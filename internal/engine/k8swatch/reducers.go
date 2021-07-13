@@ -7,60 +7,23 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
-	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-func HandleKubernetesDiscoveryCreateAction(_ context.Context, state *store.EngineState, a KubernetesDiscoveryCreateAction) {
-	key := apis.Key(a.KubernetesDiscovery)
-	if _, ok := state.KubernetesDiscoveries[key]; !ok {
-		state.KubernetesDiscoveries[key] = a.KubernetesDiscovery
-	}
-}
-
-func HandleKubernetesDiscoveryUpdateAction(ctx context.Context, state *store.EngineState, a KubernetesDiscoveryUpdateAction) {
-	key := apis.Key(a.KubernetesDiscovery)
-	if _, ok := state.KubernetesDiscoveries[key]; ok {
-		state.KubernetesDiscoveries[key] = a.KubernetesDiscovery
-	}
-	UpdateK8sRuntimeState(ctx, state, key)
-}
-
 func HandleKubernetesDiscoveryUpdateStatusAction(ctx context.Context, state *store.EngineState, a KubernetesDiscoveryUpdateStatusAction) {
-	key := apis.KeyFromMeta(*a.ObjectMeta)
-	if _, ok := state.KubernetesDiscoveries[key]; ok {
-		state.KubernetesDiscoveries[key].Status = *a.Status
-	}
-	UpdateK8sRuntimeState(ctx, state, key)
+	UpdateK8sRuntimeState(ctx, state, a.ObjectMeta, a.Status)
 }
 
-func HandleKubernetesDiscoveryDeleteAction(_ context.Context, state *store.EngineState, a KubernetesDiscoveryDeleteAction) {
-	delete(state.KubernetesDiscoveries, a.Name)
-}
-
-func manifestAndKubernetesDiscoveryStatus(key types.NamespacedName, state *store.EngineState) (model.ManifestName, *v1alpha1.KubernetesDiscoveryStatus) {
-	kd := state.KubernetesDiscoveries[key]
-	if kd == nil {
-		return "", nil
-	}
-
-	mn := model.ManifestName(kd.Annotations[v1alpha1.AnnotationManifest])
-	if mn == "" {
-		return "", nil
-	}
-
-	return mn, kd.Status.DeepCopy()
-}
-
-func UpdateK8sRuntimeState(ctx context.Context, state *store.EngineState, key types.NamespacedName) {
-	mn, status := manifestAndKubernetesDiscoveryStatus(key, state)
+func UpdateK8sRuntimeState(ctx context.Context, state *store.EngineState, objMeta *metav1.ObjectMeta, status *v1alpha1.KubernetesDiscoveryStatus) {
+	mn := model.ManifestName(objMeta.Annotations[v1alpha1.AnnotationManifest])
 	if mn == "" {
 		// this spec isn't for a manifest, so there's no manifest runtime state to update
 		return

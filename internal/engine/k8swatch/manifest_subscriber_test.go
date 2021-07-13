@@ -57,10 +57,10 @@ func TestManifestsWithNoWatches(t *testing.T) {
 	_ = f.ms.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
 	require.Never(t, func() bool {
-		state := f.store.RLockState()
-		defer f.store.RUnlockState()
-		return len(state.KubernetesDiscoveries) != 0
-	}, 500*time.Millisecond, 10*time.Millisecond,
+		var kdList v1alpha1.KubernetesDiscoveryList
+		_ = f.cli.List(f.ctx, &kdList)
+		return len(kdList.Items) != 0
+	}, 200*time.Millisecond, 50*time.Millisecond,
 		"No KubernetesDiscovery objects should have been created in store")
 }
 
@@ -170,7 +170,6 @@ type msFixture struct {
 	store *store.Store
 	cli   ctrlclient.Client
 	ms    *ManifestSubscriber
-	cs    *changeSubscriber
 }
 
 func newMSFixture(t testing.TB) *msFixture {
@@ -180,7 +179,6 @@ func newMSFixture(t testing.TB) *msFixture {
 
 	cli := fake.NewFakeTiltClient()
 	ms := NewManifestSubscriber(k8s.DefaultNamespace, cli)
-	cs := newChangeSubscriber(t)
 
 	f := &msFixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),
@@ -188,13 +186,11 @@ func newMSFixture(t testing.TB) *msFixture {
 		ctx:            ctx,
 		cli:            cli,
 		ms:             ms,
-		cs:             cs,
 	}
 	t.Cleanup(f.TearDown)
 
 	st := store.NewStore(f.reducer, false)
 	require.NoError(t, st.AddSubscriber(ctx, ms))
-	require.NoError(t, st.AddSubscriber(ctx, cs))
 
 	f.store = st
 
@@ -211,12 +207,6 @@ func (f *msFixture) reducer(ctx context.Context, state *store.EngineState, actio
 	defer f.mu.Unlock()
 
 	switch a := action.(type) {
-	case KubernetesDiscoveryCreateAction:
-		HandleKubernetesDiscoveryCreateAction(ctx, state, a)
-	case KubernetesDiscoveryUpdateAction:
-		HandleKubernetesDiscoveryUpdateAction(ctx, state, a)
-	case KubernetesDiscoveryDeleteAction:
-		HandleKubernetesDiscoveryDeleteAction(ctx, state, a)
 	case store.PanicAction:
 		f.t.Fatalf("Store received PanicAction: %v", a.Err)
 	default:
@@ -236,8 +226,6 @@ func (f *msFixture) upsertManifest(mn model.ManifestName, yaml string, ls ...lab
 	f.store.UnlockMutableState()
 
 	_ = f.ms.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	// verify that a change summary was properly generated
-	f.cs.waitForChangeAndReset(KeyForManifest(mn))
 
 	return mt.Manifest
 }
@@ -267,18 +255,6 @@ func (f *msFixture) requireDiscoveryState(mn model.ManifestName, cond func(kd *v
 	key := KeyForManifest(mn)
 	require.Eventuallyf(f.t, func() bool {
 		desc.Reset()
-		state := f.store.RLockState()
-		defer f.store.RUnlockState()
-		storeKD := state.KubernetesDiscoveries[key]
-		if storeKD != nil {
-			// avoid tests unintentionally modifying state
-			storeKD = storeKD.DeepCopy()
-		}
-		storeOK := cond(storeKD)
-		if !storeOK {
-			desc.WriteString("Store")
-			return false
-		}
 
 		var apiKD v1alpha1.KubernetesDiscovery
 		err := f.cli.Get(f.ctx, key, &apiKD)
@@ -346,44 +322,4 @@ func watchRef(namespace k8s.Namespace, uid types.UID, name string) v1alpha1.Kube
 		UID:       string(uid),
 		Name:      name,
 	}
-}
-
-// changeSubscriber helps ensure that a ChangeSummary was populated with the affected KubernetesDiscovery object key.
-//
-// Other subscribers rely on this being properly populated, so this ensures that the actions dispatched by
-// ManifestSubscriber are properly populating it.
-type changeSubscriber struct {
-	t       testing.TB
-	mu      sync.Mutex
-	changes store.ChangeSet
-}
-
-func newChangeSubscriber(t testing.TB) *changeSubscriber {
-	return &changeSubscriber{
-		t:       t,
-		changes: store.NewChangeSet(),
-	}
-}
-
-func (c *changeSubscriber) waitForChangeAndReset(key types.NamespacedName) {
-	c.t.Helper()
-	require.Eventuallyf(c.t, func() bool {
-		c.mu.Lock()
-		defer c.mu.Unlock()
-		changed := c.changes.Changes[key]
-		if changed {
-			c.changes = store.NewChangeSet()
-			return true
-		}
-		return false
-	}, stdTimeout, 20*time.Millisecond, "Change for key[%s] was never seen", key.String())
-}
-
-func (c *changeSubscriber) OnChange(_ context.Context, _ store.RStore, summary store.ChangeSummary) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	for key := range summary.KubernetesDiscoveries.Changes {
-		c.changes.Add(key)
-	}
-	return nil
 }

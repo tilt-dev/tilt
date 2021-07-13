@@ -95,7 +95,6 @@ func (m *ManifestSubscriber) createKubernetesDiscovery(ctx context.Context, st s
 		return fmt.Errorf("failed to create KubernetesDiscovery %q: %v", key, err)
 	}
 	m.lastUpdate[key] = kd.Spec.DeepCopy()
-	st.Dispatch(NewKubernetesDiscoveryCreateAction(kd))
 	return nil
 }
 
@@ -114,7 +113,6 @@ func (m *ManifestSubscriber) updateKubernetesDiscovery(ctx context.Context, st s
 	err = m.client.Update(ctx, kd)
 	if err == nil {
 		m.lastUpdate[key] = kd.Spec.DeepCopy()
-		st.Dispatch(NewKubernetesDiscoveryUpdateAction(kd))
 	} else if !apierrors.IsNotFound(err) && !apierrors.IsConflict(err) {
 		return fmt.Errorf("failed to update KubernetesDiscovery %q: %v", key, err)
 	}
@@ -134,7 +132,6 @@ func (m *ManifestSubscriber) deleteKubernetesDiscovery(ctx context.Context, st s
 	err = m.client.Delete(ctx, kd)
 	if ctrlclient.IgnoreNotFound(err) == nil {
 		delete(m.lastUpdate, key)
-		st.Dispatch(NewKubernetesDiscoveryDeleteAction(key))
 	} else if !apierrors.IsNotFound(err) {
 		return fmt.Errorf("failed to delete KubernetesDiscovery %q: %v", key, err)
 	}
