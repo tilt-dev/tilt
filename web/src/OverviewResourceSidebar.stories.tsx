@@ -63,15 +63,19 @@ export const OneHundredResources = () => (
 export const ResourcesWithLabels = () => {
   const view = nResourceView(10)
   for (let i = 0; i < 10; i++) {
-    const resourceMetadata: Proto.v1ObjectMeta = { name: `resource_${i}` }
-    view.uiResources[i].metadata = resourceMetadata
-    resourceMetadata.labels = {}
+    const labels: { [key: string]: string } = {}
     if (i < 5) {
-      resourceMetadata.labels["frontend"] = "frontend"
+      labels["frontend"] = "frontend"
     }
     if (i % 2) {
-      resourceMetadata.labels["test"] = "test"
+      labels["test"] = "test"
     }
+
+    const resourceMetadata: Proto.v1ObjectMeta = {
+      name: `resource_${i}`,
+      labels,
+    }
+    view.uiResources[i].metadata = resourceMetadata
   }
 
   // Non-happy path resources

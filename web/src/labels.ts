@@ -1,10 +1,35 @@
 // Helper functions for working with labels
 
-type UILabels = Pick<Proto.v1ObjectMeta, "labels">
+// The generated type for labels is a generic object,
+// when in reality, it is an object with string keys and values,
+// so we can use a predicate function to type the labels object
+// more precisely
+type UILabelsGenerated = Pick<Proto.v1ObjectMeta, "labels">
+interface UILabels extends UILabelsGenerated {
+  labels: { [key: string]: string } | undefined
+}
 
-// TODO (LT): Add a lil' explanation here about k8s use of labels
-// and why we filter out labels with prefixes
-export function getUiLabels({ labels }: UILabels) {
+function isUILabels(
+  labelsWrapper: UILabelsGenerated
+): labelsWrapper is UILabels {
+  return (
+    labelsWrapper.labels === undefined ||
+    typeof labelsWrapper.labels === "object"
+  )
+}
+
+export function asUILabels(labels: UILabelsGenerated): UILabels {
+  if (isUILabels(labels)) {
+    return labels
+  }
+
+  return { labels: undefined } as UILabels
+}
+
+// Following k8s practices, we treat labels with prefixes as
+// added by external tooling and not relevant to the user
+// k8s practices outline that automated tooling prefix
+export function getUiLabels({ labels }: UILabels): string[] {
   if (!labels) {
     return []
   }
