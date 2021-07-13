@@ -14,7 +14,6 @@ import (
 	"github.com/jonboulle/clockwork"
 	"github.com/tilt-dev/probe/pkg/probe"
 	"github.com/tilt-dev/probe/pkg/prober"
-	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -213,31 +212,39 @@ func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) e
 	lastRestartEventTime := c.lastRestartEventTime(cmd.Spec.RestartOn, fileWatches)
 	lastStartEventTime := c.lastStartEventTime(cmd.Spec.StartOn, buttons)
 
-	proc, ok := c.procs[name]
-	// there is already a proc (which may or may not be running) for this cmd
-	if ok {
+	startOn := cmd.Spec.StartOn
+	waitsOnStartOn := startOn != nil && len(startOn.UIButtons) > 0
 
-		// any change to the spec means we should restart the process to pick up the changes
-		specChanged := !equality.Semantic.DeepEqual(proc.spec, cmd.Spec)
-		// a new restart event happened
-		restartOnTriggered := lastRestartEventTime.After(proc.lastRestartOnEventTime)
-		// a new start event happened
-		startOnTriggered := lastStartEventTime.After(proc.lastStartOnEventTime)
-		needsRestart := specChanged || restartOnTriggered || startOnTriggered
-		if !needsRestart {
-			return nil
-		}
-	} else {
-		startOn := cmd.Spec.StartOn
-		startOnSpecIsEmpty := startOn == nil || len(startOn.UIButtons) == 0
+	proc, hasExistingProc := c.procs[name]
 
-		// cmds with non-empty StartOn specs don't start until triggered
-		if !startOnSpecIsEmpty && lastStartEventTime.IsZero() {
-			c.setStatusWaitingOnStartOn(cmd)
-			return nil
-		}
+	lastSpec := v1alpha1.CmdSpec{}
+	lastRestartOnEventTime := time.Time{}
+	lastStartOnEventTime := time.Time{}
+	if hasExistingProc {
+		lastSpec = proc.spec
+		lastRestartOnEventTime = proc.lastRestartOnEventTime
+		lastStartOnEventTime = proc.lastStartOnEventTime
 	}
-	_ = c.runInternal(ctx, cmd, buttons, fileWatches)
+
+	restartOnTriggered := lastRestartEventTime.After(lastRestartOnEventTime)
+	startOnTriggered := lastStartEventTime.After(lastStartOnEventTime)
+	execSpecChanged := !cmdExecEqual(lastSpec, cmd.Spec)
+
+	// any change to the spec means we should stop the command immediately
+	if execSpecChanged {
+		c.stop(name)
+	}
+
+	if execSpecChanged && waitsOnStartOn && !startOnTriggered {
+		// If the cmd spec has changed since the last run,
+		// and StartOn hasn't triggered yet, set the status to waiting.
+		c.setStatusWaitingOnStartOn(name, cmd)
+	} else if execSpecChanged || restartOnTriggered || startOnTriggered {
+		// Otherwise, any change, new start event, or new restart event
+		// should restart the process to pick up changes.
+		_ = c.runInternal(ctx, cmd, buttons, fileWatches)
+	}
+
 	return nil
 }
 
@@ -298,9 +305,10 @@ func (c *Controller) runInternal(ctx context.Context,
 	proc.lastStartOnEventTime = c.lastStartEventTime(cmd.Spec.StartOn, buttons)
 	ctx, proc.cancelFunc = context.WithCancel(ctx)
 
-	c.resetStatus(name, cmd)
-
 	stillHasSameProcNum := proc.stillHasSameProcNum()
+	c.updateStatus(name, func(status *CmdStatus) {
+		*status = CmdStatus{Waiting: &CmdStateWaiting{}}
+	}, stillHasSameProcNum)
 
 	ctx = store.MustObjectLogHandler(ctx, c.st, cmd)
 	spec := cmd.Spec
@@ -403,25 +411,6 @@ func processReadinessProbeResultLogger(ctx context.Context, stillHasSameProcNum 
 	}
 }
 
-func (c *Controller) resetStatus(name types.NamespacedName, cmd *Cmd) {
-	c.updateMu.Lock()
-	defer c.updateMu.Unlock()
-
-	updated := cmd.DeepCopy()
-	updated.Status = CmdStatus{
-		Waiting: &CmdStateWaiting{},
-	}
-	c.updateCmds[name] = updated
-
-	err := c.client.Status().Update(c.globalCtx, updated)
-	if err != nil && !apierrors.IsNotFound(err) {
-		c.st.Dispatch(store.NewErrorAction(fmt.Errorf("syncing to apiserver: %v", err)))
-		return
-	}
-
-	c.st.Dispatch(local.NewCmdUpdateStatusAction(updated))
-}
-
 // Update the stored status.
 //
 // In a real K8s controller, this would be a queue to make sure we don't miss updates.
@@ -435,43 +424,41 @@ func (c *Controller) updateStatus(name types.NamespacedName, update func(status 
 		return
 	}
 
-	cmd, ok := c.updateCmds[name]
-	if !ok {
+	var cmd v1alpha1.Cmd
+	err := c.client.Get(c.globalCtx, name, &cmd)
+	if err != nil {
 		return
 	}
 
+	lastCmd, ok := c.updateCmds[name]
+	if ok {
+		cmd.Status = lastCmd.Status
+	}
 	update(&cmd.Status)
+	c.updateCmds[name] = cmd.DeepCopy()
 
-	err := c.client.Status().Update(c.globalCtx, cmd)
+	err = c.client.Status().Update(c.globalCtx, &cmd)
 	if err != nil && !apierrors.IsNotFound(err) {
 		c.st.Dispatch(store.NewErrorAction(fmt.Errorf("syncing to apiserver: %v", err)))
 		return
 	}
 
-	c.st.Dispatch(local.NewCmdUpdateStatusAction(cmd))
+	c.st.Dispatch(local.NewCmdUpdateStatusAction(&cmd))
 }
 
 const waitingOnStartOnReason = "cmd StartOn has not been triggered"
 
-func (c *Controller) setStatusWaitingOnStartOn(cmd *Cmd) {
+func (c *Controller) setStatusWaitingOnStartOn(name types.NamespacedName, cmd *Cmd) {
 	if cmd.Status.Waiting != nil && cmd.Status.Waiting.Reason == waitingOnStartOnReason {
 		return
 	}
-
-	updated := cmd.DeepCopy()
-	updated.Status = CmdStatus{
-		Waiting: &CmdStateWaiting{
-			Reason: waitingOnStartOnReason,
-		},
-	}
-
-	err := c.client.Status().Update(c.globalCtx, updated)
-	if err != nil && !apierrors.IsNotFound(err) {
-		c.st.Dispatch(store.NewErrorAction(fmt.Errorf("syncing to apiserver: %v", err)))
-		return
-	}
-
-	c.st.Dispatch(local.NewCmdUpdateStatusAction(updated))
+	c.updateStatus(name, func(status *CmdStatus) {
+		*status = CmdStatus{
+			Waiting: &CmdStateWaiting{
+				Reason: waitingOnStartOnReason,
+			},
+		}
+	}, func() bool { return true })
 }
 
 func (c *Controller) processStatuses(

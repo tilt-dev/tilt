@@ -243,14 +243,10 @@ func TestRestartOnFileWatch(t *testing.T) {
 	require.NoError(t, err)
 
 	f.clock.Advance(time.Second)
-	f.setRestartOn("cmd-serve-1", &RestartOnSpec{
-		FileWatches: []string{"fw-1"},
-	})
-	f.reconcileCmd("cmd-serve-1")
-
-	secondStart := f.assertCmdMatches("cmd-serve-1", func(cmd *Cmd) bool {
-		running := cmd.Status.Running
-		return running != nil && running.StartedAt.Time.After(firstStart.Status.Running.StartedAt.Time)
+	f.updateSpec("cmd-serve-1", func(spec *v1alpha1.CmdSpec) {
+		spec.RestartOn = &RestartOnSpec{
+			FileWatches: []string{"fw-1"},
+		}
 	})
 
 	f.clock.Advance(time.Second)
@@ -259,7 +255,7 @@ func TestRestartOnFileWatch(t *testing.T) {
 
 	f.assertCmdMatches("cmd-serve-1", func(cmd *Cmd) bool {
 		running := cmd.Status.Running
-		return running != nil && running.StartedAt.Time.After(secondStart.Status.Running.StartedAt.Time)
+		return running != nil && running.StartedAt.Time.After(firstStart.Status.Running.StartedAt.Time)
 	})
 
 	// Our fixture doesn't test reconcile.Request triage,
@@ -485,6 +481,93 @@ func TestDisposeTerminatedWhenCmdChanges(t *testing.T) {
 	f.assertCmdDeleted("foo-serve-1")
 }
 
+// Self-modifying Cmds are typically paired with a StartOn trigger,
+// to simulate a "toggle" switch on the Cmd.
+//
+// See:
+// https://github.com/tilt-dev/tilt-extensions/issues/202
+func TestSelfModifyingCmd(t *testing.T) {
+	f := newFixture(t)
+	defer f.teardown()
+
+	setupStartOnTest(t, f)
+
+	f.reconcileCmd("testcmd")
+
+	f.assertCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
+		return cmd.Status.Waiting != nil && cmd.Status.Waiting.Reason == waitingOnStartOnReason
+	})
+
+	f.clock.Advance(time.Second)
+	f.triggerButton("b-1", f.clock.Now())
+	f.clock.Advance(time.Second)
+	f.reconcileCmd("testcmd")
+
+	f.assertCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
+		return cmd.Status.Running != nil
+	})
+
+	f.updateSpec("testcmd", func(spec *v1alpha1.CmdSpec) {
+		spec.Args = []string{"yourserver"}
+	})
+	f.reconcileCmd("testcmd")
+	f.assertCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
+		return cmd.Status.Waiting != nil && cmd.Status.Waiting.Reason == waitingOnStartOnReason
+	})
+
+	f.fe.RequireNoKnownProcess(t, "myserver")
+	f.fe.RequireNoKnownProcess(t, "yourserver")
+	f.clock.Advance(time.Second)
+	f.triggerButton("b-1", f.clock.Now())
+	f.reconcileCmd("testcmd")
+
+	f.assertCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
+		return cmd.Status.Running != nil
+	})
+}
+
+// Ensure that changes to the StartOn or RestartOn fields
+// don't restart the command.
+func TestDependencyChangesDoNotCauseRestart(t *testing.T) {
+	f := newFixture(t)
+	defer f.teardown()
+
+	setupStartOnTest(t, f)
+	f.triggerButton("b-1", f.clock.Now())
+	f.clock.Advance(time.Second)
+	f.reconcileCmd("testcmd")
+
+	firstStart := f.assertCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
+		return cmd.Status.Running != nil
+	})
+
+	err := f.client.Create(f.ctx, &v1alpha1.UIButton{ObjectMeta: metav1.ObjectMeta{Name: "new-button"}})
+	require.NoError(t, err)
+
+	err = f.client.Create(f.ctx, &v1alpha1.FileWatch{
+		ObjectMeta: metav1.ObjectMeta{Name: "new-filewatch"},
+		Spec: FileWatchSpec{
+			WatchedPaths: []string{f.JoinPath("new-path")},
+		},
+	})
+	require.NoError(t, err)
+
+	f.updateSpec("testcmd", func(spec *v1alpha1.CmdSpec) {
+		spec.StartOn = &v1alpha1.StartOnSpec{
+			UIButtons: []string{"new-button"},
+		}
+		spec.RestartOn = &v1alpha1.RestartOnSpec{
+			FileWatches: []string{"new-filewatch"},
+		}
+	})
+	f.reconcileCmd("testcmd")
+
+	f.assertCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
+		running := cmd.Status.Running
+		return running != nil && running.StartedAt.Time.Equal(firstStart.Status.Running.StartedAt.Time)
+	})
+}
+
 type testStore struct {
 	*store.TestingStore
 	out     io.Writer
@@ -619,12 +702,12 @@ func (f *fixture) reconcileCmd(name string) {
 	require.NoError(f.T(), err)
 }
 
-func (f *fixture) setRestartOn(name string, restartOn *RestartOnSpec) {
+func (f *fixture) updateSpec(name string, update func(spec *v1alpha1.CmdSpec)) {
 	cmd := &Cmd{}
 	err := f.client.Get(f.ctx, types.NamespacedName{Name: name}, cmd)
 	require.NoError(f.T(), err)
 
-	cmd.Spec.RestartOn = restartOn
+	update(&(cmd.Spec))
 	err = f.client.Update(f.ctx, cmd)
 	require.NoError(f.T(), err)
 }
