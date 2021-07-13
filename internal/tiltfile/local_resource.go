@@ -135,7 +135,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		ignores:        ignores,
 		allowParallel:  allowParallel,
 		links:          links.Links,
-		labels          labels.Values,
+		labels:         labels.Values,
 		tags:           tags,
 		isTest:         isTest,
 		readinessProbe: readinessProbe.Spec(),

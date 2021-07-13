@@ -33,8 +33,12 @@ func (lv *LabelValue) Unpack(v starlark.Value) error {
 	return nil
 }
 
+func (lv *LabelValue) String() string {
+	return string(*lv)
+}
+
 type LabelOrLabelList struct {
-	Values []LabelValue
+	Values []string
 }
 
 var _ starlark.Unpacker = &LabelOrLabelList{}
@@ -54,7 +58,7 @@ func (ls *LabelOrLabelList) Unpack(v starlark.Value) error {
 		if err != nil {
 			return err
 		}
-		ls.Values = []LabelValue{l}
+		ls.Values = []string{l.String()}
 		return nil
 	}
 
@@ -76,7 +80,7 @@ func (ls *LabelOrLabelList) Unpack(v starlark.Value) error {
 		if err != nil {
 			return err
 		}
-		ls.Values = append(ls.Values, l)
+		ls.Values = append(ls.Values, l.String())
 	}
 
 	return nil

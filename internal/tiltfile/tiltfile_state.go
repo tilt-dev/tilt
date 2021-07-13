@@ -1425,6 +1425,7 @@ func (s *tiltfileState) translateLocal() ([]model.Manifest, error) {
 			Name:                 mn,
 			TriggerMode:          tm,
 			ResourceDependencies: mds,
+			Labels:               r.labels,
 		}.WithDeployTarget(lt)
 
 		result = append(result, m)
