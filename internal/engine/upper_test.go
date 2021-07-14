@@ -242,6 +242,8 @@ type fakeBuildAndDeployer struct {
 
 	// kClient registers deployed entities for subsequent retrieval.
 	kClient *k8s.FakeK8sClient
+
+	ctrlClient ctrlclient.Client
 }
 
 var _ buildcontrol.BuildAndDeployer = &fakeBuildAndDeployer{}
@@ -350,7 +352,12 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 	}
 
 	if kTarg := call.k8s(); !kTarg.Empty() {
-		result[call.k8s().ID()] = b.nextK8sDeployResult(kTarg)
+		nextK8sResult := b.nextK8sDeployResult(kTarg)
+		err = b.updateKubernetesApplyStatus(ctx, kTarg, nextK8sResult.KubernetesApplyStatus)
+		if err != nil {
+			return result, err
+		}
+		result[call.k8s().ID()] = nextK8sResult
 	}
 
 	err = b.nextLiveUpdateCompileError
@@ -363,6 +370,18 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 	}
 
 	return result, err
+}
+
+func (b *fakeBuildAndDeployer) updateKubernetesApplyStatus(ctx context.Context, kTarg model.K8sTarget, status v1alpha1.KubernetesApplyStatus) error {
+	var ka v1alpha1.KubernetesApply
+	err := b.ctrlClient.Get(ctx, types.NamespacedName{Name: kTarg.ID().Name.String()}, &ka)
+	if err != nil {
+		return err
+	}
+	require.NoError(b.t, err)
+
+	ka.Status = status
+	return b.ctrlClient.Status().Update(ctx, &ka)
 }
 
 func (b *fakeBuildAndDeployer) nextK8sDeployResult(kTarg model.K8sTarget) store.K8sBuildResult {
@@ -451,13 +470,14 @@ func (b *fakeBuildAndDeployer) waitUntilBuildCompleted(ctx context.Context, key 
 	b.buildCompletionChans.Delete(key)
 }
 
-func newFakeBuildAndDeployer(t *testing.T) *fakeBuildAndDeployer {
+func newFakeBuildAndDeployer(t *testing.T, kClient *k8s.FakeK8sClient, ctrlClient ctrlclient.Client) *fakeBuildAndDeployer {
 	return &fakeBuildAndDeployer{
 		t:                t,
 		calls:            make(chan buildAndDeployCall, 20),
 		buildLogOutput:   make(map[model.TargetID]string),
 		resultsByID:      store.BuildResultSet{},
-		kClient:          k8s.NewFakeK8sClient(t),
+		kClient:          kClient,
+		ctrlClient:       ctrlClient,
 		targetObjectTree: make(map[model.TargetID]podbuilder.PodObjectTree),
 	}
 }
@@ -3847,7 +3867,8 @@ func newTestFixture(t *testing.T) *testFixture {
 	cdc := controllers.ProvideDeferredClient()
 
 	watcher := fsevent.NewFakeMultiWatcher()
-	b := newFakeBuildAndDeployer(t)
+	kClient := k8s.NewFakeK8sClient(t)
+	b := newFakeBuildAndDeployer(t, kClient, cdc)
 
 	timerMaker := fsevent.MakeFakeTimerMaker(t)
 

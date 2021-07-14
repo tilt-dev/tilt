@@ -253,6 +253,10 @@ func (b PodBuilder) DeploymentUID() types.UID {
 
 func (b PodBuilder) buildDeployment(ns k8s.Namespace) *appsv1.Deployment {
 	return &appsv1.Deployment{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "apps/v1",
+			Kind:       "Deployment",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      b.buildDeploymentName(),
 			Namespace: ns.String(),
@@ -264,6 +268,10 @@ func (b PodBuilder) buildDeployment(ns k8s.Namespace) *appsv1.Deployment {
 
 func (b PodBuilder) buildReplicaSet(deployment *appsv1.Deployment) *appsv1.ReplicaSet {
 	return &appsv1.ReplicaSet{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "apps/v1",
+			Kind:       "ReplicaSet",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      b.buildReplicaSetName(),
 			Namespace: deployment.Namespace,
@@ -478,6 +486,10 @@ func (b PodBuilder) Build() *v1.Pod {
 	}
 
 	return &v1.Pod{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "v1",
+			Kind:       "Pod",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              string(b.PodName()),
 			Namespace:         ns.String(),
