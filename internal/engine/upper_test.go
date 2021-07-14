@@ -3942,7 +3942,7 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	wsl := server.NewWebsocketList()
 
-	kar := kubernetesapply.NewReconciler(cdc, b.kClient, sch, docker.Env{}, k8s.KubeContext("kind-kind"), st)
+	kar := kubernetesapply.NewReconciler(cdc, b.kClient, sch, docker.Env{}, k8s.KubeContext("kind-kind"), st, "default")
 
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
 		fwc,

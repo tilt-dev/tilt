@@ -48,7 +48,8 @@ func provideFakeBuildAndDeployer(ctx context.Context, docker2 docker.Client, kCl
 	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
 	execCustomBuilder := build.NewExecCustomBuilder(docker2, clock)
 	scheme := v1alpha1.NewScheme()
-	reconciler := kubernetesapply.NewReconciler(ctrlClient, kClient, scheme, dockerBuilder, kubeContext, st)
+	namespace := provideFakeK8sNamespace()
+	reconciler := kubernetesapply.NewReconciler(ctrlClient, kClient, scheme, dockerBuilder, kubeContext, st, namespace)
 	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, kClient, env, kubeContext, analytics2, buildcontrolUpdateMode, clock, kp, ctrlClient, reconciler)
 	imageBuilder := buildcontrol.NewImageBuilder(dockerBuilder, execCustomBuilder, buildcontrolUpdateMode)
 	dockerComposeBuildAndDeployer := buildcontrol.NewDockerComposeBuildAndDeployer(dcc, docker2, imageBuilder, clock)
@@ -83,6 +84,10 @@ var DeployerWireSetTest = wire.NewSet(
 var DeployerWireSet = wire.NewSet(
 	DeployerBaseWireSet,
 )
+
+func provideFakeK8sNamespace() k8s.Namespace {
+	return "default"
+}
 
 func provideFakeKubeContext(env k8s.Env) k8s.KubeContext {
 	return k8s.KubeContext(string(env))

@@ -5,27 +5,19 @@ import (
 	"fmt"
 	"sync"
 
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/builder"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
-
+	"github.com/docker/distribution/reference"
+	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/docker/distribution/reference"
-	"github.com/pkg/errors"
-
-	"github.com/tilt-dev/tilt/pkg/apis"
-	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
-	"github.com/tilt-dev/tilt/pkg/logger"
-	"github.com/tilt-dev/tilt/pkg/model"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/container"
@@ -33,6 +25,10 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/apis"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type Reconciler struct {
@@ -40,6 +36,7 @@ type Reconciler struct {
 	dkc         build.DockerKubeConnection
 	kubeContext k8s.KubeContext
 	k8sClient   k8s.Client
+	cfgNS       k8s.Namespace
 	ctrlClient  ctrlclient.Client
 	indexer     *indexer.Indexer
 
@@ -47,18 +44,22 @@ type Reconciler struct {
 
 	// Protected by the mutex.
 	results map[types.NamespacedName]*Result
+
+	// A temporary flag to help test the disco management code.
+	enableDiscoForTesting bool
 }
 
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	b := ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.KubernetesApply{}).
+		Owns(&v1alpha1.KubernetesDiscovery{}).
 		Watches(&source.Kind{Type: &v1alpha1.ImageMap{}},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue))
 
 	return b, nil
 }
 
-func NewReconciler(ctrlClient ctrlclient.Client, k8sClient k8s.Client, scheme *runtime.Scheme, dkc build.DockerKubeConnection, kubeContext k8s.KubeContext, st store.RStore) *Reconciler {
+func NewReconciler(ctrlClient ctrlclient.Client, k8sClient k8s.Client, scheme *runtime.Scheme, dkc build.DockerKubeConnection, kubeContext k8s.KubeContext, st store.RStore, cfgNS k8s.Namespace) *Reconciler {
 	return &Reconciler{
 		ctrlClient:  ctrlClient,
 		k8sClient:   k8sClient,
@@ -67,6 +68,7 @@ func NewReconciler(ctrlClient ctrlclient.Client, k8sClient k8s.Client, scheme *r
 		kubeContext: kubeContext,
 		st:          st,
 		results:     make(map[types.NamespacedName]*Result),
+		cfgNS:       cfgNS,
 	}
 }
 
@@ -84,6 +86,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	if apierrors.IsNotFound(err) || !ka.ObjectMeta.DeletionTimestamp.IsZero() {
 		toDelete := r.updateResult(nn, nil)
 		r.bestEffortDelete(ctx, toDelete)
+
+		err := r.manageOwnedKubernetesDiscovery(ctx, nn, nil)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
 		return ctrl.Result{}, nil
 	}
 
@@ -110,7 +118,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	if !r.shouldDeployOnReconcile(request.NamespacedName, &ka, imageMaps) {
 		// TODO(nick): Like with other reconcilers, there should always
 		// be a reason why we're not deploying, and we should update the
-		// Status field of KubernetesApply with that reson.
+		// Status field of KubernetesApply with that reason.
+		err := r.manageOwnedKubernetesDiscovery(ctx, nn, &ka)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
 		return ctrl.Result{}, nil
 	}
 
@@ -229,6 +242,11 @@ func (r *Reconciler) ForceApply(
 
 	toDelete := r.updateResult(nn, &result)
 	r.bestEffortDelete(ctx, toDelete)
+
+	err = r.manageOwnedKubernetesDiscovery(ctx, nn, &ka)
+	if err != nil {
+		return status, err
+	}
 
 	return status, nil
 }

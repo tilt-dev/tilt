@@ -154,7 +154,7 @@ func newFixture(t *testing.T) *fixture {
 	dockerClient.ImageAlwaysExists = true
 
 	db := build.NewDockerImageBuilder(dockerClient, dockerfile.Labels{})
-	r := NewReconciler(cfb.Client, kClient, v1alpha1.NewScheme(), db, kubeContext, st)
+	r := NewReconciler(cfb.Client, kClient, v1alpha1.NewScheme(), db, kubeContext, st, "default")
 
 	return &fixture{
 		ControllerFixture: cfb.Build(r),
