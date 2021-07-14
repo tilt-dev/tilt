@@ -9,10 +9,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	errorutil "k8s.io/apimachinery/pkg/util/errors"
-	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
+	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
@@ -20,8 +20,7 @@ import (
 // Reconcile all the port forwards owned by this KD. The KD may be nil if it's being deleted.
 func (r *Reconciler) manageOwnedPortForwards(ctx context.Context, nn types.NamespacedName, kd *v1alpha1.KubernetesDiscovery) error {
 	var pfList v1alpha1.PortForwardList
-	err := r.ctrlClient.List(ctx, &pfList, ctrlclient.InNamespace(nn.Namespace),
-		ctrlclient.MatchingFields{ownerKey: nn.Name})
+	err := indexer.ListOwnedBy(ctx, r.ctrlClient, &pfList, nn, apiType)
 	if err != nil {
 		return fmt.Errorf("failed to fetch managed PortForward objects for KubernetesDiscovery %s: %v",
 			kd.Name, err)
