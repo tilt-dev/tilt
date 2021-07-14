@@ -13,7 +13,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 
 	"github.com/tilt-dev/wmclient/pkg/analytics"
-	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -123,8 +122,7 @@ type EngineState struct {
 
 	// API-server-based data models. Stored in EngineState
 	// to assist in migration.
-	Cmds                  map[string]*Cmd                               `json:"-"`
-	KubernetesDiscoveries map[types.NamespacedName]*KubernetesDiscovery `json:"-"`
+	Cmds map[string]*Cmd `json:"-"`
 }
 
 type CloudStatus struct {
@@ -489,7 +487,6 @@ func NewState() *EngineState {
 	}
 
 	ret.Cmds = make(map[string]*Cmd)
-	ret.KubernetesDiscoveries = make(map[types.NamespacedName]*KubernetesDiscovery)
 
 	return ret
 }

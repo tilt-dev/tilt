@@ -57,9 +57,6 @@ type ChangeSummary struct {
 	// Cmds with their specs changed.
 	CmdSpecs ChangeSet
 
-	// KubernetesDiscoveries that have changed.
-	KubernetesDiscoveries ChangeSet
-
 	// Sessions that have changed.
 	Sessions ChangeSet
 
@@ -79,7 +76,6 @@ func (s *ChangeSummary) Add(other ChangeSummary) {
 	s.Legacy = s.Legacy || other.Legacy
 	s.Log = s.Log || other.Log
 	s.CmdSpecs.AddAll(other.CmdSpecs)
-	s.KubernetesDiscoveries.AddAll(other.KubernetesDiscoveries)
 	s.Sessions.AddAll(other.Sessions)
 	s.UISessions.AddAll(other.UISessions)
 	s.UIResources.AddAll(other.UIResources)
