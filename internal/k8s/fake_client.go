@@ -1,7 +1,6 @@
 package k8s
 
 import (
-	"bytes"
 	"context"
 	"io"
 	"io/ioutil"
@@ -57,6 +56,7 @@ type FakeK8sClient struct {
 	PodLogsByPodAndContainer map[PodAndCName]ReaderCloser
 	LastPodLogStartTime      time.Time
 	LastPodLogContext        context.Context
+	LastPodLogPipeWriter     *io.PipeWriter
 	ContainerLogsError       error
 
 	podWatches     []fakePodWatch
@@ -471,7 +471,10 @@ func (c *FakeK8sClient) ContainerLogs(ctx context.Context, pID PodID, cName cont
 		return buf, nil
 	}
 
-	return ReaderCloser{Reader: bytes.NewBuffer(nil)}, nil
+	r, w := io.Pipe()
+	c.LastPodLogPipeWriter = w
+
+	return ReaderCloser{Reader: r}, nil
 }
 
 func FakePodStatus(image reference.NamedTagged, phase string) v1.PodStatus {
