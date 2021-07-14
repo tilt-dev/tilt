@@ -327,6 +327,50 @@ func TestIgnoredContainerLogs(t *testing.T) {
 	f.AssertOutputContains("hello world!")
 }
 
+// Our old Fake Kubernetes client used to interact badly
+// with the pod log stream reconciler, leading to an infinite
+// loop in tests.
+func TestInfiniteLoop(t *testing.T) {
+	f := newPLMFixture(t)
+
+	f.kClient.SetLogsForPodContainer(podID, "cont1", "hello world!")
+
+	pb := newPodBuilder(podID).
+		addRunningContainer("cNameNormal", "cID-normal")
+	f.kClient.UpsertPod(pb.toPod())
+
+	pls := plsFromPod("server", pb, time.Time{})
+	f.Create(pls)
+
+	nn := types.NamespacedName{Name: pls.Name}
+	f.MustReconcile(nn)
+
+	// Make sure this goes into an active state and stays there.
+	assert.Eventually(t, func() bool {
+		var pls v1alpha1.PodLogStream
+		f.MustGet(nn, &pls)
+		return len(pls.Status.ContainerStatuses) > 0 && pls.Status.ContainerStatuses[0].Active
+	}, 200*time.Millisecond, 10*time.Millisecond)
+
+	assert.Never(t, func() bool {
+		var pls v1alpha1.PodLogStream
+		f.MustGet(nn, &pls)
+		return len(pls.Status.ContainerStatuses) == 0 || !pls.Status.ContainerStatuses[0].Active
+	}, 200*time.Millisecond, 10*time.Millisecond)
+
+	_ = f.kClient.LastPodLogPipeWriter.CloseWithError(fmt.Errorf("manually closed"))
+
+	assert.Eventually(t, func() bool {
+		var pls v1alpha1.PodLogStream
+		f.MustGet(nn, &pls)
+		if len(pls.Status.ContainerStatuses) == 0 {
+			return false
+		}
+		cst := pls.Status.ContainerStatuses[0]
+		return !cst.Active && strings.Contains(cst.Error, "manually closed")
+	}, 200*time.Millisecond, 10*time.Millisecond)
+}
+
 type plmStore struct {
 	t testing.TB
 	*store.TestingStore

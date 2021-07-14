@@ -359,9 +359,11 @@ func (m *Controller) consumeLogs(watch PodLogWatch, st store.RStore) {
 		_, err = io.Copy(logger.Get(ctx).Writer(logger.InfoLvl), reader)
 		_ = readCloser.Close()
 		close(done)
+
+		wasCanceledUpstream := ctx.Err() != nil
 		cancel()
 
-		if !retry && err != nil && ctx.Err() == nil {
+		if !retry && err != nil && !wasCanceledUpstream {
 			exitError = err
 			return
 		}
