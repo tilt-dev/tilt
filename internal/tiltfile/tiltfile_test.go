@@ -564,7 +564,7 @@ docker_build("gcr.io/foo", "foo", cache='/paths/to/cache')
 	f.loadAssertWarnings(cacheObsoleteWarning)
 }
 
-func TestDuplicateResourceNames(t *testing.T) {
+func TestK8sResourceAdditiveLinks(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -572,11 +572,19 @@ func TestDuplicateResourceNames(t *testing.T) {
 	f.file("Tiltfile", `
 
 k8s_yaml('all.yaml')
+k8s_resource('a', links=['http://demo-a.localhost/'])
 k8s_resource('a')
-k8s_resource('a')
+k8s_resource('b', links=['http://demo-b.localhost/'])
+k8s_resource('b', links=['http://demo-b.localhost/api'])
 `)
-
-	f.loadErrString("k8s_resource already called for a")
+	f.load()
+	f.assertNextManifest("a",
+		k8sResourceLinks{model.MustNewLink("http://demo-a.localhost/", "")})
+	f.assertNextManifest("b",
+		k8sResourceLinks{
+			model.MustNewLink("http://demo-b.localhost/", ""),
+			model.MustNewLink("http://demo-b.localhost/api", ""),
+		})
 }
 
 func TestDuplicateImageNames(t *testing.T) {
@@ -804,7 +812,9 @@ local_resource('foo', 'echo hi', links=%s)
 docker_build('gcr.io/foo', 'foo')
 k8s_yaml('foo.yaml')
 k8s_resource('foo', links=EXPR)
+k8s_resource('foo') # test that subsequent calls don't clear the links
 `
+
 			s = strings.Replace(s, "EXPR", c.expr, -1)
 			f.file("Tiltfile", s)
 
@@ -831,7 +841,9 @@ services:
 `)
 			s := `
 docker_compose('docker-compose.yml')
-dc_resource('foo', links=EXPR)`
+dc_resource('foo', links=EXPR)
+dc_resource('foo') # test that subsequent calls don't clear the links
+`
 
 			s = strings.Replace(s, "EXPR", c.expr, -1)
 			f.file("Tiltfile", s)
@@ -3067,7 +3079,7 @@ k8s_resource('foo:deployment:ns2', new_name='foo')
 	f.assertNextManifest("foo", db(image("gcr.io/foo2")))
 }
 
-func TestMultipleK8sResourceOptionsForOneResource(t *testing.T) {
+func TestAdditivePortForwards(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -3079,7 +3091,9 @@ k8s_yaml('foo.yaml')
 k8s_resource('foo', port_forwards=8001)
 k8s_resource('foo', port_forwards=8000)
 `)
-	f.loadErrString("k8s_resource already called for foo")
+
+	f.load()
+	f.assertNextManifest("foo", []model.PortForward{{LocalPort: 8001}, {LocalPort: 8000}})
 }
 
 func TestWorkloadToResourceFunction(t *testing.T) {
