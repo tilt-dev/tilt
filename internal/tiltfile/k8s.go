@@ -71,7 +71,6 @@ type k8sResourceOptions struct {
 	extraPodSelectors []labels.Set
 	triggerMode       triggerMode
 	autoInit          bool
-	tiltfilePosition  syntax.Position
 	resourceDeps      []string
 	objects           []string
 	manuallyGrouped   bool
@@ -285,14 +284,18 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 	if !ok {
 		// Set default options.
 		o.autoInit = true
-		o.tiltfilePosition = thread.CallFrame(1).Pos
 	}
 
-	manuallyGrouped := o.manuallyGrouped
-	if workload == "" {
+	newManualGroup := false
+	if workload == "" && !o.manuallyGrouped {
 		resourceName = newName.String()
 		// If a resource doesn't specify an existing workload then it needs to have objects to be valid
-		manuallyGrouped = true
+		newManualGroup = true
+		o.manuallyGrouped = true
+	}
+
+	if resourceName == "" {
+		return nil, fmt.Errorf("Resource name missing. Must give a name for an existing resource or a new_name to create a new resource.")
 	}
 
 	portForwards, err := convertPortForwards(portForwardsVal)
@@ -315,12 +318,8 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 		return nil, errors.Wrapf(err, "%s: resource_deps", fn.Name())
 	}
 
-	if manuallyGrouped && len(objects) == 0 {
-		return nil, fmt.Errorf("k8s_resource doesn't specify a workload or any objects. All non-workload resources must specify 1 or more objects")
-	}
-
-	if manuallyGrouped && len(objects) > 0 && newName == "" {
-		return nil, fmt.Errorf("k8s_resource has only non-workload objects but doesn't provide a new_name")
+	if newManualGroup && len(objects) == 0 {
+		return nil, fmt.Errorf("k8s_resource(new_name) creates a new group. Must specify objects in the group with objects=[...].")
 	}
 
 	// Options are added, so aggregate options from previous resource calls.
@@ -337,9 +336,6 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 	}
 	o.resourceDeps = append(o.resourceDeps, resourceDeps...)
 	o.objects = append(o.objects, objects...)
-	if manuallyGrouped {
-		o.manuallyGrouped = manuallyGrouped
-	}
 	if podReadinessMode.Value != model.PodReadinessNone {
 		o.podReadinessMode = podReadinessMode.Value
 	}

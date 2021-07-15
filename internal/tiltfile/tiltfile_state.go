@@ -703,7 +703,7 @@ func (s *tiltfileState) assembleK8s() error {
 			r.links = opts.links
 			if opts.newName != "" && opts.newName != r.name {
 				if _, ok := s.k8sByName[opts.newName]; ok {
-					return fmt.Errorf("k8s_resource at %s specified to rename %q to %q, but there already exists a resource with that name", opts.tiltfilePosition.String(), r.name, opts.newName)
+					return fmt.Errorf("k8s_resource() specified to rename %q to %q, but there already exists a resource with that name", r.name, opts.newName)
 				}
 				delete(s.k8sByName, r.name)
 				r.name = opts.newName
@@ -753,7 +753,7 @@ func (s *tiltfileState) assembleK8s() error {
 			for name := range s.k8sByName {
 				knownResources = append(knownResources, name)
 			}
-			return fmt.Errorf("k8s_resource at %s specified unknown resource %q. known resources: %s\n\nNote: Tilt's resource naming has recently changed. See https://docs.tilt.dev/resource_assembly_migration.html for more info", opts.tiltfilePosition.String(), workload, strings.Join(knownResources, ", "))
+			return fmt.Errorf("k8s_resource() specified unknown resource %q. known resources: %s", workload, strings.Join(knownResources, ", "))
 		}
 	}
 
