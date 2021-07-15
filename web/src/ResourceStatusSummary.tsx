@@ -8,7 +8,7 @@ import { ReactComponent as WarningSvg } from "./assets/svg/warning.svg"
 import { FilterLevel } from "./logfilters"
 import { usePathBuilder } from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
-import { summaryStatus, summaryStatusFromAllStatuses } from "./status"
+import { buildStatus, combinedStatus, runtimeStatus } from "./status"
 import {
   Color,
   Font,
@@ -287,18 +287,14 @@ export function ResourceStatusSummary(props: ResourceStatusSummaryProps) {
   let resources = props.view.uiResources || []
   const allStatuses: ResourceStatus[] = []
 
-  let testResources = new Array<UIResource>()
   const testStatuses: ResourceStatus[] = []
-  let otherResources = new Array<UIResource>()
   const otherStatuses: ResourceStatus[] = []
   resources.forEach((r) => {
-    const status = summaryStatus(r)
+    const status = combinedStatus(buildStatus(r), runtimeStatus(r))
     allStatuses.push(status)
     if (r.status?.localResourceInfo?.isTest) {
-      testResources.push(r)
       testStatuses.push(status)
     } else {
-      otherResources.push(r)
       otherStatuses.push(status)
     }
   })
@@ -335,10 +331,7 @@ export function ResourceSidebarStatusSummary(
   // Because SidebarItems have already-calculated statuses,
   // pass those directly to determine their summary status
   const statuses: ResourceStatus[] = props.items.map((item) =>
-    summaryStatusFromAllStatuses({
-      buildStatus: item.buildStatus,
-      runtimeStatus: item.runtimeStatus,
-    })
+    combinedStatus(item.buildStatus, item.runtimeStatus)
   )
 
   return (

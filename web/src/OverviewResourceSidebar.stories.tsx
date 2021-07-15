@@ -64,7 +64,8 @@ export const ResourcesWithLabels = () => {
   const view = nResourceView(10)
   for (let i = 0; i < 10; i++) {
     const labels: { [key: string]: string } = {}
-    if (i < 5) {
+    // The first item is a Tiltfile, so don't apply a label to it
+    if (i > 0 && i < 5) {
       labels["frontend"] = "frontend"
     }
     if (i % 2) {
@@ -72,15 +73,10 @@ export const ResourcesWithLabels = () => {
     }
 
     if (i === 3) {
-      labels["some_really_really_really_long_label_name"] =
-        "some_really_really_really_long_label_name"
+      labels["very_long_long_long_label"] = "very_long_long_long_label"
     }
 
-    const resourceMetadata: Proto.v1ObjectMeta = {
-      name: `resource_${i}`,
-      labels,
-    }
-    view.uiResources[i].metadata = resourceMetadata
+    view.uiResources[i].metadata!.labels = labels
   }
 
   // Non-happy path resources
@@ -99,6 +95,8 @@ export const ResourcesWithLabels = () => {
   }
   crashedStart.metadata!.name = "resource_12"
   view.uiResources.push(crashedStart)
+
+  // TODO: Add a Tiltfile resource
 
   return <OverviewResourceSidebar name={"vigoda_1"} view={view} />
 }

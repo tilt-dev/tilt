@@ -38,6 +38,11 @@ export const SidebarItemRoot = styled.li`
   ${StarResourceButtonRoot} {
     margin-right: ${SizeUnit(1.0 / 12)};
   }
+
+  /* groupIndent is used for un-grouped items in the grouped sidebar view */
+  &.groupIndent {
+    margin-left: ${SizeUnit(2 / 3)};
+  }
 `
 
 export let SidebarItemBox = styled.div`
@@ -194,6 +199,7 @@ export type SidebarItemViewProps = {
   selected: boolean
   resourceView: ResourceView
   pathBuilder: PathBuilder
+  inGroup?: boolean
 }
 
 function buildStatusText(item: SidebarItem): string {
@@ -266,11 +272,12 @@ export default function SidebarItemView(props: SidebarItemViewProps) {
   let isBuildingClass = building ? "isBuilding" : ""
   let onTrigger = triggerUpdate.bind(null, item.name)
   let onModeToggle = toggleTriggerMode.bind(null, item.name)
+  const groupIndentClass = props.inGroup ? "groupIndent" : ""
 
   return (
     <SidebarItemRoot
       key={item.name}
-      className={`u-showStarOnHover u-showTriggerModeOnHover ${isSelectedClass} ${isBuildingClass}`}
+      className={`u-showStarOnHover u-showTriggerModeOnHover ${isSelectedClass} ${isBuildingClass} ${groupIndentClass}`}
     >
       <StarResourceButton
         resourceName={item.name}

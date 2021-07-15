@@ -54,15 +54,24 @@ const SidebarLabelSection = styled(Accordion)`
     background-color: unset;
   }
 
+  &.MuiPaper-elevation1 {
+    box-shadow: unset;
+  }
+
   &.MuiAccordion-root,
   &.MuiAccordion-root.Mui-expanded {
-    margin: ${SizeUnit(1 / 3)} 0;
+    margin: ${SizeUnit(1 / 3)} ${SizeUnit(1 / 2)};
   }
 `
 
 const SummaryIcon = styled(CaretSvg)`
+  flex-shrink: 0;
   padding: ${SizeUnit(1 / 4)};
-  transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1) 0ms; /* Copied from MUI accordion */
+  transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1) 0ms; /* Copied from MUI accordion */
+
+  .fillStd {
+    fill: ${Color.grayLight};
+  }
 `
 
 const SidebarGroupSummary = styled(AccordionSummary)`
@@ -82,8 +91,8 @@ const SidebarGroupSummary = styled(AccordionSummary)`
     display: flex;
     font-size: ${FontSize.small};
     margin: 0;
-    max-width: 336px;
     padding: ${SizeUnit(1 / 8)};
+    width: 100%;
 
     &.Mui-expanded {
       margin: 0;
@@ -99,6 +108,7 @@ const SidebarGroupName = styled.span`
   margin-right: auto;
   overflow: hidden;
   text-overflow: ellipsis;
+  width: 100%;
 `
 
 const SidebarGroupDetails = styled(AccordionDetails)`
@@ -123,12 +133,13 @@ export function SidebarListSection(
   )
 }
 
-function SidebarItemsView(props: SidebarProps) {
+function SidebarItemsView(props: SidebarProps & { inGroup?: boolean }) {
   return (
     <>
       {props.items.map((item) => (
         <SidebarItemView
           key={"sidebarItem-" + item.name}
+          inGroup={props.inGroup}
           item={item}
           selected={props.selected === item.name}
           pathBuilder={props.pathBuilder}
@@ -144,6 +155,9 @@ function SidebarLabelListSection(props: { label: string } & SidebarProps) {
     return null
   }
 
+  const labelName =
+    props.label === "unlabeled" ? <em>{props.label}</em> : props.label
+
   // TODO: Investigate accessibility implications and add focus styles
   // There's probably a layer of a11y markup we need to add
   return (
@@ -152,11 +166,8 @@ function SidebarLabelListSection(props: { label: string } & SidebarProps) {
       key={`sidebarItem-${props.label}`}
     >
       <SidebarGroupSummary>
-        <SummaryIcon width={10} height={10} role="presentation" />
-        <SidebarGroupName>
-          {/* TODO: Make 'unlabeled' label italics */}
-          {props.label}
-        </SidebarGroupName>
+        <SummaryIcon role="presentation" />
+        <SidebarGroupName>{labelName}</SidebarGroupName>
         <ResourceSidebarStatusSummary items={props.items} />
       </SidebarGroupSummary>
       <SidebarGroupDetails>
@@ -164,7 +175,6 @@ function SidebarLabelListSection(props: { label: string } & SidebarProps) {
           <SidebarItemsView {...props} />
         </SidebarListSectionItems>
       </SidebarGroupDetails>
-      {/* TODO: Handle Tiltfile display separately */}
     </SidebarLabelSection>
   )
 }
@@ -172,6 +182,7 @@ function SidebarLabelListSection(props: { label: string } & SidebarProps) {
 function SidebarGroupedByLabels(props: SidebarProps) {
   const labelsToResources: { [key: string]: SidebarItem[] } = {}
   const unlabeled: SidebarItem[] = []
+  const tiltfile: SidebarItem[] = []
 
   props.items.forEach((item) => {
     if (item.labels.length) {
@@ -182,8 +193,13 @@ function SidebarGroupedByLabels(props: SidebarProps) {
 
         labelsToResources[label].push(item)
       })
-    } else {
+    } else if (!item.isTiltfile) {
       unlabeled.push(item)
+    }
+
+    // Display the Tiltfile outside of the label groups
+    if (item.isTiltfile) {
+      tiltfile.push(item)
     }
   })
 
@@ -200,6 +216,9 @@ function SidebarGroupedByLabels(props: SidebarProps) {
         />
       ))}
       <SidebarLabelListSection {...props} label="unlabeled" items={unlabeled} />
+      <SidebarListSection name="Tiltfile">
+        <SidebarItemsView {...props} items={tiltfile} inGroup={true} />
+      </SidebarListSection>
     </>
   )
 }

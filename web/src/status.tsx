@@ -52,20 +52,10 @@ function runtimeStatus(r: UIResource): ResourceStatus {
 // 1) If there's a current or pending build, this is "pending".
 // 2) Otherwise, if there's a build error or runtime error, this is "error".
 // 3) Otherwise, we fallback to runtime status.
-function summaryStatus(res: UIResource): ResourceStatus {
-  return summaryStatusFromAllStatuses({
-    buildStatus: buildStatus(res),
-    runtimeStatus: runtimeStatus(res),
-  })
-}
-
-function summaryStatusFromAllStatuses({
-  buildStatus,
-  runtimeStatus,
-}: {
-  buildStatus: ResourceStatus
+function combinedStatus(
+  buildStatus: ResourceStatus,
   runtimeStatus: ResourceStatus
-}) {
+): ResourceStatus {
   if (
     buildStatus !== ResourceStatus.Healthy &&
     buildStatus !== ResourceStatus.None
@@ -104,8 +94,7 @@ function warnings(res: UIResource): string[] {
 export {
   buildStatus,
   runtimeStatus,
-  summaryStatus,
-  summaryStatusFromAllStatuses,
+  combinedStatus,
   warnings,
   buildWarnings,
   runtimeWarnings,
