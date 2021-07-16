@@ -71,7 +71,6 @@ type k8sResourceOptions struct {
 	extraPodSelectors []labels.Set
 	triggerMode       triggerMode
 	autoInit          bool
-	tiltfilePosition  syntax.Position
 	resourceDeps      []string
 	objects           []string
 	manuallyGrouped   bool
@@ -263,7 +262,7 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 	var objectsVal starlark.Sequence
 	var podReadinessMode tiltfile_k8s.PodReadinessMode
 	var links links.LinkList
-	autoInit := true
+	var autoInit = value.BoolOrNone{Value: true}
 
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"workload?", &workload,
@@ -281,11 +280,22 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 	}
 
 	resourceName := workload.String()
-	manuallyGrouped := false
-	if workload == "" {
+	o, ok := s.k8sResourceOptions[resourceName]
+	if !ok {
+		// Set default options.
+		o.autoInit = true
+	}
+
+	newManualGroup := false
+	if workload == "" && !o.manuallyGrouped {
 		resourceName = newName.String()
 		// If a resource doesn't specify an existing workload then it needs to have objects to be valid
-		manuallyGrouped = true
+		newManualGroup = true
+		o.manuallyGrouped = true
+	}
+
+	if resourceName == "" {
+		return nil, fmt.Errorf("Resource name missing. Must give a name for an existing resource or a new_name to create a new resource.")
 	}
 
 	portForwards, err := convertPortForwards(portForwardsVal)
@@ -298,10 +308,6 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 		return nil, err
 	}
 
-	if opts, ok := s.k8sResourceOptions[resourceName]; ok {
-		return nil, fmt.Errorf("%s already called for %s, at %s", fn.Name(), resourceName, opts.tiltfilePosition.String())
-	}
-
 	resourceDeps, err := value.SequenceToStringSlice(resourceDepsVal)
 	if err != nil {
 		return nil, errors.Wrapf(err, "%s: resource_deps", fn.Name())
@@ -312,29 +318,30 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 		return nil, errors.Wrapf(err, "%s: resource_deps", fn.Name())
 	}
 
-	if manuallyGrouped && len(objects) == 0 {
-		return nil, fmt.Errorf("k8s_resource doesn't specify a workload or any objects. All non-workload resources must specify 1 or more objects")
+	if newManualGroup && len(objects) == 0 {
+		return nil, fmt.Errorf("k8s_resource(new_name) creates a new group. Must specify objects in the group with objects=[...].")
 	}
 
-	if manuallyGrouped && len(objects) > 0 && newName == "" {
-		return nil, fmt.Errorf("k8s_resource has only non-workload objects but doesn't provide a new_name")
+	// Options are added, so aggregate options from previous resource calls.
+	if newName != "" {
+		o.newName = string(newName)
 	}
+	o.portForwards = append(o.portForwards, portForwards...)
+	o.extraPodSelectors = append(o.extraPodSelectors, extraPodSelectors...)
+	if triggerMode != TriggerModeUnset {
+		o.triggerMode = triggerMode
+	}
+	if autoInit.IsSet {
+		o.autoInit = autoInit.Value
+	}
+	o.resourceDeps = append(o.resourceDeps, resourceDeps...)
+	o.objects = append(o.objects, objects...)
+	if podReadinessMode.Value != model.PodReadinessNone {
+		o.podReadinessMode = podReadinessMode.Value
+	}
+	o.links = append(o.links, links.Links...)
 
-	// NOTE(nick): right now this overwrites all previously set options on this
-	// resource. Is it worthwhile to make this additive?
-	s.k8sResourceOptions[resourceName] = k8sResourceOptions{
-		newName:           string(newName),
-		portForwards:      portForwards,
-		extraPodSelectors: extraPodSelectors,
-		tiltfilePosition:  thread.CallFrame(1).Pos,
-		triggerMode:       triggerMode,
-		autoInit:          autoInit,
-		resourceDeps:      resourceDeps,
-		objects:           objects,
-		manuallyGrouped:   manuallyGrouped,
-		podReadinessMode:  podReadinessMode.Value,
-		links:             links.Links,
-	}
+	s.k8sResourceOptions[resourceName] = o
 
 	return starlark.None, nil
 }

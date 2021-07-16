@@ -132,8 +132,10 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 		return nil, err
 	}
 
-	svc.TriggerMode = triggerMode
-	svc.Links = links.Links
+	if triggerMode != TriggerModeUnset {
+		svc.TriggerMode = triggerMode
+	}
+	svc.Links = append(svc.Links, links.Links...)
 
 	if imageRefAsStr != nil {
 		normalized, err := container.ParseNamed(*imageRefAsStr)
@@ -147,7 +149,7 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 	if err != nil {
 		return nil, errors.Wrapf(err, "%s: resource_deps", fn.Name())
 	}
-	svc.resourceDeps = rds
+	svc.resourceDeps = append(svc.resourceDeps, rds...)
 
 	return starlark.None, nil
 }
