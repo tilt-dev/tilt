@@ -1579,13 +1579,7 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 	entities := pb.ObjectTreeEntities()
 	f.kClient.Inject(entities...)
 
-	st := f.store.LockMutableStateForTesting()
-	ms, _ := st.ManifestState(name)
-	krs := ms.K8sRuntimeState()
-	krs.DeployedPodTemplateSpecHashSet.Add(hash)
-	krs.DeployedEntities = k8s.ObjRefList{entities.Deployment().ToObjectReference()}
-	ms.RuntimeState = krs
-	f.store.UnlockMutableState()
+	f.setK8sApplyResult(name, hash, entities.Deployment())
 
 	// Start and end a fake build to set manifestState.ExpectedContainerId
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("go/a"))
@@ -1638,13 +1632,7 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 	entities := pb.ObjectTreeEntities()
 	f.kClient.Inject(entities...)
 
-	st := f.store.LockMutableStateForTesting()
-	ms, _ := st.ManifestState(name)
-	krs := ms.K8sRuntimeState()
-	krs.DeployedPodTemplateSpecHashSet.Add(ptsh)
-	krs.DeployedEntities = k8s.ObjRefList{entities.Deployment().ToObjectReference()}
-	ms.RuntimeState = krs
-	f.store.UnlockMutableState()
+	f.setK8sApplyResult(name, ptsh, entities.Deployment())
 
 	// Start a fake build
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("go/a"))
@@ -1710,6 +1698,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 	entities := pb.ObjectTreeEntities()
 	f.kClient.Inject(entities.Deployment(), entities.ReplicaSet())
 
+	f.setK8sApplyResult(name, ptsh, entities.Deployment())
 	f.store.Dispatch(buildcontrol.NewBuildCompleteAction(name,
 		spanID0,
 		deployResultSet(f.T(), manifest, pb, []k8s.PodTemplateSpecHash{ptsh}), nil))
@@ -3908,7 +3897,6 @@ func newTestFixture(t *testing.T) *testFixture {
 		configAccess, "tilt-default", webListener, serverOptions,
 		&server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
 	ns := k8s.Namespace("default")
-	kdms := k8swatch.NewManifestSubscriber(ns, cdc)
 	of := k8s.ProvideOwnerFetcher(ctx, b.kClient)
 	rd := kubernetesdiscovery.NewContainerRestartDetector()
 	kdc := kubernetesdiscovery.NewReconciler(cdc, b.kClient, of, rd, st)
@@ -3996,7 +3984,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	uss := uisession.NewSubscriber(cdc)
 	urs := uiresource.NewSubscriber(cdc)
 
-	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, kdms, sw, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, mc, uss, urs)
+	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, sw, bc, cc, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, mc, uss, urs)
 	ret.upper, err = NewUpper(ctx, st, subs)
 	require.NoError(t, err)
 
@@ -4581,6 +4569,26 @@ func (f *testFixture) hudResource(name model.ManifestName) view.Resource {
 
 func (f *testFixture) completeBuildForManifest(m model.Manifest) {
 	f.b.completeBuild(targetIDStringForManifest(m))
+}
+
+func (f *testFixture) setK8sApplyResult(name model.ManifestName, hash k8s.PodTemplateSpecHash, entity k8s.K8sEntity) {
+	yaml, err := k8s.SerializeSpecYAML([]k8s.K8sEntity{entity})
+	require.NoError(f.t, err)
+
+	status := v1alpha1.KubernetesApplyStatus{ResultYAML: yaml}
+	var ka v1alpha1.KubernetesApply
+	require.NoError(f.t, f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: string(name)}, &ka))
+
+	ka.Status = status
+	require.NoError(f.t, f.ctrlClient.Status().Update(f.ctx, &ka))
+
+	st := f.store.LockMutableStateForTesting()
+	ms, _ := st.ManifestState(name)
+	krs := ms.K8sRuntimeState()
+	krs.DeployedPodTemplateSpecHashSet.Add(hash)
+	krs.DeployedEntities = k8s.ObjRefList{entity.ToObjectReference()}
+	ms.RuntimeState = krs
+	f.store.UnlockMutableState()
 }
 
 func podTemplateSpecHashesForTarg(t *testing.T, targ model.K8sTarget) []k8s.PodTemplateSpecHash {

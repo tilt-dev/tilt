@@ -15,7 +15,6 @@ import (
 
 func TestCreateAndUpdateDisco(t *testing.T) {
 	f := newFixture(t)
-	f.r.enableDiscoForTesting = true
 	ka := v1alpha1.KubernetesApply{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "a",
@@ -56,7 +55,6 @@ func TestCreateAndUpdateDisco(t *testing.T) {
 
 func TestCreateAndDeleteDisco(t *testing.T) {
 	f := newFixture(t)
-	f.r.enableDiscoForTesting = true
 	ka := v1alpha1.KubernetesApply{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "a",
@@ -80,7 +78,6 @@ func TestCreateAndDeleteDisco(t *testing.T) {
 
 func TestDoNotReconcileDiscoOnTransientError(t *testing.T) {
 	f := newFixture(t)
-	f.r.enableDiscoForTesting = true
 	ka := v1alpha1.KubernetesApply{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "a",
