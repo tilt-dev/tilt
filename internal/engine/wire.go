@@ -63,12 +63,17 @@ func provideFakeBuildAndDeployer(
 		k8s.ProvideContainerRuntime,
 		provideFakeKubeContext,
 		provideFakeDockerClusterEnv,
+		provideFakeK8sNamespace,
 		kubernetesapply.NewReconciler,
 		cmd.WireSet,
 		clockwork.NewRealClock,
 	)
 
 	return nil, nil
+}
+
+func provideFakeK8sNamespace() k8s.Namespace {
+	return "default"
 }
 
 func provideFakeKubeContext(env k8s.Env) k8s.KubeContext {

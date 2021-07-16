@@ -255,7 +255,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(switchCli, labels)
 	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
-	kubernetesapplyReconciler := kubernetesapply.NewReconciler(deferredClient, client, scheme, dockerBuilder, kubeContext, storeStore)
+	kubernetesapplyReconciler := kubernetesapply.NewReconciler(deferredClient, client, scheme, dockerBuilder, kubeContext, storeStore, namespace)
 	uisessionReconciler := uisession.NewReconciler(deferredClient, websocketList)
 	uiresourceReconciler := uiresource.NewReconciler(deferredClient, websocketList)
 	uibuttonReconciler := uibutton.NewReconciler(deferredClient, websocketList)
@@ -450,7 +450,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(switchCli, labels)
 	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
-	kubernetesapplyReconciler := kubernetesapply.NewReconciler(deferredClient, client, scheme, dockerBuilder, kubeContext, storeStore)
+	kubernetesapplyReconciler := kubernetesapply.NewReconciler(deferredClient, client, scheme, dockerBuilder, kubeContext, storeStore, namespace)
 	uisessionReconciler := uisession.NewReconciler(deferredClient, websocketList)
 	uiresourceReconciler := uiresource.NewReconciler(deferredClient, websocketList)
 	uibuttonReconciler := uibutton.NewReconciler(deferredClient, websocketList)
@@ -642,7 +642,7 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(switchCli, labels)
 	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
-	kubernetesapplyReconciler := kubernetesapply.NewReconciler(deferredClient, k8sClient, scheme, dockerBuilder, kubeContext, storeStore)
+	kubernetesapplyReconciler := kubernetesapply.NewReconciler(deferredClient, k8sClient, scheme, dockerBuilder, kubeContext, storeStore, namespace)
 	uisessionReconciler := uisession.NewReconciler(deferredClient, websocketList)
 	uiresourceReconciler := uiresource.NewReconciler(deferredClient, websocketList)
 	uibuttonReconciler := uibutton.NewReconciler(deferredClient, websocketList)
