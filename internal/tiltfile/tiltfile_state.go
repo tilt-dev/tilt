@@ -1032,22 +1032,22 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource, updateSettings mo
 			ResourceDependencies: mds,
 		}
 
-		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities,
-			s.defaultedPortForwards(r.portForwards), r.extraPodSelectors,
-			r.dependencyIDs, r.imageRefMap, s.inferPodReadinessMode(r),
-			locators, r.links, updateSettings)
-		if err != nil {
-			return nil, err
-		}
-
-		m = m.WithDeployTarget(k8sTarget)
-
 		iTargets, err := s.imgTargetsForDependencyIDs(r.dependencyIDs, registry)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting image build info for %s", r.name)
 		}
 
 		m = m.WithImageTargets(iTargets)
+
+		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities,
+			s.defaultedPortForwards(r.portForwards), r.extraPodSelectors,
+			r.dependencyIDs, iTargets, r.imageRefMap, s.inferPodReadinessMode(r),
+			locators, r.links, updateSettings)
+		if err != nil {
+			return nil, err
+		}
+
+		m = m.WithDeployTarget(k8sTarget)
 
 		result = append(result, m)
 	}
@@ -1235,6 +1235,9 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 
 		iTarget := model.ImageTarget{
 			Refs: refs,
+			LiveUpdateSpec: model.LiveUpdateSpec{
+				ImageSelector: reference.FamiliarName(refs.ClusterRef()),
+			},
 			ImageMapSpec: v1alpha1.ImageMapSpec{
 				Selector:        refs.ConfigurationRef.String(),
 				MatchInEnvVars:  image.matchInEnvVars,

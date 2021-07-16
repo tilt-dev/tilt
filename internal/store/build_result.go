@@ -452,7 +452,8 @@ func AllRunningContainers(mt *ManifestTarget) []ContainerInfo {
 
 	var result []ContainerInfo
 	for _, iTarget := range mt.Manifest.ImageTargets {
-		cInfos, err := RunningContainersForTargetForOnePod(iTarget, mt.State.K8sRuntimeState())
+		cInfos, err := RunningContainersForTargetForOnePod(iTarget.ID().Name.String(),
+			iTarget.LiveUpdateSpec, mt.State.K8sRuntimeState())
 		if err != nil {
 			// HACK(maia): just don't collect container info for targets running
 			// more than one pod -- we don't support LiveUpdating them anyway,
@@ -466,9 +467,9 @@ func AllRunningContainers(mt *ManifestTarget) []ContainerInfo {
 
 // If all containers running the given image are ready, returns info for them.
 // (If this image is running on multiple pods, return an error.)
-func RunningContainersForTargetForOnePod(iTarget model.ImageTarget, runtimeState K8sRuntimeState) ([]ContainerInfo, error) {
+func RunningContainersForTargetForOnePod(name string, luSpec model.LiveUpdateSpec, runtimeState K8sRuntimeState) ([]ContainerInfo, error) {
 	if runtimeState.PodLen() > 1 {
-		return nil, fmt.Errorf("can only get container info for a single pod; image target %s has %d pods", iTarget.ID(), runtimeState.PodLen())
+		return nil, fmt.Errorf("can only get container info for a single pod; image target %s has %d pods", name, runtimeState.PodLen())
 	}
 
 	if runtimeState.PodLen() == 0 {
@@ -492,7 +493,7 @@ func RunningContainersForTargetForOnePod(iTarget model.ImageTarget, runtimeState
 	for _, c := range pod.Containers {
 		// Only return containers matching our image
 		imageRef, err := container.ParseNamed(c.Image)
-		if err != nil || imageRef == nil || iTarget.Refs.ClusterRef().Name() != imageRef.Name() {
+		if err != nil || imageRef == nil || luSpec.ImageSelector != reference.FamiliarName(imageRef) {
 			continue
 		}
 		if c.ID == "" || c.Name == "" || c.State.Running == nil {

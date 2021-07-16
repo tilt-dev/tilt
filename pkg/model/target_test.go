@@ -114,5 +114,5 @@ func newK8sTarget(name string, deps ...string) K8sTarget {
 	for i, dep := range deps {
 		depIDs[i] = ImageID(container.MustParseSelector(dep))
 	}
-	return K8sTarget{Name: TargetName(name)}.WithDependencyIDs(depIDs)
+	return K8sTarget{Name: TargetName(name)}.WithDependencyIDs(depIDs, nil)
 }

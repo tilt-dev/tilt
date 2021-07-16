@@ -24,7 +24,8 @@ func MustTarget(name model.TargetName, yaml string) model.K8sTarget {
 	if err != nil {
 		panic(fmt.Errorf("MustTarget: %v", err))
 	}
-	target, err := NewTarget(name, entities, nil, nil, nil, nil, model.PodReadinessIgnore, nil, nil, model.UpdateSettings{})
+	target, err := NewTarget(name, entities, nil, nil, nil, nil,
+		nil, model.PodReadinessIgnore, nil, nil, model.UpdateSettings{})
 	if err != nil {
 		panic(fmt.Errorf("MustTarget: %v", err))
 	}
@@ -37,6 +38,7 @@ func NewTarget(
 	portForwards []model.PortForward,
 	extraPodSelectors []labels.Set,
 	dependencyIDs []model.TargetID,
+	imageTargets []model.ImageTarget,
 	refInjectCounts map[string]int,
 	podReadinessMode model.PodReadinessMode,
 	allLocators []ImageLocator,
@@ -90,11 +92,13 @@ func NewTarget(
 		ObjectRefs:          objectRefs,
 		PodReadinessMode:    podReadinessMode,
 		Links:               links,
-	}.WithDependencyIDs(dependencyIDs).WithRefInjectCounts(refInjectCounts), nil
+	}.WithDependencyIDs(dependencyIDs, model.ToLiveUpdateOnlyMap(imageTargets)).
+		WithRefInjectCounts(refInjectCounts), nil
 }
 
 func NewK8sOnlyManifest(name model.ManifestName, entities []K8sEntity, allLocators []ImageLocator) (model.Manifest, error) {
-	kTarget, err := NewTarget(name.TargetName(), entities, nil, nil, nil, nil, model.PodReadinessIgnore, allLocators, nil, model.UpdateSettings{})
+	kTarget, err := NewTarget(name.TargetName(), entities, nil, nil, nil, nil,
+		nil, model.PodReadinessIgnore, allLocators, nil, model.UpdateSettings{})
 	if err != nil {
 		return model.Manifest{}, err
 	}

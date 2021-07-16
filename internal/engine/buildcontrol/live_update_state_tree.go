@@ -19,7 +19,6 @@ type liveUpdateStateTree struct {
 func (t liveUpdateStateTree) createResultSet() store.BuildResultSet {
 	iTargetID := t.iTarget.ID()
 	state := t.iTargetState
-	res := state.LastResult
 
 	liveUpdatedContainerIDs := []container.ID{}
 	for _, c := range state.RunningContainers {
@@ -27,7 +26,7 @@ func (t liveUpdateStateTree) createResultSet() store.BuildResultSet {
 	}
 
 	resultSet := store.BuildResultSet{}
-	resultSet[iTargetID] = store.NewLiveUpdateBuildResult(res.TargetID(), liveUpdatedContainerIDs)
+	resultSet[iTargetID] = store.NewLiveUpdateBuildResult(iTargetID, liveUpdatedContainerIDs)
 
 	// Invalidate all the image builds for images we depend on.
 	// Otherwise, the image builder will think the existing image ID

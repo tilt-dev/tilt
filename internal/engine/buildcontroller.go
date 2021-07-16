@@ -176,7 +176,8 @@ func buildStateSet(ctx context.Context, manifest model.Manifest, specs []model.T
 			iTarget, ok := spec.(model.ImageTarget)
 			if ok {
 				if manifest.IsK8s() {
-					cInfos, err := store.RunningContainersForTargetForOnePod(iTarget, ms.K8sRuntimeState())
+					cInfos, err := store.RunningContainersForTargetForOnePod(
+						iTarget.ID().Name.String(), iTarget.LiveUpdateSpec, ms.K8sRuntimeState())
 					if err != nil {
 						buildState = buildState.WithRunningContainerError(err)
 					} else {
