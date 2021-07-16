@@ -16,7 +16,7 @@ func (lv *LabelValue) Unpack(v starlark.Value) error {
 		return fmt.Errorf("Value should be convertible to string, but is type %s", v.Type())
 	}
 
-	validationErrors := validation.IsQualifiedName(str)
+	validationErrors := validation.IsValidLabelValue(str)
 	if len(validationErrors) != 0 {
 		return fmt.Errorf("Invalid label %q: %s", str, strings.Join(validationErrors, ", "))
 	}
@@ -37,15 +37,15 @@ func (lv *LabelValue) String() string {
 	return string(*lv)
 }
 
-type LabelOrLabelList struct {
-	Values []string
+type LabelSet struct {
+	Values map[string]string
 }
 
-var _ starlark.Unpacker = &LabelOrLabelList{}
+var _ starlark.Unpacker = &LabelSet{}
 
 // Unpack an argument that can either be expressed as
 // a string or as a list of strings.
-func (ls *LabelOrLabelList) Unpack(v starlark.Value) error {
+func (ls *LabelSet) Unpack(v starlark.Value) error {
 	ls.Values = nil
 	if v == nil {
 		return nil
@@ -58,7 +58,7 @@ func (ls *LabelOrLabelList) Unpack(v starlark.Value) error {
 		if err != nil {
 			return err
 		}
-		ls.Values = []string{l.String()}
+		ls.Values = map[string]string{l.String(): l.String()}
 		return nil
 	}
 
@@ -74,13 +74,14 @@ func (ls *LabelOrLabelList) Unpack(v starlark.Value) error {
 
 	defer iter.Done()
 	var item starlark.Value
+	ls.Values = make(map[string]string)
 	for iter.Next(&item) {
 		var l LabelValue
 		err := l.Unpack(item)
 		if err != nil {
 			return err
 		}
-		ls.Values = append(ls.Values, l.String())
+		ls.Values[l.String()] = l.String()
 	}
 
 	return nil

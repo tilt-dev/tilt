@@ -30,7 +30,7 @@ type localResource struct {
 	ignores       []string
 	allowParallel bool
 	links         []model.Link
-	labels        []string
+	labels        map[string]string
 
 	// for use in testing mvp
 	tags   []string
@@ -53,7 +53,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 	var ignoresVal starlark.Value
 	var allowParallel bool
 	var links links.LinkList
-	var labels value.LabelOrLabelList
+	var labels value.LabelSet
 	autoInit := true
 
 	var isTest bool

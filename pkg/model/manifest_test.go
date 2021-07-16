@@ -221,6 +221,12 @@ var equalitytests = []struct {
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(DockerBuild{CacheFrom: []string{"bar", "quux"}})),
 		false,
 	},
+	{
+		"labels unequal and doesn't invalidate",
+		Manifest{}.WithLabels(map[string]string{"foo": "bar"}),
+		Manifest{}.WithLabels(map[string]string{"foo": "baz"}),
+		false,
+	},
 }
 
 func TestManifestEquality(t *testing.T) {

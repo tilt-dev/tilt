@@ -5636,6 +5636,34 @@ k8s_resource(
 	f.assertNoMoreManifests()
 }
 
+func TestLocalResourceLabels(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+local_resource("test", cmd="echo hi", labels="foo")
+local_resource("test2", cmd="echo hi2", labels=["bar", "baz"])
+`)
+
+	f.load()
+	f.assertNumManifests(2)
+	f.assertNextManifest("test", resourceLabels("foo"))
+	f.assertNextManifest("test2", resourceLabels("bar", "baz"))
+}
+
+// TODO tests (lizz + matt)
+// 1. dc_resource labels
+// 2. k8s_resource labels
+// 3. local_resource labels
+// 4. invalid labels
+//    a. name
+//    b. value
+//    c. type
+//    d. list element type
+// 5. empty string
+// 6. empty list
+// 7. additive (this we need to write functionality for once this branch is synced)
+
 type fixture struct {
 	ctx context.Context
 	out *bytes.Buffer
@@ -6147,6 +6175,8 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 					f.t.Fatalf("unknown matcher for local target %T", matcher)
 				}
 			}
+		case resourceLabelsHelper:
+			assert.Equal(f.t, opt.labels, m.Labels)
 		default:
 			f.t.Fatalf("unexpected arg to assertNextManifest: %T %v", opt, opt)
 		}
@@ -6377,6 +6407,20 @@ func resourceDeps(deps ...string) resourceDependenciesHelper {
 		mns = append(mns, model.ManifestName(d))
 	}
 	return resourceDependenciesHelper{deps: mns}
+}
+
+type resourceLabelsHelper struct {
+	labels map[string]string
+}
+
+func resourceLabels(labels ...string) resourceLabelsHelper {
+	ret := resourceLabelsHelper{
+		labels: make(map[string]string),
+	}
+	for _, l := range labels {
+		ret.labels[l] = l
+	}
+	return ret
 }
 
 type imageHelper struct {

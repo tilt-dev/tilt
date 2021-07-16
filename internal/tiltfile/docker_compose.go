@@ -93,7 +93,7 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 	var triggerMode triggerMode
 	var resourceDepsVal starlark.Sequence
 	var links links.LinkList
-	var labels value.LabelOrLabelList
+	var labels value.LabelSet
 
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
@@ -194,7 +194,7 @@ type dcService struct {
 	TriggerMode triggerMode
 	Links       []model.Link
 
-	Labels []string
+	Labels map[string]string
 
 	resourceDeps []string
 }
