@@ -47,6 +47,9 @@ type TargetQueue struct {
 func NewImageTargetQueue(ctx context.Context, iTargets []model.ImageTarget, state store.BuildStateSet, canReuseRef ReuseRefChecker) (*TargetQueue, error) {
 	targets := make([]model.TargetSpec, 0, len(iTargets))
 	for _, iTarget := range iTargets {
+		if iTarget.IsLiveUpdateOnly {
+			continue
+		}
 		targets = append(targets, iTarget)
 	}
 

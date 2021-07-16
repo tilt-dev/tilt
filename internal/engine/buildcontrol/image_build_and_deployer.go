@@ -157,6 +157,10 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 	iTargetMap := model.ImageTargetsByID(iTargets)
 	imageMapSet := make(map[types.NamespacedName]*v1alpha1.ImageMap, len(kTarget.ImageMaps))
 	for _, iTarget := range iTargets {
+		if iTarget.IsLiveUpdateOnly {
+			continue
+		}
+
 		var im v1alpha1.ImageMap
 		nn := types.NamespacedName{Name: iTarget.ID().Name.String()}
 		err := ibd.ctrlClient.Get(ctx, nn, &im)

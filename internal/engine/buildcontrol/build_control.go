@@ -401,7 +401,8 @@ func IsLiveUpdateTargetWaitingOnDeploy(state store.EngineState, mt *store.Manife
 		// This is the mechanism that live update uses to determine if the container to live-update
 		// is still pending.
 		if mt.Manifest.IsK8s() {
-			cInfos, err := store.RunningContainersForTargetForOnePod(iTarget, mt.State.K8sRuntimeState())
+			cInfos, err := store.RunningContainersForTargetForOnePod(
+				iTarget.ID().Name.String(), iTarget.LiveUpdateSpec, mt.State.K8sRuntimeState())
 			if err != nil {
 				return false
 			}

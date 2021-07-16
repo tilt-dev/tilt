@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -168,6 +170,19 @@ func TestLiveUpdateCustomBuild(t *testing.T) {
 	f.load("foo")
 
 	f.assertNextManifest("foo", cb(image("foo"), f.expectedLU))
+}
+
+func TestLiveUpdateOnlyCustomBuild(t *testing.T) {
+	f := newLiveUpdateFixture(t)
+	defer f.TearDown()
+
+	f.tiltfileCode = "custom_build('foo', ':', ['foo'], live_update=%s)"
+	f.init()
+
+	f.load("foo")
+
+	m := f.assertNextManifest("foo", cb(image("foo"), f.expectedLU))
+	assert.True(t, m.ImageTargets[0].IsLiveUpdateOnly)
 }
 
 func TestLiveUpdateSyncFilesOutsideOfDockerBuildContext(t *testing.T) {

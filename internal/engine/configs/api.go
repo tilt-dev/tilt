@@ -166,6 +166,10 @@ func toImageMapObjects(tlr tiltfile.TiltfileLoadResult) typedObjectSet {
 
 	for _, m := range tlr.Manifests {
 		for _, iTarget := range m.ImageTargets {
+			if iTarget.IsLiveUpdateOnly {
+				continue
+			}
+
 			name := apis.SanitizeName(iTarget.ID().Name.String())
 			// Note that an ImageMap might be in more than one Manifest, so we
 			// can't annotate them to a particular manifest.

@@ -43,7 +43,9 @@ func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.
 	deployedImages := g.DeployedImages()
 	for _, iTarget := range deployedImages {
 		state := stateSet[iTarget.ID()]
-		if state.IsEmpty() {
+		// If this is a normal image build, it must have info about the deployed image.
+		// Otherwise, we can update pods if we can find their containers.
+		if !iTarget.IsLiveUpdateOnly && state.IsEmpty() {
 			return nil, SilentRedirectToNextBuilderf("In-place build does not support initial deploy")
 		}
 

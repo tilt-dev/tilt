@@ -56,6 +56,8 @@ type K8sTarget struct {
 	// zero+ links assoc'd with this resource (to be displayed in UIs,
 	// in addition to any port forwards/LB endpoints)
 	Links []Link
+
+	depIDs []TargetID
 }
 
 func NewK8sTargetForTesting(yaml string) K8sTarget {
@@ -77,14 +79,7 @@ func (k8s K8sTarget) HasJob() bool {
 }
 
 func (k8s K8sTarget) DependencyIDs() []TargetID {
-	result := make([]TargetID, 0, len(k8s.ImageMaps))
-	for _, name := range k8s.ImageMaps {
-		result = append(result, TargetID{
-			Type: TargetTypeImage,
-			Name: TargetName(name),
-		})
-	}
-	return result
+	return append([]TargetID{}, k8s.depIDs...)
 }
 
 func (k8s K8sTarget) RefInjectCounts() map[string]int {
@@ -110,13 +105,31 @@ func (k8s K8sTarget) ID() TargetID {
 	}
 }
 
-func (k8s K8sTarget) WithDependencyIDs(ids []TargetID) K8sTarget {
+// Track which objects this target depends on inside the manifest.
+//
+// We're disentangling ImageTarget and live updates -
+// image builds may or may not have live updates attached, but
+// also live updates may or may not have image builds attached.
+//
+// KubernetesApplySpec only depends on ImageTargets with an Image build.
+//
+// The depIDs field depends on ImageTargets that have image builds OR have live
+// updates.
+//
+// ids: a list of the images we directly depend on.
+// isLiveUpdateOnly: a map of images that are live-update-only
+func (k8s K8sTarget) WithDependencyIDs(ids []TargetID, isLiveUpdateOnly map[TargetID]bool) K8sTarget {
 	ids = DedupeTargetIDs(ids)
+	k8s.depIDs = ids
+
 	k8s.ImageMaps = make([]string, 0, len(ids))
 
 	for _, id := range ids {
 		if id.Type != TargetTypeImage {
 			panic(fmt.Sprintf("Invalid k8s dependency: %+v", id))
+		}
+		if isLiveUpdateOnly[id] {
+			continue
 		}
 		k8s.ImageMaps = append(k8s.ImageMaps, string(id.Name))
 	}
@@ -130,3 +143,11 @@ func (k8s K8sTarget) WithRefInjectCounts(ric map[string]int) K8sTarget {
 }
 
 var _ TargetSpec = K8sTarget{}
+
+func ToLiveUpdateOnlyMap(imageTargets []ImageTarget) map[TargetID]bool {
+	result := make(map[TargetID]bool, len(imageTargets))
+	for _, image := range imageTargets {
+		result[image.ID()] = image.IsLiveUpdateOnly
+	}
+	return result
+}

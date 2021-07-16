@@ -4460,7 +4460,7 @@ func (f *testFixture) newManifestWithRef(name string, ref reference.Named) model
 	refSel := container.NewRefSelector(ref)
 
 	iTarget := NewSanchoLiveUpdateImageTarget(f)
-	iTarget.Refs.ConfigurationRef = refSel
+	iTarget = iTarget.MustWithRef(refSel)
 
 	return manifestbuilder.New(f, model.ManifestName(name)).
 		WithK8sYAML(SanchoYAML).
@@ -4471,7 +4471,7 @@ func (f *testFixture) newManifestWithRef(name string, ref reference.Named) model
 func (f *testFixture) newDockerBuildManifestWithBuildPath(name string, path string) model.Manifest {
 	db := model.DockerBuild{Dockerfile: "FROM alpine", BuildPath: path}
 	iTarget := NewSanchoLiveUpdateImageTarget(f).WithBuildDetails(db)
-	iTarget.Refs.ConfigurationRef = container.MustParseSelector(strings.ToLower(name)) // each target should have a unique ID
+	iTarget = iTarget.MustWithRef(container.MustParseSelector(strings.ToLower(name))) // each target should have a unique ID
 	return manifestbuilder.New(f, model.ManifestName(name)).
 		WithK8sYAML(SanchoYAML).
 		WithImageTarget(iTarget).

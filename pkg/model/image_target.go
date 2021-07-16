@@ -3,18 +3,44 @@ package model
 import (
 	"fmt"
 
+	"github.com/docker/distribution/reference"
+	"github.com/google/go-cmp/cmp"
+
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/sliceutils"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
+type LiveUpdateSpec struct {
+	// A KubernetesDiscovery maps deployed objects to pods.
+	//
+	// The live-updater watches the named KubernetesDiscovery object to find pods to
+	// live update into.
+	KubernetesDiscoveryName string
+
+	// ImageSelector specifies the name of the image that we're copying files into.
+	//
+	// The live-updater uses this to figure out which containers to live update.
+	ImageSelector string
+}
+
 type ImageTarget struct {
 	// An apiserver-driven data model for injecting the image into other resources.
 	v1alpha1.ImageMapSpec
+	LiveUpdateSpec
 
 	Refs         container.RefSet
 	BuildDetails BuildDetails
+
+	// In a live-update-only image, we don't inject the image into the Kubernetes
+	// deploy, we only live-update to the deployed object. See this issue:
+	//
+	// https://github.com/tilt-dev/tilt/issues/4577
+	//
+	// This is a hacky way to model this right now until we
+	// firm up how images work in the apiserver.
+	IsLiveUpdateOnly bool
 
 	// TODO(nick): It might eventually make sense to represent
 	// Tiltfile as a separate nodes in the build graph, rather
@@ -44,6 +70,7 @@ func (i ImageTarget) MustWithRef(ref container.RefSelector) ImageTarget {
 	i.Refs = container.MustSimpleRefSet(ref)
 	i.ImageMapSpec.Selector = ref.String()
 	i.ImageMapSpec.MatchExact = ref.MatchExact()
+	i.LiveUpdateSpec.ImageSelector = reference.FamiliarName(i.Refs.ClusterRef())
 	return i
 }
 
@@ -133,6 +160,14 @@ func (i ImageTarget) IsCustomBuild() bool {
 
 func (i ImageTarget) WithBuildDetails(details BuildDetails) ImageTarget {
 	i.BuildDetails = details
+	cb, ok := details.(CustomBuild)
+	if ok && cmp.Equal(cb.Command.Argv, ToHostCmd(":").Argv) && !cb.LiveUpdate.Empty() {
+		// NOTE(nick): This is a hack for the file_sync_only extension
+		// until we come up with a real API for specifying live update
+		// without an image build.
+		i.IsLiveUpdateOnly = true
+		i.LiveUpdateSpec.ImageSelector = reference.FamiliarName(i.Refs.WithoutRegistry().LocalRef())
+	}
 	return i
 }
 
