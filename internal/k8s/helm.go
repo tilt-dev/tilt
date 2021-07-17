@@ -66,9 +66,18 @@ func (c *helmKubeClient) Apply(target kube.ResourceList) (*kube.Result, error) {
 	return &kube.Result{Updated: target}, nil
 }
 
+var helmNopLogger = func(_ string, _ ...interface{}) {}
+
 func newHelmKubeClient(c *K8sClient) HelmKubeClient {
+	f := cmdutil.NewFactory(c)
+
+	// Don't use kube.New() here, because it modifies globals in
+	// a way that breaks tests.
 	return &helmKubeClient{
-		Client:  kube.New(c),
-		factory: cmdutil.NewFactory(c),
+		Client: &kube.Client{
+			Factory: f,
+			Log:     helmNopLogger,
+		},
+		factory: f,
 	}
 }

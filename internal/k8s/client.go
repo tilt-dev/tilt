@@ -261,7 +261,7 @@ func timeoutError(timeout time.Duration) error {
 }
 
 func (k *K8sClient) ToRESTConfig() (*rest.Config, error) {
-	return k.restConfig, nil
+	return rest.CopyConfig(k.restConfig), nil
 }
 func (k *K8sClient) ToDiscoveryClient() (discovery.CachedDiscoveryInterface, error) {
 	return k.discovery, nil
