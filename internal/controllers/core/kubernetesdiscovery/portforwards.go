@@ -40,7 +40,7 @@ func (r *Reconciler) manageOwnedPortForwards(ctx context.Context, nn types.Names
 			foundDesired = true
 
 			// If this PortForward is already in the APIServer, make sure it's up-to-date.
-			if apicmp.DeepEqual(pf.Spec, existingPF) {
+			if apicmp.DeepEqual(pf.Spec, existingPF.Spec) {
 				continue
 			}
 
