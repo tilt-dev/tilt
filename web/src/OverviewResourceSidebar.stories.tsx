@@ -96,8 +96,6 @@ export const ResourcesWithLabels = () => {
   crashedStart.metadata!.name = "resource_12"
   view.uiResources.push(crashedStart)
 
-  // TODO: Add a Tiltfile resource
-
   return <OverviewResourceSidebar name={"vigoda_1"} view={view} />
 }
 

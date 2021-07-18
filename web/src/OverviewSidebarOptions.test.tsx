@@ -46,7 +46,7 @@ export function assertSidebarItemsAndOptions(
 
   // only check items in the "all resources" section, i.e. don't look at starred things
   // or we'll have duplicates
-  let all = sidebar.find(SidebarListSection).find({ name: "resources" })
+  let all = sidebar.find(SidebarListSection)
   let items = all.find(SidebarItemView)
   const observedNames = items.map((i) => i.props().item.name)
   expect(observedNames).toEqual(names)
@@ -217,10 +217,7 @@ describe("overview sidebar options", () => {
       </MemoryRouter>
     )
 
-    const resourceSectionItems = root
-      .find(SidebarListSection)
-      .find({ name: "resources" })
-      .find("li")
+    const resourceSectionItems = root.find(SidebarListSection).find("li")
     expect(resourceSectionItems.map((n) => n.text())).toEqual([
       "No matching resources",
     ])

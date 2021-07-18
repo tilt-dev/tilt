@@ -133,13 +133,13 @@ export function SidebarListSection(
   )
 }
 
-function SidebarItemsView(props: SidebarProps & { inGroup?: boolean }) {
+function SidebarItemsView(props: SidebarProps & { groupView?: boolean }) {
   return (
     <>
       {props.items.map((item) => (
         <SidebarItemView
           key={"sidebarItem-" + item.name}
-          inGroup={props.inGroup}
+          groupView={props.groupView}
           item={item}
           selected={props.selected === item.name}
           pathBuilder={props.pathBuilder}
@@ -155,22 +155,23 @@ function SidebarLabelListSection(props: { label: string } & SidebarProps) {
     return null
   }
 
-  const labelName =
+  const formattedLabel =
     props.label === "unlabeled" ? <em>{props.label}</em> : props.label
+  const labelNameId = `sidebarItem-${props.label}`
 
-  // TODO: Investigate accessibility implications and add focus styles
-  // There's probably a layer of a11y markup we need to add
+  // TODO (lizz): Improve the accessibility interface for accordion feature by adding focus styles
+  // according to https://www.w3.org/TR/wai-aria-practices-1.1/examples/accordion/accordion.html
   return (
-    <SidebarLabelSection
-      defaultExpanded={true}
-      key={`sidebarItem-${props.label}`}
-    >
-      <SidebarGroupSummary>
+    <SidebarLabelSection defaultExpanded={true} key={labelNameId}>
+      <SidebarGroupSummary id={labelNameId}>
         <SummaryIcon role="presentation" />
-        <SidebarGroupName>{labelName}</SidebarGroupName>
-        <ResourceSidebarStatusSummary items={props.items} />
+        <SidebarGroupName>{formattedLabel}</SidebarGroupName>
+        <ResourceSidebarStatusSummary
+          aria-label={`Status summary for ${props.label} group`}
+          items={props.items}
+        />
       </SidebarGroupSummary>
-      <SidebarGroupDetails>
+      <SidebarGroupDetails aria-labelledby={labelNameId}>
         <SidebarListSectionItems>
           <SidebarItemsView {...props} />
         </SidebarListSectionItems>
@@ -217,7 +218,7 @@ function SidebarGroupedByLabels(props: SidebarProps) {
       ))}
       <SidebarLabelListSection {...props} label="unlabeled" items={unlabeled} />
       <SidebarListSection name="Tiltfile">
-        <SidebarItemsView {...props} items={tiltfile} inGroup={true} />
+        <SidebarItemsView {...props} items={tiltfile} groupView={true} />
       </SidebarListSection>
     </>
   )
@@ -326,6 +327,11 @@ export class SidebarResources extends React.Component<SidebarProps> {
       <SidebarItemsView {...this.props} items={filteredItems} />
     )
 
+    const resourceFilterApplied = options.resourceNameFilter.length > 0
+    const sidebarName = resourceFilterApplied
+      ? `${filteredItems.length} result${filteredItems.length === 1 ? "" : "s"}`
+      : "resources"
+
     let isOverviewClass =
       this.props.resourceView === ResourceView.OverviewDetail
         ? "isOverview"
@@ -334,6 +340,8 @@ export class SidebarResources extends React.Component<SidebarProps> {
     // TODO: The above filtering and sorting logic will get refactored during more resource
     // grouping work. It won't be necessary to map and sort here, but within each group
     const labelsEnabled = resourcesHaveLabels(this.context, this.props.items)
+    // Note: the label group view does not display if a resource name filter is applied
+    const displayLabelGroups = !resourceFilterApplied && labelsEnabled
 
     return (
       <SidebarResourcesRoot className={`Sidebar-resources ${isOverviewClass}`}>
@@ -343,10 +351,10 @@ export class SidebarResources extends React.Component<SidebarProps> {
             options={options}
             setOptions={setOptions}
           />
-          {labelsEnabled ? (
+          {displayLabelGroups ? (
             <SidebarGroupedByLabels {...this.props} items={filteredItems} />
           ) : (
-            <SidebarListSection name="resources">
+            <SidebarListSection name={sidebarName}>
               {listItems}
             </SidebarListSection>
           )}
