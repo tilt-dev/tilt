@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -82,16 +83,9 @@ func (s *tiltfileState) execLocalCmd(t *starlark.Thread, cmd model.Cmd, logOutpu
 
 	// if Tilt was invoked with `tilt up --port=XXXXX`, local() calls to use the Tilt API will fail due to trying to
 	// connect to the default port, so explicitly populate the TILT_PORT environment variable if it isn't already
-	hasTiltPort := false
-	for _, e := range c.Env {
-		if strings.HasPrefix(e, "TILT_PORT") {
-			hasTiltPort = true
-			break
-		}
-	}
-	if !hasTiltPort {
-		c.Env = append(c.Env, fmt.Sprintf("TILT_PORT=%d", s.webPort))
-	}
+	addEnvIfNotPresent(c, "TILT_PORT", strconv.Itoa(int(s.webPort)))
+	// some Tilt commands, such as `tilt dump engine`, also require the host
+	addEnvIfNotPresent(c, "TILT_HOST", string(s.webHost))
 
 	err = c.Run()
 	if err != nil {
@@ -315,4 +309,16 @@ func getHelmCRDs(path string) ([]string, error) {
 func hasYAMLExtension(fname string) bool {
 	ext := filepath.Ext(fname)
 	return strings.EqualFold(ext, ".yaml") || strings.EqualFold(ext, ".yml")
+}
+
+func addEnvIfNotPresent(c *exec.Cmd, key, value string) bool {
+	prefix := key + "="
+	for _, e := range c.Env {
+		if strings.HasPrefix(e, prefix) {
+			return false
+		}
+	}
+
+	c.Env = append(c.Env, key+"="+value)
+	return true
 }

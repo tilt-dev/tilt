@@ -359,38 +359,57 @@ func TestLocalArgvCmd(t *testing.T) {
 	assert.Contains(t, f.out.String(), `a"b`)
 }
 
-func TestLocalTiltPortPropagation(t *testing.T) {
+func TestLocalTiltEnvPropagation(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	if tiltPort, ok := os.LookupEnv("TILT_PORT"); ok {
-		// unset for tests then restore after
-		require.NoError(t, os.Unsetenv("TILT_PORT"))
-		defer require.NoError(t, os.Setenv("TILT_PORT", tiltPort))
-	} else {
-		// already unset, make sure still unset after all tests complete
-		defer require.NoError(t, os.Unsetenv("TILT_PORT"))
+	resetEnv := func() {
+		tiltVars := []string{"TILT_HOST", "TILT_PORT"}
+		for _, key := range tiltVars {
+			if originalValue, ok := os.LookupEnv(key); ok {
+				// unset for test then restore after
+				require.NoError(t, os.Unsetenv(key))
+				t.Cleanup(func() {
+					require.NoError(t, os.Setenv(key, originalValue))
+				})
+			} else {
+				// already unset, make sure still unset after test completes
+				t.Cleanup(func() {
+					require.NoError(t, os.Unsetenv(key))
+				})
+			}
+		}
 	}
+	resetEnv()
 
-	doTest := func(expectedPort int) {
-		f.file("Tiltfile", `local('echo Tilt port is $TILT_PORT')`)
+	doTest := func(expectedHost string, expectedPort int) {
+		t.Helper()
+
+		f.file("Tiltfile", `
+local('echo Tilt host is $TILT_HOST')
+local('echo Tilt port is $TILT_PORT')
+`)
 		f.load()
 
+		assert.Contains(t, f.out.String(), fmt.Sprintf(`Tilt host is %s`, expectedHost))
 		assert.Contains(t, f.out.String(), fmt.Sprintf(`Tilt port is %d`, expectedPort))
 	}
 
 	t.Run("Implicit", func(t *testing.T) {
-		// $TILT_PORT is not explicitly defined anywhere in the test fixture but should be
-		// auto-populated based on the web port (hardcoded to 12345 for tests - they don't
-		// actually load an apiserver)
-		doTest(12345)
+		resetEnv()
+		// $TILT_HOST + $TILT_PORT are not explicitly defined anywhere in the test fixture but should be
+		// auto-populated (hardcoded to 1.2.3.4/12345 for tests - no real apiserver is actually loaded)
+		f.webHost = "1.2.3.4"
+		doTest("1.2.3.4", 12345)
 	})
 
 	t.Run("Explicit", func(t *testing.T) {
-		// if TILT_PORT was passed, it shouldn't be overwritten
-		defer require.NoError(t, os.Unsetenv("TILT_PORT"))
+		resetEnv()
+		require.NoError(t, os.Setenv("TILT_HOST", "7.8.9.0"))
 		require.NoError(t, os.Setenv("TILT_PORT", "7890"))
-		doTest(7890)
+
+		// if values were explicitly passed (e.g. `local('...', env={"TILT_PORT": 7890})`, they should be respected
+		doTest("7.8.9.0", 7890)
 	})
 }
 
