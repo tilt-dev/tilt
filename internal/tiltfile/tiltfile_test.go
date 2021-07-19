@@ -344,6 +344,7 @@ local('echo foobar', echo_off=True)
 
 	assert.NotContains(t, f.out.String(), "local: echo foobar")
 }
+
 func TestLocalArgvCmd(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("windows doesn't support argv commands. Go converts it to a single string")
@@ -356,6 +357,41 @@ func TestLocalArgvCmd(t *testing.T) {
 	f.load()
 
 	assert.Contains(t, f.out.String(), `a"b`)
+}
+
+func TestLocalTiltPortPropagation(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	if tiltPort, ok := os.LookupEnv("TILT_PORT"); ok {
+		// unset for tests then restore after
+		require.NoError(t, os.Unsetenv("TILT_PORT"))
+		defer require.NoError(t, os.Setenv("TILT_PORT", tiltPort))
+	} else {
+		// already unset, make sure still unset after all tests complete
+		defer require.NoError(t, os.Unsetenv("TILT_PORT"))
+	}
+
+	doTest := func(expectedPort int) {
+		f.file("Tiltfile", `local('echo Tilt port is $TILT_PORT')`)
+		f.load()
+
+		assert.Contains(t, f.out.String(), fmt.Sprintf(`Tilt port is %d`, expectedPort))
+	}
+
+	t.Run("Implicit", func(t *testing.T) {
+		// $TILT_PORT is not explicitly defined anywhere in the test fixture but should be
+		// auto-populated based on the web port (hardcoded to 12345 for tests - they don't
+		// actually load an apiserver)
+		doTest(12345)
+	})
+
+	t.Run("Explicit", func(t *testing.T) {
+		// if TILT_PORT was passed, it shouldn't be overwritten
+		defer require.NoError(t, os.Unsetenv("TILT_PORT"))
+		require.NoError(t, os.Setenv("TILT_PORT", "7890"))
+		doTest(7890)
+	})
 }
 
 func TestReadFile(t *testing.T) {
@@ -5610,7 +5646,7 @@ func (f *fixture) newTiltfileLoader() TiltfileLoader {
 	k8sContextExt := k8scontext.NewExtension(f.k8sContext, f.k8sEnv)
 	versionExt := version.NewExtension(model.TiltBuild{Version: "0.5.0"})
 	configExt := config.NewExtension("up")
-	return ProvideTiltfileLoader(f.ta, f.kCli, k8sContextExt, versionExt, configExt, dcc, f.webHost, features, f.k8sEnv)
+	return ProvideTiltfileLoader(f.ta, f.kCli, k8sContextExt, versionExt, configExt, dcc, f.webHost, model.WebPort(12345), features, f.k8sEnv)
 }
 
 func newFixture(t *testing.T) *fixture {

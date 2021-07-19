@@ -80,6 +80,19 @@ func (s *tiltfileState) execLocalCmd(t *starlark.Thread, cmd model.Cmd, logOutpu
 		c.Stderr = io.MultiWriter(stderr, logOutput)
 	}
 
+	// if Tilt was invoked with `tilt up --port=XXXXX`, local() calls to use the Tilt API will fail due to trying to
+	// connect to the default port, so explicitly populate the TILT_PORT environment variable if it isn't already
+	hasTiltPort := false
+	for _, e := range c.Env {
+		if strings.HasPrefix(e, "TILT_PORT") {
+			hasTiltPort = true
+			break
+		}
+	}
+	if !hasTiltPort {
+		c.Env = append(c.Env, fmt.Sprintf("TILT_PORT=%d", s.webPort))
+	}
+
 	err = c.Run()
 	if err != nil {
 		// If we already logged the output, we don't need to log it again.
