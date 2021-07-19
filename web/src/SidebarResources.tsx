@@ -1,12 +1,22 @@
+import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+} from "@material-ui/core"
 import React, { Dispatch, PropsWithChildren, SetStateAction } from "react"
 import styled from "styled-components"
+import { ReactComponent as CaretSvg } from "./assets/svg/caret.svg"
 import Features, { FeaturesContext, Flag } from "./feature"
 import { orderLabels } from "./labels"
 import { PersistentStateProvider } from "./LocalStorage"
 import { OverviewSidebarOptions } from "./OverviewSidebarOptions"
 import PathBuilder from "./PathBuilder"
+import { ResourceSidebarStatusSummary } from "./ResourceStatusSummary"
 import SidebarItem from "./SidebarItem"
-import SidebarItemView, { triggerUpdate } from "./SidebarItemView"
+import SidebarItemView, {
+  SidebarItemRoot,
+  triggerUpdate,
+} from "./SidebarItemView"
 import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
 import { Color, FontSize, SizeUnit } from "./style-helpers"
 import { ResourceView, SidebarOptions } from "./types"
@@ -39,6 +49,79 @@ const NoMatchesFound = styled.li`
   color: ${Color.grayLightest};
 `
 
+const SidebarLabelSection = styled(Accordion)`
+  &.MuiPaper-root {
+    background-color: unset;
+  }
+
+  &.MuiPaper-elevation1 {
+    box-shadow: unset;
+  }
+
+  &.MuiAccordion-root,
+  &.MuiAccordion-root.Mui-expanded {
+    margin: ${SizeUnit(1 / 3)} ${SizeUnit(1 / 2)};
+  }
+`
+
+const SummaryIcon = styled(CaretSvg)`
+  flex-shrink: 0;
+  padding: ${SizeUnit(1 / 4)};
+  transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1) 0ms; /* Copied from MUI accordion */
+
+  .fillStd {
+    fill: ${Color.grayLight};
+  }
+`
+
+const SidebarGroupSummary = styled(AccordionSummary)`
+  &.MuiAccordionSummary-root,
+  &.MuiAccordionSummary-root.Mui-expanded {
+    min-height: unset;
+    padding: unset;
+  }
+
+  .MuiAccordionSummary-content {
+    align-items: center;
+    background-color: ${Color.grayLighter};
+    border: 1px solid ${Color.grayLight};
+    border-radius: ${SizeUnit(1 / 8)};
+    box-sizing: border-box;
+    color: ${Color.white};
+    display: flex;
+    font-size: ${FontSize.small};
+    margin: 0;
+    padding: ${SizeUnit(1 / 8)};
+    width: 100%;
+
+    &.Mui-expanded {
+      margin: 0;
+
+      ${SummaryIcon} {
+        transform: rotate(90deg);
+      }
+    }
+  }
+`
+
+const SidebarGroupName = styled.span`
+  margin-right: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+`
+
+const SidebarGroupDetails = styled(AccordionDetails)`
+  &.MuiAccordionDetails-root {
+    display: unset;
+    padding: unset;
+
+    ${SidebarItemRoot} {
+      margin-right: unset;
+    }
+  }
+`
+
 export function SidebarListSection(
   props: PropsWithChildren<{ name: string }>
 ): JSX.Element {
@@ -50,12 +133,13 @@ export function SidebarListSection(
   )
 }
 
-function SidebarItemsView(props: SidebarProps) {
+function SidebarItemsView(props: SidebarProps & { groupView?: boolean }) {
   return (
     <>
       {props.items.map((item) => (
         <SidebarItemView
           key={"sidebarItem-" + item.name}
+          groupView={props.groupView}
           item={item}
           selected={props.selected === item.name}
           pathBuilder={props.pathBuilder}
@@ -71,19 +155,35 @@ function SidebarLabelListSection(props: { label: string } & SidebarProps) {
     return null
   }
 
+  const formattedLabel =
+    props.label === "unlabeled" ? <em>{props.label}</em> : props.label
+  const labelNameId = `sidebarItem-${props.label}`
+
+  // TODO (lizz): Improve the accessibility interface for accordion feature by adding focus styles
+  // according to https://www.w3.org/TR/wai-aria-practices-1.1/examples/accordion/accordion.html
   return (
-    <>
-      <SidebarListSectionName>{props.label}</SidebarListSectionName>
-      <SidebarListSectionItems>
-        <SidebarItemsView {...props} />
-      </SidebarListSectionItems>
-    </>
+    <SidebarLabelSection defaultExpanded={true} key={labelNameId}>
+      <SidebarGroupSummary id={labelNameId}>
+        <SummaryIcon role="presentation" />
+        <SidebarGroupName>{formattedLabel}</SidebarGroupName>
+        <ResourceSidebarStatusSummary
+          aria-label={`Status summary for ${props.label} group`}
+          items={props.items}
+        />
+      </SidebarGroupSummary>
+      <SidebarGroupDetails aria-labelledby={labelNameId}>
+        <SidebarListSectionItems>
+          <SidebarItemsView {...props} />
+        </SidebarListSectionItems>
+      </SidebarGroupDetails>
+    </SidebarLabelSection>
   )
 }
 
 function SidebarGroupedByLabels(props: SidebarProps) {
   const labelsToResources: { [key: string]: SidebarItem[] } = {}
   const unlabeled: SidebarItem[] = []
+  const tiltfile: SidebarItem[] = []
 
   props.items.forEach((item) => {
     if (item.labels.length) {
@@ -94,8 +194,13 @@ function SidebarGroupedByLabels(props: SidebarProps) {
 
         labelsToResources[label].push(item)
       })
-    } else {
+    } else if (!item.isTiltfile) {
       unlabeled.push(item)
+    }
+
+    // Display the Tiltfile outside of the label groups
+    if (item.isTiltfile) {
+      tiltfile.push(item)
     }
   })
 
@@ -112,6 +217,9 @@ function SidebarGroupedByLabels(props: SidebarProps) {
         />
       ))}
       <SidebarLabelListSection {...props} label="unlabeled" items={unlabeled} />
+      <SidebarListSection name="Tiltfile">
+        <SidebarItemsView {...props} items={tiltfile} groupView={true} />
+      </SidebarListSection>
     </>
   )
 }
@@ -219,6 +327,11 @@ export class SidebarResources extends React.Component<SidebarProps> {
       <SidebarItemsView {...this.props} items={filteredItems} />
     )
 
+    const resourceFilterApplied = options.resourceNameFilter.length > 0
+    const sidebarName = resourceFilterApplied
+      ? `${filteredItems.length} result${filteredItems.length === 1 ? "" : "s"}`
+      : "resources"
+
     let isOverviewClass =
       this.props.resourceView === ResourceView.OverviewDetail
         ? "isOverview"
@@ -227,6 +340,8 @@ export class SidebarResources extends React.Component<SidebarProps> {
     // TODO: The above filtering and sorting logic will get refactored during more resource
     // grouping work. It won't be necessary to map and sort here, but within each group
     const labelsEnabled = resourcesHaveLabels(this.context, this.props.items)
+    // Note: the label group view does not display if a resource name filter is applied
+    const displayLabelGroups = !resourceFilterApplied && labelsEnabled
 
     return (
       <SidebarResourcesRoot className={`Sidebar-resources ${isOverviewClass}`}>
@@ -236,10 +351,10 @@ export class SidebarResources extends React.Component<SidebarProps> {
             options={options}
             setOptions={setOptions}
           />
-          {labelsEnabled ? (
+          {displayLabelGroups ? (
             <SidebarGroupedByLabels {...this.props} items={filteredItems} />
           ) : (
-            <SidebarListSection name="resources">
+            <SidebarListSection name={sidebarName}>
               {listItems}
             </SidebarListSection>
           )}

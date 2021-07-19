@@ -6,7 +6,7 @@ import { InstrumentedButton } from "./instrumentedComponents"
 import { usePathBuilder } from "./PathBuilder"
 import { ClassNameFromResourceStatus } from "./ResourceStatus"
 import { useStarredResources } from "./StarredResourcesContext"
-import { combinedStatus } from "./status"
+import { buildStatus, combinedStatus, runtimeStatus } from "./status"
 import {
   AnimDuration,
   barberpole,
@@ -221,7 +221,12 @@ export function starredResourcePropsFromView(
   const namesAndStatuses = (view?.uiResources || []).flatMap((r) => {
     let name = r.metadata?.name
     if (name && starContext.starredResources.includes(name)) {
-      return [{ name: name, status: combinedStatus(r) }]
+      return [
+        {
+          name: name,
+          status: combinedStatus(buildStatus(r), runtimeStatus(r)),
+        },
+      ]
     } else {
       return []
     }

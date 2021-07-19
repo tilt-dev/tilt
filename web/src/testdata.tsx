@@ -1,6 +1,6 @@
 import { Href, UnregisterCallback } from "history"
 import { RouteComponentProps } from "react-router-dom"
-import { TriggerMode } from "./types"
+import { ResourceName, TriggerMode } from "./types"
 
 type UIResource = Proto.v1alpha1UIResource
 type UIButton = Proto.v1alpha1UIButton
@@ -91,7 +91,7 @@ export function tiltfileResource(): UIResource {
   const tsPast = new Date(Date.now() - 12300).toISOString()
   const resource: UIResource = {
     metadata: {
-      name: "(Tiltfile)",
+      name: ResourceName.tiltfile,
     },
     status: {
       lastDeployTime: ts,

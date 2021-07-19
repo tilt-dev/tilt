@@ -7,7 +7,8 @@ import { ReactComponent as PendingSvg } from "./assets/svg/pending.svg"
 import { ReactComponent as WarningSvg } from "./assets/svg/warning.svg"
 import { FilterLevel } from "./logfilters"
 import { usePathBuilder } from "./PathBuilder"
-import { combinedStatus } from "./status"
+import SidebarItem from "./SidebarItem"
+import { buildStatus, combinedStatus, runtimeStatus } from "./status"
 import {
   Color,
   Font,
@@ -214,8 +215,7 @@ export type StatusCounts = {
   warning: number
 }
 
-function statusCounts(resources: UIResource[]): StatusCounts {
-  let statuses = resources.map((res) => combinedStatus(res))
+function statusCounts(statuses: ResourceStatus[]): StatusCounts {
   let allStatusCount = 0
   let healthyStatusCount = 0
   let unhealthyStatusCount = 0
@@ -283,34 +283,64 @@ type ResourceStatusSummaryProps = {
 }
 
 export function ResourceStatusSummary(props: ResourceStatusSummaryProps) {
-  // Count the statuses.
+  // Count and calculate the combined statuses.
   let resources = props.view.uiResources || []
+  const allStatuses: ResourceStatus[] = []
 
-  let testResources = new Array<UIResource>()
-  let otherResources = new Array<UIResource>()
+  const testStatuses: ResourceStatus[] = []
+  const otherStatuses: ResourceStatus[] = []
   resources.forEach((r) => {
+    const status = combinedStatus(buildStatus(r), runtimeStatus(r))
+    allStatuses.push(status)
     if (r.status?.localResourceInfo?.isTest) {
-      testResources.push(r)
+      testStatuses.push(status)
     } else {
-      otherResources.push(r)
+      otherStatuses.push(status)
     }
   })
 
   return (
     <ResourceStatusSummaryRoot>
-      <ResourceMetadata counts={statusCounts(resources)} />
+      <ResourceMetadata counts={statusCounts(allStatuses)} />
       <ResourceGroupStatus
-        counts={statusCounts(otherResources)}
+        counts={statusCounts(otherStatuses)}
         label={"Resources"}
         healthyLabel={"healthy"}
         unhealthyLabel={"err"}
         warningLabel={"warn"}
       />
       <ResourceGroupStatus
-        counts={statusCounts(testResources)}
+        counts={statusCounts(testStatuses)}
         label={"Tests"}
         healthyLabel={"pass"}
         unhealthyLabel={"fail"}
+        warningLabel={"warn"}
+      />
+    </ResourceStatusSummaryRoot>
+  )
+}
+
+type ResourceSidebarStatusSummaryProps = {
+  items: SidebarItem[]
+  label?: string
+}
+
+export function ResourceSidebarStatusSummary(
+  props: ResourceSidebarStatusSummaryProps
+) {
+  // Because SidebarItems have already-calculated statuses,
+  // pass those directly to determine their summary status
+  const statuses: ResourceStatus[] = props.items.map((item) =>
+    combinedStatus(item.buildStatus, item.runtimeStatus)
+  )
+
+  return (
+    <ResourceStatusSummaryRoot>
+      <ResourceGroupStatus
+        counts={statusCounts(statuses)}
+        label={props.label ?? ""}
+        healthyLabel={"healthy"}
+        unhealthyLabel={"err"}
         warningLabel={"warn"}
       />
     </ResourceStatusSummaryRoot>

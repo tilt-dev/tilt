@@ -64,18 +64,19 @@ export const ResourcesWithLabels = () => {
   const view = nResourceView(10)
   for (let i = 0; i < 10; i++) {
     const labels: { [key: string]: string } = {}
-    if (i < 5) {
+    // The first item is a Tiltfile, so don't apply a label to it
+    if (i > 0 && i < 5) {
       labels["frontend"] = "frontend"
     }
     if (i % 2) {
       labels["test"] = "test"
     }
 
-    const resourceMetadata: Proto.v1ObjectMeta = {
-      name: `resource_${i}`,
-      labels,
+    if (i === 3) {
+      labels["very_long_long_long_label"] = "very_long_long_long_label"
     }
-    view.uiResources[i].metadata = resourceMetadata
+
+    view.uiResources[i].metadata!.labels = labels
   }
 
   // Non-happy path resources
