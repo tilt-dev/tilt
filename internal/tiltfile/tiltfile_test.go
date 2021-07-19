@@ -382,7 +382,7 @@ func TestLocalTiltEnvPropagation(t *testing.T) {
 	}
 	resetEnv()
 
-	doTest := func(expectedHost string, expectedPort int) {
+	doTest := func(t testing.TB, expectedHost string, expectedPort int) {
 		t.Helper()
 
 		f.file("Tiltfile", `
@@ -400,7 +400,7 @@ local(command='echo Tilt port is $TILT_PORT', command_bat='echo Tilt port is %TI
 		// $TILT_HOST + $TILT_PORT are not explicitly defined anywhere in the test fixture but should be
 		// auto-populated (hardcoded to 1.2.3.4/12345 for tests - no real apiserver is actually loaded)
 		f.webHost = "1.2.3.4"
-		doTest("1.2.3.4", 12345)
+		doTest(t, "1.2.3.4", 12345)
 	})
 
 	t.Run("Explicit", func(t *testing.T) {
@@ -409,7 +409,7 @@ local(command='echo Tilt port is $TILT_PORT', command_bat='echo Tilt port is %TI
 		require.NoError(t, os.Setenv("TILT_PORT", "7890"))
 
 		// if values were explicitly passed (e.g. `local('...', env={"TILT_PORT": 7890})`, they should be respected
-		doTest("7.8.9.0", 7890)
+		doTest(t, "7.8.9.0", 7890)
 	})
 }
 
