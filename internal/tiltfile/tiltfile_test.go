@@ -386,8 +386,8 @@ func TestLocalTiltEnvPropagation(t *testing.T) {
 		t.Helper()
 
 		f.file("Tiltfile", `
-local('echo Tilt host is $TILT_HOST')
-local('echo Tilt port is $TILT_PORT')
+local(command='echo Tilt host is $TILT_HOST', command_bat='echo Tilt host is %TILT_HOST%', echo_off=True)
+local(command='echo Tilt port is $TILT_PORT', command_bat='echo Tilt port is %TILT_PORT%', echo_off=True)
 `)
 		f.load()
 
