@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react"
+import SplitPane from "react-split-pane"
 import styled from "styled-components"
 import { Alert, combinedAlerts } from "./alerts"
 import HeaderBar from "./HeaderBar"
 import { LogUpdateAction, LogUpdateEvent, useLogStore } from "./LogStore"
 import OverviewResourceDetails from "./OverviewResourceDetails"
 import OverviewResourceSidebar from "./OverviewResourceSidebar"
+import "./Resizer.scss"
 import { useResourceNav } from "./ResourceNav"
 import StarredResourceBar, {
   starredResourcePropsFromView,
@@ -25,13 +27,20 @@ let OverviewResourcePaneRoot = styled.div`
   background-color: ${Color.grayDark};
   max-height: 100%;
 `
-
 let Main = styled.div`
   display: flex;
   width: 100%;
   // In Safari, flex-basis "auto" squishes OverviewTabBar + OverviewResourceBar
   flex: 1 1 100%;
   overflow: hidden;
+  position: relative;
+
+  .SplitPane {
+    position: relative !important;
+  }
+  .Pane {
+    display: flex;
+  }
 `
 
 export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
@@ -88,13 +97,15 @@ export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
         {...starredResourcePropsFromView(props.view, selectedTab)}
       />
       <Main>
-        <OverviewResourceSidebar {...props} name={name} />
-        <OverviewResourceDetails
-          resource={r}
-          name={name}
-          alerts={alerts}
-          buttons={buttons}
-        />
+        <SplitPane split="vertical" minSize={336} defaultSize={336}>
+          <OverviewResourceSidebar {...props} name={name} />
+          <OverviewResourceDetails
+            resource={r}
+            name={name}
+            alerts={alerts}
+            buttons={buttons}
+          />
+        </SplitPane>
       </Main>
     </OverviewResourcePaneRoot>
   )
