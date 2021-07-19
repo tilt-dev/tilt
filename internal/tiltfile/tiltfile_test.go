@@ -344,6 +344,7 @@ local('echo foobar', echo_off=True)
 
 	assert.NotContains(t, f.out.String(), "local: echo foobar")
 }
+
 func TestLocalArgvCmd(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("windows doesn't support argv commands. Go converts it to a single string")
@@ -356,6 +357,60 @@ func TestLocalArgvCmd(t *testing.T) {
 	f.load()
 
 	assert.Contains(t, f.out.String(), `a"b`)
+}
+
+func TestLocalTiltEnvPropagation(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	resetEnv := func() {
+		tiltVars := []string{"TILT_HOST", "TILT_PORT"}
+		for _, key := range tiltVars {
+			if originalValue, ok := os.LookupEnv(key); ok {
+				// unset for test then restore after
+				require.NoError(t, os.Unsetenv(key))
+				t.Cleanup(func() {
+					require.NoError(t, os.Setenv(key, originalValue))
+				})
+			} else {
+				// already unset, make sure still unset after test completes
+				t.Cleanup(func() {
+					require.NoError(t, os.Unsetenv(key))
+				})
+			}
+		}
+	}
+	resetEnv()
+
+	doTest := func(t testing.TB, expectedHost string, expectedPort int) {
+		t.Helper()
+
+		f.file("Tiltfile", `
+local(command='echo Tilt host is $TILT_HOST', command_bat='echo Tilt host is %TILT_HOST%', echo_off=True)
+local(command='echo Tilt port is $TILT_PORT', command_bat='echo Tilt port is %TILT_PORT%', echo_off=True)
+`)
+		f.load()
+
+		assert.Contains(t, f.out.String(), fmt.Sprintf(`Tilt host is %s`, expectedHost))
+		assert.Contains(t, f.out.String(), fmt.Sprintf(`Tilt port is %d`, expectedPort))
+	}
+
+	t.Run("Implicit", func(t *testing.T) {
+		resetEnv()
+		// $TILT_HOST + $TILT_PORT are not explicitly defined anywhere in the test fixture but should be
+		// auto-populated (hardcoded to 1.2.3.4/12345 for tests - no real apiserver is actually loaded)
+		f.webHost = "1.2.3.4"
+		doTest(t, "1.2.3.4", 12345)
+	})
+
+	t.Run("Explicit", func(t *testing.T) {
+		resetEnv()
+		require.NoError(t, os.Setenv("TILT_HOST", "7.8.9.0"))
+		require.NoError(t, os.Setenv("TILT_PORT", "7890"))
+
+		// if values were explicitly passed (e.g. `local('...', env={"TILT_PORT": 7890})`, they should be respected
+		doTest(t, "7.8.9.0", 7890)
+	})
 }
 
 func TestReadFile(t *testing.T) {
@@ -5610,7 +5665,7 @@ func (f *fixture) newTiltfileLoader() TiltfileLoader {
 	k8sContextExt := k8scontext.NewExtension(f.k8sContext, f.k8sEnv)
 	versionExt := version.NewExtension(model.TiltBuild{Version: "0.5.0"})
 	configExt := config.NewExtension("up")
-	return ProvideTiltfileLoader(f.ta, f.kCli, k8sContextExt, versionExt, configExt, dcc, f.webHost, features, f.k8sEnv)
+	return ProvideTiltfileLoader(f.ta, f.kCli, k8sContextExt, versionExt, configExt, dcc, f.webHost, model.WebPort(12345), features, f.k8sEnv)
 }
 
 func newFixture(t *testing.T) *fixture {

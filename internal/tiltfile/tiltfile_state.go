@@ -65,6 +65,7 @@ type tiltfileState struct {
 	ctx           context.Context
 	dcCli         dockercompose.DockerComposeClient
 	webHost       model.WebHost
+	webPort       model.WebPort
 	k8sContextExt k8scontext.Extension
 	versionExt    version.Extension
 	configExt     *config.Extension
@@ -134,6 +135,7 @@ func newTiltfileState(
 	ctx context.Context,
 	dcCli dockercompose.DockerComposeClient,
 	webHost model.WebHost,
+	webPort model.WebPort,
 	k8sContextExt k8scontext.Extension,
 	versionExt version.Extension,
 	configExt *config.Extension,
@@ -143,6 +145,7 @@ func newTiltfileState(
 		ctx:                       ctx,
 		dcCli:                     dcCli,
 		webHost:                   webHost,
+		webPort:                   webPort,
 		k8sContextExt:             k8sContextExt,
 		versionExt:                versionExt,
 		configExt:                 configExt,
