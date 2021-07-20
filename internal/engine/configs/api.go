@@ -233,8 +233,11 @@ func toUIResourceObjects(tlr tiltfile.TiltfileLoadResult) typedObjectSet {
 
 	for _, m := range tlr.Manifests {
 		name := string(m.Name)
+
+		m = m.WithLabels(m.Labels)
 		labels := m.Labels
-		labels[LabelOwnerKind] = LabelOwnerKindTiltfile // TODO(lizz): move this label assignment to the Tiltfile
+		// TODO(lizz): consider moving this label assignment to the Tiltfile itself
+		labels[LabelOwnerKind] = LabelOwnerKindTiltfile
 
 		r := &v1alpha1.UIResource{
 			ObjectMeta: metav1.ObjectMeta{

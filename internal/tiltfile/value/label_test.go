@@ -22,7 +22,7 @@ func TestLabelStringList(t *testing.T) {
 	err := v.Unpack(sv)
 	require.NoError(t, err)
 
-	expected := LabelSet{Values: map[string]string{"label1": "label1"}}
+	expected := LabelSet{Values: map[string]string{"label1": "label1", "label2": "label2"}}
 	require.Equal(t, expected, v)
 }
 
@@ -51,4 +51,12 @@ func TestLabelEmptyString(t *testing.T) {
 	require.Contains(t, err.Error(), "name part must be non-empty")
 }
 
-// TODO(lizz): Add test case and logic to error on an empty label list
+func TestLabelEmptyList(t *testing.T) {
+	sv := starlark.NewList([]starlark.Value{})
+	v := LabelSet{}
+	err := v.Unpack(sv)
+
+	require.NoError(t, err)
+	expected := LabelSet{Values: map[string]string{}}
+	require.Equal(t, expected, v)
+}

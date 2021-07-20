@@ -5652,6 +5652,23 @@ k8s_resource('foo', labels="test")
 	f.assertNextManifest("foo", resourceLabels("test"))
 }
 
+func TestK8sResourceLabelsAppend(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+k8s_resource('foo', labels="test")
+k8s_resource('foo', labels="test2")
+`)
+
+	f.load()
+	f.assertNumManifests(1)
+	f.assertNextManifest("foo", resourceLabels("test", "test2"))
+}
+
 func TestLocalResourceLabels(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()

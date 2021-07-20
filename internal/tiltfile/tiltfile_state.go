@@ -1034,8 +1034,9 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource, updateSettings mo
 			Name:                 mn,
 			TriggerMode:          tm,
 			ResourceDependencies: mds,
-			Labels:               r.labels,
 		}
+
+		m = m.WithLabels(r.labels)
 
 		iTargets, err := s.imgTargetsForDependencyIDs(r.dependencyIDs, registry)
 		if err != nil {
@@ -1425,8 +1426,9 @@ func (s *tiltfileState) translateLocal() ([]model.Manifest, error) {
 			Name:                 mn,
 			TriggerMode:          tm,
 			ResourceDependencies: mds,
-			Labels:               r.labels,
 		}.WithDeployTarget(lt)
+
+		m = m.WithLabels(r.labels)
 
 		result = append(result, m)
 	}

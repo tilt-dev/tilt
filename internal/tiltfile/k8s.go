@@ -346,6 +346,14 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 	}
 	o.links = append(o.links, links.Links...)
 
+	if o.labels == nil {
+		o.labels = make(map[string]string)
+	}
+
+	for k, v := range labels.Values {
+		o.labels[k] = v
+	}
+
 	s.k8sResourceOptions[resourceName] = o
 
 	return starlark.None, nil

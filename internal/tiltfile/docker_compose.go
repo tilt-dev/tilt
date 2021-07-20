@@ -308,8 +308,9 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResource
 		Name:                 model.ManifestName(service.Name),
 		TriggerMode:          um,
 		ResourceDependencies: mds,
-		Labels:               service.Labels,
 	}.WithDeployTarget(dcInfo)
+
+	m = m.WithLabels(service.Labels)
 
 	if service.DfPath == "" {
 		// DC service may not have Dockerfile -- e.g. may be just an image that we pull and run.
