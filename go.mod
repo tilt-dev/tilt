@@ -21,7 +21,6 @@ require (
 	github.com/docker/docker v17.12.0-ce-rc1.0.20200730172259-9f28837c1d93+incompatible
 	github.com/docker/go v1.5.1-1 // indirect
 	github.com/docker/go-connections v0.4.0
-	github.com/docker/go-metrics v0.0.1 // indirect
 	github.com/docker/go-units v0.4.0
 	github.com/docker/libtrust v0.0.0-20160708172513-aabc10ec26b7 // indirect
 	github.com/fatih/color v1.9.0
@@ -68,7 +67,7 @@ require (
 	github.com/tilt-dev/fsnotify v1.4.8-0.20210701141043-dd524499d3fe
 	github.com/tilt-dev/go-get v0.0.0-20200911222649-1acd29546527
 	github.com/tilt-dev/localregistry-go v0.0.0-20200615231835-07e386f4ebd7
-	github.com/tilt-dev/probe v0.2.0
+	github.com/tilt-dev/probe v0.3.0
 	github.com/tilt-dev/tilt-apiserver v0.4.1
 	github.com/tilt-dev/wmclient v0.0.0-20201109174454-1839d0355fbc
 	github.com/tonistiigi/units v0.0.0-20180711220420-6950e57a87ea
