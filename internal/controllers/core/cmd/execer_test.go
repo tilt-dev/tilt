@@ -154,7 +154,7 @@ func TestExecCmd(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			c := localexec.ExecCmd(tc.cmd, l)
+			c := localexec.EmptyEnv().ExecCmd(tc.cmd, l)
 			assertCommandEqual(t, tc.cmd, c)
 		})
 	}
@@ -197,7 +197,7 @@ type processExecFixture struct {
 }
 
 func newProcessExecFixture(t *testing.T) *processExecFixture {
-	execer := NewProcessExecer()
+	execer := NewProcessExecer(localexec.EmptyEnv())
 	execer.gracePeriod = time.Second
 	testWriter := bufsync.NewThreadSafeBuffer()
 	ctx, _, _ := testutils.ForkedCtxAndAnalyticsForTest(testWriter)
