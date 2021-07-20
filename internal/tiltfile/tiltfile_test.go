@@ -5636,6 +5636,22 @@ k8s_resource(
 	f.assertNoMoreManifests()
 }
 
+func TestK8sResourceLabels(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+k8s_resource('foo', labels="test")
+`)
+
+	f.load()
+	f.assertNumManifests(1)
+	f.assertNextManifest("foo", resourceLabels("test"))
+}
+
 func TestLocalResourceLabels(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -5650,19 +5666,6 @@ local_resource("test2", cmd="echo hi2", labels=["bar", "baz"])
 	f.assertNextManifest("test", resourceLabels("foo"))
 	f.assertNextManifest("test2", resourceLabels("bar", "baz"))
 }
-
-// TODO tests (lizz + matt)
-// 1. dc_resource labels
-// 2. k8s_resource labels
-// 3. local_resource labels
-// 4. invalid labels
-//    a. name
-//    b. value
-//    c. type
-//    d. list element type
-// 5. empty string
-// 6. empty list
-// 7. additive (this we need to write functionality for once this branch is synced)
 
 type fixture struct {
 	ctx context.Context

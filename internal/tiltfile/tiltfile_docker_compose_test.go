@@ -630,6 +630,21 @@ default_registry('bar.com')
 	f.loadErrString("default_registry is not supported with docker compose")
 }
 
+func TestDockerComposeLabels(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile(filepath.Join("foo", "Dockerfile"))
+	f.file("docker-compose.yml", simpleConfig)
+	f.file("Tiltfile", `
+docker_compose('docker-compose.yml')
+dc_resource("foo", labels="test")
+`)
+
+	f.load("foo")
+	f.assertNextManifest("foo", resourceLabels("test"))
+}
+
 func TestTriggerModeDC(t *testing.T) {
 	for _, testCase := range []struct {
 		name                string
