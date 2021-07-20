@@ -68,6 +68,15 @@ github.com/chai2010/gettext-go/gettext/plural
 github.com/chai2010/gettext-go/gettext/po
 # github.com/cloudflare/cfssl v1.4.1
 ## explicit
+# github.com/compose-spec/compose-go v0.0.0-20210716132856-efad24e892ce
+## explicit
+github.com/compose-spec/compose-go/cli
+github.com/compose-spec/compose-go/errdefs
+github.com/compose-spec/compose-go/interpolation
+github.com/compose-spec/compose-go/loader
+github.com/compose-spec/compose-go/schema
+github.com/compose-spec/compose-go/template
+github.com/compose-spec/compose-go/types
 # github.com/containerd/containerd v1.4.4
 github.com/containerd/containerd/archive/compression
 github.com/containerd/containerd/content
@@ -108,6 +117,9 @@ github.com/cpuguy83/go-md2man/v2/md2man
 github.com/davecgh/go-spew/spew
 # github.com/denisbrodbeck/machineid v1.0.0
 github.com/denisbrodbeck/machineid
+# github.com/distribution/distribution/v3 v3.0.0-20210316161203-a01c71e2477e
+github.com/distribution/distribution/v3/digestset
+github.com/distribution/distribution/v3/reference
 # github.com/docker/cli v20.10.5+incompatible
 ## explicit
 github.com/docker/cli/cli/command
@@ -289,7 +301,7 @@ github.com/google/wire
 github.com/googleapis/gnostic/compiler
 github.com/googleapis/gnostic/extensions
 github.com/googleapis/gnostic/openapiv2
-# github.com/gorilla/mux v1.7.4
+# github.com/gorilla/mux v1.8.0
 ## explicit
 github.com/gorilla/mux
 # github.com/gorilla/websocket v1.4.2
@@ -321,6 +333,8 @@ github.com/imdario/mergo
 github.com/inconshreveable/mousetrap
 # github.com/jinzhu/gorm v1.9.12
 ## explicit
+# github.com/joho/godotenv v1.3.0
+github.com/joho/godotenv
 # github.com/jonboulle/clockwork v0.2.2
 ## explicit
 github.com/jonboulle/clockwork
@@ -351,6 +365,8 @@ github.com/mattn/go-colorable
 github.com/mattn/go-isatty
 # github.com/mattn/go-runewidth v0.0.7
 github.com/mattn/go-runewidth
+# github.com/mattn/go-shellwords v1.0.12
+github.com/mattn/go-shellwords
 # github.com/mattn/go-tty v0.0.3
 ## explicit
 github.com/mattn/go-tty
@@ -364,6 +380,8 @@ github.com/miekg/pkcs11
 github.com/mitchellh/go-homedir
 # github.com/mitchellh/go-wordwrap v1.0.0
 github.com/mitchellh/go-wordwrap
+# github.com/mitchellh/mapstructure v1.4.1
+github.com/mitchellh/mapstructure
 # github.com/moby/buildkit v0.7.1-0.20200925001807-2b6cccb9b3e9
 ## explicit
 github.com/moby/buildkit/api/services/control
@@ -548,6 +566,12 @@ github.com/whilp/git-urls
 # github.com/wojas/genericr v0.2.0
 ## explicit
 github.com/wojas/genericr
+# github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f
+github.com/xeipuuv/gojsonpointer
+# github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415
+github.com/xeipuuv/gojsonreference
+# github.com/xeipuuv/gojsonschema v1.2.0
+github.com/xeipuuv/gojsonschema
 # github.com/xlab/treeprint v0.0.0-20181112141820-a009c3971eca
 github.com/xlab/treeprint
 # go.etcd.io/etcd v0.5.0-alpha.5.0.20200910180754-dd1b699fc489
@@ -654,7 +678,7 @@ golang.org/x/oauth2/google
 golang.org/x/oauth2/internal
 golang.org/x/oauth2/jws
 golang.org/x/oauth2/jwt
-# golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
+# golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 ## explicit
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore

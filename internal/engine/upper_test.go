@@ -37,7 +37,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tilt-dev/wmclient/pkg/analytics"
 	"github.com/tilt-dev/wmclient/pkg/dirs"
-	yaml "gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -4521,23 +4520,8 @@ func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
 
 	f.WriteFile("Tiltfile", `docker_compose('docker-compose.yml')`)
 
-	var dcConfig dockercompose.Config
-	err = yaml.Unmarshal(dcpc, &dcConfig)
-	if err != nil {
-		f.T().Fatal(err)
-	}
-
-	svc := dcConfig.Services["server"]
-	svc.Build.Context = f.Path()
-	dcConfig.Services["server"] = svc
-
-	y, err := yaml.Marshal(dcConfig)
-	if err != nil {
-		f.T().Fatal(err)
-	}
-	f.dcc.ConfigOutput = string(y)
-
-	f.dcc.ServicesOutput = "redis\nserver\n"
+	f.dcc.WorkDir = f.Path()
+	f.dcc.ConfigOutput = string(dcpc)
 
 	tlr := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), model.UserConfigState{})
 	if tlr.Error != nil {

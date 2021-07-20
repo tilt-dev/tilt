@@ -11,12 +11,15 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/compose-spec/compose-go/types"
 	"github.com/pkg/errors"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
+
+	compose "github.com/compose-spec/compose-go/cli"
 )
 
 type DockerComposeClient interface {
@@ -24,8 +27,7 @@ type DockerComposeClient interface {
 	Down(ctx context.Context, configPaths []string, stdout, stderr io.Writer) error
 	StreamLogs(ctx context.Context, configPaths []string, serviceName model.TargetName) (io.ReadCloser, error)
 	StreamEvents(ctx context.Context, configPaths []string) (<-chan string, error)
-	Config(ctx context.Context, configPaths []string) (string, error)
-	Services(ctx context.Context, configPaths []string) (string, error)
+	Project(ctx context.Context, configPaths []string) (*types.Project, error)
 	ContainerID(ctx context.Context, configPaths []string, serviceName model.TargetName) (container.ID, error)
 }
 
@@ -183,12 +185,8 @@ func (c *cmdDCClient) StreamEvents(ctx context.Context, configPaths []string) (<
 	return ch, nil
 }
 
-func (c *cmdDCClient) Config(ctx context.Context, configPaths []string) (string, error) {
-	return c.dcOutput(ctx, configPaths, "config")
-}
-
-func (c *cmdDCClient) Services(ctx context.Context, configPaths []string) (string, error) {
-	return c.dcOutput(ctx, configPaths, "config", "--services")
+func (c *cmdDCClient) Project(_ context.Context, configPaths []string) (*types.Project, error) {
+	return c.loadProject(configPaths)
 }
 
 func (c *cmdDCClient) ContainerID(ctx context.Context, configPaths []string, serviceName model.TargetName) (container.ID, error) {
@@ -198,6 +196,18 @@ func (c *cmdDCClient) ContainerID(ctx context.Context, configPaths []string, ser
 	}
 
 	return container.ID(id), nil
+}
+
+func (c *cmdDCClient) loadProject(configPaths []string) (*types.Project, error) {
+	opts, err := compose.NewProjectOptions(configPaths)
+	if err != nil {
+		return nil, err
+	}
+	proj, err := compose.ProjectFromOptions(opts)
+	if err != nil {
+		return nil, err
+	}
+	return proj, nil
 }
 
 func (c *cmdDCClient) dcCommand(ctx context.Context, args []string) *exec.Cmd {

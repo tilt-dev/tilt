@@ -20,24 +20,24 @@ func TestParseConfigPreservesServiceOrder(t *testing.T) {
 services:
   a:
     image: imga
+    depends_on: [b]
   b:
     image: imgb
+    depends_on: [c]
   c:
     image: imgc
+    depends_on: [d, e, f]
   d:
     image: imgd
+    depends_on: [f, e]
   e:
     image: imge
+    depends_on: [f]
   f:
-    image: imgf`
+    image: imgf
+`
 
-	var servicesOutput = `f
-e
-d
-c
-b
-a`
-	services := f.parse(output, servicesOutput)
+	services := f.parse(output)
 	if assert.Len(t, services, 6) {
 		for i, name := range []string{"f", "e", "d", "c", "b", "a"} {
 			assert.Equal(t, name, services[i].Name)
@@ -57,16 +57,14 @@ func TestPortStruct(t *testing.T) {
       target: 30
 version: '3.2'
 `
-	servicesOutput := `app
-`
-	services := f.parse(output, servicesOutput)
+	services := f.parse(output)
 	if assert.Len(t, services, 1) {
 		assert.Equal(t, []int{3000}, services[0].PublishedPorts)
 	}
 
 }
 
-func TestPortMapSame(t *testing.T) {
+func TestPortMapRandomized(t *testing.T) {
 	f := newDCFixture(t)
 
 	output := `services:
@@ -77,11 +75,9 @@ func TestPortMapSame(t *testing.T) {
     - 3000/tcp
 version: '3.0'
 `
-	servicesOutput := `app
-`
-	services := f.parse(output, servicesOutput)
+	services := f.parse(output)
 	if assert.Len(t, services, 1) {
-		assert.Equal(t, []int{3000}, services[0].PublishedPorts)
+		assert.Empty(t, services[0].PublishedPorts)
 	}
 }
 
@@ -96,9 +92,8 @@ func TestPortMapDifferent(t *testing.T) {
     - 3000:30/tcp
 version: '3.0'
 `
-	servicesOutput := `app
-`
-	services := f.parse(output, servicesOutput)
+
+	services := f.parse(output)
 	if assert.Len(t, services, 1) {
 		assert.Equal(t, []int{3000}, services[0].PublishedPorts)
 	}
@@ -115,9 +110,8 @@ func TestPortMapIP(t *testing.T) {
     - 127.0.0.1:3000:30/tcp
 version: '3.0'
 `
-	servicesOutput := `app
-`
-	services := f.parse(output, servicesOutput)
+
+	services := f.parse(output)
 	if assert.Len(t, services, 1) {
 		assert.Equal(t, []int{3000}, services[0].PublishedPorts)
 	}
@@ -139,9 +133,10 @@ func newDCFixture(t *testing.T) dcFixture {
 	}
 }
 
-func (f dcFixture) parse(configOutput, servicesOutput string) []*dcService {
+func (f dcFixture) parse(configOutput string) []*dcService {
+	f.t.Helper()
+
 	f.dcCli.ConfigOutput = configOutput
-	f.dcCli.ServicesOutput = servicesOutput
 
 	services, err := parseDCConfig(f.ctx, f.dcCli, []string{"doesn't-matter.yml"})
 	if err != nil {

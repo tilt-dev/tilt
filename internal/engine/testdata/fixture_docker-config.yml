@@ -5,6 +5,8 @@ services:
     image: redis:alpine
     network_mode: bridge
   server:
+    build:
+      context: .
     environment:
       NAME: TheServer
     expose:

@@ -7,6 +7,10 @@ import (
 	"io"
 	"testing"
 
+	"github.com/compose-spec/compose-go/loader"
+
+	"github.com/compose-spec/compose-go/types"
+
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -19,11 +23,13 @@ type FakeDCClient struct {
 	ContainerIdOutput container.ID
 	eventJson         chan string
 	ConfigOutput      string
-	ServicesOutput    string
 
 	UpCalls   []UpCall
 	DownError error
+	WorkDir   string
 }
+
+var _ DockerComposeClient = &FakeDCClient{}
 
 // Represents a single call to Up
 type UpCall struct {
@@ -108,12 +114,19 @@ func (c *FakeDCClient) SendEvent(evt Event) error {
 	return nil
 }
 
-func (c *FakeDCClient) Config(ctx context.Context, configPaths []string) (string, error) {
+func (c *FakeDCClient) Config(_ context.Context, _ []string) (string, error) {
 	return c.ConfigOutput, nil
 }
 
-func (c *FakeDCClient) Services(ctx context.Context, configPaths []string) (string, error) {
-	return c.ServicesOutput, nil
+func (c *FakeDCClient) Project(_ context.Context, _ []string) (*types.Project, error) {
+	return loader.Load(types.ConfigDetails{
+		WorkingDir: c.WorkDir,
+		ConfigFiles: []types.ConfigFile{
+			{
+				Content: []byte(c.ConfigOutput),
+			},
+		},
+	})
 }
 
 func (c *FakeDCClient) ContainerID(ctx context.Context, configPaths []string, serviceName model.TargetName) (container.ID, error) {
