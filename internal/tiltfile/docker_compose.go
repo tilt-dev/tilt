@@ -93,6 +93,7 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 	var triggerMode triggerMode
 	var resourceDepsVal starlark.Sequence
 	var links links.LinkList
+	var labels value.LabelSet
 
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
@@ -109,6 +110,7 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 		"trigger_mode?", &triggerMode,
 		"resource_deps?", &resourceDepsVal,
 		"links?", &links,
+		"labels?", &labels,
 	); err != nil {
 		return nil, err
 	}
@@ -136,6 +138,8 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 		svc.TriggerMode = triggerMode
 	}
 	svc.Links = append(svc.Links, links.Links...)
+
+	svc.Labels = labels.Values
 
 	if imageRefAsStr != nil {
 		normalized, err := container.ParseNamed(*imageRefAsStr)
@@ -189,6 +193,8 @@ type dcService struct {
 
 	TriggerMode triggerMode
 	Links       []model.Link
+
+	Labels map[string]string
 
 	resourceDeps []string
 }
@@ -306,6 +312,8 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResource
 		TriggerMode:          um,
 		ResourceDependencies: mds,
 	}.WithDeployTarget(dcInfo)
+
+	m = m.WithLabels(service.Labels)
 
 	if service.DfPath == "" {
 		// DC service may not have Dockerfile -- e.g. may be just an image that we pull and run.

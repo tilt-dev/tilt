@@ -5636,6 +5636,54 @@ k8s_resource(
 	f.assertNoMoreManifests()
 }
 
+func TestK8sResourceLabels(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+k8s_resource('foo', labels="test")
+`)
+
+	f.load()
+	f.assertNumManifests(1)
+	f.assertNextManifest("foo", resourceLabels("test"))
+}
+
+func TestK8sResourceLabelsAppend(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+k8s_resource('foo', labels="test")
+k8s_resource('foo', labels="test2")
+`)
+
+	f.load()
+	f.assertNumManifests(1)
+	f.assertNextManifest("foo", resourceLabels("test", "test2"))
+}
+
+func TestLocalResourceLabels(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+local_resource("test", cmd="echo hi", labels="foo")
+local_resource("test2", cmd="echo hi2", labels=["bar", "baz"])
+`)
+
+	f.load()
+	f.assertNumManifests(2)
+	f.assertNextManifest("test", resourceLabels("foo"))
+	f.assertNextManifest("test2", resourceLabels("bar", "baz"))
+}
+
 type fixture struct {
 	ctx context.Context
 	out *bytes.Buffer
@@ -6147,6 +6195,8 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 					f.t.Fatalf("unknown matcher for local target %T", matcher)
 				}
 			}
+		case resourceLabelsHelper:
+			assert.Equal(f.t, opt.labels, m.Labels)
 		default:
 			f.t.Fatalf("unexpected arg to assertNextManifest: %T %v", opt, opt)
 		}
@@ -6377,6 +6427,20 @@ func resourceDeps(deps ...string) resourceDependenciesHelper {
 		mns = append(mns, model.ManifestName(d))
 	}
 	return resourceDependenciesHelper{deps: mns}
+}
+
+type resourceLabelsHelper struct {
+	labels map[string]string
+}
+
+func resourceLabels(labels ...string) resourceLabelsHelper {
+	ret := resourceLabelsHelper{
+		labels: make(map[string]string),
+	}
+	for _, l := range labels {
+		ret.labels[l] = l
+	}
+	return ret
 }
 
 type imageHelper struct {

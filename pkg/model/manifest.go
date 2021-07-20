@@ -35,7 +35,7 @@ const TiltfileManifestName = ManifestName("(Tiltfile)")
 func (m ManifestName) String() string         { return string(m) }
 func (m ManifestName) TargetName() TargetName { return TargetName(m) }
 
-// NOTE: If you modify Manifest, make sure to modify `Manifest.Equal` appropriately
+// NOTE: If you modify Manifest, make sure to modify `equalForBuildInvalidation` appropriately
 type Manifest struct {
 	// Properties for all manifests.
 	Name ManifestName
@@ -56,6 +56,8 @@ type Manifest struct {
 	ResourceDependencies []ManifestName
 
 	Source ManifestSource
+
+	Labels map[string]string
 }
 
 func (m Manifest) ID() TargetID {
@@ -220,6 +222,14 @@ func (m Manifest) LocalPaths() []string {
 		paths = append(paths, iTarget.LocalPaths()...)
 	}
 	return sliceutils.DedupedAndSorted(paths)
+}
+
+func (m Manifest) WithLabels(labels map[string]string) Manifest {
+	m.Labels = make(map[string]string)
+	for k, v := range labels {
+		m.Labels[k] = v
+	}
+	return m
 }
 
 func (m Manifest) Validate() error {
@@ -447,6 +457,7 @@ var portForwardPathAllowUnexported = cmp.AllowUnexported(PortForward{})
 var ignoreCustomBuildDepsField = cmpopts.IgnoreFields(CustomBuild{}, "Deps")
 var ignoreLocalTargetDepsField = cmpopts.IgnoreFields(LocalTarget{}, "Deps")
 var ignoreDockerBuildCacheFrom = cmpopts.IgnoreFields(DockerBuild{}, "CacheFrom")
+var ignoreLabels = cmpopts.IgnoreFields(Manifest{}, "Labels")
 
 var dockerRefEqual = cmp.Comparer(func(a, b reference.Named) bool {
 	aNil := a == nil
@@ -484,6 +495,9 @@ func equalForBuildInvalidation(x, y interface{}) bool {
 		// DockerBuild.CacheFrom doesn't invalidate a build (b/c it affects HOW we build but
 		// shouldn't affect the result of the build), so don't compare these fields
 		ignoreDockerBuildCacheFrom,
+
+		// user-added labels don't invalidate a build
+		ignoreLabels,
 	)
 }
 

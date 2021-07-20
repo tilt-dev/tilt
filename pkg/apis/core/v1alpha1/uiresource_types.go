@@ -68,6 +68,10 @@ func (in *UIResource) GetObjectMeta() *metav1.ObjectMeta {
 	return &in.ObjectMeta
 }
 
+func (in *UIResource) GetSpec() interface{} {
+	return in.Spec
+}
+
 func (in *UIResource) NamespaceScoped() bool {
 	return false
 }
