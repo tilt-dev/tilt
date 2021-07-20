@@ -11,6 +11,7 @@ import {
   ResourceView,
   TriggerMode,
 } from "./types"
+import {Width} from "./style-helpers"
 
 type UIResource = Proto.v1alpha1UIResource
 let pathBuilder = PathBuilder.forTesting("localhost", "/")
@@ -24,7 +25,7 @@ function ItemWrapper(props: { children: React.ReactNode }) {
   return (
     <MemoryRouter initialEntries={["/"]}>
       <ResourceNavContextProvider value={resourceNav}>
-        <div style={{ width: "336px", margin: "100px" }}>{props.children}</div>
+        <div style={{ width: `${Width.sidebarDefault}px`, margin: "100px" }}>{props.children}</div>
       </ResourceNavContextProvider>
     </MemoryRouter>
   )

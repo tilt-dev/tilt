@@ -50,10 +50,6 @@ $statusbar-tiltPanel-width: $spacing-unit * 1.75;
 
 $tablet-width: 1500px;
 
-// These below need to be synchronized with style-helpers.ts
-// We're mid-migration in shifting away from Sass to Styled Components
-// When most styling is via Styled Components, these will be refactored away:
-$sidebar-width: $spacing-unit * 10.5; // Width.sidebar
 $statusbar-height: $spacing-unit * 1.5; // Height.statusbar
 
 // Z-Index

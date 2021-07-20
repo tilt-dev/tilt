@@ -4,6 +4,7 @@ import { usePathBuilder } from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
 import SidebarResources from "./SidebarResources"
 import { ResourceName, ResourceView } from "./types"
+import { Width } from "./style-helpers"
 
 type OverviewResourceSidebarProps = {
   name: string
@@ -16,7 +17,7 @@ let OverviewResourceSidebarRoot = styled.div`
   flex-shrink: 0;
   flex-grow: 1;
   height: 100%;
-  min-width: 336px;
+  min-width: ${Width.sidebarDefault}px;
 `
 
 export default function OverviewResourceSidebar(
