@@ -158,6 +158,40 @@ services:
 	f.assertConfigFiles(expectedConfFiles...)
 }
 
+func TestDockerComposeManifestAbsoluteDockerfile(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	dockerfilePath := f.JoinPath("baz", "Dockerfile")
+
+	dcYAML := fmt.Sprintf(`build:
+  context: %s
+  dockerfile: %s`,
+		f.JoinPath("baz"),
+		dockerfilePath)
+	f.dockerfile(dockerfilePath)
+	f.file("docker-compose.yml", fmt.Sprintf(`
+version: '3'
+services:
+  baz:
+    build:
+      context: %s
+      dockerfile: %s`, f.JoinPath("baz"), dockerfilePath))
+	f.file("Tiltfile", "docker_compose('docker-compose.yml')")
+
+	f.load("baz")
+	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
+	f.assertDcManifest("baz",
+		dcConfigPath([]string{configPath}),
+		dcYAMLRaw(dcYAML),
+		dcDfRaw(simpleDockerfile),
+		// TODO(maia): assert m.tiltFilename
+	)
+
+	expectedConfFiles := []string{"Tiltfile", ".tiltignore", ".dockerignore", "docker-compose.yml", "baz/Dockerfile", "baz/.dockerignore"}
+	f.assertConfigFiles(expectedConfFiles...)
+}
+
 func TestDockerComposeManifestAlternateDockerfileAndDockerIgnore(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()

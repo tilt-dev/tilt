@@ -213,7 +213,10 @@ func DockerComposeConfigToService(c dockercompose.Config, name string) (dcServic
 			// We only expect a Dockerfile if there's a build context specified.
 			dfPath = "Dockerfile"
 		}
-		dfPath = filepath.Join(buildContext, dfPath)
+
+		if !filepath.IsAbs(dfPath) {
+			dfPath = filepath.Join(buildContext, dfPath)
+		}
 	}
 
 	var mountedLocalDirs []string
