@@ -16,9 +16,14 @@ func (lv *LabelValue) Unpack(v starlark.Value) error {
 		return fmt.Errorf("Value should be convertible to string, but is type %s", v.Type())
 	}
 
-	validationErrors := validation.IsValidLabelValue(str)
+	validationErrors := validation.IsQualifiedName(str)
 	if len(validationErrors) != 0 {
 		return fmt.Errorf("Invalid label %q: %s", str, strings.Join(validationErrors, ", "))
+	}
+
+	validLabelValueErrors := validation.IsValidLabelValue(str)
+	if len(validLabelValueErrors) != 0 {
+		return fmt.Errorf("Invalid label %q: %s", str, strings.Join(validLabelValueErrors, ", "))
 	}
 
 	// Tilt assumes prefixed labels are not added by the user and thus doesn't use them

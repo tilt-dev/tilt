@@ -42,3 +42,13 @@ func TestLabelInvalidType(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "value should be a label or List or Tuple of labels")
 }
+
+func TestLabelEmptyString(t *testing.T) {
+	v := LabelSet{}
+	err := v.Unpack(starlark.String(""))
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "name part must be non-empty")
+}
+
+// TODO(lizz): Add test case and logic to error on an empty label list
