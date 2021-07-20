@@ -3,8 +3,8 @@ import styled from "styled-components"
 import { usePathBuilder } from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
 import SidebarResources from "./SidebarResources"
-import { ResourceName, ResourceView } from "./types"
 import { Width } from "./style-helpers"
+import { ResourceName, ResourceView } from "./types"
 
 type OverviewResourceSidebarProps = {
   name: string

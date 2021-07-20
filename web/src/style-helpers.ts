@@ -65,6 +65,7 @@ export function SizeUnit(multiplier: number) {
 
 export enum Width {
   sidebarDefault = 336,
+  smallScreen = 1500,
   statusIcon = 22,
   statusIconMarginRight = 10,
 }

@@ -11,9 +11,8 @@ import { useResourceNav } from "./ResourceNav"
 import StarredResourceBar, {
   starredResourcePropsFromView,
 } from "./StarredResourceBar"
-import { Color } from "./style-helpers"
+import { Color, Width } from "./style-helpers"
 import { ResourceName } from "./types"
-import {Width} from "./style-helpers"
 
 type UIResource = Proto.v1alpha1UIResource
 type OverviewResourcePaneProps = {
@@ -98,7 +97,11 @@ export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
         {...starredResourcePropsFromView(props.view, selectedTab)}
       />
       <Main>
-        <SplitPane split="vertical" minSize={Width.sidebarDefault} defaultSize={Width.sidebarDefault}>
+        <SplitPane
+          split="vertical"
+          minSize={Width.sidebarDefault}
+          defaultSize={Width.sidebarDefault}
+        >
           <OverviewResourceSidebar {...props} name={name} />
           <OverviewResourceDetails
             resource={r}

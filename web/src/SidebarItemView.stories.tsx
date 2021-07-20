@@ -4,6 +4,7 @@ import PathBuilder from "./PathBuilder"
 import { ResourceNavContextProvider } from "./ResourceNav"
 import SidebarItem from "./SidebarItem"
 import SidebarItemView, { SidebarItemViewProps } from "./SidebarItemView"
+import { Width } from "./style-helpers"
 import { oneResourceNoAlerts } from "./testdata"
 import {
   ResourceName,
@@ -11,7 +12,6 @@ import {
   ResourceView,
   TriggerMode,
 } from "./types"
-import {Width} from "./style-helpers"
 
 type UIResource = Proto.v1alpha1UIResource
 let pathBuilder = PathBuilder.forTesting("localhost", "/")
@@ -25,7 +25,9 @@ function ItemWrapper(props: { children: React.ReactNode }) {
   return (
     <MemoryRouter initialEntries={["/"]}>
       <ResourceNavContextProvider value={resourceNav}>
-        <div style={{ width: `${Width.sidebarDefault}px`, margin: "100px" }}>{props.children}</div>
+        <div style={{ width: `${Width.sidebarDefault}px`, margin: "100px" }}>
+          {props.children}
+        </div>
       </ResourceNavContextProvider>
     </MemoryRouter>
   )
