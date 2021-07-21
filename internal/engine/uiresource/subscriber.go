@@ -14,7 +14,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/hud/webview"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
-	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 // Creates UIResource objects from the EngineState
@@ -56,8 +55,7 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 			return nil
 		}
 
-		logger.Get(ctx).Infof("listing uiresource: %v", err)
-		return nil
+		return err
 	}
 
 	storedMap := make(map[types.NamespacedName]v1alpha1.UIResource)
@@ -75,8 +73,7 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 			// If there's no current version of this resource, we should delete it.
 			err := s.client.Delete(ctx, &v1alpha1.UIResource{ObjectMeta: metav1.ObjectMeta{Name: name.Name}})
 			if err != nil && !apierrors.IsNotFound(err) {
-				st.Dispatch(store.NewErrorAction(fmt.Errorf("deleting resource %s: %v", name.Name, err)))
-				return nil
+				return err
 			}
 			continue
 		}
@@ -87,8 +84,7 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 			// create it.
 			err := s.client.Create(ctx, resource)
 			if err != nil {
-				logger.Get(ctx).Infof("creating uiresource %s: %v", name.Name, err)
-				return nil
+				return err
 			}
 			continue
 		}
@@ -102,8 +98,7 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 			}
 			err = s.client.Status().Update(ctx, update)
 			if err != nil {
-				logger.Get(ctx).Infof("updating uiresource %s: %v", name.Name, err)
-				return nil
+				return err
 			}
 			continue
 		}

@@ -12,7 +12,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/hud/webview"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
-	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 type Subscriber struct {
@@ -38,8 +37,7 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 		// If nothing is stored, create it.
 		err := s.client.Create(ctx, session)
 		if err != nil {
-			logger.Get(ctx).Infof("creating uisession: %v", err)
-			return nil
+			return err
 		}
 		return nil
 	} else if err != nil {
@@ -49,8 +47,7 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 			return nil
 		}
 
-		logger.Get(ctx).Infof("fetching uisession: %v", err)
-		return nil
+		return err
 	}
 
 	if !apicmp.DeepEqual(session.Status, stored.Status) {
@@ -62,8 +59,7 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 		}
 		err = s.client.Status().Update(ctx, update)
 		if err != nil {
-			logger.Get(ctx).Infof("updating uisession: %v", err)
-			return nil
+			return err
 		}
 	}
 
