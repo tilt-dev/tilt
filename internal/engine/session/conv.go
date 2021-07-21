@@ -256,30 +256,31 @@ func waitingFromHolds(mn model.ManifestName, holds buildcontrol.HoldSet) *sessio
 	}
 }
 
-// tiltfileTarget creates a session.Target object from the engine state for the current Tiltfile.
+// tiltfileTarget creates a session.Target object from a Tiltfile ManifestState
 //
-// This is slightly different from generic resource handling because there is no ManifestTarget in the engine
-// for the Tiltfile (just ManifestState) and config file changes are stored stop level on state, but conceptually
-// it does similar things.
-func tiltfileTarget(state store.EngineState) session.Target {
+// This is slightly different from generic resource handling because there is no
+// ManifestTarget in the engine for the Tiltfile (just ManifestState) and config
+// file changes are stored stop level on state, but conceptually it does similar
+// things.
+func tiltfileTarget(name model.ManifestName, ms *store.ManifestState) session.Target {
 	target := session.Target{
 		Name:      "tiltfile:update",
-		Resources: []string{model.TiltfileManifestName.String()},
+		Resources: []string{name.String()},
 		Type:      session.TargetTypeJob,
 	}
 
 	// Tiltfile is special in engine state and doesn't have a target, just state, so
 	// this logic is largely duplicated from the generic resource build logic
-	if !state.TiltfileState.CurrentBuild.Empty() {
+	if !ms.CurrentBuild.Empty() {
 		target.State.Active = &session.TargetStateActive{
-			StartTime: apis.NewMicroTime(state.TiltfileState.CurrentBuild.StartTime),
+			StartTime: apis.NewMicroTime(ms.CurrentBuild.StartTime),
 		}
-	} else if hasPendingChanges, _ := state.TiltfileState.HasPendingChanges(); hasPendingChanges {
+	} else if hasPendingChanges, _ := ms.HasPendingChanges(); hasPendingChanges {
 		target.State.Waiting = &session.TargetStateWaiting{
 			WaitReason: "config-changed",
 		}
-	} else if len(state.TiltfileState.BuildHistory) != 0 {
-		lastBuild := state.TiltfileState.LastBuild()
+	} else if len(ms.BuildHistory) != 0 {
+		lastBuild := ms.LastBuild()
 		target.State.Terminated = &session.TargetStateTerminated{
 			StartTime:  apis.NewMicroTime(lastBuild.StartTime),
 			FinishTime: apis.NewMicroTime(lastBuild.FinishTime),

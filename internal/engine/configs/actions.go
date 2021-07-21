@@ -10,6 +10,7 @@ import (
 )
 
 type ConfigsReloadStartedAction struct {
+	Name         model.ManifestName
 	FilesChanged []string
 	StartTime    time.Time
 	SpanID       logstore.SpanID
@@ -19,6 +20,8 @@ type ConfigsReloadStartedAction struct {
 func (ConfigsReloadStartedAction) Action() {}
 
 type ConfigsReloadedAction struct {
+	Name model.ManifestName
+
 	// TODO(nick): Embed TiltfileLoadResult instead of copying fields.
 	Manifests   []model.Manifest
 	Tiltignore  model.Dockerignore

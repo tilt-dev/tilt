@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/tilt-dev/tilt/pkg/apis"
+	"github.com/tilt-dev/tilt/pkg/model"
 
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 
@@ -141,7 +142,13 @@ func (c *Controller) makeLatestStatus(st store.RStore) *session.SessionStatus {
 		StartTime: apis.NewMicroTime(c.startTime),
 	}
 
-	status.Targets = append(status.Targets, tiltfileTarget(state))
+	// A session only captures services that are created by the main Tiltfile
+	// entrypoint. We don't consider any extension Tiltfiles or Manifests created
+	// by them.
+	ms, ok := state.TiltfileStates[model.TiltfileManifestName]
+	if ok {
+		status.Targets = append(status.Targets, tiltfileTarget(model.TiltfileManifestName, ms))
+	}
 
 	// determine the reason any resources (and thus all of their targets) are waiting (aka "holds")
 	// N.B. we don't actually care about what's "next" to build, but the info comes alongside that

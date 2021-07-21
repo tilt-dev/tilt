@@ -1012,14 +1012,14 @@ k8s_yaml('snack.yaml')`
 	// Second call: change Tiltfile, break manifest
 	f.WriteConfigFiles("Tiltfile", "borken")
 	f.WaitUntil("tiltfile error set", func(st store.EngineState) bool {
-		return st.LastTiltfileError() != nil
+		return st.LastMainTiltfileError() != nil
 	})
 	f.assertNoCall("Tiltfile error should prevent BuildAndDeploy from being called")
 
 	// Third call: put Tiltfile back. No change to manifest or to synced files, so expect no build.
 	f.WriteConfigFiles("Tiltfile", origTiltfile)
 	f.WaitUntil("tiltfile error cleared", func(st store.EngineState) bool {
-		return st.LastTiltfileError() == nil
+		return st.LastMainTiltfileError() == nil
 	})
 
 	f.withState(func(state store.EngineState) {
@@ -1055,7 +1055,7 @@ k8s_yaml('snack.yaml')
 	// Second call: change Tiltfile, break manifest
 	f.WriteConfigFiles("Tiltfile", "borken")
 	f.WaitUntil("tiltfile error set", func(st store.EngineState) bool {
-		return st.LastTiltfileError() != nil
+		return st.LastMainTiltfileError() != nil
 	})
 
 	f.assertNoCall("Tiltfile error should prevent BuildAndDeploy from being called")
@@ -1068,7 +1068,7 @@ k8s_yaml('snack.yaml')
 		"expected this call to have NO image (since we should have cleared it to force an image build)")
 
 	f.WaitUntil("tiltfile error cleared", func(state store.EngineState) bool {
-		return state.LastTiltfileError() == nil
+		return state.LastMainTiltfileError() == nil
 	})
 
 	f.withManifestTarget("snack", func(mt store.ManifestTarget) {
@@ -1187,6 +1187,7 @@ func TestConfigChange_ManifestIncludingInitialBuildsIfTriggerModeChangedToManual
 	// change the trigger mode
 	foo = foo.WithTriggerMode(model.TriggerModeManualWithAutoInit)
 	f.store.Dispatch(configs.ConfigsReloadedAction{
+		Name:       model.TiltfileManifestName,
 		FinishTime: f.Now(),
 		Manifests:  []model.Manifest{foo, bar},
 	})
@@ -2680,6 +2681,7 @@ func TestDockerComposeStartsEventWatcher(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	f.store.Dispatch(configs.ConfigsReloadedAction{
+		Name:       model.TiltfileManifestName,
 		Manifests:  []model.Manifest{m},
 		FinishTime: f.Now(),
 	})
@@ -2861,14 +2863,14 @@ func TestEmptyTiltfile(t *testing.T) {
 		closeCh <- err
 	}()
 	f.WaitUntil("build is set", func(st store.EngineState) bool {
-		return !st.TiltfileState.LastBuild().Empty()
+		return !st.TiltfileStates[model.TiltfileManifestName].LastBuild().Empty()
 	})
 	f.withState(func(st store.EngineState) {
-		assert.Contains(t, st.TiltfileState.LastBuild().Error.Error(), "No resources found. Check out ")
+		assert.Contains(t, st.TiltfileStates[model.TiltfileManifestName].LastBuild().Error.Error(), "No resources found. Check out ")
 		assertContainsOnce(t, st.LogStore.String(), "No resources found. Check out ")
 		assertContainsOnce(t, st.LogStore.ManifestLog(store.TiltfileManifestName), "No resources found. Check out ")
 
-		buildRecord := st.TiltfileState.LastBuild()
+		buildRecord := st.TiltfileStates[model.TiltfileManifestName].LastBuild()
 		assertContainsOnce(t, st.LogStore.SpanLog(buildRecord.SpanID), "No resources found. Check out ")
 	})
 
@@ -3041,6 +3043,7 @@ func TestFeatureFlagsStoredOnState(t *testing.T) {
 	f.Start([]model.Manifest{})
 
 	f.store.Dispatch(configs.ConfigsReloadedAction{
+		Name:       model.TiltfileManifestName,
 		FinishTime: f.Now(),
 		Features:   map[string]bool{"foo": true},
 	})
@@ -3050,6 +3053,7 @@ func TestFeatureFlagsStoredOnState(t *testing.T) {
 	})
 
 	f.store.Dispatch(configs.ConfigsReloadedAction{
+		Name:       model.TiltfileManifestName,
 		FinishTime: f.Now(),
 		Features:   map[string]bool{"foo": false},
 	})
@@ -3066,6 +3070,7 @@ func TestTeamIDStoredOnState(t *testing.T) {
 	f.Start([]model.Manifest{})
 
 	f.store.Dispatch(configs.ConfigsReloadedAction{
+		Name:       model.TiltfileManifestName,
 		FinishTime: f.Now(),
 		TeamID:     "sharks",
 	})
@@ -3075,6 +3080,7 @@ func TestTeamIDStoredOnState(t *testing.T) {
 	})
 
 	f.store.Dispatch(configs.ConfigsReloadedAction{
+		Name:       model.TiltfileManifestName,
 		FinishTime: f.Now(),
 		TeamID:     "jets",
 	})
@@ -3152,7 +3158,7 @@ k8s_yaml('snack.yaml')`)
 	f.loadAndStart()
 
 	f.WaitUntil("Tiltfile loaded", func(state store.EngineState) bool {
-		return len(state.TiltfileState.BuildHistory) == 1
+		return len(state.MainTiltfileState().BuildHistory) == 1
 	})
 
 	// we shouldn't log changes for first build
@@ -3166,7 +3172,7 @@ k8s_yaml('snack.yaml')`)
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("Tiltfile"))
 
 	f.WaitUntil("Tiltfile reloaded", func(state store.EngineState) bool {
-		return len(state.TiltfileState.BuildHistory) == 2
+		return len(state.MainTiltfileState().BuildHistory) == 2
 	})
 
 	f.withState(func(state store.EngineState) {
@@ -3207,7 +3213,7 @@ fail('goodnight moon')
 	f.loadAndStart()
 
 	f.WaitUntil("Tiltfile loaded", func(state store.EngineState) bool {
-		return len(state.TiltfileState.BuildHistory) == 1
+		return len(state.MainTiltfileState().BuildHistory) == 1
 	})
 	f.withState(func(state store.EngineState) {
 		assert.True(t, state.Features["snapshots"])
@@ -3226,7 +3232,7 @@ fail('goodnight moon')
 	f.loadAndStart()
 
 	f.WaitUntil("Tiltfile loaded", func(state store.EngineState) bool {
-		return len(state.TiltfileState.BuildHistory) == 1
+		return len(state.MainTiltfileState().BuildHistory) == 1
 	})
 	f.withState(func(state store.EngineState) {
 		assert.True(t, state.MetricsSettings.Enabled)
@@ -3240,7 +3246,7 @@ k8s_yaml('snack.yaml')
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("Tiltfile"))
 
 	f.WaitUntil("Tiltfile reloaded", func(state store.EngineState) bool {
-		return len(state.TiltfileState.BuildHistory) == 2
+		return len(state.MainTiltfileState().BuildHistory) == 2
 	})
 	f.withState(func(state store.EngineState) {
 		assert.False(t, state.MetricsSettings.Enabled)
@@ -3319,7 +3325,7 @@ docker_prune_settings(disable=True)
 	f.loadAndStart()
 
 	f.WaitUntil("Tiltfile loaded", func(state store.EngineState) bool {
-		return len(state.TiltfileState.BuildHistory) == 1
+		return len(state.MainTiltfileState().BuildHistory) == 1
 	})
 	f.withState(func(state store.EngineState) {
 		assert.False(t, state.DockerPruneSettings.Enabled)
@@ -3337,7 +3343,7 @@ func TestDockerPruneEnabledByDefault(t *testing.T) {
 	f.loadAndStart()
 
 	f.WaitUntil("Tiltfile loaded", func(state store.EngineState) bool {
-		return len(state.TiltfileState.BuildHistory) == 1
+		return len(state.MainTiltfileState().BuildHistory) == 1
 	})
 	f.withState(func(state store.EngineState) {
 		assert.True(t, state.DockerPruneSettings.Enabled)
@@ -3436,6 +3442,7 @@ func TestVersionSettingsStoredOnState(t *testing.T) {
 		CheckUpdates: false,
 	}
 	f.store.Dispatch(configs.ConfigsReloadedAction{
+		Name:            model.TiltfileManifestName,
 		FinishTime:      f.Now(),
 		VersionSettings: vs,
 	})
@@ -3456,6 +3463,7 @@ func TestAnalyticsTiltfileOpt(t *testing.T) {
 	})
 
 	f.store.Dispatch(configs.ConfigsReloadedAction{
+		Name:                 model.TiltfileManifestName,
 		FinishTime:           f.Now(),
 		AnalyticsTiltfileOpt: analytics.OptIn,
 	})
@@ -3487,21 +3495,21 @@ print('foo=', cfg['foo'])`)
 	f.loadAndStart(opt)
 
 	f.WaitUntil("first tiltfile build finishes", func(state store.EngineState) bool {
-		return len(state.TiltfileState.BuildHistory) == 1
+		return len(state.MainTiltfileState().BuildHistory) == 1
 	})
 
 	f.withState(func(state store.EngineState) {
-		spanID := state.TiltfileState.LastBuild().SpanID
+		spanID := state.MainTiltfileState().LastBuild().SpanID
 		require.Contains(t, state.LogStore.SpanLog(spanID), `foo= ["bar"]`)
 	})
 	f.store.Dispatch(server.SetTiltfileArgsAction{Args: []string{"--foo", "baz", "--foo", "quu"}})
 
 	f.WaitUntil("second tiltfile build finishes", func(state store.EngineState) bool {
-		return len(state.TiltfileState.BuildHistory) == 2
+		return len(state.MainTiltfileState().BuildHistory) == 2
 	})
 
 	f.withState(func(state store.EngineState) {
-		spanID := state.TiltfileState.LastBuild().SpanID
+		spanID := state.MainTiltfileState().LastBuild().SpanID
 		require.Contains(t, state.LogStore.SpanLog(spanID), `foo= ["baz", "quu"]`)
 	})
 }
@@ -3619,7 +3627,7 @@ func TestDefaultUpdateSettings(t *testing.T) {
 	f.loadAndStart()
 
 	f.WaitUntil("Tiltfile loaded", func(state store.EngineState) bool {
-		return len(state.TiltfileState.BuildHistory) == 1
+		return len(state.MainTiltfileState().BuildHistory) == 1
 	})
 	f.withState(func(state store.EngineState) {
 		assert.Equal(t, model.DefaultUpdateSettings(), state.UpdateSettings)
@@ -3639,7 +3647,7 @@ update_settings(k8s_upsert_timeout_secs=123)
 	f.loadAndStart()
 
 	f.WaitUntil("Tiltfile loaded", func(state store.EngineState) bool {
-		return len(state.TiltfileState.BuildHistory) == 1
+		return len(state.MainTiltfileState().BuildHistory) == 1
 	})
 	f.withState(func(state store.EngineState) {
 		assert.Equal(t, 123*time.Second, state.UpdateSettings.K8sUpsertTimeout())
@@ -3659,7 +3667,7 @@ update_settings(max_parallel_updates=123)
 	f.loadAndStart()
 
 	f.WaitUntil("Tiltfile loaded", func(state store.EngineState) bool {
-		return len(state.TiltfileState.BuildHistory) == 1
+		return len(state.MainTiltfileState().BuildHistory) == 1
 	})
 	f.withState(func(state store.EngineState) {
 		assert.Equal(t, 123, state.UpdateSettings.MaxParallelUpdates())
@@ -3718,21 +3726,21 @@ func TestHandleTiltfileTriggerQueue(t *testing.T) {
 	f.withState(func(st store.EngineState) {
 		assert.False(t, st.TiltfileInTriggerQueue(),
 			"initial state should NOT have Tiltfile in trigger queue")
-		assert.Equal(t, model.BuildReasonNone, st.TiltfileState.TriggerReason,
+		assert.Equal(t, model.BuildReasonNone, st.MainTiltfileState().TriggerReason,
 			"initial state should not have Tiltfile trigger reason")
 	})
 	action := server.AppendToTriggerQueueAction{Name: model.TiltfileManifestName, Reason: 123}
 	f.store.Dispatch(action)
 
 	f.WaitUntil("Tiltfile trigger processed", func(st store.EngineState) bool {
-		return st.TiltfileInTriggerQueue() && st.TiltfileState.TriggerReason == 123
+		return st.TiltfileInTriggerQueue() && st.MainTiltfileState().TriggerReason == 123
 	})
 
 	f.WaitUntil("Tiltfile built and trigger cleared", func(st store.EngineState) bool {
-		return len(st.TiltfileState.BuildHistory) == 2 && // Tiltfile built b/c it was triggered...
+		return len(st.MainTiltfileState().BuildHistory) == 2 && // Tiltfile built b/c it was triggered...
 
 			// and the trigger was cleared
-			!st.TiltfileInTriggerQueue() && st.TiltfileState.TriggerReason == model.BuildReasonNone
+			!st.TiltfileInTriggerQueue() && st.MainTiltfileState().TriggerReason == model.BuildReasonNone
 	})
 
 	err := f.Stop()
@@ -4075,7 +4083,7 @@ func (f *testFixture) Init(action InitAction) {
 	}()
 
 	f.WaitUntil("tiltfile build finishes", func(st store.EngineState) bool {
-		return !st.TiltfileState.LastBuild().Empty()
+		return !st.MainTiltfileState().LastBuild().Empty()
 	})
 
 	state := f.store.LockMutableStateForTesting()

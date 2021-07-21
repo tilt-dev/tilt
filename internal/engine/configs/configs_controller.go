@@ -45,6 +45,7 @@ func (cc *ConfigsController) DisableForTesting(disabled bool) {
 }
 
 type buildEntry struct {
+	name                  model.ManifestName
 	filesChanged          []string
 	buildReason           model.BuildReason
 	userConfigState       model.UserConfigState
@@ -53,7 +54,7 @@ type buildEntry struct {
 	engineMode            store.EngineMode
 }
 
-func (e buildEntry) Name() model.ManifestName       { return model.TiltfileManifestName }
+func (e buildEntry) Name() model.ManifestName       { return e.name }
 func (e buildEntry) FilesChanged() []string         { return e.filesChanged }
 func (e buildEntry) BuildReason() model.BuildReason { return e.buildReason }
 
@@ -75,63 +76,75 @@ func (cc *ConfigsController) needsBuild(ctx context.Context, st store.RStore) (b
 	}
 
 	// Don't start the next build if the last completion hasn't been recorded yet.
-	isRunning := !state.TiltfileState.CurrentBuild.StartTime.IsZero()
-	if isRunning {
-		return buildEntry{}, false
-	}
-
-	tfState := state.TiltfileState
-	var reason model.BuildReason
-	lastStartTime := tfState.LastBuild().StartTime
-	if !tfState.StartedFirstBuild() {
-		reason = reason.With(model.BuildReasonFlagInit)
-	}
-
-	hasPendingChanges, _ := tfState.HasPendingChanges()
-	if hasPendingChanges {
-		reason = reason.With(model.BuildReasonFlagChangedFiles)
-	}
-
-	if state.UserConfigState.ArgsChangeTime.After(lastStartTime) {
-		reason = reason.With(model.BuildReasonFlagTiltfileArgs)
-	}
-
-	if state.TiltfileInTriggerQueue() {
-		reason = reason.With(state.TiltfileState.TriggerReason)
-	}
-
-	if reason == model.BuildReasonNone {
-		return buildEntry{}, false
-	}
-
-	filesChanged := []string{}
-	for _, st := range state.TiltfileState.BuildStatuses {
-		for k := range st.PendingFileChanges {
-			filesChanged = append(filesChanged, k)
+	for _, ms := range state.TiltfileStates {
+		isRunning := !ms.CurrentBuild.StartTime.IsZero()
+		if isRunning {
+			return buildEntry{}, false
 		}
 	}
-	filesChanged = sliceutils.DedupedAndSorted(filesChanged)
 
-	tiltfilePath, err := state.RelativeTiltfilePath()
-	if err != nil {
-		st.Dispatch(store.NewErrorAction(err))
+	for _, name := range state.TiltfileDefinitionOrder {
+		tfState, ok := state.TiltfileStates[name]
+		if !ok {
+			continue
+		}
+
+		var reason model.BuildReason
+		lastStartTime := tfState.LastBuild().StartTime
+		if !tfState.StartedFirstBuild() {
+			reason = reason.With(model.BuildReasonFlagInit)
+		}
+
+		hasPendingChanges, _ := tfState.HasPendingChanges()
+		if hasPendingChanges {
+			reason = reason.With(model.BuildReasonFlagChangedFiles)
+		}
+
+		if state.UserConfigState.ArgsChangeTime.After(lastStartTime) {
+			reason = reason.With(model.BuildReasonFlagTiltfileArgs)
+		}
+
+		if state.TiltfileInTriggerQueue() {
+			reason = reason.With(tfState.TriggerReason)
+		}
+
+		if reason == model.BuildReasonNone {
+			continue
+		}
+
+		filesChanged := []string{}
+		for _, st := range tfState.BuildStatuses {
+			for k := range st.PendingFileChanges {
+				filesChanged = append(filesChanged, k)
+			}
+		}
+		filesChanged = sliceutils.DedupedAndSorted(filesChanged)
+
+		tiltfilePath, err := state.RelativeTiltfilePath()
+		if err != nil {
+			st.Dispatch(store.NewErrorAction(err))
+		}
+
+		cc.loadStartedCount++
+
+		return buildEntry{
+			name:                  name,
+			filesChanged:          filesChanged,
+			buildReason:           reason,
+			userConfigState:       state.UserConfigState,
+			tiltfilePath:          tiltfilePath,
+			checkpointAtExecStart: state.LogStore.Checkpoint(),
+			engineMode:            state.EngineMode,
+		}, true
 	}
 
-	cc.loadStartedCount++
-
-	return buildEntry{
-		filesChanged:          filesChanged,
-		buildReason:           reason,
-		userConfigState:       state.UserConfigState,
-		tiltfilePath:          tiltfilePath,
-		checkpointAtExecStart: state.LogStore.Checkpoint(),
-		engineMode:            state.EngineMode,
-	}, true
+	return buildEntry{}, false
 }
 
 func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore, entry buildEntry) {
 	startTime := cc.clock()
 	st.Dispatch(ConfigsReloadStartedAction{
+		Name:         entry.name,
 		FilesChanged: entry.filesChanged,
 		StartTime:    startTime,
 		SpanID:       SpanIDForLoadCount(cc.loadStartedCount),
@@ -178,6 +191,7 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore, 
 	}
 
 	st.Dispatch(ConfigsReloadedAction{
+		Name:                  entry.name,
 		Manifests:             tlr.Manifests,
 		Tiltignore:            tlr.Tiltignore,
 		ConfigFiles:           tlr.ConfigFiles,

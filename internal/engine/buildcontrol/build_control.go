@@ -20,10 +20,12 @@ func NextTargetToBuild(state store.EngineState) (*store.ManifestTarget, HoldSet)
 
 	// Don't build anything if there are pending config file changes.
 	// We want the Tiltfile to re-run first.
-	tiltfileHasPendingChanges, _ := state.TiltfileState.HasPendingChanges()
-	if tiltfileHasPendingChanges {
-		holds.Fill(targets, store.HoldTiltfileReload)
-		return nil, holds
+	for _, ms := range state.GetTiltfileStates() {
+		tiltfileHasPendingChanges, _ := ms.HasPendingChanges()
+		if tiltfileHasPendingChanges {
+			holds.Fill(targets, store.HoldTiltfileReload)
+			return nil, holds
+		}
 	}
 
 	// If we're already building an unparallelizable local target, bail immediately.
