@@ -5,10 +5,46 @@ package localexec
 import (
 	"os"
 	"os/exec"
+	"strconv"
+	"strings"
 
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
+
+// Common environment for local exec commands.
+type Env struct {
+	pairs   []kvPair
+	environ func() []string
+}
+
+func EmptyEnv() *Env {
+	return &Env{
+		environ: os.Environ,
+	}
+}
+
+func DefaultEnv(port model.WebPort, host model.WebHost) *Env {
+	e := &Env{
+		environ: os.Environ,
+	}
+
+	// if Tilt was invoked with `tilt up --port=XXXXX`, local() calls to use the Tilt API will fail due to trying to
+	// connect to the default port, so explicitly populate the TILT_PORT environment variable if it isn't already
+	e.Add("TILT_PORT", strconv.Itoa(int(port)))
+
+	// some Tilt commands, such as `tilt dump engine`, also require the host
+	e.Add("TILT_HOST", string(host))
+
+	// We don't really want to collect analytics when extensions use 'tilt get'/'tilt apply'.
+	e.Add("TILT_DISABLE_ANALYTICS", "1")
+
+	return e
+}
+
+func (e *Env) Add(k, v string) {
+	e.pairs = append(e.pairs, kvPair{Key: k, Value: v})
+}
 
 // ExecCmd creates a stdlib exec.Cmd instance suitable for execution by the local engine.
 //
@@ -19,18 +55,39 @@ import (
 // NOTE: To avoid confusion with ExecCmdContext, this method accepts a logger instance
 // directly rather than using logger.Get(ctx); the returned exec.Cmd from this function
 // will NOT be associated with any context.
-func ExecCmd(cmd model.Cmd, l logger.Logger) *exec.Cmd {
+func (e *Env) ExecCmd(cmd model.Cmd, l logger.Logger) *exec.Cmd {
 	c := exec.Command(cmd.Argv[0], cmd.Argv[1:]...)
-	populateExecCmd(c, cmd, l)
+	e.populateExecCmd(c, cmd, l)
 	return c
 }
 
-func populateExecCmd(c *exec.Cmd, cmd model.Cmd, l logger.Logger) {
+func (e *Env) populateExecCmd(c *exec.Cmd, cmd model.Cmd, l logger.Logger) {
 	c.Dir = cmd.Dir
 	// env precedence: parent process (i.e. tilt) -> logger -> command
 	// dupes are left for Go stdlib to handle (API guarantees last wins)
-	execEnv := os.Environ()
+	execEnv := e.environ()
+
 	execEnv = logger.PrepareEnv(l, execEnv)
+	for _, kv := range e.pairs {
+		execEnv = addEnvIfNotPresent(execEnv, kv.Key, kv.Value)
+	}
+
 	execEnv = append(execEnv, cmd.Env...)
 	c.Env = execEnv
+}
+
+type kvPair struct {
+	Key   string
+	Value string
+}
+
+func addEnvIfNotPresent(env []string, key, value string) []string {
+	prefix := key + "="
+	for _, e := range env {
+		if strings.HasPrefix(e, prefix) {
+			return env
+		}
+	}
+
+	return append(env, key+"="+value)
 }

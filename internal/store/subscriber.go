@@ -200,6 +200,11 @@ func (e *subscriberEntry) notify(ctx context.Context, store *Store) {
 		return
 	}
 
+	if ctx.Err() != nil {
+		// context finished
+		return
+	}
+
 	// Backoff on error
 	backoff := activeChange.LastBackoff * 2
 	if backoff == 0 {

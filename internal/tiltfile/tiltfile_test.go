@@ -13,10 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tilt-dev/tilt/internal/tiltfile/config"
-
-	"github.com/tilt-dev/tilt/internal/tiltfile/version"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tilt-dev/wmclient/pkg/analytics"
@@ -32,13 +28,16 @@ import (
 	"github.com/tilt-dev/tilt/internal/ignore"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
+	"github.com/tilt-dev/tilt/internal/localexec"
 	"github.com/tilt-dev/tilt/internal/ospath"
 	"github.com/tilt-dev/tilt/internal/sliceutils"
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/internal/tiltfile/config"
 	tiltfile_k8s "github.com/tilt-dev/tilt/internal/tiltfile/k8s"
 	"github.com/tilt-dev/tilt/internal/tiltfile/k8scontext"
 	"github.com/tilt-dev/tilt/internal/tiltfile/testdata"
+	"github.com/tilt-dev/tilt/internal/tiltfile/version"
 	"github.com/tilt-dev/tilt/internal/yaml"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -5713,7 +5712,8 @@ func (f *fixture) newTiltfileLoader() TiltfileLoader {
 	k8sContextExt := k8scontext.NewExtension(f.k8sContext, f.k8sEnv)
 	versionExt := version.NewExtension(model.TiltBuild{Version: "0.5.0"})
 	configExt := config.NewExtension("up")
-	return ProvideTiltfileLoader(f.ta, f.kCli, k8sContextExt, versionExt, configExt, dcc, f.webHost, model.WebPort(12345), features, f.k8sEnv)
+	localEnv := localexec.DefaultEnv(12345, f.webHost)
+	return ProvideTiltfileLoader(f.ta, f.kCli, k8sContextExt, versionExt, configExt, dcc, f.webHost, localEnv, features, f.k8sEnv)
 }
 
 func newFixture(t *testing.T) *fixture {

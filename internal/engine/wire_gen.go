@@ -25,6 +25,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/dockerfile"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/localexec"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/tracer"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -53,7 +54,8 @@ func provideFakeBuildAndDeployer(ctx context.Context, docker2 docker.Client, kCl
 	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, kClient, env, kubeContext, analytics2, buildcontrolUpdateMode, clock, kp, ctrlClient, reconciler)
 	imageBuilder := buildcontrol.NewImageBuilder(dockerBuilder, execCustomBuilder, buildcontrolUpdateMode)
 	dockerComposeBuildAndDeployer := buildcontrol.NewDockerComposeBuildAndDeployer(dcc, docker2, imageBuilder, clock)
-	execer := cmd.ProvideExecer()
+	localexecEnv := provideFakeEnv()
+	execer := cmd.ProvideExecer(localexecEnv)
 	proberManager := cmd.ProvideProberManager()
 	clockworkClock := clockwork.NewRealClock()
 	controller := cmd.NewController(ctx, execer, proberManager, ctrlClient, st, clockworkClock, scheme)
@@ -84,6 +86,10 @@ var DeployerWireSetTest = wire.NewSet(
 var DeployerWireSet = wire.NewSet(
 	DeployerBaseWireSet,
 )
+
+func provideFakeEnv() *localexec.Env {
+	return localexec.EmptyEnv()
+}
 
 func provideFakeK8sNamespace() k8s.Namespace {
 	return "default"
