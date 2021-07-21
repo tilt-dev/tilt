@@ -63,25 +63,9 @@ export function SizeUnit(multiplier: number) {
   return `${unit * multiplier}px`
 }
 
-// Set sizes expressed in pixels:
-export enum Height {
-  unit = heightUnit,
-  statusHeader = unit * 1.8, // The bar at the top with Pod ID and status
-  secondaryNav = unit * 1.2,
-  secondaryNavLower = unit * 0.8,
-  secondaryNavOverlap = unit * -0.2,
-  secondaryNavTwoLevel = unit * 1.8,
-  statusbar = unit * 1.5,
-}
 export enum Width {
-  badge = unit * 0.6,
-  secondaryNavItem = unit * 5,
-  sidebarTriggerButton = unit,
-  sidebar = unit * 10.5, // Sync with constants.scss > $sidebar-width
-  sidebarCollapsed = unit,
-  statusbar = unit * 1.5, // sync with constants.scss > $statusbar-height
+  sidebarDefault = 336,
   smallScreen = 1500,
-
   statusIcon = 22,
   statusIconMarginRight = 10,
 }

@@ -3,6 +3,7 @@ import styled from "styled-components"
 import { usePathBuilder } from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
 import SidebarResources from "./SidebarResources"
+import { Width } from "./style-helpers"
 import { ResourceName, ResourceView } from "./types"
 
 type OverviewResourceSidebarProps = {
@@ -13,11 +14,10 @@ type OverviewResourceSidebarProps = {
 let OverviewResourceSidebarRoot = styled.div`
   display: flex;
   flex-direction: column;
-  flex-basis: 336px;
   flex-shrink: 0;
-  flex-grow: 0;
+  flex-grow: 1;
   height: 100%;
-  width: 336px;
+  min-width: ${Width.sidebarDefault}px;
 `
 
 export default function OverviewResourceSidebar(

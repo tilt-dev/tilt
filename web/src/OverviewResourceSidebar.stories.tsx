@@ -1,8 +1,10 @@
 import React from "react"
 import { MemoryRouter } from "react-router"
+import SplitPane from "react-split-pane"
 import Features, { FeaturesProvider, Flag } from "./feature"
 import OverviewResourceSidebar from "./OverviewResourceSidebar"
 import PathBuilder from "./PathBuilder"
+import { Width } from "./style-helpers"
 import {
   nResourceView,
   oneResource,
@@ -30,7 +32,13 @@ export default {
         <MemoryRouter initialEntries={["/"]}>
           <FeaturesProvider value={features}>
             <div style={{ margin: "-1rem", height: "80vh" }}>
-              <Story />
+              <SplitPane
+                split="vertical"
+                minSize={Width.sidebarDefault}
+                defaultSize={Width.sidebarDefault}
+              >
+                <Story />
+              </SplitPane>
             </div>
           </FeaturesProvider>
         </MemoryRouter>
