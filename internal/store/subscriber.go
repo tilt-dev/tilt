@@ -204,10 +204,10 @@ func (e *subscriberEntry) notify(ctx context.Context, store *Store) {
 	backoff := activeChange.LastBackoff * 2
 	if backoff == 0 {
 		backoff = time.Second
-		logger.Get(ctx).Debugf("Problem processing change. Subscriber: %s. Backing off %v. Error: %v", subscriberName, backoff, err)
+		logger.Get(ctx).Debugf("Problem processing change. Subscriber: %s. Backing off %v. Error: %v", subscriberName(e.subscriber), backoff, err)
 	} else if backoff > MaxBackoff {
 		backoff = MaxBackoff
-		logger.Get(ctx).Errorf("Problem processing change. Subscriber: %s. Backing off %v. Error: %v", subscriberName, backoff, err)
+		logger.Get(ctx).Errorf("Problem processing change. Subscriber: %s. Backing off %v. Error: %v", subscriberName(e.subscriber), backoff, err)
 	}
 	store.sleeper.Sleep(ctx, backoff)
 
