@@ -8,6 +8,9 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/compose-spec/compose-go/types"
+	"gopkg.in/yaml.v3"
+
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
@@ -206,22 +209,20 @@ func (svc dcService) ImageRef() reference.Named {
 	return svc.imageRefFromConfig
 }
 
-func DockerComposeConfigToService(c dockercompose.Config, name string) (dcService, error) {
-	svcConfig, ok := c.Services[name]
-	if !ok {
-		return dcService{}, fmt.Errorf("no service %s found in config", name)
-	}
+func DockerComposeConfigToService(svcConfig types.ServiceConfig) (dcService, error) {
+	var buildContext, dfPath string
+	if svcConfig.Build != nil {
+		buildContext = svcConfig.Build.Context
+		dfPath = svcConfig.Build.Dockerfile
+		if buildContext != "" {
+			if dfPath == "" {
+				// We only expect a Dockerfile if there's a build context specified.
+				dfPath = "Dockerfile"
+			}
 
-	buildContext := svcConfig.Build.Context
-	dfPath := svcConfig.Build.Dockerfile
-	if buildContext != "" {
-		if dfPath == "" {
-			// We only expect a Dockerfile if there's a build context specified.
-			dfPath = "Dockerfile"
-		}
-
-		if !filepath.IsAbs(dfPath) {
-			dfPath = filepath.Join(buildContext, dfPath)
+			if !filepath.IsAbs(dfPath) {
+				dfPath = filepath.Join(buildContext, dfPath)
+			}
 		}
 	}
 
@@ -233,17 +234,22 @@ func DockerComposeConfigToService(c dockercompose.Config, name string) (dcServic
 	var publishedPorts []int
 	for _, portSpec := range svcConfig.Ports {
 		if portSpec.Published != 0 {
-			publishedPorts = append(publishedPorts, portSpec.Published)
+			publishedPorts = append(publishedPorts, int(portSpec.Published))
 		}
 	}
 
+	rawConfig, err := yaml.Marshal(svcConfig)
+	if err != nil {
+		return dcService{}, err
+	}
+
 	svc := dcService{
-		Name:             name,
+		Name:             svcConfig.Name,
 		BuildContext:     buildContext,
 		DfPath:           dfPath,
 		MountedLocalDirs: mountedLocalDirs,
 
-		ServiceConfig:  svcConfig.RawYAML,
+		ServiceConfig:  rawConfig,
 		PublishedPorts: publishedPorts,
 	}
 
@@ -269,19 +275,22 @@ func DockerComposeConfigToService(c dockercompose.Config, name string) (dcServic
 }
 
 func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, configPaths []string) ([]*dcService, error) {
-
-	config, svcNames, err := dockercompose.ReadConfigAndServiceNames(ctx, dcc, configPaths)
+	proj, err := dcc.Project(ctx, configPaths)
 	if err != nil {
 		return nil, err
 	}
 
 	var services []*dcService
-	for _, name := range svcNames {
-		svc, err := DockerComposeConfigToService(config, name)
+	err = proj.WithServices(proj.ServiceNames(), func(svcConfig types.ServiceConfig) error {
+		svc, err := DockerComposeConfigToService(svcConfig)
 		if err != nil {
-			return nil, errors.Wrapf(err, "getting service %s", name)
+			return errors.Wrapf(err, "getting service %s", svcConfig.Name)
 		}
 		services = append(services, &svc)
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return services, nil

@@ -1,5 +1,3 @@
-//+build !skiplargetiltfiletests
-
 package tiltfile
 
 import (
@@ -68,11 +66,18 @@ services:
 // a struct and YAML'd back out...
 func (f *fixture) simpleConfigAfterParse() string {
 	return fmt.Sprintf(`build:
-  context: %s
-command: sleep 100
+    context: %s
+    dockerfile: %s
+command:
+    - sleep
+    - "100"
+networks:
+    default: null
 ports:
-- published: 12312
-  target: 80`, f.JoinPath("foo"))
+    - mode: ingress
+      target: 80
+      published: 12312
+      protocol: tcp`, f.JoinPath("foo"), f.JoinPath("foo", "Dockerfile"))
 }
 
 func TestDockerComposeManifest(t *testing.T) {
@@ -114,11 +119,15 @@ services:
     image: redis:alpine`)
 	f.file("Tiltfile", "docker_compose('docker-compose.yml')")
 
+	expectedYAMLRaw := `image: redis:alpine
+networks:
+    default: null`
+
 	f.load("bar")
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
 	f.assertDcManifest("bar",
 		dcConfigPath([]string{configPath}),
-		dcYAMLRaw("image: redis:alpine"),
+		dcYAMLRaw(expectedYAMLRaw),
 		dcDfRaw(""),
 		// TODO(maia): assert m.tiltFilename
 	)
@@ -131,10 +140,6 @@ func TestDockerComposeManifestAlternateDockerfile(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	dcYAML := fmt.Sprintf(`build:
-  context: %s
-  dockerfile: alternate-Dockerfile`,
-		f.JoinPath("baz"))
 	f.dockerfile("baz/alternate-Dockerfile")
 	f.file("docker-compose.yml", fmt.Sprintf(`
 version: '3'
@@ -145,11 +150,18 @@ services:
       dockerfile: alternate-Dockerfile`, f.JoinPath("baz")))
 	f.file("Tiltfile", "docker_compose('docker-compose.yml')")
 
+	expectedRawYAML := fmt.Sprintf(`build:
+    context: %s
+    dockerfile: %s
+networks:
+    default: null`,
+		f.JoinPath("baz"), f.JoinPath("baz", "alternate-Dockerfile"))
+
 	f.load("baz")
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
 	f.assertDcManifest("baz",
 		dcConfigPath([]string{configPath}),
-		dcYAMLRaw(dcYAML),
+		dcYAMLRaw(expectedRawYAML),
 		dcDfRaw(simpleDockerfile),
 		// TODO(maia): assert m.tiltFilename
 	)
@@ -163,12 +175,6 @@ func TestDockerComposeManifestAbsoluteDockerfile(t *testing.T) {
 	defer f.TearDown()
 
 	dockerfilePath := f.JoinPath("baz", "Dockerfile")
-
-	dcYAML := fmt.Sprintf(`build:
-  context: %s
-  dockerfile: %s`,
-		f.JoinPath("baz"),
-		dockerfilePath)
 	f.dockerfile(dockerfilePath)
 	f.file("docker-compose.yml", fmt.Sprintf(`
 version: '3'
@@ -179,11 +185,19 @@ services:
       dockerfile: %s`, f.JoinPath("baz"), dockerfilePath))
 	f.file("Tiltfile", "docker_compose('docker-compose.yml')")
 
+	expectedRawYAML := fmt.Sprintf(`build:
+    context: %s
+    dockerfile: %s
+networks:
+    default: null`,
+		f.JoinPath("baz"),
+		dockerfilePath)
+
 	f.load("baz")
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
 	f.assertDcManifest("baz",
 		dcConfigPath([]string{configPath}),
-		dcYAMLRaw(dcYAML),
+		dcYAMLRaw(expectedRawYAML),
 		dcDfRaw(simpleDockerfile),
 		// TODO(maia): assert m.tiltFilename
 	)
@@ -196,10 +210,6 @@ func TestDockerComposeManifestAlternateDockerfileAndDockerIgnore(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	dcYAML := fmt.Sprintf(`build:
-  context: %s
-  dockerfile: alternate-Dockerfile`,
-		f.JoinPath("baz"))
 	f.dockerfile("baz/alternate-Dockerfile")
 	f.dockerignore("baz/alternate-Dockerfile.dockerignore")
 	f.file("docker-compose.yml", fmt.Sprintf(`
@@ -211,11 +221,18 @@ services:
       dockerfile: alternate-Dockerfile`, f.JoinPath("baz")))
 	f.file("Tiltfile", "docker_compose('docker-compose.yml')")
 
+	expectedRawYAML := fmt.Sprintf(`build:
+    context: %s
+    dockerfile: %s
+networks:
+    default: null`,
+		f.JoinPath("baz"), f.JoinPath("baz", "alternate-Dockerfile"))
+
 	f.load("baz")
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
 	f.assertDcManifest("baz",
 		dcConfigPath([]string{configPath}),
-		dcYAMLRaw(dcYAML),
+		dcYAMLRaw(expectedRawYAML),
 		dcDfRaw(simpleDockerfile),
 		// TODO(maia): assert m.tiltFilename
 	)
@@ -540,6 +557,7 @@ services:
     image: gcr.io/foo
   bar:
     image: gcr.io/bar
+    depends_on: [foo]
 `)
 	f.file("Tiltfile", `
 docker_build('gcr.io/foo', './foo')
