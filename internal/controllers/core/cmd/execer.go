@@ -120,17 +120,19 @@ func (fe *FakeExecer) RequireNoKnownProcess(t *testing.T, cmd string) {
 	require.False(t, ok, "%T should not be tracking any process with cmd %q, but it is", FakeExecer{}, cmd)
 }
 
-func ProvideExecer() Execer {
-	return NewProcessExecer()
+func ProvideExecer(localEnv *localexec.Env) Execer {
+	return NewProcessExecer(localEnv)
 }
 
 type processExecer struct {
 	gracePeriod time.Duration
+	localEnv    *localexec.Env
 }
 
-func NewProcessExecer() *processExecer {
+func NewProcessExecer(localEnv *localexec.Env) *processExecer {
 	return &processExecer{
 		gracePeriod: DefaultGracePeriod,
+		localEnv:    localEnv,
 	}
 }
 
@@ -148,7 +150,7 @@ func (e *processExecer) processRun(ctx context.Context, cmd model.Cmd, w io.Writ
 	defer close(statusCh)
 
 	logger.Get(ctx).Infof("Running cmd: %s", cmd.String())
-	c := localexec.ExecCmd(cmd, logger.Get(ctx))
+	c := e.localEnv.ExecCmd(cmd, logger.Get(ctx))
 
 	c.SysProcAttr = &syscall.SysProcAttr{}
 	procutil.SetOptNewProcessGroup(c.SysProcAttr)
