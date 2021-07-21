@@ -30,7 +30,7 @@ func (ar *AnalyticsReporter) OnChange(ctx context.Context, st store.RStore, _ st
 	defer st.RUnlockState()
 
 	// wait until state has been kinda initialized
-	if !state.TiltStartTime.IsZero() && state.LastTiltfileError() == nil {
+	if !state.TiltStartTime.IsZero() && state.LastMainTiltfileError() == nil {
 		ar.started = true
 		go func() {
 			select {
@@ -133,7 +133,7 @@ func (ar *AnalyticsReporter) report(ctx context.Context) {
 	}
 
 	tiltfileIsInError := "false"
-	if st.LastTiltfileError() != nil {
+	if st.LastMainTiltfileError() != nil {
 		tiltfileIsInError = "true"
 	} else {
 		// only report when there's no tiltfile error, to avoid polluting aggregations

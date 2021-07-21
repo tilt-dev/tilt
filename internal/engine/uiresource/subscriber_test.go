@@ -17,6 +17,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func TestCreate(t *testing.T) {
@@ -46,7 +47,7 @@ func TestUpdateTiltfile(t *testing.T) {
 	assert.Equal(t, "1", r.ObjectMeta.ResourceVersion)
 
 	f.store.WithState(func(es *store.EngineState) {
-		es.TiltfileState.CurrentBuild.StartTime = time.Now()
+		es.TiltfileStates[model.TiltfileManifestName].CurrentBuild.StartTime = time.Now()
 	})
 
 	_ = f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())

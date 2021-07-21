@@ -38,6 +38,7 @@ func TestConfigsController(t *testing.T) {
 	_ = f.cc.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 
 	expected := &ConfigsReloadedAction{
+		Name:       model.TiltfileManifestName,
 		Manifests:  []model.Manifest{bar},
 		FinishTime: f.fc.Times[1],
 	}
@@ -178,7 +179,7 @@ func newCCFixture(t *testing.T) *ccFixture {
 
 	state := st.LockMutableStateForTesting()
 	state.TiltfilePath = f.JoinPath("Tiltfile")
-	state.TiltfileState.AddPendingFileChange(model.TargetID{
+	state.TiltfileStates[model.TiltfileManifestName].AddPendingFileChange(model.TargetID{
 		Type: model.TargetTypeConfigs,
 		Name: "singleton",
 	}, f.JoinPath("Tiltfile"), time.Now())

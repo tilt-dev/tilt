@@ -487,14 +487,18 @@ func handleConfigsReloadStarted(
 	state *store.EngineState,
 	event configs.ConfigsReloadStartedAction,
 ) {
+	ms, ok := state.TiltfileStates[event.Name]
+	if !ok {
+		return
+	}
+
 	status := model.BuildRecord{
 		StartTime: event.StartTime,
 		Reason:    event.Reason,
 		Edits:     event.FilesChanged,
 		SpanID:    event.SpanID,
 	}
-
-	state.TiltfileState.CurrentBuild = status
+	ms.CurrentBuild = status
 	state.RemoveFromTriggerQueue(model.TiltfileManifestName)
 	state.StartedTiltfileLoadCount++
 }
@@ -511,10 +515,14 @@ func handleConfigsReloaded(
 		manifestNames[m.Name] = true
 	}
 
-	b := state.TiltfileState.CurrentBuild
+	ms, ok := state.TiltfileStates[event.Name]
+	if !ok {
+		return
+	}
+	b := ms.CurrentBuild
 
 	// Remove pending file changes that were consumed by this build.
-	for _, status := range state.TiltfileState.BuildStatuses {
+	for _, status := range ms.BuildStatuses {
 		status.ClearPendingChangesBefore(b.StartTime)
 	}
 
@@ -565,9 +573,9 @@ func handleConfigsReloaded(
 			b.WarningCount = len(state.LogStore.Warnings(b.SpanID))
 		}
 
-		state.TiltfileState.AddCompletedBuild(b)
+		ms.AddCompletedBuild(b)
 	}
-	state.TiltfileState.CurrentBuild = model.BuildRecord{}
+	ms.CurrentBuild = model.BuildRecord{}
 	if event.Err != nil {
 		// When the Tiltfile had an error, we want to differentiate between two cases:
 		//
@@ -606,7 +614,7 @@ func handleConfigsReloaded(
 
 		newDefOrder[i] = m.ManifestName()
 
-		configFilesThatChanged := state.TiltfileState.LastBuild().Edits
+		configFilesThatChanged := ms.LastBuild().Edits
 		old := mt.Manifest
 		mt.Manifest = m
 
