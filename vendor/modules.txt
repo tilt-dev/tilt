@@ -205,7 +205,6 @@ github.com/docker/go-connections/nat
 github.com/docker/go-connections/sockets
 github.com/docker/go-connections/tlsconfig
 # github.com/docker/go-metrics v0.0.1
-## explicit
 github.com/docker/go-metrics
 # github.com/docker/go-units v0.4.0
 ## explicit
@@ -534,7 +533,7 @@ github.com/tilt-dev/go-get/internal/web
 # github.com/tilt-dev/localregistry-go v0.0.0-20200615231835-07e386f4ebd7
 ## explicit
 github.com/tilt-dev/localregistry-go
-# github.com/tilt-dev/probe v0.2.0
+# github.com/tilt-dev/probe v0.3.0
 ## explicit
 github.com/tilt-dev/probe/pkg/probe
 github.com/tilt-dev/probe/pkg/prober
@@ -1473,10 +1472,11 @@ k8s.io/kubectl/pkg/util/storage
 k8s.io/kubectl/pkg/util/templates
 k8s.io/kubectl/pkg/util/term
 k8s.io/kubectl/pkg/validation
-# k8s.io/utils v0.0.0-20210527160623-6fdb442a123b
+# k8s.io/utils v0.0.0-20210709001253-0e1f9d693477
 k8s.io/utils/buffer
 k8s.io/utils/exec
 k8s.io/utils/integer
+k8s.io/utils/internal/third_party/forked/golang/net
 k8s.io/utils/net
 k8s.io/utils/path
 k8s.io/utils/pointer

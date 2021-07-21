@@ -29,7 +29,7 @@ type ProberManager interface {
 	Exec(name string, args ...string) prober.ProberFunc
 }
 
-func probeWorkerFromSpec(manager ProberManager, probeSpec *v1alpha1.Probe, changedFunc probe.StatusChangedFunc, resultFunc probe.ResultFunc) (*probe.Worker, error) {
+func probeWorkerFromSpec(manager ProberManager, probeSpec *v1alpha1.Probe, resultFunc probe.ResultFunc) (*probe.Worker, error) {
 	probeFunc, err := proberFromSpec(manager, probeSpec)
 	if err != nil {
 		return nil, err
@@ -53,9 +53,6 @@ func probeWorkerFromSpec(manager ProberManager, probeSpec *v1alpha1.Probe, chang
 		opts = append(opts, probe.WorkerFailureThreshold(int(probeSpec.FailureThreshold)))
 	}
 
-	if changedFunc != nil {
-		opts = append(opts, probe.WorkerOnStatusChange(changedFunc))
-	}
 	if resultFunc != nil {
 		opts = append(opts, probe.WorkerOnProbeResult(resultFunc))
 	}

@@ -41,14 +41,12 @@ const (
 // safe to use from multiple Goroutines.
 var realClock = clockwork.NewRealClock()
 
-// StatusChangedFunc is invoked on status transitions using WorkerOnStatusChange.
+// ResultFunc is invoked on every probe execution using WorkerOnProbeResult.
 //
-// It will NOT be called for subsequent probe invocations that do not
-// result in a status change.
-type StatusChangedFunc func(status prober.Result, output string)
-
-// ProbeResultFunc is invoked on every probe execution using WorkerOnProbeResult.
-type ResultFunc func(result prober.Result, output string, err error)
+// If statusChanged is true, the probe has transitioned. Note that subsequent
+// invocations of ResultFunc might have the same result value but statusChanged
+// set to false if a transition hasn't occurred due to success and failure thresholds.
+type ResultFunc func(result prober.Result, statusChanged bool, output string, err error)
 
 // WorkerOption can be passed when creating a Worker to configure the
 // instance.
@@ -115,8 +113,6 @@ type Worker struct {
 	status prober.Result
 	// resultFunc is an optional function to call whenever a probe executes.
 	resultFunc ResultFunc
-	// statusFunc is an optional function to call whenever the status changes.
-	statusFunc StatusChangedFunc
 	// lastResult is the result of the previous probe execution and is used along with
 	// resultRun to determine when a threshold has been crossed.
 	lastResult prober.Result
@@ -140,8 +136,7 @@ func (w *Worker) Run(ctx context.Context) {
 	w.running = true
 	w.lastResult = prober.Unknown
 	w.resultRun = 0
-	// initial status is failure until a successful probe
-	w.status = prober.Failure
+	w.status = prober.Unknown
 
 	w.mu.Unlock()
 
@@ -210,14 +205,11 @@ func (w *Worker) handleResult(probeResult probeResult) {
 	result := probeResult.result
 	statusChanged := false
 
-	if w.resultFunc != nil || w.statusFunc != nil {
+	if w.resultFunc != nil {
 		// these are handled together to ensure that order is result then status changed
 		defer func() {
 			if w.resultFunc != nil {
-				w.resultFunc(result, probeResult.output, probeResult.err)
-			}
-			if statusChanged && w.statusFunc != nil {
-				w.statusFunc(result, probeResult.output)
+				w.resultFunc(result, statusChanged, probeResult.output, probeResult.err)
 			}
 		}()
 	}
@@ -245,13 +237,12 @@ func (w *Worker) handleResult(probeResult probeResult) {
 	}
 
 	w.mu.Lock()
+	defer w.mu.Unlock()
 	if !w.running || w.status == result {
-		w.mu.Unlock()
 		return
 	}
 	w.status = result
 	statusChanged = true
-	w.mu.Unlock()
 }
 
 // isSuccessResult coerces a probe.Result value into a bool based on
@@ -304,19 +295,6 @@ func WorkerSuccessThreshold(v int) WorkerOption {
 func WorkerInitialDelay(delay time.Duration) WorkerOption {
 	return func(w *Worker) {
 		w.initialDelay = delay
-	}
-}
-
-// WorkerOnStatusChange sets the function to invoke when the status
-// transitions.
-//
-// Subsequent probe invocations that do not result in a change to the
-// status (either because they return the same result or the failure/
-// success threshold has not been met) will not emit a status change
-// update.
-func WorkerOnStatusChange(f StatusChangedFunc) WorkerOption {
-	return func(w *Worker) {
-		w.statusFunc = f
 	}
 }
 
