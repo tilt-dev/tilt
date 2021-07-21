@@ -235,8 +235,6 @@ type SidebarProps = {
 }
 
 export const defaultOptions: SidebarOptions = {
-  testsHidden: false,
-  testsOnly: false,
   alertsOnTop: false,
   resourceNameFilter: "",
 }
@@ -275,6 +273,24 @@ function resourcesHaveLabels(features: Features, items: SidebarItem[]) {
   return items.some((item) => item.labels.length > 0)
 }
 
+function applyOptionsToItems(
+  items: SidebarItem[],
+  options: SidebarOptions
+): SidebarItem[] {
+  let itemsToDisplay: SidebarItem[] = [...items]
+  if (options.resourceNameFilter) {
+    itemsToDisplay = itemsToDisplay.filter((item) =>
+      matchesResourceName(item, options.resourceNameFilter)
+    )
+  }
+
+  if (options.alertsOnTop) {
+    itemsToDisplay.sort(sortByHasAlerts)
+  }
+
+  return itemsToDisplay
+}
+
 export class SidebarResources extends React.Component<SidebarProps> {
   constructor(props: SidebarProps) {
     super(props)
@@ -293,41 +309,19 @@ export class SidebarResources extends React.Component<SidebarProps> {
     options: SidebarOptions,
     setOptions: Dispatch<SetStateAction<SidebarOptions>>
   ) {
-    // generally, only show filters if there are tests (otherwise the filters are just noise)
-    //   however, also show filters if the filter options are non-default
-    //   (e.g., in case there were previously tests and the user deselected resources)
-    const showFilters =
-      this.props.items.some((item) => item.isTest) ||
-      options.testsHidden !== defaultOptions.testsHidden ||
-      options.testsOnly !== defaultOptions.testsOnly
-
-    let filteredItems = [...this.props.items]
-    if (options.testsHidden) {
-      filteredItems = this.props.items.filter((item) => !item.isTest)
-    } else if (options.testsOnly) {
-      filteredItems = this.props.items.filter((item) => item.isTest)
-    }
-
-    filteredItems = filteredItems.filter((item) =>
-      matchesResourceName(item, options.resourceNameFilter)
-    )
-
-    if (options.alertsOnTop) {
-      filteredItems.sort(sortByHasAlerts)
-    }
+    const filteredItems = applyOptionsToItems(this.props.items, options)
 
     // only say no matches if there were actually items that got filtered out
     // otherwise, there might just be 0 resources because there are 0 resources
     // (though technically there's probably always at least a Tiltfile resource)
+    const resourceFilterApplied = options.resourceNameFilter.length > 0
     const noResourcesMatchFilter =
-      filteredItems.length === 0 && this.props.items.length !== 0
+      resourceFilterApplied && filteredItems.length === 0
     const listItems = noResourcesMatchFilter ? (
       <NoMatchesFound key={"no-matches"}>No matching resources</NoMatchesFound>
     ) : (
       <SidebarItemsView {...this.props} items={filteredItems} />
     )
-
-    const resourceFilterApplied = options.resourceNameFilter.length > 0
     const sidebarName = resourceFilterApplied
       ? `${filteredItems.length} result${filteredItems.length === 1 ? "" : "s"}`
       : "resources"
@@ -337,20 +331,14 @@ export class SidebarResources extends React.Component<SidebarProps> {
         ? "isOverview"
         : ""
 
-    // TODO: The above filtering and sorting logic will get refactored during more resource
-    // grouping work. It won't be necessary to map and sort here, but within each group
-    const labelsEnabled = resourcesHaveLabels(this.context, this.props.items)
     // Note: the label group view does not display if a resource name filter is applied
+    const labelsEnabled = resourcesHaveLabels(this.context, this.props.items)
     const displayLabelGroups = !resourceFilterApplied && labelsEnabled
 
     return (
       <SidebarResourcesRoot className={`Sidebar-resources ${isOverviewClass}`}>
         <SidebarList>
-          <OverviewSidebarOptions
-            showFilters={showFilters}
-            options={options}
-            setOptions={setOptions}
-          />
+          <OverviewSidebarOptions options={options} setOptions={setOptions} />
           {displayLabelGroups ? (
             <SidebarGroupedByLabels {...this.props} items={filteredItems} />
           ) : (

@@ -10,8 +10,6 @@ import { accessorsForTesting, tiltfileKeyContext } from "./LocalStorage"
 import {
   AlertsOnTopToggle,
   ResourceNameFilterTextField,
-  TestsHiddenToggle,
-  TestsOnlyToggle,
 } from "./OverviewSidebarOptions"
 import { assertSidebarItemsAndOptions } from "./OverviewSidebarOptions.test"
 import PathBuilder from "./PathBuilder"
@@ -117,15 +115,11 @@ describe("SidebarResources", () => {
   })
 
   const falseyOptions: SidebarOptions = {
-    testsHidden: false,
-    testsOnly: false,
     alertsOnTop: false,
     resourceNameFilter: "",
   }
 
   const loadCases: [string, any, string[]][] = [
-    ["tests only", { ...falseyOptions, testsOnly: true }, ["a", "b"]],
-    ["tests hidden", { ...falseyOptions, testsHidden: true }, ["vigoda"]],
     [
       "alertsOnTop",
       { ...falseyOptions, alertsOnTop: true },
@@ -166,19 +160,11 @@ describe("SidebarResources", () => {
         </MemoryRouter>
       )
 
-      assertSidebarItemsAndOptions(
-        root,
-        expectedItems,
-        options.testsHidden,
-        options.testsOnly,
-        options.alertsOnTop
-      )
+      assertSidebarItemsAndOptions(root, expectedItems, options.alertsOnTop)
     }
   )
 
   const saveCases: [string, SidebarOptions][] = [
-    ["testsHidden", { ...falseyOptions, testsHidden: true }],
-    ["testsOnly", { ...falseyOptions, testsOnly: true }],
     ["alertsOnTop", { ...falseyOptions, alertsOnTop: true }],
     ["resourceNameFilter", { ...falseyOptions, resourceNameFilter: "foo" }],
   ]
@@ -203,21 +189,6 @@ describe("SidebarResources", () => {
           </tiltfileKeyContext.Provider>
         </MemoryRouter>
       )
-
-      let testsHiddenControl = root.find(TestsHiddenToggle)
-      if (
-        testsHiddenControl.hasClass("is-enabled") !==
-        expectedOptions.testsHidden
-      ) {
-        testsHiddenControl.simulate("click")
-      }
-
-      let testsOnlyControl = root.find(TestsOnlyToggle)
-      if (
-        testsOnlyControl.hasClass("is-enabled") !== expectedOptions.testsOnly
-      ) {
-        testsOnlyControl.simulate("click")
-      }
 
       let aotToggle = root.find(AlertsOnTopToggle)
       if (aotToggle.hasClass("is-enabled") !== expectedOptions.alertsOnTop) {
