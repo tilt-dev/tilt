@@ -245,3 +245,22 @@ func TestSubscriberBackoff(t *testing.T) {
 	assert.Equal(t, call.summary, ChangeSummary{CmdSpecs: NewChangeSet(nn1, nn2, nn3), LastBackoff: 2 * time.Second})
 	close(call.done)
 }
+
+type subscriberWithPointerReceiver struct {
+}
+
+func (s *subscriberWithPointerReceiver) OnChange(ctx context.Context, st RStore, summary ChangeSummary) error {
+	return nil
+}
+
+type subscriberWithNonPointerReceiver struct {
+}
+
+func (s subscriberWithNonPointerReceiver) OnChange(ctx context.Context, st RStore, summary ChangeSummary) error {
+	return nil
+}
+
+func TestSubscriberName(t *testing.T) {
+	require.Equal(t, "store.subscriberWithPointerReceiver", subscriberName(&subscriberWithPointerReceiver{}))
+	require.Equal(t, "store.subscriberWithNonPointerReceiver", subscriberName(subscriberWithNonPointerReceiver{}))
+}

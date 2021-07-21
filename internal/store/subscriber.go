@@ -3,6 +3,8 @@ package store
 import (
 	"context"
 	"fmt"
+	"reflect"
+	"strings"
 	"sync"
 	"time"
 
@@ -177,6 +179,16 @@ func (e *subscriberEntry) movePendingToActive() *ChangeSummary {
 	return activeChange
 }
 
+// returns a string identifying the subscriber's type using its package + type name
+// e.g. "engine/uiresource.Subscriber"
+func subscriberName(sub Subscriber) string {
+	typ := reflect.TypeOf(sub)
+	if typ.Kind() == reflect.Ptr {
+		typ = typ.Elem()
+	}
+	return fmt.Sprintf("%s.%s", strings.TrimPrefix(typ.PkgPath(), "github.com/tilt-dev/tilt/internal/"), typ.Name())
+}
+
 func (e *subscriberEntry) notify(ctx context.Context, store *Store) {
 	e.activeMu.Lock()
 	defer e.activeMu.Unlock()
@@ -189,14 +201,13 @@ func (e *subscriberEntry) notify(ctx context.Context, store *Store) {
 	}
 
 	// Backoff on error
-	// TODO(nick): Include the subscriber name in the error message.
 	backoff := activeChange.LastBackoff * 2
 	if backoff == 0 {
 		backoff = time.Second
-		logger.Get(ctx).Debugf("Problem processing change. Backing off %v. Error: %v", backoff, err)
+		logger.Get(ctx).Debugf("Problem processing change. Subscriber: %s. Backing off %v. Error: %v", subscriberName, backoff, err)
 	} else if backoff > MaxBackoff {
 		backoff = MaxBackoff
-		logger.Get(ctx).Errorf("Problem processing change. Backing off %v. Error: %v", backoff, err)
+		logger.Get(ctx).Errorf("Problem processing change. Subscriber: %s. Backing off %v. Error: %v", subscriberName, backoff, err)
 	}
 	store.sleeper.Sleep(ctx, backoff)
 
