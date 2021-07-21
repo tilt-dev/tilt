@@ -188,6 +188,13 @@ func (e *subscriberEntry) notify(ctx context.Context, store *Store) {
 		return
 	}
 
+	select {
+	case <-ctx.Done():
+		// don't keep retrying after context is done
+		return
+	default:
+	}
+
 	// Backoff on error
 	// TODO(nick): Include the subscriber name in the error message.
 	backoff := activeChange.LastBackoff * 2
