@@ -315,13 +315,11 @@ func (c *Controller) runInternal(ctx context.Context,
 	spec := cmd.Spec
 
 	if spec.ReadinessProbe != nil {
-		statusChangeFunc := c.processReadinessProbeStatusChange(ctx, name, stillHasSameProcNum)
-		resultLoggerFunc := processReadinessProbeResultLogger(ctx, stillHasSameProcNum)
+		probeResultFunc := c.handleProbeResultFunc(ctx, name, stillHasSameProcNum)
 		probeWorker, err := probeWorkerFromSpec(
 			c.proberManager,
 			spec.ReadinessProbe,
-			statusChangeFunc,
-			resultLoggerFunc)
+			probeResultFunc)
 		if err != nil {
 			logger.Get(ctx).Errorf("Invalid readiness probe: %v", err)
 			c.updateStatus(name, func(status *CmdStatus) {
@@ -355,20 +353,39 @@ func (c *Controller) runInternal(ctx context.Context,
 	return proc.doneCh
 }
 
-func (c *Controller) processReadinessProbeStatusChange(ctx context.Context, name types.NamespacedName, stillHasSameProcNum func() bool) probe.StatusChangedFunc {
+func (c *Controller) handleProbeResultFunc(ctx context.Context, name types.NamespacedName, stillHasSameProcNum func() bool) probe.ResultFunc {
 	existingReady := false
 
-	return func(status prober.Result, output string) {
+	return func(result prober.Result, statusChanged bool, output string, err error) {
 		if !stillHasSameProcNum() {
 			return
 		}
 
-		if status == prober.Success {
-			// successful probes are ONLY logged on status change to reduce chattiness
-			logProbeOutput(ctx, status, output, nil)
+		// we try to balance logging important probe results without flooding the logs
+		//  * ALL transitions are logged
+		// 		* success->{failure,warning} @ WARN
+		// 		* {failure,warning}->success @ INFO
+		// 	* subsequent non-successful results @ VERBOSE
+		// 		* expected healthy/steady-state is recurring success, and this is apparent
+		// 		  from the "Ready" state, so logging every invocation is superfluous
+		loggerLevel := logger.NoneLvl
+		if statusChanged {
+			if result != prober.Success {
+				loggerLevel = logger.WarnLvl
+			} else {
+				loggerLevel = logger.InfoLvl
+			}
+		} else if result != prober.Success {
+			loggerLevel = logger.VerboseLvl
+		}
+		logProbeOutput(ctx, loggerLevel, result, output, nil)
+
+		if !statusChanged {
+			// the probe did not transition states, so the result is logged but not used to update status
+			return
 		}
 
-		ready := status == prober.Success || status == prober.Warning
+		ready := result == prober.Success || result == prober.Warning
 		if existingReady != ready {
 			existingReady = ready
 			c.updateStatus(name, func(status *CmdStatus) { status.Ready = ready }, stillHasSameProcNum)
@@ -376,16 +393,16 @@ func (c *Controller) processReadinessProbeStatusChange(ctx context.Context, name
 	}
 }
 
-func logProbeOutput(ctx context.Context, result prober.Result, output string, err error) {
+func logProbeOutput(ctx context.Context, level logger.Level, result prober.Result, output string, err error) {
 	l := logger.Get(ctx)
-	if !l.Level().ShouldDisplay(logger.VerboseLvl) {
+	if level == logger.NoneLvl || !l.Level().ShouldDisplay(level) {
 		return
 	}
 
+	w := l.Writer(level)
 	if err != nil {
-		l.Verbosef("[readiness probe error] %v", err)
+		_, _ = fmt.Fprintf(w, "[readiness probe error] %v\n", err)
 	} else if output != "" {
-		w := l.Writer(logger.VerboseLvl)
 		var logMessage strings.Builder
 		s := bufio.NewScanner(strings.NewReader(output))
 		for s.Scan() {
@@ -396,19 +413,6 @@ func logProbeOutput(ctx context.Context, result prober.Result, output string, er
 			logMessage.WriteRune('\n')
 		}
 		_, _ = io.WriteString(w, logMessage.String())
-	}
-}
-
-func processReadinessProbeResultLogger(ctx context.Context, stillHasSameProcNum func() bool) probe.ResultFunc {
-	return func(result prober.Result, output string, err error) {
-		if !stillHasSameProcNum() {
-			return
-		}
-
-		// successful probes are ONLY logged on status change to reduce chattiness
-		if result != prober.Success {
-			logProbeOutput(ctx, result, output, err)
-		}
 	}
 }
 
