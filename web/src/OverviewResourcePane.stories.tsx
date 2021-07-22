@@ -1,3 +1,4 @@
+import { StylesProvider } from "@material-ui/core/styles"
 import React from "react"
 import { MemoryRouter } from "react-router"
 import LogStore, { LogStoreProvider } from "./LogStore"
@@ -20,7 +21,9 @@ export default {
       <MemoryRouter initialEntries={["/"]}>
         <StarredResourceMemoryProvider>
           <div style={{ margin: "-1rem", height: "80vh" }}>
-            <Story />
+            <StylesProvider injectFirst>
+              <Story />
+            </StylesProvider>
           </div>
         </StarredResourceMemoryProvider>
       </MemoryRouter>
@@ -53,6 +56,14 @@ export const TwoResources = () => (
 export const TenResources = () => (
   <OverviewResourcePaneHarness name="vigoda_1" view={tenResourceView()} />
 )
+
+export const TenResourcesLongNames = () => {
+  let view = tenResourceView()
+  view.uiResources.forEach((r, n) => {
+    r.metadata!.name = "elastic-beanstalk-search-stream-" + n
+  })
+  return <OverviewResourcePaneHarness name="vigoda_1" view={view} />
+}
 
 export const TwoButtons = () => {
   const view = nButtonView(2)
