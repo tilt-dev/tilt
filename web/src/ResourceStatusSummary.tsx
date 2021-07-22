@@ -285,35 +285,19 @@ type ResourceStatusSummaryProps = {
 export function ResourceStatusSummary(props: ResourceStatusSummaryProps) {
   // Count and calculate the combined statuses.
   let resources = props.view.uiResources || []
-  const allStatuses: ResourceStatus[] = []
 
-  const testStatuses: ResourceStatus[] = []
-  const otherStatuses: ResourceStatus[] = []
-  resources.forEach((r) => {
-    const status = combinedStatus(buildStatus(r), runtimeStatus(r))
-    allStatuses.push(status)
-    if (r.status?.localResourceInfo?.isTest) {
-      testStatuses.push(status)
-    } else {
-      otherStatuses.push(status)
-    }
-  })
+  const allStatuses = resources.map((r) =>
+    combinedStatus(buildStatus(r), runtimeStatus(r))
+  )
 
   return (
     <ResourceStatusSummaryRoot>
       <ResourceMetadata counts={statusCounts(allStatuses)} />
       <ResourceGroupStatus
-        counts={statusCounts(otherStatuses)}
+        counts={statusCounts(allStatuses)}
         label={"Resources"}
         healthyLabel={"healthy"}
         unhealthyLabel={"err"}
-        warningLabel={"warn"}
-      />
-      <ResourceGroupStatus
-        counts={statusCounts(testStatuses)}
-        label={"Tests"}
-        healthyLabel={"pass"}
-        unhealthyLabel={"fail"}
         warningLabel={"warn"}
       />
     </ResourceStatusSummaryRoot>

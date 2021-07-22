@@ -127,7 +127,6 @@ export const ClearResourceNameFilterButton = styled(InstrumentedButton)`
 `
 
 type OverviewSidebarOptionsProps = {
-  showFilters: boolean
   options: SidebarOptions
   setOptions: Dispatch<SetStateAction<SidebarOptions>>
 }
@@ -141,30 +140,6 @@ function setAlertsOnTop(
   })
 }
 
-function toggleTestsOnly(props: OverviewSidebarOptionsProps) {
-  props.setOptions((prevOptions) => {
-    // Always set the option you're not currently toggling to 'false', because both
-    // of these settings cannot be 'true' at the same time
-    return {
-      ...prevOptions,
-      testsHidden: false,
-      testsOnly: !prevOptions.testsOnly,
-    }
-  })
-}
-
-function toggleTestsHidden(props: OverviewSidebarOptionsProps) {
-  props.setOptions((prevOptions) => {
-    // Always set the option you're not currently toggling to 'false', because both
-    // of these settings cannot be 'true' at the same time
-    return {
-      ...prevOptions,
-      testsHidden: !prevOptions.testsHidden,
-      testsOnly: false,
-    }
-  })
-}
-
 function setResourceNameFilter(
   newValue: string,
   props: OverviewSidebarOptionsProps
@@ -175,36 +150,6 @@ function setResourceNameFilter(
       resourceNameFilter: newValue,
     }
   })
-}
-
-function filterOptions(props: OverviewSidebarOptionsProps) {
-  return (
-    <FilterOptionList>
-      Tests:
-      <ResourceFilterSegmentedControls>
-        <TestsHiddenToggle
-          className={props.options.testsHidden ? "is-enabled" : ""}
-          onClick={(e) => toggleTestsHidden(props)}
-          analyticsName="ui.web.testsHiddenToggle"
-          analyticsTags={{
-            newTestsHiddenState: (!props.options.testsHidden).toString(),
-          }}
-        >
-          Hidden
-        </TestsHiddenToggle>
-        <TestsOnlyToggle
-          className={props.options.testsOnly ? "is-enabled" : ""}
-          onClick={(e) => toggleTestsOnly(props)}
-          analyticsName="ui.web.testsOnlyToggle"
-          analyticsTags={{
-            newTestsOnlyState: (!props.options.testsOnly).toString(),
-          }}
-        >
-          Only
-        </TestsOnlyToggle>
-      </ResourceFilterSegmentedControls>
-    </FilterOptionList>
-  )
 }
 
 // debounce so we don't send for every single keypress
@@ -260,13 +205,10 @@ export function OverviewSidebarOptions(
 ): JSX.Element {
   return (
     <OverviewSidebarOptionsRoot>
-      <OverviewSidebarOptionsButtonsRoot
-        className={!props.showFilters ? "is-filterButtonsHidden" : ""}
-      >
-        {props.showFilters ? filterOptions(props) : null}
+      <OverviewSidebarOptionsButtonsRoot className="is-filterButtonsHidden">
         <AlertsOnTopToggle
           className={props.options.alertsOnTop ? "is-enabled" : ""}
-          onClick={(e) => setAlertsOnTop(props, !props.options.alertsOnTop)}
+          onClick={(_e) => setAlertsOnTop(props, !props.options.alertsOnTop)}
           analyticsName="ui.web.alertsOnTopToggle"
         >
           Alerts on Top
