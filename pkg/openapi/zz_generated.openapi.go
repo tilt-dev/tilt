@@ -100,6 +100,13 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetStateTerminated":           schema_pkg_apis_core_v1alpha1_TargetStateTerminated(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetStateWaiting":              schema_pkg_apis_core_v1alpha1_TargetStateWaiting(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltBuild":                       schema_pkg_apis_core_v1alpha1_TiltBuild(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Tiltfile":                        schema_pkg_apis_core_v1alpha1_Tiltfile(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileList":                    schema_pkg_apis_core_v1alpha1_TiltfileList(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileSpec":                    schema_pkg_apis_core_v1alpha1_TiltfileSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileStateRunning":            schema_pkg_apis_core_v1alpha1_TiltfileStateRunning(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileStateTerminated":         schema_pkg_apis_core_v1alpha1_TiltfileStateTerminated(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileStateWaiting":            schema_pkg_apis_core_v1alpha1_TiltfileStateWaiting(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileStatus":                  schema_pkg_apis_core_v1alpha1_TiltfileStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildRunning":                  schema_pkg_apis_core_v1alpha1_UIBuildRunning(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildTerminated":               schema_pkg_apis_core_v1alpha1_UIBuildTerminated(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIButton":                        schema_pkg_apis_core_v1alpha1_UIButton(ref),
@@ -3245,6 +3252,296 @@ func schema_pkg_apis_core_v1alpha1_TiltBuild(ref common.ReferenceCallback) commo
 				},
 			},
 		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_Tiltfile(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Tiltfile is the main way users add services to Tilt.\n\nThe Tiltfile evaluator executes the Tiltfile, then adds all the objects it creates as children of the Tiltfile object.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileSpec"),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileStatus"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_TiltfileList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "TiltfileList",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Tiltfile"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Tiltfile", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_TiltfileSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "TiltfileSpec defines the desired state of Tiltfile",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"path": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The path to the Tiltfile on disk.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"labels": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A set of labels to apply to all objects owned by this Tiltfile.",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"restartOn": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Objects that can trigger a re-execution of this Tiltfile.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec"),
+						},
+					},
+				},
+				Required: []string{"path"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_TiltfileStateRunning(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "TiltfileStateRunning is a running state of a tiltfile execution.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"reasons": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The reason why this tiltfile was built. May contain more than one reason.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"startedAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Time at which previous execution of the command started.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_TiltfileStateTerminated(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "TiltfileStateTerminated is a terminated state of a tiltfile execution.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"reasons": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The reasons why this tiltfile was built. May contain more than one reason.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"error": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Error message if this tiltfile execution failed.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"startedAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Time at which previous execution of the command started.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+					"finishedAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Time at which the command last terminated.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+					"warningCount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Number of warnings generated by this Tiltfile. (brief) reason the process is terminated",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_TiltfileStateWaiting(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "TiltfileStateWaiting is a waiting state of a tiltfile execution.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"reason": {
+						SchemaProps: spec.SchemaProps{
+							Description: "(brief) reason the tiltfile is waiting.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_TiltfileStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "TiltfileStatus defines the observed state of Tiltfile",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"waiting": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Details about a waiting tiltfile.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileStateWaiting"),
+						},
+					},
+					"running": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Details about a running tiltfile.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileStateRunning"),
+						},
+					},
+					"terminated": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Details about a terminated tiltfile.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileStateTerminated"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileStateRunning", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileStateTerminated", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileStateWaiting"},
 	}
 }
 
