@@ -307,8 +307,10 @@ func (m *Controller) consumeLogs(watch PodLogWatch, st store.RStore) {
 		ctx, cancel := context.WithCancel(ctx)
 		readCloser, err := m.kClient.ContainerLogs(ctx, pID, containerName, ns, startReadTime)
 		if err != nil {
+			if ctx.Err() == nil {
+				exitError = err
+			}
 			cancel()
-			exitError = err
 			return
 		}
 
