@@ -30,7 +30,7 @@ func ManifestNames(names []string) []ManifestName {
 	return mNames
 }
 
-const TiltfileManifestName = ManifestName("(Tiltfile)")
+const MainTiltfileManifestName = ManifestName("(Tiltfile)")
 
 func (m ManifestName) String() string         { return string(m) }
 func (m ManifestName) TargetName() TargetName { return TargetName(m) }

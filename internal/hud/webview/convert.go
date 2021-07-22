@@ -117,7 +117,7 @@ func sortUIResources(resources []*v1alpha1.UIResource, order []model.ManifestNam
 	for i, name := range order {
 		resourceOrder[name.String()] = i
 	}
-	resourceOrder[store.TiltfileManifestName.String()] = -1
+	resourceOrder[store.MainTiltfileManifestName.String()] = -1
 	sort.Slice(resources, func(i, j int) bool {
 		objI := resources[i]
 		objJ := resources[j]
@@ -187,7 +187,14 @@ func ToUISession(s store.EngineState) *v1alpha1.UISession {
 // The order of the list is non-deterministic.
 func ToUIResourceList(state store.EngineState) ([]*v1alpha1.UIResource, error) {
 	ret := make([]*v1alpha1.UIResource, 0, len(state.ManifestTargets)+1)
-	ret = append(ret, TiltfileResourceProtoView(state))
+	for _, name := range state.TiltfileDefinitionOrder {
+		ms, ok := state.TiltfileStates[name]
+		if !ok {
+			continue
+		}
+
+		ret = append(ret, TiltfileResourceProtoView(name, ms, state.LogStore))
+	}
 	for i, mt := range state.Targets() {
 		// Skip manifests that don't come from the tiltfile.
 		if mt.Manifest.Source != model.ManifestSourceTiltfile {
@@ -256,24 +263,24 @@ func toUIResource(mt *store.ManifestTarget, s store.EngineState) (*v1alpha1.UIRe
 	return r, nil
 }
 
-func TiltfileResourceProtoView(s store.EngineState) *v1alpha1.UIResource {
-	ltfb := s.TiltfileState.LastBuild()
-	ctfb := s.TiltfileState.CurrentBuild
+func TiltfileResourceProtoView(name model.ManifestName, ms *store.ManifestState, logStore *logstore.LogStore) *v1alpha1.UIResource {
+	ltfb := ms.LastBuild()
+	ctfb := ms.CurrentBuild
 
 	pctfb := ToBuildRunning(ctfb)
 	history := []v1alpha1.UIBuildTerminated{}
 	if !ltfb.Empty() {
-		history = append(history, ToBuildTerminated(ltfb, s.LogStore))
+		history = append(history, ToBuildTerminated(ltfb, logStore))
 	}
 	tr := &v1alpha1.UIResource{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: store.TiltfileManifestName.String(),
+			Name: string(name),
 		},
 		Status: v1alpha1.UIResourceStatus{
 			CurrentBuild:  pctfb,
 			BuildHistory:  history,
 			RuntimeStatus: v1alpha1.RuntimeStatusNotApplicable,
-			UpdateStatus:  s.TiltfileState.UpdateStatus(model.TriggerModeAuto),
+			UpdateStatus:  ms.UpdateStatus(model.TriggerModeAuto),
 			Order:         -1,
 		},
 	}

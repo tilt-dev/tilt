@@ -34,10 +34,11 @@ func TestExitControlCI_TiltfileFailure(t *testing.T) {
 
 	// Tiltfile state is stored independent of resource state within engine
 	f.store.WithState(func(state *store.EngineState) {
-		state.TiltfileState = &store.ManifestState{}
-		state.TiltfileState.AddCompletedBuild(model.BuildRecord{
+		ms := &store.ManifestState{}
+		ms.AddCompletedBuild(model.BuildRecord{
 			Error: errors.New("fake Tiltfile error"),
 		})
+		state.TiltfileStates[model.MainTiltfileManifestName] = ms
 	})
 
 	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
@@ -507,7 +508,7 @@ func newFixture(t *testing.T, engineMode store.EngineMode) *fixture {
 	st.WithState(func(state *store.EngineState) {
 		state.EngineMode = engineMode
 		state.TiltfilePath = f.JoinPath("Tiltfile")
-		state.TiltfileState.AddCompletedBuild(model.BuildRecord{
+		state.TiltfileStates[model.MainTiltfileManifestName].AddCompletedBuild(model.BuildRecord{
 			StartTime:  time.Now(),
 			FinishTime: time.Now(),
 			Reason:     model.BuildReasonFlagInit,

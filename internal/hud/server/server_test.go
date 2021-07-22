@@ -167,7 +167,7 @@ func TestHandleTriggerMalformedPayload(t *testing.T) {
 func TestHandleTriggerTiltfileOK(t *testing.T) {
 	f := newTestFixture(t)
 
-	payload := fmt.Sprintf(`{"manifest_names":["%s"]}`, model.TiltfileManifestName)
+	payload := fmt.Sprintf(`{"manifest_names":["%s"]}`, model.MainTiltfileManifestName)
 	status, _ := f.makeReq("/api/trigger", f.serv.HandleTrigger, http.MethodPost, payload)
 
 	require.Equal(t, http.StatusOK, status, "handler returned wrong status code")
@@ -232,7 +232,7 @@ func TestSendToTriggerQueue_automaticManifest(t *testing.T) {
 func TestSendToTriggerQueue_Tiltfile(t *testing.T) {
 	f := newTestFixture(t)
 
-	err := server.SendToTriggerQueue(f.st, model.TiltfileManifestName.String(), model.BuildReasonFlagTriggerWeb)
+	err := server.SendToTriggerQueue(f.st, model.MainTiltfileManifestName.String(), model.BuildReasonFlagTriggerWeb)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -244,7 +244,7 @@ func TestSendToTriggerQueue_Tiltfile(t *testing.T) {
 	}
 
 	expected := server.AppendToTriggerQueueAction{
-		Name:   model.TiltfileManifestName,
+		Name:   model.MainTiltfileManifestName,
 		Reason: model.BuildReasonFlagTriggerWeb,
 	}
 	assert.Equal(t, expected, action)

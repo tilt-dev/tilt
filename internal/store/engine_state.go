@@ -90,7 +90,8 @@ type EngineState struct {
 
 	IsProfiling bool
 
-	TiltfileState *ManifestState
+	TiltfileDefinitionOrder []model.ManifestName
+	TiltfileStates          map[model.ManifestName]*ManifestState
 
 	SuggestedTiltVersion string
 	VersionSettings      model.VersionSettings
@@ -146,7 +147,7 @@ func (e *EngineState) AnalyticsEffectiveOpt() analytics.Opt {
 
 func (e *EngineState) ManifestNamesForTargetID(id model.TargetID) []model.ManifestName {
 	if id.Type == model.TargetTypeConfigs {
-		return []model.ManifestName{model.TiltfileManifestName}
+		return []model.ManifestName{model.MainTiltfileManifestName}
 	}
 
 	result := make([]model.ManifestName, 0)
@@ -227,8 +228,9 @@ func (e EngineState) Manifest(mn model.ManifestName) (model.Manifest, bool) {
 }
 
 func (e EngineState) ManifestState(mn model.ManifestName) (*ManifestState, bool) {
-	if mn == model.TiltfileManifestName {
-		return e.TiltfileState, true
+	st, ok := e.TiltfileStates[mn]
+	if ok {
+		return st, ok
 	}
 
 	m, ok := e.ManifestTargets[mn]
@@ -277,6 +279,19 @@ func (e EngineState) Targets() []*ManifestTarget {
 	return result
 }
 
+// Returns TiltfileStates in a stable order.
+func (e EngineState) GetTiltfileStates() []*ManifestState {
+	result := make([]*ManifestState, 0, len(e.TiltfileStates))
+	for _, mn := range e.TiltfileDefinitionOrder {
+		mt, ok := e.TiltfileStates[mn]
+		if !ok {
+			continue
+		}
+		result = append(result, mt)
+	}
+	return result
+}
+
 func (e EngineState) TargetsBesides(mn model.ManifestName) []*ManifestTarget {
 	targets := e.Targets()
 	result := make([]*ManifestTarget, 0, len(targets))
@@ -300,7 +315,7 @@ func (e *EngineState) ManifestInTriggerQueue(mn model.ManifestName) bool {
 }
 
 func (e *EngineState) TiltfileInTriggerQueue() bool {
-	return e.ManifestInTriggerQueue(model.TiltfileManifestName)
+	return e.ManifestInTriggerQueue(model.MainTiltfileManifestName)
 }
 
 func (e *EngineState) AppendToTriggerQueue(mn model.ManifestName, reason model.BuildReason) {
@@ -349,8 +364,17 @@ func (e EngineState) IsEmpty() bool {
 	return len(e.ManifestTargets) == 0
 }
 
-func (e EngineState) LastTiltfileError() error {
-	return e.TiltfileState.LastBuild().Error
+func (e EngineState) LastMainTiltfileError() error {
+	st, ok := e.TiltfileStates[model.MainTiltfileManifestName]
+	if !ok {
+		return nil
+	}
+
+	return st.LastBuild().Error
+}
+
+func (e *EngineState) MainTiltfileState() *ManifestState {
+	return e.TiltfileStates[model.MainTiltfileManifestName]
 }
 
 func (e *EngineState) HasDockerBuild() bool {
@@ -477,9 +501,12 @@ func NewState() *EngineState {
 	}
 	ret.UpdateSettings = model.DefaultUpdateSettings()
 	ret.CurrentlyBuilding = make(map[model.ManifestName]bool)
-	ret.TiltfileState = &ManifestState{
-		Name:          model.TiltfileManifestName,
-		BuildStatuses: make(map[model.TargetID]*BuildStatus),
+	ret.TiltfileDefinitionOrder = []model.ManifestName{model.MainTiltfileManifestName}
+	ret.TiltfileStates = map[model.ManifestName]*ManifestState{
+		model.MainTiltfileManifestName: &ManifestState{
+			Name:          model.MainTiltfileManifestName,
+			BuildStatuses: make(map[model.TargetID]*BuildStatus),
+		},
 	}
 
 	if ok, _ := tiltanalytics.IsAnalyticsDisabledFromEnv(); ok {
@@ -789,7 +816,9 @@ func StateToView(s EngineState, mu *sync.RWMutex) view.View {
 		IsProfiling: s.IsProfiling,
 	}
 
-	ret.Resources = append(ret.Resources, tiltfileResourceView(s))
+	for _, ms := range s.TiltfileStates {
+		ret.Resources = append(ret.Resources, tiltfileResourceView(ms))
+	}
 
 	for _, name := range s.ManifestDefinitionOrder {
 		mt, ok := s.ManifestTargets[name]
@@ -868,20 +897,20 @@ func StateToView(s EngineState, mu *sync.RWMutex) view.View {
 	return ret
 }
 
-const TiltfileManifestName = model.TiltfileManifestName
+const MainTiltfileManifestName = model.MainTiltfileManifestName
 
-func tiltfileResourceView(s EngineState) view.Resource {
+func tiltfileResourceView(ms *ManifestState) view.Resource {
 	tr := view.Resource{
-		Name:         TiltfileManifestName,
+		Name:         MainTiltfileManifestName,
 		IsTiltfile:   true,
-		CurrentBuild: s.TiltfileState.CurrentBuild,
-		BuildHistory: s.TiltfileState.BuildHistory,
+		CurrentBuild: ms.CurrentBuild,
+		BuildHistory: ms.BuildHistory,
 		ResourceInfo: view.TiltfileResourceInfo{},
 	}
-	if !s.TiltfileState.CurrentBuild.Empty() {
-		tr.PendingBuildSince = s.TiltfileState.CurrentBuild.StartTime
+	if !ms.CurrentBuild.Empty() {
+		tr.PendingBuildSince = ms.CurrentBuild.StartTime
 	} else {
-		tr.LastDeployTime = s.TiltfileState.LastBuild().FinishTime
+		tr.LastDeployTime = ms.LastBuild().FinishTime
 	}
 	return tr
 }
