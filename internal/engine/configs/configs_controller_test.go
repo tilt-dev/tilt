@@ -38,7 +38,7 @@ func TestConfigsController(t *testing.T) {
 	_ = f.cc.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 
 	expected := &ConfigsReloadedAction{
-		Name:       model.TiltfileManifestName,
+		Name:       model.MainTiltfileManifestName,
 		Manifests:  []model.Manifest{bar},
 		FinishTime: f.fc.Times[1],
 	}
@@ -92,7 +92,7 @@ func TestBuildReasonTrigger(t *testing.T) {
 	bar := manifestbuilder.New(f, "bar").WithK8sYAML(testyaml.SanchoYAML).Build()
 
 	state := f.st.LockMutableStateForTesting()
-	state.AppendToTriggerQueue(model.TiltfileManifestName, model.BuildReasonFlagTriggerWeb)
+	state.AppendToTriggerQueue(model.MainTiltfileManifestName, model.BuildReasonFlagTriggerWeb)
 	f.st.UnlockMutableState()
 
 	f.setManifestResult(bar)
@@ -179,7 +179,7 @@ func newCCFixture(t *testing.T) *ccFixture {
 
 	state := st.LockMutableStateForTesting()
 	state.TiltfilePath = f.JoinPath("Tiltfile")
-	state.TiltfileStates[model.TiltfileManifestName].AddPendingFileChange(model.TargetID{
+	state.TiltfileStates[model.MainTiltfileManifestName].AddPendingFileChange(model.TargetID{
 		Type: model.TargetTypeConfigs,
 		Name: "singleton",
 	}, f.JoinPath("Tiltfile"), time.Now())

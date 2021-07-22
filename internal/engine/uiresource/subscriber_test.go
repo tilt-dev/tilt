@@ -47,7 +47,7 @@ func TestUpdateTiltfile(t *testing.T) {
 	assert.Equal(t, "1", r.ObjectMeta.ResourceVersion)
 
 	f.store.WithState(func(es *store.EngineState) {
-		es.TiltfileStates[model.TiltfileManifestName].CurrentBuild.StartTime = time.Now()
+		es.TiltfileStates[model.MainTiltfileManifestName].CurrentBuild.StartTime = time.Now()
 	})
 
 	_ = f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())

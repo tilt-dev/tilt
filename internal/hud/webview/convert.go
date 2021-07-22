@@ -117,7 +117,7 @@ func sortUIResources(resources []*v1alpha1.UIResource, order []model.ManifestNam
 	for i, name := range order {
 		resourceOrder[name.String()] = i
 	}
-	resourceOrder[store.TiltfileManifestName.String()] = -1
+	resourceOrder[store.MainTiltfileManifestName.String()] = -1
 	sort.Slice(resources, func(i, j int) bool {
 		objI := resources[i]
 		objJ := resources[j]

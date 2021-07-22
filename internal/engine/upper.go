@@ -499,10 +499,11 @@ func handleConfigsReloadStarted(
 		SpanID:    event.SpanID,
 	}
 	ms.CurrentBuild = status
-	state.RemoveFromTriggerQueue(model.TiltfileManifestName)
+	state.RemoveFromTriggerQueue(model.MainTiltfileManifestName)
 	state.StartedTiltfileLoadCount++
 }
 
+// TODO(nick): Rewrite to handle multiple tiltfiles.
 func handleConfigsReloaded(
 	ctx context.Context,
 	state *store.EngineState,

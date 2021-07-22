@@ -8,7 +8,7 @@ import (
 )
 
 func SourcePrefix(n model.ManifestName) string {
-	if n == "" || n == model.TiltfileManifestName {
+	if n == "" || n == model.MainTiltfileManifestName {
 		return ""
 	}
 	max := 13

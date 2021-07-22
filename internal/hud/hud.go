@@ -215,7 +215,7 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 			url := h.webURL
 
 			// If the cursor is in the default position (Tiltfile), open the All log.
-			if r.Name != store.TiltfileManifestName {
+			if r.Name != store.MainTiltfileManifestName {
 				url.Path = fmt.Sprintf("/r/%s/", r.Name)
 			}
 

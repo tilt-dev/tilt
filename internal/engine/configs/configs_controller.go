@@ -151,7 +151,7 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore, 
 		Reason:       entry.BuildReason(),
 	})
 
-	actionWriter := NewTiltfileLogWriter(st, cc.loadStartedCount)
+	actionWriter := NewTiltfileLogWriter(entry.name, st, cc.loadStartedCount)
 	ctx = logger.CtxWithLogHandler(ctx, actionWriter)
 
 	buildcontrol.LogBuildEntry(ctx, entry)
@@ -177,6 +177,7 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore, 
 		}
 	}
 
+	// TODO(nick): Rewrite to handle multiple tiltfiles.
 	err := updateOwnedObjects(ctx, cc.ctrlClient, tlr, entry.engineMode)
 	if err != nil {
 		if tlr.Error == nil {

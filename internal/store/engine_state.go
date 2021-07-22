@@ -147,7 +147,7 @@ func (e *EngineState) AnalyticsEffectiveOpt() analytics.Opt {
 
 func (e *EngineState) ManifestNamesForTargetID(id model.TargetID) []model.ManifestName {
 	if id.Type == model.TargetTypeConfigs {
-		return []model.ManifestName{model.TiltfileManifestName}
+		return []model.ManifestName{model.MainTiltfileManifestName}
 	}
 
 	result := make([]model.ManifestName, 0)
@@ -315,7 +315,7 @@ func (e *EngineState) ManifestInTriggerQueue(mn model.ManifestName) bool {
 }
 
 func (e *EngineState) TiltfileInTriggerQueue() bool {
-	return e.ManifestInTriggerQueue(model.TiltfileManifestName)
+	return e.ManifestInTriggerQueue(model.MainTiltfileManifestName)
 }
 
 func (e *EngineState) AppendToTriggerQueue(mn model.ManifestName, reason model.BuildReason) {
@@ -365,7 +365,7 @@ func (e EngineState) IsEmpty() bool {
 }
 
 func (e EngineState) LastMainTiltfileError() error {
-	st, ok := e.TiltfileStates[model.TiltfileManifestName]
+	st, ok := e.TiltfileStates[model.MainTiltfileManifestName]
 	if !ok {
 		return nil
 	}
@@ -374,7 +374,7 @@ func (e EngineState) LastMainTiltfileError() error {
 }
 
 func (e *EngineState) MainTiltfileState() *ManifestState {
-	return e.TiltfileStates[model.TiltfileManifestName]
+	return e.TiltfileStates[model.MainTiltfileManifestName]
 }
 
 func (e *EngineState) HasDockerBuild() bool {
@@ -501,10 +501,10 @@ func NewState() *EngineState {
 	}
 	ret.UpdateSettings = model.DefaultUpdateSettings()
 	ret.CurrentlyBuilding = make(map[model.ManifestName]bool)
-	ret.TiltfileDefinitionOrder = []model.ManifestName{model.TiltfileManifestName}
+	ret.TiltfileDefinitionOrder = []model.ManifestName{model.MainTiltfileManifestName}
 	ret.TiltfileStates = map[model.ManifestName]*ManifestState{
-		model.TiltfileManifestName: &ManifestState{
-			Name:          model.TiltfileManifestName,
+		model.MainTiltfileManifestName: &ManifestState{
+			Name:          model.MainTiltfileManifestName,
 			BuildStatuses: make(map[model.TargetID]*BuildStatus),
 		},
 	}
@@ -897,11 +897,11 @@ func StateToView(s EngineState, mu *sync.RWMutex) view.View {
 	return ret
 }
 
-const TiltfileManifestName = model.TiltfileManifestName
+const MainTiltfileManifestName = model.MainTiltfileManifestName
 
 func tiltfileResourceView(ms *ManifestState) view.Resource {
 	tr := view.Resource{
-		Name:         TiltfileManifestName,
+		Name:         MainTiltfileManifestName,
 		IsTiltfile:   true,
 		CurrentBuild: ms.CurrentBuild,
 		BuildHistory: ms.BuildHistory,

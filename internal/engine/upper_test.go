@@ -1187,7 +1187,7 @@ func TestConfigChange_ManifestIncludingInitialBuildsIfTriggerModeChangedToManual
 	// change the trigger mode
 	foo = foo.WithTriggerMode(model.TriggerModeManualWithAutoInit)
 	f.store.Dispatch(configs.ConfigsReloadedAction{
-		Name:       model.TiltfileManifestName,
+		Name:       model.MainTiltfileManifestName,
 		FinishTime: f.Now(),
 		Manifests:  []model.Manifest{foo, bar},
 	})
@@ -1312,7 +1312,7 @@ func TestHudUpdated(t *testing.T) {
 	assert.Equal(t, nil, err)
 
 	assert.Equal(t, 2, len(f.fakeHud().LastView.Resources))
-	assert.Equal(t, store.TiltfileManifestName, f.fakeHud().LastView.Resources[0].Name)
+	assert.Equal(t, store.MainTiltfileManifestName, f.fakeHud().LastView.Resources[0].Name)
 	rv := f.fakeHud().LastView.Resources[1]
 	assert.Equal(t, manifest.Name, model.ManifestName(rv.Name))
 	f.assertAllBuildsConsumed()
@@ -2681,7 +2681,7 @@ func TestDockerComposeStartsEventWatcher(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	f.store.Dispatch(configs.ConfigsReloadedAction{
-		Name:       model.TiltfileManifestName,
+		Name:       model.MainTiltfileManifestName,
 		Manifests:  []model.Manifest{m},
 		FinishTime: f.Now(),
 	})
@@ -2863,14 +2863,14 @@ func TestEmptyTiltfile(t *testing.T) {
 		closeCh <- err
 	}()
 	f.WaitUntil("build is set", func(st store.EngineState) bool {
-		return !st.TiltfileStates[model.TiltfileManifestName].LastBuild().Empty()
+		return !st.TiltfileStates[model.MainTiltfileManifestName].LastBuild().Empty()
 	})
 	f.withState(func(st store.EngineState) {
-		assert.Contains(t, st.TiltfileStates[model.TiltfileManifestName].LastBuild().Error.Error(), "No resources found. Check out ")
+		assert.Contains(t, st.TiltfileStates[model.MainTiltfileManifestName].LastBuild().Error.Error(), "No resources found. Check out ")
 		assertContainsOnce(t, st.LogStore.String(), "No resources found. Check out ")
-		assertContainsOnce(t, st.LogStore.ManifestLog(store.TiltfileManifestName), "No resources found. Check out ")
+		assertContainsOnce(t, st.LogStore.ManifestLog(store.MainTiltfileManifestName), "No resources found. Check out ")
 
-		buildRecord := st.TiltfileStates[model.TiltfileManifestName].LastBuild()
+		buildRecord := st.TiltfileStates[model.MainTiltfileManifestName].LastBuild()
 		assertContainsOnce(t, st.LogStore.SpanLog(buildRecord.SpanID), "No resources found. Check out ")
 	})
 
@@ -3043,7 +3043,7 @@ func TestFeatureFlagsStoredOnState(t *testing.T) {
 	f.Start([]model.Manifest{})
 
 	f.store.Dispatch(configs.ConfigsReloadedAction{
-		Name:       model.TiltfileManifestName,
+		Name:       model.MainTiltfileManifestName,
 		FinishTime: f.Now(),
 		Features:   map[string]bool{"foo": true},
 	})
@@ -3053,7 +3053,7 @@ func TestFeatureFlagsStoredOnState(t *testing.T) {
 	})
 
 	f.store.Dispatch(configs.ConfigsReloadedAction{
-		Name:       model.TiltfileManifestName,
+		Name:       model.MainTiltfileManifestName,
 		FinishTime: f.Now(),
 		Features:   map[string]bool{"foo": false},
 	})
@@ -3070,7 +3070,7 @@ func TestTeamIDStoredOnState(t *testing.T) {
 	f.Start([]model.Manifest{})
 
 	f.store.Dispatch(configs.ConfigsReloadedAction{
-		Name:       model.TiltfileManifestName,
+		Name:       model.MainTiltfileManifestName,
 		FinishTime: f.Now(),
 		TeamID:     "sharks",
 	})
@@ -3080,7 +3080,7 @@ func TestTeamIDStoredOnState(t *testing.T) {
 	})
 
 	f.store.Dispatch(configs.ConfigsReloadedAction{
-		Name:       model.TiltfileManifestName,
+		Name:       model.MainTiltfileManifestName,
 		FinishTime: f.Now(),
 		TeamID:     "jets",
 	})
@@ -3442,7 +3442,7 @@ func TestVersionSettingsStoredOnState(t *testing.T) {
 		CheckUpdates: false,
 	}
 	f.store.Dispatch(configs.ConfigsReloadedAction{
-		Name:            model.TiltfileManifestName,
+		Name:            model.MainTiltfileManifestName,
 		FinishTime:      f.Now(),
 		VersionSettings: vs,
 	})
@@ -3463,7 +3463,7 @@ func TestAnalyticsTiltfileOpt(t *testing.T) {
 	})
 
 	f.store.Dispatch(configs.ConfigsReloadedAction{
-		Name:                 model.TiltfileManifestName,
+		Name:                 model.MainTiltfileManifestName,
 		FinishTime:           f.Now(),
 		AnalyticsTiltfileOpt: analytics.OptIn,
 	})
@@ -3520,10 +3520,10 @@ func TestTelemetryLogAction(t *testing.T) {
 
 	f.Start([]model.Manifest{})
 
-	f.store.Dispatch(store.NewLogAction(model.TiltfileManifestName, "0", logger.InfoLvl, nil, []byte("testing")))
+	f.store.Dispatch(store.NewLogAction(model.MainTiltfileManifestName, "0", logger.InfoLvl, nil, []byte("testing")))
 
 	f.WaitUntil("log is stored", func(state store.EngineState) bool {
-		l := state.LogStore.ManifestLog(store.TiltfileManifestName)
+		l := state.LogStore.ManifestLog(store.MainTiltfileManifestName)
 		return strings.Contains(l, "testing")
 	})
 }
@@ -3729,7 +3729,7 @@ func TestHandleTiltfileTriggerQueue(t *testing.T) {
 		assert.Equal(t, model.BuildReasonNone, st.MainTiltfileState().TriggerReason,
 			"initial state should not have Tiltfile trigger reason")
 	})
-	action := server.AppendToTriggerQueueAction{Name: model.TiltfileManifestName, Reason: 123}
+	action := server.AppendToTriggerQueueAction{Name: model.MainTiltfileManifestName, Reason: 123}
 	f.store.Dispatch(action)
 
 	f.WaitUntil("Tiltfile trigger processed", func(st store.EngineState) bool {

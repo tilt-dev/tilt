@@ -38,7 +38,7 @@ func TestExitControlCI_TiltfileFailure(t *testing.T) {
 		ms.AddCompletedBuild(model.BuildRecord{
 			Error: errors.New("fake Tiltfile error"),
 		})
-		state.TiltfileStates[model.TiltfileManifestName] = ms
+		state.TiltfileStates[model.MainTiltfileManifestName] = ms
 	})
 
 	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
@@ -508,7 +508,7 @@ func newFixture(t *testing.T, engineMode store.EngineMode) *fixture {
 	st.WithState(func(state *store.EngineState) {
 		state.EngineMode = engineMode
 		state.TiltfilePath = f.JoinPath("Tiltfile")
-		state.TiltfileStates[model.TiltfileManifestName].AddCompletedBuild(model.BuildRecord{
+		state.TiltfileStates[model.MainTiltfileManifestName].AddCompletedBuild(model.BuildRecord{
 			StartTime:  time.Now(),
 			FinishTime: time.Now(),
 			Reason:     model.BuildReasonFlagInit,

@@ -656,7 +656,7 @@ func TestTiltfileResource(t *testing.T) {
 	rtf := newRendererTestFixture(t)
 
 	v := newView(view.Resource{
-		Name:         store.TiltfileManifestName,
+		Name:         store.MainTiltfileManifestName,
 		IsTiltfile:   true,
 		ResourceInfo: view.TiltfileResourceInfo{},
 	})
@@ -666,7 +666,7 @@ func TestTiltfileResource(t *testing.T) {
 
 	now := time.Now()
 	v = newView(view.Resource{
-		Name:         store.TiltfileManifestName,
+		Name:         store.MainTiltfileManifestName,
 		IsTiltfile:   true,
 		ResourceInfo: view.TiltfileResourceInfo{},
 		BuildHistory: []model.BuildRecord{
@@ -685,7 +685,7 @@ func TestTiltfileResourceWithWarning(t *testing.T) {
 	rtf := newRendererTestFixture(t)
 	now := time.Now()
 	v := newView(view.Resource{
-		Name:         store.TiltfileManifestName,
+		Name:         store.MainTiltfileManifestName,
 		IsTiltfile:   true,
 		ResourceInfo: view.TiltfileResourceInfo{},
 		BuildHistory: []model.BuildRecord{
@@ -700,7 +700,7 @@ func TestTiltfileResourceWithWarning(t *testing.T) {
 		},
 	})
 	v.LogReader = newWarningLogReader(
-		store.TiltfileManifestName,
+		store.MainTiltfileManifestName,
 		"tiltfile:1",
 		[]string{"I am warning you\n", "Something is alarming here\n"})
 
@@ -713,7 +713,7 @@ func TestTiltfileResourcePending(t *testing.T) {
 
 	now := time.Now()
 	v := newView(view.Resource{
-		Name:         store.TiltfileManifestName,
+		Name:         store.MainTiltfileManifestName,
 		IsTiltfile:   true,
 		ResourceInfo: view.TiltfileResourceInfo{},
 		CurrentBuild: model.BuildRecord{
@@ -723,7 +723,7 @@ func TestTiltfileResourcePending(t *testing.T) {
 			SpanID:    "tiltfile:1",
 		},
 	})
-	v.LogReader = newSpanLogReader(store.TiltfileManifestName, "tiltfile:1", "Building...")
+	v.LogReader = newSpanLogReader(store.MainTiltfileManifestName, "tiltfile:1", "Building...")
 
 	vs := fakeViewState(1, view.CollapseNo)
 	rtf.run("Tiltfile resource pending", 80, 20, v, vs)

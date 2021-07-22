@@ -145,9 +145,9 @@ func (c *Controller) makeLatestStatus(st store.RStore) *session.SessionStatus {
 	// A session only captures services that are created by the main Tiltfile
 	// entrypoint. We don't consider any extension Tiltfiles or Manifests created
 	// by them.
-	ms, ok := state.TiltfileStates[model.TiltfileManifestName]
+	ms, ok := state.TiltfileStates[model.MainTiltfileManifestName]
 	if ok {
-		status.Targets = append(status.Targets, tiltfileTarget(model.TiltfileManifestName, ms))
+		status.Targets = append(status.Targets, tiltfileTarget(model.MainTiltfileManifestName, ms))
 	}
 
 	// determine the reason any resources (and thus all of their targets) are waiting (aka "holds")
