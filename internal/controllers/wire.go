@@ -10,6 +10,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesdiscovery"
 	"github.com/tilt-dev/tilt/internal/controllers/core/podlogstream"
 	"github.com/tilt-dev/tilt/internal/controllers/core/portforward"
+	"github.com/tilt-dev/tilt/internal/controllers/core/tiltfile"
 	"github.com/tilt-dev/tilt/internal/controllers/core/uibutton"
 	"github.com/tilt-dev/tilt/internal/controllers/core/uiresource"
 	"github.com/tilt-dev/tilt/internal/controllers/core/uisession"
@@ -35,7 +36,8 @@ func ProvideControllers(
 	uis *uisession.Reconciler,
 	uir *uiresource.Reconciler,
 	uib *uibutton.Reconciler,
-	pfr *portforward.Reconciler) []Controller {
+	pfr *portforward.Reconciler,
+	tfr *tiltfile.Reconciler) []Controller {
 	return []Controller{
 		fileWatch,
 		cmds,
@@ -46,6 +48,7 @@ func ProvideControllers(
 		uir,
 		uib,
 		pfr,
+		tfr,
 	}
 }
 
@@ -63,4 +66,5 @@ var WireSet = wire.NewSet(
 	uiresource.WireSet,
 	uisession.WireSet,
 	uibutton.WireSet,
+	tiltfile.WireSet,
 )
