@@ -14,7 +14,7 @@ type OverviewResourceSidebarProps = {
 let OverviewResourceSidebarRoot = styled.div`
   display: flex;
   flex-direction: column;
-  flex-shrink: 0;
+  flex-shrink: 1;
   flex-grow: 1;
   height: 100%;
   min-width: ${Width.sidebarDefault}px;
