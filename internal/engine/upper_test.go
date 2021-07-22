@@ -52,6 +52,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
 	"github.com/tilt-dev/tilt/internal/controllers/core/podlogstream"
 	apiportforward "github.com/tilt-dev/tilt/internal/controllers/core/portforward"
+	ctrltiltfile "github.com/tilt-dev/tilt/internal/controllers/core/tiltfile"
 	ctrluibutton "github.com/tilt-dev/tilt/internal/controllers/core/uibutton"
 	ctrluiresource "github.com/tilt-dev/tilt/internal/controllers/core/uiresource"
 	ctrluisession "github.com/tilt-dev/tilt/internal/controllers/core/uisession"
@@ -3940,6 +3941,7 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	kar := kubernetesapply.NewReconciler(cdc, b.kClient, sch, docker.Env{}, k8s.KubeContext("kind-kind"), st, "default")
 
+	tfr := ctrltiltfile.NewReconciler(st, tfl, dockerClient, cdc, sch)
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
 		fwc,
 		cmds,
@@ -3950,6 +3952,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		ctrluiresource.NewReconciler(cdc, wsl),
 		ctrluibutton.NewReconciler(cdc, wsl),
 		pfr,
+		tfr,
 	))
 
 	dp := dockerprune.NewDockerPruner(dockerClient)
