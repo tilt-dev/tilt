@@ -188,7 +188,11 @@ func (b ManifestBuilder) Build() model.Manifest {
 		b.f.T().Fatalf("No deploy target specified: %s", b.name)
 		return model.Manifest{}
 	}
-	m = m.WithTriggerMode(b.triggerMode)
+	m = m.
+		WithTriggerMode(b.triggerMode).
+		WithLabels(map[string]string{
+			"tilt.dev/owner-kind": "Tiltfile",
+		})
 	return m
 }
 

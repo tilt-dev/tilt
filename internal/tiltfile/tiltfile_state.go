@@ -294,8 +294,17 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 		return nil, starkit.Model{}, err
 	}
 
-	for _, m := range manifests {
-		err := m.Validate()
+	for i := range manifests {
+		// ensure all manifests have a label indicating they're owned
+		// by the Tiltfile - some reconcilers have special handling
+		l := manifests[i].Labels
+		if l == nil {
+			l = make(map[string]string)
+		}
+		l[v1alpha1.LabelOwnerKind] = v1alpha1.LabelOwnerKindTiltfile
+		manifests[i] = manifests[i].WithLabels(l)
+
+		err := manifests[i].Validate()
 		if err != nil {
 			// Even on manifest validation errors, we may be able
 			// to use other kinds of models (e.g., watched files)
