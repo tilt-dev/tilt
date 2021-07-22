@@ -18,6 +18,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
+	"github.com/tilt-dev/tilt/internal/localexec"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
@@ -166,7 +167,7 @@ func newLTFixture(t *testing.T) *ltFixture {
 
 	ctrlClient := fake.NewFakeTiltClient()
 
-	fe := cmd.NewProcessExecer()
+	fe := cmd.NewProcessExecer(localexec.EmptyEnv())
 	fpm := cmd.NewFakeProberManager()
 	cclock := clockwork.NewFakeClock()
 	st := NewTestingStore(out)

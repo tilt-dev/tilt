@@ -50,6 +50,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/hud/prompt"
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/localexec"
 	"github.com/tilt-dev/tilt/internal/openurl"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/tiltfile"
@@ -82,6 +83,7 @@ var BaseWireSet = wire.NewSet(
 	tiltfile.WireSet,
 	git.ProvideGitRemote,
 
+	localexec.DefaultEnv,
 	docker.SwitchWireSet,
 
 	ProvideDeferredExporter,

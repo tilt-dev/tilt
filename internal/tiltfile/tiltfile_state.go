@@ -12,6 +12,7 @@ import (
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
 
+	"github.com/tilt-dev/tilt/internal/localexec"
 	links "github.com/tilt-dev/tilt/internal/tiltfile/links"
 	"github.com/tilt-dev/tilt/internal/tiltfile/print"
 	"github.com/tilt-dev/tilt/internal/tiltfile/probe"
@@ -65,7 +66,7 @@ type tiltfileState struct {
 	ctx           context.Context
 	dcCli         dockercompose.DockerComposeClient
 	webHost       model.WebHost
-	webPort       model.WebPort
+	localEnv      *localexec.Env
 	k8sContextExt k8scontext.Extension
 	versionExt    version.Extension
 	configExt     *config.Extension
@@ -135,7 +136,7 @@ func newTiltfileState(
 	ctx context.Context,
 	dcCli dockercompose.DockerComposeClient,
 	webHost model.WebHost,
-	webPort model.WebPort,
+	localEnv *localexec.Env,
 	k8sContextExt k8scontext.Extension,
 	versionExt version.Extension,
 	configExt *config.Extension,
@@ -145,7 +146,7 @@ func newTiltfileState(
 		ctx:                       ctx,
 		dcCli:                     dcCli,
 		webHost:                   webHost,
-		webPort:                   webPort,
+		localEnv:                  localEnv,
 		k8sContextExt:             k8sContextExt,
 		versionExt:                versionExt,
 		configExt:                 configExt,
@@ -293,8 +294,17 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 		return nil, starkit.Model{}, err
 	}
 
-	for _, m := range manifests {
-		err := m.Validate()
+	for i := range manifests {
+		// ensure all manifests have a label indicating they're owned
+		// by the Tiltfile - some reconcilers have special handling
+		l := manifests[i].Labels
+		if l == nil {
+			l = make(map[string]string)
+		}
+		l[v1alpha1.LabelOwnerKind] = v1alpha1.LabelOwnerKindTiltfile
+		manifests[i] = manifests[i].WithLabels(l)
+
+		err := manifests[i].Validate()
 		if err != nil {
 			// Even on manifest validation errors, we may be able
 			// to use other kinds of models (e.g., watched files)
