@@ -401,7 +401,7 @@ func logProbeOutput(ctx context.Context, level logger.Level, result prober.Resul
 
 	w := l.Writer(level)
 	if err != nil {
-		_, _ = io.WriteString(w, fmt.Sprintf("[readiness probe error] %v\n", err))
+		_, _ = fmt.Fprintf(w, "[readiness probe error] %v\n", err)
 	} else if output != "" {
 		var logMessage strings.Builder
 		s := bufio.NewScanner(strings.NewReader(output))
