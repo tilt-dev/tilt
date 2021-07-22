@@ -6435,7 +6435,10 @@ type resourceLabelsHelper struct {
 
 func resourceLabels(labels ...string) resourceLabelsHelper {
 	ret := resourceLabelsHelper{
-		labels: make(map[string]string),
+		// initialize with global labels inherited by all resources
+		labels: map[string]string{
+			"tilt.dev/owner-kind": "Tiltfile",
+		},
 	}
 	for _, l := range labels {
 		ret.labels[l] = l
