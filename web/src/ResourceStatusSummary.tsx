@@ -139,6 +139,7 @@ type ResourceGroupStatusProps = {
   healthyLabel: string
   unhealthyLabel: string
   warningLabel: string
+  linkToLogFilters: boolean
 }
 
 export function ResourceGroupStatus(props: ResourceGroupStatusProps) {
@@ -150,12 +151,15 @@ export function ResourceGroupStatus(props: ResourceGroupStatusProps) {
   let items = new Array<JSX.Element>()
 
   if (props.counts.unhealthy) {
+    const errorHref = props.linkToLogFilters
+      ? pb.encpath`/r/${ResourceName.all}/overview?level=${FilterLevel.error}`
+      : undefined
     items.push(
       <ResourceGroupStatusItem
         key={props.unhealthyLabel}
         label={props.unhealthyLabel}
         count={props.counts.unhealthy}
-        href={pb.encpath`/r/${ResourceName.all}/overview?level=${FilterLevel.error}`}
+        href={errorHref}
         className="is-highlightError"
         icon={<CloseSvg width="11" key="icon" />}
       />
@@ -163,12 +167,15 @@ export function ResourceGroupStatus(props: ResourceGroupStatusProps) {
   }
 
   if (props.counts.warning) {
+    const warningHref = props.linkToLogFilters
+      ? pb.encpath`/r/${ResourceName.all}/overview?level=${FilterLevel.warn}`
+      : undefined
     items.push(
       <ResourceGroupStatusItem
         key={props.warningLabel}
         label={props.warningLabel}
         count={props.counts.warning}
-        href={pb.encpath`/r/${ResourceName.all}/overview?level=${FilterLevel.warn}`}
+        href={warningHref}
         className="is-highlightWarning"
         icon={<WarningSvg width="7" key="icon" />}
       />
@@ -299,6 +306,7 @@ export function ResourceStatusSummary(props: ResourceStatusSummaryProps) {
         healthyLabel={"healthy"}
         unhealthyLabel={"err"}
         warningLabel={"warn"}
+        linkToLogFilters={true}
       />
     </ResourceStatusSummaryRoot>
   )
@@ -326,6 +334,7 @@ export function ResourceSidebarStatusSummary(
         healthyLabel={"healthy"}
         unhealthyLabel={"err"}
         warningLabel={"warn"}
+        linkToLogFilters={false}
       />
     </ResourceStatusSummaryRoot>
   )

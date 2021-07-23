@@ -26,22 +26,24 @@ function expectStatusCounts(
   expect(actual).toEqual(expected)
 }
 
+const testCounts: StatusCounts = {
+  total: 11,
+  healthy: 0,
+  warning: 2,
+  unhealthy: 4,
+  pending: 0,
+}
+
 it("shows the counts it's given", () => {
-  const counts: StatusCounts = {
-    total: 11,
-    healthy: 0,
-    warning: 2,
-    unhealthy: 4,
-    pending: 0,
-  }
   const root = mount(
     <MemoryRouter>
       <ResourceGroupStatus
-        counts={counts}
+        counts={testCounts}
         healthyLabel="healthy"
         label="resources"
         unhealthyLabel="unhealthy"
         warningLabel="warning"
+        linkToLogFilters={true}
       />
     </MemoryRouter>
   )
@@ -53,4 +55,50 @@ it("shows the counts it's given", () => {
     { label: "warning", counts: [2] },
     { label: "healthy", counts: [0, 11] },
   ])
+})
+
+it("links to warning and unhealthy resources when `linkToLogFilters` is true", () => {
+  const root = mount(
+    <MemoryRouter>
+      <ResourceGroupStatus
+        counts={testCounts}
+        healthyLabel="healthy"
+        label="resources"
+        unhealthyLabel="unhealthy"
+        warningLabel="warning"
+        linkToLogFilters={true}
+      />
+    </MemoryRouter>
+  )
+
+  const warningLinkCount = root
+    .find(ResourceGroupStatusItem)
+    .filterWhere((item) => item.props().label === "warning")
+    .find("a").length
+  const errorLinkCount = root
+    .find(ResourceGroupStatusItem)
+    .filterWhere((item) => item.props().label === "unhealthy")
+    .find("a").length
+
+  expect(warningLinkCount).toBe(1)
+  expect(errorLinkCount).toBe(1)
+})
+
+it("does NOT link to warning and unhealthy resources when `linkToLogFilters` is false", () => {
+  const root = mount(
+    <MemoryRouter>
+      <ResourceGroupStatus
+        counts={testCounts}
+        healthyLabel="healthy"
+        label="resources"
+        unhealthyLabel="unhealthy"
+        warningLabel="warning"
+        linkToLogFilters={false}
+      />
+    </MemoryRouter>
+  )
+
+  const linkCount = root.find(ResourceGroupStatusItem).find("a").length
+
+  expect(linkCount).toBe(0)
 })
