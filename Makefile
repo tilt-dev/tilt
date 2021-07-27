@@ -53,14 +53,14 @@ test: test-go test-js
 # TODO(matt) skiplargetiltfiletests only skips the tiltfile DC+Helm tests at the moment
 # we might also want to skip the ones in engine
 shorttest:
-	go test -mod vendor -p $(GO_PARALLEL_JOBS) -tags skipcontainertests,skiplargetiltfiletests -timeout 100s ./...
+	go test -mod vendor -p $(GO_PARALLEL_JOBS) -short -tags skipcontainertests,skiplargetiltfiletests -timeout 100s ./...
 
 shorttestsum:
 ifneq ($(CIRCLECI),true)
-	gotestsum -- -mod vendor -p $(GO_PARALLEL_JOBS) -tags skipcontainertests,skiplargetiltfiletests -timeout 100s ./...
+	gotestsum -- -mod vendor -p $(GO_PARALLEL_JOBS) -short -tags skipcontainertests,skiplargetiltfiletests -timeout 100s ./...
 else
 	mkdir -p test-results
-	gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml --rerun-fails=2 --rerun-fails-max-failures=10 --packages="./..." -- -mod vendor -count 1 -p $(GO_PARALLEL_JOBS) -tags skipcontainertests,skiplargetiltfiletests -timeout 100s
+	gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml --rerun-fails=2 --rerun-fails-max-failures=10 --packages="./..." -- -mod vendor -count 1 -p $(GO_PARALLEL_JOBS) -short -tags skipcontainertests,skiplargetiltfiletests -timeout 100s
 endif
 
 integration:

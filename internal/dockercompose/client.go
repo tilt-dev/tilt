@@ -8,8 +8,11 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/compose-spec/compose-go/loader"
 
 	"github.com/compose-spec/compose-go/types"
 	"github.com/pkg/errors"
@@ -185,8 +188,22 @@ func (c *cmdDCClient) StreamEvents(ctx context.Context, configPaths []string) (<
 	return ch, nil
 }
 
-func (c *cmdDCClient) Project(_ context.Context, configPaths []string) (*types.Project, error) {
-	return c.loadProject(configPaths)
+func (c *cmdDCClient) Project(ctx context.Context, configPaths []string) (*types.Project, error) {
+	proj, err := c.loadProject(configPaths)
+	if err == nil {
+		return proj, nil
+	}
+
+	// HACK(milas): compose-go has known regressions with resolving variables during YAML loading
+	// 	if it fails, attempt to fallback to using the CLI to resolve the YAML and then parse
+	// 	it with compose-go
+	// 	see https://github.com/tilt-dev/tilt/issues/4795
+	//var fallbackErr error
+	proj, err = c.loadProjectCLI(ctx, configPaths)
+	if err != nil {
+		return nil, err
+	}
+	return proj, nil
 }
 
 func (c *cmdDCClient) ContainerID(ctx context.Context, configPaths []string, serviceName model.TargetName) (container.ID, error) {
@@ -199,7 +216,7 @@ func (c *cmdDCClient) ContainerID(ctx context.Context, configPaths []string, ser
 }
 
 func (c *cmdDCClient) loadProject(configPaths []string) (*types.Project, error) {
-	opts, err := compose.NewProjectOptions(configPaths)
+	opts, err := compose.NewProjectOptions(configPaths, compose.WithOsEnv)
 	if err != nil {
 		return nil, err
 	}
@@ -208,6 +225,33 @@ func (c *cmdDCClient) loadProject(configPaths []string) (*types.Project, error) 
 		return nil, err
 	}
 	return proj, nil
+}
+
+func (c *cmdDCClient) loadProjectCLI(ctx context.Context, configPaths []string) (*types.Project, error) {
+	resolvedYAML, err := c.dcOutput(ctx, configPaths, "config")
+	if err != nil {
+		return nil, err
+	}
+
+	// in practice, the workdir should be irrelevant as the CLI call above _should_ already have resolved paths,
+	// but we populate it appropriately regardless because historically docker-compose has been inconsistent in
+	// this regard
+	var workDir string
+	if len(configPaths) != 0 {
+		// from the compose Docs:
+		// 	> When you use multiple Compose files, all paths in the files are relative to the first configuration file specified with -f
+		// https://docs.docker.com/compose/reference/#use--f-to-specify-name-and-path-of-one-or-more-compose-files
+		workDir = filepath.Dir(configPaths[0])
+	}
+
+	return loader.Load(types.ConfigDetails{
+		WorkingDir: workDir,
+		ConfigFiles: []types.ConfigFile{
+			{
+				Content: []byte(resolvedYAML),
+			},
+		},
+	})
 }
 
 func (c *cmdDCClient) dcCommand(ctx context.Context, args []string) *exec.Cmd {
