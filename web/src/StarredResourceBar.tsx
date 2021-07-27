@@ -3,6 +3,7 @@ import { useHistory } from "react-router"
 import styled from "styled-components"
 import { ReactComponent as StarSvg } from "./assets/svg/star.svg"
 import { InstrumentedButton } from "./instrumentedComponents"
+import { useLogStore } from "./LogStore"
 import { usePathBuilder } from "./PathBuilder"
 import { ClassNameFromResourceStatus } from "./ResourceStatus"
 import { useStarredResources } from "./StarredResourcesContext"
@@ -217,6 +218,7 @@ export function starredResourcePropsFromView(
   view: Proto.webviewView,
   selectedResource: string
 ): StarredResourceBarProps {
+  const ls = useLogStore()
   const starContext = useStarredResources()
   const namesAndStatuses = (view?.uiResources || []).flatMap((r) => {
     let name = r.metadata?.name
@@ -224,7 +226,7 @@ export function starredResourcePropsFromView(
       return [
         {
           name: name,
-          status: combinedStatus(buildStatus(r), runtimeStatus(r)),
+          status: combinedStatus(buildStatus(r, ls), runtimeStatus(r, ls)),
         },
       ]
     } else {

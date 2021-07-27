@@ -6,6 +6,7 @@ import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
 import { ReactComponent as PendingSvg } from "./assets/svg/pending.svg"
 import { ReactComponent as WarningSvg } from "./assets/svg/warning.svg"
 import { FilterLevel } from "./logfilters"
+import { useLogStore } from "./LogStore"
 import { usePathBuilder } from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
 import { buildStatus, combinedStatus, runtimeStatus } from "./status"
@@ -292,9 +293,10 @@ type ResourceStatusSummaryProps = {
 export function ResourceStatusSummary(props: ResourceStatusSummaryProps) {
   // Count and calculate the combined statuses.
   let resources = props.view.uiResources || []
+  let logStore = useLogStore()
 
   const allStatuses = resources.map((r) =>
-    combinedStatus(buildStatus(r), runtimeStatus(r))
+    combinedStatus(buildStatus(r, logStore), runtimeStatus(r, logStore))
   )
 
   return (

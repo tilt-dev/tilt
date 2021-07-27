@@ -9,6 +9,7 @@ import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
 import { InstrumentedButton } from "./instrumentedComponents"
 import { displayURL } from "./links"
+import { LogAlertIndex, useLogStore } from "./LogStore"
 import OverviewTableStarResourceButton from "./OverviewTableStarResourceButton"
 import OverviewTableStatus from "./OverviewTableStatus"
 import OverviewTableTriggerButton from "./OverviewTableTriggerButton"
@@ -379,7 +380,7 @@ async function copyTextToClipboard(text: string, cb: () => void) {
   cb()
 }
 
-function uiResourceToCell(r: UIResource): RowValues {
+function uiResourceToCell(r: UIResource, alertIndex: LogAlertIndex): RowValues {
   let res = (r.status || {}) as UIResourceStatus
   let buildHistory = res.buildHistory || []
   let lastBuild = buildHistory.length > 0 ? buildHistory[0] : null
@@ -402,11 +403,11 @@ function uiResourceToCell(r: UIResource): RowValues {
     name: r.metadata?.name ?? "",
     resourceTypeLabel: resourceTypeLabel(r),
     statusLine: {
-      buildStatus: buildStatus(r),
+      buildStatus: buildStatus(r, alertIndex),
       lastBuildDur: lastBuildDur,
-      buildAlertCount: buildAlerts(r, null).length,
-      runtimeAlertCount: runtimeAlerts(r, null).length,
-      runtimeStatus: runtimeStatus(r),
+      buildAlertCount: buildAlerts(r, alertIndex).length,
+      runtimeAlertCount: runtimeAlerts(r, alertIndex).length,
+      runtimeStatus: runtimeStatus(r, alertIndex),
     },
     podId: res.k8sResourceInfo?.podName ?? "",
     endpoints: res.endpointLinks ?? [],
@@ -438,8 +439,10 @@ function resourceTypeLabel(r: UIResource): string {
 }
 
 export default function OverviewTable(props: OverviewTableProps) {
+  let logStore = useLogStore()
   const data = React.useMemo(
-    () => props.view.uiResources?.map(uiResourceToCell) || [],
+    () =>
+      props.view.uiResources?.map((r) => uiResourceToCell(r, logStore)) || [],
     [props.view.uiResources]
   )
 

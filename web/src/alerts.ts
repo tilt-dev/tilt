@@ -1,7 +1,6 @@
-import { podStatusIsError } from "./constants"
 import { FilterLevel, FilterSource } from "./logfilters"
-import { logLinesToString } from "./logs"
-import LogStore from "./LogStore"
+import { LogAlert, LogAlertIndex } from "./LogStore"
+import { LogLevel } from "./types"
 
 type UIResource = Proto.v1alpha1UIResource
 type K8sResourceInfo = Proto.v1alpha1UIResourceKubernetes
@@ -9,162 +8,82 @@ type K8sResourceInfo = Proto.v1alpha1UIResourceKubernetes
 export type Alert = {
   source: FilterSource
   level: FilterLevel
-
-  msg: string
   resourceName: string
 }
 
-//These functions determine what kind of error has occurred based on information about
-//the resource - return booleans
-
-//Errors for K8s Resources
-function crashRebuild(r: UIResource): boolean {
-  let history = r.status?.buildHistory ?? []
-  return history.length > 0 && !!history[0].isCrashRebuild
-}
-
-function podStatusHasError(r: UIResource) {
-  let rInfo = r.status?.k8sResourceInfo as K8sResourceInfo
-  let podStatus = rInfo.podStatus
-  let podStatusMessage = rInfo.podStatusMessage
-  if (podStatus == null) {
-    return false
+// Runtime alerts can only come from the current pod.
+//
+// All alerts are derived from the log store, to ensure that clearing logs
+// also clears the alerts.
+//
+// TODO(nick): Add support for docker compose, local resource runtime alerts.
+function runtimeAlerts(r: UIResource, alertIndex: LogAlertIndex): Alert[] {
+  let name = r.metadata?.name || ""
+  let spanId = r.status?.k8sResourceInfo?.spanID || ""
+  if (!spanId) {
+    return []
   }
-  return podStatusIsError(podStatus) || podStatusMessage
-}
-
-function podRestarted(r: UIResource) {
-  let rInfo = r.status?.k8sResourceInfo as K8sResourceInfo
-  return (rInfo.podRestarts ?? 0) > 0
-}
-
-function runtimeAlerts(r: UIResource, logStore: LogStore | null): Alert[] {
-  let result: Alert[] = []
-
-  if (r.status?.k8sResourceInfo) {
-    // K8s alerts
-    if (podStatusHasError(r)) {
-      result.push(podStatusIsErrAlert(r))
-    } else if (podRestarted(r)) {
-      result.push(podRestartAlert(r))
+  return alertIndex.alertsForSpanId(spanId).map(
+    (logAlert: LogAlert): Alert => {
+      return {
+        resourceName: name,
+        source: FilterSource.runtime,
+        level:
+          logAlert.level == LogLevel.WARN
+            ? FilterLevel.warn
+            : FilterLevel.error,
+      }
     }
-    if (crashRebuild(r)) {
-      result.push(crashRebuildAlert(r))
-    }
-  }
-
-  return result
+  )
 }
 
-function buildAlerts(r: UIResource, logStore: LogStore | null): Alert[] {
-  let result: Alert[] = []
-
-  const failAlert = buildFailedAlert(r, logStore)
-  if (failAlert) {
-    result.push(failAlert)
-  }
-
-  let bwa = buildWarningsAlerts(r, logStore)
-  if (bwa.length > 0) {
-    result.push(...bwa)
-  }
-  return result
-}
-
-function combinedAlerts(r: UIResource, logStore: LogStore | null): Alert[] {
-  let result = runtimeAlerts(r, logStore)
-  result.push(...buildAlerts(r, logStore))
-  return result
-}
-
-//The following functions create the alerts based on their types, since
-// they use different information from the resource to contruct their messages
-function podStatusIsErrAlert(resource: UIResource): Alert {
-  let rInfo = resource.status?.k8sResourceInfo as K8sResourceInfo
-  let podStatus = rInfo.podStatus
-  let podStatusMessage = rInfo.podStatusMessage
-  let msg = podStatusMessage || `Pod has status ${podStatus}`
-
-  return {
-    msg: msg,
-    resourceName: resource.metadata?.name ?? "",
-    level: FilterLevel.error,
-    source: FilterSource.runtime,
-  }
-}
-function podRestartAlert(r: UIResource): Alert {
-  let rInfo = r.status?.k8sResourceInfo as K8sResourceInfo
-  let msg = `Restarts: ${Number(rInfo.podRestarts).toString()}`
-  return {
-    msg: msg,
-    resourceName: r.metadata?.name ?? "",
-    level: FilterLevel.warn,
-    source: FilterSource.runtime,
-  }
-}
-function crashRebuildAlert(r: UIResource): Alert {
-  let rInfo = r.status?.k8sResourceInfo as K8sResourceInfo
-  let msg = "Pod crashed"
-  return {
-    msg: msg,
-    resourceName: r.metadata?.name ?? "",
-    level: FilterLevel.error,
-    source: FilterSource.runtime,
-  }
-}
-function buildFailedAlert(
-  resource: UIResource,
-  logStore: LogStore | null
-): Alert | null {
-  // both: DCResource and K8s UIResource
-  const latestBuild = (resource.status?.buildHistory ?? [])[0]
+// Build alerts can only come from the most recently finished build.
+//
+// All alerts are derived from the log store, to ensure that clearing logs
+// also clears the alerts.
+function buildAlerts(r: UIResource, alertIndex: LogAlertIndex): Alert[] {
+  let name = r.metadata?.name || ""
+  const latestBuild = (r.status?.buildHistory ?? [])[0]
   const spanId = latestBuild?.spanID ?? ""
-  if (
-    !latestBuild ||
-    !latestBuild.error ||
-    (logStore && !logStore.hasLinesForSpan(spanId))
-  ) {
-    return null
+  if (!spanId) {
+    return []
   }
-  let msg = "[missing error message]"
-  if (logStore) {
-    msg = logLinesToString(logStore.spanLog([spanId]), false)
-  }
-  return {
-    msg: msg,
-    resourceName: resource.metadata?.name ?? "",
-    level: FilterLevel.error,
-    source: FilterSource.build,
-  }
+  return alertIndex.alertsForSpanId(spanId).map(
+    (logAlert: LogAlert): Alert => {
+      return {
+        resourceName: name,
+        source: FilterSource.build,
+        level:
+          logAlert.level == LogLevel.WARN
+            ? FilterLevel.warn
+            : FilterLevel.error,
+      }
+    }
+  )
 }
 
-function buildWarningsAlerts(
-  resource: UIResource,
-  logStore: LogStore | null
-): Alert[] {
-  let alertArray: Alert[] = []
-  const latestBuild = (resource.status?.buildHistory ?? [])[0]
-  if (
-    latestBuild &&
-    (!logStore || logStore.hasLinesForSpan(latestBuild.spanID ?? ""))
-  ) {
-    alertArray = (latestBuild.warnings || []).map((w) => ({
-      msg: w,
-      resourceName: resource.metadata?.name ?? "",
-      level: FilterLevel.warn,
-      source: FilterSource.build,
-    }))
-  }
-  return alertArray
+function combinedAlerts(r: UIResource, alertIndex: LogAlertIndex): Alert[] {
+  let result = runtimeAlerts(r, alertIndex)
+  result.push(...buildAlerts(r, alertIndex))
+  return result
+}
+
+function buildWarningCount(r: UIResource, alertIndex: LogAlertIndex): number {
+  return buildAlerts(r, alertIndex).filter((alert) => {
+    return alert.level == FilterLevel.warn
+  }).length
+}
+
+function runtimeWarningCount(r: UIResource, alertIndex: LogAlertIndex): number {
+  return runtimeAlerts(r, alertIndex).filter((alert) => {
+    return alert.level == FilterLevel.warn
+  }).length
 }
 
 export {
   combinedAlerts,
   buildAlerts,
   runtimeAlerts,
-  podStatusIsErrAlert,
-  buildWarningsAlerts,
-  buildFailedAlert,
-  crashRebuildAlert,
-  podRestartAlert,
+  buildWarningCount,
+  runtimeWarningCount,
 }

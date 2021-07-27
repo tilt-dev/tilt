@@ -6,23 +6,20 @@ import (
 	"strings"
 
 	"github.com/golang/protobuf/ptypes"
-
-	"github.com/tilt-dev/tilt/internal/k8s"
-
-	"github.com/tilt-dev/tilt/pkg/apis"
-
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/cloud/cloudurl"
+	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
+	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
-
 	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
 )
 
@@ -317,7 +314,7 @@ func populateResourceInfoView(mt *store.ManifestTarget, r *v1alpha1.UIResource) 
 		kState := mt.State.K8sRuntimeState()
 		pod := kState.MostRecentPod()
 		podID := k8s.PodID(pod.Name)
-		r.Status.K8sResourceInfo = &v1alpha1.UIResourceKubernetes{
+		rK8s := &v1alpha1.UIResourceKubernetes{
 			PodName:            pod.Name,
 			PodCreationTime:    pod.CreatedAt,
 			PodUpdateStartTime: apis.NewTime(kState.UpdateStartTime[k8s.PodID(pod.Name)]),
@@ -327,7 +324,10 @@ func populateResourceInfoView(mt *store.ManifestTarget, r *v1alpha1.UIResource) 
 			PodRestarts:        kState.VisiblePodContainerRestarts(podID),
 			DisplayNames:       mt.Manifest.K8sTarget().DisplayNames,
 		}
-
+		if podID != "" {
+			rK8s.SpanID = string(k8sconv.SpanIDForPod(mt.Manifest.Name, podID))
+		}
+		r.Status.K8sResourceInfo = rK8s
 		r.Status.RuntimeStatus = v1alpha1.RuntimeStatus(kState.RuntimeStatus())
 		return nil
 	}

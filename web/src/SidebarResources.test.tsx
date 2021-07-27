@@ -7,6 +7,7 @@ import {
   mockAnalyticsCalls,
 } from "./analytics_test_helpers"
 import { accessorsForTesting, tiltfileKeyContext } from "./LocalStorage"
+import LogStore from "./LogStore"
 import {
   AlertsOnTopToggle,
   ResourceNameFilterTextField,
@@ -51,7 +52,8 @@ describe("SidebarResources", () => {
   })
 
   it("adds items to the starred list when items are starred", () => {
-    let items = twoResourceView().uiResources.map((r) => new SidebarItem(r))
+    let ls = new LogStore()
+    let items = twoResourceView().uiResources.map((r) => new SidebarItem(r, ls))
     const root = mount(
       <MemoryRouter>
         <tiltfileKeyContext.Provider value="test">
@@ -82,7 +84,8 @@ describe("SidebarResources", () => {
   })
 
   it("removes items from the starred list when items are unstarred", () => {
-    let items = twoResourceView().uiResources.map((r) => new SidebarItem(r))
+    let ls = new LogStore()
+    let items = twoResourceView().uiResources.map((r) => new SidebarItem(r, ls))
     starredItemsAccessor.set(items.map((i) => i.name))
 
     const root = mount(
@@ -141,11 +144,12 @@ describe("SidebarResources", () => {
     (name, options, expectedItems) => {
       sidebarOptionsAccessor.set(options)
 
+      let ls = new LogStore()
       const items = [
         oneResource(),
         oneResourceTestWithName("a"),
         oneResourceTestWithName("b"),
-      ].map((res) => new SidebarItem(res))
+      ].map((res) => new SidebarItem(res, ls))
 
       const root = mount(
         <MemoryRouter>
@@ -171,11 +175,12 @@ describe("SidebarResources", () => {
   test.each(saveCases)(
     "saves option %s to localStorage",
     (name, expectedOptions) => {
+      let ls = new LogStore()
       const items = [
         oneResource(),
         oneResourceTestWithName("a"),
         oneResourceTestWithName("b"),
-      ].map((res) => new SidebarItem(res))
+      ].map((res) => new SidebarItem(res, ls))
 
       const root = mount(
         <MemoryRouter>

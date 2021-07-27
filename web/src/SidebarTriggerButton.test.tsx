@@ -7,6 +7,7 @@ import {
   expectIncrs,
   mockAnalyticsCalls,
 } from "./analytics_test_helpers"
+import LogStore from "./LogStore"
 import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
 import { triggerUpdate } from "./SidebarItemView"
@@ -38,6 +39,10 @@ let expectIsQueued = (button: any, expected: boolean) => {
 }
 let expectWithTooltip = (button: any, expected: string) => {
   expect(button.prop("title")).toEqual(expected)
+}
+
+let newSidebarItem = (r: UIResource): SidebarItem => {
+  return new SidebarItem(r, new LogStore())
 }
 
 describe("SidebarTriggerButton", () => {
@@ -148,7 +153,7 @@ describe("SidebarTriggerButton", () => {
           res.pendingBuildSince = "0001-01-01T00:00:00Z"
         }
 
-        return new SidebarItem(r)
+        return newSidebarItem(r)
       }
     )
 
@@ -190,7 +195,7 @@ describe("SidebarTriggerButton", () => {
           r.metadata = { name: "selected resource" }
         }
 
-        return new SidebarItem(r)
+        return newSidebarItem(r)
       }
     )
 
@@ -227,7 +232,7 @@ describe("SidebarTriggerButton", () => {
           res.hasPendingChanges = false
           res.pendingBuildSince = "0001-01-01T00:00:00Z"
         }
-        return new SidebarItem(r)
+        return newSidebarItem(r)
       }
     )
 
@@ -260,7 +265,7 @@ describe("SidebarTriggerButton", () => {
 
   it("trigger button not clickable if resource is building", () => {
     let res = oneResource() // by default this resource is in the process of building
-    let items = [new SidebarItem(res)]
+    let items = [newSidebarItem(res)]
 
     const root = mount(
       <MemoryRouter initialEntries={["/"]}>
@@ -290,7 +295,7 @@ describe("SidebarTriggerButton", () => {
     res.lastDeployTime = ""
     res.hasPendingChanges = false
     res.pendingBuildSince = ""
-    let items = [new SidebarItem(r)]
+    let items = [newSidebarItem(r)]
 
     const root = mount(
       <MemoryRouter initialEntries={["/"]}>
@@ -316,7 +321,7 @@ describe("SidebarTriggerButton", () => {
     let res = oneResource()
     res.status!.currentBuild = {}
     res.status!.queued = true
-    let items = [new SidebarItem(res)]
+    let items = [newSidebarItem(res)]
 
     const root = mount(
       <MemoryRouter initialEntries={["/"]}>
@@ -344,7 +349,7 @@ describe("SidebarTriggerButton", () => {
     res.status!.currentBuild = {}
     res.status!.hasPendingChanges = false
     res.status!.pendingBuildSince = ""
-    let items = [new SidebarItem(res)]
+    let items = [newSidebarItem(res)]
 
     const root = mount(
       <MemoryRouter initialEntries={["/"]}>
@@ -374,7 +379,7 @@ describe("SidebarTriggerButton", () => {
     res.status.hasPendingChanges = false
     res.status.pendingBuildSince = "0001-01-01T00:00:00Z"
 
-    let items = [new SidebarItem(res)]
+    let items = [newSidebarItem(res)]
 
     const root = mount(
       <MemoryRouter initialEntries={["/"]}>

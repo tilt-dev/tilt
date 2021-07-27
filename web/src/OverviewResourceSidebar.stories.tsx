@@ -2,6 +2,7 @@ import React from "react"
 import { MemoryRouter } from "react-router"
 import SplitPane from "react-split-pane"
 import Features, { FeaturesProvider, Flag } from "./feature"
+import LogStore, { LogStoreProvider } from "./LogStore"
 import OverviewResourceSidebar from "./OverviewResourceSidebar"
 import PathBuilder from "./PathBuilder"
 import { Width } from "./style-helpers"
@@ -16,7 +17,7 @@ import {
   tiltfileResource,
   twoResourceView,
 } from "./testdata"
-import { UpdateStatus } from "./types"
+import { LogLevel, UpdateStatus } from "./types"
 
 type UIResource = Proto.v1alpha1UIResource
 let pathBuilder = PathBuilder.forTesting("localhost", "/")
@@ -122,16 +123,40 @@ export function TwoResourcesTwoTests() {
 }
 
 export function TestsWithErrors() {
+  let logStore = new LogStore()
+  let segments = []
+  let spans = {} as any
   let all: UIResource[] = [tiltfileResource()]
   for (let i = 0; i < 8; i++) {
     let test = oneResourceTest()
-    test.metadata = { name: "test_" + i }
+    let name = "test_" + i
+    test.metadata = { name: name }
+
+    let spanId = "build-" + i
+    spans[spanId] = { manifestName: name }
+
+    test.status!.buildHistory![0].spanID = spanId
     if (i % 2 === 0) {
       test.status!.buildHistory![0].error = "egads!"
       test.status!.updateStatus = UpdateStatus.Error
+
+      segments.push({
+        spanId,
+        text: `egads ${i}!\n`,
+        time: new Date().toString(),
+        level: LogLevel.ERROR,
+        anchor: true,
+      })
     }
     all.push(test)
   }
+
+  logStore.append({ spans, segments })
+
   let view = { uiResources: all, tiltfileKey: "test" }
-  return <OverviewResourceSidebar name={""} view={view} />
+  return (
+    <LogStoreProvider value={logStore}>
+      <OverviewResourceSidebar name={""} view={view} />
+    </LogStoreProvider>
+  )
 }

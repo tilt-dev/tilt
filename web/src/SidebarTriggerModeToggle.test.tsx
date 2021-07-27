@@ -7,6 +7,7 @@ import {
   expectIncrs,
   mockAnalyticsCalls,
 } from "./analytics_test_helpers"
+import LogStore from "./LogStore"
 import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
 import { toggleTriggerMode } from "./SidebarItemView"
@@ -43,9 +44,10 @@ describe("SidebarTriggerButton", () => {
   })
 
   it("shows toggle button only for test cards", () => {
+    let ls = new LogStore()
     let view = twoResourceView()
     view.uiResources.push(oneResourceTest())
-    let items = view.uiResources.map((r) => new SidebarItem(r))
+    let items = view.uiResources.map((r) => new SidebarItem(r, ls))
 
     const root = mount(
       <MemoryRouter>
@@ -75,8 +77,8 @@ describe("SidebarTriggerButton", () => {
     resources[3].status!.triggerMode = TriggerMode.TriggerModeManual
 
     let view = { uiResources: resources }
-
-    let items = view.uiResources.map((r) => new SidebarItem(r))
+    let ls = new LogStore()
+    let items = view.uiResources.map((r) => new SidebarItem(r, ls))
     const root = mount(
       <MemoryRouter>
         <SidebarResources

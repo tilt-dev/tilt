@@ -8,7 +8,8 @@ import { NotFound } from "./OverviewResourcePane.stories"
 import OverviewResourceSidebar from "./OverviewResourceSidebar"
 import { ResourceNavProvider } from "./ResourceNav"
 import { oneResourceView } from "./testdata"
-import { appendLinesForManifestAndSpan } from "./testlogs"
+import { appendLinesForManifestAndSpan, Line } from "./testlogs"
+import { LogLevel } from "./types"
 
 type UIResource = Proto.v1alpha1UIResource
 
@@ -67,7 +68,7 @@ describe("alert filtering", () => {
       latestBuild.warnings = []
 
       appendLinesForManifestAndSpan(logStore, r.metadata!.name!, "build:1", [
-        "the build failed!",
+        "the build is ok!\n",
       ])
     })
   })
@@ -80,7 +81,13 @@ describe("alert filtering", () => {
       latestBuild.warnings = ["warning 1!", "warning 2!"]
 
       appendLinesForManifestAndSpan(logStore, r.metadata!.name!, "build:1", [
-        "the build failed!",
+        { level: LogLevel.WARN, anchor: true, text: "warning 1!\n" } as Line,
+        { level: LogLevel.WARN, anchor: true, text: "warning 2!\n" } as Line,
+        {
+          level: LogLevel.ERROR,
+          anchor: true,
+          text: "the build failed!\n",
+        } as Line,
       ])
     })
   })
@@ -93,7 +100,12 @@ describe("alert filtering", () => {
       latestBuild.warnings = ["warning!"]
 
       appendLinesForManifestAndSpan(logStore, r.metadata!.name!, "build:2", [
-        "the build failed!",
+        { level: LogLevel.WARN, anchor: true, text: "warning!\n" } as Line,
+        {
+          level: LogLevel.ERROR,
+          anchor: true,
+          text: "the build failed!\n",
+        } as Line,
       ])
     })
   })

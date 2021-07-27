@@ -1,5 +1,6 @@
 import React from "react"
 import { MemoryRouter } from "react-router"
+import LogStore from "./LogStore"
 import PathBuilder from "./PathBuilder"
 import { ResourceNavContextProvider } from "./ResourceNav"
 import SidebarItem from "./SidebarItem"
@@ -103,7 +104,8 @@ function withArgs(args: Args): optionFn {
 }
 
 function itemView(...options: optionFn[]) {
-  let item = new SidebarItem(oneResourceNoAlerts())
+  let ls = new LogStore()
+  let item = new SidebarItem(oneResourceNoAlerts(), ls)
   let props = {
     item: item,
     selected: false,

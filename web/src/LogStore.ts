@@ -6,7 +6,7 @@
 
 import React, { useContext } from "react"
 import { isBuildSpanId } from "./logs"
-import { LogLine, LogPatchSet } from "./types"
+import { LogLevel, LogLine, LogPatchSet } from "./types"
 
 // Firestore doesn't properly handle maps with keys equal to the empty string, so
 // we normalize all empty span ids to '_' client-side.
@@ -15,11 +15,27 @@ const fieldNameProgressId = "progressID"
 
 const defaultMaxLogLength = 2 * 1000 * 1000
 
+// Index all warnings and errors by span.
+export type LogAlert = {
+  lineIndex: number
+  level: LogLevel
+}
+
+// LogStore implements LogAlertIndex, a narrower interface for fetching
+// the alerts for a particular span.
+//
+// Consumers of LogAlertIndex shouldn't assume it's a LogStore. In the future,
+// we may break them up into separate objects.
+export interface LogAlertIndex {
+  alertsForSpanId(spanId: string): LogAlert[]
+}
+
 type LogSpan = {
   spanId: string
   manifestName: string
   firstLineIndex: number
   lastLineIndex: number
+  alerts: LogAlert[]
 }
 
 type LogWarning = {
@@ -72,7 +88,7 @@ export interface LogUpdateEvent {
 
 type callback = (e: LogUpdateEvent) => void
 
-class LogStore {
+class LogStore implements LogAlertIndex {
   // Track which segments we've received from the server.
   checkpoint: number
 
@@ -92,9 +108,6 @@ class LogStore {
   // A cache of the react data model
   lineCache: { [key: number]: LogLine }
 
-  // We index all the warnings up-front by span id.
-  warningIndex: { [key: string]: LogWarning[] }
-
   updateCallbacks: callback[]
 
   // Track log length, for truncation.
@@ -107,7 +120,6 @@ class LogStore {
     this.segmentToLine = []
     this.lines = []
     this.checkpoint = 0
-    this.warningIndex = {}
     this.lineCache = {}
     this.updateCallbacks = []
     this.maxLogLength = defaultMaxLogLength
@@ -126,10 +138,6 @@ class LogStore {
   hasLinesForSpan(spanId: string): boolean {
     const span = this.spans[spanId]
     return span && span.firstLineIndex !== -1
-  }
-
-  warnings(spanId: string): LogWarning[] {
-    return this.warningIndex[spanId] ?? []
   }
 
   toLogList(maxSize: number | null | undefined): Proto.webviewLogList {
@@ -196,6 +204,7 @@ class LogStore {
           manifestName: newSpans[key].manifestName ?? "",
           firstLineIndex: -1,
           lastLineIndex: -1,
+          alerts: [],
         }
       }
     }
@@ -207,6 +216,16 @@ class LogStore {
     })
 
     this.ensureMaxLength()
+  }
+
+  // Returns a list of all error and warning log lines in this span,
+  // and their line index. Consumers must not mutate the list.
+  alertsForSpanId(spanId: string): LogAlert[] {
+    let span = this.spans[spanId]
+    if (!span) {
+      return []
+    }
+    return span.alerts
   }
 
   private invokeUpdateCallbacks(e: LogUpdateEvent) {
@@ -264,8 +283,18 @@ class LogStore {
     }
 
     if (isStartingNewLine) {
-      span.lastLineIndex = this.lines.length
+      let lineIndex = this.lines.length
+      span.lastLineIndex = lineIndex
       this.lines.push(candidate)
+
+      // If this starts a warning or error, index it now.
+      let level = newSegment.level
+      if (
+        newSegment.anchor &&
+        (level === LogLevel.WARN || level === LogLevel.ERROR)
+      ) {
+        span.alerts.push({ level, lineIndex })
+      }
     }
   }
 
@@ -289,10 +318,10 @@ class LogStore {
       const spanId = span.spanId
       if (spansToDelete.has(spanId)) {
         delete this.spans[spanId]
-        delete this.warningIndex[spanId]
       } else {
         span.firstLineIndex = -1
         span.lastLineIndex = -1
+        span.alerts = []
       }
     }
 
@@ -676,6 +705,7 @@ class LogStore {
     for (const span of Object.values(this.spans)) {
       span.firstLineIndex = -1
       span.lastLineIndex = -1
+      span.alerts = []
     }
 
     this.segments = []
@@ -734,6 +764,15 @@ export default LogStore
 const logStoreContext = React.createContext<LogStore>(new LogStore())
 
 export function useLogStore(): LogStore {
+  return useContext(logStoreContext)
+}
+
+// LogAlertIndex provides access to warnings/errors without the rest of the
+// LogStore.
+//
+// Consumers of LogAlertIndex shouldn't assume it's a LogStore. In the future,
+// we may break them up into separate objects.
+export function useLogAlertIndex(): LogAlertIndex {
   return useContext(logStoreContext)
 }
 
