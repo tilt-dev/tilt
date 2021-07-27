@@ -9,7 +9,10 @@ import (
 	"strings"
 
 	"github.com/compose-spec/compose-go/types"
-	"gopkg.in/yaml.v3"
+	// DANGER: some compose-go types are not friendly to being marshaled with gopkg.in/yaml.v3
+	// and will trigger a stack overflow panic
+	// see https://github.com/tilt-dev/tilt/issues/4797
+	composeyaml "gopkg.in/yaml.v2"
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
@@ -238,7 +241,7 @@ func DockerComposeConfigToService(svcConfig types.ServiceConfig) (dcService, err
 		}
 	}
 
-	rawConfig, err := yaml.Marshal(svcConfig)
+	rawConfig, err := composeyaml.Marshal(svcConfig)
 	if err != nil {
 		return dcService{}, err
 	}

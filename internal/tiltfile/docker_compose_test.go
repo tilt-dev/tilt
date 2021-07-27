@@ -117,6 +117,25 @@ version: '3.0'
 	}
 }
 
+func TestMarshalOverflow(t *testing.T) {
+	f := newDCFixture(t)
+
+	// certain Compose types cause a stack overflow panic if marshaled with gopkg.in/yaml.v3
+	// https://github.com/tilt-dev/tilt/issues/4797
+	output := `services:
+  foo:
+    image: myimage
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 20000
+        hard: 40000
+`
+
+	services := f.parse(output)
+	assert.NotEmpty(t, services)
+}
+
 type dcFixture struct {
 	t     *testing.T
 	ctx   context.Context
