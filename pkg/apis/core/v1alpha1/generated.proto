@@ -157,6 +157,28 @@ message CmdStatus {
   optional bool ready = 4;
 }
 
+// ConfigMap stores unstructured data that other controllers can read and write.
+//
+// Useful for sharing data from one system and subscribing to it from another.
+//
+// +k8s:openapi-gen=true
+message ConfigMap {
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+
+  // Data contains the configuration data.
+  // Each key must consist of alphanumeric characters, '-', '_' or '.'.
+  // +optional
+  map<string, string> data = 2;
+}
+
+// ConfigMapList
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+message ConfigMapList {
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+
+  repeated ConfigMap items = 2;
+}
+
 // Container is an init or application container within a pod.
 //
 // The Tilt API representation mirrors the Kubernetes API very closely. Irrelevant data is
