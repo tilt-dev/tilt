@@ -1,9 +1,11 @@
+import { buildWarningCount, runtimeWarningCount } from "./alerts"
+import { LogAlertIndex } from "./LogStore"
 import { ResourceStatus, RuntimeStatus, UpdateStatus } from "./types"
 
 type UIResource = Proto.v1alpha1UIResource
 type UIResourceStatus = Proto.v1alpha1UIResourceStatus
 
-function buildStatus(r: UIResource): ResourceStatus {
+function buildStatus(r: UIResource, alertIndex: LogAlertIndex): ResourceStatus {
   let res = r.status || {}
   if (res.updateStatus == UpdateStatus.InProgress) {
     return ResourceStatus.Building
@@ -16,7 +18,9 @@ function buildStatus(r: UIResource): ResourceStatus {
     return ResourceStatus.None
   } else if (res.updateStatus == UpdateStatus.Error) {
     return ResourceStatus.Unhealthy
-  } else if (buildWarnings(r).length > 0) {
+  } else if (buildWarningCount(r, alertIndex) > 0) {
+    // Warnings are derived from the log store, so that clearing
+    // logs clears the warning indicator.
     return ResourceStatus.Warning
   } else if (res.updateStatus == UpdateStatus.Ok) {
     return ResourceStatus.Healthy
@@ -24,9 +28,15 @@ function buildStatus(r: UIResource): ResourceStatus {
   return ResourceStatus.None
 }
 
-function runtimeStatus(r: UIResource): ResourceStatus {
+function runtimeStatus(
+  r: UIResource,
+  alertIndex: LogAlertIndex
+): ResourceStatus {
   let res = r.status || {}
-  let hasWarnings = runtimeWarnings(r).length > 0
+
+  // Warnings are derived from the log store, so that clearing
+  // logs clears the warning indicator.
+  let hasWarnings = runtimeWarningCount(r, alertIndex) > 0
   if (hasWarnings) {
     if (res.runtimeStatus === RuntimeStatus.Error) {
       return ResourceStatus.Unhealthy
@@ -70,32 +80,4 @@ function combinedStatus(
   return runtimeStatus
 }
 
-function buildWarnings(res: UIResource): string[] {
-  let buildHistory = res.status?.buildHistory || []
-  let lastBuild = buildHistory[0]
-  return Array.from((lastBuild && lastBuild.warnings) || [])
-}
-
-function runtimeWarnings(res: UIResource): string[] {
-  let warnings = []
-  let podRestarts = res.status?.k8sResourceInfo?.podRestarts
-  if (podRestarts && podRestarts > 0) {
-    warnings.push("Container restarted")
-  }
-  return warnings
-}
-
-function warnings(res: UIResource): string[] {
-  let warnings = buildWarnings(res)
-  warnings.push(...runtimeWarnings(res))
-  return warnings
-}
-
-export {
-  buildStatus,
-  runtimeStatus,
-  combinedStatus,
-  warnings,
-  buildWarnings,
-  runtimeWarnings,
-}
+export { buildStatus, runtimeStatus, combinedStatus }
