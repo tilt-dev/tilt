@@ -798,7 +798,7 @@ func (f *fixture) assertDcManifest(name model.ManifestName, opts ...interface{})
 		case dcLocalPathsHelper:
 			assert.ElementsMatch(f.t, opt.paths, dcInfo.LocalPaths(), "docker compose local paths")
 		case dcYAMLRawHelper:
-			assert.Equal(f.t, strings.TrimSpace(opt.yaml), strings.TrimSpace(string(dcInfo.YAMLRaw)), "docker compose YAML raw")
+			assert.YAMLEq(f.t, opt.yaml, string(dcInfo.YAMLRaw), "docker compose YAML raw")
 		case dcDfRawHelper:
 			assert.Equal(f.t, strings.TrimSpace(opt.df), strings.TrimSpace(string(dcInfo.DfRaw)), "docker compose Dockerfile raw")
 		case dcPublishedPortsHelper:
