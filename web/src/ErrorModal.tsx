@@ -1,5 +1,6 @@
 import React, { PureComponent } from "react"
 import Modal from "react-modal"
+import { linkToTiltDocs, TiltDocsPage } from "./constants"
 import "./FatalErrorModal.scss"
 import { ShowErrorModal } from "./types"
 
@@ -32,7 +33,12 @@ export default class ErrorModal extends PureComponent<props> {
               opening a GitHub issue
             </a>{" "}
             or{" "}
-            <a href="https://docs.tilt.dev/debug_faq.html#where-can-i-ask-questions">
+            <a
+              href={linkToTiltDocs(
+                TiltDocsPage.DebugFaq,
+                "#where-can-i-ask-questions"
+              )}
+            >
               contacting us on Slack
             </a>
             .

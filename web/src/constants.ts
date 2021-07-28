@@ -22,3 +22,24 @@ function podStatusIsError(status: string | undefined) {
 }
 
 export { podStatusIsCrash, podStatusIsError }
+
+// Links to Tilt's documentation
+export const TILT_DOCS_LINK = "https://docs.tilt.dev"
+
+export enum TiltDocsPage {
+  DebugFaq = "debug_faq.html",
+  Faq = "faq.html",
+  Snapshots = "snapshots.html",
+  TelemetryFaq = "telemetry_faq.html",
+  TiltfileConcepts = "tiltfile_concepts.html",
+  TriggerMode = "manual_update_control.html",
+  Upgrade = "upgrade.html",
+}
+
+export function linkToTiltDocs(page?: TiltDocsPage, anchor?: string) {
+  if (!page) {
+    return TILT_DOCS_LINK
+  }
+
+  return `${TILT_DOCS_LINK}/${page}${anchor ?? ""}`
+}

@@ -1,6 +1,7 @@
 import { withStyles } from "@material-ui/core/styles"
 import Switch from "@material-ui/core/Switch"
 import React from "react"
+import { linkToTiltDocs, TiltDocsPage } from "./constants"
 import FloatDialog from "./FloatDialog"
 import { usePathBuilder } from "./PathBuilder"
 import { Color } from "./style-helpers"
@@ -69,7 +70,7 @@ export default function UpdateDialog(props: props) {
         </span>
         &nbsp;
         <a
-          href="https://docs.tilt.dev/upgrade.html"
+          href={linkToTiltDocs(TiltDocsPage.Upgrade)}
           target="_blank"
           rel="noopener noreferrer"
         >

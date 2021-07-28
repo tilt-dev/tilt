@@ -1,5 +1,6 @@
 import React, { Component } from "react"
 import "./AnalyticsNudge.scss"
+import { linkToTiltDocs, TiltDocsPage } from "./constants"
 
 const nudgeTimeoutMs = 15000
 const nudgeElem = (): JSX.Element => {
@@ -8,7 +9,7 @@ const nudgeElem = (): JSX.Element => {
       Welcome to Tilt! We collect anonymized usage data to help us improve. Is
       that OK? (
       <a
-        href="https://docs.tilt.dev/telemetry_faq.html"
+        href={linkToTiltDocs(TiltDocsPage.TelemetryFaq)}
         target="_blank"
         rel="noopener noreferrer"
       >

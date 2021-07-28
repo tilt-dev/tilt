@@ -7,6 +7,7 @@ import { incr } from "./analytics"
 import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
+import { linkToTiltDocs, TiltDocsPage } from "./constants"
 import { InstrumentedButton } from "./instrumentedComponents"
 import { displayURL } from "./links"
 import { LogAlertIndex, useLogStore } from "./LogStore"
@@ -26,6 +27,7 @@ import {
 } from "./style-helpers"
 import { isZeroTime, timeDiff } from "./time"
 import { timeAgoFormatter } from "./timeFormatters"
+import { TiltInfoTooltip } from "./Tooltip"
 import { ResourceStatus, TargetType, TriggerMode } from "./types"
 
 type UIResource = Proto.v1alpha1UIResource
@@ -172,6 +174,14 @@ const PodIdCopy = styled(InstrumentedButton)`
 
   svg {
     fill: ${Color.gray6};
+  }
+`
+
+const HeaderInfoTooltip = styled(TiltInfoTooltip)`
+  margin: 0 ${SizeUnit(1 / 4)};
+
+  & .fillStd {
+    fill: ${Color.grayLight};
   }
 `
 
@@ -375,6 +385,30 @@ const columns: Column<RowValues>[] = [
   },
 ]
 
+const columnNameToInfoTooltip: {
+  [key: string]: NonNullable<React.ReactNode>
+} = {
+  "Trigger Mode": (
+    <>
+      Trigger mode can be toggled through the UI. To set it persistantly, see{" "}
+      <a href={linkToTiltDocs(TiltDocsPage.TriggerMode)}>Tiltfile docs</a>.
+    </>
+  ),
+}
+
+function ResourceTableHeaderTip(props: { name?: string }) {
+  if (!props.name) {
+    return null
+  }
+
+  const tooltipContent = columnNameToInfoTooltip[props.name]
+  if (!tooltipContent) {
+    return null
+  }
+
+  return <HeaderInfoTooltip title={tooltipContent} size={10} />
+}
+
 async function copyTextToClipboard(text: string, cb: () => void) {
   await navigator.clipboard.writeText(text)
   cb()
@@ -476,6 +510,7 @@ export default function OverviewTable(props: OverviewTableProps) {
                 ])}
               >
                 {column.render("Header")}
+                <ResourceTableHeaderTip name={String(column.Header)} />
                 {column.canSort && (
                   <ResourceTableHeaderSortTriangle
                     className={

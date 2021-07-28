@@ -46,6 +46,7 @@ import {
   mixinResetButtonStyle,
   SizeUnit,
 } from "./style-helpers"
+import { TiltInfoTooltip } from "./Tooltip"
 import { ResourceName } from "./types"
 
 type UIResource = Proto.v1alpha1UIResource
@@ -471,6 +472,7 @@ export function FilterRadioButton(props: FilterRadioButtonProps) {
 
 export const FILTER_INPUT_DEBOUNCE = 500 // in ms
 export const FILTER_FIELD_ID = "FilterTermTextInput"
+export const FILTER_FIELD_TOOLTIP_ID = "FilterTermInfoTooltip"
 
 function FilterTermFieldError({ error }: { error: string }) {
   return (
@@ -480,6 +482,14 @@ function FilterTermFieldError({ error }: { error: string }) {
     </FieldErrorTooltip>
   )
 }
+
+const FilterTermInfoTooltip = styled(TiltInfoTooltip)`
+  margin: 0 ${SizeUnit(1 / 4)};
+
+  & .fillStd {
+    fill: ${Color.grayLight};
+  }
+`
 
 const debounceFilterLogs = debounce((history: History, search: string) => {
   // Record the action for analytics
@@ -556,6 +566,7 @@ export function FilterTermField({ termFromUrl }: { termFromUrl: FilterTerm }) {
   return (
     <>
       <FilterTermTextField
+        aria-describedby={FILTER_FIELD_TOOLTIP_ID}
         error={state === TermState.Error}
         id={FILTER_FIELD_ID}
         helperText={
@@ -574,6 +585,11 @@ export function FilterTermField({ termFromUrl }: { termFromUrl: FilterTerm }) {
       <SrOnly component="label" htmlFor={FILTER_FIELD_ID}>
         Filter resource logs by text or /regexp/
       </SrOnly>
+      <FilterTermInfoTooltip
+        id={FILTER_FIELD_TOOLTIP_ID}
+        title="RegExp should be wrapped in forward slashes, is case-insensitive, and parsed in JavaScript."
+        placement="right-end"
+      />
     </>
   )
 }
