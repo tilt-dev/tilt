@@ -12,6 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
@@ -30,6 +31,12 @@ type BuildEntry struct {
 	TiltfilePath          string
 	CheckpointAtExecStart logstore.Checkpoint
 	EngineMode            store.EngineMode
+	LoadCount             int
+}
+
+func (be *BuildEntry) WithLogger(ctx context.Context, st store.RStore) context.Context {
+	actionWriter := NewTiltfileLogWriter(be.Name, st, be.LoadCount)
+	return logger.CtxWithLogHandler(ctx, actionWriter)
 }
 
 type BuildSource struct {
@@ -48,6 +55,11 @@ func (s *BuildSource) Start(ctx context.Context, handler handler.EventHandler, q
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.q = q
+	if s.entry != nil && s.q != nil {
+		s.q.Add(reconcile.Request{
+			NamespacedName: types.NamespacedName{Name: s.entry.Name.String()},
+		})
+	}
 	return nil
 }
 
@@ -64,6 +76,16 @@ func (s *BuildSource) SetEntry(e *BuildEntry) {
 	if e != nil && s.q != nil {
 		s.q.Add(reconcile.Request{
 			NamespacedName: types.NamespacedName{Name: e.Name.String()},
+		})
+	}
+}
+
+func (s *BuildSource) Add(nn types.NamespacedName) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.q != nil {
+		s.q.Add(reconcile.Request{
+			NamespacedName: nn,
 		})
 	}
 }

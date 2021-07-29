@@ -2,38 +2,30 @@ package configs
 
 import (
 	"context"
-	"fmt"
-	"time"
 
-	"github.com/pkg/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	ctrltiltfile "github.com/tilt-dev/tilt/internal/controllers/core/tiltfile"
-	"github.com/tilt-dev/tilt/internal/docker"
-	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/sliceutils"
 	"github.com/tilt-dev/tilt/internal/store"
-	"github.com/tilt-dev/tilt/internal/tiltfile"
-	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type ConfigsController struct {
-	tfl              tiltfile.TiltfileLoader
-	dockerClient     docker.Client
-	clock            func() time.Time
 	ctrlClient       ctrlclient.Client
 	buildSource      *ctrltiltfile.BuildSource
 	loadStartedCount int // used to synchronize with state
 }
 
-func NewConfigsController(tfl tiltfile.TiltfileLoader, dockerClient docker.Client, ctrlClient ctrlclient.Client, buildSource *ctrltiltfile.BuildSource) *ConfigsController {
+func NewConfigsController(ctrlClient ctrlclient.Client, buildSource *ctrltiltfile.BuildSource) *ConfigsController {
 	return &ConfigsController{
-		tfl:          tfl,
-		dockerClient: dockerClient,
-		ctrlClient:   ctrlClient,
-		clock:        time.Now,
-		buildSource:  buildSource,
+		ctrlClient:  ctrlClient,
+		buildSource: buildSource,
 	}
 }
 
@@ -104,8 +96,6 @@ func (cc *ConfigsController) needsBuild(ctx context.Context, st store.RStore) (*
 			st.Dispatch(store.NewErrorAction(err))
 		}
 
-		cc.loadStartedCount++
-
 		return &ctrltiltfile.BuildEntry{
 			Name:                  name,
 			FilesChanged:          filesChanged,
@@ -120,104 +110,41 @@ func (cc *ConfigsController) needsBuild(ctx context.Context, st store.RStore) (*
 	return nil, false
 }
 
-func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore, entry *ctrltiltfile.BuildEntry) {
-	startTime := cc.clock()
-	st.Dispatch(ctrltiltfile.ConfigsReloadStartedAction{
-		Name:         entry.Name,
-		FilesChanged: entry.FilesChanged,
-		StartTime:    startTime,
-		SpanID:       SpanIDForLoadCount(cc.loadStartedCount),
-		Reason:       entry.BuildReason,
-	})
-
-	actionWriter := NewTiltfileLogWriter(entry.Name, st, cc.loadStartedCount)
-	ctx = logger.CtxWithLogHandler(ctx, actionWriter)
-
-	buildcontrol.LogBuildEntry(ctx, buildcontrol.BuildEntry{
-		Name:         entry.Name,
-		BuildReason:  entry.BuildReason,
-		FilesChanged: entry.FilesChanged,
-	})
-
-	userConfigState := entry.UserConfigState
-	if entry.BuildReason.Has(model.BuildReasonFlagTiltfileArgs) {
-		logger.Get(ctx).Infof("Tiltfile args changed to: %v", userConfigState.Args)
-	}
-
-	tlr := cc.tfl.Load(ctx, entry.TiltfilePath, userConfigState)
-	if tlr.Error == nil && len(tlr.Manifests) == 0 {
-		tlr.Error = fmt.Errorf("No resources found. Check out https://docs.tilt.dev/tutorial.html to get started!")
-	}
-
-	if tlr.Orchestrator() != model.OrchestratorUnknown {
-		cc.dockerClient.SetOrchestrator(tlr.Orchestrator())
-	}
-
-	if requiresDocker(tlr) {
-		dockerErr := cc.dockerClient.CheckConnected()
-		if tlr.Error == nil && dockerErr != nil {
-			tlr.Error = errors.Wrap(dockerErr, "Failed to connect to Docker")
-		}
-	}
-
-	// TODO(nick): Rewrite to handle multiple tiltfiles.
-	err := ctrltiltfile.UpdateOwnedObjects(ctx, cc.ctrlClient, tlr, entry.EngineMode)
-	if err != nil {
-		if tlr.Error == nil {
-			tlr.Error = errors.Wrap(err, "Failed to update API server")
-		} else {
-			logger.Get(ctx).Errorf("Failed to update API server: %v", err)
-		}
-	}
-
-	if tlr.Error != nil {
-		logger.Get(ctx).Errorf("%s", tlr.Error.Error())
-	}
-
-	st.Dispatch(ctrltiltfile.ConfigsReloadedAction{
-		Name:                  entry.Name,
-		Manifests:             tlr.Manifests,
-		Tiltignore:            tlr.Tiltignore,
-		ConfigFiles:           tlr.ConfigFiles,
-		FinishTime:            cc.clock(),
-		Err:                   tlr.Error,
-		Features:              tlr.FeatureFlags,
-		TeamID:                tlr.TeamID,
-		TelemetrySettings:     tlr.TelemetrySettings,
-		MetricsSettings:       tlr.MetricsSettings,
-		Secrets:               tlr.Secrets,
-		AnalyticsTiltfileOpt:  tlr.AnalyticsOpt,
-		DockerPruneSettings:   tlr.DockerPruneSettings,
-		CheckpointAtExecStart: entry.CheckpointAtExecStart,
-		VersionSettings:       tlr.VersionSettings,
-		UpdateSettings:        tlr.UpdateSettings,
-		WatchSettings:         tlr.WatchSettings,
-	})
-}
-
 func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) error {
 	entry, ok := cc.needsBuild(ctx, st)
 	if !ok {
 		return nil
 	}
 
-	cc.buildSource.SetEntry(entry)
-	cc.loadTiltfile(ctx, st, entry)
-	return nil
-}
-
-func requiresDocker(tlr tiltfile.TiltfileLoadResult) bool {
-	if tlr.Orchestrator() == model.OrchestratorDC {
-		return true
+	newTF := &v1alpha1.Tiltfile{
+		ObjectMeta: metav1.ObjectMeta{Name: entry.Name.String()},
+		Spec: v1alpha1.TiltfileSpec{
+			Path: entry.TiltfilePath,
+		},
+	}
+	var tf v1alpha1.Tiltfile
+	err := cc.ctrlClient.Get(ctx, types.NamespacedName{Name: entry.Name.String()}, &tf)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return err
 	}
 
-	for _, m := range tlr.Manifests {
-		for _, iTarget := range m.ImageTargets {
-			if iTarget.IsDockerBuild() {
-				return true
-			}
+	if apierrors.IsNotFound(err) {
+		err := cc.ctrlClient.Create(ctx, newTF)
+		if err != nil {
+			return err
+		}
+	} else if !apicmp.DeepEqual(tf.Spec, newTF.Spec) {
+		update := tf.DeepCopy()
+		update.Spec = newTF.Spec
+		err := cc.ctrlClient.Update(ctx, update)
+		if err != nil {
+			return err
 		}
 	}
 
-	return false
+	// Don't increment until we know we've updated the apiserver.
+	cc.loadStartedCount++
+	entry.LoadCount = cc.loadStartedCount
+	cc.buildSource.SetEntry(entry)
+	return nil
 }

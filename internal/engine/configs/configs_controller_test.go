@@ -9,6 +9,10 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"k8s.io/client-go/util/workqueue"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	ctrltiltfile "github.com/tilt-dev/tilt/internal/controllers/core/tiltfile"
@@ -20,6 +24,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/internal/tiltfile"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -36,15 +41,12 @@ func TestConfigsController(t *testing.T) {
 
 	bar := manifestbuilder.New(f, "bar").WithK8sYAML(testyaml.SanchoYAML).Build()
 	f.setManifestResult(bar)
-	_ = f.cc.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
+	f.onChange()
+	f.popQueue()
+	f.popQueue()
 
-	expected := &ctrltiltfile.ConfigsReloadedAction{
-		Name:       model.MainTiltfileManifestName,
-		Manifests:  []model.Manifest{bar},
-		FinishTime: f.fc.Times[1],
-	}
-
-	assert.Equal(t, expected, f.st.end)
+	require.NotNil(t, f.st.end)
+	assert.Equal(t, []model.Manifest{bar}, f.st.end.Manifests)
 	assert.Equal(t, model.OrchestratorK8s, f.docker.Orchestrator)
 }
 
@@ -61,7 +63,9 @@ func TestConfigsControllerDockerNotConnected(t *testing.T) {
 		WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
 		Build()
 	f.setManifestResult(bar)
-	_ = f.cc.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
+	f.onChange()
+	f.popQueue()
+	f.popQueue()
 
 	if assert.Error(t, f.st.end.Err) {
 		assert.Equal(t, "Failed to connect to Docker: connection-error", f.st.end.Err.Error())
@@ -80,7 +84,9 @@ func TestConfigsControllerDockerNotConnectedButNotRequired(t *testing.T) {
 		WithK8sYAML(testyaml.SanchoYAML).
 		Build()
 	f.setManifestResult(bar)
-	_ = f.cc.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
+	f.onChange()
+	f.popQueue()
+	f.popQueue()
 
 	assert.NoError(t, f.st.end.Err)
 }
@@ -97,7 +103,9 @@ func TestBuildReasonTrigger(t *testing.T) {
 	f.st.UnlockMutableState()
 
 	f.setManifestResult(bar)
-	_ = f.cc.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
+	f.onChange()
+	f.popQueue()
+	f.popQueue()
 
 	assert.True(t, f.st.start.Reason.Has(model.BuildReasonFlagTriggerWeb),
 		"expected build reason has flag: TriggerWeb")
@@ -108,7 +116,9 @@ func TestErrorLog(t *testing.T) {
 	defer f.TearDown()
 
 	f.tfl.Result = tiltfile.TiltfileLoadResult{Error: fmt.Errorf("The goggles do nothing!")}
-	_ = f.cc.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
+	f.onChange()
+	f.popQueue()
+	f.popQueue()
 
 	assert.Contains(f.T(), f.st.out.String(), "ERROR LEVEL: The goggles do nothing!")
 }
@@ -157,8 +167,9 @@ type ccFixture struct {
 	cc     *ConfigsController
 	st     *testStore
 	tfl    *tiltfile.FakeTiltfileLoader
-	fc     *testutils.FakeClock
 	docker *docker.FakeClient
+	tfr    *ctrltiltfile.Reconciler
+	q      workqueue.RateLimitingInterface
 }
 
 func newCCFixture(t *testing.T) *ccFixture {
@@ -167,12 +178,14 @@ func newCCFixture(t *testing.T) *ccFixture {
 	tfl := tiltfile.NewFakeTiltfileLoader()
 	d := docker.NewFakeClient()
 	tc := fake.NewFakeTiltClient()
+	q := workqueue.NewRateLimitingQueue(
+		workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, time.Millisecond))
 	buildSource := ctrltiltfile.NewBuildSource()
-	cc := NewConfigsController(tfl, d, tc, buildSource)
-	fc := testutils.NewRandomFakeClock()
-	cc.clock = fc.Clock()
+	tfr := ctrltiltfile.NewReconciler(st, tfl, d, tc, v1alpha1.NewScheme(), buildSource)
+	cc := NewConfigsController(tc, buildSource)
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	ctx, cancel := context.WithCancel(ctx)
+	_ = buildSource.Start(ctx, handler.Funcs{}, q)
 
 	// configs_controller uses state.RelativeTiltfilePath, which is relative to wd
 	// sometimes the original directory was invalid (e.g., it was another test's temp dir, which was deleted,
@@ -194,8 +207,9 @@ func newCCFixture(t *testing.T) *ccFixture {
 		cc:             cc,
 		st:             st,
 		tfl:            tfl,
-		fc:             fc,
 		docker:         d,
+		tfr:            tfr,
+		q:              q,
 	}
 }
 
@@ -216,6 +230,30 @@ func (f *ccFixture) addManifest(name model.ManifestName) {
 func (f *ccFixture) setManifestResult(m model.Manifest) {
 	f.tfl.Result = tiltfile.TiltfileLoadResult{
 		Manifests: []model.Manifest{m},
+	}
+}
+
+func (f *ccFixture) onChange() {
+	_ = f.cc.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
+}
+
+// Wait for the next item on the workqueue, then run reconcile on it.
+func (f *ccFixture) popQueue() {
+	f.T().Helper()
+
+	done := make(chan error)
+	go func() {
+		item, _ := f.q.Get()
+		_, err := f.tfr.Reconcile(f.ctx, item.(reconcile.Request))
+		f.q.Done(item)
+		done <- err
+	}()
+
+	select {
+	case <-time.After(time.Second):
+		f.T().Fatal("timeout waiting for workqueue")
+	case err := <-done:
+		assert.NoError(f.T(), err)
 	}
 }
 
