@@ -65,6 +65,95 @@ func TestMonitorReady(t *testing.T) {
 	assertSnapshot(t, f.out.String())
 }
 
+// https://github.com/tilt-dev/tilt/issues/3513
+func TestJobCompleted(t *testing.T) {
+	f := newPMFixture(t)
+	defer f.TearDown()
+
+	start := time.Now()
+	p := v1alpha1.Pod{
+		Name:      "pod-id",
+		CreatedAt: apis.NewTime(start),
+		Conditions: []v1alpha1.PodCondition{
+			{
+				Type:               string(v1.PodScheduled),
+				Status:             string(v1.ConditionTrue),
+				LastTransitionTime: apis.NewTime(start.Add(time.Second)),
+				Reason:             "PodCompleted",
+			},
+			{
+				Type:               string(v1.PodInitialized),
+				Status:             string(v1.ConditionTrue),
+				LastTransitionTime: apis.NewTime(start.Add(5 * time.Second)),
+				Reason:             "PodCompleted",
+			},
+			{
+				Type:               string(v1.PodReady),
+				Status:             string(v1.ConditionFalse),
+				LastTransitionTime: apis.NewTime(start.Add(10 * time.Second)),
+				Reason:             "PodCompleted",
+			},
+		},
+	}
+
+	state := store.NewState()
+	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
+		model.Manifest{Name: "server"}, p))
+	f.store.SetState(*state)
+
+	_ = f.pm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+
+	assertSnapshot(t, f.out.String())
+}
+
+func TestJobCompletedAfterReady(t *testing.T) {
+	f := newPMFixture(t)
+	defer f.TearDown()
+
+	start := time.Now()
+	p := v1alpha1.Pod{
+		Name:      "pod-id",
+		CreatedAt: apis.NewTime(start),
+		Conditions: []v1alpha1.PodCondition{
+			{
+				Type:               string(v1.PodScheduled),
+				Status:             string(v1.ConditionTrue),
+				LastTransitionTime: apis.NewTime(start.Add(time.Second)),
+			},
+			{
+				Type:               string(v1.PodInitialized),
+				Status:             string(v1.ConditionTrue),
+				LastTransitionTime: apis.NewTime(start.Add(5 * time.Second)),
+			},
+			{
+				Type:               string(v1.PodReady),
+				Status:             string(v1.ConditionTrue),
+				LastTransitionTime: apis.NewTime(start.Add(10 * time.Second)),
+			},
+		},
+	}
+
+	state := store.NewState()
+	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
+		model.Manifest{Name: "server"}, p))
+	f.store.SetState(*state)
+	_ = f.pm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+
+	p.Conditions[2].Status = string(v1.ConditionFalse)
+	p.Conditions[2] = v1alpha1.PodCondition{
+		Type:               string(v1.PodReady),
+		Status:             string(v1.ConditionFalse),
+		LastTransitionTime: apis.NewTime(start.Add(20 * time.Second)),
+		Reason:             "PodCompleted",
+	}
+	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
+		model.Manifest{Name: "server"}, p))
+	f.store.SetState(*state)
+	_ = f.pm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+
+	assertSnapshot(t, f.out.String())
+}
+
 type pmFixture struct {
 	*tempdir.TempDirFixture
 	ctx    context.Context

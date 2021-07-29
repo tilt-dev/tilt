@@ -6,13 +6,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
-
 	"github.com/google/go-cmp/cmp"
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
@@ -119,6 +118,19 @@ func (m *PodMonitor) printCondition(ctx context.Context, name string, cond v1alp
 	}
 
 	if cond.Status == string(v1.ConditionTrue) {
+		l.Infof("%s┊ %s%s- %s", indent, name, spacer, duration)
+		return
+	}
+
+	// PodConditions unfortunately don't represent Jobs well:
+	// 1) If a Job runs quickly enough, we might never observe the pod in a ready state (i.e., no updates have Type="Ready" and Status="True")
+	// 2) After a Job finishes, we get a pod update with Type="Ready", Status="False", and LastTransitionTime=the job end time,
+	//    meaning that we lose the time at which the pod actually transitioned to the ready state.
+	// Rather than invest in more state to track these for the Job case, let's just replace "Ready" with "Completed"
+	// and reconsider if/when a user cares.
+	if cond.Type == "Ready" && cond.Reason == "PodCompleted" {
+		name = "Completed"
+		spacer = strings.Repeat(" ", spacerMax-len(name))
 		l.Infof("%s┊ %s%s- %s", indent, name, spacer, duration)
 		return
 	}
