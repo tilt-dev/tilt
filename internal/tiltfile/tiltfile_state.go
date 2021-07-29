@@ -89,7 +89,7 @@ type tiltfileState struct {
 	k8sUnresourced []k8s.K8sEntity
 
 	dc                 dcResourceSet // currently only support one d-c.yml
-	k8sResourceOptions map[string]k8sResourceOptions
+	k8sResourceOptions []k8sResourceOptions
 	localResources     []localResource
 
 	// ensure that any images are pushed to/pulled from this registry, rewriting names if needed
@@ -159,7 +159,6 @@ func newTiltfileState(
 		builtinCallCounts:         make(map[string]int),
 		builtinArgCounts:          make(map[string]map[string]int),
 		unconsumedLiveUpdateSteps: make(map[string]liveUpdateStep),
-		k8sResourceOptions:        make(map[string]k8sResourceOptions),
 		localResources:            []localResource{},
 		triggerMode:               TriggerModeAuto,
 		features:                  features,
@@ -697,7 +696,7 @@ func (s *tiltfileState) assembleK8s() error {
 		fullNames[i] = fullNameFromK8sEntity(e)
 	}
 
-	for workload, opts := range s.k8sResourceOptions {
+	for _, opts := range s.k8sResourceOptions {
 		if opts.manuallyGrouped {
 			r, err := s.makeK8sResource(opts.newName)
 			if err != nil {
@@ -706,18 +705,27 @@ func (s *tiltfileState) assembleK8s() error {
 			r.manuallyGrouped = true
 			s.k8sByName[opts.newName] = r
 		}
-		if r, ok := s.k8sByName[workload]; ok {
-			r.extraPodSelectors = opts.extraPodSelectors
-			r.podReadinessMode = opts.podReadinessMode
-			r.portForwards = opts.portForwards
-			r.triggerMode = opts.triggerMode
-			r.autoInit = opts.autoInit
-			r.resourceDeps = opts.resourceDeps
-			r.links = opts.links
-			r.labels = opts.labels
+		if r, ok := s.k8sByName[opts.workload]; ok {
+			// Options are added, so aggregate options from previous resource calls.
+			r.extraPodSelectors = append(r.extraPodSelectors, opts.extraPodSelectors...)
+			if opts.podReadinessMode != model.PodReadinessNone {
+				r.podReadinessMode = opts.podReadinessMode
+			}
+			r.portForwards = append(r.portForwards, opts.portForwards...)
+			if opts.triggerMode != TriggerModeUnset {
+				r.triggerMode = opts.triggerMode
+			}
+			if opts.autoInit.IsSet {
+				r.autoInit = opts.autoInit.Value
+			}
+			r.resourceDeps = append(r.resourceDeps, opts.resourceDeps...)
+			r.links = append(r.links, opts.links...)
+			for k, v := range opts.labels {
+				r.labels[k] = v
+			}
 			if opts.newName != "" && opts.newName != r.name {
 				if _, ok := s.k8sByName[opts.newName]; ok {
-					return fmt.Errorf("k8s_resource() specified to rename %q to %q, but there already exists a resource with that name", r.name, opts.newName)
+					return fmt.Errorf("k8s_resource at %s specified to rename %q to %q, but there already exists a resource with that name", opts.tiltfilePosition.String(), r.name, opts.newName)
 				}
 				delete(s.k8sByName, r.name)
 				r.name = opts.newName
@@ -767,7 +775,7 @@ func (s *tiltfileState) assembleK8s() error {
 			for name := range s.k8sByName {
 				knownResources = append(knownResources, name)
 			}
-			return fmt.Errorf("k8s_resource() specified unknown resource %q. known resources: %s", workload, strings.Join(knownResources, ", "))
+			return fmt.Errorf("k8s_resource at %s specified unknown resource %q. known resources: %s", opts.tiltfilePosition.String(), opts.workload, strings.Join(knownResources, ", "))
 		}
 	}
 
