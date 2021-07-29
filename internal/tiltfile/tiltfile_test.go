@@ -3097,6 +3097,22 @@ k8s_resource('foo', new_name='bar')
 	f.assertNextManifest("bar", deployment("foo"))
 }
 
+func TestK8sResourceRenameTwice(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+k8s_resource('foo', new_name='bar')
+k8s_resource('bar', new_name='baz')
+`)
+
+	f.load()
+	f.assertNumManifests(1)
+	f.assertNextManifest("baz", deployment("foo"))
+}
+
 func TestK8sResourceNewNameConflict(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -3131,6 +3147,21 @@ k8s_resource('foo:deployment:ns2', new_name='foo')
 
 	f.assertNextManifest("foo:deployment:ns1", db(image("gcr.io/foo1")))
 	f.assertNextManifest("foo", db(image("gcr.io/foo2")))
+}
+
+func TestConflictingNewNames(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.yaml("ns1.yaml", namespace("ns1"))
+	f.yaml("ns2.yaml", namespace("ns2"))
+	f.file("Tiltfile", `
+k8s_yaml(['ns1.yaml', 'ns2.yaml'])
+k8s_resource(new_name='foo', objects=['ns1:namespace'])
+k8s_resource(new_name='foo', objects=['ns2:namespace'])
+`)
+
+	f.loadErrString("k8s_resource named \"foo\" already exists")
 }
 
 func TestAdditivePortForwards(t *testing.T) {
@@ -5372,6 +5403,17 @@ k8s_resource('hello-foo', objects=['foo:secret'])
 	f.assertNoMoreManifests()
 }
 
+func TestK8sResourceNewNameWithoutObjects(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+k8s_resource(new_name='foo')
+`)
+
+	f.loadErrString("k8s_resource doesn't specify a workload or any objects")
+}
+
 func TestK8sResourceObjectsWithGroup(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -5434,7 +5476,7 @@ k8s_resource('foo', objects=['baz:namespace:qux'])
 	f.loadErrString("No object identified by the fragment \"baz:namespace:qux\" could be found. Possible objects are: \"foo:Deployment:default\", \"baz:Namespace:default\"")
 }
 
-func TestK8sResouceObjectsNonWorkloadOnly(t *testing.T) {
+func TestK8sResourceObjectsNonWorkloadOnly(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -5454,7 +5496,6 @@ k8s_resource(new_name='foo', objects=['bar', 'baz:namespace:default'])
 }
 
 func TestK8sResourceNewNameAdditive(t *testing.T) {
-
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -5473,7 +5514,6 @@ k8s_resource('namespaces', objects=['b'])
 }
 
 func TestK8sExistingResourceAdditive(t *testing.T) {
-
 	f := newFixture(t)
 	defer f.TearDown()
 
@@ -5495,7 +5535,31 @@ k8s_resource('a', objects=['c'])
 }
 
 func TestK8sExistingResourceNewNameAdditive(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
 
+	// this was working non-deterministically based on hashtable order, so generate a bunch of resources
+	// to reduce the chance of false positives
+	// https://github.com/tilt-dev/tilt/issues/4808
+	for i := 1; i <= 25; i++ {
+		f.yaml(fmt.Sprintf("deploy%d.yaml", i), deployment(fmt.Sprintf("deploy%d", i)))
+	}
+
+	f.file("Tiltfile", `
+for i in range(1, 26):
+  k8s_yaml('deploy%d.yaml' % (i))
+  k8s_resource('deploy%d' % (i), new_name='deploy%d-renamed' % (i), labels=['a'])
+  k8s_resource('deploy%d-renamed' % (i), labels=['b'])
+`)
+
+	f.load()
+	for i := 1; i <= 25; i++ {
+		f.assertNextManifest(model.ManifestName(fmt.Sprintf("deploy%d-renamed", i)),
+			k8sObject(fmt.Sprintf("deploy%d", i), "Deployment"), resourceLabels("a", "b"))
+	}
+}
+
+func TestK8sExistingResourceNewNameAlreadyTaken(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 

@@ -67,12 +67,14 @@ type k8sResource struct {
 
 // holds options passed to `k8s_resource` until assembly happens
 type k8sResourceOptions struct {
+	workload string
 	// if non-empty, how to rename this resource
 	newName           string
 	portForwards      []model.PortForward
 	extraPodSelectors []labels.Set
 	triggerMode       triggerMode
-	autoInit          bool
+	autoInit          value.BoolOrNone
+	tiltfilePosition  syntax.Position
 	resourceDeps      []string
 	objects           []string
 	manuallyGrouped   bool
@@ -285,18 +287,11 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 	}
 
 	resourceName := workload.String()
-	o, ok := s.k8sResourceOptions[resourceName]
-	if !ok {
-		// Set default options.
-		o.autoInit = true
-	}
-
-	newManualGroup := false
-	if workload == "" && !o.manuallyGrouped {
+	manuallyGrouped := false
+	if workload == "" {
 		resourceName = newName.String()
 		// If a resource doesn't specify an existing workload then it needs to have objects to be valid
-		newManualGroup = true
-		o.manuallyGrouped = true
+		manuallyGrouped = true
 	}
 
 	if resourceName == "" {
@@ -323,38 +318,30 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 		return nil, errors.Wrapf(err, "%s: resource_deps", fn.Name())
 	}
 
-	if newManualGroup && len(objects) == 0 {
-		return nil, fmt.Errorf("k8s_resource(new_name) creates a new group. Must specify objects in the group with objects=[...].")
+	if manuallyGrouped && len(objects) == 0 {
+		return nil, fmt.Errorf("k8s_resource doesn't specify a workload or any objects. All non-workload resources must specify 1 or more objects")
 	}
 
-	// Options are added, so aggregate options from previous resource calls.
-	if newName != "" {
-		o.newName = string(newName)
-	}
-	o.portForwards = append(o.portForwards, portForwards...)
-	o.extraPodSelectors = append(o.extraPodSelectors, extraPodSelectors...)
-	if triggerMode != TriggerModeUnset {
-		o.triggerMode = triggerMode
-	}
-	if autoInit.IsSet {
-		o.autoInit = autoInit.Value
-	}
-	o.resourceDeps = append(o.resourceDeps, resourceDeps...)
-	o.objects = append(o.objects, objects...)
-	if podReadinessMode.Value != model.PodReadinessNone {
-		o.podReadinessMode = podReadinessMode.Value
-	}
-	o.links = append(o.links, links.Links...)
-
-	if o.labels == nil {
-		o.labels = make(map[string]string)
-	}
-
+	labelMap := make(map[string]string)
 	for k, v := range labels.Values {
-		o.labels[k] = v
+		labelMap[k] = v
 	}
 
-	s.k8sResourceOptions[resourceName] = o
+	s.k8sResourceOptions = append(s.k8sResourceOptions, k8sResourceOptions{
+		workload:          resourceName,
+		newName:           string(newName),
+		portForwards:      portForwards,
+		extraPodSelectors: extraPodSelectors,
+		tiltfilePosition:  thread.CallFrame(1).Pos,
+		triggerMode:       triggerMode,
+		autoInit:          autoInit,
+		resourceDeps:      resourceDeps,
+		objects:           objects,
+		manuallyGrouped:   manuallyGrouped,
+		podReadinessMode:  podReadinessMode.Value,
+		links:             links.Links,
+		labels:            labelMap,
+	})
 
 	return starlark.None, nil
 }
@@ -615,6 +602,7 @@ func (s *tiltfileState) makeK8sResource(name string) (*k8sResource, error) {
 		name:        name,
 		imageRefMap: make(map[string]int),
 		autoInit:    true,
+		labels:      make(map[string]string),
 	}
 	s.k8s = append(s.k8s, r)
 	s.k8sByName[name] = r
