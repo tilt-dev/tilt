@@ -6,6 +6,7 @@ import {
 import React, { Dispatch, PropsWithChildren, SetStateAction } from "react"
 import styled from "styled-components"
 import { ReactComponent as CaretSvg } from "./assets/svg/caret.svg"
+import { ReactComponent as InfoSvg } from "./assets/svg/info.svg"
 import Features, { FeaturesContext, Flag } from "./feature"
 import { orderLabels } from "./labels"
 import { PersistentStateProvider } from "./LocalStorage"
@@ -19,6 +20,7 @@ import SidebarItemView, {
 } from "./SidebarItemView"
 import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
 import { Color, FontSize, SizeUnit } from "./style-helpers"
+import TiltTooltip from "./Tooltip"
 import { ResourceView, SidebarOptions } from "./types"
 
 let SidebarResourcesRoot = styled.nav`
@@ -30,7 +32,9 @@ let SidebarResourcesRoot = styled.nav`
   }
 `
 
-let SidebarList = styled.div``
+let SidebarList = styled.div`
+  margin-bottom: ${SizeUnit(1.75)};
+`
 
 let SidebarListSectionName = styled.div`
   margin-top: ${SizeUnit(0.5)};
@@ -61,6 +65,23 @@ const SidebarLabelSection = styled(Accordion)`
   &.MuiAccordion-root,
   &.MuiAccordion-root.Mui-expanded {
     margin: ${SizeUnit(1 / 3)} ${SizeUnit(1 / 2)};
+  }
+`
+
+const SidebarGroupInfo = styled.aside`
+  background-color: ${Color.grayDark};
+  bottom: 0;
+  box-sizing: border-box;
+  left: 0;
+  padding: 10px 10px 5px 10px;
+  position: absolute;
+  width: 100%;
+  z-index: 2;
+`
+
+const InfoIcon = styled(InfoSvg)`
+  .fillStd {
+    fill: ${Color.blueLight};
   }
 `
 
@@ -121,6 +142,30 @@ const SidebarGroupDetails = styled(AccordionDetails)`
     }
   }
 `
+
+const GROUP_INFO_TOOLTIP_ID = "sidebar-groups-info"
+function SidebarLabelInfo() {
+  const tooltipInfo = (
+    <>
+      Resources can be grouped by adding custom labels.{" "}
+      <a
+        href="https://docs.tilt.dev/tiltfile_concepts.html#resource-groups"
+        target="_blank"
+      >
+        See docs for more info
+      </a>
+      .
+    </>
+  )
+
+  return (
+    <SidebarGroupInfo>
+      <TiltTooltip interactive title={tooltipInfo} leaveDelay={500}>
+        <InfoIcon id={GROUP_INFO_TOOLTIP_ID} />
+      </TiltTooltip>
+    </SidebarGroupInfo>
+  )
+}
 
 export function SidebarListSection(
   props: PropsWithChildren<{ name: string }>
@@ -337,7 +382,8 @@ export class SidebarResources extends React.Component<SidebarProps> {
 
     return (
       <SidebarResourcesRoot className={`Sidebar-resources ${isOverviewClass}`}>
-        <SidebarList>
+        <SidebarLabelInfo />
+        <SidebarList aria-describedby={GROUP_INFO_TOOLTIP_ID}>
           <OverviewSidebarOptions options={options} setOptions={setOptions} />
           {displayLabelGroups ? (
             <SidebarGroupedByLabels {...this.props} items={filteredItems} />

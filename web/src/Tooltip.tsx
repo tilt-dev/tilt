@@ -1,13 +1,7 @@
 import { makeStyles } from "@material-ui/core/styles"
-import Tooltip from "@material-ui/core/Tooltip"
+import Tooltip, { TooltipProps } from "@material-ui/core/Tooltip"
 import React from "react"
 import { Color, Font, FontSize, SizeUnit } from "./style-helpers"
-
-type TooltipProps = {
-  title: string
-  children: React.ReactElement
-  open?: boolean // Useful for keeping the tooltip open in storybook
-}
 
 let useStyles = makeStyles((theme) => ({
   arrow: {
@@ -33,5 +27,13 @@ let useStyles = makeStyles((theme) => ({
 export default function TiltTooltip(props: TooltipProps) {
   const classes = useStyles()
 
-  return <Tooltip arrow placement="top-end" classes={classes} {...props} />
+  return (
+    <Tooltip
+      arrow
+      placement="top-end"
+      classes={classes}
+      role="tooltip"
+      {...props}
+    />
+  )
 }
