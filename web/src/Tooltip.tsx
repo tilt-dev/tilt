@@ -43,14 +43,16 @@ export default function TiltTooltip(props: TooltipProps) {
 }
 
 const InfoIcon = styled(InfoSvg)`
+  padding: ${SizeUnit(0.25)};
+  cursor: pointer;
+
   .fillStd {
-    fill: ${Color.blueLight};
+    fill: ${Color.gray6};
   }
 `
 
 interface InfoTooltipProps {
   idForIcon?: string // Use to semantically associate the tooltip with another element through `aria-describedby` or `aria-labelledby`
-  size?: number
 }
 
 export function TiltInfoTooltip(
@@ -58,11 +60,7 @@ export function TiltInfoTooltip(
 ) {
   return (
     <TiltTooltip interactive leaveDelay={INFO_TOOLTIP_LEAVE_DELAY} {...props}>
-      <InfoIcon
-        id={props.idForIcon ?? ""}
-        height={props.size ?? 20}
-        width={props.size ?? 20}
-      />
+      <InfoIcon id={props.idForIcon ?? ""} height={16} width={16} />
     </TiltTooltip>
   )
 }

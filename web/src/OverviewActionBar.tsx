@@ -483,14 +483,6 @@ function FilterTermFieldError({ error }: { error: string }) {
   )
 }
 
-const FilterTermInfoTooltip = styled(TiltInfoTooltip)`
-  margin: 0 ${SizeUnit(1 / 4)};
-
-  & .fillStd {
-    fill: ${Color.grayLight};
-  }
-`
-
 const filterTermTooltipContent = (
   <>
     RegExp should be wrapped in forward slashes, is case-insensitive, and is{" "}
@@ -598,7 +590,7 @@ export function FilterTermField({ termFromUrl }: { termFromUrl: FilterTerm }) {
       <SrOnly component="label" htmlFor={FILTER_FIELD_ID}>
         Filter resource logs by text or /regexp/
       </SrOnly>
-      <FilterTermInfoTooltip
+      <TiltInfoTooltip
         id={FILTER_FIELD_TOOLTIP_ID}
         title={filterTermTooltipContent}
         placement="right-end"
