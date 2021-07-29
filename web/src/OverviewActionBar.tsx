@@ -491,6 +491,19 @@ const FilterTermInfoTooltip = styled(TiltInfoTooltip)`
   }
 `
 
+const filterTermTooltipContent = (
+  <>
+    RegExp should be wrapped in forward slashes, is case-insensitive, and is{" "}
+    <a
+      href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions"
+      target="_blank"
+    >
+      parsed in JavaScript
+    </a>
+    .
+  </>
+)
+
 const debounceFilterLogs = debounce((history: History, search: string) => {
   // Record the action for analytics
   incr("ui.web.filterTerm", { action: "edit" })
@@ -587,7 +600,7 @@ export function FilterTermField({ termFromUrl }: { termFromUrl: FilterTerm }) {
       </SrOnly>
       <FilterTermInfoTooltip
         id={FILTER_FIELD_TOOLTIP_ID}
-        title="RegExp should be wrapped in forward slashes, is case-insensitive, and parsed in JavaScript."
+        title={filterTermTooltipContent}
         placement="right-end"
       />
     </>

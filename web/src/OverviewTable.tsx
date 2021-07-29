@@ -390,7 +390,7 @@ const columnNameToInfoTooltip: {
 } = {
   "Trigger Mode": (
     <>
-      Trigger mode can be toggled through the UI. To set it persistantly, see{" "}
+      Trigger mode can be toggled through the UI. To set it persistently, see{" "}
       <a href={linkToTiltDocs(TiltDocsPage.TriggerMode)}>Tiltfile docs</a>.
     </>
   ),
