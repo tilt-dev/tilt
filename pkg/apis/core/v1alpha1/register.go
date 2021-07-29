@@ -64,6 +64,7 @@ func AllResourceObjects() []resource.Object {
 		&PortForward{},
 		&ImageMap{},
 		&Tiltfile{},
+		&ConfigMap{},
 
 		// Hey! You! If you're adding a new top-level type, add the type object here.
 	}
@@ -82,6 +83,7 @@ func AllResourceLists() []runtime.Object {
 		&PortForwardList{},
 		&ImageMapList{},
 		&TiltfileList{},
+		&ConfigMapList{},
 
 		// Hey! You! If you're adding a new top-level type, add the List type here.
 	}
