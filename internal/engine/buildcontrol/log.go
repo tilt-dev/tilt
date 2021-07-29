@@ -8,16 +8,16 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-type BuildEntry interface {
-	Name() model.ManifestName
-	BuildReason() model.BuildReason
-	FilesChanged() []string
+type BuildEntry struct {
+	Name         model.ManifestName
+	BuildReason  model.BuildReason
+	FilesChanged []string
 }
 
 func LogBuildEntry(ctx context.Context, entry BuildEntry) {
-	name := entry.Name()
-	buildReason := entry.BuildReason()
-	changedFiles := entry.FilesChanged()
+	name := entry.Name
+	buildReason := entry.BuildReason
+	changedFiles := entry.FilesChanged
 	firstBuild := buildReason.Has(model.BuildReasonFlagInit)
 
 	l := logger.Get(ctx).WithFields(logger.Fields{logger.FieldNameBuildEvent: "init"})

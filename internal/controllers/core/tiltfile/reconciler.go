@@ -27,24 +27,27 @@ type Reconciler struct {
 	dockerClient docker.Client
 	ctrlClient   ctrlclient.Client
 	indexer      *indexer.Indexer
+	buildSource  *BuildSource
 }
 
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	b := ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.Tiltfile{}).
 		Watches(&source.Kind{Type: &v1alpha1.FileWatch{}},
-			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue))
+			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
+		Watches(r.buildSource, handler.Funcs{})
 
 	return b, nil
 }
 
-func NewReconciler(st store.RStore, tfl tiltfile.TiltfileLoader, dockerClient docker.Client, ctrlClient ctrlclient.Client, scheme *runtime.Scheme) *Reconciler {
+func NewReconciler(st store.RStore, tfl tiltfile.TiltfileLoader, dockerClient docker.Client, ctrlClient ctrlclient.Client, scheme *runtime.Scheme, buildSource *BuildSource) *Reconciler {
 	return &Reconciler{
 		st:           st,
 		tfl:          tfl,
 		dockerClient: dockerClient,
 		ctrlClient:   ctrlClient,
 		indexer:      indexer.NewIndexer(scheme, indexTiltfile),
+		buildSource:  buildSource,
 	}
 }
 
