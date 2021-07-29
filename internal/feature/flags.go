@@ -58,7 +58,7 @@ var MainDefaults = Defaults{
 		Status:  Obsolete,
 	},
 	Labels: Value{
-		Enabled: false,
+		Enabled: true,
 		Status:  Active,
 	},
 }
