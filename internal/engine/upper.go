@@ -13,10 +13,10 @@ import (
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch"
+	ctrltiltfile "github.com/tilt-dev/tilt/internal/controllers/core/tiltfile"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
-	"github.com/tilt-dev/tilt/internal/engine/configs"
 	"github.com/tilt-dev/tilt/internal/engine/dcwatch"
 	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
 	"github.com/tilt-dev/tilt/internal/engine/local"
@@ -137,9 +137,9 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleBuildCompleted(ctx, state, action)
 	case buildcontrol.BuildStartedAction:
 		handleBuildStarted(ctx, state, action)
-	case configs.ConfigsReloadStartedAction:
+	case ctrltiltfile.ConfigsReloadStartedAction:
 		handleConfigsReloadStarted(ctx, state, action)
-	case configs.ConfigsReloadedAction:
+	case ctrltiltfile.ConfigsReloadedAction:
 		handleConfigsReloaded(ctx, state, action)
 	case dcwatch.EventAction:
 		handleDockerComposeEvent(ctx, state, action)
@@ -485,7 +485,7 @@ func handleStartProfilingAction(state *store.EngineState) {
 func handleConfigsReloadStarted(
 	ctx context.Context,
 	state *store.EngineState,
-	event configs.ConfigsReloadStartedAction,
+	event ctrltiltfile.ConfigsReloadStartedAction,
 ) {
 	ms, ok := state.TiltfileStates[event.Name]
 	if !ok {
@@ -507,7 +507,7 @@ func handleConfigsReloadStarted(
 func handleConfigsReloaded(
 	ctx context.Context,
 	state *store.EngineState,
-	event configs.ConfigsReloadedAction,
+	event ctrltiltfile.ConfigsReloadedAction,
 ) {
 
 	manifests := event.Manifests

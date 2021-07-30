@@ -38,7 +38,7 @@ func TestConfigsController(t *testing.T) {
 	f.setManifestResult(bar)
 	_ = f.cc.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 
-	expected := &ConfigsReloadedAction{
+	expected := &ctrltiltfile.ConfigsReloadedAction{
 		Name:       model.MainTiltfileManifestName,
 		Manifests:  []model.Manifest{bar},
 		FinishTime: f.fc.Times[1],
@@ -116,8 +116,8 @@ func TestErrorLog(t *testing.T) {
 type testStore struct {
 	*store.TestingStore
 	out   *bytes.Buffer
-	start *ConfigsReloadStartedAction
-	end   *ConfigsReloadedAction
+	start *ctrltiltfile.ConfigsReloadStartedAction
+	end   *ctrltiltfile.ConfigsReloadedAction
 }
 
 func NewTestingStore() *testStore {
@@ -139,12 +139,12 @@ func (s *testStore) Dispatch(action store.Action) {
 		_, _ = fmt.Fprintf(s.out, "%s %s", level, logAction.Message())
 	}
 
-	start, ok := action.(ConfigsReloadStartedAction)
+	start, ok := action.(ctrltiltfile.ConfigsReloadStartedAction)
 	if ok {
 		s.start = &start
 	}
 
-	end, ok := action.(ConfigsReloadedAction)
+	end, ok := action.(ctrltiltfile.ConfigsReloadedAction)
 	if ok {
 		s.end = &end
 	}
