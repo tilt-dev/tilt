@@ -7,6 +7,7 @@ import { incr } from "./analytics"
 import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
+import { linkToTiltDocs, TiltDocsPage } from "./constants"
 import { InstrumentedButton } from "./instrumentedComponents"
 import { displayURL } from "./links"
 import { LogAlertIndex, useLogStore } from "./LogStore"
@@ -26,6 +27,7 @@ import {
 } from "./style-helpers"
 import { isZeroTime, timeDiff } from "./time"
 import { timeAgoFormatter } from "./timeFormatters"
+import { TiltInfoTooltip } from "./Tooltip"
 import { ResourceStatus, TargetType, TriggerMode } from "./types"
 
 type UIResource = Proto.v1alpha1UIResource
@@ -93,6 +95,11 @@ const ResourceTableHeader = styled(ResourceTableData)`
   padding-bottom: ${SizeUnit(0.5)};
   box-sizing: border-box;
   white-space: nowrap;
+`
+
+const ResourceTableHeaderLabel = styled.div`
+  display: flex;
+  align-items: center;
 `
 
 const ResourceTableHeaderSortTriangle = styled.div`
@@ -375,6 +382,30 @@ const columns: Column<RowValues>[] = [
   },
 ]
 
+const columnNameToInfoTooltip: {
+  [key: string]: NonNullable<React.ReactNode>
+} = {
+  "Trigger Mode": (
+    <>
+      Trigger mode can be toggled through the UI. To set it persistently, see{" "}
+      <a href={linkToTiltDocs(TiltDocsPage.TriggerMode)}>Tiltfile docs</a>.
+    </>
+  ),
+}
+
+function ResourceTableHeaderTip(props: { name?: string }) {
+  if (!props.name) {
+    return null
+  }
+
+  const tooltipContent = columnNameToInfoTooltip[props.name]
+  if (!tooltipContent) {
+    return null
+  }
+
+  return <TiltInfoTooltip title={tooltipContent} />
+}
+
 async function copyTextToClipboard(text: string, cb: () => void) {
   await navigator.clipboard.writeText(text)
   cb()
@@ -475,18 +506,21 @@ export default function OverviewTable(props: OverviewTableProps) {
                   }),
                 ])}
               >
-                {column.render("Header")}
-                {column.canSort && (
-                  <ResourceTableHeaderSortTriangle
-                    className={
-                      column.isSorted
-                        ? column.isSortedDesc
-                          ? "is-sorted-desc"
-                          : "is-sorted-asc"
-                        : ""
-                    }
-                  />
-                )}
+                <ResourceTableHeaderLabel>
+                  {column.render("Header")}
+                  <ResourceTableHeaderTip name={String(column.Header)} />
+                  {column.canSort && (
+                    <ResourceTableHeaderSortTriangle
+                      className={
+                        column.isSorted
+                          ? column.isSortedDesc
+                            ? "is-sorted-desc"
+                            : "is-sorted-asc"
+                          : ""
+                      }
+                    />
+                  )}
+                </ResourceTableHeaderLabel>
               </ResourceTableHeader>
             ))}
           </ResourceTableRow>

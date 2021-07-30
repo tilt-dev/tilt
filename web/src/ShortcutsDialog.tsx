@@ -3,6 +3,7 @@ import styled from "styled-components"
 import { ReactComponent as GithubSvg } from "./assets/svg/github.svg"
 import { ReactComponent as SlackSvg } from "./assets/svg/slack.svg"
 import ButtonLink from "./ButtonLink"
+import { linkToTiltDocs } from "./constants"
 import FloatDialog, { HR } from "./FloatDialog"
 import { AnimDuration, Color } from "./style-helpers"
 
@@ -111,7 +112,7 @@ export default function ShortcutsDialog(props: props) {
       <HR />
       <ShortcutRow style={{ marginBottom: "24px" }}>
         <ButtonLink
-          href="https://docs.tilt.dev/"
+          href={linkToTiltDocs()}
           target="_blank"
           rel="noopener noreferrer"
         >

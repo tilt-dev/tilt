@@ -20,7 +20,7 @@ import SidebarItemView, {
 } from "./SidebarItemView"
 import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
 import { Color, FontSize, SizeUnit } from "./style-helpers"
-import TiltTooltip from "./Tooltip"
+import { TiltInfoTooltip } from "./Tooltip"
 import { ResourceView, SidebarOptions } from "./types"
 
 let SidebarResourcesRoot = styled.nav`
@@ -160,9 +160,7 @@ function SidebarLabelInfo() {
 
   return (
     <SidebarGroupInfo>
-      <TiltTooltip interactive title={tooltipInfo} leaveDelay={500}>
-        <InfoIcon id={GROUP_INFO_TOOLTIP_ID} />
-      </TiltTooltip>
+      <TiltInfoTooltip title={tooltipInfo} />
     </SidebarGroupInfo>
   )
 }
