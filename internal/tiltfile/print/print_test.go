@@ -3,6 +3,7 @@ package print
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -32,36 +33,65 @@ func TestFail(t *testing.T) {
 	}
 }
 
-func TestExit(t *testing.T) {
+func TestExitArgTypes(t *testing.T) {
+	type tc struct {
+		name        string
+		exitArg     string
+		expectedLog string
+	}
+
+	tcs := []tc{
+		{"Omitted", ``, ""},
+		{"String", `"goodbye"`, "goodbye"},
+		{"StringNamed", `code='ciao'`, "ciao"},
+		{"Int", `123`, "123"},
+		{"Dict", `dict(foo='bar', baz=123)`, `{"foo": "bar", "baz": 123}`},
+		{"None", `None`, ""},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newFixture(t)
+			defer f.TearDown()
+
+			f.File(
+				"Tiltfile", fmt.Sprintf(`
+exit(%s)
+fail("this can't happen!")
+`, tc.exitArg))
+
+			_, err := f.ExecFile("Tiltfile")
+			require.NoError(t, err)
+			out := f.PrintOutput()
+			if tc.expectedLog == "" {
+				assert.Empty(t, out)
+			} else {
+				assert.Contains(t, out, tc.expectedLog)
+				assert.NotContains(t, out, "this can't happen!")
+			}
+		})
+	}
+}
+
+func TestExitLoadedTiltfile(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
+	f.File("exit.tiltfile", `exit("later alligator")`)
+
+	// loaded Tiltfile can force the root Tiltfile to halt execution
+	// i.e. it's more like `sys.exit(0)` than `return`
 	f.File(
 		"Tiltfile", `
-exit("goodbye")
+load("./exit.tiltfile", "this_symbol_does_not_exist")
 fail("this can't happen!")
 `)
 
 	_, err := f.ExecFile("Tiltfile")
 	require.NoError(t, err)
 	out := f.PrintOutput()
-	assert.Contains(t, out, "goodbye")
+	assert.Contains(t, out, "later alligator")
 	assert.NotContains(t, out, "this can't happen!")
-}
-
-func TestExitNoMessage(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.File(
-		"Tiltfile", `
-exit()
-fail("this can't happen!")
-`)
-
-	_, err := f.ExecFile("Tiltfile")
-	require.NoError(t, err)
-	assert.Empty(t, f.PrintOutput())
 }
 
 func newFixture(tb testing.TB) *starkit.Fixture {

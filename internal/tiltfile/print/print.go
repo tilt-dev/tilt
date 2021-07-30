@@ -60,8 +60,8 @@ func warn(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kw
 }
 
 func exit(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var msg string
-	err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs, "msg?", &msg)
+	var codeVal starlark.Value
+	err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs, "code?", &codeVal)
 	if err != nil {
 		return nil, err
 	}
@@ -71,8 +71,11 @@ func exit(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kw
 		return nil, err
 	}
 
-	if msg != "" {
-		logger.Get(ctx).Infof("%s", msg)
+	if codeVal != nil && codeVal != starlark.None {
+		code := codeVal.String()
+		if code != "" {
+			logger.Get(ctx).Infof("%s", code)
+		}
 	}
 
 	return starlark.None, starkit.ErrStopExecution
