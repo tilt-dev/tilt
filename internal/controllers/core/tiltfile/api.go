@@ -1,4 +1,4 @@
-package configs
+package tiltfile
 
 import (
 	"context"
@@ -47,7 +47,7 @@ type typedObjectSet map[string]object
 //
 // In the future, anything that creates objects based on the Tiltfile (e.g., FileWatch specs,
 // LocalServer specs) should go here.
-func updateOwnedObjects(ctx context.Context, client ctrlclient.Client, tlr tiltfile.TiltfileLoadResult, mode store.EngineMode) error {
+func UpdateOwnedObjects(ctx context.Context, client ctrlclient.Client, tlr tiltfile.TiltfileLoadResult, mode store.EngineMode) error {
 	apiObjects := toAPIObjects(tlr, mode)
 
 	// Retry until the cache has started.

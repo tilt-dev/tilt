@@ -170,7 +170,7 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore, 
 	}
 
 	// TODO(nick): Rewrite to handle multiple tiltfiles.
-	err := updateOwnedObjects(ctx, cc.ctrlClient, tlr, entry.EngineMode)
+	err := ctrltiltfile.UpdateOwnedObjects(ctx, cc.ctrlClient, tlr, entry.EngineMode)
 	if err != nil {
 		if tlr.Error == nil {
 			tlr.Error = errors.Wrap(err, "Failed to update API server")
