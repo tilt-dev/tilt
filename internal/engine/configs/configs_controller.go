@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	ctrltiltfile "github.com/tilt-dev/tilt/internal/controllers/core/tiltfile"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/sliceutils"
@@ -15,7 +16,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
-	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
 
 type ConfigsController struct {
@@ -24,15 +24,17 @@ type ConfigsController struct {
 	dockerClient       docker.Client
 	clock              func() time.Time
 	ctrlClient         ctrlclient.Client
+	buildSource        *ctrltiltfile.BuildSource
 	loadStartedCount   int // used to synchronize with state
 }
 
-func NewConfigsController(tfl tiltfile.TiltfileLoader, dockerClient docker.Client, ctrlClient ctrlclient.Client) *ConfigsController {
+func NewConfigsController(tfl tiltfile.TiltfileLoader, dockerClient docker.Client, ctrlClient ctrlclient.Client, buildSource *ctrltiltfile.BuildSource) *ConfigsController {
 	return &ConfigsController{
 		tfl:          tfl,
 		dockerClient: dockerClient,
 		ctrlClient:   ctrlClient,
 		clock:        time.Now,
+		buildSource:  buildSource,
 	}
 }
 
@@ -44,20 +46,6 @@ func (cc *ConfigsController) DisableForTesting(disabled bool) {
 	cc.disabledForTesting = disabled
 }
 
-type buildEntry struct {
-	name                  model.ManifestName
-	filesChanged          []string
-	buildReason           model.BuildReason
-	userConfigState       model.UserConfigState
-	tiltfilePath          string
-	checkpointAtExecStart logstore.Checkpoint
-	engineMode            store.EngineMode
-}
-
-func (e buildEntry) Name() model.ManifestName       { return e.name }
-func (e buildEntry) FilesChanged() []string         { return e.filesChanged }
-func (e buildEntry) BuildReason() model.BuildReason { return e.buildReason }
-
 // Modeled after BuildController.needsBuild and NextBuildReason(). Check to see that:
 // 1) There's currently no Tiltfile build running,
 // 2) There are pending file changes, and
@@ -65,21 +53,21 @@ func (e buildEntry) BuildReason() model.BuildReason { return e.buildReason }
 //    (so that we don't keep re-running a failed build)
 // 4) OR the command-line args have changed since the last Tiltfile build
 // 5) OR user has manually triggered a Tiltfile build
-func (cc *ConfigsController) needsBuild(ctx context.Context, st store.RStore) (buildEntry, bool) {
+func (cc *ConfigsController) needsBuild(ctx context.Context, st store.RStore) (*ctrltiltfile.BuildEntry, bool) {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
 	// Don't start the next build until the previous action has been recorded,
 	// so that we don't accidentally repeat the same build.
 	if cc.loadStartedCount != state.StartedTiltfileLoadCount {
-		return buildEntry{}, false
+		return nil, false
 	}
 
 	// Don't start the next build if the last completion hasn't been recorded yet.
 	for _, ms := range state.TiltfileStates {
 		isRunning := !ms.CurrentBuild.StartTime.IsZero()
 		if isRunning {
-			return buildEntry{}, false
+			return nil, false
 		}
 	}
 
@@ -127,41 +115,45 @@ func (cc *ConfigsController) needsBuild(ctx context.Context, st store.RStore) (b
 
 		cc.loadStartedCount++
 
-		return buildEntry{
-			name:                  name,
-			filesChanged:          filesChanged,
-			buildReason:           reason,
-			userConfigState:       state.UserConfigState,
-			tiltfilePath:          tiltfilePath,
-			checkpointAtExecStart: state.LogStore.Checkpoint(),
-			engineMode:            state.EngineMode,
+		return &ctrltiltfile.BuildEntry{
+			Name:                  name,
+			FilesChanged:          filesChanged,
+			BuildReason:           reason,
+			UserConfigState:       state.UserConfigState,
+			TiltfilePath:          tiltfilePath,
+			CheckpointAtExecStart: state.LogStore.Checkpoint(),
+			EngineMode:            state.EngineMode,
 		}, true
 	}
 
-	return buildEntry{}, false
+	return nil, false
 }
 
-func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore, entry buildEntry) {
+func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore, entry *ctrltiltfile.BuildEntry) {
 	startTime := cc.clock()
 	st.Dispatch(ConfigsReloadStartedAction{
-		Name:         entry.name,
-		FilesChanged: entry.filesChanged,
+		Name:         entry.Name,
+		FilesChanged: entry.FilesChanged,
 		StartTime:    startTime,
 		SpanID:       SpanIDForLoadCount(cc.loadStartedCount),
-		Reason:       entry.BuildReason(),
+		Reason:       entry.BuildReason,
 	})
 
-	actionWriter := NewTiltfileLogWriter(entry.name, st, cc.loadStartedCount)
+	actionWriter := NewTiltfileLogWriter(entry.Name, st, cc.loadStartedCount)
 	ctx = logger.CtxWithLogHandler(ctx, actionWriter)
 
-	buildcontrol.LogBuildEntry(ctx, entry)
+	buildcontrol.LogBuildEntry(ctx, buildcontrol.BuildEntry{
+		Name:         entry.Name,
+		BuildReason:  entry.BuildReason,
+		FilesChanged: entry.FilesChanged,
+	})
 
-	userConfigState := entry.userConfigState
-	if entry.BuildReason().Has(model.BuildReasonFlagTiltfileArgs) {
+	userConfigState := entry.UserConfigState
+	if entry.BuildReason.Has(model.BuildReasonFlagTiltfileArgs) {
 		logger.Get(ctx).Infof("Tiltfile args changed to: %v", userConfigState.Args)
 	}
 
-	tlr := cc.tfl.Load(ctx, entry.tiltfilePath, userConfigState)
+	tlr := cc.tfl.Load(ctx, entry.TiltfilePath, userConfigState)
 	if tlr.Error == nil && len(tlr.Manifests) == 0 {
 		tlr.Error = fmt.Errorf("No resources found. Check out https://docs.tilt.dev/tutorial.html to get started!")
 	}
@@ -178,7 +170,7 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore, 
 	}
 
 	// TODO(nick): Rewrite to handle multiple tiltfiles.
-	err := updateOwnedObjects(ctx, cc.ctrlClient, tlr, entry.engineMode)
+	err := updateOwnedObjects(ctx, cc.ctrlClient, tlr, entry.EngineMode)
 	if err != nil {
 		if tlr.Error == nil {
 			tlr.Error = errors.Wrap(err, "Failed to update API server")
@@ -192,7 +184,7 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore, 
 	}
 
 	st.Dispatch(ConfigsReloadedAction{
-		Name:                  entry.name,
+		Name:                  entry.Name,
 		Manifests:             tlr.Manifests,
 		Tiltignore:            tlr.Tiltignore,
 		ConfigFiles:           tlr.ConfigFiles,
@@ -205,7 +197,7 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore, 
 		Secrets:               tlr.Secrets,
 		AnalyticsTiltfileOpt:  tlr.AnalyticsOpt,
 		DockerPruneSettings:   tlr.DockerPruneSettings,
-		CheckpointAtExecStart: entry.checkpointAtExecStart,
+		CheckpointAtExecStart: entry.CheckpointAtExecStart,
 		VersionSettings:       tlr.VersionSettings,
 		UpdateSettings:        tlr.UpdateSettings,
 		WatchSettings:         tlr.WatchSettings,
@@ -222,6 +214,7 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore, _ st
 		return nil
 	}
 
+	cc.buildSource.SetEntry(entry)
 	cc.loadTiltfile(ctx, st, entry)
 	return nil
 }

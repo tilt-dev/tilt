@@ -3894,7 +3894,8 @@ func newTestFixture(t *testing.T) *testFixture {
 	versionExt := version.NewExtension(model.TiltBuild{Version: "0.5.0"})
 	configExt := config.NewExtension("up")
 	tfl := tiltfile.ProvideTiltfileLoader(ta, b.kClient, k8sContextExt, versionExt, configExt, fakeDcc, "localhost", localexec.EmptyEnv(), feature.MainDefaults, env)
-	cc := configs.NewConfigsController(tfl, dockerClient, cdc)
+	buildSource := ctrltiltfile.NewBuildSource()
+	cc := configs.NewConfigsController(tfl, dockerClient, cdc, buildSource)
 	dcw := dcwatch.NewEventWatcher(fakeDcc, dockerClient)
 	dclm := runtimelog.NewDockerComposeLogManager(fakeDcc)
 	serverOptions, err := server.ProvideTiltServerOptionsForTesting(ctx)
@@ -3941,7 +3942,7 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	kar := kubernetesapply.NewReconciler(cdc, b.kClient, sch, docker.Env{}, k8s.KubeContext("kind-kind"), st, "default")
 
-	tfr := ctrltiltfile.NewReconciler(st, tfl, dockerClient, cdc, sch)
+	tfr := ctrltiltfile.NewReconciler(st, tfl, dockerClient, cdc, sch, buildSource)
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
 		fwc,
 		cmds,

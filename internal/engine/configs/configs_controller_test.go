@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/tilt-dev/tilt/internal/container"
+	ctrltiltfile "github.com/tilt-dev/tilt/internal/controllers/core/tiltfile"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
@@ -166,7 +167,8 @@ func newCCFixture(t *testing.T) *ccFixture {
 	tfl := tiltfile.NewFakeTiltfileLoader()
 	d := docker.NewFakeClient()
 	tc := fake.NewFakeTiltClient()
-	cc := NewConfigsController(tfl, d, tc)
+	buildSource := ctrltiltfile.NewBuildSource()
+	cc := NewConfigsController(tfl, d, tc, buildSource)
 	fc := testutils.NewRandomFakeClock()
 	cc.clock = fc.Clock()
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()

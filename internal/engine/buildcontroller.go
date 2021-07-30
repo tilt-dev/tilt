@@ -107,7 +107,11 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore, _ store
 		}
 		ctx := logger.CtxWithLogHandler(ctx, actionWriter)
 
-		buildcontrol.LogBuildEntry(ctx, entry)
+		buildcontrol.LogBuildEntry(ctx, buildcontrol.BuildEntry{
+			Name:         entry.Name(),
+			BuildReason:  entry.BuildReason(),
+			FilesChanged: entry.FilesChanged(),
+		})
 
 		result, err := c.buildAndDeploy(ctx, st, entry)
 		st.Dispatch(buildcontrol.NewBuildCompleteAction(entry.name, entry.spanID, result, err))
