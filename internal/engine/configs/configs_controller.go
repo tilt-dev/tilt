@@ -19,13 +19,12 @@ import (
 )
 
 type ConfigsController struct {
-	disabledForTesting bool
-	tfl                tiltfile.TiltfileLoader
-	dockerClient       docker.Client
-	clock              func() time.Time
-	ctrlClient         ctrlclient.Client
-	buildSource        *ctrltiltfile.BuildSource
-	loadStartedCount   int // used to synchronize with state
+	tfl              tiltfile.TiltfileLoader
+	dockerClient     docker.Client
+	clock            func() time.Time
+	ctrlClient       ctrlclient.Client
+	buildSource      *ctrltiltfile.BuildSource
+	loadStartedCount int // used to synchronize with state
 }
 
 func NewConfigsController(tfl tiltfile.TiltfileLoader, dockerClient docker.Client, ctrlClient ctrlclient.Client, buildSource *ctrltiltfile.BuildSource) *ConfigsController {
@@ -36,14 +35,6 @@ func NewConfigsController(tfl tiltfile.TiltfileLoader, dockerClient docker.Clien
 		clock:        time.Now,
 		buildSource:  buildSource,
 	}
-}
-
-func (cc *ConfigsController) SetTiltfileLoaderForTesting(tfl tiltfile.TiltfileLoader) {
-	cc.tfl = tfl
-}
-
-func (cc *ConfigsController) DisableForTesting(disabled bool) {
-	cc.disabledForTesting = disabled
 }
 
 // Modeled after BuildController.needsBuild and NextBuildReason(). Check to see that:
@@ -131,7 +122,7 @@ func (cc *ConfigsController) needsBuild(ctx context.Context, st store.RStore) (*
 
 func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore, entry *ctrltiltfile.BuildEntry) {
 	startTime := cc.clock()
-	st.Dispatch(ConfigsReloadStartedAction{
+	st.Dispatch(ctrltiltfile.ConfigsReloadStartedAction{
 		Name:         entry.Name,
 		FilesChanged: entry.FilesChanged,
 		StartTime:    startTime,
@@ -183,7 +174,7 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore, 
 		logger.Get(ctx).Errorf("%s", tlr.Error.Error())
 	}
 
-	st.Dispatch(ConfigsReloadedAction{
+	st.Dispatch(ctrltiltfile.ConfigsReloadedAction{
 		Name:                  entry.Name,
 		Manifests:             tlr.Manifests,
 		Tiltignore:            tlr.Tiltignore,
@@ -205,10 +196,6 @@ func (cc *ConfigsController) loadTiltfile(ctx context.Context, st store.RStore, 
 }
 
 func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) error {
-	if cc.disabledForTesting {
-		return nil
-	}
-
 	entry, ok := cc.needsBuild(ctx, st)
 	if !ok {
 		return nil

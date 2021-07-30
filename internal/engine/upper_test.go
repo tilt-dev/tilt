@@ -526,6 +526,7 @@ func TestUpper_Up(t *testing.T) {
 func TestUpper_UpK8sEntityOrdering(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.useRealTiltfileLoader()
 
 	postgresEntities, err := k8s.ParseYAMLFromString(testyaml.PostgresYAML)
 	require.NoError(t, err)
@@ -802,6 +803,8 @@ func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
 func TestConfigFileChangeClearsBuildStateToForceImageBuild(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.useRealTiltfileLoader()
+
 	f.WriteFile("Tiltfile", `
 docker_build('gcr.io/windmill-public-containers/servantes/snack', '.', live_update=[sync('.', '/app')])
 k8s_yaml('snack.yaml')
@@ -852,6 +855,7 @@ k8s_yaml('snack.yaml')
 func TestMultipleChangesOnlyDeployOneManifest(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", `
 docker_build("gcr.io/windmill-public-containers/servantes/snack", "./snack", dockerfile="Dockerfile1")
@@ -912,6 +916,7 @@ k8s_resource('doggos', new_name='quux')
 func TestSecondResourceIsBuilt(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", `
 docker_build("gcr.io/windmill-public-containers/servantes/snack", "./snack", dockerfile="Dockerfile1")
@@ -956,6 +961,7 @@ k8s_resource('doggos', new_name='quux')  # rename "doggos" --> "quux"
 func TestConfigChange_NoOpChange(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", `
 docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', dockerfile='Dockerfile')
@@ -997,6 +1003,7 @@ k8s_yaml('snack.yaml')`)
 func TestConfigChange_TiltfileErrorAndFixWithNoChanges(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.useRealTiltfileLoader()
 
 	origTiltfile := `
 docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', dockerfile='Dockerfile')
@@ -1031,6 +1038,7 @@ k8s_yaml('snack.yaml')`
 func TestConfigChange_TiltfileErrorAndFixWithFileChange(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.useRealTiltfileLoader()
 
 	tiltfileWithCmd := func(cmd string) string {
 		return fmt.Sprintf(`
@@ -1087,6 +1095,7 @@ k8s_yaml('snack.yaml')
 func TestConfigChange_TriggerModeChangePropagatesButDoesntInvalidateBuild(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.useRealTiltfileLoader()
 
 	origTiltfile := `
 docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', dockerfile='Dockerfile')
@@ -1121,6 +1130,7 @@ trigger_mode(TRIGGER_MODE_MANUAL)`, origTiltfile)
 func TestConfigChange_ManifestWithPendingChangesBuildsIfTriggerModeChangedToAuto(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.useRealTiltfileLoader()
 
 	baseTiltfile := `trigger_mode(%s)
 docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', dockerfile='Dockerfile')
@@ -1187,7 +1197,7 @@ func TestConfigChange_ManifestIncludingInitialBuildsIfTriggerModeChangedToManual
 
 	// change the trigger mode
 	foo = foo.WithTriggerMode(model.TriggerModeManualWithAutoInit)
-	f.store.Dispatch(configs.ConfigsReloadedAction{
+	f.store.Dispatch(ctrltiltfile.ConfigsReloadedAction{
 		Name:       model.MainTiltfileManifestName,
 		FinishTime: f.Now(),
 		Manifests:  []model.Manifest{foo, bar},
@@ -1206,6 +1216,7 @@ func TestConfigChange_ManifestIncludingInitialBuildsIfTriggerModeChangedToManual
 func TestConfigChange_FilenamesLoggedInManifestBuild(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", `
 k8s_yaml('snack.yaml')
@@ -1241,6 +1252,7 @@ docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', ignor
 func TestConfigChange_LocalResourceChange(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", `print('tiltfile 1')
 local_resource('local', 'echo one fish two fish', deps='foo.bar')`)
@@ -2585,6 +2597,7 @@ func TestHudExitWithError(t *testing.T) {
 func TestNewConfigsAreWatchedAfterFailure(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.useRealTiltfileLoader()
 	f.loadAndStart()
 
 	f.WriteConfigFiles("Tiltfile", "read_file('foo.txt')")
@@ -2681,7 +2694,7 @@ func TestDockerComposeStartsEventWatcher(t *testing.T) {
 	f.Start([]model.Manifest{})
 	time.Sleep(10 * time.Millisecond)
 
-	f.store.Dispatch(configs.ConfigsReloadedAction{
+	f.store.Dispatch(ctrltiltfile.ConfigsReloadedAction{
 		Name:       model.MainTiltfileManifestName,
 		Manifests:  []model.Manifest{m},
 		FinishTime: f.Now(),
@@ -2699,6 +2712,8 @@ func TestDockerComposeStartsEventWatcher(t *testing.T) {
 func TestDockerComposeRecordsBuildLogs(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.useRealTiltfileLoader()
+
 	m, _ := f.setupDCFixture()
 	expected := "yarn install"
 	f.setBuildLogOutput(m.DockerComposeTarget().ID(), expected)
@@ -2719,6 +2734,8 @@ func TestDockerComposeRecordsBuildLogs(t *testing.T) {
 func TestDockerComposeRecordsRunLogs(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.useRealTiltfileLoader()
+
 	m, _ := f.setupDCFixture()
 	expected := "hello world"
 	output := make(chan string, 1)
@@ -2747,6 +2764,8 @@ func TestDockerComposeRecordsRunLogs(t *testing.T) {
 func TestDockerComposeFiltersRunLogs(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.useRealTiltfileLoader()
+
 	m, _ := f.setupDCFixture()
 	expected := "Attaching to snack\n"
 	output := make(chan string, 1)
@@ -2770,6 +2789,8 @@ func TestDockerComposeFiltersRunLogs(t *testing.T) {
 func TestDockerComposeDetectsCrashes(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.useRealTiltfileLoader()
+
 	m1, m2 := f.setupDCFixture()
 
 	f.loadAndStart()
@@ -2828,6 +2849,8 @@ func TestDockerComposeDetectsCrashes(t *testing.T) {
 func TestDockerComposeBuildCompletedSetsStatusToUpIfSuccessful(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.useRealTiltfileLoader()
+
 	m1, _ := f.setupDCFixture()
 
 	expected := container.ID("aaaaaa")
@@ -2853,6 +2876,7 @@ func TestDockerComposeBuildCompletedSetsStatusToUpIfSuccessful(t *testing.T) {
 func TestEmptyTiltfile(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.useRealTiltfileLoader()
 	f.WriteFile("Tiltfile", "")
 
 	closeCh := make(chan error)
@@ -2884,6 +2908,7 @@ func TestEmptyTiltfile(t *testing.T) {
 func TestUpperStart(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.useRealTiltfileLoader()
 
 	tok := token.Token("unit test token")
 	cloudAddress := "nonexistent.example.com"
@@ -2973,6 +2998,7 @@ func TestConfigChangeThatChangesManifestIsIncludedInManifestsChangedFile(t *test
 
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.useRealTiltfileLoader()
 
 	tiltfile := `
 docker_build('gcr.io/windmill-public-containers/servantes/snack', '.')
@@ -3043,7 +3069,7 @@ func TestFeatureFlagsStoredOnState(t *testing.T) {
 
 	f.Start([]model.Manifest{})
 
-	f.store.Dispatch(configs.ConfigsReloadedAction{
+	f.store.Dispatch(ctrltiltfile.ConfigsReloadedAction{
 		Name:       model.MainTiltfileManifestName,
 		FinishTime: f.Now(),
 		Features:   map[string]bool{"foo": true},
@@ -3053,7 +3079,7 @@ func TestFeatureFlagsStoredOnState(t *testing.T) {
 		return state.Features["foo"] == true
 	})
 
-	f.store.Dispatch(configs.ConfigsReloadedAction{
+	f.store.Dispatch(ctrltiltfile.ConfigsReloadedAction{
 		Name:       model.MainTiltfileManifestName,
 		FinishTime: f.Now(),
 		Features:   map[string]bool{"foo": false},
@@ -3070,7 +3096,7 @@ func TestTeamIDStoredOnState(t *testing.T) {
 
 	f.Start([]model.Manifest{})
 
-	f.store.Dispatch(configs.ConfigsReloadedAction{
+	f.store.Dispatch(ctrltiltfile.ConfigsReloadedAction{
 		Name:       model.MainTiltfileManifestName,
 		FinishTime: f.Now(),
 		TeamID:     "sharks",
@@ -3080,7 +3106,7 @@ func TestTeamIDStoredOnState(t *testing.T) {
 		return state.TeamID == "sharks"
 	})
 
-	f.store.Dispatch(configs.ConfigsReloadedAction{
+	f.store.Dispatch(ctrltiltfile.ConfigsReloadedAction{
 		Name:       model.MainTiltfileManifestName,
 		FinishTime: f.Now(),
 		TeamID:     "jets",
@@ -3148,6 +3174,7 @@ func TestBuildErrorLoggedOnceByUpper(t *testing.T) {
 func TestTiltfileChangedFilesOnlyLoggedAfterFirstBuild(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", `
 docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', dockerfile='Dockerfile')
@@ -3205,6 +3232,7 @@ func TestDeployUIDsInEngineState(t *testing.T) {
 func TestEnableFeatureOnFail(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", `
 enable_feature('snapshots')
@@ -3224,6 +3252,7 @@ fail('goodnight moon')
 func TestEnableMetrics(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", `
 experimental_metrics_settings(enabled=True)
@@ -3257,6 +3286,7 @@ k8s_yaml('snack.yaml')
 func TestSecretScrubbed(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.useRealTiltfileLoader()
 
 	tiltfile := `
 print('about to print secret')
@@ -3287,6 +3317,7 @@ data:
 func TestShortSecretNotScrubbed(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.useRealTiltfileLoader()
 
 	tiltfile := `
 print('about to print secret: s')
@@ -3315,6 +3346,7 @@ stringData:
 func TestDisableDockerPrune(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.useRealTiltfileLoader()
 
 	f.WriteFile("Dockerfile", `FROM iron/go:prod`)
 	f.WriteFile("snack.yaml", simpleYAML)
@@ -3336,6 +3368,7 @@ docker_prune_settings(disable=True)
 func TestDockerPruneEnabledByDefault(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", simpleTiltfile)
 	f.WriteFile("Dockerfile", `FROM iron/go:prod`)
@@ -3442,7 +3475,7 @@ func TestVersionSettingsStoredOnState(t *testing.T) {
 	vs := model.VersionSettings{
 		CheckUpdates: false,
 	}
-	f.store.Dispatch(configs.ConfigsReloadedAction{
+	f.store.Dispatch(ctrltiltfile.ConfigsReloadedAction{
 		Name:            model.MainTiltfileManifestName,
 		FinishTime:      f.Now(),
 		VersionSettings: vs,
@@ -3463,7 +3496,7 @@ func TestAnalyticsTiltfileOpt(t *testing.T) {
 		assert.Equal(t, analytics.OptDefault, state.AnalyticsEffectiveOpt())
 	})
 
-	f.store.Dispatch(configs.ConfigsReloadedAction{
+	f.store.Dispatch(ctrltiltfile.ConfigsReloadedAction{
 		Name:                 model.MainTiltfileManifestName,
 		FinishTime:           f.Now(),
 		AnalyticsTiltfileOpt: analytics.OptIn,
@@ -3481,6 +3514,7 @@ func TestAnalyticsTiltfileOpt(t *testing.T) {
 func TestConfigArgsChangeCausesTiltfileRerun(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", `
 print('hello')
@@ -3594,6 +3628,7 @@ func TestLocalResourceServeWithNoUpdate(t *testing.T) {
 func TestLocalResourceServeChangeCmd(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", "local_resource('foo', serve_cmd='true')")
 
@@ -3619,6 +3654,7 @@ func TestLocalResourceServeChangeCmd(t *testing.T) {
 func TestDefaultUpdateSettings(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.useRealTiltfileLoader()
 
 	f.WriteFile("Dockerfile", `FROM iron/go:prod`)
 	f.WriteFile("snack.yaml", simpleYAML)
@@ -3638,6 +3674,7 @@ func TestDefaultUpdateSettings(t *testing.T) {
 func TestSetK8sUpsertTimeout(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.useRealTiltfileLoader()
 
 	f.WriteFile("Dockerfile", `FROM iron/go:prod`)
 	f.WriteFile("snack.yaml", simpleYAML)
@@ -3658,6 +3695,7 @@ update_settings(k8s_upsert_timeout_secs=123)
 func TestSetMaxBuildSlots(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.useRealTiltfileLoader()
 
 	f.WriteFile("Dockerfile", `FROM iron/go:prod`)
 	f.WriteFile("snack.yaml", simpleYAML)
@@ -3679,6 +3717,7 @@ update_settings(max_parallel_updates=123)
 func TestTiltignoreRespectedOnError(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", `local("echo hi > a.txt")
 read_file('a.txt')
@@ -3710,6 +3749,7 @@ fail('x')`)
 func TestHandleTiltfileTriggerQueue(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
+	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", `print("hello world")`)
 
@@ -3841,7 +3881,8 @@ type testFixture struct {
 	bc                         *BuildController
 	cc                         *configs.ConfigsController
 	dcc                        *dockercompose.FakeDCClient
-	tfl                        tiltfile.TiltfileLoader
+	tfl                        *tiltfile.FakeTiltfileLoader
+	realTFL                    tiltfile.TiltfileLoader
 	opter                      *tiltanalytics.FakeOpter
 	dp                         *dockerprune.DockerPruner
 	fe                         *cmd.FakeExecer
@@ -3893,7 +3934,8 @@ func newTestFixture(t *testing.T) *testFixture {
 	k8sContextExt := k8scontext.NewExtension("fake-context", env)
 	versionExt := version.NewExtension(model.TiltBuild{Version: "0.5.0"})
 	configExt := config.NewExtension("up")
-	tfl := tiltfile.ProvideTiltfileLoader(ta, b.kClient, k8sContextExt, versionExt, configExt, fakeDcc, "localhost", localexec.EmptyEnv(), feature.MainDefaults, env)
+	realTFL := tiltfile.ProvideTiltfileLoader(ta, b.kClient, k8sContextExt, versionExt, configExt, fakeDcc, "localhost", localexec.EmptyEnv(), feature.MainDefaults, env)
+	tfl := tiltfile.NewFakeTiltfileLoader()
 	buildSource := ctrltiltfile.NewBuildSource()
 	cc := configs.NewConfigsController(tfl, dockerClient, cdc, buildSource)
 	dcw := dcwatch.NewEventWatcher(fakeDcc, dockerClient)
@@ -3978,6 +4020,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		cc:                cc,
 		dcc:               fakeDcc,
 		tfl:               tfl,
+		realTFL:           realTFL,
 		opter:             to,
 		dp:                dp,
 		fe:                fe,
@@ -4037,11 +4080,12 @@ func (f *testFixture) Start(manifests []model.Manifest, initOptions ...initOptio
 	f.Init(ia)
 }
 
+func (f *testFixture) useRealTiltfileLoader() {
+	f.tfl.Delegate = f.realTFL
+}
+
 func (f *testFixture) setManifests(manifests []model.Manifest) {
-	tfl := tiltfile.NewFakeTiltfileLoader()
-	tfl.Result.Manifests = manifests
-	f.tfl = tfl
-	f.cc.SetTiltfileLoaderForTesting(tfl)
+	f.tfl.Result.Manifests = manifests
 }
 
 func (f *testFixture) setMaxParallelUpdates(n int) {
@@ -4536,7 +4580,7 @@ func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
 	f.dcc.WorkDir = f.Path()
 	f.dcc.ConfigOutput = string(dcpc)
 
-	tlr := f.tfl.Load(f.ctx, f.JoinPath("Tiltfile"), model.UserConfigState{})
+	tlr := f.realTFL.Load(f.ctx, f.JoinPath("Tiltfile"), model.UserConfigState{})
 	if tlr.Error != nil {
 		f.T().Fatal(tlr.Error)
 	}
