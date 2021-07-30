@@ -1412,7 +1412,6 @@ func TestPodEventOrdering(t *testing.T) {
 	podOrders := [][]podbuilder.PodBuilder{
 		{podAPast, podBPast, podANow, podBNow},
 		{podAPast, podANow, podBPast, podBNow},
-		{podANow, podAPast, podBNow, podBPast},
 		{podAPast, podBPast, podANow, podCNow, podCNowDeleting, podBNow},
 	}
 
