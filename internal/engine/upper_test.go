@@ -4091,7 +4091,7 @@ func (f *testFixture) Init(action InitAction) {
 	})
 
 	state := f.store.LockMutableStateForTesting()
-	expectedFileWatches := configs.ToFileWatchObjects(configs.WatchInputs{
+	expectedFileWatches := ctrltiltfile.ToFileWatchObjects(ctrltiltfile.WatchInputs{
 		Manifests:     state.Manifests(),
 		ConfigFiles:   state.ConfigFiles,
 		WatchSettings: state.WatchSettings,

@@ -1,4 +1,4 @@
-package configs
+package tiltfile
 
 import (
 	"context"
@@ -27,7 +27,7 @@ func TestAPICreate(t *testing.T) {
 	ctx := context.Background()
 	c := fake.NewFakeTiltClient()
 	fe := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
-	err := updateOwnedObjects(ctx, c, tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}}, store.EngineModeUp)
+	err := UpdateOwnedObjects(ctx, c, tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}}, store.EngineModeUp)
 	assert.NoError(t, err)
 
 	var ka v1alpha1.KubernetesApply
@@ -42,13 +42,13 @@ func TestAPIDelete(t *testing.T) {
 	ctx := context.Background()
 	c := fake.NewFakeTiltClient()
 	fe := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
-	err := updateOwnedObjects(ctx, c, tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}}, store.EngineModeUp)
+	err := UpdateOwnedObjects(ctx, c, tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}}, store.EngineModeUp)
 	assert.NoError(t, err)
 
 	var ka1 v1alpha1.KubernetesApply
 	assert.NoError(t, c.Get(ctx, types.NamespacedName{Name: "fe"}, &ka1))
 
-	err = updateOwnedObjects(ctx, c, tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{}}, store.EngineModeUp)
+	err = UpdateOwnedObjects(ctx, c, tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{}}, store.EngineModeUp)
 	assert.NoError(t, err)
 
 	var ka2 v1alpha1.KubernetesApply
@@ -65,13 +65,13 @@ func TestAPINoGarbageCollectOnError(t *testing.T) {
 	ctx := context.Background()
 	c := fake.NewFakeTiltClient()
 	fe := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
-	err := updateOwnedObjects(ctx, c, tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}}, store.EngineModeUp)
+	err := UpdateOwnedObjects(ctx, c, tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}}, store.EngineModeUp)
 	assert.NoError(t, err)
 
 	var ka1 v1alpha1.KubernetesApply
 	assert.NoError(t, c.Get(ctx, types.NamespacedName{Name: "fe"}, &ka1))
 
-	err = updateOwnedObjects(ctx, c, tiltfile.TiltfileLoadResult{
+	err = UpdateOwnedObjects(ctx, c, tiltfile.TiltfileLoadResult{
 		Error:     fmt.Errorf("random failure"),
 		Manifests: []model.Manifest{},
 	}, store.EngineModeUp)
@@ -89,7 +89,7 @@ func TestAPIUpdate(t *testing.T) {
 	ctx := context.Background()
 	c := fake.NewFakeTiltClient()
 	fe := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
-	err := updateOwnedObjects(ctx, c, tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}}, store.EngineModeUp)
+	err := UpdateOwnedObjects(ctx, c, tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}}, store.EngineModeUp)
 	assert.NoError(t, err)
 
 	var ka v1alpha1.KubernetesApply
@@ -98,7 +98,7 @@ func TestAPIUpdate(t *testing.T) {
 	assert.NotContains(t, ka.Spec.YAML, "sidecar")
 
 	fe = manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoSidecarYAML).Build()
-	err = updateOwnedObjects(ctx, c, tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}}, store.EngineModeUp)
+	err = UpdateOwnedObjects(ctx, c, tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}}, store.EngineModeUp)
 	assert.NoError(t, err)
 
 	err = c.Get(ctx, types.NamespacedName{Name: "fe"}, &ka)
@@ -116,7 +116,7 @@ func TestImageMapCreate(t *testing.T) {
 		WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
 		WithK8sYAML(testyaml.SanchoYAML).
 		Build()
-	err := updateOwnedObjects(ctx, c, tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}}, store.EngineModeUp)
+	err := UpdateOwnedObjects(ctx, c, tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}}, store.EngineModeUp)
 	assert.NoError(t, err)
 
 	name := apis.SanitizeName(SanchoRef.String())
