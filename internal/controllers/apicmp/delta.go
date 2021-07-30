@@ -1,6 +1,9 @@
 package apicmp
 
 import (
+	"fmt"
+	"reflect"
+
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/conversion"
@@ -36,5 +39,10 @@ func Comparators() []interface{} {
 var delta = conversion.EqualitiesOrDie(Comparators()...)
 
 func DeepEqual(a, b interface{}) bool {
+	typeA := reflect.TypeOf(a)
+	typeB := reflect.TypeOf(b)
+	if typeA != typeB {
+		panic(fmt.Sprintf("internal error: comparing incommensurable objects: %T, %T", a, b))
+	}
 	return delta.DeepEqual(a, b)
 }
