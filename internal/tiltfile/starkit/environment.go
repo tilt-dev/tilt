@@ -197,6 +197,9 @@ func (e *Environment) start(path string) (Model, error) {
 
 	_, err = e.exec(t, path)
 	model.BuiltinCalls = e.builtinCalls
+	if errors.Is(err, ErrStopExecution) {
+		return model, nil
+	}
 	return model, err
 }
 

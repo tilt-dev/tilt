@@ -48,6 +48,10 @@ func (f *Fixture) SetContext(ctx context.Context) {
 	f.ctx = ctx
 }
 
+func (f *Fixture) SetOutput(out *bytes.Buffer) {
+	f.out = out
+}
+
 func (f *Fixture) OnStart(e *Environment) error {
 	if !f.useRealFS {
 		e.SetFakeFileSystem(f.fs)
