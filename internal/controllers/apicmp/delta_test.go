@@ -1,6 +1,7 @@
 package apicmp
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -73,4 +74,19 @@ func TestCmp(t *testing.T) {
 		},
 	}))
 
+}
+
+func testCmpPanicHelper() (result string) {
+	defer func() {
+		r := recover()
+		result = fmt.Sprintf("%s", r)
+	}()
+
+	DeepEqual(v1alpha1.Cmd{}, &v1alpha1.Cmd{})
+	return
+}
+
+func TestCmpPanic(t *testing.T) {
+	result := testCmpPanicHelper()
+	assert.Contains(t, result, "comparing incommensurable objects: v1alpha1.Cmd, *v1alpha1.Cmd")
 }
