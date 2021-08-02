@@ -48,6 +48,7 @@ type PortForwarder struct {
 
 	dialer        httpstream.Dialer
 	streamConn    httpstream.Connection
+	errorHandler  *errorHandler
 	listeners     []io.Closer
 	Ready         chan struct{}
 	requestIDLock sync.Mutex
@@ -207,23 +208,19 @@ func (pf *PortForwarder) ForwardPorts() error {
 // forward dials the remote host specific in req, upgrades the request, starts
 // listeners for each port specified in ports, and forwards local connections
 // to the remote host via streams.
+//
+// Returns an error if any of the local ports aren't available.
 func (pf *PortForwarder) forward() error {
 	var err error
+	pf.errorHandler = newErrorHandler()
+	defer pf.errorHandler.Close()
 
-	listenSuccess := false
 	for i := range pf.ports {
 		port := &pf.ports[i]
 		err = pf.listenOnPort(port)
-		switch {
-		case err == nil:
-			listenSuccess = true
-		default:
-			logger.Get(pf.ctx).Errorf("Unable to listen on port %d: %v", port.Local, err)
+		if err != nil {
+			return fmt.Errorf("Unable to listen on port %d: %v", port.Local, err)
 		}
-	}
-
-	if !listenSuccess {
-		return fmt.Errorf("unable to listen on any of the requested ports: %v", pf.ports)
 	}
 
 	if pf.Ready != nil {
@@ -232,6 +229,9 @@ func (pf *PortForwarder) forward() error {
 
 	// wait for interrupt or conn closure
 	select {
+	case err := <-pf.errorHandler.Done():
+		return err
+
 	case <-pf.ctx.Done():
 	case <-pf.streamConn.CloseChan():
 		logger.Get(pf.ctx).Debugf("lost connection to pod")
@@ -333,7 +333,10 @@ func (pf *PortForwarder) handleConnection(conn net.Conn, port ForwardedPort) {
 	headers.Set(v1.PortForwardRequestIDHeader, strconv.Itoa(requestID))
 	errorStream, err := pf.streamConn.CreateStream(headers)
 	if err != nil {
-		logger.Get(pf.ctx).Debugf("error creating error stream for port %d -> %d: %v", port.Local, port.Remote, err)
+		// If CreateStream fails, stop the whole portforwarder, because this might
+		// mean the whole streamConn is wedged. The PortForward reconciler will backoff
+		// and re-create the connection.
+		pf.errorHandler.Stop(fmt.Errorf("creating stream: %v", err))
 		return
 	}
 	// we're not writing to this stream
@@ -355,7 +358,10 @@ func (pf *PortForwarder) handleConnection(conn net.Conn, port ForwardedPort) {
 	headers.Set(v1.StreamType, v1.StreamTypeData)
 	dataStream, err := pf.streamConn.CreateStream(headers)
 	if err != nil {
-		logger.Get(pf.ctx).Debugf("error creating forwarding stream for port %d -> %d: %v", port.Local, port.Remote, err)
+		// If CreateStream fails, stop the whole portforwarder, because this might
+		// mean the whole streamConn is wedged. The PortForward reconciler will backoff
+		// and re-create the connection.
+		pf.errorHandler.Stop(fmt.Errorf("creating stream: %v", err))
 		return
 	}
 
