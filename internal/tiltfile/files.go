@@ -25,6 +25,15 @@ import (
 
 const localLogPrefix = " → "
 
+type execCommandOptions struct {
+	// logOutput writes stdout and stderr to logs if true.
+	logOutput bool
+	// logCommand writes the command being executed to logs if true.
+	logCommand bool
+	// logCommandPrefix is a custom prefix before the command (default: "Running: ") used if logCommand is true.
+	logCommandPrefix string
+}
+
 func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var commandValue, commandBatValue, commandDirValue starlark.Value
 	var commandEnv value.StringStringMap
@@ -47,11 +56,11 @@ func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, arg
 		return nil, err
 	}
 
-	if !echoOff {
-		s.logger.Infof("local: %s", cmd)
-	}
-
-	out, err := s.execLocalCmd(thread, cmd, !quiet)
+	out, err := s.execLocalCmd(thread, cmd, execCommandOptions{
+		logOutput:        !quiet,
+		logCommand:       !echoOff,
+		logCommandPrefix: "local:",
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -59,12 +68,20 @@ func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, arg
 	return tiltfile_io.NewBlob(out, fmt.Sprintf("local: %s", cmd)), nil
 }
 
-func (s *tiltfileState) execLocalCmd(t *starlark.Thread, cmd model.Cmd, logOutput bool) (string, error) {
+func (s *tiltfileState) execLocalCmd(t *starlark.Thread, cmd model.Cmd, options execCommandOptions) (string, error) {
 	stdout := bytes.NewBuffer(nil)
 	stderr := bytes.NewBuffer(nil)
 	ctx, err := starkit.ContextFromThread(t)
 	if err != nil {
 		return "", err
+	}
+
+	if options.logCommand {
+		prefix := options.logCommandPrefix
+		if prefix == "" {
+			prefix = "Running:"
+		}
+		s.logger.Infof("%s %s", prefix, cmd)
 	}
 
 	c := s.localEnv.ExecCmd(cmd, logger.Get(ctx))
@@ -73,7 +90,7 @@ func (s *tiltfileState) execLocalCmd(t *starlark.Thread, cmd model.Cmd, logOutpu
 	c.Stdout = stdout
 	c.Stderr = stderr
 
-	if logOutput {
+	if options.logOutput {
 		logOutput := logger.NewMutexWriter(logger.NewPrefixedLogger(localLogPrefix, s.logger).Writer(logger.InfoLvl))
 		c.Stdout = io.MultiWriter(stdout, logOutput)
 		c.Stderr = io.MultiWriter(stderr, logOutput)
@@ -82,7 +99,7 @@ func (s *tiltfileState) execLocalCmd(t *starlark.Thread, cmd model.Cmd, logOutpu
 	err = c.Run()
 	if err != nil {
 		// If we already logged the output, we don't need to log it again.
-		if logOutput {
+		if options.logOutput {
 			return "", fmt.Errorf("command %q failed.\nerror: %v", c.Args, err)
 		}
 
@@ -90,7 +107,9 @@ func (s *tiltfileState) execLocalCmd(t *starlark.Thread, cmd model.Cmd, logOutpu
 		return "", errors.New(errorMessage)
 	}
 
-	if stdout.Len() == 0 && stderr.Len() == 0 {
+	// only show that there was no output if the command was echoed AND we wanted output logged
+	// otherwise, it's confusing to get "[no output]" without context of _what_ didn't have output
+	if options.logCommand && options.logOutput && stdout.Len() == 0 && stderr.Len() == 0 {
 		s.logger.Infof("%s[no output]", localLogPrefix)
 	}
 
@@ -125,7 +144,10 @@ func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin,
 		cmd.Argv = []string{"kubectl", "kustomize", relKustomizePath}
 	}
 
-	yaml, err := s.execLocalCmd(thread, cmd, false)
+	yaml, err := s.execLocalCmd(thread, cmd, execCommandOptions{
+		logOutput:  false,
+		logCommand: false,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -227,9 +249,10 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		cmd = append(cmd, "--set", setArg)
 	}
 
-	s.logger.Infof("Running: %s", cmd)
-
-	stdout, err := s.execLocalCmd(thread, model.Cmd{Argv: cmd, Dir: starkit.AbsWorkingDir(thread)}, false)
+	stdout, err := s.execLocalCmd(thread, model.Cmd{Argv: cmd, Dir: starkit.AbsWorkingDir(thread)}, execCommandOptions{
+		logOutput:  false,
+		logCommand: true,
+	})
 	if err != nil {
 		return nil, err
 	}
