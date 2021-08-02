@@ -291,6 +291,46 @@ message ExecAction {
   repeated string command = 1;
 }
 
+// ExtensionRepo specifies a repo or folder where a set of extensions live.
+// +k8s:openapi-gen=true
+message ExtensionRepo {
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+
+  optional ExtensionRepoSpec spec = 2;
+
+  optional ExtensionRepoStatus status = 3;
+}
+
+// ExtensionRepoList
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+message ExtensionRepoList {
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+
+  repeated ExtensionRepo items = 2;
+}
+
+// ExtensionRepoSpec defines how to access the repo.
+message ExtensionRepoSpec {
+  // The URL of the repo.
+  //
+  // Allowed:
+  // https: URLs that point to a public git repo
+  // file: URLs that point to a location on disk.
+  optional string url = 1;
+}
+
+// ExtensionRepoStatus defines the observed state of ExtensionRepo
+message ExtensionRepoStatus {
+  // Contains information about any problems loading the repo.
+  optional string error = 1;
+
+  // The last time the repo was fetched and checked for validity.
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.Time lastFetchedAt = 2;
+
+  // The path to the repo on local disk.
+  optional string path = 3;
+}
+
 message FileEvent {
   // Time is an approximate timestamp for a batch of file changes.
   //
@@ -389,6 +429,43 @@ message ForwardStatus {
   // Error is a human-readable description if a problem was encountered
   // while initializing the forward.
   optional string error = 5;
+}
+
+// GlobalExtension defines an extension that's evaluated on Tilt startup.
+// +k8s:openapi-gen=true
+message GlobalExtension {
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+
+  optional GlobalExtensionSpec spec = 2;
+
+  optional GlobalExtensionStatus status = 3;
+}
+
+// GlobalExtensionList
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+message GlobalExtensionList {
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+
+  repeated GlobalExtension items = 2;
+}
+
+// GlobalExtensionSpec defines the desired state of GlobalExtension
+message GlobalExtensionSpec {
+  // RepoName specifies the ExtensionRepo object where we should find this extension.
+  //
+  // The GlobalExtension controller should watch for changes to this repo, and
+  // may update if this repo is deleted or moved.
+  optional string repoName = 1;
+}
+
+// GlobalExtensionStatus defines the observed state of GlobalExtension
+message GlobalExtensionStatus {
+  // Contains information about any problems loading the extension.
+  optional string error = 1;
+
+  // The path to the extension on disk. This location should be shared
+  // and readable by all Tilt instances.
+  optional string path = 2;
 }
 
 // HTTPGetAction describes an action based on HTTP Get requests.
