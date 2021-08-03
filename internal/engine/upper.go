@@ -499,7 +499,7 @@ func handleConfigsReloadStarted(
 		SpanID:    event.SpanID,
 	}
 	ms.CurrentBuild = status
-	state.RemoveFromTriggerQueue(model.MainTiltfileManifestName)
+	state.RemoveFromTriggerQueue(event.Name)
 	state.StartedTiltfileLoadCount++
 }
 
@@ -511,9 +511,13 @@ func handleConfigsReloaded(
 ) {
 
 	manifests := event.Manifests
-	manifestNames := map[model.ManifestName]bool{}
-	for _, m := range manifests {
-		manifestNames[m.Name] = true
+	loadedManifestNames := map[model.ManifestName]bool{}
+	for i, m := range manifests {
+		loadedManifestNames[m.Name] = true
+
+		// Properly annotate the manifest with the source tiltfile.
+		m.SourceTiltfile = event.Name
+		manifests[i] = m
 	}
 
 	ms, ok := state.TiltfileStates[event.Name]
@@ -589,7 +593,7 @@ func handleConfigsReloaded(
 		// your "good" state.
 
 		// Watch any new config files in the partial state.
-		state.ConfigFiles = sliceutils.AppendWithoutDupes(state.ConfigFiles, event.ConfigFiles...)
+		state.TiltfileConfigPaths[event.Name] = sliceutils.AppendWithoutDupes(state.TiltfileConfigPaths[event.Name], event.ConfigFiles...)
 
 		// Enable any new features in the partial state.
 		if len(state.Features) == 0 {
@@ -606,14 +610,17 @@ func handleConfigsReloaded(
 
 	state.DockerPruneSettings = event.DockerPruneSettings
 
-	newDefOrder := make([]model.ManifestName, len(manifests))
-	for i, m := range manifests {
+	// Make sure all the new manifests are in the EngineState.
+	for _, m := range manifests {
 		mt, ok := state.ManifestTargets[m.ManifestName()]
+		if ok && mt.Manifest.SourceTiltfile != event.Name {
+			logger.Get(ctx).Errorf("Resource defined in two tiltfiles: %s, %s", event.Name, mt.Manifest.SourceTiltfile)
+			continue
+		}
+
 		if !ok {
 			mt = store.NewManifestTarget(m)
 		}
-
-		newDefOrder[i] = m.ManifestName()
 
 		configFilesThatChanged := ms.LastBuild().Edits
 		old := mt.Manifest
@@ -630,26 +637,35 @@ func handleConfigsReloaded(
 		state.UpsertManifestTarget(mt)
 	}
 
-	// Go through all the existing manifest targets:
-	// 1) If they were from the Tiltfile, but were removed from the latest
-	//    Tiltfile execution, delete them.
-	// 2) If they were not from the Tiltfile, preserve them.
+	// Go through all the existing manifest targets. If they were from this
+	// Tiltfile, but were removed from the latest Tiltfile execution, delete them.
 	for _, mt := range state.Targets() {
 		m := mt.Manifest
-		if m.Source == model.ManifestSourceTiltfile {
-			if !manifestNames[m.Name] {
+
+		if m.SourceTiltfile == event.Name {
+			if !loadedManifestNames[m.Name] {
 				delete(state.ManifestTargets, m.Name)
 			}
 			continue
 		}
-
-		newDefOrder = append(newDefOrder, m.Name)
 	}
 
-	// TODO(maia): update ConfigsManifest with new ConfigFiles/update watches
+	// Create a new definition order that merges:
+	// the existing definition order, and
+	// any new manifests.
+	newOrder := append([]model.ManifestName{}, state.ManifestDefinitionOrder...)
+	newOrderSet := make(map[model.ManifestName]bool)
+	for _, name := range newOrder {
+		newOrderSet[name] = true
+	}
+	for _, newManifest := range manifests {
+		if !newOrderSet[newManifest.Name] {
+			newOrder = append(newOrder, newManifest.Name)
+		}
+	}
 
-	state.ManifestDefinitionOrder = newDefOrder
-	state.ConfigFiles = event.ConfigFiles
+	state.ManifestDefinitionOrder = newOrder
+	state.TiltfileConfigPaths[event.Name] = event.ConfigFiles
 
 	state.Features = event.Features
 	state.TelemetrySettings = event.TelemetrySettings
@@ -660,10 +676,6 @@ func handleConfigsReloaded(
 }
 
 func handleLogAction(state *store.EngineState, action store.LogAction) {
-	manifest, ok := state.Manifest(action.ManifestName())
-	if ok && manifest.Source == model.ManifestSourceMetrics {
-		return
-	}
 	state.LogStore.Append(action, state.Secrets)
 }
 
@@ -714,7 +726,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.TiltBuildInfo = action.TiltBuild
 	engineState.TiltStartTime = action.StartTime
 	engineState.TiltfilePath = action.TiltfilePath
-	engineState.ConfigFiles = action.ConfigFiles
+	engineState.TiltfileConfigPaths[model.MainTiltfileManifestName] = action.ConfigFiles
 	engineState.UserConfigState.Args = action.UserArgs
 	engineState.AnalyticsUserOpt = action.AnalyticsUserOpt
 	engineState.EngineMode = action.EngineMode

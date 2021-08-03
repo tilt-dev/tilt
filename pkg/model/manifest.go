@@ -55,7 +55,7 @@ type Manifest struct {
 	// ready at least once.
 	ResourceDependencies []ManifestName
 
-	Source ManifestSource
+	SourceTiltfile ManifestName
 
 	Labels map[string]string
 }
@@ -500,8 +500,3 @@ func equalForBuildInvalidation(x, y interface{}) bool {
 		ignoreLabels,
 	)
 }
-
-type ManifestSource string
-
-const ManifestSourceTiltfile = ManifestSource("")
-const ManifestSourceMetrics = ManifestSource("metrics")
