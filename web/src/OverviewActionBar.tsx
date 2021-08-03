@@ -202,6 +202,11 @@ const OverviewButtonMixin = `
   &.isEnabled.isRadio {
     pointer-events: none;
   }
+  
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.33;
+  }
 
   & .fillStd {
     fill: ${Color.gray7};

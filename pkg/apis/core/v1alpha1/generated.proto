@@ -1520,6 +1520,12 @@ message UIButtonSpec {
   //
   // +optional
   optional string iconSVG = 4;
+
+  // If true, the button will be rendered, but with an effect indicating it's
+  // disabled. It will also be unclickable.
+  //
+  // +optional
+  optional bool disabled = 5;
 }
 
 // UIButtonStatus defines the observed state of UIButton

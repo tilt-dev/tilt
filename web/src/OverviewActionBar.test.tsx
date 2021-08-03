@@ -7,8 +7,8 @@ import {
   expectIncrs,
   mockAnalyticsCalls,
 } from "./analytics_test_helpers"
-import { FilterLevel, FilterSource } from "./logfilters"
-import {
+import {EMPTY_FILTER_TERM, FilterLevel, FilterSource, useFilterSet} from "./logfilters"
+import OverviewActionBar, {
   ActionBarTopRow,
   ButtonLeftPill,
   createLogSearch,
@@ -18,6 +18,8 @@ import {
   FILTER_INPUT_DEBOUNCE,
 } from "./OverviewActionBar"
 import { EmptyBar, FullBar } from "./OverviewActionBar.stories"
+import {oneButton} from "./testdata"
+import {InstrumentedButton} from "./instrumentedComponents"
 
 beforeEach(() => {
   mockAnalyticsCalls()
@@ -92,18 +94,40 @@ it("navigates to build warning filter", () => {
   expect(history.location.search).toEqual("?level=warn&source=build")
 })
 
-it("shows buttons", () => {
-  let root = mount(
-    <MemoryRouter initialEntries={["/"]}>
-      <FullBar />
-    </MemoryRouter>
-  )
-  let topBar = root.find(ActionBarTopRow)
-  expect(topBar).toHaveLength(1)
+describe("buttons", () => {
+  it("shows endpoint buttons", () => {
+    let root = mount(
+      <MemoryRouter initialEntries={["/"]}>
+        <FullBar />
+      </MemoryRouter>
+    )
+    let topBar = root.find(ActionBarTopRow)
+    expect(topBar).toHaveLength(1)
 
-  let endpoints = topBar.find(Endpoint)
-  expect(endpoints).toHaveLength(2)
+    let endpoints = topBar.find(Endpoint)
+    expect(endpoints).toHaveLength(2)
+  })
+
+  it("disables disabled buttons", () => {
+    let uiButtons = [oneButton(1, "vigoda")]
+    uiButtons[0].spec!.disabled = true
+    let filterSet = {
+      level: FilterLevel.all,
+      source: FilterSource.all,
+      term: EMPTY_FILTER_TERM,
+    }
+    let root = mount(
+      <MemoryRouter initialEntries={["/"]}>
+        <OverviewActionBar filterSet={filterSet} buttons={uiButtons} />
+      </MemoryRouter>
+    )
+    let topBar = root.find(ActionBarTopRow)
+    let buttons = topBar.find(InstrumentedButton)
+    expect(buttons).toHaveLength(1)
+    expect(buttons.at(0).prop("disabled")).toBe(true)
+  })
 })
+
 
 describe("Term filter input", () => {
   const FILTER_INPUT = `input#${FILTER_FIELD_ID}`

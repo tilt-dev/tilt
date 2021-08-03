@@ -79,6 +79,12 @@ type UIButtonSpec struct {
 	//
 	// +optional
 	IconSVG string `json:"iconSVG,omitempty" protobuf:"bytes,4,opt,name=iconSVG"`
+
+	// If true, the button will be rendered, but with an effect indicating it's
+	// disabled. It will also be unclickable.
+	//
+	// +optional
+	Disabled bool `json:"disabled,omitempty" protobuf:"varint,5,opt,name=disabled"`
 }
 
 // UIComponentLocation specifies where to put a UI component.

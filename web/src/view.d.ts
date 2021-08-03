@@ -506,6 +506,13 @@ declare namespace Proto {
      * +optional
      */
     iconSVG?: string;
+    /**
+     * If true, the button will be rendered, but with an effect indicating it's
+     * disabled. It will also be unclickable.
+     *
+     * +optional
+     */
+    disabled?: boolean;
   }
   export interface v1alpha1UIButton {
     metadata?: v1ObjectMeta;
