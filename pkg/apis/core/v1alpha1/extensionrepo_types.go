@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"context"
+	strings "strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -93,8 +94,15 @@ func (in *ExtensionRepo) IsStorageVersion() bool {
 }
 
 func (in *ExtensionRepo) Validate(ctx context.Context) field.ErrorList {
-	// TODO(user): Modify it, adding your API validation here.
-	return nil
+	var fieldErrors field.ErrorList
+	url := in.Spec.URL
+	if !strings.HasPrefix(url, "https://") && !strings.HasPrefix(url, "http://") {
+		fieldErrors = append(fieldErrors, field.Invalid(
+			field.NewPath("spec.url"),
+			url,
+			"URLs must start with https:// or http://"))
+	}
+	return fieldErrors
 }
 
 var _ resource.ObjectList = &ExtensionRepoList{}

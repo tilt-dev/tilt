@@ -3982,7 +3982,8 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	tfr := ctrltiltfile.NewReconciler(st, tfl, dockerClient, cdc, sch, buildSource)
 	ger := globalextension.NewReconciler(cdc, sch)
-	er := extensionrepo.NewReconciler(cdc)
+	er, err := extensionrepo.NewReconciler(cdc, dir)
+	require.NoError(t, err)
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
 		fwc,
 		cmds,
