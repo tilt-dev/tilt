@@ -17,19 +17,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tilt-dev/tilt/pkg/model/logstore"
-
-	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesapply"
-	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesdiscovery"
-	"github.com/tilt-dev/tilt/internal/localexec"
-
 	"github.com/davecgh/go-spew/spew"
-
-	"github.com/tilt-dev/tilt/internal/timecmp"
-	"github.com/tilt-dev/tilt/pkg/apis"
-
-	"github.com/tilt-dev/tilt/internal/store/k8sconv"
-
 	"github.com/docker/distribution/reference"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/google/uuid"
@@ -48,8 +36,12 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
+	"github.com/tilt-dev/tilt/internal/controllers/core/extensionrepo"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
+	"github.com/tilt-dev/tilt/internal/controllers/core/globalextension"
+	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesapply"
+	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesdiscovery"
 	"github.com/tilt-dev/tilt/internal/controllers/core/podlogstream"
 	apiportforward "github.com/tilt-dev/tilt/internal/controllers/core/portforward"
 	ctrltiltfile "github.com/tilt-dev/tilt/internal/controllers/core/tiltfile"
@@ -79,8 +71,10 @@ import (
 	"github.com/tilt-dev/tilt/internal/hud/view"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
+	"github.com/tilt-dev/tilt/internal/localexec"
 	"github.com/tilt-dev/tilt/internal/openurl"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
 	"github.com/tilt-dev/tilt/internal/testutils/httptest"
@@ -92,13 +86,16 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/config"
 	"github.com/tilt-dev/tilt/internal/tiltfile/k8scontext"
 	"github.com/tilt-dev/tilt/internal/tiltfile/version"
+	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/internal/token"
 	"github.com/tilt-dev/tilt/internal/tracer"
 	"github.com/tilt-dev/tilt/internal/watch"
+	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/assets"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/model/logstore"
 	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
 )
 
@@ -3984,6 +3981,8 @@ func newTestFixture(t *testing.T) *testFixture {
 	kar := kubernetesapply.NewReconciler(cdc, b.kClient, sch, docker.Env{}, k8s.KubeContext("kind-kind"), st, "default")
 
 	tfr := ctrltiltfile.NewReconciler(st, tfl, dockerClient, cdc, sch, buildSource)
+	ger := globalextension.NewReconciler(cdc, sch)
+	er := extensionrepo.NewReconciler(cdc)
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
 		fwc,
 		cmds,
@@ -3995,6 +3994,8 @@ func newTestFixture(t *testing.T) *testFixture {
 		ctrluibutton.NewReconciler(cdc, wsl),
 		pfr,
 		tfr,
+		ger,
+		er,
 	))
 
 	dp := dockerprune.NewDockerPruner(dockerClient)
