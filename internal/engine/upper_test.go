@@ -3936,7 +3936,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	realTFL := tiltfile.ProvideTiltfileLoader(ta, b.kClient, k8sContextExt, versionExt, configExt, fakeDcc, "localhost", localexec.EmptyEnv(), feature.MainDefaults, env)
 	tfl := tiltfile.NewFakeTiltfileLoader()
 	buildSource := ctrltiltfile.NewBuildSource()
-	cc := configs.NewConfigsController(tfl, dockerClient, cdc, buildSource)
+	cc := configs.NewConfigsController(cdc, buildSource)
 	dcw := dcwatch.NewEventWatcher(fakeDcc, dockerClient)
 	dclm := runtimelog.NewDockerComposeLogManager(fakeDcc)
 	serverOptions, err := server.ProvideTiltServerOptionsForTesting(ctx)

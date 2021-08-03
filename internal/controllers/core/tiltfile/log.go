@@ -1,4 +1,4 @@
-package configs
+package tiltfile
 
 import (
 	"fmt"
@@ -20,10 +20,10 @@ func NewTiltfileLogWriter(mn model.ManifestName, s store.RStore, loadCount int) 
 }
 
 func (w *tiltfileLogWriter) Write(level logger.Level, fields logger.Fields, p []byte) error {
-	w.store.Dispatch(store.NewLogAction(w.name, SpanIDForLoadCount(w.loadCount), level, fields, p))
+	w.store.Dispatch(store.NewLogAction(w.name, SpanIDForLoadCount(w.name, w.loadCount), level, fields, p))
 	return nil
 }
 
-func SpanIDForLoadCount(loadCount int) logstore.SpanID {
-	return logstore.SpanID(fmt.Sprintf("tiltfile:%d", loadCount))
+func SpanIDForLoadCount(mn model.ManifestName, loadCount int) logstore.SpanID {
+	return logstore.SpanID(fmt.Sprintf("tiltfile:%s:%d", mn, loadCount))
 }

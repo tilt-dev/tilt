@@ -311,7 +311,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	}
 	compositeBuildAndDeployer := engine.NewCompositeBuildAndDeployer(buildOrder, traceTracer)
 	buildController := engine.NewBuildController(compositeBuildAndDeployer)
-	configsController := configs.NewConfigsController(tiltfileLoader, switchCli, deferredClient, buildSource)
+	configsController := configs.NewConfigsController(deferredClient, buildSource)
 	eventWatcher := dcwatch.NewEventWatcher(dockerComposeClient, localClient)
 	dockerComposeLogManager := runtimelog.NewDockerComposeLogManager(dockerComposeClient)
 	analyticsReporter := analytics2.ProvideAnalyticsReporter(analytics3, storeStore, client, k8sEnv)
@@ -508,7 +508,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	}
 	compositeBuildAndDeployer := engine.NewCompositeBuildAndDeployer(buildOrder, traceTracer)
 	buildController := engine.NewBuildController(compositeBuildAndDeployer)
-	configsController := configs.NewConfigsController(tiltfileLoader, switchCli, deferredClient, buildSource)
+	configsController := configs.NewConfigsController(deferredClient, buildSource)
 	eventWatcher := dcwatch.NewEventWatcher(dockerComposeClient, localClient)
 	dockerComposeLogManager := runtimelog.NewDockerComposeLogManager(dockerComposeClient)
 	analyticsReporter := analytics2.ProvideAnalyticsReporter(analytics3, storeStore, client, k8sEnv)

@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tilt-dev/tilt/internal/engine/configs"
+	ctrltiltfile "github.com/tilt-dev/tilt/internal/controllers/core/tiltfile"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -163,7 +163,7 @@ func TestStateToViewK8sTargetsIncludeDisplayNames(t *testing.T) {
 
 func TestStateToViewTiltfileLog(t *testing.T) {
 	es := newState([]model.Manifest{})
-	spanID := configs.SpanIDForLoadCount(1)
+	spanID := ctrltiltfile.SpanIDForLoadCount("(Tiltfile)", 1)
 	es.LogStore.Append(
 		store.NewLogAction(store.MainTiltfileManifestName, spanID, logger.InfoLvl, nil, []byte("hello")),
 		nil)
