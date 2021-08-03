@@ -7,7 +7,8 @@ import {
   expectIncrs,
   mockAnalyticsCalls,
 } from "./analytics_test_helpers"
-import {EMPTY_FILTER_TERM, FilterLevel, FilterSource, useFilterSet} from "./logfilters"
+import { InstrumentedButton } from "./instrumentedComponents"
+import { EMPTY_FILTER_TERM, FilterLevel, FilterSource } from "./logfilters"
 import OverviewActionBar, {
   ActionBarTopRow,
   ButtonLeftPill,
@@ -18,8 +19,7 @@ import OverviewActionBar, {
   FILTER_INPUT_DEBOUNCE,
 } from "./OverviewActionBar"
 import { EmptyBar, FullBar } from "./OverviewActionBar.stories"
-import {oneButton} from "./testdata"
-import {InstrumentedButton} from "./instrumentedComponents"
+import { oneButton } from "./testdata"
 
 beforeEach(() => {
   mockAnalyticsCalls()
@@ -127,7 +127,6 @@ describe("buttons", () => {
     expect(buttons.at(0).prop("disabled")).toBe(true)
   })
 })
-
 
 describe("Term filter input", () => {
   const FILTER_INPUT = `input#${FILTER_FIELD_ID}`
