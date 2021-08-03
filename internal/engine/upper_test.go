@@ -3936,7 +3936,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	cc := configs.NewConfigsController(cdc, buildSource)
 	dcw := dcwatch.NewEventWatcher(fakeDcc, dockerClient)
 	dclm := runtimelog.NewDockerComposeLogManager(fakeDcc)
-	serverOptions, err := server.ProvideTiltServerOptionsForTesting(ctx)
+	serverOptions, err := server.ProvideTiltServerOptionsForTesting(ctx, dir)
 	require.NoError(t, err)
 	webListener, err := server.ProvideWebListener("localhost", 0)
 	require.NoError(t, err)
