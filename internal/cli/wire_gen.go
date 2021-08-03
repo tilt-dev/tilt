@@ -26,8 +26,10 @@ import (
 	"github.com/tilt-dev/tilt/internal/containerupdate"
 	"github.com/tilt-dev/tilt/internal/controllers"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
+	"github.com/tilt-dev/tilt/internal/controllers/core/extensionrepo"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
+	"github.com/tilt-dev/tilt/internal/controllers/core/globalextension"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesapply"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesdiscovery"
 	"github.com/tilt-dev/tilt/internal/controllers/core/podlogstream"
@@ -275,7 +277,9 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, client, extension, versionExtension, configExtension, dockerComposeClient, webHost, env, defaults, k8sEnv)
 	buildSource := tiltfile2.NewBuildSource()
 	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, switchCli, deferredClient, scheme, buildSource)
-	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler)
+	globalextensionReconciler := globalextension.NewReconciler(deferredClient, scheme)
+	extensionrepoReconciler := extensionrepo.NewReconciler(deferredClient)
+	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler, globalextensionReconciler, extensionrepoReconciler)
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	v2 := provideClock()
 	renderer := hud.NewRenderer(v2)
@@ -472,7 +476,9 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, client, extension, versionExtension, configExtension, dockerComposeClient, webHost, env, defaults, k8sEnv)
 	buildSource := tiltfile2.NewBuildSource()
 	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, switchCli, deferredClient, scheme, buildSource)
-	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler)
+	globalextensionReconciler := globalextension.NewReconciler(deferredClient, scheme)
+	extensionrepoReconciler := extensionrepo.NewReconciler(deferredClient)
+	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler, globalextensionReconciler, extensionrepoReconciler)
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	v2 := provideClock()
 	renderer := hud.NewRenderer(v2)
@@ -666,7 +672,9 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, k8sClient, extension, versionExtension, configExtension, dockerComposeClient, webHost, env, defaults, k8sEnv)
 	buildSource := tiltfile2.NewBuildSource()
 	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, switchCli, deferredClient, scheme, buildSource)
-	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler)
+	globalextensionReconciler := globalextension.NewReconciler(deferredClient, scheme)
+	extensionrepoReconciler := extensionrepo.NewReconciler(deferredClient)
+	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler, globalextensionReconciler, extensionrepoReconciler)
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	stdout := hud.ProvideStdout()
 	incrementalPrinter := hud.NewIncrementalPrinter(stdout)
