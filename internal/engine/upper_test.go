@@ -2598,7 +2598,7 @@ func TestNewConfigsAreWatchedAfterFailure(t *testing.T) {
 
 	f.WriteConfigFiles("Tiltfile", "read_file('foo.txt')")
 	f.WaitUntil("foo.txt is a config file", func(state store.EngineState) bool {
-		for _, s := range state.ConfigFiles {
+		for _, s := range state.MainConfigPaths() {
 			if s == f.JoinPath("foo.txt") {
 				return true
 			}
@@ -3761,7 +3761,7 @@ func TestHandleTiltfileTriggerQueue(t *testing.T) {
 	})
 
 	f.withState(func(st store.EngineState) {
-		assert.False(t, st.TiltfileInTriggerQueue(),
+		assert.False(t, st.ManifestInTriggerQueue(model.MainTiltfileManifestName),
 			"initial state should NOT have Tiltfile in trigger queue")
 		assert.Equal(t, model.BuildReasonNone, st.MainTiltfileState().TriggerReason,
 			"initial state should not have Tiltfile trigger reason")
@@ -3770,14 +3770,16 @@ func TestHandleTiltfileTriggerQueue(t *testing.T) {
 	f.store.Dispatch(action)
 
 	f.WaitUntil("Tiltfile trigger processed", func(st store.EngineState) bool {
-		return st.TiltfileInTriggerQueue() && st.MainTiltfileState().TriggerReason == 123
+		return st.ManifestInTriggerQueue(model.MainTiltfileManifestName) &&
+			st.MainTiltfileState().TriggerReason == 123
 	})
 
 	f.WaitUntil("Tiltfile built and trigger cleared", func(st store.EngineState) bool {
 		return len(st.MainTiltfileState().BuildHistory) == 2 && // Tiltfile built b/c it was triggered...
 
 			// and the trigger was cleared
-			!st.TiltfileInTriggerQueue() && st.MainTiltfileState().TriggerReason == model.BuildReasonNone
+			!st.ManifestInTriggerQueue(model.MainTiltfileManifestName) &&
+			st.MainTiltfileState().TriggerReason == model.BuildReasonNone
 	})
 
 	err := f.Stop()
@@ -4137,7 +4139,7 @@ func (f *testFixture) Init(action InitAction) {
 	state := f.store.LockMutableStateForTesting()
 	expectedFileWatches := ctrltiltfile.ToFileWatchObjects(ctrltiltfile.WatchInputs{
 		Manifests:     state.Manifests(),
-		ConfigFiles:   state.ConfigFiles,
+		ConfigFiles:   state.MainConfigPaths(),
 		WatchSettings: state.WatchSettings,
 		Tiltignore:    state.Tiltignore,
 	})

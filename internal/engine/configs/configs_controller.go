@@ -75,7 +75,7 @@ func (cc *ConfigsController) needsBuild(ctx context.Context, st store.RStore) (*
 			reason = reason.With(model.BuildReasonFlagTiltfileArgs)
 		}
 
-		if state.TiltfileInTriggerQueue() {
+		if state.ManifestInTriggerQueue(name) {
 			reason = reason.With(tfState.TriggerReason)
 		}
 

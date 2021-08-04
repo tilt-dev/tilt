@@ -79,10 +79,6 @@ type EngineState struct {
 
 	TiltfilePath string
 
-	// TODO(nick): This should be called "ConfigPaths", not "ConfigFiles",
-	// because this could refer to directories that are watched recursively.
-	ConfigFiles []string
-
 	Tiltignore    model.Dockerignore
 	WatchSettings model.WatchSettings
 
@@ -92,6 +88,10 @@ type EngineState struct {
 
 	TiltfileDefinitionOrder []model.ManifestName
 	TiltfileStates          map[model.ManifestName]*ManifestState
+
+	// Files and directories read during tiltfile execution,
+	// which we listen to for reload.
+	TiltfileConfigPaths map[model.ManifestName][]string
 
 	SuggestedTiltVersion string
 	VersionSettings      model.VersionSettings
@@ -314,10 +314,6 @@ func (e *EngineState) ManifestInTriggerQueue(mn model.ManifestName) bool {
 	return false
 }
 
-func (e *EngineState) TiltfileInTriggerQueue() bool {
-	return e.ManifestInTriggerQueue(model.MainTiltfileManifestName)
-}
-
 func (e *EngineState) AppendToTriggerQueue(mn model.ManifestName, reason model.BuildReason) {
 	ms, ok := e.ManifestState(mn)
 	if !ok {
@@ -375,6 +371,10 @@ func (e EngineState) LastMainTiltfileError() error {
 
 func (e *EngineState) MainTiltfileState() *ManifestState {
 	return e.TiltfileStates[model.MainTiltfileManifestName]
+}
+
+func (e *EngineState) MainConfigPaths() []string {
+	return e.TiltfileConfigPaths[model.MainTiltfileManifestName]
 }
 
 func (e *EngineState) HasDockerBuild() bool {
@@ -508,6 +508,7 @@ func NewState() *EngineState {
 			BuildStatuses: make(map[model.TargetID]*BuildStatus),
 		},
 	}
+	ret.TiltfileConfigPaths = map[model.ManifestName][]string{}
 
 	if ok, _ := tiltanalytics.IsAnalyticsDisabledFromEnv(); ok {
 		ret.AnalyticsEnvOpt = analytics.OptOut
@@ -823,11 +824,6 @@ func StateToView(s EngineState, mu *sync.RWMutex) view.View {
 	for _, name := range s.ManifestDefinitionOrder {
 		mt, ok := s.ManifestTargets[name]
 		if !ok {
-			continue
-		}
-
-		// Skip manifests that don't come from the tiltfile.
-		if mt.Manifest.Source != model.ManifestSourceTiltfile {
 			continue
 		}
 

@@ -193,11 +193,6 @@ func ToUIResourceList(state store.EngineState) ([]*v1alpha1.UIResource, error) {
 		ret = append(ret, TiltfileResourceProtoView(name, ms, state.LogStore))
 	}
 	for i, mt := range state.Targets() {
-		// Skip manifests that don't come from the tiltfile.
-		if mt.Manifest.Source != model.ManifestSourceTiltfile {
-			continue
-		}
-
 		r, err := toUIResource(mt, state)
 		if err != nil {
 			return nil, err
