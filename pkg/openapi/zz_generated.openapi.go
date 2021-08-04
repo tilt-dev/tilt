@@ -4180,6 +4180,13 @@ func schema_pkg_apis_core_v1alpha1_UIButtonSpec(ref common.ReferenceCallback) co
 							Format:      "",
 						},
 					},
+					"disabled": {
+						SchemaProps: spec.SchemaProps{
+							Description: "If true, the button will be rendered, but with an effect indicating it's disabled. It will also be unclickable.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"location", "text"},
 			},

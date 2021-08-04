@@ -79,7 +79,7 @@ export const ApiButton: React.FC<ApiButtonProps> = (props) => {
     <InstrumentedButton
       analyticsName={"ui.web.uibutton"}
       onClick={onClick}
-      disabled={loading}
+      disabled={loading || props.button.spec?.disabled}
       className={props.className}
     >
       {props.children || (

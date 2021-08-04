@@ -392,6 +392,11 @@
         "iconSVG": {
           "type": "string",
           "description": "IconSVG is an SVG to use as the icon to appear next to button text or on the button itself (depending on button\nlocation).\n\nThis should be an \u003csvg\u003e element scaled for a 24x24 viewport.\n\nIf both IconSVG and IconName are specified, IconSVG will take precedence.\n\n+optional"
+        },
+        "disabled": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "If true, the button will be rendered, but with an effect indicating it's\ndisabled. It will also be unclickable.\n\n+optional"
         }
       },
       "title": "UIButtonSpec defines the desired state of UIButton"

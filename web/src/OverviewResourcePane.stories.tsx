@@ -93,6 +93,12 @@ export const TenButtons = () => (
   <OverviewResourcePaneHarness name="vigoda" view={nButtonView(10)} />
 )
 
+export const DisabledButton = () => {
+  const view = nButtonView(1)
+  view.uiButtons[0].spec!.disabled = true
+  return <OverviewResourcePaneHarness name="vigoda" view={view} />
+}
+
 export const FullResourceBar = () => {
   let view = tenResourceView()
   let res = view.uiResources[1]
