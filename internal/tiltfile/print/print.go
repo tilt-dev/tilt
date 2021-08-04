@@ -25,6 +25,10 @@ func (Extension) OnStart(env *starkit.Environment) error {
 	if err != nil {
 		return err
 	}
+	err = env.AddBuiltin("exit", exit)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -53,4 +57,26 @@ func warn(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kw
 	logger.Get(ctx).Warnf("%s", msg)
 
 	return starlark.None, nil
+}
+
+func exit(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var codeVal starlark.Value
+	err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs, "code?", &codeVal)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, err := starkit.ContextFromThread(thread)
+	if err != nil {
+		return nil, err
+	}
+
+	if codeVal != nil && codeVal != starlark.None {
+		code := codeVal.String()
+		if code != "" {
+			logger.Get(ctx).Infof("%s", code)
+		}
+	}
+
+	return starlark.None, starkit.ErrStopExecution
 }
