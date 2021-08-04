@@ -344,6 +344,61 @@ local('echo foobar', echo_off=True)
 	assert.NotContains(t, f.out.String(), "local: echo foobar")
 }
 
+func TestLocalNoOutput(t *testing.T) {
+	type tc struct {
+		echoOff               bool
+		quiet                 bool
+		shouldDisplayNoOutput bool
+	}
+
+	// only if BOTH quiet=False + echo_off=False should the [no output] show up
+	// 	* if quiet=True, we don't care about output, so doesn't make sense to log that there was NO output
+	// 	* if echo_off=True, we don't know what command it's coming from, so it's more confusing than helpful
+	tcs := []tc{
+		{echoOff: true, quiet: true, shouldDisplayNoOutput: false},
+		{echoOff: false, quiet: true, shouldDisplayNoOutput: false},
+		{echoOff: true, quiet: true, shouldDisplayNoOutput: false},
+		{echoOff: false, quiet: false, shouldDisplayNoOutput: true},
+	}
+
+	goBoolToStarlark := func(v bool) string {
+		if v {
+			return "True"
+		}
+		return "False"
+	}
+
+	for _, tc := range tcs {
+		name := fmt.Sprintf("EchoOff%s_Quiet%s", goBoolToStarlark(tc.echoOff), goBoolToStarlark(tc.quiet))
+		t.Run(name, func(t *testing.T) {
+			f := newFixture(t)
+			defer f.TearDown()
+
+			f.setupFoo()
+
+			f.file(
+				"Tiltfile", fmt.Sprintf(`
+local('exit 0', echo_off=%s, quiet=%s)
+`, goBoolToStarlark(tc.echoOff), goBoolToStarlark(tc.quiet)))
+
+			f.load()
+
+			out := f.out.String()
+			if !tc.echoOff {
+				assert.Contains(t, out, "local: exit 0")
+			} else {
+				assert.NotContains(t, out, "exit")
+			}
+
+			if tc.shouldDisplayNoOutput {
+				assert.Contains(t, out, "[no output]")
+			} else {
+				assert.NotContains(t, out, "no output")
+			}
+		})
+	}
+}
+
 func TestLocalArgvCmd(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("windows doesn't support argv commands. Go converts it to a single string")
