@@ -278,7 +278,10 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	buildSource := tiltfile2.NewBuildSource()
 	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, switchCli, deferredClient, scheme, buildSource)
 	globalextensionReconciler := globalextension.NewReconciler(deferredClient, scheme)
-	extensionrepoReconciler := extensionrepo.NewReconciler(deferredClient)
+	extensionrepoReconciler, err := extensionrepo.NewReconciler(deferredClient, tiltDevDir)
+	if err != nil {
+		return CmdUpDeps{}, err
+	}
 	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler, globalextensionReconciler, extensionrepoReconciler)
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	v2 := provideClock()
@@ -477,7 +480,10 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	buildSource := tiltfile2.NewBuildSource()
 	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, switchCli, deferredClient, scheme, buildSource)
 	globalextensionReconciler := globalextension.NewReconciler(deferredClient, scheme)
-	extensionrepoReconciler := extensionrepo.NewReconciler(deferredClient)
+	extensionrepoReconciler, err := extensionrepo.NewReconciler(deferredClient, tiltDevDir)
+	if err != nil {
+		return CmdCIDeps{}, err
+	}
 	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler, globalextensionReconciler, extensionrepoReconciler)
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	v2 := provideClock()
@@ -673,7 +679,10 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	buildSource := tiltfile2.NewBuildSource()
 	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, switchCli, deferredClient, scheme, buildSource)
 	globalextensionReconciler := globalextension.NewReconciler(deferredClient, scheme)
-	extensionrepoReconciler := extensionrepo.NewReconciler(deferredClient)
+	extensionrepoReconciler, err := extensionrepo.NewReconciler(deferredClient, tiltDevDir)
+	if err != nil {
+		return CmdUpdogDeps{}, err
+	}
 	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler, globalextensionReconciler, extensionrepoReconciler)
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	stdout := hud.ProvideStdout()

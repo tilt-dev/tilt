@@ -62,8 +62,30 @@ func NewDownloader(srcRoot string) Downloader {
 	}
 }
 
-// downloadPackage runs the create or download command
-// to make the first copy of or update a copy of the given package.
+// Analyze the import path to determine the version control system,
+// repository, and the import path for the root of the repository.
+func (d *Downloader) repoRoot(pkg string) (string, *repoRoot, error) {
+	security := web.SecureOnly
+	if i := strings.Index(pkg, "..."); i >= 0 {
+		slash := strings.LastIndexByte(pkg[:i], '/')
+		if slash < 0 {
+			return "", nil, fmt.Errorf("cannot expand ... in %q", pkg)
+		}
+		pkg = pkg[:slash]
+	}
+	if err := checkImportPath(pkg); err != nil {
+		return "", nil, fmt.Errorf("%s: invalid import path: %v", pkg, err)
+	}
+
+	rr, err := repoRootForImportPath(pkg, security)
+	if err != nil {
+		return "", nil, err
+	}
+	return pkg, rr, err
+}
+
+// Download runs the create or download command to make the first copy of or
+// update a copy of the given package.
 func (d *Downloader) Download(pkg string) (string, error) {
 	var (
 		vcs            *vcsCmd
@@ -71,22 +93,8 @@ func (d *Downloader) Download(pkg string) (string, error) {
 		err            error
 	)
 
-	security := web.SecureOnly
 	srcRoot := d.srcRoot
-	if i := strings.Index(pkg, "..."); i >= 0 {
-		slash := strings.LastIndexByte(pkg[:i], '/')
-		if slash < 0 {
-			return "", fmt.Errorf("cannot expand ... in %q", pkg)
-		}
-		pkg = pkg[:slash]
-	}
-	if err := checkImportPath(pkg); err != nil {
-		return "", fmt.Errorf("%s: invalid import path: %v", pkg, err)
-	}
-
-	// Analyze the import path to determine the version control system,
-	// repository, and the import path for the root of the repository.
-	rr, err := repoRootForImportPath(pkg, security)
+	pkg, rr, err := d.repoRoot(pkg)
 	if err != nil {
 		return "", err
 	}
@@ -138,4 +146,32 @@ func (d *Downloader) Download(pkg string) (string, error) {
 	}
 
 	return result, nil
+}
+
+// Determines where the repository will be downloaded before we download it.
+func (d *Downloader) DestinationPath(pkg string) string {
+	srcRoot := d.srcRoot
+	return filepath.Join(srcRoot, filepath.FromSlash(pkg))
+}
+
+// Determines the hash of the currently checked out head.
+//
+// Returns the empty string if the current VCS does not support HEAD references.
+func (d *Downloader) HeadRef(pkg string) (string, error) {
+	srcRoot := d.srcRoot
+	_, rr, err := d.repoRoot(pkg)
+	if err != nil {
+		return "", err
+	}
+	vcs := rr.vcs
+	if vcs == nil || vcs.cmd != "git" {
+		return "", nil
+	}
+	rootPath := rr.Root
+	root := filepath.Join(srcRoot, filepath.FromSlash(rootPath))
+	out, err := vcs.runOutput(root, "rev-parse HEAD")
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
 }

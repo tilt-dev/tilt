@@ -78,6 +78,9 @@ func TestAPIServerDynamicClient(t *testing.T) {
 				},
 			},
 		},
+		"ExtensionRepo": map[string]interface{}{
+			"url": "https://github.com/tilt-dev/tilt-extensions",
+		},
 	}
 
 	for _, obj := range v1alpha1.AllResourceObjects() {
