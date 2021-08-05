@@ -1,7 +1,7 @@
 import React, { Component, useRef, useState } from "react"
 import styled from "styled-components"
 import { AccountMenuContent, AccountMenuHeader } from "./AccountMenu"
-import { incr } from "./analytics"
+import { AnalyticsType, incr } from "./analytics"
 import { ReactComponent as AccountIcon } from "./assets/svg/account.svg"
 import { ReactComponent as HelpIcon } from "./assets/svg/help.svg"
 import { ReactComponent as SnapshotIcon } from "./assets/svg/snapshot.svg"
@@ -163,7 +163,7 @@ export function GlobalNav(props: GlobalNavProps) {
 
   let toggleAccountMenu = (action: string) => {
     if (!accountMenuOpen) {
-      incr("ui.web.menu", { type: "account", action: action })
+      incr("ui.web.menu", { type: AnalyticsType.Account, action: action })
     }
     setAccountMenuAnchor(
       accountMenuOpen ? null : (accountButton.current as Element)
@@ -172,7 +172,7 @@ export function GlobalNav(props: GlobalNavProps) {
 
   let toggleShortcutsDialog = (action: string) => {
     if (!shortcutsDialogOpen) {
-      incr("ui.web.menu", { type: "shortcuts", action: action })
+      incr("ui.web.menu", { type: AnalyticsType.Shortcut, action: action })
     }
     setShortcutsDialogAnchor(
       shortcutsDialogOpen ? null : (shortcutButton.current as Element)
@@ -181,7 +181,7 @@ export function GlobalNav(props: GlobalNavProps) {
 
   let toggleUpdateDialog = (action: string) => {
     if (!updateDialogOpen) {
-      incr("ui.web.menu", { type: "update", action: action })
+      incr("ui.web.menu", { type: AnalyticsType.Update, action: action })
     }
     setUpdateDialogAnchor(
       updateDialogOpen ? null : (updateButton.current as Element)

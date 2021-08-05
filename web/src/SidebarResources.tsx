@@ -3,8 +3,15 @@ import {
   AccordionDetails,
   AccordionSummary,
 } from "@material-ui/core"
-import React, { Dispatch, PropsWithChildren, SetStateAction } from "react"
+import React, {
+  ChangeEvent,
+  Dispatch,
+  PropsWithChildren,
+  SetStateAction,
+  useState,
+} from "react"
 import styled from "styled-components"
+import { AnalyticsType, incr } from "./analytics"
 import { ReactComponent as CaretSvg } from "./assets/svg/caret.svg"
 import { ReactComponent as InfoSvg } from "./assets/svg/info.svg"
 import Features, { FeaturesContext, Flag } from "./feature"
@@ -202,10 +209,24 @@ function SidebarLabelListSection(props: { label: string } & SidebarProps) {
     props.label === "unlabeled" ? <em>{props.label}</em> : props.label
   const labelNameId = `sidebarItem-${props.label}`
 
+  // Track the expanded/collapsed state of a resource group manually
+  // so analytics events are captured
+  const [expanded, setExpanded] = useState(true)
+  const handleChange = (_e: ChangeEvent<{}>) => {
+    const action = expanded ? "collapse" : "expand"
+    incr("ui.web.resourceGroup", { action, type: AnalyticsType.Detail })
+
+    setExpanded(!expanded)
+  }
+
   // TODO (lizz): Improve the accessibility interface for accordion feature by adding focus styles
   // according to https://www.w3.org/TR/wai-aria-practices-1.1/examples/accordion/accordion.html
   return (
-    <SidebarLabelSection defaultExpanded={true} key={labelNameId}>
+    <SidebarLabelSection
+      expanded={expanded}
+      key={labelNameId}
+      onChange={handleChange}
+    >
       <SidebarGroupSummary id={labelNameId}>
         <SummaryIcon role="presentation" />
         <SidebarGroupName>{formattedLabel}</SidebarGroupName>

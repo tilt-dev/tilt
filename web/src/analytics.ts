@@ -6,11 +6,42 @@ import {
   TermState,
 } from "./logfilters"
 
-export type Tags = { [key: string]: string }
+export type Tags = {
+  [key: string]: string | undefined
+  // action?: AnalyticsAction,
+  type?: AnalyticsType
+}
+
+// The `type` tag describes what section of the UI
+// that the analytics event takes place in
+export enum AnalyticsType {
+  Account = "account",
+  Detail = "resource-detail",
+  Grid = "grid",
+  Shortcut = "shortcuts",
+  Unknown = "unknown",
+  Update = "update",
+}
+
+// The `action` tag describes the type of UI interaction
+export enum AnalyticsAction {
+  Click = "click",
+  Collapse = "collapse",
+  Edit = "edit",
+  Expand = "expand",
+  Load = "load",
+  Shortcut = "shortcut",
+  Star = "star",
+  Unstar = "unstar",
+  Push = "PUSH", // Reserved for location change events
+}
 
 // Fire and forget all analytics events
 export const incr = (name: string, tags: Tags = {}): void => {
   let url = `//${window.location.host}/api/analytics`
+
+  // Uncomment to debug analytics events
+  // console.log("analytics \nname:", name, "\n payload:", tags)
 
   fetch(url, {
     method: "post",
@@ -18,25 +49,25 @@ export const incr = (name: string, tags: Tags = {}): void => {
   })
 }
 
-export const pathToTag = (path: string): string => {
+export const pathToTag = (path: string): AnalyticsType => {
   if (path.indexOf("/") === 0) {
     path = path.substring(1) // chop off the leading /
   }
   let parts = path.split("/")
   if (parts[0] === "") {
-    return "grid"
+    return AnalyticsType.Grid
   }
   if (parts[0] === "overview") {
-    return "grid"
+    return AnalyticsType.Grid
   }
 
   if (parts[0] === "r") {
     if (parts[2] === "overview") {
-      return "resource-detail"
+      return AnalyticsType.Detail
     }
   }
 
-  return "unknown"
+  return AnalyticsType.Unknown
 }
 
 export let navigationToTags = (location: any, action: string): Tags => {

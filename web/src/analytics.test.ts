@@ -1,8 +1,8 @@
-import { navigationToTags, pathToTag } from "./analytics"
+import { AnalyticsType, navigationToTags, pathToTag } from "./analytics"
 
 it("maps / to all", () => {
   let path = "/"
-  let expected = "grid"
+  let expected = AnalyticsType.Grid
 
   let actual = pathToTag(path)
   expect(actual).toBe(expected)
@@ -10,18 +10,18 @@ it("maps / to all", () => {
 
 it("maps something weird to unknown", () => {
   let path = "/woah/there"
-  let expected = "unknown"
+  let expected = AnalyticsType.Unknown
 
   let actual = pathToTag(path)
   expect(actual).toBe(expected)
 })
 
 it("maps grid", () => {
-  expect(pathToTag("/overview")).toBe("grid")
+  expect(pathToTag("/overview")).toBe(AnalyticsType.Grid)
 })
 
 it("maps resource detail", () => {
-  expect(pathToTag("/r/(all)/overview")).toBe("resource-detail")
+  expect(pathToTag("/r/(all)/overview")).toBe(AnalyticsType.Detail)
 })
 
 it("maps filters", () => {
@@ -32,6 +32,6 @@ it("maps filters", () => {
   expect(navigationToTags(loc, "PUSH")).toEqual({
     level: "error",
     source: "build",
-    type: "resource-detail",
+    type: AnalyticsType.Detail,
   })
 })
