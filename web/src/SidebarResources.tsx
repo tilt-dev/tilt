@@ -11,7 +11,7 @@ import React, {
   useState,
 } from "react"
 import styled from "styled-components"
-import { AnalyticsType, incr } from "./analytics"
+import { AnalyticsAction, AnalyticsType, incr } from "./analytics"
 import { ReactComponent as CaretSvg } from "./assets/svg/caret.svg"
 import { ReactComponent as InfoSvg } from "./assets/svg/info.svg"
 import Features, { FeaturesContext, Flag } from "./feature"
@@ -213,7 +213,7 @@ function SidebarLabelListSection(props: { label: string } & SidebarProps) {
   // so analytics events are captured
   const [expanded, setExpanded] = useState(true)
   const handleChange = (_e: ChangeEvent<{}>) => {
-    const action = expanded ? "collapse" : "expand"
+    const action = expanded ? AnalyticsAction.Collapse : AnalyticsAction.Expand
     incr("ui.web.resourceGroup", { action, type: AnalyticsType.Detail })
 
     setExpanded(!expanded)

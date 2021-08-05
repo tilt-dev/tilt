@@ -1,3 +1,4 @@
+import { Action, Location } from "history"
 import { AnalyticsType, navigationToTags, pathToTag } from "./analytics"
 
 it("maps / to all", () => {
@@ -29,9 +30,11 @@ it("maps filters", () => {
     pathname: "/r/vigoda/overview",
     search: "?level=error&source=build",
   }
-  expect(navigationToTags(loc, "PUSH")).toEqual({
-    level: "error",
-    source: "build",
-    type: AnalyticsType.Detail,
-  })
+  expect(navigationToTags(loc as Location<{ action: Action }>, "PUSH")).toEqual(
+    {
+      level: "error",
+      source: "build",
+      type: AnalyticsType.Detail,
+    }
+  )
 })

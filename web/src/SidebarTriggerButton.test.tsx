@@ -2,6 +2,7 @@ import { mount } from "enzyme"
 import fetchMock from "fetch-mock"
 import React from "react"
 import { MemoryRouter } from "react-router"
+import { AnalyticsAction } from "./analytics"
 import {
   cleanupMockAnalyticsCalls,
   expectIncrs,
@@ -82,7 +83,10 @@ describe("SidebarTriggerButton", () => {
     expect(preventDefaulted).toEqual(true)
 
     expect(fetchMock.calls().length).toEqual(2)
-    expectIncrs({ name: "ui.web.triggerResource", tags: { action: "click" } })
+    expectIncrs({
+      name: "ui.web.triggerResource",
+      tags: { action: AnalyticsAction.Click },
+    })
 
     expect(fetchMock.calls()[1][0]).toEqual("http://localhost/api/trigger")
     expect(fetchMock.calls()[1][1]?.method).toEqual("post")

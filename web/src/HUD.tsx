@@ -52,7 +52,7 @@ export default class HUD extends Component<HudProps, HudState> {
     this.pathBuilder = new PathBuilder(window.location)
     this.controller = new AppController(this.pathBuilder, this)
     this.history = props.history
-    this.unlisten = this.history.listen((location: any, action: string) => {
+    this.unlisten = this.history.listen((location, action) => {
       let tags = navigationToTags(location, action)
       incr("ui.web.navigation", tags)
     })

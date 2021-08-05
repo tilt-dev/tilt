@@ -1,5 +1,5 @@
 import React, { LegacyRef } from "react"
-import { incr, Tags } from "./analytics"
+import { AnalyticsAction, incr, Tags } from "./analytics"
 
 export type InstrumentedButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   analyticsName: string
@@ -9,7 +9,7 @@ export type InstrumentedButtonProps = React.ButtonHTMLAttributes<HTMLButtonEleme
 
 export function InstrumentedButton(props: InstrumentedButtonProps) {
   const { analyticsName, analyticsTags, onClick, ...buttonProps } = { ...props }
-  const tags = { action: "click", ...(analyticsTags ?? {}) }
+  const tags = { action: AnalyticsAction.Click, ...(analyticsTags ?? {}) }
   const instrumentedOnClick = (
     e: React.MouseEvent<HTMLButtonElement, MouseEvent>
   ) => {

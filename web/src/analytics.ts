@@ -1,3 +1,4 @@
+import { Action, Location } from "history"
 import {
   FilterLevel,
   filterSetFromLocation,
@@ -8,7 +9,7 @@ import {
 
 export type Tags = {
   [key: string]: string | undefined
-  // action?: AnalyticsAction,
+  action?: AnalyticsAction | Action
   type?: AnalyticsType
 }
 
@@ -26,6 +27,7 @@ export enum AnalyticsType {
 // The `action` tag describes the type of UI interaction
 export enum AnalyticsAction {
   Click = "click",
+  Close = "close",
   Collapse = "collapse",
   Edit = "edit",
   Expand = "expand",
@@ -33,7 +35,6 @@ export enum AnalyticsAction {
   Shortcut = "shortcut",
   Star = "star",
   Unstar = "unstar",
-  Push = "PUSH", // Reserved for location change events
 }
 
 // Fire and forget all analytics events
@@ -41,7 +42,7 @@ export const incr = (name: string, tags: Tags = {}): void => {
   let url = `//${window.location.host}/api/analytics`
 
   // Uncomment to debug analytics events
-  // console.log("analytics \nname:", name, "\n payload:", tags)
+  // console.log("analytics event: \nname:", name, "\npayload:", tags)
 
   fetch(url, {
     method: "post",
@@ -70,10 +71,18 @@ export const pathToTag = (path: string): AnalyticsType => {
   return AnalyticsType.Unknown
 }
 
-export let navigationToTags = (location: any, action: string): Tags => {
+export let navigationToTags = (
+  location: Location,
+  action: AnalyticsAction | Action
+): Tags => {
   let tags: Tags = { type: pathToTag(location.pathname) }
-  if (action === "PUSH" && location.state?.action) {
-    tags.action = location.state.action
+
+  // If the location has a `state`, use the `action` property for the analytics event
+  const locationAction: Action | undefined = location.state
+    ? (location as Location<{ action?: Action }>).state?.action
+    : undefined
+  if (action === "PUSH" && locationAction) {
+    tags.action = locationAction
   }
 
   let filterSet = filterSetFromLocation(location)

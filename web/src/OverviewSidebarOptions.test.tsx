@@ -1,6 +1,7 @@
 import { mount, ReactWrapper } from "enzyme"
 import React from "react"
 import { MemoryRouter } from "react-router"
+import { AnalyticsAction } from "./analytics"
 import {
   cleanupMockAnalyticsCalls,
   expectIncrs,
@@ -128,7 +129,10 @@ describe("overview sidebar options", () => {
     tf.props().onChange({ target: { value: "foobar" } })
     expectIncrs(...[])
     jest.runTimersToTime(10000)
-    expectIncrs({ name: "ui.web.resourceNameFilter", tags: { action: "edit" } })
+    expectIncrs({
+      name: "ui.web.resourceNameFilter",
+      tags: { action: AnalyticsAction.Edit },
+    })
   })
 
   it("reports analytics when search bar cleared", () => {
@@ -143,7 +147,7 @@ describe("overview sidebar options", () => {
     button.simulate("click")
     expectIncrs({
       name: "ui.web.clearResourceNameFilter",
-      tags: { action: "click" },
+      tags: { action: AnalyticsAction.Click },
     })
   })
 })

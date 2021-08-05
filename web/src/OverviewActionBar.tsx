@@ -14,7 +14,7 @@ import React, { ChangeEvent, useEffect, useRef, useState } from "react"
 import { useHistory, useLocation } from "react-router"
 import styled from "styled-components"
 import { Alert } from "./alerts"
-import { incr } from "./analytics"
+import { AnalyticsAction, incr } from "./analytics"
 import { ApiButton } from "./ApiButton"
 import { ReactComponent as AlertSvg } from "./assets/svg/alert.svg"
 import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
@@ -503,7 +503,7 @@ const filterTermTooltipContent = (
 
 const debounceFilterLogs = debounce((history: History, search: string) => {
   // Record the action for analytics
-  incr("ui.web.filterTerm", { action: "edit" })
+  incr("ui.web.filterTerm", { action: AnalyticsAction.Edit })
   // Navigate to filtered logs with search query
   history.push({ search })
 }, FILTER_INPUT_DEBOUNCE)
@@ -738,7 +738,9 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
     }
     endpointEls.push(
       <Endpoint
-        onClick={() => void incr("ui.web.endpoint", { action: "click" })}
+        onClick={() =>
+          void incr("ui.web.endpoint", { action: AnalyticsAction.Click })
+        }
         href={ep.url}
         // We use ep.url as the target, so that clicking the link re-uses the tab.
         target={ep.url}

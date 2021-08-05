@@ -2,6 +2,7 @@ import { mount } from "enzyme"
 import fetchMock from "fetch-mock"
 import React from "react"
 import { MemoryRouter } from "react-router"
+import { AnalyticsAction } from "./analytics"
 import {
   cleanupMockAnalyticsCalls,
   expectIncrs,
@@ -134,7 +135,7 @@ describe("SidebarTriggerButton", () => {
     expectIncrs({
       name: "ui.web.toggleTriggerMode",
       tags: {
-        action: "click",
+        action: AnalyticsAction.Click,
         toMode: TriggerMode.TriggerModeManual.toString(),
       },
     })

@@ -1,7 +1,7 @@
 import React, { Component, useRef, useState } from "react"
 import styled from "styled-components"
 import { AccountMenuContent, AccountMenuHeader } from "./AccountMenu"
-import { AnalyticsType, incr } from "./analytics"
+import { AnalyticsAction, AnalyticsType, incr } from "./analytics"
 import { ReactComponent as AccountIcon } from "./assets/svg/account.svg"
 import { ReactComponent as HelpIcon } from "./assets/svg/help.svg"
 import { ReactComponent as SnapshotIcon } from "./assets/svg/snapshot.svg"
@@ -161,7 +161,7 @@ export function GlobalNav(props: GlobalNavProps) {
     return null
   }
 
-  let toggleAccountMenu = (action: string) => {
+  let toggleAccountMenu = (action: AnalyticsAction) => {
     if (!accountMenuOpen) {
       incr("ui.web.menu", { type: AnalyticsType.Account, action: action })
     }
@@ -170,7 +170,7 @@ export function GlobalNav(props: GlobalNavProps) {
     )
   }
 
-  let toggleShortcutsDialog = (action: string) => {
+  let toggleShortcutsDialog = (action: AnalyticsAction) => {
     if (!shortcutsDialogOpen) {
       incr("ui.web.menu", { type: AnalyticsType.Shortcut, action: action })
     }
@@ -179,7 +179,7 @@ export function GlobalNav(props: GlobalNavProps) {
     )
   }
 
-  let toggleUpdateDialog = (action: string) => {
+  let toggleUpdateDialog = (action: AnalyticsAction) => {
     if (!updateDialogOpen) {
       incr("ui.web.menu", { type: AnalyticsType.Update, action: action })
     }
@@ -201,7 +201,7 @@ export function GlobalNav(props: GlobalNavProps) {
     <GlobalNavRoot>
       <MenuButton
         ref={updateButton}
-        onClick={() => toggleUpdateDialog("click")}
+        onClick={() => toggleUpdateDialog(AnalyticsAction.Click)}
         data-open={updateDialogOpen}
       >
         <div>v{props.runningBuild?.version || "?"}</div>
@@ -218,7 +218,7 @@ export function GlobalNav(props: GlobalNavProps) {
 
       <MenuButton
         ref={shortcutButton}
-        onClick={() => toggleShortcutsDialog("click")}
+        onClick={() => toggleShortcutsDialog(AnalyticsAction.Click)}
         data-open={shortcutsDialogOpen}
       >
         <HelpIcon width="24" height="24" />
@@ -226,7 +226,7 @@ export function GlobalNav(props: GlobalNavProps) {
       </MenuButton>
       <MenuButton
         ref={accountButton}
-        onClick={() => toggleAccountMenu("click")}
+        onClick={() => toggleAccountMenu(AnalyticsAction.Click)}
         data-open={accountMenuOpen}
       >
         <AccountIcon width="24" height="24" />
@@ -238,26 +238,28 @@ export function GlobalNav(props: GlobalNavProps) {
         title={accountMenuHeader}
         open={accountMenuOpen}
         anchorEl={accountMenuAnchor}
-        onClose={() => toggleAccountMenu("close")}
+        onClose={() => toggleAccountMenu(AnalyticsAction.Close)}
       >
         {accountMenuContent}
       </FloatDialog>
       <ShortcutsDialog
         open={shortcutsDialogOpen}
         anchorEl={shortcutsDialogAnchor}
-        onClose={() => toggleShortcutsDialog("close")}
+        onClose={() => toggleShortcutsDialog(AnalyticsAction.Close)}
         isOverview={true}
       />
       <UpdateDialog
         open={updateDialogOpen}
         anchorEl={updateDialogAnchor}
-        onClose={() => toggleUpdateDialog("close")}
+        onClose={() => toggleUpdateDialog(AnalyticsAction.Close)}
         showUpdate={props.showUpdate}
         suggestedVersion={props.suggestedVersion}
         isNewInterface={true}
       />
       <GlobalNavShortcuts
-        toggleShortcutsDialog={() => toggleShortcutsDialog("shortcut")}
+        toggleShortcutsDialog={() =>
+          toggleShortcutsDialog(AnalyticsAction.Shortcut)
+        }
         snapshot={props.snapshot}
       />
     </GlobalNavRoot>

@@ -1,6 +1,7 @@
 import { fireEvent } from "@testing-library/dom"
 import { mount } from "enzyme"
 import React from "react"
+import { AnalyticsAction } from "./analytics"
 import {
   cleanupMockAnalyticsCalls,
   expectIncrs,
@@ -84,7 +85,7 @@ describe("clears logs", () => {
     expect(logLinesToString(logStore!.allLog(), false)).toEqual("")
     expectIncrs({
       name: "ui.web.clearLogs",
-      tags: { action: "shortcut", all: "false" },
+      tags: { action: AnalyticsAction.Shortcut, all: "false" },
     })
   })
 
@@ -97,7 +98,7 @@ describe("clears logs", () => {
     expect(logLinesToString(logStore!.allLog(), false)).toEqual("")
     expectIncrs({
       name: "ui.web.clearLogs",
-      tags: { action: "shortcut", all: "false" },
+      tags: { action: AnalyticsAction.Shortcut, all: "false" },
     })
   })
 })

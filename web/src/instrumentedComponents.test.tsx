@@ -1,4 +1,5 @@
 import { mount } from "enzyme"
+import { AnalyticsAction } from "./analytics"
 import {
   cleanupMockAnalyticsCalls,
   expectIncrs,
@@ -36,7 +37,7 @@ describe("instrumented components", () => {
       expect(underlyingOnClickCalled).toEqual(true)
       expectIncrs({
         name: "ui.web.foo.bar",
-        tags: { action: "click", hello: "goodbye" },
+        tags: { action: AnalyticsAction.Click, hello: "goodbye" },
       })
     })
 
@@ -51,7 +52,7 @@ describe("instrumented components", () => {
 
       expectIncrs({
         name: "ui.web.foo.bar",
-        tags: { action: "click" },
+        tags: { action: AnalyticsAction.Click },
       })
     })
 
@@ -66,7 +67,7 @@ describe("instrumented components", () => {
 
       expectIncrs({
         name: "ui.web.foo.bar",
-        tags: { action: "click" },
+        tags: { action: AnalyticsAction.Click },
       })
     })
   })
