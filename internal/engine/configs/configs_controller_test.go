@@ -20,6 +20,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/tiltfiles"
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
@@ -158,6 +159,13 @@ func (s *testStore) Dispatch(action store.Action) {
 	if ok {
 		s.end = &end
 	}
+
+	tfa, ok := action.(tiltfiles.TiltfileUpsertAction)
+	if ok {
+		state := s.LockMutableStateForTesting()
+		tiltfiles.HandleTiltfileUpsertAction(state, tfa)
+		s.UnlockMutableState()
+	}
 }
 
 type ccFixture struct {
@@ -193,12 +201,11 @@ func newCCFixture(t *testing.T) *ccFixture {
 	f.Chdir()
 
 	state := st.LockMutableStateForTesting()
-	state.TiltfilePath = f.JoinPath("Tiltfile")
-	state.TiltfileStates[model.MainTiltfileManifestName].AddPendingFileChange(model.TargetID{
-		Type: model.TargetTypeConfigs,
-		Name: "singleton",
-	}, f.JoinPath("Tiltfile"), time.Now())
+	state.DesiredTiltfilePath = f.JoinPath("Tiltfile")
 	st.UnlockMutableState()
+
+	// Simulate tiltfile initialization
+	_ = cc.maybeCreateInitialTiltfile(ctx, st)
 
 	return &ccFixture{
 		TempDirFixture: f,

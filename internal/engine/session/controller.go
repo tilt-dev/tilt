@@ -103,8 +103,9 @@ func (c *Controller) makeSession(st store.RStore) *session.Session {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
-	// engine hasn't finished initialization - Tiltfile hasn't been loaded yet
-	if state.TiltfilePath == "" {
+	// The Tiltfile object hasn't been created yet.
+	tf, ok := state.Tiltfiles[model.MainTiltfileManifestName.String()]
+	if !ok {
 		return nil
 	}
 
@@ -113,7 +114,7 @@ func (c *Controller) makeSession(st store.RStore) *session.Session {
 			Name: "Tiltfile",
 		},
 		Spec: session.SessionSpec{
-			TiltfilePath: state.TiltfilePath,
+			TiltfilePath: tf.Spec.Path,
 		},
 		Status: session.SessionStatus{
 			PID:       c.pid,
