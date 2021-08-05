@@ -2,6 +2,7 @@ package fake
 
 import (
 	"context"
+	"io"
 	"os"
 	"testing"
 
@@ -15,6 +16,7 @@ import (
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
 
+	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
@@ -33,6 +35,7 @@ type object interface {
 
 type ControllerFixture struct {
 	t          testing.TB
+	out        *bufsync.ThreadSafeBuffer
 	ctx        context.Context
 	cancel     context.CancelFunc
 	controller controller
@@ -59,18 +62,25 @@ func (b ControllerFixtureBuilder) Build(c controller) *ControllerFixture {
 func newControllerFixture(t testing.TB, cli ctrlclient.Client, c controller) *ControllerFixture {
 	t.Helper()
 
+	out := bufsync.NewThreadSafeBuffer()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
-	ctx = logger.WithLogger(ctx, logger.NewTestLogger(os.Stdout))
+	ctx = logger.WithLogger(ctx, logger.NewTestLogger(io.MultiWriter(out, os.Stdout)))
 
 	return &ControllerFixture{
 		t:          t,
+		out:        out,
 		ctx:        ctx,
 		cancel:     cancel,
 		Scheme:     cli.Scheme(),
 		Client:     cli,
 		controller: c,
 	}
+}
+
+func (b ControllerFixture) Stdout() string {
+	return b.out.String()
 }
 
 func (f ControllerFixture) T() testing.TB {
