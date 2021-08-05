@@ -388,7 +388,14 @@ const columnNameToInfoTooltip: {
   "Trigger Mode": (
     <>
       Trigger mode can be toggled through the UI. To set it persistently, see{" "}
-      <a href={linkToTiltDocs(TiltDocsPage.TriggerMode)} target="_blank" rel="noopener noreferrer">Tiltfile docs</a>.
+      <a
+        href={linkToTiltDocs(TiltDocsPage.TriggerMode)}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Tiltfile docs
+      </a>
+      .
     </>
   ),
 }
