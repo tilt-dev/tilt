@@ -1465,8 +1465,16 @@ func schema_pkg_apis_core_v1alpha1_GlobalExtensionSpec(ref common.ReferenceCallb
 							Format:      "",
 						},
 					},
+					"repoPath": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RepoPath specifies the path to the extension directory inside the repo.\n\nOnce the repo is downloaded, this path should point to a directory with a Tiltfile as the main \"entrypoint\" of the extension.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
-				Required: []string{"repoName"},
+				Required: []string{"repoName", "repoPath"},
 			},
 		},
 	}

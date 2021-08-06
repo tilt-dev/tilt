@@ -456,6 +456,12 @@ message GlobalExtensionSpec {
   // The GlobalExtension controller should watch for changes to this repo, and
   // may update if this repo is deleted or moved.
   optional string repoName = 1;
+
+  // RepoPath specifies the path to the extension directory inside the repo.
+  //
+  // Once the repo is downloaded, this path should point to a directory with a
+  // Tiltfile as the main "entrypoint" of the extension.
+  optional string repoPath = 2;
 }
 
 // GlobalExtensionStatus defines the observed state of GlobalExtension

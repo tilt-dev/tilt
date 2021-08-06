@@ -58,6 +58,12 @@ type GlobalExtensionSpec struct {
 	// The GlobalExtension controller should watch for changes to this repo, and
 	// may update if this repo is deleted or moved.
 	RepoName string `json:"repoName" protobuf:"bytes,1,opt,name=repoName"`
+
+	// RepoPath specifies the path to the extension directory inside the repo.
+	//
+	// Once the repo is downloaded, this path should point to a directory with a
+	// Tiltfile as the main "entrypoint" of the extension.
+	RepoPath string `json:"repoPath" protobuf:"bytes,2,opt,name=repoPath"`
 }
 
 var _ resource.Object = &GlobalExtension{}
