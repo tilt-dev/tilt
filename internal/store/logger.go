@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -41,6 +42,10 @@ func WithObjectLogHandler(ctx context.Context, st RStore, obj runtime.Object) (c
 	// get dumped in the global log.
 	mn := meta.GetAnnotations()[v1alpha1.AnnotationManifest]
 	spanID := meta.GetAnnotations()[v1alpha1.AnnotationSpanID]
+	if spanID == "" {
+		spanID = fmt.Sprintf("%s-%s", reflect.TypeOf(obj).Name(), meta.GetName())
+	}
+
 	w := apiLogWriter{
 		store:        st,
 		manifestName: model.ManifestName(mn),

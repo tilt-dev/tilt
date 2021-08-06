@@ -7,6 +7,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
@@ -33,6 +34,37 @@ func TestDefault(t *testing.T) {
 
 	p := f.JoinPath("my-repo", "my-ext", "Tiltfile")
 	require.Equal(t, p, ext.Status.Path)
+
+	var tf v1alpha1.Tiltfile
+	f.MustGet(types.NamespacedName{Name: "my-repo:my-ext"}, &tf)
+	require.Equal(t, p, tf.Spec.Path)
+}
+
+func TestCleanupTiltfile(t *testing.T) {
+	f := newFixture(t)
+	f.setupRepo()
+
+	ext := v1alpha1.GlobalExtension{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "my-repo:my-ext",
+		},
+		Spec: v1alpha1.GlobalExtensionSpec{
+			RepoName: "my-repo",
+			RepoPath: "my-ext",
+		},
+	}
+	f.Create(&ext)
+
+	f.MustGet(types.NamespacedName{Name: "my-repo:my-ext"}, &ext)
+
+	p := f.JoinPath("my-repo", "my-ext", "Tiltfile")
+
+	var tf v1alpha1.Tiltfile
+	f.MustGet(types.NamespacedName{Name: "my-repo:my-ext"}, &tf)
+	require.Equal(t, p, tf.Spec.Path)
+
+	f.Delete(&ext)
+	assert.False(t, f.Get(types.NamespacedName{Name: "my-repo:my-ext"}, &tf))
 }
 
 func TestMissing(t *testing.T) {

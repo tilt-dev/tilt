@@ -54,7 +54,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 	// Cleanup tiltfile loads if an extension is deleted.
 	if apierrors.IsNotFound(err) || !ext.ObjectMeta.DeletionTimestamp.IsZero() {
-		// TODO(nick): Remove child tiltfile objects.
+		err := r.manageOwnedTiltfile(ctx, nn, nil)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 		return ctrl.Result{}, nil
 	}
 
@@ -100,6 +103,15 @@ func (r *Reconciler) updateStatus(ctx context.Context, ext *v1alpha1.GlobalExten
 		return ctrl.Result{}, nil
 	}
 	err := r.ctrlClient.Status().Update(ctx, update)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	err = r.manageOwnedTiltfile(ctx, types.NamespacedName{Name: update.Name}, update)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	return ctrl.Result{}, err
 }
 
@@ -116,6 +128,15 @@ func (r *Reconciler) updateError(ctx context.Context, ext *v1alpha1.GlobalExtens
 	logger.Get(ctx).Errorf("globalextension %s: %s", ext.Name, errorMsg)
 
 	err := r.ctrlClient.Status().Update(ctx, update)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	err = r.manageOwnedTiltfile(ctx, types.NamespacedName{Name: update.Name}, update)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	return ctrl.Result{}, err
 }
 
