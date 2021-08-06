@@ -1,6 +1,7 @@
 import { mount, ReactWrapper } from "enzyme"
 import React from "react"
 import { MemoryRouter } from "react-router"
+import { AnalyticsAction } from "./analytics"
 import {
   cleanupMockAnalyticsCalls,
   expectIncrs,
@@ -72,12 +73,18 @@ describe("SidebarResources", () => {
     clickStar(root, "snack")
 
     expectIncrs(
-      { name: "ui.web.star", tags: { starCount: "0", action: "load" } },
+      {
+        name: "ui.web.star",
+        tags: { starCount: "0", action: AnalyticsAction.Load },
+      },
       {
         name: "ui.web.sidebarStarButton",
-        tags: { action: "click", newStarState: "true" },
+        tags: { action: AnalyticsAction.Click, newStarState: "true" },
       },
-      { name: "ui.web.star", tags: { starCount: "1", action: "star" } }
+      {
+        name: "ui.web.star",
+        tags: { starCount: "1", action: AnalyticsAction.Star },
+      }
     )
 
     expect(starredItemsAccessor.get()).toEqual(["snack"])
@@ -106,12 +113,18 @@ describe("SidebarResources", () => {
     clickStar(root, "snack")
 
     expectIncrs(
-      { name: "ui.web.star", tags: { starCount: "2", action: "load" } },
+      {
+        name: "ui.web.star",
+        tags: { starCount: "2", action: AnalyticsAction.Load },
+      },
       {
         name: "ui.web.sidebarStarButton",
-        tags: { action: "click", newStarState: "false" },
+        tags: { action: AnalyticsAction.Click, newStarState: "false" },
       },
-      { name: "ui.web.star", tags: { starCount: "1", action: "unstar" } }
+      {
+        name: "ui.web.star",
+        tags: { starCount: "1", action: AnalyticsAction.Unstar },
+      }
     )
 
     expect(starredItemsAccessor.get()).toEqual(["vigoda"])

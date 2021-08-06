@@ -1,5 +1,6 @@
 import { mount } from "enzyme"
 import React from "react"
+import { AnalyticsAction } from "./analytics"
 import {
   cleanupMockAnalyticsCalls,
   expectIncrs,
@@ -58,7 +59,7 @@ describe("ClearLogs", () => {
 
     expectIncrs({
       name: "ui.web.clearLogs",
-      tags: { action: "click", all: "true" },
+      tags: { action: AnalyticsAction.Click, all: "true" },
     })
   })
 
@@ -81,7 +82,7 @@ describe("ClearLogs", () => {
 
     expectIncrs({
       name: "ui.web.clearLogs",
-      tags: { action: "click", all: "false" },
+      tags: { action: AnalyticsAction.Click, all: "false" },
     })
   })
 })

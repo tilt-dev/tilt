@@ -2,7 +2,7 @@ import { debounce, InputAdornment, TextField } from "@material-ui/core"
 import { InputProps as StandardInputProps } from "@material-ui/core/Input/Input"
 import React, { Dispatch, SetStateAction } from "react"
 import styled from "styled-components"
-import { incr } from "./analytics"
+import { AnalyticsAction, incr } from "./analytics"
 import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
 import { ReactComponent as SearchSvg } from "./assets/svg/search.svg"
 import { InstrumentedButton } from "./instrumentedComponents"
@@ -154,7 +154,7 @@ function setResourceNameFilter(
 
 // debounce so we don't send for every single keypress
 let incrResourceNameFilterEdit = debounce(() => {
-  incr("ui.web.resourceNameFilter", { action: "edit" })
+  incr("ui.web.resourceNameFilter", { action: AnalyticsAction.Edit })
 }, 5000)
 
 function ResourceNameFilter(props: OverviewSidebarOptionsProps) {

@@ -3,7 +3,7 @@ import { CellProps, Column, useSortBy, useTable } from "react-table"
 import TimeAgo from "react-timeago"
 import styled from "styled-components"
 import { buildAlerts, runtimeAlerts } from "./alerts"
-import { incr } from "./analytics"
+import { AnalyticsAction, incr } from "./analytics"
 import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
@@ -297,7 +297,9 @@ function TableEndpointColumn({ row }: CellProps<RowValues>) {
   let endpoints = row.values.endpoints.map((ep: any) => {
     return (
       <Endpoint
-        onClick={() => void incr("ui.web.endpoint", { action: "click" })}
+        onClick={() =>
+          void incr("ui.web.endpoint", { action: AnalyticsAction.Click })
+        }
         href={ep.url}
         // We use ep.url as the target, so that clicking the link re-uses the tab.
         target={ep.url}

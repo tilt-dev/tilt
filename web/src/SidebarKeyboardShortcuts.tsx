@@ -1,5 +1,5 @@
 import React, { Component } from "react"
-import { incr } from "./analytics"
+import { AnalyticsAction, incr } from "./analytics"
 import { ResourceNav, useResourceNav } from "./ResourceNav"
 import { isTargetEditable } from "./shortcut"
 import SidebarItem from "./SidebarItem"
@@ -65,7 +65,7 @@ class SidebarKeyboardShortcuts extends Component<Props> {
           return
         }
         this.props.onTrigger()
-        incr("ui.web.triggerResource", { action: "shortcut" })
+        incr("ui.web.triggerResource", { action: AnalyticsAction.Shortcut })
         e.preventDefault()
         break
     }

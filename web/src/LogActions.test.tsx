@@ -1,5 +1,6 @@
 import { mount } from "enzyme"
 import React from "react"
+import { AnalyticsAction } from "./analytics"
 import {
   cleanupMockAnalyticsCalls,
   expectIncrs,
@@ -53,7 +54,7 @@ describe("LogsFontSize", () => {
     expect(getLocalStorageValue()).toEqual(`95%`) // JSON serialized
     expectIncrs({
       name: "ui.web.zoomLogs",
-      tags: { action: "click", dir: "out" },
+      tags: { action: AnalyticsAction.Click, dir: "out" },
     })
   })
 
@@ -72,7 +73,7 @@ describe("LogsFontSize", () => {
     expect(getLocalStorageValue()).toEqual(`105%`)
     expectIncrs({
       name: "ui.web.zoomLogs",
-      tags: { action: "click", dir: "in" },
+      tags: { action: AnalyticsAction.Click, dir: "in" },
     })
   })
 })

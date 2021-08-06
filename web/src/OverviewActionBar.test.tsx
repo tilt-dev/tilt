@@ -2,6 +2,7 @@ import MenuItem from "@material-ui/core/MenuItem"
 import { mount, ReactWrapper } from "enzyme"
 import { createMemoryHistory, MemoryHistory } from "history"
 import { MemoryRouter, Router } from "react-router"
+import { AnalyticsAction } from "./analytics"
 import {
   cleanupMockAnalyticsCalls,
   expectIncrs,
@@ -71,7 +72,7 @@ it("navigates to warning filter", () => {
 
   expectIncrs({
     name: "ui.web.filterLevel",
-    tags: { action: "click", level: "warn", source: "" },
+    tags: { action: AnalyticsAction.Click, level: "warn", source: "" },
   })
 })
 
