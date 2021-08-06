@@ -3,7 +3,6 @@ package store
 import (
 	"fmt"
 	"net/url"
-	"os"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -201,21 +200,6 @@ func TestMostRecentPod(t *testing.T) {
 	m := model.Manifest{Name: "fe"}
 	podSet := NewK8sRuntimeStateWithPods(m, podA, podB, podC)
 	assert.Equal(t, "pod-b", podSet.MostRecentPod().Name)
-}
-
-func TestRelativeTiltfilePath(t *testing.T) {
-	es := newState([]model.Manifest{})
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	es.TiltfilePath = filepath.Join(wd, "Tiltfile")
-
-	actual, err := es.RelativeTiltfilePath()
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.Equal(t, "Tiltfile", actual)
 }
 
 func TestNextBuildReason(t *testing.T) {

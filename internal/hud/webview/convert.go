@@ -175,7 +175,7 @@ func ToUISession(s store.EngineState) *v1alpha1.UISession {
 
 	status.TiltStartTime = metav1.NewTime(s.TiltStartTime)
 
-	status.TiltfileKey = s.TiltfilePath
+	status.TiltfileKey = s.MainTiltfilePath()
 
 	return ret
 }

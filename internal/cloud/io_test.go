@@ -8,10 +8,14 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tilt-dev/tilt/internal/hud/webview"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/tiltfiles"
 	"github.com/tilt-dev/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/model"
 	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
 )
 
@@ -20,6 +24,12 @@ func TestWriteSnapshotTo(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
 
 	state := store.NewState()
+	tiltfiles.HandleTiltfileUpsertAction(state, tiltfiles.TiltfileUpsertAction{
+		Tiltfile: &v1alpha1.Tiltfile{
+			ObjectMeta: metav1.ObjectMeta{Name: model.MainTiltfileManifestName.String()},
+			Spec:       v1alpha1.TiltfileSpec{Path: "Tiltfile"},
+		},
+	})
 	snapshot := &proto_webview.Snapshot{
 		View: &proto_webview.View{
 			UiSession: webview.ToUISession(*state),
@@ -48,7 +58,8 @@ func TestWriteSnapshotTo(t *testing.T) {
         "versionSettings": {
           "checkUpdates": true
         },
-        "tiltCloudSchemeHost": "https:"
+        "tiltCloudSchemeHost": "https:",
+        "tiltfileKey": "Tiltfile"
       }
     },
     "uiResources": [

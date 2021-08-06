@@ -3,7 +3,6 @@ package store
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"sort"
 	"sync"
 	"time"
@@ -77,8 +76,6 @@ type EngineState struct {
 	// All logs in Tilt, stored in a structured format.
 	LogStore *logstore.LogStore `testdiff:"ignore"`
 
-	TiltfilePath string
-
 	Tiltignore    model.Dockerignore
 	WatchSettings model.WatchSettings
 
@@ -121,9 +118,17 @@ type EngineState struct {
 
 	UserConfigState model.UserConfigState
 
+	// The initialization sequence is unfortunate. Currently we have:
+	// 1) Dispatch an InitAction
+	// 1) InitAction sets DesiredTiltfilePath
+	// 2) ConfigsController reads DesiredTiltfilePath, writes a new Tiltfile object to the APIServer
+	// 4) ConfigsController dispatches a TiltfileCreateAction, to copy the apiserver data into the EngineState
+	DesiredTiltfilePath string
+
 	// API-server-based data models. Stored in EngineState
 	// to assist in migration.
-	Cmds map[string]*Cmd `json:"-"`
+	Cmds      map[string]*Cmd               `json:"-"`
+	Tiltfiles map[string]*v1alpha1.Tiltfile `json:"-"`
 }
 
 type CloudStatus struct {
@@ -131,6 +136,14 @@ type CloudStatus struct {
 	TeamName                         string
 	TokenKnownUnregistered           bool // to distinguish whether an empty Username means "we haven't checked" or "we checked and the token isn't registered"
 	WaitingForStatusPostRegistration bool
+}
+
+func (e *EngineState) MainTiltfilePath() string {
+	tf, ok := e.Tiltfiles[model.MainTiltfileManifestName.String()]
+	if !ok {
+		return ""
+	}
+	return tf.Spec.Path
 }
 
 // Merge analytics opt-in status from different sources.
@@ -348,14 +361,6 @@ func (e *EngineState) RemoveFromTriggerQueue(mn model.ManifestName) {
 	}
 }
 
-func (e EngineState) RelativeTiltfilePath() (string, error) {
-	wd, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Rel(wd, e.TiltfilePath)
-}
-
 func (e EngineState) IsEmpty() bool {
 	return len(e.ManifestTargets) == 0
 }
@@ -501,6 +506,9 @@ func NewState() *EngineState {
 	}
 	ret.UpdateSettings = model.DefaultUpdateSettings()
 	ret.CurrentlyBuilding = make(map[model.ManifestName]bool)
+
+	// For most Tiltfiles, this is created by the TiltfileUpsertAction.  But
+	// lots of tests assume tha main tiltfile state exists on initialization.
 	ret.TiltfileDefinitionOrder = []model.ManifestName{model.MainTiltfileManifestName}
 	ret.TiltfileStates = map[model.ManifestName]*ManifestState{
 		model.MainTiltfileManifestName: &ManifestState{
@@ -515,6 +523,7 @@ func NewState() *EngineState {
 	}
 
 	ret.Cmds = make(map[string]*Cmd)
+	ret.Tiltfiles = make(map[string]*v1alpha1.Tiltfile)
 
 	return ret
 }

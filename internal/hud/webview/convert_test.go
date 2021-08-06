@@ -1,8 +1,6 @@
 package webview
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -172,21 +170,6 @@ func TestStateToViewTiltfileLog(t *testing.T) {
 	require.True(t, ok, "no resource named (Tiltfile) found")
 	assert.Equal(t, "hello", string(v.LogList.Segments[0].Text))
 	assert.Equal(t, "(Tiltfile)", string(v.LogList.Spans[string(spanID)].ManifestName))
-}
-
-func TestRelativeTiltfilePath(t *testing.T) {
-	es := newState([]model.Manifest{})
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	es.TiltfilePath = filepath.Join(wd, "Tiltfile")
-
-	actual, err := es.RelativeTiltfilePath()
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.Equal(t, "Tiltfile", actual)
 }
 
 func TestNeedsNudgeSet(t *testing.T) {

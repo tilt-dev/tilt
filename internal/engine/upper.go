@@ -28,6 +28,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/sliceutils"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/tiltfiles"
 	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/internal/token"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -177,6 +178,10 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		local.HandleCmdUpdateStatusAction(state, action)
 	case local.CmdDeleteAction:
 		local.HandleCmdDeleteAction(state, action)
+	case tiltfiles.TiltfileUpsertAction:
+		tiltfiles.HandleTiltfileUpsertAction(state, action)
+	case tiltfiles.TiltfileDeleteAction:
+		tiltfiles.HandleTiltfileDeleteAction(state, action)
 	default:
 		state.FatalError = fmt.Errorf("unrecognized action: %T", action)
 	}
@@ -725,7 +730,7 @@ func handleDumpEngineStateAction(ctx context.Context, engineState *store.EngineS
 func handleInitAction(ctx context.Context, engineState *store.EngineState, action InitAction) {
 	engineState.TiltBuildInfo = action.TiltBuild
 	engineState.TiltStartTime = action.StartTime
-	engineState.TiltfilePath = action.TiltfilePath
+	engineState.DesiredTiltfilePath = action.TiltfilePath
 	engineState.TiltfileConfigPaths[model.MainTiltfileManifestName] = action.ConfigFiles
 	engineState.UserConfigState.Args = action.UserArgs
 	engineState.AnalyticsUserOpt = action.AnalyticsUserOpt

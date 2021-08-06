@@ -5,21 +5,21 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	ctrltiltfile "github.com/tilt-dev/tilt/internal/controllers/core/tiltfile"
 	"github.com/tilt-dev/tilt/internal/sliceutils"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/tiltfiles"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type ConfigsController struct {
-	ctrlClient       ctrlclient.Client
-	buildSource      *ctrltiltfile.BuildSource
-	loadStartedCount int // used to synchronize with state
+	ctrlClient               ctrlclient.Client
+	buildSource              *ctrltiltfile.BuildSource
+	loadStartedCount         int // used to synchronize with state
+	isInitialTiltfileCreated bool
 }
 
 func NewConfigsController(ctrlClient ctrlclient.Client, buildSource *ctrltiltfile.BuildSource) *ConfigsController {
@@ -55,6 +55,11 @@ func (cc *ConfigsController) needsBuild(ctx context.Context, st store.RStore) (*
 	}
 
 	for _, name := range state.TiltfileDefinitionOrder {
+		tf, ok := state.Tiltfiles[name.String()]
+		if !ok {
+			continue
+		}
+
 		tfState, ok := state.TiltfileStates[name]
 		if !ok {
 			continue
@@ -91,17 +96,12 @@ func (cc *ConfigsController) needsBuild(ctx context.Context, st store.RStore) (*
 		}
 		filesChanged = sliceutils.DedupedAndSorted(filesChanged)
 
-		tiltfilePath, err := state.RelativeTiltfilePath()
-		if err != nil {
-			st.Dispatch(store.NewErrorAction(err))
-		}
-
 		return &ctrltiltfile.BuildEntry{
 			Name:                  name,
 			FilesChanged:          filesChanged,
 			BuildReason:           reason,
 			UserConfigState:       state.UserConfigState,
-			TiltfilePath:          tiltfilePath,
+			TiltfilePath:          tf.Spec.Path,
 			CheckpointAtExecStart: state.LogStore.Checkpoint(),
 			EngineMode:            state.EngineMode,
 		}, true
@@ -110,41 +110,52 @@ func (cc *ConfigsController) needsBuild(ctx context.Context, st store.RStore) (*
 	return nil, false
 }
 
-func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) error {
-	entry, ok := cc.needsBuild(ctx, st)
-	if !ok {
+func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) error {
+	if summary.IsLogOnly() {
 		return nil
 	}
 
-	newTF := &v1alpha1.Tiltfile{
-		ObjectMeta: metav1.ObjectMeta{Name: entry.Name.String()},
-		Spec: v1alpha1.TiltfileSpec{
-			Path: entry.TiltfilePath,
-		},
-	}
-	var tf v1alpha1.Tiltfile
-	err := cc.ctrlClient.Get(ctx, types.NamespacedName{Name: entry.Name.String()}, &tf)
-	if err != nil && !apierrors.IsNotFound(err) {
-		return err
+	if !cc.isInitialTiltfileCreated {
+		err := cc.maybeCreateInitialTiltfile(ctx, st)
+		if err != nil {
+			return err
+		}
+
+		if !cc.isInitialTiltfileCreated {
+			return nil
+		}
 	}
 
-	if apierrors.IsNotFound(err) {
-		err := cc.ctrlClient.Create(ctx, newTF)
-		if err != nil {
-			return err
-		}
-	} else if !apicmp.DeepEqual(tf.Spec, newTF.Spec) {
-		update := tf.DeepCopy()
-		update.Spec = newTF.Spec
-		err := cc.ctrlClient.Update(ctx, update)
-		if err != nil {
-			return err
-		}
+	entry, ok := cc.needsBuild(ctx, st)
+	if !ok {
+		return nil
 	}
 
 	// Don't increment until we know we've updated the apiserver.
 	cc.loadStartedCount++
 	entry.LoadCount = cc.loadStartedCount
 	cc.buildSource.SetEntry(entry)
+	return nil
+}
+
+// Register the tiltfile with the APIServer, then dispatch an action to also copy it into the EngineState.
+func (cc *ConfigsController) maybeCreateInitialTiltfile(ctx context.Context, st store.RStore) error {
+	state := st.RLockState()
+	desired := state.DesiredTiltfilePath
+	st.RUnlockState()
+
+	newTF := &v1alpha1.Tiltfile{
+		ObjectMeta: metav1.ObjectMeta{Name: model.MainTiltfileManifestName.String()},
+		Spec: v1alpha1.TiltfileSpec{
+			Path: desired,
+		},
+	}
+	err := cc.ctrlClient.Create(ctx, newTF)
+	if err != nil && !apierrors.IsAlreadyExists(err) {
+		return err
+	}
+
+	st.Dispatch(tiltfiles.NewTiltfileUpsertAction(newTF))
+	cc.isInitialTiltfileCreated = true
 	return nil
 }

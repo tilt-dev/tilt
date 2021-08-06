@@ -9,21 +9,19 @@ import (
 	"testing"
 	"time"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
-
-	"github.com/tilt-dev/tilt/internal/controllers/fake"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/tiltfiles"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -507,8 +505,14 @@ func newFixture(t *testing.T, engineMode store.EngineMode) *fixture {
 	st := NewTestingStore(t)
 	st.WithState(func(state *store.EngineState) {
 		state.EngineMode = engineMode
-		state.TiltfilePath = f.JoinPath("Tiltfile")
-		state.TiltfileStates[model.MainTiltfileManifestName].AddCompletedBuild(model.BuildRecord{
+		mn := model.MainTiltfileManifestName
+		tiltfiles.HandleTiltfileUpsertAction(state, tiltfiles.TiltfileUpsertAction{
+			Tiltfile: &v1alpha1.Tiltfile{
+				ObjectMeta: metav1.ObjectMeta{Name: mn.String()},
+				Spec:       v1alpha1.TiltfileSpec{Path: f.JoinPath("Tiltfile")},
+			},
+		})
+		state.TiltfileStates[mn].AddCompletedBuild(model.BuildRecord{
 			StartTime:  time.Now(),
 			FinishTime: time.Now(),
 			Reason:     model.BuildReasonFlagInit,
