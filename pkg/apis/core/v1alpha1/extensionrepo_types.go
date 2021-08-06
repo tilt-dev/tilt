@@ -104,7 +104,7 @@ func (in *ExtensionRepo) Validate(ctx context.Context) field.ErrorList {
 			field.NewPath("spec.url"),
 			url,
 			"URLs must start with http(s):// or file://"))
-	} else if isFile && !filepath.IsAbs(strings.TrimPrefix(url, "filepath://")) {
+	} else if isFile && !filepath.IsAbs(strings.TrimPrefix(url, "file://")) {
 		fieldErrors = append(fieldErrors, field.Invalid(
 			field.NewPath("spec.url"),
 			url,
