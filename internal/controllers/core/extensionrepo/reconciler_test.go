@@ -1,10 +1,13 @@
 package extensionrepo
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tilt-dev/wmclient/pkg/dirs"
 	"github.com/tilt-dev/wmclient/pkg/os/temp"
@@ -29,7 +32,8 @@ func TestInvalidRepo(t *testing.T) {
 	}
 	f.Create(&repo)
 	f.MustGet(key, &repo)
-	require.Equal(t, "URL must start with 'https://': x", repo.Status.Error)
+	assert.Equal(t, "invalid: URL must start with 'https://': x", repo.Status.Error)
+	assert.Equal(t, "extensionrepo default: invalid: URL must start with 'https://': x\n", f.Stdout())
 }
 
 func TestUnknown(t *testing.T) {
@@ -45,10 +49,10 @@ func TestUnknown(t *testing.T) {
 	}
 	f.Create(&repo)
 	f.MustGet(key, &repo)
-	require.Contains(t, repo.Status.Error, "Downloading ExtensionRepo default. Waiting 5s before retrying.")
+	require.Contains(t, repo.Status.Error, "download error: waiting 5s before retrying")
 }
 
-func TestDefault(t *testing.T) {
+func TestDefaultWeb(t *testing.T) {
 	f := newFixture(t)
 	key := types.NamespacedName{Name: "default"}
 	repo := v1alpha1.ExtensionRepo{
@@ -74,9 +78,31 @@ func TestDefault(t *testing.T) {
 	require.True(t, os.IsNotExist(err))
 }
 
+func TestDefaultFile(t *testing.T) {
+	f := newFixture(t)
+
+	path := filepath.Join(f.dir.Path(), "my-repo")
+	_ = os.MkdirAll(path, os.FileMode(0755))
+
+	key := types.NamespacedName{Name: "default"}
+	repo := v1alpha1.ExtensionRepo{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: key.Name,
+		},
+		Spec: v1alpha1.ExtensionRepoSpec{
+			URL: fmt.Sprintf("file://%s", path),
+		},
+	}
+	f.Create(&repo)
+	f.MustGet(key, &repo)
+	require.Equal(t, repo.Status.Error, "")
+	require.Equal(t, repo.Status.Path, path)
+}
+
 type fixture struct {
 	*fake.ControllerFixture
-	r *Reconciler
+	r   *Reconciler
+	dir *temp.TempDir
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -92,5 +118,6 @@ func newFixture(t *testing.T) *fixture {
 	return &fixture{
 		ControllerFixture: cfb.Build(r),
 		r:                 r,
+		dir:               tmpDir,
 	}
 }

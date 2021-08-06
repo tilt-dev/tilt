@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"context"
+	"path/filepath"
 	strings "strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -96,11 +97,18 @@ func (in *ExtensionRepo) IsStorageVersion() bool {
 func (in *ExtensionRepo) Validate(ctx context.Context) field.ErrorList {
 	var fieldErrors field.ErrorList
 	url := in.Spec.URL
-	if !strings.HasPrefix(url, "https://") && !strings.HasPrefix(url, "http://") {
+	isWeb := strings.HasPrefix(url, "https://") || strings.HasPrefix(url, "http://")
+	isFile := strings.HasPrefix(url, "file://")
+	if !isWeb && !isFile {
 		fieldErrors = append(fieldErrors, field.Invalid(
 			field.NewPath("spec.url"),
 			url,
-			"URLs must start with https:// or http://"))
+			"URLs must start with http(s):// or file://"))
+	} else if isFile && !filepath.IsAbs(strings.TrimPrefix(url, "file://")) {
+		fieldErrors = append(fieldErrors, field.Invalid(
+			field.NewPath("spec.url"),
+			url,
+			"file:// URLs must be absolute (e.g., file:///home/user/repo)"))
 	}
 	return fieldErrors
 }

@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	urlpkg "net/url"
 	"os"
 	"os/exec"
@@ -17,6 +18,15 @@ import (
 
 	"github.com/tilt-dev/go-get/internal/web"
 )
+
+type cmdContext struct {
+	dir    string
+	stderr io.Writer
+}
+
+func newCmdContext(dir string, stderr io.Writer) cmdContext {
+	return cmdContext{stderr: stderr, dir: dir}
+}
 
 // A vcsCmd describes how to use a version control system
 // like Mercurial, Git, or Subversion.
@@ -35,8 +45,8 @@ type vcsCmd struct {
 	scheme  []string
 	pingCmd string
 
-	remoteRepo  func(v *vcsCmd, rootDir string) (remoteRepo string, err error)
-	resolveRepo func(v *vcsCmd, rootDir, remoteRepo string) (realRepo string, err error)
+	remoteRepo  func(v *vcsCmd, rootDir cmdContext) (remoteRepo string, err error)
+	resolveRepo func(v *vcsCmd, rootDir cmdContext, remoteRepo string) (realRepo string, err error)
 }
 
 var defaultSecureScheme = map[string]bool{
@@ -126,7 +136,7 @@ var vcsHg = &vcsCmd{
 	remoteRepo: hgRemoteRepo,
 }
 
-func hgRemoteRepo(vcsHg *vcsCmd, rootDir string) (remoteRepo string, err error) {
+func hgRemoteRepo(vcsHg *vcsCmd, rootDir cmdContext) (remoteRepo string, err error) {
 	out, err := vcsHg.runOutput(rootDir, "paths default")
 	if err != nil {
 		return "", err
@@ -173,7 +183,7 @@ var vcsGit = &vcsCmd{
 // repositories by SSH.
 var scpSyntaxRe = regexp.MustCompile(`^([a-zA-Z0-9_]+)@([a-zA-Z0-9._-]+):(.*)$`)
 
-func gitRemoteRepo(vcsGit *vcsCmd, rootDir string) (remoteRepo string, err error) {
+func gitRemoteRepo(vcsGit *vcsCmd, rootDir cmdContext) (remoteRepo string, err error) {
 	cmd := "config remote.origin.url"
 	errParse := errors.New("unable to parse output of git " + cmd)
 	errRemoteOriginNotFound := errors.New("remote origin not found")
@@ -238,7 +248,7 @@ var vcsBzr = &vcsCmd{
 	resolveRepo: bzrResolveRepo,
 }
 
-func bzrRemoteRepo(vcsBzr *vcsCmd, rootDir string) (remoteRepo string, err error) {
+func bzrRemoteRepo(vcsBzr *vcsCmd, rootDir cmdContext) (remoteRepo string, err error) {
 	outb, err := vcsBzr.runOutput(rootDir, "config parent_location")
 	if err != nil {
 		return "", err
@@ -246,7 +256,7 @@ func bzrRemoteRepo(vcsBzr *vcsCmd, rootDir string) (remoteRepo string, err error
 	return strings.TrimSpace(string(outb)), nil
 }
 
-func bzrResolveRepo(vcsBzr *vcsCmd, rootDir, remoteRepo string) (realRepo string, err error) {
+func bzrResolveRepo(vcsBzr *vcsCmd, rootDir cmdContext, remoteRepo string) (realRepo string, err error) {
 	outb, err := vcsBzr.runOutput(rootDir, "info "+remoteRepo)
 	if err != nil {
 		return "", err
@@ -295,7 +305,7 @@ var vcsSvn = &vcsCmd{
 	remoteRepo: svnRemoteRepo,
 }
 
-func svnRemoteRepo(vcsSvn *vcsCmd, rootDir string) (remoteRepo string, err error) {
+func svnRemoteRepo(vcsSvn *vcsCmd, rootDir cmdContext) (remoteRepo string, err error) {
 	outb, err := vcsSvn.runOutput(rootDir, "info")
 	if err != nil {
 		return "", err
@@ -345,7 +355,7 @@ var vcsFossil = &vcsCmd{
 	remoteRepo: fossilRemoteRepo,
 }
 
-func fossilRemoteRepo(vcsFossil *vcsCmd, rootDir string) (remoteRepo string, err error) {
+func fossilRemoteRepo(vcsFossil *vcsCmd, rootDir cmdContext) (remoteRepo string, err error) {
 	out, err := vcsFossil.runOutput(rootDir, "remote-url")
 	if err != nil {
 		return "", err
@@ -364,24 +374,25 @@ func (v *vcsCmd) String() string {
 // If an error occurs, run prints the command line and the
 // command's combined stdout+stderr to standard error.
 // Otherwise run discards the command's output.
-func (v *vcsCmd) run(dir string, cmd string, keyval ...string) error {
-	_, err := v.run1(dir, cmd, keyval, true)
+func (v *vcsCmd) run(ctx cmdContext, cmd string, keyval ...string) error {
+	_, err := v.run1(ctx, cmd, keyval, true)
 	return err
 }
 
 // runVerboseOnly is like run but only generates error output to standard error in verbose mode.
-func (v *vcsCmd) runVerboseOnly(dir string, cmd string, keyval ...string) error {
-	_, err := v.run1(dir, cmd, keyval, false)
+func (v *vcsCmd) runVerboseOnly(ctx cmdContext, cmd string, keyval ...string) error {
+	_, err := v.run1(ctx, cmd, keyval, false)
 	return err
 }
 
 // runOutput is like run but returns the output of the command.
-func (v *vcsCmd) runOutput(dir string, cmd string, keyval ...string) ([]byte, error) {
-	return v.run1(dir, cmd, keyval, true)
+func (v *vcsCmd) runOutput(ctx cmdContext, cmd string, keyval ...string) ([]byte, error) {
+	return v.run1(ctx, cmd, keyval, true)
 }
 
 // run1 is the generalized implementation of run and runOutput.
-func (v *vcsCmd) run1(dir string, cmdline string, keyval []string, verbose bool) ([]byte, error) {
+func (v *vcsCmd) run1(ctx cmdContext, cmdline string, keyval []string, verbose bool) ([]byte, error) {
+	dir := ctx.dir
 	m := make(map[string]string)
 	for i := 0; i < len(keyval); i += 2 {
 		m[keyval[i]] = keyval[i+1]
@@ -422,17 +433,17 @@ func (v *vcsCmd) run1(dir string, cmdline string, keyval []string, verbose bool)
 	}
 
 	cmd := exec.Command(v.cmd, args...)
-	cmd.Dir = dir
+	cmd.Dir = ctx.dir
 	cmd.Env = envForDir(cmd.Dir, os.Environ())
 
 	out, err := cmd.Output()
 	if err != nil {
 		if verbose {
-			fmt.Fprintf(os.Stderr, "# cd %s; %s %s\n", dir, v.cmd, strings.Join(args, " "))
+			fmt.Fprintf(ctx.stderr, "# cd %s; %s %s\n", dir, v.cmd, strings.Join(args, " "))
 			if ee, ok := err.(*exec.ExitError); ok && len(ee.Stderr) > 0 {
-				os.Stderr.Write(ee.Stderr)
+				ctx.stderr.Write(ee.Stderr)
 			} else {
-				fmt.Fprintf(os.Stderr, err.Error())
+				fmt.Fprintf(ctx.stderr, err.Error())
 			}
 		}
 	}
@@ -440,15 +451,15 @@ func (v *vcsCmd) run1(dir string, cmdline string, keyval []string, verbose bool)
 }
 
 // ping pings to determine scheme to use.
-func (v *vcsCmd) ping(scheme, repo string) error {
-	return v.runVerboseOnly(".", v.pingCmd, "scheme", scheme, "repo", repo)
+func (v *vcsCmd) ping(scheme, repo string, stderr io.Writer) error {
+	return v.runVerboseOnly(newCmdContext(".", stderr), v.pingCmd, "scheme", scheme, "repo", repo)
 }
 
 // create creates a new copy of repo in dir.
 // The parent of dir must exist; dir must not.
-func (v *vcsCmd) create(dir, repo string) error {
+func (v *vcsCmd) create(dir, repo string, stderr io.Writer) error {
 	for _, cmd := range v.createCmd {
-		if err := v.run(".", cmd, "dir", dir, "repo", repo); err != nil {
+		if err := v.run(newCmdContext(".", stderr), cmd, "dir", dir, "repo", repo); err != nil {
 			return err
 		}
 	}
@@ -456,9 +467,9 @@ func (v *vcsCmd) create(dir, repo string) error {
 }
 
 // download downloads any new changes for the repo in dir.
-func (v *vcsCmd) download(dir string) error {
+func (v *vcsCmd) download(dir string, stderr io.Writer) error {
 	for _, cmd := range v.downloadCmd {
-		if err := v.run(dir, cmd); err != nil {
+		if err := v.run(newCmdContext(dir, stderr), cmd); err != nil {
 			return err
 		}
 	}
@@ -466,10 +477,10 @@ func (v *vcsCmd) download(dir string) error {
 }
 
 // tags returns the list of available tags for the repo in dir.
-func (v *vcsCmd) tags(dir string) ([]string, error) {
+func (v *vcsCmd) tags(dir string, stderr io.Writer) ([]string, error) {
 	var tags []string
 	for _, tc := range v.tagCmd {
-		out, err := v.runOutput(dir, tc.cmd)
+		out, err := v.runOutput(newCmdContext(dir, stderr), tc.cmd)
 		if err != nil {
 			return nil, err
 		}
@@ -483,13 +494,14 @@ func (v *vcsCmd) tags(dir string) ([]string, error) {
 
 // tagSync syncs the repo in dir to the named tag,
 // which either is a tag returned by tags or is v.tagDefault.
-func (v *vcsCmd) tagSync(dir, tag string) error {
+func (v *vcsCmd) tagSync(dir, tag string, stderr io.Writer) error {
 	if v.tagSyncCmd == nil {
 		return nil
 	}
+	cmdCtx := newCmdContext(dir, stderr)
 	if tag != "" {
 		for _, tc := range v.tagLookupCmd {
-			out, err := v.runOutput(dir, tc.cmd, "tag", tag)
+			out, err := v.runOutput(cmdCtx, tc.cmd, "tag", tag)
 			if err != nil {
 				return err
 			}
@@ -504,7 +516,7 @@ func (v *vcsCmd) tagSync(dir, tag string) error {
 
 	if tag == "" && v.tagSyncDefault != nil {
 		for _, cmd := range v.tagSyncDefault {
-			if err := v.run(dir, cmd); err != nil {
+			if err := v.run(cmdCtx, cmd); err != nil {
 				return err
 			}
 		}
@@ -512,7 +524,7 @@ func (v *vcsCmd) tagSync(dir, tag string) error {
 	}
 
 	for _, cmd := range v.tagSyncCmd {
-		if err := v.run(dir, cmd, "tag", tag); err != nil {
+		if err := v.run(cmdCtx, cmd, "tag", tag); err != nil {
 			return err
 		}
 	}
@@ -639,8 +651,8 @@ func httpPrefix(s string) string {
 
 // repoRootForImportPath analyzes importPath to determine the
 // version control system, and code repository to use.
-func repoRootForImportPath(importPath string, security web.SecurityMode) (*repoRoot, error) {
-	rr, err := repoRootFromVCSPaths(importPath, security, vcsPaths)
+func repoRootForImportPath(importPath string, security web.SecurityMode, stderr io.Writer) (*repoRoot, error) {
+	rr, err := repoRootFromVCSPaths(importPath, security, vcsPaths, stderr)
 
 	// Should have been taken care of above, but make sure.
 	if err == nil && strings.Contains(importPath, "...") && strings.Contains(rr.Root, "...") {
@@ -655,7 +667,7 @@ var errUnknownSite = errors.New("dynamic lookup required to find mapping")
 
 // repoRootFromVCSPaths attempts to map importPath to a repoRoot
 // using the mappings defined in vcsPaths.
-func repoRootFromVCSPaths(importPath string, security web.SecurityMode, vcsPaths []*vcsPath) (*repoRoot, error) {
+func repoRootFromVCSPaths(importPath string, security web.SecurityMode, vcsPaths []*vcsPath, stderr io.Writer) (*repoRoot, error) {
 	// A common error is to use https://packagepath because that's what
 	// hg and git require. Diagnose this helpfully.
 	if prefix := httpPrefix(importPath); prefix != "" {
@@ -712,7 +724,7 @@ func repoRootFromVCSPaths(importPath string, security web.SecurityMode, vcsPaths
 					if security == web.SecureOnly && !vcs.isSecureScheme(s) {
 						continue
 					}
-					if vcs.ping(s, repo) == nil {
+					if vcs.ping(s, repo, stderr) == nil {
 						scheme = s
 						break
 					}
@@ -894,7 +906,7 @@ func bitbucketVCS(match map[string]string) error {
 			// VCS it uses. See issue 5375.
 			root := match["root"]
 			for _, vcs := range []string{"git", "hg"} {
-				if vcsByCmd(vcs).ping("https", root) == nil {
+				if vcsByCmd(vcs).ping("https", root, os.Stderr) == nil {
 					resp.SCM = vcs
 					break
 				}

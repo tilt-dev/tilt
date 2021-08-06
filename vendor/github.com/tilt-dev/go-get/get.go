@@ -6,6 +6,7 @@ package get
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -45,20 +46,15 @@ func init() {
 // Downloader fetches repositories under the given source tree.
 // Not thread-safe.
 type Downloader struct {
-	srcRoot string
+	Stderr io.Writer
 
-	// downloadRootCache records the version control repository
-	// root directories we have already considered during the download.
-	// For example, all the packages in the github.com/google/codesearch repo
-	// share the same root (the directory for that path), and we only need
-	// to run the hg commands to consider each repository once.
-	downloadRootCache map[string]bool
+	srcRoot string
 }
 
-func NewDownloader(srcRoot string) Downloader {
-	return Downloader{
-		srcRoot:           srcRoot,
-		downloadRootCache: map[string]bool{},
+func NewDownloader(srcRoot string) *Downloader {
+	return &Downloader{
+		Stderr:  os.Stderr,
+		srcRoot: srcRoot,
 	}
 }
 
@@ -77,7 +73,7 @@ func (d *Downloader) repoRoot(pkg string) (string, *repoRoot, error) {
 		return "", nil, fmt.Errorf("%s: invalid import path: %v", pkg, err)
 	}
 
-	rr, err := repoRootForImportPath(pkg, security)
+	rr, err := repoRootForImportPath(pkg, security, d.Stderr)
 	if err != nil {
 		return "", nil, err
 	}
@@ -107,12 +103,6 @@ func (d *Downloader) Download(pkg string) (string, error) {
 		return "", err
 	}
 
-	// If we've considered this repository already, don't do it again.
-	if d.downloadRootCache[root] {
-		return result, nil
-	}
-	d.downloadRootCache[root] = true
-
 	// Check that this is an appropriate place for the repo to be checked out.
 	// The target directory must either not exist or have a repo checked out already.
 	meta := filepath.Join(root, "."+vcs.cmd)
@@ -130,22 +120,41 @@ func (d *Downloader) Download(pkg string) (string, error) {
 			return "", err
 		}
 
-		if err = vcs.create(root, repo); err != nil {
+		if err = vcs.create(root, repo, d.Stderr); err != nil {
 			return "", err
 		}
 	} else {
 		// Metadata directory does exist; download incremental updates.
-		if err = vcs.download(root); err != nil {
+		if err = vcs.download(root, d.Stderr); err != nil {
 			return "", err
 		}
 	}
 
 	// Select and sync to appropriate version of the repository.
-	if err := vcs.tagSync(root, ""); err != nil {
+	if err := vcs.tagSync(root, "", d.Stderr); err != nil {
 		return "", err
 	}
 
 	return result, nil
+}
+
+// Update the checked out repo to the given ref.
+// Assumes the repo has already been downloaded.
+func (d *Downloader) RefSync(pkg, tag string) error {
+	srcRoot := d.srcRoot
+	_, rr, err := d.repoRoot(pkg)
+	if err != nil {
+		return err
+	}
+	vcs, rootPath := rr.vcs, rr.Root
+	root := filepath.Join(srcRoot, filepath.FromSlash(rootPath))
+	cmdCtx := newCmdContext(root, d.Stderr)
+	for _, cmd := range vcs.tagSyncCmd {
+		if err := vcs.run(cmdCtx, cmd, "tag", tag); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Determines where the repository will be downloaded before we download it.
@@ -169,9 +178,13 @@ func (d *Downloader) HeadRef(pkg string) (string, error) {
 	}
 	rootPath := rr.Root
 	root := filepath.Join(srcRoot, filepath.FromSlash(rootPath))
-	out, err := vcs.runOutput(root, "rev-parse HEAD")
+	out, err := vcs.runOutput(d.toCmdContext(root), "rev-parse HEAD")
 	if err != nil {
 		return "", err
 	}
 	return strings.TrimSpace(string(out)), nil
+}
+
+func (d *Downloader) toCmdContext(dir string) cmdContext {
+	return cmdContext{stderr: d.Stderr, dir: dir}
 }
