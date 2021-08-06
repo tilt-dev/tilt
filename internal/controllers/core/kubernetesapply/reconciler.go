@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -142,7 +143,8 @@ func (r *Reconciler) shouldDeployOnReconcile(
 	nn types.NamespacedName,
 	ka *v1alpha1.KubernetesApply,
 	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) bool {
-	if ka.ObjectMeta.Labels[v1alpha1.LabelOwnerKind] == v1alpha1.LabelOwnerKindTiltfile {
+	owner := metav1.GetControllerOf(ka)
+	if owner != nil && owner.Kind == v1alpha1.OwnerKindTiltfile {
 		// Until resource dependencies are expressed in the API,
 		// we can't use reconciliation to deploy KubernetesApply objects
 		// owned by the Tiltfile.

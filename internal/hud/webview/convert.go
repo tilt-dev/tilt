@@ -184,25 +184,29 @@ func ToUISession(s store.EngineState) *v1alpha1.UISession {
 // The order of the list is non-deterministic.
 func ToUIResourceList(state store.EngineState) ([]*v1alpha1.UIResource, error) {
 	ret := make([]*v1alpha1.UIResource, 0, len(state.ManifestTargets)+1)
+
+	// All tiltfiles appear earlier than other resources in the same group.
 	for _, name := range state.TiltfileDefinitionOrder {
 		ms, ok := state.TiltfileStates[name]
 		if !ok {
 			continue
 		}
 
-		ret = append(ret, TiltfileResourceProtoView(name, ms, state.LogStore))
+		r := TiltfileResourceProtoView(name, ms, state.LogStore)
+		r.Status.Order = int32(len(ret) + 1)
+		ret = append(ret, r)
 	}
-	for i, mt := range state.Targets() {
+
+	for _, mt := range state.Targets() {
 		r, err := toUIResource(mt, state)
 		if err != nil {
 			return nil, err
 		}
 
-		// The Tiltfile has Order -1, all "normal" resources have Order >= 1
-		r.Status.Order = int32(i + 1)
-
+		r.Status.Order = int32(len(ret) + 1)
 		ret = append(ret, r)
 	}
+
 	return ret, nil
 }
 
@@ -273,7 +277,6 @@ func TiltfileResourceProtoView(name model.ManifestName, ms *store.ManifestState,
 			BuildHistory:  history,
 			RuntimeStatus: v1alpha1.RuntimeStatusNotApplicable,
 			UpdateStatus:  ms.UpdateStatus(model.TriggerModeAuto),
-			Order:         -1,
 		},
 	}
 	start := metav1.NewMicroTime(ctfb.StartTime)

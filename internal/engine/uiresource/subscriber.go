@@ -4,9 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -16,7 +13,9 @@ import (
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
-// Creates UIResource objects from the EngineState
+// UIResource objects are created/deleted by the Tiltfile controller.
+//
+// This subscriber only updates their status.
 type Subscriber struct {
 	client ctrlclient.Client
 }
@@ -58,44 +57,21 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 		return err
 	}
 
-	storedMap := make(map[types.NamespacedName]v1alpha1.UIResource)
-	toReconcile := make(map[types.NamespacedName]*v1alpha1.UIResource, len(currentResources))
+	storedMap := make(map[string]v1alpha1.UIResource)
 	for _, r := range storedList.Items {
-		storedMap[types.NamespacedName{Name: r.Name}] = r
-		toReconcile[types.NamespacedName{Name: r.Name}] = nil
+		storedMap[r.Name] = r
 	}
+
 	for _, r := range currentResources {
-		toReconcile[types.NamespacedName{Name: r.Name}] = r
-	}
-
-	for name, resource := range toReconcile {
-		if resource == nil {
-			// If there's no current version of this resource, we should delete it.
-			err := s.client.Delete(ctx, &v1alpha1.UIResource{ObjectMeta: metav1.ObjectMeta{Name: name.Name}})
-			if err != nil && !apierrors.IsNotFound(err) {
-				return err
-			}
-			continue
-		}
-
-		stored, isStored := storedMap[name]
+		stored, isStored := storedMap[r.Name]
 		if !isStored {
-			// If there's a current version but nothing stored,
-			// create it.
-			err := s.client.Create(ctx, resource)
-			if err != nil {
-				return err
-			}
 			continue
 		}
 
-		if !apicmp.DeepEqual(resource.Status, stored.Status) {
+		if !apicmp.DeepEqual(r.Status, stored.Status) {
 			// If the current version is different than what's stored, update it.
-			update := &v1alpha1.UIResource{
-				ObjectMeta: *stored.ObjectMeta.DeepCopy(),
-				Spec:       *stored.Spec.DeepCopy(),
-				Status:     *resource.Status.DeepCopy(),
-			}
+			update := stored.DeepCopy()
+			update.Status = r.Status
 			err = s.client.Status().Update(ctx, update)
 			if err != nil {
 				return err

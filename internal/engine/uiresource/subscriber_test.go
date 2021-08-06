@@ -8,43 +8,30 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
-	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store"
-	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-func TestCreate(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	_ = f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-
-	r := f.resource("(Tiltfile)")
-	require.NotNil(t, r)
-	assert.Equal(t, "(Tiltfile)", r.ObjectMeta.Name)
-	assert.Equal(t, "1", r.ObjectMeta.ResourceVersion)
-
-	_ = f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	r = f.resource("(Tiltfile)")
-	assert.Equal(t, "1", r.ObjectMeta.ResourceVersion)
-}
-
 func TestUpdateTiltfile(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
+	r := &v1alpha1.UIResource{ObjectMeta: metav1.ObjectMeta{Name: "(Tiltfile)"}}
+	err := f.tc.Create(f.ctx, r)
+	require.NoError(t, err)
+
 	_ = f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	r := f.resource("(Tiltfile)")
+	r = f.resource("(Tiltfile)")
 	require.NotNil(t, r)
 	assert.Equal(t, "(Tiltfile)", r.ObjectMeta.Name)
-	assert.Equal(t, "1", r.ObjectMeta.ResourceVersion)
+	assert.Equal(t, "2", r.ObjectMeta.ResourceVersion)
 
 	f.store.WithState(func(es *store.EngineState) {
 		es.TiltfileStates[model.MainTiltfileManifestName].CurrentBuild.StartTime = time.Now()
@@ -54,30 +41,14 @@ func TestUpdateTiltfile(t *testing.T) {
 
 	r = f.resource("(Tiltfile)")
 	require.NotNil(t, r)
-	assert.Equal(t, "2", r.ObjectMeta.ResourceVersion)
-}
+	assert.Equal(t, "3", r.ObjectMeta.ResourceVersion)
 
-func TestDeleteManifest(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.store.WithState(func(state *store.EngineState) {
-		m := manifestbuilder.New(f, "fe").
-			WithK8sYAML(testyaml.SanchoYAML).
-			Build()
-		state.UpsertManifestTarget(store.NewManifestTarget(m))
-	})
-
+	// Make sure OnChange is idempotent.
 	_ = f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	assert.Equal(t, "(Tiltfile)", f.resource("(Tiltfile)").ObjectMeta.Name)
-	assert.Equal(t, "fe", f.resource("fe").ObjectMeta.Name)
 
-	f.store.WithState(func(state *store.EngineState) {
-		state.RemoveManifestTarget("fe")
-	})
-
-	_ = f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	assert.Nil(t, f.resource("fe"))
+	r = f.resource("(Tiltfile)")
+	require.NotNil(t, r)
+	assert.Equal(t, "3", r.ObjectMeta.ResourceVersion)
 }
 
 type fixture struct {
