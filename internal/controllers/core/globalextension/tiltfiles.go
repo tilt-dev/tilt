@@ -38,7 +38,7 @@ func (r *Reconciler) manageOwnedTiltfile(ctx context.Context, nn types.Namespace
 		return fmt.Errorf("creating tiltfile: %v", err)
 	}
 
-	// Delete all the port-forwards that don't match this one.
+	// Delete all the Tiltfiles that don't match this one.
 	errs := []error{}
 	foundDesired := false
 	for _, existingChild := range childList.Items {
