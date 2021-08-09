@@ -152,7 +152,7 @@ func (e *processExecer) processRun(ctx context.Context, cmd model.Cmd, w io.Writ
 	logger.Get(ctx).Infof("Running cmd: %s", cmd.String())
 	c, err := e.localEnv.ExecCmd(cmd, logger.Get(ctx))
 	if err != nil {
-		logger.Get(ctx).Errorf("%s invalid cmd: %v", cmd.String(), err)
+		logger.Get(ctx).Errorf("%q invalid cmd: %v", cmd.String(), err)
 		statusCh <- statusAndMetadata{
 			status:   Error,
 			exitCode: 1,
