@@ -288,6 +288,28 @@ watch_settings(ignore=ignore)
 	assert.Equal(t, []string{"bar"}, f.loadResult.WatchSettings.Ignores[0].Patterns)
 }
 
+func TestLocalEmptyArray(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+local([])
+`)
+
+	f.loadErrString("empty cmd")
+}
+
+func TestLocalEmptyString(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+local('')
+`)
+
+	f.loadErrString("empty cmd")
+}
+
 func TestCustomBuildBat(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()

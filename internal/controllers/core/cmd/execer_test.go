@@ -147,6 +147,15 @@ func TestHandlesProcessThatFailsToStart(t *testing.T) {
 	f.assertLogContains("failed to start: ")
 }
 
+func TestExecEmpty(t *testing.T) {
+	f := newProcessExecFixture(t)
+	defer f.tearDown()
+
+	f.start("")
+	f.waitForError()
+	f.assertLogContains("empty cmd")
+}
+
 func TestExecCmd(t *testing.T) {
 	testCases := execTestCases()
 
@@ -154,7 +163,8 @@ func TestExecCmd(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			c := localexec.EmptyEnv().ExecCmd(tc.cmd, l)
+			c, err := localexec.EmptyEnv().ExecCmd(tc.cmd, l)
+			require.NoError(t, err)
 			assertCommandEqual(t, tc.cmd, c)
 		})
 	}

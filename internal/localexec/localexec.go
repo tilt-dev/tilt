@@ -3,6 +3,7 @@
 package localexec
 
 import (
+	"errors"
 	"os"
 	"os/exec"
 	"strconv"
@@ -55,10 +56,13 @@ func (e *Env) Add(k, v string) {
 // NOTE: To avoid confusion with ExecCmdContext, this method accepts a logger instance
 // directly rather than using logger.Get(ctx); the returned exec.Cmd from this function
 // will NOT be associated with any context.
-func (e *Env) ExecCmd(cmd model.Cmd, l logger.Logger) *exec.Cmd {
+func (e *Env) ExecCmd(cmd model.Cmd, l logger.Logger) (*exec.Cmd, error) {
+	if len(cmd.Argv) == 0 {
+		return nil, errors.New("empty cmd")
+	}
 	c := exec.Command(cmd.Argv[0], cmd.Argv[1:]...)
 	e.populateExecCmd(c, cmd, l)
-	return c
+	return c, nil
 }
 
 func (e *Env) populateExecCmd(c *exec.Cmd, cmd model.Cmd, l logger.Logger) {
