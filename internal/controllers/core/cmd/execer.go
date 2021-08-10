@@ -150,14 +150,23 @@ func (e *processExecer) processRun(ctx context.Context, cmd model.Cmd, w io.Writ
 	defer close(statusCh)
 
 	logger.Get(ctx).Infof("Running cmd: %s", cmd.String())
-	c := e.localEnv.ExecCmd(cmd, logger.Get(ctx))
+	c, err := e.localEnv.ExecCmd(cmd, logger.Get(ctx))
+	if err != nil {
+		logger.Get(ctx).Errorf("%q invalid cmd: %v", cmd.String(), err)
+		statusCh <- statusAndMetadata{
+			status:   Error,
+			exitCode: 1,
+			reason:   fmt.Sprintf("invalid cmd: %v", err),
+		}
+		return
+	}
 
 	c.SysProcAttr = &syscall.SysProcAttr{}
 	procutil.SetOptNewProcessGroup(c.SysProcAttr)
 	c.Stderr = w
 	c.Stdout = w
 
-	err := c.Start()
+	err = c.Start()
 	if err != nil {
 		logger.Get(ctx).Errorf("%s failed to start: %v", cmd.String(), err)
 		statusCh <- statusAndMetadata{

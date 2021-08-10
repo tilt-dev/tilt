@@ -84,7 +84,10 @@ func (s *tiltfileState) execLocalCmd(t *starlark.Thread, cmd model.Cmd, options 
 		s.logger.Infof("%s %s", prefix, cmd)
 	}
 
-	c := s.localEnv.ExecCmd(cmd, logger.Get(ctx))
+	c, err := s.localEnv.ExecCmd(cmd, logger.Get(ctx))
+	if err != nil {
+		return "", err
+	}
 
 	// TODO(nick): Should this also inject any docker.Env overrides?
 	c.Stdout = stdout
