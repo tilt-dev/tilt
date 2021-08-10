@@ -24,6 +24,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/tiltfiles"
 	"github.com/tilt-dev/tilt/internal/tiltfile"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -81,8 +82,13 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	if apierrors.IsNotFound(err) || !tf.ObjectMeta.DeletionTimestamp.IsZero() {
 		// TODO(nick): Also delete any owned objects.
 		r.deleteExistingRun(nn)
+
+		r.st.Dispatch(tiltfiles.NewTiltfileDeleteAction(nn.Name))
 		return ctrl.Result{}, nil
 	}
+
+	// The apiserver is the source of truth, and will ensure the engine state is up to date.
+	r.st.Dispatch(tiltfiles.NewTiltfileUpsertAction(&tf))
 
 	ctx = store.MustObjectLogHandler(ctx, r.st, &tf)
 	run := r.runs[nn]

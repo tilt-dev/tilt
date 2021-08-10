@@ -10,7 +10,6 @@ import (
 	ctrltiltfile "github.com/tilt-dev/tilt/internal/controllers/core/tiltfile"
 	"github.com/tilt-dev/tilt/internal/sliceutils"
 	"github.com/tilt-dev/tilt/internal/store"
-	"github.com/tilt-dev/tilt/internal/store/tiltfiles"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -155,7 +154,6 @@ func (cc *ConfigsController) maybeCreateInitialTiltfile(ctx context.Context, st 
 		return err
 	}
 
-	st.Dispatch(tiltfiles.NewTiltfileUpsertAction(newTF))
 	cc.isInitialTiltfileCreated = true
 	return nil
 }

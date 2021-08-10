@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -206,6 +207,7 @@ func newCCFixture(t *testing.T) *ccFixture {
 
 	// Simulate tiltfile initialization
 	_ = cc.maybeCreateInitialTiltfile(ctx, st)
+	_, _ = tfr.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Name: model.MainTiltfileManifestName.String()}})
 
 	return &ccFixture{
 		TempDirFixture: f,
