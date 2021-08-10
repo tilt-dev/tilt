@@ -61,7 +61,7 @@ func AllResourceObjects() []resource.Object {
 		&ImageMap{},
 		&Tiltfile{},
 		&ConfigMap{},
-		&GlobalExtension{},
+		&Extension{},
 		&ExtensionRepo{},
 
 		// Hey! You! If you're adding a new top-level type, add the type object here.
@@ -82,7 +82,7 @@ func AllResourceLists() []runtime.Object {
 		&ImageMapList{},
 		&TiltfileList{},
 		&ConfigMapList{},
-		&GlobalExtensionList{},
+		&ExtensionList{},
 		&ExtensionRepoList{},
 
 		// Hey! You! If you're adding a new top-level type, add the List type here.

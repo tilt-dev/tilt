@@ -172,7 +172,7 @@ func newAPIServerFixture(t testing.TB) *apiserverFixture {
 
 	memconn := ProvideMemConn()
 
-	cfg, err := ProvideTiltServerOptions(ctx, model.TiltBuild{}, memconn, "corgi-charge", testdata.CertKey(), 0, dir)
+	cfg, err := ProvideTiltServerOptions(ctx, model.TiltBuild{}, memconn, "corgi-charge", testdata.CertKey(), 0)
 	require.NoError(t, err)
 
 	const host = "localhost"

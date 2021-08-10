@@ -1,4 +1,4 @@
-package globalextension
+package extension
 
 import (
 	"fmt"
@@ -19,11 +19,11 @@ func TestDefault(t *testing.T) {
 	f := newFixture(t)
 	f.setupRepo()
 
-	ext := v1alpha1.GlobalExtension{
+	ext := v1alpha1.Extension{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "my-repo:my-ext",
 		},
-		Spec: v1alpha1.GlobalExtensionSpec{
+		Spec: v1alpha1.ExtensionSpec{
 			RepoName: "my-repo",
 			RepoPath: "my-ext",
 		},
@@ -44,11 +44,11 @@ func TestCleanupTiltfile(t *testing.T) {
 	f := newFixture(t)
 	f.setupRepo()
 
-	ext := v1alpha1.GlobalExtension{
+	ext := v1alpha1.Extension{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "my-repo:my-ext",
 		},
-		Spec: v1alpha1.GlobalExtensionSpec{
+		Spec: v1alpha1.ExtensionSpec{
 			RepoName: "my-repo",
 			RepoPath: "my-ext",
 		},
@@ -71,11 +71,11 @@ func TestMissing(t *testing.T) {
 	f := newFixture(t)
 	f.setupRepo()
 
-	ext := v1alpha1.GlobalExtension{
+	ext := v1alpha1.Extension{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "my-repo:my-ext",
 		},
-		Spec: v1alpha1.GlobalExtensionSpec{
+		Spec: v1alpha1.ExtensionSpec{
 			RepoName: "my-repo",
 			RepoPath: "my-ext2",
 		},

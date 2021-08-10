@@ -32,30 +32,30 @@ import (
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// GlobalExtension defines an extension that's evaluated on Tilt startup.
+// Extension defines an extension that's evaluated on Tilt startup.
 // +k8s:openapi-gen=true
-type GlobalExtension struct {
+type Extension struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
-	Spec   GlobalExtensionSpec   `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
-	Status GlobalExtensionStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
+	Spec   ExtensionSpec   `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
+	Status ExtensionStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
 }
 
-// GlobalExtensionList
+// ExtensionList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type GlobalExtensionList struct {
+type ExtensionList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
-	Items []GlobalExtension `json:"items" protobuf:"bytes,2,rep,name=items"`
+	Items []Extension `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
 
-// GlobalExtensionSpec defines the desired state of GlobalExtension
-type GlobalExtensionSpec struct {
+// ExtensionSpec defines the desired state of Extension
+type ExtensionSpec struct {
 	// RepoName specifies the ExtensionRepo object where we should find this extension.
 	//
-	// The GlobalExtension controller should watch for changes to this repo, and
+	// The Extension controller should watch for changes to this repo, and
 	// may update if this repo is deleted or moved.
 	RepoName string `json:"repoName" protobuf:"bytes,1,opt,name=repoName"`
 
@@ -66,50 +66,50 @@ type GlobalExtensionSpec struct {
 	RepoPath string `json:"repoPath" protobuf:"bytes,2,opt,name=repoPath"`
 }
 
-var _ resource.Object = &GlobalExtension{}
-var _ resourcestrategy.Validater = &GlobalExtension{}
+var _ resource.Object = &Extension{}
+var _ resourcestrategy.Validater = &Extension{}
 
-func (in *GlobalExtension) GetObjectMeta() *metav1.ObjectMeta {
+func (in *Extension) GetObjectMeta() *metav1.ObjectMeta {
 	return &in.ObjectMeta
 }
 
-func (in *GlobalExtension) NamespaceScoped() bool {
+func (in *Extension) NamespaceScoped() bool {
 	return false
 }
 
-func (in *GlobalExtension) New() runtime.Object {
-	return &GlobalExtension{}
+func (in *Extension) New() runtime.Object {
+	return &Extension{}
 }
 
-func (in *GlobalExtension) NewList() runtime.Object {
-	return &GlobalExtensionList{}
+func (in *Extension) NewList() runtime.Object {
+	return &ExtensionList{}
 }
 
-func (in *GlobalExtension) GetGroupVersionResource() schema.GroupVersionResource {
+func (in *Extension) GetGroupVersionResource() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
 		Group:    "tilt.dev",
 		Version:  "v1alpha1",
-		Resource: "globalextensions",
+		Resource: "extensions",
 	}
 }
 
-func (in *GlobalExtension) IsStorageVersion() bool {
+func (in *Extension) IsStorageVersion() bool {
 	return true
 }
 
-func (in *GlobalExtension) Validate(ctx context.Context) field.ErrorList {
+func (in *Extension) Validate(ctx context.Context) field.ErrorList {
 	// TODO(user): Modify it, adding your API validation here.
 	return nil
 }
 
-var _ resource.ObjectList = &GlobalExtensionList{}
+var _ resource.ObjectList = &ExtensionList{}
 
-func (in *GlobalExtensionList) GetListMeta() *metav1.ListMeta {
+func (in *ExtensionList) GetListMeta() *metav1.ListMeta {
 	return &in.ListMeta
 }
 
-// GlobalExtensionStatus defines the observed state of GlobalExtension
-type GlobalExtensionStatus struct {
+// ExtensionStatus defines the observed state of Extension
+type ExtensionStatus struct {
 	// Contains information about any problems loading the extension.
 	Error string `json:"error,omitempty" protobuf:"bytes,1,opt,name=error"`
 
@@ -118,16 +118,16 @@ type GlobalExtensionStatus struct {
 	Path string `json:"path,omitempty" protobuf:"bytes,2,opt,name=path"`
 }
 
-// GlobalExtension implements ObjectWithStatusSubResource interface.
-var _ resource.ObjectWithStatusSubResource = &GlobalExtension{}
+// Extension implements ObjectWithStatusSubResource interface.
+var _ resource.ObjectWithStatusSubResource = &Extension{}
 
-func (in *GlobalExtension) GetStatus() resource.StatusSubResource {
+func (in *Extension) GetStatus() resource.StatusSubResource {
 	return in.Status
 }
 
-// GlobalExtensionStatus{} implements StatusSubResource interface.
-var _ resource.StatusSubResource = &GlobalExtensionStatus{}
+// ExtensionStatus{} implements StatusSubResource interface.
+var _ resource.StatusSubResource = &ExtensionStatus{}
 
-func (in GlobalExtensionStatus) CopyTo(parent resource.ObjectWithStatusSubResource) {
-	parent.(*GlobalExtension).Status = in
+func (in ExtensionStatus) CopyTo(parent resource.ObjectWithStatusSubResource) {
+	parent.(*Extension).Status = in
 }

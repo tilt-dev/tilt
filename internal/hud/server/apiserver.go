@@ -50,8 +50,6 @@ const maxRequestBodyBytes = int64(20 * 1024 * 1024)
 type WebListener net.Listener
 type APIServerPort int
 
-const storageRelDir = "global"
-
 type APIServerConfig = apiserver.Config
 
 type DynamicInterface = dynamic.Interface
@@ -121,33 +119,15 @@ func ProvideTiltServerOptions(
 	memconn apiserver.ConnProvider,
 	token BearerToken,
 	certKey options.GeneratableKeyCert,
-	apiPort APIServerPort,
-	dir *dirs.TiltDevDir) (*APIServerConfig, error) {
+	apiPort APIServerPort) (*APIServerConfig, error) {
 	w := logger.Get(ctx).Writer(logger.DebugLvl)
 	builder := builder.NewServerBuilder().
 		WithOutputWriter(w).
 		WithBearerToken(string(token)).
 		WithCertKey(certKey)
 
-	err := dir.MkdirAll(storageRelDir)
-	if err != nil {
-		return nil, err
-	}
-
-	storagePath, err := dir.Abs(storageRelDir)
-	if err != nil {
-		return nil, err
-	}
-
 	for _, obj := range v1alpha1.AllResourceObjects() {
-		gvr := obj.GetGroupVersionResource()
-		useFileStorage := gvr == (&v1alpha1.ExtensionRepo{}).GetGroupVersionResource() ||
-			gvr == (&v1alpha1.GlobalExtension{}).GetGroupVersionResource()
-		if useFileStorage {
-			builder = builder.WithResourceFileStorage(obj, storagePath)
-		} else {
-			builder = builder.WithResourceMemoryStorage(obj, "data")
-		}
+		builder = builder.WithResourceMemoryStorage(obj, "data")
 	}
 	builder = builder.WithOpenAPIDefinitions("tilt", tiltBuild.Version, openapi.GetOpenAPIDefinitions)
 
@@ -190,9 +170,9 @@ func ProvideTiltServerOptions(
 //
 // 1) Changes http -> https
 // 2) Skips OpenAPI installation
-func ProvideTiltServerOptionsForTesting(ctx context.Context, dir *dirs.TiltDevDir) (*APIServerConfig, error) {
+func ProvideTiltServerOptionsForTesting(ctx context.Context) (*APIServerConfig, error) {
 	config, err := ProvideTiltServerOptions(ctx,
-		model.TiltBuild{}, ProvideMemConn(), "corgi-charge", testdata.CertKey(), 0, dir)
+		model.TiltBuild{}, ProvideMemConn(), "corgi-charge", testdata.CertKey(), 0)
 	if err != nil {
 		return nil, err
 	}

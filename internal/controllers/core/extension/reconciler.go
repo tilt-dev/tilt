@@ -1,4 +1,4 @@
-package globalextension
+package extension
 
 import (
 	"context"
@@ -45,7 +45,7 @@ func NewReconciler(ctrlClient ctrlclient.Client, scheme *runtime.Scheme) *Reconc
 func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	nn := request.NamespacedName
 
-	var ext v1alpha1.GlobalExtension
+	var ext v1alpha1.Extension
 	err := r.ctrlClient.Get(ctx, nn, &ext)
 	r.indexer.OnReconcile(nn, &ext)
 	if err != nil && !apierrors.IsNotFound(err) {
@@ -88,14 +88,14 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	}
 
 	// TODO(nick): Create Tiltfile child object.
-	return r.updateStatus(ctx, &ext, func(status *v1alpha1.GlobalExtensionStatus) {
+	return r.updateStatus(ctx, &ext, func(status *v1alpha1.ExtensionStatus) {
 		status.Path = absPath
 		status.Error = ""
 	})
 }
 
 // Generic status update.
-func (r *Reconciler) updateStatus(ctx context.Context, ext *v1alpha1.GlobalExtension, mutateFn func(*v1alpha1.GlobalExtensionStatus)) (ctrl.Result, error) {
+func (r *Reconciler) updateStatus(ctx context.Context, ext *v1alpha1.Extension, mutateFn func(*v1alpha1.ExtensionStatus)) (ctrl.Result, error) {
 	update := ext.DeepCopy()
 	mutateFn(&(update.Status))
 
@@ -116,7 +116,7 @@ func (r *Reconciler) updateStatus(ctx context.Context, ext *v1alpha1.GlobalExten
 }
 
 // Update status with an error message, logging the error.
-func (r *Reconciler) updateError(ctx context.Context, ext *v1alpha1.GlobalExtension, errorMsg string) (ctrl.Result, error) {
+func (r *Reconciler) updateError(ctx context.Context, ext *v1alpha1.Extension, errorMsg string) (ctrl.Result, error) {
 	update := ext.DeepCopy()
 	update.Status.Error = errorMsg
 	update.Status.Path = ""
@@ -125,7 +125,7 @@ func (r *Reconciler) updateError(ctx context.Context, ext *v1alpha1.GlobalExtens
 		return ctrl.Result{}, nil
 	}
 
-	logger.Get(ctx).Errorf("globalextension %s: %s", ext.Name, errorMsg)
+	logger.Get(ctx).Errorf("extension %s: %s", ext.Name, errorMsg)
 
 	err := r.ctrlClient.Status().Update(ctx, update)
 	if err != nil {
@@ -143,7 +143,7 @@ func (r *Reconciler) updateError(ctx context.Context, ext *v1alpha1.GlobalExtens
 // Find all the objects we need to watch based on the extension spec.
 func indexExtension(obj client.Object) []indexer.Key {
 	result := []indexer.Key{}
-	ext := obj.(*v1alpha1.GlobalExtension)
+	ext := obj.(*v1alpha1.Extension)
 	if ext.Spec.RepoName != "" {
 		repoGVK := v1alpha1.SchemeGroupVersion.WithKind("ExtensionRepo")
 		result = append(result, indexer.Key{
