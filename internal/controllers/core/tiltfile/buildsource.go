@@ -30,7 +30,6 @@ type BuildEntry struct {
 	UserConfigState       model.UserConfigState
 	TiltfilePath          string
 	CheckpointAtExecStart logstore.Checkpoint
-	EngineMode            store.EngineMode
 	LoadCount             int
 }
 

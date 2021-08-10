@@ -102,7 +102,6 @@ func (cc *ConfigsController) needsBuild(ctx context.Context, st store.RStore) (*
 			UserConfigState:       state.UserConfigState,
 			TiltfilePath:          tf.Spec.Path,
 			CheckpointAtExecStart: state.LogStore.Checkpoint(),
-			EngineMode:            state.EngineMode,
 		}, true
 	}
 

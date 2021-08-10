@@ -68,7 +68,6 @@ func (u Upper) Start(
 	ctx context.Context,
 	args []string,
 	b model.TiltBuild,
-	engineMode store.EngineMode,
 	fileName string,
 	initTerminalMode store.TerminalMode,
 	analyticsUserOpt analytics.Opt,
@@ -86,7 +85,6 @@ func (u Upper) Start(
 	configFiles := []string{absTfPath}
 
 	return u.Init(ctx, InitAction{
-		EngineMode:       engineMode,
 		TiltfilePath:     absTfPath,
 		ConfigFiles:      configFiles,
 		UserArgs:         args,
@@ -734,7 +732,6 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.TiltfileConfigPaths[model.MainTiltfileManifestName] = action.ConfigFiles
 	engineState.UserConfigState.Args = action.UserArgs
 	engineState.AnalyticsUserOpt = action.AnalyticsUserOpt
-	engineState.EngineMode = action.EngineMode
 	engineState.CloudAddress = action.CloudAddress
 	engineState.Token = action.Token
 	engineState.TerminalMode = action.TerminalMode

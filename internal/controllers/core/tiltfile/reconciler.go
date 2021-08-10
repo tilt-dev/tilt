@@ -40,6 +40,7 @@ type Reconciler struct {
 	ctrlClient   ctrlclient.Client
 	indexer      *indexer.Indexer
 	buildSource  *BuildSource
+	engineMode   store.EngineMode
 
 	runs map[types.NamespacedName]*runStatus
 }
@@ -54,7 +55,9 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	return b, nil
 }
 
-func NewReconciler(st store.RStore, tfl tiltfile.TiltfileLoader, dockerClient docker.Client, ctrlClient ctrlclient.Client, scheme *runtime.Scheme, buildSource *BuildSource) *Reconciler {
+func NewReconciler(st store.RStore, tfl tiltfile.TiltfileLoader, dockerClient docker.Client,
+	ctrlClient ctrlclient.Client, scheme *runtime.Scheme,
+	buildSource *BuildSource, engineMode store.EngineMode) *Reconciler {
 	return &Reconciler{
 		st:           st,
 		tfl:          tfl,
@@ -63,6 +66,7 @@ func NewReconciler(st store.RStore, tfl tiltfile.TiltfileLoader, dockerClient do
 		indexer:      indexer.NewIndexer(scheme, indexTiltfile),
 		runs:         make(map[types.NamespacedName]*runStatus),
 		buildSource:  buildSource,
+		engineMode:   engineMode,
 	}
 }
 
@@ -214,7 +218,7 @@ func (r *Reconciler) run(ctx context.Context, nn types.NamespacedName, tf *v1alp
 // apiserver.
 func (r *Reconciler) handleLoaded(ctx context.Context, nn types.NamespacedName, tf *v1alpha1.Tiltfile, entry *BuildEntry, tlr *tiltfile.TiltfileLoadResult) error {
 	// TODO(nick): Rewrite to handle multiple tiltfiles.
-	err := updateOwnedObjects(ctx, r.ctrlClient, nn, tf, tlr, entry.EngineMode)
+	err := updateOwnedObjects(ctx, r.ctrlClient, nn, tf, tlr, r.engineMode)
 	if err != nil {
 		// If updating the API server fails, just return the error, so that the
 		// reconciler will retry.

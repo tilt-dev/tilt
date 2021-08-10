@@ -17,7 +17,7 @@ func TestOnChange(t *testing.T) {
 	to := tiltanalytics.NewFakeOpter(analytics.OptIn)
 	_, a := tiltanalytics.NewMemoryTiltAnalyticsForTest(to)
 	cmdUpTags := CmdTags(map[string]string{"watch": "true"})
-	au := NewAnalyticsUpdater(a, cmdUpTags)
+	au := NewAnalyticsUpdater(a, cmdUpTags, store.EngineModeUp)
 	st := store.NewTestingStore()
 	setUserOpt(st, analytics.OptOut)
 	_ = au.OnChange(context.Background(), st, store.LegacyChangeSummary())
@@ -32,7 +32,7 @@ func TestReportOnOptIn(t *testing.T) {
 	require.NoError(t, err)
 
 	cmdUpTags := CmdTags(map[string]string{"watch": "true"})
-	au := NewAnalyticsUpdater(a, cmdUpTags)
+	au := NewAnalyticsUpdater(a, cmdUpTags, store.EngineModeUp)
 	st := store.NewTestingStore()
 	setUserOpt(st, analytics.OptIn)
 	_ = au.OnChange(context.Background(), st, store.LegacyChangeSummary())

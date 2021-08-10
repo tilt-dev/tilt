@@ -495,7 +495,6 @@ func TestUpper_Up(t *testing.T) {
 	storeErr := make(chan error, 1)
 	go func() {
 		storeErr <- f.upper.Init(f.ctx, InitAction{
-			EngineMode:   store.EngineModeUp,
 			TiltfilePath: f.JoinPath("Tiltfile"),
 			StartTime:    f.Now(),
 		})
@@ -521,7 +520,7 @@ func TestUpper_Up(t *testing.T) {
 }
 
 func TestUpper_UpK8sEntityOrdering(t *testing.T) {
-	f := newTestFixture(t)
+	f := newTestFixture(t, fixtureOptions{engineMode: &store.EngineModeCI})
 	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
@@ -533,7 +532,6 @@ func TestUpper_UpK8sEntityOrdering(t *testing.T) {
 	f.WriteFile("postgres.yaml", yaml)
 
 	err = f.upper.Init(f.ctx, InitAction{
-		EngineMode:   store.EngineModeCI,
 		TiltfilePath: f.JoinPath("Tiltfile"),
 		StartTime:    f.Now(),
 	})
@@ -554,7 +552,7 @@ func TestUpper_UpK8sEntityOrdering(t *testing.T) {
 }
 
 func TestUpper_CI(t *testing.T) {
-	f := newTestFixture(t)
+	f := newTestFixture(t, fixtureOptions{engineMode: &store.EngineModeCI})
 	defer f.TearDown()
 
 	manifest := f.newManifest("foobar")
@@ -564,7 +562,6 @@ func TestUpper_CI(t *testing.T) {
 	storeErr := make(chan error, 1)
 	go func() {
 		storeErr <- f.upper.Init(f.ctx, InitAction{
-			EngineMode:   store.EngineModeCI,
 			TiltfilePath: f.JoinPath("Tiltfile"),
 			UserArgs:     nil, // equivalent to `tilt up --watch=false` (i.e. not specifying any manifest names)
 			StartTime:    f.Now(),
@@ -667,7 +664,7 @@ func TestFirstBuildCancels_Up(t *testing.T) {
 }
 
 func TestFirstBuildFails_CI(t *testing.T) {
-	f := newTestFixture(t)
+	f := newTestFixture(t, fixtureOptions{engineMode: &store.EngineModeCI})
 	defer f.TearDown()
 	manifest := f.newManifest("foobar")
 	buildFailedToken := errors.New("doesn't compile")
@@ -675,7 +672,6 @@ func TestFirstBuildFails_CI(t *testing.T) {
 
 	f.setManifests([]model.Manifest{manifest})
 	f.Init(InitAction{
-		EngineMode:   store.EngineModeCI,
 		TiltfilePath: f.JoinPath("Tiltfile"),
 		TerminalMode: store.TerminalModeHUD,
 		StartTime:    f.Now(),
@@ -2877,7 +2873,7 @@ func TestEmptyTiltfile(t *testing.T) {
 
 	closeCh := make(chan error)
 	go func() {
-		err := f.upper.Start(f.ctx, []string{}, model.TiltBuild{}, store.EngineModeUp,
+		err := f.upper.Start(f.ctx, []string{}, model.TiltBuild{},
 			f.JoinPath("Tiltfile"), store.TerminalModeHUD,
 			analytics.OptIn, token.Token("unit test token"),
 			"nonexistent.example.com")
@@ -2914,7 +2910,7 @@ func TestUpperStart(t *testing.T) {
 	f.WriteFile("Tiltfile", "")
 	go func() {
 		err := f.upper.Start(f.ctx, []string{"foo", "bar"}, model.TiltBuild{},
-			store.EngineModeUp, f.JoinPath("Tiltfile"), store.TerminalModeHUD,
+			f.JoinPath("Tiltfile"), store.TerminalModeHUD,
 			analytics.OptIn, tok, cloudAddress)
 		closeCh <- err
 	}()
@@ -3721,7 +3717,6 @@ fail('x')`)
 	f.WriteFile(".tiltignore", "a.txt")
 
 	f.Init(InitAction{
-		EngineMode:   store.EngineModeUp,
 		TiltfilePath: f.JoinPath("Tiltfile"),
 		TerminalMode: store.TerminalModeHUD,
 		StartTime:    f.Now(),
@@ -3750,7 +3745,6 @@ func TestHandleTiltfileTriggerQueue(t *testing.T) {
 	f.WriteFile("Tiltfile", `print("hello world")`)
 
 	f.Init(InitAction{
-		EngineMode:   store.EngineModeUp,
 		TiltfilePath: f.JoinPath("Tiltfile"),
 		TerminalMode: store.TerminalModeHUD,
 		StartTime:    f.Now(),
@@ -3887,13 +3881,25 @@ type testFixture struct {
 	fpm                        *cmd.FakeProberManager
 	overrideMaxParallelUpdates int
 	ctrlClient                 ctrlclient.Client
+	engineMode                 store.EngineMode
 
 	onchangeCh        chan bool
 	sessionController *session.Controller
 }
 
-func newTestFixture(t *testing.T) *testFixture {
+type fixtureOptions struct {
+	engineMode *store.EngineMode
+}
+
+func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	f := tempdir.NewTempDirFixture(t)
+
+	engineMode := store.EngineModeUp
+	for _, o := range options {
+		if o.engineMode != nil {
+			engineMode = *o.engineMode
+		}
+	}
 
 	dir := dirs.NewTiltDevDirAt(f.Path())
 	log := bufsync.NewThreadSafeBuffer()
@@ -3926,7 +3932,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	env := k8s.EnvDockerDesktop
 	podSource := podlogstream.NewPodSource(ctx, b.kClient, v1alpha1.NewScheme())
 	plsc := podlogstream.NewController(ctx, cdc, st, b.kClient, podSource)
-	au := engineanalytics.NewAnalyticsUpdater(ta, engineanalytics.CmdTags{})
+	au := engineanalytics.NewAnalyticsUpdater(ta, engineanalytics.CmdTags{}, engineMode)
 	ar := engineanalytics.ProvideAnalyticsReporter(ta, st, b.kClient, env)
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	k8sContextExt := k8scontext.NewExtension("fake-context", env)
@@ -3958,7 +3964,7 @@ func newTestFixture(t *testing.T) *testFixture {
 	fwc := filewatch.NewController(cdc, st, watcher.NewSub, timerMaker.Maker())
 	cmds := cmd.NewController(ctx, fe, fpm, cdc, st, clock, v1alpha1.NewScheme())
 	lsc := local.NewServerController(cdc)
-	sessionController := session.NewController(cdc)
+	sessionController := session.NewController(cdc, engineMode)
 	ts := hud.NewTerminalStream(hud.NewIncrementalPrinter(log), st)
 	tp := prompt.NewTerminalPrompt(ta, prompt.TTYOpen, openurl.BrowserOpen,
 		log, "localhost", model.WebURL{})
@@ -3982,7 +3988,7 @@ func newTestFixture(t *testing.T) *testFixture {
 
 	kar := kubernetesapply.NewReconciler(cdc, b.kClient, sch, docker.Env{}, k8s.KubeContext("kind-kind"), st, "default")
 
-	tfr := ctrltiltfile.NewReconciler(st, tfl, dockerClient, cdc, sch, buildSource)
+	tfr := ctrltiltfile.NewReconciler(st, tfl, dockerClient, cdc, sch, buildSource, engineMode)
 	ger := globalextension.NewReconciler(cdc, sch)
 	er, err := extensionrepo.NewReconciler(cdc, dir)
 	require.NoError(t, err)
@@ -4030,6 +4036,7 @@ func newTestFixture(t *testing.T) *testFixture {
 		fpm:               fpm,
 		ctrlClient:        cdc,
 		sessionController: sessionController,
+		engineMode:        engineMode,
 	}
 
 	ret.disableEnvAnalyticsOpt()
@@ -4072,7 +4079,6 @@ func (f *testFixture) Start(manifests []model.Manifest, initOptions ...initOptio
 	f.setManifests(manifests)
 
 	ia := InitAction{
-		EngineMode:   store.EngineModeUp,
 		TiltfilePath: f.JoinPath("Tiltfile"),
 		TerminalMode: store.TerminalModeHUD,
 		StartTime:    f.Now(),
@@ -4113,7 +4119,7 @@ func (f *testFixture) Init(action InitAction) {
 	ctx, cancel := context.WithCancel(f.ctx)
 	defer cancel()
 
-	watchFiles := action.EngineMode.WatchesFiles()
+	watchFiles := f.engineMode.WatchesFiles()
 	f.upperInitResult = make(chan error, 10)
 
 	go func() {
@@ -4536,7 +4542,6 @@ func (f *testFixture) assertAllBuildsConsumed() {
 func (f *testFixture) loadAndStart(initOptions ...initOption) {
 	f.t.Helper()
 	ia := InitAction{
-		EngineMode:   store.EngineModeUp,
 		TiltfilePath: f.JoinPath("Tiltfile"),
 		TerminalMode: store.TerminalModeHUD,
 		StartTime:    f.Now(),

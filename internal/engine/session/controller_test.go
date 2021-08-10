@@ -504,7 +504,6 @@ func newFixture(t *testing.T, engineMode store.EngineMode) *fixture {
 
 	st := NewTestingStore(t)
 	st.WithState(func(state *store.EngineState) {
-		state.EngineMode = engineMode
 		mn := model.MainTiltfileManifestName
 		tiltfiles.HandleTiltfileUpsertAction(state, tiltfiles.TiltfileUpsertAction{
 			Tiltfile: &v1alpha1.Tiltfile{
@@ -520,7 +519,7 @@ func newFixture(t *testing.T, engineMode store.EngineMode) *fixture {
 	})
 
 	cli := fake.NewFakeTiltClient()
-	c := NewController(cli)
+	c := NewController(cli, engineMode)
 	ctx := context.Background()
 	l := logger.NewLogger(logger.VerboseLvl, os.Stdout)
 	ctx = logger.WithLogger(ctx, l)

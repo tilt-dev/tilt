@@ -18,7 +18,6 @@ func NewErrorAction(err error) store.ErrorAction {
 }
 
 type InitAction struct {
-	EngineMode   store.EngineMode
 	TiltfilePath string
 	ConfigFiles  []string
 	UserArgs     []string

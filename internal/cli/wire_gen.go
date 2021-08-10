@@ -276,7 +276,8 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	defaults := _wireDefaultsValue
 	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, client, extension, versionExtension, configExtension, dockerComposeClient, webHost, env, defaults, k8sEnv)
 	buildSource := tiltfile2.NewBuildSource()
-	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, switchCli, deferredClient, scheme, buildSource)
+	engineMode := _wireEngineModeValue
+	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, switchCli, deferredClient, scheme, buildSource, engineMode)
 	globalextensionReconciler := globalextension.NewReconciler(deferredClient, scheme)
 	extensionrepoReconciler, err := extensionrepo.NewReconciler(deferredClient, tiltDevDir)
 	if err != nil {
@@ -322,14 +323,14 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	eventWatcher := dcwatch.NewEventWatcher(dockerComposeClient, localClient)
 	dockerComposeLogManager := runtimelog.NewDockerComposeLogManager(dockerComposeClient)
 	analyticsReporter := analytics2.ProvideAnalyticsReporter(analytics3, storeStore, client, k8sEnv)
-	analyticsUpdater := analytics2.NewAnalyticsUpdater(analytics3, cmdTags)
+	analyticsUpdater := analytics2.NewAnalyticsUpdater(analytics3, cmdTags, engineMode)
 	eventWatchManager := k8swatch.NewEventWatchManager(client, ownerFetcher, namespace)
 	cloudStatusManager := cloud.NewStatusManager(httpClient, clock)
 	dockerPruner := dockerprune.NewDockerPruner(switchCli)
 	telemetryController := telemetry.NewController(buildClock, spanCollector)
 	serverController := local.NewServerController(deferredClient)
 	podMonitor := k8srollout.NewPodMonitor()
-	sessionController := session.NewController(deferredClient)
+	sessionController := session.NewController(deferredClient, engineMode)
 	deferredExporter := ProvideDeferredExporter()
 	gitRemote := git.ProvideGitRemote()
 	metricsController := metrics.NewController(deferredExporter, tiltBuild, gitRemote)
@@ -357,10 +358,11 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 }
 
 var (
-	_wireReducerValue   = engine.UpperReducer
-	_wireLabelsValue    = dockerfile.Labels{}
-	_wireOpenURLValue   = openurl.OpenURL(openurl.BrowserOpen)
-	_wireOpenInputValue = prompt.OpenInput(prompt.TTYOpen)
+	_wireReducerValue    = engine.UpperReducer
+	_wireLabelsValue     = dockerfile.Labels{}
+	_wireEngineModeValue = store.EngineModeUp
+	_wireOpenURLValue    = openurl.OpenURL(openurl.BrowserOpen)
+	_wireOpenInputValue  = prompt.OpenInput(prompt.TTYOpen)
 )
 
 func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (CmdCIDeps, error) {
@@ -478,7 +480,8 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	defaults := _wireDefaultsValue
 	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, client, extension, versionExtension, configExtension, dockerComposeClient, webHost, env, defaults, k8sEnv)
 	buildSource := tiltfile2.NewBuildSource()
-	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, switchCli, deferredClient, scheme, buildSource)
+	engineMode := _wireStoreEngineModeValue
+	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, switchCli, deferredClient, scheme, buildSource, engineMode)
 	globalextensionReconciler := globalextension.NewReconciler(deferredClient, scheme)
 	extensionrepoReconciler, err := extensionrepo.NewReconciler(deferredClient, tiltDevDir)
 	if err != nil {
@@ -525,14 +528,14 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	dockerComposeLogManager := runtimelog.NewDockerComposeLogManager(dockerComposeClient)
 	analyticsReporter := analytics2.ProvideAnalyticsReporter(analytics3, storeStore, client, k8sEnv)
 	cmdTags := _wireCmdTagsValue
-	analyticsUpdater := analytics2.NewAnalyticsUpdater(analytics3, cmdTags)
+	analyticsUpdater := analytics2.NewAnalyticsUpdater(analytics3, cmdTags, engineMode)
 	eventWatchManager := k8swatch.NewEventWatchManager(client, ownerFetcher, namespace)
 	cloudStatusManager := cloud.NewStatusManager(httpClient, clock)
 	dockerPruner := dockerprune.NewDockerPruner(switchCli)
 	telemetryController := telemetry.NewController(buildClock, spanCollector)
 	serverController := local.NewServerController(deferredClient)
 	podMonitor := k8srollout.NewPodMonitor()
-	sessionController := session.NewController(deferredClient)
+	sessionController := session.NewController(deferredClient, engineMode)
 	deferredExporter := ProvideDeferredExporter()
 	gitRemote := git.ProvideGitRemote()
 	metricsController := metrics.NewController(deferredExporter, tiltBuild, gitRemote)
@@ -559,7 +562,8 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 }
 
 var (
-	_wireCmdTagsValue = analytics2.CmdTags(map[string]string{})
+	_wireStoreEngineModeValue = store.EngineModeCI
+	_wireCmdTagsValue         = analytics2.CmdTags(map[string]string{})
 )
 
 func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags analytics2.CmdTags, subcommand model.TiltSubcommand, objects []client.Object) (CmdUpdogDeps, error) {
@@ -677,7 +681,8 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	defaults := _wireDefaultsValue
 	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, k8sClient, extension, versionExtension, configExtension, dockerComposeClient, webHost, env, defaults, k8sEnv)
 	buildSource := tiltfile2.NewBuildSource()
-	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, switchCli, deferredClient, scheme, buildSource)
+	engineMode := _wireEngineModeValue2
+	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, switchCli, deferredClient, scheme, buildSource, engineMode)
 	globalextensionReconciler := globalextension.NewReconciler(deferredClient, scheme)
 	extensionrepoReconciler, err := extensionrepo.NewReconciler(deferredClient, tiltDevDir)
 	if err != nil {
@@ -707,6 +712,10 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	}
 	return cmdUpdogDeps, nil
 }
+
+var (
+	_wireEngineModeValue2 = store.EngineModeCI
+)
 
 func wireKubeContext(ctx context.Context) (k8s.KubeContext, error) {
 	k8sKubeContextOverride := ProvideKubeContextOverride()

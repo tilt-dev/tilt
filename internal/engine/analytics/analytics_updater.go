@@ -20,13 +20,15 @@ type AnalyticsUpdater struct {
 	ta          *analytics.TiltAnalytics
 	cmdTags     CmdTags
 	reportedCmd bool
+	engineMode  store.EngineMode
 }
 
-func NewAnalyticsUpdater(ta *analytics.TiltAnalytics, cmdTags CmdTags) *AnalyticsUpdater {
+func NewAnalyticsUpdater(ta *analytics.TiltAnalytics, cmdTags CmdTags, engineMode store.EngineMode) *AnalyticsUpdater {
 	return &AnalyticsUpdater{
 		ta:          ta,
 		cmdTags:     cmdTags,
 		reportedCmd: ta.EffectiveOpt() != wmanalytics.OptOut,
+		engineMode:  engineMode,
 	}
 }
 
@@ -44,7 +46,7 @@ func (sub *AnalyticsUpdater) OnChange(ctx context.Context, st store.RStore, _ st
 		sub.reportedCmd = true
 
 		cmd := "cmd.up"
-		if state.EngineMode.IsCIMode() {
+		if sub.engineMode.IsCIMode() {
 			cmd = "cmd.ci"
 		}
 

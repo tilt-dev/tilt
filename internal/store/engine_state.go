@@ -37,7 +37,6 @@ type EngineState struct {
 	ManifestTargets map[model.ManifestName]*ManifestTarget
 
 	CurrentlyBuilding map[model.ManifestName]bool
-	EngineMode        EngineMode
 	TerminalMode      TerminalMode
 
 	// For synchronizing BuildController -- wait until engine records all builds started

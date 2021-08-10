@@ -175,6 +175,7 @@ func wireDockerPrune(ctx context.Context, analytics *analytics.TiltAnalytics, su
 func wireCmdUp(ctx context.Context, analytics *analytics.TiltAnalytics, cmdTags engineanalytics.CmdTags, subcommand model.TiltSubcommand) (CmdUpDeps, error) {
 	wire.Build(UpWireSet,
 		cloud.NewSnapshotter,
+		wire.Value(store.EngineModeUp),
 		wire.Struct(new(CmdUpDeps), "*"))
 	return CmdUpDeps{}, nil
 }
@@ -191,6 +192,7 @@ type CmdUpDeps struct {
 func wireCmdCI(ctx context.Context, analytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (CmdCIDeps, error) {
 	wire.Build(UpWireSet,
 		cloud.NewSnapshotter,
+		wire.Value(store.EngineModeCI),
 		wire.Value(engineanalytics.CmdTags(map[string]string{})),
 		wire.Struct(new(CmdCIDeps), "*"),
 	)
@@ -213,6 +215,7 @@ func wireCmdUpdog(ctx context.Context,
 	wire.Build(BaseWireSet,
 		provideUpdogSubscriber,
 		provideUpdogCmdSubscribers,
+		wire.Value(store.EngineModeCI),
 		wire.Struct(new(CmdUpdogDeps), "*"))
 	return CmdUpdogDeps{}, nil
 }

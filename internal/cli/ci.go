@@ -92,9 +92,7 @@ func (c *ciCmd) run(ctx context.Context, args []string) error {
 		defer cmdCIDeps.Snapshotter.WriteSnapshot(ctx, c.outputSnapshotOnExit)
 	}
 
-	engineMode := store.EngineModeCI
-
-	err = upper.Start(ctx, args, cmdCIDeps.TiltBuild, engineMode,
+	err = upper.Start(ctx, args, cmdCIDeps.TiltBuild,
 		c.fileName, store.TerminalModeStream, a.UserOpt(), cmdCIDeps.Token,
 		string(cmdCIDeps.CloudAddress))
 	if err == nil {
