@@ -193,7 +193,8 @@ func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) e
 		return nil
 	}
 
-	if cmd.ObjectMeta.Labels[v1alpha1.LabelOwnerKind] == v1alpha1.LabelOwnerKindTiltfile {
+	owner := metav1.GetControllerOf(cmd)
+	if owner != nil && owner.Kind == v1alpha1.OwnerKindTiltfile {
 		// Until resource dependencies are expressed in the API,
 		// we can't use reconciliation to deploy Cmd objects
 		// owned by the Tiltfile.

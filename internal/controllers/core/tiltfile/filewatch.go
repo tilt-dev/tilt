@@ -87,9 +87,6 @@ func ToFileWatchObjects(watchInputs WatchInputs) typedObjectSet {
 				fw := &v1alpha1.FileWatch{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: apis.SanitizeName(targetID.String()),
-						Labels: map[string]string{
-							LabelOwnerKind: LabelOwnerKindTiltfile,
-						},
 						Annotations: map[string]string{
 							v1alpha1.AnnotationManifest: string(m.Name),
 							v1alpha1.AnnotationTargetID: targetID.String(),
@@ -106,9 +103,6 @@ func ToFileWatchObjects(watchInputs WatchInputs) typedObjectSet {
 		configFw := &v1alpha1.FileWatch{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: apis.SanitizeName(ConfigsTargetID.String()),
-				Labels: map[string]string{
-					LabelOwnerKind: LabelOwnerKindTiltfile,
-				},
 				Annotations: map[string]string{
 					v1alpha1.AnnotationTargetID: ConfigsTargetID.String(),
 				},

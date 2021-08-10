@@ -80,9 +80,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	}
 
 	if apierrors.IsNotFound(err) || !tf.ObjectMeta.DeletionTimestamp.IsZero() {
-		// TODO(nick): Also delete any owned objects.
 		r.deleteExistingRun(nn)
 
+		// Delete owned objects
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 		r.st.Dispatch(tiltfiles.NewTiltfileDeleteAction(nn.Name))
 		return ctrl.Result{}, nil
 	}
@@ -92,6 +95,13 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 	ctx = store.MustObjectLogHandler(ctx, r.st, &tf)
 	run := r.runs[nn]
+	if run == nil {
+		// Initialize the UISession if this has never been initialized before.
+		err := updateOwnedObjects(ctx, r.ctrlClient, nn, &tf, nil, store.EngineModeCI)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+	}
 
 	// If the spec has changed, cancel any existing runs
 	if run != nil && !apicmp.DeepEqual(run.spec, &(tf.Spec)) {
@@ -204,7 +214,7 @@ func (r *Reconciler) run(ctx context.Context, nn types.NamespacedName, tf *v1alp
 // apiserver.
 func (r *Reconciler) handleLoaded(ctx context.Context, nn types.NamespacedName, tf *v1alpha1.Tiltfile, entry *BuildEntry, tlr *tiltfile.TiltfileLoadResult) error {
 	// TODO(nick): Rewrite to handle multiple tiltfiles.
-	err := UpdateOwnedObjects(ctx, r.ctrlClient, *tlr, entry.EngineMode)
+	err := updateOwnedObjects(ctx, r.ctrlClient, nn, tf, tlr, entry.EngineMode)
 	if err != nil {
 		// If updating the API server fails, just return the error, so that the
 		// reconciler will retry.

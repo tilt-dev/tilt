@@ -189,10 +189,7 @@ func (b ManifestBuilder) Build() model.Manifest {
 		return model.Manifest{}
 	}
 	m = m.
-		WithTriggerMode(b.triggerMode).
-		WithLabels(map[string]string{
-			"tilt.dev/owner-kind": "Tiltfile",
-		})
+		WithTriggerMode(b.triggerMode)
 	return m
 }
 

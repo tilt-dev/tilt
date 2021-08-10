@@ -300,7 +300,6 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 		if l == nil {
 			l = make(map[string]string)
 		}
-		l[v1alpha1.LabelOwnerKind] = v1alpha1.LabelOwnerKindTiltfile
 		manifests[i] = manifests[i].WithLabels(l)
 
 		err := manifests[i].Validate()
