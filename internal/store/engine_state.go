@@ -159,7 +159,7 @@ func (e *EngineState) AnalyticsEffectiveOpt() analytics.Opt {
 
 func (e *EngineState) ManifestNamesForTargetID(id model.TargetID) []model.ManifestName {
 	if id.Type == model.TargetTypeConfigs {
-		return []model.ManifestName{model.MainTiltfileManifestName}
+		return []model.ManifestName{model.ManifestName(id.Name)}
 	}
 
 	result := make([]model.ManifestName, 0)
