@@ -1,4 +1,4 @@
-import React, { ChangeEvent, useState } from "react"
+import React, { ChangeEvent, useMemo, useState } from "react"
 import {
   CellProps,
   Column,
@@ -760,24 +760,39 @@ function TableGroup(props: { label: string; data: RowValues[] }) {
   )
 }
 
-function TableGroupedByLabels(props: GroupByLabelView<RowValues>) {
+function TableGroupedByLabels(props: OverviewTableProps) {
+  const logStore = useLogStore()
+  const data = useMemo(
+    () => resourcesToTableCells(props.view.uiResources, props.view.uiButtons, logStore),
+    [props.view.uiResources]
+  )
   return (
     <>
-      {props.labels.map((label) => (
+      {data.labels.map((label) => (
         <TableGroup
           key={`tableOverview-${label}`}
           label={label}
-          data={props.labelsToResources[label]}
+          data={data.labelsToResources[label]}
         />
       ))}
-      <TableGroup label={"unlabeled"} data={props.unlabeled} />
-      <TableGroup label={"Tiltfile"} data={props.tiltfile} />
+      <TableGroup label={"unlabeled"} data={data.unlabeled} />
+      <TableGroup label={"Tiltfile"} data={data.tiltfile} />
     </>
   )
 }
 
+function TableWithoutGroups(props: OverviewTableProps) {
+  const logStore = useLogStore()
+  const data = useMemo(() => {
+    return (
+      props.view.uiResources?.map((r) => uiResourceToCell(r, props.view.uiButtons, logStore)) || []
+    )
+  }, [props.view.uiResources])
+
+  return <Table columns={columnDefs} data={data} />
+}
+
 export default function OverviewTable(props: OverviewTableProps) {
-  let logStore = useLogStore()
   const features = useFeatures()
 
   const groupByLabels = resourcesHaveLabels<UIResource>(
@@ -786,24 +801,9 @@ export default function OverviewTable(props: OverviewTableProps) {
     getResourceLabels
   )
 
-  // I'm not super pleased with the two possible return types here
-  // Can the react memo call happen later, like on each individual table?
-  const data = React.useMemo(() => {
-    if (groupByLabels) {
-      return resourcesToTableCells(props.view.uiResources, props.view.uiButtons, logStore)
-    } else {
-      return (
-        props.view.uiResources?.map((r) => uiResourceToCell(r, props.view.uiButtons, logStore)) || []
-      )
-    }
-  }, [props.view.uiResources, props.view.uiButtons])
-
-  // Does the React.useMemo call need to be different?
-  // I think we'll call `useTable` once per label group
-
   return groupByLabels ? (
-    <TableGroupedByLabels {...(data as GroupByLabelView<RowValues>)} />
+    <TableGroupedByLabels {...props} />
   ) : (
-    <Table columns={columnDefs} data={data as RowValues[]} />
+    <TableWithoutGroups {...props} />
   )
 }
