@@ -172,7 +172,8 @@ func TestFileWatch_ConfigFiles(t *testing.T) {
 	f.SetTiltIgnoreContents("**/foo")
 	f.inputs.ConfigFiles = append(f.inputs.ConfigFiles, "path_to_watch", "stop")
 
-	f.RequireFileWatchSpecEqual(ConfigsTargetID, v1alpha1.FileWatchSpec{
+	id := model.TargetID{Type: model.TargetTypeConfigs, Name: model.TargetName(model.MainTiltfileManifestName)}
+	f.RequireFileWatchSpecEqual(id, v1alpha1.FileWatchSpec{
 		WatchedPaths: []string{"path_to_watch", "stop"},
 		Ignores: []v1alpha1.IgnoreDef{
 			{BasePath: f.Path(), Patterns: []string{"**/foo"}},
@@ -263,6 +264,7 @@ func newFWFixture(t *testing.T) *fwFixture {
 		ctx:            ctx,
 		cli:            cli,
 		TempDirFixture: tmpdir,
+		inputs:         WatchInputs{TiltfileManifestName: model.MainTiltfileManifestName},
 	}
 
 	t.Cleanup(func() {

@@ -1,6 +1,7 @@
 package tiltfile
 
 import (
+	"fmt"
 	"path/filepath"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,16 +14,13 @@ import (
 )
 
 type WatchInputs struct {
-	Manifests     []model.Manifest
-	ConfigFiles   []string
-	WatchSettings model.WatchSettings
-	Tiltignore    model.Dockerignore
-	EngineMode    store.EngineMode
-}
-
-var ConfigsTargetID = model.TargetID{
-	Type: model.TargetTypeConfigs,
-	Name: "singleton",
+	TiltfileManifestName model.ManifestName
+	TiltfilePath         string
+	Manifests            []model.Manifest
+	ConfigFiles          []string
+	WatchSettings        model.WatchSettings
+	Tiltignore           model.Dockerignore
+	EngineMode           store.EngineMode
 }
 
 type WatchableTarget interface {
@@ -99,18 +97,30 @@ func ToFileWatchObjects(watchInputs WatchInputs) typedObjectSet {
 		}
 	}
 
+	paths := []string{}
 	if len(watchInputs.ConfigFiles) > 0 {
+		paths = append(paths, watchInputs.ConfigFiles...)
+	} else if watchInputs.TiltfilePath != "" {
+		// A complete ConfigFiles set should include the Tiltfile. If it doesn't,
+		// add it to the watch list now.
+		paths = append(paths, watchInputs.TiltfilePath)
+	}
+
+	if len(paths) > 0 {
+		id := fmt.Sprintf("%s:%s", model.TargetTypeConfigs, watchInputs.TiltfileManifestName)
 		configFw := &v1alpha1.FileWatch{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: apis.SanitizeName(ConfigsTargetID.String()),
+				Name: apis.SanitizeName(id),
 				Annotations: map[string]string{
-					v1alpha1.AnnotationTargetID: ConfigsTargetID.String(),
+					v1alpha1.AnnotationManifest: watchInputs.TiltfileManifestName.String(),
+					v1alpha1.AnnotationTargetID: id,
 				},
 			},
 			Spec: v1alpha1.FileWatchSpec{
-				WatchedPaths: append([]string(nil), watchInputs.ConfigFiles...),
+				WatchedPaths: paths,
 			},
 		}
+
 		addGlobalIgnoresToSpec(&configFw.Spec, globalIgnores)
 		fileWatches = append(fileWatches, configFw)
 	}

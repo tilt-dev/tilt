@@ -4145,10 +4145,11 @@ func (f *testFixture) Init(action InitAction) {
 
 	state := f.store.LockMutableStateForTesting()
 	expectedFileWatches := ctrltiltfile.ToFileWatchObjects(ctrltiltfile.WatchInputs{
-		Manifests:     state.Manifests(),
-		ConfigFiles:   state.MainConfigPaths(),
-		WatchSettings: state.WatchSettings,
-		Tiltignore:    state.Tiltignore,
+		TiltfileManifestName: model.MainTiltfileManifestName,
+		Manifests:            state.Manifests(),
+		ConfigFiles:          state.MainConfigPaths(),
+		WatchSettings:        state.WatchSettings,
+		Tiltignore:           state.Tiltignore,
 	})
 	expectedWatchCount := len(expectedFileWatches)
 	if f.overrideMaxParallelUpdates > 0 {
