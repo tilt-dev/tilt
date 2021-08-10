@@ -1,11 +1,14 @@
 // Helper functions for working with labels and resource groups
 
+import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+} from "@material-ui/core"
 import styled from "styled-components"
-import Features, { Flag } from "./feature"
-
 import { ReactComponent as CaretSvg } from "./assets/svg/caret.svg"
-import { AccordionDetails, AccordionSummary, Accordion } from "@material-ui/core"
-import { Color, FontSize, SizeUnit } from "./style-helpers"
+import Features, { Flag } from "./feature"
+import { Color, SizeUnit } from "./style-helpers"
 
 // The generated type for labels is a generic object,
 // when in reality, it is an object with string keys and values,
@@ -62,6 +65,8 @@ export function orderLabels(labels: string[]) {
   return [...labels].sort((a, b) => a.localeCompare(b))
 }
 
+// This helper function takes a template type for the resources
+// and a label accessor function
 export function resourcesHaveLabels<T>(
   features: Features,
   resources: T[] | undefined,

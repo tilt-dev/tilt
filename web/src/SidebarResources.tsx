@@ -3,15 +3,23 @@ import React, {
   Dispatch,
   PropsWithChildren,
   SetStateAction,
-  useState,
 } from "react"
 import styled from "styled-components"
-import { AnalyticsAction, AnalyticsType, incr } from "./analytics"
+import { AnalyticsType } from "./analytics"
 import { FeaturesContext } from "./feature"
-import { Group, GroupByLabelView, GroupDetails, GroupSummary, orderLabels, resourcesHaveLabels, SummaryIcon } from "./labels"
+import {
+  Group,
+  GroupByLabelView,
+  GroupDetails,
+  GroupSummary,
+  orderLabels,
+  resourcesHaveLabels,
+  SummaryIcon,
+} from "./labels"
 import { PersistentStateProvider } from "./LocalStorage"
 import { OverviewSidebarOptions } from "./OverviewSidebarOptions"
 import PathBuilder from "./PathBuilder"
+import { useResourceGroups } from "./ResourceGroupsContext"
 import { ResourceSidebarStatusSummary } from "./ResourceStatusSummary"
 import SidebarItem from "./SidebarItem"
 import SidebarItemView, {
@@ -149,15 +157,10 @@ function SidebarLabelListSection(props: { label: string } & SidebarProps) {
     props.label === "unlabeled" ? <em>{props.label}</em> : props.label
   const labelNameId = `sidebarItem-${props.label}`
 
-  // Track the expanded/collapsed state of a resource group manually
-  // so analytics events are captured
-  const [expanded, setExpanded] = useState(true)
-  const handleChange = (_e: ChangeEvent<{}>) => {
-    const action = expanded ? AnalyticsAction.Collapse : AnalyticsAction.Expand
-    incr("ui.web.resourceGroup", { action, type: AnalyticsType.Detail })
-
-    setExpanded(!expanded)
-  }
+  const { getGroup, setGroup } = useResourceGroups()
+  const expanded = getGroup(props.label)
+  const handleChange = (_e: ChangeEvent<{}>) =>
+    setGroup(props.label, AnalyticsType.Detail)
 
   // TODO (lizz): Improve the accessibility interface for accordion feature by adding focus styles
   // according to https://www.w3.org/TR/wai-aria-practices-1.1/examples/accordion/accordion.html
@@ -237,9 +240,6 @@ function SidebarGroupedByLabels(props: SidebarProps) {
     </>
   )
 }
-
-type UIResource = Proto.v1alpha1UIResource
-type Build = Proto.v1alpha1UIBuildTerminated
 
 type SidebarProps = {
   items: SidebarItem[]

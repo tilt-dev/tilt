@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { ChangeEvent, useState } from "react"
 import {
   CellProps,
   Column,
@@ -9,7 +9,7 @@ import {
 import TimeAgo from "react-timeago"
 import styled from "styled-components"
 import { buildAlerts, runtimeAlerts } from "./alerts"
-import { AnalyticsAction, incr } from "./analytics"
+import { AnalyticsAction, AnalyticsType, incr } from "./analytics"
 import { ApiIcon, buttonsForResource } from "./ApiButton"
 import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
@@ -36,6 +36,7 @@ import OverviewTableStarResourceButton from "./OverviewTableStarResourceButton"
 import OverviewTableStatus from "./OverviewTableStatus"
 import OverviewTableTriggerButton from "./OverviewTableTriggerButton"
 import OverviewTableTriggerModeToggle from "./OverviewTableTriggerModeToggle"
+import { useResourceGroups } from "./ResourceGroupsContext"
 import { useResourceNav } from "./ResourceNav"
 import { useStarredResources } from "./StarredResourcesContext"
 import { buildStatus, runtimeStatus } from "./status"
@@ -674,7 +675,7 @@ function Table(props: TableOptions<RowValues> & { isGroupView?: boolean }) {
   //   }
   // })
 
-  const isGroupClass = props.isGroupView ? 'isGroup' : ''
+  const isGroupClass = props.isGroupView ? "isGroup" : ""
 
   return (
     <ResourceTable {...getTableProps()} className={isGroupClass}>
@@ -737,13 +738,20 @@ function TableGroup(props: { label: string; data: RowValues[] }) {
     props.label === "unlabeled" ? <em>{props.label}</em> : props.label
   const labelNameId = `tableOverview-${props.label}`
 
+  const { getGroup, setGroup } = useResourceGroups()
+  const expanded = getGroup(props.label)
+  const handleChange = (_e: ChangeEvent<{}>) =>
+    setGroup(props.label, AnalyticsType.Grid)
+
   return (
-    <OverviewGroup defaultExpanded={true} key={labelNameId}>
+    <OverviewGroup
+      expanded={expanded}
+      key={labelNameId}
+      onChange={handleChange}
+    >
       <OverviewGroupSummary id={labelNameId}>
         <SummaryIcon role="presentation" />
-        <OverviewGroupName>
-          {formattedLabel}
-        </OverviewGroupName>
+        <OverviewGroupName>{formattedLabel}</OverviewGroupName>
       </OverviewGroupSummary>
       <OverviewGroupDetails>
         <Table columns={columnDefs} data={props.data} isGroupView />
@@ -753,14 +761,14 @@ function TableGroup(props: { label: string; data: RowValues[] }) {
 }
 
 function TableGroupedByLabels(props: GroupByLabelView<RowValues>) {
-  // Next, we can work on styles or the shared state
-
-  // After that's implemented, we can work on the shared state across log and table views
-
   return (
     <>
       {props.labels.map((label) => (
-        <TableGroup key={`tableOverview-${label}`} label={label} data={props.labelsToResources[label]} />
+        <TableGroup
+          key={`tableOverview-${label}`}
+          label={label}
+          data={props.labelsToResources[label]}
+        />
       ))}
       <TableGroup label={"unlabeled"} data={props.unlabeled} />
       <TableGroup label={"Tiltfile"} data={props.tiltfile} />
