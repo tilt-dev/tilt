@@ -1,5 +1,11 @@
 import React, { useState } from "react"
-import { CellProps, Column, useSortBy, useTable } from "react-table"
+import {
+  CellProps,
+  Column,
+  TableOptions,
+  useSortBy,
+  useTable,
+} from "react-table"
 import TimeAgo from "react-timeago"
 import styled from "styled-components"
 import { buildAlerts, runtimeAlerts } from "./alerts"
@@ -9,7 +15,20 @@ import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
 import { linkToTiltDocs, TiltDocsPage } from "./constants"
+import { useFeatures } from "./feature"
 import { InstrumentedButton } from "./instrumentedComponents"
+import {
+  asUILabels,
+  getUILabels,
+  Group,
+  GroupByLabelView,
+  GroupDetails,
+  GroupName,
+  GroupSummary,
+  orderLabels,
+  resourcesHaveLabels,
+  SummaryIcon,
+} from "./labels"
 import { displayURL } from "./links"
 import LogStore, { LogAlertIndex, useLogStore } from "./LogStore"
 import { CustomActionButton } from "./OverviewButton"
@@ -30,12 +49,16 @@ import {
 import { isZeroTime, timeDiff } from "./time"
 import { timeAgoFormatter } from "./timeFormatters"
 import TiltTooltip, { TiltInfoTooltip } from "./Tooltip"
-import { ResourceStatus, TargetType, TriggerMode } from "./types"
-type UIResource = Proto.v1alpha1UIResource
-type UIResourceStatus = Proto.v1alpha1UIResourceStatus
-type UIButton = Proto.v1alpha1UIButton
-type Build = Proto.v1alpha1UIBuildTerminated
-type UILink = Proto.v1alpha1UIResourceLink
+import {
+  ResourceName,
+  ResourceStatus,
+  TargetType,
+  TriggerMode,
+  UILink,
+  UIResource,
+  UIResourceStatus,
+  UIButton
+} from "./types"
 
 type OverviewTableProps = {
   view: Proto.webviewView
@@ -68,15 +91,41 @@ type OverviewTableStatus = {
   runtimeAlertCount: number
 }
 
+const OverviewGroup = styled(Group)`
+  &.MuiAccordion-root,
+  &.MuiAccordion-root.Mui-expanded {
+    margin: ${SizeUnit(1 / 2)} ${SizeUnit(1 / 2)};
+  }
+`
+
+const OverviewGroupSummary = styled(GroupSummary)`
+  .MuiAccordionSummary-content {
+    font-size: ${FontSize.default};
+  }
+`
+
+const OverviewGroupName = styled(GroupName)`
+  padding-left: ${SizeUnit(1 / 3)};
+`
+
+const OverviewGroupDetails = styled(GroupDetails)``
+
 const ResourceTable = styled.table`
   margin-top: ${SizeUnit(0.5)};
   border-collapse: collapse;
+  width: 100%;
 
   td:first-child {
     padding-left: ${SizeUnit(1)};
   }
   td:last-child {
     padding-right: ${SizeUnit(1)};
+  }
+
+  &.isGroup {
+    /* border: 1px yellow solid; */
+    border: 1px ${Color.grayLighter} solid;
+    border-radius: 0 ${SizeUnit(1 / 4)}; /* TODO: Figure out border radius */
   }
 `
 const ResourceTableHead = styled.thead`
@@ -122,7 +171,7 @@ const ResourceTableHeaderSortTriangle = styled.div`
     transform: rotate(180deg);
   }
 `
-const ResourceName = styled.button`
+const Name = styled.button`
   ${mixinResetButtonStyle};
   color: ${Color.offWhite};
   font-size: ${FontSize.small};
@@ -232,12 +281,12 @@ function TableNameColumn({ row }: CellProps<RowValues>) {
     row.values.statusLine.runtimeStatus === ResourceStatus.Unhealthy
 
   return (
-    <ResourceName
+    <Name
       className={hasError ? "has-error" : ""}
       onClick={(e) => nav.openResource(row.values.name)}
     >
       {row.values.name}
-    </ResourceName>
+    </Name>
   )
 }
 
@@ -551,13 +600,52 @@ function viewToRowValues(
   )
 }
 
-export default function OverviewTable(props: OverviewTableProps) {
-  let logStore = useLogStore()
-  const data = React.useMemo(() => viewToRowValues(props.view, logStore), [
-    props.view.uiResources,
-    props.view.uiButtons,
-  ])
+function getResourceLabels(resource: UIResource) {
+  const uiLabels = asUILabels({ labels: resource.metadata?.labels })
+  return getUILabels(uiLabels)
+}
 
+function resourcesToTableCells(
+  resources: UIResource[] | undefined,
+  buttons: UIButton[] | undefined,
+  logStore: LogStore
+): GroupByLabelView<RowValues> {
+  const labelsToResources: { [key: string]: RowValues[] } = {}
+  const unlabeled: RowValues[] = []
+  const tiltfile: RowValues[] = []
+
+  if (resources === undefined) {
+    return { labels: [], labelsToResources, tiltfile, unlabeled }
+  }
+
+  resources.forEach((r) => {
+    const labels = getResourceLabels(r)
+    const isTiltfile = r.metadata?.name === ResourceName.tiltfile
+    const tableCell = uiResourceToCell(r, buttons, logStore)
+    if (labels.length) {
+      labels.forEach((label) => {
+        if (!labelsToResources.hasOwnProperty(label)) {
+          labelsToResources[label] = []
+        }
+
+        labelsToResources[label].push(tableCell)
+      })
+    } else if (!isTiltfile) {
+      unlabeled.push(tableCell)
+    }
+
+    // Display the Tiltfile outside of the label groups
+    if (isTiltfile) {
+      tiltfile.push(tableCell)
+    }
+  })
+
+  const labels = orderLabels(Object.keys(labelsToResources))
+
+  return { labels, labelsToResources, tiltfile, unlabeled }
+}
+
+function Table(props: TableOptions<RowValues> & { isGroupView?: boolean }) {
   const {
     getTableProps,
     getTableBodyProps,
@@ -568,23 +656,28 @@ export default function OverviewTable(props: OverviewTableProps) {
   } = useTable(
     {
       columns: columnDefs,
-      data,
+      data: props.data,
       autoResetSortBy: false,
     },
     useSortBy
   )
 
+  // TODO (lizz): since the structure of the table components has
+  // changed, this component no longer has direct access to the view
+
   // if there are no widgets, hide the widgets column
   // TODO(matt) is this actually what we want?
-  const widgetsVisible = hasWidgets(props.view)
-  columns.forEach((c) => {
-    if (c.Header === "Widgets" && widgetsVisible !== c.isVisible) {
-      c.toggleHidden(!widgetsVisible)
-    }
-  })
+  // const widgetsVisible = hasWidgets(props.view)
+  // columns.forEach((c) => {
+  //   if (c.Header === "Widgets" && widgetsVisible !== c.isVisible) {
+  //     c.toggleHidden(!widgetsVisible)
+  //   }
+  // })
+
+  const isGroupClass = props.isGroupView ? 'isGroup' : ''
 
   return (
-    <ResourceTable {...getTableProps()}>
+    <ResourceTable {...getTableProps()} className={isGroupClass}>
       <ResourceTableHead>
         {headerGroups.map((headerGroup) => (
           <ResourceTableRow {...headerGroup.getHeaderGroupProps()}>
@@ -632,5 +725,77 @@ export default function OverviewTable(props: OverviewTableProps) {
         })}
       </tbody>
     </ResourceTable>
+  )
+}
+
+function TableGroup(props: { label: string; data: RowValues[] }) {
+  if (props.data.length === 0) {
+    return null
+  }
+
+  const formattedLabel =
+    props.label === "unlabeled" ? <em>{props.label}</em> : props.label
+  const labelNameId = `tableOverview-${props.label}`
+
+  return (
+    <OverviewGroup defaultExpanded={true} key={labelNameId}>
+      <OverviewGroupSummary id={labelNameId}>
+        <SummaryIcon role="presentation" />
+        <OverviewGroupName>
+          {formattedLabel}
+        </OverviewGroupName>
+      </OverviewGroupSummary>
+      <OverviewGroupDetails>
+        <Table columns={columnDefs} data={props.data} isGroupView />
+      </OverviewGroupDetails>
+    </OverviewGroup>
+  )
+}
+
+function TableGroupedByLabels(props: GroupByLabelView<RowValues>) {
+  // Next, we can work on styles or the shared state
+
+  // After that's implemented, we can work on the shared state across log and table views
+
+  return (
+    <>
+      {props.labels.map((label) => (
+        <TableGroup key={`tableOverview-${label}`} label={label} data={props.labelsToResources[label]} />
+      ))}
+      <TableGroup label={"unlabeled"} data={props.unlabeled} />
+      <TableGroup label={"Tiltfile"} data={props.tiltfile} />
+    </>
+  )
+}
+
+export default function OverviewTable(props: OverviewTableProps) {
+  let logStore = useLogStore()
+  const features = useFeatures()
+
+  const groupByLabels = resourcesHaveLabels<UIResource>(
+    features,
+    props.view.uiResources,
+    getResourceLabels
+  )
+
+  // I'm not super pleased with the two possible return types here
+  // Can the react memo call happen later, like on each individual table?
+  const data = React.useMemo(() => {
+    if (groupByLabels) {
+      return resourcesToTableCells(props.view.uiResources, props.view.uiButtons, logStore)
+    } else {
+      return (
+        props.view.uiResources?.map((r) => uiResourceToCell(r, props.view.uiButtons, logStore)) || []
+      )
+    }
+  }, [props.view.uiResources, props.view.uiButtons])
+
+  // Does the React.useMemo call need to be different?
+  // I think we'll call `useTable` once per label group
+
+  return groupByLabels ? (
+    <TableGroupedByLabels {...(data as GroupByLabelView<RowValues>)} />
+  ) : (
+    <Table columns={columnDefs} data={data as RowValues[]} />
   )
 }

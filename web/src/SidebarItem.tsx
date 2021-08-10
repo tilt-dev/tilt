@@ -1,6 +1,6 @@
 import moment from "moment"
 import { buildAlerts, runtimeAlerts } from "./alerts"
-import { asUILabels, getUiLabels } from "./labels"
+import { asUILabels, getUILabels } from "./labels"
 import { LogAlertIndex } from "./LogStore"
 import { buildStatus, runtimeStatus } from "./status"
 import { timeDiff } from "./time"
@@ -45,7 +45,7 @@ class SidebarItem {
     this.runtimeStatus = runtimeStatus(res, logAlertIndex)
     this.runtimeAlertCount = runtimeAlerts(res, logAlertIndex).length
     this.hasEndpoints = (status.endpointLinks || []).length > 0
-    this.labels = getUiLabels(labels)
+    this.labels = getUILabels(labels)
     this.lastBuildDur =
       lastBuild && lastBuild.startTime && lastBuild.finishTime
         ? timeDiff(lastBuild.startTime, lastBuild.finishTime)
