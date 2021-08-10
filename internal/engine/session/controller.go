@@ -33,9 +33,10 @@ import (
 // has been converted to a reconciler. (Ideally, there will also be much less special case conversion logic as the data
 // models on which this controller depends evolve during migration to apiserver.)
 type Controller struct {
-	pid       int64
-	startTime time.Time
-	client    ctrlclient.Client
+	pid        int64
+	startTime  time.Time
+	client     ctrlclient.Client
+	engineMode store.EngineMode
 
 	// The last status object sent to the server.
 	lastStatus *session.SessionStatus
@@ -48,11 +49,12 @@ type Controller struct {
 
 var _ store.Subscriber = &Controller{}
 
-func NewController(cli ctrlclient.Client) *Controller {
+func NewController(cli ctrlclient.Client, engineMode store.EngineMode) *Controller {
 	return &Controller{
-		pid:       int64(os.Getpid()),
-		startTime: time.Now(),
-		client:    cli,
+		pid:        int64(os.Getpid()),
+		startTime:  time.Now(),
+		client:     cli,
+		engineMode: engineMode,
 	}
 }
 
@@ -124,7 +126,7 @@ func (c *Controller) makeSession(st store.RStore) *session.Session {
 
 	// currently, manual + CI are the only supported modes; the apiserver will validate this field and reject
 	// the object on creation if it doesn't conform, so there's no additional validation/error-handling here
-	switch state.EngineMode {
+	switch c.engineMode {
 	case store.EngineModeUp:
 		s.Spec.ExitCondition = session.ExitConditionManual
 	case store.EngineModeCI:

@@ -122,7 +122,7 @@ func (c *updogCmd) run(ctx context.Context, args []string) error {
 
 	// A lot of these parameters don't matter because we don't have any
 	// controllers registered.
-	err = deps.Upper.Start(ctx, args, deps.TiltBuild, store.EngineModeCI,
+	err = deps.Upper.Start(ctx, args, deps.TiltBuild,
 		"Tiltfile", store.TerminalModeStream, a.UserOpt(), deps.Token,
 		string(deps.CloudAddress))
 	if err != context.Canceled {

@@ -190,7 +190,7 @@ func newCCFixture(t *testing.T) *ccFixture {
 	q := workqueue.NewRateLimitingQueue(
 		workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, time.Millisecond))
 	buildSource := ctrltiltfile.NewBuildSource()
-	tfr := ctrltiltfile.NewReconciler(st, tfl, d, tc, v1alpha1.NewScheme(), buildSource)
+	tfr := ctrltiltfile.NewReconciler(st, tfl, d, tc, v1alpha1.NewScheme(), buildSource, store.EngineModeUp)
 	cc := NewConfigsController(tc, buildSource)
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	ctx, cancel := context.WithCancel(ctx)

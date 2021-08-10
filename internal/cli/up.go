@@ -163,9 +163,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	engineMode := store.EngineModeUp
-
-	err = upper.Start(ctx, args, cmdUpDeps.TiltBuild, engineMode,
+	err = upper.Start(ctx, args, cmdUpDeps.TiltBuild,
 		c.fileName, termMode, a.UserOpt(), cmdUpDeps.Token, string(cmdUpDeps.CloudAddress))
 	if err != context.Canceled {
 		return err
