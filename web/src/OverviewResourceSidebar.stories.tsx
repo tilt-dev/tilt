@@ -4,23 +4,19 @@ import SplitPane from "react-split-pane"
 import Features, { FeaturesProvider, Flag } from "./feature"
 import LogStore, { LogStoreProvider } from "./LogStore"
 import OverviewResourceSidebar from "./OverviewResourceSidebar"
-import PathBuilder from "./PathBuilder"
+import { ResourceGroupsProvider } from "./ResourceGroupsContext"
 import { Width } from "./style-helpers"
 import {
   nResourceView,
+  nResourceWithLabelsView,
   oneResource,
-  oneResourceCrashedOnStart,
-  oneResourceFailedToBuild,
   oneResourceNoAlerts,
   oneResourceTest,
   tenResourceView,
   tiltfileResource,
   twoResourceView,
 } from "./testdata"
-import { LogLevel, UpdateStatus } from "./types"
-
-type UIResource = Proto.v1alpha1UIResource
-let pathBuilder = PathBuilder.forTesting("localhost", "/")
+import { LogLevel, UIResource, UpdateStatus } from "./types"
 
 export default {
   title: "New UI/Log View/OverviewResourceSidebar",
@@ -32,15 +28,17 @@ export default {
       return (
         <MemoryRouter initialEntries={["/"]}>
           <FeaturesProvider value={features}>
-            <div style={{ margin: "-1rem", height: "80vh" }}>
-              <SplitPane
-                split="vertical"
-                minSize={Width.sidebarDefault}
-                defaultSize={Width.sidebarDefault}
-              >
-                <Story />
-              </SplitPane>
-            </div>
+            <ResourceGroupsProvider>
+              <div style={{ margin: "-1rem", height: "80vh" }}>
+                <SplitPane
+                  split="vertical"
+                  minSize={Width.sidebarDefault}
+                  defaultSize={Width.sidebarDefault}
+                >
+                  <Story />
+                </SplitPane>
+              </div>
+            </ResourceGroupsProvider>
           </FeaturesProvider>
         </MemoryRouter>
       )
@@ -65,48 +63,16 @@ export const TenResources = () => (
   <OverviewResourceSidebar name={"vigoda_1"} view={tenResourceView()} />
 )
 
+export const TenResourcesWithLabels = () => (
+  <OverviewResourceSidebar
+    name={"vigoda_1"}
+    view={nResourceWithLabelsView(10)}
+  />
+)
+
 export const OneHundredResources = () => (
   <OverviewResourceSidebar name={"vigoda_1"} view={nResourceView(100)} />
 )
-
-export const ResourcesWithLabels = () => {
-  const view = nResourceView(10)
-  for (let i = 0; i < 10; i++) {
-    const labels: { [key: string]: string } = {}
-    // The first item is a Tiltfile, so don't apply a label to it
-    if (i > 0 && i < 5) {
-      labels["frontend"] = "frontend"
-    }
-    if (i % 2) {
-      labels["test"] = "test"
-    }
-
-    if (i === 3) {
-      labels["very_long_long_long_label"] = "very_long_long_long_label"
-    }
-
-    view.uiResources[i].metadata!.labels = labels
-  }
-
-  // Non-happy path resources
-  const [failedBuild] = oneResourceFailedToBuild()
-  failedBuild.metadata!.labels = {
-    test: "test",
-    backend: "backend",
-  }
-  failedBuild.metadata!.name = "resource_11"
-  view.uiResources.push(failedBuild)
-
-  const [crashedStart] = oneResourceCrashedOnStart()
-  crashedStart.metadata!.labels = {
-    javascript: "javascript",
-    backend: "frontend",
-  }
-  crashedStart.metadata!.name = "resource_12"
-  view.uiResources.push(crashedStart)
-
-  return <OverviewResourceSidebar name={"vigoda_1"} view={view} />
-}
 
 export function TwoResourcesTwoTests() {
   let all: UIResource[] = [

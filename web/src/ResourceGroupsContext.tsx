@@ -3,7 +3,7 @@ import { AnalyticsAction, AnalyticsType, incr } from "./analytics"
 import { usePersistentState } from "./LocalStorage"
 
 const GROUPS_LOCAL_STORAGE_NAME = "resource-groups"
-export const DEFAULT_GROUP_STATE = true
+const DEFAULT_GROUP_STATE = true
 
 export type GroupExpandedState = { [key: string]: boolean }
 
@@ -16,10 +16,16 @@ type ResourceGroupsContext = {
 const resourceGroupsContext = createContext<ResourceGroupsContext>({
   expanded: {},
   setGroup: () => {
-    console.warn("Resource group context is not set.")
+    // Note: this warning should only show in development
+    console.warn(
+      "Resource group context is not set. Did you forget to provide it?"
+    )
   },
   getGroup: () => {
-    console.warn("Resource group context is not set.")
+    // Note: this warning should only show in development
+    console.warn(
+      "Resource group context is not set. Did you forget to provide it?"
+    )
     return DEFAULT_GROUP_STATE
   },
 })
@@ -28,7 +34,7 @@ export function useResourceGroups(): ResourceGroupsContext {
   return useContext(resourceGroupsContext)
 }
 
-export function ResourceGroupsContextProvider(props: PropsWithChildren<{}>) {
+export function ResourceGroupsProvider(props: PropsWithChildren<{}>) {
   const [expanded, setExpandedState] = usePersistentState<GroupExpandedState>(
     GROUPS_LOCAL_STORAGE_NAME,
     {}

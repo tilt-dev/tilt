@@ -1,34 +1,51 @@
 import { StylesProvider } from "@material-ui/core/styles"
 import React from "react"
 import { MemoryRouter } from "react-router"
+import Features, { FeaturesProvider, Flag } from "./feature"
 import LogStore, { LogStoreProvider } from "./LogStore"
 import OverviewResourcePane from "./OverviewResourcePane"
+import { ResourceGroupsProvider } from "./ResourceGroupsContext"
 import { ResourceNavProvider } from "./ResourceNav"
 import { StarredResourceMemoryProvider } from "./StarredResourcesContext"
 import {
   nButtonView,
   nResourceView,
+  nResourceWithLabelsView,
   tenResourceView,
   twoResourceView,
 } from "./testdata"
 
-type UIResource = Proto.v1alpha1UIResource
-
 export default {
   title: "New UI/OverviewResourcePane",
   decorators: [
-    (Story: any) => (
-      <MemoryRouter initialEntries={["/"]}>
-        <StarredResourceMemoryProvider>
-          <div style={{ margin: "-1rem", height: "80vh" }}>
-            <StylesProvider injectFirst>
-              <Story />
-            </StylesProvider>
-          </div>
-        </StarredResourceMemoryProvider>
-      </MemoryRouter>
-    ),
+    (Story: any, context: any) => {
+      const features = new Features({
+        [Flag.Labels]: context?.args?.labelsEnabled ?? true,
+      })
+      return (
+        <MemoryRouter initialEntries={["/"]}>
+          <FeaturesProvider value={features}>
+            <StarredResourceMemoryProvider>
+              <div style={{ margin: "-1rem", height: "80vh" }}>
+                <StylesProvider injectFirst>
+                  <Story />
+                </StylesProvider>
+              </div>
+            </StarredResourceMemoryProvider>
+          </FeaturesProvider>
+        </MemoryRouter>
+      )
+    },
   ],
+  argTypes: {
+    labelsEnabled: {
+      name: "Group resources by label enabled",
+      control: {
+        type: "boolean",
+      },
+      defaultValue: true,
+    },
+  },
 }
 
 function OverviewResourcePaneHarness(props: {
@@ -42,9 +59,11 @@ function OverviewResourcePaneHarness(props: {
     resources.some((res) => res.metadata?.name == name)
   return (
     <MemoryRouter initialEntries={[entry]}>
-      <ResourceNavProvider validateResource={validateResource}>
-        <OverviewResourcePane view={view} />
-      </ResourceNavProvider>
+      <ResourceGroupsProvider>
+        <ResourceNavProvider validateResource={validateResource}>
+          <OverviewResourcePane view={view} />
+        </ResourceNavProvider>
+      </ResourceGroupsProvider>
     </MemoryRouter>
   )
 }
@@ -64,6 +83,13 @@ export const TenResourcesLongNames = () => {
   })
   return <OverviewResourcePaneHarness name="vigoda_1" view={view} />
 }
+
+export const TenResourcesWithLabels = () => (
+  <OverviewResourcePaneHarness
+    name="vigoda_1"
+    view={nResourceWithLabelsView(10)}
+  />
+)
 
 export const TwoButtons = () => {
   const view = nButtonView(2)

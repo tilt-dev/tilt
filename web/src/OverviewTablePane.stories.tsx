@@ -1,29 +1,56 @@
 import React from "react"
 import { MemoryRouter } from "react-router"
+import Features, { FeaturesProvider, Flag } from "./feature"
 import OverviewTablePane from "./OverviewTablePane"
+import { ResourceGroupsProvider } from "./ResourceGroupsContext"
 import { StarredResourceMemoryProvider } from "./StarredResourcesContext"
-import { nResourceView, tenResourceView, twoResourceView } from "./testdata"
-
-type UIResource = Proto.v1alpha1UIResource
+import {
+  nResourceView,
+  nResourceWithLabelsView,
+  tenResourceView,
+  twoResourceView,
+} from "./testdata"
 
 export default {
   title: "New UI/OverviewTablePane",
   decorators: [
-    (Story: any) => (
-      <MemoryRouter initialEntries={["/"]}>
-        <div style={{ margin: "-1rem", height: "80vh" }}>
-          <StarredResourceMemoryProvider>
-            <Story />
-          </StarredResourceMemoryProvider>
-        </div>
-      </MemoryRouter>
-    ),
+    (Story: any, context: any) => {
+      const features = new Features({
+        [Flag.Labels]: context?.args?.labelsEnabled ?? true,
+      })
+      return (
+        <MemoryRouter initialEntries={["/"]}>
+          <FeaturesProvider value={features}>
+            <ResourceGroupsProvider>
+              <StarredResourceMemoryProvider>
+                <div style={{ margin: "-1rem", height: "80vh" }}>
+                  <Story />
+                </div>
+              </StarredResourceMemoryProvider>
+            </ResourceGroupsProvider>
+          </FeaturesProvider>
+        </MemoryRouter>
+      )
+    },
   ],
+  argTypes: {
+    labelsEnabled: {
+      name: "Group resources by label enabled",
+      control: {
+        type: "boolean",
+      },
+      defaultValue: true,
+    },
+  },
 }
 
 export const TwoResources = () => <OverviewTablePane view={twoResourceView()} />
 
 export const TenResources = () => <OverviewTablePane view={tenResourceView()} />
+
+export const TenResourcesWithLabels = () => (
+  <OverviewTablePane view={nResourceWithLabelsView(10)} />
+)
 
 export const OneHundredResources = () => (
   <OverviewTablePane view={nResourceView(100)} />

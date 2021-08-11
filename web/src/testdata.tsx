@@ -393,6 +393,47 @@ export function nResourceView(n: number): view {
   }
 }
 
+export const nResourceWithLabelsView = (n: number) => {
+  const view = nResourceView(n)
+  const firstLabelLimit = Math.floor(n / 5)
+  const secondLabelLimit = n < 10 ? 2 : 5
+  for (let i = 0; i < 10; i++) {
+    const labels: { [key: string]: string } = {}
+    // The first item is a Tiltfile, so don't apply a label to it
+    if (i > 0 && i < firstLabelLimit) {
+      labels["frontend"] = "frontend"
+    }
+    if (i % secondLabelLimit) {
+      labels["test"] = "test"
+    }
+
+    if (i === 3) {
+      labels["very_long_long_long_label"] = "very_long_long_long_label"
+    }
+
+    view.uiResources[i].metadata!.labels = labels
+  }
+
+  // Non-happy path resources
+  const [failedBuild] = oneResourceFailedToBuild()
+  failedBuild.metadata!.labels = {
+    test: "test",
+    backend: "backend",
+  }
+  failedBuild.metadata!.name = "a_failed_build"
+  view.uiResources.push(failedBuild)
+
+  const [crashedStart] = oneResourceCrashedOnStart()
+  crashedStart.metadata!.labels = {
+    javascript: "javascript",
+    backend: "frontend",
+  }
+  crashedStart.metadata!.name = "crash_on_start"
+  view.uiResources.push(crashedStart)
+
+  return view
+}
+
 function oneButton(i: number, resourceName: string): UIButton {
   return {
     metadata: { name: `button${i + 1}` },

@@ -9,8 +9,6 @@ import {
 } from "./testdata"
 import { UpdateStatus } from "./types"
 
-type UIResource = Proto.v1alpha1UIResource
-
 export default {
   title: "New UI/Shared/OverviewResourceBar",
   decorators: [
