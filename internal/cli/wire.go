@@ -7,8 +7,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesdiscovery"
-
 	cliclient "github.com/tilt-dev/tilt/internal/cli/client"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
 
@@ -27,6 +25,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/cloud/cloudurl"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers"
+	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesdiscovery"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/engine"
@@ -57,6 +56,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/token"
 	"github.com/tilt-dev/tilt/internal/tracer"
 	"github.com/tilt-dev/tilt/internal/user"
+	"github.com/tilt-dev/tilt/internal/xdg"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -145,6 +145,7 @@ var BaseWireSet = wire.NewSet(
 	wire.Bind(new(tracer.SpanSource), new(*tracer.SpanCollector)),
 
 	dirs.UseTiltDevDir,
+	xdg.NewTiltDevBase,
 	token.GetOrCreateToken,
 
 	buildcontrol.NewKINDLoader,

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/tilt-dev/go-get"
-	"github.com/tilt-dev/wmclient/pkg/dirs"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -18,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
+	"github.com/tilt-dev/tilt/internal/xdg"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -46,8 +46,8 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	return b, nil
 }
 
-func NewReconciler(ctrlClient ctrlclient.Client, dir *dirs.TiltDevDir) (*Reconciler, error) {
-	dlrPath, err := dir.Abs(tiltModulesRelDir)
+func NewReconciler(ctrlClient ctrlclient.Client, base xdg.Base) (*Reconciler, error) {
+	dlrPath, err := base.DataFile(tiltModulesRelDir)
 	if err != nil {
 		return nil, fmt.Errorf("creating extensionrepo controller: %v", err)
 	}

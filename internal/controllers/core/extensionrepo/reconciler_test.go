@@ -2,6 +2,7 @@ package extensionrepo
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,13 +10,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tilt-dev/wmclient/pkg/dirs"
 	"github.com/tilt-dev/wmclient/pkg/os/temp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/internal/xdg"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
@@ -88,7 +89,7 @@ func TestDefaultWeb(t *testing.T) {
 func TestDefaultFile(t *testing.T) {
 	f := newFixture(t)
 
-	path := filepath.Join(f.dir.Path(), "my-repo")
+	path := filepath.Join(f.base.Dir, "my-repo")
 	_ = os.MkdirAll(path, os.FileMode(0755))
 
 	key := types.NamespacedName{Name: "default"}
@@ -128,9 +129,9 @@ func TestRepoSync(t *testing.T) {
 
 type fixture struct {
 	*fake.ControllerFixture
-	r   *Reconciler
-	dir *temp.TempDir
-	dlr *fakeDownloader
+	r    *Reconciler
+	dlr  *fakeDownloader
+	base xdg.FakeBase
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -139,23 +140,23 @@ func newFixture(t *testing.T) *fixture {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = os.RemoveAll(tmpDir.Path()) })
 
-	dir := dirs.NewTiltDevDirAt(tmpDir.Path())
-	r, err := NewReconciler(cfb.Client, dir)
+	base := xdg.FakeBase{Dir: tmpDir.Path()}
+	r, err := NewReconciler(cfb.Client, base)
 	require.NoError(t, err)
 
-	dlr := &fakeDownloader{dir: dir, headRef: "fake-head"}
+	dlr := &fakeDownloader{base: base, headRef: "fake-head"}
 	r.dlr = dlr
 
 	return &fixture{
 		ControllerFixture: cfb.Build(r),
 		r:                 r,
-		dir:               tmpDir,
 		dlr:               dlr,
+		base:              base,
 	}
 }
 
 type fakeDownloader struct {
-	dir *dirs.TiltDevDir
+	base xdg.Base
 
 	downloadError error
 	downloadCount int
@@ -164,7 +165,7 @@ type fakeDownloader struct {
 }
 
 func (d *fakeDownloader) DestinationPath(pkg string) string {
-	result, _ := d.dir.Abs(pkg)
+	result, _ := d.base.DataFile(pkg)
 	return result
 }
 
@@ -174,8 +175,13 @@ func (d *fakeDownloader) Download(pkg string) (string, error) {
 		return "", fmt.Errorf("download error %d: %v", d.downloadCount, d.downloadError)
 	}
 
-	err := d.dir.WriteFile(filepath.Join(pkg, "Tiltfile"),
-		fmt.Sprintf("Download count %d", d.downloadCount))
+	path, err := d.base.DataFile(filepath.Join(pkg, "Tiltfile"))
+	if err != nil {
+		return "", err
+	}
+
+	err = os.WriteFile(path,
+		[]byte(fmt.Sprintf("Download count %d", d.downloadCount)), fs.FileMode(0777))
 	return "", err
 }
 

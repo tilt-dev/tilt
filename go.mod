@@ -4,6 +4,7 @@ go 1.16
 
 require (
 	contrib.go.opencensus.io/exporter/ocagent v0.7.0
+	github.com/adrg/xdg v0.3.3
 	github.com/agl/ed25519 v0.0.0-20170116200512-5312a6153412 // indirect
 	github.com/akutz/memconn v0.1.0
 	github.com/alessio/shellescape v1.2.2
