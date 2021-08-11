@@ -335,6 +335,11 @@ message ExtensionRepoSpec {
   // https: URLs that point to a public git repo
   // file: URLs that point to a location on disk.
   optional string url = 1;
+
+  // A reference to sync the repo to. If empty, Tilt will always update
+  // the repo to the latest version.
+  // +optional
+  optional string ref = 2;
 }
 
 // ExtensionRepoStatus defines the observed state of ExtensionRepo
@@ -347,6 +352,11 @@ message ExtensionRepoStatus {
 
   // The path to the repo on local disk.
   optional string path = 3;
+
+  // The reference that we currently have checked out.
+  // On git, this is the commit hash.
+  // On file repos, this is empty.
+  optional string checkoutRef = 4;
 }
 
 // ExtensionSpec defines the desired state of Extension
