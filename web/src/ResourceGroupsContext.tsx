@@ -1,9 +1,8 @@
-import { createContext, PropsWithChildren, useContext, useState } from "react"
+import { createContext, PropsWithChildren, useContext } from "react"
 import { AnalyticsAction, AnalyticsType, incr } from "./analytics"
+import { usePersistentState } from "./LocalStorage"
 
-// To use local storage, you can use the `usePersistentState` hook instead of `useState`
-// I'm not sure how the provider or context ingestion is different, but I think everything else is the same
-
+const GROUPS_LOCAL_STORAGE_NAME = "resource-groups"
 export const DEFAULT_GROUP_STATE = true
 
 export type GroupExpandedState = { [key: string]: boolean }
@@ -30,7 +29,10 @@ export function useResourceGroups(): ResourceGroupsContext {
 }
 
 export function ResourceGroupsContextProvider(props: PropsWithChildren<{}>) {
-  const [expanded, setExpandedState] = useState<GroupExpandedState>({})
+  const [expanded, setExpandedState] = usePersistentState<GroupExpandedState>(
+    GROUPS_LOCAL_STORAGE_NAME,
+    {}
+  )
 
   function setGroup(groupLabel: string, page: AnalyticsType) {
     const currentGroupState = expanded[groupLabel] ?? DEFAULT_GROUP_STATE
