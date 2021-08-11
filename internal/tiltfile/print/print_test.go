@@ -95,7 +95,7 @@ fail("this can't happen!")
 }
 
 func newFixture(tb testing.TB) *starkit.Fixture {
-	f := starkit.NewFixture(tb, NewExtension())
+	f := starkit.NewFixture(tb, NewPlugin())
 	out := bytes.NewBuffer(nil)
 	f.SetOutput(out)
 	log := logger.NewLogger(logger.VerboseLvl, out)

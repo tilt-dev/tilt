@@ -21,9 +21,9 @@ func init() {
 }
 
 // The main entrypoint to starkit.
-// Execute a file with a set of starlark extensions.
-func ExecFile(path string, extensions ...Extension) (Model, error) {
-	return newEnvironment(extensions...).start(path)
+// Execute a file with a set of starlark plugins.
+func ExecFile(path string, plugins ...Plugin) (Model, error) {
+	return newEnvironment(plugins...).start(path)
 }
 
 const argUnpackerKey = "starkit.ArgUnpacker"
@@ -53,7 +53,7 @@ type Environment struct {
 	loadCache        map[string]loadCacheEntry
 	predeclared      starlark.StringDict
 	print            func(thread *starlark.Thread, msg string)
-	extensions       []Extension
+	plugins          []Plugin
 	fakeFileSystem   map[string]string
 	loadInterceptors []LoadInterceptor
 	startPath        string
@@ -61,11 +61,11 @@ type Environment struct {
 	builtinCalls []BuiltinCall
 }
 
-func newEnvironment(extensions ...Extension) *Environment {
+func newEnvironment(plugins ...Plugin) *Environment {
 	return &Environment{
 		unpackArgs:     starlark.UnpackArgs,
 		loadCache:      make(map[string]loadCacheEntry),
-		extensions:     append([]Extension{}, extensions...),
+		plugins:        append([]Plugin{}, plugins...),
 		predeclared:    starlark.StringDict{},
 		fakeFileSystem: nil,
 		builtinCalls:   []BuiltinCall{},
@@ -87,13 +87,13 @@ func (e *Environment) StartPath() string {
 
 // Add a builtin to the environment.
 //
-// All builtins will be wrapped to invoke OnBuiltinCall on every extension.
+// All builtins will be wrapped to invoke OnBuiltinCall on every plugin.
 //
 // All builtins should use starkit.UnpackArgs to get instrumentation.
 func (e *Environment) AddBuiltin(name string, f Function) error {
 	wrapped := starlark.NewBuiltin(name, func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-		for _, ext := range e.extensions {
-			onBuiltinCallExt, ok := ext.(OnBuiltinCallExtension)
+		for _, ext := range e.plugins {
+			onBuiltinCallExt, ok := ext.(OnBuiltinCallPlugin)
 			if ok {
 				onBuiltinCallExt.OnBuiltinCall(name, fn)
 			}
@@ -170,8 +170,8 @@ func (e *Environment) start(path string) (Model, error) {
 	e.startPath = path
 
 	model := NewModel()
-	for _, ext := range e.extensions {
-		sExt, isStateful := ext.(StatefulExtension)
+	for _, ext := range e.plugins {
+		sExt, isStateful := ext.(StatefulPlugin)
 		if isStateful {
 			err := model.createInitState(sExt)
 			if err != nil {
@@ -180,7 +180,7 @@ func (e *Environment) start(path string) (Model, error) {
 		}
 	}
 
-	for _, ext := range e.extensions {
+	for _, ext := range e.plugins {
 		err := ext.OnStart(e)
 		if err != nil {
 			return Model{}, errors.Wrapf(err, "internal error: %T", ext)
@@ -261,8 +261,8 @@ func (e *Environment) getPath(t *starlark.Thread, path string) (string, error) {
 }
 
 func (e *Environment) doLoad(t *starlark.Thread, localPath string) (starlark.StringDict, error) {
-	for _, ext := range e.extensions {
-		onExecExt, ok := ext.(OnExecExtension)
+	for _, ext := range e.plugins {
+		onExecExt, ok := ext.(OnExecPlugin)
 		if ok {
 			err := onExecExt.OnExec(t, localPath)
 			if err != nil {

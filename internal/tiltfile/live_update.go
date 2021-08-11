@@ -15,7 +15,7 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-const fmtRestartContainerDeprecationError = "Found `restart_container()` LiveUpdate step in resource(s): [%s]. `restart_container()`  has been deprecated for k8s resources. We recommend the restart_process extension: https://github.com/windmilleng/tilt-extensions/tree/master/restart_process. For more information, see https://docs.tilt.dev/live_update_reference.html#restarting-your-process"
+const fmtRestartContainerDeprecationError = "Found `restart_container()` LiveUpdate step in resource(s): [%s]. `restart_container()`  has been deprecated for k8s resources. We recommend the restart_process extension: https://github.com/tilt-dev/tilt-extensions/tree/master/restart_process. For more information, see https://docs.tilt.dev/live_update_reference.html#restarting-your-process"
 
 func restartContainerDeprecationError(names []model.ManifestName) string {
 	strs := make([]string, len(names))

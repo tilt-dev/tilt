@@ -13,21 +13,21 @@ type Settings struct {
 	CustomTagsToReport map[string]string
 }
 
-type Extension struct {
+type Plugin struct {
 }
 
-func NewExtension() Extension {
-	return Extension{}
+func NewPlugin() Plugin {
+	return Plugin{}
 }
 
-func (e Extension) NewState() interface{} {
+func (e Plugin) NewState() interface{} {
 	return Settings{
 		Opt:                analytics.OptDefault,
 		CustomTagsToReport: make(map[string]string),
 	}
 }
 
-func (Extension) OnStart(env *starkit.Environment) error {
+func (Plugin) OnStart(env *starkit.Environment) error {
 	err := env.AddBuiltin("analytics_settings", setAnalyticsSettings)
 	if err != nil {
 		return err
@@ -80,7 +80,7 @@ func reportCustomTags(thread *starlark.Thread, fn *starlark.Builtin, args starla
 	return starlark.None, err
 }
 
-var _ starkit.StatefulExtension = Extension{}
+var _ starkit.StatefulPlugin = Plugin{}
 
 func MustState(model starkit.Model) Settings {
 	state, err := GetState(model)

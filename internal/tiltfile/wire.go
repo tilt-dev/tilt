@@ -10,7 +10,7 @@ import (
 
 var WireSet = wire.NewSet(
 	ProvideTiltfileLoader,
-	k8scontext.NewExtension,
-	version.NewExtension,
-	config.NewExtension,
+	k8scontext.NewPlugin,
+	version.NewPlugin,
+	config.NewPlugin,
 )

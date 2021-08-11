@@ -74,19 +74,19 @@ func parseAndMaybeAddScheme(uStr string) (*url.URL, error) {
 }
 
 // Implements functions for dealing with k8s secret settings.
-type Extension struct{}
+type Plugin struct{}
 
-var _ starkit.Extension = Extension{}
+var _ starkit.Plugin = Plugin{}
 
-func NewExtension() Extension {
-	return Extension{}
+func NewPlugin() Plugin {
+	return Plugin{}
 }
 
-func (e Extension) OnStart(env *starkit.Environment) error {
+func (e Plugin) OnStart(env *starkit.Environment) error {
 	return env.AddBuiltin("link", e.link)
 }
 
-func (e Extension) link(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func (e Plugin) link(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var url, name string
 
 	if err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs,

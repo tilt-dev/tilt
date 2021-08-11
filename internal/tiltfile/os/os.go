@@ -17,14 +17,14 @@ import (
 // https://docs.bazel.build/versions/master/skylark/lib/repository_os.html
 // and Python's OS module
 // https://docs.python.org/3/library/os.html
-type Extension struct {
+type Plugin struct {
 }
 
-func NewExtension() Extension {
-	return Extension{}
+func NewPlugin() Plugin {
+	return Plugin{}
 }
 
-func (e Extension) OnStart(env *starkit.Environment) error {
+func (e Plugin) OnStart(env *starkit.Environment) error {
 	err := env.AddBuiltin("os.getcwd", cwd)
 	if err != nil {
 		return err

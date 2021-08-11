@@ -12,23 +12,23 @@ import (
 
 // Implements functions for dealing with the Kubernetes context.
 // Exposes an API for other plugins to get and validate the allowed k8s context.
-type Extension struct {
+type Plugin struct {
 	context k8s.KubeContext
 	env     k8s.Env
 }
 
-func NewExtension(context k8s.KubeContext, env k8s.Env) Extension {
-	return Extension{
+func NewPlugin(context k8s.KubeContext, env k8s.Env) Plugin {
+	return Plugin{
 		context: context,
 		env:     env,
 	}
 }
 
-func (e Extension) NewState() interface{} {
+func (e Plugin) NewState() interface{} {
 	return State{context: e.context, env: e.env}
 }
 
-func (e Extension) OnStart(env *starkit.Environment) error {
+func (e Plugin) OnStart(env *starkit.Environment) error {
 	err := env.AddBuiltin("allow_k8s_contexts", e.allowK8sContexts)
 	if err != nil {
 		return err
@@ -41,11 +41,11 @@ func (e Extension) OnStart(env *starkit.Environment) error {
 	return nil
 }
 
-func (e Extension) k8sContext(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func (e Plugin) k8sContext(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	return starlark.String(e.context), nil
 }
 
-func (e Extension) allowK8sContexts(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func (e Plugin) allowK8sContexts(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var contexts starlark.Value
 	if err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs,
 		"contexts", &contexts,
@@ -75,7 +75,7 @@ func (e Extension) allowK8sContexts(thread *starlark.Thread, fn *starlark.Builti
 	return starlark.None, err
 }
 
-var _ starkit.StatefulExtension = &Extension{}
+var _ starkit.StatefulPlugin = &Plugin{}
 
 type State struct {
 	context k8s.KubeContext

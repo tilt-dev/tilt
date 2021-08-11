@@ -25,17 +25,17 @@ const (
 	WatchRecursive
 )
 
-type Extension struct{}
+type Plugin struct{}
 
-func NewExtension() Extension {
-	return Extension{}
+func NewPlugin() Plugin {
+	return Plugin{}
 }
 
-func (Extension) NewState() interface{} {
+func (Plugin) NewState() interface{} {
 	return ReadState{}
 }
 
-func (Extension) OnStart(e *starkit.Environment) error {
+func (Plugin) OnStart(e *starkit.Environment) error {
 	err := e.AddBuiltin("read_file", readFile)
 	if err != nil {
 		return err
@@ -59,7 +59,7 @@ func (Extension) OnStart(e *starkit.Environment) error {
 	return nil
 }
 
-func (Extension) OnExec(t *starlark.Thread, tiltfilePath string) error {
+func (Plugin) OnExec(t *starlark.Thread, tiltfilePath string) error {
 	return RecordReadPath(t, WatchFileOnly, tiltfilePath)
 }
 
@@ -228,8 +228,8 @@ func RecordReadPath(t *starlark.Thread, wt WatchType, files ...string) error {
 	return errors.Wrap(err, "error recording read file")
 }
 
-var _ starkit.StatefulExtension = Extension{}
-var _ starkit.OnExecExtension = Extension{}
+var _ starkit.StatefulPlugin = Plugin{}
+var _ starkit.OnExecPlugin = Plugin{}
 
 func MustState(model starkit.Model) ReadState {
 	state, err := GetState(model)

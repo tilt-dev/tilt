@@ -11,14 +11,14 @@ import (
 // The starlark sys module.
 // Contains a subset of Python's sys module.
 // https://docs.python.org/3/library/sys.html
-type Extension struct {
+type Plugin struct {
 }
 
-func NewExtension() Extension {
-	return Extension{}
+func NewPlugin() Plugin {
+	return Plugin{}
 }
 
-func (e Extension) OnStart(env *starkit.Environment) error {
+func (e Plugin) OnStart(env *starkit.Environment) error {
 	err := env.AddValue("sys.argv", argv())
 	if err != nil {
 		return err

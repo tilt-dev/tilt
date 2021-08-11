@@ -76,20 +76,20 @@ func (failLoadInterceptor) LocalPath(t *starlark.Thread, path string) (string, e
 	return "", fmt.Errorf("I'm an error look at me!")
 }
 
-func NewExtensionWithIdentifier(id string) *TestExtension {
-	return &TestExtension{identifier: id, callCount: 0}
+func NewPluginWithIdentifier(id string) *TestPlugin {
+	return &TestPlugin{identifier: id, callCount: 0}
 }
 
-type TestExtension struct {
+type TestPlugin struct {
 	identifier string
 
-	// Generally, extensions shouldn't store state this way.
+	// Generally, plugins shouldn't store state this way.
 	// They should store it on the Thread object with SetState and friends.
 	// But this is OK for testing.
 	callCount int
 }
 
-func (te *TestExtension) OnStart(e *Environment) error {
+func (te *TestPlugin) OnStart(e *Environment) error {
 	return e.AddBuiltin(te.identifier, func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (value starlark.Value, err error) {
 		te.callCount++
 		return starlark.None, nil
@@ -97,7 +97,7 @@ func (te *TestExtension) OnStart(e *Environment) error {
 }
 
 func TestTopLevelBuiltin(t *testing.T) {
-	e := NewExtensionWithIdentifier("hi")
+	e := NewPluginWithIdentifier("hi")
 	f := NewFixture(t, e)
 	f.File("Tiltfile", "hi()")
 	_, err := f.ExecFile("Tiltfile")
@@ -106,7 +106,7 @@ func TestTopLevelBuiltin(t *testing.T) {
 }
 
 func TestModuleBuiltin(t *testing.T) {
-	e := NewExtensionWithIdentifier("oh.hai")
+	e := NewPluginWithIdentifier("oh.hai")
 	f := NewFixture(t, e)
 	f.File("Tiltfile", "oh.hai()")
 	_, err := f.ExecFile("Tiltfile")
@@ -115,7 +115,7 @@ func TestModuleBuiltin(t *testing.T) {
 }
 
 func TestNestedModuleBuiltin(t *testing.T) {
-	e := NewExtensionWithIdentifier("oh.hai.cat")
+	e := NewPluginWithIdentifier("oh.hai.cat")
 	f := NewFixture(t, e)
 	f.File("Tiltfile", "oh.hai.cat()")
 	_, err := f.ExecFile("Tiltfile")
@@ -124,32 +124,32 @@ func TestNestedModuleBuiltin(t *testing.T) {
 }
 
 func TestDuplicateGlobalName(t *testing.T) {
-	e1 := NewExtensionWithIdentifier("foo")
-	e2 := NewExtensionWithIdentifier("foo")
+	e1 := NewPluginWithIdentifier("foo")
+	e2 := NewPluginWithIdentifier("foo")
 	f := NewFixture(t, e1, e2)
 	f.File("Tiltfile", "foo()")
 
 	_, err := f.ExecFile("Tiltfile")
 	require.Errorf(t, err, "Tiltfile exec should fail")
 	require.Contains(t, err.Error(), "multiple values added named foo")
-	require.Contains(t, err.Error(), "internal error: *starkit.TestExtension")
+	require.Contains(t, err.Error(), "internal error: *starkit.TestPlugin")
 }
 
 func TestDuplicateNameWithinModule(t *testing.T) {
-	e1 := NewExtensionWithIdentifier("bar.foo")
-	e2 := NewExtensionWithIdentifier("bar.foo")
+	e1 := NewPluginWithIdentifier("bar.foo")
+	e2 := NewPluginWithIdentifier("bar.foo")
 	f := NewFixture(t, e1, e2)
 	f.File("Tiltfile", "bar.foo()")
 
 	_, err := f.ExecFile("Tiltfile")
 	require.Errorf(t, err, "Tiltfile exec should fail")
 	require.Contains(t, err.Error(), "multiple values added named bar.foo")
-	require.Contains(t, err.Error(), "internal error: *starkit.TestExtension")
+	require.Contains(t, err.Error(), "internal error: *starkit.TestPlugin")
 }
 
-type PwdExtension struct{}
+type PwdPlugin struct{}
 
-func (e PwdExtension) OnStart(env *Environment) error {
+func (e PwdPlugin) OnStart(env *Environment) error {
 	return env.AddBuiltin("pwd", pwd)
 }
 
@@ -162,7 +162,7 @@ func pwd(t *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []
 // bar defines `hello` and finishes loading
 // foo calls `hello`, which prints foo
 func TestUsePwdOfCallSiteLoadingTiltfile(t *testing.T) {
-	f := NewFixture(t, PwdExtension{})
+	f := NewFixture(t, PwdPlugin{})
 	f.File("bar/Tiltfile", `
 def hello():
 	pwd()
@@ -182,7 +182,7 @@ hello()
 // foo loads bar
 // bar calls pwd while it's loading, which prints bar
 func TestUsePwdOfCallSiteLoadedTiltfile(t *testing.T) {
-	f := NewFixture(t, PwdExtension{})
+	f := NewFixture(t, PwdPlugin{})
 	f.File("bar/Tiltfile", `
 def unused():
   pass
@@ -202,7 +202,7 @@ load('../bar/Tiltfile', 'unused')
 // Tiltfile loads Tiltfile2
 // 1 prints its __file__ and calls a method in 2 to do the same
 func TestUseMagicFileVar(t *testing.T) {
-	f := NewFixture(t, PwdExtension{})
+	f := NewFixture(t, PwdPlugin{})
 	f.File("Tiltfile2", `
 def print_mypath():
   print(__file__)
@@ -222,7 +222,7 @@ print_mypath()
 }
 
 func TestSupportsSet(t *testing.T) {
-	f := NewFixture(t, PwdExtension{})
+	f := NewFixture(t, PwdPlugin{})
 	f.File("Tiltfile", `
 x = set([1, 2, 1])
 print(x)

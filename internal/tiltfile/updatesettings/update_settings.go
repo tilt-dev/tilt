@@ -13,21 +13,21 @@ import (
 )
 
 // Implements functions for dealing with update settings.
-type Extension struct{}
+type Plugin struct{}
 
-func NewExtension() Extension {
-	return Extension{}
+func NewPlugin() Plugin {
+	return Plugin{}
 }
 
-func (e Extension) NewState() interface{} {
+func (e Plugin) NewState() interface{} {
 	return model.DefaultUpdateSettings()
 }
 
-func (e Extension) OnStart(env *starkit.Environment) error {
+func (e Plugin) OnStart(env *starkit.Environment) error {
 	return env.AddBuiltin("update_settings", e.updateSettings)
 }
 
-func (e *Extension) updateSettings(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func (e *Plugin) updateSettings(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var maxParallelUpdates, k8sUpsertTimeoutSecs starlark.Value
 	if err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs,
 		"max_parallel_updates?", &maxParallelUpdates,
@@ -78,7 +78,7 @@ func valueToInt(v starlark.Value) (val int, wasPassed bool, err error) {
 	}
 }
 
-var _ starkit.StatefulExtension = Extension{}
+var _ starkit.StatefulPlugin = Plugin{}
 
 func MustState(model starkit.Model) model.UpdateSettings {
 	state, err := GetState(model)

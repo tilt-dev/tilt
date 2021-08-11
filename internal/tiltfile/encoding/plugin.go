@@ -2,10 +2,10 @@ package encoding
 
 import "github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 
-type Extension struct{}
+type Plugin struct{}
 
-func NewExtension() Extension {
-	return Extension{}
+func NewPlugin() Plugin {
+	return Plugin{}
 }
 
 const (
@@ -21,7 +21,7 @@ const (
 	encodeJSONN = "encode_json"
 )
 
-func (Extension) OnStart(env *starkit.Environment) error {
+func (Plugin) OnStart(env *starkit.Environment) error {
 	for _, b := range []struct {
 		name string
 		f    starkit.Function

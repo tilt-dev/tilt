@@ -22,15 +22,15 @@ const (
 
 var errInvalidProbeAction = errors.New("exactly one of exec, http_get, or tcp_socket must be specified")
 
-func NewExtension() Extension {
-	return Extension{}
+func NewPlugin() Plugin {
+	return Plugin{}
 }
 
-type Extension struct{}
+type Plugin struct{}
 
-var _ starkit.Extension = Extension{}
+var _ starkit.Plugin = Plugin{}
 
-func (e Extension) OnStart(env *starkit.Environment) error {
+func (e Plugin) OnStart(env *starkit.Environment) error {
 	if err := env.AddBuiltin("http_get_action", e.httpGetAction); err != nil {
 		return fmt.Errorf("could not add http_get_action builtin: %v", err)
 	}
@@ -77,7 +77,7 @@ func (p Probe) Spec() *v1alpha1.Probe {
 	return p.spec
 }
 
-func (e Extension) probe(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func (e Plugin) probe(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var initialDelayVal, timeoutVal, periodVal, successThresholdVal, failureThresholdVal value.Int32
 	var exec ExecAction
 	var httpGet HTTPGetAction
@@ -180,7 +180,7 @@ func (e ExecAction) Type() string {
 	return typeExecAction
 }
 
-func (e Extension) execAction(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func (e Plugin) execAction(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var command value.StringSequence
 	err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs, "command", &command)
 	if err != nil {
@@ -230,7 +230,7 @@ func (h HTTPGetAction) Type() string {
 	return typeHTTPGetAction
 }
 
-func (e Extension) httpGetAction(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func (e Plugin) httpGetAction(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var host, scheme, path starlark.String
 	var port int
 	// TODO(milas): support headers
@@ -297,7 +297,7 @@ func (t TCPSocketAction) Type() string {
 	return typeTCPSocketAction
 }
 
-func (e Extension) tcpSocketAction(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func (e Plugin) tcpSocketAction(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var host starlark.String
 	var port int
 	err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs,

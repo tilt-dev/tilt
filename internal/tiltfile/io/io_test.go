@@ -89,7 +89,7 @@ s = read_file('dne.txt')
 }
 
 func newFixture(t *testing.T) *starkit.Fixture {
-	f := starkit.NewFixture(t, NewExtension(), starlarkstruct.NewExtension())
+	f := starkit.NewFixture(t, NewPlugin(), starlarkstruct.NewPlugin())
 	f.UseRealFS()
 	f.File("assert.tilt", `
 def equals(expected, observed):

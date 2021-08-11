@@ -25,5 +25,5 @@ allow_k8s_contexts('gke-blorg')
 }
 
 func NewFixture(tb testing.TB, ctx k8s.KubeContext, env k8s.Env) *starkit.Fixture {
-	return starkit.NewFixture(tb, NewExtension(ctx, env))
+	return starkit.NewFixture(tb, NewPlugin(ctx, env))
 }

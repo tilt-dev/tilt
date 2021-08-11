@@ -82,9 +82,9 @@ type TiltfileLoader interface {
 func ProvideTiltfileLoader(
 	analytics *analytics.TiltAnalytics,
 	kCli k8s.Client,
-	k8sContextExt k8scontext.Extension,
-	versionExt version.Extension,
-	configExt *config.Extension,
+	k8sContextExt k8scontext.Plugin,
+	versionExt version.Plugin,
+	configExt *config.Plugin,
 	dcCli dockercompose.DockerComposeClient,
 	webHost model.WebHost,
 	localEnv *localexec.Env,
@@ -111,9 +111,9 @@ type tiltfileLoader struct {
 	webHost   model.WebHost
 	localEnv  *localexec.Env
 
-	k8sContextExt k8scontext.Extension
-	versionExt    version.Extension
-	configExt     *config.Extension
+	k8sContextExt k8scontext.Plugin
+	versionExt    version.Plugin
+	configExt     *config.Plugin
 	fDefaults     feature.Defaults
 	env           k8s.Env
 }
@@ -223,7 +223,7 @@ func reportCustomTags(a *analytics.TiltAnalytics, tags map[string]string) {
 
 func (tfl *tiltfileLoader) reportTiltfileLoaded(
 	callCounts map[string]int, argCounts map[string]map[string]int,
-	loadDur time.Duration, extensionsLoaded map[string]bool) {
+	loadDur time.Duration, pluginsLoaded map[string]bool) {
 	tags := make(map[string]string)
 
 	// env should really be a global tag, but there's a circular dependency
@@ -240,11 +240,11 @@ func (tfl *tiltfileLoader) reportTiltfileLoaded(
 	}
 	tfl.analytics.Incr("tiltfile.loaded", tags)
 	tfl.analytics.Timer("tiltfile.load", loadDur, nil)
-	for ext := range extensionsLoaded {
+	for ext := range pluginsLoaded {
 		tags := map[string]string{
 			"env":      string(tfl.env),
 			"ext_name": ext,
 		}
-		tfl.analytics.Incr("tiltfile.loaded.extension", tags)
+		tfl.analytics.Incr("tiltfile.loaded.plugin", tags)
 	}
 }

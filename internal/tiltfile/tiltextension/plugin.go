@@ -16,13 +16,13 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 )
 
-type Extension struct {
+type Plugin struct {
 	fetcher Fetcher
 	store   Store
 }
 
-func NewExtension(fetcher Fetcher, store Store) *Extension {
-	return &Extension{
+func NewPlugin(fetcher Fetcher, store Store) *Plugin {
+	return &Plugin{
 		fetcher: fetcher,
 		store:   store,
 	}
@@ -32,7 +32,7 @@ type State struct {
 	ExtsLoaded map[string]bool
 }
 
-func (e Extension) NewState() interface{} {
+func (e Plugin) NewState() interface{} {
 	return State{
 		ExtsLoaded: make(map[string]bool),
 	}
@@ -43,12 +43,12 @@ type Fetcher interface {
 	CleanUp() error
 }
 
-func (e *Extension) OnStart(env *starkit.Environment) error {
+func (e *Plugin) OnStart(env *starkit.Environment) error {
 	env.AddLoadInterceptor(e)
 	return nil
 }
 
-func (e *Extension) recordExtensionLoaded(ctx context.Context, t *starlark.Thread, moduleName string) {
+func (e *Plugin) recordExtensionLoaded(ctx context.Context, t *starlark.Thread, moduleName string) {
 	err := starkit.SetState(t, func(existing State) (State, error) {
 		existing.ExtsLoaded[moduleName] = true
 		return existing, nil
@@ -60,7 +60,7 @@ func (e *Extension) recordExtensionLoaded(ctx context.Context, t *starlark.Threa
 
 const extensionPrefix = "ext://"
 
-func (e *Extension) LocalPath(t *starlark.Thread, arg string) (localPath string, err error) {
+func (e *Plugin) LocalPath(t *starlark.Thread, arg string) (localPath string, err error) {
 	ctx, err := starkit.ContextFromThread(t)
 	if err != nil {
 		return "", err
@@ -99,8 +99,8 @@ func (e *Extension) LocalPath(t *starlark.Thread, arg string) (localPath string,
 	return e.store.Write(ctx, contents)
 }
 
-var _ starkit.LoadInterceptor = (*Extension)(nil)
-var _ starkit.StatefulExtension = (*Extension)(nil)
+var _ starkit.LoadInterceptor = (*Plugin)(nil)
+var _ starkit.StatefulPlugin = (*Plugin)(nil)
 
 func MustState(model starkit.Model) State {
 	state, err := GetState(model)

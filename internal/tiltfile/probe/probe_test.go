@@ -10,7 +10,7 @@ import (
 )
 
 func TestProbeMetaOptions(t *testing.T) {
-	f := starkit.NewFixture(t, NewExtension())
+	f := starkit.NewFixture(t, NewPlugin())
 	defer f.TearDown()
 
 	f.File("Tiltfile", `
@@ -50,7 +50,7 @@ tcp_socket: None
 }
 
 func TestProbeActions_None(t *testing.T) {
-	f := starkit.NewFixture(t, NewExtension())
+	f := starkit.NewFixture(t, NewPlugin())
 	defer f.TearDown()
 
 	f.File("Tiltfile", `p = probe()`)
@@ -60,7 +60,7 @@ func TestProbeActions_None(t *testing.T) {
 }
 
 func TestProbeActions_Multiple(t *testing.T) {
-	f := starkit.NewFixture(t, NewExtension())
+	f := starkit.NewFixture(t, NewPlugin())
 	defer f.TearDown()
 
 	f.File("Tiltfile", `
@@ -72,7 +72,7 @@ p = probe(exec=exec_action([]), http_get=http_get_action(8000), tcp_socket=None)
 }
 
 func TestProbeActions_Exec(t *testing.T) {
-	f := starkit.NewFixture(t, NewExtension())
+	f := starkit.NewFixture(t, NewPlugin())
 	defer f.TearDown()
 
 	f.File("Tiltfile", `
@@ -88,7 +88,7 @@ print(p.exec.command)
 }
 
 func TestProbeActions_HTTPGet(t *testing.T) {
-	f := starkit.NewFixture(t, NewExtension())
+	f := starkit.NewFixture(t, NewPlugin())
 	defer f.TearDown()
 
 	f.File("Tiltfile", `
@@ -114,7 +114,7 @@ https
 }
 
 func TestProbeActions_HTTPGet_NoHost(t *testing.T) {
-	f := starkit.NewFixture(t, NewExtension())
+	f := starkit.NewFixture(t, NewPlugin())
 	defer f.TearDown()
 
 	f.File("Tiltfile", `
@@ -139,7 +139,7 @@ https
 }
 
 func TestProbeActions_TCPSocket(t *testing.T) {
-	f := starkit.NewFixture(t, NewExtension())
+	f := starkit.NewFixture(t, NewPlugin())
 	defer f.TearDown()
 
 	f.File("Tiltfile", `

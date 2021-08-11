@@ -25,23 +25,23 @@ type Settings struct {
 	seenWorkingDirectory string
 }
 
-type Extension struct {
+type Plugin struct {
 	UserConfigState model.UserConfigState
 	TiltSubcommand  model.TiltSubcommand
 }
 
-func NewExtension(tiltSubcommand model.TiltSubcommand) *Extension {
-	return &Extension{TiltSubcommand: tiltSubcommand}
+func NewPlugin(tiltSubcommand model.TiltSubcommand) *Plugin {
+	return &Plugin{TiltSubcommand: tiltSubcommand}
 }
 
-func (e *Extension) NewState() interface{} {
+func (e *Plugin) NewState() interface{} {
 	return Settings{
 		configDef:       ConfigDef{configSettings: make(map[string]configSetting)},
 		userConfigState: e.UserConfigState,
 	}
 }
 
-var _ starkit.StatefulExtension = &Extension{}
+var _ starkit.StatefulPlugin = &Plugin{}
 
 func MustState(model starkit.Model) Settings {
 	state, err := GetState(model)
@@ -57,7 +57,7 @@ func GetState(m starkit.Model) (Settings, error) {
 	return state, err
 }
 
-func (e *Extension) OnStart(env *starkit.Environment) error {
+func (e *Plugin) OnStart(env *starkit.Environment) error {
 	for _, b := range []struct {
 		name string
 		f    starkit.Function
@@ -101,7 +101,7 @@ func (e *Extension) OnStart(env *starkit.Environment) error {
 	return err
 }
 
-func (e *Extension) parse(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func (e *Plugin) parse(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs)
 	if err != nil {
 		return starlark.None, err
