@@ -6,6 +6,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apiset"
 	"github.com/tilt-dev/tilt/internal/ignore"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis"
@@ -60,8 +61,8 @@ func addGlobalIgnoresToSpec(spec *v1alpha1.FileWatchSpec, globalIgnores []model.
 }
 
 // FileWatchesFromManifests creates FileWatch specs from Tilt manifests in the engine state.
-func ToFileWatchObjects(watchInputs WatchInputs) typedObjectSet {
-	result := typedObjectSet{}
+func ToFileWatchObjects(watchInputs WatchInputs) apiset.TypedObjectSet {
+	result := apiset.TypedObjectSet{}
 	if !watchInputs.EngineMode.WatchesFiles() {
 		return result
 	}

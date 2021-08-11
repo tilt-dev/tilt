@@ -71,6 +71,10 @@ type ExtensionRepoSpec struct {
 var _ resource.Object = &ExtensionRepo{}
 var _ resourcestrategy.Validater = &ExtensionRepo{}
 
+func (in *ExtensionRepo) GetSpec() interface{} {
+	return in.Spec
+}
+
 func (in *ExtensionRepo) GetObjectMeta() *metav1.ObjectMeta {
 	return &in.ObjectMeta
 }
