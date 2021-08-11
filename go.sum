@@ -1103,6 +1103,8 @@ github.com/tilt-dev/fsnotify v1.4.8-0.20210701141043-dd524499d3fe h1:dULiU6eWdUf
 github.com/tilt-dev/fsnotify v1.4.8-0.20210701141043-dd524499d3fe/go.mod h1:9wJjkpCk7ADlLOAl+yIXbHwnMoV9i0+uLr9CG3D5434=
 github.com/tilt-dev/go-get v0.2.0 h1:VELDyR4hky5R3u7UpWciF1LqKmNPGlxNKmsYlpNAGVU=
 github.com/tilt-dev/go-get v0.2.0/go.mod h1:sqJ1OH6ggqbd2+J5TFsDGP/CXeRAXBxR52m5FtL0+xo=
+github.com/tilt-dev/go-get v0.2.1 h1:HUIbKVc6yGv+g4QfsIsjcgQKGTLIgwHFMBIFyiJzB2Q=
+github.com/tilt-dev/go-get v0.2.1/go.mod h1:sqJ1OH6ggqbd2+J5TFsDGP/CXeRAXBxR52m5FtL0+xo=
 github.com/tilt-dev/json-patch/v4 v4.8.1 h1:AbrhK3NMDfk/+/oMXz3NcKaCNwHYdhUJMDjBHNOHF5o=
 github.com/tilt-dev/json-patch/v4 v4.8.1/go.mod h1:tS8rrXPNPgltwGinFPfBjCwHFLxMa3ozjPngreH2eW0=
 github.com/tilt-dev/localregistry-go v0.0.0-20200615231835-07e386f4ebd7 h1:ysHGLJJRVcnG6WoZJt7GGD4hsMSwMxEg7Rxx4fJrSrY=

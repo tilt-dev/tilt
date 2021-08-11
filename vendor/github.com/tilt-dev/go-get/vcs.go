@@ -433,7 +433,8 @@ func (v *vcsCmd) run1(ctx cmdContext, cmdline string, keyval []string, verbose b
 	}
 
 	cmd := exec.Command(v.cmd, args...)
-	cmd.Dir = ctx.dir
+	// dir defaults to ctx.dir but will be overridden if the command starts with `-go-internal-cd`
+	cmd.Dir = dir
 	cmd.Env = envForDir(cmd.Dir, os.Environ())
 
 	out, err := cmd.Output()
@@ -443,7 +444,7 @@ func (v *vcsCmd) run1(ctx cmdContext, cmdline string, keyval []string, verbose b
 			if ee, ok := err.(*exec.ExitError); ok && len(ee.Stderr) > 0 {
 				ctx.stderr.Write(ee.Stderr)
 			} else {
-				fmt.Fprintf(ctx.stderr, err.Error())
+				fmt.Fprintf(ctx.stderr, "%s\n", err.Error())
 			}
 		}
 	}
