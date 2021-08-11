@@ -74,7 +74,7 @@ func newServerFixture(t *testing.T) *serverFixture {
 	require.NoError(t, err)
 
 	cfg, err := server.ProvideTiltServerOptions(ctx, model.TiltBuild{}, memconn, "corgi-charge", testdata.CertKey(),
-		server.APIServerPort(apiPort), dir)
+		server.APIServerPort(apiPort))
 	require.NoError(t, err)
 
 	webListener, err := server.ProvideWebListener("localhost", model.WebPort(webPort))

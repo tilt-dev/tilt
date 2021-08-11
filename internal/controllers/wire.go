@@ -5,9 +5,9 @@ import (
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
+	"github.com/tilt-dev/tilt/internal/controllers/core/extension"
 	"github.com/tilt-dev/tilt/internal/controllers/core/extensionrepo"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch"
-	"github.com/tilt-dev/tilt/internal/controllers/core/globalextension"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesapply"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesdiscovery"
 	"github.com/tilt-dev/tilt/internal/controllers/core/podlogstream"
@@ -40,8 +40,8 @@ func ProvideControllers(
 	uib *uibutton.Reconciler,
 	pfr *portforward.Reconciler,
 	tfr *tiltfile.Reconciler,
-	ger *globalextension.Reconciler,
-	er *extensionrepo.Reconciler) []Controller {
+	extr *extension.Reconciler,
+	extrr *extensionrepo.Reconciler) []Controller {
 	return []Controller{
 		fileWatch,
 		cmds,
@@ -53,8 +53,8 @@ func ProvideControllers(
 		uib,
 		pfr,
 		tfr,
-		ger,
-		er,
+		extr,
+		extrr,
 	}
 }
 
@@ -74,5 +74,5 @@ var WireSet = wire.NewSet(
 	uibutton.WireSet,
 	tiltfile.WireSet,
 	extensionrepo.WireSet,
-	globalextension.WireSet,
+	extension.WireSet,
 )

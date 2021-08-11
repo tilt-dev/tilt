@@ -1,4 +1,4 @@
-package globalextension
+package extension
 
 import (
 	"context"
@@ -17,19 +17,19 @@ import (
 
 var (
 	apiGVStr = v1alpha1.SchemeGroupVersion.String()
-	apiKind  = "GlobalExtension"
+	apiKind  = "Extension"
 	apiType  = metav1.TypeMeta{Kind: apiKind, APIVersion: apiGVStr}
 )
 
-// Reconcile the Tiltfile owned by this GlobalExtension.
+// Reconcile the Tiltfile owned by this Extension.
 //
 // TODO(nick): This is almost exactly the same as the code for managing PortForwards
 // from KubernetesDiscovery. I feel like we're missing some abstraction here.
-func (r *Reconciler) manageOwnedTiltfile(ctx context.Context, nn types.NamespacedName, owner *v1alpha1.GlobalExtension) error {
+func (r *Reconciler) manageOwnedTiltfile(ctx context.Context, nn types.NamespacedName, owner *v1alpha1.Extension) error {
 	var childList v1alpha1.TiltfileList
 	err := indexer.ListOwnedBy(ctx, r.ctrlClient, &childList, nn, apiType)
 	if err != nil {
-		return fmt.Errorf("failed to fetch managed Tiltfile objects for GlobalExtension %s: %v",
+		return fmt.Errorf("failed to fetch managed Tiltfile objects for Extension %s: %v",
 			owner.Name, err)
 	}
 
@@ -78,7 +78,7 @@ func (r *Reconciler) manageOwnedTiltfile(ctx context.Context, nn types.Namespace
 }
 
 // Construct the desired tiltfile. May be nil.
-func (r *Reconciler) toDesiredTiltfile(owner *v1alpha1.GlobalExtension) (*v1alpha1.Tiltfile, error) {
+func (r *Reconciler) toDesiredTiltfile(owner *v1alpha1.Extension) (*v1alpha1.Tiltfile, error) {
 	if owner == nil {
 		return nil, nil
 	}

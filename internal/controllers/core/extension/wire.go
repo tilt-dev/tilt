@@ -1,4 +1,4 @@
-package globalextension
+package extension
 
 import "github.com/google/wire"
 

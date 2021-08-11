@@ -46,10 +46,14 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerStateTerminated":        schema_pkg_apis_core_v1alpha1_ContainerStateTerminated(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerStateWaiting":           schema_pkg_apis_core_v1alpha1_ContainerStateWaiting(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExecAction":                      schema_pkg_apis_core_v1alpha1_ExecAction(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Extension":                       schema_pkg_apis_core_v1alpha1_Extension(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExtensionList":                   schema_pkg_apis_core_v1alpha1_ExtensionList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExtensionRepo":                   schema_pkg_apis_core_v1alpha1_ExtensionRepo(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExtensionRepoList":               schema_pkg_apis_core_v1alpha1_ExtensionRepoList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExtensionRepoSpec":               schema_pkg_apis_core_v1alpha1_ExtensionRepoSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExtensionRepoStatus":             schema_pkg_apis_core_v1alpha1_ExtensionRepoStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExtensionSpec":                   schema_pkg_apis_core_v1alpha1_ExtensionSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExtensionStatus":                 schema_pkg_apis_core_v1alpha1_ExtensionStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileEvent":                       schema_pkg_apis_core_v1alpha1_FileEvent(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatch":                       schema_pkg_apis_core_v1alpha1_FileWatch(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatchList":                   schema_pkg_apis_core_v1alpha1_FileWatchList(ref),
@@ -57,10 +61,6 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatchStatus":                 schema_pkg_apis_core_v1alpha1_FileWatchStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Forward":                         schema_pkg_apis_core_v1alpha1_Forward(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ForwardStatus":                   schema_pkg_apis_core_v1alpha1_ForwardStatus(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.GlobalExtension":                 schema_pkg_apis_core_v1alpha1_GlobalExtension(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.GlobalExtensionList":             schema_pkg_apis_core_v1alpha1_GlobalExtensionList(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.GlobalExtensionSpec":             schema_pkg_apis_core_v1alpha1_GlobalExtensionSpec(ref),
-		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.GlobalExtensionStatus":           schema_pkg_apis_core_v1alpha1_GlobalExtensionStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.HTTPGetAction":                   schema_pkg_apis_core_v1alpha1_HTTPGetAction(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.HTTPHeader":                      schema_pkg_apis_core_v1alpha1_HTTPHeader(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Handler":                         schema_pkg_apis_core_v1alpha1_Handler(ref),
@@ -875,6 +875,102 @@ func schema_pkg_apis_core_v1alpha1_ExecAction(ref common.ReferenceCallback) comm
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_Extension(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Extension defines an extension that's evaluated on Tilt startup.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExtensionSpec"),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExtensionStatus"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExtensionSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExtensionStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_ExtensionList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ExtensionList",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Extension"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Extension", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_ExtensionRepo(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -1026,6 +1122,63 @@ func schema_pkg_apis_core_v1alpha1_ExtensionRepoStatus(ref common.ReferenceCallb
 		},
 		Dependencies: []string{
 			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_ExtensionSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ExtensionSpec defines the desired state of Extension",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"repoName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RepoName specifies the ExtensionRepo object where we should find this extension.\n\nThe Extension controller should watch for changes to this repo, and may update if this repo is deleted or moved.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"repoPath": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RepoPath specifies the path to the extension directory inside the repo.\n\nOnce the repo is downloaded, this path should point to a directory with a Tiltfile as the main \"entrypoint\" of the extension.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"repoName", "repoPath"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_ExtensionStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ExtensionStatus defines the observed state of Extension",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"error": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Contains information about any problems loading the extension.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"path": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The path to the extension on disk. This location should be shared and readable by all Tilt instances.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
 	}
 }
 
@@ -1351,159 +1504,6 @@ func schema_pkg_apis_core_v1alpha1_ForwardStatus(ref common.ReferenceCallback) c
 		},
 		Dependencies: []string{
 			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
-	}
-}
-
-func schema_pkg_apis_core_v1alpha1_GlobalExtension(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "GlobalExtension defines an extension that's evaluated on Tilt startup.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"kind": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"apiVersion": {
-						SchemaProps: spec.SchemaProps{
-							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"metadata": {
-						SchemaProps: spec.SchemaProps{
-							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
-						},
-					},
-					"spec": {
-						SchemaProps: spec.SchemaProps{
-							Default: map[string]interface{}{},
-							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.GlobalExtensionSpec"),
-						},
-					},
-					"status": {
-						SchemaProps: spec.SchemaProps{
-							Default: map[string]interface{}{},
-							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.GlobalExtensionStatus"),
-						},
-					},
-				},
-			},
-		},
-		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.GlobalExtensionSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.GlobalExtensionStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
-	}
-}
-
-func schema_pkg_apis_core_v1alpha1_GlobalExtensionList(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "GlobalExtensionList",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"kind": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"apiVersion": {
-						SchemaProps: spec.SchemaProps{
-							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"metadata": {
-						SchemaProps: spec.SchemaProps{
-							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
-						},
-					},
-					"items": {
-						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.GlobalExtension"),
-									},
-								},
-							},
-						},
-					},
-				},
-				Required: []string{"items"},
-			},
-		},
-		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.GlobalExtension", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
-	}
-}
-
-func schema_pkg_apis_core_v1alpha1_GlobalExtensionSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "GlobalExtensionSpec defines the desired state of GlobalExtension",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"repoName": {
-						SchemaProps: spec.SchemaProps{
-							Description: "RepoName specifies the ExtensionRepo object where we should find this extension.\n\nThe GlobalExtension controller should watch for changes to this repo, and may update if this repo is deleted or moved.",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"repoPath": {
-						SchemaProps: spec.SchemaProps{
-							Description: "RepoPath specifies the path to the extension directory inside the repo.\n\nOnce the repo is downloaded, this path should point to a directory with a Tiltfile as the main \"entrypoint\" of the extension.",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-				},
-				Required: []string{"repoName", "repoPath"},
-			},
-		},
-	}
-}
-
-func schema_pkg_apis_core_v1alpha1_GlobalExtensionStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "GlobalExtensionStatus defines the observed state of GlobalExtension",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"error": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Contains information about any problems loading the extension.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"path": {
-						SchemaProps: spec.SchemaProps{
-							Description: "The path to the extension on disk. This location should be shared and readable by all Tilt instances.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-				},
-			},
-		},
 	}
 }
 

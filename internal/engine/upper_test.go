@@ -36,10 +36,10 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
+	"github.com/tilt-dev/tilt/internal/controllers/core/extension"
 	"github.com/tilt-dev/tilt/internal/controllers/core/extensionrepo"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
-	"github.com/tilt-dev/tilt/internal/controllers/core/globalextension"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesapply"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesdiscovery"
 	"github.com/tilt-dev/tilt/internal/controllers/core/podlogstream"
@@ -3944,7 +3944,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	cc := configs.NewConfigsController(cdc, buildSource)
 	dcw := dcwatch.NewEventWatcher(fakeDcc, dockerClient)
 	dclm := runtimelog.NewDockerComposeLogManager(fakeDcc)
-	serverOptions, err := server.ProvideTiltServerOptionsForTesting(ctx, dir)
+	serverOptions, err := server.ProvideTiltServerOptionsForTesting(ctx)
 	require.NoError(t, err)
 	webListener, err := server.ProvideWebListener("localhost", 0)
 	require.NoError(t, err)
@@ -3989,8 +3989,8 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	kar := kubernetesapply.NewReconciler(cdc, b.kClient, sch, docker.Env{}, k8s.KubeContext("kind-kind"), st, "default")
 
 	tfr := ctrltiltfile.NewReconciler(st, tfl, dockerClient, cdc, sch, buildSource, engineMode)
-	ger := globalextension.NewReconciler(cdc, sch)
-	er, err := extensionrepo.NewReconciler(cdc, dir)
+	extr := extension.NewReconciler(cdc, sch)
+	extrr, err := extensionrepo.NewReconciler(cdc, dir)
 	require.NoError(t, err)
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
 		fwc,
@@ -4003,8 +4003,8 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		ctrluibutton.NewReconciler(cdc, wsl),
 		pfr,
 		tfr,
-		ger,
-		er,
+		extr,
+		extrr,
 	))
 
 	dp := dockerprune.NewDockerPruner(dockerClient)
