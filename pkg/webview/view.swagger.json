@@ -470,7 +470,7 @@
           "title": "A Text input that takes a string\n+optional"
         }
       },
-      "title": "Defines an Input to render in the UI.\nIf UIButton is analogous to an HTML \u003cform\u003e,\nUIInput is analogous to  HTML \u003cinput\u003e"
+      "description": "Defines an Input to render in the UI.\nIf UIButton is analogous to an HTML \u003cform\u003e,\nUIInput is analogous to an HTML \u003cinput\u003e."
     },
     "v1alpha1UIInputStatus": {
       "type": "object",

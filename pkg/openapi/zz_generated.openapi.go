@@ -4353,7 +4353,7 @@ func schema_pkg_apis_core_v1alpha1_UIInputSpec(ref common.ReferenceCallback) com
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "Defines an Input to render in the UI. If UIButton is analogous to an HTML <form>, UIInput is analogous to  HTML <input>",
+				Description: "Defines an Input to render in the UI. If UIButton is analogous to an HTML <form>, UIInput is analogous to an HTML <input>.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"id": {

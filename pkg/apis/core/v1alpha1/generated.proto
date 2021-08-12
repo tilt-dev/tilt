@@ -1596,7 +1596,7 @@ message UIFeatureFlag {
 
 // Defines an Input to render in the UI.
 // If UIButton is analogous to an HTML <form>,
-// UIInput is analogous to  HTML <input>
+// UIInput is analogous to an HTML <input>.
 message UIInputSpec {
   // An ID to distinguish this input from others.
   optional string id = 1;
