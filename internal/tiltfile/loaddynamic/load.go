@@ -27,7 +27,7 @@ import (
 type LoadDynamicFn struct {
 }
 
-func NewExtension() LoadDynamicFn {
+func NewPlugin() LoadDynamicFn {
 	return LoadDynamicFn{}
 }
 

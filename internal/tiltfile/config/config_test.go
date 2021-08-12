@@ -498,9 +498,9 @@ print(config.main_dir)
 }
 
 func NewFixture(tb testing.TB, userConfigState model.UserConfigState, tiltSubcommand model.TiltSubcommand) *starkit.Fixture {
-	ext := NewExtension(tiltSubcommand)
+	ext := NewPlugin(tiltSubcommand)
 	ext.UserConfigState = userConfigState
-	ret := starkit.NewFixture(tb, ext, io.NewExtension(), include.IncludeFn{})
+	ret := starkit.NewFixture(tb, ext, io.NewPlugin(), include.IncludeFn{})
 	ret.UseRealFS()
 	return ret
 }

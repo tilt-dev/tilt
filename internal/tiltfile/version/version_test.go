@@ -93,5 +93,5 @@ version_settings(constraint='0.x')
 const TestingVersion = "0.5.3"
 
 func NewFixture(tb testing.TB) *starkit.Fixture {
-	return starkit.NewFixture(tb, NewExtension(model.TiltBuild{Version: TestingVersion}))
+	return starkit.NewFixture(tb, NewPlugin(model.TiltBuild{Version: TestingVersion}))
 }

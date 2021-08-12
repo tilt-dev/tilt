@@ -13,7 +13,7 @@ type fixture struct {
 }
 
 func newFixture(t testing.TB) fixture {
-	f := fixture{starkit.NewFixture(t, NewExtension(), io.NewExtension(), starlarkstruct.NewExtension())}
+	f := fixture{starkit.NewFixture(t, NewPlugin(), io.NewPlugin(), starlarkstruct.NewPlugin())}
 	f.UseRealFS()
 	f.File("assert.tilt", `
 def equals(expected, observed):

@@ -43,5 +43,5 @@ local_git_repo('.').asdf()
 }
 
 func NewFixture(tb testing.TB) *starkit.Fixture {
-	return starkit.NewFixture(tb, NewExtension())
+	return starkit.NewFixture(tb, NewPlugin())
 }

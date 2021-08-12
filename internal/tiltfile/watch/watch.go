@@ -8,22 +8,22 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-type Extension struct {
+type Plugin struct {
 }
 
-func NewExtension() Extension {
-	return Extension{}
+func NewPlugin() Plugin {
+	return Plugin{}
 }
 
-func (e Extension) NewState() interface{} {
+func (e Plugin) NewState() interface{} {
 	return model.WatchSettings{}
 }
 
-func (e Extension) OnStart(env *starkit.Environment) error {
+func (e Plugin) OnStart(env *starkit.Environment) error {
 	return env.AddBuiltin("watch_settings", e.setWatchSettings)
 }
 
-func (e Extension) setWatchSettings(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func (e Plugin) setWatchSettings(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	err := starkit.SetState(thread, func(settings model.WatchSettings) (model.WatchSettings, error) {
 		var ignores value.StringOrStringList
 		if err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs,
@@ -46,7 +46,7 @@ func (e Extension) setWatchSettings(thread *starlark.Thread, fn *starlark.Builti
 	return starlark.None, err
 }
 
-var _ starkit.StatefulExtension = Extension{}
+var _ starkit.StatefulPlugin = Plugin{}
 
 func MustState(model starkit.Model) model.WatchSettings {
 	state, err := GetState(model)

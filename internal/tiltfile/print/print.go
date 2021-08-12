@@ -10,13 +10,13 @@ import (
 )
 
 // Additional functions for print output.
-type Extension struct{}
+type Plugin struct{}
 
-func NewExtension() Extension {
-	return Extension{}
+func NewPlugin() Plugin {
+	return Plugin{}
 }
 
-func (Extension) OnStart(env *starkit.Environment) error {
+func (Plugin) OnStart(env *starkit.Environment) error {
 	err := env.AddBuiltin("warn", warn)
 	if err != nil {
 		return err

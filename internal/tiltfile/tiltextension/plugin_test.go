@@ -130,7 +130,7 @@ type extensionFixture struct {
 
 func newExtensionFixture(t *testing.T) *extensionFixture {
 	tmp := tempdir.NewTempDirFixture(t)
-	ext := NewExtension(
+	ext := NewPlugin(
 		&fakeFetcher{t: t},
 		NewLocalStore(tmp.JoinPath("project")),
 	)

@@ -33,18 +33,18 @@ type settings struct {
 	hello int
 }
 
-type testExtension struct {
+type testPlugin struct {
 }
 
-func newTestExtension() testExtension {
-	return testExtension{}
+func newTestPlugin() testPlugin {
+	return testPlugin{}
 }
 
-func (e testExtension) NewState() interface{} {
+func (e testPlugin) NewState() interface{} {
 	return settings{}
 }
 
-func (testExtension) OnStart(env *Environment) error {
+func (testPlugin) OnStart(env *Environment) error {
 	return env.AddBuiltin("set_setting", setSetting)
 }
 
@@ -66,7 +66,7 @@ func setSetting(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tup
 	return starlark.None, err
 }
 
-var _ StatefulExtension = testExtension{}
+var _ StatefulPlugin = testPlugin{}
 
 func mustState(m Model) settings {
 	var state settings
@@ -78,5 +78,5 @@ func mustState(m Model) settings {
 }
 
 func newSetStateFixture(tb testing.TB) *Fixture {
-	return NewFixture(tb, newTestExtension())
+	return NewFixture(tb, newTestPlugin())
 }

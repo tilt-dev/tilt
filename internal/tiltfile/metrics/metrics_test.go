@@ -42,5 +42,5 @@ experimental_metrics_settings(reporting_period='1s')
 }
 
 func newFixture(tb testing.TB) *starkit.Fixture {
-	return starkit.NewFixture(tb, NewExtension())
+	return starkit.NewFixture(tb, NewPlugin())
 }

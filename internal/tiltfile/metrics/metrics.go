@@ -8,17 +8,17 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-type Extension struct{}
+type Plugin struct{}
 
-func NewExtension() Extension {
-	return Extension{}
+func NewPlugin() Plugin {
+	return Plugin{}
 }
 
-func (e Extension) NewState() interface{} {
+func (e Plugin) NewState() interface{} {
 	return model.DefaultMetricsSettings()
 }
 
-func (Extension) OnStart(env *starkit.Environment) error {
+func (Plugin) OnStart(env *starkit.Environment) error {
 	return env.AddBuiltin("experimental_metrics_settings", setMetricsSettings)
 }
 
@@ -43,7 +43,7 @@ func setMetricsSettings(thread *starlark.Thread, fn *starlark.Builtin, args star
 	return starlark.None, err
 }
 
-var _ starkit.StatefulExtension = Extension{}
+var _ starkit.StatefulPlugin = Plugin{}
 
 func MustState(model starkit.Model) model.MetricsSettings {
 	state, err := GetState(model)

@@ -5028,8 +5028,8 @@ func TestBuiltinAnalytics(t *testing.T) {
 	// 1. a positional arg
 	// 2. a keyword arg
 	// 3. a mix of both for the same arg
-	// 4. a builtin from a starkit extension
-	// 5. loading a Tilt extension
+	// 4. a builtin from a starkit plugin
+	// 5. loading a Tilt plugin
 
 	f.file("Tiltfile", `
 local('echo hi')
@@ -5039,7 +5039,7 @@ allow_k8s_contexts("hello")
 load('ext://fooExt', 'printFoo')
 `)
 
-	// write the extension locally so we don't need to deal with fake fetchers etc.
+	// write the plugin locally so we don't need to deal with fake fetchers etc.
 	f.WriteFile(filepath.Join("tilt_modules", "fooExt", "Tiltfile"), `
 def printFoo():
   print("foo")
@@ -5062,12 +5062,12 @@ def printFoo():
 		require.Equal(t, v, countEvent.Tags[k], "count for %s", k)
 	}
 
-	extensionEvent := f.SingleAnalyticsEvent("tiltfile.loaded.extension")
+	pluginEvent := f.SingleAnalyticsEvent("tiltfile.loaded.plugin")
 	expectedTags := map[string]string{
 		"ext_name": "fooExt",
 		"env":      "docker-for-desktop",
 	}
-	require.Equal(t, expectedTags, extensionEvent.Tags)
+	require.Equal(t, expectedTags, pluginEvent.Tags)
 }
 
 func TestCustomTagsReported(t *testing.T) {
@@ -5850,9 +5850,9 @@ func (f *fixture) newTiltfileLoader() TiltfileLoader {
 		feature.Snapshots:   feature.Value{Enabled: true},
 	}
 
-	k8sContextExt := k8scontext.NewExtension(f.k8sContext, f.k8sEnv)
-	versionExt := version.NewExtension(model.TiltBuild{Version: "0.5.0"})
-	configExt := config.NewExtension("up")
+	k8sContextExt := k8scontext.NewPlugin(f.k8sContext, f.k8sEnv)
+	versionExt := version.NewPlugin(model.TiltBuild{Version: "0.5.0"})
+	configExt := config.NewPlugin("up")
 	localEnv := localexec.DefaultEnv(12345, f.webHost)
 	return ProvideTiltfileLoader(f.ta, f.kCli, k8sContextExt, versionExt, configExt, dcc, f.webHost, localEnv, features, f.k8sEnv)
 }

@@ -19,7 +19,7 @@ import (
 // A fixture for test setup/teardown
 type Fixture struct {
 	tb               testing.TB
-	extensions       []Extension
+	plugins          []Plugin
 	path             string
 	temp             *tempdir.TempDirFixture
 	fs               map[string]string
@@ -29,18 +29,18 @@ type Fixture struct {
 	ctx              context.Context
 }
 
-func NewFixture(tb testing.TB, extensions ...Extension) *Fixture {
+func NewFixture(tb testing.TB, plugins ...Plugin) *Fixture {
 	temp := tempdir.NewTempDirFixture(tb)
 	temp.Chdir()
 
 	return &Fixture{
-		tb:         tb,
-		extensions: extensions,
-		path:       temp.Path(),
-		temp:       temp,
-		fs:         make(map[string]string),
-		out:        bytes.NewBuffer(nil),
-		ctx:        context.Background(),
+		tb:      tb,
+		plugins: plugins,
+		path:    temp.Path(),
+		temp:    temp,
+		fs:      make(map[string]string),
+		out:     bytes.NewBuffer(nil),
+		ctx:     context.Background(),
 	}
 }
 
@@ -65,8 +65,8 @@ func (f *Fixture) OnStart(e *Environment) error {
 }
 
 func (f *Fixture) ExecFile(name string) (Model, error) {
-	extensions := append([]Extension{f}, f.extensions...)
-	env := newEnvironment(extensions...)
+	plugins := append([]Plugin{f}, f.plugins...)
+	env := newEnvironment(plugins...)
 	for _, i := range f.loadInterceptors {
 		env.AddLoadInterceptor(i)
 	}

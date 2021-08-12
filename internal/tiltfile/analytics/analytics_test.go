@@ -52,5 +52,5 @@ experimental_analytics_report({'1': '2a', '3': '4'})
 }
 
 func NewFixture(tb testing.TB) *starkit.Fixture {
-	return starkit.NewFixture(tb, NewExtension())
+	return starkit.NewFixture(tb, NewPlugin())
 }

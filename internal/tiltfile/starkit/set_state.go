@@ -11,7 +11,7 @@ import (
 //
 // That function should transform old state into new state. It can have the signature `func(T) T` or `func(T) (T, error)`.
 //
-// For example, an extension that accumulated strings might use
+// For example, an plugin that accumulated strings might use
 // SetState() like this:
 //
 // err := starkit.SetState(t, func(strings []string) {

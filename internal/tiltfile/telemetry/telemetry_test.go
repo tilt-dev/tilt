@@ -63,5 +63,5 @@ experimental_telemetry_cmd('bar.sh')
 }
 
 func newFixture(tb testing.TB) *starkit.Fixture {
-	return starkit.NewFixture(tb, NewExtension())
+	return starkit.NewFixture(tb, NewPlugin())
 }

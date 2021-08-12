@@ -450,5 +450,5 @@ print(os.path.join("foo", "bar", "baz"))
 }
 
 func NewFixture(tb testing.TB) *starkit.Fixture {
-	return starkit.NewFixture(tb, NewExtension(), io.NewExtension())
+	return starkit.NewFixture(tb, NewPlugin(), io.NewPlugin())
 }

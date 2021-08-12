@@ -11,19 +11,19 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-type Extension struct{}
+type Plugin struct{}
 
-func NewExtension() Extension {
-	return Extension{}
+func NewPlugin() Plugin {
+	return Plugin{}
 }
 
-func (e Extension) NewState() interface{} {
+func (e Plugin) NewState() interface{} {
 	return model.TelemetrySettings{
 		Period: model.DefaultTelemetryPeriod,
 	}
 }
 
-func (Extension) OnStart(env *starkit.Environment) error {
+func (Plugin) OnStart(env *starkit.Environment) error {
 	return env.AddBuiltin("experimental_telemetry_cmd", setTelemetryCmd)
 }
 
@@ -69,7 +69,7 @@ func setTelemetryCmd(thread *starlark.Thread, fn *starlark.Builtin, args starlar
 	return starlark.None, nil
 }
 
-var _ starkit.StatefulExtension = Extension{}
+var _ starkit.StatefulPlugin = Plugin{}
 
 func MustState(model starkit.Model) model.TelemetrySettings {
 	state, err := GetState(model)

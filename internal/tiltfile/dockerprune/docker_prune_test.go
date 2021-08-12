@@ -46,5 +46,5 @@ docker_prune_settings(keep_recent=5)
 }
 
 func NewFixture(tb testing.TB) *starkit.Fixture {
-	return starkit.NewFixture(tb, NewExtension())
+	return starkit.NewFixture(tb, NewPlugin())
 }

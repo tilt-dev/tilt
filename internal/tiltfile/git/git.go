@@ -10,13 +10,13 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 )
 
-type Extension struct{}
+type Plugin struct{}
 
-func NewExtension() Extension {
-	return Extension{}
+func NewPlugin() Plugin {
+	return Plugin{}
 }
 
-func (Extension) OnStart(env *starkit.Environment) error {
+func (Plugin) OnStart(env *starkit.Environment) error {
 	return env.AddBuiltin("local_git_repo", localGitRepo)
 }
 

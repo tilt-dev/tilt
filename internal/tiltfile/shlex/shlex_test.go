@@ -9,7 +9,7 @@ import (
 )
 
 func TestQuote(t *testing.T) {
-	f := starkit.NewFixture(t, NewExtension())
+	f := starkit.NewFixture(t, NewPlugin())
 
 	f.File("Tiltfile", `
 s = shlex.quote("foo '$FOO'")

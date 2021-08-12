@@ -20,12 +20,12 @@ func NewModel() Model {
 	}
 }
 
-func (m Model) createInitState(ext StatefulExtension) error {
+func (m Model) createInitState(ext StatefulPlugin) error {
 	v := ext.NewState()
 	t := reflect.TypeOf(v)
 	_, exists := m.state[t]
 	if exists {
-		return fmt.Errorf("Initializing extension %T: model type conflict: %T", ext, v)
+		return fmt.Errorf("Initializing plugin %T: model type conflict: %T", ext, v)
 	}
 	m.state[t] = v
 	return nil

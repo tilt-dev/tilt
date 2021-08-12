@@ -11,27 +11,27 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-type Extension struct {
+type Plugin struct {
 	tiltVersion string
 }
 
-func NewExtension(tiltBuild model.TiltBuild) Extension {
-	return Extension{
+func NewPlugin(tiltBuild model.TiltBuild) Plugin {
+	return Plugin{
 		tiltVersion: tiltBuild.Version,
 	}
 }
 
-func (e Extension) NewState() interface{} {
+func (e Plugin) NewState() interface{} {
 	return model.VersionSettings{
 		CheckUpdates: true,
 	}
 }
 
-func (e Extension) OnStart(env *starkit.Environment) error {
+func (e Plugin) OnStart(env *starkit.Environment) error {
 	return env.AddBuiltin("version_settings", e.setVersionSettings)
 }
 
-func (e Extension) setVersionSettings(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func (e Plugin) setVersionSettings(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var constraint string
 
 	err := starkit.SetState(thread, func(settings model.VersionSettings) (model.VersionSettings, error) {
@@ -61,7 +61,7 @@ func (e Extension) setVersionSettings(thread *starlark.Thread, fn *starlark.Buil
 	return starlark.None, err
 }
 
-var _ starkit.StatefulExtension = Extension{}
+var _ starkit.StatefulPlugin = Plugin{}
 
 func MustState(model starkit.Model) model.VersionSettings {
 	state, err := GetState(model)

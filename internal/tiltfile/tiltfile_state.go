@@ -67,9 +67,9 @@ type tiltfileState struct {
 	dcCli         dockercompose.DockerComposeClient
 	webHost       model.WebHost
 	localEnv      *localexec.Env
-	k8sContextExt k8scontext.Extension
-	versionExt    version.Extension
-	configExt     *config.Extension
+	k8sContextExt k8scontext.Plugin
+	versionExt    version.Plugin
+	configExt     *config.Plugin
 	localRegistry container.Registry
 	features      feature.FeatureSet
 
@@ -137,9 +137,9 @@ func newTiltfileState(
 	dcCli dockercompose.DockerComposeClient,
 	webHost model.WebHost,
 	localEnv *localexec.Env,
-	k8sContextExt k8scontext.Extension,
-	versionExt version.Extension,
-	configExt *config.Extension,
+	k8sContextExt k8scontext.Plugin,
+	versionExt version.Plugin,
+	configExt *config.Plugin,
 	localRegistry container.Registry,
 	features feature.FeatureSet) *tiltfileState {
 	return &tiltfileState{
@@ -193,28 +193,28 @@ func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.
 	result, err := starkit.ExecFile(absFilename,
 		s,
 		include.IncludeFn{},
-		git.NewExtension(),
-		os.NewExtension(),
-		sys.NewExtension(),
-		io.NewExtension(),
+		git.NewPlugin(),
+		os.NewPlugin(),
+		sys.NewPlugin(),
+		io.NewPlugin(),
 		s.k8sContextExt,
-		dockerprune.NewExtension(),
-		analytics.NewExtension(),
+		dockerprune.NewPlugin(),
+		analytics.NewPlugin(),
 		s.versionExt,
 		s.configExt,
-		starlarkstruct.NewExtension(),
-		telemetry.NewExtension(),
-		metrics.NewExtension(),
-		updatesettings.NewExtension(),
-		secretsettings.NewExtension(),
-		encoding.NewExtension(),
-		shlex.NewExtension(),
-		watch.NewExtension(),
-		loaddynamic.NewExtension(),
-		tiltextension.NewExtension(fetcher, tiltextension.NewLocalStore(filepath.Dir(absFilename))),
-		links.NewExtension(),
-		print.NewExtension(),
-		probe.NewExtension(),
+		starlarkstruct.NewPlugin(),
+		telemetry.NewPlugin(),
+		metrics.NewPlugin(),
+		updatesettings.NewPlugin(),
+		secretsettings.NewPlugin(),
+		encoding.NewPlugin(),
+		shlex.NewPlugin(),
+		watch.NewPlugin(),
+		loaddynamic.NewPlugin(),
+		tiltextension.NewPlugin(fetcher, tiltextension.NewLocalStore(filepath.Dir(absFilename))),
+		links.NewPlugin(),
+		print.NewPlugin(),
+		probe.NewPlugin(),
 	)
 	if err != nil {
 		return nil, result, starkit.UnpackBacktrace(err)
@@ -490,7 +490,7 @@ func (s *tiltfileState) unpackArgs(fnname string, args starlark.Tuple, kwargs []
 	return err
 }
 
-// TODO(nick): Split these into separate extensions
+// TODO(nick): Split these into separate plugins
 func (s *tiltfileState) OnStart(e *starkit.Environment) error {
 	e.SetArgUnpacker(s.unpackArgs)
 	e.SetPrint(s.print)
@@ -1093,7 +1093,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource, updateSettings mo
 // In Tilt, we typically do this in the Tiltfile loader post-execution.
 // Here, we default the port-forward Host to the WebHost.
 //
-// TODO(nick): I think the "right" way to do this is to give the starkit extension system
+// TODO(nick): I think the "right" way to do this is to give the starkit plugin system
 // a "default"-ing hook that runs post-execution.
 func (s *tiltfileState) defaultedPortForwards(pfs []model.PortForward) []model.PortForward {
 	result := make([]model.PortForward, 0, len(pfs))
@@ -1202,7 +1202,7 @@ func maybeRestartContainerDeprecationError(manifests []model.Manifest) error {
 	return nil
 }
 func needsRestartContainerDeprecationError(m model.Manifest) bool {
-	// 7/2/20: we've deprecated restart_container() in favor of the restart_process extension.
+	// 7/2/20: we've deprecated restart_container() in favor of the restart_process plugin.
 	// If this is a k8s resource with a restart_container step, throw a deprecation error.
 	// (restart_container is still allowed for Docker Compose resources)
 	if !m.IsK8s() {
@@ -1493,6 +1493,6 @@ func validateResourceDependencies(ms []model.Manifest) error {
 	return nil
 }
 
-var _ starkit.Extension = &tiltfileState{}
-var _ starkit.OnExecExtension = &tiltfileState{}
-var _ starkit.OnBuiltinCallExtension = &tiltfileState{}
+var _ starkit.Plugin = &tiltfileState{}
+var _ starkit.OnExecPlugin = &tiltfileState{}
+var _ starkit.OnBuiltinCallPlugin = &tiltfileState{}
