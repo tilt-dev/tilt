@@ -72,6 +72,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/token"
 	"github.com/tilt-dev/tilt/internal/tracer"
 	"github.com/tilt-dev/tilt/internal/user"
+	"github.com/tilt-dev/tilt/internal/xdg"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -279,7 +280,8 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	engineMode := _wireEngineModeValue
 	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, switchCli, deferredClient, scheme, buildSource, engineMode)
 	extensionReconciler := extension.NewReconciler(deferredClient, scheme)
-	extensionrepoReconciler, err := extensionrepo.NewReconciler(deferredClient, tiltDevDir)
+	base := xdg.NewTiltDevBase()
+	extensionrepoReconciler, err := extensionrepo.NewReconciler(deferredClient, base)
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
@@ -483,7 +485,8 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	engineMode := _wireStoreEngineModeValue
 	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, switchCli, deferredClient, scheme, buildSource, engineMode)
 	extensionReconciler := extension.NewReconciler(deferredClient, scheme)
-	extensionrepoReconciler, err := extensionrepo.NewReconciler(deferredClient, tiltDevDir)
+	base := xdg.NewTiltDevBase()
+	extensionrepoReconciler, err := extensionrepo.NewReconciler(deferredClient, base)
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
@@ -684,7 +687,8 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	engineMode := _wireEngineModeValue2
 	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, switchCli, deferredClient, scheme, buildSource, engineMode)
 	extensionReconciler := extension.NewReconciler(deferredClient, scheme)
-	extensionrepoReconciler, err := extensionrepo.NewReconciler(deferredClient, tiltDevDir)
+	base := xdg.NewTiltDevBase()
+	extensionrepoReconciler, err := extensionrepo.NewReconciler(deferredClient, base)
 	if err != nil {
 		return CmdUpdogDeps{}, err
 	}
@@ -1012,7 +1016,7 @@ var BaseWireSet = wire.NewSet(
 	provideWebMode,
 	provideWebURL,
 	provideWebPort,
-	provideWebHost, server.WireSet, provideAssetServer, tracer.NewSpanCollector, wire.Bind(new(trace.SpanProcessor), new(*tracer.SpanCollector)), wire.Bind(new(tracer.SpanSource), new(*tracer.SpanCollector)), dirs.UseTiltDevDir, token.GetOrCreateToken, buildcontrol.NewKINDLoader, wire.Value(feature.MainDefaults),
+	provideWebHost, server.WireSet, provideAssetServer, tracer.NewSpanCollector, wire.Bind(new(trace.SpanProcessor), new(*tracer.SpanCollector)), wire.Bind(new(tracer.SpanSource), new(*tracer.SpanCollector)), dirs.UseTiltDevDir, xdg.NewTiltDevBase, token.GetOrCreateToken, buildcontrol.NewKINDLoader, wire.Value(feature.MainDefaults),
 )
 
 var CLIClientWireSet = wire.NewSet(

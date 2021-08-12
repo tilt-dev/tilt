@@ -90,6 +90,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/token"
 	"github.com/tilt-dev/tilt/internal/tracer"
 	"github.com/tilt-dev/tilt/internal/watch"
+	"github.com/tilt-dev/tilt/internal/xdg"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/assets"
@@ -3902,6 +3903,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	}
 
 	dir := dirs.NewTiltDevDirAt(f.Path())
+	base := xdg.FakeBase{Dir: f.Path()}
 	log := bufsync.NewThreadSafeBuffer()
 	to := tiltanalytics.NewFakeOpter(analytics.OptIn)
 	ctx, _, ta := testutils.ForkedCtxAndAnalyticsWithOpterForTest(log, to)
@@ -3990,7 +3992,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 
 	tfr := ctrltiltfile.NewReconciler(st, tfl, dockerClient, cdc, sch, buildSource, engineMode)
 	extr := extension.NewReconciler(cdc, sch)
-	extrr, err := extensionrepo.NewReconciler(cdc, dir)
+	extrr, err := extensionrepo.NewReconciler(cdc, base)
 	require.NoError(t, err)
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
 		fwc,
