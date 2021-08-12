@@ -94,3 +94,17 @@ export const ApiButton: React.FC<ApiButtonProps> = (props) => {
     </InstrumentedButton>
   )
 }
+
+export function buttonsForResource(
+  buttons: UIButton[] | undefined,
+  resourceName: string | undefined
+): UIButton[] {
+  if (!resourceName || !buttons) {
+    return []
+  }
+  return buttons.filter(
+    (b) =>
+      b.spec?.location?.componentType?.toLowerCase() === "resource" &&
+      b.spec?.location?.componentID === resourceName
+  )
+}

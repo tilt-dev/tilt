@@ -4,7 +4,7 @@ import TimeAgo from "react-timeago"
 import styled from "styled-components"
 import { buildAlerts, runtimeAlerts } from "./alerts"
 import { AnalyticsAction, incr } from "./analytics"
-import { ApiIcon } from "./ApiButton"
+import { ApiIcon, buttonsForResource } from "./ApiButton"
 import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
@@ -343,11 +343,14 @@ function TableTriggerModeColumn({ row }: CellProps<RowValues>) {
 function TableWidgetsColumn({ row }: CellProps<RowValues>) {
   const buttons = row.original.buttons.map((b: UIButton) => {
     let content = (
-      <ApiIcon
-        iconName={b.spec?.iconName || "smart_button"}
-        iconSVG={b.spec?.iconSVG}
-      />
+      <CustomActionButton key={b.metadata?.name} button={b}>
+        <ApiIcon
+          iconName={b.spec?.iconName || "smart_button"}
+          iconSVG={b.spec?.iconSVG}
+        />
+      </CustomActionButton>
     )
+
     if (b.spec?.text) {
       content = (
         <TiltTooltip title={b.spec.text}>
@@ -355,10 +358,9 @@ function TableWidgetsColumn({ row }: CellProps<RowValues>) {
         </TiltTooltip>
       )
     }
+
     return (
-      <CustomActionButton key={b.metadata?.name} button={b}>
-        {content}
-      </CustomActionButton>
+      <React.Fragment key={b.metadata?.name || ""}>{content}</React.Fragment>
     )
   })
   return <WidgetCell>{buttons}</WidgetCell>
@@ -366,9 +368,11 @@ function TableWidgetsColumn({ row }: CellProps<RowValues>) {
 
 // https://react-table.tanstack.com/docs/api/useTable#column-options
 // The docs on this are not very clear!
-// "accessor" should return a primitive, and that primitive is used for sorting and filtering
+// `accessor` should return a primitive, and that primitive is used for sorting and filtering
 // the Cell function can get whatever it needs to render via row.original
 // best evidence I've (Matt) found: https://github.com/tannerlinsley/react-table/discussions/2429#discussioncomment-25582
+//   (from the author)
+// TODO: fix existing columns to return reasonable primitives from `accessor`
 const columnDefs: Column<RowValues>[] = [
   {
     Header: "Starred",
@@ -470,7 +474,7 @@ async function copyTextToClipboard(text: string, cb: () => void) {
 
 function uiResourceToCell(
   r: UIResource,
-  allButtons: UIButton[],
+  allButtons: UIButton[] | undefined,
   alertIndex: LogAlertIndex
 ): RowValues {
   let res = (r.status || {}) as UIResourceStatus
@@ -483,11 +487,7 @@ function uiResourceToCell(
   let currentBuildStartTime = res.currentBuild?.startTime ?? ""
   let isBuilding = !isZeroTime(currentBuildStartTime)
   let hasBuilt = lastBuild !== null
-  let buttons = allButtons.filter(
-    (b) =>
-      b.spec?.location?.componentType?.toLowerCase() === "resource" &&
-      b.spec?.location?.componentID === r.metadata?.name
-  )
+  let buttons = buttonsForResource(allButtons, r.metadata?.name)
 
   return {
     lastDeployTime: res.lastDeployTime ?? "",
@@ -546,7 +546,7 @@ function viewToRowValues(
 ): RowValues[] {
   return (
     view.uiResources?.map((r) =>
-      uiResourceToCell(r, view.uiButtons || [], logStore)
+      uiResourceToCell(r, view.uiButtons, logStore)
     ) || []
   )
 }
