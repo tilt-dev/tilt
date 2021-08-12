@@ -28,16 +28,15 @@ const tiltModulesRelDir = "tilt_modules"
 type Downloader interface {
 	DestinationPath(pkg string) string
 	Download(pkg string) (string, error)
-	HeadRef(pgs string) (string, error)
+	HeadRef(pkg string) (string, error)
+	RefSync(pkg string, ref string) error
 }
 
 type Reconciler struct {
 	ctrlClient ctrlclient.Client
 	dlr        Downloader
 
-	fetches            map[types.NamespacedName]time.Time
-	backoffs           map[types.NamespacedName]time.Duration
-	lastKnownDestPaths map[types.NamespacedName]string
+	repoStates map[types.NamespacedName]*repoState
 }
 
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
@@ -53,11 +52,9 @@ func NewReconciler(ctrlClient ctrlclient.Client, dir *dirs.TiltDevDir) (*Reconci
 		return nil, fmt.Errorf("creating extensionrepo controller: %v", err)
 	}
 	return &Reconciler{
-		ctrlClient:         ctrlClient,
-		dlr:                get.NewDownloader(dlrPath),
-		fetches:            make(map[types.NamespacedName]time.Time),
-		backoffs:           make(map[types.NamespacedName]time.Duration),
-		lastKnownDestPaths: make(map[types.NamespacedName]string),
+		ctrlClient: ctrlClient,
+		dlr:        get.NewDownloader(dlrPath),
+		repoStates: make(map[types.NamespacedName]*repoState),
 	}, nil
 }
 
@@ -71,7 +68,16 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		return ctrl.Result{}, err
 	}
 
-	if apierrors.IsNotFound(err) || !repo.ObjectMeta.DeletionTimestamp.IsZero() {
+	isDelete := apierrors.IsNotFound(err) || !repo.ObjectMeta.DeletionTimestamp.IsZero()
+	needsCleanup := isDelete
+
+	// If the spec has changed, clear the current repo state.
+	state, ok := r.repoStates[nn]
+	if ok && !apicmp.DeepEqual(state.spec, repo.Spec) {
+		needsCleanup = true
+	}
+
+	if needsCleanup {
 		// If a repo is deleted, delete it on disk.
 		//
 		// This is simple, but not accurate.
@@ -81,15 +87,23 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		//
 		// A "real" implementation would use the on-disk repos as the source of
 		// truth, and garbage collect ones with no remaining refs.
-		path, ok := r.lastKnownDestPaths[nn]
-		if !ok {
-			return ctrl.Result{}, nil
+		if state != nil && state.lastSuccessfulDestPath != "" {
+			err := os.RemoveAll(state.lastSuccessfulDestPath)
+			if err != nil && !os.IsNotExist(err) {
+				return ctrl.Result{}, err
+			}
 		}
-		err := os.RemoveAll(path)
-		if err != nil && !os.IsNotExist(err) {
-			return ctrl.Result{}, err
-		}
+		delete(r.repoStates, nn)
+	}
+
+	if isDelete {
 		return ctrl.Result{}, nil
+	}
+
+	state, ok = r.repoStates[nn]
+	if !ok {
+		state = &repoState{spec: repo.Spec}
+		r.repoStates[nn] = state
 	}
 
 	if strings.HasPrefix(repo.Spec.URL, "file://") {
@@ -102,11 +116,15 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		return r.updateError(ctx, &repo, fmt.Sprintf("invalid: %v", err))
 	}
 
-	return r.reconcileDownloaderRepo(ctx, nn, &repo, importPath)
+	return r.reconcileDownloaderRepo(ctx, nn, &repo, importPath, state)
 }
 
 // Reconcile a repo that lives on disk, and shouldn't otherwise be modified.
 func (r *Reconciler) reconcileFileRepo(ctx context.Context, repo *v1alpha1.ExtensionRepo, filePath string) (reconcile.Result, error) {
+	if repo.Spec.Ref != "" {
+		return r.updateError(ctx, repo, "spec.ref not supported on file:// repos")
+	}
+
 	if !filepath.IsAbs(filePath) {
 		msg := fmt.Sprintf("file paths must be absolute. Url: %s", repo.Spec.URL)
 		return r.updateError(ctx, repo, msg)
@@ -134,68 +152,74 @@ func (r *Reconciler) reconcileFileRepo(ctx context.Context, repo *v1alpha1.Exten
 // Reconcile a repo that we need to fetch remotely, and store
 // under ~/.tilt-dev.
 func (r *Reconciler) reconcileDownloaderRepo(ctx context.Context, nn types.NamespacedName,
-	repo *v1alpha1.ExtensionRepo, importPath string) (reconcile.Result, error) {
+	repo *v1alpha1.ExtensionRepo, importPath string, state *repoState) (reconcile.Result, error) {
 	getDlr, ok := r.dlr.(*get.Downloader)
 	if ok {
 		getDlr.Stderr = logger.Get(ctx).Writer(logger.InfoLvl)
 	}
 
 	destPath := r.dlr.DestinationPath(importPath)
-	info, err := os.Stat(destPath)
+	_, err := os.Stat(destPath)
 	if err != nil && !os.IsNotExist(err) {
 		return ctrl.Result{}, err
 	}
 
-	// If the destination path does not exist, download it now.
-	if os.IsNotExist(err) {
-		lastFetch := r.fetches[nn]
-		lastBackoff := r.backoffs[nn]
-		if time.Since(lastFetch) < lastBackoff {
-			// If we're already in the middle of a backoff period, requeue.
-			return ctrl.Result{RequeueAfter: lastBackoff}, nil
+	// If the directory exists and has already been fetched successfully during this session,
+	// no reconciliation is needed.
+	exists := err == nil
+	if exists && state.lastSuccessfulDestPath != "" {
+		return ctrl.Result{}, nil
+	}
+
+	lastFetch := state.lastFetch
+	lastBackoff := state.backoff
+	if time.Since(lastFetch) < lastBackoff {
+		// If we're already in the middle of a backoff period, requeue.
+		return ctrl.Result{RequeueAfter: lastBackoff}, nil
+	}
+
+	state.lastFetch = time.Now()
+
+	_, err = r.dlr.Download(importPath)
+	if err != nil {
+		backoff := state.nextBackoff()
+		backoffMsg := fmt.Sprintf("download error: waiting %s before retrying. Original error: %v", backoff, err)
+		_, updateErr := r.updateError(ctx, repo, backoffMsg)
+		if updateErr != nil {
+			return ctrl.Result{}, updateErr
 		}
 
-		_, err := r.dlr.Download(importPath)
-		if err != nil {
-			backoff := r.nextBackoff(nn)
-			backoffMsg := fmt.Sprintf("download error: waiting %s before retrying. Original error: %v", backoff, err)
-			_, updateErr := r.updateError(ctx, repo, backoffMsg)
-			if updateErr != nil {
-				return ctrl.Result{}, updateErr
-			}
+		return ctrl.Result{RequeueAfter: backoff}, nil
+	}
 
-			return ctrl.Result{RequeueAfter: backoff}, nil
-		}
+	info, err := os.Stat(destPath)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 
-		info, err = os.Stat(destPath)
+	if repo.Spec.Ref != "" {
+		err := r.dlr.RefSync(importPath, repo.Spec.Ref)
 		if err != nil {
-			return ctrl.Result{}, err
+			return r.updateError(ctx, repo, fmt.Sprintf("sync to ref %s: %v", repo.Spec.Ref, err))
 		}
 	}
 
+	ref, err := r.dlr.HeadRef(importPath)
+	if err != nil {
+		return r.updateError(ctx, repo, fmt.Sprintf("determining head: %v", err))
+	}
+
 	// Update the status.
-	delete(r.backoffs, nn)
-	r.lastKnownDestPaths[nn] = destPath
+	state.backoff = 0
+	state.lastSuccessfulDestPath = destPath
 
 	timeFetched := apis.NewTime(info.ModTime())
 	return r.updateStatus(ctx, repo, func(status *v1alpha1.ExtensionRepoStatus) {
 		status.Error = ""
 		status.LastFetchedAt = timeFetched
 		status.Path = destPath
+		status.CheckoutRef = ref
 	})
-}
-
-// Step up the backoff after an error.
-func (r *Reconciler) nextBackoff(nn types.NamespacedName) time.Duration {
-	backoff := r.backoffs[nn]
-	if backoff == 0 {
-		backoff = 5 * time.Second
-	} else {
-		backoff = 2 * backoff
-	}
-	r.fetches[nn] = time.Now()
-	r.backoffs[nn] = backoff
-	return backoff
 }
 
 // Loosely inspired by controllerutil's Update status algorithm.
@@ -237,4 +261,23 @@ func getDownloaderImportPath(repo *v1alpha1.ExtensionRepo) (string, error) {
 		return strings.TrimPrefix(url, "http://"), nil
 	}
 	return "", fmt.Errorf("URL must start with 'https://': %v", url)
+}
+
+type repoState struct {
+	spec                   v1alpha1.ExtensionRepoSpec
+	lastFetch              time.Time
+	backoff                time.Duration
+	lastSuccessfulDestPath string
+}
+
+// Step up the backoff after an error.
+func (s *repoState) nextBackoff() time.Duration {
+	backoff := s.backoff
+	if backoff == 0 {
+		backoff = 5 * time.Second
+	} else {
+		backoff = 2 * backoff
+	}
+	s.backoff = backoff
+	return backoff
 }

@@ -1082,6 +1082,13 @@ func schema_pkg_apis_core_v1alpha1_ExtensionRepoSpec(ref common.ReferenceCallbac
 							Format:      "",
 						},
 					},
+					"ref": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A reference to sync the repo to. If empty, Tilt will always update the repo to the latest version.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"url"},
 			},
@@ -1113,6 +1120,13 @@ func schema_pkg_apis_core_v1alpha1_ExtensionRepoStatus(ref common.ReferenceCallb
 					"path": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The path to the repo on local disk.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"checkoutRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The reference that we currently have checked out. On git, this is the commit hash. On file repos, this is empty.",
 							Type:        []string{"string"},
 							Format:      "",
 						},

@@ -61,6 +61,11 @@ type ExtensionRepoSpec struct {
 	// https: URLs that point to a public git repo
 	// file: URLs that point to a location on disk.
 	URL string `json:"url" protobuf:"bytes,1,opt,name=url"`
+
+	// A reference to sync the repo to. If empty, Tilt will always update
+	// the repo to the latest version.
+	// +optional
+	Ref string `json:"ref,omitempty" protobuf:"bytes,2,opt,name=ref"`
 }
 
 var _ resource.Object = &ExtensionRepo{}
@@ -129,6 +134,11 @@ type ExtensionRepoStatus struct {
 
 	// The path to the repo on local disk.
 	Path string `json:"path,omitempty" protobuf:"bytes,3,opt,name=path"`
+
+	// The reference that we currently have checked out.
+	// On git, this is the commit hash.
+	// On file repos, this is empty.
+	CheckoutRef string `json:"checkoutRef,omitempty" protobuf:"bytes,4,opt,name=checkoutRef"`
 }
 
 // ExtensionRepo implements ObjectWithStatusSubResource interface.
