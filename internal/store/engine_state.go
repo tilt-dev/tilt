@@ -75,12 +75,7 @@ type EngineState struct {
 	// All logs in Tilt, stored in a structured format.
 	LogStore *logstore.LogStore `testdiff:"ignore"`
 
-	Tiltignore    model.Dockerignore
-	WatchSettings model.WatchSettings
-
 	TriggerQueue []model.ManifestName
-
-	IsProfiling bool
 
 	TiltfileDefinitionOrder []model.ManifestName
 	TiltfileStates          map[model.ManifestName]*ManifestState
@@ -821,9 +816,7 @@ func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []model.Link) {
 }
 
 func StateToView(s EngineState, mu *sync.RWMutex) view.View {
-	ret := view.View{
-		IsProfiling: s.IsProfiling,
-	}
+	ret := view.View{}
 
 	for _, ms := range s.TiltfileStates {
 		ret.Resources = append(ret.Resources, tiltfileResourceView(ms))

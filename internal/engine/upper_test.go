@@ -3724,14 +3724,24 @@ fail('x')`)
 	})
 
 	f.WaitUntil(".tiltignore processed", func(es store.EngineState) bool {
-		return strings.Contains(strings.Join(es.Tiltignore.Patterns, "\n"), "a.txt")
+		var fw v1alpha1.FileWatch
+		err := f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: "configs:(Tiltfile)"}, &fw)
+		if err != nil {
+			return false
+		}
+		return strings.Contains(strings.Join(fw.Spec.Ignores[0].Patterns, "\n"), "a.txt")
 	})
 
 	f.WriteFile(".tiltignore", "a.txt\nb.txt\n")
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("Tiltfile"))
 
 	f.WaitUntil(".tiltignore processed", func(es store.EngineState) bool {
-		return strings.Contains(strings.Join(es.Tiltignore.Patterns, "\n"), "b.txt")
+		var fw v1alpha1.FileWatch
+		err := f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: "configs:(Tiltfile)"}, &fw)
+		if err != nil {
+			return false
+		}
+		return strings.Contains(strings.Join(fw.Spec.Ignores[0].Patterns, "\n"), "b.txt")
 	})
 
 	err := f.Stop()
@@ -4150,8 +4160,6 @@ func (f *testFixture) Init(action InitAction) {
 		TiltfileManifestName: model.MainTiltfileManifestName,
 		Manifests:            state.Manifests(),
 		ConfigFiles:          state.MainConfigPaths(),
-		WatchSettings:        state.WatchSettings,
-		Tiltignore:           state.Tiltignore,
 	})
 	expectedWatchCount := len(expectedFileWatches)
 	if f.overrideMaxParallelUpdates > 0 {

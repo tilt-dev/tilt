@@ -144,10 +144,6 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleDockerComposeEvent(ctx, state, action)
 	case server.AppendToTriggerQueueAction:
 		state.AppendToTriggerQueue(action.Name, action.Reason)
-	case hud.StartProfilingAction:
-		handleStartProfilingAction(state)
-	case hud.StopProfilingAction:
-		handleStopProfilingAction(state)
 	case hud.DumpEngineStateAction:
 		handleDumpEngineStateAction(ctx, state)
 	case store.AnalyticsUserOptAction:
@@ -477,14 +473,6 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	}
 }
 
-func handleStopProfilingAction(state *store.EngineState) {
-	state.IsProfiling = false
-}
-
-func handleStartProfilingAction(state *store.EngineState) {
-	state.IsProfiling = true
-}
-
 func handleConfigsReloadStarted(
 	ctx context.Context,
 	state *store.EngineState,
@@ -548,15 +536,6 @@ func handleConfigsReloaded(
 
 	// Retroactively scrub secrets
 	state.LogStore.ScrubSecretsStartingAt(newSecrets, event.CheckpointAtExecStart)
-
-	// Add tiltignore if it exists, even if execution failed.
-	if !event.Tiltignore.Empty() || event.Err == nil {
-		state.Tiltignore = event.Tiltignore
-	}
-
-	if !event.WatchSettings.Empty() || event.Err == nil {
-		state.WatchSettings = event.WatchSettings
-	}
 
 	// Add team id if it exists, even if execution failed.
 	if event.TeamID != "" || event.Err == nil {

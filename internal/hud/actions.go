@@ -10,16 +10,6 @@ func NewExitAction(err error) ExitAction {
 	return ExitAction{err}
 }
 
-type StartProfilingAction struct {
-}
-
-func (StartProfilingAction) Action() {}
-
-type StopProfilingAction struct {
-}
-
-func (StopProfilingAction) Action() {}
-
 type DumpEngineStateAction struct {
 }
 
