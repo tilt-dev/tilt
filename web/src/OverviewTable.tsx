@@ -4,13 +4,15 @@ import TimeAgo from "react-timeago"
 import styled from "styled-components"
 import { buildAlerts, runtimeAlerts } from "./alerts"
 import { AnalyticsAction, incr } from "./analytics"
+import { ApiIcon, buttonsForResource } from "./ApiButton"
 import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
 import { linkToTiltDocs, TiltDocsPage } from "./constants"
 import { InstrumentedButton } from "./instrumentedComponents"
 import { displayURL } from "./links"
-import { LogAlertIndex, useLogStore } from "./LogStore"
+import LogStore, { LogAlertIndex, useLogStore } from "./LogStore"
+import { CustomActionButton } from "./OverviewButton"
 import OverviewTableStarResourceButton from "./OverviewTableStarResourceButton"
 import OverviewTableStatus from "./OverviewTableStatus"
 import OverviewTableTriggerButton from "./OverviewTableTriggerButton"
@@ -27,11 +29,11 @@ import {
 } from "./style-helpers"
 import { isZeroTime, timeDiff } from "./time"
 import { timeAgoFormatter } from "./timeFormatters"
-import { TiltInfoTooltip } from "./Tooltip"
+import TiltTooltip, { TiltInfoTooltip } from "./Tooltip"
 import { ResourceStatus, TargetType, TriggerMode } from "./types"
-
 type UIResource = Proto.v1alpha1UIResource
 type UIResourceStatus = Proto.v1alpha1UIResourceStatus
+type UIButton = Proto.v1alpha1UIButton
 type Build = Proto.v1alpha1UIBuildTerminated
 type UILink = Proto.v1alpha1UIResourceLink
 
@@ -48,6 +50,7 @@ type RowValues = {
   podId: string
   endpoints: UILink[]
   triggerMode: TriggerMode
+  buttons: UIButton[]
 }
 
 type OverviewTableTrigger = {
@@ -79,7 +82,7 @@ const ResourceTable = styled.table`
 const ResourceTableHead = styled.thead`
   background-color: ${Color.grayDarker};
 `
-const ResourceTableRow = styled.tr`
+export const ResourceTableRow = styled.tr`
   border-bottom: 1px solid ${Color.grayLighter};
 `
 const ResourceTableData = styled.td`
@@ -179,6 +182,16 @@ const PodIdCopy = styled(InstrumentedButton)`
 
   svg {
     fill: ${Color.gray6};
+  }
+`
+const WidgetCell = styled.span`
+  display: flex;
+  flex-wrap: wrap;
+  max-width: ${SizeUnit(8)};
+
+  ${CustomActionButton} {
+    margin-bottom: ${SizeUnit(0.125)};
+    margin-right: ${SizeUnit(0.125)};
   }
 `
 
@@ -327,7 +340,40 @@ function TableTriggerModeColumn({ row }: CellProps<RowValues>) {
   )
 }
 
-const columns: Column<RowValues>[] = [
+function TableWidgetsColumn({ row }: CellProps<RowValues>) {
+  const buttons = row.original.buttons.map((b: UIButton) => {
+    let content = (
+      <CustomActionButton key={b.metadata?.name} button={b}>
+        <ApiIcon
+          iconName={b.spec?.iconName || "smart_button"}
+          iconSVG={b.spec?.iconSVG}
+        />
+      </CustomActionButton>
+    )
+
+    if (b.spec?.text) {
+      content = (
+        <TiltTooltip title={b.spec.text}>
+          <span>{content}</span>
+        </TiltTooltip>
+      )
+    }
+
+    return (
+      <React.Fragment key={b.metadata?.name || ""}>{content}</React.Fragment>
+    )
+  })
+  return <WidgetCell>{buttons}</WidgetCell>
+}
+
+// https://react-table.tanstack.com/docs/api/useTable#column-options
+// The docs on this are not very clear!
+// `accessor` should return a primitive, and that primitive is used for sorting and filtering
+// the Cell function can get whatever it needs to render via row.original
+// best evidence I've (Matt) found: https://github.com/tannerlinsley/react-table/discussions/2429#discussioncomment-25582
+//   (from the author)
+// TODO: fix existing columns to return reasonable primitives from `accessor`
+const columnDefs: Column<RowValues>[] = [
   {
     Header: "Starred",
     width: "20px",
@@ -369,6 +415,12 @@ const columns: Column<RowValues>[] = [
     accessor: "podId",
     width: "50px",
     Cell: TablePodIDColumn,
+  },
+  {
+    Header: "Widgets",
+    id: "widgets",
+    accessor: (row) => row.buttons.length,
+    Cell: TableWidgetsColumn,
   },
   {
     Header: "Endpoints",
@@ -420,7 +472,11 @@ async function copyTextToClipboard(text: string, cb: () => void) {
   cb()
 }
 
-function uiResourceToCell(r: UIResource, alertIndex: LogAlertIndex): RowValues {
+function uiResourceToCell(
+  r: UIResource,
+  allButtons: UIButton[] | undefined,
+  alertIndex: LogAlertIndex
+): RowValues {
   let res = (r.status || {}) as UIResourceStatus
   let buildHistory = res.buildHistory || []
   let lastBuild = buildHistory.length > 0 ? buildHistory[0] : null
@@ -431,6 +487,7 @@ function uiResourceToCell(r: UIResource, alertIndex: LogAlertIndex): RowValues {
   let currentBuildStartTime = res.currentBuild?.startTime ?? ""
   let isBuilding = !isZeroTime(currentBuildStartTime)
   let hasBuilt = lastBuild !== null
+  let buttons = buttonsForResource(allButtons, r.metadata?.name)
 
   return {
     lastDeployTime: res.lastDeployTime ?? "",
@@ -452,6 +509,7 @@ function uiResourceToCell(r: UIResource, alertIndex: LogAlertIndex): RowValues {
     podId: res.k8sResourceInfo?.podName ?? "",
     endpoints: res.endpointLinks ?? [],
     triggerMode: res.triggerMode ?? TriggerMode.TriggerModeAuto,
+    buttons: buttons,
   }
 }
 
@@ -478,13 +536,27 @@ function resourceTypeLabel(r: UIResource): string {
   return "Unknown"
 }
 
+function hasWidgets(view: Proto.webviewView): boolean {
+  return !!view.uiButtons?.length
+}
+
+function viewToRowValues(
+  view: Proto.webviewView,
+  logStore: LogStore
+): RowValues[] {
+  return (
+    view.uiResources?.map((r) =>
+      uiResourceToCell(r, view.uiButtons, logStore)
+    ) || []
+  )
+}
+
 export default function OverviewTable(props: OverviewTableProps) {
   let logStore = useLogStore()
-  const data = React.useMemo(
-    () =>
-      props.view.uiResources?.map((r) => uiResourceToCell(r, logStore)) || [],
-    [props.view.uiResources]
-  )
+  const data = React.useMemo(() => viewToRowValues(props.view, logStore), [
+    props.view.uiResources,
+    props.view.uiButtons,
+  ])
 
   const {
     getTableProps,
@@ -492,14 +564,24 @@ export default function OverviewTable(props: OverviewTableProps) {
     headerGroups,
     rows,
     prepareRow,
+    columns,
   } = useTable(
     {
-      columns,
+      columns: columnDefs,
       data,
       autoResetSortBy: false,
     },
     useSortBy
   )
+
+  // if there are no widgets, hide the widgets column
+  // TODO(matt) is this actually what we want?
+  const widgetsVisible = hasWidgets(props.view)
+  columns.forEach((c) => {
+    if (c.Header === "Widgets" && widgetsVisible !== c.isVisible) {
+      c.toggleHidden(!widgetsVisible)
+    }
+  })
 
   return (
     <ResourceTable {...getTableProps()}>

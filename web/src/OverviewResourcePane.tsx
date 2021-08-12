@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react"
 import SplitPane from "react-split-pane"
 import styled from "styled-components"
 import { Alert, combinedAlerts } from "./alerts"
+import { buttonsForResource } from "./ApiButton"
 import HeaderBar from "./HeaderBar"
 import { LogUpdateAction, LogUpdateEvent, useLogStore } from "./LogStore"
 import OverviewResourceDetails from "./OverviewResourceDetails"
@@ -83,12 +84,7 @@ export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
     resources.forEach((r) => alerts.push(...combinedAlerts(r, logStore)))
   }
 
-  const buttons = props.view.uiButtons?.filter(
-    (b) =>
-      b.spec?.location &&
-      (b.spec.location.componentType ?? "").toLowerCase() === "resource" &&
-      b.spec.location.componentID === name
-  )
+  const buttons = buttonsForResource(props.view.uiButtons, name)
 
   return (
     <OverviewResourcePaneRoot>
