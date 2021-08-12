@@ -207,10 +207,9 @@ func (r Resource) IsCollapsed(rv ResourceViewState) bool {
 // Client should always hold this as a value struct, and copy it
 // whenever they need to mutate something.
 type View struct {
-	LogReader   logstore.Reader
-	Resources   []Resource
-	IsProfiling bool
-	FatalError  error
+	LogReader  logstore.Reader
+	Resources  []Resource
+	FatalError error
 }
 
 func (v View) TiltfileErrorMessage() string {

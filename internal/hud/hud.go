@@ -237,12 +237,6 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 			return true
 		case tcell.KeyCtrlD:
 			dispatch(DumpEngineStateAction{})
-		case tcell.KeyCtrlP:
-			if h.currentView.IsProfiling {
-				dispatch(StopProfilingAction{})
-			} else {
-				dispatch(StartProfilingAction{})
-			}
 		case tcell.KeyCtrlO:
 			go writeHeapProfile(ctx)
 		}
