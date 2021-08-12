@@ -1,6 +1,10 @@
 # Enforce versioning so that labels are supported
 version_settings(constraint='>=0.22.1')
 
+# Uncomment to try the cancel button extension
+#v1alpha1.extension_repo(name='default', url='file:///home/nick/src/tilt-extensions')
+#v1alpha1.extension(name='cancel', repo_name='default', repo_path='cancel')
+
 enable_feature("labels")
 
 local_resource(
@@ -44,4 +48,3 @@ local_resource(
   auto_init=False,
   trigger_mode=TRIGGER_MODE_MANUAL,
   labels=["test"])
-

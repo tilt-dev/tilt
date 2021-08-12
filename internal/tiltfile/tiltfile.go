@@ -11,7 +11,9 @@ import (
 	wmanalytics "github.com/tilt-dev/wmclient/pkg/analytics"
 	"go.starlark.net/starlark"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apiset"
 	"github.com/tilt-dev/tilt/internal/tiltfile/tiltextension"
+	"github.com/tilt-dev/tilt/internal/tiltfile/v1alpha1"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
@@ -53,6 +55,7 @@ type TiltfileLoadResult struct {
 	VersionSettings     model.VersionSettings
 	UpdateSettings      model.UpdateSettings
 	WatchSettings       model.WatchSettings
+	ObjectSet           apiset.ObjectSet
 
 	// For diagnostic purposes only
 	BuiltinCalls []starkit.BuiltinCall `json:"-"`
@@ -161,6 +164,10 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, userConfigS
 
 	tlr.BuiltinCalls = result.BuiltinCalls
 
+	// All data models are loaded with GetState. We ignore the error if the state
+	// isn't properly loaded. This is necessary for handling partial Tiltfile
+	// execution correctly, where some state is correctly assembled but other
+	// state is not (and should be assumed empty).
 	ws, _ := watch.GetState(result)
 	tlr.WatchSettings = ws
 
@@ -185,6 +192,9 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, userConfigS
 	tlr.Error = err
 	tlr.Manifests = manifests
 	tlr.TeamID = s.teamID
+
+	objectSet, _ := v1alpha1.GetState(result)
+	tlr.ObjectSet = objectSet
 
 	vs, _ := version.GetState(result)
 	tlr.VersionSettings = vs

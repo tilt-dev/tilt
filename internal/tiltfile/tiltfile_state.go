@@ -12,6 +12,7 @@ import (
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apiset"
 	"github.com/tilt-dev/tilt/internal/localexec"
 	links "github.com/tilt-dev/tilt/internal/tiltfile/links"
 	"github.com/tilt-dev/tilt/internal/tiltfile/print"
@@ -43,6 +44,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/telemetry"
 	"github.com/tilt-dev/tilt/internal/tiltfile/tiltextension"
 	"github.com/tilt-dev/tilt/internal/tiltfile/updatesettings"
+	tfv1alpha1 "github.com/tilt-dev/tilt/internal/tiltfile/v1alpha1"
 	"github.com/tilt-dev/tilt/internal/tiltfile/version"
 	"github.com/tilt-dev/tilt/internal/tiltfile/watch"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -125,6 +127,8 @@ type tiltfileState struct {
 
 	secretSettings model.SecretSettings
 
+	apiObjects apiset.ObjectSet
+
 	logger logger.Logger
 
 	// postExecReadFiles is generally a mistake -- it means that if tiltfile execution fails,
@@ -163,6 +167,7 @@ func newTiltfileState(
 		triggerMode:               TriggerModeAuto,
 		features:                  features,
 		secretSettings:            model.DefaultSecretSettings(),
+		apiObjects:                apiset.ObjectSet{},
 		k8sKinds:                  make(map[k8s.ObjectSelector]*tiltfile_k8s.KindInfo),
 	}
 }
@@ -215,6 +220,7 @@ func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.
 		links.NewPlugin(),
 		print.NewPlugin(),
 		probe.NewPlugin(),
+		tfv1alpha1.NewPlugin(),
 	)
 	if err != nil {
 		return nil, result, starkit.UnpackBacktrace(err)
