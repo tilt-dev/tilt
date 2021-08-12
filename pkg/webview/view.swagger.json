@@ -397,6 +397,13 @@
           "type": "boolean",
           "format": "boolean",
           "description": "If true, the button will be rendered, but with an effect indicating it's\ndisabled. It will also be unclickable.\n\n+optional"
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1alpha1UIInputSpec"
+          },
+          "title": "Any inputs for this button.\n+optional"
         }
       },
       "title": "UIButtonSpec defines the desired state of UIButton"
@@ -407,6 +414,13 @@
         "lastClickedAt": {
           "type": "string", "format": "date-time",
           "description": "LastClickedAt is the timestamp of the last time the button was clicked.\n\nIf the button has never clicked before, this will be the zero-value/null."
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1alpha1UIInputStatus"
+          },
+          "title": "Status of any inputs on this button.\n+optional"
         }
       },
       "title": "UIButtonStatus defines the observed state of UIButton"
@@ -439,6 +453,38 @@
         }
       },
       "description": "Configures Tilt to enable non-default features (e.g., experimental or\ndeprecated).\n\nThe Tilt features controlled by this are generally in an unfinished state,\nand not yet documented.\n\nAs a Tilt user, you don’t need to worry about this unless something\nelse directs you to (e.g., an experimental feature doc, or a conversation\nwith a Tilt contributor)."
+    },
+    "v1alpha1UIInputSpec": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "An ID to distinguish this input from others."
+        },
+        "label": {
+          "type": "string",
+          "title": "A label to display next to this input in the UI.\n+optional"
+        },
+        "text": {
+          "$ref": "#/definitions/v1alpha1UITextInputSpec",
+          "title": "A Text input that takes a string\n+optional"
+        }
+      },
+      "title": "Defines an Input to render in the UI.\nIf UIButton is analogous to an HTML \u003cform\u003e,\nUIInput is analogous to  HTML \u003cinput\u003e"
+    },
+    "v1alpha1UIInputStatus": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "The ID of the input to which this status belongs"
+        },
+        "text": {
+          "$ref": "#/definitions/v1alpha1UITextInputStatus",
+          "title": "The status of a text input\n+optional"
+        }
+      },
+      "title": "The status corresponding to a UIInputSpec"
     },
     "v1alpha1UIResource": {
       "type": "object",
@@ -706,6 +752,28 @@
         }
       },
       "title": "UISessionStatus defines the observed state of UISession"
+    },
+    "v1alpha1UITextInputSpec": {
+      "type": "object",
+      "properties": {
+        "defaultValue": {
+          "type": "string",
+          "description": "Initial value for this field.\n\n+optional"
+        },
+        "placeholder": {
+          "type": "string",
+          "description": "A short hint that describes the expected input of this field.\n\n+optional"
+        }
+      }
+    },
+    "v1alpha1UITextInputStatus": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string",
+          "description": "The content of the text input."
+        }
+      }
     },
     "webviewAckWebsocketRequest": {
       "type": "object",
