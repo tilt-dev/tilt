@@ -1542,6 +1542,10 @@ message UIButtonSpec {
   //
   // +optional
   optional bool disabled = 5;
+
+  // Any inputs for this button.
+  // +optional
+  repeated UIInputSpec inputs = 6;
 }
 
 // UIButtonStatus defines the observed state of UIButton
@@ -1550,6 +1554,10 @@ message UIButtonStatus {
   //
   // If the button has never clicked before, this will be the zero-value/null.
   optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastClickedAt = 1;
+
+  // Status of any inputs on this button.
+  // +optional
+  repeated UIInputStatus inputs = 2;
 }
 
 // UIComponentLocation specifies where to put a UI component.
@@ -1584,6 +1592,33 @@ message UIFeatureFlag {
   // The value of the flag.
   // +optional
   optional bool value = 2;
+}
+
+// Defines an Input to render in the UI.
+// If UIButton is analogous to an HTML <form>,
+// UIInput is analogous to an HTML <input>.
+message UIInputSpec {
+  // Name of this input. Must be unique within the UIButton.
+  optional string id = 1;
+
+  // A label to display next to this input in the UI.
+  // +optional
+  optional string label = 2;
+
+  // A Text input that takes a string.
+  // +optional
+  optional UITextInputSpec text = 3;
+}
+
+// The status corresponding to a UIInputSpec
+message UIInputStatus {
+  // Name of the input whose status this is. Must match the `Name` of a corresponding
+  // UIInputSpec.
+  optional string id = 1;
+
+  // The status of a text input
+  // +optional
+  optional UITextInputStatus text = 2;
 }
 
 // UIResource represents per-resource status data for rendering the web UI.
@@ -1863,6 +1898,23 @@ message UISessionStatus {
   // project in LocalStorage or other persistent storage.
   // +optional
   optional string tiltfileKey = 11;
+}
+
+message UITextInputSpec {
+  // Initial value for this field.
+  //
+  // +optional
+  optional string defaultValue = 1;
+
+  // A short hint that describes the expected input of this field.
+  //
+  // +optional
+  optional string placeholder = 2;
+}
+
+message UITextInputStatus {
+  // The content of the text input.
+  optional string value = 1;
 }
 
 // Information about how the Tilt binary handles updates.

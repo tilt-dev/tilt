@@ -126,6 +126,8 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIComponentLocation":             schema_pkg_apis_core_v1alpha1_UIComponentLocation(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIComponentLocationResource":     schema_pkg_apis_core_v1alpha1_UIComponentLocationResource(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIFeatureFlag":                   schema_pkg_apis_core_v1alpha1_UIFeatureFlag(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIInputSpec":                     schema_pkg_apis_core_v1alpha1_UIInputSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIInputStatus":                   schema_pkg_apis_core_v1alpha1_UIInputStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResource":                      schema_pkg_apis_core_v1alpha1_UIResource(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceKubernetes":            schema_pkg_apis_core_v1alpha1_UIResourceKubernetes(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLink":                  schema_pkg_apis_core_v1alpha1_UIResourceLink(ref),
@@ -138,6 +140,8 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UISessionList":                   schema_pkg_apis_core_v1alpha1_UISessionList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UISessionSpec":                   schema_pkg_apis_core_v1alpha1_UISessionSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UISessionStatus":                 schema_pkg_apis_core_v1alpha1_UISessionStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UITextInputSpec":                 schema_pkg_apis_core_v1alpha1_UITextInputSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UITextInputStatus":               schema_pkg_apis_core_v1alpha1_UITextInputStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.VersionSettings":                 schema_pkg_apis_core_v1alpha1_VersionSettings(ref),
 		"k8s.io/apimachinery/pkg/apis/meta/v1.APIGroup":                                   schema_pkg_apis_meta_v1_APIGroup(ref),
 		"k8s.io/apimachinery/pkg/apis/meta/v1.APIGroupList":                               schema_pkg_apis_meta_v1_APIGroupList(ref),
@@ -4209,12 +4213,26 @@ func schema_pkg_apis_core_v1alpha1_UIButtonSpec(ref common.ReferenceCallback) co
 							Format:      "",
 						},
 					},
+					"inputs": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Any inputs for this button.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIInputSpec"),
+									},
+								},
+							},
+						},
+					},
 				},
 				Required: []string{"location", "text"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIComponentLocation"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIComponentLocation", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIInputSpec"},
 	}
 }
 
@@ -4232,11 +4250,25 @@ func schema_pkg_apis_core_v1alpha1_UIButtonStatus(ref common.ReferenceCallback) 
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
+					"inputs": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Status of any inputs on this button.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIInputStatus"),
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIInputStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
 	}
 }
 
@@ -4314,6 +4346,74 @@ func schema_pkg_apis_core_v1alpha1_UIFeatureFlag(ref common.ReferenceCallback) c
 				},
 			},
 		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UIInputSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Defines an Input to render in the UI. If UIButton is analogous to an HTML <form>, UIInput is analogous to an HTML <input>.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name of this input. Must be unique within the UIButton.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"label": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A label to display next to this input in the UI.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"text": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A Text input that takes a string.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UITextInputSpec"),
+						},
+					},
+				},
+				Required: []string{"name"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UITextInputSpec"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UIInputStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "The status corresponding to a UIInputSpec",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name of the input whose status this is. Must match the `Name` of a corresponding UIInputSpec.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"text": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The status of a text input",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UITextInputStatus"),
+						},
+					},
+				},
+				Required: []string{"name"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UITextInputStatus"},
 	}
 }
 
@@ -4939,6 +5039,53 @@ func schema_pkg_apis_core_v1alpha1_UISessionStatus(ref common.ReferenceCallback)
 		},
 		Dependencies: []string{
 			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltBuild", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIFeatureFlag", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.VersionSettings", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UITextInputSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"defaultValue": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Initial value for this field.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"placeholder": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A short hint that describes the expected input of this field.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UITextInputStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"value": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The content of the text input.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"value"},
+			},
+		},
 	}
 }
 

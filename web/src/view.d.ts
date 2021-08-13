@@ -354,6 +354,26 @@ declare namespace Proto {
      */
     Raw?: string;
   }
+  export interface v1alpha1UITextInputStatus {
+    /**
+     * The content of the text input.
+     */
+    value?: string;
+  }
+  export interface v1alpha1UITextInputSpec {
+    /**
+     * Initial value for this field.
+     *
+     * +optional
+     */
+    defaultValue?: string;
+    /**
+     * A short hint that describes the expected input of this field.
+     *
+     * +optional
+     */
+    placeholder?: string;
+  }
   export interface v1alpha1UISessionStatus {
     featureFlags?: v1alpha1UIFeatureFlag[];
     needsAnalyticsNudge?: boolean;
@@ -451,6 +471,22 @@ declare namespace Proto {
     spec?: v1alpha1UIResourceSpec;
     status?: v1alpha1UIResourceStatus;
   }
+  export interface v1alpha1UIInputStatus {
+    /**
+     * Name of the input whose status this is. Must match the `Name` of a corresponding
+     * UIInputSpec.
+     */
+    id?: string;
+    text?: v1alpha1UITextInputStatus;
+  }
+  export interface v1alpha1UIInputSpec {
+    /**
+     * Name of this input. Must be unique within the UIButton.
+     */
+    id?: string;
+    label?: string;
+    text?: v1alpha1UITextInputSpec;
+  }
   export interface v1alpha1UIFeatureFlag {
     name?: string;
     value?: boolean;
@@ -474,6 +510,7 @@ declare namespace Proto {
      * If the button has never clicked before, this will be the zero-value/null.
      */
     lastClickedAt?: string;
+    inputs?: v1alpha1UIInputStatus[];
   }
   export interface v1alpha1UIButtonSpec {
     /**
@@ -513,6 +550,7 @@ declare namespace Proto {
      * +optional
      */
     disabled?: boolean;
+    inputs?: v1alpha1UIInputSpec[];
   }
   export interface v1alpha1UIButton {
     metadata?: v1ObjectMeta;

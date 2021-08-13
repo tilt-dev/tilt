@@ -85,6 +85,10 @@ type UIButtonSpec struct {
 	//
 	// +optional
 	Disabled bool `json:"disabled,omitempty" protobuf:"varint,5,opt,name=disabled"`
+
+	// Any inputs for this button.
+	// +optional
+	Inputs []UIInputSpec `json:"inputs,omitempty" protobuf:"bytes,6,rep,name=inputs"`
 }
 
 // UIComponentLocation specifies where to put a UI component.
@@ -139,7 +143,7 @@ func (in *UIButton) IsStorageVersion() bool {
 	return true
 }
 
-func (in *UIButton) Validate(_ context.Context) field.ErrorList {
+func (in *UIButton) Validate(ctx context.Context) field.ErrorList {
 	var fieldErrors field.ErrorList
 
 	if in.Spec.Text == "" {
@@ -165,6 +169,15 @@ func (in *UIButton) Validate(_ context.Context) field.ErrorList {
 		}
 	}
 
+	seenInputIDs := make(map[string]bool)
+	for i, input := range in.Spec.Inputs {
+		if seenInputIDs[input.Name] {
+			fieldErrors = append(fieldErrors, field.Duplicate(field.NewPath("spec").Child("inputs").Index(i).Child("id"), input))
+		}
+		seenInputIDs[input.Name] = true
+		fieldErrors = append(fieldErrors, input.Validate(ctx, field.NewPath("spec"))...)
+	}
+
 	return fieldErrors
 }
 
@@ -174,12 +187,75 @@ func (in *UIButtonList) GetListMeta() *metav1.ListMeta {
 	return &in.ListMeta
 }
 
+type UITextInputSpec struct {
+	// Initial value for this field.
+	//
+	// +optional
+	DefaultValue string `json:"defaultValue,omitempty" protobuf:"bytes,1,opt,name=defaultValue"`
+
+	// A short hint that describes the expected input of this field.
+	//
+	// +optional
+	Placeholder string `json:"placeholder,omitempty" protobuf:"bytes,2,opt,name=placeholder"`
+}
+
+type UITextInputStatus struct {
+	// The content of the text input.
+	Value string `json:"value" protobuf:"bytes,1,opt,name=value"`
+}
+
+// Defines an Input to render in the UI.
+// If UIButton is analogous to an HTML <form>,
+// UIInput is analogous to an HTML <input>.
+type UIInputSpec struct {
+	// Name of this input. Must be unique within the UIButton.
+	Name string `json:"name" protobuf:"bytes,1,opt,name=id"`
+
+	// A label to display next to this input in the UI.
+	// +optional
+	Label string `json:"label" protobuf:"bytes,2,opt,name=label"`
+
+	// Exactly one of the following must be non-nil.
+	// TODO(matt) add more types (e.g., bool/checkbox, select one or multiple resources)
+
+	// A Text input that takes a string.
+	// +optional
+	Text *UITextInputSpec `json:"text,omitempty" protobuf:"bytes,3,opt,name=text"`
+}
+
+func (in *UIInputSpec) Validate(_ context.Context, path *field.Path) field.ErrorList {
+	var fieldErrors field.ErrorList
+
+	if in.Text == nil {
+		fieldErrors = append(fieldErrors, field.Invalid(path, in, "must specify exactly one input type"))
+	}
+
+	return fieldErrors
+}
+
+// The status corresponding to a UIInputSpec
+type UIInputStatus struct {
+	// Name of the input whose status this is. Must match the `Name` of a corresponding
+	// UIInputSpec.
+	Name string `json:"name" protobuf:"bytes,1,opt,name=id"`
+
+	// The same one of these should be non-nil as on the corresponding UITextInputSpec
+
+	// The status of a text input
+	// +optional
+	Text *UITextInputStatus `json:"text,omitempty" protobuf:"bytes,2,opt,name=text"`
+}
+
 // UIButtonStatus defines the observed state of UIButton
 type UIButtonStatus struct {
 	// LastClickedAt is the timestamp of the last time the button was clicked.
 	//
 	// If the button has never clicked before, this will be the zero-value/null.
 	LastClickedAt metav1.MicroTime `json:"lastClickedAt,omitempty" protobuf:"bytes,1,opt,name=lastClickedAt"`
+
+	// Status of any inputs on this button.
+	// +optional
+	Inputs []UIInputStatus `json:"inputs,omitempty" protobuf:"bytes,2,rep,name=inputs"`
 }
 
 // UIButton implements ObjectWithStatusSubResource interface.
