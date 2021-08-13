@@ -101,13 +101,25 @@ func (c *Controller) TearDown(ctx context.Context) {
 
 // Fetch all the buttons that this object depends on.
 func (c *Controller) buttons(ctx context.Context, cmd *v1alpha1.Cmd) (map[string]*v1alpha1.UIButton, error) {
+	buttonNames := []string{}
+
 	startOn := cmd.Spec.StartOn
-	if startOn == nil {
-		return nil, nil
+	if startOn != nil {
+		buttonNames = append(buttonNames, startOn.UIButtons...)
 	}
 
-	result := make(map[string]*v1alpha1.UIButton, len(startOn.UIButtons))
-	for _, n := range startOn.UIButtons {
+	restartOn := cmd.Spec.RestartOn
+	if restartOn != nil {
+		buttonNames = append(buttonNames, restartOn.UIButtons...)
+	}
+
+	result := make(map[string]*v1alpha1.UIButton, len(buttonNames))
+	for _, n := range buttonNames {
+		_, exists := result[n]
+		if exists {
+			continue
+		}
+
 		b := &UIButton{}
 		err := c.client.Get(ctx, types.NamespacedName{Name: n}, b)
 		if err != nil {
@@ -166,10 +178,11 @@ func (c *Controller) lastStartEvent(startOn *StartOnSpec, buttons map[string]*v1
 }
 
 // Fetch the last time a restart was requested from this target's dependencies.
-func (c *Controller) lastRestartEventTime(restartOn *RestartOnSpec, fileWatches map[string]*v1alpha1.FileWatch) time.Time {
+func (c *Controller) lastRestartEvent(restartOn *RestartOnSpec, fileWatches map[string]*v1alpha1.FileWatch, buttons map[string]*v1alpha1.UIButton) (time.Time, []v1alpha1.UIInputStatus) {
 	cur := time.Time{}
+	var latestButton *v1alpha1.UIButton
 	if restartOn == nil {
-		return cur
+		return cur, nil
 	}
 
 	for _, fwn := range restartOn.FileWatches {
@@ -183,7 +196,25 @@ func (c *Controller) lastRestartEventTime(restartOn *RestartOnSpec, fileWatches 
 			cur = lastEventTime.Time
 		}
 	}
-	return cur
+
+	for _, bn := range restartOn.UIButtons {
+		b, ok := buttons[bn]
+		if !ok {
+			// ignore missing buttons
+			continue
+		}
+		lastEventTime := b.Status.LastClickedAt
+		if lastEventTime.Time.After(cur) {
+			cur = lastEventTime.Time
+			latestButton = b
+		}
+	}
+
+	var inputs []v1alpha1.UIInputStatus
+	if latestButton != nil {
+		inputs = latestButton.Status.Inputs
+	}
+	return cur, inputs
 }
 
 func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) error {
@@ -218,9 +249,8 @@ func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) e
 		return err
 	}
 
-	lastRestartEventTime := c.lastRestartEventTime(cmd.Spec.RestartOn, fileWatches)
+	lastRestartEventTime, _ := c.lastRestartEvent(cmd.Spec.RestartOn, fileWatches, buttons)
 	lastStartEventTime, _ := c.lastStartEvent(cmd.Spec.StartOn, buttons)
-
 	startOn := cmd.Spec.StartOn
 	waitsOnStartOn := startOn != nil && len(startOn.UIButtons) > 0
 
@@ -310,9 +340,17 @@ func (c *Controller) runInternal(ctx context.Context,
 
 	proc.spec = cmd.Spec
 	proc.isServer = cmd.ObjectMeta.Annotations[local.AnnotationOwnerKind] == "CmdServer"
-	proc.lastRestartOnEventTime = c.lastRestartEventTime(cmd.Spec.RestartOn, fileWatches)
-	var inputs []v1alpha1.UIInputStatus
-	proc.lastStartOnEventTime, inputs = c.lastStartEvent(cmd.Spec.StartOn, buttons)
+
+	var startInputs, restartInputs []v1alpha1.UIInputStatus
+
+	proc.lastRestartOnEventTime, restartInputs = c.lastRestartEvent(cmd.Spec.RestartOn, fileWatches, buttons)
+	proc.lastStartOnEventTime, startInputs = c.lastStartEvent(cmd.Spec.StartOn, buttons)
+
+	mergedInputs := startInputs
+	if proc.lastRestartOnEventTime.After(proc.lastStartOnEventTime) {
+		mergedInputs = restartInputs
+	}
+
 	ctx, proc.cancelFunc = context.WithCancel(ctx)
 
 	stillHasSameProcNum := proc.stillHasSameProcNum()
@@ -350,7 +388,7 @@ func (c *Controller) runInternal(ctx context.Context,
 	startedAt := apis.NewMicroTime(c.clock.Now())
 
 	env := append([]string{}, spec.Env...)
-	for _, input := range inputs {
+	for _, input := range mergedInputs {
 		env = append(env, fmt.Sprintf("%s=%s", input.Name, input.Text.Value))
 	}
 
@@ -557,6 +595,15 @@ func indexCmd(obj client.Object) []indexer.Key {
 			result = append(result, indexer.Key{
 				Name: types.NamespacedName{Name: name},
 				GVK:  fwGVK,
+			})
+		}
+
+		bGVK := v1alpha1.SchemeGroupVersion.WithKind("UIButton")
+
+		for _, name := range cmd.Spec.RestartOn.UIButtons {
+			result = append(result, indexer.Key{
+				Name: types.NamespacedName{Name: name},
+				GVK:  bGVK,
 			})
 		}
 	}

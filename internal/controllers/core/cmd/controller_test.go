@@ -267,6 +267,51 @@ func TestRestartOnFileWatch(t *testing.T) {
 		f.c.indexer.Enqueue(fw))
 }
 
+func TestRestartOnUIButton(t *testing.T) {
+	f := newFixture(t)
+	defer f.teardown()
+
+	f.resource("cmd", "true", ".", f.clock.Now())
+	f.step()
+
+	firstStart := f.assertCmdMatches("cmd-serve-1", func(cmd *Cmd) bool {
+		return cmd.Status.Running != nil
+	})
+
+	f.clock.Advance(time.Second)
+	f.updateSpec("cmd-serve-1", func(spec *v1alpha1.CmdSpec) {
+		spec.RestartOn = &RestartOnSpec{
+			UIButtons: []string{"b-1"},
+		}
+	})
+
+	b := &UIButton{
+		ObjectMeta: ObjectMeta{
+			Name: "b-1",
+		},
+		Spec: UIButtonSpec{},
+	}
+	err := f.client.Create(f.ctx, b)
+	require.NoError(t, err)
+
+	f.clock.Advance(time.Second)
+	f.triggerButton("b-1", f.clock.Now())
+	f.reconcileCmd("cmd-serve-1")
+
+	f.assertCmdMatches("cmd-serve-1", func(cmd *Cmd) bool {
+		running := cmd.Status.Running
+		return running != nil && running.StartedAt.Time.After(firstStart.Status.Running.StartedAt.Time)
+	})
+
+	// Our fixture doesn't test reconcile.Request triage,
+	// so test it manually here.
+	assert.Equal(f.T(),
+		[]reconcile.Request{
+			reconcile.Request{NamespacedName: types.NamespacedName{Name: "cmd-serve-1"}},
+		},
+		f.c.indexer.Enqueue(b))
+}
+
 func setupStartOnTest(t *testing.T, f *fixture) {
 	cmd := &Cmd{
 		ObjectMeta: metav1.ObjectMeta{

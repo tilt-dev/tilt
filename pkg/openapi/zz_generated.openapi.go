@@ -3212,8 +3212,22 @@ func schema_pkg_apis_core_v1alpha1_RestartOnSpec(ref common.ReferenceCallback) c
 							},
 						},
 					},
+					"uiButtons": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A list of ui buttons that can trigger a restart.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
 				},
-				Required: []string{"fileWatches"},
 			},
 		},
 	}
