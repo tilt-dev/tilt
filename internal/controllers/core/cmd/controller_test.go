@@ -568,7 +568,7 @@ func TestDependencyChangesDoNotCauseRestart(t *testing.T) {
 	})
 }
 
-func TestCmdUsesInputsFromButton(t *testing.T) {
+func TestCmdUsesInputsFromButtonOnStart(t *testing.T) {
 	f := newFixture(t)
 	defer f.teardown()
 
@@ -590,8 +590,46 @@ func TestCmdUsesInputsFromButton(t *testing.T) {
 	f.reconcileCmd("testcmd")
 
 	actualEnv := f.fe.processes["myserver"].env
-
 	expectedEnv := []string{"foo=bar", "baz=wait what comes next"}
+	require.Equal(t, expectedEnv, actualEnv)
+}
+
+func TestCmdOnlyUsesButtonThatStartedIt(t *testing.T) {
+	f := newFixture(t)
+	defer f.teardown()
+
+	setupStartOnTest(t, f)
+	f.updateButton("b-1", func(button *v1alpha1.UIButton) {
+		inputs := []v1alpha1.UIInputStatus{
+			{
+				Name: "foo",
+				Text: &v1alpha1.UITextInputStatus{Value: "bar"},
+			},
+			{
+				Name: "baz",
+				Text: &v1alpha1.UITextInputStatus{Value: "wait what comes next"},
+			},
+		}
+		button.Status.Inputs = append(button.Status.Inputs, inputs...)
+	})
+
+	b := &UIButton{
+		ObjectMeta: ObjectMeta{
+			Name: "b-2",
+		},
+		Spec: UIButtonSpec{},
+	}
+	err := f.client.Create(f.ctx, b)
+	require.NoError(t, err)
+	f.updateSpec("testcmd", func(spec *v1alpha1.CmdSpec) {
+		spec.StartOn.UIButtons = append(spec.StartOn.UIButtons, "b-2")
+	})
+	f.triggerButton("b-2", f.clock.Now())
+	f.reconcileCmd("testcmd")
+
+	actualEnv := f.fe.processes["myserver"].env
+	// b-1's env gets ignored since it was triggered by b-2
+	expectedEnv := []string{}
 	require.Equal(t, expectedEnv, actualEnv)
 }
 
