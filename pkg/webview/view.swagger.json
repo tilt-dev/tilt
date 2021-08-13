@@ -459,7 +459,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "An ID to distinguish this input from others."
+          "description": "Name of this input. Must be unique within the UIButton."
         },
         "label": {
           "type": "string",
@@ -467,7 +467,7 @@
         },
         "text": {
           "$ref": "#/definitions/v1alpha1UITextInputSpec",
-          "title": "A Text input that takes a string\n+optional"
+          "title": "A Text input that takes a string.\n+optional"
         }
       },
       "description": "Defines an Input to render in the UI.\nIf UIButton is analogous to an HTML \u003cform\u003e,\nUIInput is analogous to an HTML \u003cinput\u003e."
@@ -477,7 +477,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "title": "The ID of the input to which this status belongs"
+          "description": "Name of the input whose status this is. Must match the `Name` of a corresponding\nUIInputSpec."
         },
         "text": {
           "$ref": "#/definitions/v1alpha1UITextInputStatus",

@@ -4356,9 +4356,9 @@ func schema_pkg_apis_core_v1alpha1_UIInputSpec(ref common.ReferenceCallback) com
 				Description: "Defines an Input to render in the UI. If UIButton is analogous to an HTML <form>, UIInput is analogous to an HTML <input>.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"id": {
+					"name": {
 						SchemaProps: spec.SchemaProps{
-							Description: "An ID to distinguish this input from others.",
+							Description: "Name of this input. Must be unique within the UIButton.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
@@ -4374,12 +4374,12 @@ func schema_pkg_apis_core_v1alpha1_UIInputSpec(ref common.ReferenceCallback) com
 					},
 					"text": {
 						SchemaProps: spec.SchemaProps{
-							Description: "A Text input that takes a string",
+							Description: "A Text input that takes a string.",
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UITextInputSpec"),
 						},
 					},
 				},
-				Required: []string{"id"},
+				Required: []string{"name"},
 			},
 		},
 		Dependencies: []string{
@@ -4394,9 +4394,9 @@ func schema_pkg_apis_core_v1alpha1_UIInputStatus(ref common.ReferenceCallback) c
 				Description: "The status corresponding to a UIInputSpec",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"id": {
+					"name": {
 						SchemaProps: spec.SchemaProps{
-							Description: "The ID of the input to which this status belongs",
+							Description: "Name of the input whose status this is. Must match the `Name` of a corresponding UIInputSpec.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
@@ -4409,7 +4409,7 @@ func schema_pkg_apis_core_v1alpha1_UIInputStatus(ref common.ReferenceCallback) c
 						},
 					},
 				},
-				Required: []string{"id"},
+				Required: []string{"name"},
 			},
 		},
 		Dependencies: []string{

@@ -472,12 +472,16 @@ declare namespace Proto {
     status?: v1alpha1UIResourceStatus;
   }
   export interface v1alpha1UIInputStatus {
+    /**
+     * Name of the input whose status this is. Must match the `Name` of a corresponding
+     * UIInputSpec.
+     */
     id?: string;
     text?: v1alpha1UITextInputStatus;
   }
   export interface v1alpha1UIInputSpec {
     /**
-     * An ID to distinguish this input from others.
+     * Name of this input. Must be unique within the UIButton.
      */
     id?: string;
     label?: string;

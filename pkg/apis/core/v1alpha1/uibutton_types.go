@@ -171,10 +171,10 @@ func (in *UIButton) Validate(ctx context.Context) field.ErrorList {
 
 	seenInputIDs := make(map[string]bool)
 	for i, input := range in.Spec.Inputs {
-		if seenInputIDs[input.ID] {
+		if seenInputIDs[input.Name] {
 			fieldErrors = append(fieldErrors, field.Duplicate(field.NewPath("spec").Child("inputs").Index(i).Child("id"), input))
 		}
-		seenInputIDs[input.ID] = true
+		seenInputIDs[input.Name] = true
 		fieldErrors = append(fieldErrors, input.Validate(ctx, field.NewPath("spec"))...)
 	}
 
@@ -208,8 +208,8 @@ type UITextInputStatus struct {
 // If UIButton is analogous to an HTML <form>,
 // UIInput is analogous to an HTML <input>.
 type UIInputSpec struct {
-	// An ID to distinguish this input from others.
-	ID string `json:"id" protobuf:"bytes,1,opt,name=id"`
+	// Name of this input. Must be unique within the UIButton.
+	Name string `json:"name" protobuf:"bytes,1,opt,name=id"`
 
 	// A label to display next to this input in the UI.
 	// +optional
@@ -218,7 +218,7 @@ type UIInputSpec struct {
 	// Exactly one of the following must be non-nil.
 	// TODO(matt) add more types (e.g., bool/checkbox, select one or multiple resources)
 
-	// A Text input that takes a string
+	// A Text input that takes a string.
 	// +optional
 	Text *UITextInputSpec `json:"text,omitempty" protobuf:"bytes,3,opt,name=text"`
 }
@@ -235,8 +235,9 @@ func (in *UIInputSpec) Validate(_ context.Context, path *field.Path) field.Error
 
 // The status corresponding to a UIInputSpec
 type UIInputStatus struct {
-	// The ID of the input to which this status belongs
-	ID string `json:"id" protobuf:"bytes,1,opt,name=id"`
+	// Name of the input whose status this is. Must match the `Name` of a corresponding
+	// UIInputSpec.
+	Name string `json:"name" protobuf:"bytes,1,opt,name=id"`
 
 	// The same one of these should be non-nil as on the corresponding UITextInputSpec
 
