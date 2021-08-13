@@ -3421,7 +3421,7 @@ func schema_pkg_apis_core_v1alpha1_StartOnSpec(ref common.ReferenceCallback) com
 					},
 					"uiButtons": {
 						SchemaProps: spec.SchemaProps{
-							Description: "A list of ui buttons that can trigger a run.",
+							Description: "A list of ui buttons that can trigger a run.\n\nWhen a button triggers a run, any UIInputs on that button will be added to the cmd's env.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{

@@ -237,5 +237,8 @@ type StartOnSpec struct {
 	// +optional
 	StartAfter metav1.Time `json:"startAfter,omitempty" protobuf:"bytes,1,opt,name=startAfter"`
 	// A list of ui buttons that can trigger a run.
+	//
+	// When a button triggers a run, any UIInputs on that button will be added
+	// to the cmd's env.
 	UIButtons []string `json:"uiButtons" protobuf:"bytes,2,rep,name=uiButtons"`
 }

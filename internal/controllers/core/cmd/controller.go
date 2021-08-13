@@ -138,10 +138,11 @@ func (c *Controller) fileWatches(ctx context.Context, cmd *v1alpha1.Cmd) (map[st
 }
 
 // Fetch the last time a start was requested from this target's dependencies.
-func (c *Controller) lastStartEventTime(startOn *StartOnSpec, buttons map[string]*v1alpha1.UIButton) time.Time {
-	cur := time.Time{}
+func (c *Controller) lastStartEvent(startOn *StartOnSpec, buttons map[string]*v1alpha1.UIButton) (time.Time, []v1alpha1.UIInputStatus) {
+	latestTime := time.Time{}
+	var latestButton *v1alpha1.UIButton
 	if startOn == nil {
-		return cur
+		return time.Time{}, nil
 	}
 
 	for _, bn := range startOn.UIButtons {
@@ -151,11 +152,17 @@ func (c *Controller) lastStartEventTime(startOn *StartOnSpec, buttons map[string
 			continue
 		}
 		lastEventTime := b.Status.LastClickedAt
-		if !lastEventTime.Time.Before(startOn.StartAfter.Time) && lastEventTime.Time.After(cur) {
-			cur = lastEventTime.Time
+		if !lastEventTime.Time.Before(startOn.StartAfter.Time) && lastEventTime.Time.After(latestTime) {
+			latestTime = lastEventTime.Time
+			latestButton = b
 		}
 	}
-	return cur
+
+	var inputs []v1alpha1.UIInputStatus
+	if latestButton != nil {
+		inputs = latestButton.Status.Inputs
+	}
+	return latestTime, inputs
 }
 
 // Fetch the last time a restart was requested from this target's dependencies.
@@ -212,7 +219,7 @@ func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) e
 	}
 
 	lastRestartEventTime := c.lastRestartEventTime(cmd.Spec.RestartOn, fileWatches)
-	lastStartEventTime := c.lastStartEventTime(cmd.Spec.StartOn, buttons)
+	lastStartEventTime, _ := c.lastStartEvent(cmd.Spec.StartOn, buttons)
 
 	startOn := cmd.Spec.StartOn
 	waitsOnStartOn := startOn != nil && len(startOn.UIButtons) > 0
@@ -304,7 +311,8 @@ func (c *Controller) runInternal(ctx context.Context,
 	proc.spec = cmd.Spec
 	proc.isServer = cmd.ObjectMeta.Annotations[local.AnnotationOwnerKind] == "CmdServer"
 	proc.lastRestartOnEventTime = c.lastRestartEventTime(cmd.Spec.RestartOn, fileWatches)
-	proc.lastStartOnEventTime = c.lastStartEventTime(cmd.Spec.StartOn, buttons)
+	var inputs []v1alpha1.UIInputStatus
+	proc.lastStartOnEventTime, inputs = c.lastStartEvent(cmd.Spec.StartOn, buttons)
 	ctx, proc.cancelFunc = context.WithCancel(ctx)
 
 	stillHasSameProcNum := proc.stillHasSameProcNum()
@@ -341,10 +349,15 @@ func (c *Controller) runInternal(ctx context.Context,
 
 	startedAt := apis.NewMicroTime(c.clock.Now())
 
+	env := append([]string{}, spec.Env...)
+	for _, input := range inputs {
+		env = append(env, fmt.Sprintf("%s=%s", input.Name, input.Text.Value))
+	}
+
 	cmdModel := model.Cmd{
 		Argv: spec.Args,
 		Dir:  spec.Dir,
-		Env:  spec.Env,
+		Env:  env,
 	}
 	statusCh := c.execer.Start(ctx, cmdModel, logger.Get(ctx).Writer(logger.InfoLvl))
 	proc.doneCh = make(chan struct{})
