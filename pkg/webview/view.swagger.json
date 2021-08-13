@@ -457,7 +457,7 @@
     "v1alpha1UIInputSpec": {
       "type": "object",
       "properties": {
-        "id": {
+        "name": {
           "type": "string",
           "description": "Name of this input. Must be unique within the UIButton."
         },
@@ -475,7 +475,7 @@
     "v1alpha1UIInputStatus": {
       "type": "object",
       "properties": {
-        "id": {
+        "name": {
           "type": "string",
           "description": "Name of the input whose status this is. Must match the `Name` of a corresponding\nUIInputSpec."
         },

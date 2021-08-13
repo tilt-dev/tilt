@@ -1599,7 +1599,7 @@ message UIFeatureFlag {
 // UIInput is analogous to an HTML <input>.
 message UIInputSpec {
   // Name of this input. Must be unique within the UIButton.
-  optional string id = 1;
+  optional string name = 1;
 
   // A label to display next to this input in the UI.
   // +optional
@@ -1614,7 +1614,7 @@ message UIInputSpec {
 message UIInputStatus {
   // Name of the input whose status this is. Must match the `Name` of a corresponding
   // UIInputSpec.
-  optional string id = 1;
+  optional string name = 1;
 
   // The status of a text input
   // +optional
