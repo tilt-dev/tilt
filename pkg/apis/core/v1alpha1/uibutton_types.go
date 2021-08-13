@@ -209,7 +209,7 @@ type UITextInputStatus struct {
 // UIInput is analogous to an HTML <input>.
 type UIInputSpec struct {
 	// Name of this input. Must be unique within the UIButton.
-	Name string `json:"name" protobuf:"bytes,1,opt,name=id"`
+	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
 
 	// A label to display next to this input in the UI.
 	// +optional
@@ -237,7 +237,7 @@ func (in *UIInputSpec) Validate(_ context.Context, path *field.Path) field.Error
 type UIInputStatus struct {
 	// Name of the input whose status this is. Must match the `Name` of a corresponding
 	// UIInputSpec.
-	Name string `json:"name" protobuf:"bytes,1,opt,name=id"`
+	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
 
 	// The same one of these should be non-nil as on the corresponding UITextInputSpec
 
