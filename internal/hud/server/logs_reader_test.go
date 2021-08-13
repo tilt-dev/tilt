@@ -36,6 +36,12 @@ func TestLogStreamerPrintsLogs(t *testing.T) {
 	f.assertExpectedLogLines(expected)
 }
 
+func TestHandleEmptyView(t *testing.T) {
+	f := newLogStreamerFixture(t)
+	f.handle(proto_webview.View{})
+	f.assertExpectedLogLines([]expectedLine{expectedLine{}}) // Always end in a newline
+}
+
 func TestLogStreamerPrefixing(t *testing.T) {
 	f := newLogStreamerFixture(t)
 	manifestNames := []string{"foo", "", "foo", "bar"}
