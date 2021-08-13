@@ -494,12 +494,30 @@ func handleConfigsReloadStarted(
 	state.StartedTiltfileLoadCount++
 }
 
-// TODO(nick): Rewrite to handle multiple tiltfiles.
+// In the original Tilt architecture, the Tiltfile contained
+// the whole engine state. Reloading the tiltfile re-created that
+// state from scratch.
+//
+// We've moved towards a more modular architecture, but many of the tilt data
+// models aren't modular. For example, if two Tiltfiles set UpdateSettings,
+// it's not clear which one "wins" or how their preferences combine.
+//
+// In the long-term, Tiltfile settings should only take affect in objects created
+// by that Tiltfile. (e.g., WatchSettings only affects FileWatches created by
+// that Tiltfile.)
+//
+// In the medium-term, we resolve this in the EngineState in three different ways:
+// 1) If a data structure supports merging (like the Manifest map), do a merge.
+// 2) If merging fails (like if two Tiltfiles define the same Manifest), log an Error
+//    and try to do something resonable.
+// 3) If a data structure does not support merging (like UpdateSettings), only
+//    accept that data structure from the "main" tiltfile.
 func handleConfigsReloaded(
 	ctx context.Context,
 	state *store.EngineState,
 	event ctrltiltfile.ConfigsReloadedAction,
 ) {
+	isMainTiltfile := event.Name == model.MainTiltfileManifestName
 
 	manifests := event.Manifests
 	loadedManifestNames := map[model.ManifestName]bool{}
@@ -538,13 +556,13 @@ func handleConfigsReloaded(
 	state.LogStore.ScrubSecretsStartingAt(newSecrets, event.CheckpointAtExecStart)
 
 	// Add team id if it exists, even if execution failed.
-	if event.TeamID != "" || event.Err == nil {
+	if isMainTiltfile && (event.TeamID != "" || event.Err == nil) {
 		state.TeamID = event.TeamID
 	}
 
 	// Only set the metrics settings from the tiltfile if the mode
 	// hasn't been configured from elsewhere.
-	if state.MetricsServing.Mode == model.MetricsDefault {
+	if isMainTiltfile && state.MetricsServing.Mode == model.MetricsDefault {
 		// Add metrics if it exists, even if execution failed.
 		if event.MetricsSettings.Enabled || event.Err == nil {
 			state.MetricsSettings = event.MetricsSettings
@@ -577,20 +595,20 @@ func handleConfigsReloaded(
 		// Watch any new config files in the partial state.
 		state.TiltfileConfigPaths[event.Name] = sliceutils.AppendWithoutDupes(state.TiltfileConfigPaths[event.Name], event.ConfigFiles...)
 
-		// Enable any new features in the partial state.
-		if len(state.Features) == 0 {
-			state.Features = event.Features
-		} else {
-			for feature, val := range event.Features {
-				if val {
-					state.Features[feature] = val
+		if isMainTiltfile {
+			// Enable any new features in the partial state.
+			if len(state.Features) == 0 {
+				state.Features = event.Features
+			} else {
+				for feature, val := range event.Features {
+					if val {
+						state.Features[feature] = val
+					}
 				}
 			}
 		}
 		return
 	}
-
-	state.DockerPruneSettings = event.DockerPruneSettings
 
 	// Make sure all the new manifests are in the EngineState.
 	for _, m := range manifests {
@@ -649,12 +667,15 @@ func handleConfigsReloaded(
 	state.ManifestDefinitionOrder = newOrder
 	state.TiltfileConfigPaths[event.Name] = event.ConfigFiles
 
-	state.Features = event.Features
-	state.TelemetrySettings = event.TelemetrySettings
-	state.VersionSettings = event.VersionSettings
-	state.AnalyticsTiltfileOpt = event.AnalyticsTiltfileOpt
-
-	state.UpdateSettings = event.UpdateSettings
+	// Global state that's only configurable from the main manifest.
+	if isMainTiltfile {
+		state.Features = event.Features
+		state.TelemetrySettings = event.TelemetrySettings
+		state.VersionSettings = event.VersionSettings
+		state.AnalyticsTiltfileOpt = event.AnalyticsTiltfileOpt
+		state.UpdateSettings = event.UpdateSettings
+		state.DockerPruneSettings = event.DockerPruneSettings
+	}
 }
 
 func handleLogAction(state *store.EngineState, action store.LogAction) {
