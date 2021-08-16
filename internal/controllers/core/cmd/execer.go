@@ -29,6 +29,7 @@ type Execer interface {
 type fakeExecProcess struct {
 	exitCh    chan int
 	workdir   string
+	env       []string
 	startTime time.Time
 }
 
@@ -60,6 +61,7 @@ func (e *FakeExecer) Start(ctx context.Context, cmd model.Cmd, w io.Writer) chan
 		exitCh:    exitCh,
 		workdir:   cmd.Dir,
 		startTime: time.Now(),
+		env:       cmd.Env,
 	}
 	e.mu.Unlock()
 

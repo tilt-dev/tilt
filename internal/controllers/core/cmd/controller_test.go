@@ -568,6 +568,71 @@ func TestDependencyChangesDoNotCauseRestart(t *testing.T) {
 	})
 }
 
+func TestCmdUsesInputsFromButtonOnStart(t *testing.T) {
+	f := newFixture(t)
+	defer f.teardown()
+
+	setupStartOnTest(t, f)
+	f.updateButton("b-1", func(button *v1alpha1.UIButton) {
+		inputs := []v1alpha1.UIInputStatus{
+			{
+				Name: "foo",
+				Text: &v1alpha1.UITextInputStatus{Value: "bar"},
+			},
+			{
+				Name: "baz",
+				Text: &v1alpha1.UITextInputStatus{Value: "wait what comes next"},
+			},
+		}
+		button.Status.Inputs = append(button.Status.Inputs, inputs...)
+	})
+	f.triggerButton("b-1", f.clock.Now())
+	f.reconcileCmd("testcmd")
+
+	actualEnv := f.fe.processes["myserver"].env
+	expectedEnv := []string{"foo=bar", "baz=wait what comes next"}
+	require.Equal(t, expectedEnv, actualEnv)
+}
+
+func TestCmdOnlyUsesButtonThatStartedIt(t *testing.T) {
+	f := newFixture(t)
+	defer f.teardown()
+
+	setupStartOnTest(t, f)
+	f.updateButton("b-1", func(button *v1alpha1.UIButton) {
+		inputs := []v1alpha1.UIInputStatus{
+			{
+				Name: "foo",
+				Text: &v1alpha1.UITextInputStatus{Value: "bar"},
+			},
+			{
+				Name: "baz",
+				Text: &v1alpha1.UITextInputStatus{Value: "wait what comes next"},
+			},
+		}
+		button.Status.Inputs = append(button.Status.Inputs, inputs...)
+	})
+
+	b := &UIButton{
+		ObjectMeta: ObjectMeta{
+			Name: "b-2",
+		},
+		Spec: UIButtonSpec{},
+	}
+	err := f.client.Create(f.ctx, b)
+	require.NoError(t, err)
+	f.updateSpec("testcmd", func(spec *v1alpha1.CmdSpec) {
+		spec.StartOn.UIButtons = append(spec.StartOn.UIButtons, "b-2")
+	})
+	f.triggerButton("b-2", f.clock.Now())
+	f.reconcileCmd("testcmd")
+
+	actualEnv := f.fe.processes["myserver"].env
+	// b-1's env gets ignored since it was triggered by b-2
+	expectedEnv := []string{}
+	require.Equal(t, expectedEnv, actualEnv)
+}
+
 type testStore struct {
 	*store.TestingStore
 	out     io.Writer
@@ -688,13 +753,9 @@ func (f *fixture) triggerFileWatch(name string) {
 }
 
 func (f *fixture) triggerButton(name string, ts time.Time) {
-	b := &UIButton{}
-	err := f.client.Get(f.ctx, types.NamespacedName{Name: name}, b)
-	require.NoError(f.T(), err)
-
-	b.Status.LastClickedAt = metav1.NewMicroTime(ts)
-	err = f.client.Status().Update(f.ctx, b)
-	require.NoError(f.T(), err)
+	f.updateButton(name, func(b *v1alpha1.UIButton) {
+		b.Status.LastClickedAt = metav1.NewMicroTime(ts)
+	})
 }
 
 func (f *fixture) reconcileCmd(name string) {
@@ -709,6 +770,16 @@ func (f *fixture) updateSpec(name string, update func(spec *v1alpha1.CmdSpec)) {
 
 	update(&(cmd.Spec))
 	err = f.client.Update(f.ctx, cmd)
+	require.NoError(f.T(), err)
+}
+
+func (f *fixture) updateButton(name string, update func(button *v1alpha1.UIButton)) {
+	button := &UIButton{}
+	err := f.client.Get(f.ctx, types.NamespacedName{Name: name}, button)
+	require.NoError(f.T(), err)
+
+	update(button)
+	err = f.client.Update(f.ctx, button)
 	require.NoError(f.T(), err)
 }
 
