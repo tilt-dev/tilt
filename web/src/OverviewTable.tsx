@@ -62,10 +62,10 @@ import {
   ResourceStatus,
   TargetType,
   TriggerMode,
+  UIButton,
   UILink,
   UIResource,
   UIResourceStatus,
-  UIButton
 } from "./types"
 
 export type OverviewTableProps = {
@@ -785,7 +785,12 @@ function TableGroup(props: { label: string; data: RowValues[] }) {
 export function TableGroupedByLabels(props: OverviewTableProps) {
   const logStore = useLogStore()
   const data = useMemo(
-    () => resourcesToTableCells(props.view.uiResources, props.view.uiButtons, logStore),
+    () =>
+      resourcesToTableCells(
+        props.view.uiResources,
+        props.view.uiButtons,
+        logStore
+      ),
     [props.view.uiResources]
   )
   return (
@@ -807,7 +812,9 @@ function TableWithoutGroups(props: OverviewTableProps) {
   const logStore = useLogStore()
   const data = useMemo(() => {
     return (
-      props.view.uiResources?.map((r) => uiResourceToCell(r, props.view.uiButtons, logStore)) || []
+      props.view.uiResources?.map((r) =>
+        uiResourceToCell(r, props.view.uiButtons, logStore)
+      ) || []
     )
   }, [props.view.uiResources])
 

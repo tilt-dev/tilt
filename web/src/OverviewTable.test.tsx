@@ -1,9 +1,6 @@
 import { mount, ReactWrapper } from "enzyme"
 import React from "react"
 import { MemoryRouter } from "react-router"
-import { CustomActionButton } from "./OverviewButton"
-import OverviewTable, { ResourceTableRow } from "./OverviewTable"
-import { nResourceView, oneButton } from "./testdata"
 import { AnalyticsAction, AnalyticsType } from "./analytics"
 import {
   cleanupMockAnalyticsCalls,
@@ -12,18 +9,20 @@ import {
 } from "./analytics_test_helpers"
 import { GroupByLabelView, TILTFILE_LABEL, UNLABELED_LABEL } from "./labels"
 import LogStore from "./LogStore"
-import {
+import { CustomActionButton } from "./OverviewButton"
+import OverviewTable, {
   OverviewGroup,
   OverviewGroupName,
   OverviewGroupSummary,
   OverviewTableProps,
   resourcesToTableCells,
+  ResourceTableRow,
   RowValues,
   Table,
   TableGroupedByLabels,
   TableNameColumn,
 } from "./OverviewTable"
-import { nResourceWithLabelsView } from "./testdata"
+import { nResourceView, nResourceWithLabelsView, oneButton } from "./testdata"
 
 it("shows buttons on the appropriate resources", () => {
   let view = nResourceView(3)
@@ -51,7 +50,6 @@ it("shows buttons on the appropriate resources", () => {
   expect(actualButtons).toEqual(expectedButtons)
 })
 
-
 describe("overview table with groups", () => {
   let view: Proto.webviewView
   let wrapper: ReactWrapper<OverviewTableProps, typeof TableGroupedByLabels>
@@ -74,7 +72,11 @@ describe("overview table with groups", () => {
     let resources: GroupByLabelView<RowValues>
 
     beforeEach(() => {
-      resources = resourcesToTableCells(view.uiResources, view.uiButtons, new LogStore())
+      resources = resourcesToTableCells(
+        view.uiResources,
+        view.uiButtons,
+        new LogStore()
+      )
     })
 
     it("renders each label group in order", () => {
