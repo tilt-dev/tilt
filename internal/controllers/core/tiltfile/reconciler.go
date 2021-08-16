@@ -285,6 +285,15 @@ func indexTiltfile(obj client.Object) []indexer.Key {
 				GVK:  fwGVK,
 			})
 		}
+
+		bGVK := v1alpha1.SchemeGroupVersion.WithKind("UIButton")
+
+		for _, name := range tiltfile.Spec.RestartOn.UIButtons {
+			result = append(result, indexer.Key{
+				Name: types.NamespacedName{Name: name},
+				GVK:  bGVK,
+			})
+		}
 	}
 	return result
 }

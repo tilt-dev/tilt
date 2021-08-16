@@ -1702,6 +1702,11 @@ func (in *RestartOnSpec) DeepCopyInto(out *RestartOnSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.UIButtons != nil {
+		in, out := &in.UIButtons, &out.UIButtons
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

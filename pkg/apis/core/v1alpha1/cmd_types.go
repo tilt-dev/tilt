@@ -227,7 +227,12 @@ func (in CmdStatus) CopyTo(parent resource.ObjectWithStatusSubResource) {
 // RestartOnSpec indicates the set of objects that can trigger a restart of this object.
 type RestartOnSpec struct {
 	// A list of file watches that can trigger a restart.
-	FileWatches []string `json:"fileWatches" protobuf:"bytes,1,rep,name=fileWatches"`
+	// +optional
+	FileWatches []string `json:"fileWatches,omitempty" protobuf:"bytes,1,rep,name=fileWatches"`
+
+	// A list of ui buttons that can trigger a restart.
+	// +optional
+	UIButtons []string `json:"uiButtons,omitempty" protobuf:"bytes,2,rep,name=uiButtons"`
 }
 
 // StartOnSpec indicates the set of objects that can trigger a start/restart of this object.

@@ -1186,7 +1186,12 @@ message Probe {
 // RestartOnSpec indicates the set of objects that can trigger a restart of this object.
 message RestartOnSpec {
   // A list of file watches that can trigger a restart.
+  // +optional
   repeated string fileWatches = 1;
+
+  // A list of ui buttons that can trigger a restart.
+  // +optional
+  repeated string uiButtons = 2;
 }
 
 // Session provides introspective data about the status of the Tilt process.
