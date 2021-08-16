@@ -79,7 +79,7 @@ func NewLogStreamer(resources []string, p *hud.IncrementalPrinter) *LogStreamer 
 }
 
 func (ls *LogStreamer) Handle(v proto_webview.View) error {
-	if v.LogList.FromCheckpoint == -1 {
+	if v.LogList == nil || v.LogList.FromCheckpoint == -1 {
 		// Server has no new logs to send
 		return nil
 	}
