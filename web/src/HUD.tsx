@@ -19,7 +19,6 @@ import LogStore, { LogStoreProvider } from "./LogStore"
 import OverviewResourcePane from "./OverviewResourcePane"
 import OverviewTablePane from "./OverviewTablePane"
 import PathBuilder, { PathBuilderProvider } from "./PathBuilder"
-import { ResourceGroupsProvider } from "./ResourceGroupsContext"
 import { ResourceNavProvider } from "./ResourceNav"
 import ShareSnapshotModal from "./ShareSnapshotModal"
 import { SnapshotActionProvider } from "./snapshot"
@@ -249,21 +248,17 @@ export default class HUD extends Component<HudProps, HudState> {
           <SnapshotActionProvider value={snapshotAction}>
             <PathBuilderProvider value={this.pathBuilder}>
               <LogStoreProvider value={this.state.logStore || new LogStore()}>
-                <ResourceGroupsProvider>
-                  <Switch>
-                    <Route
-                      path={this.path("/r/:name/overview")}
-                      render={(props: RouteComponentProps<any>) => (
-                        <OverviewResourcePane view={this.state.view} />
-                      )}
-                    />
-                    <Route
-                      render={() => (
-                        <OverviewTablePane view={this.state.view} />
-                      )}
-                    />
-                  </Switch>
-                </ResourceGroupsProvider>
+                <Switch>
+                  <Route
+                    path={this.path("/r/:name/overview")}
+                    render={(props: RouteComponentProps<any>) => (
+                      <OverviewResourcePane view={this.state.view} />
+                    )}
+                  />
+                  <Route
+                    render={() => <OverviewTablePane view={this.state.view} />}
+                  />
+                </Switch>
               </LogStoreProvider>
             </PathBuilderProvider>
           </SnapshotActionProvider>

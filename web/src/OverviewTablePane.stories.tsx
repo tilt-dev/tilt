@@ -2,14 +2,8 @@ import React from "react"
 import { MemoryRouter } from "react-router"
 import Features, { FeaturesProvider, Flag } from "./feature"
 import OverviewTablePane from "./OverviewTablePane"
-import { ResourceGroupsProvider } from "./ResourceGroupsContext"
 import { StarredResourceMemoryProvider } from "./StarredResourcesContext"
-import {
-  nResourceView,
-  nResourceWithLabelsView,
-  tenResourceView,
-  twoResourceView,
-} from "./testdata"
+import { nResourceView, tenResourceView, twoResourceView } from "./testdata"
 
 export default {
   title: "New UI/OverviewTablePane",
@@ -21,13 +15,11 @@ export default {
       return (
         <MemoryRouter initialEntries={["/"]}>
           <FeaturesProvider value={features}>
-            <ResourceGroupsProvider>
-              <StarredResourceMemoryProvider>
-                <div style={{ margin: "-1rem", height: "80vh" }}>
-                  <Story />
-                </div>
-              </StarredResourceMemoryProvider>
-            </ResourceGroupsProvider>
+            <StarredResourceMemoryProvider>
+              <div style={{ margin: "-1rem", height: "80vh" }}>
+                <Story />
+              </div>
+            </StarredResourceMemoryProvider>
           </FeaturesProvider>
         </MemoryRouter>
       )
@@ -47,10 +39,6 @@ export default {
 export const TwoResources = () => <OverviewTablePane view={twoResourceView()} />
 
 export const TenResources = () => <OverviewTablePane view={tenResourceView()} />
-
-export const TenResourcesWithLabels = () => (
-  <OverviewTablePane view={nResourceWithLabelsView(10)} />
-)
 
 export const OneHundredResources = () => (
   <OverviewTablePane view={nResourceView(100)} />

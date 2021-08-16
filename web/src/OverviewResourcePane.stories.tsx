@@ -4,7 +4,6 @@ import { MemoryRouter } from "react-router"
 import Features, { FeaturesProvider, Flag } from "./feature"
 import LogStore, { LogStoreProvider } from "./LogStore"
 import OverviewResourcePane from "./OverviewResourcePane"
-import { ResourceGroupsProvider } from "./ResourceGroupsContext"
 import { ResourceNavProvider } from "./ResourceNav"
 import { StarredResourceMemoryProvider } from "./StarredResourcesContext"
 import {
@@ -59,11 +58,9 @@ function OverviewResourcePaneHarness(props: {
     resources.some((res) => res.metadata?.name == name)
   return (
     <MemoryRouter initialEntries={[entry]}>
-      <ResourceGroupsProvider>
-        <ResourceNavProvider validateResource={validateResource}>
-          <OverviewResourcePane view={view} />
-        </ResourceNavProvider>
-      </ResourceGroupsProvider>
+      <ResourceNavProvider validateResource={validateResource}>
+        <OverviewResourcePane view={view} />
+      </ResourceNavProvider>
     </MemoryRouter>
   )
 }

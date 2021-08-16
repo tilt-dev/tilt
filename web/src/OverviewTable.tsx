@@ -1,3 +1,8 @@
+import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+} from "@material-ui/core"
 import React, { ChangeEvent, useMemo, useState } from "react"
 import {
   CellProps,
@@ -15,19 +20,14 @@ import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
 import { linkToTiltDocs, TiltDocsPage } from "./constants"
-import { useFeatures } from "./feature"
 import { InstrumentedButton } from "./instrumentedComponents"
 import {
   asUILabels,
   getUILabels,
-  Group,
   GroupByLabelView,
-  GroupDetails,
-  GroupName,
-  GroupSummary,
   orderLabels,
-  resourcesHaveLabels,
-  SummaryIcon,
+  TILTFILE_LABEL,
+  UNLABELED_LABEL,
 } from "./labels"
 import { displayURL } from "./links"
 import LogStore, { LogAlertIndex, useLogStore } from "./LogStore"
@@ -36,7 +36,14 @@ import OverviewTableStarResourceButton from "./OverviewTableStarResourceButton"
 import OverviewTableStatus from "./OverviewTableStatus"
 import OverviewTableTriggerButton from "./OverviewTableTriggerButton"
 import OverviewTableTriggerModeToggle from "./OverviewTableTriggerModeToggle"
-import { useResourceGroups } from "./ResourceGroupsContext"
+import {
+  AccordionDetailsStyleResetMixin,
+  AccordionStyleResetMixin,
+  AccordionSummaryStyleResetMixin,
+  ResourceGroupNameMixin,
+  ResourceGroupSummaryIcon,
+  ResourceGroupSummaryMixin,
+} from "./ResourceGroups"
 import { useResourceNav } from "./ResourceNav"
 import { useStarredResources } from "./StarredResourcesContext"
 import { buildStatus, runtimeStatus } from "./status"
@@ -61,11 +68,11 @@ import {
   UIButton
 } from "./types"
 
-type OverviewTableProps = {
+export type OverviewTableProps = {
   view: Proto.webviewView
 }
 
-type RowValues = {
+export type RowValues = {
   lastDeployTime: string
   trigger: OverviewTableTrigger
   name: string
@@ -92,24 +99,34 @@ type OverviewTableStatus = {
   runtimeAlertCount: number
 }
 
-const OverviewGroup = styled(Group)`
+export const OverviewGroup = styled(Accordion)`
+  ${AccordionStyleResetMixin}
+
+  /* Set specific margins for table view */
   &.MuiAccordion-root,
   &.MuiAccordion-root.Mui-expanded {
-    margin: ${SizeUnit(1 / 2)} ${SizeUnit(1 / 2)};
+    margin: ${SizeUnit(1 / 2)};
   }
 `
 
-const OverviewGroupSummary = styled(GroupSummary)`
+export const OverviewGroupSummary = styled(AccordionSummary)`
+  ${AccordionSummaryStyleResetMixin}
+  ${ResourceGroupSummaryMixin}
+
   .MuiAccordionSummary-content {
     font-size: ${FontSize.default};
   }
 `
 
-const OverviewGroupName = styled(GroupName)`
+export const OverviewGroupName = styled.span`
+  ${ResourceGroupNameMixin}
+
   padding-left: ${SizeUnit(1 / 3)};
 `
 
-const OverviewGroupDetails = styled(GroupDetails)``
+export const OverviewGroupDetails = styled(AccordionDetails)`
+  ${AccordionDetailsStyleResetMixin}
+`
 
 const ResourceTable = styled.table`
   margin-top: ${SizeUnit(0.5)};
@@ -275,7 +292,7 @@ function TableTriggerColumn({ row }: CellProps<RowValues>) {
   )
 }
 
-function TableNameColumn({ row }: CellProps<RowValues>) {
+export function TableNameColumn({ row }: CellProps<RowValues>) {
   let nav = useResourceNav()
   let hasError =
     row.values.statusLine.buildStatus === ResourceStatus.Unhealthy ||
@@ -606,7 +623,7 @@ function getResourceLabels(resource: UIResource) {
   return getUILabels(uiLabels)
 }
 
-function resourcesToTableCells(
+export function resourcesToTableCells(
   resources: UIResource[] | undefined,
   buttons: UIButton[] | undefined,
   logStore: LogStore
@@ -646,7 +663,9 @@ function resourcesToTableCells(
   return { labels, labelsToResources, tiltfile, unlabeled }
 }
 
-function Table(props: TableOptions<RowValues> & { isGroupView?: boolean }) {
+export function Table(
+  props: TableOptions<RowValues> & { isGroupView?: boolean }
+) {
   const {
     getTableProps,
     getTableBodyProps,
@@ -735,13 +754,16 @@ function TableGroup(props: { label: string; data: RowValues[] }) {
   }
 
   const formattedLabel =
-    props.label === "unlabeled" ? <em>{props.label}</em> : props.label
+    props.label === UNLABELED_LABEL ? <em>{props.label}</em> : props.label
   const labelNameId = `tableOverview-${props.label}`
 
-  const { getGroup, setGroup } = useResourceGroups()
-  const expanded = getGroup(props.label)
-  const handleChange = (_e: ChangeEvent<{}>) =>
-    setGroup(props.label, AnalyticsType.Grid)
+  // Groups are expanded by default
+  const [expanded, setExpanded] = useState(true)
+  const handleChange = (_e: ChangeEvent<{}>) => {
+    const action = expanded ? AnalyticsAction.Collapse : AnalyticsAction.Expand
+    incr("ui.web.resourceGroup", { action, type: AnalyticsType.Grid })
+    setExpanded(!expanded)
+  }
 
   return (
     <OverviewGroup
@@ -750,7 +772,7 @@ function TableGroup(props: { label: string; data: RowValues[] }) {
       onChange={handleChange}
     >
       <OverviewGroupSummary id={labelNameId}>
-        <SummaryIcon role="presentation" />
+        <ResourceGroupSummaryIcon role="presentation" />
         <OverviewGroupName>{formattedLabel}</OverviewGroupName>
       </OverviewGroupSummary>
       <OverviewGroupDetails>
@@ -760,7 +782,7 @@ function TableGroup(props: { label: string; data: RowValues[] }) {
   )
 }
 
-function TableGroupedByLabels(props: OverviewTableProps) {
+export function TableGroupedByLabels(props: OverviewTableProps) {
   const logStore = useLogStore()
   const data = useMemo(
     () => resourcesToTableCells(props.view.uiResources, props.view.uiButtons, logStore),
@@ -775,8 +797,8 @@ function TableGroupedByLabels(props: OverviewTableProps) {
           data={data.labelsToResources[label]}
         />
       ))}
-      <TableGroup label={"unlabeled"} data={data.unlabeled} />
-      <TableGroup label={"Tiltfile"} data={data.tiltfile} />
+      <TableGroup label={UNLABELED_LABEL} data={data.unlabeled} />
+      <TableGroup label={TILTFILE_LABEL} data={data.tiltfile} />
     </>
   )
 }
@@ -793,17 +815,7 @@ function TableWithoutGroups(props: OverviewTableProps) {
 }
 
 export default function OverviewTable(props: OverviewTableProps) {
-  const features = useFeatures()
-
-  const groupByLabels = resourcesHaveLabels<UIResource>(
-    features,
-    props.view.uiResources,
-    getResourceLabels
-  )
-
-  return groupByLabels ? (
-    <TableGroupedByLabels {...props} />
-  ) : (
-    <TableWithoutGroups {...props} />
-  )
+  // TODO: Add support for table groups by feature flag
+  // when groups are ready to launch
+  return <TableWithoutGroups {...props} />
 }

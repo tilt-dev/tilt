@@ -397,7 +397,7 @@ export const nResourceWithLabelsView = (n: number) => {
   const view = nResourceView(n)
   const firstLabelLimit = Math.floor(n / 5)
   const secondLabelLimit = n < 10 ? 2 : 5
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < n; i++) {
     const labels: { [key: string]: string } = {}
     // The first item is a Tiltfile, so don't apply a label to it
     if (i > 0 && i < firstLabelLimit) {

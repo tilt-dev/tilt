@@ -1,25 +1,36 @@
+import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+} from "@material-ui/core"
 import React, {
   ChangeEvent,
   Dispatch,
   PropsWithChildren,
   SetStateAction,
+  useState,
 } from "react"
 import styled from "styled-components"
-import { AnalyticsType } from "./analytics"
+import { AnalyticsAction, AnalyticsType, incr } from "./analytics"
 import { FeaturesContext } from "./feature"
 import {
-  Group,
   GroupByLabelView,
-  GroupDetails,
-  GroupSummary,
   orderLabels,
   resourcesHaveLabels,
-  SummaryIcon,
+  TILTFILE_LABEL,
+  UNLABELED_LABEL,
 } from "./labels"
 import { PersistentStateProvider } from "./LocalStorage"
 import { OverviewSidebarOptions } from "./OverviewSidebarOptions"
 import PathBuilder from "./PathBuilder"
-import { useResourceGroups } from "./ResourceGroupsContext"
+import {
+  AccordionDetailsStyleResetMixin,
+  AccordionStyleResetMixin,
+  AccordionSummaryStyleResetMixin,
+  ResourceGroupNameMixin,
+  ResourceGroupSummaryIcon,
+  ResourceGroupSummaryMixin,
+} from "./ResourceGroups"
 import { ResourceSidebarStatusSummary } from "./ResourceStatusSummary"
 import SidebarItem from "./SidebarItem"
 import SidebarItemView, {
@@ -61,8 +72,6 @@ const NoMatchesFound = styled.li`
   color: ${Color.grayLightest};
 `
 
-const SidebarLabelSection = Group
-
 const SidebarGroupInfo = styled.aside`
   background-color: ${Color.grayDark};
   bottom: 0;
@@ -74,7 +83,21 @@ const SidebarGroupInfo = styled.aside`
   z-index: 2;
 `
 
-const SidebarGroupSummary = styled(GroupSummary)`
+const SidebarLabelSection = styled(Accordion)`
+  ${AccordionStyleResetMixin}
+
+  /* Set specific margins for sidebar */
+  &.MuiAccordion-root,
+  &.MuiAccordion-root.Mui-expanded {
+    margin: ${SizeUnit(1 / 3)} ${SizeUnit(1 / 2)};
+  }
+`
+
+const SidebarGroupSummary = styled(AccordionSummary)`
+  ${AccordionSummaryStyleResetMixin}
+  ${ResourceGroupSummaryMixin}
+
+  /* Set specific background and borders for sidebar */
   .MuiAccordionSummary-content {
     background-color: ${Color.grayLighter};
     border: 1px solid ${Color.grayLight};
@@ -84,13 +107,12 @@ const SidebarGroupSummary = styled(GroupSummary)`
 `
 
 const SidebarGroupName = styled.span`
-  margin-right: auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  width: 100%;
+  ${ResourceGroupNameMixin}
 `
 
-const SidebarGroupDetails = styled(GroupDetails)`
+const SidebarGroupDetails = styled(AccordionDetails)`
+  ${AccordionDetailsStyleResetMixin}
+
   &.MuiAccordionDetails-root {
     ${SidebarItemRoot} {
       margin-right: unset;
@@ -154,13 +176,16 @@ function SidebarLabelListSection(props: { label: string } & SidebarProps) {
   }
 
   const formattedLabel =
-    props.label === "unlabeled" ? <em>{props.label}</em> : props.label
+    props.label === UNLABELED_LABEL ? <em>{props.label}</em> : props.label
   const labelNameId = `sidebarItem-${props.label}`
 
-  const { getGroup, setGroup } = useResourceGroups()
-  const expanded = getGroup(props.label)
-  const handleChange = (_e: ChangeEvent<{}>) =>
-    setGroup(props.label, AnalyticsType.Detail)
+  // Groups are expanded by default
+  const [expanded, setExpanded] = useState(true)
+  const handleChange = (_e: ChangeEvent<{}>) => {
+    const action = expanded ? AnalyticsAction.Collapse : AnalyticsAction.Expand
+    incr("ui.web.resourceGroup", { action, type: AnalyticsType.Detail })
+    setExpanded(!expanded)
+  }
 
   // TODO (lizz): Improve the accessibility interface for accordion feature by adding focus styles
   // according to https://www.w3.org/TR/wai-aria-practices-1.1/examples/accordion/accordion.html
@@ -171,7 +196,7 @@ function SidebarLabelListSection(props: { label: string } & SidebarProps) {
       onChange={handleChange}
     >
       <SidebarGroupSummary id={labelNameId}>
-        <SummaryIcon role="presentation" />
+        <ResourceGroupSummaryIcon role="presentation" />
         <SidebarGroupName>{formattedLabel}</SidebarGroupName>
         <ResourceSidebarStatusSummary
           aria-label={`Status summary for ${props.label} group`}
@@ -233,8 +258,12 @@ function SidebarGroupedByLabels(props: SidebarProps) {
           items={labelsToResources[label]}
         />
       ))}
-      <SidebarLabelListSection {...props} label="unlabeled" items={unlabeled} />
-      <SidebarListSection name="Tiltfile">
+      <SidebarLabelListSection
+        {...props}
+        label={UNLABELED_LABEL}
+        items={unlabeled}
+      />
+      <SidebarListSection name={TILTFILE_LABEL}>
         <SidebarItemsView {...props} items={tiltfile} groupView={true} />
       </SidebarListSection>
     </>
