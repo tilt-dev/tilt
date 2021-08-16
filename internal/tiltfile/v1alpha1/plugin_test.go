@@ -14,7 +14,7 @@ func TestExtension(t *testing.T) {
 	defer f.TearDown()
 
 	f.File("Tiltfile", `
-v1alpha1.extension_repo(name='default', url='https://github.com/tilt-dev/tilt-extensions')
+v1alpha1.extension_repo(name='default', url='https://github.com/tilt-dev/tilt-extensions', ref='HEAD')
 v1alpha1.extension(name='cancel', repo_name='default', repo_path='cancel')
 `)
 	result, err := f.ExecFile("Tiltfile")
@@ -25,6 +25,7 @@ v1alpha1.extension(name='cancel', repo_name='default', repo_path='cancel')
 	repo := set[(&v1alpha1.ExtensionRepo{}).GetGroupVersionResource()]["default"].(*v1alpha1.ExtensionRepo)
 	require.NotNil(t, repo)
 	require.Equal(t, "https://github.com/tilt-dev/tilt-extensions", repo.Spec.URL)
+	require.Equal(t, "HEAD", repo.Spec.Ref)
 
 	ext := set[(&v1alpha1.Extension{}).GetGroupVersionResource()]["cancel"].(*v1alpha1.Extension)
 	require.NotNil(t, ext)

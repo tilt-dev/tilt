@@ -15,11 +15,13 @@ func (p Plugin) extensionRepo(t *starlark.Thread, fn *starlark.Builtin, args sta
 	var labels value.StringStringMap
 	var annotations value.StringStringMap
 	var url string
+	var ref string
 	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
 		"name", &name,
 		"labels?", &labels,
 		"annotations?", &annotations,
 		"url?", &url,
+		"ref?", &ref,
 	)
 	if err != nil {
 		return nil, err
@@ -33,6 +35,7 @@ func (p Plugin) extensionRepo(t *starlark.Thread, fn *starlark.Builtin, args sta
 		},
 		Spec: v1alpha1.ExtensionRepoSpec{
 			URL: url,
+			Ref: ref,
 		},
 	}
 
