@@ -737,10 +737,10 @@ function TableGroup(props: { label: string; data: RowValues[] }) {
     props.label === UNLABELED_LABEL ? <em>{props.label}</em> : props.label
   const labelNameId = `tableOverview-${props.label}`
 
-  const { getGroup, setGroup } = useResourceGroups()
-  const expanded = getGroup(props.label)
+  const { getGroup, toggleGroupExpanded } = useResourceGroups()
+  const { expanded } = getGroup(props.label)
   const handleChange = (_e: ChangeEvent<{}>) =>
-    setGroup(props.label, AnalyticsType.Grid)
+    toggleGroupExpanded(props.label, AnalyticsType.Grid)
 
   return (
     <OverviewGroup expanded={expanded} onChange={handleChange}>

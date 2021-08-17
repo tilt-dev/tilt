@@ -179,10 +179,10 @@ function SidebarLabelListSection(props: { label: string } & SidebarProps) {
     props.label === UNLABELED_LABEL ? <em>{props.label}</em> : props.label
   const labelNameId = `sidebarItem-${props.label}`
 
-  const { getGroup, setGroup } = useResourceGroups()
-  const expanded = getGroup(props.label)
+  const { getGroup, toggleGroupExpanded } = useResourceGroups()
+  const { expanded } = getGroup(props.label)
   const handleChange = (_e: ChangeEvent<{}>) =>
-    setGroup(props.label, AnalyticsType.Detail)
+    toggleGroupExpanded(props.label, AnalyticsType.Detail)
 
   // TODO (lizz): Improve the accessibility interface for accordion feature by adding focus styles
   // according to https://www.w3.org/TR/wai-aria-practices-1.1/examples/accordion/accordion.html

@@ -4,6 +4,7 @@ import SplitPane from "react-split-pane"
 import Features, { FeaturesProvider, Flag } from "./feature"
 import LogStore, { LogStoreProvider } from "./LogStore"
 import OverviewResourceSidebar from "./OverviewResourceSidebar"
+import { ResourceGroupsContextProvider } from "./ResourceGroupsContext"
 import { Width } from "./style-helpers"
 import {
   nResourceView,
@@ -27,15 +28,17 @@ export default {
       return (
         <MemoryRouter initialEntries={["/"]}>
           <FeaturesProvider value={features}>
-            <div style={{ margin: "-1rem", height: "80vh" }}>
-              <SplitPane
-                split="vertical"
-                minSize={Width.sidebarDefault}
-                defaultSize={Width.sidebarDefault}
-              >
-                <Story />
-              </SplitPane>
-            </div>
+            <ResourceGroupsContextProvider>
+              <div style={{ margin: "-1rem", height: "80vh" }}>
+                <SplitPane
+                  split="vertical"
+                  minSize={Width.sidebarDefault}
+                  defaultSize={Width.sidebarDefault}
+                >
+                  <Story />
+                </SplitPane>
+              </div>
+            </ResourceGroupsContextProvider>
           </FeaturesProvider>
         </MemoryRouter>
       )

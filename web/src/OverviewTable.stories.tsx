@@ -1,6 +1,7 @@
 import React from "react"
 import { MemoryRouter } from "react-router"
 import OverviewTable, { TableGroupedByLabels } from "./OverviewTable"
+import { ResourceGroupsContextProvider } from "./ResourceGroupsContext"
 import {
   nButtonView,
   nResourceView,
@@ -14,14 +15,16 @@ export default {
   decorators: [
     (Story: any) => (
       <MemoryRouter initialEntries={["/"]}>
-        {/* required for MUI <Icon> */}
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/icon?family=Material+Icons"
-        />
-        <div style={{ margin: "-1rem" }}>
-          <Story />
-        </div>
+        <ResourceGroupsContextProvider>
+          {/* required for MUI <Icon> */}
+          <link
+            rel="stylesheet"
+            href="https://fonts.googleapis.com/icon?family=Material+Icons"
+          />
+          <div style={{ margin: "-1rem" }}>
+            <Story />
+          </div>
+        </ResourceGroupsContextProvider>
       </MemoryRouter>
     ),
   ],

@@ -1,27 +1,32 @@
-import { createContext, PropsWithChildren, useContext, useState } from "react"
+import { createContext, PropsWithChildren, useContext } from "react"
 import { AnalyticsAction, AnalyticsType, incr } from "./analytics"
+import { usePersistentState } from "./LocalStorage"
 
-// To use local storage, you can use the `usePersistentState` hook instead of `useState`
-// I'm not sure how the provider or context ingestion is different, but I think everything else is the same
+export type GroupState = { expanded: boolean }
 
-export const DEFAULT_GROUP_STATE = true
-
-export type GroupExpandedState = { [key: string]: boolean }
+export type GroupsState = {
+  [key: string]: GroupState
+}
 
 type ResourceGroupsContext = {
-  expanded: GroupExpandedState
-  setGroup: (groupLabel: string, page: AnalyticsType) => void
-  getGroup: (groupLabel: string) => boolean
+  groups: GroupsState
+  getGroup: (groupLabel: string) => GroupState
+  toggleGroupExpanded: (groupLabel: string, page: AnalyticsType) => void
+}
+
+export const DEFAULT_EXPANDED_STATE = true
+export const DEFAULT_GROUP_STATE: GroupState = {
+  expanded: DEFAULT_EXPANDED_STATE,
 }
 
 const resourceGroupsContext = createContext<ResourceGroupsContext>({
-  expanded: {},
-  setGroup: () => {
+  groups: {},
+  toggleGroupExpanded: () => {
     console.warn("Resource group context is not set.")
   },
   getGroup: () => {
     console.warn("Resource group context is not set.")
-    return DEFAULT_GROUP_STATE
+    return { ...DEFAULT_GROUP_STATE }
   },
 })
 
@@ -29,29 +34,44 @@ export function useResourceGroups(): ResourceGroupsContext {
   return useContext(resourceGroupsContext)
 }
 
-export function ResourceGroupsContextProvider(props: PropsWithChildren<{}>) {
-  const [expanded, setExpandedState] = useState<GroupExpandedState>({})
+export function ResourceGroupsContextProvider(
+  props: PropsWithChildren<{ initialValuesForTesting?: GroupsState }>
+) {
+  const defaultPersistentValue = props.initialValuesForTesting ?? {}
+  const [groups, setGroups] = usePersistentState<GroupsState>(
+    "resource-groups",
+    defaultPersistentValue
+  )
 
-  function setGroup(groupLabel: string, page: AnalyticsType) {
-    const currentGroupState = expanded[groupLabel] ?? DEFAULT_GROUP_STATE
-    const nextGroupState = !currentGroupState
+  function toggleGroupExpanded(groupLabel: string, page: AnalyticsType) {
+    const currentGroupState = groups[groupLabel] ?? { ...DEFAULT_GROUP_STATE }
+    const nextGroupState = {
+      ...currentGroupState,
+      expanded: !currentGroupState.expanded,
+    }
 
-    const action = nextGroupState
+    const action = nextGroupState.expanded
       ? AnalyticsAction.Expand
       : AnalyticsAction.Collapse
     incr("ui.web.resourceGroup", { action, type: page })
 
-    setExpandedState((prevState) => ({
-      ...prevState,
-      [groupLabel]: nextGroupState,
-    }))
+    setGroups((prevState) => {
+      return {
+        ...prevState,
+        [groupLabel]: nextGroupState,
+      }
+    })
   }
 
   function getGroup(groupLabel: string) {
-    return expanded[groupLabel] ?? DEFAULT_GROUP_STATE
+    return groups[groupLabel] ?? { ...DEFAULT_GROUP_STATE }
   }
 
-  const defaultValue = { expanded: {}, setGroup, getGroup }
+  const defaultValue: ResourceGroupsContext = {
+    groups,
+    toggleGroupExpanded,
+    getGroup,
+  }
 
   return (
     <resourceGroupsContext.Provider value={defaultValue}>
