@@ -43,6 +43,7 @@ import {
   ResourceGroupSummaryIcon,
   ResourceGroupSummaryMixin,
 } from "./ResourceGroups"
+import { useResourceGroups } from "./ResourceGroupsContext"
 import { useResourceNav } from "./ResourceNav"
 import { useStarredResources } from "./StarredResourcesContext"
 import { buildStatus, runtimeStatus } from "./status"
@@ -736,13 +737,10 @@ function TableGroup(props: { label: string; data: RowValues[] }) {
     props.label === UNLABELED_LABEL ? <em>{props.label}</em> : props.label
   const labelNameId = `tableOverview-${props.label}`
 
-  // Groups are expanded by default
-  const [expanded, setExpanded] = useState(true)
-  const handleChange = (_e: ChangeEvent<{}>) => {
-    const action = expanded ? AnalyticsAction.Collapse : AnalyticsAction.Expand
-    incr("ui.web.resourceGroup", { action, type: AnalyticsType.Grid })
-    setExpanded(!expanded)
-  }
+  const { getGroup, setGroup } = useResourceGroups()
+  const expanded = getGroup(props.label)
+  const handleChange = (_e: ChangeEvent<{}>) =>
+    setGroup(props.label, AnalyticsType.Grid)
 
   return (
     <OverviewGroup expanded={expanded} onChange={handleChange}>
@@ -797,7 +795,7 @@ function TableWithoutGroups(props: OverviewTableProps) {
 }
 
 export default function OverviewTable(props: OverviewTableProps) {
-  // TODO: Add support for table groups by feature flag
+  // TODO (lizz): Add support for table groups by feature flag
   // when groups are ready to launch
   return <TableWithoutGroups {...props} />
 }
