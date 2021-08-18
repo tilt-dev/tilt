@@ -43,6 +43,14 @@ const TestConsumer = (props: { labelName?: string }) => {
 describe("ResourceGroupsContext", () => {
   let wrapper: ReactWrapper<typeof TestConsumer>
 
+  // Helpers
+  const groupState = () => wrapper.find(`#${GROUP_STATE_ID}`).text()
+  const labelState = () => wrapper.find(`#${LABEL_STATE_ID}`).text()
+  const clickButton = () => {
+    wrapper.find("button").simulate("click")
+    wrapper.update()
+  }
+
   beforeEach(() => {
     mockAnalyticsCalls()
   })
@@ -59,9 +67,7 @@ describe("ResourceGroupsContext", () => {
       </ResourceGroupsContextProvider>
     )
 
-    const groupState = wrapper.find(`#${GROUP_STATE_ID}`).text()
-
-    expect(groupState).toBe(JSON.stringify({}))
+    expect(groupState()).toBe(JSON.stringify({}))
   })
 
   describe("toggleGroupExpanded", () => {
@@ -72,11 +78,9 @@ describe("ResourceGroupsContext", () => {
           <TestConsumer labelName="test" />
         </ResourceGroupsContextProvider>
       )
-      wrapper.find("button").simulate("click")
-      wrapper.update()
+      clickButton()
 
-      const labelState = wrapper.find(`#${LABEL_STATE_ID}`).text()
-      expect(labelState).toBe(JSON.stringify({ expanded: true }))
+      expect(labelState()).toBe(JSON.stringify({ expanded: true }))
     })
 
     it("sets expanded to `false` when group is expanded", () => {
@@ -86,11 +90,9 @@ describe("ResourceGroupsContext", () => {
           <TestConsumer labelName="test" />
         </ResourceGroupsContextProvider>
       )
-      wrapper.find("button").simulate("click")
-      wrapper.update()
+      clickButton()
 
-      const labelState = wrapper.find(`#${LABEL_STATE_ID}`).text()
-      expect(labelState).toBe(JSON.stringify({ expanded: false }))
+      expect(labelState()).toBe(JSON.stringify({ expanded: false }))
     })
 
     it("sets expanded to `false` if a group isn't saved yet and is toggled", () => {
@@ -99,11 +101,9 @@ describe("ResourceGroupsContext", () => {
           <TestConsumer labelName="a-non-existent-group" />
         </ResourceGroupsContextProvider>
       )
-      wrapper.find("button").simulate("click")
-      wrapper.update()
+      clickButton()
 
-      const labelState = wrapper.find(`#${LABEL_STATE_ID}`).text()
-      expect(labelState).toBe(JSON.stringify({ expanded: false }))
+      expect(labelState()).toBe(JSON.stringify({ expanded: false }))
     })
 
     it("makes an analytics call with the right payload", () => {
@@ -113,7 +113,7 @@ describe("ResourceGroupsContext", () => {
           <TestConsumer labelName="test" />
         </ResourceGroupsContextProvider>
       )
-      wrapper.find("button").simulate("click")
+      clickButton()
       // Expect the "collapse" action value because the test label group is expanded
       // when it's clicked on and the "grid" type value because it's hardcoded in the
       // test component
@@ -133,8 +133,7 @@ describe("ResourceGroupsContext", () => {
         </ResourceGroupsContextProvider>
       )
 
-      const labelState = wrapper.find(`#${LABEL_STATE_ID}`).text()
-      expect(labelState).toBe(JSON.stringify({ expanded: false }))
+      expect(labelState()).toBe(JSON.stringify({ expanded: false }))
     })
 
     it("returns a default state of a resource group if a group isn't saved yet", () => {
@@ -145,8 +144,7 @@ describe("ResourceGroupsContext", () => {
         </ResourceGroupsContextProvider>
       )
 
-      const labelState = wrapper.find(`#${LABEL_STATE_ID}`).text()
-      expect(labelState).toBe(JSON.stringify(DEFAULT_GROUP_STATE))
+      expect(labelState()).toBe(JSON.stringify(DEFAULT_GROUP_STATE))
     })
   })
 })

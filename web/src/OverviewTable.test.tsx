@@ -199,11 +199,13 @@ describe("overview table with groups", () => {
 
       // Loop through each resource group and expect that its expanded state
       // matches with the hardcoded test data
-      const resourceGroups = wrapper.find(OverviewGroup)
-      resourceGroups.forEach((group) => {
+      const actualExpandedState: GroupsState = {}
+      wrapper.find(OverviewGroup).forEach((group) => {
         const groupName = group.find(OverviewGroupName).text()
-        expect(group.props().expanded).toEqual(testData[groupName].expanded)
+        actualExpandedState[groupName] = { expanded: group.props().expanded }
       })
+
+      expect(actualExpandedState).toEqual(testData)
     })
 
     it("is collapsed when an expanded resource group summary is clicked on", () => {
