@@ -121,6 +121,25 @@ describe("overview table with groups", () => {
       const { labelsToResources, unlabeled, tiltfile } = resources
       const resourceGroups = wrapper.find(OverviewGroup)
 
+      const actualResourcesFromTable: { [key: string]: string[] } = {}
+      const expectedResourcesFromLabelGroups: { [key: string]: string[] } = {}
+
+      // Create a dictionary of labels to a list of resource names
+      // based on the view
+      Object.keys(labelsToResources).forEach((label) => {
+        const resourceNames = labelsToResources[label].map((r) => r.name)
+        expectedResourcesFromLabelGroups[label] = resourceNames
+      })
+
+      expectedResourcesFromLabelGroups[UNLABELED_LABEL] = unlabeled.map(
+        (r) => r.name
+      )
+      expectedResourcesFromLabelGroups[TILTFILE_LABEL] = tiltfile.map(
+        (r) => r.name
+      )
+
+      // Create a dictionary of labels to a list of resource names
+      // based on what's rendered in each group table
       resourceGroups.forEach((group) => {
         // Find the label group name
         const groupName = group.find(OverviewGroupName).text()
@@ -130,20 +149,10 @@ describe("overview table with groups", () => {
           .find(TableNameColumn)
           .map((resourceName) => resourceName.text())
 
-        // Get a list of the resource names in this label group
-        let resourcesInLabelGroup: string[]
-        if (groupName === UNLABELED_LABEL) {
-          resourcesInLabelGroup = unlabeled.map((resource) => resource.name)
-        } else if (groupName === TILTFILE_LABEL) {
-          resourcesInLabelGroup = tiltfile.map((resource) => resource.name)
-        } else {
-          resourcesInLabelGroup = labelsToResources[groupName].map(
-            (resource) => resource.name
-          )
-        }
-
-        expect(resourcesInTable).toEqual(resourcesInLabelGroup)
+        actualResourcesFromTable[groupName] = resourcesInTable
       })
+
+      expect(actualResourcesFromTable).toEqual(expectedResourcesFromLabelGroups)
     })
   })
 

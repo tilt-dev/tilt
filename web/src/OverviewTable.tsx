@@ -22,8 +22,7 @@ import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
 import { linkToTiltDocs, TiltDocsPage } from "./constants"
 import { InstrumentedButton } from "./instrumentedComponents"
 import {
-  asUILabels,
-  getUILabels,
+  getResourceLabels,
   GroupByLabelView,
   orderLabels,
   TILTFILE_LABEL,
@@ -141,9 +140,8 @@ const ResourceTable = styled.table`
   }
 
   &.isGroup {
-    /* border: 1px yellow solid; */
     border: 1px ${Color.grayLighter} solid;
-    border-radius: 0 ${SizeUnit(1 / 4)}; /* TODO: Figure out border radius */
+    border-radius: 0 ${SizeUnit(1 / 4)};
   }
 `
 const ResourceTableHead = styled.thead`
@@ -618,11 +616,6 @@ function viewToRowValues(
   )
 }
 
-function getResourceLabels(resource: UIResource) {
-  const uiLabels = asUILabels({ labels: resource.metadata?.labels })
-  return getUILabels(uiLabels)
-}
-
 export function resourcesToTableCells(
   resources: UIResource[] | undefined,
   buttons: UIButton[] | undefined,
@@ -648,16 +641,14 @@ export function resourcesToTableCells(
 
         labelsToResources[label].push(tableCell)
       })
-    } else if (!isTiltfile) {
-      unlabeled.push(tableCell)
-    }
-
-    // Display the Tiltfile outside of the label groups
-    if (isTiltfile) {
+    } else if (isTiltfile) {
       tiltfile.push(tableCell)
+    } else {
+      unlabeled.push(tableCell)
     }
   })
 
+  // Labels are always displayed in sorted order
   const labels = orderLabels(Object.keys(labelsToResources))
 
   return { labels, labelsToResources, tiltfile, unlabeled }
@@ -681,18 +672,6 @@ export function Table(
     },
     useSortBy
   )
-
-  // TODO (lizz): since the structure of the table components has
-  // changed, this component no longer has direct access to the view
-
-  // if there are no widgets, hide the widgets column
-  // TODO(matt) is this actually what we want?
-  // const widgetsVisible = hasWidgets(props.view)
-  // columns.forEach((c) => {
-  //   if (c.Header === "Widgets" && widgetsVisible !== c.isVisible) {
-  //     c.toggleHidden(!widgetsVisible)
-  //   }
-  // })
 
   const isGroupClass = props.isGroupView ? "isGroup" : ""
 
@@ -766,11 +745,7 @@ function TableGroup(props: { label: string; data: RowValues[] }) {
   }
 
   return (
-    <OverviewGroup
-      expanded={expanded}
-      key={labelNameId}
-      onChange={handleChange}
-    >
+    <OverviewGroup expanded={expanded} onChange={handleChange}>
       <OverviewGroupSummary id={labelNameId}>
         <ResourceGroupSummaryIcon role="presentation" />
         <OverviewGroupName>{formattedLabel}</OverviewGroupName>
@@ -791,13 +766,13 @@ export function TableGroupedByLabels(props: OverviewTableProps) {
         props.view.uiButtons,
         logStore
       ),
-    [props.view.uiResources]
+    [props.view.uiResources, props.view.uiButtons]
   )
   return (
     <>
       {data.labels.map((label) => (
         <TableGroup
-          key={`tableOverview-${label}`}
+          key={label}
           label={label}
           data={data.labelsToResources[label]}
         />
@@ -816,7 +791,7 @@ function TableWithoutGroups(props: OverviewTableProps) {
         uiResourceToCell(r, props.view.uiButtons, logStore)
       ) || []
     )
-  }, [props.view.uiResources])
+  }, [props.view.uiResources, props.view.uiButtons])
 
   return <Table columns={columnDefs} data={data} />
 }

@@ -228,16 +228,14 @@ function resourcesLabelView(
 
         labelsToResources[label].push(item)
       })
-    } else if (!item.isTiltfile) {
-      unlabeled.push(item)
-    }
-
-    // Display the Tiltfile outside of the label groups
-    if (item.isTiltfile) {
+    } else if (item.isTiltfile) {
       tiltfile.push(item)
+    } else {
+      unlabeled.push(item)
     }
   })
 
+  // Labels are always displayed in sorted order
   const labels = orderLabels(Object.keys(labelsToResources))
 
   return { labels, labelsToResources, tiltfile, unlabeled }
