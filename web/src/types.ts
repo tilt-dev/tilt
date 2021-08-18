@@ -148,3 +148,10 @@ export type SidebarOptions = {
   // Filter options
   resourceNameFilter: string
 }
+
+// TODO (lizz): Centralize other redundant type definitions
+export type UIResource = Proto.v1alpha1UIResource
+export type UIResourceStatus = Proto.v1alpha1UIResourceStatus
+export type Build = Proto.v1alpha1UIBuildTerminated
+export type UILink = Proto.v1alpha1UIResourceLink
+export type UIButton = Proto.v1alpha1UIButton

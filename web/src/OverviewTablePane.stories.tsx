@@ -1,24 +1,39 @@
 import React from "react"
 import { MemoryRouter } from "react-router"
+import Features, { FeaturesProvider, Flag } from "./feature"
 import OverviewTablePane from "./OverviewTablePane"
 import { StarredResourceMemoryProvider } from "./StarredResourcesContext"
 import { nResourceView, tenResourceView, twoResourceView } from "./testdata"
 
-type UIResource = Proto.v1alpha1UIResource
-
 export default {
   title: "New UI/OverviewTablePane",
   decorators: [
-    (Story: any) => (
-      <MemoryRouter initialEntries={["/"]}>
-        <div style={{ margin: "-1rem", height: "80vh" }}>
-          <StarredResourceMemoryProvider>
-            <Story />
-          </StarredResourceMemoryProvider>
-        </div>
-      </MemoryRouter>
-    ),
+    (Story: any, context: any) => {
+      const features = new Features({
+        [Flag.Labels]: context?.args?.labelsEnabled ?? true,
+      })
+      return (
+        <MemoryRouter initialEntries={["/"]}>
+          <FeaturesProvider value={features}>
+            <StarredResourceMemoryProvider>
+              <div style={{ margin: "-1rem", height: "80vh" }}>
+                <Story />
+              </div>
+            </StarredResourceMemoryProvider>
+          </FeaturesProvider>
+        </MemoryRouter>
+      )
+    },
   ],
+  argTypes: {
+    labelsEnabled: {
+      name: "Group resources by label enabled",
+      control: {
+        type: "boolean",
+      },
+      defaultValue: true,
+    },
+  },
 }
 
 export const TwoResources = () => <OverviewTablePane view={twoResourceView()} />

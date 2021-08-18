@@ -1,6 +1,6 @@
 import moment from "moment"
 import { buildAlerts, runtimeAlerts } from "./alerts"
-import { asUILabels, getUiLabels } from "./labels"
+import { getResourceLabels } from "./labels"
 import { LogAlertIndex } from "./LogStore"
 import { buildStatus, runtimeStatus } from "./status"
 import { timeDiff } from "./time"
@@ -36,7 +36,6 @@ class SidebarItem {
     let status = (res.status || {}) as UIResourceStatus
     let buildHistory = status.buildHistory || []
     let lastBuild = buildHistory.length > 0 ? buildHistory[0] : null
-    const labels = asUILabels({ labels: res.metadata?.labels })
     this.name = res.metadata?.name ?? ""
     this.isTiltfile = this.name === ResourceName.tiltfile
     this.isTest = !!status.localResourceInfo?.isTest
@@ -45,7 +44,7 @@ class SidebarItem {
     this.runtimeStatus = runtimeStatus(res, logAlertIndex)
     this.runtimeAlertCount = runtimeAlerts(res, logAlertIndex).length
     this.hasEndpoints = (status.endpointLinks || []).length > 0
-    this.labels = getUiLabels(labels)
+    this.labels = getResourceLabels(res)
     this.lastBuildDur =
       lastBuild && lastBuild.startTime && lastBuild.finishTime
         ? timeDiff(lastBuild.startTime, lastBuild.finishTime)

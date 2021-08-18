@@ -12,13 +12,25 @@ import React, {
 } from "react"
 import styled from "styled-components"
 import { AnalyticsAction, AnalyticsType, incr } from "./analytics"
-import { ReactComponent as CaretSvg } from "./assets/svg/caret.svg"
-import { ReactComponent as InfoSvg } from "./assets/svg/info.svg"
-import Features, { FeaturesContext, Flag } from "./feature"
-import { orderLabels } from "./labels"
+import { FeaturesContext } from "./feature"
+import {
+  GroupByLabelView,
+  orderLabels,
+  resourcesHaveLabels,
+  TILTFILE_LABEL,
+  UNLABELED_LABEL,
+} from "./labels"
 import { PersistentStateProvider } from "./LocalStorage"
 import { OverviewSidebarOptions } from "./OverviewSidebarOptions"
 import PathBuilder from "./PathBuilder"
+import {
+  AccordionDetailsStyleResetMixin,
+  AccordionStyleResetMixin,
+  AccordionSummaryStyleResetMixin,
+  ResourceGroupNameMixin,
+  ResourceGroupSummaryIcon,
+  ResourceGroupSummaryMixin,
+} from "./ResourceGroups"
 import { ResourceSidebarStatusSummary } from "./ResourceStatusSummary"
 import SidebarItem from "./SidebarItem"
 import SidebarItemView, {
@@ -60,21 +72,6 @@ const NoMatchesFound = styled.li`
   color: ${Color.grayLightest};
 `
 
-const SidebarLabelSection = styled(Accordion)`
-  &.MuiPaper-root {
-    background-color: unset;
-  }
-
-  &.MuiPaper-elevation1 {
-    box-shadow: unset;
-  }
-
-  &.MuiAccordion-root,
-  &.MuiAccordion-root.Mui-expanded {
-    margin: ${SizeUnit(1 / 3)} ${SizeUnit(1 / 2)};
-  }
-`
-
 const SidebarGroupInfo = styled.aside`
   background-color: ${Color.grayDark};
   bottom: 0;
@@ -86,64 +83,37 @@ const SidebarGroupInfo = styled.aside`
   z-index: 2;
 `
 
-const InfoIcon = styled(InfoSvg)`
-  .fillStd {
-    fill: ${Color.blueLight};
-  }
-`
+const SidebarLabelSection = styled(Accordion)`
+  ${AccordionStyleResetMixin}
 
-const SummaryIcon = styled(CaretSvg)`
-  flex-shrink: 0;
-  padding: ${SizeUnit(1 / 4)};
-  transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1) 0ms; /* Copied from MUI accordion */
-
-  .fillStd {
-    fill: ${Color.grayLight};
+  /* Set specific margins for sidebar */
+  &.MuiAccordion-root,
+  &.MuiAccordion-root.Mui-expanded {
+    margin: ${SizeUnit(1 / 3)} ${SizeUnit(1 / 2)};
   }
 `
 
 const SidebarGroupSummary = styled(AccordionSummary)`
-  &.MuiAccordionSummary-root,
-  &.MuiAccordionSummary-root.Mui-expanded {
-    min-height: unset;
-    padding: unset;
-  }
+  ${AccordionSummaryStyleResetMixin}
+  ${ResourceGroupSummaryMixin}
 
+  /* Set specific background and borders for sidebar */
   .MuiAccordionSummary-content {
-    align-items: center;
     background-color: ${Color.grayLighter};
     border: 1px solid ${Color.grayLight};
     border-radius: ${SizeUnit(1 / 8)};
-    box-sizing: border-box;
-    color: ${Color.white};
-    display: flex;
     font-size: ${FontSize.small};
-    margin: 0;
-    padding: ${SizeUnit(1 / 8)};
-    width: 100%;
-
-    &.Mui-expanded {
-      margin: 0;
-
-      ${SummaryIcon} {
-        transform: rotate(90deg);
-      }
-    }
   }
 `
 
 const SidebarGroupName = styled.span`
-  margin-right: auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  width: 100%;
+  ${ResourceGroupNameMixin}
 `
 
 const SidebarGroupDetails = styled(AccordionDetails)`
-  &.MuiAccordionDetails-root {
-    display: unset;
-    padding: unset;
+  ${AccordionDetailsStyleResetMixin}
 
+  &.MuiAccordionDetails-root {
     ${SidebarItemRoot} {
       margin-right: unset;
     }
@@ -206,16 +176,14 @@ function SidebarLabelListSection(props: { label: string } & SidebarProps) {
   }
 
   const formattedLabel =
-    props.label === "unlabeled" ? <em>{props.label}</em> : props.label
+    props.label === UNLABELED_LABEL ? <em>{props.label}</em> : props.label
   const labelNameId = `sidebarItem-${props.label}`
 
-  // Track the expanded/collapsed state of a resource group manually
-  // so analytics events are captured
+  // Groups are expanded by default
   const [expanded, setExpanded] = useState(true)
   const handleChange = (_e: ChangeEvent<{}>) => {
     const action = expanded ? AnalyticsAction.Collapse : AnalyticsAction.Expand
     incr("ui.web.resourceGroup", { action, type: AnalyticsType.Detail })
-
     setExpanded(!expanded)
   }
 
@@ -228,7 +196,7 @@ function SidebarLabelListSection(props: { label: string } & SidebarProps) {
       onChange={handleChange}
     >
       <SidebarGroupSummary id={labelNameId}>
-        <SummaryIcon role="presentation" />
+        <ResourceGroupSummaryIcon role="presentation" />
         <SidebarGroupName>{formattedLabel}</SidebarGroupName>
         <ResourceSidebarStatusSummary
           aria-label={`Status summary for ${props.label} group`}
@@ -244,12 +212,14 @@ function SidebarLabelListSection(props: { label: string } & SidebarProps) {
   )
 }
 
-function SidebarGroupedByLabels(props: SidebarProps) {
+function resourcesLabelView(
+  items: SidebarItem[]
+): GroupByLabelView<SidebarItem> {
   const labelsToResources: { [key: string]: SidebarItem[] } = {}
   const unlabeled: SidebarItem[] = []
   const tiltfile: SidebarItem[] = []
 
-  props.items.forEach((item) => {
+  items.forEach((item) => {
     if (item.labels.length) {
       item.labels.forEach((label) => {
         if (!labelsToResources.hasOwnProperty(label)) {
@@ -258,17 +228,23 @@ function SidebarGroupedByLabels(props: SidebarProps) {
 
         labelsToResources[label].push(item)
       })
-    } else if (!item.isTiltfile) {
-      unlabeled.push(item)
-    }
-
-    // Display the Tiltfile outside of the label groups
-    if (item.isTiltfile) {
+    } else if (item.isTiltfile) {
       tiltfile.push(item)
+    } else {
+      unlabeled.push(item)
     }
   })
 
+  // Labels are always displayed in sorted order
   const labels = orderLabels(Object.keys(labelsToResources))
+
+  return { labels, labelsToResources, tiltfile, unlabeled }
+}
+
+function SidebarGroupedByLabels(props: SidebarProps) {
+  const { labels, labelsToResources, tiltfile, unlabeled } = resourcesLabelView(
+    props.items
+  )
 
   return (
     <>
@@ -280,16 +256,17 @@ function SidebarGroupedByLabels(props: SidebarProps) {
           items={labelsToResources[label]}
         />
       ))}
-      <SidebarLabelListSection {...props} label="unlabeled" items={unlabeled} />
-      <SidebarListSection name="Tiltfile">
+      <SidebarLabelListSection
+        {...props}
+        label={UNLABELED_LABEL}
+        items={unlabeled}
+      />
+      <SidebarListSection name={TILTFILE_LABEL}>
         <SidebarItemsView {...props} items={tiltfile} groupView={true} />
       </SidebarListSection>
     </>
   )
 }
-
-type UIResource = Proto.v1alpha1UIResource
-type Build = Proto.v1alpha1UIBuildTerminated
 
 type SidebarProps = {
   items: SidebarItem[]
@@ -327,14 +304,6 @@ function matchesResourceName(item: SidebarItem, filter: string): boolean {
   return filter
     .split(" ")
     .every((token) => item.name.toLowerCase().includes(token.toLowerCase()))
-}
-
-function resourcesHaveLabels(features: Features, items: SidebarItem[]) {
-  if (!features.isEnabled(Flag.Labels)) {
-    return false
-  }
-
-  return items.some((item) => item.labels.length > 0)
 }
 
 function applyOptionsToItems(
@@ -396,7 +365,11 @@ export class SidebarResources extends React.Component<SidebarProps> {
         : ""
 
     // Note: the label group view does not display if a resource name filter is applied
-    const labelsEnabled = resourcesHaveLabels(this.context, this.props.items)
+    const labelsEnabled = resourcesHaveLabels<SidebarItem>(
+      this.context,
+      this.props.items,
+      (item) => item.labels
+    )
     const displayLabelGroups = !resourceFilterApplied && labelsEnabled
 
     return (
