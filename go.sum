@@ -1103,8 +1103,6 @@ github.com/tilt-dev/fsevents v0.0.0-20200515134857-2efe37af20de h1:tG+nJMUUxV7MJ
 github.com/tilt-dev/fsevents v0.0.0-20200515134857-2efe37af20de/go.mod h1:1jUbPVh7Ani2CSublmvP7+zqTgR06A8Y0MKU9Xr2L5s=
 github.com/tilt-dev/fsnotify v1.4.8-0.20210701141043-dd524499d3fe h1:dULiU6eWdUfLAO0URJz+k1zEN5B3rPS5Iupr4Srd/yk=
 github.com/tilt-dev/fsnotify v1.4.8-0.20210701141043-dd524499d3fe/go.mod h1:9wJjkpCk7ADlLOAl+yIXbHwnMoV9i0+uLr9CG3D5434=
-github.com/tilt-dev/go-get v0.2.0 h1:VELDyR4hky5R3u7UpWciF1LqKmNPGlxNKmsYlpNAGVU=
-github.com/tilt-dev/go-get v0.2.0/go.mod h1:sqJ1OH6ggqbd2+J5TFsDGP/CXeRAXBxR52m5FtL0+xo=
 github.com/tilt-dev/go-get v0.2.1 h1:HUIbKVc6yGv+g4QfsIsjcgQKGTLIgwHFMBIFyiJzB2Q=
 github.com/tilt-dev/go-get v0.2.1/go.mod h1:sqJ1OH6ggqbd2+J5TFsDGP/CXeRAXBxR52m5FtL0+xo=
 github.com/tilt-dev/json-patch/v4 v4.8.1 h1:AbrhK3NMDfk/+/oMXz3NcKaCNwHYdhUJMDjBHNOHF5o=
@@ -1115,8 +1113,8 @@ github.com/tilt-dev/opencensus-go v0.22.5-0.20200904175236-275b1754f353 h1:lxM1v
 github.com/tilt-dev/opencensus-go v0.22.5-0.20200904175236-275b1754f353/go.mod h1:yxeiOL68Rb0Xd1ddK5vPZ/oVn4vY4Ynel7k9FzqtOIw=
 github.com/tilt-dev/probe v0.3.0 h1:yQiBt4sDwa3Wm73BsGvGlyvQVYFpANbc+WuMNhb6700=
 github.com/tilt-dev/probe v0.3.0/go.mod h1:yMGw+VQ+nJkjB9etiBGsHGX4ibq5M3+oCS/kVJ3/WYU=
-github.com/tilt-dev/tilt-apiserver v0.4.1 h1:3zdmOxLs5TiXr5hNqDj9qrjZX6eKerHMMNHNRgzYz/Y=
-github.com/tilt-dev/tilt-apiserver v0.4.1/go.mod h1:PAHqmySCZzHBsx1dMQfBZ7CdSuqWp/cIS0sRBKIpe8M=
+github.com/tilt-dev/tilt-apiserver v0.4.3 h1:ELueRfmHFq/Dyljtfm2jSZbWKuVnHyWA5b1apr3LKF8=
+github.com/tilt-dev/tilt-apiserver v0.4.3/go.mod h1:PAHqmySCZzHBsx1dMQfBZ7CdSuqWp/cIS0sRBKIpe8M=
 github.com/tilt-dev/wmclient v0.0.0-20201109174454-1839d0355fbc h1:wGkAoZhrvnmq93B4W2v+agiPl7xzqUaxXkxmKrwJ6bc=
 github.com/tilt-dev/wmclient v0.0.0-20201109174454-1839d0355fbc/go.mod h1:n01fG3LbImzxBP3GGCTHkgXuPeJusWg6xv0QYGm9HtE=
 github.com/timakin/bodyclose v0.0.0-20190930140734-f7f2e9bca95e/go.mod h1:Qimiffbc6q9tBWlVV6x0P9sat/ao1xEkREYPPj9hphk=
