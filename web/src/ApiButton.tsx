@@ -95,16 +95,25 @@ export const ApiButton: React.FC<ApiButtonProps> = (props) => {
   )
 }
 
-export function buttonsForResource(
+export function buttonsForComponent(
   buttons: UIButton[] | undefined,
-  resourceName: string | undefined
+  componentType: string,
+  componentID: string | undefined
 ): UIButton[] {
-  if (!resourceName || !buttons) {
+  if (!buttons) {
     return []
   }
-  return buttons.filter(
-    (b) =>
-      b.spec?.location?.componentType?.toLowerCase() === "resource" &&
-      b.spec?.location?.componentID === resourceName
-  )
+
+  return buttons
+    .filter(
+      (b) =>
+        b.spec?.location?.componentType?.toUpperCase() ===
+          componentType.toUpperCase() &&
+        b.spec?.location?.componentID === componentID
+    )
+    .sort((a, b) =>
+      (a.metadata?.creationTimestamp || "").localeCompare(
+        b.metadata?.creationTimestamp || ""
+      )
+    )
 }
