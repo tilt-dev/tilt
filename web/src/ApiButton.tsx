@@ -112,8 +112,8 @@ export function buttonsForComponent(
         b.spec?.location?.componentID === componentID
     )
     .sort((a, b) =>
-      (a.metadata?.creationTimestamp || "").localeCompare(
-        b.metadata?.creationTimestamp || ""
+      (a.metadata?.name || "").localeCompare(
+        b.metadata?.name || ""
       )
     )
 }
