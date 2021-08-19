@@ -2,10 +2,9 @@ import React from "react"
 import styled from "styled-components"
 import { GlobalNav, GlobalNavRoot } from "./GlobalNav"
 import { usePathBuilder } from "./PathBuilder"
-import { ResourceStatusSummary } from "./ResourceStatusSummary"
+import { AllResourceStatusSummary } from "./ResourceStatusSummary"
 import { useSnapshotAction } from "./snapshot"
 import { SizeUnit } from "./style-helpers"
-import { TargetType } from "./types"
 import { showUpdate } from "./UpdateDialog"
 
 type OverviewResourceBarProps = {
@@ -32,10 +31,6 @@ export default function OverviewResourceBar(props: OverviewResourceBarProps) {
   let runningBuild = session?.runningTiltBuild
   let suggestedVersion = session?.suggestedTiltVersion
   let resources = view?.uiResources || []
-  let hasK8s = resources.some((r) => {
-    let specs = r.status?.specs ?? []
-    return specs.some((spec) => spec.type === TargetType.K8s)
-  })
 
   let globalNavProps = {
     isSnapshot,
@@ -51,7 +46,7 @@ export default function OverviewResourceBar(props: OverviewResourceBarProps) {
 
   return (
     <OverviewResourceBarRoot>
-      <ResourceStatusSummary view={props.view} />
+      <AllResourceStatusSummary resources={resources} />
       <GlobalNav {...globalNavProps} />
     </OverviewResourceBarRoot>
   )

@@ -39,6 +39,7 @@ export const AccordionStyleResetMixin = `
   &.MuiAccordion-root,
   &.MuiAccordion-root.Mui-expanded {
     margin: unset;
+    position: unset; /* Removes a mysterious top border only visible on collapse */
   }
 `
 
@@ -103,11 +104,4 @@ export const ResourceGroupSummaryMixin = `
       }
     }
   }
-`
-
-export const ResourceGroupNameMixin = `
-  margin-right: auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  width: 100%;
 `

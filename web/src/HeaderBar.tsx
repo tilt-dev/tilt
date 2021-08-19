@@ -6,7 +6,7 @@ import { CustomNav } from "./CustomNav"
 import { GlobalNav } from "./GlobalNav"
 import { usePathBuilder } from "./PathBuilder"
 import {
-  ResourceStatusSummary,
+  AllResourceStatusSummary,
   ResourceStatusSummaryRoot,
 } from "./ResourceStatusSummary"
 import { useSnapshotAction } from "./snapshot"
@@ -93,7 +93,7 @@ export default function HeaderBar(props: HeaderBarProps) {
       <AllResourcesLink to={pb.encpath`/r/(all)/overview`}>
         All Resources
       </AllResourcesLink>
-      <ResourceStatusSummary view={props.view} />
+      <AllResourceStatusSummary resources={resources} />
       <CustomNav view={props.view} />
       <GlobalNav {...globalNavProps} />
     </HeaderBarRoot>

@@ -7,6 +7,7 @@ import { ReactComponent as PendingSvg } from "./assets/svg/pending.svg"
 import { ReactComponent as WarningSvg } from "./assets/svg/warning.svg"
 import { FilterLevel } from "./logfilters"
 import { useLogStore } from "./LogStore"
+import { RowValues } from "./OverviewTable"
 import { usePathBuilder } from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
 import { buildStatus, combinedStatus, runtimeStatus } from "./status"
@@ -286,58 +287,87 @@ function ResourceMetadata(props: { counts: StatusCounts }) {
   return <></>
 }
 
-type ResourceStatusSummaryProps = {
-  view: Proto.webviewView
-}
-
-export function ResourceStatusSummary(props: ResourceStatusSummaryProps) {
-  // Count and calculate the combined statuses.
-  let resources = props.view.uiResources || []
-  let logStore = useLogStore()
-
-  const allStatuses = resources.map((r) =>
-    combinedStatus(buildStatus(r, logStore), runtimeStatus(r, logStore))
-  )
-
-  return (
-    <ResourceStatusSummaryRoot>
-      <ResourceMetadata counts={statusCounts(allStatuses)} />
-      <ResourceGroupStatus
-        counts={statusCounts(allStatuses)}
-        label={"Resources"}
-        healthyLabel={"healthy"}
-        unhealthyLabel={"err"}
-        warningLabel={"warn"}
-        linkToLogFilters={true}
-      />
-    </ResourceStatusSummaryRoot>
-  )
-}
-
-type ResourceSidebarStatusSummaryProps = {
-  items: SidebarItem[]
+/**
+ * The ResourceStatusSummary component takes a template type
+ * for the resources it will summarize and a callback
+ * function that returns the status of a resource. It can be
+ * used with different resource data types.
+ */
+type ResourceStatusSummaryProps<T> = {
+  resources: T[]
   label?: string
+  updateMetadata?: boolean
+  linkToLogFilters?: boolean
 }
 
-export function ResourceSidebarStatusSummary(
-  props: ResourceSidebarStatusSummaryProps
+function ResourceStatusSummary<T>(
+  props: ResourceStatusSummaryProps<T> & {
+    getStatus: (resource: T) => ResourceStatus
+  }
 ) {
-  // Because SidebarItems have already-calculated statuses,
-  // pass those directly to determine their summary status
-  const statuses: ResourceStatus[] = props.items.map((item) =>
-    combinedStatus(item.buildStatus, item.runtimeStatus)
-  )
+  // Default the display options if no option is provided
+  const updateMetadata = props.updateMetadata ?? true
+  const linkToLogFilters = props.linkToLogFilters ?? true
+  const label = props.label ?? "Resources"
+
+  // Create the resource status list
+  const statuses: ResourceStatus[] = props.resources.map(props.getStatus)
 
   return (
     <ResourceStatusSummaryRoot>
+      {updateMetadata && <ResourceMetadata counts={statusCounts(statuses)} />}
       <ResourceGroupStatus
         counts={statusCounts(statuses)}
-        label={props.label ?? ""}
+        label={label}
         healthyLabel={"healthy"}
         unhealthyLabel={"err"}
         warningLabel={"warn"}
-        linkToLogFilters={false}
+        linkToLogFilters={linkToLogFilters}
       />
     </ResourceStatusSummaryRoot>
   )
+}
+
+export function SidebarGroupStatusSummary(
+  props: ResourceStatusSummaryProps<SidebarItem>
+) {
+  const getStatus = (item: SidebarItem) =>
+    combinedStatus(item.buildStatus, item.runtimeStatus)
+
+  return (
+    <ResourceStatusSummary
+      getStatus={getStatus}
+      linkToLogFilters={false}
+      updateMetadata={false}
+      label=""
+      {...props}
+    />
+  )
+}
+
+export function TableGroupStatusSummary(
+  props: ResourceStatusSummaryProps<RowValues>
+) {
+  const getStatus = (r: RowValues) =>
+    combinedStatus(r.statusLine.buildStatus, r.statusLine.runtimeStatus)
+
+  return (
+    <ResourceStatusSummary
+      getStatus={getStatus}
+      linkToLogFilters={false}
+      updateMetadata={false}
+      label=""
+      {...props}
+    />
+  )
+}
+
+export function AllResourceStatusSummary(
+  props: ResourceStatusSummaryProps<UIResource>
+) {
+  const logStore = useLogStore()
+  const getStatus = (r: UIResource) =>
+    combinedStatus(buildStatus(r, logStore), runtimeStatus(r, logStore))
+
+  return <ResourceStatusSummary getStatus={getStatus} {...props} />
 }
