@@ -3,6 +3,8 @@ package buildcontrol
 import (
 	"time"
 
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -421,6 +423,12 @@ func IsLiveUpdateTargetWaitingOnDeploy(state store.EngineState, mt *store.Manife
 				if c.Restarts > 0 {
 					return false
 				}
+			}
+
+			// If the pod is in a finished state, then the containers
+			// may never re-enter Running.
+			if pod.Phase == string(v1.PodSucceeded) || pod.Phase == string(v1.PodFailed) {
+				return false
 			}
 
 		} else if mt.Manifest.IsDC() {

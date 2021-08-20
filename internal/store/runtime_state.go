@@ -72,7 +72,7 @@ type K8sRuntimeState struct {
 	// In many cases, this will be a Deployment UID.
 	PodAncestorUID types.UID
 
-	Pods                           map[k8s.PodID]*v1alpha1.Pod
+	Pods                           PodSet
 	LBs                            map[k8s.ServiceName]*url.URL
 	DeployedEntities               k8s.ObjRefList         // for the most recent successful deploy
 	DeployedPodTemplateSpecHashSet PodTemplateSpecHashSet // for the most recent successful deploy
@@ -106,7 +106,7 @@ func NewK8sRuntimeStateWithPods(m model.Manifest, pods ...v1alpha1.Pod) K8sRunti
 func NewK8sRuntimeState(m model.Manifest) K8sRuntimeState {
 	return K8sRuntimeState{
 		PodReadinessMode:               m.PodReadinessMode(),
-		Pods:                           make(map[k8s.PodID]*v1alpha1.Pod),
+		Pods:                           PodSet{},
 		LBs:                            make(map[k8s.ServiceName]*url.URL),
 		DeployedPodTemplateSpecHashSet: NewPodTemplateSpecHashSet(),
 		UpdateStartTime:                make(map[k8s.PodID]time.Time),
@@ -189,17 +189,7 @@ func (s K8sRuntimeState) PodList() []v1alpha1.Pod {
 // So most of this time, this will return the only pod.
 // And in other cases, it will return a reasonable, consistent default.
 func (s K8sRuntimeState) MostRecentPod() v1alpha1.Pod {
-	bestPod := v1alpha1.Pod{}
-	found := false
-
-	for _, v := range s.Pods {
-		if !found || podCompare(*v, bestPod) {
-			bestPod = *v
-			found = true
-		}
-	}
-
-	return bestPod
+	return s.Pods.MostRecentPod()
 }
 
 func (s K8sRuntimeState) HasOKPodTemplateSpecHash(pod *v1alpha1.Pod) bool {
@@ -288,4 +278,30 @@ func (s PodTemplateSpecHashSet) Add(hashes ...k8s.PodTemplateSpecHash) {
 
 func (s PodTemplateSpecHashSet) Contains(hash k8s.PodTemplateSpecHash) bool {
 	return s[hash]
+}
+
+type PodSet map[k8s.PodID]*v1alpha1.Pod
+
+func (ps PodSet) MostRecentPod() v1alpha1.Pod {
+	bestPod := v1alpha1.Pod{}
+	found := false
+
+	for _, v := range ps {
+		if !found || podCompare(*v, bestPod) {
+			bestPod = *v
+			found = true
+		}
+	}
+
+	return bestPod
+}
+
+func (ps PodSet) Filter(filter func(pod *v1alpha1.Pod) bool) PodSet {
+	newSet := PodSet{}
+	for k, v := range ps {
+		if filter(v) {
+			newSet[k] = v
+		}
+	}
+	return newSet
 }
