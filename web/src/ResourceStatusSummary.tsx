@@ -287,37 +287,29 @@ function ResourceMetadata(props: { counts: StatusCounts }) {
   return <></>
 }
 
-/**
- * The ResourceStatusSummary component takes a template type
- * for the resources it will summarize and a callback
- * function that returns the status of a resource. It can be
- * used with different resource data types.
- */
-type ResourceStatusSummaryProps<T> = {
-  resources: T[]
+type ResourceStatusSummaryOptions = {
   label?: string
   updateMetadata?: boolean
   linkToLogFilters?: boolean
 }
 
-function ResourceStatusSummary<T>(
-  props: ResourceStatusSummaryProps<T> & {
-    getStatus: (resource: T) => ResourceStatus
-  }
-) {
+type ResourceStatusSummaryProps = {
+  statuses: ResourceStatus[]
+} & ResourceStatusSummaryOptions
+
+function ResourceStatusSummary(props: ResourceStatusSummaryProps) {
   // Default the display options if no option is provided
   const updateMetadata = props.updateMetadata ?? true
   const linkToLogFilters = props.linkToLogFilters ?? true
   const label = props.label ?? "Resources"
 
-  // Create the resource status list
-  const statuses: ResourceStatus[] = props.resources.map(props.getStatus)
-
   return (
     <ResourceStatusSummaryRoot>
-      {updateMetadata && <ResourceMetadata counts={statusCounts(statuses)} />}
+      {updateMetadata && (
+        <ResourceMetadata counts={statusCounts(props.statuses)} />
+      )}
       <ResourceGroupStatus
-        counts={statusCounts(statuses)}
+        counts={statusCounts(props.statuses)}
         label={label}
         healthyLabel={"healthy"}
         unhealthyLabel={"err"}
@@ -328,15 +320,24 @@ function ResourceStatusSummary<T>(
   )
 }
 
+// The generic StatusSummaryProps takes a template type
+// for the resources it will summarize, so that it can be used
+// throughout the app with different data types.
+
+type StatusSummaryProps<T> = {
+  resources: T[]
+} & ResourceStatusSummaryOptions
+
 export function SidebarGroupStatusSummary(
-  props: ResourceStatusSummaryProps<SidebarItem>
+  props: StatusSummaryProps<SidebarItem>
 ) {
-  const getStatus = (item: SidebarItem) =>
+  const allStatuses = props.resources.map((item: SidebarItem) =>
     combinedStatus(item.buildStatus, item.runtimeStatus)
+  )
 
   return (
     <ResourceStatusSummary
-      getStatus={getStatus}
+      statuses={allStatuses}
       linkToLogFilters={false}
       updateMetadata={false}
       label=""
@@ -345,15 +346,14 @@ export function SidebarGroupStatusSummary(
   )
 }
 
-export function TableGroupStatusSummary(
-  props: ResourceStatusSummaryProps<RowValues>
-) {
-  const getStatus = (r: RowValues) =>
+export function TableGroupStatusSummary(props: StatusSummaryProps<RowValues>) {
+  const allStatuses = props.resources.map((r: RowValues) =>
     combinedStatus(r.statusLine.buildStatus, r.statusLine.runtimeStatus)
+  )
 
   return (
     <ResourceStatusSummary
-      getStatus={getStatus}
+      statuses={allStatuses}
       linkToLogFilters={false}
       updateMetadata={false}
       label=""
@@ -363,11 +363,12 @@ export function TableGroupStatusSummary(
 }
 
 export function AllResourceStatusSummary(
-  props: ResourceStatusSummaryProps<UIResource>
+  props: StatusSummaryProps<UIResource>
 ) {
   const logStore = useLogStore()
-  const getStatus = (r: UIResource) =>
+  const allStatuses = props.resources.map((r: UIResource) =>
     combinedStatus(buildStatus(r, logStore), runtimeStatus(r, logStore))
+  )
 
-  return <ResourceStatusSummary getStatus={getStatus} {...props} />
+  return <ResourceStatusSummary statuses={allStatuses} {...props} />
 }
