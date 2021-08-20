@@ -1,10 +1,10 @@
-import React, { LegacyRef } from "react"
+import { Button, ButtonProps } from "@material-ui/core"
+import React from "react"
 import { AnalyticsAction, incr, Tags } from "./analytics"
 
-export type InstrumentedButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+export type InstrumentedButtonProps = ButtonProps & {
   analyticsName: string
   analyticsTags?: Tags
-  ref?: LegacyRef<HTMLButtonElement>
 }
 
 export function InstrumentedButton(props: InstrumentedButtonProps) {
@@ -18,5 +18,12 @@ export function InstrumentedButton(props: InstrumentedButtonProps) {
       onClick(e)
     }
   }
-  return <button onClick={instrumentedOnClick} {...buttonProps} />
+  return (
+    <Button
+      variant="outlined"
+      disableRipple={true}
+      onClick={instrumentedOnClick}
+      {...buttonProps}
+    />
+  )
 }

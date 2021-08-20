@@ -1,8 +1,14 @@
 import styled from "styled-components"
 import { ApiButton } from "./ApiButton"
-import { AnimDuration, Color, Font } from "./style-helpers"
+import {
+  AnimDuration,
+  Color,
+  Font,
+  mixinResetButtonStyle,
+} from "./style-helpers"
 
 export const OverviewButtonMixin = `
+  ${mixinResetButtonStyle};
   font-family: ${Font.sansSerif};
   display: flex;
   align-items: center;
