@@ -19,6 +19,6 @@ export function InstrumentedButton(props: InstrumentedButtonProps) {
     }
   }
   return (
-    <Button variant="outlined" onClick={instrumentedOnClick} {...buttonProps} />
+    <Button variant="outlined" disableRipple={true} onClick={instrumentedOnClick} {...buttonProps} />
   )
 }
