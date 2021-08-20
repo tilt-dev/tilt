@@ -104,11 +104,15 @@ export const mixinResetButtonStyle = `
   cursor: pointer;
 
   // undo Material UI's Button styling
+  // TODO - maybe we should be doing it like this? https://material-ui.com/customization/globals/#css
   letter-spacing: normal;
   min-width: 0px;
   text-transform: none;
   line-height: normal;
   font-size: ${FontSize.smallest};
+  &:hover {
+    background-color: transparent;
+  }
 `
 
 export const mixinTruncateText = `
