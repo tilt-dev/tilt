@@ -18,5 +18,7 @@ export function InstrumentedButton(props: InstrumentedButtonProps) {
       onClick(e)
     }
   }
-  return <Button variant="outlined" onClick={instrumentedOnClick} {...buttonProps} />
+  return (
+    <Button variant="outlined" onClick={instrumentedOnClick} {...buttonProps} />
+  )
 }
