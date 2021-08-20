@@ -102,6 +102,13 @@ export const mixinResetButtonStyle = `
   margin: 0;
   font-family: inherit;
   cursor: pointer;
+
+  // undo Material UI's Button styling
+  letter-spacing: normal;
+  min-width: 0px;
+  text-transform: none;
+  line-height: normal;
+  font-size: ${FontSize.smallest};
 `
 
 export const mixinTruncateText = `
