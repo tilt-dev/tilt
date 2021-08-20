@@ -16,11 +16,6 @@ export default {
     (Story: any) => (
       <MemoryRouter initialEntries={["/"]}>
         <ResourceGroupsContextProvider>
-          {/* required for MUI <Icon> */}
-          <link
-            rel="stylesheet"
-            href="https://fonts.googleapis.com/icon?family=Material+Icons"
-          />
           <div style={{ margin: "-1rem" }}>
             <Story />
           </div>
