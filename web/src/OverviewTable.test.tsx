@@ -25,6 +25,7 @@ import {
   GroupsState,
   ResourceGroupsContextProvider,
 } from "./ResourceGroupsContext"
+import { TableGroupStatusSummary } from "./ResourceStatusSummary"
 import { nResourceView, nResourceWithLabelsView, oneButton } from "./testdata"
 
 it("shows buttons on the appropriate resources", () => {
@@ -160,6 +161,18 @@ describe("overview table with groups", () => {
       })
 
       expect(actualResourcesFromTable).toEqual(expectedResourcesFromLabelGroups)
+    })
+  })
+
+  describe("resource status summary", () => {
+    it("renders summaries for each label group", () => {
+      const summaries = wrapper.find(TableGroupStatusSummary)
+      const totalLabelCount =
+        resources.labels.length +
+        (resources.tiltfile.length ? 1 : 0) +
+        (resources.unlabeled.length ? 1 : 0)
+
+      expect(summaries.length).toBe(totalLabelCount)
     })
   })
 

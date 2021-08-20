@@ -26,12 +26,11 @@ import {
   AccordionDetailsStyleResetMixin,
   AccordionStyleResetMixin,
   AccordionSummaryStyleResetMixin,
-  ResourceGroupNameMixin,
   ResourceGroupSummaryIcon,
   ResourceGroupSummaryMixin,
 } from "./ResourceGroups"
 import { useResourceGroups } from "./ResourceGroupsContext"
-import { ResourceSidebarStatusSummary } from "./ResourceStatusSummary"
+import { SidebarGroupStatusSummary } from "./ResourceStatusSummary"
 import SidebarItem from "./SidebarItem"
 import SidebarItemView, {
   SidebarItemRoot,
@@ -107,7 +106,10 @@ const SidebarGroupSummary = styled(AccordionSummary)`
 `
 
 const SidebarGroupName = styled.span`
-  ${ResourceGroupNameMixin}
+  margin-right: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
 `
 
 const SidebarGroupDetails = styled(AccordionDetails)`
@@ -187,17 +189,13 @@ function SidebarLabelListSection(props: { label: string } & SidebarProps) {
   // TODO (lizz): Improve the accessibility interface for accordion feature by adding focus styles
   // according to https://www.w3.org/TR/wai-aria-practices-1.1/examples/accordion/accordion.html
   return (
-    <SidebarLabelSection
-      expanded={expanded}
-      key={labelNameId}
-      onChange={handleChange}
-    >
+    <SidebarLabelSection expanded={expanded} onChange={handleChange}>
       <SidebarGroupSummary id={labelNameId}>
         <ResourceGroupSummaryIcon role="presentation" />
         <SidebarGroupName>{formattedLabel}</SidebarGroupName>
-        <ResourceSidebarStatusSummary
+        <SidebarGroupStatusSummary
           aria-label={`Status summary for ${props.label} group`}
-          items={props.items}
+          resources={props.items}
         />
       </SidebarGroupSummary>
       <SidebarGroupDetails aria-labelledby={labelNameId}>
