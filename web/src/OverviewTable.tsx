@@ -15,7 +15,7 @@ import TimeAgo from "react-timeago"
 import styled from "styled-components"
 import { buildAlerts, runtimeAlerts } from "./alerts"
 import { AnalyticsAction, AnalyticsType, incr } from "./analytics"
-import { ApiIcon, buttonsForResource } from "./ApiButton"
+import { ApiIcon, buttonsForComponent } from "./ApiButton"
 import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
@@ -553,7 +553,7 @@ function uiResourceToCell(
   let currentBuildStartTime = res.currentBuild?.startTime ?? ""
   let isBuilding = !isZeroTime(currentBuildStartTime)
   let hasBuilt = lastBuild !== null
-  let buttons = buttonsForResource(allButtons, r.metadata?.name)
+  let buttons = buttonsForComponent(allButtons, "resource", r.metadata?.name)
 
   return {
     lastDeployTime: res.lastDeployTime ?? "",

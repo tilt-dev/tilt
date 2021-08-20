@@ -1,6 +1,6 @@
 import React from "react"
 import styled from "styled-components"
-import { ApiButton, ApiIcon } from "./ApiButton"
+import { ApiButton, ApiIcon, buttonsForComponent } from "./ApiButton"
 import { MenuButtonLabel, MenuButtonMixin } from "./GlobalNav"
 
 type CustomNavProps = {
@@ -15,13 +15,7 @@ const CustomNavButton = styled(ApiButton)`
 `
 
 export function CustomNav(props: CustomNavProps) {
-  const buttons =
-    props.view.uiButtons?.filter(
-      (b) =>
-        b.spec?.location &&
-        (b.spec.location.componentType ?? "").toLowerCase() === "global" &&
-        (b.spec.location.componentID ?? "").toLowerCase() === "nav"
-    ) || []
+  const buttons = buttonsForComponent(props.view.uiButtons, "global", "nav")
 
   return (
     <React.Fragment>
