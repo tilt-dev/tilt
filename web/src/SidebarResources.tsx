@@ -8,10 +8,9 @@ import React, {
   Dispatch,
   PropsWithChildren,
   SetStateAction,
-  useState,
 } from "react"
 import styled from "styled-components"
-import { AnalyticsAction, AnalyticsType, incr } from "./analytics"
+import { AnalyticsType } from "./analytics"
 import { FeaturesContext } from "./feature"
 import {
   GroupByLabelView,
@@ -31,6 +30,7 @@ import {
   ResourceGroupSummaryIcon,
   ResourceGroupSummaryMixin,
 } from "./ResourceGroups"
+import { useResourceGroups } from "./ResourceGroupsContext"
 import { ResourceSidebarStatusSummary } from "./ResourceStatusSummary"
 import SidebarItem from "./SidebarItem"
 import SidebarItemView, {
@@ -179,13 +179,10 @@ function SidebarLabelListSection(props: { label: string } & SidebarProps) {
     props.label === UNLABELED_LABEL ? <em>{props.label}</em> : props.label
   const labelNameId = `sidebarItem-${props.label}`
 
-  // Groups are expanded by default
-  const [expanded, setExpanded] = useState(true)
-  const handleChange = (_e: ChangeEvent<{}>) => {
-    const action = expanded ? AnalyticsAction.Collapse : AnalyticsAction.Expand
-    incr("ui.web.resourceGroup", { action, type: AnalyticsType.Detail })
-    setExpanded(!expanded)
-  }
+  const { getGroup, toggleGroupExpanded } = useResourceGroups()
+  const { expanded } = getGroup(props.label)
+  const handleChange = (_e: ChangeEvent<{}>) =>
+    toggleGroupExpanded(props.label, AnalyticsType.Detail)
 
   // TODO (lizz): Improve the accessibility interface for accordion feature by adding focus styles
   // according to https://www.w3.org/TR/wai-aria-practices-1.1/examples/accordion/accordion.html

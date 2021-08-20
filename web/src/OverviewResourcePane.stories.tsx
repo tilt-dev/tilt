@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router"
 import Features, { FeaturesProvider, Flag } from "./feature"
 import LogStore, { LogStoreProvider } from "./LogStore"
 import OverviewResourcePane from "./OverviewResourcePane"
+import { ResourceGroupsContextProvider } from "./ResourceGroupsContext"
 import { ResourceNavProvider } from "./ResourceNav"
 import { StarredResourceMemoryProvider } from "./StarredResourcesContext"
 import {
@@ -24,13 +25,15 @@ export default {
       return (
         <MemoryRouter initialEntries={["/"]}>
           <FeaturesProvider value={features}>
-            <StarredResourceMemoryProvider>
-              <div style={{ margin: "-1rem", height: "80vh" }}>
-                <StylesProvider injectFirst>
-                  <Story />
-                </StylesProvider>
-              </div>
-            </StarredResourceMemoryProvider>
+            <ResourceGroupsContextProvider>
+              <StarredResourceMemoryProvider>
+                <div style={{ margin: "-1rem", height: "80vh" }}>
+                  <StylesProvider injectFirst>
+                    <Story />
+                  </StylesProvider>
+                </div>
+              </StarredResourceMemoryProvider>
+            </ResourceGroupsContextProvider>
           </FeaturesProvider>
         </MemoryRouter>
       )

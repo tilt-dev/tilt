@@ -1,10 +1,8 @@
 import { mount, ReactWrapper } from "enzyme"
 import React from "react"
 import { MemoryRouter } from "react-router"
-import { AnalyticsAction, AnalyticsType } from "./analytics"
 import {
   cleanupMockAnalyticsCalls,
-  expectIncrs,
   mockAnalyticsCalls,
 } from "./analytics_test_helpers"
 import { GroupByLabelView, TILTFILE_LABEL, UNLABELED_LABEL } from "./labels"
@@ -22,6 +20,11 @@ import OverviewTable, {
   TableGroupedByLabels,
   TableNameColumn,
 } from "./OverviewTable"
+import {
+  DEFAULT_GROUP_STATE,
+  GroupsState,
+  ResourceGroupsContextProvider,
+} from "./ResourceGroupsContext"
 import { nResourceView, nResourceWithLabelsView, oneButton } from "./testdata"
 
 it("shows buttons on the appropriate resources", () => {
@@ -53,15 +56,29 @@ it("shows buttons on the appropriate resources", () => {
 describe("overview table with groups", () => {
   let view: Proto.webviewView
   let wrapper: ReactWrapper<OverviewTableProps, typeof TableGroupedByLabels>
+  let resources: GroupByLabelView<RowValues>
 
   beforeEach(() => {
     view = nResourceWithLabelsView(5)
-    wrapper = mount(<TableGroupedByLabels view={view} />)
+    wrapper = mount(
+      <ResourceGroupsContextProvider>
+        <TableGroupedByLabels view={view} />
+      </ResourceGroupsContextProvider>
+    )
+    resources = resourcesToTableCells(
+      view.uiResources,
+      view.uiButtons,
+      new LogStore()
+    )
 
     mockAnalyticsCalls()
+    localStorage.clear()
   })
 
-  afterEach(() => cleanupMockAnalyticsCalls())
+  afterEach(() => {
+    cleanupMockAnalyticsCalls()
+    localStorage.clear()
+  })
 
   // TODO: When resource groups are live in table view, add tests for:
   //       If no resources have labels, it renders a single table view
@@ -69,16 +86,6 @@ describe("overview table with groups", () => {
   //       If there are labels and feature is enabled, it renders table with groups
 
   describe("display", () => {
-    let resources: GroupByLabelView<RowValues>
-
-    beforeEach(() => {
-      resources = resourcesToTableCells(
-        view.uiResources,
-        view.uiButtons,
-        new LogStore()
-      )
-    })
-
     it("renders each label group in order", () => {
       const { labels: sortedLabels } = resources
       const groupNames = wrapper.find(OverviewGroupName)
@@ -166,10 +173,39 @@ describe("overview table with groups", () => {
       groups = getResourceGroups()
     })
 
-    it("sets resource groups as expanded by default", () => {
-      groups.forEach((group) => {
-        expect(group.props().expanded).toBe(true)
+    it("displays as expanded or collapsed based on the ResourceGroupContext", () => {
+      // Create an existing randomized group state from the labels
+      const { labels } = resources
+      const testData: GroupsState = [
+        ...labels,
+        UNLABELED_LABEL,
+        TILTFILE_LABEL,
+      ].reduce((groupsState: GroupsState, label) => {
+        const randomLabelState = Math.random() > 0.5
+        groupsState[label] = {
+          ...DEFAULT_GROUP_STATE,
+          expanded: randomLabelState,
+        }
+
+        return groupsState
+      }, {})
+
+      // Re-mount the component with the initial groups context values
+      wrapper = mount(
+        <ResourceGroupsContextProvider initialValuesForTesting={testData}>
+          <TableGroupedByLabels view={view} />
+        </ResourceGroupsContextProvider>
+      )
+
+      // Loop through each resource group and expect that its expanded state
+      // matches with the hardcoded test data
+      const actualExpandedState: GroupsState = {}
+      wrapper.find(OverviewGroup).forEach((group) => {
+        const groupName = group.find(OverviewGroupName).text()
+        actualExpandedState[groupName] = { expanded: group.props().expanded }
       })
+
+      expect(actualExpandedState).toEqual(testData)
     })
 
     it("is collapsed when an expanded resource group summary is clicked on", () => {
@@ -207,21 +243,6 @@ describe("overview table with groups", () => {
 
       const updatedGroup = getResourceGroups().first()
       expect(updatedGroup.props().expanded).toBe(true)
-    })
-
-    it("submits analytics with the correct payload", () => {
-      const group = groups.first()
-      const expanded = group.props().expanded
-
-      group.find(OverviewGroupSummary).simulate("click")
-
-      expectIncrs({
-        name: "ui.web.resourceGroup",
-        tags: {
-          action: expanded ? AnalyticsAction.Collapse : AnalyticsAction.Expand,
-          type: AnalyticsType.Grid,
-        },
-      })
     })
   })
 })
