@@ -53,6 +53,39 @@ func TestCreateAndUpdateDisco(t *testing.T) {
 	assert.Contains(f.T(), ka.Status.ResultYAML, fmt.Sprintf("uid: %s", uid2))
 }
 
+func TestDiscoveryStrategySelectorsOnly(t *testing.T) {
+	f := newFixture(t)
+	ka := v1alpha1.KubernetesApply{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "a",
+		},
+		Spec: v1alpha1.KubernetesApplySpec{
+			YAML:              testyaml.SanchoYAML,
+			DiscoveryStrategy: v1alpha1.KubernetesDiscoveryStrategySelectorsOnly,
+			KubernetesDiscoveryTemplateSpec: &v1alpha1.KubernetesDiscoveryTemplateSpec{
+				ExtraSelectors: []metav1.LabelSelector{
+					metav1.LabelSelector{
+						MatchLabels: map[string]string{"app": "tilt-site"},
+					},
+				},
+			},
+		},
+	}
+	f.Create(&ka)
+
+	f.MustReconcile(types.NamespacedName{Name: "a"})
+	f.MustGet(types.NamespacedName{Name: "a"}, &ka)
+
+	var kd v1alpha1.KubernetesDiscovery
+	f.MustGet(types.NamespacedName{Name: "a"}, &kd)
+	assert.Equal(f.T(), 1, len(kd.Spec.Watches))
+
+	// Make sure we don't contain UID watches
+	assert.Equal(t, "", kd.Spec.Watches[0].UID)
+	assert.Equal(t, "default", kd.Spec.Watches[0].Namespace)
+	assert.Equal(t, map[string]string{"app": "tilt-site"}, kd.Spec.ExtraSelectors[0].MatchLabels)
+}
+
 func TestCreateAndDeleteDisco(t *testing.T) {
 	f := newFixture(t)
 	ka := v1alpha1.KubernetesApply{

@@ -2426,7 +2426,6 @@ func schema_pkg_apis_core_v1alpha1_KubernetesWatchRef(ref common.ReferenceCallba
 					"uid": {
 						SchemaProps: spec.SchemaProps{
 							Description: "UID is a Kubernetes object UID.\n\nIt should either be the exact object UID or the transitive owner.",
-							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -2447,7 +2446,7 @@ func schema_pkg_apis_core_v1alpha1_KubernetesWatchRef(ref common.ReferenceCallba
 						},
 					},
 				},
-				Required: []string{"uid", "namespace"},
+				Required: []string{"namespace"},
 			},
 		},
 	}

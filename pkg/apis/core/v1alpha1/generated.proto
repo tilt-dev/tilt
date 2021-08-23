@@ -899,6 +899,8 @@ message KubernetesWatchRef {
   // UID is a Kubernetes object UID.
   //
   // It should either be the exact object UID or the transitive owner.
+  //
+  // +optional
   optional string uid = 1;
 
   // Namespace is the Kubernetes namespace for discovery. Required.
@@ -907,6 +909,8 @@ message KubernetesWatchRef {
   // Name is the Kubernetes object name.
   //
   // This is not directly used in discovery; it is extra metadata.
+  //
+  // +optional
   optional string name = 3;
 }
 
