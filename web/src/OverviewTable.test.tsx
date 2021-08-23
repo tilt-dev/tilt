@@ -5,9 +5,9 @@ import {
   cleanupMockAnalyticsCalls,
   mockAnalyticsCalls,
 } from "./analytics_test_helpers"
+import { ApiButton } from "./ApiButton"
 import { GroupByLabelView, TILTFILE_LABEL, UNLABELED_LABEL } from "./labels"
 import LogStore from "./LogStore"
-import { CustomActionButton } from "./OverviewButton"
 import OverviewTable, {
   OverviewGroup,
   OverviewGroupName,
@@ -48,7 +48,7 @@ it("shows buttons on the appropriate resources", () => {
   // first row is headers, so skip it
   const rows = root.find(ResourceTableRow).slice(1)
   const actualButtons = rows.map((row) =>
-    row.find(CustomActionButton).map((e) => e.prop("button").metadata.name)
+    row.find(ApiButton).map((e) => e.prop("button").metadata?.name)
   )
 
   expect(actualButtons).toEqual(expectedButtons)

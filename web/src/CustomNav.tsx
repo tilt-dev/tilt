@@ -8,7 +8,18 @@ type CustomNavProps = {
 }
 
 const CustomNavButton = styled(ApiButton)`
-  ${MenuButtonMixin}
+  align-items: center;
+
+  // If the api button has an options toggle, remove padding between the submit
+  // button and the options button.
+  button:first-child {
+    ${MenuButtonMixin};
+    padding-right: 0px;
+  }
+  // If there is no options toggle, then use the default padding.
+  button:only-child {
+    ${MenuButtonMixin};
+  }
   .apibtn-label {
     display: none;
   }

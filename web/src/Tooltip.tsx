@@ -34,7 +34,7 @@ export default function TiltTooltip(props: TooltipProps) {
   return (
     <Tooltip
       arrow
-      placement="top-end"
+      placement="top-start"
       classes={classes}
       role="tooltip"
       {...props}

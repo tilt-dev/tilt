@@ -6,7 +6,7 @@ import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
 import { Color, Font, FontSize } from "./style-helpers"
 
 type props = {
-  id: string
+  id?: string
   title: string | React.ReactElement
   open: boolean
   anchorEl: Element | null
