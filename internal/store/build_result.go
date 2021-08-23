@@ -468,15 +468,16 @@ func AllRunningContainers(mt *ManifestTarget) []ContainerInfo {
 // If all containers running the given image are ready, returns info for them.
 // (If this image is running on multiple pods, return an error.)
 func RunningContainersForTargetForOnePod(name string, luSpec model.LiveUpdateSpec, runtimeState K8sRuntimeState) ([]ContainerInfo, error) {
-	if runtimeState.PodLen() > 1 {
-		return nil, fmt.Errorf("can only get container info for a single pod; image target %s has %d pods", name, runtimeState.PodLen())
+	// Ignore completed pods.
+	podSet := runtimeState.Pods.Filter(func(p *v1alpha1.Pod) bool {
+		return !(p.Phase == string(v1.PodSucceeded) ||
+			p.Phase == string(v1.PodFailed))
+	})
+	if len(podSet) > 1 {
+		return nil, fmt.Errorf("can only get container info for a single pod; image target %s has %d pods", name, len(podSet))
 	}
 
-	if runtimeState.PodLen() == 0 {
-		return nil, nil
-	}
-
-	pod := runtimeState.MostRecentPod()
+	pod := podSet.MostRecentPod()
 	if pod.Name == "" {
 		return nil, nil
 	}

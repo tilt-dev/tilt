@@ -278,6 +278,9 @@ func TestHoldForDeploy(t *testing.T) {
 
 	sancho.State.K8sRuntimeState().Pods["pod-1"] = sidecarCrashedPod("pod-1", sanchoImage.Refs.ClusterRef())
 	f.assertNextTargetToBuild("sancho")
+
+	sancho.State.K8sRuntimeState().Pods["pod-1"] = completedPod("pod-1", sanchoImage.Refs.ClusterRef())
+	f.assertNextTargetToBuild("sancho")
 }
 
 func readyPod(podID k8s.PodID, ref reference.Named) *v1alpha1.Pod {
@@ -371,6 +374,30 @@ func sidecarCrashedPod(podID k8s.PodID, ref reference.Named) *v1alpha1.Pod {
 						FinishedAt: metav1.Now(),
 						Reason:     "Error",
 						ExitCode:   127,
+					}},
+			},
+		},
+	}
+}
+
+func completedPod(podID k8s.PodID, ref reference.Named) *v1alpha1.Pod {
+	return &v1alpha1.Pod{
+		Name:   podID.String(),
+		Phase:  string(v1.PodSucceeded),
+		Status: "Completed",
+		Containers: []v1alpha1.Container{
+			{
+				ID:       string(podID + "-container"),
+				Name:     "c",
+				Ready:    false,
+				Image:    ref.String(),
+				Restarts: 0,
+				State: v1alpha1.ContainerState{
+					Terminated: &v1alpha1.ContainerStateTerminated{
+						StartedAt:  metav1.Now(),
+						FinishedAt: metav1.Now(),
+						Reason:     "Succcess!",
+						ExitCode:   0,
 					}},
 			},
 		},

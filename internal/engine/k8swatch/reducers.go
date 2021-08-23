@@ -118,6 +118,12 @@ func CheckForContainerCrash(state *store.EngineState, mt *store.ManifestTarget) 
 	}
 
 	runningContainers := store.AllRunningContainers(mt)
+	if len(runningContainers) == 0 {
+		// If there are no running containers, it might mean the containers are
+		// being deleted. We don't need to intervene yet.
+		return
+	}
+
 	hitList := make(map[container.ID]bool, len(ms.LiveUpdatedContainerIDs))
 	for cID := range ms.LiveUpdatedContainerIDs {
 		hitList[cID] = true
@@ -131,7 +137,8 @@ func CheckForContainerCrash(state *store.EngineState, mt *store.ManifestTarget) 
 		return
 	}
 
-	// The pod isn't what we expect!
+	// There are new running containers that don't match
+	// what we live-updated!
 	ms.NeedsRebuildFromCrash = true
 	ms.LiveUpdatedContainerIDs = container.NewIDSet()
 

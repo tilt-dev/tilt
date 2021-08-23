@@ -2275,66 +2275,6 @@ func TestUpperPodRestartsBeforeTiltStart(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// This tests a bug that led to infinite redeploys:
-// 1. Crash rebuild
-// 2. Immediately do a container build, before we get the event with the new container ID in (1). This container build
-//    should *not* happen in the pre-(1) container ID. Whether it happens in the container from (1) or yields a fresh
-//    container build isn't too important
-func TestUpperBuildImmediatelyAfterCrashRebuild(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-
-	manifest := f.newManifest("fe")
-	pb := f.registerForDeployer(manifest)
-	f.Start([]model.Manifest{manifest})
-
-	call := f.nextCall()
-	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
-	assert.Equal(t, []string{}, call.oneImageState().FilesChanged())
-	f.waitForCompletedBuildCount(1)
-
-	f.b.nextLiveUpdateContainerIDs = []container.ID{podbuilder.FakeContainerID()}
-	pod := pb.Build()
-	f.podEvent(pb.Build())
-	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
-
-	call = f.nextCall()
-	assert.Equal(t, pod.Name, call.oneImageState().OneContainerInfo().PodID.String())
-	f.waitForCompletedBuildCount(2)
-	f.withManifestState("fe", func(ms store.ManifestState) {
-		assert.Equal(t, model.BuildReasonFlagChangedFiles, ms.LastBuild().Reason)
-		assert.Equal(t, podbuilder.FakeContainerIDSet(1), ms.LiveUpdatedContainerIDs)
-	})
-
-	// Simulate a container restart where the new container isn't running yet
-	// HACK(milas): by making the container ID an empty string, it'll get ignored; we should really just
-	// 	properly set the container status
-	pb = pb.WithContainerID("")
-	f.podEvent(pb.Build())
-	call = f.nextCall()
-	assert.True(t, call.oneImageState().OneContainerInfo().Empty())
-	f.waitForCompletedBuildCount(3)
-
-	f.withManifestState("fe", func(ms store.ManifestState) {
-		assert.Equal(t, model.BuildReasonFlagCrash, ms.LastBuild().Reason)
-	})
-
-	// kick off another build
-	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main2.go"))
-
-	// at this point we have not received a pod event for pod that was started by the crash-rebuild,
-	// so we should be waiting on the pod deploy to rebuild.
-	f.assertNoCall()
-	f.withState(func(st store.EngineState) {
-		_, holds := buildcontrol.NextTargetToBuild(st)
-		assert.Equal(t, store.HoldWaitingForDeploy, holds[manifest.Name])
-	})
-
-	err := f.Stop()
-	assert.NoError(t, err)
-	f.assertAllBuildsConsumed()
-}
-
 func TestUpperRecordPodWithMultipleContainers(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
