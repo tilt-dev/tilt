@@ -18,6 +18,8 @@ import (
 
 const MaxNameLength = validation.DNS1123SubdomainMaxLength
 
+var invalidLabelCharacters = regexp.MustCompile("[^-A-Za-z0-9_.]")
+
 var invalidPathCharacters = regexp.MustCompile(`[` + strings.Join(path.NameMayNotContain, "") + `]`)
 
 func Key(o resource.Object) types.NamespacedName {
@@ -26,6 +28,21 @@ func Key(o resource.Object) types.NamespacedName {
 
 func KeyFromMeta(objMeta metav1.ObjectMeta) types.NamespacedName {
 	return types.NamespacedName{Name: objMeta.Name, Namespace: objMeta.Namespace}
+}
+
+// SanitizeLabel ensures a value is suitable as both a label key and value.
+func SanitizeLabel(name string) string {
+	sanitized := invalidLabelCharacters.ReplaceAllString(name, "_")
+	max := validation.LabelValueMaxLength
+	if len(sanitized) > max {
+		var sb strings.Builder
+		sb.Grow(max)
+		sb.WriteString(sanitized[:max-9])
+		sb.WriteRune('-')
+		sb.WriteString(hashValue(name))
+		sanitized = sb.String()
+	}
+	return sanitized
 }
 
 // SanitizeName ensures a value is suitable for usage as an apiserver identifier.

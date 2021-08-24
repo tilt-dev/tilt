@@ -12,6 +12,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
+	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
@@ -88,6 +89,10 @@ func (r *Reconciler) toDesiredTiltfile(owner *v1alpha1.Extension) (*v1alpha1.Til
 		return nil, nil
 	}
 
+	// Each extensions resources get their own group.
+	// We prefix it with 'extension' so that all extensions get put together.
+	// TODO(nick): Let the user choose the label when they register the extension.
+	label := apis.SanitizeLabel(fmt.Sprintf("extension.%s", owner.Name))
 	child := &v1alpha1.Tiltfile{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: owner.Name,
@@ -98,8 +103,7 @@ func (r *Reconciler) toDesiredTiltfile(owner *v1alpha1.Extension) (*v1alpha1.Til
 		Spec: v1alpha1.TiltfileSpec{
 			Path: path,
 			Labels: map[string]string{
-				// All tiltfiles are under the "extensions" group.
-				"extensions": "extensions",
+				label: label,
 			},
 		},
 	}
