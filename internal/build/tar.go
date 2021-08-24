@@ -210,33 +210,49 @@ func (a *ArchiveBuilder) entriesForPath(ctx context.Context, localPath, containe
 func (a *ArchiveBuilder) writeEntry(entry archiveEntry) error {
 	path := entry.path
 	header := entry.header
-	info := entry.info
-	err := a.tw.WriteHeader(header)
+
+	if header.Typeflag != tar.TypeReg {
+		// anything other than a regular file (e.g. dir, symlink) just needs the header
+		if err := a.tw.WriteHeader(header); err != nil {
+			return errors.Wrapf(err, "%s: writing header", path)
+		}
+		return nil
+	}
+
+	file, err := os.Open(path)
+	if err != nil {
+		// In case the file has been deleted since we last looked at it.
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return errors.Wrapf(err, "%s: open", path)
+	}
+
+	defer func() {
+		_ = file.Close()
+	}()
+
+	// wait to write the header until _after_ the file is successfully opened
+	// to avoid generating an invalid tar entry that has a header but no contents
+	// in the case the file has been deleted
+	err = a.tw.WriteHeader(header)
 	if err != nil {
 		return errors.Wrapf(err, "%s: writing header", path)
 	}
 
-	if info.IsDir() {
-		return nil
+	// N.B. intentionally do not limit the number of bytes - TarWriter::Write() will
+	// 	return an error if _more_ than the header specified is written and Flush()
+	// 	will error if _less_ was written; this is desirable to handle concurrent file
+	// 	writes while we are reading (e.g. truncate/append)
+	_, err = io.Copy(a.tw, file)
+	if err != nil && err != io.EOF {
+		return errors.Wrapf(err, "%s: copying Contents", path)
 	}
 
-	if header.Typeflag == tar.TypeReg {
-		file, err := os.Open(path)
-		if err != nil {
-			// In case the file has been deleted since we last looked at it.
-			if os.IsNotExist(err) {
-				return nil
-			}
-			return errors.Wrapf(err, "%s: open", path)
-		}
-		defer func() {
-			_ = file.Close()
-		}()
-
-		_, err = io.CopyN(a.tw, file, info.Size())
-		if err != nil && err != io.EOF {
-			return errors.Wrapf(err, "%s: copying Contents", path)
-		}
+	// explicitly flush so that if the entry is invalid we will detect it now and
+	// provide a more meaningful error
+	if err := a.tw.Flush(); err != nil {
+		return errors.Wrapf(err, "%s: flush", path)
 	}
 	return nil
 }
@@ -292,8 +308,13 @@ func tarArchiveForPaths(ctx context.Context, pw *io.PipeWriter, toArchive []Path
 	if err != nil {
 		_ = pw.CloseWithError(errors.Wrap(err, "archivePathsIfExists"))
 	} else {
-		_ = ab.Close()
-		_ = pw.Close()
+		// propagate errors from the TarWriter::Close() because it performs a final
+		// Flush() and any errors mean the tar is invalid
+		if err := ab.Close(); err != nil {
+			_ = pw.CloseWithError(errors.Wrap(err, "tar close"))
+		} else {
+			_ = pw.Close()
+		}
 	}
 }
 
