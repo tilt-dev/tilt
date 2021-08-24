@@ -9,7 +9,8 @@ import LogStore from "./LogStore"
 import SocketBar from "./SocketBar"
 import {
   logList,
-  nButtonView, nResourceView,
+  nButtonView,
+  nResourceView,
   oneResourceView,
   twoResourceView,
 } from "./testdata"

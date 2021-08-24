@@ -104,11 +104,10 @@ export function buttonsForComponent(
     return []
   }
 
-  return buttons
-    .filter(
-      (b) =>
-        b.spec?.location?.componentType?.toUpperCase() ===
-          componentType.toUpperCase() &&
-        b.spec?.location?.componentID === componentID
-    )
+  return buttons.filter(
+    (b) =>
+      b.spec?.location?.componentType?.toUpperCase() ===
+        componentType.toUpperCase() &&
+      b.spec?.location?.componentID === componentID
+  )
 }
