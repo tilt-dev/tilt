@@ -21,6 +21,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/io"
 	tiltfile_k8s "github.com/tilt-dev/tilt/internal/tiltfile/k8s"
 	"github.com/tilt-dev/tilt/internal/tiltfile/value"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -51,6 +52,8 @@ type k8sResource struct {
 
 	podReadinessMode model.PodReadinessMode
 
+	discoveryStrategy v1alpha1.KubernetesDiscoveryStrategy
+
 	dependencyIDs []model.TargetID
 
 	triggerMode triggerMode
@@ -79,6 +82,7 @@ type k8sResourceOptions struct {
 	objects           []string
 	manuallyGrouped   bool
 	podReadinessMode  model.PodReadinessMode
+	discoveryStrategy v1alpha1.KubernetesDiscoveryStrategy
 	links             []model.Link
 	labels            map[string]string
 }
@@ -269,6 +273,7 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 	var links links.LinkList
 	var autoInit = value.BoolOrNone{Value: true}
 	var labels value.LabelSet
+	var discoveryStrategy tiltfile_k8s.DiscoveryStrategy
 
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"workload?", &workload,
@@ -282,6 +287,7 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 		"pod_readiness?", &podReadinessMode,
 		"links?", &links,
 		"labels?", &labels,
+		"discovery_strategy?", &discoveryStrategy,
 	); err != nil {
 		return nil, err
 	}
@@ -341,6 +347,7 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 		podReadinessMode:  podReadinessMode.Value,
 		links:             links.Links,
 		labels:            labelMap,
+		discoveryStrategy: v1alpha1.KubernetesDiscoveryStrategy(discoveryStrategy),
 	})
 
 	return starlark.None, nil

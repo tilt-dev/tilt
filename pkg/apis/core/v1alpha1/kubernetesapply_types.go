@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"context"
+	fmt "fmt"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -187,10 +188,20 @@ func (in *KubernetesApply) IsStorageVersion() bool {
 func (in *KubernetesApply) Validate(ctx context.Context) field.ErrorList {
 	var fieldErrors field.ErrorList
 	if in.Spec.YAML == "" {
-		fieldErrors = append(fieldErrors, field.Required(field.NewPath("yaml"), "cannot be empty"))
+		fieldErrors = append(fieldErrors, field.Required(field.NewPath("spec.yaml"), "cannot be empty"))
 	}
 
-	// TODO(nick): Validate the image locators as well.
+	kdStrategy := in.Spec.DiscoveryStrategy
+	if !(kdStrategy == "" ||
+		kdStrategy == KubernetesDiscoveryStrategyDefault ||
+		kdStrategy == KubernetesDiscoveryStrategySelectorsOnly) {
+		fieldErrors = append(fieldErrors, field.Invalid(
+			field.NewPath("spec.discoveryStrategy"),
+			kdStrategy,
+			fmt.Sprintf("Must be one of: %s, %s",
+				KubernetesDiscoveryStrategyDefault,
+				KubernetesDiscoveryStrategySelectorsOnly)))
+	}
 
 	return fieldErrors
 }

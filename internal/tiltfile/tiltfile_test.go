@@ -1763,6 +1763,36 @@ k8s_resource(new_name='config', objects=['config'])
 	)
 }
 
+func TestK8sDiscoveryStrategy(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo:stable")))
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+k8s_resource('foo', discovery_strategy='selectors-only')
+`)
+
+	f.load("foo")
+	f.assertNextManifest("foo",
+		deployment("foo"),
+		v1alpha1.KubernetesDiscoveryStrategySelectorsOnly,
+	)
+}
+
+func TestK8sDiscoveryStrategyInvalid(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo:stable")))
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+k8s_resource('foo', discovery_strategy='typo')
+`)
+
+	f.loadErrString("Invalid. Must be one of: \"default\", \"selectors-only\"")
+}
+
 func TestPodReadinessOverrideDeployment(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -6205,6 +6235,8 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 			if !found {
 				f.t.Fatalf("deployment %v not found in yaml %q", opt.name, yaml)
 			}
+		case v1alpha1.KubernetesDiscoveryStrategy:
+			assert.Equal(f.t, opt, m.K8sTarget().DiscoveryStrategy)
 		case podReadinessHelper:
 			assert.Equal(f.t, opt.podReadiness, m.K8sTarget().PodReadinessMode)
 		case namespaceHelper:

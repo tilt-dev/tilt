@@ -97,12 +97,18 @@ type KubernetesWatchRef struct {
 	// UID is a Kubernetes object UID.
 	//
 	// It should either be the exact object UID or the transitive owner.
-	UID string `json:"uid" protobuf:"bytes,1,opt,name=uid"`
+	//
+	// +optional
+	UID string `json:"uid,omitempty" protobuf:"bytes,1,opt,name=uid"`
+
 	// Namespace is the Kubernetes namespace for discovery. Required.
 	Namespace string `json:"namespace" protobuf:"bytes,2,opt,name=namespace"`
+
 	// Name is the Kubernetes object name.
 	//
 	// This is not directly used in discovery; it is extra metadata.
+	//
+	// +optional
 	Name string `json:"name,omitempty" protobuf:"bytes,3,opt,name=name"`
 }
 

@@ -716,6 +716,9 @@ func (s *tiltfileState) assembleK8s() error {
 			if opts.podReadinessMode != model.PodReadinessNone {
 				r.podReadinessMode = opts.podReadinessMode
 			}
+			if opts.discoveryStrategy != "" {
+				r.discoveryStrategy = opts.discoveryStrategy
+			}
 			r.portForwards = append(r.portForwards, opts.portForwards...)
 			if opts.triggerMode != TriggerModeUnset {
 				r.triggerMode = opts.triggerMode
@@ -1071,6 +1074,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource, updateSettings mo
 		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities,
 			s.defaultedPortForwards(r.portForwards), r.extraPodSelectors,
 			r.dependencyIDs, iTargets, r.imageRefMap, s.inferPodReadinessMode(r),
+			r.discoveryStrategy,
 			locators, r.links, updateSettings)
 		if err != nil {
 			return nil, err

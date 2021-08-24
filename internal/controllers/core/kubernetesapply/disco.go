@@ -124,7 +124,7 @@ func (r *Reconciler) toDesiredKubernetesDiscovery(ka *v1alpha1.KubernetesApply) 
 func (r *Reconciler) toWatchRefs(ka *v1alpha1.KubernetesApply) ([]v1alpha1.KubernetesWatchRef, error) {
 	seenNamespaces := make(map[k8s.Namespace]bool)
 	var result []v1alpha1.KubernetesWatchRef
-	if ka.Status.ResultYAML != "" {
+	if ka.Status.ResultYAML != "" && ka.Spec.DiscoveryStrategy != v1alpha1.KubernetesDiscoveryStrategySelectorsOnly {
 		deployed, err := k8s.ParseYAMLFromString(ka.Status.ResultYAML)
 		if err != nil {
 			return nil, err

@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -25,7 +26,8 @@ func MustTarget(name model.TargetName, yaml string) model.K8sTarget {
 		panic(fmt.Errorf("MustTarget: %v", err))
 	}
 	target, err := NewTarget(name, entities, nil, nil, nil, nil,
-		nil, model.PodReadinessIgnore, nil, nil, model.UpdateSettings{})
+		nil, model.PodReadinessIgnore, v1alpha1.KubernetesDiscoveryStrategyDefault,
+		nil, nil, model.UpdateSettings{})
 	if err != nil {
 		panic(fmt.Errorf("MustTarget: %v", err))
 	}
@@ -41,6 +43,7 @@ func NewTarget(
 	imageTargets []model.ImageTarget,
 	refInjectCounts map[string]int,
 	podReadinessMode model.PodReadinessMode,
+	discoveryStrategy v1alpha1.KubernetesDiscoveryStrategy,
 	allLocators []ImageLocator,
 	links []model.Link,
 	updateSettings model.UpdateSettings) (model.K8sTarget, error) {
@@ -82,6 +85,13 @@ func NewTarget(
 			},
 		},
 		PortForwardTemplateSpec: toPortForwardTemplateSpec(portForwards),
+		DiscoveryStrategy:       discoveryStrategy,
+	}
+
+	kapp := &v1alpha1.KubernetesApply{Spec: apply}
+	errors := kapp.Validate(context.TODO())
+	if errors != nil {
+		return model.K8sTarget{}, errors.ToAggregate()
 	}
 
 	return model.K8sTarget{
@@ -98,7 +108,8 @@ func NewTarget(
 
 func NewK8sOnlyManifest(name model.ManifestName, entities []K8sEntity, allLocators []ImageLocator) (model.Manifest, error) {
 	kTarget, err := NewTarget(name.TargetName(), entities, nil, nil, nil, nil,
-		nil, model.PodReadinessIgnore, allLocators, nil, model.UpdateSettings{})
+		nil, model.PodReadinessIgnore, v1alpha1.KubernetesDiscoveryStrategyDefault,
+		allLocators, nil, model.UpdateSettings{})
 	if err != nil {
 		return model.Manifest{}, err
 	}
