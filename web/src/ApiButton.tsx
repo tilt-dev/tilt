@@ -171,9 +171,9 @@ export const ApiButton: React.FC<ApiButtonProps> = (props) => {
     // apiserver's date format time is _extremely_ strict to the point that it requires the full
     // six-decimal place microsecond precision, e.g. .000Z will be rejected, it must be .000000Z
     // so use an explicit RFC3339 moment format to ensure it passes
-    toUpdate.status!.lastClickedAt = moment().format(
-      "YYYY-MM-DDTHH:mm:ss.SSSSSSZ"
-    )
+    toUpdate.status!.lastClickedAt = moment
+      .utc()
+      .format("YYYY-MM-DDTHH:mm:ss.SSSSSSZ")
 
     toUpdate.status!.inputs = []
     props.button.spec!.inputs?.forEach((spec) => {
