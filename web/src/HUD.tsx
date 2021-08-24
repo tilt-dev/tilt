@@ -349,7 +349,7 @@ function compareObjectsOrder<
   }
 
   let aName = a.metadata?.name || ""
-  let bName = a.metadata?.name || ""
+  let bName = b.metadata?.name || ""
   return aName < bName ? -1 : aName == bName ? 0 : 1
 }
 

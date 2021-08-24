@@ -111,7 +111,4 @@ export function buttonsForComponent(
           componentType.toUpperCase() &&
         b.spec?.location?.componentID === componentID
     )
-    .sort((a, b) =>
-      (a.metadata?.name || "").localeCompare(b.metadata?.name || "")
-    )
 }
