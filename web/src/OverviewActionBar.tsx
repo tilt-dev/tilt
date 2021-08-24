@@ -179,7 +179,13 @@ function FilterSourceMenu(props: FilterSourceMenuProps) {
 }
 
 const CustomActionButton = styled(ApiButton)`
-  ${OverviewButtonMixin};
+  button {
+    ${OverviewButtonMixin};
+  }
+
+  & + & {
+    margin-left: ${SizeUnit(0.25)};
+  }
 `
 
 const ButtonRoot = styled(InstrumentedButton)`

@@ -2,6 +2,7 @@ import React from "react"
 import styled from "styled-components"
 import { ApiButton, ApiIcon, buttonsForComponent } from "./ApiButton"
 import { MenuButtonLabel, MenuButtonMixin } from "./GlobalNav"
+import {SizeUnit} from "./style-helpers"
 
 type CustomNavProps = {
   view: Proto.webviewView
@@ -10,15 +11,17 @@ type CustomNavProps = {
 const CustomNavButton = styled(ApiButton)`
   align-items: center;
 
-  // If the api button has an options toggle, remove padding between the submit
+  button {
+    ${MenuButtonMixin};
+  }
+  // If there is an options toggle, remove padding between the submit
   // button and the options button.
   button:first-child {
-    ${MenuButtonMixin};
     padding-right: 0px;
   }
-  // If there is no options toggle, then use the default padding.
+  // If there is no options toggle, then restore the default padding.
   button:only-child {
-    ${MenuButtonMixin};
+    ${SizeUnit(0.5)};
   }
   .apibtn-label {
     display: none;

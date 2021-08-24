@@ -76,15 +76,11 @@ describe("ApiButton", () => {
     const root = mount(<ApiButton button={b} />)
 
     const optionsButton = root.find(ApiButtonInputsToggleButton)
-    act(() => {
-      optionsButton.simulate("click")
-    })
+    optionsButton.simulate("click")
     root.update()
 
     const tf = root.find(ApiButtonForm).find("input")
-    act(() => {
-      tf.simulate("change", { target: { value: "new_value" } })
-    })
+    tf.simulate("change", { target: { value: "new_value" } })
     root.update()
 
     const submit = root.find(ApiButton).find(Button).at(0)
@@ -93,7 +89,7 @@ describe("ApiButton", () => {
       // the button's onclick updates the button so we need to wait for that to resolve
       // within the act() before continuing
       // some related info: https://github.com/testing-library/react-testing-library/issues/281
-      return flushPromises()
+      await flushPromises()
     })
     root.update()
 
