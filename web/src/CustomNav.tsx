@@ -2,7 +2,7 @@ import React from "react"
 import styled from "styled-components"
 import { ApiButton, ApiIcon, buttonsForComponent } from "./ApiButton"
 import { MenuButtonLabel, MenuButtonMixin } from "./GlobalNav"
-import {SizeUnit} from "./style-helpers"
+import { SizeUnit } from "./style-helpers"
 
 type CustomNavProps = {
   view: Proto.webviewView
