@@ -2074,6 +2074,13 @@ func schema_pkg_apis_core_v1alpha1_KubernetesApplySpec(ref common.ReferenceCallb
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamTemplateSpec"),
 						},
 					},
+					"discoveryStrategy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DiscoveryStrategy describes how we set up pod watches for the applied resources. This affects all systems that attach to pods, including PortForwards, PodLogStreams, resource readiness, and live-updates.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"yaml"},
 			},

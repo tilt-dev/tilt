@@ -135,6 +135,13 @@ type KubernetesApplySpec struct {
 	//
 	// +optional
 	PodLogStreamTemplateSpec *PodLogStreamTemplateSpec `json:"podLogStreamTemplateSpec,omitempty" protobuf:"bytes,7,opt,name=podLogStreamTemplateSpec"`
+
+	// DiscoveryStrategy describes how we set up pod watches for the applied
+	// resources. This affects all systems that attach to pods, including
+	// PortForwards, PodLogStreams, resource readiness, and live-updates.
+	//
+	// +optional
+	DiscoveryStrategy KubernetesDiscoveryStrategy `json:"discoveryStrategy,omitempty" protobuf:"bytes,8,opt,name=discoveryStrategy,casttype=KubernetesDiscoveryStrategy"`
 }
 
 var _ resource.Object = &KubernetesApply{}
@@ -279,3 +286,21 @@ type KubernetesDiscoveryTemplateSpec struct {
 	// not set an owner reference to itself.
 	ExtraSelectors []metav1.LabelSelector `json:"extraSelectors,omitempty" protobuf:"bytes,1,rep,name=extraSelectors"`
 }
+
+type KubernetesDiscoveryStrategy string
+
+var (
+	// In the default strategy, we traverse owner references of every pod,
+	// and follow pods that belong to an applied resource. If extra selectors
+	// are specified, we use them too.
+	KubernetesDiscoveryStrategyDefault KubernetesDiscoveryStrategy = "default"
+
+	// In the selectors-only strategy, we only traverse label selectors, and ignore
+	// owner references.
+	//
+	// For example, you might have a CRD that does some of its work in pods, then
+	// creates a new Deployment. In that case, the child pods of the CRD aren't
+	// the ones we want to track for readiness or live-update. You want the ones
+	// from the deployment.
+	KubernetesDiscoveryStrategySelectorsOnly KubernetesDiscoveryStrategy = "selectors-only"
+)
