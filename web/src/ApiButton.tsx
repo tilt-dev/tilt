@@ -104,14 +104,10 @@ export function buttonsForComponent(
     return []
   }
 
-  return buttons
-    .filter(
-      (b) =>
-        b.spec?.location?.componentType?.toUpperCase() ===
-          componentType.toUpperCase() &&
-        b.spec?.location?.componentID === componentID
-    )
-    .sort((a, b) =>
-      (a.metadata?.name || "").localeCompare(b.metadata?.name || "")
-    )
+  return buttons.filter(
+    (b) =>
+      b.spec?.location?.componentType?.toUpperCase() ===
+        componentType.toUpperCase() &&
+      b.spec?.location?.componentID === componentID
+  )
 }

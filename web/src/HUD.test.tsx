@@ -10,6 +10,7 @@ import SocketBar from "./SocketBar"
 import {
   logList,
   nButtonView,
+  nResourceView,
   oneResourceView,
   twoResourceView,
 } from "./testdata"
@@ -191,16 +192,25 @@ describe("mergeAppUpdates", () => {
   })
 
   it("handles add resource out of order", () => {
-    let prevState = { view: twoResourceView() }
-    prevState.view.uiResources = [twoResourceView().uiResources[1]]
+    let prevState = { view: nResourceView(10) }
+    let addedResources = prevState.view.uiResources.splice(3, 1)
 
-    let update = { view: { uiResources: [twoResourceView().uiResources[0]] } }
+    let update = { view: { uiResources: addedResources } }
     let result = mergeAppUpdate(prevState as any, update)
     expect(result!.view).not.toBe(prevState.view)
     expect(result!.view.uiSession).toBe(prevState.view.uiSession)
-    expect(result!.view.uiResources!.length).toEqual(2)
-    expect(result!.view.uiResources![0].metadata!.name).toEqual("vigoda")
-    expect(result!.view.uiResources![1].metadata!.name).toEqual("snack")
+    expect(result!.view.uiResources).toEqual(nResourceView(10).uiResources)
+  })
+
+  it("handles add button out of order", () => {
+    let prevState = { view: nButtonView(9) }
+    let addedButtons = prevState.view.uiButtons.splice(3, 1)
+
+    let update = { view: { uiButtons: addedButtons } }
+    let result = mergeAppUpdate(prevState as any, update)
+    expect(result!.view).not.toBe(prevState.view)
+    expect(result!.view.uiSession).toBe(prevState.view.uiSession)
+    expect(result!.view.uiButtons).toEqual(nButtonView(9).uiButtons)
   })
 
   it("handles delete resource", () => {
