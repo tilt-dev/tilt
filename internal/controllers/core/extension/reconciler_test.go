@@ -38,6 +38,7 @@ func TestDefault(t *testing.T) {
 	var tf v1alpha1.Tiltfile
 	f.MustGet(types.NamespacedName{Name: "my-repo:my-ext"}, &tf)
 	require.Equal(t, p, tf.Spec.Path)
+	require.Equal(t, map[string]string{"extension.my-repo_my-ext": "extension.my-repo_my-ext"}, tf.Spec.Labels)
 }
 
 func TestCleanupTiltfile(t *testing.T) {
