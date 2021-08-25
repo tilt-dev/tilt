@@ -15,6 +15,7 @@ import { useHistory, useLocation } from "react-router"
 import styled from "styled-components"
 import { Alert } from "./alerts"
 import { AnalyticsAction, incr } from "./analytics"
+import { ApiButton } from "./ApiButton"
 import { ReactComponent as AlertSvg } from "./assets/svg/alert.svg"
 import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
@@ -35,7 +36,7 @@ import {
 } from "./logfilters"
 import { useLogStore } from "./LogStore"
 import OverviewActionBarKeyboardShortcuts from "./OverviewActionBarKeyboardShortcuts"
-import { CustomActionButton, OverviewButtonMixin } from "./OverviewButton"
+import { OverviewButtonMixin } from "./OverviewButton"
 import { usePathBuilder } from "./PathBuilder"
 import SrOnly from "./SrOnly"
 import {
@@ -176,6 +177,16 @@ function FilterSourceMenu(props: FilterSourceMenuProps) {
     </Menu>
   )
 }
+
+const CustomActionButton = styled(ApiButton)`
+  button {
+    ${OverviewButtonMixin};
+  }
+
+  & + & {
+    margin-left: ${SizeUnit(0.25)};
+  }
+`
 
 const ButtonRoot = styled(InstrumentedButton)`
   ${OverviewButtonMixin}

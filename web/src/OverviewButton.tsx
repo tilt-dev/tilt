@@ -1,5 +1,3 @@
-import styled from "styled-components"
-import { ApiButton } from "./ApiButton"
 import {
   AnimDuration,
   Color,
@@ -61,6 +59,9 @@ export const OverviewButtonMixin = `
   &:hover {
     color: ${Color.blue};
     border-color: ${Color.blue};
+    // When in a ButtonGroup, adjacent buttons share a border.
+    // Force this button to the front so that its highlighted border shows.
+    z-index: 10;
   }
   &:hover .fillStd {
     fill: ${Color.blue};
@@ -72,8 +73,4 @@ export const OverviewButtonMixin = `
   &.isEnabled:hover .fillStd {
     fill: ${Color.blue};
   }
-`
-
-export const CustomActionButton = styled(ApiButton)`
-  ${OverviewButtonMixin}
 `

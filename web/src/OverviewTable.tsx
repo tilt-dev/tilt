@@ -15,7 +15,7 @@ import TimeAgo from "react-timeago"
 import styled from "styled-components"
 import { buildAlerts, runtimeAlerts } from "./alerts"
 import { AnalyticsAction, AnalyticsType, incr } from "./analytics"
-import { ApiIcon, buttonsForComponent } from "./ApiButton"
+import { ApiButton, ApiIcon, buttonsForComponent } from "./ApiButton"
 import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
@@ -30,7 +30,7 @@ import {
 } from "./labels"
 import { displayURL } from "./links"
 import LogStore, { LogAlertIndex, useLogStore } from "./LogStore"
-import { CustomActionButton } from "./OverviewButton"
+import { OverviewButtonMixin } from "./OverviewButton"
 import OverviewTableStarResourceButton from "./OverviewTableStarResourceButton"
 import OverviewTableStatus from "./OverviewTableStatus"
 import OverviewTableTriggerButton from "./OverviewTableTriggerButton"
@@ -249,12 +249,17 @@ const PodIdCopy = styled(InstrumentedButton)`
     fill: ${Color.gray6};
   }
 `
+const CustomActionButton = styled(ApiButton)`
+  button {
+    ${OverviewButtonMixin};
+  }
+`
 const WidgetCell = styled.span`
   display: flex;
   flex-wrap: wrap;
   max-width: ${SizeUnit(8)};
 
-  ${CustomActionButton} {
+  .MuiButtonGroup-root {
     margin-bottom: ${SizeUnit(0.125)};
     margin-right: ${SizeUnit(0.125)};
   }
