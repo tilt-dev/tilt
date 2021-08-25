@@ -15,6 +15,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -637,6 +638,40 @@ func TestCmdUsesInputsFromButtonOnStart(t *testing.T) {
 	actualEnv := f.fe.processes["myserver"].env
 	expectedEnv := []string{"foo=bar", "baz=wait what comes next"}
 	require.Equal(t, expectedEnv, actualEnv)
+}
+
+func TestBoolInput(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		input         v1alpha1.UIBoolInputSpec
+		value         bool
+		expectedValue string
+	}{
+		{"true, default", v1alpha1.UIBoolInputSpec{}, true, "true"},
+		{"true, custom", v1alpha1.UIBoolInputSpec{TrueString: pointer.String("custom value")}, true, "custom value"},
+		{"false, default", v1alpha1.UIBoolInputSpec{}, false, "false"},
+		{"false, custom", v1alpha1.UIBoolInputSpec{FalseString: pointer.String("ooh la la")}, false, "ooh la la"},
+		{"false, empty", v1alpha1.UIBoolInputSpec{FalseString: pointer.String("")}, false, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newFixture(t)
+			defer f.teardown()
+
+			setupStartOnTest(t, f)
+			f.updateButton("b-1", func(button *v1alpha1.UIButton) {
+				spec := v1alpha1.UIInputSpec{Name: "dry_run", Bool: &tc.input}
+				button.Spec.Inputs = append(button.Spec.Inputs, spec)
+				status := v1alpha1.UIInputStatus{Name: "dry_run", Bool: &v1alpha1.UIBoolInputStatus{Value: tc.value}}
+				button.Status.Inputs = append(button.Status.Inputs, status)
+			})
+			f.triggerButton("b-1", f.clock.Now())
+			f.reconcileCmd("testcmd")
+
+			actualEnv := f.fe.processes["myserver"].env
+			expectedEnv := []string{fmt.Sprintf("dry_run=%s", tc.expectedValue)}
+			require.Equal(t, expectedEnv, actualEnv)
+		})
+	}
 }
 
 func TestCmdOnlyUsesButtonThatStartedIt(t *testing.T) {

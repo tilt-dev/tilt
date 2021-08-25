@@ -204,6 +204,26 @@ type UITextInputStatus struct {
 	Value string `json:"value" protobuf:"bytes,1,opt,name=value"`
 }
 
+type UIBoolInputSpec struct {
+	// Whether the input is initially true or false.
+	// +optional
+	DefaultValue bool `json:"defaultValue,omitempty" protobuf:"varint,1,opt,name=defaultValue"`
+
+	// If the input's value is converted to a string, use this if the value is true.
+	// If unspecified, its string value will be `"true"`
+	// +optional
+	TrueString *string `json:"trueString,omitempty" protobuf:"bytes,2,opt,name=trueString"`
+
+	// If the input's value is converted to a string, use this if the value is false.
+	// If unspecified, its string value will be `"false"`
+	// +optional
+	FalseString *string `json:"falseString,omitempty" protobuf:"bytes,3,opt,name=falseString"`
+}
+
+type UIBoolInputStatus struct {
+	Value bool `json:"value" protobuf:"varint,1,opt,name=value"`
+}
+
 // Defines an Input to render in the UI.
 // If UIButton is analogous to an HTML <form>,
 // UIInput is analogous to an HTML <input>.
@@ -216,17 +236,28 @@ type UIInputSpec struct {
 	Label string `json:"label" protobuf:"bytes,2,opt,name=label"`
 
 	// Exactly one of the following must be non-nil.
-	// TODO(matt) add more types (e.g., bool/checkbox, select one or multiple resources)
 
 	// A Text input that takes a string.
 	// +optional
 	Text *UITextInputSpec `json:"text,omitempty" protobuf:"bytes,3,opt,name=text"`
+
+	// A Bool input that is true or false
+	// +optional
+	Bool *UIBoolInputSpec `json:"bool,omitempty" protobuf:"bytes,4,opt,name=bool"`
 }
 
 func (in *UIInputSpec) Validate(_ context.Context, path *field.Path) field.ErrorList {
 	var fieldErrors field.ErrorList
 
-	if in.Text == nil {
+	numInputTypes := 0
+	if in.Text != nil {
+		numInputTypes += 1
+	}
+	if in.Bool != nil {
+		numInputTypes += 1
+	}
+
+	if numInputTypes != 1 {
 		fieldErrors = append(fieldErrors, field.Invalid(path, in, "must specify exactly one input type"))
 	}
 
@@ -241,9 +272,13 @@ type UIInputStatus struct {
 
 	// The same one of these should be non-nil as on the corresponding UITextInputSpec
 
-	// The status of a text input
+	// The status of the input, if it's text
 	// +optional
 	Text *UITextInputStatus `json:"text,omitempty" protobuf:"bytes,2,opt,name=text"`
+
+	// The status of the input, if it's a bool
+	// +optional
+	Bool *UIBoolInputStatus `json:"bool,omitempty" protobuf:"bytes,3,opt,name=bool"`
 }
 
 // UIButtonStatus defines the observed state of UIButton

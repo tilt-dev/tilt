@@ -1,4 +1,11 @@
-import { ButtonGroup, Icon, SvgIcon, TextField } from "@material-ui/core"
+import {
+  ButtonGroup,
+  Checkbox,
+  FormControlLabel,
+  Icon,
+  SvgIcon,
+  TextField,
+} from "@material-ui/core"
 import ArrowDropDownIcon from "@material-ui/icons/ArrowDropDown"
 import moment from "moment"
 import React, { useRef, useState } from "react"
@@ -50,17 +57,35 @@ type ApiButtonInputProps = {
 }
 
 function ApiButtonInput(props: ApiButtonInputProps) {
-  return (
-    <TextField
-      label={props.spec.label ?? props.spec.name}
-      id={props.spec.name}
-      defaultValue={props.spec.text?.defaultValue}
-      placeholder={props.spec.text?.placeholder}
-      value={props.value || props.spec.text?.defaultValue || ""}
-      onChange={(e) => props.setValue(props.spec.name!, e.target.value)}
-      fullWidth
-    />
-  )
+  if (props.spec.text) {
+    return (
+      <TextField
+        label={props.spec.label ?? props.spec.name}
+        id={props.spec.name}
+        defaultValue={props.spec.text?.defaultValue}
+        placeholder={props.spec.text?.placeholder}
+        value={props.value || props.spec.text?.defaultValue || ""}
+        onChange={(e) => props.setValue(props.spec.name!, e.target.value)}
+        fullWidth
+      />
+    )
+  } else if (props.spec.bool) {
+    const isChecked =
+      props.value === "true" || props.spec.bool.defaultValue || false
+    return (
+      <FormControlLabel
+        control={<Checkbox id={props.spec.name} checked={isChecked} />}
+        label={props.spec.label ?? props.spec.name}
+        onChange={(_, checked) =>
+          props.setValue(props.spec.name!, checked.toString())
+        }
+      />
+    )
+  } else {
+    return (
+      <div>{`Error: button input ${props.spec.name} had unsupported type`}</div>
+    )
+  }
 }
 
 type ApiButtonFormProps = {
@@ -179,10 +204,13 @@ export const ApiButton: React.FC<ApiButtonProps> = (props) => {
     props.button.spec!.inputs?.forEach((spec) => {
       const value = inputValues.get(spec.name!)
       if (value !== undefined) {
-        toUpdate.status!.inputs!.push({
-          name: spec.name,
-          text: { value: value },
-        })
+        let status: UIInputStatus = { name: spec.name }
+        if (spec.text) {
+          status.text = { value: value }
+        } else if (spec.bool) {
+          status.bool = { value: value === "true" }
+        }
+        toUpdate.status!.inputs!.push(status)
       }
     })
 

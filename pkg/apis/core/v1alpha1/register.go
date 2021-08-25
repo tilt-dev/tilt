@@ -22,6 +22,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 
+	"github.com/tilt-dev/tilt/tools/devlog"
+
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
 )
 
@@ -105,6 +107,13 @@ var AddToScheme = func(scheme *runtime.Scheme) error {
 		Group:   GroupName,
 		Version: Version,
 	}, objs...)
+
+	devlog.Logf("adding defaulting funcs")
+	err := addDefaultingFuncs(scheme)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

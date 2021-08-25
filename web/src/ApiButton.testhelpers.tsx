@@ -17,6 +17,16 @@ export function textField(
   }
 }
 
+export function boolField(name: string, defaultValue?: boolean): UIInputSpec {
+  return {
+    name: name,
+    label: name,
+    bool: {
+      defaultValue: defaultValue,
+    },
+  }
+}
+
 export function makeUIButton(args?: {
   inputSpecs?: UIInputSpec[]
   inputStatuses?: UIInputStatus[]

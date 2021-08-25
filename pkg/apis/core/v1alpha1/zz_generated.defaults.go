@@ -28,5 +28,18 @@ import (
 // Public to allow building arbitrary schemes.
 // All generated defaulters are covering - they call all nested defaulters.
 func RegisterDefaults(scheme *runtime.Scheme) error {
+	scheme.AddTypeDefaultingFunc(&UIButton{}, func(obj interface{}) { SetObjectDefaults_UIButton(obj.(*UIButton)) })
+	scheme.AddTypeDefaultingFunc(&UIButtonList{}, func(obj interface{}) { SetObjectDefaults_UIButtonList(obj.(*UIButtonList)) })
 	return nil
+}
+
+func SetObjectDefaults_UIButton(in *UIButton) {
+	SetDefaults_UIButton(in)
+}
+
+func SetObjectDefaults_UIButtonList(in *UIButtonList) {
+	for i := range in.Items {
+		a := &in.Items[i]
+		SetObjectDefaults_UIButton(a)
+	}
 }
