@@ -1470,15 +1470,17 @@ message TiltfileStatus {
 }
 
 message UIBoolInputSpec {
-  // Whether the input is initially true or false
+  // Whether the input is initially true or false.
   // +optional
   optional bool defaultValue = 1;
 
-  // If the input's value is converted to a string, use this if the value is true
+  // If the input's value is converted to a string, use this if the value is true.
+  // If unspecified, its string value will be `"true"`
   // +optional
   optional string trueString = 2;
 
-  // If the input's value is converted to a string, use this if the value is false
+  // If the input's value is converted to a string, use this if the value is false.
+  // If unspecified, its string value will be `"false"`
   // +optional
   optional string falseString = 3;
 }

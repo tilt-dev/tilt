@@ -317,15 +317,15 @@
         "defaultValue": {
           "type": "boolean",
           "format": "boolean",
-          "title": "Whether the input is initially true or false\n+optional"
+          "title": "Whether the input is initially true or false.\n+optional"
         },
         "trueString": {
           "type": "string",
-          "title": "If the input's value is converted to a string, use this if the value is true\n+optional"
+          "title": "If the input's value is converted to a string, use this if the value is true.\nIf unspecified, its string value will be `\"true\"`\n+optional"
         },
         "falseString": {
           "type": "string",
-          "title": "If the input's value is converted to a string, use this if the value is false\n+optional"
+          "title": "If the input's value is converted to a string, use this if the value is false.\nIf unspecified, its string value will be `\"false\"`\n+optional"
         }
       }
     },

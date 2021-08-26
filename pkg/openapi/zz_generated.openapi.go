@@ -4010,21 +4010,21 @@ func schema_pkg_apis_core_v1alpha1_UIBoolInputSpec(ref common.ReferenceCallback)
 				Properties: map[string]spec.Schema{
 					"defaultValue": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Whether the input is initially true or false",
+							Description: "Whether the input is initially true or false.",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
 					},
 					"trueString": {
 						SchemaProps: spec.SchemaProps{
-							Description: "If the input's value is converted to a string, use this if the value is true",
+							Description: "If the input's value is converted to a string, use this if the value is true. If unspecified, its string value will be `\"true\"`",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
 					"falseString": {
 						SchemaProps: spec.SchemaProps{
-							Description: "If the input's value is converted to a string, use this if the value is false",
+							Description: "If the input's value is converted to a string, use this if the value is false. If unspecified, its string value will be `\"false\"`",
 							Type:        []string{"string"},
 							Format:      "",
 						},
