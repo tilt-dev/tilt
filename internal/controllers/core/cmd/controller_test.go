@@ -620,7 +620,11 @@ func TestCmdUsesInputsFromButtonOnStart(t *testing.T) {
 
 	setupStartOnTest(t, f)
 	f.updateButton("b-1", func(button *v1alpha1.UIButton) {
-		inputs := []v1alpha1.UIInputStatus{
+		button.Spec.Inputs = []v1alpha1.UIInputSpec{
+			{Name: "foo", Text: &v1alpha1.UITextInputSpec{}},
+			{Name: "baz", Text: &v1alpha1.UITextInputSpec{}},
+		}
+		button.Status.Inputs = []v1alpha1.UIInputStatus{
 			{
 				Name: "foo",
 				Text: &v1alpha1.UITextInputStatus{Value: "bar"},
@@ -630,7 +634,6 @@ func TestCmdUsesInputsFromButtonOnStart(t *testing.T) {
 				Text: &v1alpha1.UITextInputStatus{Value: "wait what comes next"},
 			},
 		}
-		button.Status.Inputs = append(button.Status.Inputs, inputs...)
 	})
 	f.triggerButton("b-1", f.clock.Now())
 	f.reconcileCmd("testcmd")
