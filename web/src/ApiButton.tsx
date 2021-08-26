@@ -52,8 +52,8 @@ const svgElement = (src: string): React.ReactElement => {
 type ApiButtonInputProps = {
   spec: UIInputSpec
   status: UIInputStatus | undefined
-  value: string | undefined
-  setValue: (name: string, value: string) => void
+  value: boolean | undefined
+  setValue: (name: string, value: any) => void
 }
 
 function ApiButtonInput(props: ApiButtonInputProps) {
@@ -71,13 +71,13 @@ function ApiButtonInput(props: ApiButtonInputProps) {
     )
   } else if (props.spec.bool) {
     const isChecked =
-      props.value === "true" || props.spec.bool.defaultValue || false
+      props.value ?? props.spec.bool.defaultValue ?? false
     return (
       <FormControlLabel
         control={<Checkbox id={props.spec.name} checked={isChecked} />}
         label={props.spec.label ?? props.spec.name}
         onChange={(_, checked) =>
-          props.setValue(props.spec.name!, checked.toString())
+          props.setValue(props.spec.name!, checked)
         }
       />
     )
@@ -90,8 +90,8 @@ function ApiButtonInput(props: ApiButtonInputProps) {
 
 type ApiButtonFormProps = {
   uiButton: UIButton
-  setInputValue: (name: string, value: string) => void
-  getInputValue: (name: string) => string | undefined
+  setInputValue: (name: string, value: any) => void
+  getInputValue: (name: string) => any | undefined
 }
 
 export function ApiButtonForm(props: ApiButtonFormProps) {
@@ -121,8 +121,8 @@ export function ApiButtonForm(props: ApiButtonFormProps) {
 type ApiButtonWithOptionsProps = {
   submit: JSX.Element
   uiButton: UIButton
-  setInputValue: (name: string, value: string) => void
-  getInputValue: (name: string) => string | undefined
+  setInputValue: (name: string, value: any) => void
+  getInputValue: (name: string) => any | undefined
   className?: string
 }
 
@@ -186,7 +186,7 @@ export const ApiIcon: React.FC<ApiIconProps> = (props) => {
 //    options used on submit.
 export const ApiButton: React.FC<ApiButtonProps> = (props) => {
   const [loading, setLoading] = useState(false)
-  const [inputValues, setInputValues] = useState(new Map<string, string>())
+  const [inputValues, setInputValues] = useState(new Map<string, any>())
 
   const onClick = async () => {
     const toUpdate = {
@@ -256,7 +256,7 @@ export const ApiButton: React.FC<ApiButtonProps> = (props) => {
   )
 
   if (props.button.spec?.inputs?.length) {
-    const setInputValue = (name: string, value: string) => {
+    const setInputValue = (name: string, value: any) => {
       // We need a `new Map` to ensure the reference changes to force a rerender.
       setInputValues(new Map(inputValues.set(name, value)))
     }

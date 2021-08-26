@@ -209,12 +209,12 @@ type UIBoolInputSpec struct {
 	// +optional
 	DefaultValue bool `json:"defaultValue,omitempty" protobuf:"varint,1,opt,name=defaultValue"`
 
-	// If the input's value is converted to a string, use this if the value is true.
+	// If the input's value is converted to a string, use this when the value is true.
 	// If unspecified, its string value will be `"true"`
 	// +optional
 	TrueString *string `json:"trueString,omitempty" protobuf:"bytes,2,opt,name=trueString"`
 
-	// If the input's value is converted to a string, use this if the value is false.
+	// If the input's value is converted to a string, use this when the value is false.
 	// If unspecified, its string value will be `"false"`
 	// +optional
 	FalseString *string `json:"falseString,omitempty" protobuf:"bytes,3,opt,name=falseString"`
