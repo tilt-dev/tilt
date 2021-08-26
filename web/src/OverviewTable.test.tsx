@@ -6,6 +6,7 @@ import {
   mockAnalyticsCalls,
 } from "./analytics_test_helpers"
 import { ApiButton } from "./ApiButton"
+import Features, { FeaturesProvider, Flag } from "./feature"
 import { GroupByLabelView, TILTFILE_LABEL, UNLABELED_LABEL } from "./labels"
 import LogStore from "./LogStore"
 import OverviewTable, {
@@ -19,14 +20,40 @@ import OverviewTable, {
   Table,
   TableGroupedByLabels,
   TableNameColumn,
+  TableWithoutGroups,
 } from "./OverviewTable"
+import { ResourceGroupsInfoTip } from "./ResourceGroups"
 import {
   DEFAULT_GROUP_STATE,
   GroupsState,
   ResourceGroupsContextProvider,
 } from "./ResourceGroupsContext"
 import { TableGroupStatusSummary } from "./ResourceStatusSummary"
-import { nResourceView, nResourceWithLabelsView, oneButton } from "./testdata"
+import {
+  nResourceView,
+  nResourceWithLabelsView,
+  oneButton,
+  TestDataView,
+} from "./testdata"
+
+const tableViewWithSettings = ({
+  view,
+  labelsEnabled,
+}: {
+  view: TestDataView
+  labelsEnabled?: boolean
+}) => {
+  const features = new Features({ [Flag.Labels]: labelsEnabled ?? true })
+  return (
+    <MemoryRouter initialEntries={["/"]}>
+      <FeaturesProvider value={features}>
+        <ResourceGroupsContextProvider>
+          <OverviewTable view={view} />
+        </ResourceGroupsContextProvider>
+      </FeaturesProvider>
+    </MemoryRouter>
+  )
+}
 
 it("shows buttons on the appropriate resources", () => {
   let view = nResourceView(3)
@@ -37,11 +64,7 @@ it("shows buttons on the appropriate resources", () => {
     oneButton(2, view.uiResources[1].metadata?.name!),
   ]
 
-  const root = mount(
-    <MemoryRouter initialEntries={["/"]}>
-      <OverviewTable view={view} />
-    </MemoryRouter>
-  )
+  const root = mount(tableViewWithSettings({ view }))
 
   // buttons expected to be on each row, in order
   const expectedButtons = [["button1"], ["button2", "button3"], []]
@@ -54,18 +77,64 @@ it("shows buttons on the appropriate resources", () => {
   expect(actualButtons).toEqual(expectedButtons)
 })
 
+describe("when labels feature is enabled", () => {
+  it("it displays tables grouped by labels if resources have labels", () => {
+    const wrapper = mount(
+      tableViewWithSettings({
+        view: nResourceWithLabelsView(5),
+        labelsEnabled: true,
+      })
+    )
+    expect(wrapper.find(TableGroupedByLabels).length).toBeGreaterThan(0)
+    expect(wrapper.find(TableWithoutGroups).length).toBe(0)
+  })
+
+  it("it displays a single table if no resources have labels", () => {
+    const wrapper = mount(
+      tableViewWithSettings({ view: nResourceView(5), labelsEnabled: true })
+    )
+    expect(wrapper.find(TableWithoutGroups).length).toBe(1)
+    expect(wrapper.find(TableGroupedByLabels).length).toBe(0)
+  })
+
+  it("it displays the resource grouping tooltip if no resources have labels", () => {
+    const wrapper = mount(
+      tableViewWithSettings({ view: nResourceView(5), labelsEnabled: true })
+    )
+    expect(wrapper.find(ResourceGroupsInfoTip).length).toBe(1)
+  })
+})
+
+describe("when labels feature is not enabled", () => {
+  let wrapper: ReactWrapper<OverviewTableProps, typeof OverviewTable>
+
+  beforeEach(() => {
+    wrapper = mount(
+      tableViewWithSettings({
+        view: nResourceWithLabelsView(5),
+        labelsEnabled: false,
+      })
+    )
+  })
+
+  it("it displays a single table", () => {
+    expect(wrapper.find(TableWithoutGroups).length).toBe(1)
+    expect(wrapper.find(TableGroupedByLabels).length).toBe(0)
+  })
+
+  it("it does not display the resource grouping tooltip", () => {
+    expect(wrapper.find(ResourceGroupsInfoTip).length).toBe(0)
+  })
+})
+
 describe("overview table with groups", () => {
-  let view: Proto.webviewView
-  let wrapper: ReactWrapper<OverviewTableProps, typeof TableGroupedByLabels>
+  let view: TestDataView
+  let wrapper: ReactWrapper<OverviewTableProps, typeof OverviewTable>
   let resources: GroupByLabelView<RowValues>
 
   beforeEach(() => {
     view = nResourceWithLabelsView(5)
-    wrapper = mount(
-      <ResourceGroupsContextProvider>
-        <TableGroupedByLabels view={view} />
-      </ResourceGroupsContextProvider>
-    )
+    wrapper = mount(tableViewWithSettings({ view, labelsEnabled: true }))
     resources = resourcesToTableCells(
       view.uiResources,
       view.uiButtons,
@@ -81,12 +150,11 @@ describe("overview table with groups", () => {
     localStorage.clear()
   })
 
-  // TODO: When resource groups are live in table view, add tests for:
-  //       If no resources have labels, it renders a single table view
-  //       If labels are not enabled, it renders a single table view
-  //       If there are labels and feature is enabled, it renders table with groups
-
   describe("display", () => {
+    it("does not show the resource groups tooltip", () => {
+      expect(wrapper.find(ResourceGroupsInfoTip).length).toBe(0)
+    })
+
     it("renders each label group in order", () => {
       const { labels: sortedLabels } = resources
       const groupNames = wrapper.find(OverviewGroupName)

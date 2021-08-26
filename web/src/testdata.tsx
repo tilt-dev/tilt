@@ -10,7 +10,7 @@ type Link = Proto.v1alpha1UIResourceLink
 const unnamedEndpointLink: Link = { url: "1.2.3.4:8080" }
 const namedEndpointLink: Link = { url: "1.2.3.4:9090", name: "debugger" }
 
-type view = {
+export type TestDataView = {
   uiResources: Array<UIResource>
   uiButtons: Array<UIButton>
   uiSession?: UISession
@@ -314,7 +314,7 @@ function oneResourceTest(): UIResource {
   return oneResourceTestWithName("boop")
 }
 
-function oneResourceView(): view {
+function oneResourceView(): TestDataView {
   return {
     uiResources: [oneResource()],
     uiSession: { status: { tiltfileKey: "test", runningTiltBuild } },
@@ -322,7 +322,7 @@ function oneResourceView(): view {
   }
 }
 
-function twoResourceView(): view {
+function twoResourceView(): TestDataView {
   const time = Date.now()
   const ts = new Date(time).toISOString()
   const vigoda = oneResource()
@@ -369,11 +369,11 @@ function twoResourceView(): view {
   }
 }
 
-export function tenResourceView(): view {
+export function tenResourceView(): TestDataView {
   return nResourceView(10)
 }
 
-export function nResourceView(n: number): view {
+export function nResourceView(n: number): TestDataView {
   let resources: UIResource[] = []
   for (let i = 0; i < n; i++) {
     if (i === 0) {
@@ -447,7 +447,7 @@ function oneButton(i: number, resourceName: string): UIButton {
   }
 }
 
-function nButtonView(n: number): view {
+function nButtonView(n: number): TestDataView {
   const ts = new Date(Date.now()).toISOString()
 
   return {
