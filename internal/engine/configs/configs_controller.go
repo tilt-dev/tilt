@@ -75,7 +75,13 @@ func (cc *ConfigsController) needsBuild(ctx context.Context, st store.RStore) (*
 			reason = reason.With(model.BuildReasonFlagChangedFiles)
 		}
 
-		if state.UserConfigState.ArgsChangeTime.After(lastStartTime) {
+		// Only the main tiltfile may read tilt configs and args.
+		userConfigState := state.UserConfigState
+		if name != model.MainTiltfileManifestName {
+			userConfigState = model.UserConfigState{}
+		}
+
+		if userConfigState.ArgsChangeTime.After(lastStartTime) {
 			reason = reason.With(model.BuildReasonFlagTiltfileArgs)
 		}
 
@@ -99,7 +105,7 @@ func (cc *ConfigsController) needsBuild(ctx context.Context, st store.RStore) (*
 			Name:                  name,
 			FilesChanged:          filesChanged,
 			BuildReason:           reason,
-			UserConfigState:       state.UserConfigState,
+			UserConfigState:       userConfigState,
 			TiltfilePath:          tf.Spec.Path,
 			CheckpointAtExecStart: state.LogStore.Checkpoint(),
 		}, true

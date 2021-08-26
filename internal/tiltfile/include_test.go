@@ -75,7 +75,11 @@ include('./bar/Tiltfile')
 	assertContainsOnce(
 		t,
 		f.out.String(),
-		"Beginning Tiltfile execution\nfoo\nSuccessfully loaded Tiltfile")
+		"Loading Tiltfile at")
+	assertContainsOnce(
+		t,
+		f.out.String(),
+		"foo\nSuccessfully loaded Tiltfile")
 }
 
 func TestIncludeMissing(t *testing.T) {
@@ -125,7 +129,11 @@ shout()
 	assertContainsOnce(
 		t,
 		f.out.String(),
-		"Beginning Tiltfile execution\nboo\nSuccessfully loaded Tiltfile")
+		"Loading Tiltfile at")
+	assertContainsOnce(
+		t,
+		f.out.String(),
+		"boo\nSuccessfully loaded Tiltfile")
 
 }
 
