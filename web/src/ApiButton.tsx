@@ -175,11 +175,19 @@ export const ApiIcon: React.FC<ApiIconProps> = (props) => {
       // merge the props from material-ui while keeping the children of the actual SVG
       return React.cloneElement(svgEl, { ...props }, ...svgEl.props.children)
     }
-    return <ApiIconRoot><SvgIcon component={svg} /></ApiIconRoot>
+    return (
+      <ApiIconRoot>
+        <SvgIcon component={svg} />
+      </ApiIconRoot>
+    )
   }
 
   if (props.iconName) {
-    return <ApiIconRoot><Icon>{props.iconName}</Icon></ApiIconRoot>
+    return (
+      <ApiIconRoot>
+        <Icon>{props.iconName}</Icon>
+      </ApiIconRoot>
+    )
   }
 
   return null
