@@ -70,15 +70,12 @@ function ApiButtonInput(props: ApiButtonInputProps) {
       />
     )
   } else if (props.spec.bool) {
-    const isChecked =
-      props.value ?? props.spec.bool.defaultValue ?? false
+    const isChecked = props.value ?? props.spec.bool.defaultValue ?? false
     return (
       <FormControlLabel
         control={<Checkbox id={props.spec.name} checked={isChecked} />}
         label={props.spec.label ?? props.spec.name}
-        onChange={(_, checked) =>
-          props.setValue(props.spec.name!, checked)
-        }
+        onChange={(_, checked) => props.setValue(props.spec.name!, checked)}
       />
     )
   } else {
@@ -132,7 +129,11 @@ function ApiButtonWithOptions(props: ApiButtonWithOptionsProps) {
 
   return (
     <>
-      <ButtonGroup ref={anchorRef} className={props.className}>
+      <ButtonGroup
+        ref={anchorRef}
+        className={props.className}
+        disableRipple={true}
+      >
         {props.submit}
         <ApiButtonInputsToggleButton
           size="small"
@@ -272,7 +273,11 @@ export const ApiButton: React.FC<ApiButtonProps> = (props) => {
       />
     )
   } else {
-    return <ButtonGroup className={props.className}>{button}</ButtonGroup>
+    return (
+      <ButtonGroup className={props.className} disableRipple={true}>
+        {button}
+      </ButtonGroup>
+    )
   }
 }
 
