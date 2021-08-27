@@ -19,7 +19,7 @@ type UIButton = Proto.v1alpha1UIButton
 type UIInputSpec = Proto.v1alpha1UIInputSpec
 type UIInputStatus = Proto.v1alpha1UIInputStatus
 
-const ApiButtonFormRoot = styled.span`
+const ApiButtonFormRoot = styled.div`
   z-index: 20;
 `
 const ApiButtonFormFooter = styled.div`
@@ -28,7 +28,12 @@ const ApiButtonFormFooter = styled.div`
   font-color: ${Color.grayLighter};
   font-size: ${FontSize.smallester};
 `
-export const ApiButtonLabel = styled.span``
+export const ApiButtonLabel = styled.div``
+export const ApiButtonRoot = styled(ButtonGroup)`
+  ${ApiButtonLabel} {
+    margin-left: ${SizeUnit(0.25)};
+  }
+`
 
 type ApiButtonProps = { className?: string; button: UIButton }
 
@@ -129,11 +134,7 @@ function ApiButtonWithOptions(props: ApiButtonWithOptionsProps) {
 
   return (
     <>
-      <ButtonGroup
-        ref={anchorRef}
-        className={props.className}
-        disableRipple={true}
-      >
+      <ApiButtonRoot ref={anchorRef} className={props.className} disableRipple={true}>
         {props.submit}
         <ApiButtonInputsToggleButton
           size="small"
@@ -144,7 +145,7 @@ function ApiButtonWithOptions(props: ApiButtonWithOptionsProps) {
         >
           <ArrowDropDownIcon />
         </ApiButtonInputsToggleButton>
-      </ButtonGroup>
+      </ApiButtonRoot>
       <FloatDialog
         open={open}
         onClose={() => {
@@ -273,11 +274,7 @@ export const ApiButton: React.FC<ApiButtonProps> = (props) => {
       />
     )
   } else {
-    return (
-      <ButtonGroup className={props.className} disableRipple={true}>
-        {button}
-      </ButtonGroup>
-    )
+    return <ApiButtonRoot className={props.className} disableRipple={true}>{button}</ApiButtonRoot>
   }
 }
 

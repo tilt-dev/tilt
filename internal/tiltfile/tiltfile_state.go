@@ -185,7 +185,7 @@ func (s *tiltfileState) print(_ *starlark.Thread, msg string) {
 // TODO(nick): Eventually this will just return a starkit.Model, which will contain
 // all the mutable state collected by execution.
 func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.UserConfigState) ([]model.Manifest, starkit.Model, error) {
-	s.logger.Infof("Beginning Tiltfile execution")
+	s.logger.Infof("Loading Tiltfile at: %s", absFilename)
 
 	s.configExt.UserConfigState = userConfigState
 
