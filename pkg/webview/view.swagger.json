@@ -311,6 +311,33 @@
       },
       "description": "Time is a wrapper around time.Time which supports correct\nmarshaling to YAML and JSON.  Wrappers are provided for many\nof the factory methods that the time package offers.\n\n+protobuf.options.marshal=false\n+protobuf.as=Timestamp\n+protobuf.options.(gogoproto.goproto_stringer)=false"
     },
+    "v1alpha1UIBoolInputSpec": {
+      "type": "object",
+      "properties": {
+        "defaultValue": {
+          "type": "boolean",
+          "format": "boolean",
+          "title": "Whether the input is initially true or false.\n+optional"
+        },
+        "trueString": {
+          "type": "string",
+          "title": "If the input's value is converted to a string, use this when the value is true.\nIf unspecified, its string value will be `\"true\"`\n+optional"
+        },
+        "falseString": {
+          "type": "string",
+          "title": "If the input's value is converted to a string, use this when the value is false.\nIf unspecified, its string value will be `\"false\"`\n+optional"
+        }
+      }
+    },
+    "v1alpha1UIBoolInputStatus": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
     "v1alpha1UIBuildRunning": {
       "type": "object",
       "properties": {
@@ -468,6 +495,10 @@
         "text": {
           "$ref": "#/definitions/v1alpha1UITextInputSpec",
           "title": "A Text input that takes a string.\n+optional"
+        },
+        "bool": {
+          "$ref": "#/definitions/v1alpha1UIBoolInputSpec",
+          "title": "A Bool input that is true or false\n+optional"
         }
       },
       "description": "Defines an Input to render in the UI.\nIf UIButton is analogous to an HTML \u003cform\u003e,\nUIInput is analogous to an HTML \u003cinput\u003e."
@@ -481,7 +512,11 @@
         },
         "text": {
           "$ref": "#/definitions/v1alpha1UITextInputStatus",
-          "title": "The status of a text input\n+optional"
+          "title": "The status of the input, if it's text\n+optional"
+        },
+        "bool": {
+          "$ref": "#/definitions/v1alpha1UIBoolInputStatus",
+          "title": "The status of the input, if it's a bool\n+optional"
         }
       },
       "title": "The status corresponding to a UIInputSpec"

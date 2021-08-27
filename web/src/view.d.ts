@@ -478,6 +478,7 @@ declare namespace Proto {
      */
     name?: string;
     text?: v1alpha1UITextInputStatus;
+    bool?: v1alpha1UIBoolInputStatus;
   }
   export interface v1alpha1UIInputSpec {
     /**
@@ -486,6 +487,7 @@ declare namespace Proto {
     name?: string;
     label?: string;
     text?: v1alpha1UITextInputSpec;
+    bool?: v1alpha1UIBoolInputSpec;
   }
   export interface v1alpha1UIFeatureFlag {
     name?: string;
@@ -568,6 +570,14 @@ declare namespace Proto {
   export interface v1alpha1UIBuildRunning {
     startTime?: string;
     spanID?: string;
+  }
+  export interface v1alpha1UIBoolInputStatus {
+    value?: boolean;
+  }
+  export interface v1alpha1UIBoolInputSpec {
+    defaultValue?: boolean;
+    trueString?: string;
+    falseString?: string;
   }
   export interface corev1alpha1VersionSettings {
     checkUpdates?: boolean;

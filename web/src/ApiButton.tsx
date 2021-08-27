@@ -1,4 +1,11 @@
-import { ButtonGroup, Icon, SvgIcon, TextField } from "@material-ui/core"
+import {
+  ButtonGroup,
+  Checkbox,
+  FormControlLabel,
+  Icon,
+  SvgIcon,
+  TextField,
+} from "@material-ui/core"
 import ArrowDropDownIcon from "@material-ui/icons/ArrowDropDown"
 import moment from "moment"
 import React, { useRef, useState } from "react"
@@ -50,28 +57,43 @@ const svgElement = (src: string): React.ReactElement => {
 type ApiButtonInputProps = {
   spec: UIInputSpec
   status: UIInputStatus | undefined
-  value: string | undefined
-  setValue: (name: string, value: string) => void
+  value: boolean | undefined
+  setValue: (name: string, value: any) => void
 }
 
 function ApiButtonInput(props: ApiButtonInputProps) {
-  return (
-    <TextField
-      label={props.spec.label ?? props.spec.name}
-      id={props.spec.name}
-      defaultValue={props.spec.text?.defaultValue}
-      placeholder={props.spec.text?.placeholder}
-      value={props.value || props.spec.text?.defaultValue || ""}
-      onChange={(e) => props.setValue(props.spec.name!, e.target.value)}
-      fullWidth
-    />
-  )
+  if (props.spec.text) {
+    return (
+      <TextField
+        label={props.spec.label ?? props.spec.name}
+        id={props.spec.name}
+        defaultValue={props.spec.text?.defaultValue}
+        placeholder={props.spec.text?.placeholder}
+        value={props.value || props.spec.text?.defaultValue || ""}
+        onChange={(e) => props.setValue(props.spec.name!, e.target.value)}
+        fullWidth
+      />
+    )
+  } else if (props.spec.bool) {
+    const isChecked = props.value ?? props.spec.bool.defaultValue ?? false
+    return (
+      <FormControlLabel
+        control={<Checkbox id={props.spec.name} checked={isChecked} />}
+        label={props.spec.label ?? props.spec.name}
+        onChange={(_, checked) => props.setValue(props.spec.name!, checked)}
+      />
+    )
+  } else {
+    return (
+      <div>{`Error: button input ${props.spec.name} had unsupported type`}</div>
+    )
+  }
 }
 
 type ApiButtonFormProps = {
   uiButton: UIButton
-  setInputValue: (name: string, value: string) => void
-  getInputValue: (name: string) => string | undefined
+  setInputValue: (name: string, value: any) => void
+  getInputValue: (name: string) => any | undefined
 }
 
 export function ApiButtonForm(props: ApiButtonFormProps) {
@@ -101,8 +123,8 @@ export function ApiButtonForm(props: ApiButtonFormProps) {
 type ApiButtonWithOptionsProps = {
   submit: JSX.Element
   uiButton: UIButton
-  setInputValue: (name: string, value: string) => void
-  getInputValue: (name: string) => string | undefined
+  setInputValue: (name: string, value: any) => void
+  getInputValue: (name: string) => any | undefined
   className?: string
 }
 
@@ -112,7 +134,11 @@ function ApiButtonWithOptions(props: ApiButtonWithOptionsProps) {
 
   return (
     <>
-      <ApiButtonRoot ref={anchorRef} className={props.className}>
+      <ApiButtonRoot
+        ref={anchorRef}
+        className={props.className}
+        disableRipple={true}
+      >
         {props.submit}
         <ApiButtonInputsToggleButton
           size="small"
@@ -166,7 +192,7 @@ export const ApiIcon: React.FC<ApiIconProps> = (props) => {
 //    options used on submit.
 export const ApiButton: React.FC<ApiButtonProps> = (props) => {
   const [loading, setLoading] = useState(false)
-  const [inputValues, setInputValues] = useState(new Map<string, string>())
+  const [inputValues, setInputValues] = useState(new Map<string, any>())
 
   const onClick = async () => {
     const toUpdate = {
@@ -184,10 +210,13 @@ export const ApiButton: React.FC<ApiButtonProps> = (props) => {
     props.button.spec!.inputs?.forEach((spec) => {
       const value = inputValues.get(spec.name!)
       if (value !== undefined) {
-        toUpdate.status!.inputs!.push({
-          name: spec.name,
-          text: { value: value },
-        })
+        let status: UIInputStatus = { name: spec.name }
+        if (spec.text) {
+          status.text = { value: value }
+        } else if (spec.bool) {
+          status.bool = { value: value === true }
+        }
+        toUpdate.status!.inputs!.push(status)
       }
     })
 
@@ -233,7 +262,7 @@ export const ApiButton: React.FC<ApiButtonProps> = (props) => {
   )
 
   if (props.button.spec?.inputs?.length) {
-    const setInputValue = (name: string, value: string) => {
+    const setInputValue = (name: string, value: any) => {
       // We need a `new Map` to ensure the reference changes to force a rerender.
       setInputValues(new Map(inputValues.set(name, value)))
     }
@@ -249,7 +278,11 @@ export const ApiButton: React.FC<ApiButtonProps> = (props) => {
       />
     )
   } else {
-    return <ApiButtonRoot className={props.className}>{button}</ApiButtonRoot>
+    return (
+      <ApiButtonRoot className={props.className} disableRipple={true}>
+        {button}
+      </ApiButtonRoot>
+    )
   }
 }
 

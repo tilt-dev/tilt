@@ -149,8 +149,25 @@ func (c *Controller) fileWatches(ctx context.Context, cmd *v1alpha1.Cmd) (map[st
 	return result, nil
 }
 
+func inputsFromButton(button v1alpha1.UIButton) []input {
+	statuses := make(map[string]v1alpha1.UIInputStatus)
+	for _, status := range button.Status.Inputs {
+		statuses[status.Name] = status
+	}
+
+	var ret []input
+	for _, spec := range button.Spec.Inputs {
+		ret = append(ret, input{
+			spec:   spec,
+			status: statuses[spec.Name],
+		})
+	}
+
+	return ret
+}
+
 // Fetch the last time a start was requested from this target's dependencies.
-func (c *Controller) lastStartEvent(startOn *StartOnSpec, buttons map[string]*v1alpha1.UIButton) (time.Time, []v1alpha1.UIInputStatus) {
+func (c *Controller) lastStartEvent(startOn *StartOnSpec, buttons map[string]*v1alpha1.UIButton) (time.Time, []input) {
 	latestTime := time.Time{}
 	var latestButton *v1alpha1.UIButton
 	if startOn == nil {
@@ -170,15 +187,15 @@ func (c *Controller) lastStartEvent(startOn *StartOnSpec, buttons map[string]*v1
 		}
 	}
 
-	var inputs []v1alpha1.UIInputStatus
+	var inputs []input
 	if latestButton != nil {
-		inputs = latestButton.Status.Inputs
+		inputs = inputsFromButton(*latestButton)
 	}
 	return latestTime, inputs
 }
 
 // Fetch the last time a restart was requested from this target's dependencies.
-func (c *Controller) lastRestartEvent(restartOn *RestartOnSpec, fileWatches map[string]*v1alpha1.FileWatch, buttons map[string]*v1alpha1.UIButton) (time.Time, []v1alpha1.UIInputStatus) {
+func (c *Controller) lastRestartEvent(restartOn *RestartOnSpec, fileWatches map[string]*v1alpha1.FileWatch, buttons map[string]*v1alpha1.UIButton) (time.Time, []input) {
 	cur := time.Time{}
 	var latestButton *v1alpha1.UIButton
 	if restartOn == nil {
@@ -210,9 +227,9 @@ func (c *Controller) lastRestartEvent(restartOn *RestartOnSpec, fileWatches map[
 		}
 	}
 
-	var inputs []v1alpha1.UIInputStatus
+	var inputs []input
 	if latestButton != nil {
-		inputs = latestButton.Status.Inputs
+		inputs = inputsFromButton(*latestButton)
 	}
 	return cur, inputs
 }
@@ -315,6 +332,32 @@ func (c *Controller) ForceRun(ctx context.Context, cmd *v1alpha1.Cmd) (*v1alpha1
 	return result.Status.DeepCopy(), nil
 }
 
+func (i input) stringValue() string {
+	if i.status.Text != nil {
+		return i.status.Text.Value
+	} else if i.status.Bool != nil {
+		if i.status.Bool.Value {
+			if i.spec.Bool.TrueString != nil {
+				return *i.spec.Bool.TrueString
+			} else {
+				return "true"
+			}
+		} else {
+			if i.spec.Bool.FalseString != nil {
+				return *i.spec.Bool.FalseString
+			} else {
+				return "false"
+			}
+		}
+	}
+	return ""
+}
+
+type input struct {
+	spec   v1alpha1.UIInputSpec
+	status v1alpha1.UIInputStatus
+}
+
 // Runs the command unconditionally, stopping any currently running command.
 //
 // The filewatches and buttons are needed for bookkeeping on how the command
@@ -341,7 +384,7 @@ func (c *Controller) runInternal(ctx context.Context,
 	proc.spec = cmd.Spec
 	proc.isServer = cmd.ObjectMeta.Annotations[local.AnnotationOwnerKind] == "CmdServer"
 
-	var startInputs, restartInputs []v1alpha1.UIInputStatus
+	var startInputs, restartInputs []input
 
 	proc.lastRestartOnEventTime, restartInputs = c.lastRestartEvent(cmd.Spec.RestartOn, fileWatches, buttons)
 	proc.lastStartOnEventTime, startInputs = c.lastStartEvent(cmd.Spec.StartOn, buttons)
@@ -389,7 +432,7 @@ func (c *Controller) runInternal(ctx context.Context,
 
 	env := append([]string{}, spec.Env...)
 	for _, input := range mergedInputs {
-		env = append(env, fmt.Sprintf("%s=%s", input.Name, input.Text.Value))
+		env = append(env, fmt.Sprintf("%s=%s", input.spec.Name, input.stringValue()))
 	}
 
 	cmdModel := model.Cmd{

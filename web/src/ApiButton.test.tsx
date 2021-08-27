@@ -13,7 +13,7 @@ import {
   ApiButtonInputsToggleButton,
   ApiButtonLabel,
 } from "./ApiButton"
-import { makeUIButton, textField } from "./ApiButton.testhelpers"
+import { boolField, makeUIButton, textField } from "./ApiButton.testhelpers"
 import { flushPromises } from "./promise"
 
 type UIButtonStatus = Proto.v1alpha1UIButtonStatus
@@ -71,16 +71,18 @@ describe("ApiButton", () => {
   })
 
   it("submits the current options when the submit button is clicked", async () => {
-    const inputSpec = textField("text1")
-    const b = makeUIButton({ inputSpecs: [inputSpec] })
+    const inputSpecs = [textField("text1"), boolField("bool1")]
+    const b = makeUIButton({ inputSpecs: inputSpecs })
     const root = mount(<ApiButton button={b} />)
 
     const optionsButton = root.find(ApiButtonInputsToggleButton)
     optionsButton.simulate("click")
     root.update()
 
-    const tf = root.find(ApiButtonForm).find("input")
+    const tf = root.find(ApiButtonForm).find("input#text1")
     tf.simulate("change", { target: { value: "new_value" } })
+    const bf = root.find(ApiButtonForm).find("input#bool1")
+    bf.simulate("change", { target: { checked: true } })
     root.update()
 
     const submit = root.find(ApiButton).find(Button).at(0)
@@ -114,6 +116,12 @@ describe("ApiButton", () => {
           name: "text1",
           text: {
             value: "new_value",
+          },
+        },
+        {
+          name: "bool1",
+          bool: {
+            value: true,
           },
         },
       ],

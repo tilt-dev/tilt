@@ -1469,6 +1469,26 @@ message TiltfileStatus {
   optional TiltfileStateTerminated terminated = 3;
 }
 
+message UIBoolInputSpec {
+  // Whether the input is initially true or false.
+  // +optional
+  optional bool defaultValue = 1;
+
+  // If the input's value is converted to a string, use this when the value is true.
+  // If unspecified, its string value will be `"true"`
+  // +optional
+  optional string trueString = 2;
+
+  // If the input's value is converted to a string, use this when the value is false.
+  // If unspecified, its string value will be `"false"`
+  // +optional
+  optional string falseString = 3;
+}
+
+message UIBoolInputStatus {
+  optional bool value = 1;
+}
+
 // UIBuildRunning respresents an in-progress build/update in the user interface.
 message UIBuildRunning {
   // The time when the build started.
@@ -1627,6 +1647,10 @@ message UIInputSpec {
   // A Text input that takes a string.
   // +optional
   optional UITextInputSpec text = 3;
+
+  // A Bool input that is true or false
+  // +optional
+  optional UIBoolInputSpec bool = 4;
 }
 
 // The status corresponding to a UIInputSpec
@@ -1635,9 +1659,13 @@ message UIInputStatus {
   // UIInputSpec.
   optional string name = 1;
 
-  // The status of a text input
+  // The status of the input, if it's text
   // +optional
   optional UITextInputStatus text = 2;
+
+  // The status of the input, if it's a bool
+  // +optional
+  optional UIBoolInputStatus bool = 3;
 }
 
 // UIResource represents per-resource status data for rendering the web UI.
