@@ -134,7 +134,11 @@ function ApiButtonWithOptions(props: ApiButtonWithOptionsProps) {
 
   return (
     <>
-      <ApiButtonRoot ref={anchorRef} className={props.className} disableRipple={true}>
+      <ApiButtonRoot
+        ref={anchorRef}
+        className={props.className}
+        disableRipple={true}
+      >
         {props.submit}
         <ApiButtonInputsToggleButton
           size="small"
@@ -274,7 +278,11 @@ export const ApiButton: React.FC<ApiButtonProps> = (props) => {
       />
     )
   } else {
-    return <ApiButtonRoot className={props.className} disableRipple={true}>{button}</ApiButtonRoot>
+    return (
+      <ApiButtonRoot className={props.className} disableRipple={true}>
+        {button}
+      </ApiButtonRoot>
+    )
   }
 }
 
