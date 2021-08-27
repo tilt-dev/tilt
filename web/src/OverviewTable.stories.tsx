@@ -1,6 +1,7 @@
 import React from "react"
 import { MemoryRouter } from "react-router"
-import OverviewTable, { TableGroupedByLabels } from "./OverviewTable"
+import Features, { FeaturesProvider, Flag } from "./feature"
+import OverviewTable from "./OverviewTable"
 import { ResourceGroupsContextProvider } from "./ResourceGroupsContext"
 import {
   nButtonView,
@@ -13,16 +14,32 @@ import {
 export default {
   title: "New UI/Overview/OverviewTable",
   decorators: [
-    (Story: any) => (
-      <MemoryRouter initialEntries={["/"]}>
-        <ResourceGroupsContextProvider>
-          <div style={{ margin: "-1rem" }}>
-            <Story />
-          </div>
-        </ResourceGroupsContextProvider>
-      </MemoryRouter>
-    ),
+    (Story: any, context: any) => {
+      const features = new Features({
+        [Flag.Labels]: context?.args?.labelsEnabled ?? true,
+      })
+      return (
+        <MemoryRouter initialEntries={["/"]}>
+          <FeaturesProvider value={features}>
+            <ResourceGroupsContextProvider>
+              <div style={{ margin: "-1rem" }}>
+                <Story />
+              </div>
+            </ResourceGroupsContextProvider>
+          </FeaturesProvider>
+        </MemoryRouter>
+      )
+    },
   ],
+  argTypes: {
+    labelsEnabled: {
+      name: "Group resources by label enabled",
+      control: {
+        type: "boolean",
+      },
+      defaultValue: true,
+    },
+  },
 }
 
 export const TwoResources = () => <OverviewTable view={twoResourceView()} />
@@ -31,10 +48,8 @@ export const TenResources = () => {
   return <OverviewTable view={tenResourceView()} />
 }
 
-// TODO: When table resource groups are live, OverviewTable component
-// can be used directly here instead of TableGroupedByLabels
 export const TenResourceWithLabels = () => {
-  return <TableGroupedByLabels view={nResourceWithLabelsView(10)} />
+  return <OverviewTable view={nResourceWithLabelsView(10)} />
 }
 
 export const OneHundredResources = () => {

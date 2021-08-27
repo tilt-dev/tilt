@@ -20,6 +20,7 @@ import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
 import { linkToTiltDocs, TiltDocsPage } from "./constants"
+import { Flag, useFeatures } from "./feature"
 import { InstrumentedButton } from "./instrumentedComponents"
 import {
   getResourceLabels,
@@ -39,6 +40,7 @@ import {
   AccordionDetailsStyleResetMixin,
   AccordionStyleResetMixin,
   AccordionSummaryStyleResetMixin,
+  ResourceGroupsInfoTip,
   ResourceGroupSummaryIcon,
   ResourceGroupSummaryMixin,
 } from "./ResourceGroups"
@@ -99,34 +101,7 @@ type OverviewTableStatus = {
   runtimeAlertCount: number
 }
 
-export const OverviewGroup = styled(Accordion)`
-  ${AccordionStyleResetMixin}
-
-  /* Set specific margins for table view */
-  &.MuiAccordion-root,
-  &.MuiAccordion-root.Mui-expanded,
-  &.MuiAccordion-root.Mui-expanded:first-child {
-    margin: ${SizeUnit(1 / 2)};
-  }
-`
-
-export const OverviewGroupSummary = styled(AccordionSummary)`
-  ${AccordionSummaryStyleResetMixin}
-  ${ResourceGroupSummaryMixin}
-
-  .MuiAccordionSummary-content {
-    font-size: ${FontSize.default};
-  }
-`
-
-export const OverviewGroupName = styled.span`
-  padding: 0 ${SizeUnit(1 / 3)};
-`
-
-export const OverviewGroupDetails = styled(AccordionDetails)`
-  ${AccordionDetailsStyleResetMixin}
-`
-
+// Table styles
 const ResourceTable = styled.table`
   margin-top: ${SizeUnit(0.5)};
   border-collapse: collapse;
@@ -264,6 +239,41 @@ const WidgetCell = styled.span`
     margin-right: ${SizeUnit(0.125)};
   }
 `
+
+// Table Group styles
+export const OverviewGroup = styled(Accordion)`
+  ${AccordionStyleResetMixin}
+
+  /* Set specific margins for table view */
+  &.MuiAccordion-root,
+  &.MuiAccordion-root.Mui-expanded,
+  &.MuiAccordion-root.Mui-expanded:first-child {
+    margin: ${SizeUnit(1 / 2)};
+  }
+`
+
+export const OverviewGroupSummary = styled(AccordionSummary)`
+  ${AccordionSummaryStyleResetMixin}
+  ${ResourceGroupSummaryMixin}
+
+  .MuiAccordionSummary-content {
+    font-size: ${FontSize.default};
+  }
+`
+
+export const OverviewGroupName = styled.span`
+  padding: 0 ${SizeUnit(1 / 3)};
+`
+
+export const OverviewGroupDetails = styled(AccordionDetails)`
+  ${AccordionDetailsStyleResetMixin}
+
+  ${ResourceTable} {
+    margin-top: 4px;
+  }
+`
+
+const GROUP_INFO_TOOLTIP_ID = "table-groups-info"
 
 function TableStarColumn({ row }: CellProps<RowValues>) {
   let ctx = useStarredResources()
@@ -789,7 +799,7 @@ export function TableGroupedByLabels(props: OverviewTableProps) {
   )
 }
 
-function TableWithoutGroups(props: OverviewTableProps) {
+export function TableWithoutGroups(props: OverviewTableProps) {
   const logStore = useLogStore()
   const data = useMemo(() => {
     return (
@@ -803,7 +813,30 @@ function TableWithoutGroups(props: OverviewTableProps) {
 }
 
 export default function OverviewTable(props: OverviewTableProps) {
-  // TODO (lizz): Add support for table groups by feature flag
-  // when groups are ready to launch
-  return <TableWithoutGroups {...props} />
+  const features = useFeatures()
+  const labelsEnabled = features.isEnabled(Flag.Labels)
+  const resourcesHaveLabels =
+    props.view.uiResources?.some((r) => getResourceLabels(r).length > 0) ||
+    false
+
+  // The label group tip is only displayed if labels are enabled but not used
+  const displayLabelGroupsTip = labelsEnabled && !resourcesHaveLabels
+
+  if (labelsEnabled && resourcesHaveLabels) {
+    return <TableGroupedByLabels {...props} />
+  } else {
+    return (
+      <>
+        {displayLabelGroupsTip && (
+          <ResourceGroupsInfoTip idForIcon={GROUP_INFO_TOOLTIP_ID} />
+        )}
+        <TableWithoutGroups
+          aria-describedby={
+            displayLabelGroupsTip ? GROUP_INFO_TOOLTIP_ID : undefined
+          }
+          {...props}
+        />
+      </>
+    )
+  }
 }
