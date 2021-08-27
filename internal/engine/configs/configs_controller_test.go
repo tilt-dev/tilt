@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -42,6 +43,7 @@ func TestConfigsController(t *testing.T) {
 	f.addManifest("fe")
 
 	bar := manifestbuilder.New(f, "bar").WithK8sYAML(testyaml.SanchoYAML).Build()
+	bar.SourceTiltfile = model.MainTiltfileManifestName
 	f.setManifestResult(bar)
 	f.onChange()
 	f.popQueue()
@@ -125,7 +127,46 @@ func TestErrorLog(t *testing.T) {
 	assert.Contains(f.T(), f.st.out.String(), "ERROR LEVEL: The goggles do nothing!")
 }
 
+func TestExtensionTiltfile(t *testing.T) {
+	f := newCCFixture(t)
+	defer f.TearDown()
+
+	// Initialize the Main tiltfile
+	f.st.WithState(func(es *store.EngineState) {
+		es.UserConfigState = model.UserConfigState{
+			Args: []string{"fe"},
+		}
+	})
+	f.addManifest("fe")
+
+	bar := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
+	f.setManifestResult(bar)
+	f.onChange()
+	f.popQueue()
+	f.popQueue()
+
+	// Add an extension tiltfile.
+	f.st.WithState(func(es *store.EngineState) {
+		tiltfiles.HandleTiltfileUpsertAction(es, tiltfiles.TiltfileUpsertAction{
+			Tiltfile: &v1alpha1.Tiltfile{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ext",
+				},
+				Spec: v1alpha1.TiltfileSpec{
+					Path: "extpath",
+				},
+			},
+		})
+	})
+	f.onChange()
+
+	entry := f.bs.Entry()
+	assert.Equal(t, "ext", string(entry.Name))
+	assert.Equal(t, model.UserConfigState{}, entry.UserConfigState)
+}
+
 type testStore struct {
+	ctx context.Context
 	*store.TestingStore
 	out   *bytes.Buffer
 	start *ctrltiltfile.ConfigsReloadStartedAction
@@ -153,11 +194,17 @@ func (s *testStore) Dispatch(action store.Action) {
 
 	start, ok := action.(ctrltiltfile.ConfigsReloadStartedAction)
 	if ok {
+		state := s.LockMutableStateForTesting()
+		ctrltiltfile.HandleConfigsReloadStarted(s.ctx, state, start)
+		s.UnlockMutableState()
 		s.start = &start
 	}
 
 	end, ok := action.(ctrltiltfile.ConfigsReloadedAction)
 	if ok {
+		state := s.LockMutableStateForTesting()
+		ctrltiltfile.HandleConfigsReloaded(s.ctx, state, end)
+		s.UnlockMutableState()
 		s.end = &end
 	}
 
@@ -179,6 +226,7 @@ type ccFixture struct {
 	docker *docker.FakeClient
 	tfr    *ctrltiltfile.Reconciler
 	q      workqueue.RateLimitingInterface
+	bs     *ctrltiltfile.BuildSource
 }
 
 func newCCFixture(t *testing.T) *ccFixture {
@@ -194,6 +242,7 @@ func newCCFixture(t *testing.T) *ccFixture {
 	cc := NewConfigsController(tc, buildSource)
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	ctx, cancel := context.WithCancel(ctx)
+	st.ctx = ctx
 	_ = buildSource.Start(ctx, handler.Funcs{}, q)
 
 	// configs_controller uses state.RelativeTiltfilePath, which is relative to wd
@@ -219,6 +268,7 @@ func newCCFixture(t *testing.T) *ccFixture {
 		docker:         d,
 		tfr:            tfr,
 		q:              q,
+		bs:             buildSource,
 	}
 }
 
