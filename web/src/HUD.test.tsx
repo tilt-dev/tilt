@@ -301,7 +301,8 @@ describe("mergeAppUpdates", () => {
 
     let update = {
       view: {
-        uiResources: [{ metadata: { name: "vigoda" } }],
+        uiResources: [{ metadata: { name: "b" } }, { metadata: { name: "a" } }],
+        uiButtons: [{ metadata: { name: "z" } }, { metadata: { name: "y" } }],
         logList: logList(["line1", "line2"]),
         isComplete: true,
       },
@@ -313,6 +314,14 @@ describe("mergeAppUpdates", () => {
       "line1",
       "line2",
     ])
+    const expectedResourceOrder = ["a", "b"]
+    expect(result!.view.uiResources?.map((r) => r.metadata!.name)).toEqual(
+      expectedResourceOrder
+    )
+    const expectedButtonOrder = ["y", "z"]
+    expect(result!.view.uiButtons?.map((r) => r.metadata!.name)).toEqual(
+      expectedButtonOrder
+    )
   })
 
   it("handles log only update", () => {
