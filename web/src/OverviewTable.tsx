@@ -101,34 +101,7 @@ type OverviewTableStatus = {
   runtimeAlertCount: number
 }
 
-export const OverviewGroup = styled(Accordion)`
-  ${AccordionStyleResetMixin}
-
-  /* Set specific margins for table view */
-  &.MuiAccordion-root,
-  &.MuiAccordion-root.Mui-expanded,
-  &.MuiAccordion-root.Mui-expanded:first-child {
-    margin: ${SizeUnit(1 / 2)};
-  }
-`
-
-export const OverviewGroupSummary = styled(AccordionSummary)`
-  ${AccordionSummaryStyleResetMixin}
-  ${ResourceGroupSummaryMixin}
-
-  .MuiAccordionSummary-content {
-    font-size: ${FontSize.default};
-  }
-`
-
-export const OverviewGroupName = styled.span`
-  padding: 0 ${SizeUnit(1 / 3)};
-`
-
-export const OverviewGroupDetails = styled(AccordionDetails)`
-  ${AccordionDetailsStyleResetMixin}
-`
-
+// Table styles
 const ResourceTable = styled.table`
   margin-top: ${SizeUnit(0.5)};
   border-collapse: collapse;
@@ -264,6 +237,39 @@ const WidgetCell = styled.span`
   .MuiButtonGroup-root {
     margin-bottom: ${SizeUnit(0.125)};
     margin-right: ${SizeUnit(0.125)};
+  }
+`
+
+// Table Group styles
+export const OverviewGroup = styled(Accordion)`
+  ${AccordionStyleResetMixin}
+
+  /* Set specific margins for table view */
+  &.MuiAccordion-root,
+  &.MuiAccordion-root.Mui-expanded,
+  &.MuiAccordion-root.Mui-expanded:first-child {
+    margin: ${SizeUnit(1 / 2)};
+  }
+`
+
+export const OverviewGroupSummary = styled(AccordionSummary)`
+  ${AccordionSummaryStyleResetMixin}
+  ${ResourceGroupSummaryMixin}
+
+  .MuiAccordionSummary-content {
+    font-size: ${FontSize.default};
+  }
+`
+
+export const OverviewGroupName = styled.span`
+  padding: 0 ${SizeUnit(1 / 3)};
+`
+
+export const OverviewGroupDetails = styled(AccordionDetails)`
+  ${AccordionDetailsStyleResetMixin}
+
+  ${ResourceTable} {
+    margin-top: 4px;
   }
 `
 
