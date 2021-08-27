@@ -35,7 +35,7 @@ describe("ApiButton", () => {
 
   it("renders a simple button", () => {
     const b = makeUIButton()
-    const root = mount(<ApiButton button={b} />)
+    const root = mount(<ApiButton uiButton={b} />)
     const button = root.find(ApiButton).find("button")
     expect(button.length).toEqual(1)
     expect(button.find(Icon).text()).toEqual(b.spec!.iconName)
@@ -45,7 +45,7 @@ describe("ApiButton", () => {
   it("renders an options button when the button has inputs", () => {
     const inputs = [1, 2, 3].map((i) => textField(`text${i}`))
     const b = makeUIButton({ inputSpecs: inputs })
-    const root = mount(<ApiButton button={b} />)
+    const root = mount(<ApiButton uiButton={b} />)
     expect(
       root.find(ApiButton).find(ApiButtonInputsToggleButton).length
     ).toEqual(1)
@@ -54,7 +54,7 @@ describe("ApiButton", () => {
   it("shows the options form when the options button is clicked", () => {
     const inputs = [1, 2, 3].map((i) => textField(`text${i}`))
     const b = makeUIButton({ inputSpecs: inputs })
-    const root = mount(<ApiButton button={b} />)
+    const root = mount(<ApiButton uiButton={b} />)
 
     const optionsButton = root.find(ApiButtonInputsToggleButton)
     optionsButton.simulate("click")
@@ -73,7 +73,7 @@ describe("ApiButton", () => {
   it("submits the current options when the submit button is clicked", async () => {
     const inputSpec = textField("text1")
     const b = makeUIButton({ inputSpecs: [inputSpec] })
-    const root = mount(<ApiButton button={b} />)
+    const root = mount(<ApiButton uiButton={b} />)
 
     const optionsButton = root.find(ApiButtonInputsToggleButton)
     optionsButton.simulate("click")

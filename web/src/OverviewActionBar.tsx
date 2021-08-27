@@ -656,7 +656,7 @@ export function OverviewWidgets(props: { buttons?: UIButton[] }) {
   return (
     <WidgetRoot key="widgets">
       {props.buttons?.map((b) => (
-        <CustomActionButton button={b} key={b.metadata?.name} />
+        <CustomActionButton uiButton={b} key={b.metadata?.name} />
       ))}
     </WidgetRoot>
   )

@@ -413,7 +413,7 @@ function TableTriggerModeColumn({ row }: CellProps<RowValues>) {
 function TableWidgetsColumn({ row }: CellProps<RowValues>) {
   const buttons = row.original.buttons.map((b: UIButton) => {
     let content = (
-      <CustomActionButton key={b.metadata?.name} button={b}>
+      <CustomActionButton key={b.metadata?.name} uiButton={b}>
         <ApiIcon
           iconName={b.spec?.iconName || "smart_button"}
           iconSVG={b.spec?.iconSVG}
