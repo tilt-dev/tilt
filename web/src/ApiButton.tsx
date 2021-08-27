@@ -210,7 +210,7 @@ export const ApiButton: React.FC<ApiButtonProps> = (props) => {
         if (spec.text) {
           status.text = { value: value }
         } else if (spec.bool) {
-          status.bool = { value: value === "true" }
+          status.bool = { value: value === true }
         }
         toUpdate.status!.inputs!.push(status)
       }
