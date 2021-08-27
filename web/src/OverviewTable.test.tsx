@@ -48,7 +48,7 @@ it("shows buttons on the appropriate resources", () => {
   // first row is headers, so skip it
   const rows = root.find(ResourceTableRow).slice(1)
   const actualButtons = rows.map((row) =>
-    row.find(ApiButton).map((e) => e.prop("button").metadata?.name)
+    row.find(ApiButton).map((e) => e.prop("uiButton").metadata?.name)
   )
 
   expect(actualButtons).toEqual(expectedButtons)

@@ -1,4 +1,10 @@
-import {ButtonGroup, ButtonProps, Icon, SvgIcon, TextField} from "@material-ui/core"
+import {
+  ButtonGroup,
+  ButtonProps,
+  Icon,
+  SvgIcon,
+  TextField,
+} from "@material-ui/core"
 import ArrowDropDownIcon from "@material-ui/icons/ArrowDropDown"
 import moment from "moment"
 import React, { useRef, useState } from "react"
@@ -170,7 +176,7 @@ export const ApiIcon: React.FC<ApiIconProps> = (props) => {
 // 2. Optionally, an options <button>, which allows the user to configure the
 //    options used on submit.
 export const ApiButton: React.FC<ApiButtonProps> = (props) => {
-  const { className, uiButton, ...buttonProps } = {...props}
+  const { className, uiButton, ...buttonProps } = { ...props }
 
   const [loading, setLoading] = useState(false)
   const [inputValues, setInputValues] = useState(new Map<string, string>())

@@ -34,7 +34,11 @@ export function CustomNav(props: CustomNavProps) {
   return (
     <React.Fragment>
       {buttons.map((b) => (
-        <CustomNavButton key={b.metadata?.name} uiButton={b} variant="contained">
+        <CustomNavButton
+          key={b.metadata?.name}
+          uiButton={b}
+          variant="contained"
+        >
           <ApiIcon
             iconName={b.spec?.iconName || "smart_button"}
             iconSVG={b.spec?.iconSVG}
