@@ -89,7 +89,7 @@ export function createFilterTermState(input: string): FilterTerm {
       regexp: parseTermInput(input),
       state: TermState.Parsed,
     }
-  } catch (error) {
+  } catch (error: any) {
     let message = "Invalid regexp"
     if (error.message) {
       message += `: ${error.message}`
