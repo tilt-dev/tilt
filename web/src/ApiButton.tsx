@@ -8,12 +8,15 @@ import {
 } from "@material-ui/core"
 import ArrowDropDownIcon from "@material-ui/icons/ArrowDropDown"
 import moment from "moment"
+import { useSnackbar } from "notistack"
 import React, { useRef, useState } from "react"
 import { convertFromNode, convertFromString } from "react-from-dom"
+import { Link } from "react-router-dom"
 import styled from "styled-components"
 import FloatDialog from "./FloatDialog"
 import { InstrumentedButton } from "./instrumentedComponents"
-import { Color, FontSize, SizeUnit } from "./style-helpers"
+import { usePathBuilder } from "./PathBuilder"
+import { Color, Font, FontSize, SizeUnit } from "./style-helpers"
 
 type UIButton = Proto.v1alpha1UIButton
 type UIInputSpec = Proto.v1alpha1UIInputSpec
@@ -33,6 +36,11 @@ export const ApiButtonRoot = styled(ButtonGroup)`
   ${ApiButtonLabel} {
     margin-left: ${SizeUnit(0.25)};
   }
+`
+export const LogLink = styled(Link)`
+  font-family: ${Font.sansSerif};
+  color: ${Color.gray7};
+  font-size: ${FontSize.smallest};
 `
 
 type ApiButtonProps = { className?: string; button: UIButton }
@@ -184,59 +192,90 @@ export const ApiIcon: React.FC<ApiIconProps> = (props) => {
   return null
 }
 
+async function updateButtonStatus(
+  button: UIButton,
+  inputValues: Map<string, any>
+) {
+  const toUpdate = {
+    metadata: { ...button.metadata },
+    status: { ...button.status },
+  } as UIButton
+  // apiserver's date format time is _extremely_ strict to the point that it requires the full
+  // six-decimal place microsecond precision, e.g. .000Z will be rejected, it must be .000000Z
+  // so use an explicit RFC3339 moment format to ensure it passes
+  toUpdate.status!.lastClickedAt = moment
+    .utc()
+    .format("YYYY-MM-DDTHH:mm:ss.SSSSSSZ")
+
+  toUpdate.status!.inputs = []
+  button.spec!.inputs?.forEach((spec) => {
+    const value = inputValues.get(spec.name!)
+    if (value !== undefined) {
+      let status: UIInputStatus = { name: spec.name }
+      if (spec.text) {
+        status.text = { value: value }
+      } else if (spec.bool) {
+        status.bool = { value: value === true }
+      }
+      toUpdate.status!.inputs!.push(status)
+    }
+  })
+
+  const url = `/proxy/apis/tilt.dev/v1alpha1/uibuttons/${
+    toUpdate.metadata!.name
+  }/status`
+  await fetch(url, {
+    method: "PUT",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(toUpdate),
+  })
+}
+
 // Renders a UIButton.
 // NB: The `Button` in `ApiButton` refers to a UIButton, not an html <button>.
 // This can be confusing because each ApiButton consists of one or two <button>s:
 // 1. A submit <button>, which fires the button's action.
 // 2. Optionally, an options <button>, which allows the user to configure the
 //    options used on submit.
-export const ApiButton: React.FC<ApiButtonProps> = (props) => {
+export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
   const [loading, setLoading] = useState(false)
   const [inputValues, setInputValues] = useState(new Map<string, any>())
 
-  const onClick = async () => {
-    const toUpdate = {
-      metadata: { ...props.button.metadata },
-      status: { ...props.button.status },
-    } as UIButton
-    // apiserver's date format time is _extremely_ strict to the point that it requires the full
-    // six-decimal place microsecond precision, e.g. .000Z will be rejected, it must be .000000Z
-    // so use an explicit RFC3339 moment format to ensure it passes
-    toUpdate.status!.lastClickedAt = moment
-      .utc()
-      .format("YYYY-MM-DDTHH:mm:ss.SSSSSSZ")
+  const { enqueueSnackbar } = useSnackbar()
+  const pb = usePathBuilder()
 
-    toUpdate.status!.inputs = []
-    props.button.spec!.inputs?.forEach((spec) => {
-      const value = inputValues.get(spec.name!)
-      if (value !== undefined) {
-        let status: UIInputStatus = { name: spec.name }
-        if (spec.text) {
-          status.text = { value: value }
-        } else if (spec.bool) {
-          status.bool = { value: value === true }
-        }
-        toUpdate.status!.inputs!.push(status)
+  const onClick = async () => {
+    const snackbarLogsLink =
+      props.button.spec?.location?.componentType === "Global" ? (
+        <LogLink to="/r/(all)/overview">Global Logs</LogLink>
+      ) : (
+        <LogLink
+          to={pb.encpath`/r/${
+            props.button.spec?.location?.componentID || "(all)"
+          }/overview`}
+        >
+          Resource Logs
+        </LogLink>
+      )
+    enqueueSnackbar(
+      `Triggered button: ${
+        props.button.spec?.text || props.button.metadata?.name
+      }`,
+      {
+        action: snackbarLogsLink,
       }
-    })
+    )
 
     // TODO(milas): currently the loading state just disables the button for the duration of
     //  the AJAX request to avoid duplicate clicks - there is no progress tracking at the
     //  moment, so there's no fancy spinner animation or propagation of result of action(s)
     //  that occur as a result of click right now
     setLoading(true)
-    const url = `/proxy/apis/tilt.dev/v1alpha1/uibuttons/${
-      toUpdate.metadata!.name
-    }/status`
     try {
-      await fetch(url, {
-        method: "PUT",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(toUpdate),
-      })
+      await updateButtonStatus(props.button, inputValues)
     } finally {
       setLoading(false)
     }

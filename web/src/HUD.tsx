@@ -1,5 +1,6 @@
 import { StylesProvider } from "@material-ui/core/styles"
 import { History, UnregisterCallback } from "history"
+import { SnackbarProvider } from "notistack"
 import React, { Component } from "react"
 import ReactOutlineManager from "react-outline-manager"
 import { useHistory } from "react-router"
@@ -216,17 +217,23 @@ export default class HUD extends Component<HudProps, HudState> {
       <tiltfileKeyContext.Provider value={tiltfileKey}>
         <StarredResourcesContextProvider>
           <ReactOutlineManager>
-            <ResourceNavProvider validateResource={validateResource}>
-              <div className={hudClasses.join(" ")}>
-                <AnalyticsNudge needsNudge={needsNudge} />
-                <SocketBar state={this.state.socketState} />
-                {fatalErrorModal}
-                {errorModal}
-                {shareSnapshotModal}
+            <SnackbarProvider
+              maxSnack={3}
+              anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+              autoHideDuration={6000}
+            >
+              <ResourceNavProvider validateResource={validateResource}>
+                <div className={hudClasses.join(" ")}>
+                  <AnalyticsNudge needsNudge={needsNudge} />
+                  <SocketBar state={this.state.socketState} />
+                  {fatalErrorModal}
+                  {errorModal}
+                  {shareSnapshotModal}
 
-                {this.renderOverviewSwitch()}
-              </div>
-            </ResourceNavProvider>
+                  {this.renderOverviewSwitch()}
+                </div>
+              </ResourceNavProvider>
+            </SnackbarProvider>
           </ReactOutlineManager>
         </StarredResourcesContextProvider>
       </tiltfileKeyContext.Provider>
