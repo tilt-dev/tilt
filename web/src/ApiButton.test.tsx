@@ -1,6 +1,7 @@
 import { Button, Icon, TextField } from "@material-ui/core"
 import { mount } from "enzyme"
 import fetchMock from "fetch-mock"
+import { SnackbarProvider } from "notistack"
 import React from "react"
 import { act } from "react-dom/test-utils"
 import { MemoryRouter } from "react-router"
@@ -23,7 +24,9 @@ type UIButton = Proto.v1alpha1UIButton
 function mountButton(b: UIButton) {
   return mount(
     <MemoryRouter>
-      <ApiButton button={b} />
+      <SnackbarProvider>
+        <ApiButton button={b} />
+      </SnackbarProvider>
     </MemoryRouter>
   )
 }

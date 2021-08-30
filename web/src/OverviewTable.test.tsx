@@ -1,4 +1,5 @@
 import { mount, ReactWrapper } from "enzyme"
+import { SnackbarProvider } from "notistack"
 import React from "react"
 import { MemoryRouter } from "react-router"
 import {
@@ -46,11 +47,13 @@ const tableViewWithSettings = ({
   const features = new Features({ [Flag.Labels]: labelsEnabled ?? true })
   return (
     <MemoryRouter initialEntries={["/"]}>
-      <FeaturesProvider value={features}>
-        <ResourceGroupsContextProvider>
-          <OverviewTable view={view} />
-        </ResourceGroupsContextProvider>
-      </FeaturesProvider>
+      <SnackbarProvider>
+        <FeaturesProvider value={features}>
+          <ResourceGroupsContextProvider>
+            <OverviewTable view={view} />
+          </ResourceGroupsContextProvider>
+        </FeaturesProvider>
+      </SnackbarProvider>
     </MemoryRouter>
   )
 }
