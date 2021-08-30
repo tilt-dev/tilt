@@ -9,7 +9,7 @@ jobs:
   build-linux:
     resource_class: medium+
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:6cff318d4e9ac8904b97945c6fb73eae8330004a3782ce1c9406863f64f71eab
+      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:c9274f913a541c7b62f238872d0a05331449f7db8885974229d99e0965f49eff
     # apiserver code generation scripts require being in GOPATH
     working_directory: /go/src/github.com/tilt-dev/tilt
 
@@ -31,7 +31,7 @@ jobs:
           only_for_branches: master
   helm2:
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:6cff318d4e9ac8904b97945c6fb73eae8330004a3782ce1c9406863f64f71eab
+      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:c9274f913a541c7b62f238872d0a05331449f7db8885974229d99e0965f49eff
     steps:
       - checkout
       - run: sudo mv /usr/bin/helm2 /usr/bin/helm
@@ -43,7 +43,7 @@ jobs:
 
   build-js:
     docker:
-      - image: circleci/node:12
+      - image: circleci/node:16
     steps:
       - checkout
       - run: make check-js
@@ -60,7 +60,7 @@ jobs:
 
   publish-assets:
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:6cff318d4e9ac8904b97945c6fb73eae8330004a3782ce1c9406863f64f71eab
+      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:c9274f913a541c7b62f238872d0a05331449f7db8885974229d99e0965f49eff
     steps:
       - checkout
       - run: echo $GCLOUD_SERVICE_KEY > /tmp/gcloud-service-key.json
@@ -88,7 +88,7 @@ jobs:
   build-integration:
     resource_class: medium+
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:f79aebd720b58a8d9de1e98f496151e2f9cc2e3896182cfd9b5bb3b297d5ec28
+      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:d41a891455a232a865c7abc1e2ffe25b1a78a207a6ea00feeb1a0c26c58f1eeb
     steps:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV

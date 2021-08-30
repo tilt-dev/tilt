@@ -146,7 +146,11 @@ out = open(%q, 'w')
 out.write(sys.stdin.read())
 out.close()
 `, ranTxt, out))
-	tcf.cmd = fmt.Sprintf("python %s", tcf.temp.JoinPath("work.py"))
+	if runtime.GOOS == "windows" {
+		tcf.cmd = fmt.Sprintf("python %s", tcf.temp.JoinPath("work.py"))
+		return
+	}
+	tcf.cmd = fmt.Sprintf("python3 %s", tcf.temp.JoinPath("work.py"))
 }
 
 func (tcf *tcFixture) failCmd() {
@@ -158,6 +162,7 @@ func (tcf *tcFixture) failCmd() {
 }
 
 func (tcf *tcFixture) assertNoInvocation() {
+	tcf.t.Helper()
 	_, err := os.Stat(tcf.temp.JoinPath("ran.txt"))
 	if !os.IsNotExist(err) {
 		tcf.t.Fatalf("expected ran.txt to not exist")
@@ -165,6 +170,7 @@ func (tcf *tcFixture) assertNoInvocation() {
 }
 
 func (tcf *tcFixture) assertInvocation() {
+	tcf.t.Helper()
 	_, err := os.Stat(tcf.temp.JoinPath("ran.txt"))
 	if err != nil {
 		tcf.t.Fatalf("error stat'ing ran.txt: %v", err)
