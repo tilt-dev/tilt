@@ -39,7 +39,7 @@ RUN set -exu \
   && mv /tmp/goreleaser /usr/bin/ \
   && goreleaser --version
 
-RUN curl -sL https://deb.nodesource.com/setup_12.x | bash -
+RUN curl -sL https://deb.nodesource.com/setup_16.x | bash -
 RUN apt install -y nodejs
 
 RUN curl -sL https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - && \
