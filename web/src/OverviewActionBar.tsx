@@ -538,6 +538,7 @@ export function FilterTermField({ termFromUrl }: { termFromUrl: FilterTerm }) {
       </SrOnly>
       <TiltInfoTooltip
         id={FILTER_FIELD_TOOLTIP_ID}
+        dismissId="log-filter-term"
         title={filterTermTooltipContent}
         placement="right-end"
       />

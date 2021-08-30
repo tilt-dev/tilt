@@ -544,7 +544,12 @@ function ResourceTableHeaderTip(props: { name?: string }) {
     return null
   }
 
-  return <TiltInfoTooltip title={tooltipContent} />
+  return (
+    <TiltInfoTooltip
+      title={tooltipContent}
+      dismissId={`table-header-${props.name}`}
+    />
+  )
 }
 
 async function copyTextToClipboard(text: string, cb: () => void) {
