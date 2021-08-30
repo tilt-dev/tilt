@@ -21,13 +21,13 @@ type InstrumentationProps = {
 export function InstrumentedButton(props: ButtonProps & InstrumentationProps) {
   const { analyticsName, analyticsTags, onClick, ...buttonProps } = { ...props }
   const instrumentedOnClick: typeof onClick = (e) => {
-    if (onClick) {
-      onClick(e)
-    }
     incr(analyticsName, {
       action: AnalyticsAction.Click,
       ...(analyticsTags ?? {}),
     })
+    if (onClick) {
+      onClick(e)
+    }
   }
 
   return (
@@ -61,10 +61,10 @@ export function InstrumentedTextField(
   )
 
   const instrumentedOnChange: typeof onChange = (e) => {
+    debouncedIncr()
     if (onChange) {
       onChange(e)
     }
-    debouncedIncr()
   }
 
   return <TextField onChange={instrumentedOnChange} {...textFieldProps} />
