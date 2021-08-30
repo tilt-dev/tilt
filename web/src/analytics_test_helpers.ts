@@ -1,4 +1,4 @@
-import fetchMock from "fetch-mock"
+import fetchMock, {MockCall} from "fetch-mock"
 import { Tags } from "./analytics"
 
 export function mockAnalyticsCalls() {
@@ -25,6 +25,10 @@ export function expectIncr(fetchMockIndex: number, name: string, tags: Tags) {
   )
 }
 
+function isAnalyticsCall(c: MockCall): boolean {
+  return c[0]?.toString().endsWith("/api/analytics")
+}
+
 export function expectIncrs(...incrs: { name: string; tags: Tags }[]) {
   const expectedRequestBodies = incrs.map((i) => [
     {
@@ -35,9 +39,13 @@ export function expectIncrs(...incrs: { name: string; tags: Tags }[]) {
   ])
   const incrCalls = fetchMock
     .calls()
-    .filter((e) => e[0]?.toString().endsWith("/api/analytics"))
+    .filter(isAnalyticsCall)
   const actualRequestBodies = incrCalls.map((e) =>
     JSON.parse(e[1]?.body?.toString() ?? "")
   )
   expect(actualRequestBodies).toEqual(expectedRequestBodies)
+}
+
+export function nonAnalyticsCalls(): MockCall[] {
+  return fetchMock.calls().filter(c => !isAnalyticsCall(c))
 }

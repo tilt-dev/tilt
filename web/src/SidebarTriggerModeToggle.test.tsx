@@ -6,7 +6,7 @@ import { AnalyticsAction } from "./analytics"
 import {
   cleanupMockAnalyticsCalls,
   expectIncrs,
-  mockAnalyticsCalls,
+  mockAnalyticsCalls, nonAnalyticsCalls,
 } from "./analytics_test_helpers"
 import LogStore from "./LogStore"
 import PathBuilder from "./PathBuilder"
@@ -131,7 +131,6 @@ describe("SidebarTriggerButton", () => {
     })
     expect(preventDefaulted).toEqual(true)
 
-    expect(fetchMock.calls().length).toEqual(2) // 1 call to analytics, one to /override
     expectIncrs({
       name: "ui.web.toggleTriggerMode",
       tags: {
@@ -140,14 +139,19 @@ describe("SidebarTriggerButton", () => {
       },
     })
 
-    expect(fetchMock.calls()[1][0]).toEqual("/api/override/trigger_mode")
-    expect(fetchMock.calls()[1][1]?.method).toEqual("post")
-    expect(fetchMock.calls()[1][1]?.body).toEqual(
-      JSON.stringify({
-        manifest_names: ["foobar"],
-        trigger_mode: TriggerMode.TriggerModeManual,
-      })
-    )
+    var mc: MockCall
+    mc.
+    const expectedCall = [
+      "/api/override/trigger_mode",
+      {
+        method: "post",
+        body: JSON.stringify({
+          manifest_names: ["foobar"],
+          trigger_mode: TriggerMode.TriggerModeManual,
+        }),
+      },
+    ]
+    expect(nonAnalyticsCalls()).toEqual([expectedCall])
   })
 
   it("toggles auto to manual", () => {
