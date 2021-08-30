@@ -1,11 +1,13 @@
-import { debounce, InputAdornment, TextField } from "@material-ui/core"
+import { InputAdornment } from "@material-ui/core"
 import { InputProps as StandardInputProps } from "@material-ui/core/Input/Input"
 import React, { Dispatch, SetStateAction } from "react"
 import styled from "styled-components"
-import { AnalyticsAction, incr } from "./analytics"
 import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
 import { ReactComponent as SearchSvg } from "./assets/svg/search.svg"
-import { InstrumentedButton } from "./instrumentedComponents"
+import {
+  InstrumentedButton,
+  InstrumentedTextField,
+} from "./instrumentedComponents"
 import {
   Color,
   Font,
@@ -90,7 +92,7 @@ export const AlertsOnTopToggle = styled(InstrumentedButton)`
   }
 `
 
-export const ResourceNameFilterTextField = styled(TextField)`
+export const ResourceNameFilterTextField = styled(InstrumentedTextField)`
   & .MuiOutlinedInput-root {
     border-radius: ${SizeUnit(0.5)};
     border: 1px solid ${Color.grayLighter};
@@ -152,11 +154,6 @@ function setResourceNameFilter(
   })
 }
 
-// debounce so we don't send for every single keypress
-let incrResourceNameFilterEdit = debounce(() => {
-  incr("ui.web.resourceNameFilter", { action: AnalyticsAction.Edit })
-}, 5000)
-
 function ResourceNameFilter(props: OverviewSidebarOptionsProps) {
   let inputProps: Partial<StandardInputProps> = {
     startAdornment: (
@@ -184,18 +181,14 @@ function ResourceNameFilter(props: OverviewSidebarOptionsProps) {
     )
   }
 
-  const onChange = (e: any) => {
-    incrResourceNameFilterEdit()
-    setResourceNameFilter(e.target.value, props)
-  }
-
   return (
     <ResourceNameFilterTextField
       value={props.options.resourceNameFilter ?? ""}
-      onChange={onChange}
+      onChange={(e) => setResourceNameFilter(e.target.value, props)}
       placeholder="Filter resources by name"
       InputProps={inputProps}
       variant="outlined"
+      analyticsName="ui.web.resourceNameFilter"
     />
   )
 }

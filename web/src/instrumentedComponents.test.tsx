@@ -1,19 +1,25 @@
 import { mount } from "enzyme"
+import React from "react"
 import { AnalyticsAction } from "./analytics"
 import {
   cleanupMockAnalyticsCalls,
   expectIncrs,
   mockAnalyticsCalls,
 } from "./analytics_test_helpers"
-import { InstrumentedButton } from "./instrumentedComponents"
+import {
+  InstrumentedButton,
+  InstrumentedTextField,
+} from "./instrumentedComponents"
 
 describe("instrumented components", () => {
   beforeEach(() => {
     mockAnalyticsCalls()
+    jest.useFakeTimers()
   })
 
   afterEach(() => {
     cleanupMockAnalyticsCalls()
+    jest.useRealTimers()
   })
 
   describe("instrumented button", () => {
@@ -68,6 +74,27 @@ describe("instrumented components", () => {
       expectIncrs({
         name: "ui.web.foo.bar",
         tags: { action: AnalyticsAction.Click },
+      })
+    })
+  })
+
+  describe("instrumented TextField", () => {
+    it("reports analytics, debounced, when edited", () => {
+      const root = mount(
+        <InstrumentedTextField
+          analyticsName={"ui.web.TestTextField"}
+          analyticsTags={{ foo: "bar" }}
+        />
+      )
+      const tf = root.find(InstrumentedTextField).find('input[type="text"]')
+      // two changes in rapid succession should result in only one analytics event
+      tf.simulate("change", { target: { value: "foo" } })
+      tf.simulate("change", { target: { value: "foobar" } })
+      expectIncrs(...[])
+      jest.runTimersToTime(10000)
+      expectIncrs({
+        name: "ui.web.TestTextField",
+        tags: { action: AnalyticsAction.Edit, foo: "bar" },
       })
     })
   })
