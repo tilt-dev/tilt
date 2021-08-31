@@ -86,12 +86,13 @@ export function TiltInfoTooltip(
   const { displayShadow, idForIcon, title, dismissId, ...tooltipProps } = props
   const shadowClass = displayShadow ? "shadow" : ""
 
-  const [
-    dismissed,
-    setDismissed,
-  ] = usePersistentState(`tooltip-dismissed-${props.dismissId}`, false, {
-    keyedByTiltfile: false,
-  })
+  const [dismissed, setDismissed] = usePersistentState(
+    `tooltip-dismissed-${props.dismissId}`,
+    false,
+    {
+      keyedByTiltfile: false,
+    }
+  )
   if (dismissed) {
     return null
   }
