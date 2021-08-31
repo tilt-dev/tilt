@@ -6073,6 +6073,7 @@ func unusedImageWarning(unusedImage string, suggestedImages []string, configType
 		}
 	}
 	ret = ret + "\nSkipping this image build"
+	ret = ret + fmt.Sprintf("\nIf this is deliberate, suppress this warning with: update_settings(suppress_unused_image_warnings=[%q])", unusedImage)
 	return ret
 }
 
