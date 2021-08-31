@@ -105,6 +105,7 @@ func (r *Reconciler) toDesiredTiltfile(owner *v1alpha1.Extension) (*v1alpha1.Til
 			Labels: map[string]string{
 				label: label,
 			},
+			Args: owner.Spec.Args,
 		},
 	}
 	err := controllerutil.SetControllerReference(owner, child, r.ctrlClient.Scheme())

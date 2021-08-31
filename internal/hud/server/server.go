@@ -22,6 +22,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/cloud"
 	"github.com/tilt-dev/tilt/internal/hud/webview"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/tiltfiles"
 	"github.com/tilt-dev/tilt/pkg/assets"
 	"github.com/tilt-dev/tilt/pkg/model"
 	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
@@ -220,9 +221,15 @@ func (s *HeadsUpServer) HandleSetTiltfileArgs(w http.ResponseWriter, req *http.R
 	err := jsoniter.NewDecoder(req.Body).Decode(&args)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error parsing JSON payload: %v", err), http.StatusBadRequest)
+		return
 	}
 
-	s.store.Dispatch(SetTiltfileArgsAction{args})
+	ctx := req.Context()
+	err = tiltfiles.SetTiltfileArgs(ctx, s.store, s.ctrlClient, args)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error updating apiserver: %v", err), http.StatusInternalServerError)
+		return
+	}
 }
 
 func (s *HeadsUpServer) HandleTrigger(w http.ResponseWriter, req *http.Request) {

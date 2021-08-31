@@ -36,7 +36,6 @@ func TestDefault(t *testing.T) {
 			Path: p,
 		},
 	}
-	f.bs.SetEntry(&BuildEntry{Name: "my-tf", TiltfilePath: p})
 	f.Create(&tf)
 
 	// Make sure the FileWatch was created

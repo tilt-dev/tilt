@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -12,6 +13,16 @@ import (
 )
 
 // Fetch all the buttons that this object depends on.
+//
+// If a button isn't in the API server yet, it will simply be missing from the map.
+//
+// Other errors reaching the API server will be returned to the caller.
+//
+// TODO(nick): If the user typos a button name, there's currently no feedback
+// that this is happening. This is probably the correct product behavior (in particular:
+// resources should still run if their restarton button has been deleted).
+// We might eventually need some sort of StartOnStatus/RestartOnStatus to express errors
+// in lookup.
 func Buttons(ctx context.Context, client client.Client, restartOn *v1alpha1.RestartOnSpec, startOn *v1alpha1.StartOnSpec) (map[string]*v1alpha1.UIButton, error) {
 	buttonNames := []string{}
 	if startOn != nil {
@@ -32,6 +43,9 @@ func Buttons(ctx context.Context, client client.Client, restartOn *v1alpha1.Rest
 		b := &v1alpha1.UIButton{}
 		err := client.Get(ctx, types.NamespacedName{Name: n}, b)
 		if err != nil {
+			if apierrors.IsNotFound(err) {
+				continue
+			}
 			return nil, err
 		}
 		result[n] = b
@@ -40,6 +54,16 @@ func Buttons(ctx context.Context, client client.Client, restartOn *v1alpha1.Rest
 }
 
 // Fetch all the filewatches that this object depends on.
+//
+// If a filewatch isn't in the API server yet, it will simply be missing from the map.
+//
+// Other errors reaching the API server will be returned to the caller.
+//
+// TODO(nick): If the user typos a filewatch name, there's currently no feedback
+// that this is happening. This is probably the correct product behavior (in particular:
+// resources should still run if their restarton filewatch has been deleted).
+// We might eventually need some sort of RestartOnStatus to express errors
+// in lookup.
 func FileWatches(ctx context.Context, client client.Client, restartOn *v1alpha1.RestartOnSpec) (map[string]*v1alpha1.FileWatch, error) {
 	if restartOn == nil {
 		return nil, nil
@@ -50,6 +74,9 @@ func FileWatches(ctx context.Context, client client.Client, restartOn *v1alpha1.
 		fw := &v1alpha1.FileWatch{}
 		err := client.Get(ctx, types.NamespacedName{Name: n}, fw)
 		if err != nil {
+			if apierrors.IsNotFound(err) {
+				continue
+			}
 			return nil, err
 		}
 		result[n] = fw

@@ -11,12 +11,6 @@ type AppendToTriggerQueueAction struct {
 
 func (AppendToTriggerQueueAction) Action() {}
 
-type SetTiltfileArgsAction struct {
-	Args []string
-}
-
-func (SetTiltfileArgsAction) Action() {}
-
 // TODO: a way to clear an override
 type OverrideTriggerModeAction struct {
 	ManifestNames []model.ManifestName

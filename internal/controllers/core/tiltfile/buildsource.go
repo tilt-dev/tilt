@@ -17,12 +17,7 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
 
-// BuildSource is a way for legacy Tilt reconcilers to
-// notify the reconciliation loop that a Tiltfile needs to be rebuilt.
-//
-// We model this as a controller-runtime Source, which is intended for watching
-// external resources that trigger reconciliation.
-
+// BuildEntry is vestigial, but currently used to help manage state about a tiltfile build.
 type BuildEntry struct {
 	Name                  model.ManifestName
 	FilesChanged          []string
@@ -38,10 +33,10 @@ func (be *BuildEntry) WithLogger(ctx context.Context, st store.RStore) context.C
 	return logger.CtxWithLogHandler(ctx, actionWriter)
 }
 
+// BuildSource is vestigial, but currently used to help re-run the reconciler.
 type BuildSource struct {
-	mu    sync.Mutex
-	entry *BuildEntry
-	q     workqueue.RateLimitingInterface
+	mu sync.Mutex
+	q  workqueue.RateLimitingInterface
 }
 
 var _ source.Source = &BuildSource{}
@@ -54,29 +49,7 @@ func (s *BuildSource) Start(ctx context.Context, handler handler.EventHandler, q
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.q = q
-	if s.entry != nil && s.q != nil {
-		s.q.Add(reconcile.Request{
-			NamespacedName: types.NamespacedName{Name: s.entry.Name.String()},
-		})
-	}
 	return nil
-}
-
-func (s *BuildSource) Entry() *BuildEntry {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.entry
-}
-
-func (s *BuildSource) SetEntry(e *BuildEntry) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.entry = e
-	if e != nil && s.q != nil {
-		s.q.Add(reconcile.Request{
-			NamespacedName: types.NamespacedName{Name: e.Name.String()},
-		})
-	}
 }
 
 func (s *BuildSource) Add(nn types.NamespacedName) {

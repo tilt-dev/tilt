@@ -75,6 +75,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/openurl"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
+	"github.com/tilt-dev/tilt/internal/store/tiltfiles"
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
 	"github.com/tilt-dev/tilt/internal/testutils/httptest"
@@ -532,11 +533,13 @@ func TestUpper_UpK8sEntityOrdering(t *testing.T) {
 	f.WriteFile("Tiltfile", `k8s_yaml('postgres.yaml')`)
 	f.WriteFile("postgres.yaml", yaml)
 
-	err = f.upper.Init(f.ctx, InitAction{
-		TiltfilePath: f.JoinPath("Tiltfile"),
-		StartTime:    f.Now(),
-	})
-	require.NoError(t, err)
+	storeErr := make(chan error, 1)
+	go func() {
+		storeErr <- f.upper.Init(f.ctx, InitAction{
+			TiltfilePath: f.JoinPath("Tiltfile"),
+			StartTime:    f.Now(),
+		})
+	}()
 
 	call := f.nextCallComplete()
 	entities, err := k8s.ParseYAMLFromString(call.k8s().YAML)
@@ -550,6 +553,7 @@ func TestUpper_UpK8sEntityOrdering(t *testing.T) {
 		"YAML on the manifest should be in sorted order")
 
 	f.assertAllBuildsConsumed()
+	require.NoError(t, <-storeErr)
 }
 
 func TestUpper_CI(t *testing.T) {
@@ -3470,7 +3474,8 @@ print('foo=', cfg['foo'])`)
 		spanID := state.MainTiltfileState().LastBuild().SpanID
 		require.Contains(t, state.LogStore.SpanLog(spanID), `foo= ["bar"]`)
 	})
-	f.store.Dispatch(server.SetTiltfileArgsAction{Args: []string{"--foo", "baz", "--foo", "quu"}})
+	err := tiltfiles.SetTiltfileArgs(f.ctx, f.store, f.ctrlClient, []string{"--foo", "baz", "--foo", "quu"})
+	require.NoError(t, err)
 
 	f.WaitUntil("second tiltfile build finishes", func(state store.EngineState) bool {
 		return len(state.MainTiltfileState().BuildHistory) == 2
@@ -3893,7 +3898,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	realTFL := tiltfile.ProvideTiltfileLoader(ta, b.kClient, k8sContextExt, versionExt, configExt, fakeDcc, "localhost", localexec.EmptyEnv(), feature.MainDefaults, env)
 	tfl := tiltfile.NewFakeTiltfileLoader()
 	buildSource := ctrltiltfile.NewBuildSource()
-	cc := configs.NewConfigsController(cdc, buildSource)
+	cc := configs.NewConfigsController(cdc)
 	tqs := configs.NewTriggerQueueSubscriber(cdc)
 	dcw := dcwatch.NewEventWatcher(fakeDcc, dockerClient)
 	dclm := runtimelog.NewDockerComposeLogManager(fakeDcc)
