@@ -116,6 +116,10 @@ func (idx *buildIndex) unmatchedImageWarning(image *dockerImage, configType stri
 		matchLines = append(matchLines, fmt.Sprintf("    - %s\n", match))
 	}
 
-	return fmt.Errorf("Image not used in any %s config:\n    ✕ %v\n%sSkipping this image build",
-		configType, container.FamiliarString(image.configurationRef), strings.Join(matchLines, ""))
+	return fmt.Errorf("Image not used in any %s config:\n    ✕ %v\n%sSkipping this image build\n"+
+		"If this is deliberate, suppress this warning with: update_settings(suppress_unused_image_warnings=[%q])",
+		configType,
+		container.FamiliarString(image.configurationRef),
+		strings.Join(matchLines, ""),
+		container.FamiliarString(image.configurationRef))
 }
