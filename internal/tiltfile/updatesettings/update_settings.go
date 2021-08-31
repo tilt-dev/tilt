@@ -10,6 +10,7 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
+	"github.com/tilt-dev/tilt/internal/tiltfile/value"
 )
 
 // Implements functions for dealing with update settings.
@@ -29,9 +30,11 @@ func (e Plugin) OnStart(env *starkit.Environment) error {
 
 func (e *Plugin) updateSettings(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var maxParallelUpdates, k8sUpsertTimeoutSecs starlark.Value
+	var unusedImageWarnings value.StringOrStringList
 	if err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs,
 		"max_parallel_updates?", &maxParallelUpdates,
-		"k8s_upsert_timeout_secs?", &k8sUpsertTimeoutSecs); err != nil {
+		"k8s_upsert_timeout_secs?", &k8sUpsertTimeoutSecs,
+		"suppress_unused_image_warnings?", &unusedImageWarnings); err != nil {
 		return nil, err
 	}
 
@@ -60,6 +63,7 @@ func (e *Plugin) updateSettings(thread *starlark.Thread, fn *starlark.Builtin, a
 		if kutsPassed {
 			settings = settings.WithK8sUpsertTimeout(time.Duration(kuts) * time.Second)
 		}
+		settings.SuppressUnusedImageWarnings = append(settings.SuppressUnusedImageWarnings, unusedImageWarnings.Values...)
 		return settings
 	})
 
