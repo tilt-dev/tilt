@@ -11,7 +11,7 @@ import { AnalyticsAction, incr, Tags } from "./analytics"
 // Shared components that implement analytics
 // 1. Saves callers from having to implement/test analytics for every interactive
 //    component.
-// 2. Allows wrappers to cheaply require uses specify analytics params.
+// 2. Allows wrappers to cheaply require analytics params.
 
 type InstrumentationProps = {
   analyticsName: string
@@ -40,6 +40,12 @@ export function InstrumentedButton(props: ButtonProps & InstrumentationProps) {
   )
 }
 
+// How long to debounce TextField edit events. i.e., only send one edit
+// event per this duration. These don't need to be submitted super
+// urgently, and we want to be closer to sending one per user intent than
+// one per keystroke.
+const textFieldEditDebounceMilliseconds = 5000
+
 export function InstrumentedTextField(
   props: TextFieldProps & InstrumentationProps
 ) {
@@ -56,7 +62,7 @@ export function InstrumentedTextField(
           action: AnalyticsAction.Edit,
           ...(analyticsTags ?? {}),
         })
-      }, 5000),
+      }, textFieldEditDebounceMilliseconds),
     [analyticsName, analyticsTags]
   )
 
