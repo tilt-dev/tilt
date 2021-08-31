@@ -67,6 +67,15 @@ type TiltfileSpec struct {
 	// Objects that can trigger a re-execution of this Tiltfile.
 	// +optional
 	RestartOn *RestartOnSpec `json:"restartOn,omitempty" protobuf:"bytes,3,opt,name=restartOn"`
+
+	// Arguments to the Tiltfile.
+	//
+	// Arguments can be positional (['a', 'b', 'c']) or flag-based ('--to-edit=a').
+	// By default, a list of arguments indicates the list of services in the tiltfile
+	// that should be enabled.
+	//
+	// +optional
+	Args []string `json:"args,omitempty" protobuf:"bytes,4,rep,name=args"`
 }
 
 var _ resource.Object = &Tiltfile{}

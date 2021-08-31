@@ -372,6 +372,15 @@ message ExtensionSpec {
   // Once the repo is downloaded, this path should point to a directory with a
   // Tiltfile as the main "entrypoint" of the extension.
   optional string repoPath = 2;
+
+  // Arguments to the Tiltfile loaded by this extension.
+  //
+  // Arguments can be positional (['a', 'b', 'c']) or flag-based ('--to-edit=a').
+  // By default, a list of arguments indicates the list of services in the tiltfile
+  // that should be enabled.
+  //
+  // +optional
+  repeated string args = 3;
 }
 
 // ExtensionStatus defines the observed state of Extension
@@ -1411,6 +1420,15 @@ message TiltfileSpec {
   // Objects that can trigger a re-execution of this Tiltfile.
   // +optional
   optional RestartOnSpec restartOn = 3;
+
+  // Arguments to the Tiltfile.
+  //
+  // Arguments can be positional (['a', 'b', 'c']) or flag-based ('--to-edit=a').
+  // By default, a list of arguments indicates the list of services in the tiltfile
+  // that should be enabled.
+  //
+  // +optional
+  repeated string args = 4;
 }
 
 // TiltfileStateRunning is a running state of a tiltfile execution.

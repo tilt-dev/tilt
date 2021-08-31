@@ -1168,6 +1168,21 @@ func schema_pkg_apis_core_v1alpha1_ExtensionSpec(ref common.ReferenceCallback) c
 							Format:      "",
 						},
 					},
+					"args": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Arguments to the Tiltfile loaded by this extension.\n\nArguments can be positional (['a', 'b', 'c']) or flag-based ('--to-edit=a'). By default, a list of arguments indicates the list of services in the tiltfile that should be enabled.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
 				},
 				Required: []string{"repoName", "repoPath"},
 			},
@@ -3843,6 +3858,21 @@ func schema_pkg_apis_core_v1alpha1_TiltfileSpec(ref common.ReferenceCallback) co
 						SchemaProps: spec.SchemaProps{
 							Description: "Objects that can trigger a re-execution of this Tiltfile.",
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec"),
+						},
+					},
+					"args": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Arguments to the Tiltfile.\n\nArguments can be positional (['a', 'b', 'c']) or flag-based ('--to-edit=a'). By default, a list of arguments indicates the list of services in the tiltfile that should be enabled.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
 						},
 					},
 				},
