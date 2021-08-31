@@ -532,6 +532,22 @@ const columnNameToInfoTooltip: {
       .
     </>
   ),
+  Widgets: (
+    <>
+      <div>You can add custom buttons here to easily perform actions.</div>
+      <div>
+        See{" "}
+        <a
+          href={linkToTiltDocs(TiltDocsPage.CustomButtons)}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          custom buttons docs
+        </a>
+        .
+      </div>
+    </>
+  ),
 }
 
 function ResourceTableHeaderTip(props: { name?: string }) {
