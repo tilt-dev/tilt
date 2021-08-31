@@ -1,6 +1,8 @@
 import {
   Button,
   ButtonProps,
+  Checkbox,
+  CheckboxProps,
   debounce,
   TextField,
   TextFieldProps,
@@ -74,4 +76,23 @@ export function InstrumentedTextField(
   }
 
   return <TextField onChange={instrumentedOnChange} {...textFieldProps} />
+}
+
+export function InstrumentedCheckbox(
+  props: CheckboxProps & InstrumentationProps
+) {
+  const { analyticsName, analyticsTags, onChange, ...checkboxProps } = {
+    ...props,
+  }
+  const instrumentedOnChange: typeof onChange = (e, checked) => {
+    incr(analyticsName, {
+      action: AnalyticsAction.Edit,
+      ...(analyticsTags ?? {}),
+    })
+    if (onChange) {
+      onChange(e, checked)
+    }
+  }
+
+  return <Checkbox onChange={instrumentedOnChange} {...checkboxProps} />
 }
