@@ -114,6 +114,11 @@ const ResourceTable = styled.table`
     padding-right: ${SizeUnit(1)};
   }
 
+  td + td {
+    padding-left: ${SizeUnit(1 / 4)};
+    padding-right: ${SizeUnit(1 / 4)};
+  }
+
   &.isGroup {
     border: 1px ${Color.grayLighter} solid;
     border-radius: 0 ${SizeUnit(1 / 4)};
@@ -127,13 +132,13 @@ export const ResourceTableRow = styled.tr`
 `
 const ResourceTableData = styled.td`
   font-family: ${Font.monospace};
-  font-size: ${FontSize.smallest};
+  font-size: ${FontSize.small};
   color: ${Color.gray6};
   box-sizing: border-box;
 `
 const ResourceTableHeader = styled(ResourceTableData)`
   color: ${Color.gray7};
-  font-size: ${FontSize.smallest};
+  font-size: ${FontSize.small};
   padding-top: ${SizeUnit(0.5)};
   padding-bottom: ${SizeUnit(0.5)};
   box-sizing: border-box;
