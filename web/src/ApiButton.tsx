@@ -31,9 +31,10 @@ const ApiButtonFormFooter = styled.div`
   font-color: ${Color.grayLighter};
   font-size: ${FontSize.smallester};
 `
+const ApiIconRoot = styled.div``
 export const ApiButtonLabel = styled.div``
 export const ApiButtonRoot = styled(ButtonGroup)`
-  ${ApiButtonLabel} {
+  ${ApiIconRoot} + ${ApiButtonLabel} {
     margin-left: ${SizeUnit(0.25)};
   }
 `
@@ -182,11 +183,19 @@ export const ApiIcon: React.FC<ApiIconProps> = (props) => {
       // merge the props from material-ui while keeping the children of the actual SVG
       return React.cloneElement(svgEl, { ...props }, ...svgEl.props.children)
     }
-    return <SvgIcon component={svg} />
+    return (
+      <ApiIconRoot>
+        <SvgIcon component={svg} />
+      </ApiIconRoot>
+    )
   }
 
   if (props.iconName) {
-    return <Icon>{props.iconName}</Icon>
+    return (
+      <ApiIconRoot>
+        <Icon>{props.iconName}</Icon>
+      </ApiIconRoot>
+    )
   }
 
   return null

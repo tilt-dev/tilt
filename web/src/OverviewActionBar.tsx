@@ -1,9 +1,4 @@
-import {
-  debounce,
-  InputAdornment,
-  InputProps,
-  TextField,
-} from "@material-ui/core"
+import { debounce, InputAdornment, InputProps } from "@material-ui/core"
 import Menu from "@material-ui/core/Menu"
 import MenuItem from "@material-ui/core/MenuItem"
 import { PopoverOrigin } from "@material-ui/core/Popover"
@@ -22,7 +17,10 @@ import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
 import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as FilterSvg } from "./assets/svg/filter.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
-import { InstrumentedButton } from "./instrumentedComponents"
+import {
+  InstrumentedButton,
+  InstrumentedTextField,
+} from "./instrumentedComponents"
 import { displayURL } from "./links"
 import LogActions from "./LogActions"
 import {
@@ -215,7 +213,7 @@ export let ButtonRightPill = styled(ButtonRoot)`
   border-radius: 0 4px 4px 0;
 `
 
-const FilterTermTextField = styled(TextField)`
+const FilterTermTextField = styled(InstrumentedTextField)`
   & .MuiOutlinedInput-root {
     background-color: ${Color.grayDark};
     position: relative;
@@ -443,8 +441,6 @@ const filterTermTooltipContent = (
 )
 
 const debounceFilterLogs = debounce((history: History, search: string) => {
-  // Record the action for analytics
-  incr("ui.web.filterTerm", { action: AnalyticsAction.Edit })
   // Navigate to filtered logs with search query
   history.push({ search })
 }, FILTER_INPUT_DEBOUNCE)
@@ -532,6 +528,7 @@ export function FilterTermField({ termFromUrl }: { termFromUrl: FilterTerm }) {
         placeholder="Filter by text or /regexp/"
         value={filterTerm}
         variant="outlined"
+        analyticsName="ui.web.filterTerm"
       />
       <SrOnly component="label" htmlFor={FILTER_FIELD_ID}>
         Filter resource logs by text or /regexp/
