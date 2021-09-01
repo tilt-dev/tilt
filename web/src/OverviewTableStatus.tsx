@@ -6,6 +6,7 @@ import { ReactComponent as PendingSvg } from "./assets/svg/pending.svg"
 import { useResourceNav } from "./ResourceNav"
 import {
   Color,
+  FontSize,
   Glow,
   mixinResetButtonStyle,
   SizeUnit,
@@ -20,6 +21,8 @@ const StyledOverviewTableStatus = styled.button`
   color: inherit;
   display: flex;
   align-items: center;
+  font-size: ${FontSize.small};
+  text-align: left;
 
   & + & {
     margin-top: ${SizeUnit(0.15)};

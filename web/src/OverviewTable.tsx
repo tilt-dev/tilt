@@ -19,6 +19,7 @@ import { ApiButton, ApiIcon, buttonsForComponent } from "./ApiButton"
 import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
+import { ReactComponent as StarSvg } from "./assets/svg/star.svg"
 import { linkToTiltDocs, TiltDocsPage } from "./constants"
 import { Flag, useFeatures } from "./feature"
 import { InstrumentedButton } from "./instrumentedComponents"
@@ -32,7 +33,9 @@ import {
 import { displayURL } from "./links"
 import LogStore, { LogAlertIndex, useLogStore } from "./LogStore"
 import { OverviewButtonMixin } from "./OverviewButton"
-import OverviewTableStarResourceButton from "./OverviewTableStarResourceButton"
+import OverviewTableStarResourceButton, {
+  StyledTableStarResourceButton,
+} from "./OverviewTableStarResourceButton"
 import OverviewTableStatus from "./OverviewTableStatus"
 import OverviewTableTriggerButton from "./OverviewTableTriggerButton"
 import OverviewTableTriggerModeToggle from "./OverviewTableTriggerModeToggle"
@@ -102,6 +105,10 @@ type OverviewTableStatus = {
 }
 
 // Table styles
+const OverviewTableRoot = styled.section`
+  margin-bottom: ${SizeUnit(1 / 2)};
+`
+
 const ResourceTable = styled.table`
   margin-top: ${SizeUnit(0.5)};
   border-collapse: collapse;
@@ -109,9 +116,17 @@ const ResourceTable = styled.table`
 
   td:first-child {
     padding-left: ${SizeUnit(1)};
+
+    & ${StyledTableStarResourceButton} {
+      margin-left: -15px; /* Center the star button underneath the header */
+    }
   }
   td:last-child {
     padding-right: ${SizeUnit(1)};
+  }
+
+  td + td {
+    padding-right: ${SizeUnit(1 / 2)};
   }
 
   &.isGroup {
@@ -127,13 +142,13 @@ export const ResourceTableRow = styled.tr`
 `
 const ResourceTableData = styled.td`
   font-family: ${Font.monospace};
-  font-size: ${FontSize.smallest};
+  font-size: ${FontSize.small};
   color: ${Color.gray6};
   box-sizing: border-box;
 `
 const ResourceTableHeader = styled(ResourceTableData)`
   color: ${Color.gray7};
-  font-size: ${FontSize.smallest};
+  font-size: ${FontSize.small};
   padding-top: ${SizeUnit(0.5)};
   padding-bottom: ${SizeUnit(0.5)};
   box-sizing: border-box;
@@ -162,6 +177,13 @@ const ResourceTableHeaderSortTriangle = styled.div`
     transform: rotate(180deg);
   }
 `
+
+const TableHeaderStarIcon = styled(StarSvg)`
+  fill: ${Color.gray7};
+  height: 13px;
+  width: 13px;
+`
+
 const Name = styled.button`
   ${mixinResetButtonStyle};
   color: ${Color.offWhite};
@@ -455,13 +477,16 @@ function TableWidgetsColumn({ row }: CellProps<RowValues>) {
 // TODO: fix existing columns to return reasonable primitives from `accessor`
 const columnDefs: Column<RowValues>[] = [
   {
-    Header: "Starred",
-    width: "20px",
+    Header: () => <TableHeaderStarIcon title="Starred" />,
+    id: "starred",
+    accessor: "name", // Note: this accessor is meaningless but required when `Header` returns JSX.The starred column gets its data directly from the StarredResources context and sort on this column is disabled.
+    disableSortBy: true,
+    width: "10px",
     Cell: TableStarColumn,
   },
   {
     Header: "Updated",
-    width: "20px",
+    width: "25px",
     accessor: "lastDeployTime",
     Cell: TableUpdateColumn,
   },
@@ -487,7 +512,7 @@ const columnDefs: Column<RowValues>[] = [
     Header: "Status",
     accessor: "statusLine",
     disableSortBy: true,
-    width: "150px",
+    width: "200px",
     Cell: TableStatusColumn,
   },
   {
@@ -614,21 +639,6 @@ function resourceTypeLabel(r: UIResource): string {
     }
   }
   return "Unknown"
-}
-
-function hasWidgets(view: Proto.webviewView): boolean {
-  return !!view.uiButtons?.length
-}
-
-function viewToRowValues(
-  view: Proto.webviewView,
-  logStore: LogStore
-): RowValues[] {
-  return (
-    view.uiResources?.map((r) =>
-      uiResourceToCell(r, view.uiButtons, logStore)
-    ) || []
-  )
 }
 
 export function resourcesToTableCells(
@@ -823,10 +833,14 @@ export default function OverviewTable(props: OverviewTableProps) {
   const displayLabelGroupsTip = labelsEnabled && !resourcesHaveLabels
 
   if (labelsEnabled && resourcesHaveLabels) {
-    return <TableGroupedByLabels {...props} />
+    return (
+      <OverviewTableRoot title="Resources overview">
+        <TableGroupedByLabels {...props} />
+      </OverviewTableRoot>
+    )
   } else {
     return (
-      <>
+      <OverviewTableRoot title="Resources overview">
         {displayLabelGroupsTip && (
           <ResourceGroupsInfoTip idForIcon={GROUP_INFO_TOOLTIP_ID} />
         )}
@@ -836,7 +850,7 @@ export default function OverviewTable(props: OverviewTableProps) {
           }
           {...props}
         />
-      </>
+      </OverviewTableRoot>
     )
   }
 }
