@@ -26,13 +26,13 @@ const (
 	EnvMicroK8s      Env = "microk8s"
 	EnvCRC           Env = "crc"
 	EnvKrucible      Env = "krucible"
-
 	// Kind v0.6 substantially changed the protocol for detecting and pulling,
 	// so we represent them as two separate envs.
-	EnvKIND5 Env = "kind-0.5-"
-	EnvKIND6 Env = "kind-0.6+"
-	EnvK3D   Env = "k3d"
-	EnvNone  Env = "none" // k8s not running (not neces. a problem, e.g. if using Tilt x Docker Compose)
+	EnvKIND5          Env = "kind-0.5-"
+	EnvKIND6          Env = "kind-0.6+"
+	EnvK3D            Env = "k3d"
+	EnvRancherDesktop Env = "rancher-desktop"
+	EnvNone           Env = "none" // k8s not running (not neces. a problem, e.g. if using Tilt x Docker Compose)
 )
 
 func (e Env) IsDevCluster() bool {
@@ -43,7 +43,8 @@ func (e Env) IsDevCluster() bool {
 		e == EnvKIND5 ||
 		e == EnvKIND6 ||
 		e == EnvK3D ||
-		e == EnvKrucible
+		e == EnvKrucible ||
+		e == EnvRancherDesktop
 }
 
 func ProvideKubeContext(config *api.Config) (KubeContext, error) {
@@ -116,6 +117,8 @@ func ProvideEnv(ctx context.Context, config *api.Config) Env {
 		return EnvKrucible
 	} else if strings.HasPrefix(cn, "k3d-") {
 		return EnvK3D
+	} else if strings.HasPrefix(cn, "rancher-desktop") {
+		return EnvRancherDesktop
 	}
 
 	loc := c.LocationOfOrigin
