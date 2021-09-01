@@ -63,58 +63,59 @@ func (dp *DockerPruner) SetUp(ctx context.Context, _ store.RStore) error {
 	return nil
 }
 
-func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) error {
-	if dp.disabledForTesting || dp.disabledOnSetup {
+// OnChange determines if any Tilt-built Docker images should be pruned based on settings and invokes the pruning
+// process if necessary.
+//
+// Care should be taken when modifying this method to not introduce expensive operations unless necessary, as this
+// is invoked for EVERY store action change batch. Because of this, the store (un)locking is done somewhat manually,
+// so care must be taken to avoid locking issues.
+func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) error {
+	if dp.disabledForTesting || dp.disabledOnSetup || summary.IsLogOnly() {
 		return nil
 	}
 
 	state := st.RLockState()
 	settings := state.DockerPruneSettings
-	buildInProg := len(state.CurrentlyBuilding) > 0
-	curBuildCount := state.CompletedBuildCount
-	hasDockerBuild := state.HasDockerBuild()
-	nextToBuild := buildcontrol.NextManifestNameToBuild(state)
-	imgSelectors := model.LocalRefSelectorsForManifests(state.Manifests())
-	st.RUnlockState()
-
-	if !settings.Enabled {
-		return nil
-	}
-
-	// If user doesn't have at least one Docker build, they probably don't care about pruning
-	if !hasDockerBuild {
-		return nil
-	}
-
-	// Don't prune while we're building or about to build something, in case of weird side-effects.
-	if buildInProg || nextToBuild != "" {
+	// Exit early if possible if any of the following is true:
+	// 	* Pruning is disabled entirely
+	// 	* Engine is currently building something
+	// 	* There are NO `docker_build`s in the Tiltfile
+	// 	* Something is queued for building
+	if !settings.Enabled || len(state.CurrentlyBuilding) > 0 || !state.HasDockerBuild() || buildcontrol.NextManifestNameToBuild(state) != "" {
+		st.RUnlockState()
 		return nil
 	}
 
 	// Prune as soon after startup as we can (waiting until we've built SOMETHING)
-	if dp.lastPruneTime.IsZero() && curBuildCount > 0 {
-		dp.PruneAndRecordState(ctx, settings.MaxAge, settings.KeepRecent, imgSelectors, curBuildCount)
-		return nil
-	}
-
+	curBuildCount := state.CompletedBuildCount
+	shouldPrune := dp.lastPruneTime.IsZero() && curBuildCount > 0
 	// "Prune every X builds" takes precedence over "prune every Y hours"
 	if settings.NumBuilds != 0 {
 		buildsSince := curBuildCount - dp.lastPruneBuildCount
 		if buildsSince >= settings.NumBuilds {
-			dp.PruneAndRecordState(ctx, settings.MaxAge, settings.KeepRecent, imgSelectors, curBuildCount)
+			shouldPrune = true
 		}
+	} else {
+		interval := settings.Interval
+		if interval == 0 {
+			interval = model.DockerPruneDefaultInterval
+		}
+		if time.Since(dp.lastPruneTime) >= interval {
+			shouldPrune = true
+		}
+	}
+
+	if shouldPrune {
+		// N.B. Only determine the ref selectors if we're actually going to prune - OnChange is called for every batch
+		// 	of store events and this is a comparatively expensive operation (lots of regex), but 99% of the time this
+		// 	is called, no pruning is going to happen, so avoid burning CPU cycles unnecessarily
+		imgSelectors := model.LocalRefSelectorsForManifests(state.Manifests())
+		st.RUnlockState()
+		dp.PruneAndRecordState(ctx, settings.MaxAge, settings.KeepRecent, imgSelectors, curBuildCount)
 		return nil
 	}
 
-	interval := settings.Interval
-	if interval == 0 {
-		interval = model.DockerPruneDefaultInterval
-	}
-
-	if time.Since(dp.lastPruneTime) >= interval {
-		dp.PruneAndRecordState(ctx, settings.MaxAge, settings.KeepRecent, imgSelectors, curBuildCount)
-	}
-
+	st.RUnlockState()
 	return nil
 }
 
