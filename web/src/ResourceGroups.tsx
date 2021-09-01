@@ -111,7 +111,7 @@ const BottomLeftContainer = styled.aside`
   bottom: 0;
   left: 0;
   padding: 10px 10px 5px 10px;
-  position: absolute;
+  position: fixed;
   z-index: 2;
 `
 

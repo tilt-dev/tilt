@@ -134,7 +134,7 @@ const StarredResourceRoot = styled.div`
     padding-left: ${SizeUnit(0.25)};
   }
 `
-const StarredResourceBarRoot = styled.div`
+const StarredResourceBarRoot = styled.section`
   padding-left: ${SizeUnit(0.5)};
   padding-right: ${SizeUnit(0.5)};
   padding-top: ${SizeUnit(0.25)};
@@ -200,7 +200,7 @@ export function StarredResource(props: {
 
 export default function StarredResourceBar(props: StarredResourceBarProps) {
   return (
-    <StarredResourceBarRoot>
+    <StarredResourceBarRoot title="Starred resources">
       {props.resources.map((r) => (
         <StarredResource
           resource={r}

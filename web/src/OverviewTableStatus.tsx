@@ -22,6 +22,7 @@ const StyledOverviewTableStatus = styled.button`
   display: flex;
   align-items: center;
   font-size: ${FontSize.small};
+  text-align: left;
 
   & + & {
     margin-top: ${SizeUnit(0.15)};
