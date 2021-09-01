@@ -21,7 +21,7 @@ type InstrumentationProps = {
 }
 
 export function InstrumentedButton(props: ButtonProps & InstrumentationProps) {
-  const { analyticsName, analyticsTags, onClick, ...buttonProps } = { ...props }
+  const { analyticsName, analyticsTags, onClick, ...buttonProps } = props
   const instrumentedOnClick: typeof onClick = (e) => {
     incr(analyticsName, {
       action: AnalyticsAction.Click,
@@ -51,9 +51,7 @@ const textFieldEditDebounceMilliseconds = 5000
 export function InstrumentedTextField(
   props: TextFieldProps & InstrumentationProps
 ) {
-  const { analyticsName, analyticsTags, onChange, ...textFieldProps } = {
-    ...props,
-  }
+  const { analyticsName, analyticsTags, onChange, ...textFieldProps } = props
 
   // we have to memoize the debounced function so that incrs reuse the same debounce timer
   const debouncedIncr = useMemo(
@@ -81,9 +79,7 @@ export function InstrumentedTextField(
 export function InstrumentedCheckbox(
   props: CheckboxProps & InstrumentationProps
 ) {
-  const { analyticsName, analyticsTags, onChange, ...checkboxProps } = {
-    ...props,
-  }
+  const { analyticsName, analyticsTags, onChange, ...checkboxProps } = props
   const instrumentedOnChange: typeof onChange = (e, checked) => {
     incr(analyticsName, {
       action: AnalyticsAction.Edit,

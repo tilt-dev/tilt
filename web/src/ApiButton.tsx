@@ -69,7 +69,8 @@ function ApiButtonInput(props: ApiButtonInputProps) {
         placeholder={props.spec.text?.placeholder}
         value={props.value || props.spec.text?.defaultValue || ""}
         onChange={(e) => props.setValue(props.spec.name!, e.target.value)}
-        analyticsName="ui.web.uibutton.input.text"
+        analyticsName="ui.web.uibutton.input"
+        analyticsTags={{ inputType: "text" }}
         fullWidth
       />
     )
@@ -81,7 +82,8 @@ function ApiButtonInput(props: ApiButtonInputProps) {
           <InstrumentedCheckbox
             id={props.spec.name}
             checked={isChecked}
-            analyticsName="ui.web.uibutton.input.bool"
+            analyticsName="ui.web.uibutton.input"
+            analyticsTags={{ inputType: "bool" }}
           />
         }
         label={props.spec.label ?? props.spec.name}
@@ -150,7 +152,7 @@ function ApiButtonWithOptions(props: ApiButtonWithOptionsProps) {
           onClick={() => {
             setOpen((prevOpen) => !prevOpen)
           }}
-          analyticsName="ui.web.uiButton.inputs"
+          analyticsName="ui.web.uibutton.inputs"
         >
           <ArrowDropDownIcon />
         </ApiButtonInputsToggleButton>
