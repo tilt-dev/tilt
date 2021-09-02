@@ -14,6 +14,7 @@ import { convertFromNode, convertFromString } from "react-from-dom"
 import { Link } from "react-router-dom"
 import styled from "styled-components"
 import FloatDialog from "./FloatDialog"
+import { useHudErrorContext } from "./HudErrorContext"
 import { InstrumentedButton } from "./instrumentedComponents"
 import { usePathBuilder } from "./PathBuilder"
 import { Color, Font, FontSize, SizeUnit } from "./style-helpers"
@@ -233,7 +234,7 @@ async function updateButtonStatus(
   const url = `/proxy/apis/tilt.dev/v1alpha1/uibuttons/${
     toUpdate.metadata!.name
   }/status`
-  await fetch(url, {
+  const resp = await fetch(url, {
     method: "PUT",
     headers: {
       Accept: "application/json",
@@ -241,6 +242,10 @@ async function updateButtonStatus(
     },
     body: JSON.stringify(toUpdate),
   })
+  if (resp && resp.status !== 200) {
+    const body = await resp.text()
+    throw `error submitting button click to api: ${body}`
+  }
 }
 
 // Renders a UIButton.
@@ -256,7 +261,23 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
   const { enqueueSnackbar } = useSnackbar()
   const pb = usePathBuilder()
 
+  const { setError } = useHudErrorContext()
+
   const onClick = async () => {
+    // TODO(milas): currently the loading state just disables the button for the duration of
+    //  the AJAX request to avoid duplicate clicks - there is no progress tracking at the
+    //  moment, so there's no fancy spinner animation or propagation of result of action(s)
+    //  that occur as a result of click right now
+    setLoading(true)
+    try {
+      await updateButtonStatus(props.button, inputValues)
+    } catch (err) {
+      setError(`Error submitting button click: ${err}`)
+      return
+    } finally {
+      setLoading(false)
+    }
+
     const snackbarLogsLink =
       props.button.spec?.location?.componentType === "Global" ? (
         <LogLink to="/r/(all)/overview">Global Logs</LogLink>
@@ -277,17 +298,6 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
         action: snackbarLogsLink,
       }
     )
-
-    // TODO(milas): currently the loading state just disables the button for the duration of
-    //  the AJAX request to avoid duplicate clicks - there is no progress tracking at the
-    //  moment, so there's no fancy spinner animation or propagation of result of action(s)
-    //  that occur as a result of click right now
-    setLoading(true)
-    try {
-      await updateButtonStatus(props.button, inputValues)
-    } finally {
-      setLoading(false)
-    }
   }
 
   // button text is not included in analytics name since that can be user data

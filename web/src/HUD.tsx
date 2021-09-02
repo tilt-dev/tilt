@@ -13,6 +13,7 @@ import FatalErrorModal from "./FatalErrorModal"
 import Features, { FeaturesProvider, Flag } from "./feature"
 import HeroScreen from "./HeroScreen"
 import "./HUD.scss"
+import { HudErrorContextProvider } from "./HudErrorContext"
 import HudState from "./HudState"
 import { InterfaceVersion, useInterfaceVersion } from "./InterfaceVersion"
 import { tiltfileKeyContext } from "./LocalStorage"
@@ -74,6 +75,7 @@ export default class HUD extends Component<HudProps, HudState> {
 
     this.handleOpenModal = this.handleOpenModal.bind(this)
     this.handleShowCopySuccess = this.handleShowCopySuccess.bind(this)
+    this.setError = this.setError.bind(this)
   }
 
   componentDidMount() {
@@ -217,23 +219,25 @@ export default class HUD extends Component<HudProps, HudState> {
       <tiltfileKeyContext.Provider value={tiltfileKey}>
         <StarredResourcesContextProvider>
           <ReactOutlineManager>
-            <SnackbarProvider
-              maxSnack={3}
-              anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-              autoHideDuration={6000}
-            >
-              <ResourceNavProvider validateResource={validateResource}>
-                <div className={hudClasses.join(" ")}>
-                  <AnalyticsNudge needsNudge={needsNudge} />
-                  <SocketBar state={this.state.socketState} />
-                  {fatalErrorModal}
-                  {errorModal}
-                  {shareSnapshotModal}
+            <HudErrorContextProvider setError={this.setError}>
+              <SnackbarProvider
+                maxSnack={3}
+                anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                autoHideDuration={6000}
+              >
+                <ResourceNavProvider validateResource={validateResource}>
+                  <div className={hudClasses.join(" ")}>
+                    <AnalyticsNudge needsNudge={needsNudge} />
+                    <SocketBar state={this.state.socketState} />
+                    {fatalErrorModal}
+                    {errorModal}
+                    {shareSnapshotModal}
 
-                  {this.renderOverviewSwitch()}
-                </div>
-              </ResourceNavProvider>
-            </SnackbarProvider>
+                    {this.renderOverviewSwitch()}
+                  </div>
+                </ResourceNavProvider>
+              </SnackbarProvider>
+            </HudErrorContextProvider>
           </ReactOutlineManager>
         </StarredResourcesContextProvider>
       </tiltfileKeyContext.Provider>
@@ -335,6 +339,10 @@ export default class HUD extends Component<HudProps, HudState> {
         }
       />
     )
+  }
+
+  setError(error: string) {
+    this.setState({ error: error })
   }
 }
 

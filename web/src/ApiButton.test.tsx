@@ -16,19 +16,22 @@ import {
   ApiButtonLabel,
 } from "./ApiButton"
 import { boolField, makeUIButton, textField } from "./ApiButton.testhelpers"
+import { HudErrorContextProvider } from "./HudErrorContext"
 import { flushPromises } from "./promise"
 
 type UIButtonStatus = Proto.v1alpha1UIButtonStatus
 type UIButton = Proto.v1alpha1UIButton
 
-function mountButton(b: UIButton) {
+function wrappedMount(e: JSX.Element) {
   return mount(
     <MemoryRouter>
-      <SnackbarProvider>
-        <ApiButton button={b} />
-      </SnackbarProvider>
+      <SnackbarProvider>{e}</SnackbarProvider>
     </MemoryRouter>
   )
+}
+
+function mountButton(b: UIButton) {
+  return wrappedMount(<ApiButton button={b} />)
 }
 
 describe("ApiButton", () => {
@@ -137,5 +140,36 @@ describe("ApiButton", () => {
       ],
     }
     expect(actualStatus).toEqual(expectedStatus)
+  })
+
+  it("sets a hud error when the api request fails", async () => {
+    let error: string | undefined
+    const setError = (e: string) => {
+      error = e
+    }
+    const root = wrappedMount(
+      <HudErrorContextProvider setError={setError}>
+        <ApiButton button={makeUIButton()} />
+      </HudErrorContextProvider>
+    )
+
+    fetchMock.reset()
+    mockAnalyticsCalls()
+    fetchMock.put(
+      (url) => url.startsWith("/proxy/apis/tilt.dev/v1alpha1/uibuttons"),
+      { throws: "broken!" }
+    )
+
+    const submit = root.find(ApiButton).find(Button).at(0)
+    await act(async () => {
+      submit.simulate("click")
+      // the button's onclick updates the button so we need to wait for that to resolve
+      // within the act() before continuing
+      // some related info: https://github.com/testing-library/react-testing-library/issues/281
+      await flushPromises()
+    })
+    root.update()
+
+    expect(error).toEqual("Error submitting button click: broken!")
   })
 })
