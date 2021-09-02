@@ -180,27 +180,12 @@ func HandleConfigsReloaded(
 
 		if m.SourceTiltfile == event.Name {
 			if !loadedManifestNames[m.Name] {
-				delete(state.ManifestTargets, m.Name)
+				state.RemoveManifestTarget(m.Name)
 			}
 			continue
 		}
 	}
 
-	// Create a new definition order that merges:
-	// the existing definition order, and
-	// any new manifests.
-	newOrder := append([]model.ManifestName{}, state.ManifestDefinitionOrder...)
-	newOrderSet := make(map[model.ManifestName]bool)
-	for _, name := range newOrder {
-		newOrderSet[name] = true
-	}
-	for _, newManifest := range manifests {
-		if !newOrderSet[newManifest.Name] {
-			newOrder = append(newOrder, newManifest.Name)
-		}
-	}
-
-	state.ManifestDefinitionOrder = newOrder
 	state.TiltfileConfigPaths[event.Name] = event.ConfigFiles
 
 	// Global state that's only configurable from the main manifest.
