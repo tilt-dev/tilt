@@ -126,7 +126,8 @@ const ResourceTable = styled.table`
   }
 
   td + td {
-    padding-right: ${SizeUnit(1 / 2)};
+    padding-left: ${SizeUnit(1 / 4)};
+    padding-right: ${SizeUnit(1 / 4)};
   }
 
   &.isGroup {
@@ -145,6 +146,10 @@ export const ResourceTableData = styled.td`
   font-size: ${FontSize.small};
   color: ${Color.gray6};
   box-sizing: border-box;
+
+  &.isSorted {
+    background-color: ${Color.gray};
+  }
 `
 export const ResourceTableHeader = styled(ResourceTableData)`
   color: ${Color.gray7};
@@ -153,6 +158,10 @@ export const ResourceTableHeader = styled(ResourceTableData)`
   padding-bottom: ${SizeUnit(0.5)};
   box-sizing: border-box;
   white-space: nowrap;
+
+  &.isSorted {
+    background-color: ${Color.grayDark};
+  }
 `
 
 const ResourceTableHeaderLabel = styled.div`
@@ -166,8 +175,8 @@ const ResourceTableHeaderSortTriangle = styled.div`
   margin-left: ${SizeUnit(0.25)};
   width: 0;
   height: 0;
-  border-left: 4px solid transparent;
-  border-right: 4px solid transparent;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
   border-bottom: 6px solid ${Color.grayLight};
 
   &.is-sorted-asc {
@@ -738,6 +747,8 @@ export function Table(
 
   const isGroupClass = props.isGroupView ? "isGroup" : ""
 
+  // TODO (lizz): Consider adding `aria-sort` properties and markup to table
+  // to improve accessibility
   return (
     <ResourceTable {...getTableProps()} className={isGroupClass}>
       <ResourceTableHead>
@@ -746,9 +757,14 @@ export function Table(
             {headerGroup.headers.map((column) => (
               <ResourceTableHeader
                 {...column.getHeaderProps([
-                  { style: { width: column.width } },
+                  {
+                    style: { width: column.width },
+                    className: column.isSorted ? "isSorted" : "",
+                  },
                   column.getSortByToggleProps({
-                    title: `Sort by ${column.render("Header")}`,
+                    title: column.canSort
+                      ? `Sort by ${column.render("Header")}`
+                      : column.render("Header"),
                   }),
                 ])}
               >
@@ -778,7 +794,11 @@ export function Table(
           return (
             <ResourceTableRow {...row.getRowProps()}>
               {row.cells.map((cell) => (
-                <ResourceTableData {...cell.getCellProps()}>
+                <ResourceTableData
+                  {...cell.getCellProps({
+                    className: cell.column.isSorted ? "isSorted" : "",
+                  })}
+                >
                   {cell.render("Cell")}
                 </ResourceTableData>
               ))}
