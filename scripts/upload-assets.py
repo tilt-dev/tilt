@@ -21,9 +21,10 @@ parser.add_argument('version', help='A version string like "v1.2.3".')
 args = parser.parse_args()
 version = args.version
 if version == "latest":
-  version = str(subprocess.check_output([
+  version = subprocess.check_output([
     "git", "describe", "--tags", "--abbrev=0"
-  ])).strip()
+  ]).decode('utf-8').strip()
+
 dir_url = ("https://storage.googleapis.com/tilt-static-assets/%s/" % version)
 
 if args.clean:
