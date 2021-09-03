@@ -2,16 +2,7 @@ import { Button } from "@material-ui/core"
 import { mount } from "enzyme"
 import React from "react"
 import { act } from "react-test-renderer"
-import { tiltfileKeyContext } from "./LocalStorage"
 import TiltTooltip, { TiltInfoTooltip } from "./Tooltip"
-
-function mountWithContext(children: JSX.Element) {
-  return mount(
-    <tiltfileKeyContext.Provider value="test">
-      {children}
-    </tiltfileKeyContext.Provider>
-  )
-}
 
 describe("TiltInfoTooltip", () => {
   beforeEach(() => {
@@ -23,7 +14,7 @@ describe("TiltInfoTooltip", () => {
   })
 
   it("hides info button when clicked", () => {
-    const root = mountWithContext(
+    const root = mount(
       <TiltInfoTooltip title="Hello!" dismissId="test-tooltip" open={true} />
     )
 

@@ -1,10 +1,10 @@
 import { makeStyles } from "@material-ui/core/styles"
 import Tooltip, { TooltipProps } from "@material-ui/core/Tooltip"
 import React from "react"
+import { useStorageState } from "react-storage-hooks"
 import styled from "styled-components"
 import { ReactComponent as InfoSvg } from "./assets/svg/info.svg"
 import { InstrumentedButton } from "./instrumentedComponents"
-import { usePersistentState } from "./LocalStorage"
 import {
   Color,
   ColorRGBA,
@@ -67,10 +67,14 @@ const InfoIcon = styled(InfoSvg)`
 const DismissButton = styled(InstrumentedButton)`
   ${mixinResetButtonStyle};
 
+  width: 100%;
+
   .MuiButton-label {
     font-size: ${FontSize.smallester};
     font-style: italic;
     color: ${Color.grayLight};
+    text-align: right;
+    display: block;
   }
 `
 
@@ -86,12 +90,13 @@ export function TiltInfoTooltip(
   const { displayShadow, idForIcon, title, dismissId, ...tooltipProps } = props
   const shadowClass = displayShadow ? "shadow" : ""
 
-  const [dismissed, setDismissed] = usePersistentState(
+  // bug: if multiple tooltips are on the same page with the same key,
+  // "dismiss" will only affect the tooltip clicked, until next refresh
+  // https://app.clubhouse.io/windmill/story/12654/modifying-usepersistentstate-state-doesn-t-update-other-components-in-the-same-page-using-the-same-key
+  const [dismissed, setDismissed] = useStorageState(
+    localStorage,
     `tooltip-dismissed-${props.dismissId}`,
-    false,
-    {
-      keyedByTiltfile: false,
-    }
+    false
   )
   if (dismissed) {
     return null
@@ -109,7 +114,7 @@ export function TiltInfoTooltip(
           analyticsTags={{ tooltip: props.dismissId }}
           onClick={() => setDismissed(true)}
         >
-          Hide this info button
+          Don't show this tip
         </DismissButton>
       </>
     )

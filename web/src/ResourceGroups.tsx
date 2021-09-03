@@ -136,6 +136,7 @@ export function ResourceGroupsInfoTip(props: { idForIcon: string }) {
         displayShadow={true}
         idForIcon={props.idForIcon}
         dismissId="resource-groups"
+        open={true}
       />
     </BottomLeftContainer>
   )

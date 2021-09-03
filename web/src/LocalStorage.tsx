@@ -33,35 +33,22 @@ export function accessorsForTesting<S>(name: string) {
   }
 }
 
-// Like `useState`, but backed by localStorage
-// options:
-// - maybeUpgradeSavedState: transforms any state read from storage - allows, e.g., filling in default values for
-//                           fields added since the state was saved
-// - keyedByTiltfile: this state is saved per tiltfile - defaults to true
+// Like `useState`, but backed by localStorage and namespaced by the tiltfileKey
+// maybeUpgradeSavedState: transforms any state read from storage - allows, e.g., filling in default values for
+//                         fields added since the state was saved
 export function usePersistentState<S>(
   name: string,
   defaultValue: S,
-  options?: {
-    maybeUpgradeSavedState?: (state: S) => S
-    keyedByTiltfile?: boolean
-  }
+  maybeUpgradeSavedState?: (state: S) => S
 ): [state: S, setState: Dispatch<SetStateAction<S>>] {
-  let state: S
-  let setState: Dispatch<SetStateAction<S>>
-  if (options?.keyedByTiltfile !== false) {
-    const tiltfileKey = useContext<TiltfileKey>(tiltfileKeyContext)
-
-    ;[state, setState] = useStorageState<S>(
-      localStorage,
-      makeKey(tiltfileKey, name),
-      defaultValue
-    )
-  } else {
-    ;[state, setState] = useStorageState<S>(localStorage, name, defaultValue)
-  }
-
-  if (options?.maybeUpgradeSavedState) {
-    state = options.maybeUpgradeSavedState(state)
+  const tiltfileKey = useContext(tiltfileKeyContext)
+  let [state, setState] = useStorageState<S>(
+    localStorage,
+    makeKey(tiltfileKey, name),
+    defaultValue
+  )
+  if (maybeUpgradeSavedState) {
+    state = maybeUpgradeSavedState(state)
   }
   return [state, setState]
 }
@@ -70,12 +57,12 @@ export function PersistentStateProvider<S>(props: {
   name: string
   defaultValue: S
   maybeUpgradeSavedState?: (state: S) => S
-  keyedByTiltfile?: boolean
   children: (state: S, setState: Dispatch<SetStateAction<S>>) => JSX.Element
 }) {
-  let [state, setState] = usePersistentState(props.name, props.defaultValue, {
-    maybeUpgradeSavedState: props.maybeUpgradeSavedState,
-    keyedByTiltfile: props.keyedByTiltfile,
-  })
+  let [state, setState] = usePersistentState(
+    props.name,
+    props.defaultValue,
+    props.maybeUpgradeSavedState
+  )
   return props.children(state, setState)
 }
