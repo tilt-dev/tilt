@@ -25,6 +25,7 @@ import (
 	"github.com/tilt-dev/probe/pkg/probe"
 	"github.com/tilt-dev/probe/pkg/prober"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apis/restarton"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/engine/local"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -101,52 +102,12 @@ func (c *Controller) TearDown(ctx context.Context) {
 
 // Fetch all the buttons that this object depends on.
 func (c *Controller) buttons(ctx context.Context, cmd *v1alpha1.Cmd) (map[string]*v1alpha1.UIButton, error) {
-	buttonNames := []string{}
-
-	startOn := cmd.Spec.StartOn
-	if startOn != nil {
-		buttonNames = append(buttonNames, startOn.UIButtons...)
-	}
-
-	restartOn := cmd.Spec.RestartOn
-	if restartOn != nil {
-		buttonNames = append(buttonNames, restartOn.UIButtons...)
-	}
-
-	result := make(map[string]*v1alpha1.UIButton, len(buttonNames))
-	for _, n := range buttonNames {
-		_, exists := result[n]
-		if exists {
-			continue
-		}
-
-		b := &UIButton{}
-		err := c.client.Get(ctx, types.NamespacedName{Name: n}, b)
-		if err != nil {
-			return nil, err
-		}
-		result[n] = b
-	}
-	return result, nil
+	return restarton.Buttons(ctx, c.client, cmd.Spec.RestartOn, cmd.Spec.StartOn)
 }
 
 // Fetch all the filewatches that this object depends on.
 func (c *Controller) fileWatches(ctx context.Context, cmd *v1alpha1.Cmd) (map[string]*v1alpha1.FileWatch, error) {
-	restartOn := cmd.Spec.RestartOn
-	if restartOn == nil {
-		return nil, nil
-	}
-
-	result := make(map[string]*v1alpha1.FileWatch, len(restartOn.FileWatches))
-	for _, n := range restartOn.FileWatches {
-		fw := &v1alpha1.FileWatch{}
-		err := c.client.Get(ctx, types.NamespacedName{Name: n}, fw)
-		if err != nil {
-			return nil, err
-		}
-		result[n] = fw
-	}
-	return result, nil
+	return restarton.FileWatches(ctx, c.client, cmd.Spec.RestartOn)
 }
 
 func inputsFromButton(button v1alpha1.UIButton) []input {
@@ -168,25 +129,7 @@ func inputsFromButton(button v1alpha1.UIButton) []input {
 
 // Fetch the last time a start was requested from this target's dependencies.
 func (c *Controller) lastStartEvent(startOn *StartOnSpec, buttons map[string]*v1alpha1.UIButton) (time.Time, []input) {
-	latestTime := time.Time{}
-	var latestButton *v1alpha1.UIButton
-	if startOn == nil {
-		return time.Time{}, nil
-	}
-
-	for _, bn := range startOn.UIButtons {
-		b, ok := buttons[bn]
-		if !ok {
-			// ignore missing buttons
-			continue
-		}
-		lastEventTime := b.Status.LastClickedAt
-		if !lastEventTime.Time.Before(startOn.StartAfter.Time) && lastEventTime.Time.After(latestTime) {
-			latestTime = lastEventTime.Time
-			latestButton = b
-		}
-	}
-
+	latestTime, latestButton := restarton.LastStartEvent(startOn, buttons)
 	var inputs []input
 	if latestButton != nil {
 		inputs = inputsFromButton(*latestButton)
@@ -196,37 +139,7 @@ func (c *Controller) lastStartEvent(startOn *StartOnSpec, buttons map[string]*v1
 
 // Fetch the last time a restart was requested from this target's dependencies.
 func (c *Controller) lastRestartEvent(restartOn *RestartOnSpec, fileWatches map[string]*v1alpha1.FileWatch, buttons map[string]*v1alpha1.UIButton) (time.Time, []input) {
-	cur := time.Time{}
-	var latestButton *v1alpha1.UIButton
-	if restartOn == nil {
-		return cur, nil
-	}
-
-	for _, fwn := range restartOn.FileWatches {
-		fw, ok := fileWatches[fwn]
-		if !ok {
-			// ignore missing filewatches
-			continue
-		}
-		lastEventTime := fw.Status.LastEventTime
-		if lastEventTime.Time.After(cur) {
-			cur = lastEventTime.Time
-		}
-	}
-
-	for _, bn := range restartOn.UIButtons {
-		b, ok := buttons[bn]
-		if !ok {
-			// ignore missing buttons
-			continue
-		}
-		lastEventTime := b.Status.LastClickedAt
-		if lastEventTime.Time.After(cur) {
-			cur = lastEventTime.Time
-			latestButton = b
-		}
-	}
-
+	cur, latestButton := restarton.LastRestartEvent(restartOn, fileWatches, buttons)
 	var inputs []input
 	if latestButton != nil {
 		inputs = inputsFromButton(*latestButton)
