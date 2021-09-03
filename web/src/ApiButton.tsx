@@ -17,7 +17,7 @@ import FloatDialog from "./FloatDialog"
 import { useHudErrorContext } from "./HudErrorContext"
 import { InstrumentedButton } from "./instrumentedComponents"
 import { usePathBuilder } from "./PathBuilder"
-import { Color, Font, FontSize, SizeUnit } from "./style-helpers"
+import { Color, FontSize, SizeUnit } from "./style-helpers"
 
 type UIButton = Proto.v1alpha1UIButton
 type UIInputSpec = Proto.v1alpha1UIInputSpec
@@ -40,9 +40,8 @@ export const ApiButtonRoot = styled(ButtonGroup)`
   }
 `
 export const LogLink = styled(Link)`
-  font-family: ${Font.sansSerif};
-  color: ${Color.gray7};
   font-size: ${FontSize.smallest};
+  padding-left: ${SizeUnit(0.5)};
 `
 
 type ApiButtonProps = { className?: string; button: UIButton }
@@ -291,12 +290,11 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
         </LogLink>
       )
     enqueueSnackbar(
-      `Triggered button: ${
-        props.button.spec?.text || props.button.metadata?.name
-      }`,
-      {
-        action: snackbarLogsLink,
-      }
+      <div>
+        Triggered button:{" "}
+        {props.button.spec?.text || props.button.metadata?.name}
+        {snackbarLogsLink}
+      </div>
     )
   }
 

@@ -1,5 +1,6 @@
 import React, { useContext } from "react"
 
+// allows consumers to set an error message to show up in the HUD
 type HudErrorContext = {
   setError: (error: string) => void
 }

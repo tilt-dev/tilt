@@ -1,6 +1,5 @@
 import { StylesProvider } from "@material-ui/core/styles"
 import { History, UnregisterCallback } from "history"
-import { SnackbarProvider } from "notistack"
 import React, { Component } from "react"
 import ReactOutlineManager from "react-outline-manager"
 import { useHistory } from "react-router"
@@ -24,6 +23,7 @@ import PathBuilder, { PathBuilderProvider } from "./PathBuilder"
 import { ResourceGroupsContextProvider } from "./ResourceGroupsContext"
 import { ResourceNavProvider } from "./ResourceNav"
 import ShareSnapshotModal from "./ShareSnapshotModal"
+import { TiltSnackbarProvider } from "./Snackbar"
 import { SnapshotActionProvider } from "./snapshot"
 import SocketBar from "./SocketBar"
 import { StarredResourcesContextProvider } from "./StarredResourcesContext"
@@ -220,11 +220,7 @@ export default class HUD extends Component<HudProps, HudState> {
         <StarredResourcesContextProvider>
           <ReactOutlineManager>
             <HudErrorContextProvider setError={this.setError}>
-              <SnackbarProvider
-                maxSnack={3}
-                anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-                autoHideDuration={6000}
-              >
+              <TiltSnackbarProvider>
                 <ResourceNavProvider validateResource={validateResource}>
                   <div className={hudClasses.join(" ")}>
                     <AnalyticsNudge needsNudge={needsNudge} />
@@ -236,7 +232,7 @@ export default class HUD extends Component<HudProps, HudState> {
                     {this.renderOverviewSwitch()}
                   </div>
                 </ResourceNavProvider>
-              </SnackbarProvider>
+              </TiltSnackbarProvider>
             </HudErrorContextProvider>
           </ReactOutlineManager>
         </StarredResourcesContextProvider>
