@@ -10,7 +10,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tilt-dev/wmclient/pkg/analytics"
-	"go.opencensus.io/stats"
 
 	"github.com/tilt-dev/tilt/pkg/model"
 
@@ -97,14 +96,6 @@ func preCommand(ctx context.Context, cmdName model.TiltSubcommand) (context.Cont
 	l := logger.NewLogger(logLevel(verbose, debug), os.Stdout)
 	ctx = logger.WithLogger(ctx, l)
 
-	ctx, cleanup, err := initMetrics(ctx, cmdName)
-	if err != nil {
-		l.Errorf("Fatal error initializing metrics: %v", err)
-		os.Exit(1)
-	}
-
-	stats.Record(ctx, CommandCountMeasure.M(1))
-
 	a, err := wireAnalytics(l, cmdName)
 	if err != nil {
 		l.Errorf("Fatal error initializing analytics: %v", err)
@@ -112,6 +103,7 @@ func preCommand(ctx context.Context, cmdName model.TiltSubcommand) (context.Cont
 	}
 
 	ctx = tiltanalytics.WithAnalytics(ctx, a)
+	cleanup := func() error { return nil }
 
 	initKlog(l.Writer(logger.InfoLvl))
 

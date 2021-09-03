@@ -37,7 +37,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/k8srollout"
 	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
 	"github.com/tilt-dev/tilt/internal/engine/local"
-	"github.com/tilt-dev/tilt/internal/engine/metrics"
 	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/engine/session"
 	"github.com/tilt-dev/tilt/internal/engine/telemetry"
@@ -86,8 +85,6 @@ var BaseWireSet = wire.NewSet(
 	localexec.DefaultEnv,
 	docker.SwitchWireSet,
 
-	ProvideDeferredExporter,
-	metrics.WireSet,
 	user.WireSet,
 	dockercompose.NewDockerComposeClient,
 

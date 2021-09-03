@@ -14,6 +14,7 @@ import (
 	"go.starlark.net/starlark"
 
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 // A fixture for test setup/teardown
@@ -30,6 +31,8 @@ type Fixture struct {
 }
 
 func NewFixture(tb testing.TB, plugins ...Plugin) *Fixture {
+	out := bytes.NewBuffer(nil)
+	ctx := logger.WithLogger(context.Background(), logger.NewTestLogger(out))
 	temp := tempdir.NewTempDirFixture(tb)
 	temp.Chdir()
 
@@ -39,8 +42,8 @@ func NewFixture(tb testing.TB, plugins ...Plugin) *Fixture {
 		path:    temp.Path(),
 		temp:    temp,
 		fs:      make(map[string]string),
-		out:     bytes.NewBuffer(nil),
-		ctx:     context.Background(),
+		out:     out,
+		ctx:     ctx,
 	}
 }
 
