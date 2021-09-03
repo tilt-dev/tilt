@@ -58,7 +58,7 @@ func (s *StringList) Unpack(v starlark.Value) error {
 	for iter.Next(&item) {
 		sv, ok := AsString(item)
 		if !ok {
-			return fmt.Errorf("list should contain only strings, but element %q was of type %s", item.String(), item.Type())
+			return fmt.Errorf("value should contain only strings, but element %q was of type %s", item.String(), item.Type())
 		}
 		*s = append(*s, sv)
 	}
