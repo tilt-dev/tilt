@@ -557,6 +557,19 @@ const columnNameToInfoTooltip: {
       .
     </>
   ),
+  Widgets: (
+    <>
+      Buttons can be added to resources to easily perform custom actions. See{" "}
+      <a
+        href={linkToTiltDocs(TiltDocsPage.CustomButtons)}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        buttons docs
+      </a>
+      .
+    </>
+  ),
 }
 
 function ResourceTableHeaderTip(props: { name?: string }) {
