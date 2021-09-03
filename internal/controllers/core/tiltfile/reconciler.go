@@ -140,11 +140,14 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 	run = r.runs[nn]
 	if run != nil {
-		update := tf.DeepCopy()
-		update.Status = run.TiltfileStatus()
-		err := r.ctrlClient.Status().Update(ctx, update)
-		if err != nil {
-			return ctrl.Result{}, err
+		newStatus := run.TiltfileStatus()
+		if !apicmp.DeepEqual(newStatus, tf.Status) {
+			update := tf.DeepCopy()
+			update.Status = run.TiltfileStatus()
+			err := r.ctrlClient.Status().Update(ctx, update)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
 		}
 	}
 
