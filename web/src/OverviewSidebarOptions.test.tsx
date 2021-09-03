@@ -63,13 +63,11 @@ const allNames = ["(Tiltfile)", "vigoda", "snack", "beep", "boop"]
 describe("overview sidebar options", () => {
   beforeEach(() => {
     mockAnalyticsCalls()
-    jest.useFakeTimers()
   })
 
   afterEach(() => {
     cleanupMockAnalyticsCalls()
     localStorage.clear()
-    jest.useRealTimers()
   })
 
   it("shows all resources by default", () => {
@@ -117,22 +115,6 @@ describe("overview sidebar options", () => {
     expect(resourceSectionItems.map((n) => n.text())).toEqual([
       "No matching resources",
     ])
-  })
-
-  it("reports analytics, debounced, when search bar edited", () => {
-    const root = mount(
-      <OverviewSidebarOptions options={defaultOptions} setOptions={() => {}} />
-    )
-    const tf = root.find(ResourceNameFilterTextField)
-    // two changes in rapid succession should result in only one analytics event
-    tf.props().onChange({ target: { value: "foo" } })
-    tf.props().onChange({ target: { value: "foobar" } })
-    expectIncrs(...[])
-    jest.runTimersToTime(10000)
-    expectIncrs({
-      name: "ui.web.resourceNameFilter",
-      tags: { action: AnalyticsAction.Edit },
-    })
   })
 
   it("reports analytics when search bar cleared", () => {

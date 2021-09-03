@@ -1,6 +1,7 @@
 import styled from "styled-components"
 import { ReactComponent as CaretSvg } from "./assets/svg/caret.svg"
 import { Color, SizeUnit } from "./style-helpers"
+import { InfoTooltipProps, TiltInfoTooltip } from "./Tooltip"
 
 /**
  * This file contains style-reset versions of the Material UI Accordion
@@ -105,3 +106,32 @@ export const ResourceGroupSummaryMixin = `
     }
   }
 `
+
+const BottomLeftContainer = styled.aside`
+  bottom: 0;
+  left: 0;
+  padding: 10px 10px 5px 10px;
+  position: fixed;
+  z-index: 2;
+`
+
+export function ResourceGroupsInfoTip(props: InfoTooltipProps) {
+  const tooltipInfo = (
+    <>
+      Resources can be grouped by adding custom labels.{" "}
+      <a
+        href="https://docs.tilt.dev/tiltfile_concepts.html#resource-groups"
+        target="_blank"
+      >
+        See docs for more info
+      </a>
+      .
+    </>
+  )
+
+  return (
+    <BottomLeftContainer>
+      <TiltInfoTooltip title={tooltipInfo} displayShadow={true} {...props} />
+    </BottomLeftContainer>
+  )
+}

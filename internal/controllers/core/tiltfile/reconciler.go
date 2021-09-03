@@ -50,6 +50,8 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 		For(&v1alpha1.Tiltfile{}).
 		Watches(&source.Kind{Type: &v1alpha1.FileWatch{}},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
+		Watches(&source.Kind{Type: &v1alpha1.ConfigMap{}},
+			handler.EnqueueRequestsFromMapFunc(enqueueTriggerQueue)).
 		Watches(r.buildSource, handler.Funcs{})
 
 	return b, nil
@@ -138,11 +140,14 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 	run = r.runs[nn]
 	if run != nil {
-		update := tf.DeepCopy()
-		update.Status = run.TiltfileStatus()
-		err := r.ctrlClient.Status().Update(ctx, update)
-		if err != nil {
-			return ctrl.Result{}, err
+		newStatus := run.TiltfileStatus()
+		if !apicmp.DeepEqual(newStatus, tf.Status) {
+			update := tf.DeepCopy()
+			update.Status = run.TiltfileStatus()
+			err := r.ctrlClient.Status().Update(ctx, update)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
 		}
 	}
 
@@ -296,6 +301,27 @@ func indexTiltfile(obj client.Object) []indexer.Key {
 		}
 	}
 	return result
+}
+
+// Find any objects we need to reconcile based on the trigger queue.
+func enqueueTriggerQueue(obj client.Object) []reconcile.Request {
+	cm, ok := obj.(*v1alpha1.ConfigMap)
+	if !ok {
+		return nil
+	}
+
+	if cm.Name != tiltfiles.TriggerQueueConfigMapName {
+		return nil
+	}
+
+	mn := cm.Data["0"]
+	if mn == "" {
+		return nil
+	}
+
+	// We can't guarantee that this manifest is a Tiltfile, but
+	// that's OK. The reconciler will handle it gracefully.
+	return []reconcile.Request{reconcile.Request{NamespacedName: types.NamespacedName{Name: mn}}}
 }
 
 func requiresDocker(tlr tiltfile.TiltfileLoadResult) bool {

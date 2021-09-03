@@ -11,11 +11,10 @@ import React, {
 } from "react"
 import styled from "styled-components"
 import { AnalyticsType } from "./analytics"
-import { FeaturesContext } from "./feature"
+import { FeaturesContext, Flag } from "./feature"
 import {
   GroupByLabelView,
   orderLabels,
-  resourcesHaveLabels,
   TILTFILE_LABEL,
   UNLABELED_LABEL,
 } from "./labels"
@@ -26,6 +25,7 @@ import {
   AccordionDetailsStyleResetMixin,
   AccordionStyleResetMixin,
   AccordionSummaryStyleResetMixin,
+  ResourceGroupsInfoTip,
   ResourceGroupSummaryIcon,
   ResourceGroupSummaryMixin,
 } from "./ResourceGroups"
@@ -38,7 +38,6 @@ import SidebarItemView, {
 } from "./SidebarItemView"
 import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
 import { Color, FontSize, SizeUnit } from "./style-helpers"
-import { TiltInfoTooltip } from "./Tooltip"
 import { ResourceView, SidebarOptions } from "./types"
 
 let SidebarResourcesRoot = styled.nav`
@@ -69,17 +68,6 @@ const SidebarListSectionItems = styled.ul`
 const NoMatchesFound = styled.li`
   margin-left: ${SizeUnit(0.5)};
   color: ${Color.grayLightest};
-`
-
-const SidebarGroupInfo = styled.aside`
-  background-color: ${Color.grayDark};
-  bottom: 0;
-  box-sizing: border-box;
-  left: 0;
-  padding: 10px 10px 5px 10px;
-  position: absolute;
-  width: 100%;
-  z-index: 2;
 `
 
 const SidebarLabelSection = styled(Accordion)`
@@ -123,26 +111,6 @@ const SidebarGroupDetails = styled(AccordionDetails)`
 `
 
 const GROUP_INFO_TOOLTIP_ID = "sidebar-groups-info"
-function SidebarLabelInfo() {
-  const tooltipInfo = (
-    <>
-      Resources can be grouped by adding custom labels.{" "}
-      <a
-        href="https://docs.tilt.dev/tiltfile_concepts.html#resource-groups"
-        target="_blank"
-      >
-        See docs for more info
-      </a>
-      .
-    </>
-  )
-
-  return (
-    <SidebarGroupInfo>
-      <TiltInfoTooltip title={tooltipInfo} />
-    </SidebarGroupInfo>
-  )
-}
 
 export function SidebarListSection(
   props: PropsWithChildren<{ name: string }>
@@ -359,18 +327,27 @@ export class SidebarResources extends React.Component<SidebarProps> {
         ? "isOverview"
         : ""
 
-    // Note: the label group view does not display if a resource name filter is applied
-    const labelsEnabled = resourcesHaveLabels<SidebarItem>(
-      this.context,
-      this.props.items,
-      (item) => item.labels
+    const labelsEnabled: boolean = this.context.isEnabled(Flag.Labels)
+    const resourcesHaveLabels = this.props.items.some(
+      (item) => item.labels.length > 0
     )
-    const displayLabelGroups = !resourceFilterApplied && labelsEnabled
+
+    // The label group tip is only displayed if labels are enabled but not used
+    const displayLabelGroupsTip = labelsEnabled && !resourcesHaveLabels
+    // The label group view does not display if a resource name filter is applied
+    const displayLabelGroups =
+      !resourceFilterApplied && labelsEnabled && resourcesHaveLabels
 
     return (
       <SidebarResourcesRoot className={`Sidebar-resources ${isOverviewClass}`}>
-        <SidebarLabelInfo />
-        <SidebarList aria-describedby={GROUP_INFO_TOOLTIP_ID}>
+        {displayLabelGroupsTip && (
+          <ResourceGroupsInfoTip idForIcon={GROUP_INFO_TOOLTIP_ID} />
+        )}
+        <SidebarList
+          aria-describedby={
+            displayLabelGroupsTip ? GROUP_INFO_TOOLTIP_ID : undefined
+          }
+        >
           <OverviewSidebarOptions options={options} setOptions={setOptions} />
           {displayLabelGroups ? (
             <SidebarGroupedByLabels {...this.props} items={filteredItems} />

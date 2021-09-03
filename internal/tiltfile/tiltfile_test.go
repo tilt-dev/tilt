@@ -1898,6 +1898,22 @@ k8s_yaml('foo.yaml')
 	f.loadAssertWarnings(w)
 }
 
+func TestDockerBuildUnusedSuppressWarning(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.gitInit("")
+	f.file("Dockerfile", "FROM golang:1.10")
+	f.file("Tiltfile", `
+docker_build('a', '.')
+docker_build('b', '.')
+update_settings(suppress_unused_image_warnings=['a'])
+update_settings(suppress_unused_image_warnings=['b'])
+`)
+
+	f.load()
+}
+
 func TestDockerBuildButK8sNonMatchingTag(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -6057,6 +6073,7 @@ func unusedImageWarning(unusedImage string, suggestedImages []string, configType
 		}
 	}
 	ret = ret + "\nSkipping this image build"
+	ret = ret + fmt.Sprintf("\nIf this is deliberate, suppress this warning with: update_settings(suppress_unused_image_warnings=[%q])", unusedImage)
 	return ret
 }
 

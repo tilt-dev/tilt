@@ -117,6 +117,8 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileStateTerminated":         schema_pkg_apis_core_v1alpha1_TiltfileStateTerminated(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileStateWaiting":            schema_pkg_apis_core_v1alpha1_TiltfileStateWaiting(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileStatus":                  schema_pkg_apis_core_v1alpha1_TiltfileStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBoolInputSpec":                 schema_pkg_apis_core_v1alpha1_UIBoolInputSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBoolInputStatus":               schema_pkg_apis_core_v1alpha1_UIBoolInputStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildRunning":                  schema_pkg_apis_core_v1alpha1_UIBuildRunning(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildTerminated":               schema_pkg_apis_core_v1alpha1_UIBuildTerminated(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIButton":                        schema_pkg_apis_core_v1alpha1_UIButton(ref),
@@ -1164,6 +1166,21 @@ func schema_pkg_apis_core_v1alpha1_ExtensionSpec(ref common.ReferenceCallback) c
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
+						},
+					},
+					"args": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Arguments to the Tiltfile loaded by this extension.\n\nArguments can be positional (['a', 'b', 'c']) or flag-based ('--to-edit=a'). By default, a list of arguments indicates the list of services in the tiltfile that should be enabled.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
 						},
 					},
 				},
@@ -3843,6 +3860,21 @@ func schema_pkg_apis_core_v1alpha1_TiltfileSpec(ref common.ReferenceCallback) co
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec"),
 						},
 					},
+					"args": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Arguments to the Tiltfile.\n\nArguments can be positional (['a', 'b', 'c']) or flag-based ('--to-edit=a'). By default, a list of arguments indicates the list of services in the tiltfile that should be enabled.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
 				},
 				Required: []string{"path"},
 			},
@@ -3997,6 +4029,59 @@ func schema_pkg_apis_core_v1alpha1_TiltfileStatus(ref common.ReferenceCallback) 
 		},
 		Dependencies: []string{
 			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileStateRunning", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileStateTerminated", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileStateWaiting"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UIBoolInputSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"defaultValue": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether the input is initially true or false.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"trueString": {
+						SchemaProps: spec.SchemaProps{
+							Description: "If the input's value is converted to a string, use this when the value is true. If unspecified, its string value will be `\"true\"`",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"falseString": {
+						SchemaProps: spec.SchemaProps{
+							Description: "If the input's value is converted to a string, use this when the value is false. If unspecified, its string value will be `\"false\"`",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UIBoolInputStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"value": {
+						SchemaProps: spec.SchemaProps{
+							Default: false,
+							Type:    []string{"boolean"},
+							Format:  "",
+						},
+					},
+				},
+				Required: []string{"value"},
+			},
+		},
 	}
 }
 
@@ -4398,12 +4483,18 @@ func schema_pkg_apis_core_v1alpha1_UIInputSpec(ref common.ReferenceCallback) com
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UITextInputSpec"),
 						},
 					},
+					"bool": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A Bool input that is true or false",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBoolInputSpec"),
+						},
+					},
 				},
 				Required: []string{"name"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UITextInputSpec"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBoolInputSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UITextInputSpec"},
 	}
 }
 
@@ -4424,8 +4515,14 @@ func schema_pkg_apis_core_v1alpha1_UIInputStatus(ref common.ReferenceCallback) c
 					},
 					"text": {
 						SchemaProps: spec.SchemaProps{
-							Description: "The status of a text input",
+							Description: "The status of the input, if it's text",
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UITextInputStatus"),
+						},
+					},
+					"bool": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The status of the input, if it's a bool",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBoolInputStatus"),
 						},
 					},
 				},
@@ -4433,7 +4530,7 @@ func schema_pkg_apis_core_v1alpha1_UIInputStatus(ref common.ReferenceCallback) c
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UITextInputStatus"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBoolInputStatus", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UITextInputStatus"},
 	}
 }
 

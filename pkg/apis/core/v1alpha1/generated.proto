@@ -372,6 +372,15 @@ message ExtensionSpec {
   // Once the repo is downloaded, this path should point to a directory with a
   // Tiltfile as the main "entrypoint" of the extension.
   optional string repoPath = 2;
+
+  // Arguments to the Tiltfile loaded by this extension.
+  //
+  // Arguments can be positional (['a', 'b', 'c']) or flag-based ('--to-edit=a').
+  // By default, a list of arguments indicates the list of services in the tiltfile
+  // that should be enabled.
+  //
+  // +optional
+  repeated string args = 3;
 }
 
 // ExtensionStatus defines the observed state of Extension
@@ -1411,6 +1420,15 @@ message TiltfileSpec {
   // Objects that can trigger a re-execution of this Tiltfile.
   // +optional
   optional RestartOnSpec restartOn = 3;
+
+  // Arguments to the Tiltfile.
+  //
+  // Arguments can be positional (['a', 'b', 'c']) or flag-based ('--to-edit=a').
+  // By default, a list of arguments indicates the list of services in the tiltfile
+  // that should be enabled.
+  //
+  // +optional
+  repeated string args = 4;
 }
 
 // TiltfileStateRunning is a running state of a tiltfile execution.
@@ -1467,6 +1485,26 @@ message TiltfileStatus {
   // Details about a terminated tiltfile.
   // +optional
   optional TiltfileStateTerminated terminated = 3;
+}
+
+message UIBoolInputSpec {
+  // Whether the input is initially true or false.
+  // +optional
+  optional bool defaultValue = 1;
+
+  // If the input's value is converted to a string, use this when the value is true.
+  // If unspecified, its string value will be `"true"`
+  // +optional
+  optional string trueString = 2;
+
+  // If the input's value is converted to a string, use this when the value is false.
+  // If unspecified, its string value will be `"false"`
+  // +optional
+  optional string falseString = 3;
+}
+
+message UIBoolInputStatus {
+  optional bool value = 1;
 }
 
 // UIBuildRunning respresents an in-progress build/update in the user interface.
@@ -1627,6 +1665,10 @@ message UIInputSpec {
   // A Text input that takes a string.
   // +optional
   optional UITextInputSpec text = 3;
+
+  // A Bool input that is true or false
+  // +optional
+  optional UIBoolInputSpec bool = 4;
 }
 
 // The status corresponding to a UIInputSpec
@@ -1635,9 +1677,13 @@ message UIInputStatus {
   // UIInputSpec.
   optional string name = 1;
 
-  // The status of a text input
+  // The status of the input, if it's text
   // +optional
   optional UITextInputStatus text = 2;
+
+  // The status of the input, if it's a bool
+  // +optional
+  optional UIBoolInputStatus bool = 3;
 }
 
 // UIResource represents per-resource status data for rendering the web UI.

@@ -116,6 +116,9 @@ func TestProvideEnv(t *testing.T) {
 			Cluster: "k3d-k3s-default",
 		},
 	}
+	rancherDesktopContexts := map[string]*api.Context{
+		"rancher-desktop": {Cluster: "rancher-desktop"},
+	}
 
 	table := []expectedConfig{
 		{EnvNone, &api.Config{}},
@@ -139,6 +142,7 @@ func TestProvideEnv(t *testing.T) {
 		{EnvMinikube, &api.Config{CurrentContext: "custom-name", Contexts: minikubeCustomNameContexts, Clusters: minikubeCustomNameClusters}},
 		{EnvUnknown, &api.Config{CurrentContext: "custom-name", Contexts: minikubeCustomNameContexts}},
 		{EnvK3D, &api.Config{CurrentContext: "k3d-k3s-default", Contexts: k3d3xContexts}},
+		{EnvRancherDesktop, &api.Config{CurrentContext: "rancher-desktop", Contexts: rancherDesktopContexts}},
 	}
 
 	for _, tt := range table {

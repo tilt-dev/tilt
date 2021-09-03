@@ -64,6 +64,15 @@ type ExtensionSpec struct {
 	// Once the repo is downloaded, this path should point to a directory with a
 	// Tiltfile as the main "entrypoint" of the extension.
 	RepoPath string `json:"repoPath" protobuf:"bytes,2,opt,name=repoPath"`
+
+	// Arguments to the Tiltfile loaded by this extension.
+	//
+	// Arguments can be positional (['a', 'b', 'c']) or flag-based ('--to-edit=a').
+	// By default, a list of arguments indicates the list of services in the tiltfile
+	// that should be enabled.
+	//
+	// +optional
+	Args []string `json:"args,omitempty" protobuf:"bytes,3,rep,name=args"`
 }
 
 var _ resource.Object = &Extension{}

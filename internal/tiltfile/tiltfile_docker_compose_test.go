@@ -596,7 +596,8 @@ docker_compose('docker-compose.yml')
     ✕ gcr.typo.io/foo
 Did you mean…
     - gcr.io/foo
-Skipping this image build`)
+Skipping this image build
+If this is deliberate, suppress this warning with: update_settings(suppress_unused_image_warnings=["gcr.typo.io/foo"])`)
 }
 
 func TestDockerComposeOnlySomeWithDockerBuild(t *testing.T) {

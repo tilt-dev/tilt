@@ -401,6 +401,8 @@ export function mergeAppUpdate<K extends keyof HudState>(
     newState.view = state.view
     newState.logStore = new LogStore()
     newState.logStore.append(logListUpdate)
+    newState.view?.uiResources?.sort(compareObjectsOrder)
+    newState.view?.uiButtons?.sort(compareObjectsOrder)
     return newState
   }
 

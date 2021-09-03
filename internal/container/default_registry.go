@@ -3,6 +3,7 @@ package container
 import (
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
@@ -123,6 +124,13 @@ func (r Registry) HostFromCluster() string {
 // names is not that important.
 func (r Registry) replaceRegistry(defaultReg string, rs RefSelector) (reference.Named, error) {
 	if defaultReg == "" {
+		return rs.AsNamedOnly(), nil
+	}
+
+	// Sometimes users get confused and put the local registry name in the YAML.
+	// No need to replace the registry in that case.
+	// https://github.com/tilt-dev/tilt/issues/4911
+	if strings.HasPrefix(rs.RefFamiliarName(), fmt.Sprintf("%s/", defaultReg)) {
 		return rs.AsNamedOnly(), nil
 	}
 
