@@ -7,7 +7,12 @@ import React, { ChangeEvent, useMemo, useState } from "react"
 import {
   CellProps,
   Column,
+  HeaderGroup,
+  Row,
+  SortingRule,
+  TableHeaderProps,
   TableOptions,
+  TableState,
   useSortBy,
   useTable,
 } from "react-table"
@@ -76,6 +81,21 @@ import {
 export type OverviewTableProps = {
   view: Proto.webviewView
 }
+
+type TableGroupProps = {
+  label: string
+  setGlobalSortBy: (id: string) => void
+} & TableOptions<RowValues>
+
+type TableProps = {
+  isGroupView?: boolean
+  setGlobalSortBy?: (id: string) => void
+} & TableOptions<RowValues>
+
+type TableHeadRowProps = {
+  headerGroup: HeaderGroup<RowValues>
+  setGlobalSortBy?: (id: string) => void
+} & TableHeaderProps
 
 export type RowValues = {
   lastDeployTime: string
@@ -619,6 +639,47 @@ function ResourceTableHeaderTip(props: { name?: string }) {
   )
 }
 
+const FIRST_SORT_STATE = false
+const SECOND_SORT_STATE = true
+
+// This helper function manually implements the toggle sorting
+// logic used by react-table, so we can keep the sorting state
+// globally and sort multiple tables by the same column.
+//    Click once to sort by ascending values
+//    Click twice to sort by descending values
+//    Click thrice to remove sort
+// Note: unlike react-table, this function does NOT support
+// sorting by multiple columns right now.
+function calculateNextSort(
+  id: string,
+  sortByState: SortingRule<RowValues>[] | undefined
+): SortingRule<RowValues>[] {
+  if (!sortByState || sortByState.length === 0) {
+    return [{ id, desc: FIRST_SORT_STATE }]
+  }
+
+  // If the current sort is the same column as next sort,
+  // determine its next value
+  const [currentSort] = sortByState
+  if (currentSort.id === id) {
+    const { desc } = currentSort
+
+    if (desc === undefined) {
+      return [{ id, desc: FIRST_SORT_STATE }]
+    }
+
+    if (desc === FIRST_SORT_STATE) {
+      return [{ id, desc: SECOND_SORT_STATE }]
+    }
+
+    if (desc === SECOND_SORT_STATE) {
+      return []
+    }
+  }
+
+  return [{ id, desc: FIRST_SORT_STATE }]
+}
+
 async function copyTextToClipboard(text: string, cb: () => void) {
   await navigator.clipboard.writeText(text)
   cb()
@@ -726,70 +787,101 @@ export function resourcesToTableCells(
   return { labels, labelsToResources, tiltfile, unlabeled }
 }
 
-export function Table(
-  props: TableOptions<RowValues> & { isGroupView?: boolean }
-) {
+function TableHeadRow({ headerGroup, setGlobalSortBy }: TableHeadRowProps) {
+  const calculateToggleProps = (column: HeaderGroup<RowValues>) => {
+    // Warning! Toggle props are not typed or documented well within react-table.
+    // Modify toggle props with caution.
+    // See https://react-table.tanstack.com/docs/api/useSortBy#column-properties
+    const toggleProps: { [key: string]: any } = {
+      title: column.canSort
+        ? `Sort by ${column.render("Header")}`
+        : column.render("Header"),
+    }
+
+    if (setGlobalSortBy) {
+      // If the sort state is global, rather than individual to each table,
+      // pass a click handler to the sort toggle that changes the global state
+      toggleProps.onClick = () => setGlobalSortBy(column.id)
+    }
+
+    return toggleProps
+  }
+
+  const calculateHeaderProps = (column: HeaderGroup<RowValues>) => {
+    const headerProps: Partial<TableHeaderProps> = {
+      style: { width: column.width },
+    }
+
+    if (column.isSorted) {
+      headerProps.className = "isSorted"
+    }
+
+    return headerProps
+  }
+
+  return (
+    <ResourceTableRow>
+      {headerGroup.headers.map((column) => (
+        <ResourceTableHeader
+          {...column.getHeaderProps([
+            calculateHeaderProps(column),
+            column.getSortByToggleProps(calculateToggleProps(column)),
+          ])}
+        >
+          <ResourceTableHeaderLabel>
+            {column.render("Header")}
+            <ResourceTableHeaderTip name={String(column.Header)} />
+            {column.canSort && (
+              <ResourceTableHeaderSortTriangle
+                className={
+                  column.isSorted
+                    ? column.isSortedDesc
+                      ? "is-sorted-desc"
+                      : "is-sorted-asc"
+                    : ""
+                }
+              />
+            )}
+          </ResourceTableHeaderLabel>
+        </ResourceTableHeader>
+      ))}
+    </ResourceTableRow>
+  )
+}
+
+export function Table(props: TableProps) {
   const {
     getTableProps,
     getTableBodyProps,
     headerGroups,
     rows,
     prepareRow,
-    columns,
   } = useTable(
     {
       columns: columnDefs,
       data: props.data,
       autoResetSortBy: false,
+      useControlledState: props.useControlledState,
     },
     useSortBy
   )
 
   const isGroupClass = props.isGroupView ? "isGroup" : ""
 
-  // TODO (lizz): Consider adding `aria-sort` properties and markup to table
-  // to improve accessibility
+  // TODO (lizz): Consider adding `aria-sort` markup to table headings
   return (
     <ResourceTable {...getTableProps()} className={isGroupClass}>
       <ResourceTableHead>
-        {headerGroups.map((headerGroup) => (
-          <ResourceTableRow {...headerGroup.getHeaderGroupProps()}>
-            {headerGroup.headers.map((column) => (
-              <ResourceTableHeader
-                {...column.getHeaderProps([
-                  {
-                    style: { width: column.width },
-                    className: column.isSorted ? "isSorted" : "",
-                  },
-                  column.getSortByToggleProps({
-                    title: column.canSort
-                      ? `Sort by ${column.render("Header")}`
-                      : column.render("Header"),
-                  }),
-                ])}
-              >
-                <ResourceTableHeaderLabel>
-                  {column.render("Header")}
-                  <ResourceTableHeaderTip name={String(column.Header)} />
-                  {column.canSort && (
-                    <ResourceTableHeaderSortTriangle
-                      className={
-                        column.isSorted
-                          ? column.isSortedDesc
-                            ? "is-sorted-desc"
-                            : "is-sorted-asc"
-                          : ""
-                      }
-                    />
-                  )}
-                </ResourceTableHeaderLabel>
-              </ResourceTableHeader>
-            ))}
-          </ResourceTableRow>
+        {headerGroups.map((headerGroup: HeaderGroup<RowValues>) => (
+          <TableHeadRow
+            {...headerGroup.getHeaderGroupProps()}
+            headerGroup={headerGroup}
+            setGlobalSortBy={props.setGlobalSortBy}
+          />
         ))}
       </ResourceTableHead>
       <tbody {...getTableBodyProps()}>
-        {rows.map((row, i) => {
+        {rows.map((row: Row<RowValues>) => {
           prepareRow(row)
           return (
             <ResourceTableRow {...row.getRowProps()}>
@@ -810,19 +902,20 @@ export function Table(
   )
 }
 
-function TableGroup(props: { label: string; data: RowValues[] }) {
-  if (props.data.length === 0) {
+function TableGroup(props: TableGroupProps) {
+  const { label, ...tableProps } = props
+
+  if (tableProps.data.length === 0) {
     return null
   }
 
-  const formattedLabel =
-    props.label === UNLABELED_LABEL ? <em>{props.label}</em> : props.label
-  const labelNameId = `tableOverview-${props.label}`
+  const formattedLabel = label === UNLABELED_LABEL ? <em>{label}</em> : label
+  const labelNameId = `tableOverview-${label}`
 
   const { getGroup, toggleGroupExpanded } = useResourceGroups()
-  const { expanded } = getGroup(props.label)
+  const { expanded } = getGroup(label)
   const handleChange = (_e: ChangeEvent<{}>) =>
-    toggleGroupExpanded(props.label, AnalyticsType.Grid)
+    toggleGroupExpanded(label, AnalyticsType.Grid)
 
   return (
     <OverviewGroup expanded={expanded} onChange={handleChange}>
@@ -830,12 +923,12 @@ function TableGroup(props: { label: string; data: RowValues[] }) {
         <ResourceGroupSummaryIcon role="presentation" />
         <OverviewGroupName>{formattedLabel}</OverviewGroupName>
         <TableGroupStatusSummary
-          aria-label={`Status summary for ${props.label} group`}
-          resources={props.data}
+          aria-label={`Status summary for ${label} group`}
+          resources={tableProps.data}
         />
       </OverviewGroupSummary>
       <OverviewGroupDetails>
-        <Table columns={columnDefs} data={props.data} isGroupView />
+        <Table {...tableProps} isGroupView />
       </OverviewGroupDetails>
     </OverviewGroup>
   )
@@ -852,6 +945,24 @@ export function TableGroupedByLabels(props: OverviewTableProps) {
       ),
     [props.view.uiResources, props.view.uiButtons]
   )
+
+  // Global table settings are currently used to sort multiple
+  // tables by the same column
+  // See: https://react-table.tanstack.com/docs/faq#how-can-i-manually-control-the-table-state
+  const [globalTableSettings, setGlobalTableSettings] = useState<
+    TableState<RowValues>
+  >()
+
+  const useControlledState = (state: TableState<RowValues>) =>
+    useMemo(() => {
+      return { ...state, ...globalTableSettings }
+    }, [state, globalTableSettings])
+
+  const setGlobalSortBy = (columnId: string) => {
+    const sortBy = calculateNextSort(columnId, globalTableSettings?.sortBy)
+    setGlobalTableSettings({ sortBy })
+  }
+
   return (
     <>
       {data.labels.map((label) => (
@@ -859,10 +970,25 @@ export function TableGroupedByLabels(props: OverviewTableProps) {
           key={label}
           label={label}
           data={data.labelsToResources[label]}
+          columns={columnDefs}
+          useControlledState={useControlledState}
+          setGlobalSortBy={setGlobalSortBy}
         />
       ))}
-      <TableGroup label={UNLABELED_LABEL} data={data.unlabeled} />
-      <TableGroup label={TILTFILE_LABEL} data={data.tiltfile} />
+      <TableGroup
+        label={UNLABELED_LABEL}
+        data={data.unlabeled}
+        columns={columnDefs}
+        useControlledState={useControlledState}
+        setGlobalSortBy={setGlobalSortBy}
+      />
+      <TableGroup
+        label={TILTFILE_LABEL}
+        data={data.tiltfile}
+        columns={columnDefs}
+        useControlledState={useControlledState}
+        setGlobalSortBy={setGlobalSortBy}
+      />
     </>
   )
 }
