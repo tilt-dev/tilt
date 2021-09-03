@@ -1,7 +1,9 @@
 import MenuItem from "@material-ui/core/MenuItem"
 import { mount, ReactWrapper } from "enzyme"
 import { createMemoryHistory, MemoryHistory } from "history"
-import { MemoryRouter, Router } from "react-router"
+import { SnackbarProvider } from "notistack"
+import React from "react"
+import { Router } from "react-router"
 import { AnalyticsAction } from "./analytics"
 import {
   cleanupMockAnalyticsCalls,
@@ -22,8 +24,11 @@ import OverviewActionBar, {
 import { EmptyBar, FullBar } from "./OverviewActionBar.stories"
 import { oneButton } from "./testdata"
 
+let history: MemoryHistory
 beforeEach(() => {
   mockAnalyticsCalls()
+  history = createMemoryHistory()
+  history.push({ pathname: "/" })
 })
 
 afterEach(() => {
@@ -31,12 +36,16 @@ afterEach(() => {
   jest.useRealTimers()
 })
 
-it("shows endpoints", () => {
-  let root = mount(
-    <MemoryRouter initialEntries={["/"]}>
-      <FullBar />
-    </MemoryRouter>
+function mountBar(e: JSX.Element) {
+  return mount(
+    <Router history={history}>
+      <SnackbarProvider>{e}</SnackbarProvider>
+    </Router>
   )
+}
+
+it("shows endpoints", () => {
+  let root = mountBar(<FullBar />)
   let topBar = root.find(ActionBarTopRow)
   expect(topBar).toHaveLength(1)
 
@@ -45,22 +54,13 @@ it("shows endpoints", () => {
 })
 
 it("skips the top bar when empty", () => {
-  let root = mount(
-    <MemoryRouter initialEntries={["/"]}>
-      <EmptyBar />
-    </MemoryRouter>
-  )
+  let root = mountBar(<EmptyBar />)
   let topBar = root.find(ActionBarTopRow)
   expect(topBar).toHaveLength(0)
 })
 
 it("navigates to warning filter", () => {
-  let history = createMemoryHistory()
-  let root = mount(
-    <Router history={history}>
-      <FullBar />
-    </Router>
-  )
+  let root = mountBar(<FullBar />)
   let warnFilter = root
     .find(FilterRadioButton)
     .filter({ level: FilterLevel.warn })
@@ -77,12 +77,7 @@ it("navigates to warning filter", () => {
 })
 
 it("navigates to build warning filter", () => {
-  let history = createMemoryHistory()
-  let root = mount(
-    <Router history={history}>
-      <FullBar />
-    </Router>
-  )
+  let root = mountBar(<FullBar />)
   let warnFilter = root
     .find(FilterRadioButton)
     .filter({ level: FilterLevel.warn })
@@ -97,11 +92,7 @@ it("navigates to build warning filter", () => {
 
 describe("buttons", () => {
   it("shows endpoint buttons", () => {
-    let root = mount(
-      <MemoryRouter initialEntries={["/"]}>
-        <FullBar />
-      </MemoryRouter>
-    )
+    let root = mountBar(<FullBar />)
     let topBar = root.find(ActionBarTopRow)
     expect(topBar).toHaveLength(1)
 
@@ -117,10 +108,8 @@ describe("buttons", () => {
       source: FilterSource.all,
       term: EMPTY_FILTER_TERM,
     }
-    let root = mount(
-      <MemoryRouter initialEntries={["/"]}>
-        <OverviewActionBar filterSet={filterSet} buttons={uiButtons} />
-      </MemoryRouter>
+    let root = mountBar(
+      <OverviewActionBar filterSet={filterSet} buttons={uiButtons} />
     )
     let topBar = root.find(ActionBarTopRow)
     let buttons = topBar.find(InstrumentedButton)
@@ -131,10 +120,7 @@ describe("buttons", () => {
 
 describe("Term filter input", () => {
   const FILTER_INPUT = `input#${FILTER_FIELD_ID}`
-  let history: MemoryHistory
   let root: ReactWrapper<any, Readonly<{}>, React.Component<{}, {}, any>>
-
-  beforeEach(() => (history = createMemoryHistory()))
 
   it("renders with no initial value if there is no existing term filter", () => {
     history.push({
@@ -142,11 +128,7 @@ describe("Term filter input", () => {
       search: createLogSearch("", {}).toString(),
     })
 
-    root = mount(
-      <Router history={history}>
-        <FullBar />
-      </Router>
-    )
+    root = mountBar(<FullBar />)
 
     const inputField = root.find(FILTER_INPUT)
     expect(inputField.props().value).toBe("")
@@ -158,11 +140,7 @@ describe("Term filter input", () => {
       search: createLogSearch("", { term: "bleep bloop" }).toString(),
     })
 
-    root = mount(
-      <Router history={history}>
-        <FullBar />
-      </Router>
-    )
+    root = mountBar(<FullBar />)
 
     const inputField = root.find(FILTER_INPUT)
     expect(inputField.props().value).toBe("bleep bloop")
@@ -171,11 +149,7 @@ describe("Term filter input", () => {
   it("changes the global term filter state when its value changes", () => {
     jest.useFakeTimers()
 
-    root = mount(
-      <Router history={history}>
-        <FullBar />
-      </Router>
-    )
+    root = mountBar(<FullBar />)
 
     const inputField = root.find(FILTER_INPUT)
     inputField.simulate("change", { target: { value: "docker" } })
@@ -188,11 +162,7 @@ describe("Term filter input", () => {
   it("uses debouncing to update the global term filter state", () => {
     jest.useFakeTimers()
 
-    root = mount(
-      <Router history={history}>
-        <FullBar />
-      </Router>
-    )
+    root = mountBar(<FullBar />)
 
     const inputField = root.find(FILTER_INPUT)
     inputField.simulate("change", { target: { value: "doc" } })
@@ -219,11 +189,7 @@ describe("Term filter input", () => {
 
     history.push({ pathname: "/", search: "level=warn&source=build" })
 
-    root = mount(
-      <Router history={history}>
-        <FullBar />
-      </Router>
-    )
+    root = mountBar(<FullBar />)
 
     const inputField = root.find(FILTER_INPUT)
     inputField.simulate("change", { target: { value: "help" } })

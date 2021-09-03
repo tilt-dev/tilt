@@ -1,8 +1,10 @@
 import { Button, Icon, TextField } from "@material-ui/core"
 import { mount } from "enzyme"
 import fetchMock from "fetch-mock"
+import { SnackbarProvider } from "notistack"
 import React from "react"
 import { act } from "react-dom/test-utils"
+import { MemoryRouter } from "react-router"
 import {
   cleanupMockAnalyticsCalls,
   mockAnalyticsCalls,
@@ -14,9 +16,23 @@ import {
   ApiButtonLabel,
 } from "./ApiButton"
 import { boolField, makeUIButton, textField } from "./ApiButton.testhelpers"
+import { HudErrorContextProvider } from "./HudErrorContext"
 import { flushPromises } from "./promise"
 
 type UIButtonStatus = Proto.v1alpha1UIButtonStatus
+type UIButton = Proto.v1alpha1UIButton
+
+function wrappedMount(e: JSX.Element) {
+  return mount(
+    <MemoryRouter>
+      <SnackbarProvider>{e}</SnackbarProvider>
+    </MemoryRouter>
+  )
+}
+
+function mountButton(b: UIButton) {
+  return wrappedMount(<ApiButton uiButton={b} />)
+}
 
 describe("ApiButton", () => {
   beforeEach(() => {
@@ -35,7 +51,7 @@ describe("ApiButton", () => {
 
   it("renders a simple button", () => {
     const b = makeUIButton()
-    const root = mount(<ApiButton uiButton={b} />)
+    const root = mountButton(b)
     const button = root.find(ApiButton).find("button")
     expect(button.length).toEqual(1)
     expect(button.find(Icon).text()).toEqual(b.spec!.iconName)
@@ -44,8 +60,7 @@ describe("ApiButton", () => {
 
   it("renders an options button when the button has inputs", () => {
     const inputs = [1, 2, 3].map((i) => textField(`text${i}`))
-    const b = makeUIButton({ inputSpecs: inputs })
-    const root = mount(<ApiButton uiButton={b} />)
+    const root = mountButton(makeUIButton({ inputSpecs: inputs }))
     expect(
       root.find(ApiButton).find(ApiButtonInputsToggleButton).length
     ).toEqual(1)
@@ -53,8 +68,7 @@ describe("ApiButton", () => {
 
   it("shows the options form when the options button is clicked", () => {
     const inputs = [1, 2, 3].map((i) => textField(`text${i}`))
-    const b = makeUIButton({ inputSpecs: inputs })
-    const root = mount(<ApiButton uiButton={b} />)
+    const root = mountButton(makeUIButton({ inputSpecs: inputs }))
 
     const optionsButton = root.find(ApiButtonInputsToggleButton)
     optionsButton.simulate("click")
@@ -72,8 +86,7 @@ describe("ApiButton", () => {
 
   it("submits the current options when the submit button is clicked", async () => {
     const inputSpecs = [textField("text1"), boolField("bool1")]
-    const b = makeUIButton({ inputSpecs: inputSpecs })
-    const root = mount(<ApiButton uiButton={b} />)
+    const root = mountButton(makeUIButton({ inputSpecs: inputSpecs }))
 
     const optionsButton = root.find(ApiButtonInputsToggleButton)
     optionsButton.simulate("click")
@@ -127,5 +140,36 @@ describe("ApiButton", () => {
       ],
     }
     expect(actualStatus).toEqual(expectedStatus)
+  })
+
+  it("sets a hud error when the api request fails", async () => {
+    let error: string | undefined
+    const setError = (e: string) => {
+      error = e
+    }
+    const root = wrappedMount(
+      <HudErrorContextProvider setError={setError}>
+        <ApiButton uiButton={makeUIButton()} />
+      </HudErrorContextProvider>
+    )
+
+    fetchMock.reset()
+    mockAnalyticsCalls()
+    fetchMock.put(
+      (url) => url.startsWith("/proxy/apis/tilt.dev/v1alpha1/uibuttons"),
+      { throws: "broken!" }
+    )
+
+    const submit = root.find(ApiButton).find(Button).at(0)
+    await act(async () => {
+      submit.simulate("click")
+      // the button's onclick updates the button so we need to wait for that to resolve
+      // within the act() before continuing
+      // some related info: https://github.com/testing-library/react-testing-library/issues/281
+      await flushPromises()
+    })
+    root.update()
+
+    expect(error).toEqual("Error submitting button click: broken!")
   })
 })
