@@ -315,13 +315,14 @@ function TableUpdateColumn({ row }: CellProps<RowValues>) {
 }
 
 function TableTriggerColumn({ row }: CellProps<RowValues>) {
+  const trigger = row.original.trigger
   return (
     <OverviewTableTriggerButton
-      hasPendingChanges={row.values.trigger.hasPendingChanges}
-      hasBuilt={row.values.trigger.hasBuilt}
-      isBuilding={row.values.trigger.isBuilding}
+      hasPendingChanges={trigger.hasPendingChanges}
+      hasBuilt={trigger.hasBuilt}
+      isBuilding={trigger.isBuilding}
       triggerMode={row.values.triggerMode}
-      isQueued={row.values.trigger.isQueued}
+      isQueued={trigger.isQueued}
       resourceName={row.values.name}
     />
   )
@@ -330,8 +331,8 @@ function TableTriggerColumn({ row }: CellProps<RowValues>) {
 export function TableNameColumn({ row }: CellProps<RowValues>) {
   let nav = useResourceNav()
   let hasError =
-    row.values.statusLine.buildStatus === ResourceStatus.Unhealthy ||
-    row.values.statusLine.runtimeStatus === ResourceStatus.Unhealthy
+    row.original.statusLine.buildStatus === ResourceStatus.Unhealthy ||
+    row.original.statusLine.runtimeStatus === ResourceStatus.Unhealthy
 
   return (
     <Name
@@ -344,18 +345,19 @@ export function TableNameColumn({ row }: CellProps<RowValues>) {
 }
 
 function TableStatusColumn({ row }: CellProps<RowValues>) {
+  const status = row.original.statusLine
   return (
     <>
       <OverviewTableStatus
-        status={row.values.statusLine.buildStatus}
-        lastBuildDur={row.values.statusLine.lastBuildDur}
-        alertCount={row.values.statusLine.buildAlertCount}
+        status={status.buildStatus}
+        lastBuildDur={status.lastBuildDur}
+        alertCount={status.buildAlertCount}
         isBuild={true}
         resourceName={row.values.name}
       />
       <OverviewTableStatus
-        status={row.values.statusLine.runtimeStatus}
-        alertCount={row.values.statusLine.runtimeAlertCount}
+        status={status.runtimeStatus}
+        alertCount={status.runtimeAlertCount}
         resourceName={row.values.name}
       />
     </>
@@ -409,7 +411,7 @@ function TablePodIDColumn({ row }: CellProps<RowValues>) {
 }
 
 function TableEndpointColumn({ row }: CellProps<RowValues>) {
-  let endpoints = row.values.endpoints.map((ep: any) => {
+  let endpoints = row.original.endpoints.map((ep: any) => {
     return (
       <Endpoint
         onClick={() =>
@@ -468,13 +470,29 @@ function TableWidgetsColumn({ row }: CellProps<RowValues>) {
   return <WidgetCell>{buttons}</WidgetCell>
 }
 
+function statusSortKey(row: RowValues): string {
+  const status = row.statusLine
+  let order
+  if (
+    status.buildStatus == ResourceStatus.Unhealthy ||
+    status.runtimeStatus === ResourceStatus.Unhealthy
+  ) {
+    order = 0
+  } else if (status.buildAlertCount || status.runtimeAlertCount) {
+    order = 1
+  } else {
+    order = 2
+  }
+  // add name after order just to keep things stable when orders are equal
+  return `${order}${row.name}`
+}
+
 // https://react-table.tanstack.com/docs/api/useTable#column-options
 // The docs on this are not very clear!
 // `accessor` should return a primitive, and that primitive is used for sorting and filtering
 // the Cell function can get whatever it needs to render via row.original
 // best evidence I've (Matt) found: https://github.com/tannerlinsley/react-table/discussions/2429#discussioncomment-25582
 //   (from the author)
-// TODO: fix existing columns to return reasonable primitives from `accessor`
 const columnDefs: Column<RowValues>[] = [
   {
     Header: () => <TableHeaderStarIcon title="Starred" />,
@@ -510,8 +528,7 @@ const columnDefs: Column<RowValues>[] = [
   },
   {
     Header: "Status",
-    accessor: "statusLine",
-    disableSortBy: true,
+    accessor: (row) => statusSortKey(row),
     width: "200px",
     Cell: TableStatusColumn,
   },
@@ -529,7 +546,8 @@ const columnDefs: Column<RowValues>[] = [
   },
   {
     Header: "Endpoints",
-    accessor: "endpoints",
+    id: "endpoints",
+    accessor: (row) => row.endpoints.length,
     sortType: "basic",
     Cell: TableEndpointColumn,
   },
