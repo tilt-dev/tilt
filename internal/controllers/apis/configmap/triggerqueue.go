@@ -28,6 +28,18 @@ func TriggerQueue(ctx context.Context, client client.Client) (*v1alpha1.ConfigMa
 	return &cm, nil
 }
 
+func NamesInTriggerQueue(cm *v1alpha1.ConfigMap) []string {
+	result := make([]string, 0, len(cm.Data)/2)
+	for k, v := range cm.Data {
+		if !strings.HasSuffix(k, "-name") {
+			continue
+		}
+
+		result = append(result, v)
+	}
+	return result
+}
+
 func InTriggerQueue(cm *v1alpha1.ConfigMap, nn types.NamespacedName) bool {
 	name := nn.Name
 	for k, v := range cm.Data {

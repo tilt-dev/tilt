@@ -155,6 +155,9 @@ func LastRestartEvent(restartOn *v1alpha1.RestartOnSpec, fileWatches map[string]
 // this build but are not sure).
 func FilesChanged(restartOn *v1alpha1.RestartOnSpec, fileWatches map[string]*v1alpha1.FileWatch, lastBuild time.Time) []string {
 	filesChanged := []string{}
+	if restartOn == nil {
+		return filesChanged
+	}
 	for _, fwn := range restartOn.FileWatches {
 		fw, ok := fileWatches[fwn]
 		if !ok {

@@ -656,7 +656,13 @@ func (ms *ManifestState) AddPendingFileChange(targetID model.TargetID, file stri
 		// which files it consumed from which FileWatches. But we're changing
 		// this architecture anyway. For now, we record the time it got into
 		// the EngineState, rather than the time it was originally changed.
-		timestamp = time.Now()
+		//
+		// This will all go away as we move things into reconcilers,
+		// because reconcilers do synchronous state updates.
+		isReconciler := targetID.Type == model.TargetTypeConfigs
+		if !isReconciler {
+			timestamp = time.Now()
+		}
 	}
 
 	bs := ms.MutableBuildStatus(targetID)

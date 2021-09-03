@@ -54,7 +54,7 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 		Watches(&source.Kind{Type: &v1alpha1.FileWatch{}},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
 		Watches(&source.Kind{Type: &v1alpha1.ConfigMap{}},
-			handler.EnqueueRequestsFromMapFunc(enqueueTriggerQueue)).
+			handler.EnqueueRequestsFromMapFunc(r.enqueueTriggerQueue)).
 		Watches(r.buildSource, handler.Funcs{})
 
 	return b, nil
@@ -175,9 +175,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 //    (so that we don't keep re-running a failed build)
 // 4) OR the command-line args have changed since the last Tiltfile build
 // 5) OR user has manually triggered a Tiltfile build
-//
-// In some cases, there may be race conditions where a tiltfile has finished executing,
-// but its results haven't bee
 func (r *Reconciler) needsBuild(ctx context.Context, nn types.NamespacedName, tf *v1alpha1.Tiltfile, run *runStatus, fileWatches map[string]*v1alpha1.FileWatch, triggerQueue *v1alpha1.ConfigMap, lastRestartEvent time.Time) *BuildEntry {
 	var reason model.BuildReason
 	filesChanged := []string{}
@@ -339,6 +336,10 @@ func (r *Reconciler) handleLoaded(ctx context.Context, nn types.NamespacedName, 
 		run.finishTime = time.Now()
 	}
 
+	// Schedule a reconcile in case any triggers happened while we were updating
+	// API objects.
+	r.buildSource.Add(nn)
+
 	return nil
 }
 
@@ -379,7 +380,7 @@ func indexTiltfile(obj client.Object) []indexer.Key {
 }
 
 // Find any objects we need to reconcile based on the trigger queue.
-func enqueueTriggerQueue(obj client.Object) []reconcile.Request {
+func (r *Reconciler) enqueueTriggerQueue(obj client.Object) []reconcile.Request {
 	cm, ok := obj.(*v1alpha1.ConfigMap)
 	if !ok {
 		return nil
@@ -389,14 +390,21 @@ func enqueueTriggerQueue(obj client.Object) []reconcile.Request {
 		return nil
 	}
 
-	mn := cm.Data["0"]
-	if mn == "" {
-		return nil
-	}
+	// We can only trigger tiltfiles that have run once, so search
+	// through the map of known tiltfiles.
+	names := configmap.NamesInTriggerQueue(cm)
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
-	// We can't guarantee that this manifest is a Tiltfile, but
-	// that's OK. The reconciler will handle it gracefully.
-	return []reconcile.Request{reconcile.Request{NamespacedName: types.NamespacedName{Name: mn}}}
+	requests := []reconcile.Request{}
+	for _, name := range names {
+		nn := types.NamespacedName{Name: name}
+		_, ok := r.runs[nn]
+		if ok {
+			requests = append(requests, reconcile.Request{NamespacedName: nn})
+		}
+	}
+	return requests
 }
 
 func requiresDocker(tlr tiltfile.TiltfileLoadResult) bool {

@@ -75,7 +75,6 @@ func TestSteadyState(t *testing.T) {
 			Path: p,
 		},
 	}
-	f.bs.SetEntry(&BuildEntry{Name: "my-tf", TiltfilePath: p})
 	f.Create(&tf)
 
 	assert.Eventually(t, func() bool {
