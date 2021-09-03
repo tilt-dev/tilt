@@ -1,4 +1,10 @@
-import { ButtonGroup, FormControlLabel, Icon, SvgIcon } from "@material-ui/core"
+import {
+  ButtonGroup,
+  ButtonProps,
+  FormControlLabel,
+  Icon,
+  SvgIcon,
+} from "@material-ui/core"
 import ArrowDropDownIcon from "@material-ui/icons/ArrowDropDown"
 import moment from "moment"
 import React, { useRef, useState } from "react"
@@ -33,7 +39,10 @@ export const ApiButtonRoot = styled(ButtonGroup)`
   }
 `
 
-type ApiButtonProps = { className?: string; button: UIButton }
+type ApiButtonProps = ButtonProps & {
+  className?: string
+  uiButton: UIButton
+}
 
 type ApiIconProps = { iconName?: string; iconSVG?: string }
 
@@ -133,6 +142,7 @@ type ApiButtonWithOptionsProps = {
   setInputValue: (name: string, value: any) => void
   getInputValue: (name: string) => any | undefined
   className?: string
+  buttonProps: ButtonProps
 }
 
 function ApiButtonWithOptions(props: ApiButtonWithOptionsProps) {
@@ -152,7 +162,8 @@ function ApiButtonWithOptions(props: ApiButtonWithOptionsProps) {
           onClick={() => {
             setOpen((prevOpen) => !prevOpen)
           }}
-          analyticsName="ui.web.uibutton.inputMenu"
+          analyticsName="ui.web.uiButton.inputMenu"
+          {...props.buttonProps}
         >
           <ArrowDropDownIcon />
         </ApiButtonInputsToggleButton>
@@ -206,13 +217,15 @@ export const ApiIcon: React.FC<ApiIconProps> = (props) => {
 // 2. Optionally, an options <button>, which allows the user to configure the
 //    options used on submit.
 export const ApiButton: React.FC<ApiButtonProps> = (props) => {
+  const { className, uiButton, ...buttonProps } = { ...props }
+
   const [loading, setLoading] = useState(false)
   const [inputValues, setInputValues] = useState(new Map<string, any>())
 
   const onClick = async () => {
     const toUpdate = {
-      metadata: { ...props.button.metadata },
-      status: { ...props.button.status },
+      metadata: { ...uiButton.metadata },
+      status: { ...uiButton.status },
     } as UIButton
     // apiserver's date format time is _extremely_ strict to the point that it requires the full
     // six-decimal place microsecond precision, e.g. .000Z will be rejected, it must be .000000Z
@@ -222,7 +235,7 @@ export const ApiButton: React.FC<ApiButtonProps> = (props) => {
       .format("YYYY-MM-DDTHH:mm:ss.SSSSSSZ")
 
     toUpdate.status!.inputs = []
-    props.button.spec!.inputs?.forEach((spec) => {
+    uiButton.spec!.inputs?.forEach((spec) => {
       const value = inputValues.get(spec.name!)
       if (value !== undefined) {
         let status: UIInputStatus = { name: spec.name }
@@ -262,21 +275,22 @@ export const ApiButton: React.FC<ApiButtonProps> = (props) => {
     <InstrumentedButton
       analyticsName={"ui.web.uibutton"}
       onClick={onClick}
-      disabled={loading || props.button.spec?.disabled}
+      disabled={loading || uiButton.spec?.disabled}
+      {...buttonProps}
     >
       {props.children || (
         <>
           <ApiIcon
-            iconName={props.button.spec?.iconName}
-            iconSVG={props.button.spec?.iconSVG}
+            iconName={uiButton.spec?.iconName}
+            iconSVG={uiButton.spec?.iconSVG}
           />
-          <ApiButtonLabel>{props.button.spec?.text ?? "Button"}</ApiButtonLabel>
+          <ApiButtonLabel>{uiButton.spec?.text ?? "Button"}</ApiButtonLabel>
         </>
       )}
     </InstrumentedButton>
   )
 
-  if (props.button.spec?.inputs?.length) {
+  if (uiButton.spec?.inputs?.length) {
     const setInputValue = (name: string, value: any) => {
       // We need a `new Map` to ensure the reference changes to force a rerender.
       setInputValues(new Map(inputValues.set(name, value)))
@@ -285,16 +299,17 @@ export const ApiButton: React.FC<ApiButtonProps> = (props) => {
 
     return (
       <ApiButtonWithOptions
-        className={props.className}
+        className={className}
         submit={button}
-        uiButton={props.button}
+        uiButton={uiButton}
         setInputValue={setInputValue}
         getInputValue={getInputValue}
+        buttonProps={buttonProps}
       />
     )
   } else {
     return (
-      <ApiButtonRoot className={props.className} disableRipple={true}>
+      <ApiButtonRoot className={className} disableRipple={true}>
         {button}
       </ApiButtonRoot>
     )
