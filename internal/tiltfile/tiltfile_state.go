@@ -18,6 +18,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/print"
 	"github.com/tilt-dev/tilt/internal/tiltfile/probe"
 	"github.com/tilt-dev/tilt/internal/tiltfile/sys"
+	"github.com/tilt-dev/tilt/internal/tiltfile/tiltextension"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
@@ -42,7 +43,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starlarkstruct"
 	"github.com/tilt-dev/tilt/internal/tiltfile/telemetry"
-	"github.com/tilt-dev/tilt/internal/tiltfile/tiltextension"
 	"github.com/tilt-dev/tilt/internal/tiltfile/updatesettings"
 	tfv1alpha1 "github.com/tilt-dev/tilt/internal/tiltfile/v1alpha1"
 	"github.com/tilt-dev/tilt/internal/tiltfile/version"
@@ -184,10 +184,10 @@ func (s *tiltfileState) print(_ *starlark.Thread, msg string) {
 //
 // TODO(nick): Eventually this will just return a starkit.Model, which will contain
 // all the mutable state collected by execution.
-func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.UserConfigState) ([]model.Manifest, starkit.Model, error) {
+func (s *tiltfileState) loadManifests(absFilename string, args []string) ([]model.Manifest, starkit.Model, error) {
 	s.logger.Infof("Loading Tiltfile at: %s", absFilename)
 
-	s.configExt.UserConfigState = userConfigState
+	s.configExt.UserConfigState = model.NewUserConfigState(args)
 
 	dlr, err := tiltextension.NewTempDirDownloader()
 	if err != nil {

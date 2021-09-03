@@ -7,14 +7,13 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/tilt-dev/tilt/internal/analytics"
+	ctrltiltfile "github.com/tilt-dev/tilt/internal/controllers/apis/tiltfile"
+	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/internal/engine/dockerprune"
+	"github.com/tilt-dev/tilt/internal/tiltfile"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
-
-	"github.com/tilt-dev/tilt/internal/docker"
-	"github.com/tilt-dev/tilt/internal/tiltfile"
-
-	"github.com/tilt-dev/tilt/internal/analytics"
-	"github.com/tilt-dev/tilt/internal/engine/dockerprune"
 )
 
 type dockerPruneCmd struct {
@@ -60,7 +59,7 @@ func (c *dockerPruneCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	tlr := deps.tfl.Load(ctx, c.fileName, model.NewUserConfigState(args))
+	tlr := deps.tfl.Load(ctx, ctrltiltfile.MainTiltfile(c.fileName, args))
 	if tlr.Error != nil {
 		return tlr.Error
 	}

@@ -3,6 +3,7 @@ package tiltfile
 import (
 	"context"
 
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -18,10 +19,11 @@ func NewFakeTiltfileLoader() *FakeTiltfileLoader {
 	return &FakeTiltfileLoader{}
 }
 
-func (tfl *FakeTiltfileLoader) Load(ctx context.Context, filename string, userConfigState model.UserConfigState) TiltfileLoadResult {
+func (tfl *FakeTiltfileLoader) Load(ctx context.Context, tf *v1alpha1.Tiltfile) TiltfileLoadResult {
+	userConfigState := model.NewUserConfigState(tf.Spec.Args)
 	tfl.userConfigState = userConfigState
 	if tfl.Delegate != nil {
-		return tfl.Delegate.Load(ctx, filename, userConfigState)
+		return tfl.Delegate.Load(ctx, tf)
 	}
 	return tfl.Result
 }
