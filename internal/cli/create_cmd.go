@@ -37,7 +37,7 @@ func newCreateCmdCmd() *createCmdCmd {
 	}
 }
 
-func (c *createCmdCmd) name() model.TiltSubcommand { return "cmd" }
+func (c *createCmdCmd) name() model.TiltSubcommand { return "create" }
 
 func (c *createCmdCmd) register() *cobra.Command {
 	cmd := &cobra.Command{
