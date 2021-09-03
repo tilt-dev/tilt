@@ -48,12 +48,14 @@ func (p Plugin) extension(t *starlark.Thread, fn *starlark.Builtin, args starlar
 	var annotations value.StringStringMap
 	var repoName string
 	var repoPath string
+	var specArgs value.StringList
 	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
 		"name", &name,
 		"labels?", &labels,
 		"annotations?", &annotations,
 		"repo_name?", &repoName,
 		"repo_path?", &repoPath,
+		"args?", &specArgs,
 	)
 	if err != nil {
 		return nil, err
@@ -68,6 +70,7 @@ func (p Plugin) extension(t *starlark.Thread, fn *starlark.Builtin, args starlar
 		Spec: v1alpha1.ExtensionSpec{
 			RepoName: repoName,
 			RepoPath: repoPath,
+			Args:     specArgs,
 		},
 	}
 
