@@ -8,6 +8,7 @@ import {
 } from "./analytics_test_helpers"
 import {
   InstrumentedButton,
+  InstrumentedCheckbox,
   InstrumentedTextField,
 } from "./instrumentedComponents"
 
@@ -94,6 +95,23 @@ describe("instrumented components", () => {
       jest.runTimersToTime(10000)
       expectIncrs({
         name: "ui.web.TestTextField",
+        tags: { action: AnalyticsAction.Edit, foo: "bar" },
+      })
+    })
+  })
+
+  describe("instrumented Checkbox", () => {
+    it("reports analytics when clicked", () => {
+      const root = mount(
+        <InstrumentedCheckbox
+          analyticsName={"ui.web.TestCheckbox"}
+          analyticsTags={{ foo: "bar" }}
+        />
+      )
+      const tf = root.find(InstrumentedCheckbox).find('input[type="checkbox"]')
+      tf.simulate("change", { target: { checked: true } })
+      expectIncrs({
+        name: "ui.web.TestCheckbox",
         tags: { action: AnalyticsAction.Edit, foo: "bar" },
       })
     })
