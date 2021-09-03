@@ -1,7 +1,7 @@
 import styled from "styled-components"
 import { ReactComponent as CaretSvg } from "./assets/svg/caret.svg"
 import { Color, SizeUnit } from "./style-helpers"
-import { InfoTooltipProps, TiltInfoTooltip } from "./Tooltip"
+import { TiltInfoTooltip } from "./Tooltip"
 
 /**
  * This file contains style-reset versions of the Material UI Accordion
@@ -115,7 +115,7 @@ const BottomLeftContainer = styled.aside`
   z-index: 2;
 `
 
-export function ResourceGroupsInfoTip(props: InfoTooltipProps) {
+export function ResourceGroupsInfoTip(props: { idForIcon: string }) {
   const tooltipInfo = (
     <>
       Resources can be grouped by adding custom labels.{" "}
@@ -131,7 +131,12 @@ export function ResourceGroupsInfoTip(props: InfoTooltipProps) {
 
   return (
     <BottomLeftContainer>
-      <TiltInfoTooltip title={tooltipInfo} displayShadow={true} {...props} />
+      <TiltInfoTooltip
+        title={tooltipInfo}
+        displayShadow={true}
+        idForIcon={props.idForIcon}
+        dismissId="resource-groups"
+      />
     </BottomLeftContainer>
   )
 }
