@@ -309,6 +309,9 @@ function TableStarColumn({ row }: CellProps<RowValues>) {
 }
 
 function TableUpdateColumn({ row }: CellProps<RowValues>) {
+  if (!row.values.lastDeployTime) {
+    return null
+  }
   return (
     <TimeAgo date={row.values.lastDeployTime} formatter={timeAgoFormatter} />
   )
