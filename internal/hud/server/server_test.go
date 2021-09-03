@@ -15,7 +15,10 @@ import (
 	"testing"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
+	"github.com/tilt-dev/tilt/internal/store/tiltfiles"
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/user"
 
@@ -29,6 +32,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/cloud/cloudurl"
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/assets"
 	"github.com/tilt-dev/tilt/pkg/model"
 	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
@@ -373,10 +377,10 @@ func TestSetTiltfileArgs(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 	require.Equal(t, http.StatusOK, rr.Code)
 
-	a := store.WaitForAction(t, reflect.TypeOf(server.SetTiltfileArgsAction{}), f.getActions)
-	action, ok := a.(server.SetTiltfileArgsAction)
+	a := store.WaitForAction(t, reflect.TypeOf(tiltfiles.SetTiltfileArgsAction{}), f.getActions)
+	action, ok := a.(tiltfiles.SetTiltfileArgsAction)
 	if !ok {
-		t.Fatalf("Action was not of type '%T': %+v", server.SetTiltfileArgsAction{}, action)
+		t.Fatalf("Action was not of type '%T': %+v", tiltfiles.SetTiltfileArgsAction{}, action)
 	}
 	assert.Equal(t, []string{"--foo", "bar", "as df"}, action.Args)
 }
@@ -406,6 +410,10 @@ func newTestFixture(t *testing.T) *serverFixture {
 	up := user.NewFakePrefs()
 	wsl := server.NewWebsocketList()
 	ctrlClient := fake.NewFakeTiltClient()
+	_ = ctrlClient.Create(context.Background(), &v1alpha1.Tiltfile{
+		ObjectMeta: metav1.ObjectMeta{Name: model.MainTiltfileManifestName.String()},
+	})
+
 	serv, err := server.ProvideHeadsUpServer(context.Background(), st, assets.NewFakeServer(), ta, uploader, wsl, ctrlClient)
 	if err != nil {
 		t.Fatal(err)

@@ -80,7 +80,11 @@ func (c *BuildController) DisableForTesting() {
 	c.disabledForTesting = true
 }
 
-func (c *BuildController) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) error {
+func (c *BuildController) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) error {
+	if summary.IsLogOnly() {
+		return nil
+	}
+
 	if c.disabledForTesting {
 		return nil
 	}

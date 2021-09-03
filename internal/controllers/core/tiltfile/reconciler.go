@@ -20,6 +20,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/restarton"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
@@ -41,6 +43,7 @@ type Reconciler struct {
 	indexer      *indexer.Indexer
 	buildSource  *BuildSource
 	engineMode   store.EngineMode
+	loadCount    int // used to differentiate spans
 
 	runs map[types.NamespacedName]*runStatus
 }
@@ -51,7 +54,7 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 		Watches(&source.Kind{Type: &v1alpha1.FileWatch{}},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
 		Watches(&source.Kind{Type: &v1alpha1.ConfigMap{}},
-			handler.EnqueueRequestsFromMapFunc(enqueueTriggerQueue)).
+			handler.EnqueueRequestsFromMapFunc(r.enqueueTriggerQueue)).
 		Watches(r.buildSource, handler.Funcs{})
 
 	return b, nil
@@ -110,28 +113,39 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		}
 	}
 
-	// If the spec has changed, cancel any existing runs
-	if run != nil && !apicmp.DeepEqual(run.spec, &(tf.Spec)) {
-		run.cancel()
-		delete(r.runs, nn)
-		run = nil
-	}
-
 	step := runStepNone
 	if run != nil {
 		step = run.step
 		ctx = run.entry.WithLogger(ctx, r.st)
 	}
 
-	// Check to see if we have a BuildEntry triggering this tiltfile.
-	//
-	// This is a short-term hack to make this interoperate with the legacy subscriber.
-	// The "right" version would read from FileWatch and other dependencies to determine
-	// when to build.
-	be := r.buildSource.Entry()
-	if be != nil && be.Name.String() == nn.Name && (step == runStepNone || step == runStepDone) {
-		r.startRunAsync(ctx, nn, &tf, be)
-	} else if step == runStepLoaded {
+	// If the tiltfile isn't being run, check to see if anything has triggered a run.
+	if step == runStepNone || step == runStepDone {
+		buttons, err := restarton.Buttons(ctx, r.ctrlClient, tf.Spec.RestartOn, nil)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		fileWatches, err := restarton.FileWatches(ctx, r.ctrlClient, tf.Spec.RestartOn)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		lastRestartEventTime, _ := restarton.LastRestartEvent(tf.Spec.RestartOn, fileWatches, buttons)
+		queue, err := configmap.TriggerQueue(ctx, r.ctrlClient)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		be := r.needsBuild(ctx, nn, &tf, run, fileWatches, queue, lastRestartEventTime)
+		if be != nil {
+			r.startRunAsync(ctx, nn, &tf, be)
+		}
+	}
+
+	// If the tiltfile has been loaded, we may still need to copy all its outputs
+	// to the apiserver.
+	if step == runStepLoaded {
 		err := r.handleLoaded(ctx, nn, &tf, run.entry, run.tlr)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -154,6 +168,66 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	return ctrl.Result{}, nil
 }
 
+// Modeled after BuildController.needsBuild and NextBuildReason(). Check to see that:
+// 1) There's currently no Tiltfile build running,
+// 2) There are pending file changes, and
+// 3) Those files have changed since the last Tiltfile build
+//    (so that we don't keep re-running a failed build)
+// 4) OR the command-line args have changed since the last Tiltfile build
+// 5) OR user has manually triggered a Tiltfile build
+func (r *Reconciler) needsBuild(ctx context.Context, nn types.NamespacedName, tf *v1alpha1.Tiltfile, run *runStatus, fileWatches map[string]*v1alpha1.FileWatch, triggerQueue *v1alpha1.ConfigMap, lastRestartEvent time.Time) *BuildEntry {
+	var reason model.BuildReason
+	filesChanged := []string{}
+
+	step := runStepNone
+	lastStartTime := time.Time{}
+	lastStartArgs := []string{}
+	if run != nil {
+		step = run.step
+		lastStartTime = run.startTime
+		lastStartArgs = run.startArgs
+	}
+
+	if step == runStepNone {
+		reason = reason.With(model.BuildReasonFlagInit)
+	} else {
+		filesChanged = restarton.FilesChanged(tf.Spec.RestartOn, fileWatches, lastStartTime)
+		if len(filesChanged) > 0 {
+			reason = reason.With(model.BuildReasonFlagChangedFiles)
+		} else if lastRestartEvent.After(lastStartTime) {
+			reason = reason.With(model.BuildReasonFlagTriggerUnknown)
+		}
+	}
+
+	userConfigState := model.NewUserConfigState(tf.Spec.Args)
+	if !lastStartTime.IsZero() && !apicmp.DeepEqual(tf.Spec.Args, lastStartArgs) {
+		reason = reason.With(model.BuildReasonFlagTiltfileArgs)
+	}
+
+	if configmap.InTriggerQueue(triggerQueue, nn) {
+		reason = reason.With(configmap.TriggerQueueReason(triggerQueue, nn))
+	}
+
+	if reason == model.BuildReasonNone {
+		return nil
+	}
+
+	state := r.st.RLockState()
+	defer r.st.RUnlockState()
+
+	r.loadCount++
+
+	return &BuildEntry{
+		Name:                  model.ManifestName(nn.Name),
+		FilesChanged:          filesChanged,
+		BuildReason:           reason,
+		UserConfigState:       userConfigState,
+		TiltfilePath:          tf.Spec.Path,
+		CheckpointAtExecStart: state.LogStore.Checkpoint(),
+		LoadCount:             r.loadCount,
+	}
+}
+
 // Start a tiltfile run asynchronously, returning immediately.
 func (r *Reconciler) startRunAsync(ctx context.Context, nn types.NamespacedName, tf *v1alpha1.Tiltfile, entry *BuildEntry) {
 	ctx = entry.WithLogger(ctx, r.st)
@@ -166,6 +240,7 @@ func (r *Reconciler) startRunAsync(ctx context.Context, nn types.NamespacedName,
 		spec:      tf.Spec.DeepCopy(),
 		entry:     entry,
 		startTime: time.Now(),
+		startArgs: entry.UserConfigState.Args,
 	}
 	go r.run(ctx, nn, tf, entry)
 }
@@ -235,9 +310,6 @@ func (r *Reconciler) handleLoaded(ctx context.Context, nn types.NamespacedName, 
 		logger.Get(ctx).Errorf("%s", tlr.Error.Error())
 	}
 
-	// We've consumed the build entry, and are ready for the next one.
-	r.buildSource.SetEntry(nil)
-
 	r.st.Dispatch(ConfigsReloadedAction{
 		Name:                  entry.Name,
 		Manifests:             tlr.Manifests,
@@ -263,6 +335,10 @@ func (r *Reconciler) handleLoaded(ctx context.Context, nn types.NamespacedName, 
 		run.step = runStepDone
 		run.finishTime = time.Now()
 	}
+
+	// Schedule a reconcile in case any triggers happened while we were updating
+	// API objects.
+	r.buildSource.Add(nn)
 
 	return nil
 }
@@ -304,7 +380,7 @@ func indexTiltfile(obj client.Object) []indexer.Key {
 }
 
 // Find any objects we need to reconcile based on the trigger queue.
-func enqueueTriggerQueue(obj client.Object) []reconcile.Request {
+func (r *Reconciler) enqueueTriggerQueue(obj client.Object) []reconcile.Request {
 	cm, ok := obj.(*v1alpha1.ConfigMap)
 	if !ok {
 		return nil
@@ -314,14 +390,21 @@ func enqueueTriggerQueue(obj client.Object) []reconcile.Request {
 		return nil
 	}
 
-	mn := cm.Data["0"]
-	if mn == "" {
-		return nil
-	}
+	// We can only trigger tiltfiles that have run once, so search
+	// through the map of known tiltfiles.
+	names := configmap.NamesInTriggerQueue(cm)
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
-	// We can't guarantee that this manifest is a Tiltfile, but
-	// that's OK. The reconciler will handle it gracefully.
-	return []reconcile.Request{reconcile.Request{NamespacedName: types.NamespacedName{Name: mn}}}
+	requests := []reconcile.Request{}
+	for _, name := range names {
+		nn := types.NamespacedName{Name: name}
+		_, ok := r.runs[nn]
+		if ok {
+			requests = append(requests, reconcile.Request{NamespacedName: nn})
+		}
+	}
+	return requests
 }
 
 func requiresDocker(tlr tiltfile.TiltfileLoadResult) bool {
@@ -366,6 +449,7 @@ type runStatus struct {
 	entry      *BuildEntry
 	tlr        *tiltfile.TiltfileLoadResult
 	startTime  time.Time
+	startArgs  []string
 	finishTime time.Time
 }
 

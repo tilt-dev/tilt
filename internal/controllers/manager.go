@@ -78,7 +78,9 @@ func (m *TiltServerControllerManager) SetUp(ctx context.Context, _ store.RStore)
 		if e.Message == "Starting EventSource" ||
 			e.Message == "Starting Controller" ||
 			e.Message == "Starting workers" ||
-			e.Message == "error received after stop sequence was engaged" {
+			e.Message == "error received after stop sequence was engaged" ||
+			e.Message == "Shutdown signal received, waiting for all workers to finish" ||
+			e.Message == "All workers finished" {
 			return
 		}
 

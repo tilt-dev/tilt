@@ -155,7 +155,7 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleUserStartedTiltCloudRegistrationAction(state)
 	case store.PanicAction:
 		handlePanicAction(state, action)
-	case server.SetTiltfileArgsAction:
+	case tiltfiles.SetTiltfileArgsAction:
 		handleSetTiltfileArgsAction(state, action)
 	case store.LogAction:
 		handleLogAction(state, action)
@@ -543,7 +543,7 @@ func handlePanicAction(state *store.EngineState, action store.PanicAction) {
 	state.PanicExited = action.Err
 }
 
-func handleSetTiltfileArgsAction(state *store.EngineState, action server.SetTiltfileArgsAction) {
+func handleSetTiltfileArgsAction(state *store.EngineState, action tiltfiles.SetTiltfileArgsAction) {
 	state.UserConfigState = state.UserConfigState.WithArgs(action.Args)
 }
 
