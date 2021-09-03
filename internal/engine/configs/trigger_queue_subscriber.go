@@ -36,7 +36,13 @@ func (s *TriggerQueueSubscriber) fromState(st store.RStore) *v1alpha1.ConfigMap 
 	}
 
 	for i, v := range state.TriggerQueue {
-		cm.Data[fmt.Sprintf("%d", i)] = v.String()
+		cm.Data[fmt.Sprintf("%d-name", i)] = v.String()
+
+		ms, ok := state.ManifestState(v)
+		if !ok {
+			continue
+		}
+		cm.Data[fmt.Sprintf("%d-reason-code", i)] = fmt.Sprintf("%d", ms.TriggerReason)
 	}
 	return cm
 }
