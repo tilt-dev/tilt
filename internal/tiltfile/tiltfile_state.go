@@ -231,6 +231,16 @@ func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.
 		return nil, result, err
 	}
 
+	us, err := updatesettings.GetState(result)
+	if err != nil {
+		return nil, result, err
+	}
+
+	err = s.assertAllImagesMatched(us)
+	if err != nil {
+		s.logger.Warnf("%s", err.Error())
+	}
+
 	var manifests []model.Manifest
 	k8sContextState, err := k8scontext.GetState(result)
 	if err != nil {
@@ -238,11 +248,6 @@ func (s *tiltfileState) loadManifests(absFilename string, userConfigState model.
 	}
 
 	if len(resources.k8s) > 0 || len(unresourced) > 0 {
-		us, err := updatesettings.GetState(result)
-		if err != nil {
-			return nil, result, err
-		}
-
 		manifests, err = s.translateK8s(resources.k8s, us)
 		if err != nil {
 			return nil, result, err
@@ -587,11 +592,6 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 			"resources/entities and docker-compose resources")
 	}
 
-	err = s.assertAllImagesMatched()
-	if err != nil {
-		s.logger.Warnf("%s", err.Error())
-	}
-
 	return resourceSet{
 		dc:  s.dc,
 		k8s: s.k8s,
@@ -613,8 +613,9 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 // Long-term, we want to have better tooling to help with (4),
 // like being able to see k8s resources as they move thru
 // the build system.
-func (s *tiltfileState) assertAllImagesMatched() error {
+func (s *tiltfileState) assertAllImagesMatched(us model.UpdateSettings) error {
 	unmatchedImages := s.buildIndex.unmatchedImages()
+	unmatchedImages = filterUnmatchedImages(us, unmatchedImages)
 	if len(unmatchedImages) == 0 {
 		return nil
 	}

@@ -31,7 +31,7 @@ function wrappedMount(e: JSX.Element) {
 }
 
 function mountButton(b: UIButton) {
-  return wrappedMount(<ApiButton button={b} />)
+  return wrappedMount(<ApiButton uiButton={b} />)
 }
 
 describe("ApiButton", () => {
@@ -149,7 +149,7 @@ describe("ApiButton", () => {
     }
     const root = wrappedMount(
       <HudErrorContextProvider setError={setError}>
-        <ApiButton button={makeUIButton()} />
+        <ApiButton uiButton={makeUIButton()} />
       </HudErrorContextProvider>
     )
 

@@ -13,6 +13,9 @@ const (
 type UpdateSettings struct {
 	maxParallelUpdates int           // max number of updates to run concurrently
 	k8sUpsertTimeout   time.Duration // timeout for k8s upsert operations
+
+	// A list of images to suppress the warning for.
+	SuppressUnusedImageWarnings []string
 }
 
 func (us UpdateSettings) MaxParallelUpdates() int {

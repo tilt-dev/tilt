@@ -1,10 +1,9 @@
 import {
   ButtonGroup,
-  Checkbox,
+  ButtonProps,
   FormControlLabel,
   Icon,
   SvgIcon,
-  TextField,
 } from "@material-ui/core"
 import ArrowDropDownIcon from "@material-ui/icons/ArrowDropDown"
 import moment from "moment"
@@ -15,7 +14,11 @@ import { Link } from "react-router-dom"
 import styled from "styled-components"
 import FloatDialog from "./FloatDialog"
 import { useHudErrorContext } from "./HudErrorContext"
-import { InstrumentedButton } from "./instrumentedComponents"
+import {
+  InstrumentedButton,
+  InstrumentedCheckbox,
+  InstrumentedTextField,
+} from "./instrumentedComponents"
 import { usePathBuilder } from "./PathBuilder"
 import { Color, FontSize, SizeUnit } from "./style-helpers"
 
@@ -44,7 +47,10 @@ export const LogLink = styled(Link)`
   padding-left: ${SizeUnit(0.5)};
 `
 
-type ApiButtonProps = { className?: string; button: UIButton }
+type ApiButtonProps = ButtonProps & {
+  className?: string
+  uiButton: UIButton
+}
 
 type ApiIconProps = { iconName?: string; iconSVG?: string }
 
@@ -73,13 +79,15 @@ type ApiButtonInputProps = {
 function ApiButtonInput(props: ApiButtonInputProps) {
   if (props.spec.text) {
     return (
-      <TextField
+      <InstrumentedTextField
         label={props.spec.label ?? props.spec.name}
         id={props.spec.name}
         defaultValue={props.spec.text?.defaultValue}
         placeholder={props.spec.text?.placeholder}
         value={props.value || props.spec.text?.defaultValue || ""}
         onChange={(e) => props.setValue(props.spec.name!, e.target.value)}
+        analyticsName="ui.web.uibutton.inputValue"
+        analyticsTags={{ inputType: "text" }}
         fullWidth
       />
     )
@@ -87,7 +95,14 @@ function ApiButtonInput(props: ApiButtonInputProps) {
     const isChecked = props.value ?? props.spec.bool.defaultValue ?? false
     return (
       <FormControlLabel
-        control={<Checkbox id={props.spec.name} checked={isChecked} />}
+        control={
+          <InstrumentedCheckbox
+            id={props.spec.name}
+            checked={isChecked}
+            analyticsName="ui.web.uibutton.inputValue"
+            analyticsTags={{ inputType: "bool" }}
+          />
+        }
         label={props.spec.label ?? props.spec.name}
         onChange={(_, checked) => props.setValue(props.spec.name!, checked)}
       />
@@ -135,6 +150,7 @@ type ApiButtonWithOptionsProps = {
   setInputValue: (name: string, value: any) => void
   getInputValue: (name: string) => any | undefined
   className?: string
+  buttonProps: ButtonProps
 }
 
 function ApiButtonWithOptions(props: ApiButtonWithOptionsProps) {
@@ -154,7 +170,8 @@ function ApiButtonWithOptions(props: ApiButtonWithOptionsProps) {
           onClick={() => {
             setOpen((prevOpen) => !prevOpen)
           }}
-          analyticsName="ui.web.uiButton.inputs"
+          analyticsName="ui.web.uiButton.inputMenu"
+          {...props.buttonProps}
         >
           <ArrowDropDownIcon />
         </ApiButtonInputsToggleButton>
@@ -254,6 +271,8 @@ async function updateButtonStatus(
 // 2. Optionally, an options <button>, which allows the user to configure the
 //    options used on submit.
 export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
+  const { className, uiButton, ...buttonProps } = props
+
   const [loading, setLoading] = useState(false)
   const [inputValues, setInputValues] = useState(new Map<string, any>())
 
@@ -269,7 +288,7 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
     //  that occur as a result of click right now
     setLoading(true)
     try {
-      await updateButtonStatus(props.button, inputValues)
+      await updateButtonStatus(uiButton, inputValues)
     } catch (err) {
       setError(`Error submitting button click: ${err}`)
       return
@@ -278,12 +297,12 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
     }
 
     const snackbarLogsLink =
-      props.button.spec?.location?.componentType === "Global" ? (
+      uiButton.spec?.location?.componentType === "Global" ? (
         <LogLink to="/r/(all)/overview">Global Logs</LogLink>
       ) : (
         <LogLink
           to={pb.encpath`/r/${
-            props.button.spec?.location?.componentID || "(all)"
+            uiButton.spec?.location?.componentID || "(all)"
           }/overview`}
         >
           Resource Logs
@@ -291,8 +310,7 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
       )
     enqueueSnackbar(
       <div>
-        Triggered button:{" "}
-        {props.button.spec?.text || props.button.metadata?.name}
+        Triggered button: {uiButton.spec?.text || uiButton.metadata?.name}
         {snackbarLogsLink}
       </div>
     )
@@ -303,21 +321,22 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
     <InstrumentedButton
       analyticsName={"ui.web.uibutton"}
       onClick={onClick}
-      disabled={loading || props.button.spec?.disabled}
+      disabled={loading || uiButton.spec?.disabled}
+      {...buttonProps}
     >
       {props.children || (
         <>
           <ApiIcon
-            iconName={props.button.spec?.iconName}
-            iconSVG={props.button.spec?.iconSVG}
+            iconName={uiButton.spec?.iconName}
+            iconSVG={uiButton.spec?.iconSVG}
           />
-          <ApiButtonLabel>{props.button.spec?.text ?? "Button"}</ApiButtonLabel>
+          <ApiButtonLabel>{uiButton.spec?.text ?? "Button"}</ApiButtonLabel>
         </>
       )}
     </InstrumentedButton>
   )
 
-  if (props.button.spec?.inputs?.length) {
+  if (uiButton.spec?.inputs?.length) {
     const setInputValue = (name: string, value: any) => {
       // We need a `new Map` to ensure the reference changes to force a rerender.
       setInputValues(new Map(inputValues.set(name, value)))
@@ -326,16 +345,17 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
 
     return (
       <ApiButtonWithOptions
-        className={props.className}
+        className={className}
         submit={button}
-        uiButton={props.button}
+        uiButton={uiButton}
         setInputValue={setInputValue}
         getInputValue={getInputValue}
+        buttonProps={buttonProps}
       />
     )
   } else {
     return (
-      <ApiButtonRoot className={props.className} disableRipple={true}>
+      <ApiButtonRoot className={className} disableRipple={true}>
         {button}
       </ApiButtonRoot>
     )

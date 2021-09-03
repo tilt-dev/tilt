@@ -569,3 +569,29 @@ func (s *tiltfileState) dockerignoresForImage(image *dockerImage) ([]model.Docke
 		source,
 		paths, image.ignores, image.onlys, image.dbDockerfilePath)
 }
+
+// Filter out all images that are suppressed.
+func filterUnmatchedImages(us model.UpdateSettings, images []*dockerImage) []*dockerImage {
+	result := make([]*dockerImage, 0, len(images))
+	for _, image := range images {
+		name := container.FamiliarString(image.configurationRef)
+
+		ok := true
+		for _, suppressed := range us.SuppressUnusedImageWarnings {
+			if suppressed == "*" {
+				ok = false
+				break
+			}
+
+			if suppressed == name {
+				ok = false
+				break
+			}
+		}
+
+		if ok {
+			result = append(result, image)
+		}
+	}
+	return result
+}

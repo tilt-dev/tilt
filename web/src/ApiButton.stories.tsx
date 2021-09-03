@@ -31,13 +31,13 @@ const StyledButton = styled(ApiButton)`
 
 export const SimpleButton = () => {
   const button = makeUIButton()
-  return <StyledButton button={button} />
+  return <StyledButton uiButton={button} />
 }
 
 export const ThreeTextInputs = () => {
   const inputs: UIInputSpec[] = [1, 2, 3].map((i) => textField(`text${i}`))
   const button = makeUIButton({ inputSpecs: inputs })
-  return <StyledButton button={button} />
+  return <StyledButton uiButton={button} />
 }
 
 export const TextInputOptions = () => {
@@ -47,5 +47,5 @@ export const TextInputOptions = () => {
       textField("text2", "default value"),
     ],
   })
-  return <StyledButton button={button} />
+  return <StyledButton uiButton={button} />
 }

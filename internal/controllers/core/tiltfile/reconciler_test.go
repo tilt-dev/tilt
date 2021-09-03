@@ -63,6 +63,41 @@ func TestDefault(t *testing.T) {
 	assert.False(t, f.Get(fwKey, &fw))
 }
 
+func TestSteadyState(t *testing.T) {
+	f := newFixture(t)
+	p := f.tempdir.JoinPath("Tiltfile")
+	f.tempdir.WriteFile(p, "print('hello-world')")
+
+	tf := v1alpha1.Tiltfile{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "my-tf",
+		},
+		Spec: v1alpha1.TiltfileSpec{
+			Path: p,
+		},
+	}
+	f.bs.SetEntry(&BuildEntry{Name: "my-tf", TiltfilePath: p})
+	f.Create(&tf)
+
+	assert.Eventually(t, func() bool {
+		f.MustGet(types.NamespacedName{Name: "my-tf"}, &tf)
+		return tf.Status.Running != nil
+	}, time.Second, time.Millisecond)
+
+	f.popQueue()
+
+	assert.Eventually(t, func() bool {
+		f.MustGet(types.NamespacedName{Name: "my-tf"}, &tf)
+		return tf.Status.Terminated != nil
+	}, time.Second, time.Millisecond)
+
+	// Make sure a second reconcile doesn't update the status again.
+	var tf2 = v1alpha1.Tiltfile{}
+	f.MustReconcile(types.NamespacedName{Name: "my-tf"})
+	f.MustGet(types.NamespacedName{Name: "my-tf"}, &tf2)
+	assert.Equal(t, tf.ResourceVersion, tf2.ResourceVersion)
+}
+
 type testStore struct {
 	*store.TestingStore
 	out *bytes.Buffer

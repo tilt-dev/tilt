@@ -101,6 +101,7 @@ var BaseWireSet = wire.NewSet(
 	uisession.NewSubscriber,
 	uiresource.NewSubscriber,
 	configs.NewConfigsController,
+	configs.NewTriggerQueueSubscriber,
 	telemetry.NewController,
 	dcwatch.NewEventWatcher,
 	runtimelog.NewDockerComposeLogManager,

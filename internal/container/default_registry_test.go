@@ -36,6 +36,10 @@ var namedTestCases = []struct {
 	{"aws_account_id.dkr.ecr.region.amazonaws.com/bar", "gcr.io/baz/foo/bar", "aws_account_id.dkr.ecr.region.amazonaws.com/bar/gcr.io_baz_foo_bar"},
 	{"gcr.io/foo", "docker.io/library/busybox", "gcr.io/foo/busybox"},
 	{"gcr.io/foo", "bar", "gcr.io/foo/bar"},
+	{"myreg.com", "myreg.com/bar", "myreg.com/bar"},
+	{"myreg.com:5000", "myreg.com:5000/bar", "myreg.com:5000/bar"},
+	{"myreg.com:5000", "myreg.com/bar", "myreg.com:5000/myreg.com_bar"},
+	{"myreg.com", "myreg.com:5000/bar", "myreg.com/myreg.com_5000_bar"},
 }
 
 func TestReplaceNamed(t *testing.T) {

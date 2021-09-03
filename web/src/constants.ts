@@ -34,6 +34,7 @@ export enum TiltDocsPage {
   TiltfileConcepts = "tiltfile_concepts.html",
   TriggerMode = "manual_update_control.html",
   Upgrade = "upgrade.html",
+  CustomButtons = "buttons.html",
 }
 
 export function linkToTiltDocs(page?: TiltDocsPage, anchor?: string) {
