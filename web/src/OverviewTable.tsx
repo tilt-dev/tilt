@@ -140,13 +140,13 @@ const ResourceTableHead = styled.thead`
 export const ResourceTableRow = styled.tr`
   border-bottom: 1px solid ${Color.grayLighter};
 `
-const ResourceTableData = styled.td`
+export const ResourceTableData = styled.td`
   font-family: ${Font.monospace};
   font-size: ${FontSize.small};
   color: ${Color.gray6};
   box-sizing: border-box;
 `
-const ResourceTableHeader = styled(ResourceTableData)`
+export const ResourceTableHeader = styled(ResourceTableData)`
   color: ${Color.gray7};
   font-size: ${FontSize.small};
   padding-top: ${SizeUnit(0.5)};
