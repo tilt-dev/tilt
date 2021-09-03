@@ -11,29 +11,34 @@ import (
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
-func TestCreateRepo(t *testing.T) {
+func TestCreateExt(t *testing.T) {
 	f := newServerFixture(t)
 	defer f.TearDown()
 
 	out := bytes.NewBuffer(nil)
 
-	cmd := newCreateRepoCmd()
+	cmd := newCreateExtCmd()
 	cmd.helper.streams.Out = out
 	c := cmd.register()
 	err := c.Flags().Parse([]string{
-		"default", "https://github.com/tilt-dev/tilt-extensions",
-		"--ref", "FAKE_SHA",
+		"cancel",
+		"--repo", "my-repo",
+		"--path", "my-path",
+		"--",
+		"foo",
+		"--namespace=bar",
 	})
 	require.NoError(t, err)
 
 	err = cmd.run(f.ctx, c.Flags().Args())
 	require.NoError(t, err)
-	assert.Contains(t, out.String(), `extensionrepo.tilt.dev/default created`)
+	assert.Contains(t, out.String(), `extension.tilt.dev/cancel created`)
 
-	var obj v1alpha1.ExtensionRepo
-	err = f.client.Get(f.ctx, types.NamespacedName{Name: "default"}, &obj)
+	var obj v1alpha1.Extension
+	err = f.client.Get(f.ctx, types.NamespacedName{Name: "cancel"}, &obj)
 	require.NoError(t, err)
 
-	assert.Equal(t, "https://github.com/tilt-dev/tilt-extensions", obj.Spec.URL)
-	assert.Equal(t, "FAKE_SHA", obj.Spec.Ref)
+	assert.Equal(t, "my-repo", obj.Spec.RepoName)
+	assert.Equal(t, "my-path", obj.Spec.RepoPath)
+	assert.Equal(t, []string{"foo", "--namespace=bar"}, obj.Spec.Args)
 }

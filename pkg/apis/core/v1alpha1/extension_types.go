@@ -90,6 +90,10 @@ func (in *Extension) NamespaceScoped() bool {
 	return false
 }
 
+func (in *Extension) ShortNames() []string {
+	return []string{"ext"}
+}
+
 func (in *Extension) New() runtime.Object {
 	return &Extension{}
 }

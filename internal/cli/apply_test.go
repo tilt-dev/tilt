@@ -31,7 +31,7 @@ spec:
 	err := c.Flags().Parse([]string{"-f", f.JoinPath("sleep.yaml")})
 	require.NoError(t, err)
 
-	err = cmd.run(f.ctx, nil)
+	err = cmd.run(f.ctx, c.Flags().Args())
 	require.NoError(t, err)
 	assert.Contains(t, out.String(), `cmd.tilt.dev/my-sleep created`)
 
