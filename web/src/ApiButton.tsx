@@ -1,18 +1,15 @@
-import {
-  ButtonGroup,
-  Checkbox,
-  FormControlLabel,
-  Icon,
-  SvgIcon,
-  TextField,
-} from "@material-ui/core"
+import { ButtonGroup, FormControlLabel, Icon, SvgIcon } from "@material-ui/core"
 import ArrowDropDownIcon from "@material-ui/icons/ArrowDropDown"
 import moment from "moment"
 import React, { useRef, useState } from "react"
 import { convertFromNode, convertFromString } from "react-from-dom"
 import styled from "styled-components"
 import FloatDialog from "./FloatDialog"
-import { InstrumentedButton } from "./instrumentedComponents"
+import {
+  InstrumentedButton,
+  InstrumentedCheckbox,
+  InstrumentedTextField,
+} from "./instrumentedComponents"
 import { Color, FontSize, SizeUnit } from "./style-helpers"
 
 type UIButton = Proto.v1alpha1UIButton
@@ -65,13 +62,15 @@ type ApiButtonInputProps = {
 function ApiButtonInput(props: ApiButtonInputProps) {
   if (props.spec.text) {
     return (
-      <TextField
+      <InstrumentedTextField
         label={props.spec.label ?? props.spec.name}
         id={props.spec.name}
         defaultValue={props.spec.text?.defaultValue}
         placeholder={props.spec.text?.placeholder}
         value={props.value || props.spec.text?.defaultValue || ""}
         onChange={(e) => props.setValue(props.spec.name!, e.target.value)}
+        analyticsName="ui.web.uibutton.inputValue"
+        analyticsTags={{ inputType: "text" }}
         fullWidth
       />
     )
@@ -79,7 +78,14 @@ function ApiButtonInput(props: ApiButtonInputProps) {
     const isChecked = props.value ?? props.spec.bool.defaultValue ?? false
     return (
       <FormControlLabel
-        control={<Checkbox id={props.spec.name} checked={isChecked} />}
+        control={
+          <InstrumentedCheckbox
+            id={props.spec.name}
+            checked={isChecked}
+            analyticsName="ui.web.uibutton.inputValue"
+            analyticsTags={{ inputType: "bool" }}
+          />
+        }
         label={props.spec.label ?? props.spec.name}
         onChange={(_, checked) => props.setValue(props.spec.name!, checked)}
       />
@@ -146,7 +152,7 @@ function ApiButtonWithOptions(props: ApiButtonWithOptionsProps) {
           onClick={() => {
             setOpen((prevOpen) => !prevOpen)
           }}
-          analyticsName="ui.web.uiButton.inputs"
+          analyticsName="ui.web.uibutton.inputMenu"
         >
           <ArrowDropDownIcon />
         </ApiButtonInputsToggleButton>
