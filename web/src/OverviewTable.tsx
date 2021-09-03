@@ -534,18 +534,15 @@ const columnNameToInfoTooltip: {
   ),
   Widgets: (
     <>
-      <div>You can add custom buttons here to easily perform actions.</div>
-      <div>
-        See{" "}
-        <a
-          href={linkToTiltDocs(TiltDocsPage.CustomButtons)}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          custom buttons docs
-        </a>
-        .
-      </div>
+      Buttons can be added to resources to easily perform custom actions. See{" "}
+      <a
+        href={linkToTiltDocs(TiltDocsPage.CustomButtons)}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        buttons docs
+      </a>
+      .
     </>
   ),
 }
