@@ -24,10 +24,11 @@ func TestCreateCmd(t *testing.T) {
 	err := c.Flags().Parse([]string{
 		"--env", "COLOR=1",
 		"-e", "USER=nick",
+		"my-cmd", "echo", "hello", "world",
 	})
 	require.NoError(t, err)
 
-	err = cmd.run(f.ctx, []string{"my-cmd", "echo", "hello", "world"})
+	err = cmd.run(f.ctx, c.Flags().Args())
 	require.NoError(t, err)
 	assert.Contains(t, out.String(), `cmd.tilt.dev/my-cmd created`)
 

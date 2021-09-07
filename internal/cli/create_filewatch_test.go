@@ -24,10 +24,11 @@ func TestCreateFileWatch(t *testing.T) {
 	c := cmd.register()
 	err := c.Flags().Parse([]string{
 		"--ignore", "web/node_modules",
+		"my-watch", "src", "web",
 	})
 	require.NoError(t, err)
 
-	err = cmd.run(f.ctx, []string{"my-watch", "src", "web"})
+	err = cmd.run(f.ctx, c.Flags().Args())
 	require.NoError(t, err)
 	assert.Contains(t, out.String(), `filewatch.tilt.dev/my-watch created`)
 
@@ -53,10 +54,10 @@ func TestCreateFileWatchNoIgnore(t *testing.T) {
 	cmd := newCreateFileWatchCmd()
 	cmd.helper.streams.Out = out
 	c := cmd.register()
-	err := c.Flags().Parse([]string{})
+	err := c.Flags().Parse([]string{"my-watch", "src"})
 	require.NoError(t, err)
 
-	err = cmd.run(f.ctx, []string{"my-watch", "src"})
+	err = cmd.run(f.ctx, c.Flags().Args())
 	require.NoError(t, err)
 	assert.Contains(t, out.String(), `filewatch.tilt.dev/my-watch created`)
 
