@@ -200,7 +200,7 @@ export function StarredResource(props: {
 
 export default function StarredResourceBar(props: StarredResourceBarProps) {
   return (
-    <StarredResourceBarRoot title="Starred resources">
+    <StarredResourceBarRoot aria-label="Starred resources">
       {props.resources.map((r) => (
         <StarredResource
           resource={r}

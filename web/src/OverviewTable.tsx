@@ -190,7 +190,7 @@ const ResourceTableHeaderLabel = styled.div`
   user-select: none;
 `
 
-const ResourceTableHeaderSortTriangle = styled.div`
+export const ResourceTableHeaderSortTriangle = styled.div`
   display: inline-block;
   margin-left: ${SizeUnit(0.25)};
   width: 0;
@@ -787,7 +787,10 @@ export function resourcesToTableCells(
   return { labels, labelsToResources, tiltfile, unlabeled }
 }
 
-function TableHeadRow({ headerGroup, setGlobalSortBy }: TableHeadRowProps) {
+export function TableHeadRow({
+  headerGroup,
+  setGlobalSortBy,
+}: TableHeadRowProps) {
   const calculateToggleProps = (column: HeaderGroup<RowValues>) => {
     // Warning! Toggle props are not typed or documented well within react-table.
     // Modify toggle props with caution.
@@ -1018,13 +1021,13 @@ export default function OverviewTable(props: OverviewTableProps) {
 
   if (labelsEnabled && resourcesHaveLabels) {
     return (
-      <OverviewTableRoot title="Resources overview">
+      <OverviewTableRoot aria-label="Resources overview">
         <TableGroupedByLabels {...props} />
       </OverviewTableRoot>
     )
   } else {
     return (
-      <OverviewTableRoot title="Resources overview">
+      <OverviewTableRoot aria-label="Resources overview">
         {displayLabelGroupsTip && (
           <ResourceGroupsInfoTip idForIcon={GROUP_INFO_TOOLTIP_ID} />
         )}
