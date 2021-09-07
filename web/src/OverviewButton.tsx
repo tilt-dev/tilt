@@ -1,6 +1,7 @@
 import {
   AnimDuration,
   Color,
+  ColorRGBA,
   Font,
   mixinResetButtonStyle,
 } from "./style-helpers"
@@ -13,9 +14,9 @@ export const OverviewButtonMixin = `
   padding: 8px 12px;
   margin: 0;
 
-  background: ${Color.grayDark};
+  background: transparent;
 
-  border: 1px solid ${Color.grayLighter};
+  border: 1px solid ${ColorRGBA(Color.grayLightest, 0.5)};
   box-sizing: border-box;
   border-radius: 4px;
   cursor: pointer;
@@ -59,9 +60,6 @@ export const OverviewButtonMixin = `
   &:hover {
     color: ${Color.blue};
     border-color: ${Color.blue};
-    // When in a ButtonGroup, adjacent buttons share a border.
-    // Force this button to the front so that its highlighted border shows.
-    z-index: 10;
   }
   &:hover .fillStd {
     fill: ${Color.blue};
