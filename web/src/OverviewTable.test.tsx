@@ -16,6 +16,8 @@ import OverviewTable, {
   OverviewGroupSummary,
   OverviewTableProps,
   resourcesToTableCells,
+  ResourceTableData,
+  ResourceTableHeader,
   ResourceTableRow,
   RowValues,
   Table,
@@ -36,6 +38,7 @@ import {
   oneButton,
   TestDataView,
 } from "./testdata"
+import { RuntimeStatus, UpdateStatus } from "./types"
 
 const tableViewWithSettings = ({
   view,
@@ -78,6 +81,38 @@ it("shows buttons on the appropriate resources", () => {
   )
 
   expect(actualButtons).toEqual(expectedButtons)
+})
+
+it("sorts by status", () => {
+  let view = nResourceView(10)
+  view.uiResources[3].status!.updateStatus = UpdateStatus.Error
+  view.uiResources[7].status!.runtimeStatus = RuntimeStatus.Error
+  const root = mount(tableViewWithSettings({ view }))
+
+  const statusHeader = root
+    .find(ResourceTableHeader)
+    .filterWhere((r) => r.text() === "Status")
+  statusHeader.simulate("click")
+  root.update()
+
+  const rows = root.find(ResourceTableRow).slice(1) // skip the header
+  const actualResources = rows.map((row) =>
+    row.find(ResourceTableData).at(3).text()
+  )
+  // 3 and 7 go first because they're failing, then it's alpha
+  const expectedResources = [
+    "_3",
+    "_7",
+    "(Tiltfile)",
+    "_1",
+    "_2",
+    "_4",
+    "_5",
+    "_6",
+    "_8",
+    "_9",
+  ]
+  expect(expectedResources).toEqual(actualResources)
 })
 
 describe("when labels feature is enabled", () => {
