@@ -54,7 +54,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile"
 	"github.com/tilt-dev/tilt/internal/token"
 	"github.com/tilt-dev/tilt/internal/tracer"
-	"github.com/tilt-dev/tilt/internal/user"
 	"github.com/tilt-dev/tilt/internal/xdg"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -85,7 +84,6 @@ var BaseWireSet = wire.NewSet(
 	localexec.DefaultEnv,
 	docker.SwitchWireSet,
 
-	user.WireSet,
 	dockercompose.NewDockerComposeClient,
 
 	clockwork.NewRealClock,

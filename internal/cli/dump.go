@@ -165,11 +165,7 @@ More info on custom build scripts: https://docs.tilt.dev/custom_build.html
 }
 
 func dumpImageDeployRef(cmd *cobra.Command, args []string) {
-	ctx, cleanup := preCommand(context.Background(), "dump")
-	defer func() {
-		_ = cleanup()
-	}()
-
+	ctx := preCommand(context.Background(), "dump")
 	deps, err := wireDumpImageDeployRefDeps(ctx)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Initialization error: %v\n", err)
