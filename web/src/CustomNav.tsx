@@ -1,7 +1,7 @@
 import React from "react"
 import styled from "styled-components"
 import { ApiButton, ApiIcon, buttonsForComponent } from "./ApiButton"
-import { MenuButtonLabel, MenuButtonMixin } from "./GlobalNav"
+import { MenuButtonLabeled, MenuButtonMixin } from "./GlobalNav"
 import { Color, SizeUnit } from "./style-helpers"
 
 type CustomNavProps = {
@@ -46,19 +46,18 @@ export function CustomNav(props: CustomNavProps) {
   return (
     <React.Fragment>
       {buttons.map((b) => (
-        <CustomNavButton
-          key={b.metadata?.name}
-          uiButton={b}
-          variant="contained"
-        >
-          <ApiIcon
-            iconName={b.spec?.iconName || "smart_button"}
-            iconSVG={b.spec?.iconSVG}
-          />
-          <MenuButtonLabel className="ignoreClick">
-            {b.spec?.text}
-          </MenuButtonLabel>
-        </CustomNavButton>
+        <MenuButtonLabeled label={b.spec?.text}>
+          <CustomNavButton
+            key={b.metadata?.name}
+            uiButton={b}
+            variant="contained"
+          >
+            <ApiIcon
+              iconName={b.spec?.iconName || "smart_button"}
+              iconSVG={b.spec?.iconSVG}
+            />
+          </CustomNavButton>
+        </MenuButtonLabeled>
       ))}
     </React.Fragment>
   )

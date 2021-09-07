@@ -33,6 +33,8 @@ export const MenuButtonLabel = styled.div`
   transition: opacity ${AnimDuration.default} ease;
   opacity: 0;
   white-space: nowrap;
+  width: 100%;
+  text-align: center;
 `
 export const MenuButtonMixin = `
   ${mixinResetButtonStyle};
@@ -41,7 +43,6 @@ export const MenuButtonMixin = `
   justify-content: flex-end;
   align-items: center;
   transition: color ${AnimDuration.default} ease;
-  position: relative; // Anchor MenuButtonLabel, which shouldn't affect this element's width
   padding-top: ${SizeUnit(0.5)};
   padding-left: ${SizeUnit(0.5)};
   padding-right: ${SizeUnit(0.5)};
@@ -64,13 +65,15 @@ export const MenuButtonMixin = `
     pointer-events: none;
     cursor: default;
   }
-  
-  &:hover ${MenuButtonLabel}, &[data-open="true"] ${MenuButtonLabel} {
-    opacity: 1;
-  }
 `
 export const MenuButton = styled.button`
   ${MenuButtonMixin}
+`
+export const MenuButtonLabeledRoot = styled.div`
+  position: relative; // Anchor MenuButtonLabel, which shouldn't affect this element's width
+  &:hover ${MenuButtonLabel}, button[data-open="true"] + ${MenuButtonLabel} {
+    opacity: 1;
+  }
 `
 const UpdateAvailableFloatIcon = styled(UpdateAvailableIcon)`
   display: none;
@@ -126,6 +129,17 @@ class GlobalNavShortcuts extends Component<GlobalNavShortcutsProps> {
   render() {
     return <span></span>
   }
+}
+
+export function MenuButtonLabeled(
+  props: React.PropsWithChildren<{ label?: string }>
+) {
+  return (
+    <MenuButtonLabeledRoot>
+      {props.children}
+      {props.label && <MenuButtonLabel>{props.label}</MenuButtonLabel>}
+    </MenuButtonLabeledRoot>
+  )
 }
 
 type GlobalNavProps = {
@@ -191,47 +205,49 @@ export function GlobalNav(props: GlobalNavProps) {
   let accountMenuHeader = <AccountMenuHeader {...props} />
   let accountMenuContent = <AccountMenuContent {...props} />
   let snapshotButton = props.snapshot.enabled ? (
-    <MenuButton onClick={props.snapshot.openModal}>
-      <SnapshotIcon width="24" height="24" />
-      <MenuButtonLabel>Snapshot</MenuButtonLabel>
-    </MenuButton>
+    <MenuButtonLabeled label="Snapshot">
+      <MenuButton onClick={props.snapshot.openModal}>
+        <SnapshotIcon width="24" height="24" />
+      </MenuButton>
+    </MenuButtonLabeled>
   ) : null
 
   return (
     <GlobalNavRoot>
-      <MenuButton
-        ref={updateButton}
-        onClick={() => toggleUpdateDialog(AnalyticsAction.Click)}
-        data-open={updateDialogOpen}
-      >
-        <div>v{props.runningBuild?.version || "?"}</div>
+      <MenuButtonLabeled label={props.showUpdate ? "Get Update" : "Version"}>
+        <MenuButton
+          ref={updateButton}
+          onClick={() => toggleUpdateDialog(AnalyticsAction.Click)}
+          data-open={updateDialogOpen}
+        >
+          <div>v{props.runningBuild?.version || "?"}</div>
 
-        <UpdateAvailableFloatIcon
-          className={props.showUpdate ? "is-visible" : ""}
-        />
-        <MenuButtonLabel>
-          {props.showUpdate ? "Get Update" : "Version"}
-        </MenuButtonLabel>
-      </MenuButton>
+          <UpdateAvailableFloatIcon
+            className={props.showUpdate ? "is-visible" : ""}
+          />
+        </MenuButton>
+      </MenuButtonLabeled>
 
       {snapshotButton}
 
-      <MenuButton
-        ref={shortcutButton}
-        onClick={() => toggleShortcutsDialog(AnalyticsAction.Click)}
-        data-open={shortcutsDialogOpen}
-      >
-        <HelpIcon width="24" height="24" />
-        <MenuButtonLabel>Help</MenuButtonLabel>
-      </MenuButton>
-      <MenuButton
-        ref={accountButton}
-        onClick={() => toggleAccountMenu(AnalyticsAction.Click)}
-        data-open={accountMenuOpen}
-      >
-        <AccountIcon width="24" height="24" />
-        <MenuButtonLabel>Account</MenuButtonLabel>
-      </MenuButton>
+      <MenuButtonLabeled label={"Help"}>
+        <MenuButton
+          ref={shortcutButton}
+          onClick={() => toggleShortcutsDialog(AnalyticsAction.Click)}
+          data-open={shortcutsDialogOpen}
+        >
+          <HelpIcon width="24" height="24" />
+        </MenuButton>
+      </MenuButtonLabeled>
+      <MenuButtonLabeled label="Account">
+        <MenuButton
+          ref={accountButton}
+          onClick={() => toggleAccountMenu(AnalyticsAction.Click)}
+          data-open={accountMenuOpen}
+        >
+          <AccountIcon width="24" height="24" />
+        </MenuButton>
+      </MenuButtonLabeled>
 
       <FloatDialog
         id="accountMenu"
