@@ -281,7 +281,10 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
 
   const { setError } = useHudErrorContext()
 
-  const onClick = async () => {
+  const onClick = async (e: React.MouseEvent<HTMLElement>) => {
+    if ((e.target as Element).classList.contains("ignoreClick")) {
+      return true
+    }
     // TODO(milas): currently the loading state just disables the button for the duration of
     //  the AJAX request to avoid duplicate clicks - there is no progress tracking at the
     //  moment, so there's no fancy spinner animation or propagation of result of action(s)
