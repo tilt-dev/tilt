@@ -1,11 +1,14 @@
 package tiltfile
 
 import (
+	"fmt"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
+	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -73,6 +76,52 @@ docker_build('gcr.io/fe', '.', dockerfile="Dockerfile.custom", live_update=[
 			},
 		},
 		m.ImageTargetAt(0).Dockerignores())
+}
+
+func TestCustomPlatform(t *testing.T) {
+	type tc struct {
+		name     string
+		argValue string
+		envValue string
+		expected string
+	}
+	tcs := []tc{
+		{name: "No Platform"},
+		{name: "Arg Only", argValue: "linux/arm64", expected: "linux/arm64"},
+		{name: "Env Only", envValue: "linux/arm64", expected: "linux/arm64"},
+		// explicit arg takes precedence over env
+		{name: "Arg + Env", argValue: "linux/arm64", envValue: "linux/amd64", expected: "linux/arm64"},
+	}
+
+	for _, tt := range tcs {
+		t.Run(
+			tt.name, func(t *testing.T) {
+				if tt.envValue == "" {
+					testutils.Unsetenv(t, dockerPlatformEnv)
+				} else {
+					testutils.Setenv(t, dockerPlatformEnv, tt.envValue)
+				}
+
+				f := newFixture(t)
+				defer f.TearDown()
+
+				f.yaml("fe.yaml", deployment("fe", image("gcr.io/fe")))
+				f.file("Dockerfile", `FROM alpine`)
+
+				tf := "k8s_yaml('fe.yaml')\n"
+				if tt.argValue == "" {
+					tf += "docker_build('gcr.io/fe', '.')\n"
+				} else {
+					tf += fmt.Sprintf("docker_build('gcr.io/fe', '.', platform='%s')", tt.argValue)
+				}
+
+				f.file("Tiltfile", tf)
+
+				f.load()
+				m := f.assertNextManifest("fe")
+				require.Equal(t, tt.expected, m.ImageTargetAt(0).DockerBuildInfo().Platform)
+			})
+	}
 }
 
 func TestCustomBuildDepsAreLocalRepos(t *testing.T) {

@@ -2,7 +2,6 @@ package dockercompose_test
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/compose-spec/compose-go/types"
@@ -14,26 +13,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 )
-
-func setEnvForTest(t testing.TB, key, value string) {
-	t.Helper()
-
-	if curVal, ok := os.LookupEnv(key); ok {
-		t.Cleanup(func() {
-			if err := os.Setenv(key, curVal); err != nil {
-				t.Errorf("Failed to restore env var %q: %v", key, err)
-			}
-		})
-	} else {
-		t.Cleanup(func() {
-			if err := os.Unsetenv(key); err != nil {
-				t.Errorf("Failed to restore env var %q: %v", key, err)
-			}
-		})
-	}
-
-	require.NoError(t, os.Setenv(key, value))
-}
 
 // TestVariableInterpolation both ensures Tilt properly passes environment to Compose for interpolation
 // as well as catches potential regressions in the upstream YAML parsing from compose-go (currently, a
@@ -64,15 +43,15 @@ func TestVariableInterpolation(t *testing.T) {
 `
 
 	// the value is already quoted - Compose should NOT add extra quotes
-	setEnvForTest(t, "DC_TEST_IMAGE", "myimage")
+	testutils.Setenv(t, "DC_TEST_IMAGE", "myimage")
 	// unquoted 0 is a number in YAML, but Compose SHOULD quote this properly for the field string
 	// N.B. the path MUST exist or Compose will fail loading!
-	setEnvForTest(t, "DC_TEST_CONTEXT", "0")
+	testutils.Setenv(t, "DC_TEST_CONTEXT", "0")
 	f.tmpdir.MkdirAll("0")
 	// unquoted Y is a bool in YAML, but Compose SHOULD quote this properly for the field string
-	setEnvForTest(t, "DC_TEST_DOCKERFILE", "Y")
+	testutils.Setenv(t, "DC_TEST_DOCKERFILE", "Y")
 	// Compose should NOT quote this since the field is numeric
-	setEnvForTest(t, "DC_TEST_PORT", "8081")
+	testutils.Setenv(t, "DC_TEST_PORT", "8081")
 
 	proj := f.loadProject(output)
 	if assert.Len(t, proj.Services, 1) {
