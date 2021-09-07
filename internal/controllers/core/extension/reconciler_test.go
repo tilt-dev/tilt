@@ -26,6 +26,7 @@ func TestDefault(t *testing.T) {
 		Spec: v1alpha1.ExtensionSpec{
 			RepoName: "my-repo",
 			RepoPath: "my-ext",
+			Args:     []string{"--namespaces=foo"},
 		},
 	}
 	f.Create(&ext)
@@ -37,8 +38,12 @@ func TestDefault(t *testing.T) {
 
 	var tf v1alpha1.Tiltfile
 	f.MustGet(types.NamespacedName{Name: "my-repo:my-ext"}, &tf)
-	require.Equal(t, p, tf.Spec.Path)
-	require.Equal(t, map[string]string{"extension.my-repo_my-ext": "extension.my-repo_my-ext"}, tf.Spec.Labels)
+	require.Equal(t, tf.Spec, v1alpha1.TiltfileSpec{
+		Path:      p,
+		Labels:    map[string]string{"extension.my-repo_my-ext": "extension.my-repo_my-ext"},
+		RestartOn: &v1alpha1.RestartOnSpec{FileWatches: []string{"configs:my-repo:my-ext"}},
+		Args:      []string{"--namespaces=foo"},
+	})
 }
 
 func TestCleanupTiltfile(t *testing.T) {

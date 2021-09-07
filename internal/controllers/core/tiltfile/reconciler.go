@@ -106,7 +106,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	ctx = store.MustObjectLogHandler(ctx, r.st, &tf)
 	run := r.runs[nn]
 	if run == nil {
-		// Initialize the UISession if this has never been initialized before.
+		// Initialize the UISession and filewatch if this has never been initialized before.
 		err := updateOwnedObjects(ctx, r.ctrlClient, nn, &tf, nil, r.engineMode)
 		if err != nil {
 			return ctrl.Result{}, err

@@ -14,6 +14,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 var (
@@ -93,6 +94,7 @@ func (r *Reconciler) toDesiredTiltfile(owner *v1alpha1.Extension) (*v1alpha1.Til
 	// We prefix it with 'extension' so that all extensions get put together.
 	// TODO(nick): Let the user choose the label when they register the extension.
 	label := apis.SanitizeLabel(fmt.Sprintf("extension.%s", owner.Name))
+	fwName := apis.SanitizeName(fmt.Sprintf("%s:%s", model.TargetTypeConfigs, owner.Name))
 	child := &v1alpha1.Tiltfile{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: owner.Name,
@@ -106,6 +108,11 @@ func (r *Reconciler) toDesiredTiltfile(owner *v1alpha1.Extension) (*v1alpha1.Til
 				label: label,
 			},
 			Args: owner.Spec.Args,
+			RestartOn: &v1alpha1.RestartOnSpec{
+				// It's OK if this filewatch doesn't exist yet.
+				// (Tiltfiles are weird in that the Tiltfile reconciler manages the filewatch.)
+				FileWatches: []string{fwName},
+			},
 		},
 	}
 	err := controllerutil.SetControllerReference(owner, child, r.ctrlClient.Scheme())
