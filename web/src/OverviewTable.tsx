@@ -31,7 +31,7 @@ import {
   UNLABELED_LABEL,
 } from "./labels"
 import { displayURL } from "./links"
-import LogStore, { LogAlertIndex, useLogStore } from "./LogStore"
+import { LogAlertIndex, useLogAlertIndex } from "./LogStore"
 import { OverviewButtonMixin } from "./OverviewButton"
 import OverviewTableStarResourceButton, {
   StyledTableStarResourceButton,
@@ -355,13 +355,11 @@ function TableStatusColumn({ row }: CellProps<RowValues>) {
       <OverviewTableStatus
         status={status.buildStatus}
         lastBuildDur={status.lastBuildDur}
-        alertCount={status.buildAlertCount}
         isBuild={true}
         resourceName={row.values.name}
       />
       <OverviewTableStatus
         status={status.runtimeStatus}
-        alertCount={status.runtimeAlertCount}
         resourceName={row.values.name}
       />
     </>
@@ -646,10 +644,10 @@ function uiResourceToCell(
     resourceTypeLabel: resourceTypeLabel(r),
     statusLine: {
       buildStatus: buildStatus(r, alertIndex),
-      lastBuildDur: lastBuildDur,
       buildAlertCount: buildAlerts(r, alertIndex).length,
-      runtimeAlertCount: runtimeAlerts(r, alertIndex).length,
+      lastBuildDur: lastBuildDur,
       runtimeStatus: runtimeStatus(r, alertIndex),
+      runtimeAlertCount: runtimeAlerts(r, alertIndex).length,
     },
     podId: res.k8sResourceInfo?.podName ?? "",
     endpoints: res.endpointLinks ?? [],
@@ -684,7 +682,7 @@ function resourceTypeLabel(r: UIResource): string {
 export function resourcesToTableCells(
   resources: UIResource[] | undefined,
   buttons: UIButton[] | undefined,
-  logStore: LogStore
+  logAlertIndex: LogAlertIndex
 ): GroupByLabelView<RowValues> {
   const labelsToResources: { [key: string]: RowValues[] } = {}
   const unlabeled: RowValues[] = []
@@ -697,7 +695,7 @@ export function resourcesToTableCells(
   resources.forEach((r) => {
     const labels = getResourceLabels(r)
     const isTiltfile = r.metadata?.name === ResourceName.tiltfile
-    const tableCell = uiResourceToCell(r, buttons, logStore)
+    const tableCell = uiResourceToCell(r, buttons, logAlertIndex)
     if (labels.length) {
       labels.forEach((label) => {
         if (!labelsToResources.hasOwnProperty(label)) {
@@ -824,13 +822,13 @@ function TableGroup(props: { label: string; data: RowValues[] }) {
 }
 
 export function TableGroupedByLabels(props: OverviewTableProps) {
-  const logStore = useLogStore()
+  const logAlertIndex = useLogAlertIndex()
   const data = useMemo(
     () =>
       resourcesToTableCells(
         props.view.uiResources,
         props.view.uiButtons,
-        logStore
+        logAlertIndex
       ),
     [props.view.uiResources, props.view.uiButtons]
   )
@@ -850,11 +848,11 @@ export function TableGroupedByLabels(props: OverviewTableProps) {
 }
 
 export function TableWithoutGroups(props: OverviewTableProps) {
-  const logStore = useLogStore()
+  const logAlertIndex = useLogAlertIndex()
   const data = useMemo(() => {
     return (
       props.view.uiResources?.map((r) =>
-        uiResourceToCell(r, props.view.uiButtons, logStore)
+        uiResourceToCell(r, props.view.uiButtons, logAlertIndex)
       ) || []
     )
   }, [props.view.uiResources, props.view.uiButtons])
