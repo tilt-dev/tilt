@@ -13,6 +13,7 @@ type BuildOptions struct {
 	Network            string
 	CacheFrom          []string
 	PullParent         bool
+	Platform           string
 	ExtraTags          []string
 	ForceLegacyBuilder bool
 }

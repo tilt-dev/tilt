@@ -23,6 +23,8 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
+const dockerPlatformEnv = "DOCKER_DEFAULT_PLATFORM"
+
 var cacheObsoleteWarning = "docker_build(cache=...) is obsolete, and currently a no-op.\n" +
 	"You should switch to live_update to optimize your builds."
 
@@ -40,6 +42,7 @@ type dockerImage struct {
 	extraTags        []string // Extra tags added at build-time.
 	cacheFrom        []string
 	pullParent       bool
+	platform         string
 
 	// Overrides the container args. Used as an escape hatch in case people want the old entrypoint behavior.
 	// See discussion here:
@@ -102,7 +105,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		onlyVal,
 		entrypoint starlark.Value
 	var buildArgs value.StringStringMap
-	var network value.Stringable
+	var network, platform value.Stringable
 	var ssh, secret, extraTags, cacheFrom value.StringOrStringList
 	var matchInEnvVars, pullParent bool
 	var overrideArgsVal starlark.Sequence
@@ -126,6 +129,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		"extra_tag?", &extraTags,
 		"cache_from?", &cacheFrom,
 		"pull?", &pullParent,
+		"platform?", &platform,
 	); err != nil {
 		return nil, err
 	}
@@ -216,6 +220,12 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		}
 	}
 
+	if platform.Value == "" {
+		// for compatibility with Docker CLI, support the env var fallback
+		// see https://docs.docker.com/engine/reference/commandline/cli/#environment-variables
+		platform.Value = os.Getenv(dockerPlatformEnv)
+	}
+
 	r := &dockerImage{
 		workDir:          starkit.CurrentExecPath(thread),
 		dbDockerfilePath: dockerfilePath,
@@ -236,6 +246,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		extraTags:        extraTags.Values,
 		cacheFrom:        cacheFrom.Values,
 		pullParent:       pullParent,
+		platform:         platform.Value,
 	}
 	err = s.buildIndex.addImage(r)
 	if err != nil {

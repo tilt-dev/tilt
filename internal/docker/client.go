@@ -469,6 +469,7 @@ func (c *Cli) ImageBuild(ctx context.Context, buildContext io.Reader, options Bu
 	opts.NetworkMode = options.Network
 	opts.CacheFrom = options.CacheFrom
 	opts.PullParent = options.PullParent
+	opts.Platform = options.Platform
 
 	opts.Labels = BuiltByTiltLabel // label all images as built by us
 

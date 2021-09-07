@@ -1296,6 +1296,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 				Network:     image.network,
 				CacheFrom:   image.cacheFrom,
 				PullParent:  image.pullParent,
+				Platform:    image.platform,
 				ExtraTags:   image.extraTags,
 			})
 		case CustomBuild:

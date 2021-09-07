@@ -21,6 +21,7 @@ func Options(archive io.Reader, db model.DockerBuild) docker.BuildOptions {
 		SecretSpecs: db.SecretSpecs,
 		CacheFrom:   db.CacheFrom,
 		PullParent:  db.PullParent,
+		Platform:    db.Platform,
 	}
 }
 
