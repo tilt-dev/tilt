@@ -3,7 +3,7 @@ module github.com/tilt-dev/tilt
 go 1.16
 
 require (
-	contrib.go.opencensus.io/exporter/ocagent v0.7.0
+	cloud.google.com/go v0.56.0 // indirect
 	github.com/adrg/xdg v0.3.3
 	github.com/agl/ed25519 v0.0.0-20170116200512-5312a6153412 // indirect
 	github.com/akutz/memconn v0.1.0
@@ -96,6 +96,7 @@ require (
 	k8s.io/klog/v2 v2.8.0
 	k8s.io/kube-openapi v0.0.0-20210305001622-591a79e4bda7
 	k8s.io/kubectl v0.21.2
+	k8s.io/utils v0.0.0-20210709001253-0e1f9d693477
 	sigs.k8s.io/controller-runtime v0.9.2
 	sigs.k8s.io/kustomize/api v0.8.8
 	sigs.k8s.io/yaml v1.2.0

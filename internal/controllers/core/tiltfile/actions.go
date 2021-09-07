@@ -33,7 +33,6 @@ type ConfigsReloadedAction struct {
 	Features             map[string]bool
 	TeamID               string
 	TelemetrySettings    model.TelemetrySettings
-	MetricsSettings      model.MetricsSettings
 	Secrets              model.SecretSet
 	DockerPruneSettings  model.DockerPruneSettings
 	AnalyticsTiltfileOpt analytics.Opt

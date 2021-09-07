@@ -10,7 +10,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tilt-dev/wmclient/pkg/analytics"
-	"go.opencensus.io/stats"
 
 	"github.com/tilt-dev/tilt/pkg/model"
 
@@ -93,17 +92,9 @@ type tiltCmd interface {
 	run(ctx context.Context, args []string) error
 }
 
-func preCommand(ctx context.Context, cmdName model.TiltSubcommand) (context.Context, func() error) {
+func preCommand(ctx context.Context, cmdName model.TiltSubcommand) context.Context {
 	l := logger.NewLogger(logLevel(verbose, debug), os.Stdout)
 	ctx = logger.WithLogger(ctx, l)
-
-	ctx, cleanup, err := initMetrics(ctx, cmdName)
-	if err != nil {
-		l.Errorf("Fatal error initializing metrics: %v", err)
-		os.Exit(1)
-	}
-
-	stats.Record(ctx, CommandCountMeasure.M(1))
 
 	a, err := wireAnalytics(l, cmdName)
 	if err != nil {
@@ -136,22 +127,15 @@ func preCommand(ctx context.Context, cmdName model.TiltSubcommand) (context.Cont
 		}
 	}()
 
-	return ctx, cleanup
+	return ctx
 }
 
 func addCommand(parent *cobra.Command, child tiltCmd) {
 	cobraChild := child.register()
 	cobraChild.Run = func(_ *cobra.Command, args []string) {
-		ctx, cleanup := preCommand(context.Background(), child.name())
+		ctx := preCommand(context.Background(), child.name())
 
 		err := child.run(ctx, args)
-
-		err2 := cleanup()
-		// ignore cleanup errors if we have a real error
-		if err == nil {
-			err = err2
-		}
-
 		if err != nil {
 			// TODO(maia): this shouldn't print if we've already pretty-printed it
 			_, printErr := fmt.Fprintf(output.OriginalStderr, "Error: %v\n", err)

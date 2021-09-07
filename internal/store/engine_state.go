@@ -107,9 +107,6 @@ type EngineState struct {
 
 	TelemetrySettings model.TelemetrySettings
 
-	MetricsSettings model.MetricsSettings
-	MetricsServing  MetricsServing
-
 	UserConfigState model.UserConfigState
 
 	// The initialization sequence is unfortunate. Currently we have:

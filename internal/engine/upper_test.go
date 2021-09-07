@@ -58,7 +58,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/k8srollout"
 	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
 	"github.com/tilt-dev/tilt/internal/engine/local"
-	"github.com/tilt-dev/tilt/internal/engine/metrics"
 	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/engine/session"
 	"github.com/tilt-dev/tilt/internal/engine/telemetry"
@@ -3186,40 +3185,6 @@ fail('goodnight moon')
 	})
 }
 
-func TestEnableMetrics(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-	f.useRealTiltfileLoader()
-
-	f.WriteFile("Tiltfile", `
-experimental_metrics_settings(enabled=True)
-fail('goodnight moon')
-`)
-
-	f.loadAndStart()
-
-	f.WaitUntil("Tiltfile loaded", func(state store.EngineState) bool {
-		return len(state.MainTiltfileState().BuildHistory) == 1
-	})
-	f.withState(func(state store.EngineState) {
-		assert.True(t, state.MetricsSettings.Enabled)
-	})
-
-	f.WriteFile("Tiltfile", `
-experimental_metrics_settings(enabled=False)
-k8s_yaml('snack.yaml')
-`)
-	f.WriteFile("snack.yaml", simpleYAML)
-	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("Tiltfile"))
-
-	f.WaitUntil("Tiltfile reloaded", func(state store.EngineState) bool {
-		return len(state.MainTiltfileState().BuildHistory) == 2
-	})
-	f.withState(func(state store.EngineState) {
-		assert.False(t, state.MetricsSettings.Enabled)
-	})
-}
-
 func TestSecretScrubbed(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -4002,12 +3967,10 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	tc := telemetry.NewController(clock, tracer.NewSpanCollector(ctx))
 	podm := k8srollout.NewPodMonitor()
 
-	de := metrics.NewDeferredExporter()
-	mc := metrics.NewController(de, model.TiltBuild{}, "")
 	uss := uisession.NewSubscriber(cdc)
 	urs := uiresource.NewSubscriber(cdc)
 
-	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, sw, bc, cc, tqs, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, mc, uss, urs)
+	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, sw, bc, cc, tqs, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, uss, urs)
 	ret.upper, err = NewUpper(ctx, st, subs)
 	require.NoError(t, err)
 

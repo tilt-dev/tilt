@@ -96,15 +96,6 @@ func HandleConfigsReloaded(
 		state.TeamID = event.TeamID
 	}
 
-	// Only set the metrics settings from the tiltfile if the mode
-	// hasn't been configured from elsewhere.
-	if isMainTiltfile && state.MetricsServing.Mode == model.MetricsDefault {
-		// Add metrics if it exists, even if execution failed.
-		if event.MetricsSettings.Enabled || event.Err == nil {
-			state.MetricsSettings = event.MetricsSettings
-		}
-	}
-
 	// if the ConfigsReloadedAction came from a unit test, there might not be a current build
 	if !b.Empty() {
 		b.FinishTime = event.FinishTime

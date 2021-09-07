@@ -20,7 +20,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/store/tiltfiles"
 	"github.com/tilt-dev/tilt/internal/testutils"
-	"github.com/tilt-dev/tilt/internal/user"
 
 	grpcRuntime "github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/stretchr/testify/assert"
@@ -393,7 +392,6 @@ type serverFixture struct {
 	st           *store.Store
 	getActions   func() []store.Action
 	snapshotHTTP *fakeHTTPClient
-	up           *user.FakePrefs
 }
 
 func newTestFixture(t *testing.T) *serverFixture {
@@ -407,7 +405,6 @@ func newTestFixture(t *testing.T) *serverFixture {
 	snapshotHTTP := &fakeHTTPClient{}
 	addr := cloudurl.Address("nonexistent.example.com")
 	uploader := cloud.NewSnapshotUploader(snapshotHTTP, addr)
-	up := user.NewFakePrefs()
 	wsl := server.NewWebsocketList()
 	ctrlClient := fake.NewFakeTiltClient()
 	_ = ctrlClient.Create(context.Background(), &v1alpha1.Tiltfile{
@@ -427,7 +424,6 @@ func newTestFixture(t *testing.T) *serverFixture {
 		st:           st,
 		getActions:   getActions,
 		snapshotHTTP: snapshotHTTP,
-		up:           up,
 	}
 }
 
