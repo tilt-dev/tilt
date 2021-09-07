@@ -34,7 +34,7 @@ func newCreateFileWatchCmd() *createFileWatchCmd {
 	}
 }
 
-func (c *createFileWatchCmd) name() model.TiltSubcommand { return "filewatch" }
+func (c *createFileWatchCmd) name() model.TiltSubcommand { return "create" }
 
 func (c *createFileWatchCmd) register() *cobra.Command {
 	cmd := &cobra.Command{

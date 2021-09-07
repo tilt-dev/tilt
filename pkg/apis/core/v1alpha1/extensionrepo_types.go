@@ -83,6 +83,10 @@ func (in *ExtensionRepo) NamespaceScoped() bool {
 	return false
 }
 
+func (in *ExtensionRepo) ShortNames() []string {
+	return []string{"repo", "extrepo"}
+}
+
 func (in *ExtensionRepo) New() runtime.Object {
 	return &ExtensionRepo{}
 }
