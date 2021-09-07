@@ -158,6 +158,7 @@ const ResourceTableHeader = styled(ResourceTableData)`
 const ResourceTableHeaderLabel = styled.div`
   display: flex;
   align-items: center;
+  user-select: none;
 `
 
 const ResourceTableHeaderSortTriangle = styled.div`
