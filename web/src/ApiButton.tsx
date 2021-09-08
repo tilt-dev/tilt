@@ -221,7 +221,7 @@ export const ApiIcon: React.FC<ApiIconProps> = (props) => {
 
 async function updateButtonStatus(
   button: UIButton,
-  inputValues: Record<string, any>
+  inputValues: { [name: string]: any }
 ) {
   const toUpdate = {
     metadata: { ...button.metadata },
@@ -236,7 +236,7 @@ async function updateButtonStatus(
 
   toUpdate.status!.inputs = []
   button.spec!.inputs?.forEach((spec) => {
-    const value = inputValues.get(spec.name!)
+    const value = inputValues[spec.name!]
     if (value !== undefined) {
       let status: UIInputStatus = { name: spec.name }
       if (spec.text) {
