@@ -26,12 +26,12 @@ func NewEventWatcher(dcc dockercompose.DockerComposeClient, docker docker.LocalC
 	}
 }
 
-func (w *EventWatcher) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) error {
-	if !w.watching {
+func (w *EventWatcher) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) error {
+	// TODO(nick): This should respond dynamically if the path changes.
+	if summary.IsLogOnly() || w.watching {
 		return nil
 	}
 
-	// TODO(nick): This should respond dynamically if the path changes.
 	state := st.RLockState()
 	configPaths := state.DockerComposeConfigPath()
 	st.RUnlockState()

@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 	"testing"
+	"time"
+	"unicode"
 
 	"github.com/compose-spec/compose-go/loader"
 
@@ -62,10 +65,13 @@ func (c *FakeDCClient) Down(ctx context.Context, configPaths []string, stdout, s
 	return nil
 }
 
-func (c *FakeDCClient) StreamLogs(ctx context.Context, configPaths []string, serviceName model.TargetName) (io.ReadCloser, error) {
+func (c *FakeDCClient) StreamLogs(ctx context.Context, _ []string, serviceName model.TargetName) (io.ReadCloser, error) {
 	output := c.RunLogOutput[serviceName]
 	reader, writer := io.Pipe()
 	go func() {
+		// docker-compose always logs an "Attaching to foo, bar" at the start of a log session
+		_, _ = writer.Write([]byte(fmt.Sprintf("Attaching to %s\n", serviceName)))
+
 		done := false
 		for !done {
 			select {
@@ -75,10 +81,18 @@ func (c *FakeDCClient) StreamLogs(ctx context.Context, configPaths []string, ser
 				if !ok {
 					done = true
 				} else {
-					_, _ = writer.Write([]byte(s))
+					logLine := fmt.Sprintf("%s %s\n",
+						time.Now().Format(time.RFC3339Nano),
+						strings.TrimRightFunc(s, unicode.IsSpace))
+					_, _ = writer.Write([]byte(logLine))
 				}
 			}
 		}
+
+		// we call docker-compose logs with --follow, so it only terminates (normally) when the container exits
+		// and it writes a message with the container exit code
+		_, _ = writer.Write([]byte(fmt.Sprintf("%s exited with code 0\n", serviceName)))
+
 		_ = writer.Close()
 	}()
 	return reader, nil

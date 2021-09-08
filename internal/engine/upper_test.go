@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -2679,6 +2680,9 @@ func TestDockerComposeRecordsRunLogs(t *testing.T) {
 	defer close(output)
 	f.setDCRunLogOutput(m.DockerComposeTarget(), output)
 
+	containerState := docker.NewRunningContainerState()
+	f.b.nextDockerComposeContainerState = &containerState
+
 	f.loadAndStart()
 	f.waitForCompletedBuildCount(2)
 
@@ -2702,12 +2706,28 @@ func TestDockerComposeFiltersRunLogs(t *testing.T) {
 	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
+	// since this is a negative test case, we need to ensure our mock behaves properly first
+	fakeServiceLog := make(chan string)
+	close(fakeServiceLog)
+	f.dcc.RunLogOutput["fake-service"] = fakeServiceLog
+	r, err := f.dcc.StreamLogs(f.ctx, nil, "fake-service")
+	require.NoError(t, err, "Failed to set up fake Docker Compose log stream")
+	sampleDCLogOutput, err := io.ReadAll(r)
+	require.NoError(t, err, "Failed to read fake Docker Compose log stream")
+	assert.Equal(t, string(sampleDCLogOutput),
+		`Attaching to fake-service
+fake-service exited with code 0
+`)
+
 	m, _ := f.setupDCFixture()
-	expected := "Attaching to snack\n"
+	expected := "some app log"
 	output := make(chan string, 1)
 	output <- expected
 	defer close(output)
 	f.setDCRunLogOutput(m.DockerComposeTarget(), output)
+
+	containerState := docker.NewRunningContainerState()
+	f.b.nextDockerComposeContainerState = &containerState
 
 	f.loadAndStart()
 	f.waitForCompletedBuildCount(2)
@@ -2716,7 +2736,9 @@ func TestDockerComposeFiltersRunLogs(t *testing.T) {
 	f.withState(func(es store.EngineState) {
 		ms, _ := es.ManifestState(m.ManifestName())
 		spanID := ms.DCRuntimeState().SpanID
-		assert.NotContains(t, es.LogStore.SpanLog(spanID), expected)
+		spanLog := es.LogStore.SpanLog(spanID)
+		assert.NotContains(t, spanLog, "Attaching to")
+		assert.Contains(t, spanLog, expected)
 	})
 }
 
