@@ -94,6 +94,33 @@ func TestMissing(t *testing.T) {
 		fmt.Sprintf("no extension tiltfile found at %s", p), ext.Status.Error)
 }
 
+// Verify that args are propagated to the tiltfile when changed.
+func TestChangeArgs(t *testing.T) {
+	f := newFixture(t)
+	f.setupRepo()
+
+	ext := v1alpha1.Extension{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "ext",
+		},
+		Spec: v1alpha1.ExtensionSpec{
+			RepoName: "my-repo",
+			RepoPath: "my-ext",
+			Args:     []string{"--namespace=bar"},
+		},
+	}
+	f.Create(&ext)
+
+	f.MustGet(types.NamespacedName{Name: "ext"}, &ext)
+
+	ext.Spec.Args = []string{"--namespace=foo"}
+	f.Update(&ext)
+
+	var tf v1alpha1.Tiltfile
+	f.MustGet(types.NamespacedName{Name: "ext"}, &tf)
+	require.Equal(t, []string{"--namespace=foo"}, tf.Spec.Args)
+}
+
 type fixture struct {
 	*fake.ControllerFixture
 	*tempdir.TempDirFixture

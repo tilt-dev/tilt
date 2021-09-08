@@ -91,41 +91,45 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		return r.updateError(ctx, &ext, fmt.Sprintf("no extension tiltfile found at %s", absPath))
 	}
 
-	// TODO(nick): Create Tiltfile child object.
-	return r.updateStatus(ctx, &ext, func(status *v1alpha1.ExtensionStatus) {
+	update, err := r.updateStatus(ctx, &ext, func(status *v1alpha1.ExtensionStatus) {
 		status.Path = absPath
 		status.Error = ""
 	})
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	// Always manage the child objects, even if the user-visible status didn't change,
+	// because there might be internal state we need to propagate.
+	err = r.manageOwnedTiltfile(ctx, types.NamespacedName{Name: ext.Name}, update)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	return ctrl.Result{}, nil
 }
 
 // Generic status update.
-func (r *Reconciler) updateStatus(ctx context.Context, ext *v1alpha1.Extension, mutateFn func(*v1alpha1.ExtensionStatus)) (ctrl.Result, error) {
+func (r *Reconciler) updateStatus(ctx context.Context, ext *v1alpha1.Extension, mutateFn func(*v1alpha1.ExtensionStatus)) (*v1alpha1.Extension, error) {
 	update := ext.DeepCopy()
 	mutateFn(&(update.Status))
 
 	if apicmp.DeepEqual(update.Status, ext.Status) {
-		return ctrl.Result{}, nil
+		return update, nil
 	}
 	err := r.ctrlClient.Status().Update(ctx, update)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	err = r.manageOwnedTiltfile(ctx, types.NamespacedName{Name: update.Name}, update)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	return ctrl.Result{}, err
+	return update, err
 }
 
-// Update status with an error message, logging the error.
+// Update status with an error message, logging the error, and managing child objects.
 func (r *Reconciler) updateError(ctx context.Context, ext *v1alpha1.Extension, errorMsg string) (ctrl.Result, error) {
 	update := ext.DeepCopy()
 	update.Status.Error = errorMsg
 	update.Status.Path = ""
 
 	if apicmp.DeepEqual(update.Status, ext.Status) {
+		// We don't need to worry about managing the child object, because
+		// all error states are equivalent.
 		return ctrl.Result{}, nil
 	}
 
