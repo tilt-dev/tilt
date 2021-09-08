@@ -40,7 +40,7 @@ export const MenuButtonMixin = `
   ${mixinResetButtonStyle};
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+  justify-content: center;
   align-items: center;
   transition: color ${AnimDuration.default} ease;
   padding-top: ${SizeUnit(0.5)};
@@ -49,6 +49,7 @@ export const MenuButtonMixin = `
   padding-bottom: ${SizeUnit(0.5)};
   font-size: ${FontSize.smallest};
   color: ${Color.blue};
+  height: 100%;
 
   & .fillStd {
     fill: ${Color.blue};
@@ -67,11 +68,14 @@ export const MenuButtonMixin = `
   }
 `
 export const MenuButton = styled.button`
-  ${MenuButtonMixin}
+  ${MenuButtonMixin};
 `
 export const MenuButtonLabeledRoot = styled.div`
   position: relative; // Anchor MenuButtonLabel, which shouldn't affect this element's width
-  &:hover ${MenuButtonLabel}, button[data-open="true"] + ${MenuButtonLabel} {
+  &:is(:hover, :focus, :active)
+    ${MenuButtonLabel},
+    button[data-open="true"]
+    + ${MenuButtonLabel} {
     opacity: 1;
   }
 `
@@ -212,13 +216,16 @@ export function GlobalNav(props: GlobalNavProps) {
     </MenuButtonLabeled>
   ) : null
 
+  const versionButtonLabel = props.showUpdate ? "Get Update" : "Version"
+
   return (
     <GlobalNavRoot>
-      <MenuButtonLabeled label={props.showUpdate ? "Get Update" : "Version"}>
+      <MenuButtonLabeled label={versionButtonLabel}>
         <MenuButton
           ref={updateButton}
           onClick={() => toggleUpdateDialog(AnalyticsAction.Click)}
           data-open={updateDialogOpen}
+          aria-label={versionButtonLabel}
         >
           <div>v{props.runningBuild?.version || "?"}</div>
 
@@ -230,11 +237,12 @@ export function GlobalNav(props: GlobalNavProps) {
 
       {snapshotButton}
 
-      <MenuButtonLabeled label={"Help"}>
+      <MenuButtonLabeled label="Help">
         <MenuButton
           ref={shortcutButton}
           onClick={() => toggleShortcutsDialog(AnalyticsAction.Click)}
           data-open={shortcutsDialogOpen}
+          aria-label="Help"
         >
           <HelpIcon width="24" height="24" />
         </MenuButton>
@@ -244,6 +252,7 @@ export function GlobalNav(props: GlobalNavProps) {
           ref={accountButton}
           onClick={() => toggleAccountMenu(AnalyticsAction.Click)}
           data-open={accountMenuOpen}
+          aria-label="Account"
         >
           <AccountIcon width="24" height="24" />
         </MenuButton>

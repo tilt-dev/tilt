@@ -10,15 +10,17 @@ type CustomNavProps = {
 
 const CustomNavButton = styled(ApiButton)`
   height: 100%;
+  align-items: center;
 
   button {
     ${MenuButtonMixin};
     height: 100%;
-    box-shadow: none;
+    box-shadow: unset;
     justify-content: center;
 
-    &:hover {
-      box-shadow: none;
+    &:hover,
+    &:active {
+      box-shadow: unset;
     }
   }
 
@@ -51,6 +53,7 @@ export function CustomNav(props: CustomNavProps) {
             key={b.metadata?.name}
             uiButton={b}
             variant="contained"
+            aria-label={b.spec?.text}
           >
             <ApiIcon
               iconName={b.spec?.iconName || "smart_button"}

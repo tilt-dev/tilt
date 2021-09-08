@@ -41,8 +41,6 @@ export const ApiButtonRoot = styled(ButtonGroup)`
   ${ApiIconRoot} + ${ApiButtonLabel} {
     margin-left: ${SizeUnit(0.25)};
   }
-
-  align-items: center;
 `
 export const LogLink = styled(Link)`
   font-size: ${FontSize.smallest};
@@ -173,6 +171,7 @@ function ApiButtonWithOptions(props: ApiButtonWithOptionsProps) {
             setOpen((prevOpen) => !prevOpen)
           }}
           analyticsName="ui.web.uiButton.inputMenu"
+          aria-label={`Open ${props.uiButton.spec?.text} options`}
           {...props.buttonProps}
         >
           <ArrowDropDownIcon />
@@ -283,7 +282,7 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
 
   const { setError } = useHudErrorContext()
 
-  const onClick = async (e: React.MouseEvent<HTMLElement>) => {
+  const onClick = async () => {
     // TODO(milas): currently the loading state just disables the button for the duration of
     //  the AJAX request to avoid duplicate clicks - there is no progress tracking at the
     //  moment, so there's no fancy spinner animation or propagation of result of action(s)
@@ -324,6 +323,7 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
       analyticsName={"ui.web.uibutton"}
       onClick={onClick}
       disabled={loading || uiButton.spec?.disabled}
+      aria-label={`Trigger ${uiButton.spec?.text}`}
       {...buttonProps}
     >
       {props.children || (
@@ -353,11 +353,16 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
         setInputValue={setInputValue}
         getInputValue={getInputValue}
         buttonProps={buttonProps}
+        aria-label={uiButton.spec?.text}
       />
     )
   } else {
     return (
-      <ApiButtonRoot className={className} disableRipple={true}>
+      <ApiButtonRoot
+        className={className}
+        disableRipple={true}
+        aria-label={uiButton.spec?.text}
+      >
         {button}
       </ApiButtonRoot>
     )
