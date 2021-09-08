@@ -20,11 +20,11 @@ import OverviewTable, {
   ResourceTableData,
   ResourceTableHeader,
   ResourceTableHeaderSortTriangle,
+  ResourceTableHeadRow,
   ResourceTableRow,
   RowValues,
   Table,
   TableGroupedByLabels,
-  TableHeadRow,
   TableNameColumn,
   TableWithoutGroups,
 } from "./OverviewTable"
@@ -65,28 +65,29 @@ const tableViewWithSettings = ({
   )
 }
 
-const findTableColumnName = (
+const findTableHeaderByName = (
   wrapper: ReactWrapper<any>,
   columnName: string,
   sortable = true
-) => {
+): ReactWrapper<any, typeof ResourceTableHeader> => {
   const selector = sortable ? `Sort by ${columnName}` : columnName
   return wrapper.find(ResourceTableHeader).filter(`[title="${selector}"]`)
 }
 
-const findTableColumn = (wrapper: ReactWrapper<any>, columnName: string) => {
-  const allTableHeaders = wrapper.find(TableHeadRow)
-  const allColumns = allTableHeaders.reduce(
-    (columns: HeaderGroup<RowValues>[], row) => {
+const findTableColumnByName = (
+  wrapper: ReactWrapper<any>,
+  columnName: string
+): HeaderGroup<RowValues>[] => {
+  const matchingColumns = wrapper
+    .find(ResourceTableHeadRow)
+    .reduce((columns: HeaderGroup<RowValues>[], row) => {
       const specificColumn = row
         .prop("headerGroup")
         .headers.filter((column) => column.Header === columnName)
       return [...columns, ...specificColumn]
-    },
-    []
-  )
+    }, [])
 
-  return allColumns
+  return matchingColumns
 }
 // End helpers
 
@@ -205,15 +206,15 @@ describe("overview table without groups", () => {
 
   describe("sorting", () => {
     it("table sorts when a column header is clicked", () => {
-      findTableColumnName(wrapper, "Pod ID").simulate("click")
-      const [podIdColumn] = findTableColumn(wrapper, "Pod ID")
+      findTableHeaderByName(wrapper, "Pod ID").simulate("click")
+      const [podIdColumn] = findTableColumnByName(wrapper, "Pod ID")
 
       expect(podIdColumn.isSorted).toBe(true)
     })
 
     it("table column header displays ascending arrow when sorted ascending", () => {
-      findTableColumnName(wrapper, "Pod ID").simulate("click")
-      const arrowIcon = findTableColumnName(wrapper, "Pod ID").find(
+      findTableHeaderByName(wrapper, "Pod ID").simulate("click")
+      const arrowIcon = findTableHeaderByName(wrapper, "Pod ID").find(
         ResourceTableHeaderSortTriangle
       )
 
@@ -221,8 +222,10 @@ describe("overview table without groups", () => {
     })
 
     it("table column header displays descending arrow when sorted descending", () => {
-      findTableColumnName(wrapper, "Pod ID").simulate("click").simulate("click")
-      const arrowIcon = findTableColumnName(wrapper, "Pod ID").find(
+      findTableHeaderByName(wrapper, "Pod ID")
+        .simulate("click")
+        .simulate("click")
+      const arrowIcon = findTableHeaderByName(wrapper, "Pod ID").find(
         ResourceTableHeaderSortTriangle
       )
 
@@ -444,10 +447,13 @@ describe("overview table with groups", () => {
     })
 
     it("all resource group tables are sorted by the same column when one table is sorted", () => {
-      const allTableHeaders = wrapper.find(TableHeadRow)
-      const allNameColumns = findTableColumn(wrapper, "Resource Name")
+      const allTables = wrapper.find(Table)
+      const allNameColumns = findTableColumnByName(wrapper, "Resource Name")
 
-      expect(allNameColumns.length).toBe(allTableHeaders.length)
+      // As a safeguard, make sure that the number of "Resource Name" columns
+      // matches the number of tables being rendered
+      expect(allNameColumns.length).toBe(allTables.length)
+      // Expect that every "Resource Name" column is sorted
       expect(allNameColumns.every((column) => column.isSorted)).toBe(true)
     })
 

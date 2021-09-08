@@ -92,7 +92,7 @@ type TableProps = {
   setGlobalSortBy?: (id: string) => void
 } & TableOptions<RowValues>
 
-type TableHeadRowProps = {
+type ResourceTableHeadRowProps = {
   headerGroup: HeaderGroup<RowValues>
   setGlobalSortBy?: (id: string) => void
 } & TableHeaderProps
@@ -648,8 +648,7 @@ const SECOND_SORT_STATE = true
 //    Click once to sort by ascending values
 //    Click twice to sort by descending values
 //    Click thrice to remove sort
-// Note: unlike react-table, this function does NOT support
-// sorting by multiple columns right now.
+// Note: this does NOT support sorting by multiple columns.
 function calculateNextSort(
   id: string,
   sortByState: SortingRule<RowValues>[] | undefined
@@ -787,22 +786,24 @@ export function resourcesToTableCells(
   return { labels, labelsToResources, tiltfile, unlabeled }
 }
 
-export function TableHeadRow({
+export function ResourceTableHeadRow({
   headerGroup,
   setGlobalSortBy,
-}: TableHeadRowProps) {
+}: ResourceTableHeadRowProps) {
   const calculateToggleProps = (column: HeaderGroup<RowValues>) => {
+    // If a column header is JSX, fall back on using its id as a descriptive title
+    const columnHeader =
+      typeof column.Header === "string" ? column.Header : column.id
+
     // Warning! Toggle props are not typed or documented well within react-table.
     // Modify toggle props with caution.
     // See https://react-table.tanstack.com/docs/api/useSortBy#column-properties
     const toggleProps: { [key: string]: any } = {
-      title: column.canSort
-        ? `Sort by ${column.render("Header")}`
-        : column.render("Header"),
+      title: column.canSort ? `Sort by ${columnHeader}` : columnHeader,
     }
 
-    if (setGlobalSortBy) {
-      // If the sort state is global, rather than individual to each table,
+    if (setGlobalSortBy && column.canSort) {
+      // The sort state is global whenever there are multiple tables, so
       // pass a click handler to the sort toggle that changes the global state
       toggleProps.onClick = () => setGlobalSortBy(column.id)
     }
@@ -876,7 +877,7 @@ export function Table(props: TableProps) {
     <ResourceTable {...getTableProps()} className={isGroupClass}>
       <ResourceTableHead>
         {headerGroups.map((headerGroup: HeaderGroup<RowValues>) => (
-          <TableHeadRow
+          <ResourceTableHeadRow
             {...headerGroup.getHeaderGroupProps()}
             headerGroup={headerGroup}
             setGlobalSortBy={props.setGlobalSortBy}
@@ -890,9 +891,8 @@ export function Table(props: TableProps) {
             <ResourceTableRow {...row.getRowProps()}>
               {row.cells.map((cell) => (
                 <ResourceTableData
-                  {...cell.getCellProps({
-                    className: cell.column.isSorted ? "isSorted" : "",
-                  })}
+                  {...cell.getCellProps()}
+                  className={cell.column.isSorted ? "isSorted" : ""}
                 >
                   {cell.render("Cell")}
                 </ResourceTableData>
