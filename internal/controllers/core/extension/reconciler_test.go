@@ -10,6 +10,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tilt-dev/wmclient/pkg/analytics"
+
+	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -17,7 +20,7 @@ import (
 
 func TestDefault(t *testing.T) {
 	f := newFixture(t)
-	f.setupRepo()
+	repo := f.setupRepo()
 
 	ext := v1alpha1.Extension{
 		ObjectMeta: metav1.ObjectMeta{
@@ -43,6 +46,18 @@ func TestDefault(t *testing.T) {
 		Labels:    map[string]string{"extension.my-repo_my-ext": "extension.my-repo_my-ext"},
 		RestartOn: &v1alpha1.RestartOnSpec{FileWatches: []string{"configs:my-repo:my-ext"}},
 		Args:      []string{"--namespaces=foo"},
+	})
+
+	assert.Equal(t, f.ma.Counts, []analytics.CountEvent{
+		analytics.CountEvent{
+			Name: "api.extension.load",
+			Tags: map[string]string{
+				"ext_path":      "my-ext",
+				"repo_type":     "file",
+				"repo_url_hash": tiltanalytics.HashSHA1(repo.Spec.URL),
+			},
+			N: 1,
+		},
 	})
 }
 
@@ -124,7 +139,8 @@ func TestChangeArgs(t *testing.T) {
 type fixture struct {
 	*fake.ControllerFixture
 	*tempdir.TempDirFixture
-	r *Reconciler
+	r  *Reconciler
+	ma *analytics.MemoryAnalytics
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -132,15 +148,19 @@ func newFixture(t *testing.T) *fixture {
 	tf := tempdir.NewTempDirFixture(t)
 	t.Cleanup(tf.TearDown)
 
-	r := NewReconciler(cfb.Client, v1alpha1.NewScheme())
+	o := tiltanalytics.NewFakeOpter(analytics.OptIn)
+	ma, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(o)
+
+	r := NewReconciler(cfb.Client, v1alpha1.NewScheme(), ta)
 	return &fixture{
 		ControllerFixture: cfb.Build(r),
 		TempDirFixture:    tf,
 		r:                 r,
+		ma:                ma,
 	}
 }
 
-func (f *fixture) setupRepo() {
+func (f *fixture) setupRepo() *v1alpha1.ExtensionRepo {
 	p := f.JoinPath("my-repo", "my-ext", "Tiltfile")
 	f.WriteFile(p, "print('hello-world')")
 
@@ -156,4 +176,5 @@ func (f *fixture) setupRepo() {
 		},
 	}
 	f.Create(&repo)
+	return &repo
 }

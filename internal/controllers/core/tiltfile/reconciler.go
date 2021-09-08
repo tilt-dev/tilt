@@ -268,7 +268,11 @@ func (r *Reconciler) run(ctx context.Context, nn types.NamespacedName, tf *v1alp
 	}
 
 	tlr := r.tfl.Load(ctx, entry.TiltfilePath, userConfigState)
-	if tlr.Error == nil && len(tlr.Manifests) == 0 {
+
+	// If the user is executing an empty main tiltfile, that probably means
+	// they need a tutorial. For now, we link to that tutorial, but a more interactive
+	// system might make sense here.
+	if tlr.Error == nil && len(tlr.Manifests) == 0 && tf.Name == model.MainTiltfileManifestName.String() {
 		tlr.Error = fmt.Errorf("No resources found. Check out https://docs.tilt.dev/tutorial.html to get started!")
 	}
 
