@@ -3,6 +3,7 @@ import styled from "styled-components"
 import { ReactComponent as CheckmarkSmallSvg } from "./assets/svg/checkmark-small.svg"
 import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
 import { ReactComponent as PendingSvg } from "./assets/svg/pending.svg"
+import { ReactComponent as WarningSvg } from "./assets/svg/warning.svg"
 import { useResourceNav } from "./ResourceNav"
 import {
   Color,
@@ -65,6 +66,7 @@ const StatusIcon = styled.span`
   align-items: center;
   margin-right: ${SizeUnit(0.2)};
   width: ${SizeUnit(0.5)};
+  flex-shrink: 0;
 
   svg {
     width: 100%;
@@ -75,12 +77,11 @@ type OverviewTableStatusProps = {
   status: ResourceStatus
   resourceName: string
   lastBuildDur?: moment.Duration | null
-  alertCount: number
   isBuild?: boolean
 }
 
 export default function OverviewTableStatus(props: OverviewTableStatusProps) {
-  let { status, lastBuildDur, alertCount, isBuild, resourceName } = props
+  let { status, lastBuildDur, isBuild, resourceName } = props
   let icon = null
   let msg = ""
   let classes = ""
@@ -98,8 +99,17 @@ export default function OverviewTableStatus(props: OverviewTableStatusProps) {
       msg = isBuild ? "Update Pending" : "Runtime Pending"
       classes = "is-pending"
       break
-    case ResourceStatus.Warning:
+
+    case ResourceStatus.Warning: {
+      let buildDurText = lastBuildDur
+        ? ` in ${formatBuildDuration(lastBuildDur)}`
+        : ""
+      icon = <WarningSvg fill={Color.yellow} width="10px" height="10px" />
+      msg = isBuild ? `Updated${buildDurText}` : "Runtime Ready"
+      classes = "is-warning"
       break
+    }
+
     case ResourceStatus.Healthy:
       let buildDurText = lastBuildDur
         ? ` in ${formatBuildDuration(lastBuildDur)}`
@@ -107,11 +117,8 @@ export default function OverviewTableStatus(props: OverviewTableStatusProps) {
       icon = <CheckmarkSmallSvg />
       msg = isBuild ? `Updated${buildDurText}` : "Runtime Ready"
       classes = "is-healthy"
-
-      if (alertCount > 0) {
-        msg += ", with issues"
-      }
       break
+
     case ResourceStatus.Unhealthy:
       icon = <CloseSvg />
       msg = isBuild ? "Update error" : "Runtime error"
