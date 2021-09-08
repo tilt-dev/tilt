@@ -171,6 +171,7 @@ function ApiButtonWithOptions(props: ApiButtonWithOptionsProps) {
             setOpen((prevOpen) => !prevOpen)
           }}
           analyticsName="ui.web.uiButton.inputMenu"
+          aria-label={`Open ${props.uiButton.spec?.text} options`}
           {...props.buttonProps}
         >
           <ArrowDropDownIcon />
@@ -322,6 +323,7 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
       analyticsName={"ui.web.uibutton"}
       onClick={onClick}
       disabled={loading || uiButton.spec?.disabled}
+      aria-label={`Trigger ${uiButton.spec?.text}`}
       {...buttonProps}
     >
       {props.children || (
@@ -351,11 +353,16 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
         setInputValue={setInputValue}
         getInputValue={getInputValue}
         buttonProps={buttonProps}
+        aria-label={uiButton.spec?.text}
       />
     )
   } else {
     return (
-      <ApiButtonRoot className={className} disableRipple={true}>
+      <ApiButtonRoot
+        className={className}
+        disableRipple={true}
+        aria-label={uiButton.spec?.text}
+      >
         {button}
       </ApiButtonRoot>
     )
