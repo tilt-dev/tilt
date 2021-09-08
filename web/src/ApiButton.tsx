@@ -21,6 +21,7 @@ import {
 } from "./instrumentedComponents"
 import { usePathBuilder } from "./PathBuilder"
 import { Color, FontSize, SizeUnit } from "./style-helpers"
+import { apiTimeFormat, tiltApiPut } from "./tiltApi"
 
 type UIButton = Proto.v1alpha1UIButton
 type UIInputSpec = Proto.v1alpha1UIInputSpec
@@ -219,22 +220,19 @@ export const ApiIcon: React.FC<ApiIconProps> = (props) => {
   return null
 }
 
-async function updateButtonStatus(
+// returns metadata + button status w/ the specified input buttons
+function buttonStatusWithInputs(
   button: UIButton,
   inputValues: Map<string, any>
-) {
-  const toUpdate = {
+): UIButton {
+  const result = {
     metadata: { ...button.metadata },
     status: { ...button.status },
   } as UIButton
-  // apiserver's date format time is _extremely_ strict to the point that it requires the full
-  // six-decimal place microsecond precision, e.g. .000Z will be rejected, it must be .000000Z
-  // so use an explicit RFC3339 moment format to ensure it passes
-  toUpdate.status!.lastClickedAt = moment
-    .utc()
-    .format("YYYY-MM-DDTHH:mm:ss.SSSSSSZ")
 
-  toUpdate.status!.inputs = []
+  result.status!.lastClickedAt = apiTimeFormat(moment.utc())
+
+  result.status!.inputs = []
   button.spec!.inputs?.forEach((spec) => {
     const value = inputValues.get(spec.name!)
     if (value !== undefined) {
@@ -244,25 +242,20 @@ async function updateButtonStatus(
       } else if (spec.bool) {
         status.bool = { value: value === true }
       }
-      toUpdate.status!.inputs!.push(status)
+      result.status!.inputs!.push(status)
     }
   })
 
-  const url = `/proxy/apis/tilt.dev/v1alpha1/uibuttons/${
-    toUpdate.metadata!.name
-  }/status`
-  const resp = await fetch(url, {
-    method: "PUT",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(toUpdate),
-  })
-  if (resp && resp.status !== 200) {
-    const body = await resp.text()
-    throw `error submitting button click to api: ${body}`
-  }
+  return result
+}
+
+async function updateButtonStatus(
+  button: UIButton,
+  inputValues: Map<string, any>
+) {
+  const toUpdate = buttonStatusWithInputs(button, inputValues)
+
+  await tiltApiPut("uibuttons", "status", toUpdate)
 }
 
 // Renders a UIButton.
