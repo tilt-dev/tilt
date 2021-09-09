@@ -1,6 +1,8 @@
 package model
 
 import (
+	"fmt"
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -227,6 +229,18 @@ var equalitytests = []struct {
 		Manifest{}.WithLabels(map[string]string{"foo": "baz"}),
 		false,
 	},
+	{
+		"Links unequal and doesn't invalidate",
+		Manifest{}.WithDeployTarget(NewLocalTarget("foo", Cmd{}, Cmd{}, nil).WithLinks([]Link{
+			{Name: "bar", URL: mustURL("mysql://root:password@localhost:3306/mydbname")},
+		})),
+		Manifest{}.WithDeployTarget(NewLocalTarget("foo", Cmd{}, Cmd{}, nil).WithLinks([]Link{
+			// the username is changed because if not properly ignored, that will cause a panic due to url.Userinfo
+			// having unexported fields [everything else remains the same to avoid go-cmp short-circuiting elsewhere]
+			{Name: "bar", URL: mustURL("mysql://r00t:password@localhost:3306/mydbname")},
+		})),
+		false,
+	},
 }
 
 func TestManifestEquality(t *testing.T) {
@@ -265,4 +279,12 @@ func TestDCTargetValidate(t *testing.T) {
 func TestHostCmdToString(t *testing.T) {
 	cmd := ToHostCmd("echo hi")
 	assert.Equal(t, "echo hi", cmd.String())
+}
+
+func mustURL(v string) *url.URL {
+	u, err := url.Parse(v)
+	if err != nil {
+		panic(fmt.Errorf("failed to parse URL[%s]: %v", v, err))
+	}
+	return u
 }
