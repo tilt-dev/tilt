@@ -127,18 +127,14 @@ func (m *DockerComposeLogManager) consumeLogs(watch dockerComposeLogWatch, st st
 	name := watch.name
 
 	for {
-		readCloser, err := m.dcc.StreamLogs(watch.ctx, watch.dc.ConfigPaths, watch.dc.Name)
-		if err != nil {
-			logger.Get(watch.ctx).Debugf("Error streaming %s logs: %v", name, err)
-			return
-		}
+		readCloser := m.dcc.StreamLogs(watch.ctx, watch.dc.ConfigPaths, watch.dc.Name)
 		actionWriter := &DockerComposeLogActionWriter{
 			store:        st,
 			manifestName: name,
 			since:        startTime,
 		}
 
-		_, err = io.Copy(actionWriter, readCloser)
+		_, err := io.Copy(actionWriter, readCloser)
 		_ = readCloser.Close()
 		if err == nil || watch.ctx.Err() != nil {
 			// stop tailing because either:

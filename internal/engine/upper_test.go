@@ -2710,8 +2710,7 @@ func TestDockerComposeFiltersRunLogs(t *testing.T) {
 	fakeServiceLog := make(chan string)
 	close(fakeServiceLog)
 	f.dcc.RunLogOutput["fake-service"] = fakeServiceLog
-	r, err := f.dcc.StreamLogs(f.ctx, nil, "fake-service")
-	require.NoError(t, err, "Failed to set up fake Docker Compose log stream")
+	r := f.dcc.StreamLogs(f.ctx, nil, "fake-service")
 	sampleDCLogOutput, err := io.ReadAll(r)
 	require.NoError(t, err, "Failed to read fake Docker Compose log stream")
 	assert.Equal(t, string(sampleDCLogOutput),
