@@ -15,6 +15,7 @@ export enum Flag {
   UpdateHistory = "update_history",
   Facets = "facets",
   Labels = "labels",
+  DisableResources = "disable_resources",
 }
 
 export default class Features {

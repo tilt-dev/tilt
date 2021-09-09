@@ -1,4 +1,4 @@
-import { debounce, InputAdornment, InputProps } from "@material-ui/core"
+import { debounce, Icon, InputAdornment, InputProps } from "@material-ui/core"
 import Menu from "@material-ui/core/Menu"
 import MenuItem from "@material-ui/core/MenuItem"
 import { PopoverOrigin } from "@material-ui/core/Popover"
@@ -17,6 +17,7 @@ import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
 import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as FilterSvg } from "./assets/svg/filter.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
+import { Flag, useFeatures } from "./feature"
 import {
   InstrumentedButton,
   InstrumentedTextField,
@@ -45,7 +46,7 @@ import {
   mixinResetButtonStyle,
   SizeUnit,
 } from "./style-helpers"
-import { TiltInfoTooltip } from "./Tooltip"
+import TiltTooltip, { TiltInfoTooltip } from "./Tooltip"
 import { ResourceName } from "./types"
 
 type UIResource = Proto.v1alpha1UIResource
@@ -659,6 +660,88 @@ export function OverviewWidgets(props: { buttons?: UIButton[] }) {
     </WidgetRoot>
   )
 }
+const EnableDisableResourceRoot = styled(ButtonRoot)<{
+  confirmingDisable: boolean
+}>`
+  ${(props) =>
+    props.confirmingDisable &&
+    `
+    color: ${Color.white};
+    background-color: ${Color.red};
+
+    &:hover {
+      color: ${Color.white};
+      background-color: ${Color.red};
+    }
+  `};
+  margin-left: auto;
+  padding-left: ${SizeUnit(0.25)};
+`
+const EnableDisableResourceButtonContent = styled.div`
+  .MuiIcon-root {
+    font-size: ${FontSize.small};
+  }
+  display: flex;
+  align-items: center;
+`
+
+function EnableDisableResource(props: { resource: UIResource }) {
+  // TODO(matt) - get disabled value from resource status, set disabled value by calling api
+  const [disabled, setDisabled] = useState(false)
+
+  const [confirmingDisable, setConfirmingDisable] = useState(false)
+
+  const onClick = () => {
+    if (disabled) {
+      setDisabled(false)
+    } else if (confirmingDisable) {
+      setDisabled(true)
+      setConfirmingDisable(false)
+    } else {
+      setConfirmingDisable(true)
+    }
+  }
+
+  let buttonContent: JSX.Element
+  let tooltipText: string
+  if (disabled) {
+    tooltipText =
+      "Enabling will allow this service to run and update based on changes, depending on its configuration."
+    buttonContent = (
+      <EnableDisableResourceButtonContent>
+        <Icon>play_arrow</Icon> Enable service
+      </EnableDisableResourceButtonContent>
+    )
+  } else {
+    tooltipText =
+      "Disabling will shut down this service, and keep it from updating as you make file system changes."
+    if (confirmingDisable) {
+      buttonContent = (
+        <EnableDisableResourceButtonContent>
+          <Icon>block</Icon> Confirm disable
+        </EnableDisableResourceButtonContent>
+      )
+    } else {
+      buttonContent = (
+        <EnableDisableResourceButtonContent>
+          <Icon>block</Icon> Disable service
+        </EnableDisableResourceButtonContent>
+      )
+    }
+  }
+  return (
+    <TiltTooltip title={tooltipText}>
+      <EnableDisableResourceRoot
+        analyticsName="ui.web.actionBar.enableDisableResource"
+        analyticsTags={{ isNowDisabled: (!disabled).toString() }}
+        onClick={onClick}
+        confirmingDisable={confirmingDisable}
+      >
+        {buttonContent}
+      </EnableDisableResourceRoot>
+    </TiltTooltip>
+  )
+}
 
 export default function OverviewActionBar(props: OverviewActionBarProps) {
   let { resource, filterSet, alerts, buttons } = props
@@ -669,6 +752,7 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
     : ResourceName.all
   const isSnapshot = usePathBuilder().isSnapshot()
   const logStore = useLogStore()
+  const features = useFeatures()
 
   let endpointEls: any = []
   endpoints.forEach((ep, i) => {
@@ -739,6 +823,9 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
         />
         <FilterTermField termFromUrl={filterSet.term} />
         <LogActions resourceName={resourceName} isSnapshot={isSnapshot} />
+        {features.isEnabled(Flag.DisableResources) && resource && (
+          <EnableDisableResource resource={resource} />
+        )}
       </ActionBarBottomRow>
     </ActionBarRoot>
   )
