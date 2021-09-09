@@ -4,6 +4,7 @@ import Features, { FeaturesProvider, Flag } from "./feature"
 import LogStore, { LogStoreProvider } from "./LogStore"
 import OverviewTable from "./OverviewTable"
 import { ResourceGroupsContextProvider } from "./ResourceGroupsContext"
+import { ResourceListOptionsProvider } from "./ResourceListOptionsContext"
 import { TiltSnackbarProvider } from "./Snackbar"
 import {
   nButtonView,
@@ -27,9 +28,11 @@ export default {
           <TiltSnackbarProvider>
             <FeaturesProvider value={features}>
               <ResourceGroupsContextProvider>
-                <div style={{ margin: "-1rem" }}>
-                  <Story />
-                </div>
+                <ResourceListOptionsProvider>
+                  <div style={{ margin: "-1rem" }}>
+                    <Story />
+                  </div>
+                </ResourceListOptionsProvider>
               </ResourceGroupsContextProvider>
             </FeaturesProvider>
           </TiltSnackbarProvider>

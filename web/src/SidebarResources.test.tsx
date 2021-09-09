@@ -15,7 +15,7 @@ import PathBuilder from "./PathBuilder"
 import {
   DEFAULT_OPTIONS,
   ResourceListOptions,
-  ResourceListOptionsContextProvider,
+  ResourceListOptionsProvider,
   RESOURCE_LIST_OPTIONS_KEY,
 } from "./ResourceListOptionsContext"
 import SidebarItem from "./SidebarItem"
@@ -62,7 +62,7 @@ describe("SidebarResources", () => {
       <MemoryRouter>
         <tiltfileKeyContext.Provider value="test">
           <StarredResourcesContextProvider>
-            <ResourceListOptionsContextProvider>
+            <ResourceListOptionsProvider>
               <SidebarResources
                 items={items}
                 selected={""}
@@ -70,7 +70,7 @@ describe("SidebarResources", () => {
                 pathBuilder={pathBuilder}
                 resourceListOptions={DEFAULT_OPTIONS}
               />
-            </ResourceListOptionsContextProvider>
+            </ResourceListOptionsProvider>
           </StarredResourcesContextProvider>
         </tiltfileKeyContext.Provider>
       </MemoryRouter>
@@ -105,7 +105,7 @@ describe("SidebarResources", () => {
       <MemoryRouter>
         <tiltfileKeyContext.Provider value="test">
           <StarredResourcesContextProvider>
-            <ResourceListOptionsContextProvider>
+            <ResourceListOptionsProvider>
               <SidebarResources
                 items={items}
                 selected={""}
@@ -113,7 +113,7 @@ describe("SidebarResources", () => {
                 pathBuilder={pathBuilder}
                 resourceListOptions={DEFAULT_OPTIONS}
               />
-            </ResourceListOptionsContextProvider>
+            </ResourceListOptionsProvider>
           </StarredResourcesContextProvider>
         </tiltfileKeyContext.Provider>
       </MemoryRouter>
@@ -166,7 +166,7 @@ describe("SidebarResources", () => {
       const root = mount(
         <MemoryRouter>
           <tiltfileKeyContext.Provider value="test">
-            <ResourceListOptionsContextProvider>
+            <ResourceListOptionsProvider>
               <SidebarResources
                 items={items}
                 selected={""}
@@ -174,7 +174,7 @@ describe("SidebarResources", () => {
                 pathBuilder={pathBuilder}
                 resourceListOptions={options}
               />
-            </ResourceListOptionsContextProvider>
+            </ResourceListOptionsProvider>
           </tiltfileKeyContext.Provider>
         </MemoryRouter>
       )
@@ -205,7 +205,7 @@ describe("SidebarResources", () => {
       const root = mount(
         <MemoryRouter>
           <tiltfileKeyContext.Provider value="test">
-            <ResourceListOptionsContextProvider>
+            <ResourceListOptionsProvider>
               <SidebarResources
                 items={items}
                 selected={""}
@@ -213,7 +213,7 @@ describe("SidebarResources", () => {
                 pathBuilder={pathBuilder}
                 resourceListOptions={DEFAULT_OPTIONS}
               />
-            </ResourceListOptionsContextProvider>
+            </ResourceListOptionsProvider>
           </tiltfileKeyContext.Provider>
         </MemoryRouter>
       )

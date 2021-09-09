@@ -17,7 +17,7 @@ import {
 import {
   DEFAULT_OPTIONS,
   ResourceListOptions,
-  ResourceListOptionsContextProvider,
+  ResourceListOptionsProvider,
   RESOURCE_LIST_OPTIONS_KEY,
 } from "./ResourceListOptionsContext"
 import { ResourceNameFilterTextField } from "./ResourceNameFilter"
@@ -83,11 +83,11 @@ describe("overview sidebar options", () => {
     const root = mount(
       <MemoryRouter>
         <tiltfileKeyContext.Provider value="test">
-          <ResourceListOptionsContextProvider>
+          <ResourceListOptionsProvider>
             <StarredResourcesContextProvider>
               {TwoResourcesTwoTests()}
             </StarredResourcesContextProvider>
-          </ResourceListOptionsContextProvider>
+          </ResourceListOptionsProvider>
         </tiltfileKeyContext.Provider>
       </MemoryRouter>
     )
@@ -108,11 +108,11 @@ describe("overview sidebar options", () => {
     const root = mount(
       <MemoryRouter>
         <tiltfileKeyContext.Provider value="test">
-          <ResourceListOptionsContextProvider>
+          <ResourceListOptionsProvider>
             <StarredResourcesContextProvider>
               {TwoResourcesTwoTests()}
             </StarredResourcesContextProvider>
-          </ResourceListOptionsContextProvider>
+          </ResourceListOptionsProvider>
         </tiltfileKeyContext.Provider>
       </MemoryRouter>
     )

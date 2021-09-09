@@ -12,11 +12,11 @@ import Features, { FeaturesProvider, Flag } from "./feature"
 import { GroupByLabelView, TILTFILE_LABEL, UNLABELED_LABEL } from "./labels"
 import LogStore from "./LogStore"
 import OverviewTable, {
+  labeledResourcesToTableCells,
   OverviewGroup,
   OverviewGroupName,
   OverviewGroupSummary,
   OverviewTableProps,
-  resourcesToTableCells,
   ResourceTableData,
   ResourceTableHeader,
   ResourceTableHeaderSortTriangle,
@@ -242,7 +242,7 @@ describe("overview table with groups", () => {
   beforeEach(() => {
     view = nResourceWithLabelsView(8)
     wrapper = mount(tableViewWithSettings({ view, labelsEnabled: true }))
-    resources = resourcesToTableCells(
+    resources = labeledResourcesToTableCells(
       view.uiResources,
       view.uiButtons,
       new LogStore()
@@ -381,7 +381,10 @@ describe("overview table with groups", () => {
       // Re-mount the component with the initial groups context values
       wrapper = mount(
         <ResourceGroupsContextProvider initialValuesForTesting={testData}>
-          <TableGroupedByLabels view={view} />
+          <TableGroupedByLabels
+            resources={view.uiResources}
+            buttons={view.uiButtons}
+          />
         </ResourceGroupsContextProvider>
       )
 
