@@ -5,9 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 	"testing"
+	"time"
+	"unicode"
 
 	"github.com/compose-spec/compose-go/loader"
+	"github.com/stretchr/testify/require"
 
 	"github.com/compose-spec/compose-go/types"
 
@@ -62,10 +66,16 @@ func (c *FakeDCClient) Down(ctx context.Context, configPaths []string, stdout, s
 	return nil
 }
 
-func (c *FakeDCClient) StreamLogs(ctx context.Context, configPaths []string, serviceName model.TargetName) (io.ReadCloser, error) {
+func (c *FakeDCClient) StreamLogs(ctx context.Context, _ []string, serviceName model.TargetName) io.ReadCloser {
 	output := c.RunLogOutput[serviceName]
 	reader, writer := io.Pipe()
 	go func() {
+		c.t.Helper()
+
+		// docker-compose always logs an "Attaching to foo, bar" at the start of a log session
+		_, err := writer.Write([]byte(fmt.Sprintf("Attaching to %s\n", serviceName)))
+		require.NoError(c.t, err, "Failed to write to fake Docker Compose logs")
+
 		done := false
 		for !done {
 			select {
@@ -75,13 +85,22 @@ func (c *FakeDCClient) StreamLogs(ctx context.Context, configPaths []string, ser
 				if !ok {
 					done = true
 				} else {
-					_, _ = writer.Write([]byte(s))
+					logLine := fmt.Sprintf("%s %s\n",
+						time.Now().Format(time.RFC3339Nano),
+						strings.TrimRightFunc(s, unicode.IsSpace))
+					_, err = writer.Write([]byte(logLine))
+					require.NoError(c.t, err, "Failed to write to fake Docker Compose logs")
 				}
 			}
 		}
-		_ = writer.Close()
+
+		// we call docker-compose logs with --follow, so it only terminates (normally) when the container exits
+		// and it writes a message with the container exit code
+		_, err = writer.Write([]byte(fmt.Sprintf("%s exited with code 0\n", serviceName)))
+		require.NoError(c.t, err, "Failed to write to fake Docker Compose logs")
+		require.NoError(c.t, writer.Close(), "Failed to close fake Docker Compose logs writer")
 	}()
-	return reader, nil
+	return reader
 }
 
 func (c *FakeDCClient) StreamEvents(ctx context.Context, configPaths []string) (<-chan string, error) {

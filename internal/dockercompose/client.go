@@ -28,7 +28,7 @@ import (
 type DockerComposeClient interface {
 	Up(ctx context.Context, configPaths []string, serviceName model.TargetName, shouldBuild bool, stdout, stderr io.Writer) error
 	Down(ctx context.Context, configPaths []string, stdout, stderr io.Writer) error
-	StreamLogs(ctx context.Context, configPaths []string, serviceName model.TargetName) (io.ReadCloser, error)
+	StreamLogs(ctx context.Context, configPaths []string, serviceName model.TargetName) io.ReadCloser
 	StreamEvents(ctx context.Context, configPaths []string) (<-chan string, error)
 	Project(ctx context.Context, configPaths []string) (*types.Project, error)
 	ContainerID(ctx context.Context, configPaths []string, serviceName model.TargetName) (container.ID, error)
@@ -50,6 +50,8 @@ func NewDockerComposeClient(env docker.LocalEnv) DockerComposeClient {
 
 func (c *cmdDCClient) Up(ctx context.Context, configPaths []string, serviceName model.TargetName, shouldBuild bool, stdout, stderr io.Writer) error {
 	var genArgs []string
+	// TODO(milas): this causes docker-compose to output a truly excessive amount of logging; it might
+	// 	make sense to hide it behind a special environment variable instead or something
 	if logger.Get(ctx).Level().ShouldDisplay(logger.VerboseLvl) {
 		genArgs = []string{"--verbose"}
 	}
@@ -117,37 +119,36 @@ func (c *cmdDCClient) Down(ctx context.Context, configPaths []string, stdout, st
 	return nil
 }
 
-func (c *cmdDCClient) StreamLogs(ctx context.Context, configPaths []string, serviceName model.TargetName) (io.ReadCloser, error) {
-	// TODO(maia): --since time
-	// (may need to implement with `docker log <cID>` instead since `d-c log` doesn't support `--since`
+func (c *cmdDCClient) StreamLogs(ctx context.Context, configPaths []string, serviceName model.TargetName) io.ReadCloser {
 	var args []string
 	for _, config := range configPaths {
 		args = append(args, "-f", config)
 	}
-	args = append(args, "logs", "--no-color", "-f", serviceName.String())
+
+	r, w := io.Pipe()
+
+	// NOTE: we can't practically remove "--no-color" due to the way that Docker Compose formats colorful lines; it
+	// 		 will wrap the entire line (including the \n) with the color codes, so you end up with something like:
+	//			\u001b[36mmyproject_my-container_1 exited with code 0\n\u001b[0m
+	// 		 where the ANSI reset (\u001b[0m) is _AFTER_ the \n, which doesn't play nice with our log segment logic
+	// 		 under some conditions - adding a final \n after stdout is closed would probably be sufficient given the
+	// 		 current pattern of how Compose colorizes stuff, but it's really not worth the headache to find out
+	args = append(args, "logs", "--no-color", "--no-log-prefix", "--timestamps", "--follow", serviceName.String())
 	cmd := c.dcCommand(ctx, args)
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return nil, errors.Wrap(err, "making stdout pipe for `docker-compose logs`")
-	}
+	cmd.Stdout = w
 
 	errBuf := bytes.Buffer{}
 	cmd.Stderr = &errBuf
 
-	err = cmd.Start()
-	if err != nil {
-		return nil, errors.Wrapf(err, "`docker-compose %s`",
-			strings.Join(args, " "))
-	}
-
 	go func() {
-		err = cmd.Wait()
-		if err != nil {
-			logger.Get(ctx).Debugf("cmd `docker-compose %s` exited with error: \"%v\" (stderr: %s)",
-				strings.Join(args, " "), err, errBuf.String())
+		if cmdErr := cmd.Run(); cmdErr != nil {
+			_ = w.CloseWithError(fmt.Errorf("cmd `docker-compose %s` exited with error: \"%v\" (stderr: %s)",
+				strings.Join(args, " "), cmdErr, errBuf.String()))
+		} else {
+			_ = w.Close()
 		}
 	}()
-	return stdout, nil
+	return r
 }
 
 func (c *cmdDCClient) StreamEvents(ctx context.Context, configPaths []string) (<-chan string, error) {
