@@ -171,6 +171,15 @@ message ConfigMap {
   map<string, string> data = 2;
 }
 
+// Specifies a ConfigMap to control a DisableSource
+message ConfigMapDisableSource {
+  // The name of the ConfigMap
+  optional string name = 1;
+
+  // The key where the enable/disable state is stored.
+  optional string key = 2;
+}
+
 // ConfigMapList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 message ConfigMapList {
@@ -278,6 +287,23 @@ message ContainerStateTerminated {
 message ContainerStateWaiting {
   // Reason is a (brief) reason the container is not yet running.
   optional string reason = 1;
+}
+
+// Points at a thing that can control whether something is disabled
+message DisableSource {
+  // This DisableSource is controlled by a ConfigMap
+  optional ConfigMapDisableSource configMap = 2;
+}
+
+message DisableStatus {
+  // Whether this is currently disabled.
+  optional bool disabled = 1;
+
+  // The last time this status was updated.
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.Time lastUpdateTime = 2;
+
+  // The reason this status was updated.
+  optional string reason = 3;
 }
 
 // ExecAction describes a "run in container" action.
@@ -1851,6 +1877,12 @@ message UIResourceStatus {
   //
   // +optional
   optional int32 order = 15;
+
+  // Indicates how to disable this resource.
+  optional DisableSource disableSource = 17;
+
+  // Whether/why/when this status is currently disabled.
+  optional DisableStatus disableStatus = 16;
 }
 
 // UIResourceTargetSpec represents the spec of a build or deploy that a resource summarizes.

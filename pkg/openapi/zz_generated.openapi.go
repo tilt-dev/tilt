@@ -38,6 +38,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdStateWaiting":                 schema_pkg_apis_core_v1alpha1_CmdStateWaiting(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdStatus":                       schema_pkg_apis_core_v1alpha1_CmdStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ConfigMap":                       schema_pkg_apis_core_v1alpha1_ConfigMap(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ConfigMapDisableSource":          schema_pkg_apis_core_v1alpha1_ConfigMapDisableSource(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ConfigMapList":                   schema_pkg_apis_core_v1alpha1_ConfigMapList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Container":                       schema_pkg_apis_core_v1alpha1_Container(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerLogStreamStatus":        schema_pkg_apis_core_v1alpha1_ContainerLogStreamStatus(ref),
@@ -45,6 +46,8 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerStateRunning":           schema_pkg_apis_core_v1alpha1_ContainerStateRunning(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerStateTerminated":        schema_pkg_apis_core_v1alpha1_ContainerStateTerminated(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerStateWaiting":           schema_pkg_apis_core_v1alpha1_ContainerStateWaiting(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource":                   schema_pkg_apis_core_v1alpha1_DisableSource(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableStatus":                   schema_pkg_apis_core_v1alpha1_DisableStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExecAction":                      schema_pkg_apis_core_v1alpha1_ExecAction(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Extension":                       schema_pkg_apis_core_v1alpha1_Extension(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExtensionList":                   schema_pkg_apis_core_v1alpha1_ExtensionList(ref),
@@ -561,6 +564,36 @@ func schema_pkg_apis_core_v1alpha1_ConfigMap(ref common.ReferenceCallback) commo
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_ConfigMapDisableSource(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Specifies a ConfigMap to control a DisableSource",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The name of the ConfigMap",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"key": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The key where the enable/disable state is stored.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"name", "key"},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_ConfigMapList(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -850,6 +883,65 @@ func schema_pkg_apis_core_v1alpha1_ContainerStateWaiting(ref common.ReferenceCal
 				Required: []string{"reason"},
 			},
 		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_DisableSource(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Points at a thing that can control whether something is disabled",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"configMap": {
+						SchemaProps: spec.SchemaProps{
+							Description: "This DisableSource is controlled by a ConfigMap",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ConfigMapDisableSource"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ConfigMapDisableSource"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_DisableStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"disabled": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether this is currently disabled.",
+							Default:     false,
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"lastUpdateTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The last time this status was updated.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"reason": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The reason this status was updated.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"disabled", "lastUpdateTime", "reason"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
 	}
 }
 
@@ -4904,11 +4996,25 @@ func schema_pkg_apis_core_v1alpha1_UIResourceStatus(ref common.ReferenceCallback
 							Format:      "int32",
 						},
 					},
+					"disableSource": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Indicates how to disable this resource.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource"),
+						},
+					},
+					"disableStatus": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether/why/when this status is currently disabled.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableStatus"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildRunning", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildTerminated", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceKubernetes", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLink", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLocal", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceTargetSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableStatus", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildRunning", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildTerminated", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceKubernetes", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLink", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLocal", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceTargetSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
 	}
 }
 

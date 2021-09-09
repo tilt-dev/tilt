@@ -178,6 +178,12 @@ type UIResourceStatus struct {
 	//
 	// +optional
 	Order int32 `json:"order,omitempty" protobuf:"varint,15,opt,name=order"`
+
+	// Indicates how to disable this resource.
+	DisableSource DisableSource `json:"disableSource,omitempty" protobuf:"bytes,17,opt,name=disableSource"`
+
+	// Whether/why/when this status is currently disabled.
+	DisableStatus DisableStatus `json:"disableStatus,omitempty" protobuf:"bytes,16,opt,name=disableStatus"`
 }
 
 // UIResource implements ObjectWithStatusSubResource interface.

@@ -438,6 +438,14 @@ declare namespace Proto {
      * +optional
      */
     order?: number;
+    /**
+     * Indicates how to disable this resource.
+     */
+    disableSource?: v1alpha1DisableSource;
+    /**
+     * Whether/why/when this status is currently disabled.
+     */
+    disableStatus?: v1alpha1DisableStatus;
   }
   export interface v1alpha1UIResourceSpec {}
   export interface v1alpha1UIResourceLocal {
@@ -578,6 +586,30 @@ declare namespace Proto {
     defaultValue?: boolean;
     trueString?: string;
     falseString?: string;
+  }
+  export interface v1alpha1DisableStatus {
+    /**
+     * Whether this is currently disabled.
+     */
+    disabled?: boolean;
+    /**
+     * The last time this status was updated.
+     */
+    lastUpdateTime?: string;
+    /**
+     * The reason this status was updated.
+     */
+    reason?: string;
+  }
+  export interface v1alpha1DisableSource {
+    configMap?: v1alpha1ConfigMapDisableSource;
+  }
+  export interface v1alpha1ConfigMapDisableSource {
+    name?: string;
+    /**
+     * The key where the enable/disable state is stored.
+     */
+    key?: string;
   }
   export interface corev1alpha1VersionSettings {
     checkUpdates?: boolean;
