@@ -160,12 +160,7 @@ type dockerComposeLogWatch struct {
 }
 
 func (w *dockerComposeLogWatch) Done() bool {
-	select {
-	case <-w.ctx.Done():
-		return true
-	default:
-		return false
-	}
+	return w.ctx.Err() != nil
 }
 
 type DockerComposeLogActionWriter struct {
