@@ -267,7 +267,7 @@ func (r *Reconciler) run(ctx context.Context, nn types.NamespacedName, tf *v1alp
 		logger.Get(ctx).Infof("Tiltfile args changed to: %v", userConfigState.Args)
 	}
 
-	tlr := r.tfl.Load(ctx, entry.TiltfilePath, userConfigState)
+	tlr := r.tfl.Load(ctx, tf)
 
 	// If the user is executing an empty main tiltfile, that probably means
 	// they need a tutorial. For now, we link to that tutorial, but a more interactive

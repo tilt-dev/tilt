@@ -19,9 +19,12 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/container"
+	ctrltiltfile "github.com/tilt-dev/tilt/internal/controllers/apis/tiltfile"
+	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/feature"
@@ -1257,7 +1260,7 @@ docker_build('gcr.io/bar', 'bar')
 k8s_yaml('bar.yaml')
 `)
 
-	tlr := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), model.NewUserConfigState([]string{"baz"}))
+	tlr := f.newTiltfileLoader().Load(f.ctx, ctrltiltfile.MainTiltfile(f.JoinPath("Tiltfile"), []string{"baz"}))
 	err := tlr.Error
 	if assert.Error(t, err) {
 		assert.Equal(t, `You specified some resources that could not be found: "baz"
@@ -5879,6 +5882,7 @@ type fixture struct {
 	k8sContext k8s.KubeContext
 	k8sEnv     k8s.Env
 	webHost    model.WebHost
+	ctrlclient ctrlclient.Client
 
 	ta *tiltanalytics.TiltAnalytics
 	an *analytics.MemoryAnalytics
@@ -5910,6 +5914,7 @@ func newFixture(t *testing.T) *fixture {
 	f.Chdir()
 
 	kCli := k8s.NewFakeK8sClient(t)
+	ctrlclient := fake.NewFakeTiltClient()
 
 	r := &fixture{
 		ctx:            ctx,
@@ -5921,6 +5926,7 @@ func newFixture(t *testing.T) *fixture {
 		kCli:           kCli,
 		k8sContext:     "fake-context",
 		k8sEnv:         k8s.EnvDockerDesktop,
+		ctrlclient:     ctrlclient,
 	}
 
 	// Collect the warnings
@@ -6056,7 +6062,7 @@ func (f *fixture) load(args ...string) {
 // Warnings should be asserted later with assertWarnings
 func (f *fixture) loadAllowWarnings(args ...string) {
 	f.t.Helper()
-	tlr := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), model.NewUserConfigState(args))
+	tlr := f.newTiltfileLoader().Load(f.ctx, ctrltiltfile.MainTiltfile(f.JoinPath("Tiltfile"), args))
 	err := tlr.Error
 	if err != nil {
 		f.t.Fatal(err)
@@ -6084,7 +6090,7 @@ func (f *fixture) loadAssertWarnings(warnings ...string) {
 }
 
 func (f *fixture) loadErrString(msgs ...string) {
-	tlr := f.newTiltfileLoader().Load(f.ctx, f.JoinPath("Tiltfile"), model.UserConfigState{})
+	tlr := f.newTiltfileLoader().Load(f.ctx, ctrltiltfile.MainTiltfile(f.JoinPath("Tiltfile"), nil))
 	err := tlr.Error
 
 	if err == nil {

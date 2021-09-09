@@ -35,6 +35,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/cloud"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers"
+	apitiltfile "github.com/tilt-dev/tilt/internal/controllers/apis/tiltfile"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
 	"github.com/tilt-dev/tilt/internal/controllers/core/extension"
 	"github.com/tilt-dev/tilt/internal/controllers/core/extensionrepo"
@@ -4526,7 +4527,7 @@ func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
 	f.dcc.WorkDir = f.Path()
 	f.dcc.ConfigOutput = string(dcpc)
 
-	tlr := f.realTFL.Load(f.ctx, f.JoinPath("Tiltfile"), model.UserConfigState{})
+	tlr := f.realTFL.Load(f.ctx, apitiltfile.MainTiltfile(f.JoinPath("Tiltfile"), nil))
 	if tlr.Error != nil {
 		f.T().Fatal(tlr.Error)
 	}

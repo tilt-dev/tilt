@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
+	ctrltiltfile "github.com/tilt-dev/tilt/internal/controllers/apis/tiltfile"
 	"github.com/tilt-dev/tilt/internal/engine"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -68,7 +69,7 @@ func (c *downCmd) run(ctx context.Context, args []string) error {
 }
 
 func (c *downCmd) down(ctx context.Context, downDeps DownDeps, args []string) error {
-	tlr := downDeps.tfl.Load(ctx, c.fileName, model.NewUserConfigState(args))
+	tlr := downDeps.tfl.Load(ctx, ctrltiltfile.MainTiltfile(c.fileName, args))
 	err := tlr.Error
 	if err != nil {
 		return err
