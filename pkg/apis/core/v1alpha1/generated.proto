@@ -289,6 +289,18 @@ message ContainerStateWaiting {
   optional string reason = 1;
 }
 
+// Aggregated disable status of objects that belong to a resource.
+message DisableResourceStatus {
+  // How many of the resource's objects are enabled.
+  optional int32 enabledCount = 1;
+
+  // How many of the resource's objects are disabled.
+  optional int32 disabledCount = 2;
+
+  // All unique sources that control the resource's objects' disable status.
+  repeated DisableSource sources = 3;
+}
+
 // Points at a thing that can control whether something is disabled
 message DisableSource {
   // This DisableSource is controlled by a ConfigMap
@@ -1878,11 +1890,8 @@ message UIResourceStatus {
   // +optional
   optional int32 order = 15;
 
-  // Indicates how to disable this resource.
-  optional DisableSource disableSource = 17;
-
-  // Whether/why/when this status is currently disabled.
-  optional DisableStatus disableStatus = 16;
+  // Information about the resource's objects' disabled status.
+  optional DisableResourceStatus disableStatus = 16;
 }
 
 // UIResourceTargetSpec represents the spec of a build or deploy that a resource summarizes.

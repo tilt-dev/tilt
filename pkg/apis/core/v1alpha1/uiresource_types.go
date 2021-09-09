@@ -107,6 +107,18 @@ func (in *UIResourceList) GetListMeta() *metav1.ListMeta {
 	return &in.ListMeta
 }
 
+// Aggregated disable status of objects that belong to a resource.
+type DisableResourceStatus struct {
+	// How many of the resource's objects are enabled.
+	EnabledCount int32 `json:"enabledCount" protobuf:"varint,1,opt,name=enabledCount"`
+
+	// How many of the resource's objects are disabled.
+	DisabledCount int32 `json:"disabledCount" protobuf:"varint,2,opt,name=disabledCount"`
+
+	// All unique sources that control the resource's objects' disable status.
+	Sources []DisableSource `json:"sources" protobuf:"bytes,3,rep,name=sources"`
+}
+
 // UIResourceStatus defines the observed state of UIResource
 type UIResourceStatus struct {
 	// The last time this resource was deployed.
@@ -179,11 +191,8 @@ type UIResourceStatus struct {
 	// +optional
 	Order int32 `json:"order,omitempty" protobuf:"varint,15,opt,name=order"`
 
-	// Indicates how to disable this resource.
-	DisableSource DisableSource `json:"disableSource,omitempty" protobuf:"bytes,17,opt,name=disableSource"`
-
-	// Whether/why/when this status is currently disabled.
-	DisableStatus DisableStatus `json:"disableStatus,omitempty" protobuf:"bytes,16,opt,name=disableStatus"`
+	// Information about the resource's objects' disabled status.
+	DisableStatus DisableResourceStatus `json:"disableStatus,omitempty" protobuf:"bytes,16,opt,name=disableStatus"`
 }
 
 // UIResource implements ObjectWithStatusSubResource interface.

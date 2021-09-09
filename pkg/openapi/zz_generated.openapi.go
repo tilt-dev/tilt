@@ -46,6 +46,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerStateRunning":           schema_pkg_apis_core_v1alpha1_ContainerStateRunning(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerStateTerminated":        schema_pkg_apis_core_v1alpha1_ContainerStateTerminated(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerStateWaiting":           schema_pkg_apis_core_v1alpha1_ContainerStateWaiting(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableResourceStatus":           schema_pkg_apis_core_v1alpha1_DisableResourceStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource":                   schema_pkg_apis_core_v1alpha1_DisableSource(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableStatus":                   schema_pkg_apis_core_v1alpha1_DisableStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExecAction":                      schema_pkg_apis_core_v1alpha1_ExecAction(ref),
@@ -883,6 +884,52 @@ func schema_pkg_apis_core_v1alpha1_ContainerStateWaiting(ref common.ReferenceCal
 				Required: []string{"reason"},
 			},
 		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_DisableResourceStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Aggregated disable status of objects that belong to a resource.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"enabledCount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "How many of the resource's objects are enabled.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"disabledCount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "How many of the resource's objects are disabled.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"sources": {
+						SchemaProps: spec.SchemaProps{
+							Description: "All unique sources that control the resource's objects' disable status.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"enabledCount", "disabledCount", "sources"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource"},
 	}
 }
 
@@ -4996,25 +5043,18 @@ func schema_pkg_apis_core_v1alpha1_UIResourceStatus(ref common.ReferenceCallback
 							Format:      "int32",
 						},
 					},
-					"disableSource": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Indicates how to disable this resource.",
-							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource"),
-						},
-					},
 					"disableStatus": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Whether/why/when this status is currently disabled.",
+							Description: "Information about the resource's objects' disabled status.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableStatus"),
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableResourceStatus"),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableStatus", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildRunning", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildTerminated", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceKubernetes", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLink", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLocal", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceTargetSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableResourceStatus", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildRunning", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildTerminated", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceKubernetes", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLink", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLocal", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceTargetSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
 	}
 }
 

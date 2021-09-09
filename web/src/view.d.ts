@@ -439,13 +439,9 @@ declare namespace Proto {
      */
     order?: number;
     /**
-     * Indicates how to disable this resource.
+     * Information about the resource's objects' disabled status.
      */
-    disableSource?: v1alpha1DisableSource;
-    /**
-     * Whether/why/when this status is currently disabled.
-     */
-    disableStatus?: v1alpha1DisableStatus;
+    disableStatus?: v1alpha1DisableResourceStatus;
   }
   export interface v1alpha1UIResourceSpec {}
   export interface v1alpha1UIResourceLocal {
@@ -587,22 +583,22 @@ declare namespace Proto {
     trueString?: string;
     falseString?: string;
   }
-  export interface v1alpha1DisableStatus {
-    /**
-     * Whether this is currently disabled.
-     */
-    disabled?: boolean;
-    /**
-     * The last time this status was updated.
-     */
-    lastUpdateTime?: string;
-    /**
-     * The reason this status was updated.
-     */
-    reason?: string;
-  }
   export interface v1alpha1DisableSource {
     configMap?: v1alpha1ConfigMapDisableSource;
+  }
+  export interface v1alpha1DisableResourceStatus {
+    /**
+     * How many of the resource's objects are enabled.
+     */
+    enabledCount?: number;
+    /**
+     * How many of the resource's objects are disabled.
+     */
+    disabledCount?: number;
+    /**
+     * All unique sources that control the resource's objects' disable status.
+     */
+    sources?: v1alpha1DisableSource[];
   }
   export interface v1alpha1ConfigMapDisableSource {
     name?: string;
