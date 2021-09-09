@@ -186,6 +186,23 @@ func ProvideTiltServerOptionsForTesting(ctx context.Context) (*APIServerConfig, 
 	return config, nil
 }
 
+// Generate the server config, removing options that are not needed for headless mode
+// (where we don't open up any webserver or apiserver).
+func ProvideTiltServerOptionsForHeadless(ctx context.Context, memconn apiserver.ConnProvider, version model.TiltBuild) (*APIServerConfig, error) {
+	config, err := ProvideTiltServerOptions(ctx,
+		version, memconn, "corgi-charge", testdata.CertKey(), 0)
+	if err != nil {
+		return nil, err
+	}
+
+	config.GenericConfig.LoopbackClientConfig.TLSClientConfig = rest.TLSClientConfig{}
+	config.GenericConfig.LoopbackClientConfig.Host =
+		strings.Replace(config.GenericConfig.LoopbackClientConfig.Host, "https://", "http://", 1)
+	config.ExtraConfig.ServingInfo.Cert = nil
+
+	return config, nil
+}
+
 // Provide a dynamic API client for the Tilt server.
 func ProvideTiltDynamic(config *APIServerConfig) (DynamicInterface, error) {
 	return dynamic.NewForConfig(config.GenericConfig.LoopbackClientConfig)

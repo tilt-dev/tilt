@@ -34,7 +34,10 @@ import (
 const apiServerProxyPrefix = "/proxy"
 
 type HeadsUpServerController struct {
-	configAccess    clientcmd.ConfigAccess
+	// configAccess may be nil in cases where we don't
+	// want to persist the config to disk.
+	configAccess clientcmd.ConfigAccess
+
 	apiServerName   model.APIServerName
 	webListener     WebListener
 	hudServer       *HeadsUpServer
@@ -194,6 +197,10 @@ func (s *HeadsUpServerController) setUpHelper(ctx context.Context, st store.RSto
 //
 // Usually shows up as ~/.windmill/config or ~/.tilt-dev/config.
 func (s *HeadsUpServerController) addToAPIServerConfig() error {
+	if s.configAccess == nil {
+		return nil
+	}
+
 	newConfig, err := s.configAccess.GetStartingConfig()
 	if err != nil {
 		return err
@@ -226,6 +233,10 @@ func (s *HeadsUpServerController) addToAPIServerConfig() error {
 //
 // Usually shows up as ~/.windmill/config or ~/.tilt-dev/config.
 func (s *HeadsUpServerController) removeFromAPIServerConfig() error {
+	if s.configAccess == nil {
+		return nil
+	}
+
 	newConfig, err := s.configAccess.GetStartingConfig()
 	if err != nil {
 		return err

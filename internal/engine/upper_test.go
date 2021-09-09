@@ -26,7 +26,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tilt-dev/wmclient/pkg/analytics"
-	"github.com/tilt-dev/wmclient/pkg/dirs"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -3843,7 +3842,6 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		}
 	}
 
-	dir := dirs.NewTiltDevDirAt(f.Path())
 	base := xdg.FakeBase{Dir: f.Path()}
 	log := bufsync.NewThreadSafeBuffer()
 	to := tiltanalytics.NewFakeOpter(analytics.OptIn)
@@ -3892,9 +3890,8 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	require.NoError(t, err)
 	webListener, err := server.ProvideWebListener("localhost", 0)
 	require.NoError(t, err)
-	configAccess := server.ProvideConfigAccess(dir)
 	hudsc := server.ProvideHeadsUpServerController(
-		configAccess, "tilt-default", webListener, serverOptions,
+		nil, "tilt-default", webListener, serverOptions,
 		&server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
 	ns := k8s.Namespace("default")
 	of := k8s.ProvideOwnerFetcher(ctx, b.kClient)
