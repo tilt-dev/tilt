@@ -38,7 +38,14 @@ const ApiButtonFormFooter = styled.div`
 `
 const ApiIconRoot = styled.div``
 export const ApiButtonLabel = styled.div``
-export const ApiButtonRoot = styled(ButtonGroup)`
+// MUI makes it tricky to get cursor: not-allowed on disabled buttons
+// https://material-ui.com/components/buttons/#cursor-not-allowed
+export const ApiButtonRoot = styled(ButtonGroup)<{ disabled?: boolean }>`
+  ${(props) =>
+    props.disabled &&
+    `
+    cursor: not-allowed;
+  `}
   ${ApiIconRoot} + ${ApiButtonLabel} {
     margin-left: ${SizeUnit(0.25)};
   }
@@ -151,12 +158,19 @@ type ApiButtonWithOptionsProps = {
   setInputValue: (name: string, value: any) => void
   getInputValue: (name: string) => any | undefined
   className?: string
-  buttonProps: ButtonProps
 }
 
-function ApiButtonWithOptions(props: ApiButtonWithOptionsProps) {
+function ApiButtonWithOptions(props: ApiButtonWithOptionsProps & ButtonProps) {
   const [open, setOpen] = useState(false)
   const anchorRef = useRef(null)
+
+  const {
+    submit,
+    uiButton,
+    setInputValue,
+    getInputValue,
+    ...buttonProps
+  } = props
 
   return (
     <>
@@ -164,6 +178,7 @@ function ApiButtonWithOptions(props: ApiButtonWithOptionsProps) {
         ref={anchorRef}
         className={props.className}
         disableRipple={true}
+        disabled={buttonProps.disabled}
       >
         {props.submit}
         <ApiButtonInputsToggleButton
@@ -173,7 +188,7 @@ function ApiButtonWithOptions(props: ApiButtonWithOptionsProps) {
           }}
           analyticsName="ui.web.uiButton.inputMenu"
           aria-label={`Open ${props.uiButton.spec?.text} options`}
-          {...props.buttonProps}
+          {...buttonProps}
         >
           <ArrowDropDownIcon />
         </ApiButtonInputsToggleButton>
@@ -310,12 +325,14 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
     )
   }
 
+  const disabled = loading || uiButton.spec?.disabled
+
   // button text is not included in analytics name since that can be user data
   const button = (
     <InstrumentedButton
       analyticsName={"ui.web.uibutton"}
       onClick={onClick}
-      disabled={loading || uiButton.spec?.disabled}
+      disabled={disabled}
       aria-label={`Trigger ${uiButton.spec?.text}`}
       {...buttonProps}
     >
@@ -345,8 +362,13 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
         uiButton={uiButton}
         setInputValue={setInputValue}
         getInputValue={getInputValue}
-        buttonProps={buttonProps}
         aria-label={uiButton.spec?.text}
+        // use-case-wise, it'd probably be better to leave the options button enabled
+        // regardless of the submit button's state.
+        // However, that's currently a low-impact difference, and this is a really
+        // cheap way to ensure the styling matches.
+        disabled={disabled}
+        {...buttonProps}
       />
     )
   } else {
@@ -355,6 +377,7 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
         className={className}
         disableRipple={true}
         aria-label={uiButton.spec?.text}
+        disabled={disabled}
       >
         {button}
       </ApiButtonRoot>

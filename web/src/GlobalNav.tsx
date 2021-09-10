@@ -62,9 +62,8 @@ export const MenuButtonMixin = `
     fill: ${Color.grayDarker};
   }
 
-  &.is-disabled {
-    pointer-events: none;
-    cursor: default;
+  &:disabled {
+    opacity: 0.33;
   }
 `
 export const MenuButton = styled.button`
