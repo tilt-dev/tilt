@@ -22,10 +22,36 @@ import (
 	"os/exec"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 )
 
 const doubleQuoteSpecialChars = "\\\n\r\"!$`"
+
+// LoadWithLookupFn will read your env file(s), lookup the inherited variables with `lookupFn`
+//
+// and load them into ENV for this process.
+//
+// Call this function as close as possible to the start of your program (ideally in main)
+//
+// If you call Load without any args it will default to loading .env in the current path
+//
+// You can otherwise tell it which files to load (there can be more than one) like
+//
+//		godotenv.Load("fileone", "filetwo")
+//
+// It's important to note that it WILL NOT OVERRIDE an env variable that already exists - consider the .env file to set dev vars or sensible defaults
+func LoadWithLookupFn(lookupFn func(string) (string, bool), filenames ...string) (err error) {
+	filenames = filenamesOrDefault(filenames)
+
+	for _, filename := range filenames {
+		err = loadFile(filename, false, lookupFn)
+		if err != nil {
+			return // return early on a spazout
+		}
+	}
+	return
+}
 
 // Load will read your env file(s) and load them into ENV for this process.
 //
@@ -39,15 +65,9 @@ const doubleQuoteSpecialChars = "\\\n\r\"!$`"
 //
 // It's important to note that it WILL NOT OVERRIDE an env variable that already exists - consider the .env file to set dev vars or sensible defaults
 func Load(filenames ...string) (err error) {
-	filenames = filenamesOrDefault(filenames)
-
-	for _, filename := range filenames {
-		err = loadFile(filename, false)
-		if err != nil {
-			return // return early on a spazout
-		}
-	}
-	return
+	return LoadWithLookupFn(func(string) (string, bool){
+		return "", true
+	}, filenames...)
 }
 
 // Overload will read your env file(s) and load them into ENV for this process.
@@ -65,7 +85,9 @@ func Overload(filenames ...string) (err error) {
 	filenames = filenamesOrDefault(filenames)
 
 	for _, filename := range filenames {
-		err = loadFile(filename, true)
+		err = loadFile(filename, true, func(string) (string, bool) {
+			return "", true
+		})
 		if err != nil {
 			return // return early on a spazout
 		}
@@ -80,7 +102,7 @@ func Read(filenames ...string) (envMap map[string]string, err error) {
 	envMap = make(map[string]string)
 
 	for _, filename := range filenames {
-		individualEnvMap, individualErr := readFile(filename)
+		individualEnvMap, individualErr := readFile(filename, noLookupFn)
 
 		if individualErr != nil {
 			err = individualErr
@@ -95,9 +117,31 @@ func Read(filenames ...string) (envMap map[string]string, err error) {
 	return
 }
 
-// Parse reads an env file from io.Reader, returning a map of keys and values.
-func Parse(r io.Reader) (envMap map[string]string, err error) {
+// ReadWithLookup all env (with same file loading semantics as Load) but return values as
+// a map rather than automatically writing values into env
+func ReadWithLookup(lookupFn func(string)(string, bool), filenames ...string) (envMap map[string]string, err error) {
+	filenames = filenamesOrDefault(filenames)
 	envMap = make(map[string]string)
+
+	for _, filename := range filenames {
+		individualEnvMap, individualErr := readFile(filename, lookupFn)
+
+		if individualErr != nil {
+			err = individualErr
+			return // return early on a spazout
+		}
+
+		for key, value := range individualEnvMap {
+			envMap[key] = value
+		}
+	}
+
+	return
+}
+
+// ParseWithLookup reads an env file from io.Reader resolving variables with lookupFn, returning a map of keys and values.
+func ParseWithLookup(r io.Reader, lookupFn func(string)(string, bool)) (map[string]string, error) {
+	envMap := make(map[string]string)
 
 	var lines []string
 	scanner := bufio.NewScanner(r)
@@ -105,22 +149,29 @@ func Parse(r io.Reader) (envMap map[string]string, err error) {
 		lines = append(lines, scanner.Text())
 	}
 
-	if err = scanner.Err(); err != nil {
-		return
+	if err := scanner.Err(); err != nil {
+		return envMap, err
 	}
 
 	for _, fullLine := range lines {
 		if !isIgnoredLine(fullLine) {
 			var key, value string
-			key, value, err = parseLine(fullLine, envMap)
-
+			key, value, err := parseLine(fullLine, envMap, lookupFn)
 			if err != nil {
-				return
+				return envMap, err
+			}
+			if key == "" {
+				continue
 			}
 			envMap[key] = value
 		}
 	}
-	return
+	return envMap, nil
+}
+
+// Parse reads an env file from io.Reader, returning a map of keys and values.
+func Parse(r io.Reader) (map[string]string, error) {
+	return ParseWithLookup(r, noLookupFn)
 }
 
 //Unmarshal reads an env file from a string, returning a map of keys and values.
@@ -147,15 +198,20 @@ func Exec(filenames []string, cmd string, cmdArgs []string) error {
 
 // Write serializes the given environment and writes it to a file
 func Write(envMap map[string]string, filename string) error {
-	content, error := Marshal(envMap)
-	if error != nil {
-		return error
+	content, err := Marshal(envMap)
+	if err != nil {
+		return err
 	}
-	file, error := os.Create(filename)
-	if error != nil {
-		return error
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
 	}
-	_, err := file.WriteString(content)
+	defer file.Close()
+	_, err = file.WriteString(content + "\n")
+	if err != nil {
+		return err
+	}
+	file.Sync()
 	return err
 }
 
@@ -164,7 +220,11 @@ func Write(envMap map[string]string, filename string) error {
 func Marshal(envMap map[string]string) (string, error) {
 	lines := make([]string, 0, len(envMap))
 	for k, v := range envMap {
-		lines = append(lines, fmt.Sprintf(`%s="%s"`, k, doubleQuoteEscape(v)))
+		if d, err := strconv.Atoi(v); err == nil {
+			lines = append(lines, fmt.Sprintf(`%s=%d`, k, d))
+		} else {
+			lines = append(lines, fmt.Sprintf(`%s="%s"`, k, doubleQuoteEscape(v)))
+		}
 	}
 	sort.Strings(lines)
 	return strings.Join(lines, "\n"), nil
@@ -177,8 +237,8 @@ func filenamesOrDefault(filenames []string) []string {
 	return filenames
 }
 
-func loadFile(filename string, overload bool) error {
-	envMap, err := readFile(filename)
+func loadFile(filename string, overload bool, lookupFn func(string)(string, bool)) error {
+	envMap, err := readFile(filename, lookupFn)
 	if err != nil {
 		return err
 	}
@@ -199,17 +259,19 @@ func loadFile(filename string, overload bool) error {
 	return nil
 }
 
-func readFile(filename string) (envMap map[string]string, err error) {
+func readFile(filename string, lookupFn func(string)(string, bool)) (envMap map[string]string, err error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		return
 	}
 	defer file.Close()
 
-	return Parse(file)
+	return ParseWithLookup(file, lookupFn)
 }
 
-func parseLine(line string, envMap map[string]string) (key string, value string, err error) {
+var exportRegex = regexp.MustCompile(`^\s*(?:export\s+)?(.*?)\s*$`)
+
+func parseLine(line string, envMap map[string]string, lookupFn func(string)(string, bool)) (key string, value string, err error) {
 	if len(line) == 0 {
 		err = errors.New("zero length string")
 		return
@@ -246,22 +308,50 @@ func parseLine(line string, envMap map[string]string) (key string, value string,
 		splitString = strings.SplitN(line, ":", 2)
 	}
 
+	// Parse the key
+	key = strings.TrimSpace(strings.TrimPrefix(splitString[0], "export "))
+	key = exportRegex.ReplaceAllString(key, "$1")
+	if err = validateVariableName(key); err != nil {
+		return
+	}
+
+	// Environment inherited variable
+	if firstEquals < 0 && firstColon < 0 {
+		value = ""
+		v, ok := lookupFn(strings.TrimSpace(key))
+		if ok {
+			value = v
+		}
+		return
+	}
+
 	if len(splitString) != 2 {
 		err = errors.New("Can't separate key from value")
 		return
 	}
 
-	// Parse the key
-	key = splitString[0]
-	if strings.HasPrefix(key, "export") {
-		key = strings.TrimPrefix(key, "export")
-	}
-	key = strings.Trim(key, " ")
-
 	// Parse the value
 	value = parseValue(splitString[1], envMap)
 	return
 }
+
+func validateVariableName(key string) error {
+	key = strings.TrimSpace(strings.TrimPrefix(key, "export "))
+	if !variableNameRegex.MatchString(key) {
+		return fmt.Errorf("invalid variable name %q", key)
+	}
+	return nil
+}
+
+var (
+	singleQuotesRegex  = regexp.MustCompile(`\A'(.*)'\z`)
+	doubleQuotesRegex  = regexp.MustCompile(`\A"(.*)"\z`)
+	escapeRegex        = regexp.MustCompile(`\\.`)
+	unescapeCharsRegex = regexp.MustCompile(`\\([^$])`)
+	variableNameRegex  = regexp.MustCompile(`^[_\\.a-zA-Z0-9]+$`)
+
+	noLookupFn = func(string)(string, bool) {return "", true}
+)
 
 func parseValue(value string, envMap map[string]string) string {
 
@@ -270,11 +360,9 @@ func parseValue(value string, envMap map[string]string) string {
 
 	// check if we've got quoted values or possible escapes
 	if len(value) > 1 {
-		rs := regexp.MustCompile(`\A'(.*)'\z`)
-		singleQuotes := rs.FindStringSubmatch(value)
+		singleQuotes := singleQuotesRegex.FindStringSubmatch(value)
 
-		rd := regexp.MustCompile(`\A"(.*)"\z`)
-		doubleQuotes := rd.FindStringSubmatch(value)
+		doubleQuotes := doubleQuotesRegex.FindStringSubmatch(value)
 
 		if singleQuotes != nil || doubleQuotes != nil {
 			// pull the quotes off the edges
@@ -283,7 +371,6 @@ func parseValue(value string, envMap map[string]string) string {
 
 		if doubleQuotes != nil {
 			// expand newlines
-			escapeRegex := regexp.MustCompile(`\\.`)
 			value = escapeRegex.ReplaceAllStringFunc(value, func(match string) string {
 				c := strings.TrimPrefix(match, `\`)
 				switch c {
@@ -296,8 +383,7 @@ func parseValue(value string, envMap map[string]string) string {
 				}
 			})
 			// unescape characters
-			e := regexp.MustCompile(`\\([^$])`)
-			value = e.ReplaceAllString(value, "$1")
+			value = unescapeCharsRegex.ReplaceAllString(value, "$1")
 		}
 
 		if singleQuotes == nil {
@@ -308,11 +394,11 @@ func parseValue(value string, envMap map[string]string) string {
 	return value
 }
 
-func expandVariables(v string, m map[string]string) string {
-	r := regexp.MustCompile(`(\\)?(\$)(\()?\{?([A-Z0-9_]+)?\}?`)
+var expandVarRegex = regexp.MustCompile(`(\\)?(\$)(\()?\{?([A-Z0-9_]+)?\}?`)
 
-	return r.ReplaceAllStringFunc(v, func(s string) string {
-		submatch := r.FindStringSubmatch(s)
+func expandVariables(v string, m map[string]string) string {
+	return expandVarRegex.ReplaceAllStringFunc(v, func(s string) string {
+		submatch := expandVarRegex.FindStringSubmatch(s)
 
 		if submatch == nil {
 			return s
@@ -327,7 +413,7 @@ func expandVariables(v string, m map[string]string) string {
 }
 
 func isIgnoredLine(line string) bool {
-	trimmedLine := strings.Trim(line, " \n\t")
+	trimmedLine := strings.TrimSpace(line)
 	return len(trimmedLine) == 0 || strings.HasPrefix(trimmedLine, "#")
 }
 

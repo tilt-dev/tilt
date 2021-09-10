@@ -145,6 +145,8 @@ func (c *FakeDCClient) Project(_ context.Context, _ []string) (*types.Project, e
 				Content: []byte(c.ConfigOutput),
 			},
 		},
+	}, func(options *loader.Options) {
+		options.ResolvePaths = true
 	})
 }
 

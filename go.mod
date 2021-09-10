@@ -13,7 +13,7 @@ require (
 	github.com/bugsnag/panicwrap v1.2.0 // indirect
 	github.com/chai2010/gettext-go v0.0.0-20170215093142-bf70f2a70fb1 // indirect
 	github.com/cloudflare/cfssl v1.4.1 // indirect
-	github.com/compose-spec/compose-go v0.0.0-20210716132856-efad24e892ce
+	github.com/compose-spec/compose-go v0.0.0-20210910070419-813d4ccb40f8
 	github.com/containerd/continuity v0.0.0-20201208142359-180525291bb7
 	github.com/d4l3k/messagediff v1.2.1 // indirect
 	github.com/davecgh/go-spew v1.1.1
@@ -85,7 +85,7 @@ require (
 	gopkg.in/fatih/pool.v2 v2.0.0 // indirect
 	gopkg.in/gorethink/gorethink.v3 v3.0.5 // indirect
 	gopkg.in/yaml.v2 v2.4.0
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	helm.sh/helm/v3 v3.6.2
 	k8s.io/api v0.21.2
 	k8s.io/apimachinery v0.21.2
