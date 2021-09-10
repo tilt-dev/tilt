@@ -27,9 +27,9 @@ import (
 	"github.com/compose-spec/compose-go/errdefs"
 	"github.com/compose-spec/compose-go/loader"
 	"github.com/compose-spec/compose-go/types"
-	"github.com/joho/godotenv"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"github.com/ulyssessouza/godotenv"
 )
 
 // ProjectOptions groups the command line options recommended for a Compose implementation
@@ -154,6 +154,14 @@ func WithDiscardEnvFile(o *ProjectOptions) error {
 	return nil
 }
 
+// WithLoadOptions provides a hook to control how compose files are loaded
+func WithLoadOptions(loadOptions ...func(*loader.Options)) ProjectOptionsFn {
+	return func(o *ProjectOptions) error {
+		o.loadOptions = append(o.loadOptions, loadOptions...)
+		return nil
+	}
+}
+
 // WithOsEnv imports environment variables from OS
 func WithOsEnv(o *ProjectOptions) error {
 	for k, v := range getAsEqualsMap(os.Environ()) {
@@ -188,6 +196,9 @@ func WithDotEnv(o *ProjectOptions) error {
 
 	s, err := os.Stat(dotEnvFile)
 	if os.IsNotExist(err) {
+		if o.EnvFile != "" {
+			return errors.Errorf("Couldn't find env file: %s", o.EnvFile)
+		}
 		return nil
 	}
 	if err != nil {
@@ -195,7 +206,9 @@ func WithDotEnv(o *ProjectOptions) error {
 	}
 
 	if s.IsDir() {
-		return nil
+		if o.EnvFile != "" {
+			return errors.Errorf("%s is a directory", dotEnvFile)
+		}
 	}
 
 	file, err := os.Open(dotEnvFile)
@@ -204,11 +217,22 @@ func WithDotEnv(o *ProjectOptions) error {
 	}
 	defer file.Close()
 
-	env, err := godotenv.Parse(file)
+	notInEnvSet := make(map[string]interface{})
+	env, err := godotenv.ParseWithLookup(file, func(k string) (string, bool) {
+		v, ok := os.LookupEnv(k)
+		if !ok {
+			notInEnvSet[k] = nil
+			return "", true
+		}
+		return v, true
+	})
 	if err != nil {
 		return err
 	}
 	for k, v := range env {
+		if _, ok := notInEnvSet[k]; ok {
+			continue
+		}
 		o.Environment[k] = v
 	}
 	return nil
@@ -219,6 +243,16 @@ func WithInterpolation(interpolation bool) ProjectOptionsFn {
 	return func(o *ProjectOptions) error {
 		o.loadOptions = append(o.loadOptions, func(options *loader.Options) {
 			options.SkipInterpolation = !interpolation
+		})
+		return nil
+	}
+}
+
+// WithResolvedPaths set ProjectOptions to enable paths resolution
+func WithResolvedPaths(resolve bool) ProjectOptionsFn {
+	return func(o *ProjectOptions) error {
+		o.loadOptions = append(o.loadOptions, func(options *loader.Options) {
+			options.ResolvePaths = resolve
 		})
 		return nil
 	}
@@ -298,8 +332,7 @@ func ProjectFromOptions(options *ProjectOptions) (*types.Project, error) {
 		} else if nameFromEnv, ok := options.Environment[ComposeProjectName]; ok && nameFromEnv != "" {
 			opts.Name = nameFromEnv
 		} else {
-			opts.Name = regexp.MustCompile(`[^-_a-z0-9]+`).
-				ReplaceAllString(strings.ToLower(filepath.Base(absWorkingDir)), "")
+			opts.Name = regexp.MustCompile(`(?m)[a-z]+[-_a-z0-9]*`).FindString(strings.ToLower(filepath.Base(absWorkingDir)))
 		}
 		opts.Name = strings.ToLower(opts.Name)
 	}

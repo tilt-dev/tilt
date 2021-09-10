@@ -199,7 +199,6 @@ func (c *cmdDCClient) Project(ctx context.Context, configPaths []string) (*types
 	// 	if it fails, attempt to fallback to using the CLI to resolve the YAML and then parse
 	// 	it with compose-go
 	// 	see https://github.com/tilt-dev/tilt/issues/4795
-	//var fallbackErr error
 	proj, err = c.loadProjectCLI(ctx, configPaths)
 	if err != nil {
 		return nil, err
@@ -217,7 +216,9 @@ func (c *cmdDCClient) ContainerID(ctx context.Context, configPaths []string, ser
 }
 
 func (c *cmdDCClient) loadProject(configPaths []string) (*types.Project, error) {
-	opts, err := compose.NewProjectOptions(configPaths, compose.WithOsEnv)
+	// NOTE: take care to keep relevant options in sync with FakeDCClient::Project() and cmdDCClient::loadProjectCLI()
+	// 	which work differently so cannot directly share options but need to behave similarly
+	opts, err := compose.NewProjectOptions(configPaths, compose.WithOsEnv, compose.WithResolvedPaths(true))
 	if err != nil {
 		return nil, err
 	}
@@ -234,9 +235,9 @@ func (c *cmdDCClient) loadProjectCLI(ctx context.Context, configPaths []string) 
 		return nil, err
 	}
 
-	// in practice, the workdir should be irrelevant as the CLI call above _should_ already have resolved paths,
-	// but we populate it appropriately regardless because historically docker-compose has been inconsistent in
-	// this regard
+	// docker-compose is very inconsistent about whether it fully resolves paths or not via CLI, both between
+	// v1 and v2 as well as even different releases within v2, so set the workdir and force the loader to resolve
+	// any relative paths
 	var workDir string
 	if len(configPaths) != 0 {
 		// from the compose Docs:
@@ -252,6 +253,9 @@ func (c *cmdDCClient) loadProjectCLI(ctx context.Context, configPaths []string) 
 				Content: []byte(resolvedYAML),
 			},
 		},
+		// no environment specified because the CLI call will already have resolved all variables
+	}, func(options *loader.Options) {
+		options.ResolvePaths = true
 	})
 }
 

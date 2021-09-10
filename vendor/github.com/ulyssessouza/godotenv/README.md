@@ -1,4 +1,4 @@
-# GoDotEnv [![Build Status](https://travis-ci.org/joho/godotenv.svg?branch=master)](https://travis-ci.org/joho/godotenv) [![Build status](https://ci.appveyor.com/api/projects/status/9v40vnfvvgde64u4?svg=true)](https://ci.appveyor.com/project/joho/godotenv) [![Go Report Card](https://goreportcard.com/badge/github.com/joho/godotenv)](https://goreportcard.com/report/github.com/joho/godotenv)
+# GoDotEnv ![CI](https://github.com/joho/godotenv/workflows/CI/badge.svg) [![Go Report Card](https://goreportcard.com/badge/github.com/joho/godotenv)](https://goreportcard.com/report/github.com/joho/godotenv)
 
 A Go (golang) port of the Ruby dotenv project (which loads env vars from a .env file)
 
@@ -109,6 +109,31 @@ myEnv, err := godotenv.Parse(reader)
 content := getRemoteFileContent()
 myEnv, err := godotenv.Unmarshal(content)
 ```
+
+### Precedence & Conventions
+
+Existing envs take precedence of envs that are loaded later.
+
+The [convention](https://github.com/bkeepers/dotenv#what-other-env-files-can-i-use)
+for managing multiple environments (i.e. development, test, production)
+is to create an env named `{YOURAPP}_ENV` and load envs in this order:
+
+```go
+env := os.Getenv("FOO_ENV")
+if "" == env {
+  env = "development"
+}
+
+godotenv.Load(".env." + env + ".local")
+if "test" != env {
+  godotenv.Load(".env.local")
+}
+godotenv.Load(".env." + env)
+godotenv.Load() // The Original .env
+```
+
+If you need to, you can also use `godotenv.Overload()` to defy this convention
+and overwrite existing envs instead of only supplanting them. Use with caution.
 
 ### Command Mode
 

@@ -228,6 +228,11 @@ func (s Services) GetProfiles() []string {
 
 // ApplyProfiles disables service which don't match selected profiles
 func (p *Project) ApplyProfiles(profiles []string) {
+	for _, p := range profiles {
+		if p == "*" {
+			return
+		}
+	}
 	var enabled, disabled Services
 	for _, service := range p.Services {
 		if service.HasProfile(profiles) {

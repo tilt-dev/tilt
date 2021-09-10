@@ -226,10 +226,17 @@ const (
 )
 
 const (
+	// ServicePrefix is the prefix for references pointing to a service
+	ServicePrefix = "service:"
+	// ContainerPrefix is the prefix for references pointing to a container
+	ContainerPrefix = "container:"
+
 	// NetworkModeServicePrefix is the prefix for network_mode pointing to a service
-	NetworkModeServicePrefix = "service:"
+	// Deprecated prefer ServicePrefix
+	NetworkModeServicePrefix = ServicePrefix
 	// NetworkModeContainerPrefix is the prefix for network_mode pointing to a container
-	NetworkModeContainerPrefix = "container:"
+	// Deprecated prefer ContainerPrefix
+	NetworkModeContainerPrefix = ContainerPrefix
 )
 
 // GetDependencies retrieve all services this service depends on
@@ -246,9 +253,21 @@ func (s ServiceConfig) GetDependencies() []string {
 			dependencies.append(link)
 		}
 	}
-	if strings.HasPrefix(s.NetworkMode, NetworkModeServicePrefix) {
-		dependencies.append(s.NetworkMode[len(NetworkModeServicePrefix):])
+	if strings.HasPrefix(s.NetworkMode, ServicePrefix) {
+		dependencies.append(s.NetworkMode[len(ServicePrefix):])
 	}
+	if strings.HasPrefix(s.Ipc, ServicePrefix) {
+		dependencies.append(s.Ipc[len(ServicePrefix):])
+	}
+	if strings.HasPrefix(s.Pid, ServicePrefix) {
+		dependencies.append(s.Pid[len(ServicePrefix):])
+	}
+	for _, vol := range s.VolumesFrom {
+		if !strings.HasPrefix(s.Pid, ContainerPrefix) {
+			dependencies.append(vol)
+		}
+	}
+
 	return dependencies.toSlice()
 }
 
@@ -352,7 +371,7 @@ func (e MappingWithEquals) OverrideBy(other MappingWithEquals) MappingWithEquals
 // Resolve update a MappingWithEquals for keys without value (`key`, but not `key=`)
 func (e MappingWithEquals) Resolve(lookupFn func(string) (string, bool)) MappingWithEquals {
 	for k, v := range e {
-		if v == nil || *v == "" {
+		if v == nil {
 			if value, ok := lookupFn(k); ok {
 				e[k] = &value
 			}
@@ -558,7 +577,7 @@ type ServiceNetworkConfig struct {
 // ServicePortConfig is the port configuration for a service
 type ServicePortConfig struct {
 	Mode      string `yaml:",omitempty" json:"mode,omitempty"`
-	HostIP    string `yaml:"host_ip,omitempty" json:"host_ip,omitempty"`
+	HostIP    string `mapstructure:"host_ip" yaml:"host_ip,omitempty" json:"host_ip,omitempty"`
 	Target    uint32 `yaml:",omitempty" json:"target,omitempty"`
 	Published uint32 `yaml:",omitempty" json:"published,omitempty"`
 	Protocol  string `yaml:",omitempty" json:"protocol,omitempty"`
