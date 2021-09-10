@@ -2731,6 +2731,12 @@ fake-service exited with code 0
 	f.loadAndStart()
 	f.waitForCompletedBuildCount(2)
 
+	f.WaitUntil("wait until manifest state has a log", func(state store.EngineState) bool {
+		ms, _ := state.ManifestState(m.ManifestName())
+		spanID := ms.DCRuntimeState().SpanID
+		return spanID != "" && state.LogStore.SpanLog(spanID) != ""
+	})
+
 	// recorded on manifest state
 	f.withState(func(es store.EngineState) {
 		ms, _ := es.ManifestState(m.ManifestName())
