@@ -12,6 +12,7 @@ import React, {
 import styled from "styled-components"
 import { AnalyticsType } from "./analytics"
 import { FeaturesContext, Flag } from "./feature"
+import { GlobalOptions } from "./GlobalOptionsContext"
 import {
   GroupByLabelView,
   orderLabels,
@@ -30,6 +31,7 @@ import {
   ResourceGroupSummaryMixin,
 } from "./ResourceGroups"
 import { useResourceGroups } from "./ResourceGroupsContext"
+import { matchesResourceName } from "./ResourceNameFilter"
 import { SidebarGroupStatusSummary } from "./ResourceStatusSummary"
 import SidebarItem from "./SidebarItem"
 import SidebarItemView, {
@@ -236,17 +238,31 @@ type SidebarProps = {
   selected: string
   resourceView: ResourceView
   pathBuilder: PathBuilder
+  globalOptions: GlobalOptions
 }
 
 export const defaultOptions: SidebarOptions = {
   alertsOnTop: false,
-  resourceNameFilter: "",
 }
 
-function MaybeUpgradeSavedSidebarOptions(o: SidebarOptions) {
-  // non-nullable fields added to SidebarOptions after its initial release need to have default values
-  // filled in here
-  return { ...o, resourceNameFilter: o.resourceNameFilter ?? "" }
+// Note: non-nullable fields added to SidebarOptions after its initial release
+// need to have default values filled in here
+function MaybeUpgradeSavedSidebarOptions(savedOptions: SidebarOptions) {
+  // Since `resourceNameFilter` has moved out of SidebarOptions and into
+  // GlobalOptions, do not include it in the saved state
+  if (savedOptions.hasOwnProperty("resourceNameFilter")) {
+    const updatedOptions = { ...defaultOptions }
+    Object.keys(savedOptions).forEach((option) => {
+      if (option !== "resourceNameFilter") {
+        updatedOptions[option as keyof SidebarOptions] =
+          savedOptions[option as keyof SidebarOptions]
+      }
+    })
+
+    return updatedOptions
+  }
+
+  return savedOptions
 }
 
 function hasAlerts(item: SidebarItem): boolean {
@@ -257,26 +273,14 @@ function sortByHasAlerts(itemA: SidebarItem, itemB: SidebarItem): number {
   return Number(hasAlerts(itemB)) - Number(hasAlerts(itemA))
 }
 
-function matchesResourceName(item: SidebarItem, filter: string): boolean {
-  filter = filter.trim()
-  // this is functionally redundant but probably an important enough case to make its own thing
-  if (filter === "") {
-    return true
-  }
-  // a resource matches the query if the resource name contains all tokens in the query
-  return filter
-    .split(" ")
-    .every((token) => item.name.toLowerCase().includes(token.toLowerCase()))
-}
-
 function applyOptionsToItems(
   items: SidebarItem[],
-  options: SidebarOptions
+  options: SidebarOptions & GlobalOptions
 ): SidebarItem[] {
   let itemsToDisplay: SidebarItem[] = [...items]
   if (options.resourceNameFilter) {
     itemsToDisplay = itemsToDisplay.filter((item) =>
-      matchesResourceName(item, options.resourceNameFilter)
+      matchesResourceName(item.name, options.resourceNameFilter)
     )
   }
 
@@ -302,15 +306,17 @@ export class SidebarResources extends React.Component<SidebarProps> {
   }
 
   renderWithOptions(
-    options: SidebarOptions,
-    setOptions: Dispatch<SetStateAction<SidebarOptions>>
+    sidebarOptions: SidebarOptions,
+    setSidebarOptions: Dispatch<SetStateAction<SidebarOptions>>
   ) {
+    const options = { ...sidebarOptions, ...this.props.globalOptions }
     const filteredItems = applyOptionsToItems(this.props.items, options)
 
     // only say no matches if there were actually items that got filtered out
     // otherwise, there might just be 0 resources because there are 0 resources
     // (though technically there's probably always at least a Tiltfile resource)
-    const resourceFilterApplied = options.resourceNameFilter.length > 0
+    const resourceFilterApplied =
+      this.props.globalOptions.resourceNameFilter.length > 0
     const noResourcesMatchFilter =
       resourceFilterApplied && filteredItems.length === 0
     const listItems = noResourcesMatchFilter ? (
@@ -348,7 +354,10 @@ export class SidebarResources extends React.Component<SidebarProps> {
             displayLabelGroupsTip ? GROUP_INFO_TOOLTIP_ID : undefined
           }
         >
-          <OverviewSidebarOptions options={options} setOptions={setOptions} />
+          <OverviewSidebarOptions
+            options={sidebarOptions}
+            setOptions={setSidebarOptions}
+          />
           {displayLabelGroups ? (
             <SidebarGroupedByLabels {...this.props} items={filteredItems} />
           ) : (

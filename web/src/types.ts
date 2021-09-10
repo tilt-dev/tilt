@@ -144,9 +144,6 @@ export enum ResourceName {
 export type SidebarOptions = {
   // Sorting options
   alertsOnTop: boolean
-
-  // Filter options
-  resourceNameFilter: string
 }
 
 // TODO (lizz): Centralize other redundant type definitions

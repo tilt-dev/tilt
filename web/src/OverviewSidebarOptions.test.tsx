@@ -1,12 +1,14 @@
 import { mount, ReactWrapper } from "enzyme"
 import React from "react"
 import { MemoryRouter } from "react-router"
-import { AnalyticsAction } from "./analytics"
 import {
   cleanupMockAnalyticsCalls,
-  expectIncrs,
   mockAnalyticsCalls,
 } from "./analytics_test_helpers"
+import {
+  GlobalOptions,
+  GlobalOptionsContextProvider,
+} from "./GlobalOptionsContext"
 import { accessorsForTesting, tiltfileKeyContext } from "./LocalStorage"
 import {
   TestsWithErrors,
@@ -14,20 +16,18 @@ import {
 } from "./OverviewResourceSidebar.stories"
 import {
   AlertsOnTopToggle,
-  ClearResourceNameFilterButton,
   OverviewSidebarOptions,
-  ResourceNameFilterTextField,
 } from "./OverviewSidebarOptions"
+import { ResourceNameFilterTextField } from "./ResourceNameFilter"
 import SidebarItemView from "./SidebarItemView"
 import SidebarResources, {
   defaultOptions,
   SidebarListSection,
 } from "./SidebarResources"
 import { StarredResourcesContextProvider } from "./StarredResourcesContext"
-import { SidebarOptions } from "./types"
 
-const sidebarOptionsAccessor = accessorsForTesting<SidebarOptions>(
-  "sidebar_options"
+const globalOptionsAccessor = accessorsForTesting<GlobalOptions>(
+  "global-options"
 )
 
 export function assertSidebarItemsAndOptions(
@@ -77,13 +77,15 @@ describe("overview sidebar options", () => {
 
   it("applies the name filter", () => {
     // 'B p' tests both case insensitivity and a multi-term query
-    sidebarOptionsAccessor.set({ ...defaultOptions, resourceNameFilter: "B p" })
+    globalOptionsAccessor.set({ resourceNameFilter: "B p" })
     const root = mount(
       <MemoryRouter>
         <tiltfileKeyContext.Provider value="test">
-          <StarredResourcesContextProvider>
-            {TwoResourcesTwoTests()}
-          </StarredResourcesContextProvider>
+          <GlobalOptionsContextProvider>
+            <StarredResourcesContextProvider>
+              {TwoResourcesTwoTests()}
+            </StarredResourcesContextProvider>
+          </GlobalOptionsContextProvider>
         </tiltfileKeyContext.Provider>
       </MemoryRouter>
     )
@@ -97,16 +99,17 @@ describe("overview sidebar options", () => {
   })
 
   it("says no matches found", () => {
-    sidebarOptionsAccessor.set({
-      ...defaultOptions,
+    globalOptionsAccessor.set({
       resourceNameFilter: "asdfawfwef",
     })
     const root = mount(
       <MemoryRouter>
         <tiltfileKeyContext.Provider value="test">
-          <StarredResourcesContextProvider>
-            {TwoResourcesTwoTests()}
-          </StarredResourcesContextProvider>
+          <GlobalOptionsContextProvider>
+            <StarredResourcesContextProvider>
+              {TwoResourcesTwoTests()}
+            </StarredResourcesContextProvider>
+          </GlobalOptionsContextProvider>
         </tiltfileKeyContext.Provider>
       </MemoryRouter>
     )
@@ -115,22 +118,6 @@ describe("overview sidebar options", () => {
     expect(resourceSectionItems.map((n) => n.text())).toEqual([
       "No matching resources",
     ])
-  })
-
-  it("reports analytics when search bar cleared", () => {
-    const root = mount(
-      <OverviewSidebarOptions
-        options={{ ...defaultOptions, resourceNameFilter: "foo" }}
-        setOptions={() => {}}
-      />
-    )
-    const button = root.find(ClearResourceNameFilterButton)
-
-    button.simulate("click")
-    expectIncrs({
-      name: "ui.web.clearResourceNameFilter",
-      tags: { action: AnalyticsAction.Click },
-    })
   })
 })
 

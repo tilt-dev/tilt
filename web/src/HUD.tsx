@@ -10,6 +10,7 @@ import AppController from "./AppController"
 import ErrorModal from "./ErrorModal"
 import FatalErrorModal from "./FatalErrorModal"
 import Features, { FeaturesProvider, Flag } from "./feature"
+import { GlobalOptionsContextProvider } from "./GlobalOptionsContext"
 import HeroScreen from "./HeroScreen"
 import "./HUD.scss"
 import { HudErrorContextProvider } from "./HudErrorContext"
@@ -257,19 +258,21 @@ export default class HUD extends Component<HudProps, HudState> {
             <PathBuilderProvider value={this.pathBuilder}>
               <LogStoreProvider value={this.state.logStore || new LogStore()}>
                 <ResourceGroupsContextProvider>
-                  <Switch>
-                    <Route
-                      path={this.path("/r/:name/overview")}
-                      render={(props: RouteComponentProps<any>) => (
-                        <OverviewResourcePane view={this.state.view} />
-                      )}
-                    />
-                    <Route
-                      render={() => (
-                        <OverviewTablePane view={this.state.view} />
-                      )}
-                    />
-                  </Switch>
+                  <GlobalOptionsContextProvider>
+                    <Switch>
+                      <Route
+                        path={this.path("/r/:name/overview")}
+                        render={(props: RouteComponentProps<any>) => (
+                          <OverviewResourcePane view={this.state.view} />
+                        )}
+                      />
+                      <Route
+                        render={() => (
+                          <OverviewTablePane view={this.state.view} />
+                        )}
+                      />
+                    </Switch>
+                  </GlobalOptionsContextProvider>
                 </ResourceGroupsContextProvider>
               </LogStoreProvider>
             </PathBuilderProvider>

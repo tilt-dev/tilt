@@ -1,5 +1,6 @@
 import React from "react"
 import styled from "styled-components"
+import { useGlobalOptions } from "./GlobalOptionsContext"
 import { useLogAlertIndex } from "./LogStore"
 import { usePathBuilder } from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
@@ -32,6 +33,7 @@ export default function OverviewResourceSidebar(
   if (props.name === ResourceName.all) {
     selected = ""
   }
+  const { options } = useGlobalOptions()
 
   return (
     <OverviewResourceSidebarRoot>
@@ -40,6 +42,7 @@ export default function OverviewResourceSidebar(
         selected={selected}
         resourceView={ResourceView.OverviewDetail}
         pathBuilder={pathBuilder}
+        globalOptions={options}
       />
     </OverviewResourceSidebarRoot>
   )
