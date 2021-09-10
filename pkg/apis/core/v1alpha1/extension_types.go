@@ -34,6 +34,7 @@ import (
 
 // Extension defines an extension that's evaluated on Tilt startup.
 // +k8s:openapi-gen=true
+// +tilt:starlark-gen=true
 type Extension struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`

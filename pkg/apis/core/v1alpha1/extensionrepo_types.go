@@ -36,6 +36,7 @@ import (
 
 // ExtensionRepo specifies a repo or folder where a set of extensions live.
 // +k8s:openapi-gen=true
+// +tilt:starlark-gen=true
 type ExtensionRepo struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
