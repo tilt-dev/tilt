@@ -672,17 +672,15 @@ const EnableDisableResourceRoot = styled(ButtonRoot)<{
     &:hover {
       color: ${Color.white};
       background-color: ${Color.red};
+      border-color: ${Color.white};
     }
   `};
-  margin-left: auto;
+  margin-left: ${SizeUnit(0.5)};
   padding-left: ${SizeUnit(0.25)};
 `
-const EnableDisableResourceButtonContent = styled.div`
-  .MuiIcon-root {
-    font-size: ${FontSize.small};
-  }
-  display: flex;
-  align-items: center;
+const EnableDisableResourceButtonIcon = styled(Icon)`
+  font-size: ${FontSize.small};
+  padding-right: ${SizeUnit(1 / 8)};
 `
 
 function EnableDisableResource(props: { resource: UIResource }) {
@@ -706,26 +704,35 @@ function EnableDisableResource(props: { resource: UIResource }) {
   let tooltipText: string
   if (disabled) {
     tooltipText =
-      "Enabling will allow this service to run and update based on changes, depending on its configuration."
+      "Enabling will allow this service to run and update based on changes as normal."
     buttonContent = (
-      <EnableDisableResourceButtonContent>
-        <Icon>play_arrow</Icon> Enable service
-      </EnableDisableResourceButtonContent>
+      <>
+        <EnableDisableResourceButtonIcon>
+          play_arrow
+        </EnableDisableResourceButtonIcon>{" "}
+        Enable service
+      </>
     )
   } else {
     tooltipText =
-      "Disabling will shut down this service, and keep it from updating as you make file system changes."
+      "Disabling will shut down this service and keep it from updating as you make file system changes."
     if (confirmingDisable) {
       buttonContent = (
-        <EnableDisableResourceButtonContent>
-          <Icon>block</Icon> Confirm disable
-        </EnableDisableResourceButtonContent>
+        <>
+          <EnableDisableResourceButtonIcon>
+            block
+          </EnableDisableResourceButtonIcon>{" "}
+          Confirm disable
+        </>
       )
     } else {
       buttonContent = (
-        <EnableDisableResourceButtonContent>
-          <Icon>block</Icon> Disable service
-        </EnableDisableResourceButtonContent>
+        <>
+          <EnableDisableResourceButtonIcon>
+            block
+          </EnableDisableResourceButtonIcon>{" "}
+          Disable service
+        </>
       )
     }
   }
