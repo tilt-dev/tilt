@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"strings"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
@@ -119,7 +120,9 @@ func (cd ConfigDef) parseArgs(args []string) (ret configMap, output string, err 
 
 	if len(fs.Args()) > 0 {
 		if cd.positionalSettingName == "" {
-			return nil, w.String(), errors.New("positional args were specified, but none were expected (no setting defined with args=True)")
+			return nil, w.String(), fmt.Errorf(
+				"invalid tiltfile config args: positional CLI args (%q) were specified, but none were expected.\n"+
+					"See https://docs.tilt.dev/tiltfile_config.html#positional-arguments for examples.", strings.Join(fs.Args(), " "))
 		} else {
 			for _, arg := range fs.Args() {
 				err := ret[cd.positionalSettingName].Set(arg)

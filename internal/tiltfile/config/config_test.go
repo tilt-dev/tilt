@@ -242,7 +242,10 @@ cfg = config.parse()
 
 	_, err := f.ExecFile("Tiltfile")
 	require.Error(t, err)
-	require.Equal(t, "positional args were specified, but none were expected (no setting defined with args=True)", err.Error())
+	require.Equal(t,
+		"invalid tiltfile config args: positional CLI args (\"do re mi\") were specified, but none were expected.\n"+
+			"See https://docs.tilt.dev/tiltfile_config.html#positional-arguments for examples.",
+		err.Error())
 }
 
 func TestUsage(t *testing.T) {
