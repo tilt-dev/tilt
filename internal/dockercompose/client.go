@@ -9,10 +9,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 
 	"github.com/compose-spec/compose-go/loader"
+	"golang.org/x/mod/semver"
 
 	"github.com/compose-spec/compose-go/types"
 	"github.com/pkg/errors"
@@ -25,6 +27,10 @@ import (
 	compose "github.com/compose-spec/compose-go/cli"
 )
 
+// versionRegex handles both v1 and v2 version outputs, which have several variations.
+// (See TestParseComposeVersionOutput for various cases.)
+var versionRegex = regexp.MustCompile(`(?mi)^docker[ -]compose(?: version)?:? v?([^\s,]+),?(?: build ([a-z0-9]+))?`)
+
 type DockerComposeClient interface {
 	Up(ctx context.Context, configPaths []string, serviceName model.TargetName, shouldBuild bool, stdout, stderr io.Writer) error
 	Down(ctx context.Context, configPaths []string, stdout, stderr io.Writer) error
@@ -32,19 +38,27 @@ type DockerComposeClient interface {
 	StreamEvents(ctx context.Context, configPaths []string) (<-chan string, error)
 	Project(ctx context.Context, configPaths []string) (*types.Project, error)
 	ContainerID(ctx context.Context, configPaths []string, serviceName model.TargetName) (container.ID, error)
+	Version(ctx context.Context) (string, error)
 }
 
 type cmdDCClient struct {
-	env docker.Env
-	mu  *sync.Mutex
+	env         docker.Env
+	mu          *sync.Mutex
+	composePath string
 }
 
 // TODO(dmiller): we might want to make this take a path to the docker-compose config so we don't
 // have to keep passing it in.
 func NewDockerComposeClient(env docker.LocalEnv) DockerComposeClient {
+	composePath, err := exec.LookPath("docker-compose-v1")
+	if err != nil {
+		composePath = "docker-compose"
+	}
+
 	return &cmdDCClient{
-		env: docker.Env(env),
-		mu:  &sync.Mutex{},
+		env:         docker.Env(env),
+		mu:          &sync.Mutex{},
+		composePath: composePath,
 	}
 }
 
@@ -215,6 +229,19 @@ func (c *cmdDCClient) ContainerID(ctx context.Context, configPaths []string, ser
 	return container.ID(id), nil
 }
 
+// Version runs `docker-compose version` and parses the output.
+//
+// NOTE: The version subcommand was added in Docker Compose v1.4.0 (released 2015-08-04), so this won't work for
+// 		 truly ancient versions, but handles both v1 and v2.
+func (c *cmdDCClient) Version(ctx context.Context) (string, error) {
+	cmd := c.dcCommand(ctx, []string{"version"})
+	stdout, err := cmd.Output()
+	if err != nil {
+		return "", FormatError(cmd, stdout, err)
+	}
+	return ParseComposeVersionOutput(stdout)
+}
+
 func (c *cmdDCClient) loadProject(configPaths []string) (*types.Project, error) {
 	// NOTE: take care to keep relevant options in sync with FakeDCClient::Project() and cmdDCClient::loadProjectCLI()
 	// 	which work differently so cannot directly share options but need to behave similarly
@@ -260,7 +287,7 @@ func (c *cmdDCClient) loadProjectCLI(ctx context.Context, configPaths []string) 
 }
 
 func (c *cmdDCClient) dcCommand(ctx context.Context, args []string) *exec.Cmd {
-	cmd := exec.CommandContext(ctx, "docker-compose", args...)
+	cmd := exec.CommandContext(ctx, c.composePath, args...)
 	cmd.Env = append(os.Environ(), c.env.AsEnviron()...)
 	return cmd
 }
@@ -283,6 +310,24 @@ func (c *cmdDCClient) dcOutput(ctx context.Context, configPaths []string, args .
 		err = fmt.Errorf("%s", errorMessage)
 	}
 	return strings.TrimSpace(string(output)), err
+}
+
+// ParseComposeVersionOutput parses the raw output of `docker-compose --version` (v1) or `docker-compose version` (v2)
+// and returns the semver or an error.
+func ParseComposeVersionOutput(stdout []byte) (string, error) {
+	// match 0: raw output
+	// match 1: version w/o leading v (required)
+	// match 2: build (optional - unused)
+	m := versionRegex.FindSubmatch(bytes.TrimSpace(stdout))
+	if len(m) < 2 {
+		return "", fmt.Errorf("could not parse version from output: %q", string(stdout))
+	}
+	rawVersion := string(m[1])
+	canonicalVersion := semver.Canonical("v" + rawVersion)
+	if canonicalVersion == "" {
+		return "", fmt.Errorf("invalid version: %q", rawVersion)
+	}
+	return canonicalVersion, nil
 }
 
 func FormatError(cmd *exec.Cmd, stdout []byte, err error) error {

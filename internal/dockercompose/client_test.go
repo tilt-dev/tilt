@@ -1,7 +1,9 @@
-package dockercompose_test
+package dockercompose
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/compose-spec/compose-go/types"
@@ -9,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tilt-dev/tilt/internal/docker"
-	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 )
@@ -68,10 +69,69 @@ func TestVariableInterpolation(t *testing.T) {
 	}
 }
 
+func TestPreferComposeV1(t *testing.T) {
+	t.Run("v1 Symlink Exists", func(t *testing.T) {
+		tmpdir := t.TempDir()
+		binPath := filepath.Join(tmpdir, "docker-compose-v1")
+		require.NoError(t, os.WriteFile(binPath, nil, 0777),
+			"Failed to create fake docker-compose-v1 binary")
+
+		testutils.Setenv(t, "PATH", tmpdir)
+		cli, ok := NewDockerComposeClient(docker.LocalEnv{}).(*cmdDCClient)
+		require.True(t, ok, "Unexpected type for Compose client: %T", cli)
+		assert.Equal(t, binPath, cli.composePath)
+	})
+
+	t.Run("No v1 Symlink Exists", func(t *testing.T) {
+		testutils.Unsetenv(t, "PATH")
+		cli, ok := NewDockerComposeClient(docker.LocalEnv{}).(*cmdDCClient)
+		require.True(t, ok, "Unexpected type for Compose client: %T", cli)
+		// if docker-compose-v1 isn't in path, we just set the path to the unqualified binary name and let it get
+		// resolved at exec time
+		assert.Equal(t, "docker-compose", cli.composePath)
+	})
+}
+
+func TestParseComposeVersionOutput(t *testing.T) {
+	type tc struct {
+		version string
+		output  []byte
+	}
+	tcs := []tc{
+		{
+			version: "v1.4.0",
+			output: []byte(`docker-compose version: 1.4.0
+docker-py version: 1.3.1
+CPython version: 2.7.9
+OpenSSL version: OpenSSL 1.0.1e 11 Feb 2013
+`),
+		},
+		{
+			version: "v1.29.2",
+			output: []byte(`docker-compose version 1.29.2, build 5becea4c
+docker-py version: 5.0.0
+CPython version: 3.7.10
+OpenSSL version: OpenSSL 1.1.0l  10 Sep 2019
+`),
+		},
+		{
+			version: "v2.0.0-rc.3",
+			output:  []byte("Docker Compose version v2.0.0-rc.3\n"),
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.version, func(t *testing.T) {
+			version, err := ParseComposeVersionOutput(tc.output)
+			require.NoError(t, err)
+			require.Equal(t, tc.version, version)
+		})
+	}
+}
+
 type dcFixture struct {
 	t      testing.TB
 	ctx    context.Context
-	cli    dockercompose.DockerComposeClient
+	cli    DockerComposeClient
 	tmpdir *tempdir.TempDirFixture
 }
 
@@ -84,7 +144,7 @@ func newDCFixture(t testing.TB) *dcFixture {
 	return &dcFixture{
 		t:      t,
 		ctx:    ctx,
-		cli:    dockercompose.NewDockerComposeClient(docker.LocalEnv{}),
+		cli:    NewDockerComposeClient(docker.LocalEnv{}),
 		tmpdir: tmpdir,
 	}
 }
