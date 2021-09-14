@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -50,15 +51,10 @@ type cmdDCClient struct {
 // TODO(dmiller): we might want to make this take a path to the docker-compose config so we don't
 // have to keep passing it in.
 func NewDockerComposeClient(env docker.LocalEnv) DockerComposeClient {
-	composePath, err := exec.LookPath("docker-compose-v1")
-	if err != nil {
-		composePath = "docker-compose"
-	}
-
 	return &cmdDCClient{
 		env:         docker.Env(env),
 		mu:          &sync.Mutex{},
-		composePath: composePath,
+		composePath: dcExecutablePath(),
 	}
 }
 
@@ -284,6 +280,18 @@ func (c *cmdDCClient) loadProjectCLI(ctx context.Context, configPaths []string) 
 	}, func(options *loader.Options) {
 		options.ResolvePaths = true
 	})
+}
+
+func dcExecutablePath() string {
+	v1Name := "docker-compose-v1"
+	if runtime.GOOS == "windows" {
+		v1Name += ".exe"
+	}
+	composePath, err := exec.LookPath(v1Name)
+	if err != nil {
+		composePath = "docker-compose"
+	}
+	return composePath
 }
 
 func (c *cmdDCClient) dcCommand(ctx context.Context, args []string) *exec.Cmd {
