@@ -1215,7 +1215,7 @@ func (s *tiltfileState) validateDockerComposeVersion() error {
 		logger.Get(s.ctx).Debugf("Failed to determine Docker Compose version: %v", err)
 	} else if semver.Compare(dcVersion, minimumDockerComposeVersion) == -1 {
 		return fmt.Errorf(
-			"Tilt requires a Docker Compose %s+ (you have %s). Please upgrade and re-launch Tilt.",
+			"Tilt requires Docker Compose %s+ (you have %s). Please upgrade and re-launch Tilt.",
 			minimumDockerComposeVersion,
 			dcVersion)
 	} else if semver.Major(dcVersion) == "v2" {
