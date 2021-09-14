@@ -43,7 +43,7 @@ jobs:
 
   build-js:
     docker:
-      - image: circleci/node:16
+      - image: cimg/node:16.8
     steps:
       - checkout
       - run: make check-js
@@ -75,7 +75,7 @@ jobs:
       size: "large"
     steps:
       - run: choco install make kustomize kubernetes-helm docker-compose
-      - run: choco update golang --version=1.16.2
+      - run: choco upgrade -y --allow-downgrade golang --version=1.16.2
       - run: go get -u gotest.tools/gotestsum
       - checkout
       # Check to make sure Windows binaries compile
