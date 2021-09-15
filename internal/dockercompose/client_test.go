@@ -100,6 +100,7 @@ func TestPreferComposeV1(t *testing.T) {
 func TestParseComposeVersionOutput(t *testing.T) {
 	type tc struct {
 		version string
+		build   string
 		output  []byte
 	}
 	tcs := []tc{
@@ -113,6 +114,7 @@ OpenSSL version: OpenSSL 1.0.1e 11 Feb 2013
 		},
 		{
 			version: "v1.29.2",
+			build:   "5becea4c",
 			output: []byte(`docker-compose version 1.29.2, build 5becea4c
 docker-py version: 5.0.0
 CPython version: 3.7.10
@@ -123,12 +125,23 @@ OpenSSL version: OpenSSL 1.1.0l  10 Sep 2019
 			version: "v2.0.0-rc.3",
 			output:  []byte("Docker Compose version v2.0.0-rc.3\n"),
 		},
+		{
+			version: "v2.0.0-rc.3",
+			build:   "bu1ld-info",
+			// NOTE: this format is valid semver but as of v2.0.0, has not been used by Compose but is supported
+			output: []byte("Docker Compose version v2.0.0-rc.3+bu1ld-info\n"),
+		},
 	}
 	for _, tc := range tcs {
-		t.Run(tc.version, func(t *testing.T) {
-			version, err := ParseComposeVersionOutput(tc.output)
+		name := tc.version
+		if tc.build != "" {
+			name += "+" + tc.build
+		}
+		t.Run(name, func(t *testing.T) {
+			version, build, err := ParseComposeVersionOutput(tc.output)
 			require.NoError(t, err)
 			require.Equal(t, tc.version, version)
+			require.Equal(t, tc.build, build)
 		})
 	}
 }

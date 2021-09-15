@@ -1210,7 +1210,7 @@ func (s *tiltfileState) validateLiveUpdate(iTarget model.ImageTarget, g model.Ta
 func (s *tiltfileState) validateDockerComposeVersion() error {
 	const minimumDockerComposeVersion = "v1.28.3"
 
-	dcVersion, err := s.dcCli.Version(s.ctx)
+	dcVersion, _, err := s.dcCli.Version(s.ctx)
 	if err != nil {
 		logger.Get(s.ctx).Debugf("Failed to determine Docker Compose version: %v", err)
 	} else if semver.Compare(dcVersion, minimumDockerComposeVersion) == -1 {

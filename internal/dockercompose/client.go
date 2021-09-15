@@ -30,7 +30,7 @@ import (
 
 // versionRegex handles both v1 and v2 version outputs, which have several variations.
 // (See TestParseComposeVersionOutput for various cases.)
-var versionRegex = regexp.MustCompile(`(?mi)^docker[ -]compose(?: version)?:? v?([^\s,]+),?(?: build ([a-z0-9]+))?`)
+var versionRegex = regexp.MustCompile(`(?mi)^docker[ -]compose(?: version)?:? v?([^\s,]+),?(?: build ([a-z0-9-]+))?`)
 
 type DockerComposeClient interface {
 	Up(ctx context.Context, configPaths []string, serviceName model.TargetName, shouldBuild bool, stdout, stderr io.Writer) error
@@ -39,7 +39,7 @@ type DockerComposeClient interface {
 	StreamEvents(ctx context.Context, configPaths []string) (<-chan string, error)
 	Project(ctx context.Context, configPaths []string) (*types.Project, error)
 	ContainerID(ctx context.Context, configPaths []string, serviceName model.TargetName) (container.ID, error)
-	Version(ctx context.Context) (string, error)
+	Version(ctx context.Context) (canonicalVersion string, build string, err error)
 }
 
 type cmdDCClient struct {
@@ -225,15 +225,15 @@ func (c *cmdDCClient) ContainerID(ctx context.Context, configPaths []string, ser
 	return container.ID(id), nil
 }
 
-// Version runs `docker-compose version` and parses the output.
+// Version runs `docker-compose version` and parses the output, returning the canonical version and build (if present).
 //
 // NOTE: The version subcommand was added in Docker Compose v1.4.0 (released 2015-08-04), so this won't work for
 // 		 truly ancient versions, but handles both v1 and v2.
-func (c *cmdDCClient) Version(ctx context.Context) (string, error) {
+func (c *cmdDCClient) Version(ctx context.Context) (string, string, error) {
 	cmd := c.dcCommand(ctx, []string{"version"})
 	stdout, err := cmd.Output()
 	if err != nil {
-		return "", FormatError(cmd, stdout, err)
+		return "", "", FormatError(cmd, stdout, err)
 	}
 	return ParseComposeVersionOutput(stdout)
 }
@@ -321,21 +321,30 @@ func (c *cmdDCClient) dcOutput(ctx context.Context, configPaths []string, args .
 }
 
 // ParseComposeVersionOutput parses the raw output of `docker-compose --version` (v1) or `docker-compose version` (v2)
-// and returns the semver or an error.
-func ParseComposeVersionOutput(stdout []byte) (string, error) {
+// and returns the canonical semver + build (might be blank) or an error.
+func ParseComposeVersionOutput(stdout []byte) (string, string, error) {
 	// match 0: raw output
 	// match 1: version w/o leading v (required)
-	// match 2: build (optional - unused)
+	// match 2: build (optional)
 	m := versionRegex.FindSubmatch(bytes.TrimSpace(stdout))
 	if len(m) < 2 {
-		return "", fmt.Errorf("could not parse version from output: %q", string(stdout))
+		return "", "", fmt.Errorf("could not parse version from output: %q", string(stdout))
 	}
-	rawVersion := string(m[1])
-	canonicalVersion := semver.Canonical("v" + rawVersion)
+	rawVersion := "v" + string(m[1])
+	canonicalVersion := semver.Canonical(rawVersion)
 	if canonicalVersion == "" {
-		return "", fmt.Errorf("invalid version: %q", rawVersion)
+		return "", "", fmt.Errorf("invalid version: %q", rawVersion)
 	}
-	return canonicalVersion, nil
+	build := semver.Build(rawVersion)
+	if build != "" {
+		// prefer semver build if present, but strip off the leading `+`
+		// (currently, Docker Compose has not made use of this, preferring to list the build independently if at all)
+		build = strings.TrimPrefix(build, "+")
+	} else if len(m) > 2 {
+		// otherwise, fall back to regex match if possible
+		build = string(m[2])
+	}
+	return canonicalVersion, build, nil
 }
 
 func FormatError(cmd *exec.Cmd, stdout []byte, err error) error {
