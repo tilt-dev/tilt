@@ -138,7 +138,7 @@ OpenSSL version: OpenSSL 1.1.0l  10 Sep 2019
 			name += "+" + tc.build
 		}
 		t.Run(name, func(t *testing.T) {
-			version, build, err := ParseComposeVersionOutput(tc.output)
+			version, build, err := parseComposeVersionOutput(tc.output)
 			require.NoError(t, err)
 			require.Equal(t, tc.version, version)
 			require.Equal(t, tc.build, build)

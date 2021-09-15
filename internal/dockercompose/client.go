@@ -235,7 +235,7 @@ func (c *cmdDCClient) Version(ctx context.Context) (string, string, error) {
 	if err != nil {
 		return "", "", FormatError(cmd, stdout, err)
 	}
-	return ParseComposeVersionOutput(stdout)
+	return parseComposeVersionOutput(stdout)
 }
 
 func (c *cmdDCClient) loadProject(configPaths []string) (*types.Project, error) {
@@ -320,9 +320,9 @@ func (c *cmdDCClient) dcOutput(ctx context.Context, configPaths []string, args .
 	return strings.TrimSpace(string(output)), err
 }
 
-// ParseComposeVersionOutput parses the raw output of `docker-compose --version` (v1) or `docker-compose version` (v2)
+// parseComposeVersionOutput parses the raw output of `docker-compose version` for both v1.x + v2.x Compose
 // and returns the canonical semver + build (might be blank) or an error.
-func ParseComposeVersionOutput(stdout []byte) (string, string, error) {
+func parseComposeVersionOutput(stdout []byte) (string, string, error) {
 	// match 0: raw output
 	// match 1: version w/o leading v (required)
 	// match 2: build (optional)

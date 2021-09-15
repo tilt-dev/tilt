@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/mod/semver"
 
 	ctrltiltfile "github.com/tilt-dev/tilt/internal/controllers/apis/tiltfile"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
@@ -795,8 +796,11 @@ func TestDockerComposeVersionWarnings(t *testing.T) {
 	}
 	tcs := []tc{
 		{version: "v1.28.0", error: "Tilt requires Docker Compose v1.28.3+ (you have v1.28.0). Please upgrade and re-launch Tilt."},
-		{version: "v2.0.0-rc.3", warning: "Tilt has known issues with Docker Compose v2."},
+		{version: "v2.0.0-rc.3", warning: "Support for Docker Compose v2.x is experimental, and you might encounter errors or broken functionality.\n" +
+			"For best results, we recommend using Docker Compose v1.x with Tilt."},
 		{version: "v1.29.2" /* no errors or warnings */},
+		{version: "v1.99.0-beta.4", warning: "You are running a pre-release version of Docker Compose (v1.99.0-beta.4), which is unsupported.\n" +
+			"You might encounter errors or broken functionality."},
 	}
 
 	for _, tc := range tcs {
@@ -814,7 +818,7 @@ func TestDockerComposeVersionWarnings(t *testing.T) {
 			if tl, ok := loader.(tiltfileLoader); ok {
 				dcCli := dockercompose.NewFakeDockerComposeClient(t, f.ctx)
 				dcCli.ConfigOutput = simpleConfig
-				dcCli.VersionOutput = tc.version
+				dcCli.VersionOutput = semver.Canonical(tc.version)
 				tl.dcCli = dcCli
 				loader = tl
 			} else {
