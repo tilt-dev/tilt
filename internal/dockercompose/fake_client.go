@@ -155,10 +155,10 @@ func (c *FakeDCClient) ContainerID(ctx context.Context, configPaths []string, se
 	return c.ContainerIdOutput, nil
 }
 
-func (c *FakeDCClient) Version(_ context.Context) (string, error) {
+func (c *FakeDCClient) Version(_ context.Context) (string, string, error) {
 	if c.VersionOutput != "" {
-		return c.VersionOutput, nil
+		return c.VersionOutput, "tilt-fake", nil
 	}
 	// default to a "known good" version that won't produce warnings
-	return "v1.29.2", nil
+	return "v1.29.2", "tilt-fake", nil
 }
