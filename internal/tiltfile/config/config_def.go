@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"strings"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
@@ -64,7 +65,7 @@ func (cd ConfigDef) incorporateArgs(config configMap, args []string) (ret config
 	var settingsFromArgs configMap
 	settingsFromArgs, output, err = cd.parseArgs(args)
 	if err != nil {
-		return nil, output, err
+		return nil, output, fmt.Errorf("invalid Tiltfile config args: %v", err)
 	}
 
 	config = mergeConfigMaps(config, settingsFromArgs)
@@ -112,19 +113,23 @@ func (cd ConfigDef) parseArgs(args []string) (ret configMap, output string, err 
 
 	err = fs.Parse(args)
 	if err != nil {
-		_, _ = fmt.Fprintf(w, "Error parsing tiltfile config args: %v\nUsage:\n", err)
-		fs.PrintDefaults()
-		return nil, w.String(), err
+		usage := fs.FlagUsagesWrapped(80)
+		if strings.TrimSpace(usage) != "" {
+			usage = "\nUsage:\n" + usage
+		}
+		return nil, w.String(), fmt.Errorf("%v%s", err, usage)
 	}
 
 	if len(fs.Args()) > 0 {
 		if cd.positionalSettingName == "" {
-			return nil, w.String(), errors.New("positional args were specified, but none were expected (no setting defined with args=True)")
+			return nil, w.String(), fmt.Errorf(
+				"positional CLI args (%q) were specified, but none were expected.\n"+
+					"See https://docs.tilt.dev/tiltfile_config.html#positional-arguments for examples.", strings.Join(fs.Args(), " "))
 		} else {
 			for _, arg := range fs.Args() {
 				err := ret[cd.positionalSettingName].Set(arg)
 				if err != nil {
-					return nil, w.String(), errors.Wrapf(err, "error setting positional arg %s", cd.positionalSettingName)
+					return nil, w.String(), fmt.Errorf("invalid positional args (%s): %v", cd.positionalSettingName, err)
 				}
 			}
 		}
