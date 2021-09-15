@@ -77,6 +77,7 @@ require (
 	go.opencensus.io v0.22.4
 	go.opentelemetry.io/otel v0.2.0
 	go.starlark.net v0.0.0-20200615180055-61b64bc45990
+	golang.org/x/mod v0.3.1-0.20200828183125-ce943fd02449
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	google.golang.org/genproto v0.0.0-20201110150050-8816d57aaa9a
 	google.golang.org/grpc v1.29.1

@@ -7,7 +7,11 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/mod/semver"
 
+	ctrltiltfile "github.com/tilt-dev/tilt/internal/controllers/apis/tiltfile"
+	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -782,6 +786,60 @@ dc_resource('bar', resource_deps=['foo'])
 	f.load()
 	f.assertNextManifest("foo", resourceDeps())
 	f.assertNextManifest("bar", resourceDeps("foo"))
+}
+
+func TestDockerComposeVersionWarnings(t *testing.T) {
+	type tc struct {
+		version string
+		warning string
+		error   string
+	}
+	tcs := []tc{
+		{version: "v1.28.0", error: "Tilt requires Docker Compose v1.28.3+ (you have v1.28.0). Please upgrade and re-launch Tilt."},
+		{version: "v2.0.0-rc.3", warning: "Support for Docker Compose v2.x is experimental, and you might encounter errors or broken functionality.\n" +
+			"For best results, we recommend using Docker Compose v1.x with Tilt."},
+		{version: "v1.29.2" /* no errors or warnings */},
+		{version: "v1.99.0-beta.4", warning: "You are running a pre-release version of Docker Compose (v1.99.0-beta.4), which is unsupported.\n" +
+			"You might encounter errors or broken functionality."},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.version, func(t *testing.T) {
+			f := newFixture(t)
+			defer f.TearDown()
+
+			f.dockerfile(filepath.Join("foo", "Dockerfile"))
+			f.file("docker-compose.yml", simpleConfig)
+			f.file("Tiltfile", "docker_compose('docker-compose.yml')")
+
+			f.load("foo")
+
+			loader := f.newTiltfileLoader()
+			if tl, ok := loader.(tiltfileLoader); ok {
+				dcCli := dockercompose.NewFakeDockerComposeClient(t, f.ctx)
+				dcCli.ConfigOutput = simpleConfig
+				dcCli.VersionOutput = semver.Canonical(tc.version)
+				tl.dcCli = dcCli
+				loader = tl
+			} else {
+				require.Fail(t, "Could not set up fake Docker Compose client")
+			}
+
+			f.loadResult = loader.Load(f.ctx, ctrltiltfile.MainTiltfile(f.JoinPath("Tiltfile"), nil))
+			if tc.error == "" {
+				require.NoError(t, f.loadResult.Error, "Tiltfile load result had unexpected error")
+			} else {
+				require.Contains(t, f.loadResult.Error.Error(), tc.error)
+			}
+
+			if tc.warning != "" {
+				require.Len(t, f.warnings, 1)
+				require.Contains(t, f.warnings[0], tc.warning)
+			} else {
+				require.Empty(t, f.warnings, "Tiltfile load result had unexpected warning(s)")
+			}
+		})
+	}
 }
 
 func (f *fixture) assertDcManifest(name model.ManifestName, opts ...interface{}) model.Manifest {

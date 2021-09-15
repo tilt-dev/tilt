@@ -27,6 +27,7 @@ type FakeDCClient struct {
 	ContainerIdOutput container.ID
 	eventJson         chan string
 	ConfigOutput      string
+	VersionOutput     string
 
 	UpCalls   []UpCall
 	DownError error
@@ -152,4 +153,12 @@ func (c *FakeDCClient) Project(_ context.Context, _ []string) (*types.Project, e
 
 func (c *FakeDCClient) ContainerID(ctx context.Context, configPaths []string, serviceName model.TargetName) (container.ID, error) {
 	return c.ContainerIdOutput, nil
+}
+
+func (c *FakeDCClient) Version(_ context.Context) (string, error) {
+	if c.VersionOutput != "" {
+		return c.VersionOutput, nil
+	}
+	// default to a "known good" version that won't produce warnings
+	return "v1.29.2", nil
 }

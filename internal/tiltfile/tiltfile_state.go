@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/docker/distribution/reference"
@@ -11,10 +12,11 @@ import (
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
+	"golang.org/x/mod/semver"
 
 	"github.com/tilt-dev/tilt/internal/controllers/apiset"
 	"github.com/tilt-dev/tilt/internal/localexec"
-	links "github.com/tilt-dev/tilt/internal/tiltfile/links"
+	"github.com/tilt-dev/tilt/internal/tiltfile/links"
 	"github.com/tilt-dev/tilt/internal/tiltfile/print"
 	"github.com/tilt-dev/tilt/internal/tiltfile/probe"
 	"github.com/tilt-dev/tilt/internal/tiltfile/sys"
@@ -262,6 +264,12 @@ If you're sure you want to deploy there, add:
 to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext, kubeContext)
 		}
 	} else {
+		if !resources.dc.Empty() {
+			if err := s.validateDockerComposeVersion(); err != nil {
+				return nil, result, err
+			}
+		}
+
 		manifests, err = s.translateDC(resources.dc)
 		if err != nil {
 			return nil, result, err
@@ -1196,6 +1204,38 @@ func (s *tiltfileState) validateLiveUpdate(iTarget model.ImageTarget, g model.Ta
 		}
 	}
 
+	return nil
+}
+
+func (s *tiltfileState) validateDockerComposeVersion() error {
+	const minimumDockerComposeVersion = "v1.28.3"
+
+	dcVersion, err := s.dcCli.Version(s.ctx)
+	if err != nil {
+		logger.Get(s.ctx).Debugf("Failed to determine Docker Compose version: %v", err)
+	} else if semver.Compare(dcVersion, minimumDockerComposeVersion) == -1 {
+		return fmt.Errorf(
+			"Tilt requires Docker Compose %s+ (you have %s). Please upgrade and re-launch Tilt.",
+			minimumDockerComposeVersion,
+			dcVersion)
+	} else if semver.Major(dcVersion) == "v2" {
+		var downgradeInstructions string
+		if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
+			// `docker-compose` on Docker Desktop is a shim that conditionally execs either v1 or v2
+			downgradeInstructions = "Run `docker-compose disable-v2` and re-launch Tilt."
+		} else {
+			// Compose v2 on Linux is a Docker plugin, used by running "docker compose" (notice the lack of hyphen -
+			// it's a subcommand found by searching `~/.docker/cli-plugins`), so if `docker-compose` points to v2,
+			// there must be a custom symlink; this will likely become more common over time as users want to
+			// maintain compatibility with existing tooling
+			downgradeInstructions = "Ensure `docker-compose` in your PATH points to Compose v1 and re-launch Tilt.\n"
+		}
+		logger.Get(s.ctx).Warnf("Support for Docker Compose v2.x is experimental, and you might encounter errors or broken functionality.\n"+
+			"For best results, we recommend using Docker Compose v1.x with Tilt.\n%s", downgradeInstructions)
+	} else if semver.Prerelease(dcVersion) != "" {
+		logger.Get(s.ctx).Warnf("You are running a pre-release version of Docker Compose (%s), which is unsupported.\n"+
+			"You might encounter errors or broken functionality.", dcVersion)
+	}
 	return nil
 }
 

@@ -6,9 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/tilt-dev/tilt/internal/testutils"
-
 	"github.com/tilt-dev/tilt/internal/dockercompose"
+	"github.com/tilt-dev/tilt/internal/testutils"
 )
 
 // ParseConfig must return services topologically sorted wrt dependencies.

@@ -642,6 +642,7 @@ golang.org/x/crypto/ssh
 golang.org/x/crypto/ssh/agent
 golang.org/x/crypto/ssh/terminal
 # golang.org/x/mod v0.3.1-0.20200828183125-ce943fd02449
+## explicit
 golang.org/x/mod/module
 golang.org/x/mod/semver
 # golang.org/x/net v0.0.0-20210428140749-89ef3d95e781
