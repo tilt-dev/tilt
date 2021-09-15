@@ -126,7 +126,7 @@ OpenSSL version: OpenSSL 1.1.0l  10 Sep 2019
 	}
 	for _, tc := range tcs {
 		t.Run(tc.version, func(t *testing.T) {
-			version, err := ParseComposeVersionOutput(tc.output)
+			version, err := parseComposeVersionOutput(tc.output)
 			require.NoError(t, err)
 			require.Equal(t, tc.version, version)
 		})

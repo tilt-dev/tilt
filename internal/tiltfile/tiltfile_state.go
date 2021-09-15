@@ -1230,7 +1230,11 @@ func (s *tiltfileState) validateDockerComposeVersion() error {
 			// maintain compatibility with existing tooling
 			downgradeInstructions = "Ensure `docker-compose` in your PATH points to Compose v1 and re-launch Tilt.\n"
 		}
-		logger.Get(s.ctx).Warnf("Tilt has known issues with Docker Compose v2.\n%s", downgradeInstructions)
+		logger.Get(s.ctx).Warnf("Support for Docker Compose v2.x is experimental, and you might encounter errors or broken functionality.\n"+
+			"For best results, we recommend using Docker Compose v1.x with Tilt.\n%s", downgradeInstructions)
+	} else if semver.Prerelease(dcVersion) != "" {
+		logger.Get(s.ctx).Warnf("You are running a pre-release version of Docker Compose (%s), which is unsupported.\n"+
+			"You might encounter errors or broken functionality.", dcVersion)
 	}
 	return nil
 }
