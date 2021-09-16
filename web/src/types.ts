@@ -141,14 +141,6 @@ export enum ResourceName {
   all = "(all)",
 }
 
-export type SidebarOptions = {
-  // Sorting options
-  alertsOnTop: boolean
-
-  // Filter options
-  resourceNameFilter: string
-}
-
 // TODO (lizz): Centralize other redundant type definitions
 export type UIResource = Proto.v1alpha1UIResource
 export type UIResourceStatus = Proto.v1alpha1UIResourceStatus

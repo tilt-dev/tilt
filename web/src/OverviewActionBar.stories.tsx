@@ -9,6 +9,7 @@ import {
   useFilterSet,
 } from "./logfilters"
 import OverviewActionBar from "./OverviewActionBar"
+import { TiltSnackbarProvider } from "./Snackbar"
 import { StarredResourceMemoryProvider } from "./StarredResourcesContext"
 import { oneButton, oneResource } from "./testdata"
 
@@ -22,11 +23,13 @@ export default {
       history.location.search = `?level=${level}&source=${source}`
       return (
         <Router history={history}>
-          <StarredResourceMemoryProvider>
-            <div style={{ margin: "-1rem", height: "80vh" }}>
-              <Story {...context.args} />
-            </div>
-          </StarredResourceMemoryProvider>
+          <TiltSnackbarProvider>
+            <StarredResourceMemoryProvider>
+              <div style={{ margin: "-1rem", height: "80vh" }}>
+                <Story {...context.args} />
+              </div>
+            </StarredResourceMemoryProvider>
+          </TiltSnackbarProvider>
         </Router>
       )
     },
