@@ -8,9 +8,9 @@ import {
   expectIncrs,
   mockAnalyticsCalls,
 } from "./analytics_test_helpers"
-import { DEFAULT_OPTIONS } from "./GlobalOptionsContext"
 import LogStore from "./LogStore"
 import PathBuilder from "./PathBuilder"
+import { DEFAULT_OPTIONS } from "./ResourceListOptionsContext"
 import SidebarItem from "./SidebarItem"
 import { triggerUpdate } from "./SidebarItemView"
 import SidebarResources from "./SidebarResources"
@@ -169,7 +169,7 @@ describe("SidebarTriggerButton", () => {
           selected=""
           resourceView={ResourceView.Log}
           pathBuilder={pathBuilder}
-          globalOptions={DEFAULT_OPTIONS}
+          resourceListOptions={DEFAULT_OPTIONS}
         />
       </MemoryRouter>
     )
@@ -212,7 +212,7 @@ describe("SidebarTriggerButton", () => {
           selected="selected resource"
           resourceView={ResourceView.Log}
           pathBuilder={pathBuilder}
-          globalOptions={DEFAULT_OPTIONS}
+          resourceListOptions={DEFAULT_OPTIONS}
         />
       </MemoryRouter>
     )
@@ -250,7 +250,7 @@ describe("SidebarTriggerButton", () => {
           selected=""
           resourceView={ResourceView.Log}
           pathBuilder={pathBuilder}
-          globalOptions={DEFAULT_OPTIONS}
+          resourceListOptions={DEFAULT_OPTIONS}
         />
       </MemoryRouter>
     )
@@ -282,7 +282,7 @@ describe("SidebarTriggerButton", () => {
           selected=""
           resourceView={ResourceView.Log}
           pathBuilder={pathBuilder}
-          globalOptions={DEFAULT_OPTIONS}
+          resourceListOptions={DEFAULT_OPTIONS}
         />
       </MemoryRouter>
     )
@@ -313,7 +313,7 @@ describe("SidebarTriggerButton", () => {
           selected=""
           resourceView={ResourceView.Log}
           pathBuilder={pathBuilder}
-          globalOptions={DEFAULT_OPTIONS}
+          resourceListOptions={DEFAULT_OPTIONS}
         />
       </MemoryRouter>
     )
@@ -340,7 +340,7 @@ describe("SidebarTriggerButton", () => {
           selected=""
           resourceView={ResourceView.Log}
           pathBuilder={pathBuilder}
-          globalOptions={DEFAULT_OPTIONS}
+          resourceListOptions={DEFAULT_OPTIONS}
         />
       </MemoryRouter>
     )
@@ -369,7 +369,7 @@ describe("SidebarTriggerButton", () => {
           selected=""
           resourceView={ResourceView.Log}
           pathBuilder={pathBuilder}
-          globalOptions={DEFAULT_OPTIONS}
+          resourceListOptions={DEFAULT_OPTIONS}
         />
       </MemoryRouter>
     )
@@ -400,7 +400,7 @@ describe("SidebarTriggerButton", () => {
           selected=""
           resourceView={ResourceView.Log}
           pathBuilder={pathBuilder}
-          globalOptions={DEFAULT_OPTIONS}
+          resourceListOptions={DEFAULT_OPTIONS}
         />
       </MemoryRouter>
     )

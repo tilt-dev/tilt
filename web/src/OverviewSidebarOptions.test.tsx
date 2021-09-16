@@ -5,10 +5,6 @@ import {
   cleanupMockAnalyticsCalls,
   mockAnalyticsCalls,
 } from "./analytics_test_helpers"
-import {
-  GlobalOptions,
-  GlobalOptionsContextProvider,
-} from "./GlobalOptionsContext"
 import { accessorsForTesting, tiltfileKeyContext } from "./LocalStorage"
 import {
   TestsWithErrors,
@@ -18,16 +14,19 @@ import {
   AlertsOnTopToggle,
   OverviewSidebarOptions,
 } from "./OverviewSidebarOptions"
+import {
+  DEFAULT_OPTIONS,
+  ResourceListOptions,
+  ResourceListOptionsContextProvider,
+  RESOURCE_LIST_OPTIONS_KEY,
+} from "./ResourceListOptionsContext"
 import { ResourceNameFilterTextField } from "./ResourceNameFilter"
 import SidebarItemView from "./SidebarItemView"
-import SidebarResources, {
-  defaultOptions,
-  SidebarListSection,
-} from "./SidebarResources"
+import SidebarResources, { SidebarListSection } from "./SidebarResources"
 import { StarredResourcesContextProvider } from "./StarredResourcesContext"
 
-const globalOptionsAccessor = accessorsForTesting<GlobalOptions>(
-  "global-options"
+const resourceListOptionsAccessor = accessorsForTesting<ResourceListOptions>(
+  RESOURCE_LIST_OPTIONS_KEY
 )
 
 export function assertSidebarItemsAndOptions(
@@ -77,15 +76,18 @@ describe("overview sidebar options", () => {
 
   it("applies the name filter", () => {
     // 'B p' tests both case insensitivity and a multi-term query
-    globalOptionsAccessor.set({ resourceNameFilter: "B p" })
+    resourceListOptionsAccessor.set({
+      ...DEFAULT_OPTIONS,
+      resourceNameFilter: "B p",
+    })
     const root = mount(
       <MemoryRouter>
         <tiltfileKeyContext.Provider value="test">
-          <GlobalOptionsContextProvider>
+          <ResourceListOptionsContextProvider>
             <StarredResourcesContextProvider>
               {TwoResourcesTwoTests()}
             </StarredResourcesContextProvider>
-          </GlobalOptionsContextProvider>
+          </ResourceListOptionsContextProvider>
         </tiltfileKeyContext.Provider>
       </MemoryRouter>
     )
@@ -93,23 +95,24 @@ describe("overview sidebar options", () => {
     assertSidebarItemsAndOptions(
       root,
       ["beep", "boop"],
-      defaultOptions.alertsOnTop,
+      DEFAULT_OPTIONS.alertsOnTop,
       "B p"
     )
   })
 
   it("says no matches found", () => {
-    globalOptionsAccessor.set({
+    resourceListOptionsAccessor.set({
+      ...DEFAULT_OPTIONS,
       resourceNameFilter: "asdfawfwef",
     })
     const root = mount(
       <MemoryRouter>
         <tiltfileKeyContext.Provider value="test">
-          <GlobalOptionsContextProvider>
+          <ResourceListOptionsContextProvider>
             <StarredResourcesContextProvider>
               {TwoResourcesTwoTests()}
             </StarredResourcesContextProvider>
-          </GlobalOptionsContextProvider>
+          </ResourceListOptionsContextProvider>
         </tiltfileKeyContext.Provider>
       </MemoryRouter>
     )

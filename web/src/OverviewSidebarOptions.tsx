@@ -1,6 +1,7 @@
-import React, { Dispatch, SetStateAction } from "react"
+import React from "react"
 import styled from "styled-components"
 import { InstrumentedButton } from "./instrumentedComponents"
+import { useResourceListOptions } from "./ResourceListOptionsContext"
 import { ResourceNameFilter } from "./ResourceNameFilter"
 import {
   Color,
@@ -10,7 +11,6 @@ import {
   mixinResetListStyle,
   SizeUnit,
 } from "./style-helpers"
-import { SidebarOptions } from "./types"
 
 const OverviewSidebarOptionsRoot = styled.div`
   display: flex;
@@ -53,29 +53,19 @@ export const AlertsOnTopToggle = styled(InstrumentedButton)`
   }
 `
 
-type OverviewSidebarOptionsProps = {
-  options: SidebarOptions
-  setOptions: Dispatch<SetStateAction<SidebarOptions>>
-}
+export function OverviewSidebarOptions() {
+  const { options, setOptions } = useResourceListOptions()
 
-function setAlertsOnTop(
-  props: OverviewSidebarOptionsProps,
-  alertsOnTop: boolean
-) {
-  props.setOptions((prevOptions) => {
-    return { ...prevOptions, alertsOnTop: alertsOnTop }
-  })
-}
+  function setAlertsOnTop(alertsOnTop: boolean) {
+    setOptions({ alertsOnTop })
+  }
 
-export function OverviewSidebarOptions(
-  props: OverviewSidebarOptionsProps
-): JSX.Element {
   return (
     <OverviewSidebarOptionsRoot>
       <OverviewSidebarOptionsButtonsRoot>
         <AlertsOnTopToggle
-          className={props.options.alertsOnTop ? "is-enabled" : ""}
-          onClick={(_e) => setAlertsOnTop(props, !props.options.alertsOnTop)}
+          className={options.alertsOnTop ? "is-enabled" : ""}
+          onClick={(_e) => setAlertsOnTop(!options.alertsOnTop)}
           analyticsName="ui.web.alertsOnTopToggle"
         >
           Alerts on Top

@@ -4,11 +4,11 @@ import React from "react"
 import styled from "styled-components"
 import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
 import { ReactComponent as SearchSvg } from "./assets/svg/search.svg"
-import { useGlobalOptions } from "./GlobalOptionsContext"
 import {
   InstrumentedButton,
   InstrumentedTextField,
 } from "./instrumentedComponents"
+import { useResourceListOptions } from "./ResourceListOptionsContext"
 import {
   Color,
   Font,
@@ -72,7 +72,7 @@ export function ResourceNameFilter(props: { className?: string }) {
   const {
     options: { resourceNameFilter },
     setOptions,
-  } = useGlobalOptions()
+  } = useResourceListOptions()
 
   function setResourceNameFilter(newValue: string) {
     setOptions({ resourceNameFilter: newValue })

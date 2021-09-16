@@ -7,28 +7,29 @@ import {
   expectIncrs,
   mockAnalyticsCalls,
 } from "./analytics_test_helpers"
-import {
-  GlobalOptions,
-  GlobalOptionsContextProvider,
-} from "./GlobalOptionsContext"
 import { accessorsForTesting, tiltfileKeyContext } from "./LocalStorage"
+import {
+  DEFAULT_OPTIONS,
+  ResourceListOptions,
+  ResourceListOptionsContextProvider,
+  RESOURCE_LIST_OPTIONS_KEY,
+} from "./ResourceListOptionsContext"
 import {
   ClearResourceNameFilterButton,
   ResourceNameFilter,
   ResourceNameFilterTextField,
 } from "./ResourceNameFilter"
 
-const globalOptionsAccessor = accessorsForTesting<GlobalOptions>(
-  "global-options"
+const resourceListOptionsAccessor = accessorsForTesting<ResourceListOptions>(
+  RESOURCE_LIST_OPTIONS_KEY
 )
 
 const ResourceNameFilterTestWrapper = () => (
   <MemoryRouter>
     <tiltfileKeyContext.Provider value="test">
-      <GlobalOptionsContextProvider>
-        {/* <GlobalOptionsContextProvider initialValuesForTesting={{"resourceNameFilter": initialFilter }}> */}
+      <ResourceListOptionsContextProvider>
         <ResourceNameFilter />
-      </GlobalOptionsContextProvider>
+      </ResourceListOptionsContextProvider>
     </tiltfileKeyContext.Provider>
   </MemoryRouter>
 )
@@ -44,7 +45,10 @@ describe("ResourceNameFilter", () => {
   })
 
   it("displays 'clear' button when there is input", () => {
-    globalOptionsAccessor.set({ resourceNameFilter: "wow" })
+    resourceListOptionsAccessor.set({
+      ...DEFAULT_OPTIONS,
+      resourceNameFilter: "wow",
+    })
     const root = mount(<ResourceNameFilterTestWrapper />)
     const button = root.find(ClearResourceNameFilterButton)
     expect(button.length).toBe(1)
@@ -57,7 +61,10 @@ describe("ResourceNameFilter", () => {
   })
 
   it("reports analytics when input is cleared", () => {
-    globalOptionsAccessor.set({ resourceNameFilter: "wow again" })
+    resourceListOptionsAccessor.set({
+      ...DEFAULT_OPTIONS,
+      resourceNameFilter: "wow again",
+    })
     const root = mount(<ResourceNameFilterTestWrapper />)
     const button = root.find(ClearResourceNameFilterButton)
 
@@ -70,23 +77,24 @@ describe("ResourceNameFilter", () => {
   })
 
   describe("persistent state", () => {
-    it("reflects existing value in GlobalOptionsContext", () => {
-      globalOptionsAccessor.set({ resourceNameFilter: "cool resource" })
+    it("reflects existing value in ResourceListOptionsContext", () => {
+      resourceListOptionsAccessor.set({
+        ...DEFAULT_OPTIONS,
+        resourceNameFilter: "cool resource",
+      })
       const root = mount(<ResourceNameFilterTestWrapper />)
       const textField = root.find(ResourceNameFilterTextField)
 
       expect(textField.prop("value")).toBe("cool resource")
     })
 
-    // TODO (lizz): figure out how the accessor works with testing and get this passing!
-    xit("saves input to GlobalOptionsContext", () => {
+    it("saves input to ResourceListOptionsContext", () => {
       const root = mount(<ResourceNameFilterTestWrapper />)
-      const textField = root.find(ResourceNameFilterTextField)
+      const textField = root.find("input")
 
       textField.simulate("change", { target: { value: "very cool resource" } })
-      root.update()
 
-      expect(globalOptionsAccessor.get()?.resourceNameFilter).toBe(
+      expect(resourceListOptionsAccessor.get()?.resourceNameFilter).toBe(
         "very cool resource"
       )
     })

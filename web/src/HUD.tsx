@@ -10,7 +10,6 @@ import AppController from "./AppController"
 import ErrorModal from "./ErrorModal"
 import FatalErrorModal from "./FatalErrorModal"
 import Features, { FeaturesProvider, Flag } from "./feature"
-import { GlobalOptionsContextProvider } from "./GlobalOptionsContext"
 import HeroScreen from "./HeroScreen"
 import "./HUD.scss"
 import { HudErrorContextProvider } from "./HudErrorContext"
@@ -22,6 +21,7 @@ import OverviewResourcePane from "./OverviewResourcePane"
 import OverviewTablePane from "./OverviewTablePane"
 import PathBuilder, { PathBuilderProvider } from "./PathBuilder"
 import { ResourceGroupsContextProvider } from "./ResourceGroupsContext"
+import { ResourceListOptionsContextProvider } from "./ResourceListOptionsContext"
 import { ResourceNavProvider } from "./ResourceNav"
 import ShareSnapshotModal from "./ShareSnapshotModal"
 import { TiltSnackbarProvider } from "./Snackbar"
@@ -258,7 +258,7 @@ export default class HUD extends Component<HudProps, HudState> {
             <PathBuilderProvider value={this.pathBuilder}>
               <LogStoreProvider value={this.state.logStore || new LogStore()}>
                 <ResourceGroupsContextProvider>
-                  <GlobalOptionsContextProvider>
+                  <ResourceListOptionsContextProvider>
                     <Switch>
                       <Route
                         path={this.path("/r/:name/overview")}
@@ -272,7 +272,7 @@ export default class HUD extends Component<HudProps, HudState> {
                         )}
                       />
                     </Switch>
-                  </GlobalOptionsContextProvider>
+                  </ResourceListOptionsContextProvider>
                 </ResourceGroupsContextProvider>
               </LogStoreProvider>
             </PathBuilderProvider>
