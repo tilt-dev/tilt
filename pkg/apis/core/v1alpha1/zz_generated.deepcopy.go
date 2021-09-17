@@ -114,6 +114,11 @@ func (in *CmdSpec) DeepCopyInto(out *CmdSpec) {
 		*out = new(StartOnSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.DisableSource != nil {
+		in, out := &in.DisableSource, &out.DisableSource
+		*out = new(DisableSource)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 
@@ -194,6 +199,11 @@ func (in *CmdStatus) DeepCopyInto(out *CmdStatus) {
 	if in.Terminated != nil {
 		in, out := &in.Terminated, &out.Terminated
 		*out = new(CmdStateTerminated)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.DisableStatus != nil {
+		in, out := &in.DisableStatus, &out.DisableStatus
+		*out = new(DisableStatus)
 		(*in).DeepCopyInto(*out)
 	}
 	return
@@ -783,6 +793,11 @@ func (in *FileWatchSpec) DeepCopyInto(out *FileWatchSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.DisableSource != nil {
+		in, out := &in.DisableSource, &out.DisableSource
+		*out = new(DisableSource)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 
@@ -807,6 +822,11 @@ func (in *FileWatchStatus) DeepCopyInto(out *FileWatchStatus) {
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
+	}
+	if in.DisableStatus != nil {
+		in, out := &in.DisableStatus, &out.DisableStatus
+		*out = new(DisableStatus)
+		(*in).DeepCopyInto(*out)
 	}
 	return
 }
@@ -1064,6 +1084,11 @@ func (in *ImageMapSpec) DeepCopyInto(out *ImageMapSpec) {
 		*out = new(ImageMapOverrideArgs)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.DisableSource != nil {
+		in, out := &in.DisableSource, &out.DisableSource
+		*out = new(DisableSource)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 
@@ -1185,6 +1210,11 @@ func (in *KubernetesApplySpec) DeepCopyInto(out *KubernetesApplySpec) {
 		*out = new(PodLogStreamTemplateSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.DisableSource != nil {
+		in, out := &in.DisableSource, &out.DisableSource
+		*out = new(DisableSource)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 
@@ -1202,6 +1232,11 @@ func (in *KubernetesApplySpec) DeepCopy() *KubernetesApplySpec {
 func (in *KubernetesApplyStatus) DeepCopyInto(out *KubernetesApplyStatus) {
 	*out = *in
 	in.LastApplyTime.DeepCopyInto(&out.LastApplyTime)
+	if in.DisableStatus != nil {
+		in, out := &in.DisableStatus, &out.DisableStatus
+		*out = new(DisableStatus)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 

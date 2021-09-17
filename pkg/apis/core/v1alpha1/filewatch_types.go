@@ -58,6 +58,10 @@ type FileWatchSpec struct {
 	WatchedPaths []string `json:"watchedPaths" protobuf:"bytes,1,rep,name=watchedPaths"`
 	// Ignores are optional rules to filter out a subset of changes matched by WatchedPaths.
 	Ignores []IgnoreDef `json:"ignores,omitempty" protobuf:"bytes,2,rep,name=ignores"`
+	// Specifies how to disable this.
+	//
+	// +optional
+	DisableSource *DisableSource `json:"disableSource,omitempty" protobuf:"bytes,3,opt,name=disableSource"`
 }
 
 type IgnoreDef struct {
@@ -143,6 +147,9 @@ type FileWatchStatus struct {
 	// Error is set if there is a problem with the filesystem watch. If non-empty, consumers should assume that
 	// no filesystem events will be seen and that the file watcher is in a failed state.
 	Error string `json:"error,omitempty" protobuf:"bytes,4,opt,name=error"`
+	// Details about whether/why this is disabled.
+	// +optional
+	DisableStatus *DisableStatus `json:"disableStatus,omitempty" protobuf:"bytes,5,opt,name=disableStatus"`
 }
 
 type FileEvent struct {

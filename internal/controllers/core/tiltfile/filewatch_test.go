@@ -67,7 +67,7 @@ func TestFileWatch_disabledOnCIMode(t *testing.T) {
 	m := model.Manifest{Name: "foo"}.WithDeployTarget(target)
 	f.SetManifest(m)
 
-	actualSet := ToFileWatchObjects(f.inputs)
+	actualSet := ToFileWatchObjects(f.inputs, make(map[string]*v1alpha1.DisableSource))
 	assert.Empty(t, actualSet)
 }
 
@@ -287,7 +287,7 @@ func (f fileWatchDiffer) String() string {
 func (f *fwFixture) RequireFileWatchSpecEqual(targetID model.TargetID, spec v1alpha1.FileWatchSpec) {
 	f.t.Helper()
 
-	actualSet := ToFileWatchObjects(f.inputs)
+	actualSet := ToFileWatchObjects(f.inputs, make(map[string]*v1alpha1.DisableSource))
 	actual, ok := actualSet[apis.SanitizeName(targetID.String())]
 	require.True(f.T(), ok, "No filewatch found for %s", targetID)
 	fwd := &fileWatchDiffer{expected: spec}

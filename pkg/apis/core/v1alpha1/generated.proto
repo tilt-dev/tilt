@@ -94,6 +94,11 @@ message CmdSpec {
   // a Cmd with any StartOn triggers will not have its command run until its
   // StartOn is satisfied.
   optional StartOnSpec startOn = 6;
+
+  // Specifies how to disable this.
+  //
+  // +optional
+  optional DisableSource disableSource = 7;
 }
 
 // CmdStateRunning is a running state of a local command.
@@ -155,6 +160,10 @@ message CmdStatus {
   //
   // +optional
   optional bool ready = 4;
+
+  // Details about whether/why this is disabled.
+  // +optional
+  optional DisableStatus disableStatus = 5;
 }
 
 // ConfigMap stores unstructured data that other controllers can read and write.
@@ -331,6 +340,7 @@ message ExecAction {
 
 // Extension defines an extension that's evaluated on Tilt startup.
 // +k8s:openapi-gen=true
+// +tilt:starlark-gen=true
 message Extension {
   optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
@@ -349,6 +359,7 @@ message ExtensionList {
 
 // ExtensionRepo specifies a repo or folder where a set of extensions live.
 // +k8s:openapi-gen=true
+// +tilt:starlark-gen=true
 message ExtensionRepo {
   optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
@@ -467,6 +478,11 @@ message FileWatchSpec {
 
   // Ignores are optional rules to filter out a subset of changes matched by WatchedPaths.
   repeated IgnoreDef ignores = 2;
+
+  // Specifies how to disable this.
+  //
+  // +optional
+  optional DisableSource disableSource = 3;
 }
 
 // FileWatchStatus defines the observed state of FileWatch
@@ -488,6 +504,10 @@ message FileWatchStatus {
   // Error is set if there is a problem with the filesystem watch. If non-empty, consumers should assume that
   // no filesystem events will be seen and that the file watcher is in a failed state.
   optional string error = 4;
+
+  // Details about whether/why this is disabled.
+  // +optional
+  optional DisableStatus disableStatus = 5;
 }
 
 // Forward defines a port forward to execute on a given pod.
@@ -802,6 +822,11 @@ message KubernetesApplySpec {
   //
   // +optional
   optional string discoveryStrategy = 8;
+
+  // Specifies how to disable this.
+  //
+  // +optional
+  optional DisableSource disableSource = 9;
 }
 
 // KubernetesApplyStatus defines the observed state of KubernetesApply
@@ -834,6 +859,10 @@ message KubernetesApplyStatus {
   //
   // +optional
   optional string appliedInputHash = 4;
+
+  // Details about whether/why this is disabled.
+  // +optional
+  optional DisableStatus disableStatus = 5;
 }
 
 // KubernetesDiscovery
