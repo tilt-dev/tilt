@@ -5,7 +5,7 @@ version_settings(constraint='>=0.22.1')
 #v1alpha1.extension_repo(name='default', url='file:///home/nick/src/tilt-extensions')
 #v1alpha1.extension(name='cancel', repo_name='default', repo_path='cancel')
 
-load('ext://uibutton', 'cmd_button', 'location')
+enable_feature("labels")
 
 local_resource(
   'storybook',
@@ -13,33 +13,6 @@ local_resource(
   links=['http://localhost:9009'],
   readiness_probe=probe(http_get=http_get_action(port=9009)),
   labels=["frontend"])
-
-cmd_button(
-  name='2prettier',
-  resource='storybook',
-  argv=['sh', '-c', 'tilt trigger check:prettier'],
-  text='2. Run prettier',
-  location=location.RESOURCE,
-  icon_name='cleaning_services',
-)
-
-cmd_button(
-  name='1ts-compile',
-  resource='storybook',
-  argv=['sh', '-c', 'tilt trigger check:tsc'],
-  text='1. Verify compile',
-  location=location.RESOURCE,
-  icon_name='handyman',
-)
-
-cmd_button(
-  name='3check-js',
-  resource='storybook',
-  argv=['sh', '-c', 'tilt trigger check:check-js'],
-  text='3. Check lint + compile',
-  location=location.RESOURCE,
-  icon_name='card_giftcard',
-)
 
 local_resource(
   'check:prettier',
