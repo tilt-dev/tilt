@@ -151,6 +151,8 @@ func (s *Store) Loop(ctx context.Context) error {
 		case actions := <-s.actionCh:
 			s.stateMu.Lock()
 
+			logCheckpoint := s.state.LogStore.Checkpoint()
+
 			for _, action := range actions {
 				var oldState EngineState
 				if s.logActions {
@@ -174,6 +176,12 @@ func (s *Store) Loop(ctx context.Context) error {
 						}
 					}()
 				}
+			}
+
+			// if one of the actions logged, but didn't report it via Summarizer,
+			// include it in the summary anyway
+			if logCheckpoint != s.state.LogStore.Checkpoint() {
+				summary.Log = true
 			}
 
 			s.stateMu.Unlock()
