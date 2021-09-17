@@ -99,7 +99,6 @@ type TableGroupProps = {
 } & TableOptions<RowValues>
 
 type TableProps = {
-  isGroupView?: boolean
   setGlobalSortBy?: (id: string) => void
 } & TableOptions<RowValues>
 
@@ -137,7 +136,6 @@ type OverviewTableStatus = {
 
 // Resource name filter styles
 const OverviewTableResourceNameFilter = styled(ResourceNameFilter)`
-  margin-left: ${SizeUnit(1 / 2)};
   margin-right: ${SizeUnit(1 / 2)};
   min-width: ${Width.sidebarDefault}px;
 `
@@ -159,11 +157,15 @@ const NoMatchesFound = styled.p`
 // Table styles
 const OverviewTableRoot = styled.section`
   margin-bottom: ${SizeUnit(1 / 2)};
+  margin-left: ${SizeUnit(1 / 2)};
+  margin-right: ${SizeUnit(1 / 2)};
 `
 
 const ResourceTable = styled.table`
   margin-top: ${SizeUnit(0.5)};
   border-collapse: collapse;
+  border: 1px ${Color.grayLighter} solid;
+  border-radius: 0 ${SizeUnit(1 / 4)};
   width: 100%;
 
   td:first-child {
@@ -180,11 +182,6 @@ const ResourceTable = styled.table`
   td + td {
     padding-left: ${SizeUnit(1 / 4)};
     padding-right: ${SizeUnit(1 / 4)};
-  }
-
-  &.isGroup {
-    border: 1px ${Color.grayLighter} solid;
-    border-radius: 0 ${SizeUnit(1 / 4)};
   }
 `
 const ResourceTableHead = styled.thead`
@@ -328,11 +325,9 @@ const WidgetCell = styled.span`
 export const OverviewGroup = styled(Accordion)`
   ${AccordionStyleResetMixin}
 
-  /* Set specific margins for table view */
   &.MuiAccordion-root,
-  &.MuiAccordion-root.Mui-expanded,
-  &.MuiAccordion-root.Mui-expanded:first-child {
-    margin: ${SizeUnit(1 / 2)};
+  &.MuiAccordion-root.Mui-expanded {
+    margin-top: ${SizeUnit(1 / 2)};
   }
 `
 
@@ -359,7 +354,7 @@ export const OverviewGroupDetails = styled(AccordionDetails)`
 
 const GROUP_INFO_TOOLTIP_ID = "table-groups-info"
 
-function TableResourceResultCount(props: { resources?: UIResource[] }) {
+export function TableResourceResultCount(props: { resources?: UIResource[] }) {
   const { options } = useResourceListOptions()
 
   if (
@@ -378,7 +373,7 @@ function TableResourceResultCount(props: { resources?: UIResource[] }) {
   )
 }
 
-function TableNoMatchesFound(props: { resources?: UIResource[] }) {
+export function TableNoMatchesFound(props: { resources?: UIResource[] }) {
   const { options } = useResourceListOptions()
 
   if (props.resources?.length === 0 && options.resourceNameFilter.length > 0) {
@@ -952,11 +947,9 @@ export function Table(props: TableProps) {
     useSortBy
   )
 
-  const isGroupClass = props.isGroupView ? "isGroup" : ""
-
   // TODO (lizz): Consider adding `aria-sort` markup to table headings
   return (
-    <ResourceTable {...getTableProps()} className={isGroupClass}>
+    <ResourceTable {...getTableProps()}>
       <ResourceTableHead>
         {headerGroups.map((headerGroup: HeaderGroup<RowValues>) => (
           <ResourceTableHeadRow
@@ -1013,7 +1006,7 @@ function TableGroup(props: TableGroupProps) {
         />
       </OverviewGroupSummary>
       <OverviewGroupDetails>
-        <Table {...tableProps} isGroupView />
+        <Table {...tableProps} />
       </OverviewGroupDetails>
     </OverviewGroup>
   )

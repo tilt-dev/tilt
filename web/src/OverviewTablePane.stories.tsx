@@ -11,7 +11,6 @@ import {
   twoResourceView,
 } from "./testdata"
 
-
 export default {
   title: "New UI/OverviewTablePane",
   decorators: [
