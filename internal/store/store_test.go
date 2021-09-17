@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/tilt-dev/tilt/pkg/logger"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -78,6 +80,32 @@ func TestBroadcastActionsBatching(t *testing.T) {
 	f.WaitUntilDone()
 }
 
+// if the logstore checkpoint changes, the summary should say there's a log change
+// even if the action summarizer doesn't
+func TestInferredSummaryLog(t *testing.T) {
+	f := newFixture(t)
+
+	s := newFakeSubscriber()
+	_ = f.store.AddSubscriber(f.ctx, s)
+
+	f.Start()
+
+	f.store.Dispatch(CompletedBuildAction{})
+	call := <-s.onChange
+	assert.False(t, call.summary.IsLogOnly())
+	assert.True(t, call.summary.Legacy)
+	close(call.done)
+
+	f.store.Dispatch(SneakyLoggingAction{})
+	call = <-s.onChange
+	assert.True(t, call.summary.Log)
+	assert.True(t, call.summary.Legacy)
+	close(call.done)
+
+	f.store.Dispatch(DoneAction{})
+	f.WaitUntilDone()
+}
+
 type fixture struct {
 	t      *testing.T
 	store  *Store
@@ -122,6 +150,13 @@ type CompletedBuildAction struct {
 
 func (CompletedBuildAction) Action() {}
 
+// An action that writes to the log but doesn't report it via
+// Summarize (or even implement Summarizer!)
+type SneakyLoggingAction struct {
+}
+
+func (SneakyLoggingAction) Action() {}
+
 type DoneAction struct {
 }
 
@@ -131,6 +166,8 @@ var TestReducer = Reducer(func(ctx context.Context, s *EngineState, action Actio
 	switch action.(type) {
 	case CompletedBuildAction:
 		s.CompletedBuildCount++
+	case SneakyLoggingAction:
+		s.LogStore.Append(NewLogAction("foo", "foo", logger.ErrorLvl, nil, []byte("hi")), s.Secrets)
 	case DoneAction:
 		s.FatalError = context.Canceled
 	}
