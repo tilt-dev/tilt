@@ -70,7 +70,7 @@ func (in *ConfigMap) NamespaceScoped() bool {
 }
 
 func (in *ConfigMap) GetSpec() interface{} {
-	return in.Data
+	return nil
 }
 
 func (in *ConfigMap) ShortNames() []string {
