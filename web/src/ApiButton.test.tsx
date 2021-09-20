@@ -17,15 +17,20 @@ import {
 } from "./ApiButton"
 import { boolField, makeUIButton, textField } from "./ApiButton.testhelpers"
 import { HudErrorContextProvider } from "./HudErrorContext"
+import { accessorsForTesting, tiltfileKeyContext } from "./LocalStorage"
 import { flushPromises } from "./promise"
 
 type UIButtonStatus = Proto.v1alpha1UIButtonStatus
 type UIButton = Proto.v1alpha1UIButton
 
+const buttonInputsAccessor = accessorsForTesting(`apibutton-TestButton`)
+
 function wrappedMount(e: JSX.Element) {
   return mount(
     <MemoryRouter>
-      <SnackbarProvider>{e}</SnackbarProvider>
+      <tiltfileKeyContext.Provider value="test">
+        <SnackbarProvider>{e}</SnackbarProvider>
+      </tiltfileKeyContext.Provider>
     </MemoryRouter>
   )
 }
@@ -36,6 +41,7 @@ function mountButton(b: UIButton) {
 
 describe("ApiButton", () => {
   beforeEach(() => {
+    localStorage.clear()
     fetchMock.reset()
     mockAnalyticsCalls()
     fetchMock.mock(
@@ -46,6 +52,7 @@ describe("ApiButton", () => {
   })
 
   afterEach(() => {
+    localStorage.clear()
     cleanupMockAnalyticsCalls()
   })
 
@@ -140,6 +147,43 @@ describe("ApiButton", () => {
       ],
     }
     expect(actualStatus).toEqual(expectedStatus)
+  })
+
+  it("reads options from local storage", () => {
+    buttonInputsAccessor.set({
+      text1: "text value",
+      bool1: true,
+    })
+    const inputSpecs = [textField("text1"), boolField("bool1")]
+    const root = mountButton(makeUIButton({ inputSpecs: inputSpecs }))
+
+    const optionsButton = root.find(ApiButtonInputsToggleButton)
+    optionsButton.simulate("click")
+    root.update()
+
+    const tf = root.find(ApiButtonForm).find("input#text1")
+    expect(tf.props().value).toEqual("text value")
+    const bf = root.find(ApiButtonForm).find("input#bool1")
+    expect(bf.props().checked).toEqual(true)
+  })
+
+  it("writes options to local storage", () => {
+    const inputSpecs = [textField("text1"), boolField("bool1")]
+    const root = mountButton(makeUIButton({ inputSpecs: inputSpecs }))
+
+    const optionsButton = root.find(ApiButtonInputsToggleButton)
+    optionsButton.simulate("click")
+    root.update()
+
+    const tf = root.find(ApiButtonForm).find("input#text1")
+    tf.simulate("change", { target: { value: "new_value" } })
+    const bf = root.find(ApiButtonForm).find("input#bool1")
+    bf.simulate("change", { target: { checked: true } })
+
+    expect(buttonInputsAccessor.get()).toEqual({
+      text1: "new_value",
+      bool1: true,
+    })
   })
 
   it("sets a hud error when the api request fails", async () => {

@@ -19,6 +19,7 @@ import {
   InstrumentedCheckbox,
   InstrumentedTextField,
 } from "./instrumentedComponents"
+import { usePersistentState } from "./LocalStorage"
 import { usePathBuilder } from "./PathBuilder"
 import { Color, FontSize, SizeUnit } from "./style-helpers"
 import { apiTimeFormat, tiltApiPut } from "./tiltApi"
@@ -238,7 +239,7 @@ export const ApiIcon: React.FC<ApiIconProps> = (props) => {
 // returns metadata + button status w/ the specified input buttons
 function buttonStatusWithInputs(
   button: UIButton,
-  inputValues: Map<string, any>
+  inputValues: { [name: string]: any }
 ): UIButton {
   const result = {
     metadata: { ...button.metadata },
@@ -249,7 +250,7 @@ function buttonStatusWithInputs(
 
   result.status!.inputs = []
   button.spec!.inputs?.forEach((spec) => {
-    const value = inputValues.get(spec.name!)
+    const value = inputValues[spec.name!]
     if (value !== undefined) {
       let status: UIInputStatus = { name: spec.name }
       if (spec.text) {
@@ -266,7 +267,7 @@ function buttonStatusWithInputs(
 
 async function updateButtonStatus(
   button: UIButton,
-  inputValues: Map<string, any>
+  inputValues: { [name: string]: any }
 ) {
   const toUpdate = buttonStatusWithInputs(button, inputValues)
 
@@ -283,7 +284,9 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
   const { className, uiButton, ...buttonProps } = props
 
   const [loading, setLoading] = useState(false)
-  const [inputValues, setInputValues] = useState(new Map<string, any>())
+  const [inputValues, setInputValues] = usePersistentState<{
+    [name: string]: any
+  }>(`apibutton-${uiButton.metadata?.name}`, {})
 
   const { enqueueSnackbar } = useSnackbar()
   const pb = usePathBuilder()
@@ -350,10 +353,10 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
 
   if (uiButton.spec?.inputs?.length) {
     const setInputValue = (name: string, value: any) => {
-      // We need a `new Map` to ensure the reference changes to force a rerender.
-      setInputValues(new Map(inputValues.set(name, value)))
+      // Copy to a new object so that the reference changes to force a rerender.
+      setInputValues({ ...inputValues, [name]: value })
     }
-    const getInputValue = (name: string) => inputValues.get(name)
+    const getInputValue = (name: string) => inputValues[name]
 
     return (
       <ApiButtonWithOptions
