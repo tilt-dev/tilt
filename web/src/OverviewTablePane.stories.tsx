@@ -2,6 +2,7 @@ import React from "react"
 import { MemoryRouter } from "react-router"
 import Features, { FeaturesProvider, Flag } from "./feature"
 import OverviewTablePane from "./OverviewTablePane"
+import { ResourceListOptionsProvider } from "./ResourceListOptionsContext"
 import { StarredResourceMemoryProvider } from "./StarredResourcesContext"
 import {
   nResourceView,
@@ -20,11 +21,13 @@ export default {
       return (
         <MemoryRouter initialEntries={["/"]}>
           <FeaturesProvider value={features}>
-            <StarredResourceMemoryProvider>
-              <div style={{ margin: "-1rem", height: "80vh" }}>
-                <Story />
-              </div>
-            </StarredResourceMemoryProvider>
+            <ResourceListOptionsProvider>
+              <StarredResourceMemoryProvider>
+                <div style={{ margin: "-1rem", height: "80vh" }}>
+                  <Story />
+                </div>
+              </StarredResourceMemoryProvider>
+            </ResourceListOptionsProvider>
           </FeaturesProvider>
         </MemoryRouter>
       )

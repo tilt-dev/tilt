@@ -12,11 +12,11 @@ import Features, { FeaturesProvider, Flag } from "./feature"
 import { GroupByLabelView, TILTFILE_LABEL, UNLABELED_LABEL } from "./labels"
 import LogStore from "./LogStore"
 import OverviewTable, {
+  labeledResourcesToTableCells,
   OverviewGroup,
   OverviewGroupName,
   OverviewGroupSummary,
   OverviewTableProps,
-  resourcesToTableCells,
   ResourceTableData,
   ResourceTableHeader,
   ResourceTableHeaderSortTriangle,
@@ -26,6 +26,8 @@ import OverviewTable, {
   Table,
   TableGroupedByLabels,
   TableNameColumn,
+  TableNoMatchesFound,
+  TableResourceResultCount,
   TableWithoutGroups,
 } from "./OverviewTable"
 import { ResourceGroupsInfoTip } from "./ResourceGroups"
@@ -34,6 +36,14 @@ import {
   GroupsState,
   ResourceGroupsContextProvider,
 } from "./ResourceGroupsContext"
+import {
+  ResourceListOptions,
+  ResourceListOptionsProvider,
+} from "./ResourceListOptionsContext"
+import {
+  matchesResourceName,
+  ResourceNameFilterTextField,
+} from "./ResourceNameFilter"
 import { TableGroupStatusSummary } from "./ResourceStatusSummary"
 import {
   nResourceView,
@@ -47,9 +57,11 @@ import { RuntimeStatus, UpdateStatus } from "./types"
 const tableViewWithSettings = ({
   view,
   labelsEnabled,
+  resourceListOptions,
 }: {
   view: TestDataView
   labelsEnabled?: boolean
+  resourceListOptions?: ResourceListOptions
 }) => {
   const features = new Features({ [Flag.Labels]: labelsEnabled ?? true })
   return (
@@ -57,7 +69,11 @@ const tableViewWithSettings = ({
       <SnackbarProvider>
         <FeaturesProvider value={features}>
           <ResourceGroupsContextProvider>
-            <OverviewTable view={view} />
+            <ResourceListOptionsProvider
+              initialValuesForTesting={resourceListOptions}
+            >
+              <OverviewTable view={view} />
+            </ResourceListOptionsProvider>
           </ResourceGroupsContextProvider>
         </FeaturesProvider>
       </SnackbarProvider>
@@ -90,6 +106,10 @@ const findTableColumnByName = (
   return matchingColumns
 }
 // End helpers
+
+afterEach(() => {
+  localStorage.clear()
+})
 
 it("shows buttons on the appropriate resources", () => {
   let view = nResourceView(3)
@@ -145,6 +165,72 @@ it("sorts by status", () => {
   expect(expectedResources).toEqual(actualResources)
 })
 
+describe("resource name filter", () => {
+  describe("when a filter is applied", () => {
+    let view: TestDataView
+    let wrapper: ReactWrapper<OverviewTableProps, typeof OverviewTable>
+
+    beforeEach(() => {
+      view = nResourceView(100)
+      wrapper = mount(
+        tableViewWithSettings({
+          view,
+          resourceListOptions: { resourceNameFilter: "1", alertsOnTop: false },
+        })
+      )
+    })
+
+    it("displays an accurate result count", () => {
+      const resultCount = wrapper.find(TableResourceResultCount)
+      expect(resultCount).toBeDefined()
+      // Expect 19 results because test data names resources with their index number
+      expect(resultCount.text()).toMatch(/19/)
+    })
+
+    it("displays only matching resources if there are matches", () => {
+      const matchingResources =
+        wrapper.find(TableWithoutGroups).prop("resources") || []
+
+      // Expect 19 results because test data names resources with their index number
+      expect(matchingResources.length).toBe(19)
+
+      const displayedResourceNames = wrapper
+        .find(TableNameColumn)
+        .map((nameCell) => nameCell.text())
+      const everyNameMatchesFilterTerm = displayedResourceNames.every((name) =>
+        matchesResourceName(name, "1")
+      )
+
+      expect(everyNameMatchesFilterTerm).toBe(true)
+    })
+
+    it("displays a `no matches` message if there are no matches", () => {
+      wrapper
+        .find(`${ResourceNameFilterTextField} input`)
+        .simulate("change", { target: { value: "eek no matches!" } })
+      wrapper.update()
+
+      expect(wrapper.find(TableNoMatchesFound)).toBeDefined()
+    })
+  })
+
+  describe("when a filter is NOT applied", () => {
+    it("displays all resources", () => {
+      const wrapper = mount(
+        tableViewWithSettings({
+          view: nResourceView(10),
+          resourceListOptions: { resourceNameFilter: "", alertsOnTop: false },
+        })
+      )
+
+      const resourceListProp =
+        wrapper.find(TableWithoutGroups).prop("resources") || []
+      expect(resourceListProp.length).toBe(10)
+      expect(wrapper.find(`tbody ${ResourceTableRow}`).length).toBe(10)
+    })
+  })
+})
+
 describe("when labels feature is enabled", () => {
   it("it displays tables grouped by labels if resources have labels", () => {
     const wrapper = mount(
@@ -173,7 +259,7 @@ describe("when labels feature is enabled", () => {
   })
 })
 
-describe("when labels feature is not enabled", () => {
+describe("when labels feature is NOT enabled", () => {
   let wrapper: ReactWrapper<OverviewTableProps, typeof OverviewTable>
 
   beforeEach(() => {
@@ -242,7 +328,7 @@ describe("overview table with groups", () => {
   beforeEach(() => {
     view = nResourceWithLabelsView(8)
     wrapper = mount(tableViewWithSettings({ view, labelsEnabled: true }))
-    resources = resourcesToTableCells(
+    resources = labeledResourcesToTableCells(
       view.uiResources,
       view.uiButtons,
       new LogStore()
@@ -381,7 +467,10 @@ describe("overview table with groups", () => {
       // Re-mount the component with the initial groups context values
       wrapper = mount(
         <ResourceGroupsContextProvider initialValuesForTesting={testData}>
-          <TableGroupedByLabels view={view} />
+          <TableGroupedByLabels
+            resources={view.uiResources}
+            buttons={view.uiButtons}
+          />
         </ResourceGroupsContextProvider>
       )
 
@@ -487,6 +576,19 @@ describe("overview table with groups", () => {
       const actualNames = unsortedNames.map((name) => name.text())
 
       expect(actualNames).toStrictEqual(expectedNames)
+    })
+  })
+
+  describe("resource name filter", () => {
+    it("does not display tables in groups when a resource filter is applied", () => {
+      expect(wrapper.find(TableGroupedByLabels).length).toBeGreaterThan(0)
+
+      wrapper
+        .find(`${ResourceNameFilterTextField} input`)
+        .simulate("change", { target: { value: "filtering!" } })
+      wrapper.update()
+
+      expect(wrapper.find(TableGroupedByLabels).length).toBe(0)
     })
   })
 })

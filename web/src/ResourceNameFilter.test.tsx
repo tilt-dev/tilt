@@ -11,7 +11,7 @@ import { accessorsForTesting, tiltfileKeyContext } from "./LocalStorage"
 import {
   DEFAULT_OPTIONS,
   ResourceListOptions,
-  ResourceListOptionsContextProvider,
+  ResourceListOptionsProvider,
   RESOURCE_LIST_OPTIONS_KEY,
 } from "./ResourceListOptionsContext"
 import {
@@ -27,9 +27,9 @@ const resourceListOptionsAccessor = accessorsForTesting<ResourceListOptions>(
 const ResourceNameFilterTestWrapper = () => (
   <MemoryRouter>
     <tiltfileKeyContext.Provider value="test">
-      <ResourceListOptionsContextProvider>
+      <ResourceListOptionsProvider>
         <ResourceNameFilter />
-      </ResourceListOptionsContextProvider>
+      </ResourceListOptionsProvider>
     </tiltfileKeyContext.Provider>
   </MemoryRouter>
 )

@@ -5,7 +5,7 @@ import Features, { FeaturesProvider, Flag } from "./feature"
 import LogStore, { LogStoreProvider } from "./LogStore"
 import OverviewResourceSidebar from "./OverviewResourceSidebar"
 import { ResourceGroupsContextProvider } from "./ResourceGroupsContext"
-import { ResourceListOptionsContextProvider } from "./ResourceListOptionsContext"
+import { ResourceListOptionsProvider } from "./ResourceListOptionsContext"
 import { Width } from "./style-helpers"
 import {
   nResourceView,
@@ -123,9 +123,9 @@ export function TestsWithErrors() {
   let view = { uiResources: all, tiltfileKey: "test" }
   return (
     <LogStoreProvider value={logStore}>
-      <ResourceListOptionsContextProvider>
+      <ResourceListOptionsProvider>
         <OverviewResourceSidebar name={""} view={view} />
-      </ResourceListOptionsContextProvider>
+      </ResourceListOptionsProvider>
     </LogStoreProvider>
   )
 }

@@ -53,6 +53,11 @@ import {
   ResourceGroupSummaryMixin,
 } from "./ResourceGroups"
 import { useResourceGroups } from "./ResourceGroupsContext"
+import {
+  ResourceListOptions,
+  useResourceListOptions,
+} from "./ResourceListOptionsContext"
+import { matchesResourceName, ResourceNameFilter } from "./ResourceNameFilter"
 import { useResourceNav } from "./ResourceNav"
 import { TableGroupStatusSummary } from "./ResourceStatusSummary"
 import { useStarredResources } from "./StarredResourcesContext"
@@ -63,6 +68,7 @@ import {
   FontSize,
   mixinResetButtonStyle,
   SizeUnit,
+  Width,
 } from "./style-helpers"
 import { isZeroTime, timeDiff } from "./time"
 import { timeAgoFormatter } from "./timeFormatters"
@@ -82,13 +88,17 @@ export type OverviewTableProps = {
   view: Proto.webviewView
 }
 
+type TableWrapperProps = {
+  resources?: UIResource[]
+  buttons?: UIButton[]
+}
+
 type TableGroupProps = {
   label: string
   setGlobalSortBy: (id: string) => void
 } & TableOptions<RowValues>
 
 type TableProps = {
-  isGroupView?: boolean
   setGlobalSortBy?: (id: string) => void
 } & TableOptions<RowValues>
 
@@ -124,14 +134,38 @@ type OverviewTableStatus = {
   runtimeAlertCount: number
 }
 
+// Resource name filter styles
+const OverviewTableResourceNameFilter = styled(ResourceNameFilter)`
+  margin-right: ${SizeUnit(1 / 2)};
+  min-width: ${Width.sidebarDefault}px;
+`
+
+const ResourceResultCount = styled.p`
+  color: ${Color.grayLight};
+  font-size: ${FontSize.small};
+  margin-top: ${SizeUnit(0.5)};
+  margin-left: ${SizeUnit(0.5)};
+  text-transform: uppercase;
+`
+
+const NoMatchesFound = styled.p`
+  color: ${Color.grayLightest};
+  margin-left: ${SizeUnit(0.5)};
+  margin-top: ${SizeUnit(1 / 4)};
+`
+
 // Table styles
 const OverviewTableRoot = styled.section`
   margin-bottom: ${SizeUnit(1 / 2)};
+  margin-left: ${SizeUnit(1 / 2)};
+  margin-right: ${SizeUnit(1 / 2)};
 `
 
 const ResourceTable = styled.table`
   margin-top: ${SizeUnit(0.5)};
   border-collapse: collapse;
+  border: 1px ${Color.grayLighter} solid;
+  border-radius: 0 ${SizeUnit(1 / 4)};
   width: 100%;
 
   td:first-child {
@@ -148,11 +182,6 @@ const ResourceTable = styled.table`
   td + td {
     padding-left: ${SizeUnit(1 / 4)};
     padding-right: ${SizeUnit(1 / 4)};
-  }
-
-  &.isGroup {
-    border: 1px ${Color.grayLighter} solid;
-    border-radius: 0 ${SizeUnit(1 / 4)};
   }
 `
 const ResourceTableHead = styled.thead`
@@ -296,11 +325,9 @@ const WidgetCell = styled.span`
 export const OverviewGroup = styled(Accordion)`
   ${AccordionStyleResetMixin}
 
-  /* Set specific margins for table view */
   &.MuiAccordion-root,
-  &.MuiAccordion-root.Mui-expanded,
-  &.MuiAccordion-root.Mui-expanded:first-child {
-    margin: ${SizeUnit(1 / 2)};
+  &.MuiAccordion-root.Mui-expanded {
+    margin-top: ${SizeUnit(1 / 2)};
   }
 `
 
@@ -326,6 +353,35 @@ export const OverviewGroupDetails = styled(AccordionDetails)`
 `
 
 const GROUP_INFO_TOOLTIP_ID = "table-groups-info"
+
+export function TableResourceResultCount(props: { resources?: UIResource[] }) {
+  const { options } = useResourceListOptions()
+
+  if (
+    props.resources === undefined ||
+    options.resourceNameFilter.length === 0
+  ) {
+    return null
+  }
+
+  const count = props.resources.length
+
+  return (
+    <ResourceResultCount>
+      {count} result{count !== 1 ? "s" : ""}
+    </ResourceResultCount>
+  )
+}
+
+export function TableNoMatchesFound(props: { resources?: UIResource[] }) {
+  const { options } = useResourceListOptions()
+
+  if (props.resources?.length === 0 && options.resourceNameFilter.length > 0) {
+    return <NoMatchesFound>No matching resources</NoMatchesFound>
+  }
+
+  return null
+}
 
 function TableStarColumn({ row }: CellProps<RowValues>) {
   let ctx = useStarredResources()
@@ -684,6 +740,23 @@ async function copyTextToClipboard(text: string, cb: () => void) {
   cb()
 }
 
+function applyOptionsToResources(
+  resources: UIResource[] | undefined,
+  options: ResourceListOptions
+): UIResource[] {
+  if (!resources) {
+    return []
+  }
+
+  if (options.resourceNameFilter.length === 0) {
+    return resources
+  }
+
+  return resources.filter((r) =>
+    matchesResourceName(r.metadata?.name || "", options.resourceNameFilter)
+  )
+}
+
 function uiResourceToCell(
   r: UIResource,
   allButtons: UIButton[] | undefined,
@@ -748,7 +821,7 @@ function resourceTypeLabel(r: UIResource): string {
   return "Unknown"
 }
 
-export function resourcesToTableCells(
+export function labeledResourcesToTableCells(
   resources: UIResource[] | undefined,
   buttons: UIButton[] | undefined,
   logAlertIndex: LogAlertIndex
@@ -854,6 +927,10 @@ export function ResourceTableHeadRow({
 }
 
 export function Table(props: TableProps) {
+  if (props.data.length === 0) {
+    return null
+  }
+
   const {
     getTableProps,
     getTableBodyProps,
@@ -870,11 +947,9 @@ export function Table(props: TableProps) {
     useSortBy
   )
 
-  const isGroupClass = props.isGroupView ? "isGroup" : ""
-
   // TODO (lizz): Consider adding `aria-sort` markup to table headings
   return (
-    <ResourceTable {...getTableProps()} className={isGroupClass}>
+    <ResourceTable {...getTableProps()}>
       <ResourceTableHead>
         {headerGroups.map((headerGroup: HeaderGroup<RowValues>) => (
           <ResourceTableHeadRow
@@ -931,22 +1006,20 @@ function TableGroup(props: TableGroupProps) {
         />
       </OverviewGroupSummary>
       <OverviewGroupDetails>
-        <Table {...tableProps} isGroupView />
+        <Table {...tableProps} />
       </OverviewGroupDetails>
     </OverviewGroup>
   )
 }
 
-export function TableGroupedByLabels(props: OverviewTableProps) {
+export function TableGroupedByLabels({
+  resources,
+  buttons,
+}: TableWrapperProps) {
   const logAlertIndex = useLogAlertIndex()
   const data = useMemo(
-    () =>
-      resourcesToTableCells(
-        props.view.uiResources,
-        props.view.uiButtons,
-        logAlertIndex
-      ),
-    [props.view.uiResources, props.view.uiButtons]
+    () => labeledResourcesToTableCells(resources, buttons, logAlertIndex),
+    [resources, buttons]
   )
 
   // Global table settings are currently used to sort multiple
@@ -996,48 +1069,69 @@ export function TableGroupedByLabels(props: OverviewTableProps) {
   )
 }
 
-export function TableWithoutGroups(props: OverviewTableProps) {
+export function TableWithoutGroups({ resources, buttons }: TableWrapperProps) {
   const logAlertIndex = useLogAlertIndex()
   const data = useMemo(() => {
     return (
-      props.view.uiResources?.map((r) =>
-        uiResourceToCell(r, props.view.uiButtons, logAlertIndex)
-      ) || []
+      resources?.map((r) => uiResourceToCell(r, buttons, logAlertIndex)) || []
     )
-  }, [props.view.uiResources, props.view.uiButtons])
+  }, [resources, buttons])
 
   return <Table columns={columnDefs} data={data} />
 }
 
-export default function OverviewTable(props: OverviewTableProps) {
+function OverviewTableContent(props: OverviewTableProps) {
   const features = useFeatures()
   const labelsEnabled = features.isEnabled(Flag.Labels)
   const resourcesHaveLabels =
     props.view.uiResources?.some((r) => getResourceLabels(r).length > 0) ||
     false
 
-  // The label group tip is only displayed if labels are enabled but not used
-  const displayLabelGroupsTip = labelsEnabled && !resourcesHaveLabels
+  const { options } = useResourceListOptions()
+  const resourceFilterApplied = options.resourceNameFilter.length > 0
 
-  if (labelsEnabled && resourcesHaveLabels) {
+  // Table groups are displayed when feature is enabled, resources have labels,
+  // and no resource name filter is applied
+  const displayResourceGroups =
+    labelsEnabled && resourcesHaveLabels && !resourceFilterApplied
+
+  if (displayResourceGroups) {
     return (
-      <OverviewTableRoot aria-label="Resources overview">
-        <TableGroupedByLabels {...props} />
-      </OverviewTableRoot>
+      <TableGroupedByLabels
+        resources={props.view.uiResources}
+        buttons={props.view.uiButtons}
+      />
     )
   } else {
+    // The label group tip is only displayed if labels are enabled but not used
+    const displayLabelGroupsTip = labelsEnabled && !resourcesHaveLabels
+
+    // Apply any display filters or options to resources
+    const resources = applyOptionsToResources(props.view.uiResources, options)
     return (
-      <OverviewTableRoot aria-label="Resources overview">
+      <>
         {displayLabelGroupsTip && (
           <ResourceGroupsInfoTip idForIcon={GROUP_INFO_TOOLTIP_ID} />
         )}
+        <TableResourceResultCount resources={resources} />
+        <TableNoMatchesFound resources={resources} />
         <TableWithoutGroups
           aria-describedby={
             displayLabelGroupsTip ? GROUP_INFO_TOOLTIP_ID : undefined
           }
-          {...props}
+          resources={resources}
+          buttons={props.view.uiButtons}
         />
-      </OverviewTableRoot>
+      </>
     )
   }
+}
+
+export default function OverviewTable(props: OverviewTableProps) {
+  return (
+    <OverviewTableRoot aria-label="Resources overview">
+      <OverviewTableResourceNameFilter />
+      <OverviewTableContent {...props} />
+    </OverviewTableRoot>
+  )
 }

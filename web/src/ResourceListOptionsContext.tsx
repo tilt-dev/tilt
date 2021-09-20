@@ -48,7 +48,7 @@ export function useResourceListOptions(): ResourceListOptionsContext {
   return useContext(ResourceListOptionsContext)
 }
 
-export function ResourceListOptionsContextProvider(
+export function ResourceListOptionsProvider(
   props: PropsWithChildren<{ initialValuesForTesting?: ResourceListOptions }>
 ) {
   const defaultPersistentValue = props.initialValuesForTesting ?? {

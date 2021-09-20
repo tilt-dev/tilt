@@ -5,7 +5,7 @@ import Features, { FeaturesProvider, Flag } from "./feature"
 import LogStore, { LogStoreProvider } from "./LogStore"
 import OverviewResourcePane from "./OverviewResourcePane"
 import { ResourceGroupsContextProvider } from "./ResourceGroupsContext"
-import { ResourceListOptionsContextProvider } from "./ResourceListOptionsContext"
+import { ResourceListOptionsProvider } from "./ResourceListOptionsContext"
 import { ResourceNavProvider } from "./ResourceNav"
 import { TiltSnackbarProvider } from "./Snackbar"
 import { StarredResourceMemoryProvider } from "./StarredResourcesContext"
@@ -29,7 +29,7 @@ export default {
           <TiltSnackbarProvider>
             <FeaturesProvider value={features}>
               <ResourceGroupsContextProvider>
-                <ResourceListOptionsContextProvider>
+                <ResourceListOptionsProvider>
                   <StarredResourceMemoryProvider>
                     <div style={{ margin: "-1rem", height: "80vh" }}>
                       <StylesProvider injectFirst>
@@ -37,7 +37,7 @@ export default {
                       </StylesProvider>
                     </div>
                   </StarredResourceMemoryProvider>
-                </ResourceListOptionsContextProvider>
+                </ResourceListOptionsProvider>
               </ResourceGroupsContextProvider>
             </FeaturesProvider>
           </TiltSnackbarProvider>
