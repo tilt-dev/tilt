@@ -12,8 +12,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.starlark.net/starlark"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
@@ -28,6 +30,7 @@ type Fixture struct {
 	useRealFS        bool // Use a real filesystem
 	loadInterceptors []LoadInterceptor
 	ctx              context.Context
+	tf               *v1alpha1.Tiltfile
 }
 
 func NewFixture(tb testing.TB, plugins ...Plugin) *Fixture {
@@ -44,6 +47,11 @@ func NewFixture(tb testing.TB, plugins ...Plugin) *Fixture {
 		fs:      make(map[string]string),
 		out:     out,
 		ctx:     ctx,
+		tf: &v1alpha1.Tiltfile{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "(Tiltfile)",
+			},
+		},
 	}
 }
 
@@ -73,7 +81,8 @@ func (f *Fixture) ExecFile(name string) (Model, error) {
 	for _, i := range f.loadInterceptors {
 		env.AddLoadInterceptor(i)
 	}
-	return env.start(filepath.Join(f.path, name))
+	f.tf.Spec.Path = filepath.Join(f.path, name)
+	return env.start(f.tf)
 }
 
 func (f *Fixture) SetLoadInterceptor(i LoadInterceptor) {
@@ -86,6 +95,10 @@ func (f *Fixture) PrintOutput() string {
 
 func (f *Fixture) Path() string {
 	return f.path
+}
+
+func (f *Fixture) Tiltfile() *v1alpha1.Tiltfile {
+	return f.tf
 }
 
 func (f *Fixture) JoinPath(elem ...string) string {
@@ -123,6 +136,7 @@ func (f *Fixture) UseRealFS() {
 	require.NoError(f.tb, err)
 	f.path = path
 	f.useRealFS = true
+	f.tf.Spec.Path = path
 }
 
 func (f *Fixture) TearDown() {

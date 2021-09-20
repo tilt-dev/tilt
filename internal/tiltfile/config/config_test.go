@@ -61,7 +61,7 @@ config.parse()`
 			require.NoError(t, err)
 
 			manifests := []model.Manifest{{Name: "a"}, {Name: "b"}}
-			actual, err := MustState(result).EnabledResources(manifests)
+			actual, err := MustState(result).EnabledResources(f.Tiltfile(), manifests)
 			require.NoError(t, err)
 
 			expectedResourcesByName := make(map[model.ManifestName]bool)
@@ -201,7 +201,7 @@ config.parse()
 
 	expected := `invalid Tiltfile config args: unknown flag: --bar
 Usage:
-      --foo list[string]   
+      --foo list[string]   ` + `
 `
 
 	_, err := f.ExecFile("Tiltfile")
@@ -286,7 +286,7 @@ config.set_enabled_resources(config.parse()['resources'])
 	require.NoError(t, err)
 
 	manifests := []model.Manifest{{Name: "foo"}, {Name: "bar"}, {Name: "baz"}}
-	actual, err := MustState(result).EnabledResources(manifests)
+	actual, err := MustState(result).EnabledResources(f.Tiltfile(), manifests)
 	require.NoError(t, err)
 	require.Equal(t, manifests[:2], actual)
 }
@@ -510,9 +510,10 @@ print(config.main_dir)
 
 func NewFixture(tb testing.TB, userConfigState model.UserConfigState, tiltSubcommand model.TiltSubcommand) *starkit.Fixture {
 	ext := NewPlugin(tiltSubcommand)
-	ext.UserConfigState = userConfigState
+
 	ret := starkit.NewFixture(tb, ext, io.NewPlugin(), include.IncludeFn{})
 	ret.UseRealFS()
+	ret.Tiltfile().Spec.Args = userConfigState.Args
 	return ret
 }
 

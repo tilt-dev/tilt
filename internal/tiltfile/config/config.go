@@ -19,25 +19,22 @@ type Settings struct {
 	configDef        ConfigDef
 
 	configParseCalled bool
-	userConfigState   model.UserConfigState
 
 	// if parse has been called, the directory containing the Tiltfile that called it
 	seenWorkingDirectory string
 }
 
 type Plugin struct {
-	UserConfigState model.UserConfigState
-	TiltSubcommand  model.TiltSubcommand
+	tiltSubcommand model.TiltSubcommand
 }
 
 func NewPlugin(tiltSubcommand model.TiltSubcommand) *Plugin {
-	return &Plugin{TiltSubcommand: tiltSubcommand}
+	return &Plugin{tiltSubcommand: tiltSubcommand}
 }
 
 func (e *Plugin) NewState() interface{} {
 	return Settings{
-		configDef:       ConfigDef{configSettings: make(map[string]configSetting)},
-		userConfigState: e.UserConfigState,
+		configDef: ConfigDef{configSettings: make(map[string]configSetting)},
 	}
 }
 
@@ -83,17 +80,18 @@ func (e *Plugin) OnStart(env *starkit.Environment) error {
 		}
 	}
 
-	err := env.AddValue("config.tilt_subcommand", starlark.String(e.TiltSubcommand))
+	err := env.AddValue("config.tilt_subcommand", starlark.String(e.tiltSubcommand))
 	if err != nil {
 		return err
 	}
 
-	err = env.AddValue("config.main_path", starlark.String(env.StartPath()))
+	startPath := env.StartTiltfile().Spec.Path
+	err = env.AddValue("config.main_path", starlark.String(startPath))
 	if err != nil {
 		return err
 	}
 
-	err = env.AddValue("config.main_dir", starlark.String(filepath.Dir(env.StartPath())))
+	err = env.AddValue("config.main_dir", starlark.String(filepath.Dir(startPath)))
 	if err != nil {
 		return err
 	}
@@ -125,6 +123,10 @@ func (e *Plugin) parse(thread *starlark.Thread, fn *starlark.Builtin, args starl
 		return starlark.None, err
 	}
 
+	tf, err := starkit.StartTiltfileFromThread(thread)
+	if err != nil {
+		return starlark.None, err
+	}
 	m, err := starkit.ModelFromThread(thread)
 	if err != nil {
 		return starlark.None, err
@@ -141,7 +143,7 @@ func (e *Plugin) parse(thread *starlark.Thread, fn *starlark.Builtin, args starl
 		return starlark.None, err
 	}
 
-	ret, out, err := settings.configDef.parse(userConfigPath, e.UserConfigState.Args)
+	ret, out, err := settings.configDef.parse(userConfigPath, tf.Spec.Args)
 	if out != "" {
 		thread.Print(thread, out)
 	}

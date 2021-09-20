@@ -161,7 +161,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, tf *corev1alpha1.Tiltfile) T
 	s := newTiltfileState(ctx, tfl.dcCli, tfl.webHost, tfl.localEnv, tfl.k8sContextExt, tfl.versionExt,
 		tfl.configExt, localRegistry, feature.FromDefaults(tfl.fDefaults))
 
-	manifests, result, err := s.loadManifests(absFilename, tf.Spec.Args)
+	manifests, result, err := s.loadManifests(tf)
 
 	tlr.BuiltinCalls = result.BuiltinCalls
 
