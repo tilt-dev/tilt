@@ -35,6 +35,7 @@ import (
 
 // FileWatch
 // +k8s:openapi-gen=true
+// +tilt:starlark-gen=true
 type FileWatch struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
@@ -55,7 +56,10 @@ type FileWatchList struct {
 // FileWatchSpec defines the desired state of FileWatch
 type FileWatchSpec struct {
 	// WatchedPaths are paths of directories or files to watch for changes to. It cannot be empty.
+	//
+	// +tilt:local-path=true
 	WatchedPaths []string `json:"watchedPaths" protobuf:"bytes,1,rep,name=watchedPaths"`
+
 	// Ignores are optional rules to filter out a subset of changes matched by WatchedPaths.
 	Ignores []IgnoreDef `json:"ignores,omitempty" protobuf:"bytes,2,rep,name=ignores"`
 	// Specifies how to disable this.
@@ -68,7 +72,10 @@ type IgnoreDef struct {
 	// BasePath is the base path for the patterns. It cannot be empty.
 	//
 	// If no patterns are specified, everything under it will be recursively ignored.
+	//
+	// +tilt:local-path=true
 	BasePath string `json:"basePath" protobuf:"bytes,1,opt,name=basePath"`
+
 	// Patterns are dockerignore style rules. Absolute-style patterns will be rooted to the BasePath.
 	//
 	// See https://docs.docker.com/engine/reference/builder/#dockerignore-file.

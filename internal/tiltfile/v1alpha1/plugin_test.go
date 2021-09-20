@@ -62,6 +62,31 @@ v1alpha1.extension_repo(name='default', url='ftp://github.com/tilt-dev/tilt-exte
 	require.Contains(t, err.Error(), "URLs must start with http(s):// or file://")
 }
 
+func TestFileWatchAsDict(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.File("Tiltfile", `
+v1alpha1.file_watch(name='my-fw', watched_paths=['./dir'], ignores=[{'base_path': './dir/ignore', 'patterns': ['**']}])
+`)
+	result, err := f.ExecFile("Tiltfile")
+	require.NoError(t, err)
+
+	set := MustState(result)
+
+	fw := set[(&v1alpha1.FileWatch{}).GetGroupVersionResource()]["my-fw"].(*v1alpha1.FileWatch)
+	require.NotNil(t, fw)
+	require.Equal(t, fw.Spec, v1alpha1.FileWatchSpec{
+		WatchedPaths: []string{f.JoinPath("dir")},
+		Ignores: []v1alpha1.IgnoreDef{
+			v1alpha1.IgnoreDef{
+				BasePath: f.JoinPath("dir", "ignore"),
+				Patterns: []string{"**"},
+			},
+		},
+	})
+}
+
 func newFixture(tb testing.TB) *starkit.Fixture {
 	return starkit.NewFixture(tb, NewPlugin())
 }

@@ -9,6 +9,16 @@ import (
 // A set of API Objects of different types.
 type ObjectSet map[schema.GroupVersionResource]TypedObjectSet
 
+func (s ObjectSet) GetOrCreateTypedSet(o Object) TypedObjectSet {
+	gvk := o.GetGroupVersionResource()
+	set := s[gvk]
+	if set == nil {
+		set = TypedObjectSet{}
+		s[gvk] = set
+	}
+	return set
+}
+
 // A set of API Objects of the same type.
 type TypedObjectSet map[string]Object
 

@@ -43,17 +43,11 @@ func (p Plugin) register(t *starlark.Thread, obj apiset.Object) (starlark.Value,
 	}
 
 	err := starkit.SetState(t, func(set apiset.ObjectSet) (apiset.ObjectSet, error) {
-		gvr := obj.GetGroupVersionResource()
-		typedSet, ok := set[gvr]
-		if !ok {
-			typedSet = apiset.TypedObjectSet{}
-			set[gvr] = typedSet
-		}
-
+		typedSet := set.GetOrCreateTypedSet(obj)
 		name := obj.GetName()
 		_, exists := typedSet[name]
 		if exists {
-			return set, fmt.Errorf("%s %q already registered", gvr.Resource, name)
+			return set, fmt.Errorf("%s %q already registered", obj.GetGroupVersionResource().Resource, name)
 		}
 
 		typedSet[name] = obj

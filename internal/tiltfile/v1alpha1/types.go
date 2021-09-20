@@ -1,6 +1,8 @@
 package v1alpha1
 
 import (
+	"fmt"
+
 	"go.starlark.net/starlark"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -20,6 +22,10 @@ func (p Plugin) registerSymbols(env *starkit.Environment) error {
 		return err
 	}
 	err = env.AddBuiltin("v1alpha1.extension_repo", p.extensionRepo)
+	if err != nil {
+		return err
+	}
+	err = env.AddBuiltin("v1alpha1.file_watch", p.fileWatch)
 	if err != nil {
 		return err
 	}
@@ -72,4 +78,112 @@ func (p Plugin) extensionRepo(t *starlark.Thread, fn *starlark.Builtin, args sta
 	obj.ObjectMeta.Labels = labels
 	obj.ObjectMeta.Annotations = annotations
 	return p.register(t, obj)
+}
+
+func (p Plugin) fileWatch(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	obj := &v1alpha1.FileWatch{
+		ObjectMeta: metav1.ObjectMeta{},
+		Spec:       v1alpha1.FileWatchSpec{},
+	}
+	var watchedPaths value.LocalPathList = value.NewLocalPathListUnpacker(t)
+	var ignores IgnoreDefList = IgnoreDefList{t: t}
+	var labels value.StringStringMap
+	var annotations value.StringStringMap
+	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
+		"name", &obj.ObjectMeta.Name,
+		"labels?", &labels,
+		"annotations?", &annotations,
+		"watched_paths?", &watchedPaths,
+		"ignores?", &ignores,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	obj.Spec.WatchedPaths = watchedPaths.Value
+	obj.Spec.Ignores = ignores.Value
+	obj.ObjectMeta.Labels = labels
+	obj.ObjectMeta.Annotations = annotations
+	return p.register(t, obj)
+}
+
+type IgnoreDef struct {
+	*starlark.Dict
+	Value v1alpha1.IgnoreDef
+	t     *starlark.Thread // instantiation thread for computing abspath
+}
+
+func (o *IgnoreDef) Unpack(v starlark.Value) error {
+	obj := v1alpha1.IgnoreDef{}
+
+	mapObj, ok := v.(*starlark.Dict)
+	if !ok {
+		return fmt.Errorf("expected dict, actual: %v", v.Type())
+	}
+
+	for _, item := range mapObj.Items() {
+		keyV, val := item[0], item[1]
+		key, ok := starlark.AsString(keyV)
+		if !ok {
+			return fmt.Errorf("key must be string. Got: %s", keyV.Type())
+		}
+
+		if key == "base_path" {
+			v := value.NewLocalPathUnpacker(o.t)
+			err := v.Unpack(val)
+			if err != nil {
+				return fmt.Errorf("unpacking %s: %v", key, err)
+			}
+			obj.BasePath = v.Value
+			continue
+		}
+		if key == "patterns" {
+			var v value.StringList
+			err := v.Unpack(val)
+			if err != nil {
+				return fmt.Errorf("unpacking %s: %v", key, err)
+			}
+			obj.Patterns = v
+			continue
+		}
+		return fmt.Errorf("Unexpected attribute name: %s", key)
+	}
+
+	mapObj.Freeze()
+	o.Dict = mapObj
+	o.Value = obj
+
+	return nil
+}
+
+type IgnoreDefList struct {
+	*starlark.List
+	Value []v1alpha1.IgnoreDef
+	t     *starlark.Thread
+}
+
+func (o *IgnoreDefList) Unpack(v starlark.Value) error {
+	items := []v1alpha1.IgnoreDef{}
+
+	listObj, ok := v.(*starlark.List)
+	if !ok {
+		return fmt.Errorf("expected list, actual: %v", v.Type())
+	}
+
+	for i := 0; i < listObj.Len(); i++ {
+		v := listObj.Index(i)
+
+		item := IgnoreDef{t: o.t}
+		err := item.Unpack(v)
+		if err != nil {
+			return fmt.Errorf("at index %d: %v", i, err)
+		}
+		items = append(items, v1alpha1.IgnoreDef(item.Value))
+	}
+
+	listObj.Freeze()
+	o.List = listObj
+	o.Value = items
+
+	return nil
 }
