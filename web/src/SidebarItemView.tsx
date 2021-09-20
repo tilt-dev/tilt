@@ -214,11 +214,9 @@ function buildStatusText(item: SidebarItem): string {
   } else if (buildStatus === ResourceStatus.Unhealthy) {
     return "Update error"
   } else if (buildStatus === ResourceStatus.Healthy) {
-    let msg = `Completed in ${buildDur}`
-    if (item.buildAlertCount > 0) {
-      msg += ", with issues"
-    }
-    return msg
+    return `Completed in ${buildDur}`
+  } else if (buildStatus === ResourceStatus.Warning) {
+    return `Completed in ${buildDur}, with issues`
   }
   return "Unknown"
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -25,7 +26,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tilt-dev/wmclient/pkg/analytics"
-	"github.com/tilt-dev/wmclient/pkg/dirs"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -35,6 +35,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/cloud"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers"
+	apitiltfile "github.com/tilt-dev/tilt/internal/controllers/apis/tiltfile"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
 	"github.com/tilt-dev/tilt/internal/controllers/core/extension"
 	"github.com/tilt-dev/tilt/internal/controllers/core/extensionrepo"
@@ -2679,6 +2680,9 @@ func TestDockerComposeRecordsRunLogs(t *testing.T) {
 	defer close(output)
 	f.setDCRunLogOutput(m.DockerComposeTarget(), output)
 
+	containerState := docker.NewRunningContainerState()
+	f.b.nextDockerComposeContainerState = &containerState
+
 	f.loadAndStart()
 	f.waitForCompletedBuildCount(2)
 
@@ -2702,21 +2706,44 @@ func TestDockerComposeFiltersRunLogs(t *testing.T) {
 	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
+	// since this is a negative test case, we need to ensure our mock behaves properly first
+	fakeServiceLog := make(chan string)
+	close(fakeServiceLog)
+	f.dcc.RunLogOutput["fake-service"] = fakeServiceLog
+	r := f.dcc.StreamLogs(f.ctx, nil, "fake-service")
+	sampleDCLogOutput, err := io.ReadAll(r)
+	require.NoError(t, err, "Failed to read fake Docker Compose log stream")
+	assert.Equal(t, string(sampleDCLogOutput),
+		`Attaching to fake-service
+fake-service exited with code 0
+`)
+
 	m, _ := f.setupDCFixture()
-	expected := "Attaching to snack\n"
+	expected := "some app log"
 	output := make(chan string, 1)
 	output <- expected
 	defer close(output)
 	f.setDCRunLogOutput(m.DockerComposeTarget(), output)
 
+	containerState := docker.NewRunningContainerState()
+	f.b.nextDockerComposeContainerState = &containerState
+
 	f.loadAndStart()
 	f.waitForCompletedBuildCount(2)
+
+	f.WaitUntil("wait until manifest state has a log", func(state store.EngineState) bool {
+		ms, _ := state.ManifestState(m.ManifestName())
+		spanID := ms.DCRuntimeState().SpanID
+		return spanID != "" && state.LogStore.SpanLog(spanID) != ""
+	})
 
 	// recorded on manifest state
 	f.withState(func(es store.EngineState) {
 		ms, _ := es.ManifestState(m.ManifestName())
 		spanID := ms.DCRuntimeState().SpanID
-		assert.NotContains(t, es.LogStore.SpanLog(spanID), expected)
+		spanLog := es.LogStore.SpanLog(spanID)
+		assert.NotContains(t, spanLog, "Attaching to")
+		assert.Contains(t, spanLog, expected)
 	})
 }
 
@@ -3822,7 +3849,6 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		}
 	}
 
-	dir := dirs.NewTiltDevDirAt(f.Path())
 	base := xdg.FakeBase{Dir: f.Path()}
 	log := bufsync.NewThreadSafeBuffer()
 	to := tiltanalytics.NewFakeOpter(analytics.OptIn)
@@ -3871,9 +3897,8 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	require.NoError(t, err)
 	webListener, err := server.ProvideWebListener("localhost", 0)
 	require.NoError(t, err)
-	configAccess := server.ProvideConfigAccess(dir)
 	hudsc := server.ProvideHeadsUpServerController(
-		configAccess, "tilt-default", webListener, serverOptions,
+		nil, "tilt-default", webListener, serverOptions,
 		&server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
 	ns := k8s.Namespace("default")
 	of := k8s.ProvideOwnerFetcher(ctx, b.kClient)
@@ -3912,7 +3937,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	kar := kubernetesapply.NewReconciler(cdc, b.kClient, sch, docker.Env{}, k8s.KubeContext("kind-kind"), st, "default")
 
 	tfr := ctrltiltfile.NewReconciler(st, tfl, dockerClient, cdc, sch, buildSource, engineMode)
-	extr := extension.NewReconciler(cdc, sch)
+	extr := extension.NewReconciler(cdc, sch, ta)
 	extrr, err := extensionrepo.NewReconciler(cdc, base)
 	require.NoError(t, err)
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
@@ -4508,7 +4533,7 @@ func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
 	f.dcc.WorkDir = f.Path()
 	f.dcc.ConfigOutput = string(dcpc)
 
-	tlr := f.realTFL.Load(f.ctx, f.JoinPath("Tiltfile"), model.UserConfigState{})
+	tlr := f.realTFL.Load(f.ctx, apitiltfile.MainTiltfile(f.JoinPath("Tiltfile"), nil))
 	if tlr.Error != nil {
 		f.T().Fatal(tlr.Error)
 	}

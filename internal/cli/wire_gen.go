@@ -277,7 +277,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	buildSource := tiltfile2.NewBuildSource()
 	engineMode := _wireEngineModeValue
 	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, switchCli, deferredClient, scheme, buildSource, engineMode)
-	extensionReconciler := extension.NewReconciler(deferredClient, scheme)
+	extensionReconciler := extension.NewReconciler(deferredClient, scheme, analytics3)
 	base := xdg.NewTiltDevBase()
 	extensionrepoReconciler, err := extensionrepo.NewReconciler(deferredClient, base)
 	if err != nil {
@@ -480,7 +480,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	buildSource := tiltfile2.NewBuildSource()
 	engineMode := _wireStoreEngineModeValue
 	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, switchCli, deferredClient, scheme, buildSource, engineMode)
-	extensionReconciler := extension.NewReconciler(deferredClient, scheme)
+	extensionReconciler := extension.NewReconciler(deferredClient, scheme, analytics3)
 	base := xdg.NewTiltDevBase()
 	extensionrepoReconciler, err := extensionrepo.NewReconciler(deferredClient, base)
 	if err != nil {
@@ -680,7 +680,7 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	buildSource := tiltfile2.NewBuildSource()
 	engineMode := _wireEngineModeValue2
 	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, switchCli, deferredClient, scheme, buildSource, engineMode)
-	extensionReconciler := extension.NewReconciler(deferredClient, scheme)
+	extensionReconciler := extension.NewReconciler(deferredClient, scheme, analytics3)
 	base := xdg.NewTiltDevBase()
 	extensionrepoReconciler, err := extensionrepo.NewReconciler(deferredClient, base)
 	if err != nil {

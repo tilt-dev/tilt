@@ -3,12 +3,7 @@ import {
   AccordionDetails,
   AccordionSummary,
 } from "@material-ui/core"
-import React, {
-  ChangeEvent,
-  Dispatch,
-  PropsWithChildren,
-  SetStateAction,
-} from "react"
+import React, { ChangeEvent, PropsWithChildren } from "react"
 import styled from "styled-components"
 import { AnalyticsType } from "./analytics"
 import { FeaturesContext, Flag } from "./feature"
@@ -18,7 +13,6 @@ import {
   TILTFILE_LABEL,
   UNLABELED_LABEL,
 } from "./labels"
-import { PersistentStateProvider } from "./LocalStorage"
 import { OverviewSidebarOptions } from "./OverviewSidebarOptions"
 import PathBuilder from "./PathBuilder"
 import {
@@ -30,6 +24,8 @@ import {
   ResourceGroupSummaryMixin,
 } from "./ResourceGroups"
 import { useResourceGroups } from "./ResourceGroupsContext"
+import { ResourceListOptions } from "./ResourceListOptionsContext"
+import { matchesResourceName } from "./ResourceNameFilter"
 import { SidebarGroupStatusSummary } from "./ResourceStatusSummary"
 import SidebarItem from "./SidebarItem"
 import SidebarItemView, {
@@ -38,7 +34,7 @@ import SidebarItemView, {
 } from "./SidebarItemView"
 import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
 import { Color, FontSize, SizeUnit } from "./style-helpers"
-import { ResourceView, SidebarOptions } from "./types"
+import { ResourceView } from "./types"
 
 let SidebarResourcesRoot = styled.nav`
   flex: 1 0 auto;
@@ -236,17 +232,7 @@ type SidebarProps = {
   selected: string
   resourceView: ResourceView
   pathBuilder: PathBuilder
-}
-
-export const defaultOptions: SidebarOptions = {
-  alertsOnTop: false,
-  resourceNameFilter: "",
-}
-
-function MaybeUpgradeSavedSidebarOptions(o: SidebarOptions) {
-  // non-nullable fields added to SidebarOptions after its initial release need to have default values
-  // filled in here
-  return { ...o, resourceNameFilter: o.resourceNameFilter ?? "" }
+  resourceListOptions: ResourceListOptions
 }
 
 function hasAlerts(item: SidebarItem): boolean {
@@ -257,26 +243,14 @@ function sortByHasAlerts(itemA: SidebarItem, itemB: SidebarItem): number {
   return Number(hasAlerts(itemB)) - Number(hasAlerts(itemA))
 }
 
-function matchesResourceName(item: SidebarItem, filter: string): boolean {
-  filter = filter.trim()
-  // this is functionally redundant but probably an important enough case to make its own thing
-  if (filter === "") {
-    return true
-  }
-  // a resource matches the query if the resource name contains all tokens in the query
-  return filter
-    .split(" ")
-    .every((token) => item.name.toLowerCase().includes(token.toLowerCase()))
-}
-
 function applyOptionsToItems(
   items: SidebarItem[],
-  options: SidebarOptions
+  options: ResourceListOptions
 ): SidebarItem[] {
   let itemsToDisplay: SidebarItem[] = [...items]
   if (options.resourceNameFilter) {
     itemsToDisplay = itemsToDisplay.filter((item) =>
-      matchesResourceName(item, options.resourceNameFilter)
+      matchesResourceName(item.name, options.resourceNameFilter)
     )
   }
 
@@ -301,16 +275,17 @@ export class SidebarResources extends React.Component<SidebarProps> {
     }
   }
 
-  renderWithOptions(
-    options: SidebarOptions,
-    setOptions: Dispatch<SetStateAction<SidebarOptions>>
-  ) {
-    const filteredItems = applyOptionsToItems(this.props.items, options)
+  render() {
+    const filteredItems = applyOptionsToItems(
+      this.props.items,
+      this.props.resourceListOptions
+    )
 
     // only say no matches if there were actually items that got filtered out
     // otherwise, there might just be 0 resources because there are 0 resources
     // (though technically there's probably always at least a Tiltfile resource)
-    const resourceFilterApplied = options.resourceNameFilter.length > 0
+    const resourceFilterApplied =
+      this.props.resourceListOptions.resourceNameFilter.length > 0
     const noResourcesMatchFilter =
       resourceFilterApplied && filteredItems.length === 0
     const listItems = noResourcesMatchFilter ? (
@@ -348,7 +323,7 @@ export class SidebarResources extends React.Component<SidebarProps> {
             displayLabelGroupsTip ? GROUP_INFO_TOOLTIP_ID : undefined
           }
         >
-          <OverviewSidebarOptions options={options} setOptions={setOptions} />
+          <OverviewSidebarOptions />
           {displayLabelGroups ? (
             <SidebarGroupedByLabels {...this.props} items={filteredItems} />
           ) : (
@@ -364,18 +339,6 @@ export class SidebarResources extends React.Component<SidebarProps> {
           resourceView={this.props.resourceView}
         />
       </SidebarResourcesRoot>
-    )
-  }
-
-  render() {
-    return (
-      <PersistentStateProvider
-        defaultValue={defaultOptions}
-        name={"sidebar_options"}
-        maybeUpgradeSavedState={MaybeUpgradeSavedSidebarOptions}
-      >
-        {(value: SidebarOptions, set) => this.renderWithOptions(value, set)}
-      </PersistentStateProvider>
     )
   }
 }

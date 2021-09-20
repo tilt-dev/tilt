@@ -62,7 +62,7 @@ github.com/chai2010/gettext-go/gettext/plural
 github.com/chai2010/gettext-go/gettext/po
 # github.com/cloudflare/cfssl v1.4.1
 ## explicit
-# github.com/compose-spec/compose-go v0.0.0-20210716132856-efad24e892ce
+# github.com/compose-spec/compose-go v0.0.0-20210910070419-813d4ccb40f8
 ## explicit
 github.com/compose-spec/compose-go/cli
 github.com/compose-spec/compose-go/errdefs
@@ -326,8 +326,6 @@ github.com/imdario/mergo
 github.com/inconshreveable/mousetrap
 # github.com/jinzhu/gorm v1.9.12
 ## explicit
-# github.com/joho/godotenv v1.3.0
-github.com/joho/godotenv
 # github.com/jonboulle/clockwork v0.2.2
 ## explicit
 github.com/jonboulle/clockwork
@@ -553,6 +551,8 @@ github.com/tilt-dev/wmclient/pkg/os/temp
 # github.com/tonistiigi/units v0.0.0-20180711220420-6950e57a87ea
 ## explicit
 github.com/tonistiigi/units
+# github.com/ulyssessouza/godotenv v1.3.1-0.20210806120901-e417b721114e
+github.com/ulyssessouza/godotenv
 # github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa
 ## explicit
 github.com/whilp/git-urls
@@ -642,6 +642,7 @@ golang.org/x/crypto/ssh
 golang.org/x/crypto/ssh/agent
 golang.org/x/crypto/ssh/terminal
 # golang.org/x/mod v0.3.1-0.20200828183125-ce943fd02449
+## explicit
 golang.org/x/mod/module
 golang.org/x/mod/semver
 # golang.org/x/net v0.0.0-20210428140749-89ef3d95e781

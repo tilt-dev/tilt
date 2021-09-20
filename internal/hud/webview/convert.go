@@ -259,6 +259,8 @@ func toUIResource(mt *store.ManifestTarget, s store.EngineState) (*v1alpha1.UIRe
 	return r, nil
 }
 
+// TODO(nick): We should build this from the Tiltfile in the apiserver,
+// not the Tiltfile state in EngineState.
 func TiltfileResourceProtoView(name model.ManifestName, ms *store.ManifestState, logStore *logstore.LogStore) *v1alpha1.UIResource {
 	ltfb := ms.LastBuild()
 	ctfb := ms.CurrentBuild

@@ -23,7 +23,7 @@ import { flushPromises } from "./promise"
 type UIButtonStatus = Proto.v1alpha1UIButtonStatus
 type UIButton = Proto.v1alpha1UIButton
 
-const buttonInputs = accessorsForTesting(`apibutton-TestButton`)
+const buttonInputsAccessor = accessorsForTesting(`apibutton-TestButton`)
 
 function wrappedMount(e: JSX.Element) {
   return mount(
@@ -149,8 +149,8 @@ describe("ApiButton", () => {
     expect(actualStatus).toEqual(expectedStatus)
   })
 
-  it("reads options from local storage", async () => {
-    buttonInputs.set({
+  it("reads options from local storage", () => {
+    buttonInputsAccessor.set({
       text1: "text value",
       bool1: true,
     })
@@ -167,7 +167,7 @@ describe("ApiButton", () => {
     expect(bf.props().checked).toEqual(true)
   })
 
-  it("writes options to local storage", async () => {
+  it("writes options to local storage", () => {
     const inputSpecs = [textField("text1"), boolField("bool1")]
     const root = mountButton(makeUIButton({ inputSpecs: inputSpecs }))
 
@@ -180,7 +180,7 @@ describe("ApiButton", () => {
     const bf = root.find(ApiButtonForm).find("input#bool1")
     bf.simulate("change", { target: { checked: true } })
 
-    expect(buttonInputs.get()).toEqual({
+    expect(buttonInputsAccessor.get()).toEqual({
       text1: "new_value",
       bool1: true,
     })

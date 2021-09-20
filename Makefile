@@ -180,3 +180,7 @@ shellcheck:
 update-codegen:
 	scripts/update-codegen.sh
 	goimports -w -l $(GOIMPORTS_LOCAL_ARG) pkg
+
+update-starlark-codegen:
+	go install github.com/tilt-dev/tilt-starlark-codegen@latest
+	tilt-starlark-codegen ./pkg/apis/core/v1alpha1 ./internal/tiltfile/v1alpha1

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -17,6 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/ospath"
@@ -27,6 +29,7 @@ import (
 type Reconciler struct {
 	ctrlClient ctrlclient.Client
 	indexer    *indexer.Indexer
+	analytics  *analytics.TiltAnalytics
 }
 
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
@@ -38,10 +41,11 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	return b, nil
 }
 
-func NewReconciler(ctrlClient ctrlclient.Client, scheme *runtime.Scheme) *Reconciler {
+func NewReconciler(ctrlClient ctrlclient.Client, scheme *runtime.Scheme, analytics *analytics.TiltAnalytics) *Reconciler {
 	return &Reconciler{
 		ctrlClient: ctrlClient,
 		indexer:    indexer.NewIndexer(scheme, indexExtension),
+		analytics:  analytics,
 	}
 }
 
@@ -91,41 +95,60 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		return r.updateError(ctx, &ext, fmt.Sprintf("no extension tiltfile found at %s", absPath))
 	}
 
-	// TODO(nick): Create Tiltfile child object.
-	return r.updateStatus(ctx, &ext, func(status *v1alpha1.ExtensionStatus) {
+	update, changed, err := r.updateStatus(ctx, &ext, func(status *v1alpha1.ExtensionStatus) {
 		status.Path = absPath
 		status.Error = ""
 	})
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	// Always manage the child objects, even if the user-visible status didn't change,
+	// because there might be internal state we need to propagate.
+	err = r.manageOwnedTiltfile(ctx, types.NamespacedName{Name: ext.Name}, update)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if changed {
+		repoType := "http"
+		if strings.HasPrefix(repo.Spec.URL, "file://") {
+			repoType = "file"
+		}
+		r.analytics.Incr("api.extension.load", map[string]string{
+			"ext_path":      ext.Spec.RepoPath,
+			"repo_url_hash": analytics.HashSHA1(repo.Spec.URL),
+			"repo_type":     repoType,
+		})
+	}
+
+	return ctrl.Result{}, nil
 }
 
-// Generic status update.
-func (r *Reconciler) updateStatus(ctx context.Context, ext *v1alpha1.Extension, mutateFn func(*v1alpha1.ExtensionStatus)) (ctrl.Result, error) {
+// Generic status update. Returns true if the server changed.
+func (r *Reconciler) updateStatus(ctx context.Context, ext *v1alpha1.Extension, mutateFn func(*v1alpha1.ExtensionStatus)) (*v1alpha1.Extension, bool, error) {
 	update := ext.DeepCopy()
 	mutateFn(&(update.Status))
 
 	if apicmp.DeepEqual(update.Status, ext.Status) {
-		return ctrl.Result{}, nil
+		return update, false, nil
 	}
 	err := r.ctrlClient.Status().Update(ctx, update)
 	if err != nil {
-		return ctrl.Result{}, err
+		return update, false, err
 	}
-
-	err = r.manageOwnedTiltfile(ctx, types.NamespacedName{Name: update.Name}, update)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	return ctrl.Result{}, err
+	return update, true, nil
 }
 
-// Update status with an error message, logging the error.
+// Update status with an error message, logging the error, and managing child objects.
 func (r *Reconciler) updateError(ctx context.Context, ext *v1alpha1.Extension, errorMsg string) (ctrl.Result, error) {
 	update := ext.DeepCopy()
 	update.Status.Error = errorMsg
 	update.Status.Path = ""
 
 	if apicmp.DeepEqual(update.Status, ext.Status) {
+		// We don't need to worry about managing the child object, because
+		// all error states are equivalent.
 		return ctrl.Result{}, nil
 	}
 

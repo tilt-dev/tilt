@@ -2,6 +2,7 @@ import { mount, ReactWrapper } from "enzyme"
 import { SnackbarProvider } from "notistack"
 import React from "react"
 import { MemoryRouter } from "react-router"
+import { HeaderGroup } from "react-table"
 import {
   cleanupMockAnalyticsCalls,
   mockAnalyticsCalls,
@@ -18,6 +19,8 @@ import OverviewTable, {
   resourcesToTableCells,
   ResourceTableData,
   ResourceTableHeader,
+  ResourceTableHeaderSortTriangle,
+  ResourceTableHeadRow,
   ResourceTableRow,
   RowValues,
   Table,
@@ -40,6 +43,7 @@ import {
 } from "./testdata"
 import { RuntimeStatus, UpdateStatus } from "./types"
 
+// Helpers
 const tableViewWithSettings = ({
   view,
   labelsEnabled,
@@ -60,6 +64,32 @@ const tableViewWithSettings = ({
     </MemoryRouter>
   )
 }
+
+const findTableHeaderByName = (
+  wrapper: ReactWrapper<any>,
+  columnName: string,
+  sortable = true
+): ReactWrapper<any, typeof ResourceTableHeader> => {
+  const selector = sortable ? `Sort by ${columnName}` : columnName
+  return wrapper.find(ResourceTableHeader).filter(`[title="${selector}"]`)
+}
+
+const findTableColumnByName = (
+  wrapper: ReactWrapper<any>,
+  columnName: string
+): HeaderGroup<RowValues>[] => {
+  const matchingColumns = wrapper
+    .find(ResourceTableHeadRow)
+    .reduce((columns: HeaderGroup<RowValues>[], row) => {
+      const specificColumn = row
+        .prop("headerGroup")
+        .headers.filter((column) => column.Header === columnName)
+      return [...columns, ...specificColumn]
+    }, [])
+
+  return matchingColumns
+}
+// End helpers
 
 it("shows buttons on the appropriate resources", () => {
   let view = nResourceView(3)
@@ -165,13 +195,52 @@ describe("when labels feature is not enabled", () => {
   })
 })
 
+describe("overview table without groups", () => {
+  let view: TestDataView
+  let wrapper: ReactWrapper<OverviewTableProps, typeof OverviewTable>
+
+  beforeEach(() => {
+    view = nResourceView(8)
+    wrapper = mount(tableViewWithSettings({ view, labelsEnabled: true }))
+  })
+
+  describe("sorting", () => {
+    it("table sorts when a column header is clicked", () => {
+      findTableHeaderByName(wrapper, "Pod ID").simulate("click")
+      const [podIdColumn] = findTableColumnByName(wrapper, "Pod ID")
+
+      expect(podIdColumn.isSorted).toBe(true)
+    })
+
+    it("table column header displays ascending arrow when sorted ascending", () => {
+      findTableHeaderByName(wrapper, "Pod ID").simulate("click")
+      const arrowIcon = findTableHeaderByName(wrapper, "Pod ID").find(
+        ResourceTableHeaderSortTriangle
+      )
+
+      expect(arrowIcon.hasClass("is-sorted-asc")).toBe(true)
+    })
+
+    it("table column header displays descending arrow when sorted descending", () => {
+      findTableHeaderByName(wrapper, "Pod ID")
+        .simulate("click")
+        .simulate("click")
+      const arrowIcon = findTableHeaderByName(wrapper, "Pod ID").find(
+        ResourceTableHeaderSortTriangle
+      )
+
+      expect(arrowIcon.hasClass("is-sorted-desc")).toBe(true)
+    })
+  })
+})
+
 describe("overview table with groups", () => {
   let view: TestDataView
   let wrapper: ReactWrapper<OverviewTableProps, typeof OverviewTable>
   let resources: GroupByLabelView<RowValues>
 
   beforeEach(() => {
-    view = nResourceWithLabelsView(5)
+    view = nResourceWithLabelsView(8)
     wrapper = mount(tableViewWithSettings({ view, labelsEnabled: true }))
     resources = resourcesToTableCells(
       view.uiResources,
@@ -362,6 +431,62 @@ describe("overview table with groups", () => {
 
       const updatedGroup = getResourceGroups().first()
       expect(updatedGroup.props().expanded).toBe(true)
+    })
+  })
+
+  describe("sorting", () => {
+    let firstTableNameColumn: ReactWrapper<any, typeof ResourceTableHeader>
+
+    beforeEach(() => {
+      // Find and click the "Resource Name" column on the first table group
+      firstTableNameColumn = wrapper
+        .find(ResourceTableHeader)
+        .filter('[title="Sort by Resource Name"]')
+        .first()
+      firstTableNameColumn.simulate("click")
+    })
+
+    it("all resource group tables are sorted by the same column when one table is sorted", () => {
+      const allTables = wrapper.find(Table)
+      const allNameColumns = findTableColumnByName(wrapper, "Resource Name")
+
+      // As a safeguard, make sure that the number of "Resource Name" columns
+      // matches the number of tables being rendered
+      expect(allNameColumns.length).toBe(allTables.length)
+      // Expect that every "Resource Name" column is sorted
+      expect(allNameColumns.every((column) => column.isSorted)).toBe(true)
+    })
+
+    it("tables sort by ascending values when clicked once", () => {
+      // Use the fourth resource group table, since it has multiple resources in the test data generator
+      const ascendingNames = wrapper.find(Table).at(3).find(TableNameColumn)
+      const expectedNames = ["_1", "_3", "_5", "_7", "a_failed_build"]
+      const actualNames = ascendingNames.map((name) => name.text())
+
+      expect(actualNames).toStrictEqual(expectedNames)
+    })
+
+    it("tables sort by descending values when clicked twice", () => {
+      firstTableNameColumn.simulate("click")
+
+      // Use the fourth resource group table, since it has multiple resources in the test data generator
+      const descendingNames = wrapper.find(Table).at(3).find(TableNameColumn)
+      const expectedNames = ["a_failed_build", "_7", "_5", "_3", "_1"]
+      const actualNames = descendingNames.map((name) => name.text())
+
+      expect(actualNames).toStrictEqual(expectedNames)
+    })
+
+    it("tables un-sort when clicked thrice", () => {
+      firstTableNameColumn.simulate("click")
+      firstTableNameColumn.simulate("click")
+
+      // Use the fourth resource group table, since it has multiple resources in the test data generator
+      const unsortedNames = wrapper.find(Table).at(3).find(TableNameColumn)
+      const expectedNames = ["_1", "_3", "_5", "_7", "a_failed_build"]
+      const actualNames = unsortedNames.map((name) => name.text())
+
+      expect(actualNames).toStrictEqual(expectedNames)
     })
   })
 })

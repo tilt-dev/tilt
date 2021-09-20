@@ -43,7 +43,7 @@ jobs:
 
   build-js:
     docker:
-      - image: circleci/node:16
+      - image: cimg/node:16.8
     steps:
       - checkout
       - run: make check-js
@@ -75,7 +75,7 @@ jobs:
       size: "large"
     steps:
       - run: choco install make kustomize kubernetes-helm docker-compose
-      - run: choco update golang --version=1.16.2
+      - run: choco upgrade -y --allow-downgrade golang --version=1.16.2
       - run: go get -u gotest.tools/gotestsum
       - checkout
       # Check to make sure Windows binaries compile
@@ -88,7 +88,7 @@ jobs:
   build-integration:
     resource_class: medium+
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:d41a891455a232a865c7abc1e2ffe25b1a78a207a6ea00feeb1a0c26c58f1eeb
+      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:5bd1575a8c47e52607a490b9498c112e616e43d90811b068811f796cb88add99
     steps:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
@@ -146,7 +146,7 @@ jobs:
           path: test-results
       - slack/notify-on-failure:
           only_for_branches: master
-          
+
   deploy-storybook:
     docker:
       - image: cimg/base:2020.01
@@ -167,7 +167,7 @@ jobs:
       - run: ./configs/storybook/deploy.sh
       - slack/notify-on-failure:
           only_for_branches: master
-          
+
   release:
     resource_class: medium+
     docker:
@@ -195,9 +195,8 @@ workflows:
       - shellcheck/check:
           dir: scripts
           exclude: SC2001
-          
+
   build:
-        
     # The linux job is cheaper than the others, so run that first.
     jobs:
       - build-linux
@@ -229,16 +228,16 @@ workflows:
           filters:
             branches:
               only: master
-              
+
   release:
     jobs:
       - release:
           context:
-          - Tilt Slack Context
-          - Tilt Release CLI Context
-          - Tilt Docker Login Context
-          - Tilt Cloud Login Context
-          - Tilt Deploy Context
+            - Tilt Slack Context
+            - Tilt Release CLI Context
+            - Tilt Docker Login Context
+            - Tilt Cloud Login Context
+            - Tilt Deploy Context
           filters:
             branches:
               only: never-release-on-a-branch

@@ -28,15 +28,7 @@ func (e Plugin) NewState() interface{} {
 }
 
 func (p Plugin) OnStart(env *starkit.Environment) error {
-	err := env.AddBuiltin("v1alpha1.extension_repo", p.extensionRepo)
-	if err != nil {
-		return err
-	}
-	err = env.AddBuiltin("v1alpha1.extension", p.extension)
-	if err != nil {
-		return err
-	}
-	return nil
+	return p.registerSymbols(env)
 }
 
 // Register an API object, so that it's reconciled against the API server when

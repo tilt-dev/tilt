@@ -106,7 +106,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	ctx = store.MustObjectLogHandler(ctx, r.st, &tf)
 	run := r.runs[nn]
 	if run == nil {
-		// Initialize the UISession if this has never been initialized before.
+		// Initialize the UISession and filewatch if this has never been initialized before.
 		err := updateOwnedObjects(ctx, r.ctrlClient, nn, &tf, nil, r.engineMode)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -267,8 +267,12 @@ func (r *Reconciler) run(ctx context.Context, nn types.NamespacedName, tf *v1alp
 		logger.Get(ctx).Infof("Tiltfile args changed to: %v", userConfigState.Args)
 	}
 
-	tlr := r.tfl.Load(ctx, entry.TiltfilePath, userConfigState)
-	if tlr.Error == nil && len(tlr.Manifests) == 0 {
+	tlr := r.tfl.Load(ctx, tf)
+
+	// If the user is executing an empty main tiltfile, that probably means
+	// they need a tutorial. For now, we link to that tutorial, but a more interactive
+	// system might make sense here.
+	if tlr.Error == nil && len(tlr.Manifests) == 0 && tf.Name == model.MainTiltfileManifestName.String() {
 		tlr.Error = fmt.Errorf("No resources found. Check out https://docs.tilt.dev/tutorial.html to get started!")
 	}
 

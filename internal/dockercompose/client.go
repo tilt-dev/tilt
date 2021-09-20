@@ -9,10 +9,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 
 	"github.com/compose-spec/compose-go/loader"
+	"golang.org/x/mod/semver"
 
 	"github.com/compose-spec/compose-go/types"
 	"github.com/pkg/errors"
@@ -25,31 +28,40 @@ import (
 	compose "github.com/compose-spec/compose-go/cli"
 )
 
+// versionRegex handles both v1 and v2 version outputs, which have several variations.
+// (See TestParseComposeVersionOutput for various cases.)
+var versionRegex = regexp.MustCompile(`(?mi)^docker[ -]compose(?: version)?:? v?([^\s,]+),?(?: build ([a-z0-9-]+))?`)
+
 type DockerComposeClient interface {
 	Up(ctx context.Context, configPaths []string, serviceName model.TargetName, shouldBuild bool, stdout, stderr io.Writer) error
 	Down(ctx context.Context, configPaths []string, stdout, stderr io.Writer) error
-	StreamLogs(ctx context.Context, configPaths []string, serviceName model.TargetName) (io.ReadCloser, error)
+	StreamLogs(ctx context.Context, configPaths []string, serviceName model.TargetName) io.ReadCloser
 	StreamEvents(ctx context.Context, configPaths []string) (<-chan string, error)
 	Project(ctx context.Context, configPaths []string) (*types.Project, error)
 	ContainerID(ctx context.Context, configPaths []string, serviceName model.TargetName) (container.ID, error)
+	Version(ctx context.Context) (canonicalVersion string, build string, err error)
 }
 
 type cmdDCClient struct {
-	env docker.Env
-	mu  *sync.Mutex
+	env         docker.Env
+	mu          *sync.Mutex
+	composePath string
 }
 
 // TODO(dmiller): we might want to make this take a path to the docker-compose config so we don't
 // have to keep passing it in.
 func NewDockerComposeClient(env docker.LocalEnv) DockerComposeClient {
 	return &cmdDCClient{
-		env: docker.Env(env),
-		mu:  &sync.Mutex{},
+		env:         docker.Env(env),
+		mu:          &sync.Mutex{},
+		composePath: dcExecutablePath(),
 	}
 }
 
 func (c *cmdDCClient) Up(ctx context.Context, configPaths []string, serviceName model.TargetName, shouldBuild bool, stdout, stderr io.Writer) error {
 	var genArgs []string
+	// TODO(milas): this causes docker-compose to output a truly excessive amount of logging; it might
+	// 	make sense to hide it behind a special environment variable instead or something
 	if logger.Get(ctx).Level().ShouldDisplay(logger.VerboseLvl) {
 		genArgs = []string{"--verbose"}
 	}
@@ -117,37 +129,36 @@ func (c *cmdDCClient) Down(ctx context.Context, configPaths []string, stdout, st
 	return nil
 }
 
-func (c *cmdDCClient) StreamLogs(ctx context.Context, configPaths []string, serviceName model.TargetName) (io.ReadCloser, error) {
-	// TODO(maia): --since time
-	// (may need to implement with `docker log <cID>` instead since `d-c log` doesn't support `--since`
+func (c *cmdDCClient) StreamLogs(ctx context.Context, configPaths []string, serviceName model.TargetName) io.ReadCloser {
 	var args []string
 	for _, config := range configPaths {
 		args = append(args, "-f", config)
 	}
-	args = append(args, "logs", "--no-color", "-f", serviceName.String())
+
+	r, w := io.Pipe()
+
+	// NOTE: we can't practically remove "--no-color" due to the way that Docker Compose formats colorful lines; it
+	// 		 will wrap the entire line (including the \n) with the color codes, so you end up with something like:
+	//			\u001b[36mmyproject_my-container_1 exited with code 0\n\u001b[0m
+	// 		 where the ANSI reset (\u001b[0m) is _AFTER_ the \n, which doesn't play nice with our log segment logic
+	// 		 under some conditions - adding a final \n after stdout is closed would probably be sufficient given the
+	// 		 current pattern of how Compose colorizes stuff, but it's really not worth the headache to find out
+	args = append(args, "logs", "--no-color", "--no-log-prefix", "--timestamps", "--follow", serviceName.String())
 	cmd := c.dcCommand(ctx, args)
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return nil, errors.Wrap(err, "making stdout pipe for `docker-compose logs`")
-	}
+	cmd.Stdout = w
 
 	errBuf := bytes.Buffer{}
 	cmd.Stderr = &errBuf
 
-	err = cmd.Start()
-	if err != nil {
-		return nil, errors.Wrapf(err, "`docker-compose %s`",
-			strings.Join(args, " "))
-	}
-
 	go func() {
-		err = cmd.Wait()
-		if err != nil {
-			logger.Get(ctx).Debugf("cmd `docker-compose %s` exited with error: \"%v\" (stderr: %s)",
-				strings.Join(args, " "), err, errBuf.String())
+		if cmdErr := cmd.Run(); cmdErr != nil {
+			_ = w.CloseWithError(fmt.Errorf("cmd `docker-compose %s` exited with error: \"%v\" (stderr: %s)",
+				strings.Join(args, " "), cmdErr, errBuf.String()))
+		} else {
+			_ = w.Close()
 		}
 	}()
-	return stdout, nil
+	return r
 }
 
 func (c *cmdDCClient) StreamEvents(ctx context.Context, configPaths []string) (<-chan string, error) {
@@ -198,7 +209,6 @@ func (c *cmdDCClient) Project(ctx context.Context, configPaths []string) (*types
 	// 	if it fails, attempt to fallback to using the CLI to resolve the YAML and then parse
 	// 	it with compose-go
 	// 	see https://github.com/tilt-dev/tilt/issues/4795
-	//var fallbackErr error
 	proj, err = c.loadProjectCLI(ctx, configPaths)
 	if err != nil {
 		return nil, err
@@ -215,8 +225,23 @@ func (c *cmdDCClient) ContainerID(ctx context.Context, configPaths []string, ser
 	return container.ID(id), nil
 }
 
+// Version runs `docker-compose version` and parses the output, returning the canonical version and build (if present).
+//
+// NOTE: The version subcommand was added in Docker Compose v1.4.0 (released 2015-08-04), so this won't work for
+// 		 truly ancient versions, but handles both v1 and v2.
+func (c *cmdDCClient) Version(ctx context.Context) (string, string, error) {
+	cmd := c.dcCommand(ctx, []string{"version"})
+	stdout, err := cmd.Output()
+	if err != nil {
+		return "", "", FormatError(cmd, stdout, err)
+	}
+	return parseComposeVersionOutput(stdout)
+}
+
 func (c *cmdDCClient) loadProject(configPaths []string) (*types.Project, error) {
-	opts, err := compose.NewProjectOptions(configPaths, compose.WithOsEnv)
+	// NOTE: take care to keep relevant options in sync with FakeDCClient::Project() and cmdDCClient::loadProjectCLI()
+	// 	which work differently so cannot directly share options but need to behave similarly
+	opts, err := compose.NewProjectOptions(configPaths, compose.WithOsEnv, compose.WithResolvedPaths(true))
 	if err != nil {
 		return nil, err
 	}
@@ -233,9 +258,9 @@ func (c *cmdDCClient) loadProjectCLI(ctx context.Context, configPaths []string) 
 		return nil, err
 	}
 
-	// in practice, the workdir should be irrelevant as the CLI call above _should_ already have resolved paths,
-	// but we populate it appropriately regardless because historically docker-compose has been inconsistent in
-	// this regard
+	// docker-compose is very inconsistent about whether it fully resolves paths or not via CLI, both between
+	// v1 and v2 as well as even different releases within v2, so set the workdir and force the loader to resolve
+	// any relative paths
 	var workDir string
 	if len(configPaths) != 0 {
 		// from the compose Docs:
@@ -251,11 +276,26 @@ func (c *cmdDCClient) loadProjectCLI(ctx context.Context, configPaths []string) 
 				Content: []byte(resolvedYAML),
 			},
 		},
+		// no environment specified because the CLI call will already have resolved all variables
+	}, func(options *loader.Options) {
+		options.ResolvePaths = true
 	})
 }
 
+func dcExecutablePath() string {
+	v1Name := "docker-compose-v1"
+	if runtime.GOOS == "windows" {
+		v1Name += ".exe"
+	}
+	composePath, err := exec.LookPath(v1Name)
+	if err != nil {
+		composePath = "docker-compose"
+	}
+	return composePath
+}
+
 func (c *cmdDCClient) dcCommand(ctx context.Context, args []string) *exec.Cmd {
-	cmd := exec.CommandContext(ctx, "docker-compose", args...)
+	cmd := exec.CommandContext(ctx, c.composePath, args...)
 	cmd.Env = append(os.Environ(), c.env.AsEnviron()...)
 	return cmd
 }
@@ -278,6 +318,33 @@ func (c *cmdDCClient) dcOutput(ctx context.Context, configPaths []string, args .
 		err = fmt.Errorf("%s", errorMessage)
 	}
 	return strings.TrimSpace(string(output)), err
+}
+
+// parseComposeVersionOutput parses the raw output of `docker-compose version` for both v1.x + v2.x Compose
+// and returns the canonical semver + build (might be blank) or an error.
+func parseComposeVersionOutput(stdout []byte) (string, string, error) {
+	// match 0: raw output
+	// match 1: version w/o leading v (required)
+	// match 2: build (optional)
+	m := versionRegex.FindSubmatch(bytes.TrimSpace(stdout))
+	if len(m) < 2 {
+		return "", "", fmt.Errorf("could not parse version from output: %q", string(stdout))
+	}
+	rawVersion := "v" + string(m[1])
+	canonicalVersion := semver.Canonical(rawVersion)
+	if canonicalVersion == "" {
+		return "", "", fmt.Errorf("invalid version: %q", rawVersion)
+	}
+	build := semver.Build(rawVersion)
+	if build != "" {
+		// prefer semver build if present, but strip off the leading `+`
+		// (currently, Docker Compose has not made use of this, preferring to list the build independently if at all)
+		build = strings.TrimPrefix(build, "+")
+	} else if len(m) > 2 {
+		// otherwise, fall back to regex match if possible
+		build = string(m[2])
+	}
+	return canonicalVersion, build, nil
 }
 
 func FormatError(cmd *exec.Cmd, stdout []byte, err error) error {

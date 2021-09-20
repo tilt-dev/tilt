@@ -9,12 +9,15 @@ import {
 } from "./analytics_test_helpers"
 import { accessorsForTesting, tiltfileKeyContext } from "./LocalStorage"
 import LogStore from "./LogStore"
-import {
-  AlertsOnTopToggle,
-  ResourceNameFilterTextField,
-} from "./OverviewSidebarOptions"
+import { AlertsOnTopToggle } from "./OverviewSidebarOptions"
 import { assertSidebarItemsAndOptions } from "./OverviewSidebarOptions.test"
 import PathBuilder from "./PathBuilder"
+import {
+  DEFAULT_OPTIONS,
+  ResourceListOptions,
+  ResourceListOptionsContextProvider,
+  RESOURCE_LIST_OPTIONS_KEY,
+} from "./ResourceListOptionsContext"
 import SidebarItem from "./SidebarItem"
 import SidebarResources from "./SidebarResources"
 import { StarredResourcesContextProvider } from "./StarredResourcesContext"
@@ -24,12 +27,12 @@ import {
   oneResourceTestWithName,
   twoResourceView,
 } from "./testdata"
-import { ResourceView, SidebarOptions } from "./types"
+import { ResourceView } from "./types"
 
 let pathBuilder = PathBuilder.forTesting("localhost", "/")
 
-const sidebarOptionsAccessor = accessorsForTesting<SidebarOptions>(
-  "sidebar_options"
+const resourceListOptionsAccessor = accessorsForTesting<ResourceListOptions>(
+  RESOURCE_LIST_OPTIONS_KEY
 )
 const starredItemsAccessor = accessorsForTesting<string[]>("pinned-resources")
 
@@ -59,12 +62,15 @@ describe("SidebarResources", () => {
       <MemoryRouter>
         <tiltfileKeyContext.Provider value="test">
           <StarredResourcesContextProvider>
-            <SidebarResources
-              items={items}
-              selected={""}
-              resourceView={ResourceView.Log}
-              pathBuilder={pathBuilder}
-            />
+            <ResourceListOptionsContextProvider>
+              <SidebarResources
+                items={items}
+                selected={""}
+                resourceView={ResourceView.Log}
+                pathBuilder={pathBuilder}
+                resourceListOptions={DEFAULT_OPTIONS}
+              />
+            </ResourceListOptionsContextProvider>
           </StarredResourcesContextProvider>
         </tiltfileKeyContext.Provider>
       </MemoryRouter>
@@ -99,12 +105,15 @@ describe("SidebarResources", () => {
       <MemoryRouter>
         <tiltfileKeyContext.Provider value="test">
           <StarredResourcesContextProvider>
-            <SidebarResources
-              items={items}
-              selected={""}
-              resourceView={ResourceView.Log}
-              pathBuilder={pathBuilder}
-            />
+            <ResourceListOptionsContextProvider>
+              <SidebarResources
+                items={items}
+                selected={""}
+                resourceView={ResourceView.Log}
+                pathBuilder={pathBuilder}
+                resourceListOptions={DEFAULT_OPTIONS}
+              />
+            </ResourceListOptionsContextProvider>
           </StarredResourcesContextProvider>
         </tiltfileKeyContext.Provider>
       </MemoryRouter>
@@ -130,32 +139,22 @@ describe("SidebarResources", () => {
     expect(starredItemsAccessor.get()).toEqual(["vigoda"])
   })
 
-  const falseyOptions: SidebarOptions = {
-    alertsOnTop: false,
-    resourceNameFilter: "",
-  }
-
-  const loadCases: [string, any, string[]][] = [
+  const loadCases: [string, ResourceListOptions, string[]][] = [
     [
       "alertsOnTop",
-      { ...falseyOptions, alertsOnTop: true },
+      { ...DEFAULT_OPTIONS, alertsOnTop: true },
       ["vigoda", "a", "b"],
     ],
     [
       "resourceNameFilter",
-      { ...falseyOptions, resourceNameFilter: "vig" },
+      { ...DEFAULT_OPTIONS, resourceNameFilter: "vig" },
       ["vigoda"],
-    ],
-    [
-      "resourceNameFilter undefined",
-      { ...falseyOptions, resourceNameFilter: undefined },
-      ["vigoda", "a", "b"],
     ],
   ]
   test.each(loadCases)(
     "loads %p from localStorage",
     (name, options, expectedItems) => {
-      sidebarOptionsAccessor.set(options)
+      resourceListOptionsAccessor.set(options)
 
       let ls = new LogStore()
       const items = [
@@ -167,23 +166,31 @@ describe("SidebarResources", () => {
       const root = mount(
         <MemoryRouter>
           <tiltfileKeyContext.Provider value="test">
-            <SidebarResources
-              items={items}
-              selected={""}
-              resourceView={ResourceView.OverviewDetail}
-              pathBuilder={pathBuilder}
-            />
+            <ResourceListOptionsContextProvider>
+              <SidebarResources
+                items={items}
+                selected={""}
+                resourceView={ResourceView.OverviewDetail}
+                pathBuilder={pathBuilder}
+                resourceListOptions={options}
+              />
+            </ResourceListOptionsContextProvider>
           </tiltfileKeyContext.Provider>
         </MemoryRouter>
       )
 
-      assertSidebarItemsAndOptions(root, expectedItems, options.alertsOnTop)
+      assertSidebarItemsAndOptions(
+        root,
+        expectedItems,
+        options.alertsOnTop,
+        options.resourceNameFilter
+      )
     }
   )
 
-  const saveCases: [string, SidebarOptions][] = [
-    ["alertsOnTop", { ...falseyOptions, alertsOnTop: true }],
-    ["resourceNameFilter", { ...falseyOptions, resourceNameFilter: "foo" }],
+  const saveCases: [string, ResourceListOptions][] = [
+    ["alertsOnTop", { ...DEFAULT_OPTIONS, alertsOnTop: true }],
+    ["resourceNameFilter", { ...DEFAULT_OPTIONS, resourceNameFilter: "foo" }],
   ]
   test.each(saveCases)(
     "saves option %s to localStorage",
@@ -198,12 +205,15 @@ describe("SidebarResources", () => {
       const root = mount(
         <MemoryRouter>
           <tiltfileKeyContext.Provider value="test">
-            <SidebarResources
-              items={items}
-              selected={""}
-              resourceView={ResourceView.OverviewDetail}
-              pathBuilder={pathBuilder}
-            />
+            <ResourceListOptionsContextProvider>
+              <SidebarResources
+                items={items}
+                selected={""}
+                resourceView={ResourceView.OverviewDetail}
+                pathBuilder={pathBuilder}
+                resourceListOptions={DEFAULT_OPTIONS}
+              />
+            </ResourceListOptionsContextProvider>
           </tiltfileKeyContext.Provider>
         </MemoryRouter>
       )
@@ -213,17 +223,13 @@ describe("SidebarResources", () => {
         aotToggle.simulate("click")
       }
 
-      let resourceNameFilterTextField = root.find(ResourceNameFilterTextField)
-      if (
-        resourceNameFilterTextField.props().value !==
-        expectedOptions.resourceNameFilter
-      ) {
-        resourceNameFilterTextField.find("input").simulate("change", {
+      if (expectedOptions.resourceNameFilter.length) {
+        root.find("input").simulate("change", {
           target: { value: expectedOptions.resourceNameFilter },
         })
       }
 
-      const observedOptions = sidebarOptionsAccessor.get()
+      const observedOptions = resourceListOptionsAccessor.get()
       expect(observedOptions).toEqual(expectedOptions)
     }
   )

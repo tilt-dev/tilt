@@ -34,6 +34,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/value"
 	"github.com/tilt-dev/tilt/internal/tiltfile/version"
 	"github.com/tilt-dev/tilt/internal/tiltfile/watch"
+	corev1alpha1 "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -77,7 +78,7 @@ type TiltfileLoader interface {
 	// We want to be very careful not to treat non-zero exit codes like an error.
 	// Because even if the Tiltfile has errors, we might need to watch files
 	// or return partial results (like enabled features).
-	Load(ctx context.Context, filename string, userConfigState model.UserConfigState) TiltfileLoadResult
+	Load(ctx context.Context, tf *corev1alpha1.Tiltfile) TiltfileLoadResult
 }
 
 func ProvideTiltfileLoader(
@@ -122,9 +123,10 @@ type tiltfileLoader struct {
 var _ TiltfileLoader = &tiltfileLoader{}
 
 // Load loads the Tiltfile in `filename`
-func (tfl tiltfileLoader) Load(ctx context.Context, filename string, userConfigState model.UserConfigState) TiltfileLoadResult {
+func (tfl tiltfileLoader) Load(ctx context.Context, tf *corev1alpha1.Tiltfile) TiltfileLoadResult {
 	start := time.Now()
-	absFilename, err := ospath.RealAbs(filename)
+	filename := tf.Spec.Path
+	absFilename, err := ospath.RealAbs(tf.Spec.Path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return TiltfileLoadResult{
@@ -156,9 +158,10 @@ func (tfl tiltfileLoader) Load(ctx context.Context, filename string, userConfigS
 
 	localRegistry := tfl.kCli.LocalRegistry(ctx)
 
-	s := newTiltfileState(ctx, tfl.dcCli, tfl.webHost, tfl.localEnv, tfl.k8sContextExt, tfl.versionExt, tfl.configExt, localRegistry, feature.FromDefaults(tfl.fDefaults))
+	s := newTiltfileState(ctx, tfl.dcCli, tfl.webHost, tfl.localEnv, tfl.k8sContextExt, tfl.versionExt,
+		tfl.configExt, localRegistry, feature.FromDefaults(tfl.fDefaults))
 
-	manifests, result, err := s.loadManifests(absFilename, userConfigState)
+	manifests, result, err := s.loadManifests(absFilename, tf.Spec.Args)
 
 	tlr.BuiltinCalls = result.BuiltinCalls
 

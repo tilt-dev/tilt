@@ -13,6 +13,7 @@ import (
 	"github.com/tilt-dev/tilt/pkg/logger"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
+	ctrltiltfile "github.com/tilt-dev/tilt/internal/controllers/apis/tiltfile"
 	"github.com/tilt-dev/tilt/internal/tiltfile"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -94,7 +95,7 @@ func (c *tiltfileResultCmd) run(ctx context.Context, args []string) error {
 	}
 
 	start := time.Now()
-	tlr := deps.tfl.Load(ctx, c.fileName, model.NewUserConfigState(args))
+	tlr := deps.tfl.Load(ctx, ctrltiltfile.MainTiltfile(c.fileName, args))
 	tflDur := time.Since(start)
 	if tlr.Error != nil {
 		maybePrintDeferredLogsToStderr(ctx, showTiltfileLogs)

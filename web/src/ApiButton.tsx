@@ -22,6 +22,7 @@ import {
 import { usePersistentState } from "./LocalStorage"
 import { usePathBuilder } from "./PathBuilder"
 import { Color, FontSize, SizeUnit } from "./style-helpers"
+import { apiTimeFormat, tiltApiPut } from "./tiltApi"
 
 type UIButton = Proto.v1alpha1UIButton
 type UIInputSpec = Proto.v1alpha1UIInputSpec
@@ -38,7 +39,14 @@ const ApiButtonFormFooter = styled.div`
 `
 const ApiIconRoot = styled.div``
 export const ApiButtonLabel = styled.div``
-export const ApiButtonRoot = styled(ButtonGroup)`
+// MUI makes it tricky to get cursor: not-allowed on disabled buttons
+// https://material-ui.com/components/buttons/#cursor-not-allowed
+export const ApiButtonRoot = styled(ButtonGroup)<{ disabled?: boolean }>`
+  ${(props) =>
+    props.disabled &&
+    `
+    cursor: not-allowed;
+  `}
   ${ApiIconRoot} + ${ApiButtonLabel} {
     margin-left: ${SizeUnit(0.25)};
   }
@@ -151,12 +159,19 @@ type ApiButtonWithOptionsProps = {
   setInputValue: (name: string, value: any) => void
   getInputValue: (name: string) => any | undefined
   className?: string
-  buttonProps: ButtonProps
 }
 
-function ApiButtonWithOptions(props: ApiButtonWithOptionsProps) {
+function ApiButtonWithOptions(props: ApiButtonWithOptionsProps & ButtonProps) {
   const [open, setOpen] = useState(false)
   const anchorRef = useRef(null)
+
+  const {
+    submit,
+    uiButton,
+    setInputValue,
+    getInputValue,
+    ...buttonProps
+  } = props
 
   return (
     <>
@@ -164,6 +179,7 @@ function ApiButtonWithOptions(props: ApiButtonWithOptionsProps) {
         ref={anchorRef}
         className={props.className}
         disableRipple={true}
+        disabled={buttonProps.disabled}
       >
         {props.submit}
         <ApiButtonInputsToggleButton
@@ -172,7 +188,8 @@ function ApiButtonWithOptions(props: ApiButtonWithOptionsProps) {
             setOpen((prevOpen) => !prevOpen)
           }}
           analyticsName="ui.web.uiButton.inputMenu"
-          {...props.buttonProps}
+          aria-label={`Open ${props.uiButton.spec?.text} options`}
+          {...buttonProps}
         >
           <ArrowDropDownIcon />
         </ApiButtonInputsToggleButton>
@@ -219,22 +236,19 @@ export const ApiIcon: React.FC<ApiIconProps> = (props) => {
   return null
 }
 
-async function updateButtonStatus(
+// returns metadata + button status w/ the specified input buttons
+function buttonStatusWithInputs(
   button: UIButton,
   inputValues: { [name: string]: any }
-) {
-  const toUpdate = {
+): UIButton {
+  const result = {
     metadata: { ...button.metadata },
     status: { ...button.status },
   } as UIButton
-  // apiserver's date format time is _extremely_ strict to the point that it requires the full
-  // six-decimal place microsecond precision, e.g. .000Z will be rejected, it must be .000000Z
-  // so use an explicit RFC3339 moment format to ensure it passes
-  toUpdate.status!.lastClickedAt = moment
-    .utc()
-    .format("YYYY-MM-DDTHH:mm:ss.SSSSSSZ")
 
-  toUpdate.status!.inputs = []
+  result.status!.lastClickedAt = apiTimeFormat(moment.utc())
+
+  result.status!.inputs = []
   button.spec!.inputs?.forEach((spec) => {
     const value = inputValues[spec.name!]
     if (value !== undefined) {
@@ -244,25 +258,20 @@ async function updateButtonStatus(
       } else if (spec.bool) {
         status.bool = { value: value === true }
       }
-      toUpdate.status!.inputs!.push(status)
+      result.status!.inputs!.push(status)
     }
   })
 
-  const url = `/proxy/apis/tilt.dev/v1alpha1/uibuttons/${
-    toUpdate.metadata!.name
-  }/status`
-  const resp = await fetch(url, {
-    method: "PUT",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(toUpdate),
-  })
-  if (resp && resp.status !== 200) {
-    const body = await resp.text()
-    throw `error submitting button click to api: ${body}`
-  }
+  return result
+}
+
+async function updateButtonStatus(
+  button: UIButton,
+  inputValues: { [name: string]: any }
+) {
+  const toUpdate = buttonStatusWithInputs(button, inputValues)
+
+  await tiltApiPut("uibuttons", "status", toUpdate)
 }
 
 // Renders a UIButton.
@@ -319,12 +328,15 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
     )
   }
 
+  const disabled = loading || uiButton.spec?.disabled
+
   // button text is not included in analytics name since that can be user data
   const button = (
     <InstrumentedButton
       analyticsName={"ui.web.uibutton"}
       onClick={onClick}
-      disabled={loading || uiButton.spec?.disabled}
+      disabled={disabled}
+      aria-label={`Trigger ${uiButton.spec?.text}`}
       {...buttonProps}
     >
       {props.children || (
@@ -353,12 +365,23 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
         uiButton={uiButton}
         setInputValue={setInputValue}
         getInputValue={getInputValue}
-        buttonProps={buttonProps}
+        aria-label={uiButton.spec?.text}
+        // use-case-wise, it'd probably be better to leave the options button enabled
+        // regardless of the submit button's state.
+        // However, that's currently a low-impact difference, and this is a really
+        // cheap way to ensure the styling matches.
+        disabled={disabled}
+        {...buttonProps}
       />
     )
   } else {
     return (
-      <ApiButtonRoot className={className} disableRipple={true}>
+      <ApiButtonRoot
+        className={className}
+        disableRipple={true}
+        aria-label={uiButton.spec?.text}
+        disabled={disabled}
+      >
         {button}
       </ApiButtonRoot>
     )

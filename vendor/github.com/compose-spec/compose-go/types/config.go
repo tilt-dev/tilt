@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 
 	"github.com/mitchellh/mapstructure"
-	"github.com/sirupsen/logrus"
 )
 
 // ConfigDetails are the details about a group of ConfigFiles
@@ -34,9 +33,6 @@ type ConfigDetails struct {
 // LookupEnv provides a lookup function for environment variables
 func (cd ConfigDetails) LookupEnv(key string) (string, bool) {
 	v, ok := cd.Environment[key]
-	if !ok {
-		logrus.Warnf("The %s variable is not set. Defaulting to a blank string.", key)
-	}
 	return v, ok
 }
 

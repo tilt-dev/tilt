@@ -99,6 +99,7 @@ export function tiltfileResource(): UIResource {
         {
           finishTime: ts,
           startTime: tsPast,
+          spanID: "(Tiltfile):0",
         },
       ],
       updateStatus: "ok",
@@ -550,7 +551,7 @@ function oneResourceBuilding(): UIResource[] {
         },
         pendingBuildSince: "0001-01-01T00:00:00Z",
         updateStatus: "ok",
-        runtimeStatus: "ok",
+        runtimeStatus: "not_applicable",
         order: -1,
       },
     },

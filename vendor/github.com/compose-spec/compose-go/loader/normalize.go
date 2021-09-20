@@ -28,7 +28,7 @@ import (
 )
 
 // normalize compose project by moving deprecated attributes to their canonical position and injecting implicit defaults
-func normalize(project *types.Project) error {
+func normalize(project *types.Project, resolvePaths bool) error {
 	absWorkingDir, err := filepath.Abs(project.WorkingDir)
 	if err != nil {
 		return err
@@ -72,8 +72,10 @@ func normalize(project *types.Project) error {
 			}
 			localContext := absPath(project.WorkingDir, s.Build.Context)
 			if _, err := os.Stat(localContext); err == nil {
-				s.Build.Context = localContext
-				s.Build.Dockerfile = absPath(localContext, s.Build.Dockerfile)
+				if resolvePaths {
+					s.Build.Context = localContext
+					s.Build.Dockerfile = absPath(localContext, s.Build.Dockerfile)
+				}
 			} else {
 				// might be a remote http/git context. Unfortunately supported "remote" syntax is highly ambiguous
 				// in moby/moby and not defined by compose-spec, so let's assume runtime will check

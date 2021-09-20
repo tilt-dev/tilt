@@ -1,13 +1,8 @@
-import { InputAdornment } from "@material-ui/core"
-import { InputProps as StandardInputProps } from "@material-ui/core/Input/Input"
-import React, { Dispatch, SetStateAction } from "react"
+import React from "react"
 import styled from "styled-components"
-import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
-import { ReactComponent as SearchSvg } from "./assets/svg/search.svg"
-import {
-  InstrumentedButton,
-  InstrumentedTextField,
-} from "./instrumentedComponents"
+import { InstrumentedButton } from "./instrumentedComponents"
+import { useResourceListOptions } from "./ResourceListOptionsContext"
+import { ResourceNameFilter } from "./ResourceNameFilter"
 import {
   Color,
   Font,
@@ -16,7 +11,6 @@ import {
   mixinResetListStyle,
   SizeUnit,
 } from "./style-helpers"
-import { SidebarOptions } from "./types"
 
 const OverviewSidebarOptionsRoot = styled.div`
   display: flex;
@@ -33,9 +27,7 @@ const OverviewSidebarOptionsButtonsRoot = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  &.is-filterButtonsHidden {
-    justify-content: flex-end;
-  }
+  justify-content: flex-end;
 `
 
 export const FilterOptionList = styled.ul`
@@ -46,37 +38,6 @@ export const FilterOptionList = styled.ul`
 `
 
 const toggleBorderRadius = "3px"
-
-const ResourceFilterSegmentedControls = styled.div`
-  margin-left: ${SizeUnit(0.25)};
-`
-
-const ResourceFilterToggle = styled(InstrumentedButton)`
-  ${mixinResetButtonStyle};
-  color: ${Color.grayLightest};
-  background-color: ${Color.gray};
-  padding: ${SizeUnit(0.125)} ${SizeUnit(0.25)};
-  font-size: ${FontSize.smallester};
-
-  &.is-enabled {
-    color: ${Color.grayDarkest};
-    background-color: ${Color.offWhite};
-  }
-
-  & + & {
-    border-left: 2px solid ${Color.grayDark};
-  }
-`
-
-export const TestsHiddenToggle = styled(ResourceFilterToggle)`
-  border-top-left-radius: ${toggleBorderRadius};
-  border-bottom-left-radius: ${toggleBorderRadius};
-`
-
-export const TestsOnlyToggle = styled(ResourceFilterToggle)`
-  border-top-right-radius: ${toggleBorderRadius};
-  border-bottom-right-radius: ${toggleBorderRadius};
-`
 
 export const AlertsOnTopToggle = styled(InstrumentedButton)`
   ${mixinResetButtonStyle};
@@ -92,122 +53,25 @@ export const AlertsOnTopToggle = styled(InstrumentedButton)`
   }
 `
 
-export const ResourceNameFilterTextField = styled(InstrumentedTextField)`
-  & .MuiOutlinedInput-root {
-    border-radius: ${SizeUnit(0.5)};
-    border: 1px solid ${Color.grayLighter};
-    background-color: ${Color.gray};
+export function OverviewSidebarOptions() {
+  const { options, setOptions } = useResourceListOptions()
 
-    & fieldset {
-      border-color: 1px solid ${Color.grayLighter};
-    }
-    &:hover fieldset {
-      border: 1px solid ${Color.grayLighter};
-    }
-    &.Mui-focused fieldset {
-      border: 1px solid ${Color.grayLighter};
-    }
-    & .MuiOutlinedInput-input {
-      padding: ${SizeUnit(0.2)};
-    }
+  function setAlertsOnTop(alertsOnTop: boolean) {
+    setOptions({ alertsOnTop })
   }
 
-  margin-top: ${SizeUnit(0.4)};
-  margin-bottom: ${SizeUnit(0.4)};
-
-  & .MuiInputBase-input {
-    font-family: ${Font.monospace};
-    color: ${Color.offWhite};
-    font-size: ${FontSize.small};
-  }
-`
-
-export const ClearResourceNameFilterButton = styled(InstrumentedButton)`
-  ${mixinResetButtonStyle};
-  display: flex;
-  align-items: center;
-`
-
-type OverviewSidebarOptionsProps = {
-  options: SidebarOptions
-  setOptions: Dispatch<SetStateAction<SidebarOptions>>
-}
-
-function setAlertsOnTop(
-  props: OverviewSidebarOptionsProps,
-  alertsOnTop: boolean
-) {
-  props.setOptions((prevOptions) => {
-    return { ...prevOptions, alertsOnTop: alertsOnTop }
-  })
-}
-
-function setResourceNameFilter(
-  newValue: string,
-  props: OverviewSidebarOptionsProps
-) {
-  props.setOptions((prevOptions) => {
-    return {
-      ...prevOptions,
-      resourceNameFilter: newValue,
-    }
-  })
-}
-
-function ResourceNameFilter(props: OverviewSidebarOptionsProps) {
-  let inputProps: Partial<StandardInputProps> = {
-    startAdornment: (
-      <InputAdornment position="start">
-        <SearchSvg fill={Color.grayLightest} />
-      </InputAdornment>
-    ),
-  }
-
-  // only show the "x" to clear if there's any input to clear
-  if (props.options.resourceNameFilter) {
-    const onClearClick = () => {
-      setResourceNameFilter("", props)
-    }
-
-    inputProps.endAdornment = (
-      <InputAdornment position="end">
-        <ClearResourceNameFilterButton
-          onClick={onClearClick}
-          analyticsName="ui.web.clearResourceNameFilter"
-        >
-          <CloseSvg fill={Color.grayLightest} />
-        </ClearResourceNameFilterButton>
-      </InputAdornment>
-    )
-  }
-
-  return (
-    <ResourceNameFilterTextField
-      value={props.options.resourceNameFilter ?? ""}
-      onChange={(e) => setResourceNameFilter(e.target.value, props)}
-      placeholder="Filter resources by name"
-      InputProps={inputProps}
-      variant="outlined"
-      analyticsName="ui.web.resourceNameFilter"
-    />
-  )
-}
-
-export function OverviewSidebarOptions(
-  props: OverviewSidebarOptionsProps
-): JSX.Element {
   return (
     <OverviewSidebarOptionsRoot>
-      <OverviewSidebarOptionsButtonsRoot className="is-filterButtonsHidden">
+      <OverviewSidebarOptionsButtonsRoot>
         <AlertsOnTopToggle
-          className={props.options.alertsOnTop ? "is-enabled" : ""}
-          onClick={(_e) => setAlertsOnTop(props, !props.options.alertsOnTop)}
+          className={options.alertsOnTop ? "is-enabled" : ""}
+          onClick={(_e) => setAlertsOnTop(!options.alertsOnTop)}
           analyticsName="ui.web.alertsOnTopToggle"
         >
           Alerts on Top
         </AlertsOnTopToggle>
       </OverviewSidebarOptionsButtonsRoot>
-      <ResourceNameFilter {...props} />
+      <ResourceNameFilter />
     </OverviewSidebarOptionsRoot>
   )
 }

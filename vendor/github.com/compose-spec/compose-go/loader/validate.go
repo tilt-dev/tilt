@@ -38,15 +38,15 @@ func checkConsistency(project *types.Project) error {
 			}
 		}
 
-		if strings.HasPrefix(s.NetworkMode, types.NetworkModeServicePrefix) {
-			serviceName := s.NetworkMode[len(types.NetworkModeServicePrefix):]
+		if strings.HasPrefix(s.NetworkMode, types.ServicePrefix) {
+			serviceName := s.NetworkMode[len(types.ServicePrefix):]
 			if _, err := project.GetServices(serviceName); err != nil {
 				return fmt.Errorf("service %q not found for network_mode 'service:%s'", serviceName, serviceName)
 			}
 		}
 
-		if strings.HasPrefix(s.NetworkMode, types.NetworkModeContainerPrefix) {
-			containerName := s.NetworkMode[len(types.NetworkModeContainerPrefix):]
+		if strings.HasPrefix(s.NetworkMode, types.ContainerPrefix) {
+			containerName := s.NetworkMode[len(types.ContainerPrefix):]
 			if _, err := project.GetByContainerName(containerName); err != nil {
 				return fmt.Errorf("service with container_name %q not found for network_mode 'container:%s'", containerName, containerName)
 			}

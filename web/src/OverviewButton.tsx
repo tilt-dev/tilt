@@ -34,8 +34,9 @@ export const OverviewButtonMixin = `
   }
 
   &:disabled {
-    cursor: not-allowed;
     opacity: 0.33;
+    border: 1px solid ${ColorRGBA(Color.grayLightest, 0.5)};
+    color: ${Color.gray7};
   }
 
   & .fillStd {

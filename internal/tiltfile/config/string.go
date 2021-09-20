@@ -44,7 +44,7 @@ func (s *stringSetting) setFromInterface(i interface{}) error {
 
 func (s *stringSetting) Set(v string) error {
 	if s.isSet {
-		return fmt.Errorf("string settings can only be specified once. multiple values found (last value: %s", v)
+		return fmt.Errorf("string settings can only be specified once. multiple values found (last value: %s)", v)
 	}
 
 	s.value = v

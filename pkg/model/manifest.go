@@ -5,17 +5,15 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/docker/distribution/reference"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/validation/path"
 	"k8s.io/apimachinery/pkg/labels"
 
-	"github.com/docker/distribution/reference"
-
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/sliceutils"
-
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 // TODO(nick): We should probably get rid of ManifestName completely and just use TargetName everywhere.
@@ -459,6 +457,12 @@ var ignoreLocalTargetDepsField = cmpopts.IgnoreFields(LocalTarget{}, "Deps")
 var ignoreDockerBuildCacheFrom = cmpopts.IgnoreFields(DockerBuild{}, "CacheFrom")
 var ignoreLabels = cmpopts.IgnoreFields(Manifest{}, "Labels")
 
+// ignoreLinks ignores user-defined links for the purpose of build invalidation
+//
+// This is done both because they don't actually invalidate the build AND because url.URL is not directly comparable
+// in all cases (e.g. a URL with a user@ value will result in url.URL->User being populated which has unexported fields).
+var ignoreLinks = cmpopts.IgnoreTypes(Link{})
+
 var dockerRefEqual = cmp.Comparer(func(a, b reference.Named) bool {
 	aNil := a == nil
 	bNil := b == nil
@@ -498,5 +502,8 @@ func equalForBuildInvalidation(x, y interface{}) bool {
 
 		// user-added labels don't invalidate a build
 		ignoreLabels,
+
+		// user-added links don't invalidate a build
+		ignoreLinks,
 	)
 }

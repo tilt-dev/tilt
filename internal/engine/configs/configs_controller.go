@@ -2,16 +2,12 @@ package configs
 
 import (
 	"context"
-	"fmt"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apis/tiltfile"
 	"github.com/tilt-dev/tilt/internal/store"
-	"github.com/tilt-dev/tilt/pkg/apis"
-	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
-	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type ConfigsController struct {
@@ -46,19 +42,7 @@ func (cc *ConfigsController) maybeCreateInitialTiltfile(ctx context.Context, st 
 	ucs := state.UserConfigState
 	st.RUnlockState()
 
-	name := model.MainTiltfileManifestName.String()
-	fwName := apis.SanitizeName(fmt.Sprintf("%s:%s", model.TargetTypeConfigs, name))
-	newTF := &v1alpha1.Tiltfile{
-		ObjectMeta: metav1.ObjectMeta{Name: name},
-		Spec: v1alpha1.TiltfileSpec{
-			Path: desired,
-			Args: ucs.Args,
-			RestartOn: &v1alpha1.RestartOnSpec{
-				FileWatches: []string{fwName},
-			},
-		},
-	}
-	err := cc.ctrlClient.Create(ctx, newTF)
+	err := cc.ctrlClient.Create(ctx, tiltfile.MainTiltfile(desired, ucs.Args))
 	if err != nil && !apierrors.IsAlreadyExists(err) {
 		return err
 	}

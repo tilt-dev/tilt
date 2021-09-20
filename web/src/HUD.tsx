@@ -21,6 +21,7 @@ import OverviewResourcePane from "./OverviewResourcePane"
 import OverviewTablePane from "./OverviewTablePane"
 import PathBuilder, { PathBuilderProvider } from "./PathBuilder"
 import { ResourceGroupsContextProvider } from "./ResourceGroupsContext"
+import { ResourceListOptionsContextProvider } from "./ResourceListOptionsContext"
 import { ResourceNavProvider } from "./ResourceNav"
 import ShareSnapshotModal from "./ShareSnapshotModal"
 import { TiltSnackbarProvider } from "./Snackbar"
@@ -257,19 +258,21 @@ export default class HUD extends Component<HudProps, HudState> {
             <PathBuilderProvider value={this.pathBuilder}>
               <LogStoreProvider value={this.state.logStore || new LogStore()}>
                 <ResourceGroupsContextProvider>
-                  <Switch>
-                    <Route
-                      path={this.path("/r/:name/overview")}
-                      render={(props: RouteComponentProps<any>) => (
-                        <OverviewResourcePane view={this.state.view} />
-                      )}
-                    />
-                    <Route
-                      render={() => (
-                        <OverviewTablePane view={this.state.view} />
-                      )}
-                    />
-                  </Switch>
+                  <ResourceListOptionsContextProvider>
+                    <Switch>
+                      <Route
+                        path={this.path("/r/:name/overview")}
+                        render={(props: RouteComponentProps<any>) => (
+                          <OverviewResourcePane view={this.state.view} />
+                        )}
+                      />
+                      <Route
+                        render={() => (
+                          <OverviewTablePane view={this.state.view} />
+                        )}
+                      />
+                    </Switch>
+                  </ResourceListOptionsContextProvider>
                 </ResourceGroupsContextProvider>
               </LogStoreProvider>
             </PathBuilderProvider>
