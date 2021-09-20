@@ -69,6 +69,10 @@ func (in *ConfigMap) NamespaceScoped() bool {
 	return false
 }
 
+func (in *ConfigMap) GetSpec() interface{} {
+	return nil
+}
+
 func (in *ConfigMap) ShortNames() []string {
 	return []string{"cm"}
 }

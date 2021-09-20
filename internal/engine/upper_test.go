@@ -4094,7 +4094,7 @@ func (f *testFixture) Init(action InitAction) {
 		TiltfileManifestName: model.MainTiltfileManifestName,
 		Manifests:            state.Manifests(),
 		ConfigFiles:          state.MainConfigPaths(),
-	})
+	}, make(map[string]*v1alpha1.DisableSource))
 	expectedWatchCount := len(expectedFileWatches)
 	if f.overrideMaxParallelUpdates > 0 {
 		state.UpdateSettings = state.UpdateSettings.WithMaxParallelUpdates(f.overrideMaxParallelUpdates)

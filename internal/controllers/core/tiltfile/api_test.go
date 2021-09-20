@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/stretchr/testify/assert"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -184,4 +186,86 @@ func TestAPITwoTiltfiles(t *testing.T) {
 	if assert.Error(t, err) {
 		assert.True(t, apierrors.IsNotFound(err))
 	}
+}
+
+// Ensure that we create a ConfigMap for each resource's DisableSource
+// And set .Spec.DisableSource fields appropriately
+func TestCreateDisableSource(t *testing.T) {
+	f := tempdir.NewTempDirFixture(t)
+	defer f.TearDown()
+
+	ctx := context.Background()
+	c := fake.NewFakeTiltClient()
+	fe := manifestbuilder.New(f, "fe").
+		WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+		WithK8sYAML(testyaml.SanchoYAML).
+		Build()
+	lr := manifestbuilder.New(f, "be").WithLocalResource("ls", []string{"be"}).Build()
+	nn := types.NamespacedName{Name: "tiltfile"}
+	tf := &v1alpha1.Tiltfile{ObjectMeta: metav1.ObjectMeta{Name: "tiltfile"}}
+	err := updateOwnedObjects(ctx, c, nn, tf,
+		&tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe, lr}}, store.EngineModeUp)
+	assert.NoError(t, err)
+
+	feDisable := &v1alpha1.DisableSource{
+		ConfigMap: &v1alpha1.ConfigMapDisableSource{
+			Name: "fe-disable",
+			Key:  "isDisabled",
+		},
+	}
+
+	var cm v1alpha1.ConfigMap
+	require.NoError(t, c.Get(ctx, types.NamespacedName{Name: feDisable.ConfigMap.Name}, &cm))
+	require.Equal(t, "false", cm.Data[feDisable.ConfigMap.Key])
+
+	name := apis.SanitizeName(SanchoRef.String())
+	var im v1alpha1.ImageMap
+	require.NoError(t, c.Get(ctx, types.NamespacedName{Name: name}, &im))
+	require.Equal(t, feDisable, im.Spec.DisableSource)
+
+	var ka v1alpha1.KubernetesApply
+	require.NoError(t, c.Get(ctx, types.NamespacedName{Name: "fe"}, &ka))
+	require.Equal(t, feDisable, ka.Spec.DisableSource)
+
+	beDisable := &v1alpha1.DisableSource{
+		ConfigMap: &v1alpha1.ConfigMapDisableSource{
+			Name: "be-disable",
+			Key:  "isDisabled",
+		},
+	}
+
+	var fw v1alpha1.FileWatch
+	require.NoError(t, c.Get(ctx, types.NamespacedName{Name: "local:be"}, &fw))
+	require.Equal(t, beDisable, fw.Spec.DisableSource)
+
+	var cmd v1alpha1.Cmd
+	require.NoError(t, c.Get(ctx, types.NamespacedName{Name: "be:update"}, &cmd))
+	require.Equal(t, beDisable, cmd.Spec.DisableSource)
+}
+
+// If a DisableSource ConfigMap already exists, don't replace its data
+func TestUpdateDisableSource(t *testing.T) {
+	f := tempdir.NewTempDirFixture(t)
+	defer f.TearDown()
+
+	ctx := context.Background()
+	c := fake.NewFakeTiltClient()
+	fe := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
+	nn := types.NamespacedName{Name: "tiltfile"}
+	tf := &v1alpha1.Tiltfile{ObjectMeta: metav1.ObjectMeta{Name: "tiltfile"}}
+	err := updateOwnedObjects(ctx, c, nn, tf,
+		&tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}}, store.EngineModeUp)
+	assert.NoError(t, err)
+
+	var cm v1alpha1.ConfigMap
+	require.NoError(t, c.Get(ctx, types.NamespacedName{Name: "fe-disable"}, &cm))
+	cm.Data["isDisabled"] = "true"
+	require.NoError(t, c.Update(ctx, &cm))
+
+	err = updateOwnedObjects(ctx, c, nn, tf,
+		&tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}}, store.EngineModeUp)
+	assert.NoError(t, err)
+
+	require.NoError(t, c.Get(ctx, types.NamespacedName{Name: cm.Name}, &cm))
+	require.Equal(t, "true", cm.Data["isDisabled"])
 }

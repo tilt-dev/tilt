@@ -101,6 +101,11 @@ type CmdSpec struct {
 	// a Cmd with any StartOn triggers will not have its command run until its
 	// StartOn is satisfied.
 	StartOn *StartOnSpec `json:"startOn,omitempty" protobuf:"bytes,6,opt,name=startOn"`
+
+	// Specifies how to disable this.
+	//
+	// +optional
+	DisableSource *DisableSource `json:"disableSource,omitempty" protobuf:"bytes,7,opt,name=disableSource"`
 }
 
 var _ resource.Object = &Cmd{}
@@ -173,6 +178,10 @@ type CmdStatus struct {
 	//
 	// +optional
 	Ready bool `json:"ready,omitempty" protobuf:"varint,4,opt,name=ready"`
+
+	// Details about whether/why this is disabled.
+	// +optional
+	DisableStatus *DisableStatus `json:"disableStatus,omitempty" protobuf:"bytes,5,opt,name=disableStatus"`
 }
 
 // CmdStateWaiting is a waiting state of a local command.

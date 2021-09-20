@@ -143,6 +143,11 @@ type KubernetesApplySpec struct {
 	//
 	// +optional
 	DiscoveryStrategy KubernetesDiscoveryStrategy `json:"discoveryStrategy,omitempty" protobuf:"bytes,8,opt,name=discoveryStrategy,casttype=KubernetesDiscoveryStrategy"`
+
+	// Specifies how to disable this.
+	//
+	// +optional
+	DisableSource *DisableSource `json:"disableSource,omitempty" protobuf:"bytes,9,opt,name=disableSource"`
 }
 
 var _ resource.Object = &KubernetesApply{}
@@ -242,6 +247,10 @@ type KubernetesApplyStatus struct {
 	//
 	// +optional
 	AppliedInputHash string `json:"appliedInputHash,omitempty" protobuf:"bytes,4,opt,name=appliedInputHash"`
+
+	// Details about whether/why this is disabled.
+	// +optional
+	DisableStatus *DisableStatus `json:"disableStatus,omitempty" protobuf:"bytes,5,opt,name=disableStatus"`
 
 	// TODO(nick): We should also add some sort of status field to this
 	// status (like waiting, active, done).

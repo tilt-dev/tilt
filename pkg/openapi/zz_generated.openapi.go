@@ -362,11 +362,17 @@ func schema_pkg_apis_core_v1alpha1_CmdSpec(ref common.ReferenceCallback) common.
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.StartOnSpec"),
 						},
 					},
+					"disableSource": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Specifies how to disable this.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Probe", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.StartOnSpec"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Probe", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.StartOnSpec"},
 	}
 }
 
@@ -506,11 +512,17 @@ func schema_pkg_apis_core_v1alpha1_CmdStatus(ref common.ReferenceCallback) commo
 							Format:      "",
 						},
 					},
+					"disableStatus": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Details about whether/why this is disabled.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableStatus"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdStateRunning", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdStateTerminated", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdStateWaiting"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdStateRunning", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdStateTerminated", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdStateWaiting", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableStatus"},
 	}
 }
 
@@ -1525,12 +1537,18 @@ func schema_pkg_apis_core_v1alpha1_FileWatchSpec(ref common.ReferenceCallback) c
 							},
 						},
 					},
+					"disableSource": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Specifies how to disable this.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource"),
+						},
+					},
 				},
 				Required: []string{"watchedPaths"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.IgnoreDef"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.IgnoreDef"},
 	}
 }
 
@@ -1576,11 +1594,17 @@ func schema_pkg_apis_core_v1alpha1_FileWatchStatus(ref common.ReferenceCallback)
 							Format:      "",
 						},
 					},
+					"disableStatus": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Details about whether/why this is disabled.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableStatus"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileEvent", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableStatus", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileEvent", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
 	}
 }
 
@@ -2034,12 +2058,18 @@ func schema_pkg_apis_core_v1alpha1_ImageMapSpec(ref common.ReferenceCallback) co
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapOverrideArgs"),
 						},
 					},
+					"disableSource": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Specifies how to disable this.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource"),
+						},
+					},
 				},
 				Required: []string{"selector"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapOverrideArgs", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapOverrideCommand"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapOverrideArgs", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapOverrideCommand"},
 	}
 }
 
@@ -2237,12 +2267,18 @@ func schema_pkg_apis_core_v1alpha1_KubernetesApplySpec(ref common.ReferenceCallb
 							Format:      "",
 						},
 					},
+					"disableSource": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Specifies how to disable this.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource"),
+						},
+					},
 				},
 				Required: []string{"yaml"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryTemplateSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesImageLocator", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamTemplateSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForwardTemplateSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryTemplateSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesImageLocator", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamTemplateSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForwardTemplateSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
 	}
 }
 
@@ -2281,11 +2317,17 @@ func schema_pkg_apis_core_v1alpha1_KubernetesApplyStatus(ref common.ReferenceCal
 							Format:      "",
 						},
 					},
+					"disableStatus": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Details about whether/why this is disabled.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableStatus"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
 	}
 }
 
