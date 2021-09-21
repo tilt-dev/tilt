@@ -131,12 +131,12 @@ func propagateAnnotations(tf *v1alpha1.Tiltfile, obj apiset.Object) {
 var typesWithTiltfileBuiltins = []apiset.Object{
 	&v1alpha1.ExtensionRepo{},
 	&v1alpha1.Extension{},
+	&v1alpha1.FileWatch{},
 }
 
 var typesToReconcile = append([]apiset.Object{
 	&v1alpha1.KubernetesApply{},
 	&v1alpha1.ImageMap{},
-	&v1alpha1.FileWatch{},
 	&v1alpha1.Cmd{},
 	&v1alpha1.UIResource{},
 	&v1alpha1.ConfigMap{},
@@ -205,7 +205,10 @@ func toAPIObjects(nn types.NamespacedName, tf *v1alpha1.Tiltfile, tlr *tiltfile.
 		watchInputs.TiltfilePath = tf.Spec.Path
 	}
 
-	result[(&v1alpha1.FileWatch{}).GetGroupVersionResource()] = ToFileWatchObjects(watchInputs, disableSources)
+	fwMap := result.GetOrCreateTypedSet(&v1alpha1.FileWatch{})
+	for k, fw := range ToFileWatchObjects(watchInputs, disableSources) {
+		fwMap[k] = fw
+	}
 
 	return result
 }
