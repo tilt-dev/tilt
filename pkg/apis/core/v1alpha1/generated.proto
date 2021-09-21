@@ -706,6 +706,11 @@ message ImageMapSpec {
   //
   // +optional
   optional ImageMapOverrideArgs overrideArgs = 5;
+
+  // Specifies how to disable this.
+  //
+  // +optional
+  optional DisableSource disableSource = 6;
 }
 
 // ImageMapStatus defines the observed state of ImageMap
@@ -988,6 +993,32 @@ message KubernetesWatchRef {
   //
   // +optional
   optional string name = 3;
+}
+
+// LiveUpdate
+// +k8s:openapi-gen=true
+message LiveUpdate {
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+
+  optional LiveUpdateSpec spec = 2;
+
+  optional LiveUpdateStatus status = 3;
+}
+
+// LiveUpdateList
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+message LiveUpdateList {
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+
+  repeated LiveUpdate items = 2;
+}
+
+// LiveUpdateSpec defines the desired state of LiveUpdate
+message LiveUpdateSpec {
+}
+
+// LiveUpdateStatus defines the observed state of LiveUpdate
+message LiveUpdateStatus {
 }
 
 // Selector for any Kubernetes-style API.
