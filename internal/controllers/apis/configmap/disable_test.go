@@ -90,6 +90,7 @@ func TestMaybeNewDisableStatusNoChange(t *testing.T) {
 	status, err := MaybeNewDisableStatus(f.ctx, f.fc, disableSource(), nil)
 	require.NoError(t, err)
 	newStatus, err := MaybeNewDisableStatus(f.ctx, f.fc, disableSource(), status)
+	require.NoError(t, err)
 	require.Same(t, status, newStatus)
 }
 
@@ -105,6 +106,7 @@ func TestMaybeNewDisableStatusChange(t *testing.T) {
 	require.NoError(t, err)
 	f.updateConfigMap(pointer.StringPtr("true"))
 	newStatus, err := MaybeNewDisableStatus(f.ctx, f.fc, disableSource(), status)
+	require.NoError(t, err)
 	require.NotSame(t, status, newStatus)
 }
 
