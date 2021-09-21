@@ -87,6 +87,61 @@ v1alpha1.file_watch(name='my-fw', watched_paths=['./dir'], ignores=[{'base_path'
 	})
 }
 
+func TestFileWatchDisableOn(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.File("Tiltfile", `
+v1alpha1.file_watch(name='my-fw',
+                    watched_paths=['./dir'],
+                    disable_source={'config_map':{'name':'my-fw','key':'disabled'}})
+`)
+	result, err := f.ExecFile("Tiltfile")
+	require.NoError(t, err)
+
+	set := MustState(result)
+
+	fw := set[(&v1alpha1.FileWatch{}).GetGroupVersionResource()]["my-fw"].(*v1alpha1.FileWatch)
+	require.NotNil(t, fw)
+	require.Equal(t, fw.Spec, v1alpha1.FileWatchSpec{
+		WatchedPaths: []string{f.JoinPath("dir")},
+		DisableSource: &v1alpha1.DisableSource{
+			ConfigMap: &v1alpha1.ConfigMapDisableSource{
+				Name: "my-fw",
+				Key:  "disabled",
+			},
+		},
+	})
+}
+
+func TestFileWatchWithIgnoreBuiltin(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.File("Tiltfile", `
+v1alpha1.file_watch(
+  name='my-fw',
+  watched_paths=['./dir'],
+  ignores=[v1alpha1.ignore_def(base_path='./dir/ignore', patterns=['**'])])
+`)
+	result, err := f.ExecFile("Tiltfile")
+	require.NoError(t, err)
+
+	set := MustState(result)
+
+	fw := set[(&v1alpha1.FileWatch{}).GetGroupVersionResource()]["my-fw"].(*v1alpha1.FileWatch)
+	require.NotNil(t, fw)
+	require.Equal(t, fw.Spec, v1alpha1.FileWatchSpec{
+		WatchedPaths: []string{f.JoinPath("dir")},
+		Ignores: []v1alpha1.IgnoreDef{
+			v1alpha1.IgnoreDef{
+				BasePath: f.JoinPath("dir", "ignore"),
+				Patterns: []string{"**"},
+			},
+		},
+	})
+}
+
 func newFixture(tb testing.TB) *starkit.Fixture {
 	return starkit.NewFixture(tb, NewPlugin())
 }
