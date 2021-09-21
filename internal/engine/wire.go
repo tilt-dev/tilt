@@ -38,7 +38,7 @@ var DeployerBaseWireSet = wire.NewSet(
 
 var DeployerWireSetTest = wire.NewSet(
 	DeployerBaseWireSet,
-	wire.InterfaceValue(new(sdktrace.SpanProcessor), (sdktrace.SpanProcessor)(nil)),
+	wire.InterfaceValue(new(sdktrace.SpanExporter), (sdktrace.SpanExporter)(nil)),
 )
 
 var DeployerWireSet = wire.NewSet(

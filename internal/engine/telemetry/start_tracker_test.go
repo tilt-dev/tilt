@@ -7,9 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/otel/api/core"
-	"go.opentelemetry.io/otel/api/trace"
-	"google.golang.org/grpc/codes"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -17,8 +15,12 @@ import (
 
 func TestStart(t *testing.T) {
 	ctx := context.Background()
-	ft := newFakeTracer()
-	cst := NewStartTracker(ft)
+
+	fp := newFakeProcessor()
+
+	tp := sdktrace.NewTracerProvider()
+	tp.RegisterSpanProcessor(fp)
+	cst := NewStartTracker(tp.Tracer("tilt.dev/test"))
 
 	st := store.NewTestingStore()
 	manifest := model.Manifest{Name: "test"}
@@ -30,15 +32,15 @@ func TestStart(t *testing.T) {
 	_ = cst.OnChange(ctx, st, store.LegacyChangeSummary())
 
 	// first run span should be started
-	span, exists := ft.spans["first_run"]
+	span, exists := fp.spans["first_run"]
 	require.True(t, exists)
-	assert.False(t, span.ended)
+	assert.Zero(t, span.EndTime())
 
 	// first run span should still not be ended
 	_ = cst.OnChange(ctx, st, store.LegacyChangeSummary())
-	span, exists = ft.spans["first_run"]
+	span, exists = fp.spans["first_run"]
 	require.True(t, exists)
-	assert.False(t, span.ended)
+	assert.Zero(t, span.EndTime())
 
 	engineState.CompletedBuildCount = 1
 	engineState.ManifestTargets[manifest.ManifestName()].State.BuildHistory = append(engineState.ManifestTargets[manifest.ManifestName()].State.BuildHistory, model.BuildRecord{StartTime: time.Now()})
@@ -46,62 +48,46 @@ func TestStart(t *testing.T) {
 	_ = cst.OnChange(ctx, st, store.LegacyChangeSummary())
 
 	// first run span should be ended
-	span, exists = ft.spans["first_run"]
+	span, exists = fp.spans["first_run"]
 	require.True(t, exists)
-	assert.True(t, span.ended)
+	assert.NotZero(t, span.EndTime())
 
 	_ = cst.OnChange(ctx, st, store.LegacyChangeSummary())
 
 	// first run span should still be ended
-	span, exists = ft.spans["first_run"]
+	span, exists = fp.spans["first_run"]
 	require.True(t, exists)
-	assert.True(t, span.ended)
+	assert.NotZero(t, span.EndTime())
 }
 
-type fakeSpanState struct {
-	ended bool
+type capturingProcessor struct {
+	spans     map[string]sdktrace.ReadOnlySpan
+	processor sdktrace.SpanProcessor
 }
 
-type fakeSpan struct {
-	state *fakeSpanState
+func (f *capturingProcessor) OnStart(parent context.Context, s sdktrace.ReadWriteSpan) {
+	f.processor.OnStart(parent, s)
+	f.spans[s.Name()] = s
 }
 
-func (s *fakeSpan) Tracer() trace.Tracer {
-	return nil
-}
-func (s *fakeSpan) End(options ...trace.EndOption) {
-	s.state.ended = true
-}
-func (s *fakeSpan) AddEvent(ctx context.Context, msg string, attrs ...core.KeyValue) {}
-func (s *fakeSpan) AddEventWithTimestamp(ctx context.Context, timestamp time.Time, msg string, attrs ...core.KeyValue) {
-}
-func (s *fakeSpan) IsRecording() bool { return true }
-func (s *fakeSpan) SpanContext() core.SpanContext {
-	return core.SpanContext{}
-}
-func (s *fakeSpan) SetStatus(codes.Code)           {}
-func (s *fakeSpan) SetName(name string)            {}
-func (s *fakeSpan) SetAttributes(...core.KeyValue) {}
-
-type fakeTracer struct {
-	spans map[string]*fakeSpanState
+func (f *capturingProcessor) OnEnd(s sdktrace.ReadOnlySpan) {
+	f.processor.OnEnd(s)
+	f.spans[s.Name()] = s
 }
 
-func newFakeTracer() *fakeTracer {
-	return &fakeTracer{spans: map[string]*fakeSpanState{}}
+func (f *capturingProcessor) Shutdown(ctx context.Context) error {
+	return f.processor.Shutdown(ctx)
 }
 
-func (f *fakeTracer) Start(ctx context.Context, spanName string, startOpts ...trace.SpanOption) (context.Context, trace.Span) {
-	spanState := &fakeSpanState{}
-	f.spans[spanName] = spanState
-
-	return ctx, &fakeSpan{spanState}
+func (f *capturingProcessor) ForceFlush(ctx context.Context) error {
+	return f.processor.ForceFlush(ctx)
 }
 
-func (f *fakeTracer) WithSpan(
-	ctx context.Context,
-	spanName string,
-	fn func(ctx context.Context) error,
-) error {
-	return nil
+func newFakeProcessor() *capturingProcessor {
+	return &capturingProcessor{
+		spans:     make(map[string]sdktrace.ReadOnlySpan),
+		processor: sdktrace.NewSimpleSpanProcessor(nil),
+	}
 }
+
+var _ sdktrace.SpanProcessor = &capturingProcessor{}

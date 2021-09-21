@@ -61,18 +61,15 @@ func provideFakeBuildAndDeployer(ctx context.Context, docker2 docker.Client, kCl
 	controller := cmd.NewController(ctx, execer, proberManager, ctrlClient, st, clockworkClock, scheme)
 	localTargetBuildAndDeployer := buildcontrol.NewLocalTargetBuildAndDeployer(clock, ctrlClient, controller)
 	buildOrder := DefaultBuildOrder(liveUpdateBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, localTargetBuildAndDeployer, buildcontrolUpdateMode, env, runtime)
-	spanProcessor := _wireSpanProcessorValue
-	traceTracer, err := tracer.InitOpenTelemetry(ctx, spanProcessor)
-	if err != nil {
-		return nil, err
-	}
+	spanExporter := _wireSpanExporterValue
+	traceTracer := tracer.InitOpenTelemetry(spanExporter)
 	compositeBuildAndDeployer := NewCompositeBuildAndDeployer(buildOrder, traceTracer)
 	return compositeBuildAndDeployer, nil
 }
 
 var (
-	_wireLabelsValue        = dockerfile.Labels{}
-	_wireSpanProcessorValue = (trace.SpanProcessor)(nil)
+	_wireLabelsValue       = dockerfile.Labels{}
+	_wireSpanExporterValue = (trace.SpanExporter)(nil)
 )
 
 // wire.go:
@@ -80,7 +77,7 @@ var (
 var DeployerBaseWireSet = wire.NewSet(buildcontrol.BaseWireSet, wire.Value(UpperReducer), DefaultBuildOrder, wire.Bind(new(buildcontrol.BuildAndDeployer), new(*CompositeBuildAndDeployer)), NewCompositeBuildAndDeployer)
 
 var DeployerWireSetTest = wire.NewSet(
-	DeployerBaseWireSet, wire.InterfaceValue(new(trace.SpanProcessor), (trace.SpanProcessor)(nil)),
+	DeployerBaseWireSet, wire.InterfaceValue(new(trace.SpanExporter), (trace.SpanExporter)(nil)),
 )
 
 var DeployerWireSet = wire.NewSet(

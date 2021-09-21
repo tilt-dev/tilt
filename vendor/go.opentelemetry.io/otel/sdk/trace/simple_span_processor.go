@@ -1,4 +1,4 @@
-// Copyright 2019, OpenTelemetry Authors
+// Copyright The OpenTelemetry Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,42 +12,92 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package trace
+package trace // import "go.opentelemetry.io/otel/sdk/trace"
 
 import (
 	"context"
+	"sync"
 
-	export "go.opentelemetry.io/otel/sdk/export/trace"
+	"go.opentelemetry.io/otel"
 )
 
-// SimpleSpanProcessor implements SpanProcessor interfaces. It is used by
-// exporters to receive SpanData synchronously when span is finished.
-type SimpleSpanProcessor struct {
-	e export.SpanSyncer
+// simpleSpanProcessor is a SpanProcessor that synchronously sends all
+// completed Spans to a trace.Exporter immediately.
+type simpleSpanProcessor struct {
+	exporterMu sync.RWMutex
+	exporter   SpanExporter
+	stopOnce   sync.Once
 }
 
-var _ SpanProcessor = (*SimpleSpanProcessor)(nil)
+var _ SpanProcessor = (*simpleSpanProcessor)(nil)
 
-// NewSimpleSpanProcessor creates a new instance of SimpleSpanProcessor
-// for a given export.
-func NewSimpleSpanProcessor(e export.SpanSyncer) *SimpleSpanProcessor {
-	ssp := &SimpleSpanProcessor{
-		e: e,
+// NewSimpleSpanProcessor returns a new SpanProcessor that will synchronously
+// send completed spans to the exporter immediately.
+//
+// This SpanProcessor is not recommended for production use. The synchronous
+// nature of this SpanProcessor make it good for testing, debugging, or
+// showing examples of other feature, but it will be slow and have a high
+// computation resource usage overhead. The BatchSpanProcessor is recommended
+// for production use instead.
+func NewSimpleSpanProcessor(exporter SpanExporter) SpanProcessor {
+	ssp := &simpleSpanProcessor{
+		exporter: exporter,
 	}
 	return ssp
 }
 
-// OnStart method does nothing.
-func (ssp *SimpleSpanProcessor) OnStart(sd *export.SpanData) {
-}
+// OnStart does nothing.
+func (ssp *simpleSpanProcessor) OnStart(context.Context, ReadWriteSpan) {}
 
-// OnEnd method exports SpanData using associated export.
-func (ssp *SimpleSpanProcessor) OnEnd(sd *export.SpanData) {
-	if ssp.e != nil && sd.SpanContext.IsSampled() {
-		ssp.e.ExportSpan(context.Background(), sd)
+// OnEnd immediately exports a ReadOnlySpan.
+func (ssp *simpleSpanProcessor) OnEnd(s ReadOnlySpan) {
+	ssp.exporterMu.RLock()
+	defer ssp.exporterMu.RUnlock()
+
+	if ssp.exporter != nil && s.SpanContext().TraceFlags().IsSampled() {
+		if err := ssp.exporter.ExportSpans(context.Background(), []ReadOnlySpan{s}); err != nil {
+			otel.Handle(err)
+		}
 	}
 }
 
-// Shutdown method does nothing. There is no data to cleanup.
-func (ssp *SimpleSpanProcessor) Shutdown() {
+// Shutdown shuts down the exporter this SimpleSpanProcessor exports to.
+func (ssp *simpleSpanProcessor) Shutdown(ctx context.Context) error {
+	var err error
+	ssp.stopOnce.Do(func() {
+		stopFunc := func(exp SpanExporter) (<-chan error, func()) {
+			done := make(chan error)
+			return done, func() { done <- exp.Shutdown(ctx) }
+		}
+
+		// The exporter field of the simpleSpanProcessor needs to be zeroed to
+		// signal it is shut down, meaning all subsequent calls to OnEnd will
+		// be gracefully ignored. This needs to be done synchronously to avoid
+		// any race condition.
+		//
+		// A closure is used to keep reference to the exporter and then the
+		// field is zeroed. This ensures the simpleSpanProcessor is shut down
+		// before the exporter. This order is important as it avoids a
+		// potential deadlock. If the exporter shut down operation generates a
+		// span, that span would need to be exported. Meaning, OnEnd would be
+		// called and try acquiring the lock that is held here.
+		ssp.exporterMu.Lock()
+		done, shutdown := stopFunc(ssp.exporter)
+		ssp.exporter = nil
+		ssp.exporterMu.Unlock()
+
+		go shutdown()
+
+		select {
+		case err = <-done:
+		case <-ctx.Done():
+			err = ctx.Err()
+		}
+	})
+	return err
+}
+
+// ForceFlush does nothing as there is no data to flush.
+func (ssp *simpleSpanProcessor) ForceFlush(context.Context) error {
+	return nil
 }

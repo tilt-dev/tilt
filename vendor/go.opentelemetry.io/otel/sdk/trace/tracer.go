@@ -1,4 +1,4 @@
-// Copyright 2019, OpenTelemetry Authors
+// Copyright The OpenTelemetry Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,85 +12,142 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package trace
+package trace // import "go.opentelemetry.io/otel/sdk/trace"
 
 import (
 	"context"
+	"time"
 
-	"go.opentelemetry.io/otel/api/core"
-	apitrace "go.opentelemetry.io/otel/api/trace"
+	"go.opentelemetry.io/otel/trace"
+
+	"go.opentelemetry.io/otel/sdk/instrumentation"
 )
 
 type tracer struct {
-	provider *Provider
-	name     string
+	provider               *TracerProvider
+	instrumentationLibrary instrumentation.Library
 }
 
-var _ apitrace.Tracer = &tracer{}
+var _ trace.Tracer = &tracer{}
 
-func (tr *tracer) Start(ctx context.Context, name string, o ...apitrace.SpanOption) (context.Context, apitrace.Span) {
-	var opts apitrace.SpanOptions
-	var parent core.SpanContext
-	var remoteParent bool
+// Start starts a Span and returns it along with a context containing it.
+//
+// The Span is created with the provided name and as a child of any existing
+// span context found in the passed context. The created Span will be
+// configured appropriately by any SpanOption passed.
+func (tr *tracer) Start(ctx context.Context, name string, options ...trace.SpanStartOption) (context.Context, trace.Span) {
+	config := trace.NewSpanStartConfig(options...)
 
-	//TODO [rghetia] : Add new option for parent. If parent is configured then use that parent.
-	for _, op := range o {
-		op(&opts)
+	// For local spans created by this SDK, track child span count.
+	if p := trace.SpanFromContext(ctx); p != nil {
+		if sdkSpan, ok := p.(*recordingSpan); ok {
+			sdkSpan.addChild()
+		}
 	}
 
-	if relation := opts.Relation; relation.SpanContext != core.EmptySpanContext() {
-		switch relation.RelationshipType {
-		case apitrace.ChildOfRelationship, apitrace.FollowsFromRelationship:
-			parent = relation.SpanContext
-			remoteParent = true
-		default:
-			// Future relationship types may have different behavior,
-			// e.g., adding a `Link` instead of setting the `parent`
+	s := tr.newSpan(ctx, name, &config)
+	if rw, ok := s.(ReadWriteSpan); ok && s.IsRecording() {
+		sps, _ := tr.provider.spanProcessors.Load().(spanProcessorStates)
+		for _, sp := range sps {
+			sp.sp.OnStart(ctx, rw)
 		}
+	}
+	if rtt, ok := s.(runtimeTracer); ok {
+		ctx = rtt.runtimeTrace(ctx)
+	}
+
+	return trace.ContextWithSpan(ctx, s), s
+}
+
+type runtimeTracer interface {
+	// runtimeTrace starts a "runtime/trace".Task for the span and
+	// returns a context containing the task.
+	runtimeTrace(ctx context.Context) context.Context
+}
+
+// newSpan returns a new configured span.
+func (tr *tracer) newSpan(ctx context.Context, name string, config *trace.SpanConfig) trace.Span {
+	// If told explicitly to make this a new root use a zero value SpanContext
+	// as a parent which contains an invalid trace ID and is not remote.
+	var psc trace.SpanContext
+	if config.NewRoot() {
+		ctx = trace.ContextWithSpanContext(ctx, psc)
 	} else {
-		if p := apitrace.CurrentSpan(ctx); p != nil {
-			if sdkSpan, ok := p.(*span); ok {
-				sdkSpan.addChild()
-				parent = sdkSpan.spanContext
-			}
-		}
+		psc = trace.SpanContextFromContext(ctx)
 	}
 
-	spanName := tr.spanNameWithPrefix(name)
-	span := startSpanInternal(tr, spanName, parent, remoteParent, opts)
-	for _, l := range opts.Links {
-		span.addLink(l)
-	}
-	span.SetAttributes(opts.Attributes...)
-
-	span.tracer = tr
-
-	if span.IsRecording() {
-		sps, _ := tr.provider.spanProcessors.Load().(spanProcessorMap)
-		for sp := range sps {
-			sp.OnStart(span.data)
-		}
+	// If there is a valid parent trace ID, use it to ensure the continuity of
+	// the trace. Always generate a new span ID so other components can rely
+	// on a unique span ID, even if the Span is non-recording.
+	var tid trace.TraceID
+	var sid trace.SpanID
+	if !psc.TraceID().IsValid() {
+		tid, sid = tr.provider.idGenerator.NewIDs(ctx)
+	} else {
+		tid = psc.TraceID()
+		sid = tr.provider.idGenerator.NewSpanID(ctx, tid)
 	}
 
-	ctx, end := startExecutionTracerTask(ctx, spanName)
-	span.executionTracerTaskEnd = end
-	return apitrace.SetCurrentSpan(ctx, span), span
+	samplingResult := tr.provider.sampler.ShouldSample(SamplingParameters{
+		ParentContext: ctx,
+		TraceID:       tid,
+		Name:          name,
+		Kind:          config.SpanKind(),
+		Attributes:    config.Attributes(),
+		Links:         config.Links(),
+	})
+
+	scc := trace.SpanContextConfig{
+		TraceID:    tid,
+		SpanID:     sid,
+		TraceState: samplingResult.Tracestate,
+	}
+	if isSampled(samplingResult) {
+		scc.TraceFlags = psc.TraceFlags() | trace.FlagsSampled
+	} else {
+		scc.TraceFlags = psc.TraceFlags() &^ trace.FlagsSampled
+	}
+	sc := trace.NewSpanContext(scc)
+
+	if !isRecording(samplingResult) {
+		return tr.newNonRecordingSpan(sc)
+	}
+	return tr.newRecordingSpan(psc, sc, name, samplingResult, config)
 }
 
-func (tr *tracer) WithSpan(ctx context.Context, name string, body func(ctx context.Context) error) error {
-	ctx, span := tr.Start(ctx, name)
-	defer span.End()
-
-	if err := body(ctx); err != nil {
-		// TODO: set event with boolean attribute for error.
-		return err
+// newRecordingSpan returns a new configured recordingSpan.
+func (tr *tracer) newRecordingSpan(psc, sc trace.SpanContext, name string, sr SamplingResult, config *trace.SpanConfig) *recordingSpan {
+	startTime := config.Timestamp()
+	if startTime.IsZero() {
+		startTime = time.Now()
 	}
-	return nil
+
+	s := &recordingSpan{
+		parent:                 psc,
+		spanContext:            sc,
+		spanKind:               trace.ValidateSpanKind(config.SpanKind()),
+		name:                   name,
+		startTime:              startTime,
+		attributes:             newAttributesMap(tr.provider.spanLimits.AttributeCountLimit),
+		events:                 newEvictedQueue(tr.provider.spanLimits.EventCountLimit),
+		links:                  newEvictedQueue(tr.provider.spanLimits.LinkCountLimit),
+		tracer:                 tr,
+		spanLimits:             tr.provider.spanLimits,
+		resource:               tr.provider.resource,
+		instrumentationLibrary: tr.instrumentationLibrary,
+	}
+
+	for _, l := range config.Links() {
+		s.addLink(l)
+	}
+
+	s.SetAttributes(sr.Attributes...)
+	s.SetAttributes(config.Attributes()...)
+
+	return s
 }
 
-func (tr *tracer) spanNameWithPrefix(name string) string {
-	if tr.name != "" {
-		return tr.name + "/" + name
-	}
-	return name
+// newNonRecordingSpan returns a new configured nonRecordingSpan.
+func (tr *tracer) newNonRecordingSpan(sc trace.SpanContext) nonRecordingSpan {
+	return nonRecordingSpan{tracer: tr, sc: sc}
 }
