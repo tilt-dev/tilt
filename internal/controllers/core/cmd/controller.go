@@ -3,28 +3,28 @@ package cmd
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
 	"sync"
 	"time"
 
-	"sigs.k8s.io/controller-runtime/pkg/builder"
-
 	"github.com/jonboulle/clockwork"
+	"github.com/tilt-dev/probe/pkg/probe"
+	"github.com/tilt-dev/probe/pkg/prober"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	"github.com/tilt-dev/probe/pkg/probe"
-	"github.com/tilt-dev/probe/pkg/prober"
-
+	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/restarton"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/engine/local"
@@ -161,6 +161,25 @@ func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) e
 		return nil
 	}
 
+	disableStatus, err := configmap.MaybeNewDisableStatus(ctx, c.client, cmd.Spec.DisableSource, cmd.Status.DisableStatus)
+	if err != nil {
+		return err
+	}
+
+	if disableStatus != cmd.Status.DisableStatus {
+		c.updateStatus(name, func(status *CmdStatus) {
+			status.DisableStatus = disableStatus
+		}, func() bool {
+			return true
+		})
+	}
+
+	if disableStatus.Disabled {
+		c.stop(name)
+		delete(c.procs, name)
+		return nil
+	}
+
 	owner := metav1.GetControllerOf(cmd)
 	if owner != nil && owner.Kind == v1alpha1.OwnerKindTiltfile {
 		// Until resource dependencies are expressed in the API,
@@ -224,6 +243,15 @@ func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) e
 //
 // Blocks until the command is finished, then returns its status.
 func (c *Controller) ForceRun(ctx context.Context, cmd *v1alpha1.Cmd) (*v1alpha1.CmdStatus, error) {
+	disableStatus, err := configmap.MaybeNewDisableStatus(ctx, c.client, cmd.Spec.DisableSource, cmd.Status.DisableStatus)
+	if err != nil {
+		return nil, err
+	}
+	if disableStatus.Disabled {
+		// TODO(matt) have the build controller ensure we don't reach this point on disabled commands (ch12734)
+		return nil, errors.New("cmd is disabled")
+	}
+
 	c.reconcileMu.Lock()
 	doneCh := c.runInternal(ctx, cmd, nil, nil)
 	c.reconcileMu.Unlock()
@@ -311,7 +339,10 @@ func (c *Controller) runInternal(ctx context.Context,
 
 	stillHasSameProcNum := proc.stillHasSameProcNum()
 	c.updateStatus(name, func(status *CmdStatus) {
-		*status = CmdStatus{Waiting: &CmdStateWaiting{}}
+		*status = CmdStatus{
+			Waiting:       &CmdStateWaiting{},
+			DisableStatus: status.DisableStatus,
+		}
 	}, stillHasSameProcNum)
 
 	ctx = store.MustObjectLogHandler(ctx, c.st, cmd)
@@ -331,6 +362,7 @@ func (c *Controller) runInternal(ctx context.Context,
 						ExitCode: 1,
 						Reason:   fmt.Sprintf("Invalid readiness probe: %v", err),
 					},
+					DisableStatus: status.DisableStatus,
 				}
 			}, stillHasSameProcNum)
 
@@ -470,6 +502,7 @@ func (c *Controller) setStatusWaitingOnStartOn(name types.NamespacedName, cmd *C
 			Waiting: &CmdStateWaiting{
 				Reason: waitingOnStartOnReason,
 			},
+			DisableStatus: status.DisableStatus,
 		}
 	}, func() bool { return true })
 }
@@ -563,15 +596,28 @@ func indexCmd(obj client.Object) []indexer.Key {
 			})
 		}
 	}
+
+	if cmd.Spec.DisableSource != nil {
+		cm := cmd.Spec.DisableSource.ConfigMap
+		if cm != nil {
+			gvk := v1alpha1.SchemeGroupVersion.WithKind("ConfigMap")
+			result = append(result, indexer.Key{
+				Name: types.NamespacedName{Name: cm.Name},
+				GVK:  gvk,
+			})
+		}
+	}
 	return result
 }
 
 func (r *Controller) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	b := ctrl.NewControllerManagedBy(mgr).
 		For(&Cmd{}).
-		Watches(&source.Kind{Type: &v1alpha1.FileWatch{}},
+		Watches(&source.Kind{Type: &FileWatch{}},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
-		Watches(&source.Kind{Type: &v1alpha1.UIButton{}},
+		Watches(&source.Kind{Type: &UIButton{}},
+			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
+		Watches(&source.Kind{Type: &ConfigMap{}},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue))
 
 	return b, nil
