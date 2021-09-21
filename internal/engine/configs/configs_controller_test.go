@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apis/tiltfile"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -28,7 +29,7 @@ func TestCreateTiltfile(t *testing.T) {
 	var tf v1alpha1.Tiltfile
 	require.NoError(t, client.Get(ctx, types.NamespacedName{Name: model.MainTiltfileManifestName.String()}, &tf))
 	assert.Equal(t, tf.Spec, v1alpha1.TiltfileSpec{
-		Path: "./fake-tiltfile-path",
+		Path: tiltfile.ResolveFilename("fake-tiltfile-path"),
 		Args: []string{"arg1", "arg2"},
 		RestartOn: &v1alpha1.RestartOnSpec{
 			FileWatches: []string{"configs:(Tiltfile)"},

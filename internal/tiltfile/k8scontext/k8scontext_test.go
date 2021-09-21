@@ -17,11 +17,24 @@ allow_k8s_contexts('gke-blorg')
 	model, err := f.ExecFile("Tiltfile")
 	assert.NoError(t, err)
 	assert.Equal(t, []k8s.KubeContext{"gke-blorg"}, MustState(model).allowed)
-	assert.True(t, MustState(model).IsAllowed())
+	assert.True(t, MustState(model).IsAllowed(f.Tiltfile()))
 
 	model, err = f.ExecFile("Tiltfile")
 	assert.NoError(t, err)
 	assert.Equal(t, []k8s.KubeContext{"gke-blorg"}, MustState(model).allowed)
+}
+
+func TestForbidK8sContext(t *testing.T) {
+	f := NewFixture(t, "gke-blorg", k8s.EnvGKE)
+	f.File("Tiltfile", `
+`)
+	model, err := f.ExecFile("Tiltfile")
+	assert.NoError(t, err)
+	assert.False(t, MustState(model).IsAllowed(f.Tiltfile()))
+
+	// All k8s contexts are allowed in extensions.
+	f.Tiltfile().ObjectMeta.Name = "my-ext"
+	assert.True(t, MustState(model).IsAllowed(f.Tiltfile()))
 }
 
 func NewFixture(tb testing.TB, ctx k8s.KubeContext, env k8s.Env) *starkit.Fixture {

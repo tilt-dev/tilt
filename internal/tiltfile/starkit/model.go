@@ -6,6 +6,8 @@ import (
 	"reflect"
 
 	"go.starlark.net/starlark"
+
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
 type Model struct {
@@ -62,4 +64,13 @@ func ContextFromThread(t *starlark.Thread) (context.Context, error) {
 	}
 
 	return ctx, nil
+}
+
+func StartTiltfileFromThread(t *starlark.Thread) (*v1alpha1.Tiltfile, error) {
+	tf, ok := t.Local(startTfKey).(*v1alpha1.Tiltfile)
+	if !ok {
+		return nil, fmt.Errorf("Internal error Starlark not initialized correctly: start tiltfile not found")
+	}
+
+	return tf, nil
 }

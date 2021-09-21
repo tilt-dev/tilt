@@ -8,6 +8,8 @@ import (
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 	"github.com/tilt-dev/tilt/internal/tiltfile/value"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // Implements functions for dealing with the Kubernetes context.
@@ -87,7 +89,26 @@ func (s State) KubeContext() k8s.KubeContext {
 	return s.context
 }
 
-func (s State) IsAllowed() bool {
+// Returns whether we're allowed to deploy to this kubecontext.
+//
+// Checks against a manually specified list and a baked-in list
+// with known dev cluster names.
+//
+// Currently, only the tiltfile executor knows about "allowed" kubecontexts.
+//
+// We don't keep this information around after tiltfile execution finishes.
+//
+// This is incompatible with the overall technical direction of tilt as an
+// apiserver.  Objects registered via the API (like KubernetesApplys) don't get
+// this protection. And it's currently only limited to the main Tiltfile.
+//
+// A more compatible solution would be to have api server objects
+// for the kubecontexts that tilt is aware of, and ways to mark them safe.
+func (s State) IsAllowed(tf *v1alpha1.Tiltfile) bool {
+	if tf.Name != model.MainTiltfileManifestName.String() {
+		return true
+	}
+
 	if s.env == k8s.EnvNone || s.env.IsDevCluster() {
 		return true
 	}

@@ -10,6 +10,8 @@ import (
 	"github.com/pkg/errors"
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
+
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
 func init() {
@@ -22,13 +24,14 @@ func init() {
 
 // The main entrypoint to starkit.
 // Execute a file with a set of starlark plugins.
-func ExecFile(path string, plugins ...Plugin) (Model, error) {
-	return newEnvironment(plugins...).start(path)
+func ExecFile(tf *v1alpha1.Tiltfile, plugins ...Plugin) (Model, error) {
+	return newEnvironment(plugins...).start(tf)
 }
 
 const argUnpackerKey = "starkit.ArgUnpacker"
 const modelKey = "starkit.Model"
 const ctxKey = "starkit.Ctx"
+const startTfKey = "starkit.StartTiltfile"
 const execingTiltfileKey = "starkit.ExecingTiltfile"
 
 // Unpacks args, using the arg unpacker on the current thread.
@@ -49,6 +52,7 @@ type BuiltinCall struct {
 // A starlark execution environment.
 type Environment struct {
 	ctx              context.Context
+	startTf          *v1alpha1.Tiltfile
 	unpackArgs       ArgUnpacker
 	loadCache        map[string]loadCacheEntry
 	predeclared      starlark.StringDict
@@ -56,7 +60,6 @@ type Environment struct {
 	plugins          []Plugin
 	fakeFileSystem   map[string]string
 	loadInterceptors []LoadInterceptor
-	startPath        string
 
 	builtinCalls []BuiltinCall
 }
@@ -80,9 +83,9 @@ func (e *Environment) SetArgUnpacker(unpackArgs ArgUnpacker) {
 	e.unpackArgs = unpackArgs
 }
 
-// The absolute path to the entrypoint of the environment.
-func (e *Environment) StartPath() string {
-	return e.startPath
+// The tiltfile model driving this environment.
+func (e *Environment) StartTiltfile() *v1alpha1.Tiltfile {
+	return e.startTf
 }
 
 // Add a builtin to the environment.
@@ -160,14 +163,14 @@ func (e *Environment) SetFakeFileSystem(files map[string]string) {
 	e.fakeFileSystem = files
 }
 
-func (e *Environment) start(path string) (Model, error) {
+func (e *Environment) start(tf *v1alpha1.Tiltfile) (Model, error) {
 	// NOTE(dmiller): we only call Abs here because it's the root of the stack
-	path, err := filepath.Abs(path)
+	path, err := filepath.Abs(tf.Spec.Path)
 	if err != nil {
 		return Model{}, errors.Wrap(err, "environment#start")
 	}
 
-	e.startPath = path
+	e.startTf = tf
 
 	model := NewModel()
 	for _, ext := range e.plugins {
@@ -194,6 +197,7 @@ func (e *Environment) start(path string) (Model, error) {
 	t.SetLocal(argUnpackerKey, e.unpackArgs)
 	t.SetLocal(modelKey, model)
 	t.SetLocal(ctxKey, e.ctx)
+	t.SetLocal(startTfKey, e.startTf)
 
 	_, err = e.exec(t, path)
 	model.BuiltinCalls = e.builtinCalls
