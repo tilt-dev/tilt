@@ -67,7 +67,7 @@ type dockerImage struct {
 	skipsLocalDocker  bool
 	outputsImageRefTo string
 
-	liveUpdate model.LiveUpdate
+	liveUpdate v1alpha1.LiveUpdateSpec
 }
 
 func (d *dockerImage) ID() model.TargetID {

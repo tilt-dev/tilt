@@ -7,6 +7,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -25,18 +26,22 @@ var SanchoRef = container.MustParseSelector(testyaml.SanchoImage)
 var SanchoBaseRef = container.MustParseSelector("sancho-base")
 var SanchoSidecarRef = container.MustParseSelector(testyaml.SanchoSidecarImage)
 
-func SyncStepsForApp(app string, fixture Fixture) []model.LiveUpdateSyncStep {
-	return []model.LiveUpdateSyncStep{model.LiveUpdateSyncStep{
-		Source: fixture.Path(),
-		Dest:   fmt.Sprintf("/go/src/github.com/tilt-dev/%s", app),
-	}}
+func SyncStepsForApp(app string, fixture Fixture) []v1alpha1.LiveUpdateSync {
+	return []v1alpha1.LiveUpdateSync{
+		{
+			LocalPath:     ".",
+			ContainerPath: fmt.Sprintf("/go/src/github.com/tilt-dev/%s", app),
+		},
+	}
 }
-func SanchoSyncSteps(fixture Fixture) []model.LiveUpdateSyncStep {
+func SanchoSyncSteps(fixture Fixture) []v1alpha1.LiveUpdateSync {
 	return SyncStepsForApp("sancho", fixture)
 }
 
-func RunStepsForApp(app string) []model.LiveUpdateRunStep {
-	return []model.LiveUpdateRunStep{model.LiveUpdateRunStep{Command: model.Cmd{Argv: []string{"go", "install", fmt.Sprintf("github.com/tilt-dev/%s", app)}}}}
+func RunStepsForApp(app string) []v1alpha1.LiveUpdateExec {
+	return []v1alpha1.LiveUpdateExec{
+		v1alpha1.LiveUpdateExec{Args: []string{"go", "install", fmt.Sprintf("github.com/tilt-dev/%s", app)}},
+	}
 }
 
 var SanchoRunSteps = RunStepsForApp("sancho")
@@ -86,16 +91,17 @@ func NewSanchoDockerBuildImageTarget(f Fixture) model.ImageTarget {
 	})
 }
 
-func NewSanchoLiveUpdate(f Fixture) model.LiveUpdate {
-	syncs := []model.LiveUpdateSyncStep{
+func NewSanchoLiveUpdate(f Fixture) v1alpha1.LiveUpdateSpec {
+	syncs := []v1alpha1.LiveUpdateSync{
 		{
-			Source: f.Path(),
-			Dest:   "/go/src/github.com/tilt-dev/sancho",
+
+			LocalPath:     ".",
+			ContainerPath: "/go/src/github.com/tilt-dev/sancho",
 		},
 	}
-	runs := []model.LiveUpdateRunStep{
+	runs := []v1alpha1.LiveUpdateExec{
 		{
-			Command: model.Cmd{Argv: []string{"go", "install", "github.com/tilt-dev/sancho"}},
+			Args: []string{"go", "install", "github.com/tilt-dev/sancho"},
 		},
 	}
 
@@ -103,7 +109,7 @@ func NewSanchoLiveUpdate(f Fixture) model.LiveUpdate {
 }
 
 func NewSanchoLiveUpdateImageTarget(f Fixture) model.ImageTarget {
-	return imageTargetWithLiveUpdate(NewSanchoDockerBuildImageTarget(f), NewSanchoLiveUpdate(f))
+	return NewSanchoDockerBuildImageTarget(f).WithLiveUpdateSpec(NewSanchoLiveUpdate(f))
 }
 
 func NewSanchoSidecarDockerBuildImageTarget(f Fixture) model.ImageTarget {
@@ -125,7 +131,7 @@ func NewSanchoDockerBuildManifestWithYaml(f Fixture, yaml string) model.Manifest
 		Build()
 }
 
-func NewSanchoDockerBuildMultiStageManifestWithLiveUpdate(fixture Fixture, lu model.LiveUpdate) model.Manifest {
+func NewSanchoDockerBuildMultiStageManifestWithLiveUpdate(fixture Fixture, lu v1alpha1.LiveUpdateSpec) model.Manifest {
 	baseImage := model.MustNewImageTarget(SanchoBaseRef).WithBuildDetails(model.DockerBuild{
 		Dockerfile: `FROM golang:1.10`,
 		BuildPath:  fixture.JoinPath("sancho-base"),
@@ -269,29 +275,16 @@ func NewManifestsWithSameTwoImages(fixture Fixture) (model.Manifest, model.Manif
 	return m1, m2
 }
 
-func assembleLiveUpdate(syncs []model.LiveUpdateSyncStep, runs []model.LiveUpdateRunStep, shouldRestart bool, fallBackOn []string, f Fixture) model.LiveUpdate {
-	var steps []model.LiveUpdateStep
-	if len(fallBackOn) > 0 {
-		steps = append(steps, model.LiveUpdateFallBackOnStep{Files: fallBackOn})
-	}
-	for _, sync := range syncs {
-		steps = append(steps, sync)
-	}
-	for _, run := range runs {
-		steps = append(steps, run)
-	}
+func assembleLiveUpdate(syncs []v1alpha1.LiveUpdateSync, runs []v1alpha1.LiveUpdateExec, shouldRestart bool, fallBackOn []string, f Fixture) v1alpha1.LiveUpdateSpec {
+	restart := v1alpha1.LiveUpdateRestartStrategyNone
 	if shouldRestart {
-		steps = append(steps, model.LiveUpdateRestartContainerStep{})
+		restart = v1alpha1.LiveUpdateRestartStrategyAlways
 	}
-	lu, err := model.NewLiveUpdate(steps, f.Path())
-	if err != nil {
-		f.T().Fatal(err)
+	return v1alpha1.LiveUpdateSpec{
+		BasePath:  f.Path(),
+		Syncs:     syncs,
+		Execs:     runs,
+		StopPaths: fallBackOn,
+		Restart:   restart,
 	}
-	return lu
-}
-
-func imageTargetWithLiveUpdate(i model.ImageTarget, lu model.LiveUpdate) model.ImageTarget {
-	db := i.DockerBuildInfo()
-	db.LiveUpdate = lu
-	return i.WithBuildDetails(db)
 }

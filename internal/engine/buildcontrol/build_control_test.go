@@ -2,6 +2,7 @@ package buildcontrol
 
 import (
 	"fmt"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -231,17 +232,16 @@ func TestHoldForDeploy(t *testing.T) {
 	f.WriteFile(objFile, "hello")
 	f.WriteFile(fallbackFile, "hello")
 
-	lu, err := model.NewLiveUpdate([]model.LiveUpdateStep{
-		model.LiveUpdateFallBackOnStep{Files: []string{f.JoinPath("src", "package.json")}},
-		model.LiveUpdateSyncStep{Source: f.JoinPath("src"), Dest: "/src"},
-	}, f.Path())
-	require.NoError(t, err)
-
+	luSpec := v1alpha1.LiveUpdateSpec{
+		BasePath:  f.Path(),
+		StopPaths: []string{filepath.Join("src", "package.json")},
+		Syncs:     []v1alpha1.LiveUpdateSync{{LocalPath: "src", ContainerPath: "/src"}},
+	}
 	sanchoImage := model.MustNewImageTarget(container.MustParseSelector("sancho")).
+		WithLiveUpdateSpec(luSpec).
 		WithBuildDetails(model.DockerBuild{BuildPath: f.Path()})
 	sancho := f.upsertManifest(manifestbuilder.New(f, "sancho").
 		WithImageTargets(sanchoImage).
-		WithLiveUpdate(lu).
 		WithK8sYAML(testyaml.SanchoYAML).
 		Build())
 

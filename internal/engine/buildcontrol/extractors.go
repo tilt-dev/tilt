@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/sliceutils"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -68,8 +69,8 @@ func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.
 			continue
 		}
 
-		luInfo := iTarget.LiveUpdateInfo()
-		if luInfo.Empty() {
+		luSpec := iTarget.LiveUpdateSpec
+		if liveupdate.IsEmptySpec(luSpec) {
 			return nil, SilentRedirectToNextBuilderf("LiveUpdate requires that LiveUpdate details be specified")
 		}
 

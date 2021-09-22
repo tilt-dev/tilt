@@ -2,6 +2,7 @@ package engine
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -20,6 +21,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -297,11 +299,11 @@ func TestLiveUpdateDiffImgMultipleContainersOnlySomeSyncsMatch(t *testing.T) {
 
 	sanchoPath := f.JoinPath("sancho")
 	sanchoSyncs := SanchoSyncSteps(f)
-	sanchoSyncs[0].Source = sanchoPath
+	sanchoSyncs[0].LocalPath = sanchoPath
 
 	sidecarPath := f.JoinPath("sidecar")
 	sidecarSyncs := SyncStepsForApp("sidecar", f)
-	sidecarSyncs[0].Source = sidecarPath
+	sidecarSyncs[0].LocalPath = sidecarPath
 
 	sanchoLU := assembleLiveUpdate(sanchoSyncs, SanchoRunSteps, false, nil, f)
 	sidecarLU := assembleLiveUpdate(sidecarSyncs, RunStepsForApp("sidecar"),
@@ -344,7 +346,7 @@ func TestLiveUpdateDiffImgMultipleContainersSameContextOnlyOneLiveUpdate(t *test
 
 	buildContext := f.Path()
 	sanchoSyncs := SanchoSyncSteps(f)
-	sanchoSyncs[0].Source = buildContext
+	sanchoSyncs[0].LocalPath = buildContext
 
 	sanchoLU := assembleLiveUpdate(sanchoSyncs, SanchoRunSteps, false, nil, f)
 	sanchoTarg := model.MustNewImageTarget(SanchoRef).WithBuildDetails(model.DockerBuild{
@@ -379,9 +381,9 @@ func TestLiveUpdateDiffImgMultipleContainersFallBackIfFilesDoesntMatchAnySyncs(t
 	defer f.TearDown()
 
 	sanchoSyncs := SanchoSyncSteps(f)
-	sanchoSyncs[0].Source = f.JoinPath("sancho")
+	sanchoSyncs[0].LocalPath = f.JoinPath("sancho")
 	sidecarSyncs := SyncStepsForApp("sidecar", f)
-	sidecarSyncs[0].Source = f.JoinPath("sidecar")
+	sidecarSyncs[0].LocalPath = f.JoinPath("sidecar")
 
 	sanchoLU := assembleLiveUpdate(sanchoSyncs, SanchoRunSteps, false, nil, f)
 	sidecarLU := assembleLiveUpdate(sidecarSyncs, RunStepsForApp("sidecar"),
@@ -665,10 +667,10 @@ func TestLiveUpdateRunTriggerLocalContainer(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
-	runs := []model.LiveUpdateRunStep{
-		model.LiveUpdateRunStep{Command: model.ToUnixCmd("echo hello")},
-		model.LiveUpdateRunStep{Command: model.ToUnixCmd("echo a"), Triggers: f.NewPathSet("a.txt")}, // matches changed file
-		model.LiveUpdateRunStep{Command: model.ToUnixCmd("echo b"), Triggers: f.NewPathSet("b.txt")}, // does NOT match changed file
+	runs := []v1alpha1.LiveUpdateExec{
+		{Args: model.ToUnixCmd("echo hello").Argv},
+		{Args: model.ToUnixCmd("echo a").Argv, TriggerPaths: []string{"a.txt"}}, // matches changed file
+		{Args: model.ToUnixCmd("echo b").Argv, TriggerPaths: []string{"b.txt"}}, // does NOT match changed file
 	}
 	lu := assembleLiveUpdate(SanchoSyncSteps(f), runs, true, nil, f)
 	tCase := testCase{
@@ -691,10 +693,10 @@ func TestLiveUpdateRunTriggerExec(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 
-	runs := []model.LiveUpdateRunStep{
-		model.LiveUpdateRunStep{Command: model.ToUnixCmd("echo hello")},
-		model.LiveUpdateRunStep{Command: model.ToUnixCmd("echo a"), Triggers: f.NewPathSet("a.txt")}, // matches changed file
-		model.LiveUpdateRunStep{Command: model.ToUnixCmd("echo b"), Triggers: f.NewPathSet("b.txt")}, // does NOT match changed file
+	runs := []v1alpha1.LiveUpdateExec{
+		{Args: model.ToUnixCmd("echo hello").Argv},
+		{Args: model.ToUnixCmd("echo a").Argv, TriggerPaths: []string{"a.txt"}}, // matches changed file
+		{Args: model.ToUnixCmd("echo b").Argv, TriggerPaths: []string{"b.txt"}}, // does NOT match changed file
 	}
 	lu := assembleLiveUpdate(SanchoSyncSteps(f), runs, false, nil, f)
 	tCase := testCase{
@@ -828,9 +830,9 @@ func TestLiveUpdateLocalContainerChangedFileNotMatchingSyncFallsBack(t *testing.
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
-	steps := []model.LiveUpdateSyncStep{model.LiveUpdateSyncStep{
-		Source: f.JoinPath("specific/directory"),
-		Dest:   "/go/src/github.com/tilt-dev/sancho",
+	steps := []v1alpha1.LiveUpdateSync{{
+		LocalPath:     filepath.Join("specific", "directory"),
+		ContainerPath: "/go/src/github.com/tilt-dev/sancho",
 	}}
 
 	lu := assembleLiveUpdate(steps, SanchoRunSteps, true, []string{"a.txt"}, f)
@@ -859,9 +861,9 @@ func TestLiveUpdateExecChangedFileNotMatchingSyncFallsBack(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 
-	steps := []model.LiveUpdateSyncStep{model.LiveUpdateSyncStep{
-		Source: f.JoinPath("specific/directory"),
-		Dest:   "/go/src/github.com/tilt-dev/sancho",
+	steps := []v1alpha1.LiveUpdateSync{{
+		LocalPath:     filepath.Join("specific", "directory"),
+		ContainerPath: "/go/src/github.com/tilt-dev/sancho",
 	}}
 
 	lu := assembleLiveUpdate(steps, SanchoRunSteps, false, []string{"a.txt"}, f)
@@ -890,9 +892,9 @@ func TestLiveUpdateManyFilesNotMatching(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 
-	steps := []model.LiveUpdateSyncStep{model.LiveUpdateSyncStep{
-		Source: f.JoinPath("specific/directory"),
-		Dest:   "/go/src/github.com/tilt-dev/sancho",
+	steps := []v1alpha1.LiveUpdateSync{{
+		LocalPath:     filepath.Join("specific", "directory"),
+		ContainerPath: "/go/src/github.com/tilt-dev/sancho",
 	}}
 
 	changedFiles := []string{}
@@ -933,9 +935,9 @@ func TestLiveUpdateSomeFilesMatchSyncSomeDontFallsBack(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
-	steps := []model.LiveUpdateSyncStep{model.LiveUpdateSyncStep{
-		Source: f.JoinPath("specific/directory"),
-		Dest:   "/go/src/github.com/tilt-dev/sancho",
+	steps := []v1alpha1.LiveUpdateSync{{
+		LocalPath:     filepath.Join("specific", "directory"),
+		ContainerPath: "/go/src/github.com/tilt-dev/sancho",
 	}}
 
 	lu := assembleLiveUpdate(steps, SanchoRunSteps, true, []string{"a.txt"}, f)
@@ -965,9 +967,9 @@ func TestLiveUpdateInFirstImageOfImageDependency(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
-	steps := []model.LiveUpdateSyncStep{model.LiveUpdateSyncStep{
-		Source: f.JoinPath("sancho-base"),
-		Dest:   "/go/src/github.com/tilt-dev/sancho-base",
+	steps := []v1alpha1.LiveUpdateSync{{
+		LocalPath:     "sancho-base",
+		ContainerPath: "/go/src/github.com/tilt-dev/sancho-base",
 	}}
 
 	lu := assembleLiveUpdate(steps, SanchoRunSteps, true, nil, f)
@@ -986,9 +988,9 @@ func TestLiveUpdateInFirstImageOfImageDependencyWithoutSync(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
-	steps := []model.LiveUpdateSyncStep{model.LiveUpdateSyncStep{
-		Source: f.JoinPath("sancho"),
-		Dest:   "/go/src/github.com/tilt-dev/sancho",
+	steps := []v1alpha1.LiveUpdateSync{{
+		LocalPath:     "sancho",
+		ContainerPath: "/go/src/github.com/tilt-dev/sancho",
 	}}
 
 	lu := assembleLiveUpdate(steps, SanchoRunSteps, true, nil, f)
@@ -1006,9 +1008,9 @@ func TestLiveUpdateInSecondImageOfImageDependency(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
-	steps := []model.LiveUpdateSyncStep{model.LiveUpdateSyncStep{
-		Source: f.JoinPath("sancho"),
-		Dest:   "/go/src/github.com/tilt-dev/sancho",
+	steps := []v1alpha1.LiveUpdateSync{{
+		LocalPath:     "sancho",
+		ContainerPath: "/go/src/github.com/tilt-dev/sancho",
 	}}
 
 	lu := assembleLiveUpdate(steps, SanchoRunSteps, true, nil, f)
