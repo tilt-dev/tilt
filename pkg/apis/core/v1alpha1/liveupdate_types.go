@@ -62,22 +62,15 @@ type LiveUpdateSpec struct {
 	// +tilt:local-path=true
 	BasePath string `json:"basePath" protobuf:"bytes,1,opt,name=basePath"`
 
+	// Specifies how this live-updater finds the containers that need live update.
+	Selector *LiveUpdateSelector `json:"selector" protobuf:"bytes,8,opt,name=selector"`
+
 	// Name of the FileWatch object to watch for a list of files that
 	// have recently been updated.
 	//
 	// Every live update must be associated with a FileWatch object
 	// to trigger the update.
 	FileWatchName string `json:"fileWatchName" protobuf:"bytes,2,opt,name=fileWatchName"`
-
-	// Name of the KubernetesDiscovery object to watch for a list of pods
-	// that we're able to update.
-	//
-	// Every live update must be associated with some object for finding
-	// containers. In the future, we expect there to be other types
-	// of container discovery objects (like Docker Compose container discovery).
-	//
-	// +optional
-	KubernetesDiscoveryName string `json:"kubernetesDiscoveryName,omitempty" protobuf:"bytes,3,opt,name=kubernetesDiscoveryName"`
 
 	// A list of relative paths that will immediately stop the live-update for the
 	// current container.
@@ -175,6 +168,27 @@ var _ resource.StatusSubResource = &LiveUpdateStatus{}
 
 func (in LiveUpdateStatus) CopyTo(parent resource.ObjectWithStatusSubResource) {
 	parent.(*LiveUpdate).Status = in
+}
+
+// Specifies how to select containers to live update.
+//
+// Every live update must be associated with some object for finding
+// containers. In the future, we expect there to be other types
+// of container discovery objects (like Docker Compose container discovery).
+type LiveUpdateSelector struct {
+	// Finds containers in Kubernetes.
+	Kubernetes *LiveUpdateKubernetesSelector `json:"kubernetes,omitempty" protobuf:"bytes,1,opt,name=kubernetes"`
+}
+
+// Specifies how to select containers to live update inside K8s.
+type LiveUpdateKubernetesSelector struct {
+	// The name of a KubernetesDiscovery object for finding pods.
+	DiscoveryName string `json:"discoveryName,omitempty" protobuf:"bytes,1,opt,name=discoveryName"`
+
+	// Image specifies the name of the image that we're copying files into.
+	// Determines which containers in a pod to live-update.
+	// Matches images by name unless tag is explicitly specified.
+	Image string `json:"image,omitempty" protobuf:"bytes,2,opt,name=image"`
 }
 
 // Determines how a local path maps into a container image.

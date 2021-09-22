@@ -1027,12 +1027,33 @@ message LiveUpdateExec {
   repeated string triggerPaths = 2;
 }
 
+// Specifies how to select containers to live update inside K8s.
+message LiveUpdateKubernetesSelector {
+  // The name of a KubernetesDiscovery object for finding pods.
+  optional string discoveryName = 1;
+
+  // Image specifies the name of the image that we're copying files into.
+  // Determines which containers in a pod to live-update.
+  // Matches images by name unless tag is explicitly specified.
+  optional string image = 2;
+}
+
 // LiveUpdateList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 message LiveUpdateList {
   optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
 
   repeated LiveUpdate items = 2;
+}
+
+// Specifies how to select containers to live update.
+//
+// Every live update must be associated with some object for finding
+// containers. In the future, we expect there to be other types
+// of container discovery objects (like Docker Compose container discovery).
+message LiveUpdateSelector {
+  // Finds containers in Kubernetes.
+  optional LiveUpdateKubernetesSelector kubernetes = 1;
 }
 
 // LiveUpdateSpec defines the desired state of LiveUpdate
@@ -1046,22 +1067,15 @@ message LiveUpdateSpec {
   // +tilt:local-path=true
   optional string basePath = 1;
 
+  // Specifies how this live-updater finds the containers that need live update.
+  optional LiveUpdateSelector selector = 8;
+
   // Name of the FileWatch object to watch for a list of files that
   // have recently been updated.
   //
   // Every live update must be associated with a FileWatch object
   // to trigger the update.
   optional string fileWatchName = 2;
-
-  // Name of the KubernetesDiscovery object to watch for a list of pods
-  // that we're able to update.
-  //
-  // Every live update must be associated with some object for finding
-  // containers. In the future, we expect there to be other types
-  // of container discovery objects (like Docker Compose container discovery).
-  //
-  // +optional
-  optional string kubernetesDiscoveryName = 3;
 
   // A list of relative paths that will immediately stop the live-update for the
   // current container.

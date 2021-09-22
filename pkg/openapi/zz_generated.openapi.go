@@ -89,7 +89,9 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesWatchRef":              schema_pkg_apis_core_v1alpha1_KubernetesWatchRef(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdate":                      schema_pkg_apis_core_v1alpha1_LiveUpdate(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateExec":                  schema_pkg_apis_core_v1alpha1_LiveUpdateExec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateKubernetesSelector":    schema_pkg_apis_core_v1alpha1_LiveUpdateKubernetesSelector(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateList":                  schema_pkg_apis_core_v1alpha1_LiveUpdateList(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSelector":              schema_pkg_apis_core_v1alpha1_LiveUpdateSelector(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSpec":                  schema_pkg_apis_core_v1alpha1_LiveUpdateSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateStatus":                schema_pkg_apis_core_v1alpha1_LiveUpdateStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSync":                  schema_pkg_apis_core_v1alpha1_LiveUpdateSync(ref),
@@ -2747,6 +2749,33 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateExec(ref common.ReferenceCallback) 
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_LiveUpdateKubernetesSelector(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Specifies how to select containers to live update inside K8s.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"discoveryName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The name of a KubernetesDiscovery object for finding pods.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"image": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Image specifies the name of the image that we're copying files into. Determines which containers in a pod to live-update. Matches images by name unless tag is explicitly specified.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_LiveUpdateList(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -2796,6 +2825,27 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateList(ref common.ReferenceCallback) 
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_LiveUpdateSelector(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Specifies how to select containers to live update.\n\nEvery live update must be associated with some object for finding containers. In the future, we expect there to be other types of container discovery objects (like Docker Compose container discovery).",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kubernetes": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Finds containers in Kubernetes.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateKubernetesSelector"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateKubernetesSelector"},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_LiveUpdateSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -2811,17 +2861,16 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateSpec(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
+					"selector": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Specifies how this live-updater finds the containers that need live update.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSelector"),
+						},
+					},
 					"fileWatchName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Name of the FileWatch object to watch for a list of files that have recently been updated.\n\nEvery live update must be associated with a FileWatch object to trigger the update.",
 							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"kubernetesDiscoveryName": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Name of the KubernetesDiscovery object to watch for a list of pods that we're able to update.\n\nEvery live update must be associated with some object for finding containers. In the future, we expect there to be other types of container discovery objects (like Docker Compose container discovery).",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -2877,11 +2926,11 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateSpec(ref common.ReferenceCallback) 
 						},
 					},
 				},
-				Required: []string{"basePath", "fileWatchName"},
+				Required: []string{"basePath", "selector", "fileWatchName"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateExec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSync"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateExec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSelector", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSync"},
 	}
 }
 
