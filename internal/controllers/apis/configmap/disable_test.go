@@ -61,7 +61,7 @@ func TestMaybeNewDisableStatusTrue(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, newStatus)
 	require.Equal(t, true, newStatus.Disabled)
-	require.Contains(t, newStatus.Reason, "is \"true\"")
+	require.Contains(t, newStatus.Reason, "is true")
 }
 
 func TestMaybeNewDisableStatusFalse(t *testing.T) {
@@ -71,7 +71,7 @@ func TestMaybeNewDisableStatusFalse(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, newStatus)
 	require.Equal(t, false, newStatus.Disabled)
-	require.Contains(t, newStatus.Reason, "is not \"true\"")
+	require.Contains(t, newStatus.Reason, "is false")
 }
 
 func TestMaybeNewDisableStatusGobbledygookValue(t *testing.T) {
@@ -81,7 +81,7 @@ func TestMaybeNewDisableStatusGobbledygookValue(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, newStatus)
 	require.Equal(t, false, newStatus.Disabled)
-	require.Contains(t, newStatus.Reason, "is not \"true\"")
+	require.Contains(t, newStatus.Reason, "strconv.ParseBool: parsing \"asdf\"")
 }
 
 func TestMaybeNewDisableStatusNoChange(t *testing.T) {

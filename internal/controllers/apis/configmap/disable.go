@@ -3,6 +3,7 @@ package configmap
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,17 +35,12 @@ func disableStatus(ctx context.Context, client client.Client, disableSource *v1a
 	if !ok {
 		return false, fmt.Sprintf("ConfigMap %q has no key %q", disableSource.ConfigMap.Name, disableSource.ConfigMap.Key), nil
 	}
-	// TODO(matt)
-	// checking `== "true"` rather than strconv.ParseBool because we lack a good way to surface errors
-	// maybe once we have something like k8s events, we should use that?
-	isDisabled = cmVal == "true"
-	var verb string
-	if isDisabled {
-		verb = "is"
-	} else {
-		verb = "is not"
+	isDisabled, err = strconv.ParseBool(cmVal)
+	if err != nil {
+		return false, fmt.Sprintf("error parsing ConfigMap/key %q/%q value %q as a bool: %v", disableSource.ConfigMap.Name, disableSource.ConfigMap.Key, cmVal, err.Error()), nil
 	}
-	return isDisabled, fmt.Sprintf("ConfigMap/key %q/%q %s \"true\"", disableSource.ConfigMap.Name, disableSource.ConfigMap.Key, verb), nil
+
+	return isDisabled, fmt.Sprintf("ConfigMap/key %q/%q is %v", disableSource.ConfigMap.Name, disableSource.ConfigMap.Key, isDisabled), nil
 }
 
 // Returns a new DisableStatus if the disable status has changed, or the prev status if it hasn't.

@@ -3,7 +3,6 @@ package cmd
 import (
 	"bufio"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -243,15 +242,6 @@ func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) e
 //
 // Blocks until the command is finished, then returns its status.
 func (c *Controller) ForceRun(ctx context.Context, cmd *v1alpha1.Cmd) (*v1alpha1.CmdStatus, error) {
-	disableStatus, err := configmap.MaybeNewDisableStatus(ctx, c.client, cmd.Spec.DisableSource, cmd.Status.DisableStatus)
-	if err != nil {
-		return nil, err
-	}
-	if disableStatus.Disabled {
-		// TODO(matt) have the build controller ensure we don't reach this point on disabled commands (ch12734)
-		return nil, errors.New("cmd is disabled")
-	}
-
 	c.reconcileMu.Lock()
 	doneCh := c.runInternal(ctx, cmd, nil, nil)
 	c.reconcileMu.Unlock()
@@ -339,10 +329,10 @@ func (c *Controller) runInternal(ctx context.Context,
 
 	stillHasSameProcNum := proc.stillHasSameProcNum()
 	c.updateStatus(name, func(status *CmdStatus) {
-		*status = CmdStatus{
-			Waiting:       &CmdStateWaiting{},
-			DisableStatus: status.DisableStatus,
-		}
+		status.Running = nil
+		status.Waiting = &CmdStateWaiting{}
+		status.Terminated = nil
+		status.Ready = false
 	}, stillHasSameProcNum)
 
 	ctx = store.MustObjectLogHandler(ctx, c.st, cmd)
@@ -357,13 +347,13 @@ func (c *Controller) runInternal(ctx context.Context,
 		if err != nil {
 			logger.Get(ctx).Errorf("Invalid readiness probe: %v", err)
 			c.updateStatus(name, func(status *CmdStatus) {
-				*status = CmdStatus{
-					Terminated: &CmdStateTerminated{
-						ExitCode: 1,
-						Reason:   fmt.Sprintf("Invalid readiness probe: %v", err),
-					},
-					DisableStatus: status.DisableStatus,
+				status.Terminated = &CmdStateTerminated{
+					ExitCode: 1,
+					Reason:   fmt.Sprintf("Invalid readiness probe: %v", err),
 				}
+				status.Waiting = nil
+				status.Running = nil
+				status.Ready = false
 			}, stillHasSameProcNum)
 
 			proc.doneCh = make(chan struct{})
@@ -498,12 +488,12 @@ func (c *Controller) setStatusWaitingOnStartOn(name types.NamespacedName, cmd *C
 		return
 	}
 	c.updateStatus(name, func(status *CmdStatus) {
-		*status = CmdStatus{
-			Waiting: &CmdStateWaiting{
-				Reason: waitingOnStartOnReason,
-			},
-			DisableStatus: status.DisableStatus,
+		status.Waiting = &CmdStateWaiting{
+			Reason: waitingOnStartOnReason,
 		}
+		status.Running = nil
+		status.Terminated = nil
+		status.Ready = false
 	}, func() bool { return true })
 }
 
