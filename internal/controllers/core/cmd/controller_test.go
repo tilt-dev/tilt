@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -357,7 +358,7 @@ func TestStartOnNoPreviousProcess(t *testing.T) {
 	f.triggerButton("b-1", f.clock.Now())
 	f.reconcileCmd("testcmd")
 
-	f.assertCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
+	f.requireCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
 		running := cmd.Status.Running
 		return running != nil && running.StartedAt.Time.After(startup)
 	})
@@ -371,7 +372,7 @@ func TestStartOnDoesntRunOnCreation(t *testing.T) {
 
 	f.reconcileCmd("testcmd")
 
-	f.assertCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
+	f.requireCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
 		return cmd.Status.Waiting != nil && cmd.Status.Waiting.Reason == waitingOnStartOnReason
 	})
 
@@ -388,7 +389,7 @@ func TestStartOnStartAfter(t *testing.T) {
 
 	f.reconcileCmd("testcmd")
 
-	f.assertCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
+	f.requireCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
 		return cmd.Status.Waiting != nil && cmd.Status.Waiting.Reason == waitingOnStartOnReason
 	})
 
@@ -406,7 +407,7 @@ func TestStartOnRunningProcess(t *testing.T) {
 	f.reconcileCmd("testcmd")
 
 	// wait for the initial process to start
-	f.assertCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
+	f.requireCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
 		return cmd.Status.Running != nil
 	})
 
@@ -420,7 +421,7 @@ func TestStartOnRunningProcess(t *testing.T) {
 	f.triggerButton("b-1", secondClickTime)
 	f.reconcileCmd("testcmd")
 
-	f.assertCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
+	f.requireCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
 		running := cmd.Status.Running
 		return running != nil && !running.StartedAt.Time.Before(secondClickTime)
 	})
@@ -445,7 +446,7 @@ func TestStartOnPreviousTerminatedProcess(t *testing.T) {
 	f.reconcileCmd("testcmd")
 
 	// wait for the initial process to start
-	f.assertCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
+	f.requireCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
 		return cmd.Status.Running != nil
 	})
 
@@ -457,7 +458,7 @@ func TestStartOnPreviousTerminatedProcess(t *testing.T) {
 	require.NoError(t, err)
 
 	// wait for the initial process to die
-	f.assertCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
+	f.requireCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
 		return cmd.Status.Terminated != nil
 	})
 
@@ -466,7 +467,7 @@ func TestStartOnPreviousTerminatedProcess(t *testing.T) {
 	f.triggerButton("b-1", secondClickTime)
 	f.reconcileCmd("testcmd")
 
-	f.assertCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
+	f.requireCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
 		running := cmd.Status.Running
 		return running != nil && !running.StartedAt.Time.Before(secondClickTime)
 	})
@@ -527,6 +528,90 @@ func TestDisposeTerminatedWhenCmdChanges(t *testing.T) {
 	f.assertCmdDeleted("foo-serve-1")
 }
 
+func TestDisable(t *testing.T) {
+	f := newFixture(t)
+	defer f.teardown()
+
+	cmd := &Cmd{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "cmd-1",
+		},
+		Spec: v1alpha1.CmdSpec{
+			Args: []string{"sh", "-c", "sleep 10000"},
+			DisableSource: &v1alpha1.DisableSource{
+				ConfigMap: &v1alpha1.ConfigMapDisableSource{
+					Name: "disable-cmd-1",
+					Key:  "isDisabled",
+				},
+			},
+		},
+	}
+	err := f.client.Create(f.ctx, cmd)
+	require.NoError(t, err)
+
+	f.setDisabled(cmd.Name, false)
+
+	f.requireCmdMatchesInAPI(cmd.Name, func(cmd *Cmd) bool {
+		return cmd.Status.Running != nil &&
+			cmd.Status.DisableStatus != nil &&
+			!cmd.Status.DisableStatus.Disabled
+	})
+
+	f.setDisabled(cmd.Name, true)
+
+	f.requireCmdMatchesInAPI(cmd.Name, func(cmd *Cmd) bool {
+		return cmd.Status.Terminated != nil &&
+			cmd.Status.DisableStatus != nil &&
+			cmd.Status.DisableStatus.Disabled
+	})
+
+	f.setDisabled(cmd.Name, false)
+
+	f.requireCmdMatchesInAPI(cmd.Name, func(cmd *Cmd) bool {
+		return cmd.Status.Running != nil &&
+			cmd.Status.DisableStatus != nil &&
+			!cmd.Status.DisableStatus.Disabled
+	})
+}
+
+func TestReenable(t *testing.T) {
+	f := newFixture(t)
+	defer f.teardown()
+
+	cmd := &Cmd{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "cmd-1",
+		},
+		Spec: v1alpha1.CmdSpec{
+			Args: []string{"sh", "-c", "sleep 10000"},
+			DisableSource: &v1alpha1.DisableSource{
+				ConfigMap: &v1alpha1.ConfigMapDisableSource{
+					Name: "disable-cmd-1",
+					Key:  "isDisabled",
+				},
+			},
+		},
+	}
+	err := f.client.Create(f.ctx, cmd)
+	require.NoError(t, err)
+
+	f.setDisabled(cmd.Name, true)
+
+	f.requireCmdMatchesInAPI(cmd.Name, func(cmd *Cmd) bool {
+		return cmd.Status.Running == nil &&
+			cmd.Status.DisableStatus != nil &&
+			cmd.Status.DisableStatus.Disabled
+	})
+
+	f.setDisabled(cmd.Name, false)
+
+	f.requireCmdMatchesInAPI(cmd.Name, func(cmd *Cmd) bool {
+		return cmd.Status.Running != nil &&
+			cmd.Status.DisableStatus != nil &&
+			!cmd.Status.DisableStatus.Disabled
+	})
+}
+
 // Self-modifying Cmds are typically paired with a StartOn trigger,
 // to simulate a "toggle" switch on the Cmd.
 //
@@ -540,7 +625,7 @@ func TestSelfModifyingCmd(t *testing.T) {
 
 	f.reconcileCmd("testcmd")
 
-	f.assertCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
+	f.requireCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
 		return cmd.Status.Waiting != nil && cmd.Status.Waiting.Reason == waitingOnStartOnReason
 	})
 
@@ -549,7 +634,7 @@ func TestSelfModifyingCmd(t *testing.T) {
 	f.clock.Advance(time.Second)
 	f.reconcileCmd("testcmd")
 
-	f.assertCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
+	f.requireCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
 		return cmd.Status.Running != nil
 	})
 
@@ -557,7 +642,7 @@ func TestSelfModifyingCmd(t *testing.T) {
 		spec.Args = []string{"yourserver"}
 	})
 	f.reconcileCmd("testcmd")
-	f.assertCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
+	f.requireCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
 		return cmd.Status.Waiting != nil && cmd.Status.Waiting.Reason == waitingOnStartOnReason
 	})
 
@@ -567,7 +652,7 @@ func TestSelfModifyingCmd(t *testing.T) {
 	f.triggerButton("b-1", f.clock.Now())
 	f.reconcileCmd("testcmd")
 
-	f.assertCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
+	f.requireCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
 		return cmd.Status.Running != nil
 	})
 }
@@ -583,7 +668,7 @@ func TestDependencyChangesDoNotCauseRestart(t *testing.T) {
 	f.clock.Advance(time.Second)
 	f.reconcileCmd("testcmd")
 
-	firstStart := f.assertCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
+	firstStart := f.requireCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
 		return cmd.Status.Running != nil
 	})
 
@@ -608,7 +693,7 @@ func TestDependencyChangesDoNotCauseRestart(t *testing.T) {
 	})
 	f.reconcileCmd("testcmd")
 
-	f.assertCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
+	f.requireCmdMatchesInAPI("testcmd", func(cmd *Cmd) bool {
 		running := cmd.Status.Running
 		return running != nil && running.StartedAt.Time.Equal(firstStart.Status.Running.StartedAt.Time)
 	})
@@ -866,6 +951,37 @@ func (f *fixture) updateButton(name string, update func(button *v1alpha1.UIButto
 	require.NoError(f.T(), err)
 }
 
+// checks `cmdName`'s DisableSource and makes sure it's configured to be disabled or enabled per `isDisabled`
+func (f *fixture) setDisabled(cmdName string, isDisabled bool) {
+	cmd := &Cmd{}
+	err := f.client.Get(f.ctx, types.NamespacedName{Name: cmdName}, cmd)
+	require.NoError(f.T(), err)
+
+	require.NotNil(f.T(), cmd.Spec.DisableSource)
+	require.NotNil(f.T(), cmd.Spec.DisableSource.ConfigMap)
+
+	configMap := &ConfigMap{}
+	err = f.client.Get(f.ctx, types.NamespacedName{Name: cmd.Spec.DisableSource.ConfigMap.Name}, configMap)
+	if apierrors.IsNotFound(err) {
+		configMap.ObjectMeta.Name = cmd.Spec.DisableSource.ConfigMap.Name
+		configMap.Data = map[string]string{cmd.Spec.DisableSource.ConfigMap.Key: strconv.FormatBool(isDisabled)}
+		err = f.client.Create(f.ctx, configMap)
+		require.NoError(f.T(), err)
+	} else {
+		require.Nil(f.T(), err)
+		configMap.Data[cmd.Spec.DisableSource.ConfigMap.Key] = strconv.FormatBool(isDisabled)
+		err = f.client.Update(f.ctx, configMap)
+		require.NoError(f.T(), err)
+	}
+
+	f.reconcileCmd(cmdName)
+
+	// block until the change has been processed
+	f.requireCmdMatchesInAPI(cmdName, func(cmd *Cmd) bool {
+		return cmd.Status.DisableStatus.Disabled == isDisabled
+	})
+}
+
 func (f *fixture) resource(name string, cmd string, workdir string, lastDeploy time.Time) {
 	c := model.ToHostCmd(cmd)
 	c.Dir = workdir
@@ -941,14 +1057,14 @@ func (f *fixture) assertCmdMatches(name string, matcher func(cmd *Cmd) bool) *Cm
 		return matcher(cmd)
 	}, timeout, interval)
 
-	return f.assertCmdMatchesInAPI(name, matcher)
+	return f.requireCmdMatchesInAPI(name, matcher)
 }
 
-func (f *fixture) assertCmdMatchesInAPI(name string, matcher func(cmd *Cmd) bool) *Cmd {
+func (f *fixture) requireCmdMatchesInAPI(name string, matcher func(cmd *Cmd) bool) *Cmd {
 	f.t.Helper()
 	var cmd Cmd
 
-	assert.Eventually(f.t, func() bool {
+	require.Eventually(f.t, func() bool {
 		err := f.client.Get(f.ctx, types.NamespacedName{Name: name}, &cmd)
 		require.NoError(f.t, err)
 		return matcher(&cmd)

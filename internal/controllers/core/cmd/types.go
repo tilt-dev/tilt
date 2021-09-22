@@ -13,6 +13,7 @@ type CmdSpec = v1alpha1.CmdSpec
 type CmdStateWaiting = v1alpha1.CmdStateWaiting
 type CmdStateTerminated = v1alpha1.CmdStateTerminated
 type CmdStateRunning = v1alpha1.CmdStateRunning
+type ConfigMap = v1alpha1.ConfigMap
 type ObjectMeta = metav1.ObjectMeta
 type FileWatch = v1alpha1.FileWatch
 type FileWatchSpec = v1alpha1.FileWatchSpec
