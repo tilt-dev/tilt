@@ -179,11 +179,10 @@ func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) e
 		return nil
 	}
 
-	owner := metav1.GetControllerOf(cmd)
-	if owner != nil && owner.Kind == v1alpha1.OwnerKindTiltfile {
+	if cmd.Annotations[v1alpha1.AnnotationManagedBy] == "local_resource" {
 		// Until resource dependencies are expressed in the API,
 		// we can't use reconciliation to deploy Cmd objects
-		// owned by the Tiltfile.
+		// that are part of local_resource.
 		return nil
 	}
 

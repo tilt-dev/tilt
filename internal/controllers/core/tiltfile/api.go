@@ -132,12 +132,12 @@ var typesWithTiltfileBuiltins = []apiset.Object{
 	&v1alpha1.ExtensionRepo{},
 	&v1alpha1.Extension{},
 	&v1alpha1.FileWatch{},
+	&v1alpha1.Cmd{},
 }
 
 var typesToReconcile = append([]apiset.Object{
 	&v1alpha1.KubernetesApply{},
 	&v1alpha1.ImageMap{},
-	&v1alpha1.Cmd{},
 	&v1alpha1.UIResource{},
 	&v1alpha1.ConfigMap{},
 }, typesWithTiltfileBuiltins...)
@@ -180,10 +180,15 @@ func toAPIObjects(nn types.NamespacedName, tf *v1alpha1.Tiltfile, tlr *tiltfile.
 		result[(&v1alpha1.ConfigMap{}).GetGroupVersionResource()] = toDisableConfigMaps(disableSources)
 		result[(&v1alpha1.KubernetesApply{}).GetGroupVersionResource()] = toKubernetesApplyObjects(tlr, disableSources)
 		result[(&v1alpha1.ImageMap{}).GetGroupVersionResource()] = toImageMapObjects(tlr, disableSources)
-		result[(&v1alpha1.Cmd{}).GetGroupVersionResource()] = toCmdObjects(tlr, disableSources)
 
 		for _, obj := range typesWithTiltfileBuiltins {
 			result[obj.GetGroupVersionResource()] = tlr.ObjectSet[obj.GetGroupVersionResource()]
+		}
+
+		updateCmds := toCmdObjects(tlr, disableSources)
+		cmdMap := result.GetOrCreateTypedSet(&v1alpha1.Cmd{})
+		for key, cmd := range updateCmds {
+			cmdMap[key] = cmd
 		}
 	} else {
 		disableSources = make(map[string]*v1alpha1.DisableSource)
@@ -321,8 +326,9 @@ func toCmdObjects(tlr *tiltfile.TiltfileLoadResult, disableSources map[string]*v
 			ObjectMeta: metav1.ObjectMeta{
 				Name: name,
 				Annotations: map[string]string{
-					v1alpha1.AnnotationManifest: m.Name.String(),
-					v1alpha1.AnnotationSpanID:   fmt.Sprintf("cmd:%s", name),
+					v1alpha1.AnnotationManifest:  m.Name.String(),
+					v1alpha1.AnnotationSpanID:    fmt.Sprintf("cmd:%s", name),
+					v1alpha1.AnnotationManagedBy: "local_resource",
 				},
 			},
 			Spec: *cmdSpec,

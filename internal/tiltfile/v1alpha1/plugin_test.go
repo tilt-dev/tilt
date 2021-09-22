@@ -142,6 +142,28 @@ v1alpha1.file_watch(
 	})
 }
 
+func TestCmdDefaultDir(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.File("Tiltfile", `
+v1alpha1.cmd(
+  name='my-cmd',
+  args=['echo', 'hello'])
+`)
+	result, err := f.ExecFile("Tiltfile")
+	require.NoError(t, err)
+
+	set := MustState(result)
+
+	cmd := set[(&v1alpha1.Cmd{}).GetGroupVersionResource()]["my-cmd"].(*v1alpha1.Cmd)
+	require.NotNil(t, cmd)
+	require.Equal(t, cmd.Spec, v1alpha1.CmdSpec{
+		Args: []string{"echo", "hello"},
+		Dir:  f.Path(),
+	})
+}
+
 func newFixture(tb testing.TB) *starkit.Fixture {
 	return starkit.NewFixture(tb, NewPlugin())
 }

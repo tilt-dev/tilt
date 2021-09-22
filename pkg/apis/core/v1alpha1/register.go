@@ -33,6 +33,10 @@ const Version = "v1alpha1"
 // AnnotationTargetID is an internal Tilt target ID used for the build graph.
 const AnnotationTargetID = "tilt.dev/target-id"
 
+// AnnotationManaged declares when an object is managed by a system
+// that's not entirely expressed in apiserver objects.
+const AnnotationManagedBy = "tilt.dev/managed-by"
+
 // AnnotationManifest identifies which manifest an object's logs should appear under.
 const AnnotationManifest = "tilt.dev/resource"
 
