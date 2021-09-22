@@ -7,8 +7,9 @@ import (
 	"io"
 	"strings"
 
-	exporttrace "go.opentelemetry.io/otel/sdk/export/trace"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace"
+
+	"github.com/tilt-dev/tilt/internal/tracer/exptel"
 )
 
 // SpanCollector does 3 things:
@@ -17,21 +18,20 @@ import (
 // 3) Allows consumers to read spans they might want to send elsewhere
 // Numbers 2 and 3 access the same data, and so it's a concurrency issue.
 type SpanCollector struct {
-
 	// members for communicating with the loop() goroutine
 
 	// for OpenTelemetry SpanCollector
-	spanDataCh chan *exporttrace.SpanData
+	spanDataCh chan trace.ReadOnlySpan
 
 	// for SpanSource
-	readReqCh chan chan []*exporttrace.SpanData
-	requeueCh chan []*exporttrace.SpanData
+	readReqCh chan chan []trace.ReadOnlySpan
+	requeueCh chan []trace.ReadOnlySpan
 }
 
 // SpanSource is the interface for consumers (generally telemetry.Controller)
 type SpanSource interface {
 	// GetOutgoingSpans gives a consumer access to spans they should send
-	// If there are no outoing spans, err will be io.EOF
+	// If there are no outgoing spans, err will be io.EOF
 	// rejectFn allows client to reject spans, so they can be requeued
 	// rejectFn must be called, if at all, before the next call to GetOutgoingSpans
 	GetOutgoingSpans() (data io.Reader, rejectFn func(), err error)
@@ -42,9 +42,9 @@ type SpanSource interface {
 
 func NewSpanCollector(ctx context.Context) *SpanCollector {
 	r := &SpanCollector{
-		spanDataCh: make(chan *exporttrace.SpanData),
-		readReqCh:  make(chan chan []*exporttrace.SpanData),
-		requeueCh:  make(chan []*exporttrace.SpanData),
+		spanDataCh: make(chan trace.ReadOnlySpan),
+		readReqCh:  make(chan chan []trace.ReadOnlySpan),
+		requeueCh:  make(chan []trace.ReadOnlySpan),
 	}
 	go r.loop(ctx)
 	return r
@@ -52,7 +52,7 @@ func NewSpanCollector(ctx context.Context) *SpanCollector {
 
 func (c *SpanCollector) loop(ctx context.Context) {
 	// spans that have come in and are waiting to be read by a consumer
-	var queue []*exporttrace.SpanData
+	var queue []trace.ReadOnlySpan
 
 	for {
 		if c.spanDataCh == nil && c.readReqCh == nil {
@@ -83,20 +83,26 @@ func (c *SpanCollector) loop(ctx context.Context) {
 }
 
 // OpenTelemetry exporter methods
-func (c *SpanCollector) OnStart(sd *exporttrace.SpanData) {
+
+func (c *SpanCollector) ExportSpans(ctx context.Context, spans []trace.ReadOnlySpan) error {
+	for _, s := range spans {
+		select {
+		case c.spanDataCh <- s:
+		case <-ctx.Done():
+			return nil
+		}
+	}
+	return nil
 }
 
-func (c *SpanCollector) OnEnd(sd *exporttrace.SpanData) {
-	c.spanDataCh <- sd
-}
-
-func (c *SpanCollector) Shutdown() {
+func (c *SpanCollector) Shutdown(ctx context.Context) error {
 	close(c.spanDataCh)
+	return nil
 }
 
 // SpanSource
 func (c *SpanCollector) GetOutgoingSpans() (io.Reader, func(), error) {
-	readCh := make(chan []*exporttrace.SpanData)
+	readCh := make(chan []trace.ReadOnlySpan)
 	c.readReqCh <- readCh
 	spans := <-readCh
 
@@ -106,7 +112,8 @@ func (c *SpanCollector) GetOutgoingSpans() (io.Reader, func(), error) {
 
 	var b strings.Builder
 	w := json.NewEncoder(&b)
-	for _, span := range spans {
+	for i := range spans {
+		span := exptel.NewSpanFromOtel(spans[i], tracerName+"/")
 		if err := w.Encode(span); err != nil {
 			return nil, nil, fmt.Errorf("Error marshaling %v: %v", span, err)
 		}
@@ -126,7 +133,7 @@ func (c *SpanCollector) Close() error {
 
 const maxQueueSize = 1024 // round number that can hold a fair bit of data
 
-func appendAndTrim(lst1 []*exporttrace.SpanData, lst2 ...*exporttrace.SpanData) []*exporttrace.SpanData {
+func appendAndTrim(lst1 []trace.ReadOnlySpan, lst2 ...trace.ReadOnlySpan) []trace.ReadOnlySpan {
 	r := append(lst1, lst2...)
 	if len(r) <= maxQueueSize {
 		return r
@@ -135,5 +142,5 @@ func appendAndTrim(lst1 []*exporttrace.SpanData, lst2 ...*exporttrace.SpanData) 
 	return r[elemsToRemove:]
 }
 
-var _ sdktrace.SpanProcessor = (*SpanCollector)(nil)
+var _ trace.SpanExporter = (*SpanCollector)(nil)
 var _ SpanSource = (*SpanCollector)(nil)

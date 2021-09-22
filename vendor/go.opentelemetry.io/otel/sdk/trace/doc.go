@@ -1,4 +1,4 @@
-// Copyright 2019, OpenTelemetry Authors
+// Copyright The OpenTelemetry Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,6 @@
 Package trace contains support for OpenTelemetry distributed tracing.
 
 The following assumes a basic familiarity with OpenTelemetry concepts.
-See http://opentelemetry.io/otel
+See https://opentelemetry.io.
 */
 package trace // import "go.opentelemetry.io/otel/sdk/trace"

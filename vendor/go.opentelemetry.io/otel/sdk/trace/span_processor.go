@@ -1,4 +1,4 @@
-// Copyright 2019, OpenTelemetry Authors
+// Copyright The OpenTelemetry Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,70 +12,56 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package trace
+package trace // import "go.opentelemetry.io/otel/sdk/trace"
 
 import (
+	"context"
 	"sync"
-	"sync/atomic"
-
-	export "go.opentelemetry.io/otel/sdk/export/trace"
 )
 
-// SpanProcessor is interface to add hooks to start and end method invocations.
+// SpanProcessor is a processing pipeline for spans in the trace signal.
+// SpanProcessors registered with a TracerProvider and are called at the start
+// and end of a Span's lifecycle, and are called in the order they are
+// registered.
 type SpanProcessor interface {
+	// DO NOT CHANGE: any modification will not be backwards compatible and
+	// must never be done outside of a new major release.
 
-	// OnStart method is invoked when span is started. It is a synchronous call
-	// and hence should not block.
-	OnStart(sd *export.SpanData)
+	// OnStart is called when a span is started. It is called synchronously
+	// and should not block.
+	OnStart(parent context.Context, s ReadWriteSpan)
+	// DO NOT CHANGE: any modification will not be backwards compatible and
+	// must never be done outside of a new major release.
 
-	// OnEnd method is invoked when span is finished. It is a synchronous call
-	// and hence should not block.
-	OnEnd(sd *export.SpanData)
+	// OnEnd is called when span is finished. It is called synchronously and
+	// hence not block.
+	OnEnd(s ReadOnlySpan)
+	// DO NOT CHANGE: any modification will not be backwards compatible and
+	// must never be done outside of a new major release.
 
-	// Shutdown is invoked when SDK shutsdown. Use this call to cleanup any processor
-	// data. No calls to OnStart and OnEnd method is invoked after Shutdown call is
-	// made. It should not be blocked indefinitely.
-	Shutdown()
+	// Shutdown is called when the SDK shuts down. Any cleanup or release of
+	// resources held by the processor should be done in this call.
+	//
+	// Calls to OnStart, OnEnd, or ForceFlush after this has been called
+	// should be ignored.
+	//
+	// All timeouts and cancellations contained in ctx must be honored, this
+	// should not block indefinitely.
+	Shutdown(ctx context.Context) error
+	// DO NOT CHANGE: any modification will not be backwards compatible and
+	// must never be done outside of a new major release.
+
+	// ForceFlush exports all ended spans to the configured Exporter that have not yet
+	// been exported.  It should only be called when absolutely necessary, such as when
+	// using a FaaS provider that may suspend the process after an invocation, but before
+	// the Processor can export the completed spans.
+	ForceFlush(ctx context.Context) error
+	// DO NOT CHANGE: any modification will not be backwards compatible and
+	// must never be done outside of a new major release.
 }
 
-type spanProcessorMap map[SpanProcessor]*sync.Once
-
-var (
-	mu             sync.Mutex
-	spanProcessors atomic.Value
-)
-
-// RegisterSpanProcessor adds to the list of SpanProcessors that will receive sampled
-// trace spans.
-func RegisterSpanProcessor(e SpanProcessor) {
-	mu.Lock()
-	defer mu.Unlock()
-	new := make(spanProcessorMap)
-	if old, ok := spanProcessors.Load().(spanProcessorMap); ok {
-		for k, v := range old {
-			new[k] = v
-		}
-	}
-	new[e] = &sync.Once{}
-	spanProcessors.Store(new)
+type spanProcessorState struct {
+	sp    SpanProcessor
+	state *sync.Once
 }
-
-// UnregisterSpanProcessor removes from the list of SpanProcessors the SpanProcessor that was
-// registered with the given name.
-func UnregisterSpanProcessor(s SpanProcessor) {
-	mu.Lock()
-	defer mu.Unlock()
-	new := make(spanProcessorMap)
-	if old, ok := spanProcessors.Load().(spanProcessorMap); ok {
-		for k, v := range old {
-			new[k] = v
-		}
-	}
-	if stopOnce, ok := new[s]; ok && stopOnce != nil {
-		stopOnce.Do(func() {
-			s.Shutdown()
-		})
-	}
-	delete(new, s)
-	spanProcessors.Store(new)
-}
+type spanProcessorStates []*spanProcessorState

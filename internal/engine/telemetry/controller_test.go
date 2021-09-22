@@ -12,8 +12,9 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-
-	exporttrace "go.opentelemetry.io/otel/sdk/export/trace"
+	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
@@ -109,7 +110,7 @@ type tcFixture struct {
 	st         *store.TestingStore
 	cmd        string
 	lastRun    time.Time
-	spans      []*exporttrace.SpanData
+	spans      []trace.ReadOnlySpan
 	sc         *tracer.SpanCollector
 	controller *Controller
 }
@@ -128,7 +129,7 @@ func newTCFixture(t *testing.T) *tcFixture {
 		clock: fakeClock{now: time.Unix(1551202573, 0)},
 		st:    st,
 		sc:    tracer.NewSpanCollector(ctx),
-		spans: []*exporttrace.SpanData{&exporttrace.SpanData{}},
+		spans: []trace.ReadOnlySpan{tracetest.SpanStub{}.Snapshot()},
 	}
 }
 
@@ -182,9 +183,8 @@ func (tcf *tcFixture) setLastRun(t time.Time) {
 }
 
 func (tcf *tcFixture) run() {
-	for _, sd := range tcf.spans {
-		tcf.sc.OnEnd(sd)
-	}
+	tcf.t.Helper()
+	require.NoError(tcf.t, tcf.sc.ExportSpans(tcf.ctx, tcf.spans))
 
 	ts := model.TelemetrySettings{
 		Cmd:     model.ToHostCmd(tcf.cmd),

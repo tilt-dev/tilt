@@ -8,8 +8,11 @@ import (
 	"strings"
 	"testing"
 
-	"go.opentelemetry.io/otel/api/core"
-	exporttrace "go.opentelemetry.io/otel/sdk/export/trace"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func TestExporterSimple(t *testing.T) {
@@ -47,28 +50,28 @@ func TestExporterString(t *testing.T) {
 	f := newFixture(t)
 	defer f.tearDown()
 
-	spanID, _ := core.SpanIDFromHex("00f067aa0ba902b7")
-	sd := &exporttrace.SpanData{
-		SpanContext: core.SpanContext{
+	spanID, _ := trace.SpanIDFromHex("00f067aa0ba902b7")
+	sd := &tracetest.SpanStub{
+		SpanContext: trace.NewSpanContext(trace.SpanContextConfig{
 			SpanID: spanID,
-		},
+		}),
 		Name: "foo",
 	}
 
 	f.export(sd)
 	s, _ := f.getSpanText()
-	expected := `{"SpanContext":{"TraceID":"00000000000000000000000000000000","SpanID":"00f067aa0ba902b7","TraceFlags":0},"ParentSpanID":"0000000000000000","SpanKind":0,"Name":"foo","StartTime":"0001-01-01T00:00:00Z","EndTime":"0001-01-01T00:00:00Z","Attributes":null,"MessageEvents":null,"Links":null,"Status":0,"HasRemoteParent":false,"DroppedAttributeCount":0,"DroppedMessageEventCount":0,"DroppedLinkCount":0,"ChildSpanCount":0}
+	// N.B. we add a `tilt.usage/` prefix to the span name during export
+	expected := `{"SpanContext":{"TraceID":"00000000000000000000000000000000","SpanID":"00f067aa0ba902b7","TraceFlags":0},"ParentSpanID":"0000000000000000","SpanKind":0,"Name":"tilt.dev/usage/foo","StartTime":"0001-01-01T00:00:00Z","EndTime":"0001-01-01T00:00:00Z","Attributes":null,"MessageEvents":null,"Links":null,"Status":0,"HasRemoteParent":false,"DroppedAttributeCount":0,"DroppedMessageEventCount":0,"DroppedLinkCount":0,"ChildSpanCount":0}
 `
-	if s != expected {
-		t.Fatalf("got %v; expected %v", s, expected)
-	}
+
+	require.JSONEq(t, expected, s, "spans did not match")
 }
 
 func TestExporterTrims(t *testing.T) {
 	f := newFixture(t)
 	defer f.tearDown()
 
-	var sds []*exporttrace.SpanData
+	var sds []*tracetest.SpanStub
 	for i := 0; i < 2048; i++ {
 		sdi := sd(i)
 		sds = append(sds, sdi)
@@ -111,24 +114,25 @@ func newFixture(t *testing.T) *fixture {
 }
 
 func (f *fixture) tearDown() {
+	f.t.Helper()
 	f.assertEmpty()
-	f.sc.Shutdown()
-	f.sc.Close()
+	require.NoError(f.t, f.sc.Shutdown(f.ctx))
+	require.NoError(f.t, f.sc.Close())
 }
 
-func (f *fixture) export(sd *exporttrace.SpanData) {
-	f.sc.OnStart(sd)
-	f.sc.OnEnd(sd)
+func (f *fixture) export(sd *tracetest.SpanStub) {
+	f.t.Helper()
+	require.NoError(f.t, f.sc.ExportSpans(f.ctx, []sdktrace.ReadOnlySpan{sd.Snapshot()}))
 }
 
-func (f *fixture) assertConsumeSpans(expected ...*exporttrace.SpanData) {
+func (f *fixture) assertConsumeSpans(expected ...*tracetest.SpanStub) {
 	f.t.Helper()
 	actual, _ := f.getSpans()
 
 	f.assertSpansEqual(expected, actual)
 }
 
-func (f *fixture) assertRejectSpans(expected ...*exporttrace.SpanData) {
+func (f *fixture) assertRejectSpans(expected ...*tracetest.SpanStub) {
 	f.t.Helper()
 	actual, rejectFn := f.getSpans()
 	rejectFn()
@@ -144,7 +148,7 @@ func (f *fixture) assertEmpty() {
 	}
 }
 
-func (f *fixture) assertSpansEqual(expected []*exporttrace.SpanData, actual []*exporttrace.SpanData) {
+func (f *fixture) assertSpansEqual(expected []*tracetest.SpanStub, actual []*tracetest.SpanStub) {
 	f.t.Helper()
 	if len(expected) != len(actual) {
 		f.t.Fatalf("got %v (len %v); expected %v (len %v)", actual, len(actual), expected, len(expected))
@@ -158,9 +162,7 @@ func (f *fixture) assertSpansEqual(expected []*exporttrace.SpanData, actual []*e
 		if exErr != nil || actErr != nil {
 			f.t.Fatalf("unexpected error %v %v", exErr, actErr)
 		}
-		if string(exJSON) != string(actJSON) {
-			f.t.Fatalf("unequal spans; got:\n%q; expected:\n%q", string(exJSON), string(actJSON))
-		}
+		assert.JSONEq(f.t, string(exJSON), string(actJSON), "unequal spans")
 	}
 }
 
@@ -179,13 +181,13 @@ func (f *fixture) getSpanText() (string, func()) {
 	return string(bs), rejectFn
 }
 
-func (f *fixture) getSpans() ([]*exporttrace.SpanData, func()) {
+func (f *fixture) getSpans() ([]*tracetest.SpanStub, func()) {
 	f.t.Helper()
 	s, rejectFn := f.getSpanText()
 	r := strings.NewReader(s)
 	dec := json.NewDecoder(r)
 
-	var result []*exporttrace.SpanData
+	var result []*tracetest.SpanStub
 
 	for dec.More() {
 		var data SpanDataFromJSON
@@ -210,25 +212,25 @@ type SpanContextFromJSON struct {
 	SpanID string
 }
 
-func sdFromData(data SpanDataFromJSON) *exporttrace.SpanData {
-	spanID, _ := core.SpanIDFromHex(data.SpanContext.SpanID)
+func sdFromData(data SpanDataFromJSON) *tracetest.SpanStub {
+	spanID, _ := trace.SpanIDFromHex(data.SpanContext.SpanID)
 
-	return &exporttrace.SpanData{
-		SpanContext: core.SpanContext{
+	return &tracetest.SpanStub{
+		SpanContext: trace.NewSpanContext(trace.SpanContextConfig{
 			SpanID: spanID,
-		},
+		}),
 	}
 }
 
-func sd(id int) *exporttrace.SpanData {
-	return &exporttrace.SpanData{
-		SpanContext: core.SpanContext{
+func sd(id int) *tracetest.SpanStub {
+	return &tracetest.SpanStub{
+		SpanContext: trace.NewSpanContext(trace.SpanContextConfig{
 			SpanID: idFromInt(id),
-		},
+		}),
 	}
 }
 
-func idFromInt(id int) (r core.SpanID) {
+func idFromInt(id int) (r trace.SpanID) {
 	r[7] = uint8(id % 256)
 	r[6] = uint8(id / 256)
 	return r

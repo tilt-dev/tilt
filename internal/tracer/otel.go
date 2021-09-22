@@ -1,23 +1,16 @@
 package tracer
 
 import (
-	"context"
-
-	apitrace "go.opentelemetry.io/otel/api/trace"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
 )
 
-var tracer apitrace.Tracer
+const tracerName = "tilt.dev/usage"
 
-func InitOpenTelemetry(ctx context.Context, exporter sdktrace.SpanProcessor) (apitrace.Tracer, error) {
-	tp, err := sdktrace.NewProvider(
-		sdktrace.WithConfig(sdktrace.Config{DefaultSampler: sdktrace.AlwaysSample()}))
-	if err != nil {
-		return nil, err
-	}
-	if exporter != nil {
-		tp.RegisterSpanProcessor(exporter)
-	}
-	tracer = tp.Tracer("tilt.dev/usage")
-	return tracer, nil
+func InitOpenTelemetry(exporter sdktrace.SpanExporter) trace.Tracer {
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSampler(sdktrace.AlwaysSample()))
+	sp := sdktrace.NewBatchSpanProcessor(exporter)
+	tp.RegisterSpanProcessor(sp)
+	tracer := tp.Tracer(tracerName)
+	return tracer
 }

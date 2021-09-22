@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"go.opentelemetry.io/otel/api/core"
-	"go.opentelemetry.io/otel/api/trace"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
@@ -58,7 +58,7 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 	for _, s := range specs {
 		specNames = append(specNames, s.ID().String())
 	}
-	span.SetAttributes(core.KeyValue{Key: core.Key("targetNames"), Value: core.String(strings.Join(specNames, ","))})
+	span.SetAttributes(attribute.KeyValue{Key: attribute.Key("targetNames"), Value: attribute.StringValue(strings.Join(specNames, ","))})
 
 	logger.Get(ctx).Debugf("Building with BuildOrder: %s", composite.builders.String())
 	for i, builder := range composite.builders {
@@ -69,7 +69,7 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 		if err == nil {
 			buildTypes := br.BuildTypes()
 			for _, bt := range buildTypes {
-				span.SetAttributes(core.KeyValue{Key: core.Key(fmt.Sprintf("buildType.%s", bt)), Value: core.Bool(true)})
+				span.SetAttributes(attribute.KeyValue{Key: attribute.Key(fmt.Sprintf("buildType.%s", bt)), Value: attribute.BoolValue(true)})
 			}
 			return br, nil
 		}

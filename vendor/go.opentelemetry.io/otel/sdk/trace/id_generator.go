@@ -1,4 +1,4 @@
-// Copyright 2019, OpenTelemetry Authors
+// Copyright The OpenTelemetry Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,38 +12,66 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package trace
+package trace // import "go.opentelemetry.io/otel/sdk/trace"
 
 import (
+	"context"
+	crand "crypto/rand"
+	"encoding/binary"
 	"math/rand"
 	"sync"
 
-	"go.opentelemetry.io/otel/api/core"
-	"go.opentelemetry.io/otel/sdk/trace/internal"
+	"go.opentelemetry.io/otel/trace"
 )
 
-type defaultIDGenerator struct {
+// IDGenerator allows custom generators for TraceID and SpanID.
+type IDGenerator interface {
+	// DO NOT CHANGE: any modification will not be backwards compatible and
+	// must never be done outside of a new major release.
+
+	// NewIDs returns a new trace and span ID.
+	NewIDs(ctx context.Context) (trace.TraceID, trace.SpanID)
+	// DO NOT CHANGE: any modification will not be backwards compatible and
+	// must never be done outside of a new major release.
+
+	// NewSpanID returns a ID for a new span in the trace with traceID.
+	NewSpanID(ctx context.Context, traceID trace.TraceID) trace.SpanID
+	// DO NOT CHANGE: any modification will not be backwards compatible and
+	// must never be done outside of a new major release.
+}
+
+type randomIDGenerator struct {
 	sync.Mutex
 	randSource *rand.Rand
 }
 
-var _ internal.IDGenerator = &defaultIDGenerator{}
+var _ IDGenerator = &randomIDGenerator{}
 
 // NewSpanID returns a non-zero span ID from a randomly-chosen sequence.
-func (gen *defaultIDGenerator) NewSpanID() core.SpanID {
+func (gen *randomIDGenerator) NewSpanID(ctx context.Context, traceID trace.TraceID) trace.SpanID {
 	gen.Lock()
 	defer gen.Unlock()
-	sid := core.SpanID{}
+	sid := trace.SpanID{}
 	gen.randSource.Read(sid[:])
 	return sid
 }
 
-// NewTraceID returns a non-zero trace ID from a randomly-chosen sequence.
-// mu should be held while this function is called.
-func (gen *defaultIDGenerator) NewTraceID() core.TraceID {
+// NewIDs returns a non-zero trace ID and a non-zero span ID from a
+// randomly-chosen sequence.
+func (gen *randomIDGenerator) NewIDs(ctx context.Context) (trace.TraceID, trace.SpanID) {
 	gen.Lock()
 	defer gen.Unlock()
-	tid := core.TraceID{}
+	tid := trace.TraceID{}
 	gen.randSource.Read(tid[:])
-	return tid
+	sid := trace.SpanID{}
+	gen.randSource.Read(sid[:])
+	return tid, sid
+}
+
+func defaultIDGenerator() IDGenerator {
+	gen := &randomIDGenerator{}
+	var rngSeed int64
+	_ = binary.Read(crand.Reader, binary.LittleEndian, &rngSeed)
+	gen.randSource = rand.New(rand.NewSource(rngSeed))
+	return gen
 }
