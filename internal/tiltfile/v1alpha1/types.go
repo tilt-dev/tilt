@@ -29,6 +29,18 @@ func (p Plugin) registerSymbols(env *starkit.Environment) error {
 	if err != nil {
 		return err
 	}
+	err = env.AddBuiltin("v1alpha1.config_map_disable_source", p.configMapDisableSource)
+	if err != nil {
+		return err
+	}
+	err = env.AddBuiltin("v1alpha1.disable_source", p.disableSource)
+	if err != nil {
+		return err
+	}
+	err = env.AddBuiltin("v1alpha1.ignore_def", p.ignoreDef)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 func (p Plugin) extension(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -87,6 +99,7 @@ func (p Plugin) fileWatch(t *starlark.Thread, fn *starlark.Builtin, args starlar
 	}
 	var watchedPaths value.LocalPathList = value.NewLocalPathListUnpacker(t)
 	var ignores IgnoreDefList = IgnoreDefList{t: t}
+	var disableSource DisableSource = DisableSource{t: t}
 	var labels value.StringStringMap
 	var annotations value.StringStringMap
 	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
@@ -95,6 +108,7 @@ func (p Plugin) fileWatch(t *starlark.Thread, fn *starlark.Builtin, args starlar
 		"annotations?", &annotations,
 		"watched_paths?", &watchedPaths,
 		"ignores?", &ignores,
+		"disable_source?", &disableSource,
 	)
 	if err != nil {
 		return nil, err
@@ -102,19 +116,287 @@ func (p Plugin) fileWatch(t *starlark.Thread, fn *starlark.Builtin, args starlar
 
 	obj.Spec.WatchedPaths = watchedPaths.Value
 	obj.Spec.Ignores = ignores.Value
+	if disableSource.isUnpacked {
+		obj.Spec.DisableSource = (*v1alpha1.DisableSource)(&disableSource.Value)
+	}
 	obj.ObjectMeta.Labels = labels
 	obj.ObjectMeta.Annotations = annotations
 	return p.register(t, obj)
 }
 
+type ConfigMapDisableSource struct {
+	*starlark.Dict
+	Value      v1alpha1.ConfigMapDisableSource
+	isUnpacked bool
+	t          *starlark.Thread // instantiation thread for computing abspath
+}
+
+func (p Plugin) configMapDisableSource(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var name starlark.Value
+	var key starlark.Value
+	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
+		"name?", &name,
+		"key?", &key,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	dict := starlark.NewDict(2)
+
+	if name != nil {
+		err := dict.SetKey(starlark.String("name"), name)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if key != nil {
+		err := dict.SetKey(starlark.String("key"), key)
+		if err != nil {
+			return nil, err
+		}
+	}
+	var obj *ConfigMapDisableSource = &ConfigMapDisableSource{t: t}
+	err = obj.Unpack(dict)
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
+}
+
+func (o *ConfigMapDisableSource) Unpack(v starlark.Value) error {
+	obj := v1alpha1.ConfigMapDisableSource{}
+
+	starlarkObj, ok := v.(*ConfigMapDisableSource)
+	if ok {
+		*o = *starlarkObj
+		return nil
+	}
+
+	mapObj, ok := v.(*starlark.Dict)
+	if !ok {
+		return fmt.Errorf("expected dict, actual: %v", v.Type())
+	}
+
+	for _, item := range mapObj.Items() {
+		keyV, val := item[0], item[1]
+		key, ok := starlark.AsString(keyV)
+		if !ok {
+			return fmt.Errorf("key must be string. Got: %s", keyV.Type())
+		}
+
+		if key == "name" {
+			v, ok := starlark.AsString(val)
+			if !ok {
+				return fmt.Errorf("Expected string, actual: %s", val.Type())
+			}
+			obj.Name = string(v)
+			continue
+		}
+		if key == "key" {
+			v, ok := starlark.AsString(val)
+			if !ok {
+				return fmt.Errorf("Expected string, actual: %s", val.Type())
+			}
+			obj.Key = string(v)
+			continue
+		}
+		return fmt.Errorf("Unexpected attribute name: %s", key)
+	}
+
+	mapObj.Freeze()
+	o.Dict = mapObj
+	o.Value = obj
+	o.isUnpacked = true
+
+	return nil
+}
+
+type ConfigMapDisableSourceList struct {
+	*starlark.List
+	Value []v1alpha1.ConfigMapDisableSource
+	t     *starlark.Thread
+}
+
+func (o *ConfigMapDisableSourceList) Unpack(v starlark.Value) error {
+	items := []v1alpha1.ConfigMapDisableSource{}
+
+	listObj, ok := v.(*starlark.List)
+	if !ok {
+		return fmt.Errorf("expected list, actual: %v", v.Type())
+	}
+
+	for i := 0; i < listObj.Len(); i++ {
+		v := listObj.Index(i)
+
+		item := ConfigMapDisableSource{t: o.t}
+		err := item.Unpack(v)
+		if err != nil {
+			return fmt.Errorf("at index %d: %v", i, err)
+		}
+		items = append(items, v1alpha1.ConfigMapDisableSource(item.Value))
+	}
+
+	listObj.Freeze()
+	o.List = listObj
+	o.Value = items
+
+	return nil
+}
+
+type DisableSource struct {
+	*starlark.Dict
+	Value      v1alpha1.DisableSource
+	isUnpacked bool
+	t          *starlark.Thread // instantiation thread for computing abspath
+}
+
+func (p Plugin) disableSource(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var configMap starlark.Value
+	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
+		"config_map?", &configMap,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	dict := starlark.NewDict(1)
+
+	if configMap != nil {
+		err := dict.SetKey(starlark.String("config_map"), configMap)
+		if err != nil {
+			return nil, err
+		}
+	}
+	var obj *DisableSource = &DisableSource{t: t}
+	err = obj.Unpack(dict)
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
+}
+
+func (o *DisableSource) Unpack(v starlark.Value) error {
+	obj := v1alpha1.DisableSource{}
+
+	starlarkObj, ok := v.(*DisableSource)
+	if ok {
+		*o = *starlarkObj
+		return nil
+	}
+
+	mapObj, ok := v.(*starlark.Dict)
+	if !ok {
+		return fmt.Errorf("expected dict, actual: %v", v.Type())
+	}
+
+	for _, item := range mapObj.Items() {
+		keyV, val := item[0], item[1]
+		key, ok := starlark.AsString(keyV)
+		if !ok {
+			return fmt.Errorf("key must be string. Got: %s", keyV.Type())
+		}
+
+		if key == "config_map" {
+			v := ConfigMapDisableSource{t: o.t}
+			err := v.Unpack(val)
+			if err != nil {
+				return fmt.Errorf("unpacking %s: %v", key, err)
+			}
+			obj.ConfigMap = (*v1alpha1.ConfigMapDisableSource)(&v.Value)
+			continue
+		}
+		return fmt.Errorf("Unexpected attribute name: %s", key)
+	}
+
+	mapObj.Freeze()
+	o.Dict = mapObj
+	o.Value = obj
+	o.isUnpacked = true
+
+	return nil
+}
+
+type DisableSourceList struct {
+	*starlark.List
+	Value []v1alpha1.DisableSource
+	t     *starlark.Thread
+}
+
+func (o *DisableSourceList) Unpack(v starlark.Value) error {
+	items := []v1alpha1.DisableSource{}
+
+	listObj, ok := v.(*starlark.List)
+	if !ok {
+		return fmt.Errorf("expected list, actual: %v", v.Type())
+	}
+
+	for i := 0; i < listObj.Len(); i++ {
+		v := listObj.Index(i)
+
+		item := DisableSource{t: o.t}
+		err := item.Unpack(v)
+		if err != nil {
+			return fmt.Errorf("at index %d: %v", i, err)
+		}
+		items = append(items, v1alpha1.DisableSource(item.Value))
+	}
+
+	listObj.Freeze()
+	o.List = listObj
+	o.Value = items
+
+	return nil
+}
+
 type IgnoreDef struct {
 	*starlark.Dict
-	Value v1alpha1.IgnoreDef
-	t     *starlark.Thread // instantiation thread for computing abspath
+	Value      v1alpha1.IgnoreDef
+	isUnpacked bool
+	t          *starlark.Thread // instantiation thread for computing abspath
+}
+
+func (p Plugin) ignoreDef(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var basePath starlark.Value
+	var patterns starlark.Value
+	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
+		"base_path?", &basePath,
+		"patterns?", &patterns,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	dict := starlark.NewDict(2)
+
+	if basePath != nil {
+		err := dict.SetKey(starlark.String("base_path"), basePath)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if patterns != nil {
+		err := dict.SetKey(starlark.String("patterns"), patterns)
+		if err != nil {
+			return nil, err
+		}
+	}
+	var obj *IgnoreDef = &IgnoreDef{t: t}
+	err = obj.Unpack(dict)
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
 }
 
 func (o *IgnoreDef) Unpack(v starlark.Value) error {
 	obj := v1alpha1.IgnoreDef{}
+
+	starlarkObj, ok := v.(*IgnoreDef)
+	if ok {
+		*o = *starlarkObj
+		return nil
+	}
 
 	mapObj, ok := v.(*starlark.Dict)
 	if !ok {
@@ -152,6 +434,7 @@ func (o *IgnoreDef) Unpack(v starlark.Value) error {
 	mapObj.Freeze()
 	o.Dict = mapObj
 	o.Value = obj
+	o.isUnpacked = true
 
 	return nil
 }
