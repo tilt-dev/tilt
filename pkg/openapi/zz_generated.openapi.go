@@ -2727,7 +2727,7 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateExec(ref common.ReferenceCallback) 
 					},
 					"triggerPaths": {
 						SchemaProps: spec.SchemaProps{
-							Description: "A list of relative paths that trigger this command exec.\n\nIf not specified, all file changes trigger this exec.\n\nPaths are specified relative to the the BasePath of the LiveUpdate.",
+							Description: "A list of relative paths that trigger this command exec.\n\nIf not specified, all file changes seen by the LiveUpdate trigger this exec.\n\nPaths are specified relative to the the BasePath of the LiveUpdate.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -2843,7 +2843,7 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateSpec(ref common.ReferenceCallback) 
 					},
 					"syncs": {
 						SchemaProps: spec.SchemaProps{
-							Description: "A list of sync steps to determine how local paths map into the container.",
+							Description: "Specify paths that can be live-updated into the container and their destinations. Any file changes observed that do not match any of these will invalidate the container image and force a complete rebuild.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{

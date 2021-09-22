@@ -1019,7 +1019,7 @@ message LiveUpdateExec {
 
   // A list of relative paths that trigger this command exec.
   //
-  // If not specified, all file changes trigger this exec.
+  // If not specified, all file changes seen by the LiveUpdate trigger this exec.
   //
   // Paths are specified relative to the the BasePath of the LiveUpdate.
   //
@@ -1072,7 +1072,8 @@ message LiveUpdateSpec {
   // +optional
   repeated string stopPaths = 4;
 
-  // A list of sync steps to determine how local paths map into the container.
+  // Specify paths that can be live-updated into the container and their destinations.
+  // Any file changes observed that do not match any of these will invalidate the container image and force a complete rebuild.
   //
   // +optional
   repeated LiveUpdateSync syncs = 5;

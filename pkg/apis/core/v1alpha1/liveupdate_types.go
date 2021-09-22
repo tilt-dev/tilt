@@ -197,7 +197,7 @@ type LiveUpdateExec struct {
 
 	// A list of relative paths that trigger this command exec.
 	//
-	// If not specified, all file changes trigger this exec.
+	// If not specified, all file changes seen by the LiveUpdate trigger this exec.
 	//
 	// Paths are specified relative to the the BasePath of the LiveUpdate.
 	//
