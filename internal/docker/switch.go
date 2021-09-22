@@ -23,6 +23,8 @@ type switchCli struct {
 	mu         sync.Mutex
 }
 
+var _ Client = &switchCli{}
+
 func ProvideSwitchCli(clusterCli ClusterClient, localCli LocalClient) *switchCli {
 	return &switchCli{
 		localCli:   localCli,
@@ -68,6 +70,9 @@ func (c *switchCli) ContainerRestartNoWait(ctx context.Context, containerID stri
 }
 func (c *switchCli) ExecInContainer(ctx context.Context, cID container.ID, cmd model.Cmd, in io.Reader, out io.Writer) error {
 	return c.client().ExecInContainer(ctx, cID, cmd, in, out)
+}
+func (c *switchCli) ImagePull(ctx context.Context, ref reference.Named) (reference.Canonical, error) {
+	return c.client().ImagePull(ctx, ref)
 }
 func (c *switchCli) ImagePush(ctx context.Context, ref reference.NamedTagged) (io.ReadCloser, error) {
 	return c.client().ImagePush(ctx, ref)

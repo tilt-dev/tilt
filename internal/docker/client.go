@@ -10,14 +10,14 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
-
-	"github.com/docker/cli/cli/connhelper"
 
 	"github.com/blang/semver"
 	"github.com/docker/cli/cli/command"
 	"github.com/docker/cli/cli/config"
+	"github.com/docker/cli/cli/connhelper"
 	cliflags "github.com/docker/cli/cli/flags"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
@@ -28,6 +28,7 @@ import (
 	"github.com/moby/buildkit/identity"
 	"github.com/moby/buildkit/session"
 	"github.com/moby/buildkit/session/auth/authprovider"
+	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
 
 	"github.com/tilt-dev/tilt/internal/container"
@@ -87,6 +88,7 @@ type Client interface {
 	// Returns an ExitError if the command exits with a non-zero exit code.
 	ExecInContainer(ctx context.Context, cID container.ID, cmd model.Cmd, in io.Reader, out io.Writer) error
 
+	ImagePull(ctx context.Context, ref reference.Named) (reference.Canonical, error)
 	ImagePush(ctx context.Context, image reference.NamedTagged) (io.ReadCloser, error)
 	ImageBuild(ctx context.Context, buildContext io.Reader, options BuildOptions) (types.ImageBuildResponse, error)
 	ImageTag(ctx context.Context, source, target string) error
@@ -384,6 +386,91 @@ func (c *Cli) ServerVersion() types.Version {
 	return c.serverVersion
 }
 
+type encodedAuth string
+
+func (c *Cli) authInfo(ctx context.Context, repoInfo *registry.RepositoryInfo, cmdName string) (encodedAuth, types.RequestPrivilegeFunc, error) {
+	infoWriter := logger.Get(ctx).Writer(logger.InfoLvl)
+	cli, err := command.NewDockerCli(
+		command.WithCombinedStreams(infoWriter),
+		command.WithContentTrust(true),
+	)
+	if err != nil {
+		return "", nil, errors.Wrap(err, "authInfo#NewDockerCli")
+	}
+
+	err = cli.Initialize(cliflags.NewClientOptions())
+	if err != nil {
+		return "", nil, errors.Wrap(err, "authInfo#InitializeCLI")
+	}
+	authConfig := command.ResolveAuthConfig(ctx, cli, repoInfo.Index)
+	requestPrivilege := command.RegistryAuthenticationPrivilegedFunc(cli, repoInfo.Index, cmdName)
+
+	auth, err := command.EncodeAuthToBase64(authConfig)
+	if err != nil {
+		return "", nil, errors.Wrap(err, "authInfo#EncodeAuthToBase64")
+	}
+	return encodedAuth(auth), requestPrivilege, nil
+}
+
+func (c *Cli) ImagePull(ctx context.Context, ref reference.Named) (reference.Canonical, error) {
+	repoInfo, err := registry.ParseRepositoryInfo(ref)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse registry for %q: %v", ref.String(), err)
+	}
+
+	encodedAuth, requestPrivilege, err := c.authInfo(ctx, repoInfo, "push")
+	if err != nil {
+		return nil, fmt.Errorf("could not authenticate: %v", err)
+	}
+
+	image := ref.String()
+	pullResp, err := c.Client.ImagePull(ctx, image, types.ImagePullOptions{
+		RegistryAuth:  string(encodedAuth),
+		PrivilegeFunc: requestPrivilege,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("could not pull image %q: %v", image, err)
+	}
+	defer func() {
+		_ = pullResp.Close()
+	}()
+
+	// the /images/create API is a bit chaotic, returning JSON lines of status as it pulls
+	// including ASCII progress bar animation etc.
+	// there's not really any guarantees with it, so the prevailing guidance is to try and
+	// inspect the image immediately afterwards to ensure it was pulled successfully
+	// (this is racy and could be improved by _trying_ to get the digest out of this response
+	// and making sure it matches with the result of inspect, but Docker itself suffers from
+	// this same race condition during a docker run that triggers a pull, so it's reasonable
+	// to deem it as acceptable here as well)
+	_, err = io.Copy(io.Discard, pullResp)
+	if err != nil {
+		return nil, fmt.Errorf("connection error while pulling image %q: %v", image, err)
+	}
+
+	imgInspect, _, err := c.ImageInspectWithRaw(ctx, image)
+	if err != nil {
+		return nil, fmt.Errorf("failed to inspect after pull for image %q: %v", image, err)
+	}
+
+	digestInfo := strings.SplitN(imgInspect.RepoDigests[0], "@", 2)
+	if len(digestInfo) != 2 {
+		return nil, fmt.Errorf("invalid digest %q for image %q: missing @", imgInspect.RepoDigests[0], image)
+	}
+
+	d, err := digest.Parse(digestInfo[1])
+	if err != nil {
+		return nil, fmt.Errorf("invalid digest %q for image %q: %v", imgInspect.RepoDigests[0], image, err)
+	}
+
+	digestRef, err := reference.WithDigest(ref, d)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create digest reference for image %q: %v", image, err)
+	}
+
+	return digestRef, nil
+}
+
 func (c *Cli) ImagePush(ctx context.Context, ref reference.NamedTagged) (io.ReadCloser, error) {
 	repoInfo, err := registry.ParseRepositoryInfo(ref)
 	if err != nil {
@@ -391,34 +478,18 @@ func (c *Cli) ImagePush(ctx context.Context, ref reference.NamedTagged) (io.Read
 	}
 
 	logger.Get(ctx).Infof("Authenticating to image repo: %s", repoInfo.Index.Name)
-	infoWriter := logger.Get(ctx).Writer(logger.InfoLvl)
-	cli, err := command.NewDockerCli(
-		command.WithCombinedStreams(infoWriter),
-		command.WithContentTrust(true),
-	)
+	encodedAuth, requestPrivilege, err := c.authInfo(ctx, repoInfo, "push")
 	if err != nil {
-		return nil, errors.Wrap(err, "ImagePush#NewDockerCli")
-	}
-
-	err = cli.Initialize(cliflags.NewClientOptions())
-	if err != nil {
-		return nil, errors.Wrap(err, "ImagePush#InitializeCLI")
-	}
-	authConfig := command.ResolveAuthConfig(ctx, cli, repoInfo.Index)
-	requestPrivilege := command.RegistryAuthenticationPrivilegedFunc(cli, repoInfo.Index, "push")
-
-	encodedAuth, err := command.EncodeAuthToBase64(authConfig)
-	if err != nil {
-		return nil, errors.Wrap(err, "ImagePush#EncodeAuthToBase64")
+		return nil, errors.Wrap(err, "ImagePush: authenticate")
 	}
 
 	options := types.ImagePushOptions{
-		RegistryAuth:  encodedAuth,
+		RegistryAuth:  string(encodedAuth),
 		PrivilegeFunc: requestPrivilege,
 	}
 
 	if reference.Domain(ref) == "" {
-		return nil, errors.Wrap(err, "ImagePush: no domain in container name")
+		return nil, errors.New("ImagePush: no domain in container name")
 	}
 	logger.Get(ctx).Infof("Sending image data")
 	return c.Client.ImagePush(ctx, ref.String(), options)
