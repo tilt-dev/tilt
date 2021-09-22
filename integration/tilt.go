@@ -20,6 +20,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type UpType int
+
+const (
+	UpTypeUp UpType = iota
+	UpTypeDemo
+)
+
 type TiltDriver struct {
 	Environ map[string]string
 
@@ -97,8 +104,18 @@ func (d *TiltDriver) CI(ctx context.Context, out io.Writer, args ...string) erro
 	return cmd.Run()
 }
 
-func (d *TiltDriver) Up(ctx context.Context, out io.Writer, args ...string) (*TiltUpResponse, error) {
-	mandatoryArgs := []string{"up",
+func (d *TiltDriver) Up(ctx context.Context, upType UpType, out io.Writer, args ...string) (*TiltUpResponse, error) {
+	var upSubcommand string
+	switch upType {
+	case UpTypeUp:
+		upSubcommand = "up"
+	case UpTypeDemo:
+		upSubcommand = "demo"
+	default:
+		return nil, fmt.Errorf("unsupported up type: %v", upType)
+	}
+
+	mandatoryArgs := []string{upSubcommand,
 		// Can't attach a HUD or install browsers in headless mode
 		"--hud=false",
 
@@ -179,11 +196,25 @@ func (r *TiltUpResponse) Err() error {
 	return r.err
 }
 
-func (r *TiltUpResponse) Kill() error {
+// TriggerExit sends a SIGTERM to the `tilt up` process to give it a chance to exit normally.
+//
+// If the signal cannot be sent or 2 seconds have elapsed, it will be forcibly killed with SIGKILL.
+func (r *TiltUpResponse) TriggerExit() error {
 	if r.process == nil {
 		return nil
 	}
-	return r.process.Kill()
+
+	if err := r.process.Signal(syscall.SIGTERM); err != nil {
+		return r.process.Kill()
+	}
+
+	select {
+	case <-r.Done():
+	case <-time.After(2 * time.Second):
+		return r.process.Kill()
+	}
+
+	return nil
 }
 
 // Kill the tilt process and print the goroutine/register state.
