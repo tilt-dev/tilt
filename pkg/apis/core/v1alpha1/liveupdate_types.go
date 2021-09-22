@@ -88,7 +88,8 @@ type LiveUpdateSpec struct {
 	// +optional
 	StopPaths []string `json:"stopPaths,omitempty" protobuf:"bytes,4,rep,name=stopPaths"`
 
-	// A list of sync steps to determine how local paths map into the container.
+	// Specify paths that can be live-updated into the container and their destinations.
+	// Any file changes observed that do not match any of these will invalidate the container image and force a complete rebuild.
 	//
 	// +optional
 	Syncs []LiveUpdateSync `json:"syncs,omitempty" protobuf:"bytes,5,rep,name=syncs"`
