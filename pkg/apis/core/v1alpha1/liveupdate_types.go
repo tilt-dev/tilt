@@ -53,6 +53,67 @@ type LiveUpdateList struct {
 
 // LiveUpdateSpec defines the desired state of LiveUpdate
 type LiveUpdateSpec struct {
+	// An absolute local path that serves as the basis for all
+	// path calculations.
+	//
+	// Relative paths in this object are calculated relative to the base path. It
+	// cannot be empty.
+	//
+	// +tilt:local-path=true
+	BasePath string `json:"basePath" protobuf:"bytes,1,opt,name=basePath"`
+
+	// Name of the FileWatch object to watch for a list of files that
+	// have recently been updated.
+	//
+	// Every live update must be associated with a FileWatch object
+	// to trigger the update.
+	FileWatchName string `json:"fileWatchName" protobuf:"bytes,2,opt,name=fileWatchName"`
+
+	// Name of the KubernetesDiscovery object to watch for a list of pods
+	// that we're able to update.
+	//
+	// Every live update must be associated with some object for finding
+	// containers. In the future, we expect there to be other types
+	// of container discovery objects (like Docker Compose container discovery).
+	//
+	// +optional
+	KubernetesDiscoveryName string `json:"kubernetesDiscoveryName,omitempty" protobuf:"bytes,3,opt,name=kubernetesDiscoveryName"`
+
+	// A list of relative paths that will immediately stop the live-update for the
+	// current container.
+	//
+	// Used to detect file changes that invalidate the entire container image,
+	// forcing a complete rebuild.
+	//
+	// +optional
+	StopPaths []string `json:"stopPaths,omitempty" protobuf:"bytes,4,rep,name=stopPaths"`
+
+	// A list of sync steps to determine how local paths map into the container.
+	//
+	// +optional
+	Syncs []LiveUpdateSync `json:"syncs,omitempty" protobuf:"bytes,5,rep,name=syncs"`
+
+	// A list of commands to run inside the container after files are synced.
+	//
+	// NB: In some documentation, we call these 'runs'. 'exec' more clearly
+	// matches kubectl exec for remote commands.
+	//
+	// +optional
+	Execs []LiveUpdateExec `json:"execs,omitempty" protobuf:"bytes,6,rep,name=execs"`
+
+	// Specifies whether Tilt should try to natively restart the container in-place
+	// after syncs and execs.
+	//
+	// Note that native restarts are only supported by Docker and Docker Compose
+	// (and NOT docker-shim or containerd, the most common Kubernetes runtimes).
+	//
+	// To restart on live-update in Kubernetes, see the guide for how
+	// to apply extensions to add restart behavior:
+	//
+	// https://docs.tilt.dev/live_update_reference.html
+	//
+	// +optional
+	Restart LiveUpdateRestartStrategy `json:"restart,omitempty" protobuf:"bytes,7,opt,name=restart,casttype=LiveUpdateRestartStrategy"`
 }
 
 var _ resource.Object = &LiveUpdate{}
@@ -114,3 +175,54 @@ var _ resource.StatusSubResource = &LiveUpdateStatus{}
 func (in LiveUpdateStatus) CopyTo(parent resource.ObjectWithStatusSubResource) {
 	parent.(*LiveUpdate).Status = in
 }
+
+// Determines how a local path maps into a container image.
+type LiveUpdateSync struct {
+	// A relative path to local files. Required.
+	//
+	// Computed relative to the live-update BasePath.
+	LocalPath string `json:"localPath" protobuf:"bytes,1,opt,name=localPath"`
+
+	// An absolute path inside the container. Required.
+	ContainerPath string `json:"containerPath" protobuf:"bytes,2,opt,name=containerPath"`
+}
+
+// Runs a remote command after files have been synced to the container.
+// Commonly used for small in-container changes (like moving files
+// around, or restart processes).
+type LiveUpdateExec struct {
+	// Command-line arguments to run inside the container. Must have length at least 1.
+	Args []string `json:"args" protobuf:"bytes,1,rep,name=args"`
+
+	// A list of relative paths that trigger this command exec.
+	//
+	// If not specified, all file changes trigger this exec.
+	//
+	// Paths are specified relative to the the BasePath of the LiveUpdate.
+	//
+	// +optional
+	TriggerPaths []string `json:"triggerPaths" protobuf:"bytes,2,rep,name=triggerPaths"`
+}
+
+// Specifies whether Tilt should try to natively restart the container in-place
+// after syncs and execs.
+//
+// Note that native restarts are only supported by Docker and Docker Compose
+// (and NOT docker-shim or containerd, the most common Kubernetes runtimes).
+//
+// To restart on live-update in Kubernetes, see the guide for how
+// to apply extensions to add restart behavior:
+//
+// https://docs.tilt.dev/live_update_reference.html
+type LiveUpdateRestartStrategy string
+
+var (
+	// Never use native restarts.
+	LiveUpdateRestartStrategyNone LiveUpdateRestartStrategy = "none"
+
+	// Always try to restart the container.
+	//
+	// If you're connected to a container runtime that does not support native
+	// restarts, this will be an error.
+	LiveUpdateRestartStrategyAlways LiveUpdateRestartStrategy = "always"
+)

@@ -88,9 +88,11 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesImageObjectDescriptor": schema_pkg_apis_core_v1alpha1_KubernetesImageObjectDescriptor(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesWatchRef":              schema_pkg_apis_core_v1alpha1_KubernetesWatchRef(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdate":                      schema_pkg_apis_core_v1alpha1_LiveUpdate(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateExec":                  schema_pkg_apis_core_v1alpha1_LiveUpdateExec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateList":                  schema_pkg_apis_core_v1alpha1_LiveUpdateList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSpec":                  schema_pkg_apis_core_v1alpha1_LiveUpdateSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateStatus":                schema_pkg_apis_core_v1alpha1_LiveUpdateStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSync":                  schema_pkg_apis_core_v1alpha1_LiveUpdateSync(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ObjectSelector":                  schema_pkg_apis_core_v1alpha1_ObjectSelector(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Pod":                             schema_pkg_apis_core_v1alpha1_Pod(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodCondition":                    schema_pkg_apis_core_v1alpha1_PodCondition(ref),
@@ -2701,6 +2703,50 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdate(ref common.ReferenceCallback) comm
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_LiveUpdateExec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Runs a remote command after files have been synced to the container. Commonly used for small in-container changes (like moving files around, or restart processes).",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"args": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Command-line arguments to run inside the container. Must have length at least 1.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"triggerPaths": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A list of relative paths that trigger this command exec.\n\nIf not specified, all file changes trigger this exec.\n\nPaths are specified relative to the the BasePath of the LiveUpdate.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"args"},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_LiveUpdateList(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -2756,8 +2802,86 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateSpec(ref common.ReferenceCallback) 
 			SchemaProps: spec.SchemaProps{
 				Description: "LiveUpdateSpec defines the desired state of LiveUpdate",
 				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"basePath": {
+						SchemaProps: spec.SchemaProps{
+							Description: "An absolute local path that serves as the basis for all path calculations.\n\nRelative paths in this object are calculated relative to the base path. It cannot be empty.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"fileWatchName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name of the FileWatch object to watch for a list of files that have recently been updated.\n\nEvery live update must be associated with a FileWatch object to trigger the update.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"kubernetesDiscoveryName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name of the KubernetesDiscovery object to watch for a list of pods that we're able to update.\n\nEvery live update must be associated with some object for finding containers. In the future, we expect there to be other types of container discovery objects (like Docker Compose container discovery).",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"stopPaths": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A list of relative paths that will immediately stop the live-update for the current container.\n\nUsed to detect file changes that invalidate the entire container image, forcing a complete rebuild.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"syncs": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A list of sync steps to determine how local paths map into the container.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSync"),
+									},
+								},
+							},
+						},
+					},
+					"execs": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A list of commands to run inside the container after files are synced.\n\nNB: In some documentation, we call these 'runs'. 'exec' more clearly matches kubectl exec for remote commands.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateExec"),
+									},
+								},
+							},
+						},
+					},
+					"restart": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Specifies whether Tilt should try to natively restart the container in-place after syncs and execs.\n\nNote that native restarts are only supported by Docker and Docker Compose (and NOT docker-shim or containerd, the most common Kubernetes runtimes).\n\nTo restart on live-update in Kubernetes, see the guide for how to apply extensions to add restart behavior:\n\nhttps://docs.tilt.dev/live_update_reference.html",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"basePath", "fileWatchName"},
 			},
 		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateExec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSync"},
 	}
 }
 
@@ -2767,6 +2891,36 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateStatus(ref common.ReferenceCallback
 			SchemaProps: spec.SchemaProps{
 				Description: "LiveUpdateStatus defines the observed state of LiveUpdate",
 				Type:        []string{"object"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_LiveUpdateSync(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Determines how a local path maps into a container image.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"localPath": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A relative path to local files. Required.\n\nComputed relative to the live-update BasePath.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"containerPath": {
+						SchemaProps: spec.SchemaProps{
+							Description: "An absolute path inside the container. Required.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"localPath", "containerPath"},
 			},
 		},
 	}
