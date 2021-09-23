@@ -38,6 +38,7 @@ import (
 // (within OS limitations) to kill any spawned descendant processes.
 //
 // +k8s:openapi-gen=true
+// +tilt:starlark-gen=true
 type Cmd struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
@@ -66,6 +67,7 @@ type CmdSpec struct {
 	// in the default Tilt working directory.
 	//
 	// +optional
+	// +tilt:local-path=true
 	Dir string `json:"dir,omitempty" protobuf:"bytes,2,opt,name=dir"`
 
 	// Additional variables process environment.
