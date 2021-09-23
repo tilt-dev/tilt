@@ -154,13 +154,10 @@ func getExistingAPIObjects(ctx context.Context, client ctrlclient.Client, nn typ
 			return nil, err
 		}
 
-		s := apiset.TypedObjectSet{}
 		_ = meta.EachListItem(list, func(obj runtime.Object) error {
-			cObj := obj.(apiset.Object)
-			s[cObj.GetName()] = cObj
+			result.Add(obj.(apiset.Object))
 			return nil
 		})
-		result[obj.GetGroupVersionResource()] = s
 	}
 
 	return result, nil
@@ -170,19 +167,19 @@ func getExistingAPIObjects(ctx context.Context, client ctrlclient.Client, nn typ
 func toAPIObjects(nn types.NamespacedName, tf *v1alpha1.Tiltfile, tlr *tiltfile.TiltfileLoadResult, mode store.EngineMode) apiset.ObjectSet {
 	result := apiset.ObjectSet{}
 
-	result[(&v1alpha1.UIResource{}).GetGroupVersionResource()] = toUIResourceObjects(tf, tlr)
+	result.AddSetForType(&v1alpha1.UIResource{}, toUIResourceObjects(tf, tlr))
 
 	var disableSources map[string]*v1alpha1.DisableSource
 
 	if tlr != nil {
 		disableSources = toDisableSources(tlr)
 
-		result[(&v1alpha1.ConfigMap{}).GetGroupVersionResource()] = toDisableConfigMaps(disableSources)
-		result[(&v1alpha1.KubernetesApply{}).GetGroupVersionResource()] = toKubernetesApplyObjects(tlr, disableSources)
-		result[(&v1alpha1.ImageMap{}).GetGroupVersionResource()] = toImageMapObjects(tlr, disableSources)
+		result.AddSetForType(&v1alpha1.ConfigMap{}, toDisableConfigMaps(disableSources))
+		result.AddSetForType(&v1alpha1.KubernetesApply{}, toKubernetesApplyObjects(tlr, disableSources))
+		result.AddSetForType(&v1alpha1.ImageMap{}, toImageMapObjects(tlr, disableSources))
 
 		for _, obj := range typesWithTiltfileBuiltins {
-			result[obj.GetGroupVersionResource()] = tlr.ObjectSet[obj.GetGroupVersionResource()]
+			result.AddSetForType(obj, tlr.ObjectSet.GetSetForType(obj))
 		}
 
 		updateCmds := toCmdObjects(tlr, disableSources)

@@ -9,6 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	"github.com/tilt-dev/tilt/pkg/logger"
 
@@ -25,6 +26,9 @@ var tupleRE = regexp.MustCompile(`,\)$`)
 const TiltfileErrExitCode = 5
 
 type tiltfileResultCmd struct {
+	streams genericclioptions.IOStreams
+	exit    func(code int)
+
 	fileName string
 
 	// for Builtin Timings mode
@@ -45,7 +49,10 @@ func newTiltfileResultDeps(tfl tiltfile.TiltfileLoader) cmdTiltfileResultDeps {
 }
 
 func newTiltfileResultCmd() *tiltfileResultCmd {
-	return &tiltfileResultCmd{}
+	return &tiltfileResultCmd{
+		streams: genericclioptions.IOStreams{Out: os.Stdout, ErrOut: os.Stderr, In: os.Stdin},
+		exit:    os.Exit,
+	}
 }
 
 func (c *tiltfileResultCmd) name() model.TiltSubcommand { return "tiltfile-result" }
@@ -85,12 +92,12 @@ func (c *tiltfileResultCmd) run(ctx context.Context, args []string) error {
 		ctx = logger.WithLogger(ctx, l)
 	} else {
 		// send all logs to stderr so stdout has only structured output
-		ctx = logger.WithLogger(ctx, logger.NewLogger(logLvl, os.Stderr))
+		ctx = logger.WithLogger(ctx, logger.NewLogger(logLvl, c.streams.ErrOut))
 	}
 
 	deps, err := wireTiltfileResult(ctx, analytics.Get(ctx), "alpha tiltfile-result")
 	if err != nil {
-		maybePrintDeferredLogsToStderr(ctx, showTiltfileLogs)
+		c.maybePrintDeferredLogsToStderr(ctx, showTiltfileLogs)
 		return errors.Wrap(err, "wiring dependencies")
 	}
 
@@ -98,13 +105,14 @@ func (c *tiltfileResultCmd) run(ctx context.Context, args []string) error {
 	tlr := deps.tfl.Load(ctx, ctrltiltfile.MainTiltfile(c.fileName, args))
 	tflDur := time.Since(start)
 	if tlr.Error != nil {
-		maybePrintDeferredLogsToStderr(ctx, showTiltfileLogs)
+		c.maybePrintDeferredLogsToStderr(ctx, showTiltfileLogs)
 
 		// Some errors won't JSONify properly by default, so just print it
 		// to STDERR and use the exit code to indicate that it's an error
 		// from Tiltfile parsing.
-		fmt.Fprintln(os.Stderr, tlr.Error)
-		os.Exit(TiltfileErrExitCode)
+		fmt.Fprintln(c.streams.ErrOut, tlr.Error)
+		c.exit(TiltfileErrExitCode)
+		return nil
 	}
 
 	// Instead of printing result JSON, print Builtin Timings instead
@@ -117,21 +125,21 @@ func (c *tiltfileResultCmd) run(ctx context.Context, args []string) error {
 				continue
 			}
 			argsStr := tupleRE.ReplaceAllString(fmt.Sprintf("%v", call.Args), ")") // clean up tuple stringification
-			fmt.Fprintf(os.Stdout, "- %s%s took %s\n", call.Name, argsStr, call.Dur)
+			fmt.Fprintf(c.streams.Out, "- %s%s took %s\n", call.Name, argsStr, call.Dur)
 		}
-		fmt.Fprintf(os.Stdout, "Tiltfile execution took %s\n", tflDur.String())
+		fmt.Fprintf(c.streams.Out, "Tiltfile execution took %s\n", tflDur.String())
 		return nil
 	}
 
-	err = encodeJSON(tlr)
+	err = encodeJSON(c.streams.Out, tlr)
 	if err != nil {
-		maybePrintDeferredLogsToStderr(ctx, showTiltfileLogs)
+		c.maybePrintDeferredLogsToStderr(ctx, showTiltfileLogs)
 		return errors.Wrap(err, "encoding JSON")
 	}
 	return nil
 }
 
-func maybePrintDeferredLogsToStderr(ctx context.Context, showTiltfileLogs bool) {
+func (c *tiltfileResultCmd) maybePrintDeferredLogsToStderr(ctx context.Context, showTiltfileLogs bool) {
 	if showTiltfileLogs {
 		// We've already printed the logs elsewhere, do nothing
 		return
@@ -140,6 +148,6 @@ func maybePrintDeferredLogsToStderr(ctx context.Context, showTiltfileLogs bool) 
 	if !ok {
 		panic(fmt.Sprintf("expected logger of type DeferredLogger, got: %T", logger.Get(ctx)))
 	}
-	stderrLogger := logger.NewLogger(l.Level(), os.Stderr)
+	stderrLogger := logger.NewLogger(l.Level(), c.streams.ErrOut)
 	l.SetOutput(stderrLogger)
 }

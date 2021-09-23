@@ -7,14 +7,26 @@ import (
 )
 
 // A set of API Objects of different types.
-type ObjectSet map[schema.GroupVersionResource]TypedObjectSet
+type ObjectSet map[string]TypedObjectSet
+
+func (s ObjectSet) GetSetForType(o Object) TypedObjectSet {
+	return s[o.GetGroupVersionResource().String()]
+}
+
+func (s ObjectSet) Add(o Object) {
+	s.GetOrCreateTypedSet(o)[o.GetName()] = o
+}
+
+func (s ObjectSet) AddSetForType(o Object, set TypedObjectSet) {
+	s[o.GetGroupVersionResource().String()] = set
+}
 
 func (s ObjectSet) GetOrCreateTypedSet(o Object) TypedObjectSet {
 	gvk := o.GetGroupVersionResource()
-	set := s[gvk]
+	set := s[gvk.String()]
 	if set == nil {
 		set = TypedObjectSet{}
-		s[gvk] = set
+		s[gvk.String()] = set
 	}
 	return set
 }
