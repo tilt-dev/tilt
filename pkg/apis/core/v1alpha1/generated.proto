@@ -1507,8 +1507,11 @@ message StartOnSpec {
 }
 
 // Describes where a ToggleButton's state is stored.
+// Exactly one type of source must be set.
 message StateSource {
   // State is stored in a ConfigMap.
+  //
+  // +optional
   optional ConfigMapStateSource configMap = 1;
 }
 

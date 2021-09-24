@@ -4041,13 +4041,12 @@ func schema_pkg_apis_core_v1alpha1_StateSource(ref common.ReferenceCallback) com
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "Describes where a ToggleButton's state is stored.",
+				Description: "Describes where a ToggleButton's state is stored. Exactly one type of source must be set.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"configMap": {
 						SchemaProps: spec.SchemaProps{
 							Description: "State is stored in a ConfigMap.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ConfigMapStateSource"),
 						},
 					},

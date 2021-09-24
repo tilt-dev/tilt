@@ -103,9 +103,12 @@ type ToggleButtonStateSpec struct {
 }
 
 // Describes where a ToggleButton's state is stored.
+// Exactly one type of source must be set.
 type StateSource struct {
 	// State is stored in a ConfigMap.
-	ConfigMap ConfigMapStateSource `json:"configMap,omitempty" protobuf:"bytes,1,opt,name=configMap"`
+	//
+	// +optional
+	ConfigMap *ConfigMapStateSource `json:"configMap,omitempty" protobuf:"bytes,1,opt,name=configMap"`
 }
 
 // Describes how a ToggleButton's state is stored in a ConfigMap
