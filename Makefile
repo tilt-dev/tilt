@@ -177,7 +177,7 @@ test_install_version_check: install
 shellcheck:
 	find ./scripts -type f -name '*.sh' -exec docker run --rm -it -e SHELLCHECK_OPTS="-e SC2001" -v $$(pwd):/mnt nlknguyen/alpine-shellcheck {} \;
 
-update-codegen:
+update-codegen: update-starlark-codegen
 	scripts/update-codegen.sh
 	goimports -w -l $(GOIMPORTS_LOCAL_ARG) pkg
 
