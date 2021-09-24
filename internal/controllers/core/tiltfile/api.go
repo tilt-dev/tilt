@@ -133,6 +133,7 @@ var typesWithTiltfileBuiltins = []apiset.Object{
 	&v1alpha1.Extension{},
 	&v1alpha1.FileWatch{},
 	&v1alpha1.Cmd{},
+	&v1alpha1.UIButton{},
 }
 
 var typesToReconcile = append([]apiset.Object{

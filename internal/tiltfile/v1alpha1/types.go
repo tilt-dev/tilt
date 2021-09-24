@@ -33,6 +33,10 @@ func (p Plugin) registerSymbols(env *starkit.Environment) error {
 	if err != nil {
 		return err
 	}
+	err = env.AddBuiltin("v1alpha1.ui_button", p.uiButton)
+	if err != nil {
+		return err
+	}
 	err = env.AddBuiltin("v1alpha1.config_map_disable_source", p.configMapDisableSource)
 	if err != nil {
 		return err
@@ -74,6 +78,22 @@ func (p Plugin) registerSymbols(env *starkit.Environment) error {
 		return err
 	}
 	err = env.AddBuiltin("v1alpha1.tcp_socket_action", p.tCPSocketAction)
+	if err != nil {
+		return err
+	}
+	err = env.AddBuiltin("v1alpha1.ui_bool_input_spec", p.uIBoolInputSpec)
+	if err != nil {
+		return err
+	}
+	err = env.AddBuiltin("v1alpha1.ui_component_location", p.uIComponentLocation)
+	if err != nil {
+		return err
+	}
+	err = env.AddBuiltin("v1alpha1.ui_input_spec", p.uIInputSpec)
+	if err != nil {
+		return err
+	}
+	err = env.AddBuiltin("v1alpha1.ui_text_input_spec", p.uITextInputSpec)
 	if err != nil {
 		return err
 	}
@@ -214,6 +234,38 @@ func (p Plugin) fileWatch(t *starlark.Thread, fn *starlark.Builtin, args starlar
 	if disableSource.isUnpacked {
 		obj.Spec.DisableSource = (*v1alpha1.DisableSource)(&disableSource.Value)
 	}
+	obj.ObjectMeta.Labels = labels
+	obj.ObjectMeta.Annotations = annotations
+	return p.register(t, obj)
+}
+
+func (p Plugin) uiButton(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var err error
+	obj := &v1alpha1.UIButton{
+		ObjectMeta: metav1.ObjectMeta{},
+		Spec:       v1alpha1.UIButtonSpec{},
+	}
+	var location UIComponentLocation = UIComponentLocation{t: t}
+	var inputs UIInputSpecList = UIInputSpecList{t: t}
+	var labels value.StringStringMap
+	var annotations value.StringStringMap
+	err = starkit.UnpackArgs(t, fn.Name(), args, kwargs,
+		"name", &obj.ObjectMeta.Name,
+		"labels?", &labels,
+		"annotations?", &annotations,
+		"location?", &location,
+		"text?", &obj.Spec.Text,
+		"icon_name?", &obj.Spec.IconName,
+		"icon_svg?", &obj.Spec.IconSVG,
+		"disabled?", &obj.Spec.Disabled,
+		"inputs?", &inputs,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	obj.Spec.Location = v1alpha1.UIComponentLocation(location.Value)
+	obj.Spec.Inputs = inputs.Value
 	obj.ObjectMeta.Labels = labels
 	obj.ObjectMeta.Annotations = annotations
 	return p.register(t, obj)
@@ -1648,6 +1700,536 @@ func (o *TCPSocketActionList) Unpack(v starlark.Value) error {
 			return fmt.Errorf("at index %d: %v", i, err)
 		}
 		items = append(items, v1alpha1.TCPSocketAction(item.Value))
+	}
+
+	listObj.Freeze()
+	o.List = listObj
+	o.Value = items
+
+	return nil
+}
+
+type UIBoolInputSpec struct {
+	*starlark.Dict
+	Value      v1alpha1.UIBoolInputSpec
+	isUnpacked bool
+	t          *starlark.Thread // instantiation thread for computing abspath
+}
+
+func (p Plugin) uIBoolInputSpec(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var defaultValue starlark.Value
+	var trueString starlark.Value
+	var falseString starlark.Value
+	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
+		"default_value?", &defaultValue,
+		"true_string?", &trueString,
+		"false_string?", &falseString,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	dict := starlark.NewDict(3)
+
+	if defaultValue != nil {
+		err := dict.SetKey(starlark.String("default_value"), defaultValue)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if trueString != nil {
+		err := dict.SetKey(starlark.String("true_string"), trueString)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if falseString != nil {
+		err := dict.SetKey(starlark.String("false_string"), falseString)
+		if err != nil {
+			return nil, err
+		}
+	}
+	var obj *UIBoolInputSpec = &UIBoolInputSpec{t: t}
+	err = obj.Unpack(dict)
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
+}
+
+func (o *UIBoolInputSpec) Unpack(v starlark.Value) error {
+	obj := v1alpha1.UIBoolInputSpec{}
+
+	starlarkObj, ok := v.(*UIBoolInputSpec)
+	if ok {
+		*o = *starlarkObj
+		return nil
+	}
+
+	mapObj, ok := v.(*starlark.Dict)
+	if !ok {
+		return fmt.Errorf("expected dict, actual: %v", v.Type())
+	}
+
+	for _, item := range mapObj.Items() {
+		keyV, val := item[0], item[1]
+		key, ok := starlark.AsString(keyV)
+		if !ok {
+			return fmt.Errorf("key must be string. Got: %s", keyV.Type())
+		}
+
+		if key == "default_value" {
+			v, ok := val.(starlark.Bool)
+			if !ok {
+				return fmt.Errorf("Expected bool, got: %v", val.Type())
+			}
+			obj.DefaultValue = bool(v)
+			continue
+		}
+		if key == "true_string" {
+			v, ok := starlark.AsString(val)
+			if !ok {
+				return fmt.Errorf("Expected string, actual: %s", val.Type())
+			}
+			obj.TrueString = (*string)(&v)
+			continue
+		}
+		if key == "false_string" {
+			v, ok := starlark.AsString(val)
+			if !ok {
+				return fmt.Errorf("Expected string, actual: %s", val.Type())
+			}
+			obj.FalseString = (*string)(&v)
+			continue
+		}
+		return fmt.Errorf("Unexpected attribute name: %s", key)
+	}
+
+	mapObj.Freeze()
+	o.Dict = mapObj
+	o.Value = obj
+	o.isUnpacked = true
+
+	return nil
+}
+
+type UIBoolInputSpecList struct {
+	*starlark.List
+	Value []v1alpha1.UIBoolInputSpec
+	t     *starlark.Thread
+}
+
+func (o *UIBoolInputSpecList) Unpack(v starlark.Value) error {
+	items := []v1alpha1.UIBoolInputSpec{}
+
+	listObj, ok := v.(*starlark.List)
+	if !ok {
+		return fmt.Errorf("expected list, actual: %v", v.Type())
+	}
+
+	for i := 0; i < listObj.Len(); i++ {
+		v := listObj.Index(i)
+
+		item := UIBoolInputSpec{t: o.t}
+		err := item.Unpack(v)
+		if err != nil {
+			return fmt.Errorf("at index %d: %v", i, err)
+		}
+		items = append(items, v1alpha1.UIBoolInputSpec(item.Value))
+	}
+
+	listObj.Freeze()
+	o.List = listObj
+	o.Value = items
+
+	return nil
+}
+
+type UIComponentLocation struct {
+	*starlark.Dict
+	Value      v1alpha1.UIComponentLocation
+	isUnpacked bool
+	t          *starlark.Thread // instantiation thread for computing abspath
+}
+
+func (p Plugin) uIComponentLocation(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var componentID starlark.Value
+	var componentType starlark.Value
+	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
+		"component_id?", &componentID,
+		"component_type?", &componentType,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	dict := starlark.NewDict(2)
+
+	if componentID != nil {
+		err := dict.SetKey(starlark.String("component_id"), componentID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if componentType != nil {
+		err := dict.SetKey(starlark.String("component_type"), componentType)
+		if err != nil {
+			return nil, err
+		}
+	}
+	var obj *UIComponentLocation = &UIComponentLocation{t: t}
+	err = obj.Unpack(dict)
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
+}
+
+func (o *UIComponentLocation) Unpack(v starlark.Value) error {
+	obj := v1alpha1.UIComponentLocation{}
+
+	starlarkObj, ok := v.(*UIComponentLocation)
+	if ok {
+		*o = *starlarkObj
+		return nil
+	}
+
+	mapObj, ok := v.(*starlark.Dict)
+	if !ok {
+		return fmt.Errorf("expected dict, actual: %v", v.Type())
+	}
+
+	for _, item := range mapObj.Items() {
+		keyV, val := item[0], item[1]
+		key, ok := starlark.AsString(keyV)
+		if !ok {
+			return fmt.Errorf("key must be string. Got: %s", keyV.Type())
+		}
+
+		if key == "component_id" {
+			v, ok := starlark.AsString(val)
+			if !ok {
+				return fmt.Errorf("Expected string, actual: %s", val.Type())
+			}
+			obj.ComponentID = string(v)
+			continue
+		}
+		if key == "component_type" {
+			v, ok := starlark.AsString(val)
+			if !ok {
+				return fmt.Errorf("Expected string, actual: %s", val.Type())
+			}
+			obj.ComponentType = v1alpha1.ComponentType(v)
+			continue
+		}
+		return fmt.Errorf("Unexpected attribute name: %s", key)
+	}
+
+	mapObj.Freeze()
+	o.Dict = mapObj
+	o.Value = obj
+	o.isUnpacked = true
+
+	return nil
+}
+
+type UIComponentLocationList struct {
+	*starlark.List
+	Value []v1alpha1.UIComponentLocation
+	t     *starlark.Thread
+}
+
+func (o *UIComponentLocationList) Unpack(v starlark.Value) error {
+	items := []v1alpha1.UIComponentLocation{}
+
+	listObj, ok := v.(*starlark.List)
+	if !ok {
+		return fmt.Errorf("expected list, actual: %v", v.Type())
+	}
+
+	for i := 0; i < listObj.Len(); i++ {
+		v := listObj.Index(i)
+
+		item := UIComponentLocation{t: o.t}
+		err := item.Unpack(v)
+		if err != nil {
+			return fmt.Errorf("at index %d: %v", i, err)
+		}
+		items = append(items, v1alpha1.UIComponentLocation(item.Value))
+	}
+
+	listObj.Freeze()
+	o.List = listObj
+	o.Value = items
+
+	return nil
+}
+
+type UIInputSpec struct {
+	*starlark.Dict
+	Value      v1alpha1.UIInputSpec
+	isUnpacked bool
+	t          *starlark.Thread // instantiation thread for computing abspath
+}
+
+func (p Plugin) uIInputSpec(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var name starlark.Value
+	var label starlark.Value
+	var text starlark.Value
+	var bool starlark.Value
+	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
+		"name?", &name,
+		"label?", &label,
+		"text?", &text,
+		"bool?", &bool,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	dict := starlark.NewDict(4)
+
+	if name != nil {
+		err := dict.SetKey(starlark.String("name"), name)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if label != nil {
+		err := dict.SetKey(starlark.String("label"), label)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if text != nil {
+		err := dict.SetKey(starlark.String("text"), text)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if bool != nil {
+		err := dict.SetKey(starlark.String("bool"), bool)
+		if err != nil {
+			return nil, err
+		}
+	}
+	var obj *UIInputSpec = &UIInputSpec{t: t}
+	err = obj.Unpack(dict)
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
+}
+
+func (o *UIInputSpec) Unpack(v starlark.Value) error {
+	obj := v1alpha1.UIInputSpec{}
+
+	starlarkObj, ok := v.(*UIInputSpec)
+	if ok {
+		*o = *starlarkObj
+		return nil
+	}
+
+	mapObj, ok := v.(*starlark.Dict)
+	if !ok {
+		return fmt.Errorf("expected dict, actual: %v", v.Type())
+	}
+
+	for _, item := range mapObj.Items() {
+		keyV, val := item[0], item[1]
+		key, ok := starlark.AsString(keyV)
+		if !ok {
+			return fmt.Errorf("key must be string. Got: %s", keyV.Type())
+		}
+
+		if key == "name" {
+			v, ok := starlark.AsString(val)
+			if !ok {
+				return fmt.Errorf("Expected string, actual: %s", val.Type())
+			}
+			obj.Name = string(v)
+			continue
+		}
+		if key == "label" {
+			v, ok := starlark.AsString(val)
+			if !ok {
+				return fmt.Errorf("Expected string, actual: %s", val.Type())
+			}
+			obj.Label = string(v)
+			continue
+		}
+		if key == "text" {
+			v := UITextInputSpec{t: o.t}
+			err := v.Unpack(val)
+			if err != nil {
+				return fmt.Errorf("unpacking %s: %v", key, err)
+			}
+			obj.Text = (*v1alpha1.UITextInputSpec)(&v.Value)
+			continue
+		}
+		if key == "bool" {
+			v := UIBoolInputSpec{t: o.t}
+			err := v.Unpack(val)
+			if err != nil {
+				return fmt.Errorf("unpacking %s: %v", key, err)
+			}
+			obj.Bool = (*v1alpha1.UIBoolInputSpec)(&v.Value)
+			continue
+		}
+		return fmt.Errorf("Unexpected attribute name: %s", key)
+	}
+
+	mapObj.Freeze()
+	o.Dict = mapObj
+	o.Value = obj
+	o.isUnpacked = true
+
+	return nil
+}
+
+type UIInputSpecList struct {
+	*starlark.List
+	Value []v1alpha1.UIInputSpec
+	t     *starlark.Thread
+}
+
+func (o *UIInputSpecList) Unpack(v starlark.Value) error {
+	items := []v1alpha1.UIInputSpec{}
+
+	listObj, ok := v.(*starlark.List)
+	if !ok {
+		return fmt.Errorf("expected list, actual: %v", v.Type())
+	}
+
+	for i := 0; i < listObj.Len(); i++ {
+		v := listObj.Index(i)
+
+		item := UIInputSpec{t: o.t}
+		err := item.Unpack(v)
+		if err != nil {
+			return fmt.Errorf("at index %d: %v", i, err)
+		}
+		items = append(items, v1alpha1.UIInputSpec(item.Value))
+	}
+
+	listObj.Freeze()
+	o.List = listObj
+	o.Value = items
+
+	return nil
+}
+
+type UITextInputSpec struct {
+	*starlark.Dict
+	Value      v1alpha1.UITextInputSpec
+	isUnpacked bool
+	t          *starlark.Thread // instantiation thread for computing abspath
+}
+
+func (p Plugin) uITextInputSpec(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var defaultValue starlark.Value
+	var placeholder starlark.Value
+	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
+		"default_value?", &defaultValue,
+		"placeholder?", &placeholder,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	dict := starlark.NewDict(2)
+
+	if defaultValue != nil {
+		err := dict.SetKey(starlark.String("default_value"), defaultValue)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if placeholder != nil {
+		err := dict.SetKey(starlark.String("placeholder"), placeholder)
+		if err != nil {
+			return nil, err
+		}
+	}
+	var obj *UITextInputSpec = &UITextInputSpec{t: t}
+	err = obj.Unpack(dict)
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
+}
+
+func (o *UITextInputSpec) Unpack(v starlark.Value) error {
+	obj := v1alpha1.UITextInputSpec{}
+
+	starlarkObj, ok := v.(*UITextInputSpec)
+	if ok {
+		*o = *starlarkObj
+		return nil
+	}
+
+	mapObj, ok := v.(*starlark.Dict)
+	if !ok {
+		return fmt.Errorf("expected dict, actual: %v", v.Type())
+	}
+
+	for _, item := range mapObj.Items() {
+		keyV, val := item[0], item[1]
+		key, ok := starlark.AsString(keyV)
+		if !ok {
+			return fmt.Errorf("key must be string. Got: %s", keyV.Type())
+		}
+
+		if key == "default_value" {
+			v, ok := starlark.AsString(val)
+			if !ok {
+				return fmt.Errorf("Expected string, actual: %s", val.Type())
+			}
+			obj.DefaultValue = string(v)
+			continue
+		}
+		if key == "placeholder" {
+			v, ok := starlark.AsString(val)
+			if !ok {
+				return fmt.Errorf("Expected string, actual: %s", val.Type())
+			}
+			obj.Placeholder = string(v)
+			continue
+		}
+		return fmt.Errorf("Unexpected attribute name: %s", key)
+	}
+
+	mapObj.Freeze()
+	o.Dict = mapObj
+	o.Value = obj
+	o.isUnpacked = true
+
+	return nil
+}
+
+type UITextInputSpecList struct {
+	*starlark.List
+	Value []v1alpha1.UITextInputSpec
+	t     *starlark.Thread
+}
+
+func (o *UITextInputSpecList) Unpack(v starlark.Value) error {
+	items := []v1alpha1.UITextInputSpec{}
+
+	listObj, ok := v.(*starlark.List)
+	if !ok {
+		return fmt.Errorf("expected list, actual: %v", v.Type())
+	}
+
+	for i := 0; i < listObj.Len(); i++ {
+		v := listObj.Index(i)
+
+		item := UITextInputSpec{t: o.t}
+		err := item.Unpack(v)
+		if err != nil {
+			return fmt.Errorf("at index %d: %v", i, err)
+		}
+		items = append(items, v1alpha1.UITextInputSpec(item.Value))
 	}
 
 	listObj.Freeze()

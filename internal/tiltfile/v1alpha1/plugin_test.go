@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -161,6 +162,38 @@ v1alpha1.cmd(
 	require.Equal(t, cmd.Spec, v1alpha1.CmdSpec{
 		Args: []string{"echo", "hello"},
 		Dir:  f.Path(),
+	})
+}
+
+func TestUIButton(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.File("Tiltfile", `
+v1alpha1.ui_button(
+  name='my-button',
+  annotations={'tilt.dev/resource': 'fe', 'tilt.dev/log-span-id': 'fe'},
+  text='hello world',
+  icon_name='circle',
+  location={'component_type': 'resource', 'component_id': 'fe'})
+`)
+	result, err := f.ExecFile("Tiltfile")
+	require.NoError(t, err)
+
+	set := MustState(result)
+
+	obj := set.GetSetForType(&v1alpha1.UIButton{})["my-button"].(*v1alpha1.UIButton)
+	require.NotNil(t, obj)
+	require.Equal(t, obj, &v1alpha1.UIButton{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "my-button",
+			Annotations: map[string]string{"tilt.dev/resource": "fe", "tilt.dev/log-span-id": "fe"},
+		},
+		Spec: v1alpha1.UIButtonSpec{
+			Text:     "hello world",
+			IconName: "circle",
+			Location: v1alpha1.UIComponentLocation{ComponentType: "resource", ComponentID: "fe"},
+		},
 	})
 }
 
