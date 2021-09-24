@@ -17,6 +17,7 @@ import (
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/xdg"
 	"github.com/tilt-dev/tilt/pkg/assets"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -94,7 +95,7 @@ type headlessServer struct {
 
 func newHeadlessServer(ctx context.Context) (*headlessServer, error) {
 	memconn := server.ProvideMemConn()
-	serverOptions, err := server.ProvideTiltServerOptionsForHeadless(ctx, memconn, tiltInfo())
+	serverOptions, err := server.ProvideTiltServerOptionsForHeadless(ctx, xdg.NewTiltDevBase(), memconn, tiltInfo())
 	if err != nil {
 		return nil, err
 	}

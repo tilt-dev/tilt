@@ -17,6 +17,7 @@ import (
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/options"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/testdata"
+	"github.com/tilt-dev/tilt/internal/xdg"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 
@@ -188,9 +189,15 @@ func ProvideTiltServerOptionsForTesting(ctx context.Context) (*APIServerConfig, 
 
 // Generate the server config, removing options that are not needed for headless mode
 // (where we don't open up any webserver or apiserver).
-func ProvideTiltServerOptionsForHeadless(ctx context.Context, memconn apiserver.ConnProvider, version model.TiltBuild) (*APIServerConfig, error) {
+func ProvideTiltServerOptionsForHeadless(ctx context.Context, base xdg.Base, memconn apiserver.ConnProvider, version model.TiltBuild) (*APIServerConfig, error) {
+	exampleCert, err := base.CacheFile(filepath.Join("certs", "headless", "example.crt"))
+	if err != nil {
+		return nil, err
+	}
+
+	keyCert := options.GeneratableKeyCert{FixtureDirectory: filepath.Dir(exampleCert)}
 	config, err := ProvideTiltServerOptions(ctx,
-		version, memconn, "corgi-charge", testdata.CertKey(), 0)
+		version, memconn, "corgi-charge", keyCert, 0)
 	if err != nil {
 		return nil, err
 	}
