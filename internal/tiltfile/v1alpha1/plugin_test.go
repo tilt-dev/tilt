@@ -22,12 +22,12 @@ v1alpha1.extension(name='cancel', repo_name='default', repo_path='cancel')
 
 	set := MustState(result)
 
-	repo := set[(&v1alpha1.ExtensionRepo{}).GetGroupVersionResource()]["default"].(*v1alpha1.ExtensionRepo)
+	repo := set.GetSetForType(&v1alpha1.ExtensionRepo{})["default"].(*v1alpha1.ExtensionRepo)
 	require.NotNil(t, repo)
 	require.Equal(t, "https://github.com/tilt-dev/tilt-extensions", repo.Spec.URL)
 	require.Equal(t, "HEAD", repo.Spec.Ref)
 
-	ext := set[(&v1alpha1.Extension{}).GetGroupVersionResource()]["cancel"].(*v1alpha1.Extension)
+	ext := set.GetSetForType(&v1alpha1.Extension{})["cancel"].(*v1alpha1.Extension)
 	require.NotNil(t, ext)
 	require.Equal(t, "default", ext.Spec.RepoName)
 }
@@ -45,7 +45,7 @@ v1alpha1.extension(name='cancel', repo_name='default', repo_path='cancel', args=
 
 	set := MustState(result)
 
-	ext := set[(&v1alpha1.Extension{}).GetGroupVersionResource()]["cancel"].(*v1alpha1.Extension)
+	ext := set.GetSetForType(&v1alpha1.Extension{})["cancel"].(*v1alpha1.Extension)
 	require.NotNil(t, ext)
 	require.Equal(t, []string{"--namespace=foo"}, ext.Spec.Args)
 }
@@ -74,7 +74,7 @@ v1alpha1.file_watch(name='my-fw', watched_paths=['./dir'], ignores=[{'base_path'
 
 	set := MustState(result)
 
-	fw := set[(&v1alpha1.FileWatch{}).GetGroupVersionResource()]["my-fw"].(*v1alpha1.FileWatch)
+	fw := set.GetSetForType(&v1alpha1.FileWatch{})["my-fw"].(*v1alpha1.FileWatch)
 	require.NotNil(t, fw)
 	require.Equal(t, fw.Spec, v1alpha1.FileWatchSpec{
 		WatchedPaths: []string{f.JoinPath("dir")},
@@ -101,7 +101,7 @@ v1alpha1.file_watch(name='my-fw',
 
 	set := MustState(result)
 
-	fw := set[(&v1alpha1.FileWatch{}).GetGroupVersionResource()]["my-fw"].(*v1alpha1.FileWatch)
+	fw := set.GetSetForType(&v1alpha1.FileWatch{})["my-fw"].(*v1alpha1.FileWatch)
 	require.NotNil(t, fw)
 	require.Equal(t, fw.Spec, v1alpha1.FileWatchSpec{
 		WatchedPaths: []string{f.JoinPath("dir")},
@@ -129,7 +129,7 @@ v1alpha1.file_watch(
 
 	set := MustState(result)
 
-	fw := set[(&v1alpha1.FileWatch{}).GetGroupVersionResource()]["my-fw"].(*v1alpha1.FileWatch)
+	fw := set.GetSetForType(&v1alpha1.FileWatch{})["my-fw"].(*v1alpha1.FileWatch)
 	require.NotNil(t, fw)
 	require.Equal(t, fw.Spec, v1alpha1.FileWatchSpec{
 		WatchedPaths: []string{f.JoinPath("dir")},
@@ -156,7 +156,7 @@ v1alpha1.cmd(
 
 	set := MustState(result)
 
-	cmd := set[(&v1alpha1.Cmd{}).GetGroupVersionResource()]["my-cmd"].(*v1alpha1.Cmd)
+	cmd := set.GetSetForType(&v1alpha1.Cmd{})["my-cmd"].(*v1alpha1.Cmd)
 	require.NotNil(t, cmd)
 	require.Equal(t, cmd.Spec, v1alpha1.CmdSpec{
 		Args: []string{"echo", "hello"},
