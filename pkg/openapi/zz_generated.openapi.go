@@ -40,6 +40,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ConfigMap":                       schema_pkg_apis_core_v1alpha1_ConfigMap(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ConfigMapDisableSource":          schema_pkg_apis_core_v1alpha1_ConfigMapDisableSource(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ConfigMapList":                   schema_pkg_apis_core_v1alpha1_ConfigMapList(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ConfigMapStateSource":            schema_pkg_apis_core_v1alpha1_ConfigMapStateSource(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Container":                       schema_pkg_apis_core_v1alpha1_Container(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerLogStreamStatus":        schema_pkg_apis_core_v1alpha1_ContainerLogStreamStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerState":                  schema_pkg_apis_core_v1alpha1_ContainerState(ref),
@@ -115,6 +116,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.SessionSpec":                     schema_pkg_apis_core_v1alpha1_SessionSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.SessionStatus":                   schema_pkg_apis_core_v1alpha1_SessionStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.StartOnSpec":                     schema_pkg_apis_core_v1alpha1_StartOnSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.StateSource":                     schema_pkg_apis_core_v1alpha1_StateSource(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TCPSocketAction":                 schema_pkg_apis_core_v1alpha1_TCPSocketAction(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Target":                          schema_pkg_apis_core_v1alpha1_Target(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetState":                     schema_pkg_apis_core_v1alpha1_TargetState(ref),
@@ -129,6 +131,11 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileStateTerminated":         schema_pkg_apis_core_v1alpha1_TiltfileStateTerminated(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileStateWaiting":            schema_pkg_apis_core_v1alpha1_TiltfileStateWaiting(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileStatus":                  schema_pkg_apis_core_v1alpha1_TiltfileStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ToggleButton":                    schema_pkg_apis_core_v1alpha1_ToggleButton(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ToggleButtonList":                schema_pkg_apis_core_v1alpha1_ToggleButtonList(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ToggleButtonSpec":                schema_pkg_apis_core_v1alpha1_ToggleButtonSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ToggleButtonStateSpec":           schema_pkg_apis_core_v1alpha1_ToggleButtonStateSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ToggleButtonStatus":              schema_pkg_apis_core_v1alpha1_ToggleButtonStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBoolInputSpec":                 schema_pkg_apis_core_v1alpha1_UIBoolInputSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBoolInputStatus":               schema_pkg_apis_core_v1alpha1_UIBoolInputStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildRunning":                  schema_pkg_apis_core_v1alpha1_UIBuildRunning(ref),
@@ -661,6 +668,50 @@ func schema_pkg_apis_core_v1alpha1_ConfigMapList(ref common.ReferenceCallback) c
 		},
 		Dependencies: []string{
 			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ConfigMap", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_ConfigMapStateSource(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Describes how a ToggleButton's state is stored in a ConfigMap",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name of the ConfigMap",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"key": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Key within the ConfigMap",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"onValue": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ConfigMap value corresponding to the button's \"on\" state. If not specified, \"true\" will be used.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"offValue": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ConfigMap value corresponding to the button's \"off\" state If not specified, \"false\" will be used.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"name", "key"},
+			},
+		},
 	}
 }
 
@@ -3986,6 +4037,28 @@ func schema_pkg_apis_core_v1alpha1_StartOnSpec(ref common.ReferenceCallback) com
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_StateSource(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Describes where a ToggleButton's state is stored.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"configMap": {
+						SchemaProps: spec.SchemaProps{
+							Description: "State is stored in a ConfigMap.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ConfigMapStateSource"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ConfigMapStateSource"},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_TCPSocketAction(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -4535,6 +4608,228 @@ func schema_pkg_apis_core_v1alpha1_TiltfileStatus(ref common.ReferenceCallback) 
 		},
 		Dependencies: []string{
 			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileStateRunning", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileStateTerminated", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileStateWaiting"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_ToggleButton(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ToggleButton",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ToggleButtonSpec"),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ToggleButtonStatus"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ToggleButtonSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ToggleButtonStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_ToggleButtonList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ToggleButtonList",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ToggleButton"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ToggleButton", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_ToggleButtonSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ToggleButtonSpec defines the desired state of ToggleButton",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"location": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Where to display the button",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIComponentLocation"),
+						},
+					},
+					"on": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Config for the button when it is \"on\"",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ToggleButtonStateSpec"),
+						},
+					},
+					"off": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Config for the button when it is \"off\"",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ToggleButtonStateSpec"),
+						},
+					},
+					"defaultOn": {
+						SchemaProps: spec.SchemaProps{
+							Description: "If `StateSource` does not point at a valid value, the initial button state will be \"on\" or \"off\" depending on this bool",
+							Default:     false,
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"stateSource": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Where the toggle button's state is stored",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.StateSource"),
+						},
+					},
+				},
+				Required: []string{"location", "on", "off", "defaultOn", "stateSource"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.StateSource", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ToggleButtonStateSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIComponentLocation"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_ToggleButtonStateSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Describes a state (on/off) of a ToggleButton",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"text": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Text to appear on the button itself or as hover text (depending on button location).",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"iconName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "IconName is a Material Icon to appear next to button text or on the button itself (depending on button location).\n\nValid values are icon font ligature names from the Material Icons set. See https://fonts.google.com/icons for the full list of available icons.\n\nIf both IconSVG and IconName are specified, IconSVG will take precedence.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"iconSVG": {
+						SchemaProps: spec.SchemaProps{
+							Description: "IconSVG is an SVG to use as the icon to appear next to button text or on the button itself (depending on button location).\n\nThis should be an <svg> element scaled for a 24x24 viewport.\n\nIf both IconSVG and IconName are specified, IconSVG will take precedence.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"requiresConfirmation": {
+						SchemaProps: spec.SchemaProps{
+							Description: "If true, clicking the button in this state requires a second click to confirm.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"text"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_ToggleButtonStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ToggleButtonStatus defines the observed state of ToggleButton",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"on": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether the button is currently \"on\"",
+							Default:     false,
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"lastChange": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The last time the button changed from on to off, or vice versa.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+				},
+				Required: []string{"on", "lastChange"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
 	}
 }
 
