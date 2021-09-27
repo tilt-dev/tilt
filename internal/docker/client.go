@@ -453,6 +453,10 @@ func (c *Cli) ImagePull(ctx context.Context, ref reference.Named) (reference.Can
 		return nil, fmt.Errorf("failed to inspect after pull for image %q: %v", image, err)
 	}
 
+	// NOTE: the value in RepoDigests is NOT canonical, so we need to grab the digest and attach it to the original ref
+	// 	for example, the value from the image inspect for `docker.io/nginx:1.21.3` will be `nginx@sha256:<hash>`,
+	// 	which loses the repo and tag; by grabbing the digest and re-attaching it, we end up with something like
+	//	`docker.io/nginx:1.21.3@sha256:<hash>`
 	digestInfo := strings.SplitN(imgInspect.RepoDigests[0], "@", 2)
 	if len(digestInfo) != 2 {
 		return nil, fmt.Errorf("invalid digest %q for image %q: missing @", imgInspect.RepoDigests[0], image)
