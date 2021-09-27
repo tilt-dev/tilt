@@ -68,6 +68,9 @@ func (c *switchCli) ContainerList(ctx context.Context, options types.ContainerLi
 func (c *switchCli) ContainerRestartNoWait(ctx context.Context, containerID string) error {
 	return c.client().ContainerRestartNoWait(ctx, containerID)
 }
+func (c *switchCli) Run(ctx context.Context, opts RunOptions) (RunResult, error) {
+	return c.client().Run(ctx, opts)
+}
 func (c *switchCli) ExecInContainer(ctx context.Context, cID container.ID, cmd model.Cmd, in io.Reader, out io.Writer) error {
 	return c.client().ExecInContainer(ctx, cID, cmd, in, out)
 }

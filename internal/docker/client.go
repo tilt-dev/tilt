@@ -20,8 +20,10 @@ import (
 	cliflags "github.com/docker/cli/cli/flags"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
+	mobycontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/docker/docker/registry"
 	"github.com/docker/go-connections/tlsconfig"
 	"github.com/moby/buildkit/identity"
@@ -81,6 +83,8 @@ type Client interface {
 	ContainerInspect(ctx context.Context, contianerID string) (types.ContainerJSON, error)
 	ContainerList(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error)
 	ContainerRestartNoWait(ctx context.Context, containerID string) error
+
+	Run(ctx context.Context, opts RunOptions) (RunResult, error)
 
 	// Execute a command in a container, streaming the command output to `out`.
 	// Returns an ExitError if the command exits with a non-zero exit code.
@@ -644,4 +648,100 @@ func (c *Cli) ExecInContainer(ctx context.Context, cID container.ID, cmd model.C
 		}
 		return nil
 	}
+}
+
+func (c *Cli) Run(ctx context.Context, opts RunOptions) (RunResult, error) {
+	image := opts.ContainerConfig.Image
+	if image == "" {
+		// docker doesn't give great errors, so we do some basic validation upfront
+		return RunResult{}, errors.New("image name (opts.ContainerConfig.Image) cannot be empty")
+	}
+
+	if opts.Pull {
+		ref, err := reference.ParseNamed(image)
+		if err != nil {
+			return RunResult{}, fmt.Errorf("invalid image ref %q: %v", image, err)
+		}
+		if _, err := c.ImagePull(ctx, ref); err != nil {
+			return RunResult{}, fmt.Errorf("error pulling image %q: %v", image, err)
+		}
+	}
+
+	createResp, err := c.Client.ContainerCreate(ctx,
+		&opts.ContainerConfig,
+		opts.HostConfig,
+		opts.NetworkConfig,
+		nil,
+		opts.ContainerName,
+	)
+	if err != nil {
+		return RunResult{}, fmt.Errorf("could not create container: %v", err)
+	}
+	var containerStarted bool
+	defer func() {
+		// make an effort to clean up any container we create but don't successfully start
+		if containerStarted {
+			return
+		}
+		if err := c.Client.ContainerRemove(ctx, createResp.ID, types.ContainerRemoveOptions{}); err != nil {
+			logger.Get(ctx).Debugf("Failed to remove container after error before start (id=%s): %v", createResp.ID, err)
+		}
+	}()
+
+	statusCh, statusErrCh := c.Client.ContainerWait(ctx, createResp.ID, mobycontainer.WaitConditionNextExit)
+	// ContainerWait() can immediately write to the error channel before returning if it can't start the API request,
+	// so catch these errors early (it _also_ can write to that channel later, so it's still passed to the RunResult)
+	select {
+	case err = <-statusErrCh:
+		return RunResult{}, fmt.Errorf("could not wait for container (id=%s): %v", createResp.ID, err)
+	default:
+	}
+
+	err = c.Client.ContainerStart(ctx, createResp.ID, types.ContainerStartOptions{})
+	if err != nil {
+		return RunResult{}, fmt.Errorf("could not start container (id=%s): %v", createResp.ID, err)
+	}
+	containerStarted = true
+
+	logsErrCh := make(chan error, 1)
+	if opts.Stdout != nil || opts.Stderr != nil {
+		var logsResp io.ReadCloser
+		logsResp, err = c.Client.ContainerLogs(
+			ctx, createResp.ID, types.ContainerLogsOptions{
+				ShowStdout: opts.Stdout != nil,
+				ShowStderr: opts.Stderr != nil,
+				Follow:     true,
+			},
+		)
+		if err != nil {
+			return RunResult{}, fmt.Errorf("could not read container logs: %v", err)
+		}
+
+		go func() {
+			stdout := opts.Stdout
+			if stdout == nil {
+				stdout = io.Discard
+			}
+			stderr := opts.Stderr
+			if stderr == nil {
+				stderr = io.Discard
+			}
+
+			_, err = stdcopy.StdCopy(stdout, stderr, logsResp)
+			_ = logsResp.Close()
+			logsErrCh <- err
+		}()
+	} else {
+		// there is no I/O so immediately signal so that the result call doesn't block on it
+		logsErrCh <- nil
+	}
+
+	result := RunResult{
+		ContainerID:  createResp.ID,
+		logsErrCh:    logsErrCh,
+		statusRespCh: statusCh,
+		statusErrCh:  statusErrCh,
+	}
+
+	return result, nil
 }
