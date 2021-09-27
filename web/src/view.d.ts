@@ -483,6 +483,7 @@ declare namespace Proto {
     name?: string;
     text?: v1alpha1UITextInputStatus;
     bool?: v1alpha1UIBoolInputStatus;
+    hidden?: v1alpha1UIHiddenInputStatus;
   }
   export interface v1alpha1UIInputSpec {
     /**
@@ -492,6 +493,13 @@ declare namespace Proto {
     label?: string;
     text?: v1alpha1UITextInputSpec;
     bool?: v1alpha1UIBoolInputSpec;
+    hidden?: v1alpha1UIHiddenInputSpec;
+  }
+  export interface v1alpha1UIHiddenInputStatus {
+    value?: string;
+  }
+  export interface v1alpha1UIHiddenInputSpec {
+    value?: string;
   }
   export interface v1alpha1UIFeatureFlag {
     name?: string;

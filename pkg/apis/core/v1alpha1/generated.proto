@@ -32,6 +32,7 @@ option go_package = "v1alpha1";
 // (within OS limitations) to kill any spawned descendant processes.
 //
 // +k8s:openapi-gen=true
+// +tilt:starlark-gen=true
 message Cmd {
   optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
@@ -59,6 +60,7 @@ message CmdSpec {
   // in the default Tilt working directory.
   //
   // +optional
+  // +tilt:local-path=true
   optional string dir = 2;
 
   // Additional variables process environment.
@@ -1858,6 +1860,14 @@ message UIFeatureFlag {
   optional bool value = 2;
 }
 
+message UIHiddenInputSpec {
+  optional string value = 1;
+}
+
+message UIHiddenInputStatus {
+  optional string value = 1;
+}
+
 // Defines an Input to render in the UI.
 // If UIButton is analogous to an HTML <form>,
 // UIInput is analogous to an HTML <input>.
@@ -1876,6 +1886,10 @@ message UIInputSpec {
   // A Bool input that is true or false
   // +optional
   optional UIBoolInputSpec bool = 4;
+
+  // An input that has a constant value and does not display to the user
+  // +optional
+  optional UIHiddenInputSpec hidden = 5;
 }
 
 // The status corresponding to a UIInputSpec
@@ -1891,6 +1905,10 @@ message UIInputStatus {
   // The status of the input, if it's a bool
   // +optional
   optional UIBoolInputStatus bool = 3;
+
+  // The status of the input, if it's a hidden
+  // +optional
+  optional UIHiddenInputStatus hidden = 4;
 }
 
 // UIResource represents per-resource status data for rendering the web UI.

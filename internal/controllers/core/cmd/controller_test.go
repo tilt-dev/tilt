@@ -762,6 +762,27 @@ func TestBoolInput(t *testing.T) {
 	}
 }
 
+func TestHiddenInput(t *testing.T) {
+	f := newFixture(t)
+	defer f.teardown()
+
+	val := "afds"
+
+	setupStartOnTest(t, f)
+	f.updateButton("b-1", func(button *v1alpha1.UIButton) {
+		spec := v1alpha1.UIInputSpec{Name: "foo", Hidden: &v1alpha1.UIHiddenInputSpec{Value: val}}
+		button.Spec.Inputs = append(button.Spec.Inputs, spec)
+		status := v1alpha1.UIInputStatus{Name: "foo", Hidden: &v1alpha1.UIHiddenInputStatus{Value: val}}
+		button.Status.Inputs = append(button.Status.Inputs, status)
+	})
+	f.triggerButton("b-1", f.clock.Now())
+	f.reconcileCmd("testcmd")
+
+	actualEnv := f.fe.processes["myserver"].env
+	expectedEnv := []string{fmt.Sprintf("foo=%s", val)}
+	require.Equal(t, expectedEnv, actualEnv)
+}
+
 func TestCmdOnlyUsesButtonThatStartedIt(t *testing.T) {
 	f := newFixture(t)
 	defer f.teardown()

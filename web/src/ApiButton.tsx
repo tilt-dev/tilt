@@ -81,7 +81,7 @@ const svgElement = (src: string): React.ReactElement => {
 type ApiButtonInputProps = {
   spec: UIInputSpec
   status: UIInputStatus | undefined
-  value: boolean | undefined
+  value: any | undefined
   setValue: (name: string, value: any) => void
 }
 
@@ -116,6 +116,8 @@ function ApiButtonInput(props: ApiButtonInputProps) {
         onChange={(_, checked) => props.setValue(props.spec.name!, checked)}
       />
     )
+  } else if (props.spec.hidden) {
+    return null
   } else {
     return (
       <div>{`Error: button input ${props.spec.name} had unsupported type`}</div>
@@ -257,6 +259,8 @@ function buttonStatusWithInputs(
         status.text = { value: value }
       } else if (spec.bool) {
         status.bool = { value: value === true }
+      } else if (spec.hidden) {
+        status.hidden = { value: spec.hidden.value }
       }
       result.status!.inputs!.push(status)
     }
@@ -272,6 +276,17 @@ async function updateButtonStatus(
   const toUpdate = buttonStatusWithInputs(button, inputValues)
 
   await tiltApiPut("uibuttons", "status", toUpdate)
+}
+
+function setHiddenInputs(
+  uiButton: UIButton,
+  inputValues: { [name: string]: any }
+) {
+  uiButton.spec?.inputs?.forEach((i) => {
+    if (i.hidden && i.name) {
+      inputValues[i.name] = i.hidden.value
+    }
+  })
 }
 
 // Renders a UIButton.
@@ -299,6 +314,7 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
     //  moment, so there's no fancy spinner animation or propagation of result of action(s)
     //  that occur as a result of click right now
     setLoading(true)
+    setHiddenInputs(uiButton, inputValues)
     try {
       await updateButtonStatus(uiButton, inputValues)
     } catch (err) {

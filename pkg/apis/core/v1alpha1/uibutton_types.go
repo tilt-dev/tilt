@@ -224,6 +224,14 @@ type UIBoolInputStatus struct {
 	Value bool `json:"value" protobuf:"varint,1,opt,name=value"`
 }
 
+type UIHiddenInputSpec struct {
+	Value string `json:"value" protobuf:"bytes,1,opt,name=value"`
+}
+
+type UIHiddenInputStatus struct {
+	Value string `json:"value" protobuf:"bytes,1,opt,name=value"`
+}
+
 // Defines an Input to render in the UI.
 // If UIButton is analogous to an HTML <form>,
 // UIInput is analogous to an HTML <input>.
@@ -244,6 +252,10 @@ type UIInputSpec struct {
 	// A Bool input that is true or false
 	// +optional
 	Bool *UIBoolInputSpec `json:"bool,omitempty" protobuf:"bytes,4,opt,name=bool"`
+
+	// An input that has a constant value and does not display to the user
+	// +optional
+	Hidden *UIHiddenInputSpec `json:"hidden,omitempty" protobuf:"bytes,5,opt,name=hidden"`
 }
 
 func (in *UIInputSpec) Validate(_ context.Context, path *field.Path) field.ErrorList {
@@ -279,6 +291,10 @@ type UIInputStatus struct {
 	// The status of the input, if it's a bool
 	// +optional
 	Bool *UIBoolInputStatus `json:"bool,omitempty" protobuf:"bytes,3,opt,name=bool"`
+
+	// The status of the input, if it's a hidden
+	// +optional
+	Hidden *UIHiddenInputStatus `json:"hidden,omitempty" protobuf:"bytes,4,opt,name=hidden"`
 }
 
 // UIButtonStatus defines the observed state of UIButton
