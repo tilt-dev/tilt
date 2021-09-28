@@ -18,7 +18,6 @@ package v1alpha1
 
 import (
 	"context"
-	fmt "fmt"
 	"path"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -160,7 +159,7 @@ func (in *LiveUpdate) Validate(ctx context.Context) field.ErrorList {
 		if !path.IsAbs(sync.ContainerPath) {
 			errors = append(errors,
 				field.Invalid(
-					field.NewPath(fmt.Sprintf("spec.syncs[%d]", i)),
+					field.NewPath("spec.syncs").Index(i),
 					sync.ContainerPath,
 					"sync destination is not absolute"))
 		}
