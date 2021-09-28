@@ -29,17 +29,12 @@ var (
 
 // Detector detects OpenTelemetry resource information
 type Detector interface {
-	// DO NOT CHANGE: any modification will not be backwards compatible and
-	// must never be done outside of a new major release.
-
 	// Detect returns an initialized Resource based on gathered information.
 	// If the source information to construct a Resource contains invalid
 	// values, a Resource is returned with the valid parts of the source
 	// information used for initialization along with an appropriately
 	// wrapped ErrPartialResource error.
 	Detect(ctx context.Context) (*Resource, error)
-	// DO NOT CHANGE: any modification will not be backwards compatible and
-	// must never be done outside of a new major release.
 }
 
 // Detect calls all input detectors sequentially and merges each result with the previous one.
@@ -58,10 +53,7 @@ func Detect(ctx context.Context, detectors ...Detector) (*Resource, error) {
 				continue
 			}
 		}
-		autoDetectedRes, err = Merge(autoDetectedRes, res)
-		if err != nil {
-			errInfo = append(errInfo, err.Error())
-		}
+		autoDetectedRes = Merge(autoDetectedRes, res)
 	}
 
 	var aggregatedError error

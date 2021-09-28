@@ -4,6 +4,7 @@ import (
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/rest"
 	"github.com/tilt-dev/tilt-apiserver/pkg/storage/filepath"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
@@ -13,7 +14,7 @@ func (a *Server) WithResourceFileStorage(obj resource.Object, path string) *Serv
 	ws := filepath.NewWatchSet()
 	strategy := rest.DefaultStrategy{
 		Object:      obj,
-		ObjectTyper: a.scheme,
+		ObjectTyper: a.apiScheme,
 	}
 	a.WithResourceAndHandler(obj, filepath.NewJSONFilepathStorageProvider(obj, path, fs, ws, strategy))
 
@@ -35,7 +36,7 @@ func (a *Server) WithResourceMemoryStorage(obj resource.Object, path string) *Se
 	ws := filepath.NewWatchSet()
 	strategy := rest.DefaultStrategy{
 		Object:      obj,
-		ObjectTyper: a.scheme,
+		ObjectTyper: a.apiScheme,
 	}
 	a.WithResourceAndHandler(obj, filepath.NewJSONFilepathStorageProvider(obj, path, a.memoryFS, ws, strategy))
 
@@ -58,7 +59,11 @@ func (a *Server) WithResourceMemoryStorage(obj resource.Object, path string) *Se
 // Note: WithResourceAndHandler will NOT register the "status" subresource for the resource object.
 func (a *Server) WithResourceAndHandler(obj resource.Object, sp rest.ResourceHandlerProvider) *Server {
 	gvr := obj.GetGroupVersionResource()
-	a.schemeBuilder.Register(resource.AddToScheme(obj))
+	a.apiSchemeBuilder.Register(resource.AddToScheme(obj))
+	a.openapiSchemeBuilder.Register(func(s *runtime.Scheme) error {
+		s.AddKnownTypes(obj.GetGroupVersionResource().GroupVersion(), obj.New(), obj.NewList())
+		return nil
+	})
 	return a.forGroupVersionResource(gvr, sp)
 }
 

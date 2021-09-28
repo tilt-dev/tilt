@@ -21,64 +21,37 @@ import (
 	"strings"
 
 	"go.opentelemetry.io/otel/attribute"
-	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 )
 
-const (
-	// resourceAttrKey is the environment variable name OpenTelemetry Resource information will be read from.
-	resourceAttrKey = "OTEL_RESOURCE_ATTRIBUTES"
-
-	// svcNameKey is the environment variable name that Service Name information will be read from.
-	svcNameKey = "OTEL_SERVICE_NAME"
-)
+// envVar is the environment variable name OpenTelemetry Resource information can be assigned to.
+const envVar = "OTEL_RESOURCE_ATTRIBUTES"
 
 var (
 	// errMissingValue is returned when a resource value is missing.
 	errMissingValue = fmt.Errorf("%w: missing value", ErrPartialResource)
 )
 
-// fromEnv is a Detector that implements the Detector and collects
+// FromEnv is a Detector that implements the Detector and collects
 // resources from environment.  This Detector is included as a
-// builtin.
-type fromEnv struct{}
+// builtin.  If these resource attributes are not wanted, use the
+// WithFromEnv(nil) or WithoutBuiltin() options to explicitly disable
+// them.
+type FromEnv struct{}
 
 // compile time assertion that FromEnv implements Detector interface
-var _ Detector = fromEnv{}
+var _ Detector = FromEnv{}
 
 // Detect collects resources from environment
-func (fromEnv) Detect(context.Context) (*Resource, error) {
-	attrs := strings.TrimSpace(os.Getenv(resourceAttrKey))
-	svcName := strings.TrimSpace(os.Getenv(svcNameKey))
+func (FromEnv) Detect(context.Context) (*Resource, error) {
+	attrs := strings.TrimSpace(os.Getenv(envVar))
 
-	if attrs == "" && svcName == "" {
+	if attrs == "" {
 		return Empty(), nil
 	}
-
-	var res *Resource
-
-	if svcName != "" {
-		res = NewSchemaless(semconv.ServiceNameKey.String(svcName))
-	}
-
-	r2, err := constructOTResources(attrs)
-
-	// Ensure that the resource with the service name from OTEL_SERVICE_NAME
-	// takes precedence, if it was defined.
-	res, err2 := Merge(r2, res)
-
-	if err == nil {
-		err = err2
-	} else if err2 != nil {
-		err = fmt.Errorf("detecting resources: %s", []string{err.Error(), err2.Error()})
-	}
-
-	return res, err
+	return constructOTResources(attrs)
 }
 
 func constructOTResources(s string) (*Resource, error) {
-	if s == "" {
-		return Empty(), nil
-	}
 	pairs := strings.Split(s, ",")
 	attrs := []attribute.KeyValue{}
 	var invalid []string
@@ -95,5 +68,5 @@ func constructOTResources(s string) (*Resource, error) {
 	if len(invalid) > 0 {
 		err = fmt.Errorf("%w: %v", errMissingValue, invalid)
 	}
-	return NewSchemaless(attrs...), err
+	return NewWithAttributes(attrs...), err
 }

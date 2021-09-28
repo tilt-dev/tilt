@@ -40,9 +40,6 @@ $(TOOLS)/%: | $(TOOLS)
 	cd $(TOOLS_MOD_DIR) && \
 	$(GO) build -o $@ $(PACKAGE)
 
-SEMCONVGEN = $(TOOLS)/semconvgen
-$(TOOLS)/semconvgen: PACKAGE=go.opentelemetry.io/build-tools/semconvgen
-
 CROSSLINK = $(TOOLS)/crosslink
 $(TOOLS)/crosslink: PACKAGE=go.opentelemetry.io/otel/$(TOOLS_MOD_DIR)/crosslink
 
@@ -52,16 +49,13 @@ $(TOOLS)/golangci-lint: PACKAGE=github.com/golangci/golangci-lint/cmd/golangci-l
 MISSPELL = $(TOOLS)/misspell
 $(TOOLS)/misspell: PACKAGE= github.com/client9/misspell/cmd/misspell
 
-GOCOVMERGE = $(TOOLS)/gocovmerge
-$(TOOLS)/gocovmerge: PACKAGE= github.com/wadey/gocovmerge
-
 STRINGER = $(TOOLS)/stringer
 $(TOOLS)/stringer: PACKAGE=golang.org/x/tools/cmd/stringer
 
 $(TOOLS)/gojq: PACKAGE=github.com/itchyny/gojq/cmd/gojq
 
 .PHONY: tools
-tools: $(CROSSLINK) $(GOLANGCI_LINT) $(MISSPELL) $(GOCOVMERGE) $(STRINGER) $(TOOLS)/gojq $(SEMCONVGEN)
+tools: $(CROSSLINK) $(GOLANGCI_LINT) $(MISSPELL) $(STRINGER) $(TOOLS)/gojq
 
 
 # Build
@@ -114,18 +108,19 @@ test:
 COVERAGE_MODE    = atomic
 COVERAGE_PROFILE = coverage.out
 .PHONY: test-coverage
-test-coverage: | $(GOCOVMERGE)
+test-coverage:
 	@set -e; \
 	printf "" > coverage.txt; \
 	for dir in $(ALL_COVERAGE_MOD_DIRS); do \
-	  echo "$(GO) test -coverpkg=go.opentelemetry.io/otel/... -covermode=$(COVERAGE_MODE) -coverprofile="$(COVERAGE_PROFILE)" $${dir}/..."; \
+	  echo "$(GO) test -coverpkg=./... -covermode=$(COVERAGE_MODE) -coverprofile="$(COVERAGE_PROFILE)" $${dir}/..."; \
 	  (cd "$${dir}" && \
 	    $(GO) list ./... \
 	    | grep -v third_party \
 	    | xargs $(GO) test -coverpkg=./... -covermode=$(COVERAGE_MODE) -coverprofile="$(COVERAGE_PROFILE)" && \
 	  $(GO) tool cover -html=coverage.out -o coverage.html); \
+	  [ -f "$${dir}/coverage.out" ] && cat "$${dir}/coverage.out" >> coverage.txt; \
 	done; \
-	$(GOCOVMERGE) $$(find . -name coverage.out) > coverage.txt
+	sed -i.bak -e '2,$$ { /^mode: /d; }' coverage.txt
 
 .PHONY: lint
 lint: misspell lint-modules | $(GOLANGCI_LINT)
@@ -152,7 +147,7 @@ lint-modules: | $(CROSSLINK)
 
 .PHONY: license-check
 license-check:
-	@licRes=$$(for f in $$(find . -type f \( -iname '*.go' -o -iname '*.sh' \) ! -path '**/third_party/*') ; do \
+	@licRes=$$(for f in $$(find . -type f \( -iname '*.go' -o -iname '*.sh' \) ! -path '**/third_party/*' ! -path './exporters/otlp/internal/opentelemetry-proto/*') ; do \
 	           awk '/Copyright The OpenTelemetry Authors|generated|GENERATED/ && NR<=3 { found=1; next } END { if (!found) print FILENAME }' $$f; \
 	   done); \
 	   if [ -n "$${licRes}" ]; then \
@@ -163,14 +158,13 @@ license-check:
 .PHONY: dependabot-check
 dependabot-check:
 	@result=$$( \
-		for f in $$( find . -type f -name go.mod -exec dirname {} \; | sed 's/^.//' ); \
-			do grep -q "directory: \+$$f" .github/dependabot.yml \
+		for f in $$( find . -type f -name go.mod -exec dirname {} \; | sed 's/^.\/\?/\//' ); \
+			do grep -q "$$f" .github/dependabot.yml \
 			|| echo "$$f"; \
 		done; \
 	); \
 	if [ -n "$$result" ]; then \
 		echo "missing go.mod dependabot check:"; echo "$$result"; \
-		echo "new modules need to be added to the .github/dependabot.yml file"; \
 		exit 1; \
 	fi
 
