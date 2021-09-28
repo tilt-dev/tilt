@@ -35,6 +35,7 @@ import (
 
 // UIButton
 // +k8s:openapi-gen=true
+// +tilt:starlark-gen=true
 type UIButton struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
@@ -114,6 +115,10 @@ type UIComponentLocationResource struct {
 
 var _ resource.Object = &UIButton{}
 var _ resourcestrategy.Validater = &UIButton{}
+
+func (in *UIButton) GetSpec() interface{} {
+	return in.Spec
+}
 
 func (in *UIButton) GetObjectMeta() *metav1.ObjectMeta {
 	return &in.ObjectMeta

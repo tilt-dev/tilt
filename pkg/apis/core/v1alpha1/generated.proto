@@ -1759,6 +1759,7 @@ message UIBuildTerminated {
 
 // UIButton
 // +k8s:openapi-gen=true
+// +tilt:starlark-gen=true
 message UIButton {
   optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 

@@ -16,14 +16,15 @@ import (
 	"github.com/tilt-dev/wmclient/pkg/analytics"
 
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 var (
-	lu = model.LiveUpdate{Steps: []model.LiveUpdateStep{model.LiveUpdateSyncStep{}}} // non-empty LiveUpdate
+	lu = v1alpha1.LiveUpdateSpec{Syncs: []v1alpha1.LiveUpdateSync{{ContainerPath: "/"}}} // non-empty LiveUpdate
 
 	imgTargDB       = model.ImageTarget{BuildDetails: model.DockerBuild{}}
-	imgTargDBWithLU = model.ImageTarget{BuildDetails: model.DockerBuild{LiveUpdate: lu}}
+	imgTargDBWithLU = model.ImageTarget{LiveUpdateSpec: lu, BuildDetails: model.DockerBuild{}}
 
 	kTarg = model.K8sTarget{}
 	dTarg = model.DockerComposeTarget{}
@@ -35,9 +36,9 @@ var (
 	r3 = "gcr.io/some-project-162817/three"
 	r4 = "gcr.io/some-project-162817/four"
 
-	iTargWithRef1     = iTargetForRef(r1).WithBuildDetails(model.DockerBuild{LiveUpdate: lu})
-	iTargWithRef2     = iTargetForRef(r2).WithBuildDetails(model.DockerBuild{LiveUpdate: lu})
-	iTargWithRef3     = iTargetForRef(r3).WithBuildDetails(model.DockerBuild{LiveUpdate: lu})
+	iTargWithRef1     = iTargetForRef(r1).WithLiveUpdateSpec(lu).WithBuildDetails(model.DockerBuild{})
+	iTargWithRef2     = iTargetForRef(r2).WithLiveUpdateSpec(lu).WithBuildDetails(model.DockerBuild{})
+	iTargWithRef3     = iTargetForRef(r3).WithLiveUpdateSpec(lu).WithBuildDetails(model.DockerBuild{})
 	iTargWithRef4NoLU = iTargetForRef(r4)
 )
 

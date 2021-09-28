@@ -12,23 +12,12 @@ import (
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
-type LiveUpdateSpec struct {
-	// A KubernetesDiscovery maps deployed objects to pods.
-	//
-	// The live-updater watches the named KubernetesDiscovery object to find pods to
-	// live update into.
-	KubernetesDiscoveryName string
-
-	// ImageSelector specifies the name of the image that we're copying files into.
-	//
-	// The live-updater uses this to figure out which containers to live update.
-	ImageSelector string
-}
-
 type ImageTarget struct {
 	// An apiserver-driven data model for injecting the image into other resources.
 	v1alpha1.ImageMapSpec
-	LiveUpdateSpec
+
+	// An apiserver-driven data model for live-updating containers.
+	LiveUpdateSpec v1alpha1.LiveUpdateSpec
 
 	Refs         container.RefSet
 	BuildDetails BuildDetails
@@ -70,7 +59,22 @@ func (i ImageTarget) MustWithRef(ref container.RefSelector) ImageTarget {
 	i.Refs = container.MustSimpleRefSet(ref)
 	i.ImageMapSpec.Selector = ref.String()
 	i.ImageMapSpec.MatchExact = ref.MatchExact()
-	i.LiveUpdateSpec.ImageSelector = reference.FamiliarName(i.Refs.ClusterRef())
+	i.SetKubernetesImageSelector(reference.FamiliarName(i.Refs.ClusterRef()))
+	return i
+}
+
+func (i *ImageTarget) SetKubernetesImageSelector(image string) {
+	if i.LiveUpdateSpec.Selector.Kubernetes == nil {
+		i.LiveUpdateSpec.Selector.Kubernetes = &v1alpha1.LiveUpdateKubernetesSelector{}
+	}
+	i.LiveUpdateSpec.Selector.Kubernetes.Image = reference.FamiliarName(i.Refs.ClusterRef())
+}
+
+func (i ImageTarget) WithLiveUpdateSpec(luSpec v1alpha1.LiveUpdateSpec) ImageTarget {
+	if luSpec.Selector.Kubernetes == nil {
+		luSpec.Selector.Kubernetes = i.LiveUpdateSpec.Selector.Kubernetes
+	}
+	i.LiveUpdateSpec = luSpec
 	return i
 }
 
@@ -137,17 +141,6 @@ func (i ImageTarget) IsDockerBuild() bool {
 	return ok
 }
 
-func (i ImageTarget) LiveUpdateInfo() LiveUpdate {
-	switch details := i.BuildDetails.(type) {
-	case DockerBuild:
-		return details.LiveUpdate
-	case CustomBuild:
-		return details.LiveUpdate
-	default:
-		return LiveUpdate{}
-	}
-}
-
 func (i ImageTarget) CustomBuildInfo() CustomBuild {
 	ret, _ := i.BuildDetails.(CustomBuild)
 	return ret
@@ -161,12 +154,13 @@ func (i ImageTarget) IsCustomBuild() bool {
 func (i ImageTarget) WithBuildDetails(details BuildDetails) ImageTarget {
 	i.BuildDetails = details
 	cb, ok := details.(CustomBuild)
-	if ok && cmp.Equal(cb.Command.Argv, ToHostCmd(":").Argv) && !cb.LiveUpdate.Empty() {
+	isEmptyLiveUpdateSpec := len(i.LiveUpdateSpec.Syncs) == 0 && len(i.LiveUpdateSpec.Execs) == 0
+	if ok && cmp.Equal(cb.Command.Argv, ToHostCmd(":").Argv) && !isEmptyLiveUpdateSpec {
 		// NOTE(nick): This is a hack for the file_sync_only extension
 		// until we come up with a real API for specifying live update
 		// without an image build.
 		i.IsLiveUpdateOnly = true
-		i.LiveUpdateSpec.ImageSelector = reference.FamiliarName(i.Refs.WithoutRegistry().LocalRef())
+		i.SetKubernetesImageSelector(reference.FamiliarName(i.Refs.WithoutRegistry().LocalRef()))
 	}
 	return i
 }
@@ -266,7 +260,6 @@ type DockerBuild struct {
 	Dockerfile  string
 	BuildPath   string // the absolute path to the files
 	BuildArgs   DockerBuildArgs
-	LiveUpdate  LiveUpdate // Optionally, can use LiveUpdate to update this build in place.
 	TargetStage DockerBuildTarget
 
 	// Pass SSH secrets to docker so it can clone private repos.
@@ -314,7 +307,6 @@ type CustomBuild struct {
 	// export $EXPECTED_REF=name:expected_tag )
 	Tag string
 
-	LiveUpdate       LiveUpdate // Optionally, can use LiveUpdate to update this build in place.
 	DisablePush      bool
 	SkipsLocalDocker bool
 

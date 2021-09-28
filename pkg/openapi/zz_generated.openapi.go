@@ -2866,6 +2866,7 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateSpec(ref common.ReferenceCallback) 
 					"selector": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Specifies how this live-updater finds the containers that need live update.",
+							Default:     map[string]interface{}{},
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSelector"),
 						},
 					},

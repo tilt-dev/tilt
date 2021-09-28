@@ -446,7 +446,7 @@
           "$ref": "#/definitions/v1alpha1UIButtonStatus"
         }
       },
-      "title": "UIButton\n+k8s:openapi-gen=true"
+      "title": "UIButton\n+k8s:openapi-gen=true\n+tilt:starlark-gen=true"
     },
     "v1alpha1UIButtonSpec": {
       "type": "object",

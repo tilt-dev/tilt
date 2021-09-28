@@ -6,6 +6,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/tilt-dev/tilt/internal/build"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -387,14 +388,14 @@ func IsLiveUpdateTargetWaitingOnDeploy(state store.EngineState, mt *store.Manife
 		}
 
 		iTarget := mt.Manifest.ImageTargetWithID(id)
-		luInfo := iTarget.LiveUpdateInfo()
-		_, pathsMatchingNoSync, err := build.FilesToPathMappings(files, luInfo.SyncSteps())
+		luSpec := iTarget.LiveUpdateSpec
+		_, pathsMatchingNoSync, err := build.FilesToPathMappings(files, liveupdate.SyncSteps(luSpec))
 		if err != nil || len(pathsMatchingNoSync) > 0 {
 			return false
 		}
 
 		// If any changed files match a FallBackOn file, fall back to next BuildAndDeployer
-		anyMatch, _, err := luInfo.FallBackOnFiles().AnyMatch(files)
+		anyMatch, _, err := liveupdate.FallBackOnFiles(luSpec).AnyMatch(files)
 		if err != nil || anyMatch {
 			return false
 		}
@@ -404,9 +405,9 @@ func IsLiveUpdateTargetWaitingOnDeploy(state store.EngineState, mt *store.Manife
 		// We only care about targets where there are 0 running containers for the current build.
 		// This is the mechanism that live update uses to determine if the container to live-update
 		// is still pending.
-		if mt.Manifest.IsK8s() {
+		if mt.Manifest.IsK8s() && iTarget.LiveUpdateSpec.Selector.Kubernetes != nil {
 			cInfos, err := store.RunningContainersForTargetForOnePod(
-				iTarget.ID().Name.String(), iTarget.LiveUpdateSpec, mt.State.K8sRuntimeState())
+				iTarget.LiveUpdateSpec.Selector.Kubernetes, mt.State.K8sRuntimeState())
 			if err != nil {
 				return false
 			}

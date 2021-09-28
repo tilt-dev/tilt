@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/mod/semver"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	ctrltiltfile "github.com/tilt-dev/tilt/internal/controllers/apis/tiltfile"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -463,7 +464,7 @@ dc_resource('foo', 'gcr.io/foo')
 
 	// Make sure there's no live update in the default case.
 	assert.True(t, iTarget.IsDockerBuild())
-	assert.True(t, iTarget.LiveUpdateInfo().Empty())
+	assert.True(t, liveupdate.IsEmptySpec(iTarget.LiveUpdateSpec))
 
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
 	assert.Equal(t, m.DockerComposeTarget().ConfigPaths, []string{configPath})
@@ -495,7 +496,7 @@ docker_compose('docker-compose.yml')
 
 	// Make sure there's no live update in the default case.
 	assert.True(t, iTarget.IsDockerBuild())
-	assert.True(t, iTarget.LiveUpdateInfo().Empty())
+	assert.True(t, liveupdate.IsEmptySpec(iTarget.LiveUpdateSpec))
 
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
 	assert.Equal(t, m.DockerComposeTarget().ConfigPaths, []string{configPath})
