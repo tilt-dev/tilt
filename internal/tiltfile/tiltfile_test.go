@@ -23,6 +23,7 @@ import (
 
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	ctrltiltfile "github.com/tilt-dev/tilt/internal/controllers/apis/tiltfile"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/docker"
@@ -120,7 +121,7 @@ k8s_yaml('foo.yaml')
 
 	// Make sure there's no live update in the default case.
 	assert.True(t, iTarget.IsDockerBuild())
-	assert.True(t, iTarget.LiveUpdateInfo().Empty())
+	assert.True(t, liveupdate.IsEmptySpec(iTarget.LiveUpdateSpec))
 }
 
 // I.e. make sure that we handle de/normalization between `fooimage` <--> `docker.io/library/fooimage`
@@ -2013,8 +2014,8 @@ k8s_yaml('foo.yaml')
 	m := f.assertNextManifest("foo",
 		deployment("foo", image("gcr.io/image-a"), image("gcr.io/image-b")))
 
-	assert.True(t, m.ImageTargetAt(0).LiveUpdateInfo().Empty())
-	assert.False(t, m.ImageTargetAt(1).LiveUpdateInfo().Empty())
+	assert.True(t, liveupdate.IsEmptySpec(m.ImageTargetAt(0).LiveUpdateSpec))
+	assert.False(t, liveupdate.IsEmptySpec(m.ImageTargetAt(1).LiveUpdateSpec))
 }
 
 func TestImageDependencyCycle(t *testing.T) {
@@ -3441,16 +3442,18 @@ docker_build('gcr.io/some-project-162817/sancho-sidecar', './sidecar',
 )
 `)
 
-	sync1 := model.LiveUpdateSyncStep{Source: f.JoinPath("sancho/foo"), Dest: "/bar"}
-	expectedLU1, err := model.NewLiveUpdate([]model.LiveUpdateStep{sync1}, f.Path())
-	if err != nil {
-		t.Fatal(err)
+	sync1 := v1alpha1.LiveUpdateSync{LocalPath: filepath.Join("sancho", "foo"), ContainerPath: "/bar"}
+	expectedLU1 := v1alpha1.LiveUpdateSpec{
+		BasePath: f.Path(),
+		Syncs:    []v1alpha1.LiveUpdateSync{sync1},
 	}
-	sync2 := model.LiveUpdateSyncStep{Source: f.JoinPath("sidecar/baz"), Dest: "/quux"}
-	expectedLU2, err := model.NewLiveUpdate([]model.LiveUpdateStep{sync2}, f.Path())
-	if err != nil {
-		t.Fatal(err)
+	expectedLU1.Selector.Kubernetes = &v1alpha1.LiveUpdateKubernetesSelector{Image: "gcr.io/some-project-162817/sancho"}
+	sync2 := v1alpha1.LiveUpdateSync{LocalPath: filepath.Join("sidecar", "baz"), ContainerPath: "/quux"}
+	expectedLU2 := v1alpha1.LiveUpdateSpec{
+		BasePath: f.Path(),
+		Syncs:    []v1alpha1.LiveUpdateSync{sync2},
 	}
+	expectedLU2.Selector.Kubernetes = &v1alpha1.LiveUpdateKubernetesSelector{Image: "gcr.io/some-project-162817/sancho-sidecar"}
 
 	f.load()
 	f.assertNextManifest("sancho",
@@ -6090,6 +6093,7 @@ func (f *fixture) loadAssertWarnings(warnings ...string) {
 }
 
 func (f *fixture) loadErrString(msgs ...string) {
+	f.t.Helper()
 	tlr := f.newTiltfileLoader().Load(f.ctx, ctrltiltfile.MainTiltfile(f.JoinPath("Tiltfile"), nil))
 	err := tlr.Error
 
@@ -6203,9 +6207,9 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 						f.t.Fatalf("expected OverrideCommand (aka entrypoint) %v, got %v",
 							matcher.cmd.Argv, image.OverrideCommand.Command)
 					}
-				case model.LiveUpdate:
-					lu := image.LiveUpdateInfo()
-					assert.False(f.t, lu.Empty())
+				case v1alpha1.LiveUpdateSpec:
+					lu := image.LiveUpdateSpec
+					assert.False(f.t, liveupdate.IsEmptySpec(lu))
 					assert.Equal(f.t, matcher, lu)
 				default:
 					f.t.Fatalf("unknown dbHelper matcher: %T %v", matcher, matcher)
@@ -6239,9 +6243,9 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 						f.t.Fatalf("expected OverrideCommand (aka entrypoint) %v, got %v",
 							matcher.cmd.Argv, image.OverrideCommand.Command)
 					}
-				case model.LiveUpdate:
-					lu := image.LiveUpdateInfo()
-					assert.False(f.t, lu.Empty())
+				case v1alpha1.LiveUpdateSpec:
+					lu := image.LiveUpdateSpec
+					assert.False(f.t, liveupdate.IsEmptySpec(lu))
 					assert.Equal(f.t, matcher, lu)
 				}
 			}

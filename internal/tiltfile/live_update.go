@@ -2,7 +2,7 @@ package tiltfile
 
 import (
 	"fmt"
-	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -12,6 +12,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 	"github.com/tilt-dev/tilt/internal/tiltfile/value"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -206,53 +207,97 @@ func (s *tiltfileState) liveUpdateRestartContainer(thread *starlark.Thread, fn *
 	return ret, nil
 }
 
-func (s *tiltfileState) liveUpdateStepToModel(t *starlark.Thread, l liveUpdateStep) (model.LiveUpdateStep, error) {
-	switch x := l.(type) {
-	case liveUpdateFallBackOnStep:
-		return model.LiveUpdateFallBackOnStep{Files: x.files}, nil
-	case liveUpdateSyncStep:
-		// NOTE(maia): we assume a Linux container, and so use `path` to check that
-		// the sync dest is a LINUX abs path! (`filepath.IsAbs` varies depending on
-		// OS the binary was installed for; `path` deals with Linux paths only.)
-		if !path.IsAbs(x.remotePath) {
-			return nil, fmt.Errorf("sync destination '%s' (%s) is not absolute", x.remotePath, x.position.String())
-		}
-		return model.LiveUpdateSyncStep{Source: x.localPath, Dest: x.remotePath}, nil
-	case liveUpdateRunStep:
-		return model.LiveUpdateRunStep{
-			Command: x.command,
-			Triggers: model.PathSet{
-				Paths:         x.triggers,
-				BaseDirectory: starkit.AbsWorkingDir(t),
-			},
-		}, nil
-	case liveUpdateRestartContainerStep:
-		return model.LiveUpdateRestartContainerStep{}, nil
-	default:
-		return nil, fmt.Errorf("internal error - unknown liveUpdateStep '%v' of type '%T', declared at %s", l, l, l.declarationPos())
+func (s *tiltfileState) liveUpdateFromSteps(t *starlark.Thread, maybeSteps starlark.Value) (v1alpha1.LiveUpdateSpec, error) {
+	var err error
+
+	basePath := starkit.AbsWorkingDir(t)
+	spec := v1alpha1.LiveUpdateSpec{
+		BasePath: basePath,
 	}
-}
 
-func (s *tiltfileState) liveUpdateFromSteps(t *starlark.Thread, maybeSteps starlark.Value) (model.LiveUpdate, error) {
-	var modelSteps []model.LiveUpdateStep
 	stepSlice := starlarkValueOrSequenceToSlice(maybeSteps)
+	if len(stepSlice) == 0 {
+		return v1alpha1.LiveUpdateSpec{}, nil
+	}
 
+	noMoreFallbacks := false
+	noMoreSyncs := false
+	noMoreRuns := false
 	for _, v := range stepSlice {
 		step, ok := v.(liveUpdateStep)
 		if !ok {
-			return model.LiveUpdate{}, fmt.Errorf("'steps' must be a list of live update steps - got value '%v' of type '%s'", v.String(), v.Type())
+			return v1alpha1.LiveUpdateSpec{}, fmt.Errorf("'steps' must be a list of live update steps - got value '%v' of type '%s'", v.String(), v.Type())
 		}
 
-		ms, err := s.liveUpdateStepToModel(t, step)
-		if err != nil {
-			return model.LiveUpdate{}, err
+		switch x := step.(type) {
+
+		case liveUpdateFallBackOnStep:
+			if noMoreFallbacks {
+				return v1alpha1.LiveUpdateSpec{}, fmt.Errorf("fall_back_on steps must appear at the start of the list")
+			}
+
+			for _, f := range x.files {
+				if filepath.IsAbs(f) {
+					f, err = filepath.Rel(basePath, f)
+					if err != nil {
+						return v1alpha1.LiveUpdateSpec{}, err
+					}
+				}
+				spec.StopPaths = append(spec.StopPaths, f)
+			}
+
+		case liveUpdateSyncStep:
+			if noMoreRuns {
+				return v1alpha1.LiveUpdateSpec{}, fmt.Errorf("restart container is only valid as the last step")
+			}
+			if noMoreSyncs {
+				return v1alpha1.LiveUpdateSpec{}, fmt.Errorf("all sync steps must precede all run steps")
+			}
+			noMoreFallbacks = true
+
+			localPath := x.localPath
+			if filepath.IsAbs(localPath) {
+				localPath, err = filepath.Rel(basePath, x.localPath)
+				if err != nil {
+					return v1alpha1.LiveUpdateSpec{}, err
+				}
+			}
+			spec.Syncs = append(spec.Syncs, v1alpha1.LiveUpdateSync{
+				LocalPath:     localPath,
+				ContainerPath: x.remotePath,
+			})
+
+		case liveUpdateRunStep:
+			if noMoreRuns {
+				return v1alpha1.LiveUpdateSpec{}, fmt.Errorf("restart container is only valid as the last step")
+			}
+			noMoreFallbacks = true
+			noMoreSyncs = true
+
+			spec.Execs = append(spec.Execs, v1alpha1.LiveUpdateExec{
+				Args:         x.command.Argv,
+				TriggerPaths: x.triggers,
+			})
+
+		case liveUpdateRestartContainerStep:
+			noMoreFallbacks = true
+			noMoreSyncs = true
+			noMoreRuns = true
+			spec.Restart = v1alpha1.LiveUpdateRestartStrategyAlways
+
+		default:
+			return v1alpha1.LiveUpdateSpec{}, fmt.Errorf("internal error - unknown liveUpdateStep '%v' of type '%T', declared at %s", x, x, x.declarationPos())
 		}
+
 		s.consumeLiveUpdateStep(step)
-
-		modelSteps = append(modelSteps, ms)
 	}
 
-	return model.NewLiveUpdate(modelSteps, starkit.AbsWorkingDir(t))
+	errs := (&v1alpha1.LiveUpdate{Spec: spec}).Validate(s.ctx)
+	if len(errs) > 0 {
+		return v1alpha1.LiveUpdateSpec{}, errs.ToAggregate()
+	}
+
+	return spec, nil
 }
 
 func (s *tiltfileState) consumeLiveUpdateStep(stepToConsume liveUpdateStep) {

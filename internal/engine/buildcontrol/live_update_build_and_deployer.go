@@ -8,6 +8,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/ospath"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
@@ -199,9 +200,10 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (liveUpdInfo, err
 	var runs []model.Run
 	var hotReload bool
 
-	if luInfo := iTarget.LiveUpdateInfo(); !luInfo.Empty() {
+	luSpec := iTarget.LiveUpdateSpec
+	if !liveupdate.IsEmptySpec(luSpec) {
 		var pathsMatchingNoSync []string
-		fileMappings, pathsMatchingNoSync, err = build.FilesToPathMappings(filesChanged, luInfo.SyncSteps())
+		fileMappings, pathsMatchingNoSync, err = build.FilesToPathMappings(filesChanged, liveupdate.SyncSteps(luSpec))
 		if err != nil {
 			return liveUpdInfo{}, err
 		}
@@ -212,7 +214,7 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (liveUpdInfo, err
 		}
 
 		// If any changed files match a FallBackOn file, fall back to next BuildAndDeployer
-		anyMatch, file, err := luInfo.FallBackOnFiles().AnyMatch(filesChanged)
+		anyMatch, file, err := liveupdate.FallBackOnFiles(luSpec).AnyMatch(filesChanged)
 		if err != nil {
 			return liveUpdInfo{}, err
 		}
@@ -222,8 +224,8 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (liveUpdInfo, err
 				"Detected change to fall_back_on file %q", prettyFile)
 		}
 
-		runs = luInfo.RunSteps()
-		hotReload = !luInfo.ShouldRestart()
+		runs = liveupdate.RunSteps(luSpec)
+		hotReload = !liveupdate.ShouldRestart(iTarget.LiveUpdateSpec)
 	} else {
 		// We should have validated this when generating the LiveUpdateStateTrees, but double check!
 		panic(fmt.Sprintf("did not find Live Update info on target %s, "+

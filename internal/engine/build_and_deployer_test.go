@@ -202,7 +202,10 @@ func TestLiveUpdateFallbackMessagingRedirect(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
-	lu := assembleLiveUpdate([]model.LiveUpdateSyncStep{model.LiveUpdateSyncStep{Source: f.Path(), Dest: "/blah"}},
+	syncs := []v1alpha1.LiveUpdateSync{
+		{LocalPath: ".", ContainerPath: "/blah"},
+	}
+	lu := assembleLiveUpdate(syncs,
 		nil, false, []string{f.JoinPath("fall_back.txt")}, f)
 	manifest := manifestbuilder.New(f, "foobar").
 		WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
