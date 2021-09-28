@@ -84,7 +84,7 @@ type Client interface {
 	ContainerList(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error)
 	ContainerRestartNoWait(ctx context.Context, containerID string) error
 
-	Run(ctx context.Context, opts RunOptions) (RunResult, error)
+	Run(ctx context.Context, opts RunConfig) (RunResult, error)
 
 	// Execute a command in a container, streaming the command output to `out`.
 	// Returns an ExitError if the command exits with a non-zero exit code.
@@ -650,43 +650,54 @@ func (c *Cli) ExecInContainer(ctx context.Context, cID container.ID, cmd model.C
 	}
 }
 
-func (c *Cli) Run(ctx context.Context, opts RunOptions) (RunResult, error) {
-	image := opts.ContainerConfig.Image
-	if image == "" {
-		// docker doesn't give great errors, so we do some basic validation upfront
-		return RunResult{}, errors.New("image name (opts.ContainerConfig.Image) cannot be empty")
+func (c *Cli) Run(ctx context.Context, opts RunConfig) (RunResult, error) {
+	if opts.Pull {
+		namedRef, ok := opts.Image.(reference.Named)
+		if !ok {
+			return RunResult{}, fmt.Errorf("invalid reference type %T for pull", opts.Image)
+		}
+		if _, err := c.ImagePull(ctx, namedRef); err != nil {
+			return RunResult{}, fmt.Errorf("error pulling image %q: %v", opts.Image, err)
+		}
 	}
 
-	if opts.Pull {
-		ref, err := reference.ParseNamed(image)
-		if err != nil {
-			return RunResult{}, fmt.Errorf("invalid image ref %q: %v", image, err)
-		}
-		if _, err := c.ImagePull(ctx, ref); err != nil {
-			return RunResult{}, fmt.Errorf("error pulling image %q: %v", image, err)
-		}
+	cc := &mobycontainer.Config{
+		Image:        opts.Image.String(),
+		AttachStdout: opts.Stdout != nil,
+		AttachStderr: opts.Stderr != nil,
+		Cmd:          opts.Cmd,
+		Labels:       BuiltByTiltLabel,
+	}
+
+	hc := &mobycontainer.HostConfig{
+		Mounts: opts.Mounts,
 	}
 
 	createResp, err := c.Client.ContainerCreate(ctx,
-		&opts.ContainerConfig,
-		opts.HostConfig,
-		opts.NetworkConfig,
+		cc,
+		hc,
+		nil,
 		nil,
 		opts.ContainerName,
 	)
 	if err != nil {
 		return RunResult{}, fmt.Errorf("could not create container: %v", err)
 	}
+
+	tearDown := func(containerID string) error {
+		return c.Client.ContainerRemove(ctx, createResp.ID, types.ContainerRemoveOptions{Force: true})
+	}
+
 	var containerStarted bool
-	defer func() {
+	defer func(containerID string) {
 		// make an effort to clean up any container we create but don't successfully start
 		if containerStarted {
 			return
 		}
-		if err := c.Client.ContainerRemove(ctx, createResp.ID, types.ContainerRemoveOptions{}); err != nil {
+		if err := tearDown(containerID); err != nil {
 			logger.Get(ctx).Debugf("Failed to remove container after error before start (id=%s): %v", createResp.ID, err)
 		}
-	}()
+	}(createResp.ID)
 
 	statusCh, statusErrCh := c.Client.ContainerWait(ctx, createResp.ID, mobycontainer.WaitConditionNextExit)
 	// ContainerWait() can immediately write to the error channel before returning if it can't start the API request,
@@ -741,6 +752,7 @@ func (c *Cli) Run(ctx context.Context, opts RunOptions) (RunResult, error) {
 		logsErrCh:    logsErrCh,
 		statusRespCh: statusCh,
 		statusErrCh:  statusErrCh,
+		tearDown:     tearDown,
 	}
 
 	return result, nil

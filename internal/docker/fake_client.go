@@ -206,7 +206,7 @@ func (c *FakeClient) ContainerRestartNoWait(ctx context.Context, containerID str
 	return nil
 }
 
-func (c *FakeClient) Run(ctx context.Context, opts RunOptions) (RunResult, error) {
+func (c *FakeClient) Run(ctx context.Context, opts RunConfig) (RunResult, error) {
 	return RunResult{}, nil
 }
 

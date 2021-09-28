@@ -4,12 +4,17 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/docker/distribution/reference"
 	mobycontainer "github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/api/types/mount"
 )
 
-// RunOptions defines the container to create and start.
-type RunOptions struct {
+// RunConfig defines the container to create and start.
+type RunConfig struct {
+	// Image to execute.
+	//
+	// If Pull is true, this must be a reference.Named.
+	Image reference.Reference
 	// Pull will ensure the image exists locally before running.
 	//
 	// If an image will only be used once, this is a convenience to avoid calling ImagePull first.
@@ -18,14 +23,6 @@ type RunOptions struct {
 	Pull bool
 	// ContainerName is a unique name for the container. If not specified, Docker will generate a random name.
 	ContainerName string
-	// ContainerConfig is the main configuration for the container.
-	//
-	// The Image field MUST be populated at a minimum.
-	ContainerConfig mobycontainer.Config
-	// HostConfig is host-level options such as bind mounts (optional).
-	HostConfig *mobycontainer.HostConfig
-	// NetworkConfig is the network interface configuration for the container (optional).
-	NetworkConfig *network.NetworkingConfig
 	// Stdout from the container will be written here if non-nil.
 	//
 	// Errors copying the container output are logged but not propagated.
@@ -34,6 +31,10 @@ type RunOptions struct {
 	//
 	// Errors copying the container output are logged but not propagated.
 	Stderr io.Writer
+	// Cmd to run when starting the container.
+	Cmd []string
+	// Mounts to attach to the container.
+	Mounts []mount.Mount
 }
 
 // RunResult contains information about a container execution.
@@ -43,9 +44,10 @@ type RunResult struct {
 	logsErrCh    <-chan error
 	statusRespCh <-chan mobycontainer.ContainerWaitOKBody
 	statusErrCh  <-chan error
+	tearDown     func(containerID string) error
 }
 
-// Wait blocks until stdout and stderr have been fully consumed (if writers were passed via RunOptions) and the
+// Wait blocks until stdout and stderr have been fully consumed (if writers were passed via RunConfig) and the
 // container has exited. If there is any error consuming stdout/stderr or monitoring the container execution, an
 // error will be returned.
 func (r *RunResult) Wait() (int64, error) {
@@ -63,4 +65,17 @@ func (r *RunResult) Wait() (int64, error) {
 		}
 		return statusResp.StatusCode, nil
 	}
+}
+
+// Close removes the container (forcibly if it's still running).
+func (r *RunResult) Close() error {
+	if r.tearDown == nil {
+		return nil
+	}
+	err := r.tearDown(r.ContainerID)
+	if err != nil {
+		return err
+	}
+	r.tearDown = nil
+	return nil
 }
