@@ -79,11 +79,16 @@ func (c *demoCmd) run(ctx context.Context, args []string) error {
 		return fmt.Errorf("tilt demo requires Docker to be installed and running: %v", err)
 	}
 	if client.Env().Host != "" && !strings.HasPrefix(client.Env().Host, "unix://") {
-		// to properly support remote Docker hosts, we'd need to:
-		// 	* manually create the registry with `k3d registry create tilt-demo-xxxx --port $HOST:random
-		// 		* query the registry back to find the port number
-		// 	* use the registry when creating cluster `k3d cluster create tilt-demo-xxx --registry use tilt-demo-xxxx:$PORT`
-		// 	* parse the kubeconfig and rewrite the cluster host to use $HOST instead of 0.0.0.0
+		// properly supporting remote Docker connections is very tricky - either:
+		//
+		// the remote host will need more ports accessible (for K8s API + registry API) and we have to ensure
+		// that everything both listens on the public interface and references it in configs
+		// (such as "local-registry-hosting" ConfigMap)
+		// 	OR
+		// we need to tunnel everything (perhaps using Docker - this is the approach ctlptl takes!)
+		//
+		// for now, it's not supported as it's a pretty advanced setup to begin with, so we're not really targeting
+		// it with the `tilt demo` functionality
 		return fmt.Errorf("tilt demo requires a local Docker daemon (current Docker host: %s)", client.Env().Host)
 	}
 
