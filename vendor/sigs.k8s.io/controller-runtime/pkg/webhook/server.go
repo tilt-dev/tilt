@@ -28,10 +28,12 @@ import (
 	"path/filepath"
 	"strconv"
 	"sync"
+	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	kscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/certwatcher"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/internal/metrics"
 )
@@ -86,6 +88,10 @@ type Server struct {
 
 	// defaultingOnce ensures that the default fields are only ever set once.
 	defaultingOnce sync.Once
+
+	// started is set to true immediately before the server is started
+	// and thus can be used to check if the server has been started
+	started bool
 
 	// mu protects access to the webhook map & setFields for Start, Register, etc
 	mu sync.Mutex
@@ -272,12 +278,43 @@ func (s *Server) Start(ctx context.Context) error {
 		close(idleConnsClosed)
 	}()
 
+	s.mu.Lock()
+	s.started = true
+	s.mu.Unlock()
 	if err := srv.Serve(listener); err != nil && err != http.ErrServerClosed {
 		return err
 	}
 
 	<-idleConnsClosed
 	return nil
+}
+
+// StartedChecker returns an healthz.Checker which is healthy after the
+// server has been started.
+func (s *Server) StartedChecker() healthz.Checker {
+	config := &tls.Config{
+		InsecureSkipVerify: true, // nolint:gosec // config is used to connect to our own webhook port.
+	}
+	return func(req *http.Request) error {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+
+		if !s.started {
+			return fmt.Errorf("webhook server has not been started yet")
+		}
+
+		d := &net.Dialer{Timeout: 10 * time.Second}
+		conn, err := tls.DialWithDialer(d, "tcp", net.JoinHostPort(s.Host, strconv.Itoa(s.Port)), config)
+		if err != nil {
+			return fmt.Errorf("webhook server is not reachable: %v", err)
+		}
+
+		if err := conn.Close(); err != nil {
+			return fmt.Errorf("webhook server is not reachable: closing connection: %v", err)
+		}
+
+		return nil
+	}
 }
 
 // InjectFunc injects the field setter into the server.

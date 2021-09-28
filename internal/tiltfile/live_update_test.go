@@ -2,10 +2,12 @@ package tiltfile
 
 import (
 	"fmt"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -48,7 +50,7 @@ docker_build('gcr.io/foo', 'foo',
     sync('foo', 'baz'),
   ]
 )`)
-	f.loadErrString("sync destination", "'baz'", "is not absolute")
+	f.loadErrString("sync destination", "baz", "is not absolute")
 }
 
 func TestLiveUpdateRunBeforeSync(t *testing.T) {
@@ -136,7 +138,7 @@ func TestLiveUpdateDockerBuildQualifiedImageName(t *testing.T) {
 	defer f.TearDown()
 
 	f.tiltfileCode = "docker_build('gcr.io/foo', 'foo', live_update=%s)"
-	f.configuredImageName = "gcr.io/foo"
+	f.expectedLU.Selector.Kubernetes = &v1alpha1.LiveUpdateKubernetesSelector{Image: "gcr.io/foo"}
 	f.init()
 
 	f.load("foo")
@@ -157,6 +159,7 @@ docker_build('foo', 'foo', live_update=%s)`
 
 	i := image("foo")
 	i.localRef = "gcr.io/foo"
+	f.expectedLU.Selector.Kubernetes = &v1alpha1.LiveUpdateKubernetesSelector{Image: "gcr.io/foo"}
 	f.assertNextManifest("foo", db(i, f.expectedLU))
 }
 
@@ -222,33 +225,35 @@ k8s_yaml('foo.yaml')
 `)
 	f.load()
 
-	lu := model.LiveUpdate{
-		Steps: []model.LiveUpdateStep{
-			model.LiveUpdateSyncStep{
-				Source: f.JoinPath("a/message.txt"),
-				Dest:   "/src/message.txt",
+	lu := v1alpha1.LiveUpdateSpec{
+		BasePath: f.Path(),
+		Syncs: []v1alpha1.LiveUpdateSync{
+			v1alpha1.LiveUpdateSync{
+				LocalPath:     filepath.Join("a", "message.txt"),
+				ContainerPath: "/src/message.txt",
 			},
 		},
-		BaseDir: f.Path(),
 	}
+	lu.Selector.Kubernetes = &v1alpha1.LiveUpdateKubernetesSelector{Image: "gcr.io/image-b"}
+
 	f.assertNextManifest("foo",
 		db(image("gcr.io/image-a")),
 		db(image("gcr.io/image-b"), lu))
 }
 
 func TestLiveUpdateRun(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
 	for _, tc := range []struct {
 		name         string
 		tiltfileText string
-		expectedCmd  model.Cmd
+		expectedArgv []string
 	}{
-		{"string cmd", `"echo hi"`, model.ToUnixCmdInDir("echo hi", f.Path())},
-		{"array cmd", `["echo", "hi"]`, model.Cmd{Argv: []string{"echo", "hi"}, Dir: f.Path()}},
+		{"string cmd", `"echo hi"`, []string{"sh", "-c", "echo hi"}},
+		{"array cmd", `["echo", "hi"]`, []string{"echo", "hi"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			f := newFixture(t)
+			defer f.TearDown()
+
 			f.gitInit("")
 			f.yaml("foo.yaml", deployment("foo", image("gcr.io/image-a")))
 			f.file("imageA.dockerfile", `FROM golang:1.10`)
@@ -261,15 +266,15 @@ k8s_yaml('foo.yaml')
 `, tc.tiltfileText))
 			f.load()
 
-			lu := model.LiveUpdate{
-				Steps: []model.LiveUpdateStep{
-					model.LiveUpdateRunStep{
-						Command:  tc.expectedCmd,
-						Triggers: model.NewPathSet(nil, f.Path()),
+			lu := v1alpha1.LiveUpdateSpec{
+				BasePath: f.Path(),
+				Execs: []v1alpha1.LiveUpdateExec{
+					v1alpha1.LiveUpdateExec{
+						Args: tc.expectedArgv,
 					},
 				},
-				BaseDir: f.Path(),
 			}
+			lu.Selector.Kubernetes = &v1alpha1.LiveUpdateKubernetesSelector{Image: "gcr.io/image-a"}
 			f.assertNextManifest("foo",
 				db(image("gcr.io/image-a"), lu))
 		})
@@ -411,14 +416,13 @@ docker_compose('docker-compose.yml')
 type liveUpdateFixture struct {
 	*fixture
 
-	tiltfileCode        string
-	configuredImageName string
-	expectedLU          model.LiveUpdate
+	tiltfileCode string
+	expectedLU   v1alpha1.LiveUpdateSpec
 }
 
 func (f *liveUpdateFixture) init() {
 	f.dockerfile("foo/Dockerfile")
-	f.yaml("foo.yaml", deployment("foo", image(f.configuredImageName)))
+	f.yaml("foo.yaml", deployment("foo", image(f.expectedLU.Selector.Kubernetes.Image)))
 
 	luSteps := `[
     fall_back_on(['foo/i', 'foo/j']),
@@ -435,27 +439,26 @@ k8s_yaml('foo.yaml')
 
 func newLiveUpdateFixture(t *testing.T) *liveUpdateFixture {
 	f := &liveUpdateFixture{
-		fixture:             newFixture(t),
-		configuredImageName: "foo",
+		fixture: newFixture(t),
 	}
 
-	var steps []model.LiveUpdateStep
-
-	steps = append(steps,
-		model.LiveUpdateFallBackOnStep{
-			Files: []string{f.JoinPath("foo/i"), f.JoinPath("foo/j")},
+	f.expectedLU = v1alpha1.LiveUpdateSpec{
+		BasePath:  f.Path(),
+		StopPaths: []string{filepath.Join("foo", "i"), filepath.Join("foo", "j")},
+		Syncs: []v1alpha1.LiveUpdateSync{
+			v1alpha1.LiveUpdateSync{
+				LocalPath:     filepath.Join("foo", "b"),
+				ContainerPath: "/c",
+			},
 		},
-		model.LiveUpdateSyncStep{Source: f.JoinPath("foo", "b"), Dest: "/c"},
-		model.LiveUpdateRunStep{
-			Command:  model.ToUnixCmdInDir("f", f.Path()),
-			Triggers: model.NewPathSet([]string{"g", "h"}, f.Path()),
+		Execs: []v1alpha1.LiveUpdateExec{
+			v1alpha1.LiveUpdateExec{
+				Args:         []string{"sh", "-c", "f"},
+				TriggerPaths: []string{"g", "h"},
+			},
 		},
-	)
-
-	f.expectedLU = model.LiveUpdate{
-		Steps:   steps,
-		BaseDir: f.Path(),
 	}
+	f.expectedLU.Selector.Kubernetes = &v1alpha1.LiveUpdateKubernetesSelector{Image: "foo"}
 
 	return f
 }

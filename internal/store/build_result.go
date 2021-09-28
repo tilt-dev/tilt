@@ -452,29 +452,32 @@ func AllRunningContainers(mt *ManifestTarget) []ContainerInfo {
 
 	var result []ContainerInfo
 	for _, iTarget := range mt.Manifest.ImageTargets {
-		cInfos, err := RunningContainersForTargetForOnePod(iTarget.ID().Name.String(),
-			iTarget.LiveUpdateSpec, mt.State.K8sRuntimeState())
-		if err != nil {
-			// HACK(maia): just don't collect container info for targets running
-			// more than one pod -- we don't support LiveUpdating them anyway,
-			// so no need to monitor those containers for crashes.
-			continue
+		selector := iTarget.LiveUpdateSpec.Selector
+		if mt.Manifest.IsK8s() && selector.Kubernetes != nil {
+			cInfos, err := RunningContainersForTargetForOnePod(
+				selector.Kubernetes, mt.State.K8sRuntimeState())
+			if err != nil {
+				// HACK(maia): just don't collect container info for targets running
+				// more than one pod -- we don't support LiveUpdating them anyway,
+				// so no need to monitor those containers for crashes.
+				continue
+			}
+			result = append(result, cInfos...)
 		}
-		result = append(result, cInfos...)
 	}
 	return result
 }
 
 // If all containers running the given image are ready, returns info for them.
 // (If this image is running on multiple pods, return an error.)
-func RunningContainersForTargetForOnePod(name string, luSpec model.LiveUpdateSpec, runtimeState K8sRuntimeState) ([]ContainerInfo, error) {
+func RunningContainersForTargetForOnePod(selector *v1alpha1.LiveUpdateKubernetesSelector, runtimeState K8sRuntimeState) ([]ContainerInfo, error) {
 	// Ignore completed pods.
 	podSet := runtimeState.Pods.Filter(func(p *v1alpha1.Pod) bool {
 		return !(p.Phase == string(v1.PodSucceeded) ||
 			p.Phase == string(v1.PodFailed))
 	})
 	if len(podSet) > 1 {
-		return nil, fmt.Errorf("can only get container info for a single pod; image target %s has %d pods", name, len(podSet))
+		return nil, fmt.Errorf("can only get container info for a single pod; image target %s has %d pods", selector.Image, len(podSet))
 	}
 
 	pod := podSet.MostRecentPod()
@@ -494,7 +497,7 @@ func RunningContainersForTargetForOnePod(name string, luSpec model.LiveUpdateSpe
 	for _, c := range pod.Containers {
 		// Only return containers matching our image
 		imageRef, err := container.ParseNamed(c.Image)
-		if err != nil || imageRef == nil || luSpec.ImageSelector != reference.FamiliarName(imageRef) {
+		if err != nil || imageRef == nil || selector.Image != reference.FamiliarName(imageRef) {
 			continue
 		}
 		if c.ID == "" || c.Name == "" || c.State.Running == nil {

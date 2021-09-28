@@ -29,7 +29,6 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-errors/errors v1.1.1 // indirect
 	github.com/go-openapi/spec v0.20.1
-	github.com/go-openapi/swag v0.19.13 // indirect
 	github.com/gofrs/uuid v3.2.0+incompatible // indirect
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.2
@@ -39,7 +38,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.4.2
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 // indirect
-	github.com/grpc-ecosystem/grpc-gateway v1.14.6
+	github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed // indirect
 	github.com/jinzhu/gorm v1.9.12 // indirect
 	github.com/jonboulle/clockwork v0.2.2
@@ -71,38 +70,38 @@ require (
 	github.com/tilt-dev/go-get v0.2.1
 	github.com/tilt-dev/localregistry-go v0.0.0-20200615231835-07e386f4ebd7
 	github.com/tilt-dev/probe v0.3.0
-	github.com/tilt-dev/tilt-apiserver v0.4.3
+	github.com/tilt-dev/tilt-apiserver v0.5.0
 	github.com/tilt-dev/wmclient v0.0.0-20201109174454-1839d0355fbc
 	github.com/tonistiigi/units v0.0.0-20180711220420-6950e57a87ea
 	github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa
 	github.com/wojas/genericr v0.2.0
 	go.opencensus.io v0.22.4
-	go.opentelemetry.io/otel v1.0.0
-	go.opentelemetry.io/otel/sdk v1.0.0
-	go.opentelemetry.io/otel/trace v1.0.0
+	go.opentelemetry.io/otel v0.20.0
+	go.opentelemetry.io/otel/sdk v0.20.0
+	go.opentelemetry.io/otel/trace v0.20.0
 	go.starlark.net v0.0.0-20200615180055-61b64bc45990
-	golang.org/x/mod v0.3.1-0.20200828183125-ce943fd02449
+	golang.org/x/mod v0.4.2
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	google.golang.org/genproto v0.0.0-20201110150050-8816d57aaa9a
-	google.golang.org/grpc v1.29.1
+	google.golang.org/genproto v0.0.0-20210602131652-f16073e35f0c
+	google.golang.org/grpc v1.38.0
 	gopkg.in/d4l3k/messagediff.v1 v1.2.1
 	gopkg.in/dancannon/gorethink.v3 v3.0.5 // indirect
 	gopkg.in/fatih/pool.v2 v2.0.0 // indirect
 	gopkg.in/gorethink/gorethink.v3 v3.0.5 // indirect
 	gopkg.in/yaml.v2 v2.4.0
 	helm.sh/helm/v3 v3.6.2
-	k8s.io/api v0.21.2
-	k8s.io/apimachinery v0.21.2
-	k8s.io/apiserver v0.21.2
-	k8s.io/cli-runtime v0.21.2
-	k8s.io/client-go v0.21.2
-	k8s.io/code-generator v0.21.2
-	k8s.io/klog/v2 v2.8.0
-	k8s.io/kube-openapi v0.0.0-20210305001622-591a79e4bda7
-	k8s.io/kubectl v0.21.2
-	k8s.io/utils v0.0.0-20210709001253-0e1f9d693477
-	sigs.k8s.io/controller-runtime v0.9.2
-	sigs.k8s.io/kustomize/api v0.8.8
+	k8s.io/api v0.22.2
+	k8s.io/apimachinery v0.22.2
+	k8s.io/apiserver v0.22.2
+	k8s.io/cli-runtime v0.22.2
+	k8s.io/client-go v0.22.2
+	k8s.io/code-generator v0.22.2
+	k8s.io/klog/v2 v2.9.0
+	k8s.io/kube-openapi v0.0.0-20210421082810-95288971da7e
+	k8s.io/kubectl v0.22.2
+	k8s.io/utils v0.0.0-20210819203725-bdf08cb9a70a
+	sigs.k8s.io/controller-runtime v0.10.1
+	sigs.k8s.io/kustomize/api v0.8.11
 	sigs.k8s.io/yaml v1.2.0
 )
 
@@ -120,16 +119,11 @@ replace (
 	// kubectl pulls in an old version of kustomize, which pulls in an old version of go-openapi, with which the new kustomize is incompatible
 	github.com/go-openapi/spec => github.com/go-openapi/spec v0.19.3
 
-	// controller-runtime uses a newer gnostic but apiserver + kube-openapi require an older version
-	// due to an incompatible change from yaml.v2 -> yaml.v3
-	// see https://github.com/kubernetes-sigs/controller-runtime/issues/1498
-	github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.4.1
-
 	// can remove if/when https://github.com/pkg/browser/pull/30 is merged
 	github.com/pkg/browser => github.com/tilt-dev/browser v0.0.1
 
 	go.opencensus.io => github.com/tilt-dev/opencensus-go v0.22.5-0.20200904175236-275b1754f353
 	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
 
-	k8s.io/apimachinery => github.com/tilt-dev/apimachinery v0.21.2-tilt-20210625
+	k8s.io/apimachinery => github.com/tilt-dev/apimachinery v0.22.2-tilt-20210928
 )

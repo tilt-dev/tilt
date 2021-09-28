@@ -32,6 +32,7 @@ option go_package = "v1alpha1";
 // (within OS limitations) to kill any spawned descendant processes.
 //
 // +k8s:openapi-gen=true
+// +tilt:starlark-gen=true
 message Cmd {
   optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
@@ -59,6 +60,7 @@ message CmdSpec {
   // in the default Tilt working directory.
   //
   // +optional
+  // +tilt:local-path=true
   optional string dir = 2;
 
   // Additional variables process environment.
@@ -1757,6 +1759,7 @@ message UIBuildTerminated {
 
 // UIButton
 // +k8s:openapi-gen=true
+// +tilt:starlark-gen=true
 message UIButton {
   optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 

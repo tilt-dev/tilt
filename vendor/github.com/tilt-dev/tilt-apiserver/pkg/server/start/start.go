@@ -254,7 +254,7 @@ func (o TiltServerOptions) RunTiltServerFromConfig(config apiserver.CompletedCon
 		return nil, err
 	}
 
-	stoppedCh, err := genericapiserver.RunServer(&http.Server{
+	stoppedCh, _, err := genericapiserver.RunServer(&http.Server{
 		Addr:           serving.Listener.Addr().String(),
 		Handler:        prepared.Handler,
 		MaxHeaderBytes: 1 << 20,
