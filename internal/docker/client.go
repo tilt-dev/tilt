@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -28,7 +27,6 @@ import (
 	"github.com/moby/buildkit/identity"
 	"github.com/moby/buildkit/session"
 	"github.com/moby/buildkit/session/auth/authprovider"
-	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
 
 	"github.com/tilt-dev/tilt/internal/container"
@@ -453,26 +451,24 @@ func (c *Cli) ImagePull(ctx context.Context, ref reference.Named) (reference.Can
 		return nil, fmt.Errorf("failed to inspect after pull for image %q: %v", image, err)
 	}
 
-	// NOTE: the value in RepoDigests is NOT canonical, so we need to grab the digest and attach it to the original ref
-	// 	for example, the value from the image inspect for `docker.io/nginx:1.21.3` will be `nginx@sha256:<hash>`,
-	// 	which loses the repo and tag; by grabbing the digest and re-attaching it, we end up with something like
-	//	`docker.io/nginx:1.21.3@sha256:<hash>`
-	digestInfo := strings.SplitN(imgInspect.RepoDigests[0], "@", 2)
-	if len(digestInfo) != 2 {
-		return nil, fmt.Errorf("invalid digest %q for image %q: missing @", imgInspect.RepoDigests[0], image)
-	}
-
-	d, err := digest.Parse(digestInfo[1])
+	pulledRef, err := reference.ParseNormalizedNamed(imgInspect.RepoDigests[0])
 	if err != nil {
-		return nil, fmt.Errorf("invalid digest %q for image %q: %v", imgInspect.RepoDigests[0], image, err)
+		return nil, fmt.Errorf("invalid reference %q for image %q: %v", imgInspect.RepoDigests[0], image, err)
 	}
-
-	digestRef, err := reference.WithDigest(ref, d)
+	cRef, ok := pulledRef.(reference.Canonical)
+	if !ok {
+		// this indicates a bug/behavior change within Docker because we just parsed a digest reference
+		return nil, fmt.Errorf("reference %q is not canonical", pulledRef.String())
+	}
+	// the reference from the repo digest will be missing the tag (if specified), so we attach the digest to the
+	// original reference to get something like `docker.io/library/nginx:1.21.32@sha256:<hash>` for an input of
+	// `docker.io/library/nginx:1.21.3` (if we used the repo digest, it'd be `docker.io/library/nginx@sha256:<hash>`
+	// with no tag, so this ensures all parts are preserved).
+	cRef, err = reference.WithDigest(ref, cRef.Digest())
 	if err != nil {
-		return nil, fmt.Errorf("failed to create digest reference for image %q: %v", image, err)
+		return nil, fmt.Errorf("invalid digest for reference %q: %v", pulledRef.String(), err)
 	}
-
-	return digestRef, nil
+	return cRef, nil
 }
 
 func (c *Cli) ImagePush(ctx context.Context, ref reference.NamedTagged) (io.ReadCloser, error) {
