@@ -78,7 +78,7 @@ func (c *demoCmd) run(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("tilt demo requires Docker to be installed and running: %v", err)
 	}
-	if client.Env().Host != "" && !strings.HasPrefix(client.Env().Host, "unix://") {
+	if !isLocalDockerHost(client.Env().Host) {
 		// properly supporting remote Docker connections is very tricky - either:
 		//
 		// the remote host will need more ports accessible (for K8s API + registry API) and we have to ensure
@@ -195,4 +195,20 @@ func (c *demoCmd) cleanupClusters(ctx context.Context, k3dCli *demo.K3dClient) e
 		return errors.New("could not remove one or more tilt-demo K8s clusters")
 	}
 	return nil
+}
+
+// TODO(milas): this is copy-pasted from ctlptl, use it from a common place
+func isLocalDockerHost(dockerHost string) bool {
+	return dockerHost == "" ||
+
+		// Check all the "standard" docker localhosts.
+		// https://github.com/docker/cli/blob/a32cd16160f1b41c1c4ae7bee4dac929d1484e59/opts/hosts.go#L22
+		strings.HasPrefix(dockerHost, "tcp://localhost:") ||
+		strings.HasPrefix(dockerHost, "tcp://127.0.0.1:") ||
+
+		// https://github.com/moby/moby/blob/master/client/client_windows.go#L4
+		strings.HasPrefix(dockerHost, "npipe:") ||
+
+		// https://github.com/moby/moby/blob/master/client/client_unix.go#L6
+		strings.HasPrefix(dockerHost, "unix:")
 }
