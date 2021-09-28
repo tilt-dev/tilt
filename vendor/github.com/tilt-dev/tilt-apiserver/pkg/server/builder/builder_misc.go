@@ -38,7 +38,7 @@ func (a *Server) WithConnProvider(connProvider apiserver.ConnProvider) *Server {
 //      -O zz_generated.openapi --output-base ../../.. --go-header-file ./hack/boilerplate.go.txt
 func (a *Server) WithOpenAPIDefinitions(
 	name, version string, openAPI openapicommon.GetOpenAPIDefinitions) *Server {
-	a.recommendedConfigFns = append(a.recommendedConfigFns, start.SetOpenAPIDefinitionFn(a.scheme, name, version, openAPI))
+	a.recommendedConfigFns = append(a.recommendedConfigFns, start.SetOpenAPIDefinitionFn(a.openapiScheme, name, version, openAPI))
 	return a
 }
 
