@@ -52,8 +52,8 @@ type fixture struct {
 
 func newFixture(t *testing.T, dir string) *fixture {
 	if dir == "" {
-		// test doesn't require any assets, so chdir to a tempdir anyway
-		// to ensure it's not messing with local stuff by accident
+		// test doesn't require any in-repo assets, so chdir to a tempdir
+		// to prevent accidentally overwriting repo files with Tilt commands
 		dir = t.TempDir()
 	} else {
 		// checking for `..` is heavy-handed, but there's no valid reason for

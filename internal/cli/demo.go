@@ -19,13 +19,18 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-const demoClusterPrefix = "tilt-demo-"
+const demoResourcesPrefix = "tilt-demo-"
 const sampleProjPackage = "github.com/tilt-dev/tilt-avatars"
 
 type demoCmd struct {
-	tiltfilePath string
-	teardown     bool
-	hud          bool
+	hud bool
+
+	teardown bool
+
+	tmpdir            string
+	skipCreateCluster bool
+	projPackage       string
+	tiltfilePath      string
 }
 
 func (c *demoCmd) name() model.TiltSubcommand { return "demo" }
@@ -50,6 +55,17 @@ A sample project (%s) will be cloned locally to a temporary directory using Git 
 	cmd.Flags().BoolVar(&c.hud, "hud", true, "If true, tilt will open in HUD mode.")
 	cmd.Flags().Lookup("hud").Hidden = true
 
+	// --tmpdir exists so that integration tests can inspect the output / use the Tiltfile
+	cmd.Flags().StringVarP(&c.tmpdir, "tmpdir", "", "",
+		"Temporary directory to clone sample project to")
+	cmd.Flags().Lookup("tmpdir").Hidden = true
+
+	cmd.Flags().BoolVar(&c.skipCreateCluster, "no-cluster", false,
+		"Skip ephemeral cluster creation (requires local K8s cluster to already be configured)")
+
+	cmd.Flags().StringVarP(&c.projPackage, "repo", "r", sampleProjPackage,
+		"Path to custom repo to use instead of Tiltfile")
+
 	// we don't use the `addTiltfileFlag()` because the default here should be empty
 	cmd.Flags().StringVarP(&c.tiltfilePath, "file", "f", "",
 		"Path to custom Tiltfile to use instead of sample project")
@@ -71,69 +87,75 @@ func (c *demoCmd) run(ctx context.Context, args []string) error {
 	}
 	k3dCli := demo.NewK3dClient(client)
 
-	//
-	// 0. Prepare environment
-	//
-	err = client.CheckConnected()
-	if err != nil {
-		return fmt.Errorf("tilt demo requires Docker to be installed and running: %v", err)
-	}
-	if !isLocalDockerHost(client.Env().Host) {
-		// properly supporting remote Docker connections is very tricky - either:
-		//
-		// the remote host will need more ports accessible (for K8s API + registry API) and we have to ensure
-		// that everything both listens on the public interface and references it in configs
-		// (such as "local-registry-hosting" ConfigMap)
-		// 	OR
-		// we need to tunnel everything (perhaps using Docker - this is the approach ctlptl takes!)
-		//
-		// for now, it's not supported as it's a pretty advanced setup to begin with, so we're not really targeting
-		// it with the `tilt demo` functionality
-		return fmt.Errorf("tilt demo requires a local Docker daemon (current Docker host: %s)", client.Env().Host)
-	}
-
 	if c.teardown {
 		return c.cleanupClusters(ctx, k3dCli)
 	}
 
-	logger.Get(ctx).Infof("\nHang tight while Tilt prepares your demo environment!")
+	if c.projPackage != sampleProjPackage && c.tiltfilePath != "" {
+		return fmt.Errorf("cannot specify both a custom repo and Tiltfile path")
+	}
 
 	//
-	// 1. Create a cluster that will be torn down in the background on exit (Ctrl-C)
+	// 0. Prepare environment
 	//
-	tmpdir, err := os.MkdirTemp("", demoClusterPrefix)
+	logger.Get(ctx).Infof("\nHang tight while Tilt prepares your demo environment!")
+	c.tmpdir, err = os.MkdirTemp(c.tmpdir, demoResourcesPrefix)
 	if err != nil {
 		return fmt.Errorf("could not create temporary directory: %v", err)
 	}
-	clusterName := filepath.Base(tmpdir)
-	logger.Get(ctx).Infof("\tCreating %q local Kubernetes cluster...", clusterName)
-	if err := k3dCli.CreateCluster(ctx, clusterName); err != nil {
-		return fmt.Errorf("failed to create Kubernetes cluster: %v", err)
-	}
-	defer func() {
-		// N.B. use background context because the main context has already been canceled due to Ctrl-C
-		// 	but also don't block on execution (just fire request to Docker API and forget) because at this
-		// 	point we have < 2 secs before the signal handler forcibly exits the process
-		ctx := logger.WithLogger(context.Background(), logger.Get(ctx))
-		logger.Get(ctx).Infof("\nDeleting %q local Kubernetes cluster...", clusterName)
-		if err = k3dCli.DeleteCluster(ctx, clusterName, false); err != nil {
-			logger.Get(ctx).Warnf("\tFailed to delete cluster %q: %v", clusterName, err)
-		}
-	}()
 
-	//
-	// 2. Use the new cluster's kubeconfig for this Tilt process
-	//
-	if kubeconfig, err := k3dCli.GenerateKubeconfig(ctx, clusterName); err != nil {
-		return fmt.Errorf("failed to generate kubeconfig: %v", err)
-	} else {
-		kubeconfigPath := filepath.Join(tmpdir, "kubeconfig")
-		if err := os.WriteFile(kubeconfigPath, kubeconfig, 0666); err != nil {
-			return fmt.Errorf("failed to write kubeconfig file: %v", err)
-		}
-		err = os.Setenv("KUBECONFIG", kubeconfigPath)
+	if !c.skipCreateCluster {
+		err = client.CheckConnected()
 		if err != nil {
-			return fmt.Errorf("failed to set KUBECONFIG env var: %v", err)
+			return fmt.Errorf("tilt demo requires Docker to be installed and running: %v", err)
+		}
+		if !isLocalDockerHost(client.Env().Host) {
+			// properly supporting remote Docker connections is very tricky - either:
+			//
+			// the remote host will need more ports accessible (for K8s API + registry API) and we have to ensure
+			// that everything both listens on the public interface and references it in configs
+			// (such as "local-registry-hosting" ConfigMap)
+			// 	OR
+			// we need to tunnel everything (perhaps using Docker - this is the approach ctlptl takes!)
+			//
+			// for now, it's not supported as it's a pretty advanced setup to begin with, so we're not really targeting
+			// it with the `tilt demo` functionality
+			return fmt.Errorf("tilt demo requires a local Docker daemon to create a temporary Kubernetes cluster (current Docker host: %s)", client.Env().Host)
+		}
+
+		//
+		// 1. Create a cluster that will be torn down in the background on exit (Ctrl-C)
+		//
+		clusterName := filepath.Base(c.tmpdir)
+		logger.Get(ctx).Infof("\tCreating %q local Kubernetes cluster...", clusterName)
+		if err := k3dCli.CreateCluster(ctx, clusterName); err != nil {
+			return fmt.Errorf("failed to create Kubernetes cluster: %v", err)
+		}
+		defer func() {
+			// N.B. use background context because the main context has already been canceled due to Ctrl-C
+			// 	but also don't block on execution (just fire request to Docker API and forget) because at this
+			// 	point we have < 2 secs before the signal handler forcibly exits the process
+			ctx := logger.WithLogger(context.Background(), logger.Get(ctx))
+			logger.Get(ctx).Infof("\nDeleting %q local Kubernetes cluster...", clusterName)
+			if err = k3dCli.DeleteCluster(ctx, clusterName, false); err != nil {
+				logger.Get(ctx).Warnf("\tFailed to delete cluster %q: %v", clusterName, err)
+			}
+		}()
+
+		//
+		// 2. Use the new cluster's kubeconfig for this Tilt process
+		//
+		if kubeconfig, err := k3dCli.GenerateKubeconfig(ctx, clusterName); err != nil {
+			return fmt.Errorf("failed to generate kubeconfig: %v", err)
+		} else {
+			kubeconfigPath := filepath.Join(c.tmpdir, "kubeconfig")
+			if err := os.WriteFile(kubeconfigPath, kubeconfig, 0666); err != nil {
+				return fmt.Errorf("failed to write kubeconfig file: %v", err)
+			}
+			err = os.Setenv("KUBECONFIG", kubeconfigPath)
+			if err != nil {
+				return fmt.Errorf("failed to set KUBECONFIG env var: %v", err)
+			}
 		}
 	}
 
@@ -142,9 +164,9 @@ func (c *demoCmd) run(ctx context.Context, args []string) error {
 	//
 	var projPath string
 	if c.tiltfilePath == "" {
-		logger.Get(ctx).Infof("\tFetching %q project...", sampleProjPackage)
-		dlr := get.NewDownloader(tmpdir)
-		projPath, err = dlr.Download(sampleProjPackage)
+		logger.Get(ctx).Infof("\tFetching %q project...", c.projPackage)
+		dlr := get.NewDownloader(c.tmpdir)
+		projPath, err = dlr.Download(c.projPackage)
 		if err != nil {
 			return fmt.Errorf("failed to download sample project: %v", err)
 		}
@@ -183,7 +205,7 @@ func (c *demoCmd) cleanupClusters(ctx context.Context, k3dCli *demo.K3dClient) e
 
 	failed := false
 	for _, clusterName := range clusterNames {
-		if strings.HasPrefix(clusterName, demoClusterPrefix) {
+		if strings.HasPrefix(clusterName, demoResourcesPrefix) {
 			logger.Get(ctx).Infof("Removing cluster %q...", clusterName)
 			if err := k3dCli.DeleteCluster(ctx, clusterName, true); err != nil {
 				failed = true
