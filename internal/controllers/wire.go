@@ -10,6 +10,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesapply"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesdiscovery"
+	"github.com/tilt-dev/tilt/internal/controllers/core/liveupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/core/podlogstream"
 	"github.com/tilt-dev/tilt/internal/controllers/core/portforward"
 	"github.com/tilt-dev/tilt/internal/controllers/core/tiltfile"
@@ -41,7 +42,8 @@ func ProvideControllers(
 	pfr *portforward.Reconciler,
 	tfr *tiltfile.Reconciler,
 	extr *extension.Reconciler,
-	extrr *extensionrepo.Reconciler) []Controller {
+	extrr *extensionrepo.Reconciler,
+	lur *liveupdate.Reconciler) []Controller {
 	return []Controller{
 		fileWatch,
 		cmds,
@@ -55,6 +57,7 @@ func ProvideControllers(
 		tfr,
 		extr,
 		extrr,
+		lur,
 	}
 }
 
@@ -75,4 +78,5 @@ var WireSet = wire.NewSet(
 	tiltfile.WireSet,
 	extensionrepo.WireSet,
 	extension.WireSet,
+	liveupdate.WireSet,
 )

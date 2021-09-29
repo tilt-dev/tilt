@@ -43,6 +43,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesapply"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesdiscovery"
+	"github.com/tilt-dev/tilt/internal/controllers/core/liveupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/core/podlogstream"
 	apiportforward "github.com/tilt-dev/tilt/internal/controllers/core/portforward"
 	ctrltiltfile "github.com/tilt-dev/tilt/internal/controllers/core/tiltfile"
@@ -3943,6 +3944,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	extr := extension.NewReconciler(cdc, sch, ta)
 	extrr, err := extensionrepo.NewReconciler(cdc, base)
 	require.NoError(t, err)
+	lur := liveupdate.NewReconciler(cdc)
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
 		fwc,
 		cmds,
@@ -3956,6 +3958,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		tfr,
 		extr,
 		extrr,
+		lur,
 	))
 
 	dp := dockerprune.NewDockerPruner(dockerClient)
