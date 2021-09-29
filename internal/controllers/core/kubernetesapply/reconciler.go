@@ -26,6 +26,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/kubernetesapplys"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -90,8 +91,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 			return ctrl.Result{}, err
 		}
 
+		r.st.Dispatch(kubernetesapplys.NewKubernetesApplyDeleteAction(request.NamespacedName.Name))
 		return ctrl.Result{}, nil
 	}
+
+	// The apiserver is the source of truth, and will ensure the engine state is up to date.
+	r.st.Dispatch(kubernetesapplys.NewKubernetesApplyUpsertAction(&ka))
 
 	ctx = store.MustObjectLogHandler(ctx, r.st, &ka)
 	err = r.manageOwnedKubernetesDiscovery(ctx, nn, &ka)

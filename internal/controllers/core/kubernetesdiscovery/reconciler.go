@@ -25,6 +25,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
+	"github.com/tilt-dev/tilt/internal/store/kubernetesdiscoverys"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -153,8 +154,12 @@ func (w *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 			return ctrl.Result{}, err
 		}
 
+		w.dispatcher.Dispatch(kubernetesdiscoverys.NewKubernetesDiscoveryDeleteAction(request.NamespacedName.Name))
 		return ctrl.Result{}, nil
 	}
+
+	// The apiserver is the source of truth, and will ensure the engine state is up to date.
+	w.dispatcher.Dispatch(kubernetesdiscoverys.NewKubernetesDiscoveryUpsertAction(kd))
 
 	if !hasExisting || !equality.Semantic.DeepEqual(existing.spec, kd.Spec) {
 		if err := w.addOrReplace(ctx, key, kd); err != nil {
