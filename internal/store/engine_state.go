@@ -118,8 +118,11 @@ type EngineState struct {
 
 	// API-server-based data models. Stored in EngineState
 	// to assist in migration.
-	Cmds      map[string]*Cmd               `json:"-"`
-	Tiltfiles map[string]*v1alpha1.Tiltfile `json:"-"`
+	Cmds                 map[string]*Cmd                          `json:"-"`
+	Tiltfiles            map[string]*v1alpha1.Tiltfile            `json:"-"`
+	FileWatches          map[string]*v1alpha1.FileWatch           `json:"-"`
+	KubernetesApplys     map[string]*v1alpha1.KubernetesApply     `json:"-"`
+	KubernetesDiscoverys map[string]*v1alpha1.KubernetesDiscovery `json:"-"`
 }
 
 type CloudStatus struct {
@@ -515,6 +518,9 @@ func NewState() *EngineState {
 
 	ret.Cmds = make(map[string]*Cmd)
 	ret.Tiltfiles = make(map[string]*v1alpha1.Tiltfile)
+	ret.FileWatches = make(map[string]*v1alpha1.FileWatch)
+	ret.KubernetesApplys = make(map[string]*v1alpha1.KubernetesApply)
+	ret.KubernetesDiscoverys = make(map[string]*v1alpha1.KubernetesDiscovery)
 
 	return ret
 }

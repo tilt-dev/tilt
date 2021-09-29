@@ -27,6 +27,9 @@ import (
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/filewatches"
+	"github.com/tilt-dev/tilt/internal/store/kubernetesapplys"
+	"github.com/tilt-dev/tilt/internal/store/kubernetesdiscoverys"
 	"github.com/tilt-dev/tilt/internal/store/tiltfiles"
 	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/internal/token"
@@ -123,10 +126,14 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		state.FatalError = action.Error
 	case hud.ExitAction:
 		handleHudExitAction(state, action)
+
+	// TODO(nick): Delete these handlers in favor of the bog-standard ones that copy
+	// the api models directly.
 	case filewatch.FileWatchUpdateStatusAction:
 		filewatch.HandleFileWatchUpdateStatusEvent(ctx, state, action)
 	case k8swatch.KubernetesDiscoveryUpdateStatusAction:
 		k8swatch.HandleKubernetesDiscoveryUpdateStatusAction(ctx, state, action)
+
 	case k8swatch.ServiceChangeAction:
 		handleServiceEvent(ctx, state, action)
 	case store.K8sEventAction:
@@ -175,6 +182,18 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		tiltfiles.HandleTiltfileUpsertAction(state, action)
 	case tiltfiles.TiltfileDeleteAction:
 		tiltfiles.HandleTiltfileDeleteAction(state, action)
+	case filewatches.FileWatchUpsertAction:
+		filewatches.HandleFileWatchUpsertAction(state, action)
+	case filewatches.FileWatchDeleteAction:
+		filewatches.HandleFileWatchDeleteAction(state, action)
+	case kubernetesapplys.KubernetesApplyUpsertAction:
+		kubernetesapplys.HandleKubernetesApplyUpsertAction(state, action)
+	case kubernetesapplys.KubernetesApplyDeleteAction:
+		kubernetesapplys.HandleKubernetesApplyDeleteAction(state, action)
+	case kubernetesdiscoverys.KubernetesDiscoveryUpsertAction:
+		kubernetesdiscoverys.HandleKubernetesDiscoveryUpsertAction(state, action)
+	case kubernetesdiscoverys.KubernetesDiscoveryDeleteAction:
+		kubernetesdiscoverys.HandleKubernetesDiscoveryDeleteAction(state, action)
 	default:
 		state.FatalError = fmt.Errorf("unrecognized action: %T", action)
 	}

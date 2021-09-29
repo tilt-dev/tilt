@@ -17,26 +17,23 @@ import (
 	"fmt"
 	"sync"
 
-	"sigs.k8s.io/controller-runtime/pkg/builder"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
-
 	"github.com/tilt-dev/fsnotify"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-
-	"github.com/tilt-dev/tilt/internal/ignore"
-	"github.com/tilt-dev/tilt/internal/watch"
-	"github.com/tilt-dev/tilt/pkg/logger"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
+	"github.com/tilt-dev/tilt/internal/ignore"
 	"github.com/tilt-dev/tilt/internal/store"
-	filewatches "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/internal/store/filewatches"
+	"github.com/tilt-dev/tilt/internal/watch"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 // Controller reconciles a FileWatch object
@@ -65,7 +62,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	defer c.mu.Unlock()
 	existing, hasExisting := c.targetWatches[req.NamespacedName]
 
-	var fw filewatches.FileWatch
+	var fw v1alpha1.FileWatch
 	err := c.Client.Get(ctx, req.NamespacedName, &fw)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return ctrl.Result{}, err
@@ -76,8 +73,12 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 			existing.cleanupWatch(ctx)
 			c.removeWatch(existing)
 		}
+		c.Store.Dispatch(filewatches.NewFileWatchDeleteAction(req.NamespacedName.Name))
 		return ctrl.Result{}, nil
 	}
+
+	// The apiserver is the source of truth, and will ensure the engine state is up to date.
+	c.Store.Dispatch(filewatches.NewFileWatchUpsertAction(&fw))
 
 	if !hasExisting || !equality.Semantic.DeepEqual(existing.spec, fw.Spec) {
 		if err := c.addOrReplace(ctx, c.Store, req.NamespacedName, &fw); err != nil {
@@ -90,7 +91,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 func (c *Controller) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	b := ctrl.NewControllerManagedBy(mgr).
-		For(&filewatches.FileWatch{})
+		For(&v1alpha1.FileWatch{})
 
 	return b, nil
 }
@@ -104,7 +105,7 @@ func (c *Controller) removeWatch(tw *watcher) {
 	}
 }
 
-func (c *Controller) addOrReplace(ctx context.Context, st store.RStore, name types.NamespacedName, fw *filewatches.FileWatch) error {
+func (c *Controller) addOrReplace(ctx context.Context, st store.RStore, name types.NamespacedName, fw *v1alpha1.FileWatch) error {
 	ignoreMatcher, err := ignore.IgnoresToMatcher(fw.Spec.Ignores)
 	if err != nil {
 		return err
@@ -121,7 +122,7 @@ func (c *Controller) addOrReplace(ctx context.Context, st store.RStore, name typ
 	}
 
 	// replace the entirety of status to clear out any old events
-	fw.Status = filewatches.FileWatchStatus{
+	fw.Status = v1alpha1.FileWatchStatus{
 		MonitorStartTime: metav1.NowMicro(),
 	}
 	if err := c.Client.Status().Update(ctx, fw); err != nil {
