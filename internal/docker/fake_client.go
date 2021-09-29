@@ -206,6 +206,10 @@ func (c *FakeClient) ContainerRestartNoWait(ctx context.Context, containerID str
 	return nil
 }
 
+func (c *FakeClient) Run(ctx context.Context, opts RunConfig) (RunResult, error) {
+	return RunResult{}, nil
+}
+
 func (c *FakeClient) ExecInContainer(ctx context.Context, cID container.ID, cmd model.Cmd, in io.Reader, out io.Writer) error {
 	if cmd.Argv[0] == "tar" {
 		c.CopyCount++
