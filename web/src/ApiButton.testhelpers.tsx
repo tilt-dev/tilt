@@ -27,6 +27,15 @@ export function boolField(name: string, defaultValue?: boolean): UIInputSpec {
   }
 }
 
+export function hiddenField(name: string, value: string): UIInputSpec {
+  return {
+    name: name,
+    hidden: {
+      value: value,
+    },
+  }
+}
+
 export function makeUIButton(args?: {
   inputSpecs?: UIInputSpec[]
   inputStatuses?: UIInputStatus[]

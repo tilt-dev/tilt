@@ -15,7 +15,12 @@ import {
   ApiButtonInputsToggleButton,
   ApiButtonLabel,
 } from "./ApiButton"
-import { boolField, makeUIButton, textField } from "./ApiButton.testhelpers"
+import {
+  boolField,
+  hiddenField,
+  makeUIButton,
+  textField,
+} from "./ApiButton.testhelpers"
 import { HudErrorContextProvider } from "./HudErrorContext"
 import { accessorsForTesting, tiltfileKeyContext } from "./LocalStorage"
 import { flushPromises } from "./promise"
@@ -92,7 +97,11 @@ describe("ApiButton", () => {
   })
 
   it("submits the current options when the submit button is clicked", async () => {
-    const inputSpecs = [textField("text1"), boolField("bool1")]
+    const inputSpecs = [
+      textField("text1"),
+      boolField("bool1"),
+      hiddenField("hidden1", "hidden value 1"),
+    ]
     const root = mountButton(makeUIButton({ inputSpecs: inputSpecs }))
 
     const optionsButton = root.find(ApiButtonInputsToggleButton)
@@ -142,6 +151,12 @@ describe("ApiButton", () => {
           name: "bool1",
           bool: {
             value: true,
+          },
+        },
+        {
+          name: "hidden1",
+          hidden: {
+            value: "hidden value 1",
           },
         },
       ],

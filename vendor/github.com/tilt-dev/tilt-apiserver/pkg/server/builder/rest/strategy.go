@@ -34,6 +34,7 @@ import (
 
 // Strategy defines functions that are invoked prior to storing a Kubernetes resource.
 type Strategy interface {
+	WarningsOnCreate(ctx context.Context, obj runtime.Object) []string
 	AllowCreateOnUpdate() bool
 	AllowUnconditionalUpdate() bool
 	Match(label labels.Selector, field fields.Selector) storage.SelectionPredicate
@@ -168,4 +169,12 @@ func (d DefaultStrategy) ConvertToTable(
 		return c.ConvertToTable(ctx, tableOptions)
 	}
 	return d.TableConvertor.ConvertToTable(ctx, obj, tableOptions)
+}
+
+func (d DefaultStrategy) WarningsOnCreate(ctx context.Context, obj runtime.Object) []string {
+	return nil
+}
+
+func (d DefaultStrategy) WarningsOnUpdate(ctx context.Context, old, new runtime.Object) []string {
+	return nil
 }

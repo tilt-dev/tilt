@@ -301,6 +301,10 @@ func LocalRefSelectorsForManifests(manifests []Manifest) []container.RefSelector
 
 var _ TargetSpec = Manifest{}
 
+// Self-contained spec for syncing files from local to a container.
+//
+// Unlike v1alpha1.LiveUpdateSync, all fields of this object must be absolute
+// paths.
 type Sync struct {
 	LocalPath     string
 	ContainerPath string
@@ -312,6 +316,10 @@ type LocalGitRepo struct {
 
 func (LocalGitRepo) IsRepo() {}
 
+// Self-contained spec for running in a container.
+//
+// Unlike v1alpha1.LiveUpdateExec, all fields of this object must be absolute
+// paths.
 type Run struct {
 	// Required. The command to run.
 	Cmd Cmd

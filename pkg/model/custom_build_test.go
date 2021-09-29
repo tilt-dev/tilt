@@ -8,23 +8,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 )
 
-func TestEmptyLiveUpdate(t *testing.T) {
-	lu, err := NewLiveUpdate(nil, "/base/dir")
-	if err != nil {
-		t.Fatal(err)
-	}
-	cb := CustomBuild{
-		Command:    ToHostCmd("exit 0"),
-		Deps:       []string{"foo", "bar"},
-		LiveUpdate: lu,
-	}
-	it := ImageTarget{
-		BuildDetails: cb,
-	}
-	bi := it.LiveUpdateInfo()
-	assert.True(t, bi.Empty())
-}
-
 func TestValidate(t *testing.T) {
 	cb := CustomBuild{
 		Command: ToHostCmd("exit 0"),

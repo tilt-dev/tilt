@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 )
@@ -90,7 +91,7 @@ func (ar *AnalyticsReporter) report(ctx context.Context) {
 		}
 		var seenLU, multiImgLU, multiContainerLU bool
 		for _, it := range m.ImageTargets {
-			if !it.LiveUpdateInfo().Empty() {
+			if !liveupdate.IsEmptySpec(it.LiveUpdateSpec) {
 				if !seenLU {
 					seenLU = true
 					liveUpdateCount++

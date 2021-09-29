@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/docker/go-units"
+	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
 
 	"github.com/docker/distribution/reference"
@@ -133,6 +134,8 @@ type FakeClient struct {
 	ContainersPruned       []string
 }
 
+var _ Client = &FakeClient{}
+
 func NewFakeClient() *FakeClient {
 	return &FakeClient{
 		PushOutput:          ExamplePushOutput1,
@@ -203,6 +206,10 @@ func (c *FakeClient) ContainerRestartNoWait(ctx context.Context, containerID str
 	return nil
 }
 
+func (c *FakeClient) Run(ctx context.Context, opts RunConfig) (RunResult, error) {
+	return RunResult{}, nil
+}
+
 func (c *FakeClient) ExecInContainer(ctx context.Context, cID container.ID, cmd model.Cmd, in io.Reader, out io.Writer) error {
 	if cmd.Argv[0] == "tar" {
 		c.CopyCount++
@@ -226,6 +233,12 @@ func (c *FakeClient) ExecInContainer(ctx context.Context, cID container.ID, cmd 
 	}
 
 	return err
+}
+
+func (c *FakeClient) ImagePull(_ context.Context, ref reference.Named) (reference.Canonical, error) {
+	// fake digest is the reference itself hashed
+	// i.e. docker.io/library/_/nginx -> sha256sum(docker.io/library/_/nginx) -> 2ca21a92e8ee99f672764b7619a413019de5ffc7f06dbc7422d41eca17705802
+	return reference.WithDigest(ref, digest.FromString(ref.String()))
 }
 
 func (c *FakeClient) ImagePush(ctx context.Context, ref reference.NamedTagged) (io.ReadCloser, error) {

@@ -43,6 +43,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesapply"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesdiscovery"
+	"github.com/tilt-dev/tilt/internal/controllers/core/liveupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/core/podlogstream"
 	apiportforward "github.com/tilt-dev/tilt/internal/controllers/core/portforward"
 	ctrltiltfile "github.com/tilt-dev/tilt/internal/controllers/core/tiltfile"
@@ -1079,9 +1080,9 @@ k8s_yaml('snack.yaml')
 	})
 
 	f.withManifestTarget("snack", func(mt store.ManifestTarget) {
-		expectedCmd := model.ToUnixCmd("changed")
-		expectedCmd.Dir = f.Path()
-		assert.Equal(t, expectedCmd, mt.Manifest.ImageTargetAt(0).LiveUpdateInfo().RunSteps()[0].Cmd,
+		assert.Equal(t,
+			model.ToUnixCmd("changed").Argv,
+			mt.Manifest.ImageTargetAt(0).LiveUpdateSpec.Execs[0].Args,
 			"Tiltfile change should have propagated to manifest")
 	})
 
@@ -1281,11 +1282,14 @@ ADD ./ ./
 go build ./...
 `
 	manifest := f.newManifest("foobar")
-	manifest = manifest.WithImageTarget(manifest.ImageTargetAt(0).WithBuildDetails(
-		model.DockerBuild{
-			Dockerfile: df,
-			BuildPath:  f.Path(),
-		}))
+	iTarget := manifest.ImageTargetAt(0).
+		WithLiveUpdateSpec(v1alpha1.LiveUpdateSpec{}).
+		WithBuildDetails(
+			model.DockerBuild{
+				Dockerfile: df,
+				BuildPath:  f.Path(),
+			})
+	manifest = manifest.WithImageTarget(iTarget)
 
 	f.Start([]model.Manifest{manifest})
 
@@ -3940,6 +3944,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	extr := extension.NewReconciler(cdc, sch, ta)
 	extrr, err := extensionrepo.NewReconciler(cdc, base)
 	require.NoError(t, err)
+	lur := liveupdate.NewReconciler(cdc)
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
 		fwc,
 		cmds,
@@ -3953,6 +3958,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		tfr,
 		extr,
 		extrr,
+		lur,
 	))
 
 	dp := dockerprune.NewDockerPruner(dockerClient)
@@ -4468,7 +4474,7 @@ func (f *testFixture) newManifestWithRef(name string, ref reference.Named) model
 
 func (f *testFixture) newDockerBuildManifestWithBuildPath(name string, path string) model.Manifest {
 	db := model.DockerBuild{Dockerfile: "FROM alpine", BuildPath: path}
-	iTarget := NewSanchoLiveUpdateImageTarget(f).WithBuildDetails(db)
+	iTarget := NewSanchoDockerBuildImageTarget(f).WithBuildDetails(db)
 	iTarget = iTarget.MustWithRef(container.MustParseSelector(strings.ToLower(name))) // each target should have a unique ID
 	return manifestbuilder.New(f, model.ManifestName(name)).
 		WithK8sYAML(SanchoYAML).

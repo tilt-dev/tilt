@@ -279,6 +279,8 @@ func (i input) stringValue() string {
 				return "false"
 			}
 		}
+	} else if i.status.Hidden != nil {
+		return i.status.Hidden.Value
 	}
 	return ""
 }

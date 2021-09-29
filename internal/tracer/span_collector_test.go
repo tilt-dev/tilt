@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -51,7 +50,7 @@ func TestExporterString(t *testing.T) {
 	defer f.tearDown()
 
 	spanID, _ := trace.SpanIDFromHex("00f067aa0ba902b7")
-	sd := &tracetest.SpanStub{
+	sd := &sdktrace.SpanSnapshot{
 		SpanContext: trace.NewSpanContext(trace.SpanContextConfig{
 			SpanID: spanID,
 		}),
@@ -71,7 +70,7 @@ func TestExporterTrims(t *testing.T) {
 	f := newFixture(t)
 	defer f.tearDown()
 
-	var sds []*tracetest.SpanStub
+	var sds []*sdktrace.SpanSnapshot
 	for i := 0; i < 2048; i++ {
 		sdi := sd(i)
 		sds = append(sds, sdi)
@@ -120,19 +119,19 @@ func (f *fixture) tearDown() {
 	require.NoError(f.t, f.sc.Close())
 }
 
-func (f *fixture) export(sd *tracetest.SpanStub) {
+func (f *fixture) export(sd *sdktrace.SpanSnapshot) {
 	f.t.Helper()
-	require.NoError(f.t, f.sc.ExportSpans(f.ctx, []sdktrace.ReadOnlySpan{sd.Snapshot()}))
+	require.NoError(f.t, f.sc.ExportSpans(f.ctx, []*sdktrace.SpanSnapshot{sd}))
 }
 
-func (f *fixture) assertConsumeSpans(expected ...*tracetest.SpanStub) {
+func (f *fixture) assertConsumeSpans(expected ...*sdktrace.SpanSnapshot) {
 	f.t.Helper()
 	actual, _ := f.getSpans()
 
 	f.assertSpansEqual(expected, actual)
 }
 
-func (f *fixture) assertRejectSpans(expected ...*tracetest.SpanStub) {
+func (f *fixture) assertRejectSpans(expected ...*sdktrace.SpanSnapshot) {
 	f.t.Helper()
 	actual, rejectFn := f.getSpans()
 	rejectFn()
@@ -148,7 +147,7 @@ func (f *fixture) assertEmpty() {
 	}
 }
 
-func (f *fixture) assertSpansEqual(expected []*tracetest.SpanStub, actual []*tracetest.SpanStub) {
+func (f *fixture) assertSpansEqual(expected []*sdktrace.SpanSnapshot, actual []*sdktrace.SpanSnapshot) {
 	f.t.Helper()
 	if len(expected) != len(actual) {
 		f.t.Fatalf("got %v (len %v); expected %v (len %v)", actual, len(actual), expected, len(expected))
@@ -181,13 +180,13 @@ func (f *fixture) getSpanText() (string, func()) {
 	return string(bs), rejectFn
 }
 
-func (f *fixture) getSpans() ([]*tracetest.SpanStub, func()) {
+func (f *fixture) getSpans() ([]*sdktrace.SpanSnapshot, func()) {
 	f.t.Helper()
 	s, rejectFn := f.getSpanText()
 	r := strings.NewReader(s)
 	dec := json.NewDecoder(r)
 
-	var result []*tracetest.SpanStub
+	var result []*sdktrace.SpanSnapshot
 
 	for dec.More() {
 		var data SpanDataFromJSON
@@ -212,18 +211,18 @@ type SpanContextFromJSON struct {
 	SpanID string
 }
 
-func sdFromData(data SpanDataFromJSON) *tracetest.SpanStub {
+func sdFromData(data SpanDataFromJSON) *sdktrace.SpanSnapshot {
 	spanID, _ := trace.SpanIDFromHex(data.SpanContext.SpanID)
 
-	return &tracetest.SpanStub{
+	return &sdktrace.SpanSnapshot{
 		SpanContext: trace.NewSpanContext(trace.SpanContextConfig{
 			SpanID: spanID,
 		}),
 	}
 }
 
-func sd(id int) *tracetest.SpanStub {
-	return &tracetest.SpanStub{
+func sd(id int) *sdktrace.SpanSnapshot {
+	return &sdktrace.SpanSnapshot{
 		SpanContext: trace.NewSpanContext(trace.SpanContextConfig{
 			SpanID: idFromInt(id),
 		}),

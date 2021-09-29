@@ -47,8 +47,14 @@ func (c explodingClient) ContainerList(ctx context.Context, options types.Contai
 func (c explodingClient) ContainerRestartNoWait(ctx context.Context, containerID string) error {
 	return c.err
 }
+func (c explodingClient) Run(ctx context.Context, opts RunConfig) (RunResult, error) {
+	return RunResult{}, c.err
+}
 func (c explodingClient) ExecInContainer(ctx context.Context, cID container.ID, cmd model.Cmd, in io.Reader, out io.Writer) error {
 	return c.err
+}
+func (c explodingClient) ImagePull(_ context.Context, _ reference.Named) (reference.Canonical, error) {
+	return nil, c.err
 }
 func (c explodingClient) ImagePush(ctx context.Context, ref reference.NamedTagged) (io.ReadCloser, error) {
 	return nil, c.err

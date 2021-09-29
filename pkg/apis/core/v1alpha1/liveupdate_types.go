@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"context"
+	"path"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -63,7 +64,7 @@ type LiveUpdateSpec struct {
 	BasePath string `json:"basePath" protobuf:"bytes,1,opt,name=basePath"`
 
 	// Specifies how this live-updater finds the containers that need live update.
-	Selector *LiveUpdateSelector `json:"selector" protobuf:"bytes,8,opt,name=selector"`
+	Selector LiveUpdateSelector `json:"selector" protobuf:"bytes,8,opt,name=selector"`
 
 	// Name of the FileWatch object to watch for a list of files that
 	// have recently been updated.
@@ -142,8 +143,28 @@ func (in *LiveUpdate) IsStorageVersion() bool {
 }
 
 func (in *LiveUpdate) Validate(ctx context.Context) field.ErrorList {
-	// TODO(user): Modify it, adding your API validation here.
-	return nil
+	errors := field.ErrorList{}
+	if len(in.Spec.Syncs) == 0 && len(in.Spec.Execs) == 0 {
+		errors = append(errors,
+			field.Invalid(
+				field.NewPath("spec.syncs"),
+				in.Spec.Syncs,
+				"must contain at least 1 sync or 1 exec to run on live update"))
+	}
+
+	for i, sync := range in.Spec.Syncs {
+		// We assume a Linux container, and so use `path` to check that
+		// the sync dest is a LINUX abs path! (`filepath.IsAbs` varies depending on
+		// OS the binary was installed for; `path` deals with Linux paths only.)
+		if !path.IsAbs(sync.ContainerPath) {
+			errors = append(errors,
+				field.Invalid(
+					field.NewPath("spec.syncs").Index(i),
+					sync.ContainerPath,
+					"sync destination is not absolute"))
+		}
+	}
+	return errors
 }
 
 var _ resource.ObjectList = &LiveUpdateList{}

@@ -14,6 +14,7 @@ import (
 	"go.starlark.net/syntax"
 	"golang.org/x/mod/semver"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/apiset"
 	"github.com/tilt-dev/tilt/internal/localexec"
 	"github.com/tilt-dev/tilt/internal/tiltfile/links"
@@ -1150,7 +1151,7 @@ func (s *tiltfileState) validateLiveUpdatesForManifest(m model.Manifest) error {
 		isDeployed := m.IsImageDeployed(iTarg)
 
 		// This check only applies to images with live updates.
-		if iTarg.LiveUpdateInfo().Empty() {
+		if liveupdate.IsEmptySpec(iTarg.LiveUpdateSpec) {
 			continue
 		}
 
@@ -1169,8 +1170,8 @@ func (s *tiltfileState) validateLiveUpdatesForManifest(m model.Manifest) error {
 }
 
 func (s *tiltfileState) validateLiveUpdate(iTarget model.ImageTarget, g model.TargetGraph) error {
-	lu := iTarget.LiveUpdateInfo()
-	if lu.Empty() {
+	luSpec := iTarget.LiveUpdateSpec
+	if liveupdate.IsEmptySpec(luSpec) {
 		return nil
 	}
 
@@ -1190,20 +1191,22 @@ func (s *tiltfileState) validateLiveUpdate(iTarget model.ImageTarget, g model.Ta
 
 	// Verify that all a) sync step src's and b) fall_back_on files are children of a watched paths.
 	// (If not, we'll never even get "file changed" events for them--they're nonsensical input, throw an error.)
-	for _, sync := range lu.SyncSteps() {
+	for _, sync := range liveupdate.SyncSteps(luSpec) {
 		if !ospath.IsChildOfOne(watchedPaths, sync.LocalPath) {
 			return fmt.Errorf("sync step source '%s' is not a child of any watched filepaths (%v)",
 				sync.LocalPath, watchedPaths)
 		}
 	}
 
-	for _, path := range lu.FallBackOnFiles().Paths {
-		if !filepath.IsAbs(path) {
-			return fmt.Errorf("internal error: path not resolved correctly! Please report to https://github.com/tilt-dev/tilt/issues : %s", path)
+	pathSet := liveupdate.FallBackOnFiles(luSpec)
+	for _, path := range pathSet.Paths {
+		resolved := path
+		if !filepath.IsAbs(resolved) {
+			resolved = filepath.Join(pathSet.BaseDirectory, path)
 		}
-		if !ospath.IsChildOfOne(watchedPaths, path) {
+		if !ospath.IsChildOfOne(watchedPaths, resolved) {
 			return fmt.Errorf("fall_back_on paths '%s' is not a child of any watched filepaths (%v)",
-				path, watchedPaths)
+				resolved, watchedPaths)
 		}
 	}
 
@@ -1264,7 +1267,7 @@ func needsRestartContainerDeprecationError(m model.Manifest) bool {
 	}
 
 	for _, iTarg := range m.ImageTargets {
-		if iTarg.LiveUpdateInfo().ShouldRestart() {
+		if liveupdate.ShouldRestart(iTarg.LiveUpdateSpec) {
 			return true
 		}
 	}
@@ -1312,9 +1315,6 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 
 		iTarget := model.ImageTarget{
 			Refs: refs,
-			LiveUpdateSpec: model.LiveUpdateSpec{
-				ImageSelector: reference.FamiliarName(refs.ClusterRef()),
-			},
 			ImageMapSpec: v1alpha1.ImageMapSpec{
 				Selector:        refs.ConfigurationRef.String(),
 				MatchInEnvVars:  image.matchInEnvVars,
@@ -1322,9 +1322,12 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 				OverrideCommand: overrideCommand,
 				OverrideArgs:    image.overrideArgs,
 			},
+			LiveUpdateSpec: image.liveUpdate,
 		}
 
-		lu := image.liveUpdate
+		// TODO(nick): Update this to set the selector correctly for
+		// both Kubernetes and DockerCompose selectors.
+		iTarget.SetKubernetesImageSelector(reference.FamiliarName(refs.ClusterRef()))
 
 		switch image.Type() {
 		case DockerBuild:
@@ -1332,7 +1335,6 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 				Dockerfile:  image.dbDockerfile.String(),
 				BuildPath:   image.dbBuildPath,
 				BuildArgs:   image.dbBuildArgs,
-				LiveUpdate:  lu,
 				TargetStage: model.DockerBuildTarget(image.targetStage),
 				SSHSpecs:    image.sshSpecs,
 				SecretSpecs: image.secretSpecs,
@@ -1351,12 +1353,10 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 				DisablePush:       image.disablePush,
 				SkipsLocalDocker:  image.skipsLocalDocker,
 				OutputsImageRefTo: image.outputsImageRefTo,
-				LiveUpdate:        lu,
 			}
 			iTarget = iTarget.WithBuildDetails(r).
 				MaybeIgnoreRegistry()
 
-			// TODO(dbentley): validate that syncs is a subset of deps
 		case UnknownBuild:
 			return nil, fmt.Errorf("no build info for image %s", image.configurationRef.RefFamiliarString())
 		}
