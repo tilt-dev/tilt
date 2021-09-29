@@ -108,6 +108,8 @@ type CmdSpec struct {
 	//
 	// +optional
 	DisableSource *DisableSource `json:"disableSource,omitempty" protobuf:"bytes,7,opt,name=disableSource"`
+
+	RemoveMe string `json:"removeMe"`
 }
 
 var _ resource.Object = &Cmd{}
