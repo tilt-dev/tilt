@@ -20,11 +20,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type UpType int
+type UpCommand string
 
 const (
-	UpTypeUp UpType = iota
-	UpTypeDemo
+	UpCommandUp   UpCommand = "up"
+	UpCommandDemo UpCommand = "demo"
 )
 
 type TiltDriver struct {
@@ -104,18 +104,11 @@ func (d *TiltDriver) CI(ctx context.Context, out io.Writer, args ...string) erro
 	return cmd.Run()
 }
 
-func (d *TiltDriver) Up(ctx context.Context, upType UpType, out io.Writer, args ...string) (*TiltUpResponse, error) {
-	var upSubcommand string
-	switch upType {
-	case UpTypeUp:
-		upSubcommand = "up"
-	case UpTypeDemo:
-		upSubcommand = "demo"
-	default:
-		return nil, fmt.Errorf("unsupported up type: %v", upType)
+func (d *TiltDriver) Up(ctx context.Context, command UpCommand, out io.Writer, args ...string) (*TiltUpResponse, error) {
+	if command == "" {
+		command = UpCommandUp
 	}
-
-	mandatoryArgs := []string{upSubcommand,
+	mandatoryArgs := []string{string(command),
 		// Can't attach a HUD or install browsers in headless mode
 		"--hud=false",
 

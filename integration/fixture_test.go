@@ -208,7 +208,7 @@ func (f *fixture) TiltCI(args ...string) {
 }
 
 func (f *fixture) TiltUp(args ...string) {
-	response, err := f.tilt.Up(f.ctx, UpTypeUp, f.LogWriter(), args...)
+	response, err := f.tilt.Up(f.ctx, UpCommandUp, f.LogWriter(), args...)
 	if err != nil {
 		f.t.Fatalf("TiltUp: %v", err)
 	}
@@ -216,7 +216,7 @@ func (f *fixture) TiltUp(args ...string) {
 }
 
 func (f *fixture) TiltDemo(args ...string) {
-	response, err := f.tilt.Up(f.ctx, UpTypeDemo, f.LogWriter(), args...)
+	response, err := f.tilt.Up(f.ctx, UpCommandDemo, f.LogWriter(), args...)
 	if err != nil {
 		f.t.Fatalf("TiltDemo: %v", err)
 	}
