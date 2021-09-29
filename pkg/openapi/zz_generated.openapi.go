@@ -140,6 +140,8 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIComponentLocation":             schema_pkg_apis_core_v1alpha1_UIComponentLocation(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIComponentLocationResource":     schema_pkg_apis_core_v1alpha1_UIComponentLocationResource(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIFeatureFlag":                   schema_pkg_apis_core_v1alpha1_UIFeatureFlag(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIHiddenInputSpec":               schema_pkg_apis_core_v1alpha1_UIHiddenInputSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIHiddenInputStatus":             schema_pkg_apis_core_v1alpha1_UIHiddenInputStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIInputSpec":                     schema_pkg_apis_core_v1alpha1_UIInputSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIInputStatus":                   schema_pkg_apis_core_v1alpha1_UIInputStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResource":                      schema_pkg_apis_core_v1alpha1_UIResource(ref),
@@ -4961,6 +4963,46 @@ func schema_pkg_apis_core_v1alpha1_UIFeatureFlag(ref common.ReferenceCallback) c
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_UIHiddenInputSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"value": {
+						SchemaProps: spec.SchemaProps{
+							Default: "",
+							Type:    []string{"string"},
+							Format:  "",
+						},
+					},
+				},
+				Required: []string{"value"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UIHiddenInputStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"value": {
+						SchemaProps: spec.SchemaProps{
+							Default: "",
+							Type:    []string{"string"},
+							Format:  "",
+						},
+					},
+				},
+				Required: []string{"value"},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_UIInputSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -4996,12 +5038,18 @@ func schema_pkg_apis_core_v1alpha1_UIInputSpec(ref common.ReferenceCallback) com
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBoolInputSpec"),
 						},
 					},
+					"hidden": {
+						SchemaProps: spec.SchemaProps{
+							Description: "An input that has a constant value and does not display to the user",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIHiddenInputSpec"),
+						},
+					},
 				},
 				Required: []string{"name"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBoolInputSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UITextInputSpec"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBoolInputSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIHiddenInputSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UITextInputSpec"},
 	}
 }
 
@@ -5032,12 +5080,18 @@ func schema_pkg_apis_core_v1alpha1_UIInputStatus(ref common.ReferenceCallback) c
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBoolInputStatus"),
 						},
 					},
+					"hidden": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The status of the input, if it's a hidden",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIHiddenInputStatus"),
+						},
+					},
 				},
 				Required: []string{"name"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBoolInputStatus", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UITextInputStatus"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBoolInputStatus", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIHiddenInputStatus", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UITextInputStatus"},
 	}
 }
 
