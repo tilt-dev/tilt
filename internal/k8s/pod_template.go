@@ -36,6 +36,10 @@ func InjectPodTemplateSpecHashes(entity K8sEntity) (K8sEntity, error) {
 	}
 
 	for _, ts := range templateSpecs {
+		if ts.Labels == nil {
+			ts.Labels = map[string]string{}
+		}
+
 		h, err := HashPodTemplateSpec(ts)
 		if err != nil {
 			return K8sEntity{}, errors.Wrap(err, "calculating hash")
