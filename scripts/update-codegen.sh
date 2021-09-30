@@ -8,8 +8,9 @@ cd "$DIR/.."
 
 # docker mounts don't work in our CI setup - just run the scripts directly
 if [[ $CI == true ]]; then
-  # TODO - get this working in CI
-  # scripts/update-protobuf-helper.sh
+  # TODO - keep in sync with the Dockerfile
+  go install "k8s.io/code-generator/cmd/go-to-protobuf@v0.22.2"
+  scripts/update-protobuf-helper.sh
   scripts/update-codegen-helper.sh
   exit 0
 fi
