@@ -8,7 +8,8 @@ cd "$DIR/.."
 
 # docker mounts don't work in our CI setup - just run the scripts directly
 if [[ $CI == true ]]; then
-  scripts/update-protobuf-helper.sh
+  # TODO - get this working in CI
+  # scripts/update-protobuf-helper.sh
   scripts/update-codegen-helper.sh
   exit 0
 fi
