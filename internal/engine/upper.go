@@ -428,14 +428,10 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	manifest := mt.Manifest
 	if manifest.IsK8s() {
 		state := ms.K8sRuntimeState()
-		deployedEntities := cb.Result.DeployedEntities()
-		if len(deployedEntities) > 0 {
-			state.DeployedEntities = deployedEntities
-		}
 
-		deployedPodTemplateSpecHashSet := cb.Result.DeployedPodTemplateSpecHashes()
-		if len(deployedPodTemplateSpecHashSet) > 0 {
-			state.DeployedPodTemplateSpecHashSet = deployedPodTemplateSpecHashSet
+		applyFilter := cb.Result.ApplyFilter()
+		if applyFilter != nil && len(applyFilter.DeployedRefs) > 0 {
+			state.ApplyFilter = applyFilter
 		}
 
 		if err == nil {

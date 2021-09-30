@@ -20,6 +20,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/dockerfile"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -308,24 +309,11 @@ func (ibd *ImageBuildAndDeployer) deploy(
 		return store.K8sBuildResult{}, fmt.Errorf("%s", status.Error)
 	}
 
-	deployed, err := k8s.ParseYAMLFromString(status.ResultYAML)
+	filter, err := k8sconv.NewKubernetesApplyFilter(&status)
 	if err != nil {
 		return store.K8sBuildResult{}, err
 	}
-
-	podTemplateSpecHashes := []k8s.PodTemplateSpecHash{}
-	for _, entity := range deployed {
-		if entity.UID() == "" {
-			return store.K8sBuildResult{}, fmt.Errorf("Entity not deployed correctly: %v", entity)
-		}
-		hs, err := k8s.ReadPodTemplateSpecHashes(entity)
-		if err != nil {
-			return store.K8sBuildResult{}, errors.Wrap(err, "reading pod template spec hashes")
-		}
-		podTemplateSpecHashes = append(podTemplateSpecHashes, hs...)
-	}
-
-	return store.NewK8sDeployResult(kTargetID, status, k8s.ToRefList(deployed), podTemplateSpecHashes), nil
+	return store.NewK8sDeployResult(kTargetID, filter), nil
 }
 
 // Delete all the resources in the Kubernetes target, to ensure that they restart when

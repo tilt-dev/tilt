@@ -63,24 +63,27 @@ func (ks *watcherKnownState) createTaskList(state store.EngineState) watcherTask
 		}
 
 		// Collect all the new UIDs
-		for _, ref := range mt.State.K8sRuntimeState().DeployedEntities {
-			// Our data model allows people to have the same resource defined in
-			// multiple manifests, and so we can have the same deployed UID in
-			// multiple manifests.
-			//
-			// This check protects us from infinite loops where the diff keeps flipping
-			// between the two manifests.
-			//
-			// Ideally, our data model would prevent this from happening entirely.
-			id := ref.UID
-			if seenUIDs[id] {
-				continue
-			}
-			seenUIDs[id] = true
+		applyFilter := mt.State.K8sRuntimeState().ApplyFilter
+		if applyFilter != nil {
+			for _, ref := range applyFilter.DeployedRefs {
+				// Our data model allows people to have the same resource defined in
+				// multiple manifests, and so we can have the same deployed UID in
+				// multiple manifests.
+				//
+				// This check protects us from infinite loops where the diff keeps flipping
+				// between the two manifests.
+				//
+				// Ideally, our data model would prevent this from happening entirely.
+				id := ref.UID
+				if seenUIDs[id] {
+					continue
+				}
+				seenUIDs[id] = true
 
-			oldName := ks.knownDeployedUIDs[id]
-			if name != oldName {
-				newUIDs[id] = name
+				oldName := ks.knownDeployedUIDs[id]
+				if name != oldName {
+					newUIDs[id] = name
+				}
 			}
 		}
 	}
