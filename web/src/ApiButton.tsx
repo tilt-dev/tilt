@@ -367,7 +367,8 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
     </InstrumentedButton>
   )
 
-  if (uiButton.spec?.inputs?.length) {
+  // show the options button if there are any non-hidden inputs
+  if (uiButton.spec?.inputs?.filter((i) => !i.hidden)?.length) {
     const setInputValue = (name: string, value: any) => {
       // Copy to a new object so that the reference changes to force a rerender.
       setInputValues({ ...inputValues, [name]: value })

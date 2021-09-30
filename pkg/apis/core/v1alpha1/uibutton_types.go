@@ -273,6 +273,9 @@ func (in *UIInputSpec) Validate(_ context.Context, path *field.Path) field.Error
 	if in.Bool != nil {
 		numInputTypes += 1
 	}
+	if in.Hidden != nil {
+		numInputTypes += 1
+	}
 
 	if numInputTypes != 1 {
 		fieldErrors = append(fieldErrors, field.Invalid(path, in, "must specify exactly one input type"))
