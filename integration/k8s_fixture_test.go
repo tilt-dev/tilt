@@ -7,9 +7,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -80,31 +78,6 @@ func (f *k8sFixture) deleteNamespace() {
 		}
 	}
 	f.t.Fatalf("timed out waiting for tilt-integration deletion to complete. last output of %q: %q", args, string(b))
-}
-
-func (f *k8sFixture) Curl(url string) (string, error) {
-	resp, err := http.Get(url)
-	if err != nil {
-		return "", errors.Wrap(err, "Curl")
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		f.t.Errorf("Error fetching %s: %s", url, resp.Status)
-	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", errors.Wrap(err, "Curl")
-	}
-	return string(body), nil
-}
-
-func (f *k8sFixture) CurlUntil(ctx context.Context, url string, expectedContents string) {
-	f.t.Helper()
-	f.WaitUntil(ctx, fmt.Sprintf("curl(%s)", url), func() (string, error) {
-		return f.Curl(url)
-	}, expectedContents)
 }
 
 // Waits until all pods matching the selector are ready (i.e. phase = "Running")

@@ -21,7 +21,7 @@ func TestCrash(t *testing.T) {
 	out := bytes.NewBuffer(nil)
 	// fixture assigns a random unused port when created, which is used for all Tilt commands, so this
 	// will collide with the previous invocation
-	res, err := f.tilt.Up(f.ctx, out)
+	res, err := f.tilt.Up(f.ctx, UpCommandUp, out)
 	assert.NoError(t, err)
 	<-res.Done()
 	assert.Contains(t, out.String(), "Tilt cannot start")
