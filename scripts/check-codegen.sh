@@ -31,7 +31,10 @@ if [[ $changes =~ $codegen_regex ]]; then
   echo "Found changed API files (compared to origin/master):"
   print_file_list "${changes}"
   printf "\nRunning codegen to ensure up-to-date...\n\n"
-  make update-codegen
+  make update-codegen-go
+  # TODO - get this working in CI and swap these all out with `make update-codegeen`
+  # make update-codegen-ts
+  make update-codegen-starlark
 else
   echo "No API files modified (skipping up-to-date check)"
   exit 0
