@@ -90,8 +90,6 @@ type UIButtonSpec struct {
 	// Any inputs for this button.
 	// +optional
 	Inputs []UIInputSpec `json:"inputs,omitempty" protobuf:"bytes,6,rep,name=inputs"`
-
-	Asdf string `json:"asdf"`
 }
 
 // UIComponentLocation specifies where to put a UI component.
