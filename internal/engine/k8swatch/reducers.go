@@ -2,7 +2,6 @@ package k8swatch
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
@@ -10,12 +9,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
+	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
-	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -60,7 +58,7 @@ func UpdateK8sRuntimeState(ctx context.Context, state *store.EngineState, objMet
 	prunePods(ms)
 
 	if anyPodsUpdated {
-		CheckForContainerCrash(state, mt)
+		liveupdates.CheckForContainerCrash(state, mn.String())
 	}
 }
 
@@ -109,43 +107,6 @@ func maybeUpdateStateForPod(ms *store.ManifestState, pod *v1alpha1.Pod) bool {
 
 	ms.RuntimeState = runtime
 	return true
-}
-
-func CheckForContainerCrash(state *store.EngineState, mt *store.ManifestTarget) {
-	ms := mt.State
-	if ms.NeedsRebuildFromCrash {
-		// We're already aware the pod is crashing.
-		return
-	}
-
-	runningContainers := store.AllRunningContainers(mt)
-	if len(runningContainers) == 0 {
-		// If there are no running containers, it might mean the containers are
-		// being deleted. We don't need to intervene yet.
-		return
-	}
-
-	hitList := make(map[container.ID]bool, len(ms.LiveUpdatedContainerIDs))
-	for cID := range ms.LiveUpdatedContainerIDs {
-		hitList[cID] = true
-	}
-	for _, c := range runningContainers {
-		delete(hitList, c.ContainerID)
-	}
-
-	if len(hitList) == 0 {
-		// The pod is what we expect it to be.
-		return
-	}
-
-	// There are new running containers that don't match
-	// what we live-updated!
-	ms.NeedsRebuildFromCrash = true
-	ms.LiveUpdatedContainerIDs = container.NewIDSet()
-
-	msg := fmt.Sprintf("Detected a container change for %s. We could be running stale code. Rebuilding and deploying a new image.", ms.Name)
-	le := store.NewLogAction(ms.Name, ms.LastBuild().SpanID, logger.WarnLvl, nil, []byte(msg+"\n"))
-	state.LogStore.Append(le, state.Secrets)
 }
 
 // If there's more than one pod, prune the deleting/dead ones so

@@ -32,6 +32,10 @@ type KubernetesResource struct {
 	// A set of properties we use to determine which pods in Discovery
 	// belong to the current Apply.
 	ApplyFilter *KubernetesApplyFilter
+
+	// A set of pods that belong to the current Discovery
+	// and the current ApplyStatus (if available).
+	FilteredPods []v1alpha1.Pod
 }
 
 func NewKubernetesResource(discovery *v1alpha1.KubernetesDiscovery, status *v1alpha1.KubernetesApplyStatus) (*KubernetesResource, error) {
@@ -44,8 +48,17 @@ func NewKubernetesResource(discovery *v1alpha1.KubernetesDiscovery, status *v1al
 		}
 	}
 
-	return &KubernetesResource{Discovery: discovery, ApplyStatus: status, ApplyFilter: filter}, nil
+	var filteredPods []v1alpha1.Pod
+	if discovery != nil {
+		filteredPods = FilterPods(filter, discovery.Status.Pods)
+	}
 
+	return &KubernetesResource{
+		Discovery:    discovery,
+		ApplyStatus:  status,
+		ApplyFilter:  filter,
+		FilteredPods: filteredPods,
+	}, nil
 }
 
 // Filter to determine whether a pod or resource belongs to the current
@@ -119,4 +132,54 @@ func HasOKPodTemplateSpecHash(pod *v1alpha1.Pod, filter *KubernetesApplyFilter) 
 	}
 
 	return ContainsHash(filter, hash)
+}
+
+// Only keep pods that belong in the current filter.
+// If no filter is specified, return all pods.
+func FilterPods(filter *KubernetesApplyFilter, pods []v1alpha1.Pod) []v1alpha1.Pod {
+	if filter == nil {
+		return pods
+	}
+
+	result := []v1alpha1.Pod{}
+
+	for _, pod := range pods {
+		// Ignore pods that have a stale pod template hash
+		if !HasOKPodTemplateSpecHash(&pod, filter) {
+			continue
+		}
+
+		// Ignore pods that aren't owned by a current Apply.
+		if !ContainsUID(filter, types.UID(pod.AncestorUID)) {
+			continue
+		}
+
+		result = append(result, pod)
+	}
+
+	return result
+}
+
+func MostRecentPod(pod []v1alpha1.Pod) v1alpha1.Pod {
+	bestPod := v1alpha1.Pod{}
+	found := false
+
+	for _, v := range pod {
+		if !found || PodCompare(v, bestPod) {
+			bestPod = v
+			found = true
+		}
+	}
+
+	return bestPod
+}
+
+// PodCompare is a stable sort order for pods.
+func PodCompare(p1 v1alpha1.Pod, p2 v1alpha1.Pod) bool {
+	if p1.CreatedAt.After(p2.CreatedAt.Time) {
+		return true
+	} else if p2.CreatedAt.After(p1.CreatedAt.Time) {
+		return false
+	}
+	return p1.Name > p2.Name
 }

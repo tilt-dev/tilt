@@ -30,6 +30,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/store/filewatches"
 	"github.com/tilt-dev/tilt/internal/store/kubernetesapplys"
 	"github.com/tilt-dev/tilt/internal/store/kubernetesdiscoverys"
+	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/internal/store/tiltfiles"
 	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/internal/token"
@@ -354,13 +355,14 @@ func handleBuildResults(engineState *store.EngineState,
 }
 
 func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, cb buildcontrol.BuildCompleteAction) {
+	mn := cb.ManifestName
 	defer func() {
-		delete(engineState.CurrentlyBuilding, cb.ManifestName)
+		delete(engineState.CurrentlyBuilding, mn)
 	}()
 
 	engineState.CompletedBuildCount++
 
-	mt, ok := engineState.ManifestTargets[cb.ManifestName]
+	mt, ok := engineState.ManifestTargets[mn]
 	if !ok {
 		return
 	}
@@ -421,7 +423,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 		bestPod := krs.MostRecentPod()
 		if timecmp.AfterOrEqual(bestPod.CreatedAt, bs.StartTime) ||
 			timecmp.Equal(krs.UpdateStartTime[k8s.PodID(bestPod.Name)], bs.StartTime) {
-			k8swatch.CheckForContainerCrash(engineState, mt)
+			liveupdates.CheckForContainerCrash(engineState, mn.String())
 		}
 	}
 

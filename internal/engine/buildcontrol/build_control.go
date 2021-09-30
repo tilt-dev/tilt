@@ -8,6 +8,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -406,8 +407,13 @@ func IsLiveUpdateTargetWaitingOnDeploy(state store.EngineState, mt *store.Manife
 		// This is the mechanism that live update uses to determine if the container to live-update
 		// is still pending.
 		if mt.Manifest.IsK8s() && iTarget.LiveUpdateSpec.Selector.Kubernetes != nil {
-			cInfos, err := store.RunningContainersForTargetForOnePod(
-				iTarget.LiveUpdateSpec.Selector.Kubernetes, mt.State.K8sRuntimeState())
+			kResource := state.KubernetesResources[mt.Manifest.Name.String()]
+			if kResource == nil {
+				return true // Wait for the k8s resource to appear.
+			}
+
+			cInfos, err := store.RunningContainersForOnePod(
+				iTarget.LiveUpdateSpec.Selector.Kubernetes, kResource)
 			if err != nil {
 				return false
 			}
@@ -419,7 +425,7 @@ func IsLiveUpdateTargetWaitingOnDeploy(state store.EngineState, mt *store.Manife
 			// If the container in this pod is in a crash loop, then don't hold back
 			// updates until the deploy finishes -- this is a pretty good signal
 			// that it might not become healthy.
-			pod := mt.State.K8sRuntimeState().MostRecentPod()
+			pod := k8sconv.MostRecentPod(kResource.FilteredPods)
 			for _, c := range pod.Containers {
 				if c.Restarts > 0 {
 					return false
