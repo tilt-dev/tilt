@@ -78,6 +78,14 @@ describe("ApiButton", () => {
     ).toEqual(1)
   })
 
+  it("doesn't render an options button when the button has only hidden inputs", () => {
+    const inputs = [1, 2, 3].map((i) => hiddenField(`hidden${i}`, `value${i}`))
+    const root = mountButton(makeUIButton({ inputSpecs: inputs }))
+    expect(
+      root.find(ApiButton).find(ApiButtonInputsToggleButton).length
+    ).toEqual(0)
+  })
+
   it("shows the options form when the options button is clicked", () => {
     const inputs = [1, 2, 3].map((i) => textField(`text${i}`))
     const root = mountButton(makeUIButton({ inputSpecs: inputs }))
