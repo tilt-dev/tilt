@@ -15,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/podbuilder"
@@ -309,7 +310,9 @@ func (f *ewmFixture) addDeployedEntity(m model.Manifest, entity k8s.K8sEntity) {
 		f.t.Fatalf("Unknown manifest: %s", m.Name)
 	}
 	runtimeState := mState.K8sRuntimeState()
-	runtimeState.DeployedEntities = k8s.ObjRefList{entity.ToObjectReference()}
+	runtimeState.ApplyFilter = &k8sconv.KubernetesApplyFilter{
+		DeployedRefs: k8s.ObjRefList{entity.ToObjectReference()},
+	}
 	mState.RuntimeState = runtimeState
 }
 

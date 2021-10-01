@@ -13,6 +13,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -67,7 +68,7 @@ func maybeUpdateStateForPod(ms *store.ManifestState, pod *v1alpha1.Pod) bool {
 	podID := k8s.PodID(pod.Name)
 	runtime := ms.K8sRuntimeState()
 
-	if !runtime.HasOKPodTemplateSpecHash(pod) {
+	if !k8sconv.HasOKPodTemplateSpecHash(pod, runtime.ApplyFilter) {
 		// If this is from an outdated deploy but the pod is still being tracked, we
 		// will still update it; if it's outdated and untracked, just ignore
 		if _, alreadyTracked := runtime.Pods[podID]; alreadyTracked {
