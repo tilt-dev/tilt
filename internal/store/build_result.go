@@ -8,6 +8,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	dockertypes "github.com/docker/docker/api/types"
+	"github.com/docker/go-connections/nat"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
@@ -117,17 +118,21 @@ type DockerComposeBuildResult struct {
 
 	// The initial state of the container.
 	ContainerState *dockertypes.ContainerState
+
+	// Runtime port bindings
+	Ports nat.PortMap
 }
 
 func (r DockerComposeBuildResult) TargetID() model.TargetID   { return r.id }
 func (r DockerComposeBuildResult) BuildType() model.BuildType { return model.BuildTypeDockerCompose }
 
 // For docker compose deploy targets.
-func NewDockerComposeDeployResult(id model.TargetID, containerID container.ID, state *dockertypes.ContainerState) DockerComposeBuildResult {
+func NewDockerComposeDeployResult(id model.TargetID, containerID container.ID, state *dockertypes.ContainerState, ports nat.PortMap) DockerComposeBuildResult {
 	return DockerComposeBuildResult{
 		id:                       id,
 		DockerComposeContainerID: containerID,
 		ContainerState:           state,
+		Ports:                    ports,
 	}
 }
 

@@ -458,6 +458,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 		cState := dcResult.ContainerState
 		if cState != nil {
 			state = state.WithContainerState(*cState)
+			state = state.WithPorts(dcResult.Ports)
 
 			if docker.HasStarted(*cState) {
 				if state.StartTime.IsZero() {
