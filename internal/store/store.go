@@ -141,6 +141,15 @@ func (s *Store) Loop(ctx context.Context) error {
 	}
 	defer s.subscribers.TeardownAll(context.Background())
 
+	// Set up a defer handler, and make sure to unlock the state
+	// if the control loop is interrupted by a panic.
+	hasStateLock := false
+	defer func() {
+		if hasStateLock {
+			s.stateMu.Unlock()
+		}
+	}()
+
 	for {
 		summary := ChangeSummary{}
 
@@ -150,6 +159,7 @@ func (s *Store) Loop(ctx context.Context) error {
 
 		case actions := <-s.actionCh:
 			s.stateMu.Lock()
+			hasStateLock = true
 
 			logCheckpoint := s.state.LogStore.Checkpoint()
 
@@ -185,6 +195,7 @@ func (s *Store) Loop(ctx context.Context) error {
 			}
 
 			s.stateMu.Unlock()
+			hasStateLock = false
 		}
 
 		// Subscribers

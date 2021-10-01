@@ -251,7 +251,7 @@ func (b PodBuilder) DeploymentUID() types.UID {
 	return types.UID(fmt.Sprintf("%s-fakeUID", b.buildDeploymentName()))
 }
 
-func (b PodBuilder) buildDeployment(ns k8s.Namespace) *appsv1.Deployment {
+func (b PodBuilder) buildDeployment(ns k8s.Namespace, spec v1.PodSpec, labels map[string]string) *appsv1.Deployment {
 	return &appsv1.Deployment{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "apps/v1",
@@ -262,6 +262,14 @@ func (b PodBuilder) buildDeployment(ns k8s.Namespace) *appsv1.Deployment {
 			Namespace: ns.String(),
 			Labels:    k8s.NewTiltLabelMap(),
 			UID:       b.DeploymentUID(),
+		},
+		Spec: appsv1.DeploymentSpec{
+			Template: v1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: labels,
+				},
+				Spec: spec,
+			},
 		},
 	}
 }
@@ -434,7 +442,7 @@ func (p PodObjectTree) Deployment() k8s.K8sEntity {
 // Simulates a Pod -> ReplicaSet -> Deployment ref tree
 func (b PodBuilder) ObjectTreeEntities() PodObjectTree {
 	pod := b.Build()
-	dep := b.buildDeployment(k8s.Namespace(pod.Namespace))
+	dep := b.buildDeployment(k8s.Namespace(pod.Namespace), pod.Spec, pod.Labels)
 	rs := b.buildReplicaSet(dep)
 	return PodObjectTree{
 		k8s.NewK8sEntity(pod),
@@ -477,7 +485,7 @@ func (b PodBuilder) Build() *v1.Pod {
 		spec.Containers[i] = container
 	}
 
-	deployment := b.buildDeployment(ns)
+	deployment := b.buildDeployment(ns, spec, labels)
 	ownerRefs := []metav1.OwnerReference{
 		k8s.RuntimeObjToOwnerRef(b.buildReplicaSet(deployment)),
 	}
