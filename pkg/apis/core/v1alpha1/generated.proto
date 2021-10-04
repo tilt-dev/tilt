@@ -199,6 +199,24 @@ message ConfigMapList {
   repeated ConfigMap items = 2;
 }
 
+// Describes how a ToggleButton's state is stored in a ConfigMap
+message ConfigMapStateSource {
+  // Name of the ConfigMap
+  optional string name = 1;
+
+  // Key within the ConfigMap
+  optional string key = 2;
+
+  // ConfigMap value corresponding to the button's "on" state.
+  // If not specified, "true" will be used.
+  // +optional
+  optional string onValue = 3;
+
+  // ConfigMap value corresponding to the button's "off" state
+  // If not specified, "false" will be used.
+  optional string offValue = 4;
+}
+
 // Container is an init or application container within a pod.
 //
 // The Tilt API representation mirrors the Kubernetes API very closely. Irrelevant data is
@@ -1488,6 +1506,15 @@ message StartOnSpec {
   repeated string uiButtons = 2;
 }
 
+// Describes where a ToggleButton's state is stored.
+// Exactly one type of source must be set.
+message StateSource {
+  // State is stored in a ConfigMap.
+  //
+  // +optional
+  optional ConfigMapStateSource configMap = 1;
+}
+
 // TCPSocketAction describes an action based on opening a socket
 message TCPSocketAction {
   // Number or name of the port to access on the container.
@@ -1694,6 +1721,84 @@ message TiltfileStatus {
   // Details about a terminated tiltfile.
   // +optional
   optional TiltfileStateTerminated terminated = 3;
+}
+
+// ToggleButton
+// +k8s:openapi-gen=true
+message ToggleButton {
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+
+  optional ToggleButtonSpec spec = 2;
+
+  optional ToggleButtonStatus status = 3;
+}
+
+// ToggleButtonList
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+message ToggleButtonList {
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+
+  repeated ToggleButton items = 2;
+}
+
+// ToggleButtonSpec defines the desired state of ToggleButton
+message ToggleButtonSpec {
+  // Where to display the button
+  optional UIComponentLocation location = 1;
+
+  // Config for the button when it is "on"
+  optional ToggleButtonStateSpec on = 2;
+
+  // Config for the button when it is "off"
+  optional ToggleButtonStateSpec off = 3;
+
+  // If `StateSource` does not point at a valid value, the initial button
+  // state will be "on" or "off" depending on this bool
+  optional bool defaultOn = 4;
+
+  // Where the toggle button's state is stored
+  optional StateSource stateSource = 5;
+}
+
+// Describes a state (on/off) of a ToggleButton
+message ToggleButtonStateSpec {
+  // Text to appear on the button itself or as hover text (depending on button location).
+  optional string text = 2;
+
+  // IconName is a Material Icon to appear next to button text or on the button itself (depending on button location).
+  //
+  // Valid values are icon font ligature names from the Material Icons set.
+  // See https://fonts.google.com/icons for the full list of available icons.
+  //
+  // If both IconSVG and IconName are specified, IconSVG will take precedence.
+  //
+  // +optional
+  optional string iconName = 3;
+
+  // IconSVG is an SVG to use as the icon to appear next to button text or on the button itself (depending on button
+  // location).
+  //
+  // This should be an <svg> element scaled for a 24x24 viewport.
+  //
+  // If both IconSVG and IconName are specified, IconSVG will take precedence.
+  //
+  // +optional
+  optional string iconSVG = 4;
+
+  // If true, clicking the button in this state requires a second click
+  // to confirm.
+  //
+  // +optional
+  optional bool requiresConfirmation = 5;
+}
+
+// ToggleButtonStatus defines the observed state of ToggleButton
+message ToggleButtonStatus {
+  // Whether the button is currently "on"
+  optional bool on = 1;
+
+  // The last time the button changed from on to off, or vice versa.
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastChange = 2;
 }
 
 message UIBoolInputSpec {
