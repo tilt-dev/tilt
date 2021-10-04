@@ -27,6 +27,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
@@ -695,7 +696,7 @@ func TestDeployInjectsPodTemplateSpecHash(t *testing.T) {
 
 	hash := f.firstPodTemplateSpecHash()
 
-	require.True(t, resultSet.DeployedPodTemplateSpecHashes().Contains(hash))
+	require.True(t, k8sconv.ContainsHash(resultSet.ApplyFilter(), hash))
 }
 
 func TestDeployPodTemplateSpecHashChangesWhenImageChanges(t *testing.T) {
@@ -868,9 +869,9 @@ func TestIBDDeployUIDs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	deployed := result.DeployedEntities()
-	assert.Equal(t, 1, len(deployed))
-	assert.True(t, deployed.ContainsUID(f.k8s.LastUpsertResult[0].UID()))
+	filter := result.ApplyFilter()
+	assert.Equal(t, 1, len(filter.DeployedRefs))
+	assert.True(t, k8sconv.ContainsUID(filter, f.k8s.LastUpsertResult[0].UID()))
 }
 
 func TestDockerBuildTargetStage(t *testing.T) {

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/go-connections/nat"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -32,6 +33,8 @@ type State struct {
 	LastReadyTime time.Time
 
 	SpanID model.LogSpanID
+
+	Ports nat.PortMap
 }
 
 func (State) RuntimeState() {}
@@ -69,6 +72,11 @@ func (s State) RuntimeStatusError() error {
 
 func (s State) WithContainerState(state types.ContainerState) State {
 	s.ContainerState = state
+	return s
+}
+
+func (s State) WithPorts(ports nat.PortMap) State {
+	s.Ports = ports
 	return s
 }
 

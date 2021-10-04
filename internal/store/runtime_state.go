@@ -72,10 +72,10 @@ type K8sRuntimeState struct {
 	// In many cases, this will be a Deployment UID.
 	PodAncestorUID types.UID
 
-	Pods                           PodSet
-	LBs                            map[k8s.ServiceName]*url.URL
-	DeployedEntities               k8s.ObjRefList         // for the most recent successful deploy
-	DeployedPodTemplateSpecHashSet PodTemplateSpecHashSet // for the most recent successful deploy
+	Pods PodSet
+	LBs  map[k8s.ServiceName]*url.URL
+
+	ApplyFilter *k8sconv.KubernetesApplyFilter
 
 	LastReadyOrSucceededTime    time.Time
 	HasEverDeployedSuccessfully bool
@@ -105,12 +105,11 @@ func NewK8sRuntimeStateWithPods(m model.Manifest, pods ...v1alpha1.Pod) K8sRunti
 
 func NewK8sRuntimeState(m model.Manifest) K8sRuntimeState {
 	return K8sRuntimeState{
-		PodReadinessMode:               m.PodReadinessMode(),
-		Pods:                           PodSet{},
-		LBs:                            make(map[k8s.ServiceName]*url.URL),
-		DeployedPodTemplateSpecHashSet: NewPodTemplateSpecHashSet(),
-		UpdateStartTime:                make(map[k8s.PodID]time.Time),
-		BaselineRestarts:               make(map[k8s.PodID]int32),
+		PodReadinessMode: m.PodReadinessMode(),
+		Pods:             PodSet{},
+		LBs:              make(map[k8s.ServiceName]*url.URL),
+		UpdateStartTime:  make(map[k8s.PodID]time.Time),
+		BaselineRestarts: make(map[k8s.PodID]int32),
 	}
 }
 
@@ -192,34 +191,6 @@ func (s K8sRuntimeState) MostRecentPod() v1alpha1.Pod {
 	return s.Pods.MostRecentPod()
 }
 
-func (s K8sRuntimeState) HasOKPodTemplateSpecHash(pod *v1alpha1.Pod) bool {
-	// if it doesn't have a label, just let it through - maybe it's from a CRD w/ no pod template spec
-	hash := k8s.PodTemplateSpecHash(pod.PodTemplateSpecHash)
-	if hash == "" {
-		return true
-	}
-
-	return s.DeployedPodTemplateSpecHashSet.Contains(hash)
-}
-
-func (s K8sRuntimeState) DeployedUIDSet() k8s.UIDSet {
-	uids := k8s.NewUIDSet()
-	for _, ref := range s.DeployedEntities {
-		uids.Add(ref.UID)
-	}
-	return uids
-}
-
-// podCompare is a stable sort order for pods.
-func podCompare(p1 v1alpha1.Pod, p2 v1alpha1.Pod) bool {
-	if p1.CreatedAt.After(p2.CreatedAt.Time) {
-		return true
-	} else if p2.CreatedAt.After(p1.CreatedAt.Time) {
-		return false
-	}
-	return p1.Name > p2.Name
-}
-
 func AllPodContainers(p v1alpha1.Pod) []v1alpha1.Container {
 	var result []v1alpha1.Container
 	result = append(result, p.InitContainers...)
@@ -264,22 +235,6 @@ func AllPodContainerPorts(p v1alpha1.Pod) []int32 {
 	return result
 }
 
-type PodTemplateSpecHashSet map[k8s.PodTemplateSpecHash]bool
-
-func NewPodTemplateSpecHashSet() PodTemplateSpecHashSet {
-	return make(map[k8s.PodTemplateSpecHash]bool)
-}
-
-func (s PodTemplateSpecHashSet) Add(hashes ...k8s.PodTemplateSpecHash) {
-	for _, hash := range hashes {
-		s[hash] = true
-	}
-}
-
-func (s PodTemplateSpecHashSet) Contains(hash k8s.PodTemplateSpecHash) bool {
-	return s[hash]
-}
-
 type PodSet map[k8s.PodID]*v1alpha1.Pod
 
 func (ps PodSet) MostRecentPod() v1alpha1.Pod {
@@ -287,7 +242,7 @@ func (ps PodSet) MostRecentPod() v1alpha1.Pod {
 	found := false
 
 	for _, v := range ps {
-		if !found || podCompare(*v, bestPod) {
+		if !found || k8sconv.PodCompare(*v, bestPod) {
 			bestPod = *v
 			found = true
 		}

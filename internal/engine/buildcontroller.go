@@ -8,6 +8,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
@@ -64,7 +65,8 @@ func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buil
 
 	buildReason := mt.NextBuildReason()
 	targets := buildcontrol.BuildTargets(manifest)
-	buildStateSet := buildStateSet(ctx, manifest, targets, ms, buildReason)
+	buildStateSet := buildStateSet(ctx, manifest, state.KubernetesResources[manifest.Name.String()],
+		targets, ms, buildReason)
 
 	return buildEntry{
 		name:          manifest.Name,
@@ -151,7 +153,8 @@ func SpanIDForBuildLog(buildCount int) logstore.SpanID {
 }
 
 // Extract a set of build states from a manifest for BuildAndDeploy.
-func buildStateSet(ctx context.Context, manifest model.Manifest, specs []model.TargetSpec,
+func buildStateSet(ctx context.Context, manifest model.Manifest,
+	kresource *k8sconv.KubernetesResource, specs []model.TargetSpec,
 	ms *store.ManifestState, reason model.BuildReason) store.BuildStateSet {
 	result := store.BuildStateSet{}
 
@@ -185,8 +188,7 @@ func buildStateSet(ctx context.Context, manifest model.Manifest, specs []model.T
 			if ok {
 				selector := iTarget.LiveUpdateSpec.Selector
 				if manifest.IsK8s() && selector.Kubernetes != nil {
-					cInfos, err := store.RunningContainersForTargetForOnePod(
-						selector.Kubernetes, ms.K8sRuntimeState())
+					cInfos, err := store.RunningContainersForOnePod(selector.Kubernetes, kresource)
 					if err != nil {
 						buildState = buildState.WithRunningContainerError(err)
 					} else {

@@ -8,20 +8,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tilt-dev/tilt/pkg/apis"
-
-	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
-
+	"github.com/docker/go-connections/nat"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/hud/view"
+	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
-
-	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/pkg/apis"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -34,6 +32,7 @@ type endpointsCase struct {
 	lbURLs   []string
 
 	dcPublishedPorts []int
+	dcPortMap        nat.PortMap
 
 	k8sResLinks   []model.Link
 	localResLinks []model.Link
@@ -319,6 +318,24 @@ func TestManifestTargetEndpoints(t *testing.T) {
 			},
 		},
 		{
+			name: "docker compose dynamic ports",
+			expected: []model.Link{
+				model.MustNewLink("http://localhost:8000/", ""),
+			},
+			dcPortMap: nat.PortMap{
+				"8080/tcp": []nat.PortBinding{
+					{
+						HostIP:   "0.0.0.0",
+						HostPort: "8000",
+					},
+					{
+						HostIP:   "::",
+						HostPort: "8000",
+					},
+				},
+			},
+		},
+		{
 			name: "load balancers",
 			expected: []model.Link{
 				model.MustNewLink("a", ""), model.MustNewLink("b", ""), model.MustNewLink("c", ""), model.MustNewLink("d", ""),
@@ -369,7 +386,16 @@ func TestManifestTargetEndpoints(t *testing.T) {
 				m = m.WithDeployTarget(model.DockerComposeTarget{Links: c.dcResLinks})
 			}
 
+			if len(c.dcPortMap) > 0 && !m.IsDC() {
+				m = m.WithDeployTarget(model.DockerComposeTarget{})
+			}
+
 			mt := newManifestTargetWithLoadBalancerURLs(m, c.lbURLs)
+			if len(c.dcPortMap) > 0 {
+				dcState := mt.State.DCRuntimeState()
+				dcState.Ports = c.dcPortMap
+				mt.State.RuntimeState = dcState
+			}
 			actual := ManifestTargetEndpoints(mt)
 			assertLinks(t, c.expected, actual)
 		})

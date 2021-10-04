@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
 
@@ -115,6 +116,10 @@ type EngineState struct {
 	// 2) ConfigsController reads DesiredTiltfilePath, writes a new Tiltfile object to the APIServer
 	// 4) ConfigsController dispatches a TiltfileCreateAction, to copy the apiserver data into the EngineState
 	DesiredTiltfilePath string
+
+	// KubernetesResources by name.
+	// Updated to match KubernetesApply + KubernetesDiscovery
+	KubernetesResources map[string]*k8sconv.KubernetesResource `json:"-"`
 
 	// API-server-based data models. Stored in EngineState
 	// to assist in migration.
@@ -521,6 +526,7 @@ func NewState() *EngineState {
 	ret.FileWatches = make(map[string]*v1alpha1.FileWatch)
 	ret.KubernetesApplys = make(map[string]*v1alpha1.KubernetesApply)
 	ret.KubernetesDiscoverys = make(map[string]*v1alpha1.KubernetesDiscovery)
+	ret.KubernetesResources = make(map[string]*k8sconv.KubernetesResource)
 
 	return ret
 }
@@ -813,14 +819,34 @@ func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []model.Link) {
 		return localResourceLinks
 	}
 
-	publishedPorts := mt.Manifest.DockerComposeTarget().PublishedPorts()
-	if len(publishedPorts) > 0 {
+	if mt.Manifest.IsDC() {
+		hostPorts := make(map[int]bool)
+		publishedPorts := mt.Manifest.DockerComposeTarget().PublishedPorts()
 		for _, p := range publishedPorts {
+			if p == 0 || hostPorts[p] {
+				continue
+			}
+			hostPorts[p] = true
 			endpoints = append(endpoints, model.MustNewLink(fmt.Sprintf("http://localhost:%d/", p), ""))
 		}
+
+		for _, bindings := range mt.State.DCRuntimeState().Ports {
+			// Docker usually contains multiple bindings for each port - one for ipv4 (0.0.0.0)
+			// and one for ipv6 (::1).
+			for _, binding := range bindings {
+				pstring := binding.HostPort
+				p, err := strconv.Atoi(pstring)
+				if err != nil || p == 0 || hostPorts[p] {
+					continue
+				}
+				hostPorts[p] = true
+				endpoints = append(endpoints, model.MustNewLink(fmt.Sprintf("http://localhost:%d/", p), ""))
+			}
+		}
+
+		endpoints = append(endpoints, mt.Manifest.DockerComposeTarget().Links...)
 	}
 
-	endpoints = append(endpoints, mt.Manifest.DockerComposeTarget().Links...)
 	return endpoints
 }
 

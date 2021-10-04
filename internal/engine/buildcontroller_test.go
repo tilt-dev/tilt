@@ -722,6 +722,9 @@ func TestFullBuildTriggerClearsLiveUpdate(t *testing.T) {
 	f.WaitUntilManifestState("foobar loaded", "foobar", func(ms store.ManifestState) bool {
 		return len(ms.K8sRuntimeState().Pods) == 1
 	})
+	f.WaitUntil("foobar k8sresource loaded", func(s store.EngineState) bool {
+		return s.KubernetesResources["foobar"] != nil && len(s.KubernetesResources["foobar"].FilteredPods) == 1
+	})
 	f.withManifestState("foobar", func(ms store.ManifestState) {
 		ms.LiveUpdatedContainerIDs["containerID"] = true
 	})

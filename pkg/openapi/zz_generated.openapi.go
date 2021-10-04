@@ -2816,6 +2816,13 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateKubernetesSelector(ref common.Refer
 							Format:      "",
 						},
 					},
+					"applyName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ApplyName is the name of a KubernetesApply object for filtering discovered pods to prevent updating old deployments.\n\nIf not provided, no filtering will be applied and all discovered Pods will be eligible for update.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"image": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Image specifies the name of the image that we're copying files into. Determines which containers in a pod to live-update. Matches images by name unless tag is explicitly specified.",

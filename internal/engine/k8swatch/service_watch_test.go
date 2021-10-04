@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/servicebuilder"
@@ -104,8 +105,8 @@ func (f *swFixture) addDeployedService(m model.Manifest, svc *v1.Service) {
 		f.t.Fatalf("Unknown manifest: %s", m.Name)
 	}
 	runtimeState := mState.K8sRuntimeState()
-	runtimeState.DeployedEntities = k8s.ObjRefList{
-		k8s.NewK8sEntity(svc).ToObjectReference(),
+	runtimeState.ApplyFilter = &k8sconv.KubernetesApplyFilter{
+		DeployedRefs: k8s.ObjRefList{k8s.NewK8sEntity(svc).ToObjectReference()},
 	}
 	mState.RuntimeState = runtimeState
 }

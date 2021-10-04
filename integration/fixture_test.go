@@ -8,13 +8,17 @@ import (
 	"go/build"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
 )
@@ -43,10 +47,22 @@ type fixture struct {
 	tilt          *TiltDriver
 	activeTiltUp  *TiltUpResponse
 	tearingDown   bool
+	skipTiltDown  bool
 }
 
 func newFixture(t *testing.T, dir string) *fixture {
-	dir = filepath.Join(packageDir, dir)
+	if dir == "" {
+		// test doesn't require any in-repo assets, so chdir to a tempdir
+		// to prevent accidentally overwriting repo files with Tilt commands
+		dir = t.TempDir()
+	} else {
+		// checking for `..` is heavy-handed, but there's no valid reason for
+		// an integration test to use it
+		if filepath.IsAbs(dir) || strings.Contains(dir, "..") {
+			t.Fatalf("dir %q should be a relative path under the integration/ directory", dir)
+		}
+		dir = filepath.Join(packageDir, dir)
+	}
 	err := os.Chdir(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -108,6 +124,41 @@ func (f *fixture) DumpLogs() {
 	_, _ = os.Stdout.Write([]byte(f.logs.String()))
 }
 
+func (f *fixture) Curl(url string) (int, string, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return -1, "", errors.Wrap(err, "Curl")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		f.t.Errorf("Error fetching %s: %s", url, resp.Status)
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return -1, "", errors.Wrap(err, "Curl")
+	}
+	return resp.StatusCode, string(body), nil
+}
+
+func (f *fixture) CurlUntil(ctx context.Context, url string, expectedContents string) {
+	f.t.Helper()
+	f.WaitUntil(ctx, fmt.Sprintf("curl(%s)", url), func() (string, error) {
+		_, body, err := f.Curl(url)
+		return body, err
+	}, expectedContents)
+}
+
+func (f *fixture) CurlUntilStatusCode(ctx context.Context, url string, expectedStatusCode int) {
+	f.t.Helper()
+	const prefix = "HTTP Status Code: "
+	f.WaitUntil(ctx, fmt.Sprintf("curl(%s)", url), func() (string, error) {
+		code, _, err := f.Curl(url)
+		return prefix + strconv.Itoa(code), err
+	}, prefix+strconv.Itoa(expectedStatusCode))
+}
+
 func (f *fixture) WaitUntil(ctx context.Context, msg string, fun func() (string, error), expectedContents string) {
 	f.t.Helper()
 	for {
@@ -157,9 +208,17 @@ func (f *fixture) TiltCI(args ...string) {
 }
 
 func (f *fixture) TiltUp(args ...string) {
-	response, err := f.tilt.Up(f.ctx, f.LogWriter(), args...)
+	response, err := f.tilt.Up(f.ctx, UpCommandUp, f.LogWriter(), args...)
 	if err != nil {
 		f.t.Fatalf("TiltUp: %v", err)
+	}
+	f.activeTiltUp = response
+}
+
+func (f *fixture) TiltDemo(args ...string) {
+	response, err := f.tilt.Up(f.ctx, UpCommandDemo, f.LogWriter(), args...)
+	if err != nil {
+		f.t.Fatalf("TiltDemo: %v", err)
 	}
 	f.activeTiltUp = response
 }
@@ -224,14 +283,12 @@ func (f *fixture) StartTearDown() {
 		}
 	}
 
-	f.cancel()
-	f.ctx = context.Background()
 	f.tearingDown = true
 }
 
 func (f *fixture) KillProcs() {
 	if f.activeTiltUp != nil {
-		err := f.activeTiltUp.Kill()
+		err := f.activeTiltUp.TriggerExit()
 		if err != nil && err.Error() != "os: process already finished" {
 			fmt.Printf("error killing tilt: %v\n", err)
 		}
@@ -241,7 +298,11 @@ func (f *fixture) KillProcs() {
 func (f *fixture) TearDown() {
 	f.StartTearDown()
 
+	// give `tilt up` a chance to exit gracefully
+	// (once the context is canceled, it will be immediately SIGKILL'd)
 	f.KillProcs()
+	f.cancel()
+	f.ctx = context.Background()
 
 	// This is a hack.
 	//
@@ -259,11 +320,13 @@ func (f *fixture) TearDown() {
 	// or more scriptability in the Tiltfile.
 	f.tilt.Environ["SKIP_NAMESPACE"] = "true"
 
-	ctx, cancel := context.WithTimeout(f.ctx, 30*time.Second)
-	defer cancel()
-	err := f.tilt.Down(ctx, os.Stdout)
-	if err != nil {
-		f.t.Errorf("Running tilt down: %v", err)
+	if !f.skipTiltDown {
+		ctx, cancel := context.WithTimeout(f.ctx, 30*time.Second)
+		defer cancel()
+		err := f.tilt.Down(ctx, os.Stdout)
+		if err != nil {
+			f.t.Errorf("Running tilt down: %v", err)
+		}
 	}
 
 	for k, v := range f.originalFiles {

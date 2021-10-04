@@ -30,6 +30,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/store/filewatches"
 	"github.com/tilt-dev/tilt/internal/store/kubernetesapplys"
 	"github.com/tilt-dev/tilt/internal/store/kubernetesdiscoverys"
+	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/internal/store/tiltfiles"
 	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/internal/token"
@@ -354,13 +355,14 @@ func handleBuildResults(engineState *store.EngineState,
 }
 
 func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, cb buildcontrol.BuildCompleteAction) {
+	mn := cb.ManifestName
 	defer func() {
-		delete(engineState.CurrentlyBuilding, cb.ManifestName)
+		delete(engineState.CurrentlyBuilding, mn)
 	}()
 
 	engineState.CompletedBuildCount++
 
-	mt, ok := engineState.ManifestTargets[cb.ManifestName]
+	mt, ok := engineState.ManifestTargets[mn]
 	if !ok {
 		return
 	}
@@ -421,21 +423,17 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 		bestPod := krs.MostRecentPod()
 		if timecmp.AfterOrEqual(bestPod.CreatedAt, bs.StartTime) ||
 			timecmp.Equal(krs.UpdateStartTime[k8s.PodID(bestPod.Name)], bs.StartTime) {
-			k8swatch.CheckForContainerCrash(engineState, mt)
+			liveupdates.CheckForContainerCrash(engineState, mn.String())
 		}
 	}
 
 	manifest := mt.Manifest
 	if manifest.IsK8s() {
 		state := ms.K8sRuntimeState()
-		deployedEntities := cb.Result.DeployedEntities()
-		if len(deployedEntities) > 0 {
-			state.DeployedEntities = deployedEntities
-		}
 
-		deployedPodTemplateSpecHashSet := cb.Result.DeployedPodTemplateSpecHashes()
-		if len(deployedPodTemplateSpecHashSet) > 0 {
-			state.DeployedPodTemplateSpecHashSet = deployedPodTemplateSpecHashSet
+		applyFilter := cb.Result.ApplyFilter()
+		if applyFilter != nil && len(applyFilter.DeployedRefs) > 0 {
+			state.ApplyFilter = applyFilter
 		}
 
 		if err == nil {
@@ -458,6 +456,7 @@ func handleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 		cState := dcResult.ContainerState
 		if cState != nil {
 			state = state.WithContainerState(*cState)
+			state = state.WithPorts(dcResult.Ports)
 
 			if docker.HasStarted(*cState) {
 				if state.StartTime.IsZero() {

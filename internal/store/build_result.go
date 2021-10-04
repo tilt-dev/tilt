@@ -8,10 +8,12 @@ import (
 
 	"github.com/docker/distribution/reference"
 	dockertypes "github.com/docker/docker/api/types"
+	"github.com/docker/go-connections/nat"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -117,42 +119,38 @@ type DockerComposeBuildResult struct {
 
 	// The initial state of the container.
 	ContainerState *dockertypes.ContainerState
+
+	// Runtime port bindings
+	Ports nat.PortMap
 }
 
 func (r DockerComposeBuildResult) TargetID() model.TargetID   { return r.id }
 func (r DockerComposeBuildResult) BuildType() model.BuildType { return model.BuildTypeDockerCompose }
 
 // For docker compose deploy targets.
-func NewDockerComposeDeployResult(id model.TargetID, containerID container.ID, state *dockertypes.ContainerState) DockerComposeBuildResult {
+func NewDockerComposeDeployResult(id model.TargetID, containerID container.ID, state *dockertypes.ContainerState, ports nat.PortMap) DockerComposeBuildResult {
 	return DockerComposeBuildResult{
 		id:                       id,
 		DockerComposeContainerID: containerID,
 		ContainerState:           state,
+		Ports:                    ports,
 	}
 }
 
 type K8sBuildResult struct {
-	v1alpha1.KubernetesApplyStatus
+	*k8sconv.KubernetesApplyFilter
 
 	id model.TargetID
-
-	// DeployedRefs are references to the objects that we deployed to a Kubernetes cluster.
-	DeployedRefs []v1.ObjectReference
-
-	// Hashes of the pod template specs that we deployed to a Kubernetes cluster.
-	PodTemplateSpecHashes []k8s.PodTemplateSpecHash
 }
 
 func (r K8sBuildResult) TargetID() model.TargetID   { return r.id }
 func (r K8sBuildResult) BuildType() model.BuildType { return model.BuildTypeK8s }
 
 // NewK8sDeployResult creates a deploy result for Kubernetes deploy targets.
-func NewK8sDeployResult(id model.TargetID, status v1alpha1.KubernetesApplyStatus, deployedRefs []v1.ObjectReference, hashes []k8s.PodTemplateSpecHash) K8sBuildResult {
+func NewK8sDeployResult(id model.TargetID, filter *k8sconv.KubernetesApplyFilter) K8sBuildResult {
 	return K8sBuildResult{
 		id:                    id,
-		KubernetesApplyStatus: status,
-		DeployedRefs:          deployedRefs,
-		PodTemplateSpecHashes: hashes,
+		KubernetesApplyFilter: filter,
 	}
 }
 
@@ -185,29 +183,14 @@ func (set BuildResultSet) LiveUpdatedContainerIDs() []container.ID {
 	return result
 }
 
-func (set BuildResultSet) DeployedEntities() k8s.ObjRefList {
-	var result k8s.ObjRefList
+func (set BuildResultSet) ApplyFilter() *k8sconv.KubernetesApplyFilter {
 	for _, r := range set {
 		r, ok := r.(K8sBuildResult)
 		if ok {
-			for _, ref := range r.DeployedRefs {
-				// shallow copy is fine; there's no reference types on v1.ObjectReference
-				result = append(result, ref)
-			}
+			return r.KubernetesApplyFilter
 		}
 	}
-	return result
-}
-
-func (set BuildResultSet) DeployedPodTemplateSpecHashes() PodTemplateSpecHashSet {
-	result := NewPodTemplateSpecHashSet()
-	for _, r := range set {
-		r, ok := r.(K8sBuildResult)
-		if ok {
-			result.Add(r.PodTemplateSpecHashes...)
-		}
-	}
-	return result
+	return nil
 }
 
 func MergeBuildResultsSet(a, b BuildResultSet) BuildResultSet {
@@ -445,7 +428,7 @@ func IDsForInfos(infos []ContainerInfo) []container.ID {
 	return ids
 }
 
-func AllRunningContainers(mt *ManifestTarget) []ContainerInfo {
+func AllRunningContainers(mt *ManifestTarget, state *EngineState) []ContainerInfo {
 	if mt.Manifest.IsDC() {
 		return RunningContainersForDC(mt.State.DCRuntimeState())
 	}
@@ -454,8 +437,9 @@ func AllRunningContainers(mt *ManifestTarget) []ContainerInfo {
 	for _, iTarget := range mt.Manifest.ImageTargets {
 		selector := iTarget.LiveUpdateSpec.Selector
 		if mt.Manifest.IsK8s() && selector.Kubernetes != nil {
-			cInfos, err := RunningContainersForTargetForOnePod(
-				selector.Kubernetes, mt.State.K8sRuntimeState())
+			cInfos, err := RunningContainersForOnePod(
+				selector.Kubernetes,
+				state.KubernetesResources[mt.Manifest.Name.String()])
 			if err != nil {
 				// HACK(maia): just don't collect container info for targets running
 				// more than one pod -- we don't support LiveUpdating them anyway,
@@ -470,29 +454,28 @@ func AllRunningContainers(mt *ManifestTarget) []ContainerInfo {
 
 // If all containers running the given image are ready, returns info for them.
 // (If this image is running on multiple pods, return an error.)
-func RunningContainersForTargetForOnePod(selector *v1alpha1.LiveUpdateKubernetesSelector, runtimeState K8sRuntimeState) ([]ContainerInfo, error) {
-	// Ignore completed pods.
-	podSet := runtimeState.Pods.Filter(func(p *v1alpha1.Pod) bool {
-		return !(p.Phase == string(v1.PodSucceeded) ||
-			p.Phase == string(v1.PodFailed))
-	})
-	if len(podSet) > 1 {
-		return nil, fmt.Errorf("can only get container info for a single pod; image target %s has %d pods", selector.Image, len(podSet))
-	}
-
-	pod := podSet.MostRecentPod()
-	if pod.Name == "" {
+func RunningContainersForOnePod(selector *v1alpha1.LiveUpdateKubernetesSelector, resource *k8sconv.KubernetesResource) ([]ContainerInfo, error) {
+	if resource == nil {
 		return nil, nil
 	}
 
-	// If there was a recent deploy, the runtime state might not have the
-	// new pods yet. We check the PodAncestorID and see if it's in the most
-	// recent deploy set. If it's not, then we can should ignore these pods.
-	ancestorUID := runtimeState.PodAncestorUID
-	if ancestorUID != "" && !runtimeState.DeployedUIDSet().Contains(ancestorUID) {
-		return nil, nil
+	activePods := []v1alpha1.Pod{}
+	for _, p := range resource.FilteredPods {
+		// Ignore completed pods.
+		if p.Phase == string(v1.PodSucceeded) || p.Phase == string(v1.PodFailed) {
+			continue
+		}
+		activePods = append(activePods, p)
 	}
 
+	if len(activePods) == 0 {
+		return nil, nil
+	}
+	if len(activePods) > 1 {
+		return nil, fmt.Errorf("can only get container info for a single pod; image target %s has %d pods", selector.Image, len(resource.FilteredPods))
+	}
+
+	pod := activePods[0]
 	var containers []ContainerInfo
 	for _, c := range pod.Containers {
 		// Only return containers matching our image

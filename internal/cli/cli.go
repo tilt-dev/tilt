@@ -70,6 +70,7 @@ up-to-date in real-time. Think 'docker build && kubectl apply' or 'docker-compos
 	addCommand(rootCmd, newApplyCmd())
 	addCommand(rootCmd, newCreateCmd())
 	addCommand(rootCmd, newPatchCmd())
+	addCommand(rootCmd, &demoCmd{})
 
 	rootCmd.AddCommand(analytics.NewCommand())
 	rootCmd.AddCommand(newDumpCmd(rootCmd))

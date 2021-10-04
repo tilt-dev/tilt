@@ -224,9 +224,9 @@ type fakeBuildAndDeployer struct {
 	nextDockerComposeContainerID    container.ID
 	nextDockerComposeContainerState *dockertypes.ContainerState
 
-	targetObjectTree          map[model.TargetID]podbuilder.PodObjectTree
-	nextDeployedUID           types.UID
-	nextPodTemplateSpecHashes []k8s.PodTemplateSpecHash
+	targetObjectTree        map[model.TargetID]podbuilder.PodObjectTree
+	nextDeployedUID         types.UID
+	nextPodTemplateSpecHash k8s.PodTemplateSpecHash
 
 	// Set this to simulate a build with no results and an error.
 	// Do not set this directly, use fixture.SetNextBuildError
@@ -351,12 +351,12 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 
 		dcContainerState := b.nextDockerComposeContainerState
 		result[call.dc().ID()] = store.NewDockerComposeDeployResult(
-			call.dc().ID(), dcContainerID, dcContainerState)
+			call.dc().ID(), dcContainerID, dcContainerState, nil)
 	}
 
 	if kTarg := call.k8s(); !kTarg.Empty() {
-		nextK8sResult := b.nextK8sDeployResult(kTarg)
-		err = b.updateKubernetesApplyStatus(ctx, kTarg, nextK8sResult.KubernetesApplyStatus)
+		status, nextK8sResult := b.nextK8sDeployResult(kTarg)
+		err = b.updateKubernetesApplyStatus(ctx, kTarg, *status)
 		if err != nil {
 			return result, err
 		}
@@ -387,10 +387,9 @@ func (b *fakeBuildAndDeployer) updateKubernetesApplyStatus(ctx context.Context, 
 	return b.ctrlClient.Status().Update(ctx, &ka)
 }
 
-func (b *fakeBuildAndDeployer) nextK8sDeployResult(kTarg model.K8sTarget) store.K8sBuildResult {
+func (b *fakeBuildAndDeployer) nextK8sDeployResult(kTarg model.K8sTarget) (*v1alpha1.KubernetesApplyStatus, store.K8sBuildResult) {
 	var err error
 	var deployed []k8s.K8sEntity
-	var templateSpecHashes []k8s.PodTemplateSpecHash
 	var status = v1alpha1.KubernetesApplyStatus{
 		LastApplyTime:    apis.NowMicro(),
 		AppliedInputHash: "x",
@@ -401,7 +400,7 @@ func (b *fakeBuildAndDeployer) nextK8sDeployResult(kTarg model.K8sTarget) store.
 		if b.nextDeployedUID != "" {
 			b.t.Fatalf("Cannot set both explicit deployed entities + next deployed UID")
 		}
-		if len(b.nextPodTemplateSpecHashes) != 0 {
+		if b.nextPodTemplateSpecHash != "" {
 			b.t.Fatalf("Cannot set both explicit deployed entities + next pod template spec hashes")
 		}
 
@@ -413,10 +412,6 @@ func (b *fakeBuildAndDeployer) nextK8sDeployResult(kTarg model.K8sTarget) store.
 		// only return the Deployment entity as deployed since the ReplicaSet + Pod are created implicitly,
 		// i.e. they are not returned in a normal apply call for a Deployment
 		deployed = []k8s.K8sEntity{explicitDeploymentEntities.Deployment()}
-		hash := explicitDeploymentEntities.Pod().Labels()[k8s.TiltPodTemplateHashLabel]
-		if hash != "" {
-			templateSpecHashes = append(templateSpecHashes, k8s.PodTemplateSpecHash(hash))
-		}
 	} else {
 		deployed, err = k8s.ParseYAMLFromString(kTarg.YAML)
 		require.NoError(b.t, err)
@@ -430,10 +425,19 @@ func (b *fakeBuildAndDeployer) nextK8sDeployResult(kTarg model.K8sTarget) store.
 			deployed[i].SetUID(string(uid))
 		}
 
-		templateSpecHashes = podTemplateSpecHashesForTarg(b.t, kTarg)
-		if len(b.nextPodTemplateSpecHashes) != 0 {
-			templateSpecHashes = b.nextPodTemplateSpecHashes
-			b.nextPodTemplateSpecHashes = nil
+		for i, e := range deployed {
+			if b.nextPodTemplateSpecHash != "" {
+				e = e.DeepCopy()
+				templateSpecs, err := k8s.ExtractPodTemplateSpec(&e)
+				require.NoError(b.t, err)
+				for _, ts := range templateSpecs {
+					ts.Labels = map[string]string{k8s.TiltPodTemplateHashLabel: string(b.nextPodTemplateSpecHash)}
+				}
+				deployed[i] = e
+			} else {
+				deployed[i], err = k8s.InjectPodTemplateSpecHashes(e)
+				require.NoError(b.t, err)
+			}
 		}
 	}
 
@@ -441,7 +445,9 @@ func (b *fakeBuildAndDeployer) nextK8sDeployResult(kTarg model.K8sTarget) store.
 	require.NoError(b.t, err)
 	status.ResultYAML = resultYAML
 
-	return store.NewK8sDeployResult(kTarg.ID(), status, k8s.ToRefList(deployed), templateSpecHashes)
+	filter, err := k8sconv.NewKubernetesApplyFilter(&status)
+	require.NoError(b.t, err)
+	return &status, store.NewK8sDeployResult(kTarg.ID(), filter)
 }
 
 func (b *fakeBuildAndDeployer) getOrCreateBuildCompletionChannel(key string) buildCompletionChannel {
@@ -1448,7 +1454,8 @@ func TestPodEventOrdering(t *testing.T) {
 			call := f.nextCall()
 			assert.True(t, call.oneImageState().IsEmpty())
 			f.WaitUntilManifestState("uid deployed", "fe", func(ms store.ManifestState) bool {
-				return ms.K8sRuntimeState().DeployedEntities.ContainsUID(uidNow)
+
+				return k8sconv.ContainsUID(ms.K8sRuntimeState().ApplyFilter, uidNow)
 			})
 
 			for _, pb := range order {
@@ -2044,7 +2051,7 @@ func TestPodAddedToStateOrNotByTemplateHash(t *testing.T) {
 			f.kClient.Inject(entities.Deployment(), entities.ReplicaSet())
 
 			f.b.nextDeployedUID = ancestorUID
-			f.b.nextPodTemplateSpecHashes = []k8s.PodTemplateSpecHash{deployedHash}
+			f.b.nextPodTemplateSpecHash = deployedHash
 			f.Start([]model.Manifest{manifest})
 
 			_ = f.nextCallComplete()
@@ -3190,7 +3197,7 @@ func TestDeployUIDsInEngineState(t *testing.T) {
 
 	_ = f.nextCall()
 	f.WaitUntilManifestState("UID in ManifestState", "fe", func(state store.ManifestState) bool {
-		return state.K8sRuntimeState().DeployedEntities.ContainsUID(uid)
+		return k8sconv.ContainsUID(state.K8sRuntimeState().ApplyFilter, uid)
 	})
 
 	err := f.Stop()
@@ -4589,36 +4596,12 @@ func (f *testFixture) setK8sApplyResult(name model.ManifestName, hash k8s.PodTem
 	st := f.store.LockMutableStateForTesting()
 	ms, _ := st.ManifestState(name)
 	krs := ms.K8sRuntimeState()
-	krs.DeployedPodTemplateSpecHashSet.Add(hash)
-	krs.DeployedEntities = k8s.ObjRefList{entity.ToObjectReference()}
+	krs.ApplyFilter = &k8sconv.KubernetesApplyFilter{
+		PodTemplateSpecHashes: []k8s.PodTemplateSpecHash{hash},
+		DeployedRefs:          k8s.ObjRefList{entity.ToObjectReference()},
+	}
 	ms.RuntimeState = krs
 	f.store.UnlockMutableState()
-}
-
-func podTemplateSpecHashesForTarg(t *testing.T, targ model.K8sTarget) []k8s.PodTemplateSpecHash {
-	entities, err := k8s.ParseYAMLFromString(targ.YAML)
-	require.NoError(t, err)
-
-	var ptsh []k8s.PodTemplateSpecHash
-	for _, e := range entities {
-		hashes := podTemplateSpecHashes(t, &e)
-		ptsh = append(ptsh, hashes...)
-	}
-
-	return ptsh
-}
-
-func podTemplateSpecHashes(t *testing.T, e *k8s.K8sEntity) []k8s.PodTemplateSpecHash {
-	templateSpecs, err := k8s.ExtractPodTemplateSpec(e)
-	require.NoError(t, err)
-
-	var hashes []k8s.PodTemplateSpecHash
-	for _, ts := range templateSpecs {
-		h, err := k8s.HashPodTemplateSpec(ts)
-		require.NoError(t, err)
-		hashes = append(hashes, h)
-	}
-	return hashes
 }
 
 type fixtureSub struct {
@@ -4653,13 +4636,11 @@ func deployResultSet(t testing.TB, manifest model.Manifest, pb podbuilder.PodBui
 	}
 	ktID := manifest.K8sTarget().ID()
 	entities := []k8s.K8sEntity{pb.ObjectTreeEntities().Deployment()}
-	yaml, err := k8s.SerializeSpecYAML(entities)
-	require.NoError(t, err)
-	status := v1alpha1.KubernetesApplyStatus{
-		ResultYAML:    yaml,
-		LastApplyTime: apis.NowMicro(),
+	filter := &k8sconv.KubernetesApplyFilter{
+		DeployedRefs:          k8s.ToRefList(entities),
+		PodTemplateSpecHashes: hashes,
 	}
-	resultSet[ktID] = store.NewK8sDeployResult(ktID, status, k8s.ToRefList(entities), hashes)
+	resultSet[ktID] = store.NewK8sDeployResult(ktID, filter)
 	return resultSet
 }
 
