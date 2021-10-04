@@ -206,6 +206,14 @@ type LiveUpdateKubernetesSelector struct {
 	// The name of a KubernetesDiscovery object for finding pods.
 	DiscoveryName string `json:"discoveryName,omitempty" protobuf:"bytes,1,opt,name=discoveryName"`
 
+	// ApplyName is the name of a KubernetesApply object for filtering discovered pods to prevent updating old
+	// deployments.
+	//
+	// If not provided, no filtering will be applied and all discovered Pods will be eligible for update.
+	//
+	// +optional
+	ApplyName string `json:"applyName,omitempty" protobuf:"bytes,3,opt,name=applyName"`
+
 	// Image specifies the name of the image that we're copying files into.
 	// Determines which containers in a pod to live-update.
 	// Matches images by name unless tag is explicitly specified.
