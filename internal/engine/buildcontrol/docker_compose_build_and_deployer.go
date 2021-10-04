@@ -7,6 +7,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
+	"github.com/docker/go-connections/nat"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 
@@ -159,7 +160,12 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		containerState = containerJSON.ContainerJSONBase.State
 	}
 
-	newResults[dcTarget.ID()] = store.NewDockerComposeDeployResult(dcTarget.ID(), cid, containerState)
+	var ports nat.PortMap
+	if containerJSON.NetworkSettings != nil {
+		ports = containerJSON.NetworkSettings.NetworkSettingsBase.Ports
+	}
+
+	newResults[dcTarget.ID()] = store.NewDockerComposeDeployResult(dcTarget.ID(), cid, containerState, ports)
 	return newResults, nil
 }
 
