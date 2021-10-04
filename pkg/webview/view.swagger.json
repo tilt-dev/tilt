@@ -4,10 +4,6 @@
     "title": "pkg/webview/view.proto",
     "version": "version not set"
   },
-  "schemes": [
-    "http",
-    "https"
-  ],
   "consumes": [
     "application/json"
   ],
@@ -17,12 +13,18 @@
   "paths": {
     "/api/snapshot/new": {
       "post": {
-        "operationId": "UploadSnapshot",
+        "operationId": "ViewService_UploadSnapshot",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/webviewUploadSnapshotResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -43,12 +45,18 @@
     },
     "/api/view": {
       "get": {
-        "operationId": "GetView",
+        "operationId": "ViewService_GetView",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/webviewView"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -59,12 +67,18 @@
     },
     "/websocket/ack": {
       "post": {
-        "operationId": "AckWebsocket",
+        "operationId": "WebsocketService_AckWebsocket",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/webviewAckWebsocketResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
             }
           }
         },
@@ -102,7 +116,6 @@
         },
         "dev": {
           "type": "boolean",
-          "format": "boolean",
           "title": "Indicates whether this is a development build (true) or an official release (false).\n+optional"
         }
       },
@@ -113,11 +126,43 @@
       "properties": {
         "checkUpdates": {
           "type": "boolean",
-          "format": "boolean",
           "title": "Whether version updates have been enabled/disabled from the Tiltfile.\n+optional"
         }
       },
       "description": "Information about how the Tilt binary handles updates."
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "type_url": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "runtimeError": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "string"
+        },
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
     },
     "v1FieldsV1": {
       "type": "object",
@@ -288,12 +333,10 @@
         },
         "controller": {
           "type": "boolean",
-          "format": "boolean",
           "title": "If true, this reference points to the managing controller.\n+optional"
         },
         "blockOwnerDeletion": {
           "type": "boolean",
-          "format": "boolean",
           "title": "If true, AND if the owner has the \"foregroundDeletion\" finalizer, then\nthe owner cannot be deleted from the key-value store until this\nreference is removed.\nDefaults to false.\nTo set this field, a user needs \"delete\" permission of the owner,\notherwise 422 (Unprocessable Entity) will be returned.\n+optional"
         }
       },
@@ -367,7 +410,6 @@
       "properties": {
         "defaultValue": {
           "type": "boolean",
-          "format": "boolean",
           "title": "Whether the input is initially true or false.\n+optional"
         },
         "trueString": {
@@ -384,8 +426,7 @@
       "type": "object",
       "properties": {
         "value": {
-          "type": "boolean",
-          "format": "boolean"
+          "type": "boolean"
         }
       }
     },
@@ -431,7 +472,6 @@
         },
         "isCrashRebuild": {
           "type": "boolean",
-          "format": "boolean",
           "title": "A crash rebuild happens when Tilt live-updated a container, then\nthe pod crashed, wiping out the live-updates. Tilt does a full\nbuild+deploy to reset the pod state to what's on disk.\n+optional"
         }
       },
@@ -473,7 +513,6 @@
         },
         "disabled": {
           "type": "boolean",
-          "format": "boolean",
           "description": "If true, the button will be rendered, but with an effect indicating it's\ndisabled. It will also be unclickable.\n\n+optional"
         },
         "inputs": {
@@ -526,7 +565,6 @@
         },
         "value": {
           "type": "boolean",
-          "format": "boolean",
           "title": "The value of the flag.\n+optional"
         }
       },
@@ -636,7 +674,6 @@
         },
         "allContainersReady": {
           "type": "boolean",
-          "format": "boolean",
           "title": "Whether all the containers in the pod are currently healthy\nand have passed readiness checks.\n+optional"
         },
         "podRestarts": {
@@ -682,7 +719,6 @@
         },
         "isTest": {
           "type": "boolean",
-          "format": "boolean",
           "title": "Whether this represents a test job.\n+optional"
         }
       },
@@ -721,7 +757,6 @@
         },
         "hasPendingChanges": {
           "type": "boolean",
-          "format": "boolean",
           "title": "True if the build was put in the pending queue due to file changes.\n+optional"
         },
         "endpointLinks": {
@@ -756,7 +791,6 @@
         },
         "queued": {
           "type": "boolean",
-          "format": "boolean",
           "title": "Queued is a simple indicator of whether the resource is queued for an update.\n+optional"
         },
         "order": {
@@ -784,7 +818,6 @@
         },
         "hasLiveUpdate": {
           "type": "boolean",
-          "format": "boolean",
           "title": "Whether the target has a live update assocated with it.\n+optional"
         }
       },
@@ -821,7 +854,6 @@
         },
         "needsAnalyticsNudge": {
           "type": "boolean",
-          "format": "boolean",
           "title": "NeedsAnalyticsNudge reports whether the UI hasn't opted in or out\nof analytics, and the UI should nudge them to do so.\n+optional"
         },
         "runningTiltBuild": {
@@ -929,8 +961,7 @@
           "format": "date-time"
         },
         "is_crash_rebuild": {
-          "type": "boolean",
-          "format": "boolean"
+          "type": "boolean"
         },
         "span_id": {
           "type": "string",
@@ -957,8 +988,7 @@
           "type": "string"
         },
         "all_containers_ready": {
-          "type": "boolean",
-          "format": "boolean"
+          "type": "boolean"
         },
         "pod_restarts": {
           "type": "integer",
@@ -995,8 +1025,7 @@
           "format": "int64"
         },
         "is_test": {
-          "type": "boolean",
-          "format": "boolean"
+          "type": "boolean"
         }
       }
     },
@@ -1058,7 +1087,6 @@
         },
         "anchor": {
           "type": "boolean",
-          "format": "boolean",
           "description": "When we store warnings in the LogStore, we break them up into lines and\nstore them as a series of line segments. 'anchor' marks the beginning of a\nseries of logs that should be kept together.\n\nAnchor warning1, line1\n       warning1, line2\nAnchor warning2, line1"
         },
         "fields": {
@@ -1106,8 +1134,7 @@
           "format": "date-time"
         },
         "has_pending_changes": {
-          "type": "boolean",
-          "format": "boolean"
+          "type": "boolean"
         },
         "endpoint_links": {
           "type": "array",
@@ -1131,8 +1158,7 @@
           "type": "string"
         },
         "is_tiltfile": {
-          "type": "boolean",
-          "format": "boolean"
+          "type": "boolean"
         },
         "specs": {
           "type": "array",
@@ -1141,8 +1167,7 @@
           }
         },
         "queued": {
-          "type": "boolean",
-          "format": "boolean"
+          "type": "boolean"
         }
       }
     },
@@ -1153,8 +1178,7 @@
           "$ref": "#/definitions/webviewView"
         },
         "is_sidebar_closed": {
-          "type": "boolean",
-          "format": "boolean"
+          "type": "boolean"
         },
         "path": {
           "type": "string"
@@ -1191,8 +1215,7 @@
           "$ref": "#/definitions/webviewTargetType"
         },
         "has_live_update": {
-          "type": "boolean",
-          "format": "boolean"
+          "type": "boolean"
         }
       }
     },
@@ -1221,8 +1244,7 @@
           "type": "string"
         },
         "dev": {
-          "type": "boolean",
-          "format": "boolean"
+          "type": "boolean"
         }
       }
     },
@@ -1238,8 +1260,7 @@
       "type": "object",
       "properties": {
         "check_updates": {
-          "type": "boolean",
-          "format": "boolean"
+          "type": "boolean"
         }
       }
     },
@@ -1257,19 +1278,16 @@
         },
         "DEPRECATED_log_timestamps": {
           "type": "boolean",
-          "format": "boolean",
           "description": "We used to have a setting that allowed users to dynamically\nprepend timestamps in logs."
         },
         "feature_flags": {
           "type": "object",
           "additionalProperties": {
-            "type": "boolean",
-            "format": "boolean"
+            "type": "boolean"
           }
         },
         "needs_analytics_nudge": {
-          "type": "boolean",
-          "format": "boolean"
+          "type": "boolean"
         },
         "running_tilt_build": {
           "$ref": "#/definitions/webviewTiltBuild"
@@ -1328,7 +1346,6 @@
         },
         "is_complete": {
           "type": "boolean",
-          "format": "boolean",
           "description": "indicates that this view is a complete representation of the app\nif false, this view just contains deltas from a previous view."
         }
       },

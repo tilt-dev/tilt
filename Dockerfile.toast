@@ -1,7 +1,7 @@
 FROM golang:1.16-alpine
-RUN apk update
 
-RUN apk add \
+RUN apk add --no-cache \
+  build-base \
   protobuf \
   protobuf-dev \
   git \
@@ -9,20 +9,26 @@ RUN apk add \
   make \
   nodejs \
   yarn
-  
-RUN go get -u \
-  github.com/golang/protobuf/protoc-gen-go \
-  github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway \
-  github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger \
-  google.golang.org/grpc \
-  github.com/google/wire/cmd/wire
-  
-RUN go get golang.org/x/tools/cmd/goimports
 
-RUN cd /tmp && \
-  wget https://github.com/grpc/grpc-web/releases/download/1.0.6/protoc-gen-grpc-web-1.0.6-linux-x86_64 && \
-  mv protoc-gen-grpc-web-1.0.6-linux-x86_64 /usr/local/bin/protoc-gen-grpc-web && \
+
+RUN go install 'github.com/golang/protobuf/protoc-gen-go@v1.4.3'
+RUN go install 'github.com/google/wire/cmd/wire@v0.5.0'
+RUN go install 'golang.org/x/tools/cmd/goimports@latest'
+ARG GRPC_GATEWAY_VERSION="v1.16.0"
+RUN go install "github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway@${GRPC_GATEWAY_VERSION}"
+RUN go install "github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger@${GRPC_GATEWAY_VERSION}"
+
+#RUN wget "https://github.com/grpc-ecosystem/grpc-gateway/releases/download/${GRPC_GATEWAY_VERSION}/protoc-gen-grpc-gateway-${GRPC_GATEWAY_VERSION}-linux-x86_64" \
+#      -o /usr/local/bin/protoc-gen-grpc-gateway && \
+#    chmod +x /usr/local/bin/protoc-gen-grpc-gateway
+#
+#RUN wget "https://github.com/grpc-ecosystem/grpc-gateway/releases/download/${GRPC_GATEWAY_VERSION}/protoc-gen-swagger-${GRPC_GATEWAY_VERSION}-linux-x86_64" \
+#      -o /usr/local/bin/protoc-gen-swagger && \
+#    chmod +x /usr/local/bin/protoc-gen-swagger
+
+RUN wget https://github.com/grpc/grpc-web/releases/download/1.0.6/protoc-gen-grpc-web-1.0.6-linux-x86_64 \
+    -o /usr/local/bin/protoc-gen-grpc-web && \
   chmod +x /usr/local/bin/protoc-gen-grpc-web
   
 RUN yarn global add \
-  @manifoldco/swagger-to-ts
+  '@manifoldco/swagger-to-ts@1.4.0'

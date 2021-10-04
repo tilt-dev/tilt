@@ -1,4 +1,5 @@
-image: gcr.io/windmill-public-containers/tilt-toast@sha256:481cd7eb12dc5b82ea5f6832b2895f914a6b21621dbb122ea5290ae73bb0d1b3
+#image: gcr.io/windmill-public-containers/tilt-toast@sha256:TODO
+image: milas/tilt-toast:5
 tasks:
   webview-proto:
     input_paths:
@@ -19,15 +20,15 @@ tasks:
        -I. \
        -I./vendor \
        -I/usr/include \
-       -I"$(go env GOPATH)"/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis \
+       -I"$(go list -f "{{.Dir}}" -m "github.com/grpc-ecosystem/grpc-gateway@latest")/third_party/googleapis" \
        --grpc-gateway_out=logtostderr=true:. \
        --swagger_out=logtostderr=true:. \
        --go_out=plugins=grpc,paths=source_relative:. \
        pkg/webview/*.proto
-      goimports -local github.com/tilt-dev/tilt -w pkg/webview/*.pb.go
       sed -i 's|v1alpha1 "pkg/apis/core/v1alpha1"|v1alpha1 "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"|g' pkg/webview/view.pb.go 
       sed -i 's|"$ref": "#/definitions/v1Time",|"type": "string", "format": "date-time",|g' pkg/webview/view.swagger.json
       sed -i 's|"$ref": "#/definitions/v1MicroTime",|"type": "string", "format": "date-time",|g' pkg/webview/view.swagger.json
+      goimports -local github.com/tilt-dev/tilt -w pkg/webview/*.pb.go
 
   proto-ts:
     dependencies:
@@ -47,6 +48,8 @@ tasks:
   wire:
     location: /go/src/github.com/tilt-dev/tilt
     input_paths:
+      - go.mod
+      - go.sum
       - assets
       - cmd
       - integration
