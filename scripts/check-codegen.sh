@@ -31,12 +31,10 @@ if [[ $changes =~ $codegen_regex ]]; then
   echo "Found changed API files (compared to origin/master):"
   print_file_list "${changes}"
   printf "\nRunning codegen to ensure up-to-date...\n\n"
-  # use the helper script directly - this is primarily run on CircleCI Linux
-  # and the wrapper script uses local volume mounts that won't work with remote Docker
-  # stdout is also suppressed because it's emits a ton of bogus warnings
-  # that aren't relevant and might cause confusion when looking at CI output
-  ( "${dir}/update-codegen-helper.sh" ) >/dev/null
-  goimports -w -local github.com/tilt-dev/tilt pkg >/dev/null
+  make update-codegen-go
+  # TODO - get this working in CI and swap these all out with `make update-codegeen`
+  # make update-codegen-ts
+  make update-codegen-starlark
 else
   echo "No API files modified (skipping up-to-date check)"
   exit 0

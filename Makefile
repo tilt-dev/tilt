@@ -1,4 +1,4 @@
-.PHONY: all proto install lint test test-go check-js test-js test-storybook integration wire-check wire ensure check-go goimports proto-webview proto-webview-ts vendor shellcheck release-container update-codegen
+.PHONY: all install lint test test-go check-js test-js test-storybook integration wire-check wire ensure check-go goimports vendor shellcheck release-container update-codegen update-codegen-go update-codegen-starlark update-codegen-ts
 
 all: check-go check-js test-js test-storybook
 
@@ -14,9 +14,6 @@ GO_PARALLEL_JOBS := 4
 CIRCLECI := $(if $(CIRCLECI),$(CIRCLECI),false)
 
 GOIMPORTS_LOCAL_ARG := -local github.com/tilt-dev/tilt
-
-proto:
-	toast proto-ts
 
 # Build a binary the current commit SHA
 install:
@@ -177,10 +174,15 @@ test_install_version_check: install
 shellcheck:
 	find ./scripts -type f -name '*.sh' -exec docker run --rm -it -e SHELLCHECK_OPTS="-e SC2001" -v $$(pwd):/mnt nlknguyen/alpine-shellcheck {} \;
 
-update-codegen: update-starlark-codegen
+update-codegen: update-codegen-go update-codegen-ts update-codegen-starlark
+
+update-codegen-go:
 	scripts/update-codegen.sh
 	goimports -w -l $(GOIMPORTS_LOCAL_ARG) pkg
 
-update-starlark-codegen:
+update-codegen-starlark:
 	go install github.com/tilt-dev/tilt-starlark-codegen@latest
 	tilt-starlark-codegen ./pkg/apis/core/v1alpha1 ./internal/tiltfile/v1alpha1
+
+update-codegen-ts:
+	toast proto-ts
