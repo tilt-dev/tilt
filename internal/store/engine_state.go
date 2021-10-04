@@ -8,21 +8,19 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tilt-dev/tilt/internal/timecmp"
-
-	"github.com/tilt-dev/tilt/internal/store/k8sconv"
-
 	"github.com/tilt-dev/wmclient/pkg/analytics"
-
-	"github.com/tilt-dev/tilt/internal/k8s"
-	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/hud/view"
+	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/ospath"
+	"github.com/tilt-dev/tilt/internal/store/dcconv"
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
+	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/internal/token"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
@@ -577,6 +575,14 @@ func (ms *ManifestState) MutableBuildStatus(id model.TargetID) *BuildStatus {
 func (ms *ManifestState) DCRuntimeState() dockercompose.State {
 	ret, _ := ms.RuntimeState.(dockercompose.State)
 	return ret
+}
+
+func (ms *ManifestState) DockerResource() *dcconv.DockerResource {
+	ret, ok := ms.RuntimeState.(dockercompose.State)
+	if !ok {
+		return nil
+	}
+	return &dcconv.DockerResource{ContainerID: string(ret.ContainerID)}
 }
 
 func (ms *ManifestState) IsDC() bool {

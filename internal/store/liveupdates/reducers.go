@@ -26,7 +26,7 @@ func CheckForContainerCrash(state *store.EngineState, name string) {
 		return
 	}
 
-	runningContainers := store.AllRunningContainers(mt, state)
+	runningContainers := AllRunningContainers(mt, state)
 	if len(runningContainers) == 0 {
 		// If there are no running containers, it might mean the containers are
 		// being deleted. We don't need to intervene yet.

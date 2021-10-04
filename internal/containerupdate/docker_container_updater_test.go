@@ -8,16 +8,16 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/internal/testutils"
 
 	"github.com/tilt-dev/tilt/internal/build"
-	"github.com/tilt-dev/tilt/internal/store"
 
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-var TestContainerInfo = store.ContainerInfo{
+var TestContainerInfo = liveupdates.Container{
 	PodID:         "somepod",
 	ContainerID:   docker.TestContainer,
 	ContainerName: "my-container",

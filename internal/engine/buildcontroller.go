@@ -8,6 +8,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/dcconv"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -188,16 +189,12 @@ func buildStateSet(ctx context.Context, manifest model.Manifest,
 			if ok {
 				selector := iTarget.LiveUpdateSpec.Selector
 				if manifest.IsK8s() && selector.Kubernetes != nil {
-					cInfos, err := store.RunningContainersForOnePod(selector.Kubernetes, kresource)
-					if err != nil {
-						buildState = buildState.WithRunningContainerError(err)
-					} else {
-						buildState = buildState.WithRunningContainers(cInfos)
-					}
+					buildState.KubernetesSelector = selector.Kubernetes
+					buildState.KubernetesResource = kresource
 				}
 
 				if manifest.IsDC() {
-					buildState = buildState.WithRunningContainers(store.RunningContainersForDC(ms.DCRuntimeState()))
+					buildState.DockerResource = &dcconv.DockerResource{ContainerID: string(ms.DCRuntimeState().ContainerID)}
 				}
 			}
 		}
