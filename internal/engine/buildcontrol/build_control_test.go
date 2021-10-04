@@ -19,6 +19,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -267,19 +268,24 @@ func TestHoldForDeploy(t *testing.T) {
 	f.assertNoTargetNextToBuild()
 	f.assertHold("sancho", store.HoldWaitingForDeploy)
 
-	sancho.State.K8sRuntimeState().Pods["pod-1"] = readyPod("pod-1", sanchoImage.Refs.ClusterRef())
+	resource := &k8sconv.KubernetesResource{
+		FilteredPods: []v1alpha1.Pod{},
+	}
+	f.st.KubernetesResources["sancho"] = resource
+
+	resource.FilteredPods = append(resource.FilteredPods, *readyPod("pod-1", sanchoImage.Refs.ClusterRef()))
 	f.assertNextTargetToBuild("sancho")
 
-	sancho.State.K8sRuntimeState().Pods["pod-1"] = crashingPod("pod-1", sanchoImage.Refs.ClusterRef())
+	resource.FilteredPods[0] = *crashingPod("pod-1", sanchoImage.Refs.ClusterRef())
 	f.assertNextTargetToBuild("sancho")
 
-	sancho.State.K8sRuntimeState().Pods["pod-1"] = crashedInThePastPod("pod-1", sanchoImage.Refs.ClusterRef())
+	resource.FilteredPods[0] = *crashedInThePastPod("pod-1", sanchoImage.Refs.ClusterRef())
 	f.assertNextTargetToBuild("sancho")
 
-	sancho.State.K8sRuntimeState().Pods["pod-1"] = sidecarCrashedPod("pod-1", sanchoImage.Refs.ClusterRef())
+	resource.FilteredPods[0] = *sidecarCrashedPod("pod-1", sanchoImage.Refs.ClusterRef())
 	f.assertNextTargetToBuild("sancho")
 
-	sancho.State.K8sRuntimeState().Pods["pod-1"] = completedPod("pod-1", sanchoImage.Refs.ClusterRef())
+	resource.FilteredPods[0] = *completedPod("pod-1", sanchoImage.Refs.ClusterRef())
 	f.assertNextTargetToBuild("sancho")
 }
 

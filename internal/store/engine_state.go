@@ -116,6 +116,10 @@ type EngineState struct {
 	// 4) ConfigsController dispatches a TiltfileCreateAction, to copy the apiserver data into the EngineState
 	DesiredTiltfilePath string
 
+	// KubernetesResources by name.
+	// Updated to match KubernetesApply + KubernetesDiscovery
+	KubernetesResources map[string]*k8sconv.KubernetesResource `json:"-"`
+
 	// API-server-based data models. Stored in EngineState
 	// to assist in migration.
 	Cmds                 map[string]*Cmd                          `json:"-"`
@@ -521,6 +525,7 @@ func NewState() *EngineState {
 	ret.FileWatches = make(map[string]*v1alpha1.FileWatch)
 	ret.KubernetesApplys = make(map[string]*v1alpha1.KubernetesApply)
 	ret.KubernetesDiscoverys = make(map[string]*v1alpha1.KubernetesDiscovery)
+	ret.KubernetesResources = make(map[string]*k8sconv.KubernetesResource)
 
 	return ret
 }

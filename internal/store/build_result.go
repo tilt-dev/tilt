@@ -423,7 +423,7 @@ func IDsForInfos(infos []ContainerInfo) []container.ID {
 	return ids
 }
 
-func AllRunningContainers(mt *ManifestTarget) []ContainerInfo {
+func AllRunningContainers(mt *ManifestTarget, state *EngineState) []ContainerInfo {
 	if mt.Manifest.IsDC() {
 		return RunningContainersForDC(mt.State.DCRuntimeState())
 	}
@@ -432,8 +432,9 @@ func AllRunningContainers(mt *ManifestTarget) []ContainerInfo {
 	for _, iTarget := range mt.Manifest.ImageTargets {
 		selector := iTarget.LiveUpdateSpec.Selector
 		if mt.Manifest.IsK8s() && selector.Kubernetes != nil {
-			cInfos, err := RunningContainersForTargetForOnePod(
-				selector.Kubernetes, mt.State.K8sRuntimeState())
+			cInfos, err := RunningContainersForOnePod(
+				selector.Kubernetes,
+				state.KubernetesResources[mt.Manifest.Name.String()])
 			if err != nil {
 				// HACK(maia): just don't collect container info for targets running
 				// more than one pod -- we don't support LiveUpdating them anyway,
@@ -448,29 +449,28 @@ func AllRunningContainers(mt *ManifestTarget) []ContainerInfo {
 
 // If all containers running the given image are ready, returns info for them.
 // (If this image is running on multiple pods, return an error.)
-func RunningContainersForTargetForOnePod(selector *v1alpha1.LiveUpdateKubernetesSelector, runtimeState K8sRuntimeState) ([]ContainerInfo, error) {
-	// Ignore completed pods.
-	podSet := runtimeState.Pods.Filter(func(p *v1alpha1.Pod) bool {
-		return !(p.Phase == string(v1.PodSucceeded) ||
-			p.Phase == string(v1.PodFailed))
-	})
-	if len(podSet) > 1 {
-		return nil, fmt.Errorf("can only get container info for a single pod; image target %s has %d pods", selector.Image, len(podSet))
-	}
-
-	pod := podSet.MostRecentPod()
-	if pod.Name == "" {
+func RunningContainersForOnePod(selector *v1alpha1.LiveUpdateKubernetesSelector, resource *k8sconv.KubernetesResource) ([]ContainerInfo, error) {
+	if resource == nil {
 		return nil, nil
 	}
 
-	// If there was a recent deploy, the runtime state might not have the
-	// new pods yet. We check the PodAncestorID and see if it's in the most
-	// recent deploy set. If it's not, then we can should ignore these pods.
-	ancestorUID := runtimeState.PodAncestorUID
-	if ancestorUID != "" && !k8sconv.ContainsUID(runtimeState.ApplyFilter, ancestorUID) {
-		return nil, nil
+	activePods := []v1alpha1.Pod{}
+	for _, p := range resource.FilteredPods {
+		// Ignore completed pods.
+		if p.Phase == string(v1.PodSucceeded) || p.Phase == string(v1.PodFailed) {
+			continue
+		}
+		activePods = append(activePods, p)
 	}
 
+	if len(activePods) == 0 {
+		return nil, nil
+	}
+	if len(activePods) > 1 {
+		return nil, fmt.Errorf("can only get container info for a single pod; image target %s has %d pods", selector.Image, len(resource.FilteredPods))
+	}
+
+	pod := activePods[0]
 	var containers []ContainerInfo
 	for _, c := range pod.Containers {
 		// Only return containers matching our image

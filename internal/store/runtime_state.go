@@ -191,16 +191,6 @@ func (s K8sRuntimeState) MostRecentPod() v1alpha1.Pod {
 	return s.Pods.MostRecentPod()
 }
 
-// podCompare is a stable sort order for pods.
-func podCompare(p1 v1alpha1.Pod, p2 v1alpha1.Pod) bool {
-	if p1.CreatedAt.After(p2.CreatedAt.Time) {
-		return true
-	} else if p2.CreatedAt.After(p1.CreatedAt.Time) {
-		return false
-	}
-	return p1.Name > p2.Name
-}
-
 func AllPodContainers(p v1alpha1.Pod) []v1alpha1.Container {
 	var result []v1alpha1.Container
 	result = append(result, p.InitContainers...)
@@ -252,7 +242,7 @@ func (ps PodSet) MostRecentPod() v1alpha1.Pod {
 	found := false
 
 	for _, v := range ps {
-		if !found || podCompare(*v, bestPod) {
+		if !found || k8sconv.PodCompare(*v, bestPod) {
 			bestPod = *v
 			found = true
 		}
