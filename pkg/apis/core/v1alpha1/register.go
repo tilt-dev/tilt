@@ -68,6 +68,7 @@ func AllResourceObjects() []resource.Object {
 		&Extension{},
 		&ExtensionRepo{},
 		&LiveUpdate{},
+		&ToggleButton{},
 
 		// Hey! You! If you're adding a new top-level type, add the type object here.
 	}
@@ -90,6 +91,7 @@ func AllResourceLists() []runtime.Object {
 		&ExtensionList{},
 		&ExtensionRepoList{},
 		&LiveUpdateList{},
+		&ToggleButtonList{},
 
 		// Hey! You! If you're adding a new top-level type, add the List type here.
 	}

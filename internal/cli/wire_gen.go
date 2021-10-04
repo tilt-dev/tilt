@@ -7,8 +7,16 @@ package cli
 
 import (
 	"context"
+	"time"
+
 	"github.com/google/wire"
 	"github.com/jonboulle/clockwork"
+	"github.com/tilt-dev/wmclient/pkg/dirs"
+	"go.opentelemetry.io/otel/sdk/trace"
+	version2 "k8s.io/apimachinery/pkg/version"
+	"k8s.io/client-go/tools/clientcmd/api"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
 	client2 "github.com/tilt-dev/tilt/internal/cli/client"
@@ -28,6 +36,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/core/podlogstream"
 	"github.com/tilt-dev/tilt/internal/controllers/core/portforward"
 	tiltfile2 "github.com/tilt-dev/tilt/internal/controllers/core/tiltfile"
+	"github.com/tilt-dev/tilt/internal/controllers/core/togglebutton"
 	"github.com/tilt-dev/tilt/internal/controllers/core/uibutton"
 	"github.com/tilt-dev/tilt/internal/controllers/core/uiresource"
 	"github.com/tilt-dev/tilt/internal/controllers/core/uisession"
@@ -67,12 +76,6 @@ import (
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
-	"github.com/tilt-dev/wmclient/pkg/dirs"
-	"go.opentelemetry.io/otel/sdk/trace"
-	version2 "k8s.io/apimachinery/pkg/version"
-	"k8s.io/client-go/tools/clientcmd/api"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"time"
 )
 
 // Injectors from wire.go:
@@ -276,6 +279,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	buildSource := tiltfile2.NewBuildSource()
 	engineMode := _wireEngineModeValue
 	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, switchCli, deferredClient, scheme, buildSource, engineMode)
+	togglebuttonReconciler := togglebutton.NewReconciler(deferredClient, scheme)
 	extensionReconciler := extension.NewReconciler(deferredClient, scheme, analytics3)
 	base := xdg.NewTiltDevBase()
 	extensionrepoReconciler, err := extensionrepo.NewReconciler(deferredClient, base)
@@ -283,7 +287,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 		return CmdUpDeps{}, err
 	}
 	liveupdateReconciler := liveupdate.NewReconciler(deferredClient)
-	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler, extensionReconciler, extensionrepoReconciler, liveupdateReconciler)
+	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler, togglebuttonReconciler, extensionReconciler, extensionrepoReconciler, liveupdateReconciler)
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	v2 := provideClock()
 	renderer := hud.NewRenderer(v2)
@@ -477,6 +481,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	buildSource := tiltfile2.NewBuildSource()
 	engineMode := _wireStoreEngineModeValue
 	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, switchCli, deferredClient, scheme, buildSource, engineMode)
+	togglebuttonReconciler := togglebutton.NewReconciler(deferredClient, scheme)
 	extensionReconciler := extension.NewReconciler(deferredClient, scheme, analytics3)
 	base := xdg.NewTiltDevBase()
 	extensionrepoReconciler, err := extensionrepo.NewReconciler(deferredClient, base)
@@ -484,7 +489,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 		return CmdCIDeps{}, err
 	}
 	liveupdateReconciler := liveupdate.NewReconciler(deferredClient)
-	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler, extensionReconciler, extensionrepoReconciler, liveupdateReconciler)
+	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler, togglebuttonReconciler, extensionReconciler, extensionrepoReconciler, liveupdateReconciler)
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	v2 := provideClock()
 	renderer := hud.NewRenderer(v2)
@@ -675,6 +680,7 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	buildSource := tiltfile2.NewBuildSource()
 	engineMode := _wireEngineModeValue2
 	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, switchCli, deferredClient, scheme, buildSource, engineMode)
+	togglebuttonReconciler := togglebutton.NewReconciler(deferredClient, scheme)
 	extensionReconciler := extension.NewReconciler(deferredClient, scheme, analytics3)
 	base := xdg.NewTiltDevBase()
 	extensionrepoReconciler, err := extensionrepo.NewReconciler(deferredClient, base)
@@ -682,7 +688,7 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 		return CmdUpdogDeps{}, err
 	}
 	liveupdateReconciler := liveupdate.NewReconciler(deferredClient)
-	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler, extensionReconciler, extensionrepoReconciler, liveupdateReconciler)
+	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler, togglebuttonReconciler, extensionReconciler, extensionrepoReconciler, liveupdateReconciler)
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	stdout := hud.ProvideStdout()
 	incrementalPrinter := hud.NewIncrementalPrinter(stdout)

@@ -262,6 +262,7 @@ func (p Plugin) uiButton(t *starlark.Thread, fn *starlark.Builtin, args starlark
 		"icon_name?", &obj.Spec.IconName,
 		"icon_svg?", &obj.Spec.IconSVG,
 		"disabled?", &obj.Spec.Disabled,
+		"requires_confirmation?", &obj.Spec.RequiresConfirmation,
 		"inputs?", &inputs,
 	)
 	if err != nil {

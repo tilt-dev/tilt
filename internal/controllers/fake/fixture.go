@@ -106,9 +106,23 @@ func (f *ControllerFixture) KeyForObject(o object) types.NamespacedName {
 
 func (f *ControllerFixture) MustReconcile(key types.NamespacedName) ctrl.Result {
 	f.t.Helper()
-	res, err := f.controller.Reconcile(f.ctx, ctrl.Request{NamespacedName: key})
+	result, err := f.Reconcile(key)
 	require.NoError(f.t, err)
-	return res
+	return result
+}
+
+func (f *ControllerFixture) Reconcile(key types.NamespacedName) (ctrl.Result, error) {
+	f.t.Helper()
+	return f.controller.Reconcile(f.ctx, ctrl.Request{NamespacedName: key})
+}
+
+func (f *ControllerFixture) ReconcileWithErrors(key types.NamespacedName, expectedErrorSubstrings ...string) {
+	f.t.Helper()
+	_, err := f.Reconcile(key)
+	require.Error(f.t, err)
+	for _, s := range expectedErrorSubstrings {
+		require.Contains(f.t, err.Error(), s)
+	}
 }
 
 func (f *ControllerFixture) Get(key types.NamespacedName, out object) bool {

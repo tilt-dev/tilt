@@ -87,6 +87,12 @@ type UIButtonSpec struct {
 	// +optional
 	Disabled bool `json:"disabled,omitempty" protobuf:"varint,5,opt,name=disabled"`
 
+	// If true, the UI will require the user to click the button a second time to
+	// confirm before taking action
+	//
+	// +optional
+	RequiresConfirmation bool `json:"requiresConfirmation,omitempty" protobuf:"varint,7,opt,name=requiresConfirmation"`
+
 	// Any inputs for this button.
 	// +optional
 	Inputs []UIInputSpec `json:"inputs,omitempty" protobuf:"bytes,6,rep,name=inputs"`

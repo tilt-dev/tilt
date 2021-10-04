@@ -347,6 +347,16 @@ declare namespace Proto {
     time?: string;
     fieldsType?: string;
     fieldsV1?: v1FieldsV1;
+    /**
+     * Subresource is the name of the subresource used to update that object, or
+     * empty string if the object was updated through the main resource. The
+     * value of this field is used to distinguish between managers, even if they
+     * share the same name. For example, a status update will be distinct from a
+     * regular update using the same manager name.
+     * Note that the APIVersion field is not related to the Subresource field and
+     * it always corresponds to the version of the main resource.
+     */
+    subresource?: string;
   }
   export interface v1FieldsV1 {
     /**
@@ -564,6 +574,10 @@ declare namespace Proto {
      * +optional
      */
     disabled?: boolean;
+    /**
+     * +optional
+     */
+    requiresConfirmation?: boolean;
     inputs?: v1alpha1UIInputSpec[];
   }
   export interface v1alpha1UIButton {
