@@ -12,7 +12,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/k8s"
-	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -31,7 +31,7 @@ func (cu *DockerUpdater) WillBuildToKubeContext(kctx k8s.KubeContext) bool {
 	return cu.dCli.Env().WillBuildToKubeContext(kctx)
 }
 
-func (cu *DockerUpdater) UpdateContainer(ctx context.Context, cInfo store.ContainerInfo,
+func (cu *DockerUpdater) UpdateContainer(ctx context.Context, cInfo liveupdates.Container,
 	archiveToCopy io.Reader, filesToDelete []string, cmds []model.Cmd, hotReload bool) error {
 	l := logger.Get(ctx)
 

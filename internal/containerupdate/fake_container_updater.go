@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -15,7 +15,7 @@ type FakeContainerUpdater struct {
 }
 
 type UpdateContainerCall struct {
-	ContainerInfo store.ContainerInfo
+	ContainerInfo liveupdates.Container
 	Archive       io.Reader
 	ToDelete      []string
 	Cmds          []model.Cmd
@@ -26,7 +26,7 @@ func (cu *FakeContainerUpdater) SetUpdateErr(err error) {
 	cu.UpdateErrs = []error{err}
 }
 
-func (cu *FakeContainerUpdater) UpdateContainer(ctx context.Context, cInfo store.ContainerInfo,
+func (cu *FakeContainerUpdater) UpdateContainer(ctx context.Context, cInfo liveupdates.Container,
 	archiveToCopy io.Reader, filesToDelete []string, cmds []model.Cmd, hotReload bool) error {
 	cu.Calls = append(cu.Calls, UpdateContainerCall{
 		ContainerInfo: cInfo,

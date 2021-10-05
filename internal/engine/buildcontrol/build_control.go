@@ -9,6 +9,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
+	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -412,7 +413,7 @@ func IsLiveUpdateTargetWaitingOnDeploy(state store.EngineState, mt *store.Manife
 				return true // Wait for the k8s resource to appear.
 			}
 
-			cInfos, err := store.RunningContainersForOnePod(
+			cInfos, err := liveupdates.RunningContainersForOnePod(
 				iTarget.LiveUpdateSpec.Selector.Kubernetes, kResource)
 			if err != nil {
 				return false
@@ -439,7 +440,7 @@ func IsLiveUpdateTargetWaitingOnDeploy(state store.EngineState, mt *store.Manife
 			}
 
 		} else if mt.Manifest.IsDC() {
-			cInfos := store.RunningContainersForDC(mt.State.DCRuntimeState())
+			cInfos := liveupdates.RunningContainersForDC(mt.State.DockerResource())
 			if len(cInfos) != 0 {
 				return false
 			}

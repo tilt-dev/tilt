@@ -22,6 +22,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/podbuilder"
 	"github.com/tilt-dev/tilt/internal/watch"
@@ -45,7 +46,7 @@ func TestBuildControllerOnePod(t *testing.T) {
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
-	assert.Equal(t, pod.Name, call.oneImageState().OneContainerInfo().PodID.String())
+	assert.Equal(t, pod.Name, call.oneImageState().KubernetesResource.FilteredPods[0].Name)
 
 	err := f.Stop()
 	assert.NoError(t, err)
@@ -81,14 +82,15 @@ func TestBuildControllerTooManyPodsForLiveUpdateErrorMessage(t *testing.T) {
 
 	call = f.nextCall()
 
-	// Should not have sent container info b/c too many pods
-	assert.Equal(t, store.ContainerInfo{}, call.oneImageState().OneContainerInfo())
-
 	err := f.Stop()
 	assert.NoError(t, err)
 	f.assertAllBuildsConsumed()
 
-	err = call.oneImageState().RunningContainerError
+	// Should not have sent container info b/c too many pods
+	s := call.oneImageState()
+	containers, err := liveupdates.RunningContainers(
+		s.KubernetesSelector, s.KubernetesResource, nil)
+	assert.Equal(t, 0, len(containers))
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "can only get container info for a single pod",
 			"should print error message when trying to get Running Containers for manifest with more than one pod")
@@ -124,12 +126,16 @@ func TestBuildControllerTooManyPodsForDockerBuildNoErrorMessage(t *testing.T) {
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
-	// Should not have sent container info b/c too many pods
-	assert.Equal(t, store.ContainerInfo{}, call.oneImageState().OneContainerInfo())
 
 	err := f.Stop()
 	assert.NoError(t, err)
 	f.assertAllBuildsConsumed()
+
+	// Should not have sent container info b/c too many pods
+	s := call.oneImageState()
+	containers, _ := liveupdates.RunningContainers(
+		s.KubernetesSelector, s.KubernetesResource, nil)
+	assert.Equal(t, 0, len(containers))
 
 	// Should not have surfaced this log line b/c manifest doesn't have LiveUpdate instructions
 	assert.NotContains(t, f.log.String(), "can only get container info for a single pod",
@@ -157,9 +163,13 @@ func TestBuildControllerIgnoresImageTags(t *testing.T) {
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
-	assert.Equal(t, "pod-id", call.oneImageState().OneContainerInfo().PodID.String())
+	s := call.oneImageState()
+	containers, err := liveupdates.RunningContainers(
+		s.KubernetesSelector, s.KubernetesResource, nil)
+	require.NoError(t, err)
+	assert.Equal(t, "pod-id", containers[0].PodID.String())
 
-	err := f.Stop()
+	err = f.Stop()
 	assert.NoError(t, err)
 	f.assertAllBuildsConsumed()
 }
@@ -178,10 +188,13 @@ func TestBuildControllerDockerCompose(t *testing.T) {
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
-	imageState := call.state[imageTarget.ID()]
-	assert.Equal(t, "dc-sancho", imageState.OneContainerInfo().ContainerID.String())
+	s := call.state[imageTarget.ID()]
+	containers, err := liveupdates.RunningContainers(
+		nil, nil, s.DockerResource)
+	require.NoError(t, err)
+	assert.Equal(t, "dc-sancho", containers[0].ContainerID.String())
 
-	err := f.Stop()
+	err = f.Stop()
 	assert.NoError(t, err)
 	f.assertAllBuildsConsumed()
 }
@@ -243,9 +256,15 @@ func TestBuildControllerWontContainerBuildWithTwoPods(t *testing.T) {
 	// if there are multiple pods, so make sure we're not sending deploy info (i.e. that
 	// we're doing an image build)
 	call = f.nextCall()
-	assert.Equal(t, "", call.oneImageState().OneContainerInfo().PodID.String())
+	s := call.oneImageState()
+	containers, err := liveupdates.RunningContainers(
+		s.KubernetesSelector, s.KubernetesResource, nil)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "can only get container info for a single pod")
+	}
+	assert.Equal(t, 0, len(containers))
 
-	err := f.Stop()
+	err = f.Stop()
 	assert.NoError(t, err)
 	f.assertAllBuildsConsumed()
 }
@@ -287,13 +306,16 @@ func TestBuildControllerTwoContainers(t *testing.T) {
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
-	runningContainers := call.oneImageState().RunningContainers
+	s := call.oneImageState()
+	containers, err := liveupdates.RunningContainers(
+		s.KubernetesSelector, s.KubernetesResource, nil)
+	require.NoError(t, err)
 
-	require.Len(t, runningContainers, 2, "expect info for two containers (those "+
+	require.Len(t, containers, 2, "expect info for two containers (those "+
 		"matching the image built by this manifest")
 
-	c0 := runningContainers[0]
-	c1 := runningContainers[1]
+	c0 := containers[0]
+	c1 := containers[1]
 
 	assert.Equal(t, pod.Name, c0.PodID.String(), "pod ID for cInfo at index 0")
 	assert.Equal(t, pod.Name, c1.PodID.String(), "pod ID for cInfo at index 1")
@@ -304,7 +326,7 @@ func TestBuildControllerTwoContainers(t *testing.T) {
 	assert.Equal(t, "sancho", c0.ContainerName.String(), "container name for cInfo at index 0")
 	assert.Equal(t, "same image", c1.ContainerName.String(), "container name for cInfo at index 1")
 
-	err := f.Stop()
+	err = f.Stop()
 	assert.NoError(t, err)
 	f.assertAllBuildsConsumed()
 }
@@ -366,7 +388,11 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
-	assert.Equal(t, pod.Name, call.oneImageState().OneContainerInfo().PodID.String())
+	s := call.oneImageState()
+	containers, err := liveupdates.RunningContainers(
+		s.KubernetesSelector, s.KubernetesResource, nil)
+	require.NoError(t, err)
+	assert.Equal(t, pod.Name, containers[0].PodID.String())
 	f.waitForCompletedBuildCount(2)
 	f.withManifestState("fe", func(ms store.ManifestState) {
 		assert.Equal(t, model.BuildReasonFlagChangedFiles, ms.LastBuild().Reason)
@@ -376,7 +402,11 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	// Restart the pod with a new container id, to simulate a container restart.
 	f.podEvent(basePB.WithContainerID("funnyContainerID").Build())
 	call = f.nextCall()
-	assert.True(t, call.oneImageState().OneContainerInfo().Empty())
+	s = call.oneImageState()
+	containers, err = liveupdates.RunningContainers(
+		s.KubernetesSelector, s.KubernetesResource, nil)
+	require.NoError(t, err)
+	assert.Equal(t, 0, len(containers))
 	assert.False(t, call.oneImageState().FullBuildTriggered)
 	f.waitForCompletedBuildCount(3)
 
@@ -384,7 +414,7 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 		assert.Equal(t, model.BuildReasonFlagCrash, ms.LastBuild().Reason)
 	})
 
-	err := f.Stop()
+	err = f.Stop()
 	assert.NoError(t, err)
 	f.assertAllBuildsConsumed()
 }
@@ -1451,11 +1481,13 @@ func TestManifestsWithSameTwoImages(t *testing.T) {
 
 	id := m2.ImageTargets[0].ID()
 	result := f.b.resultsByID[id]
-	assert.Equal(t, store.NewBuildState(result, nil, nil), call.state[id])
+	assert.Equal(t, result, call.state[id].LastResult)
+	assert.Equal(t, 0, len(call.state[id].FilesChangedSet))
 
 	id = m2.ImageTargets[1].ID()
 	result = f.b.resultsByID[id]
-	assert.Equal(t, store.NewBuildState(result, nil, nil), call.state[id])
+	assert.Equal(t, result, call.state[id].LastResult)
+	assert.Equal(t, 0, len(call.state[id].FilesChangedSet))
 
 	err := f.Stop()
 	assert.NoError(t, err)
@@ -1497,15 +1529,13 @@ func TestManifestsWithTwoCommonAncestors(t *testing.T) {
 
 	id := m2.ImageTargets[0].ID()
 	result := f.b.resultsByID[id]
-	assert.Equal(t,
-		store.NewBuildState(result, nil, nil),
-		call.state[id])
+	assert.Equal(t, result, call.state[id].LastResult)
+	assert.Equal(t, 0, len(call.state[id].FilesChangedSet))
 
 	id = m2.ImageTargets[1].ID()
 	result = f.b.resultsByID[id]
-	assert.Equal(t,
-		store.NewBuildState(result, nil, nil),
-		call.state[id])
+	assert.Equal(t, result, call.state[id].LastResult)
+	assert.Equal(t, 0, len(call.state[id].FilesChangedSet))
 
 	id = m2.ImageTargets[2].ID()
 	result = f.b.resultsByID[id]

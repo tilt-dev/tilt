@@ -12,6 +12,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
+	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 
 	"github.com/tilt-dev/tilt/internal/docker"
 
@@ -84,15 +85,16 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 	require.True(t, manifest.IsImageDeployed(iTarg))
 
 	for targID, cIDs := range tCase.runningContainersByTarget {
-		cInfos := make([]store.ContainerInfo, len(cIDs))
+		containers := make([]liveupdates.Container, len(cIDs))
 		for i, id := range cIDs {
-			cInfos[i] = store.ContainerInfo{
+			containers[i] = liveupdates.Container{
 				PodID:         testPodID,
 				ContainerID:   id,
 				ContainerName: container.Name(fmt.Sprintf("container %s", id)),
 			}
 		}
-		bs[targID] = bs[targID].WithRunningContainers(cInfos)
+		imageName := string(targID.Name)
+		bs[targID] = liveupdates.WithFakeContainers(bs[targID], imageName, containers)
 	}
 
 	targets := buildcontrol.BuildTargets(manifest)
