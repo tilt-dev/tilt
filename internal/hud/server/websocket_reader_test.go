@@ -173,7 +173,7 @@ type fakeViewHandler struct {
 	nextErr     error
 }
 
-func (fvh *fakeViewHandler) Handle(v proto_webview.View) error {
+func (fvh *fakeViewHandler) Handle(v *proto_webview.View) error {
 	fvh.callCount += 1
 	if fvh.nextErr != nil {
 		err := fvh.nextErr

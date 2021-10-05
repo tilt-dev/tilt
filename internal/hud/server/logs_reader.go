@@ -48,7 +48,7 @@ func newWebsocketReader(conn WebsocketConn, persistent bool, handler ViewHandler
 }
 
 type ViewHandler interface {
-	Handle(v proto_webview.View) error
+	Handle(v *proto_webview.View) error
 }
 
 type LogStreamer struct {
@@ -78,8 +78,8 @@ func NewLogStreamer(resources []string, p *hud.IncrementalPrinter) *LogStreamer 
 	}
 }
 
-func (ls *LogStreamer) Handle(v proto_webview.View) error {
-	if v.LogList == nil || v.LogList.FromCheckpoint == -1 {
+func (ls *LogStreamer) Handle(v *proto_webview.View) error {
+	if v == nil || v.LogList == nil || v.LogList.FromCheckpoint == -1 {
 		// Server has no new logs to send
 		return nil
 	}
@@ -162,9 +162,9 @@ func (wsr *WebsocketReader) Listen(ctx context.Context) error {
 	}
 }
 
-func (wsr *WebsocketReader) handleTextMessage(ctx context.Context, reader io.Reader) error {
-	v := proto_webview.View{}
-	err := wsr.unmarshaller.Unmarshal(reader, &v)
+func (wsr *WebsocketReader) handleTextMessage(_ context.Context, reader io.Reader) error {
+	v := &proto_webview.View{}
+	err := wsr.unmarshaller.Unmarshal(reader, v)
 	if err != nil {
 		return errors.Wrap(err, "Unmarshalling websocket message")
 	}
