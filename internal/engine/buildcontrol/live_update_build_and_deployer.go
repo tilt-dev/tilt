@@ -21,6 +21,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/ignore"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -50,15 +51,33 @@ func NewLiveUpdateBuildAndDeployer(dcu *containerupdate.DockerUpdater,
 }
 
 // Info needed to perform a live update
-type liveUpdInfo struct {
-	iTarget      model.ImageTarget
-	containers   []liveupdates.Container
-	changedFiles []build.PathMapping
-	runs         []model.Run
-	hotReload    bool
+type LiveUpdateInput struct {
+	ID model.TargetID
+
+	// Name is human-readable representation of what we're live-updating. The API
+	// Server doesn't make any guarantees that this maps to an image name, or a
+	// service name, or to anything in particular.
+	Name string
+
+	Filter model.PathMatcher
+	Spec   v1alpha1.LiveUpdateSpec
+
+	// Derived from KubernetesResource + KubenetesSelector + DockerResource
+	Containers []liveupdates.Container
+
+	// Derived from FileWatch + Sync rules
+	ChangedFiles []build.PathMapping
 }
 
-func (lui liveUpdInfo) Empty() bool { return lui.iTarget.ID() == model.ImageTarget{}.ID() }
+func (lui LiveUpdateInput) RunSteps() []model.Run {
+	return liveupdate.RunSteps(lui.Spec)
+}
+
+func (lui LiveUpdateInput) ShouldRestart() bool {
+	return liveupdate.ShouldRestart(lui.Spec)
+}
+
+func (lui LiveUpdateInput) Empty() bool { return lui.Name == "" }
 
 func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, stateSet store.BuildStateSet) (store.BuildResultSet, error) {
 	liveUpdateStateSet, err := extractImageTargetsForLiveUpdates(specs, stateSet)
@@ -67,7 +86,7 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	}
 
 	containerUpdater := lubad.containerUpdaterForSpecs(specs)
-	liveUpdInfos := make([]liveUpdInfo, 0, len(liveUpdateStateSet))
+	liveUpdateInputs := make([]LiveUpdateInput, 0, len(liveUpdateStateSet))
 
 	if len(liveUpdateStateSet) == 0 {
 		return nil, SilentRedirectToNextBuilderf("no targets for Live Update found")
@@ -80,20 +99,20 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		}
 
 		if !luInfo.Empty() {
-			liveUpdInfos = append(liveUpdInfos, luInfo)
+			liveUpdateInputs = append(liveUpdateInputs, luInfo)
 		}
 	}
 
-	ps := build.NewPipelineState(ctx, len(liveUpdInfos), lubad.clock)
+	ps := build.NewPipelineState(ctx, len(liveUpdateInputs), lubad.clock)
 	err = nil
 	defer func() {
 		ps.End(ctx, err)
 	}()
 
 	var dontFallBackErr error
-	for _, info := range liveUpdInfos {
-		ps.StartPipelineStep(ctx, "updating image %s", reference.FamiliarName(info.iTarget.Refs.ClusterRef()))
-		err = lubad.buildAndDeploy(ctx, ps, containerUpdater, info.iTarget, info.containers, info.changedFiles, info.runs, info.hotReload)
+	for _, info := range liveUpdateInputs {
+		ps.StartPipelineStep(ctx, "updating image %s", info.Name)
+		err = lubad.buildAndDeploy(ctx, ps, containerUpdater, info)
 		if err != nil {
 			if !IsDontFallBackError(err) {
 				// something went wrong, we want to fall back -- bail and
@@ -110,10 +129,10 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	}
 
 	err = dontFallBackErr
-	return createResultSet(liveUpdateStateSet, liveUpdInfos), err
+	return createResultSet(liveUpdateStateSet, liveUpdateInputs), err
 }
 
-func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, ps *build.PipelineState, cu containerupdate.ContainerUpdater, iTarget model.ImageTarget, containers []liveupdates.Container, changedFiles []build.PathMapping, runs []model.Run, hotReload bool) (err error) {
+func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, ps *build.PipelineState, cu containerupdate.ContainerUpdater, info LiveUpdateInput) (err error) {
 	startTime := time.Now()
 	defer func() {
 		analytics.Get(ctx).Timer("build.container", time.Since(startTime), map[string]string{
@@ -121,6 +140,7 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, ps 
 		})
 	}()
 
+	containers := info.Containers
 	l := logger.Get(ctx)
 	cIDStr := container.ShortStrs(liveupdates.IDsForContainers(containers))
 	suffix := ""
@@ -129,8 +149,11 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, ps 
 	}
 	ps.StartBuildStep(ctx, "Updating container%s: %s", suffix, cIDStr)
 
-	filter := ignore.CreateBuildContextFilter(iTarget)
-	boiledSteps, err := build.BoilRuns(runs, changedFiles)
+	filter := info.Filter
+	runSteps := info.RunSteps()
+	changedFiles := info.ChangedFiles
+	hotReload := !info.ShouldRestart()
+	boiledSteps, err := build.BoilRuns(runSteps, changedFiles)
 	if err != nil {
 		return err
 	}
@@ -191,58 +214,54 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, ps 
 
 // liveUpdateInfoForStateTree validates the state tree for LiveUpdate and returns
 // all the info we need to execute the update.
-func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (liveUpdInfo, error) {
+func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (LiveUpdateInput, error) {
 	iTarget := stateTree.iTarget
 	filesChanged := stateTree.filesChanged
 
 	var err error
 	var fileMappings []build.PathMapping
-	var runs []model.Run
-	var hotReload bool
 
 	luSpec := iTarget.LiveUpdateSpec
-	if !liveupdate.IsEmptySpec(luSpec) {
-		var pathsMatchingNoSync []string
-		fileMappings, pathsMatchingNoSync, err = build.FilesToPathMappings(filesChanged, liveupdate.SyncSteps(luSpec))
-		if err != nil {
-			return liveUpdInfo{}, err
-		}
-		if len(pathsMatchingNoSync) > 0 {
-			return liveUpdInfo{}, RedirectToNextBuilderInfof(
-				"Found file(s) not matching any sync for %s (files: %s)", iTarget.ID(),
-				ospath.FormatFileChangeList(pathsMatchingNoSync))
-		}
-
-		// If any changed files match a FallBackOn file, fall back to next BuildAndDeployer
-		anyMatch, file, err := liveupdate.FallBackOnFiles(luSpec).AnyMatch(filesChanged)
-		if err != nil {
-			return liveUpdInfo{}, err
-		}
-		if anyMatch {
-			prettyFile := ospath.FileDisplayName(iTarget.LocalPaths(), file)
-			return liveUpdInfo{}, RedirectToNextBuilderInfof(
-				"Detected change to fall_back_on file %q", prettyFile)
-		}
-
-		runs = liveupdate.RunSteps(luSpec)
-		hotReload = !liveupdate.ShouldRestart(iTarget.LiveUpdateSpec)
-	} else {
+	if liveupdate.IsEmptySpec(luSpec) {
 		// We should have validated this when generating the LiveUpdateStateTrees, but double check!
 		panic(fmt.Sprintf("did not find Live Update info on target %s, "+
 			"which should have already been validated for Live Update", iTarget.ID()))
 	}
 
-	if len(fileMappings) == 0 {
-		// No files matched a sync for this image, no Live Update to run
-		return liveUpdInfo{}, nil
+	var pathsMatchingNoSync []string
+	fileMappings, pathsMatchingNoSync, err = build.FilesToPathMappings(filesChanged, liveupdate.SyncSteps(luSpec))
+	if err != nil {
+		return LiveUpdateInput{}, err
+	}
+	if len(pathsMatchingNoSync) > 0 {
+		return LiveUpdateInput{}, RedirectToNextBuilderInfof(
+			"Found file(s) not matching any sync for %s (files: %s)", iTarget.ID(),
+			ospath.FormatFileChangeList(pathsMatchingNoSync))
 	}
 
-	return liveUpdInfo{
-		iTarget:      iTarget,
-		changedFiles: fileMappings,
-		runs:         runs,
-		hotReload:    hotReload,
-		containers:   stateTree.containers,
+	// If any changed files match a FallBackOn file, fall back to next BuildAndDeployer
+	anyMatch, file, err := liveupdate.FallBackOnFiles(luSpec).AnyMatch(filesChanged)
+	if err != nil {
+		return LiveUpdateInput{}, err
+	}
+	if anyMatch {
+		prettyFile := ospath.FileDisplayName([]string{luSpec.BasePath}, file)
+		return LiveUpdateInput{}, RedirectToNextBuilderInfof(
+			"Detected change to fall_back_on file %q", prettyFile)
+	}
+
+	if len(fileMappings) == 0 {
+		// No files matched a sync for this image, no Live Update to run
+		return LiveUpdateInput{}, nil
+	}
+
+	return LiveUpdateInput{
+		ID:           iTarget.ID(),
+		Name:         reference.FamiliarName(iTarget.Refs.ClusterRef()),
+		Filter:       ignore.CreateBuildContextFilter(iTarget),
+		Spec:         iTarget.LiveUpdateSpec,
+		ChangedFiles: fileMappings,
+		Containers:   stateTree.containers,
 	}, nil
 }
 
