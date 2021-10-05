@@ -3951,7 +3951,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	extr := extension.NewReconciler(cdc, sch, ta)
 	extrr, err := extensionrepo.NewReconciler(cdc, base)
 	require.NoError(t, err)
-	lur := liveupdate.NewReconciler(cdc)
+	lur := liveupdate.NewReconciler(cdc, sch)
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
 		fwc,
 		cmds,

@@ -22,7 +22,7 @@ func TestIndexing(t *testing.T) {
 			BasePath: "/tmp",
 			Selector: kubernetesSelector("discovery", "apply", "fake-image"),
 			Syncs: []v1alpha1.LiveUpdateSync{
-				{ LocalPath: "in", ContainerPath: "/out/"},
+				{LocalPath: "in", ContainerPath: "/out/"},
 			},
 		},
 	})
@@ -34,7 +34,7 @@ func TestIndexing(t *testing.T) {
 			BasePath: "/tmp",
 			Selector: kubernetesSelector("discovery", "", "fake-image"),
 			Syncs: []v1alpha1.LiveUpdateSync{
-				{ LocalPath: "in", ContainerPath: "/out/"},
+				{LocalPath: "in", ContainerPath: "/out/"},
 			},
 		},
 	})
@@ -61,7 +61,7 @@ func newFixture(t testing.TB) *fixture {
 	r := NewReconciler(cfb.Client, v1alpha1.NewScheme())
 	return &fixture{
 		ControllerFixture: cfb.Build(r),
-		r: r,
+		r:                 r,
 	}
 }
 
@@ -69,8 +69,8 @@ func kubernetesSelector(discoveryName string, applyName string, image string) v1
 	return v1alpha1.LiveUpdateSelector{
 		Kubernetes: &v1alpha1.LiveUpdateKubernetesSelector{
 			DiscoveryName: discoveryName,
-			ApplyName: applyName,
-			Image: image,
+			ApplyName:     applyName,
+			Image:         image,
 		},
 	}
 }

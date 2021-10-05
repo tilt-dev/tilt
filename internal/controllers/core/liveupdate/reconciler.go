@@ -24,7 +24,7 @@ var applyGVK = v1alpha1.SchemeGroupVersion.WithKind("KubernetesApply")
 
 // Manages the LiveUpdate API object.
 type Reconciler struct {
-	client ctrlclient.Client
+	client  ctrlclient.Client
 	indexer *indexer.Indexer
 }
 
@@ -32,7 +32,7 @@ var _ reconcile.Reconciler = &Reconciler{}
 
 func NewReconciler(client ctrlclient.Client, scheme *runtime.Scheme) *Reconciler {
 	return &Reconciler{
-		client: client,
+		client:  client,
 		indexer: indexer.NewIndexer(scheme, indexLiveUpdate),
 	}
 }
@@ -74,7 +74,7 @@ func indexLiveUpdate(obj ctrlclient.Object) []indexer.Key {
 			result = append(result, indexer.Key{
 				Name: types.NamespacedName{
 					Namespace: lu.Namespace,
-					Name: lu.Spec.Selector.Kubernetes.DiscoveryName,
+					Name:      lu.Spec.Selector.Kubernetes.DiscoveryName,
 				},
 				GVK: discoveryGVK,
 			})
@@ -84,7 +84,7 @@ func indexLiveUpdate(obj ctrlclient.Object) []indexer.Key {
 			result = append(result, indexer.Key{
 				Name: types.NamespacedName{
 					Namespace: lu.Namespace,
-					Name: lu.Spec.Selector.Kubernetes.ApplyName,
+					Name:      lu.Spec.Selector.Kubernetes.ApplyName,
 				},
 				GVK: applyGVK,
 			})
