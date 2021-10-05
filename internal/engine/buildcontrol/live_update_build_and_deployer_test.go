@@ -17,6 +17,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -39,13 +40,18 @@ func TestBuildAndDeployBoilsSteps(t *testing.T) {
 	defer f.teardown()
 
 	packageJson := build.PathMapping{LocalPath: f.JoinPath("package.json"), ContainerPath: "/src/package.json"}
-	runs := []model.Run{
-		model.ToRun(model.ToUnixCmd("./foo.sh bar")),
-		model.Run{Cmd: model.ToUnixCmd("yarn install"), Triggers: f.newPathSet("package.json")},
-		model.Run{Cmd: model.ToUnixCmd("pip install"), Triggers: f.newPathSet("requirements.txt")},
-	}
-
-	err := f.lubad.buildAndDeploy(f.ctx, f.ps, f.cu, model.ImageTarget{}, TestContainers, []build.PathMapping{packageJson}, runs, false)
+	err := f.lubad.buildAndDeploy(f.ctx, f.ps, f.cu, LiveUpdateInput{
+		Spec: v1alpha1.LiveUpdateSpec{
+			BasePath: f.Path(),
+			Execs: []v1alpha1.LiveUpdateExec{
+				{Args: model.ToUnixCmd("./foo.sh bar").Argv},
+				{Args: model.ToUnixCmd("yarn install").Argv, TriggerPaths: []string{"package.json"}},
+				{Args: model.ToUnixCmd("pip install").Argv, TriggerPaths: []string{"requirements.txt"}},
+			},
+		},
+		Containers:   TestContainers,
+		ChangedFiles: []build.PathMapping{packageJson},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +83,10 @@ func TestUpdateInContainerArchivesFilesToCopyAndGetsFilesToRemove(t *testing.T) 
 		build.PathMapping{LocalPath: f.JoinPath("does-not-exist"), ContainerPath: "/src/does-not-exist"},
 	}
 
-	err := f.lubad.buildAndDeploy(f.ctx, f.ps, f.cu, model.ImageTarget{}, TestContainers, paths, nil, false)
+	err := f.lubad.buildAndDeploy(f.ctx, f.ps, f.cu, LiveUpdateInput{
+		Containers:   TestContainers,
+		ChangedFiles: paths,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +113,9 @@ func TestDontFallBackOnUserError(t *testing.T) {
 
 	f.cu.SetUpdateErr(build.RunStepFailure{ExitCode: 12345})
 
-	err := f.lubad.buildAndDeploy(f.ctx, f.ps, f.cu, model.ImageTarget{}, TestContainers, nil, nil, false)
+	err := f.lubad.buildAndDeploy(f.ctx, f.ps, f.cu, LiveUpdateInput{
+		Containers: TestContainers,
+	})
 	if assert.NotNil(t, err) {
 		assert.IsType(t, DontFallBackError{}, err)
 	}
@@ -116,7 +127,16 @@ func TestUpdateContainerWithHotReload(t *testing.T) {
 
 	expectedHotReloads := []bool{true, true, false, true}
 	for _, hotReload := range expectedHotReloads {
-		err := f.lubad.buildAndDeploy(f.ctx, f.ps, f.cu, model.ImageTarget{}, TestContainers, nil, nil, hotReload)
+		restart := v1alpha1.LiveUpdateRestartStrategyNone
+		if !hotReload {
+			restart = v1alpha1.LiveUpdateRestartStrategyAlways
+		}
+		err := f.lubad.buildAndDeploy(f.ctx, f.ps, f.cu, LiveUpdateInput{
+			Containers: TestContainers,
+			Spec: v1alpha1.LiveUpdateSpec{
+				Restart: restart,
+			},
+		})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -155,9 +175,14 @@ func TestUpdateMultipleRunningContainers(t *testing.T) {
 	}
 
 	cmd := model.ToUnixCmd("./foo.sh bar")
-	runs := []model.Run{model.ToRun(cmd)}
 
-	err := f.lubad.buildAndDeploy(f.ctx, f.ps, f.cu, model.ImageTarget{}, containers, paths, runs, true)
+	err := f.lubad.buildAndDeploy(f.ctx, f.ps, f.cu, LiveUpdateInput{
+		Containers:   containers,
+		ChangedFiles: paths,
+		Spec: v1alpha1.LiveUpdateSpec{
+			Execs: []v1alpha1.LiveUpdateExec{{Args: cmd.Argv}},
+		},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -196,7 +221,9 @@ func TestErrorStopsSubsequentContainerUpdates(t *testing.T) {
 	containers := []liveupdates.Container{container1, container2}
 
 	f.cu.SetUpdateErr(fmt.Errorf("👀"))
-	err := f.lubad.buildAndDeploy(f.ctx, f.ps, f.cu, model.ImageTarget{}, containers, nil, nil, false)
+	err := f.lubad.buildAndDeploy(f.ctx, f.ps, f.cu, LiveUpdateInput{
+		Containers: containers,
+	})
 	require.NotNil(t, err)
 	assert.Contains(t, "👀", err.Error())
 	require.Len(t, f.cu.Calls, 1, "should only call UpdateContainer once (error should stop subsequent calls)")
@@ -234,7 +261,10 @@ func TestUpdateMultipleContainersWithSameTarArchive(t *testing.T) {
 		expectFile("src/planets/earth", "world"),
 	}
 
-	err := f.lubad.buildAndDeploy(f.ctx, f.ps, f.cu, model.ImageTarget{}, containers, paths, nil, true)
+	err := f.lubad.buildAndDeploy(f.ctx, f.ps, f.cu, LiveUpdateInput{
+		Containers:   containers,
+		ChangedFiles: paths,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -280,7 +310,10 @@ func TestUpdateMultipleContainersWithSameTarArchiveOnRunStepFailure(t *testing.T
 	}
 
 	f.cu.UpdateErrs = []error{rsf, rsf}
-	err := f.lubad.buildAndDeploy(f.ctx, f.ps, f.cu, model.ImageTarget{}, containers, paths, nil, true)
+	err := f.lubad.buildAndDeploy(f.ctx, f.ps, f.cu, LiveUpdateInput{
+		Containers:   containers,
+		ChangedFiles: paths,
+	})
 	require.NotNil(t, err)
 	assert.Contains(t, err.Error(), "Run step \"omgwtfbbq\" failed with exit code: 123")
 
@@ -349,10 +382,6 @@ func newFixture(t testing.TB) *lcbadFixture {
 
 func (f *lcbadFixture) teardown() {
 	f.TempDirFixture.TearDown()
-}
-
-func (f *lcbadFixture) newPathSet(paths ...string) model.PathSet {
-	return model.NewPathSet(paths, f.Path())
 }
 
 func expectFile(path, contents string) testutils.ExpectedFile {
