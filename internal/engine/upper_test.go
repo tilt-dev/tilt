@@ -2953,7 +2953,8 @@ func TestWatchManifestsWithCommonAncestor(t *testing.T) {
 
 	id := m2.ImageTargets[0].ID()
 	result := f.b.resultsByID[id]
-	assert.Equal(t, store.NewBuildState(result, nil, nil), call.state[id])
+	assert.Equal(t, result, call.state[id].LastResult)
+	assert.Equal(t, 0, len(call.state[id].FilesChangedSet))
 
 	id = m2.ImageTargets[1].ID()
 	result = f.b.resultsByID[id]
@@ -3954,7 +3955,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	extr := extension.NewReconciler(cdc, sch, ta)
 	extrr, err := extensionrepo.NewReconciler(cdc, base)
 	require.NoError(t, err)
-	lur := liveupdate.NewReconciler(cdc)
+	lur := liveupdate.NewReconciler(cdc, sch)
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
 		fwc,
 		cmds,

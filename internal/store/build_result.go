@@ -1,18 +1,14 @@
 package store
 
 import (
-	"fmt"
 	"sort"
-
-	v1 "k8s.io/api/core/v1"
 
 	"github.com/docker/distribution/reference"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/go-connections/nat"
 
 	"github.com/tilt-dev/tilt/internal/container"
-	"github.com/tilt-dev/tilt/internal/dockercompose"
-	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/store/dcconv"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -291,10 +287,11 @@ type BuildState struct {
 	// live_update, and force an image build (even if there are no changed files)
 	FullBuildTriggered bool
 
-	RunningContainers []ContainerInfo
+	KubernetesSelector *v1alpha1.LiveUpdateKubernetesSelector
 
-	// If we had an error retrieving running containers
-	RunningContainerError error
+	KubernetesResource *k8sconv.KubernetesResource
+
+	DockerResource *dcconv.DockerResource
 }
 
 func NewBuildState(result BuildResult, files []string, pendingDeps []model.TargetID) BuildState {
@@ -313,29 +310,11 @@ func NewBuildState(result BuildResult, files []string, pendingDeps []model.Targe
 	}
 }
 
-func (b BuildState) WithRunningContainers(cInfos []ContainerInfo) BuildState {
-	b.RunningContainers = cInfos
-	return b
-}
-
-func (b BuildState) WithRunningContainerError(err error) BuildState {
-	b.RunningContainerError = err
-	return b
-}
-
 func (b BuildState) WithFullBuildTriggered(isImageBuildTrigger bool) BuildState {
 	b.FullBuildTriggered = isImageBuildTrigger
 	return b
 }
 
-// NOTE(maia): Interim method to replicate old behavior where every
-// BuildState had a single ContainerInfo
-func (b BuildState) OneContainerInfo() ContainerInfo {
-	if len(b.RunningContainers) == 0 {
-		return ContainerInfo{}
-	}
-	return b.RunningContainers[0]
-}
 func (b BuildState) LastLocalImageAsString() string {
 	img := LocalImageRefFromBuildResult(b.LastResult)
 	if img == nil {
@@ -406,106 +385,6 @@ func (set BuildStateSet) FilesChanged() []string {
 	}
 	sort.Strings(result)
 	return result
-}
-
-// Information describing a single running & ready container
-type ContainerInfo struct {
-	PodID         k8s.PodID
-	ContainerID   container.ID
-	ContainerName container.Name
-	Namespace     k8s.Namespace
-}
-
-func (c ContainerInfo) Empty() bool {
-	return c == ContainerInfo{}
-}
-
-func IDsForInfos(infos []ContainerInfo) []container.ID {
-	ids := make([]container.ID, len(infos))
-	for i, info := range infos {
-		ids[i] = info.ContainerID
-	}
-	return ids
-}
-
-func AllRunningContainers(mt *ManifestTarget, state *EngineState) []ContainerInfo {
-	if mt.Manifest.IsDC() {
-		return RunningContainersForDC(mt.State.DCRuntimeState())
-	}
-
-	var result []ContainerInfo
-	for _, iTarget := range mt.Manifest.ImageTargets {
-		selector := iTarget.LiveUpdateSpec.Selector
-		if mt.Manifest.IsK8s() && selector.Kubernetes != nil {
-			cInfos, err := RunningContainersForOnePod(
-				selector.Kubernetes,
-				state.KubernetesResources[mt.Manifest.Name.String()])
-			if err != nil {
-				// HACK(maia): just don't collect container info for targets running
-				// more than one pod -- we don't support LiveUpdating them anyway,
-				// so no need to monitor those containers for crashes.
-				continue
-			}
-			result = append(result, cInfos...)
-		}
-	}
-	return result
-}
-
-// If all containers running the given image are ready, returns info for them.
-// (If this image is running on multiple pods, return an error.)
-func RunningContainersForOnePod(selector *v1alpha1.LiveUpdateKubernetesSelector, resource *k8sconv.KubernetesResource) ([]ContainerInfo, error) {
-	if resource == nil {
-		return nil, nil
-	}
-
-	activePods := []v1alpha1.Pod{}
-	for _, p := range resource.FilteredPods {
-		// Ignore completed pods.
-		if p.Phase == string(v1.PodSucceeded) || p.Phase == string(v1.PodFailed) {
-			continue
-		}
-		activePods = append(activePods, p)
-	}
-
-	if len(activePods) == 0 {
-		return nil, nil
-	}
-	if len(activePods) > 1 {
-		return nil, fmt.Errorf("can only get container info for a single pod; image target %s has %d pods", selector.Image, len(resource.FilteredPods))
-	}
-
-	pod := activePods[0]
-	var containers []ContainerInfo
-	for _, c := range pod.Containers {
-		// Only return containers matching our image
-		imageRef, err := container.ParseNamed(c.Image)
-		if err != nil || imageRef == nil || selector.Image != reference.FamiliarName(imageRef) {
-			continue
-		}
-		if c.ID == "" || c.Name == "" || c.State.Running == nil {
-			// If we're missing any relevant info for this container, OR if the
-			// container isn't running, we can't update it in place.
-			// (Since we'll need to fully rebuild this image, we shouldn't bother
-			// in-place updating ANY containers on this pod -- they'll all
-			// be recreated when we image build. So don't return ANY ContainerInfos.)
-			return nil, nil
-		}
-		containers = append(containers, ContainerInfo{
-			PodID:         k8s.PodID(pod.Name),
-			ContainerID:   container.ID(c.ID),
-			ContainerName: container.Name(c.Name),
-			Namespace:     k8s.Namespace(pod.Namespace),
-		})
-	}
-
-	return containers, nil
-}
-
-func RunningContainersForDC(state dockercompose.State) []ContainerInfo {
-	return []ContainerInfo{
-		ContainerInfo{ContainerID: state.ContainerID},
-	}
 }
 
 var BuildStateClean = BuildState{}

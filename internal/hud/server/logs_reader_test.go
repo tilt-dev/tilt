@@ -38,7 +38,7 @@ func TestLogStreamerPrintsLogs(t *testing.T) {
 
 func TestHandleEmptyView(t *testing.T) {
 	f := newLogStreamerFixture(t)
-	f.handle(proto_webview.View{})
+	f.handle(&proto_webview.View{})
 	f.assertExpectedLogLines([]expectedLine{expectedLine{}}) // Always end in a newline
 }
 
@@ -158,12 +158,12 @@ func (f *logStreamerFixture) withResourceNames(resourceNames ...string) *logStre
 	return f
 }
 
-func (f *logStreamerFixture) handle(view proto_webview.View) {
+func (f *logStreamerFixture) handle(view *proto_webview.View) {
 	err := f.ls.Handle(view)
 	require.NoError(f.t, err)
 }
 
-func (f *logStreamerFixture) newViewWithLogsForManifest(messages []string, manifestName string, fromChkpt int32) proto_webview.View {
+func (f *logStreamerFixture) newViewWithLogsForManifest(messages []string, manifestName string, fromChkpt int32) *proto_webview.View {
 	dummyManifestNames := make([]string, len(messages))
 	for i := 0; i < len(messages); i++ {
 		dummyManifestNames[i] = manifestName
@@ -171,11 +171,11 @@ func (f *logStreamerFixture) newViewWithLogsForManifest(messages []string, manif
 	return f.newViewWithLogsForManifests(messages, dummyManifestNames, fromChkpt)
 }
 
-func (f *logStreamerFixture) newViewWithLogsForManifests(messages []string, manifestNames []string, fromChkpt int32) proto_webview.View {
+func (f *logStreamerFixture) newViewWithLogsForManifests(messages []string, manifestNames []string, fromChkpt int32) *proto_webview.View {
 	segs := f.segments(messages, manifestNames)
 	spans := f.spans(manifestNames, nil)
 
-	return proto_webview.View{
+	return &proto_webview.View{
 		LogList: &proto_webview.LogList{
 			Spans:          spans,
 			Segments:       segs,

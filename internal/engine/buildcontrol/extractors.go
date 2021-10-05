@@ -9,6 +9,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/sliceutils"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -74,14 +75,19 @@ func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.
 			return nil, SilentRedirectToNextBuilderf("LiveUpdate requires that LiveUpdate details be specified")
 		}
 
-		if state.RunningContainerError != nil {
-			return nil, RedirectToNextBuilderInfof("Error retrieving container info: %v", state.RunningContainerError)
+		containers, err := liveupdates.RunningContainers(
+			state.KubernetesSelector,
+			state.KubernetesResource,
+			state.DockerResource)
+
+		if err != nil {
+			return nil, RedirectToNextBuilderInfof("Error retrieving container info: %v", err)
 		}
 
 		// Now that we have live update information, we know this CAN be updated in
 		// a container(s). Check to see if we have enough information about the
 		// container(s) that would need to be updated.
-		if len(state.RunningContainers) == 0 {
+		if len(containers) == 0 {
 			return nil, RedirectToNextBuilderInfof("Don't have info for running container of image %q "+
 				"(often a result of the deployment not yet being ready)", container.FamiliarString(iTarget.Refs.ClusterRef()))
 		}
@@ -94,7 +100,7 @@ func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.
 		result = append(result, liveUpdateStateTree{
 			iTarget:           iTarget,
 			filesChanged:      filesChanged,
-			iTargetState:      state,
+			containers:        containers,
 			hasFileChangesIDs: hasFileChangesIDs,
 		})
 	}

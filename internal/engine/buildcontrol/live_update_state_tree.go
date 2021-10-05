@@ -3,6 +3,7 @@ package buildcontrol
 import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -11,17 +12,16 @@ import (
 type liveUpdateStateTree struct {
 	iTarget           model.ImageTarget
 	filesChanged      []string
-	iTargetState      store.BuildState
+	containers        []liveupdates.Container
 	hasFileChangesIDs []model.TargetID
 }
 
 // Create a successful build result if the live update deploys successfully.
 func (t liveUpdateStateTree) createResultSet() store.BuildResultSet {
 	iTargetID := t.iTarget.ID()
-	state := t.iTargetState
 
 	liveUpdatedContainerIDs := []container.ID{}
-	for _, c := range state.RunningContainers {
+	for _, c := range t.containers {
 		liveUpdatedContainerIDs = append(liveUpdatedContainerIDs, c.ContainerID)
 	}
 

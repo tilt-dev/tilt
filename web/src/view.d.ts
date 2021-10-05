@@ -629,6 +629,16 @@ declare namespace Proto {
      */
     key?: string;
   }
+  export interface runtimeError {
+    error?: string;
+    code?: number;
+    message?: string;
+    details?: protobufAny[];
+  }
+  export interface protobufAny {
+    typeUrl?: string;
+    value?: string;
+  }
   export interface corev1alpha1VersionSettings {
     checkUpdates?: boolean;
   }

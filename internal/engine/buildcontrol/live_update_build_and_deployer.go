@@ -10,6 +10,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/ospath"
+	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 
@@ -51,7 +52,7 @@ func NewLiveUpdateBuildAndDeployer(dcu *containerupdate.DockerUpdater,
 // Info needed to perform a live update
 type liveUpdInfo struct {
 	iTarget      model.ImageTarget
-	state        store.BuildState
+	containers   []liveupdates.Container
 	changedFiles []build.PathMapping
 	runs         []model.Run
 	hotReload    bool
@@ -92,7 +93,7 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	var dontFallBackErr error
 	for _, info := range liveUpdInfos {
 		ps.StartPipelineStep(ctx, "updating image %s", reference.FamiliarName(info.iTarget.Refs.ClusterRef()))
-		err = lubad.buildAndDeploy(ctx, ps, containerUpdater, info.iTarget, info.state, info.changedFiles, info.runs, info.hotReload)
+		err = lubad.buildAndDeploy(ctx, ps, containerUpdater, info.iTarget, info.containers, info.changedFiles, info.runs, info.hotReload)
 		if err != nil {
 			if !IsDontFallBackError(err) {
 				// something went wrong, we want to fall back -- bail and
@@ -112,7 +113,7 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	return createResultSet(liveUpdateStateSet, liveUpdInfos), err
 }
 
-func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, ps *build.PipelineState, cu containerupdate.ContainerUpdater, iTarget model.ImageTarget, state store.BuildState, changedFiles []build.PathMapping, runs []model.Run, hotReload bool) (err error) {
+func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, ps *build.PipelineState, cu containerupdate.ContainerUpdater, iTarget model.ImageTarget, containers []liveupdates.Container, changedFiles []build.PathMapping, runs []model.Run, hotReload bool) (err error) {
 	startTime := time.Now()
 	defer func() {
 		analytics.Get(ctx).Timer("build.container", time.Since(startTime), map[string]string{
@@ -121,9 +122,9 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, ps 
 	}()
 
 	l := logger.Get(ctx)
-	cIDStr := container.ShortStrs(store.IDsForInfos(state.RunningContainers))
+	cIDStr := container.ShortStrs(liveupdates.IDsForContainers(containers))
 	suffix := ""
-	if len(state.RunningContainers) != 1 {
+	if len(containers) != 1 {
 		suffix = "(s)"
 	}
 	ps.StartBuildStep(ctx, "Updating container%s: %s", suffix, cIDStr)
@@ -155,7 +156,7 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, ps 
 	}
 
 	var lastUserBuildFailure error
-	for _, cInfo := range state.RunningContainers {
+	for _, cInfo := range containers {
 		archive := build.TarArchiveForPaths(ctx, toArchive, filter)
 		err = cu.UpdateContainer(ctx, cInfo, archive,
 			build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
@@ -192,7 +193,6 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, ps 
 // all the info we need to execute the update.
 func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (liveUpdInfo, error) {
 	iTarget := stateTree.iTarget
-	state := stateTree.iTargetState
 	filesChanged := stateTree.filesChanged
 
 	var err error
@@ -239,10 +239,10 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (liveUpdInfo, err
 
 	return liveUpdInfo{
 		iTarget:      iTarget,
-		state:        state,
 		changedFiles: fileMappings,
 		runs:         runs,
 		hotReload:    hotReload,
+		containers:   stateTree.containers,
 	}, nil
 }
 

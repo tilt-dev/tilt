@@ -9,7 +9,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/k8s"
-	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -24,7 +24,7 @@ func NewExecUpdater(kCli k8s.Client) *ExecUpdater {
 	return &ExecUpdater{kCli: kCli}
 }
 
-func (cu *ExecUpdater) UpdateContainer(ctx context.Context, cInfo store.ContainerInfo,
+func (cu *ExecUpdater) UpdateContainer(ctx context.Context, cInfo liveupdates.Container,
 	archiveToCopy io.Reader, filesToDelete []string, cmds []model.Cmd, hotReload bool) error {
 	if !hotReload {
 		return fmt.Errorf("ExecUpdater does not support `restart_container()` step. If you ran Tilt " +

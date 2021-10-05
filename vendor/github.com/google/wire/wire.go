@@ -146,7 +146,8 @@ func InterfaceValue(typ interface{}, x interface{}) ProvidedValue {
 // A StructProvider represents a named struct.
 type StructProvider struct{}
 
-// Struct specifies that the given struct type will be provided by filling in the fields in the struct that have the names given.
+// Struct specifies that the given struct type will be provided by filling in
+// the fields in the struct that have the names given.
 //
 // The first argument must be a pointer to the struct type. For a struct type
 // Foo, Wire will use field-filling to provide both Foo and *Foo. The remaining
@@ -172,11 +173,11 @@ type StructFields struct{}
 // to provide the types of those fields. The structType argument must be a
 // pointer to the struct or a pointer to a pointer to the struct it wishes to reference.
 //
-// The following example would provide *Foo and *Bar using S.MyFoo and S.MyBar respectively:
+// The following example would provide Foo and Bar using S.MyFoo and S.MyBar respectively:
 //
 //  type S struct {
-//  	MyFoo *Foo
-//  	MyBar *Bar
+//  	MyFoo Foo
+//  	MyBar Bar
 //  }
 //
 //  func NewStruct() S { /* ... */ }
@@ -186,6 +187,10 @@ type StructFields struct{}
 //
 //  func NewStruct() *S { /* ... */ }
 //  var Set = wire.NewSet(wire.FieldsOf(new(*S), "MyFoo", "MyBar"))
+//
+//  If the structType argument is a pointer to a pointer to a struct, then FieldsOf
+//  additionally provides a pointer to each field type (e.g., *Foo and *Bar in the
+//  example above).
 func FieldsOf(structType interface{}, fieldNames ...string) StructFields {
 	return StructFields{}
 }
