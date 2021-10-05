@@ -1767,6 +1767,25 @@ k8s_resource(new_name='config', objects=['config'])
 	)
 }
 
+func TestPodReadinessDefaultJob(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("job.yaml", `apiVersion: batch/v1
+kind: Job
+metadata:
+  name: myjob
+`)
+	f.file("Tiltfile", `
+k8s_yaml('job.yaml')
+`)
+
+	f.load("myjob")
+	f.assertNextManifest("myjob",
+		podReadiness(model.PodReadinessComplete),
+	)
+}
+
 func TestK8sDiscoveryStrategy(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()

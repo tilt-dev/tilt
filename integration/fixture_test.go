@@ -3,7 +3,9 @@
 package integration
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"go/build"
 	"io"
@@ -19,8 +21,10 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/require"
 
 	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
 var packageDir string
@@ -221,6 +225,30 @@ func (f *fixture) TiltDemo(args ...string) {
 		f.t.Fatalf("TiltDemo: %v", err)
 	}
 	f.activeTiltUp = response
+}
+
+func (f *fixture) TiltSession() v1alpha1.Session {
+	response, err := f.tilt.Get(f.ctx, "session", "Tiltfile")
+	require.NoError(f.t, err, "error getting Tiltfile session")
+	result := v1alpha1.Session{}
+	decoder := json.NewDecoder(bytes.NewReader(response))
+	decoder.DisallowUnknownFields()
+	err = decoder.Decode(&result)
+	require.NoError(f.t, err)
+	return result
+}
+
+func (f *fixture) TargetStatus(name string) v1alpha1.Target {
+	var targetNames []string
+	sess := f.TiltSession()
+	for _, target := range sess.Status.Targets {
+		if target.Name == name {
+			return target
+		}
+		targetNames = append(targetNames, target.Name)
+	}
+	f.t.Fatalf("No target named %s. Targets in session: %v\n", name, targetNames)
+	return v1alpha1.Target{}
 }
 
 func (f *fixture) ReplaceContents(fileBaseName, original, replacement string) {

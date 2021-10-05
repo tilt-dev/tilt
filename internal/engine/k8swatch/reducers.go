@@ -101,7 +101,14 @@ func maybeUpdateStateForPod(ms *store.ManifestState, pod *v1alpha1.Pod) bool {
 	// Track the new version
 	runtime.Pods[podID] = pod
 
-	if len(pod.Containers) != 0 && (store.AllPodContainersReady(*pod) || pod.Phase == string(v1.PodSucceeded)) {
+	isReadyOrSucceeded := false
+	if ms.K8sRuntimeState().PodReadinessMode == model.PodReadinessComplete {
+		// for jobs, we don't care about whether it's ready, only whether it's succeeded
+		isReadyOrSucceeded = pod.Phase == string(v1.PodSucceeded)
+	} else {
+		isReadyOrSucceeded = len(pod.Containers) != 0 && store.AllPodContainersReady(*pod)
+	}
+	if isReadyOrSucceeded {
 		runtime.LastReadyOrSucceededTime = time.Now()
 	}
 
