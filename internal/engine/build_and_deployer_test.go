@@ -136,10 +136,10 @@ func TestLiveUpdateTaskKilled(t *testing.T) {
 
 	changed := f.WriteFile("a.txt", "a")
 
-	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
+	manifest := NewSanchoLiveUpdateManifest(f)
+	bs := resultToStateSet(manifest, alreadyBuiltSet, []string{changed}, testContainerInfo)
 	f.docker.SetExecError(docker.ExitError{ExitCode: build.TaskKillExitCode})
 
-	manifest := NewSanchoLiveUpdateManifest(f)
 	targets := buildcontrol.BuildTargets(manifest)
 	_, err := f.BuildAndDeploy(targets, bs)
 	if err != nil {
@@ -159,10 +159,10 @@ func TestFallBackToImageDeploy(t *testing.T) {
 
 	f.docker.SetExecError(errors.New("some random error"))
 
-	changed := f.WriteFile("a.txt", "a")
-	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
-
 	manifest := NewSanchoLiveUpdateManifest(f)
+	changed := f.WriteFile("a.txt", "a")
+	bs := resultToStateSet(manifest, alreadyBuiltSet, []string{changed}, testContainerInfo)
+
 	targets := buildcontrol.BuildTargets(manifest)
 	_, err := f.BuildAndDeploy(targets, bs)
 	if err != nil {
@@ -180,10 +180,10 @@ func TestNoFallbackForDontFallBackError(t *testing.T) {
 	defer f.TearDown()
 	f.docker.SetExecError(buildcontrol.DontFallBackErrorf("i'm melllting"))
 
-	changed := f.WriteFile("a.txt", "a")
-	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
-
 	manifest := NewSanchoLiveUpdateManifest(f)
+	changed := f.WriteFile("a.txt", "a")
+	bs := resultToStateSet(manifest, alreadyBuiltSet, []string{changed}, testContainerInfo)
+
 	targets := buildcontrol.BuildTargets(manifest)
 	_, err := f.BuildAndDeploy(targets, bs)
 	if err == nil {
@@ -215,7 +215,7 @@ func TestLiveUpdateFallbackMessagingRedirect(t *testing.T) {
 		Build()
 
 	changed := f.WriteFile("fall_back.txt", "a")
-	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
+	bs := resultToStateSet(manifest, alreadyBuiltSet, []string{changed}, testContainerInfo)
 
 	targets := buildcontrol.BuildTargets(manifest)
 	_, err := f.BuildAndDeploy(targets, bs)
@@ -238,10 +238,10 @@ func TestLiveUpdateFallbackMessagingUnexpectedError(t *testing.T) {
 
 	f.docker.SetExecError(errors.New("some random error"))
 
-	changed := f.WriteFile("a.txt", "a")
-	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
-
 	manifest := NewSanchoLiveUpdateManifest(f)
+	changed := f.WriteFile("a.txt", "a")
+	bs := resultToStateSet(manifest, alreadyBuiltSet, []string{changed}, testContainerInfo)
+
 	targets := buildcontrol.BuildTargets(manifest)
 	_, err := f.BuildAndDeploy(targets, bs)
 	if err != nil {
@@ -266,13 +266,13 @@ func TestLiveUpdateTwice(t *testing.T) {
 	aPath := f.WriteFile("a.txt", "a")
 	bPath := f.WriteFile("b.txt", "b")
 
-	firstState := resultToStateSet(alreadyBuiltSet, []string{aPath}, testContainerInfo)
+	firstState := resultToStateSet(manifest, alreadyBuiltSet, []string{aPath}, testContainerInfo)
 	firstResult, err := f.BuildAndDeploy(targets, firstState)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	secondState := resultToStateSet(firstResult, []string{bPath}, testContainerInfo)
+	secondState := resultToStateSet(manifest, firstResult, []string{bPath}, testContainerInfo)
 	_, err = f.BuildAndDeploy(targets, secondState)
 	if err != nil {
 		t.Fatal(err)
@@ -304,7 +304,7 @@ func TestLiveUpdateTwiceDeadPod(t *testing.T) {
 	aPath := f.WriteFile("a.txt", "a")
 	bPath := f.WriteFile("b.txt", "b")
 
-	firstState := resultToStateSet(alreadyBuiltSet, []string{aPath}, testContainerInfo)
+	firstState := resultToStateSet(manifest, alreadyBuiltSet, []string{aPath}, testContainerInfo)
 	firstResult, err := f.BuildAndDeploy(targets, firstState)
 	if err != nil {
 		t.Fatal(err)
@@ -313,7 +313,7 @@ func TestLiveUpdateTwiceDeadPod(t *testing.T) {
 	// Kill the pod
 	f.docker.SetExecError(fmt.Errorf("Dead pod"))
 
-	secondState := resultToStateSet(firstResult, []string{bPath}, testContainerInfo)
+	secondState := resultToStateSet(manifest, firstResult, []string{bPath}, testContainerInfo)
 	_, err = f.BuildAndDeploy(targets, secondState)
 	if err != nil {
 		t.Fatal(err)
@@ -428,7 +428,7 @@ func TestContainerBuildMultiStage(t *testing.T) {
 	manifest := NewSanchoLiveUpdateMultiStageManifest(f)
 	targets := buildcontrol.BuildTargets(manifest)
 	changed := f.WriteFile("a.txt", "a")
-	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
+	bs := resultToStateSet(manifest, alreadyBuiltSet, []string{changed}, testContainerInfo)
 
 	// There are two image targets. The first has a build result,
 	// the second does not --> second target needs build
@@ -484,7 +484,7 @@ func TestDockerComposeLiveUpdate(t *testing.T) {
 	manifest := NewSanchoLiveUpdateDCManifest(f)
 	targets := buildcontrol.BuildTargets(manifest)
 	changed := f.WriteFile("a.txt", "a")
-	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
+	bs := resultToStateSet(manifest, alreadyBuiltSet, []string{changed}, testContainerInfo)
 
 	_, err := f.BuildAndDeploy(targets, bs)
 	if err != nil {
@@ -545,7 +545,7 @@ func TestLiveUpdateWithRunFailureReturnsContainerIDs(t *testing.T) {
 	manifest := NewSanchoLiveUpdateManifest(f)
 	targets := buildcontrol.BuildTargets(manifest)
 	changed := f.WriteFile("a.txt", "a")
-	bs := resultToStateSet(alreadyBuiltSet, []string{changed}, testContainerInfo)
+	bs := resultToStateSet(manifest, alreadyBuiltSet, []string{changed}, testContainerInfo)
 	resultSet, err := f.BuildAndDeploy(targets, bs)
 	require.NotNil(t, err, "expected failed LiveUpdate to return error")
 
@@ -609,7 +609,7 @@ func TestOneLiveUpdateOneDockerBuildDoesImageBuild(t *testing.T) {
 		WithImageTargets(sanchoTarg, sidecarTarg).
 		Build()
 	changed := f.WriteFile("a.txt", "a")
-	sanchoState := liveupdates.WithFakeContainers(
+	sanchoState := liveupdates.WithFakeK8sContainers(
 		store.NewBuildState(store.NewImageBuildResultSingleRef(sanchoTarg.ID(), sanchoRef), []string{changed}, nil),
 		sanchoRef.String(), []liveupdates.Container{sanchoCInfo})
 	sidecarState := store.NewBuildState(store.NewImageBuildResultSingleRef(sidecarTarg.ID(), sidecarRef), []string{changed}, nil)
@@ -752,10 +752,10 @@ func multiImageLiveUpdateManifestAndBuildState(f *bdFixture) (model.Manifest, st
 		Build()
 
 	changed := f.WriteFile("a.txt", "a")
-	sanchoState := liveupdates.WithFakeContainers(
+	sanchoState := liveupdates.WithFakeK8sContainers(
 		store.NewBuildState(store.NewImageBuildResultSingleRef(sanchoTarg.ID(), sanchoRef), []string{changed}, nil),
 		string(sanchoTarg.ID().Name), []liveupdates.Container{sanchoCInfo})
-	sidecarState := liveupdates.WithFakeContainers(
+	sidecarState := liveupdates.WithFakeK8sContainers(
 		store.NewBuildState(store.NewImageBuildResultSingleRef(sidecarTarg.ID(), sidecarRef), []string{changed}, nil),
 		string(sidecarTarg.ID().Name), []liveupdates.Container{sidecarCInfo})
 
@@ -802,10 +802,10 @@ type bdFixture struct {
 }
 
 func newBDFixture(t *testing.T, env k8s.Env, runtime container.Runtime) *bdFixture {
-	return newBDFixtureWithUpdateMode(t, env, runtime, buildcontrol.UpdateModeAuto)
+	return newBDFixtureWithUpdateMode(t, env, runtime, liveupdates.UpdateModeAuto)
 }
 
-func newBDFixtureWithUpdateMode(t *testing.T, env k8s.Env, runtime container.Runtime, um buildcontrol.UpdateMode) *bdFixture {
+func newBDFixtureWithUpdateMode(t *testing.T, env k8s.Env, runtime container.Runtime, um liveupdates.UpdateMode) *bdFixture {
 	logs := new(bytes.Buffer)
 	ctx, _, ta := testutils.ForkedCtxAndAnalyticsForTest(logs)
 	ctx, cancel := context.WithCancel(ctx)
@@ -821,7 +821,7 @@ func newBDFixtureWithUpdateMode(t *testing.T, env k8s.Env, runtime container.Run
 	}
 	k8s := k8s.NewFakeK8sClient(t)
 	k8s.Runtime = runtime
-	mode := buildcontrol.UpdateModeFlag(um)
+	mode := liveupdates.UpdateModeFlag(um)
 	dcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	kl := &fakeKINDLoader{}
 	ctrlClient := fake.NewFakeTiltClient()
@@ -963,7 +963,11 @@ func (f *bdFixture) createBuildStateSet(manifest model.Manifest, changedFiles []
 
 		state := store.NewBuildState(alreadyBuilt, filesChangingImage, nil)
 		if manifest.IsImageDeployed(iTarget) {
-			state = liveupdates.WithFakeContainers(state, string(iTarget.ID().Name), []liveupdates.Container{testContainerInfo})
+			if manifest.IsDC() {
+				state = liveupdates.WithFakeDCContainer(state, testContainerInfo)
+			} else {
+				state = liveupdates.WithFakeK8sContainers(state, string(iTarget.ID().Name), []liveupdates.Container{testContainerInfo})
+			}
 		}
 		bs[iTarget.ID()] = state
 	}
@@ -976,11 +980,15 @@ func (f *bdFixture) createBuildStateSet(manifest model.Manifest, changedFiles []
 	return bs
 }
 
-func resultToStateSet(resultSet store.BuildResultSet, files []string, container liveupdates.Container) store.BuildStateSet {
+func resultToStateSet(m model.Manifest, resultSet store.BuildResultSet, files []string, container liveupdates.Container) store.BuildStateSet {
 	stateSet := store.BuildStateSet{}
 	for id, result := range resultSet {
 		state := store.NewBuildState(result, files, nil)
-		state = liveupdates.WithFakeContainers(state, string(id.Name), []liveupdates.Container{container})
+		if m.IsDC() {
+			state = liveupdates.WithFakeDCContainer(state, container)
+		} else {
+			state = liveupdates.WithFakeK8sContainers(state, string(id.Name), []liveupdates.Container{container})
+		}
 		stateSet[id] = state
 	}
 	return stateSet

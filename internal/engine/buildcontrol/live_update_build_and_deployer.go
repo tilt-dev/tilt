@@ -6,47 +6,32 @@ import (
 	"time"
 
 	"github.com/docker/distribution/reference"
-	"github.com/pkg/errors"
-
-	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
-	"github.com/tilt-dev/tilt/internal/ospath"
-	"github.com/tilt-dev/tilt/internal/store/liveupdates"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
-
-	"github.com/tilt-dev/tilt/internal/container"
-	"github.com/tilt-dev/tilt/internal/containerupdate"
-
 	"github.com/tilt-dev/tilt/internal/build"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
+	ctrlliveupdate "github.com/tilt-dev/tilt/internal/controllers/core/liveupdate"
 	"github.com/tilt-dev/tilt/internal/ignore"
-	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/ospath"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
-	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 var _ BuildAndDeployer = &LiveUpdateBuildAndDeployer{}
 
 type LiveUpdateBuildAndDeployer struct {
-	dcu         *containerupdate.DockerUpdater
-	ecu         *containerupdate.ExecUpdater
-	updMode     UpdateMode
-	kubeContext k8s.KubeContext
-	clock       build.Clock
+	luReconciler *ctrlliveupdate.Reconciler
+	clock        build.Clock
 }
 
-func NewLiveUpdateBuildAndDeployer(dcu *containerupdate.DockerUpdater,
-	ecu *containerupdate.ExecUpdater,
-	updMode UpdateMode,
-	kubeContext k8s.KubeContext,
-	c build.Clock) *LiveUpdateBuildAndDeployer {
+func NewLiveUpdateBuildAndDeployer(luReconciler *ctrlliveupdate.Reconciler, c build.Clock) *LiveUpdateBuildAndDeployer {
 	return &LiveUpdateBuildAndDeployer{
-		dcu:         dcu,
-		ecu:         ecu,
-		updMode:     updMode,
-		kubeContext: kubeContext,
-		clock:       c,
+		luReconciler: luReconciler,
+		clock:        c,
 	}
 }
 
@@ -59,22 +44,9 @@ type LiveUpdateInput struct {
 	// service name, or to anything in particular.
 	Name string
 
-	Filter model.PathMatcher
-	Spec   v1alpha1.LiveUpdateSpec
+	Spec v1alpha1.LiveUpdateSpec
 
-	// Derived from KubernetesResource + KubenetesSelector + DockerResource
-	Containers []liveupdates.Container
-
-	// Derived from FileWatch + Sync rules
-	ChangedFiles []build.PathMapping
-}
-
-func (lui LiveUpdateInput) RunSteps() []model.Run {
-	return liveupdate.RunSteps(lui.Spec)
-}
-
-func (lui LiveUpdateInput) ShouldRestart() bool {
-	return liveupdate.ShouldRestart(lui.Spec)
+	ctrlliveupdate.Input
 }
 
 func (lui LiveUpdateInput) Empty() bool { return lui.Name == "" }
@@ -85,7 +57,6 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		return store.BuildResultSet{}, err
 	}
 
-	containerUpdater := lubad.containerUpdaterForSpecs(specs)
 	liveUpdateInputs := make([]LiveUpdateInput, 0, len(liveUpdateStateSet))
 
 	if len(liveUpdateStateSet) == 0 {
@@ -112,7 +83,7 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	var dontFallBackErr error
 	for _, info := range liveUpdateInputs {
 		ps.StartPipelineStep(ctx, "updating image %s", info.Name)
-		err = lubad.buildAndDeploy(ctx, ps, containerUpdater, info)
+		err = lubad.buildAndDeploy(ctx, ps, info)
 		if err != nil {
 			if !IsDontFallBackError(err) {
 				// something went wrong, we want to fall back -- bail and
@@ -132,7 +103,7 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	return createResultSet(liveUpdateStateSet, liveUpdateInputs), err
 }
 
-func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, ps *build.PipelineState, cu containerupdate.ContainerUpdater, info LiveUpdateInput) (err error) {
+func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, ps *build.PipelineState, info LiveUpdateInput) (err error) {
 	startTime := time.Now()
 	defer func() {
 		analytics.Get(ctx).Timer("build.container", time.Since(startTime), map[string]string{
@@ -141,7 +112,6 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, ps 
 	}()
 
 	containers := info.Containers
-	l := logger.Get(ctx)
 	cIDStr := container.ShortStrs(liveupdates.IDsForContainers(containers))
 	suffix := ""
 	if len(containers) != 1 {
@@ -149,65 +119,16 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, ps 
 	}
 	ps.StartBuildStep(ctx, "Updating container%s: %s", suffix, cIDStr)
 
-	filter := info.Filter
-	runSteps := info.RunSteps()
-	changedFiles := info.ChangedFiles
-	hotReload := !info.ShouldRestart()
-	boiledSteps, err := build.BoilRuns(runSteps, changedFiles)
-	if err != nil {
-		return err
+	status := lubad.luReconciler.ForceApply(
+		ctx,
+		types.NamespacedName{Name: info.Name},
+		info.Spec,
+		info.Input)
+	if status.UnknownError != nil {
+		return status.UnknownError
 	}
-
-	// rm files from container
-	toRemove, toArchive, err := build.MissingLocalPaths(ctx, changedFiles)
-	if err != nil {
-		return errors.Wrap(err, "MissingLocalPaths")
-	}
-
-	if len(toRemove) > 0 {
-		l.Infof("Will delete %d file(s) from container%s: %s", len(toRemove), suffix, cIDStr)
-		for _, pm := range toRemove {
-			l.Infof("- '%s' (matched local path: '%s')", pm.ContainerPath, pm.LocalPath)
-		}
-	}
-
-	if len(toArchive) > 0 {
-		l.Infof("Will copy %d file(s) to container%s: %s", len(toArchive), suffix, cIDStr)
-		for _, pm := range toArchive {
-			l.Infof("- %s", pm.PrettyStr())
-		}
-	}
-
-	var lastUserBuildFailure error
-	for _, cInfo := range containers {
-		archive := build.TarArchiveForPaths(ctx, toArchive, filter)
-		err = cu.UpdateContainer(ctx, cInfo, archive,
-			build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
-		if err != nil {
-			if runFail, ok := build.MaybeRunStepFailure(err); ok {
-				// Keep running updates -- we want all containers to have the same files on them
-				// even if the Runs don't succeed
-				lastUserBuildFailure = err
-				logger.Get(ctx).Infof("  → Failed to update container %s: run step %q failed with exit code: %d",
-					cInfo.ContainerID.ShortStr(), runFail.Cmd.String(), runFail.ExitCode)
-				continue
-			}
-
-			// Something went wrong with this update and it's NOT the user's fault--
-			// likely a infrastructure error. Bail, and fall back to full build.
-			return err
-		} else {
-			logger.Get(ctx).Infof("  → Container %s updated!", cInfo.ContainerID.ShortStr())
-			if lastUserBuildFailure != nil {
-				// This build succeeded, but previously at least one failed due to user error.
-				// We may have inconsistent state--bail, and fall back to full build.
-				return fmt.Errorf("Failed to update container: container %s successfully updated, "+
-					"but last update failed with '%v'", cInfo.ContainerID.ShortStr(), lastUserBuildFailure)
-			}
-		}
-	}
-	if lastUserBuildFailure != nil {
-		return WrapDontFallBackError(lastUserBuildFailure)
+	if status.ExecError != nil {
+		return WrapDontFallBackError(status.ExecError)
 	}
 	return nil
 }
@@ -256,28 +177,14 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (LiveUpdateInput,
 	}
 
 	return LiveUpdateInput{
-		ID:           iTarget.ID(),
-		Name:         reference.FamiliarName(iTarget.Refs.ClusterRef()),
-		Filter:       ignore.CreateBuildContextFilter(iTarget),
-		Spec:         iTarget.LiveUpdateSpec,
-		ChangedFiles: fileMappings,
-		Containers:   stateTree.containers,
+		ID:   iTarget.ID(),
+		Name: reference.FamiliarName(iTarget.Refs.ClusterRef()),
+		Spec: iTarget.LiveUpdateSpec,
+		Input: ctrlliveupdate.Input{
+			Filter:       ignore.CreateBuildContextFilter(iTarget),
+			ChangedFiles: fileMappings,
+			Containers:   stateTree.containers,
+			IsDC:         stateTree.isDC,
+		},
 	}, nil
-}
-
-func (lubad *LiveUpdateBuildAndDeployer) containerUpdaterForSpecs(specs []model.TargetSpec) containerupdate.ContainerUpdater {
-	isDC := len(model.ExtractDockerComposeTargets(specs)) > 0
-	if isDC || lubad.updMode == UpdateModeContainer {
-		return lubad.dcu
-	}
-
-	if lubad.updMode == UpdateModeKubectlExec {
-		return lubad.ecu
-	}
-
-	if lubad.dcu.WillBuildToKubeContext(lubad.kubeContext) {
-		return lubad.dcu
-	}
-
-	return lubad.ecu
 }

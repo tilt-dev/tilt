@@ -94,7 +94,7 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 			}
 		}
 		imageName := string(targID.Name)
-		bs[targID] = liveupdates.WithFakeContainers(bs[targID], imageName, containers)
+		bs[targID] = liveupdates.WithFakeK8sContainers(bs[targID], imageName, containers)
 	}
 
 	targets := buildcontrol.BuildTargets(manifest)

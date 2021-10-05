@@ -15,9 +15,9 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
-	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/hud/prompt"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/pkg/assets"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -28,7 +28,7 @@ var webModeFlag model.WebMode = model.DefaultWebMode
 
 const DefaultWebDevPort = 46764
 
-var updateModeFlag string = string(buildcontrol.UpdateModeAuto)
+var updateModeFlag string = string(liveupdates.UpdateModeAuto)
 var webDevPort = 0
 var logActionsFlag bool = false
 
@@ -70,8 +70,8 @@ local resources--i.e. those using serve_cmd--are terminated when you exit Tilt.
 `,
 	}
 
-	cmd.Flags().StringVar(&updateModeFlag, "update-mode", string(buildcontrol.UpdateModeAuto),
-		fmt.Sprintf("Control the strategy Tilt uses for updating instances. Possible values: %v", buildcontrol.AllUpdateModes))
+	cmd.Flags().StringVar(&updateModeFlag, "update-mode", string(liveupdates.UpdateModeAuto),
+		fmt.Sprintf("Control the strategy Tilt uses for updating instances. Possible values: %v", liveupdates.AllUpdateModes))
 	cmd.Flags().BoolVar(&c.hud, "hud", true, "If true, tilt will open in HUD mode.")
 	cmd.Flags().BoolVar(&c.legacy, "legacy", false, "If true, tilt will open in legacy terminal mode.")
 	cmd.Flags().BoolVar(&c.stream, "stream", false, "If true, tilt will stream logs in the terminal.")
@@ -179,8 +179,8 @@ func redirectLogs(ctx context.Context, l logger.Logger) context.Context {
 	return ctx
 }
 
-func provideUpdateModeFlag() buildcontrol.UpdateModeFlag {
-	return buildcontrol.UpdateModeFlag(updateModeFlag)
+func provideUpdateModeFlag() liveupdates.UpdateModeFlag {
+	return liveupdates.UpdateModeFlag(updateModeFlag)
 }
 
 func provideLogActions() store.LogActionsFlag {

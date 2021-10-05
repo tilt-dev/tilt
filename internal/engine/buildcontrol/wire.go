@@ -19,6 +19,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/dockerfile"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/internal/tracer"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
@@ -46,7 +47,7 @@ var BaseWireSet = wire.NewSet(
 
 	tracer.InitOpenTelemetry,
 
-	ProvideUpdateMode,
+	liveupdates.ProvideUpdateMode,
 )
 
 func ProvideImageBuildAndDeployer(

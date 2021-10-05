@@ -1,4 +1,4 @@
-package buildcontrol
+package liveupdates
 
 import (
 	"fmt"
