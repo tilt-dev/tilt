@@ -10,21 +10,15 @@ RUN apk add --no-cache \
   nodejs \
   yarn
 
-
+# Newer versions of protoc-gen-go are stricter with the `go_package` argument, which is invalid in the K8s protobufs
+# so we're currently locked to an older version as there's no way to suppress the error
+# see https://github.com/golang/protobuf/issues/1316
 RUN go install 'github.com/golang/protobuf/protoc-gen-go@v1.4.3'
 RUN go install 'github.com/google/wire/cmd/wire@v0.5.0'
 RUN go install 'golang.org/x/tools/cmd/goimports@latest'
 ARG GRPC_GATEWAY_VERSION="v1.16.0"
 RUN go install "github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway@${GRPC_GATEWAY_VERSION}"
 RUN go install "github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger@${GRPC_GATEWAY_VERSION}"
-
-#RUN wget "https://github.com/grpc-ecosystem/grpc-gateway/releases/download/${GRPC_GATEWAY_VERSION}/protoc-gen-grpc-gateway-${GRPC_GATEWAY_VERSION}-linux-x86_64" \
-#      -o /usr/local/bin/protoc-gen-grpc-gateway && \
-#    chmod +x /usr/local/bin/protoc-gen-grpc-gateway
-#
-#RUN wget "https://github.com/grpc-ecosystem/grpc-gateway/releases/download/${GRPC_GATEWAY_VERSION}/protoc-gen-swagger-${GRPC_GATEWAY_VERSION}-linux-x86_64" \
-#      -o /usr/local/bin/protoc-gen-swagger && \
-#    chmod +x /usr/local/bin/protoc-gen-swagger
 
 RUN wget https://github.com/grpc/grpc-web/releases/download/1.0.6/protoc-gen-grpc-web-1.0.6-linux-x86_64 \
     -o /usr/local/bin/protoc-gen-grpc-web && \
