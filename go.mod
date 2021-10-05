@@ -28,13 +28,12 @@ require (
 	github.com/gdamore/tcell v1.1.3
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-errors/errors v1.1.1 // indirect
-	github.com/go-openapi/spec v0.20.1
 	github.com/gofrs/uuid v3.2.0+incompatible // indirect
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.6
 	github.com/google/uuid v1.1.2
-	github.com/google/wire v0.3.0
+	github.com/google/wire v0.5.0
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.4.2
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 // indirect
@@ -84,6 +83,7 @@ require (
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	google.golang.org/genproto v0.0.0-20210602131652-f16073e35f0c
 	google.golang.org/grpc v1.38.0
+	google.golang.org/protobuf v1.26.0
 	gopkg.in/d4l3k/messagediff.v1 v1.2.1
 	gopkg.in/dancannon/gorethink.v3 v3.0.5 // indirect
 	gopkg.in/fatih/pool.v2 v2.0.0 // indirect

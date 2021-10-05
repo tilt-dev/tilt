@@ -243,9 +243,6 @@ github.com/go-logr/logr
 github.com/go-openapi/jsonpointer
 # github.com/go-openapi/jsonreference v0.19.5
 github.com/go-openapi/jsonreference
-# github.com/go-openapi/spec v0.20.1 => github.com/go-openapi/spec v0.19.3
-## explicit
-github.com/go-openapi/spec
 # github.com/go-openapi/swag v0.19.14
 github.com/go-openapi/swag
 # github.com/gofrs/uuid v3.2.0+incompatible
@@ -287,7 +284,7 @@ github.com/google/shlex
 # github.com/google/uuid v1.1.2
 ## explicit
 github.com/google/uuid
-# github.com/google/wire v0.3.0
+# github.com/google/wire v0.5.0
 ## explicit
 github.com/google/wire
 # github.com/googleapis/gnostic v0.5.5
@@ -634,7 +631,6 @@ go.opentelemetry.io/otel/sdk/instrumentation
 go.opentelemetry.io/otel/sdk/internal
 go.opentelemetry.io/otel/sdk/resource
 go.opentelemetry.io/otel/sdk/trace
-go.opentelemetry.io/otel/sdk/trace/tracetest
 # go.opentelemetry.io/otel/sdk/export/metric v0.20.0
 go.opentelemetry.io/otel/sdk/export/metric
 go.opentelemetry.io/otel/sdk/export/metric/aggregation
@@ -830,6 +826,7 @@ google.golang.org/grpc/stats
 google.golang.org/grpc/status
 google.golang.org/grpc/tap
 # google.golang.org/protobuf v1.26.0
+## explicit
 google.golang.org/protobuf/encoding/protojson
 google.golang.org/protobuf/encoding/prototext
 google.golang.org/protobuf/encoding/protowire
