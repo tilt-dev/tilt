@@ -1,5 +1,4 @@
-#image: gcr.io/windmill-public-containers/tilt-toast@sha256:TODO
-image: milas/tilt-toast:5
+image: gcr.io/windmill-public-containers/tilt-toast@sha256:7fc872a08b65c491a69002767d22818eb09e89101af37ef4b614e13b29c9589a
 tasks:
   webview-proto:
     input_paths:
