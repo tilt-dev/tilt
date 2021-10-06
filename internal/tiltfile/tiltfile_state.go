@@ -1025,7 +1025,7 @@ func (s *tiltfileState) inferPodReadinessMode(r *k8sResource) model.PodReadiness
 		}
 	}
 
-	modes := []model.PodReadinessMode{model.PodReadinessWait, model.PodReadinessIgnore, model.PodReadinessComplete}
+	modes := []model.PodReadinessMode{model.PodReadinessWait, model.PodReadinessIgnore, model.PodReadinessSucceeded}
 	for _, m := range modes {
 		if hasMode[m] {
 			return m

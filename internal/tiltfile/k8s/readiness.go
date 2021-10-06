@@ -23,7 +23,7 @@ func (m *PodReadinessMode) Unpack(v starlark.Value) error {
 	for _, mode := range []model.PodReadinessMode{
 		model.PodReadinessIgnore,
 		model.PodReadinessWait,
-		model.PodReadinessComplete,
+		model.PodReadinessSucceeded,
 		model.PodReadinessNone,
 	} {
 		if s == string(mode) {

@@ -102,7 +102,7 @@ func maybeUpdateStateForPod(ms *store.ManifestState, pod *v1alpha1.Pod) bool {
 	runtime.Pods[podID] = pod
 
 	isReadyOrSucceeded := false
-	if ms.K8sRuntimeState().PodReadinessMode == model.PodReadinessComplete {
+	if ms.K8sRuntimeState().PodReadinessMode == model.PodReadinessSucceeded {
 		// for jobs, we don't care about whether it's ready, only whether it's succeeded
 		isReadyOrSucceeded = pod.Phase == string(v1.PodSucceeded)
 	} else {

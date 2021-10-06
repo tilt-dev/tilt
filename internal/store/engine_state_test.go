@@ -172,7 +172,7 @@ func TestRuntimeStateJob(t *testing.T) {
 
 			m := manifestbuilder.New(f, "foo").
 				WithK8sYAML(testyaml.JobYAML).
-				WithK8sPodReadiness(model.PodReadinessComplete).
+				WithK8sPodReadiness(model.PodReadinessSucceeded).
 				Build()
 			state := newState([]model.Manifest{m})
 			runtimeState := state.ManifestTargets[m.Name].State.K8sRuntimeState()

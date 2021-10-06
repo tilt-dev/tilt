@@ -1782,7 +1782,7 @@ k8s_yaml('job.yaml')
 
 	f.load("myjob")
 	f.assertNextManifest("myjob",
-		podReadiness(model.PodReadinessComplete),
+		podReadiness(model.PodReadinessSucceeded),
 	)
 }
 

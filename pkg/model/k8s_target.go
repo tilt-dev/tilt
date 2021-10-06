@@ -22,8 +22,8 @@ const PodReadinessWait PodReadinessMode = "wait"
 // Don't even wait for pods to appear.
 const PodReadinessIgnore PodReadinessMode = "ignore"
 
-// wait until the pod has completed
-const PodReadinessComplete PodReadinessMode = "complete"
+// wait until the pod has completed successfully
+const PodReadinessSucceeded PodReadinessMode = "succeeded"
 
 type K8sTarget struct {
 	// An apiserver-driven data model for applying Kubernetes YAML.

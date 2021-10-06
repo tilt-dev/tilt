@@ -16,6 +16,6 @@ func InitialKinds() map[k8s.ObjectSelector]*KindInfo {
 		panic(err)
 	}
 	return map[k8s.ObjectSelector]*KindInfo{
-		sel: {PodReadinessMode: model.PodReadinessComplete},
+		sel: {PodReadinessMode: model.PodReadinessSucceeded},
 	}
 }

@@ -135,7 +135,7 @@ func (s K8sRuntimeState) RuntimeStatus() v1alpha1.RuntimeStatus {
 
 	switch v1.PodPhase(pod.Phase) {
 	case v1.PodRunning:
-		if AllPodContainersReady(pod) && s.PodReadinessMode != model.PodReadinessComplete {
+		if AllPodContainersReady(pod) && s.PodReadinessMode != model.PodReadinessSucceeded {
 			return v1alpha1.RuntimeStatusOK
 		}
 		return v1alpha1.RuntimeStatusPending
