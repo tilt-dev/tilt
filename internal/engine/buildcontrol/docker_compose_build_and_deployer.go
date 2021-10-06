@@ -137,14 +137,14 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 
 	stdout := logger.Get(ctx).Writer(logger.InfoLvl)
 	stderr := logger.Get(ctx).Writer(logger.InfoLvl)
-	err = bd.dcc.Up(ctx, dcTarget.ConfigPaths, dcTarget.Name, !haveImage, stdout, stderr)
+	err = bd.dcc.Up(ctx, dcTarget.Spec, !haveImage, stdout, stderr)
 	if err != nil {
 		return newResults, err
 	}
 
 	// NOTE(dmiller): right now we only need this the first time. In the future
 	// it might be worth it to move this somewhere else
-	cid, err := bd.dcc.ContainerID(ctx, dcTarget.ConfigPaths, dcTarget.Name)
+	cid, err := bd.dcc.ContainerID(ctx, dcTarget.Spec)
 	if err != nil {
 		return newResults, err
 	}
