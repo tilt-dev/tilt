@@ -8,6 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/tilt-dev/tilt/internal/containerupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
@@ -58,7 +59,8 @@ type fixture struct {
 
 func newFixture(t testing.TB) *fixture {
 	cfb := fake.NewControllerFixtureBuilder(t)
-	r := NewReconciler(cfb.Client, v1alpha1.NewScheme())
+	cu := &containerupdate.FakeContainerUpdater{}
+	r := NewFakeReconciler(cu, cfb.Client)
 	return &fixture{
 		ControllerFixture: cfb.Build(r),
 		r:                 r,

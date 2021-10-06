@@ -4,13 +4,19 @@ import (
 	"sort"
 
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/dcconv"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
-func WithFakeContainers(s store.BuildState, imageName string, containers []Container) store.BuildState {
+func WithFakeK8sContainers(s store.BuildState, imageName string, containers []Container) store.BuildState {
 	s.KubernetesSelector = &v1alpha1.LiveUpdateKubernetesSelector{Image: imageName}
 	s.KubernetesResource = FakeKubernetesResource(imageName, containers)
+	return s
+}
+
+func WithFakeDCContainer(s store.BuildState, container Container) store.BuildState {
+	s.DockerResource = &dcconv.DockerResource{ContainerID: string(container.ContainerID)}
 	return s
 }
 

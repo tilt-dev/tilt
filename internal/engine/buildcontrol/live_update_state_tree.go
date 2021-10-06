@@ -14,6 +14,7 @@ type liveUpdateStateTree struct {
 	filesChanged      []string
 	containers        []liveupdates.Container
 	hasFileChangesIDs []model.TargetID
+	isDC              bool
 }
 
 // Create a successful build result if the live update deploys successfully.
