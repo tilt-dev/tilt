@@ -109,6 +109,16 @@ type LiveUpdateSpec struct {
 	//
 	// +optional
 	Restart LiveUpdateRestartStrategy `json:"restart,omitempty" protobuf:"bytes,7,opt,name=restart,casttype=LiveUpdateRestartStrategy"`
+
+	// TODO(nick): I think there's a spec bug here - we need some way to get the
+	// StartTime of the image build, so that we know what files need to be synced
+	// once the image deploys.
+	//
+	// The right answer here is probably to:
+	// - Add a timestamp to ImageMapStatus, so that it has a high-water mark of what
+	//   files the image includes.
+	// - Add a reference from LiveUpdateSelector to the ImageMapStatus
+	// - The reconciler should also watch ImageMapStatus for changes.
 }
 
 var _ resource.Object = &LiveUpdate{}
@@ -175,6 +185,18 @@ func (in *LiveUpdateList) GetListMeta() *metav1.ListMeta {
 
 // LiveUpdateStatus defines the observed state of LiveUpdate
 type LiveUpdateStatus struct {
+	// A list of all containers that the live-updater is currently connected to.
+	// +optional
+	Containers []LiveUpdateContainerStatus `json:"containers,omitempty" protobuf:"bytes,1,rep,name=containers"`
+
+	// If any of the containers are currently failing to process updates,
+	// the Failed state surfaces information about what's happening and what
+	// the live-updater is doing to fix the problem.
+	//
+	// If all containers are updating successfully, Failed will be nil.
+	//
+	// +optional
+	Failed *LiveUpdateStateFailed `json:"failed,omitempty" protobuf:"bytes,2,opt,name=failed"`
 }
 
 // LiveUpdate implements ObjectWithStatusSubResource interface.
@@ -270,3 +292,56 @@ var (
 	// restarts, this will be an error.
 	LiveUpdateRestartStrategyAlways LiveUpdateRestartStrategy = "always"
 )
+
+// LiveUpdateContainerStatus defines the observed state of
+// the live-update syncer for a particular container.
+type LiveUpdateContainerStatus struct {
+	// The name of the container in the pod.
+	ContainerName string `json:"containerName" protobuf:"bytes,1,opt,name=containerName"`
+
+	// The ID of the container in the pod, in the format 'docker://<container_id>'.
+	// +optional
+	ContainerID string `json:"containerID,omitempty" protobuf:"bytes,2,opt,name=containerID"`
+
+	// The name of the pod this container belongs to.
+	PodName string `json:"podName" protobuf:"bytes,3,opt,name=podName"`
+
+	// The namespace of the pod this container belongs to.
+	Namespace string `json:"namespace" protobuf:"bytes,4,opt,name=namespace"`
+
+	// The timestamp of the most recent file update successfully synced to the
+	// container.
+	//
+	// Must match the timestamp in a FileEvent, not the time the sync was performed.
+	//
+	// +optional
+	LastFileTimeSynced metav1.MicroTime `json:"lastFileTimeSynced,omitempty" protobuf:"bytes,5,opt,name=lastFileTimeSynced"`
+
+	// Contains any error messages from the most recent sequence of Execs.
+	//
+	// Empty if the most recent Execs completed successfully.
+	//
+	// An ExecError is not necessarily a failure state. For example, a linter
+	// error in the container is something we'd want to surface to the user, but
+	// not an indication that the live-updater did something wrong.
+	//
+	// +optional
+	LastExecError string `json:"lastExecError,omitempty" protobuf:"bytes,6,opt,name=lastExecError"`
+}
+
+// If any of the containers are currently failing to process updates, the
+// LiveUpdateStateFailed surfaces information about what's happening and what
+// the live-updater is doing to fix the problem.
+type LiveUpdateStateFailed struct {
+	// One word camel-case reason why we've reached a failure state.
+	// +optional
+	Reason string `json:"reason,omitempty" protobuf:"bytes,1,opt,name=reason"`
+
+	// Human-readable description of what's wrong.
+	// +optional
+	Message string `json:"message,omitempty" protobuf:"bytes,2,opt,name=message"`
+
+	// When the live-updater transitioned into a Failed state.
+	// +optional
+	LastTransitionTime metav1.MicroTime `json:"lastTransitionTime,omitempty" protobuf:"bytes,3,opt,name=lastTransitionTime"`
+}
