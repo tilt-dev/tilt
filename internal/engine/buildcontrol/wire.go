@@ -64,7 +64,6 @@ func ProvideImageBuildAndDeployer(
 	st store.RStore) (*ImageBuildAndDeployer, error) {
 	wire.Build(
 		BaseWireSet,
-		wire.Value(UpdateModeFlag(UpdateModeAuto)),
 		kubernetesapply.NewReconciler,
 		provideFakeK8sNamespace,
 	)
@@ -83,16 +82,7 @@ func ProvideDockerComposeBuildAndDeployer(
 	dir *dirs.TiltDevDir) (*DockerComposeBuildAndDeployer, error) {
 	wire.Build(
 		BaseWireSet,
-		wire.Value(UpdateModeFlag(UpdateModeAuto)),
 		build.ProvideClock,
-		wire.Value(docker.ClusterEnv(docker.Env{})),
-
-		// EnvNone ensures that we get an exploding k8s client.
-		wire.Value(k8s.KubeContextOverride("")),
-		wire.Value(k8s.NamespaceOverride("")),
-		k8s.ProvideClientConfig,
-		k8s.ProvideKubeContext,
-		k8s.ProvideKubeConfig,
 	)
 
 	return nil, nil
