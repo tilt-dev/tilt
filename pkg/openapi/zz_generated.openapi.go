@@ -89,11 +89,13 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesImageObjectDescriptor": schema_pkg_apis_core_v1alpha1_KubernetesImageObjectDescriptor(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesWatchRef":              schema_pkg_apis_core_v1alpha1_KubernetesWatchRef(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdate":                      schema_pkg_apis_core_v1alpha1_LiveUpdate(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateContainerStatus":       schema_pkg_apis_core_v1alpha1_LiveUpdateContainerStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateExec":                  schema_pkg_apis_core_v1alpha1_LiveUpdateExec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateKubernetesSelector":    schema_pkg_apis_core_v1alpha1_LiveUpdateKubernetesSelector(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateList":                  schema_pkg_apis_core_v1alpha1_LiveUpdateList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSelector":              schema_pkg_apis_core_v1alpha1_LiveUpdateSelector(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSpec":                  schema_pkg_apis_core_v1alpha1_LiveUpdateSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateStateFailed":           schema_pkg_apis_core_v1alpha1_LiveUpdateStateFailed(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateStatus":                schema_pkg_apis_core_v1alpha1_LiveUpdateStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSync":                  schema_pkg_apis_core_v1alpha1_LiveUpdateSync(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ObjectSelector":                  schema_pkg_apis_core_v1alpha1_ObjectSelector(ref),
@@ -2758,6 +2760,67 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdate(ref common.ReferenceCallback) comm
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_LiveUpdateContainerStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "LiveUpdateContainerStatus defines the observed state of the live-update syncer for a particular container.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"containerName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The name of the container in the pod.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"containerID": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The ID of the container in the pod, in the format 'docker://<container_id>'.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"podName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The name of the pod this container belongs to.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"namespace": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The namespace of the pod this container belongs to.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"lastFileTimeSynced": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The timestamp of the most recent file update successfully synced to the container.\n\nMust match the timestamp in a FileEvent, not the time the sync was performed.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+					"lastExecError": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Contains any error messages from the most recent sequence of Execs.\n\nEmpty if the most recent Execs completed successfully.\n\nAn ExecError is not necessarily a failure state. For example, a linter error in the container is something we'd want to surface to the user, but not an indication that the live-updater did something wrong.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"containerName", "podName", "namespace"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_LiveUpdateExec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -2995,14 +3058,74 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateSpec(ref common.ReferenceCallback) 
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_LiveUpdateStateFailed(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "If any of the containers are currently failing to process updates, the LiveUpdateStateFailed surfaces information about what's happening and what the live-updater is doing to fix the problem.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"reason": {
+						SchemaProps: spec.SchemaProps{
+							Description: "One word camel-case reason why we've reached a failure state.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"message": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Human-readable description of what's wrong.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"lastTransitionTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "When the live-updater transitioned into a Failed state.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_LiveUpdateStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Description: "LiveUpdateStatus defines the observed state of LiveUpdate",
 				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"containers": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A list of all containers that the live-updater is currently connected to.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateContainerStatus"),
+									},
+								},
+							},
+						},
+					},
+					"failed": {
+						SchemaProps: spec.SchemaProps{
+							Description: "If any of the containers are currently failing to process updates, the Failed state surfaces information about what's happening and what the live-updater is doing to fix the problem.\n\nIf all containers are updating successfully, Failed will be nil.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateStateFailed"),
+						},
+					},
+				},
 			},
 		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateContainerStatus", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateStateFailed"},
 	}
 }
 
