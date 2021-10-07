@@ -8,7 +8,7 @@ type DockerComposeUpSpec struct {
 	// The name of the service to create.
 	Service string
 
-	// A specification of the project we're
+	// A specification of the project the service belongs to
 	Project DockerComposeProject
 }
 
