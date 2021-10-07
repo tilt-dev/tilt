@@ -1369,7 +1369,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 		iTarget = iTarget.
 			WithRepos(s.reposForImage(image)).
 			WithDockerignores(dIgnores). // used even for custom build
-			WithTiltFilename(image.workDir).
+			WithTiltFilename(image.tiltfilePath).
 			WithDependencyIDs(image.dependencyIDs)
 
 		depTargets, err := s.imgTargetsForDependencyIDsHelper(image.dependencyIDs, claimStatus, reg)
