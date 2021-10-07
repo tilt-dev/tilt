@@ -241,7 +241,7 @@ func (c *cmdDCClient) Version(ctx context.Context) (string, string, error) {
 func (c *cmdDCClient) loadProject(configPaths []string) (*types.Project, error) {
 	// NOTE: take care to keep relevant options in sync with FakeDCClient::Project() and cmdDCClient::loadProjectCLI()
 	// 	which work differently so cannot directly share options but need to behave similarly
-	opts, err := compose.NewProjectOptions(configPaths, compose.WithOsEnv, compose.WithResolvedPaths(true))
+	opts, err := compose.NewProjectOptions(configPaths, compose.WithOsEnv, compose.WithResolvedPaths(true), compose.WithDotEnv)
 	if err != nil {
 		return nil, err
 	}
