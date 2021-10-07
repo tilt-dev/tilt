@@ -4390,7 +4390,10 @@ local_resource("test", "echo hi", deps=["foo/bar", "foo/a.txt"])
 	f.assertNumManifests(1)
 	path1 := "foo/bar"
 	path2 := "foo/a.txt"
-	m := f.assertNextManifest("test", localTarget(updateCmd(f.Path(), "echo hi", nil), deps(path1, path2)), fileChangeMatches("foo/a.txt"))
+	m := f.assertNextManifest("test", localTarget(
+		updateCmd(f.Path(), "echo hi", nil),
+		deps(path1, path2)),
+		fileChangeMatches("foo/a.txt"))
 
 	lt := m.LocalTarget()
 	f.assertRepos([]string{f.Path()}, lt.LocalRepos())

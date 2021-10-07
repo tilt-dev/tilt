@@ -75,19 +75,6 @@ func (m PathMapping) Filter(matcher model.PathMatcher) ([]PathMapping, error) {
 	return result, nil
 }
 
-func FilterMappings(mappings []PathMapping, matcher model.PathMatcher) ([]PathMapping, error) {
-	result := make([]PathMapping, 0)
-	for _, mapping := range mappings {
-		filtered, err := mapping.Filter(matcher)
-		if err != nil {
-			return nil, err
-		}
-
-		result = append(result, filtered...)
-	}
-	return result, nil
-}
-
 // FilesToPathMappings converts a list of absolute local filepaths into pathMappings (i.e.
 // associates local filepaths with their syncs and destination paths), returning those
 // that it cannot associate with a sync.
@@ -149,17 +136,6 @@ func isFile(path string) (bool, error) {
 	}
 	mode := fi.Mode()
 	return !mode.IsDir(), nil
-}
-
-func SyncsToPathMappings(syncs []model.Sync) []PathMapping {
-	pms := make([]PathMapping, len(syncs))
-	for i, s := range syncs {
-		pms[i] = PathMapping{
-			LocalPath:     s.LocalPath,
-			ContainerPath: s.ContainerPath,
-		}
-	}
-	return pms
 }
 
 // Return all the path mappings for local paths that do not exist.

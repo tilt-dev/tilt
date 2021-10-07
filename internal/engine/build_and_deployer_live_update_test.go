@@ -13,6 +13,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
+	"github.com/tilt-dev/tilt/pkg/apis"
 
 	"github.com/tilt-dev/tilt/internal/docker"
 
@@ -219,7 +220,7 @@ func TestLiveUpdateDockerBuildExecSameImgMultipleContainers(t *testing.T) {
 	defer f.TearDown()
 
 	iTarg := NewSanchoDockerBuildImageTarget(f)
-	lu := assembleLiveUpdate(SanchoSyncSteps(f), nil, false, []string{"i/match/nothing"}, f)
+	lu := assembleLiveUpdate(SanchoSyncSteps(f), nil, false, []string{"i/match/nothing"}, f, apis.SanitizeName(iTarg.ID().String()))
 	cIDs := []container.ID{"c1", "c2", "c3"}
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
@@ -269,11 +270,13 @@ func TestLiveUpdateDockerBuildExecDiffImgMultipleContainers(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeCrio)
 	defer f.TearDown()
 
-	sanchoLU := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, false, nil, f)
-	sidecarLU := assembleLiveUpdate(SyncStepsForApp("sidecar", f), RunStepsForApp("sidecar"),
-		false, nil, f)
 	sanchoTarg := NewSanchoDockerBuildImageTarget(f)
+	sanchoLU := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps,
+		false, nil, f, apis.SanitizeName(sanchoTarg.ID().String()))
+
 	sidecarTarg := NewSanchoSidecarDockerBuildImageTarget(f)
+	sidecarLU := assembleLiveUpdate(SyncStepsForApp("sidecar", f), RunStepsForApp("sidecar"),
+		false, nil, f, apis.SanitizeName(sidecarTarg.ID().String()))
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sanchoWithSidecar").
 			WithK8sYAML(testyaml.SanchoSidecarYAML).
@@ -307,17 +310,19 @@ func TestLiveUpdateDiffImgMultipleContainersOnlySomeSyncsMatch(t *testing.T) {
 	sidecarSyncs := SyncStepsForApp("sidecar", f)
 	sidecarSyncs[0].LocalPath = sidecarPath
 
-	sanchoLU := assembleLiveUpdate(sanchoSyncs, SanchoRunSteps, false, nil, f)
-	sidecarLU := assembleLiveUpdate(sidecarSyncs, RunStepsForApp("sidecar"),
-		false, nil, f)
 	sanchoTarg := model.MustNewImageTarget(SanchoRef).WithBuildDetails(model.DockerBuild{
 		Dockerfile: SanchoDockerfile,
 		BuildPath:  sanchoPath,
 	})
+	sanchoLU := assembleLiveUpdate(sanchoSyncs, SanchoRunSteps,
+		false, nil, f, apis.SanitizeName(sanchoTarg.ID().String()))
+
 	sidecarTarg := model.MustNewImageTarget(SanchoSidecarRef).WithBuildDetails(model.DockerBuild{
 		Dockerfile: SanchoDockerfile,
 		BuildPath:  sidecarPath,
 	})
+	sidecarLU := assembleLiveUpdate(sidecarSyncs, RunStepsForApp("sidecar"),
+		false, nil, f, apis.SanitizeName(sidecarTarg.ID().String()))
 
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sanchoWithSidecar").
@@ -350,11 +355,13 @@ func TestLiveUpdateDiffImgMultipleContainersSameContextOnlyOneLiveUpdate(t *test
 	sanchoSyncs := SanchoSyncSteps(f)
 	sanchoSyncs[0].LocalPath = buildContext
 
-	sanchoLU := assembleLiveUpdate(sanchoSyncs, SanchoRunSteps, false, nil, f)
 	sanchoTarg := model.MustNewImageTarget(SanchoRef).WithBuildDetails(model.DockerBuild{
 		Dockerfile: SanchoDockerfile,
 		BuildPath:  buildContext,
 	})
+	sanchoLU := assembleLiveUpdate(sanchoSyncs, SanchoRunSteps,
+		false, nil, f, apis.SanitizeName(sanchoTarg.ID().String()))
+
 	sidecarTarg := model.MustNewImageTarget(SanchoSidecarRef).WithBuildDetails(model.DockerBuild{
 		Dockerfile: SanchoDockerfile,
 		BuildPath:  buildContext,
@@ -387,11 +394,13 @@ func TestLiveUpdateDiffImgMultipleContainersFallBackIfFilesDoesntMatchAnySyncs(t
 	sidecarSyncs := SyncStepsForApp("sidecar", f)
 	sidecarSyncs[0].LocalPath = f.JoinPath("sidecar")
 
-	sanchoLU := assembleLiveUpdate(sanchoSyncs, SanchoRunSteps, false, nil, f)
-	sidecarLU := assembleLiveUpdate(sidecarSyncs, RunStepsForApp("sidecar"),
-		false, nil, f)
 	sanchoTarg := NewSanchoDockerBuildImageTarget(f)
+	sanchoLU := assembleLiveUpdate(sanchoSyncs, SanchoRunSteps,
+		false, nil, f, apis.SanitizeName(sanchoTarg.ID().String()))
+
 	sidecarTarg := NewSanchoSidecarDockerBuildImageTarget(f)
+	sidecarLU := assembleLiveUpdate(sidecarSyncs, RunStepsForApp("sidecar"),
+		false, nil, f, apis.SanitizeName(sidecarTarg.ID().String()))
 
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sanchoWithSidecar").
@@ -453,11 +462,13 @@ func TestLiveUpdateExecUserRunFailureDoesntFallBack(t *testing.T) {
 
 	f.k8s.ExecErrors = []error{nil, userFailureErrExec}
 
-	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, false, []string{"i/match/nothing"}, f)
+	sanchoTarg := NewSanchoDockerBuildImageTarget(f)
+	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps,
+		false, []string{"i/match/nothing"}, f, apis.SanitizeName(sanchoTarg.ID().String()))
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
-			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+			WithImageTarget(sanchoTarg).
 			WithLiveUpdate(lu).
 			Build(),
 		changedFiles: []string{"a.txt"},
@@ -627,11 +638,13 @@ func TestLiveUpdateCustomBuildLocalContainer(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
-	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"i/match/nothing"}, f)
+	sanchoTarg := NewSanchoCustomBuildImageTarget(f)
+	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps,
+		true, []string{"i/match/nothing"}, f, apis.SanitizeName(sanchoTarg.ID().String()))
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
-			WithImageTarget(NewSanchoCustomBuildImageTarget(f)).
+			WithImageTarget(sanchoTarg).
 			WithLiveUpdate(lu).
 			Build(),
 		changedFiles:             []string{"app/a.txt"},
@@ -648,11 +661,13 @@ func TestLiveUpdateHotReloadLocalContainer(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
-	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, false, nil, f)
+	sanchoTarg := NewSanchoDockerBuildImageTarget(f)
+	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps,
+		false, nil, f, apis.SanitizeName(sanchoTarg.ID().String()))
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
-			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+			WithImageTarget(sanchoTarg).
 			WithLiveUpdate(lu).
 			Build(),
 		changedFiles:             []string{"a.txt"},
@@ -669,16 +684,18 @@ func TestLiveUpdateRunTriggerLocalContainer(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
+	sanchoTarg := NewSanchoDockerBuildImageTarget(f)
 	runs := []v1alpha1.LiveUpdateExec{
 		{Args: model.ToUnixCmd("echo hello").Argv},
 		{Args: model.ToUnixCmd("echo a").Argv, TriggerPaths: []string{"a.txt"}}, // matches changed file
 		{Args: model.ToUnixCmd("echo b").Argv, TriggerPaths: []string{"b.txt"}}, // does NOT match changed file
 	}
-	lu := assembleLiveUpdate(SanchoSyncSteps(f), runs, true, nil, f)
+	lu := assembleLiveUpdate(SanchoSyncSteps(f), runs,
+		true, nil, f, apis.SanitizeName(sanchoTarg.ID().String()))
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
-			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+			WithImageTarget(sanchoTarg).
 			WithLiveUpdate(lu).
 			Build(),
 		changedFiles:             []string{"a.txt"},
@@ -695,16 +712,18 @@ func TestLiveUpdateRunTriggerExec(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 
+	sanchoTarg := NewSanchoDockerBuildImageTarget(f)
 	runs := []v1alpha1.LiveUpdateExec{
 		{Args: model.ToUnixCmd("echo hello").Argv},
 		{Args: model.ToUnixCmd("echo a").Argv, TriggerPaths: []string{"a.txt"}}, // matches changed file
 		{Args: model.ToUnixCmd("echo b").Argv, TriggerPaths: []string{"b.txt"}}, // does NOT match changed file
 	}
-	lu := assembleLiveUpdate(SanchoSyncSteps(f), runs, false, nil, f)
+	lu := assembleLiveUpdate(SanchoSyncSteps(f), runs,
+		false, nil, f, apis.SanitizeName(sanchoTarg.ID().String()))
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
-			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+			WithImageTarget(sanchoTarg).
 			WithLiveUpdate(lu).
 			Build(),
 		changedFiles:             []string{"a.txt"},
@@ -722,11 +741,13 @@ func TestLiveUpdateCustomBuildExec(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 
-	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, false, nil, f)
+	sanchoTarg := NewSanchoCustomBuildImageTarget(f)
+	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps,
+		false, nil, f, apis.SanitizeName(sanchoTarg.ID().String()))
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
-			WithImageTarget(NewSanchoCustomBuildImageTarget(f)).
+			WithImageTarget(sanchoTarg).
 			WithLiveUpdate(lu).
 			Build(),
 		changedFiles:             []string{"app/a.txt"},
@@ -744,11 +765,13 @@ func TestLiveUpdateExecDoesNotSupportRestart(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeContainerd)
 	defer f.TearDown()
 
-	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"i/match/nothing"}, f)
+	sanchoTarg := NewSanchoDockerBuildImageTarget(f)
+	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps,
+		true, []string{"i/match/nothing"}, f, apis.SanitizeName(sanchoTarg.ID().String()))
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
-			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+			WithImageTarget(sanchoTarg).
 			WithLiveUpdate(lu).
 			Build(),
 		changedFiles:             []string{"a.txt"},
@@ -767,11 +790,13 @@ func TestLiveUpdateDockerBuildExec(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeContainerd)
 	defer f.TearDown()
 
-	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, false, nil, f)
+	sanchoTarg := NewSanchoDockerBuildImageTarget(f)
+	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps,
+		false, nil, f, apis.SanitizeName(sanchoTarg.ID().String()))
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
-			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+			WithImageTarget(sanchoTarg).
 			WithLiveUpdate(lu).
 			Build(),
 		changedFiles:           []string{"a.txt"},
@@ -786,11 +811,13 @@ func TestLiveUpdateLocalContainerFallBackOn(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
-	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"a.txt"}, f)
+	sanchoTarg := NewSanchoDockerBuildImageTarget(f)
+	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps,
+		true, []string{"a.txt"}, f, apis.SanitizeName(sanchoTarg.ID().String()))
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
-			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+			WithImageTarget(sanchoTarg).
 			WithLiveUpdate(lu).
 			Build(),
 		changedFiles:             []string{"a.txt"},
@@ -809,11 +836,13 @@ func TestLiveUpdateExecFallBackOn(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
 	defer f.TearDown()
 
-	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, false, []string{"a.txt"}, f)
+	sanchoTarg := NewSanchoDockerBuildImageTarget(f)
+	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps,
+		false, []string{"a.txt"}, f, apis.SanitizeName(sanchoTarg.ID().String()))
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
-			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+			WithImageTarget(sanchoTarg).
 			WithLiveUpdate(lu).
 			Build(),
 		changedFiles:             []string{"a.txt"},
@@ -837,11 +866,13 @@ func TestLiveUpdateLocalContainerChangedFileNotMatchingSyncFallsBack(t *testing.
 		ContainerPath: "/go/src/github.com/tilt-dev/sancho",
 	}}
 
-	lu := assembleLiveUpdate(steps, SanchoRunSteps, true, []string{"a.txt"}, f)
+	sanchoTarg := NewSanchoDockerBuildImageTarget(f)
+	lu := assembleLiveUpdate(steps, SanchoRunSteps,
+		true, []string{"a.txt"}, f, apis.SanitizeName(sanchoTarg.ID().String()))
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
-			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+			WithImageTarget(sanchoTarg).
 			WithLiveUpdate(lu).
 			Build(),
 		changedFiles: []string{f.JoinPath("a.txt")}, // matches context but not sync'd directory
@@ -868,11 +899,13 @@ func TestLiveUpdateExecChangedFileNotMatchingSyncFallsBack(t *testing.T) {
 		ContainerPath: "/go/src/github.com/tilt-dev/sancho",
 	}}
 
-	lu := assembleLiveUpdate(steps, SanchoRunSteps, false, []string{"a.txt"}, f)
+	sanchoTarg := NewSanchoDockerBuildImageTarget(f)
+	lu := assembleLiveUpdate(steps, SanchoRunSteps,
+		false, []string{"a.txt"}, f, apis.SanitizeName(sanchoTarg.ID().String()))
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
-			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+			WithImageTarget(sanchoTarg).
 			WithLiveUpdate(lu).
 			Build(),
 		changedFiles: []string{f.JoinPath("a.txt")}, // matches context but not sync'd directory
@@ -911,11 +944,13 @@ func TestLiveUpdateManyFilesNotMatching(t *testing.T) {
 		f.JoinPath("a11.txt"),
 		f.JoinPath("a12.txt"))
 
-	lu := assembleLiveUpdate(steps, SanchoRunSteps, false, []string{"a.txt"}, f)
+	sanchoTarg := NewSanchoDockerBuildImageTarget(f)
+	lu := assembleLiveUpdate(steps, SanchoRunSteps,
+		false, []string{"a.txt"}, f, apis.SanitizeName(sanchoTarg.ID().String()))
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
-			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+			WithImageTarget(sanchoTarg).
 			WithLiveUpdate(lu).
 			Build(),
 		changedFiles: changedFiles,
@@ -942,11 +977,13 @@ func TestLiveUpdateSomeFilesMatchSyncSomeDontFallsBack(t *testing.T) {
 		ContainerPath: "/go/src/github.com/tilt-dev/sancho",
 	}}
 
-	lu := assembleLiveUpdate(steps, SanchoRunSteps, true, []string{"a.txt"}, f)
+	sanchoTarg := NewSanchoDockerBuildImageTarget(f)
+	lu := assembleLiveUpdate(steps, SanchoRunSteps,
+		true, []string{"a.txt"}, f, apis.SanitizeName(sanchoTarg.ID().String()))
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
-			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+			WithImageTarget(sanchoTarg).
 			WithLiveUpdate(lu).
 			Build(),
 		// One file matches a sync, one does not -- we should still fall back.
@@ -974,7 +1011,8 @@ func TestLiveUpdateInFirstImageOfImageDependency(t *testing.T) {
 		ContainerPath: "/go/src/github.com/tilt-dev/sancho-base",
 	}}
 
-	lu := assembleLiveUpdate(steps, SanchoRunSteps, true, nil, f)
+	sanchoTargAPIName := apis.SanitizeName(NewSanchoDockerBuildImageTarget(f).ID().String())
+	lu := assembleLiveUpdate(steps, SanchoRunSteps, true, nil, f, sanchoTargAPIName)
 	tCase := testCase{
 		manifest:                 NewSanchoDockerBuildMultiStageManifestWithLiveUpdate(f, lu),
 		changedFiles:             []string{"sancho-base/a.txt"},
@@ -995,7 +1033,8 @@ func TestLiveUpdateInFirstImageOfImageDependencyWithoutSync(t *testing.T) {
 		ContainerPath: "/go/src/github.com/tilt-dev/sancho",
 	}}
 
-	lu := assembleLiveUpdate(steps, SanchoRunSteps, true, nil, f)
+	sanchoTargAPIName := apis.SanitizeName(NewSanchoDockerBuildImageTarget(f).ID().String())
+	lu := assembleLiveUpdate(steps, SanchoRunSteps, true, nil, f, sanchoTargAPIName)
 	tCase := testCase{
 		manifest:               NewSanchoDockerBuildMultiStageManifestWithLiveUpdate(f, lu),
 		changedFiles:           []string{"sancho-base/a.txt"},
@@ -1015,7 +1054,8 @@ func TestLiveUpdateInSecondImageOfImageDependency(t *testing.T) {
 		ContainerPath: "/go/src/github.com/tilt-dev/sancho",
 	}}
 
-	lu := assembleLiveUpdate(steps, SanchoRunSteps, true, nil, f)
+	sanchoTargAPIName := apis.SanitizeName(NewSanchoDockerBuildImageTarget(f).ID().String())
+	lu := assembleLiveUpdate(steps, SanchoRunSteps, true, nil, f, sanchoTargAPIName)
 	tCase := testCase{
 		manifest:                 NewSanchoDockerBuildMultiStageManifestWithLiveUpdate(f, lu),
 		changedFiles:             []string{"sancho/a.txt"},

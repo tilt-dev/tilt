@@ -13,7 +13,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	ctrlliveupdate "github.com/tilt-dev/tilt/internal/controllers/core/liveupdate"
-	"github.com/tilt-dev/tilt/internal/ignore"
 	"github.com/tilt-dev/tilt/internal/ospath"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
@@ -181,7 +180,6 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (LiveUpdateInput,
 		Name: reference.FamiliarName(iTarget.Refs.ClusterRef()),
 		Spec: iTarget.LiveUpdateSpec,
 		Input: ctrlliveupdate.Input{
-			Filter:       ignore.CreateBuildContextFilter(iTarget),
 			ChangedFiles: fileMappings,
 			Containers:   stateTree.containers,
 			IsDC:         stateTree.isDC,

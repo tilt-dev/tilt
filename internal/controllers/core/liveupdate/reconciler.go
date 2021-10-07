@@ -22,6 +22,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/containerupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
+	"github.com/tilt-dev/tilt/internal/ignore"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -121,7 +122,15 @@ func (r *Reconciler) ForceApply(
 		suffix = "(s)"
 	}
 
-	filter := input.Filter
+	var fw v1alpha1.FileWatch
+	if err := r.client.Get(ctx, types.NamespacedName{Namespace: nn.Namespace, Name: spec.FileWatchName}, &fw); err != nil {
+		return Status{UnknownError: fmt.Errorf("failed to fetch FileWatch: %v", err)}
+	}
+
+	filter, err := ignore.IgnoresToMatcher(fw.Spec.Ignores)
+	if err != nil {
+		return Status{UnknownError: err}
+	}
 	runSteps := liveupdate.RunSteps(spec)
 	changedFiles := input.ChangedFiles
 	hotReload := !liveupdate.ShouldRestart(spec)

@@ -7,6 +7,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
+	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -91,10 +92,9 @@ func NewSanchoDockerBuildImageTarget(f Fixture) model.ImageTarget {
 	})
 }
 
-func NewSanchoLiveUpdate(f Fixture) v1alpha1.LiveUpdateSpec {
+func NewSanchoLiveUpdate(f Fixture, targetID model.TargetID) v1alpha1.LiveUpdateSpec {
 	syncs := []v1alpha1.LiveUpdateSync{
 		{
-
 			LocalPath:     ".",
 			ContainerPath: "/go/src/github.com/tilt-dev/sancho",
 		},
@@ -105,11 +105,12 @@ func NewSanchoLiveUpdate(f Fixture) v1alpha1.LiveUpdateSpec {
 		},
 	}
 
-	return assembleLiveUpdate(syncs, runs, true, []string{}, f)
+	return assembleLiveUpdate(syncs, runs, true, []string{}, f, apis.SanitizeName(targetID.String()))
 }
 
 func NewSanchoLiveUpdateImageTarget(f Fixture) model.ImageTarget {
-	return NewSanchoDockerBuildImageTarget(f).WithLiveUpdateSpec(NewSanchoLiveUpdate(f))
+	iTarget := NewSanchoDockerBuildImageTarget(f)
+	return iTarget.WithLiveUpdateSpec(NewSanchoLiveUpdate(f, iTarget.ID()))
 }
 
 func NewSanchoSidecarDockerBuildImageTarget(f Fixture) model.ImageTarget {
@@ -275,16 +276,17 @@ func NewManifestsWithSameTwoImages(fixture Fixture) (model.Manifest, model.Manif
 	return m1, m2
 }
 
-func assembleLiveUpdate(syncs []v1alpha1.LiveUpdateSync, runs []v1alpha1.LiveUpdateExec, shouldRestart bool, fallBackOn []string, f Fixture) v1alpha1.LiveUpdateSpec {
+func assembleLiveUpdate(syncs []v1alpha1.LiveUpdateSync, runs []v1alpha1.LiveUpdateExec, shouldRestart bool, fallBackOn []string, f Fixture, fileWatchName string) v1alpha1.LiveUpdateSpec {
 	restart := v1alpha1.LiveUpdateRestartStrategyNone
 	if shouldRestart {
 		restart = v1alpha1.LiveUpdateRestartStrategyAlways
 	}
 	return v1alpha1.LiveUpdateSpec{
-		BasePath:  f.Path(),
-		Syncs:     syncs,
-		Execs:     runs,
-		StopPaths: fallBackOn,
-		Restart:   restart,
+		BasePath:      f.Path(),
+		FileWatchName: fileWatchName,
+		Syncs:         syncs,
+		Execs:         runs,
+		StopPaths:     fallBackOn,
+		Restart:       restart,
 	}
 }

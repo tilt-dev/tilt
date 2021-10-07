@@ -8,6 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/containerupdate"
@@ -40,10 +42,13 @@ func TestBuildAndDeployBoilsSteps(t *testing.T) {
 	f := newFixture(t)
 	defer f.teardown()
 
+	f.createFileWatch("fw")
+
 	packageJson := build.PathMapping{LocalPath: f.JoinPath("package.json"), ContainerPath: "/src/package.json"}
 	err := f.lubad.buildAndDeploy(f.ctx, f.ps, LiveUpdateInput{
 		Spec: v1alpha1.LiveUpdateSpec{
-			BasePath: f.Path(),
+			BasePath:      f.Path(),
+			FileWatchName: "fw",
 			Execs: []v1alpha1.LiveUpdateExec{
 				{Args: model.ToUnixCmd("./foo.sh bar").Argv},
 				{Args: model.ToUnixCmd("yarn install").Argv, TriggerPaths: []string{"package.json"}},
@@ -86,7 +91,12 @@ func TestUpdateInContainerArchivesFilesToCopyAndGetsFilesToRemove(t *testing.T) 
 		build.PathMapping{LocalPath: f.JoinPath("does-not-exist"), ContainerPath: "/src/does-not-exist"},
 	}
 
+	f.createFileWatch("fw")
+
 	err := f.lubad.buildAndDeploy(f.ctx, f.ps, LiveUpdateInput{
+		Spec: v1alpha1.LiveUpdateSpec{
+			FileWatchName: "fw",
+		},
 		Input: liveupdate.Input{
 			Containers:   TestContainers,
 			ChangedFiles: paths,
@@ -118,7 +128,12 @@ func TestDontFallBackOnUserError(t *testing.T) {
 
 	f.cu.SetUpdateErr(build.RunStepFailure{ExitCode: 12345})
 
+	f.createFileWatch("fw")
+
 	err := f.lubad.buildAndDeploy(f.ctx, f.ps, LiveUpdateInput{
+		Spec: v1alpha1.LiveUpdateSpec{
+			FileWatchName: "fw",
+		},
 		Input: liveupdate.Input{
 			Containers: TestContainers,
 		},
@@ -132,6 +147,8 @@ func TestUpdateContainerWithHotReload(t *testing.T) {
 	f := newFixture(t)
 	defer f.teardown()
 
+	f.createFileWatch("fw")
+
 	expectedHotReloads := []bool{true, true, false, true}
 	for _, hotReload := range expectedHotReloads {
 		restart := v1alpha1.LiveUpdateRestartStrategyNone
@@ -140,7 +157,8 @@ func TestUpdateContainerWithHotReload(t *testing.T) {
 		}
 		err := f.lubad.buildAndDeploy(f.ctx, f.ps, LiveUpdateInput{
 			Spec: v1alpha1.LiveUpdateSpec{
-				Restart: restart,
+				FileWatchName: "fw",
+				Restart:       restart,
 			},
 			Input: liveupdate.Input{
 				Containers: TestContainers,
@@ -185,13 +203,16 @@ func TestUpdateMultipleRunningContainers(t *testing.T) {
 
 	cmd := model.ToUnixCmd("./foo.sh bar")
 
+	f.createFileWatch("fw")
+
 	err := f.lubad.buildAndDeploy(f.ctx, f.ps, LiveUpdateInput{
 		Input: liveupdate.Input{
 			Containers:   containers,
 			ChangedFiles: paths,
 		},
 		Spec: v1alpha1.LiveUpdateSpec{
-			Execs: []v1alpha1.LiveUpdateExec{{Args: cmd.Argv}},
+			FileWatchName: "fw",
+			Execs:         []v1alpha1.LiveUpdateExec{{Args: cmd.Argv}},
 		},
 	})
 	if err != nil {
@@ -231,8 +252,12 @@ func TestErrorStopsSubsequentContainerUpdates(t *testing.T) {
 
 	containers := []liveupdates.Container{container1, container2}
 
+	f.createFileWatch("fw")
 	f.cu.SetUpdateErr(fmt.Errorf("👀"))
 	err := f.lubad.buildAndDeploy(f.ctx, f.ps, LiveUpdateInput{
+		Spec: v1alpha1.LiveUpdateSpec{
+			FileWatchName: "fw",
+		},
 		Input: liveupdate.Input{
 			Containers: containers,
 		},
@@ -274,7 +299,12 @@ func TestUpdateMultipleContainersWithSameTarArchive(t *testing.T) {
 		expectFile("src/planets/earth", "world"),
 	}
 
+	f.createFileWatch("fw")
+
 	err := f.lubad.buildAndDeploy(f.ctx, f.ps, LiveUpdateInput{
+		Spec: v1alpha1.LiveUpdateSpec{
+			FileWatchName: "fw",
+		},
 		Input: liveupdate.Input{
 			Containers:   containers,
 			ChangedFiles: paths,
@@ -324,8 +354,12 @@ func TestUpdateMultipleContainersWithSameTarArchiveOnRunStepFailure(t *testing.T
 		expectFile("src/planets/earth", "world"),
 	}
 
+	f.createFileWatch("fw")
 	f.cu.UpdateErrs = []error{rsf, rsf}
 	err := f.lubad.buildAndDeploy(f.ctx, f.ps, LiveUpdateInput{
+		Spec: v1alpha1.LiveUpdateSpec{
+			FileWatchName: "fw",
+		},
 		Input: liveupdate.Input{
 			Containers:   containers,
 			ChangedFiles: paths,
@@ -371,12 +405,13 @@ func TestSkipLiveUpdateIfForceUpdate(t *testing.T) {
 
 type lcbadFixture struct {
 	*tempdir.TempDirFixture
-	t     testing.TB
-	ctx   context.Context
-	st    *store.TestingStore
-	cu    *containerupdate.FakeContainerUpdater
-	ps    *build.PipelineState
-	lubad *LiveUpdateBuildAndDeployer
+	t         testing.TB
+	ctx       context.Context
+	st        *store.TestingStore
+	cu        *containerupdate.FakeContainerUpdater
+	ps        *build.PipelineState
+	lubad     *LiveUpdateBuildAndDeployer
+	apiClient ctrlclient.Client
 }
 
 func newFixture(t testing.TB) *lcbadFixture {
@@ -392,6 +427,7 @@ func newFixture(t testing.TB) *lcbadFixture {
 		st:             st,
 		ctx:            ctx,
 		cu:             cu,
+		apiClient:      cfb.Client,
 		ps:             build.NewPipelineState(ctx, 1, lubad.clock),
 		lubad:          lubad,
 	}
@@ -399,6 +435,17 @@ func newFixture(t testing.TB) *lcbadFixture {
 
 func (f *lcbadFixture) teardown() {
 	f.TempDirFixture.TearDown()
+}
+
+func (f *lcbadFixture) createFileWatch(name string, ignores ...v1alpha1.IgnoreDef) {
+	f.t.Helper()
+	require.NoError(f.t, f.apiClient.Create(f.ctx, &v1alpha1.FileWatch{
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+		Spec: v1alpha1.FileWatchSpec{
+			WatchedPaths: []string{f.Path()},
+			Ignores:      ignores,
+		},
+	}))
 }
 
 func expectFile(path, contents string) testutils.ExpectedFile {

@@ -25,6 +25,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
+	"github.com/tilt-dev/tilt/internal/ignore"
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 
 	"github.com/tilt-dev/wmclient/pkg/dirs"
@@ -203,11 +204,17 @@ func TestLiveUpdateFallbackMessagingRedirect(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
+	fw := v1alpha1.FileWatch{
+		ObjectMeta: metav1.ObjectMeta{Name: "fw"},
+		Spec:       v1alpha1.FileWatchSpec{WatchedPaths: []string{f.Path()}},
+	}
+	f.upsert(&fw)
+
 	syncs := []v1alpha1.LiveUpdateSync{
 		{LocalPath: ".", ContainerPath: "/blah"},
 	}
 	lu := assembleLiveUpdate(syncs,
-		nil, false, []string{f.JoinPath("fall_back.txt")}, f)
+		nil, false, []string{f.JoinPath("fall_back.txt")}, f, "fw")
 	manifest := manifestbuilder.New(f, "foobar").
 		WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
 		WithLiveUpdate(lu).
@@ -915,6 +922,17 @@ func (f *bdFixture) BuildAndDeploy(specs []model.TargetSpec, stateSet store.Buil
 				im.Status = imageBuildResult.ImageMapStatus
 			}
 			f.upsert(&im)
+
+			// TODO(milas): it might make more sense to store the FileWatchSpec on the ImageTarget similar to
+			//	LiveUpdateSpec so that we don't have to re-initialize it here
+			fw := v1alpha1.FileWatch{
+				ObjectMeta: metav1.ObjectMeta{Name: apis.SanitizeName(iTarget.ID().String())},
+				Spec: v1alpha1.FileWatchSpec{
+					WatchedPaths: iTarget.Dependencies(),
+					Ignores:      ignore.TargetToFileWatchIgnores(iTarget),
+				},
+			}
+			f.upsert(&fw)
 		}
 
 		kTarget, ok := spec.(model.K8sTarget)
