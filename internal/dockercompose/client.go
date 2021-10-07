@@ -83,7 +83,7 @@ func (c *cmdDCClient) Up(ctx context.Context, spec model.DockerComposeUpSpec, sh
 	// TODO(milas): this causes docker-compose to output a truly excessive amount of logging; it might
 	// 	make sense to hide it behind a special environment variable instead or something
 	if logger.Get(ctx).Level().ShouldDisplay(logger.VerboseLvl) {
-		genArgs = []string{"--verbose"}
+		genArgs = append(genArgs, "--verbose")
 	}
 
 	if shouldBuild {
