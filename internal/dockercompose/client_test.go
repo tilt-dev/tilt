@@ -146,6 +146,25 @@ OpenSSL version: OpenSSL 1.1.0l  10 Sep 2019
 	}
 }
 
+func TestLoadEnvFile(t *testing.T) {
+	if testing.Short() {
+		// remove this once the fallback to docker-compose CLI for YAML parse is eliminated
+		// (dependent upon compose-go upstream bugs being fixed)
+		t.Skip("skipping test that invokes docker-compose CLI in short mode")
+	}
+
+	f := newDCFixture(t)
+	f.tmpdir.WriteFile(".env", "COMMAND=foo")
+
+	dcYAML := `services:
+  foo:
+    command: ${COMMAND}
+    image: asdf
+`
+	proj := f.loadProject(dcYAML)
+	require.Equal(t, types.ShellCommand{"foo"}, proj.Services[0].Command)
+}
+
 type dcFixture struct {
 	t      testing.TB
 	ctx    context.Context

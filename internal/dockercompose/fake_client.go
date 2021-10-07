@@ -10,6 +10,8 @@ import (
 	"time"
 	"unicode"
 
+	compose "github.com/compose-spec/compose-go/cli"
+
 	"github.com/compose-spec/compose-go/loader"
 	"github.com/stretchr/testify/require"
 
@@ -139,6 +141,14 @@ func (c *FakeDCClient) Config(_ context.Context, _ []string) (string, error) {
 }
 
 func (c *FakeDCClient) Project(_ context.Context, _ []string) (*types.Project, error) {
+	// this is a dummy ProjectOptions that lets us use compose's logic to apply options
+	// for consistency, but we have to then pull the data out ourselves since we're calling
+	// loader.Load ourselves
+	opts, err := compose.NewProjectOptions(nil, compose.WithDotEnv, compose.WithOsEnv)
+	if err != nil {
+		return nil, err
+	}
+
 	return loader.Load(types.ConfigDetails{
 		WorkingDir: c.WorkDir,
 		ConfigFiles: []types.ConfigFile{
@@ -146,6 +156,7 @@ func (c *FakeDCClient) Project(_ context.Context, _ []string) (*types.Project, e
 				Content: []byte(c.ConfigOutput),
 			},
 		},
+		Environment: opts.Environment,
 	}, func(options *loader.Options) {
 		options.ResolvePaths = true
 	})
