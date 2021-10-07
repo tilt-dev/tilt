@@ -1286,7 +1286,7 @@ k8s_yaml('foo.yaml')
 		buildFilters(".git"),
 		fileChangeFilters(".git"),
 		buildFilters("Tiltfile"),
-		fileChangeMatches("Tiltfile"),
+		fileChangeFilters("Tiltfile"),
 		buildMatches("foo.yaml"),
 		fileChangeMatches("foo.yaml"),
 	)
