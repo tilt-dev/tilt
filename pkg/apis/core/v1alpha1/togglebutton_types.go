@@ -180,11 +180,9 @@ func (in *ToggleButtonList) GetListMeta() *metav1.ListMeta {
 
 // ToggleButtonStatus defines the observed state of ToggleButton
 type ToggleButtonStatus struct {
-	// Whether the button is currently "on"
-	On bool `json:"on" protobuf:"varint,1,opt,name=on"`
-
-	// The last time the button changed from on to off, or vice versa.
-	LastChange metav1.MicroTime `json:"lastChange" protobuf:"bytes,2,opt,name=lastChange"`
+	// If healthy, empty. If non-healthy, specifies a problem the ToggleButton encountered
+	// +optional
+	Error string `json:"error"`
 }
 
 // ToggleButton implements ObjectWithStatusSubResource interface.

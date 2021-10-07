@@ -83,12 +83,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	var tb v1alpha1.ToggleButton
 	err := r.ctrlClient.Get(ctx, nn, &tb)
 	r.indexer.OnReconcile(nn, &tb)
-	if err != nil && !apierrors.IsNotFound(err) {
+	if client.IgnoreNotFound(err) != nil {
 		return ctrl.Result{}, err
 	}
 
 	if apierrors.IsNotFound(err) || !tb.ObjectMeta.DeletionTimestamp.IsZero() {
-		err := r.managedOwnedUIButton(ctx, nn, nil)
+		err := r.managedOwnedUIButton(ctx, nn, nil, false)
 		return ctrl.Result{}, err
 	}
 
@@ -97,14 +97,25 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		return ctrl.Result{}, err
 	}
 
-	err = r.manageToggleButton(ctx, &tb)
+	isOn, ok, err := r.isOn(ctx, &tb)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if !ok {
+		return ctrl.Result{}, nil
+	}
+
+	err = r.managedOwnedUIButton(ctx, nn, &tb, isOn)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	err = r.managedOwnedUIButton(ctx, nn, &tb)
-	if err != nil {
-		return ctrl.Result{}, err
+	if tb.Status.Error != "" {
+		tb.Status.Error = ""
+		err = r.ctrlClient.Status().Update(ctx, &tb)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	return ctrl.Result{}, err
@@ -184,63 +195,61 @@ func (r *Reconciler) processClick(ctx context.Context, tb v1alpha1.ToggleButton)
 	return nil
 }
 
-func (r *Reconciler) manageToggleButton(ctx context.Context, tb *v1alpha1.ToggleButton) error {
+func setError(ctx context.Context, c ctrlclient.Client, tb *v1alpha1.ToggleButton, error string) error {
+	tb.Status.Error = error
+	return c.Status().Update(ctx, tb)
+}
+
+func (r *Reconciler) isOn(ctx context.Context, tb *v1alpha1.ToggleButton) (isOn bool, ok bool, err error) {
 	ss := tb.Spec.StateSource.ConfigMap
 	var cm v1alpha1.ConfigMap
-	err := r.ctrlClient.Get(ctx, types.NamespacedName{Name: ss.Name}, &cm)
-	// TODO(matt) what should we do here?
-	if apierrors.IsNotFound(err) {
-		return nil
-	}
-	if err != nil {
-		return errors.Wrapf(err, "fetching ToggleButton %q ConfigMap %q", tb.Name, ss.Name)
+	err = r.ctrlClient.Get(ctx, types.NamespacedName{Name: ss.Name}, &cm)
+	if client.IgnoreNotFound(err) != nil {
+		return false, false, errors.Wrapf(err, "fetching ToggleButton %q ConfigMap %q", tb.Name, ss.Name)
 	}
 
+	if apierrors.IsNotFound(err) {
+		err := setError(ctx, r.ctrlClient, tb, fmt.Sprintf("no such ConfigMap %q", ss.Name))
+		return false, false, err
+	}
+
+	isOn = tb.Spec.DefaultOn
 	if cm.Data != nil {
-		var newOn bool
 		cmVal, ok := cm.Data[ss.Key]
 		if ok {
 			switch cmVal {
 			case ss.OnValue:
-				newOn = true
+				isOn = true
 			case ss.OffValue:
-				newOn = false
+				isOn = false
 			default:
-				newOn = tb.Spec.DefaultOn
-			}
-		} else {
-			newOn = tb.Spec.DefaultOn
-		}
-
-		if newOn != tb.Status.On {
-			tb.Status.On = newOn
-			tb.Status.LastChange = metav1.NowMicro()
-			err := r.ctrlClient.Status().Update(ctx, tb)
-			if err != nil {
-				return errors.Wrapf(err, "Updating ToggleButton %q status", tb.Name)
+				msg := fmt.Sprintf(
+					"ConfigMap %q key %q has unknown value %q. expected %q or %q",
+					ss.Name,
+					ss.Key,
+					cmVal,
+					ss.OnValue,
+					ss.OffValue,
+				)
+				err := setError(ctx, r.ctrlClient, tb, msg)
+				return false, false, err
 			}
 		}
 	}
 
-	return nil
+	return isOn, true, nil
 }
 
-func (r *Reconciler) managedOwnedUIButton(ctx context.Context, nn types.NamespacedName, tb *v1alpha1.ToggleButton) error {
+func (r *Reconciler) managedOwnedUIButton(ctx context.Context, nn types.NamespacedName, tb *v1alpha1.ToggleButton, isOn bool) error {
+	b := &v1alpha1.UIButton{ObjectMeta: metav1.ObjectMeta{Name: uibuttonName(nn.Name), Namespace: nn.Namespace}}
+
 	if tb == nil {
-		err := r.ctrlClient.Delete(ctx, &v1alpha1.UIButton{ObjectMeta: metav1.ObjectMeta{Name: uibuttonName(nn.Name), Namespace: nn.Namespace}})
+		err := r.ctrlClient.Delete(ctx, b)
 		return ctrlclient.IgnoreNotFound(err)
 	}
 
-	desiredUIButton, err := r.toDesiredUIButton(tb)
-	if err != nil {
-		return err
-	}
-
-	b := &v1alpha1.UIButton{ObjectMeta: metav1.ObjectMeta{Name: desiredUIButton.Name}}
-	_, err = ctrl.CreateOrUpdate(ctx, r.ctrlClient, b, func() error {
-		b.Spec = desiredUIButton.Spec
-		b.OwnerReferences = desiredUIButton.OwnerReferences
-		return nil
+	_, err := ctrl.CreateOrUpdate(ctx, r.ctrlClient, b, func() error {
+		return r.configureUIButton(b, isOn, tb)
 	})
 	if err != nil {
 		return errors.Wrapf(err, "upserting ToggleButton %q's UIButton", tb.Name)
@@ -253,39 +262,35 @@ func uibuttonName(tbName string) string {
 	return fmt.Sprintf("toggle-%s", tbName)
 }
 
-func (r *Reconciler) toDesiredUIButton(tb *v1alpha1.ToggleButton) (v1alpha1.UIButton, error) {
+func (r *Reconciler) configureUIButton(b *v1alpha1.UIButton, isOn bool, tb *v1alpha1.ToggleButton) error {
 	var stateSpec v1alpha1.ToggleButtonStateSpec
 	var value string
-	if tb.Status.On {
+	if isOn {
 		stateSpec = tb.Spec.On
 		value = turnOffInputValue
 	} else {
 		stateSpec = tb.Spec.Off
 		value = turnOnInputValue
 	}
-	result := v1alpha1.UIButton{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: uibuttonName(tb.Name),
-		},
-		Spec: v1alpha1.UIButtonSpec{
-			Location:             tb.Spec.Location,
-			Text:                 stateSpec.Text,
-			IconName:             stateSpec.IconName,
-			IconSVG:              stateSpec.IconSVG,
-			RequiresConfirmation: stateSpec.RequiresConfirmation,
-			Inputs: []v1alpha1.UIInputSpec{
-				{
-					Name:   actionUIInputName,
-					Hidden: &v1alpha1.UIHiddenInputSpec{Value: value},
-				},
+
+	b.Spec = v1alpha1.UIButtonSpec{
+		Location:             tb.Spec.Location,
+		Text:                 stateSpec.Text,
+		IconName:             stateSpec.IconName,
+		IconSVG:              stateSpec.IconSVG,
+		RequiresConfirmation: stateSpec.RequiresConfirmation,
+		Inputs: []v1alpha1.UIInputSpec{
+			{
+				Name:   actionUIInputName,
+				Hidden: &v1alpha1.UIHiddenInputSpec{Value: value},
 			},
 		},
 	}
 
-	err := controllerutil.SetControllerReference(tb, &result, r.ctrlClient.Scheme())
+	err := controllerutil.SetControllerReference(tb, b, r.ctrlClient.Scheme())
 	if err != nil {
-		return v1alpha1.UIButton{}, errors.Wrapf(err, "setting ToggleButton %q's UIButton's controller reference", tb.Name)
+		return errors.Wrapf(err, "setting ToggleButton %q's UIButton's controller reference", tb.Name)
 	}
 
-	return result, nil
+	return nil
 }
