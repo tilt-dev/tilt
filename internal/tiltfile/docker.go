@@ -68,6 +68,9 @@ type dockerImage struct {
 	outputsImageRefTo string
 
 	liveUpdate v1alpha1.LiveUpdateSpec
+
+	// TODO(milas): we should have a better way of passing the Tiltfile path around during resource assembly
+	tiltfilePath string
 }
 
 func (d *dockerImage) ID() model.TargetID {
@@ -247,6 +250,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		cacheFrom:        cacheFrom.Values,
 		pullParent:       pullParent,
 		platform:         platform.Value,
+		tiltfilePath:     starkit.CurrentExecPath(thread),
 	}
 	err = s.buildIndex.addImage(r)
 	if err != nil {
@@ -367,6 +371,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		entrypoint:        entrypointCmd,
 		overrideArgs:      overrideArgs,
 		outputsImageRefTo: outputsImageRefTo.Value,
+		tiltfilePath:      starkit.CurrentExecPath(thread),
 	}
 
 	err = s.buildIndex.addImage(img)
