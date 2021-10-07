@@ -17,6 +17,13 @@ import (
 	"fmt"
 	"sync"
 
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
+	"github.com/tilt-dev/tilt/internal/controllers/indexer"
+
 	"github.com/tilt-dev/fsnotify"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -45,15 +52,17 @@ type Controller struct {
 	fsWatcherMaker fsevent.WatcherMaker
 	timerMaker     fsevent.TimerMaker
 	mu             sync.Mutex
+	indexer        *indexer.Indexer
 }
 
-func NewController(client ctrlclient.Client, store store.RStore, fsWatcherMaker fsevent.WatcherMaker, timerMaker fsevent.TimerMaker) *Controller {
+func NewController(client ctrlclient.Client, store store.RStore, fsWatcherMaker fsevent.WatcherMaker, timerMaker fsevent.TimerMaker, scheme *runtime.Scheme) *Controller {
 	return &Controller{
 		Client:         client,
 		Store:          store,
 		targetWatches:  make(map[types.NamespacedName]*watcher),
 		fsWatcherMaker: fsWatcherMaker,
 		timerMaker:     timerMaker,
+		indexer:        indexer.NewIndexer(scheme, indexFw),
 	}
 }
 
@@ -64,6 +73,9 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	var fw v1alpha1.FileWatch
 	err := c.Client.Get(ctx, req.NamespacedName, &fw)
+
+	c.indexer.OnReconcile(req.NamespacedName, &fw)
+
 	if err != nil && !apierrors.IsNotFound(err) {
 		return ctrl.Result{}, err
 	}
@@ -74,6 +86,29 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 			c.removeWatch(existing)
 		}
 		c.Store.Dispatch(filewatches.NewFileWatchDeleteAction(req.NamespacedName.Name))
+		return ctrl.Result{}, nil
+	}
+
+	// Get configmap's disable status
+	disableStatus, err := configmap.MaybeNewDisableStatus(ctx, c.Client, fw.Spec.DisableSource, fw.Status.DisableStatus)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	// Update filewatch's disable status
+	if disableStatus != fw.Status.DisableStatus {
+		fw.Status.DisableStatus = disableStatus
+		if err := c.Client.Status().Update(ctx, &fw); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
+	// Clean up existing filewatches if it's disabled
+	if disableStatus.Disabled {
+		if hasExisting {
+			existing.cleanupWatch(ctx)
+			c.removeWatch(existing)
+		}
 		return ctrl.Result{}, nil
 	}
 
@@ -91,7 +126,9 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 func (c *Controller) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	b := ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha1.FileWatch{})
+		For(&v1alpha1.FileWatch{}).
+		Watches(&source.Kind{Type: &v1alpha1.ConfigMap{}},
+			handler.EnqueueRequestsFromMapFunc((c.indexer.Enqueue)))
 
 	return b, nil
 }
@@ -121,10 +158,12 @@ func (c *Controller) addOrReplace(ctx context.Context, st store.RStore, name typ
 		return fmt.Errorf("failed to initialize filesystem watch: %v", err)
 	}
 
-	// replace the entirety of status to clear out any old events
-	fw.Status = v1alpha1.FileWatchStatus{
-		MonitorStartTime: metav1.NowMicro(),
-	}
+	// Clear out any old events
+	fw.Status.FileEvents = nil
+	fw.Status.LastEventTime = metav1.MicroTime{}
+	fw.Status.MonitorStartTime = metav1.NowMicro()
+	fw.Status.Error = ""
+
 	if err := c.Client.Status().Update(ctx, fw); err != nil {
 		_ = notify.Close()
 		return fmt.Errorf("failed to update monitor start time: %v", err)
@@ -196,4 +235,23 @@ func (c *Controller) dispatchFileChangesLoop(ctx context.Context, st store.RStor
 			}
 		}
 	}
+}
+
+// Find all the objects to watch based on the Filewatch model
+func indexFw(obj ctrlclient.Object) []indexer.Key {
+	fw := obj.(*v1alpha1.FileWatch)
+	result := []indexer.Key{}
+
+	if fw.Spec.DisableSource != nil {
+		cm := fw.Spec.DisableSource.ConfigMap
+		if cm != nil {
+			gvk := v1alpha1.SchemeGroupVersion.WithKind("ConfigMap")
+			result = append(result, indexer.Key{
+				Name: types.NamespacedName{Name: cm.Name},
+				GVK:  gvk,
+			})
+		}
+	}
+
+	return result
 }
