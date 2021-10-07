@@ -128,7 +128,7 @@ func (c *cmdDCClient) Down(ctx context.Context, p model.DockerComposeProject, st
 
 	args := c.projectArgs(p)
 	if logger.Get(ctx).Level().ShouldDisplay(logger.VerboseLvl) {
-		args = []string{"--verbose"}
+		args = append(args, "--verbose")
 	}
 
 	args = append(args, "down")
