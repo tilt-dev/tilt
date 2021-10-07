@@ -171,7 +171,7 @@ func newTiltfileState(
 		features:                  features,
 		secretSettings:            model.DefaultSecretSettings(),
 		apiObjects:                apiset.ObjectSet{},
-		k8sKinds:                  make(map[k8s.ObjectSelector]*tiltfile_k8s.KindInfo),
+		k8sKinds:                  tiltfile_k8s.InitialKinds(),
 	}
 }
 
@@ -1008,7 +1008,7 @@ func (s *tiltfileState) decideRegistry() container.Registry {
 // if it should wait for the pods to be complete before building the next resource (e.g., jobs)
 // and it's complicated a bit by the fact that there are both normal CRDs where the image shows up in the same place each time, and more meta CRDs (like HelmRelease) where it might appear in different places
 //
-// feels like wer're still doing this very ad-hoc rather than holistically
+// feels like we're still doing this very ad-hoc rather than holistically
 func (s *tiltfileState) inferPodReadinessMode(r *k8sResource) model.PodReadinessMode {
 	// The mode set directly on the resource has highest priority.
 	if r.podReadinessMode != model.PodReadinessNone {
@@ -1016,28 +1016,20 @@ func (s *tiltfileState) inferPodReadinessMode(r *k8sResource) model.PodReadiness
 	}
 
 	// Next, check if any of the k8s kinds have a mode.
-	hasWaitMode := false
-	hasIgnoreMode := false
+	hasMode := make(map[model.PodReadinessMode]bool)
 	for _, e := range r.entities {
 		for sel, info := range s.k8sKinds {
 			if sel.Matches(e) {
-				if info.PodReadinessMode == model.PodReadinessWait {
-					hasWaitMode = true
-				}
-
-				if info.PodReadinessMode == model.PodReadinessIgnore {
-					hasIgnoreMode = true
-				}
+				hasMode[info.PodReadinessMode] = true
 			}
 		}
 	}
 
-	if hasWaitMode {
-		return model.PodReadinessWait
-	}
-
-	if hasIgnoreMode {
-		return model.PodReadinessIgnore
+	modes := []model.PodReadinessMode{model.PodReadinessWait, model.PodReadinessIgnore, model.PodReadinessSucceeded}
+	for _, m := range modes {
+		if hasMode[m] {
+			return m
+		}
 	}
 
 	// Auto-infer based on context

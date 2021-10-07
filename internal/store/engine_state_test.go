@@ -11,6 +11,7 @@ import (
 	"github.com/docker/go-connections/nat"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	v1 "k8s.io/api/core/v1"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/hud/view"
@@ -154,6 +155,41 @@ func TestRuntimeStateNonWorkload(t *testing.T) {
 	runtimeState.HasEverDeployedSuccessfully = true
 
 	assert.Equal(t, v1alpha1.RuntimeStatusOK, runtimeState.RuntimeStatus())
+}
+
+func TestRuntimeStateJob(t *testing.T) {
+	for _, tc := range []struct {
+		phase                 v1.PodPhase
+		expectedRuntimeStatus v1alpha1.RuntimeStatus
+	}{
+		{v1.PodRunning, v1alpha1.RuntimeStatusPending},
+		{v1.PodSucceeded, v1alpha1.RuntimeStatusOK},
+		{v1.PodFailed, v1alpha1.RuntimeStatusError},
+	} {
+		t.Run(string(tc.phase), func(t *testing.T) {
+			f := tempdir.NewTempDirFixture(t)
+			defer f.TearDown()
+
+			m := manifestbuilder.New(f, "foo").
+				WithK8sYAML(testyaml.JobYAML).
+				WithK8sPodReadiness(model.PodReadinessSucceeded).
+				Build()
+			state := newState([]model.Manifest{m})
+			runtimeState := state.ManifestTargets[m.Name].State.K8sRuntimeState()
+			assert.Equal(t, v1alpha1.RuntimeStatusPending, runtimeState.RuntimeStatus())
+
+			runtimeState.HasEverDeployedSuccessfully = true
+
+			pod := &v1alpha1.Pod{
+				Name:      "pod",
+				CreatedAt: apis.Now(),
+				Phase:     string(tc.phase),
+			}
+			runtimeState.Pods[k8s.PodID(pod.Name)] = pod
+
+			assert.Equal(t, tc.expectedRuntimeStatus, runtimeState.RuntimeStatus())
+		})
+	}
 }
 
 func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {
