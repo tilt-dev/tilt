@@ -77,6 +77,10 @@ func IgnoresToMatcher(ignores []v1alpha1.IgnoreDef) (model.PathMatcher, error) {
 
 // Pull the FileWatch Ignores out of the old manifest target data model.
 func TargetToFileWatchIgnores(t IgnorableTarget) (ignores []v1alpha1.IgnoreDef) {
+	if iTarget, ok := t.(model.ImageTarget); ok && iTarget.TiltFilename() != "" {
+		ignores = append(ignores, v1alpha1.IgnoreDef{BasePath: iTarget.TiltFilename()})
+	}
+
 	for _, r := range t.LocalRepos() {
 		ignores = append(ignores, v1alpha1.IgnoreDef{
 			BasePath: filepath.Join(r.LocalPath, ".git"),
