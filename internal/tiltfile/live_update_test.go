@@ -138,6 +138,7 @@ func TestLiveUpdateDockerBuildQualifiedImageName(t *testing.T) {
 	defer f.TearDown()
 
 	f.tiltfileCode = "docker_build('gcr.io/foo', 'foo', live_update=%s)"
+	f.expectedLU.FileWatchName = "image:gcr.io_foo"
 	f.expectedLU.Selector.Kubernetes = &v1alpha1.LiveUpdateKubernetesSelector{Image: "gcr.io/foo"}
 	f.init()
 
@@ -226,7 +227,8 @@ k8s_yaml('foo.yaml')
 	f.load()
 
 	lu := v1alpha1.LiveUpdateSpec{
-		BasePath: f.Path(),
+		BasePath:      f.Path(),
+		FileWatchName: "image:gcr.io_image-b",
 		Syncs: []v1alpha1.LiveUpdateSync{
 			v1alpha1.LiveUpdateSync{
 				LocalPath:     filepath.Join("a", "message.txt"),
@@ -267,14 +269,17 @@ k8s_yaml('foo.yaml')
 			f.load()
 
 			lu := v1alpha1.LiveUpdateSpec{
-				BasePath: f.Path(),
+				BasePath:      f.Path(),
+				FileWatchName: "image:gcr.io_image-a",
 				Execs: []v1alpha1.LiveUpdateExec{
 					v1alpha1.LiveUpdateExec{
 						Args: tc.expectedArgv,
 					},
 				},
+				Selector: v1alpha1.LiveUpdateSelector{
+					Kubernetes: &v1alpha1.LiveUpdateKubernetesSelector{Image: "gcr.io/image-a"},
+				},
 			}
-			lu.Selector.Kubernetes = &v1alpha1.LiveUpdateKubernetesSelector{Image: "gcr.io/image-a"}
 			f.assertNextManifest("foo",
 				db(image("gcr.io/image-a"), lu))
 		})
@@ -443,8 +448,9 @@ func newLiveUpdateFixture(t *testing.T) *liveUpdateFixture {
 	}
 
 	f.expectedLU = v1alpha1.LiveUpdateSpec{
-		BasePath:  f.Path(),
-		StopPaths: []string{filepath.Join("foo", "i"), filepath.Join("foo", "j")},
+		BasePath:      f.Path(),
+		FileWatchName: "image:foo",
+		StopPaths:     []string{filepath.Join("foo", "i"), filepath.Join("foo", "j")},
 		Syncs: []v1alpha1.LiveUpdateSync{
 			v1alpha1.LiveUpdateSync{
 				LocalPath:     filepath.Join("foo", "b"),
