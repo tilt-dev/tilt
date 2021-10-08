@@ -135,6 +135,7 @@ var typesWithTiltfileBuiltins = []apiset.Object{
 	&v1alpha1.Cmd{},
 	&v1alpha1.UIButton{},
 	&v1alpha1.ConfigMap{},
+	&v1alpha1.KubernetesDiscovery{},
 }
 
 var typesToReconcile = append([]apiset.Object{
