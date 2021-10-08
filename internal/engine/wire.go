@@ -17,12 +17,14 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesapply"
+	"github.com/tilt-dev/tilt/internal/controllers/core/liveupdate"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/localexec"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 )
 
 var DeployerBaseWireSet = wire.NewSet(
@@ -51,7 +53,7 @@ func provideFakeBuildAndDeployer(
 	kClient k8s.Client,
 	dir *dirs.TiltDevDir,
 	env k8s.Env,
-	updateMode buildcontrol.UpdateModeFlag,
+	updateMode liveupdates.UpdateModeFlag,
 	dcc dockercompose.DockerComposeClient,
 	clock build.Clock,
 	kp buildcontrol.KINDLoader,
@@ -64,6 +66,7 @@ func provideFakeBuildAndDeployer(
 		provideFakeKubeContext,
 		provideFakeDockerClusterEnv,
 		provideFakeK8sNamespace,
+		liveupdate.NewReconciler,
 		kubernetesapply.NewReconciler,
 		cmd.WireSet,
 		clockwork.NewRealClock,

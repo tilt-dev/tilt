@@ -102,6 +102,7 @@ func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.
 			filesChanged:      filesChanged,
 			containers:        containers,
 			hasFileChangesIDs: hasFileChangesIDs,
+			isDC:              state.DockerResource != nil,
 		})
 	}
 

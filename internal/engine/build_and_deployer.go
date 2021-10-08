@@ -12,6 +12,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -110,8 +111,8 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 }
 
 func DefaultBuildOrder(lubad *buildcontrol.LiveUpdateBuildAndDeployer, ibad *buildcontrol.ImageBuildAndDeployer, dcbad *buildcontrol.DockerComposeBuildAndDeployer,
-	ltbad *buildcontrol.LocalTargetBuildAndDeployer, updMode buildcontrol.UpdateMode, env k8s.Env, runtime container.Runtime) BuildOrder {
-	if updMode == buildcontrol.UpdateModeImage {
+	ltbad *buildcontrol.LocalTargetBuildAndDeployer, updMode liveupdates.UpdateMode, env k8s.Env, runtime container.Runtime) BuildOrder {
+	if updMode == liveupdates.UpdateModeImage {
 		return BuildOrder{dcbad, ibad, ltbad}
 	}
 

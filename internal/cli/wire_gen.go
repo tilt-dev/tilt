@@ -66,6 +66,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/localexec"
 	"github.com/tilt-dev/tilt/internal/openurl"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/internal/tiltfile"
 	"github.com/tilt-dev/tilt/internal/tiltfile/config"
 	"github.com/tilt-dev/tilt/internal/tiltfile/k8scontext"
@@ -286,7 +287,14 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
-	liveupdateReconciler := liveupdate.NewReconciler(deferredClient, scheme)
+	dockerUpdater := containerupdate.NewDockerUpdater(switchCli)
+	execUpdater := containerupdate.NewExecUpdater(client)
+	liveupdatesUpdateModeFlag := provideUpdateModeFlag()
+	updateMode, err := liveupdates.ProvideUpdateMode(liveupdatesUpdateModeFlag, kubeContext, clusterEnv)
+	if err != nil {
+		return CmdUpDeps{}, err
+	}
+	liveupdateReconciler := liveupdate.NewReconciler(dockerUpdater, execUpdater, updateMode, kubeContext, deferredClient, scheme)
 	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler, togglebuttonReconciler, extensionReconciler, extensionrepoReconciler, liveupdateReconciler)
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	v2 := provideClock()
@@ -299,20 +307,13 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	openInput := _wireOpenInputValue
 	terminalPrompt := prompt.NewTerminalPrompt(analytics3, openInput, openURL, stdout, webHost, webURL)
 	serviceWatcher := k8swatch.NewServiceWatcher(client, ownerFetcher, namespace)
-	dockerUpdater := containerupdate.NewDockerUpdater(switchCli)
-	execUpdater := containerupdate.NewExecUpdater(client)
-	buildcontrolUpdateModeFlag := provideUpdateModeFlag()
-	updateMode, err := buildcontrol.ProvideUpdateMode(buildcontrolUpdateModeFlag, kubeContext, clusterEnv)
-	if err != nil {
-		return CmdUpDeps{}, err
-	}
 	buildClock := build.ProvideClock()
-	liveUpdateBuildAndDeployer := buildcontrol.NewLiveUpdateBuildAndDeployer(dockerUpdater, execUpdater, updateMode, kubeContext, buildClock)
+	liveUpdateBuildAndDeployer := buildcontrol.NewLiveUpdateBuildAndDeployer(liveupdateReconciler, buildClock)
 	execCustomBuilder := build.NewExecCustomBuilder(switchCli, buildClock)
 	clusterName := k8s.ProvideClusterName(ctx, apiConfig)
 	kindLoader := buildcontrol.NewKINDLoader(k8sEnv, clusterName)
-	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, client, k8sEnv, kubeContext, analytics3, updateMode, buildClock, kindLoader, deferredClient, kubernetesapplyReconciler)
-	imageBuilder := buildcontrol.NewImageBuilder(dockerBuilder, execCustomBuilder, updateMode)
+	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, client, k8sEnv, kubeContext, analytics3, buildClock, kindLoader, deferredClient, kubernetesapplyReconciler)
+	imageBuilder := buildcontrol.NewImageBuilder(dockerBuilder, execCustomBuilder)
 	dockerComposeBuildAndDeployer := buildcontrol.NewDockerComposeBuildAndDeployer(dockerComposeClient, switchCli, imageBuilder, buildClock)
 	localTargetBuildAndDeployer := buildcontrol.NewLocalTargetBuildAndDeployer(buildClock, deferredClient, cmdController)
 	buildOrder := engine.DefaultBuildOrder(liveUpdateBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, localTargetBuildAndDeployer, updateMode, k8sEnv, runtime)
@@ -488,7 +489,14 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
-	liveupdateReconciler := liveupdate.NewReconciler(deferredClient, scheme)
+	dockerUpdater := containerupdate.NewDockerUpdater(switchCli)
+	execUpdater := containerupdate.NewExecUpdater(client)
+	liveupdatesUpdateModeFlag := provideUpdateModeFlag()
+	updateMode, err := liveupdates.ProvideUpdateMode(liveupdatesUpdateModeFlag, kubeContext, clusterEnv)
+	if err != nil {
+		return CmdCIDeps{}, err
+	}
+	liveupdateReconciler := liveupdate.NewReconciler(dockerUpdater, execUpdater, updateMode, kubeContext, deferredClient, scheme)
 	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler, togglebuttonReconciler, extensionReconciler, extensionrepoReconciler, liveupdateReconciler)
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	v2 := provideClock()
@@ -501,20 +509,13 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	openInput := _wireOpenInputValue
 	terminalPrompt := prompt.NewTerminalPrompt(analytics3, openInput, openURL, stdout, webHost, webURL)
 	serviceWatcher := k8swatch.NewServiceWatcher(client, ownerFetcher, namespace)
-	dockerUpdater := containerupdate.NewDockerUpdater(switchCli)
-	execUpdater := containerupdate.NewExecUpdater(client)
-	buildcontrolUpdateModeFlag := provideUpdateModeFlag()
-	updateMode, err := buildcontrol.ProvideUpdateMode(buildcontrolUpdateModeFlag, kubeContext, clusterEnv)
-	if err != nil {
-		return CmdCIDeps{}, err
-	}
 	buildClock := build.ProvideClock()
-	liveUpdateBuildAndDeployer := buildcontrol.NewLiveUpdateBuildAndDeployer(dockerUpdater, execUpdater, updateMode, kubeContext, buildClock)
+	liveUpdateBuildAndDeployer := buildcontrol.NewLiveUpdateBuildAndDeployer(liveupdateReconciler, buildClock)
 	execCustomBuilder := build.NewExecCustomBuilder(switchCli, buildClock)
 	clusterName := k8s.ProvideClusterName(ctx, apiConfig)
 	kindLoader := buildcontrol.NewKINDLoader(k8sEnv, clusterName)
-	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, client, k8sEnv, kubeContext, analytics3, updateMode, buildClock, kindLoader, deferredClient, kubernetesapplyReconciler)
-	imageBuilder := buildcontrol.NewImageBuilder(dockerBuilder, execCustomBuilder, updateMode)
+	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, client, k8sEnv, kubeContext, analytics3, buildClock, kindLoader, deferredClient, kubernetesapplyReconciler)
+	imageBuilder := buildcontrol.NewImageBuilder(dockerBuilder, execCustomBuilder)
 	dockerComposeBuildAndDeployer := buildcontrol.NewDockerComposeBuildAndDeployer(dockerComposeClient, switchCli, imageBuilder, buildClock)
 	localTargetBuildAndDeployer := buildcontrol.NewLocalTargetBuildAndDeployer(buildClock, deferredClient, cmdController)
 	buildOrder := engine.DefaultBuildOrder(liveUpdateBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, localTargetBuildAndDeployer, updateMode, k8sEnv, runtime)
@@ -687,7 +688,14 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	if err != nil {
 		return CmdUpdogDeps{}, err
 	}
-	liveupdateReconciler := liveupdate.NewReconciler(deferredClient, scheme)
+	dockerUpdater := containerupdate.NewDockerUpdater(switchCli)
+	execUpdater := containerupdate.NewExecUpdater(k8sClient)
+	liveupdatesUpdateModeFlag := provideUpdateModeFlag()
+	updateMode, err := liveupdates.ProvideUpdateMode(liveupdatesUpdateModeFlag, kubeContext, clusterEnv)
+	if err != nil {
+		return CmdUpdogDeps{}, err
+	}
+	liveupdateReconciler := liveupdate.NewReconciler(dockerUpdater, execUpdater, updateMode, kubeContext, deferredClient, scheme)
 	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler, togglebuttonReconciler, extensionReconciler, extensionrepoReconciler, liveupdateReconciler)
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	stdout := hud.ProvideStdout()

@@ -111,7 +111,8 @@ type StateSource struct {
 	ConfigMap *ConfigMapStateSource `json:"configMap,omitempty" protobuf:"bytes,1,opt,name=configMap"`
 }
 
-// Describes how a ToggleButton's state is stored in a ConfigMap
+// Describes how a ToggleButton's state is stored in a ConfigMap.
+// The ConfigMap must be created separately - the ToggleButton will not automatically create it.
 type ConfigMapStateSource struct {
 	// Name of the ConfigMap
 	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
@@ -182,7 +183,7 @@ func (in *ToggleButtonList) GetListMeta() *metav1.ListMeta {
 type ToggleButtonStatus struct {
 	// If healthy, empty. If non-healthy, specifies a problem the ToggleButton encountered
 	// +optional
-	Error string `json:"error"`
+	Error string `json:"error" protobuf:"bytes,1,opt,name=error"`
 }
 
 // ToggleButton implements ObjectWithStatusSubResource interface.

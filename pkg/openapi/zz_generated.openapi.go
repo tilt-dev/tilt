@@ -677,7 +677,7 @@ func schema_pkg_apis_core_v1alpha1_ConfigMapStateSource(ref common.ReferenceCall
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "Describes how a ToggleButton's state is stored in a ConfigMap",
+				Description: "Describes how a ToggleButton's state is stored in a ConfigMap. The ConfigMap must be created separately - the ToggleButton will not automatically create it.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"name": {
@@ -4818,27 +4818,17 @@ func schema_pkg_apis_core_v1alpha1_ToggleButtonStatus(ref common.ReferenceCallba
 				Description: "ToggleButtonStatus defines the observed state of ToggleButton",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"on": {
+					"error": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Whether the button is currently \"on\"",
-							Default:     false,
-							Type:        []string{"boolean"},
+							Description: "If healthy, empty. If non-healthy, specifies a problem the ToggleButton encountered",
+							Default:     "",
+							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
-					"lastChange": {
-						SchemaProps: spec.SchemaProps{
-							Description: "The last time the button changed from on to off, or vice versa.",
-							Default:     map[string]interface{}{},
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
-						},
-					},
 				},
-				Required: []string{"on", "lastChange"},
 			},
 		},
-		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
 	}
 }
 

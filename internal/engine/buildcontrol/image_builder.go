@@ -53,16 +53,14 @@ var ImageBuildCount = &view.View{
 }
 
 type ImageBuilder struct {
-	db         build.DockerBuilder
-	custb      build.CustomBuilder
-	updateMode UpdateMode
+	db    build.DockerBuilder
+	custb build.CustomBuilder
 }
 
-func NewImageBuilder(db build.DockerBuilder, custb build.CustomBuilder, updateMode UpdateMode) *ImageBuilder {
+func NewImageBuilder(db build.DockerBuilder, custb build.CustomBuilder) *ImageBuilder {
 	return &ImageBuilder{
-		db:         db,
-		custb:      custb,
-		updateMode: updateMode,
+		db:    db,
+		custb: custb,
 	}
 }
 

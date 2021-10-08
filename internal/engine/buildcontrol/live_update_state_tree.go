@@ -14,6 +14,7 @@ type liveUpdateStateTree struct {
 	filesChanged      []string
 	containers        []liveupdates.Container
 	hasFileChangesIDs []model.TargetID
+	isDC              bool
 }
 
 // Create a successful build result if the live update deploys successfully.
@@ -40,10 +41,10 @@ func (t liveUpdateStateTree) createResultSet() store.BuildResultSet {
 	return resultSet
 }
 
-func createResultSet(trees []liveUpdateStateTree, luInfos []liveUpdInfo) store.BuildResultSet {
+func createResultSet(trees []liveUpdateStateTree, luInfos []LiveUpdateInput) store.BuildResultSet {
 	liveUpdatedTargetIDs := make(map[model.TargetID]bool)
 	for _, info := range luInfos {
-		liveUpdatedTargetIDs[info.iTarget.ID()] = true
+		liveUpdatedTargetIDs[info.ID] = true
 	}
 
 	resultSet := store.BuildResultSet{}

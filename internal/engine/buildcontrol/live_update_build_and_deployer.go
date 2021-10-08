@@ -6,59 +6,50 @@ import (
 	"time"
 
 	"github.com/docker/distribution/reference"
-	"github.com/pkg/errors"
-
-	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
-	"github.com/tilt-dev/tilt/internal/ospath"
-	"github.com/tilt-dev/tilt/internal/store/liveupdates"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
-
-	"github.com/tilt-dev/tilt/internal/container"
-	"github.com/tilt-dev/tilt/internal/containerupdate"
-
 	"github.com/tilt-dev/tilt/internal/build"
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
+	ctrlliveupdate "github.com/tilt-dev/tilt/internal/controllers/core/liveupdate"
 	"github.com/tilt-dev/tilt/internal/ignore"
-	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/ospath"
 	"github.com/tilt-dev/tilt/internal/store"
-	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/internal/store/liveupdates"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 var _ BuildAndDeployer = &LiveUpdateBuildAndDeployer{}
 
 type LiveUpdateBuildAndDeployer struct {
-	dcu         *containerupdate.DockerUpdater
-	ecu         *containerupdate.ExecUpdater
-	updMode     UpdateMode
-	kubeContext k8s.KubeContext
-	clock       build.Clock
+	luReconciler *ctrlliveupdate.Reconciler
+	clock        build.Clock
 }
 
-func NewLiveUpdateBuildAndDeployer(dcu *containerupdate.DockerUpdater,
-	ecu *containerupdate.ExecUpdater,
-	updMode UpdateMode,
-	kubeContext k8s.KubeContext,
-	c build.Clock) *LiveUpdateBuildAndDeployer {
+func NewLiveUpdateBuildAndDeployer(luReconciler *ctrlliveupdate.Reconciler, c build.Clock) *LiveUpdateBuildAndDeployer {
 	return &LiveUpdateBuildAndDeployer{
-		dcu:         dcu,
-		ecu:         ecu,
-		updMode:     updMode,
-		kubeContext: kubeContext,
-		clock:       c,
+		luReconciler: luReconciler,
+		clock:        c,
 	}
 }
 
 // Info needed to perform a live update
-type liveUpdInfo struct {
-	iTarget      model.ImageTarget
-	containers   []liveupdates.Container
-	changedFiles []build.PathMapping
-	runs         []model.Run
-	hotReload    bool
+type LiveUpdateInput struct {
+	ID model.TargetID
+
+	// Name is human-readable representation of what we're live-updating. The API
+	// Server doesn't make any guarantees that this maps to an image name, or a
+	// service name, or to anything in particular.
+	Name string
+
+	Spec v1alpha1.LiveUpdateSpec
+
+	ctrlliveupdate.Input
 }
 
-func (lui liveUpdInfo) Empty() bool { return lui.iTarget.ID() == model.ImageTarget{}.ID() }
+func (lui LiveUpdateInput) Empty() bool { return lui.Name == "" }
 
 func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, stateSet store.BuildStateSet) (store.BuildResultSet, error) {
 	liveUpdateStateSet, err := extractImageTargetsForLiveUpdates(specs, stateSet)
@@ -66,8 +57,7 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		return store.BuildResultSet{}, err
 	}
 
-	containerUpdater := lubad.containerUpdaterForSpecs(specs)
-	liveUpdInfos := make([]liveUpdInfo, 0, len(liveUpdateStateSet))
+	liveUpdateInputs := make([]LiveUpdateInput, 0, len(liveUpdateStateSet))
 
 	if len(liveUpdateStateSet) == 0 {
 		return nil, SilentRedirectToNextBuilderf("no targets for Live Update found")
@@ -80,20 +70,20 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		}
 
 		if !luInfo.Empty() {
-			liveUpdInfos = append(liveUpdInfos, luInfo)
+			liveUpdateInputs = append(liveUpdateInputs, luInfo)
 		}
 	}
 
-	ps := build.NewPipelineState(ctx, len(liveUpdInfos), lubad.clock)
+	ps := build.NewPipelineState(ctx, len(liveUpdateInputs), lubad.clock)
 	err = nil
 	defer func() {
 		ps.End(ctx, err)
 	}()
 
 	var dontFallBackErr error
-	for _, info := range liveUpdInfos {
-		ps.StartPipelineStep(ctx, "updating image %s", reference.FamiliarName(info.iTarget.Refs.ClusterRef()))
-		err = lubad.buildAndDeploy(ctx, ps, containerUpdater, info.iTarget, info.containers, info.changedFiles, info.runs, info.hotReload)
+	for _, info := range liveUpdateInputs {
+		ps.StartPipelineStep(ctx, "updating image %s", info.Name)
+		err = lubad.buildAndDeploy(ctx, ps, info)
 		if err != nil {
 			if !IsDontFallBackError(err) {
 				// something went wrong, we want to fall back -- bail and
@@ -110,10 +100,10 @@ func (lubad *LiveUpdateBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	}
 
 	err = dontFallBackErr
-	return createResultSet(liveUpdateStateSet, liveUpdInfos), err
+	return createResultSet(liveUpdateStateSet, liveUpdateInputs), err
 }
 
-func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, ps *build.PipelineState, cu containerupdate.ContainerUpdater, iTarget model.ImageTarget, containers []liveupdates.Container, changedFiles []build.PathMapping, runs []model.Run, hotReload bool) (err error) {
+func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, ps *build.PipelineState, info LiveUpdateInput) (err error) {
 	startTime := time.Now()
 	defer func() {
 		analytics.Get(ctx).Timer("build.container", time.Since(startTime), map[string]string{
@@ -121,7 +111,7 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, ps 
 		})
 	}()
 
-	l := logger.Get(ctx)
+	containers := info.Containers
 	cIDStr := container.ShortStrs(liveupdates.IDsForContainers(containers))
 	suffix := ""
 	if len(containers) != 1 {
@@ -129,136 +119,72 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, ps 
 	}
 	ps.StartBuildStep(ctx, "Updating container%s: %s", suffix, cIDStr)
 
-	filter := ignore.CreateBuildContextFilter(iTarget)
-	boiledSteps, err := build.BoilRuns(runs, changedFiles)
-	if err != nil {
-		return err
+	status := lubad.luReconciler.ForceApply(
+		ctx,
+		types.NamespacedName{Name: info.Name},
+		info.Spec,
+		info.Input)
+	if status.UnknownError != nil {
+		return status.UnknownError
 	}
-
-	// rm files from container
-	toRemove, toArchive, err := build.MissingLocalPaths(ctx, changedFiles)
-	if err != nil {
-		return errors.Wrap(err, "MissingLocalPaths")
-	}
-
-	if len(toRemove) > 0 {
-		l.Infof("Will delete %d file(s) from container%s: %s", len(toRemove), suffix, cIDStr)
-		for _, pm := range toRemove {
-			l.Infof("- '%s' (matched local path: '%s')", pm.ContainerPath, pm.LocalPath)
-		}
-	}
-
-	if len(toArchive) > 0 {
-		l.Infof("Will copy %d file(s) to container%s: %s", len(toArchive), suffix, cIDStr)
-		for _, pm := range toArchive {
-			l.Infof("- %s", pm.PrettyStr())
-		}
-	}
-
-	var lastUserBuildFailure error
-	for _, cInfo := range containers {
-		archive := build.TarArchiveForPaths(ctx, toArchive, filter)
-		err = cu.UpdateContainer(ctx, cInfo, archive,
-			build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
-		if err != nil {
-			if runFail, ok := build.MaybeRunStepFailure(err); ok {
-				// Keep running updates -- we want all containers to have the same files on them
-				// even if the Runs don't succeed
-				lastUserBuildFailure = err
-				logger.Get(ctx).Infof("  → Failed to update container %s: run step %q failed with exit code: %d",
-					cInfo.ContainerID.ShortStr(), runFail.Cmd.String(), runFail.ExitCode)
-				continue
-			}
-
-			// Something went wrong with this update and it's NOT the user's fault--
-			// likely a infrastructure error. Bail, and fall back to full build.
-			return err
-		} else {
-			logger.Get(ctx).Infof("  → Container %s updated!", cInfo.ContainerID.ShortStr())
-			if lastUserBuildFailure != nil {
-				// This build succeeded, but previously at least one failed due to user error.
-				// We may have inconsistent state--bail, and fall back to full build.
-				return fmt.Errorf("Failed to update container: container %s successfully updated, "+
-					"but last update failed with '%v'", cInfo.ContainerID.ShortStr(), lastUserBuildFailure)
-			}
-		}
-	}
-	if lastUserBuildFailure != nil {
-		return WrapDontFallBackError(lastUserBuildFailure)
+	if status.ExecError != nil {
+		return WrapDontFallBackError(status.ExecError)
 	}
 	return nil
 }
 
 // liveUpdateInfoForStateTree validates the state tree for LiveUpdate and returns
 // all the info we need to execute the update.
-func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (liveUpdInfo, error) {
+func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (LiveUpdateInput, error) {
 	iTarget := stateTree.iTarget
 	filesChanged := stateTree.filesChanged
 
 	var err error
 	var fileMappings []build.PathMapping
-	var runs []model.Run
-	var hotReload bool
 
 	luSpec := iTarget.LiveUpdateSpec
-	if !liveupdate.IsEmptySpec(luSpec) {
-		var pathsMatchingNoSync []string
-		fileMappings, pathsMatchingNoSync, err = build.FilesToPathMappings(filesChanged, liveupdate.SyncSteps(luSpec))
-		if err != nil {
-			return liveUpdInfo{}, err
-		}
-		if len(pathsMatchingNoSync) > 0 {
-			return liveUpdInfo{}, RedirectToNextBuilderInfof(
-				"Found file(s) not matching any sync for %s (files: %s)", iTarget.ID(),
-				ospath.FormatFileChangeList(pathsMatchingNoSync))
-		}
-
-		// If any changed files match a FallBackOn file, fall back to next BuildAndDeployer
-		anyMatch, file, err := liveupdate.FallBackOnFiles(luSpec).AnyMatch(filesChanged)
-		if err != nil {
-			return liveUpdInfo{}, err
-		}
-		if anyMatch {
-			prettyFile := ospath.FileDisplayName(iTarget.LocalPaths(), file)
-			return liveUpdInfo{}, RedirectToNextBuilderInfof(
-				"Detected change to fall_back_on file %q", prettyFile)
-		}
-
-		runs = liveupdate.RunSteps(luSpec)
-		hotReload = !liveupdate.ShouldRestart(iTarget.LiveUpdateSpec)
-	} else {
+	if liveupdate.IsEmptySpec(luSpec) {
 		// We should have validated this when generating the LiveUpdateStateTrees, but double check!
 		panic(fmt.Sprintf("did not find Live Update info on target %s, "+
 			"which should have already been validated for Live Update", iTarget.ID()))
 	}
 
+	var pathsMatchingNoSync []string
+	fileMappings, pathsMatchingNoSync, err = build.FilesToPathMappings(filesChanged, liveupdate.SyncSteps(luSpec))
+	if err != nil {
+		return LiveUpdateInput{}, err
+	}
+	if len(pathsMatchingNoSync) > 0 {
+		return LiveUpdateInput{}, RedirectToNextBuilderInfof(
+			"Found file(s) not matching any sync for %s (files: %s)", iTarget.ID(),
+			ospath.FormatFileChangeList(pathsMatchingNoSync))
+	}
+
+	// If any changed files match a FallBackOn file, fall back to next BuildAndDeployer
+	anyMatch, file, err := liveupdate.FallBackOnFiles(luSpec).AnyMatch(filesChanged)
+	if err != nil {
+		return LiveUpdateInput{}, err
+	}
+	if anyMatch {
+		prettyFile := ospath.FileDisplayName([]string{luSpec.BasePath}, file)
+		return LiveUpdateInput{}, RedirectToNextBuilderInfof(
+			"Detected change to fall_back_on file %q", prettyFile)
+	}
+
 	if len(fileMappings) == 0 {
 		// No files matched a sync for this image, no Live Update to run
-		return liveUpdInfo{}, nil
+		return LiveUpdateInput{}, nil
 	}
 
-	return liveUpdInfo{
-		iTarget:      iTarget,
-		changedFiles: fileMappings,
-		runs:         runs,
-		hotReload:    hotReload,
-		containers:   stateTree.containers,
+	return LiveUpdateInput{
+		ID:   iTarget.ID(),
+		Name: reference.FamiliarName(iTarget.Refs.ClusterRef()),
+		Spec: iTarget.LiveUpdateSpec,
+		Input: ctrlliveupdate.Input{
+			Filter:       ignore.CreateBuildContextFilter(iTarget),
+			ChangedFiles: fileMappings,
+			Containers:   stateTree.containers,
+			IsDC:         stateTree.isDC,
+		},
 	}, nil
-}
-
-func (lubad *LiveUpdateBuildAndDeployer) containerUpdaterForSpecs(specs []model.TargetSpec) containerupdate.ContainerUpdater {
-	isDC := len(model.ExtractDockerComposeTargets(specs)) > 0
-	if isDC || lubad.updMode == UpdateModeContainer {
-		return lubad.dcu
-	}
-
-	if lubad.updMode == UpdateModeKubectlExec {
-		return lubad.ecu
-	}
-
-	if lubad.dcu.WillBuildToKubeContext(lubad.kubeContext) {
-		return lubad.dcu
-	}
-
-	return lubad.ecu
 }

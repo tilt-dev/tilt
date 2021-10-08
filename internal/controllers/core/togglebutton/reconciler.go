@@ -80,9 +80,9 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	defer r.mu.Unlock()
 	nn := request.NamespacedName
 
-	var tb v1alpha1.ToggleButton
-	err := r.ctrlClient.Get(ctx, nn, &tb)
-	r.indexer.OnReconcile(nn, &tb)
+	tb := &v1alpha1.ToggleButton{}
+	err := r.ctrlClient.Get(ctx, nn, tb)
+	r.indexer.OnReconcile(nn, tb)
 	if client.IgnoreNotFound(err) != nil {
 		return ctrl.Result{}, err
 	}
@@ -92,27 +92,28 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		return ctrl.Result{}, err
 	}
 
+	hadError := tb.Status.Error != ""
+	// clear the error so we can see if reconciliation re-sets it
+	tb.Status.Error = ""
+
 	err = r.processClick(ctx, tb)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	isOn, ok, err := r.isOn(ctx, &tb)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-	if !ok {
-		return ctrl.Result{}, nil
-	}
-
-	err = r.managedOwnedUIButton(ctx, nn, &tb, isOn)
+	isOn, err := r.isOn(ctx, tb)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	if tb.Status.Error != "" {
-		tb.Status.Error = ""
-		err = r.ctrlClient.Status().Update(ctx, &tb)
+	err = r.managedOwnedUIButton(ctx, nn, tb, isOn)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if hadError && tb.Status.Error == "" {
+		// whatever error was there did not get re-set, so clear it in the api
+		err = r.setError(ctx, tb, "")
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -121,7 +122,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	return ctrl.Result{}, err
 }
 
-func (r *Reconciler) processClick(ctx context.Context, tb v1alpha1.ToggleButton) error {
+func (r *Reconciler) processClick(ctx context.Context, tb *v1alpha1.ToggleButton) error {
 	uiButton := v1alpha1.UIButton{}
 	err := r.ctrlClient.Get(ctx, types.NamespacedName{Name: uibuttonName(tb.Name)}, &uiButton)
 	if err != nil {
@@ -135,19 +136,19 @@ func (r *Reconciler) processClick(ctx context.Context, tb v1alpha1.ToggleButton)
 	// if there's a new click, pass the new value through to the ConfigMap
 	if uiButton.Status.LastClickedAt.After(r.lastClickProcessTimes[tb.Name]) {
 		foundInput := false
-		var newOnValue bool
+		var isOn bool
 		for _, input := range uiButton.Status.Inputs {
 			if input.Name == actionUIInputName {
 				if input.Hidden == nil {
-					return fmt.Errorf("button %q input %q was not of type 'Hidden'", uiButton.Name, input.Name)
+					return r.setErrorf(ctx, tb, "button %q input %q was not of type 'Hidden'", uiButton.Name, input.Name)
 				}
 				switch input.Hidden.Value {
 				case turnOnInputValue:
-					newOnValue = true
+					isOn = true
 				case turnOffInputValue:
-					newOnValue = false
+					isOn = false
 				default:
-					return fmt.Errorf("button %q input %q had unexpected value %q", uiButton.Name, input.Name, input.Hidden.Value)
+					return r.setErrorf(ctx, tb, "button %q input %q had unexpected value %q", uiButton.Name, input.Name, input.Hidden.Value)
 				}
 				foundInput = true
 				break
@@ -155,12 +156,12 @@ func (r *Reconciler) processClick(ctx context.Context, tb v1alpha1.ToggleButton)
 		}
 
 		if !foundInput {
-			return fmt.Errorf("UIButton %q does not have an input named %q", uiButton.Name, actionUIInputName)
+			return r.setErrorf(ctx, tb, "UIButton %q does not have an input named %q", uiButton.Name, actionUIInputName)
 		}
 
 		ss := tb.Spec.StateSource.ConfigMap
 		if ss == nil {
-			return fmt.Errorf("ToggleButton %q has nil Spec.StateSource.ConfigMap", tb.Name)
+			return r.setError(ctx, tb, "Spec.StateSource.ConfigMap is nil")
 		}
 		var cm v1alpha1.ConfigMap
 		err := r.ctrlClient.Get(ctx, types.NamespacedName{Name: ss.Name}, &cm)
@@ -168,11 +169,11 @@ func (r *Reconciler) processClick(ctx context.Context, tb v1alpha1.ToggleButton)
 			return errors.Wrap(err, "fetching ToggleButton ConfigMap")
 		}
 
-		var desiredValue string
-		if newOnValue {
-			desiredValue = ss.OnValue
+		var newValue string
+		if isOn {
+			newValue = ss.OnValue
 		} else {
-			desiredValue = ss.OffValue
+			newValue = ss.OffValue
 		}
 
 		if cm.Data == nil {
@@ -181,8 +182,8 @@ func (r *Reconciler) processClick(ctx context.Context, tb v1alpha1.ToggleButton)
 
 		currentValue, ok := cm.Data[ss.Key]
 
-		if !ok || currentValue != desiredValue {
-			cm.Data[ss.Key] = desiredValue
+		if !ok || currentValue != newValue {
+			cm.Data[ss.Key] = newValue
 			err := r.ctrlClient.Update(ctx, &cm)
 			if err != nil {
 				return errors.Wrap(err, "updating ConfigMap with ToggleButton value")
@@ -195,25 +196,33 @@ func (r *Reconciler) processClick(ctx context.Context, tb v1alpha1.ToggleButton)
 	return nil
 }
 
-func setError(ctx context.Context, c ctrlclient.Client, tb *v1alpha1.ToggleButton, error string) error {
+// sets an error in the ToggleButton's status
+// This should be used for non-retriable errors
+func (r *Reconciler) setError(ctx context.Context, tb *v1alpha1.ToggleButton, error string) error {
 	tb.Status.Error = error
-	return c.Status().Update(ctx, tb)
+	return r.ctrlClient.Status().Update(ctx, tb)
 }
 
-func (r *Reconciler) isOn(ctx context.Context, tb *v1alpha1.ToggleButton) (isOn bool, ok bool, err error) {
+func (r *Reconciler) setErrorf(ctx context.Context, tb *v1alpha1.ToggleButton, errorfmt string, a ...interface{}) error {
+	return r.setError(ctx, tb, fmt.Sprintf(errorfmt, a...))
+}
+
+func (r *Reconciler) isOn(ctx context.Context, tb *v1alpha1.ToggleButton) (bool, error) {
+	isOn := tb.Spec.DefaultOn
 	ss := tb.Spec.StateSource.ConfigMap
+	if ss == nil {
+		return isOn, r.setError(ctx, tb, "Spec.StateSource.ConfigMap is nil")
+	}
 	var cm v1alpha1.ConfigMap
-	err = r.ctrlClient.Get(ctx, types.NamespacedName{Name: ss.Name}, &cm)
+	err := r.ctrlClient.Get(ctx, types.NamespacedName{Name: ss.Name}, &cm)
 	if client.IgnoreNotFound(err) != nil {
-		return false, false, errors.Wrapf(err, "fetching ToggleButton %q ConfigMap %q", tb.Name, ss.Name)
+		return false, errors.Wrapf(err, "fetching ToggleButton %q ConfigMap %q", tb.Name, ss.Name)
 	}
 
 	if apierrors.IsNotFound(err) {
-		err := setError(ctx, r.ctrlClient, tb, fmt.Sprintf("no such ConfigMap %q", ss.Name))
-		return false, false, err
+		return isOn, r.setErrorf(ctx, tb, "no such ConfigMap %q", ss.Name)
 	}
 
-	isOn = tb.Spec.DefaultOn
 	if cm.Data != nil {
 		cmVal, ok := cm.Data[ss.Key]
 		if ok {
@@ -223,7 +232,9 @@ func (r *Reconciler) isOn(ctx context.Context, tb *v1alpha1.ToggleButton) (isOn 
 			case ss.OffValue:
 				isOn = false
 			default:
-				msg := fmt.Sprintf(
+				return isOn, r.setErrorf(
+					ctx,
+					tb,
 					"ConfigMap %q key %q has unknown value %q. expected %q or %q",
 					ss.Name,
 					ss.Key,
@@ -231,13 +242,11 @@ func (r *Reconciler) isOn(ctx context.Context, tb *v1alpha1.ToggleButton) (isOn 
 					ss.OnValue,
 					ss.OffValue,
 				)
-				err := setError(ctx, r.ctrlClient, tb, msg)
-				return false, false, err
 			}
 		}
 	}
 
-	return isOn, true, nil
+	return isOn, nil
 }
 
 func (r *Reconciler) managedOwnedUIButton(ctx context.Context, nn types.NamespacedName, tb *v1alpha1.ToggleButton, isOn bool) error {

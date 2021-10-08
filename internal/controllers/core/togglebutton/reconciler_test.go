@@ -21,9 +21,6 @@ func TestReconciler_CreatesOffUIButton(t *testing.T) {
 
 	uib := f.uiButton()
 	require.Equal(t, "enable", uib.Spec.Text)
-
-	tb := f.toggleButton()
-	require.False(t, tb.Status.On)
 }
 
 func TestReconciler_CreatesOnUIButton(t *testing.T) {
@@ -39,9 +36,6 @@ func TestReconciler_CreatesOnUIButton(t *testing.T) {
 
 	uib := f.uiButton()
 	require.Equal(t, "disable", uib.Spec.Text)
-
-	tb := f.toggleButton()
-	require.True(t, tb.Status.On)
 }
 
 func TestReconciler_DeletesUIButton(t *testing.T) {
@@ -83,13 +77,9 @@ func TestReconciler_HandlesClick(t *testing.T) {
 	cm := f.configMap()
 	require.Equal(t, "true", cm.Data["enabled"])
 
-	// 2. The ToggleButton's status is On
-	tb := f.toggleButton()
-	require.True(t, tb.Status.On)
-
-	// 3. The UIButton reflects the TB's OnStateSpec
+	// 2. The UIButton reflects the TB's OnStateSpec
 	uib = f.uiButton()
-	require.Equal(t, tb.Spec.On.Text, uib.Spec.Text)
+	require.Equal(t, "disable", uib.Spec.Text)
 }
 
 func TestReconciler_HandlesConfigMapUpdate(t *testing.T) {
@@ -104,12 +94,9 @@ func TestReconciler_HandlesConfigMapUpdate(t *testing.T) {
 
 	f.MustReconcile(tbName)
 
-	// changing the configmap directly should cause the togglebutton and uibutton to update
-	tb := f.toggleButton()
-	require.True(t, tb.Status.On)
-
+	// changing the configmap directly should cause the uibutton to update
 	uib := f.uiButton()
-	require.Equal(t, tb.Spec.On.Text, uib.Spec.Text)
+	require.Equal(t, "disable", uib.Spec.Text)
 }
 
 func TestReconciler_uiButtonClickedNoInput(t *testing.T) {
@@ -124,7 +111,10 @@ func TestReconciler_uiButtonClickedNoInput(t *testing.T) {
 	err := f.Client.Status().Update(f.ctx, &uib)
 	require.NoError(t, err)
 
-	f.ReconcileWithErrors(tbName, "does not have an input named \"action\"")
+	f.MustReconcile(tbName)
+
+	tb := f.toggleButton()
+	require.Contains(t, tb.Status.Error, "does not have an input named \"action\"")
 }
 
 func TestReconciler_uiButtonClickedInputWrongType(t *testing.T) {
@@ -145,7 +135,10 @@ func TestReconciler_uiButtonClickedInputWrongType(t *testing.T) {
 	err := f.Client.Status().Update(f.ctx, &uib)
 	require.NoError(t, err)
 
-	f.ReconcileWithErrors(tbName, "input \"action\" was not of type 'Hidden'")
+	f.MustReconcile(tbName)
+
+	tb := f.toggleButton()
+	require.Contains(t, tb.Status.Error, "input \"action\" was not of type 'Hidden'")
 }
 
 func TestReconciler_uiButtonClickedInputWrongValue(t *testing.T) {
@@ -166,7 +159,82 @@ func TestReconciler_uiButtonClickedInputWrongValue(t *testing.T) {
 	err := f.Client.Status().Update(f.ctx, &uib)
 	require.NoError(t, err)
 
-	f.ReconcileWithErrors(tbName, "input \"action\" had unexpected value \"fdasfsa\"")
+	f.MustReconcile(tbName)
+
+	tb := f.toggleButton()
+	require.Contains(t, tb.Status.Error, "unexpected value \"fdasfsa\"")
+}
+
+func TestReconciler_noConfigMap(t *testing.T) {
+	f := newFixture(t)
+
+	f.createToggleButton()
+
+	tb := f.toggleButton()
+	require.Equal(t, "no such ConfigMap \"toggle-cm\"", tb.Status.Error)
+}
+
+func TestReconciler_doesntSpecifyConfigMap(t *testing.T) {
+	f := newFixture(t)
+
+	f.createToggleButton()
+	tb := f.toggleButton()
+	tb.Spec.StateSource.ConfigMap = nil
+	f.Update(&tb)
+
+	// simulate a click on the button, but with an unknown value
+	uib := f.uiButton()
+	require.NotNil(t, uib)
+	uib.Status.LastClickedAt = metav1.NowMicro()
+	uib.Status.Inputs = []v1alpha1.UIInputStatus{
+		{
+			Name:   actionUIInputName,
+			Hidden: &v1alpha1.UIHiddenInputStatus{Value: "foo"},
+		},
+	}
+	err := f.Client.Status().Update(f.ctx, &uib)
+	require.NoError(t, err)
+
+	f.MustReconcile(tbName)
+
+	tb = f.toggleButton()
+	require.Contains(t, tb.Status.Error, "Spec.StateSource.ConfigMap is nil")
+}
+
+func TestReconciler_ConfigMapUnexpectedValue(t *testing.T) {
+	f := newFixture(t)
+	f.setupTest()
+
+	cm := f.configMap()
+	tb := f.toggleButton()
+	cm.Data[tb.Spec.StateSource.ConfigMap.Key] = "asdf"
+	err := f.Client.Status().Update(f.ctx, &cm)
+	require.NoError(t, err)
+
+	f.MustReconcile(tbName)
+
+	tb = f.toggleButton()
+	require.Contains(t, tb.Status.Error, "unknown value \"asdf\"")
+}
+
+func TestReconciler_clearError(t *testing.T) {
+	f := newFixture(t)
+	f.setupTest()
+
+	cm := f.configMap()
+	tb := f.toggleButton()
+	cm.Data[tb.Spec.StateSource.ConfigMap.Key] = "asdf"
+	err := f.Client.Status().Update(f.ctx, &cm)
+	require.NoError(t, err)
+	f.MustReconcile(tbName)
+
+	cm.Data[tb.Spec.StateSource.ConfigMap.Key] = tb.Spec.StateSource.ConfigMap.OnValue
+	err = f.Client.Status().Update(f.ctx, &cm)
+	require.NoError(t, err)
+	f.MustReconcile(tbName)
+
+	tb = f.toggleButton()
+	require.Equal(t, "", tb.Status.Error)
 }
 
 type fixture struct {
@@ -185,7 +253,7 @@ func newFixture(t *testing.T) *fixture {
 	}
 }
 
-func (f *fixture) setupTest() {
+func (f *fixture) createConfigMap() {
 	err := f.Client.Create(f.ctx, &v1alpha1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "toggle-cm",
@@ -195,7 +263,10 @@ func (f *fixture) setupTest() {
 		},
 	})
 	require.NoError(f.t, err)
-	err = f.Client.Create(f.ctx, &v1alpha1.ToggleButton{
+}
+
+func (f *fixture) createToggleButton() {
+	err := f.Client.Create(f.ctx, &v1alpha1.ToggleButton{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      tbName.Name,
 			Namespace: tbName.Namespace,
@@ -222,6 +293,11 @@ func (f *fixture) setupTest() {
 	})
 	require.NoError(f.t, err)
 	f.MustReconcile(tbName)
+}
+
+func (f *fixture) setupTest() {
+	f.createConfigMap()
+	f.createToggleButton()
 }
 
 func (f *fixture) toggleButton() v1alpha1.ToggleButton {

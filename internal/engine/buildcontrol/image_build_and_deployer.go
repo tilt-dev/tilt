@@ -80,7 +80,6 @@ func NewImageBuildAndDeployer(
 	env k8s.Env,
 	kubeContext k8s.KubeContext,
 	analytics *analytics.TiltAnalytics,
-	updMode UpdateMode,
 	c build.Clock,
 	kl KINDLoader,
 	ctrlClient ctrlclient.Client,
@@ -88,7 +87,7 @@ func NewImageBuildAndDeployer(
 ) *ImageBuildAndDeployer {
 	return &ImageBuildAndDeployer{
 		db:          db,
-		ib:          NewImageBuilder(db, customBuilder, updMode),
+		ib:          NewImageBuilder(db, customBuilder),
 		k8sClient:   k8sClient,
 		env:         env,
 		kubeContext: kubeContext,

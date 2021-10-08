@@ -21,6 +21,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/dockerfile"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/internal/tracer"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
@@ -32,21 +33,15 @@ func ProvideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kC
 	dockerImageBuilder := build.NewDockerImageBuilder(docker2, labels)
 	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
 	execCustomBuilder := build.NewExecCustomBuilder(docker2, clock)
-	updateModeFlag := _wireUpdateModeFlagValue
-	updateMode, err := ProvideUpdateMode(updateModeFlag, kubeContext, clusterEnv)
-	if err != nil {
-		return nil, err
-	}
 	scheme := v1alpha1.NewScheme()
 	namespace := provideFakeK8sNamespace()
 	reconciler := kubernetesapply.NewReconciler(ctrlclient, kClient, scheme, dockerBuilder, kubeContext, st, namespace)
-	imageBuildAndDeployer := NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, kClient, env, kubeContext, analytics2, updateMode, clock, kp, ctrlclient, reconciler)
+	imageBuildAndDeployer := NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, kClient, env, kubeContext, analytics2, clock, kp, ctrlclient, reconciler)
 	return imageBuildAndDeployer, nil
 }
 
 var (
-	_wireLabelsValue         = dockerfile.Labels{}
-	_wireUpdateModeFlagValue = UpdateModeFlag(UpdateModeAuto)
+	_wireLabelsValue = dockerfile.Labels{}
 )
 
 func ProvideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompose.DockerComposeClient, dCli docker.Client, dir *dirs.TiltDevDir) (*DockerComposeBuildAndDeployer, error) {
@@ -55,41 +50,17 @@ func ProvideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompo
 	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
 	clock := build.ProvideClock()
 	execCustomBuilder := build.NewExecCustomBuilder(dCli, clock)
-	updateModeFlag := _wireBuildcontrolUpdateModeFlagValue
-	kubeContextOverride := _wireKubeContextOverrideValue
-	namespaceOverride := _wireNamespaceOverrideValue
-	clientConfig := k8s.ProvideClientConfig(kubeContextOverride, namespaceOverride)
-	config, err := k8s.ProvideKubeConfig(clientConfig, kubeContextOverride)
-	if err != nil {
-		return nil, err
-	}
-	kubeContext, err := k8s.ProvideKubeContext(config)
-	if err != nil {
-		return nil, err
-	}
-	clusterEnv := _wireClusterEnvValue
-	updateMode, err := ProvideUpdateMode(updateModeFlag, kubeContext, clusterEnv)
-	if err != nil {
-		return nil, err
-	}
-	imageBuilder := NewImageBuilder(dockerBuilder, execCustomBuilder, updateMode)
+	imageBuilder := NewImageBuilder(dockerBuilder, execCustomBuilder)
 	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(dcCli, dCli, imageBuilder, clock)
 	return dockerComposeBuildAndDeployer, nil
 }
-
-var (
-	_wireBuildcontrolUpdateModeFlagValue = UpdateModeFlag(UpdateModeAuto)
-	_wireKubeContextOverrideValue        = k8s.KubeContextOverride("")
-	_wireNamespaceOverrideValue          = k8s.NamespaceOverride("")
-	_wireClusterEnvValue                 = docker.ClusterEnv(docker.Env{})
-)
 
 // wire.go:
 
 var BaseWireSet = wire.NewSet(wire.Value(dockerfile.Labels{}), v1alpha1.NewScheme, k8s.ProvideMinikubeClient, build.DefaultDockerBuilder, build.NewDockerImageBuilder, build.NewExecCustomBuilder, wire.Bind(new(build.CustomBuilder), new(*build.ExecCustomBuilder)), wire.Bind(new(build.DockerKubeConnection), new(build.DockerBuilder)), NewDockerComposeBuildAndDeployer,
 	NewImageBuildAndDeployer,
 	NewLiveUpdateBuildAndDeployer,
-	NewLocalTargetBuildAndDeployer, containerupdate.NewDockerUpdater, containerupdate.NewExecUpdater, NewImageBuilder, tracer.InitOpenTelemetry, ProvideUpdateMode,
+	NewLocalTargetBuildAndDeployer, containerupdate.NewDockerUpdater, containerupdate.NewExecUpdater, NewImageBuilder, tracer.InitOpenTelemetry, liveupdates.ProvideUpdateMode,
 )
 
 func provideFakeK8sNamespace() k8s.Namespace {
