@@ -158,8 +158,13 @@ func (b ManifestBuilder) Build() model.Manifest {
 		m = assembleDC(
 			model.Manifest{Name: b.name, ResourceDependencies: rds},
 			model.DockerComposeTarget{
-				Name:        model.TargetName(b.name),
-				ConfigPaths: b.dcConfigPaths,
+				Spec: model.DockerComposeUpSpec{
+					Service: string(b.name),
+					Project: model.DockerComposeProject{
+						ConfigPaths: b.dcConfigPaths,
+					},
+				},
+				Name: model.TargetName(b.name),
 			},
 			b.iTargets...)
 	} else if b.localCmd != "" || b.localServeCmd != "" {

@@ -579,7 +579,7 @@ func TestDockerComposeUpExpanded(t *testing.T) {
 	now := time.Now()
 	v := newView(view.Resource{
 		Name:         "snack",
-		ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, "running", testCID, "snack:dc", now.Add(-5*time.Second), v1alpha1.RuntimeStatusOK),
+		ResourceInfo: view.NewDCResourceInfo("running", testCID, "snack:dc", now.Add(-5*time.Second), v1alpha1.RuntimeStatusOK),
 		Endpoints:    []string{"http://localhost:3000"},
 		CurrentBuild: model.BuildRecord{
 			StartTime: now.Add(-5 * time.Second),
@@ -598,7 +598,7 @@ func TestStatusBarDCRebuild(t *testing.T) {
 	now := time.Now()
 	v := newView(view.Resource{
 		Name:         "snack",
-		ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, "exited", testCID, "snack:dc", now.Add(-5*time.Second), v1alpha1.RuntimeStatusError),
+		ResourceInfo: view.NewDCResourceInfo("exited", testCID, "snack:dc", now.Add(-5*time.Second), v1alpha1.RuntimeStatusError),
 		CurrentBuild: model.BuildRecord{
 			StartTime: now.Add(-5 * time.Second),
 			Reason:    model.BuildReasonFlagChangedFiles,
@@ -616,7 +616,7 @@ func TestDetectDCCrashExpanded(t *testing.T) {
 	now := time.Now()
 	v := newView(view.Resource{
 		Name:         "snack",
-		ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, "exited", testCID, "snack:dc", now.Add(-5*time.Second), v1alpha1.RuntimeStatusError),
+		ResourceInfo: view.NewDCResourceInfo("exited", testCID, "snack:dc", now.Add(-5*time.Second), v1alpha1.RuntimeStatusError),
 	})
 	v.LogReader = newSpanLogReader("snack", "snack:dc", "hi im a crash")
 
@@ -630,7 +630,7 @@ func TestDetectDCCrashNotExpanded(t *testing.T) {
 	now := time.Now()
 	v := newView(view.Resource{
 		Name:         "snack",
-		ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, "exited", testCID, "snack:dc", now.Add(-5*time.Second), v1alpha1.RuntimeStatusError),
+		ResourceInfo: view.NewDCResourceInfo("exited", testCID, "snack:dc", now.Add(-5*time.Second), v1alpha1.RuntimeStatusError),
 	})
 	v.LogReader = newSpanLogReader("snack", "snack:dc", "hi im a crash")
 
@@ -644,7 +644,7 @@ func TestDetectDCCrashAutoExpand(t *testing.T) {
 	now := time.Now()
 	v := newView(view.Resource{
 		Name:         "snack",
-		ResourceInfo: view.NewDCResourceInfo([]string{"foo"}, "exited", testCID, "snack:dc", now.Add(-5*time.Second), v1alpha1.RuntimeStatusError),
+		ResourceInfo: view.NewDCResourceInfo("exited", testCID, "snack:dc", now.Add(-5*time.Second), v1alpha1.RuntimeStatusError),
 	})
 	v.LogReader = newSpanLogReader("snack", "snack:dc", "hi im a crash")
 
