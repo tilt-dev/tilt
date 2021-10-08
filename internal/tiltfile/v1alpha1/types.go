@@ -21,6 +21,10 @@ func (p Plugin) registerSymbols(env *starkit.Environment) error {
 	if err != nil {
 		return err
 	}
+	err = env.AddBuiltin("v1alpha1.config_map", p.configMap)
+	if err != nil {
+		return err
+	}
 	err = env.AddBuiltin("v1alpha1.extension", p.extension)
 	if err != nil {
 		return err
@@ -154,6 +158,30 @@ func (p Plugin) cmd(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tupl
 	if disableSource.isUnpacked {
 		obj.Spec.DisableSource = (*v1alpha1.DisableSource)(&disableSource.Value)
 	}
+	obj.ObjectMeta.Labels = labels
+	obj.ObjectMeta.Annotations = annotations
+	return p.register(t, obj)
+}
+
+func (p Plugin) configMap(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var err error
+	obj := &v1alpha1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{},
+	}
+	var data value.StringStringMap
+	var labels value.StringStringMap
+	var annotations value.StringStringMap
+	err = starkit.UnpackArgs(t, fn.Name(), args, kwargs,
+		"name", &obj.ObjectMeta.Name,
+		"labels?", &labels,
+		"annotations?", &annotations,
+		"data?", &data,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	obj.Data = data
 	obj.ObjectMeta.Labels = labels
 	obj.ObjectMeta.Annotations = annotations
 	return p.register(t, obj)
