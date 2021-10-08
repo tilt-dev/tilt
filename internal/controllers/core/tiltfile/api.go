@@ -183,8 +183,8 @@ func toAPIObjects(nn types.NamespacedName, tf *v1alpha1.Tiltfile, tlr *tiltfile.
 		}
 
 		cmMap := result.GetOrCreateTypedSet(&v1alpha1.ConfigMap{})
-		for k, fw := range toDisableConfigMaps(disableSources) {
-			cmMap[k] = fw
+		for k, obj := range toDisableConfigMaps(disableSources) {
+			cmMap[k] = obj
 		}
 
 		updateCmds := toCmdObjects(tlr, disableSources)
