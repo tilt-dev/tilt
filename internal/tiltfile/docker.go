@@ -187,7 +187,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		s.logger.Warnf("%s", cacheObsoleteWarning)
 	}
 
-	liveUpdate, err := s.liveUpdateFromSteps(thread, liveUpdateVal)
+	liveUpdate, err := s.liveUpdateFromSteps(thread, ref, liveUpdateVal)
 	if err != nil {
 		return nil, errors.Wrap(err, "live_update")
 	}
@@ -318,7 +318,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, fmt.Errorf("Argument 1 (ref): can't parse %q: %v", dockerRef, err)
 	}
 
-	liveUpdate, err := s.liveUpdateFromSteps(thread, liveUpdateVal)
+	liveUpdate, err := s.liveUpdateFromSteps(thread, ref, liveUpdateVal)
 	if err != nil {
 		return nil, errors.Wrap(err, "live_update")
 	}

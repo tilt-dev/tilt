@@ -6,12 +6,15 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/docker/distribution/reference"
 	"go.starlark.net/syntax"
 
 	"go.starlark.net/starlark"
 
+	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 	"github.com/tilt-dev/tilt/internal/tiltfile/value"
+	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -207,12 +210,16 @@ func (s *tiltfileState) liveUpdateRestartContainer(thread *starlark.Thread, fn *
 	return ret, nil
 }
 
-func (s *tiltfileState) liveUpdateFromSteps(t *starlark.Thread, maybeSteps starlark.Value) (v1alpha1.LiveUpdateSpec, error) {
+func (s *tiltfileState) liveUpdateFromSteps(t *starlark.Thread, ref reference.Named, maybeSteps starlark.Value) (v1alpha1.LiveUpdateSpec, error) {
 	var err error
 
 	basePath := starkit.AbsWorkingDir(t)
 	spec := v1alpha1.LiveUpdateSpec{
 		BasePath: basePath,
+		// TODO(milas): this is pretty fragile and requires implicit knowledge of how the image FileWatch API objects
+		// 	are named by the engine; ideally similar to how the Tiltfile is creating an API spec for LiveUpdate here,
+		// 	it should do the same for FileWatch and pass in a types.NamespacedName for the FileWatch here
+		FileWatchName: apis.SanitizeName(model.ImageID(container.NewRefSelector(ref)).String()),
 	}
 
 	stepSlice := starlarkValueOrSequenceToSlice(maybeSteps)
