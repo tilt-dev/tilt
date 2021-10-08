@@ -29,8 +29,9 @@ import (
 
 // dcResourceSet represents a single docker-compose config file and all its associated services
 type dcResourceSet struct {
-	configPaths []string
+	Project model.DockerComposeProject
 
+	configPaths  []string
 	services     []*dcService
 	tiltfilePath string
 }
@@ -65,7 +66,7 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 	allConfigPaths := append([]string{}, dc.configPaths...)
 	allConfigPaths = append(allConfigPaths, configPaths.Value...)
 
-	services, err := parseDCConfig(s.ctx, s.dcCli, allConfigPaths)
+	project, services, err := parseDCConfig(s.ctx, s.dcCli, allConfigPaths)
 	if err != nil {
 		return nil, err
 	}
@@ -83,6 +84,7 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 	}
 
 	s.dc = dcResourceSet{
+		Project:      *project,
 		configPaths:  allConfigPaths,
 		services:     services,
 		tiltfilePath: starkit.CurrentExecPath(thread),
@@ -277,10 +279,10 @@ func DockerComposeConfigToService(svcConfig types.ServiceConfig) (dcService, err
 	return svc, nil
 }
 
-func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, configPaths []string) ([]*dcService, error) {
-	proj, err := dcc.Project(ctx, configPaths)
+func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, configPaths []string) (*model.DockerComposeProject, []*dcService, error) {
+	projModel, proj, err := dcc.Project(ctx, configPaths)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var services []*dcService
@@ -293,16 +295,20 @@ func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, c
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return services, nil
+	return projModel, services, nil
 }
 
 func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResourceSet) (model.Manifest, error) {
 	dcInfo := model.DockerComposeTarget{
-		ConfigPaths: dcSet.configPaths,
-		YAMLRaw:     service.ServiceConfig,
+		Name: model.TargetName(service.Name),
+		Spec: model.DockerComposeUpSpec{
+			Service: service.Name,
+			Project: dcSet.Project,
+		},
+		ServiceYAML: string(service.ServiceConfig),
 		DfRaw:       service.DfContents,
 		Links:       service.Links,
 	}.WithDependencyIDs(service.DependencyIDs).

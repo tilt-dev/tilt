@@ -4,3 +4,6 @@ include('../Tiltfile')
 k8s_yaml('job.yaml')
 docker_build('job', '.')
 k8s_resource('job', port_forwards=31234)
+
+# to test that resource_deps on jobs wait for succeeded, not running
+local_resource('foo', 'echo hi', allow_parallel=True, resource_deps=['job'])

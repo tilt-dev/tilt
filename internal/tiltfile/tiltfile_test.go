@@ -1286,7 +1286,7 @@ k8s_yaml('foo.yaml')
 		buildFilters(".git"),
 		fileChangeFilters(".git"),
 		buildFilters("Tiltfile"),
-		fileChangeMatches("Tiltfile"),
+		fileChangeFilters("Tiltfile"),
 		buildMatches("foo.yaml"),
 		fileChangeMatches("foo.yaml"),
 	)
@@ -1764,6 +1764,25 @@ k8s_resource(new_name='config', objects=['config'])
 	f.load("config")
 	f.assertNextManifest("config",
 		podReadiness(model.PodReadinessIgnore),
+	)
+}
+
+func TestPodReadinessDefaultJob(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("job.yaml", `apiVersion: batch/v1
+kind: Job
+metadata:
+  name: myjob
+`)
+	f.file("Tiltfile", `
+k8s_yaml('job.yaml')
+`)
+
+	f.load("myjob")
+	f.assertNextManifest("myjob",
+		podReadiness(model.PodReadinessSucceeded),
 	)
 }
 

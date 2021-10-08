@@ -38,6 +38,7 @@ import (
 // Useful for sharing data from one system and subscribing to it from another.
 //
 // +k8s:openapi-gen=true
+// +tilt:starlark-gen=true
 type ConfigMap struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`

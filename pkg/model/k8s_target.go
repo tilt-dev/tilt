@@ -10,11 +10,7 @@ import (
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
-// Whether or not to wait for pods to become ready before
-// marking the k8s resource healthy.
-//
-// TODO(nick): I strongly suspect we will at least want a separate mode
-// for jobs that waits until they become complete, as we do in `tilt ci`
+// Specifies how a Pod's state factors into determining whether a resource is ready
 type PodReadinessMode string
 
 // Pod readiness isn't applicable to this resource
@@ -25,6 +21,9 @@ const PodReadinessWait PodReadinessMode = "wait"
 
 // Don't even wait for pods to appear.
 const PodReadinessIgnore PodReadinessMode = "ignore"
+
+// wait until the pod has completed successfully
+const PodReadinessSucceeded PodReadinessMode = "succeeded"
 
 type K8sTarget struct {
 	// An apiserver-driven data model for applying Kubernetes YAML.

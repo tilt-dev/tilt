@@ -173,6 +173,7 @@ message CmdStatus {
 // Useful for sharing data from one system and subscribing to it from another.
 //
 // +k8s:openapi-gen=true
+// +tilt:starlark-gen=true
 message ConfigMap {
   optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
@@ -1031,6 +1032,42 @@ message LiveUpdate {
   optional LiveUpdateStatus status = 3;
 }
 
+// LiveUpdateContainerStatus defines the observed state of
+// the live-update syncer for a particular container.
+message LiveUpdateContainerStatus {
+  // The name of the container in the pod.
+  optional string containerName = 1;
+
+  // The ID of the container in the pod, in the format 'docker://<container_id>'.
+  // +optional
+  optional string containerID = 2;
+
+  // The name of the pod this container belongs to.
+  optional string podName = 3;
+
+  // The namespace of the pod this container belongs to.
+  optional string namespace = 4;
+
+  // The timestamp of the most recent file update successfully synced to the
+  // container.
+  //
+  // Must match the timestamp in a FileEvent, not the time the sync was performed.
+  //
+  // +optional
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastFileTimeSynced = 5;
+
+  // Contains any error messages from the most recent sequence of Execs.
+  //
+  // Empty if the most recent Execs completed successfully.
+  //
+  // An ExecError is not necessarily a failure state. For example, a linter
+  // error in the container is something we'd want to surface to the user, but
+  // not an indication that the live-updater did something wrong.
+  //
+  // +optional
+  optional string lastExecError = 6;
+}
+
 // Runs a remote command after files have been synced to the container.
 // Commonly used for small in-container changes (like moving files
 // around, or restart processes).
@@ -1144,8 +1181,37 @@ message LiveUpdateSpec {
   optional string restart = 7;
 }
 
+// If any of the containers are currently failing to process updates, the
+// LiveUpdateStateFailed surfaces information about what's happening and what
+// the live-updater is doing to fix the problem.
+message LiveUpdateStateFailed {
+  // One word camel-case reason why we've reached a failure state.
+  // +optional
+  optional string reason = 1;
+
+  // Human-readable description of what's wrong.
+  // +optional
+  optional string message = 2;
+
+  // When the live-updater transitioned into a Failed state.
+  // +optional
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastTransitionTime = 3;
+}
+
 // LiveUpdateStatus defines the observed state of LiveUpdate
 message LiveUpdateStatus {
+  // A list of all containers that the live-updater is currently connected to.
+  // +optional
+  repeated LiveUpdateContainerStatus containers = 1;
+
+  // If any of the containers are currently failing to process updates,
+  // the Failed state surfaces information about what's happening and what
+  // the live-updater is doing to fix the problem.
+  //
+  // If all containers are updating successfully, Failed will be nil.
+  //
+  // +optional
+  optional LiveUpdateStateFailed failed = 2;
 }
 
 // Determines how a local path maps into a container image.

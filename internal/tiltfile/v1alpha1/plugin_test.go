@@ -197,6 +197,32 @@ v1alpha1.ui_button(
 	})
 }
 
+func TestConfigMap(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.File("Tiltfile", `
+v1alpha1.config_map(
+  name='my-config',
+  labels={'bar': 'baz'},
+  data={'foo': 'bar'})
+`)
+	result, err := f.ExecFile("Tiltfile")
+	require.NoError(t, err)
+
+	set := MustState(result)
+
+	obj := set.GetSetForType(&v1alpha1.ConfigMap{})["my-config"].(*v1alpha1.ConfigMap)
+	require.NotNil(t, obj)
+	require.Equal(t, obj, &v1alpha1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   "my-config",
+			Labels: map[string]string{"bar": "baz"},
+		},
+		Data: map[string]string{"foo": "bar"},
+	})
+}
+
 func newFixture(tb testing.TB) *starkit.Fixture {
 	return starkit.NewFixture(tb, NewPlugin())
 }

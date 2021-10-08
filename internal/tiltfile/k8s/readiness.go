@@ -20,19 +20,16 @@ func (m *PodReadinessMode) Unpack(v starlark.Value) error {
 		return fmt.Errorf("Must be a string. Got: %s", v.Type())
 	}
 
-	if s == string(model.PodReadinessIgnore) {
-		m.Value = model.PodReadinessIgnore
-		return nil
-	}
-
-	if s == string(model.PodReadinessWait) {
-		m.Value = model.PodReadinessWait
-		return nil
-	}
-
-	if s == "" {
-		m.Value = model.PodReadinessNone
-		return nil
+	for _, mode := range []model.PodReadinessMode{
+		model.PodReadinessIgnore,
+		model.PodReadinessWait,
+		model.PodReadinessSucceeded,
+		model.PodReadinessNone,
+	} {
+		if s == string(mode) {
+			m.Value = mode
+			return nil
+		}
 	}
 
 	return fmt.Errorf("Invalid value. Allowed: {%s, %s}. Got: %s", model.PodReadinessIgnore, model.PodReadinessWait, s)
