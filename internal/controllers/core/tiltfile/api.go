@@ -133,13 +133,13 @@ var typesWithTiltfileBuiltins = []apiset.Object{
 	&v1alpha1.Extension{},
 	&v1alpha1.FileWatch{},
 	&v1alpha1.Cmd{},
+	&v1alpha1.KubernetesApply{},
 	&v1alpha1.UIButton{},
 	&v1alpha1.ConfigMap{},
 	&v1alpha1.KubernetesDiscovery{},
 }
 
 var typesToReconcile = append([]apiset.Object{
-	&v1alpha1.KubernetesApply{},
 	&v1alpha1.ImageMap{},
 	&v1alpha1.UIResource{},
 }, typesWithTiltfileBuiltins...)
@@ -175,12 +175,15 @@ func toAPIObjects(nn types.NamespacedName, tf *v1alpha1.Tiltfile, tlr *tiltfile.
 
 	if tlr != nil {
 		disableSources = toDisableSources(tlr)
-
-		result.AddSetForType(&v1alpha1.KubernetesApply{}, toKubernetesApplyObjects(tlr, disableSources))
 		result.AddSetForType(&v1alpha1.ImageMap{}, toImageMapObjects(tlr, disableSources))
 
 		for _, obj := range typesWithTiltfileBuiltins {
 			result.AddSetForType(obj, tlr.ObjectSet.GetSetForType(obj))
+		}
+
+		kaMap := result.GetOrCreateTypedSet(&v1alpha1.KubernetesApply{})
+		for k, obj := range toKubernetesApplyObjects(tlr, disableSources) {
+			kaMap[k] = obj
 		}
 
 		cmMap := result.GetOrCreateTypedSet(&v1alpha1.ConfigMap{})
