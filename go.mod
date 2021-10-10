@@ -3,7 +3,6 @@ module github.com/tilt-dev/tilt
 go 1.16
 
 require (
-	cloud.google.com/go v0.56.0 // indirect
 	github.com/adrg/xdg v0.3.3
 	github.com/agl/ed25519 v0.0.0-20170116200512-5312a6153412 // indirect
 	github.com/akutz/memconn v0.1.0
@@ -52,14 +51,12 @@ require (
 	github.com/moby/buildkit v0.7.1-0.20200925001807-2b6cccb9b3e9
 	github.com/modern-go/reflect2 v1.0.1
 	github.com/opencontainers/go-digest v1.0.0
-	github.com/pelletier/go-toml v1.5.0 // indirect
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
 	github.com/pkg/browser v0.0.0-00010101000000-000000000000
 	github.com/pkg/errors v0.9.1
 	github.com/rivo/tview v0.0.0-20180926100353-bc39bf8d245d
 	github.com/schollz/closestmatch v2.1.0+incompatible
-	github.com/spf13/cobra v1.1.3
-	github.com/spf13/jwalterweatherman v1.1.0 // indirect
+	github.com/spf13/cobra v1.2.1
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.0
 	github.com/theupdateframework/notary v0.6.1 // indirect
@@ -74,7 +71,7 @@ require (
 	github.com/tonistiigi/units v0.0.0-20180711220420-6950e57a87ea
 	github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa
 	github.com/wojas/genericr v0.2.0
-	go.opencensus.io v0.22.4
+	go.opencensus.io v0.23.0
 	go.opentelemetry.io/otel v0.20.0
 	go.opentelemetry.io/otel/sdk v0.20.0
 	go.opentelemetry.io/otel/trace v0.20.0
