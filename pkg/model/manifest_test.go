@@ -110,6 +110,42 @@ var equalitytests = []struct {
 		false,
 	},
 	{
+		"DockerCompose.ConfigPaths equal",
+		Manifest{}.WithDeployTarget(DockerComposeTarget{ConfigPaths: []string{"/src/docker-compose.yml"}}),
+		Manifest{}.WithDeployTarget(DockerComposeTarget{ConfigPaths: []string{"/src/docker-compose.yml"}}),
+		false,
+	},
+	{
+		"DockerCompose.ConfigPaths unequal",
+		Manifest{}.WithDeployTarget(DockerComposeTarget{ConfigPaths: []string{"/src/docker-compose1.yml"}}),
+		Manifest{}.WithDeployTarget(DockerComposeTarget{ConfigPaths: []string{"/src/docker-compose2.yml"}}),
+		true,
+	},
+	{
+		"DockerCompose.YAMLRaw equal",
+		Manifest{}.WithDeployTarget(DockerComposeTarget{YAMLRaw: []byte("hello world")}),
+		Manifest{}.WithDeployTarget(DockerComposeTarget{YAMLRaw: []byte("hello world")}),
+		false,
+	},
+	{
+		"DockerCompose.YAMLRaw unequal",
+		Manifest{}.WithDeployTarget(DockerComposeTarget{YAMLRaw: []byte("hello world")}),
+		Manifest{}.WithDeployTarget(DockerComposeTarget{YAMLRaw: []byte("goodbye world")}),
+		true,
+	},
+	{
+		"DockerCompose.DfRaw equal",
+		Manifest{}.WithDeployTarget(DockerComposeTarget{DfRaw: []byte("hello world")}),
+		Manifest{}.WithDeployTarget(DockerComposeTarget{DfRaw: []byte("hello world")}),
+		false,
+	},
+	{
+		"DockerCompose.DfRaw unequal",
+		Manifest{}.WithDeployTarget(DockerComposeTarget{DfRaw: []byte("hello world")}),
+		Manifest{}.WithDeployTarget(DockerComposeTarget{DfRaw: []byte("goodbye world")}),
+		true,
+	},
+	{
 		"k8s.YAML equal",
 		Manifest{}.WithDeployTarget(NewK8sTargetForTesting("hello world")),
 		Manifest{}.WithDeployTarget(NewK8sTargetForTesting("hello world")),
@@ -221,13 +257,8 @@ func TestManifestEquality(t *testing.T) {
 
 func TestDCTargetValidate(t *testing.T) {
 	targ := DockerComposeTarget{
-		Name: "blah",
-		Spec: DockerComposeUpSpec{
-			Service: "blah",
-			Project: DockerComposeProject{
-				ConfigPaths: []string{"docker-compose.yml"},
-			},
-		},
+		Name:        "blah",
+		ConfigPaths: []string{"docker-compose.yml"},
 	}
 	err := targ.Validate()
 	assert.NoError(t, err)
@@ -238,14 +269,7 @@ func TestDCTargetValidate(t *testing.T) {
 		assert.Contains(t, err.Error(), "missing config path")
 	}
 
-	noName := DockerComposeTarget{
-		Spec: DockerComposeUpSpec{
-			Service: "blah",
-			Project: DockerComposeProject{
-				ConfigPaths: []string{"docker-compose.yml"},
-			},
-		},
-	}
+	noName := DockerComposeTarget{ConfigPaths: []string{"docker-compose.yml"}}
 	err = noName.Validate()
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "missing name")

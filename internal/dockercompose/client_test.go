@@ -189,7 +189,7 @@ func newDCFixture(t testing.TB) *dcFixture {
 func (f *dcFixture) loadProject(composeYAML string) *types.Project {
 	f.t.Helper()
 	f.tmpdir.WriteFile("docker-compose.yaml", composeYAML)
-	_, proj, err := f.cli.Project(f.ctx, []string{f.tmpdir.JoinPath("docker-compose.yaml")})
+	proj, err := f.cli.Project(f.ctx, []string{f.tmpdir.JoinPath("docker-compose.yaml")})
 	require.NoError(f.t, err, "Failed to parse compose YAML")
 	return proj
 }

@@ -115,17 +115,17 @@ func (c *downCmd) down(ctx context.Context, downDeps DownDeps, args []string) er
 		}
 	}
 
-	var dcProject model.DockerComposeProject
+	var dcConfigPaths []string
 	for _, m := range tlr.Manifests {
 		if m.IsDC() {
-			dcProject = m.DockerComposeTarget().Spec.Project
+			dcConfigPaths = m.DockerComposeTarget().ConfigPaths
 			break
 		}
 	}
 
-	if !model.IsEmptyDockerComposeProject(dcProject) {
+	if len(dcConfigPaths) > 0 {
 		dcc := downDeps.dcClient
-		err = dcc.Down(ctx, dcProject, logger.Get(ctx).Writer(logger.InfoLvl), logger.Get(ctx).Writer(logger.InfoLvl))
+		err = dcc.Down(ctx, dcConfigPaths, logger.Get(ctx).Writer(logger.InfoLvl), logger.Get(ctx).Writer(logger.InfoLvl))
 		if err != nil {
 			return errors.Wrap(err, "Running `docker-compose down`")
 		}

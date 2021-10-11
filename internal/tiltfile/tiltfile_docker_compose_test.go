@@ -94,8 +94,10 @@ func TestDockerComposeManifest(t *testing.T) {
 	f.file("Tiltfile", "docker_compose('docker-compose.yml')")
 
 	f.load("foo")
+	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
 	f.assertDcManifest("foo",
-		dcServiceYAML(f.simpleConfigAfterParse()),
+		dcConfigPath([]string{configPath}),
+		dcYAMLRaw(f.simpleConfigAfterParse()),
 		dcDfRaw(simpleDockerfile),
 		dcPublishedPorts(12312),
 		// TODO(maia): assert m.tiltFilename
@@ -122,13 +124,15 @@ services:
     image: redis:alpine`)
 	f.file("Tiltfile", "docker_compose('docker-compose.yml')")
 
-	expectedYAML := `image: redis:alpine
+	expectedYAMLRaw := `image: redis:alpine
 networks:
     default: null`
 
 	f.load("bar")
+	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
 	f.assertDcManifest("bar",
-		dcServiceYAML(expectedYAML),
+		dcConfigPath([]string{configPath}),
+		dcYAMLRaw(expectedYAMLRaw),
 		dcDfRaw(""),
 		// TODO(maia): assert m.tiltFilename
 	)
@@ -151,7 +155,7 @@ services:
       dockerfile: alternate-Dockerfile`, f.JoinPath("baz")))
 	f.file("Tiltfile", "docker_compose('docker-compose.yml')")
 
-	expectedYAML := fmt.Sprintf(`build:
+	expectedRawYAML := fmt.Sprintf(`build:
     context: %s
     dockerfile: %s
 networks:
@@ -159,8 +163,10 @@ networks:
 		f.JoinPath("baz"), f.JoinPath("baz", "alternate-Dockerfile"))
 
 	f.load("baz")
+	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
 	f.assertDcManifest("baz",
-		dcServiceYAML(expectedYAML),
+		dcConfigPath([]string{configPath}),
+		dcYAMLRaw(expectedRawYAML),
 		dcDfRaw(simpleDockerfile),
 		// TODO(maia): assert m.tiltFilename
 	)
@@ -184,7 +190,7 @@ services:
       dockerfile: %s`, f.JoinPath("baz"), dockerfilePath))
 	f.file("Tiltfile", "docker_compose('docker-compose.yml')")
 
-	expectedYAML := fmt.Sprintf(`build:
+	expectedRawYAML := fmt.Sprintf(`build:
     context: %s
     dockerfile: %s
 networks:
@@ -193,8 +199,10 @@ networks:
 		dockerfilePath)
 
 	f.load("baz")
+	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
 	f.assertDcManifest("baz",
-		dcServiceYAML(expectedYAML),
+		dcConfigPath([]string{configPath}),
+		dcYAMLRaw(expectedRawYAML),
 		dcDfRaw(simpleDockerfile),
 		// TODO(maia): assert m.tiltFilename
 	)
@@ -218,7 +226,7 @@ services:
       dockerfile: alternate-Dockerfile`, f.JoinPath("baz")))
 	f.file("Tiltfile", "docker_compose('docker-compose.yml')")
 
-	expectedYAML := fmt.Sprintf(`build:
+	expectedRawYAML := fmt.Sprintf(`build:
     context: %s
     dockerfile: %s
 networks:
@@ -226,8 +234,10 @@ networks:
 		f.JoinPath("baz"), f.JoinPath("baz", "alternate-Dockerfile"))
 
 	f.load("baz")
+	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
 	f.assertDcManifest("baz",
-		dcServiceYAML(expectedYAML),
+		dcConfigPath([]string{configPath}),
+		dcYAMLRaw(expectedRawYAML),
 		dcDfRaw(simpleDockerfile),
 		// TODO(maia): assert m.tiltFilename
 	)
@@ -305,7 +315,7 @@ services:
 	f.file("Tiltfile", fmt.Sprintf("docker_compose(%q)", configPath))
 
 	f.load("foo")
-	f.assertDcManifest("foo")
+	f.assertDcManifest("foo", dcConfigPath([]string{configPath}))
 }
 
 func TestDockerComposeManifestComputesLocalPaths(t *testing.T) {
@@ -323,8 +333,10 @@ RUN echo hi`
 	f.file("Tiltfile", "docker_compose('docker-compose.yml')")
 
 	f.load("foo")
+	configPath := f.JoinPath("docker-compose.yml")
 	f.assertDcManifest("foo",
-		dcServiceYAML(f.simpleConfigAfterParse()),
+		dcConfigPath([]string{configPath}),
+		dcYAMLRaw(f.simpleConfigAfterParse()),
 		dcDfRaw(df),
 		dcLocalPaths([]string{f.JoinPath("foo")}),
 		// TODO(maia): assert m.tiltFilename
@@ -363,8 +375,10 @@ services:
       - "12312:80"`)
 	f.file("Tiltfile", "docker_compose('foo/docker-compose.yml')")
 	f.load("foo")
+	configPath := f.JoinPath("foo", "docker-compose.yml")
 	f.assertDcManifest("foo",
-		dcServiceYAML(f.simpleConfigAfterParse()),
+		dcConfigPath([]string{configPath}),
+		dcYAMLRaw(f.simpleConfigAfterParse()),
 		dcDfRaw(df),
 		dcLocalPaths([]string{f.JoinPath("foo")}),
 		dcPublishedPorts(12312),
@@ -452,7 +466,8 @@ dc_resource('foo', 'gcr.io/foo')
 	assert.True(t, iTarget.IsDockerBuild())
 	assert.True(t, liveupdate.IsEmptySpec(iTarget.LiveUpdateSpec))
 
-	assert.Contains(t, m.DockerComposeTarget().Spec.Project.YAML, "services:\n  foo:\n    build:")
+	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
+	assert.Equal(t, m.DockerComposeTarget().ConfigPaths, []string{configPath})
 }
 
 func TestDockerComposeWithDockerBuildAutoAssociate(t *testing.T) {
@@ -483,8 +498,8 @@ docker_compose('docker-compose.yml')
 	assert.True(t, iTarget.IsDockerBuild())
 	assert.True(t, liveupdate.IsEmptySpec(iTarget.LiveUpdateSpec))
 
-	assert.Contains(t, m.DockerComposeTarget().Spec.Project.YAML,
-		"image: gcr.io/as_specified_in_config")
+	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
+	assert.Equal(t, m.DockerComposeTarget().ConfigPaths, []string{configPath})
 }
 
 // I.e. make sure that we handle de/normalization between `fooimage` <--> `docker.io/library/fooimage`
@@ -504,8 +519,8 @@ dc_resource('foo', 'fooimage')
 	m := f.assertNextManifest("foo", db(image("fooimage")))
 	assert.True(t, m.ImageTargetAt(0).IsDockerBuild())
 
-	assert.Contains(t, m.DockerComposeTarget().Spec.Project.YAML,
-		"services:\n  foo:\n    build:")
+	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
+	assert.Equal(t, m.DockerComposeTarget().ConfigPaths, []string{configPath})
 }
 
 func TestMultipleDockerComposeWithDockerBuild(t *testing.T) {
@@ -527,10 +542,12 @@ dc_resource('bar', 'gcr.io/bar')
 	foo := f.assertNextManifest("foo", db(image("gcr.io/foo")))
 	assert.True(t, foo.ImageTargetAt(0).IsDockerBuild())
 
+	bar := f.assertNextManifest("bar", db(image("gcr.io/bar")))
 	assert.True(t, foo.ImageTargetAt(0).IsDockerBuild())
 
-	assert.Contains(t, foo.DockerComposeTarget().Spec.Project.YAML,
-		"services:\n  bar:\n    depends_on:\n      foo")
+	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
+	assert.Equal(t, foo.DockerComposeTarget().ConfigPaths, []string{configPath})
+	assert.Equal(t, bar.DockerComposeTarget().ConfigPaths, []string{configPath})
 }
 
 func TestMultipleDockerComposeWithDockerBuildImageNames(t *testing.T) {
@@ -539,15 +556,14 @@ func TestMultipleDockerComposeWithDockerBuildImageNames(t *testing.T) {
 
 	f.dockerfile(filepath.Join("foo", "Dockerfile"))
 	f.dockerfile(filepath.Join("bar", "Dockerfile"))
-	config := `version: '3'
+	f.file("docker-compose.yml", `version: '3'
 services:
   foo:
     image: gcr.io/foo
   bar:
     image: gcr.io/bar
     depends_on: [foo]
-`
-	f.file("docker-compose.yml", config)
+`)
 	f.file("Tiltfile", `
 docker_build('gcr.io/foo', './foo')
 docker_build('gcr.io/bar', './bar')
@@ -560,10 +576,11 @@ docker_compose('docker-compose.yml')
 	assert.True(t, foo.ImageTargetAt(0).IsDockerBuild())
 
 	bar := f.assertNextManifest("bar", db(image("gcr.io/bar")))
-	assert.True(t, bar.ImageTargetAt(0).IsDockerBuild())
+	assert.True(t, foo.ImageTargetAt(0).IsDockerBuild())
 
-	assert.Contains(t, foo.DockerComposeTarget().Spec.Project.YAML, "services:\n  bar:\n    depends_on:\n      foo")
-	assert.Contains(t, bar.DockerComposeTarget().Spec.Project.YAML, "services:\n  bar:\n    depends_on:\n      foo")
+	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
+	assert.Equal(t, foo.DockerComposeTarget().ConfigPaths, []string{configPath})
+	assert.Equal(t, bar.DockerComposeTarget().ConfigPaths, []string{configPath})
 }
 
 func TestDCImageRefSuggestion(t *testing.T) {
@@ -608,7 +625,9 @@ dc_resource('foo', img_name)
 	bar := f.assertNextManifest("bar")
 	assert.Empty(t, bar.ImageTargets)
 
-	assert.Contains(t, foo.DockerComposeTarget().Spec.Project.YAML, "services:\n  bar:\n    depends_on:\n      foo")
+	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
+	assert.Equal(t, foo.DockerComposeTarget().ConfigPaths, []string{configPath})
+	assert.Equal(t, bar.DockerComposeTarget().ConfigPaths, []string{configPath})
 }
 
 func TestDockerComposeResourceNoImageMatch(t *testing.T) {
@@ -834,10 +853,12 @@ func (f *fixture) assertDcManifest(name model.ManifestName, opts ...interface{})
 
 	for _, opt := range opts {
 		switch opt := opt.(type) {
+		case dcConfigPathHelper:
+			assert.Equal(f.t, opt.paths, dcInfo.ConfigPaths, "docker compose config path")
 		case dcLocalPathsHelper:
 			assert.ElementsMatch(f.t, opt.paths, dcInfo.LocalPaths(), "docker compose local paths")
-		case dcServiceYAMLHelper:
-			assert.YAMLEq(f.t, opt.yaml, string(dcInfo.ServiceYAML), "docker compose YAML")
+		case dcYAMLRawHelper:
+			assert.YAMLEq(f.t, opt.yaml, string(dcInfo.YAMLRaw), "docker compose YAML raw")
 		case dcDfRawHelper:
 			assert.Equal(f.t, strings.TrimSpace(opt.df), strings.TrimSpace(string(dcInfo.DfRaw)), "docker compose Dockerfile raw")
 		case dcPublishedPortsHelper:
@@ -849,12 +870,20 @@ func (f *fixture) assertDcManifest(name model.ManifestName, opts ...interface{})
 	return m
 }
 
-type dcServiceYAMLHelper struct {
+type dcConfigPathHelper struct {
+	paths []string
+}
+
+func dcConfigPath(paths []string) dcConfigPathHelper {
+	return dcConfigPathHelper{paths}
+}
+
+type dcYAMLRawHelper struct {
 	yaml string
 }
 
-func dcServiceYAML(yaml string) dcServiceYAMLHelper {
-	return dcServiceYAMLHelper{yaml}
+func dcYAMLRaw(yaml string) dcYAMLRawHelper {
+	return dcYAMLRawHelper{yaml}
 }
 
 type dcDfRawHelper struct {

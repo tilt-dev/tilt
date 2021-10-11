@@ -36,8 +36,8 @@ func TestDockerComposeTargetBuilt(t *testing.T) {
 	}
 	if assert.Len(t, f.dcCli.UpCalls, 1, "expect one call to `docker-compose up`") {
 		call := f.dcCli.UpCalls[0]
-		assert.Equal(t, dcTarg.Spec, call.Spec)
-		assert.Equal(t, "fe", call.Spec.Service)
+		assert.Equal(t, dcTarg.ConfigPaths, call.PathToConfig)
+		assert.Equal(t, "fe", call.ServiceName.String())
 		assert.True(t, call.ShouldBuild)
 	}
 
@@ -68,8 +68,8 @@ func TestTiltBuildsImage(t *testing.T) {
 
 	if assert.Len(t, f.dcCli.UpCalls, 1, "expect one call to `docker-compose up`") {
 		call := f.dcCli.UpCalls[0]
-		assert.Equal(t, dcTarg.Spec, call.Spec)
-		assert.Equal(t, "fe", call.Spec.Service)
+		assert.Equal(t, dcTarg.ConfigPaths, call.PathToConfig)
+		assert.Equal(t, "fe", call.ServiceName.String())
 		assert.False(t, call.ShouldBuild, "should call `up` without `--build` b/c Tilt is doing the building")
 	}
 
@@ -205,9 +205,7 @@ func newDCBDFixture(t *testing.T) *dcbdFixture {
 
 func defaultDockerComposeTarget(f Fixture, name string) model.DockerComposeTarget {
 	return model.DockerComposeTarget{
-		Name: model.TargetName(name),
-		Spec: model.DockerComposeUpSpec{
-			Service: name,
-		},
+		Name:        model.TargetName(name),
+		ConfigPaths: []string{f.JoinPath("docker-compose.yml")},
 	}
 }

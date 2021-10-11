@@ -464,7 +464,6 @@ var ignoreCustomBuildDepsField = cmpopts.IgnoreFields(CustomBuild{}, "Deps")
 var ignoreLocalTargetDepsField = cmpopts.IgnoreFields(LocalTarget{}, "Deps")
 var ignoreDockerBuildCacheFrom = cmpopts.IgnoreFields(DockerBuild{}, "CacheFrom")
 var ignoreLabels = cmpopts.IgnoreFields(Manifest{}, "Labels")
-var ignoreDockerComposeProject = cmpopts.IgnoreFields(DockerComposeUpSpec{}, "Project")
 
 // ignoreLinks ignores user-defined links for the purpose of build invalidation
 //
@@ -514,10 +513,5 @@ func equalForBuildInvalidation(x, y interface{}) bool {
 
 		// user-added links don't invalidate a build
 		ignoreLinks,
-
-		// We don't want a change to the DockerCompose Project to invalidate
-		// all individual services. We track the service-specific YAML with
-		// a seprate ServiceYAML field.
-		ignoreDockerComposeProject,
 	)
 }
