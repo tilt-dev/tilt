@@ -25,7 +25,7 @@ type FakeDCClient struct {
 	t   *testing.T
 	ctx context.Context
 
-	RunLogOutput      map[string]<-chan string
+	RunLogOutput      map[model.TargetName]<-chan string
 	ContainerIdOutput container.ID
 	eventJson         chan string
 	ConfigOutput      string
@@ -40,8 +40,9 @@ var _ DockerComposeClient = &FakeDCClient{}
 
 // Represents a single call to Up
 type UpCall struct {
-	Spec        model.DockerComposeUpSpec
-	ShouldBuild bool
+	PathToConfig []string
+	ServiceName  model.TargetName
+	ShouldBuild  bool
 }
 
 func NewFakeDockerComposeClient(t *testing.T, ctx context.Context) *FakeDCClient {
@@ -49,17 +50,17 @@ func NewFakeDockerComposeClient(t *testing.T, ctx context.Context) *FakeDCClient
 		t:            t,
 		ctx:          ctx,
 		eventJson:    make(chan string, 100),
-		RunLogOutput: make(map[string]<-chan string),
+		RunLogOutput: make(map[model.TargetName]<-chan string),
 	}
 }
 
-func (c *FakeDCClient) Up(ctx context.Context, spec model.DockerComposeUpSpec,
+func (c *FakeDCClient) Up(ctx context.Context, configPaths []string, serviceName model.TargetName,
 	shouldBuild bool, stdout, stderr io.Writer) error {
-	c.UpCalls = append(c.UpCalls, UpCall{spec, shouldBuild})
+	c.UpCalls = append(c.UpCalls, UpCall{configPaths, serviceName, shouldBuild})
 	return nil
 }
 
-func (c *FakeDCClient) Down(ctx context.Context, p model.DockerComposeProject, stdout, stderr io.Writer) error {
+func (c *FakeDCClient) Down(ctx context.Context, configPaths []string, stdout, stderr io.Writer) error {
 	if c.DownError != nil {
 		err := c.DownError
 		c.DownError = err
@@ -68,14 +69,14 @@ func (c *FakeDCClient) Down(ctx context.Context, p model.DockerComposeProject, s
 	return nil
 }
 
-func (c *FakeDCClient) StreamLogs(ctx context.Context, spec model.DockerComposeUpSpec) io.ReadCloser {
-	output := c.RunLogOutput[spec.Service]
+func (c *FakeDCClient) StreamLogs(ctx context.Context, _ []string, serviceName model.TargetName) io.ReadCloser {
+	output := c.RunLogOutput[serviceName]
 	reader, writer := io.Pipe()
 	go func() {
 		c.t.Helper()
 
 		// docker-compose always logs an "Attaching to foo, bar" at the start of a log session
-		_, err := writer.Write([]byte(fmt.Sprintf("Attaching to %s\n", spec.Service)))
+		_, err := writer.Write([]byte(fmt.Sprintf("Attaching to %s\n", serviceName)))
 		require.NoError(c.t, err, "Failed to write to fake Docker Compose logs")
 
 		done := false
@@ -98,14 +99,14 @@ func (c *FakeDCClient) StreamLogs(ctx context.Context, spec model.DockerComposeU
 
 		// we call docker-compose logs with --follow, so it only terminates (normally) when the container exits
 		// and it writes a message with the container exit code
-		_, err = writer.Write([]byte(fmt.Sprintf("%s exited with code 0\n", spec.Service)))
+		_, err = writer.Write([]byte(fmt.Sprintf("%s exited with code 0\n", serviceName)))
 		require.NoError(c.t, err, "Failed to write to fake Docker Compose logs")
 		require.NoError(c.t, writer.Close(), "Failed to close fake Docker Compose logs writer")
 	}()
 	return reader
 }
 
-func (c *FakeDCClient) StreamEvents(ctx context.Context, p model.DockerComposeProject) (<-chan string, error) {
+func (c *FakeDCClient) StreamEvents(ctx context.Context, configPaths []string) (<-chan string, error) {
 	events := make(chan string, 10)
 	go func() {
 		for {
@@ -139,18 +140,16 @@ func (c *FakeDCClient) Config(_ context.Context, _ []string) (string, error) {
 	return c.ConfigOutput, nil
 }
 
-func (c *FakeDCClient) Project(_ context.Context, configPaths []string) (*model.DockerComposeProject, *types.Project, error) {
-	m := &model.DockerComposeProject{ConfigPaths: configPaths}
-
+func (c *FakeDCClient) Project(_ context.Context, _ []string) (*types.Project, error) {
 	// this is a dummy ProjectOptions that lets us use compose's logic to apply options
 	// for consistency, but we have to then pull the data out ourselves since we're calling
 	// loader.Load ourselves
 	opts, err := compose.NewProjectOptions(nil, compose.WithDotEnv, compose.WithOsEnv)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	p, err := loader.Load(types.ConfigDetails{
+	return loader.Load(types.ConfigDetails{
 		WorkingDir: c.WorkDir,
 		ConfigFiles: []types.ConfigFile{
 			{
@@ -161,10 +160,9 @@ func (c *FakeDCClient) Project(_ context.Context, configPaths []string) (*model.
 	}, func(options *loader.Options) {
 		options.ResolvePaths = true
 	})
-	return m, p, err
 }
 
-func (c *FakeDCClient) ContainerID(ctx context.Context, spec model.DockerComposeUpSpec) (container.ID, error) {
+func (c *FakeDCClient) ContainerID(ctx context.Context, configPaths []string, serviceName model.TargetName) (container.ID, error) {
 	return c.ContainerIdOutput, nil
 }
 

@@ -967,7 +967,7 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 
 	switch state := mt.State.RuntimeState.(type) {
 	case dockercompose.State:
-		return view.NewDCResourceInfo(
+		return view.NewDCResourceInfo(mt.Manifest.DockerComposeTarget().ConfigPaths,
 			state.ContainerState.Status, state.ContainerID, state.SpanID, state.StartTime, runStatus)
 	case K8sRuntimeState:
 		pod := state.MostRecentPod()
@@ -992,14 +992,13 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 
 // DockerComposeConfigPath returns the path to the docker-compose yaml file of any
 // docker-compose manifests on this EngineState.
-//
-// Current assumption is only one project per run, so we take the
+// NOTE(maia): current assumption is only one d-c.yaml per run, so we take the
 // path from the first d-c manifest we see.
-func (s EngineState) DockerComposeProject() model.DockerComposeProject {
+func (s EngineState) DockerComposeConfigPath() []string {
 	for _, mt := range s.ManifestTargets {
 		if mt.Manifest.IsDC() {
-			return mt.Manifest.DockerComposeTarget().Spec.Project
+			return mt.Manifest.DockerComposeTarget().ConfigPaths
 		}
 	}
-	return model.DockerComposeProject{}
+	return []string{}
 }
