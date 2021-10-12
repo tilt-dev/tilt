@@ -89,6 +89,16 @@ func TestAPIServerDynamicClient(t *testing.T) {
 				},
 			},
 		},
+		"ToggleButton": map[string]interface{}{
+			"stateSource": map[string]interface{}{
+				"configMap": map[string]interface{}{
+					"name":     "foo",
+					"key":      "bar",
+					"onValue":  "on",
+					"offValue": "off",
+				},
+			},
+		},
 	}
 
 	for _, obj := range v1alpha1.AllResourceObjects() {

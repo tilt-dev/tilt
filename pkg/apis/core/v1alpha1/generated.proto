@@ -173,6 +173,7 @@ message CmdStatus {
 // Useful for sharing data from one system and subscribing to it from another.
 //
 // +k8s:openapi-gen=true
+// +tilt:starlark-gen=true
 message ConfigMap {
   optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
@@ -199,7 +200,8 @@ message ConfigMapList {
   repeated ConfigMap items = 2;
 }
 
-// Describes how a ToggleButton's state is stored in a ConfigMap
+// Describes how a ToggleButton's state is stored in a ConfigMap.
+// The ConfigMap must be created separately - the ToggleButton will not automatically create it.
 message ConfigMapStateSource {
   // Name of the ConfigMap
   optional string name = 1;
@@ -1867,11 +1869,9 @@ message ToggleButtonStateSpec {
 
 // ToggleButtonStatus defines the observed state of ToggleButton
 message ToggleButtonStatus {
-  // Whether the button is currently "on"
-  optional bool on = 1;
-
-  // The last time the button changed from on to off, or vice versa.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastChange = 2;
+  // If healthy, empty. If non-healthy, specifies a problem the ToggleButton encountered
+  // +optional
+  optional string error = 1;
 }
 
 message UIBoolInputSpec {
@@ -1987,6 +1987,12 @@ message UIButtonSpec {
   //
   // +optional
   optional bool disabled = 5;
+
+  // If true, the UI will require the user to click the button a second time to
+  // confirm before taking action
+  //
+  // +optional
+  optional bool requiresConfirmation = 7;
 
   // Any inputs for this button.
   // +optional

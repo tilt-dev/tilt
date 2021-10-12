@@ -515,6 +515,11 @@
           "type": "boolean",
           "description": "If true, the button will be rendered, but with an effect indicating it's\ndisabled. It will also be unclickable.\n\n+optional"
         },
+        "requiresConfirmation": {
+          "type": "boolean",
+          "description": "+optional",
+          "title": "If true, the UI will require the user to click the button a second time to\nconfirm before taking action"
+        },
         "inputs": {
           "type": "array",
           "items": {

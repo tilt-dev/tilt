@@ -111,7 +111,8 @@ type StateSource struct {
 	ConfigMap *ConfigMapStateSource `json:"configMap,omitempty" protobuf:"bytes,1,opt,name=configMap"`
 }
 
-// Describes how a ToggleButton's state is stored in a ConfigMap
+// Describes how a ToggleButton's state is stored in a ConfigMap.
+// The ConfigMap must be created separately - the ToggleButton will not automatically create it.
 type ConfigMapStateSource struct {
 	// Name of the ConfigMap
 	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
@@ -161,8 +162,15 @@ func (in *ToggleButton) IsStorageVersion() bool {
 }
 
 func (in *ToggleButton) Validate(ctx context.Context) field.ErrorList {
-	// TODO(user): Modify it, adding your API validation here.
-	return nil
+	var result field.ErrorList
+	if in.Spec.StateSource.ConfigMap == nil {
+		result = append(result, field.Invalid(field.NewPath("Spec", "StateSource"), in.Spec.StateSource, "must specify exactly one kind of StateSource"))
+	} else {
+		if in.Spec.StateSource.ConfigMap.OffValue == in.Spec.StateSource.ConfigMap.OnValue {
+			result = append(result, field.Invalid(field.NewPath("Spec", "StateSource", "ConfigMap"), in.Spec.StateSource.ConfigMap, "OnValue and OffValue must differ"))
+		}
+	}
+	return result
 }
 
 var _ resource.ObjectList = &ToggleButtonList{}
@@ -173,11 +181,9 @@ func (in *ToggleButtonList) GetListMeta() *metav1.ListMeta {
 
 // ToggleButtonStatus defines the observed state of ToggleButton
 type ToggleButtonStatus struct {
-	// Whether the button is currently "on"
-	On bool `json:"on" protobuf:"varint,1,opt,name=on"`
-
-	// The last time the button changed from on to off, or vice versa.
-	LastChange metav1.MicroTime `json:"lastChange" protobuf:"bytes,2,opt,name=lastChange"`
+	// If healthy, empty. If non-healthy, specifies a problem the ToggleButton encountered
+	// +optional
+	Error string `json:"error" protobuf:"bytes,1,opt,name=error"`
 }
 
 // ToggleButton implements ObjectWithStatusSubResource interface.

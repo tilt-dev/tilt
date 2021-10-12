@@ -4,6 +4,8 @@ import (
 	"github.com/google/wire"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/tilt-dev/tilt/internal/controllers/core/togglebutton"
+
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
 	"github.com/tilt-dev/tilt/internal/controllers/core/extension"
 	"github.com/tilt-dev/tilt/internal/controllers/core/extensionrepo"
@@ -41,6 +43,7 @@ func ProvideControllers(
 	uib *uibutton.Reconciler,
 	pfr *portforward.Reconciler,
 	tfr *tiltfile.Reconciler,
+	tbr *togglebutton.Reconciler,
 	extr *extension.Reconciler,
 	extrr *extensionrepo.Reconciler,
 	lur *liveupdate.Reconciler) []Controller {
@@ -55,6 +58,7 @@ func ProvideControllers(
 		uib,
 		pfr,
 		tfr,
+		tbr,
 		extr,
 		extrr,
 		lur,
@@ -75,6 +79,7 @@ var WireSet = wire.NewSet(
 	uiresource.WireSet,
 	uisession.WireSet,
 	uibutton.WireSet,
+	togglebutton.WireSet,
 	tiltfile.WireSet,
 	extensionrepo.WireSet,
 	extension.WireSet,
