@@ -3,7 +3,6 @@ package togglebutton
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -12,7 +11,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -35,8 +33,6 @@ const (
 type Reconciler struct {
 	ctrlClient            ctrlclient.Client
 	indexer               *indexer.Indexer
-	queue                 workqueue.RateLimitingInterface
-	mu                    sync.Mutex
 	lastClickProcessTimes map[string]time.Time
 }
 
@@ -54,7 +50,6 @@ func NewReconciler(ctrlClient ctrlclient.Client, scheme *runtime.Scheme) *Reconc
 	return &Reconciler{
 		ctrlClient:            ctrlClient,
 		indexer:               indexer.NewIndexer(scheme, indexToggleButton),
-		queue:                 workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "togglebutton"),
 		lastClickProcessTimes: make(map[string]time.Time),
 	}
 }
@@ -76,8 +71,6 @@ func indexToggleButton(obj client.Object) []indexer.Key {
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
 	nn := request.NamespacedName
 
 	tb := &v1alpha1.ToggleButton{}
@@ -92,8 +85,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		return ctrl.Result{}, err
 	}
 
-	hadError := tb.Status.Error != ""
-	// clear the error so we can see if reconciliation re-sets it
+	origError := tb.Status.Error
+	// clear the error - if its conditions still apply, it will get re-set
 	tb.Status.Error = ""
 
 	err = r.processClick(ctx, tb)
@@ -111,9 +104,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		return ctrl.Result{}, err
 	}
 
-	if hadError && tb.Status.Error == "" {
-		// whatever error was there did not get re-set, so clear it in the api
-		err = r.setError(ctx, tb, "")
+	if origError != tb.Status.Error {
+		err := r.ctrlClient.Status().Update(ctx, tb)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -140,7 +132,12 @@ func (r *Reconciler) processClick(ctx context.Context, tb *v1alpha1.ToggleButton
 		for _, input := range uiButton.Status.Inputs {
 			if input.Name == actionUIInputName {
 				if input.Hidden == nil {
-					return r.setErrorf(ctx, tb, "button %q input %q was not of type 'Hidden'", uiButton.Name, input.Name)
+					tb.Status.Error = fmt.Sprintf(
+						"button %q input %q was not of type 'Hidden'",
+						uiButton.Name,
+						input.Name,
+					)
+					return nil
 				}
 				switch input.Hidden.Value {
 				case turnOnInputValue:
@@ -148,7 +145,8 @@ func (r *Reconciler) processClick(ctx context.Context, tb *v1alpha1.ToggleButton
 				case turnOffInputValue:
 					isOn = false
 				default:
-					return r.setErrorf(ctx, tb, "button %q input %q had unexpected value %q", uiButton.Name, input.Name, input.Hidden.Value)
+					tb.Status.Error = fmt.Sprintf("button %q input %q had unexpected value %q", uiButton.Name, input.Name, input.Hidden.Value)
+					return nil
 				}
 				foundInput = true
 				break
@@ -156,12 +154,14 @@ func (r *Reconciler) processClick(ctx context.Context, tb *v1alpha1.ToggleButton
 		}
 
 		if !foundInput {
-			return r.setErrorf(ctx, tb, "UIButton %q does not have an input named %q", uiButton.Name, actionUIInputName)
+			tb.Status.Error = fmt.Sprintf("UIButton %q does not have an input named %q", uiButton.Name, actionUIInputName)
+			return nil
 		}
 
 		ss := tb.Spec.StateSource.ConfigMap
 		if ss == nil {
-			return r.setError(ctx, tb, "Spec.StateSource.ConfigMap is nil")
+			tb.Status.Error = "Spec.StateSource.ConfigMap is nil"
+			return nil
 		}
 		var cm v1alpha1.ConfigMap
 		err := r.ctrlClient.Get(ctx, types.NamespacedName{Name: ss.Name}, &cm)
@@ -196,22 +196,12 @@ func (r *Reconciler) processClick(ctx context.Context, tb *v1alpha1.ToggleButton
 	return nil
 }
 
-// sets an error in the ToggleButton's status
-// This should be used for non-retriable errors
-func (r *Reconciler) setError(ctx context.Context, tb *v1alpha1.ToggleButton, error string) error {
-	tb.Status.Error = error
-	return r.ctrlClient.Status().Update(ctx, tb)
-}
-
-func (r *Reconciler) setErrorf(ctx context.Context, tb *v1alpha1.ToggleButton, errorfmt string, a ...interface{}) error {
-	return r.setError(ctx, tb, fmt.Sprintf(errorfmt, a...))
-}
-
 func (r *Reconciler) isOn(ctx context.Context, tb *v1alpha1.ToggleButton) (bool, error) {
 	isOn := tb.Spec.DefaultOn
 	ss := tb.Spec.StateSource.ConfigMap
 	if ss == nil {
-		return isOn, r.setError(ctx, tb, "Spec.StateSource.ConfigMap is nil")
+		tb.Status.Error = "Spec.StateSource.ConfigMap is nil"
+		return isOn, nil
 	}
 	var cm v1alpha1.ConfigMap
 	err := r.ctrlClient.Get(ctx, types.NamespacedName{Name: ss.Name}, &cm)
@@ -220,7 +210,8 @@ func (r *Reconciler) isOn(ctx context.Context, tb *v1alpha1.ToggleButton) (bool,
 	}
 
 	if apierrors.IsNotFound(err) {
-		return isOn, r.setErrorf(ctx, tb, "no such ConfigMap %q", ss.Name)
+		tb.Status.Error = fmt.Sprintf("no such ConfigMap %q", ss.Name)
+		return isOn, nil
 	}
 
 	if cm.Data != nil {
@@ -232,16 +223,14 @@ func (r *Reconciler) isOn(ctx context.Context, tb *v1alpha1.ToggleButton) (bool,
 			case ss.OffValue:
 				isOn = false
 			default:
-				return isOn, r.setErrorf(
-					ctx,
-					tb,
+				tb.Status.Error = fmt.Sprintf(
 					"ConfigMap %q key %q has unknown value %q. expected %q or %q",
 					ss.Name,
 					ss.Key,
 					cmVal,
 					ss.OnValue,
-					ss.OffValue,
-				)
+					ss.OffValue)
+				return isOn, nil
 			}
 		}
 	}

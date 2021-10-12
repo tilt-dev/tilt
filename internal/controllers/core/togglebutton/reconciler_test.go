@@ -21,6 +21,8 @@ func TestReconciler_CreatesOffUIButton(t *testing.T) {
 
 	uib := f.uiButton()
 	require.Equal(t, "enable", uib.Spec.Text)
+
+	f.requireSteadyState()
 }
 
 func TestReconciler_CreatesOnUIButton(t *testing.T) {
@@ -36,6 +38,8 @@ func TestReconciler_CreatesOnUIButton(t *testing.T) {
 
 	uib := f.uiButton()
 	require.Equal(t, "disable", uib.Spec.Text)
+
+	f.requireSteadyState()
 }
 
 func TestReconciler_DeletesUIButton(t *testing.T) {
@@ -80,6 +84,8 @@ func TestReconciler_HandlesClick(t *testing.T) {
 	// 2. The UIButton reflects the TB's OnStateSpec
 	uib = f.uiButton()
 	require.Equal(t, "disable", uib.Spec.Text)
+
+	f.requireSteadyState()
 }
 
 func TestReconciler_HandlesConfigMapUpdate(t *testing.T) {
@@ -97,6 +103,8 @@ func TestReconciler_HandlesConfigMapUpdate(t *testing.T) {
 	// changing the configmap directly should cause the uibutton to update
 	uib := f.uiButton()
 	require.Equal(t, "disable", uib.Spec.Text)
+
+	f.requireSteadyState()
 }
 
 func TestReconciler_uiButtonClickedNoInput(t *testing.T) {
@@ -115,6 +123,8 @@ func TestReconciler_uiButtonClickedNoInput(t *testing.T) {
 
 	tb := f.toggleButton()
 	require.Contains(t, tb.Status.Error, "does not have an input named \"action\"")
+
+	f.requireSteadyState()
 }
 
 func TestReconciler_uiButtonClickedInputWrongType(t *testing.T) {
@@ -139,6 +149,8 @@ func TestReconciler_uiButtonClickedInputWrongType(t *testing.T) {
 
 	tb := f.toggleButton()
 	require.Contains(t, tb.Status.Error, "input \"action\" was not of type 'Hidden'")
+
+	f.requireSteadyState()
 }
 
 func TestReconciler_uiButtonClickedInputWrongValue(t *testing.T) {
@@ -163,6 +175,8 @@ func TestReconciler_uiButtonClickedInputWrongValue(t *testing.T) {
 
 	tb := f.toggleButton()
 	require.Contains(t, tb.Status.Error, "unexpected value \"fdasfsa\"")
+
+	f.requireSteadyState()
 }
 
 func TestReconciler_noConfigMap(t *testing.T) {
@@ -172,6 +186,8 @@ func TestReconciler_noConfigMap(t *testing.T) {
 
 	tb := f.toggleButton()
 	require.Equal(t, "no such ConfigMap \"toggle-cm\"", tb.Status.Error)
+
+	f.requireSteadyState()
 }
 
 func TestReconciler_doesntSpecifyConfigMap(t *testing.T) {
@@ -199,6 +215,8 @@ func TestReconciler_doesntSpecifyConfigMap(t *testing.T) {
 
 	tb = f.toggleButton()
 	require.Contains(t, tb.Status.Error, "Spec.StateSource.ConfigMap is nil")
+
+	f.requireSteadyState()
 }
 
 func TestReconciler_ConfigMapUnexpectedValue(t *testing.T) {
@@ -215,6 +233,8 @@ func TestReconciler_ConfigMapUnexpectedValue(t *testing.T) {
 
 	tb = f.toggleButton()
 	require.Contains(t, tb.Status.Error, "unknown value \"asdf\"")
+
+	f.requireSteadyState()
 }
 
 func TestReconciler_clearError(t *testing.T) {
@@ -235,6 +255,8 @@ func TestReconciler_clearError(t *testing.T) {
 
 	tb = f.toggleButton()
 	require.Equal(t, "", tb.Status.Error)
+
+	f.requireSteadyState()
 }
 
 type fixture struct {
@@ -316,4 +338,12 @@ func (f *fixture) configMap() v1alpha1.ConfigMap {
 	var cm v1alpha1.ConfigMap
 	f.MustGet(types.NamespacedName{Name: "toggle-cm"}, &cm)
 	return cm
+}
+
+// ensures a reconcile doesn't cause any object changes and thus risk infinitely reconciling
+func (f *fixture) requireSteadyState() {
+	tb := f.toggleButton()
+	f.MustReconcile(tbName)
+	tb2 := f.toggleButton()
+	require.Equal(f.t, tb.ObjectMeta.ResourceVersion, tb2.ObjectMeta.ResourceVersion)
 }
