@@ -3966,7 +3966,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		kdc,
 		kar,
 		ctrluisession.NewReconciler(cdc, wsl),
-		ctrluiresource.NewReconciler(cdc, wsl),
+		ctrluiresource.NewReconciler(cdc, wsl, st),
 		ctrluibutton.NewReconciler(cdc, wsl),
 		pfr,
 		tfr,

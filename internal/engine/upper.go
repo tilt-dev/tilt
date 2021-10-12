@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/tilt-dev/tilt/internal/store/uiresources"
+
 	"github.com/davecgh/go-spew/spew"
 	"github.com/tilt-dev/wmclient/pkg/analytics"
 
@@ -195,6 +197,10 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		kubernetesdiscoverys.HandleKubernetesDiscoveryUpsertAction(state, action)
 	case kubernetesdiscoverys.KubernetesDiscoveryDeleteAction:
 		kubernetesdiscoverys.HandleKubernetesDiscoveryDeleteAction(state, action)
+	case uiresources.UIResourceUpsertAction:
+		uiresources.HandleUIResourceUpsertAction(state, action)
+	case uiresources.UIResourceDeleteAction:
+		uiresources.HandleUIResourceDeleteAction(state, action)
 	default:
 		state.FatalError = fmt.Errorf("unrecognized action: %T", action)
 	}
