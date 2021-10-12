@@ -22,6 +22,7 @@ type ResourceInfoView interface {
 }
 
 type DCResourceInfo struct {
+	ConfigPaths     []string
 	ContainerStatus string
 	ContainerID     container.ID
 	SpanID          logstore.SpanID
@@ -29,8 +30,9 @@ type DCResourceInfo struct {
 	RunStatus       v1alpha1.RuntimeStatus
 }
 
-func NewDCResourceInfo(status string, cID container.ID, spanID logstore.SpanID, startTime time.Time, runtimeStatus v1alpha1.RuntimeStatus) DCResourceInfo {
+func NewDCResourceInfo(configPaths []string, status string, cID container.ID, spanID logstore.SpanID, startTime time.Time, runtimeStatus v1alpha1.RuntimeStatus) DCResourceInfo {
 	return DCResourceInfo{
+		ConfigPaths:     configPaths,
 		ContainerStatus: status,
 		ContainerID:     cID,
 		SpanID:          spanID,

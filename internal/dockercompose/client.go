@@ -26,11 +26,6 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 
 	compose "github.com/compose-spec/compose-go/cli"
-
-	// DANGER: some compose-go types are not friendly to being marshaled with gopkg.in/yaml.v3
-	// and will trigger a stack overflow panic
-	// see https://github.com/tilt-dev/tilt/issues/4797
-	composeyaml "gopkg.in/yaml.v2"
 )
 
 // versionRegex handles both v1 and v2 version outputs, which have several variations.
@@ -38,12 +33,12 @@ import (
 var versionRegex = regexp.MustCompile(`(?mi)^docker[ -]compose(?: version)?:? v?([^\s,]+),?(?: build ([a-z0-9-]+))?`)
 
 type DockerComposeClient interface {
-	Up(ctx context.Context, spec model.DockerComposeUpSpec, shouldBuild bool, stdout, stderr io.Writer) error
-	Down(ctx context.Context, spec model.DockerComposeProject, stdout, stderr io.Writer) error
-	StreamLogs(ctx context.Context, spec model.DockerComposeUpSpec) io.ReadCloser
-	StreamEvents(ctx context.Context, spec model.DockerComposeProject) (<-chan string, error)
-	Project(ctx context.Context, configPaths []string) (*model.DockerComposeProject, *types.Project, error)
-	ContainerID(ctx context.Context, spec model.DockerComposeUpSpec) (container.ID, error)
+	Up(ctx context.Context, configPaths []string, serviceName model.TargetName, shouldBuild bool, stdout, stderr io.Writer) error
+	Down(ctx context.Context, configPaths []string, stdout, stderr io.Writer) error
+	StreamLogs(ctx context.Context, configPaths []string, serviceName model.TargetName) io.ReadCloser
+	StreamEvents(ctx context.Context, configPaths []string) (<-chan string, error)
+	Project(ctx context.Context, configPaths []string) (*types.Project, error)
+	ContainerID(ctx context.Context, configPaths []string, serviceName model.TargetName) (container.ID, error)
 	Version(ctx context.Context) (canonicalVersion string, build string, err error)
 }
 
@@ -63,34 +58,22 @@ func NewDockerComposeClient(env docker.LocalEnv) DockerComposeClient {
 	}
 }
 
-func (c *cmdDCClient) projectArgs(p model.DockerComposeProject) []string {
-	if p.YAML != "" {
-		args := []string{"-f", "-"}
-		if p.ProjectPath != "" {
-			args = append(args, "--project-directory", p.ProjectPath)
-		}
-		return args
-	}
-	result := []string{}
-	for _, cp := range p.ConfigPaths {
-		result = append(result, "-f", cp)
-	}
-	return result
-}
-
-func (c *cmdDCClient) Up(ctx context.Context, spec model.DockerComposeUpSpec, shouldBuild bool, stdout, stderr io.Writer) error {
-	genArgs := c.projectArgs(spec.Project)
+func (c *cmdDCClient) Up(ctx context.Context, configPaths []string, serviceName model.TargetName, shouldBuild bool, stdout, stderr io.Writer) error {
+	var genArgs []string
 	// TODO(milas): this causes docker-compose to output a truly excessive amount of logging; it might
 	// 	make sense to hide it behind a special environment variable instead or something
 	if logger.Get(ctx).Level().ShouldDisplay(logger.VerboseLvl) {
-		genArgs = append(genArgs, "--verbose")
+		genArgs = []string{"--verbose"}
+	}
+
+	for _, config := range configPaths {
+		genArgs = append(genArgs, "-f", config)
 	}
 
 	if shouldBuild {
 		var buildArgs = append([]string{}, genArgs...)
-		buildArgs = append(buildArgs, "build", spec.Service)
+		buildArgs = append(buildArgs, "build", serviceName.String())
 		cmd := c.dcCommand(ctx, buildArgs)
-		cmd.Stdin = strings.NewReader(spec.Project.YAML)
 		cmd.Stdout = stdout
 		cmd.Stderr = stderr
 		err := cmd.Run()
@@ -111,29 +94,30 @@ func (c *cmdDCClient) Up(ctx context.Context, spec model.DockerComposeUpSpec, sh
 	runArgs := append([]string{}, genArgs...)
 	runArgs = append(runArgs, "up", "--no-deps", "--no-build", "-d")
 
-	runArgs = append(runArgs, spec.Service)
+	runArgs = append(runArgs, serviceName.String())
 	cmd := c.dcCommand(ctx, runArgs)
-	cmd.Stdin = strings.NewReader(spec.Project.YAML)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 
 	return FormatError(cmd, nil, cmd.Run())
 }
 
-func (c *cmdDCClient) Down(ctx context.Context, p model.DockerComposeProject, stdout, stderr io.Writer) error {
+func (c *cmdDCClient) Down(ctx context.Context, configPaths []string, stdout, stderr io.Writer) error {
 	// To be safe, we try not to run two docker-compose downs in parallel,
 	// because we know docker-compose up is not thread-safe.
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	args := c.projectArgs(p)
+	var args []string
 	if logger.Get(ctx).Level().ShouldDisplay(logger.VerboseLvl) {
-		args = append(args, "--verbose")
+		args = []string{"--verbose"}
+	}
+	for _, config := range configPaths {
+		args = append(args, "-f", config)
 	}
 
 	args = append(args, "down")
 	cmd := c.dcCommand(ctx, args)
-	cmd.Stdin = strings.NewReader(p.YAML)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 
@@ -145,8 +129,11 @@ func (c *cmdDCClient) Down(ctx context.Context, p model.DockerComposeProject, st
 	return nil
 }
 
-func (c *cmdDCClient) StreamLogs(ctx context.Context, spec model.DockerComposeUpSpec) io.ReadCloser {
-	args := c.projectArgs(spec.Project)
+func (c *cmdDCClient) StreamLogs(ctx context.Context, configPaths []string, serviceName model.TargetName) io.ReadCloser {
+	var args []string
+	for _, config := range configPaths {
+		args = append(args, "-f", config)
+	}
 
 	r, w := io.Pipe()
 
@@ -156,9 +143,8 @@ func (c *cmdDCClient) StreamLogs(ctx context.Context, spec model.DockerComposeUp
 	// 		 where the ANSI reset (\u001b[0m) is _AFTER_ the \n, which doesn't play nice with our log segment logic
 	// 		 under some conditions - adding a final \n after stdout is closed would probably be sufficient given the
 	// 		 current pattern of how Compose colorizes stuff, but it's really not worth the headache to find out
-	args = append(args, "logs", "--no-color", "--no-log-prefix", "--timestamps", "--follow", spec.Service)
+	args = append(args, "logs", "--no-color", "--no-log-prefix", "--timestamps", "--follow", serviceName.String())
 	cmd := c.dcCommand(ctx, args)
-	cmd.Stdin = strings.NewReader(spec.Project.YAML)
 	cmd.Stdout = w
 
 	errBuf := bytes.Buffer{}
@@ -175,13 +161,15 @@ func (c *cmdDCClient) StreamLogs(ctx context.Context, spec model.DockerComposeUp
 	return r
 }
 
-func (c *cmdDCClient) StreamEvents(ctx context.Context, p model.DockerComposeProject) (<-chan string, error) {
+func (c *cmdDCClient) StreamEvents(ctx context.Context, configPaths []string) (<-chan string, error) {
 	ch := make(chan string)
 
-	args := c.projectArgs(p)
+	var args []string
+	for _, config := range configPaths {
+		args = append(args, "-f", config)
+	}
 	args = append(args, "events", "--json")
 	cmd := c.dcCommand(ctx, args)
-	cmd.Stdin = strings.NewReader(p.YAML)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return ch, errors.Wrap(err, "making stdout pipe for `docker-compose events`")
@@ -211,35 +199,25 @@ func (c *cmdDCClient) StreamEvents(ctx context.Context, p model.DockerComposePro
 	return ch, nil
 }
 
-func (c *cmdDCClient) Project(ctx context.Context, configPaths []string) (*model.DockerComposeProject, *types.Project, error) {
+func (c *cmdDCClient) Project(ctx context.Context, configPaths []string) (*types.Project, error) {
 	proj, err := c.loadProject(configPaths)
+	if err == nil {
+		return proj, nil
+	}
+
+	// HACK(milas): compose-go has known regressions with resolving variables during YAML loading
+	// 	if it fails, attempt to fallback to using the CLI to resolve the YAML and then parse
+	// 	it with compose-go
+	// 	see https://github.com/tilt-dev/tilt/issues/4795
+	proj, err = c.loadProjectCLI(ctx, configPaths)
 	if err != nil {
-		// HACK(milas): compose-go has known regressions with resolving variables during YAML loading
-		// 	if it fails, attempt to fallback to using the CLI to resolve the YAML and then parse
-		// 	it with compose-go
-		// 	see https://github.com/tilt-dev/tilt/issues/4795
-		proj, err = c.loadProjectCLI(ctx, configPaths)
-		if err != nil {
-			return nil, nil, err
-		}
+		return nil, err
 	}
-
-	yaml, err := composeyaml.Marshal(proj)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	model := &model.DockerComposeProject{
-		ConfigPaths: configPaths,
-		YAML:        string(yaml),
-		ProjectPath: filepath.Dir(configPaths[0]),
-	}
-
-	return model, proj, nil
+	return proj, nil
 }
 
-func (c *cmdDCClient) ContainerID(ctx context.Context, spec model.DockerComposeUpSpec) (container.ID, error) {
-	id, err := c.dcOutput(ctx, spec.Project, "ps", "-q", spec.Service)
+func (c *cmdDCClient) ContainerID(ctx context.Context, configPaths []string, serviceName model.TargetName) (container.ID, error) {
+	id, err := c.dcOutput(ctx, configPaths, "ps", "-q", serviceName.String())
 	if err != nil {
 		return container.ID(""), err
 	}
@@ -275,9 +253,7 @@ func (c *cmdDCClient) loadProject(configPaths []string) (*types.Project, error) 
 }
 
 func (c *cmdDCClient) loadProjectCLI(ctx context.Context, configPaths []string) (*types.Project, error) {
-	resolvedYAML, err := c.dcOutput(ctx, model.DockerComposeProject{
-		ConfigPaths: configPaths,
-	}, "config")
+	resolvedYAML, err := c.dcOutput(ctx, configPaths, "config")
 	if err != nil {
 		return nil, err
 	}
@@ -324,12 +300,14 @@ func (c *cmdDCClient) dcCommand(ctx context.Context, args []string) *exec.Cmd {
 	return cmd
 }
 
-func (c *cmdDCClient) dcOutput(ctx context.Context, p model.DockerComposeProject, args ...string) (string, error) {
+func (c *cmdDCClient) dcOutput(ctx context.Context, configPaths []string, args ...string) (string, error) {
 
-	tempArgs := c.projectArgs(p)
+	var tempArgs []string
+	for _, config := range configPaths {
+		tempArgs = append(tempArgs, "-f", config)
+	}
 	args = append(tempArgs, args...)
 	cmd := c.dcCommand(ctx, args)
-	cmd.Stdin = strings.NewReader(p.YAML)
 
 	output, err := cmd.Output()
 	if err != nil {
