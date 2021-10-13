@@ -10,18 +10,14 @@ import (
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/uiresources"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
-// The uiresource.Reconciler is not a real reconciler because UIResource is not
-// a real API object.
-//
-// It's a fake status object that reports the Status of the legacy engine. The
-// uiresource.Reconciler wathces that status and broadcasts it to the legacy web
-// UI.
 type Reconciler struct {
 	client ctrlclient.Client
 	wsList *server.WebsocketList
@@ -54,6 +50,19 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, nil
 	}
 
+	disableStatus, err := r.disableStatus(ctx, resource)
+	if err != nil {
+		return ctrl.Result{}, nil
+	}
+
+	if !apicmp.DeepEqual(disableStatus, resource.Status.DisableStatus) {
+		resource.Status.DisableStatus = disableStatus
+		err := r.client.Status().Update(ctx, resource)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
 	r.store.Dispatch(uiresources.NewUIResourceUpsertAction(resource))
 
 	r.wsList.ForEach(func(ws *server.WebsocketSubscriber) {
@@ -61,6 +70,27 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	})
 
 	return ctrl.Result{}, nil
+}
+
+// we know the list of DisableSources, so just count the statuses of those
+// This assumes that the resource doesn't have any objects that set their own, separate DisableSource.
+// Long-term, it's probably a more principled solution to watch the api objects belonging to a
+// resource and fetch DisableSource/DisableStatus from those.
+// For now, this gets us the same result in the api and is dramatically simpler.
+func (r *Reconciler) disableStatus(ctx context.Context, resource *v1alpha1.UIResource) (v1alpha1.DisableResourceStatus, error) {
+	result := v1alpha1.DisableResourceStatus{}
+	for _, ds := range resource.Status.DisableStatus.Sources {
+		isDisabled, _, err := configmap.DisableStatus(ctx, r.client, &ds)
+		if err != nil {
+			return v1alpha1.DisableResourceStatus{}, nil
+		}
+		if isDisabled {
+			result.DisabledCount += 1
+		} else {
+			result.EnabledCount += 1
+		}
+	}
+	return result, nil
 }
 
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {

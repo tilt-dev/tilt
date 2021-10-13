@@ -51,6 +51,33 @@ func TestUpdateTiltfile(t *testing.T) {
 	assert.Equal(t, "3", r.ObjectMeta.ResourceVersion)
 }
 
+// Status.DisableStatus counts are maintained by the uiresource reconciler, so make sure
+// the subscriber is ignoring those fields
+func TestIgnoreDisableCount(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	r := &v1alpha1.UIResource{
+		ObjectMeta: metav1.ObjectMeta{Name: "(Tiltfile)"},
+		Status: v1alpha1.UIResourceStatus{
+			DisableStatus: v1alpha1.DisableResourceStatus{
+				EnabledCount:  2,
+				DisabledCount: 5,
+			},
+		},
+	}
+	err := f.tc.Create(f.ctx, r)
+	require.NoError(t, err)
+
+	_ = f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+
+	r = f.resource("(Tiltfile)")
+	require.NotNil(t, r)
+	require.Equal(t, "2", r.ObjectMeta.ResourceVersion)
+	require.Equal(t, 2, int(r.Status.DisableStatus.EnabledCount))
+	require.Equal(t, 5, int(r.Status.DisableStatus.DisabledCount))
+}
+
 type fixture struct {
 	*tempdir.TempDirFixture
 	ctx   context.Context

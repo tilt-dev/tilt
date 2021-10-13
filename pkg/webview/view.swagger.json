@@ -378,12 +378,12 @@
         "enabledCount": {
           "type": "integer",
           "format": "int32",
-          "description": "How many of the resource's objects are enabled."
+          "description": "How many of the resource's sources are enabled."
         },
         "disabledCount": {
           "type": "integer",
           "format": "int32",
-          "description": "How many of the resource's objects are disabled."
+          "description": "How many of the resource's sources are disabled."
         },
         "sources": {
           "type": "array",
@@ -393,7 +393,7 @@
           "description": "All unique sources that control the resource's objects' disable status."
         }
       },
-      "description": "Aggregated disable status of objects that belong to a resource."
+      "description": "Aggregated disable status of DisableSources that belong to a resource."
     },
     "v1alpha1DisableSource": {
       "type": "object",

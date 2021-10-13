@@ -320,12 +320,12 @@ message ContainerStateWaiting {
   optional string reason = 1;
 }
 
-// Aggregated disable status of objects that belong to a resource.
+// Aggregated disable status of DisableSources that belong to a resource.
 message DisableResourceStatus {
-  // How many of the resource's objects are enabled.
+  // How many of the resource's sources are enabled.
   optional int32 enabledCount = 1;
 
-  // How many of the resource's objects are disabled.
+  // How many of the resource's sources are disabled.
   optional int32 disabledCount = 2;
 
   // All unique sources that control the resource's objects' disable status.

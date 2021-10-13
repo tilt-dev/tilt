@@ -13,7 +13,7 @@ import (
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
-func disableStatus(ctx context.Context, client client.Client, disableSource *v1alpha1.DisableSource) (isDisabled bool, reason string, err error) {
+func DisableStatus(ctx context.Context, client client.Client, disableSource *v1alpha1.DisableSource) (isDisabled bool, reason string, err error) {
 	if disableSource == nil {
 		return false, "object does not specify a DisableSource", nil
 	}
@@ -45,7 +45,7 @@ func disableStatus(ctx context.Context, client client.Client, disableSource *v1a
 
 // Returns a new DisableStatus if the disable status has changed, or the prev status if it hasn't.
 func MaybeNewDisableStatus(ctx context.Context, client client.Client, disableSource *v1alpha1.DisableSource, prevStatus *v1alpha1.DisableStatus) (*v1alpha1.DisableStatus, error) {
-	isDisabled, reason, err := disableStatus(ctx, client, disableSource)
+	isDisabled, reason, err := DisableStatus(ctx, client, disableSource)
 	if err != nil {
 		return nil, err
 	}
