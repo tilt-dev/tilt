@@ -13,4 +13,5 @@ const (
 	HoldBuildingComponent                Hold = "building-component"
 	HoldWaitingForDep                    Hold = "waiting-for-dep"
 	HoldWaitingForDeploy                 Hold = "waiting-for-deploy"
+	HoldDisabled                         Hold = "disabled"
 )

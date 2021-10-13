@@ -56,6 +56,7 @@ func NextTargetToBuild(state store.EngineState) (*store.ManifestTarget, HoldSet)
 
 	HoldTargetsWithBuildingComponents(targets, holds)
 	HoldTargetsWaitingOnDependencies(state, targets, holds)
+	HoldDisabledTargets(state, targets, holds)
 
 	// If any of the manifest targets haven't been built yet, build them now.
 	targets = holds.RemoveIneligibleTargets(targets)
@@ -204,6 +205,16 @@ func HoldTargetsWaitingOnDependencies(state store.EngineState, mts []*store.Mani
 	for _, mt := range mts {
 		if isWaitingOnDependencies(state, mt) {
 			holds.AddHold(mt, store.HoldWaitingForDep)
+		}
+	}
+}
+
+func HoldDisabledTargets(state store.EngineState, mts []*store.ManifestTarget, holds HoldSet) {
+	for _, mt := range mts {
+		if uir, ok := state.UIResources[string(mt.Manifest.Name)]; ok {
+			if uir.Status.DisableStatus.DisabledCount > 0 {
+				holds.AddHold(mt, store.HoldDisabled)
+			}
 		}
 	}
 }
