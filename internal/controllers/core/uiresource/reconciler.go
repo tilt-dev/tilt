@@ -4,14 +4,15 @@ import (
 	"context"
 	"fmt"
 
-	"sigs.k8s.io/controller-runtime/pkg/builder"
-
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/tilt-dev/tilt/internal/hud/server"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/uiresources"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
@@ -24,14 +25,16 @@ import (
 type Reconciler struct {
 	client ctrlclient.Client
 	wsList *server.WebsocketList
+	store  store.RStore
 }
 
 var _ reconcile.Reconciler = &Reconciler{}
 
-func NewReconciler(client ctrlclient.Client, wsList *server.WebsocketList) *Reconciler {
+func NewReconciler(client ctrlclient.Client, wsList *server.WebsocketList, store store.RStore) *Reconciler {
 	return &Reconciler{
 		client: client,
 		wsList: wsList,
+		store:  store,
 	}
 }
 
@@ -47,8 +50,11 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 			ws.SendUIResourceUpdate(ctx, req.NamespacedName, nil)
 		})
 
+		r.store.Dispatch(uiresources.NewUIResourceDeleteAction(req.Name))
 		return ctrl.Result{}, nil
 	}
+
+	r.store.Dispatch(uiresources.NewUIResourceUpsertAction(resource))
 
 	r.wsList.ForEach(func(ws *server.WebsocketSubscriber) {
 		ws.SendUIResourceUpdate(ctx, req.NamespacedName, resource)

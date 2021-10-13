@@ -126,6 +126,7 @@ type EngineState struct {
 	FileWatches          map[string]*v1alpha1.FileWatch           `json:"-"`
 	KubernetesApplys     map[string]*v1alpha1.KubernetesApply     `json:"-"`
 	KubernetesDiscoverys map[string]*v1alpha1.KubernetesDiscovery `json:"-"`
+	UIResources          map[string]*v1alpha1.UIResource          `json:"-"`
 }
 
 type CloudStatus struct {
@@ -525,6 +526,7 @@ func NewState() *EngineState {
 	ret.KubernetesApplys = make(map[string]*v1alpha1.KubernetesApply)
 	ret.KubernetesDiscoverys = make(map[string]*v1alpha1.KubernetesDiscovery)
 	ret.KubernetesResources = make(map[string]*k8sconv.KubernetesResource)
+	ret.UIResources = make(map[string]*v1alpha1.UIResource)
 
 	return ret
 }
