@@ -359,7 +359,7 @@ func toUIResourceObjects(tf *v1alpha1.Tiltfile, tlr *tiltfile.TiltfileLoadResult
 				},
 			}
 
-			ds := disableSources[name]
+			ds := disableSources[disableConfigMapName(m)]
 			if ds != nil {
 				r.Status.DisableStatus.Sources = []v1alpha1.DisableSource{*ds}
 			}

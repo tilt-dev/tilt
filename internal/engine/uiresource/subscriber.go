@@ -68,10 +68,9 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 			continue
 		}
 
-		// DisableStatus counts are managed by the UIResource reconciler rather than calculated from
-		// EngineState, so leave their values in place
-		r.Status.DisableStatus.DisabledCount = stored.Status.DisableStatus.DisabledCount
-		r.Status.DisableStatus.EnabledCount = stored.Status.DisableStatus.EnabledCount
+		// DisableStatus is managed by the UIResource reconciler rather than calculated from
+		// EngineState, so leave it in place
+		r.Status.DisableStatus = stored.Status.DisableStatus
 
 		if !apicmp.DeepEqual(r.Status, stored.Status) {
 			// If the current version is different than what's stored, update it.

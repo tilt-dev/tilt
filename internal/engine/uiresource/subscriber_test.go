@@ -57,13 +57,23 @@ func TestIgnoreDisableCount(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
+	disableStatus := v1alpha1.DisableResourceStatus{
+		EnabledCount:  2,
+		DisabledCount: 5,
+		Sources: []v1alpha1.DisableSource{
+			{
+				ConfigMap: &v1alpha1.ConfigMapDisableSource{
+					Name: "foo",
+					Key:  "bar",
+				},
+			},
+		},
+	}
+
 	r := &v1alpha1.UIResource{
 		ObjectMeta: metav1.ObjectMeta{Name: "(Tiltfile)"},
 		Status: v1alpha1.UIResourceStatus{
-			DisableStatus: v1alpha1.DisableResourceStatus{
-				EnabledCount:  2,
-				DisabledCount: 5,
-			},
+			DisableStatus: disableStatus,
 		},
 	}
 	err := f.tc.Create(f.ctx, r)
@@ -74,8 +84,7 @@ func TestIgnoreDisableCount(t *testing.T) {
 	r = f.resource("(Tiltfile)")
 	require.NotNil(t, r)
 	require.Equal(t, "2", r.ObjectMeta.ResourceVersion)
-	require.Equal(t, 2, int(r.Status.DisableStatus.EnabledCount))
-	require.Equal(t, 5, int(r.Status.DisableStatus.DisabledCount))
+	require.Equal(t, disableStatus, r.Status.DisableStatus)
 }
 
 type fixture struct {
