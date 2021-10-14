@@ -10,8 +10,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
 
@@ -101,7 +103,8 @@ func (c *ServerController) determineServers(ctx context.Context, st store.RStore
 			ObjectMeta: ObjectMeta{
 				Name: name,
 				Annotations: map[string]string{
-					AnnotationDepStatus: string(mt.UpdateStatus()),
+					v1alpha1.AnnotationManifest: string(mt.Manifest.Name),
+					AnnotationDepStatus:         string(mt.UpdateStatus()),
 				},
 			},
 			Spec: CmdServerSpec{
@@ -111,6 +114,18 @@ func (c *ServerController) determineServers(ctx context.Context, st store.RStore
 				TriggerTime:    mt.State.LastSuccessfulDeployTime,
 				ReadinessProbe: lt.ReadinessProbe,
 			},
+		}
+
+		// NB: at the time of implementation, UIResource can only ever have one DisableSource,
+		// the one for that resource, so this is fine at the moment.
+		// If UIResource starts supporting multiple DisableSources, we risk getting the wrong
+		// one here.
+		// When CmdServer is made into a real api object, we can set DisableSource
+		// more appropriately.
+		if uir, ok := state.UIResources[name]; ok {
+			if len(uir.Status.DisableStatus.Sources) > 0 {
+				cmdServer.Spec.DisableSource = uir.Status.DisableStatus.Sources[0].DeepCopy()
+			}
 		}
 
 		mn := mt.Manifest.Name.String()
@@ -178,14 +193,31 @@ func (c *ServerController) deleteOrphanedCmd(ctx context.Context, st store.RStor
 }
 
 func (c *ServerController) reconcile(ctx context.Context, server CmdServer, ownedCmds []*Cmd, st store.RStore) {
+	ctx = store.MustObjectLogHandler(ctx, st, &server)
+	name := server.Name
+
+	disableStatus, err := configmap.MaybeNewDisableStatus(ctx, c.client, server.Spec.DisableSource, server.Status.DisableStatus)
+	if err != nil {
+		st.Dispatch(store.NewErrorAction(fmt.Errorf("checking cmdserver disable status: %v", err)))
+		return
+	}
+	if disableStatus != server.Status.DisableStatus {
+		server.Status.DisableStatus = disableStatus
+	}
+	if disableStatus.Disabled {
+		for _, cmd := range ownedCmds {
+			logger.Get(ctx).Infof("Resource is disabled, stopping cmd %q", cmd.Spec.Args)
+			c.deleteOwnedCmd(ctx, name, st, cmd)
+		}
+		return
+	}
+
 	// Do not make any changes to the server while the update status is building.
 	// This ensures the old server stays up while any deps are building.
 	depStatus := v1alpha1.UpdateStatus(server.ObjectMeta.Annotations[AnnotationDepStatus])
 	if depStatus != v1alpha1.UpdateStatusOK && depStatus != v1alpha1.UpdateStatusNotApplicable {
 		return
 	}
-
-	name := server.Name
 
 	// If the command was created recently but hasn't appeared yet, wait until it appears.
 	if waitingOn, ok := c.recentlyCreatedCmd[name]; ok {
@@ -256,7 +288,7 @@ func (c *ServerController) reconcile(ctx context.Context, server CmdServer, owne
 	}
 	c.recentlyCreatedCmd[name] = cmdName
 
-	err := c.client.Create(ctx, cmd)
+	err = c.client.Create(ctx, cmd)
 	if err != nil && !apierrors.IsNotFound(err) {
 		st.Dispatch(store.NewErrorAction(fmt.Errorf("syncing to apiserver: %v", err)))
 		return
@@ -281,9 +313,12 @@ type CmdServerSpec struct {
 	// Kubernetes tends to represent this as a "generation" field
 	// to force an update.
 	TriggerTime time.Time
+
+	DisableSource *v1alpha1.DisableSource
 }
 
 type CmdServerStatus struct {
+	DisableStatus *v1alpha1.DisableStatus
 }
 
 func SpanIDForServeLog(procNum int) logstore.SpanID {

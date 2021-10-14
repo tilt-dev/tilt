@@ -5,8 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/apimachinery/pkg/runtime"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -23,7 +22,7 @@ func NewLogActionLogger(ctx context.Context, dispatch func(action Action)) logge
 
 // Read labels and annotations of the given API object to determine where to log,
 // panicking if there's no info available.
-func MustObjectLogHandler(ctx context.Context, st RStore, obj runtime.Object) context.Context {
+func MustObjectLogHandler(ctx context.Context, st RStore, obj metav1.Object) context.Context {
 	ctx, err := WithObjectLogHandler(ctx, st, obj)
 	if err != nil {
 		panic(err)
@@ -32,18 +31,13 @@ func MustObjectLogHandler(ctx context.Context, st RStore, obj runtime.Object) co
 }
 
 // Read labels and annotations of the given API object to determine where to log.
-func WithObjectLogHandler(ctx context.Context, st RStore, obj runtime.Object) (context.Context, error) {
-	meta, err := meta.Accessor(obj)
-	if err != nil {
-		return nil, fmt.Errorf("object missing metadata: %T", obj)
-	}
-
+func WithObjectLogHandler(ctx context.Context, st RStore, obj metav1.Object) (context.Context, error) {
 	// It's ok if the manifest or span id don't exist, they will just
 	// get dumped in the global log.
-	mn := meta.GetAnnotations()[v1alpha1.AnnotationManifest]
-	spanID := meta.GetAnnotations()[v1alpha1.AnnotationSpanID]
+	mn := obj.GetAnnotations()[v1alpha1.AnnotationManifest]
+	spanID := obj.GetAnnotations()[v1alpha1.AnnotationSpanID]
 	if spanID == "" {
-		spanID = fmt.Sprintf("%s-%s", reflect.TypeOf(obj).Name(), meta.GetName())
+		spanID = fmt.Sprintf("%s-%s", reflect.TypeOf(obj).Name(), obj.GetName())
 	}
 
 	w := apiLogWriter{
