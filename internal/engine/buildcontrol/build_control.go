@@ -73,10 +73,9 @@ func NextTargetToBuild(state store.EngineState) (*store.ManifestTarget, HoldSet)
 	}
 
 	// Next prioritize builds that have been manually triggered.
-	if len(state.TriggerQueue) > 0 {
-		mn := state.TriggerQueue[0]
+	for _, mn := range state.TriggerQueue {
 		mt, ok := state.ManifestTargets[mn]
-		if ok {
+		if ok && holds.IsEligible(mt) {
 			return mt, holds
 		}
 	}
