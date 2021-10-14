@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
@@ -19,6 +20,10 @@ type BuildController struct {
 	b                  buildcontrol.BuildAndDeployer
 	buildsStartedCount int // used to synchronize with state
 	disabledForTesting bool
+
+	// CancelFuncs for in-progress builds
+	mu           sync.Mutex
+	cancelBuilds map[model.ManifestName]context.CancelFunc
 }
 
 type buildEntry struct {
@@ -36,7 +41,8 @@ func (e buildEntry) BuildReason() model.BuildReason { return e.buildReason }
 
 func NewBuildController(b buildcontrol.BuildAndDeployer) *BuildController {
 	return &BuildController{
-		b: b,
+		b:            b,
+		cancelBuilds: make(map[model.ManifestName]context.CancelFunc),
 	}
 }
 
@@ -88,6 +94,8 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore, summary
 		return nil
 	}
 
+	c.cleanupDisabledBuilds(st)
+
 	if c.disabledForTesting {
 		return nil
 	}
@@ -106,13 +114,8 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore, summary
 	})
 
 	go func() {
-		// Send the logs to both the EngineState and the normal log stream.
-		actionWriter := BuildLogActionWriter{
-			store:        st,
-			manifestName: entry.name,
-			spanID:       entry.spanID,
-		}
-		ctx := logger.CtxWithLogHandler(ctx, actionWriter)
+		ctx = c.buildContext(ctx, entry, st)
+		defer c.cleanupBuildContext(entry.name)
 
 		buildcontrol.LogBuildEntry(ctx, buildcontrol.BuildEntry{
 			Name:         entry.Name(),
@@ -147,6 +150,45 @@ type BuildLogActionWriter struct {
 func (w BuildLogActionWriter) Write(level logger.Level, fields logger.Fields, p []byte) error {
 	w.store.Dispatch(store.NewLogAction(w.manifestName, w.spanID, level, fields, p))
 	return nil
+}
+
+// cancel any in-progress builds associated with disabled UIResources
+// when builds are fully represented by api objects, cancellation should probably
+// be tied to those rather than the UIResource
+func (c *BuildController) cleanupDisabledBuilds(st store.RStore) {
+	state := st.RLockState()
+	defer st.RUnlockState()
+
+	for _, uir := range state.UIResources {
+		if uir.Status.DisableStatus.DisabledCount > 0 {
+			c.cleanupBuildContext(model.ManifestName(uir.Name))
+		}
+	}
+}
+
+func (c *BuildController) buildContext(ctx context.Context, entry buildEntry, st store.RStore) context.Context {
+	// Send the logs to both the EngineState and the normal log stream.
+	actionWriter := BuildLogActionWriter{
+		store:        st,
+		manifestName: entry.name,
+		spanID:       entry.spanID,
+	}
+	ctx = logger.CtxWithLogHandler(ctx, actionWriter)
+
+	ctx, cancel := context.WithCancel(ctx)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.cancelBuilds[entry.name] = cancel
+	return ctx
+}
+
+func (c *BuildController) cleanupBuildContext(mn model.ManifestName) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if cancel, ok := c.cancelBuilds[mn]; ok {
+		cancel()
+		delete(c.cancelBuilds, mn)
+	}
 }
 
 func SpanIDForBuildLog(buildCount int) logstore.SpanID {
