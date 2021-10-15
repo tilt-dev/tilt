@@ -159,6 +159,24 @@ func TestCurrentlyBuildingParallelLocalResource(t *testing.T) {
 	f.assertNextTargetToBuild("k8s1")
 }
 
+func TestTriggerIneligibleResource(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	// local1 has a build in progress
+	local1 := f.upsertLocalManifest("local1", func(m manifestbuilder.ManifestBuilder) manifestbuilder.ManifestBuilder {
+		return m.WithLocalAllowParallel(true)
+	})
+	local1.State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}
+
+	// local2 is not parallelizable
+	local2 := f.upsertLocalManifest("local2")
+
+	f.st.AppendToTriggerQueue(local1.Manifest.Name, model.BuildReasonFlagTriggerCLI)
+	f.st.AppendToTriggerQueue(local2.Manifest.Name, model.BuildReasonFlagTriggerCLI)
+	f.assertNoTargetNextToBuild()
+}
+
 func TestTwoK8sTargetsWithBaseImage(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -287,6 +305,24 @@ func TestHoldForDeploy(t *testing.T) {
 
 	resource.FilteredPods[0] = *completedPod("pod-1", sanchoImage.Refs.ClusterRef())
 	f.assertNextTargetToBuild("sancho")
+}
+
+func TestHoldDisabled(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.upsertLocalManifest("local")
+	f.st.UIResources = map[string]*v1alpha1.UIResource{
+		"local": {
+			Status: v1alpha1.UIResourceStatus{
+				DisableStatus: v1alpha1.DisableResourceStatus{
+					DisabledCount: 5,
+				},
+			},
+		},
+	}
+	f.assertHold("local", store.HoldDisabled)
+	f.assertNoTargetNextToBuild()
 }
 
 func readyPod(podID k8s.PodID, ref reference.Named) *v1alpha1.Pod {

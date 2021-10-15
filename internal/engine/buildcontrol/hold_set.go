@@ -7,23 +7,29 @@ import (
 
 type HoldSet map[model.ManifestName]store.Hold
 
+func (s HoldSet) IsEligible(target *store.ManifestTarget) bool {
+	mn := target.Manifest.Name
+	if s[mn] != store.HoldNone {
+		return false
+	}
+
+	if target.State.IsBuilding() {
+		return false
+	}
+
+	if target.NextBuildReason() == 0 {
+		return false
+	}
+
+	return true
+}
+
 func (s HoldSet) RemoveIneligibleTargets(targets []*store.ManifestTarget) []*store.ManifestTarget {
 	result := make([]*store.ManifestTarget, 0, len(targets))
 	for _, target := range targets {
-		mn := target.Manifest.Name
-		if s[mn] != store.HoldNone {
-			continue
+		if s.IsEligible(target) {
+			result = append(result, target)
 		}
-
-		if target.State.IsBuilding() {
-			continue
-		}
-
-		if target.NextBuildReason() == 0 {
-			continue
-		}
-
-		result = append(result, target)
 	}
 	return result
 }
