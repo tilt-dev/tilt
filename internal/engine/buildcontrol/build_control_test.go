@@ -307,6 +307,24 @@ func TestHoldForDeploy(t *testing.T) {
 	f.assertNextTargetToBuild("sancho")
 }
 
+func TestHoldDisabled(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.upsertLocalManifest("local")
+	f.st.UIResources = map[string]*v1alpha1.UIResource{
+		"local": {
+			Status: v1alpha1.UIResourceStatus{
+				DisableStatus: v1alpha1.DisableResourceStatus{
+					DisabledCount: 5,
+				},
+			},
+		},
+	}
+	f.assertHold("local", store.HoldDisabled)
+	f.assertNoTargetNextToBuild()
+}
+
 func readyPod(podID k8s.PodID, ref reference.Named) *v1alpha1.Pod {
 	return &v1alpha1.Pod{
 		Name:   podID.String(),
