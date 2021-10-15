@@ -159,6 +159,24 @@ func TestCurrentlyBuildingParallelLocalResource(t *testing.T) {
 	f.assertNextTargetToBuild("k8s1")
 }
 
+func TestTriggerIneligibleResource(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	// local1 has a build in progress
+	local1 := f.upsertLocalManifest("local1", func(m manifestbuilder.ManifestBuilder) manifestbuilder.ManifestBuilder {
+		return m.WithLocalAllowParallel(true)
+	})
+	local1.State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}
+
+	// local2 is not parallelizable
+	local2 := f.upsertLocalManifest("local2")
+
+	f.st.AppendToTriggerQueue(local1.Manifest.Name, model.BuildReasonFlagTriggerCLI)
+	f.st.AppendToTriggerQueue(local2.Manifest.Name, model.BuildReasonFlagTriggerCLI)
+	f.assertNoTargetNextToBuild()
+}
+
 func TestTwoK8sTargetsWithBaseImage(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
