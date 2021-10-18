@@ -225,7 +225,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	}
 	watcherMaker := fsevent.ProvideWatcherMaker()
 	timerMaker := fsevent.ProvideTimerMaker()
-	controller := filewatch.NewController(deferredClient, storeStore, watcherMaker, timerMaker)
+	controller := filewatch.NewController(deferredClient, storeStore, watcherMaker, timerMaker, scheme)
 	env := localexec.DefaultEnv(webPort, webHost)
 	execer := cmd.ProvideExecer(env)
 	proberManager := cmd.ProvideProberManager()
@@ -427,7 +427,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	}
 	watcherMaker := fsevent.ProvideWatcherMaker()
 	timerMaker := fsevent.ProvideTimerMaker()
-	controller := filewatch.NewController(deferredClient, storeStore, watcherMaker, timerMaker)
+	controller := filewatch.NewController(deferredClient, storeStore, watcherMaker, timerMaker, scheme)
 	env := localexec.DefaultEnv(webPort, webHost)
 	execer := cmd.ProvideExecer(env)
 	proberManager := cmd.ProvideProberManager()
@@ -626,7 +626,7 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	}
 	watcherMaker := fsevent.ProvideWatcherMaker()
 	timerMaker := fsevent.ProvideTimerMaker()
-	controller := filewatch.NewController(deferredClient, storeStore, watcherMaker, timerMaker)
+	controller := filewatch.NewController(deferredClient, storeStore, watcherMaker, timerMaker, scheme)
 	env := localexec.DefaultEnv(webPort, webHost)
 	execer := cmd.ProvideExecer(env)
 	proberManager := cmd.ProvideProberManager()
