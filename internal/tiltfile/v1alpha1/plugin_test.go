@@ -2,6 +2,7 @@ package v1alpha1
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -250,6 +251,53 @@ v1alpha1.config_map(
 			Labels: map[string]string{"bar": "baz"},
 		},
 		Data: map[string]string{"foo": "bar"},
+	})
+}
+
+func TestKubernetesApply(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.File("Tiltfile", `
+
+config="""
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-config-map
+data:
+  foo: bar
+"""
+
+v1alpha1.kubernetes_apply(
+  name='my-apply',
+  discovery_strategy='selectors-only',
+  timeout='2s',
+  yaml=config)
+`)
+	result, err := f.ExecFile("Tiltfile")
+	require.NoError(t, err)
+
+	set := MustState(result)
+
+	obj := set.GetSetForType(&v1alpha1.KubernetesApply{})["my-apply"].(*v1alpha1.KubernetesApply)
+	require.NotNil(t, obj)
+	require.Equal(t, obj, &v1alpha1.KubernetesApply{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "my-apply",
+		},
+		Spec: v1alpha1.KubernetesApplySpec{
+			DiscoveryStrategy: "selectors-only",
+			Timeout:           metav1.Duration{Duration: 2 * time.Second},
+			YAML: `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-config-map
+data:
+  foo: bar
+`,
+		},
 	})
 }
 

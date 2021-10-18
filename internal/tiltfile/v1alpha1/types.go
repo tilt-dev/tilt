@@ -2,6 +2,7 @@ package v1alpha1
 
 import (
 	"fmt"
+	"time"
 
 	"go.starlark.net/starlark"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,6 +35,10 @@ func (p Plugin) registerSymbols(env *starkit.Environment) error {
 		return err
 	}
 	err = env.AddBuiltin("v1alpha1.file_watch", p.fileWatch)
+	if err != nil {
+		return err
+	}
+	err = env.AddBuiltin("v1alpha1.kubernetes_apply", p.kubernetesApply)
 	if err != nil {
 		return err
 	}
@@ -77,6 +82,18 @@ func (p Plugin) registerSymbols(env *starkit.Environment) error {
 	if err != nil {
 		return err
 	}
+	err = env.AddBuiltin("v1alpha1.kubernetes_discovery_template_spec", p.kubernetesDiscoveryTemplateSpec)
+	if err != nil {
+		return err
+	}
+	err = env.AddBuiltin("v1alpha1.kubernetes_image_locator", p.kubernetesImageLocator)
+	if err != nil {
+		return err
+	}
+	err = env.AddBuiltin("v1alpha1.kubernetes_image_object_descriptor", p.kubernetesImageObjectDescriptor)
+	if err != nil {
+		return err
+	}
 	err = env.AddBuiltin("v1alpha1.kubernetes_watch_ref", p.kubernetesWatchRef)
 	if err != nil {
 		return err
@@ -86,6 +103,10 @@ func (p Plugin) registerSymbols(env *starkit.Environment) error {
 		return err
 	}
 	err = env.AddBuiltin("v1alpha1.label_selector_requirement", p.labelSelectorRequirement)
+	if err != nil {
+		return err
+	}
+	err = env.AddBuiltin("v1alpha1.object_selector", p.objectSelector)
 	if err != nil {
 		return err
 	}
@@ -291,6 +312,61 @@ func (p Plugin) fileWatch(t *starlark.Thread, fn *starlark.Builtin, args starlar
 
 	obj.Spec.WatchedPaths = watchedPaths.Value
 	obj.Spec.Ignores = ignores.Value
+	if disableSource.isUnpacked {
+		obj.Spec.DisableSource = (*v1alpha1.DisableSource)(&disableSource.Value)
+	}
+	obj.ObjectMeta.Labels = labels
+	obj.ObjectMeta.Annotations = annotations
+	return p.register(t, obj)
+}
+
+func (p Plugin) kubernetesApply(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var err error
+	obj := &v1alpha1.KubernetesApply{
+		ObjectMeta: metav1.ObjectMeta{},
+		Spec:       v1alpha1.KubernetesApplySpec{},
+	}
+	var imageMaps value.StringList
+	var imageLocators KubernetesImageLocatorList = KubernetesImageLocatorList{t: t}
+	var timeout value.Duration
+	var kubernetesDiscoveryTemplateSpec KubernetesDiscoveryTemplateSpec = KubernetesDiscoveryTemplateSpec{t: t}
+	var portForwardTemplateSpec PortForwardTemplateSpec = PortForwardTemplateSpec{t: t}
+	var podLogStreamTemplateSpec PodLogStreamTemplateSpec = PodLogStreamTemplateSpec{t: t}
+	var discoveryStrategy string
+	var disableSource DisableSource = DisableSource{t: t}
+	var labels value.StringStringMap
+	var annotations value.StringStringMap
+	err = starkit.UnpackArgs(t, fn.Name(), args, kwargs,
+		"name", &obj.ObjectMeta.Name,
+		"labels?", &labels,
+		"annotations?", &annotations,
+		"yaml?", &obj.Spec.YAML,
+		"image_maps?", &imageMaps,
+		"image_locators?", &imageLocators,
+		"timeout?", &timeout,
+		"kubernetes_discovery_template_spec?", &kubernetesDiscoveryTemplateSpec,
+		"port_forward_template_spec?", &portForwardTemplateSpec,
+		"pod_log_stream_template_spec?", &podLogStreamTemplateSpec,
+		"discovery_strategy?", &discoveryStrategy,
+		"disable_source?", &disableSource,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	obj.Spec.ImageMaps = imageMaps
+	obj.Spec.ImageLocators = imageLocators.Value
+	obj.Spec.Timeout = metav1.Duration{Duration: time.Duration(timeout)}
+	if kubernetesDiscoveryTemplateSpec.isUnpacked {
+		obj.Spec.KubernetesDiscoveryTemplateSpec = (*v1alpha1.KubernetesDiscoveryTemplateSpec)(&kubernetesDiscoveryTemplateSpec.Value)
+	}
+	if portForwardTemplateSpec.isUnpacked {
+		obj.Spec.PortForwardTemplateSpec = (*v1alpha1.PortForwardTemplateSpec)(&portForwardTemplateSpec.Value)
+	}
+	if podLogStreamTemplateSpec.isUnpacked {
+		obj.Spec.PodLogStreamTemplateSpec = (*v1alpha1.PodLogStreamTemplateSpec)(&podLogStreamTemplateSpec.Value)
+	}
+	obj.Spec.DiscoveryStrategy = v1alpha1.KubernetesDiscoveryStrategy(discoveryStrategy)
 	if disableSource.isUnpacked {
 		obj.Spec.DisableSource = (*v1alpha1.DisableSource)(&disableSource.Value)
 	}
@@ -1386,6 +1462,369 @@ func (o *IgnoreDefList) Unpack(v starlark.Value) error {
 	return nil
 }
 
+type KubernetesDiscoveryTemplateSpec struct {
+	*starlark.Dict
+	Value      v1alpha1.KubernetesDiscoveryTemplateSpec
+	isUnpacked bool
+	t          *starlark.Thread // instantiation thread for computing abspath
+}
+
+func (p Plugin) kubernetesDiscoveryTemplateSpec(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var extraSelectors starlark.Value
+	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
+		"extra_selectors?", &extraSelectors,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	dict := starlark.NewDict(1)
+
+	if extraSelectors != nil {
+		err := dict.SetKey(starlark.String("extra_selectors"), extraSelectors)
+		if err != nil {
+			return nil, err
+		}
+	}
+	var obj *KubernetesDiscoveryTemplateSpec = &KubernetesDiscoveryTemplateSpec{t: t}
+	err = obj.Unpack(dict)
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
+}
+
+func (o *KubernetesDiscoveryTemplateSpec) Unpack(v starlark.Value) error {
+	obj := v1alpha1.KubernetesDiscoveryTemplateSpec{}
+
+	starlarkObj, ok := v.(*KubernetesDiscoveryTemplateSpec)
+	if ok {
+		*o = *starlarkObj
+		return nil
+	}
+
+	mapObj, ok := v.(*starlark.Dict)
+	if !ok {
+		return fmt.Errorf("expected dict, actual: %v", v.Type())
+	}
+
+	for _, item := range mapObj.Items() {
+		keyV, val := item[0], item[1]
+		key, ok := starlark.AsString(keyV)
+		if !ok {
+			return fmt.Errorf("key must be string. Got: %s", keyV.Type())
+		}
+
+		if key == "extra_selectors" {
+			v := LabelSelectorList{t: o.t}
+			err := v.Unpack(val)
+			if err != nil {
+				return fmt.Errorf("unpacking %s: %v", key, err)
+			}
+			obj.ExtraSelectors = v.Value
+			continue
+		}
+		return fmt.Errorf("Unexpected attribute name: %s", key)
+	}
+
+	mapObj.Freeze()
+	o.Dict = mapObj
+	o.Value = obj
+	o.isUnpacked = true
+
+	return nil
+}
+
+type KubernetesDiscoveryTemplateSpecList struct {
+	*starlark.List
+	Value []v1alpha1.KubernetesDiscoveryTemplateSpec
+	t     *starlark.Thread
+}
+
+func (o *KubernetesDiscoveryTemplateSpecList) Unpack(v starlark.Value) error {
+	items := []v1alpha1.KubernetesDiscoveryTemplateSpec{}
+
+	listObj, ok := v.(*starlark.List)
+	if !ok {
+		return fmt.Errorf("expected list, actual: %v", v.Type())
+	}
+
+	for i := 0; i < listObj.Len(); i++ {
+		v := listObj.Index(i)
+
+		item := KubernetesDiscoveryTemplateSpec{t: o.t}
+		err := item.Unpack(v)
+		if err != nil {
+			return fmt.Errorf("at index %d: %v", i, err)
+		}
+		items = append(items, v1alpha1.KubernetesDiscoveryTemplateSpec(item.Value))
+	}
+
+	listObj.Freeze()
+	o.List = listObj
+	o.Value = items
+
+	return nil
+}
+
+type KubernetesImageLocator struct {
+	*starlark.Dict
+	Value      v1alpha1.KubernetesImageLocator
+	isUnpacked bool
+	t          *starlark.Thread // instantiation thread for computing abspath
+}
+
+func (p Plugin) kubernetesImageLocator(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var objectSelector starlark.Value
+	var path starlark.Value
+	var object starlark.Value
+	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
+		"object_selector?", &objectSelector,
+		"path?", &path,
+		"object?", &object,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	dict := starlark.NewDict(3)
+
+	if objectSelector != nil {
+		err := dict.SetKey(starlark.String("object_selector"), objectSelector)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if path != nil {
+		err := dict.SetKey(starlark.String("path"), path)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if object != nil {
+		err := dict.SetKey(starlark.String("object"), object)
+		if err != nil {
+			return nil, err
+		}
+	}
+	var obj *KubernetesImageLocator = &KubernetesImageLocator{t: t}
+	err = obj.Unpack(dict)
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
+}
+
+func (o *KubernetesImageLocator) Unpack(v starlark.Value) error {
+	obj := v1alpha1.KubernetesImageLocator{}
+
+	starlarkObj, ok := v.(*KubernetesImageLocator)
+	if ok {
+		*o = *starlarkObj
+		return nil
+	}
+
+	mapObj, ok := v.(*starlark.Dict)
+	if !ok {
+		return fmt.Errorf("expected dict, actual: %v", v.Type())
+	}
+
+	for _, item := range mapObj.Items() {
+		keyV, val := item[0], item[1]
+		key, ok := starlark.AsString(keyV)
+		if !ok {
+			return fmt.Errorf("key must be string. Got: %s", keyV.Type())
+		}
+
+		if key == "object_selector" {
+			v := ObjectSelector{t: o.t}
+			err := v.Unpack(val)
+			if err != nil {
+				return fmt.Errorf("unpacking %s: %v", key, err)
+			}
+			obj.ObjectSelector = v.Value
+			continue
+		}
+		if key == "path" {
+			v, ok := starlark.AsString(val)
+			if !ok {
+				return fmt.Errorf("Expected string, actual: %s", val.Type())
+			}
+			obj.Path = string(v)
+			continue
+		}
+		if key == "object" {
+			v := KubernetesImageObjectDescriptor{t: o.t}
+			err := v.Unpack(val)
+			if err != nil {
+				return fmt.Errorf("unpacking %s: %v", key, err)
+			}
+			obj.Object = (*v1alpha1.KubernetesImageObjectDescriptor)(&v.Value)
+			continue
+		}
+		return fmt.Errorf("Unexpected attribute name: %s", key)
+	}
+
+	mapObj.Freeze()
+	o.Dict = mapObj
+	o.Value = obj
+	o.isUnpacked = true
+
+	return nil
+}
+
+type KubernetesImageLocatorList struct {
+	*starlark.List
+	Value []v1alpha1.KubernetesImageLocator
+	t     *starlark.Thread
+}
+
+func (o *KubernetesImageLocatorList) Unpack(v starlark.Value) error {
+	items := []v1alpha1.KubernetesImageLocator{}
+
+	listObj, ok := v.(*starlark.List)
+	if !ok {
+		return fmt.Errorf("expected list, actual: %v", v.Type())
+	}
+
+	for i := 0; i < listObj.Len(); i++ {
+		v := listObj.Index(i)
+
+		item := KubernetesImageLocator{t: o.t}
+		err := item.Unpack(v)
+		if err != nil {
+			return fmt.Errorf("at index %d: %v", i, err)
+		}
+		items = append(items, v1alpha1.KubernetesImageLocator(item.Value))
+	}
+
+	listObj.Freeze()
+	o.List = listObj
+	o.Value = items
+
+	return nil
+}
+
+type KubernetesImageObjectDescriptor struct {
+	*starlark.Dict
+	Value      v1alpha1.KubernetesImageObjectDescriptor
+	isUnpacked bool
+	t          *starlark.Thread // instantiation thread for computing abspath
+}
+
+func (p Plugin) kubernetesImageObjectDescriptor(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var repoField starlark.Value
+	var tagField starlark.Value
+	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
+		"repo_field?", &repoField,
+		"tag_field?", &tagField,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	dict := starlark.NewDict(2)
+
+	if repoField != nil {
+		err := dict.SetKey(starlark.String("repo_field"), repoField)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if tagField != nil {
+		err := dict.SetKey(starlark.String("tag_field"), tagField)
+		if err != nil {
+			return nil, err
+		}
+	}
+	var obj *KubernetesImageObjectDescriptor = &KubernetesImageObjectDescriptor{t: t}
+	err = obj.Unpack(dict)
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
+}
+
+func (o *KubernetesImageObjectDescriptor) Unpack(v starlark.Value) error {
+	obj := v1alpha1.KubernetesImageObjectDescriptor{}
+
+	starlarkObj, ok := v.(*KubernetesImageObjectDescriptor)
+	if ok {
+		*o = *starlarkObj
+		return nil
+	}
+
+	mapObj, ok := v.(*starlark.Dict)
+	if !ok {
+		return fmt.Errorf("expected dict, actual: %v", v.Type())
+	}
+
+	for _, item := range mapObj.Items() {
+		keyV, val := item[0], item[1]
+		key, ok := starlark.AsString(keyV)
+		if !ok {
+			return fmt.Errorf("key must be string. Got: %s", keyV.Type())
+		}
+
+		if key == "repo_field" {
+			v, ok := starlark.AsString(val)
+			if !ok {
+				return fmt.Errorf("Expected string, actual: %s", val.Type())
+			}
+			obj.RepoField = string(v)
+			continue
+		}
+		if key == "tag_field" {
+			v, ok := starlark.AsString(val)
+			if !ok {
+				return fmt.Errorf("Expected string, actual: %s", val.Type())
+			}
+			obj.TagField = string(v)
+			continue
+		}
+		return fmt.Errorf("Unexpected attribute name: %s", key)
+	}
+
+	mapObj.Freeze()
+	o.Dict = mapObj
+	o.Value = obj
+	o.isUnpacked = true
+
+	return nil
+}
+
+type KubernetesImageObjectDescriptorList struct {
+	*starlark.List
+	Value []v1alpha1.KubernetesImageObjectDescriptor
+	t     *starlark.Thread
+}
+
+func (o *KubernetesImageObjectDescriptorList) Unpack(v starlark.Value) error {
+	items := []v1alpha1.KubernetesImageObjectDescriptor{}
+
+	listObj, ok := v.(*starlark.List)
+	if !ok {
+		return fmt.Errorf("expected list, actual: %v", v.Type())
+	}
+
+	for i := 0; i < listObj.Len(); i++ {
+		v := listObj.Index(i)
+
+		item := KubernetesImageObjectDescriptor{t: o.t}
+		err := item.Unpack(v)
+		if err != nil {
+			return fmt.Errorf("at index %d: %v", i, err)
+		}
+		items = append(items, v1alpha1.KubernetesImageObjectDescriptor(item.Value))
+	}
+
+	listObj.Freeze()
+	o.List = listObj
+	o.Value = items
+
+	return nil
+}
+
 type KubernetesWatchRef struct {
 	*starlark.Dict
 	Value      v1alpha1.KubernetesWatchRef
@@ -1772,6 +2211,158 @@ func (o *LabelSelectorRequirementList) Unpack(v starlark.Value) error {
 			return fmt.Errorf("at index %d: %v", i, err)
 		}
 		items = append(items, metav1.LabelSelectorRequirement(item.Value))
+	}
+
+	listObj.Freeze()
+	o.List = listObj
+	o.Value = items
+
+	return nil
+}
+
+type ObjectSelector struct {
+	*starlark.Dict
+	Value      v1alpha1.ObjectSelector
+	isUnpacked bool
+	t          *starlark.Thread // instantiation thread for computing abspath
+}
+
+func (p Plugin) objectSelector(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var aPIVersionRegexp starlark.Value
+	var kindRegexp starlark.Value
+	var nameRegexp starlark.Value
+	var namespaceRegexp starlark.Value
+	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
+		"api_version_regexp?", &aPIVersionRegexp,
+		"kind_regexp?", &kindRegexp,
+		"name_regexp?", &nameRegexp,
+		"namespace_regexp?", &namespaceRegexp,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	dict := starlark.NewDict(4)
+
+	if aPIVersionRegexp != nil {
+		err := dict.SetKey(starlark.String("api_version_regexp"), aPIVersionRegexp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if kindRegexp != nil {
+		err := dict.SetKey(starlark.String("kind_regexp"), kindRegexp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if nameRegexp != nil {
+		err := dict.SetKey(starlark.String("name_regexp"), nameRegexp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if namespaceRegexp != nil {
+		err := dict.SetKey(starlark.String("namespace_regexp"), namespaceRegexp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	var obj *ObjectSelector = &ObjectSelector{t: t}
+	err = obj.Unpack(dict)
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
+}
+
+func (o *ObjectSelector) Unpack(v starlark.Value) error {
+	obj := v1alpha1.ObjectSelector{}
+
+	starlarkObj, ok := v.(*ObjectSelector)
+	if ok {
+		*o = *starlarkObj
+		return nil
+	}
+
+	mapObj, ok := v.(*starlark.Dict)
+	if !ok {
+		return fmt.Errorf("expected dict, actual: %v", v.Type())
+	}
+
+	for _, item := range mapObj.Items() {
+		keyV, val := item[0], item[1]
+		key, ok := starlark.AsString(keyV)
+		if !ok {
+			return fmt.Errorf("key must be string. Got: %s", keyV.Type())
+		}
+
+		if key == "api_version_regexp" {
+			v, ok := starlark.AsString(val)
+			if !ok {
+				return fmt.Errorf("Expected string, actual: %s", val.Type())
+			}
+			obj.APIVersionRegexp = string(v)
+			continue
+		}
+		if key == "kind_regexp" {
+			v, ok := starlark.AsString(val)
+			if !ok {
+				return fmt.Errorf("Expected string, actual: %s", val.Type())
+			}
+			obj.KindRegexp = string(v)
+			continue
+		}
+		if key == "name_regexp" {
+			v, ok := starlark.AsString(val)
+			if !ok {
+				return fmt.Errorf("Expected string, actual: %s", val.Type())
+			}
+			obj.NameRegexp = string(v)
+			continue
+		}
+		if key == "namespace_regexp" {
+			v, ok := starlark.AsString(val)
+			if !ok {
+				return fmt.Errorf("Expected string, actual: %s", val.Type())
+			}
+			obj.NamespaceRegexp = string(v)
+			continue
+		}
+		return fmt.Errorf("Unexpected attribute name: %s", key)
+	}
+
+	mapObj.Freeze()
+	o.Dict = mapObj
+	o.Value = obj
+	o.isUnpacked = true
+
+	return nil
+}
+
+type ObjectSelectorList struct {
+	*starlark.List
+	Value []v1alpha1.ObjectSelector
+	t     *starlark.Thread
+}
+
+func (o *ObjectSelectorList) Unpack(v starlark.Value) error {
+	items := []v1alpha1.ObjectSelector{}
+
+	listObj, ok := v.(*starlark.List)
+	if !ok {
+		return fmt.Errorf("expected list, actual: %v", v.Type())
+	}
+
+	for i := 0; i < listObj.Len(); i++ {
+		v := listObj.Index(i)
+
+		item := ObjectSelector{t: o.t}
+		err := item.Unpack(v)
+		if err != nil {
+			return fmt.Errorf("at index %d: %v", i, err)
+		}
+		items = append(items, v1alpha1.ObjectSelector(item.Value))
 	}
 
 	listObj.Freeze()
