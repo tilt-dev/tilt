@@ -37,6 +37,10 @@ func (p Plugin) registerSymbols(env *starkit.Environment) error {
 	if err != nil {
 		return err
 	}
+	err = env.AddBuiltin("v1alpha1.kubernetes_discovery", p.kubernetesDiscovery)
+	if err != nil {
+		return err
+	}
 	err = env.AddBuiltin("v1alpha1.ui_button", p.uiButton)
 	if err != nil {
 		return err
@@ -53,6 +57,10 @@ func (p Plugin) registerSymbols(env *starkit.Environment) error {
 	if err != nil {
 		return err
 	}
+	err = env.AddBuiltin("v1alpha1.forward", p.forward)
+	if err != nil {
+		return err
+	}
 	err = env.AddBuiltin("v1alpha1.http_get_action", p.hTTPGetAction)
 	if err != nil {
 		return err
@@ -66,6 +74,26 @@ func (p Plugin) registerSymbols(env *starkit.Environment) error {
 		return err
 	}
 	err = env.AddBuiltin("v1alpha1.ignore_def", p.ignoreDef)
+	if err != nil {
+		return err
+	}
+	err = env.AddBuiltin("v1alpha1.kubernetes_watch_ref", p.kubernetesWatchRef)
+	if err != nil {
+		return err
+	}
+	err = env.AddBuiltin("v1alpha1.label_selector", p.labelSelector)
+	if err != nil {
+		return err
+	}
+	err = env.AddBuiltin("v1alpha1.label_selector_requirement", p.labelSelectorRequirement)
+	if err != nil {
+		return err
+	}
+	err = env.AddBuiltin("v1alpha1.pod_log_stream_template_spec", p.podLogStreamTemplateSpec)
+	if err != nil {
+		return err
+	}
+	err = env.AddBuiltin("v1alpha1.port_forward_template_spec", p.portForwardTemplateSpec)
 	if err != nil {
 		return err
 	}
@@ -265,6 +293,44 @@ func (p Plugin) fileWatch(t *starlark.Thread, fn *starlark.Builtin, args starlar
 	obj.Spec.Ignores = ignores.Value
 	if disableSource.isUnpacked {
 		obj.Spec.DisableSource = (*v1alpha1.DisableSource)(&disableSource.Value)
+	}
+	obj.ObjectMeta.Labels = labels
+	obj.ObjectMeta.Annotations = annotations
+	return p.register(t, obj)
+}
+
+func (p Plugin) kubernetesDiscovery(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var err error
+	obj := &v1alpha1.KubernetesDiscovery{
+		ObjectMeta: metav1.ObjectMeta{},
+		Spec:       v1alpha1.KubernetesDiscoverySpec{},
+	}
+	var watches KubernetesWatchRefList = KubernetesWatchRefList{t: t}
+	var extraSelectors LabelSelectorList = LabelSelectorList{t: t}
+	var portForwardTemplateSpec PortForwardTemplateSpec = PortForwardTemplateSpec{t: t}
+	var podLogStreamTemplateSpec PodLogStreamTemplateSpec = PodLogStreamTemplateSpec{t: t}
+	var labels value.StringStringMap
+	var annotations value.StringStringMap
+	err = starkit.UnpackArgs(t, fn.Name(), args, kwargs,
+		"name", &obj.ObjectMeta.Name,
+		"labels?", &labels,
+		"annotations?", &annotations,
+		"watches?", &watches,
+		"extra_selectors?", &extraSelectors,
+		"port_forward_template_spec?", &portForwardTemplateSpec,
+		"pod_log_stream_template_spec?", &podLogStreamTemplateSpec,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	obj.Spec.Watches = watches.Value
+	obj.Spec.ExtraSelectors = extraSelectors.Value
+	if portForwardTemplateSpec.isUnpacked {
+		obj.Spec.PortForwardTemplateSpec = (*v1alpha1.PortForwardTemplateSpec)(&portForwardTemplateSpec.Value)
+	}
+	if podLogStreamTemplateSpec.isUnpacked {
+		obj.Spec.PodLogStreamTemplateSpec = (*v1alpha1.PodLogStreamTemplateSpec)(&podLogStreamTemplateSpec.Value)
 	}
 	obj.ObjectMeta.Labels = labels
 	obj.ObjectMeta.Annotations = annotations
@@ -625,6 +691,142 @@ func (o *ExecActionList) Unpack(v starlark.Value) error {
 			return fmt.Errorf("at index %d: %v", i, err)
 		}
 		items = append(items, v1alpha1.ExecAction(item.Value))
+	}
+
+	listObj.Freeze()
+	o.List = listObj
+	o.Value = items
+
+	return nil
+}
+
+type Forward struct {
+	*starlark.Dict
+	Value      v1alpha1.Forward
+	isUnpacked bool
+	t          *starlark.Thread // instantiation thread for computing abspath
+}
+
+func (p Plugin) forward(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var localPort starlark.Value
+	var containerPort starlark.Value
+	var host starlark.Value
+	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
+		"local_port?", &localPort,
+		"container_port?", &containerPort,
+		"host?", &host,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	dict := starlark.NewDict(3)
+
+	if localPort != nil {
+		err := dict.SetKey(starlark.String("local_port"), localPort)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if containerPort != nil {
+		err := dict.SetKey(starlark.String("container_port"), containerPort)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if host != nil {
+		err := dict.SetKey(starlark.String("host"), host)
+		if err != nil {
+			return nil, err
+		}
+	}
+	var obj *Forward = &Forward{t: t}
+	err = obj.Unpack(dict)
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
+}
+
+func (o *Forward) Unpack(v starlark.Value) error {
+	obj := v1alpha1.Forward{}
+
+	starlarkObj, ok := v.(*Forward)
+	if ok {
+		*o = *starlarkObj
+		return nil
+	}
+
+	mapObj, ok := v.(*starlark.Dict)
+	if !ok {
+		return fmt.Errorf("expected dict, actual: %v", v.Type())
+	}
+
+	for _, item := range mapObj.Items() {
+		keyV, val := item[0], item[1]
+		key, ok := starlark.AsString(keyV)
+		if !ok {
+			return fmt.Errorf("key must be string. Got: %s", keyV.Type())
+		}
+
+		if key == "local_port" {
+			v, err := starlark.AsInt32(val)
+			if err != nil {
+				return fmt.Errorf("Expected int, got: %v", err)
+			}
+			obj.LocalPort = int32(v)
+			continue
+		}
+		if key == "container_port" {
+			v, err := starlark.AsInt32(val)
+			if err != nil {
+				return fmt.Errorf("Expected int, got: %v", err)
+			}
+			obj.ContainerPort = int32(v)
+			continue
+		}
+		if key == "host" {
+			v, ok := starlark.AsString(val)
+			if !ok {
+				return fmt.Errorf("Expected string, actual: %s", val.Type())
+			}
+			obj.Host = string(v)
+			continue
+		}
+		return fmt.Errorf("Unexpected attribute name: %s", key)
+	}
+
+	mapObj.Freeze()
+	o.Dict = mapObj
+	o.Value = obj
+	o.isUnpacked = true
+
+	return nil
+}
+
+type ForwardList struct {
+	*starlark.List
+	Value []v1alpha1.Forward
+	t     *starlark.Thread
+}
+
+func (o *ForwardList) Unpack(v starlark.Value) error {
+	items := []v1alpha1.Forward{}
+
+	listObj, ok := v.(*starlark.List)
+	if !ok {
+		return fmt.Errorf("expected list, actual: %v", v.Type())
+	}
+
+	for i := 0; i < listObj.Len(); i++ {
+		v := listObj.Index(i)
+
+		item := Forward{t: o.t}
+		err := item.Unpack(v)
+		if err != nil {
+			return fmt.Errorf("at index %d: %v", i, err)
+		}
+		items = append(items, v1alpha1.Forward(item.Value))
 	}
 
 	listObj.Freeze()
@@ -1175,6 +1377,636 @@ func (o *IgnoreDefList) Unpack(v starlark.Value) error {
 			return fmt.Errorf("at index %d: %v", i, err)
 		}
 		items = append(items, v1alpha1.IgnoreDef(item.Value))
+	}
+
+	listObj.Freeze()
+	o.List = listObj
+	o.Value = items
+
+	return nil
+}
+
+type KubernetesWatchRef struct {
+	*starlark.Dict
+	Value      v1alpha1.KubernetesWatchRef
+	isUnpacked bool
+	t          *starlark.Thread // instantiation thread for computing abspath
+}
+
+func (p Plugin) kubernetesWatchRef(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var uID starlark.Value
+	var namespace starlark.Value
+	var name starlark.Value
+	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
+		"uid?", &uID,
+		"namespace?", &namespace,
+		"name?", &name,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	dict := starlark.NewDict(3)
+
+	if uID != nil {
+		err := dict.SetKey(starlark.String("uid"), uID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if namespace != nil {
+		err := dict.SetKey(starlark.String("namespace"), namespace)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if name != nil {
+		err := dict.SetKey(starlark.String("name"), name)
+		if err != nil {
+			return nil, err
+		}
+	}
+	var obj *KubernetesWatchRef = &KubernetesWatchRef{t: t}
+	err = obj.Unpack(dict)
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
+}
+
+func (o *KubernetesWatchRef) Unpack(v starlark.Value) error {
+	obj := v1alpha1.KubernetesWatchRef{}
+
+	starlarkObj, ok := v.(*KubernetesWatchRef)
+	if ok {
+		*o = *starlarkObj
+		return nil
+	}
+
+	mapObj, ok := v.(*starlark.Dict)
+	if !ok {
+		return fmt.Errorf("expected dict, actual: %v", v.Type())
+	}
+
+	for _, item := range mapObj.Items() {
+		keyV, val := item[0], item[1]
+		key, ok := starlark.AsString(keyV)
+		if !ok {
+			return fmt.Errorf("key must be string. Got: %s", keyV.Type())
+		}
+
+		if key == "uid" {
+			v, ok := starlark.AsString(val)
+			if !ok {
+				return fmt.Errorf("Expected string, actual: %s", val.Type())
+			}
+			obj.UID = string(v)
+			continue
+		}
+		if key == "namespace" {
+			v, ok := starlark.AsString(val)
+			if !ok {
+				return fmt.Errorf("Expected string, actual: %s", val.Type())
+			}
+			obj.Namespace = string(v)
+			continue
+		}
+		if key == "name" {
+			v, ok := starlark.AsString(val)
+			if !ok {
+				return fmt.Errorf("Expected string, actual: %s", val.Type())
+			}
+			obj.Name = string(v)
+			continue
+		}
+		return fmt.Errorf("Unexpected attribute name: %s", key)
+	}
+
+	mapObj.Freeze()
+	o.Dict = mapObj
+	o.Value = obj
+	o.isUnpacked = true
+
+	return nil
+}
+
+type KubernetesWatchRefList struct {
+	*starlark.List
+	Value []v1alpha1.KubernetesWatchRef
+	t     *starlark.Thread
+}
+
+func (o *KubernetesWatchRefList) Unpack(v starlark.Value) error {
+	items := []v1alpha1.KubernetesWatchRef{}
+
+	listObj, ok := v.(*starlark.List)
+	if !ok {
+		return fmt.Errorf("expected list, actual: %v", v.Type())
+	}
+
+	for i := 0; i < listObj.Len(); i++ {
+		v := listObj.Index(i)
+
+		item := KubernetesWatchRef{t: o.t}
+		err := item.Unpack(v)
+		if err != nil {
+			return fmt.Errorf("at index %d: %v", i, err)
+		}
+		items = append(items, v1alpha1.KubernetesWatchRef(item.Value))
+	}
+
+	listObj.Freeze()
+	o.List = listObj
+	o.Value = items
+
+	return nil
+}
+
+type LabelSelector struct {
+	*starlark.Dict
+	Value      metav1.LabelSelector
+	isUnpacked bool
+	t          *starlark.Thread // instantiation thread for computing abspath
+}
+
+func (p Plugin) labelSelector(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var matchLabels starlark.Value
+	var matchExpressions starlark.Value
+	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
+		"match_labels?", &matchLabels,
+		"match_expressions?", &matchExpressions,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	dict := starlark.NewDict(2)
+
+	if matchLabels != nil {
+		err := dict.SetKey(starlark.String("match_labels"), matchLabels)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if matchExpressions != nil {
+		err := dict.SetKey(starlark.String("match_expressions"), matchExpressions)
+		if err != nil {
+			return nil, err
+		}
+	}
+	var obj *LabelSelector = &LabelSelector{t: t}
+	err = obj.Unpack(dict)
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
+}
+
+func (o *LabelSelector) Unpack(v starlark.Value) error {
+	obj := metav1.LabelSelector{}
+
+	starlarkObj, ok := v.(*LabelSelector)
+	if ok {
+		*o = *starlarkObj
+		return nil
+	}
+
+	mapObj, ok := v.(*starlark.Dict)
+	if !ok {
+		return fmt.Errorf("expected dict, actual: %v", v.Type())
+	}
+
+	for _, item := range mapObj.Items() {
+		keyV, val := item[0], item[1]
+		key, ok := starlark.AsString(keyV)
+		if !ok {
+			return fmt.Errorf("key must be string. Got: %s", keyV.Type())
+		}
+
+		if key == "match_labels" {
+			var v value.StringStringMap
+			err := v.Unpack(val)
+			if err != nil {
+				return fmt.Errorf("unpacking %s: %v", key, err)
+			}
+			obj.MatchLabels = (map[string]string)(v)
+			continue
+		}
+		if key == "match_expressions" {
+			v := LabelSelectorRequirementList{t: o.t}
+			err := v.Unpack(val)
+			if err != nil {
+				return fmt.Errorf("unpacking %s: %v", key, err)
+			}
+			obj.MatchExpressions = v.Value
+			continue
+		}
+		return fmt.Errorf("Unexpected attribute name: %s", key)
+	}
+
+	mapObj.Freeze()
+	o.Dict = mapObj
+	o.Value = obj
+	o.isUnpacked = true
+
+	return nil
+}
+
+type LabelSelectorList struct {
+	*starlark.List
+	Value []metav1.LabelSelector
+	t     *starlark.Thread
+}
+
+func (o *LabelSelectorList) Unpack(v starlark.Value) error {
+	items := []metav1.LabelSelector{}
+
+	listObj, ok := v.(*starlark.List)
+	if !ok {
+		return fmt.Errorf("expected list, actual: %v", v.Type())
+	}
+
+	for i := 0; i < listObj.Len(); i++ {
+		v := listObj.Index(i)
+
+		item := LabelSelector{t: o.t}
+		err := item.Unpack(v)
+		if err != nil {
+			return fmt.Errorf("at index %d: %v", i, err)
+		}
+		items = append(items, metav1.LabelSelector(item.Value))
+	}
+
+	listObj.Freeze()
+	o.List = listObj
+	o.Value = items
+
+	return nil
+}
+
+type LabelSelectorRequirement struct {
+	*starlark.Dict
+	Value      metav1.LabelSelectorRequirement
+	isUnpacked bool
+	t          *starlark.Thread // instantiation thread for computing abspath
+}
+
+func (p Plugin) labelSelectorRequirement(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var key starlark.Value
+	var operator starlark.Value
+	var values starlark.Value
+	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
+		"key?", &key,
+		"operator?", &operator,
+		"values?", &values,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	dict := starlark.NewDict(3)
+
+	if key != nil {
+		err := dict.SetKey(starlark.String("key"), key)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if operator != nil {
+		err := dict.SetKey(starlark.String("operator"), operator)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if values != nil {
+		err := dict.SetKey(starlark.String("values"), values)
+		if err != nil {
+			return nil, err
+		}
+	}
+	var obj *LabelSelectorRequirement = &LabelSelectorRequirement{t: t}
+	err = obj.Unpack(dict)
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
+}
+
+func (o *LabelSelectorRequirement) Unpack(v starlark.Value) error {
+	obj := metav1.LabelSelectorRequirement{}
+
+	starlarkObj, ok := v.(*LabelSelectorRequirement)
+	if ok {
+		*o = *starlarkObj
+		return nil
+	}
+
+	mapObj, ok := v.(*starlark.Dict)
+	if !ok {
+		return fmt.Errorf("expected dict, actual: %v", v.Type())
+	}
+
+	for _, item := range mapObj.Items() {
+		keyV, val := item[0], item[1]
+		key, ok := starlark.AsString(keyV)
+		if !ok {
+			return fmt.Errorf("key must be string. Got: %s", keyV.Type())
+		}
+
+		if key == "key" {
+			v, ok := starlark.AsString(val)
+			if !ok {
+				return fmt.Errorf("Expected string, actual: %s", val.Type())
+			}
+			obj.Key = string(v)
+			continue
+		}
+		if key == "operator" {
+			v, ok := starlark.AsString(val)
+			if !ok {
+				return fmt.Errorf("Expected string, actual: %s", val.Type())
+			}
+			obj.Operator = metav1.LabelSelectorOperator(v)
+			continue
+		}
+		if key == "values" {
+			var v value.StringList
+			err := v.Unpack(val)
+			if err != nil {
+				return fmt.Errorf("unpacking %s: %v", key, err)
+			}
+			obj.Values = v
+			continue
+		}
+		return fmt.Errorf("Unexpected attribute name: %s", key)
+	}
+
+	mapObj.Freeze()
+	o.Dict = mapObj
+	o.Value = obj
+	o.isUnpacked = true
+
+	return nil
+}
+
+type LabelSelectorRequirementList struct {
+	*starlark.List
+	Value []metav1.LabelSelectorRequirement
+	t     *starlark.Thread
+}
+
+func (o *LabelSelectorRequirementList) Unpack(v starlark.Value) error {
+	items := []metav1.LabelSelectorRequirement{}
+
+	listObj, ok := v.(*starlark.List)
+	if !ok {
+		return fmt.Errorf("expected list, actual: %v", v.Type())
+	}
+
+	for i := 0; i < listObj.Len(); i++ {
+		v := listObj.Index(i)
+
+		item := LabelSelectorRequirement{t: o.t}
+		err := item.Unpack(v)
+		if err != nil {
+			return fmt.Errorf("at index %d: %v", i, err)
+		}
+		items = append(items, metav1.LabelSelectorRequirement(item.Value))
+	}
+
+	listObj.Freeze()
+	o.List = listObj
+	o.Value = items
+
+	return nil
+}
+
+type PodLogStreamTemplateSpec struct {
+	*starlark.Dict
+	Value      v1alpha1.PodLogStreamTemplateSpec
+	isUnpacked bool
+	t          *starlark.Thread // instantiation thread for computing abspath
+}
+
+func (p Plugin) podLogStreamTemplateSpec(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var sinceTime starlark.Value
+	var onlyContainers starlark.Value
+	var ignoreContainers starlark.Value
+	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
+		"since_time?", &sinceTime,
+		"only_containers?", &onlyContainers,
+		"ignore_containers?", &ignoreContainers,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	dict := starlark.NewDict(3)
+
+	if sinceTime != nil {
+		err := dict.SetKey(starlark.String("since_time"), sinceTime)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if onlyContainers != nil {
+		err := dict.SetKey(starlark.String("only_containers"), onlyContainers)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if ignoreContainers != nil {
+		err := dict.SetKey(starlark.String("ignore_containers"), ignoreContainers)
+		if err != nil {
+			return nil, err
+		}
+	}
+	var obj *PodLogStreamTemplateSpec = &PodLogStreamTemplateSpec{t: t}
+	err = obj.Unpack(dict)
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
+}
+
+func (o *PodLogStreamTemplateSpec) Unpack(v starlark.Value) error {
+	obj := v1alpha1.PodLogStreamTemplateSpec{}
+
+	starlarkObj, ok := v.(*PodLogStreamTemplateSpec)
+	if ok {
+		*o = *starlarkObj
+		return nil
+	}
+
+	mapObj, ok := v.(*starlark.Dict)
+	if !ok {
+		return fmt.Errorf("expected dict, actual: %v", v.Type())
+	}
+
+	for _, item := range mapObj.Items() {
+		keyV, val := item[0], item[1]
+		key, ok := starlark.AsString(keyV)
+		if !ok {
+			return fmt.Errorf("key must be string. Got: %s", keyV.Type())
+		}
+
+		if key == "only_containers" {
+			var v value.StringList
+			err := v.Unpack(val)
+			if err != nil {
+				return fmt.Errorf("unpacking %s: %v", key, err)
+			}
+			obj.OnlyContainers = v
+			continue
+		}
+		if key == "ignore_containers" {
+			var v value.StringList
+			err := v.Unpack(val)
+			if err != nil {
+				return fmt.Errorf("unpacking %s: %v", key, err)
+			}
+			obj.IgnoreContainers = v
+			continue
+		}
+		return fmt.Errorf("Unexpected attribute name: %s", key)
+	}
+
+	mapObj.Freeze()
+	o.Dict = mapObj
+	o.Value = obj
+	o.isUnpacked = true
+
+	return nil
+}
+
+type PodLogStreamTemplateSpecList struct {
+	*starlark.List
+	Value []v1alpha1.PodLogStreamTemplateSpec
+	t     *starlark.Thread
+}
+
+func (o *PodLogStreamTemplateSpecList) Unpack(v starlark.Value) error {
+	items := []v1alpha1.PodLogStreamTemplateSpec{}
+
+	listObj, ok := v.(*starlark.List)
+	if !ok {
+		return fmt.Errorf("expected list, actual: %v", v.Type())
+	}
+
+	for i := 0; i < listObj.Len(); i++ {
+		v := listObj.Index(i)
+
+		item := PodLogStreamTemplateSpec{t: o.t}
+		err := item.Unpack(v)
+		if err != nil {
+			return fmt.Errorf("at index %d: %v", i, err)
+		}
+		items = append(items, v1alpha1.PodLogStreamTemplateSpec(item.Value))
+	}
+
+	listObj.Freeze()
+	o.List = listObj
+	o.Value = items
+
+	return nil
+}
+
+type PortForwardTemplateSpec struct {
+	*starlark.Dict
+	Value      v1alpha1.PortForwardTemplateSpec
+	isUnpacked bool
+	t          *starlark.Thread // instantiation thread for computing abspath
+}
+
+func (p Plugin) portForwardTemplateSpec(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var forwards starlark.Value
+	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
+		"forwards?", &forwards,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	dict := starlark.NewDict(1)
+
+	if forwards != nil {
+		err := dict.SetKey(starlark.String("forwards"), forwards)
+		if err != nil {
+			return nil, err
+		}
+	}
+	var obj *PortForwardTemplateSpec = &PortForwardTemplateSpec{t: t}
+	err = obj.Unpack(dict)
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
+}
+
+func (o *PortForwardTemplateSpec) Unpack(v starlark.Value) error {
+	obj := v1alpha1.PortForwardTemplateSpec{}
+
+	starlarkObj, ok := v.(*PortForwardTemplateSpec)
+	if ok {
+		*o = *starlarkObj
+		return nil
+	}
+
+	mapObj, ok := v.(*starlark.Dict)
+	if !ok {
+		return fmt.Errorf("expected dict, actual: %v", v.Type())
+	}
+
+	for _, item := range mapObj.Items() {
+		keyV, val := item[0], item[1]
+		key, ok := starlark.AsString(keyV)
+		if !ok {
+			return fmt.Errorf("key must be string. Got: %s", keyV.Type())
+		}
+
+		if key == "forwards" {
+			v := ForwardList{t: o.t}
+			err := v.Unpack(val)
+			if err != nil {
+				return fmt.Errorf("unpacking %s: %v", key, err)
+			}
+			obj.Forwards = v.Value
+			continue
+		}
+		return fmt.Errorf("Unexpected attribute name: %s", key)
+	}
+
+	mapObj.Freeze()
+	o.Dict = mapObj
+	o.Value = obj
+	o.isUnpacked = true
+
+	return nil
+}
+
+type PortForwardTemplateSpecList struct {
+	*starlark.List
+	Value []v1alpha1.PortForwardTemplateSpec
+	t     *starlark.Thread
+}
+
+func (o *PortForwardTemplateSpecList) Unpack(v starlark.Value) error {
+	items := []v1alpha1.PortForwardTemplateSpec{}
+
+	listObj, ok := v.(*starlark.List)
+	if !ok {
+		return fmt.Errorf("expected list, actual: %v", v.Type())
+	}
+
+	for i := 0; i < listObj.Len(); i++ {
+		v := listObj.Index(i)
+
+		item := PortForwardTemplateSpec{t: o.t}
+		err := item.Unpack(v)
+		if err != nil {
+			return fmt.Errorf("at index %d: %v", i, err)
+		}
+		items = append(items, v1alpha1.PortForwardTemplateSpec(item.Value))
 	}
 
 	listObj.Freeze()
