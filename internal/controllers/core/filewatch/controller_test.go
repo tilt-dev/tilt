@@ -9,7 +9,9 @@ import (
 	"testing"
 	"time"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
 
@@ -24,6 +26,10 @@ import (
 	"github.com/tilt-dev/tilt/pkg/apis"
 	filewatches "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
+
+// Test constants
+const timeout = time.Second
+const interval = 5 * time.Millisecond
 
 type fixture struct {
 	*fake.ControllerFixture
@@ -46,7 +52,7 @@ func newFixture(t *testing.T) *fixture {
 	testingStore := store.NewTestingStore()
 
 	cfb := fake.NewControllerFixtureBuilder(t)
-	controller := NewController(cfb.Client, testingStore, fakeMultiWatcher.NewSub, timerMaker.Maker())
+	controller := NewController(cfb.Client, testingStore, fakeMultiWatcher.NewSub, timerMaker.Maker(), filewatches.NewScheme())
 
 	return &fixture{
 		ControllerFixture: cfb.Build(controller),
@@ -111,10 +117,57 @@ func (f *fixture) CreateSimpleFileWatch() (types.NamespacedName, *filewatches.Fi
 		},
 		Spec: filewatches.FileWatchSpec{
 			WatchedPaths: []string{f.tmpdir.JoinPath("a"), f.tmpdir.JoinPath("b", "c")},
+			DisableSource: &filewatches.DisableSource{
+				ConfigMap: &filewatches.ConfigMapDisableSource{
+					Name: "disable-test-file-watch",
+					Key:  "isDisabled",
+				},
+			},
 		},
 	}
 	f.Create(fw)
 	return f.KeyForObject(fw), fw
+}
+
+func (f *fixture) reconcileFw(key types.NamespacedName) {
+	_, err := f.controller.Reconcile(f.Context(), ctrl.Request{NamespacedName: key})
+	require.NoError(f.T(), err)
+}
+
+func (f *fixture) setDisabled(key types.NamespacedName, isDisabled bool) {
+	fw := &filewatches.FileWatch{}
+	err := f.Client.Get(f.Context(), key, fw)
+	require.NoError(f.T(), err)
+
+	// Make sure that there's a `DisableSource` set on fw
+	require.NotNil(f.T(), fw.Spec.DisableSource)
+	require.NotNil(f.T(), fw.Spec.DisableSource.ConfigMap)
+
+	// Make sure that the configmap exists
+	configmap := &filewatches.ConfigMap{}
+	err = f.Client.Get(f.Context(), types.NamespacedName{Name: fw.Spec.DisableSource.ConfigMap.Name}, configmap)
+	// If the configmap doesn't exist, create it
+	if apierrors.IsNotFound(err) {
+		configmap.ObjectMeta.Name = fw.Spec.DisableSource.ConfigMap.Name
+		configmap.Data = map[string]string{fw.Spec.DisableSource.ConfigMap.Key: strconv.FormatBool(isDisabled)}
+		err = f.Client.Create(f.Context(), configmap)
+		require.NoError(f.T(), err)
+	} else {
+		// Otherwise, update the existing configmap
+		require.Nil(f.T(), err)
+		configmap.Data[fw.Spec.DisableSource.ConfigMap.Key] = strconv.FormatBool(isDisabled)
+		err = f.Client.Update(f.Context(), configmap)
+		require.NoError(f.T(), err)
+	}
+
+	f.reconcileFw(key)
+
+	require.Eventually(f.T(), func() bool {
+		err := f.Client.Get(f.Context(), key, fw)
+		require.NoError(f.T(), err)
+
+		return fw.Status.DisableStatus != nil && fw.Status.DisableStatus.Disabled == isDisabled
+	}, timeout, interval)
 }
 
 func TestController_LimitFileEventsHistory(t *testing.T) {
@@ -265,4 +318,33 @@ func TestController_Reconcile_Watches(t *testing.T) {
 		assert.Equal(t, []string{f.tmpdir.JoinPath("d", "2")}, updated.Status.FileEvents[1].SeenFiles)
 		assert.Equal(t, mostRecentEventTime, updated.Status.LastEventTime.Time)
 	}
+}
+
+func TestController_Disable_By_Configmap(t *testing.T) {
+	f := newFixture(t)
+	key, _ := f.CreateSimpleFileWatch()
+
+	// when enabling the configmap, the filewatch object is enabled
+	f.setDisabled(key, true)
+
+	// when disabling the configmap, the filewatch object is disabled
+	f.setDisabled(key, false)
+
+	// when enabling the configmap, the filewatch object is enabled
+	f.setDisabled(key, true)
+}
+
+func TestController_Disable_Ignores_File_Changes(t *testing.T) {
+	f := newFixture(t)
+	key, _ := f.CreateSimpleFileWatch()
+
+	// Disable the filewatch
+	f.setDisabled(key, true)
+	// Change a watched file
+	f.ChangeFile("a", "1")
+
+	// Expect that no file events were triggered
+	var fwAfterDisable filewatches.FileWatch
+	f.MustGet(key, &fwAfterDisable)
+	require.Equal(t, 0, len(fwAfterDisable.Status.FileEvents))
 }

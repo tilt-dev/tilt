@@ -290,7 +290,10 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 		b.mu.Unlock()
 
 		// block until we know we're supposed to resolve this build
-		b.waitUntilBuildCompleted(ctx, buildKey)
+		err2 := b.waitUntilBuildCompleted(ctx, buildKey)
+		if err == nil {
+			err = err2
+		}
 
 		// don't update b.calls until the end, to ensure appropriate actions have been dispatched first
 		select {
@@ -468,16 +471,18 @@ func (b *fakeBuildAndDeployer) registerBuild(key string) {
 	b.getOrCreateBuildCompletionChannel(key)
 }
 
-func (b *fakeBuildAndDeployer) waitUntilBuildCompleted(ctx context.Context, key string) {
+func (b *fakeBuildAndDeployer) waitUntilBuildCompleted(ctx context.Context, key string) error {
 	ch := b.getOrCreateBuildCompletionChannel(key)
+
+	defer b.buildCompletionChans.Delete(key)
 
 	// wait until channel for this build is closed, or context is canceled/finishes.
 	select {
 	case <-ch:
+		return nil
 	case <-ctx.Done():
+		return ctx.Err()
 	}
-
-	b.buildCompletionChans.Delete(key)
 }
 
 func newFakeBuildAndDeployer(t *testing.T, kClient *k8s.FakeK8sClient, ctrlClient ctrlclient.Client) *fakeBuildAndDeployer {
@@ -3924,7 +3929,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	tcum := cloud.NewStatusManager(httptest.NewFakeClientEmptyJSON(), clock)
 	fe := cmd.NewFakeExecer()
 	fpm := cmd.NewFakeProberManager()
-	fwc := filewatch.NewController(cdc, st, watcher.NewSub, timerMaker.Maker())
+	fwc := filewatch.NewController(cdc, st, watcher.NewSub, timerMaker.Maker(), v1alpha1.NewScheme())
 	cmds := cmd.NewController(ctx, fe, fpm, cdc, st, clock, v1alpha1.NewScheme())
 	lsc := local.NewServerController(cdc)
 	sessionController := session.NewController(cdc, engineMode)

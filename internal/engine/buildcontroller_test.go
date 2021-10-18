@@ -8,14 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tilt-dev/tilt/pkg/apis"
-	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
-
-	"github.com/tilt-dev/tilt/pkg/model"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
@@ -25,7 +20,11 @@ import (
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/podbuilder"
+	"github.com/tilt-dev/tilt/internal/testutils/uiresourcebuilder"
 	"github.com/tilt-dev/tilt/internal/watch"
+	"github.com/tilt-dev/tilt/pkg/apis"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func TestBuildControllerOnePod(t *testing.T) {
@@ -1606,7 +1605,31 @@ func TestManifestsWithCommonAncestorAndTrigger(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
+func TestDisablingCancelsBuild(t *testing.T) {
+	f := newTestFixture(t)
+	manifest := manifestbuilder.New(f, "local").
+		WithLocalResource("sleep 10000", nil).Build()
+	f.b.completeBuildsManually = true
+
+	f.Start([]model.Manifest{manifest})
+	f.waitUntilManifestBuilding("local")
+
+	state := f.store.LockMutableStateForTesting()
+	state.UIResources["local"] = uiresourcebuilder.New("local").WithDisabledCount(1).Build()
+	f.store.UnlockMutableState()
+
+	f.waitForCompletedBuildCount(1)
+
+	f.withManifestState("local", func(ms store.ManifestState) {
+		require.Equal(t, "context canceled", ms.LastBuild().Error.Error())
+	})
+
+	err := f.Stop()
+	require.NoError(t, err)
+}
+
 func (f *testFixture) waitUntilManifestBuilding(name model.ManifestName) {
+	f.t.Helper()
 	msg := fmt.Sprintf("manifest %q is building", name)
 	f.WaitUntilManifestState(msg, name, func(ms store.ManifestState) bool {
 		return ms.IsBuilding()
