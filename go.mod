@@ -52,7 +52,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.1
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
-	github.com/pkg/browser v0.0.0-00010101000000-000000000000
+	github.com/pkg/browser v0.0.0-20210115035449-ce105d075bb4
 	github.com/pkg/errors v0.9.1
 	github.com/rivo/tview v0.0.0-20180926100353-bc39bf8d245d
 	github.com/schollz/closestmatch v2.1.0+incompatible
