@@ -4120,8 +4120,8 @@ func (f *testFixture) Init(action InitAction) {
 		TiltfileManifestName: model.MainTiltfileManifestName,
 		Manifests:            state.Manifests(),
 		ConfigFiles:          state.MainConfigPaths(),
+		TiltfilePath:         action.TiltfilePath,
 	}, make(map[string]*v1alpha1.DisableSource))
-	expectedWatchCount := len(expectedFileWatches)
 	if f.overrideMaxParallelUpdates > 0 {
 		state.UpdateSettings = state.UpdateSettings.WithMaxParallelUpdates(f.overrideMaxParallelUpdates)
 	}
@@ -4146,13 +4146,18 @@ func (f *testFixture) Init(action InitAction) {
 
 			return false
 		}
-		activeWatches := 0
+
+		remainingWatchNames := make(map[string]bool)
+		for _, fw := range expectedFileWatches {
+			remainingWatchNames[fw.GetName()] = true
+		}
+
 		for _, fw := range fwList.Items {
 			if !fw.Status.MonitorStartTime.IsZero() {
-				activeWatches++
+				delete(remainingWatchNames, fw.GetName())
 			}
 		}
-		return activeWatches >= expectedWatchCount
+		return len(remainingWatchNames) == 0
 	})
 }
 
