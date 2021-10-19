@@ -323,10 +323,11 @@ func fakeArgsMap(shlex *shell.Lex, args []instructions.ArgCommand) map[string]st
 func argInstructions(buildArgs map[string]string) []instructions.ArgCommand {
 	var out []instructions.ArgCommand
 	for k, v := range buildArgs {
+		value := v
 		out = append(out, instructions.ArgCommand{Args: []instructions.KeyValuePairOptional{
 			{
 				Key:   k,
-				Value: &v,
+				Value: &value,
 			},
 		}})
 	}

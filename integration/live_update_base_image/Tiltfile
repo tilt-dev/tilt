@@ -2,13 +2,15 @@
 include('../Tiltfile')
 
 repo = 'gcr.io/windmill-test-containers'
-docker_build(repo + '/live-update-base-image-common', 'common')
+docker_build(repo + '/live-update-base-image-content', 'content')
+docker_build(repo + '/live-update-base-image-base', 'base')
 docker_build(repo + '/live-update-base-image-app', 'app',
              live_update=[
-               sync('common/', '/app/'),
+                 sync('content/', '/app/'),
              ],
              build_args={
-               'BASE_IMAGE': repo + '/live-update-base-image-common',
+                 'REPO': repo,
+                 'BASE_IMAGE': 'live-update-base-image-base',
              })
 
 k8s_yaml(['app.yaml'])
