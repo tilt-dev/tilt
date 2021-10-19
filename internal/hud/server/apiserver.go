@@ -163,6 +163,12 @@ func ProvideTiltServerOptions(
 	if err != nil {
 		return nil, err
 	}
+
+	// Shout-out to kubectl-tree woop woop.
+	// https://github.com/ahmetb/kubectl-tree/blob/3561e74922d29f576698a820b4c003f1dcf691be/cmd/kubectl-tree/rootcmd.go#L75
+	config.GenericConfig.LoopbackClientConfig.QPS = 1000
+	config.GenericConfig.LoopbackClientConfig.Burst = 1000
+
 	config.GenericConfig.MaxRequestBodyBytes = maxRequestBodyBytes
 	return config, nil
 }
