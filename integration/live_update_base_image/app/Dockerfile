@@ -1,6 +1,5 @@
-FROM busybox
-
-COPY --from=gcr.io/windmill-test-containers/live-update-base-image-common /usr/src/common/regular /app/message.txt
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
 
 WORKDIR /app
 

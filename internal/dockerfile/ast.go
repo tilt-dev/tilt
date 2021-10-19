@@ -63,9 +63,9 @@ func (a AST) extractBaseNameInFromCommand(node *parser.Node, shlex *shell.Lex, m
 }
 
 // Find all images referenced in this dockerfile and call the visitor function.
-// If the visitor function returns a new image, subsitute that image into the dockerfile.
-func (a AST) traverseImageRefs(visitor func(node *parser.Node, ref reference.Named) reference.Named) error {
-	metaArgs := []instructions.ArgCommand{}
+// If the visitor function returns a new image, substitute that image into the dockerfile.
+func (a AST) traverseImageRefs(visitor func(node *parser.Node, ref reference.Named) reference.Named, dockerfileArgs []instructions.ArgCommand) error {
+	metaArgs := append([]instructions.ArgCommand(nil), dockerfileArgs...)
 	shlex := shell.NewLex(a.result.EscapeToken)
 
 	return a.Traverse(func(node *parser.Node) error {
@@ -81,7 +81,8 @@ func (a AST) traverseImageRefs(visitor func(node *parser.Node, ref reference.Nam
 				return nil
 			}
 
-			metaArgs = append(metaArgs, *argCmd)
+			// args within the Dockerfile are prepended because they provide defaults that are overridden by actual args
+			metaArgs = append([]instructions.ArgCommand{*argCmd}, metaArgs...)
 
 		case command.From:
 			baseName := a.extractBaseNameInFromCommand(node, shlex, metaArgs)
@@ -132,7 +133,7 @@ func (a AST) traverseImageRefs(visitor func(node *parser.Node, ref reference.Nam
 	})
 }
 
-func (a AST) InjectImageDigest(selector container.RefSelector, ref reference.NamedTagged) (bool, error) {
+func (a AST) InjectImageDigest(selector container.RefSelector, ref reference.NamedTagged, buildArgs map[string]string) (bool, error) {
 	modified := false
 	err := a.traverseImageRefs(func(node *parser.Node, toReplace reference.Named) reference.Named {
 		if selector.Matches(toReplace) {
@@ -140,7 +141,7 @@ func (a AST) InjectImageDigest(selector container.RefSelector, ref reference.Nam
 			return ref
 		}
 		return nil
-	})
+	}, argInstructions(buildArgs))
 	return modified, err
 }
 
@@ -314,4 +315,20 @@ func fakeArgsMap(shlex *shell.Lex, args []instructions.ArgCommand) map[string]st
 		}
 	}
 	return m
+}
+
+// argInstructions converts a map of build arguments into a slice of ArgCommand structs.
+//
+// Since the map guarantees uniqueness, there is no defined order of the resulting slice.
+func argInstructions(buildArgs map[string]string) []instructions.ArgCommand {
+	var out []instructions.ArgCommand
+	for k, v := range buildArgs {
+		out = append(out, instructions.ArgCommand{Args: []instructions.KeyValuePairOptional{
+			{
+				Key:   k,
+				Value: &v,
+			},
+		}})
+	}
+	return out
 }

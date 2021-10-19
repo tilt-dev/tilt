@@ -1,5 +1,5 @@
 FROM busybox
 
-RUN mkdir -p /usr/src/common
+WORKDIR /app
 
-ADD message.txt /usr/src/common/regular
+COPY message.txt /app/

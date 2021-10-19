@@ -131,7 +131,7 @@ func (d Dockerfile) ValidateBaseDockerfile() error {
 }
 
 // Find all images referenced in this dockerfile.
-func (d Dockerfile) FindImages() ([]reference.Named, error) {
+func (d Dockerfile) FindImages(buildArgs map[string]string) ([]reference.Named, error) {
 	result := []reference.Named{}
 	ast, err := ParseAST(d)
 	if err != nil {
@@ -141,7 +141,7 @@ func (d Dockerfile) FindImages() ([]reference.Named, error) {
 	err = ast.traverseImageRefs(func(node *parser.Node, ref reference.Named) reference.Named {
 		result = append(result, ref)
 		return nil
-	})
+	}, argInstructions(buildArgs))
 	if err != nil {
 		return nil, err
 	}
