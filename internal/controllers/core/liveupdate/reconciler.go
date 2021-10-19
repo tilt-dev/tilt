@@ -7,6 +7,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
@@ -15,15 +16,15 @@ import (
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/pkg/errors"
-
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/containerupdate"
+	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
+	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
@@ -106,12 +107,58 @@ type Status struct {
 	ExecError error
 }
 
+// Live-update containers by copying files and running exec commands.
+//
+// Update the apiserver when finished.
+//
+// We expose this as a public method as a hack! Currently, in Tilt, BuildController
+// decides when to kick off the live update, and run a full image build+deploy if it
+// fails. Eventually we'll invert that relationship, so that BuildController
+// (and other API reconcilers) watch the live update API.
 func (r *Reconciler) ForceApply(
 	ctx context.Context,
 	nn types.NamespacedName,
 	spec v1alpha1.LiveUpdateSpec,
-	input Input) Status {
+	input Input) (v1alpha1.LiveUpdateStatus, error) {
 
+	status := r.forceApplyInternal(ctx, nn, spec, input)
+
+	var obj v1alpha1.LiveUpdate
+	err := r.client.Get(ctx, nn, &obj)
+	if err != nil {
+		return v1alpha1.LiveUpdateStatus{}, client.IgnoreNotFound(err)
+	}
+
+	// Check to see if this is a state transition.
+	if status.Failed != nil {
+		transitionTime := apis.NowMicro()
+		if obj.Status.Failed != nil && obj.Status.Failed.Reason == status.Failed.Reason {
+			// If the reason hasn't changed, don't treat this as a transition.
+			transitionTime = obj.Status.Failed.LastTransitionTime
+		}
+		status.Failed.LastTransitionTime = transitionTime
+	}
+
+	if !apicmp.DeepEqual(status, obj.Status) {
+		update := obj.DeepCopy()
+		update.Status = status
+		err := r.client.Status().Update(ctx, update)
+		if err != nil {
+			return v1alpha1.LiveUpdateStatus{}, client.IgnoreNotFound(err)
+		}
+	}
+
+	return status, nil
+}
+
+// Like ForceApply, but doesn't write the status to the apiserver.
+func (r *Reconciler) forceApplyInternal(
+	ctx context.Context,
+	nn types.NamespacedName,
+	spec v1alpha1.LiveUpdateSpec,
+	input Input) v1alpha1.LiveUpdateStatus {
+
+	var result v1alpha1.LiveUpdateStatus
 	cu := r.containerUpdater(input)
 	l := logger.Get(ctx)
 	containers := input.Containers
@@ -127,13 +174,21 @@ func (r *Reconciler) ForceApply(
 	hotReload := !liveupdate.ShouldRestart(spec)
 	boiledSteps, err := build.BoilRuns(runSteps, changedFiles)
 	if err != nil {
-		return Status{UnknownError: err}
+		result.Failed = &v1alpha1.LiveUpdateStateFailed{
+			Reason:  "Invalid",
+			Message: fmt.Sprintf("Building exec: %v", err),
+		}
+		return result
 	}
 
 	// rm files from container
 	toRemove, toArchive, err := build.MissingLocalPaths(ctx, changedFiles)
 	if err != nil {
-		return Status{UnknownError: errors.Wrap(err, "MissingLocalPaths")}
+		result.Failed = &v1alpha1.LiveUpdateStateFailed{
+			Reason:  "Invalid",
+			Message: fmt.Sprintf("Mapping paths: %v", err),
+		}
+		return result
 	}
 
 	if len(toRemove) > 0 {
@@ -150,39 +205,56 @@ func (r *Reconciler) ForceApply(
 		}
 	}
 
-	var lastUserBuildFailure error
+	var lastExecErrorStatus *v1alpha1.LiveUpdateContainerStatus
 	for _, cInfo := range containers {
 		archive := build.TarArchiveForPaths(ctx, toArchive, filter)
 		err = cu.UpdateContainer(ctx, cInfo, archive,
 			build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
+
+		cStatus := v1alpha1.LiveUpdateContainerStatus{
+			ContainerName: cInfo.ContainerName.String(),
+			ContainerID:   cInfo.ContainerID.String(),
+			PodName:       cInfo.PodID.String(),
+			Namespace:     cInfo.Namespace.String(),
+
+			// TODO(nick): Pass in LastFileTimeSynced from the FileWatch events.
+			LastFileTimeSynced: apis.NowMicro(),
+		}
+
 		if err != nil {
 			if runFail, ok := build.MaybeRunStepFailure(err); ok {
 				// Keep running updates -- we want all containers to have the same files on them
 				// even if the Runs don't succeed
-				lastUserBuildFailure = err
 				logger.Get(ctx).Infof("  → Failed to update container %s: run step %q failed with exit code: %d",
 					cInfo.ContainerID.ShortStr(), runFail.Cmd.String(), runFail.ExitCode)
-				continue
+				cStatus.LastExecError = err.Error()
+				lastExecErrorStatus = &cStatus
+			} else {
+				// Something went wrong with this update and it's NOT the user's fault--
+				// likely a infrastructure error. Bail, and fall back to full build.
+				result.Failed = &v1alpha1.LiveUpdateStateFailed{
+					Reason:  "UpdateFailed",
+					Message: fmt.Sprintf("Updating pod %s: %v", cStatus.PodName, err),
+				}
+				return result
 			}
-
-			// Something went wrong with this update and it's NOT the user's fault--
-			// likely a infrastructure error. Bail, and fall back to full build.
-			return Status{UnknownError: err}
 		} else {
 			logger.Get(ctx).Infof("  → Container %s updated!", cInfo.ContainerID.ShortStr())
-			if lastUserBuildFailure != nil {
+			if lastExecErrorStatus != nil {
 				// This build succeeded, but previously at least one failed due to user error.
 				// We may have inconsistent state--bail, and fall back to full build.
-				err := fmt.Errorf("Failed to update container: container %s successfully updated, "+
-					"but last update failed with '%v'", cInfo.ContainerID.ShortStr(), lastUserBuildFailure)
-				return Status{UnknownError: err}
+				result.Failed = &v1alpha1.LiveUpdateStateFailed{
+					Reason: "PodsInconsistent",
+					Message: fmt.Sprintf("Pods in inconsistent state. Success: pod %s. Failure: pod %s. Error: %v",
+						cStatus.PodName, lastExecErrorStatus.PodName, lastExecErrorStatus.LastExecError),
+				}
+				return result
 			}
 		}
+
+		result.Containers = append(result.Containers, cStatus)
 	}
-	if lastUserBuildFailure != nil {
-		return Status{ExecError: lastUserBuildFailure}
-	}
-	return Status{}
+	return result
 }
 
 func (r *Reconciler) containerUpdater(input Input) containerupdate.ContainerUpdater {

@@ -119,16 +119,22 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, ps 
 	}
 	ps.StartBuildStep(ctx, "Updating container%s: %s", suffix, cIDStr)
 
-	status := lubad.luReconciler.ForceApply(
+	status, err := lubad.luReconciler.ForceApply(
 		ctx,
 		types.NamespacedName{Name: info.Name},
 		info.Spec,
 		info.Input)
-	if status.UnknownError != nil {
-		return status.UnknownError
+	if err != nil {
+		return err
 	}
-	if status.ExecError != nil {
-		return WrapDontFallBackError(status.ExecError)
+	if status.Failed != nil {
+		return fmt.Errorf("%s", status.Failed.Message)
+	}
+
+	for _, c := range status.Containers {
+		if c.LastExecError != "" {
+			return WrapDontFallBackError(fmt.Errorf("%s", c.LastExecError))
+		}
 	}
 	return nil
 }
