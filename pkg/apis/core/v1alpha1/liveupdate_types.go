@@ -124,6 +124,10 @@ type LiveUpdateSpec struct {
 var _ resource.Object = &LiveUpdate{}
 var _ resourcestrategy.Validater = &LiveUpdate{}
 
+func (in *LiveUpdate) GetSpec() interface{} {
+	return in.Spec
+}
+
 func (in *LiveUpdate) GetObjectMeta() *metav1.ObjectMeta {
 	return &in.ObjectMeta
 }
