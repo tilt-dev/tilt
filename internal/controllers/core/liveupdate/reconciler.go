@@ -126,7 +126,7 @@ func (r *Reconciler) ForceApply(
 	var obj v1alpha1.LiveUpdate
 	err := r.client.Get(ctx, nn, &obj)
 	if err != nil {
-		return v1alpha1.LiveUpdateStatus{}, client.IgnoreNotFound(err)
+		return v1alpha1.LiveUpdateStatus{}, err
 	}
 
 	// Check to see if this is a state transition.

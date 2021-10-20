@@ -23,6 +23,7 @@ import (
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/build"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
@@ -915,6 +916,14 @@ func (f *bdFixture) BuildAndDeploy(specs []model.TargetSpec, stateSet store.Buil
 				im.Status = imageBuildResult.ImageMapStatus
 			}
 			f.upsert(&im)
+
+			if !liveupdate.IsEmptySpec(iTarget.LiveUpdateSpec) {
+				lu := v1alpha1.LiveUpdate{
+					ObjectMeta: metav1.ObjectMeta{Name: iTarget.LiveUpdateName},
+					Spec:       iTarget.LiveUpdateSpec,
+				}
+				f.upsert(&lu)
+			}
 		}
 
 		kTarget, ok := spec.(model.K8sTarget)

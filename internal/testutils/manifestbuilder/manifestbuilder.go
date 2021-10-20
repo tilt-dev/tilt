@@ -5,6 +5,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/labels"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -125,6 +126,9 @@ func (b ManifestBuilder) WithLiveUpdateAtIndex(lu v1alpha1.LiveUpdateSpec, index
 
 	iTarg := b.iTargets[index]
 	iTarg.LiveUpdateSpec = lu
+	if !liveupdate.IsEmptySpec(lu) {
+		iTarg.LiveUpdateName = liveupdate.GetName(b.name, iTarg.ID())
+	}
 	b.iTargets[index] = iTarg
 	return b
 }

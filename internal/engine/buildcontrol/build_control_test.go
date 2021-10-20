@@ -257,7 +257,7 @@ func TestHoldForDeploy(t *testing.T) {
 		Syncs:     []v1alpha1.LiveUpdateSync{{LocalPath: "src", ContainerPath: "/src"}},
 	}
 	sanchoImage := model.MustNewImageTarget(container.MustParseSelector("sancho")).
-		WithLiveUpdateSpec(luSpec).
+		WithLiveUpdateSpec("sancho", luSpec).
 		WithBuildDetails(model.DockerBuild{BuildPath: f.Path()})
 	sancho := f.upsertManifest(manifestbuilder.New(f, "sancho").
 		WithImageTargets(sanchoImage).

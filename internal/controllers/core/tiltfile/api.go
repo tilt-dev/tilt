@@ -292,21 +292,21 @@ func toLiveUpdateObjects(tlr *tiltfile.TiltfileLoadResult) apiset.TypedObjectSet
 	for _, m := range tlr.Manifests {
 		for _, iTarget := range m.ImageTargets {
 			luSpec := iTarget.LiveUpdateSpec
-			if liveupdate.IsEmptySpec(luSpec) {
+			luName := iTarget.LiveUpdateName
+			if liveupdate.IsEmptySpec(luSpec) || luName == "" {
 				continue
 			}
-			name := apis.SanitizeName(fmt.Sprintf("%s:%s", m.Name.String(), iTarget.ID().Name))
 			obj := &v1alpha1.LiveUpdate{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: name,
+					Name: luName,
 					Annotations: map[string]string{
 						v1alpha1.AnnotationManifest: m.Name.String(),
-						v1alpha1.AnnotationSpanID:   fmt.Sprintf("liveupdate:%s", name),
+						v1alpha1.AnnotationSpanID:   fmt.Sprintf("liveupdate:%s", luName),
 					},
 				},
 				Spec: iTarget.LiveUpdateSpec,
 			}
-			result[name] = obj
+			result[luName] = obj
 		}
 	}
 	return result
