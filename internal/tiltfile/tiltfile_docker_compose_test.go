@@ -452,7 +452,8 @@ dc_resource('foo', 'gcr.io/foo')
 	assert.True(t, iTarget.IsDockerBuild())
 	assert.True(t, liveupdate.IsEmptySpec(iTarget.LiveUpdateSpec))
 
-	assert.Contains(t, m.DockerComposeTarget().Spec.Project.YAML, "services:\n  foo:\n    build:")
+	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
+	assert.Equal(t, m.DockerComposeTarget().Spec.Project.ConfigPaths, []string{configPath})
 }
 
 func TestDockerComposeWithDockerBuildAutoAssociate(t *testing.T) {
@@ -483,8 +484,8 @@ docker_compose('docker-compose.yml')
 	assert.True(t, iTarget.IsDockerBuild())
 	assert.True(t, liveupdate.IsEmptySpec(iTarget.LiveUpdateSpec))
 
-	assert.Contains(t, m.DockerComposeTarget().Spec.Project.YAML,
-		"image: gcr.io/as_specified_in_config")
+	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
+	assert.Equal(t, m.DockerComposeTarget().Spec.Project.ConfigPaths, []string{configPath})
 }
 
 // I.e. make sure that we handle de/normalization between `fooimage` <--> `docker.io/library/fooimage`
@@ -504,8 +505,9 @@ dc_resource('foo', 'fooimage')
 	m := f.assertNextManifest("foo", db(image("fooimage")))
 	assert.True(t, m.ImageTargetAt(0).IsDockerBuild())
 
-	assert.Contains(t, m.DockerComposeTarget().Spec.Project.YAML,
-		"services:\n  foo:\n    build:")
+	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
+	assert.Equal(t, m.DockerComposeTarget().Spec.Project.ConfigPaths,
+		[]string{configPath})
 }
 
 func TestMultipleDockerComposeWithDockerBuild(t *testing.T) {
@@ -527,10 +529,12 @@ dc_resource('bar', 'gcr.io/bar')
 	foo := f.assertNextManifest("foo", db(image("gcr.io/foo")))
 	assert.True(t, foo.ImageTargetAt(0).IsDockerBuild())
 
+	bar := f.assertNextManifest("bar", db(image("gcr.io/bar")))
 	assert.True(t, foo.ImageTargetAt(0).IsDockerBuild())
 
-	assert.Contains(t, foo.DockerComposeTarget().Spec.Project.YAML,
-		"services:\n  bar:\n    depends_on:\n      foo")
+	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
+	assert.Equal(t, foo.DockerComposeTarget().Spec.Project.ConfigPaths, []string{configPath})
+	assert.Equal(t, bar.DockerComposeTarget().Spec.Project.ConfigPaths, []string{configPath})
 }
 
 func TestMultipleDockerComposeWithDockerBuildImageNames(t *testing.T) {
@@ -562,8 +566,9 @@ docker_compose('docker-compose.yml')
 	bar := f.assertNextManifest("bar", db(image("gcr.io/bar")))
 	assert.True(t, bar.ImageTargetAt(0).IsDockerBuild())
 
-	assert.Contains(t, foo.DockerComposeTarget().Spec.Project.YAML, "services:\n  bar:\n    depends_on:\n      foo")
-	assert.Contains(t, bar.DockerComposeTarget().Spec.Project.YAML, "services:\n  bar:\n    depends_on:\n      foo")
+	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
+	assert.Equal(t, foo.DockerComposeTarget().Spec.Project.ConfigPaths, []string{configPath})
+	assert.Equal(t, bar.DockerComposeTarget().Spec.Project.ConfigPaths, []string{configPath})
 }
 
 func TestDCImageRefSuggestion(t *testing.T) {
@@ -608,7 +613,9 @@ dc_resource('foo', img_name)
 	bar := f.assertNextManifest("bar")
 	assert.Empty(t, bar.ImageTargets)
 
-	assert.Contains(t, foo.DockerComposeTarget().Spec.Project.YAML, "services:\n  bar:\n    depends_on:\n      foo")
+	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
+	assert.Equal(t, foo.DockerComposeTarget().Spec.Project.ConfigPaths, []string{configPath})
+	assert.Equal(t, bar.DockerComposeTarget().Spec.Project.ConfigPaths, []string{configPath})
 }
 
 func TestDockerComposeResourceNoImageMatch(t *testing.T) {

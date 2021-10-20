@@ -14,6 +14,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // TestVariableInterpolation both ensures Tilt properly passes environment to Compose for interpolation
@@ -189,7 +190,7 @@ func newDCFixture(t testing.TB) *dcFixture {
 func (f *dcFixture) loadProject(composeYAML string) *types.Project {
 	f.t.Helper()
 	f.tmpdir.WriteFile("docker-compose.yaml", composeYAML)
-	_, proj, err := f.cli.Project(f.ctx, []string{f.tmpdir.JoinPath("docker-compose.yaml")})
+	proj, err := f.cli.Project(f.ctx, model.DockerComposeProject{ConfigPaths: []string{f.tmpdir.JoinPath("docker-compose.yaml")}})
 	require.NoError(f.t, err, "Failed to parse compose YAML")
 	return proj
 }

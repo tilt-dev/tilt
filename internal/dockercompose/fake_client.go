@@ -139,15 +139,13 @@ func (c *FakeDCClient) Config(_ context.Context, _ []string) (string, error) {
 	return c.ConfigOutput, nil
 }
 
-func (c *FakeDCClient) Project(_ context.Context, configPaths []string) (*model.DockerComposeProject, *types.Project, error) {
-	m := &model.DockerComposeProject{ConfigPaths: configPaths}
-
+func (c *FakeDCClient) Project(_ context.Context, m model.DockerComposeProject) (*types.Project, error) {
 	// this is a dummy ProjectOptions that lets us use compose's logic to apply options
 	// for consistency, but we have to then pull the data out ourselves since we're calling
 	// loader.Load ourselves
 	opts, err := compose.NewProjectOptions(nil, compose.WithDotEnv, compose.WithOsEnv)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	p, err := loader.Load(types.ConfigDetails{
@@ -161,7 +159,7 @@ func (c *FakeDCClient) Project(_ context.Context, configPaths []string) (*model.
 	}, func(options *loader.Options) {
 		options.ResolvePaths = true
 	})
-	return m, p, err
+	return p, err
 }
 
 func (c *FakeDCClient) ContainerID(ctx context.Context, spec model.DockerComposeUpSpec) (container.ID, error) {

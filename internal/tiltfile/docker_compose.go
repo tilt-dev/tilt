@@ -65,8 +65,9 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 	// parse them all together.
 	allConfigPaths := append([]string{}, dc.configPaths...)
 	allConfigPaths = append(allConfigPaths, configPaths.Value...)
+	project := model.DockerComposeProject{ConfigPaths: allConfigPaths}
 
-	project, services, err := parseDCConfig(s.ctx, s.dcCli, allConfigPaths)
+	services, err := parseDCConfig(s.ctx, s.dcCli, project)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +85,7 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 	}
 
 	s.dc = dcResourceSet{
-		Project:      *project,
+		Project:      project,
 		configPaths:  allConfigPaths,
 		services:     services,
 		tiltfilePath: starkit.CurrentExecPath(thread),
@@ -279,10 +280,10 @@ func DockerComposeConfigToService(svcConfig types.ServiceConfig) (dcService, err
 	return svc, nil
 }
 
-func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, configPaths []string) (*model.DockerComposeProject, []*dcService, error) {
-	projModel, proj, err := dcc.Project(ctx, configPaths)
+func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, spec model.DockerComposeProject) ([]*dcService, error) {
+	proj, err := dcc.Project(ctx, spec)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	var services []*dcService
@@ -295,10 +296,10 @@ func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, c
 		return nil
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return projModel, services, nil
+	return services, nil
 }
 
 func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResourceSet) (model.Manifest, error) {

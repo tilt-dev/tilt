@@ -26,11 +26,6 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 
 	compose "github.com/compose-spec/compose-go/cli"
-
-	// DANGER: some compose-go types are not friendly to being marshaled with gopkg.in/yaml.v3
-	// and will trigger a stack overflow panic
-	// see https://github.com/tilt-dev/tilt/issues/4797
-	composeyaml "gopkg.in/yaml.v2"
 )
 
 // versionRegex handles both v1 and v2 version outputs, which have several variations.
@@ -42,7 +37,7 @@ type DockerComposeClient interface {
 	Down(ctx context.Context, spec model.DockerComposeProject, stdout, stderr io.Writer) error
 	StreamLogs(ctx context.Context, spec model.DockerComposeUpSpec) io.ReadCloser
 	StreamEvents(ctx context.Context, spec model.DockerComposeProject) (<-chan string, error)
-	Project(ctx context.Context, configPaths []string) (*model.DockerComposeProject, *types.Project, error)
+	Project(ctx context.Context, spec model.DockerComposeProject) (*types.Project, error)
 	ContainerID(ctx context.Context, spec model.DockerComposeUpSpec) (container.ID, error)
 	Version(ctx context.Context) (canonicalVersion string, build string, err error)
 }
@@ -211,31 +206,30 @@ func (c *cmdDCClient) StreamEvents(ctx context.Context, p model.DockerComposePro
 	return ch, nil
 }
 
-func (c *cmdDCClient) Project(ctx context.Context, configPaths []string) (*model.DockerComposeProject, *types.Project, error) {
-	proj, err := c.loadProject(configPaths)
-	if err != nil {
-		// HACK(milas): compose-go has known regressions with resolving variables during YAML loading
-		// 	if it fails, attempt to fallback to using the CLI to resolve the YAML and then parse
-		// 	it with compose-go
-		// 	see https://github.com/tilt-dev/tilt/issues/4795
-		proj, err = c.loadProjectCLI(ctx, configPaths)
-		if err != nil {
-			return nil, nil, err
+func (c *cmdDCClient) Project(ctx context.Context, spec model.DockerComposeProject) (*types.Project, error) {
+	var proj *types.Project
+	var err error
+
+	// First, use compose-go to natively load the project.
+	if len(spec.ConfigPaths) > 0 {
+		parsed, err := c.loadProjectNative(spec.ConfigPaths)
+		if err == nil {
+			proj = parsed
 		}
 	}
 
-	yaml, err := composeyaml.Marshal(proj)
-	if err != nil {
-		return nil, nil, err
+	// HACK(milas): compose-go has known regressions with resolving variables during YAML loading
+	// 	if it fails, attempt to fallback to using the CLI to resolve the YAML and then parse
+	// 	it with compose-go
+	// 	see https://github.com/tilt-dev/tilt/issues/4795
+	if proj == nil {
+		proj, err = c.loadProjectCLI(ctx, spec)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	model := &model.DockerComposeProject{
-		ConfigPaths: configPaths,
-		YAML:        string(yaml),
-		ProjectPath: filepath.Dir(configPaths[0]),
-	}
-
-	return model, proj, nil
+	return proj, nil
 }
 
 func (c *cmdDCClient) ContainerID(ctx context.Context, spec model.DockerComposeUpSpec) (container.ID, error) {
@@ -260,7 +254,7 @@ func (c *cmdDCClient) Version(ctx context.Context) (string, string, error) {
 	return parseComposeVersionOutput(stdout)
 }
 
-func (c *cmdDCClient) loadProject(configPaths []string) (*types.Project, error) {
+func (c *cmdDCClient) loadProjectNative(configPaths []string) (*types.Project, error) {
 	// NOTE: take care to keep relevant options in sync with FakeDCClient::Project() and cmdDCClient::loadProjectCLI()
 	// 	which work differently so cannot directly share options but need to behave similarly
 	opts, err := compose.NewProjectOptions(configPaths, compose.WithOsEnv, compose.WithResolvedPaths(true), compose.WithDotEnv)
@@ -274,10 +268,8 @@ func (c *cmdDCClient) loadProject(configPaths []string) (*types.Project, error) 
 	return proj, nil
 }
 
-func (c *cmdDCClient) loadProjectCLI(ctx context.Context, configPaths []string) (*types.Project, error) {
-	resolvedYAML, err := c.dcOutput(ctx, model.DockerComposeProject{
-		ConfigPaths: configPaths,
-	}, "config")
+func (c *cmdDCClient) loadProjectCLI(ctx context.Context, proj model.DockerComposeProject) (*types.Project, error) {
+	resolvedYAML, err := c.dcOutput(ctx, proj, "config")
 	if err != nil {
 		return nil, err
 	}
@@ -285,12 +277,12 @@ func (c *cmdDCClient) loadProjectCLI(ctx context.Context, configPaths []string) 
 	// docker-compose is very inconsistent about whether it fully resolves paths or not via CLI, both between
 	// v1 and v2 as well as even different releases within v2, so set the workdir and force the loader to resolve
 	// any relative paths
-	var workDir string
-	if len(configPaths) != 0 {
+	workDir := proj.ProjectPath
+	if len(proj.ConfigPaths) != 0 {
 		// from the compose Docs:
 		// 	> When you use multiple Compose files, all paths in the files are relative to the first configuration file specified with -f
 		// https://docs.docker.com/compose/reference/#use--f-to-specify-name-and-path-of-one-or-more-compose-files
-		workDir = filepath.Dir(configPaths[0])
+		workDir = filepath.Dir(proj.ConfigPaths[0])
 	}
 
 	return loader.Load(types.ConfigDetails{
