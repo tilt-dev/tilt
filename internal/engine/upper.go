@@ -7,8 +7,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/tilt-dev/tilt/internal/store/uiresources"
-
 	"github.com/davecgh/go-spew/spew"
 	"github.com/tilt-dev/wmclient/pkg/analytics"
 
@@ -29,11 +27,13 @@ import (
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/configmaps"
 	"github.com/tilt-dev/tilt/internal/store/filewatches"
 	"github.com/tilt-dev/tilt/internal/store/kubernetesapplys"
 	"github.com/tilt-dev/tilt/internal/store/kubernetesdiscoverys"
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/internal/store/tiltfiles"
+	"github.com/tilt-dev/tilt/internal/store/uiresources"
 	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/internal/token"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -201,6 +201,10 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		uiresources.HandleUIResourceUpsertAction(state, action)
 	case uiresources.UIResourceDeleteAction:
 		uiresources.HandleUIResourceDeleteAction(state, action)
+	case configmaps.ConfigMapUpsertAction:
+		configmaps.HandleConfigMapUpsertAction(state, action)
+	case configmaps.ConfigMapDeleteAction:
+		configmaps.HandleConfigMapDeleteAction(state, action)
 	default:
 		state.FatalError = fmt.Errorf("unrecognized action: %T", action)
 	}
