@@ -1069,7 +1069,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource, updateSettings mo
 
 		m = m.WithLabels(r.labels)
 
-		iTargets, err := s.imgTargetsForDependencyIDs(r.dependencyIDs, registry)
+		iTargets, err := s.imgTargetsForDependencyIDs(mn, r.dependencyIDs, registry)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting image build info for %s", r.name)
 		}
@@ -1269,12 +1269,12 @@ func needsRestartContainerDeprecationError(m model.Manifest) bool {
 
 // Grabs all image targets for the given references,
 // as well as any of their transitive dependencies.
-func (s *tiltfileState) imgTargetsForDependencyIDs(ids []model.TargetID, reg container.Registry) ([]model.ImageTarget, error) {
+func (s *tiltfileState) imgTargetsForDependencyIDs(mn model.ManifestName, ids []model.TargetID, reg container.Registry) ([]model.ImageTarget, error) {
 	claimStatus := make(map[model.TargetID]claim, len(ids))
-	return s.imgTargetsForDependencyIDsHelper(ids, claimStatus, reg)
+	return s.imgTargetsForDependencyIDsHelper(mn, ids, claimStatus, reg)
 }
 
-func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, claimStatus map[model.TargetID]claim, reg container.Registry) ([]model.ImageTarget, error) {
+func (s *tiltfileState) imgTargetsForDependencyIDsHelper(mn model.ManifestName, ids []model.TargetID, claimStatus map[model.TargetID]claim, reg container.Registry) ([]model.ImageTarget, error) {
 	iTargets := make([]model.ImageTarget, 0, len(ids))
 	for _, id := range ids {
 		image := s.buildIndex.findBuilderByID(id)
@@ -1315,6 +1315,9 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 				OverrideArgs:    image.overrideArgs,
 			},
 			LiveUpdateSpec: image.liveUpdate,
+		}
+		if !liveupdate.IsEmptySpec(image.liveUpdate) {
+			iTarget.LiveUpdateName = liveupdate.GetName(mn, iTarget.ID())
 		}
 
 		// TODO(nick): Update this to set the selector correctly for
@@ -1364,7 +1367,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(ids []model.TargetID, c
 			WithTiltFilename(image.tiltfilePath).
 			WithDependencyIDs(image.dependencyIDs)
 
-		depTargets, err := s.imgTargetsForDependencyIDsHelper(image.dependencyIDs, claimStatus, reg)
+		depTargets, err := s.imgTargetsForDependencyIDsHelper(mn, image.dependencyIDs, claimStatus, reg)
 		if err != nil {
 			return nil, err
 		}
@@ -1386,7 +1389,7 @@ func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) 
 			return nil, err
 		}
 
-		iTargets, err := s.imgTargetsForDependencyIDs(svc.DependencyIDs, container.Registry{}) // Registry not relevant to DC
+		iTargets, err := s.imgTargetsForDependencyIDs(m.Name, svc.DependencyIDs, container.Registry{}) // Registry not relevant to DC
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting image build info for %s", svc.Name)
 		}

@@ -1297,7 +1297,7 @@ go build ./...
 `
 	manifest := f.newManifest("foobar")
 	iTarget := manifest.ImageTargetAt(0).
-		WithLiveUpdateSpec(v1alpha1.LiveUpdateSpec{}).
+		WithLiveUpdateSpec("foobar", v1alpha1.LiveUpdateSpec{}).
 		WithBuildDetails(
 			model.DockerBuild{
 				Dockerfile: df,

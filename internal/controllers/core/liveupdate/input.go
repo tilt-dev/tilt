@@ -7,7 +7,7 @@ import (
 )
 
 type Input struct {
-	// TODO(nick|milas): Figure out what should happen with this filter.11
+	// TODO(nick|milas): Figure out what should happen with this filter.
 	Filter model.PathMatcher
 
 	// Derived from DockerResource
