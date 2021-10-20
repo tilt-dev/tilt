@@ -15,6 +15,7 @@ export const StarResourceButtonRoot = styled(InstrumentedButton)`
   padding: 0;
   background-color: transparent;
   align-items: center;
+  flex-shrink: 0;
 `
 let StarIcon = styled(StarSvg)`
   width: ${SizeUnit(1.0 / 3)};

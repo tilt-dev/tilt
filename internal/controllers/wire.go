@@ -4,9 +4,8 @@ import (
 	"github.com/google/wire"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/tilt-dev/tilt/internal/controllers/core/togglebutton"
-
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
+	"github.com/tilt-dev/tilt/internal/controllers/core/configmap"
 	"github.com/tilt-dev/tilt/internal/controllers/core/extension"
 	"github.com/tilt-dev/tilt/internal/controllers/core/extensionrepo"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch"
@@ -16,6 +15,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/core/podlogstream"
 	"github.com/tilt-dev/tilt/internal/controllers/core/portforward"
 	"github.com/tilt-dev/tilt/internal/controllers/core/tiltfile"
+	"github.com/tilt-dev/tilt/internal/controllers/core/togglebutton"
 	"github.com/tilt-dev/tilt/internal/controllers/core/uibutton"
 	"github.com/tilt-dev/tilt/internal/controllers/core/uiresource"
 	"github.com/tilt-dev/tilt/internal/controllers/core/uisession"
@@ -46,7 +46,9 @@ func ProvideControllers(
 	tbr *togglebutton.Reconciler,
 	extr *extension.Reconciler,
 	extrr *extensionrepo.Reconciler,
-	lur *liveupdate.Reconciler) []Controller {
+	lur *liveupdate.Reconciler,
+	cmr *configmap.Reconciler,
+) []Controller {
 	return []Controller{
 		fileWatch,
 		cmds,
@@ -62,6 +64,7 @@ func ProvideControllers(
 		extr,
 		extrr,
 		lur,
+		cmr,
 	}
 }
 
@@ -84,4 +87,5 @@ var WireSet = wire.NewSet(
 	extensionrepo.WireSet,
 	extension.WireSet,
 	liveupdate.WireSet,
+	configmap.WireSet,
 )

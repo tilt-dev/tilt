@@ -345,9 +345,11 @@ func InjectImageDependencies(iTarget model.ImageTarget, iTargetMap map[model.Tar
 	}
 
 	df := dockerfile.Dockerfile("")
+	var buildArgs map[string]string
 	switch bd := iTarget.BuildDetails.(type) {
 	case model.DockerBuild:
 		df = dockerfile.Dockerfile(bd.Dockerfile)
+		buildArgs = bd.BuildArgs
 	default:
 		return model.ImageTarget{}, fmt.Errorf("image %q has no valid buildDetails", iTarget.Refs.ConfigurationRef)
 	}
@@ -360,7 +362,7 @@ func InjectImageDependencies(iTarget model.ImageTarget, iTargetMap map[model.Tar
 	for _, dep := range deps {
 		image := dep.ImageLocalRef
 		id := dep.TargetID()
-		modified, err := ast.InjectImageDigest(iTargetMap[id].Refs.ConfigurationRef, image)
+		modified, err := ast.InjectImageDigest(iTargetMap[id].Refs.ConfigurationRef, image, buildArgs)
 		if err != nil {
 			return model.ImageTarget{}, errors.Wrap(err, "injectImageDependencies")
 		} else if !modified {

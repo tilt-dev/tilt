@@ -252,6 +252,7 @@ func (f *fixture) TargetStatus(name string) v1alpha1.Target {
 }
 
 func (f *fixture) ReplaceContents(fileBaseName, original, replacement string) {
+	f.t.Helper()
 	file := f.testDirPath(fileBaseName)
 	contentsBytes, err := ioutil.ReadFile(file)
 	if err != nil {
