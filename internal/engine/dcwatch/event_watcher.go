@@ -11,6 +11,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type EventWatcher struct {
@@ -33,16 +34,16 @@ func (w *EventWatcher) OnChange(ctx context.Context, st store.RStore, summary st
 	}
 
 	state := st.RLockState()
-	configPaths := state.DockerComposeConfigPath()
+	project := state.DockerComposeProject()
 	st.RUnlockState()
 
-	if len(configPaths) == 0 {
+	if model.IsEmptyDockerComposeProject(project) {
 		// No DC manifests to watch
 		return nil
 	}
 
 	w.watching = true
-	ch, err := w.startWatch(ctx, configPaths)
+	ch, err := w.startWatch(ctx, project)
 	if err != nil {
 		err = errors.Wrap(err, "Subscribing to docker-compose events")
 		st.Dispatch(store.NewErrorAction(err))
@@ -54,8 +55,8 @@ func (w *EventWatcher) OnChange(ctx context.Context, st store.RStore, summary st
 	return nil
 }
 
-func (w *EventWatcher) startWatch(ctx context.Context, configPath []string) (<-chan string, error) {
-	return w.dcc.StreamEvents(ctx, configPath)
+func (w *EventWatcher) startWatch(ctx context.Context, p model.DockerComposeProject) (<-chan string, error) {
+	return w.dcc.StreamEvents(ctx, p)
 }
 
 func (w *EventWatcher) dispatchEventLoop(ctx context.Context, ch <-chan string, st store.RStore) {
