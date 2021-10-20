@@ -653,7 +653,7 @@ func (s *tiltfileState) assembleImages() error {
 
 		var depImages []reference.Named
 		if imageBuilder.dbDockerfile != "" {
-			depImages, err = imageBuilder.dbDockerfile.FindImages()
+			depImages, err = imageBuilder.dbDockerfile.FindImages(imageBuilder.dbBuildArgs)
 		}
 
 		if err != nil {
