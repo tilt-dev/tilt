@@ -57,6 +57,7 @@ const KubernetesApplyTimeoutDefault = 30 * time.Second
 // to help other controllers figure out how to watch the apply progress.
 //
 // +k8s:openapi-gen=true
+// +tilt:starlark-gen=true
 type KubernetesApply struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`

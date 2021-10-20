@@ -429,7 +429,7 @@ export const nResourceWithLabelsView = (n: number) => {
     javascript: "javascript",
     backend: "frontend",
   }
-  crashedStart.metadata!.name = "crash_on_start"
+  crashedStart.metadata!.name = "crash_on_start_and_wont_restart"
   view.uiResources.push(crashedStart)
 
   return view

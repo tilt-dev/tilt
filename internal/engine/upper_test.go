@@ -18,6 +18,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tilt-dev/tilt/internal/controllers/core/configmap"
+
 	"github.com/tilt-dev/tilt/internal/controllers/core/togglebutton"
 
 	"github.com/davecgh/go-spew/spew"
@@ -1297,7 +1299,7 @@ go build ./...
 `
 	manifest := f.newManifest("foobar")
 	iTarget := manifest.ImageTargetAt(0).
-		WithLiveUpdateSpec(v1alpha1.LiveUpdateSpec{}).
+		WithLiveUpdateSpec("foobar", v1alpha1.LiveUpdateSpec{}).
 		WithBuildDetails(
 			model.DockerBuild{
 				Dockerfile: df,
@@ -3961,7 +3963,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	tcum := cloud.NewStatusManager(httptest.NewFakeClientEmptyJSON(), clock)
 	fe := cmd.NewFakeExecer()
 	fpm := cmd.NewFakeProberManager()
-	fwc := filewatch.NewController(cdc, st, watcher.NewSub, timerMaker.Maker())
+	fwc := filewatch.NewController(cdc, st, watcher.NewSub, timerMaker.Maker(), v1alpha1.NewScheme())
 	cmds := cmd.NewController(ctx, fe, fpm, cdc, st, clock, v1alpha1.NewScheme())
 	lsc := local.NewServerController(cdc)
 	sessionController := session.NewController(cdc, engineMode)
@@ -3993,6 +3995,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	extr := extension.NewReconciler(cdc, sch, ta)
 	extrr, err := extensionrepo.NewReconciler(cdc, base)
 	require.NoError(t, err)
+	cmr := configmap.NewReconciler(cdc, st)
 
 	cu := &containerupdate.FakeContainerUpdater{}
 	lur := liveupdate.NewFakeReconciler(cu, cdc)
@@ -4011,6 +4014,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		extr,
 		extrr,
 		lur,
+		cmr,
 	))
 
 	dp := dockerprune.NewDockerPruner(dockerClient)
@@ -4152,8 +4156,8 @@ func (f *testFixture) Init(action InitAction) {
 		TiltfileManifestName: model.MainTiltfileManifestName,
 		Manifests:            state.Manifests(),
 		ConfigFiles:          state.MainConfigPaths(),
+		TiltfilePath:         action.TiltfilePath,
 	}, make(map[string]*v1alpha1.DisableSource))
-	expectedWatchCount := len(expectedFileWatches)
 	if f.overrideMaxParallelUpdates > 0 {
 		state.UpdateSettings = state.UpdateSettings.WithMaxParallelUpdates(f.overrideMaxParallelUpdates)
 	}
@@ -4178,13 +4182,18 @@ func (f *testFixture) Init(action InitAction) {
 
 			return false
 		}
-		activeWatches := 0
+
+		remainingWatchNames := make(map[string]bool)
+		for _, fw := range expectedFileWatches {
+			remainingWatchNames[fw.GetName()] = true
+		}
+
 		for _, fw := range fwList.Items {
 			if !fw.Status.MonitorStartTime.IsZero() {
-				activeWatches++
+				delete(remainingWatchNames, fw.GetName())
 			}
 		}
-		return activeWatches >= expectedWatchCount
+		return len(remainingWatchNames) == 0
 	})
 }
 

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -15,12 +16,16 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/internal/tiltfile"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func TestDefault(t *testing.T) {
@@ -96,6 +101,58 @@ func TestSteadyState(t *testing.T) {
 	assert.Equal(t, tf.ResourceVersion, tf2.ResourceVersion)
 }
 
+func TestLiveUpdate(t *testing.T) {
+	f := newFixture(t)
+	p := f.tempdir.JoinPath("Tiltfile")
+
+	luSpec := v1alpha1.LiveUpdateSpec{
+		BasePath:  f.tempdir.Path(),
+		StopPaths: []string{filepath.Join("src", "package.json")},
+		Syncs:     []v1alpha1.LiveUpdateSync{{LocalPath: "src", ContainerPath: "/src"}},
+	}
+	sanchoImage := model.MustNewImageTarget(container.MustParseSelector("sancho-image")).
+		WithLiveUpdateSpec("sancho:sancho-image", luSpec).
+		WithBuildDetails(model.DockerBuild{BuildPath: f.tempdir.Path()})
+	sancho := manifestbuilder.New(f.tempdir, "sancho").
+		WithImageTargets(sanchoImage).
+		WithK8sYAML(testyaml.SanchoYAML).
+		Build()
+	f.tfl.Result = tiltfile.TiltfileLoadResult{
+		Manifests: []model.Manifest{sancho},
+	}
+
+	tf := v1alpha1.Tiltfile{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "my-tf",
+		},
+		Spec: v1alpha1.TiltfileSpec{
+			Path: p,
+		},
+	}
+	f.Create(&tf)
+
+	assert.Eventually(t, func() bool {
+		f.MustGet(types.NamespacedName{Name: "my-tf"}, &tf)
+		return tf.Status.Running != nil
+	}, time.Second, time.Millisecond)
+
+	f.popQueue()
+
+	assert.Eventually(t, func() bool {
+		f.MustGet(types.NamespacedName{Name: "my-tf"}, &tf)
+		return tf.Status.Terminated != nil
+	}, time.Second, time.Millisecond)
+
+	assert.Equal(t, "", tf.Status.Terminated.Error)
+
+	var luList = v1alpha1.LiveUpdateList{}
+	f.List(&luList)
+	if assert.Equal(t, 1, len(luList.Items)) {
+		assert.Equal(t, "sancho:sancho-image", luList.Items[0].Name)
+		assert.Equal(t, sanchoImage.LiveUpdateSpec, luList.Items[0].Spec)
+	}
+}
+
 type testStore struct {
 	*store.TestingStore
 	out *bytes.Buffer
@@ -124,6 +181,7 @@ type fixture struct {
 	r       *Reconciler
 	bs      *BuildSource
 	q       workqueue.RateLimitingInterface
+	tfl     *tiltfile.FakeTiltfileLoader
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -147,6 +205,7 @@ func newFixture(t *testing.T) *fixture {
 		r:                 r,
 		bs:                bs,
 		q:                 q,
+		tfl:               tfl,
 	}
 }
 

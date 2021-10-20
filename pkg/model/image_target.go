@@ -17,6 +17,7 @@ type ImageTarget struct {
 	v1alpha1.ImageMapSpec
 
 	// An apiserver-driven data model for live-updating containers.
+	LiveUpdateName string
 	LiveUpdateSpec v1alpha1.LiveUpdateSpec
 
 	Refs         container.RefSet
@@ -70,10 +71,11 @@ func (i *ImageTarget) SetKubernetesImageSelector(image string) {
 	i.LiveUpdateSpec.Selector.Kubernetes.Image = reference.FamiliarName(i.Refs.ClusterRef())
 }
 
-func (i ImageTarget) WithLiveUpdateSpec(luSpec v1alpha1.LiveUpdateSpec) ImageTarget {
+func (i ImageTarget) WithLiveUpdateSpec(name string, luSpec v1alpha1.LiveUpdateSpec) ImageTarget {
 	if luSpec.Selector.Kubernetes == nil {
 		luSpec.Selector.Kubernetes = i.LiveUpdateSpec.Selector.Kubernetes
 	}
+	i.LiveUpdateName = name
 	i.LiveUpdateSpec = luSpec
 	return i
 }

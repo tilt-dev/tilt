@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/docker/distribution/reference"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
@@ -39,9 +38,7 @@ func NewLiveUpdateBuildAndDeployer(luReconciler *ctrlliveupdate.Reconciler, c bu
 type LiveUpdateInput struct {
 	ID model.TargetID
 
-	// Name is human-readable representation of what we're live-updating. The API
-	// Server doesn't make any guarantees that this maps to an image name, or a
-	// service name, or to anything in particular.
+	// LiveUpdate API object name.
 	Name string
 
 	Spec v1alpha1.LiveUpdateSpec
@@ -119,16 +116,23 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, ps 
 	}
 	ps.StartBuildStep(ctx, "Updating container%s: %s", suffix, cIDStr)
 
-	status := lubad.luReconciler.ForceApply(
+	status, err := lubad.luReconciler.ForceApply(
 		ctx,
 		types.NamespacedName{Name: info.Name},
 		info.Spec,
 		info.Input)
-	if status.UnknownError != nil {
-		return status.UnknownError
+	if err != nil {
+		return err
 	}
-	if status.ExecError != nil {
-		return WrapDontFallBackError(status.ExecError)
+
+	if status.Failed != nil {
+		return fmt.Errorf("%s", status.Failed.Message)
+	}
+
+	for _, c := range status.Containers {
+		if c.LastExecError != "" {
+			return WrapDontFallBackError(fmt.Errorf("%s", c.LastExecError))
+		}
 	}
 	return nil
 }
@@ -178,7 +182,7 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (LiveUpdateInput,
 
 	return LiveUpdateInput{
 		ID:   iTarget.ID(),
-		Name: reference.FamiliarName(iTarget.Refs.ClusterRef()),
+		Name: iTarget.LiveUpdateName,
 		Spec: iTarget.LiveUpdateSpec,
 		Input: ctrlliveupdate.Input{
 			Filter:       ignore.CreateBuildContextFilter(iTarget),

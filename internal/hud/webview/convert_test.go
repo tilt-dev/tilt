@@ -314,7 +314,7 @@ func TestSpecs(t *testing.T) {
 		BasePath: ".",
 		Syncs:    []v1alpha1.LiveUpdateSync{{LocalPath: "foo", ContainerPath: "bar"}},
 	}
-	luTarg := model.ImageTarget{}.WithLiveUpdateSpec(luSpec).WithBuildDetails(model.DockerBuild{})
+	luTarg := model.ImageTarget{}.WithLiveUpdateSpec("sancho", luSpec).WithBuildDetails(model.DockerBuild{})
 
 	mNoLiveUpd := model.Manifest{Name: "noLiveUpd"}.WithImageTarget(model.ImageTarget{}).WithDeployTarget(model.K8sTarget{})
 	mLiveUpd := model.Manifest{Name: "liveUpd"}.WithImageTarget(luTarg).WithDeployTarget(model.K8sTarget{})
