@@ -8,6 +8,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	ktypes "k8s.io/apimachinery/pkg/types"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/containerupdate"
@@ -41,7 +44,7 @@ func TestBuildAndDeployBoilsSteps(t *testing.T) {
 	defer f.teardown()
 
 	packageJson := build.PathMapping{LocalPath: f.JoinPath("package.json"), ContainerPath: "/src/package.json"}
-	err := f.lubad.buildAndDeploy(f.ctx, f.ps, LiveUpdateInput{
+	err := f.buildAndDeploy(f.ctx, f.ps, LiveUpdateInput{
 		Spec: v1alpha1.LiveUpdateSpec{
 			BasePath: f.Path(),
 			Execs: []v1alpha1.LiveUpdateExec{
@@ -86,7 +89,7 @@ func TestUpdateInContainerArchivesFilesToCopyAndGetsFilesToRemove(t *testing.T) 
 		build.PathMapping{LocalPath: f.JoinPath("does-not-exist"), ContainerPath: "/src/does-not-exist"},
 	}
 
-	err := f.lubad.buildAndDeploy(f.ctx, f.ps, LiveUpdateInput{
+	err := f.buildAndDeploy(f.ctx, f.ps, LiveUpdateInput{
 		Input: liveupdate.Input{
 			Containers:   TestContainers,
 			ChangedFiles: paths,
@@ -118,7 +121,7 @@ func TestDontFallBackOnUserError(t *testing.T) {
 
 	f.cu.SetUpdateErr(build.RunStepFailure{ExitCode: 12345})
 
-	err := f.lubad.buildAndDeploy(f.ctx, f.ps, LiveUpdateInput{
+	err := f.buildAndDeploy(f.ctx, f.ps, LiveUpdateInput{
 		Input: liveupdate.Input{
 			Containers: TestContainers,
 		},
@@ -138,7 +141,7 @@ func TestUpdateContainerWithHotReload(t *testing.T) {
 		if !hotReload {
 			restart = v1alpha1.LiveUpdateRestartStrategyAlways
 		}
-		err := f.lubad.buildAndDeploy(f.ctx, f.ps, LiveUpdateInput{
+		err := f.buildAndDeploy(f.ctx, f.ps, LiveUpdateInput{
 			Spec: v1alpha1.LiveUpdateSpec{
 				Restart: restart,
 			},
@@ -185,7 +188,7 @@ func TestUpdateMultipleRunningContainers(t *testing.T) {
 
 	cmd := model.ToUnixCmd("./foo.sh bar")
 
-	err := f.lubad.buildAndDeploy(f.ctx, f.ps, LiveUpdateInput{
+	err := f.buildAndDeploy(f.ctx, f.ps, LiveUpdateInput{
 		Input: liveupdate.Input{
 			Containers:   containers,
 			ChangedFiles: paths,
@@ -232,13 +235,13 @@ func TestErrorStopsSubsequentContainerUpdates(t *testing.T) {
 	containers := []liveupdates.Container{container1, container2}
 
 	f.cu.SetUpdateErr(fmt.Errorf("👀"))
-	err := f.lubad.buildAndDeploy(f.ctx, f.ps, LiveUpdateInput{
+	err := f.buildAndDeploy(f.ctx, f.ps, LiveUpdateInput{
 		Input: liveupdate.Input{
 			Containers: containers,
 		},
 	})
 	require.NotNil(t, err)
-	assert.Contains(t, "👀", err.Error())
+	assert.Contains(t, err.Error(), "👀")
 	require.Len(t, f.cu.Calls, 1, "should only call UpdateContainer once (error should stop subsequent calls)")
 }
 
@@ -274,7 +277,7 @@ func TestUpdateMultipleContainersWithSameTarArchive(t *testing.T) {
 		expectFile("src/planets/earth", "world"),
 	}
 
-	err := f.lubad.buildAndDeploy(f.ctx, f.ps, LiveUpdateInput{
+	err := f.buildAndDeploy(f.ctx, f.ps, LiveUpdateInput{
 		Input: liveupdate.Input{
 			Containers:   containers,
 			ChangedFiles: paths,
@@ -325,7 +328,7 @@ func TestUpdateMultipleContainersWithSameTarArchiveOnRunStepFailure(t *testing.T
 	}
 
 	f.cu.UpdateErrs = []error{rsf, rsf}
-	err := f.lubad.buildAndDeploy(f.ctx, f.ps, LiveUpdateInput{
+	err := f.buildAndDeploy(f.ctx, f.ps, LiveUpdateInput{
 		Input: liveupdate.Input{
 			Containers:   containers,
 			ChangedFiles: paths,
@@ -371,12 +374,13 @@ func TestSkipLiveUpdateIfForceUpdate(t *testing.T) {
 
 type lcbadFixture struct {
 	*tempdir.TempDirFixture
-	t     testing.TB
-	ctx   context.Context
-	st    *store.TestingStore
-	cu    *containerupdate.FakeContainerUpdater
-	ps    *build.PipelineState
-	lubad *LiveUpdateBuildAndDeployer
+	t          testing.TB
+	ctx        context.Context
+	st         *store.TestingStore
+	cu         *containerupdate.FakeContainerUpdater
+	ps         *build.PipelineState
+	lubad      *LiveUpdateBuildAndDeployer
+	ctrlClient ctrlclient.Client
 }
 
 func newFixture(t testing.TB) *lcbadFixture {
@@ -394,11 +398,41 @@ func newFixture(t testing.TB) *lcbadFixture {
 		cu:             cu,
 		ps:             build.NewPipelineState(ctx, 1, lubad.clock),
 		lubad:          lubad,
+		ctrlClient:     cfb.Client,
 	}
 }
 
 func (f *lcbadFixture) teardown() {
 	f.TempDirFixture.TearDown()
+}
+
+func (f *lcbadFixture) buildAndDeploy(ctx context.Context, ps *build.PipelineState, input LiveUpdateInput) error {
+	if input.Name == "" {
+		input.Name = "fake-name"
+	}
+
+	lu := v1alpha1.LiveUpdate{
+		ObjectMeta: metav1.ObjectMeta{Name: input.Name},
+		Spec:       input.Spec,
+	}
+	f.upsert(&lu)
+	return f.lubad.buildAndDeploy(ctx, ps, input)
+}
+
+func (f *lcbadFixture) upsert(obj ctrlclient.Object) {
+	err := f.ctrlClient.Create(f.ctx, obj)
+	if err == nil {
+		return
+	}
+
+	copy := obj.DeepCopyObject().(ctrlclient.Object)
+	err = f.ctrlClient.Get(f.ctx, ktypes.NamespacedName{Name: obj.GetName()}, copy)
+	assert.NoError(f.T(), err)
+
+	obj.SetResourceVersion(copy.GetResourceVersion())
+
+	err = f.ctrlClient.Update(f.ctx, obj)
+	assert.NoError(f.T(), err)
 }
 
 func expectFile(path, contents string) testutils.ExpectedFile {

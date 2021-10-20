@@ -111,7 +111,7 @@ func TestLiveUpdate(t *testing.T) {
 		Syncs:     []v1alpha1.LiveUpdateSync{{LocalPath: "src", ContainerPath: "/src"}},
 	}
 	sanchoImage := model.MustNewImageTarget(container.MustParseSelector("sancho-image")).
-		WithLiveUpdateSpec(luSpec).
+		WithLiveUpdateSpec("sancho:sancho-image", luSpec).
 		WithBuildDetails(model.DockerBuild{BuildPath: f.tempdir.Path()})
 	sancho := manifestbuilder.New(f.tempdir, "sancho").
 		WithImageTargets(sanchoImage).

@@ -1,11 +1,18 @@
 package liveupdate
 
 import (
+	"fmt"
 	"path/filepath"
 
+	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
+
+// Generate the name for the LiveUpdate API object from an ImageTarget and ManifestName.
+func GetName(mn model.ManifestName, id model.TargetID) string {
+	return apis.SanitizeName(fmt.Sprintf("%s:%s", mn.String(), id.Name))
+}
 
 func IsEmptySpec(spec v1alpha1.LiveUpdateSpec) bool {
 	return len(spec.Syncs) == 0 && len(spec.Execs) == 0

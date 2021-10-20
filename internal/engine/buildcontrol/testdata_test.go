@@ -112,7 +112,7 @@ func NewSanchoLiveUpdate(f Fixture) v1alpha1.LiveUpdateSpec {
 }
 
 func NewSanchoLiveUpdateImageTarget(f Fixture) model.ImageTarget {
-	return NewSanchoDockerBuildImageTarget(f).WithLiveUpdateSpec(NewSanchoLiveUpdate(f))
+	return NewSanchoDockerBuildImageTarget(f).WithLiveUpdateSpec("sancho:sancho", NewSanchoLiveUpdate(f))
 }
 
 func NewSanchoSidecarDockerBuildImageTarget(f Fixture) model.ImageTarget {
