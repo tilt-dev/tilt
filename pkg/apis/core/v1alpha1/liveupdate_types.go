@@ -109,16 +109,6 @@ type LiveUpdateSpec struct {
 	//
 	// +optional
 	Restart LiveUpdateRestartStrategy `json:"restart,omitempty" protobuf:"bytes,7,opt,name=restart,casttype=LiveUpdateRestartStrategy"`
-
-	// TODO(nick): I think there's a spec bug here - we need some way to get the
-	// StartTime of the image build, so that we know what files need to be synced
-	// once the image deploys.
-	//
-	// The right answer here is probably to:
-	// - Add a timestamp to ImageMapStatus, so that it has a high-water mark of what
-	//   files the image includes.
-	// - Add a reference from LiveUpdateSelector to the ImageMapStatus
-	// - The reconciler should also watch ImageMapStatus for changes.
 }
 
 var _ resource.Object = &LiveUpdate{}
@@ -244,6 +234,15 @@ type LiveUpdateKubernetesSelector struct {
 	// Determines which containers in a pod to live-update.
 	// Matches images by name unless tag is explicitly specified.
 	Image string `json:"image,omitempty" protobuf:"bytes,2,opt,name=image"`
+
+	// Name of the ImageMap object to watch for which file changes are included
+	// in the container image.
+	//
+	// If not provided, the live-updater will copy any file changes that it's aware of,
+	// even if they're already included in the container.
+	//
+	// +optional
+	ImageMapName string `json:"imageMapName,omitempty" protobuf:"bytes,4,opt,name=imageMapName"`
 }
 
 // Determines how a local path maps into a container image.

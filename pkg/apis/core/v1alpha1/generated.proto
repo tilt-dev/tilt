@@ -747,6 +747,14 @@ message ImageMapStatus {
   // The image will not necessarily have the same repo URL as the selector. Many
   // Kubernetes clusters let you push to a local registry for local development.
   optional string image = 1;
+
+  // Timestamp indicating when the image started building.
+  //
+  // Intended to be used to determine which file changes were picked up by the
+  // image build. We can assume that any file changes before this timestamp were
+  // definitely included in the image, and any file changes after this timestamp
+  // may not be included in the image.
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime buildStartTime = 2;
 }
 
 // KubernetesApply specifies a blob of YAML to apply, and a set of ImageMaps
@@ -769,6 +777,7 @@ message ImageMapStatus {
 // to help other controllers figure out how to watch the apply progress.
 //
 // +k8s:openapi-gen=true
+// +tilt:starlark-gen=true
 message KubernetesApply {
   optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
@@ -899,6 +908,7 @@ message KubernetesApplyStatus {
 
 // KubernetesDiscovery
 // +k8s:openapi-gen=true
+// +tilt:starlark-gen=true
 message KubernetesDiscovery {
   optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
@@ -1102,6 +1112,15 @@ message LiveUpdateKubernetesSelector {
   // Determines which containers in a pod to live-update.
   // Matches images by name unless tag is explicitly specified.
   optional string image = 2;
+
+  // Name of the ImageMap object to watch for which file changes are included
+  // in the container image.
+  //
+  // If not provided, the live-updater will copy any file changes that it's aware of,
+  // even if they're already included in the container.
+  //
+  // +optional
+  optional string imageMapName = 4;
 }
 
 // LiveUpdateList
