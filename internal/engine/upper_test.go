@@ -2729,7 +2729,7 @@ func TestDockerComposeFiltersRunLogs(t *testing.T) {
 	fakeServiceLog := make(chan string)
 	close(fakeServiceLog)
 	f.dcc.RunLogOutput["fake-service"] = fakeServiceLog
-	r := f.dcc.StreamLogs(f.ctx, nil, "fake-service")
+	r := f.dcc.StreamLogs(f.ctx, model.DockerComposeUpSpec{Service: "fake-service"})
 	sampleDCLogOutput, err := io.ReadAll(r)
 	require.NoError(t, err, "Failed to read fake Docker Compose log stream")
 	assert.Equal(t, string(sampleDCLogOutput),
@@ -4581,7 +4581,7 @@ func (f *testFixture) setBuildLogOutput(id model.TargetID, output string) {
 }
 
 func (f *testFixture) setDCRunLogOutput(dc model.DockerComposeTarget, output <-chan string) {
-	f.dcc.RunLogOutput[dc.Name] = output
+	f.dcc.RunLogOutput[dc.Spec.Service] = output
 }
 
 func (f *testFixture) hudResource(name model.ManifestName) view.Resource {

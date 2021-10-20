@@ -127,7 +127,7 @@ func (m *DockerComposeLogManager) consumeLogs(watch dockerComposeLogWatch, st st
 	name := watch.name
 
 	for {
-		readCloser := m.dcc.StreamLogs(watch.ctx, watch.dc.ConfigPaths, watch.dc.Name)
+		readCloser := m.dcc.StreamLogs(watch.ctx, watch.dc.Spec)
 		actionWriter := &DockerComposeLogActionWriter{
 			store:        st,
 			manifestName: name,
