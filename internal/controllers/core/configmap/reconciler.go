@@ -3,8 +3,6 @@ package configmap
 import (
 	"context"
 
-	"github.com/tilt-dev/tilt/internal/store/configmaps"
-
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -12,6 +10,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/configmaps"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 

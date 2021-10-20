@@ -18,6 +18,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tilt-dev/tilt/internal/controllers/core/configmap"
+
 	"github.com/tilt-dev/tilt/internal/controllers/core/togglebutton"
 
 	"github.com/davecgh/go-spew/spew"
@@ -3961,6 +3963,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	extr := extension.NewReconciler(cdc, sch, ta)
 	extrr, err := extensionrepo.NewReconciler(cdc, base)
 	require.NoError(t, err)
+	cmr := configmap.NewReconciler(cdc, st)
 
 	cu := &containerupdate.FakeContainerUpdater{}
 	lur := liveupdate.NewFakeReconciler(cu, cdc)
@@ -3979,6 +3982,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		extr,
 		extrr,
 		lur,
+		cmr,
 	))
 
 	dp := dockerprune.NewDockerPruner(dockerClient)
