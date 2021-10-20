@@ -7,7 +7,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
@@ -144,7 +143,7 @@ func (r *Reconciler) ForceApply(
 		update.Status = status
 		err := r.client.Status().Update(ctx, update)
 		if err != nil {
-			return v1alpha1.LiveUpdateStatus{}, client.IgnoreNotFound(err)
+			return v1alpha1.LiveUpdateStatus{}, err
 		}
 	}
 

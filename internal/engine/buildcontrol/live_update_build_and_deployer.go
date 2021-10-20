@@ -124,6 +124,7 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, ps 
 	if err != nil {
 		return err
 	}
+
 	if status.Failed != nil {
 		return fmt.Errorf("%s", status.Failed.Message)
 	}

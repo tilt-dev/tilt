@@ -176,30 +176,6 @@ func TestFallBackToImageDeploy(t *testing.T) {
 	}
 }
 
-func TestNoFallbackForDontFallBackError(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
-	defer f.TearDown()
-	f.docker.SetExecError(buildcontrol.DontFallBackErrorf("i'm melllting"))
-
-	manifest := NewSanchoLiveUpdateManifest(f)
-	changed := f.WriteFile("a.txt", "a")
-	bs := resultToStateSet(manifest, alreadyBuiltSet, []string{changed}, testContainerInfo)
-
-	targets := buildcontrol.BuildTargets(manifest)
-	_, err := f.BuildAndDeploy(targets, bs)
-	if err == nil {
-		t.Errorf("Expected this error to fail fallback tester and propagate back up")
-	}
-
-	if f.docker.BuildCount != 0 {
-		t.Errorf("Expected no docker build, actual: %d", f.docker.BuildCount)
-	}
-
-	if f.docker.PushCount != 0 {
-		t.Errorf("Expected no push to docker, actual: %d", f.docker.PushCount)
-	}
-}
-
 func TestLiveUpdateFallbackMessagingRedirect(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
