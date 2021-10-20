@@ -88,7 +88,7 @@ function install_tilt() {
               *)     ARCH=$(uname -m);;
           esac
           set -x
-          curl -fsSL https://github.com/tilt-dev/tilt/releases/download/v$VERSION/tilt.$VERSION.mac.$(uname -m).tar.gz | tar -xzv tilt
+          curl -fsSL https://github.com/tilt-dev/tilt/releases/download/v$VERSION/tilt.$VERSION.mac.$ARCH.tar.gz | tar -xzv tilt
           copy_binary
       fi
   else
