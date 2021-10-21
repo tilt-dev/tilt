@@ -3966,7 +3966,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	cmr := configmap.NewReconciler(cdc, st)
 
 	cu := &containerupdate.FakeContainerUpdater{}
-	lur := liveupdate.NewFakeReconciler(cu, cdc)
+	lur := liveupdate.NewFakeReconciler(st, cu, cdc)
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
 		fwc,
 		cmds,

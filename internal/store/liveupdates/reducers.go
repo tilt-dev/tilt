@@ -9,6 +9,15 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
+func HandleLiveUpdateUpsertAction(state *store.EngineState, action LiveUpdateUpsertAction) {
+	n := action.LiveUpdate.Name
+	state.LiveUpdates[n] = action.LiveUpdate
+}
+
+func HandleLiveUpdateDeleteAction(state *store.EngineState, action LiveUpdateDeleteAction) {
+	delete(state.LiveUpdates, action.Name)
+}
+
 // If a container crashes, and it's been live-updated in the past,
 // then it needs to enter a special state to indicate that it
 // needs to be rebuilt (because the file system has been reset to the original image).

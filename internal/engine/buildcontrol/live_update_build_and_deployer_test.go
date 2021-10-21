@@ -386,10 +386,10 @@ type lcbadFixture struct {
 func newFixture(t testing.TB) *lcbadFixture {
 	cfb := fake.NewControllerFixtureBuilder(t)
 	cu := &containerupdate.FakeContainerUpdater{}
-	luReconciler := liveupdate.NewFakeReconciler(cu, cfb.Client)
+	st := store.NewTestingStore()
+	luReconciler := liveupdate.NewFakeReconciler(st, cu, cfb.Client)
 	lubad := NewLiveUpdateBuildAndDeployer(luReconciler, fakeClock{})
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
-	st := store.NewTestingStore()
 	return &lcbadFixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),
 		t:              t,
