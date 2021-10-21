@@ -264,7 +264,10 @@ func (c *Controller) ForceRun(ctx context.Context, cmd *v1alpha1.Cmd) (*v1alpha1
 
 func (i input) stringValue() string {
 	if i.status.Text != nil {
-		return i.status.Text.Value
+		if i.status.Text.Value != "" {
+			return i.status.Text.Value
+		}
+		return i.spec.Text.DefaultValue
 	} else if i.status.Bool != nil {
 		if i.status.Bool.Value {
 			if i.spec.Bool.TrueString != nil {
