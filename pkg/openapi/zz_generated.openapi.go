@@ -2151,10 +2151,19 @@ func schema_pkg_apis_core_v1alpha1_ImageMapStatus(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
+					"buildStartTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Timestamp indicating when the image started building.\n\nIntended to be used to determine which file changes were picked up by the image build. We can assume that any file changes before this timestamp were definitely included in the image, and any file changes after this timestamp may not be included in the image.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
 				},
 				Required: []string{"image"},
 			},
 		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
 	}
 }
 
@@ -2889,6 +2898,13 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateKubernetesSelector(ref common.Refer
 					"image": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Image specifies the name of the image that we're copying files into. Determines which containers in a pod to live-update. Matches images by name unless tag is explicitly specified.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"imageMapName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name of the ImageMap object to watch for which file changes are included in the container image.\n\nIf not provided, the live-updater will copy any file changes that it's aware of, even if they're already included in the container.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
