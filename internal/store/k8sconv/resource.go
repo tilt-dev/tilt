@@ -149,8 +149,9 @@ func FilterPods(filter *KubernetesApplyFilter, pods []v1alpha1.Pod) []v1alpha1.P
 			continue
 		}
 
-		// Ignore pods that aren't owned by a current Apply.
-		if !ContainsUID(filter, types.UID(pod.AncestorUID)) {
+		// Ignore pods that were tracked by UID but
+		// aren't owned by a current Apply.
+		if pod.AncestorUID != "" && !ContainsUID(filter, types.UID(pod.AncestorUID)) {
 			continue
 		}
 

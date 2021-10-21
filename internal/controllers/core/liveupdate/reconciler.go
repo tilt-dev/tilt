@@ -3,6 +3,7 @@ package liveupdate
 import (
 	"context"
 	"fmt"
+	"sort"
 	"sync"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,7 +26,9 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/ospath"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -143,9 +146,23 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	if monitor.hasChangesToSync {
-		err := r.maybeSync(ctx, lu, monitor)
-		if err != nil {
-			return ctrl.Result{}, err
+		status := r.maybeSync(ctx, lu, monitor)
+		if status.Failed != nil {
+			// Log any new failures.
+			isNew := lu.Status.Failed == nil || !apicmp.DeepEqual(lu.Status.Failed, status.Failed)
+			if isNew {
+				logger.Get(ctx).Warnf("LiveUpdate %q %s: %v", lu.Name, status.Failed.Reason, status.Failed.Message)
+			}
+		}
+
+		if !apicmp.DeepEqual(lu.Status, status) {
+			update := lu.DeepCopy()
+			update.Status = status
+
+			err := r.client.Status().Update(ctx, update)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
 		}
 	}
 
@@ -319,9 +336,181 @@ func (r *Reconciler) reconcileKubernetesResource(ctx context.Context, monitor *m
 
 // Convert the currently tracked state into a set of inputs
 // to the updater, then apply them.
-func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, monitor *monitor) error {
-	// TODO(nick): Fill this in.
-	return nil
+func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, monitor *monitor) v1alpha1.LiveUpdateStatus {
+	var status v1alpha1.LiveUpdateStatus
+	kSelector := lu.Spec.Selector.Kubernetes
+	if kSelector == nil {
+		status.Failed = createFailedState(lu, "Invalid", "no valid selector")
+		return status
+	}
+
+	kResource, err := k8sconv.NewKubernetesResource(monitor.lastKubernetesDiscovery, monitor.lastKubernetesApplyStatus)
+	if err != nil {
+		status.Failed = createFailedState(lu, "KubernetesError", fmt.Sprintf("creating kube resource: %v", err))
+		return status
+	}
+
+	// TODO(nick): Now that we have multiple monitors, there's no reason
+	// why we can't update multiple pods.
+	cInfos, err := liveupdates.RunningContainersForOnePod(kSelector, kResource)
+	if err != nil {
+		status.Failed = createFailedState(lu, "KubernetesError", fmt.Sprintf("determining containers: %v", err))
+		return status
+	}
+
+	// TODO(nick): LiveUpdateStatus needs to distinguish between two different cases:
+	// 1) We can't live update the pod because it's still being scheduled/initialized.
+	// 2) We can't live update the pod because it's failed, and will never recover.
+	//
+	// In the first case, we need to wait. In the second case, we need to tell
+	// the rest of tilt to rebuild. This logic currently live in buildcontrol
+	// and should be moved here.
+	if len(cInfos) == 0 {
+		return status
+	}
+
+	for _, c := range cInfos {
+		highWaterMark := r.startedTime
+		if !monitor.lastImageMapStatus.BuildStartTime.IsZero() {
+			highWaterMark = *monitor.lastImageMapStatus.BuildStartTime
+		}
+
+		cKey := monitorContainerKey{
+			containerID: c.ContainerID.String(),
+			podName:     c.PodID.String(),
+			namespace:   c.Namespace.String(),
+		}
+		cStatus, ok := monitor.containers[cKey]
+		if ok {
+			if !cStatus.lastFileTimeSynced.IsZero() {
+				highWaterMark = cStatus.lastFileTimeSynced
+			}
+
+			if cStatus.failedReason != "" {
+				status.Failed = createFailedState(lu, cStatus.failedReason, cStatus.failedMessage)
+				return status
+			}
+		}
+
+		// Determine the changed files.
+		filesChanged := []string{}
+		newHighWaterMark := highWaterMark
+		for f, t := range monitor.modTimeByPath {
+			if t.After(highWaterMark.Time) {
+				filesChanged = append(filesChanged, f)
+
+				if t.After(newHighWaterMark.Time) {
+					newHighWaterMark = t
+				}
+			}
+		}
+
+		// Sort the files so that they're deterministic.
+		sort.Slice(filesChanged, func(i, j int) bool {
+			return filesChanged[i] < filesChanged[j]
+		})
+
+		oneUpdateStatus := r.applyLiveUpdatePlan(ctx, lu.Spec, c, filesChanged, newHighWaterMark, cStatus)
+		adjustFailedStateTimestamps(lu, &oneUpdateStatus)
+
+		// Update the monitor based on the result of the applied changes.
+		if oneUpdateStatus.Failed != nil {
+			cStatus.failedReason = oneUpdateStatus.Failed.Reason
+			cStatus.failedMessage = oneUpdateStatus.Failed.Message
+		} else {
+			cStatus.lastFileTimeSynced = newHighWaterMark
+		}
+		monitor.containers[cKey] = cStatus
+
+		// Update the status based on the result of the applied changes.
+		if oneUpdateStatus.Failed != nil {
+			status.Failed = oneUpdateStatus.Failed
+			return status
+		}
+
+		status.Containers = append(status.Containers, oneUpdateStatus.Containers...)
+	}
+	return status
+}
+
+func (r *Reconciler) applyLiveUpdatePlan(
+	ctx context.Context,
+	spec v1alpha1.LiveUpdateSpec,
+	c liveupdates.Container,
+	filesChanged []string,
+	newHighWaterMark metav1.MicroTime,
+	lastStatus monitorContainerStatus) v1alpha1.LiveUpdateStatus {
+
+	var status v1alpha1.LiveUpdateStatus
+	plan, err := liveupdates.NewLiveUpdatePlan(spec, filesChanged)
+	if err != nil {
+		status.Failed = &v1alpha1.LiveUpdateStateFailed{
+			Reason:  "UpdateStopped",
+			Message: fmt.Sprintf("No update plan: %v", err),
+		}
+		return status
+	}
+
+	if len(plan.NoMatchPaths) > 0 {
+		status.Failed = &v1alpha1.LiveUpdateStateFailed{
+			Reason: "UpdateStopped",
+			Message: fmt.Sprintf("Found file(s) not matching any sync (files: %s)",
+				ospath.FormatFileChangeList(plan.NoMatchPaths)),
+		}
+		return status
+	}
+
+	// If any changed files match a FallBackOn file, fall back to next BuildAndDeployer
+	if len(plan.StopPaths) != 0 {
+		status.Failed = &v1alpha1.LiveUpdateStateFailed{
+			Reason:  "UpdateStopped",
+			Message: fmt.Sprintf("Detected change to stop file %q", plan.StopPaths[0]),
+		}
+		return status
+	}
+
+	if len(plan.SyncPaths) == 0 {
+		// No files matched a sync for this image, no Live Update to run
+		status.Containers = []v1alpha1.LiveUpdateContainerStatus{{
+			ContainerName:      c.ContainerName.String(),
+			ContainerID:        c.ContainerID.String(),
+			PodName:            c.PodID.String(),
+			Namespace:          c.Namespace.String(),
+			LastFileTimeSynced: lastStatus.lastFileTimeSynced,
+		}}
+		return status
+	}
+
+	// Apply the changes to the cluster.
+	input := Input{
+		IsDC:               false, // update this once we support DockerCompose in the API.
+		ChangedFiles:       plan.SyncPaths,
+		Containers:         []liveupdates.Container{c},
+		LastFileTimeSynced: newHighWaterMark,
+	}
+	return r.applyInternal(ctx, spec, input)
+}
+
+// Generate the correct transition time on the Failed state.
+func adjustFailedStateTimestamps(obj *v1alpha1.LiveUpdate, newStatus *v1alpha1.LiveUpdateStatus) {
+	if newStatus.Failed == nil {
+		return
+	}
+
+	newStatus.Failed = createFailedState(obj, newStatus.Failed.Reason, newStatus.Failed.Message)
+}
+
+// Create a new failed state and update the transition timestamp if appropriate.
+func createFailedState(obj *v1alpha1.LiveUpdate, reason, msg string) *v1alpha1.LiveUpdateStateFailed {
+	failed := &v1alpha1.LiveUpdateStateFailed{Reason: reason, Message: msg}
+	transitionTime := apis.NowMicro()
+	if obj.Status.Failed != nil && obj.Status.Failed.Reason == failed.Reason {
+		// If the reason hasn't changed, don't treat this as a transition.
+		transitionTime = obj.Status.Failed.LastTransitionTime
+	}
+
+	failed.LastTransitionTime = transitionTime
+	return failed
 }
 
 // Live-update containers by copying files and running exec commands.
@@ -343,44 +532,8 @@ func (r *Reconciler) ForceApply(
 		return v1alpha1.LiveUpdateStatus{}, err
 	}
 
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return r.apply(ctx, &obj, spec, input, nil)
-}
-
-// Helper function for the two live update codepaths
-// (the reconciler path and the ForceApply path).
-// Assumes we hold the lock.
-func (r *Reconciler) apply(
-	ctx context.Context,
-	obj *v1alpha1.LiveUpdate,
-	spec v1alpha1.LiveUpdateSpec,
-	input Input,
-	monitor *monitor) (v1alpha1.LiveUpdateStatus, error) {
 	status := r.applyInternal(ctx, spec, input)
-
-	if monitor != nil {
-		for _, c := range status.Containers {
-			monitor.containers[monitorContainerKey{
-				containerID: c.ContainerID,
-				podName:     c.PodName,
-				namespace:   c.Namespace,
-			}] = monitorContainerStatus{
-				lastFileTimeSynced: c.LastFileTimeSynced,
-				unrecoverable:      status.Failed != nil,
-			}
-		}
-	}
-
-	// Check to see if this is a state transition.
-	if status.Failed != nil {
-		transitionTime := apis.NowMicro()
-		if obj.Status.Failed != nil && obj.Status.Failed.Reason == status.Failed.Reason {
-			// If the reason hasn't changed, don't treat this as a transition.
-			transitionTime = obj.Status.Failed.LastTransitionTime
-		}
-		status.Failed.LastTransitionTime = transitionTime
-	}
+	adjustFailedStateTimestamps(&obj, &status)
 
 	if !apicmp.DeepEqual(status, obj.Status) {
 		update := obj.DeepCopy()

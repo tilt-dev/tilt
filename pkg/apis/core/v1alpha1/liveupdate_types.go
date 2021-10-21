@@ -72,6 +72,12 @@ type LiveUpdateSpec struct {
 	// Every live update must be associated with at least one FileWatch object
 	// to trigger the update. Usually, Tilt structures it so that there's
 	// a FileWatch for each image we depend on.
+	//
+	// TODO(nick): I think this model still isn't quite right.
+	// What you really need is a sequence of objects. One object
+	// keeps tracks of the files you're watching, and the other tracks
+	// whether or not an image has already consumed that file
+	// (i.e., a ImageMapName/FileWatchName pair).
 	FileWatchNames []string `json:"fileWatchNames,omitempty" protobuf:"bytes,2,rep,name=fileWatchNames"`
 
 	// A list of relative paths that will immediately stop the live-update for the

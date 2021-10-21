@@ -74,17 +74,35 @@ func TestConsumeFileEvents(t *testing.T) {
 	assert.Equal(t, map[string]metav1.MicroTime{}, m.modTimeByPath)
 	assert.Equal(t, "frontend-discovery", m.lastKubernetesDiscovery.Name)
 
-	// Trigger a file event, and make sure it gets pulled into the monitor.
+	// Trigger a file event, and make sure that the status reflects the sync.
 	f.addFileEvent("frontend-fw", txtPath, txtChangeTime)
 	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+
+	var lu v1alpha1.LiveUpdate
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	assert.Nil(t, lu.Status.Failed)
+	if assert.Equal(t, 1, len(lu.Status.Containers)) {
+		assert.Equal(t, txtChangeTime, lu.Status.Containers[0].LastFileTimeSynced)
+	}
+
+	// Also make sure the sync gets pulled into the monitor.
 	assert.Equal(t, map[string]metav1.MicroTime{
 		txtPath: txtChangeTime,
 	}, m.modTimeByPath)
+	assert.Equal(t, 1, len(f.cu.Calls))
+
+	// re-reconcile, and make sure we don't try to resync.
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+	assert.Equal(t, 1, len(f.cu.Calls))
+
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	assert.Nil(t, lu.Status.Failed)
 }
 
 type fixture struct {
 	*fake.ControllerFixture
-	r *Reconciler
+	r  *Reconciler
+	cu *containerupdate.FakeContainerUpdater
 }
 
 func newFixture(t testing.TB) *fixture {
@@ -95,6 +113,7 @@ func newFixture(t testing.TB) *fixture {
 	return &fixture{
 		ControllerFixture: cfb.Build(r),
 		r:                 r,
+		cu:                cu,
 	}
 }
 
