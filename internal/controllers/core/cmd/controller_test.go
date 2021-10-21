@@ -728,6 +728,36 @@ func TestCmdUsesInputsFromButtonOnStart(t *testing.T) {
 	require.Equal(t, expectedEnv, actualEnv)
 }
 
+func TestCmdUsesDefaultsFromTextInputFromButtonOnStart(t *testing.T) {
+	f := newFixture(t)
+	defer f.teardown()
+
+	setupStartOnTest(t, f)
+	f.updateButton("b-1", func(button *v1alpha1.UIButton) {
+		button.Spec.Inputs = []v1alpha1.UIInputSpec{
+			{Name: "foo", Text: &v1alpha1.UITextInputSpec{DefaultValue: "bar"}},
+			{Name: "baz", Text: &v1alpha1.UITextInputSpec{DefaultValue: "qux"}},
+		}
+		button.Status.Inputs = []v1alpha1.UIInputStatus{
+			{
+				Name: "foo",
+				Text: &v1alpha1.UITextInputStatus{},
+			},
+			{
+				Name: "baz",
+				Text: &v1alpha1.UITextInputStatus{Value: "quux"},
+			},
+		}
+	})
+	f.triggerButton("b-1", f.clock.Now())
+	f.reconcileCmd("testcmd")
+
+	actualEnv := f.fe.processes["myserver"].env
+	expectedEnv := []string{"foo=bar", "baz=quux"}
+	require.Equal(t, expectedEnv, actualEnv)
+}
+
+
 func TestBoolInput(t *testing.T) {
 	for _, tc := range []struct {
 		name          string
