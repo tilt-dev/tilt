@@ -3466,13 +3466,12 @@ docker_build('gcr.io/some-project-162817/sancho-sidecar', './sidecar',
 		BasePath: f.Path(),
 		Syncs:    []v1alpha1.LiveUpdateSync{sync1},
 	}
-	expectedLU1.Selector.Kubernetes = &v1alpha1.LiveUpdateKubernetesSelector{Image: "gcr.io/some-project-162817/sancho"}
+
 	sync2 := v1alpha1.LiveUpdateSync{LocalPath: filepath.Join("sidecar", "baz"), ContainerPath: "/quux"}
 	expectedLU2 := v1alpha1.LiveUpdateSpec{
 		BasePath: f.Path(),
 		Syncs:    []v1alpha1.LiveUpdateSync{sync2},
 	}
-	expectedLU2.Selector.Kubernetes = &v1alpha1.LiveUpdateKubernetesSelector{Image: "gcr.io/some-project-162817/sancho-sidecar"}
 
 	f.load()
 	f.assertNextManifest("sancho",

@@ -3,7 +3,6 @@ package model
 import (
 	"fmt"
 
-	"github.com/docker/distribution/reference"
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/tilt-dev/tilt/internal/container"
@@ -56,19 +55,15 @@ func ImageID(ref container.RefSelector) TargetID {
 	}
 }
 
+func (i ImageTarget) ImageMapName() string {
+	return i.ID().Name.String()
+}
+
 func (i ImageTarget) MustWithRef(ref container.RefSelector) ImageTarget {
 	i.Refs = container.MustSimpleRefSet(ref)
 	i.ImageMapSpec.Selector = ref.String()
 	i.ImageMapSpec.MatchExact = ref.MatchExact()
-	i.SetKubernetesImageSelector(reference.FamiliarName(i.Refs.ClusterRef()))
 	return i
-}
-
-func (i *ImageTarget) SetKubernetesImageSelector(image string) {
-	if i.LiveUpdateSpec.Selector.Kubernetes == nil {
-		i.LiveUpdateSpec.Selector.Kubernetes = &v1alpha1.LiveUpdateKubernetesSelector{}
-	}
-	i.LiveUpdateSpec.Selector.Kubernetes.Image = reference.FamiliarName(i.Refs.ClusterRef())
 }
 
 func (i ImageTarget) WithLiveUpdateSpec(name string, luSpec v1alpha1.LiveUpdateSpec) ImageTarget {
@@ -162,7 +157,6 @@ func (i ImageTarget) WithBuildDetails(details BuildDetails) ImageTarget {
 		// until we come up with a real API for specifying live update
 		// without an image build.
 		i.IsLiveUpdateOnly = true
-		i.SetKubernetesImageSelector(reference.FamiliarName(i.Refs.WithoutRegistry().LocalRef()))
 	}
 	return i
 }

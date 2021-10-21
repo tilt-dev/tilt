@@ -290,21 +290,25 @@ func toKubernetesApplyObjects(tlr *tiltfile.TiltfileLoadResult, disableSources m
 func toLiveUpdateObjects(tlr *tiltfile.TiltfileLoadResult) apiset.TypedObjectSet {
 	result := apiset.TypedObjectSet{}
 	for _, m := range tlr.Manifests {
+		m.InferLiveUpdateSelectors()
+
 		for _, iTarget := range m.ImageTargets {
 			luSpec := iTarget.LiveUpdateSpec
 			luName := iTarget.LiveUpdateName
 			if liveupdate.IsEmptySpec(luSpec) || luName == "" {
 				continue
 			}
+
 			obj := &v1alpha1.LiveUpdate{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: luName,
 					Annotations: map[string]string{
-						v1alpha1.AnnotationManifest: m.Name.String(),
-						v1alpha1.AnnotationSpanID:   fmt.Sprintf("liveupdate:%s", luName),
+						v1alpha1.AnnotationManifest:  m.Name.String(),
+						v1alpha1.AnnotationSpanID:    fmt.Sprintf("liveupdate:%s", luName),
+						v1alpha1.AnnotationManagedBy: "buildcontrol",
 					},
 				},
-				Spec: iTarget.LiveUpdateSpec,
+				Spec: luSpec,
 			}
 			result[luName] = obj
 		}
