@@ -254,6 +254,12 @@ function buttonStatusWithInputs(
     const value = inputValues[spec.name!]
     const defined = value !== undefined
     let status: UIInputStatus = { name: spec.name }
+    // If the value isn't defined, use the default value
+    // This is unfortunate duplication with the default value checks when initializing the
+    // MUI managed input components. It might bee cleaner to initialize `inputValues` with
+    // the default values. However, that breaks a bunch of stuff with persistence (e.g.,
+    // if you modify one value, you get a cookie and then never get to see any default values
+    // that get added/changed)
     if (spec.text) {
       status.text = { value: defined ? value : spec.text?.defaultValue }
     } else if (spec.bool) {
