@@ -3,10 +3,13 @@ package liveupdate
 import (
 	"context"
 	"fmt"
+	"sync"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
@@ -44,6 +47,12 @@ type Reconciler struct {
 	DockerUpdater containerupdate.ContainerUpdater
 	updateMode    liveupdates.UpdateMode
 	kubeContext   k8s.KubeContext
+	startedTime   metav1.MicroTime
+
+	monitors map[string]*monitor
+
+	// TODO(nick): Remove this mutex once ForceApply is gone.
+	mu sync.Mutex
 }
 
 var _ reconcile.Reconciler = &Reconciler{}
@@ -65,6 +74,8 @@ func NewReconciler(
 		client:        client,
 		indexer:       indexer.NewIndexer(scheme, indexLiveUpdate),
 		store:         st,
+		startedTime:   apis.NowMicro(),
+		monitors:      make(map[string]*monitor),
 	}
 }
 
@@ -82,10 +93,15 @@ func NewFakeReconciler(
 		client:        client,
 		indexer:       indexer.NewIndexer(scheme, indexLiveUpdate),
 		store:         st,
+		startedTime:   apis.NowMicro(),
+		monitors:      make(map[string]*monitor),
 	}
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	lu := &v1alpha1.LiveUpdate{}
 	err := r.client.Get(ctx, req.NamespacedName, lu)
 	r.indexer.OnReconcile(req.NamespacedName, lu)
@@ -95,27 +111,204 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	if apierrors.IsNotFound(err) || lu.ObjectMeta.DeletionTimestamp != nil {
 		r.store.Dispatch(liveupdates.NewLiveUpdateDeleteAction(req.Name))
+		delete(r.monitors, req.Name)
 		return ctrl.Result{}, nil
 	}
 
 	// The apiserver is the source of truth, and will ensure the engine state is up to date.
 	r.store.Dispatch(liveupdates.NewLiveUpdateUpsertAction(lu))
 
+	ctx = store.MustObjectLogHandler(ctx, r.store, lu)
+
+	if lu.Annotations[v1alpha1.AnnotationManagedBy] != "" {
+		// A LiveUpdate can't be managed by the reconciler until all the objects
+		// it depends on are managed by the reconciler. The Tiltfile controller
+		// is responsible for marking objects that we want to manage with ForceApply().
+		return ctrl.Result{}, nil
+	}
+
+	monitor := r.ensureMonitorExists(lu.Name, lu.Spec)
+	hasFileChanges, err := r.reconcileFileWatches(ctx, monitor)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	hasKubernetesChanges, err := r.reconcileKubernetesResource(ctx, monitor)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if hasFileChanges || hasKubernetesChanges {
+		monitor.hasChangesToSync = true
+	}
+
+	if monitor.hasChangesToSync {
+		err := r.maybeSync(ctx, lu, monitor)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
+	monitor.hasChangesToSync = false
+
 	return ctrl.Result{}, nil
 }
 
-// TODO(nick): Merge this with LiveUpdateStatus,
-// which will provide fuller status reporting.
-type Status struct {
-	// We failed to copy files to the container, but
-	// we don't know why.
-	UnknownError error
+// Create the monitor that tracks a live update. If the live update
+// spec changes, wipe out all accumulated state.
+func (r *Reconciler) ensureMonitorExists(name string, spec v1alpha1.LiveUpdateSpec) *monitor {
+	m, ok := r.monitors[name]
+	if ok && apicmp.DeepEqual(spec, m.spec) {
+		return m
+	}
 
-	// The exec command in the container failed.
-	// This can often mean a compiler error that the user
-	// can fix with more live-updates, so don't consider this
-	// a "permanent" failure.
-	ExecError error
+	m = &monitor{
+		spec:           spec,
+		modTimeByPath:  make(map[string]metav1.MicroTime),
+		lastFileEvents: make(map[string]*v1alpha1.FileEvent),
+		containers:     make(map[monitorContainerKey]monitorContainerStatus),
+	}
+	r.monitors[name] = m
+	return m
+}
+
+// Consume all FileEvents off the FileWatch objects.
+// Returns true if we saw new file events.
+//
+// TODO(nick): Currently, it's entirely possible to miss file events.  This has
+// always been true (since operating systems themselves put limits on the event
+// queue.) But it gets worse in a world where we read FileEvents from the API,
+// since the FileWatch API itself adds lower limits.
+//
+// Long-term, we ought to have some way to reconnect/resync like other
+// sync systems do (syncthing/rsync). e.g., diff the two file systems
+// and update based on changes. But it also might make more sense to switch to a
+// different library for syncing (e.g., Mutagen) now that live updates
+// are decoupled from other file event-triggered tasks.
+//
+// In the meantime, Milas+Nick should figure out a way to handle this
+// better in the short term.
+func (r *Reconciler) reconcileFileWatches(ctx context.Context, monitor *monitor) (bool, error) {
+	if len(monitor.spec.FileWatchNames) == 0 {
+		return false, nil
+	}
+
+	hasChange := false
+	for _, fwn := range monitor.spec.FileWatchNames {
+		oneChange, err := r.reconcileOneFileWatch(ctx, monitor, fwn)
+		if err != nil {
+			return false, err
+		}
+		if oneChange {
+			hasChange = true
+		}
+	}
+	return hasChange, nil
+}
+
+// Consume one FileWatch object.
+func (r *Reconciler) reconcileOneFileWatch(ctx context.Context, monitor *monitor, fwn string) (bool, error) {
+	var fw v1alpha1.FileWatch
+	err := r.client.Get(ctx, types.NamespacedName{Name: fwn}, &fw)
+	if err != nil {
+		// Do nothing if an object hasn't appeared yet.
+		//
+		// TODO(nick): We should have some failure state for LiveUpdateStatus
+		// for when an object it depends on isn't in the API server.
+		// This may not be a permanent failure state, because
+		// the object just hasn't been created yet.
+		return false, client.IgnoreNotFound(err)
+	}
+
+	events := fw.Status.FileEvents
+	if len(events) == 0 {
+		return false, nil
+	}
+
+	newLastFileEvent := events[len(events)-1]
+	event := monitor.lastFileEvents[fwn]
+	if event != nil && apicmp.DeepEqual(&newLastFileEvent, event) {
+		return false, nil
+	}
+	monitor.lastFileEvents[fwn] = &newLastFileEvent
+
+	// Consume all the file events.
+	for _, event := range events {
+		for _, f := range event.SeenFiles {
+			existing, ok := monitor.modTimeByPath[f]
+			if !ok || existing.Time.Before(event.Time.Time) {
+				monitor.modTimeByPath[f] = event.Time
+			}
+		}
+	}
+	return true, nil
+}
+
+// Consume all objects off the KubernetesSelector.
+// Returns true if we saw any changes to the objects we're watching.
+func (r *Reconciler) reconcileKubernetesResource(ctx context.Context, monitor *monitor) (bool, error) {
+	selector := monitor.spec.Selector.Kubernetes
+	if selector == nil {
+		return false, nil
+	}
+
+	var kd *v1alpha1.KubernetesDiscovery
+	var ka *v1alpha1.KubernetesApply
+	var im *v1alpha1.ImageMap
+	changed := false
+	if selector.ApplyName != "" {
+		ka = &v1alpha1.KubernetesApply{}
+		err := r.client.Get(ctx, types.NamespacedName{Name: selector.ApplyName}, ka)
+		if err != nil {
+			// Do nothing if an object hasn't appeared yet.
+			return false, client.IgnoreNotFound(err)
+		}
+
+		if monitor.lastKubernetesApplyStatus == nil ||
+			!apicmp.DeepEqual(monitor.lastKubernetesApplyStatus, &(ka.Status)) {
+			changed = true
+		}
+	}
+
+	if selector.DiscoveryName != "" {
+		kd = &v1alpha1.KubernetesDiscovery{}
+		err := r.client.Get(ctx, types.NamespacedName{Name: selector.DiscoveryName}, kd)
+		if err != nil {
+			// Do nothing if an object hasn't appeared yet.
+			return false, client.IgnoreNotFound(err)
+		}
+
+		if monitor.lastKubernetesDiscovery == nil ||
+			!apicmp.DeepEqual(monitor.lastKubernetesDiscovery.Status, kd.Status) {
+			changed = true
+		}
+	}
+
+	if selector.ImageMapName != "" {
+		im = &v1alpha1.ImageMap{}
+		err := r.client.Get(ctx, types.NamespacedName{Name: selector.ImageMapName}, im)
+		if err != nil {
+			// Do nothing if an object hasn't appeared yet.
+			return false, client.IgnoreNotFound(err)
+		}
+
+		if monitor.lastImageMapStatus == nil ||
+			!apicmp.DeepEqual(monitor.lastImageMapStatus, &(im.Status)) {
+			changed = true
+		}
+	}
+
+	monitor.lastImageMapStatus = &(im.Status)
+	monitor.lastKubernetesApplyStatus = &(ka.Status)
+	monitor.lastKubernetesDiscovery = kd
+	return changed, nil
+}
+
+// Convert the currently tracked state into a set of inputs
+// to the updater, then apply them.
+func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, monitor *monitor) error {
+	// TODO(nick): Fill this in.
+	return nil
 }
 
 // Live-update containers by copying files and running exec commands.
@@ -131,13 +324,39 @@ func (r *Reconciler) ForceApply(
 	nn types.NamespacedName,
 	spec v1alpha1.LiveUpdateSpec,
 	input Input) (v1alpha1.LiveUpdateStatus, error) {
-
-	status := r.forceApplyInternal(ctx, nn, spec, input)
-
 	var obj v1alpha1.LiveUpdate
 	err := r.client.Get(ctx, nn, &obj)
 	if err != nil {
 		return v1alpha1.LiveUpdateStatus{}, err
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.apply(ctx, &obj, spec, input, nil)
+}
+
+// Helper function for the two live update codepaths
+// (the reconciler path and the ForceApply path).
+// Assumes we hold the lock.
+func (r *Reconciler) apply(
+	ctx context.Context,
+	obj *v1alpha1.LiveUpdate,
+	spec v1alpha1.LiveUpdateSpec,
+	input Input,
+	monitor *monitor) (v1alpha1.LiveUpdateStatus, error) {
+	status := r.applyInternal(ctx, spec, input)
+
+	if monitor != nil {
+		for _, c := range status.Containers {
+			monitor.containers[monitorContainerKey{
+				containerID: c.ContainerID,
+				podName:     c.PodName,
+				namespace:   c.Namespace,
+			}] = monitorContainerStatus{
+				lastFileTimeSynced: input.LastFileTimeSynced,
+				unrecoverable:      status.Failed != nil,
+			}
+		}
 	}
 
 	// Check to see if this is a state transition.
@@ -162,10 +381,9 @@ func (r *Reconciler) ForceApply(
 	return status, nil
 }
 
-// Like ForceApply, but doesn't write the status to the apiserver.
-func (r *Reconciler) forceApplyInternal(
+// Like apply, but doesn't write the status to the apiserver.
+func (r *Reconciler) applyInternal(
 	ctx context.Context,
-	nn types.NamespacedName,
 	spec v1alpha1.LiveUpdateSpec,
 	input Input) v1alpha1.LiveUpdateStatus {
 
@@ -221,14 +439,17 @@ func (r *Reconciler) forceApplyInternal(
 		err = cu.UpdateContainer(ctx, cInfo, archive,
 			build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
 
-		cStatus := v1alpha1.LiveUpdateContainerStatus{
-			ContainerName: cInfo.ContainerName.String(),
-			ContainerID:   cInfo.ContainerID.String(),
-			PodName:       cInfo.PodID.String(),
-			Namespace:     cInfo.Namespace.String(),
+		lastFileTimeSynced := input.LastFileTimeSynced
+		if lastFileTimeSynced.IsZero() {
+			lastFileTimeSynced = apis.NowMicro()
+		}
 
-			// TODO(nick): Pass in LastFileTimeSynced from the FileWatch events.
-			LastFileTimeSynced: apis.NowMicro(),
+		cStatus := v1alpha1.LiveUpdateContainerStatus{
+			ContainerName:      cInfo.ContainerName.String(),
+			ContainerID:        cInfo.ContainerID.String(),
+			PodName:            cInfo.PodID.String(),
+			Namespace:          cInfo.Namespace.String(),
+			LastFileTimeSynced: lastFileTimeSynced,
 		}
 
 		if err != nil {
