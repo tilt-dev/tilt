@@ -12,7 +12,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	ctrlliveupdate "github.com/tilt-dev/tilt/internal/controllers/core/liveupdate"
-	"github.com/tilt-dev/tilt/internal/ignore"
 	"github.com/tilt-dev/tilt/internal/ospath"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
@@ -143,9 +142,6 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (LiveUpdateInput,
 	iTarget := stateTree.iTarget
 	filesChanged := stateTree.filesChanged
 
-	var err error
-	var fileMappings []build.PathMapping
-
 	luSpec := iTarget.LiveUpdateSpec
 	if liveupdate.IsEmptySpec(luSpec) {
 		// We should have validated this when generating the LiveUpdateStateTrees, but double check!
@@ -153,29 +149,24 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (LiveUpdateInput,
 			"which should have already been validated for Live Update", iTarget.ID()))
 	}
 
-	var pathsMatchingNoSync []string
-	fileMappings, pathsMatchingNoSync, err = build.FilesToPathMappings(filesChanged, liveupdate.SyncSteps(luSpec))
+	plan, err := liveupdates.NewLiveUpdatePlan(luSpec, filesChanged)
 	if err != nil {
 		return LiveUpdateInput{}, err
 	}
-	if len(pathsMatchingNoSync) > 0 {
+
+	if len(plan.NoMatchPaths) > 0 {
 		return LiveUpdateInput{}, RedirectToNextBuilderInfof(
 			"Found file(s) not matching any sync for %s (files: %s)", iTarget.ID(),
-			ospath.FormatFileChangeList(pathsMatchingNoSync))
+			ospath.FormatFileChangeList(plan.NoMatchPaths))
 	}
 
 	// If any changed files match a FallBackOn file, fall back to next BuildAndDeployer
-	anyMatch, file, err := liveupdate.FallBackOnFiles(luSpec).AnyMatch(filesChanged)
-	if err != nil {
-		return LiveUpdateInput{}, err
-	}
-	if anyMatch {
-		prettyFile := ospath.FileDisplayName([]string{luSpec.BasePath}, file)
+	if len(plan.FallBackPaths) != 0 {
 		return LiveUpdateInput{}, RedirectToNextBuilderInfof(
-			"Detected change to fall_back_on file %q", prettyFile)
+			"Detected change to fall_back_on file %q", plan.FallBackPaths[0])
 	}
 
-	if len(fileMappings) == 0 {
+	if len(plan.SyncPaths) == 0 {
 		// No files matched a sync for this image, no Live Update to run
 		return LiveUpdateInput{}, nil
 	}
@@ -185,8 +176,7 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (LiveUpdateInput,
 		Name: iTarget.LiveUpdateName,
 		Spec: iTarget.LiveUpdateSpec,
 		Input: ctrlliveupdate.Input{
-			Filter:       ignore.CreateBuildContextFilter(iTarget),
-			ChangedFiles: fileMappings,
+			ChangedFiles: plan.SyncPaths,
 			Containers:   stateTree.containers,
 			IsDC:         stateTree.isDC,
 		},

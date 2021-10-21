@@ -131,6 +131,22 @@ func (ps PathSet) AnyMatch(paths []string) (bool, string, error) {
 	return false, "", nil
 }
 
+// Intersection returns the set of paths that are in both the PathSet and the passed set of paths.
+func (ps PathSet) Intersection(paths []string) ([]string, error) {
+	var matches []string
+	matcher := NewRelativeFileOrChildMatcher(ps.BaseDirectory, ps.Paths...)
+	for _, path := range paths {
+		match, err := matcher.Matches(path)
+		if err != nil {
+			return nil, err
+		}
+		if match {
+			matches = append(matches, path)
+		}
+	}
+	return matches, nil
+}
+
 type CompositePathMatcher struct {
 	Matchers []PathMatcher
 }

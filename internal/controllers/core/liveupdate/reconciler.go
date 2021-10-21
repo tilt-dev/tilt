@@ -167,7 +167,6 @@ func (r *Reconciler) forceApplyInternal(
 		suffix = "(s)"
 	}
 
-	filter := input.Filter
 	runSteps := liveupdate.RunSteps(spec)
 	changedFiles := input.ChangedFiles
 	hotReload := !liveupdate.ShouldRestart(spec)
@@ -206,7 +205,7 @@ func (r *Reconciler) forceApplyInternal(
 
 	var lastExecErrorStatus *v1alpha1.LiveUpdateContainerStatus
 	for _, cInfo := range containers {
-		archive := build.TarArchiveForPaths(ctx, toArchive, filter)
+		archive := build.TarArchiveForPaths(ctx, toArchive, nil)
 		err = cu.UpdateContainer(ctx, cInfo, archive,
 			build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
 
