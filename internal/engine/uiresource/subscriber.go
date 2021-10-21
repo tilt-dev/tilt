@@ -26,10 +26,10 @@ func NewSubscriber(client ctrlclient.Client) *Subscriber {
 	}
 }
 
-func (s *Subscriber) currentResources(store store.RStore) ([]*v1alpha1.UIResource, error) {
+func (s *Subscriber) currentResources(store store.RStore, disableSources map[string][]v1alpha1.DisableSource) ([]*v1alpha1.UIResource, error) {
 	state := store.RLockState()
 	defer store.RUnlockState()
-	return webview.ToUIResourceList(state)
+	return webview.ToUIResourceList(state, disableSources)
 }
 
 func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) error {
@@ -37,15 +37,9 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 		return nil
 	}
 
-	currentResources, err := s.currentResources(st)
-	if err != nil {
-		st.Dispatch(store.NewErrorAction(fmt.Errorf("cannot convert UIResource: %v", err)))
-		return nil
-	}
-
 	// Collect a list of all the resources to reconcile and their most recent version.
 	storedList := &v1alpha1.UIResourceList{}
-	err = s.client.List(ctx, storedList)
+	err := s.client.List(ctx, storedList)
 
 	if err != nil {
 		// If the cache hasn't started yet, that's OK.
@@ -58,8 +52,16 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 	}
 
 	storedMap := make(map[string]v1alpha1.UIResource)
+	disableSources := make(map[string][]v1alpha1.DisableSource)
 	for _, r := range storedList.Items {
 		storedMap[r.Name] = r
+		disableSources[r.Name] = r.Status.DisableStatus.Sources
+	}
+
+	currentResources, err := s.currentResources(st, disableSources)
+	if err != nil {
+		st.Dispatch(store.NewErrorAction(fmt.Errorf("cannot convert UIResource: %v", err)))
+		return nil
 	}
 
 	for _, r := range currentResources {
@@ -67,10 +69,6 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 		if !isStored {
 			continue
 		}
-
-		// DisableStatus is managed by the UIResource reconciler rather than calculated from
-		// EngineState, so leave it in place
-		r.Status.DisableStatus = stored.Status.DisableStatus
 
 		if !apicmp.DeepEqual(r.Status, stored.Status) {
 			// If the current version is different than what's stored, update it.

@@ -13,7 +13,7 @@ import (
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
-func DisableStatus(ctx context.Context, client client.Client, disableSource *v1alpha1.DisableSource) (isDisabled bool, reason string, err error) {
+func DisableStatus(getCM func(name string) (v1alpha1.ConfigMap, error), disableSource *v1alpha1.DisableSource) (isDisabled bool, reason string, err error) {
 	if disableSource == nil {
 		return false, "object does not specify a DisableSource", nil
 	}
@@ -22,8 +22,7 @@ func DisableStatus(ctx context.Context, client client.Client, disableSource *v1a
 		return false, "DisableSource specifies no ConfigMap", nil
 	}
 
-	cm := &v1alpha1.ConfigMap{}
-	err = client.Get(ctx, types.NamespacedName{Name: disableSource.ConfigMap.Name}, cm)
+	cm, err := getCM(disableSource.ConfigMap.Name)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return false, fmt.Sprintf("ConfigMap %q does not exist", disableSource.ConfigMap.Name), nil
@@ -45,7 +44,13 @@ func DisableStatus(ctx context.Context, client client.Client, disableSource *v1a
 
 // Returns a new DisableStatus if the disable status has changed, or the prev status if it hasn't.
 func MaybeNewDisableStatus(ctx context.Context, client client.Client, disableSource *v1alpha1.DisableSource, prevStatus *v1alpha1.DisableStatus) (*v1alpha1.DisableStatus, error) {
-	isDisabled, reason, err := DisableStatus(ctx, client, disableSource)
+	getCM := func(name string) (v1alpha1.ConfigMap, error) {
+		var cm v1alpha1.ConfigMap
+		err := client.Get(ctx, types.NamespacedName{Name: disableSource.ConfigMap.Name}, &cm)
+		return cm, err
+	}
+
+	isDisabled, reason, err := DisableStatus(getCM, disableSource)
 	if err != nil {
 		return nil, err
 	}
