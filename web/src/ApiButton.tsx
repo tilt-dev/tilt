@@ -91,9 +91,8 @@ function ApiButtonInput(props: ApiButtonInputProps) {
       <InstrumentedTextField
         label={props.spec.label ?? props.spec.name}
         id={props.spec.name}
-        defaultValue={props.spec.text?.defaultValue}
         placeholder={props.spec.text?.placeholder}
-        value={props.value || props.spec.text?.defaultValue || ""}
+        value={props.value ?? props.spec.text?.defaultValue ?? ""}
         onChange={(e) => props.setValue(props.spec.name!, e.target.value)}
         analyticsName="ui.web.uibutton.inputValue"
         analyticsTags={{ inputType: "text" }}
@@ -253,17 +252,18 @@ function buttonStatusWithInputs(
   result.status!.inputs = []
   button.spec!.inputs?.forEach((spec) => {
     const value = inputValues[spec.name!]
-    if (value !== undefined) {
-      let status: UIInputStatus = { name: spec.name }
-      if (spec.text) {
-        status.text = { value: value }
-      } else if (spec.bool) {
-        status.bool = { value: value === true }
-      } else if (spec.hidden) {
-        status.hidden = { value: spec.hidden.value }
+    const defined = value !== undefined
+    let status: UIInputStatus = { name: spec.name }
+    if (spec.text) {
+      status.text = { value: defined ? value : spec.text?.defaultValue }
+    } else if (spec.bool) {
+      status.bool = {
+        value: (defined ? value : spec.bool.defaultValue) === true,
       }
-      result.status!.inputs!.push(status)
+    } else if (spec.hidden) {
+      status.hidden = { value: spec.hidden.value }
     }
+    result.status!.inputs!.push(status)
   })
 
   return result
@@ -314,7 +314,6 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
     //  moment, so there's no fancy spinner animation or propagation of result of action(s)
     //  that occur as a result of click right now
     setLoading(true)
-    setHiddenInputs(uiButton, inputValues)
     try {
       await updateButtonStatus(uiButton, inputValues)
     } catch (err) {

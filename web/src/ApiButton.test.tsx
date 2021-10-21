@@ -104,6 +104,20 @@ describe("ApiButton", () => {
     expect(actualInputNames).toEqual(expectedInputNames)
   })
 
+  it("allows an empty text string when there's a default value", () => {
+    const input = textField("text1", "default_text")
+    const root = mountButton(makeUIButton({ inputSpecs: [input] }))
+
+    const optionsButton = root.find(ApiButtonInputsToggleButton)
+    optionsButton.simulate("click")
+    root.update()
+
+    const tf = root.find(ApiButtonForm).find("input#text1")
+    tf.simulate("change", { target: { value: "" } })
+
+    expect(root.find(ApiButtonForm).find(TextField).prop("value")).toEqual("")
+  })
+
   it("submits the current options when the submit button is clicked", async () => {
     const inputSpecs = [
       textField("text1"),
@@ -153,6 +167,64 @@ describe("ApiButton", () => {
           name: "text1",
           text: {
             value: "new_value",
+          },
+        },
+        {
+          name: "bool1",
+          bool: {
+            value: true,
+          },
+        },
+        {
+          name: "hidden1",
+          hidden: {
+            value: "hidden value 1",
+          },
+        },
+      ],
+    }
+    expect(actualStatus).toEqual(expectedStatus)
+  })
+
+  it("submits default options when the submit button is clicked", async () => {
+    const inputSpecs = [
+      textField("text1", "default_text"),
+      boolField("bool1", true),
+      hiddenField("hidden1", "hidden value 1"),
+    ]
+    const root = mountButton(makeUIButton({ inputSpecs: inputSpecs }))
+
+    const submit = root.find(ApiButton).find(Button).at(0)
+    await act(async () => {
+      submit.simulate("click")
+      // the button's onclick updates the button so we need to wait for that to resolve
+      // within the act() before continuing
+      // some related info: https://github.com/testing-library/react-testing-library/issues/281
+      await flushPromises()
+    })
+    root.update()
+
+    const calls = fetchMock
+      .calls()
+      .filter((c) => c[0] !== "http://localhost/api/analytics")
+    expect(calls.length).toEqual(1)
+    const call = calls[0]
+    expect(call[0]).toEqual(
+      "/proxy/apis/tilt.dev/v1alpha1/uibuttons/TestButton/status"
+    )
+    expect(call[1]).toBeTruthy()
+    expect(call[1]!.method).toEqual("PUT")
+    expect(call[1]!.body).toBeTruthy()
+    const actualStatus: UIButtonStatus = JSON.parse(call[1]!.body!.toString())
+      .status
+
+    const expectedStatus: UIButtonStatus = {
+      lastClickedAt: "2016-12-21T23:36:07.071000+00:00",
+      inputs: [
+        {
+          name: "text1",
+          text: {
+            value: "default_text",
           },
         },
         {
