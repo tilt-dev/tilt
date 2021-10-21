@@ -22,6 +22,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -35,6 +36,7 @@ var applyGVK = v1alpha1.SchemeGroupVersion.WithKind("KubernetesApply")
 type Reconciler struct {
 	client  ctrlclient.Client
 	indexer *indexer.Indexer
+	store   store.RStore
 
 	ExecUpdater   containerupdate.ContainerUpdater
 	DockerUpdater containerupdate.ContainerUpdater
@@ -46,6 +48,7 @@ var _ reconcile.Reconciler = &Reconciler{}
 
 // Dependency-inject a live update reconciler.
 func NewReconciler(
+	st store.RStore,
 	dcu *containerupdate.DockerUpdater,
 	ecu *containerupdate.ExecUpdater,
 	updateMode liveupdates.UpdateMode,
@@ -59,11 +62,13 @@ func NewReconciler(
 		kubeContext:   kubeContext,
 		client:        client,
 		indexer:       indexer.NewIndexer(scheme, indexLiveUpdate),
+		store:         st,
 	}
 }
 
 // Create a reconciler baked by a fake ContainerUpdater and Client.
 func NewFakeReconciler(
+	st store.RStore,
 	cu containerupdate.ContainerUpdater,
 	client ctrlclient.Client) *Reconciler {
 	scheme := v1alpha1.NewScheme()
@@ -74,6 +79,7 @@ func NewFakeReconciler(
 		kubeContext:   k8s.KubeContext("fake-context"),
 		client:        client,
 		indexer:       indexer.NewIndexer(scheme, indexLiveUpdate),
+		store:         st,
 	}
 }
 
@@ -86,8 +92,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	if apierrors.IsNotFound(err) || lu.ObjectMeta.DeletionTimestamp != nil {
+		r.store.Dispatch(liveupdates.NewLiveUpdateDeleteAction(req.Name))
 		return ctrl.Result{}, nil
 	}
+
+	// The apiserver is the source of truth, and will ensure the engine state is up to date.
+	r.store.Dispatch(liveupdates.NewLiveUpdateUpsertAction(lu))
 
 	return ctrl.Result{}, nil
 }

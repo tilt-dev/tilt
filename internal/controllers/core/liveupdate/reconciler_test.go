@@ -10,6 +10,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/containerupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
+	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
@@ -60,7 +61,8 @@ type fixture struct {
 func newFixture(t testing.TB) *fixture {
 	cfb := fake.NewControllerFixtureBuilder(t)
 	cu := &containerupdate.FakeContainerUpdater{}
-	r := NewFakeReconciler(cu, cfb.Client)
+	st := store.NewTestingStore()
+	r := NewFakeReconciler(st, cu, cfb.Client)
 	return &fixture{
 		ControllerFixture: cfb.Build(r),
 		r:                 r,

@@ -205,6 +205,10 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		configmaps.HandleConfigMapUpsertAction(state, action)
 	case configmaps.ConfigMapDeleteAction:
 		configmaps.HandleConfigMapDeleteAction(state, action)
+	case liveupdates.LiveUpdateUpsertAction:
+		liveupdates.HandleLiveUpdateUpsertAction(state, action)
+	case liveupdates.LiveUpdateDeleteAction:
+		liveupdates.HandleLiveUpdateDeleteAction(state, action)
 	default:
 		state.FatalError = fmt.Errorf("unrecognized action: %T", action)
 	}
