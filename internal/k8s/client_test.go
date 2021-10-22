@@ -47,7 +47,7 @@ func TestUpsert(t *testing.T) {
 	assert.Nil(t, err)
 	_, err = f.k8sUpsert(f.ctx, postgres)
 	assert.Nil(t, err)
-	assert.Equal(t, 5, len(f.helmKube.updates))
+	assert.Equal(t, 5, len(f.resourceClient.updates))
 }
 
 func TestDelete(t *testing.T) {
@@ -56,12 +56,12 @@ func TestDelete(t *testing.T) {
 	assert.Nil(t, err)
 	err = f.client.Delete(f.ctx, postgres)
 	assert.Nil(t, err)
-	assert.Equal(t, 5, len(f.helmKube.deletes))
+	assert.Equal(t, 5, len(f.resourceClient.deletes))
 }
 
 func TestDeleteMissingKind(t *testing.T) {
 	f := newClientTestFixture(t)
-	f.helmKube.buildErrFn = func(e K8sEntity) error {
+	f.resourceClient.buildErrFn = func(e K8sEntity) error {
 		if e.GVK().Kind == "StatefulSet" {
 			return fmt.Errorf(`no matches for kind "StatefulSet" in version "apps/v1"`)
 		}
@@ -72,10 +72,10 @@ func TestDeleteMissingKind(t *testing.T) {
 	assert.Nil(t, err)
 	err = f.client.Delete(f.ctx, postgres)
 	assert.Nil(t, err)
-	assert.Equal(t, 4, len(f.helmKube.deletes))
+	assert.Equal(t, 4, len(f.resourceClient.deletes))
 
 	kinds := []string{}
-	for _, r := range f.helmKube.deletes {
+	for _, r := range f.resourceClient.deletes {
 		kinds = append(kinds, r.Object.GetObjectKind().GroupVersionKind().Kind)
 	}
 	assert.Equal(t,
@@ -94,18 +94,18 @@ func TestUpsertMutableAndImmutable(t *testing.T) {
 		t.FailNow()
 	}
 
-	require.Len(t, f.helmKube.updates, 2)
-	require.Len(t, f.helmKube.creates, 1)
+	require.Len(t, f.resourceClient.updates, 2)
+	require.Len(t, f.resourceClient.creates, 1)
 
 	// compare entities instead of strings because str > entity > string gets weird
-	call0Entity := NewK8sEntity(f.helmKube.updates[0].Object)
-	call1Entity := NewK8sEntity(f.helmKube.updates[1].Object)
+	call0Entity := NewK8sEntity(f.resourceClient.updates[0].Object)
+	call1Entity := NewK8sEntity(f.resourceClient.updates[1].Object)
 
 	// `apply` should preserve input order of entities (we sort them further upstream)
 	require.Equal(t, eDeploy, call0Entity, "expect call 0 to have applied deployment first (preserve input order)")
 	require.Equal(t, eNamespace, call1Entity, "expect call 0 to have applied namespace second (preserve input order)")
 
-	call2Entity := NewK8sEntity(f.helmKube.creates[0].Object)
+	call2Entity := NewK8sEntity(f.resourceClient.creates[0].Object)
 	require.Equal(t, eJob, call2Entity, "expect create job")
 }
 
@@ -113,12 +113,12 @@ func TestUpsertAnnotationTooLong(t *testing.T) {
 	f := newClientTestFixture(t)
 	postgres := MustParseYAMLFromString(t, testyaml.PostgresYAML)
 
-	f.helmKube.updateErr = fmt.Errorf(`The ConfigMap "postgres-config" is invalid: metadata.annotations: Too long: must have at most 262144 bytes`)
+	f.resourceClient.updateErr = fmt.Errorf(`The ConfigMap "postgres-config" is invalid: metadata.annotations: Too long: must have at most 262144 bytes`)
 	_, err := f.k8sUpsert(f.ctx, postgres)
 	assert.Nil(t, err)
-	assert.Equal(t, 0, len(f.helmKube.creates))
-	assert.Equal(t, 1, len(f.helmKube.createOrReplaces))
-	assert.Equal(t, 4, len(f.helmKube.updates))
+	assert.Equal(t, 0, len(f.resourceClient.creates))
+	assert.Equal(t, 1, len(f.resourceClient.createOrReplaces))
+	assert.Equal(t, 4, len(f.resourceClient.updates))
 }
 
 func TestUpsertStatefulsetForbidden(t *testing.T) {
@@ -126,11 +126,11 @@ func TestUpsertStatefulsetForbidden(t *testing.T) {
 	postgres, err := ParseYAMLFromString(testyaml.PostgresYAML)
 	assert.Nil(t, err)
 
-	f.helmKube.updateErr = fmt.Errorf(`The StatefulSet "postgres" is invalid: spec: Forbidden: updates to statefulset spec for fields other than 'replicas', 'template', and 'updateStrategy' are forbidden.`)
+	f.resourceClient.updateErr = fmt.Errorf(`The StatefulSet "postgres" is invalid: spec: Forbidden: updates to statefulset spec for fields other than 'replicas', 'template', and 'updateStrategy' are forbidden.`)
 	_, err = f.k8sUpsert(f.ctx, postgres)
 	assert.Nil(t, err)
-	assert.Equal(t, 1, len(f.helmKube.creates))
-	assert.Equal(t, 4, len(f.helmKube.updates))
+	assert.Equal(t, 1, len(f.resourceClient.creates))
+	assert.Equal(t, 4, len(f.resourceClient.updates))
 }
 
 func TestUpsertToTerminatingNamespaceForbidden(t *testing.T) {
@@ -142,14 +142,14 @@ func TestUpsertToTerminatingNamespaceForbidden(t *testing.T) {
 	// field error. Make sure we treat it as what it is and bail out of `kubectl apply`
 	// rather than trying to --force
 	errStr := `Error from server (Forbidden): error when creating "STDIN": deployments.apps "sancho" is forbidden: unable to create new content in namespace sancho-ns because it is being terminated`
-	f.helmKube.updateErr = fmt.Errorf(errStr)
+	f.resourceClient.updateErr = fmt.Errorf(errStr)
 
 	_, err = f.k8sUpsert(f.ctx, postgres)
 	if assert.NotNil(t, err) {
 		assert.Contains(t, err.Error(), errStr)
 	}
-	assert.Equal(t, 0, len(f.helmKube.updates))
-	assert.Equal(t, 0, len(f.helmKube.creates))
+	assert.Equal(t, 0, len(f.resourceClient.updates))
+	assert.Equal(t, 0, len(f.resourceClient.creates))
 }
 
 func TestGetGroup(t *testing.T) {
@@ -243,12 +243,12 @@ func (c *fakeResourceClient) Build(r io.Reader, validate bool) (kube.ResourceLis
 }
 
 type clientTestFixture struct {
-	t           *testing.T
-	ctx         context.Context
-	client      K8sClient
-	tracker     ktesting.ObjectTracker
-	watchNotify chan watch.Interface
-	helmKube    *fakeResourceClient
+	t              *testing.T
+	ctx            context.Context
+	client         K8sClient
+	tracker        ktesting.ObjectTracker
+	watchNotify    chan watch.Interface
+	resourceClient *fakeResourceClient
 }
 
 func newClientTestFixture(t *testing.T) *clientTestFixture {
@@ -281,8 +281,8 @@ func newClientTestFixture(t *testing.T) *clientTestFixture {
 	dc := dynfake.NewSimpleDynamicClient(scheme.Scheme)
 	runtimeAsync := newRuntimeAsync(core)
 	registryAsync := newRegistryAsync(EnvUnknown, core, runtimeAsync)
-	helmKube := &fakeResourceClient{}
-	ret.helmKube = helmKube
+	resourceClient := &fakeResourceClient{}
+	ret.resourceClient = resourceClient
 
 	ret.client = K8sClient{
 		env:               EnvUnknown,
@@ -291,7 +291,7 @@ func newClientTestFixture(t *testing.T) *clientTestFixture {
 		dynamic:           dc,
 		runtimeAsync:      runtimeAsync,
 		registryAsync:     registryAsync,
-		resourceClient:    helmKube,
+		resourceClient:    resourceClient,
 		drm:               fakeRESTMapper{},
 	}
 
