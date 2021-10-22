@@ -310,11 +310,11 @@ func indexLiveUpdate(obj ctrlclient.Object) []indexer.Key {
 	lu := obj.(*v1alpha1.LiveUpdate)
 	var result []indexer.Key
 
-	if lu.Spec.FileWatchName != "" {
+	for _, fwn := range lu.Spec.FileWatchNames {
 		result = append(result, indexer.Key{
 			Name: types.NamespacedName{
 				Namespace: lu.Namespace,
-				Name:      lu.Spec.FileWatchName,
+				Name:      fwn,
 			},
 			GVK: fwGVK,
 		})

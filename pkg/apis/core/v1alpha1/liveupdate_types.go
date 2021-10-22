@@ -66,12 +66,13 @@ type LiveUpdateSpec struct {
 	// Specifies how this live-updater finds the containers that need live update.
 	Selector LiveUpdateSelector `json:"selector" protobuf:"bytes,8,opt,name=selector"`
 
-	// Name of the FileWatch object to watch for a list of files that
+	// Names of ileWatch objects to watch for a list of files that
 	// have recently been updated.
 	//
-	// Every live update must be associated with a FileWatch object
-	// to trigger the update.
-	FileWatchName string `json:"fileWatchName" protobuf:"bytes,2,opt,name=fileWatchName"`
+	// Every live update must be associated with at least one FileWatch object
+	// to trigger the update. Usually, Tilt structures it so that there's
+	// a FileWatch for each image we depend on.
+	FileWatchNames []string `json:"fileWatchNames,omitempty" protobuf:"bytes,2,rep,name=fileWatchNames"`
 
 	// A list of relative paths that will immediately stop the live-update for the
 	// current container.

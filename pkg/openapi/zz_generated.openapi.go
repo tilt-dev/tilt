@@ -3006,12 +3006,19 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateSpec(ref common.ReferenceCallback) 
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSelector"),
 						},
 					},
-					"fileWatchName": {
+					"fileWatchNames": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Name of the FileWatch object to watch for a list of files that have recently been updated.\n\nEvery live update must be associated with a FileWatch object to trigger the update.",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
+							Description: "Names of ileWatch objects to watch for a list of files that have recently been updated.\n\nEvery live update must be associated with at least one FileWatch object to trigger the update. Usually, Tilt structures it so that there's a FileWatch for each image we depend on.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
 						},
 					},
 					"stopPaths": {
@@ -3065,7 +3072,7 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateSpec(ref common.ReferenceCallback) 
 						},
 					},
 				},
-				Required: []string{"basePath", "selector", "fileWatchName"},
+				Required: []string{"basePath", "selector"},
 			},
 		},
 		Dependencies: []string{

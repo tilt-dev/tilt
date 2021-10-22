@@ -1155,12 +1155,13 @@ message LiveUpdateSpec {
   // Specifies how this live-updater finds the containers that need live update.
   optional LiveUpdateSelector selector = 8;
 
-  // Name of the FileWatch object to watch for a list of files that
+  // Names of ileWatch objects to watch for a list of files that
   // have recently been updated.
   //
-  // Every live update must be associated with a FileWatch object
-  // to trigger the update.
-  optional string fileWatchName = 2;
+  // Every live update must be associated with at least one FileWatch object
+  // to trigger the update. Usually, Tilt structures it so that there's
+  // a FileWatch for each image we depend on.
+  repeated string fileWatchNames = 2;
 
   // A list of relative paths that will immediately stop the live-update for the
   // current container.

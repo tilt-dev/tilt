@@ -1615,6 +1615,11 @@ func (in *LiveUpdateSelector) DeepCopy() *LiveUpdateSelector {
 func (in *LiveUpdateSpec) DeepCopyInto(out *LiveUpdateSpec) {
 	*out = *in
 	in.Selector.DeepCopyInto(&out.Selector)
+	if in.FileWatchNames != nil {
+		in, out := &in.FileWatchNames, &out.FileWatchNames
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.StopPaths != nil {
 		in, out := &in.StopPaths, &out.StopPaths
 		*out = make([]string, len(*in))
