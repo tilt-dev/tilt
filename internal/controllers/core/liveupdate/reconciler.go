@@ -31,6 +31,8 @@ import (
 
 var discoveryGVK = v1alpha1.SchemeGroupVersion.WithKind("KubernetesDiscovery")
 var applyGVK = v1alpha1.SchemeGroupVersion.WithKind("KubernetesApply")
+var fwGVK = v1alpha1.SchemeGroupVersion.WithKind("FileWatch")
+var imageMapGVK = v1alpha1.SchemeGroupVersion.WithKind("ImageMap")
 
 // Manages the LiveUpdate API object.
 type Reconciler struct {
@@ -290,17 +292,34 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 		Watches(&source.Kind{Type: &v1alpha1.KubernetesDiscovery{}},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
 		Watches(&source.Kind{Type: &v1alpha1.KubernetesApply{}},
+			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
+		Watches(&source.Kind{Type: &v1alpha1.FileWatch{}},
+			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
+		Watches(&source.Kind{Type: &v1alpha1.ImageMap{}},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue))
 
 	return b, nil
 }
 
 // indexLiveUpdate returns keys of objects referenced _by_ the LiveUpdate object for reverse lookup including:
+//  - FileWatch
+//  - ImageMapName
 // 	- KubernetesDiscovery
 //	- KubernetesApply
 func indexLiveUpdate(obj ctrlclient.Object) []indexer.Key {
 	lu := obj.(*v1alpha1.LiveUpdate)
 	var result []indexer.Key
+
+	if lu.Spec.FileWatchName != "" {
+		result = append(result, indexer.Key{
+			Name: types.NamespacedName{
+				Namespace: lu.Namespace,
+				Name:      lu.Spec.FileWatchName,
+			},
+			GVK: fwGVK,
+		})
+	}
+
 	if lu.Spec.Selector.Kubernetes != nil {
 		if lu.Spec.Selector.Kubernetes.DiscoveryName != "" {
 			result = append(result, indexer.Key{
@@ -319,6 +338,16 @@ func indexLiveUpdate(obj ctrlclient.Object) []indexer.Key {
 					Name:      lu.Spec.Selector.Kubernetes.ApplyName,
 				},
 				GVK: applyGVK,
+			})
+		}
+
+		if lu.Spec.Selector.Kubernetes.ImageMapName != "" {
+			result = append(result, indexer.Key{
+				Name: types.NamespacedName{
+					Namespace: lu.Namespace,
+					Name:      lu.Spec.Selector.Kubernetes.ImageMapName,
+				},
+				GVK: imageMapGVK,
 			})
 		}
 	}
