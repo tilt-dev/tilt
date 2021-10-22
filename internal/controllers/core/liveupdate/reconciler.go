@@ -252,6 +252,8 @@ func (r *Reconciler) reconcileKubernetesResource(ctx context.Context, monitor *m
 		return false, nil
 	}
 
+	// TODO(nick): Update the status field with an error if there's no discovery name.
+
 	var kd *v1alpha1.KubernetesDiscovery
 	var ka *v1alpha1.KubernetesApply
 	var im *v1alpha1.ImageMap
@@ -298,9 +300,20 @@ func (r *Reconciler) reconcileKubernetesResource(ctx context.Context, monitor *m
 		}
 	}
 
-	monitor.lastImageMapStatus = &(im.Status)
-	monitor.lastKubernetesApplyStatus = &(ka.Status)
+	if im == nil {
+		monitor.lastImageMapStatus = nil
+	} else {
+		monitor.lastImageMapStatus = &(im.Status)
+	}
+
+	if ka == nil {
+		monitor.lastKubernetesApplyStatus = nil
+	} else {
+		monitor.lastKubernetesApplyStatus = &(ka.Status)
+	}
+
 	monitor.lastKubernetesDiscovery = kd
+
 	return changed, nil
 }
 
@@ -353,7 +366,7 @@ func (r *Reconciler) apply(
 				podName:     c.PodName,
 				namespace:   c.Namespace,
 			}] = monitorContainerStatus{
-				lastFileTimeSynced: input.LastFileTimeSynced,
+				lastFileTimeSynced: c.LastFileTimeSynced,
 				unrecoverable:      status.Failed != nil,
 			}
 		}
