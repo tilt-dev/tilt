@@ -8,27 +8,29 @@ import (
 	"helm.sh/helm/v3/pkg/kube"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/printers"
+	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/kubectl/pkg/cmd/apply"
 	"k8s.io/kubectl/pkg/cmd/delete"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
 
 // We've adapted Helm's kubernetes client for our needs
-type HelmKubeClient interface {
+type ResourceClient interface {
 	Apply(target kube.ResourceList) (*kube.Result, error)
+	CreateOrReplace(target kube.ResourceList) (*kube.Result, error)
 	Delete(existing kube.ResourceList) (*kube.Result, []error)
 	Create(l kube.ResourceList) (*kube.Result, error)
 	Build(r io.Reader, validate bool) (kube.ResourceList, error)
 }
 
-type helmKubeClient struct {
+type resourceClient struct {
 	*kube.Client
 	factory cmdutil.Factory
 }
 
 // Helm's update function doesn't really work for us,
 // so we use the kubectl apply code directly.
-func (c *helmKubeClient) Apply(target kube.ResourceList) (*kube.Result, error) {
+func (c *resourceClient) Apply(target kube.ResourceList) (*kube.Result, error) {
 	f := c.factory
 	o := apply.NewApplyOptions(genericclioptions.IOStreams{
 		In:     strings.NewReader(""),
@@ -66,14 +68,40 @@ func (c *helmKubeClient) Apply(target kube.ResourceList) (*kube.Result, error) {
 	return &kube.Result{Updated: target}, nil
 }
 
+// A simplified implementation that creates or replaces the whole object.
+func (c *resourceClient) CreateOrReplace(target kube.ResourceList) (*kube.Result, error) {
+	for _, info := range target {
+		obj, err := resource.
+			NewHelper(info.Client, info.Mapping).
+			Create(info.Namespace, true, info.Object)
+
+		if err != nil && strings.Contains(err.Error(), "already exists") {
+			obj, err = resource.
+				NewHelper(info.Client, info.Mapping).
+				Replace(info.Namespace, info.Name, true, info.Object)
+		}
+
+		if err != nil {
+			return nil, cmdutil.AddSourceToErr("create/replace", info.Source, err)
+		}
+
+		err = info.Refresh(obj, true)
+		if err != nil {
+			return nil, cmdutil.AddSourceToErr("create/replace", info.Source, err)
+		}
+	}
+
+	return &kube.Result{Updated: target}, nil
+}
+
 var helmNopLogger = func(_ string, _ ...interface{}) {}
 
-func newHelmKubeClient(c *K8sClient) HelmKubeClient {
+func newResourceClient(c *K8sClient) ResourceClient {
 	f := cmdutil.NewFactory(c)
 
 	// Don't use kube.New() here, because it modifies globals in
 	// a way that breaks tests.
-	return &helmKubeClient{
+	return &resourceClient{
 		Client: &kube.Client{
 			Factory: f,
 			Log:     helmNopLogger,
