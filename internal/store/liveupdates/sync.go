@@ -14,8 +14,10 @@ type LiveUpdatePlan struct {
 	SyncPaths []build.PathMapping
 	// NoMatchPaths are changed (local) paths that do not match any Live Update rules.
 	NoMatchPaths []string
-	// FallBackPaths are changed (local) paths that matched a fallback path rule.
-	FallBackPaths []string
+	// StopPaths are changed (local) paths that should halt Live Update and result in a full rebuild.
+	//
+	// These are often referred to as "fallback" paths, particularly in the Tiltfile API.
+	StopPaths []string
 }
 
 // NewLiveUpdatePlan evaluates a set of changed files against a LiveUpdateSpec.
@@ -31,7 +33,7 @@ func NewLiveUpdatePlan(luSpec v1alpha1.LiveUpdateSpec, filesChanged []string) (L
 		return LiveUpdatePlan{}, err
 	}
 
-	plan.FallBackPaths, err = liveupdate.FallBackOnFiles(luSpec).Intersection(filesChanged)
+	plan.StopPaths, err = liveupdate.FallBackOnFiles(luSpec).Intersection(filesChanged)
 	if err != nil {
 		return LiveUpdatePlan{}, err
 	}

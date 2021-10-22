@@ -161,9 +161,9 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (LiveUpdateInput,
 	}
 
 	// If any changed files match a FallBackOn file, fall back to next BuildAndDeployer
-	if len(plan.FallBackPaths) != 0 {
+	if len(plan.StopPaths) != 0 {
 		return LiveUpdateInput{}, RedirectToNextBuilderInfof(
-			"Detected change to fall_back_on file %q", plan.FallBackPaths[0])
+			"Detected change to fall_back_on file %q", plan.StopPaths[0])
 	}
 
 	if len(plan.SyncPaths) == 0 {
