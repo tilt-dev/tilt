@@ -5,6 +5,8 @@ import (
 
 	"k8s.io/apimachinery/pkg/labels"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -191,7 +193,8 @@ func (b ManifestBuilder) Build() model.Manifest {
 	}
 	m = m.
 		WithTriggerMode(b.triggerMode)
-	m.InferLiveUpdateSelectors()
+	err := m.InferLiveUpdateSelectors()
+	require.NoError(b.f.T(), err)
 	return m
 }
 
