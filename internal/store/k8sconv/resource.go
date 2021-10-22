@@ -83,7 +83,7 @@ func NewKubernetesApplyFilter(status *v1alpha1.KubernetesApplyStatus) (*Kubernet
 	podTemplateSpecHashes := []k8s.PodTemplateSpecHash{}
 	for _, entity := range deployed {
 		if entity.UID() == "" {
-			return nil, fmt.Errorf("Entity not deployed correctly: %v", entity)
+			return nil, fmt.Errorf("Resource missing uid: %s", entity.Name())
 		}
 		hs, err := k8s.ReadPodTemplateSpecHashes(entity)
 		if err != nil {

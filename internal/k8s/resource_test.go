@@ -26,13 +26,13 @@ func TestRESTClientBuilder(t *testing.T) {
 		clientLoader: loader,
 		drm:          fakeRESTMapper{},
 	}
-	helm := newHelmKubeClient(client)
+	rClient := newResourceClient(client)
 
 	g, _ := errgroup.WithContext(context.Background())
 	var list1, list2 kube.ResourceList
 	g.Go(func() error {
 		var err error
-		list1, err = helm.Build(strings.NewReader(`
+		list1, err = rClient.Build(strings.NewReader(`
 apiVersion: v1
 kind: Pod
 metadata:
@@ -43,7 +43,7 @@ metadata:
 
 	g.Go(func() error {
 		var err error
-		list2, err = helm.Build(strings.NewReader(`
+		list2, err = rClient.Build(strings.NewReader(`
 apiVersion: apps/v1
 kind: Deployment
 metadata:

@@ -116,7 +116,8 @@ func TestUpsertAnnotationTooLong(t *testing.T) {
 	f.helmKube.updateErr = fmt.Errorf(`The ConfigMap "postgres-config" is invalid: metadata.annotations: Too long: must have at most 262144 bytes`)
 	_, err := f.k8sUpsert(f.ctx, postgres)
 	assert.Nil(t, err)
-	assert.Equal(t, 1, len(f.helmKube.creates))
+	assert.Equal(t, 0, len(f.helmKube.creates))
+	assert.Equal(t, 1, len(f.helmKube.createOrReplaces))
 	assert.Equal(t, 4, len(f.helmKube.updates))
 }
 
@@ -174,15 +175,16 @@ func TestGetGroup(t *testing.T) {
 	}
 }
 
-type fakeHelmKubeClient struct {
-	updates    kube.ResourceList
-	creates    kube.ResourceList
-	deletes    kube.ResourceList
-	updateErr  error
-	buildErrFn func(e K8sEntity) error
+type fakeResourceClient struct {
+	updates          kube.ResourceList
+	creates          kube.ResourceList
+	deletes          kube.ResourceList
+	createOrReplaces kube.ResourceList
+	updateErr        error
+	buildErrFn       func(e K8sEntity) error
 }
 
-func (c *fakeHelmKubeClient) Apply(target kube.ResourceList) (*kube.Result, error) {
+func (c *fakeResourceClient) Apply(target kube.ResourceList) (*kube.Result, error) {
 	defer func() {
 		c.updateErr = nil
 	}()
@@ -193,15 +195,19 @@ func (c *fakeHelmKubeClient) Apply(target kube.ResourceList) (*kube.Result, erro
 	c.updates = append(c.updates, target...)
 	return &kube.Result{Updated: target}, nil
 }
-func (c *fakeHelmKubeClient) Delete(l kube.ResourceList) (*kube.Result, []error) {
+func (c *fakeResourceClient) Delete(l kube.ResourceList) (*kube.Result, []error) {
 	c.deletes = append(c.deletes, l...)
 	return &kube.Result{Deleted: l}, nil
 }
-func (c *fakeHelmKubeClient) Create(l kube.ResourceList) (*kube.Result, error) {
+func (c *fakeResourceClient) Create(l kube.ResourceList) (*kube.Result, error) {
 	c.creates = append(c.creates, l...)
 	return &kube.Result{Created: l}, nil
 }
-func (c *fakeHelmKubeClient) Build(r io.Reader, validate bool) (kube.ResourceList, error) {
+func (c *fakeResourceClient) CreateOrReplace(l kube.ResourceList) (*kube.Result, error) {
+	c.createOrReplaces = append(c.createOrReplaces, l...)
+	return &kube.Result{Updated: l}, nil
+}
+func (c *fakeResourceClient) Build(r io.Reader, validate bool) (kube.ResourceList, error) {
 	entities, err := ParseYAML(r)
 	if err != nil {
 		return nil, err
@@ -242,7 +248,7 @@ type clientTestFixture struct {
 	client      K8sClient
 	tracker     ktesting.ObjectTracker
 	watchNotify chan watch.Interface
-	helmKube    *fakeHelmKubeClient
+	helmKube    *fakeResourceClient
 }
 
 func newClientTestFixture(t *testing.T) *clientTestFixture {
@@ -275,7 +281,7 @@ func newClientTestFixture(t *testing.T) *clientTestFixture {
 	dc := dynfake.NewSimpleDynamicClient(scheme.Scheme)
 	runtimeAsync := newRuntimeAsync(core)
 	registryAsync := newRegistryAsync(EnvUnknown, core, runtimeAsync)
-	helmKube := &fakeHelmKubeClient{}
+	helmKube := &fakeResourceClient{}
 	ret.helmKube = helmKube
 
 	ret.client = K8sClient{
@@ -285,7 +291,7 @@ func newClientTestFixture(t *testing.T) *clientTestFixture {
 		dynamic:           dc,
 		runtimeAsync:      runtimeAsync,
 		registryAsync:     registryAsync,
-		helmKubeClient:    helmKube,
+		resourceClient:    helmKube,
 		drm:               fakeRESTMapper{},
 	}
 
