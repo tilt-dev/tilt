@@ -163,6 +163,12 @@ func (f *ControllerFixture) Update(o object) ctrl.Result {
 	return f.MustReconcile(f.KeyForObject(o))
 }
 
+func (f *ControllerFixture) UpdateStatus(o object) ctrl.Result {
+	f.t.Helper()
+	require.NoError(f.t, f.Client.Status().Update(f.ctx, o))
+	return f.MustReconcile(f.KeyForObject(o))
+}
+
 func (f *ControllerFixture) Delete(o object) (bool, ctrl.Result) {
 	f.t.Helper()
 	err := f.Client.Delete(f.ctx, o)
