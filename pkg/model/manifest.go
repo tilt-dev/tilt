@@ -14,6 +14,8 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/sliceutils"
+	"github.com/tilt-dev/tilt/pkg/apis"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
 // TODO(nick): We should probably get rid of ManifestName completely and just use TargetName everywhere.
@@ -254,6 +256,37 @@ func (m Manifest) Validate() error {
 	}
 
 	return nil
+}
+
+// Assemble selectors that point to other API objects created by this manifest.
+func (m *Manifest) InferLiveUpdateSelectors() {
+	for i, iTarget := range m.ImageTargets {
+		luSpec := iTarget.LiveUpdateSpec
+		luName := iTarget.LiveUpdateName
+		if luName == "" || (len(luSpec.Syncs) == 0 && len(luSpec.Execs) == 0) {
+			continue
+		}
+
+		// TODO(nick): Also set docker-compose selectors once the model supports it.
+		if m.IsK8s() {
+			luSpec.Selector.Kubernetes = &v1alpha1.LiveUpdateKubernetesSelector{
+				Image:         reference.FamiliarName(iTarget.Refs.ClusterRef()),
+				ImageMapName:  iTarget.ImageMapName(),
+				ApplyName:     m.Name.String(),
+				DiscoveryName: m.Name.String(),
+			}
+			if iTarget.IsLiveUpdateOnly {
+				luSpec.Selector.Kubernetes.Image = reference.FamiliarName(iTarget.Refs.WithoutRegistry().LocalRef())
+			}
+		}
+
+		// TODO(nick): This isn't quite right. We need to depend on all the file watch
+		// for each ImageTarget that we depend on, not just the current ImageTarget.
+		luSpec.FileWatchName = apis.SanitizeName(iTarget.ID().String())
+
+		iTarget.LiveUpdateSpec = luSpec
+		m.ImageTargets[i] = iTarget
+	}
 }
 
 // ChangesInvalidateBuild checks whether the changes from old => new manifest

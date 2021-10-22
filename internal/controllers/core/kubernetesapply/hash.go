@@ -8,7 +8,6 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -46,7 +45,7 @@ func ComputeInputHash(spec v1alpha1.KubernetesApplySpec, imageMaps map[types.Nam
 		// Don't hash in the BuildStartedTime, because
 		// this changes even when the image does not change.
 		status := imageMap.Status
-		status.BuildStartTime = metav1.MicroTime{}
+		status.BuildStartTime = nil
 		err = w.append(status)
 		if err != nil {
 			return "", fmt.Errorf("hashing %s status: %v", imageMapName, err)

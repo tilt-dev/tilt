@@ -45,7 +45,7 @@ func TestComputeHashSanchoImageMap(t *testing.T) {
 	}
 
 	hash := MustComputeInputHash(t, spec, imageMaps)
-	assert.Equal(t, hash, "uORyU03BgJhFArDwHBGzbSF0mDs=")
+	assert.Equal(t, hash, "ap_IM4fXlSII4EfidE1ciYSLePg=")
 }
 
 func TestComputeHashSanchoIgnoresIrrelevantImageMap(t *testing.T) {
@@ -70,5 +70,5 @@ func TestComputeHashSanchoImageMapChange(t *testing.T) {
 	}
 
 	hash := MustComputeInputHash(t, spec, imageMaps)
-	assert.Equal(t, hash, "pm1JY43neyaz8N3igm-csm-5bE0=")
+	assert.Equal(t, hash, "6CHjHc7hicdn0U6UkGqo0qL3uO8=")
 }

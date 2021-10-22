@@ -191,6 +191,7 @@ func (b ManifestBuilder) Build() model.Manifest {
 	}
 	m = m.
 		WithTriggerMode(b.triggerMode)
+	m.InferLiveUpdateSelectors()
 	return m
 }
 

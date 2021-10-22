@@ -1320,10 +1320,6 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(mn model.ManifestName, 
 			iTarget.LiveUpdateName = liveupdate.GetName(mn, iTarget.ID())
 		}
 
-		// TODO(nick): Update this to set the selector correctly for
-		// both Kubernetes and DockerCompose selectors.
-		iTarget.SetKubernetesImageSelector(reference.FamiliarName(refs.ClusterRef()))
-
 		switch image.Type() {
 		case DockerBuild:
 			iTarget = iTarget.WithBuildDetails(model.DockerBuild{

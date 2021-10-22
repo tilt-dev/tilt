@@ -197,7 +197,7 @@ type ImageMapStatus struct {
 	// image build. We can assume that any file changes before this timestamp were
 	// definitely included in the image, and any file changes after this timestamp
 	// may not be included in the image.
-	BuildStartTime metav1.MicroTime `json:"buildStartTime,omitempty" protobuf:"bytes,2,opt,name=buildStartTime"`
+	BuildStartTime *metav1.MicroTime `json:"buildStartTime,omitempty" protobuf:"bytes,2,opt,name=buildStartTime"`
 
 	// TODO(nick): I'm not totally sure how we should model registries in this system.
 	//

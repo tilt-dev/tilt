@@ -110,6 +110,15 @@ func TestLiveUpdate(t *testing.T) {
 		StopPaths: []string{filepath.Join("src", "package.json")},
 		Syncs:     []v1alpha1.LiveUpdateSync{{LocalPath: "src", ContainerPath: "/src"}},
 	}
+	expectedSpec := *(luSpec.DeepCopy())
+	expectedSpec.FileWatchName = "image:sancho-image"
+	expectedSpec.Selector.Kubernetes = &v1alpha1.LiveUpdateKubernetesSelector{
+		Image:         "sancho-image",
+		DiscoveryName: "sancho",
+		ApplyName:     "sancho",
+		ImageMapName:  "sancho-image",
+	}
+
 	sanchoImage := model.MustNewImageTarget(container.MustParseSelector("sancho-image")).
 		WithLiveUpdateSpec("sancho:sancho-image", luSpec).
 		WithBuildDetails(model.DockerBuild{BuildPath: f.tempdir.Path()})
@@ -149,7 +158,7 @@ func TestLiveUpdate(t *testing.T) {
 	f.List(&luList)
 	if assert.Equal(t, 1, len(luList.Items)) {
 		assert.Equal(t, "sancho:sancho-image", luList.Items[0].Name)
-		assert.Equal(t, sanchoImage.LiveUpdateSpec, luList.Items[0].Spec)
+		assert.Equal(t, expectedSpec, luList.Items[0].Spec)
 	}
 }
 
