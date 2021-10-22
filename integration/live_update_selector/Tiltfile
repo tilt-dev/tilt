@@ -1,0 +1,20 @@
+# -*- mode: Python -*-
+
+include('../Tiltfile')
+
+k8s_yaml('deployment.yaml')
+repo = local_git_repo('../../')
+docker_build('gcr.io/windmill-test-containers/integration/live-update-selector',
+             '.',
+             dockerfile='Dockerfile',
+             live_update=[
+               sync('.', '/app'),
+               run('/app/compile.sh'),
+               run('/app/restart.sh'),
+             ])
+
+# Make sure we can still track and live updates pods with selectors.
+k8s_resource("live-update-selector",
+             port_forwards=["31234:8000"],
+             extra_pod_selectors=[{'app': 'live-update-selector'}],
+             discovery_strategy='selectors-only')
