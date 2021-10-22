@@ -259,7 +259,7 @@ func (m Manifest) Validate() error {
 }
 
 // Assemble selectors that point to other API objects created by this manifest.
-func (m Manifest) InferLiveUpdateSelectors() {
+func (m *Manifest) InferLiveUpdateSelectors() {
 	for i, iTarget := range m.ImageTargets {
 		luSpec := iTarget.LiveUpdateSpec
 		luName := iTarget.LiveUpdateName
