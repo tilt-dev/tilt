@@ -44,6 +44,17 @@ var (
 // LocalServer specs) should go here.
 func updateOwnedObjects(ctx context.Context, client ctrlclient.Client, nn types.NamespacedName,
 	tf *v1alpha1.Tiltfile, tlr *tiltfile.TiltfileLoadResult, mode store.EngineMode) error {
+
+	// Assemble the LiveUpdate selectors, connecting objects together.
+	if tlr != nil {
+		for _, m := range tlr.Manifests {
+			err := m.InferLiveUpdateSelectors()
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	apiObjects := toAPIObjects(nn, tf, tlr, mode)
 
 	// Propagate labels and owner references from the parent tiltfile.
@@ -290,8 +301,6 @@ func toKubernetesApplyObjects(tlr *tiltfile.TiltfileLoadResult, disableSources m
 func toLiveUpdateObjects(tlr *tiltfile.TiltfileLoadResult) apiset.TypedObjectSet {
 	result := apiset.TypedObjectSet{}
 	for _, m := range tlr.Manifests {
-		m.InferLiveUpdateSelectors()
-
 		for _, iTarget := range m.ImageTargets {
 			luSpec := iTarget.LiveUpdateSpec
 			luName := iTarget.LiveUpdateName

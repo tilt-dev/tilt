@@ -259,7 +259,12 @@ func (m Manifest) Validate() error {
 }
 
 // Assemble selectors that point to other API objects created by this manifest.
-func (m *Manifest) InferLiveUpdateSelectors() {
+func (m *Manifest) InferLiveUpdateSelectors() error {
+	dag, err := NewTargetGraph(m.TargetSpecs())
+	if err != nil {
+		return err
+	}
+
 	for i, iTarget := range m.ImageTargets {
 		luSpec := iTarget.LiveUpdateSpec
 		luName := iTarget.LiveUpdateName
@@ -280,13 +285,19 @@ func (m *Manifest) InferLiveUpdateSelectors() {
 			}
 		}
 
-		// TODO(nick): This isn't quite right. We need to depend on all the file watch
-		// for each ImageTarget that we depend on, not just the current ImageTarget.
-		luSpec.FileWatchNames = []string{apis.SanitizeName(iTarget.ID().String())}
+		luSpec.FileWatchNames = nil
+		err := dag.VisitTree(iTarget, func(dep TargetSpec) error {
+			luSpec.FileWatchNames = append(luSpec.FileWatchNames, apis.SanitizeName(dep.ID().String()))
+			return nil
+		})
+		if err != nil {
+			return err
+		}
 
 		iTarget.LiveUpdateSpec = luSpec
 		m.ImageTargets[i] = iTarget
 	}
+	return nil
 }
 
 // ChangesInvalidateBuild checks whether the changes from old => new manifest
