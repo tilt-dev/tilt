@@ -502,7 +502,7 @@ github.com/theupdateframework/notary/tuf/data
 github.com/theupdateframework/notary/tuf/signed
 github.com/theupdateframework/notary/tuf/utils
 github.com/theupdateframework/notary/tuf/validation
-# github.com/tilt-dev/dockerignore v0.0.0-20200910202654-0d8c17a73277
+# github.com/tilt-dev/dockerignore v0.1.1
 ## explicit
 github.com/tilt-dev/dockerignore
 # github.com/tilt-dev/fsevents v0.0.0-20200515134857-2efe37af20de
