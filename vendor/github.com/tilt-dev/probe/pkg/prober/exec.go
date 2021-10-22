@@ -19,9 +19,12 @@ package prober
 
 import (
 	"context"
+	"os/exec"
+	"syscall"
 
 	"k8s.io/klog/v2"
-	"k8s.io/utils/exec"
+
+	"github.com/tilt-dev/probe/internal/procutil"
 )
 
 const (
@@ -29,15 +32,10 @@ const (
 	maxReadLength = 10 * 1 << 10 // 10KB
 )
 
-// osExecRunner is the default runner that's a shim around stdlib os/exec.
-//
-// A global instance is used to avoid creating an instance for every probe (it is Goroutine safe).
-var osExecRunner = exec.New()
-
 // NewExecProber creates an ExecProber.
 func NewExecProber() ExecProber {
 	return execProber{
-		runner: osExecRunner,
+		excer: realExecer,
 	}
 }
 
@@ -50,26 +48,74 @@ type ExecProber interface {
 	Probe(ctx context.Context, name string, args ...string) (Result, string, error)
 }
 
+type processExecer func(ctx context.Context, name string, args ...string) (exitCode int, out []byte, err error)
+
 type execProber struct {
-	runner exec.Interface
+	excer processExecer
 }
 
 // Probe executes a command to check service status.
 func (pr execProber) Probe(ctx context.Context, name string, args ...string) (Result, string, error) {
-	cmd := pr.runner.CommandContext(ctx, name, args...)
-	data, err := cmd.CombinedOutput()
-
-	klog.V(4).Infof("Exec probe response: %q", string(data))
+	exitCode, out, err := pr.excer(ctx, name, args...)
+	klog.V(4).Infof("Exec probe response (exit code %d): %s", exitCode, string(out))
 	if err != nil {
-		exit, ok := err.(exec.ExitError)
-		if ok {
-			if exit.ExitStatus() == 0 {
-				return Success, string(data), nil
-			}
-			return Failure, string(data), nil
-		}
-
 		return Unknown, "", err
 	}
-	return Success, string(data), nil
+	if exitCode != 0 {
+		return Failure, string(out), nil
+	}
+	return Success, string(out), nil
+}
+
+var realExecer = func(ctx context.Context, name string, args ...string) (int, []byte, error) {
+	// N.B. we don't use CommandContext because we want slightly different semantics to kill the
+	// 	entire process group without introducing a race between us and Go stdlib
+	cmd := exec.Command(name, args...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{}
+	procutil.SetOptNewProcessGroup(cmd.SysProcAttr)
+
+	// we want the (partial) I/O even if we kill the process group due to context deadline exceeded
+	// so they're managed manually vs using something like CombinedOutput()
+	//
+	// managing I/O properly when not using the higher-level stdlib functions is error-prone :)
+	//
+	// there are two cases here:
+	// 	* Cmd::Wait() returns -> Go stdlib ensures that I/O is fully copied, we don't need to do anything
+	//  * Context::Done() is hit -> we killed the process, I/O might be in an incomplete state, but that's
+	// 		acceptable given that we terminated it early anyway (it's only useful for debugging regardless)
+	var output threadSafeBuffer
+	cmd.Stdout = &output
+	cmd.Stderr = &output
+
+	if err := cmd.Start(); err != nil {
+		return -1, nil, err
+	}
+
+	procExitCh := make(chan error, 1)
+	go func() {
+		// this WILL block on child processes, but that's ok since we handle the timeout termination below
+		// and it's preferable vs using Process::Wait() since that complicates I/O handling (Cmd::Wait() will
+		// ensure all I/O is complete before returning)
+		err := cmd.Wait()
+		if err != nil {
+			procExitCh <- err
+		} else {
+			procExitCh <- nil
+		}
+		close(procExitCh)
+	}()
+
+	select {
+	case <-ctx.Done():
+		procutil.KillProcessGroup(cmd)
+		return -1, output.Bytes(), nil
+	case err := <-procExitCh:
+		if err != nil {
+			if exit, ok := err.(*exec.ExitError); ok {
+				return exit.ExitCode(), output.Bytes(), nil
+			}
+			return -1, output.Bytes(), err
+		}
+		return 0, output.Bytes(), nil
+	}
 }
