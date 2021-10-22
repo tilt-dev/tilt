@@ -282,7 +282,7 @@ func (m *Manifest) InferLiveUpdateSelectors() {
 
 		// TODO(nick): This isn't quite right. We need to depend on all the file watch
 		// for each ImageTarget that we depend on, not just the current ImageTarget.
-		luSpec.FileWatchName = apis.SanitizeName(iTarget.ID().String())
+		luSpec.FileWatchNames = []string{apis.SanitizeName(iTarget.ID().String())}
 
 		iTarget.LiveUpdateSpec = luSpec
 		m.ImageTargets[i] = iTarget
