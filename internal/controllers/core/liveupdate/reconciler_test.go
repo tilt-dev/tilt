@@ -58,6 +58,26 @@ func TestIndexing(t *testing.T) {
 	}, reqs)
 }
 
+func TestMissingApply(t *testing.T) {
+	f := newFixture(t)
+
+	f.setupFrontend()
+	f.Delete(&v1alpha1.KubernetesApply{ObjectMeta: metav1.ObjectMeta{Name: "frontend-apply"}})
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+
+	var lu v1alpha1.LiveUpdate
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	if assert.NotNil(t, lu.Status.Failed) {
+		assert.Equal(t, "ObjectNotFound", lu.Status.Failed.Reason)
+	}
+
+	// Verify steady state.
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+	var lu2 v1alpha1.LiveUpdate
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu2)
+	assert.Equal(t, lu.ResourceVersion, lu2.ResourceVersion)
+}
+
 func TestConsumeFileEvents(t *testing.T) {
 	f := newFixture(t)
 
