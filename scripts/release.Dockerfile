@@ -6,8 +6,6 @@
 
 FROM gcr.io/windmill-public-containers/golang-cross:1.16.2
 
-ENV GORELEASER_VERSION=v0.161.1
-
 RUN apt-get update && \
     apt-get install -y \
     apt-transport-https \
@@ -31,6 +29,7 @@ RUN set -exu \
   && which docker \
   && (docker version || true)
 
+ENV GORELEASER_VERSION=v0.183.0
 RUN set -exu \
   && URL="https://github.com/goreleaser/goreleaser/releases/download/${GORELEASER_VERSION}/goreleaser_Linux_x86_64.tar.gz" \
   && echo goreleaser URL: $URL \
