@@ -16,8 +16,9 @@ type ImageTarget struct {
 	v1alpha1.ImageMapSpec
 
 	// An apiserver-driven data model for live-updating containers.
-	LiveUpdateName string
-	LiveUpdateSpec v1alpha1.LiveUpdateSpec
+	LiveUpdateName       string
+	LiveUpdateSpec       v1alpha1.LiveUpdateSpec
+	LiveUpdateReconciler bool
 
 	Refs         container.RefSet
 	BuildDetails BuildDetails

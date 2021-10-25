@@ -24,6 +24,7 @@ const Snapshots = "snapshots"
 const UpdateHistory = "update_history"
 const Facets = "facets"
 const Labels = "labels"
+const LiveUpdateV2 = "live_update_v2"
 
 // The Value a flag can have. Status should never be changed.
 type Value struct {
@@ -59,6 +60,10 @@ var MainDefaults = Defaults{
 	},
 	Labels: Value{
 		Enabled: true,
+		Status:  Active,
+	},
+	LiveUpdateV2: Value{
+		Enabled: false,
 		Status:  Active,
 	},
 }

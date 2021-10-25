@@ -308,13 +308,18 @@ func toLiveUpdateObjects(tlr *tiltfile.TiltfileLoadResult) apiset.TypedObjectSet
 				continue
 			}
 
+			managedBy := ""
+			if !iTarget.LiveUpdateReconciler {
+				managedBy = "buildcontrol"
+			}
+
 			obj := &v1alpha1.LiveUpdate{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: luName,
 					Annotations: map[string]string{
 						v1alpha1.AnnotationManifest:  m.Name.String(),
 						v1alpha1.AnnotationSpanID:    fmt.Sprintf("liveupdate:%s", luName),
-						v1alpha1.AnnotationManagedBy: "buildcontrol",
+						v1alpha1.AnnotationManagedBy: managedBy,
 					},
 				},
 				Spec: luSpec,
