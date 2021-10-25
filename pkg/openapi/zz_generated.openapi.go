@@ -3008,7 +3008,7 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateSpec(ref common.ReferenceCallback) 
 					},
 					"fileWatchNames": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Names of ileWatch objects to watch for a list of files that have recently been updated.\n\nEvery live update must be associated with at least one FileWatch object to trigger the update. Usually, Tilt structures it so that there's a FileWatch for each image we depend on.",
+							Description: "Names of ileWatch objects to watch for a list of files that have recently been updated.\n\nEvery live update must be associated with at least one FileWatch object to trigger the update. Usually, Tilt structures it so that there's a FileWatch for each image we depend on.\n\nWhat you really need is a sequence of objects. One object keeps tracks of the files you're watching, and the other tracks whether or not an image has already consumed that file (i.e., a ImageMapName/FileWatchName pair).",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{

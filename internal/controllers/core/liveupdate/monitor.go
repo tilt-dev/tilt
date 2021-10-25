@@ -16,7 +16,7 @@ import (
 type monitor struct {
 	spec v1alpha1.LiveUpdateSpec
 
-	// Trakced dependencies.
+	// Tracked dependencies.
 	lastKubernetesDiscovery   *v1alpha1.KubernetesDiscovery
 	lastKubernetesApplyStatus *v1alpha1.KubernetesApplyStatus
 	lastImageMapStatus        *v1alpha1.ImageMapStatus
@@ -41,5 +41,6 @@ type monitorContainerStatus struct {
 
 	// Once a container is marked unrecoverable,
 	// we never send updates to it again.
-	unrecoverable bool
+	failedReason  string
+	failedMessage string
 }
