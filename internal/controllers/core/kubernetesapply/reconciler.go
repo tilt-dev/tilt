@@ -23,6 +23,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/restarton"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -62,6 +63,8 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 		For(&v1alpha1.KubernetesApply{}).
 		Owns(&v1alpha1.KubernetesDiscovery{}).
 		Watches(&source.Kind{Type: &v1alpha1.ImageMap{}},
+			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
+		Watches(&source.Kind{Type: &v1alpha1.ConfigMap{}},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue))
 
 	restarton.SetupController(b, r.indexer, func(obj ctrlclient.Object) (*v1alpha1.RestartOnSpec, *v1alpha1.StartOnSpec) {
@@ -98,15 +101,37 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	}
 
 	if apierrors.IsNotFound(err) || !ka.ObjectMeta.DeletionTimestamp.IsZero() {
-		toDelete := r.updateResult(nn, nil)
-		r.bestEffortDelete(ctx, toDelete)
-
-		err := r.manageOwnedKubernetesDiscovery(ctx, nn, nil)
+		err := r.bestEffortDeleteWithRelatedObjects(ctx, nn)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 
 		r.st.Dispatch(kubernetesapplys.NewKubernetesApplyDeleteAction(request.NamespacedName.Name))
+		return ctrl.Result{}, nil
+	}
+
+	// Get configmap's disable status
+	disableStatus, err := configmap.MaybeNewDisableStatus(ctx, r.ctrlClient, ka.Spec.DisableSource, ka.Status.DisableStatus)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	// Update kubernetesapply's disable status
+	if disableStatus != ka.Status.DisableStatus {
+		ka.Status.DisableStatus = disableStatus
+		if err := r.ctrlClient.Status().Update(ctx, &ka); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
+	// Delete kubernetesapply if it's disabled
+	if disableStatus.Disabled {
+		err := r.bestEffortDeleteWithRelatedObjects(ctx, nn)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		r.st.Dispatch(kubernetesapplys.NewKubernetesApplyUpsertAction(&ka))
 		return ctrl.Result{}, nil
 	}
 
@@ -234,7 +259,13 @@ func (r *Reconciler) ForceApply(
 	spec v1alpha1.KubernetesApplySpec,
 	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) (v1alpha1.KubernetesApplyStatus, error) {
 
-	status, appliedObjects := r.forceApplyHelper(ctx, spec, imageMaps)
+	var ka v1alpha1.KubernetesApply
+	err := r.ctrlClient.Get(ctx, nn, &ka)
+	if err != nil {
+		return v1alpha1.KubernetesApplyStatus{}, err // TODO (lizz): Will this empty status return affect anything consuming this data?
+	}
+
+	status, appliedObjects := r.forceApplyHelper(ctx, r.ctrlClient, spec, ka.Status, imageMaps)
 	statusCopy := status.DeepCopy()
 	result := Result{
 		Spec:           spec,
@@ -251,12 +282,6 @@ func (r *Reconciler) ForceApply(
 
 		result.ImageMapSpecs = append(result.ImageMapSpecs, im.Spec)
 		result.ImageMapStatuses = append(result.ImageMapStatuses, im.Status)
-	}
-
-	var ka v1alpha1.KubernetesApply
-	err := r.ctrlClient.Get(ctx, nn, &ka)
-	if err != nil {
-		return status, err
 	}
 
 	ka.Status = status
@@ -278,8 +303,11 @@ func (r *Reconciler) ForceApply(
 // - the parsed entities that we tried to apply
 func (r *Reconciler) forceApplyHelper(
 	ctx context.Context,
+	ctrlClient ctrlclient.Client,
 	spec v1alpha1.KubernetesApplySpec,
-	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) (v1alpha1.KubernetesApplyStatus, []k8s.K8sEntity) {
+	prevStatus v1alpha1.KubernetesApplyStatus,
+	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap,
+) (v1alpha1.KubernetesApplyStatus, []k8s.K8sEntity) {
 
 	startTime := apis.NowMicro()
 	status := v1alpha1.KubernetesApplyStatus{
@@ -554,6 +582,23 @@ func (r *Reconciler) updateResult(nn types.NamespacedName, result *Result) delet
 	return deleteSpec{entities: toDelete}
 }
 
+// A helper that deletes all kubernetesapply objects and the
+// related kubernetesdiscovery objects it owns
+func (r *Reconciler) bestEffortDeleteWithRelatedObjects(
+	ctx context.Context,
+	nn types.NamespacedName,
+) error {
+	toDelete := r.updateResult(nn, nil)
+	r.bestEffortDelete(ctx, toDelete)
+
+	err := r.manageOwnedKubernetesDiscovery(ctx, nn, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (r *Reconciler) bestEffortDelete(ctx context.Context, toDelete deleteSpec) {
 	if len(toDelete.entities) == 0 && toDelete.deleteCmd == nil {
 		return
@@ -603,6 +648,17 @@ func indexKubernetesApply(obj client.Object) []indexer.Key {
 			Name: types.NamespacedName{Name: name},
 			GVK:  imGVK,
 		})
+	}
+
+	if ka.Spec.DisableSource != nil {
+		cm := ka.Spec.DisableSource.ConfigMap
+		if cm != nil {
+			cmGVK := v1alpha1.SchemeGroupVersion.WithKind("ConfigMap")
+			result = append(result, indexer.Key{
+				Name: types.NamespacedName{Name: cm.Name},
+				GVK:  cmGVK,
+			})
+		}
 	}
 	return result
 }

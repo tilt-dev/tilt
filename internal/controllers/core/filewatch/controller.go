@@ -109,6 +109,8 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 			existing.cleanupWatch(ctx)
 			c.removeWatch(existing)
 		}
+
+		c.Store.Dispatch(filewatches.NewFileWatchDeleteAction(req.NamespacedName.Name))
 		return ctrl.Result{}, nil
 	}
 
