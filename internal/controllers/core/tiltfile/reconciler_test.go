@@ -111,12 +111,14 @@ func TestLiveUpdate(t *testing.T) {
 		Syncs:     []v1alpha1.LiveUpdateSync{{LocalPath: "src", ContainerPath: "/src"}},
 	}
 	expectedSpec := *(luSpec.DeepCopy())
-	expectedSpec.FileWatchNames = []string{"image:sancho-image"}
+	expectedSpec.Sources = []v1alpha1.LiveUpdateSource{{
+		FileWatch: "image:sancho-image",
+		ImageMap:  "sancho-image",
+	}}
 	expectedSpec.Selector.Kubernetes = &v1alpha1.LiveUpdateKubernetesSelector{
 		Image:         "sancho-image",
 		DiscoveryName: "sancho",
 		ApplyName:     "sancho",
-		ImageMapName:  "sancho-image",
 	}
 
 	sanchoImage := model.MustNewImageTarget(container.MustParseSelector("sancho-image")).

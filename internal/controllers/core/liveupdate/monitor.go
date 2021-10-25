@@ -19,15 +19,19 @@ type monitor struct {
 	// Tracked dependencies.
 	lastKubernetesDiscovery   *v1alpha1.KubernetesDiscovery
 	lastKubernetesApplyStatus *v1alpha1.KubernetesApplyStatus
-	lastImageMapStatus        *v1alpha1.ImageMapStatus
-	lastFileEvents            map[string]*v1alpha1.FileEvent
 
-	// History of file changes.
-	modTimeByPath map[string]metav1.MicroTime
+	// History of source file changes.
+	sources map[string]*monitorSource
 
 	// History of container updates.
 	hasChangesToSync bool
 	containers       map[monitorContainerKey]monitorContainerStatus
+}
+
+type monitorSource struct {
+	modTimeByPath   map[string]metav1.MicroTime
+	lastImageStatus *v1alpha1.ImageMapStatus
+	lastFileEvent   *v1alpha1.FileEvent
 }
 
 type monitorContainerKey struct {

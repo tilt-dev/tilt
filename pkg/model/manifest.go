@@ -14,7 +14,6 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/sliceutils"
-	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
@@ -276,7 +275,6 @@ func (m *Manifest) InferLiveUpdateSelectors() error {
 		if m.IsK8s() {
 			luSpec.Selector.Kubernetes = &v1alpha1.LiveUpdateKubernetesSelector{
 				Image:         reference.FamiliarName(iTarget.Refs.ClusterRef()),
-				ImageMapName:  iTarget.ImageMapName(),
 				ApplyName:     m.Name.String(),
 				DiscoveryName: m.Name.String(),
 			}
@@ -285,9 +283,18 @@ func (m *Manifest) InferLiveUpdateSelectors() error {
 			}
 		}
 
-		luSpec.FileWatchNames = nil
+		luSpec.Sources = nil
 		err := dag.VisitTree(iTarget, func(dep TargetSpec) error {
-			luSpec.FileWatchNames = append(luSpec.FileWatchNames, apis.SanitizeName(dep.ID().String()))
+			// Relies on the idea that ImageTargets always create
+			// FileWatches and ImageMaps related to the ImageTarget ID.
+			id := dep.ID()
+			fw := id.String()
+			imageMap := id.Name.String()
+
+			luSpec.Sources = append(luSpec.Sources, v1alpha1.LiveUpdateSource{
+				FileWatch: fw,
+				ImageMap:  imageMap,
+			})
 			return nil
 		})
 		if err != nil {

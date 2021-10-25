@@ -3,7 +3,6 @@ package liveupdate
 import (
 	"context"
 	"fmt"
-	"sort"
 	"sync"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,6 +25,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/ospath"
+	"github.com/tilt-dev/tilt/internal/sliceutils"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
@@ -135,7 +135,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	monitor := r.ensureMonitorExists(lu.Name, lu.Spec)
-	hasFileChanges, err := r.reconcileFileWatches(ctx, monitor)
+	hasFileChanges, err := r.reconcileSources(ctx, monitor)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return r.handleFailure(ctx, lu, createFailedState(lu, "ObjectNotFound", err.Error()))
@@ -220,10 +220,9 @@ func (r *Reconciler) ensureMonitorExists(name string, spec v1alpha1.LiveUpdateSp
 	}
 
 	m = &monitor{
-		spec:           spec,
-		modTimeByPath:  make(map[string]metav1.MicroTime),
-		lastFileEvents: make(map[string]*v1alpha1.FileEvent),
-		containers:     make(map[monitorContainerKey]monitorContainerStatus),
+		spec:       spec,
+		sources:    make(map[string]*monitorSource),
+		containers: make(map[monitorContainerKey]monitorContainerStatus),
 	}
 	r.monitors[name] = m
 	return m
@@ -245,14 +244,14 @@ func (r *Reconciler) ensureMonitorExists(name string, spec v1alpha1.LiveUpdateSp
 //
 // In the meantime, Milas+Nick should figure out a way to handle this
 // better in the short term.
-func (r *Reconciler) reconcileFileWatches(ctx context.Context, monitor *monitor) (bool, error) {
-	if len(monitor.spec.FileWatchNames) == 0 {
+func (r *Reconciler) reconcileSources(ctx context.Context, monitor *monitor) (bool, error) {
+	if len(monitor.spec.Sources) == 0 {
 		return false, nil
 	}
 
 	hasChange := false
-	for _, fwn := range monitor.spec.FileWatchNames {
-		oneChange, err := r.reconcileOneFileWatch(ctx, monitor, fwn)
+	for _, s := range monitor.spec.Sources {
+		oneChange, err := r.reconcileOneSource(ctx, monitor, s)
 		if err != nil {
 			return false, err
 		}
@@ -263,36 +262,81 @@ func (r *Reconciler) reconcileFileWatches(ctx context.Context, monitor *monitor)
 	return hasChange, nil
 }
 
-// Consume one FileWatch object.
-func (r *Reconciler) reconcileOneFileWatch(ctx context.Context, monitor *monitor, fwn string) (bool, error) {
+// Consume one Source object.
+func (r *Reconciler) reconcileOneSource(ctx context.Context, monitor *monitor, source v1alpha1.LiveUpdateSource) (bool, error) {
+	fwn := source.FileWatch
+	imn := source.ImageMap
+
 	var fw v1alpha1.FileWatch
-	err := r.client.Get(ctx, types.NamespacedName{Name: fwn}, &fw)
-	if err != nil {
-		return false, err
+	if fwn != "" {
+		err := r.client.Get(ctx, types.NamespacedName{Name: fwn}, &fw)
+		if err != nil {
+			return false, err
+		}
+	}
+
+	var im v1alpha1.ImageMap
+	if imn != "" {
+		err := r.client.Get(ctx, types.NamespacedName{Name: imn}, &im)
+		if err != nil {
+			return false, err
+		}
 	}
 
 	events := fw.Status.FileEvents
-	if len(events) == 0 {
+	if len(events) == 0 || fwn == "" {
 		return false, nil
+	}
+
+	mSource, ok := monitor.sources[fwn]
+	if !ok {
+		mSource = &monitorSource{
+			modTimeByPath: make(map[string]metav1.MicroTime),
+		}
+		monitor.sources[fwn] = mSource
+	}
+
+	newImageStatus := im.Status
+	imageChanged := false
+	if imn != "" {
+		imageChanged = mSource.lastImageStatus == nil ||
+			!apicmp.DeepEqual(&newImageStatus, mSource.lastImageStatus)
+		mSource.lastImageStatus = &im.Status
 	}
 
 	newLastFileEvent := events[len(events)-1]
-	event := monitor.lastFileEvents[fwn]
-	if event != nil && apicmp.DeepEqual(&newLastFileEvent, event) {
-		return false, nil
-	}
-	monitor.lastFileEvents[fwn] = &newLastFileEvent
+	event := mSource.lastFileEvent
+	fileWatchChanged := event == nil || !apicmp.DeepEqual(&newLastFileEvent, event)
+	mSource.lastFileEvent = &newLastFileEvent
 
-	// Consume all the file events.
-	for _, event := range events {
-		for _, f := range event.SeenFiles {
-			existing, ok := monitor.modTimeByPath[f]
-			if !ok || existing.Time.Before(event.Time.Time) {
-				monitor.modTimeByPath[f] = event.Time
+	if fileWatchChanged {
+		// Consume all the file events.
+		for _, event := range events {
+			eventTime := event.Time.Time
+			if newImageStatus.BuildStartTime != nil && newImageStatus.BuildStartTime.After(eventTime) {
+				continue
+			}
+
+			for _, f := range event.SeenFiles {
+				existing, ok := mSource.modTimeByPath[f]
+				if !ok || existing.Time.Before(event.Time.Time) {
+					mSource.modTimeByPath[f] = event.Time
+				}
 			}
 		}
 	}
-	return true, nil
+
+	if imageChanged && newImageStatus.BuildStartTime != nil {
+		// Delete all file events that happened before the
+		// latest build started.
+		for p, t := range mSource.modTimeByPath {
+			if newImageStatus.BuildStartTime.After(t.Time) {
+				delete(mSource.modTimeByPath, p)
+			}
+		}
+	}
+
+	return fileWatchChanged || imageChanged, nil
 }
 
 // Consume all objects off the KubernetesSelector.
@@ -305,7 +349,6 @@ func (r *Reconciler) reconcileKubernetesResource(ctx context.Context, monitor *m
 
 	var kd *v1alpha1.KubernetesDiscovery
 	var ka *v1alpha1.KubernetesApply
-	var im *v1alpha1.ImageMap
 	changed := false
 	if selector.ApplyName != "" {
 		ka = &v1alpha1.KubernetesApply{}
@@ -329,25 +372,6 @@ func (r *Reconciler) reconcileKubernetesResource(ctx context.Context, monitor *m
 	if monitor.lastKubernetesDiscovery == nil ||
 		!apicmp.DeepEqual(monitor.lastKubernetesDiscovery.Status, kd.Status) {
 		changed = true
-	}
-
-	if selector.ImageMapName != "" {
-		im = &v1alpha1.ImageMap{}
-		err := r.client.Get(ctx, types.NamespacedName{Name: selector.ImageMapName}, im)
-		if err != nil {
-			return false, err
-		}
-
-		if monitor.lastImageMapStatus == nil ||
-			!apicmp.DeepEqual(monitor.lastImageMapStatus, &(im.Status)) {
-			changed = true
-		}
-	}
-
-	if im == nil {
-		monitor.lastImageMapStatus = nil
-	} else {
-		monitor.lastImageMapStatus = &(im.Status)
 	}
 
 	if ka == nil {
@@ -398,10 +422,6 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 
 	for _, c := range cInfos {
 		highWaterMark := r.startedTime
-		if !monitor.lastImageMapStatus.BuildStartTime.IsZero() {
-			highWaterMark = *monitor.lastImageMapStatus.BuildStartTime
-		}
-
 		cKey := monitorContainerKey{
 			containerID: c.ContainerID.String(),
 			podName:     c.PodID.String(),
@@ -422,20 +442,20 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 		// Determine the changed files.
 		filesChanged := []string{}
 		newHighWaterMark := highWaterMark
-		for f, t := range monitor.modTimeByPath {
-			if t.After(highWaterMark.Time) {
-				filesChanged = append(filesChanged, f)
+		for _, source := range monitor.sources {
+			for f, t := range source.modTimeByPath {
+				if t.After(highWaterMark.Time) {
+					filesChanged = append(filesChanged, f)
 
-				if t.After(newHighWaterMark.Time) {
-					newHighWaterMark = t
+					if t.After(newHighWaterMark.Time) {
+						newHighWaterMark = t
+					}
 				}
 			}
 		}
 
 		// Sort the files so that they're deterministic.
-		sort.Slice(filesChanged, func(i, j int) bool {
-			return filesChanged[i] < filesChanged[j]
-		})
+		filesChanged = sliceutils.DedupedAndSorted(filesChanged)
 
 		oneUpdateStatus := r.applyLiveUpdatePlan(ctx, lu.Spec, c, filesChanged, newHighWaterMark, cStatus)
 		adjustFailedStateTimestamps(lu, &oneUpdateStatus)
@@ -723,14 +743,28 @@ func indexLiveUpdate(obj ctrlclient.Object) []indexer.Key {
 	lu := obj.(*v1alpha1.LiveUpdate)
 	var result []indexer.Key
 
-	for _, fwn := range lu.Spec.FileWatchNames {
-		result = append(result, indexer.Key{
-			Name: types.NamespacedName{
-				Namespace: lu.Namespace,
-				Name:      fwn,
-			},
-			GVK: fwGVK,
-		})
+	for _, s := range lu.Spec.Sources {
+		fwn := s.FileWatch
+		imn := s.ImageMap
+		if fwn != "" {
+			result = append(result, indexer.Key{
+				Name: types.NamespacedName{
+					Namespace: lu.Namespace,
+					Name:      fwn,
+				},
+				GVK: fwGVK,
+			})
+		}
+
+		if imn != "" {
+			result = append(result, indexer.Key{
+				Name: types.NamespacedName{
+					Namespace: lu.Namespace,
+					Name:      imn,
+				},
+				GVK: imageMapGVK,
+			})
+		}
 	}
 
 	if lu.Spec.Selector.Kubernetes != nil {
@@ -751,16 +785,6 @@ func indexLiveUpdate(obj ctrlclient.Object) []indexer.Key {
 					Name:      lu.Spec.Selector.Kubernetes.ApplyName,
 				},
 				GVK: applyGVK,
-			})
-		}
-
-		if lu.Spec.Selector.Kubernetes.ImageMapName != "" {
-			result = append(result, indexer.Key{
-				Name: types.NamespacedName{
-					Namespace: lu.Namespace,
-					Name:      lu.Spec.Selector.Kubernetes.ImageMapName,
-				},
-				GVK: imageMapGVK,
 			})
 		}
 	}

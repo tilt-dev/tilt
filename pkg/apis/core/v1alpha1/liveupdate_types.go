@@ -66,19 +66,12 @@ type LiveUpdateSpec struct {
 	// Specifies how this live-updater finds the containers that need live update.
 	Selector LiveUpdateSelector `json:"selector" protobuf:"bytes,8,opt,name=selector"`
 
-	// Names of ileWatch objects to watch for a list of files that
-	// have recently been updated.
+	// Sources of files to sync.
 	//
-	// Every live update must be associated with at least one FileWatch object
+	// Every live update must be associated with at least one Source object
 	// to trigger the update. Usually, Tilt structures it so that there's
-	// a FileWatch for each image we depend on.
-	//
-	// TODO(nick): I think this model still isn't quite right.
-	// What you really need is a sequence of objects. One object
-	// keeps tracks of the files you're watching, and the other tracks
-	// whether or not an image has already consumed that file
-	// (i.e., a ImageMapName/FileWatchName pair).
-	FileWatchNames []string `json:"fileWatchNames,omitempty" protobuf:"bytes,2,rep,name=fileWatchNames"`
+	// a Source for each image we depend on.
+	Sources []LiveUpdateSource `json:"sources,omitempty" protobuf:"bytes,9,rep,name=sources"`
 
 	// A list of relative paths that will immediately stop the live-update for the
 	// current container.
@@ -214,6 +207,23 @@ func (in LiveUpdateStatus) CopyTo(parent resource.ObjectWithStatusSubResource) {
 	parent.(*LiveUpdate).Status = in
 }
 
+// Specifies how to pull in files.
+type LiveUpdateSource struct {
+	// The name of a FileWatch to use as a file source.
+	//
+	// +optional
+	FileWatch string `json:"fileWatch,omitempty" protobuf:"bytes,1,opt,name=fileWatch"`
+
+	// Name of the ImageMap object to watch for which file changes from this source
+	// are included in the container image.
+	//
+	// If not provided, the live-updater will copy any file changes that it's aware of,
+	// even if they're already included in the container.
+	//
+	// +optional
+	ImageMap string `json:"imageMap,omitempty" protobuf:"bytes,2,opt,name=imageMap"`
+}
+
 // Specifies how to select containers to live update.
 //
 // Every live update must be associated with some object for finding
@@ -241,15 +251,6 @@ type LiveUpdateKubernetesSelector struct {
 	// Determines which containers in a pod to live-update.
 	// Matches images by name unless tag is explicitly specified.
 	Image string `json:"image,omitempty" protobuf:"bytes,2,opt,name=image"`
-
-	// Name of the ImageMap object to watch for which file changes are included
-	// in the container image.
-	//
-	// If not provided, the live-updater will copy any file changes that it's aware of,
-	// even if they're already included in the container.
-	//
-	// +optional
-	ImageMapName string `json:"imageMapName,omitempty" protobuf:"bytes,4,opt,name=imageMapName"`
 }
 
 // Determines how a local path maps into a container image.

@@ -91,7 +91,7 @@ func TestConsumeFileEvents(t *testing.T) {
 	// Verify initial setup.
 	m, ok := f.r.monitors["frontend-liveupdate"]
 	require.True(t, ok)
-	assert.Equal(t, map[string]metav1.MicroTime{}, m.modTimeByPath)
+	assert.Equal(t, map[string]*monitorSource{}, m.sources)
 	assert.Equal(t, "frontend-discovery", m.lastKubernetesDiscovery.Name)
 
 	// Trigger a file event, and make sure that the status reflects the sync.
@@ -108,7 +108,7 @@ func TestConsumeFileEvents(t *testing.T) {
 	// Also make sure the sync gets pulled into the monitor.
 	assert.Equal(t, map[string]metav1.MicroTime{
 		txtPath: txtChangeTime,
-	}, m.modTimeByPath)
+	}, m.sources["frontend-fw"].modTimeByPath)
 	assert.Equal(t, 1, len(f.cu.Calls))
 
 	// re-reconcile, and make sure we don't try to resync.
@@ -203,14 +203,16 @@ func (f *fixture) setupFrontend() {
 	f.Create(&v1alpha1.LiveUpdate{
 		ObjectMeta: metav1.ObjectMeta{Name: "frontend-liveupdate"},
 		Spec: v1alpha1.LiveUpdateSpec{
-			BasePath:       p,
-			FileWatchNames: []string{"frontend-fw"},
+			BasePath: p,
+			Sources: []v1alpha1.LiveUpdateSource{{
+				FileWatch: "frontend-fw",
+				ImageMap:  "frontend-image-map",
+			}},
 			Selector: v1alpha1.LiveUpdateSelector{
 				Kubernetes: &v1alpha1.LiveUpdateKubernetesSelector{
 					ApplyName:     "frontend-apply",
 					DiscoveryName: "frontend-discovery",
 					Image:         "frontend-image",
-					ImageMapName:  "frontend-image-map",
 				},
 			},
 			Syncs: []v1alpha1.LiveUpdateSync{
