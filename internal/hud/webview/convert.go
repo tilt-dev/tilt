@@ -16,6 +16,7 @@ import (
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/cloud/cloudurl"
+	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
@@ -201,8 +202,11 @@ func ToUIResourceList(state store.EngineState, disableSources map[string][]v1alp
 		ret = append(ret, r)
 	}
 
+	_, holds := buildcontrol.NextTargetToBuild(state)
+
 	for _, mt := range state.Targets() {
-		r, err := toUIResource(mt, state, disableSources[string(mt.Manifest.Name)])
+		mn := mt.Manifest.Name
+		r, err := toUIResource(mt, state, disableSources[mn.String()], holds[mn])
 		if err != nil {
 			return nil, err
 		}
@@ -241,7 +245,8 @@ func disableResourceStatus(disableSources []v1alpha1.DisableSource, s store.Engi
 
 // Converts a ManifestTarget into the public data model representation,
 // a UIResource.
-func toUIResource(mt *store.ManifestTarget, s store.EngineState, disableSources []v1alpha1.DisableSource) (*v1alpha1.UIResource, error) {
+func toUIResource(mt *store.ManifestTarget, s store.EngineState, disableSources []v1alpha1.DisableSource, hold store.Hold) (*v1alpha1.UIResource, error) {
+	mn := mt.Manifest.Name
 	ms := mt.State
 	endpoints := store.ManifestTargetEndpoints(mt)
 
@@ -260,18 +265,25 @@ func toUIResource(mt *store.ManifestTarget, s store.EngineState, disableSources 
 	// at once).
 	hasPendingChanges, pendingBuildSince := ms.HasPendingChanges()
 
-	labels := mt.Manifest.Labels
+	var holdReason string
+	var holdOn []string
+	if hold.Reason != store.HoldReasonNone {
+		holdReason = string(hold.Reason)
+		holdOn = make([]string, len(hold.HoldOn))
+		for i := range hold.HoldOn {
+			holdOn[i] = hold.HoldOn[i].String()
+		}
+	}
 
 	drs, err := disableResourceStatus(disableSources, s)
 	if err != nil {
 		return nil, errors.Wrap(err, "error determining disable resource status")
 	}
 
-	name := mt.Manifest.Name
 	r := &v1alpha1.UIResource{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   name.String(),
-			Labels: labels,
+			Name:   mn.String(),
+			Labels: mt.Manifest.Labels,
 		},
 		Status: v1alpha1.UIResourceStatus{
 			LastDeployTime:    lastDeploy,
@@ -282,8 +294,10 @@ func toUIResource(mt *store.ManifestTarget, s store.EngineState, disableSources 
 			Specs:             specs,
 			TriggerMode:       int32(mt.Manifest.TriggerMode),
 			HasPendingChanges: hasPendingChanges,
-			Queued:            s.ManifestInTriggerQueue(name),
+			Queued:            s.ManifestInTriggerQueue(mn),
 			DisableStatus:     drs,
+			HoldReason:        holdReason,
+			HoldingOn:         holdOn,
 		},
 	}
 

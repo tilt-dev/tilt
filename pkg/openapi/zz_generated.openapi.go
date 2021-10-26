@@ -5935,6 +5935,28 @@ func schema_pkg_apis_core_v1alpha1_UIResourceStatus(ref common.ReferenceCallback
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableResourceStatus"),
 						},
 					},
+					"holdReason": {
+						SchemaProps: spec.SchemaProps{
+							Description: "HoldReason is a unique, one-word reason for why the UIResource update is pending.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"holdingOn": {
+						SchemaProps: spec.SchemaProps{
+							Description: "HoldingOn is the set of resources blocking this resource from updating.\n\nThese resources might NOT be explicit dependencies of the current resource. For example, if an un-parallelizable resource is updating, all other resources with queued updates will be holding on it with a reason of `waiting-for-local`.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 		},

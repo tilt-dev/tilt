@@ -3196,6 +3196,11 @@ func (in *UIResourceStatus) DeepCopyInto(out *UIResourceStatus) {
 		copy(*out, *in)
 	}
 	in.DisableStatus.DeepCopyInto(&out.DisableStatus)
+	if in.HoldingOn != nil {
+		in, out := &in.HoldingOn, &out.HoldingOn
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

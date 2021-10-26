@@ -193,6 +193,20 @@ type UIResourceStatus struct {
 
 	// Information about the resource's objects' disabled status.
 	DisableStatus DisableResourceStatus `json:"disableStatus,omitempty" protobuf:"bytes,16,opt,name=disableStatus"`
+
+	// HoldReason is a unique, one-word reason for why the UIResource update is pending.
+	//
+	// +optional
+	HoldReason string `json:"holdReason,omitempty" protobuf:"bytes,17,opt,name=holdReason"`
+
+	// HoldingOn is the set of resources blocking this resource from updating.
+	//
+	// These resources might NOT be explicit dependencies of the current resource. For example, if an un-parallelizable
+	// resource is updating, all other resources with queued updates will be holding on it with a reason of
+	// `waiting-for-local`.
+	//
+	// +optional
+	HoldingOn []string `json:"holdingOn,omitempty" protobuf:"bytes,18,rep,name=holdingOn"`
 }
 
 // UIResource implements ObjectWithStatusSubResource interface.

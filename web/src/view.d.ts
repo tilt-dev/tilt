@@ -452,6 +452,22 @@ declare namespace Proto {
      * Information about the resource's objects' disabled status.
      */
     disableStatus?: v1alpha1DisableResourceStatus;
+    /**
+     * HoldReason is a unique, one-word reason for why the UIResource update is pending.
+     *
+     * +optional
+     */
+    holdReason?: string;
+    /**
+     * HoldingOn is the set of resources blocking this resource from updating.
+     *
+     * These resources might NOT be explicit dependencies of the current resource. For example, if an un-parallelizable
+     * resource is updating, all other resources with queued updates will be holding on it with a reason of
+     * `waiting-for-local`.
+     *
+     * +optional
+     */
+    holdingOn?: string[];
   }
   export interface v1alpha1UIResourceSpec {}
   export interface v1alpha1UIResourceLocal {

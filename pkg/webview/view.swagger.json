@@ -806,6 +806,17 @@
         "disableStatus": {
           "$ref": "#/definitions/v1alpha1DisableResourceStatus",
           "description": "Information about the resource's objects' disabled status."
+        },
+        "holdReason": {
+          "type": "string",
+          "description": "HoldReason is a unique, one-word reason for why the UIResource update is pending.\n\n+optional"
+        },
+        "holdingOn": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "HoldingOn is the set of resources blocking this resource from updating.\n\nThese resources might NOT be explicit dependencies of the current resource. For example, if an un-parallelizable\nresource is updating, all other resources with queued updates will be holding on it with a reason of\n`waiting-for-local`.\n\n+optional"
         }
       },
       "title": "UIResourceStatus defines the observed state of UIResource"

@@ -2291,6 +2291,20 @@ message UIResourceStatus {
 
   // Information about the resource's objects' disabled status.
   optional DisableResourceStatus disableStatus = 16;
+
+  // HoldReason is a unique, one-word reason for why the UIResource update is pending.
+  //
+  // +optional
+  optional string holdReason = 17;
+
+  // HoldingOn is the set of resources blocking this resource from updating.
+  //
+  // These resources might NOT be explicit dependencies of the current resource. For example, if an un-parallelizable
+  // resource is updating, all other resources with queued updates will be holding on it with a reason of
+  // `waiting-for-local`.
+  //
+  // +optional
+  repeated string holdingOn = 18;
 }
 
 // UIResourceTargetSpec represents the spec of a build or deploy that a resource summarizes.
