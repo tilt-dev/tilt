@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -16,6 +17,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	"github.com/docker/distribution/reference"
 
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/container"
@@ -385,6 +388,43 @@ func (r *Reconciler) reconcileKubernetesResource(ctx context.Context, monitor *m
 	return changed, nil
 }
 
+// Go through all the container monitors, and delete any that are no longer
+// being selected. We don't care why they're not being selected.
+func (r *Reconciler) garbageCollectMonitorContainers(res *k8sconv.KubernetesResource, monitor *monitor) {
+	podsByKey := map[monitorContainerKey]bool{}
+	for _, pod := range res.FilteredPods {
+		podsByKey[monitorContainerKey{podName: pod.Name, namespace: pod.Namespace}] = true
+	}
+
+	for key := range monitor.containers {
+		podKey := monitorContainerKey{podName: key.podName, namespace: key.namespace}
+		if !podsByKey[podKey] {
+			delete(monitor.containers, key)
+		}
+	}
+}
+
+// Visit all selected containers.
+func (r *Reconciler) visitSelectedContainers(
+	kSelector *v1alpha1.LiveUpdateKubernetesSelector,
+	kResource *k8sconv.KubernetesResource,
+	visit func(pod v1alpha1.Pod, c v1alpha1.Container) bool) {
+	for _, pod := range kResource.FilteredPods {
+		for _, c := range pod.Containers {
+			// Only visit well-formed containers matching our image
+			imageRef, err := container.ParseNamed(c.Image)
+			if err != nil || c.ID == "" || c.Name == "" || imageRef == nil ||
+				kSelector.Image != reference.FamiliarName(imageRef) {
+				continue
+			}
+			stop := visit(pod, c)
+			if stop {
+				return
+			}
+		}
+	}
+}
+
 // Convert the currently tracked state into a set of inputs
 // to the updater, then apply them.
 func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, monitor *monitor) v1alpha1.LiveUpdateStatus {
@@ -401,42 +441,49 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 		return status
 	}
 
-	// TODO(nick): Now that we have multiple monitors, there's no reason
-	// why we can't update multiple pods.
-	cInfos, err := liveupdates.RunningContainersForOnePod(kSelector, kResource)
-	if err != nil {
-		status.Failed = createFailedState(lu, "KubernetesError", fmt.Sprintf("determining containers: %v", err))
-		return status
-	}
+	r.garbageCollectMonitorContainers(kResource, monitor)
 
-	// TODO(nick): LiveUpdateStatus needs to distinguish between two different cases:
-	// 1) We can't live update the pod because it's still being scheduled/initialized.
-	// 2) We can't live update the pod because it's failed, and will never recover.
-	//
-	// In the first case, we need to wait. In the second case, we need to tell
-	// the rest of tilt to rebuild. This logic currently live in buildcontrol
-	// and should be moved here.
-	if len(cInfos) == 0 {
-		return status
-	}
-
-	for _, c := range cInfos {
-		highWaterMark := r.startedTime
+	// Go through all the container monitors, and check if any of them are unrecoverable.
+	// If they are, it's not important to figure out why.
+	r.visitSelectedContainers(kSelector, kResource, func(pod v1alpha1.Pod, c v1alpha1.Container) bool {
 		cKey := monitorContainerKey{
-			containerID: c.ContainerID.String(),
-			podName:     c.PodID.String(),
-			namespace:   c.Namespace.String(),
+			containerID: c.ID,
+			podName:     pod.Name,
+			namespace:   pod.Namespace,
 		}
-		cStatus, ok := monitor.containers[cKey]
-		if ok {
-			if !cStatus.lastFileTimeSynced.IsZero() {
-				highWaterMark = cStatus.lastFileTimeSynced
-			}
 
-			if cStatus.failedReason != "" {
-				status.Failed = createFailedState(lu, cStatus.failedReason, cStatus.failedMessage)
-				return status
-			}
+		cStatus, ok := monitor.containers[cKey]
+		if ok && cStatus.failedReason != "" {
+			status.Failed = createFailedState(lu, cStatus.failedReason, cStatus.failedMessage)
+			return true
+		}
+		return false
+	})
+
+	if status.Failed != nil {
+		return status
+	}
+
+	// Visit all containers, apply changes, and return their statuses.
+	terminatedContainerPodName := ""
+	hasAnyFilesToSync := false
+	r.visitSelectedContainers(kSelector, kResource, func(pod v1alpha1.Pod, cInfo v1alpha1.Container) bool {
+		c := liveupdates.Container{
+			ContainerID:   container.ID(cInfo.ID),
+			ContainerName: container.Name(cInfo.Name),
+			PodID:         k8s.PodID(pod.Name),
+			Namespace:     k8s.Namespace(pod.Namespace),
+		}
+		cKey := monitorContainerKey{
+			containerID: cInfo.ID,
+			podName:     pod.Name,
+			namespace:   pod.Namespace,
+		}
+
+		highWaterMark := r.startedTime
+		cStatus, ok := monitor.containers[cKey]
+		if ok && !cStatus.lastFileTimeSynced.IsZero() {
+			highWaterMark = cStatus.lastFileTimeSynced
 		}
 
 		// Determine the changed files.
@@ -456,6 +503,38 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 
 		// Sort the files so that they're deterministic.
 		filesChanged = sliceutils.DedupedAndSorted(filesChanged)
+		if len(filesChanged) > 0 {
+			hasAnyFilesToSync = true
+		}
+
+		// Ignore completed pods/containers.
+		// This is a bit tricky to handle correctly, but is handled at
+		// the end of this function.
+		if pod.Phase == string(v1.PodSucceeded) || pod.Phase == string(v1.PodFailed) || cInfo.State.Terminated != nil {
+			if terminatedContainerPodName == "" {
+				terminatedContainerPodName = pod.Name
+			}
+			return false
+		}
+
+		if cInfo.State.Running == nil {
+			// If we're missing any relevant info for this container, OR if the
+			// container isn't running, we can't update it in place.
+			// (Since we'll need to fully rebuild this image, we shouldn't bother
+			// in-place updating ANY containers on this pod -- they'll all
+			// be recreated when we image build. So don't return ANY Containers.)
+			status.Containers = append(status.Containers, v1alpha1.LiveUpdateContainerStatus{
+				ContainerName: cInfo.Name,
+				ContainerID:   cInfo.ID,
+				PodName:       pod.Name,
+				Namespace:     pod.Namespace,
+				Waiting: &v1alpha1.LiveUpdateContainerStateWaiting{
+					Reason:  "ContainerWaiting",
+					Message: "Waiting for container to start",
+				},
+			})
+			return false
+		}
 
 		oneUpdateStatus := r.applyLiveUpdatePlan(ctx, lu.Spec, c, filesChanged, newHighWaterMark, cStatus)
 		adjustFailedStateTimestamps(lu, &oneUpdateStatus)
@@ -472,11 +551,30 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 		// Update the status based on the result of the applied changes.
 		if oneUpdateStatus.Failed != nil {
 			status.Failed = oneUpdateStatus.Failed
-			return status
+			status.Containers = nil
+			return true
 		}
 
 		status.Containers = append(status.Containers, oneUpdateStatus.Containers...)
+		return false
+	})
+
+	// If the only containers we're connected to are terminated containers,
+	// there are two cases we need to worry about:
+	//
+	// 1) The pod has completed, and will never run again (like a Job).
+	// 2) This is an old pod, and we're waiting for the new pod to rollout.
+	//
+	// We don't really have a great way to distinguish between these two cases.
+	//
+	// If we get to the end of this loop and haven't found any "live" pods,
+	// we assume we're in state (1) (to prevent waiting forever).
+	if status.Failed != nil && terminatedContainerPodName != "" &&
+		hasAnyFilesToSync && len(status.Containers) == 0 {
+		status.Failed = createFailedState(lu, "Terminated",
+			fmt.Sprintf("Container for live update is stopped. Pod name: %s", terminatedContainerPodName))
 	}
+
 	return status
 }
 

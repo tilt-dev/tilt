@@ -71,11 +71,7 @@ func TestMissingApply(t *testing.T) {
 		assert.Equal(t, "ObjectNotFound", lu.Status.Failed.Reason)
 	}
 
-	// Verify steady state.
-	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
-	var lu2 v1alpha1.LiveUpdate
-	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu2)
-	assert.Equal(t, lu.ResourceVersion, lu2.ResourceVersion)
+	f.assertSteadyState(&lu)
 }
 
 func TestConsumeFileEvents(t *testing.T) {
@@ -117,6 +113,71 @@ func TestConsumeFileEvents(t *testing.T) {
 
 	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
 	assert.Nil(t, lu.Status.Failed)
+}
+
+func TestWaitingContainer(t *testing.T) {
+	f := newFixture(t)
+
+	p, _ := os.Getwd()
+	nowMicro := apis.NowMicro()
+	txtPath := filepath.Join(p, "a.txt")
+	txtChangeTime := metav1.MicroTime{Time: nowMicro.Add(time.Second)}
+
+	f.setupFrontend()
+	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
+		Pods: []v1alpha1.Pod{
+			{
+				Name:      "pod-1",
+				Namespace: "default",
+				Containers: []v1alpha1.Container{
+					{
+						Name:  "main",
+						ID:    "main",
+						Image: "frontend-image",
+						State: v1alpha1.ContainerState{
+							Waiting: &v1alpha1.ContainerStateWaiting{},
+						},
+					},
+				},
+			},
+		},
+	})
+
+	f.addFileEvent("frontend-fw", txtPath, txtChangeTime)
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+
+	var lu v1alpha1.LiveUpdate
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	assert.Nil(t, lu.Status.Failed)
+	if assert.Equal(t, 1, len(lu.Status.Containers)) {
+		assert.Equal(t, "ContainerWaiting", lu.Status.Containers[0].Waiting.Reason)
+	}
+	assert.Equal(t, 0, len(f.cu.Calls))
+
+	f.assertSteadyState(&lu)
+
+	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
+		Pods: []v1alpha1.Pod{
+			{
+				Name:      "pod-1",
+				Namespace: "default",
+				Containers: []v1alpha1.Container{
+					{
+						Name:  "main",
+						ID:    "main",
+						Image: "frontend-image",
+						State: v1alpha1.ContainerState{
+							Running: &v1alpha1.ContainerStateRunning{},
+						},
+					},
+				},
+			},
+		},
+	})
+
+	// Re-reconcile, and make sure we pull in the files.
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+	assert.Equal(t, 1, len(f.cu.Calls))
 }
 
 type fixture struct {
@@ -220,6 +281,22 @@ func (f *fixture) setupFrontend() {
 			},
 		},
 	})
+}
+
+func (f *fixture) assertSteadyState(lu *v1alpha1.LiveUpdate) {
+	f.T().Helper()
+	f.MustReconcile(types.NamespacedName{Name: lu.Name})
+	var lu2 v1alpha1.LiveUpdate
+	f.MustGet(types.NamespacedName{Name: lu.Name}, &lu2)
+	assert.Equal(f.T(), lu.ResourceVersion, lu2.ResourceVersion)
+}
+
+func (f *fixture) kdUpdateStatus(name string, status v1alpha1.KubernetesDiscoveryStatus) {
+	var kd v1alpha1.KubernetesDiscovery
+	f.MustGet(types.NamespacedName{Name: name}, &kd)
+	update := kd.DeepCopy()
+	update.Status = status
+	f.UpdateStatus(update)
 }
 
 func kubernetesSelector(discoveryName string, applyName string, image string) v1alpha1.LiveUpdateSelector {
