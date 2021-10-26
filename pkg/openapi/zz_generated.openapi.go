@@ -94,6 +94,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateKubernetesSelector":    schema_pkg_apis_core_v1alpha1_LiveUpdateKubernetesSelector(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateList":                  schema_pkg_apis_core_v1alpha1_LiveUpdateList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSelector":              schema_pkg_apis_core_v1alpha1_LiveUpdateSelector(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSource":                schema_pkg_apis_core_v1alpha1_LiveUpdateSource(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSpec":                  schema_pkg_apis_core_v1alpha1_LiveUpdateSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateStateFailed":           schema_pkg_apis_core_v1alpha1_LiveUpdateStateFailed(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateStatus":                schema_pkg_apis_core_v1alpha1_LiveUpdateStatus(ref),
@@ -2901,13 +2902,6 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateKubernetesSelector(ref common.Refer
 							Format:      "",
 						},
 					},
-					"imageMapName": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Name of the ImageMap object to watch for which file changes are included in the container image.\n\nIf not provided, the live-updater will copy any file changes that it's aware of, even if they're already included in the container.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
 				},
 			},
 		},
@@ -2984,6 +2978,33 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateSelector(ref common.ReferenceCallba
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_LiveUpdateSource(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Specifies how to pull in files.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"fileWatch": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The name of a FileWatch to use as a file source.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"imageMap": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name of the ImageMap object to watch for which file changes from this source are included in the container image.\n\nIf not provided, the live-updater will copy any file changes that it's aware of, even if they're already included in the container.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_LiveUpdateSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -3006,16 +3027,15 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateSpec(ref common.ReferenceCallback) 
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSelector"),
 						},
 					},
-					"fileWatchNames": {
+					"sources": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Names of ileWatch objects to watch for a list of files that have recently been updated.\n\nEvery live update must be associated with at least one FileWatch object to trigger the update. Usually, Tilt structures it so that there's a FileWatch for each image we depend on.\n\nWhat you really need is a sequence of objects. One object keeps tracks of the files you're watching, and the other tracks whether or not an image has already consumed that file (i.e., a ImageMapName/FileWatchName pair).",
+							Description: "Sources of files to sync.\n\nEvery live update must be associated with at least one Source object to trigger the update. Usually, Tilt structures it so that there's a Source for each image we depend on.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSource"),
 									},
 								},
 							},
@@ -3076,7 +3096,7 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateSpec(ref common.ReferenceCallback) 
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateExec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSelector", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSync"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateExec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSelector", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSource", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSync"},
 	}
 }
 
