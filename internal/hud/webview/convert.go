@@ -5,6 +5,10 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/pkg/errors"
+
+	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
+
 	"github.com/golang/protobuf/ptypes"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -182,7 +186,7 @@ func ToUISession(s store.EngineState) *v1alpha1.UISession {
 
 // Converts an EngineState into a list of UIResources.
 // The order of the list is non-deterministic.
-func ToUIResourceList(state store.EngineState) ([]*v1alpha1.UIResource, error) {
+func ToUIResourceList(state store.EngineState, disableSources map[string][]v1alpha1.DisableSource) ([]*v1alpha1.UIResource, error) {
 	ret := make([]*v1alpha1.UIResource, 0, len(state.ManifestTargets)+1)
 
 	// All tiltfiles appear earlier than other resources in the same group.
@@ -198,7 +202,7 @@ func ToUIResourceList(state store.EngineState) ([]*v1alpha1.UIResource, error) {
 	}
 
 	for _, mt := range state.Targets() {
-		r, err := toUIResource(mt, state)
+		r, err := toUIResource(mt, state, disableSources[string(mt.Manifest.Name)])
 		if err != nil {
 			return nil, err
 		}
@@ -210,9 +214,34 @@ func ToUIResourceList(state store.EngineState) ([]*v1alpha1.UIResource, error) {
 	return ret, nil
 }
 
+func disableResourceStatus(disableSources []v1alpha1.DisableSource, s store.EngineState) (v1alpha1.DisableResourceStatus, error) {
+	var result v1alpha1.DisableResourceStatus
+	for _, source := range disableSources {
+		getCM := func(name string) (v1alpha1.ConfigMap, error) {
+			cm, ok := s.ConfigMaps[name]
+			if !ok {
+				gr := (&v1alpha1.ConfigMap{}).GetGroupVersionResource().GroupResource()
+				return v1alpha1.ConfigMap{}, apierrors.NewNotFound(gr, name)
+			}
+			return *cm, nil
+		}
+		isDisabled, _, err := configmap.DisableStatus(getCM, &source)
+		if err != nil {
+			return v1alpha1.DisableResourceStatus{}, err
+		}
+		if isDisabled {
+			result.DisabledCount += 1
+		} else {
+			result.EnabledCount += 1
+		}
+	}
+	result.Sources = disableSources
+	return result, nil
+}
+
 // Converts a ManifestTarget into the public data model representation,
 // a UIResource.
-func toUIResource(mt *store.ManifestTarget, s store.EngineState) (*v1alpha1.UIResource, error) {
+func toUIResource(mt *store.ManifestTarget, s store.EngineState, disableSources []v1alpha1.DisableSource) (*v1alpha1.UIResource, error) {
 	ms := mt.State
 	endpoints := store.ManifestTargetEndpoints(mt)
 
@@ -233,6 +262,11 @@ func toUIResource(mt *store.ManifestTarget, s store.EngineState) (*v1alpha1.UIRe
 
 	labels := mt.Manifest.Labels
 
+	drs, err := disableResourceStatus(disableSources, s)
+	if err != nil {
+		return nil, errors.Wrap(err, "error determining disable resource status")
+	}
+
 	name := mt.Manifest.Name
 	r := &v1alpha1.UIResource{
 		ObjectMeta: metav1.ObjectMeta{
@@ -249,6 +283,7 @@ func toUIResource(mt *store.ManifestTarget, s store.EngineState) (*v1alpha1.UIRe
 			TriggerMode:       int32(mt.Manifest.TriggerMode),
 			HasPendingChanges: hasPendingChanges,
 			Queued:            s.ManifestInTriggerQueue(name),
+			DisableStatus:     drs,
 		},
 	}
 

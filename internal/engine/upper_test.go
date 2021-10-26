@@ -3824,6 +3824,38 @@ func TestOverrideTriggerModeBadTriggerModeLogsError(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestDisablingResourcePreventsBuild(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	m := manifestbuilder.New(f, "foo").WithLocalResource("foo", []string{f.Path()}).Build()
+
+	f.Start([]model.Manifest{m})
+
+	cm := v1alpha1.ConfigMap{}
+	err := f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: "foo-disable"}, &cm)
+	require.NoError(t, err)
+
+	cm.Data["isDisabled"] = "true"
+	err = f.ctrlClient.Update(f.ctx, &cm)
+	require.NoError(t, err)
+
+	f.WaitUntil("resource is disabled", func(state store.EngineState) bool {
+		if uir, ok := state.UIResources["foo"]; ok {
+			return uir.Status.DisableStatus.DisabledCount > 0
+		}
+		return false
+	})
+
+	action := server.AppendToTriggerQueueAction{Name: "foo", Reason: 123}
+	f.store.Dispatch(action)
+
+	f.WaitUntil("is waiting+disabled", func(state store.EngineState) bool {
+		_, holds := buildcontrol.NextTargetToBuild(state)
+		return holds["foo"] == store.HoldDisabled
+	})
+}
+
 type testFixture struct {
 	*tempdir.TempDirFixture
 	t                          *testing.T

@@ -966,12 +966,12 @@ func schema_pkg_apis_core_v1alpha1_DisableResourceStatus(ref common.ReferenceCal
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "Aggregated disable status of objects that belong to a resource.",
+				Description: "Aggregated disable status of DisableSources that belong to a resource.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"enabledCount": {
 						SchemaProps: spec.SchemaProps{
-							Description: "How many of the resource's objects are enabled.",
+							Description: "How many of the resource's sources are enabled.",
 							Default:     0,
 							Type:        []string{"integer"},
 							Format:      "int32",
@@ -979,7 +979,7 @@ func schema_pkg_apis_core_v1alpha1_DisableResourceStatus(ref common.ReferenceCal
 					},
 					"disabledCount": {
 						SchemaProps: spec.SchemaProps{
-							Description: "How many of the resource's objects are disabled.",
+							Description: "How many of the resource's sources are disabled.",
 							Default:     0,
 							Type:        []string{"integer"},
 							Format:      "int32",

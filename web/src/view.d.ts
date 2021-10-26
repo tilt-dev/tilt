@@ -610,11 +610,11 @@ declare namespace Proto {
   }
   export interface v1alpha1DisableResourceStatus {
     /**
-     * How many of the resource's objects are enabled.
+     * How many of the resource's sources are enabled.
      */
     enabledCount?: number;
     /**
-     * How many of the resource's objects are disabled.
+     * How many of the resource's sources are disabled.
      */
     disabledCount?: number;
     /**

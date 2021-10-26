@@ -107,12 +107,12 @@ func (in *UIResourceList) GetListMeta() *metav1.ListMeta {
 	return &in.ListMeta
 }
 
-// Aggregated disable status of objects that belong to a resource.
+// Aggregated disable status of DisableSources that belong to a resource.
 type DisableResourceStatus struct {
-	// How many of the resource's objects are enabled.
+	// How many of the resource's sources are enabled.
 	EnabledCount int32 `json:"enabledCount" protobuf:"varint,1,opt,name=enabledCount"`
 
-	// How many of the resource's objects are disabled.
+	// How many of the resource's sources are disabled.
 	DisabledCount int32 `json:"disabledCount" protobuf:"varint,2,opt,name=disabledCount"`
 
 	// All unique sources that control the resource's objects' disable status.
