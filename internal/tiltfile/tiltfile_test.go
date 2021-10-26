@@ -5915,10 +5915,11 @@ type fixture struct {
 func (f *fixture) newTiltfileLoader() TiltfileLoader {
 	dcc := dockercompose.NewDockerComposeClient(docker.LocalEnv{})
 	features := feature.Defaults{
-		"testflag_disabled": feature.Value{Enabled: false},
-		"testflag_enabled":  feature.Value{Enabled: true},
-		"obsoleteflag":      feature.Value{Status: feature.Obsolete, Enabled: true},
-		feature.Snapshots:   feature.Value{Enabled: true},
+		"testflag_disabled":  feature.Value{Enabled: false},
+		"testflag_enabled":   feature.Value{Enabled: true},
+		"obsoleteflag":       feature.Value{Status: feature.Obsolete, Enabled: true},
+		feature.Snapshots:    feature.Value{Enabled: true},
+		feature.LiveUpdateV2: feature.Value{Enabled: false},
 	}
 
 	k8sContextExt := k8scontext.NewPlugin(f.k8sContext, f.k8sEnv)
