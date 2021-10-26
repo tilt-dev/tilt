@@ -36,8 +36,8 @@ archives:
     linux: linux
     386: i386
     amd64: x86_64
-    arm: arm_ALPHA
-    arm64: arm64_ALPHA
+    arm: arm
+    arm64: arm64
   format_overrides:
     - goos: windows
       format: zip
