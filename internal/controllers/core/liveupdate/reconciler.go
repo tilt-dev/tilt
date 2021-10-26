@@ -10,7 +10,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
@@ -130,14 +129,25 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, nil
 	}
 
+	invalidSelectorFailedState := r.ensureSelectorValid(lu)
+	if invalidSelectorFailedState != nil {
+		return r.handleFailure(ctx, lu, invalidSelectorFailedState)
+	}
+
 	monitor := r.ensureMonitorExists(lu.Name, lu.Spec)
 	hasFileChanges, err := r.reconcileFileWatches(ctx, monitor)
 	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return r.handleFailure(ctx, lu, createFailedState(lu, "ObjectNotFound", err.Error()))
+		}
 		return ctrl.Result{}, err
 	}
 
 	hasKubernetesChanges, err := r.reconcileKubernetesResource(ctx, monitor)
 	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return r.handleFailure(ctx, lu, createFailedState(lu, "ObjectNotFound", err.Error()))
+		}
 		return ctrl.Result{}, err
 	}
 
@@ -169,6 +179,36 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	monitor.hasChangesToSync = false
 
 	return ctrl.Result{}, nil
+}
+
+// Check for some invalid states.
+func (r *Reconciler) ensureSelectorValid(lu *v1alpha1.LiveUpdate) *v1alpha1.LiveUpdateStateFailed {
+	selector := lu.Spec.Selector.Kubernetes
+	if selector == nil {
+		return createFailedState(lu, "Invalid", "No valid selector")
+	}
+
+	if selector.DiscoveryName == "" {
+		return createFailedState(lu, "Invalid", "Kubernetes selector requires DiscoveryName")
+	}
+	return nil
+}
+
+// If the failure state has changed, log it and write it to the apiserver.
+func (r *Reconciler) handleFailure(ctx context.Context, lu *v1alpha1.LiveUpdate, failed *v1alpha1.LiveUpdateStateFailed) (ctrl.Result, error) {
+	isNew := lu.Status.Failed == nil || !apicmp.DeepEqual(lu.Status.Failed, failed)
+	if !isNew {
+		return ctrl.Result{}, nil
+	}
+
+	logger.Get(ctx).Warnf("LiveUpdate %q %s: %v", lu.Name, failed.Reason, failed.Message)
+
+	update := lu.DeepCopy()
+	update.Status.Failed = failed
+
+	err := r.client.Status().Update(ctx, update)
+
+	return ctrl.Result{}, err
 }
 
 // Create the monitor that tracks a live update. If the live update
@@ -228,13 +268,7 @@ func (r *Reconciler) reconcileOneFileWatch(ctx context.Context, monitor *monitor
 	var fw v1alpha1.FileWatch
 	err := r.client.Get(ctx, types.NamespacedName{Name: fwn}, &fw)
 	if err != nil {
-		// Do nothing if an object hasn't appeared yet.
-		//
-		// TODO(nick): We should have some failure state for LiveUpdateStatus
-		// for when an object it depends on isn't in the API server.
-		// This may not be a permanent failure state, because
-		// the object just hasn't been created yet.
-		return false, client.IgnoreNotFound(err)
+		return false, err
 	}
 
 	events := fw.Status.FileEvents
@@ -269,8 +303,6 @@ func (r *Reconciler) reconcileKubernetesResource(ctx context.Context, monitor *m
 		return false, nil
 	}
 
-	// TODO(nick): Update the status field with an error if there's no discovery name.
-
 	var kd *v1alpha1.KubernetesDiscovery
 	var ka *v1alpha1.KubernetesApply
 	var im *v1alpha1.ImageMap
@@ -279,8 +311,7 @@ func (r *Reconciler) reconcileKubernetesResource(ctx context.Context, monitor *m
 		ka = &v1alpha1.KubernetesApply{}
 		err := r.client.Get(ctx, types.NamespacedName{Name: selector.ApplyName}, ka)
 		if err != nil {
-			// Do nothing if an object hasn't appeared yet.
-			return false, client.IgnoreNotFound(err)
+			return false, err
 		}
 
 		if monitor.lastKubernetesApplyStatus == nil ||
@@ -289,26 +320,22 @@ func (r *Reconciler) reconcileKubernetesResource(ctx context.Context, monitor *m
 		}
 	}
 
-	if selector.DiscoveryName != "" {
-		kd = &v1alpha1.KubernetesDiscovery{}
-		err := r.client.Get(ctx, types.NamespacedName{Name: selector.DiscoveryName}, kd)
-		if err != nil {
-			// Do nothing if an object hasn't appeared yet.
-			return false, client.IgnoreNotFound(err)
-		}
+	kd = &v1alpha1.KubernetesDiscovery{}
+	err := r.client.Get(ctx, types.NamespacedName{Name: selector.DiscoveryName}, kd)
+	if err != nil {
+		return false, err
+	}
 
-		if monitor.lastKubernetesDiscovery == nil ||
-			!apicmp.DeepEqual(monitor.lastKubernetesDiscovery.Status, kd.Status) {
-			changed = true
-		}
+	if monitor.lastKubernetesDiscovery == nil ||
+		!apicmp.DeepEqual(monitor.lastKubernetesDiscovery.Status, kd.Status) {
+		changed = true
 	}
 
 	if selector.ImageMapName != "" {
 		im = &v1alpha1.ImageMap{}
 		err := r.client.Get(ctx, types.NamespacedName{Name: selector.ImageMapName}, im)
 		if err != nil {
-			// Do nothing if an object hasn't appeared yet.
-			return false, client.IgnoreNotFound(err)
+			return false, err
 		}
 
 		if monitor.lastImageMapStatus == nil ||
