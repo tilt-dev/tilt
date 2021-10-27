@@ -4157,7 +4157,7 @@ func (f *testFixture) Init(action InitAction) {
 		Manifests:            state.Manifests(),
 		ConfigFiles:          state.MainConfigPaths(),
 		TiltfilePath:         action.TiltfilePath,
-	}, make(map[string]*v1alpha1.DisableSource))
+	}, make(map[model.ManifestName]*v1alpha1.DisableSource))
 	if f.overrideMaxParallelUpdates > 0 {
 		state.UpdateSettings = state.UpdateSettings.WithMaxParallelUpdates(f.overrideMaxParallelUpdates)
 	}
