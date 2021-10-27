@@ -358,11 +358,6 @@ declare namespace Proto {
      */
     subresource?: string;
   }
-  export interface v1GroupVersionKind {
-    group?: string;
-    version?: string;
-    kind?: string;
-  }
   export interface v1FieldsV1 {
     /**
      * Raw is the underlying serialization of this object.
@@ -466,11 +461,19 @@ declare namespace Proto {
   }
   export interface v1alpha1UIResourceStateWaitingOnRef {
     /**
-     * GVK is the Group-Version-Kind for the object this UIResource is waiting on.
+     * Group for the object type being waited on.
      */
-    gvk?: v1GroupVersionKind;
+    group?: string;
     /**
-     * Name is the key for the object this UIResource is waiting on.
+     * APIVersion for the object type being waited on.
+     */
+    apiVersion?: string;
+    /**
+     * Kind of the object type being waited on.
+     */
+    kind?: string;
+    /**
+     * Name of the object being waiting on.
      */
     name?: string;
   }

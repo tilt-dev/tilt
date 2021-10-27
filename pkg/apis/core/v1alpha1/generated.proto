@@ -2248,11 +2248,17 @@ message UIResourceStateWaiting {
 }
 
 message UIResourceStateWaitingOnRef {
-  // GVK is the Group-Version-Kind for the object this UIResource is waiting on.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.GroupVersionKind gvk = 1;
+  // Group for the object type being waited on.
+  optional string group = 1;
 
-  // Name is the key for the object this UIResource is waiting on.
-  optional string name = 2;
+  // APIVersion for the object type being waited on.
+  optional string apiVersion = 2;
+
+  // Kind of the object type being waited on.
+  optional string kind = 3;
+
+  // Name of the object being waiting on.
+  optional string name = 4;
 }
 
 // UIResourceStatus defines the observed state of UIResource

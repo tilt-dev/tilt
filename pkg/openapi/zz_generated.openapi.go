@@ -5883,27 +5883,42 @@ func schema_pkg_apis_core_v1alpha1_UIResourceStateWaitingOnRef(ref common.Refere
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
 				Properties: map[string]spec.Schema{
-					"gvk": {
+					"group": {
 						SchemaProps: spec.SchemaProps{
-							Description: "GVK is the Group-Version-Kind for the object this UIResource is waiting on.",
-							Default:     map[string]interface{}{},
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.GroupVersionKind"),
+							Description: "Group for the object type being waited on.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion for the object type being waited on.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind of the object type being waited on.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"name": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Name is the key for the object this UIResource is waiting on.",
+							Description: "Name of the object being waiting on.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
 				},
-				Required: []string{"gvk", "name"},
+				Required: []string{"group", "apiVersion", "kind", "name"},
 			},
 		},
-		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.GroupVersionKind"},
 	}
 }
 

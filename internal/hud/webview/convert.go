@@ -386,14 +386,6 @@ func LogSegmentToEvent(seg *proto_webview.LogSegment, spans map[string]*proto_we
 	return store.NewLogAction(model.ManifestName(span.ManifestName), logstore.SpanID(seg.SpanId), spoofedLevel, seg.Fields, []byte(seg.Text))
 }
 
-func groupValueKind(gvk schema.GroupVersionKind) metav1.GroupVersionKind {
-	return metav1.GroupVersionKind{
-		Group:   gvk.Group,
-		Version: gvk.Version,
-		Kind:    gvk.Kind,
-	}
-}
-
 func holdToWaiting(hold store.Hold) *v1alpha1.UIResourceStateWaiting {
 	if hold.Reason == store.HoldReasonNone {
 		return nil
@@ -402,20 +394,22 @@ func holdToWaiting(hold store.Hold) *v1alpha1.UIResourceStateWaiting {
 		Reason: string(hold.Reason),
 	}
 	for _, targetID := range hold.HoldOn {
-		var gvk metav1.GroupVersionKind
+		var gvk schema.GroupVersionKind
 		switch targetID.Type {
 		case model.TargetTypeManifest:
-			gvk = groupValueKind(v1alpha1.SchemeGroupVersion.WithKind("UIResource"))
+			gvk = v1alpha1.SchemeGroupVersion.WithKind("UIResource")
 		case model.TargetTypeImage:
-			gvk = groupValueKind(v1alpha1.SchemeGroupVersion.WithKind("ImageMap"))
+			gvk = v1alpha1.SchemeGroupVersion.WithKind("ImageMap")
 		default:
 			continue
 		}
 
 		waiting.On = append(
 			waiting.On, v1alpha1.UIResourceStateWaitingOnRef{
-				GVK:  gvk,
-				Name: targetID.Name.String(),
+				Group:      gvk.Group,
+				APIVersion: gvk.Version,
+				Kind:       gvk.Kind,
+				Name:       targetID.Name.String(),
 			},
 		)
 	}

@@ -372,9 +372,15 @@ type UIResourceStateWaiting struct {
 }
 
 type UIResourceStateWaitingOnRef struct {
-	// GVK is the Group-Version-Kind for the object this UIResource is waiting on.
-	GVK metav1.GroupVersionKind `json:"gvk" protobuf:"bytes,1,opt,name=gvk"`
+	// Group for the object type being waited on.
+	Group string `json:"group" protobuf:"bytes,1,opt,name=group"`
 
-	// Name is the key for the object this UIResource is waiting on.
-	Name string `json:"name" protobuf:"bytes,2,opt,name=name"`
+	// APIVersion for the object type being waited on.
+	APIVersion string `json:"apiVersion" protobuf:"bytes,2,opt,name=apiVersion"`
+
+	// Kind of the object type being waited on.
+	Kind string `json:"kind" protobuf:"bytes,3,opt,name=kind"`
+
+	// Name of the object being waiting on.
+	Name string `json:"name" protobuf:"bytes,4,opt,name=name"`
 }
