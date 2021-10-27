@@ -9,7 +9,7 @@ jobs:
   build-linux:
     resource_class: medium+
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:c9274f913a541c7b62f238872d0a05331449f7db8885974229d99e0965f49eff
+      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:1185c8fe8c863dc09552c5a52bb1b66c1e60e5eb6ef9a84c1408d6eed0473f5c
     # apiserver code generation scripts require being in GOPATH
     working_directory: /go/src/github.com/tilt-dev/tilt
 
@@ -31,7 +31,7 @@ jobs:
           only_for_branches: master
   helm2:
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:c9274f913a541c7b62f238872d0a05331449f7db8885974229d99e0965f49eff
+      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:1185c8fe8c863dc09552c5a52bb1b66c1e60e5eb6ef9a84c1408d6eed0473f5c
     steps:
       - checkout
       - run: sudo mv /usr/bin/helm2 /usr/bin/helm
@@ -60,7 +60,7 @@ jobs:
 
   publish-assets:
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:c9274f913a541c7b62f238872d0a05331449f7db8885974229d99e0965f49eff
+      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:1185c8fe8c863dc09552c5a52bb1b66c1e60e5eb6ef9a84c1408d6eed0473f5c
     steps:
       - checkout
       - run: echo $GCLOUD_SERVICE_KEY > /tmp/gcloud-service-key.json
@@ -75,7 +75,7 @@ jobs:
       size: "large"
     steps:
       - run: choco install make kustomize kubernetes-helm docker-compose
-      - run: choco upgrade -y --allow-downgrade golang --version=1.16.2
+      - run: choco upgrade -y --allow-downgrade golang --version=1.17.2
       - run: go get -u gotest.tools/gotestsum
       - checkout
       # Check to make sure Windows binaries compile
@@ -88,7 +88,7 @@ jobs:
   build-integration:
     resource_class: medium+
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:5bd1575a8c47e52607a490b9498c112e616e43d90811b068811f796cb88add99
+      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:b0ca90fc2a1b957f46965d1e2c5e21fc335c4257ef1592177e8f32b99e94586b
     steps:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
@@ -122,7 +122,7 @@ jobs:
           keys:
             - homebrew_cache_v13
       # Bump cache version when changing this.
-      - run: echo 'export HOMEBREW_PACKAGES="go@1.16"' >> $BASH_ENV
+      - run: echo 'export HOMEBREW_PACKAGES="go@1.17"' >> $BASH_ENV
       # Only update when brew doesn't know about some of the packages because:
       # 1) not worth the cost, and
       # 2) hits github in a way that leads to flakyness
@@ -132,7 +132,7 @@ jobs:
           paths:
             - /usr/local/Homebrew
           key: homebrew_cache_v13
-      - run: echo 'export PATH="/usr/local/opt/go@1.16/bin:$PATH"' >> $BASH_ENV
+      - run: echo 'export PATH="/usr/local/opt/go@1.17/bin:$PATH"' >> $BASH_ENV
       - run: curl -fsSL "https://github.com/gotestyourself/gotestsum/releases/download/v0.3.3/gotestsum_0.3.3_darwin_amd64.tar.gz" | sudo tar -xz -C /usr/local/bin gotestsum
       # We can't run the container tests on macos because nested
       # VMs don't work on circleci.
