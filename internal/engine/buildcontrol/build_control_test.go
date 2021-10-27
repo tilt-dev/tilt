@@ -70,7 +70,7 @@ func TestCurrentlyBuildingUncategorizedDisablesOtherK8sTargets(t *testing.T) {
 	k8sUnresourced.State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}
 	f.assertNoTargetNextToBuild()
 	for _, mn := range []model.ManifestName{"k8s1", "k8s2"} {
-		f.assertHold(mn, store.HoldReasonWaitingForUncategorized, "uncategorized")
+		f.assertHold(mn, store.HoldReasonWaitingForUncategorized, model.ManifestName("uncategorized").TargetID())
 	}
 }
 
@@ -84,7 +84,7 @@ func TestK8sDependsOnLocal(t *testing.T) {
 
 	f.assertNextTargetToBuild("local1")
 
-	f.assertHold("k8s1", store.HoldReasonWaitingForDep, "local1")
+	f.assertHold("k8s1", store.HoldReasonWaitingForDep, model.ManifestName("local1").TargetID())
 	f.assertHold("k8s2", store.HoldReasonNone)
 
 	local1.State.AddCompletedBuild(model.BuildRecord{
@@ -111,7 +111,7 @@ func TestLocalDependsOnNonWorkloadK8s(t *testing.T) {
 	k8s2 := f.upsertK8sManifest("k8s2", withK8sPodReadiness(model.PodReadinessIgnore))
 
 	f.assertNextTargetToBuild("k8s1")
-	f.assertHold("local1", store.HoldReasonWaitingForDep, "k8s1")
+	f.assertHold("local1", store.HoldReasonWaitingForDep, model.ManifestName("k8s1").TargetID())
 	f.assertHold("k8s1", store.HoldReasonNone)
 	f.assertHold("k8s2", store.HoldReasonNone)
 
@@ -147,7 +147,7 @@ func TestCurrentlyBuildingLocalResourceDisablesK8sScheduling(t *testing.T) {
 	local1.State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}
 	f.assertNoTargetNextToBuild()
 	for _, mn := range []model.ManifestName{"k8s1", "k8s2", "local2"} {
-		f.assertHold(mn, store.HoldReasonWaitingForUnparallelizableTarget, "local1")
+		f.assertHold(mn, store.HoldReasonWaitingForUnparallelizableTarget, model.ManifestName("local1").TargetID())
 	}
 }
 
@@ -474,7 +474,7 @@ func newTestFixture(t *testing.T) testFixture {
 	}
 }
 
-func (f *testFixture) assertHold(m model.ManifestName, reason store.HoldReason, holdOn ...model.ManifestName) {
+func (f *testFixture) assertHold(m model.ManifestName, reason store.HoldReason, holdOn ...model.TargetID) {
 	f.T().Helper()
 	_, hs := NextTargetToBuild(*f.st)
 	hold := store.Hold{

@@ -175,6 +175,22 @@
       },
       "description": "FieldsV1 stores a set of fields in a data structure like a Trie, in JSON format.\n\nEach key is either a '.' representing the field itself, and will always map to an empty set,\nor a string representing a sub-field or item. The string will follow one of these four formats:\n'f:\u003cname\u003e', where \u003cname\u003e is the name of a field in a struct, or key in a map\n'v:\u003cvalue\u003e', where \u003cvalue\u003e is the exact json formatted value of a list item\n'i:\u003cindex\u003e', where \u003cindex\u003e is position of a item in a list\n'k:\u003ckeys\u003e', where \u003ckeys\u003e is a map of  a list item's key fields to their unique values\nIf a key maps to an empty Fields value, the field that key represents is part of the set.\n\nThe exact format is defined in sigs.k8s.io/structured-merge-diff\n+protobuf.options.(gogoproto.goproto_stringer)=false"
     },
+    "v1GroupVersionKind": {
+      "type": "object",
+      "properties": {
+        "group": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        }
+      },
+      "description": "+protobuf.options.(gogoproto.goproto_stringer)=false",
+      "title": "GroupVersionKind unambiguously identifies a kind.  It doesn't anonymously include GroupVersion\nto avoid automatic coersion.  It doesn't use a GroupVersion to avoid custom marshalling"
+    },
     "v1ManagedFieldsEntry": {
       "type": "object",
       "properties": {
@@ -733,6 +749,35 @@
       "type": "object",
       "description": "UIResourceSpec is an empty struct.\nUIResource is a kludge for making Tilt's internal status readable, not\nfor specifying behavior."
     },
+    "v1alpha1UIResourceStateWaiting": {
+      "type": "object",
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Reason is a unique, one-word reason for why the UIResource update is pending."
+        },
+        "on": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1alpha1UIResourceStateWaitingOnRef"
+          },
+          "description": "HoldingOn is the set of objects blocking this resource from updating.\n\nThese objects might NOT be explicit dependencies of the current resource. For example, if an un-parallelizable\nresource is updating, all other resources with queued updates will be holding on it with a reason of\n`waiting-for-local`.\n\n+optional"
+        }
+      }
+    },
+    "v1alpha1UIResourceStateWaitingOnRef": {
+      "type": "object",
+      "properties": {
+        "gvk": {
+          "$ref": "#/definitions/v1GroupVersionKind",
+          "description": "GVK is the Group-Version-Kind for the object this UIResource is waiting on."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name is the key for the object this UIResource is waiting on."
+        }
+      }
+    },
     "v1alpha1UIResourceStatus": {
       "type": "object",
       "properties": {
@@ -807,16 +852,9 @@
           "$ref": "#/definitions/v1alpha1DisableResourceStatus",
           "description": "Information about the resource's objects' disabled status."
         },
-        "holdReason": {
-          "type": "string",
-          "description": "HoldReason is a unique, one-word reason for why the UIResource update is pending.\n\n+optional"
-        },
-        "holdingOn": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "HoldingOn is the set of resources blocking this resource from updating.\n\nThese resources might NOT be explicit dependencies of the current resource. For example, if an un-parallelizable\nresource is updating, all other resources with queued updates will be holding on it with a reason of\n`waiting-for-local`.\n\n+optional"
+        "waiting": {
+          "$ref": "#/definitions/v1alpha1UIResourceStateWaiting",
+          "description": "Waiting provides detail on why the resource is currently blocked from updating.\n\n+optional"
         }
       },
       "title": "UIResourceStatus defines the observed state of UIResource"

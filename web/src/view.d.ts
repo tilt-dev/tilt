@@ -358,6 +358,11 @@ declare namespace Proto {
      */
     subresource?: string;
   }
+  export interface v1GroupVersionKind {
+    group?: string;
+    version?: string;
+    kind?: string;
+  }
   export interface v1FieldsV1 {
     /**
      * Raw is the underlying serialization of this object.
@@ -453,21 +458,37 @@ declare namespace Proto {
      */
     disableStatus?: v1alpha1DisableResourceStatus;
     /**
-     * HoldReason is a unique, one-word reason for why the UIResource update is pending.
+     * Waiting provides detail on why the resource is currently blocked from updating.
      *
      * +optional
      */
-    holdReason?: string;
+    waiting?: v1alpha1UIResourceStateWaiting;
+  }
+  export interface v1alpha1UIResourceStateWaitingOnRef {
     /**
-     * HoldingOn is the set of resources blocking this resource from updating.
+     * GVK is the Group-Version-Kind for the object this UIResource is waiting on.
+     */
+    gvk?: v1GroupVersionKind;
+    /**
+     * Name is the key for the object this UIResource is waiting on.
+     */
+    name?: string;
+  }
+  export interface v1alpha1UIResourceStateWaiting {
+    /**
+     * Reason is a unique, one-word reason for why the UIResource update is pending.
+     */
+    reason?: string;
+    /**
+     * HoldingOn is the set of objects blocking this resource from updating.
      *
-     * These resources might NOT be explicit dependencies of the current resource. For example, if an un-parallelizable
+     * These objects might NOT be explicit dependencies of the current resource. For example, if an un-parallelizable
      * resource is updating, all other resources with queued updates will be holding on it with a reason of
      * `waiting-for-local`.
      *
      * +optional
      */
-    holdingOn?: string[];
+    on?: v1alpha1UIResourceStateWaitingOnRef[];
   }
   export interface v1alpha1UIResourceSpec {}
   export interface v1alpha1UIResourceLocal {

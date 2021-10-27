@@ -160,6 +160,8 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceList":                  schema_pkg_apis_core_v1alpha1_UIResourceList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLocal":                 schema_pkg_apis_core_v1alpha1_UIResourceLocal(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceSpec":                  schema_pkg_apis_core_v1alpha1_UIResourceSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceStateWaiting":          schema_pkg_apis_core_v1alpha1_UIResourceStateWaiting(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceStateWaitingOnRef":     schema_pkg_apis_core_v1alpha1_UIResourceStateWaitingOnRef(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceStatus":                schema_pkg_apis_core_v1alpha1_UIResourceStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceTargetSpec":            schema_pkg_apis_core_v1alpha1_UIResourceTargetSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UISession":                       schema_pkg_apis_core_v1alpha1_UISession(ref),
@@ -5805,6 +5807,73 @@ func schema_pkg_apis_core_v1alpha1_UIResourceSpec(ref common.ReferenceCallback) 
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_UIResourceStateWaiting(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"reason": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Reason is a unique, one-word reason for why the UIResource update is pending.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"on": {
+						SchemaProps: spec.SchemaProps{
+							Description: "HoldingOn is the set of objects blocking this resource from updating.\n\nThese objects might NOT be explicit dependencies of the current resource. For example, if an un-parallelizable resource is updating, all other resources with queued updates will be holding on it with a reason of `waiting-for-local`.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceStateWaitingOnRef"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"reason"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceStateWaitingOnRef"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UIResourceStateWaitingOnRef(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"gvk": {
+						SchemaProps: spec.SchemaProps{
+							Description: "GVK is the Group-Version-Kind for the object this UIResource is waiting on.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.GroupVersionKind"),
+						},
+					},
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name is the key for the object this UIResource is waiting on.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"gvk", "name"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.GroupVersionKind"},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_UIResourceStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -5935,33 +6004,17 @@ func schema_pkg_apis_core_v1alpha1_UIResourceStatus(ref common.ReferenceCallback
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableResourceStatus"),
 						},
 					},
-					"holdReason": {
+					"waiting": {
 						SchemaProps: spec.SchemaProps{
-							Description: "HoldReason is a unique, one-word reason for why the UIResource update is pending.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"holdingOn": {
-						SchemaProps: spec.SchemaProps{
-							Description: "HoldingOn is the set of resources blocking this resource from updating.\n\nThese resources might NOT be explicit dependencies of the current resource. For example, if an un-parallelizable resource is updating, all other resources with queued updates will be holding on it with a reason of `waiting-for-local`.",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
-									},
-								},
-							},
+							Description: "Waiting provides detail on why the resource is currently blocked from updating.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceStateWaiting"),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableResourceStatus", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildRunning", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildTerminated", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceKubernetes", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLink", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLocal", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceTargetSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableResourceStatus", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildRunning", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildTerminated", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceKubernetes", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLink", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLocal", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceStateWaiting", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceTargetSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
 	}
 }
 

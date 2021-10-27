@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
 
@@ -265,16 +266,6 @@ func toUIResource(mt *store.ManifestTarget, s store.EngineState, disableSources 
 	// at once).
 	hasPendingChanges, pendingBuildSince := ms.HasPendingChanges()
 
-	var holdReason string
-	var holdOn []string
-	if hold.Reason != store.HoldReasonNone {
-		holdReason = string(hold.Reason)
-		holdOn = make([]string, len(hold.HoldOn))
-		for i := range hold.HoldOn {
-			holdOn[i] = hold.HoldOn[i].String()
-		}
-	}
-
 	drs, err := disableResourceStatus(disableSources, s)
 	if err != nil {
 		return nil, errors.Wrap(err, "error determining disable resource status")
@@ -296,8 +287,7 @@ func toUIResource(mt *store.ManifestTarget, s store.EngineState, disableSources 
 			HasPendingChanges: hasPendingChanges,
 			Queued:            s.ManifestInTriggerQueue(mn),
 			DisableStatus:     drs,
-			HoldReason:        holdReason,
-			HoldingOn:         holdOn,
+			Waiting:           holdToWaiting(hold),
 		},
 	}
 
@@ -394,4 +384,40 @@ func LogSegmentToEvent(seg *proto_webview.LogSegment, spans map[string]*proto_we
 	// TODO(maia): actually get level (just spoofing for now)
 	spoofedLevel := logger.InfoLvl
 	return store.NewLogAction(model.ManifestName(span.ManifestName), logstore.SpanID(seg.SpanId), spoofedLevel, seg.Fields, []byte(seg.Text))
+}
+
+func groupValueKind(gvk schema.GroupVersionKind) metav1.GroupVersionKind {
+	return metav1.GroupVersionKind{
+		Group:   gvk.Group,
+		Version: gvk.Version,
+		Kind:    gvk.Kind,
+	}
+}
+
+func holdToWaiting(hold store.Hold) *v1alpha1.UIResourceStateWaiting {
+	if hold.Reason == store.HoldReasonNone {
+		return nil
+	}
+	waiting := &v1alpha1.UIResourceStateWaiting{
+		Reason: string(hold.Reason),
+	}
+	for _, targetID := range hold.HoldOn {
+		var gvk metav1.GroupVersionKind
+		switch targetID.Type {
+		case model.TargetTypeManifest:
+			gvk = groupValueKind(v1alpha1.SchemeGroupVersion.WithKind("UIResource"))
+		case model.TargetTypeImage:
+			gvk = groupValueKind(v1alpha1.SchemeGroupVersion.WithKind("ImageMap"))
+		default:
+			continue
+		}
+
+		waiting.On = append(
+			waiting.On, v1alpha1.UIResourceStateWaitingOnRef{
+				GVK:  gvk,
+				Name: targetID.Name.String(),
+			},
+		)
+	}
+	return waiting
 }

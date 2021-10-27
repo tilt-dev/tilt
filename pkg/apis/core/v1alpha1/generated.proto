@@ -2217,6 +2217,28 @@ message UIResourceLocal {
 message UIResourceSpec {
 }
 
+message UIResourceStateWaiting {
+  // Reason is a unique, one-word reason for why the UIResource update is pending.
+  optional string reason = 1;
+
+  // HoldingOn is the set of objects blocking this resource from updating.
+  //
+  // These objects might NOT be explicit dependencies of the current resource. For example, if an un-parallelizable
+  // resource is updating, all other resources with queued updates will be holding on it with a reason of
+  // `waiting-for-local`.
+  //
+  // +optional
+  repeated UIResourceStateWaitingOnRef on = 2;
+}
+
+message UIResourceStateWaitingOnRef {
+  // GVK is the Group-Version-Kind for the object this UIResource is waiting on.
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.GroupVersionKind gvk = 1;
+
+  // Name is the key for the object this UIResource is waiting on.
+  optional string name = 2;
+}
+
 // UIResourceStatus defines the observed state of UIResource
 message UIResourceStatus {
   // The last time this resource was deployed.
@@ -2292,19 +2314,10 @@ message UIResourceStatus {
   // Information about the resource's objects' disabled status.
   optional DisableResourceStatus disableStatus = 16;
 
-  // HoldReason is a unique, one-word reason for why the UIResource update is pending.
+  // Waiting provides detail on why the resource is currently blocked from updating.
   //
   // +optional
-  optional string holdReason = 17;
-
-  // HoldingOn is the set of resources blocking this resource from updating.
-  //
-  // These resources might NOT be explicit dependencies of the current resource. For example, if an un-parallelizable
-  // resource is updating, all other resources with queued updates will be holding on it with a reason of
-  // `waiting-for-local`.
-  //
-  // +optional
-  repeated string holdingOn = 18;
+  optional UIResourceStateWaiting waiting = 17;
 }
 
 // UIResourceTargetSpec represents the spec of a build or deploy that a resource summarizes.

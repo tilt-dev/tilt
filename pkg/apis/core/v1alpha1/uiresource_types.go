@@ -194,19 +194,10 @@ type UIResourceStatus struct {
 	// Information about the resource's objects' disabled status.
 	DisableStatus DisableResourceStatus `json:"disableStatus,omitempty" protobuf:"bytes,16,opt,name=disableStatus"`
 
-	// HoldReason is a unique, one-word reason for why the UIResource update is pending.
+	// Waiting provides detail on why the resource is currently blocked from updating.
 	//
 	// +optional
-	HoldReason string `json:"holdReason,omitempty" protobuf:"bytes,17,opt,name=holdReason"`
-
-	// HoldingOn is the set of resources blocking this resource from updating.
-	//
-	// These resources might NOT be explicit dependencies of the current resource. For example, if an un-parallelizable
-	// resource is updating, all other resources with queued updates will be holding on it with a reason of
-	// `waiting-for-local`.
-	//
-	// +optional
-	HoldingOn []string `json:"holdingOn,omitempty" protobuf:"bytes,18,rep,name=holdingOn"`
+	Waiting *UIResourceStateWaiting `json:"waiting,omitempty" protobuf:"bytes,17,opt,name=waiting"`
 }
 
 // UIResource implements ObjectWithStatusSubResource interface.
@@ -364,4 +355,26 @@ type UIResourceLocal struct {
 	// Whether this represents a test job.
 	// +optional
 	IsTest bool `json:"isTest,omitempty" protobuf:"varint,2,opt,name=isTest"`
+}
+
+type UIResourceStateWaiting struct {
+	// Reason is a unique, one-word reason for why the UIResource update is pending.
+	Reason string `json:"reason" protobuf:"bytes,1,opt,name=reason"`
+
+	// HoldingOn is the set of objects blocking this resource from updating.
+	//
+	// These objects might NOT be explicit dependencies of the current resource. For example, if an un-parallelizable
+	// resource is updating, all other resources with queued updates will be holding on it with a reason of
+	// `waiting-for-local`.
+	//
+	// +optional
+	On []UIResourceStateWaitingOnRef `json:"on,omitempty" protobuf:"bytes,2,rep,name=on"`
+}
+
+type UIResourceStateWaitingOnRef struct {
+	// GVK is the Group-Version-Kind for the object this UIResource is waiting on.
+	GVK metav1.GroupVersionKind `json:"gvk" protobuf:"bytes,1,opt,name=gvk"`
+
+	// Name is the key for the object this UIResource is waiting on.
+	Name string `json:"name" protobuf:"bytes,2,opt,name=name"`
 }

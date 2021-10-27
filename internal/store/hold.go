@@ -7,7 +7,7 @@ import "github.com/tilt-dev/tilt/pkg/model"
 type Hold struct {
 	Reason HoldReason
 
-	HoldOn []model.ManifestName
+	HoldOn []model.TargetID
 }
 
 func (h Hold) String() string {

@@ -30,7 +30,7 @@ func NextTargetToBuild(state store.EngineState) (*store.ManifestTarget, HoldSet)
 		if tiltfileHasPendingChanges {
 			holds.Fill(targets, store.Hold{
 				Reason: store.HoldReasonTiltfileReload,
-				HoldOn: []model.ManifestName{ms.Name},
+				HoldOn: []model.TargetID{ms.TargetID()},
 			})
 			return nil, holds
 		}
@@ -40,7 +40,7 @@ func NextTargetToBuild(state store.EngineState) (*store.ManifestTarget, HoldSet)
 	if mn, _, building := IsBuildingUnparallelizableLocalTarget(state); building {
 		holds.Fill(targets, store.Hold{
 			Reason: store.HoldReasonWaitingForUnparallelizableTarget,
-			HoldOn: []model.ManifestName{mn},
+			HoldOn: []model.TargetID{mn.TargetID()},
 		})
 		return nil, holds
 	}
@@ -111,17 +111,17 @@ func NextManifestNameToBuild(state store.EngineState) model.ManifestName {
 	return mt.Manifest.Name
 }
 
-func waitingOnDependencies(state store.EngineState, mt *store.ManifestTarget) []model.ManifestName {
+func waitingOnDependencies(state store.EngineState, mt *store.ManifestTarget) []model.TargetID {
 	// dependencies only block the first build, so if this manifest has ever built, ignore dependencies
 	if mt.State.StartedFirstBuild() {
 		return nil
 	}
 
-	var waitingOn []model.ManifestName
+	var waitingOn []model.TargetID
 	for _, mn := range mt.Manifest.ResourceDependencies {
 		ms, ok := state.ManifestState(mn)
 		if !ok || ms == nil || ms.RuntimeState == nil || !ms.RuntimeState.HasEverBeenReadyOrSucceeded() {
-			waitingOn = append(waitingOn, mn)
+			waitingOn = append(waitingOn, mn.TargetID())
 		}
 	}
 
@@ -298,7 +298,7 @@ func HoldK8sTargets(targets []*store.ManifestTarget, holds HoldSet) {
 		if target.Manifest.IsK8s() {
 			holds.AddHold(target, store.Hold{
 				Reason: store.HoldReasonWaitingForUncategorized,
-				HoldOn: []model.ManifestName{model.UnresourcedYAMLManifestName},
+				HoldOn: []model.TargetID{model.UnresourcedYAMLManifestName.TargetID()},
 			})
 		}
 	}
