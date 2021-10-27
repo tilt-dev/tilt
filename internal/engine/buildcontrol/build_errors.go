@@ -1,11 +1,11 @@
 package buildcontrol
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/pkg/errors"
 
+	"github.com/tilt-dev/tilt/internal/store/buildcontrols"
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
@@ -63,15 +63,8 @@ func IsDontFallBackError(err error) bool {
 
 var _ error = DontFallBackError{}
 
-// A permanent error indicates that the whole build pipeline needs to stop.
-// It will never recover, even on subsequent rebuilds.
-func IsFatalError(err error) bool {
-	cause := errors.Cause(err)
-	return cause == context.Canceled
-}
-
 func ShouldFallBackForErr(err error) bool {
-	if IsFatalError(err) {
+	if buildcontrols.IsFatalError(err) {
 		return false
 	}
 

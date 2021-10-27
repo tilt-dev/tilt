@@ -9,6 +9,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/buildcontrols"
 	"github.com/tilt-dev/tilt/internal/store/dcconv"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -104,7 +105,7 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore, summary
 		return nil
 	}
 
-	st.Dispatch(buildcontrol.BuildStartedAction{
+	st.Dispatch(buildcontrols.BuildStartedAction{
 		ManifestName:       entry.name,
 		StartTime:          time.Now(),
 		FilesChanged:       entry.filesChanged,
@@ -117,14 +118,14 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore, summary
 		ctx = c.buildContext(ctx, entry, st)
 		defer c.cleanupBuildContext(entry.name)
 
-		buildcontrol.LogBuildEntry(ctx, buildcontrol.BuildEntry{
+		buildcontrols.LogBuildEntry(ctx, buildcontrols.BuildEntry{
 			Name:         entry.Name(),
 			BuildReason:  entry.BuildReason(),
 			FilesChanged: entry.FilesChanged(),
 		})
 
 		result, err := c.buildAndDeploy(ctx, st, entry)
-		st.Dispatch(buildcontrol.NewBuildCompleteAction(entry.name, entry.spanID, result, err))
+		st.Dispatch(buildcontrols.NewBuildCompleteAction(entry.name, entry.spanID, result, err))
 	}()
 
 	return nil
