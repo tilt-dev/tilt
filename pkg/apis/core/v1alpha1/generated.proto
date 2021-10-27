@@ -1042,6 +1042,16 @@ message LiveUpdate {
   optional LiveUpdateStatus status = 3;
 }
 
+message LiveUpdateContainerStateWaiting {
+  // One word camel-case reason why we're in a waiting state.
+  // +optional
+  optional string reason = 1;
+
+  // Human-readable description of what's blocking.
+  // +optional
+  optional string message = 2;
+}
+
 // LiveUpdateContainerStatus defines the observed state of
 // the live-update syncer for a particular container.
 message LiveUpdateContainerStatus {
@@ -1076,6 +1086,12 @@ message LiveUpdateContainerStatus {
   //
   // +optional
   optional string lastExecError = 6;
+
+  // Details about a waiting live update.
+  //
+  // A live update is waiting when the reconciler is aware of file changes
+  // that need to be synced to the container, but has decided not to sync them yet.
+  optional LiveUpdateContainerStateWaiting waiting = 7;
 }
 
 // Runs a remote command after files have been synced to the container.

@@ -89,6 +89,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesImageObjectDescriptor": schema_pkg_apis_core_v1alpha1_KubernetesImageObjectDescriptor(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesWatchRef":              schema_pkg_apis_core_v1alpha1_KubernetesWatchRef(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdate":                      schema_pkg_apis_core_v1alpha1_LiveUpdate(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateContainerStateWaiting": schema_pkg_apis_core_v1alpha1_LiveUpdateContainerStateWaiting(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateContainerStatus":       schema_pkg_apis_core_v1alpha1_LiveUpdateContainerStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateExec":                  schema_pkg_apis_core_v1alpha1_LiveUpdateExec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateKubernetesSelector":    schema_pkg_apis_core_v1alpha1_LiveUpdateKubernetesSelector(ref),
@@ -2771,6 +2772,32 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdate(ref common.ReferenceCallback) comm
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_LiveUpdateContainerStateWaiting(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"reason": {
+						SchemaProps: spec.SchemaProps{
+							Description: "One word camel-case reason why we're in a waiting state.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"message": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Human-readable description of what's blocking.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_LiveUpdateContainerStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -2823,12 +2850,18 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateContainerStatus(ref common.Referenc
 							Format:      "",
 						},
 					},
+					"waiting": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Details about a waiting live update.\n\nA live update is waiting when the reconciler is aware of file changes that need to be synced to the container, but has decided not to sync them yet.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateContainerStateWaiting"),
+						},
+					},
 				},
 				Required: []string{"containerName", "podName", "namespace"},
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateContainerStateWaiting", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
 	}
 }
 

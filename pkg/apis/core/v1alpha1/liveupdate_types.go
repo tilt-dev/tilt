@@ -338,6 +338,12 @@ type LiveUpdateContainerStatus struct {
 	//
 	// +optional
 	LastExecError string `json:"lastExecError,omitempty" protobuf:"bytes,6,opt,name=lastExecError"`
+
+	// Details about a waiting live update.
+	//
+	// A live update is waiting when the reconciler is aware of file changes
+	// that need to be synced to the container, but has decided not to sync them yet.
+	Waiting *LiveUpdateContainerStateWaiting `json:"waiting,omitempty" protobuf:"bytes,7,opt,name=waiting"`
 }
 
 // If any of the containers are currently failing to process updates, the
@@ -355,4 +361,14 @@ type LiveUpdateStateFailed struct {
 	// When the live-updater transitioned into a Failed state.
 	// +optional
 	LastTransitionTime metav1.MicroTime `json:"lastTransitionTime,omitempty" protobuf:"bytes,3,opt,name=lastTransitionTime"`
+}
+
+type LiveUpdateContainerStateWaiting struct {
+	// One word camel-case reason why we're in a waiting state.
+	// +optional
+	Reason string `json:"reason,omitempty" protobuf:"bytes,1,opt,name=reason"`
+
+	// Human-readable description of what's blocking.
+	// +optional
+	Message string `json:"message,omitempty" protobuf:"bytes,2,opt,name=message"`
 }
