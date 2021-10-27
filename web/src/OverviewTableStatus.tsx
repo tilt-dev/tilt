@@ -4,7 +4,9 @@ import { ReactComponent as CheckmarkSmallSvg } from "./assets/svg/checkmark-smal
 import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
 import { ReactComponent as PendingSvg } from "./assets/svg/pending.svg"
 import { ReactComponent as WarningSvg } from "./assets/svg/warning.svg"
+import { Hold } from "./Hold"
 import { useResourceNav } from "./ResourceNav"
+import { PendingBuildDescription } from "./status"
 import {
   Color,
   FontSize,
@@ -14,6 +16,7 @@ import {
   spin,
 } from "./style-helpers"
 import { formatBuildDuration } from "./time"
+import Tooltip from "./Tooltip"
 import { ResourceStatus } from "./types"
 
 const StatusMsg = styled.span``
@@ -78,12 +81,14 @@ type OverviewTableStatusProps = {
   resourceName: string
   lastBuildDur?: moment.Duration | null
   isBuild?: boolean
+  hold?: Hold | null
 }
 
 export default function OverviewTableStatus(props: OverviewTableStatusProps) {
-  let { status, lastBuildDur, isBuild, resourceName } = props
+  let { status, lastBuildDur, isBuild, resourceName, hold } = props
   let icon = null
   let msg = ""
+  let tooltip = ""
   let classes = ""
 
   switch (status) {
@@ -96,7 +101,12 @@ export default function OverviewTableStatus(props: OverviewTableStatusProps) {
       break
     case ResourceStatus.Pending:
       icon = <PendingSvg />
-      msg = isBuild ? "Update Pending" : "Runtime Pending"
+      if (isBuild) {
+        msg = "Update Pending"
+        tooltip = PendingBuildDescription(hold)
+      } else {
+        msg = "Runtime Pending"
+      }
       classes = "is-pending"
       break
 
@@ -132,7 +142,7 @@ export default function OverviewTableStatus(props: OverviewTableStatusProps) {
 
   if (!msg) return null
 
-  return (
+  let content = (
     <StyledOverviewTableStatus
       className={classes}
       onClick={() => void nav.openResource(resourceName)}
@@ -141,4 +151,10 @@ export default function OverviewTableStatus(props: OverviewTableStatusProps) {
       <StatusMsg>{msg}</StatusMsg>
     </StyledOverviewTableStatus>
   )
+
+  if (tooltip) {
+    return <Tooltip title={tooltip}>{content}</Tooltip>
+  }
+
+  return content
 }

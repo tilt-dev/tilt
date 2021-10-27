@@ -27,6 +27,7 @@ import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
 import { ReactComponent as StarSvg } from "./assets/svg/star.svg"
 import { linkToTiltDocs, TiltDocsPage } from "./constants"
 import { Flag, useFeatures } from "./feature"
+import { Hold } from "./Hold"
 import { InstrumentedButton } from "./instrumentedComponents"
 import {
   getResourceLabels,
@@ -132,6 +133,7 @@ type OverviewTableStatus = {
   lastBuildDur: moment.Duration | null
   runtimeStatus: ResourceStatus
   runtimeAlertCount: number
+  hold?: Hold | null
 }
 
 // Resource name filter styles
@@ -442,6 +444,7 @@ function TableStatusColumn({ row }: CellProps<RowValues>) {
         lastBuildDur={status.lastBuildDur}
         isBuild={true}
         resourceName={row.values.name}
+        hold={status.hold}
       />
       <OverviewTableStatus
         status={status.runtimeStatus}
@@ -790,6 +793,7 @@ function uiResourceToCell(
       lastBuildDur: lastBuildDur,
       runtimeStatus: runtimeStatus(r, alertIndex),
       runtimeAlertCount: runtimeAlerts(r, alertIndex).length,
+      hold: res.waiting ? new Hold(res.waiting) : null,
     },
     podId: res.k8sResourceInfo?.podName ?? "",
     endpoints: res.endpointLinks ?? [],

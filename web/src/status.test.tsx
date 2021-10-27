@@ -1,5 +1,11 @@
+import { Hold } from "./Hold"
 import LogStore, { LogAlert, LogAlertIndex } from "./LogStore"
-import { buildStatus, combinedStatus, runtimeStatus } from "./status"
+import {
+  buildStatus,
+  combinedStatus,
+  PendingBuildDescription,
+  runtimeStatus,
+} from "./status"
 import { oneResource } from "./testdata"
 import { zeroTime } from "./time"
 import { LogLevel, ResourceStatus, RuntimeStatus, UpdateStatus } from "./types"
@@ -142,5 +148,82 @@ describe("combinedStatus", () => {
     expect(combinedStatus(buildStatus(res, ls), runtimeStatus(res, ls))).toBe(
       ResourceStatus.Unhealthy
     )
+  })
+})
+
+describe("PendingBuildDescription", () => {
+  it("shows a generic message if there is no hold", () => {
+    expect(PendingBuildDescription(null)).toBe("Update: pending")
+  })
+
+  it("shows a generic message if there are no dependencies", () => {
+    let hold = new Hold({
+      reason: "waiting-for-deploy",
+      on: [],
+    })
+    expect(PendingBuildDescription(hold)).toBe("Update: pending")
+  })
+
+  it("shows single image name", () => {
+    let hold = new Hold({
+      reason: "waiting-for-deploy",
+      on: [{ kind: "ImageMap", name: "gcr.io/foo" }],
+    })
+    expect(PendingBuildDescription(hold)).toBe(
+      "Update: waiting on image: gcr.io/foo"
+    )
+  })
+
+  it("shows single resource name", () => {
+    let hold = new Hold({
+      reason: "waiting-for-deploy",
+      on: [{ kind: "UIResource", name: "bar" }],
+    })
+    expect(PendingBuildDescription(hold)).toBe(
+      "Update: waiting on resource: bar"
+    )
+  })
+
+  it("shows multiple resource names without overflow", () => {
+    let hold = new Hold({
+      reason: "waiting-for-deploy",
+      on: [
+        { kind: "UIResource", name: "foo" },
+        { kind: "UIResource", name: "bar" },
+        { kind: "UIResource", name: "baz" },
+      ],
+    })
+    expect(PendingBuildDescription(hold)).toBe(
+      "Update: waiting on resources: foo, bar, baz"
+    )
+  })
+
+  it("shows multiple image names with overflow", () => {
+    let hold = new Hold({
+      reason: "waiting-for-deploy",
+      on: ["a", "b", "c", "d", "e"].map((x) => ({ kind: "ImageMap", name: x })),
+    })
+    expect(PendingBuildDescription(hold)).toBe(
+      "Update: waiting on images: a, b, c, and 2 more"
+    )
+  })
+
+  it("prefers image over resource", () => {
+    let hold = new Hold({
+      reason: "waiting-for-deploy",
+      on: [
+        { kind: "UIResource", name: "foo" },
+        { kind: "ImageMap", name: "bar" },
+      ],
+    })
+    expect(PendingBuildDescription(hold)).toBe("Update: waiting on image: bar")
+  })
+
+  it("gracefully falls back for unknown types", () => {
+    let hold = new Hold({
+      reason: "waiting-for-deploy",
+      on: [{ kind: "ThisIsNotARealKind", name: "foo" }],
+    })
+    expect(PendingBuildDescription(hold)).toBe("Update: waiting on 1 object")
   })
 })
