@@ -182,10 +182,14 @@ func HoldTargetsWithBuildingComponents(mts []*store.ManifestTarget, holds HoldSe
 		}
 	}
 
-	hasBuildingComponent := func(mt *store.ManifestTarget) bool {
+	hasBuildingComponent := func(mt *store.ManifestTarget) ([]model.TargetID, bool) {
+		var targetIDs []model.TargetID
+		var shouldHold bool
+
 		m := mt.Manifest
 		if building[m.ID()] {
-			return true
+			// mark as holding but don't add self as a dependency
+			shouldHold = true
 		}
 
 		for _, spec := range m.TargetSpecs() {
@@ -194,16 +198,19 @@ func HoldTargetsWithBuildingComponents(mts []*store.ManifestTarget, holds HoldSe
 			}
 
 			if building[spec.ID()] {
-				return true
+				targetIDs = append(targetIDs, spec.ID())
+				shouldHold = true
 			}
 		}
-		return false
+		return targetIDs, shouldHold
 	}
 
 	for _, mt := range mts {
-		if hasBuildingComponent(mt) {
-			// TODO(milas): can we surface dependencies in this case?
-			holds.AddHold(mt, store.Hold{Reason: store.HoldReasonBuildingComponent})
+		if waitingOn, shouldHold := hasBuildingComponent(mt); shouldHold {
+			holds.AddHold(mt, store.Hold{
+				Reason: store.HoldReasonBuildingComponent,
+				HoldOn: waitingOn,
+			})
 		}
 	}
 }
