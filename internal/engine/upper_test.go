@@ -80,6 +80,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/localexec"
 	"github.com/tilt-dev/tilt/internal/openurl"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/buildcontrols"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/internal/store/tiltfiles"
 	"github.com/tilt-dev/tilt/internal/testutils"
@@ -1621,13 +1622,13 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 		return buildcontrol.NextManifestNameToBuild(st) == manifest.Name && ms.HasPendingFileChanges()
 	})
 	spanID0 := SpanIDForBuildLog(0)
-	f.store.Dispatch(buildcontrol.BuildStartedAction{
+	f.store.Dispatch(buildcontrols.BuildStartedAction{
 		ManifestName: manifest.Name,
 		StartTime:    f.Now(),
 		SpanID:       spanID0,
 	})
 
-	f.store.Dispatch(buildcontrol.NewBuildCompleteAction(name,
+	f.store.Dispatch(buildcontrols.NewBuildCompleteAction(name,
 		spanID0,
 		liveUpdateResultSet(manifest, "theOriginalContainer"), nil))
 
@@ -1673,7 +1674,7 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 		return buildcontrol.NextManifestNameToBuild(st) == manifest.Name && ms.HasPendingFileChanges()
 	})
 	spanID0 := SpanIDForBuildLog(0)
-	f.store.Dispatch(buildcontrol.BuildStartedAction{
+	f.store.Dispatch(buildcontrols.BuildStartedAction{
 		ManifestName: manifest.Name,
 		StartTime:    f.Now(),
 		SpanID:       spanID0,
@@ -1684,7 +1685,7 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 
 	// ...and finish the build. Even though this action comes in AFTER the pod
 	// event w/ unexpected container,  we should still be able to detect the mismatch.
-	f.store.Dispatch(buildcontrol.NewBuildCompleteAction(name, spanID0,
+	f.store.Dispatch(buildcontrols.NewBuildCompleteAction(name, spanID0,
 		liveUpdateResultSet(manifest, "theOriginalContainer"), nil))
 
 	f.WaitUntilManifestState("NeedsRebuildFromCrash set to True", "foobar", func(ms store.ManifestState) bool {
@@ -1714,7 +1715,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 	})
 
 	spanID0 := SpanIDForBuildLog(0)
-	f.store.Dispatch(buildcontrol.BuildStartedAction{
+	f.store.Dispatch(buildcontrols.BuildStartedAction{
 		ManifestName: manifest.Name,
 		StartTime:    f.Now(),
 		SpanID:       spanID0,
@@ -1731,7 +1732,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 	f.kClient.Inject(entities.Deployment(), entities.ReplicaSet())
 
 	f.setK8sApplyResult(name, ptsh, entities.Deployment())
-	f.store.Dispatch(buildcontrol.NewBuildCompleteAction(name,
+	f.store.Dispatch(buildcontrols.NewBuildCompleteAction(name,
 		spanID0,
 		deployResultSet(f.T(), manifest, pb, []k8s.PodTemplateSpecHash{ptsh}), nil))
 
@@ -1748,7 +1749,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 	})
 
 	spanID1 := SpanIDForBuildLog(1)
-	f.store.Dispatch(buildcontrol.BuildStartedAction{
+	f.store.Dispatch(buildcontrols.BuildStartedAction{
 		ManifestName: manifest.Name,
 		StartTime:    f.Now(),
 		SpanID:       spanID1,
@@ -1757,7 +1758,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 	// Simulate a pod crash, then a build completion
 	f.podEvent(pb.WithContainerID("funny-container-id").Build())
 
-	f.store.Dispatch(buildcontrol.NewBuildCompleteAction(name,
+	f.store.Dispatch(buildcontrols.NewBuildCompleteAction(name,
 		spanID1,
 		liveUpdateResultSet(manifest, "normal-container-id"), nil))
 
@@ -3110,7 +3111,7 @@ func TestBuildLogAction(t *testing.T) {
 	manifest := f.newManifest("alert-injester")
 	f.Start([]model.Manifest{manifest})
 
-	f.store.Dispatch(buildcontrol.BuildStartedAction{
+	f.store.Dispatch(buildcontrols.BuildStartedAction{
 		ManifestName: manifest.Name,
 		StartTime:    f.Now(),
 		SpanID:       SpanIDForBuildLog(1),

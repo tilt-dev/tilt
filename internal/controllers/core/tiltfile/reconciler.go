@@ -24,8 +24,8 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/apis/restarton"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/docker"
-	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/buildcontrols"
 	"github.com/tilt-dev/tilt/internal/store/tiltfiles"
 	"github.com/tilt-dev/tilt/internal/tiltfile"
 	"github.com/tilt-dev/tilt/pkg/apis"
@@ -256,7 +256,7 @@ func (r *Reconciler) run(ctx context.Context, nn types.NamespacedName, tf *v1alp
 		Reason:       entry.BuildReason,
 	})
 
-	buildcontrol.LogBuildEntry(ctx, buildcontrol.BuildEntry{
+	buildcontrols.LogBuildEntry(ctx, buildcontrols.BuildEntry{
 		Name:         entry.Name,
 		BuildReason:  entry.BuildReason,
 		FilesChanged: entry.FilesChanged,
