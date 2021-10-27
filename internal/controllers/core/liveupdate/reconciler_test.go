@@ -180,6 +180,111 @@ func TestWaitingContainer(t *testing.T) {
 	assert.Equal(t, 1, len(f.cu.Calls))
 }
 
+func TestOneTerminatedContainer(t *testing.T) {
+	f := newFixture(t)
+
+	p, _ := os.Getwd()
+	nowMicro := apis.NowMicro()
+	txtPath := filepath.Join(p, "a.txt")
+	txtChangeTime := metav1.MicroTime{Time: nowMicro.Add(time.Second)}
+
+	f.setupFrontend()
+	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
+		Pods: []v1alpha1.Pod{
+			{
+				Name:      "pod-1",
+				Namespace: "default",
+				Containers: []v1alpha1.Container{
+					{
+						Name:  "main",
+						ID:    "main",
+						Image: "frontend-image",
+						State: v1alpha1.ContainerState{
+							Terminated: &v1alpha1.ContainerStateTerminated{},
+						},
+					},
+				},
+			},
+		},
+	})
+
+	f.addFileEvent("frontend-fw", txtPath, txtChangeTime)
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+
+	var lu v1alpha1.LiveUpdate
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	if assert.NotNil(t, lu.Status.Failed) {
+		assert.Equal(t, "Terminated", lu.Status.Failed.Reason)
+	}
+
+	f.assertSteadyState(&lu)
+}
+
+func TestOneRunningOneTerminatedContainer(t *testing.T) {
+	f := newFixture(t)
+
+	p, _ := os.Getwd()
+	nowMicro := apis.NowMicro()
+	txtPath := filepath.Join(p, "a.txt")
+	txtChangeTime := metav1.MicroTime{Time: nowMicro.Add(time.Second)}
+
+	f.setupFrontend()
+	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
+		Pods: []v1alpha1.Pod{
+			{
+				Name:      "pod-1",
+				Namespace: "default",
+				Containers: []v1alpha1.Container{
+					{
+						Name:  "main",
+						ID:    "main",
+						Image: "frontend-image",
+						State: v1alpha1.ContainerState{
+							Terminated: &v1alpha1.ContainerStateTerminated{},
+						},
+					},
+				},
+			},
+			{
+				Name:      "pod-2",
+				Namespace: "default",
+				Containers: []v1alpha1.Container{
+					{
+						Name:  "main",
+						ID:    "main",
+						Image: "frontend-image",
+						State: v1alpha1.ContainerState{
+							Running: &v1alpha1.ContainerStateRunning{},
+						},
+					},
+				},
+			},
+		},
+	})
+
+	// Trigger a file event, and make sure that the status reflects the sync.
+	f.addFileEvent("frontend-fw", txtPath, txtChangeTime)
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+
+	var lu v1alpha1.LiveUpdate
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	assert.Nil(t, lu.Status.Failed)
+	if assert.Equal(t, 1, len(lu.Status.Containers)) {
+		assert.Equal(t, txtChangeTime, lu.Status.Containers[0].LastFileTimeSynced)
+	}
+
+	// Also make sure the sync gets pulled into the monitor.
+	m, ok := f.r.monitors["frontend-liveupdate"]
+	require.True(t, ok)
+	assert.Equal(t, map[string]metav1.MicroTime{
+		txtPath: txtChangeTime,
+	}, m.sources["frontend-fw"].modTimeByPath)
+	assert.Equal(t, 1, len(f.cu.Calls))
+	assert.Equal(t, "pod-2", f.cu.Calls[0].ContainerInfo.PodID.String())
+
+	f.assertSteadyState(&lu)
+}
+
 type fixture struct {
 	*fake.ControllerFixture
 	r  *Reconciler
@@ -284,11 +389,15 @@ func (f *fixture) setupFrontend() {
 }
 
 func (f *fixture) assertSteadyState(lu *v1alpha1.LiveUpdate) {
+	startCalls := len(f.cu.Calls)
+
 	f.T().Helper()
 	f.MustReconcile(types.NamespacedName{Name: lu.Name})
 	var lu2 v1alpha1.LiveUpdate
 	f.MustGet(types.NamespacedName{Name: lu.Name}, &lu2)
 	assert.Equal(f.T(), lu.ResourceVersion, lu2.ResourceVersion)
+
+	assert.Equal(f.T(), startCalls, len(f.cu.Calls))
 }
 
 func (f *fixture) kdUpdateStatus(name string, status v1alpha1.KubernetesDiscoveryStatus) {

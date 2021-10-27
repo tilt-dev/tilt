@@ -518,11 +518,7 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 		}
 
 		if cInfo.State.Running == nil {
-			// If we're missing any relevant info for this container, OR if the
-			// container isn't running, we can't update it in place.
-			// (Since we'll need to fully rebuild this image, we shouldn't bother
-			// in-place updating ANY containers on this pod -- they'll all
-			// be recreated when we image build. So don't return ANY Containers.)
+			// Mark the container as waiting, so we have a record of it.
 			status.Containers = append(status.Containers, v1alpha1.LiveUpdateContainerStatus{
 				ContainerName: cInfo.Name,
 				ContainerID:   cInfo.ID,
@@ -569,7 +565,7 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 	//
 	// If we get to the end of this loop and haven't found any "live" pods,
 	// we assume we're in state (1) (to prevent waiting forever).
-	if status.Failed != nil && terminatedContainerPodName != "" &&
+	if status.Failed == nil && terminatedContainerPodName != "" &&
 		hasAnyFilesToSync && len(status.Containers) == 0 {
 		status.Failed = createFailedState(lu, "Terminated",
 			fmt.Sprintf("Container for live update is stopped. Pod name: %s", terminatedContainerPodName))
