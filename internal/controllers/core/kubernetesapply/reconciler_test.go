@@ -491,10 +491,12 @@ func (f *fixture) setDisabled(name string, isDisabled bool) {
 	if !cmExists {
 		cm.ObjectMeta.Name = ka.Spec.DisableSource.ConfigMap.Name
 		cm.Data = map[string]string{ka.Spec.DisableSource.ConfigMap.Key: strconv.FormatBool(isDisabled)}
-		f.Client.Create(f.Context(), &cm)
+		err := f.Client.Create(f.Context(), &cm)
+		require.NoError(f.T(), err)
 	} else {
 		cm.Data[ka.Spec.DisableSource.ConfigMap.Key] = strconv.FormatBool(isDisabled)
-		f.Client.Update(f.Context(), &cm)
+		err := f.Client.Update(f.Context(), &cm)
+		require.NoError(f.T(), err)
 	}
 
 	_, err := f.Reconcile(types.NamespacedName{Name: name})

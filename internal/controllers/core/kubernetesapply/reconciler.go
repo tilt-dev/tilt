@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -56,6 +57,16 @@ type Reconciler struct {
 
 	// Protected by the mutex.
 	results map[types.NamespacedName]*Result
+}
+
+// Partial KubernetesApplyStatus that represents
+// the fields returned by `ForceApply`
+type ForceApplyStatus struct {
+	ResultYAML         string
+	Error              string
+	LastApplyTime      metav1.MicroTime
+	LastApplyStartTime metav1.MicroTime
+	AppliedInputHash   string
 }
 
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
@@ -262,14 +273,23 @@ func (r *Reconciler) ForceApply(
 	var ka v1alpha1.KubernetesApply
 	err := r.ctrlClient.Get(ctx, nn, &ka)
 	if err != nil {
-		return v1alpha1.KubernetesApplyStatus{}, err // TODO (lizz): Will this empty status return affect anything consuming this data?
+		return v1alpha1.KubernetesApplyStatus{}, err
 	}
 
-	status, appliedObjects := r.forceApplyHelper(ctx, r.ctrlClient, spec, ka.Status, imageMaps)
-	statusCopy := status.DeepCopy()
+	forceApplyStatus, appliedObjects := r.forceApplyHelper(ctx, spec, imageMaps)
+
+	// Copy over status information from `forceApplyHelper`
+	// so other existing status information isn't overwritten
+	updatedStatus := ka.Status.DeepCopy()
+	updatedStatus.ResultYAML = forceApplyStatus.ResultYAML
+	updatedStatus.Error = forceApplyStatus.Error
+	updatedStatus.LastApplyStartTime = forceApplyStatus.LastApplyStartTime
+	updatedStatus.LastApplyTime = forceApplyStatus.LastApplyTime
+	updatedStatus.AppliedInputHash = forceApplyStatus.AppliedInputHash
+
 	result := Result{
 		Spec:           spec,
-		Status:         *statusCopy,
+		Status:         *updatedStatus,
 		AppliedObjects: newObjectRefSet(appliedObjects),
 	}
 
@@ -284,16 +304,16 @@ func (r *Reconciler) ForceApply(
 		result.ImageMapStatuses = append(result.ImageMapStatuses, im.Status)
 	}
 
-	ka.Status = status
+	ka.Status = *updatedStatus
 	err = r.ctrlClient.Status().Update(ctx, &ka)
 	if err != nil {
-		return status, err
+		return *updatedStatus, err
 	}
 
 	toDelete := r.updateResult(nn, &result)
 	r.bestEffortDelete(ctx, toDelete)
 
-	return status, nil
+	return *updatedStatus, nil
 }
 
 // A helper that applies the given specs to the cluster, but doesn't update the APIServer.
@@ -303,18 +323,16 @@ func (r *Reconciler) ForceApply(
 // - the parsed entities that we tried to apply
 func (r *Reconciler) forceApplyHelper(
 	ctx context.Context,
-	ctrlClient ctrlclient.Client,
 	spec v1alpha1.KubernetesApplySpec,
-	prevStatus v1alpha1.KubernetesApplyStatus,
 	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap,
-) (v1alpha1.KubernetesApplyStatus, []k8s.K8sEntity) {
+) (ForceApplyStatus, []k8s.K8sEntity) {
 
 	startTime := apis.NowMicro()
-	status := v1alpha1.KubernetesApplyStatus{
+	status := ForceApplyStatus{
 		LastApplyStartTime: startTime,
 	}
 
-	errorStatus := func(err error) v1alpha1.KubernetesApplyStatus {
+	errorStatus := func(err error) ForceApplyStatus {
 		status.LastApplyTime = apis.NowMicro()
 		status.Error = err.Error()
 		return status
