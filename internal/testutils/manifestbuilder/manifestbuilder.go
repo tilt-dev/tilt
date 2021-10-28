@@ -1,6 +1,7 @@
 package manifestbuilder
 
 import (
+	"fmt"
 	"testing"
 
 	"k8s.io/apimachinery/pkg/labels"
@@ -27,17 +28,18 @@ type ManifestBuilder struct {
 	f    Fixture
 	name model.ManifestName
 
-	k8sPodReadiness    model.PodReadinessMode
-	k8sYAML            string
-	k8sPodSelectors    []labels.Set
-	k8sImageLocators   []v1alpha1.KubernetesImageLocator
-	dcConfigPaths      []string
-	localCmd           string
-	localServeCmd      string
-	localDeps          []string
-	localAllowParallel bool
-	resourceDeps       []string
-	triggerMode        model.TriggerMode
+	k8sPodReadiness            model.PodReadinessMode
+	k8sYAML                    string
+	k8sPodSelectors            []labels.Set
+	k8sImageLocators           []v1alpha1.KubernetesImageLocator
+	dcConfigPaths              []string
+	localCmd                   string
+	localServeCmd              string
+	localDeps                  []string
+	localAllowParallel         bool
+	localServeHasDisableSource bool
+	resourceDeps               []string
+	triggerMode                model.TriggerMode
 
 	iTargets []model.ImageTarget
 }
@@ -94,6 +96,11 @@ func (b ManifestBuilder) WithLocalResource(cmd string, deps []string) ManifestBu
 
 func (b ManifestBuilder) WithLocalServeCmd(cmd string) ManifestBuilder {
 	b.localServeCmd = cmd
+	return b
+}
+
+func (b ManifestBuilder) WithLocalDisableSource() ManifestBuilder {
+	b.localServeHasDisableSource = true
 	return b
 }
 
@@ -187,6 +194,15 @@ func (b ManifestBuilder) Build() model.Manifest {
 			b.localDeps).
 			WithAllowParallel(b.localAllowParallel)
 		m = model.Manifest{Name: b.name, ResourceDependencies: rds}.WithDeployTarget(lt)
+
+		if b.localServeHasDisableSource {
+			m = m.WithDisableSource(&v1alpha1.DisableSource{
+				ConfigMap: &v1alpha1.ConfigMapDisableSource{
+					Name: fmt.Sprintf("%s-disable", b.name),
+					Key:  "isDisabled",
+				},
+			})
+		}
 	} else {
 		b.f.T().Fatalf("No deploy target specified: %s", b.name)
 		return model.Manifest{}

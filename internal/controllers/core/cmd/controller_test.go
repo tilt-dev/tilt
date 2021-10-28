@@ -26,7 +26,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
-	"github.com/tilt-dev/tilt/internal/testutils/uiresourcebuilder"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -618,13 +617,10 @@ func TestDisableServeCmd(t *testing.T) {
 	defer f.teardown()
 
 	ds := v1alpha1.DisableSource{ConfigMap: &v1alpha1.ConfigMapDisableSource{Name: "disable-foo", Key: "isDisabled"}}
-	f.st.WithState(func(state *store.EngineState) {
-		state.UIResources["foo"] = uiresourcebuilder.New("foo").
-			WithDisableSource(ds).
-			Build()
-	})
 	t1 := time.Unix(1, 0)
-	f.resource("foo", "true", ".", t1)
+	localTarget := model.NewLocalTarget("foo", model.Cmd{}, model.ToHostCmd("."), nil)
+	localTarget.ServeCmdDisableSource = &ds
+	f.resourceFromTarget("foo", localTarget, t1)
 
 	f.step()
 	f.requireCmdMatchesInAPI("foo-serve-1", func(cmd *Cmd) bool {
@@ -657,13 +653,11 @@ func TestEnableServeCmd(t *testing.T) {
 	}
 	err := f.client.Create(f.ctx, &cm)
 	require.NoError(t, err)
-	f.st.WithState(func(state *store.EngineState) {
-		state.UIResources["foo"] = uiresourcebuilder.New("foo").
-			WithDisableSource(ds).
-			Build()
-	})
+
 	t1 := time.Unix(1, 0)
-	f.resource("foo", "true", ".", t1)
+	localTarget := model.NewLocalTarget("foo", model.Cmd{}, model.ToHostCmd("."), nil)
+	localTarget.ServeCmdDisableSource = &ds
+	f.resourceFromTarget("foo", localTarget, t1)
 
 	f.step()
 	f.assertCmdCount(0)

@@ -3,6 +3,7 @@ package local
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -39,6 +40,9 @@ type ServerController struct {
 	createdTriggerTime map[string]time.Time
 	client             ctrlclient.Client
 
+	mu         sync.Mutex
+	cmdServers map[string]CmdServer
+
 	cmdCount int
 }
 
@@ -52,12 +56,25 @@ func NewServerController(client ctrlclient.Client) *ServerController {
 	}
 }
 
+func (c *ServerController) upsert(server CmdServer) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.cmdServers[server.Name] = server
+}
+
 func (c *ServerController) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) error {
 	if summary.IsLogOnly() {
 		return nil
 	}
 
 	servers, owned, orphans := c.determineServers(ctx, st)
+	c.mu.Lock()
+	c.cmdServers = make(map[string]CmdServer)
+	c.mu.Unlock()
+	for _, server := range servers {
+		c.upsert(server)
+	}
+
 	for i, server := range servers {
 		c.reconcile(ctx, server, owned[i], st)
 	}
@@ -113,19 +130,8 @@ func (c *ServerController) determineServers(ctx context.Context, st store.RStore
 				Env:            lt.ServeCmd.Env,
 				TriggerTime:    mt.State.LastSuccessfulDeployTime,
 				ReadinessProbe: lt.ReadinessProbe,
+				DisableSource:  lt.ServeCmdDisableSource,
 			},
-		}
-
-		// NB: at the time of implementation, UIResource can only ever have one DisableSource,
-		// the one for that resource, so this is fine at the moment.
-		// If UIResource starts supporting multiple DisableSources, we risk getting the wrong
-		// one here.
-		// When CmdServer is made into a real api object, we can set DisableSource
-		// more appropriately.
-		if uir, ok := state.UIResources[name]; ok {
-			if len(uir.Status.DisableStatus.Sources) > 0 {
-				cmdServer.Spec.DisableSource = uir.Status.DisableStatus.Sources[0].DeepCopy()
-			}
 		}
 
 		mn := mt.Manifest.Name.String()
@@ -143,6 +149,16 @@ func (c *ServerController) determineServers(ctx context.Context, st store.RStore
 	}
 
 	return servers, owned, orphaned
+}
+
+func (c *ServerController) Get(name string) CmdServer {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	result, ok := c.cmdServers[name]
+	if !ok {
+		return CmdServer{}
+	}
+	return result
 }
 
 // Find the most recent command in a collection
@@ -203,6 +219,7 @@ func (c *ServerController) reconcile(ctx context.Context, server CmdServer, owne
 	}
 	if disableStatus != server.Status.DisableStatus {
 		server.Status.DisableStatus = disableStatus
+		c.upsert(server)
 	}
 	if disableStatus.Disabled {
 		for _, cmd := range ownedCmds {

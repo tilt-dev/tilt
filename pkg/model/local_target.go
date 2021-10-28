@@ -28,6 +28,9 @@ type LocalTarget struct {
 	IsTest bool     // does this target represent a Test?
 
 	ReadinessProbe *v1alpha1.Probe
+
+	// Move this to CmdServerSpec when we move CmdServer to API
+	ServeCmdDisableSource *v1alpha1.DisableSource
 }
 
 var _ TargetSpec = LocalTarget{}
