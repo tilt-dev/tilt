@@ -1,6 +1,7 @@
 package kubernetesapply
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -68,7 +69,7 @@ func TestImageIndexing(t *testing.T) {
 	}, reqs)
 }
 
-func TestBasicApply(t *testing.T) {
+func TestBasicApplyYAML(t *testing.T) {
 	f := newFixture(t)
 	ka := v1alpha1.KubernetesApply{
 		ObjectMeta: metav1.ObjectMeta{
@@ -91,6 +92,24 @@ func TestBasicApply(t *testing.T) {
 	f.kClient.Yaml = ""
 	f.MustReconcile(types.NamespacedName{Name: "a"})
 	assert.Equal(f.T(), f.kClient.Yaml, "")
+}
+
+func TestBasicApplyCmd(t *testing.T) {
+	f := newFixture(t)
+	ka := v1alpha1.KubernetesApply{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "a",
+		},
+		Spec: v1alpha1.KubernetesApplySpec{
+			Cmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"false"}},
+		},
+	}
+	f.Create(&ka)
+
+	f.MustReconcile(types.NamespacedName{Name: "a"})
+	f.MustGet(types.NamespacedName{Name: "a"}, &ka)
+
+	assert.Equal(t, "Cmd apply not supported", ka.Status.Error)
 }
 
 func TestGarbageCollectAll(t *testing.T) {
@@ -137,6 +156,36 @@ func TestGarbageCollectPartial(t *testing.T) {
 	assert.Contains(f.T(), f.kClient.Yaml, "name: sancho")
 	assert.NotContains(f.T(), f.kClient.Yaml, "name: infra-kafka-zookeeper")
 	assert.Contains(f.T(), f.kClient.DeletedYaml, "name: infra-kafka-zookeeper")
+}
+
+func TestGarbageCollectAfterErrorDuringApply(t *testing.T) {
+	f := newFixture(t)
+	ka := v1alpha1.KubernetesApply{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "a",
+		},
+		Spec: v1alpha1.KubernetesApplySpec{
+			YAML: fmt.Sprintf("%s\n---\n%s\n", testyaml.SanchoYAML, testyaml.PodDisruptionBudgetYAML),
+		},
+	}
+	f.Create(&ka)
+
+	f.MustReconcile(types.NamespacedName{Name: "a"})
+	assert.Contains(f.T(), f.kClient.Yaml, "name: sancho")
+	assert.Contains(f.T(), f.kClient.Yaml, "name: infra-kafka-zookeeper")
+
+	f.kClient.UpsertError = errors.New("oh no")
+
+	f.MustGet(types.NamespacedName{Name: "a"}, &ka)
+	ka.Spec.YAML = testyaml.SanchoYAML
+	f.Update(&ka)
+
+	// because the apply (upsert) returned an error, no GC should have happened yet
+	f.MustReconcile(types.NamespacedName{Name: "a"})
+	if assert.Empty(t, f.kClient.DeletedYaml) {
+		assert.Contains(f.T(), f.kClient.Yaml, "name: sancho")
+		assert.Contains(f.T(), f.kClient.Yaml, "name: infra-kafka-zookeeper")
+	}
 }
 
 func TestRestartOn(t *testing.T) {
