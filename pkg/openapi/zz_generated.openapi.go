@@ -2405,11 +2405,17 @@ func schema_pkg_apis_core_v1alpha1_KubernetesApplySpec(ref common.ReferenceCallb
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApplyCmd"),
 						},
 					},
+					"restartOn": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RestartOn determines external triggers that will result in an apply.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApplyCmd", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryTemplateSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesImageLocator", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamTemplateSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForwardTemplateSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApplyCmd", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryTemplateSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesImageLocator", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamTemplateSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForwardTemplateSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
 	}
 }
 

@@ -161,6 +161,11 @@ type KubernetesApplySpec struct {
 	//
 	// +optional
 	Cmd *KubernetesApplyCmd `json:"cmd,omitempty" protobuf:"bytes,10,opt,name=cmd"`
+
+	// RestartOn determines external triggers that will result in an apply.
+	//
+	// +optional
+	RestartOn *RestartOnSpec `json:"restartOn,omitempty" protobuf:"bytes,11,opt,name=restartOn"`
 }
 
 var _ resource.Object = &KubernetesApply{}

@@ -902,6 +902,11 @@ message KubernetesApplySpec {
   //
   // +optional
   optional KubernetesApplyCmd cmd = 10;
+
+  // RestartOn determines external triggers that will result in an apply.
+  //
+  // +optional
+  optional RestartOnSpec restartOn = 11;
 }
 
 // KubernetesApplyStatus defines the observed state of KubernetesApply

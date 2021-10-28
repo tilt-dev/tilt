@@ -339,6 +339,7 @@ func (p Plugin) kubernetesApply(t *starlark.Thread, fn *starlark.Builtin, args s
 	var discoveryStrategy string
 	var disableSource DisableSource = DisableSource{t: t}
 	var cmd KubernetesApplyCmd = KubernetesApplyCmd{t: t}
+	var restartOn RestartOnSpec = RestartOnSpec{t: t}
 	var labels value.StringStringMap
 	var annotations value.StringStringMap
 	err = starkit.UnpackArgs(t, fn.Name(), args, kwargs,
@@ -355,6 +356,7 @@ func (p Plugin) kubernetesApply(t *starlark.Thread, fn *starlark.Builtin, args s
 		"discovery_strategy?", &discoveryStrategy,
 		"disable_source?", &disableSource,
 		"cmd?", &cmd,
+		"restart_on?", &restartOn,
 	)
 	if err != nil {
 		return nil, err
@@ -378,6 +380,9 @@ func (p Plugin) kubernetesApply(t *starlark.Thread, fn *starlark.Builtin, args s
 	}
 	if cmd.isUnpacked {
 		obj.Spec.Cmd = (*v1alpha1.KubernetesApplyCmd)(&cmd.Value)
+	}
+	if restartOn.isUnpacked {
+		obj.Spec.RestartOn = (*v1alpha1.RestartOnSpec)(&restartOn.Value)
 	}
 	obj.ObjectMeta.Labels = labels
 	obj.ObjectMeta.Annotations = annotations

@@ -1266,6 +1266,11 @@ func (in *KubernetesApplySpec) DeepCopyInto(out *KubernetesApplySpec) {
 		*out = new(KubernetesApplyCmd)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.RestartOn != nil {
+		in, out := &in.RestartOn, &out.RestartOn
+		*out = new(RestartOnSpec)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 
