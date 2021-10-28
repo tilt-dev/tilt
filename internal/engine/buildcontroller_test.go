@@ -360,7 +360,8 @@ func TestBuildControllerWontContainerBuildWithSomeButNotAllReadyContainers(t *te
 
 	f.withState(func(st store.EngineState) {
 		_, holds := buildcontrol.NextTargetToBuild(st)
-		assert.Equal(t, store.HoldWaitingForDeploy, holds[manifest.Name])
+		assert.Equal(t, store.HoldReasonWaitingForDeploy, holds[manifest.Name].Reason)
+		assert.Empty(t, holds[manifest.Name].HoldOn)
 	})
 
 	err := f.Stop()

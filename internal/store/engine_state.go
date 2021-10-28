@@ -555,10 +555,7 @@ func newManifestState(m model.Manifest) *ManifestState {
 }
 
 func (ms *ManifestState) TargetID() model.TargetID {
-	return model.TargetID{
-		Type: model.TargetTypeManifest,
-		Name: ms.Name.TargetName(),
-	}
+	return ms.Name.TargetID()
 }
 
 func (ms *ManifestState) BuildStatus(id model.TargetID) BuildStatus {

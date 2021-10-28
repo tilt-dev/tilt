@@ -33,6 +33,12 @@ const MainTiltfileManifestName = ManifestName("(Tiltfile)")
 
 func (m ManifestName) String() string         { return string(m) }
 func (m ManifestName) TargetName() TargetName { return TargetName(m) }
+func (m ManifestName) TargetID() TargetID {
+	return TargetID{
+		Type: TargetTypeManifest,
+		Name: m.TargetName(),
+	}
+}
 
 // NOTE: If you modify Manifest, make sure to modify `equalForBuildInvalidation` appropriately
 type Manifest struct {

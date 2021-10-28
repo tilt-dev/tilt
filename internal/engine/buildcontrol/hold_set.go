@@ -9,7 +9,7 @@ type HoldSet map[model.ManifestName]store.Hold
 
 func (s HoldSet) IsEligible(target *store.ManifestTarget) bool {
 	mn := target.Manifest.Name
-	if s[mn] != store.HoldNone {
+	if s[mn].Reason != store.HoldReasonNone {
 		return false
 	}
 
@@ -36,7 +36,7 @@ func (s HoldSet) RemoveIneligibleTargets(targets []*store.ManifestTarget) []*sto
 
 func (s HoldSet) AddHold(target *store.ManifestTarget, hold store.Hold) {
 	mn := target.Manifest.Name
-	if s[mn] != store.HoldNone {
+	if s[mn].Reason != store.HoldReasonNone {
 		return
 	}
 

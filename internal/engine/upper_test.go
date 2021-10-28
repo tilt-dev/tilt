@@ -3853,7 +3853,7 @@ func TestDisablingResourcePreventsBuild(t *testing.T) {
 
 	f.WaitUntil("is waiting+disabled", func(state store.EngineState) bool {
 		_, holds := buildcontrol.NextTargetToBuild(state)
-		return holds["foo"] == store.HoldDisabled
+		return holds["foo"].Reason == store.HoldReasonDisabled
 	})
 }
 

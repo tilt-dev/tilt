@@ -28,14 +28,20 @@ func NextTargetToBuild(state store.EngineState) (*store.ManifestTarget, HoldSet)
 	for _, ms := range state.GetTiltfileStates() {
 		tiltfileHasPendingChanges, _ := ms.HasPendingChanges()
 		if tiltfileHasPendingChanges {
-			holds.Fill(targets, store.HoldTiltfileReload)
+			holds.Fill(targets, store.Hold{
+				Reason: store.HoldReasonTiltfileReload,
+				HoldOn: []model.TargetID{ms.TargetID()},
+			})
 			return nil, holds
 		}
 	}
 
 	// If we're already building an unparallelizable local target, bail immediately.
-	if IsBuildingUnparallelizableLocalTarget(state) {
-		holds.Fill(targets, store.HoldWaitingForUnparallelizableTarget)
+	if mn, _, building := IsBuildingUnparallelizableLocalTarget(state); building {
+		holds.Fill(targets, store.Hold{
+			Reason: store.HoldReasonWaitingForUnparallelizableTarget,
+			HoldOn: []model.TargetID{mn.TargetID()},
+		})
 		return nil, holds
 	}
 
@@ -48,7 +54,7 @@ func NextTargetToBuild(state store.EngineState) (*store.ManifestTarget, HoldSet)
 	// Uncategorized YAML might contain namespaces or volumes that
 	// we don't want to parallelize.
 	//
-	// TODO(nick): Long-term, we should try to infer dependencies between Kuberentes
+	// TODO(nick): Long-term, we should try to infer dependencies between Kubernetes
 	// resources. A general library might make sense.
 	if IsBuildingUncategorizedYAML(state) {
 		HoldK8sTargets(targets, holds)
@@ -105,20 +111,21 @@ func NextManifestNameToBuild(state store.EngineState) model.ManifestName {
 	return mt.Manifest.Name
 }
 
-func isWaitingOnDependencies(state store.EngineState, mt *store.ManifestTarget) bool {
+func waitingOnDependencies(state store.EngineState, mt *store.ManifestTarget) []model.TargetID {
 	// dependencies only block the first build, so if this manifest has ever built, ignore dependencies
 	if mt.State.StartedFirstBuild() {
-		return false
+		return nil
 	}
 
+	var waitingOn []model.TargetID
 	for _, mn := range mt.Manifest.ResourceDependencies {
 		ms, ok := state.ManifestState(mn)
 		if !ok || ms == nil || ms.RuntimeState == nil || !ms.RuntimeState.HasEverBeenReadyOrSucceeded() {
-			return true
+			waitingOn = append(waitingOn, mn.TargetID())
 		}
 	}
 
-	return false
+	return waitingOn
 }
 
 // Check to see if this is an ImageTarget where the built image
@@ -195,15 +202,19 @@ func HoldTargetsWithBuildingComponents(mts []*store.ManifestTarget, holds HoldSe
 
 	for _, mt := range mts {
 		if hasBuildingComponent(mt) {
-			holds.AddHold(mt, store.HoldBuildingComponent)
+			// TODO(milas): can we surface dependencies in this case?
+			holds.AddHold(mt, store.Hold{Reason: store.HoldReasonBuildingComponent})
 		}
 	}
 }
 
 func HoldTargetsWaitingOnDependencies(state store.EngineState, mts []*store.ManifestTarget, holds HoldSet) {
 	for _, mt := range mts {
-		if isWaitingOnDependencies(state, mt) {
-			holds.AddHold(mt, store.HoldWaitingForDep)
+		if waitingOn := waitingOnDependencies(state, mt); len(waitingOn) != 0 {
+			holds.AddHold(mt, store.Hold{
+				Reason: store.HoldReasonWaitingForDep,
+				HoldOn: waitingOn,
+			})
 		}
 	}
 }
@@ -212,7 +223,7 @@ func HoldDisabledTargets(state store.EngineState, mts []*store.ManifestTarget, h
 	for _, mt := range mts {
 		if uir, ok := state.UIResources[string(mt.Manifest.Name)]; ok {
 			if uir.Status.DisableStatus.DisabledCount > 0 {
-				holds.AddHold(mt, store.HoldDisabled)
+				holds.AddHold(mt, store.Hold{Reason: store.HoldReasonDisabled})
 			}
 		}
 	}
@@ -277,7 +288,7 @@ func FindLocalTargets(targets []*store.ManifestTarget) []*store.ManifestTarget {
 func HoldUnparallelizableLocalTargets(targets []*store.ManifestTarget, holds map[model.ManifestName]store.Hold) {
 	for _, target := range targets {
 		if target.Manifest.IsLocal() && !target.Manifest.LocalTarget().AllowParallel {
-			holds[target.Manifest.Name] = store.HoldIsUnparallelizableTarget
+			holds[target.Manifest.Name] = store.Hold{Reason: store.HoldReasonIsUnparallelizableTarget}
 		}
 	}
 }
@@ -285,7 +296,10 @@ func HoldUnparallelizableLocalTargets(targets []*store.ManifestTarget, holds map
 func HoldK8sTargets(targets []*store.ManifestTarget, holds HoldSet) {
 	for _, target := range targets {
 		if target.Manifest.IsK8s() {
-			holds.AddHold(target, store.HoldWaitingForUncategorized)
+			holds.AddHold(target, store.Hold{
+				Reason: store.HoldReasonWaitingForUncategorized,
+				HoldOn: []model.TargetID{model.UnresourcedYAMLManifestName.TargetID()},
+			})
 		}
 	}
 }
@@ -300,15 +314,15 @@ func IsBuildingAnything(state store.EngineState) bool {
 	return false
 }
 
-func IsBuildingUnparallelizableLocalTarget(state store.EngineState) bool {
+func IsBuildingUnparallelizableLocalTarget(state store.EngineState) (model.ManifestName, model.TargetName, bool) {
 	mts := state.Targets()
 	for _, mt := range mts {
 		if mt.State.IsBuilding() && mt.Manifest.IsLocal() &&
 			!mt.Manifest.LocalTarget().AllowParallel {
-			return true
+			return mt.Manifest.Name, mt.Manifest.LocalTarget().Name, true
 		}
 	}
-	return false
+	return "", "", false
 }
 
 func IsBuildingUncategorizedYAML(state store.EngineState) bool {
@@ -365,7 +379,7 @@ func FindTargetsNeedingInitialBuild(targets []*store.ManifestTarget) []*store.Ma
 func HoldLiveUpdateTargetsWaitingOnDeploy(state store.EngineState, mts []*store.ManifestTarget, holds HoldSet) {
 	for _, mt := range mts {
 		if IsLiveUpdateTargetWaitingOnDeploy(state, mt) {
-			holds.AddHold(mt, store.HoldWaitingForDeploy)
+			holds.AddHold(mt, store.Hold{Reason: store.HoldReasonWaitingForDeploy})
 		}
 	}
 }
