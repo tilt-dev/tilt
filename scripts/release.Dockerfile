@@ -4,7 +4,7 @@
 # 1) Better leverage OS-specific C headers
 # 2) Be able to do releases from a CI job
 
-FROM gcr.io/windmill-public-containers/golang-cross:1.16.2
+FROM gcr.io/windmill-public-containers/golang-cross:1.17.2
 
 RUN apt-get update && \
     apt-get install -y \
@@ -17,7 +17,7 @@ RUN apt-get update && \
 # Install docker
 # Adapted from https://github.com/circleci/circleci-images/blob/staging/shared/images/Dockerfile-basic.template
 # Check https://download.docker.com/linux/static/stable/x86_64/ for latest versions
-ENV DOCKER_VERSION=19.03.5
+ENV DOCKER_VERSION=20.10.9
 RUN set -exu \
   && DOCKER_URL="https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_VERSION}.tgz" \
   && echo Docker URL: $DOCKER_URL \

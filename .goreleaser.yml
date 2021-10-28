@@ -26,6 +26,12 @@ builds:
   - amd64
   - arm
   - arm64
+  # https://goreleaser.com/deprecations/#builds-for-windowsarm64
+  ignore:
+  - goos: windows
+    goarch: arm
+  - goos: windows
+    goarch: arm64
   env:
   - CGO_ENABLED=0
 archives:
@@ -63,7 +69,7 @@ brews:
     email: hi@tilt.dev
   url_template: "https://github.com/tilt-dev/tilt/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
   homepage: "https://tilt.dev/"
-  description: "Tilt powers multi-service developments for teams that deploy to Kubernetes."
+  description: "A dev environment as code for microservice apps"
   test: |
     system "#{bin}/tilt version"
     system "#{bin}/tilt verify-install"
@@ -82,8 +88,15 @@ scoop:
     email: hi@tilt.dev
   commit_msg_template: "Scoop update for {{ .ProjectName }} version {{ .Tag }}"
   homepage: "https://tilt.dev/"
-  description: "Tilt powers multi-service developments for teams that deploy to Kubernetes."
+  description: "A dev environment as code for microservice apps"
   license: Apache-2.0
+release:
+  header: |
+    [Install Tilt](https://docs.tilt.dev/install.html) ⬇️ | [Upgrade Tilt](https://docs.tilt.dev/upgrade.html) ⬆️ | [Tilt Extensions](https://github.com/tilt-dev/tilt-extensions/) 🧰
+
+    ## Notable Changes
+
+    TBD
 
 # Uncomment these lines if you want to experiment with other
 # parts of the release process without releasing new binaries.

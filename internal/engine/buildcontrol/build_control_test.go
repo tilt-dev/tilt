@@ -214,6 +214,8 @@ func TestTwoK8sTargetsWithBaseImage(t *testing.T) {
 	sanchoOne.State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}
 
 	f.assertNoTargetNextToBuild()
+	f.assertHold("sancho-two", store.HoldReasonBuildingComponent, baseImage.ID())
+
 	sanchoOne.State.CurrentBuild = model.BuildRecord{}
 	sanchoOne.State.AddCompletedBuild(model.BuildRecord{
 		StartTime:  time.Now(),
