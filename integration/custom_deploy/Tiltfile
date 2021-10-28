@@ -1,26 +1,17 @@
 
-v1alpha1.file_watch(
-    name='custom-deploy-fw',
-    watched_paths=['./deploy.yaml']
-)
+enable_feature('custom_deploy')
 
-v1alpha1.kubernetes_apply(
-    name='custom-deploy-int-test',
-    timeout='10s',
-    port_forward_template_spec=v1alpha1.port_forward_template_spec(
-        forwards=[
-            v1alpha1.forward(
-                local_port=54871,
-                container_port=80
-            )
-        ]
-    ),
-    cmd=v1alpha1.kubernetes_apply_cmd(
-        args=['sh', '-c', 'kubectl apply -o yaml -f "${DEPLOY_FILE}"'],
-        dir=config.main_dir,
-        env=['DEPLOY_FILE=deploy.yaml']
-    ),
-    restart_on=v1alpha1.restart_on_spec(
-        file_watches=['custom-deploy-fw']
-    )
+custom_deploy(
+    'custom-deploy-int-test',
+    cmd='kubectl apply -o yaml -f ${DEPLOY_FILE}',
+    deps=['deploy.yaml', 'foo', 'web/'],
+    image_selector='nginx',
+    env={'DEPLOY_FILE': 'deploy.yaml'},
+    live_update=[
+        sync('./web/', '/usr/share/nginx/html/')
+    ]
+)
+k8s_resource(
+    'custom-deploy-int-test',
+    port_forwards=['54871:80']
 )

@@ -66,6 +66,8 @@ type k8sResource struct {
 	links []model.Link
 
 	labels map[string]string
+
+	customDeploy *customDeploy
 }
 
 // holds options passed to `k8s_resource` until assembly happens

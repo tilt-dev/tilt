@@ -88,6 +88,7 @@ func (f *k8sFixture) WaitForAllPodsReady(ctx context.Context, selector string) [
 }
 
 func (f *k8sFixture) WaitForAllPodsInPhase(ctx context.Context, selector string, phase v1.PodPhase) []string {
+	f.t.Helper()
 	for {
 		allPodsReady, output, podNames := f.AllPodsInPhase(ctx, selector, phase)
 		if allPodsReady {

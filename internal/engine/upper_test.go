@@ -3979,7 +3979,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	log := bufsync.NewThreadSafeBuffer()
 	to := tiltanalytics.NewFakeOpter(analytics.OptIn)
 	ctx, _, ta := testutils.ForkedCtxAndAnalyticsWithOpterForTest(log, to)
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 
 	cdc := controllers.ProvideDeferredClient()
 

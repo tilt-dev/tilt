@@ -291,11 +291,16 @@ func (m *Manifest) InferLiveUpdateSelectors() error {
 
 		luSpec.Sources = nil
 		err := dag.VisitTree(iTarget, func(dep TargetSpec) error {
-			// Relies on the idea that ImageTargets always create
+			// Relies on the idea that ImageTargets creates
 			// FileWatches and ImageMaps related to the ImageTarget ID.
 			id := dep.ID()
 			fw := id.String()
-			imageMap := id.Name.String()
+
+			// LiveUpdateOnly targets do NOT have an associated image map
+			var imageMap string
+			if depImg, ok := dep.(ImageTarget); ok && !depImg.IsLiveUpdateOnly {
+				imageMap = id.Name.String()
+			}
 
 			luSpec.Sources = append(luSpec.Sources, v1alpha1.LiveUpdateSource{
 				FileWatch: fw,

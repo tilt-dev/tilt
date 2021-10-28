@@ -81,7 +81,8 @@ func (k8s K8sTarget) Validate() error {
 		return fmt.Errorf("[Validate] K8s resources missing name:\n%s", k8s.YAML)
 	}
 
-	if k8s.YAML == "" {
+	// TODO(milas): improve error message
+	if k8s.KubernetesApplySpec.YAML == "" && k8s.KubernetesApplySpec.Cmd == nil {
 		return fmt.Errorf("[Validate] K8s resources %q missing YAML", k8s.Name)
 	}
 

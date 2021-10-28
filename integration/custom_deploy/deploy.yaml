@@ -20,3 +20,6 @@ spec:
           image: nginx
           ports:
             - containerPort: 80
+          readinessProbe:
+            httpGet:
+              port: 80
