@@ -786,6 +786,27 @@ message KubernetesApply {
   optional KubernetesApplyStatus status = 3;
 }
 
+message KubernetesApplyCmd {
+  // Args are the command-line arguments for the apply command. Must have length >= 1.
+  repeated string args = 1;
+
+  // Process working directory.
+  //
+  // If not specified, will default to Tilt working directory.
+  //
+  // +optional
+  // +tilt:local-path=true
+  optional string dir = 2;
+
+  // Env are additional variables for the process environment.
+  //
+  // Environment variables are layered on top of the environment variables
+  // that Tilt runs with.
+  //
+  // +optional
+  repeated string env = 3;
+}
+
 // KubernetesApplyList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 message KubernetesApplyList {
@@ -796,7 +817,11 @@ message KubernetesApplyList {
 
 // KubernetesApplySpec defines the desired state of KubernetesApply
 message KubernetesApplySpec {
-  // The YAML to apply to the cluster. Required.
+  // YAML to apply to the cluster.
+  //
+  // Exactly one of YAML OR Cmd MUST be provided.
+  //
+  // +optional
   optional string yaml = 1;
 
   // Names of image maps that this applier depends on.
@@ -868,6 +893,20 @@ message KubernetesApplySpec {
   //
   // +optional
   optional DisableSource disableSource = 9;
+
+  // Cmd is a custom command to generate the YAML to apply.
+  //
+  // The Cmd MUST return valid Kubernetes YAML for the entities it applied to the cluster.
+  //
+  // Exactly one of YAML OR Cmd MUST be provided.
+  //
+  // +optional
+  optional KubernetesApplyCmd cmd = 10;
+
+  // RestartOn determines external triggers that will result in an apply.
+  //
+  // +optional
+  optional RestartOnSpec restartOn = 11;
 }
 
 // KubernetesApplyStatus defines the observed state of KubernetesApply
