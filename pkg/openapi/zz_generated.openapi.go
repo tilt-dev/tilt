@@ -1900,7 +1900,8 @@ func schema_pkg_apis_core_v1alpha1_IgnoreDef(ref common.ReferenceCallback) commo
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
+				Description: "Describes sets of file paths that the FileWatch should ignore.",
+				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"basePath": {
 						SchemaProps: spec.SchemaProps{
@@ -3979,7 +3980,7 @@ func schema_pkg_apis_core_v1alpha1_Probe(ref common.ReferenceCallback) common.Op
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "Probe describes a health check to be performed o determine whether it is alive or ready to receive traffic.",
+				Description: "Probe describes a health check to be performed to determine whether it is alive or ready to receive traffic.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"exec": {
@@ -5099,7 +5100,8 @@ func schema_pkg_apis_core_v1alpha1_UIBoolInputSpec(ref common.ReferenceCallback)
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
+				Description: "Describes a boolean checkbox input field attached to a button.",
+				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"defaultValue": {
 						SchemaProps: spec.SchemaProps{
@@ -5528,7 +5530,8 @@ func schema_pkg_apis_core_v1alpha1_UIHiddenInputSpec(ref common.ReferenceCallbac
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
+				Description: "Describes a hidden input field attached to a button, with a value to pass on any submit.",
+				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"value": {
 						SchemaProps: spec.SchemaProps{
@@ -6380,7 +6383,8 @@ func schema_pkg_apis_core_v1alpha1_UITextInputSpec(ref common.ReferenceCallback)
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
+				Description: "Describes a text input field attached to a button.",
+				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"defaultValue": {
 						SchemaProps: spec.SchemaProps{

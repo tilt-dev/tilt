@@ -628,6 +628,7 @@ message Handler {
   optional TCPSocketAction tcpSocket = 3;
 }
 
+// Describes sets of file paths that the FileWatch should ignore.
 message IgnoreDef {
   // BasePath is the base path for the patterns. It cannot be empty.
   //
@@ -1554,7 +1555,7 @@ message PortForwardTemplateSpec {
   repeated Forward forwards = 1;
 }
 
-// Probe describes a health check to be performed o determine whether it is
+// Probe describes a health check to be performed to determine whether it is
 // alive or ready to receive traffic.
 message Probe {
   // The action taken to determine the health of a container
@@ -1956,6 +1957,7 @@ message ToggleButtonStatus {
   optional string error = 1;
 }
 
+// Describes a boolean checkbox input field attached to a button.
 message UIBoolInputSpec {
   // Whether the input is initially true or false.
   // +optional
@@ -2127,6 +2129,8 @@ message UIFeatureFlag {
   optional bool value = 2;
 }
 
+// Describes a hidden input field attached to a button,
+// with a value to pass on any submit.
 message UIHiddenInputSpec {
   optional string value = 1;
 }
@@ -2493,6 +2497,7 @@ message UISessionStatus {
   optional string tiltfileKey = 11;
 }
 
+// Describes a text input field attached to a button.
 message UITextInputSpec {
   // Initial value for this field.
   //

@@ -68,6 +68,7 @@ type FileWatchSpec struct {
 	DisableSource *DisableSource `json:"disableSource,omitempty" protobuf:"bytes,3,opt,name=disableSource"`
 }
 
+// Describes sets of file paths that the FileWatch should ignore.
 type IgnoreDef struct {
 	// BasePath is the base path for the patterns. It cannot be empty.
 	//
