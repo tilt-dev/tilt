@@ -82,6 +82,10 @@ func (p Plugin) registerSymbols(env *starkit.Environment) error {
 	if err != nil {
 		return err
 	}
+	err = env.AddBuiltin("v1alpha1.kubernetes_apply_cmd", p.kubernetesApplyCmd)
+	if err != nil {
+		return err
+	}
 	err = env.AddBuiltin("v1alpha1.kubernetes_discovery_template_spec", p.kubernetesDiscoveryTemplateSpec)
 	if err != nil {
 		return err
@@ -334,6 +338,7 @@ func (p Plugin) kubernetesApply(t *starlark.Thread, fn *starlark.Builtin, args s
 	var podLogStreamTemplateSpec PodLogStreamTemplateSpec = PodLogStreamTemplateSpec{t: t}
 	var discoveryStrategy string
 	var disableSource DisableSource = DisableSource{t: t}
+	var cmd KubernetesApplyCmd = KubernetesApplyCmd{t: t}
 	var labels value.StringStringMap
 	var annotations value.StringStringMap
 	err = starkit.UnpackArgs(t, fn.Name(), args, kwargs,
@@ -349,6 +354,7 @@ func (p Plugin) kubernetesApply(t *starlark.Thread, fn *starlark.Builtin, args s
 		"pod_log_stream_template_spec?", &podLogStreamTemplateSpec,
 		"discovery_strategy?", &discoveryStrategy,
 		"disable_source?", &disableSource,
+		"cmd?", &cmd,
 	)
 	if err != nil {
 		return nil, err
@@ -369,6 +375,9 @@ func (p Plugin) kubernetesApply(t *starlark.Thread, fn *starlark.Builtin, args s
 	obj.Spec.DiscoveryStrategy = v1alpha1.KubernetesDiscoveryStrategy(discoveryStrategy)
 	if disableSource.isUnpacked {
 		obj.Spec.DisableSource = (*v1alpha1.DisableSource)(&disableSource.Value)
+	}
+	if cmd.isUnpacked {
+		obj.Spec.Cmd = (*v1alpha1.KubernetesApplyCmd)(&cmd.Value)
 	}
 	obj.ObjectMeta.Labels = labels
 	obj.ObjectMeta.Annotations = annotations
@@ -1453,6 +1462,145 @@ func (o *IgnoreDefList) Unpack(v starlark.Value) error {
 			return fmt.Errorf("at index %d: %v", i, err)
 		}
 		items = append(items, v1alpha1.IgnoreDef(item.Value))
+	}
+
+	listObj.Freeze()
+	o.List = listObj
+	o.Value = items
+
+	return nil
+}
+
+type KubernetesApplyCmd struct {
+	*starlark.Dict
+	Value      v1alpha1.KubernetesApplyCmd
+	isUnpacked bool
+	t          *starlark.Thread // instantiation thread for computing abspath
+}
+
+func (p Plugin) kubernetesApplyCmd(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var specArgs starlark.Value
+	var dir starlark.Value
+	var env starlark.Value
+	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
+		"args?", &specArgs,
+		"dir?", &dir,
+		"env?", &env,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	dict := starlark.NewDict(3)
+
+	if specArgs != nil {
+		err := dict.SetKey(starlark.String("args"), specArgs)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if dir != nil {
+		err := dict.SetKey(starlark.String("dir"), dir)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if env != nil {
+		err := dict.SetKey(starlark.String("env"), env)
+		if err != nil {
+			return nil, err
+		}
+	}
+	var obj *KubernetesApplyCmd = &KubernetesApplyCmd{t: t}
+	err = obj.Unpack(dict)
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
+}
+
+func (o *KubernetesApplyCmd) Unpack(v starlark.Value) error {
+	obj := v1alpha1.KubernetesApplyCmd{}
+
+	starlarkObj, ok := v.(*KubernetesApplyCmd)
+	if ok {
+		*o = *starlarkObj
+		return nil
+	}
+
+	mapObj, ok := v.(*starlark.Dict)
+	if !ok {
+		return fmt.Errorf("expected dict, actual: %v", v.Type())
+	}
+
+	for _, item := range mapObj.Items() {
+		keyV, val := item[0], item[1]
+		key, ok := starlark.AsString(keyV)
+		if !ok {
+			return fmt.Errorf("key must be string. Got: %s", keyV.Type())
+		}
+
+		if key == "args" {
+			var v value.StringList
+			err := v.Unpack(val)
+			if err != nil {
+				return fmt.Errorf("unpacking %s: %v", key, err)
+			}
+			obj.Args = v
+			continue
+		}
+		if key == "dir" {
+			v := value.NewLocalPathUnpacker(o.t)
+			err := v.Unpack(val)
+			if err != nil {
+				return fmt.Errorf("unpacking %s: %v", key, err)
+			}
+			obj.Dir = v.Value
+			continue
+		}
+		if key == "env" {
+			var v value.StringList
+			err := v.Unpack(val)
+			if err != nil {
+				return fmt.Errorf("unpacking %s: %v", key, err)
+			}
+			obj.Env = v
+			continue
+		}
+		return fmt.Errorf("Unexpected attribute name: %s", key)
+	}
+
+	mapObj.Freeze()
+	o.Dict = mapObj
+	o.Value = obj
+	o.isUnpacked = true
+
+	return nil
+}
+
+type KubernetesApplyCmdList struct {
+	*starlark.List
+	Value []v1alpha1.KubernetesApplyCmd
+	t     *starlark.Thread
+}
+
+func (o *KubernetesApplyCmdList) Unpack(v starlark.Value) error {
+	items := []v1alpha1.KubernetesApplyCmd{}
+
+	listObj, ok := v.(*starlark.List)
+	if !ok {
+		return fmt.Errorf("expected list, actual: %v", v.Type())
+	}
+
+	for i := 0; i < listObj.Len(); i++ {
+		v := listObj.Index(i)
+
+		item := KubernetesApplyCmd{t: o.t}
+		err := item.Unpack(v)
+		if err != nil {
+			return fmt.Errorf("at index %d: %v", i, err)
+		}
+		items = append(items, v1alpha1.KubernetesApplyCmd(item.Value))
 	}
 
 	listObj.Freeze()

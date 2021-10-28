@@ -18,7 +18,6 @@ package v1alpha1
 
 import (
 	"context"
-	fmt "fmt"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -77,8 +76,12 @@ type KubernetesApplyList struct {
 
 // KubernetesApplySpec defines the desired state of KubernetesApply
 type KubernetesApplySpec struct {
-	// The YAML to apply to the cluster. Required.
-	YAML string `json:"yaml" protobuf:"bytes,1,opt,name=yaml"`
+	// YAML to apply to the cluster.
+	//
+	// Exactly one of YAML OR Cmd MUST be provided.
+	//
+	// +optional
+	YAML string `json:"yaml,omitempty" protobuf:"bytes,1,opt,name=yaml"`
 
 	// Names of image maps that this applier depends on.
 	//
@@ -149,6 +152,15 @@ type KubernetesApplySpec struct {
 	//
 	// +optional
 	DisableSource *DisableSource `json:"disableSource,omitempty" protobuf:"bytes,9,opt,name=disableSource"`
+
+	// Cmd is a custom command to generate the YAML to apply.
+	//
+	// The Cmd MUST return valid Kubernetes YAML for the entities it applied to the cluster.
+	//
+	// Exactly one of YAML OR Cmd MUST be provided.
+	//
+	// +optional
+	Cmd *KubernetesApplyCmd `json:"cmd,omitempty" protobuf:"bytes,10,opt,name=cmd"`
 }
 
 var _ resource.Object = &KubernetesApply{}
@@ -193,20 +205,33 @@ func (in *KubernetesApply) IsStorageVersion() bool {
 
 func (in *KubernetesApply) Validate(ctx context.Context) field.ErrorList {
 	var fieldErrors field.ErrorList
-	if in.Spec.YAML == "" {
-		fieldErrors = append(fieldErrors, field.Required(field.NewPath("spec.yaml"), "cannot be empty"))
-	}
 
 	kdStrategy := in.Spec.DiscoveryStrategy
 	if !(kdStrategy == "" ||
 		kdStrategy == KubernetesDiscoveryStrategyDefault ||
 		kdStrategy == KubernetesDiscoveryStrategySelectorsOnly) {
-		fieldErrors = append(fieldErrors, field.Invalid(
+		fieldErrors = append(fieldErrors, field.NotSupported(
 			field.NewPath("spec.discoveryStrategy"),
 			kdStrategy,
-			fmt.Sprintf("Must be one of: %s, %s",
-				KubernetesDiscoveryStrategyDefault,
-				KubernetesDiscoveryStrategySelectorsOnly)))
+			[]string{
+				string(KubernetesDiscoveryStrategyDefault),
+				string(KubernetesDiscoveryStrategySelectorsOnly),
+			}))
+	}
+
+	if in.Spec.YAML != "" {
+		if in.Spec.Cmd != nil {
+			fieldErrors = append(fieldErrors, field.Invalid(
+				field.NewPath("spec.cmd"),
+				in.Spec.Cmd,
+				"must specify exactly ONE of .spec.yaml or .spec.cmd"))
+		}
+	} else if in.Spec.Cmd != nil {
+		fieldErrors = append(fieldErrors, in.Spec.Cmd.validateAsSubfield(ctx, field.NewPath("spec.cmd"))...)
+	} else {
+		fieldErrors = append(fieldErrors, field.Required(
+			field.NewPath("spec.yaml"),
+			"must specify exactly ONE of .spec.yaml or .spec.cmd"))
 	}
 
 	return fieldErrors
@@ -325,3 +350,37 @@ var (
 	// from the deployment.
 	KubernetesDiscoveryStrategySelectorsOnly KubernetesDiscoveryStrategy = "selectors-only"
 )
+
+type KubernetesApplyCmd struct {
+	// Args are the command-line arguments for the apply command. Must have length >= 1.
+	Args []string `json:"args" protobuf:"bytes,1,rep,name=args"`
+
+	// Process working directory.
+	//
+	// If not specified, will default to Tilt working directory.
+	//
+	// +optional
+	// +tilt:local-path=true
+	Dir string `json:"dir" protobuf:"bytes,2,opt,name=dir"`
+
+	// Env are additional variables for the process environment.
+	//
+	// Environment variables are layered on top of the environment variables
+	// that Tilt runs with.
+	//
+	// +optional
+	Env []string `json:"env" protobuf:"bytes,3,rep,name=env"`
+}
+
+func (c *KubernetesApplyCmd) Validate(ctx context.Context) field.ErrorList {
+	return c.validateAsSubfield(ctx, nil)
+}
+
+// validateAsSubfield performs validation prepending the rootField (if non-nil) to paths in returned errors.
+func (c *KubernetesApplyCmd) validateAsSubfield(_ context.Context, rootField *field.Path) field.ErrorList {
+	var fieldErrors field.ErrorList
+	if len(c.Args) == 0 {
+		fieldErrors = append(fieldErrors, field.Required(rootField.Child("args"), "args cannot be empty"))
+	}
+	return fieldErrors
+}

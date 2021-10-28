@@ -77,6 +77,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapSpec":                    schema_pkg_apis_core_v1alpha1_ImageMapSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapStatus":                  schema_pkg_apis_core_v1alpha1_ImageMapStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApply":                 schema_pkg_apis_core_v1alpha1_KubernetesApply(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApplyCmd":              schema_pkg_apis_core_v1alpha1_KubernetesApplyCmd(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApplyList":             schema_pkg_apis_core_v1alpha1_KubernetesApplyList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApplySpec":             schema_pkg_apis_core_v1alpha1_KubernetesApplySpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApplyStatus":           schema_pkg_apis_core_v1alpha1_KubernetesApplyStatus(ref),
@@ -2217,6 +2218,57 @@ func schema_pkg_apis_core_v1alpha1_KubernetesApply(ref common.ReferenceCallback)
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_KubernetesApplyCmd(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"args": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Args are the command-line arguments for the apply command. Must have length >= 1.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"dir": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Process working directory.\n\nIf not specified, will default to Tilt working directory.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"env": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Env are additional variables for the process environment.\n\nEnvironment variables are layered on top of the environment variables that Tilt runs with.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"args"},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_KubernetesApplyList(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -2275,8 +2327,7 @@ func schema_pkg_apis_core_v1alpha1_KubernetesApplySpec(ref common.ReferenceCallb
 				Properties: map[string]spec.Schema{
 					"yaml": {
 						SchemaProps: spec.SchemaProps{
-							Description: "The YAML to apply to the cluster. Required.",
-							Default:     "",
+							Description: "YAML to apply to the cluster.\n\nExactly one of YAML OR Cmd MUST be provided.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -2348,12 +2399,17 @@ func schema_pkg_apis_core_v1alpha1_KubernetesApplySpec(ref common.ReferenceCallb
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource"),
 						},
 					},
+					"cmd": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Cmd is a custom command to generate the YAML to apply.\n\nThe Cmd MUST return valid Kubernetes YAML for the entities it applied to the cluster.\n\nExactly one of YAML OR Cmd MUST be provided.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApplyCmd"),
+						},
+					},
 				},
-				Required: []string{"yaml"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryTemplateSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesImageLocator", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamTemplateSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForwardTemplateSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApplyCmd", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryTemplateSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesImageLocator", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamTemplateSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForwardTemplateSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
 	}
 }
 
