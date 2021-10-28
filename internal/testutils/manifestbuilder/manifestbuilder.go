@@ -5,6 +5,9 @@ import (
 
 	"k8s.io/apimachinery/pkg/labels"
 
+	"github.com/stretchr/testify/require"
+
+	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -125,6 +128,9 @@ func (b ManifestBuilder) WithLiveUpdateAtIndex(lu v1alpha1.LiveUpdateSpec, index
 
 	iTarg := b.iTargets[index]
 	iTarg.LiveUpdateSpec = lu
+	if !liveupdate.IsEmptySpec(lu) {
+		iTarg.LiveUpdateName = liveupdate.GetName(b.name, iTarg.ID())
+	}
 	b.iTargets[index] = iTarg
 	return b
 }
@@ -158,8 +164,13 @@ func (b ManifestBuilder) Build() model.Manifest {
 		m = assembleDC(
 			model.Manifest{Name: b.name, ResourceDependencies: rds},
 			model.DockerComposeTarget{
-				Name:        model.TargetName(b.name),
-				ConfigPaths: b.dcConfigPaths,
+				Spec: model.DockerComposeUpSpec{
+					Service: string(b.name),
+					Project: model.DockerComposeProject{
+						ConfigPaths: b.dcConfigPaths,
+					},
+				},
+				Name: model.TargetName(b.name),
 			},
 			b.iTargets...)
 	} else if b.localCmd != "" || b.localServeCmd != "" {
@@ -182,6 +193,8 @@ func (b ManifestBuilder) Build() model.Manifest {
 	}
 	m = m.
 		WithTriggerMode(b.triggerMode)
+	err := m.InferLiveUpdateSelectors()
+	require.NoError(b.f.T(), err)
 	return m
 }
 

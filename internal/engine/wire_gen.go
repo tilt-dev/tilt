@@ -46,7 +46,7 @@ func provideFakeBuildAndDeployer(ctx context.Context, docker2 docker.Client, kCl
 		return nil, err
 	}
 	scheme := v1alpha1.NewScheme()
-	reconciler := liveupdate.NewReconciler(dockerUpdater, execUpdater, liveupdatesUpdateMode, kubeContext, ctrlClient, scheme)
+	reconciler := liveupdate.NewReconciler(st, dockerUpdater, execUpdater, liveupdatesUpdateMode, kubeContext, ctrlClient, scheme)
 	liveUpdateBuildAndDeployer := buildcontrol.NewLiveUpdateBuildAndDeployer(reconciler, clock)
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(docker2, labels)

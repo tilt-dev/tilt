@@ -18,6 +18,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tilt-dev/tilt/internal/controllers/core/configmap"
+
 	"github.com/tilt-dev/tilt/internal/controllers/core/togglebutton"
 
 	"github.com/davecgh/go-spew/spew"
@@ -78,6 +80,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/localexec"
 	"github.com/tilt-dev/tilt/internal/openurl"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/buildcontrols"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/internal/store/tiltfiles"
 	"github.com/tilt-dev/tilt/internal/testutils"
@@ -1297,7 +1300,7 @@ go build ./...
 `
 	manifest := f.newManifest("foobar")
 	iTarget := manifest.ImageTargetAt(0).
-		WithLiveUpdateSpec(v1alpha1.LiveUpdateSpec{}).
+		WithLiveUpdateSpec("foobar", v1alpha1.LiveUpdateSpec{}).
 		WithBuildDetails(
 			model.DockerBuild{
 				Dockerfile: df,
@@ -1619,13 +1622,13 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 		return buildcontrol.NextManifestNameToBuild(st) == manifest.Name && ms.HasPendingFileChanges()
 	})
 	spanID0 := SpanIDForBuildLog(0)
-	f.store.Dispatch(buildcontrol.BuildStartedAction{
+	f.store.Dispatch(buildcontrols.BuildStartedAction{
 		ManifestName: manifest.Name,
 		StartTime:    f.Now(),
 		SpanID:       spanID0,
 	})
 
-	f.store.Dispatch(buildcontrol.NewBuildCompleteAction(name,
+	f.store.Dispatch(buildcontrols.NewBuildCompleteAction(name,
 		spanID0,
 		liveUpdateResultSet(manifest, "theOriginalContainer"), nil))
 
@@ -1671,7 +1674,7 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 		return buildcontrol.NextManifestNameToBuild(st) == manifest.Name && ms.HasPendingFileChanges()
 	})
 	spanID0 := SpanIDForBuildLog(0)
-	f.store.Dispatch(buildcontrol.BuildStartedAction{
+	f.store.Dispatch(buildcontrols.BuildStartedAction{
 		ManifestName: manifest.Name,
 		StartTime:    f.Now(),
 		SpanID:       spanID0,
@@ -1682,7 +1685,7 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 
 	// ...and finish the build. Even though this action comes in AFTER the pod
 	// event w/ unexpected container,  we should still be able to detect the mismatch.
-	f.store.Dispatch(buildcontrol.NewBuildCompleteAction(name, spanID0,
+	f.store.Dispatch(buildcontrols.NewBuildCompleteAction(name, spanID0,
 		liveUpdateResultSet(manifest, "theOriginalContainer"), nil))
 
 	f.WaitUntilManifestState("NeedsRebuildFromCrash set to True", "foobar", func(ms store.ManifestState) bool {
@@ -1712,7 +1715,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 	})
 
 	spanID0 := SpanIDForBuildLog(0)
-	f.store.Dispatch(buildcontrol.BuildStartedAction{
+	f.store.Dispatch(buildcontrols.BuildStartedAction{
 		ManifestName: manifest.Name,
 		StartTime:    f.Now(),
 		SpanID:       spanID0,
@@ -1729,7 +1732,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 	f.kClient.Inject(entities.Deployment(), entities.ReplicaSet())
 
 	f.setK8sApplyResult(name, ptsh, entities.Deployment())
-	f.store.Dispatch(buildcontrol.NewBuildCompleteAction(name,
+	f.store.Dispatch(buildcontrols.NewBuildCompleteAction(name,
 		spanID0,
 		deployResultSet(f.T(), manifest, pb, []k8s.PodTemplateSpecHash{ptsh}), nil))
 
@@ -1746,7 +1749,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 	})
 
 	spanID1 := SpanIDForBuildLog(1)
-	f.store.Dispatch(buildcontrol.BuildStartedAction{
+	f.store.Dispatch(buildcontrols.BuildStartedAction{
 		ManifestName: manifest.Name,
 		StartTime:    f.Now(),
 		SpanID:       spanID1,
@@ -1755,7 +1758,7 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 	// Simulate a pod crash, then a build completion
 	f.podEvent(pb.WithContainerID("funny-container-id").Build())
 
-	f.store.Dispatch(buildcontrol.NewBuildCompleteAction(name,
+	f.store.Dispatch(buildcontrols.NewBuildCompleteAction(name,
 		spanID1,
 		liveUpdateResultSet(manifest, "normal-container-id"), nil))
 
@@ -2729,7 +2732,7 @@ func TestDockerComposeFiltersRunLogs(t *testing.T) {
 	fakeServiceLog := make(chan string)
 	close(fakeServiceLog)
 	f.dcc.RunLogOutput["fake-service"] = fakeServiceLog
-	r := f.dcc.StreamLogs(f.ctx, nil, "fake-service")
+	r := f.dcc.StreamLogs(f.ctx, model.DockerComposeUpSpec{Service: "fake-service"})
 	sampleDCLogOutput, err := io.ReadAll(r)
 	require.NoError(t, err, "Failed to read fake Docker Compose log stream")
 	assert.Equal(t, string(sampleDCLogOutput),
@@ -3108,7 +3111,7 @@ func TestBuildLogAction(t *testing.T) {
 	manifest := f.newManifest("alert-injester")
 	f.Start([]model.Manifest{manifest})
 
-	f.store.Dispatch(buildcontrol.BuildStartedAction{
+	f.store.Dispatch(buildcontrols.BuildStartedAction{
 		ManifestName: manifest.Name,
 		StartTime:    f.Now(),
 		SpanID:       SpanIDForBuildLog(1),
@@ -3822,6 +3825,38 @@ func TestOverrideTriggerModeBadTriggerModeLogsError(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestDisablingResourcePreventsBuild(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	m := manifestbuilder.New(f, "foo").WithLocalResource("foo", []string{f.Path()}).Build()
+
+	f.Start([]model.Manifest{m})
+
+	cm := v1alpha1.ConfigMap{}
+	err := f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: "foo-disable"}, &cm)
+	require.NoError(t, err)
+
+	cm.Data["isDisabled"] = "true"
+	err = f.ctrlClient.Update(f.ctx, &cm)
+	require.NoError(t, err)
+
+	f.WaitUntil("resource is disabled", func(state store.EngineState) bool {
+		if uir, ok := state.UIResources["foo"]; ok {
+			return uir.Status.DisableStatus.DisabledCount > 0
+		}
+		return false
+	})
+
+	action := server.AppendToTriggerQueueAction{Name: "foo", Reason: 123}
+	f.store.Dispatch(action)
+
+	f.WaitUntil("is waiting+disabled", func(state store.EngineState) bool {
+		_, holds := buildcontrol.NextTargetToBuild(state)
+		return holds["foo"].Reason == store.HoldReasonDisabled
+	})
+}
+
 type testFixture struct {
 	*tempdir.TempDirFixture
 	t                          *testing.T
@@ -3961,9 +3996,10 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	extr := extension.NewReconciler(cdc, sch, ta)
 	extrr, err := extensionrepo.NewReconciler(cdc, base)
 	require.NoError(t, err)
+	cmr := configmap.NewReconciler(cdc, st)
 
 	cu := &containerupdate.FakeContainerUpdater{}
-	lur := liveupdate.NewFakeReconciler(cu, cdc)
+	lur := liveupdate.NewFakeReconciler(st, cu, cdc)
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
 		fwc,
 		cmds,
@@ -3979,6 +4015,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		extr,
 		extrr,
 		lur,
+		cmr,
 	))
 
 	dp := dockerprune.NewDockerPruner(dockerClient)
@@ -4120,8 +4157,8 @@ func (f *testFixture) Init(action InitAction) {
 		TiltfileManifestName: model.MainTiltfileManifestName,
 		Manifests:            state.Manifests(),
 		ConfigFiles:          state.MainConfigPaths(),
-	}, make(map[string]*v1alpha1.DisableSource))
-	expectedWatchCount := len(expectedFileWatches)
+		TiltfilePath:         action.TiltfilePath,
+	}, make(map[model.ManifestName]*v1alpha1.DisableSource))
 	if f.overrideMaxParallelUpdates > 0 {
 		state.UpdateSettings = state.UpdateSettings.WithMaxParallelUpdates(f.overrideMaxParallelUpdates)
 	}
@@ -4146,13 +4183,18 @@ func (f *testFixture) Init(action InitAction) {
 
 			return false
 		}
-		activeWatches := 0
+
+		remainingWatchNames := make(map[string]bool)
+		for _, fw := range expectedFileWatches {
+			remainingWatchNames[fw.GetName()] = true
+		}
+
 		for _, fw := range fwList.Items {
 			if !fw.Status.MonitorStartTime.IsZero() {
-				activeWatches++
+				delete(remainingWatchNames, fw.GetName())
 			}
 		}
-		return activeWatches >= expectedWatchCount
+		return len(remainingWatchNames) == 0
 	})
 }
 
@@ -4576,7 +4618,7 @@ func (f *testFixture) setBuildLogOutput(id model.TargetID, output string) {
 }
 
 func (f *testFixture) setDCRunLogOutput(dc model.DockerComposeTarget, output <-chan string) {
-	f.dcc.RunLogOutput[dc.Name] = output
+	f.dcc.RunLogOutput[dc.Spec.Service] = output
 }
 
 func (f *testFixture) hudResource(name model.ManifestName) view.Resource {

@@ -137,8 +137,8 @@ func TestLiveUpdateDockerBuildQualifiedImageName(t *testing.T) {
 	f := newLiveUpdateFixture(t)
 	defer f.TearDown()
 
+	f.expectedImage = "gcr.io/foo"
 	f.tiltfileCode = "docker_build('gcr.io/foo', 'foo', live_update=%s)"
-	f.expectedLU.Selector.Kubernetes = &v1alpha1.LiveUpdateKubernetesSelector{Image: "gcr.io/foo"}
 	f.init()
 
 	f.load("foo")
@@ -159,7 +159,6 @@ docker_build('foo', 'foo', live_update=%s)`
 
 	i := image("foo")
 	i.localRef = "gcr.io/foo"
-	f.expectedLU.Selector.Kubernetes = &v1alpha1.LiveUpdateKubernetesSelector{Image: "gcr.io/foo"}
 	f.assertNextManifest("foo", db(i, f.expectedLU))
 }
 
@@ -234,7 +233,6 @@ k8s_yaml('foo.yaml')
 			},
 		},
 	}
-	lu.Selector.Kubernetes = &v1alpha1.LiveUpdateKubernetesSelector{Image: "gcr.io/image-b"}
 
 	f.assertNextManifest("foo",
 		db(image("gcr.io/image-a")),
@@ -274,7 +272,6 @@ k8s_yaml('foo.yaml')
 					},
 				},
 			}
-			lu.Selector.Kubernetes = &v1alpha1.LiveUpdateKubernetesSelector{Image: "gcr.io/image-a"}
 			f.assertNextManifest("foo",
 				db(image("gcr.io/image-a"), lu))
 		})
@@ -416,13 +413,14 @@ docker_compose('docker-compose.yml')
 type liveUpdateFixture struct {
 	*fixture
 
-	tiltfileCode string
-	expectedLU   v1alpha1.LiveUpdateSpec
+	tiltfileCode  string
+	expectedImage string
+	expectedLU    v1alpha1.LiveUpdateSpec
 }
 
 func (f *liveUpdateFixture) init() {
 	f.dockerfile("foo/Dockerfile")
-	f.yaml("foo.yaml", deployment("foo", image(f.expectedLU.Selector.Kubernetes.Image)))
+	f.yaml("foo.yaml", deployment("foo", image(f.expectedImage)))
 
 	luSteps := `[
     fall_back_on(['foo/i', 'foo/j']),
@@ -458,7 +456,7 @@ func newLiveUpdateFixture(t *testing.T) *liveUpdateFixture {
 			},
 		},
 	}
-	f.expectedLU.Selector.Kubernetes = &v1alpha1.LiveUpdateKubernetesSelector{Image: "foo"}
+	f.expectedImage = "foo"
 
 	return f
 }

@@ -36,9 +36,9 @@ var (
 	r3 = "gcr.io/some-project-162817/three"
 	r4 = "gcr.io/some-project-162817/four"
 
-	iTargWithRef1     = iTargetForRef(r1).WithLiveUpdateSpec(lu).WithBuildDetails(model.DockerBuild{})
-	iTargWithRef2     = iTargetForRef(r2).WithLiveUpdateSpec(lu).WithBuildDetails(model.DockerBuild{})
-	iTargWithRef3     = iTargetForRef(r3).WithLiveUpdateSpec(lu).WithBuildDetails(model.DockerBuild{})
+	iTargWithRef1     = iTargetForRef(r1).WithLiveUpdateSpec("one", lu).WithBuildDetails(model.DockerBuild{})
+	iTargWithRef2     = iTargetForRef(r2).WithLiveUpdateSpec("two", lu).WithBuildDetails(model.DockerBuild{})
+	iTargWithRef3     = iTargetForRef(r3).WithLiveUpdateSpec("three", lu).WithBuildDetails(model.DockerBuild{})
 	iTargWithRef4NoLU = iTargetForRef(r4)
 )
 

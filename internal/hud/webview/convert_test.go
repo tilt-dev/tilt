@@ -31,7 +31,7 @@ func completeProtoView(t *testing.T, s store.EngineState) *proto_webview.View {
 
 	view.UiSession = ToUISession(s)
 
-	resources, err := ToUIResourceList(s)
+	resources, err := ToUIResourceList(s, make(map[string][]v1alpha1.DisableSource))
 	require.NoError(t, err)
 	view.UiResources = resources
 
@@ -314,7 +314,7 @@ func TestSpecs(t *testing.T) {
 		BasePath: ".",
 		Syncs:    []v1alpha1.LiveUpdateSync{{LocalPath: "foo", ContainerPath: "bar"}},
 	}
-	luTarg := model.ImageTarget{}.WithLiveUpdateSpec(luSpec).WithBuildDetails(model.DockerBuild{})
+	luTarg := model.ImageTarget{}.WithLiveUpdateSpec("sancho", luSpec).WithBuildDetails(model.DockerBuild{})
 
 	mNoLiveUpd := model.Manifest{Name: "noLiveUpd"}.WithImageTarget(model.ImageTarget{}).WithDeployTarget(model.K8sTarget{})
 	mLiveUpd := model.Manifest{Name: "liveUpd"}.WithImageTarget(luTarg).WithDeployTarget(model.K8sTarget{})
@@ -350,6 +350,55 @@ func TestSpecs(t *testing.T) {
 		}
 		require.ElementsMatch(t, expected.targetTypes, observedTypes, "for resource %q", r.Name)
 		require.Equal(t, expected.hasLiveUpdate, iTargHasLU, "for resource %q", r.Name)
+	}
+}
+
+func TestDisableResourceStatus(t *testing.T) {
+	m1 := model.Manifest{Name: "m1"}.WithDeployTarget(model.LocalTarget{})
+	m2 := model.Manifest{Name: "m2"}.WithDeployTarget(model.LocalTarget{})
+	m3 := model.Manifest{Name: "m3"}.WithDeployTarget(model.LocalTarget{})
+	state := newState([]model.Manifest{m1, m2, m3})
+
+	state.ConfigMaps = map[string]*v1alpha1.ConfigMap{
+		"disable-m1":  {Data: map[string]string{"isDisabled": "true"}},
+		"disable-m2a": {Data: map[string]string{"isDisabled": "true"}},
+		"disable-m2b": {Data: map[string]string{"isDisabled": "true"}},
+		"disable-m2c": {Data: map[string]string{"isDisabled": "false"}},
+	}
+
+	disableSources := map[string][]v1alpha1.DisableSource{
+		"m1": {{ConfigMap: &v1alpha1.ConfigMapDisableSource{Name: "disable-m1", Key: "isDisabled"}}},
+		"m2": {
+			{ConfigMap: &v1alpha1.ConfigMapDisableSource{Name: "disable-m2a", Key: "isDisabled"}},
+			{ConfigMap: &v1alpha1.ConfigMapDisableSource{Name: "disable-m2b", Key: "isDisabled"}},
+			{ConfigMap: &v1alpha1.ConfigMapDisableSource{Name: "disable-m2c", Key: "isDisabled"}},
+		},
+	}
+
+	uiResources, err := ToUIResourceList(*state, disableSources)
+	require.NoError(t, err)
+
+	expected := []v1alpha1.DisableResourceStatus{
+		{}, // The first UIResource is the Tiltfile
+		{
+			EnabledCount:  0,
+			DisabledCount: 1,
+			Sources:       disableSources["m1"],
+		},
+		{
+			EnabledCount:  1,
+			DisabledCount: 2,
+			Sources:       disableSources["m2"],
+		},
+		{
+			EnabledCount:  0,
+			DisabledCount: 0,
+			Sources:       nil,
+		},
+	}
+
+	for i, uir := range uiResources {
+		require.Equal(t, expected[i], uir.Status.DisableStatus)
 	}
 }
 

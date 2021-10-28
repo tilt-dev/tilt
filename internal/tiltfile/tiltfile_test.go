@@ -3466,13 +3466,12 @@ docker_build('gcr.io/some-project-162817/sancho-sidecar', './sidecar',
 		BasePath: f.Path(),
 		Syncs:    []v1alpha1.LiveUpdateSync{sync1},
 	}
-	expectedLU1.Selector.Kubernetes = &v1alpha1.LiveUpdateKubernetesSelector{Image: "gcr.io/some-project-162817/sancho"}
+
 	sync2 := v1alpha1.LiveUpdateSync{LocalPath: filepath.Join("sidecar", "baz"), ContainerPath: "/quux"}
 	expectedLU2 := v1alpha1.LiveUpdateSpec{
 		BasePath: f.Path(),
 		Syncs:    []v1alpha1.LiveUpdateSync{sync2},
 	}
-	expectedLU2.Selector.Kubernetes = &v1alpha1.LiveUpdateKubernetesSelector{Image: "gcr.io/some-project-162817/sancho-sidecar"}
 
 	f.load()
 	f.assertNextManifest("sancho",
@@ -5916,10 +5915,11 @@ type fixture struct {
 func (f *fixture) newTiltfileLoader() TiltfileLoader {
 	dcc := dockercompose.NewDockerComposeClient(docker.LocalEnv{})
 	features := feature.Defaults{
-		"testflag_disabled": feature.Value{Enabled: false},
-		"testflag_enabled":  feature.Value{Enabled: true},
-		"obsoleteflag":      feature.Value{Status: feature.Obsolete, Enabled: true},
-		feature.Snapshots:   feature.Value{Enabled: true},
+		"testflag_disabled":  feature.Value{Enabled: false},
+		"testflag_enabled":   feature.Value{Enabled: true},
+		"obsoleteflag":       feature.Value{Status: feature.Obsolete, Enabled: true},
+		feature.Snapshots:    feature.Value{Enabled: true},
+		feature.LiveUpdateV2: feature.Value{Enabled: false},
 	}
 
 	k8sContextExt := k8scontext.NewPlugin(f.k8sContext, f.k8sEnv)

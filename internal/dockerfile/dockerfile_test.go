@@ -96,7 +96,7 @@ RUN echo bye
 
 func TestFindImages(t *testing.T) {
 	df := Dockerfile(`FROM gcr.io/image-a`)
-	images, err := df.FindImages()
+	images, err := df.FindImages(nil)
 	assert.NoError(t, err)
 	if assert.Equal(t, 1, len(images)) {
 		assert.Equal(t, "gcr.io/image-a", images[0].String())
@@ -105,7 +105,7 @@ func TestFindImages(t *testing.T) {
 
 func TestFindImagesAsBuilder(t *testing.T) {
 	df := Dockerfile(`FROM gcr.io/image-a as builder`)
-	images, err := df.FindImages()
+	images, err := df.FindImages(nil)
 	assert.NoError(t, err)
 	if assert.Equal(t, 1, len(images)) {
 		assert.Equal(t, "gcr.io/image-a", images[0].String())
@@ -115,21 +115,21 @@ func TestFindImagesAsBuilder(t *testing.T) {
 func TestFindImagesBadImageName(t *testing.T) {
 	// Capital letters aren't allowed in image names
 	df := Dockerfile(`FROM gcr.io/imageA`)
-	images, err := df.FindImages()
+	images, err := df.FindImages(nil)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(images))
 }
 
 func TestFindImagesMissingImageName(t *testing.T) {
 	df := Dockerfile(`FROM`)
-	images, err := df.FindImages()
+	images, err := df.FindImages(nil)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(images))
 }
 
 func TestFindImagesWeirdSyntax(t *testing.T) {
 	df := Dockerfile(`FROM a b`)
-	images, err := df.FindImages()
+	images, err := df.FindImages(nil)
 	assert.NoError(t, err)
 	if assert.Equal(t, 1, len(images)) {
 		assert.Equal(t, "docker.io/library/a", images[0].String())
@@ -138,22 +138,46 @@ func TestFindImagesWeirdSyntax(t *testing.T) {
 
 func TestFindImagesCopyFrom(t *testing.T) {
 	df := Dockerfile(`COPY --from=gcr.io/image-a /srcA/package.json /srcB/package.json`)
-	images, err := df.FindImages()
+	images, err := df.FindImages(nil)
 	assert.NoError(t, err)
 	if assert.Equal(t, 1, len(images)) {
 		assert.Equal(t, "gcr.io/image-a", images[0].String())
 	}
 }
 
-func TestFindImagesWithArg(t *testing.T) {
+func TestFindImagesWithDefaultArg(t *testing.T) {
 	df := Dockerfile(`
 ARG TAG="latest"
 FROM gcr.io/image-a:${TAG}
 `)
-	images, err := df.FindImages()
+	images, err := df.FindImages(nil)
 	assert.NoError(t, err)
 	if assert.Equal(t, 1, len(images)) {
 		assert.Equal(t, "gcr.io/image-a:latest", images[0].String())
+	}
+}
+
+func TestFindImagesWithNoDefaultArg(t *testing.T) {
+	df := Dockerfile(`
+ARG TAG
+FROM gcr.io/image-a:${TAG}
+`)
+	images, err := df.FindImages(map[string]string{"TAG": "latest"})
+	assert.NoError(t, err)
+	if assert.Equal(t, 1, len(images)) {
+		assert.Equal(t, "gcr.io/image-a:latest", images[0].String())
+	}
+}
+
+func TestFindImagesWithOverrideArg(t *testing.T) {
+	df := Dockerfile(`
+ARG TAG="latest"
+FROM gcr.io/image-a:${TAG}
+`)
+	images, err := df.FindImages(map[string]string{"TAG": "v2.0.1"})
+	assert.NoError(t, err)
+	if assert.Equal(t, 1, len(images)) {
+		assert.Equal(t, "gcr.io/image-a:v2.0.1", images[0].String())
 	}
 }
 
@@ -174,7 +198,7 @@ FROM ${PYTHON2_BASE}
 
 RUN --mount=type=cache,id=pip,target=/root/.cache/pip pip install python-dateutil
 `)
-	images, err := df.FindImages()
+	images, err := df.FindImages(nil)
 	assert.NoError(t, err)
 	if assert.Equal(t, 1, len(images)) {
 		assert.Equal(t, "docker.io/library/python2-base", images[0].String())

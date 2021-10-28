@@ -130,7 +130,7 @@ type K8sClient struct {
 	nodeIPAsync       *nodeIPAsync
 	drm               RESTMapper
 	clientLoader      clientcmd.ClientConfig
-	helmKubeClient    HelmKubeClient
+	resourceClient    ResourceClient
 }
 
 var _ Client = &K8sClient{}
@@ -201,7 +201,7 @@ func ProvideK8sClient(
 		metadata:          meta,
 		clientLoader:      clientLoader,
 	}
-	c.helmKubeClient = newHelmKubeClient(c)
+	c.resourceClient = newResourceClient(c)
 	return c
 }
 
@@ -282,7 +282,7 @@ func (k *K8sClient) Upsert(ctx context.Context, entities []K8sEntity, timeout ti
 		innerCtx, cancel := context.WithTimeout(ctx, timeout)
 		defer cancel()
 
-		newEntity, err := k.applyEntityAndMaybeForce(innerCtx, e)
+		newEntity, err := k.escalatingUpdate(innerCtx, e)
 		if err != nil {
 			if ctx.Err() == context.DeadlineExceeded {
 				return nil, timeoutError(timeout)
@@ -296,7 +296,7 @@ func (k *K8sClient) Upsert(ctx context.Context, entities []K8sEntity, timeout ti
 		innerCtx, cancel := context.WithTimeout(ctx, timeout)
 		defer cancel()
 
-		newEntities, err := k.forceReplaceEntity(innerCtx, e)
+		newEntities, err := k.deleteAndCreateEntity(innerCtx, e)
 		if err != nil {
 			if ctx.Err() == context.DeadlineExceeded {
 				return nil, timeoutError(timeout)
@@ -309,10 +309,58 @@ func (k *K8sClient) Upsert(ctx context.Context, entities []K8sEntity, timeout ti
 	return result, nil
 }
 
-func (k *K8sClient) forceReplaceEntity(ctx context.Context, entity K8sEntity) ([]K8sEntity, error) {
+// Update an entity like kubectl apply does.
+//
+// This is the "best" way to apply a change.
+// It will do a 3-way merge to update the spec in the least intrusive way.
+func (k *K8sClient) applyEntity(ctx context.Context, entity K8sEntity) ([]K8sEntity, error) {
 	resources, err := k.prepareUpdateList(ctx, entity)
 	if err != nil {
-		return nil, errors.Wrap(err, "kubernetes replace")
+		return nil, errors.Wrap(err, "kubernetes apply")
+	}
+
+	result, err := k.resourceClient.Apply(resources)
+	if err != nil {
+		return nil, err
+	}
+
+	return k.helmResultToEntities(result)
+}
+
+// Update an entity like kubectl create/replace does.
+//
+// This uses a PUT HTTP call to replace one entity with another.
+//
+// It's not as good as apply, because it will wipe out bookkeeping
+// that other controllers have added.
+//
+// But in cases where the entity is too big to do a 3-way merge,
+// this is the next best option.
+func (k *K8sClient) createOrReplaceEntity(ctx context.Context, entity K8sEntity) ([]K8sEntity, error) {
+	resources, err := k.prepareUpdateList(ctx, entity)
+	if err != nil {
+		return nil, errors.Wrap(err, "kubernetes upsert")
+	}
+
+	result, err := k.resourceClient.CreateOrReplace(resources)
+	if err != nil {
+		return nil, err
+	}
+
+	return k.helmResultToEntities(result)
+}
+
+// Delete and create an entity.
+//
+// This is the most intrusive way to perform an update,
+// because any children of the object will be deleted by the controller.
+//
+// Some objects in the Kubernetes ecosystem are immutable, so need
+// this approach as a last resort.
+func (k *K8sClient) deleteAndCreateEntity(ctx context.Context, entity K8sEntity) ([]K8sEntity, error) {
+	resources, err := k.prepareUpdateList(ctx, entity)
+	if err != nil {
+		return nil, errors.Wrap(err, "kubernetes delete and re-create")
 	}
 
 	result, err := k.deleteAndCreate(resources)
@@ -345,7 +393,7 @@ func (k *K8sClient) buildResourceList(ctx context.Context, e K8sEntity) (kube.Re
 		return nil, err
 	}
 
-	resources, err := k.helmKubeClient.Build(rawYAML, false)
+	resources, err := k.resourceClient.Build(rawYAML, false)
 	if err != nil {
 		return nil, err
 	}
@@ -385,7 +433,7 @@ func (k *K8sClient) deleteAndCreate(list kube.ResourceList) (*kube.Result, error
 		toDelete = append(toDelete, &rClone)
 	}
 
-	_, errs := k.helmKubeClient.Delete(toDelete)
+	_, errs := k.resourceClient.Delete(toDelete)
 	for _, err := range errs {
 		if isNotFoundError(err) {
 			continue
@@ -413,47 +461,45 @@ func (k *K8sClient) deleteAndCreate(list kube.ResourceList) (*kube.Result, error
 
 	wg.Wait()
 
-	result, err := k.helmKubeClient.Create(list)
+	result, err := k.resourceClient.Create(list)
 	if err != nil {
 		return nil, errors.Wrap(err, "kubernetes create")
 	}
 	return result, nil
 }
 
-// applyEntityAndMaybeForce `kubectl apply`'s the given entity, and if the call fails with
-// an immutible field error, attempts to `replace --force` it.
-func (k *K8sClient) applyEntityAndMaybeForce(ctx context.Context, entity K8sEntity) ([]K8sEntity, error) {
-	resources, err := k.prepareUpdateList(ctx, entity)
+// Update a resource in-place, starting with the least intrusive
+// update strategy and escalating into the most intrusive strategy.
+func (k *K8sClient) escalatingUpdate(ctx context.Context, entity K8sEntity) ([]K8sEntity, error) {
+	fallback := false
+	result, err := k.applyEntity(ctx, entity)
 	if err != nil {
-		return nil, errors.Wrap(err, "kubernetes apply")
+		msg, match := maybeAnnotationsTooLong(err.Error())
+		if match {
+			fallback = true
+			logger.Get(ctx).Infof("Updating %q failed: %s", entity.Name(), msg)
+			logger.Get(ctx).Infof("Attempting to create or replace")
+			result, err = k.createOrReplaceEntity(ctx, entity)
+		}
 	}
 
-	result, err := k.helmKubeClient.Apply(resources)
 	if err != nil {
-		reason, shouldTryReplace := maybeShouldTryReplaceReason(err.Error())
-		if !shouldTryReplace {
-			return nil, errors.Wrap(err, "kubernetes apply")
+		isImmutable := maybeImmutableFieldStderr(err.Error())
+		if isImmutable {
+			fallback = true
+			logger.Get(ctx).Infof("Updating %q failed: immutable field error", entity.Name())
+			logger.Get(ctx).Infof("Attempting to delete and re-create")
+			result, err = k.deleteAndCreateEntity(ctx, entity)
 		}
-
-		// NOTE(maia): we don't use `kubectl replace --force`, because we want to ensure that all
-		// dependant pods get deleted rather than orphaned. We WANT these pods to be deleted
-		// and recreated so they have all the new labels, etc. of their controlling k8s entity.
-		logger.Get(ctx).Infof("Updating %s failed. Attempting to delete + recreate: %s", entity.Name(), reason)
-
-		// Apply() is mutating, so we need to re-parse the entities.
-		resources, err := k.prepareUpdateList(ctx, entity)
-		if err != nil {
-			return nil, errors.Wrap(err, "kubernetes apply")
-		}
-
-		result, err = k.deleteAndCreate(resources)
-		if err != nil {
-			return nil, err
-		}
-		logger.Get(ctx).Infof("Succeeded!")
 	}
 
-	return k.helmResultToEntities(result)
+	if err != nil {
+		return nil, err
+	}
+	if fallback {
+		logger.Get(ctx).Infof("Updating %q succeeded!", entity.Name())
+	}
+	return result, nil
 }
 
 // We're using kubectl, so we only get stderr, not structured errors.
@@ -482,16 +528,6 @@ func maybeAnnotationsTooLong(stderr string) (string, bool) {
 	return "", false
 }
 
-func maybeShouldTryReplaceReason(stderr string) (string, bool) {
-	if maybeImmutableFieldStderr(stderr) {
-		return "immutable field error", true
-	} else if msg, match := maybeAnnotationsTooLong(stderr); match {
-		return fmt.Sprintf("%s (https://github.com/kubernetes/kubectl/issues/712)", msg), true
-	}
-
-	return "", false
-}
-
 // Deletes all given entities.
 //
 // Currently ignores any "not found" errors, because that seems like the correct
@@ -512,7 +548,7 @@ func (k *K8sClient) Delete(ctx context.Context, entities []K8sEntity) error {
 		resources = append(resources, resourceList...)
 	}
 
-	_, errs := k.helmKubeClient.Delete(resources)
+	_, errs := k.resourceClient.Delete(resources)
 	for _, err := range errs {
 		if err == nil || isNotFoundError(err) {
 			continue

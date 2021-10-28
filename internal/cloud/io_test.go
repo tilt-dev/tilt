@@ -36,7 +36,7 @@ func TestWriteSnapshotTo(t *testing.T) {
 		},
 	}
 
-	resources, err := webview.ToUIResourceList(*state)
+	resources, err := webview.ToUIResourceList(*state, make(map[string][]v1alpha1.DisableSource))
 	require.NoError(t, err)
 	snapshot.View.UiResources = resources
 

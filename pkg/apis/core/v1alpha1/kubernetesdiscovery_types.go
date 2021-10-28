@@ -36,6 +36,7 @@ import (
 
 // KubernetesDiscovery
 // +k8s:openapi-gen=true
+// +tilt:starlark-gen=true
 type KubernetesDiscovery struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
@@ -156,6 +157,10 @@ func (in *KubernetesDiscovery) GetObjectMeta() *metav1.ObjectMeta {
 	return &in.ObjectMeta
 }
 
+func (in *KubernetesDiscovery) GetSpec() interface{} {
+	return &in.Spec
+}
+
 func (in *KubernetesDiscovery) NamespaceScoped() bool {
 	return false
 }
@@ -187,8 +192,8 @@ func (in *KubernetesDiscovery) IsStorageVersion() bool {
 func (in *KubernetesDiscovery) Validate(_ context.Context) field.ErrorList {
 	var fieldErrors field.ErrorList
 	watchPath := field.NewPath("spec", "watches")
-	if len(in.Spec.Watches) == 0 {
-		fieldErrors = append(fieldErrors, field.Required(watchPath, "One or more watches are required"))
+	if len(in.Spec.Watches) == 0 && len(in.Spec.ExtraSelectors) == 0 {
+		fieldErrors = append(fieldErrors, field.Required(watchPath, "One or more watches or extraSelectors are required"))
 	}
 	for i := range in.Spec.Watches {
 		if in.Spec.Watches[i].Namespace == "" {

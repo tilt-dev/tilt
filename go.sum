@@ -1098,8 +1098,8 @@ github.com/tilt-dev/apimachinery v0.22.2-tilt-20210928 h1:QPY5EkF9fDBVknWzwT4kxY
 github.com/tilt-dev/apimachinery v0.22.2-tilt-20210928/go.mod h1:O3oNtNadZdeOMxHFVxOreoznohCpy0z6mocxbZr7oJ0=
 github.com/tilt-dev/browser v0.0.1 h1:e+mFToX6A7pkMlGFrXW5VLvS7qS0HVbcXqmR0uPrWUA=
 github.com/tilt-dev/browser v0.0.1/go.mod h1:2DaMt8P8xEqDFzxaAbraOig5iUmQdd1wtO1Tb6tODHA=
-github.com/tilt-dev/dockerignore v0.0.0-20200910202654-0d8c17a73277 h1:+M1rb07n9/WS/UdOFTIy+fXyAhcqZkkLU5UcNcq7zO4=
-github.com/tilt-dev/dockerignore v0.0.0-20200910202654-0d8c17a73277/go.mod h1:jVw8aojw83Ph6G4lQn0Xe5az++nNnFrK1dNQwZzT3Mc=
+github.com/tilt-dev/dockerignore v0.1.1 h1:/MPYqcD8qMCMyh3yiHuQdzbMQi9NL4vVopo6/9D/XvE=
+github.com/tilt-dev/dockerignore v0.1.1/go.mod h1:2ooUDj8B9FNWYvHadA4EKG0JDaeAOjiq5P+mvEzS2eY=
 github.com/tilt-dev/fsevents v0.0.0-20200515134857-2efe37af20de h1:tG+nJMUUxV7MJm/MeU1Mw7rvmwN9GWyHMMg+wtf9HS4=
 github.com/tilt-dev/fsevents v0.0.0-20200515134857-2efe37af20de/go.mod h1:1jUbPVh7Ani2CSublmvP7+zqTgR06A8Y0MKU9Xr2L5s=
 github.com/tilt-dev/fsnotify v1.4.8-0.20210701141043-dd524499d3fe h1:dULiU6eWdUfLAO0URJz+k1zEN5B3rPS5Iupr4Srd/yk=
@@ -1112,8 +1112,8 @@ github.com/tilt-dev/localregistry-go v0.0.0-20200615231835-07e386f4ebd7 h1:ysHGL
 github.com/tilt-dev/localregistry-go v0.0.0-20200615231835-07e386f4ebd7/go.mod h1:bZecZHy8tHzZWeF+MEQMugKbGhi9cF1A7tuaZNIxoDs=
 github.com/tilt-dev/opencensus-go v0.22.5-0.20200904175236-275b1754f353 h1:lxM1v8P9oYChoHZjnno3s8FlH0w3h2nWeq86FH4sAag=
 github.com/tilt-dev/opencensus-go v0.22.5-0.20200904175236-275b1754f353/go.mod h1:yxeiOL68Rb0Xd1ddK5vPZ/oVn4vY4Ynel7k9FzqtOIw=
-github.com/tilt-dev/probe v0.3.0 h1:yQiBt4sDwa3Wm73BsGvGlyvQVYFpANbc+WuMNhb6700=
-github.com/tilt-dev/probe v0.3.0/go.mod h1:yMGw+VQ+nJkjB9etiBGsHGX4ibq5M3+oCS/kVJ3/WYU=
+github.com/tilt-dev/probe v0.3.1 h1:PQhXSBkgcGBUU/eKt4vgAUKsAWWjBr2F53xNAc0E7zs=
+github.com/tilt-dev/probe v0.3.1/go.mod h1:F53NFbqblwu5oyIk2t+BPkswiboxuF8e5D3wbPnY4JA=
 github.com/tilt-dev/tilt-apiserver v0.5.0 h1:OfapDgtSrRi5ADjO+oIgbR7FgOAGyj859x5sFwd1dhg=
 github.com/tilt-dev/tilt-apiserver v0.5.0/go.mod h1:WfOq4XyMpYqXpMaIXZZodR9GX6clNkueNQCV2u1q5os=
 github.com/tilt-dev/wmclient v0.0.0-20201109174454-1839d0355fbc h1:wGkAoZhrvnmq93B4W2v+agiPl7xzqUaxXkxmKrwJ6bc=
@@ -1828,7 +1828,6 @@ k8s.io/utils v0.0.0-20200324210504-a9aa75ae1b89/go.mod h1:sZAwmy6armz5eXlNoLmJcl
 k8s.io/utils v0.0.0-20200603063816-c1c6865ac451/go.mod h1:jPW/WVKK9YHAvNhRxK0md/EJ228hCsBRufyofKtW8HA=
 k8s.io/utils v0.0.0-20200729134348-d5654de09c73/go.mod h1:jPW/WVKK9YHAvNhRxK0md/EJ228hCsBRufyofKtW8HA=
 k8s.io/utils v0.0.0-20201110183641-67b214c5f920/go.mod h1:jPW/WVKK9YHAvNhRxK0md/EJ228hCsBRufyofKtW8HA=
-k8s.io/utils v0.0.0-20210709001253-0e1f9d693477/go.mod h1:jPW/WVKK9YHAvNhRxK0md/EJ228hCsBRufyofKtW8HA=
 k8s.io/utils v0.0.0-20210819203725-bdf08cb9a70a h1:8dYfu/Fc9Gz2rNJKB9IQRGgQOh2clmRzNIPPY1xLY5g=
 k8s.io/utils v0.0.0-20210819203725-bdf08cb9a70a/go.mod h1:jPW/WVKK9YHAvNhRxK0md/EJ228hCsBRufyofKtW8HA=
 modernc.org/cc v1.0.0/go.mod h1:1Sk4//wdnYJiUIxnW8ddKpaOJCF37yAdqYnkxUpaYxw=

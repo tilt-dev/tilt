@@ -29,8 +29,9 @@ import (
 
 // dcResourceSet represents a single docker-compose config file and all its associated services
 type dcResourceSet struct {
-	configPaths []string
+	Project model.DockerComposeProject
 
+	configPaths  []string
 	services     []*dcService
 	tiltfilePath string
 }
@@ -64,8 +65,9 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 	// parse them all together.
 	allConfigPaths := append([]string{}, dc.configPaths...)
 	allConfigPaths = append(allConfigPaths, configPaths.Value...)
+	project := model.DockerComposeProject{ConfigPaths: allConfigPaths}
 
-	services, err := parseDCConfig(s.ctx, s.dcCli, allConfigPaths)
+	services, err := parseDCConfig(s.ctx, s.dcCli, project)
 	if err != nil {
 		return nil, err
 	}
@@ -83,6 +85,7 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 	}
 
 	s.dc = dcResourceSet{
+		Project:      project,
 		configPaths:  allConfigPaths,
 		services:     services,
 		tiltfilePath: starkit.CurrentExecPath(thread),
@@ -277,8 +280,8 @@ func DockerComposeConfigToService(svcConfig types.ServiceConfig) (dcService, err
 	return svc, nil
 }
 
-func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, configPaths []string) ([]*dcService, error) {
-	proj, err := dcc.Project(ctx, configPaths)
+func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, spec model.DockerComposeProject) ([]*dcService, error) {
+	proj, err := dcc.Project(ctx, spec)
 	if err != nil {
 		return nil, err
 	}
@@ -301,8 +304,12 @@ func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, c
 
 func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResourceSet) (model.Manifest, error) {
 	dcInfo := model.DockerComposeTarget{
-		ConfigPaths: dcSet.configPaths,
-		YAMLRaw:     service.ServiceConfig,
+		Name: model.TargetName(service.Name),
+		Spec: model.DockerComposeUpSpec{
+			Service: service.Name,
+			Project: dcSet.Project,
+		},
+		ServiceYAML: string(service.ServiceConfig),
 		DfRaw:       service.DfContents,
 		Links:       service.Links,
 	}.WithDependencyIDs(service.DependencyIDs).

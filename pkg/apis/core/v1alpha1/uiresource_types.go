@@ -107,12 +107,12 @@ func (in *UIResourceList) GetListMeta() *metav1.ListMeta {
 	return &in.ListMeta
 }
 
-// Aggregated disable status of objects that belong to a resource.
+// Aggregated disable status of DisableSources that belong to a resource.
 type DisableResourceStatus struct {
-	// How many of the resource's objects are enabled.
+	// How many of the resource's sources are enabled.
 	EnabledCount int32 `json:"enabledCount" protobuf:"varint,1,opt,name=enabledCount"`
 
-	// How many of the resource's objects are disabled.
+	// How many of the resource's sources are disabled.
 	DisabledCount int32 `json:"disabledCount" protobuf:"varint,2,opt,name=disabledCount"`
 
 	// All unique sources that control the resource's objects' disable status.
@@ -193,6 +193,11 @@ type UIResourceStatus struct {
 
 	// Information about the resource's objects' disabled status.
 	DisableStatus DisableResourceStatus `json:"disableStatus,omitempty" protobuf:"bytes,16,opt,name=disableStatus"`
+
+	// Waiting provides detail on why the resource is currently blocked from updating.
+	//
+	// +optional
+	Waiting *UIResourceStateWaiting `json:"waiting,omitempty" protobuf:"bytes,17,opt,name=waiting"`
 }
 
 // UIResource implements ObjectWithStatusSubResource interface.
@@ -350,4 +355,32 @@ type UIResourceLocal struct {
 	// Whether this represents a test job.
 	// +optional
 	IsTest bool `json:"isTest,omitempty" protobuf:"varint,2,opt,name=isTest"`
+}
+
+type UIResourceStateWaiting struct {
+	// Reason is a unique, one-word reason for why the UIResource update is pending.
+	Reason string `json:"reason" protobuf:"bytes,1,opt,name=reason"`
+
+	// HoldingOn is the set of objects blocking this resource from updating.
+	//
+	// These objects might NOT be explicit dependencies of the current resource. For example, if an un-parallelizable
+	// resource is updating, all other resources with queued updates will be holding on it with a reason of
+	// `waiting-for-local`.
+	//
+	// +optional
+	On []UIResourceStateWaitingOnRef `json:"on,omitempty" protobuf:"bytes,2,rep,name=on"`
+}
+
+type UIResourceStateWaitingOnRef struct {
+	// Group for the object type being waited on.
+	Group string `json:"group" protobuf:"bytes,1,opt,name=group"`
+
+	// APIVersion for the object type being waited on.
+	APIVersion string `json:"apiVersion" protobuf:"bytes,2,opt,name=apiVersion"`
+
+	// Kind of the object type being waited on.
+	Kind string `json:"kind" protobuf:"bytes,3,opt,name=kind"`
+
+	// Name of the object being waiting on.
+	Name string `json:"name" protobuf:"bytes,4,opt,name=name"`
 }

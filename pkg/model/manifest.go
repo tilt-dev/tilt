@@ -14,6 +14,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/sliceutils"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
 // TODO(nick): We should probably get rid of ManifestName completely and just use TargetName everywhere.
@@ -32,6 +33,12 @@ const MainTiltfileManifestName = ManifestName("(Tiltfile)")
 
 func (m ManifestName) String() string         { return string(m) }
 func (m ManifestName) TargetName() TargetName { return TargetName(m) }
+func (m ManifestName) TargetID() TargetID {
+	return TargetID{
+		Type: TargetTypeManifest,
+		Name: m.TargetName(),
+	}
+}
 
 // NOTE: If you modify Manifest, make sure to modify `equalForBuildInvalidation` appropriately
 type Manifest struct {
@@ -256,6 +263,56 @@ func (m Manifest) Validate() error {
 	return nil
 }
 
+// Assemble selectors that point to other API objects created by this manifest.
+func (m *Manifest) InferLiveUpdateSelectors() error {
+	dag, err := NewTargetGraph(m.TargetSpecs())
+	if err != nil {
+		return err
+	}
+
+	for i, iTarget := range m.ImageTargets {
+		luSpec := iTarget.LiveUpdateSpec
+		luName := iTarget.LiveUpdateName
+		if luName == "" || (len(luSpec.Syncs) == 0 && len(luSpec.Execs) == 0) {
+			continue
+		}
+
+		// TODO(nick): Also set docker-compose selectors once the model supports it.
+		if m.IsK8s() {
+			luSpec.Selector.Kubernetes = &v1alpha1.LiveUpdateKubernetesSelector{
+				Image:         reference.FamiliarName(iTarget.Refs.ClusterRef()),
+				ApplyName:     m.Name.String(),
+				DiscoveryName: m.Name.String(),
+			}
+			if iTarget.IsLiveUpdateOnly {
+				luSpec.Selector.Kubernetes.Image = reference.FamiliarName(iTarget.Refs.WithoutRegistry().LocalRef())
+			}
+		}
+
+		luSpec.Sources = nil
+		err := dag.VisitTree(iTarget, func(dep TargetSpec) error {
+			// Relies on the idea that ImageTargets always create
+			// FileWatches and ImageMaps related to the ImageTarget ID.
+			id := dep.ID()
+			fw := id.String()
+			imageMap := id.Name.String()
+
+			luSpec.Sources = append(luSpec.Sources, v1alpha1.LiveUpdateSource{
+				FileWatch: fw,
+				ImageMap:  imageMap,
+			})
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+
+		iTarget.LiveUpdateSpec = luSpec
+		m.ImageTargets[i] = iTarget
+	}
+	return nil
+}
+
 // ChangesInvalidateBuild checks whether the changes from old => new manifest
 // invalidate our build of the old one; i.e. if we're replacing `old` with `new`,
 // should we perform a full rebuild?
@@ -464,6 +521,7 @@ var ignoreCustomBuildDepsField = cmpopts.IgnoreFields(CustomBuild{}, "Deps")
 var ignoreLocalTargetDepsField = cmpopts.IgnoreFields(LocalTarget{}, "Deps")
 var ignoreDockerBuildCacheFrom = cmpopts.IgnoreFields(DockerBuild{}, "CacheFrom")
 var ignoreLabels = cmpopts.IgnoreFields(Manifest{}, "Labels")
+var ignoreDockerComposeProject = cmpopts.IgnoreFields(DockerComposeUpSpec{}, "Project")
 
 // ignoreLinks ignores user-defined links for the purpose of build invalidation
 //
@@ -513,5 +571,10 @@ func equalForBuildInvalidation(x, y interface{}) bool {
 
 		// user-added links don't invalidate a build
 		ignoreLinks,
+
+		// We don't want a change to the DockerCompose Project to invalidate
+		// all individual services. We track the service-specific YAML with
+		// a seprate ServiceYAML field.
+		ignoreDockerComposeProject,
 	)
 }

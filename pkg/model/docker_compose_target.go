@@ -7,14 +7,16 @@ import (
 )
 
 type DockerComposeTarget struct {
-	Name        TargetName
-	ConfigPaths []string
+	Spec DockerComposeUpSpec
+
+	Name TargetName
 
 	// The docker context, like in DockerBuild
 	buildPath string
 
-	YAMLRaw []byte // for diff'ing when config files change
-	DfRaw   []byte // for diff'ing when config files change
+	ServiceYAML string // for diff'ing when config files change
+
+	DfRaw []byte // for diff'ing when config files change
 
 	// TODO(nick): It might eventually make sense to represent
 	// Tiltfile as a separate nodes in the build graph, rather
@@ -126,11 +128,11 @@ func (t DockerComposeTarget) Dependencies() []string {
 
 func (dc DockerComposeTarget) Validate() error {
 	if dc.ID().Empty() {
-		return fmt.Errorf("[Validate] DockerCompose resource missing name:\n%s", dc.YAMLRaw)
+		return fmt.Errorf("[Validate] DockerCompose resource missing name:\n%s", dc.ServiceYAML)
 	}
 
-	if len(dc.ConfigPaths) == 0 {
-		return fmt.Errorf("[Validate] DockerCompose resource %s missing config path", dc.Name)
+	if len(dc.Spec.Project.ConfigPaths) == 0 && dc.Spec.Project.YAML == "" {
+		return fmt.Errorf("[Validate] DockerCompose resource %s missing config path", dc.Spec.Service)
 	}
 
 	return nil

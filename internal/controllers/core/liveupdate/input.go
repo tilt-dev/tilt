@@ -3,13 +3,11 @@ package liveupdate
 import (
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
-	"github.com/tilt-dev/tilt/pkg/model"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type Input struct {
-	// TODO(nick|milas): Figure out what should happen with this filter.11
-	Filter model.PathMatcher
-
 	// Derived from DockerResource
 	IsDC bool
 
@@ -18,4 +16,6 @@ type Input struct {
 
 	// Derived from FileWatch + Sync rules
 	ChangedFiles []build.PathMapping
+
+	LastFileTimeSynced metav1.MicroTime
 }

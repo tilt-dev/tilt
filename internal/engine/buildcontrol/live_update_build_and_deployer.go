@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/docker/distribution/reference"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
@@ -13,7 +12,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	ctrlliveupdate "github.com/tilt-dev/tilt/internal/controllers/core/liveupdate"
-	"github.com/tilt-dev/tilt/internal/ignore"
 	"github.com/tilt-dev/tilt/internal/ospath"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
@@ -39,9 +37,7 @@ func NewLiveUpdateBuildAndDeployer(luReconciler *ctrlliveupdate.Reconciler, c bu
 type LiveUpdateInput struct {
 	ID model.TargetID
 
-	// Name is human-readable representation of what we're live-updating. The API
-	// Server doesn't make any guarantees that this maps to an image name, or a
-	// service name, or to anything in particular.
+	// LiveUpdate API object name.
 	Name string
 
 	Spec v1alpha1.LiveUpdateSpec
@@ -119,16 +115,23 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, ps 
 	}
 	ps.StartBuildStep(ctx, "Updating container%s: %s", suffix, cIDStr)
 
-	status := lubad.luReconciler.ForceApply(
+	status, err := lubad.luReconciler.ForceApply(
 		ctx,
 		types.NamespacedName{Name: info.Name},
 		info.Spec,
 		info.Input)
-	if status.UnknownError != nil {
-		return status.UnknownError
+	if err != nil {
+		return err
 	}
-	if status.ExecError != nil {
-		return WrapDontFallBackError(status.ExecError)
+
+	if status.Failed != nil {
+		return fmt.Errorf("%s", status.Failed.Message)
+	}
+
+	for _, c := range status.Containers {
+		if c.LastExecError != "" {
+			return WrapDontFallBackError(fmt.Errorf("%s", c.LastExecError))
+		}
 	}
 	return nil
 }
@@ -139,9 +142,6 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (LiveUpdateInput,
 	iTarget := stateTree.iTarget
 	filesChanged := stateTree.filesChanged
 
-	var err error
-	var fileMappings []build.PathMapping
-
 	luSpec := iTarget.LiveUpdateSpec
 	if liveupdate.IsEmptySpec(luSpec) {
 		// We should have validated this when generating the LiveUpdateStateTrees, but double check!
@@ -149,40 +149,34 @@ func liveUpdateInfoForStateTree(stateTree liveUpdateStateTree) (LiveUpdateInput,
 			"which should have already been validated for Live Update", iTarget.ID()))
 	}
 
-	var pathsMatchingNoSync []string
-	fileMappings, pathsMatchingNoSync, err = build.FilesToPathMappings(filesChanged, liveupdate.SyncSteps(luSpec))
+	plan, err := liveupdates.NewLiveUpdatePlan(luSpec, filesChanged)
 	if err != nil {
 		return LiveUpdateInput{}, err
 	}
-	if len(pathsMatchingNoSync) > 0 {
+
+	if len(plan.NoMatchPaths) > 0 {
 		return LiveUpdateInput{}, RedirectToNextBuilderInfof(
 			"Found file(s) not matching any sync for %s (files: %s)", iTarget.ID(),
-			ospath.FormatFileChangeList(pathsMatchingNoSync))
+			ospath.FormatFileChangeList(plan.NoMatchPaths))
 	}
 
 	// If any changed files match a FallBackOn file, fall back to next BuildAndDeployer
-	anyMatch, file, err := liveupdate.FallBackOnFiles(luSpec).AnyMatch(filesChanged)
-	if err != nil {
-		return LiveUpdateInput{}, err
-	}
-	if anyMatch {
-		prettyFile := ospath.FileDisplayName([]string{luSpec.BasePath}, file)
+	if len(plan.StopPaths) != 0 {
 		return LiveUpdateInput{}, RedirectToNextBuilderInfof(
-			"Detected change to fall_back_on file %q", prettyFile)
+			"Detected change to fall_back_on file %q", plan.StopPaths[0])
 	}
 
-	if len(fileMappings) == 0 {
+	if len(plan.SyncPaths) == 0 {
 		// No files matched a sync for this image, no Live Update to run
 		return LiveUpdateInput{}, nil
 	}
 
 	return LiveUpdateInput{
 		ID:   iTarget.ID(),
-		Name: reference.FamiliarName(iTarget.Refs.ClusterRef()),
+		Name: iTarget.LiveUpdateName,
 		Spec: iTarget.LiveUpdateSpec,
 		Input: ctrlliveupdate.Input{
-			Filter:       ignore.CreateBuildContextFilter(iTarget),
-			ChangedFiles: fileMappings,
+			ChangedFiles: plan.SyncPaths,
 			Containers:   stateTree.containers,
 			IsDC:         stateTree.isDC,
 		},

@@ -26,9 +26,16 @@ import (
 )
 
 var upgrader = websocket.Upgrader{
-	ReadBufferSize:    1024,
-	WriteBufferSize:   1024,
-	EnableCompression: true,
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+
+	// Disable compression due to safari bugs in websockets, see:
+	// https://github.com/tilt-dev/tilt/issues/4746
+	//
+	// Though, frankly, we probably don't need compression
+	// anyway, since it's not like you're using Tilt over
+	// a mobile network.
+	EnableCompression: false,
 }
 
 type WebsocketSubscriber struct {

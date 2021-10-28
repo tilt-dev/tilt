@@ -320,12 +320,12 @@ message ContainerStateWaiting {
   optional string reason = 1;
 }
 
-// Aggregated disable status of objects that belong to a resource.
+// Aggregated disable status of DisableSources that belong to a resource.
 message DisableResourceStatus {
-  // How many of the resource's objects are enabled.
+  // How many of the resource's sources are enabled.
   optional int32 enabledCount = 1;
 
-  // How many of the resource's objects are disabled.
+  // How many of the resource's sources are disabled.
   optional int32 disabledCount = 2;
 
   // All unique sources that control the resource's objects' disable status.
@@ -747,6 +747,14 @@ message ImageMapStatus {
   // The image will not necessarily have the same repo URL as the selector. Many
   // Kubernetes clusters let you push to a local registry for local development.
   optional string image = 1;
+
+  // Timestamp indicating when the image started building.
+  //
+  // Intended to be used to determine which file changes were picked up by the
+  // image build. We can assume that any file changes before this timestamp were
+  // definitely included in the image, and any file changes after this timestamp
+  // may not be included in the image.
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime buildStartTime = 2;
 }
 
 // KubernetesApply specifies a blob of YAML to apply, and a set of ImageMaps
@@ -769,6 +777,7 @@ message ImageMapStatus {
 // to help other controllers figure out how to watch the apply progress.
 //
 // +k8s:openapi-gen=true
+// +tilt:starlark-gen=true
 message KubernetesApply {
   optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
@@ -899,6 +908,7 @@ message KubernetesApplyStatus {
 
 // KubernetesDiscovery
 // +k8s:openapi-gen=true
+// +tilt:starlark-gen=true
 message KubernetesDiscovery {
   optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
@@ -1032,6 +1042,16 @@ message LiveUpdate {
   optional LiveUpdateStatus status = 3;
 }
 
+message LiveUpdateContainerStateWaiting {
+  // One word camel-case reason why we're in a waiting state.
+  // +optional
+  optional string reason = 1;
+
+  // Human-readable description of what's blocking.
+  // +optional
+  optional string message = 2;
+}
+
 // LiveUpdateContainerStatus defines the observed state of
 // the live-update syncer for a particular container.
 message LiveUpdateContainerStatus {
@@ -1066,6 +1086,12 @@ message LiveUpdateContainerStatus {
   //
   // +optional
   optional string lastExecError = 6;
+
+  // Details about a waiting live update.
+  //
+  // A live update is waiting when the reconciler is aware of file changes
+  // that need to be synced to the container, but has decided not to sync them yet.
+  optional LiveUpdateContainerStateWaiting waiting = 7;
 }
 
 // Runs a remote command after files have been synced to the container.
@@ -1122,6 +1148,23 @@ message LiveUpdateSelector {
   optional LiveUpdateKubernetesSelector kubernetes = 1;
 }
 
+// Specifies how to pull in files.
+message LiveUpdateSource {
+  // The name of a FileWatch to use as a file source.
+  //
+  // +optional
+  optional string fileWatch = 1;
+
+  // Name of the ImageMap object to watch for which file changes from this source
+  // are included in the container image.
+  //
+  // If not provided, the live-updater will copy any file changes that it's aware of,
+  // even if they're already included in the container.
+  //
+  // +optional
+  optional string imageMap = 2;
+}
+
 // LiveUpdateSpec defines the desired state of LiveUpdate
 message LiveUpdateSpec {
   // An absolute local path that serves as the basis for all
@@ -1136,12 +1179,12 @@ message LiveUpdateSpec {
   // Specifies how this live-updater finds the containers that need live update.
   optional LiveUpdateSelector selector = 8;
 
-  // Name of the FileWatch object to watch for a list of files that
-  // have recently been updated.
+  // Sources of files to sync.
   //
-  // Every live update must be associated with a FileWatch object
-  // to trigger the update.
-  optional string fileWatchName = 2;
+  // Every live update must be associated with at least one Source object
+  // to trigger the update. Usually, Tilt structures it so that there's
+  // a Source for each image we depend on.
+  repeated LiveUpdateSource sources = 9;
 
   // A list of relative paths that will immediately stop the live-update for the
   // current container.
@@ -2190,6 +2233,34 @@ message UIResourceLocal {
 message UIResourceSpec {
 }
 
+message UIResourceStateWaiting {
+  // Reason is a unique, one-word reason for why the UIResource update is pending.
+  optional string reason = 1;
+
+  // HoldingOn is the set of objects blocking this resource from updating.
+  //
+  // These objects might NOT be explicit dependencies of the current resource. For example, if an un-parallelizable
+  // resource is updating, all other resources with queued updates will be holding on it with a reason of
+  // `waiting-for-local`.
+  //
+  // +optional
+  repeated UIResourceStateWaitingOnRef on = 2;
+}
+
+message UIResourceStateWaitingOnRef {
+  // Group for the object type being waited on.
+  optional string group = 1;
+
+  // APIVersion for the object type being waited on.
+  optional string apiVersion = 2;
+
+  // Kind of the object type being waited on.
+  optional string kind = 3;
+
+  // Name of the object being waiting on.
+  optional string name = 4;
+}
+
 // UIResourceStatus defines the observed state of UIResource
 message UIResourceStatus {
   // The last time this resource was deployed.
@@ -2264,6 +2335,11 @@ message UIResourceStatus {
 
   // Information about the resource's objects' disabled status.
   optional DisableResourceStatus disableStatus = 16;
+
+  // Waiting provides detail on why the resource is currently blocked from updating.
+  //
+  // +optional
+  optional UIResourceStateWaiting waiting = 17;
 }
 
 // UIResourceTargetSpec represents the spec of a build or deploy that a resource summarizes.

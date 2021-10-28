@@ -8,6 +8,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // ParseConfig must return services topologically sorted wrt dependencies.
@@ -156,7 +157,7 @@ func (f dcFixture) parse(configOutput string) []*dcService {
 
 	f.dcCli.ConfigOutput = configOutput
 
-	services, err := parseDCConfig(f.ctx, f.dcCli, []string{"doesn't-matter.yml"})
+	services, err := parseDCConfig(f.ctx, f.dcCli, model.DockerComposeProject{ConfigPaths: []string{"doesn't-matter.yml"}})
 	if err != nil {
 		f.t.Fatalf("dcFixture.Parse: %v", err)
 	}

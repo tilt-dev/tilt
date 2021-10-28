@@ -452,6 +452,46 @@ declare namespace Proto {
      * Information about the resource's objects' disabled status.
      */
     disableStatus?: v1alpha1DisableResourceStatus;
+    /**
+     * Waiting provides detail on why the resource is currently blocked from updating.
+     *
+     * +optional
+     */
+    waiting?: v1alpha1UIResourceStateWaiting;
+  }
+  export interface v1alpha1UIResourceStateWaitingOnRef {
+    /**
+     * Group for the object type being waited on.
+     */
+    group?: string;
+    /**
+     * APIVersion for the object type being waited on.
+     */
+    apiVersion?: string;
+    /**
+     * Kind of the object type being waited on.
+     */
+    kind?: string;
+    /**
+     * Name of the object being waiting on.
+     */
+    name?: string;
+  }
+  export interface v1alpha1UIResourceStateWaiting {
+    /**
+     * Reason is a unique, one-word reason for why the UIResource update is pending.
+     */
+    reason?: string;
+    /**
+     * HoldingOn is the set of objects blocking this resource from updating.
+     *
+     * These objects might NOT be explicit dependencies of the current resource. For example, if an un-parallelizable
+     * resource is updating, all other resources with queued updates will be holding on it with a reason of
+     * `waiting-for-local`.
+     *
+     * +optional
+     */
+    on?: v1alpha1UIResourceStateWaitingOnRef[];
   }
   export interface v1alpha1UIResourceSpec {}
   export interface v1alpha1UIResourceLocal {
@@ -610,11 +650,11 @@ declare namespace Proto {
   }
   export interface v1alpha1DisableResourceStatus {
     /**
-     * How many of the resource's objects are enabled.
+     * How many of the resource's sources are enabled.
      */
     enabledCount?: number;
     /**
-     * How many of the resource's objects are disabled.
+     * How many of the resource's sources are disabled.
      */
     disabledCount?: number;
     /**

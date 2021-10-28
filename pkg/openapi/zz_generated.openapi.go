@@ -89,11 +89,13 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesImageObjectDescriptor": schema_pkg_apis_core_v1alpha1_KubernetesImageObjectDescriptor(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesWatchRef":              schema_pkg_apis_core_v1alpha1_KubernetesWatchRef(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdate":                      schema_pkg_apis_core_v1alpha1_LiveUpdate(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateContainerStateWaiting": schema_pkg_apis_core_v1alpha1_LiveUpdateContainerStateWaiting(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateContainerStatus":       schema_pkg_apis_core_v1alpha1_LiveUpdateContainerStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateExec":                  schema_pkg_apis_core_v1alpha1_LiveUpdateExec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateKubernetesSelector":    schema_pkg_apis_core_v1alpha1_LiveUpdateKubernetesSelector(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateList":                  schema_pkg_apis_core_v1alpha1_LiveUpdateList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSelector":              schema_pkg_apis_core_v1alpha1_LiveUpdateSelector(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSource":                schema_pkg_apis_core_v1alpha1_LiveUpdateSource(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSpec":                  schema_pkg_apis_core_v1alpha1_LiveUpdateSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateStateFailed":           schema_pkg_apis_core_v1alpha1_LiveUpdateStateFailed(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateStatus":                schema_pkg_apis_core_v1alpha1_LiveUpdateStatus(ref),
@@ -159,6 +161,8 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceList":                  schema_pkg_apis_core_v1alpha1_UIResourceList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLocal":                 schema_pkg_apis_core_v1alpha1_UIResourceLocal(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceSpec":                  schema_pkg_apis_core_v1alpha1_UIResourceSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceStateWaiting":          schema_pkg_apis_core_v1alpha1_UIResourceStateWaiting(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceStateWaitingOnRef":     schema_pkg_apis_core_v1alpha1_UIResourceStateWaitingOnRef(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceStatus":                schema_pkg_apis_core_v1alpha1_UIResourceStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceTargetSpec":            schema_pkg_apis_core_v1alpha1_UIResourceTargetSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UISession":                       schema_pkg_apis_core_v1alpha1_UISession(ref),
@@ -966,12 +970,12 @@ func schema_pkg_apis_core_v1alpha1_DisableResourceStatus(ref common.ReferenceCal
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "Aggregated disable status of objects that belong to a resource.",
+				Description: "Aggregated disable status of DisableSources that belong to a resource.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"enabledCount": {
 						SchemaProps: spec.SchemaProps{
-							Description: "How many of the resource's objects are enabled.",
+							Description: "How many of the resource's sources are enabled.",
 							Default:     0,
 							Type:        []string{"integer"},
 							Format:      "int32",
@@ -979,7 +983,7 @@ func schema_pkg_apis_core_v1alpha1_DisableResourceStatus(ref common.ReferenceCal
 					},
 					"disabledCount": {
 						SchemaProps: spec.SchemaProps{
-							Description: "How many of the resource's objects are disabled.",
+							Description: "How many of the resource's sources are disabled.",
 							Default:     0,
 							Type:        []string{"integer"},
 							Format:      "int32",
@@ -2151,10 +2155,18 @@ func schema_pkg_apis_core_v1alpha1_ImageMapStatus(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
+					"buildStartTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Timestamp indicating when the image started building.\n\nIntended to be used to determine which file changes were picked up by the image build. We can assume that any file changes before this timestamp were definitely included in the image, and any file changes after this timestamp may not be included in the image.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
 				},
 				Required: []string{"image"},
 			},
 		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
 	}
 }
 
@@ -2760,6 +2772,32 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdate(ref common.ReferenceCallback) comm
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_LiveUpdateContainerStateWaiting(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"reason": {
+						SchemaProps: spec.SchemaProps{
+							Description: "One word camel-case reason why we're in a waiting state.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"message": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Human-readable description of what's blocking.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_LiveUpdateContainerStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -2812,12 +2850,18 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateContainerStatus(ref common.Referenc
 							Format:      "",
 						},
 					},
+					"waiting": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Details about a waiting live update.\n\nA live update is waiting when the reconciler is aware of file changes that need to be synced to the container, but has decided not to sync them yet.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateContainerStateWaiting"),
+						},
+					},
 				},
 				Required: []string{"containerName", "podName", "namespace"},
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateContainerStateWaiting", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
 	}
 }
 
@@ -2969,6 +3013,33 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateSelector(ref common.ReferenceCallba
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_LiveUpdateSource(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Specifies how to pull in files.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"fileWatch": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The name of a FileWatch to use as a file source.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"imageMap": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name of the ImageMap object to watch for which file changes from this source are included in the container image.\n\nIf not provided, the live-updater will copy any file changes that it's aware of, even if they're already included in the container.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_LiveUpdateSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -2991,12 +3062,18 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateSpec(ref common.ReferenceCallback) 
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSelector"),
 						},
 					},
-					"fileWatchName": {
+					"sources": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Name of the FileWatch object to watch for a list of files that have recently been updated.\n\nEvery live update must be associated with a FileWatch object to trigger the update.",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
+							Description: "Sources of files to sync.\n\nEvery live update must be associated with at least one Source object to trigger the update. Usually, Tilt structures it so that there's a Source for each image we depend on.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSource"),
+									},
+								},
+							},
 						},
 					},
 					"stopPaths": {
@@ -3050,11 +3127,11 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateSpec(ref common.ReferenceCallback) 
 						},
 					},
 				},
-				Required: []string{"basePath", "selector", "fileWatchName"},
+				Required: []string{"basePath", "selector"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateExec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSelector", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSync"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateExec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSelector", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSource", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSync"},
 	}
 }
 
@@ -5763,6 +5840,88 @@ func schema_pkg_apis_core_v1alpha1_UIResourceSpec(ref common.ReferenceCallback) 
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_UIResourceStateWaiting(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"reason": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Reason is a unique, one-word reason for why the UIResource update is pending.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"on": {
+						SchemaProps: spec.SchemaProps{
+							Description: "HoldingOn is the set of objects blocking this resource from updating.\n\nThese objects might NOT be explicit dependencies of the current resource. For example, if an un-parallelizable resource is updating, all other resources with queued updates will be holding on it with a reason of `waiting-for-local`.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceStateWaitingOnRef"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"reason"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceStateWaitingOnRef"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UIResourceStateWaitingOnRef(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"group": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Group for the object type being waited on.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion for the object type being waited on.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind of the object type being waited on.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name of the object being waiting on.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"group", "apiVersion", "kind", "name"},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_UIResourceStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -5893,11 +6052,17 @@ func schema_pkg_apis_core_v1alpha1_UIResourceStatus(ref common.ReferenceCallback
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableResourceStatus"),
 						},
 					},
+					"waiting": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Waiting provides detail on why the resource is currently blocked from updating.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceStateWaiting"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableResourceStatus", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildRunning", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildTerminated", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceKubernetes", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLink", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLocal", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceTargetSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableResourceStatus", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildRunning", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildTerminated", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceKubernetes", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLink", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLocal", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceStateWaiting", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceTargetSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
 	}
 }
 

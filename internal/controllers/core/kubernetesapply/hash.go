@@ -41,7 +41,12 @@ func ComputeInputHash(spec v1alpha1.KubernetesApplySpec, imageMaps map[types.Nam
 		if err != nil {
 			return "", fmt.Errorf("hashing %s spec: %v", imageMapName, err)
 		}
-		err = w.append(imageMap.Status)
+
+		// Don't hash in the BuildStartedTime, because
+		// this changes even when the image does not change.
+		status := imageMap.Status
+		status.BuildStartTime = nil
+		err = w.append(status)
 		if err != nil {
 			return "", fmt.Errorf("hashing %s status: %v", imageMapName, err)
 		}

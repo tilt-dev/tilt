@@ -21,6 +21,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
+	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -162,7 +163,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		}
 
 		var im v1alpha1.ImageMap
-		nn := types.NamespacedName{Name: iTarget.ID().Name.String()}
+		nn := types.NamespacedName{Name: iTarget.ImageMapName()}
 		err := ibd.ctrlClient.Get(ctx, nn, &im)
 		if err != nil {
 			return nil, err
@@ -181,6 +182,13 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 			return store.ImageBuildResult{}, err
 		}
 
+		// TODO(nick): It might make sense to reset the ImageMapStatus here
+		// to an empty image while the image is building. maybe?
+		// I guess it depends on how image reconciliation works, and
+		// if you want the live container to keep receiving updates
+		// while an image build is going on in parallel.
+		startTime := apis.NowMicro()
+
 		refs, err := ibd.ib.Build(ctx, iTarget, ps)
 		if err != nil {
 			return store.ImageBuildResult{}, err
@@ -192,7 +200,8 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		}
 
 		result := store.NewImageBuildResult(iTarget.ID(), refs.LocalRef, refs.ClusterRef)
-		nn := types.NamespacedName{Name: iTarget.ID().Name.String()}
+		result.ImageMapStatus.BuildStartTime = &startTime
+		nn := types.NamespacedName{Name: iTarget.ImageMapName()}
 		im, ok := imageMapSet[nn]
 		if !ok {
 			return store.ImageBuildResult{}, fmt.Errorf("apiserver missing ImageMap: %s", iTarget.ID().Name)
@@ -345,9 +354,11 @@ func InjectImageDependencies(iTarget model.ImageTarget, iTargetMap map[model.Tar
 	}
 
 	df := dockerfile.Dockerfile("")
+	var buildArgs map[string]string
 	switch bd := iTarget.BuildDetails.(type) {
 	case model.DockerBuild:
 		df = dockerfile.Dockerfile(bd.Dockerfile)
+		buildArgs = bd.BuildArgs
 	default:
 		return model.ImageTarget{}, fmt.Errorf("image %q has no valid buildDetails", iTarget.Refs.ConfigurationRef)
 	}
@@ -360,7 +371,7 @@ func InjectImageDependencies(iTarget model.ImageTarget, iTargetMap map[model.Tar
 	for _, dep := range deps {
 		image := dep.ImageLocalRef
 		id := dep.TargetID()
-		modified, err := ast.InjectImageDigest(iTargetMap[id].Refs.ConfigurationRef, image)
+		modified, err := ast.InjectImageDigest(iTargetMap[id].Refs.ConfigurationRef, image, buildArgs)
 		if err != nil {
 			return model.ImageTarget{}, errors.Wrap(err, "injectImageDependencies")
 		} else if !modified {

@@ -248,8 +248,8 @@ func waitingFromHolds(mn model.ManifestName, holds buildcontrol.HoldSet) *sessio
 	// in the API, the reason is not _why_ the target "exists", but rather an explanation for why it's not yet
 	// active and is in a pending state (e.g. waitingFromHolds for dependencies)
 	waitReason := "unknown"
-	if hold, ok := holds[mn]; ok && hold != store.HoldNone {
-		waitReason = string(hold)
+	if hold, ok := holds[mn]; ok && hold.Reason != store.HoldReasonNone {
+		waitReason = string(hold.Reason)
 	}
 	return &session.TargetStateWaiting{
 		WaitReason: waitReason,

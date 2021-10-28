@@ -241,6 +241,10 @@ func TestCreateDisableSource(t *testing.T) {
 	var cmd v1alpha1.Cmd
 	require.NoError(t, c.Get(ctx, types.NamespacedName{Name: "be:update"}, &cmd))
 	require.Equal(t, beDisable, cmd.Spec.DisableSource)
+
+	var uir v1alpha1.UIResource
+	require.NoError(t, c.Get(ctx, types.NamespacedName{Name: "be"}, &uir))
+	require.Equal(t, []v1alpha1.DisableSource{*beDisable}, uir.Status.DisableStatus.Sources)
 }
 
 // If a DisableSource ConfigMap already exists, don't replace its data

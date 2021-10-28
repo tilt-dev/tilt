@@ -25,7 +25,7 @@ func TestLiveUpdateBaseImage(t *testing.T) {
 	defer cancel()
 	f.CurlUntil(ctx, "http://localhost:31000/message.txt", "Hello from regular")
 
-	f.ReplaceContents("common/message.txt", "regular", "super unleaded")
+	f.ReplaceContents("content/message.txt", "regular", "super unleaded")
 
 	ctx, cancel = context.WithTimeout(f.ctx, timePerStage)
 	defer cancel()

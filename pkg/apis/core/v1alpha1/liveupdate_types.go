@@ -66,12 +66,12 @@ type LiveUpdateSpec struct {
 	// Specifies how this live-updater finds the containers that need live update.
 	Selector LiveUpdateSelector `json:"selector" protobuf:"bytes,8,opt,name=selector"`
 
-	// Name of the FileWatch object to watch for a list of files that
-	// have recently been updated.
+	// Sources of files to sync.
 	//
-	// Every live update must be associated with a FileWatch object
-	// to trigger the update.
-	FileWatchName string `json:"fileWatchName" protobuf:"bytes,2,opt,name=fileWatchName"`
+	// Every live update must be associated with at least one Source object
+	// to trigger the update. Usually, Tilt structures it so that there's
+	// a Source for each image we depend on.
+	Sources []LiveUpdateSource `json:"sources,omitempty" protobuf:"bytes,9,rep,name=sources"`
 
 	// A list of relative paths that will immediately stop the live-update for the
 	// current container.
@@ -109,20 +109,14 @@ type LiveUpdateSpec struct {
 	//
 	// +optional
 	Restart LiveUpdateRestartStrategy `json:"restart,omitempty" protobuf:"bytes,7,opt,name=restart,casttype=LiveUpdateRestartStrategy"`
-
-	// TODO(nick): I think there's a spec bug here - we need some way to get the
-	// StartTime of the image build, so that we know what files need to be synced
-	// once the image deploys.
-	//
-	// The right answer here is probably to:
-	// - Add a timestamp to ImageMapStatus, so that it has a high-water mark of what
-	//   files the image includes.
-	// - Add a reference from LiveUpdateSelector to the ImageMapStatus
-	// - The reconciler should also watch ImageMapStatus for changes.
 }
 
 var _ resource.Object = &LiveUpdate{}
 var _ resourcestrategy.Validater = &LiveUpdate{}
+
+func (in *LiveUpdate) GetSpec() interface{} {
+	return in.Spec
+}
 
 func (in *LiveUpdate) GetObjectMeta() *metav1.ObjectMeta {
 	return &in.ObjectMeta
@@ -211,6 +205,23 @@ var _ resource.StatusSubResource = &LiveUpdateStatus{}
 
 func (in LiveUpdateStatus) CopyTo(parent resource.ObjectWithStatusSubResource) {
 	parent.(*LiveUpdate).Status = in
+}
+
+// Specifies how to pull in files.
+type LiveUpdateSource struct {
+	// The name of a FileWatch to use as a file source.
+	//
+	// +optional
+	FileWatch string `json:"fileWatch,omitempty" protobuf:"bytes,1,opt,name=fileWatch"`
+
+	// Name of the ImageMap object to watch for which file changes from this source
+	// are included in the container image.
+	//
+	// If not provided, the live-updater will copy any file changes that it's aware of,
+	// even if they're already included in the container.
+	//
+	// +optional
+	ImageMap string `json:"imageMap,omitempty" protobuf:"bytes,2,opt,name=imageMap"`
 }
 
 // Specifies how to select containers to live update.
@@ -327,6 +338,12 @@ type LiveUpdateContainerStatus struct {
 	//
 	// +optional
 	LastExecError string `json:"lastExecError,omitempty" protobuf:"bytes,6,opt,name=lastExecError"`
+
+	// Details about a waiting live update.
+	//
+	// A live update is waiting when the reconciler is aware of file changes
+	// that need to be synced to the container, but has decided not to sync them yet.
+	Waiting *LiveUpdateContainerStateWaiting `json:"waiting,omitempty" protobuf:"bytes,7,opt,name=waiting"`
 }
 
 // If any of the containers are currently failing to process updates, the
@@ -344,4 +361,14 @@ type LiveUpdateStateFailed struct {
 	// When the live-updater transitioned into a Failed state.
 	// +optional
 	LastTransitionTime metav1.MicroTime `json:"lastTransitionTime,omitempty" protobuf:"bytes,3,opt,name=lastTransitionTime"`
+}
+
+type LiveUpdateContainerStateWaiting struct {
+	// One word camel-case reason why we're in a waiting state.
+	// +optional
+	Reason string `json:"reason,omitempty" protobuf:"bytes,1,opt,name=reason"`
+
+	// Human-readable description of what's blocking.
+	// +optional
+	Message string `json:"message,omitempty" protobuf:"bytes,2,opt,name=message"`
 }

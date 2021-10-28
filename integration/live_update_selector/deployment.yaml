@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: live-update-selector
+  namespace: tilt-integration
+  labels:
+    app: live-update-selector
+spec:
+  selector:
+    matchLabels:
+      app: live-update-selector
+  template:
+    metadata:
+      labels:
+        app: live-update-selector
+    spec:
+      containers:
+      - name: live-update-selector
+        image: gcr.io/windmill-test-containers/integration/live-update-selector
+        ports:
+        - containerPort: 8000

@@ -83,7 +83,7 @@ func NewKubernetesApplyFilter(status *v1alpha1.KubernetesApplyStatus) (*Kubernet
 	podTemplateSpecHashes := []k8s.PodTemplateSpecHash{}
 	for _, entity := range deployed {
 		if entity.UID() == "" {
-			return nil, fmt.Errorf("Entity not deployed correctly: %v", entity)
+			return nil, fmt.Errorf("Resource missing uid: %s", entity.Name())
 		}
 		hs, err := k8s.ReadPodTemplateSpecHashes(entity)
 		if err != nil {
@@ -149,8 +149,9 @@ func FilterPods(filter *KubernetesApplyFilter, pods []v1alpha1.Pod) []v1alpha1.P
 			continue
 		}
 
-		// Ignore pods that aren't owned by a current Apply.
-		if !ContainsUID(filter, types.UID(pod.AncestorUID)) {
+		// Ignore pods that were tracked by UID but
+		// aren't owned by a current Apply.
+		if pod.AncestorUID != "" && !ContainsUID(filter, types.UID(pod.AncestorUID)) {
 			continue
 		}
 

@@ -10,7 +10,7 @@ Kubernetes for Prod, Tilt for Dev
 Modern apps are made of too many services. They're everywhere and in constant
 communication.
 
-[Tilt](https://tilt.dev) powers multi-service development and makes sure they behave!
+[Tilt](https://tilt.dev) powers microservice development and makes sure they behave!
 Run `tilt up` to work in a complete dev environment configured for your team.
 
 Tilt automates all the steps from a code change to a new process: watching
