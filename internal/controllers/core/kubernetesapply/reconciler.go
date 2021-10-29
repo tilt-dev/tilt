@@ -282,10 +282,39 @@ func (r *Reconciler) forceApplyHelper(
 		return errorStatus(err), nil
 	}
 
+	var deployed []k8s.K8sEntity
+	if spec.YAML != "" {
+		deployed, err = r.runYAMLDeploy(ctx, spec, imageMaps)
+		if err != nil {
+			return errorStatus(err), nil
+		}
+	} else {
+		deployed, err = r.runCmdDeploy(ctx, spec)
+		if err != nil {
+			return errorStatus(err), nil
+		}
+	}
+
+	status.LastApplyTime = apis.NowMicro()
+	status.AppliedInputHash = inputHash
+	for _, d := range deployed {
+		d.Clean()
+	}
+
+	resultYAML, err := k8s.SerializeSpecYAML(deployed)
+	if err != nil {
+		return errorStatus(err), deployed
+	}
+
+	status.ResultYAML = resultYAML
+	return status, deployed
+}
+
+func (r *Reconciler) runYAMLDeploy(ctx context.Context, spec v1alpha1.KubernetesApplySpec, imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) ([]k8s.K8sEntity, error) {
 	// Create API objects.
 	newK8sEntities, err := r.createEntitiesToDeploy(ctx, imageMaps, spec)
 	if err != nil {
-		return errorStatus(err), newK8sEntities
+		return newK8sEntities, err
 	}
 
 	ctx = r.indentLogger(ctx)
@@ -307,22 +336,15 @@ func (r *Reconciler) forceApplyHelper(
 
 	deployed, err := r.k8sClient.Upsert(ctx, newK8sEntities, timeout)
 	if err != nil {
-		return errorStatus(err), newK8sEntities
+		return nil, err
 	}
 
-	status.LastApplyTime = apis.NowMicro()
-	status.AppliedInputHash = inputHash
-	for _, d := range deployed {
-		d.Clean()
-	}
+	return deployed, nil
+}
 
-	resultYAML, err := k8s.SerializeSpecYAML(deployed)
-	if err != nil {
-		return errorStatus(err), newK8sEntities
-	}
-
-	status.ResultYAML = resultYAML
-	return status, newK8sEntities
+func (r *Reconciler) runCmdDeploy(ctx context.Context, spec v1alpha1.KubernetesApplySpec) ([]k8s.K8sEntity, error) {
+	// TODO(milas): implement Cmd apply
+	return nil, errors.New("Cmd apply not supported")
 }
 
 func (r *Reconciler) indentLogger(ctx context.Context) context.Context {
@@ -455,6 +477,12 @@ func (r *Reconciler) updateResult(nn types.NamespacedName, result *Result) []k8s
 		delete(r.results, nn)
 	} else {
 		r.results[nn] = result
+	}
+
+	if result != nil && result.Status.Error != "" {
+		// do not attempt to delete any objects if the apply failed
+		// N.B. if the result is nil, that means the object was deleted, so objects WILL be deleted
+		return nil
 	}
 
 	// Go through all the results, and check to see which objects
