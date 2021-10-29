@@ -4052,7 +4052,7 @@ func schema_pkg_apis_core_v1alpha1_RestartOnSpec(ref common.ReferenceCallback) c
 				Properties: map[string]spec.Schema{
 					"fileWatches": {
 						SchemaProps: spec.SchemaProps{
-							Description: "A list of file watches that can trigger a restart.",
+							Description: "FileWatches that can trigger a restart.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -4067,7 +4067,7 @@ func schema_pkg_apis_core_v1alpha1_RestartOnSpec(ref common.ReferenceCallback) c
 					},
 					"uiButtons": {
 						SchemaProps: spec.SchemaProps{
-							Description: "A list of ui buttons that can trigger a restart.",
+							Description: "UIButtons that can trigger a restart.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -4281,14 +4281,14 @@ func schema_pkg_apis_core_v1alpha1_StartOnSpec(ref common.ReferenceCallback) com
 				Properties: map[string]spec.Schema{
 					"startAfter": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Any events that predate this time will be ignored.",
+							Description: "StartAfter indicates that events before this time should be ignored.",
 							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
 						},
 					},
 					"uiButtons": {
 						SchemaProps: spec.SchemaProps{
-							Description: "A list of ui buttons that can trigger a run.\n\nWhen a button triggers a run, any UIInputs on that button will be added to the cmd's env.",
+							Description: "UIButtons that can trigger a start/restart.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{

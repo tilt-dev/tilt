@@ -234,27 +234,3 @@ var _ resource.StatusSubResource = &CmdStatus{}
 func (in CmdStatus) CopyTo(parent resource.ObjectWithStatusSubResource) {
 	parent.(*Cmd).Status = in
 }
-
-// RestartOnSpec indicates the set of objects that can trigger a restart of this object.
-type RestartOnSpec struct {
-	// A list of file watches that can trigger a restart.
-	// +optional
-	FileWatches []string `json:"fileWatches,omitempty" protobuf:"bytes,1,rep,name=fileWatches"`
-
-	// A list of ui buttons that can trigger a restart.
-	// +optional
-	UIButtons []string `json:"uiButtons,omitempty" protobuf:"bytes,2,rep,name=uiButtons"`
-}
-
-// StartOnSpec indicates the set of objects that can trigger a start/restart of this object.
-type StartOnSpec struct {
-	// Any events that predate this time will be ignored.
-	//
-	// +optional
-	StartAfter metav1.Time `json:"startAfter,omitempty" protobuf:"bytes,1,opt,name=startAfter"`
-	// A list of ui buttons that can trigger a run.
-	//
-	// When a button triggers a run, any UIInputs on that button will be added
-	// to the cmd's env.
-	UIButtons []string `json:"uiButtons" protobuf:"bytes,2,rep,name=uiButtons"`
-}
