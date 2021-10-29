@@ -188,6 +188,28 @@ func TestAPITwoTiltfiles(t *testing.T) {
 	}
 }
 
+func TestCreateUiResourceForTiltfile(t *testing.T) {
+	f := tempdir.NewTempDirFixture(t)
+	defer f.TearDown()
+
+	ctx := context.Background()
+	c := fake.NewFakeTiltClient()
+	fe := manifestbuilder.New(f, "fe").
+		WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+		WithK8sYAML(testyaml.SanchoYAML).
+		Build()
+	lr := manifestbuilder.New(f, "be").WithLocalResource("ls", []string{"be"}).Build()
+	nn := types.NamespacedName{Name: "tiltfile"}
+	tf := &v1alpha1.Tiltfile{ObjectMeta: metav1.ObjectMeta{Name: "tiltfile", Labels: map[string]string{"some": "sweet-label"}}}
+	err := updateOwnedObjects(ctx, c, nn, tf,
+		&tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe, lr}}, store.EngineModeUp)
+	assert.NoError(t, err)
+
+	var uir v1alpha1.UIResource
+	require.NoError(t, c.Get(ctx, types.NamespacedName{Name: "tiltfile"}, &uir))
+	require.Equal(t, "tiltfile", uir.ObjectMeta.Name)
+}
+
 // Ensure that we create a ConfigMap for each resource's DisableSource
 // And set .Spec.DisableSource fields appropriately
 func TestCreateDisableSource(t *testing.T) {
