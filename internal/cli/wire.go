@@ -82,6 +82,9 @@ var BaseWireSet = wire.NewSet(
 	git.ProvideGitRemote,
 
 	localexec.DefaultEnv,
+	localexec.NewProcessExecer,
+	wire.Bind(new(localexec.Execer), new(*localexec.ProcessExecer)),
+
 	docker.SwitchWireSet,
 
 	dockercompose.NewDockerComposeClient,

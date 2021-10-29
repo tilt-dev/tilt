@@ -5926,7 +5926,8 @@ func (f *fixture) newTiltfileLoader() TiltfileLoader {
 	versionExt := version.NewPlugin(model.TiltBuild{Version: "0.5.0"})
 	configExt := config.NewPlugin("up")
 	localEnv := localexec.DefaultEnv(12345, f.webHost)
-	return ProvideTiltfileLoader(f.ta, f.kCli, k8sContextExt, versionExt, configExt, dcc, f.webHost, localEnv, features, f.k8sEnv)
+	execer := localexec.NewProcessExecer(localEnv)
+	return ProvideTiltfileLoader(f.ta, f.kCli, k8sContextExt, versionExt, configExt, dcc, f.webHost, execer, features, f.k8sEnv)
 }
 
 func newFixture(t *testing.T) *fixture {
