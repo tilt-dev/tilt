@@ -207,6 +207,7 @@ func TestCreateUiResourceForTiltfile(t *testing.T) {
 
 	var uir v1alpha1.UIResource
 	require.NoError(t, c.Get(ctx, types.NamespacedName{Name: "tiltfile"}, &uir))
+	require.Equal(t, map[string]string{"some": "sweet-label"}, uir.ObjectMeta.Labels)
 	require.Equal(t, "tiltfile", uir.ObjectMeta.Name)
 }
 
