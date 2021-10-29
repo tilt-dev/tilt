@@ -112,7 +112,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	}
 
 	if apierrors.IsNotFound(err) || !ka.ObjectMeta.DeletionTimestamp.IsZero() {
-		err := r.bestEffortDeleteWithRelatedObjects(ctx, nn)
+		err := r.deleteCreatedObjects(ctx, nn)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -137,7 +137,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 	// Delete kubernetesapply if it's disabled
 	if disableStatus.Disabled {
-		err := r.bestEffortDeleteWithRelatedObjects(ctx, nn)
+		err := r.deleteCreatedObjects(ctx, nn)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -602,7 +602,7 @@ func (r *Reconciler) updateResult(nn types.NamespacedName, result *Result) delet
 
 // A helper that deletes all kubernetesapply objects and the
 // related kubernetesdiscovery objects it owns
-func (r *Reconciler) bestEffortDeleteWithRelatedObjects(
+func (r *Reconciler) deleteCreatedObjects(
 	ctx context.Context,
 	nn types.NamespacedName,
 ) error {

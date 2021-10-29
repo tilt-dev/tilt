@@ -505,6 +505,19 @@ func (f *fixture) setDisabled(name string, isDisabled bool) {
 	f.requireKaMatchesInApi(name, func(ka *v1alpha1.KubernetesApply) bool {
 		return ka.Status.DisableStatus != nil && ka.Status.DisableStatus.Disabled == isDisabled
 	})
+
+	kd := v1alpha1.KubernetesDiscovery{}
+	kdExists := f.Get(types.NamespacedName{Name: name}, &kd)
+
+	if isDisabled {
+		require.False(f.T(), kdExists)
+
+		require.Contains(f.T(), f.kClient.DeletedYaml, "name: sancho")
+		// Reset the deletedYaml so it doesn't interfere with other tests
+		f.kClient.DeletedYaml = ""
+	} else {
+		require.True(f.T(), kdExists)
+	}
 }
 
 type fixture struct {
