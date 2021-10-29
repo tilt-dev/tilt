@@ -3,6 +3,7 @@ package kubernetesapply
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -17,6 +18,8 @@ import (
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/timecmp"
+	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
@@ -134,6 +137,71 @@ func TestGarbageCollectPartial(t *testing.T) {
 	assert.Contains(f.T(), f.kClient.Yaml, "name: sancho")
 	assert.NotContains(f.T(), f.kClient.Yaml, "name: infra-kafka-zookeeper")
 	assert.Contains(f.T(), f.kClient.DeletedYaml, "name: infra-kafka-zookeeper")
+}
+
+func TestRestartOn(t *testing.T) {
+	f := newFixture(t)
+
+	f.Create(&v1alpha1.FileWatch{
+		ObjectMeta: metav1.ObjectMeta{Name: "fw"},
+		Spec:       v1alpha1.FileWatchSpec{WatchedPaths: []string{"/fake/dir"}},
+	})
+
+	ka := v1alpha1.KubernetesApply{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "a",
+		},
+		Spec: v1alpha1.KubernetesApplySpec{
+			YAML: testyaml.SanchoYAML,
+			RestartOn: &v1alpha1.RestartOnSpec{
+				FileWatches: []string{"fw"},
+			},
+		},
+	}
+	f.Create(&ka)
+
+	f.MustReconcile(types.NamespacedName{Name: "a"})
+	assert.Contains(f.T(), f.kClient.Yaml, "name: sancho")
+
+	f.MustGet(types.NamespacedName{Name: "a"}, &ka)
+	assert.Contains(f.T(), ka.Status.ResultYAML, "name: sancho")
+	assert.Contains(f.T(), ka.Status.ResultYAML, "uid:")
+	lastApply := ka.Status.LastApplyTime
+
+	// Make sure that re-reconciling w/o changes doesn't re-apply the YAML
+	f.kClient.Yaml = ""
+	f.MustReconcile(types.NamespacedName{Name: "a"})
+	f.MustGet(types.NamespacedName{Name: "a"}, &ka)
+	assert.Equal(f.T(), f.kClient.Yaml, "")
+	timecmp.AssertTimeEqual(t, lastApply, ka.Status.LastApplyTime)
+
+	// Fake a FileWatch event - now re-reconciling should re-apply the YAML
+	var fw v1alpha1.FileWatch
+	f.MustGet(types.NamespacedName{Name: "fw"}, &fw)
+	ts := apis.NowMicro()
+	fw.Status.LastEventTime = ts
+	fw.Status.FileEvents = append(fw.Status.FileEvents, v1alpha1.FileEvent{
+		Time:      ts,
+		SeenFiles: []string{"/fake/dir/file"},
+	})
+	f.UpdateStatus(&fw)
+
+	f.kClient.Yaml = ""
+	f.MustReconcile(types.NamespacedName{Name: "a"})
+	f.MustGet(types.NamespacedName{Name: "a"}, &ka)
+	assert.Contains(f.T(), f.kClient.Yaml, "name: sancho")
+	assert.Truef(t, ka.Status.LastApplyTime.After(lastApply.Time),
+		"Last apply time %s should have been after previous apply time %s",
+		ka.Status.LastApplyTime.Format(time.RFC3339Nano),
+		lastApply.Format(time.RFC3339Nano))
+	lastApply = ka.Status.LastApplyTime
+
+	// One last time - make sure that re-reconciling w/o changes doesn't re-apply the YAML
+	f.kClient.Yaml = ""
+	f.MustReconcile(types.NamespacedName{Name: "a"})
+	f.MustGet(types.NamespacedName{Name: "a"}, &ka)
+	assert.Equal(f.T(), f.kClient.Yaml, "")
+	timecmp.AssertTimeEqual(f.T(), lastApply, ka.Status.LastApplyTime)
 }
 
 type fixture struct {

@@ -23,10 +23,12 @@ import (
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/restarton"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/kubernetesapplys"
+	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -122,7 +124,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		imageMaps[nn] = &im
 	}
 
-	if !r.shouldDeployOnReconcile(request.NamespacedName, &ka, imageMaps) {
+	restartObjs, err := restarton.FetchObjects(ctx, r.ctrlClient, ka.Spec.RestartOn, nil)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if !r.shouldDeployOnReconcile(request.NamespacedName, &ka, imageMaps, restartObjs) {
 		// TODO(nick): Like with other reconcilers, there should always
 		// be a reason why we're not deploying, and we should update the
 		// Status field of KubernetesApply with that reason.
@@ -144,10 +151,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 // 1) We have enough info to deploy, and
 // 2) Either we haven't deployed before,
 //    or one of the inputs has changed since the last deploy.
-func (r *Reconciler) shouldDeployOnReconcile(
-	nn types.NamespacedName,
-	ka *v1alpha1.KubernetesApply,
-	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) bool {
+func (r *Reconciler) shouldDeployOnReconcile(nn types.NamespacedName, ka *v1alpha1.KubernetesApply,
+	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap, restartObjs restarton.Objects) bool {
 	owner := metav1.GetControllerOf(ka)
 	if owner != nil && owner.Kind == v1alpha1.OwnerKindTiltfile {
 		// Until resource dependencies are expressed in the API,
@@ -193,6 +198,11 @@ func (r *Reconciler) shouldDeployOnReconcile(
 		if !apicmp.DeepEqual(im.Status, result.ImageMapStatuses[i]) {
 			return true
 		}
+	}
+
+	lastRestartTime, _ := restarton.LastRestartEvent(ka.Spec.RestartOn, restartObjs)
+	if !timecmp.BeforeOrEqual(lastRestartTime, result.Status.LastApplyTime) {
+		return true
 	}
 
 	return false
@@ -493,6 +503,8 @@ var imGVK = v1alpha1.SchemeGroupVersion.WithKind("ImageMap")
 func indexImageMap(obj client.Object) []indexer.Key {
 	ka := obj.(*v1alpha1.KubernetesApply)
 	result := []indexer.Key{}
+
+	result = append(result, restarton.ExtractKeysForIndexer(ka.Namespace, ka.Spec.RestartOn, nil)...)
 
 	for _, name := range ka.Spec.ImageMaps {
 		result = append(result, indexer.Key{
