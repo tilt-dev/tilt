@@ -79,7 +79,7 @@ type ExecAction struct {
 	Command []string `json:"command,omitempty" protobuf:"bytes,1,rep,name=command"`
 }
 
-// Probe describes a health check to be performed o determine whether it is
+// Probe describes a health check to be performed to determine whether it is
 // alive or ready to receive traffic.
 type Probe struct {
 	// The action taken to determine the health of a container

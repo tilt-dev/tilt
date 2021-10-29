@@ -198,6 +198,7 @@ func (in *UIButtonList) GetListMeta() *metav1.ListMeta {
 	return &in.ListMeta
 }
 
+// Describes a text input field attached to a button.
 type UITextInputSpec struct {
 	// Initial value for this field.
 	//
@@ -215,6 +216,7 @@ type UITextInputStatus struct {
 	Value string `json:"value" protobuf:"bytes,1,opt,name=value"`
 }
 
+// Describes a boolean checkbox input field attached to a button.
 type UIBoolInputSpec struct {
 	// Whether the input is initially true or false.
 	// +optional
@@ -235,6 +237,8 @@ type UIBoolInputStatus struct {
 	Value bool `json:"value" protobuf:"varint,1,opt,name=value"`
 }
 
+// Describes a hidden input field attached to a button,
+// with a value to pass on any submit.
 type UIHiddenInputSpec struct {
 	Value string `json:"value" protobuf:"bytes,1,opt,name=value"`
 }
