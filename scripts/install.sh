@@ -63,12 +63,10 @@ function install_tilt() {
       else
           # On Linux, "uname -m" reports "aarch64" on ARM 64 bits machines,
           # and armv7l on ARM 32 bits machines like the Raspberry Pi.
-          # However, as of October 2021, the Tilt releases for linux/arm are
-          # named "arm64" and "arm", and tagged as _ALPHA releases.
           # This is a small workaround so that the install script works on ARM.
           case $(uname -m) in
-              aarch64) ARCH=arm64_ALPHA;;
-              armv7l)  ARCH=arm_ALPHA;;
+              aarch64) ARCH=arm64;;
+              armv7l)  ARCH=arm;;
               *)       ARCH=$(uname -m);;
           esac
           set -x
@@ -80,13 +78,7 @@ function install_tilt() {
           brew_install_or_upgrade
       else
           # On macOS, "uname -m" reports "arm64" on ARM 64 bits machines
-          # (like the M1). However, as of October 2021, the Tilt releases
-          # for darwin/arm are tagged as _ALPHA releases.
-          # This is a small workaround so that the install script works on the M1.
-          case $(uname -m) in
-              arm64) ARCH=arm64_ALPHA;;
-              *)     ARCH=$(uname -m);;
-          esac
+          ARCH=$(uname -m)
           set -x
           curl -fsSL https://github.com/tilt-dev/tilt/releases/download/v$VERSION/tilt.$VERSION.mac.$ARCH.tar.gz | tar -xzv tilt
           copy_binary
