@@ -1590,11 +1590,11 @@ message Probe {
 
 // RestartOnSpec indicates the set of objects that can trigger a restart of this object.
 message RestartOnSpec {
-  // A list of file watches that can trigger a restart.
+  // FileWatches that can trigger a restart.
   // +optional
   repeated string fileWatches = 1;
 
-  // A list of ui buttons that can trigger a restart.
+  // UIButtons that can trigger a restart.
   // +optional
   repeated string uiButtons = 2;
 }
@@ -1652,15 +1652,12 @@ message SessionStatus {
 
 // StartOnSpec indicates the set of objects that can trigger a start/restart of this object.
 message StartOnSpec {
-  // Any events that predate this time will be ignored.
+  // StartAfter indicates that events before this time should be ignored.
   //
   // +optional
   optional k8s.io.apimachinery.pkg.apis.meta.v1.Time startAfter = 1;
 
-  // A list of ui buttons that can trigger a run.
-  //
-  // When a button triggers a run, any UIInputs on that button will be added
-  // to the cmd's env.
+  // UIButtons that can trigger a start/restart.
   repeated string uiButtons = 2;
 }
 
