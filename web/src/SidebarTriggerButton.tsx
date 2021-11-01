@@ -115,8 +115,7 @@ function SidebarTriggerButton(props: SidebarTriggerButtonProps) {
   let clickable =
     !props.isQueued && // already queued for manual run
     !props.isBuilding && // currently building
-    !(!isManualTriggerIncludingInitial && !props.hasBuilt) && // waiting to perform its initial build
-    !(props.hasPendingChanges && !isManualTriggerMode) // waiting to perform an auto-triggered build in response to a change
+    !(!isManualTriggerIncludingInitial && !props.hasBuilt) // waiting to perform its initial build
 
   let clickMe = false
   if (clickable) {
