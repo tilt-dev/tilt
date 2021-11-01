@@ -269,7 +269,8 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(switchCli, labels)
 	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
-	kubernetesapplyReconciler := kubernetesapply.NewReconciler(deferredClient, client, scheme, dockerBuilder, kubeContext, storeStore, namespace)
+	processExecer := localexec.NewProcessExecer(env)
+	kubernetesapplyReconciler := kubernetesapply.NewReconciler(deferredClient, client, scheme, dockerBuilder, kubeContext, storeStore, namespace, processExecer)
 	uisessionReconciler := uisession.NewReconciler(deferredClient, websocketList)
 	uiresourceReconciler := uiresource.NewReconciler(deferredClient, websocketList, storeStore)
 	uibuttonReconciler := uibutton.NewReconciler(deferredClient, websocketList)
@@ -278,7 +279,6 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	versionPlugin := version.NewPlugin(tiltBuild)
 	configPlugin := config.NewPlugin(subcommand)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
-	processExecer := localexec.NewProcessExecer(env)
 	defaults := _wireDefaultsValue
 	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, client, plugin, versionPlugin, configPlugin, dockerComposeClient, webHost, processExecer, defaults, k8sEnv)
 	buildSource := tiltfile2.NewBuildSource()
@@ -473,7 +473,8 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(switchCli, labels)
 	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
-	kubernetesapplyReconciler := kubernetesapply.NewReconciler(deferredClient, client, scheme, dockerBuilder, kubeContext, storeStore, namespace)
+	processExecer := localexec.NewProcessExecer(env)
+	kubernetesapplyReconciler := kubernetesapply.NewReconciler(deferredClient, client, scheme, dockerBuilder, kubeContext, storeStore, namespace, processExecer)
 	uisessionReconciler := uisession.NewReconciler(deferredClient, websocketList)
 	uiresourceReconciler := uiresource.NewReconciler(deferredClient, websocketList, storeStore)
 	uibuttonReconciler := uibutton.NewReconciler(deferredClient, websocketList)
@@ -482,7 +483,6 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	versionPlugin := version.NewPlugin(tiltBuild)
 	configPlugin := config.NewPlugin(subcommand)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
-	processExecer := localexec.NewProcessExecer(env)
 	defaults := _wireDefaultsValue
 	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, client, plugin, versionPlugin, configPlugin, dockerComposeClient, webHost, processExecer, defaults, k8sEnv)
 	buildSource := tiltfile2.NewBuildSource()
@@ -674,7 +674,8 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(switchCli, labels)
 	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
-	kubernetesapplyReconciler := kubernetesapply.NewReconciler(deferredClient, k8sClient, scheme, dockerBuilder, kubeContext, storeStore, namespace)
+	processExecer := localexec.NewProcessExecer(env)
+	kubernetesapplyReconciler := kubernetesapply.NewReconciler(deferredClient, k8sClient, scheme, dockerBuilder, kubeContext, storeStore, namespace, processExecer)
 	uisessionReconciler := uisession.NewReconciler(deferredClient, websocketList)
 	uiresourceReconciler := uiresource.NewReconciler(deferredClient, websocketList, storeStore)
 	uibuttonReconciler := uibutton.NewReconciler(deferredClient, websocketList)
@@ -683,7 +684,6 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	versionPlugin := version.NewPlugin(tiltBuild)
 	configPlugin := config.NewPlugin(subcommand)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
-	processExecer := localexec.NewProcessExecer(env)
 	defaults := _wireDefaultsValue
 	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, k8sClient, plugin, versionPlugin, configPlugin, dockerComposeClient, webHost, processExecer, defaults, k8sEnv)
 	buildSource := tiltfile2.NewBuildSource()

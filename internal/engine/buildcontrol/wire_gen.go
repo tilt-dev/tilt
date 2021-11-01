@@ -20,6 +20,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/dockerfile"
 	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/localexec"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/internal/tracer"
@@ -28,14 +29,14 @@ import (
 
 // Injectors from wire.go:
 
-func ProvideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, env k8s.Env, kubeContext k8s.KubeContext, clusterEnv docker.ClusterEnv, dir *dirs.TiltDevDir, clock build.Clock, kp KINDLoader, analytics2 *analytics.TiltAnalytics, ctrlclient client.Client, st store.RStore) (*ImageBuildAndDeployer, error) {
+func ProvideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, env k8s.Env, kubeContext k8s.KubeContext, clusterEnv docker.ClusterEnv, dir *dirs.TiltDevDir, clock build.Clock, kp KINDLoader, analytics2 *analytics.TiltAnalytics, ctrlclient client.Client, st store.RStore, execer localexec.Execer) (*ImageBuildAndDeployer, error) {
 	labels := _wireLabelsValue
 	dockerImageBuilder := build.NewDockerImageBuilder(docker2, labels)
 	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
 	execCustomBuilder := build.NewExecCustomBuilder(docker2, clock)
 	scheme := v1alpha1.NewScheme()
 	namespace := provideFakeK8sNamespace()
-	reconciler := kubernetesapply.NewReconciler(ctrlclient, kClient, scheme, dockerBuilder, kubeContext, st, namespace)
+	reconciler := kubernetesapply.NewReconciler(ctrlclient, kClient, scheme, dockerBuilder, kubeContext, st, namespace, execer)
 	imageBuildAndDeployer := NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, kClient, env, kubeContext, analytics2, clock, kp, ctrlclient, reconciler)
 	return imageBuildAndDeployer, nil
 }

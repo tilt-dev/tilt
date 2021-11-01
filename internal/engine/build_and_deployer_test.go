@@ -26,6 +26,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
+	"github.com/tilt-dev/tilt/internal/localexec"
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 
 	"github.com/tilt-dev/wmclient/pkg/dirs"
@@ -803,8 +804,9 @@ func newBDFixtureWithUpdateMode(t *testing.T, env k8s.Env, runtime container.Run
 	kl := &fakeKINDLoader{}
 	ctrlClient := fake.NewFakeTiltClient()
 	st := NewTestingStore(logs)
+	execer := localexec.NewFakeExecer(t)
 	bd, err := provideFakeBuildAndDeployer(ctx, dockerClient, k8s, dir, env, mode, dcc,
-		fakeClock{now: time.Unix(1551202573, 0)}, kl, ta, ctrlClient, st)
+		fakeClock{now: time.Unix(1551202573, 0)}, kl, ta, ctrlClient, st, execer)
 	require.NoError(t, err)
 
 	return &bdFixture{

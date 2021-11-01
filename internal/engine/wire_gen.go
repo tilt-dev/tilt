@@ -35,7 +35,7 @@ import (
 
 // Injectors from wire.go:
 
-func provideFakeBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, dir *dirs.TiltDevDir, env k8s.Env, updateMode liveupdates.UpdateModeFlag, dcc dockercompose.DockerComposeClient, clock build.Clock, kp buildcontrol.KINDLoader, analytics2 *analytics.TiltAnalytics, ctrlClient client.Client, st store.RStore) (buildcontrol.BuildAndDeployer, error) {
+func provideFakeBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, dir *dirs.TiltDevDir, env k8s.Env, updateMode liveupdates.UpdateModeFlag, dcc dockercompose.DockerComposeClient, clock build.Clock, kp buildcontrol.KINDLoader, analytics2 *analytics.TiltAnalytics, ctrlClient client.Client, st store.RStore, execer localexec.Execer) (buildcontrol.BuildAndDeployer, error) {
 	dockerUpdater := containerupdate.NewDockerUpdater(docker2)
 	execUpdater := containerupdate.NewExecUpdater(kClient)
 	kubeContext := provideFakeKubeContext(env)
@@ -53,15 +53,15 @@ func provideFakeBuildAndDeployer(ctx context.Context, docker2 docker.Client, kCl
 	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
 	execCustomBuilder := build.NewExecCustomBuilder(docker2, clock)
 	namespace := provideFakeK8sNamespace()
-	kubernetesapplyReconciler := kubernetesapply.NewReconciler(ctrlClient, kClient, scheme, dockerBuilder, kubeContext, st, namespace)
+	kubernetesapplyReconciler := kubernetesapply.NewReconciler(ctrlClient, kClient, scheme, dockerBuilder, kubeContext, st, namespace, execer)
 	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, kClient, env, kubeContext, analytics2, clock, kp, ctrlClient, kubernetesapplyReconciler)
 	imageBuilder := buildcontrol.NewImageBuilder(dockerBuilder, execCustomBuilder)
 	dockerComposeBuildAndDeployer := buildcontrol.NewDockerComposeBuildAndDeployer(dcc, docker2, imageBuilder, clock)
 	localexecEnv := provideFakeEnv()
-	execer := cmd.ProvideExecer(localexecEnv)
+	cmdExecer := cmd.ProvideExecer(localexecEnv)
 	proberManager := cmd.ProvideProberManager()
 	clockworkClock := clockwork.NewRealClock()
-	controller := cmd.NewController(ctx, execer, proberManager, ctrlClient, st, clockworkClock, scheme)
+	controller := cmd.NewController(ctx, cmdExecer, proberManager, ctrlClient, st, clockworkClock, scheme)
 	localTargetBuildAndDeployer := buildcontrol.NewLocalTargetBuildAndDeployer(clock, ctrlClient, controller)
 	buildOrder := DefaultBuildOrder(liveUpdateBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, localTargetBuildAndDeployer, liveupdatesUpdateMode, env, runtime)
 	spanExporter := _wireSpanExporterValue
