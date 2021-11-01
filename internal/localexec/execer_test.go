@@ -22,7 +22,7 @@ func TestProcessExecer_Run(t *testing.T) {
 	ctx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
 	defer cancel()
 
-	// this works across both sh + cmd
+	// this works across both cmd.exe + sh
 	script := `echo hello from stdout && echo hello from stderr 1>&2`
 
 	execer := NewProcessExecer(EmptyEnv())
@@ -31,8 +31,9 @@ func TestProcessExecer_Run(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, 0, r.ExitCode)
-	assert.Equal(t, "hello from stdout\n", string(r.Stdout))
-	assert.Equal(t, "hello from stderr\n", string(r.Stderr))
+	// trim space to not deal with line-ending/whitespace differences between cmd.exe/sh
+	assert.Equal(t, "hello from stdout", strings.TrimSpace(string(r.Stdout)))
+	assert.Equal(t, "hello from stderr", strings.TrimSpace(string(r.Stderr)))
 }
 
 func TestProcessExecer_Run_ProcessGroup(t *testing.T) {
