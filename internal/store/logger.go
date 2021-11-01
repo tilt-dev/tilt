@@ -3,7 +3,6 @@ package store
 import (
 	"context"
 	"fmt"
-	"reflect"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -43,7 +42,7 @@ func WithObjectLogHandler(ctx context.Context, st RStore, obj runtime.Object) (c
 	mn := meta.GetAnnotations()[v1alpha1.AnnotationManifest]
 	spanID := meta.GetAnnotations()[v1alpha1.AnnotationSpanID]
 	if spanID == "" {
-		spanID = fmt.Sprintf("%s-%s", reflect.TypeOf(obj).Name(), meta.GetName())
+		spanID = fmt.Sprintf("%s-%s", obj.GetObjectKind().GroupVersionKind().Kind, meta.GetName())
 	}
 
 	w := apiLogWriter{

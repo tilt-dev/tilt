@@ -1,6 +1,7 @@
 package kubernetesapply
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"sync"
@@ -346,8 +347,40 @@ func (r *Reconciler) runYAMLDeploy(ctx context.Context, spec v1alpha1.Kubernetes
 }
 
 func (r *Reconciler) runCmdDeploy(ctx context.Context, spec v1alpha1.KubernetesApplySpec) ([]k8s.K8sEntity, error) {
-	// TODO(milas): implement Cmd apply
-	return nil, errors.New("Cmd apply not supported")
+	cmd := model.Cmd{
+		Argv: append([]string(nil), spec.Cmd.Args...),
+		Dir:  spec.Cmd.Dir,
+		Env:  append([]string(nil), spec.Cmd.Env...),
+	}
+
+	timeout := spec.Timeout.Duration
+	if timeout == 0 {
+		timeout = v1alpha1.KubernetesApplyTimeoutDefault
+	}
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	var stdoutBuf bytes.Buffer
+	runIO := localexec.RunIO{
+		Stdout: &stdoutBuf,
+		Stderr: logger.Get(ctx).Writer(logger.WarnLvl),
+	}
+
+	exitCode, err := r.execer.Run(ctx, cmd, runIO)
+	if err != nil {
+		return nil, fmt.Errorf("apply command failed: %v", err)
+	} else if exitCode != 0 {
+		return nil, fmt.Errorf("apply command exited with status %d\nstdout:\n%s\n", exitCode, stdoutBuf.String())
+	}
+
+	// don't pass the bytes.Buffer directly to the YAML parser or it'll consume it and we can't print it out on failure
+	stdout := stdoutBuf.Bytes()
+	entities, err := k8s.ParseYAML(bytes.NewReader(stdout))
+	if err != nil {
+		return nil, fmt.Errorf("apply command returned malformed YAML: %v\nstdout:\n%s\n", err, string(stdout))
+	}
+
+	return entities, nil
 }
 
 func (r *Reconciler) indentLogger(ctx context.Context) context.Context {
