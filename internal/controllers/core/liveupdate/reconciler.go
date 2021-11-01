@@ -461,7 +461,7 @@ func (r *Reconciler) dispatchCompleteBuildAction(lu *v1alpha1.LiveUpdate, newSta
 	}
 	containerIDs := []container.ID{}
 	for _, status := range newStatus.Containers {
-		if status.Waiting != nil {
+		if status.Waiting == nil {
 			containerIDs = append(containerIDs, container.ID(status.ContainerID))
 		}
 	}

@@ -12,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/containerupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -125,6 +126,11 @@ func TestConsumeFileEvents(t *testing.T) {
 			keys = append(keys, key)
 		}
 		assert.Equal(t, "image:frontend-image", keys[0].String())
+
+		result := f.st.lastCompletedAction.Result[keys[0]]
+		assert.Equal(t,
+			[]container.ID{"main-id"},
+			result.(store.LiveUpdateBuildResult).LiveUpdatedContainerIDs)
 	}
 }
 
@@ -145,7 +151,7 @@ func TestWaitingContainer(t *testing.T) {
 				Containers: []v1alpha1.Container{
 					{
 						Name:  "main",
-						ID:    "main",
+						ID:    "main-id",
 						Image: "frontend-image",
 						State: v1alpha1.ContainerState{
 							Waiting: &v1alpha1.ContainerStateWaiting{},
@@ -177,7 +183,7 @@ func TestWaitingContainer(t *testing.T) {
 				Containers: []v1alpha1.Container{
 					{
 						Name:  "main",
-						ID:    "main",
+						ID:    "main-id",
 						Image: "frontend-image",
 						State: v1alpha1.ContainerState{
 							Running: &v1alpha1.ContainerStateRunning{},
@@ -210,7 +216,7 @@ func TestOneTerminatedContainer(t *testing.T) {
 				Containers: []v1alpha1.Container{
 					{
 						Name:  "main",
-						ID:    "main",
+						ID:    "main-id",
 						Image: "frontend-image",
 						State: v1alpha1.ContainerState{
 							Terminated: &v1alpha1.ContainerStateTerminated{},
@@ -250,7 +256,7 @@ func TestOneRunningOneTerminatedContainer(t *testing.T) {
 				Containers: []v1alpha1.Container{
 					{
 						Name:  "main",
-						ID:    "main",
+						ID:    "main-id",
 						Image: "frontend-image",
 						State: v1alpha1.ContainerState{
 							Terminated: &v1alpha1.ContainerStateTerminated{},
@@ -264,7 +270,7 @@ func TestOneRunningOneTerminatedContainer(t *testing.T) {
 				Containers: []v1alpha1.Container{
 					{
 						Name:  "main",
-						ID:    "main",
+						ID:    "main-id",
 						Image: "frontend-image",
 						State: v1alpha1.ContainerState{
 							Running: &v1alpha1.ContainerStateRunning{},
@@ -387,7 +393,7 @@ func (f *fixture) setupFrontend() {
 					Containers: []v1alpha1.Container{
 						{
 							Name:  "main",
-							ID:    "main",
+							ID:    "main-id",
 							Image: "frontend-image",
 							Ready: true,
 							State: v1alpha1.ContainerState{
