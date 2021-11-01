@@ -59,7 +59,8 @@ func provideFakeBuildAndDeployer(
 	kp buildcontrol.KINDLoader,
 	analytics *analytics.TiltAnalytics,
 	ctrlClient ctrlclient.Client,
-	st store.RStore) (buildcontrol.BuildAndDeployer, error) {
+	st store.RStore,
+	execer localexec.Execer) (buildcontrol.BuildAndDeployer, error) {
 	wire.Build(
 		DeployerWireSetTest,
 		k8s.ProvideContainerRuntime,

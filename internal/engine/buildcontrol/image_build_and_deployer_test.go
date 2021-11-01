@@ -11,7 +11,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
-	digest "github.com/opencontainers/go-digest"
+	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tilt-dev/wmclient/pkg/dirs"
@@ -26,6 +26,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
+	"github.com/tilt-dev/tilt/internal/localexec"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/internal/testutils"
@@ -1018,8 +1019,9 @@ func newIBDFixture(t *testing.T, env k8s.Env) *ibdFixture {
 	clusterEnv := docker.ClusterEnv(docker.Env{})
 	ctrlClient := fake.NewFakeTiltClient()
 	st := store.NewTestingStore()
+	execer := localexec.NewFakeExecer(t)
 	ibd, err := ProvideImageBuildAndDeployer(ctx, dockerClient, kClient, env, kubeContext,
-		clusterEnv, dir, clock, kl, ta, ctrlClient, st)
+		clusterEnv, dir, clock, kl, ta, ctrlClient, st, execer)
 	if err != nil {
 		t.Fatal(err)
 	}

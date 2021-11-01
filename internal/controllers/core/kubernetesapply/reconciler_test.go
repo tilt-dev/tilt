@@ -18,6 +18,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/dockerfile"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
+	"github.com/tilt-dev/tilt/internal/localexec"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/pkg/apis"
@@ -257,6 +258,7 @@ type fixture struct {
 	*fake.ControllerFixture
 	r       *Reconciler
 	kClient *k8s.FakeK8sClient
+	execer  *localexec.FakeExecer
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -270,12 +272,15 @@ func newFixture(t *testing.T) *fixture {
 	// when testing the reconciler
 	dockerClient.ImageAlwaysExists = true
 
+	execer := localexec.NewFakeExecer(t)
+
 	db := build.NewDockerImageBuilder(dockerClient, dockerfile.Labels{})
-	r := NewReconciler(cfb.Client, kClient, v1alpha1.NewScheme(), db, kubeContext, st, "default")
+	r := NewReconciler(cfb.Client, kClient, v1alpha1.NewScheme(), db, kubeContext, st, "default", execer)
 
 	return &fixture{
 		ControllerFixture: cfb.Build(r),
 		r:                 r,
 		kClient:           kClient,
+		execer:            execer,
 	}
 }
