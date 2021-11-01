@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,11 +31,14 @@ import (
 	"github.com/tilt-dev/tilt/internal/ospath"
 	"github.com/tilt-dev/tilt/internal/sliceutils"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/buildcontrols"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
 
 var discoveryGVK = v1alpha1.SchemeGroupVersion.WithKind("KubernetesDiscovery")
@@ -425,6 +429,47 @@ func (r *Reconciler) visitSelectedContainers(
 	}
 }
 
+func (r *Reconciler) dispatchStartBuildAction(ctx context.Context, lu *v1alpha1.LiveUpdate, filesChanged []string) {
+	manifestName := lu.Annotations[v1alpha1.AnnotationManifest]
+	spanID := lu.Annotations[v1alpha1.AnnotationSpanID]
+	r.store.Dispatch(buildcontrols.BuildStartedAction{
+		ManifestName:       model.ManifestName(manifestName),
+		StartTime:          time.Now(),
+		FilesChanged:       filesChanged,
+		Reason:             model.BuildReasonFlagChangedFiles,
+		SpanID:             logstore.SpanID(spanID),
+		FullBuildTriggered: false,
+	})
+
+	buildcontrols.LogBuildEntry(ctx, buildcontrols.BuildEntry{
+		Name:         model.ManifestName(manifestName),
+		BuildReason:  model.BuildReasonFlagChangedFiles,
+		FilesChanged: filesChanged,
+	})
+}
+
+func (r *Reconciler) dispatchCompleteBuildAction(lu *v1alpha1.LiveUpdate, newStatus v1alpha1.LiveUpdateStatus) {
+	manifestName := model.ManifestName(lu.Annotations[v1alpha1.AnnotationManifest])
+	spanID := logstore.SpanID(lu.Annotations[v1alpha1.AnnotationSpanID])
+	var err error
+	if newStatus.Failed != nil {
+		err = fmt.Errorf("%s", newStatus.Failed.Message)
+	}
+	imageTargetID := model.TargetID{
+		Type: model.TargetTypeImage,
+		Name: model.TargetName(apis.SanitizeName(lu.Spec.Selector.Kubernetes.Image)),
+	}
+	containerIDs := []container.ID{}
+	for _, status := range newStatus.Containers {
+		if status.Waiting == nil {
+			containerIDs = append(containerIDs, container.ID(status.ContainerID))
+		}
+	}
+	result := store.NewLiveUpdateBuildResult(imageTargetID, containerIDs)
+	resultSet := store.BuildResultSet{imageTargetID: result}
+	r.store.Dispatch(buildcontrols.NewBuildCompleteAction(manifestName, spanID, resultSet, err))
+}
+
 // Convert the currently tracked state into a set of inputs
 // to the updater, then apply them.
 func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, monitor *monitor) v1alpha1.LiveUpdateStatus {
@@ -463,6 +508,8 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 	if status.Failed != nil {
 		return status
 	}
+
+	updateEventDispatched := false
 
 	// Visit all containers, apply changes, and return their statuses.
 	terminatedContainerPodName := ""
@@ -532,6 +579,11 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 			return false
 		}
 
+		if !updateEventDispatched {
+			updateEventDispatched = true
+			r.dispatchStartBuildAction(ctx, lu, filesChanged)
+		}
+
 		oneUpdateStatus := r.applyLiveUpdatePlan(ctx, lu.Spec, c, filesChanged, newHighWaterMark, cStatus)
 		adjustFailedStateTimestamps(lu, &oneUpdateStatus)
 
@@ -569,6 +621,10 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 		hasAnyFilesToSync && len(status.Containers) == 0 {
 		status.Failed = createFailedState(lu, "Terminated",
 			fmt.Sprintf("Container for live update is stopped. Pod name: %s", terminatedContainerPodName))
+	}
+
+	if updateEventDispatched {
+		r.dispatchCompleteBuildAction(lu, status)
 	}
 
 	return status
