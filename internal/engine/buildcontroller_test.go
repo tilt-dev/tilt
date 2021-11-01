@@ -206,7 +206,6 @@ func TestBuildControllerLocalResource(t *testing.T) {
 	dep := f.JoinPath("stuff.json")
 	manifest := manifestbuilder.New(f, "local").
 		WithLocalResource("echo beep boop", []string{dep}).
-		WithLocalDisableSource().
 		Build()
 	f.Start([]model.Manifest{manifest})
 
@@ -1560,7 +1559,6 @@ func TestLocalDependsOnNonWorkloadK8s(t *testing.T) {
 
 	local1 := manifestbuilder.New(f, "local").
 		WithLocalResource("exec-local", nil).
-		WithLocalDisableSource().
 		WithResourceDeps("k8s1").
 		Build()
 	k8s1 := manifestbuilder.New(f, "k8s1").
@@ -1614,7 +1612,6 @@ func TestDisablingCancelsBuild(t *testing.T) {
 	f := newTestFixture(t)
 	manifest := manifestbuilder.New(f, "local").
 		WithLocalResource("sleep 10000", nil).
-		WithLocalDisableSource().
 		Build()
 	f.b.completeBuildsManually = true
 

@@ -40,6 +40,9 @@ type ServerController struct {
 	createdTriggerTime map[string]time.Time
 	client             ctrlclient.Client
 
+	// store latest copies of CmdServer to allow introspection by tests
+	// via a substitute for a `GET` API endpoint
+	// TODO - remove when CmdServer is added to the API
 	mu         sync.Mutex
 	cmdServers map[string]CmdServer
 
@@ -151,6 +154,8 @@ func (c *ServerController) determineServers(ctx context.Context, st store.RStore
 	return servers, owned, orphaned
 }
 
+// approximate a `GET` API endpoint for CmdServer
+// TODO: remove once CmdServer is in the API
 func (c *ServerController) Get(name string) CmdServer {
 	c.mu.Lock()
 	defer c.mu.Unlock()

@@ -99,11 +99,6 @@ func (b ManifestBuilder) WithLocalServeCmd(cmd string) ManifestBuilder {
 	return b
 }
 
-func (b ManifestBuilder) WithLocalDisableSource() ManifestBuilder {
-	b.localServeHasDisableSource = true
-	return b
-}
-
 func (b ManifestBuilder) WithLocalAllowParallel(v bool) ManifestBuilder {
 	b.localAllowParallel = v
 	return b
@@ -195,20 +190,17 @@ func (b ManifestBuilder) Build() model.Manifest {
 			WithAllowParallel(b.localAllowParallel)
 		m = model.Manifest{Name: b.name, ResourceDependencies: rds}.WithDeployTarget(lt)
 
-		if b.localServeHasDisableSource {
-			m = m.WithDisableSource(&v1alpha1.DisableSource{
-				ConfigMap: &v1alpha1.ConfigMapDisableSource{
-					Name: fmt.Sprintf("%s-disable", b.name),
-					Key:  "isDisabled",
-				},
-			})
-		}
+		m = m.WithDisableSource(&v1alpha1.DisableSource{
+			ConfigMap: &v1alpha1.ConfigMapDisableSource{
+				Name: fmt.Sprintf("%s-disable", b.name),
+				Key:  "isDisabled",
+			},
+		})
 	} else {
 		b.f.T().Fatalf("No deploy target specified: %s", b.name)
 		return model.Manifest{}
 	}
-	m = m.
-		WithTriggerMode(b.triggerMode)
+	m = m.WithTriggerMode(b.triggerMode)
 	err := m.InferLiveUpdateSelectors()
 	require.NoError(b.f.T(), err)
 	return m
