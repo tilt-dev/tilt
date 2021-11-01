@@ -120,7 +120,7 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - homebrew_cache_v14
+            - homebrew_cache_v15
       # Bump cache version when changing this.
       - run: echo 'export HOMEBREW_PACKAGES="go@1.17"' >> $BASH_ENV
       # Only update when brew doesn't know about some of the packages because:
@@ -130,10 +130,10 @@ jobs:
       - run: HOMEBREW_NO_AUTO_UPDATE=true brew install ${HOMEBREW_PACKAGES}
       - save_cache:
           paths:
-            - /usr/local/Homebrew
-          key: homebrew_cache_v14
+            - /usr/local/Cellar
+          key: homebrew_cache_v15
       - run: echo 'export PATH="/usr/local/opt/go@1.17/bin:$PATH"' >> $BASH_ENV
-      - run: curl -fsSL "https://github.com/gotestyourself/gotestsum/releases/download/v1.7.0/gotestsum_1.7.0_darwin_amd64.tar.gz" | sudo tar -xz -C /usr/local/bin gotestsum
+      - run: curl -fsSL "https://github.com/gotestyourself/gotestsum/releases/download/v0.3.3/gotestsum_0.3.3_darwin_amd64.tar.gz" | sudo tar -xz -C /usr/local/bin gotestsum
       # We can't run the container tests on macos because nested
       # VMs don't work on circleci.
       - run: mkdir -p test-results
