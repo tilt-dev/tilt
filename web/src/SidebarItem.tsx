@@ -1,5 +1,6 @@
 import moment from "moment"
 import { buildAlerts, runtimeAlerts } from "./alerts"
+import { Hold } from "./Hold"
 import { getResourceLabels } from "./labels"
 import { LogAlertIndex } from "./LogStore"
 import { buildStatus, runtimeStatus } from "./status"
@@ -28,6 +29,7 @@ class SidebarItem {
   hasPendingChanges: boolean
   queued: boolean
   lastBuild: Build | null = null
+  hold: Hold | null = null
 
   /**
    * Create a pared down SidebarItem from a ResourceView
@@ -56,6 +58,7 @@ class SidebarItem {
     this.hasPendingChanges = !!status.hasPendingChanges
     this.queued = !!status.queued
     this.lastBuild = lastBuild
+    this.hold = status.waiting ? new Hold(status.waiting) : null
   }
 }
 

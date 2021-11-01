@@ -424,7 +424,8 @@ func toUIResourceObjects(tf *v1alpha1.Tiltfile, tlr *tiltfile.TiltfileLoadResult
 	if tf != nil {
 		result[tf.Name] = &v1alpha1.UIResource{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: tf.Name,
+				Name:   tf.Name,
+				Labels: tf.Labels,
 				Annotations: map[string]string{
 					v1alpha1.AnnotationManifest: tf.Name,
 				},

@@ -51,6 +51,10 @@ func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.
 			return nil, SilentRedirectToNextBuilderf("In-place build does not support initial deploy")
 		}
 
+		if iTarget.LiveUpdateReconciler {
+			return nil, SilentRedirectToNextBuilderf("Live update handled by API controller")
+		}
+
 		if state.FullBuildTriggered {
 			return nil, SilentRedirectToNextBuilderf("Force update (triggered manually, not automatically, with no dirty files)")
 		}

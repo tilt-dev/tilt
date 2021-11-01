@@ -1,4 +1,5 @@
 import { buildWarningCount, runtimeWarningCount } from "./alerts"
+import { Hold } from "./Hold"
 import { LogAlertIndex } from "./LogStore"
 import { ResourceStatus, RuntimeStatus, UpdateStatus } from "./types"
 
@@ -78,6 +79,36 @@ function combinedStatus(
   }
 
   return runtimeStatus
+}
+
+export function PendingBuildDescription(hold?: Hold | null): string {
+  let text = "Update: "
+  if (!hold?.count) {
+    text += "pending"
+    return text
+  }
+
+  text += "waiting on "
+  const maxToShow = 3
+  let toShow: string[] = []
+  if (hold?.images.length) {
+    text += hold.images.length > 1 ? "images: " : "image: "
+    toShow = hold.images
+  } else if (hold?.resources.length) {
+    text += hold.resources.length > 1 ? "resources: " : "resource: "
+    toShow = hold.resources
+  } else {
+    text += `${hold.count} object${hold.count > 1 ? "s" : ""}`
+    return text
+  }
+
+  text += toShow.slice(0, maxToShow).join(", ")
+  if (toShow.length > maxToShow) {
+    const extra = toShow.length - maxToShow
+    text += `, and ${extra} more`
+  }
+
+  return text
 }
 
 export { buildStatus, runtimeStatus, combinedStatus }

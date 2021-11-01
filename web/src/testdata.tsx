@@ -526,6 +526,17 @@ function oneResourceFailedToBuild(): UIResource[] {
           podRestarts: 0,
         },
         updateStatus: "pending",
+        waiting: {
+          reason: "waiting-for-dep",
+          on: [
+            {
+              group: "tilt.dev",
+              apiVersion: "v1alpha1",
+              kind: "ImageMap",
+              name: "gcr.io/test-base-image",
+            },
+          ],
+        },
         runtimeStatus: "ok",
       },
     },
