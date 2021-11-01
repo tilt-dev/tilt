@@ -7,7 +7,6 @@ import (
 	"io"
 	"os/exec"
 	"sync"
-	"sync/atomic"
 	"syscall"
 	"testing"
 
@@ -87,45 +86,44 @@ func (p ProcessExecer) Run(ctx context.Context, cmd model.Cmd, runIO RunIO) (int
 		return -1, err
 	}
 
-	// there's a data race on this value if the process termination + context cancellation happen
-	// very close together, so all access should be done via atomic
-	//
-	// NOTE: if this condition occurs, it's possible the process will be reported as killed (127)
-	// even though it actually had already exited because we force an exit code to prevent returning
-	// an exit code of 0 despite having triggered a SIGKILL in the common case
-	var exitCode int64
-	procDone := make(chan struct{}, 1)
+	// monitor context cancel in a background goroutine and forcibly kill the process group if it's exceeded
+	// (N.B. an exit code of 137 is forced; otherwise, it's possible for the main process to exit with 0 after
+	// its children are killed, which is misleading)
+	// the sync.Once provides synchronization with the main function that's blocked on Cmd::Wait()
+	var exitCode int
+	var handleProcessExit sync.Once
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	go func() {
-		select {
-		case <-procDone:
-			// stop blocking & do nothing, process already terminated
-			return
-		case <-ctx.Done():
-			// forcibly set the exit code to simulate a standard SIGKILL
-			// (since we're signaling the process group, it's possible to still get an exit code of 0 otherwise)
-			atomic.StoreInt64(&exitCode, 137)
-			procutil.KillProcessGroup(osCmd)
-		}
+		<-ctx.Done()
+		handleProcessExit.Do(
+			func() {
+				procutil.KillProcessGroup(osCmd)
+				exitCode = 137
+			})
 	}()
 
 	// this WILL block on child processes, but that's ok since we handle the timeout termination in a goroutine above
 	// and it's preferable vs using Process::Wait() since that complicates I/O handling (Cmd::Wait() will
 	// ensure all I/O is complete before returning)
 	err = osCmd.Wait()
-	procDone <- struct{}{}
-	close(procDone)
 	if exitErr, ok := err.(*exec.ExitError); ok {
-		atomic.StoreInt64(&exitCode, int64(exitErr.ExitCode()))
+		handleProcessExit.Do(
+			func() {
+				exitCode = exitErr.ExitCode()
+			})
 		err = nil
 	} else if err != nil {
-		exitCode = -1
+		handleProcessExit.Do(
+			func() {
+				exitCode = -1
+			})
+	} else {
+		// explicitly consume the sync.Once to prevent a data race with the goroutine waiting on the context
+		// (since process completed successfully, exit code is 0, so no need to set anything)
+		handleProcessExit.Do(func() {})
 	}
-
-	// this conversion should be safe:
-	// 	* Windows exit codes are 32-bit
-	// 	* Unix exit codes are platform int
-	//		^ the only value we explicitly store is 127 so in range even if 32-bit
-	return int(atomic.LoadInt64(&exitCode)), err
+	return exitCode, err
 }
 
 type fakeCmdResult struct {
