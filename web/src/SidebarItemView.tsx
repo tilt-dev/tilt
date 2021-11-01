@@ -122,7 +122,7 @@ let SidebarItemBuildBox = styled.div`
   padding-right: 4px;
 `
 let SidebarItemText = styled.div`
-  display: flex;
+  ${mixinTruncateText}
   align-items: center;
   flex-grow: 1;
   padding-top: 4px;
