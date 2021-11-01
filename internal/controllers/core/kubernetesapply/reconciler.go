@@ -121,6 +121,9 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		return ctrl.Result{}, nil
 	}
 
+	// The apiserver is the source of truth, and will ensure the engine state is up to date.
+	r.st.Dispatch(kubernetesapplys.NewKubernetesApplyUpsertAction(&ka))
+
 	// Get configmap's disable status
 	disableStatus, err := configmap.MaybeNewDisableStatus(ctx, r.ctrlClient, ka.Spec.DisableSource, ka.Status.DisableStatus)
 	if err != nil {
@@ -145,9 +148,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		r.st.Dispatch(kubernetesapplys.NewKubernetesApplyUpsertAction(&ka))
 		return ctrl.Result{}, nil
 	}
-
-	// The apiserver is the source of truth, and will ensure the engine state is up to date.
-	r.st.Dispatch(kubernetesapplys.NewKubernetesApplyUpsertAction(&ka))
 
 	ctx = store.MustObjectLogHandler(ctx, r.st, &ka)
 	err = r.manageOwnedKubernetesDiscovery(ctx, nn, &ka)
