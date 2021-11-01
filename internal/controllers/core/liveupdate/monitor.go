@@ -14,11 +14,13 @@ import (
 // - Every file change it has seen
 // - The history of container updates
 type monitor struct {
-	spec v1alpha1.LiveUpdateSpec
+	manifestName string
+	spec         v1alpha1.LiveUpdateSpec
 
 	// Tracked dependencies.
 	lastKubernetesDiscovery   *v1alpha1.KubernetesDiscovery
 	lastKubernetesApplyStatus *v1alpha1.KubernetesApplyStatus
+	lastTriggerQueue          *v1alpha1.ConfigMap
 
 	// History of source file changes.
 	sources map[string]*monitorSource

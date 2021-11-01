@@ -14,6 +14,8 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/containerupdate"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/buildcontrols"
@@ -131,6 +133,49 @@ func TestConsumeFileEvents(t *testing.T) {
 		assert.Equal(t,
 			[]container.ID{"main-id"},
 			result.(store.LiveUpdateBuildResult).LiveUpdatedContainerIDs)
+	}
+}
+
+func TestConsumeFileEventsUpdateModeManual(t *testing.T) {
+	f := newFixture(t)
+
+	p, _ := os.Getwd()
+	nowMicro := apis.NowMicro()
+	txtPath := filepath.Join(p, "a.txt")
+	txtChangeTime := metav1.MicroTime{Time: nowMicro.Add(time.Second)}
+
+	f.setupFrontend()
+
+	var lu v1alpha1.LiveUpdate
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	lu.Annotations[liveupdate.AnnotationUpdateMode] = liveupdate.UpdateModeManual
+	f.Update(&lu)
+
+	// Trigger a file event, and make sure that the status reflects the sync.
+	f.addFileEvent("frontend-fw", txtPath, txtChangeTime)
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	assert.Nil(t, lu.Status.Failed)
+	if assert.Equal(t, 1, len(lu.Status.Containers)) {
+		assert.Equal(t, "Trigger", lu.Status.Containers[0].Waiting.Reason)
+	}
+
+	f.Upsert(&v1alpha1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: configmap.TriggerQueueName,
+		},
+		Data: map[string]string{
+			"0-name": "frontend",
+		},
+	})
+
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	assert.Nil(t, lu.Status.Failed)
+	if assert.Equal(t, 1, len(lu.Status.Containers)) {
+		assert.Equal(t, txtChangeTime, lu.Status.Containers[0].LastFileTimeSynced)
 	}
 }
 
@@ -408,7 +453,13 @@ func (f *fixture) setupFrontend() {
 		},
 	})
 	f.Create(&v1alpha1.LiveUpdate{
-		ObjectMeta: metav1.ObjectMeta{Name: "frontend-liveupdate"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "frontend-liveupdate",
+			Annotations: map[string]string{
+				v1alpha1.AnnotationManifest:     "frontend",
+				liveupdate.AnnotationUpdateMode: "auto",
+			},
+		},
 		Spec: v1alpha1.LiveUpdateSpec{
 			BasePath: p,
 			Sources: []v1alpha1.LiveUpdateSource{{
@@ -425,6 +476,11 @@ func (f *fixture) setupFrontend() {
 			Syncs: []v1alpha1.LiveUpdateSync{
 				{LocalPath: ".", ContainerPath: "/app"},
 			},
+		},
+	})
+	f.Create(&v1alpha1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: configmap.TriggerQueueName,
 		},
 	})
 }
