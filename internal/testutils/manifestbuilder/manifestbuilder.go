@@ -28,18 +28,17 @@ type ManifestBuilder struct {
 	f    Fixture
 	name model.ManifestName
 
-	k8sPodReadiness            model.PodReadinessMode
-	k8sYAML                    string
-	k8sPodSelectors            []labels.Set
-	k8sImageLocators           []v1alpha1.KubernetesImageLocator
-	dcConfigPaths              []string
-	localCmd                   string
-	localServeCmd              string
-	localDeps                  []string
-	localAllowParallel         bool
-	localServeHasDisableSource bool
-	resourceDeps               []string
-	triggerMode                model.TriggerMode
+	k8sPodReadiness    model.PodReadinessMode
+	k8sYAML            string
+	k8sPodSelectors    []labels.Set
+	k8sImageLocators   []v1alpha1.KubernetesImageLocator
+	dcConfigPaths      []string
+	localCmd           string
+	localServeCmd      string
+	localDeps          []string
+	localAllowParallel bool
+	resourceDeps       []string
+	triggerMode        model.TriggerMode
 
 	iTargets []model.ImageTarget
 }
