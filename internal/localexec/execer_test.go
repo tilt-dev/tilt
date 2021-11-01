@@ -23,10 +23,7 @@ func TestProcessExecer_Run(t *testing.T) {
 	defer cancel()
 
 	// this works across both sh + cmd
-	script := `
-echo hello from stdout
-echo hello from stderr 1>&2
-`
+	script := `echo hello from stdout && echo hello from stderr 1>&2`
 
 	execer := NewProcessExecer(EmptyEnv())
 
