@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
@@ -25,6 +26,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/containerupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -45,6 +47,8 @@ var discoveryGVK = v1alpha1.SchemeGroupVersion.WithKind("KubernetesDiscovery")
 var applyGVK = v1alpha1.SchemeGroupVersion.WithKind("KubernetesApply")
 var fwGVK = v1alpha1.SchemeGroupVersion.WithKind("FileWatch")
 var imageMapGVK = v1alpha1.SchemeGroupVersion.WithKind("ImageMap")
+
+var reasonObjectNotFound = "ObjectNotFound"
 
 // Manages the LiveUpdate API object.
 type Reconciler struct {
@@ -141,11 +145,11 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return r.handleFailure(ctx, lu, invalidSelectorFailedState)
 	}
 
-	monitor := r.ensureMonitorExists(lu.Name, lu.Spec)
+	monitor := r.ensureMonitorExists(lu.Name, lu)
 	hasFileChanges, err := r.reconcileSources(ctx, monitor)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			return r.handleFailure(ctx, lu, createFailedState(lu, "ObjectNotFound", err.Error()))
+			return r.handleFailure(ctx, lu, createFailedState(lu, reasonObjectNotFound, err.Error()))
 		}
 		return ctrl.Result{}, err
 	}
@@ -153,12 +157,17 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	hasKubernetesChanges, err := r.reconcileKubernetesResource(ctx, monitor)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			return r.handleFailure(ctx, lu, createFailedState(lu, "ObjectNotFound", err.Error()))
+			return r.handleFailure(ctx, lu, createFailedState(lu, reasonObjectNotFound, err.Error()))
 		}
 		return ctrl.Result{}, err
 	}
 
-	if hasFileChanges || hasKubernetesChanges {
+	hasTriggerQueueChanges, err := r.reconcileTriggerQueue(ctx, monitor)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if hasFileChanges || hasKubernetesChanges || hasTriggerQueueChanges {
 		monitor.hasChangesToSync = true
 	}
 
@@ -167,8 +176,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		if status.Failed != nil {
 			// Log any new failures.
 			isNew := lu.Status.Failed == nil || !apicmp.DeepEqual(lu.Status.Failed, status.Failed)
-			if isNew {
-				logger.Get(ctx).Warnf("LiveUpdate %q %s: %v", lu.Name, status.Failed.Reason, status.Failed.Message)
+			if isNew && r.shouldLogFailureReason(status.Failed) {
+				logger.Get(ctx).Infof("LiveUpdate %q %s: %v", lu.Name, status.Failed.Reason, status.Failed.Message)
 			}
 		}
 
@@ -186,6 +195,11 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	monitor.hasChangesToSync = false
 
 	return ctrl.Result{}, nil
+}
+
+func (r *Reconciler) shouldLogFailureReason(obj *v1alpha1.LiveUpdateStateFailed) bool {
+	// ObjectNotFound errors are normal before the Apply has created the KubernetesDiscovery object.
+	return obj.Reason != reasonObjectNotFound
 }
 
 // Check for some invalid states.
@@ -220,16 +234,18 @@ func (r *Reconciler) handleFailure(ctx context.Context, lu *v1alpha1.LiveUpdate,
 
 // Create the monitor that tracks a live update. If the live update
 // spec changes, wipe out all accumulated state.
-func (r *Reconciler) ensureMonitorExists(name string, spec v1alpha1.LiveUpdateSpec) *monitor {
+func (r *Reconciler) ensureMonitorExists(name string, obj *v1alpha1.LiveUpdate) *monitor {
+	spec := obj.Spec
 	m, ok := r.monitors[name]
-	if ok && apicmp.DeepEqual(spec, m.spec) {
+	if ok && apicmp.DeepEqual(obj.Spec, m.spec) {
 		return m
 	}
 
 	m = &monitor{
-		spec:       spec,
-		sources:    make(map[string]*monitorSource),
-		containers: make(map[monitorContainerKey]monitorContainerStatus),
+		manifestName: obj.Annotations[v1alpha1.AnnotationManifest],
+		spec:         spec,
+		sources:      make(map[string]*monitorSource),
+		containers:   make(map[monitorContainerKey]monitorContainerStatus),
 	}
 	r.monitors[name] = m
 	return m
@@ -344,6 +360,24 @@ func (r *Reconciler) reconcileOneSource(ctx context.Context, monitor *monitor, s
 	}
 
 	return fileWatchChanged || imageChanged, nil
+}
+
+// Consume the TriggerQueue.
+// This isn't formally represented in the API right now, it's just
+// a ConfigMap to pull attributes off of.
+// Returns true if we saw any changes.
+func (r *Reconciler) reconcileTriggerQueue(ctx context.Context, monitor *monitor) (bool, error) {
+	queue, err := configmap.TriggerQueue(ctx, r.client)
+	if err != nil {
+		return false, client.IgnoreNotFound(err)
+	}
+
+	if monitor.lastTriggerQueue != nil && apicmp.DeepEqual(queue.Data, monitor.lastTriggerQueue.Data) {
+		return false, nil
+	}
+
+	monitor.lastTriggerQueue = queue
+	return true, nil
 }
 
 // Consume all objects off the KubernetesSelector.
@@ -486,6 +520,17 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 		return status
 	}
 
+	manifestName := lu.Annotations[v1alpha1.AnnotationManifest]
+	updateMode := lu.Annotations[liveupdate.AnnotationUpdateMode]
+	inTriggerQueue := monitor.lastTriggerQueue != nil && manifestName != "" &&
+		configmap.InTriggerQueue(monitor.lastTriggerQueue, types.NamespacedName{Name: manifestName})
+	isUpdateModeManual := updateMode == liveupdate.UpdateModeManual
+	isWaitingOnTrigger := false
+	if isUpdateModeManual && !inTriggerQueue {
+		// In manual mode, we should always wait for a trigger before live updating anything.
+		isWaitingOnTrigger = true
+	}
+
 	r.garbageCollectMonitorContainers(kResource, monitor)
 
 	// Go through all the container monitors, and check if any of them are unrecoverable.
@@ -564,17 +609,27 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 			return false
 		}
 
+		var waiting *v1alpha1.LiveUpdateContainerStateWaiting
 		if cInfo.State.Running == nil {
+			waiting = &v1alpha1.LiveUpdateContainerStateWaiting{
+				Reason:  "ContainerWaiting",
+				Message: "Waiting for container to start",
+			}
+		} else if isWaitingOnTrigger {
+			waiting = &v1alpha1.LiveUpdateContainerStateWaiting{
+				Reason:  "Trigger",
+				Message: "Only updates on manual trigger",
+			}
+		}
+
+		if waiting != nil {
 			// Mark the container as waiting, so we have a record of it.
 			status.Containers = append(status.Containers, v1alpha1.LiveUpdateContainerStatus{
 				ContainerName: cInfo.Name,
 				ContainerID:   cInfo.ID,
 				PodName:       pod.Name,
 				Namespace:     pod.Namespace,
-				Waiting: &v1alpha1.LiveUpdateContainerStateWaiting{
-					Reason:  "ContainerWaiting",
-					Message: "Waiting for container to start",
-				},
+				Waiting:       waiting,
 			})
 			return false
 		}
@@ -879,9 +934,42 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 		Watches(&source.Kind{Type: &v1alpha1.FileWatch{}},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
 		Watches(&source.Kind{Type: &v1alpha1.ImageMap{}},
-			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue))
+			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
+		Watches(&source.Kind{Type: &v1alpha1.ConfigMap{}},
+			handler.EnqueueRequestsFromMapFunc(r.enqueueTriggerQueue))
 
 	return b, nil
+}
+
+// Find any objects we need to reconcile based on the trigger queue.
+func (r *Reconciler) enqueueTriggerQueue(obj client.Object) []reconcile.Request {
+	cm, ok := obj.(*v1alpha1.ConfigMap)
+	if !ok {
+		return nil
+	}
+
+	if cm.Name != configmap.TriggerQueueName {
+		return nil
+	}
+
+	// We can only trigger liveupdates that have run once, so search
+	// through the map of known liveupdates
+	names := configmap.NamesInTriggerQueue(cm)
+	nameSet := make(map[string]bool)
+	for _, name := range names {
+		nameSet[name] = true
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	requests := []reconcile.Request{}
+	for name, monitor := range r.monitors {
+		if nameSet[monitor.manifestName] {
+			requests = append(requests, reconcile.Request{NamespacedName: types.NamespacedName{Name: name}})
+		}
+	}
+	return requests
 }
 
 // indexLiveUpdate returns keys of objects referenced _by_ the LiveUpdate object for reverse lookup including:

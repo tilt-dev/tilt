@@ -4,8 +4,6 @@ import (
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
-const TriggerQueueConfigMapName = "tilt-trigger-queue"
-
 type TiltfileUpsertAction struct {
 	Tiltfile *v1alpha1.Tiltfile
 }
