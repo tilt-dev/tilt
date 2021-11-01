@@ -5,6 +5,7 @@ orbs:
   win: circleci/windows@2.2.0
   gcp-cli: circleci/gcp-cli@1.8.3
   kubernetes: circleci/kubernetes@0.9.1
+  go: circleci/go@1.7.0
 jobs:
   build-linux:
     resource_class: medium+
@@ -118,21 +119,8 @@ jobs:
 
     steps:
       - checkout
-      - restore_cache:
-          keys:
-            - homebrew_cache_v14
-      # Bump cache version when changing this.
-      - run: echo 'export HOMEBREW_PACKAGES="go@1.17"' >> $BASH_ENV
-      # Only update when brew doesn't know about some of the packages because:
-      # 1) not worth the cost, and
-      # 2) hits github in a way that leads to flakyness
-      - run: brew info ${HOMEBREW_PACKAGES} || brew update || true
-      - run: HOMEBREW_NO_AUTO_UPDATE=true brew install ${HOMEBREW_PACKAGES}
-      - save_cache:
-          paths:
-            - /usr/local/Homebrew
-          key: homebrew_cache_v14
-      - run: echo 'export PATH="/usr/local/opt/go@1.17/bin:$PATH"' >> $BASH_ENV
+      - go/install:
+          version: "1.17.2"
       - run: curl -fsSL "https://github.com/gotestyourself/gotestsum/releases/download/v1.7.0/gotestsum_1.7.0_darwin_amd64.tar.gz" | sudo tar -xz -C /usr/local/bin gotestsum
       # We can't run the container tests on macos because nested
       # VMs don't work on circleci.
