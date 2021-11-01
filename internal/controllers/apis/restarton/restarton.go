@@ -8,9 +8,69 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/sliceutils"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
+
+var fwGVK = v1alpha1.SchemeGroupVersion.WithKind("FileWatch")
+var btnGVK = v1alpha1.SchemeGroupVersion.WithKind("UIButton")
+
+// Objects is a container for objects referenced by a RestartOnSpec and/or StartOnSpec.
+type Objects struct {
+	UIButtons   map[string]*v1alpha1.UIButton
+	FileWatches map[string]*v1alpha1.FileWatch
+}
+
+// FetchObjects retrieves all objects referenced in either the RestartOnSpec or StartOnSpec.
+func FetchObjects(ctx context.Context, client client.Reader, restartOn *v1alpha1.RestartOnSpec, startOn *v1alpha1.StartOnSpec) (Objects, error) {
+	buttons, err := Buttons(ctx, client, restartOn, startOn)
+	if err != nil {
+		return Objects{}, err
+	}
+
+	fileWatches, err := FileWatches(ctx, client, restartOn)
+	if err != nil {
+		return Objects{}, err
+	}
+
+	return Objects{
+		UIButtons:   buttons,
+		FileWatches: fileWatches,
+	}, nil
+}
+
+// ExtractKeysForIndexer returns the keys of objects referenced in the RestartOnSpec and/or StartOnSpec.
+func ExtractKeysForIndexer(namespace string, restartOn *v1alpha1.RestartOnSpec, startOn *v1alpha1.StartOnSpec) []indexer.Key {
+	var keys []indexer.Key
+
+	if restartOn != nil {
+		for _, name := range restartOn.FileWatches {
+			keys = append(keys, indexer.Key{
+				Name: types.NamespacedName{Namespace: namespace, Name: name},
+				GVK:  fwGVK,
+			})
+		}
+
+		for _, name := range restartOn.UIButtons {
+			keys = append(keys, indexer.Key{
+				Name: types.NamespacedName{Namespace: namespace, Name: name},
+				GVK:  btnGVK,
+			})
+		}
+	}
+
+	if startOn != nil {
+		for _, name := range startOn.UIButtons {
+			keys = append(keys, indexer.Key{
+				Name: types.NamespacedName{Namespace: namespace, Name: name},
+				GVK:  btnGVK,
+			})
+		}
+	}
+
+	return keys
+}
 
 // Fetch all the buttons that this object depends on.
 //
@@ -23,7 +83,7 @@ import (
 // resources should still run if their restarton button has been deleted).
 // We might eventually need some sort of StartOnStatus/RestartOnStatus to express errors
 // in lookup.
-func Buttons(ctx context.Context, client client.Client, restartOn *v1alpha1.RestartOnSpec, startOn *v1alpha1.StartOnSpec) (map[string]*v1alpha1.UIButton, error) {
+func Buttons(ctx context.Context, client client.Reader, restartOn *v1alpha1.RestartOnSpec, startOn *v1alpha1.StartOnSpec) (map[string]*v1alpha1.UIButton, error) {
 	buttonNames := []string{}
 	if startOn != nil {
 		buttonNames = append(buttonNames, startOn.UIButtons...)
@@ -64,7 +124,7 @@ func Buttons(ctx context.Context, client client.Client, restartOn *v1alpha1.Rest
 // resources should still run if their restarton filewatch has been deleted).
 // We might eventually need some sort of RestartOnStatus to express errors
 // in lookup.
-func FileWatches(ctx context.Context, client client.Client, restartOn *v1alpha1.RestartOnSpec) (map[string]*v1alpha1.FileWatch, error) {
+func FileWatches(ctx context.Context, client client.Reader, restartOn *v1alpha1.RestartOnSpec) (map[string]*v1alpha1.FileWatch, error) {
 	if restartOn == nil {
 		return nil, nil
 	}
@@ -88,7 +148,7 @@ func FileWatches(ctx context.Context, client client.Client, restartOn *v1alpha1.
 //
 // Returns the most recent trigger time. If the most recent trigger is a button,
 // return the button. Some consumers use the button for text inputs.
-func LastStartEvent(startOn *v1alpha1.StartOnSpec, buttons map[string]*v1alpha1.UIButton) (time.Time, *v1alpha1.UIButton) {
+func LastStartEvent(startOn *v1alpha1.StartOnSpec, restartObjs Objects) (time.Time, *v1alpha1.UIButton) {
 	latestTime := time.Time{}
 	var latestButton *v1alpha1.UIButton
 	if startOn == nil {
@@ -96,7 +156,7 @@ func LastStartEvent(startOn *v1alpha1.StartOnSpec, buttons map[string]*v1alpha1.
 	}
 
 	for _, bn := range startOn.UIButtons {
-		b, ok := buttons[bn]
+		b, ok := restartObjs.UIButtons[bn]
 		if !ok {
 			// ignore missing buttons
 			continue
@@ -115,7 +175,7 @@ func LastStartEvent(startOn *v1alpha1.StartOnSpec, buttons map[string]*v1alpha1.
 //
 // Returns the most recent trigger time. If the most recent trigger is a button,
 // return the button. Some consumers use the button for text inputs.
-func LastRestartEvent(restartOn *v1alpha1.RestartOnSpec, fileWatches map[string]*v1alpha1.FileWatch, buttons map[string]*v1alpha1.UIButton) (time.Time, *v1alpha1.UIButton) {
+func LastRestartEvent(restartOn *v1alpha1.RestartOnSpec, restartObjs Objects) (time.Time, *v1alpha1.UIButton) {
 	cur := time.Time{}
 	var latestButton *v1alpha1.UIButton
 	if restartOn == nil {
@@ -123,7 +183,7 @@ func LastRestartEvent(restartOn *v1alpha1.RestartOnSpec, fileWatches map[string]
 	}
 
 	for _, fwn := range restartOn.FileWatches {
-		fw, ok := fileWatches[fwn]
+		fw, ok := restartObjs.FileWatches[fwn]
 		if !ok {
 			// ignore missing filewatches
 			continue
@@ -135,7 +195,7 @@ func LastRestartEvent(restartOn *v1alpha1.RestartOnSpec, fileWatches map[string]
 	}
 
 	for _, bn := range restartOn.UIButtons {
-		b, ok := buttons[bn]
+		b, ok := restartObjs.UIButtons[bn]
 		if !ok {
 			// ignore missing buttons
 			continue

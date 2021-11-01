@@ -628,6 +628,7 @@ message Handler {
   optional TCPSocketAction tcpSocket = 3;
 }
 
+// Describes sets of file paths that the FileWatch should ignore.
 message IgnoreDef {
   // BasePath is the base path for the patterns. It cannot be empty.
   //
@@ -786,6 +787,27 @@ message KubernetesApply {
   optional KubernetesApplyStatus status = 3;
 }
 
+message KubernetesApplyCmd {
+  // Args are the command-line arguments for the apply command. Must have length >= 1.
+  repeated string args = 1;
+
+  // Process working directory.
+  //
+  // If not specified, will default to Tilt working directory.
+  //
+  // +optional
+  // +tilt:local-path=true
+  optional string dir = 2;
+
+  // Env are additional variables for the process environment.
+  //
+  // Environment variables are layered on top of the environment variables
+  // that Tilt runs with.
+  //
+  // +optional
+  repeated string env = 3;
+}
+
 // KubernetesApplyList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 message KubernetesApplyList {
@@ -796,7 +818,11 @@ message KubernetesApplyList {
 
 // KubernetesApplySpec defines the desired state of KubernetesApply
 message KubernetesApplySpec {
-  // The YAML to apply to the cluster. Required.
+  // YAML to apply to the cluster.
+  //
+  // Exactly one of YAML OR Cmd MUST be provided.
+  //
+  // +optional
   optional string yaml = 1;
 
   // Names of image maps that this applier depends on.
@@ -868,6 +894,20 @@ message KubernetesApplySpec {
   //
   // +optional
   optional DisableSource disableSource = 9;
+
+  // Cmd is a custom command to generate the YAML to apply.
+  //
+  // The Cmd MUST return valid Kubernetes YAML for the entities it applied to the cluster.
+  //
+  // Exactly one of YAML OR Cmd MUST be provided.
+  //
+  // +optional
+  optional KubernetesApplyCmd cmd = 10;
+
+  // RestartOn determines external triggers that will result in an apply.
+  //
+  // +optional
+  optional RestartOnSpec restartOn = 11;
 }
 
 // KubernetesApplyStatus defines the observed state of KubernetesApply
@@ -1515,7 +1555,7 @@ message PortForwardTemplateSpec {
   repeated Forward forwards = 1;
 }
 
-// Probe describes a health check to be performed o determine whether it is
+// Probe describes a health check to be performed to determine whether it is
 // alive or ready to receive traffic.
 message Probe {
   // The action taken to determine the health of a container
@@ -1550,11 +1590,11 @@ message Probe {
 
 // RestartOnSpec indicates the set of objects that can trigger a restart of this object.
 message RestartOnSpec {
-  // A list of file watches that can trigger a restart.
+  // FileWatches that can trigger a restart.
   // +optional
   repeated string fileWatches = 1;
 
-  // A list of ui buttons that can trigger a restart.
+  // UIButtons that can trigger a restart.
   // +optional
   repeated string uiButtons = 2;
 }
@@ -1612,15 +1652,12 @@ message SessionStatus {
 
 // StartOnSpec indicates the set of objects that can trigger a start/restart of this object.
 message StartOnSpec {
-  // Any events that predate this time will be ignored.
+  // StartAfter indicates that events before this time should be ignored.
   //
   // +optional
   optional k8s.io.apimachinery.pkg.apis.meta.v1.Time startAfter = 1;
 
-  // A list of ui buttons that can trigger a run.
-  //
-  // When a button triggers a run, any UIInputs on that button will be added
-  // to the cmd's env.
+  // UIButtons that can trigger a start/restart.
   repeated string uiButtons = 2;
 }
 
@@ -1917,6 +1954,7 @@ message ToggleButtonStatus {
   optional string error = 1;
 }
 
+// Describes a boolean checkbox input field attached to a button.
 message UIBoolInputSpec {
   // Whether the input is initially true or false.
   // +optional
@@ -2088,6 +2126,8 @@ message UIFeatureFlag {
   optional bool value = 2;
 }
 
+// Describes a hidden input field attached to a button,
+// with a value to pass on any submit.
 message UIHiddenInputSpec {
   optional string value = 1;
 }
@@ -2454,6 +2494,7 @@ message UISessionStatus {
   optional string tiltfileKey = 11;
 }
 
+// Describes a text input field attached to a button.
 message UITextInputSpec {
   // Initial value for this field.
   //

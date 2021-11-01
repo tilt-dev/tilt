@@ -23,10 +23,12 @@ import (
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/restarton"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/kubernetesapplys"
+	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -122,7 +124,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		imageMaps[nn] = &im
 	}
 
-	if !r.shouldDeployOnReconcile(request.NamespacedName, &ka, imageMaps) {
+	restartObjs, err := restarton.FetchObjects(ctx, r.ctrlClient, ka.Spec.RestartOn, nil)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if !r.shouldDeployOnReconcile(request.NamespacedName, &ka, imageMaps, restartObjs) {
 		// TODO(nick): Like with other reconcilers, there should always
 		// be a reason why we're not deploying, and we should update the
 		// Status field of KubernetesApply with that reason.
@@ -144,10 +151,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 // 1) We have enough info to deploy, and
 // 2) Either we haven't deployed before,
 //    or one of the inputs has changed since the last deploy.
-func (r *Reconciler) shouldDeployOnReconcile(
-	nn types.NamespacedName,
-	ka *v1alpha1.KubernetesApply,
-	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) bool {
+func (r *Reconciler) shouldDeployOnReconcile(nn types.NamespacedName, ka *v1alpha1.KubernetesApply,
+	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap, restartObjs restarton.Objects) bool {
 	owner := metav1.GetControllerOf(ka)
 	if owner != nil && owner.Kind == v1alpha1.OwnerKindTiltfile {
 		// Until resource dependencies are expressed in the API,
@@ -193,6 +198,11 @@ func (r *Reconciler) shouldDeployOnReconcile(
 		if !apicmp.DeepEqual(im.Status, result.ImageMapStatuses[i]) {
 			return true
 		}
+	}
+
+	lastRestartTime, _ := restarton.LastRestartEvent(ka.Spec.RestartOn, restartObjs)
+	if !timecmp.BeforeOrEqual(lastRestartTime, result.Status.LastApplyTime) {
+		return true
 	}
 
 	return false
@@ -272,10 +282,39 @@ func (r *Reconciler) forceApplyHelper(
 		return errorStatus(err), nil
 	}
 
+	var deployed []k8s.K8sEntity
+	if spec.YAML != "" {
+		deployed, err = r.runYAMLDeploy(ctx, spec, imageMaps)
+		if err != nil {
+			return errorStatus(err), nil
+		}
+	} else {
+		deployed, err = r.runCmdDeploy(ctx, spec)
+		if err != nil {
+			return errorStatus(err), nil
+		}
+	}
+
+	status.LastApplyTime = apis.NowMicro()
+	status.AppliedInputHash = inputHash
+	for _, d := range deployed {
+		d.Clean()
+	}
+
+	resultYAML, err := k8s.SerializeSpecYAML(deployed)
+	if err != nil {
+		return errorStatus(err), deployed
+	}
+
+	status.ResultYAML = resultYAML
+	return status, deployed
+}
+
+func (r *Reconciler) runYAMLDeploy(ctx context.Context, spec v1alpha1.KubernetesApplySpec, imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) ([]k8s.K8sEntity, error) {
 	// Create API objects.
 	newK8sEntities, err := r.createEntitiesToDeploy(ctx, imageMaps, spec)
 	if err != nil {
-		return errorStatus(err), newK8sEntities
+		return newK8sEntities, err
 	}
 
 	ctx = r.indentLogger(ctx)
@@ -297,22 +336,15 @@ func (r *Reconciler) forceApplyHelper(
 
 	deployed, err := r.k8sClient.Upsert(ctx, newK8sEntities, timeout)
 	if err != nil {
-		return errorStatus(err), newK8sEntities
+		return nil, err
 	}
 
-	status.LastApplyTime = apis.NowMicro()
-	status.AppliedInputHash = inputHash
-	for _, d := range deployed {
-		d.Clean()
-	}
+	return deployed, nil
+}
 
-	resultYAML, err := k8s.SerializeSpecYAML(deployed)
-	if err != nil {
-		return errorStatus(err), newK8sEntities
-	}
-
-	status.ResultYAML = resultYAML
-	return status, newK8sEntities
+func (r *Reconciler) runCmdDeploy(ctx context.Context, spec v1alpha1.KubernetesApplySpec) ([]k8s.K8sEntity, error) {
+	// TODO(milas): implement Cmd apply
+	return nil, errors.New("Cmd apply not supported")
 }
 
 func (r *Reconciler) indentLogger(ctx context.Context) context.Context {
@@ -447,6 +479,12 @@ func (r *Reconciler) updateResult(nn types.NamespacedName, result *Result) []k8s
 		r.results[nn] = result
 	}
 
+	if result != nil && result.Status.Error != "" {
+		// do not attempt to delete any objects if the apply failed
+		// N.B. if the result is nil, that means the object was deleted, so objects WILL be deleted
+		return nil
+	}
+
 	// Go through all the results, and check to see which objects
 	// we're not managing anymore.
 	var toDeleteMap objectRefSet
@@ -493,6 +531,8 @@ var imGVK = v1alpha1.SchemeGroupVersion.WithKind("ImageMap")
 func indexImageMap(obj client.Object) []indexer.Key {
 	ka := obj.(*v1alpha1.KubernetesApply)
 	result := []indexer.Key{}
+
+	result = append(result, restarton.ExtractKeysForIndexer(ka.Namespace, ka.Spec.RestartOn, nil)...)
 
 	for _, name := range ka.Spec.ImageMaps {
 		result = append(result, indexer.Key{
