@@ -619,6 +619,7 @@ declare namespace Proto {
      */
     requiresConfirmation?: boolean;
     inputs?: v1alpha1UIInputSpec[];
+    buttonType?: string;
   }
   export interface v1alpha1UIButton {
     metadata?: v1ObjectMeta;

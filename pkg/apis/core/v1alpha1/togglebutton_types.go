@@ -68,6 +68,10 @@ type ToggleButtonSpec struct {
 
 	// Where the toggle button's state is stored
 	StateSource StateSource `json:"stateSource" protobuf:"bytes,5,opt,name=stateSource"`
+
+	// For internal Tilt use, to specify special behavior in the UI. Should typically be empty.
+	// +optional
+	ButtonType UIButtonType `json:"buttonType,omitempty" protobuf:"bytes,6,opt,name=buttonType,casttype=UIButtonType"`
 }
 
 // Describes a state (on/off) of a ToggleButton

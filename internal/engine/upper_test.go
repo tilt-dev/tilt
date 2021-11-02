@@ -3857,6 +3857,34 @@ func TestDisablingResourcePreventsBuild(t *testing.T) {
 	})
 }
 
+func TestDisableButtonIsCreated(t *testing.T) {
+	f := newTestFixture(t)
+	f.useRealTiltfileLoader()
+
+	f.WriteFile("Tiltfile", `
+enable_feature('disable_resources')
+local_resource('foo', 'echo hi')
+`)
+	f.loadAndStart()
+
+	f.waitForCompletedBuildCount(1)
+
+	var b v1alpha1.UIButton
+	require.Eventually(t, func() bool {
+		err := f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: "toggle-foo-disable"}, &b)
+		require.NoError(t, ctrlclient.IgnoreNotFound(err))
+		return err == nil
+	}, time.Second, time.Millisecond)
+
+	require.Equal(t, v1alpha1.UIButtonTypeDisableToggle, b.Spec.ButtonType)
+	require.Equal(t, []v1alpha1.UIInputSpec{
+		{
+			Name:   "action",
+			Hidden: &v1alpha1.UIHiddenInputSpec{Value: "on"},
+		},
+	}, b.Spec.Inputs)
+}
+
 type testFixture struct {
 	*tempdir.TempDirFixture
 	t                          *testing.T

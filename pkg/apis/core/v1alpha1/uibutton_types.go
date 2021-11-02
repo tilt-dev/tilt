@@ -96,7 +96,17 @@ type UIButtonSpec struct {
 	// Any inputs for this button.
 	// +optional
 	Inputs []UIInputSpec `json:"inputs,omitempty" protobuf:"bytes,6,rep,name=inputs"`
+
+	// For internal Tilt use, to specify special behavior in the UI. Should typically be empty.
+	// +optional
+	ButtonType UIButtonType `json:"buttonType,omitempty" protobuf:"bytes,8,opt,name=buttonType,casttype=UIButtonType"`
 }
+
+type UIButtonType string
+
+const (
+	UIButtonTypeDisableToggle UIButtonType = "DisableToggle"
+)
 
 // UIComponentLocation specifies where to put a UI component.
 type UIComponentLocation struct {

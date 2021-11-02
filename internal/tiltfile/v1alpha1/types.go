@@ -435,6 +435,7 @@ func (p Plugin) uiButton(t *starlark.Thread, fn *starlark.Builtin, args starlark
 	}
 	var location UIComponentLocation = UIComponentLocation{t: t}
 	var inputs UIInputSpecList = UIInputSpecList{t: t}
+	var buttonType string
 	var labels value.StringStringMap
 	var annotations value.StringStringMap
 	err = starkit.UnpackArgs(t, fn.Name(), args, kwargs,
@@ -448,6 +449,7 @@ func (p Plugin) uiButton(t *starlark.Thread, fn *starlark.Builtin, args starlark
 		"disabled?", &obj.Spec.Disabled,
 		"requires_confirmation?", &obj.Spec.RequiresConfirmation,
 		"inputs?", &inputs,
+		"button_type?", &buttonType,
 	)
 	if err != nil {
 		return nil, err
@@ -455,6 +457,7 @@ func (p Plugin) uiButton(t *starlark.Thread, fn *starlark.Builtin, args starlark
 
 	obj.Spec.Location = v1alpha1.UIComponentLocation(location.Value)
 	obj.Spec.Inputs = inputs.Value
+	obj.Spec.ButtonType = v1alpha1.UIButtonType(buttonType)
 	obj.ObjectMeta.Labels = labels
 	obj.ObjectMeta.Annotations = annotations
 	return p.register(t, obj)

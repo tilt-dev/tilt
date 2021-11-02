@@ -283,6 +283,7 @@ func (r *Reconciler) configureUIButton(b *v1alpha1.UIButton, isOn bool, tb *v1al
 				Hidden: &v1alpha1.UIHiddenInputSpec{Value: value},
 			},
 		},
+		ButtonType: tb.Spec.ButtonType,
 	}
 
 	err := controllerutil.SetControllerReference(tb, b, r.ctrlClient.Scheme())

@@ -527,6 +527,10 @@
             "$ref": "#/definitions/v1alpha1UIInputSpec"
           },
           "title": "Any inputs for this button.\n+optional"
+        },
+        "buttonType": {
+          "type": "string",
+          "title": "For internal Tilt use, to specify special behavior in the UI. Should typically be empty.\n+optional"
         }
       },
       "title": "UIButtonSpec defines the desired state of UIButton"

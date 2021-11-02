@@ -1913,6 +1913,10 @@ message ToggleButtonSpec {
 
   // Where the toggle button's state is stored
   optional StateSource stateSource = 5;
+
+  // For internal Tilt use, to specify special behavior in the UI. Should typically be empty.
+  // +optional
+  optional string buttonType = 6;
 }
 
 // Describes a state (on/off) of a ToggleButton
@@ -2078,6 +2082,10 @@ message UIButtonSpec {
   // Any inputs for this button.
   // +optional
   repeated UIInputSpec inputs = 6;
+
+  // For internal Tilt use, to specify special behavior in the UI. Should typically be empty.
+  // +optional
+  optional string buttonType = 8;
 }
 
 // UIButtonStatus defines the observed state of UIButton

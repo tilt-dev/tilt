@@ -308,6 +308,7 @@ func toToggleButtons(tlr *tiltfile.TiltfileLoadResult, disableSources disableSou
 							OffValue: "false",
 						},
 					},
+					ButtonType: v1alpha1.UIButtonTypeDisableToggle,
 				},
 			}
 			result[tb.Name] = tb
