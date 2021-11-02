@@ -18,6 +18,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/apiset"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
+	"github.com/tilt-dev/tilt/internal/feature"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/tiltfile"
 	"github.com/tilt-dev/tilt/pkg/apis"
@@ -210,6 +211,8 @@ func toAPIObjects(nn types.NamespacedName, tf *v1alpha1.Tiltfile, tlr *tiltfile.
 		for key, cmd := range updateCmds {
 			cmdMap[key] = cmd
 		}
+
+		result.AddSetForType(&v1alpha1.ToggleButton{}, toToggleButtons(tlr, disableSources))
 	} else {
 		disableSources = make(disableSourceMap)
 	}
@@ -269,6 +272,46 @@ func toDisableConfigMaps(disableSources disableSourceMap) apiset.TypedObjectSet 
 			Data: map[string]string{ds.ConfigMap.Key: "false"},
 		}
 		result[cm.Name] = cm
+	}
+	return result
+}
+
+func toToggleButtons(tlr *tiltfile.TiltfileLoadResult, disableSources disableSourceMap) apiset.TypedObjectSet {
+	result := apiset.TypedObjectSet{}
+	if tlr != nil && tlr.FeatureFlags[feature.DisableResources] {
+		for name, ds := range disableSources {
+			// TODO(matt) - add/set a field to make sure this displays in the right location
+			// https://app.shortcut.com/windmill/story/12866/backend-creates-enable-disable-togglebuttons
+			tb := &v1alpha1.ToggleButton{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: fmt.Sprintf("%s-disable", name),
+				},
+				Spec: v1alpha1.ToggleButtonSpec{
+					Location: v1alpha1.UIComponentLocation{
+						ComponentID:   string(name),
+						ComponentType: v1alpha1.ComponentTypeResource,
+					},
+					On: v1alpha1.ToggleButtonStateSpec{
+						Text:     "Enable",
+						IconName: "play_arrow",
+					},
+					Off: v1alpha1.ToggleButtonStateSpec{
+						Text:                 "Disable",
+						IconName:             "stop",
+						RequiresConfirmation: true,
+					},
+					StateSource: v1alpha1.StateSource{
+						ConfigMap: &v1alpha1.ConfigMapStateSource{
+							Name:     ds.ConfigMap.Name,
+							Key:      ds.ConfigMap.Key,
+							OnValue:  "true",
+							OffValue: "false",
+						},
+					},
+				},
+			}
+			result[tb.Name] = tb
+		}
 	}
 	return result
 }

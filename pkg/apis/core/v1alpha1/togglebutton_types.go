@@ -137,6 +137,10 @@ func (in *ToggleButton) GetObjectMeta() *metav1.ObjectMeta {
 	return &in.ObjectMeta
 }
 
+func (in *ToggleButton) GetSpec() interface{} {
+	return &in.Spec
+}
+
 func (in *ToggleButton) NamespaceScoped() bool {
 	return false
 }
