@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: custom-deploy
+  namespace: tilt-integration
+  labels:
+    app: custom-deploy
+spec:
+  selector:
+    matchLabels:
+      app: custom-deploy
+  template:
+    metadata:
+      labels:
+        app: custom-deploy
+        someLabel: someValue1
+    spec:
+      containers:
+        - name: nginx
+          image: nginx
+          ports:
+            - containerPort: 80
