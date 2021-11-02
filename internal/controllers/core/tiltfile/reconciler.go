@@ -55,7 +55,10 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 			handler.EnqueueRequestsFromMapFunc(r.enqueueTriggerQueue)).
 		Watches(r.buildSource, handler.Funcs{})
 
-	restarton.RegisterWatches(b, r.indexer)
+	restarton.SetupController(b, r.indexer, func(obj ctrlclient.Object) (*v1alpha1.RestartOnSpec, *v1alpha1.StartOnSpec) {
+		tf := obj.(*v1alpha1.Tiltfile)
+		return tf.Spec.RestartOn, nil
+	})
 
 	return b, nil
 }
@@ -353,10 +356,7 @@ func (r *Reconciler) deleteExistingRun(nn types.NamespacedName) {
 
 // Find all the objects we need to watch based on the tiltfile model.
 func indexTiltfile(obj client.Object) []indexer.Key {
-	result := []indexer.Key{}
-	tf := obj.(*v1alpha1.Tiltfile)
-	result = append(result, restarton.ExtractKeysForIndexer(tf.Namespace, tf.Spec.RestartOn, nil)...)
-	return result
+	return nil
 }
 
 // Find any objects we need to reconcile based on the trigger queue.

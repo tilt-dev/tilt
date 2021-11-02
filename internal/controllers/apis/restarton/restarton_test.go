@@ -13,6 +13,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -69,7 +71,7 @@ func TestExtractKeysForIndexer(t *testing.T) {
 	}
 
 	for _, tc := range tcs {
-		keys := ExtractKeysForIndexer(ns, tc.restartOn, tc.startOn)
+		keys := extractKeysForIndexer(ns, tc.restartOn, tc.startOn)
 		assert.ElementsMatchf(t, tc.expected, keys,
 			"Indexer keys did not match\nRestartOnSpec: %s\nStartOnSpec: %s",
 			strings.TrimSpace(spew.Sdump(tc.restartOn)),
@@ -116,6 +118,10 @@ func TestFetchObjects_Error(t *testing.T) {
 }
 
 type noopController struct{}
+
+func (n noopController) CreateBuilder(_ ctrl.Manager) (*builder.Builder, error) {
+	return nil, nil
+}
 
 func (n noopController) Reconcile(_ context.Context, _ reconcile.Request) (reconcile.Result, error) {
 	return reconcile.Result{}, nil

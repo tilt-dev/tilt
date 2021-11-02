@@ -58,7 +58,10 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 		Watches(&source.Kind{Type: &v1alpha1.ImageMap{}},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue))
 
-	restarton.RegisterWatches(b, r.indexer)
+	restarton.SetupController(b, r.indexer, func(obj ctrlclient.Object) (*v1alpha1.RestartOnSpec, *v1alpha1.StartOnSpec) {
+		ka := obj.(*v1alpha1.KubernetesApply)
+		return ka.Spec.RestartOn, nil
+	})
 
 	return b, nil
 }
@@ -534,9 +537,6 @@ var imGVK = v1alpha1.SchemeGroupVersion.WithKind("ImageMap")
 func indexKubernetesApply(obj client.Object) []indexer.Key {
 	ka := obj.(*v1alpha1.KubernetesApply)
 	result := []indexer.Key{}
-
-	result = append(result, restarton.ExtractKeysForIndexer(ka.Namespace, ka.Spec.RestartOn, nil)...)
-
 	for _, name := range ka.Spec.ImageMaps {
 		result = append(result, indexer.Key{
 			Name: types.NamespacedName{Name: name},
