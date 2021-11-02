@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -24,6 +25,7 @@ import (
 // It's not exported and should match the minimal set of methods needed from controllers.Controller.
 type controller interface {
 	reconcile.Reconciler
+	CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error)
 }
 
 // object just bridges together a couple of different representations of runtime.Object.
@@ -45,38 +47,56 @@ type ControllerFixture struct {
 
 type ControllerFixtureBuilder struct {
 	t      testing.TB
+	ctx    context.Context
+	cancel context.CancelFunc
+	out    *bufsync.ThreadSafeBuffer
 	Client ctrlclient.Client
 }
 
 func NewControllerFixtureBuilder(t testing.TB) *ControllerFixtureBuilder {
-	return &ControllerFixtureBuilder{
-		t:      t,
-		Client: NewFakeTiltClient(),
-	}
-}
-
-func (b ControllerFixtureBuilder) Build(c controller) *ControllerFixture {
-	return newControllerFixture(b.t, b.Client, c)
-}
-
-func newControllerFixture(t testing.TB, cli ctrlclient.Client, c controller) *ControllerFixture {
-	t.Helper()
-
 	out := bufsync.NewThreadSafeBuffer()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 	ctx = logger.WithLogger(ctx, logger.NewTestLogger(io.MultiWriter(out, os.Stdout)))
 
+	return &ControllerFixtureBuilder{
+		t:      t,
+		ctx:    ctx,
+		cancel: cancel,
+		out:    out,
+		Client: NewFakeTiltClient(),
+	}
+}
+
+func (b ControllerFixtureBuilder) Build(c controller) *ControllerFixture {
+	b.t.Helper()
+
+	// apiserver controller initialization is awkward and some parts are done via the builder,
+	// so we call it here even though we won't actually use the builder result
+	// currently, this relies on the fact that no controllers actually use the
+	// controllerruntime.Manager argument for anything besides passing it along - if that changes,
+	// we'll need to provide a mock of it that implements the requisite functionality
+	_, err := c.CreateBuilder(nil)
+	require.NoError(b.t, err, "Error in controller CreateBuilder()")
+
 	return &ControllerFixture{
-		t:          t,
-		out:        out,
-		ctx:        ctx,
-		cancel:     cancel,
-		Scheme:     cli.Scheme(),
-		Client:     cli,
+		t:          b.t,
+		out:        b.out,
+		ctx:        b.ctx,
+		cancel:     b.cancel,
+		Scheme:     b.Client.Scheme(),
+		Client:     b.Client,
 		controller: c,
 	}
+}
+
+func (b ControllerFixtureBuilder) OutWriter() io.Writer {
+	return b.out
+}
+
+func (b ControllerFixtureBuilder) Context() context.Context {
+	return b.ctx
 }
 
 func (b ControllerFixture) Stdout() string {

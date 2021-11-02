@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -18,17 +17,13 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
-	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/engine/local"
 	"github.com/tilt-dev/tilt/internal/store"
-	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
-	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
-	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -37,7 +32,6 @@ var interval = 5 * time.Millisecond
 
 func TestNoop(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
 
 	f.step()
 	f.assertCmdCount(0)
@@ -45,7 +39,6 @@ func TestNoop(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
 
 	t1 := time.Unix(1, 0)
 	f.resource("foo", "true", ".", t1)
@@ -72,7 +65,6 @@ func TestUpdate(t *testing.T) {
 
 func TestUpdateWithCurrentBuild(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
 
 	t1 := time.Unix(1, 0)
 	f.resource("foo", "true", ".", t1)
@@ -90,7 +82,7 @@ func TestUpdateWithCurrentBuild(t *testing.T) {
 
 	f.step()
 
-	assert.Never(f.t, func() bool {
+	assert.Never(t, func() bool {
 		return f.st.Cmd("foo-serve-2") != nil
 	}, 20*time.Millisecond, 5*time.Millisecond)
 
@@ -104,7 +96,6 @@ func TestUpdateWithCurrentBuild(t *testing.T) {
 
 func TestServe(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
 
 	t1 := time.Unix(1, 0)
 	f.resource("foo", "sleep 60", "testdir", t1)
@@ -120,7 +111,6 @@ func TestServe(t *testing.T) {
 
 func TestServeReadinessProbe(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
 
 	t1 := time.Unix(1, 0)
 
@@ -147,7 +137,6 @@ func TestServeReadinessProbe(t *testing.T) {
 
 func TestServeReadinessProbeInvalidSpec(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
 
 	t1 := time.Unix(1, 0)
 
@@ -173,7 +162,6 @@ func TestServeReadinessProbeInvalidSpec(t *testing.T) {
 
 func TestFailure(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
 
 	t1 := time.Unix(1, 0)
 	f.resource("foo", "true", ".", t1)
@@ -195,7 +183,6 @@ func TestFailure(t *testing.T) {
 
 func TestUniqueSpanIDs(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
 
 	t1 := time.Unix(1, 0)
 	f.resource("foo", "foo.sh", ".", t1)
@@ -209,14 +196,13 @@ func TestUniqueSpanIDs(t *testing.T) {
 
 func TestTearDown(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
 
 	t1 := time.Unix(1, 0)
 	f.resource("foo", "foo.sh", ".", t1)
 	f.resource("bar", "bar.sh", ".", t1)
 	f.step()
 
-	f.c.TearDown(f.ctx)
+	f.c.TearDown(f.Context())
 
 	f.fe.RequireNoKnownProcess(t, "foo.sh")
 	f.fe.RequireNoKnownProcess(t, "bar.sh")
@@ -224,7 +210,6 @@ func TestTearDown(t *testing.T) {
 
 func TestRestartOnFileWatch(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
 
 	f.resource("cmd", "true", ".", f.clock.Now())
 	f.step()
@@ -238,10 +223,10 @@ func TestRestartOnFileWatch(t *testing.T) {
 			Name: "fw-1",
 		},
 		Spec: FileWatchSpec{
-			WatchedPaths: []string{f.Path()},
+			WatchedPaths: []string{t.TempDir()},
 		},
 	}
-	err := f.client.Create(f.ctx, fw)
+	err := f.Client.Create(f.Context(), fw)
 	require.NoError(t, err)
 
 	f.clock.Advance(time.Second)
@@ -271,7 +256,6 @@ func TestRestartOnFileWatch(t *testing.T) {
 
 func TestRestartOnUIButton(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
 
 	f.resource("cmd", "true", ".", f.clock.Now())
 	f.step()
@@ -293,7 +277,7 @@ func TestRestartOnUIButton(t *testing.T) {
 		},
 		Spec: UIButtonSpec{},
 	}
-	err := f.client.Create(f.ctx, b)
+	err := f.Client.Create(f.Context(), b)
 	require.NoError(t, err)
 
 	f.clock.Advance(time.Second)
@@ -328,7 +312,7 @@ func setupStartOnTest(t *testing.T, f *fixture) {
 		},
 	}
 
-	err := f.client.Create(f.ctx, cmd)
+	err := f.Client.Create(f.Context(), cmd)
 	require.NoError(t, err)
 
 	b := &UIButton{
@@ -337,7 +321,7 @@ func setupStartOnTest(t *testing.T, f *fixture) {
 		},
 		Spec: UIButtonSpec{},
 	}
-	err = f.client.Create(f.ctx, b)
+	err = f.Client.Create(f.Context(), b)
 	require.NoError(t, err)
 
 	f.reconcileCmd("testcmd")
@@ -347,7 +331,6 @@ func setupStartOnTest(t *testing.T, f *fixture) {
 
 func TestStartOnNoPreviousProcess(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
 
 	startup := f.clock.Now()
 
@@ -366,7 +349,6 @@ func TestStartOnNoPreviousProcess(t *testing.T) {
 
 func TestStartOnDoesntRunOnCreation(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
 
 	setupStartOnTest(t, f)
 
@@ -381,7 +363,6 @@ func TestStartOnDoesntRunOnCreation(t *testing.T) {
 
 func TestStartOnStartAfter(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
 
 	setupStartOnTest(t, f)
 
@@ -398,7 +379,6 @@ func TestStartOnStartAfter(t *testing.T) {
 
 func TestStartOnRunningProcess(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
 
 	setupStartOnTest(t, f)
 
@@ -436,7 +416,6 @@ func TestStartOnRunningProcess(t *testing.T) {
 
 func TestStartOnPreviousTerminatedProcess(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
 
 	firstClickTime := f.clock.Now()
 
@@ -482,7 +461,6 @@ func TestStartOnPreviousTerminatedProcess(t *testing.T) {
 
 func TestDisposeOrphans(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
 
 	t1 := time.Unix(1, 0)
 	f.resource("foo", "true", ".", t1)
@@ -501,9 +479,6 @@ func TestDisposeOrphans(t *testing.T) {
 
 func TestDisposeTerminatedWhenCmdChanges(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
-
-	f.MkdirAll("subdir")
 
 	t1 := time.Unix(1, 0)
 	f.resource("foo", "true", ".", t1)
@@ -530,7 +505,6 @@ func TestDisposeTerminatedWhenCmdChanges(t *testing.T) {
 
 func TestDisable(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
 
 	cmd := &Cmd{
 		ObjectMeta: metav1.ObjectMeta{
@@ -546,7 +520,7 @@ func TestDisable(t *testing.T) {
 			},
 		},
 	}
-	err := f.client.Create(f.ctx, cmd)
+	err := f.Client.Create(f.Context(), cmd)
 	require.NoError(t, err)
 
 	f.setDisabled(cmd.Name, false)
@@ -576,7 +550,6 @@ func TestDisable(t *testing.T) {
 
 func TestReenable(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
 
 	cmd := &Cmd{
 		ObjectMeta: metav1.ObjectMeta{
@@ -592,7 +565,7 @@ func TestReenable(t *testing.T) {
 			},
 		},
 	}
-	err := f.client.Create(f.ctx, cmd)
+	err := f.Client.Create(f.Context(), cmd)
 	require.NoError(t, err)
 
 	f.setDisabled(cmd.Name, true)
@@ -619,7 +592,6 @@ func TestReenable(t *testing.T) {
 // https://github.com/tilt-dev/tilt-extensions/issues/202
 func TestSelfModifyingCmd(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
 
 	setupStartOnTest(t, f)
 
@@ -661,7 +633,6 @@ func TestSelfModifyingCmd(t *testing.T) {
 // don't restart the command.
 func TestDependencyChangesDoNotCauseRestart(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
 
 	setupStartOnTest(t, f)
 	f.triggerButton("b-1", f.clock.Now())
@@ -672,13 +643,13 @@ func TestDependencyChangesDoNotCauseRestart(t *testing.T) {
 		return cmd.Status.Running != nil
 	})
 
-	err := f.client.Create(f.ctx, &v1alpha1.UIButton{ObjectMeta: metav1.ObjectMeta{Name: "new-button"}})
+	err := f.Client.Create(f.Context(), &v1alpha1.UIButton{ObjectMeta: metav1.ObjectMeta{Name: "new-button"}})
 	require.NoError(t, err)
 
-	err = f.client.Create(f.ctx, &v1alpha1.FileWatch{
+	err = f.Client.Create(f.Context(), &v1alpha1.FileWatch{
 		ObjectMeta: metav1.ObjectMeta{Name: "new-filewatch"},
 		Spec: FileWatchSpec{
-			WatchedPaths: []string{f.JoinPath("new-path")},
+			WatchedPaths: []string{t.TempDir()},
 		},
 	})
 	require.NoError(t, err)
@@ -701,7 +672,6 @@ func TestDependencyChangesDoNotCauseRestart(t *testing.T) {
 
 func TestCmdUsesInputsFromButtonOnStart(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
 
 	setupStartOnTest(t, f)
 	f.updateButton("b-1", func(button *v1alpha1.UIButton) {
@@ -743,7 +713,6 @@ func TestBoolInput(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newFixture(t)
-			defer f.teardown()
 
 			setupStartOnTest(t, f)
 			f.updateButton("b-1", func(button *v1alpha1.UIButton) {
@@ -764,7 +733,6 @@ func TestBoolInput(t *testing.T) {
 
 func TestHiddenInput(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
 
 	val := "afds"
 
@@ -785,7 +753,6 @@ func TestHiddenInput(t *testing.T) {
 
 func TestCmdOnlyUsesButtonThatStartedIt(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
 
 	setupStartOnTest(t, f)
 	f.updateButton("b-1", func(button *v1alpha1.UIButton) {
@@ -808,7 +775,7 @@ func TestCmdOnlyUsesButtonThatStartedIt(t *testing.T) {
 		},
 		Spec: UIButtonSpec{},
 	}
-	err := f.client.Create(f.ctx, b)
+	err := f.Client.Create(f.Context(), b)
 	require.NoError(t, err)
 	f.updateSpec("testcmd", func(spec *v1alpha1.CmdSpec) {
 		spec.StartOn.UIButtons = append(spec.StartOn.UIButtons, "b-2")
@@ -880,64 +847,43 @@ func (s *testStore) Dispatch(action store.Action) {
 }
 
 type fixture struct {
-	*tempdir.TempDirFixture
-	t      *testing.T
-	out    *bufsync.ThreadSafeBuffer
-	st     *testStore
-	fe     *FakeExecer
-	fpm    *FakeProberManager
-	sc     *local.ServerController
-	client ctrlclient.Client
-	c      *Controller
-	ctx    context.Context
-	cancel context.CancelFunc
-	clock  clockwork.FakeClock
+	*fake.ControllerFixture
+	st    *testStore
+	fe    *FakeExecer
+	fpm   *FakeProberManager
+	sc    *local.ServerController
+	c     *Controller
+	clock clockwork.FakeClock
 }
 
 func newFixture(t *testing.T) *fixture {
-	f := tempdir.NewTempDirFixture(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	out := bufsync.NewThreadSafeBuffer()
-	w := io.MultiWriter(out, os.Stdout)
-	l := logger.NewLogger(logger.VerboseLvl, w)
-	ctx = logger.WithLogger(ctx, l)
-	st := NewTestingStore(w)
+	f := fake.NewControllerFixtureBuilder(t)
+	st := NewTestingStore(f.OutWriter())
 
 	fe := NewFakeExecer()
 	fpm := NewFakeProberManager()
-	fc := fake.NewFakeTiltClient()
-	sc := local.NewServerController(fc)
+	sc := local.NewServerController(f.Client)
 	clock := clockwork.NewFakeClock()
-	c := NewController(ctx, fe, fpm, fc, st, clock, v1alpha1.NewScheme())
+	c := NewController(f.Context(), fe, fpm, f.Client, st, clock, v1alpha1.NewScheme())
 
 	return &fixture{
-		TempDirFixture: f,
-		t:              t,
-		st:             st,
-		out:            out,
-		fe:             fe,
-		fpm:            fpm,
-		sc:             sc,
-		c:              c,
-		ctx:            ctx,
-		cancel:         cancel,
-		client:         fc,
-		clock:          clock,
+		ControllerFixture: f.Build(c),
+		st:                st,
+		fe:                fe,
+		fpm:               fpm,
+		sc:                sc,
+		c:                 c,
+		clock:             clock,
 	}
-}
-
-func (f *fixture) teardown() {
-	f.cancel()
-	f.TempDirFixture.TearDown()
 }
 
 func (f *fixture) triggerFileWatch(name string) {
 	fw := &FileWatch{}
-	err := f.client.Get(f.ctx, types.NamespacedName{Name: name}, fw)
+	err := f.Client.Get(f.Context(), types.NamespacedName{Name: name}, fw)
 	require.NoError(f.T(), err)
 
 	fw.Status.LastEventTime = apis.NewMicroTime(f.clock.Now())
-	err = f.client.Status().Update(f.ctx, fw)
+	err = f.Client.Status().Update(f.Context(), fw)
 	require.NoError(f.T(), err)
 }
 
@@ -948,50 +894,50 @@ func (f *fixture) triggerButton(name string, ts time.Time) {
 }
 
 func (f *fixture) reconcileCmd(name string) {
-	_, err := f.c.Reconcile(f.ctx, ctrl.Request{NamespacedName: types.NamespacedName{Name: name}})
+	_, err := f.c.Reconcile(f.Context(), ctrl.Request{NamespacedName: types.NamespacedName{Name: name}})
 	require.NoError(f.T(), err)
 }
 
 func (f *fixture) updateSpec(name string, update func(spec *v1alpha1.CmdSpec)) {
 	cmd := &Cmd{}
-	err := f.client.Get(f.ctx, types.NamespacedName{Name: name}, cmd)
+	err := f.Client.Get(f.Context(), types.NamespacedName{Name: name}, cmd)
 	require.NoError(f.T(), err)
 
 	update(&(cmd.Spec))
-	err = f.client.Update(f.ctx, cmd)
+	err = f.Client.Update(f.Context(), cmd)
 	require.NoError(f.T(), err)
 }
 
 func (f *fixture) updateButton(name string, update func(button *v1alpha1.UIButton)) {
 	button := &UIButton{}
-	err := f.client.Get(f.ctx, types.NamespacedName{Name: name}, button)
+	err := f.Client.Get(f.Context(), types.NamespacedName{Name: name}, button)
 	require.NoError(f.T(), err)
 
 	update(button)
-	err = f.client.Update(f.ctx, button)
+	err = f.Client.Update(f.Context(), button)
 	require.NoError(f.T(), err)
 }
 
 // checks `cmdName`'s DisableSource and makes sure it's configured to be disabled or enabled per `isDisabled`
 func (f *fixture) setDisabled(cmdName string, isDisabled bool) {
 	cmd := &Cmd{}
-	err := f.client.Get(f.ctx, types.NamespacedName{Name: cmdName}, cmd)
+	err := f.Client.Get(f.Context(), types.NamespacedName{Name: cmdName}, cmd)
 	require.NoError(f.T(), err)
 
 	require.NotNil(f.T(), cmd.Spec.DisableSource)
 	require.NotNil(f.T(), cmd.Spec.DisableSource.ConfigMap)
 
 	configMap := &ConfigMap{}
-	err = f.client.Get(f.ctx, types.NamespacedName{Name: cmd.Spec.DisableSource.ConfigMap.Name}, configMap)
+	err = f.Client.Get(f.Context(), types.NamespacedName{Name: cmd.Spec.DisableSource.ConfigMap.Name}, configMap)
 	if apierrors.IsNotFound(err) {
 		configMap.ObjectMeta.Name = cmd.Spec.DisableSource.ConfigMap.Name
 		configMap.Data = map[string]string{cmd.Spec.DisableSource.ConfigMap.Key: strconv.FormatBool(isDisabled)}
-		err = f.client.Create(f.ctx, configMap)
+		err = f.Client.Create(f.Context(), configMap)
 		require.NoError(f.T(), err)
 	} else {
 		require.Nil(f.T(), err)
 		configMap.Data[cmd.Spec.DisableSource.ConfigMap.Key] = strconv.FormatBool(isDisabled)
-		err = f.client.Update(f.ctx, configMap)
+		err = f.Client.Update(f.Context(), configMap)
 		require.NoError(f.T(), err)
 	}
 
@@ -1034,23 +980,23 @@ func (f *fixture) resourceFromTarget(name string, target model.TargetSpec, lastD
 
 func (f *fixture) step() {
 	f.st.summary = store.ChangeSummary{}
-	_ = f.sc.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
+	_ = f.sc.OnChange(f.Context(), f.st, store.LegacyChangeSummary())
 	for name := range f.st.summary.CmdSpecs.Changes {
-		_, err := f.c.Reconcile(f.ctx, ctrl.Request{NamespacedName: name})
-		require.NoError(f.t, err)
+		_, err := f.c.Reconcile(f.Context(), ctrl.Request{NamespacedName: name})
+		require.NoError(f.T(), err)
 	}
 }
 
 func (f *fixture) assertLogMessage(name string, messages ...string) {
 	for _, m := range messages {
-		assert.Eventually(f.t, func() bool {
-			return strings.Contains(f.out.String(), m)
+		assert.Eventually(f.T(), func() bool {
+			return strings.Contains(f.Stdout(), m)
 		}, timeout, interval)
 	}
 }
 
 func (f *fixture) waitForLogEventContaining(message string) store.LogAction {
-	ctx, cancel := context.WithTimeout(f.ctx, time.Second)
+	ctx, cancel := context.WithTimeout(f.Context(), time.Second)
 	defer cancel()
 
 	for {
@@ -1063,14 +1009,15 @@ func (f *fixture) waitForLogEventContaining(message string) store.LogAction {
 		}
 		select {
 		case <-ctx.Done():
-			f.t.Fatalf("timed out waiting for log event w/ message %q. seen actions: %v", message, actions)
+			f.T().Fatalf("timed out waiting for log event w/ message %q. seen actions: %v", message, actions)
 		case <-time.After(20 * time.Millisecond):
 		}
 	}
 }
 
 func (f *fixture) assertCmdMatches(name string, matcher func(cmd *Cmd) bool) *Cmd {
-	assert.Eventually(f.t, func() bool {
+	f.T().Helper()
+	assert.Eventually(f.T(), func() bool {
 		cmd := f.st.Cmd(name)
 		if cmd == nil {
 			return false
@@ -1082,12 +1029,12 @@ func (f *fixture) assertCmdMatches(name string, matcher func(cmd *Cmd) bool) *Cm
 }
 
 func (f *fixture) requireCmdMatchesInAPI(name string, matcher func(cmd *Cmd) bool) *Cmd {
-	f.t.Helper()
+	f.T().Helper()
 	var cmd Cmd
 
-	require.Eventually(f.t, func() bool {
-		err := f.client.Get(f.ctx, types.NamespacedName{Name: name}, &cmd)
-		require.NoError(f.t, err)
+	require.Eventually(f.T(), func() bool {
+		err := f.Client.Get(f.Context(), types.NamespacedName{Name: name}, &cmd)
+		require.NoError(f.T(), err)
 		return matcher(&cmd)
 	}, timeout, interval)
 
@@ -1095,22 +1042,22 @@ func (f *fixture) requireCmdMatchesInAPI(name string, matcher func(cmd *Cmd) boo
 }
 
 func (f *fixture) assertCmdDeleted(name string) {
-	assert.Eventually(f.t, func() bool {
+	assert.Eventually(f.T(), func() bool {
 		cmd := f.st.Cmd(name)
 		return cmd == nil || cmd.DeletionTimestamp != nil
 	}, timeout, interval)
 
 	var cmd Cmd
-	err := f.client.Get(f.ctx, types.NamespacedName{Name: name}, &cmd)
-	assert.Error(f.t, err)
-	assert.True(f.t, apierrors.IsNotFound(err))
+	err := f.Client.Get(f.Context(), types.NamespacedName{Name: name}, &cmd)
+	assert.Error(f.T(), err)
+	assert.True(f.T(), apierrors.IsNotFound(err))
 }
 
 func (f *fixture) assertCmdCount(count int) {
-	assert.Equal(f.t, count, f.st.CmdCount())
+	assert.Equal(f.T(), count, f.st.CmdCount())
 
 	var list CmdList
-	err := f.client.List(f.ctx, &list)
-	require.NoError(f.t, err)
-	assert.Equal(f.t, count, len(list.Items))
+	err := f.Client.List(f.Context(), &list)
+	require.NoError(f.T(), err)
+	assert.Equal(f.T(), count, len(list.Items))
 }

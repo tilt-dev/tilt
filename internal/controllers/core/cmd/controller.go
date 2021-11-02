@@ -61,7 +61,10 @@ func (r *Controller) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 		Watches(&source.Kind{Type: &ConfigMap{}},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue))
 
-	restarton.RegisterWatches(b, r.indexer)
+	restarton.SetupController(b, r.indexer, func(obj ctrlclient.Object) (*v1alpha1.RestartOnSpec, *v1alpha1.StartOnSpec) {
+		cmd := obj.(*v1alpha1.Cmd)
+		return cmd.Spec.RestartOn, cmd.Spec.StartOn
+	})
 
 	return b, nil
 }
@@ -552,9 +555,6 @@ func (c *Controller) processStatuses(
 func indexCmd(obj client.Object) []indexer.Key {
 	cmd := obj.(*v1alpha1.Cmd)
 	result := []indexer.Key{}
-
-	result = append(result, restarton.ExtractKeysForIndexer(cmd.Namespace, cmd.Spec.RestartOn, cmd.Spec.StartOn)...)
-
 	if cmd.Spec.DisableSource != nil {
 		cm := cmd.Spec.DisableSource.ConfigMap
 		if cm != nil {
