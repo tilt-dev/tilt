@@ -224,15 +224,16 @@ describe("SidebarTriggerButton", () => {
     expectIsSelected(buttons.at(1), false) // Non-selected resource
   })
 
-  it("never shows clickMe trigger button for automatic resources", () => {
+  // A pending resource may mean that a pod is being rolled out, but is not
+  // ready yet. In that case, the trigger button will delete the pod (cancelling
+  // the rollout) and rebuild.
+  it("shows clickMe trigger button when pending", () => {
     let items = twoResourceView().uiResources.map(
       (r: UIResource, i: number) => {
         let res = r.status!
         res.currentBuild = {} // not currently building
 
         if (i == 0) {
-          // first resource has pending changes -- but is automatic, should NOT
-          // have a clickMe button (and button should be !clickable)
           res.hasPendingChanges = true
           res.pendingBuildSince = new Date(Date.now()).toISOString()
         } else {
@@ -260,10 +261,10 @@ describe("SidebarTriggerButton", () => {
     let b0 = buttons.at(0) // Automatic resource with pending changes
     let b1 = buttons.at(1) // Automatic resource, no pending changes
 
-    expectClickable(b0, false)
+    expectClickable(b0, true)
     expectManualTriggerIcon(b0, false)
     expectIsQueued(b0, false)
-    expectWithTooltip(b0, TriggerButtonTooltip.UpdateInProgOrPending)
+    expectWithTooltip(b0, TriggerButtonTooltip.Default)
 
     expectClickable(b1, true)
     expectManualTriggerIcon(b1, false)

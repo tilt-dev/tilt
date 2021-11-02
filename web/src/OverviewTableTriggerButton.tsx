@@ -89,8 +89,7 @@ function OverviewTableTriggerButton(props: TriggerButtonProps) {
   let isDisabled =
     props.isQueued || // already queued for manual run
     props.isBuilding || // currently building
-    (!isManualTriggerIncludingInitial && !props.hasBuilt) || // waiting to perform its initial build
-    (props.hasPendingChanges && !isManualTriggerMode) // waiting to perform an auto-triggered build in response to a change
+    (!isManualTriggerIncludingInitial && !props.hasBuilt) // waiting to perform its initial build
 
   let shouldBeClicked = false
   if (!isDisabled) {
