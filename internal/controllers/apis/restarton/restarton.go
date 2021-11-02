@@ -6,7 +6,10 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/sliceutils"
@@ -15,6 +18,11 @@ import (
 
 var fwGVK = v1alpha1.SchemeGroupVersion.WithKind("FileWatch")
 var btnGVK = v1alpha1.SchemeGroupVersion.WithKind("UIButton")
+
+var restartOnTypes = []client.Object{
+	&v1alpha1.FileWatch{},
+	&v1alpha1.UIButton{},
+}
 
 // Objects is a container for objects referenced by a RestartOnSpec and/or StartOnSpec.
 type Objects struct {
@@ -41,6 +49,10 @@ func FetchObjects(ctx context.Context, client client.Reader, restartOn *v1alpha1
 }
 
 // ExtractKeysForIndexer returns the keys of objects referenced in the RestartOnSpec and/or StartOnSpec.
+//
+// This should be called as part of the func passed to indexer.Indexer at construction.
+//
+// Controllers MUST also call RegisterWatches or reconciliation will not occur when a referenced object changes.
 func ExtractKeysForIndexer(namespace string, restartOn *v1alpha1.RestartOnSpec, startOn *v1alpha1.StartOnSpec) []indexer.Key {
 	var keys []indexer.Key
 
@@ -234,4 +246,19 @@ func FilesChanged(restartOn *v1alpha1.RestartOnSpec, fileWatches map[string]*v1a
 		}
 	}
 	return sliceutils.DedupedAndSorted(filesChanged)
+}
+
+// RegisterWatches ensures that reconciliation happens on changes to objects referenced by RestartOnSpec/StartOnSpec.
+//
+// It should be called by a controllers CreateBuilder() method.
+//
+// Controllers MUST also call ExtractKeysForIndexer as part of their indexer initialization.
+func RegisterWatches(builder *builder.Builder, indexer *indexer.Indexer) {
+	for _, t := range restartOnTypes {
+		// this is arguably overly defensive, but a copy of the type object stub is made
+		// to avoid sharing references of it across different reconcilers
+		obj := t.DeepCopyObject().(client.Object)
+		builder.Watches(&source.Kind{Type: obj},
+			handler.EnqueueRequestsFromMapFunc(indexer.Enqueue))
+	}
 }

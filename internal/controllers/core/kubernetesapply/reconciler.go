@@ -58,6 +58,8 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 		Watches(&source.Kind{Type: &v1alpha1.ImageMap{}},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue))
 
+	restarton.RegisterWatches(b, r.indexer)
+
 	return b, nil
 }
 
@@ -65,7 +67,7 @@ func NewReconciler(ctrlClient ctrlclient.Client, k8sClient k8s.Client, scheme *r
 	return &Reconciler{
 		ctrlClient:  ctrlClient,
 		k8sClient:   k8sClient,
-		indexer:     indexer.NewIndexer(scheme, indexImageMap),
+		indexer:     indexer.NewIndexer(scheme, indexKubernetesApply),
 		execer:      execer,
 		dkc:         dkc,
 		kubeContext: kubeContext,
@@ -528,8 +530,8 @@ func (r *Reconciler) bestEffortDelete(ctx context.Context, entities []k8s.K8sEnt
 
 var imGVK = v1alpha1.SchemeGroupVersion.WithKind("ImageMap")
 
-// Find all the objects we need to watch based on the Cmd model.
-func indexImageMap(obj client.Object) []indexer.Key {
+// indexKubernetesApply returns keys for all the objects we need to watch based on the spec.
+func indexKubernetesApply(obj client.Object) []indexer.Key {
 	ka := obj.(*v1alpha1.KubernetesApply)
 	result := []indexer.Key{}
 
