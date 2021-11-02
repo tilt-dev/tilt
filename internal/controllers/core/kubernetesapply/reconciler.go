@@ -269,14 +269,13 @@ func (r *Reconciler) ForceApply(
 	nn types.NamespacedName,
 	spec v1alpha1.KubernetesApplySpec,
 	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) (v1alpha1.KubernetesApplyStatus, error) {
+	forceApplyStatus, appliedObjects := r.forceApplyHelper(ctx, spec, imageMaps)
 
 	var ka v1alpha1.KubernetesApply
 	err := r.ctrlClient.Get(ctx, nn, &ka)
 	if err != nil {
 		return v1alpha1.KubernetesApplyStatus{}, err
 	}
-
-	forceApplyStatus, appliedObjects := r.forceApplyHelper(ctx, spec, imageMaps)
 
 	// Copy over status information from `forceApplyHelper`
 	// so other existing status information isn't overwritten
