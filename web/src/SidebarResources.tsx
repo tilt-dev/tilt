@@ -3,7 +3,7 @@ import {
   AccordionDetails,
   AccordionSummary,
 } from "@material-ui/core"
-import React, { ChangeEvent, PropsWithChildren } from "react"
+import React, { ChangeEvent } from "react"
 import styled from "styled-components"
 import { AnalyticsType } from "./analytics"
 import { FeaturesContext, Flag } from "./feature"
@@ -36,6 +36,19 @@ import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
 import { Color, FontSize, SizeUnit } from "./style-helpers"
 import { ResourceView } from "./types"
 
+type SidebarProps = {
+  items: SidebarItem[]
+  selected: string
+  resourceView: ResourceView
+  pathBuilder: PathBuilder
+  resourceListOptions: ResourceListOptions
+}
+
+type SidebarSectionProps = {
+  sectionName?: string
+  groupView?: boolean
+} & SidebarProps
+
 let SidebarResourcesRoot = styled.nav`
   flex: 1 0 auto;
 
@@ -45,7 +58,7 @@ let SidebarResourcesRoot = styled.nav`
   }
 `
 
-let SidebarList = styled.div`
+let SidebarResourcesContent = styled.div`
   margin-bottom: ${SizeUnit(1.75)};
 `
 
@@ -56,7 +69,8 @@ let SidebarListSectionName = styled.div`
   color: ${Color.grayLight};
   font-size: ${FontSize.small};
 `
-const SidebarListSectionItems = styled.ul`
+
+const SidebarListSectionItemsRoot = styled.ul`
   margin-top: ${SizeUnit(0.25)};
   list-style: none;
 `
@@ -108,20 +122,31 @@ const SidebarGroupDetails = styled(AccordionDetails)`
 
 const GROUP_INFO_TOOLTIP_ID = "sidebar-groups-info"
 
-export function SidebarListSection(
-  props: PropsWithChildren<{ name: string }>
-): JSX.Element {
+export function SidebarListSection(props: SidebarSectionProps): JSX.Element {
   return (
-    <div>
-      <SidebarListSectionName>{props.name}</SidebarListSectionName>
-      <SidebarListSectionItems>{props.children}</SidebarListSectionItems>
-    </div>
+    <>
+      {props.sectionName && (
+        <SidebarListSectionName>{props.sectionName}</SidebarListSectionName>
+      )}
+      <SidebarListSectionItems {...props} />
+    </>
   )
 }
 
-function SidebarItemsView(props: SidebarProps & { groupView?: boolean }) {
+function SidebarListSectionItems(props: SidebarSectionProps) {
+  if (
+    props.items.length === 0 &&
+    props.resourceListOptions.resourceNameFilter.length > 0
+  ) {
+    return (
+      <SidebarListSectionItemsRoot>
+        <NoMatchesFound>No matching resources</NoMatchesFound>
+      </SidebarListSectionItemsRoot>
+    )
+  }
+
   return (
-    <>
+    <SidebarListSectionItemsRoot>
       {props.items.map((item) => (
         <SidebarItemView
           key={"sidebarItem-" + item.name}
@@ -132,11 +157,11 @@ function SidebarItemsView(props: SidebarProps & { groupView?: boolean }) {
           resourceView={props.resourceView}
         />
       ))}
-    </>
+    </SidebarListSectionItemsRoot>
   )
 }
 
-function SidebarLabelListSection(props: { label: string } & SidebarProps) {
+function SidebarGroupListSection(props: { label: string } & SidebarProps) {
   if (props.items.length === 0) {
     return null
   }
@@ -163,9 +188,7 @@ function SidebarLabelListSection(props: { label: string } & SidebarProps) {
         />
       </SidebarGroupSummary>
       <SidebarGroupDetails aria-labelledby={labelNameId}>
-        <SidebarListSectionItems>
-          <SidebarItemsView {...props} />
-        </SidebarListSectionItems>
+        <SidebarListSection {...props} />
       </SidebarGroupDetails>
     </SidebarLabelSection>
   )
@@ -208,31 +231,26 @@ function SidebarGroupedByLabels(props: SidebarProps) {
   return (
     <>
       {labels.map((label) => (
-        <SidebarLabelListSection
+        <SidebarGroupListSection
           {...props}
           key={`sidebarItem-${label}`}
           label={label}
           items={labelsToResources[label]}
         />
       ))}
-      <SidebarLabelListSection
+      <SidebarGroupListSection
         {...props}
         label={UNLABELED_LABEL}
         items={unlabeled}
       />
-      <SidebarListSection name={TILTFILE_LABEL}>
-        <SidebarItemsView {...props} items={tiltfile} groupView={true} />
-      </SidebarListSection>
+      <SidebarListSection
+        {...props}
+        sectionName={TILTFILE_LABEL}
+        items={tiltfile}
+        groupView={true}
+      />
     </>
   )
-}
-
-type SidebarProps = {
-  items: SidebarItem[]
-  selected: string
-  resourceView: ResourceView
-  pathBuilder: PathBuilder
-  resourceListOptions: ResourceListOptions
 }
 
 function hasAlerts(item: SidebarItem): boolean {
@@ -286,13 +304,7 @@ export class SidebarResources extends React.Component<SidebarProps> {
     // (though technically there's probably always at least a Tiltfile resource)
     const resourceFilterApplied =
       this.props.resourceListOptions.resourceNameFilter.length > 0
-    const noResourcesMatchFilter =
-      resourceFilterApplied && filteredItems.length === 0
-    const listItems = noResourcesMatchFilter ? (
-      <NoMatchesFound key={"no-matches"}>No matching resources</NoMatchesFound>
-    ) : (
-      <SidebarItemsView {...this.props} items={filteredItems} />
-    )
+
     const sidebarName = resourceFilterApplied
       ? `${filteredItems.length} result${filteredItems.length === 1 ? "" : "s"}`
       : "resources"
@@ -318,7 +330,7 @@ export class SidebarResources extends React.Component<SidebarProps> {
         {displayLabelGroupsTip && (
           <ResourceGroupsInfoTip idForIcon={GROUP_INFO_TOOLTIP_ID} />
         )}
-        <SidebarList
+        <SidebarResourcesContent
           aria-describedby={
             displayLabelGroupsTip ? GROUP_INFO_TOOLTIP_ID : undefined
           }
@@ -327,11 +339,13 @@ export class SidebarResources extends React.Component<SidebarProps> {
           {displayLabelGroups ? (
             <SidebarGroupedByLabels {...this.props} items={filteredItems} />
           ) : (
-            <SidebarListSection name={sidebarName}>
-              {listItems}
-            </SidebarListSection>
+            <SidebarListSection
+              {...this.props}
+              sectionName={sidebarName}
+              items={filteredItems}
+            />
           )}
-        </SidebarList>
+        </SidebarResourcesContent>
         <SidebarKeyboardShortcuts
           selected={this.props.selected}
           items={filteredItems}
