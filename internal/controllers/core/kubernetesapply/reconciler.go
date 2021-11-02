@@ -363,7 +363,7 @@ func (r *Reconciler) runCmdDeploy(ctx context.Context, spec v1alpha1.KubernetesA
 	var stdoutBuf bytes.Buffer
 	runIO := localexec.RunIO{
 		Stdout: &stdoutBuf,
-		Stderr: logger.Get(ctx).Writer(logger.WarnLvl),
+		Stderr: logger.Get(ctx).Writer(logger.InfoLvl),
 	}
 
 	exitCode, err := r.execer.Run(ctx, cmd, runIO)
