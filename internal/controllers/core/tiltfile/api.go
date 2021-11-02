@@ -287,8 +287,9 @@ func toKubernetesApplyObjects(tlr *tiltfile.TiltfileLoadResult, disableSources d
 			ObjectMeta: metav1.ObjectMeta{
 				Name: name,
 				Annotations: map[string]string{
-					v1alpha1.AnnotationManifest: name,
-					v1alpha1.AnnotationSpanID:   fmt.Sprintf("kubernetesapply:%s", name),
+					v1alpha1.AnnotationManifest:  name,
+					v1alpha1.AnnotationSpanID:    fmt.Sprintf("kubernetesapply:%s", name),
+					v1alpha1.AnnotationManagedBy: "buildcontrol",
 				},
 			},
 			Spec: kTarget.KubernetesApplySpec,
@@ -467,7 +468,8 @@ func updateNewObjects(ctx context.Context, client ctrlclient.Client, newObjects,
 			// Are there other fields here we should check?
 			specChanged := !apicmp.DeepEqual(old.GetSpec(), obj.GetSpec())
 			labelsChanged := !apicmp.DeepEqual(old.GetLabels(), obj.GetLabels())
-			if specChanged || labelsChanged {
+			annsChanged := !apicmp.DeepEqual(old.GetAnnotations(), obj.GetAnnotations())
+			if specChanged || labelsChanged || annsChanged {
 				obj.SetResourceVersion(old.GetResourceVersion())
 				if cm, ok := obj.(*v1alpha1.ConfigMap); ok {
 					// Tiltfiles can create ConfigMaps with default values, but

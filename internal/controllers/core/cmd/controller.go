@@ -55,6 +55,17 @@ type Controller struct {
 
 var _ store.TearDowner = &Controller{}
 
+func (r *Controller) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
+	b := ctrl.NewControllerManagedBy(mgr).
+		For(&Cmd{}).
+		Watches(&source.Kind{Type: &ConfigMap{}},
+			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue))
+
+	restarton.RegisterWatches(b, r.indexer)
+
+	return b, nil
+}
+
 func NewController(ctx context.Context, execer Execer, proberManager ProberManager, client ctrlclient.Client, st store.RStore, clock clockwork.Clock, scheme *runtime.Scheme) *Controller {
 	return &Controller{
 		globalCtx:     ctx,
@@ -555,19 +566,6 @@ func indexCmd(obj client.Object) []indexer.Key {
 		}
 	}
 	return result
-}
-
-func (r *Controller) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
-	b := ctrl.NewControllerManagedBy(mgr).
-		For(&Cmd{}).
-		Watches(&source.Kind{Type: &FileWatch{}},
-			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
-		Watches(&source.Kind{Type: &UIButton{}},
-			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
-		Watches(&source.Kind{Type: &ConfigMap{}},
-			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue))
-
-	return b, nil
 }
 
 // currentProcess represents the current process for a Manifest, so that Controller can

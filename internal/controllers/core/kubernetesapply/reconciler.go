@@ -10,7 +10,6 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -60,6 +59,8 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 		Watches(&source.Kind{Type: &v1alpha1.ImageMap{}},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue))
 
+	restarton.RegisterWatches(b, r.indexer)
+
 	return b, nil
 }
 
@@ -67,7 +68,7 @@ func NewReconciler(ctrlClient ctrlclient.Client, k8sClient k8s.Client, scheme *r
 	return &Reconciler{
 		ctrlClient:  ctrlClient,
 		k8sClient:   k8sClient,
-		indexer:     indexer.NewIndexer(scheme, indexImageMap),
+		indexer:     indexer.NewIndexer(scheme, indexKubernetesApply),
 		execer:      execer,
 		dkc:         dkc,
 		kubeContext: kubeContext,
@@ -157,11 +158,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 //    or one of the inputs has changed since the last deploy.
 func (r *Reconciler) shouldDeployOnReconcile(nn types.NamespacedName, ka *v1alpha1.KubernetesApply,
 	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap, restartObjs restarton.Objects) bool {
-	owner := metav1.GetControllerOf(ka)
-	if owner != nil && owner.Kind == v1alpha1.OwnerKindTiltfile {
+	if ka.Annotations[v1alpha1.AnnotationManagedBy] != "" {
 		// Until resource dependencies are expressed in the API,
 		// we can't use reconciliation to deploy KubernetesApply objects
-		// owned by the Tiltfile.
+		// managed by the buildcontrol engine.
 		return false
 	}
 
@@ -563,8 +563,8 @@ func (r *Reconciler) bestEffortDelete(ctx context.Context, entities []k8s.K8sEnt
 
 var imGVK = v1alpha1.SchemeGroupVersion.WithKind("ImageMap")
 
-// Find all the objects we need to watch based on the Cmd model.
-func indexImageMap(obj client.Object) []indexer.Key {
+// indexKubernetesApply returns keys for all the objects we need to watch based on the spec.
+func indexKubernetesApply(obj client.Object) []indexer.Key {
 	ka := obj.(*v1alpha1.KubernetesApply)
 	result := []indexer.Key{}
 

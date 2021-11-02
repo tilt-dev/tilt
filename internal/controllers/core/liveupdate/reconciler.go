@@ -222,7 +222,9 @@ func (r *Reconciler) handleFailure(ctx context.Context, lu *v1alpha1.LiveUpdate,
 		return ctrl.Result{}, nil
 	}
 
-	logger.Get(ctx).Warnf("LiveUpdate %q %s: %v", lu.Name, failed.Reason, failed.Message)
+	if r.shouldLogFailureReason(failed) {
+		logger.Get(ctx).Infof("LiveUpdate %q %s: %v", lu.Name, failed.Reason, failed.Message)
+	}
 
 	update := lu.DeepCopy()
 	update.Status.Failed = failed
@@ -634,12 +636,39 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 			return false
 		}
 
-		if !updateEventDispatched {
-			updateEventDispatched = true
-			r.dispatchStartBuildAction(ctx, lu, filesChanged)
+		// Create a plan to update the container.
+		var oneUpdateStatus v1alpha1.LiveUpdateStatus
+		plan, failed := r.createLiveUpdatePlan(lu.Spec, filesChanged)
+		if failed != nil {
+			// The plan told us to stop updating - this container is unrecoverable.
+			oneUpdateStatus.Failed = failed
+		} else if len(plan.SyncPaths) == 0 {
+			// The plan told us that there are no updates to do.
+			oneUpdateStatus.Containers = []v1alpha1.LiveUpdateContainerStatus{{
+				ContainerName:      c.ContainerName.String(),
+				ContainerID:        c.ContainerID.String(),
+				PodName:            c.PodID.String(),
+				Namespace:          c.Namespace.String(),
+				LastFileTimeSynced: cStatus.lastFileTimeSynced,
+			}}
+		} else {
+			// The plan told us that we have some files to sync.
+			// Log progress and treat this as an update in the engine state.
+			if !updateEventDispatched {
+				updateEventDispatched = true
+				r.dispatchStartBuildAction(ctx, lu, filesChanged)
+			}
+
+			// Apply the change to the container.
+			oneUpdateStatus = r.applyInternal(ctx, lu.Spec, Input{
+				IsDC:               false, // update this once we support DockerCompose in the API.
+				ChangedFiles:       plan.SyncPaths,
+				Containers:         []liveupdates.Container{c},
+				LastFileTimeSynced: newHighWaterMark,
+			})
 		}
 
-		oneUpdateStatus := r.applyLiveUpdatePlan(ctx, lu.Spec, c, filesChanged, newHighWaterMark, cStatus)
+		// Merge the status from the single update into the overall liveupdate status.
 		adjustFailedStateTimestamps(lu, &oneUpdateStatus)
 
 		// Update the monitor based on the result of the applied changes.
@@ -685,62 +714,31 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 	return status
 }
 
-func (r *Reconciler) applyLiveUpdatePlan(
-	ctx context.Context,
-	spec v1alpha1.LiveUpdateSpec,
-	c liveupdates.Container,
-	filesChanged []string,
-	newHighWaterMark metav1.MicroTime,
-	lastStatus monitorContainerStatus) v1alpha1.LiveUpdateStatus {
-
-	var status v1alpha1.LiveUpdateStatus
+func (r *Reconciler) createLiveUpdatePlan(spec v1alpha1.LiveUpdateSpec, filesChanged []string) (liveupdates.LiveUpdatePlan, *v1alpha1.LiveUpdateStateFailed) {
 	plan, err := liveupdates.NewLiveUpdatePlan(spec, filesChanged)
 	if err != nil {
-		status.Failed = &v1alpha1.LiveUpdateStateFailed{
+		return plan, &v1alpha1.LiveUpdateStateFailed{
 			Reason:  "UpdateStopped",
 			Message: fmt.Sprintf("No update plan: %v", err),
 		}
-		return status
 	}
 
 	if len(plan.NoMatchPaths) > 0 {
-		status.Failed = &v1alpha1.LiveUpdateStateFailed{
+		return plan, &v1alpha1.LiveUpdateStateFailed{
 			Reason: "UpdateStopped",
 			Message: fmt.Sprintf("Found file(s) not matching any sync (files: %s)",
 				ospath.FormatFileChangeList(plan.NoMatchPaths)),
 		}
-		return status
 	}
 
 	// If any changed files match a FallBackOn file, fall back to next BuildAndDeployer
 	if len(plan.StopPaths) != 0 {
-		status.Failed = &v1alpha1.LiveUpdateStateFailed{
+		return plan, &v1alpha1.LiveUpdateStateFailed{
 			Reason:  "UpdateStopped",
 			Message: fmt.Sprintf("Detected change to stop file %q", plan.StopPaths[0]),
 		}
-		return status
 	}
-
-	if len(plan.SyncPaths) == 0 {
-		// No files matched a sync for this image, no Live Update to run
-		status.Containers = []v1alpha1.LiveUpdateContainerStatus{{
-			ContainerName:      c.ContainerName.String(),
-			ContainerID:        c.ContainerID.String(),
-			PodName:            c.PodID.String(),
-			Namespace:          c.Namespace.String(),
-			LastFileTimeSynced: lastStatus.lastFileTimeSynced,
-		}}
-		return status
-	}
-
-	// Apply the changes to the cluster.
-	input := Input{
-		IsDC:               false, // update this once we support DockerCompose in the API.
-		ChangedFiles:       plan.SyncPaths,
-		Containers:         []liveupdates.Container{c},
-		LastFileTimeSynced: newHighWaterMark,
-	}
-	return r.applyInternal(ctx, spec, input)
+	return plan, nil
 }
 
 // Generate the correct transition time on the Failed state.
