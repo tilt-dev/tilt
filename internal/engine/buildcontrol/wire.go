@@ -18,6 +18,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/dockerfile"
 	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/localexec"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/internal/tracer"
@@ -62,7 +63,8 @@ func ProvideImageBuildAndDeployer(
 	kp KINDLoader,
 	analytics *analytics.TiltAnalytics,
 	ctrlclient ctrlclient.Client,
-	st store.RStore) (*ImageBuildAndDeployer, error) {
+	st store.RStore,
+	execer localexec.Execer) (*ImageBuildAndDeployer, error) {
 	wire.Build(
 		BaseWireSet,
 		kubernetesapply.NewReconciler,

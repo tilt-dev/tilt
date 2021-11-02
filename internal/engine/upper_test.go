@@ -3981,7 +3981,8 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	k8sContextExt := k8scontext.NewPlugin("fake-context", env)
 	versionExt := version.NewPlugin(model.TiltBuild{Version: "0.5.0"})
 	configExt := config.NewPlugin("up")
-	realTFL := tiltfile.ProvideTiltfileLoader(ta, b.kClient, k8sContextExt, versionExt, configExt, fakeDcc, "localhost", localexec.EmptyEnv(), feature.MainDefaults, env)
+	execer := localexec.NewProcessExecer(localexec.EmptyEnv())
+	realTFL := tiltfile.ProvideTiltfileLoader(ta, b.kClient, k8sContextExt, versionExt, configExt, fakeDcc, "localhost", execer, feature.MainDefaults, env)
 	tfl := tiltfile.NewFakeTiltfileLoader()
 	buildSource := ctrltiltfile.NewBuildSource()
 	cc := configs.NewConfigsController(cdc)
@@ -4029,7 +4030,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 
 	wsl := server.NewWebsocketList()
 
-	kar := kubernetesapply.NewReconciler(cdc, b.kClient, sch, docker.Env{}, k8s.KubeContext("kind-kind"), st, "default")
+	kar := kubernetesapply.NewReconciler(cdc, b.kClient, sch, docker.Env{}, k8s.KubeContext("kind-kind"), st, "default", execer)
 
 	tfr := ctrltiltfile.NewReconciler(st, tfl, dockerClient, cdc, sch, buildSource, engineMode)
 	tbr := togglebutton.NewReconciler(cdc, sch)

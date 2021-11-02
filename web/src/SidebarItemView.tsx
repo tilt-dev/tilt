@@ -1,6 +1,7 @@
 import React from "react"
 import TimeAgo from "react-timeago"
 import styled from "styled-components"
+import { Hold } from "./Hold"
 import PathBuilder from "./PathBuilder"
 import { useResourceNav } from "./ResourceNav"
 import SidebarIcon from "./SidebarIcon"
@@ -10,6 +11,7 @@ import { SidebarTriggerModeToggle } from "./SidebarTriggerModeToggle"
 import StarResourceButton, {
   StarResourceButtonRoot,
 } from "./StarResourceButton"
+import { PendingBuildDescription } from "./status"
 import {
   AnimDuration,
   barberpole,
@@ -120,7 +122,7 @@ let SidebarItemBuildBox = styled.div`
   padding-right: 4px;
 `
 let SidebarItemText = styled.div`
-  display: flex;
+  ${mixinTruncateText}
   align-items: center;
   flex-grow: 1;
   padding-top: 4px;
@@ -206,7 +208,7 @@ function buildStatusText(item: SidebarItem): string {
   let buildDur = item.lastBuildDur ? formatBuildDuration(item.lastBuildDur) : ""
   let buildStatus = item.buildStatus
   if (buildStatus === ResourceStatus.Pending) {
-    return "Pending"
+    return holdStatusText(item.hold)
   } else if (buildStatus === ResourceStatus.Building) {
     return "Updating…"
   } else if (buildStatus === ResourceStatus.None) {
@@ -219,6 +221,33 @@ function buildStatusText(item: SidebarItem): string {
     return `Completed in ${buildDur}, with issues`
   }
   return "Unknown"
+}
+
+function holdStatusText(hold?: Hold | null): string {
+  if (!hold?.count) {
+    return "Pending"
+  }
+
+  if (hold.images.length) {
+    return "Waiting for shared image build"
+  }
+
+  if (hold.resources.length === 1) {
+    // show the actual name
+    return `Waiting on ${hold.resources[0]}`
+  }
+
+  let count: number
+  let type: string
+  if (hold.resources.length) {
+    count = hold.resources.length
+    type = "resources"
+  } else {
+    count = hold.count
+    type = `object${hold.count > 1 ? "s" : ""}`
+  }
+
+  return `Waiting on ${count} ${type}`
 }
 
 function runtimeTooltipText(status: ResourceStatus): string {
@@ -238,12 +267,12 @@ function runtimeTooltipText(status: ResourceStatus): string {
   }
 }
 
-function buildTooltipText(status: ResourceStatus): string {
+function buildTooltipText(status: ResourceStatus, hold: Hold | null): string {
   switch (status) {
     case ResourceStatus.Building:
       return "Update: in progress"
     case ResourceStatus.Pending:
-      return "Update: pending"
+      return PendingBuildDescription(hold)
     case ResourceStatus.Warning:
       return "Update: warning"
     case ResourceStatus.Healthy:
@@ -312,7 +341,7 @@ export default function SidebarItemView(props: SidebarItemViewProps) {
           </SidebarItemRuntimeBox>
           <SidebarItemBuildBox>
             <SidebarIcon
-              tooltipText={buildTooltipText(item.buildStatus)}
+              tooltipText={buildTooltipText(item.buildStatus, item.hold)}
               status={item.buildStatus}
               alertCount={item.buildAlertCount}
             />

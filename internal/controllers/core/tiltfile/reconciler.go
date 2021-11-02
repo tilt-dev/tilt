@@ -121,23 +121,18 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 	// If the tiltfile isn't being run, check to see if anything has triggered a run.
 	if step == runStepNone || step == runStepDone {
-		buttons, err := restarton.Buttons(ctx, r.ctrlClient, tf.Spec.RestartOn, nil)
+		restartObjs, err := restarton.FetchObjects(ctx, r.ctrlClient, tf.Spec.RestartOn, nil)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 
-		fileWatches, err := restarton.FileWatches(ctx, r.ctrlClient, tf.Spec.RestartOn)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
-		lastRestartEventTime, _ := restarton.LastRestartEvent(tf.Spec.RestartOn, fileWatches, buttons)
+		lastRestartEventTime, _ := restarton.LastRestartEvent(tf.Spec.RestartOn, restartObjs)
 		queue, err := configmap.TriggerQueue(ctx, r.ctrlClient)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 
-		be := r.needsBuild(ctx, nn, &tf, run, fileWatches, queue, lastRestartEventTime)
+		be := r.needsBuild(ctx, nn, &tf, run, restartObjs.FileWatches, queue, lastRestartEventTime)
 		if be != nil {
 			r.startRunAsync(ctx, nn, &tf, be)
 		}
@@ -359,26 +354,8 @@ func (r *Reconciler) deleteExistingRun(nn types.NamespacedName) {
 // Find all the objects we need to watch based on the tiltfile model.
 func indexTiltfile(obj client.Object) []indexer.Key {
 	result := []indexer.Key{}
-	tiltfile := obj.(*v1alpha1.Tiltfile)
-	if tiltfile.Spec.RestartOn != nil {
-		fwGVK := v1alpha1.SchemeGroupVersion.WithKind("FileWatch")
-
-		for _, name := range tiltfile.Spec.RestartOn.FileWatches {
-			result = append(result, indexer.Key{
-				Name: types.NamespacedName{Name: name},
-				GVK:  fwGVK,
-			})
-		}
-
-		bGVK := v1alpha1.SchemeGroupVersion.WithKind("UIButton")
-
-		for _, name := range tiltfile.Spec.RestartOn.UIButtons {
-			result = append(result, indexer.Key{
-				Name: types.NamespacedName{Name: name},
-				GVK:  bGVK,
-			})
-		}
-	}
+	tf := obj.(*v1alpha1.Tiltfile)
+	result = append(result, restarton.ExtractKeysForIndexer(tf.Namespace, tf.Spec.RestartOn, nil)...)
 	return result
 }
 
@@ -389,7 +366,7 @@ func (r *Reconciler) enqueueTriggerQueue(obj client.Object) []reconcile.Request 
 		return nil
 	}
 
-	if cm.Name != tiltfiles.TriggerQueueConfigMapName {
+	if cm.Name != configmap.TriggerQueueName {
 		return nil
 	}
 

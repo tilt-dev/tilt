@@ -98,6 +98,9 @@ func NextTargetToBuild(state store.EngineState) (*store.ManifestTarget, HoldSet)
 	//
 	// https://github.com/tilt-dev/tilt/issues/3759
 	HoldLiveUpdateTargetsWaitingOnDeploy(state, targets, holds)
+
+	HoldLiveUpdateTargetsHandledByReconciler(state, targets, holds)
+
 	targets = holds.RemoveIneligibleTargets(targets)
 
 	return EarliestPendingAutoTriggerTarget(targets), holds
@@ -182,10 +185,14 @@ func HoldTargetsWithBuildingComponents(mts []*store.ManifestTarget, holds HoldSe
 		}
 	}
 
-	hasBuildingComponent := func(mt *store.ManifestTarget) bool {
+	hasBuildingComponent := func(mt *store.ManifestTarget) ([]model.TargetID, bool) {
+		var targetIDs []model.TargetID
+		var shouldHold bool
+
 		m := mt.Manifest
 		if building[m.ID()] {
-			return true
+			// mark as holding but don't add self as a dependency
+			shouldHold = true
 		}
 
 		for _, spec := range m.TargetSpecs() {
@@ -194,16 +201,19 @@ func HoldTargetsWithBuildingComponents(mts []*store.ManifestTarget, holds HoldSe
 			}
 
 			if building[spec.ID()] {
-				return true
+				targetIDs = append(targetIDs, spec.ID())
+				shouldHold = true
 			}
 		}
-		return false
+		return targetIDs, shouldHold
 	}
 
 	for _, mt := range mts {
-		if hasBuildingComponent(mt) {
-			// TODO(milas): can we surface dependencies in this case?
-			holds.AddHold(mt, store.Hold{Reason: store.HoldReasonBuildingComponent})
+		if waitingOn, shouldHold := hasBuildingComponent(mt); shouldHold {
+			holds.AddHold(mt, store.Hold{
+				Reason: store.HoldReasonBuildingComponent,
+				HoldOn: waitingOn,
+			})
 		}
 	}
 }
@@ -476,4 +486,25 @@ func IsLiveUpdateTargetWaitingOnDeploy(state store.EngineState, mt *store.Manife
 	// If we've gotten this far, that means we should wait until this deploy
 	// finishes before processing these file changes.
 	return true
+}
+
+// Hold back live update targets that are being successfully
+// handled by a reconciler.
+func HoldLiveUpdateTargetsHandledByReconciler(state store.EngineState, mts []*store.ManifestTarget, holds HoldSet) {
+	for _, mt := range mts {
+		iTargets := mt.Manifest.ImageTargets
+		for _, iTarget := range iTargets {
+			isHandledByReconciler := iTarget.LiveUpdateReconciler
+			if !isHandledByReconciler {
+				continue
+			}
+
+			// Live update should hold back a target if it's not failing.
+			lu := state.LiveUpdates[iTarget.LiveUpdateName]
+			isFailing := lu != nil && lu.Status.Failed != nil
+			if !isFailing {
+				holds.AddHold(mt, store.Hold{Reason: store.HoldReconciling})
+			}
+		}
+	}
 }

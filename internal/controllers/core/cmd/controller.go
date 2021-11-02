@@ -99,16 +99,6 @@ func (c *Controller) TearDown(ctx context.Context) {
 	}
 }
 
-// Fetch all the buttons that this object depends on.
-func (c *Controller) buttons(ctx context.Context, cmd *v1alpha1.Cmd) (map[string]*v1alpha1.UIButton, error) {
-	return restarton.Buttons(ctx, c.client, cmd.Spec.RestartOn, cmd.Spec.StartOn)
-}
-
-// Fetch all the filewatches that this object depends on.
-func (c *Controller) fileWatches(ctx context.Context, cmd *v1alpha1.Cmd) (map[string]*v1alpha1.FileWatch, error) {
-	return restarton.FileWatches(ctx, c.client, cmd.Spec.RestartOn)
-}
-
 func inputsFromButton(button v1alpha1.UIButton) []input {
 	statuses := make(map[string]v1alpha1.UIInputStatus)
 	for _, status := range button.Status.Inputs {
@@ -127,8 +117,8 @@ func inputsFromButton(button v1alpha1.UIButton) []input {
 }
 
 // Fetch the last time a start was requested from this target's dependencies.
-func (c *Controller) lastStartEvent(startOn *StartOnSpec, buttons map[string]*v1alpha1.UIButton) (time.Time, []input) {
-	latestTime, latestButton := restarton.LastStartEvent(startOn, buttons)
+func (c *Controller) lastStartEvent(startOn *StartOnSpec, restartObjs restarton.Objects) (time.Time, []input) {
+	latestTime, latestButton := restarton.LastStartEvent(startOn, restartObjs)
 	var inputs []input
 	if latestButton != nil {
 		inputs = inputsFromButton(*latestButton)
@@ -137,8 +127,8 @@ func (c *Controller) lastStartEvent(startOn *StartOnSpec, buttons map[string]*v1
 }
 
 // Fetch the last time a restart was requested from this target's dependencies.
-func (c *Controller) lastRestartEvent(restartOn *RestartOnSpec, fileWatches map[string]*v1alpha1.FileWatch, buttons map[string]*v1alpha1.UIButton) (time.Time, []input) {
-	cur, latestButton := restarton.LastRestartEvent(restartOn, fileWatches, buttons)
+func (c *Controller) lastRestartEvent(restartOn *RestartOnSpec, restartObjs restarton.Objects) (time.Time, []input) {
+	cur, latestButton := restarton.LastRestartEvent(restartOn, restartObjs)
 	var inputs []input
 	if latestButton != nil {
 		inputs = inputsFromButton(*latestButton)
@@ -186,18 +176,13 @@ func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) e
 		return nil
 	}
 
-	buttons, err := c.buttons(ctx, cmd)
+	restartObjs, err := restarton.FetchObjects(ctx, c.client, cmd.Spec.RestartOn, cmd.Spec.StartOn)
 	if err != nil {
 		return err
 	}
 
-	fileWatches, err := c.fileWatches(ctx, cmd)
-	if err != nil {
-		return err
-	}
-
-	lastRestartEventTime, _ := c.lastRestartEvent(cmd.Spec.RestartOn, fileWatches, buttons)
-	lastStartEventTime, _ := c.lastStartEvent(cmd.Spec.StartOn, buttons)
+	lastRestartEventTime, _ := c.lastRestartEvent(cmd.Spec.RestartOn, restartObjs)
+	lastStartEventTime, _ := c.lastStartEvent(cmd.Spec.StartOn, restartObjs)
 	startOn := cmd.Spec.StartOn
 	waitsOnStartOn := startOn != nil && len(startOn.UIButtons) > 0
 
@@ -228,7 +213,7 @@ func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) e
 	} else if execSpecChanged || restartOnTriggered || startOnTriggered {
 		// Otherwise, any change, new start event, or new restart event
 		// should restart the process to pick up changes.
-		_ = c.runInternal(ctx, cmd, buttons, fileWatches)
+		_ = c.runInternal(ctx, cmd, restartObjs)
 	}
 
 	return nil
@@ -242,7 +227,7 @@ func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) e
 // Blocks until the command is finished, then returns its status.
 func (c *Controller) ForceRun(ctx context.Context, cmd *v1alpha1.Cmd) (*v1alpha1.CmdStatus, error) {
 	c.reconcileMu.Lock()
-	doneCh := c.runInternal(ctx, cmd, nil, nil)
+	doneCh := c.runInternal(ctx, cmd, restarton.Objects{})
 	c.reconcileMu.Unlock()
 
 	select {
@@ -298,8 +283,7 @@ type input struct {
 // Returns a channel that closes when the Cmd is finished.
 func (c *Controller) runInternal(ctx context.Context,
 	cmd *v1alpha1.Cmd,
-	buttons map[string]*v1alpha1.UIButton,
-	fileWatches map[string]*v1alpha1.FileWatch) (doneCh chan struct{}) {
+	restartObjs restarton.Objects) (doneCh chan struct{}) {
 	name := types.NamespacedName{Name: cmd.Name}
 	proc, ok := c.procs[name]
 	if ok {
@@ -318,8 +302,8 @@ func (c *Controller) runInternal(ctx context.Context,
 
 	var startInputs, restartInputs []input
 
-	proc.lastRestartOnEventTime, restartInputs = c.lastRestartEvent(cmd.Spec.RestartOn, fileWatches, buttons)
-	proc.lastStartOnEventTime, startInputs = c.lastStartEvent(cmd.Spec.StartOn, buttons)
+	proc.lastRestartOnEventTime, restartInputs = c.lastRestartEvent(cmd.Spec.RestartOn, restartObjs)
+	proc.lastStartOnEventTime, startInputs = c.lastStartEvent(cmd.Spec.StartOn, restartObjs)
 
 	mergedInputs := startInputs
 	if proc.lastRestartOnEventTime.After(proc.lastStartOnEventTime) {
@@ -557,36 +541,8 @@ func (c *Controller) processStatuses(
 func indexCmd(obj client.Object) []indexer.Key {
 	cmd := obj.(*v1alpha1.Cmd)
 	result := []indexer.Key{}
-	if cmd.Spec.StartOn != nil {
-		bGVK := v1alpha1.SchemeGroupVersion.WithKind("UIButton")
 
-		for _, name := range cmd.Spec.StartOn.UIButtons {
-			result = append(result, indexer.Key{
-				Name: types.NamespacedName{Name: name},
-				GVK:  bGVK,
-			})
-		}
-	}
-
-	if cmd.Spec.RestartOn != nil {
-		fwGVK := v1alpha1.SchemeGroupVersion.WithKind("FileWatch")
-
-		for _, name := range cmd.Spec.RestartOn.FileWatches {
-			result = append(result, indexer.Key{
-				Name: types.NamespacedName{Name: name},
-				GVK:  fwGVK,
-			})
-		}
-
-		bGVK := v1alpha1.SchemeGroupVersion.WithKind("UIButton")
-
-		for _, name := range cmd.Spec.RestartOn.UIButtons {
-			result = append(result, indexer.Key{
-				Name: types.NamespacedName{Name: name},
-				GVK:  bGVK,
-			})
-		}
-	}
+	result = append(result, restarton.ExtractKeysForIndexer(cmd.Namespace, cmd.Spec.RestartOn, cmd.Spec.StartOn)...)
 
 	if cmd.Spec.DisableSource != nil {
 		cm := cmd.Spec.DisableSource.ConfigMap

@@ -13,14 +13,15 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/tilt-dev/tilt/internal/store/tiltfiles"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
+const TriggerQueueName = "tilt-trigger-queue"
+
 func TriggerQueue(ctx context.Context, client client.Client) (*v1alpha1.ConfigMap, error) {
 	var cm v1alpha1.ConfigMap
-	err := client.Get(ctx, types.NamespacedName{Name: tiltfiles.TriggerQueueConfigMapName}, &cm)
+	err := client.Get(ctx, types.NamespacedName{Name: TriggerQueueName}, &cm)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return nil, err
 	}

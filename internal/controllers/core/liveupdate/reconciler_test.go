@@ -12,11 +12,16 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/containerupdate"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/buildcontrols"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func TestIndexing(t *testing.T) {
@@ -113,6 +118,65 @@ func TestConsumeFileEvents(t *testing.T) {
 
 	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
 	assert.Nil(t, lu.Status.Failed)
+
+	if assert.NotNil(t, f.st.lastStartedAction) {
+		assert.Equal(t, []string{txtPath}, f.st.lastStartedAction.FilesChanged)
+	}
+	if assert.NotNil(t, f.st.lastCompletedAction) {
+		keys := []model.TargetID{}
+		for key := range f.st.lastCompletedAction.Result {
+			keys = append(keys, key)
+		}
+		assert.Equal(t, "image:frontend-image", keys[0].String())
+
+		result := f.st.lastCompletedAction.Result[keys[0]]
+		assert.Equal(t,
+			[]container.ID{"main-id"},
+			result.(store.LiveUpdateBuildResult).LiveUpdatedContainerIDs)
+	}
+}
+
+func TestConsumeFileEventsUpdateModeManual(t *testing.T) {
+	f := newFixture(t)
+
+	p, _ := os.Getwd()
+	nowMicro := apis.NowMicro()
+	txtPath := filepath.Join(p, "a.txt")
+	txtChangeTime := metav1.MicroTime{Time: nowMicro.Add(time.Second)}
+
+	f.setupFrontend()
+
+	var lu v1alpha1.LiveUpdate
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	lu.Annotations[liveupdate.AnnotationUpdateMode] = liveupdate.UpdateModeManual
+	f.Update(&lu)
+
+	// Trigger a file event, and make sure that the status reflects the sync.
+	f.addFileEvent("frontend-fw", txtPath, txtChangeTime)
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	assert.Nil(t, lu.Status.Failed)
+	if assert.Equal(t, 1, len(lu.Status.Containers)) {
+		assert.Equal(t, "Trigger", lu.Status.Containers[0].Waiting.Reason)
+	}
+
+	f.Upsert(&v1alpha1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: configmap.TriggerQueueName,
+		},
+		Data: map[string]string{
+			"0-name": "frontend",
+		},
+	})
+
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	assert.Nil(t, lu.Status.Failed)
+	if assert.Equal(t, 1, len(lu.Status.Containers)) {
+		assert.Equal(t, txtChangeTime, lu.Status.Containers[0].LastFileTimeSynced)
+	}
 }
 
 func TestWaitingContainer(t *testing.T) {
@@ -132,7 +196,7 @@ func TestWaitingContainer(t *testing.T) {
 				Containers: []v1alpha1.Container{
 					{
 						Name:  "main",
-						ID:    "main",
+						ID:    "main-id",
 						Image: "frontend-image",
 						State: v1alpha1.ContainerState{
 							Waiting: &v1alpha1.ContainerStateWaiting{},
@@ -164,7 +228,7 @@ func TestWaitingContainer(t *testing.T) {
 				Containers: []v1alpha1.Container{
 					{
 						Name:  "main",
-						ID:    "main",
+						ID:    "main-id",
 						Image: "frontend-image",
 						State: v1alpha1.ContainerState{
 							Running: &v1alpha1.ContainerStateRunning{},
@@ -197,7 +261,7 @@ func TestOneTerminatedContainer(t *testing.T) {
 				Containers: []v1alpha1.Container{
 					{
 						Name:  "main",
-						ID:    "main",
+						ID:    "main-id",
 						Image: "frontend-image",
 						State: v1alpha1.ContainerState{
 							Terminated: &v1alpha1.ContainerStateTerminated{},
@@ -237,7 +301,7 @@ func TestOneRunningOneTerminatedContainer(t *testing.T) {
 				Containers: []v1alpha1.Container{
 					{
 						Name:  "main",
-						ID:    "main",
+						ID:    "main-id",
 						Image: "frontend-image",
 						State: v1alpha1.ContainerState{
 							Terminated: &v1alpha1.ContainerStateTerminated{},
@@ -251,7 +315,7 @@ func TestOneRunningOneTerminatedContainer(t *testing.T) {
 				Containers: []v1alpha1.Container{
 					{
 						Name:  "main",
-						ID:    "main",
+						ID:    "main-id",
 						Image: "frontend-image",
 						State: v1alpha1.ContainerState{
 							Running: &v1alpha1.ContainerStateRunning{},
@@ -285,21 +349,43 @@ func TestOneRunningOneTerminatedContainer(t *testing.T) {
 	f.assertSteadyState(&lu)
 }
 
+type TestingStore struct {
+	*store.TestingStore
+	lastStartedAction   buildcontrols.BuildStartedAction
+	lastCompletedAction buildcontrols.BuildCompleteAction
+}
+
+func newTestingStore() *TestingStore {
+	return &TestingStore{TestingStore: store.NewTestingStore()}
+}
+
+func (s *TestingStore) Dispatch(action store.Action) {
+	s.TestingStore.Dispatch(action)
+	switch action := action.(type) {
+	case buildcontrols.BuildStartedAction:
+		s.lastStartedAction = action
+	case buildcontrols.BuildCompleteAction:
+		s.lastCompletedAction = action
+	}
+}
+
 type fixture struct {
 	*fake.ControllerFixture
 	r  *Reconciler
 	cu *containerupdate.FakeContainerUpdater
+	st *TestingStore
 }
 
 func newFixture(t testing.TB) *fixture {
 	cfb := fake.NewControllerFixtureBuilder(t)
 	cu := &containerupdate.FakeContainerUpdater{}
-	st := store.NewTestingStore()
+	st := newTestingStore()
 	r := NewFakeReconciler(st, cu, cfb.Client)
 	return &fixture{
 		ControllerFixture: cfb.Build(r),
 		r:                 r,
 		cu:                cu,
+		st:                st,
 	}
 }
 
@@ -352,7 +438,7 @@ func (f *fixture) setupFrontend() {
 					Containers: []v1alpha1.Container{
 						{
 							Name:  "main",
-							ID:    "main",
+							ID:    "main-id",
 							Image: "frontend-image",
 							Ready: true,
 							State: v1alpha1.ContainerState{
@@ -367,7 +453,13 @@ func (f *fixture) setupFrontend() {
 		},
 	})
 	f.Create(&v1alpha1.LiveUpdate{
-		ObjectMeta: metav1.ObjectMeta{Name: "frontend-liveupdate"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "frontend-liveupdate",
+			Annotations: map[string]string{
+				v1alpha1.AnnotationManifest:     "frontend",
+				liveupdate.AnnotationUpdateMode: "auto",
+			},
+		},
 		Spec: v1alpha1.LiveUpdateSpec{
 			BasePath: p,
 			Sources: []v1alpha1.LiveUpdateSource{{
@@ -384,6 +476,11 @@ func (f *fixture) setupFrontend() {
 			Syncs: []v1alpha1.LiveUpdateSync{
 				{LocalPath: ".", ContainerPath: "/app"},
 			},
+		},
+	})
+	f.Create(&v1alpha1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: configmap.TriggerQueueName,
 		},
 	})
 }

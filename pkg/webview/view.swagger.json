@@ -420,7 +420,8 @@
           "type": "string",
           "title": "If the input's value is converted to a string, use this when the value is false.\nIf unspecified, its string value will be `\"false\"`\n+optional"
         }
-      }
+      },
+      "description": "Describes a boolean checkbox input field attached to a button."
     },
     "v1alpha1UIBoolInputStatus": {
       "type": "object",
@@ -581,7 +582,8 @@
         "value": {
           "type": "string"
         }
-      }
+      },
+      "description": "Describes a hidden input field attached to a button,\nwith a value to pass on any submit."
     },
     "v1alpha1UIHiddenInputStatus": {
       "type": "object",
@@ -956,7 +958,8 @@
           "type": "string",
           "description": "A short hint that describes the expected input of this field.\n\n+optional"
         }
-      }
+      },
+      "description": "Describes a text input field attached to a button."
     },
     "v1alpha1UITextInputStatus": {
       "type": "object",
