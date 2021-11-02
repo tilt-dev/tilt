@@ -254,6 +254,30 @@ func TestRestartOn(t *testing.T) {
 	timecmp.AssertTimeEqual(f.T(), lastApply, ka.Status.LastApplyTime)
 }
 
+func TestIgnoreManagedObjects(t *testing.T) {
+	f := newFixture(t)
+	ka := v1alpha1.KubernetesApply{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "a",
+			Annotations: map[string]string{
+				v1alpha1.AnnotationManagedBy: "buildcontrol",
+			},
+		},
+		Spec: v1alpha1.KubernetesApplySpec{
+			YAML: testyaml.SanchoYAML,
+		},
+	}
+	f.Create(&ka)
+
+	f.MustReconcile(types.NamespacedName{Name: "a"})
+	assert.Empty(f.T(), f.kClient.Yaml)
+
+	// no apply should happen since the object is managed by the engine
+	f.MustGet(types.NamespacedName{Name: "a"}, &ka)
+	assert.Empty(f.T(), ka.Status.ResultYAML)
+	assert.Zero(f.T(), ka.Status.LastApplyTime)
+}
+
 type fixture struct {
 	*fake.ControllerFixture
 	r       *Reconciler
