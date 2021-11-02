@@ -9,8 +9,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
 	"github.com/tilt-dev/tilt/internal/store"
-	"github.com/tilt-dev/tilt/internal/store/tiltfiles"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
@@ -30,7 +30,7 @@ func (s *TriggerQueueSubscriber) fromState(st store.RStore) *v1alpha1.ConfigMap 
 
 	cm := &v1alpha1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: tiltfiles.TriggerQueueConfigMapName,
+			Name: configmap.TriggerQueueName,
 		},
 		Data: make(map[string]string, len(state.TriggerQueue)),
 	}

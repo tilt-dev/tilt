@@ -366,7 +366,7 @@ func (r *Reconciler) enqueueTriggerQueue(obj client.Object) []reconcile.Request 
 		return nil
 	}
 
-	if cm.Name != tiltfiles.TriggerQueueConfigMapName {
+	if cm.Name != configmap.TriggerQueueName {
 		return nil
 	}
 

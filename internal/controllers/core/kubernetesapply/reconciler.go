@@ -26,6 +26,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/apis/restarton"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/localexec"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/kubernetesapplys"
 	"github.com/tilt-dev/tilt/internal/timecmp"
@@ -43,6 +44,7 @@ type Reconciler struct {
 	cfgNS       k8s.Namespace
 	ctrlClient  ctrlclient.Client
 	indexer     *indexer.Indexer
+	execer      localexec.Execer
 
 	mu sync.Mutex
 
@@ -60,11 +62,12 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	return b, nil
 }
 
-func NewReconciler(ctrlClient ctrlclient.Client, k8sClient k8s.Client, scheme *runtime.Scheme, dkc build.DockerKubeConnection, kubeContext k8s.KubeContext, st store.RStore, cfgNS k8s.Namespace) *Reconciler {
+func NewReconciler(ctrlClient ctrlclient.Client, k8sClient k8s.Client, scheme *runtime.Scheme, dkc build.DockerKubeConnection, kubeContext k8s.KubeContext, st store.RStore, cfgNS k8s.Namespace, execer localexec.Execer) *Reconciler {
 	return &Reconciler{
 		ctrlClient:  ctrlClient,
 		k8sClient:   k8sClient,
 		indexer:     indexer.NewIndexer(scheme, indexImageMap),
+		execer:      execer,
 		dkc:         dkc,
 		kubeContext: kubeContext,
 		st:          st,

@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/localexec"
 	tiltfile_io "github.com/tilt-dev/tilt/internal/tiltfile/io"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 	"github.com/tilt-dev/tilt/internal/tiltfile/value"
@@ -69,8 +70,7 @@ func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, arg
 }
 
 func (s *tiltfileState) execLocalCmd(t *starlark.Thread, cmd model.Cmd, options execCommandOptions) (string, error) {
-	stdout := bytes.NewBuffer(nil)
-	stderr := bytes.NewBuffer(nil)
+	var stdoutBuf, stderrBuf bytes.Buffer
 	ctx, err := starkit.ContextFromThread(t)
 	if err != nil {
 		return "", err
@@ -84,39 +84,44 @@ func (s *tiltfileState) execLocalCmd(t *starlark.Thread, cmd model.Cmd, options 
 		s.logger.Infof("%s %s", prefix, cmd)
 	}
 
-	c, err := s.localEnv.ExecCmd(cmd, logger.Get(ctx))
-	if err != nil {
-		return "", err
+	var runIO localexec.RunIO
+	if options.logOutput {
+		logOutput := logger.NewMutexWriter(logger.NewPrefixedLogger(localLogPrefix, s.logger).Writer(logger.InfoLvl))
+		runIO.Stdout = io.MultiWriter(&stdoutBuf, logOutput)
+		runIO.Stderr = io.MultiWriter(&stderrBuf, logOutput)
+	} else {
+		runIO.Stdout = &stdoutBuf
+		runIO.Stderr = &stderrBuf
 	}
 
 	// TODO(nick): Should this also inject any docker.Env overrides?
-	c.Stdout = stdout
-	c.Stderr = stderr
-
-	if options.logOutput {
-		logOutput := logger.NewMutexWriter(logger.NewPrefixedLogger(localLogPrefix, s.logger).Writer(logger.InfoLvl))
-		c.Stdout = io.MultiWriter(stdout, logOutput)
-		c.Stderr = io.MultiWriter(stderr, logOutput)
-	}
-
-	err = c.Run()
-	if err != nil {
-		// If we already logged the output, we don't need to log it again.
-		if options.logOutput {
-			return "", fmt.Errorf("command %q failed.\nerror: %v", c.Args, err)
+	exitCode, err := s.execer.Run(ctx, cmd, runIO)
+	if err != nil || exitCode != 0 {
+		var errMessage strings.Builder
+		errMessage.WriteString(fmt.Sprintf("command %q failed.", cmd))
+		if err != nil {
+			errMessage.WriteString(fmt.Sprintf("\nerror: %v", err))
+		} else {
+			errMessage.WriteString(fmt.Sprintf("\nerror: exit status %d", exitCode))
 		}
 
-		errorMessage := fmt.Sprintf("command %q failed.\nerror: %v\nstdout: %q\nstderr: %q", c.Args, err, stdout.String(), stderr.String())
-		return "", errors.New(errorMessage)
+		if !options.logOutput {
+			// if we already logged the output, don't include it in the error message to prevent it from
+			// getting output 2x
+			errMessage.WriteString(fmt.Sprintf("\nstdout: %q\nstderr: %q",
+				stdoutBuf.String(), stderrBuf.String()))
+		}
+
+		return "", errors.New(errMessage.String())
 	}
 
 	// only show that there was no output if the command was echoed AND we wanted output logged
 	// otherwise, it's confusing to get "[no output]" without context of _what_ didn't have output
-	if options.logCommand && options.logOutput && stdout.Len() == 0 && stderr.Len() == 0 {
+	if options.logCommand && options.logOutput && stdoutBuf.Len() == 0 && stderrBuf.Len() == 0 {
 		s.logger.Infof("%s[no output]", localLogPrefix)
 	}
 
-	return stdout.String(), nil
+	return stdoutBuf.String(), nil
 }
 
 func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {

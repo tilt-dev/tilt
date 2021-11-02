@@ -156,10 +156,26 @@ func (f *ControllerFixture) Create(o object) ctrl.Result {
 	return f.MustReconcile(f.KeyForObject(o))
 }
 
-// Update updates the object including Status subresource.
+// Update updates the object metadata and spec.
 func (f *ControllerFixture) Update(o object) ctrl.Result {
 	f.t.Helper()
 	require.NoError(f.t, f.Client.Update(f.ctx, o))
+	return f.MustReconcile(f.KeyForObject(o))
+}
+
+// Create or update.
+func (f *ControllerFixture) Upsert(o object) ctrl.Result {
+	f.t.Helper()
+
+	err := f.Client.Create(f.ctx, o)
+	if apierrors.IsAlreadyExists(err) {
+		update := o.DeepCopyObject().(object)
+
+		require.NoError(f.t, f.Client.Get(f.ctx, f.KeyForObject(o), o))
+		update.SetResourceVersion(o.GetResourceVersion())
+		return f.Update(update)
+	}
+	require.NoError(f.t, err)
 	return f.MustReconcile(f.KeyForObject(o))
 }
 

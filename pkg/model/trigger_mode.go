@@ -2,15 +2,26 @@ package model
 
 type TriggerMode int
 
-// When Tilt decides that a resource could use a build, TriggerMode specifies whether to require manual approval
-// before that build takes place.
-// There are two classes of build as far as TriggerMode is concerned:
-// 1. Initial - A manifest's first build per `tilt up`. Either directly because the user ran `tilt up`,
-// 		or because the user just added the manifest to the Tiltfile.
-// 2. Non-initial - After the initial build, any time one of the manifest's dependencies changes, the manifest is ready
-//      for an update
-// NOTE(maia): These are probably better stored as two different bools (OnFileChange and OnInit
-//   or similar)--but that's a refactor for another day
+// Currently TriggerMode models two orthogonal attributes in one enum:
+//
+// 1. Whether a file change should update the resource immediately (auto vs
+//    manual mode)
+//
+// 2. Whether a resource should start when the env starts (auto_init=true vs
+//    auto_init=false mode, sometimes called AutoInit vs ManualInit mode)
+//
+// In the APIServer, we don't model these as attributes of a resource.  Rather,
+// the resource specifies where these attribute comes from, with the ability to
+// define different sources.
+//
+// Update triggers are modeled as StartOn/RestartOn, so resources
+// can be configured with different types of update triggers.
+//
+// Start/stop status of resources are modeled as DisableOn, so
+// that individual objects can be independently started/stopped.
+//
+// We expect TriggerMode to go away in the API in favor of better visualization
+// of why updates have been triggered and why resources are stopped.
 const (
 	// Tilt automatically performs all builds (initial and non-initial) without manual intervention
 	TriggerModeAuto TriggerMode = iota
