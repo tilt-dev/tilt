@@ -822,6 +822,7 @@ func TestConfigFileChangeClearsBuildStateToForceImageBuild(t *testing.T) {
 	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", `
+disable_feature('live_update_v2')
 docker_build('gcr.io/windmill-public-containers/servantes/snack', '.', live_update=[sync('.', '/app')])
 k8s_yaml('snack.yaml')
 	`)
@@ -1058,6 +1059,7 @@ func TestConfigChange_TiltfileErrorAndFixWithFileChange(t *testing.T) {
 
 	tiltfileWithCmd := func(cmd string) string {
 		return fmt.Sprintf(`
+disable_feature('live_update_v2')
 docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', dockerfile='Dockerfile',
     live_update=[
         sync('./src', '/src'),
