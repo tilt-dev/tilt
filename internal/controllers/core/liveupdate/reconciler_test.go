@@ -248,6 +248,57 @@ func TestWaitingContainer(t *testing.T) {
 	assert.Equal(t, 1, len(f.cu.Calls))
 }
 
+func TestWaitingContainerNoID(t *testing.T) {
+	f := newFixture(t)
+
+	p, _ := os.Getwd()
+	nowMicro := apis.NowMicro()
+	txtPath := filepath.Join(p, "a.txt")
+	txtChangeTime := metav1.MicroTime{Time: nowMicro.Add(time.Second)}
+
+	f.setupFrontend()
+	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
+		Pods: []v1alpha1.Pod{
+			{
+				Name:      "pod-1",
+				Namespace: "default",
+				InitContainers: []v1alpha1.Container{
+					{
+						Name:  "main-init",
+						ID:    "main-id",
+						Image: "busybox",
+						State: v1alpha1.ContainerState{
+							Running: &v1alpha1.ContainerStateRunning{},
+						},
+					},
+				},
+				Containers: []v1alpha1.Container{
+					{
+						Name:  "main",
+						Image: "frontend-image",
+						State: v1alpha1.ContainerState{
+							Waiting: &v1alpha1.ContainerStateWaiting{Reason: "PodInitializing"},
+						},
+					},
+				},
+			},
+		},
+	})
+
+	f.addFileEvent("frontend-fw", txtPath, txtChangeTime)
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+
+	var lu v1alpha1.LiveUpdate
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	assert.Nil(t, lu.Status.Failed)
+	if assert.Equal(t, 1, len(lu.Status.Containers)) {
+		assert.Equal(t, "ContainerWaiting", lu.Status.Containers[0].Waiting.Reason)
+	}
+	assert.Equal(t, 0, len(f.cu.Calls))
+
+	f.assertSteadyState(&lu)
+}
+
 func TestOneTerminatedContainer(t *testing.T) {
 	f := newFixture(t)
 
