@@ -453,7 +453,7 @@ func (r *Reconciler) visitSelectedContainers(
 		for _, c := range pod.Containers {
 			// Only visit well-formed containers matching our image
 			imageRef, err := container.ParseNamed(c.Image)
-			if err != nil || c.ID == "" || c.Name == "" || imageRef == nil ||
+			if err != nil || c.Name == "" || imageRef == nil ||
 				kSelector.Image != reference.FamiliarName(imageRef) {
 				continue
 			}
@@ -612,7 +612,10 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 		}
 
 		var waiting *v1alpha1.LiveUpdateContainerStateWaiting
-		if cInfo.State.Running == nil {
+
+		// We interpret "no container id" as a waiting state
+		// (terminated states should have been caught above).
+		if cInfo.State.Running == nil || cInfo.ID == "" {
 			waiting = &v1alpha1.LiveUpdateContainerStateWaiting{
 				Reason:  "ContainerWaiting",
 				Message: "Waiting for container to start",
