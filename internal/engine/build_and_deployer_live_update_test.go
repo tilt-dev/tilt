@@ -181,8 +181,13 @@ func TestLiveUpdateDockerBuildLocalContainer(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
+	m := manifestbuilder.New(f, "sancho").
+		WithK8sYAML(SanchoYAML).
+		WithLiveUpdateBAD().
+		WithImageTarget(NewSanchoLiveUpdateImageTarget(f)).
+		Build()
 	tCase := testCase{
-		manifest:                 NewSanchoLiveUpdateManifest(f),
+		manifest:                 m,
 		changedFiles:             []string{"a.txt"},
 		expectDockerBuildCount:   0,
 		expectDockerPushCount:    0,
@@ -197,7 +202,11 @@ func TestLiveUpdateDockerBuildLocalContainerSameImgMultipleContainers(t *testing
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
-	m := NewSanchoLiveUpdateManifest(f)
+	m := manifestbuilder.New(f, "sancho").
+		WithK8sYAML(SanchoYAML).
+		WithLiveUpdateBAD().
+		WithImageTarget(NewSanchoLiveUpdateImageTarget(f)).
+		Build()
 	cIDs := []container.ID{"c1", "c2", "c3"}
 	tCase := testCase{
 		manifest:                  m,
@@ -224,6 +233,7 @@ func TestLiveUpdateDockerBuildExecSameImgMultipleContainers(t *testing.T) {
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
+			WithLiveUpdateBAD().
 			WithImageTarget(iTarg).
 			WithLiveUpdate(lu).
 			Build(),
@@ -247,6 +257,7 @@ func TestLiveUpdateDockerBuildLocalContainerDiffImgMultipleContainers(t *testing
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sanchoWithSidecar").
 			WithK8sYAML(testyaml.SanchoSidecarYAML).
+			WithLiveUpdateBAD().
 			WithImageTargets(sanchoTarg, sidecarTarg).
 			Build(),
 		runningContainersByTarget: map[model.TargetID][]container.ID{
@@ -277,6 +288,7 @@ func TestLiveUpdateDockerBuildExecDiffImgMultipleContainers(t *testing.T) {
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sanchoWithSidecar").
 			WithK8sYAML(testyaml.SanchoSidecarYAML).
+			WithLiveUpdateBAD().
 			WithImageTargets(sanchoTarg, sidecarTarg).
 			WithLiveUpdateAtIndex(sanchoLU, 0).
 			WithLiveUpdateAtIndex(sidecarLU, 1).
@@ -322,6 +334,7 @@ func TestLiveUpdateDiffImgMultipleContainersOnlySomeSyncsMatch(t *testing.T) {
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sanchoWithSidecar").
 			WithK8sYAML(testyaml.SanchoSidecarYAML).
+			WithLiveUpdateBAD().
 			WithImageTargets(sanchoTarg, sidecarTarg).
 			WithLiveUpdateAtIndex(sanchoLU, 0).
 			WithLiveUpdateAtIndex(sidecarLU, 1).
@@ -363,6 +376,7 @@ func TestLiveUpdateDiffImgMultipleContainersSameContextOnlyOneLiveUpdate(t *test
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sanchoWithSidecar").
 			WithK8sYAML(testyaml.SanchoSidecarYAML).
+			WithLiveUpdateBAD().
 			WithImageTargets(sanchoTarg, sidecarTarg).
 			WithLiveUpdateAtIndex(sanchoLU, 0).
 			Build(),
@@ -396,6 +410,7 @@ func TestLiveUpdateDiffImgMultipleContainersFallBackIfFilesDoesntMatchAnySyncs(t
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sanchoWithSidecar").
 			WithK8sYAML(testyaml.SanchoSidecarYAML).
+			WithLiveUpdateBAD().
 			WithImageTargets(sanchoTarg, sidecarTarg).
 			WithLiveUpdateAtIndex(sanchoLU, 0).
 			WithLiveUpdateAtIndex(sidecarLU, 1).
@@ -425,9 +440,14 @@ func TestLiveUpdateDockerContainerUserRunFailureDoesntFallBack(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
+	m := manifestbuilder.New(f, "sancho").
+		WithK8sYAML(SanchoYAML).
+		WithLiveUpdateBAD().
+		WithImageTarget(NewSanchoLiveUpdateImageTarget(f)).
+		Build()
 	f.docker.SetExecError(userFailureErrDocker)
 	tCase := testCase{
-		manifest:     NewSanchoLiveUpdateManifest(f),
+		manifest:     m,
 		changedFiles: []string{"a.txt"},
 
 		// BuildAndDeploy call will ultimately fail with this error,
@@ -457,6 +477,7 @@ func TestLiveUpdateExecUserRunFailureDoesntFallBack(t *testing.T) {
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
+			WithLiveUpdateBAD().
 			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
 			WithLiveUpdate(lu).
 			Build(),
@@ -483,7 +504,11 @@ func TestLiveUpdateMultipleContainersFallsBackForFailure(t *testing.T) {
 
 	f.docker.SetExecError(fmt.Errorf("egads"))
 
-	m := NewSanchoLiveUpdateManifest(f)
+	m := manifestbuilder.New(f, "sancho").
+		WithK8sYAML(SanchoYAML).
+		WithLiveUpdateBAD().
+		WithImageTarget(NewSanchoLiveUpdateImageTarget(f)).
+		Build()
 	cIDs := []container.ID{"c1", "c2", "c3"}
 	tCase := testCase{
 		manifest:                  m,
@@ -510,7 +535,11 @@ func TestLiveUpdateMultipleContainersFallsBackForFailureAfterSuccess(t *testing.
 	// First call = no error, second call = error
 	f.docker.ExecErrorsToThrow = []error{nil, fmt.Errorf("egads")}
 
-	m := NewSanchoLiveUpdateManifest(f)
+	m := manifestbuilder.New(f, "sancho").
+		WithK8sYAML(SanchoYAML).
+		WithLiveUpdateBAD().
+		WithImageTarget(NewSanchoLiveUpdateImageTarget(f)).
+		Build()
 	cIDs := []container.ID{"c1", "c2", "c3"}
 	tCase := testCase{
 		manifest:                  m,
@@ -539,7 +568,11 @@ func TestLiveUpdateMultipleContainersUpdatesAllForUserRunFailuresAndDoesntFallBa
 	// Same UserRunFailure on all three exec calls
 	f.docker.ExecErrorsToThrow = []error{userFailureErrDocker, userFailureErrDocker, userFailureErrDocker}
 
-	m := NewSanchoLiveUpdateManifest(f)
+	m := manifestbuilder.New(f, "sancho").
+		WithK8sYAML(SanchoYAML).
+		WithLiveUpdateBAD().
+		WithImageTarget(NewSanchoLiveUpdateImageTarget(f)).
+		Build()
 	cIDs := []container.ID{"c1", "c2", "c3"}
 	tCase := testCase{
 		manifest:                  m,
@@ -572,7 +605,11 @@ func TestLiveUpdateMultipleContainersFallsBackForSomeUserRunFailuresSomeSuccess(
 
 	f.docker.ExecErrorsToThrow = []error{userFailureErrDocker, nil, userFailureErrDocker}
 
-	m := NewSanchoLiveUpdateManifest(f)
+	m := manifestbuilder.New(f, "sancho").
+		WithK8sYAML(SanchoYAML).
+		WithLiveUpdateBAD().
+		WithImageTarget(NewSanchoLiveUpdateImageTarget(f)).
+		Build()
 	cIDs := []container.ID{"c1", "c2", "c3"}
 	tCase := testCase{
 		manifest:                  m,
@@ -603,7 +640,11 @@ func TestLiveUpdateMultipleContainersFallsBackForSomeUserRunFailuresSomeNonUserF
 		userFailureErrDocker,
 	}
 
-	m := NewSanchoLiveUpdateManifest(f)
+	m := manifestbuilder.New(f, "sancho").
+		WithK8sYAML(SanchoYAML).
+		WithLiveUpdateBAD().
+		WithImageTarget(NewSanchoLiveUpdateImageTarget(f)).
+		Build()
 	cIDs := []container.ID{"c1", "c2", "c3"}
 	tCase := testCase{
 		manifest:                  m,
@@ -631,6 +672,7 @@ func TestLiveUpdateCustomBuildLocalContainer(t *testing.T) {
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
+			WithLiveUpdateBAD().
 			WithImageTarget(NewSanchoCustomBuildImageTarget(f)).
 			WithLiveUpdate(lu).
 			Build(),
@@ -652,6 +694,7 @@ func TestLiveUpdateHotReloadLocalContainer(t *testing.T) {
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
+			WithLiveUpdateBAD().
 			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
 			WithLiveUpdate(lu).
 			Build(),
@@ -678,6 +721,7 @@ func TestLiveUpdateRunTriggerLocalContainer(t *testing.T) {
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
+			WithLiveUpdateBAD().
 			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
 			WithLiveUpdate(lu).
 			Build(),
@@ -704,6 +748,7 @@ func TestLiveUpdateRunTriggerExec(t *testing.T) {
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
+			WithLiveUpdateBAD().
 			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
 			WithLiveUpdate(lu).
 			Build(),
@@ -726,6 +771,7 @@ func TestLiveUpdateCustomBuildExec(t *testing.T) {
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
+			WithLiveUpdateBAD().
 			WithImageTarget(NewSanchoCustomBuildImageTarget(f)).
 			WithLiveUpdate(lu).
 			Build(),
@@ -748,6 +794,7 @@ func TestLiveUpdateExecDoesNotSupportRestart(t *testing.T) {
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
+			WithLiveUpdateBAD().
 			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
 			WithLiveUpdate(lu).
 			Build(),
@@ -771,6 +818,7 @@ func TestLiveUpdateDockerBuildExec(t *testing.T) {
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
+			WithLiveUpdateBAD().
 			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
 			WithLiveUpdate(lu).
 			Build(),
@@ -790,6 +838,7 @@ func TestLiveUpdateLocalContainerFallBackOn(t *testing.T) {
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
+			WithLiveUpdateBAD().
 			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
 			WithLiveUpdate(lu).
 			Build(),
@@ -813,6 +862,7 @@ func TestLiveUpdateExecFallBackOn(t *testing.T) {
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
+			WithLiveUpdateBAD().
 			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
 			WithLiveUpdate(lu).
 			Build(),
@@ -841,6 +891,7 @@ func TestLiveUpdateLocalContainerChangedFileNotMatchingSyncFallsBack(t *testing.
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
+			WithLiveUpdateBAD().
 			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
 			WithLiveUpdate(lu).
 			Build(),
@@ -872,6 +923,7 @@ func TestLiveUpdateExecChangedFileNotMatchingSyncFallsBack(t *testing.T) {
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
+			WithLiveUpdateBAD().
 			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
 			WithLiveUpdate(lu).
 			Build(),
@@ -915,6 +967,7 @@ func TestLiveUpdateManyFilesNotMatching(t *testing.T) {
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
+			WithLiveUpdateBAD().
 			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
 			WithLiveUpdate(lu).
 			Build(),
@@ -946,6 +999,7 @@ func TestLiveUpdateSomeFilesMatchSyncSomeDontFallsBack(t *testing.T) {
 	tCase := testCase{
 		manifest: manifestbuilder.New(f, "sancho").
 			WithK8sYAML(SanchoYAML).
+			WithLiveUpdateBAD().
 			WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
 			WithLiveUpdate(lu).
 			Build(),
@@ -975,8 +1029,14 @@ func TestLiveUpdateInFirstImageOfImageDependency(t *testing.T) {
 	}}
 
 	lu := assembleLiveUpdate(steps, SanchoRunSteps, true, nil, f)
+	m := manifestbuilder.New(f, "sancho").
+		WithK8sYAML(SanchoYAML).
+		WithLiveUpdateBAD().
+		WithImageTargets(NewSanchoMultiStageImages(f)...).
+		WithLiveUpdateAtIndex(lu, 1).
+		Build()
 	tCase := testCase{
-		manifest:                 NewSanchoDockerBuildMultiStageManifestWithLiveUpdate(f, lu),
+		manifest:                 m,
 		changedFiles:             []string{"sancho-base/a.txt"},
 		expectDockerCopyCount:    1,
 		expectDockerExecCount:    1,
@@ -996,8 +1056,14 @@ func TestLiveUpdateInFirstImageOfImageDependencyWithoutSync(t *testing.T) {
 	}}
 
 	lu := assembleLiveUpdate(steps, SanchoRunSteps, true, nil, f)
+	m := manifestbuilder.New(f, "sancho").
+		WithK8sYAML(SanchoYAML).
+		WithLiveUpdateBAD().
+		WithImageTargets(NewSanchoMultiStageImages(f)...).
+		WithLiveUpdateAtIndex(lu, 1).
+		Build()
 	tCase := testCase{
-		manifest:               NewSanchoDockerBuildMultiStageManifestWithLiveUpdate(f, lu),
+		manifest:               m,
 		changedFiles:           []string{"sancho-base/a.txt"},
 		expectDockerBuildCount: 2,
 		expectK8sDeploy:        true,
@@ -1016,8 +1082,14 @@ func TestLiveUpdateInSecondImageOfImageDependency(t *testing.T) {
 	}}
 
 	lu := assembleLiveUpdate(steps, SanchoRunSteps, true, nil, f)
+	m := manifestbuilder.New(f, "sancho").
+		WithK8sYAML(SanchoYAML).
+		WithLiveUpdateBAD().
+		WithImageTargets(NewSanchoMultiStageImages(f)...).
+		WithLiveUpdateAtIndex(lu, 1).
+		Build()
 	tCase := testCase{
-		manifest:                 NewSanchoDockerBuildMultiStageManifestWithLiveUpdate(f, lu),
+		manifest:                 m,
 		changedFiles:             []string{"sancho/a.txt"},
 		expectDockerCopyCount:    1,
 		expectDockerExecCount:    1,

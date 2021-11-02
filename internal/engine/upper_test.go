@@ -4519,6 +4519,9 @@ func (f *testFixture) newManifest(name string) model.Manifest {
 	iTarget := NewSanchoLiveUpdateImageTarget(f)
 	return manifestbuilder.New(f, model.ManifestName(name)).
 		WithK8sYAML(SanchoYAML).
+		// Right now, most of our tests assume that we're going through
+		// using BuildAndDeployer to do live updates. :\
+		WithLiveUpdateBAD().
 		WithImageTarget(iTarget).
 		Build()
 }

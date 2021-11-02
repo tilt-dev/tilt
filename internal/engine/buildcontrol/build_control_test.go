@@ -277,6 +277,7 @@ func TestHoldForDeploy(t *testing.T) {
 	sancho := f.upsertManifest(manifestbuilder.New(f, "sancho").
 		WithImageTargets(sanchoImage).
 		WithK8sYAML(testyaml.SanchoYAML).
+		WithLiveUpdateBAD().
 		Build())
 
 	f.assertNextTargetToBuild("sancho")
