@@ -1,6 +1,7 @@
 package liveupdate
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -21,6 +22,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/store/buildcontrols"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -74,6 +76,7 @@ func TestMissingApply(t *testing.T) {
 	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
 	if assert.NotNil(t, lu.Status.Failed) {
 		assert.Equal(t, "ObjectNotFound", lu.Status.Failed.Reason)
+		assert.NotContains(t, f.Stdout(), "ObjectNotFound")
 	}
 
 	f.assertSteadyState(&lu)
@@ -94,6 +97,7 @@ func TestConsumeFileEvents(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, map[string]*monitorSource{}, m.sources)
 	assert.Equal(t, "frontend-discovery", m.lastKubernetesDiscovery.Name)
+	assert.Nil(t, f.st.lastStartedAction)
 
 	// Trigger a file event, and make sure that the status reflects the sync.
 	f.addFileEvent("frontend-fw", txtPath, txtChangeTime)
@@ -279,6 +283,8 @@ func TestOneTerminatedContainer(t *testing.T) {
 	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
 	if assert.NotNil(t, lu.Status.Failed) {
 		assert.Equal(t, "Terminated", lu.Status.Failed.Reason)
+		assert.Contains(t, f.Stdout(),
+			`LiveUpdate "frontend-liveupdate" Terminated: Container for live update is stopped. Pod name: pod-1`)
 	}
 
 	f.assertSteadyState(&lu)
@@ -351,8 +357,9 @@ func TestOneRunningOneTerminatedContainer(t *testing.T) {
 
 type TestingStore struct {
 	*store.TestingStore
-	lastStartedAction   buildcontrols.BuildStartedAction
-	lastCompletedAction buildcontrols.BuildCompleteAction
+	ctx                 context.Context
+	lastStartedAction   *buildcontrols.BuildStartedAction
+	lastCompletedAction *buildcontrols.BuildCompleteAction
 }
 
 func newTestingStore() *TestingStore {
@@ -363,9 +370,11 @@ func (s *TestingStore) Dispatch(action store.Action) {
 	s.TestingStore.Dispatch(action)
 	switch action := action.(type) {
 	case buildcontrols.BuildStartedAction:
-		s.lastStartedAction = action
+		s.lastStartedAction = &action
 	case buildcontrols.BuildCompleteAction:
-		s.lastCompletedAction = action
+		s.lastCompletedAction = &action
+	case store.LogAction:
+		_, _ = logger.Get(s.ctx).Writer(action.Level()).Write([]byte(action.Message()))
 	}
 }
 
@@ -381,8 +390,10 @@ func newFixture(t testing.TB) *fixture {
 	cu := &containerupdate.FakeContainerUpdater{}
 	st := newTestingStore()
 	r := NewFakeReconciler(st, cu, cfb.Client)
+	cf := cfb.Build(r)
+	st.ctx = cf.Context()
 	return &fixture{
-		ControllerFixture: cfb.Build(r),
+		ControllerFixture: cf,
 		r:                 r,
 		cu:                cu,
 		st:                st,
