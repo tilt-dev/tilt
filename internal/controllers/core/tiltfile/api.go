@@ -287,8 +287,9 @@ func toKubernetesApplyObjects(tlr *tiltfile.TiltfileLoadResult, disableSources d
 			ObjectMeta: metav1.ObjectMeta{
 				Name: name,
 				Annotations: map[string]string{
-					v1alpha1.AnnotationManifest: name,
-					v1alpha1.AnnotationSpanID:   fmt.Sprintf("kubernetesapply:%s", name),
+					v1alpha1.AnnotationManifest:  name,
+					v1alpha1.AnnotationSpanID:    fmt.Sprintf("kubernetesapply:%s", name),
+					v1alpha1.AnnotationManagedBy: "buildcontrol",
 				},
 			},
 			Spec: kTarget.KubernetesApplySpec,
