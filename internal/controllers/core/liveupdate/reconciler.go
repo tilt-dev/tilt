@@ -624,19 +624,8 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 			}
 		}
 
-		if waiting != nil {
-			// Mark the container as waiting, so we have a record of it.
-			status.Containers = append(status.Containers, v1alpha1.LiveUpdateContainerStatus{
-				ContainerName: cInfo.Name,
-				ContainerID:   cInfo.ID,
-				PodName:       pod.Name,
-				Namespace:     pod.Namespace,
-				Waiting:       waiting,
-			})
-			return false
-		}
-
 		// Create a plan to update the container.
+		filesApplied := false
 		var oneUpdateStatus v1alpha1.LiveUpdateStatus
 		plan, failed := r.createLiveUpdatePlan(lu.Spec, filesChanged)
 		if failed != nil {
@@ -645,14 +634,33 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 		} else if len(plan.SyncPaths) == 0 {
 			// The plan told us that there are no updates to do.
 			oneUpdateStatus.Containers = []v1alpha1.LiveUpdateContainerStatus{{
-				ContainerName:      c.ContainerName.String(),
-				ContainerID:        c.ContainerID.String(),
-				PodName:            c.PodID.String(),
-				Namespace:          c.Namespace.String(),
+				ContainerName:      cInfo.Name,
+				ContainerID:        cInfo.ID,
+				PodName:            pod.Name,
+				Namespace:          pod.Namespace,
 				LastFileTimeSynced: cStatus.lastFileTimeSynced,
+				Waiting:            waiting,
+			}}
+		} else if cInfo.State.Waiting != nil && cInfo.State.Waiting.Reason == "CrashLoopBackOff" {
+			// At this point, the plan told us that we have some files to sync.
+			// Check if the container is in a state to receive those updates.
+
+			// If the container is crashlooping, that means it might not be up long enough
+			// to be able to receive a live-update. Treat this as an unrecoverable failure case.
+			oneUpdateStatus.Failed = createFailedState(lu, "CrashLoopBackOff",
+				fmt.Sprintf("Cannot live update because container crashing. Pod: %s", pod.Name))
+
+		} else if waiting != nil {
+			// Mark the container as waiting, so we have a record of it. No need to sync any files.
+			oneUpdateStatus.Containers = []v1alpha1.LiveUpdateContainerStatus{{
+				ContainerName:      cInfo.Name,
+				ContainerID:        cInfo.ID,
+				PodName:            pod.Name,
+				Namespace:          pod.Namespace,
+				LastFileTimeSynced: cStatus.lastFileTimeSynced,
+				Waiting:            waiting,
 			}}
 		} else {
-			// The plan told us that we have some files to sync.
 			// Log progress and treat this as an update in the engine state.
 			if !updateEventDispatched {
 				updateEventDispatched = true
@@ -666,6 +674,7 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 				Containers:         []liveupdates.Container{c},
 				LastFileTimeSynced: newHighWaterMark,
 			})
+			filesApplied = true
 		}
 
 		// Merge the status from the single update into the overall liveupdate status.
@@ -675,7 +684,7 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 		if oneUpdateStatus.Failed != nil {
 			cStatus.failedReason = oneUpdateStatus.Failed.Reason
 			cStatus.failedMessage = oneUpdateStatus.Failed.Message
-		} else {
+		} else if filesApplied {
 			cStatus.lastFileTimeSynced = newHighWaterMark
 		}
 		monitor.containers[cKey] = cStatus
