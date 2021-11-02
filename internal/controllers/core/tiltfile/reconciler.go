@@ -51,11 +51,11 @@ type Reconciler struct {
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	b := ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.Tiltfile{}).
-		Watches(&source.Kind{Type: &v1alpha1.FileWatch{}},
-			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
 		Watches(&source.Kind{Type: &v1alpha1.ConfigMap{}},
 			handler.EnqueueRequestsFromMapFunc(r.enqueueTriggerQueue)).
 		Watches(r.buildSource, handler.Funcs{})
+
+	restarton.RegisterWatches(b, r.indexer)
 
 	return b, nil
 }
