@@ -57,7 +57,10 @@ export const EMPTY_FILTER_TERM: FilterTerm = {
   input: EMPTY_TERM,
   state: TermState.Empty,
 }
-const TERM_REGEXP_FLAGS = "gi" // Terms are case-insensitive and can match multiple instances
+
+// Terms are case-insensitive.
+// We don't want our regexp to be stateful (so no 'g' flag).
+const TERM_REGEXP_FLAGS = "i"
 
 export function isRegexp(input: string): boolean {
   return input.length > 2 && input[0] === "/" && input[input.length - 1] === "/"
