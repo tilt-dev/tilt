@@ -9,6 +9,7 @@ import (
 	"go.opencensus.io/tag"
 	octag "go.opencensus.io/tag"
 
+	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -52,19 +53,25 @@ var K8sDeployObjectsCount = &view.View{
 	TagKeys:     []octag.Key{keyResourceName, keyHasError},
 }
 
-func reportK8sDeployMetrics(ctx context.Context, kTarget model.K8sTarget, dur time.Duration, hasError bool) {
+func reportK8sDeployMetrics(ctx context.Context, targetID model.TargetID, dur time.Duration,
+	result store.K8sBuildResult, hasError bool) {
 	latencyMs := float64(dur / time.Millisecond)
 	errorTag := "0"
 	if hasError {
 		errorTag = "1"
 	}
+	var deployedCount int64
+	if result.KubernetesApplyFilter != nil {
+		deployedCount = int64(len(result.KubernetesApplyFilter.DeployedRefs))
+	}
+
 	recErr := stats.RecordWithTags(ctx,
 		[]octag.Mutator{
-			octag.Upsert(keyResourceName, kTarget.ID().Name.String()),
+			octag.Upsert(keyResourceName, targetID.Name.String()),
 			octag.Upsert(keyHasError, errorTag),
 		},
 		K8sDeployDuration.M(latencyMs),
-		K8sDeployObjects.M(int64(len(kTarget.ObjectRefs))))
+		K8sDeployObjects.M(deployedCount))
 	if recErr != nil {
 		logger.Get(ctx).Debugf("k8s deploy stats: %v", recErr)
 	}

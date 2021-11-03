@@ -3,9 +3,6 @@ package model
 import (
 	"fmt"
 	"reflect"
-	"strings"
-
-	v1 "k8s.io/api/core/v1"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
@@ -38,10 +35,6 @@ type K8sTarget struct {
 	// that balances brevity and uniqueness
 	DisplayNames []string
 
-	// Store the name, namespace, and type in a structured form
-	// for easy access. This should duplicate what's specified in the YAML.
-	ObjectRefs []v1.ObjectReference
-
 	PodReadinessMode PodReadinessMode
 
 	// Map configRef -> number of times we (expect to) inject it.
@@ -66,15 +59,6 @@ func NewK8sTargetForTesting(yaml string) K8sTarget {
 }
 
 func (k8s K8sTarget) Empty() bool { return reflect.DeepEqual(k8s, K8sTarget{}) }
-
-func (k8s K8sTarget) HasJob() bool {
-	for _, ref := range k8s.ObjectRefs {
-		if strings.Contains(ref.Kind, "Job") {
-			return true
-		}
-	}
-	return false
-}
 
 func (k8s K8sTarget) DependencyIDs() []TargetID {
 	return append([]TargetID{}, k8s.depIDs...)

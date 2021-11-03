@@ -44,13 +44,8 @@ func k8sRuntimeTarget(mt *store.ManifestTarget) *session.Target {
 
 	target := &session.Target{
 		Name:      fmt.Sprintf("%s:runtime", mt.Manifest.Name.String()),
+		Type:      k8sTargetType(mt),
 		Resources: []string{mt.Manifest.Name.String()},
-	}
-
-	if mt.Manifest.IsK8s() && mt.Manifest.K8sTarget().HasJob() {
-		target.Type = session.TargetTypeJob
-	} else {
-		target.Type = session.TargetTypeServer
 	}
 
 	// a lot of this logic is duplicated from K8sRuntimeState::RuntimeStatus()
@@ -242,6 +237,23 @@ func buildTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *session.
 	}
 
 	return res
+}
+
+func k8sTargetType(mt *store.ManifestTarget) session.TargetType {
+	if !mt.Manifest.IsK8s() {
+		return ""
+	}
+
+	krs := mt.State.K8sRuntimeState()
+	if krs.ApplyFilter != nil {
+		for _, ref := range krs.ApplyFilter.DeployedRefs {
+			if strings.Contains(ref.Kind, "Job") {
+				return session.TargetTypeJob
+			}
+		}
+	}
+
+	return session.TargetTypeServer
 }
 
 func waitingFromHolds(mn model.ManifestName, holds buildcontrol.HoldSet) *session.TargetStateWaiting {

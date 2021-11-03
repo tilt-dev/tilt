@@ -51,21 +51,19 @@ func (ks *watcherKnownState) createTaskList(state store.EngineState) watcherTask
 
 		name := mt.Manifest.Name
 
-		for _, obj := range mt.Manifest.K8sTarget().ObjectRefs {
-			namespace := k8s.Namespace(obj.Namespace)
-			if namespace == "" {
-				namespace = ks.cfgNS
-			}
-			if namespace == "" {
-				namespace = k8s.DefaultNamespace
-			}
-			namespaces[namespace] = true
-		}
-
 		// Collect all the new UIDs
 		applyFilter := mt.State.K8sRuntimeState().ApplyFilter
 		if applyFilter != nil {
 			for _, ref := range applyFilter.DeployedRefs {
+				namespace := k8s.Namespace(ref.Namespace)
+				if namespace == "" {
+					namespace = ks.cfgNS
+				}
+				if namespace == "" {
+					namespace = k8s.DefaultNamespace
+				}
+				namespaces[namespace] = true
+
 				// Our data model allows people to have the same resource defined in
 				// multiple manifests, and so we can have the same deployed UID in
 				// multiple manifests.
