@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -33,6 +34,19 @@ func CheckForContainerCrash(state *store.EngineState, name string) {
 	if ms.NeedsRebuildFromCrash {
 		// We're already aware the pod is crashing.
 		return
+	}
+
+	// In LiveUpdate V2, if a container crashes, the reconciler
+	// will wait for it to restart and re-sync the files that have
+	// changed since the last image build.
+	//
+	// If the container is in crash-rebuild mode, the reconciler will
+	// put it in an unrecoverable state. The next time we see a file change
+	// or trigger, we'll rebuild the image from scratch.
+	for _, iTarget := range mt.Manifest.ImageTargets {
+		if !liveupdate.IsEmptySpec(iTarget.LiveUpdateSpec) && iTarget.LiveUpdateReconciler {
+			return
+		}
 	}
 
 	runningContainers := AllRunningContainers(mt, state)
