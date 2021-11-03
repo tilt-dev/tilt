@@ -20,6 +20,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -349,7 +350,11 @@ func TestSkipLiveUpdateIfForceUpdate(t *testing.T) {
 	f := newFixture(t)
 	defer f.teardown()
 
-	m := NewSanchoLiveUpdateManifest(f)
+	m := manifestbuilder.New(f, "sancho").
+		WithK8sYAML(SanchoYAML).
+		WithLiveUpdateBAD().
+		WithImageTarget(NewSanchoLiveUpdateImageTarget(f)).
+		Build()
 
 	container := liveupdates.Container{
 		PodID:         "mypod",

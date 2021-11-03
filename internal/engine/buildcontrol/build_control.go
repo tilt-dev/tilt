@@ -494,7 +494,8 @@ func HoldLiveUpdateTargetsHandledByReconciler(state store.EngineState, mts []*st
 	for _, mt := range mts {
 		iTargets := mt.Manifest.ImageTargets
 		for _, iTarget := range iTargets {
-			isHandledByReconciler := iTarget.LiveUpdateReconciler
+			isHandledByReconciler := !liveupdate.IsEmptySpec(iTarget.LiveUpdateSpec) &&
+				iTarget.LiveUpdateReconciler
 			if !isHandledByReconciler {
 				continue
 			}

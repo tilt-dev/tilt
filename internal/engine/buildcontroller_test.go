@@ -56,7 +56,11 @@ func TestBuildControllerTooManyPodsForLiveUpdateErrorMessage(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	manifest := NewSanchoLiveUpdateManifest(f)
+	manifest := manifestbuilder.New(f, "sancho").
+		WithK8sYAML(SanchoYAML).
+		WithLiveUpdateBAD().
+		WithImageTarget(NewSanchoLiveUpdateImageTarget(f)).
+		Build()
 	// basePB is used for all pods so that they share the same deployment
 	basePB := f.registerForDeployer(manifest)
 
@@ -146,7 +150,16 @@ func TestBuildControllerIgnoresImageTags(t *testing.T) {
 	defer f.TearDown()
 
 	ref := container.MustParseNamed("image-foo:tagged")
-	manifest := f.newManifestWithRef("fe", ref)
+	refSel := container.NewRefSelector(ref)
+
+	iTarget := NewSanchoLiveUpdateImageTarget(f)
+	iTarget = iTarget.MustWithRef(refSel)
+
+	manifest := manifestbuilder.New(f, "fe").
+		WithK8sYAML(SanchoYAML).
+		WithLiveUpdateBAD().
+		WithImageTarget(iTarget).
+		Build()
 	basePB := f.registerForDeployer(manifest)
 	f.Start([]model.Manifest{manifest})
 
@@ -373,7 +386,11 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	manifest := f.newManifest("fe")
+	manifest := manifestbuilder.New(f, "fe").
+		WithK8sYAML(SanchoYAML).
+		WithLiveUpdateBAD().
+		WithImageTarget(NewSanchoLiveUpdateImageTarget(f)).
+		Build()
 	basePB := f.registerForDeployer(manifest)
 	f.Start([]model.Manifest{manifest})
 
@@ -425,6 +442,7 @@ func TestCrashRebuildTwoContainersOneImage(t *testing.T) {
 
 	manifest := manifestbuilder.New(f, "sancho").
 		WithK8sYAML(testyaml.SanchoTwoContainersOneImageYAML).
+		WithLiveUpdateBAD().
 		WithImageTarget(NewSanchoLiveUpdateImageTarget(f)).
 		Build()
 	// basePB is used for all pods so that they share the same deployment
@@ -476,6 +494,7 @@ func TestCrashRebuildTwoContainersTwoImages(t *testing.T) {
 
 	manifest := manifestbuilder.New(f, "sancho").
 		WithK8sYAML(testyaml.SanchoTwoContainersOneImageYAML).
+		WithLiveUpdateBAD().
 		WithImageTarget(NewSanchoLiveUpdateImageTarget(f)).
 		WithImageTarget(NewSanchoSidecarLiveUpdateImageTarget(f)).
 		Build()
@@ -529,6 +548,7 @@ func TestRecordLiveUpdatedContainerIDsForFailedLiveUpdate(t *testing.T) {
 	manifest := manifestbuilder.New(f, "sancho").
 		WithK8sYAML(testyaml.SanchoTwoContainersOneImageYAML).
 		WithImageTarget(NewSanchoLiveUpdateImageTarget(f)).
+		WithLiveUpdateBAD().
 		Build()
 	basePB := f.registerForDeployer(manifest)
 	f.Start([]model.Manifest{manifest})
