@@ -406,6 +406,74 @@ func TestOneRunningOneTerminatedContainer(t *testing.T) {
 	f.assertSteadyState(&lu)
 }
 
+func TestCrashLoopBackoff(t *testing.T) {
+	f := newFixture(t)
+
+	p, _ := os.Getwd()
+	nowMicro := apis.NowMicro()
+	txtPath := filepath.Join(p, "a.txt")
+	txtChangeTime := metav1.MicroTime{Time: nowMicro.Add(time.Second)}
+
+	f.setupFrontend()
+	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
+		Pods: []v1alpha1.Pod{
+			{
+				Name:      "pod-1",
+				Namespace: "default",
+				Containers: []v1alpha1.Container{
+					{
+						Name:  "main",
+						ID:    "main-id",
+						Image: "frontend-image",
+						State: v1alpha1.ContainerState{
+							Waiting: &v1alpha1.ContainerStateWaiting{Reason: "CrashLoopBackOff"},
+						},
+					},
+				},
+			},
+		},
+	})
+
+	f.addFileEvent("frontend-fw", txtPath, txtChangeTime)
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+
+	var lu v1alpha1.LiveUpdate
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	if assert.NotNil(t, lu.Status.Failed) {
+		assert.Equal(t, "CrashLoopBackOff", lu.Status.Failed.Reason)
+	}
+	assert.Equal(t, 0, len(f.cu.Calls))
+
+	f.assertSteadyState(&lu)
+
+	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
+		Pods: []v1alpha1.Pod{
+			{
+				Name:      "pod-1",
+				Namespace: "default",
+				Containers: []v1alpha1.Container{
+					{
+						Name:  "main",
+						ID:    "main-id",
+						Image: "frontend-image",
+						State: v1alpha1.ContainerState{
+							Running: &v1alpha1.ContainerStateRunning{},
+						},
+					},
+				},
+			},
+		},
+	})
+
+	// CrashLoopBackOff is a permanent state. If the container starts running
+	// again, we don't "revive" the live-update.
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	if assert.NotNil(t, lu.Status.Failed) {
+		assert.Equal(t, "CrashLoopBackOff", lu.Status.Failed.Reason)
+	}
+}
+
 type TestingStore struct {
 	*store.TestingStore
 	ctx                 context.Context
