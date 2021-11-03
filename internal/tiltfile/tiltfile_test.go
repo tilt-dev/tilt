@@ -6378,11 +6378,22 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 			}
 
 		case []model.PortForward:
-			assert.Equal(f.t, opt, m.K8sTarget().PortForwards)
 			if len(opt) == 0 {
 				assert.Nil(f.t, m.K8sTarget().KubernetesApplySpec.PortForwardTemplateSpec)
 			} else {
-				assert.Equal(f.t, len(opt), len(m.K8sTarget().KubernetesApplySpec.PortForwardTemplateSpec.Forwards))
+				var expectedForwards []v1alpha1.Forward
+				for _, pf := range opt {
+					expectedForwards = append(expectedForwards, v1alpha1.Forward{
+						LocalPort:     int32(pf.LocalPort),
+						ContainerPort: int32(pf.ContainerPort),
+						Host:          pf.Host,
+						Name:          pf.Name,
+						Path:          pf.PathForAppend(),
+					})
+				}
+				assert.ElementsMatch(f.t,
+					expectedForwards,
+					m.K8sTarget().KubernetesApplySpec.PortForwardTemplateSpec.Forwards)
 			}
 		case dcResourceLinks:
 			f.assertLinks(opt, m.DockerComposeTarget().Links)

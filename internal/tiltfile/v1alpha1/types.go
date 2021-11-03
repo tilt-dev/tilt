@@ -801,16 +801,20 @@ func (p Plugin) forward(t *starlark.Thread, fn *starlark.Builtin, args starlark.
 	var localPort starlark.Value
 	var containerPort starlark.Value
 	var host starlark.Value
+	var name starlark.Value
+	var path starlark.Value
 	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
 		"local_port?", &localPort,
 		"container_port?", &containerPort,
 		"host?", &host,
+		"name?", &name,
+		"path?", &path,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	dict := starlark.NewDict(3)
+	dict := starlark.NewDict(5)
 
 	if localPort != nil {
 		err := dict.SetKey(starlark.String("local_port"), localPort)
@@ -826,6 +830,18 @@ func (p Plugin) forward(t *starlark.Thread, fn *starlark.Builtin, args starlark.
 	}
 	if host != nil {
 		err := dict.SetKey(starlark.String("host"), host)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if name != nil {
+		err := dict.SetKey(starlark.String("name"), name)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if path != nil {
+		err := dict.SetKey(starlark.String("path"), path)
 		if err != nil {
 			return nil, err
 		}
@@ -881,6 +897,22 @@ func (o *Forward) Unpack(v starlark.Value) error {
 				return fmt.Errorf("Expected string, actual: %s", val.Type())
 			}
 			obj.Host = string(v)
+			continue
+		}
+		if key == "name" {
+			v, ok := starlark.AsString(val)
+			if !ok {
+				return fmt.Errorf("Expected string, actual: %s", val.Type())
+			}
+			obj.Name = string(v)
+			continue
+		}
+		if key == "path" {
+			v, ok := starlark.AsString(val)
+			if !ok {
+				return fmt.Errorf("Expected string, actual: %s", val.Type())
+			}
+			obj.Path = string(v)
 			continue
 		}
 		return fmt.Errorf("Unexpected attribute name: %s", key)

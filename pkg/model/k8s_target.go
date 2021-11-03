@@ -32,8 +32,7 @@ type K8sTarget struct {
 	// struct while we're migrating fields.
 	v1alpha1.KubernetesApplySpec
 
-	Name         TargetName
-	PortForwards []PortForward
+	Name TargetName
 
 	// Each K8s entity should have a display name for user interfaces
 	// that balances brevity and uniqueness
