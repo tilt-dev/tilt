@@ -803,10 +803,10 @@ func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []model.Link) {
 		// If the user specified port-forwards in the Tiltfile, we
 		// assume that's what they want to see in the UI (so it
 		// takes precedence over any load balancer URLs
-		portForwards := k8sTarg.PortForwards
-		if len(portForwards) > 0 {
-			for _, pf := range portForwards {
-				endpoints = append(endpoints, pf.ToLink())
+		portForwardSpec := k8sTarg.PortForwardTemplateSpec
+		if portForwardSpec != nil && len(portForwardSpec.Forwards) > 0 {
+			for _, pf := range portForwardSpec.Forwards {
+				endpoints = append(endpoints, model.PortForwardToLink(pf))
 			}
 			return endpoints
 		}

@@ -68,11 +68,15 @@ func TestStateToWebViewPortForwards(t *testing.T) {
 	m := model.Manifest{
 		Name: "foo",
 	}.WithDeployTarget(model.K8sTarget{
-		PortForwards: []model.PortForward{
-			{LocalPort: 8000, ContainerPort: 5000},
-			{LocalPort: 7000, ContainerPort: 5001},
-			{LocalPort: 5000, ContainerPort: 5002, Host: "127.0.0.2", Name: "dashboard"},
-			{LocalPort: 6000, ContainerPort: 5003, Name: "debugger"},
+		KubernetesApplySpec: v1alpha1.KubernetesApplySpec{
+			PortForwardTemplateSpec: &v1alpha1.PortForwardTemplateSpec{
+				Forwards: []v1alpha1.Forward{
+					{LocalPort: 8000, ContainerPort: 5000},
+					{LocalPort: 7000, ContainerPort: 5001},
+					{LocalPort: 5000, ContainerPort: 5002, Host: "127.0.0.2", Name: "dashboard"},
+					{LocalPort: 6000, ContainerPort: 5003, Name: "debugger"},
+				},
+			},
 		},
 	})
 	state := newState([]model.Manifest{m})
@@ -92,9 +96,13 @@ func TestStateToWebViewLinksAndPortForwards(t *testing.T) {
 	m := model.Manifest{
 		Name: "foo",
 	}.WithDeployTarget(model.K8sTarget{
-		PortForwards: []model.PortForward{
-			{LocalPort: 8000, ContainerPort: 5000},
-			{LocalPort: 8001, ContainerPort: 5001, Name: "debugger"},
+		KubernetesApplySpec: v1alpha1.KubernetesApplySpec{
+			PortForwardTemplateSpec: &v1alpha1.PortForwardTemplateSpec{
+				Forwards: []v1alpha1.Forward{
+					{LocalPort: 8000, ContainerPort: 5000},
+					{LocalPort: 8001, ContainerPort: 5001, Name: "debugger"},
+				},
+			},
 		},
 		Links: []model.Link{
 			model.MustNewLink("www.apple.edu", "apple"),

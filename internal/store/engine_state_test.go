@@ -91,9 +91,13 @@ func TestStateToViewPortForwards(t *testing.T) {
 	m := model.Manifest{
 		Name: "foo",
 	}.WithDeployTarget(model.K8sTarget{
-		PortForwards: []model.PortForward{
-			{LocalPort: 8000, ContainerPort: 5000},
-			{LocalPort: 7000, ContainerPort: 5001},
+		KubernetesApplySpec: v1alpha1.KubernetesApplySpec{
+			PortForwardTemplateSpec: &v1alpha1.PortForwardTemplateSpec{
+				Forwards: []v1alpha1.Forward{
+					{LocalPort: 8000, ContainerPort: 5000},
+					{LocalPort: 7000, ContainerPort: 5001},
+				},
+			},
 		},
 	})
 	state := newState([]model.Manifest{m})
@@ -108,9 +112,13 @@ func TestStateToWebViewLinksAndPortForwards(t *testing.T) {
 	m := model.Manifest{
 		Name: "foo",
 	}.WithDeployTarget(model.K8sTarget{
-		PortForwards: []model.PortForward{
-			{LocalPort: 8000, ContainerPort: 5000},
-			{LocalPort: 8001, ContainerPort: 5001, Name: "debugger"},
+		KubernetesApplySpec: v1alpha1.KubernetesApplySpec{
+			PortForwardTemplateSpec: &v1alpha1.PortForwardTemplateSpec{
+				Forwards: []v1alpha1.Forward{
+					{LocalPort: 8000, ContainerPort: 5000},
+					{LocalPort: 8001, ContainerPort: 5001, Name: "debugger"},
+				},
+			},
 		},
 		Links: []model.Link{
 			model.MustNewLink("www.apple.edu", "apple"),
@@ -410,9 +418,24 @@ func TestManifestTargetEndpoints(t *testing.T) {
 			m := model.Manifest{Name: "foo"}
 
 			if len(c.portFwds) > 0 || len(c.k8sResLinks) > 0 {
+				var forwards []v1alpha1.Forward
+				for _, pf := range c.portFwds {
+					forwards = append(forwards, v1alpha1.Forward{
+						LocalPort:     int32(pf.LocalPort),
+						ContainerPort: int32(pf.ContainerPort),
+						Host:          pf.Host,
+						Name:          pf.Name,
+						Path:          pf.PathForAppend(),
+					})
+				}
+
 				m = m.WithDeployTarget(model.K8sTarget{
-					PortForwards: c.portFwds,
-					Links:        c.k8sResLinks,
+					KubernetesApplySpec: v1alpha1.KubernetesApplySpec{
+						PortForwardTemplateSpec: &v1alpha1.PortForwardTemplateSpec{
+							Forwards: forwards,
+						},
+					},
+					Links: c.k8sResLinks,
 				})
 			} else if len(c.localResLinks) > 0 {
 				m = m.WithDeployTarget(model.LocalTarget{Links: c.localResLinks})

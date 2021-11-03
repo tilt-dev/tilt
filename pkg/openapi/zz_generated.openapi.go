@@ -1707,6 +1707,20 @@ func schema_pkg_apis_core_v1alpha1_Forward(ref common.ReferenceCallback) common.
 							Format:      "",
 						},
 					},
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name to identify this port forward.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"path": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Path to include as part of generated links for port forward.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"containerPort"},
 			},

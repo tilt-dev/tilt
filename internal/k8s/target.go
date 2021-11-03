@@ -97,7 +97,6 @@ func NewTarget(
 	return model.K8sTarget{
 		KubernetesApplySpec: apply,
 		Name:                name,
-		PortForwards:        portForwards,
 		DisplayNames:        displayNames,
 		ObjectRefs:          objectRefs,
 		PodReadinessMode:    podReadinessMode,
@@ -166,6 +165,8 @@ func toPortForwardTemplateSpec(forwards []model.PortForward) *v1alpha1.PortForwa
 			LocalPort:     int32(fwd.LocalPort),
 			ContainerPort: int32(fwd.ContainerPort),
 			Host:          fwd.Host,
+			Name:          fwd.Name,
+			Path:          fwd.PathForAppend(),
 		}
 	}
 	return &v1alpha1.PortForwardTemplateSpec{
