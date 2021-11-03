@@ -80,6 +80,14 @@ describe("Log filters", () => {
           )
         })
 
+        it("is not stateful", () => {
+          let parsed = parseTermInput("line 1")
+          expect(parsed.test("line 123")).toBe(true)
+          expect(parsed.test("line 124")).toBe(true)
+          expect(parsed.test("line 125")).toBe(true)
+          expect(parsed.test("line 126")).toBe(true)
+        })
+
         it("escapes any RegExp-specific characters", () => {
           expect(parseTermInput("ab?c").test(TestStrings.Basic)).toBe(false)
           expect(parseTermInput('"red"').test(TestStrings.BuildCommand)).toBe(
