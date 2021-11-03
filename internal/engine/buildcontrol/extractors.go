@@ -51,10 +51,6 @@ func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.
 			return nil, SilentRedirectToNextBuilderf("In-place build does not support initial deploy")
 		}
 
-		if iTarget.LiveUpdateReconciler {
-			return nil, SilentRedirectToNextBuilderf("Live update handled by API controller")
-		}
-
 		if state.FullBuildTriggered {
 			return nil, SilentRedirectToNextBuilderf("Force update (triggered manually, not automatically, with no dirty files)")
 		}
@@ -77,6 +73,18 @@ func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.
 		luSpec := iTarget.LiveUpdateSpec
 		if liveupdate.IsEmptySpec(luSpec) {
 			return nil, SilentRedirectToNextBuilderf("LiveUpdate requires that LiveUpdate details be specified")
+		}
+
+		// TODO(nick): In LiveUpdate v2, the reconciler will put a hold on all image builds
+		// while it's handling file changes. We'll only get to this codepath if the reconciler
+		// fails.
+		//
+		// If the reconciler fails, it should log some message about why it failed.
+		// But currently, the BuildAndDeployer itself doesn't surface any info about why
+		// live update didn't apply. A fix would be to add it to the BuildState and log it here.
+		// But it might also be worth waiting until the Image reconciler to do this.
+		if iTarget.LiveUpdateReconciler {
+			return nil, SilentRedirectToNextBuilderf("Live update handled by API controller")
 		}
 
 		containers, err := liveupdates.RunningContainers(
