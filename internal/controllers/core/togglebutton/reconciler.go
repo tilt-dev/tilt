@@ -271,6 +271,10 @@ func (r *Reconciler) configureUIButton(b *v1alpha1.UIButton, isOn bool, tb *v1al
 		value = turnOnInputValue
 	}
 
+	if b.Annotations == nil {
+		b.Annotations = make(map[string]string)
+	}
+	b.Annotations[v1alpha1.AnnotationButtonType] = tb.Annotations[v1alpha1.AnnotationButtonType]
 	b.Spec = v1alpha1.UIButtonSpec{
 		Location:             tb.Spec.Location,
 		Text:                 stateSpec.Text,
@@ -283,7 +287,6 @@ func (r *Reconciler) configureUIButton(b *v1alpha1.UIButton, isOn bool, tb *v1al
 				Hidden: &v1alpha1.UIHiddenInputSpec{Value: value},
 			},
 		},
-		ButtonType: tb.Spec.ButtonType,
 	}
 
 	err := controllerutil.SetControllerReference(tb, b, r.ctrlClient.Scheme())

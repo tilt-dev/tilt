@@ -5023,13 +5023,6 @@ func schema_pkg_apis_core_v1alpha1_ToggleButtonSpec(ref common.ReferenceCallback
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.StateSource"),
 						},
 					},
-					"buttonType": {
-						SchemaProps: spec.SchemaProps{
-							Description: "For internal Tilt use, to specify special behavior in the UI. Should typically be empty.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
 				},
 				Required: []string{"location", "on", "off", "defaultOn", "stateSource"},
 			},
@@ -5409,13 +5402,6 @@ func schema_pkg_apis_core_v1alpha1_UIButtonSpec(ref common.ReferenceCallback) co
 									},
 								},
 							},
-						},
-					},
-					"buttonType": {
-						SchemaProps: spec.SchemaProps{
-							Description: "For internal Tilt use, to specify special behavior in the UI. Should typically be empty.",
-							Type:        []string{"string"},
-							Format:      "",
 						},
 					},
 				},

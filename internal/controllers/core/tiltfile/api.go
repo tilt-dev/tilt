@@ -280,11 +280,12 @@ func toToggleButtons(tlr *tiltfile.TiltfileLoadResult, disableSources disableSou
 	result := apiset.TypedObjectSet{}
 	if tlr != nil && tlr.FeatureFlags[feature.DisableResources] {
 		for name, ds := range disableSources {
-			// TODO(matt) - add/set a field to make sure this displays in the right location
-			// https://app.shortcut.com/windmill/story/12866/backend-creates-enable-disable-togglebuttons
 			tb := &v1alpha1.ToggleButton{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: fmt.Sprintf("%s-disable", name),
+					Annotations: map[string]string{
+						v1alpha1.AnnotationButtonType: "DisableToggle",
+					},
 				},
 				Spec: v1alpha1.ToggleButtonSpec{
 					Location: v1alpha1.UIComponentLocation{
@@ -308,7 +309,6 @@ func toToggleButtons(tlr *tiltfile.TiltfileLoadResult, disableSources disableSou
 							OffValue: "false",
 						},
 					},
-					ButtonType: v1alpha1.UIButtonTypeDisableToggle,
 				},
 			}
 			result[tb.Name] = tb

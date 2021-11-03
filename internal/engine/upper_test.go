@@ -3876,7 +3876,7 @@ local_resource('foo', 'echo hi')
 		return err == nil
 	}, time.Second, time.Millisecond)
 
-	require.Equal(t, v1alpha1.UIButtonTypeDisableToggle, b.Spec.ButtonType)
+	require.Equal(t, "DisableToggle", b.Annotations[v1alpha1.AnnotationButtonType])
 	require.Equal(t, []v1alpha1.UIInputSpec{
 		{
 			Name:   "action",
