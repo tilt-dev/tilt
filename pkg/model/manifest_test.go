@@ -8,10 +8,11 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
-var portFwd8000 = []PortForward{{LocalPort: 8080}}
-var portFwd8001 = []PortForward{{LocalPort: 8081}}
+var portFwd8000 = []v1alpha1.Forward{{LocalPort: 8080}}
+var portFwd8001 = []v1alpha1.Forward{{LocalPort: 8081}}
 
 var img1 = container.MustParseSelector("blorg.io/blorgdev/blorg-frontend:tilt-361d98a2d335373f")
 var img2 = container.MustParseSelector("blorg.io/blorgdev/blorg-backend:tilt-361d98a2d335373f")
@@ -39,14 +40,30 @@ var equalitytests = []struct {
 	},
 	{
 		"PortForwards unequal",
-		Manifest{}.WithDeployTarget(K8sTarget{PortForwards: portFwd8000}),
-		Manifest{}.WithDeployTarget(K8sTarget{PortForwards: portFwd8001}),
+		Manifest{}.WithDeployTarget(K8sTarget{
+			KubernetesApplySpec: v1alpha1.KubernetesApplySpec{
+				PortForwardTemplateSpec: &v1alpha1.PortForwardTemplateSpec{Forwards: portFwd8000},
+			},
+		}),
+		Manifest{}.WithDeployTarget(K8sTarget{
+			KubernetesApplySpec: v1alpha1.KubernetesApplySpec{
+				PortForwardTemplateSpec: &v1alpha1.PortForwardTemplateSpec{Forwards: portFwd8001},
+			},
+		}),
 		true,
 	},
 	{
 		"PortForwards equal",
-		Manifest{}.WithDeployTarget(K8sTarget{PortForwards: portFwd8000}),
-		Manifest{}.WithDeployTarget(K8sTarget{PortForwards: portFwd8000}),
+		Manifest{}.WithDeployTarget(K8sTarget{
+			KubernetesApplySpec: v1alpha1.KubernetesApplySpec{
+				PortForwardTemplateSpec: &v1alpha1.PortForwardTemplateSpec{Forwards: portFwd8000},
+			},
+		}),
+		Manifest{}.WithDeployTarget(K8sTarget{
+			KubernetesApplySpec: v1alpha1.KubernetesApplySpec{
+				PortForwardTemplateSpec: &v1alpha1.PortForwardTemplateSpec{Forwards: portFwd8000},
+			},
+		}),
 		false,
 	},
 	{

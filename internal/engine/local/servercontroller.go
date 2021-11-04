@@ -320,6 +320,7 @@ func (c *ServerController) reconcile(ctx context.Context, server CmdServer, owne
 }
 
 type CmdServer struct {
+	metav1.TypeMeta
 	metav1.ObjectMeta
 
 	Spec   CmdServerSpec

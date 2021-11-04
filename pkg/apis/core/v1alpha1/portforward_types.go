@@ -83,6 +83,16 @@ type Forward struct {
 	//
 	// +optional
 	Host string `json:"host" protobuf:"bytes,5,opt,name=host"`
+
+	// Name to identify this port forward.
+	//
+	// +optional
+	Name string `json:"name,omitempty" protobuf:"bytes,6,opt,name=name"`
+
+	// Path to include as part of generated links for port forward.
+	//
+	// +optional
+	Path string `json:"path,omitempty" protobuf:"bytes,7,opt,name=path"`
 }
 
 var _ resource.Object = &PortForward{}

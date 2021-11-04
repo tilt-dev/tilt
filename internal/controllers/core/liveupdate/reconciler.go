@@ -222,7 +222,9 @@ func (r *Reconciler) handleFailure(ctx context.Context, lu *v1alpha1.LiveUpdate,
 		return ctrl.Result{}, nil
 	}
 
-	logger.Get(ctx).Warnf("LiveUpdate %q %s: %v", lu.Name, failed.Reason, failed.Message)
+	if r.shouldLogFailureReason(failed) {
+		logger.Get(ctx).Infof("LiveUpdate %q %s: %v", lu.Name, failed.Reason, failed.Message)
+	}
 
 	update := lu.DeepCopy()
 	update.Status.Failed = failed
@@ -451,7 +453,7 @@ func (r *Reconciler) visitSelectedContainers(
 		for _, c := range pod.Containers {
 			// Only visit well-formed containers matching our image
 			imageRef, err := container.ParseNamed(c.Image)
-			if err != nil || c.ID == "" || c.Name == "" || imageRef == nil ||
+			if err != nil || c.Name == "" || imageRef == nil ||
 				kSelector.Image != reference.FamiliarName(imageRef) {
 				continue
 			}
@@ -610,7 +612,10 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 		}
 
 		var waiting *v1alpha1.LiveUpdateContainerStateWaiting
-		if cInfo.State.Running == nil {
+
+		// We interpret "no container id" as a waiting state
+		// (terminated states should have been caught above).
+		if cInfo.State.Running == nil || cInfo.ID == "" {
 			waiting = &v1alpha1.LiveUpdateContainerStateWaiting{
 				Reason:  "ContainerWaiting",
 				Message: "Waiting for container to start",
@@ -622,31 +627,67 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 			}
 		}
 
-		if waiting != nil {
-			// Mark the container as waiting, so we have a record of it.
-			status.Containers = append(status.Containers, v1alpha1.LiveUpdateContainerStatus{
-				ContainerName: cInfo.Name,
-				ContainerID:   cInfo.ID,
-				PodName:       pod.Name,
-				Namespace:     pod.Namespace,
-				Waiting:       waiting,
+		// Create a plan to update the container.
+		filesApplied := false
+		var oneUpdateStatus v1alpha1.LiveUpdateStatus
+		plan, failed := r.createLiveUpdatePlan(lu.Spec, filesChanged)
+		if failed != nil {
+			// The plan told us to stop updating - this container is unrecoverable.
+			oneUpdateStatus.Failed = failed
+		} else if len(plan.SyncPaths) == 0 {
+			// The plan told us that there are no updates to do.
+			oneUpdateStatus.Containers = []v1alpha1.LiveUpdateContainerStatus{{
+				ContainerName:      cInfo.Name,
+				ContainerID:        cInfo.ID,
+				PodName:            pod.Name,
+				Namespace:          pod.Namespace,
+				LastFileTimeSynced: cStatus.lastFileTimeSynced,
+				Waiting:            waiting,
+			}}
+		} else if cInfo.State.Waiting != nil && cInfo.State.Waiting.Reason == "CrashLoopBackOff" {
+			// At this point, the plan told us that we have some files to sync.
+			// Check if the container is in a state to receive those updates.
+
+			// If the container is crashlooping, that means it might not be up long enough
+			// to be able to receive a live-update. Treat this as an unrecoverable failure case.
+			oneUpdateStatus.Failed = createFailedState(lu, "CrashLoopBackOff",
+				fmt.Sprintf("Cannot live update because container crashing. Pod: %s", pod.Name))
+
+		} else if waiting != nil {
+			// Mark the container as waiting, so we have a record of it. No need to sync any files.
+			oneUpdateStatus.Containers = []v1alpha1.LiveUpdateContainerStatus{{
+				ContainerName:      cInfo.Name,
+				ContainerID:        cInfo.ID,
+				PodName:            pod.Name,
+				Namespace:          pod.Namespace,
+				LastFileTimeSynced: cStatus.lastFileTimeSynced,
+				Waiting:            waiting,
+			}}
+		} else {
+			// Log progress and treat this as an update in the engine state.
+			if !updateEventDispatched {
+				updateEventDispatched = true
+				r.dispatchStartBuildAction(ctx, lu, filesChanged)
+			}
+
+			// Apply the change to the container.
+			oneUpdateStatus = r.applyInternal(ctx, lu.Spec, Input{
+				IsDC:               false, // update this once we support DockerCompose in the API.
+				ChangedFiles:       plan.SyncPaths,
+				Containers:         []liveupdates.Container{c},
+				LastFileTimeSynced: newHighWaterMark,
 			})
-			return false
+			filesApplied = true
 		}
 
-		if !updateEventDispatched {
-			updateEventDispatched = true
-			r.dispatchStartBuildAction(ctx, lu, filesChanged)
-		}
-
-		oneUpdateStatus := r.applyLiveUpdatePlan(ctx, lu.Spec, c, filesChanged, newHighWaterMark, cStatus)
+		// Merge the status from the single update into the overall liveupdate status.
 		adjustFailedStateTimestamps(lu, &oneUpdateStatus)
 
 		// Update the monitor based on the result of the applied changes.
 		if oneUpdateStatus.Failed != nil {
 			cStatus.failedReason = oneUpdateStatus.Failed.Reason
 			cStatus.failedMessage = oneUpdateStatus.Failed.Message
-		} else {
+		} else if filesApplied {
 			cStatus.lastFileTimeSynced = newHighWaterMark
 		}
 		monitor.containers[cKey] = cStatus
@@ -685,62 +726,31 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 	return status
 }
 
-func (r *Reconciler) applyLiveUpdatePlan(
-	ctx context.Context,
-	spec v1alpha1.LiveUpdateSpec,
-	c liveupdates.Container,
-	filesChanged []string,
-	newHighWaterMark metav1.MicroTime,
-	lastStatus monitorContainerStatus) v1alpha1.LiveUpdateStatus {
-
-	var status v1alpha1.LiveUpdateStatus
+func (r *Reconciler) createLiveUpdatePlan(spec v1alpha1.LiveUpdateSpec, filesChanged []string) (liveupdates.LiveUpdatePlan, *v1alpha1.LiveUpdateStateFailed) {
 	plan, err := liveupdates.NewLiveUpdatePlan(spec, filesChanged)
 	if err != nil {
-		status.Failed = &v1alpha1.LiveUpdateStateFailed{
+		return plan, &v1alpha1.LiveUpdateStateFailed{
 			Reason:  "UpdateStopped",
 			Message: fmt.Sprintf("No update plan: %v", err),
 		}
-		return status
 	}
 
 	if len(plan.NoMatchPaths) > 0 {
-		status.Failed = &v1alpha1.LiveUpdateStateFailed{
+		return plan, &v1alpha1.LiveUpdateStateFailed{
 			Reason: "UpdateStopped",
 			Message: fmt.Sprintf("Found file(s) not matching any sync (files: %s)",
 				ospath.FormatFileChangeList(plan.NoMatchPaths)),
 		}
-		return status
 	}
 
 	// If any changed files match a FallBackOn file, fall back to next BuildAndDeployer
 	if len(plan.StopPaths) != 0 {
-		status.Failed = &v1alpha1.LiveUpdateStateFailed{
+		return plan, &v1alpha1.LiveUpdateStateFailed{
 			Reason:  "UpdateStopped",
 			Message: fmt.Sprintf("Detected change to stop file %q", plan.StopPaths[0]),
 		}
-		return status
 	}
-
-	if len(plan.SyncPaths) == 0 {
-		// No files matched a sync for this image, no Live Update to run
-		status.Containers = []v1alpha1.LiveUpdateContainerStatus{{
-			ContainerName:      c.ContainerName.String(),
-			ContainerID:        c.ContainerID.String(),
-			PodName:            c.PodID.String(),
-			Namespace:          c.Namespace.String(),
-			LastFileTimeSynced: lastStatus.lastFileTimeSynced,
-		}}
-		return status
-	}
-
-	// Apply the changes to the cluster.
-	input := Input{
-		IsDC:               false, // update this once we support DockerCompose in the API.
-		ChangedFiles:       plan.SyncPaths,
-		Containers:         []liveupdates.Container{c},
-		LastFileTimeSynced: newHighWaterMark,
-	}
-	return r.applyInternal(ctx, spec, input)
+	return plan, nil
 }
 
 // Generate the correct transition time on the Failed state.

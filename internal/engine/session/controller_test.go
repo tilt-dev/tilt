@@ -18,6 +18,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/internal/store/tiltfiles"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
@@ -349,6 +350,12 @@ func TestExitControlCI_JobSuccess(t *testing.T) {
 	f := newFixture(t, store.EngineModeCI)
 	defer f.TearDown()
 
+	applyFilter := &k8sconv.KubernetesApplyFilter{
+		DeployedRefs: []v1.ObjectReference{
+			{Kind: "Job", Name: "pi"},
+		},
+	}
+
 	f.store.WithState(func(state *store.EngineState) {
 		m := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.JobYAML).Build()
 		state.UpsertManifestTarget(store.NewManifestTarget(m))
@@ -357,7 +364,9 @@ func TestExitControlCI_JobSuccess(t *testing.T) {
 			StartTime:  time.Now(),
 			FinishTime: time.Now(),
 		})
-		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeStateWithPods(m, pod("pod-a", true))
+		krs := store.NewK8sRuntimeStateWithPods(m, pod("pod-a", true))
+		krs.ApplyFilter = applyFilter
+		state.ManifestTargets["fe"].State.RuntimeState = krs
 	})
 
 	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
@@ -365,7 +374,9 @@ func TestExitControlCI_JobSuccess(t *testing.T) {
 
 	f.store.WithState(func(state *store.EngineState) {
 		mt := state.ManifestTargets["fe"]
-		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, successPod("pod-a"))
+		krs := store.NewK8sRuntimeStateWithPods(mt.Manifest, successPod("pod-a"))
+		krs.ApplyFilter = applyFilter
+		mt.State.RuntimeState = krs
 	})
 
 	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())

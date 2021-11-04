@@ -1,6 +1,7 @@
 package kubernetesapply
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"sync"
@@ -9,7 +10,6 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -59,6 +59,11 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 		Watches(&source.Kind{Type: &v1alpha1.ImageMap{}},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue))
 
+	restarton.SetupController(b, r.indexer, func(obj ctrlclient.Object) (*v1alpha1.RestartOnSpec, *v1alpha1.StartOnSpec) {
+		ka := obj.(*v1alpha1.KubernetesApply)
+		return ka.Spec.RestartOn, nil
+	})
+
 	return b, nil
 }
 
@@ -66,7 +71,7 @@ func NewReconciler(ctrlClient ctrlclient.Client, k8sClient k8s.Client, scheme *r
 	return &Reconciler{
 		ctrlClient:  ctrlClient,
 		k8sClient:   k8sClient,
-		indexer:     indexer.NewIndexer(scheme, indexImageMap),
+		indexer:     indexer.NewIndexer(scheme, indexKubernetesApply),
 		execer:      execer,
 		dkc:         dkc,
 		kubeContext: kubeContext,
@@ -156,11 +161,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 //    or one of the inputs has changed since the last deploy.
 func (r *Reconciler) shouldDeployOnReconcile(nn types.NamespacedName, ka *v1alpha1.KubernetesApply,
 	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap, restartObjs restarton.Objects) bool {
-	owner := metav1.GetControllerOf(ka)
-	if owner != nil && owner.Kind == v1alpha1.OwnerKindTiltfile {
+	if ka.Annotations[v1alpha1.AnnotationManagedBy] != "" {
 		// Until resource dependencies are expressed in the API,
 		// we can't use reconciliation to deploy KubernetesApply objects
-		// owned by the Tiltfile.
+		// managed by the buildcontrol engine.
 		return false
 	}
 
@@ -346,8 +350,40 @@ func (r *Reconciler) runYAMLDeploy(ctx context.Context, spec v1alpha1.Kubernetes
 }
 
 func (r *Reconciler) runCmdDeploy(ctx context.Context, spec v1alpha1.KubernetesApplySpec) ([]k8s.K8sEntity, error) {
-	// TODO(milas): implement Cmd apply
-	return nil, errors.New("Cmd apply not supported")
+	cmd := model.Cmd{
+		Argv: spec.Cmd.Args,
+		Dir:  spec.Cmd.Dir,
+		Env:  spec.Cmd.Env,
+	}
+
+	timeout := spec.Timeout.Duration
+	if timeout == 0 {
+		timeout = v1alpha1.KubernetesApplyTimeoutDefault
+	}
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	var stdoutBuf bytes.Buffer
+	runIO := localexec.RunIO{
+		Stdout: &stdoutBuf,
+		Stderr: logger.Get(ctx).Writer(logger.InfoLvl),
+	}
+
+	exitCode, err := r.execer.Run(ctx, cmd, runIO)
+	if err != nil {
+		return nil, fmt.Errorf("apply command failed: %v", err)
+	} else if exitCode != 0 {
+		return nil, fmt.Errorf("apply command exited with status %d\nstdout:\n%s\n", exitCode, stdoutBuf.String())
+	}
+
+	// don't pass the bytes.Buffer directly to the YAML parser or it'll consume it and we can't print it out on failure
+	stdout := stdoutBuf.Bytes()
+	entities, err := k8s.ParseYAML(bytes.NewReader(stdout))
+	if err != nil {
+		return nil, fmt.Errorf("apply command returned malformed YAML: %v\nstdout:\n%s\n", err, string(stdout))
+	}
+
+	return entities, nil
 }
 
 func (r *Reconciler) indentLogger(ctx context.Context) context.Context {
@@ -530,13 +566,10 @@ func (r *Reconciler) bestEffortDelete(ctx context.Context, entities []k8s.K8sEnt
 
 var imGVK = v1alpha1.SchemeGroupVersion.WithKind("ImageMap")
 
-// Find all the objects we need to watch based on the Cmd model.
-func indexImageMap(obj client.Object) []indexer.Key {
+// indexKubernetesApply returns keys for all the objects we need to watch based on the spec.
+func indexKubernetesApply(obj client.Object) []indexer.Key {
 	ka := obj.(*v1alpha1.KubernetesApply)
 	result := []indexer.Key{}
-
-	result = append(result, restarton.ExtractKeysForIndexer(ka.Namespace, ka.Spec.RestartOn, nil)...)
-
 	for _, name := range ka.Spec.ImageMaps {
 		result = append(result, indexer.Key{
 			Name: types.NamespacedName{Name: name},

@@ -144,7 +144,8 @@ var _ Execer = &FakeExecer{}
 
 func NewFakeExecer(t testing.TB) *FakeExecer {
 	return &FakeExecer{
-		t: t,
+		t:    t,
+		cmds: make(map[string]fakeCmdResult),
 	}
 }
 
@@ -163,12 +164,16 @@ func (f *FakeExecer) Run(ctx context.Context, cmd model.Cmd, runIO RunIO) (int, 
 			return -1, r.err
 		}
 
-		if _, err := runIO.Stdout.Write([]byte(r.stdout)); err != nil {
-			return -1, fmt.Errorf("error writing to stdout: %v", err)
+		if runIO.Stdout != nil && r.stdout != "" {
+			if _, err := runIO.Stdout.Write([]byte(r.stdout)); err != nil {
+				return -1, fmt.Errorf("error writing to stdout: %v", err)
+			}
 		}
 
-		if _, err := runIO.Stderr.Write([]byte(r.stderr)); err != nil {
-			return -1, fmt.Errorf("error writing to stderr: %v", err)
+		if runIO.Stderr != nil && r.stderr != "" {
+			if _, err := runIO.Stderr.Write([]byte(r.stderr)); err != nil {
+				return -1, fmt.Errorf("error writing to stderr: %v", err)
+			}
 		}
 
 		return r.exitCode, nil

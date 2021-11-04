@@ -138,7 +138,11 @@ func TestLiveUpdateTaskKilled(t *testing.T) {
 
 	changed := f.WriteFile("a.txt", "a")
 
-	manifest := NewSanchoLiveUpdateManifest(f)
+	manifest := manifestbuilder.New(f, "sancho").
+		WithK8sYAML(SanchoYAML).
+		WithLiveUpdateBAD().
+		WithImageTarget(NewSanchoLiveUpdateImageTarget(f)).
+		Build()
 	bs := resultToStateSet(manifest, alreadyBuiltSet, []string{changed}, testContainerInfo)
 	f.docker.SetExecError(docker.ExitError{ExitCode: build.TaskKillExitCode})
 
@@ -189,6 +193,7 @@ func TestLiveUpdateFallbackMessagingRedirect(t *testing.T) {
 	manifest := manifestbuilder.New(f, "foobar").
 		WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
 		WithLiveUpdate(lu).
+		WithLiveUpdateBAD().
 		WithK8sYAML(SanchoYAML).
 		Build()
 
@@ -216,7 +221,11 @@ func TestLiveUpdateFallbackMessagingUnexpectedError(t *testing.T) {
 
 	f.docker.SetExecError(errors.New("some random error"))
 
-	manifest := NewSanchoLiveUpdateManifest(f)
+	manifest := manifestbuilder.New(f, "sancho").
+		WithK8sYAML(SanchoYAML).
+		WithLiveUpdateBAD().
+		WithImageTarget(NewSanchoLiveUpdateImageTarget(f)).
+		Build()
 	changed := f.WriteFile("a.txt", "a")
 	bs := resultToStateSet(manifest, alreadyBuiltSet, []string{changed}, testContainerInfo)
 
@@ -239,7 +248,11 @@ func TestLiveUpdateTwice(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
-	manifest := NewSanchoLiveUpdateManifest(f)
+	manifest := manifestbuilder.New(f, "sancho").
+		WithK8sYAML(SanchoYAML).
+		WithLiveUpdateBAD().
+		WithImageTarget(NewSanchoLiveUpdateImageTarget(f)).
+		Build()
 	targets := buildcontrol.BuildTargets(manifest)
 	aPath := f.WriteFile("a.txt", "a")
 	bPath := f.WriteFile("b.txt", "b")
@@ -277,7 +290,11 @@ func TestLiveUpdateTwiceDeadPod(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
 	defer f.TearDown()
 
-	manifest := NewSanchoLiveUpdateManifest(f)
+	manifest := manifestbuilder.New(f, "sancho").
+		WithK8sYAML(SanchoYAML).
+		WithLiveUpdateBAD().
+		WithImageTarget(NewSanchoLiveUpdateImageTarget(f)).
+		Build()
 	targets := buildcontrol.BuildTargets(manifest)
 	aPath := f.WriteFile("a.txt", "a")
 	bPath := f.WriteFile("b.txt", "b")
@@ -520,7 +537,11 @@ func TestLiveUpdateWithRunFailureReturnsContainerIDs(t *testing.T) {
 	// LiveUpdate will failure with a RunStepFailure
 	f.docker.SetExecError(userFailureErrDocker)
 
-	manifest := NewSanchoLiveUpdateManifest(f)
+	manifest := manifestbuilder.New(f, "sancho").
+		WithK8sYAML(SanchoYAML).
+		WithLiveUpdateBAD().
+		WithImageTarget(NewSanchoLiveUpdateImageTarget(f)).
+		Build()
 	targets := buildcontrol.BuildTargets(manifest)
 	changed := f.WriteFile("a.txt", "a")
 	bs := resultToStateSet(manifest, alreadyBuiltSet, []string{changed}, testContainerInfo)
@@ -727,6 +748,7 @@ func multiImageLiveUpdateManifestAndBuildState(f *bdFixture) (model.Manifest, st
 	manifest := manifestbuilder.New(f, "sancho").
 		WithK8sYAML(testyaml.SanchoSidecarYAML).
 		WithImageTargets(sanchoTarg, sidecarTarg).
+		WithLiveUpdateBAD().
 		Build()
 
 	changed := f.WriteFile("a.txt", "a")

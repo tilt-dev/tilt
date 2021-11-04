@@ -492,9 +492,15 @@ func IsLiveUpdateTargetWaitingOnDeploy(state store.EngineState, mt *store.Manife
 // handled by a reconciler.
 func HoldLiveUpdateTargetsHandledByReconciler(state store.EngineState, mts []*store.ManifestTarget, holds HoldSet) {
 	for _, mt := range mts {
+		// We only care about targets where file changes are the ONLY build reason.
+		if mt.NextBuildReason() != model.BuildReasonFlagChangedFiles {
+			continue
+		}
+
 		iTargets := mt.Manifest.ImageTargets
 		for _, iTarget := range iTargets {
-			isHandledByReconciler := iTarget.LiveUpdateReconciler
+			isHandledByReconciler := !liveupdate.IsEmptySpec(iTarget.LiveUpdateSpec) &&
+				iTarget.LiveUpdateReconciler
 			if !isHandledByReconciler {
 				continue
 			}

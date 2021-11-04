@@ -821,6 +821,7 @@ func TestConfigFileChangeClearsBuildStateToForceImageBuild(t *testing.T) {
 	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", `
+disable_feature('live_update_v2')
 docker_build('gcr.io/windmill-public-containers/servantes/snack', '.', live_update=[sync('.', '/app')])
 k8s_yaml('snack.yaml')
 	`)
@@ -1057,6 +1058,7 @@ func TestConfigChange_TiltfileErrorAndFixWithFileChange(t *testing.T) {
 
 	tiltfileWithCmd := func(cmd string) string {
 		return fmt.Sprintf(`
+disable_feature('live_update_v2')
 docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', dockerfile='Dockerfile',
     live_update=[
         sync('./src', '/src'),
@@ -3856,6 +3858,34 @@ func TestDisablingResourcePreventsBuild(t *testing.T) {
 	})
 }
 
+func TestDisableButtonIsCreated(t *testing.T) {
+	f := newTestFixture(t)
+	f.useRealTiltfileLoader()
+
+	f.WriteFile("Tiltfile", `
+enable_feature('disable_resources')
+local_resource('foo', 'echo hi')
+`)
+	f.loadAndStart()
+
+	f.waitForCompletedBuildCount(1)
+
+	var b v1alpha1.UIButton
+	require.Eventually(t, func() bool {
+		err := f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: "toggle-foo-disable"}, &b)
+		require.NoError(t, ctrlclient.IgnoreNotFound(err))
+		return err == nil
+	}, time.Second, time.Millisecond)
+
+	require.Equal(t, "DisableToggle", b.Annotations[v1alpha1.AnnotationButtonType])
+	require.Equal(t, []v1alpha1.UIInputSpec{
+		{
+			Name:   "action",
+			Hidden: &v1alpha1.UIHiddenInputSpec{Value: "on"},
+		},
+	}, b.Spec.Inputs)
+}
+
 func TestCmdServerDoesntStartWhenDisabled(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -4560,6 +4590,9 @@ func (f *testFixture) newManifest(name string) model.Manifest {
 	iTarget := NewSanchoLiveUpdateImageTarget(f)
 	return manifestbuilder.New(f, model.ManifestName(name)).
 		WithK8sYAML(SanchoYAML).
+		// Right now, most of our tests assume that we're going through
+		// using BuildAndDeployer to do live updates. :\
+		WithLiveUpdateBAD().
 		WithImageTarget(iTarget).
 		Build()
 }

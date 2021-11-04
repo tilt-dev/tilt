@@ -6,7 +6,10 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/sliceutils"
@@ -16,10 +19,29 @@ import (
 var fwGVK = v1alpha1.SchemeGroupVersion.WithKind("FileWatch")
 var btnGVK = v1alpha1.SchemeGroupVersion.WithKind("UIButton")
 
+var restartOnTypes = []client.Object{
+	&v1alpha1.FileWatch{},
+	&v1alpha1.UIButton{},
+}
+
+type ExtractFunc func(obj client.Object) (*v1alpha1.RestartOnSpec, *v1alpha1.StartOnSpec)
+
 // Objects is a container for objects referenced by a RestartOnSpec and/or StartOnSpec.
 type Objects struct {
 	UIButtons   map[string]*v1alpha1.UIButton
 	FileWatches map[string]*v1alpha1.FileWatch
+}
+
+// SetupController creates watches for types referenced by v1alpha1.RestartOnSpec & v1alpha1.StartOnSpec and registers
+// an index function for them.
+func SetupController(builder *builder.Builder, idxer *indexer.Indexer, extractFunc ExtractFunc) {
+	idxer.AddKeyFunc(
+		func(obj client.Object) []indexer.Key {
+			restartOn, startOn := extractFunc(obj)
+			return extractKeysForIndexer(obj.GetNamespace(), restartOn, startOn)
+		})
+
+	registerWatches(builder, idxer)
 }
 
 // FetchObjects retrieves all objects referenced in either the RestartOnSpec or StartOnSpec.
@@ -38,38 +60,6 @@ func FetchObjects(ctx context.Context, client client.Reader, restartOn *v1alpha1
 		UIButtons:   buttons,
 		FileWatches: fileWatches,
 	}, nil
-}
-
-// ExtractKeysForIndexer returns the keys of objects referenced in the RestartOnSpec and/or StartOnSpec.
-func ExtractKeysForIndexer(namespace string, restartOn *v1alpha1.RestartOnSpec, startOn *v1alpha1.StartOnSpec) []indexer.Key {
-	var keys []indexer.Key
-
-	if restartOn != nil {
-		for _, name := range restartOn.FileWatches {
-			keys = append(keys, indexer.Key{
-				Name: types.NamespacedName{Namespace: namespace, Name: name},
-				GVK:  fwGVK,
-			})
-		}
-
-		for _, name := range restartOn.UIButtons {
-			keys = append(keys, indexer.Key{
-				Name: types.NamespacedName{Namespace: namespace, Name: name},
-				GVK:  btnGVK,
-			})
-		}
-	}
-
-	if startOn != nil {
-		for _, name := range startOn.UIButtons {
-			keys = append(keys, indexer.Key{
-				Name: types.NamespacedName{Namespace: namespace, Name: name},
-				GVK:  btnGVK,
-			})
-		}
-	}
-
-	return keys
 }
 
 // Fetch all the buttons that this object depends on.
@@ -234,4 +224,47 @@ func FilesChanged(restartOn *v1alpha1.RestartOnSpec, fileWatches map[string]*v1a
 		}
 	}
 	return sliceutils.DedupedAndSorted(filesChanged)
+}
+
+// registerWatches ensures that reconciliation happens on changes to objects referenced by RestartOnSpec/StartOnSpec.
+func registerWatches(builder *builder.Builder, indexer *indexer.Indexer) {
+	for _, t := range restartOnTypes {
+		// this is arguably overly defensive, but a copy of the type object stub is made
+		// to avoid sharing references of it across different reconcilers
+		obj := t.DeepCopyObject().(client.Object)
+		builder.Watches(&source.Kind{Type: obj},
+			handler.EnqueueRequestsFromMapFunc(indexer.Enqueue))
+	}
+}
+
+// extractKeysForIndexer returns the keys of objects referenced in the RestartOnSpec and/or StartOnSpec.
+func extractKeysForIndexer(namespace string, restartOn *v1alpha1.RestartOnSpec, startOn *v1alpha1.StartOnSpec) []indexer.Key {
+	var keys []indexer.Key
+
+	if restartOn != nil {
+		for _, name := range restartOn.FileWatches {
+			keys = append(keys, indexer.Key{
+				Name: types.NamespacedName{Namespace: namespace, Name: name},
+				GVK:  fwGVK,
+			})
+		}
+
+		for _, name := range restartOn.UIButtons {
+			keys = append(keys, indexer.Key{
+				Name: types.NamespacedName{Namespace: namespace, Name: name},
+				GVK:  btnGVK,
+			})
+		}
+	}
+
+	if startOn != nil {
+		for _, name := range startOn.UIButtons {
+			keys = append(keys, indexer.Key{
+				Name: types.NamespacedName{Namespace: namespace, Name: name},
+				GVK:  btnGVK,
+			})
+		}
+	}
+
+	return keys
 }

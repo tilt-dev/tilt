@@ -55,6 +55,20 @@ type Controller struct {
 
 var _ store.TearDowner = &Controller{}
 
+func (r *Controller) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
+	b := ctrl.NewControllerManagedBy(mgr).
+		For(&Cmd{}).
+		Watches(&source.Kind{Type: &ConfigMap{}},
+			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue))
+
+	restarton.SetupController(b, r.indexer, func(obj ctrlclient.Object) (*v1alpha1.RestartOnSpec, *v1alpha1.StartOnSpec) {
+		cmd := obj.(*v1alpha1.Cmd)
+		return cmd.Spec.RestartOn, cmd.Spec.StartOn
+	})
+
+	return b, nil
+}
+
 func NewController(ctx context.Context, execer Execer, proberManager ProberManager, client ctrlclient.Client, st store.RStore, clock clockwork.Clock, scheme *runtime.Scheme) *Controller {
 	return &Controller{
 		globalCtx:     ctx,
@@ -541,9 +555,6 @@ func (c *Controller) processStatuses(
 func indexCmd(obj client.Object) []indexer.Key {
 	cmd := obj.(*v1alpha1.Cmd)
 	result := []indexer.Key{}
-
-	result = append(result, restarton.ExtractKeysForIndexer(cmd.Namespace, cmd.Spec.RestartOn, cmd.Spec.StartOn)...)
-
 	if cmd.Spec.DisableSource != nil {
 		cm := cmd.Spec.DisableSource.ConfigMap
 		if cm != nil {
@@ -555,19 +566,6 @@ func indexCmd(obj client.Object) []indexer.Key {
 		}
 	}
 	return result
-}
-
-func (r *Controller) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
-	b := ctrl.NewControllerManagedBy(mgr).
-		For(&Cmd{}).
-		Watches(&source.Kind{Type: &FileWatch{}},
-			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
-		Watches(&source.Kind{Type: &UIButton{}},
-			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
-		Watches(&source.Kind{Type: &ConfigMap{}},
-			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue))
-
-	return b, nil
 }
 
 // currentProcess represents the current process for a Manifest, so that Controller can

@@ -36,13 +36,6 @@ var SanchoRef = container.MustParseSelector(testyaml.SanchoImage)
 var SanchoBaseRef = container.MustParseSelector("sancho-base")
 var SanchoSidecarRef = container.MustParseSelector(testyaml.SanchoSidecarImage)
 
-func NewSanchoLiveUpdateManifest(f Fixture) model.Manifest {
-	return manifestbuilder.New(f, "sancho").
-		WithK8sYAML(SanchoYAML).
-		WithImageTarget(NewSanchoLiveUpdateImageTarget(f)).
-		Build()
-}
-
 func NewSanchoManifestWithImageInEnvVar(f Fixture) model.Manifest {
 	it2 := model.MustNewImageTarget(container.MustParseSelector(SanchoRef.String() + "2")).WithBuildDetails(model.DockerBuild{
 		Dockerfile: SanchoDockerfile,

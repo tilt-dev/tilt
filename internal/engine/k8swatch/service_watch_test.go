@@ -65,21 +65,34 @@ func TestServiceWatchUIDDelayed(t *testing.T) {
 	uid := types.UID("fake-uid")
 	manifest := f.addManifest("server")
 
+	// the watcher won't start until it has a deployed object ref to find a namespace to watch in
+	// so we need to create at least one first
+	dummySvc := servicebuilder.New(t, manifest).WithUID("placeholder").Build()
+	f.kClient.UpsertService(dummySvc)
+	f.addDeployedService(manifest, dummySvc)
+
 	_ = f.sw.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
+	// this service should be seen even by the watcher even though it's not yet referenced by the manifest
 	s := servicebuilder.New(f.t, manifest).
 		WithUID(uid).
 		Build()
 	f.kClient.UpsertService(s)
 	f.waitUntilServiceKnown(uid)
 
+	// once it's referenced by the manifest, an event should get emitted
 	f.addDeployedService(manifest, s)
-
-	expectedSCA := ServiceChangeAction{
-		Service:      s,
-		ManifestName: manifest.Name,
+	expected := []ServiceChangeAction{
+		{
+			Service:      dummySvc,
+			ManifestName: manifest.Name,
+		},
+		{
+			Service:      s,
+			ManifestName: manifest.Name,
+		},
 	}
-	f.assertObservedServiceChangeActions(expectedSCA)
+	f.assertObservedServiceChangeActions(expected...)
 }
 
 func (f *swFixture) addManifest(manifestName model.ManifestName) model.Manifest {

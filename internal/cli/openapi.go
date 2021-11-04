@@ -95,7 +95,11 @@ type headlessServer struct {
 
 func newHeadlessServer(ctx context.Context) (*headlessServer, error) {
 	memconn := server.ProvideMemConn()
-	serverOptions, err := server.ProvideTiltServerOptionsForHeadless(ctx, xdg.NewTiltDevBase(), memconn, tiltInfo())
+	genCert, err := server.ProvideKeyCert("headless", "localhost", 0, xdg.NewTiltDevBase())
+	if err != nil {
+		return nil, err
+	}
+	serverOptions, err := server.ProvideTiltServerOptionsForHeadless(ctx, genCert, memconn, tiltInfo())
 	if err != nil {
 		return nil, err
 	}

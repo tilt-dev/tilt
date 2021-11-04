@@ -497,16 +497,16 @@ func (lns ByURL) Len() int           { return len(lns) }
 func (lns ByURL) Less(i, j int) bool { return lns[i].URLString() < lns[j].URLString() }
 func (lns ByURL) Swap(i, j int)      { lns[i], lns[j] = lns[j], lns[i] }
 
-func (pf PortForward) ToLink() Link {
+func PortForwardToLink(pf v1alpha1.Forward) Link {
 	host := pf.Host
 	if host == "" {
 		host = "localhost"
 	}
-	url := fmt.Sprintf("http://%s:%d/%s", host, pf.LocalPort, pf.PathForAppend())
+	u := fmt.Sprintf("http://%s:%d/%s", host, pf.LocalPort, strings.TrimPrefix(pf.Path, "/"))
 
 	// We panic on error here because we provide the URL format ourselves,
 	// so if it's bad, something is very wrong.
-	return MustNewLink(url, pf.Name)
+	return MustNewLink(u, pf.Name)
 }
 
 func LinksToURLStrings(lns []Link) []string {

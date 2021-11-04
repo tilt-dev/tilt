@@ -552,6 +552,16 @@ message Forward {
   //
   // +optional
   optional string host = 5;
+
+  // Name to identify this port forward.
+  //
+  // +optional
+  optional string name = 6;
+
+  // Path to include as part of generated links for port forward.
+  //
+  // +optional
+  optional string path = 7;
 }
 
 message ForwardStatus {

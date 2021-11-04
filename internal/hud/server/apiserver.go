@@ -59,8 +59,14 @@ func ProvideMemConn() apiserver.ConnProvider {
 	return apiserver.NetworkConnProvider(&memconn.Provider{}, "memu")
 }
 
-func ProvideKeyCert() options.GeneratableKeyCert {
-	return options.GeneratableKeyCert{}
+func ProvideKeyCert(apiServerName model.APIServerName, host model.WebHost, port model.WebPort, base xdg.Base) (options.GeneratableKeyCert, error) {
+	pairName := strings.Replace(fmt.Sprintf("%s_%d", host, port), string(filepath.Separator), "_", -1)
+	exampleCert, err := base.CacheFile(filepath.Join("certs", string(apiServerName), pairName))
+	if err != nil {
+		return options.GeneratableKeyCert{}, err
+	}
+
+	return options.GeneratableKeyCert{CertDirectory: filepath.Dir(exampleCert), PairName: pairName}, nil
 }
 
 // Uses the kubernetes config-loading library to load
@@ -195,13 +201,7 @@ func ProvideTiltServerOptionsForTesting(ctx context.Context) (*APIServerConfig, 
 
 // Generate the server config, removing options that are not needed for headless mode
 // (where we don't open up any webserver or apiserver).
-func ProvideTiltServerOptionsForHeadless(ctx context.Context, base xdg.Base, memconn apiserver.ConnProvider, version model.TiltBuild) (*APIServerConfig, error) {
-	exampleCert, err := base.CacheFile(filepath.Join("certs", "headless", "example.crt"))
-	if err != nil {
-		return nil, err
-	}
-
-	keyCert := options.GeneratableKeyCert{FixtureDirectory: filepath.Dir(exampleCert)}
+func ProvideTiltServerOptionsForHeadless(ctx context.Context, keyCert options.GeneratableKeyCert, memconn apiserver.ConnProvider, version model.TiltBuild) (*APIServerConfig, error) {
 	config, err := ProvideTiltServerOptions(ctx,
 		version, memconn, "corgi-charge", keyCert, 0)
 	if err != nil {

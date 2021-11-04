@@ -43,10 +43,13 @@ func TestRestartProcessDifferentUser(t *testing.T) {
 	_, _ = f.runCommand("kubectl", "exec", secondPods[0], "-c=c2", namespaceFlag,
 		"--", "kill", "1")
 
+	// live update v2 keeps track of all changes since
+	// the container started, and will be able to restore in-place.
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
+	f.CurlUntil(ctx, "http://localhost:8100", "🍄 Two-Up! 🍄")
 	f.CurlUntil(ctx, "http://localhost:8101", "🍄 Two-Up! 🍄")
 
 	replacedPods := f.WaitForAllPodsReady(ctx, "app=rpdu")
-	assert.NotEqual(t, secondPods, replacedPods)
+	assert.Equal(t, secondPods, replacedPods)
 }

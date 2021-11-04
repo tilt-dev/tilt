@@ -25,7 +25,7 @@ type KeyFunc func(obj client.Object) []Key
 type Indexer struct {
 	scheme *runtime.Scheme
 
-	indexFunc KeyFunc
+	indexFuncs []KeyFunc
 
 	// A map to help determine which Objects to reconcile when one of the objects
 	// they're watching change.
@@ -41,10 +41,10 @@ type Indexer struct {
 	mu sync.Mutex
 }
 
-func NewIndexer(scheme *runtime.Scheme, f KeyFunc) *Indexer {
+func NewIndexer(scheme *runtime.Scheme, keyFuncs ...KeyFunc) *Indexer {
 	return &Indexer{
 		scheme:                scheme,
-		indexFunc:             f,
+		indexFuncs:            keyFuncs,
 		indexByWatchedObjects: make(map[Key]map[types.NamespacedName]bool),
 	}
 }
@@ -60,14 +60,16 @@ func (m *Indexer) OnReconcile(name types.NamespacedName, obj client.Object) {
 	}
 
 	// Re-add all the mappings.
-	for _, key := range m.indexFunc(obj) {
-		index, ok := m.indexByWatchedObjects[key]
-		if !ok {
-			index = make(map[types.NamespacedName]bool)
-			m.indexByWatchedObjects[key] = index
-		}
+	for _, indexFunc := range m.indexFuncs {
+		for _, key := range indexFunc(obj) {
+			index, ok := m.indexByWatchedObjects[key]
+			if !ok {
+				index = make(map[types.NamespacedName]bool)
+				m.indexByWatchedObjects[key] = index
+			}
 
-		index[name] = true
+			index[name] = true
+		}
 	}
 }
 
@@ -95,4 +97,15 @@ func (m *Indexer) EnqueueKey(key Key) []reconcile.Request {
 		result = append(result, reconcile.Request{NamespacedName: watchingName})
 	}
 	return result
+}
+
+// AddKeyFunc registers a new indexer function.
+//
+// In practice, all KeyFunc indexer functions should be added before or during controller initialization
+// to avoid missed updates.
+func (m *Indexer) AddKeyFunc(fn KeyFunc) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.indexFuncs = append(m.indexFuncs, fn)
 }

@@ -146,12 +146,17 @@ func TestEventWatchManager_listensOnce(t *testing.T) {
 	f := newEWMFixture(t)
 	defer f.TearDown()
 
-	f.addManifest("fe")
+	m := f.addManifest("fe")
+	entities := podbuilder.New(t, m).ObjectTreeEntities()
+	f.addDeployedEntity(m, entities.Deployment())
+	f.kClient.Inject(entities...)
+
 	_ = f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
 	f.kClient.EventsWatchErr = fmt.Errorf("Multiple watches forbidden")
 	_ = f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	f.assertActions()
+
+	f.assertNoActions()
 }
 
 func TestEventWatchManager_watchError(t *testing.T) {
@@ -160,7 +165,11 @@ func TestEventWatchManager_watchError(t *testing.T) {
 
 	err := fmt.Errorf("oh noes")
 	f.kClient.EventsWatchErr = err
-	f.addManifest("someK8sManifest")
+
+	m := f.addManifest("someK8sManifest")
+	entities := podbuilder.New(t, m).ObjectTreeEntities()
+	f.addDeployedEntity(m, entities.Deployment())
+	f.kClient.Inject(entities...)
 
 	_ = f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 
@@ -321,6 +330,8 @@ func (f *ewmFixture) assertNoActions() {
 }
 
 func (f *ewmFixture) assertActions(expected ...store.Action) {
+	f.t.Helper()
+
 	start := time.Now()
 	for time.Since(start) < time.Second {
 		actions := f.store.Actions()

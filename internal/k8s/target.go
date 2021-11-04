@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
@@ -53,11 +52,6 @@ func NewTarget(
 		return model.K8sTarget{}, err
 	}
 
-	objectRefs := make([]v1.ObjectReference, 0, len(sorted))
-	for _, e := range sorted {
-		objectRefs = append(objectRefs, e.ToObjectReference())
-	}
-
 	// Use a min component count of 2 for computing names,
 	// so that the resource type appears
 	displayNames := UniqueNames(sorted, 2)
@@ -97,9 +91,7 @@ func NewTarget(
 	return model.K8sTarget{
 		KubernetesApplySpec: apply,
 		Name:                name,
-		PortForwards:        portForwards,
 		DisplayNames:        displayNames,
-		ObjectRefs:          objectRefs,
 		PodReadinessMode:    podReadinessMode,
 		Links:               links,
 	}.WithDependencyIDs(dependencyIDs, model.ToLiveUpdateOnlyMap(imageTargets)).
@@ -166,6 +158,8 @@ func toPortForwardTemplateSpec(forwards []model.PortForward) *v1alpha1.PortForwa
 			LocalPort:     int32(fwd.LocalPort),
 			ContainerPort: int32(fwd.ContainerPort),
 			Host:          fwd.Host,
+			Name:          fwd.Name,
+			Path:          fwd.PathForAppend(),
 		}
 	}
 	return &v1alpha1.PortForwardTemplateSpec{

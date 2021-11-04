@@ -3,9 +3,10 @@ package store
 import (
 	"context"
 	"fmt"
-	"reflect"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"k8s.io/apimachinery/pkg/api/meta"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -36,8 +37,12 @@ func WithObjectLogHandler(ctx context.Context, st RStore, obj metav1.Object) (co
 	// get dumped in the global log.
 	mn := obj.GetAnnotations()[v1alpha1.AnnotationManifest]
 	spanID := obj.GetAnnotations()[v1alpha1.AnnotationSpanID]
+	typ, err := meta.TypeAccessor(obj)
+	if err != nil {
+		return nil, fmt.Errorf("object missing type data: %T", obj)
+	}
 	if spanID == "" {
-		spanID = fmt.Sprintf("%s-%s", reflect.TypeOf(obj).Name(), obj.GetName())
+		spanID = fmt.Sprintf("%s-%s", typ.GetKind(), obj.GetName())
 	}
 
 	w := apiLogWriter{

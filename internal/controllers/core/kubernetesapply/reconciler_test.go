@@ -3,9 +3,12 @@ package kubernetesapply
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -97,20 +100,105 @@ func TestBasicApplyYAML(t *testing.T) {
 
 func TestBasicApplyCmd(t *testing.T) {
 	f := newFixture(t)
+
+	entities, err := k8s.ParseYAMLFromString(testyaml.SanchoYAML)
+	require.NoError(t, err, "Could not parse SanchoYAML")
+	for i := range entities {
+		entities[i].SetUID(uuid.New().String())
+	}
+	yamlOut, err := k8s.SerializeSpecYAML(entities)
+	require.NoError(t, err, "Failed to re-serialize SanchoYAML")
+
+	f.execer.RegisterCommand("custom-apply-cmd", 0, yamlOut, "")
+
 	ka := v1alpha1.KubernetesApply{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "a",
 		},
 		Spec: v1alpha1.KubernetesApplySpec{
-			Cmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"false"}},
+			Cmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-apply-cmd"}},
 		},
 	}
 	f.Create(&ka)
 
+	f.MustGet(types.NamespacedName{Name: "a"}, &ka)
+	assert.Empty(t, ka.Status.Error)
+	assert.NotZero(t, ka.Status.LastApplyTime)
+	assert.Equal(t, yamlOut, ka.Status.ResultYAML)
+
+	// verify that a re-reconcile does NOT re-invoke the command
+	f.execer.RegisterCommandError("custom-apply-cmd", errors.New("this should not get invoked"))
 	f.MustReconcile(types.NamespacedName{Name: "a"})
+	lastApplyTime := ka.Status.LastApplyTime
+	f.MustGet(types.NamespacedName{Name: "a"}, &ka)
+	assert.Empty(t, ka.Status.Error)
+	timecmp.AssertTimeEqual(t, lastApplyTime, ka.Status.LastApplyTime)
+}
+
+func TestBasicApplyCmd_ExecError(t *testing.T) {
+	f := newFixture(t)
+
+	f.execer.RegisterCommandError("custom-apply-cmd", errors.New("could not start process"))
+
+	ka := v1alpha1.KubernetesApply{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "a",
+		},
+		Spec: v1alpha1.KubernetesApplySpec{
+			Cmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-apply-cmd"}},
+		},
+	}
+	f.Create(&ka)
+
 	f.MustGet(types.NamespacedName{Name: "a"}, &ka)
 
-	assert.Equal(t, "Cmd apply not supported", ka.Status.Error)
+	assert.Equal(t, "apply command failed: could not start process", ka.Status.Error)
+}
+
+func TestBasicApplyCmd_NonZeroExitCode(t *testing.T) {
+	f := newFixture(t)
+
+	f.execer.RegisterCommand("custom-apply-cmd", 77, "whoops", "oh no")
+
+	ka := v1alpha1.KubernetesApply{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "a",
+			Annotations: map[string]string{v1alpha1.AnnotationManifest: "foo"},
+		},
+		Spec: v1alpha1.KubernetesApplySpec{
+			Cmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-apply-cmd"}},
+		},
+	}
+	f.Create(&ka)
+
+	f.MustGet(types.NamespacedName{Name: "a"}, &ka)
+
+	if assert.Equal(t, "apply command exited with status 77\nstdout:\nwhoops\n", ka.Status.Error) {
+		logAction := f.st.WaitForAction(t, reflect.TypeOf(store.LogAction{}))
+		assert.Equal(t, `manifest: foo, spanID: KubernetesApply-a, msg: "oh no"`, logAction.(store.LogAction).String())
+	}
+}
+
+func TestBasicApplyCmd_MalformedYAML(t *testing.T) {
+	f := newFixture(t)
+
+	f.execer.RegisterCommand("custom-apply-cmd", 0, "this is not yaml", "")
+
+	ka := v1alpha1.KubernetesApply{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "a",
+		},
+		Spec: v1alpha1.KubernetesApplySpec{
+			Cmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-apply-cmd"}},
+		},
+	}
+	f.Create(&ka)
+
+	f.MustGet(types.NamespacedName{Name: "a"}, &ka)
+
+	if assert.Contains(t, ka.Status.Error, "apply command returned malformed YAML") {
+		assert.Contains(t, ka.Status.Error, "stdout:\nthis is not yaml\n")
+	}
 }
 
 func TestGarbageCollectAll(t *testing.T) {
@@ -254,11 +342,36 @@ func TestRestartOn(t *testing.T) {
 	timecmp.AssertTimeEqual(f.T(), lastApply, ka.Status.LastApplyTime)
 }
 
+func TestIgnoreManagedObjects(t *testing.T) {
+	f := newFixture(t)
+	ka := v1alpha1.KubernetesApply{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "a",
+			Annotations: map[string]string{
+				v1alpha1.AnnotationManagedBy: "buildcontrol",
+			},
+		},
+		Spec: v1alpha1.KubernetesApplySpec{
+			YAML: testyaml.SanchoYAML,
+		},
+	}
+	f.Create(&ka)
+
+	f.MustReconcile(types.NamespacedName{Name: "a"})
+	assert.Empty(f.T(), f.kClient.Yaml)
+
+	// no apply should happen since the object is managed by the engine
+	f.MustGet(types.NamespacedName{Name: "a"}, &ka)
+	assert.Empty(f.T(), ka.Status.ResultYAML)
+	assert.Zero(f.T(), ka.Status.LastApplyTime)
+}
+
 type fixture struct {
 	*fake.ControllerFixture
 	r       *Reconciler
 	kClient *k8s.FakeK8sClient
 	execer  *localexec.FakeExecer
+	st      *store.TestingStore
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -282,5 +395,6 @@ func newFixture(t *testing.T) *fixture {
 		r:                 r,
 		kClient:           kClient,
 		execer:            execer,
+		st:                st,
 	}
 }

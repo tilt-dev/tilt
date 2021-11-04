@@ -131,7 +131,7 @@ func NewSanchoDockerBuildManifestWithYaml(f Fixture, yaml string) model.Manifest
 		Build()
 }
 
-func NewSanchoDockerBuildMultiStageManifestWithLiveUpdate(fixture Fixture, lu v1alpha1.LiveUpdateSpec) model.Manifest {
+func NewSanchoMultiStageImages(fixture Fixture) []model.ImageTarget {
 	baseImage := model.MustNewImageTarget(SanchoBaseRef).WithBuildDetails(model.DockerBuild{
 		Dockerfile: `FROM golang:1.10`,
 		BuildPath:  fixture.JoinPath("sancho-base"),
@@ -146,12 +146,7 @@ ENTRYPOINT /go/bin/sancho
 `,
 		BuildPath: fixture.JoinPath("sancho"),
 	}).WithDependencyIDs([]model.TargetID{baseImage.ID()})
-
-	return manifestbuilder.New(fixture, "sancho").
-		WithK8sYAML(SanchoYAML).
-		WithImageTargets(baseImage, srcImage).
-		WithLiveUpdateAtIndex(lu, 1).
-		Build()
+	return []model.ImageTarget{baseImage, srcImage}
 }
 
 func NewSanchoLiveUpdateMultiStageManifest(fixture Fixture) model.Manifest {

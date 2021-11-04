@@ -40,6 +40,10 @@ type ManifestBuilder struct {
 	resourceDeps       []string
 	triggerMode        model.TriggerMode
 
+	// When set to true, we'll always use the old build-and-deploy-based liveupdate,
+	// rather than the new apiserver-based liveupdate.
+	useLiveUpdateBAD bool
+
 	iTargets []model.ImageTarget
 }
 
@@ -57,6 +61,11 @@ func New(f Fixture, name model.ManifestName) ManifestBuilder {
 		name:            name,
 		k8sPodReadiness: k8sPodReadiness,
 	}
+}
+
+func (b ManifestBuilder) WithLiveUpdateBAD() ManifestBuilder {
+	b.useLiveUpdateBAD = true
+	return b
 }
 
 func (b ManifestBuilder) WithNamedJSONPathImageLocator(name, path string) ManifestBuilder {
@@ -143,6 +152,22 @@ func (b ManifestBuilder) WithResourceDeps(deps ...string) ManifestBuilder {
 
 func (b ManifestBuilder) Build() model.Manifest {
 	var m model.Manifest
+
+	// Adjust images to use the live update reconciler or the BuildAndDeployer.
+	// Currently,
+	for index, iTarget := range b.iTargets {
+		if liveupdate.IsEmptySpec(iTarget.LiveUpdateSpec) {
+			iTarget.LiveUpdateReconciler = false
+		} else if b.useLiveUpdateBAD {
+			iTarget.LiveUpdateReconciler = false
+		} else if len(b.dcConfigPaths) > 0 {
+			// Docker Compose must use the buildAndDeployer
+			iTarget.LiveUpdateReconciler = false
+		} else {
+			iTarget.LiveUpdateReconciler = true
+		}
+		b.iTargets[index] = iTarget
+	}
 
 	var rds []model.ManifestName
 	for _, dep := range b.resourceDeps {
