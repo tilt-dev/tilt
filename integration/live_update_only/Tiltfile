@@ -1,0 +1,21 @@
+
+# TODO(milas): this test is failing with live_update_v2 because the LU Reconciler
+#   stops after seeing a path that it can't sync, but a full BaD never happens,
+#   and the resource gets stuck in update Pending
+# disable_feature('live_update_v2')
+
+custom_build(
+    ref='nginx',
+    # this is a hack that puts the builder into "live update only" mode
+    command=':',
+    deps=['./web', 'special.txt'],
+    disable_push=True,
+    skips_local_docker=True,
+    live_update=[
+        sync('./web/', '/usr/share/nginx/html/')
+    ]
+)
+
+k8s_yaml('nginx.yaml')
+
+k8s_resource('lu-only', port_forwards=['28195:80'])
