@@ -1669,7 +1669,7 @@ func TestBuildControllerK8sFileDependencies(t *testing.T) {
 		WithPathDependencies(
 			[]string{f.JoinPath("k8s-dep")},
 			[]model.LocalGitRepo{
-				{LocalPath: "k8s-dep"},
+				{LocalPath: f.JoinPath("k8s-dep")},
 			})
 	m := model.Manifest{Name: "fe"}.WithDeployTarget(kt)
 
