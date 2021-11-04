@@ -1,11 +1,15 @@
 package k8sconv
 
 import (
+	"strings"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
@@ -31,6 +35,33 @@ func TestFilteredPodByPodTemplateHash(t *testing.T) {
 	res, err := NewKubernetesResource(discovery, applyStatus)
 	require.NoError(t, err)
 	assert.Equal(t, []v1alpha1.Pod{podA, podB}, res.FilteredPods)
+}
+
+func TestNewKubernetesApplyFilter_Sorted(t *testing.T) {
+	forDeploy, err := k8s.ParseYAMLFromString(testyaml.OutOfOrderYaml)
+	require.NoError(t, err, "Invalid test YAML")
+	for i := range forDeploy {
+		forDeploy[i].SetUID(uuid.New().String())
+	}
+	resultYAML, err := k8s.SerializeSpecYAML(forDeploy)
+	require.NoError(t, err, "Failed to re-serialize test YAML")
+	// sanity check to ensure serialization isn't changing the sort
+	require.Less(t, strings.Index(resultYAML, "Job"), strings.Index(resultYAML, "PersistentVolumeClaim"),
+		"Order in re-serialized YAML was not preserved")
+
+	applyFilter, err := NewKubernetesApplyFilter(&v1alpha1.KubernetesApplyStatus{
+		ResultYAML: resultYAML,
+	})
+	require.NoError(t, err, "Failed to create KubernetesApplyFilter")
+	require.NotNil(t, applyFilter, "KubernetesApplyFilter was nil")
+
+	var actualKinds []string
+	for _, ref := range applyFilter.DeployedRefs {
+		actualKinds = append(actualKinds, ref.Kind)
+	}
+
+	expectedKindOrder := []string{"PersistentVolume", "PersistentVolumeClaim", "ConfigMap", "Service", "StatefulSet", "Job", "Pod"}
+	assert.Equal(t, expectedKindOrder, actualKinds)
 }
 
 func newDeploymentApplyStatus() *v1alpha1.KubernetesApplyStatus {

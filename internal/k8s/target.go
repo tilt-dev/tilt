@@ -52,9 +52,6 @@ func NewTarget(
 		return model.K8sTarget{}, err
 	}
 
-	// Use a min component count of 2 for computing names,
-	// so that the resource type appears
-	displayNames := UniqueNames(sorted, 2)
 	myLocators := []v1alpha1.KubernetesImageLocator{}
 	for _, locator := range allLocators {
 		if LocatorMatchesOne(locator, entities) {
@@ -91,7 +88,6 @@ func NewTarget(
 	return model.K8sTarget{
 		KubernetesApplySpec: apply,
 		Name:                name,
-		DisplayNames:        displayNames,
 		PodReadinessMode:    podReadinessMode,
 		Links:               links,
 	}.WithDependencyIDs(dependencyIDs, model.ToLiveUpdateOnlyMap(imageTargets)).

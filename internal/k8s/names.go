@@ -3,6 +3,8 @@ package k8s
 import (
 	"fmt"
 	"strings"
+
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 const fmtduplicateYAMLDetectedError = "Duplicate YAML Entity: %s has been detected across one or more resources.  Only one specification per entity can be applied to the cluster; to ensure expected behavior, remove the duplicate specifications."
@@ -11,8 +13,16 @@ func DuplicateYAMLDetectedError(duplicatedYaml string) string {
 	return fmt.Sprintf(fmtduplicateYAMLDetectedError, duplicatedYaml)
 }
 
+func UniqueNames(entities []K8sEntity, minComponents int) []string {
+	meta := make([]EntityMeta, len(entities))
+	for i := range entities {
+		meta[i] = entities[i]
+	}
+	return UniqueNamesMeta(meta, minComponents)
+}
+
 // Calculates names for workloads by using the shortest uniquely matching identifiers
-func UniqueNames(es []K8sEntity, minComponents int) []string {
+func UniqueNamesMeta(es []EntityMeta, minComponents int) []string {
 	ret := make([]string, len(es))
 	// how many resources potentially map to a given name
 	counts := make(map[string]int)
@@ -70,7 +80,7 @@ func FragmentsToEntities(es []K8sEntity) map[string][]K8sEntity {
 }
 
 // returns a list of potential names, in order of preference
-func potentialNames(e K8sEntity, minComponents int) []string {
+func potentialNames(e EntityMeta, minComponents int) []string {
 	gvk := e.GVK()
 
 	// Empty string is synonymous with the core group
@@ -91,4 +101,10 @@ func potentialNames(e K8sEntity, minComponents int) []string {
 		ret = append(ret, strings.ToLower(SelectorStringFromParts(components[:i+1])))
 	}
 	return ret
+}
+
+type EntityMeta interface {
+	Name() string
+	Namespace() Namespace
+	GVK() schema.GroupVersionKind
 }

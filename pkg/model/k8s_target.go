@@ -31,10 +31,6 @@ type K8sTarget struct {
 
 	Name TargetName
 
-	// Each K8s entity should have a display name for user interfaces
-	// that balances brevity and uniqueness
-	DisplayNames []string
-
 	PodReadinessMode PodReadinessMode
 
 	// Map configRef -> number of times we (expect to) inject it.

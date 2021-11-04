@@ -79,6 +79,7 @@ func NewKubernetesApplyFilter(status *v1alpha1.KubernetesApplyStatus) (*Kubernet
 	if err != nil {
 		return nil, err
 	}
+	deployed = k8s.SortedEntities(deployed)
 
 	podTemplateSpecHashes := []k8s.PodTemplateSpecHash{}
 	for _, entity := range deployed {

@@ -962,17 +962,16 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 		runStatus = mt.State.RuntimeState.RuntimeStatus()
 	}
 
-	if mt.Manifest.PodReadinessMode() == model.PodReadinessIgnore {
-		return view.YAMLResourceInfo{
-			K8sDisplayNames: mt.Manifest.K8sTarget().DisplayNames,
-		}
-	}
-
 	switch state := mt.State.RuntimeState.(type) {
 	case dockercompose.State:
 		return view.NewDCResourceInfo(
 			state.ContainerState.Status, state.ContainerID, state.SpanID, state.StartTime, runStatus)
 	case K8sRuntimeState:
+		if mt.Manifest.PodReadinessMode() == model.PodReadinessIgnore {
+			return view.YAMLResourceInfo{
+				K8sDisplayNames: state.EntityDisplayNames(),
+			}
+		}
 		pod := state.MostRecentPod()
 		podID := k8s.PodID(pod.Name)
 		return view.K8sResourceInfo{
@@ -983,7 +982,7 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 			PodRestarts:        int(state.VisiblePodContainerRestarts(podID)),
 			SpanID:             k8sconv.SpanIDForPod(mt.Manifest.Name, podID),
 			RunStatus:          runStatus,
-			DisplayNames:       mt.Manifest.K8sTarget().DisplayNames,
+			DisplayNames:       state.EntityDisplayNames(),
 		}
 	case LocalRuntimeState:
 		return view.NewLocalResourceInfo(runStatus, state.PID, state.SpanID)
