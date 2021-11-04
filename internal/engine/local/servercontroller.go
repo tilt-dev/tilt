@@ -120,6 +120,10 @@ func (c *ServerController) determineServers(ctx context.Context, st store.RStore
 
 		name := mt.Manifest.Name.String()
 		cmdServer := CmdServer{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "CmdServer",
+				APIVersion: "tilt.dev/v1alpha1",
+			},
 			ObjectMeta: ObjectMeta{
 				Name: name,
 				Annotations: map[string]string{

@@ -587,7 +587,6 @@ func TestReenable(t *testing.T) {
 
 func TestDisableServeCmd(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
 
 	ds := v1alpha1.DisableSource{ConfigMap: &v1alpha1.ConfigMapDisableSource{Name: "disable-foo", Key: "isDisabled"}}
 	t1 := time.Unix(1, 0)
@@ -606,7 +605,7 @@ func TestDisableServeCmd(t *testing.T) {
 			ds.ConfigMap.Key: "true",
 		},
 	}
-	err := f.client.Create(f.ctx, &cm)
+	err := f.Client.Create(f.Context(), &cm)
 	require.NoError(t, err)
 
 	f.step()
@@ -615,7 +614,6 @@ func TestDisableServeCmd(t *testing.T) {
 
 func TestEnableServeCmd(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
 
 	ds := v1alpha1.DisableSource{ConfigMap: &v1alpha1.ConfigMapDisableSource{Name: "disable-foo", Key: "isDisabled"}}
 	cm := ConfigMap{
@@ -624,7 +622,7 @@ func TestEnableServeCmd(t *testing.T) {
 			ds.ConfigMap.Key: "true",
 		},
 	}
-	err := f.client.Create(f.ctx, &cm)
+	err := f.Client.Create(f.Context(), &cm)
 	require.NoError(t, err)
 
 	t1 := time.Unix(1, 0)
@@ -635,7 +633,7 @@ func TestEnableServeCmd(t *testing.T) {
 	f.step()
 	f.assertCmdCount(0)
 	cm.Data[ds.ConfigMap.Key] = "false"
-	err = f.client.Update(f.ctx, &cm)
+	err = f.Client.Update(f.Context(), &cm)
 	require.NoError(t, err)
 
 	f.step()
