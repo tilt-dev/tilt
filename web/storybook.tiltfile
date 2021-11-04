@@ -6,6 +6,7 @@ version_settings(constraint='>=0.22.1')
 #v1alpha1.extension(name='cancel', repo_name='default', repo_path='cancel')
 
 enable_feature("labels")
+enable_feature("disable_resources")
 
 local_resource(
   'storybook',

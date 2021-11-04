@@ -1,4 +1,4 @@
-import { ResourceStatus } from "./types"
+import { ResourceStatus, UIResource } from "./types"
 
 export function ClassNameFromResourceStatus(rs: ResourceStatus): string {
   switch (rs) {
@@ -15,4 +15,13 @@ export function ClassNameFromResourceStatus(rs: ResourceStatus): string {
     case ResourceStatus.None:
       return "isNone"
   }
+}
+
+export function resourceIsDisabled(resource: UIResource): boolean {
+  const disableCount = resource.status?.disableStatus?.disabledCount ?? 0
+  if (disableCount > 0) {
+    return true
+  }
+
+  return false
 }

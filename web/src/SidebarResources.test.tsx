@@ -7,11 +7,13 @@ import {
   expectIncrs,
   mockAnalyticsCalls,
 } from "./analytics_test_helpers"
+import Features, { FeaturesProvider, Flag } from "./feature"
 import { accessorsForTesting, tiltfileKeyContext } from "./LocalStorage"
 import LogStore from "./LogStore"
 import { AlertsOnTopToggle } from "./OverviewSidebarOptions"
 import { assertSidebarItemsAndOptions } from "./OverviewSidebarOptions.test"
 import PathBuilder from "./PathBuilder"
+import { ResourceGroupsContextProvider } from "./ResourceGroupsContext"
 import {
   DEFAULT_OPTIONS,
   ResourceListOptions,
@@ -19,10 +21,19 @@ import {
   RESOURCE_LIST_OPTIONS_KEY,
 } from "./ResourceListOptionsContext"
 import SidebarItem from "./SidebarItem"
-import SidebarResources from "./SidebarResources"
+import SidebarItemView, { DisabledSidebarItemView } from "./SidebarItemView"
+import SidebarResources, {
+  SidebarDisabledSectionList,
+  SidebarDisabledSectionTitle,
+  SidebarGroupName,
+  SidebarProps,
+} from "./SidebarResources"
+import SrOnly from "./SrOnly"
 import { StarredResourcesContextProvider } from "./StarredResourcesContext"
 import StarResourceButton from "./StarResourceButton"
 import {
+  nResourceView,
+  nResourceWithLabelsView,
   oneResource,
   oneResourceTestWithName,
   twoResourceView,
@@ -35,6 +46,42 @@ const resourceListOptionsAccessor = accessorsForTesting<ResourceListOptions>(
   RESOURCE_LIST_OPTIONS_KEY
 )
 const starredItemsAccessor = accessorsForTesting<string[]>("pinned-resources")
+
+const SidebarResourcesTestWrapper = ({
+  items,
+  selected,
+  flags,
+  resourceListOptions,
+}: {
+  items: SidebarItem[]
+  selected?: string
+  flags?: { [key in Flag]?: boolean }
+  resourceListOptions?: ResourceListOptions
+}) => {
+  const features = new Features(flags ?? {})
+  const listOptions = resourceListOptions ?? DEFAULT_OPTIONS
+  return (
+    <MemoryRouter>
+      <tiltfileKeyContext.Provider value="test">
+        <FeaturesProvider value={features}>
+          <StarredResourcesContextProvider>
+            <ResourceGroupsContextProvider>
+              <ResourceListOptionsProvider>
+                <SidebarResources
+                  items={items}
+                  selected={selected ?? ""}
+                  resourceView={ResourceView.Log}
+                  pathBuilder={pathBuilder}
+                  resourceListOptions={listOptions}
+                />
+              </ResourceListOptionsProvider>
+            </ResourceGroupsContextProvider>
+          </StarredResourcesContextProvider>
+        </FeaturesProvider>
+      </tiltfileKeyContext.Provider>
+    </MemoryRouter>
+  )
+}
 
 function clickStar(
   root: ReactWrapper<any, React.Component["state"], React.Component>,
@@ -233,4 +280,163 @@ describe("SidebarResources", () => {
       expect(observedOptions).toEqual(expectedOptions)
     }
   )
+
+  describe("disabled resources", () => {
+    let wrapper: ReactWrapper<SidebarProps, typeof SidebarResources>
+
+    function createSidebarItems(n: number, withLabels = false) {
+      const logStore = new LogStore()
+      const resourceView = withLabels ? nResourceWithLabelsView : nResourceView
+      return resourceView(n).uiResources.map(
+        (r) => new SidebarItem(r, logStore)
+      )
+    }
+
+    describe("when feature flag is enabled", () => {
+      beforeEach(() => {
+        // Create a list of sidebar items with disable resources interspersed
+        const items = createSidebarItems(5)
+        items[1].disabled = true
+        items[3].disabled = true
+
+        wrapper = mount(
+          <SidebarResourcesTestWrapper
+            items={items}
+            flags={{ [Flag.DisableResources]: true }}
+          />
+        )
+      })
+
+      it("displays disabled resources in their own list", () => {
+        const disabledItemsList = wrapper.find(SidebarDisabledSectionList)
+        const disabledItemsNames = disabledItemsList
+          .find(SidebarItemView)
+          .map((item) => item.prop("item").name)
+        expect(disabledItemsNames).toEqual(["_1", "_3"])
+      })
+
+      it("displays disabled resources list title", () => {
+        const disabledItemsList = wrapper.find(SidebarDisabledSectionList)
+        expect(disabledItemsList.find(SidebarDisabledSectionTitle).length).toBe(
+          1
+        )
+        // The disabled section title should always be present on the DOM if disabled
+        // resources are present and it should be visible to users (and NOT using sr-only)
+        expect(disabledItemsList.find(SrOnly).length).toBe(0)
+      })
+
+      describe("when there is a resource name filter", () => {
+        beforeEach(() => {
+          // Create a list of sidebar items with disable resources interspersed
+          const items = createSidebarItems(11)
+          items[1].disabled = true
+          items[3].disabled = true
+          items[8].disabled = true
+
+          wrapper = mount(
+            <SidebarResourcesTestWrapper
+              items={items}
+              flags={{ [Flag.DisableResources]: true }}
+              resourceListOptions={{
+                resourceNameFilter: "1",
+                alertsOnTop: true,
+              }}
+            />
+          )
+        })
+
+        it("displays disabled resources that match the filter", () => {
+          // Expect that all matching resources (enabled + disabled) are displayed
+          const resourceNameMatches = wrapper
+            .find(SidebarItemView)
+            .map((item) => item.prop("item").name)
+          expect(resourceNameMatches).toEqual(["_10", "_1"])
+
+          // Expect that all disabled resources appear in their own section
+          const disabledItemsList = wrapper.find(SidebarDisabledSectionList)
+          const disabledItemsNames = disabledItemsList
+            .find(SidebarItemView)
+            .map((item) => item.prop("item").name)
+          expect(disabledItemsNames).toEqual(["_1"])
+        })
+
+        it("displays the disabled resources list title with screen-reader-only class", () => {
+          const disabledItemsList = wrapper.find(SidebarDisabledSectionList)
+          expect(
+            disabledItemsList.find(SidebarDisabledSectionTitle).length
+          ).toBe(1)
+          // The disabled section title should always be present on the DOM if disabled
+          // resources are present, but it should only be available to assistive technology
+          expect(disabledItemsList.find(SrOnly).length).toBe(1)
+        })
+      })
+
+      describe("when there are groups and multiple groups have disabled resources", () => {
+        it("displays disabled resources within each group", () => {
+          const items = createSidebarItems(10, true)
+          // Add disabled items in different label groups based on hardcoded data
+          items[2].disabled = true
+          items[5].disabled = true
+
+          wrapper = mount(
+            <SidebarResourcesTestWrapper
+              items={items}
+              flags={{ [Flag.DisableResources]: true, [Flag.Labels]: true }}
+            />
+          )
+
+          expect(wrapper.find(SidebarDisabledSectionList).length).toBe(2)
+          expect(wrapper.find(SidebarDisabledSectionTitle).length).toBe(2)
+        })
+      })
+    })
+
+    describe("when feature flag is NOT enabled", () => {
+      beforeEach(() => {
+        // Create a list of sidebar items with disable resources interspersed
+        const items = createSidebarItems(3)
+        items[1].disabled = true
+
+        wrapper = mount(
+          <SidebarResourcesTestWrapper
+            items={items}
+            flags={{ [Flag.DisableResources]: false }}
+          />
+        )
+      })
+
+      it("does NOT display disabled resources at all", () => {
+        expect(wrapper.find(DisabledSidebarItemView).length).toEqual(0)
+        expect(wrapper.find(SidebarItemView).length).toEqual(2)
+      })
+
+      it("does NOT display disabled resources list title", () => {
+        expect(wrapper.find(SidebarDisabledSectionTitle).length).toBe(0)
+      })
+
+      describe("when there are groups and an entire group is disabled", () => {
+        it("does NOT display the group section", () => {
+          const items = createSidebarItems(5, true)
+          // Disable the resource that's in the label group with only one resource
+          items[3].disabled = true
+
+          wrapper = mount(
+            <SidebarResourcesTestWrapper
+              items={items}
+              flags={{ [Flag.DisableResources]: false, [Flag.Labels]: true }}
+            />
+          )
+
+          // Test data hardcodes six label groups (+ one for unlabelled items),
+          // so expect that only five total label groups show up when one group
+          // has only disabled resources
+          const labelGroupNames = wrapper
+            .find(SidebarGroupName)
+            .map((label) => label.text())
+          expect(labelGroupNames.length).toBe(5)
+          expect(labelGroupNames).not.toContain("very_long_long_long_label")
+        })
+      })
+    })
+  })
 })

@@ -3,10 +3,10 @@ import {
   AccordionDetails,
   AccordionSummary,
 } from "@material-ui/core"
-import React, { ChangeEvent } from "react"
+import React, { ChangeEvent, useMemo } from "react"
 import styled from "styled-components"
 import { AnalyticsType } from "./analytics"
-import { FeaturesContext, Flag } from "./feature"
+import { FeaturesContext, Flag, useFeatures } from "./feature"
 import {
   GroupByLabelView,
   orderLabels,
@@ -33,10 +33,11 @@ import SidebarItemView, {
   triggerUpdate,
 } from "./SidebarItemView"
 import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
-import { Color, FontSize, SizeUnit } from "./style-helpers"
+import SrOnly from "./SrOnly"
+import { Color, Font, FontSize, SizeUnit } from "./style-helpers"
 import { ResourceView } from "./types"
 
-type SidebarProps = {
+export type SidebarProps = {
   items: SidebarItem[]
   selected: string
   resourceView: ResourceView
@@ -75,6 +76,19 @@ const SidebarListSectionItemsRoot = styled.ul`
   list-style: none;
 `
 
+export const SidebarDisabledSectionList = styled.li`
+  color: ${Color.gray6};
+  font-family: ${Font.sansSerif};
+  font-size: ${FontSize.small};
+`
+
+export const SidebarDisabledSectionTitle = styled.span`
+  display: inline-block;
+  margin-bottom: ${SizeUnit(1 / 12)};
+  margin-top: ${SizeUnit(1 / 3)};
+  padding-left: ${SizeUnit(3 / 4)};
+`
+
 const NoMatchesFound = styled.li`
   margin-left: ${SizeUnit(0.5)};
   color: ${Color.grayLightest};
@@ -103,7 +117,7 @@ const SidebarGroupSummary = styled(AccordionSummary)`
   }
 `
 
-const SidebarGroupName = styled.span`
+export const SidebarGroupName = styled.span`
   margin-right: auto;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -123,30 +137,73 @@ const SidebarGroupDetails = styled(AccordionDetails)`
 const GROUP_INFO_TOOLTIP_ID = "sidebar-groups-info"
 
 export function SidebarListSection(props: SidebarSectionProps): JSX.Element {
+  const features = useFeatures()
+  const sectionName = props.sectionName ? (
+    <SidebarListSectionName>{props.sectionName}</SidebarListSectionName>
+  ) : null
+
+  const resourceNameFilterApplied =
+    props.resourceListOptions.resourceNameFilter.length > 0
+  if (props.items.length === 0 && resourceNameFilterApplied) {
+    return (
+      <>
+        {sectionName}
+        <SidebarListSectionItemsRoot>
+          <NoMatchesFound>No matching resources</NoMatchesFound>
+        </SidebarListSectionItemsRoot>
+      </>
+    )
+  }
+
+  const [enabledItems, disabledItems] = useMemo(() => {
+    const enabledItems: SidebarItem[] = []
+    const disabledItems: SidebarItem[] = []
+
+    props.items.forEach((item) => {
+      if (item.disabled) {
+        disabledItems.push(item)
+      } else {
+        enabledItems.push(item)
+      }
+    })
+
+    return [enabledItems, disabledItems]
+  }, props.items)
+
+  // The title for the disabled resource list is semantically important,
+  // but should only be visible when there's no filter term
+  const disableTitle = (
+    <SidebarDisabledSectionTitle>Disabled</SidebarDisabledSectionTitle>
+  )
+  const disableSectionTitle = resourceNameFilterApplied ? (
+    <SrOnly>{disableTitle}</SrOnly>
+  ) : (
+    disableTitle
+  )
+
+  const displayDisabledResources =
+    features.isEnabled(Flag.DisableResources) && disabledItems.length > 0
   return (
     <>
-      {props.sectionName && (
-        <SidebarListSectionName>{props.sectionName}</SidebarListSectionName>
-      )}
-      <SidebarListSectionItems {...props} />
+      {sectionName}
+      <SidebarListSectionItemsRoot>
+        <SidebarListSectionItems {...props} items={enabledItems} />
+        {displayDisabledResources && (
+          <SidebarDisabledSectionList>
+            {disableSectionTitle}
+            <ul>
+              <SidebarListSectionItems {...props} items={disabledItems} />
+            </ul>
+          </SidebarDisabledSectionList>
+        )}
+      </SidebarListSectionItemsRoot>
     </>
   )
 }
 
 function SidebarListSectionItems(props: SidebarSectionProps) {
-  if (
-    props.items.length === 0 &&
-    props.resourceListOptions.resourceNameFilter.length > 0
-  ) {
-    return (
-      <SidebarListSectionItemsRoot>
-        <NoMatchesFound>No matching resources</NoMatchesFound>
-      </SidebarListSectionItemsRoot>
-    )
-  }
-
   return (
-    <SidebarListSectionItemsRoot>
+    <>
       {props.items.map((item) => (
         <SidebarItemView
           key={"sidebarItem-" + item.name}
@@ -157,12 +214,22 @@ function SidebarListSectionItems(props: SidebarSectionProps) {
           resourceView={props.resourceView}
         />
       ))}
-    </SidebarListSectionItemsRoot>
+    </>
   )
 }
 
 function SidebarGroupListSection(props: { label: string } & SidebarProps) {
   if (props.items.length === 0) {
+    return null
+  }
+
+  // If all resources in this group are disabled, but the disable resources
+  // flag isn't enabled, don't display any group information
+  const features = useFeatures()
+  const showDisabledResources = features.isEnabled(Flag.DisableResources)
+  const allResourcesDisabled = props.items.every((item) => item.disabled)
+
+  if (!showDisabledResources && allResourcesDisabled) {
     return null
   }
 
@@ -304,7 +371,6 @@ export class SidebarResources extends React.Component<SidebarProps> {
     // (though technically there's probably always at least a Tiltfile resource)
     const resourceFilterApplied =
       this.props.resourceListOptions.resourceNameFilter.length > 0
-
     const sidebarName = resourceFilterApplied
       ? `${filteredItems.length} result${filteredItems.length === 1 ? "" : "s"}`
       : "resources"
