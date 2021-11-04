@@ -164,7 +164,7 @@ func NewSanchoLiveUpdateMultiStageManifest(fixture Fixture) model.Manifest {
 		WithDependencyIDs([]model.TargetID{baseImage.ID()})
 
 	kTarget := k8s.MustTarget("sancho", SanchoYAML).
-		WithDependencyIDs([]model.TargetID{srcImage.ID()}, nil)
+		WithImageDependencies([]model.TargetID{srcImage.ID()}, nil)
 
 	return model.Manifest{Name: "sancho"}.
 		WithImageTargets([]model.ImageTarget{baseImage, srcImage}).

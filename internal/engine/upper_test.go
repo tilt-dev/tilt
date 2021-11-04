@@ -3958,6 +3958,7 @@ type testFixture struct {
 	onchangeCh            chan bool
 	sessionController     *session.Controller
 	localServerController *local.ServerController
+	execer                *localexec.FakeExecer
 }
 
 type fixtureOptions struct {
@@ -4011,7 +4012,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	k8sContextExt := k8scontext.NewPlugin("fake-context", env)
 	versionExt := version.NewPlugin(model.TiltBuild{Version: "0.5.0"})
 	configExt := config.NewPlugin("up")
-	execer := localexec.NewProcessExecer(localexec.EmptyEnv())
+	execer := localexec.NewFakeExecer(t)
 	realTFL := tiltfile.ProvideTiltfileLoader(ta, b.kClient, k8sContextExt, versionExt, configExt, fakeDcc, "localhost", execer, feature.MainDefaults, env)
 	tfl := tiltfile.NewFakeTiltfileLoader()
 	buildSource := ctrltiltfile.NewBuildSource()
@@ -4120,6 +4121,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		sessionController:     sessionController,
 		localServerController: lsc,
 		engineMode:            engineMode,
+		execer:                execer,
 	}
 
 	ret.disableEnvAnalyticsOpt()

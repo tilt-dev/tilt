@@ -23,7 +23,7 @@ func assembleK8s(m model.Manifest, k model.K8sTarget, iTargets ...model.ImageTar
 		}
 		ids = append(ids, iTarget.ID())
 	}
-	k = k.WithDependencyIDs(ids, model.ToLiveUpdateOnlyMap(iTargets))
+	k = k.WithImageDependencies(ids, model.ToLiveUpdateOnlyMap(iTargets))
 	return m.
 		WithImageTargets(iTargets).
 		WithDeployTarget(k)
