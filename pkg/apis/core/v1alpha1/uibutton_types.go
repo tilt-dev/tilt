@@ -119,6 +119,9 @@ type UIComponentLocationResource struct {
 	ResourceName string `json:"resourceName" protobuf:"bytes,1,opt,name=resourceName"`
 }
 
+// used by the backend to indicate to the frontend that this button is special
+const AnnotationButtonType = "tilt.dev/uibutton-type"
+
 var _ resource.Object = &UIButton{}
 var _ resourcestrategy.Validater = &UIButton{}
 
