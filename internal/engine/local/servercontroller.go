@@ -3,6 +3,7 @@ package local
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -10,8 +11,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
 
@@ -37,6 +40,12 @@ type ServerController struct {
 	createdTriggerTime map[string]time.Time
 	client             ctrlclient.Client
 
+	// store latest copies of CmdServer to allow introspection by tests
+	// via a substitute for a `GET` API endpoint
+	// TODO - remove when CmdServer is added to the API
+	mu         sync.Mutex
+	cmdServers map[string]CmdServer
+
 	cmdCount int
 }
 
@@ -50,12 +59,25 @@ func NewServerController(client ctrlclient.Client) *ServerController {
 	}
 }
 
+func (c *ServerController) upsert(server CmdServer) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.cmdServers[server.Name] = server
+}
+
 func (c *ServerController) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) error {
 	if summary.IsLogOnly() {
 		return nil
 	}
 
 	servers, owned, orphans := c.determineServers(ctx, st)
+	c.mu.Lock()
+	c.cmdServers = make(map[string]CmdServer)
+	c.mu.Unlock()
+	for _, server := range servers {
+		c.upsert(server)
+	}
+
 	for i, server := range servers {
 		c.reconcile(ctx, server, owned[i], st)
 	}
@@ -98,10 +120,15 @@ func (c *ServerController) determineServers(ctx context.Context, st store.RStore
 
 		name := mt.Manifest.Name.String()
 		cmdServer := CmdServer{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "CmdServer",
+				APIVersion: "tilt.dev/v1alpha1",
+			},
 			ObjectMeta: ObjectMeta{
 				Name: name,
 				Annotations: map[string]string{
-					AnnotationDepStatus: string(mt.UpdateStatus()),
+					v1alpha1.AnnotationManifest: string(mt.Manifest.Name),
+					AnnotationDepStatus:         string(mt.UpdateStatus()),
 				},
 			},
 			Spec: CmdServerSpec{
@@ -110,6 +137,7 @@ func (c *ServerController) determineServers(ctx context.Context, st store.RStore
 				Env:            lt.ServeCmd.Env,
 				TriggerTime:    mt.State.LastSuccessfulDeployTime,
 				ReadinessProbe: lt.ReadinessProbe,
+				DisableSource:  lt.ServeCmdDisableSource,
 			},
 		}
 
@@ -128,6 +156,18 @@ func (c *ServerController) determineServers(ctx context.Context, st store.RStore
 	}
 
 	return servers, owned, orphaned
+}
+
+// approximate a `GET` API endpoint for CmdServer
+// TODO: remove once CmdServer is in the API
+func (c *ServerController) Get(name string) CmdServer {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	result, ok := c.cmdServers[name]
+	if !ok {
+		return CmdServer{}
+	}
+	return result
 }
 
 // Find the most recent command in a collection
@@ -178,14 +218,32 @@ func (c *ServerController) deleteOrphanedCmd(ctx context.Context, st store.RStor
 }
 
 func (c *ServerController) reconcile(ctx context.Context, server CmdServer, ownedCmds []*Cmd, st store.RStore) {
+	ctx = store.MustObjectLogHandler(ctx, st, &server)
+	name := server.Name
+
+	disableStatus, err := configmap.MaybeNewDisableStatus(ctx, c.client, server.Spec.DisableSource, server.Status.DisableStatus)
+	if err != nil {
+		st.Dispatch(store.NewErrorAction(fmt.Errorf("checking cmdserver disable status: %v", err)))
+		return
+	}
+	if disableStatus != server.Status.DisableStatus {
+		server.Status.DisableStatus = disableStatus
+		c.upsert(server)
+	}
+	if disableStatus.Disabled {
+		for _, cmd := range ownedCmds {
+			logger.Get(ctx).Infof("Resource is disabled, stopping cmd %q", cmd.Spec.Args)
+			c.deleteOwnedCmd(ctx, name, st, cmd)
+		}
+		return
+	}
+
 	// Do not make any changes to the server while the update status is building.
 	// This ensures the old server stays up while any deps are building.
 	depStatus := v1alpha1.UpdateStatus(server.ObjectMeta.Annotations[AnnotationDepStatus])
 	if depStatus != v1alpha1.UpdateStatusOK && depStatus != v1alpha1.UpdateStatusNotApplicable {
 		return
 	}
-
-	name := server.Name
 
 	// If the command was created recently but hasn't appeared yet, wait until it appears.
 	if waitingOn, ok := c.recentlyCreatedCmd[name]; ok {
@@ -256,7 +314,7 @@ func (c *ServerController) reconcile(ctx context.Context, server CmdServer, owne
 	}
 	c.recentlyCreatedCmd[name] = cmdName
 
-	err := c.client.Create(ctx, cmd)
+	err = c.client.Create(ctx, cmd)
 	if err != nil && !apierrors.IsNotFound(err) {
 		st.Dispatch(store.NewErrorAction(fmt.Errorf("syncing to apiserver: %v", err)))
 		return
@@ -266,6 +324,7 @@ func (c *ServerController) reconcile(ctx context.Context, server CmdServer, owne
 }
 
 type CmdServer struct {
+	metav1.TypeMeta
 	metav1.ObjectMeta
 
 	Spec   CmdServerSpec
@@ -281,9 +340,12 @@ type CmdServerSpec struct {
 	// Kubernetes tends to represent this as a "generation" field
 	// to force an update.
 	TriggerTime time.Time
+
+	DisableSource *v1alpha1.DisableSource
 }
 
 type CmdServerStatus struct {
+	DisableStatus *v1alpha1.DisableStatus
 }
 
 func SpanIDForServeLog(procNum int) logstore.SpanID {

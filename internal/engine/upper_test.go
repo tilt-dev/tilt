@@ -18,10 +18,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tilt-dev/tilt/internal/controllers/core/configmap"
-
-	"github.com/tilt-dev/tilt/internal/controllers/core/togglebutton"
-
 	"github.com/davecgh/go-spew/spew"
 	"github.com/docker/distribution/reference"
 	dockertypes "github.com/docker/docker/api/types"
@@ -33,6 +29,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	controllerruntime "sigs.k8s.io/controller-runtime"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
@@ -42,6 +39,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers"
 	apitiltfile "github.com/tilt-dev/tilt/internal/controllers/apis/tiltfile"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
+	"github.com/tilt-dev/tilt/internal/controllers/core/configmap"
 	"github.com/tilt-dev/tilt/internal/controllers/core/extension"
 	"github.com/tilt-dev/tilt/internal/controllers/core/extensionrepo"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch"
@@ -52,6 +50,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/core/podlogstream"
 	apiportforward "github.com/tilt-dev/tilt/internal/controllers/core/portforward"
 	ctrltiltfile "github.com/tilt-dev/tilt/internal/controllers/core/tiltfile"
+	"github.com/tilt-dev/tilt/internal/controllers/core/togglebutton"
 	ctrluibutton "github.com/tilt-dev/tilt/internal/controllers/core/uibutton"
 	ctrluiresource "github.com/tilt-dev/tilt/internal/controllers/core/uiresource"
 	ctrluisession "github.com/tilt-dev/tilt/internal/controllers/core/uisession"
@@ -3887,6 +3886,46 @@ local_resource('foo', 'echo hi')
 	}, b.Spec.Inputs)
 }
 
+func TestCmdServerDoesntStartWhenDisabled(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	f.useRealTiltfileLoader()
+
+	f.WriteFile("Tiltfile", `print('dummy tiltfile with no resources')`)
+
+	f.loadAndStart()
+
+	var tf v1alpha1.Tiltfile
+	err := f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: string(model.MainTiltfileManifestName)}, &tf)
+	require.NoError(t, err)
+	cm := v1alpha1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: "foo-disable"},
+		Data:       map[string]string{"isDisabled": "true"},
+	}
+	err = controllerruntime.SetControllerReference(&tf, &cm, f.ctrlClient.Scheme())
+	require.NoError(t, err)
+	err = f.ctrlClient.Create(f.ctx, &cm)
+	require.NoError(t, err)
+
+	require.Eventually(t, func() bool {
+		var cm v1alpha1.ConfigMap
+		err := f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: "foo-disable"}, &cm)
+		return err == nil && cm.Data["isDisabled"] == "true"
+	}, time.Second, time.Millisecond)
+
+	f.WriteFile("Tiltfile", `print('tiltfile 1')
+local_resource('foo', serve_cmd='echo hi; sleep 10')`)
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("Tiltfile"))
+
+	f.WaitUntil("disabled", func(state store.EngineState) bool {
+		ds := f.localServerController.Get("foo").Status.DisableStatus
+		return ds != nil && ds.Disabled
+	})
+	// make sure we got to the point where we recognized the server is disabled without actually
+	// running the command
+	require.Equal(t, f.log.String(), "")
+}
+
 type testFixture struct {
 	*tempdir.TempDirFixture
 	t                          *testing.T
@@ -3916,8 +3955,9 @@ type testFixture struct {
 	ctrlClient                 ctrlclient.Client
 	engineMode                 store.EngineMode
 
-	onchangeCh        chan bool
-	sessionController *session.Controller
+	onchangeCh            chan bool
+	sessionController     *session.Controller
+	localServerController *local.ServerController
 }
 
 type fixtureOptions struct {
@@ -4053,32 +4093,33 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	dp.DisabledForTesting(true)
 
 	ret := &testFixture{
-		TempDirFixture:    f,
-		t:                 t,
-		ctx:               ctx,
-		cancel:            cancel,
-		clock:             clock,
-		b:                 b,
-		fsWatcher:         watcher,
-		docker:            dockerClient,
-		kClient:           b.kClient,
-		hud:               h,
-		ts:                ts,
-		log:               log,
-		store:             st,
-		bc:                bc,
-		onchangeCh:        fSub.ch,
-		cc:                cc,
-		dcc:               fakeDcc,
-		tfl:               tfl,
-		realTFL:           realTFL,
-		opter:             to,
-		dp:                dp,
-		fe:                fe,
-		fpm:               fpm,
-		ctrlClient:        cdc,
-		sessionController: sessionController,
-		engineMode:        engineMode,
+		TempDirFixture:        f,
+		t:                     t,
+		ctx:                   ctx,
+		cancel:                cancel,
+		clock:                 clock,
+		b:                     b,
+		fsWatcher:             watcher,
+		docker:                dockerClient,
+		kClient:               b.kClient,
+		hud:                   h,
+		ts:                    ts,
+		log:                   log,
+		store:                 st,
+		bc:                    bc,
+		onchangeCh:            fSub.ch,
+		cc:                    cc,
+		dcc:                   fakeDcc,
+		tfl:                   tfl,
+		realTFL:               realTFL,
+		opter:                 to,
+		dp:                    dp,
+		fe:                    fe,
+		fpm:                   fpm,
+		ctrlClient:            cdc,
+		sessionController:     sessionController,
+		localServerController: lsc,
+		engineMode:            engineMode,
 	}
 
 	ret.disableEnvAnalyticsOpt()

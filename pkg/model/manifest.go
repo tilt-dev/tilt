@@ -313,6 +313,15 @@ func (m *Manifest) InferLiveUpdateSelectors() error {
 	return nil
 }
 
+// Set DisableSource for any pieces of the manifest that are disable-able but not yet in the API
+func (m Manifest) WithDisableSource(disableSource *v1alpha1.DisableSource) Manifest {
+	if lt, ok := m.DeployTarget.(LocalTarget); ok {
+		lt.ServeCmdDisableSource = disableSource
+		m.DeployTarget = lt
+	}
+	return m
+}
+
 // ChangesInvalidateBuild checks whether the changes from old => new manifest
 // invalidate our build of the old one; i.e. if we're replacing `old` with `new`,
 // should we perform a full rebuild?

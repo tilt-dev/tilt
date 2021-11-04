@@ -11,6 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
@@ -20,7 +22,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/podbuilder"
-	"github.com/tilt-dev/tilt/internal/testutils/uiresourcebuilder"
 	"github.com/tilt-dev/tilt/internal/watch"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -217,7 +218,8 @@ func TestBuildControllerLocalResource(t *testing.T) {
 
 	dep := f.JoinPath("stuff.json")
 	manifest := manifestbuilder.New(f, "local").
-		WithLocalResource("echo beep boop", []string{dep}).Build()
+		WithLocalResource("echo beep boop", []string{dep}).
+		Build()
 	f.Start([]model.Manifest{manifest})
 
 	call := f.nextCallComplete()
@@ -1629,15 +1631,24 @@ func TestManifestsWithCommonAncestorAndTrigger(t *testing.T) {
 func TestDisablingCancelsBuild(t *testing.T) {
 	f := newTestFixture(t)
 	manifest := manifestbuilder.New(f, "local").
-		WithLocalResource("sleep 10000", nil).Build()
+		WithLocalResource("sleep 10000", nil).
+		Build()
 	f.b.completeBuildsManually = true
 
 	f.Start([]model.Manifest{manifest})
 	f.waitUntilManifestBuilding("local")
 
-	state := f.store.LockMutableStateForTesting()
-	state.UIResources["local"] = uiresourcebuilder.New("local").WithDisabledCount(1).Build()
-	f.store.UnlockMutableState()
+	ds := manifest.DeployTarget.(model.LocalTarget).ServeCmdDisableSource
+	cm := &v1alpha1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: ds.ConfigMap.Name,
+		},
+		Data: map[string]string{
+			ds.ConfigMap.Key: "true",
+		},
+	}
+	err := f.ctrlClient.Patch(f.ctx, cm, client.Merge)
+	require.NoError(t, err)
 
 	f.waitForCompletedBuildCount(1)
 
@@ -1645,7 +1656,7 @@ func TestDisablingCancelsBuild(t *testing.T) {
 		require.Equal(t, "context canceled", ms.LastBuild().Error.Error())
 	})
 
-	err := f.Stop()
+	err = f.Stop()
 	require.NoError(t, err)
 }
 

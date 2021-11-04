@@ -503,7 +503,7 @@ func TestDisposeTerminatedWhenCmdChanges(t *testing.T) {
 	f.assertCmdDeleted("foo-serve-1")
 }
 
-func TestDisable(t *testing.T) {
+func TestDisableCmd(t *testing.T) {
 	f := newFixture(t)
 
 	cmd := &Cmd{
@@ -582,6 +582,63 @@ func TestReenable(t *testing.T) {
 		return cmd.Status.Running != nil &&
 			cmd.Status.DisableStatus != nil &&
 			!cmd.Status.DisableStatus.Disabled
+	})
+}
+
+func TestDisableServeCmd(t *testing.T) {
+	f := newFixture(t)
+
+	ds := v1alpha1.DisableSource{ConfigMap: &v1alpha1.ConfigMapDisableSource{Name: "disable-foo", Key: "isDisabled"}}
+	t1 := time.Unix(1, 0)
+	localTarget := model.NewLocalTarget("foo", model.Cmd{}, model.ToHostCmd("."), nil)
+	localTarget.ServeCmdDisableSource = &ds
+	f.resourceFromTarget("foo", localTarget, t1)
+
+	f.step()
+	f.requireCmdMatchesInAPI("foo-serve-1", func(cmd *Cmd) bool {
+		return cmd != nil && cmd.Status.Running != nil
+	})
+
+	cm := ConfigMap{
+		ObjectMeta: ObjectMeta{Name: ds.ConfigMap.Name},
+		Data: map[string]string{
+			ds.ConfigMap.Key: "true",
+		},
+	}
+	err := f.Client.Create(f.Context(), &cm)
+	require.NoError(t, err)
+
+	f.step()
+	f.assertCmdCount(0)
+}
+
+func TestEnableServeCmd(t *testing.T) {
+	f := newFixture(t)
+
+	ds := v1alpha1.DisableSource{ConfigMap: &v1alpha1.ConfigMapDisableSource{Name: "disable-foo", Key: "isDisabled"}}
+	cm := ConfigMap{
+		ObjectMeta: ObjectMeta{Name: ds.ConfigMap.Name},
+		Data: map[string]string{
+			ds.ConfigMap.Key: "true",
+		},
+	}
+	err := f.Client.Create(f.Context(), &cm)
+	require.NoError(t, err)
+
+	t1 := time.Unix(1, 0)
+	localTarget := model.NewLocalTarget("foo", model.Cmd{}, model.ToHostCmd("."), nil)
+	localTarget.ServeCmdDisableSource = &ds
+	f.resourceFromTarget("foo", localTarget, t1)
+
+	f.step()
+	f.assertCmdCount(0)
+	cm.Data[ds.ConfigMap.Key] = "false"
+	err = f.Client.Update(f.Context(), &cm)
+	require.NoError(t, err)
+
+	f.step()
+	f.requireCmdMatchesInAPI("foo-serve-1", func(cmd *Cmd) bool {
+		return cmd != nil && cmd.Status.Running != nil
 	})
 }
 

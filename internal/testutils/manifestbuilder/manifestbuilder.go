@@ -1,6 +1,7 @@
 package manifestbuilder
 
 import (
+	"fmt"
 	"testing"
 
 	"k8s.io/apimachinery/pkg/labels"
@@ -212,12 +213,18 @@ func (b ManifestBuilder) Build() model.Manifest {
 			b.localDeps).
 			WithAllowParallel(b.localAllowParallel)
 		m = model.Manifest{Name: b.name, ResourceDependencies: rds}.WithDeployTarget(lt)
+
+		m = m.WithDisableSource(&v1alpha1.DisableSource{
+			ConfigMap: &v1alpha1.ConfigMapDisableSource{
+				Name: fmt.Sprintf("%s-disable", b.name),
+				Key:  "isDisabled",
+			},
+		})
 	} else {
 		b.f.T().Fatalf("No deploy target specified: %s", b.name)
 		return model.Manifest{}
 	}
-	m = m.
-		WithTriggerMode(b.triggerMode)
+	m = m.WithTriggerMode(b.triggerMode)
 	err := m.InferLiveUpdateSelectors()
 	require.NoError(b.f.T(), err)
 	return m

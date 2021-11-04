@@ -5,16 +5,17 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	"github.com/stretchr/testify/assert"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
@@ -162,6 +163,50 @@ func TestLiveUpdate(t *testing.T) {
 		assert.Equal(t, "sancho:sancho-image", luList.Items[0].Name)
 		assert.Equal(t, expectedSpec, luList.Items[0].Spec)
 	}
+}
+
+func TestLocalServe(t *testing.T) {
+	f := newFixture(t)
+	p := f.tempdir.JoinPath("Tiltfile")
+
+	m := manifestbuilder.New(f.tempdir, "foo").WithLocalServeCmd(".").Build()
+	f.tfl.Result = tiltfile.TiltfileLoadResult{
+		Manifests: []model.Manifest{m},
+	}
+
+	tf := v1alpha1.Tiltfile{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "my-tf",
+		},
+		Spec: v1alpha1.TiltfileSpec{
+			Path: p,
+		},
+	}
+	f.Create(&tf)
+
+	assert.Eventually(t, func() bool {
+		f.MustGet(types.NamespacedName{Name: "my-tf"}, &tf)
+		return tf.Status.Running != nil
+	}, time.Second, time.Millisecond)
+
+	f.popQueue()
+
+	assert.Eventually(t, func() bool {
+		f.MustGet(types.NamespacedName{Name: "my-tf"}, &tf)
+		return tf.Status.Terminated != nil
+	}, time.Second, time.Millisecond)
+
+	assert.Equal(t, "", tf.Status.Terminated.Error)
+
+	a := f.st.WaitForAction(t, reflect.TypeOf(ConfigsReloadedAction{})).(ConfigsReloadedAction)
+	require.Equal(t, 1, len(a.Manifests))
+	m = a.Manifests[0]
+	require.Equal(t, model.ManifestName("foo"), m.Name)
+	require.IsType(t, model.LocalTarget{}, m.DeployTarget)
+	lt := m.DeployTarget.(model.LocalTarget)
+	require.NotNil(t, lt.ServeCmdDisableSource, "ServeCmdDisableSource is nil")
+	require.NotNil(t, lt.ServeCmdDisableSource.ConfigMap, "ServeCmdDisableSource.ConfigMap is nil")
+	require.Equal(t, "foo-disable", lt.ServeCmdDisableSource.ConfigMap.Name)
 }
 
 type testStore struct {
