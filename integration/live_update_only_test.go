@@ -56,7 +56,6 @@ func TestLiveUpdateOnly(t *testing.T) {
 		}
 
 		afterFileChangeLogs := logStr[fileChangeIdx:]
-		return strings.Contains(afterFileChangeLogs, `Falling back to a full image build + deploy`) &&
-			strings.Contains(afterFileChangeLogs, `STEP 1/1 — Deploying`)
+		return strings.Contains(afterFileChangeLogs, `STEP 1/1 — Deploying`)
 	}, 15*time.Second, 500*time.Millisecond, "Full rebuild never triggered")
 }

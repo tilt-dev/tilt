@@ -15,6 +15,7 @@ type BuildStartedAction struct {
 	Reason             model.BuildReason
 	SpanID             logstore.SpanID
 	FullBuildTriggered bool
+	IsBuildController  bool
 }
 
 func (BuildStartedAction) Action() {}
