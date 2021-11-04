@@ -361,7 +361,7 @@ func populateResourceInfoView(mt *store.ManifestTarget, r *v1alpha1.UIResource) 
 			PodStatusMessage:   strings.Join(pod.Errors, "\n"),
 			AllContainersReady: store.AllPodContainersReady(pod),
 			PodRestarts:        kState.VisiblePodContainerRestarts(podID),
-			DisplayNames:       mt.Manifest.K8sTarget().DisplayNames,
+			DisplayNames:       kState.EntityDisplayNames(),
 		}
 		if podID != "" {
 			rK8s.SpanID = string(k8sconv.SpanIDForPod(mt.Manifest.Name, podID))

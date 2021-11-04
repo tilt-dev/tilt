@@ -3,7 +3,6 @@ package k8s
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
@@ -23,15 +22,4 @@ func TestNewTargetSortsK8sEntities(t *testing.T) {
 	require.NoError(t, err)
 
 	assertKindOrder(t, expectedKindOrder, actual, "result of `NewTarget` should contain sorted YAML")
-
-	expectedDisplayNames := []string{
-		"postgres-pv-volume:persistentvolume",
-		"postgres-pv-claim:persistentvolumeclaim",
-		"postgres-config:configmap",
-		"postgres:service",
-		"postgres:statefulset",
-		"blorg-job:job",
-		"sleep:pod",
-	}
-	assert.Equal(t, expectedDisplayNames, targ.DisplayNames)
 }

@@ -4,6 +4,9 @@ import (
 	"testing"
 	"time"
 
+	v1 "k8s.io/api/core/v1"
+
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
 	"github.com/stretchr/testify/assert"
@@ -155,16 +158,24 @@ func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {
 }
 
 func TestStateToViewK8sTargetsIncludeDisplayNames(t *testing.T) {
-	displayNames := []string{"foo:namespace", "foo:secret"}
-	m := model.Manifest{Name: "foo"}.WithDeployTarget(model.K8sTarget{DisplayNames: displayNames})
+	m := model.Manifest{Name: "foo"}.WithDeployTarget(model.K8sTarget{})
 	state := newState([]model.Manifest{m})
+	krs := state.ManifestTargets["foo"].State.K8sRuntimeState()
+	krs.ApplyFilter = &k8sconv.KubernetesApplyFilter{
+		DeployedRefs: []v1.ObjectReference{
+			{Kind: "Namespace", Name: "foo"},
+			{Kind: "Secret", Name: "foo"},
+		},
+	}
+	state.ManifestTargets["foo"].State.RuntimeState = krs
+
 	v := completeProtoView(t, *state)
 
 	assert.Equal(t, 2, len(v.UiResources))
 
 	r, _ := findResource(m.Name, v)
 
-	assert.Equal(t, r.K8sResourceInfo.DisplayNames, displayNames)
+	assert.Equal(t, []string{"foo:namespace", "foo:secret"}, r.K8sResourceInfo.DisplayNames)
 }
 
 func TestStateToViewTiltfileLog(t *testing.T) {

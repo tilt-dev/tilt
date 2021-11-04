@@ -5,6 +5,8 @@ import (
 	"net/url"
 	"time"
 
+	"k8s.io/apimachinery/pkg/runtime/schema"
+
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
@@ -181,6 +183,37 @@ func (s K8sRuntimeState) PodList() []v1alpha1.Pod {
 		pods = append(pods, *pod)
 	}
 	return pods
+}
+
+func (s K8sRuntimeState) EntityDisplayNames() []string {
+	if s.ApplyFilter == nil {
+		return nil
+	}
+
+	entities := make([]k8s.EntityMeta, len(s.ApplyFilter.DeployedRefs))
+	for i := range s.ApplyFilter.DeployedRefs {
+		entities[i] = objectRefMeta{s.ApplyFilter.DeployedRefs[i]}
+	}
+
+	// Use a min component count of 2 for computing names,
+	// so that the resource type appears
+	return k8s.UniqueNamesMeta(entities, 2)
+}
+
+type objectRefMeta struct {
+	v1.ObjectReference
+}
+
+func (o objectRefMeta) Name() string {
+	return o.ObjectReference.Name
+}
+
+func (o objectRefMeta) Namespace() k8s.Namespace {
+	return k8s.Namespace(o.ObjectReference.Namespace)
+}
+
+func (o objectRefMeta) GVK() schema.GroupVersionKind {
+	return o.ObjectReference.GroupVersionKind()
 }
 
 // Get the "most recent pod" from the K8sRuntimeState.

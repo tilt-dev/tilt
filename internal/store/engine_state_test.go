@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/docker/go-connections/nat"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
@@ -17,6 +18,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/hud/view"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
+	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/pkg/apis"
@@ -204,6 +206,10 @@ func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {
 	m, err := k8s.NewK8sOnlyManifestFromYAML(testyaml.SanchoYAML)
 	assert.NoError(t, err)
 	state := newState([]model.Manifest{m})
+	krs := state.ManifestTargets[m.Name].State.K8sRuntimeState()
+	krs.ApplyFilter = yamlToApplyFilter(t, testyaml.SanchoYAML)
+	state.ManifestTargets[m.Name].State.RuntimeState = krs
+
 	v := StateToView(*state, &sync.RWMutex{})
 
 	assert.Equal(t, 2, len(v.Resources))
@@ -223,6 +229,10 @@ func TestStateToViewNonWorkloadYAMLManifest(t *testing.T) {
 	m, err := k8s.NewK8sOnlyManifest(model.ManifestName("foo"), es, nil)
 	require.NoError(t, err)
 	state := newState([]model.Manifest{m})
+	krs := state.ManifestTargets[m.Name].State.K8sRuntimeState()
+	krs.ApplyFilter = yamlToApplyFilter(t, testyaml.SecretYaml)
+	state.ManifestTargets[m.Name].State.RuntimeState = krs
+
 	v := StateToView(*state, &sync.RWMutex{})
 
 	assert.Equal(t, 2, len(v.Resources))
@@ -500,4 +510,21 @@ func assertLinks(t *testing.T, expected, actual []model.Link) {
 		// and if those match, compare everything else
 		assert.Equal(t, expected, actual)
 	}
+}
+
+func yamlToApplyFilter(t testing.TB, yaml string) *k8sconv.KubernetesApplyFilter {
+	t.Helper()
+	entities, err := k8s.ParseYAMLFromString(yaml)
+	require.NoError(t, err, "Failed to parse YAML")
+	for i := range entities {
+		entities[i].SetUID(uuid.New().String())
+	}
+	yaml, err = k8s.SerializeSpecYAML(entities)
+	require.NoError(t, err, "Failed to re-serialize YAML")
+	applyFilter, err := k8sconv.NewKubernetesApplyFilter(&v1alpha1.KubernetesApplyStatus{
+		ResultYAML: yaml,
+	})
+	require.NoError(t, err, "Failed to create KubernetesApplyFilter")
+	require.NotNil(t, applyFilter, "ApplyFilter was nil")
+	return applyFilter
 }
