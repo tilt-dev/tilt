@@ -64,7 +64,7 @@ var MainDefaults = Defaults{
 		Status:  Active,
 	},
 	LiveUpdateV2: Value{
-		Enabled: true,
+		Enabled: false,
 		Status:  Active,
 	},
 	DisableResources: Value{
