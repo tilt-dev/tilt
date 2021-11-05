@@ -1396,7 +1396,7 @@ func TestDontStartBuildIfControllerAndEngineUnsynced(t *testing.T) {
 
 	// deliberately de-sync engine state and build controller
 	st := f.store.LockMutableStateForTesting()
-	st.StartedBuildCount--
+	st.BuildControllerStartCount--
 	f.store.UnlockMutableState()
 
 	// this build won't start while state and build controller are out of sync
@@ -1404,7 +1404,7 @@ func TestDontStartBuildIfControllerAndEngineUnsynced(t *testing.T) {
 
 	// resync the two counts...
 	st = f.store.LockMutableStateForTesting()
-	st.StartedBuildCount++
+	st.BuildControllerStartCount++
 	f.store.UnlockMutableState()
 
 	// ...and manB build will start as expected

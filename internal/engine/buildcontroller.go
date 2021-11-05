@@ -53,7 +53,7 @@ func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buil
 
 	// Don't start the next build until the previous action has been recorded,
 	// so that we don't accidentally repeat the same build.
-	if c.buildsStartedCount != state.StartedBuildCount {
+	if c.buildsStartedCount > state.BuildControllerStartCount {
 		return buildEntry{}, false
 	}
 
@@ -112,6 +112,7 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore, summary
 		Reason:             entry.buildReason,
 		SpanID:             entry.spanID,
 		FullBuildTriggered: entry.buildStateSet.FullBuildTriggered(),
+		IsBuildController:  true,
 	})
 
 	go func() {

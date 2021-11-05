@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lu-only
+  namespace: tilt-integration
+  labels:
+    app: lu-only
+spec:
+  selector:
+    matchLabels:
+      app: lu-only
+  template:
+    metadata:
+      labels:
+        app: lu-only
+    spec:
+      containers:
+        - name: nginx
+          image: nginx
+          ports:
+            - containerPort: 80
