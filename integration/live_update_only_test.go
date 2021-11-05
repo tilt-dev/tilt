@@ -58,4 +58,10 @@ func TestLiveUpdateOnly(t *testing.T) {
 		afterFileChangeLogs := logStr[fileChangeIdx:]
 		return strings.Contains(afterFileChangeLogs, `STEP 1/1 — Deploying`)
 	}, 15*time.Second, 500*time.Millisecond, "Full rebuild never triggered")
+
+	// attempt another Live Update
+	f.ReplaceContents(filepath.Join("web", "index.html"), "Greetings", "Salutations")
+	ctx, cancel = context.WithTimeout(f.ctx, 10*time.Second)
+	defer cancel()
+	f.CurlUntil(ctx, "http://localhost:28195", "Salutations from Live Update!")
 }

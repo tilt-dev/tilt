@@ -351,16 +351,6 @@ func (r *Reconciler) reconcileOneSource(ctx context.Context, monitor *monitor, s
 		}
 	}
 
-	if imageChanged && newImageStatus.BuildStartTime != nil {
-		// Delete all file events that happened before the
-		// latest build started.
-		for p, t := range mSource.modTimeByPath {
-			if newImageStatus.BuildStartTime.After(t.Time) {
-				delete(mSource.modTimeByPath, p)
-			}
-		}
-	}
-
 	return fileWatchChanged || imageChanged, nil
 }
 
@@ -426,6 +416,65 @@ func (r *Reconciler) reconcileKubernetesResource(ctx context.Context, monitor *m
 	monitor.lastKubernetesDiscovery = kd
 
 	return changed, nil
+}
+
+// Go through all the file changes, and delete files that aren't relevant
+// to the current build.
+//
+// Determining the current build is a bit tricky, but our
+// order of preference is:
+// 1) If we have an ImageMap.BuildStartedAt, this is the gold standard.
+// 2) If there's no ImageMap, we prefer the KubernetesApply.LastApplyStartTime.
+// 3) If there's no KubernetesApply, we prefer the oldest pod
+//    in the filtered pod list.
+func (r *Reconciler) garbageCollectFileChanges(res *k8sconv.KubernetesResource, monitor *monitor) {
+	for _, source := range monitor.spec.Sources {
+		fwn := source.FileWatch
+		mSource, ok := monitor.sources[fwn]
+		if !ok {
+			continue
+		}
+
+		lastImageStatus := mSource.lastImageStatus
+		var gcTime time.Time
+		if lastImageStatus != nil && lastImageStatus.BuildStartTime != nil {
+			gcTime = lastImageStatus.BuildStartTime.Time
+		} else if res.ApplyStatus != nil {
+			gcTime = res.ApplyStatus.LastApplyStartTime.Time
+		} else {
+			for _, pod := range res.FilteredPods {
+				if gcTime.IsZero() || (!pod.CreatedAt.IsZero() && pod.CreatedAt.Time.Before(gcTime)) {
+					gcTime = pod.CreatedAt.Time
+				}
+			}
+		}
+
+		if !gcTime.IsZero() {
+			// Delete all file events that happened before the
+			// latest build started.
+			for p, t := range mSource.modTimeByPath {
+				if gcTime.After(t.Time) {
+					delete(mSource.modTimeByPath, p)
+				}
+			}
+
+			// Delete all failures that happened before the
+			// latest build started.
+			//
+			// This mechanism isn't perfect - for example, it will start resyncing
+			// again to a container that's going to be replaced by the current
+			// build. But we also can't determine if a container is going to be
+			// replaced or not (particularly if the image didn't change).
+			for key, c := range monitor.containers {
+				if !c.failedLowWaterMark.IsZero() && gcTime.After(c.failedLowWaterMark.Time) {
+					c.failedLowWaterMark = metav1.MicroTime{}
+					c.failedReason = ""
+					c.failedMessage = ""
+					monitor.containers[key] = c
+				}
+			}
+		}
+	}
 }
 
 // Go through all the container monitors, and delete any that are no longer
@@ -533,6 +582,7 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 		isWaitingOnTrigger = true
 	}
 
+	r.garbageCollectFileChanges(kResource, monitor)
 	r.garbageCollectMonitorContainers(kResource, monitor)
 
 	// Go through all the container monitors, and check if any of them are unrecoverable.
@@ -583,10 +633,15 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 		// Determine the changed files.
 		filesChanged := []string{}
 		newHighWaterMark := highWaterMark
+		newLowWaterMark := metav1.MicroTime{}
 		for _, source := range monitor.sources {
 			for f, t := range source.modTimeByPath {
 				if t.After(highWaterMark.Time) {
 					filesChanged = append(filesChanged, f)
+
+					if newLowWaterMark.IsZero() || t.Before(&newLowWaterMark) {
+						newLowWaterMark = t
+					}
 
 					if t.After(newHighWaterMark.Time) {
 						newHighWaterMark = t
@@ -687,6 +742,7 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 		if oneUpdateStatus.Failed != nil {
 			cStatus.failedReason = oneUpdateStatus.Failed.Reason
 			cStatus.failedMessage = oneUpdateStatus.Failed.Message
+			cStatus.failedLowWaterMark = newLowWaterMark
 		} else if filesApplied {
 			cStatus.lastFileTimeSynced = newHighWaterMark
 		}
