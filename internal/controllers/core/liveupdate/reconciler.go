@@ -819,7 +819,7 @@ func (r *Reconciler) applyInternal(
 	cu := r.containerUpdater(input)
 	l := logger.Get(ctx)
 	containers := input.Containers
-	cIDStr := container.ShortStrs(liveupdates.IDsForContainers(containers))
+	names := liveupdates.ContainerDisplayNames(containers)
 	suffix := ""
 	if len(containers) != 1 {
 		suffix = "(s)"
@@ -848,14 +848,14 @@ func (r *Reconciler) applyInternal(
 	}
 
 	if len(toRemove) > 0 {
-		l.Infof("Will delete %d file(s) from container%s: %s", len(toRemove), suffix, cIDStr)
+		l.Infof("Will delete %d file(s) from container%s: %s", len(toRemove), suffix, names)
 		for _, pm := range toRemove {
 			l.Infof("- '%s' (matched local path: '%s')", pm.ContainerPath, pm.LocalPath)
 		}
 	}
 
 	if len(toArchive) > 0 {
-		l.Infof("Will copy %d file(s) to container%s: %s", len(toArchive), suffix, cIDStr)
+		l.Infof("Will copy %d file(s) to container%s: %s", len(toArchive), suffix, names)
 		for _, pm := range toArchive {
 			l.Infof("- %s", pm.PrettyStr())
 		}
@@ -885,7 +885,7 @@ func (r *Reconciler) applyInternal(
 				// Keep running updates -- we want all containers to have the same files on them
 				// even if the Runs don't succeed
 				logger.Get(ctx).Infof("  → Failed to update container %s: run step %q failed with exit code: %d",
-					cInfo.ContainerID.ShortStr(), runFail.Cmd.String(), runFail.ExitCode)
+					cInfo.DisplayName(), runFail.Cmd.String(), runFail.ExitCode)
 				cStatus.LastExecError = err.Error()
 				lastExecErrorStatus = &cStatus
 			} else {
@@ -898,7 +898,7 @@ func (r *Reconciler) applyInternal(
 				return result
 			}
 		} else {
-			logger.Get(ctx).Infof("  → Container %s updated!", cInfo.ContainerID.ShortStr())
+			logger.Get(ctx).Infof("  → Container %s updated!", cInfo.DisplayName())
 			if lastExecErrorStatus != nil {
 				// This build succeeded, but previously at least one failed due to user error.
 				// We may have inconsistent state--bail, and fall back to full build.
