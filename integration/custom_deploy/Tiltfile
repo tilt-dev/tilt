@@ -3,11 +3,13 @@ enable_feature('custom_deploy')
 
 custom_deploy(
     'custom-deploy-int-test',
-    cmd='kubectl apply -o yaml -f ${DEPLOY_FILE}',
+    # forcibly delete and re-create the deployment whenever run
+    cmd='kubectl delete --ignore-not-found=true --wait=true -f "${DEPLOY_FILE}" >/dev/null && kubectl create -oyaml -f "${DEPLOY_FILE}"',
     deps=['deploy.yaml', 'foo', 'web/'],
     image_selector='nginx',
     env={'DEPLOY_FILE': 'deploy.yaml'},
     live_update=[
+        fall_back_on('./web/fallback.txt'),
         sync('./web/', '/usr/share/nginx/html/')
     ]
 )

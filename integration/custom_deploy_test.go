@@ -5,6 +5,7 @@ package integration
 import (
 	"context"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -51,5 +52,15 @@ func TestCustomDeploy(t *testing.T) {
 	defer cancel()
 	f.CurlUntil(ctx, "http://localhost:54871", "Welcome to nginx!")
 
-	// TODO(milas): add Live Update changes + assertions
+	// perform a Live Update (this version of the file can _only_ exist in the container via Live Update,
+	// as it's overwriting a file from a public image)
+	f.ReplaceContents(filepath.Join("web", "index.html"), "Hello", "Greetings")
+	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
+	defer cancel()
+	f.CurlUntil(ctx, "http://localhost:54871", "Greetings from Live Update!")
+
+	f.Touch(filepath.Join("web", "fallback.txt"))
+	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
+	defer cancel()
+	f.CurlUntil(ctx, "http://localhost:54871", "Welcome to nginx!")
 }
