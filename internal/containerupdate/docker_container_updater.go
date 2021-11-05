@@ -62,12 +62,12 @@ func (cu *DockerUpdater) UpdateContainer(ctx context.Context, cInfo liveupdates.
 	}
 
 	if hotReload {
-		l.Debugf("Hot reload on, skipping container restart: %s", cInfo.ContainerID.ShortStr())
+		l.Debugf("Hot reload on, skipping container restart: %s", cInfo.DisplayName())
 		return nil
 	}
 
 	// Restart container so that entrypoint restarts with the updated files etc.
-	l.Debugf("Restarting container: %s", cInfo.ContainerID.ShortStr())
+	l.Debugf("Restarting container: %s", cInfo.DisplayName())
 	err = cu.dCli.ContainerRestartNoWait(ctx, cInfo.ContainerID.String())
 	if err != nil {
 		return errors.Wrap(err, "ContainerRestart")

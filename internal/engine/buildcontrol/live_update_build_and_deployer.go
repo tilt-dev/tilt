@@ -9,7 +9,6 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
-	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	ctrlliveupdate "github.com/tilt-dev/tilt/internal/controllers/core/liveupdate"
 	"github.com/tilt-dev/tilt/internal/ospath"
@@ -108,12 +107,12 @@ func (lubad *LiveUpdateBuildAndDeployer) buildAndDeploy(ctx context.Context, ps 
 	}()
 
 	containers := info.Containers
-	cIDStr := container.ShortStrs(liveupdates.IDsForContainers(containers))
+	names := liveupdates.ContainerDisplayNames(containers)
 	suffix := ""
 	if len(containers) != 1 {
 		suffix = "(s)"
 	}
-	ps.StartBuildStep(ctx, "Updating container%s: %s", suffix, cIDStr)
+	ps.StartBuildStep(ctx, "Updating container%s: %s", suffix, names)
 
 	status, err := lubad.luReconciler.ForceApply(
 		ctx,

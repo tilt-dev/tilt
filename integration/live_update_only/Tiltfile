@@ -1,3 +1,5 @@
+include('../Tiltfile')
+
 custom_build(
     ref='nginx',
     # this is a hack that puts the builder into "live update only" mode

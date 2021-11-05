@@ -1,5 +1,7 @@
 # -*- mode: Python -*-
 
+enable_feature('live_update_v2')
+
 # HACK: load namespaces on `tilt up` but not on `tilt down`
 load_namespace = not os.environ.get('SKIP_NAMESPACE', '')
 if load_namespace:
