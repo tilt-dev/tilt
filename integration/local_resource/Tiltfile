@@ -8,6 +8,7 @@ p = probe(initial_delay_secs=0,
 local_resource('foo', serve_cmd=['./hello.sh', 'foo'], deps=['greeting'], readiness_probe=p)
 
 # readiness probe explicitly set to None
-local_resource('bar', serve_cmd=['./hello.sh', 'bar'],
+local_resource('bar',
+               serve_cmd=cmd('./hello.sh $NAME', env={'NAME': 'bar'}),
                readiness_probe=None,
                resource_deps=['foo'])

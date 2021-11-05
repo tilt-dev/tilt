@@ -22,6 +22,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/probe"
 	"github.com/tilt-dev/tilt/internal/tiltfile/sys"
 	"github.com/tilt-dev/tilt/internal/tiltfile/tiltextension"
+	"github.com/tilt-dev/tilt/internal/tiltfile/value"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
@@ -222,6 +223,7 @@ func (s *tiltfileState) loadManifests(tf *v1alpha1.Tiltfile) ([]model.Manifest, 
 		print.NewPlugin(),
 		probe.NewPlugin(),
 		tfv1alpha1.NewPlugin(),
+		value.NewCmdPlugin(),
 	)
 	if err != nil {
 		return nil, result, starkit.UnpackBacktrace(err)

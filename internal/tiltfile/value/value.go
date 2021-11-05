@@ -170,6 +170,21 @@ func valueToCmdHelper(t *starlark.Thread, cmdVal, cmdDirVal starlark.Value, cmdE
 			return model.Cmd{}, errors.Wrap(err, "a command must be a string or a list of strings")
 		}
 		return model.Cmd{Argv: argv, Dir: dir, Env: env}, nil
+	case Cmd:
+		// most Tiltfile functions have independent arguments for each part of a command
+		// the main `cmd` arg (historically used for the command argv) can be overloaded to accept the cmd() built-in
+		// but to avoid confusion, we don't allow mixing and matching with other arguments in that case
+		//    valid:   foo(cmd='echo hi', env={'bar': 'baz'})
+		//    valid:   foo(cmd=cmd('echo hi', {'bar': 'baz'})
+		//    invalid: foo(cmd=cmd('echo hi', {'bar': 'baz'}, env={'oh': 'no'})
+		if cmdDirVal != nil && cmdDirVal != starlark.None {
+			return model.Cmd{}, errors.New("cannot specify dir argument when using cmd() built-in")
+		}
+		if len(env) != 0 {
+			return model.Cmd{}, errors.New("cannot specify env argument when using cmd() built-in")
+		}
+		c := x.ToModelCmd()
+		return c, nil
 	default:
 		return model.Cmd{}, fmt.Errorf("a command must be a string or list of strings. found %T", x)
 	}

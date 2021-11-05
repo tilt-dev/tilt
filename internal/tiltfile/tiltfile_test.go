@@ -1569,6 +1569,44 @@ local_resource('foo', 'echo foo')
 	f.loadErrString("Local resource foo has been defined multiple times")
 }
 
+func TestLocalResourceCmdBuiltin(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	customDir := f.JoinPath("other")
+
+	f.file("Tiltfile", fmt.Sprintf(`
+local_resource('test', cmd('echo update', env={"K": "V"}), serve_cmd=cmd(['echo', 'serve'], dir='%s'))
+`, customDir))
+
+	f.load()
+	f.assertNextManifest("test", localTarget(
+		updateCmd(f.Path(), "echo update", []string{"K=V"}),
+		serveCmdArray(customDir, []string{"echo", "serve"}, nil)))
+}
+
+func TestLocalResourceCmdBuiltin_DuplicateEnvArg(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+local_resource('test', cmd('echo update', env={"K": "V"}), env={"K": "V"})
+`)
+
+	f.loadErrString("cannot specify env argument when using cmd() built-in")
+}
+
+func TestLocalResourceCmdBuiltin_DuplicateDirArg(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+local_resource('test', cmd('echo update', dir='/a/b/c'), dir='/d/e/f')
+`)
+
+	f.loadErrString("cannot specify dir argument when using cmd() built-in")
+}
+
 // These tests are for behavior that we specifically enabled in Starlark
 // in the init() function
 func TestTopLevelIfStatement(t *testing.T) {
