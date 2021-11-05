@@ -4310,7 +4310,7 @@ func (f *testFixture) SetNextBuildError(err error) {
 	f.WaitUntil("any in-flight builds have hit the buildAndDeployer", func(state store.EngineState) bool {
 		f.b.mu.Lock()
 		defer f.b.mu.Unlock()
-		return f.b.buildCount == state.StartedBuildCount
+		return f.b.buildCount == state.BuildControllerStartCount
 	})
 
 	_ = f.store.RLockState()
@@ -4324,7 +4324,7 @@ func (f *testFixture) SetNextLiveUpdateCompileError(err error, containerIDs []co
 	f.WaitUntil("any in-flight builds have hit the buildAndDeployer", func(state store.EngineState) bool {
 		f.b.mu.Lock()
 		defer f.b.mu.Unlock()
-		return f.b.buildCount == state.StartedBuildCount
+		return f.b.buildCount == state.BuildControllerStartCount
 	})
 
 	_ = f.store.RLockState()

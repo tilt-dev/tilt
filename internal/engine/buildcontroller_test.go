@@ -1397,7 +1397,7 @@ func TestDontStartBuildIfControllerAndEngineUnsynced(t *testing.T) {
 
 	// deliberately de-sync engine state and build controller
 	st := f.store.LockMutableStateForTesting()
-	st.StartedBuildCount--
+	st.BuildControllerStartCount--
 	f.store.UnlockMutableState()
 
 	// this build won't start while state and build controller are out of sync
@@ -1405,7 +1405,7 @@ func TestDontStartBuildIfControllerAndEngineUnsynced(t *testing.T) {
 
 	// resync the two counts...
 	st = f.store.LockMutableStateForTesting()
-	st.StartedBuildCount++
+	st.BuildControllerStartCount++
 	f.store.UnlockMutableState()
 
 	// ...and manB build will start as expected
@@ -1669,7 +1669,7 @@ func TestBuildControllerK8sFileDependencies(t *testing.T) {
 		WithPathDependencies(
 			[]string{f.JoinPath("k8s-dep")},
 			[]model.LocalGitRepo{
-				{LocalPath: "k8s-dep"},
+				{LocalPath: f.JoinPath("k8s-dep")},
 			})
 	m := model.Manifest{Name: "fe"}.WithDeployTarget(kt)
 

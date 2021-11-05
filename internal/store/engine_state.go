@@ -40,7 +40,7 @@ type EngineState struct {
 
 	// For synchronizing BuildController -- wait until engine records all builds started
 	// so far before starting another build
-	StartedBuildCount int
+	BuildControllerStartCount int
 
 	// How many builds have been completed (pass or fail) since starting tilt
 	CompletedBuildCount int

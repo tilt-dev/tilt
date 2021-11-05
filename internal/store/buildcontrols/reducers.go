@@ -19,7 +19,9 @@ import (
 )
 
 func HandleBuildStarted(ctx context.Context, state *store.EngineState, action BuildStartedAction) {
-	state.StartedBuildCount++
+	if action.IsBuildController {
+		state.BuildControllerStartCount++
+	}
 
 	mn := action.ManifestName
 	manifest, ok := state.Manifest(mn)
