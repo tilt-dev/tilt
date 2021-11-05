@@ -473,7 +473,11 @@ func (c *Controller) updateStatus(name types.NamespacedName, update func(status 
 
 	err = c.client.Status().Update(c.globalCtx, &cmd)
 	if err != nil && !apierrors.IsNotFound(err) {
-		c.st.Dispatch(store.NewErrorAction(fmt.Errorf("syncing to apiserver: %v", err)))
+		if c.globalCtx.Err() == nil {
+			// if the global context has been canceled, the controller is being torn down,
+			// so don't propagate a store error
+			c.st.Dispatch(store.NewErrorAction(fmt.Errorf("syncing to apiserver: %v", err)))
+		}
 		return
 	}
 
