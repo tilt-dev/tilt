@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/tilt-dev/tilt/internal/sliceutils"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
@@ -44,7 +45,18 @@ type K8sTarget struct {
 	// in addition to any port forwards/LB endpoints)
 	Links []Link
 
-	depIDs []TargetID
+	imageDeps []TargetID
+
+	// pathDependencies are files required by this target.
+	//
+	// For Tiltfile-based, YAML-driven (i.e. `k8s_yaml()`) resources, this is
+	// NOT used because it's not sufficient to reload the YAML and re-deploy;
+	// there is a lot of post-Tiltfile-load logic for resource assembly, image
+	// locator injection, etc. As a result, these resources have their YAML
+	// files registered as "config files", which cause the Tiltfile to be
+	// re-evaluated.
+	pathDependencies []string
+	localRepos       []LocalGitRepo
 }
 
 func NewK8sTargetForTesting(yaml string) K8sTarget {
@@ -57,7 +69,7 @@ func NewK8sTargetForTesting(yaml string) K8sTarget {
 func (k8s K8sTarget) Empty() bool { return reflect.DeepEqual(k8s, K8sTarget{}) }
 
 func (k8s K8sTarget) DependencyIDs() []TargetID {
-	return append([]TargetID{}, k8s.depIDs...)
+	return append([]TargetID{}, k8s.imageDeps...)
 }
 
 func (k8s K8sTarget) RefInjectCounts() map[string]int {
@@ -83,6 +95,29 @@ func (k8s K8sTarget) ID() TargetID {
 	}
 }
 
+// LocalRepos is part of the WatchableTarget interface.
+func (k8s K8sTarget) LocalRepos() []LocalGitRepo {
+	return k8s.localRepos
+}
+
+// Dockerignores is part of the WatchableTarget interface.
+func (k8s K8sTarget) Dockerignores() []Dockerignore {
+	return nil
+}
+
+// IgnoredLocalDirectories is part of the WatchableTarget interface.
+func (k8s K8sTarget) IgnoredLocalDirectories() []string {
+	return nil
+}
+
+// Dependencies are files required by this target.
+//
+// Part of the WatchableTarget interface.
+func (k8s K8sTarget) Dependencies() []string {
+	// sorting/de-duping guaranteed by setter
+	return k8s.pathDependencies
+}
+
 // Track which objects this target depends on inside the manifest.
 //
 // We're disentangling ImageTarget and live updates -
@@ -91,14 +126,14 @@ func (k8s K8sTarget) ID() TargetID {
 //
 // KubernetesApplySpec only depends on ImageTargets with an Image build.
 //
-// The depIDs field depends on ImageTargets that have image builds OR have live
+// The imageDeps field depends on ImageTargets that have image builds OR have live
 // updates.
 //
 // ids: a list of the images we directly depend on.
 // isLiveUpdateOnly: a map of images that are live-update-only
-func (k8s K8sTarget) WithDependencyIDs(ids []TargetID, isLiveUpdateOnly map[TargetID]bool) K8sTarget {
+func (k8s K8sTarget) WithImageDependencies(ids []TargetID, isLiveUpdateOnly map[TargetID]bool) K8sTarget {
 	ids = DedupeTargetIDs(ids)
-	k8s.depIDs = ids
+	k8s.imageDeps = ids
 
 	k8s.ImageMaps = make([]string, 0, len(ids))
 
@@ -112,6 +147,13 @@ func (k8s K8sTarget) WithDependencyIDs(ids []TargetID, isLiveUpdateOnly map[Targ
 		k8s.ImageMaps = append(k8s.ImageMaps, string(id.Name))
 	}
 
+	return k8s
+}
+
+// WithPathDependencies registers paths that this K8sTarget depends on.
+func (k8s K8sTarget) WithPathDependencies(paths []string, localRepos []LocalGitRepo) K8sTarget {
+	k8s.pathDependencies = sliceutils.DedupedAndSorted(paths)
+	k8s.localRepos = localRepos
 	return k8s
 }
 

@@ -90,7 +90,7 @@ func NewTarget(
 		Name:                name,
 		PodReadinessMode:    podReadinessMode,
 		Links:               links,
-	}.WithDependencyIDs(dependencyIDs, model.ToLiveUpdateOnlyMap(imageTargets)).
+	}.WithImageDependencies(dependencyIDs, model.ToLiveUpdateOnlyMap(imageTargets)).
 		WithRefInjectCounts(refInjectCounts), nil
 }
 

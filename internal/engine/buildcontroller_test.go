@@ -17,6 +17,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/hud/server"
+	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
@@ -1658,6 +1659,35 @@ func TestDisablingCancelsBuild(t *testing.T) {
 
 	err = f.Stop()
 	require.NoError(t, err)
+}
+
+func TestBuildControllerK8sFileDependencies(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	kt := k8s.MustTarget("fe", testyaml.SanchoYAML).
+		WithPathDependencies(
+			[]string{f.JoinPath("k8s-dep")},
+			[]model.LocalGitRepo{
+				{LocalPath: f.JoinPath("k8s-dep")},
+			})
+	m := model.Manifest{Name: "fe"}.WithDeployTarget(kt)
+
+	f.Start([]model.Manifest{m})
+
+	call := f.nextCall()
+	assert.Empty(t, call.k8sState().FilesChanged())
+
+	// path dependency is on ./k8s-dep/** with a local repo of ./k8s-dep/.git/** (ignored)
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("k8s-dep", "file"))
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("k8s-dep", ".git", "file"))
+
+	call = f.nextCall()
+	assert.Equal(t, []string{f.JoinPath("k8s-dep", "file")}, call.k8sState().FilesChanged())
+
+	err := f.Stop()
+	assert.NoError(t, err)
+	f.assertAllBuildsConsumed()
 }
 
 func (f *testFixture) waitUntilManifestBuilding(name model.ManifestName) {
