@@ -203,8 +203,7 @@ func TestRuntimeStateJob(t *testing.T) {
 }
 
 func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {
-	m, err := k8s.NewK8sOnlyManifestFromYAML(testyaml.SanchoYAML)
-	assert.NoError(t, err)
+	m := k8sManifest(t, model.UnresourcedYAMLManifestName, testyaml.SanchoYAML)
 	state := newState([]model.Manifest{m})
 	krs := state.ManifestTargets[m.Name].State.K8sRuntimeState()
 	krs.ApplyFilter = yamlToApplyFilter(t, testyaml.SanchoYAML)
@@ -224,10 +223,7 @@ func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {
 }
 
 func TestStateToViewNonWorkloadYAMLManifest(t *testing.T) {
-	es, err := k8s.ParseYAMLFromString(testyaml.SecretYaml)
-	require.NoError(t, err)
-	m, err := k8s.NewK8sOnlyManifest(model.ManifestName("foo"), es, nil)
-	require.NoError(t, err)
+	m := k8sManifest(t, "foo", testyaml.SecretYaml)
 	state := newState([]model.Manifest{m})
 	krs := state.ManifestTargets[m.Name].State.K8sRuntimeState()
 	krs.ApplyFilter = yamlToApplyFilter(t, testyaml.SecretYaml)
@@ -256,8 +252,7 @@ func TestMostRecentPod(t *testing.T) {
 }
 
 func TestNextBuildReason(t *testing.T) {
-	m, err := k8s.NewK8sOnlyManifestFromYAML(testyaml.SanchoYAML)
-	assert.NoError(t, err)
+	m := k8sManifest(t, model.UnresourcedYAMLManifestName, testyaml.SanchoYAML)
 
 	kTarget := m.K8sTarget()
 	mt := NewManifestTarget(m)
@@ -527,4 +522,11 @@ func yamlToApplyFilter(t testing.TB, yaml string) *k8sconv.KubernetesApplyFilter
 	require.NoError(t, err, "Failed to create KubernetesApplyFilter")
 	require.NotNil(t, applyFilter, "ApplyFilter was nil")
 	return applyFilter
+}
+
+func k8sManifest(t testing.TB, name model.ManifestName, yaml string) model.Manifest {
+	t.Helper()
+	kt, err := k8s.NewTargetForYAML(name.TargetName(), yaml, nil)
+	require.NoError(t, err, "Failed to create Kubernetes deploy target")
+	return model.Manifest{Name: name}.WithDeployTarget(kt)
 }

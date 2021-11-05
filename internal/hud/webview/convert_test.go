@@ -146,8 +146,8 @@ func TestStateToWebViewLocalResourceLink(t *testing.T) {
 }
 
 func TestStateToViewUnresourcedYAMLManifest(t *testing.T) {
-	m, err := k8s.NewK8sOnlyManifestFromYAML(testyaml.SanchoYAML)
-	assert.NoError(t, err)
+	mn := model.UnresourcedYAMLManifestName
+	m := model.Manifest{Name: mn}.WithDeployTarget(k8s.MustTarget(mn.TargetName(), testyaml.SanchoYAML))
 	state := newState([]model.Manifest{m})
 	v := completeProtoView(t, *state)
 

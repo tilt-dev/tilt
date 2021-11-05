@@ -3,118 +3,75 @@ package k8s
 import (
 	"context"
 	"fmt"
-	"strings"
-	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/pkg/errors"
 
-	"github.com/tilt-dev/tilt/internal/container"
-	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-var pkgInitTime = time.Now()
-
 func MustTarget(name model.TargetName, yaml string) model.K8sTarget {
-	entities, err := ParseYAML(strings.NewReader(yaml))
+	kt, err := NewTargetForYAML(name, yaml, nil)
 	if err != nil {
 		panic(fmt.Errorf("MustTarget: %v", err))
 	}
-	target, err := NewTarget(name, entities, nil, nil, nil, nil,
-		nil, model.PodReadinessIgnore, v1alpha1.KubernetesDiscoveryStrategyDefault,
-		nil, nil, model.UpdateSettings{})
-	if err != nil {
-		panic(fmt.Errorf("MustTarget: %v", err))
-	}
-	return target
+	return kt
 }
 
-func NewTarget(
-	name model.TargetName,
-	entities []K8sEntity,
-	portForwards []model.PortForward,
-	extraPodSelectors []labels.Set,
-	dependencyIDs []model.TargetID,
-	imageTargets []model.ImageTarget,
-	refInjectCounts map[string]int,
-	podReadinessMode model.PodReadinessMode,
-	discoveryStrategy v1alpha1.KubernetesDiscoveryStrategy,
-	allLocators []ImageLocator,
-	links []model.Link,
-	updateSettings model.UpdateSettings) (model.K8sTarget, error) {
-	sorted := SortedEntities(entities)
-	yaml, err := SerializeSpecYAML(sorted)
+func NewTargetForEntities(name model.TargetName, entities []K8sEntity, locators []ImageLocator) (model.K8sTarget, error) {
+	entities = SortedEntities(entities)
+	yaml, err := SerializeSpecYAML(entities)
 	if err != nil {
 		return model.K8sTarget{}, err
 	}
 
-	myLocators := []v1alpha1.KubernetesImageLocator{}
-	for _, locator := range allLocators {
+	applySpec := v1alpha1.KubernetesApplySpec{
+		DiscoveryStrategy: v1alpha1.KubernetesDiscoveryStrategyDefault,
+		YAML:              yaml,
+	}
+
+	for _, locator := range locators {
 		if LocatorMatchesOne(locator, entities) {
-			myLocators = append(myLocators, locator.ToSpec())
+			applySpec.ImageLocators = append(applySpec.ImageLocators, locator.ToSpec())
 		}
 	}
 
-	extraSelectors := SetsAsLabelSelectors(extraPodSelectors)
-	sinceTime := apis.NewTime(pkgInitTime)
-	apply := v1alpha1.KubernetesApplySpec{
-		YAML:          yaml,
-		ImageLocators: myLocators,
-		Timeout:       metav1.Duration{Duration: updateSettings.K8sUpsertTimeout()},
-		KubernetesDiscoveryTemplateSpec: &v1alpha1.KubernetesDiscoveryTemplateSpec{
-			ExtraSelectors: extraSelectors,
-		},
-		PodLogStreamTemplateSpec: &v1alpha1.PodLogStreamTemplateSpec{
-			SinceTime: &sinceTime,
-			IgnoreContainers: []string{
-				string(container.IstioInitContainerName),
-				string(container.IstioSidecarContainerName),
-			},
-		},
-		PortForwardTemplateSpec: toPortForwardTemplateSpec(portForwards),
-		DiscoveryStrategy:       discoveryStrategy,
+	target, err := NewTarget(name, applySpec, model.PodReadinessIgnore, nil)
+	if err != nil {
+		return model.K8sTarget{}, err
 	}
+	return target, nil
+}
 
-	kapp := &v1alpha1.KubernetesApply{Spec: apply}
-	errors := kapp.Validate(context.TODO())
-	if errors != nil {
-		return model.K8sTarget{}, errors.ToAggregate()
+func NewTargetForYAML(name model.TargetName, yaml string, locators []ImageLocator) (model.K8sTarget, error) {
+	entities, err := ParseYAMLFromString(yaml)
+	if err != nil {
+		return model.K8sTarget{}, err
+	}
+	return NewTargetForEntities(name, entities, locators)
+}
+
+func NewTarget(
+	name model.TargetName,
+	applySpec v1alpha1.KubernetesApplySpec,
+	podReadinessMode model.PodReadinessMode,
+	links []model.Link) (model.K8sTarget, error) {
+
+	kapp := &v1alpha1.KubernetesApply{Spec: applySpec}
+	err := kapp.Validate(context.TODO())
+	if err != nil {
+		return model.K8sTarget{}, err.ToAggregate()
 	}
 
 	return model.K8sTarget{
-		KubernetesApplySpec: apply,
+		KubernetesApplySpec: applySpec,
 		Name:                name,
 		PodReadinessMode:    podReadinessMode,
 		Links:               links,
-	}.WithImageDependencies(dependencyIDs, model.ToLiveUpdateOnlyMap(imageTargets)).
-		WithRefInjectCounts(refInjectCounts), nil
-}
-
-func NewK8sOnlyManifest(name model.ManifestName, entities []K8sEntity, allLocators []ImageLocator) (model.Manifest, error) {
-	kTarget, err := NewTarget(name.TargetName(), entities, nil, nil, nil, nil,
-		nil, model.PodReadinessIgnore, v1alpha1.KubernetesDiscoveryStrategyDefault,
-		allLocators, nil, model.UpdateSettings{})
-	if err != nil {
-		return model.Manifest{}, err
-	}
-	return model.Manifest{Name: name}.WithDeployTarget(kTarget), nil
-}
-
-func NewK8sOnlyManifestFromYAML(yaml string) (model.Manifest, error) {
-	entities, err := ParseYAMLFromString(yaml)
-	if err != nil {
-		return model.Manifest{}, errors.Wrap(err, "NewK8sOnlyManifestFromYAML")
-	}
-
-	manifest, err := NewK8sOnlyManifest(model.UnresourcedYAMLManifestName, entities, nil)
-	if err != nil {
-		return model.Manifest{}, errors.Wrap(err, "NewK8sOnlyManifestFromYAML")
-	}
-	return manifest, nil
+	}, nil
 }
 
 func ParseImageLocators(locators []v1alpha1.KubernetesImageLocator) ([]ImageLocator, error) {
@@ -142,8 +99,8 @@ func ParseImageLocators(locators []v1alpha1.KubernetesImageLocator) ([]ImageLoca
 	return result, nil
 }
 
-// Creates a port-forward template if necessary. Returns nil if no port-forwards.
-func toPortForwardTemplateSpec(forwards []model.PortForward) *v1alpha1.PortForwardTemplateSpec {
+// PortForwardTemplateSpec creates a port-forward template if necessary. Returns nil if no port-forwards.
+func PortForwardTemplateSpec(forwards []model.PortForward) *v1alpha1.PortForwardTemplateSpec {
 	if len(forwards) == 0 {
 		return nil
 	}

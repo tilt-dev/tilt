@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/docker/distribution/reference"
 	"github.com/looplab/tarjan"
@@ -13,6 +14,7 @@ import (
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
 	"golang.org/x/mod/semver"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/apiset"
@@ -22,6 +24,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/probe"
 	"github.com/tilt-dev/tilt/internal/tiltfile/sys"
 	"github.com/tilt-dev/tilt/internal/tiltfile/tiltextension"
+	"github.com/tilt-dev/tilt/pkg/apis"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
@@ -60,6 +63,8 @@ var unmatchedImageNoConfigsWarning = "No Kubernetes or Docker Compose configs fo
 var unmatchedImageAllUnresourcedWarning = "No Kubernetes configs with images found.\n" +
 	"If you are using CRDs, add k8s_kind() to tell Tilt how to find images.\n" +
 	"https://docs.tilt.dev/api.html#api.k8s_kind"
+
+var pkgInitTime = time.Now()
 
 type resourceSet struct {
 	dc  dcResourceSet // currently only support one d-c.yml
@@ -298,11 +303,18 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 	}
 
 	if len(unresourced) > 0 {
-		yamlManifest, err := k8s.NewK8sOnlyManifest(model.UnresourcedYAMLManifestName, unresourced, s.k8sImageLocatorsList())
+		mn := model.UnresourcedYAMLManifestName
+		r := &k8sResource{
+			name:             mn.String(),
+			entities:         unresourced,
+			podReadinessMode: model.PodReadinessIgnore,
+		}
+		kt, err := s.k8sDeployTarget(mn.TargetName(), r, nil, us)
 		if err != nil {
 			return nil, starkit.Model{}, err
 		}
 
+		yamlManifest := model.Manifest{Name: mn}.WithDeployTarget(kt)
 		manifests = append(manifests, yamlManifest)
 	}
 
@@ -351,6 +363,7 @@ const (
 	k8sKindN                    = "k8s_kind"
 	k8sImageJSONPathN           = "k8s_image_json_path"
 	workloadToResourceFunctionN = "workload_to_resource_function"
+	k8sCustomDeployN            = "k8s_custom_deploy"
 
 	// local resource functions
 	localResourceN = "local_resource"
@@ -532,6 +545,7 @@ func (s *tiltfileState) OnStart(e *starkit.Environment) error {
 		{k8sYamlN, s.k8sYaml},
 		{filterYamlN, s.filterYaml},
 		{k8sResourceN, s.k8sResource},
+		{k8sCustomDeployN, s.k8sCustomDeploy},
 		{localResourceN, s.localResource},
 		{testN, s.localResource}, // test is just a fork of local resource, w/ some switches based on fn.Name()
 		{portForwardN, s.portForward},
@@ -956,8 +970,8 @@ func (s *tiltfileState) assembleK8sUnresourced() error {
 }
 
 func (s *tiltfileState) validateK8s(r *k8sResource) error {
-	if len(r.entities) == 0 {
-		return fmt.Errorf("resource %q: could not associate any k8s YAML with this resource", r.name)
+	if len(r.entities) == 0 && r.customDeploy == nil {
+		return fmt.Errorf("resource %q: could not associate any k8s_yaml() or k8s_custom_deploy() with this resource", r.name)
 	}
 
 	for _, ref := range r.imageRefs {
@@ -1048,7 +1062,6 @@ func (s *tiltfileState) inferPodReadinessMode(r *k8sResource) model.PodReadiness
 
 func (s *tiltfileState) translateK8s(resources []*k8sResource, updateSettings model.UpdateSettings) ([]model.Manifest, error) {
 	var result []model.Manifest
-	locators := s.k8sImageLocatorsList()
 	registry := s.decideRegistry()
 	for _, r := range resources {
 		mn := model.ManifestName(r.name)
@@ -1088,17 +1101,12 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource, updateSettings mo
 
 		m = m.WithImageTargets(iTargets)
 
-		k8sTarget, err := k8s.NewTarget(mn.TargetName(), r.entities,
-			s.defaultedPortForwards(r.portForwards), r.extraPodSelectors,
-			r.dependencyIDs, iTargets, r.imageRefMap, s.inferPodReadinessMode(r),
-			r.discoveryStrategy,
-			locators, r.links, updateSettings)
+		k8sTarget, err := s.k8sDeployTarget(mn.TargetName(), r, iTargets, updateSettings)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "creating K8s deploy target for %s", r.name)
 		}
 
 		m = m.WithDeployTarget(k8sTarget)
-
 		result = append(result, m)
 	}
 
@@ -1108,6 +1116,67 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource, updateSettings mo
 	}
 
 	return result, nil
+}
+
+func (s *tiltfileState) k8sDeployTarget(targetName model.TargetName, r *k8sResource, imageTargets []model.ImageTarget, updateSettings model.UpdateSettings) (model.K8sTarget, error) {
+	var kdTemplateSpec *v1alpha1.KubernetesDiscoveryTemplateSpec
+	if len(r.extraPodSelectors) != 0 {
+		kdTemplateSpec = &v1alpha1.KubernetesDiscoveryTemplateSpec{
+			ExtraSelectors: k8s.SetsAsLabelSelectors(r.extraPodSelectors),
+		}
+	}
+
+	sinceTime := apis.NewTime(pkgInitTime)
+	applySpec := v1alpha1.KubernetesApplySpec{
+		Timeout:                         metav1.Duration{Duration: updateSettings.K8sUpsertTimeout()},
+		PortForwardTemplateSpec:         k8s.PortForwardTemplateSpec(s.defaultedPortForwards(r.portForwards)),
+		DiscoveryStrategy:               r.discoveryStrategy,
+		KubernetesDiscoveryTemplateSpec: kdTemplateSpec,
+		PodLogStreamTemplateSpec: &v1alpha1.PodLogStreamTemplateSpec{
+			SinceTime: &sinceTime,
+			IgnoreContainers: []string{
+				string(container.IstioInitContainerName),
+				string(container.IstioSidecarContainerName),
+			},
+		},
+	}
+
+	var deps []string
+	if r.customDeploy != nil {
+		deps = r.customDeploy.deps
+		applySpec.Cmd = &v1alpha1.KubernetesApplyCmd{
+			Args: r.customDeploy.cmd.Argv,
+			Dir:  r.customDeploy.cmd.Dir,
+			Env:  r.customDeploy.cmd.Env,
+		}
+		applySpec.RestartOn = &v1alpha1.RestartOnSpec{
+			FileWatches: []string{apis.SanitizeName(fmt.Sprintf("%s:apply", targetName.String()))},
+		}
+	} else {
+		entities := k8s.SortedEntities(r.entities)
+		var err error
+		applySpec.YAML, err = k8s.SerializeSpecYAML(entities)
+		if err != nil {
+			return model.K8sTarget{}, err
+		}
+
+		for _, locator := range s.k8sImageLocatorsList() {
+			if k8s.LocatorMatchesOne(locator, entities) {
+				applySpec.ImageLocators = append(applySpec.ImageLocators, locator.ToSpec())
+			}
+		}
+	}
+
+	t, err := k8s.NewTarget(targetName, applySpec, s.inferPodReadinessMode(r), r.links)
+	if err != nil {
+		return model.K8sTarget{}, err
+	}
+
+	t = t.WithImageDependencies(r.dependencyIDs, model.ToLiveUpdateOnlyMap(imageTargets)).
+		WithRefInjectCounts(r.imageRefMap).
+		WithPathDependencies(deps, reposForPaths(deps))
+
+	return t, nil
 }
 
 // Fill in default values in port-forwarding.

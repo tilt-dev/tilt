@@ -251,6 +251,27 @@ func (f *fixture) TargetStatus(name string) v1alpha1.Target {
 	return v1alpha1.Target{}
 }
 
+func (f *fixture) Touch(fileBaseName string) {
+	f.t.Helper()
+	filename := f.testDirPath(fileBaseName)
+	_, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		file, err := os.Create(filename)
+		require.NoError(f.t, err, "Failed to create %q", filename)
+		_ = file.Close()
+		f.t.Cleanup(
+			func() {
+				if err := os.Remove(filename); err != nil && !os.IsNotExist(err) {
+					f.t.Fatalf("Failed to remove created file %q: %v", filename, err)
+				}
+			})
+	} else {
+		now := time.Now().Local()
+		err := os.Chtimes(filename, now, now)
+		require.NoError(f.t, err, "Failed to update times on %q", filename)
+	}
+}
+
 func (f *fixture) ReplaceContents(fileBaseName, original, replacement string) {
 	f.t.Helper()
 	file := f.testDirPath(fileBaseName)

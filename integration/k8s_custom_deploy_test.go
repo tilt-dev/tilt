@@ -5,6 +5,7 @@ package integration
 import (
 	"context"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -18,16 +19,12 @@ func TestCustomDeploy(t *testing.T) {
 		t.Fatal("`kubectl` not found in PATH")
 	}
 
-	f := newK8sFixture(t, "custom_deploy")
+	f := newK8sFixture(t, "k8s_custom_deploy")
 	defer f.TearDown()
 	f.SetRestrictedCredentials()
 
 	f.TiltUp()
 
-	// ForwardPort will fail if all the pods are not ready.
-	//
-	// We can't use the normal Tilt-managed forwards here because
-	// Tilt doesn't setup forwards when --watch=false.
 	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
 	f.WaitForAllPodsReady(ctx, "someLabel=someValue1")
@@ -51,6 +48,18 @@ func TestCustomDeploy(t *testing.T) {
 	f.WaitForAllPodsReady(ctx, "someLabel=someValue2")
 
 	// verify port forward still works
+	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
+	defer cancel()
+	f.CurlUntil(ctx, "http://localhost:54871", "Welcome to nginx!")
+
+	// perform a Live Update (this version of the file can _only_ exist in the container via Live Update,
+	// as it's overwriting a file from a public image)
+	f.ReplaceContents(filepath.Join("web", "index.html"), "Hello", "Greetings")
+	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
+	defer cancel()
+	f.CurlUntil(ctx, "http://localhost:54871", "Greetings from Live Update!")
+
+	f.Touch(filepath.Join("web", "fallback.txt"))
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
 	f.CurlUntil(ctx, "http://localhost:54871", "Welcome to nginx!")

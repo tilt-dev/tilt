@@ -1,0 +1,24 @@
+
+include('../Tiltfile')
+
+enable_feature('k8s_custom_deploy')
+
+# TODO(milas): remove once bug with LU reconciler + LU-only targets after "full" rebuilds is resolved
+disable_feature('live_update_v2')
+
+k8s_custom_deploy(
+    'custom-deploy-int-test',
+    # forcibly delete and re-create the deployment whenever run
+    cmd='kubectl delete --ignore-not-found=true --wait=true -f "${DEPLOY_FILE}" >/dev/null && kubectl create -oyaml -f "${DEPLOY_FILE}"',
+    deps=['deploy.yaml', 'foo', 'web/'],
+    image_selector='nginx',
+    env={'DEPLOY_FILE': 'deploy.yaml'},
+    live_update=[
+        fall_back_on('./web/fallback.txt'),
+        sync('./web/', '/usr/share/nginx/html/')
+    ]
+)
+k8s_resource(
+    'custom-deploy-int-test',
+    port_forwards=['54871:80']
+)

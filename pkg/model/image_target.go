@@ -41,6 +41,8 @@ type ImageTarget struct {
 	dependencyIDs []TargetID
 }
 
+var _ TargetSpec = ImageTarget{}
+
 func MustNewImageTarget(ref container.RefSelector) ImageTarget {
 	return ImageTarget{}.MustWithRef(ref)
 }
@@ -322,5 +324,3 @@ func (cb CustomBuild) WithTag(t string) CustomBuild {
 func (cb CustomBuild) SkipsPush() bool {
 	return cb.SkipsLocalDocker || cb.DisablePush
 }
-
-var _ TargetSpec = ImageTarget{}
