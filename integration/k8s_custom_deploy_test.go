@@ -19,7 +19,7 @@ func TestCustomDeploy(t *testing.T) {
 		t.Fatal("`kubectl` not found in PATH")
 	}
 
-	f := newK8sFixture(t, "custom_deploy")
+	f := newK8sFixture(t, "k8s_custom_deploy")
 	defer f.TearDown()
 	f.SetRestrictedCredentials()
 

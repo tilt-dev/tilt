@@ -363,7 +363,7 @@ const (
 	k8sKindN                    = "k8s_kind"
 	k8sImageJSONPathN           = "k8s_image_json_path"
 	workloadToResourceFunctionN = "workload_to_resource_function"
-	customDeployN               = "custom_deploy"
+	k8sCustomDeployN            = "k8s_custom_deploy"
 
 	// local resource functions
 	localResourceN = "local_resource"
@@ -545,7 +545,7 @@ func (s *tiltfileState) OnStart(e *starkit.Environment) error {
 		{k8sYamlN, s.k8sYaml},
 		{filterYamlN, s.filterYaml},
 		{k8sResourceN, s.k8sResource},
-		{customDeployN, s.customDeploy},
+		{k8sCustomDeployN, s.k8sCustomDeploy},
 		{localResourceN, s.localResource},
 		{testN, s.localResource}, // test is just a fork of local resource, w/ some switches based on fn.Name()
 		{portForwardN, s.portForward},
@@ -971,7 +971,7 @@ func (s *tiltfileState) assembleK8sUnresourced() error {
 
 func (s *tiltfileState) validateK8s(r *k8sResource) error {
 	if len(r.entities) == 0 && r.customDeploy == nil {
-		return fmt.Errorf("resource %q: could not associate any k8s_yaml() or custom_deploy() with this resource", r.name)
+		return fmt.Errorf("resource %q: could not associate any k8s_yaml() or k8s_custom_deploy() with this resource", r.name)
 	}
 
 	for _, ref := range r.imageRefs {

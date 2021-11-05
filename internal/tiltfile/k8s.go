@@ -67,7 +67,7 @@ type k8sResource struct {
 
 	labels map[string]string
 
-	customDeploy *customDeploy
+	customDeploy *k8sCustomDeploy
 }
 
 // holds options passed to `k8s_resource` until assembly happens

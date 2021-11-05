@@ -14,14 +14,14 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-type customDeploy struct {
+type k8sCustomDeploy struct {
 	cmd  model.Cmd
 	deps []string
 }
 
-func (s *tiltfileState) customDeploy(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	if !s.features.Get(feature.CustomDeploy) {
-		return nil, errors.New("custom_deploy is not supported by this version of Tilt")
+func (s *tiltfileState) k8sCustomDeploy(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	if !s.features.Get(feature.K8sCustomDeploy) {
+		return nil, errors.New("k8s_custom_deploy is not supported by this version of Tilt")
 	}
 
 	var name string
@@ -49,7 +49,7 @@ func (s *tiltfileState) customDeploy(thread *starlark.Thread, fn *starlark.Built
 	if err != nil {
 		return nil, errors.Wrap(err, "cmd")
 	} else if cmd.Empty() {
-		return nil, fmt.Errorf("custom_deploy: cmd cannot be empty")
+		return nil, fmt.Errorf("k8s_custom_deploy: cmd cannot be empty")
 	}
 
 	liveUpdate, err := s.liveUpdateFromSteps(thread, liveUpdateVal)
@@ -62,14 +62,14 @@ func (s *tiltfileState) customDeploy(thread *starlark.Thread, fn *starlark.Built
 		return nil, fmt.Errorf("error making resource for %s: %v", name, err)
 	}
 
-	res.customDeploy = &customDeploy{
+	res.customDeploy = &k8sCustomDeploy{
 		cmd:  cmd,
 		deps: deps.Value,
 	}
 
 	if !liveupdate.IsEmptySpec(liveUpdate) {
 		if imageSelector == "" {
-			return nil, fmt.Errorf("custom_deploy: image_selector cannot be empty")
+			return nil, fmt.Errorf("k8s_custom_deploy: image_selector cannot be empty")
 		}
 
 		ref, err := container.ParseNamed(imageSelector)
@@ -79,6 +79,9 @@ func (s *tiltfileState) customDeploy(thread *starlark.Thread, fn *starlark.Built
 
 		img := &dockerImage{
 			configurationRef: container.NewRefSelector(ref),
+			// HACK(milas): this is treated specially in the BuildAndDeployer to
+			// 	mark this as a "LiveUpdateOnly" ImageTarget, so that no builds
+			// 	will be done, only deploy + Live Update
 			customCommand:    model.ToHostCmd(":"),
 			customDeps:       deps.Value,
 			liveUpdate:       liveUpdate,
