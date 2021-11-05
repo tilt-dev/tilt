@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"runtime"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -347,4 +348,43 @@ func TestController_Disable_Ignores_File_Changes(t *testing.T) {
 	var fwAfterDisable filewatches.FileWatch
 	f.MustGet(key, &fwAfterDisable)
 	require.Equal(t, 0, len(fwAfterDisable.Status.FileEvents))
+}
+
+func TestController_IgnoreErrorsOnCancel(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
+	f := newFixture(t)
+	key, _ := f.CreateSimpleFileWatch()
+
+	tw := f.controller.targetWatches[key]
+	require.NotNil(t, tw, "Watcher never created")
+
+	// HACK(milas): this is seriously misusing the internals of this controller to
+	// 	force the synchronization so we can cancel the context at the right time
+	tw.mu.Lock()
+
+	watcher := tw.notify.(*fsevent.FakeWatcher)
+	require.Zero(t, watcher.TotalEventCount(), "No events should have been seen yet")
+
+	f.ChangeFile("a", "1")
+
+	require.Eventually(t, func() bool {
+		return watcher.TotalEventCount() == 1
+	}, time.Second, 20*time.Millisecond, "Event never seen")
+
+	require.Eventually(t, func() bool {
+		return watcher.QueuedCount() == 0
+	}, time.Second, 20*time.Millisecond, "Event never consumed")
+
+	// at this point, the watcher is blocked trying to report the event, so
+	// we'll cancel the context on it, simulating a race, to force a failure
+	tw.cancel()
+	tw.mu.Unlock()
+
+	require.Eventually(t, func() bool {
+		return strings.Contains(f.Stdout(),
+			`Ignored stale error for "TestController_IgnoreErrorsOnCancel/test-file-watch": apiserver update status error: context canceled`)
+	}, time.Second, 10*time.Millisecond, "Error ignored log message never seen")
 }

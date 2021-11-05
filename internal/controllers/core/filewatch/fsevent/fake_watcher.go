@@ -3,6 +3,7 @@ package fsevent
 import (
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 
 	"github.com/tilt-dev/tilt/internal/ospath"
 	"github.com/tilt-dev/tilt/internal/watch"
@@ -20,7 +21,10 @@ type FakeMultiWatcher struct {
 }
 
 func NewFakeMultiWatcher() *FakeMultiWatcher {
-	r := &FakeMultiWatcher{Events: make(chan watch.FileEvent, 20), Errors: make(chan error, 20)}
+	r := &FakeMultiWatcher{
+		Events: make(chan watch.FileEvent, 20),
+		Errors: make(chan error, 20),
+	}
 	go r.loop()
 	return r
 }
@@ -92,6 +96,8 @@ type FakeWatcher struct {
 	outboundCh chan watch.FileEvent
 	errorCh    chan error
 
+	eventCount uint64
+
 	paths  []string
 	ignore watch.PathMatcher
 }
@@ -141,6 +147,14 @@ func (w *FakeWatcher) Events() chan watch.FileEvent {
 	return w.outboundCh
 }
 
+func (w *FakeWatcher) TotalEventCount() uint64 {
+	return atomic.LoadUint64(&w.eventCount)
+}
+
+func (w *FakeWatcher) QueuedCount() int {
+	return len(w.outboundCh)
+}
+
 func (w *FakeWatcher) loop() {
 	var q []watch.FileEvent
 	for {
@@ -154,6 +168,7 @@ func (w *FakeWatcher) loop() {
 		} else {
 			e := q[0]
 			w.outboundCh <- e
+			atomic.AddUint64(&w.eventCount, 1)
 			q = q[1:]
 		}
 	}
