@@ -224,13 +224,21 @@ func (c *Controller) dispatchFileChangesLoop(ctx context.Context, st store.RStor
 			}
 		case <-ctx.Done():
 			return
-
 		case fsEvents, ok := <-eventsCh:
 			if !ok {
 				return
 			}
 			if err := w.recordEvent(ctx, c.Client, st, fsEvents); err != nil {
-				st.Dispatch(store.NewErrorAction(err))
+				if ctx.Err() == nil {
+					// there's an unavoidable race here - the context might have
+					// been canceled while we were recording the event, which will
+					// cause a failure, so we just ignore _any_ errors in this case
+					// (even if it was a non-context related error, this watcher is
+					// being disposed of, so it's no longer relevant)
+					st.Dispatch(store.NewErrorAction(err))
+				} else {
+					logger.Get(ctx).Debugf("Ignored stale error for %q: %v", w.name, err)
+				}
 				return
 			}
 		}
