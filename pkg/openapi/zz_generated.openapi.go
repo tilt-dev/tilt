@@ -2458,7 +2458,14 @@ func schema_pkg_apis_core_v1alpha1_KubernetesApplyStatus(ref common.ReferenceCal
 					},
 					"lastApplyTime": {
 						SchemaProps: spec.SchemaProps{
-							Description: "The last time the controller tried to apply YAML.",
+							Description: "Timestamp of we last finished applying this YAML to the cluster.\n\nWhen populated, must be equal or after the LastApplyStartTime field.\n\nis more consistent with how we name this in other API objects.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+					"lastApplyStartTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Timestamp of when we last started applying this YAML to the cluster.",
 							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},

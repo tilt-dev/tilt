@@ -1289,6 +1289,7 @@ func (in *KubernetesApplySpec) DeepCopy() *KubernetesApplySpec {
 func (in *KubernetesApplyStatus) DeepCopyInto(out *KubernetesApplyStatus) {
 	*out = *in
 	in.LastApplyTime.DeepCopyInto(&out.LastApplyTime)
+	in.LastApplyStartTime.DeepCopyInto(&out.LastApplyStartTime)
 	if in.DisableStatus != nil {
 		in, out := &in.DisableStatus, &out.DisableStatus
 		*out = new(DisableStatus)

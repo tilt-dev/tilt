@@ -276,7 +276,10 @@ func (r *Reconciler) forceApplyHelper(
 	spec v1alpha1.KubernetesApplySpec,
 	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) (v1alpha1.KubernetesApplyStatus, []k8s.K8sEntity) {
 
-	status := v1alpha1.KubernetesApplyStatus{}
+	startTime := apis.NowMicro()
+	status := v1alpha1.KubernetesApplyStatus{
+		LastApplyStartTime: startTime,
+	}
 
 	errorStatus := func(err error) v1alpha1.KubernetesApplyStatus {
 		status.LastApplyTime = apis.NowMicro()
