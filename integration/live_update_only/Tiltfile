@@ -1,4 +1,6 @@
 
+include('../Tiltfile')
+
 # TODO(milas): this test is failing with live_update_v2 because the LU Reconciler
 #   stops after seeing a path that it can't sync, but a full BaD never happens,
 #   and the resource gets stuck in update Pending
