@@ -935,10 +935,20 @@ message KubernetesApplyStatus {
   // +optional
   optional string error = 2;
 
-  // The last time the controller tried to apply YAML.
+  // Timestamp of we last finished applying this YAML to the cluster.
+  //
+  // When populated, must be equal or after the LastApplyStartTime field.
+  //
+  // TODO(nick): In v1, we may rename this to LastApplyFinishTime, which
+  // is more consistent with how we name this in other API objects.
   //
   // +optional
   optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastApplyTime = 3;
+
+  // Timestamp of when we last started applying this YAML to the cluster.
+  //
+  // +optional
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastApplyStartTime = 6;
 
   // A base64-encoded hash of all the inputs to the apply.
   //

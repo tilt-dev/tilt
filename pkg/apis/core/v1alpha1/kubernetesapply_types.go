@@ -263,10 +263,20 @@ type KubernetesApplyStatus struct {
 	// +optional
 	Error string `json:"error,omitempty" protobuf:"bytes,2,opt,name=error"`
 
-	// The last time the controller tried to apply YAML.
+	// Timestamp of we last finished applying this YAML to the cluster.
+	//
+	// When populated, must be equal or after the LastApplyStartTime field.
+	//
+	// TODO(nick): In v1, we may rename this to LastApplyFinishTime, which
+	// is more consistent with how we name this in other API objects.
 	//
 	// +optional
 	LastApplyTime metav1.MicroTime `json:"lastApplyTime,omitempty" protobuf:"bytes,3,opt,name=lastApplyTime"`
+
+	// Timestamp of when we last started applying this YAML to the cluster.
+	//
+	// +optional
+	LastApplyStartTime metav1.MicroTime `json:"lastApplyStartTime,omitempty" protobuf:"bytes,6,opt,name=lastApplyStartTime"`
 
 	// A base64-encoded hash of all the inputs to the apply.
 	//

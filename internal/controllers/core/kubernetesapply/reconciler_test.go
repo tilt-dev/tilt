@@ -357,13 +357,24 @@ func TestIgnoreManagedObjects(t *testing.T) {
 	}
 	f.Create(&ka)
 
-	f.MustReconcile(types.NamespacedName{Name: "a"})
+	nn := types.NamespacedName{Name: "a"}
+	f.MustReconcile(nn)
 	assert.Empty(f.T(), f.kClient.Yaml)
 
 	// no apply should happen since the object is managed by the engine
-	f.MustGet(types.NamespacedName{Name: "a"}, &ka)
+	f.MustGet(nn, &ka)
 	assert.Empty(f.T(), ka.Status.ResultYAML)
 	assert.Zero(f.T(), ka.Status.LastApplyTime)
+
+	result, err := f.r.ForceApply(f.Context(), nn, ka.Spec, nil)
+	assert.Nil(f.T(), err)
+	assert.Contains(f.T(), result.ResultYAML, "sancho")
+	assert.True(f.T(), !result.LastApplyTime.IsZero())
+	assert.True(f.T(), !result.LastApplyStartTime.IsZero())
+	assert.Equal(f.T(), result.Error, "")
+
+	f.MustGet(nn, &ka)
+	assert.Equal(f.T(), result, ka.Status)
 }
 
 type fixture struct {
