@@ -119,6 +119,17 @@ func (c Container) Empty() bool {
 	return c == Container{}
 }
 
+func (c Container) DisplayName() string {
+	if c.PodID == "" {
+		if c.ContainerName == "" {
+			return c.ContainerID.ShortStr()
+		}
+		return c.ContainerName.String()
+	}
+
+	return fmt.Sprintf("%s/%s", c.PodID, c.ContainerName)
+}
+
 func IDsForContainers(infos []Container) []container.ID {
 	ids := make([]container.ID, len(infos))
 	for i, info := range infos {
