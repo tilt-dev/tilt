@@ -27,14 +27,7 @@ function copy_binary() {
 
 function brew_install_or_upgrade() {
   set -x
-  brew tap tilt-dev/tap
-  if test -d "$(brew --prefix tilt-dev/tap/tilt)"; then
-    # Tilt already installed via Brew, upgrade it
-    brew upgrade tilt-dev/tap/tilt
-  else
-    # fresh install
-    brew install tilt-dev/tap/tilt
-  fi
+  brew bundle --file=- <<< "brew 'tilt'"
 
   set +x
   location=$(command -v tilt)
