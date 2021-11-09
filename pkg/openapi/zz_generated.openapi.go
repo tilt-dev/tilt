@@ -51,6 +51,10 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableResourceStatus":           schema_pkg_apis_core_v1alpha1_DisableResourceStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource":                   schema_pkg_apis_core_v1alpha1_DisableSource(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableStatus":                   schema_pkg_apis_core_v1alpha1_DisableStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImage":                     schema_pkg_apis_core_v1alpha1_DockerImage(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageList":                 schema_pkg_apis_core_v1alpha1_DockerImageList(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageSpec":                 schema_pkg_apis_core_v1alpha1_DockerImageSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageStatus":               schema_pkg_apis_core_v1alpha1_DockerImageStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExecAction":                      schema_pkg_apis_core_v1alpha1_ExecAction(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Extension":                       schema_pkg_apis_core_v1alpha1_Extension(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExtensionList":                   schema_pkg_apis_core_v1alpha1_ExtensionList(ref),
@@ -1070,6 +1074,124 @@ func schema_pkg_apis_core_v1alpha1_DisableStatus(ref common.ReferenceCallback) c
 		},
 		Dependencies: []string{
 			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_DockerImage(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "DockerImage",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageSpec"),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageStatus"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_DockerImageList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "DockerImageList",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImage"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImage", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_DockerImageSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "DockerImageSpec defines the desired state of DockerImage",
+				Type:        []string{"object"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_DockerImageStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "DockerImageStatus defines the observed state of DockerImage",
+				Type:        []string{"object"},
+			},
+		},
 	}
 }
 
