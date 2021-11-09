@@ -133,11 +133,23 @@ type fakeCmdResult struct {
 	stderr   string
 }
 
+type FakeCall struct {
+	Cmd      model.Cmd
+	ExitCode int
+	Error    error
+}
+
+func (f FakeCall) String() string {
+	return fmt.Sprintf("cmd=%q exitCode=%d err=%v", f.Cmd.String(), f.ExitCode, f.Error)
+}
+
 type FakeExecer struct {
 	t  testing.TB
 	mu sync.Mutex
 
 	cmds map[string]fakeCmdResult
+
+	calls []FakeCall
 }
 
 var _ Execer = &FakeExecer{}
@@ -149,10 +161,18 @@ func NewFakeExecer(t testing.TB) *FakeExecer {
 	}
 }
 
-func (f *FakeExecer) Run(ctx context.Context, cmd model.Cmd, runIO RunIO) (int, error) {
+func (f *FakeExecer) Run(ctx context.Context, cmd model.Cmd, runIO RunIO) (exitCode int, err error) {
 	f.t.Helper()
 	f.mu.Lock()
 	defer f.mu.Unlock()
+
+	defer func() {
+		f.calls = append(f.calls, FakeCall{
+			Cmd:      cmd,
+			ExitCode: exitCode,
+			Error:    err,
+		})
+	}()
 
 	ctxErr := ctx.Err()
 	if ctxErr != nil {
@@ -200,4 +220,8 @@ func (f *FakeExecer) RegisterCommand(cmd string, exitCode int, stdout string, st
 		stdout:   stdout,
 		stderr:   stderr,
 	}
+}
+
+func (f *FakeExecer) Calls() []FakeCall {
+	return f.calls
 }
