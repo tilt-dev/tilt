@@ -474,6 +474,98 @@ func TestCrashLoopBackoff(t *testing.T) {
 	}
 }
 
+func TestStopPathConsumedByImageBuild(t *testing.T) {
+	f := newFixture(t)
+
+	p, _ := os.Getwd()
+	nowMicro := apis.NowMicro()
+	stopPath := filepath.Join(p, "stop.txt")
+	stopChangeTime := metav1.MicroTime{Time: nowMicro.Add(time.Second)}
+
+	f.setupFrontend()
+
+	f.addFileEvent("frontend-fw", stopPath, stopChangeTime)
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+
+	var lu v1alpha1.LiveUpdate
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	if assert.NotNil(t, lu.Status.Failed) {
+		assert.Equal(t, "UpdateStopped", lu.Status.Failed.Reason)
+	}
+
+	f.assertSteadyState(&lu)
+
+	// Clear the failure with an Image build
+	f.Upsert(&v1alpha1.ImageMap{
+		ObjectMeta: metav1.ObjectMeta{Name: "frontend-image-map"},
+		Status: v1alpha1.ImageMapStatus{
+			Image:          "frontend-image:my-tag",
+			BuildStartTime: &metav1.MicroTime{Time: nowMicro.Add(2 * time.Second)},
+		},
+	})
+
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	assert.Nil(t, lu.Status.Failed)
+
+	txtPath := filepath.Join(p, "a.txt")
+	txtChangeTime := metav1.MicroTime{Time: nowMicro.Add(3 * time.Second)}
+	f.addFileEvent("frontend-fw", txtPath, txtChangeTime)
+
+	assert.Equal(t, 0, len(f.cu.Calls))
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+	assert.Equal(t, 1, len(f.cu.Calls))
+}
+
+func TestStopPathConsumedByKubernetesApply(t *testing.T) {
+	f := newFixture(t)
+
+	p, _ := os.Getwd()
+	nowMicro := apis.NowMicro()
+	stopPath := filepath.Join(p, "stop.txt")
+	stopChangeTime := metav1.MicroTime{Time: nowMicro.Add(time.Second)}
+
+	f.setupFrontend()
+	f.Delete(&v1alpha1.ImageMap{
+		ObjectMeta: metav1.ObjectMeta{Name: "frontend-image-map"},
+	})
+
+	var lu v1alpha1.LiveUpdate
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	lu.Spec.Sources[0].ImageMap = ""
+	f.Update(&lu)
+
+	f.addFileEvent("frontend-fw", stopPath, stopChangeTime)
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	if assert.NotNil(t, lu.Status.Failed) {
+		assert.Equal(t, "UpdateStopped", lu.Status.Failed.Reason)
+	}
+
+	f.assertSteadyState(&lu)
+
+	// Clear the failure with an Apply
+	f.Upsert(&v1alpha1.KubernetesApply{
+		ObjectMeta: metav1.ObjectMeta{Name: "frontend-apply"},
+		Status: v1alpha1.KubernetesApplyStatus{
+			LastApplyStartTime: metav1.MicroTime{Time: nowMicro.Add(2 * time.Second)},
+		},
+	})
+
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	assert.Nil(t, lu.Status.Failed)
+
+	txtPath := filepath.Join(p, "a.txt")
+	txtChangeTime := metav1.MicroTime{Time: nowMicro.Add(3 * time.Second)}
+	f.addFileEvent("frontend-fw", txtPath, txtChangeTime)
+
+	assert.Equal(t, 0, len(f.cu.Calls))
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+	assert.Equal(t, 1, len(f.cu.Calls))
+}
+
 type TestingStore struct {
 	*store.TestingStore
 	ctx                 context.Context
@@ -606,6 +698,7 @@ func (f *fixture) setupFrontend() {
 			Syncs: []v1alpha1.LiveUpdateSync{
 				{LocalPath: ".", ContainerPath: "/app"},
 			},
+			StopPaths: []string{"stop.txt"},
 		},
 	})
 	f.Create(&v1alpha1.ConfigMap{

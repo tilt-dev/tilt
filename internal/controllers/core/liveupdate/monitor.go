@@ -45,8 +45,12 @@ type monitorContainerKey struct {
 type monitorContainerStatus struct {
 	lastFileTimeSynced metav1.MicroTime
 
-	// Once a container is marked unrecoverable,
-	// we never send updates to it again.
-	failedReason  string
-	failedMessage string
+	// The low water mark is the oldest file timestamp
+	// triggered a build failure.
+	//
+	// If we get a new ImageBuild or new KubernetesApply
+	// after this mark, we should try again.
+	failedLowWaterMark metav1.MicroTime
+	failedReason       string
+	failedMessage      string
 }
