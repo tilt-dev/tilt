@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -101,22 +102,14 @@ func TestBasicApplyYAML(t *testing.T) {
 func TestBasicApplyCmd(t *testing.T) {
 	f := newFixture(t)
 
-	entities, err := k8s.ParseYAMLFromString(testyaml.SanchoYAML)
-	require.NoError(t, err, "Could not parse SanchoYAML")
-	for i := range entities {
-		entities[i].SetUID(uuid.New().String())
-	}
-	yamlOut, err := k8s.SerializeSpecYAML(entities)
-	require.NoError(t, err, "Failed to re-serialize SanchoYAML")
-
-	f.execer.RegisterCommand("custom-apply-cmd", 0, yamlOut, "")
-
+	deployCmd, yamlOut := f.createDeployCmd("custom-deploy-cmd", testyaml.SanchoYAML)
 	ka := v1alpha1.KubernetesApply{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "a",
 		},
 		Spec: v1alpha1.KubernetesApplySpec{
-			DeployCmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-apply-cmd"}},
+			DeployCmd: &deployCmd,
+			DeleteCmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-delete-cmd"}},
 		},
 	}
 	f.Create(&ka)
@@ -133,6 +126,8 @@ func TestBasicApplyCmd(t *testing.T) {
 	f.MustGet(types.NamespacedName{Name: "a"}, &ka)
 	assert.Empty(t, ka.Status.Error)
 	timecmp.AssertTimeEqual(t, lastApplyTime, ka.Status.LastApplyTime)
+
+	assert.Len(t, f.execer.Calls(), 1)
 }
 
 func TestBasicApplyCmd_ExecError(t *testing.T) {
@@ -201,7 +196,7 @@ func TestBasicApplyCmd_MalformedYAML(t *testing.T) {
 	}
 }
 
-func TestGarbageCollectAll(t *testing.T) {
+func TestGarbageCollectAllOnDelete_YAML(t *testing.T) {
 	f := newFixture(t)
 	ka := v1alpha1.KubernetesApply{
 		ObjectMeta: metav1.ObjectMeta{
@@ -219,6 +214,33 @@ func TestGarbageCollectAll(t *testing.T) {
 	f.Delete(&ka)
 	f.MustReconcile(types.NamespacedName{Name: "a"})
 	assert.Contains(f.T(), f.kClient.DeletedYaml, "name: sancho")
+}
+
+func TestGarbageCollectAllOnDelete_Cmd(t *testing.T) {
+	f := newFixture(t)
+
+	deployCmd, yamlOut := f.createDeployCmd("custom-deploy-cmd", testyaml.SanchoYAML)
+	ka := v1alpha1.KubernetesApply{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "a",
+		},
+		Spec: v1alpha1.KubernetesApplySpec{
+			DeployCmd: &deployCmd,
+			DeleteCmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-delete-cmd"}},
+		},
+	}
+	f.Create(&ka)
+
+	f.MustGet(types.NamespacedName{Name: "a"}, &ka)
+	assert.Equal(f.T(), yamlOut, ka.Status.ResultYAML)
+
+	f.Delete(&ka)
+	assert.False(t, f.Get(types.NamespacedName{Name: "a"}, &ka), "Object was not deleted")
+
+	calls := f.execer.Calls()
+	if assert.Len(t, calls, 2, "Expected 2 calls (1x deploy + 1x delete)") {
+		assert.Equal(t, []string{"custom-delete-cmd"}, calls[1].Cmd.Argv)
+	}
 }
 
 func TestGarbageCollectPartial(t *testing.T) {
@@ -274,6 +296,41 @@ func TestGarbageCollectAfterErrorDuringApply(t *testing.T) {
 	if assert.Empty(t, f.kClient.DeletedYaml) {
 		assert.Contains(f.T(), f.kClient.Yaml, "name: sancho")
 		assert.Contains(f.T(), f.kClient.Yaml, "name: infra-kafka-zookeeper")
+	}
+}
+
+func TestGarbageCollect_DeleteCmdNotInvokedOnChange(t *testing.T) {
+	f := newFixture(t)
+
+	deployCmd, yamlOut := f.createDeployCmd("custom-deploy-1", testyaml.SanchoYAML)
+	ka := v1alpha1.KubernetesApply{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "a",
+		},
+		Spec: v1alpha1.KubernetesApplySpec{
+			DeployCmd: &deployCmd,
+			DeleteCmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-delete-cmd"}},
+		},
+	}
+	f.Create(&ka)
+
+	f.MustGet(types.NamespacedName{Name: "a"}, &ka)
+	assert.Equal(f.T(), yamlOut, ka.Status.ResultYAML)
+
+	yamlToDelete := yamlOut
+	deployCmd, yamlOut = f.createDeployCmd("custom-deploy-2", testyaml.JobYAML)
+	ka.Spec.DeployCmd = &deployCmd
+	f.Update(&ka)
+
+	f.MustGet(types.NamespacedName{Name: "a"}, &ka)
+	assert.Equal(f.T(), yamlOut, ka.Status.ResultYAML)
+	assert.Equal(t, yamlToDelete, f.kClient.DeletedYaml)
+
+	calls := f.execer.Calls()
+	if assert.Len(t, calls, 2, "Expected 2x deploy calls") {
+		for i := range calls {
+			assert.Equal(t, []string{fmt.Sprintf("custom-deploy-%d", i+1)}, calls[i].Cmd.Argv)
+		}
 	}
 }
 
@@ -408,4 +465,24 @@ func newFixture(t *testing.T) *fixture {
 		execer:            execer,
 		st:                st,
 	}
+}
+
+// createDeployCmd creates a KubernetesApplyCmd that use the passed YAML to generate simulated stdout via the FakeExecer.
+func (f *fixture) createDeployCmd(name string, yaml string) (v1alpha1.KubernetesApplyCmd, string) {
+	f.T().Helper()
+
+	require.NotEmpty(f.T(), yaml, "DeployCmd YAML cannot be blank")
+
+	entities, err := k8s.ParseYAMLFromString(yaml)
+	require.NoErrorf(f.T(), err, "Could not parse YAML: %s", yaml)
+	for i := range entities {
+		entities[i].SetUID(uuid.New().String())
+	}
+	yamlOut, err := k8s.SerializeSpecYAML(entities)
+	require.NoErrorf(f.T(), err, "Failed to re-serialize YAML for entities: %s", spew.Sdump(entities))
+
+	f.execer.RegisterCommand(name, 0, yamlOut, "")
+	return v1alpha1.KubernetesApplyCmd{
+		Args: []string{name},
+	}, yamlOut
 }

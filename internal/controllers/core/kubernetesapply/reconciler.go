@@ -36,6 +36,11 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
+type garbageCollectMeta struct {
+	entities  []k8s.K8sEntity
+	deleteCmd *v1alpha1.KubernetesApplyCmd
+}
+
 type Reconciler struct {
 	st          store.RStore
 	dkc         build.DockerKubeConnection
@@ -353,12 +358,6 @@ func (r *Reconciler) runYAMLDeploy(ctx context.Context, spec v1alpha1.Kubernetes
 }
 
 func (r *Reconciler) runCmdDeploy(ctx context.Context, spec v1alpha1.KubernetesApplySpec) ([]k8s.K8sEntity, error) {
-	cmd := model.Cmd{
-		Argv: spec.DeployCmd.Args,
-		Dir:  spec.DeployCmd.Dir,
-		Env:  spec.DeployCmd.Env,
-	}
-
 	timeout := spec.Timeout.Duration
 	if timeout == 0 {
 		timeout = v1alpha1.KubernetesApplyTimeoutDefault
@@ -372,7 +371,7 @@ func (r *Reconciler) runCmdDeploy(ctx context.Context, spec v1alpha1.KubernetesA
 		Stderr: logger.Get(ctx).Writer(logger.InfoLvl),
 	}
 
-	exitCode, err := r.execer.Run(ctx, cmd, runIO)
+	exitCode, err := r.execer.Run(ctx, toModelCmd(*spec.DeployCmd), runIO)
 	if err != nil {
 		return nil, fmt.Errorf("apply command failed: %v", err)
 	} else if exitCode != 0 {
@@ -511,7 +510,7 @@ func (r *Reconciler) createEntitiesToDeploy(ctx context.Context,
 // that way.
 //
 // Returns: objects to garbage-collect.
-func (r *Reconciler) updateResult(nn types.NamespacedName, result *Result) []k8s.K8sEntity {
+func (r *Reconciler) updateResult(nn types.NamespacedName, result *Result) garbageCollectMeta {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	existing := r.results[nn]
@@ -524,18 +523,27 @@ func (r *Reconciler) updateResult(nn types.NamespacedName, result *Result) []k8s
 	if result != nil && result.Status.Error != "" {
 		// do not attempt to delete any objects if the apply failed
 		// N.B. if the result is nil, that means the object was deleted, so objects WILL be deleted
-		return nil
+		return garbageCollectMeta{}
+	}
+
+	if existing == nil {
+		// there is no prior state, so we have nothing to GC
+		return garbageCollectMeta{}
+	}
+
+	if result == nil && existing.Spec.DeleteCmd != nil {
+		// the object was deleted (so result is nil) and we have a custom delete cmd, so use that
+		// and skip diffing managed entities entirely
+		return garbageCollectMeta{deleteCmd: existing.Spec.DeleteCmd}
 	}
 
 	// Go through all the results, and check to see which objects
 	// we're not managing anymore.
-	var toDeleteMap objectRefSet
-	if existing != nil {
-		toDeleteMap = existing.AppliedObjects.clone()
-		for _, result := range r.results {
-			for objRef := range result.AppliedObjects {
-				delete(toDeleteMap, objRef)
-			}
+	// TODO(milas): in the case that the KA object was deleted, should we respect `tilt.dev/down-policy`?
+	toDeleteMap := existing.AppliedObjects.clone()
+	for _, result := range r.results {
+		for objRef := range result.AppliedObjects {
+			delete(toDeleteMap, objRef)
 		}
 	}
 
@@ -543,27 +551,44 @@ func (r *Reconciler) updateResult(nn types.NamespacedName, result *Result) []k8s
 	for _, e := range toDeleteMap {
 		toDelete = append(toDelete, e)
 	}
-	return toDelete
+	return garbageCollectMeta{entities: toDelete}
 }
 
-func (r *Reconciler) bestEffortDelete(ctx context.Context, entities []k8s.K8sEntity) {
-	if len(entities) == 0 {
+func (r *Reconciler) bestEffortDelete(ctx context.Context, gcMeta garbageCollectMeta) {
+	if len(gcMeta.entities) == 0 && gcMeta.deleteCmd == nil {
 		return
 	}
 
 	l := logger.Get(ctx)
 	l.Infof("Garbage collecting Kubernetes resources:")
 
-	// Use a min component count of 2 for computing names,
-	// so that the resource type appears
-	displayNames := k8s.UniqueNames(entities, 2)
-	for _, displayName := range displayNames {
-		l.Infof("→ %s", displayName)
+	if len(gcMeta.entities) != 0 {
+		// Use a min component count of 2 for computing names,
+		// so that the resource type appears
+		displayNames := k8s.UniqueNames(gcMeta.entities, 2)
+		for _, displayName := range displayNames {
+			l.Infof("→ %s", displayName)
+		}
+
+		err := r.k8sClient.Delete(ctx, gcMeta.entities)
+		if err != nil {
+			l.Errorf("Error garbage collecting Kubernetes resources: %v", err)
+		}
 	}
 
-	err := r.k8sClient.Delete(ctx, entities)
-	if err != nil {
-		l.Errorf("Error garbage collecting Kubernetes resources: %v", err)
+	if gcMeta.deleteCmd != nil {
+		deleteCmd := toModelCmd(*gcMeta.deleteCmd)
+		l.Infof("Running cmd: %s", deleteCmd.String())
+
+		out := l.Writer(logger.InfoLvl)
+		runIO := localexec.RunIO{Stdout: out, Stderr: out}
+		exitCode, err := r.execer.Run(ctx, deleteCmd, runIO)
+		if err == nil && exitCode != 0 {
+			err = fmt.Errorf("exit status %d", exitCode)
+		}
+		if err != nil {
+			l.Errorf("Error garbage collecting Kubernetes resources: %v", err)
+		}
 	}
 }
 
@@ -622,4 +647,12 @@ func (s objectRefSet) clone() objectRefSet {
 		result[k] = v
 	}
 	return result
+}
+
+func toModelCmd(cmd v1alpha1.KubernetesApplyCmd) model.Cmd {
+	return model.Cmd{
+		Argv: cmd.Args,
+		Dir:  cmd.Dir,
+		Env:  cmd.Env,
+	}
 }
