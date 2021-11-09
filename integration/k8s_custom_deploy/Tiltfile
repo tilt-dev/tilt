@@ -3,9 +3,6 @@ include('../Tiltfile')
 
 enable_feature('k8s_custom_deploy')
 
-# TODO(milas): remove once bug with LU reconciler + LU-only targets after "full" rebuilds is resolved
-disable_feature('live_update_v2')
-
 k8s_custom_deploy(
     'custom-deploy-int-test',
     # forcibly delete and re-create the deployment whenever run
