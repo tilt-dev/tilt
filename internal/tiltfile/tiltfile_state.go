@@ -1144,7 +1144,7 @@ func (s *tiltfileState) k8sDeployTarget(targetName model.TargetName, r *k8sResou
 	var deps []string
 	if r.customDeploy != nil {
 		deps = r.customDeploy.deps
-		applySpec.Cmd = &v1alpha1.KubernetesApplyCmd{
+		applySpec.DeployCmd = &v1alpha1.KubernetesApplyCmd{
 			Args: r.customDeploy.cmd.Argv,
 			Dir:  r.customDeploy.cmd.Dir,
 			Env:  r.customDeploy.cmd.Env,

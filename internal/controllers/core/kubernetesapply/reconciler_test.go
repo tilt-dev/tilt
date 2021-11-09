@@ -116,7 +116,7 @@ func TestBasicApplyCmd(t *testing.T) {
 			Name: "a",
 		},
 		Spec: v1alpha1.KubernetesApplySpec{
-			Cmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-apply-cmd"}},
+			DeployCmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-apply-cmd"}},
 		},
 	}
 	f.Create(&ka)
@@ -145,7 +145,7 @@ func TestBasicApplyCmd_ExecError(t *testing.T) {
 			Name: "a",
 		},
 		Spec: v1alpha1.KubernetesApplySpec{
-			Cmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-apply-cmd"}},
+			DeployCmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-apply-cmd"}},
 		},
 	}
 	f.Create(&ka)
@@ -166,7 +166,7 @@ func TestBasicApplyCmd_NonZeroExitCode(t *testing.T) {
 			Annotations: map[string]string{v1alpha1.AnnotationManifest: "foo"},
 		},
 		Spec: v1alpha1.KubernetesApplySpec{
-			Cmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-apply-cmd"}},
+			DeployCmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-apply-cmd"}},
 		},
 	}
 	f.Create(&ka)
@@ -189,7 +189,7 @@ func TestBasicApplyCmd_MalformedYAML(t *testing.T) {
 			Name: "a",
 		},
 		Spec: v1alpha1.KubernetesApplySpec{
-			Cmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-apply-cmd"}},
+			DeployCmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-apply-cmd"}},
 		},
 	}
 	f.Create(&ka)

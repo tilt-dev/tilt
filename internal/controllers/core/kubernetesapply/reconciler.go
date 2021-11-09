@@ -354,9 +354,9 @@ func (r *Reconciler) runYAMLDeploy(ctx context.Context, spec v1alpha1.Kubernetes
 
 func (r *Reconciler) runCmdDeploy(ctx context.Context, spec v1alpha1.KubernetesApplySpec) ([]k8s.K8sEntity, error) {
 	cmd := model.Cmd{
-		Argv: spec.Cmd.Args,
-		Dir:  spec.Cmd.Dir,
-		Env:  spec.Cmd.Env,
+		Argv: spec.DeployCmd.Args,
+		Dir:  spec.DeployCmd.Dir,
+		Env:  spec.DeployCmd.Env,
 	}
 
 	timeout := spec.Timeout.Duration
