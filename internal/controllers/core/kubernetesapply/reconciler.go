@@ -36,7 +36,7 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-type garbageCollectMeta struct {
+type deleteSpec struct {
 	entities  []k8s.K8sEntity
 	deleteCmd *v1alpha1.KubernetesApplyCmd
 }
@@ -510,7 +510,7 @@ func (r *Reconciler) createEntitiesToDeploy(ctx context.Context,
 // that way.
 //
 // Returns: objects to garbage-collect.
-func (r *Reconciler) updateResult(nn types.NamespacedName, result *Result) garbageCollectMeta {
+func (r *Reconciler) updateResult(nn types.NamespacedName, result *Result) deleteSpec {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	existing := r.results[nn]
@@ -523,18 +523,18 @@ func (r *Reconciler) updateResult(nn types.NamespacedName, result *Result) garba
 	if result != nil && result.Status.Error != "" {
 		// do not attempt to delete any objects if the apply failed
 		// N.B. if the result is nil, that means the object was deleted, so objects WILL be deleted
-		return garbageCollectMeta{}
+		return deleteSpec{}
 	}
 
 	if existing == nil {
 		// there is no prior state, so we have nothing to GC
-		return garbageCollectMeta{}
+		return deleteSpec{}
 	}
 
 	if result == nil && existing.Spec.DeleteCmd != nil {
 		// the object was deleted (so result is nil) and we have a custom delete cmd, so use that
 		// and skip diffing managed entities entirely
-		return garbageCollectMeta{deleteCmd: existing.Spec.DeleteCmd}
+		return deleteSpec{deleteCmd: existing.Spec.DeleteCmd}
 	}
 
 	// Go through all the results, and check to see which objects
@@ -551,33 +551,33 @@ func (r *Reconciler) updateResult(nn types.NamespacedName, result *Result) garba
 	for _, e := range toDeleteMap {
 		toDelete = append(toDelete, e)
 	}
-	return garbageCollectMeta{entities: toDelete}
+	return deleteSpec{entities: toDelete}
 }
 
-func (r *Reconciler) bestEffortDelete(ctx context.Context, gcMeta garbageCollectMeta) {
-	if len(gcMeta.entities) == 0 && gcMeta.deleteCmd == nil {
+func (r *Reconciler) bestEffortDelete(ctx context.Context, toDelete deleteSpec) {
+	if len(toDelete.entities) == 0 && toDelete.deleteCmd == nil {
 		return
 	}
 
 	l := logger.Get(ctx)
 	l.Infof("Garbage collecting Kubernetes resources:")
 
-	if len(gcMeta.entities) != 0 {
+	if len(toDelete.entities) != 0 {
 		// Use a min component count of 2 for computing names,
 		// so that the resource type appears
-		displayNames := k8s.UniqueNames(gcMeta.entities, 2)
+		displayNames := k8s.UniqueNames(toDelete.entities, 2)
 		for _, displayName := range displayNames {
 			l.Infof("→ %s", displayName)
 		}
 
-		err := r.k8sClient.Delete(ctx, gcMeta.entities)
+		err := r.k8sClient.Delete(ctx, toDelete.entities)
 		if err != nil {
 			l.Errorf("Error garbage collecting Kubernetes resources: %v", err)
 		}
 	}
 
-	if gcMeta.deleteCmd != nil {
-		deleteCmd := toModelCmd(*gcMeta.deleteCmd)
+	if toDelete.deleteCmd != nil {
+		deleteCmd := toModelCmd(*toDelete.deleteCmd)
 		l.Infof("Running cmd: %s", deleteCmd.String())
 
 		out := l.Writer(logger.InfoLvl)
