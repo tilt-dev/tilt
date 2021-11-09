@@ -3,13 +3,17 @@ import { buildAlerts, runtimeAlerts } from "./alerts"
 import { Hold } from "./Hold"
 import { getResourceLabels } from "./labels"
 import { LogAlertIndex } from "./LogStore"
+import { resourceIsDisabled } from "./ResourceStatus"
 import { buildStatus, runtimeStatus } from "./status"
 import { timeDiff } from "./time"
-import { ResourceName, ResourceStatus, TriggerMode } from "./types"
-
-type UIResource = Proto.v1alpha1UIResource
-type UIResourceStatus = Proto.v1alpha1UIResourceStatus
-type Build = Proto.v1alpha1UIBuildTerminated
+import {
+  Build,
+  ResourceName,
+  ResourceStatus,
+  TriggerMode,
+  UIResource,
+  UIResourceStatus,
+} from "./types"
 
 class SidebarItem {
   name: string
@@ -30,6 +34,7 @@ class SidebarItem {
   queued: boolean
   lastBuild: Build | null = null
   hold: Hold | null = null
+  disabled: boolean
 
   /**
    * Create a pared down SidebarItem from a ResourceView
@@ -59,6 +64,7 @@ class SidebarItem {
     this.queued = !!status.queued
     this.lastBuild = lastBuild
     this.hold = status.waiting ? new Hold(status.waiting) : null
+    this.disabled = resourceIsDisabled(res)
   }
 }
 
