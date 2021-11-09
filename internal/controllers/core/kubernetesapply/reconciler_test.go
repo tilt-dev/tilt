@@ -168,9 +168,9 @@ func TestBasicApplyCmd_NonZeroExitCode(t *testing.T) {
 
 	f.MustGet(types.NamespacedName{Name: "a"}, &ka)
 
-	if assert.Equal(t, "apply command exited with status 77\nstdout:\nwhoops\n", ka.Status.Error) {
+	if assert.Equal(t, "apply command exited with status 77\nstdout:\nwhoops\n\n", ka.Status.Error) {
 		logAction := f.st.WaitForAction(t, reflect.TypeOf(store.LogAction{}))
-		assert.Equal(t, `manifest: foo, spanID: KubernetesApply-a, msg: "oh no"`, logAction.(store.LogAction).String())
+		assert.Equal(t, `manifest: foo, spanID: KubernetesApply-a, msg: "oh no\n"`, logAction.(store.LogAction).String())
 	}
 }
 

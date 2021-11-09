@@ -293,16 +293,19 @@ type DownDeps struct {
 	tfl      tiltfile.TiltfileLoader
 	dcClient dockercompose.DockerComposeClient
 	kClient  k8s.Client
+	execer   localexec.Execer
 }
 
 func ProvideDownDeps(
 	tfl tiltfile.TiltfileLoader,
 	dcClient dockercompose.DockerComposeClient,
-	kClient k8s.Client) DownDeps {
+	kClient k8s.Client,
+	execer localexec.Execer) DownDeps {
 	return DownDeps{
 		tfl:      tfl,
 		dcClient: dcClient,
 		kClient:  kClient,
+		execer:   execer,
 	}
 }
 

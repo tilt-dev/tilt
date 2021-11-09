@@ -26,7 +26,6 @@ const Facets = "facets"
 const Labels = "labels"
 const LiveUpdateV2 = "live_update_v2"
 const DisableResources = "disable_resources"
-const K8sCustomDeploy = "k8s_custom_deploy"
 
 // The Value a flag can have. Status should never be changed.
 type Value struct {
@@ -69,10 +68,6 @@ var MainDefaults = Defaults{
 		Status:  Active,
 	},
 	DisableResources: Value{
-		Enabled: false,
-		Status:  Active,
-	},
-	K8sCustomDeploy: Value{
 		Enabled: false,
 		Status:  Active,
 	},

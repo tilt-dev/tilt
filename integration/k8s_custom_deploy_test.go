@@ -11,6 +11,9 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
 )
 
 func TestK8sCustomDeploy(t *testing.T) {
@@ -63,4 +66,8 @@ func TestK8sCustomDeploy(t *testing.T) {
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
 	f.CurlUntil(ctx, "http://localhost:54871", "Welcome to nginx!")
+
+	downOutput := bufsync.NewThreadSafeBuffer()
+	require.NoError(t, f.tilt.Down(f.ctx, downOutput), "tilt down failed")
+	assert.Contains(t, downOutput.String(), `deployment.apps "custom-deploy" deleted`)
 }

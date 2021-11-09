@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"strings"
 	"sync"
 	"syscall"
 	"testing"
@@ -57,6 +58,20 @@ func OneShot(ctx context.Context, execer Execer, cmd model.Cmd) (OneShotResult, 
 		Stdout:   stdout.Bytes(),
 		Stderr:   stderr.Bytes(),
 	}, nil
+}
+
+func OneShotToLogger(ctx context.Context, execer Execer, cmd model.Cmd) error {
+	l := logger.Get(ctx)
+	out := l.Writer(logger.InfoLvl)
+
+	runIO := RunIO{Stdout: out, Stderr: out}
+
+	l.Infof("Running cmd: %s", cmd.String())
+	exitCode, err := execer.Run(ctx, cmd, runIO)
+	if err == nil && exitCode != 0 {
+		err = fmt.Errorf("exit status %d", exitCode)
+	}
+	return err
 }
 
 type ProcessExecer struct {
@@ -129,8 +144,8 @@ func (p ProcessExecer) Run(ctx context.Context, cmd model.Cmd, runIO RunIO) (int
 type fakeCmdResult struct {
 	exitCode int
 	err      error
-	stdout   string
-	stderr   string
+	stdout   []byte
+	stderr   []byte
 }
 
 type FakeCall struct {
@@ -184,14 +199,14 @@ func (f *FakeExecer) Run(ctx context.Context, cmd model.Cmd, runIO RunIO) (exitC
 			return -1, r.err
 		}
 
-		if runIO.Stdout != nil && r.stdout != "" {
-			if _, err := runIO.Stdout.Write([]byte(r.stdout)); err != nil {
+		if runIO.Stdout != nil && len(r.stdout) != 0 {
+			if _, err := runIO.Stdout.Write(r.stdout); err != nil {
 				return -1, fmt.Errorf("error writing to stdout: %v", err)
 			}
 		}
 
-		if runIO.Stderr != nil && r.stderr != "" {
-			if _, err := runIO.Stderr.Write([]byte(r.stderr)); err != nil {
+		if runIO.Stderr != nil && len(r.stderr) != 0 {
+			if _, err := runIO.Stderr.Write(r.stderr); err != nil {
 				return -1, fmt.Errorf("error writing to stderr: %v", err)
 			}
 		}
@@ -211,17 +226,41 @@ func (f *FakeExecer) RegisterCommandError(cmd string, err error) {
 	}
 }
 
+// RegisterCommandBytes adds or replaces a command to the FakeExecer.
+//
+// The output values will be used exactly as-is, so can be used to simulate processes that do not newline terminate etc.
+func (f *FakeExecer) RegisterCommandBytes(cmd string, exitCode int, stdout []byte, stderr []byte) {
+	f.registerCommand(cmd, exitCode, stdout, stderr)
+}
+
+// RegisterCommand adds or replaces a command to the FakeExecer.
+//
+// If the output strings are not newline terminated, a newline will automatically be added.
+// If this behavior is not desired, use `RegisterCommandBytes`.
 func (f *FakeExecer) RegisterCommand(cmd string, exitCode int, stdout string, stderr string) {
+	if stdout != "" && !strings.HasSuffix(stdout, "\n") {
+		stdout += "\n"
+	}
+
+	if stderr != "" && !strings.HasSuffix(stderr, "\n") {
+		stderr += "\n"
+	}
+
+	f.registerCommand(cmd, exitCode, []byte(stdout), []byte(stderr))
+}
+
+func (f *FakeExecer) Calls() []FakeCall {
+	return f.calls
+}
+
+func (f *FakeExecer) registerCommand(cmd string, exitCode int, stdout []byte, stderr []byte) {
 	f.t.Helper()
 	f.mu.Lock()
 	defer f.mu.Unlock()
+
 	f.cmds[cmd] = fakeCmdResult{
 		exitCode: exitCode,
 		stdout:   stdout,
 		stderr:   stderr,
 	}
-}
-
-func (f *FakeExecer) Calls() []FakeCall {
-	return f.calls
 }

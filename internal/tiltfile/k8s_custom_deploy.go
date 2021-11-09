@@ -8,25 +8,22 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
-	"github.com/tilt-dev/tilt/internal/feature"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 	"github.com/tilt-dev/tilt/internal/tiltfile/value"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type k8sCustomDeploy struct {
-	cmd  model.Cmd
-	deps []string
+	deployCmd model.Cmd
+	deleteCmd model.Cmd
+	deps      []string
 }
 
 func (s *tiltfileState) k8sCustomDeploy(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	if !s.features.Get(feature.K8sCustomDeploy) {
-		return nil, errors.New("k8s_custom_deploy is not supported by this version of Tilt")
-	}
-
 	var name string
-	var cmdVal, cmdBatVal, cmdDirVal starlark.Value
-	var cmdEnv value.StringStringMap
+	var deployCmdVal, deployCmdBatVal, deployCmdDirVal starlark.Value
+	var deleteCmdVal, deleteCmdBatVal, deleteCmdDirVal starlark.Value
+	var deployCmdEnv, deleteCmdEnv value.StringStringMap
 	var imageSelector string
 	var liveUpdateVal starlark.Value
 
@@ -34,22 +31,33 @@ func (s *tiltfileState) k8sCustomDeploy(thread *starlark.Thread, fn *starlark.Bu
 
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
-		"cmd", &cmdVal,
+		"deploy_cmd", &deployCmdVal,
+		"delete_cmd", &deleteCmdVal,
 		"deps", &deps,
 		"image_selector?", &imageSelector,
 		"live_update?", &liveUpdateVal,
-		"dir?", &cmdDirVal,
-		"env?", &cmdEnv,
-		"cmd_bat?", &cmdBatVal,
+		"deploy_dir?", &deployCmdDirVal,
+		"deploy_env?", &deployCmdEnv,
+		"deploy_cmd_bat?", &deployCmdBatVal,
+		"delete_dir?", &deleteCmdDirVal,
+		"delete_env?", &deleteCmdEnv,
+		"delete_cmd_bat?", &deleteCmdBatVal,
 	); err != nil {
 		return nil, err
 	}
 
-	cmd, err := value.ValueGroupToCmdHelper(thread, cmdVal, cmdBatVal, cmdDirVal, cmdEnv)
+	deployCmd, err := value.ValueGroupToCmdHelper(thread, deployCmdVal, deployCmdBatVal, deployCmdDirVal, deployCmdEnv)
 	if err != nil {
-		return nil, errors.Wrap(err, "cmd")
-	} else if cmd.Empty() {
-		return nil, fmt.Errorf("k8s_custom_deploy: cmd cannot be empty")
+		return nil, errors.Wrap(err, "deploy_cmd")
+	} else if deployCmd.Empty() {
+		return nil, fmt.Errorf("k8s_custom_deploy: deploy_cmd cannot be empty")
+	}
+
+	deleteCmd, err := value.ValueGroupToCmdHelper(thread, deleteCmdVal, deleteCmdBatVal, deleteCmdDirVal, deleteCmdEnv)
+	if err != nil {
+		return nil, errors.Wrap(err, "delete_cmd")
+	} else if deleteCmd.Empty() {
+		return nil, fmt.Errorf("k8s_custom_deploy: delete_cmd cannot be empty")
 	}
 
 	liveUpdate, err := s.liveUpdateFromSteps(thread, liveUpdateVal)
@@ -63,8 +71,9 @@ func (s *tiltfileState) k8sCustomDeploy(thread *starlark.Thread, fn *starlark.Bu
 	}
 
 	res.customDeploy = &k8sCustomDeploy{
-		cmd:  cmd,
-		deps: deps.Value,
+		deployCmd: deployCmd,
+		deleteCmd: deleteCmd,
+		deps:      deps.Value,
 	}
 
 	if !liveupdate.IsEmptySpec(liveUpdate) {
