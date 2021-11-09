@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCustomDeploy(t *testing.T) {
+func TestK8sCustomDeploy(t *testing.T) {
 	kubectlPath, err := exec.LookPath("kubectl")
 	if err != nil || kubectlPath == "" {
 		t.Fatal("`kubectl` not found in PATH")
