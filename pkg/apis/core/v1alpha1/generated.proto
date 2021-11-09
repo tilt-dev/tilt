@@ -349,6 +349,32 @@ message DisableStatus {
   optional string reason = 3;
 }
 
+// DockerImage
+// +k8s:openapi-gen=true
+message DockerImage {
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+
+  optional DockerImageSpec spec = 2;
+
+  optional DockerImageStatus status = 3;
+}
+
+// DockerImageList
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+message DockerImageList {
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+
+  repeated DockerImage items = 2;
+}
+
+// DockerImageSpec defines the desired state of DockerImage
+message DockerImageSpec {
+}
+
+// DockerImageStatus defines the observed state of DockerImage
+message DockerImageStatus {
+}
+
 // ExecAction describes a "run in container" action.
 message ExecAction {
   // Command is the command line to execute inside the container, the working directory for the
