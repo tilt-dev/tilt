@@ -1081,7 +1081,7 @@ func schema_pkg_apis_core_v1alpha1_DockerImage(ref common.ReferenceCallback) com
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "DockerImage",
+				Description: "DockerImage describes an image to build with Docker.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"kind": {
@@ -1177,8 +1177,136 @@ func schema_pkg_apis_core_v1alpha1_DockerImageSpec(ref common.ReferenceCallback)
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "DockerImageSpec defines the desired state of DockerImage",
+				Description: "DockerImageSpec describes how to build a Docker image with `docker_build`.\n\nMost fields of this spec directly correspond to the Docker CLI.",
 				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"ref": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The named reference of the image.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"dockerfileContents": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Dockerfile contains the complete contents of the Dockerfile.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"context": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Context specifies the Docker build context.\n\nMust be an absolute path on the local filesystem.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"args": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Args specifies the build arguments to the Dockerfile.\n\nEquivalent to `--build-arg` in the docker CLI.\n\nEach item should take the form \"KEY\" or \"KEY=VALUE\".",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"target": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Target specifies the name of the stage in the Dockerfile to build.\n\nEquivalent to `--target` in the docker CLI.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"sshAgentConfigs": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Pass SSH secrets to docker so it can clone private repos.\n\nhttps://docs.docker.com/develop/develop-images/build_enhancements/#using-ssh-to-access-private-data-in-builds\n\nEquivalent to `--ssh` in the docker CLI.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"secrets": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Pass secrets to docker.\n\nhttps://docs.docker.com/develop/develop-images/build_enhancements/#new-docker-build-secret-information\n\nEquivalent to `--secret` in the Docker CLI.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"network": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Set the networking mode for the RUN instructions in the docker build.\n\nEquivalent to `--network` in the Docker CLI.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"pull": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Always attempt to pull a new version of the base image.\n\nEquivalent to `--pull` in the Docker CLI.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"cacheFrom": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Images to use as cache sources.\n\nEquivalent to `--cache-from` in the Docker CLI.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"platform": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Platform specifies architecture information for target image.\n\nhttps://docs.docker.com/desktop/multi-arch/\n\nEquivalent to `--platform` in the Docker CLI.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"extraTags": {
+						SchemaProps: spec.SchemaProps{
+							Description: "By default, Tilt creates a new temporary image reference for each build. The user can also specify their own reference, to integrate with other tooling (like build IDs for Jenkins build pipelines)\n\nEquivalent to the docker build --tag flag.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"ref"},
 			},
 		},
 	}

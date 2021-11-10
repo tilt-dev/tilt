@@ -349,7 +349,7 @@ message DisableStatus {
   optional string reason = 3;
 }
 
-// DockerImage
+// DockerImage describes an image to build with Docker.
 // +k8s:openapi-gen=true
 message DockerImage {
   optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
@@ -367,8 +367,95 @@ message DockerImageList {
   repeated DockerImage items = 2;
 }
 
-// DockerImageSpec defines the desired state of DockerImage
+// DockerImageSpec describes how to build a Docker image with `docker_build`.
+//
+// Most fields of this spec directly correspond to the Docker CLI.
 message DockerImageSpec {
+  // The named reference of the image.
+  optional string ref = 12;
+
+  // Dockerfile contains the complete contents of the Dockerfile.
+  //
+  // TODO(nick): We should also support referencing the Dockerfile as a path.
+  //
+  // +optional
+  optional string dockerfileContents = 1;
+
+  // Context specifies the Docker build context.
+  //
+  // Must be an absolute path on the local filesystem.
+  //
+  // +tilt:local-path=true
+  optional string context = 2;
+
+  // Args specifies the build arguments to the Dockerfile.
+  //
+  // Equivalent to `--build-arg` in the docker CLI.
+  //
+  // Each item should take the form "KEY" or "KEY=VALUE".
+  //
+  // +optional
+  repeated string args = 3;
+
+  // Target specifies the name of the stage in the Dockerfile to build.
+  //
+  // Equivalent to `--target` in the docker CLI.
+  //
+  // +optional
+  optional string target = 4;
+
+  // Pass SSH secrets to docker so it can clone private repos.
+  //
+  // https://docs.docker.com/develop/develop-images/build_enhancements/#using-ssh-to-access-private-data-in-builds
+  //
+  // Equivalent to `--ssh` in the docker CLI.
+  //
+  // +optional
+  repeated string sshAgentConfigs = 5;
+
+  // Pass secrets to docker.
+  //
+  // https://docs.docker.com/develop/develop-images/build_enhancements/#new-docker-build-secret-information
+  //
+  // Equivalent to `--secret` in the Docker CLI.
+  //
+  // +optional
+  repeated string secrets = 6;
+
+  // Set the networking mode for the RUN instructions in the docker build.
+  //
+  // Equivalent to `--network` in the Docker CLI.
+  //
+  // +optional
+  optional string network = 7;
+
+  // Always attempt to pull a new version of the base image.
+  //
+  // Equivalent to `--pull` in the Docker CLI.
+  //
+  // +optional
+  optional bool pull = 8;
+
+  // Images to use as cache sources.
+  //
+  // Equivalent to `--cache-from` in the Docker CLI.
+  repeated string cacheFrom = 9;
+
+  // Platform specifies architecture information for target image.
+  //
+  // https://docs.docker.com/desktop/multi-arch/
+  //
+  // Equivalent to `--platform` in the Docker CLI.
+  optional string platform = 10;
+
+  // By default, Tilt creates a new temporary image reference for each build.
+  // The user can also specify their own reference, to integrate with other tooling
+  // (like build IDs for Jenkins build pipelines)
+  //
+  // Equivalent to the docker build --tag flag.
+  //
+  // +optional
+  repeated string extraTags = 11;
 }
 
 // DockerImageStatus defines the observed state of DockerImage

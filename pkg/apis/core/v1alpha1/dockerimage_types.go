@@ -32,7 +32,7 @@ import (
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// DockerImage
+// DockerImage describes an image to build with Docker.
 // +k8s:openapi-gen=true
 type DockerImage struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -51,8 +51,95 @@ type DockerImageList struct {
 	Items []DockerImage `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
 
-// DockerImageSpec defines the desired state of DockerImage
+// DockerImageSpec describes how to build a Docker image with `docker_build`.
+//
+// Most fields of this spec directly correspond to the Docker CLI.
 type DockerImageSpec struct {
+	// The named reference of the image.
+	Ref string `json:"ref" protobuf:"bytes,12,opt,name=ref"`
+
+	// Dockerfile contains the complete contents of the Dockerfile.
+	//
+	// TODO(nick): We should also support referencing the Dockerfile as a path.
+	//
+	// +optional
+	DockerfileContents string `json:"dockerfileContents,omitempty" protobuf:"bytes,1,opt,name=dockerfileContents"`
+
+	// Context specifies the Docker build context.
+	//
+	// Must be an absolute path on the local filesystem.
+	//
+	// +tilt:local-path=true
+	Context string `json:"context,omitempty" protobuf:"bytes,2,opt,name=context"`
+
+	// Args specifies the build arguments to the Dockerfile.
+	//
+	// Equivalent to `--build-arg` in the docker CLI.
+	//
+	// Each item should take the form "KEY" or "KEY=VALUE".
+	//
+	// +optional
+	Args []string `json:"args,omitempty" protobuf:"bytes,3,rep,name=args"`
+
+	// Target specifies the name of the stage in the Dockerfile to build.
+	//
+	// Equivalent to `--target` in the docker CLI.
+	//
+	// +optional
+	Target string `json:"target,omitempty" protobuf:"bytes,4,opt,name=target"`
+
+	// Pass SSH secrets to docker so it can clone private repos.
+	//
+	// https://docs.docker.com/develop/develop-images/build_enhancements/#using-ssh-to-access-private-data-in-builds
+	//
+	// Equivalent to `--ssh` in the docker CLI.
+	//
+	// +optional
+	SSHAgentConfigs []string `json:"sshAgentConfigs,omitempty" protobuf:"bytes,5,rep,name=sshAgentConfigs"`
+
+	// Pass secrets to docker.
+	//
+	// https://docs.docker.com/develop/develop-images/build_enhancements/#new-docker-build-secret-information
+	//
+	// Equivalent to `--secret` in the Docker CLI.
+	//
+	// +optional
+	Secrets []string `json:"secrets,omitempty" protobuf:"bytes,6,rep,name=secrets"`
+
+	// Set the networking mode for the RUN instructions in the docker build.
+	//
+	// Equivalent to `--network` in the Docker CLI.
+	//
+	// +optional
+	Network string `json:"network,omitempty" protobuf:"bytes,7,opt,name=network"`
+
+	// Always attempt to pull a new version of the base image.
+	//
+	// Equivalent to `--pull` in the Docker CLI.
+	//
+	// +optional
+	Pull bool `json:"pull,omitempty" protobuf:"varint,8,opt,name=pull"`
+
+	// Images to use as cache sources.
+	//
+	// Equivalent to `--cache-from` in the Docker CLI.
+	CacheFrom []string `json:"cacheFrom,omitempty" protobuf:"bytes,9,rep,name=cacheFrom"`
+
+	// Platform specifies architecture information for target image.
+	//
+	// https://docs.docker.com/desktop/multi-arch/
+	//
+	// Equivalent to `--platform` in the Docker CLI.
+	Platform string `json:"platform,omitempty" protobuf:"bytes,10,opt,name=platform"`
+
+	// By default, Tilt creates a new temporary image reference for each build.
+	// The user can also specify their own reference, to integrate with other tooling
+	// (like build IDs for Jenkins build pipelines)
+	//
+	// Equivalent to the docker build --tag flag.
+	//
+	// +optional
+	ExtraTags []string `json:"extraTags,omitempty" protobuf:"bytes,11,rep,name=extraTags"`
 }
 
 var _ resource.Object = &DockerImage{}
