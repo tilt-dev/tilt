@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/docker/cli/opts"
 	"github.com/docker/distribution/reference"
 	"github.com/moby/buildkit/frontend/dockerfile/command"
 	"github.com/moby/buildkit/frontend/dockerfile/dockerfile2llb"
@@ -133,7 +134,7 @@ func (a AST) traverseImageRefs(visitor func(node *parser.Node, ref reference.Nam
 	})
 }
 
-func (a AST) InjectImageDigest(selector container.RefSelector, ref reference.NamedTagged, buildArgs map[string]string) (bool, error) {
+func (a AST) InjectImageDigest(selector container.RefSelector, ref reference.NamedTagged, buildArgs []string) (bool, error) {
 	modified := false
 	err := a.traverseImageRefs(func(node *parser.Node, toReplace reference.Named) reference.Named {
 		if selector.Matches(toReplace) {
@@ -320,14 +321,13 @@ func fakeArgsMap(shlex *shell.Lex, args []instructions.ArgCommand) map[string]st
 // argInstructions converts a map of build arguments into a slice of ArgCommand structs.
 //
 // Since the map guarantees uniqueness, there is no defined order of the resulting slice.
-func argInstructions(buildArgs map[string]string) []instructions.ArgCommand {
+func argInstructions(buildArgs []string) []instructions.ArgCommand {
 	var out []instructions.ArgCommand
-	for k, v := range buildArgs {
-		value := v
+	for k, v := range opts.ConvertKVStringsToMapWithNil(buildArgs) {
 		out = append(out, instructions.ArgCommand{Args: []instructions.KeyValuePairOptional{
 			{
 				Key:   k,
-				Value: &value,
+				Value: v,
 			},
 		}})
 	}

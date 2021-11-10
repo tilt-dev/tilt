@@ -124,7 +124,7 @@ func TestLiveUpdate(t *testing.T) {
 
 	sanchoImage := model.MustNewImageTarget(container.MustParseSelector("sancho-image")).
 		WithLiveUpdateSpec("sancho:sancho-image", luSpec).
-		WithBuildDetails(model.DockerBuild{BuildPath: f.tempdir.Path()})
+		WithDockerImage(v1alpha1.DockerImageSpec{Context: f.tempdir.Path()})
 	sancho := manifestbuilder.New(f.tempdir, "sancho").
 		WithImageTargets(sanchoImage).
 		WithK8sYAML(testyaml.SanchoYAML).

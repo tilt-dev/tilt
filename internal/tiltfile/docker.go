@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/docker/docker/builder/dockerignore"
@@ -52,7 +53,7 @@ type dockerImage struct {
 	dbDockerfilePath string
 	dbDockerfile     dockerfile.Dockerfile
 	dbBuildPath      string
-	dbBuildArgs      model.DockerBuildArgs
+	dbBuildArgs      []string
 	customCommand    model.Cmd
 	customDeps       []string
 	customTag        string
@@ -229,13 +230,23 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		platform.Value = os.Getenv(dockerPlatformEnv)
 	}
 
+	buildArgsList := []string{}
+	for k, v := range buildArgs.AsMap() {
+		if v == "" {
+			buildArgsList = append(buildArgsList, k)
+		} else {
+			buildArgsList = append(buildArgsList, fmt.Sprintf("%s=%s", k, v))
+		}
+	}
+	sort.Strings(buildArgsList)
+
 	r := &dockerImage{
 		workDir:          starkit.CurrentExecPath(thread),
 		dbDockerfilePath: dockerfilePath,
 		dbDockerfile:     dockerfile.Dockerfile(dockerfileContents),
 		dbBuildPath:      context,
 		configurationRef: container.NewRefSelector(ref),
-		dbBuildArgs:      buildArgs.AsMap(),
+		dbBuildArgs:      buildArgsList,
 		liveUpdate:       liveUpdate,
 		matchInEnvVars:   matchInEnvVars,
 		sshSpecs:         ssh.Values,

@@ -13,6 +13,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockerfile"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -35,10 +36,12 @@ ADD dir/c.txt .
 	f.WriteFile("dir/c.txt", "c")
 	f.WriteFile("missing.txt", "missing")
 
-	refs, err := f.b.BuildImage(f.ctx, f.ps, f.getNameFromTest(), model.DockerBuild{
-		Dockerfile: df.String(),
-		BuildPath:  f.Path(),
-	}, model.EmptyMatcher)
+	spec := v1alpha1.DockerImageSpec{
+		DockerfileContents: df.String(),
+		Context:            f.Path(),
+	}
+	refs, err := f.b.BuildImage(f.ctx, f.ps, f.getNameFromTest(), model.DockerBuild{DockerImageSpec: spec},
+		model.EmptyMatcher)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,14 +69,13 @@ ADD $some_variable_name /test.txt`)
 
 	f.WriteFile("awesome_variable", "hi im an awesome variable")
 
-	ba := model.DockerBuildArgs{
-		"some_variable_name": "awesome_variable",
+	spec := v1alpha1.DockerImageSpec{
+		DockerfileContents: df.String(),
+		Context:            f.Path(),
+		Args:               []string{"some_variable_name=awesome_variable"},
 	}
-	refs, err := f.b.BuildImage(f.ctx, f.ps, f.getNameFromTest(), model.DockerBuild{
-		Dockerfile: df.String(),
-		BuildPath:  f.Path(),
-		BuildArgs:  ba,
-	}, model.EmptyMatcher)
+	refs, err := f.b.BuildImage(f.ctx, f.ps, f.getNameFromTest(), model.DockerBuild{DockerImageSpec: spec},
+		model.EmptyMatcher)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,11 +97,14 @@ ADD a.txt .`)
 
 	f.WriteFile("a.txt", "a")
 
-	refs, err := f.b.BuildImage(f.ctx, f.ps, f.getNameFromTest(), model.DockerBuild{
-		Dockerfile: df.String(),
-		BuildPath:  f.Path(),
-		ExtraTags:  []string{"fe:jenkins-1234"},
-	}, model.EmptyMatcher)
+	spec := v1alpha1.DockerImageSpec{
+		DockerfileContents: df.String(),
+		Context:            f.Path(),
+		ExtraTags:          []string{"fe:jenkins-1234"},
+		Args:               []string{"some_variable_name=awesome_variable"},
+	}
+	refs, err := f.b.BuildImage(f.ctx, f.ps, f.getNameFromTest(), model.DockerBuild{DockerImageSpec: spec},
+		model.EmptyMatcher)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,13 +124,15 @@ func TestDetectBuildkitCorruption(t *testing.T) {
 	out := bytes.NewBuffer(nil)
 	ctx := logger.WithLogger(context.Background(), logger.NewTestLogger(out))
 	ps := NewPipelineState(ctx, 1, ProvideClock())
-	_, err := f.b.BuildImage(ctx, ps, f.getNameFromTest(), model.DockerBuild{
+
+	spec := v1alpha1.DockerImageSpec{
 		// Simulate buildkit corruption
-		Dockerfile: `FROM alpine
+		DockerfileContents: `FROM alpine
 RUN echo 'failed to create LLB definition: failed commit on ref "unknown-sha256:b72fa303a3a5fbf52c723bfcfb93948bb53b3d7e8d22418e9d171a27ad7dcd84": "unknown-sha256:b72fa303a3a5fbf52c723bfcfb93948bb53b3d7e8d22418e9d171a27ad7dcd84" failed size validation: 80941 != 80929: failed precondition' && exit 1
 `,
-		BuildPath: f.Path(),
-	}, model.EmptyMatcher)
+		Context: f.Path(),
+	}
+	_, err := f.b.BuildImage(ctx, ps, f.getNameFromTest(), model.DockerBuild{DockerImageSpec: spec}, model.EmptyMatcher)
 	assert.Error(t, err)
 	assert.Contains(t, out.String(), "Detected Buildkit corruption. Rebuilding without Buildkit")
 	assert.Contains(t, out.String(), "[1/2] FROM docker.io/library/alpine") // buildkit-style output

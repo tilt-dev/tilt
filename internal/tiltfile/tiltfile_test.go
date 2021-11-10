@@ -572,7 +572,7 @@ docker_build("gcr.io/foo", "foo", target='stage')
 `)
 	f.load()
 	m := f.assertNextManifest("foo")
-	assert.Equal(t, "stage", m.ImageTargets[0].BuildDetails.(model.DockerBuild).TargetStage.String())
+	assert.Equal(t, "stage", m.ImageTargets[0].BuildDetails.(model.DockerBuild).Target)
 }
 
 func TestDockerBuildSSH(t *testing.T) {
@@ -586,7 +586,7 @@ docker_build("gcr.io/foo", "foo", ssh='default')
 `)
 	f.load()
 	m := f.assertNextManifest("foo")
-	assert.Equal(t, []string{"default"}, m.ImageTargets[0].BuildDetails.(model.DockerBuild).SSHSpecs)
+	assert.Equal(t, []string{"default"}, m.ImageTargets[0].BuildDetails.(model.DockerBuild).SSHAgentConfigs)
 }
 
 func TestDockerBuildSecret(t *testing.T) {
@@ -600,7 +600,7 @@ docker_build("gcr.io/foo", "foo", secret='id=shibboleth')
 `)
 	f.load()
 	m := f.assertNextManifest("foo")
-	assert.Equal(t, []string{"id=shibboleth"}, m.ImageTargets[0].BuildDetails.(model.DockerBuild).SecretSpecs)
+	assert.Equal(t, []string{"id=shibboleth"}, m.ImageTargets[0].BuildDetails.(model.DockerBuild).Secrets)
 }
 
 func TestDockerBuildNetwork(t *testing.T) {
@@ -628,7 +628,7 @@ docker_build("gcr.io/foo", "foo", pull=True)
 `)
 	f.load()
 	m := f.assertNextManifest("foo")
-	assert.True(t, m.ImageTargets[0].BuildDetails.(model.DockerBuild).PullParent)
+	assert.True(t, m.ImageTargets[0].BuildDetails.(model.DockerBuild).Pull)
 }
 
 func TestDockerBuildCacheFrom(t *testing.T) {
@@ -4107,8 +4107,8 @@ k8s_yaml('foo.yaml')
 
 	m := f.assertNextManifest("foo")
 	assert.Equal(t,
-		model.DockerBuildArgs{"GIT_REV": "hello"},
-		m.ImageTargets[0].DockerBuildInfo().BuildArgs)
+		[]string{"GIT_REV=hello"},
+		m.ImageTargets[0].DockerBuildInfo().Args)
 }
 
 func TestCustomBuildEntrypoint(t *testing.T) {

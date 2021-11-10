@@ -103,7 +103,7 @@ func (i ImageTarget) Validate() error {
 
 	switch bd := i.BuildDetails.(type) {
 	case DockerBuild:
-		if bd.BuildPath == "" {
+		if bd.Context == "" {
 			return fmt.Errorf("[Validate] Image %q missing build path", confRef)
 		}
 	case CustomBuild:
@@ -149,6 +149,10 @@ func (i ImageTarget) CustomBuildInfo() CustomBuild {
 func (i ImageTarget) IsCustomBuild() bool {
 	_, ok := i.BuildDetails.(CustomBuild)
 	return ok
+}
+
+func (i ImageTarget) WithDockerImage(spec v1alpha1.DockerImageSpec) ImageTarget {
+	return i.WithBuildDetails(DockerBuild{DockerImageSpec: spec})
 }
 
 func (i ImageTarget) WithBuildDetails(details BuildDetails) ImageTarget {
@@ -217,7 +221,7 @@ func (i ImageTarget) Dockerignores() []Dockerignore {
 func (i ImageTarget) LocalPaths() []string {
 	switch bd := i.BuildDetails.(type) {
 	case DockerBuild:
-		return []string{bd.BuildPath}
+		return []string{bd.Context}
 	case CustomBuild:
 		return append([]string(nil), bd.Deps...)
 	}
@@ -256,43 +260,10 @@ func ImageTargetsByID(iTargets []ImageTarget) map[TargetID]ImageTarget {
 }
 
 type DockerBuild struct {
-	Dockerfile  string
-	BuildPath   string // the absolute path to the files
-	BuildArgs   DockerBuildArgs
-	TargetStage DockerBuildTarget
-
-	// Pass SSH secrets to docker so it can clone private repos.
-	// https://docs.docker.com/develop/develop-images/build_enhancements/#using-ssh-to-access-private-data-in-builds
-	SSHSpecs []string
-
-	// Pass secrets to docker
-	// https://docs.docker.com/develop/develop-images/build_enhancements/#new-docker-build-secret-information
-	SecretSpecs []string
-
-	Network string
-
-	PullParent bool
-	CacheFrom  []string
-
-	// Platform specifies architecture information for target image.
-	// https://docs.docker.com/desktop/multi-arch/
-	Platform string
-
-	// By default, Tilt creates a new temporary image reference for each build.
-	// The user can also specify their own reference, to integrate with other tooling
-	// (like build IDs for Jenkins build pipelines)
-	//
-	// Equivalent to the docker build --tag flag.
-	// Named 'tag' for consistency with how it's used throughout the docker API,
-	// even though this is really more like a reference.NamedTagged
-	ExtraTags []string
+	v1alpha1.DockerImageSpec
 }
 
 func (DockerBuild) buildDetails() {}
-
-type DockerBuildTarget string
-
-func (s DockerBuildTarget) String() string { return string(s) }
 
 type CustomBuild struct {
 	WorkDir string

@@ -125,8 +125,6 @@ func (m Manifest) ImageTargetWithID(id TargetID) ImageTarget {
 	return ImageTarget{}
 }
 
-type DockerBuildArgs map[string]string
-
 func (m Manifest) LocalTarget() LocalTarget {
 	ret, _ := m.DeployTarget.(LocalTarget)
 	return ret

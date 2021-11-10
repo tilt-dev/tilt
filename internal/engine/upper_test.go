@@ -832,13 +832,13 @@ k8s_yaml('snack.yaml')
 
 	// First call: with the old manifest
 	call := f.nextCall("old manifest")
-	assert.Equal(t, `FROM iron/go:prod`, call.firstImgTarg().DockerBuildInfo().Dockerfile)
+	assert.Equal(t, `FROM iron/go:prod`, call.firstImgTarg().DockerBuildInfo().DockerfileContents)
 
 	f.WriteConfigFiles("Dockerfile", `FROM iron/go:dev`)
 
 	// Second call: new manifest!
 	call = f.nextCall("new manifest")
-	assert.Equal(t, "FROM iron/go:dev", call.firstImgTarg().DockerBuildInfo().Dockerfile)
+	assert.Equal(t, "FROM iron/go:dev", call.firstImgTarg().DockerBuildInfo().DockerfileContents)
 	assert.Equal(t, testyaml.SnackYAMLPostConfig, call.k8s().YAML)
 
 	// Since the manifest changed, we cleared the previous build state to force an image build
@@ -858,7 +858,7 @@ k8s_yaml('snack.yaml')
 
 	// third call: new manifest should persist
 	call = f.nextCall("persist new manifest")
-	assert.Equal(t, "FROM iron/go:dev", call.firstImgTarg().DockerBuildInfo().Dockerfile)
+	assert.Equal(t, "FROM iron/go:dev", call.firstImgTarg().DockerBuildInfo().DockerfileContents)
 
 	// Unchanged manifest --> we do NOT clear the build state
 	assert.True(t, call.oneImageState().HasLastResult())
@@ -890,11 +890,11 @@ k8s_resource('doggos', new_name='quux')
 
 	// First call: with the old manifests
 	call := f.nextCall("old manifest (baz)")
-	assert.Equal(t, `FROM iron/go:prod`, call.firstImgTarg().DockerBuildInfo().Dockerfile)
+	assert.Equal(t, `FROM iron/go:prod`, call.firstImgTarg().DockerBuildInfo().DockerfileContents)
 	assert.Equal(t, "baz", string(call.k8s().Name))
 
 	call = f.nextCall("old manifest (quux)")
-	assert.Equal(t, `FROM iron/go:prod`, call.firstImgTarg().DockerBuildInfo().Dockerfile)
+	assert.Equal(t, `FROM iron/go:prod`, call.firstImgTarg().DockerBuildInfo().DockerfileContents)
 	assert.Equal(t, "quux", string(call.k8s().Name))
 
 	// rewrite the dockerfiles
@@ -904,11 +904,11 @@ k8s_resource('doggos', new_name='quux')
 
 	// Builds triggered by config file changes
 	call = f.nextCall("manifest from config files (baz)")
-	assert.Equal(t, `FROM iron/go:dev1`, call.firstImgTarg().DockerBuildInfo().Dockerfile)
+	assert.Equal(t, `FROM iron/go:dev1`, call.firstImgTarg().DockerBuildInfo().DockerfileContents)
 	assert.Equal(t, "baz", string(call.k8s().Name))
 
 	call = f.nextCall("manifest from config files (quux)")
-	assert.Equal(t, `FROM iron/go:dev2`, call.firstImgTarg().DockerBuildInfo().Dockerfile)
+	assert.Equal(t, `FROM iron/go:dev2`, call.firstImgTarg().DockerBuildInfo().DockerfileContents)
 	assert.Equal(t, "quux", string(call.k8s().Name))
 
 	// Now change (only one) dockerfile
@@ -949,7 +949,7 @@ k8s_resource('snack', new_name='baz')  # rename "snack" --> "baz"
 
 	// First call: with one resource
 	call := f.nextCall("old manifest (baz)")
-	assert.Equal(t, "FROM iron/go:dev1", call.firstImgTarg().DockerBuildInfo().Dockerfile)
+	assert.Equal(t, "FROM iron/go:dev1", call.firstImgTarg().DockerBuildInfo().DockerfileContents)
 	assert.Equal(t, "baz", string(call.k8s().Name))
 
 	f.assertNoCall()
@@ -990,7 +990,7 @@ k8s_yaml('snack.yaml')`)
 
 	// First call: with the old manifests
 	call := f.nextCall("initial call")
-	assert.Equal(t, "FROM iron/go:dev1", call.firstImgTarg().DockerBuildInfo().Dockerfile)
+	assert.Equal(t, "FROM iron/go:dev1", call.firstImgTarg().DockerBuildInfo().DockerfileContents)
 	assert.Equal(t, "snack", string(call.k8s().Name))
 
 	// Write same contents to Dockerfile -- an "edit" event for a config file,
@@ -1302,11 +1302,10 @@ go build ./...
 	manifest := f.newManifest("foobar")
 	iTarget := manifest.ImageTargetAt(0).
 		WithLiveUpdateSpec("foobar", v1alpha1.LiveUpdateSpec{}).
-		WithBuildDetails(
-			model.DockerBuild{
-				Dockerfile: df,
-				BuildPath:  f.Path(),
-			})
+		WithDockerImage(v1alpha1.DockerImageSpec{
+			DockerfileContents: df,
+			Context:            f.Path(),
+		})
 	manifest = manifest.WithImageTarget(iTarget)
 
 	f.Start([]model.Manifest{manifest})
@@ -4612,8 +4611,8 @@ func (f *testFixture) newManifestWithRef(name string, ref reference.Named) model
 }
 
 func (f *testFixture) newDockerBuildManifestWithBuildPath(name string, path string) model.Manifest {
-	db := model.DockerBuild{Dockerfile: "FROM alpine", BuildPath: path}
-	iTarget := NewSanchoDockerBuildImageTarget(f).WithBuildDetails(db)
+	db := v1alpha1.DockerImageSpec{DockerfileContents: "FROM alpine", Context: path}
+	iTarget := NewSanchoDockerBuildImageTarget(f).WithDockerImage(db)
 	iTarget = iTarget.MustWithRef(container.MustParseSelector(strings.ToLower(name))) // each target should have a unique ID
 	return manifestbuilder.New(f, model.ManifestName(name)).
 		WithK8sYAML(SanchoYAML).

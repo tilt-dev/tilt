@@ -320,21 +320,23 @@ func TestMultiStageDockerBuildPreservesSyntaxDirective(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
 	defer f.TearDown()
 
-	baseImage := model.MustNewImageTarget(SanchoBaseRef).WithBuildDetails(model.DockerBuild{
-		Dockerfile: `FROM golang:1.10`,
-		BuildPath:  f.JoinPath("sancho-base"),
-	})
+	baseImage := model.MustNewImageTarget(SanchoBaseRef).
+		WithDockerImage(v1alpha1.DockerImageSpec{
+			DockerfileContents: `FROM golang:1.10`,
+			Context:            f.JoinPath("sancho-base"),
+		})
 
-	srcImage := model.MustNewImageTarget(SanchoRef).WithBuildDetails(model.DockerBuild{
-		Dockerfile: `# syntax = docker/dockerfile:experimental
+	srcImage := model.MustNewImageTarget(SanchoRef).
+		WithDockerImage(v1alpha1.DockerImageSpec{
+			DockerfileContents: `# syntax = docker/dockerfile:experimental
 
 FROM sancho-base
 ADD . .
 RUN go install github.com/tilt-dev/sancho
 ENTRYPOINT /go/bin/sancho
 `,
-		BuildPath: f.JoinPath("sancho"),
-	}).WithDependencyIDs([]model.TargetID{baseImage.ID()})
+			Context: f.JoinPath("sancho"),
+		}).WithDependencyIDs([]model.TargetID{baseImage.ID()})
 
 	m := manifestbuilder.New(f, "sancho").
 		WithK8sYAML(SanchoYAML).
@@ -881,7 +883,7 @@ func TestDockerBuildTargetStage(t *testing.T) {
 
 	iTarget := NewSanchoDockerBuildImageTarget(f)
 	db := iTarget.BuildDetails.(model.DockerBuild)
-	db.TargetStage = "stage"
+	db.DockerImageSpec.Target = "stage"
 	iTarget.BuildDetails = db
 
 	manifest := manifestbuilder.New(f, "sancho").

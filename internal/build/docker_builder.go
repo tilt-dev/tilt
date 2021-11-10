@@ -71,7 +71,7 @@ func (d *dockerImageBuilder) WillBuildToKubeContext(kctx k8s.KubeContext) bool {
 func (d *dockerImageBuilder) BuildImage(ctx context.Context, ps *PipelineState, refs container.RefSet, db model.DockerBuild, filter model.PathMatcher) (container.TaggedRefs, error) {
 	paths := []PathMapping{
 		{
-			LocalPath:     db.BuildPath,
+			LocalPath:     db.Context,
 			ContainerPath: "/",
 		},
 	}
@@ -164,7 +164,7 @@ func (d *dockerImageBuilder) ImageExists(ctx context.Context, ref reference.Name
 }
 
 func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState, db model.DockerBuild, paths []PathMapping, filter model.PathMatcher, refs container.RefSet) (container.TaggedRefs, error) {
-	logger.Get(ctx).Infof("Building Dockerfile:\n%s", indent(db.Dockerfile, "  "))
+	logger.Get(ctx).Infof("Building Dockerfile:\n%s\n", indent(db.DockerfileContents, "  "))
 
 	// NOTE(maia): some people want to know what files we're adding (b/c `ADD . /` isn't descriptive)
 	if logger.Get(ctx).Level().ShouldDisplay(logger.VerboseLvl) {
@@ -223,7 +223,7 @@ func (d *dockerImageBuilder) buildFromDfToDigest(ctx context.Context, db model.D
 	w.Init()
 
 	go func(ctx context.Context) {
-		err := tarContextAndUpdateDf(ctx, w, dockerfile.Dockerfile(db.Dockerfile), paths, filter)
+		err := tarContextAndUpdateDf(ctx, w, dockerfile.Dockerfile(db.DockerfileContents), paths, filter)
 		if err != nil {
 			_ = pw.CloseWithError(err)
 		} else {

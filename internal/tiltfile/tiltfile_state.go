@@ -1400,19 +1400,20 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(mn model.ManifestName, 
 
 		switch image.Type() {
 		case DockerBuild:
-			iTarget = iTarget.WithBuildDetails(model.DockerBuild{
-				Dockerfile:  image.dbDockerfile.String(),
-				BuildPath:   image.dbBuildPath,
-				BuildArgs:   image.dbBuildArgs,
-				TargetStage: model.DockerBuildTarget(image.targetStage),
-				SSHSpecs:    image.sshSpecs,
-				SecretSpecs: image.secretSpecs,
-				Network:     image.network,
-				CacheFrom:   image.cacheFrom,
-				PullParent:  image.pullParent,
-				Platform:    image.platform,
-				ExtraTags:   image.extraTags,
-			})
+			spec := v1alpha1.DockerImageSpec{
+				DockerfileContents: image.dbDockerfile.String(),
+				Context:            image.dbBuildPath,
+				Args:               image.dbBuildArgs,
+				Target:             image.targetStage,
+				SSHAgentConfigs:    image.sshSpecs,
+				Secrets:            image.secretSpecs,
+				Network:            image.network,
+				CacheFrom:          image.cacheFrom,
+				Pull:               image.pullParent,
+				Platform:           image.platform,
+				ExtraTags:          image.extraTags,
+			}
+			iTarget = iTarget.WithBuildDetails(model.DockerBuild{DockerImageSpec: spec})
 		case CustomBuild:
 			r := model.CustomBuild{
 				WorkDir:           image.workDir,
