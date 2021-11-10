@@ -2465,7 +2465,7 @@ func schema_pkg_apis_core_v1alpha1_KubernetesApplySpec(ref common.ReferenceCallb
 				Properties: map[string]spec.Schema{
 					"yaml": {
 						SchemaProps: spec.SchemaProps{
-							Description: "YAML to apply to the cluster.\n\nExactly one of YAML OR DeployCmd MUST be provided.",
+							Description: "YAML to apply to the cluster.\n\nExactly one of YAML OR ApplyCmd MUST be provided.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -2537,9 +2537,9 @@ func schema_pkg_apis_core_v1alpha1_KubernetesApplySpec(ref common.ReferenceCallb
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource"),
 						},
 					},
-					"deployCmd": {
+					"applyCmd": {
 						SchemaProps: spec.SchemaProps{
-							Description: "DeployCmd is a custom command to execute to deploy entities to the Kubernetes cluster.\n\nThe command must be idempotent, e.g. it must not fail if some or all entities already exist.\n\nThe DeployCmd MUST return valid Kubernetes YAML for the entities it applied to the cluster.\n\nExactly one of YAML OR DeployCmd MUST be provided.",
+							Description: "ApplyCmd is a custom command to execute to deploy entities to the Kubernetes cluster.\n\nThe command must be idempotent, e.g. it must not fail if some or all entities already exist.\n\nThe ApplyCmd MUST return valid Kubernetes YAML for the entities it applied to the cluster.\n\nExactly one of YAML OR ApplyCmd MUST be provided.",
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApplyCmd"),
 						},
 					},
@@ -2551,7 +2551,7 @@ func schema_pkg_apis_core_v1alpha1_KubernetesApplySpec(ref common.ReferenceCallb
 					},
 					"deleteCmd": {
 						SchemaProps: spec.SchemaProps{
-							Description: "DeleteCmd is a custom command to execute to delete entities created by DeployCmd and clean up any additional state.",
+							Description: "DeleteCmd is a custom command to execute to delete entities created by ApplyCmd and clean up any additional state.",
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApplyCmd"),
 						},
 					},

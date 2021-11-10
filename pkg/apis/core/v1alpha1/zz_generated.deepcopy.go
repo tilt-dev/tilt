@@ -1355,8 +1355,8 @@ func (in *KubernetesApplySpec) DeepCopyInto(out *KubernetesApplySpec) {
 		*out = new(DisableSource)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.DeployCmd != nil {
-		in, out := &in.DeployCmd, &out.DeployCmd
+	if in.ApplyCmd != nil {
+		in, out := &in.ApplyCmd, &out.ApplyCmd
 		*out = new(KubernetesApplyCmd)
 		(*in).DeepCopyInto(*out)
 	}

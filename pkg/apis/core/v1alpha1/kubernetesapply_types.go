@@ -78,7 +78,7 @@ type KubernetesApplyList struct {
 type KubernetesApplySpec struct {
 	// YAML to apply to the cluster.
 	//
-	// Exactly one of YAML OR DeployCmd MUST be provided.
+	// Exactly one of YAML OR ApplyCmd MUST be provided.
 	//
 	// +optional
 	YAML string `json:"yaml,omitempty" protobuf:"bytes,1,opt,name=yaml"`
@@ -153,23 +153,23 @@ type KubernetesApplySpec struct {
 	// +optional
 	DisableSource *DisableSource `json:"disableSource,omitempty" protobuf:"bytes,9,opt,name=disableSource"`
 
-	// DeployCmd is a custom command to execute to deploy entities to the Kubernetes cluster.
+	// ApplyCmd is a custom command to execute to deploy entities to the Kubernetes cluster.
 	//
 	// The command must be idempotent, e.g. it must not fail if some or all entities already exist.
 	//
-	// The DeployCmd MUST return valid Kubernetes YAML for the entities it applied to the cluster.
+	// The ApplyCmd MUST return valid Kubernetes YAML for the entities it applied to the cluster.
 	//
-	// Exactly one of YAML OR DeployCmd MUST be provided.
+	// Exactly one of YAML OR ApplyCmd MUST be provided.
 	//
 	// +optional
-	DeployCmd *KubernetesApplyCmd `json:"deployCmd,omitempty" protobuf:"bytes,10,opt,name=deployCmd"`
+	ApplyCmd *KubernetesApplyCmd `json:"applyCmd,omitempty" protobuf:"bytes,10,opt,name=applyCmd"`
 
 	// RestartOn determines external triggers that will result in an apply.
 	//
 	// +optional
 	RestartOn *RestartOnSpec `json:"restartOn,omitempty" protobuf:"bytes,11,opt,name=restartOn"`
 
-	// DeleteCmd is a custom command to execute to delete entities created by DeployCmd and clean up any
+	// DeleteCmd is a custom command to execute to delete entities created by ApplyCmd and clean up any
 	// additional state.
 	//
 	// +optional
@@ -233,18 +233,18 @@ func (in *KubernetesApply) Validate(ctx context.Context) field.ErrorList {
 	}
 
 	if in.Spec.YAML != "" {
-		if in.Spec.DeployCmd != nil {
+		if in.Spec.ApplyCmd != nil {
 			fieldErrors = append(fieldErrors, field.Invalid(
-				field.NewPath("spec.deployCmd"),
-				in.Spec.DeployCmd,
-				"must specify exactly ONE of .spec.yaml or .spec.deployCmd"))
+				field.NewPath("spec.applyCmd"),
+				in.Spec.ApplyCmd,
+				"must specify exactly ONE of .spec.yaml or .spec.applyCmd"))
 		}
-	} else if in.Spec.DeployCmd != nil {
-		fieldErrors = append(fieldErrors, in.Spec.DeployCmd.validateAsSubfield(ctx, field.NewPath("spec.cmd"))...)
+	} else if in.Spec.ApplyCmd != nil {
+		fieldErrors = append(fieldErrors, in.Spec.ApplyCmd.validateAsSubfield(ctx, field.NewPath("spec.applyCmd"))...)
 	} else {
 		fieldErrors = append(fieldErrors, field.Required(
 			field.NewPath("spec.yaml"),
-			"must specify exactly ONE of .spec.yaml or .spec.deployCmd"))
+			"must specify exactly ONE of .spec.yaml or .spec.applyCmd"))
 	}
 
 	return fieldErrors

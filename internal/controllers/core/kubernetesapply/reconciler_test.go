@@ -111,13 +111,13 @@ func TestBasicApplyYAML(t *testing.T) {
 func TestBasicApplyCmd(t *testing.T) {
 	f := newFixture(t)
 
-	deployCmd, yamlOut := f.createDeployCmd("custom-deploy-cmd", testyaml.SanchoYAML)
+	applyCmd, yamlOut := f.createApplyCmd("custom-apply-cmd", testyaml.SanchoYAML)
 	ka := v1alpha1.KubernetesApply{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "a",
 		},
 		Spec: v1alpha1.KubernetesApplySpec{
-			DeployCmd: &deployCmd,
+			ApplyCmd:  &applyCmd,
 			DeleteCmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-delete-cmd"}},
 		},
 	}
@@ -149,7 +149,7 @@ func TestBasicApplyCmd_ExecError(t *testing.T) {
 			Name: "a",
 		},
 		Spec: v1alpha1.KubernetesApplySpec{
-			DeployCmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-apply-cmd"}},
+			ApplyCmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-apply-cmd"}},
 		},
 	}
 	f.Create(&ka)
@@ -170,7 +170,7 @@ func TestBasicApplyCmd_NonZeroExitCode(t *testing.T) {
 			Annotations: map[string]string{v1alpha1.AnnotationManifest: "foo"},
 		},
 		Spec: v1alpha1.KubernetesApplySpec{
-			DeployCmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-apply-cmd"}},
+			ApplyCmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-apply-cmd"}},
 		},
 	}
 	f.Create(&ka)
@@ -193,7 +193,7 @@ func TestBasicApplyCmd_MalformedYAML(t *testing.T) {
 			Name: "a",
 		},
 		Spec: v1alpha1.KubernetesApplySpec{
-			DeployCmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-apply-cmd"}},
+			ApplyCmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-apply-cmd"}},
 		},
 	}
 	f.Create(&ka)
@@ -228,13 +228,13 @@ func TestGarbageCollectAllOnDelete_YAML(t *testing.T) {
 func TestGarbageCollectAllOnDelete_Cmd(t *testing.T) {
 	f := newFixture(t)
 
-	deployCmd, yamlOut := f.createDeployCmd("custom-deploy-cmd", testyaml.SanchoYAML)
+	applyCmd, yamlOut := f.createApplyCmd("custom-apply-cmd", testyaml.SanchoYAML)
 	ka := v1alpha1.KubernetesApply{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "a",
 		},
 		Spec: v1alpha1.KubernetesApplySpec{
-			DeployCmd: &deployCmd,
+			ApplyCmd:  &applyCmd,
 			DeleteCmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-delete-cmd"}},
 		},
 	}
@@ -247,7 +247,7 @@ func TestGarbageCollectAllOnDelete_Cmd(t *testing.T) {
 	assert.False(t, f.Get(types.NamespacedName{Name: "a"}, &ka), "Object was not deleted")
 
 	calls := f.execer.Calls()
-	if assert.Len(t, calls, 2, "Expected 2 calls (1x deploy + 1x delete)") {
+	if assert.Len(t, calls, 2, "Expected 2 calls (1x apply + 1x delete)") {
 		assert.Equal(t, []string{"custom-delete-cmd"}, calls[1].Cmd.Argv)
 	}
 }
@@ -311,13 +311,13 @@ func TestGarbageCollectAfterErrorDuringApply(t *testing.T) {
 func TestGarbageCollect_DeleteCmdNotInvokedOnChange(t *testing.T) {
 	f := newFixture(t)
 
-	deployCmd, yamlOut := f.createDeployCmd("custom-deploy-1", testyaml.SanchoYAML)
+	applyCmd, yamlOut := f.createApplyCmd("custom-apply-1", testyaml.SanchoYAML)
 	ka := v1alpha1.KubernetesApply{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "a",
 		},
 		Spec: v1alpha1.KubernetesApplySpec{
-			DeployCmd: &deployCmd,
+			ApplyCmd:  &applyCmd,
 			DeleteCmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-delete-cmd"}},
 		},
 	}
@@ -327,8 +327,8 @@ func TestGarbageCollect_DeleteCmdNotInvokedOnChange(t *testing.T) {
 	assert.Equal(f.T(), yamlOut, ka.Status.ResultYAML)
 
 	yamlToDelete := yamlOut
-	deployCmd, yamlOut = f.createDeployCmd("custom-deploy-2", testyaml.JobYAML)
-	ka.Spec.DeployCmd = &deployCmd
+	applyCmd, yamlOut = f.createApplyCmd("custom-apply-2", testyaml.JobYAML)
+	ka.Spec.ApplyCmd = &applyCmd
 	f.Update(&ka)
 
 	f.MustGet(types.NamespacedName{Name: "a"}, &ka)
@@ -336,9 +336,9 @@ func TestGarbageCollect_DeleteCmdNotInvokedOnChange(t *testing.T) {
 	assert.Equal(t, yamlToDelete, f.kClient.DeletedYaml)
 
 	calls := f.execer.Calls()
-	if assert.Len(t, calls, 2, "Expected 2x deploy calls") {
+	if assert.Len(t, calls, 2, "Expected 2x apply calls") {
 		for i := range calls {
-			assert.Equal(t, []string{fmt.Sprintf("custom-deploy-%d", i+1)}, calls[i].Cmd.Argv)
+			assert.Equal(t, []string{fmt.Sprintf("custom-apply-%d", i+1)}, calls[i].Cmd.Argv)
 		}
 	}
 }
@@ -553,11 +553,11 @@ func newFixture(t *testing.T) *fixture {
 	}
 }
 
-// createDeployCmd creates a KubernetesApplyCmd that use the passed YAML to generate simulated stdout via the FakeExecer.
-func (f *fixture) createDeployCmd(name string, yaml string) (v1alpha1.KubernetesApplyCmd, string) {
+// createApplyCmd creates a KubernetesApplyCmd that use the passed YAML to generate simulated stdout via the FakeExecer.
+func (f *fixture) createApplyCmd(name string, yaml string) (v1alpha1.KubernetesApplyCmd, string) {
 	f.T().Helper()
 
-	require.NotEmpty(f.T(), yaml, "DeployCmd YAML cannot be blank")
+	require.NotEmpty(f.T(), yaml, "applyCmd YAML cannot be blank")
 
 	entities, err := k8s.ParseYAMLFromString(yaml)
 	require.NoErrorf(f.T(), err, "Could not parse YAML: %s", yaml)

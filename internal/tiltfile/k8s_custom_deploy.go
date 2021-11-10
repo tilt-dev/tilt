@@ -14,16 +14,16 @@ import (
 )
 
 type k8sCustomDeploy struct {
-	deployCmd model.Cmd
+	applyCmd  model.Cmd
 	deleteCmd model.Cmd
 	deps      []string
 }
 
 func (s *tiltfileState) k8sCustomDeploy(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var name string
-	var deployCmdVal, deployCmdBatVal, deployCmdDirVal starlark.Value
+	var applyCmdVal, applyCmdBatVal, applyCmdDirVal starlark.Value
 	var deleteCmdVal, deleteCmdBatVal, deleteCmdDirVal starlark.Value
-	var deployCmdEnv, deleteCmdEnv value.StringStringMap
+	var applyCmdEnv, deleteCmdEnv value.StringStringMap
 	var imageSelector string
 	var liveUpdateVal starlark.Value
 
@@ -31,14 +31,14 @@ func (s *tiltfileState) k8sCustomDeploy(thread *starlark.Thread, fn *starlark.Bu
 
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
-		"deploy_cmd", &deployCmdVal,
+		"apply_cmd", &applyCmdVal,
 		"delete_cmd", &deleteCmdVal,
 		"deps", &deps,
 		"image_selector?", &imageSelector,
 		"live_update?", &liveUpdateVal,
-		"deploy_dir?", &deployCmdDirVal,
-		"deploy_env?", &deployCmdEnv,
-		"deploy_cmd_bat?", &deployCmdBatVal,
+		"apply_dir?", &applyCmdDirVal,
+		"apply_env?", &applyCmdEnv,
+		"apply_cmd_bat?", &applyCmdBatVal,
 		"delete_dir?", &deleteCmdDirVal,
 		"delete_env?", &deleteCmdEnv,
 		"delete_cmd_bat?", &deleteCmdBatVal,
@@ -46,11 +46,11 @@ func (s *tiltfileState) k8sCustomDeploy(thread *starlark.Thread, fn *starlark.Bu
 		return nil, err
 	}
 
-	deployCmd, err := value.ValueGroupToCmdHelper(thread, deployCmdVal, deployCmdBatVal, deployCmdDirVal, deployCmdEnv)
+	applyCmd, err := value.ValueGroupToCmdHelper(thread, applyCmdVal, applyCmdBatVal, applyCmdDirVal, applyCmdEnv)
 	if err != nil {
-		return nil, errors.Wrap(err, "deploy_cmd")
-	} else if deployCmd.Empty() {
-		return nil, fmt.Errorf("k8s_custom_deploy: deploy_cmd cannot be empty")
+		return nil, errors.Wrap(err, "apply_cmd")
+	} else if applyCmd.Empty() {
+		return nil, fmt.Errorf("k8s_custom_deploy: apply_cmd cannot be empty")
 	}
 
 	deleteCmd, err := value.ValueGroupToCmdHelper(thread, deleteCmdVal, deleteCmdBatVal, deleteCmdDirVal, deleteCmdEnv)
@@ -71,7 +71,7 @@ func (s *tiltfileState) k8sCustomDeploy(thread *starlark.Thread, fn *starlark.Bu
 	}
 
 	res.customDeploy = &k8sCustomDeploy{
-		deployCmd: deployCmd,
+		applyCmd:  applyCmd,
 		deleteCmd: deleteCmd,
 		deps:      deps.Value,
 	}

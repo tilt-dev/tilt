@@ -4,7 +4,7 @@ include('../Tiltfile')
 k8s_custom_deploy(
     'custom-deploy-int-test',
     # forcibly delete and re-create the deployment whenever run
-    deploy_cmd='kubectl delete --ignore-not-found=true --wait=true -f "${DEPLOY_FILE}" >/dev/null && kubectl create -oyaml -f "${DEPLOY_FILE}"',
+    apply_cmd='kubectl delete --ignore-not-found=true --wait=true -f "${DEPLOY_FILE}" >/dev/null && kubectl create -oyaml -f "${DEPLOY_FILE}"',
     delete_cmd='kubectl delete --ignore-not-found=true --wait=true -f "${DELETE_FILE}"',
     deps=['deploy.yaml', 'foo', 'web/'],
     image_selector='nginx',

@@ -1144,7 +1144,7 @@ func (s *tiltfileState) k8sDeployTarget(targetName model.TargetName, r *k8sResou
 	var deps []string
 	if r.customDeploy != nil {
 		deps = r.customDeploy.deps
-		applySpec.DeployCmd = toKubernetesApplyCmd(r.customDeploy.deployCmd)
+		applySpec.ApplyCmd = toKubernetesApplyCmd(r.customDeploy.applyCmd)
 		applySpec.DeleteCmd = toKubernetesApplyCmd(r.customDeploy.deleteCmd)
 		applySpec.RestartOn = &v1alpha1.RestartOnSpec{
 			FileWatches: []string{apis.SanitizeName(fmt.Sprintf("%s:apply", targetName.String()))},

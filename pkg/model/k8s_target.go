@@ -82,7 +82,7 @@ func (k8s K8sTarget) Validate() error {
 	}
 
 	// TODO(milas): improve error message
-	if k8s.KubernetesApplySpec.YAML == "" && k8s.KubernetesApplySpec.DeployCmd == nil {
+	if k8s.KubernetesApplySpec.YAML == "" && k8s.KubernetesApplySpec.ApplyCmd == nil {
 		return fmt.Errorf("[Validate] K8s resources %q missing YAML", k8s.Name)
 	}
 

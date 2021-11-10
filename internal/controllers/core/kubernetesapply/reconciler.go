@@ -416,7 +416,7 @@ func (r *Reconciler) runCmdDeploy(ctx context.Context, spec v1alpha1.KubernetesA
 		Stderr: logger.Get(ctx).Writer(logger.InfoLvl),
 	}
 
-	exitCode, err := r.execer.Run(ctx, toModelCmd(*spec.DeployCmd), runIO)
+	exitCode, err := r.execer.Run(ctx, toModelCmd(*spec.ApplyCmd), runIO)
 	if err != nil {
 		return nil, fmt.Errorf("apply command failed: %v", err)
 	} else if exitCode != 0 {

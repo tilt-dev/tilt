@@ -106,7 +106,7 @@ func TestDownK8sDeleteCmd(t *testing.T) {
 	defer f.TearDown()
 
 	kaSpec := v1alpha1.KubernetesApplySpec{
-		DeployCmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-deploy-cmd"}},
+		ApplyCmd:  &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-deploy-cmd"}},
 		DeleteCmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-delete-cmd"}},
 	}
 
@@ -131,7 +131,7 @@ func TestDownK8sDeleteCmd_Error(t *testing.T) {
 	f.execer.RegisterCommand("custom-delete-cmd", 321, "", "delete failed")
 
 	kaSpec := v1alpha1.KubernetesApplySpec{
-		DeployCmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-deploy-cmd"}},
+		ApplyCmd:  &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-deploy-cmd"}},
 		DeleteCmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-delete-cmd"}},
 	}
 
