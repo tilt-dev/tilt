@@ -3,54 +3,14 @@ package buildcontrol
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/docker/distribution/reference"
-	"go.opencensus.io/stats"
-	"go.opencensus.io/stats/view"
-	"go.opencensus.io/tag"
 
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/ignore"
-	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
-
-// Metric and label names must match the following rules:
-// https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels
-var KeyImageRef = tag.MustNewKey("image_ref")
-
-var KeyBuildError = tag.MustNewKey("build_error")
-
-// Loosely adapted from how opencensus does HTTP aggregations:
-// https://github.com/census-instrumentation/opencensus-specs/blob/master/stats/HTTP.md#http-stats
-// https://pkg.go.dev/go.opencensus.io/plugin/ochttp
-var ImageBuildDuration = stats.Float64(
-	"image_build_duration",
-	"Image build duration",
-	stats.UnitMilliseconds)
-
-var ImageBuildDurationDistribution = view.Distribution(
-	10, 100, 500, 1000, 2000, 5000,
-	10000, 15000, 20000, 30000, 45000, 60000, 120000,
-	240000, 480000, 1000000, 2000000, 5000000)
-
-var ImageBuildDurationView = &view.View{
-	Name:        "image_build_duration_dist",
-	Measure:     ImageBuildDuration,
-	Aggregation: ImageBuildDurationDistribution,
-	Description: "Image build time, by image ref",
-	TagKeys:     []tag.Key{KeyImageRef, KeyBuildError},
-}
-
-var ImageBuildCount = &view.View{
-	Name:        "image_build_count",
-	Measure:     ImageBuildDuration,
-	Aggregation: view.Count(),
-	Description: "Image build count",
-	TagKeys:     []tag.Key{KeyImageRef, KeyBuildError},
-}
 
 type ImageBuilder struct {
 	db    build.DockerBuilder
@@ -80,25 +40,6 @@ func (icb *ImageBuilder) CanReuseRef(ctx context.Context, iTarget model.ImageTar
 func (icb *ImageBuilder) Build(ctx context.Context, iTarget model.ImageTarget,
 	ps *build.PipelineState) (refs container.TaggedRefs, err error) {
 	userFacingRefName := container.FamiliarString(iTarget.Refs.ConfigurationRef)
-	startTime := time.Now()
-	ctx, err = tag.New(ctx, tag.Upsert(KeyImageRef, userFacingRefName))
-	if err != nil {
-		return container.TaggedRefs{}, err
-	}
-
-	defer func() {
-		latencyMs := float64(time.Since(startTime)) / float64(time.Millisecond)
-		errorTag := "0"
-		if err != nil {
-			errorTag = "1"
-		}
-		recErr := stats.RecordWithTags(ctx,
-			[]tag.Mutator{tag.Upsert(KeyBuildError, errorTag)},
-			ImageBuildDuration.M(latencyMs))
-		if recErr != nil {
-			logger.Get(ctx).Debugf("ImageBuilder stats: %v", recErr)
-		}
-	}()
 
 	switch bd := iTarget.BuildDetails.(type) {
 	case model.DockerBuild:
