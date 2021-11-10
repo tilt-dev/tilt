@@ -89,9 +89,6 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, nil
 	}
 
-	// The apiserver is the source of truth, and will ensure the engine state is up to date.
-	c.Store.Dispatch(filewatches.NewFileWatchUpsertAction(&fw))
-
 	// Get configmap's disable status
 	disableStatus, err := configmap.MaybeNewDisableStatus(ctx, c.Client, fw.Spec.DisableSource, fw.Status.DisableStatus)
 	if err != nil {
@@ -112,9 +109,11 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 			existing.cleanupWatch(ctx)
 			c.removeWatch(existing)
 		}
-
 		return ctrl.Result{}, nil
 	}
+
+	// The apiserver is the source of truth, and will ensure the engine state is up to date.
+	c.Store.Dispatch(filewatches.NewFileWatchUpsertAction(&fw))
 
 	if !hasExisting || !equality.Semantic.DeepEqual(existing.spec, fw.Spec) {
 		if err := c.addOrReplace(ctx, c.Store, req.NamespacedName, &fw); err != nil {
