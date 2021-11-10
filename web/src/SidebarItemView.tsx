@@ -1,6 +1,7 @@
 import React from "react"
 import TimeAgo from "react-timeago"
 import styled from "styled-components"
+import { Flag, useFeatures } from "./feature"
 import { Hold } from "./Hold"
 import PathBuilder from "./PathBuilder"
 import { useResourceNav } from "./ResourceNav"
@@ -32,7 +33,12 @@ export const SidebarItemRoot = styled.li`
   & + & {
     margin-top: ${SizeUnit(0.35)};
   }
-  // smaller margin-left since the star icon takes up space
+
+  &.isDisabled + &.isDisabled {
+    margin-top: ${SizeUnit(1 / 16)};
+  }
+
+  /* smaller margin-left since the star icon takes up space */
   margin-left: ${SizeUnit(0.25)};
   margin-right: ${SizeUnit(0.5)};
   display: flex;
@@ -41,27 +47,32 @@ export const SidebarItemRoot = styled.li`
     margin-right: ${SizeUnit(1.0 / 12)};
   }
 
-  /* groupViewIndent is used to indent un-grouped items so they align with grouped items */
+  /* groupViewIndent is used to indent un-grouped
+     items so they align with grouped items */
   &.groupViewIndent {
     margin-left: ${SizeUnit(2 / 3)};
   }
 `
-
-export let SidebarItemBox = styled.div`
-  color: ${Color.white};
-  background-color: ${Color.gray};
+// Shared styles between the enabled and disabled item boxes
+const sidebarItemBoxMixin = `
+  border-radius: ${overviewItemBorderRadius};
+  cursor: pointer;
   display: flex;
   flex-grow: 1;
-  transition: color ${AnimDuration.default} linear,
-    background-color ${AnimDuration.default} linear;
-  border-radius: ${overviewItemBorderRadius};
-  overflow: hidden;
-  border: 1px solid ${Color.grayLighter};
-  position: relative; // Anchor the .isBuilding::after psuedo-element
-  text-decoration: none;
   font-size: ${FontSize.small};
+  transition: color ${AnimDuration.default} linear,
+              background-color ${AnimDuration.default} linear;
+  overflow: hidden;
+  text-decoration: none;
+`
+
+export let SidebarItemBox = styled.div`
+  ${sidebarItemBoxMixin}
+  background-color: ${Color.gray};
+  border: 1px solid ${Color.grayLighter};
+  color: ${Color.white};
   font-family: ${Font.monospace};
-  cursor: pointer;
+  position: relative; /* Anchor the .isBuilding::after psuedo-element */
 
   &:hover {
     background-color: ${ColorRGBA(Color.gray, ColorAlpha.translucent)};
@@ -88,6 +99,26 @@ export let SidebarItemBox = styled.div`
     );
     background-size: 200% 200%;
     animation: ${barberpole} 8s linear infinite;
+  }
+`
+
+const DisabledSidebarItemBox = styled.div`
+  ${sidebarItemBoxMixin}
+  color: ${Color.grayLight};
+  font-family: ${Font.sansSerif};
+  font-style: italic;
+  padding: ${SizeUnit(1 / 8)} ${SizeUnit(1 / 4)};
+
+  &:hover {
+    color: ${Color.blue};
+  }
+
+  &.isSelected {
+    background-color: ${Color.gray7};
+    color: ${Color.grayDarkest};
+    transition: color ${AnimDuration.default} linear,
+      font-weight ${AnimDuration.default} linear;
+    font-weight: normal;
   }
 `
 
@@ -284,7 +315,31 @@ function buildTooltipText(status: ResourceStatus, hold: Hold | null): string {
   }
 }
 
-export default function SidebarItemView(props: SidebarItemViewProps) {
+export function DisabledSidebarItemView(props: SidebarItemViewProps) {
+  const { openResource } = useResourceNav()
+  const { item, selected, groupView } = props
+  const isSelectedClass = selected ? "isSelected" : ""
+  const groupViewIndentClass = groupView ? "groupViewIndent" : ""
+
+  return (
+    <SidebarItemRoot
+      className={`u-showStarOnHover ${isSelectedClass} ${groupViewIndentClass} isDisabled`}
+    >
+      <StarResourceButton
+        resourceName={item.name}
+        analyticsName="ui.web.sidebarStarButton"
+      />
+      <DisabledSidebarItemBox
+        className={`${isSelectedClass}`}
+        onClick={(_e) => openResource(item.name)}
+      >
+        {item.name}
+      </DisabledSidebarItemBox>
+    </SidebarItemRoot>
+  )
+}
+
+export function EnabledSidebarItemView(props: SidebarItemViewProps) {
   let nav = useResourceNav()
   let item = props.item
   let formatter = timeAgoFormatter
@@ -357,4 +412,16 @@ export default function SidebarItemView(props: SidebarItemViewProps) {
       </SidebarItemBox>
     </SidebarItemRoot>
   )
+}
+
+export default function SidebarItemView(props: SidebarItemViewProps) {
+  const features = useFeatures()
+  const showDisabledResources = features.isEnabled(Flag.DisableResources)
+  if (props.item.disabled && !showDisabledResources) {
+    return null
+  } else if (props.item.disabled && showDisabledResources) {
+    return <DisabledSidebarItemView {...props}></DisabledSidebarItemView>
+  } else {
+    return <EnabledSidebarItemView {...props}></EnabledSidebarItemView>
+  }
 }
