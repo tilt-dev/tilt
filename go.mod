@@ -50,7 +50,7 @@ require (
 	github.com/tilt-dev/go-get v0.2.1
 	github.com/tilt-dev/localregistry-go v0.0.0-20200615231835-07e386f4ebd7
 	github.com/tilt-dev/probe v0.3.1
-	github.com/tilt-dev/tilt-apiserver v0.5.0
+	github.com/tilt-dev/tilt-apiserver v0.5.1
 	github.com/tilt-dev/wmclient v0.0.0-20201109174454-1839d0355fbc
 	github.com/tonistiigi/units v0.0.0-20180711220420-6950e57a87ea
 	github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa
