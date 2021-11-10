@@ -11,8 +11,8 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	ctrltiltfile "github.com/tilt-dev/tilt/internal/controllers/apis/tiltfile"
-	"github.com/tilt-dev/tilt/internal/engine"
 	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/localexec"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -75,7 +75,31 @@ func (c *downCmd) down(ctx context.Context, downDeps DownDeps, args []string) er
 		return err
 	}
 
-	entities, err := engine.ParseYAMLFromManifests(tlr.Manifests...)
+	if err := deleteK8sEntities(ctx, tlr.Manifests, downDeps, c.deleteNamespaces); err != nil {
+		return err
+	}
+
+	var dcProject model.DockerComposeProject
+	for _, m := range tlr.Manifests {
+		if m.IsDC() {
+			dcProject = m.DockerComposeTarget().Spec.Project
+			break
+		}
+	}
+
+	if !model.IsEmptyDockerComposeProject(dcProject) {
+		dcc := downDeps.dcClient
+		err = dcc.Down(ctx, dcProject, logger.Get(ctx).Writer(logger.InfoLvl), logger.Get(ctx).Writer(logger.InfoLvl))
+		if err != nil {
+			return errors.Wrap(err, "Running `docker-compose down`")
+		}
+	}
+
+	return nil
+}
+
+func deleteK8sEntities(ctx context.Context, manifests []model.Manifest, downDeps DownDeps, deleteNamespaces bool) error {
+	entities, deleteCmds, err := k8sToDelete(manifests...)
 	if err != nil {
 		return errors.Wrap(err, "Parsing manifest YAML")
 	}
@@ -90,7 +114,7 @@ func (c *downCmd) down(ctx context.Context, downDeps DownDeps, args []string) er
 		return errors.Wrap(err, "Filtering entities by down policy")
 	}
 
-	if !c.deleteNamespaces {
+	if !deleteNamespaces {
 		var namespaces []k8s.K8sEntity
 		entities, namespaces, err = k8s.Filter(entities, func(e k8s.K8sEntity) (b bool, err error) {
 			return e.GVK() != schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Namespace"}, nil
@@ -115,21 +139,37 @@ func (c *downCmd) down(ctx context.Context, downDeps DownDeps, args []string) er
 		}
 	}
 
-	var dcProject model.DockerComposeProject
-	for _, m := range tlr.Manifests {
-		if m.IsDC() {
-			dcProject = m.DockerComposeTarget().Spec.Project
-			break
-		}
-	}
-
-	if !model.IsEmptyDockerComposeProject(dcProject) {
-		dcc := downDeps.dcClient
-		err = dcc.Down(ctx, dcProject, logger.Get(ctx).Writer(logger.InfoLvl), logger.Get(ctx).Writer(logger.InfoLvl))
-		if err != nil {
-			return errors.Wrap(err, "Running `docker-compose down`")
+	for i := range deleteCmds {
+		if err := localexec.OneShotToLogger(ctx, downDeps.execer, deleteCmds[i]); err != nil {
+			return errors.Wrapf(err, "Deleting k8s entities for cmd: %s", deleteCmds[i].String())
 		}
 	}
 
 	return nil
+}
+
+func k8sToDelete(manifests ...model.Manifest) ([]k8s.K8sEntity, []model.Cmd, error) {
+	var allEntities []k8s.K8sEntity
+	var deleteCmds []model.Cmd
+	for _, m := range manifests {
+		if !m.IsK8s() {
+			continue
+		}
+		kt := m.K8sTarget()
+
+		if kt.DeleteCmd != nil {
+			deleteCmds = append(deleteCmds, model.Cmd{
+				Argv: kt.DeleteCmd.Args,
+				Dir:  kt.DeleteCmd.Dir,
+				Env:  kt.DeleteCmd.Env,
+			})
+		} else {
+			entities, err := k8s.ParseYAMLFromString(kt.YAML)
+			if err != nil {
+				return nil, nil, err
+			}
+			allEntities = append(allEntities, entities...)
+		}
+	}
+	return allEntities, deleteCmds, nil
 }

@@ -13,12 +13,14 @@ import (
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
+	"github.com/tilt-dev/tilt/internal/localexec"
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/tiltfile"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-func TestDown(t *testing.T) {
+func TestDownK8sYAML(t *testing.T) {
 	f := newDownFixture(t)
 	defer f.TearDown()
 
@@ -96,6 +98,54 @@ func TestDownK8sFails(t *testing.T) {
 	err := f.cmd.down(f.ctx, f.deps, nil)
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "GARBLEGARBLE")
+	}
+}
+
+func TestDownK8sDeleteCmd(t *testing.T) {
+	f := newDownFixture(t)
+	defer f.TearDown()
+
+	kaSpec := v1alpha1.KubernetesApplySpec{
+		ApplyCmd:  &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-deploy-cmd"}},
+		DeleteCmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-delete-cmd"}},
+	}
+
+	kt, err := k8s.NewTarget("fe", kaSpec, model.PodReadinessIgnore, nil)
+	require.NoError(t, err, "Failed to make KubernetesTarget")
+	m := model.Manifest{Name: "fe"}.WithDeployTarget(kt)
+
+	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{m}}
+	err = f.cmd.down(f.ctx, f.deps, nil)
+	require.NoError(t, err)
+
+	calls := f.execer.Calls()
+	if assert.Len(t, calls, 1, "Should have been exactly 1 exec call") {
+		assert.Equal(t, []string{"custom-delete-cmd"}, calls[0].Cmd.Argv)
+	}
+}
+
+func TestDownK8sDeleteCmd_Error(t *testing.T) {
+	f := newDownFixture(t)
+	defer f.TearDown()
+
+	f.execer.RegisterCommand("custom-delete-cmd", 321, "", "delete failed")
+
+	kaSpec := v1alpha1.KubernetesApplySpec{
+		ApplyCmd:  &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-deploy-cmd"}},
+		DeleteCmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-delete-cmd"}},
+	}
+
+	kt, err := k8s.NewTarget("fe", kaSpec, model.PodReadinessIgnore, nil)
+	require.NoError(t, err, "Failed to make KubernetesTarget")
+	m := model.Manifest{Name: "fe"}.WithDeployTarget(kt)
+
+	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{m}}
+	err = f.cmd.down(f.ctx, f.deps, nil)
+	assert.EqualError(t, err, "Deleting k8s entities for cmd: custom-delete-cmd: exit status 321")
+
+	calls := f.execer.Calls()
+	if assert.Len(t, calls, 1, "Should have been exactly 1 exec call") {
+		assert.Equal(t, []string{"custom-delete-cmd"}, calls[0].Cmd.Argv)
 	}
 }
 
@@ -177,6 +227,7 @@ type downFixture struct {
 	tfl    *tiltfile.FakeTiltfileLoader
 	dcc    *dockercompose.FakeDCClient
 	kCli   *k8s.FakeK8sClient
+	execer *localexec.FakeExecer
 }
 
 func newDownFixture(t *testing.T) downFixture {
@@ -185,7 +236,8 @@ func newDownFixture(t *testing.T) downFixture {
 	tfl := tiltfile.NewFakeTiltfileLoader()
 	dcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	kCli := k8s.NewFakeK8sClient(t)
-	downDeps := DownDeps{tfl, dcc, kCli}
+	execer := localexec.NewFakeExecer(t)
+	downDeps := DownDeps{tfl, dcc, kCli, execer}
 	cmd := &downCmd{downDepsProvider: func(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (deps DownDeps, err error) {
 		return downDeps, nil
 	}}
@@ -198,6 +250,7 @@ func newDownFixture(t *testing.T) downFixture {
 		tfl:    tfl,
 		dcc:    dcc,
 		kCli:   kCli,
+		execer: execer,
 	}
 }
 

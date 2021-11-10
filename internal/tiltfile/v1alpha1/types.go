@@ -338,7 +338,7 @@ func (p Plugin) kubernetesApply(t *starlark.Thread, fn *starlark.Builtin, args s
 	var podLogStreamTemplateSpec PodLogStreamTemplateSpec = PodLogStreamTemplateSpec{t: t}
 	var discoveryStrategy string
 	var disableSource DisableSource = DisableSource{t: t}
-	var deployCmd KubernetesApplyCmd = KubernetesApplyCmd{t: t}
+	var applyCmd KubernetesApplyCmd = KubernetesApplyCmd{t: t}
 	var restartOn RestartOnSpec = RestartOnSpec{t: t}
 	var deleteCmd KubernetesApplyCmd = KubernetesApplyCmd{t: t}
 	var labels value.StringStringMap
@@ -356,7 +356,7 @@ func (p Plugin) kubernetesApply(t *starlark.Thread, fn *starlark.Builtin, args s
 		"pod_log_stream_template_spec?", &podLogStreamTemplateSpec,
 		"discovery_strategy?", &discoveryStrategy,
 		"disable_source?", &disableSource,
-		"deploy_cmd?", &deployCmd,
+		"apply_cmd?", &applyCmd,
 		"restart_on?", &restartOn,
 		"delete_cmd?", &deleteCmd,
 	)
@@ -380,8 +380,8 @@ func (p Plugin) kubernetesApply(t *starlark.Thread, fn *starlark.Builtin, args s
 	if disableSource.isUnpacked {
 		obj.Spec.DisableSource = (*v1alpha1.DisableSource)(&disableSource.Value)
 	}
-	if deployCmd.isUnpacked {
-		obj.Spec.DeployCmd = (*v1alpha1.KubernetesApplyCmd)(&deployCmd.Value)
+	if applyCmd.isUnpacked {
+		obj.Spec.ApplyCmd = (*v1alpha1.KubernetesApplyCmd)(&applyCmd.Value)
 	}
 	if restartOn.isUnpacked {
 		obj.Spec.RestartOn = (*v1alpha1.RestartOnSpec)(&restartOn.Value)

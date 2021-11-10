@@ -1144,11 +1144,8 @@ func (s *tiltfileState) k8sDeployTarget(targetName model.TargetName, r *k8sResou
 	var deps []string
 	if r.customDeploy != nil {
 		deps = r.customDeploy.deps
-		applySpec.DeployCmd = &v1alpha1.KubernetesApplyCmd{
-			Args: r.customDeploy.cmd.Argv,
-			Dir:  r.customDeploy.cmd.Dir,
-			Env:  r.customDeploy.cmd.Env,
-		}
+		applySpec.ApplyCmd = toKubernetesApplyCmd(r.customDeploy.applyCmd)
+		applySpec.DeleteCmd = toKubernetesApplyCmd(r.customDeploy.deleteCmd)
 		applySpec.RestartOn = &v1alpha1.RestartOnSpec{
 			FileWatches: []string{apis.SanitizeName(fmt.Sprintf("%s:apply", targetName.String()))},
 		}
@@ -1618,6 +1615,17 @@ func validateResourceDependencies(ms []model.Manifest) error {
 	}
 
 	return nil
+}
+
+func toKubernetesApplyCmd(cmd model.Cmd) *v1alpha1.KubernetesApplyCmd {
+	if cmd.Empty() {
+		return nil
+	}
+	return &v1alpha1.KubernetesApplyCmd{
+		Args: cmd.Argv,
+		Dir:  cmd.Dir,
+		Env:  cmd.Env,
+	}
 }
 
 var _ starkit.Plugin = &tiltfileState{}

@@ -856,7 +856,7 @@ message KubernetesApplyList {
 message KubernetesApplySpec {
   // YAML to apply to the cluster.
   //
-  // Exactly one of YAML OR DeployCmd MUST be provided.
+  // Exactly one of YAML OR ApplyCmd MUST be provided.
   //
   // +optional
   optional string yaml = 1;
@@ -931,23 +931,23 @@ message KubernetesApplySpec {
   // +optional
   optional DisableSource disableSource = 9;
 
-  // DeployCmd is a custom command to execute to deploy entities to the Kubernetes cluster.
+  // ApplyCmd is a custom command to execute to deploy entities to the Kubernetes cluster.
   //
   // The command must be idempotent, e.g. it must not fail if some or all entities already exist.
   //
-  // The DeployCmd MUST return valid Kubernetes YAML for the entities it applied to the cluster.
+  // The ApplyCmd MUST return valid Kubernetes YAML for the entities it applied to the cluster.
   //
-  // Exactly one of YAML OR DeployCmd MUST be provided.
+  // Exactly one of YAML OR ApplyCmd MUST be provided.
   //
   // +optional
-  optional KubernetesApplyCmd deployCmd = 10;
+  optional KubernetesApplyCmd applyCmd = 10;
 
   // RestartOn determines external triggers that will result in an apply.
   //
   // +optional
   optional RestartOnSpec restartOn = 11;
 
-  // DeleteCmd is a custom command to execute to delete entities created by DeployCmd and clean up any
+  // DeleteCmd is a custom command to execute to delete entities created by ApplyCmd and clean up any
   // additional state.
   //
   // +optional
