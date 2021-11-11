@@ -212,7 +212,6 @@ func (tfl tiltfileLoader) Load(ctx context.Context, tf *corev1alpha1.Tiltfile) T
 	}
 	extState, _ := tiltextension.GetState(result)
 	tfl.reportTiltfileLoaded(s.builtinCallCounts, s.builtinArgCounts, duration, extState.ExtsLoaded)
-	reportTiltfileExecMetrics(ctx, duration, err != nil)
 
 	if len(aSettings.CustomTagsToReport) > 0 {
 		reportCustomTags(tfl.analytics, aSettings.CustomTagsToReport)
