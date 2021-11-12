@@ -60,12 +60,6 @@ and [C#](https://docs.tilt.dev/example_csharp.html).
 **Questions:** Join [the Kubernetes slack](http://slack.k8s.io) and
  find us in the [#tilt](https://kubernetes.slack.com/messages/CESBL84MV/)
  channel. Or [file an issue](https://github.com/tilt-dev/tilt/issues). For code snippets of Tiltfile functionality shared by the Tilt community, check out [Tilt Extensions](https://github.com/tilt-dev/tilt-extensions). 
- 
-**Roadmap:** Help us figure out what to prioritize. We hold Tilt Office Hours to pair
-on Tiltfiles and collect ideas for the roadmap. Next event at 12pm ET July 23rd. Copy it to [your
-calendar](https://calendar.google.com/event?action=TEMPLATE&tmeid=NXM1bzM0c2hlZmpzNWIwbjdlMHExMnVpODJfMjAyMTA3MjNUMTYwMDAwWiBjX2c0NDZoOHExNWtjbWhjOGVrMTUyZTBhZDA0QGc&tmsrc=c_g446h8q15kcmhc8ek152e0ad04%40group.calendar.google.com)
-or join via
-[Zoom](https://us02web.zoom.us/j/89661530301?pwd=WXFuTlg4aHRpckFNOFBtVHJMd2ZQZz09).
 
 **Contribute:** Check out our [guidelines](CONTRIBUTING.md) to contribute to Tilt's source code. To extend the capabilities of Tilt via new Tiltfile functionality, read more about [Extensions](https://docs.tilt.dev/extensions.html).
 
