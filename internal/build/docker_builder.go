@@ -164,12 +164,12 @@ func (d *dockerImageBuilder) ImageExists(ctx context.Context, ref reference.Name
 }
 
 func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState, db model.DockerBuild, paths []PathMapping, filter model.PathMatcher, refs container.RefSet) (container.TaggedRefs, error) {
-	logger.Get(ctx).Infof("Building Dockerfile:\n%s\n", indent(db.Dockerfile, "  "))
-
-	ps.StartBuildStep(ctx, "Tarring context…")
+	logger.Get(ctx).Infof("Building Dockerfile:\n%s", indent(db.Dockerfile, "  "))
 
 	// NOTE(maia): some people want to know what files we're adding (b/c `ADD . /` isn't descriptive)
 	if logger.Get(ctx).Level().ShouldDisplay(logger.VerboseLvl) {
+		ps.StartBuildStep(ctx, "Tarring context…")
+
 		for _, pm := range paths {
 			ps.Printf(ctx, pm.PrettyStr())
 		}
@@ -219,13 +219,17 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState,
 // then returns the output digest.
 func (d *dockerImageBuilder) buildFromDfToDigest(ctx context.Context, db model.DockerBuild, paths []PathMapping, filter model.PathMatcher, allowBuildkit bool) (digest.Digest, error) {
 	pr, pw := io.Pipe()
+	w := NewProgressWriter(ctx, pw)
+	w.Init()
+
 	go func(ctx context.Context) {
-		err := tarContextAndUpdateDf(ctx, pw, dockerfile.Dockerfile(db.Dockerfile), paths, filter)
+		err := tarContextAndUpdateDf(ctx, w, dockerfile.Dockerfile(db.Dockerfile), paths, filter)
 		if err != nil {
 			_ = pw.CloseWithError(err)
 		} else {
 			_ = pw.Close()
 		}
+		w.Close() // Print the final progress message
 	}(ctx)
 
 	defer func() {
