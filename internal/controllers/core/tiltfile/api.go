@@ -162,6 +162,7 @@ var typesToReconcile = append([]apiset.Object{
 	&v1alpha1.ImageMap{},
 	&v1alpha1.UIResource{},
 	&v1alpha1.LiveUpdate{},
+	&v1alpha1.ToggleButton{},
 }, typesWithTiltfileBuiltins...)
 
 // Fetch all the existing API objects that were generated from the Tiltfile.
