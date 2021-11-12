@@ -6,7 +6,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 )
 
-func InjectImageDigest(df Dockerfile, selector container.RefSelector, ref reference.NamedTagged, buildArgs map[string]string) (Dockerfile, bool, error) {
+func InjectImageDigest(df Dockerfile, selector container.RefSelector, ref reference.NamedTagged, buildArgs []string) (Dockerfile, bool, error) {
 	ast, err := ParseAST(df)
 	if err != nil {
 		return "", false, err

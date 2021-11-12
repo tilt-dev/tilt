@@ -17,15 +17,6 @@ var portFwd8001 = []v1alpha1.Forward{{LocalPort: 8081}}
 var img1 = container.MustParseSelector("blorg.io/blorgdev/blorg-frontend:tilt-361d98a2d335373f")
 var img2 = container.MustParseSelector("blorg.io/blorgdev/blorg-backend:tilt-361d98a2d335373f")
 
-var buildArgs1 = DockerBuildArgs{
-	"foo": "bar",
-	"baz": "qux",
-}
-var buildArgs2 = DockerBuildArgs{
-	"foo":  "bar",
-	"beep": "boop",
-}
-
 var equalitytests = []struct {
 	name                string
 	m1                  Manifest
@@ -64,42 +55,6 @@ var equalitytests = []struct {
 				PortForwardTemplateSpec: &v1alpha1.PortForwardTemplateSpec{Forwards: portFwd8000},
 			},
 		}),
-		false,
-	},
-	{
-		"DockerBuild.Dockerfile unequal",
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(DockerBuild{Dockerfile: "FROM foo"})),
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(DockerBuild{Dockerfile: "FROM bar"})),
-		true,
-	},
-	{
-		"DockerBuild.Dockerfile equal",
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(DockerBuild{Dockerfile: "FROM foo"})),
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(DockerBuild{Dockerfile: "FROM foo"})),
-		false,
-	},
-	{
-		"DockerBuild.BuildPath unequal",
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(DockerBuild{BuildPath: "foo/bar"})),
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(DockerBuild{BuildPath: "foo/bar/baz"})),
-		true,
-	},
-	{
-		"DockerBuild.BuildPath equal",
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(DockerBuild{BuildPath: "foo/bar"})),
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(DockerBuild{BuildPath: "foo/bar"})),
-		false,
-	},
-	{
-		"DockerBuild.BuildArgs unequal",
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(DockerBuild{BuildArgs: buildArgs1})),
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(DockerBuild{BuildArgs: buildArgs2})),
-		true,
-	},
-	{
-		"DockerBuild.BuildArgs equal",
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(DockerBuild{BuildArgs: buildArgs1})),
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(DockerBuild{BuildArgs: buildArgs1})),
 		false,
 	},
 	{
@@ -196,12 +151,6 @@ var equalitytests = []struct {
 		"CustomBuild.Deps unequal and doesn't invalidate",
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(CustomBuild{Deps: []string{"foo", "bar"}})),
 		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(CustomBuild{Deps: []string{"bar", "quux"}})),
-		false,
-	},
-	{
-		"DockerBuild.CacheFrom unequal and doesn't invalidate",
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(DockerBuild{CacheFrom: []string{"foo", "bar"}})),
-		Manifest{}.WithImageTarget(ImageTarget{}.WithBuildDetails(DockerBuild{CacheFrom: []string{"bar", "quux"}})),
 		false,
 	},
 	{

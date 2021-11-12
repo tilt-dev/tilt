@@ -59,7 +59,7 @@ func TestStateToViewRelativeEditPaths(t *testing.T) {
 	m := model.Manifest{
 		Name: "foo",
 	}.WithDeployTarget(model.K8sTarget{}).WithImageTarget(model.ImageTarget{}.
-		WithBuildDetails(model.DockerBuild{BuildPath: f.JoinPath("a", "b", "c")}))
+		WithDockerImage(v1alpha1.DockerImageSpec{Context: f.JoinPath("a", "b", "c")}))
 
 	state := newState([]model.Manifest{m})
 	ms := state.ManifestTargets[m.Name].State

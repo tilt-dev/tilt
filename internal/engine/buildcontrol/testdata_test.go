@@ -37,10 +37,11 @@ var SanchoBaseRef = container.MustParseSelector("sancho-base")
 var SanchoSidecarRef = container.MustParseSelector(testyaml.SanchoSidecarImage)
 
 func NewSanchoManifestWithImageInEnvVar(f Fixture) model.Manifest {
-	it2 := model.MustNewImageTarget(container.MustParseSelector(SanchoRef.String() + "2")).WithBuildDetails(model.DockerBuild{
-		Dockerfile: SanchoDockerfile,
-		BuildPath:  f.Path(),
-	})
+	it2 := model.MustNewImageTarget(container.MustParseSelector(SanchoRef.String() + "2")).
+		WithDockerImage(v1alpha1.DockerImageSpec{
+			DockerfileContents: SanchoDockerfile,
+			Context:            f.Path(),
+		})
 	it2.MatchInEnvVars = true
 	return manifestbuilder.New(f, "sancho").
 		WithK8sYAML(testyaml.SanchoImageInEnvYAML).
@@ -83,10 +84,11 @@ func NewSanchoCustomBuildManifestWithPushDisabled(fixture Fixture) model.Manifes
 }
 
 func NewSanchoDockerBuildImageTarget(f Fixture) model.ImageTarget {
-	return model.MustNewImageTarget(SanchoRef).WithBuildDetails(model.DockerBuild{
-		Dockerfile: SanchoDockerfile,
-		BuildPath:  f.Path(),
-	})
+	return model.MustNewImageTarget(SanchoRef).
+		WithDockerImage(v1alpha1.DockerImageSpec{
+			DockerfileContents: SanchoDockerfile,
+			Context:            f.Path(),
+		})
 }
 
 func NewSanchoLiveUpdate(f Fixture) v1alpha1.LiveUpdateSpec {
@@ -128,20 +130,22 @@ func NewSanchoDockerBuildManifestWithYaml(f Fixture, yaml string) model.Manifest
 }
 
 func NewSanchoDockerBuildMultiStageManifest(fixture Fixture) model.Manifest {
-	baseImage := model.MustNewImageTarget(SanchoBaseRef).WithBuildDetails(model.DockerBuild{
-		Dockerfile: `FROM golang:1.10`,
-		BuildPath:  fixture.JoinPath("sancho-base"),
-	})
+	baseImage := model.MustNewImageTarget(SanchoBaseRef).
+		WithDockerImage(v1alpha1.DockerImageSpec{
+			DockerfileContents: `FROM golang:1.10`,
+			Context:            fixture.JoinPath("sancho-base"),
+		})
 
-	srcImage := model.MustNewImageTarget(SanchoRef).WithBuildDetails(model.DockerBuild{
-		Dockerfile: `
+	srcImage := model.MustNewImageTarget(SanchoRef).
+		WithDockerImage(v1alpha1.DockerImageSpec{
+			DockerfileContents: `
 FROM sancho-base
 ADD . .
 RUN go install github.com/tilt-dev/sancho
 ENTRYPOINT /go/bin/sancho
 `,
-		BuildPath: fixture.JoinPath("sancho"),
-	}).WithDependencyIDs([]model.TargetID{baseImage.ID()})
+			Context: fixture.JoinPath("sancho"),
+		}).WithDependencyIDs([]model.TargetID{baseImage.ID()})
 
 	return manifestbuilder.New(fixture, "sancho").
 		WithK8sYAML(SanchoYAML).
@@ -150,14 +154,15 @@ ENTRYPOINT /go/bin/sancho
 }
 
 func NewSanchoLiveUpdateMultiStageManifest(fixture Fixture) model.Manifest {
-	baseImage := model.MustNewImageTarget(SanchoBaseRef).WithBuildDetails(model.DockerBuild{
-		Dockerfile: `FROM golang:1.10`,
-		BuildPath:  fixture.Path(),
-	})
+	baseImage := model.MustNewImageTarget(SanchoBaseRef).
+		WithDockerImage(v1alpha1.DockerImageSpec{
+			DockerfileContents: `FROM golang:1.10`,
+			Context:            fixture.Path(),
+		})
 
 	srcImage := NewSanchoLiveUpdateImageTarget(fixture)
 	dbInfo := srcImage.DockerBuildInfo()
-	dbInfo.Dockerfile = `FROM sancho-base`
+	dbInfo.DockerImageSpec.DockerfileContents = `FROM sancho-base`
 
 	srcImage = srcImage.
 		WithBuildDetails(dbInfo).
@@ -180,18 +185,21 @@ func NewManifestsWithCommonAncestor(fixture Fixture) (model.Manifest, model.Mani
 	fixture.MkdirAll("image-1")
 	fixture.MkdirAll("image-2")
 
-	targetCommon := model.MustNewImageTarget(refCommon).WithBuildDetails(model.DockerBuild{
-		Dockerfile: `FROM golang:1.10`,
-		BuildPath:  fixture.JoinPath("common"),
-	})
-	target1 := model.MustNewImageTarget(ref1).WithBuildDetails(model.DockerBuild{
-		Dockerfile: `FROM ` + refCommon.String(),
-		BuildPath:  fixture.JoinPath("image-1"),
-	}).WithDependencyIDs([]model.TargetID{targetCommon.ID()})
-	target2 := model.MustNewImageTarget(ref2).WithBuildDetails(model.DockerBuild{
-		Dockerfile: `FROM ` + refCommon.String(),
-		BuildPath:  fixture.JoinPath("image-2"),
-	}).WithDependencyIDs([]model.TargetID{targetCommon.ID()})
+	targetCommon := model.MustNewImageTarget(refCommon).
+		WithDockerImage(v1alpha1.DockerImageSpec{
+			DockerfileContents: `FROM golang:1.10`,
+			Context:            fixture.JoinPath("common"),
+		})
+	target1 := model.MustNewImageTarget(ref1).
+		WithDockerImage(v1alpha1.DockerImageSpec{
+			DockerfileContents: `FROM ` + refCommon.String(),
+			Context:            fixture.JoinPath("image-1"),
+		}).WithDependencyIDs([]model.TargetID{targetCommon.ID()})
+	target2 := model.MustNewImageTarget(ref2).
+		WithDockerImage(v1alpha1.DockerImageSpec{
+			DockerfileContents: `FROM ` + refCommon.String(),
+			Context:            fixture.JoinPath("image-2"),
+		}).WithDependencyIDs([]model.TargetID{targetCommon.ID()})
 
 	m1 := manifestbuilder.New(fixture, "image-1").
 		WithK8sYAML(testyaml.Deployment("image-1", ref1.String())).
@@ -215,22 +223,26 @@ func NewManifestsWithTwoCommonAncestors(fixture Fixture) (model.Manifest, model.
 	fixture.MkdirAll("image-1")
 	fixture.MkdirAll("image-2")
 
-	targetBase := model.MustNewImageTarget(refBase).WithBuildDetails(model.DockerBuild{
-		Dockerfile: `FROM golang:1.10`,
-		BuildPath:  fixture.JoinPath("base"),
-	})
-	targetCommon := model.MustNewImageTarget(refCommon).WithBuildDetails(model.DockerBuild{
-		Dockerfile: `FROM ` + refBase.String(),
-		BuildPath:  fixture.JoinPath("common"),
-	}).WithDependencyIDs([]model.TargetID{targetBase.ID()})
-	target1 := model.MustNewImageTarget(ref1).WithBuildDetails(model.DockerBuild{
-		Dockerfile: `FROM ` + refCommon.String(),
-		BuildPath:  fixture.JoinPath("image-1"),
-	}).WithDependencyIDs([]model.TargetID{targetCommon.ID()})
-	target2 := model.MustNewImageTarget(ref2).WithBuildDetails(model.DockerBuild{
-		Dockerfile: `FROM ` + refCommon.String(),
-		BuildPath:  fixture.JoinPath("image-2"),
-	}).WithDependencyIDs([]model.TargetID{targetCommon.ID()})
+	targetBase := model.MustNewImageTarget(refBase).
+		WithDockerImage(v1alpha1.DockerImageSpec{
+			DockerfileContents: `FROM golang:1.10`,
+			Context:            fixture.JoinPath("base"),
+		})
+	targetCommon := model.MustNewImageTarget(refCommon).
+		WithDockerImage(v1alpha1.DockerImageSpec{
+			DockerfileContents: `FROM ` + refBase.String(),
+			Context:            fixture.JoinPath("common"),
+		}).WithDependencyIDs([]model.TargetID{targetBase.ID()})
+	target1 := model.MustNewImageTarget(ref1).
+		WithDockerImage(v1alpha1.DockerImageSpec{
+			DockerfileContents: `FROM ` + refCommon.String(),
+			Context:            fixture.JoinPath("image-1"),
+		}).WithDependencyIDs([]model.TargetID{targetCommon.ID()})
+	target2 := model.MustNewImageTarget(ref2).
+		WithDockerImage(v1alpha1.DockerImageSpec{
+			DockerfileContents: `FROM ` + refCommon.String(),
+			Context:            fixture.JoinPath("image-2"),
+		}).WithDependencyIDs([]model.TargetID{targetCommon.ID()})
 
 	m1 := manifestbuilder.New(fixture, "image-1").
 		WithK8sYAML(testyaml.Deployment("image-1", ref1.String())).
@@ -250,14 +262,16 @@ func NewManifestsWithSameTwoImages(fixture Fixture) (model.Manifest, model.Manif
 	fixture.MkdirAll("common")
 	fixture.MkdirAll("image-1")
 
-	targetCommon := model.MustNewImageTarget(refCommon).WithBuildDetails(model.DockerBuild{
-		Dockerfile: `FROM golang:1.10`,
-		BuildPath:  fixture.JoinPath("common"),
-	})
-	target1 := model.MustNewImageTarget(ref1).WithBuildDetails(model.DockerBuild{
-		Dockerfile: `FROM ` + refCommon.String(),
-		BuildPath:  fixture.JoinPath("image-1"),
-	}).WithDependencyIDs([]model.TargetID{targetCommon.ID()})
+	targetCommon := model.MustNewImageTarget(refCommon).
+		WithDockerImage(v1alpha1.DockerImageSpec{
+			DockerfileContents: `FROM golang:1.10`,
+			Context:            fixture.JoinPath("common"),
+		})
+	target1 := model.MustNewImageTarget(ref1).
+		WithDockerImage(v1alpha1.DockerImageSpec{
+			DockerfileContents: `FROM ` + refCommon.String(),
+			Context:            fixture.JoinPath("image-1"),
+		}).WithDependencyIDs([]model.TargetID{targetCommon.ID()})
 
 	m1 := manifestbuilder.New(fixture, "dep-1").
 		WithK8sYAML(testyaml.Deployment("dep-1", ref1.String())).

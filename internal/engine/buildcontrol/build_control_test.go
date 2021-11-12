@@ -273,7 +273,7 @@ func TestHoldForDeploy(t *testing.T) {
 	}
 	sanchoImage := model.MustNewImageTarget(container.MustParseSelector("sancho")).
 		WithLiveUpdateSpec("sancho", luSpec).
-		WithBuildDetails(model.DockerBuild{BuildPath: f.Path()})
+		WithDockerImage(v1alpha1.DockerImageSpec{Context: f.Path()})
 	sancho := f.upsertManifest(manifestbuilder.New(f, "sancho").
 		WithImageTargets(sanchoImage).
 		WithK8sYAML(testyaml.SanchoYAML).

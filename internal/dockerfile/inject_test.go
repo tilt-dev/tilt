@@ -175,7 +175,7 @@ FROM gcr.io/windmill/foo:${TAG}
 ADD . .
 `)
 	ref := container.MustParseNamedTagged("gcr.io/windmill/foo:deadbeef")
-	newDf, modified, err := InjectImageDigest(df, container.NameSelector(ref), ref, map[string]string{"TAG": "latest"})
+	newDf, modified, err := InjectImageDigest(df, container.NameSelector(ref), ref, []string{"TAG=latest"})
 	if assert.NoError(t, err) {
 		assert.True(t, modified)
 		// N.B. the rendered AST should still maintain the original value for the build arg
@@ -194,7 +194,7 @@ FROM gcr.io/windmill/foo:${TAG}
 ADD . .
 `)
 	ref := container.MustParseNamedTagged("gcr.io/windmill/foo:deadbeef")
-	newDf, modified, err := InjectImageDigest(df, container.NameSelector(ref), ref, map[string]string{"TAG": "v2.0.1"})
+	newDf, modified, err := InjectImageDigest(df, container.NameSelector(ref), ref, []string{"TAG=v2.0.1"})
 	if assert.NoError(t, err) {
 		assert.True(t, modified)
 		// N.B. the rendered AST should still maintain the original value for the build arg

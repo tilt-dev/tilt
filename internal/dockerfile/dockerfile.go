@@ -12,7 +12,7 @@ func (d Dockerfile) Empty() bool {
 }
 
 // Find all images referenced in this dockerfile.
-func (d Dockerfile) FindImages(buildArgs map[string]string) ([]reference.Named, error) {
+func (d Dockerfile) FindImages(buildArgs []string) ([]reference.Named, error) {
 	result := []reference.Named{}
 	ast, err := ParseAST(d)
 	if err != nil {

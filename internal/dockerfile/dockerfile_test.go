@@ -74,7 +74,7 @@ func TestFindImagesWithNoDefaultArg(t *testing.T) {
 ARG TAG
 FROM gcr.io/image-a:${TAG}
 `)
-	images, err := df.FindImages(map[string]string{"TAG": "latest"})
+	images, err := df.FindImages([]string{"TAG=latest"})
 	assert.NoError(t, err)
 	if assert.Equal(t, 1, len(images)) {
 		assert.Equal(t, "gcr.io/image-a:latest", images[0].String())
@@ -86,7 +86,7 @@ func TestFindImagesWithOverrideArg(t *testing.T) {
 ARG TAG="latest"
 FROM gcr.io/image-a:${TAG}
 `)
-	images, err := df.FindImages(map[string]string{"TAG": "v2.0.1"})
+	images, err := df.FindImages([]string{"TAG=v2.0.1"})
 	assert.NoError(t, err)
 	if assert.Equal(t, 1, len(images)) {
 		assert.Equal(t, "gcr.io/image-a:v2.0.1", images[0].String())
