@@ -280,6 +280,7 @@ var dockerBuildCleanupRexes = []*regexp.Regexp{
 	// when a file is missing, it generates an error like "failed to compute cache key: foo.txt not found: not found"
 	// most of that seems redundant and/or confusing
 	regexp.MustCompile("failed to compute cache key: (.* not found): not found"),
+	regexp.MustCompile("failed to compute cache key: (?:failed to walk [^ ]+): lstat (?:/.*buildkit-[^/]*/)?(.*: no such file or directory)"),
 }
 
 // buildkit emits errors that might be useful for people who are into buildkit internals, but aren't really

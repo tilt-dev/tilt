@@ -147,6 +147,11 @@ func TestCleanUpBuildKitErrors(t *testing.T) {
 			buildKitError:     `failed to solve with frontend dockerfile.v0: failed to build LLB: failed to compute cache key: "/foo.txt"`,
 			expectedTiltError: `failed to compute cache key: "/foo.txt"`,
 		},
+		// actual error - trying to ADD a file from a directory that doesn't exist locally
+		{
+			buildKitError:     `failed to compute cache key: failed to walk /var/lib/docker/tmp/buildkit-mount818620576/base/src: lstat /var/lib/docker/tmp/buildkit-mount818620576/base/src: no such file or directory`,
+			expectedTiltError: `base/src: no such file or directory`,
+		},
 		// check an unanticipated error that still has the annoying preamble
 		{
 			buildKitError:     "failed to solve with frontend dockerfile.v0: failed to build LLB: who knows, some made up explosion",
