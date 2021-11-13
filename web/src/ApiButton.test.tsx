@@ -157,8 +157,9 @@ describe("ApiButton", () => {
     expect(call[1]).toBeTruthy()
     expect(call[1]!.method).toEqual("PUT")
     expect(call[1]!.body).toBeTruthy()
-    const actualStatus: UIButtonStatus = JSON.parse(call[1]!.body!.toString())
-      .status
+    const actualStatus: UIButtonStatus = JSON.parse(
+      call[1]!.body!.toString()
+    ).status
 
     const expectedStatus: UIButtonStatus = {
       lastClickedAt: "2016-12-21T23:36:07.071000+00:00",
@@ -215,8 +216,9 @@ describe("ApiButton", () => {
     expect(call[1]).toBeTruthy()
     expect(call[1]!.method).toEqual("PUT")
     expect(call[1]!.body).toBeTruthy()
-    const actualStatus: UIButtonStatus = JSON.parse(call[1]!.body!.toString())
-      .status
+    const actualStatus: UIButtonStatus = JSON.parse(
+      call[1]!.body!.toString()
+    ).status
 
     const expectedStatus: UIButtonStatus = {
       lastClickedAt: "2016-12-21T23:36:07.071000+00:00",

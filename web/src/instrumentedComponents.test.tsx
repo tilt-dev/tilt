@@ -92,7 +92,7 @@ describe("instrumented components", () => {
       tf.simulate("change", { target: { value: "foo" } })
       tf.simulate("change", { target: { value: "foobar" } })
       expectIncrs(...[])
-      jest.runTimersToTime(10000)
+      jest.advanceTimersByTime(10000)
       expectIncrs({
         name: "ui.web.TestTextField",
         tags: { action: AnalyticsAction.Edit, foo: "bar" },

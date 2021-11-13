@@ -54,14 +54,12 @@ export function ResourceListOptionsProvider(
   const defaultPersistentValue = props.initialValuesForTesting ?? {
     ...DEFAULT_OPTIONS,
   }
-  const [
-    options,
-    setResourceListOptions,
-  ] = usePersistentState<ResourceListOptions>(
-    RESOURCE_LIST_OPTIONS_KEY,
-    defaultPersistentValue,
-    maybeUpgradeSavedOptions
-  )
+  const [options, setResourceListOptions] =
+    usePersistentState<ResourceListOptions>(
+      RESOURCE_LIST_OPTIONS_KEY,
+      defaultPersistentValue,
+      maybeUpgradeSavedOptions
+    )
 
   function setOptions(options: Partial<ResourceListOptions>) {
     setResourceListOptions((previousOptions) => ({
