@@ -69,6 +69,7 @@ type FakeK8sClient struct {
 	EventsWatchErr error
 
 	UpsertError      error
+	UpsertResult     []K8sEntity
 	LastUpsertResult []K8sEntity
 	UpsertTimeout    time.Duration
 
@@ -344,29 +345,34 @@ func (c *FakeK8sClient) TearDown() {
 	}
 }
 
-func (c *FakeK8sClient) Upsert(ctx context.Context, entities []K8sEntity, timeout time.Duration) ([]K8sEntity, error) {
+func (c *FakeK8sClient) Upsert(_ context.Context, entities []K8sEntity, timeout time.Duration) ([]K8sEntity, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	if c.UpsertError != nil {
 		return nil, c.UpsertError
 	}
-	yaml, err := SerializeSpecYAML(entities)
-	if err != nil {
-		return nil, errors.Wrap(err, "kubectl apply")
-	}
-	c.Yaml = yaml
 
-	result := make([]K8sEntity, 0, len(entities))
+	var result []K8sEntity
+	if c.UpsertResult != nil {
+		result = c.UpsertResult
+	} else {
+		yaml, err := SerializeSpecYAML(entities)
+		if err != nil {
+			return nil, errors.Wrap(err, "kubectl apply")
+		}
+		c.Yaml = yaml
 
-	for _, e := range entities {
-		clone := e.DeepCopy()
-		clone.SetUID(uuid.New().String())
-		result = append(result, clone)
+		for _, e := range entities {
+			clone := e.DeepCopy()
+			clone.SetUID(uuid.New().String())
+			result = append(result, clone)
+		}
 	}
 
 	c.LastUpsertResult = result
 	c.UpsertTimeout = timeout
+
 	return result, nil
 }
 
