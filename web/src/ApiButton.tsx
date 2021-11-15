@@ -166,13 +166,8 @@ function ApiButtonWithOptions(props: ApiButtonWithOptionsProps & ButtonProps) {
   const [open, setOpen] = useState(false)
   const anchorRef = useRef(null)
 
-  const {
-    submit,
-    uiButton,
-    setInputValue,
-    getInputValue,
-    ...buttonProps
-  } = props
+  const { submit, uiButton, setInputValue, getInputValue, ...buttonProps } =
+    props
 
   return (
     <>

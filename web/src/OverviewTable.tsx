@@ -935,21 +935,16 @@ export function Table(props: TableProps) {
     return null
   }
 
-  const {
-    getTableProps,
-    getTableBodyProps,
-    headerGroups,
-    rows,
-    prepareRow,
-  } = useTable(
-    {
-      columns: columnDefs,
-      data: props.data,
-      autoResetSortBy: false,
-      useControlledState: props.useControlledState,
-    },
-    useSortBy
-  )
+  const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } =
+    useTable(
+      {
+        columns: columnDefs,
+        data: props.data,
+        autoResetSortBy: false,
+        useControlledState: props.useControlledState,
+      },
+      useSortBy
+    )
 
   // TODO (lizz): Consider adding `aria-sort` markup to table headings
   return (
@@ -1029,9 +1024,8 @@ export function TableGroupedByLabels({
   // Global table settings are currently used to sort multiple
   // tables by the same column
   // See: https://react-table.tanstack.com/docs/faq#how-can-i-manually-control-the-table-state
-  const [globalTableSettings, setGlobalTableSettings] = useState<
-    TableState<RowValues>
-  >()
+  const [globalTableSettings, setGlobalTableSettings] =
+    useState<TableState<RowValues>>()
 
   const useControlledState = (state: TableState<RowValues>) =>
     useMemo(() => {

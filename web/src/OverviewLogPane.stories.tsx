@@ -145,18 +145,15 @@ export const BuildFallbackLinesLong = () => {
     "Build log 1\n",
     "Build log 2\n",
     {
-      text:
-        "Fallback build 1 Fallback build 1 Fallback build 1 Fallback build 1 Fallback build 1 Fallback build 1 Fallback build 1 Fallback build 1\n",
+      text: "Fallback build 1 Fallback build 1 Fallback build 1 Fallback build 1 Fallback build 1 Fallback build 1 Fallback build 1 Fallback build 1\n",
       fields: { buildEvent: "fallback" },
     },
     {
-      text:
-        "Fallback build 2 Fallback build 2 Fallback build 2 Fallback build 2 Fallback build 2 Fallback build 2 Fallback build 2 Fallback build 2\n",
+      text: "Fallback build 2 Fallback build 2 Fallback build 2 Fallback build 2 Fallback build 2 Fallback build 2 Fallback build 2 Fallback build 2\n",
       fields: { buildEvent: "fallback" },
     },
     {
-      text:
-        "Fallback build 3 Fallback build 3 Fallback build 3 Fallback build 3 Fallback build 3 Fallback build 3 Fallback build 3 Fallback build 3 Fallback build 3\n",
+      text: "Fallback build 3 Fallback build 3 Fallback build 3 Fallback build 3 Fallback build 3 Fallback build 3 Fallback build 3 Fallback build 3 Fallback build 3\n",
       fields: { buildEvent: "fallback" },
     },
     "Build log 3\n",

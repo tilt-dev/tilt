@@ -23,18 +23,14 @@ function runtimeAlerts(r: UIResource, alertIndex: LogAlertIndex): Alert[] {
   if (!spanId) {
     return []
   }
-  return alertIndex.alertsForSpanId(spanId).map(
-    (logAlert: LogAlert): Alert => {
-      return {
-        resourceName: name,
-        source: FilterSource.runtime,
-        level:
-          logAlert.level == LogLevel.WARN
-            ? FilterLevel.warn
-            : FilterLevel.error,
-      }
+  return alertIndex.alertsForSpanId(spanId).map((logAlert: LogAlert): Alert => {
+    return {
+      resourceName: name,
+      source: FilterSource.runtime,
+      level:
+        logAlert.level == LogLevel.WARN ? FilterLevel.warn : FilterLevel.error,
     }
-  )
+  })
 }
 
 // Build alerts can only come from the most recently finished build.
@@ -48,18 +44,14 @@ function buildAlerts(r: UIResource, alertIndex: LogAlertIndex): Alert[] {
   if (!spanId) {
     return []
   }
-  return alertIndex.alertsForSpanId(spanId).map(
-    (logAlert: LogAlert): Alert => {
-      return {
-        resourceName: name,
-        source: FilterSource.build,
-        level:
-          logAlert.level == LogLevel.WARN
-            ? FilterLevel.warn
-            : FilterLevel.error,
-      }
+  return alertIndex.alertsForSpanId(spanId).map((logAlert: LogAlert): Alert => {
+    return {
+      resourceName: name,
+      source: FilterSource.build,
+      level:
+        logAlert.level == LogLevel.WARN ? FilterLevel.warn : FilterLevel.error,
     }
-  )
+  })
 }
 
 function combinedAlerts(r: UIResource, alertIndex: LogAlertIndex): Alert[] {
