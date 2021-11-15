@@ -54,6 +54,10 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImage":                     schema_pkg_apis_core_v1alpha1_DockerImage(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageList":                 schema_pkg_apis_core_v1alpha1_DockerImageList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageSpec":                 schema_pkg_apis_core_v1alpha1_DockerImageSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageStageStatus":          schema_pkg_apis_core_v1alpha1_DockerImageStageStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageStateBuilding":        schema_pkg_apis_core_v1alpha1_DockerImageStateBuilding(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageStateCompleted":       schema_pkg_apis_core_v1alpha1_DockerImageStateCompleted(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageStateWaiting":         schema_pkg_apis_core_v1alpha1_DockerImageStateWaiting(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageStatus":               schema_pkg_apis_core_v1alpha1_DockerImageStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExecAction":                      schema_pkg_apis_core_v1alpha1_ExecAction(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Extension":                       schema_pkg_apis_core_v1alpha1_Extension(ref),
@@ -1312,14 +1316,199 @@ func schema_pkg_apis_core_v1alpha1_DockerImageSpec(ref common.ReferenceCallback)
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_DockerImageStageStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "DockerImageStageStatus gives detailed report of each stage of the most recent image build.\n\nMost stages are derived from Buildkit's StatusResponse https://github.com/moby/buildkit/blob/35fcb28a009d6454b2915a5c8084b25ad851cf38/api/services/control/control.proto#L108 but Tilt may synthesize its own stages for the steps it owns.\n\nStages may be executed in parallel.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A human-readable name of the stage.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"cached": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether Buildkit was able to cache the stage based on inputs.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"startedAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The timestamp when we started working on the stage.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+					"finishedAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The timetsamp when we completed the work on the stage.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+					"error": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Error message if the stage failed. If empty, the stage succeeded.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"name"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_DockerImageStateBuilding(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "DockerImageStateBuilding expresses that an image build is in-progress.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"reason": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The reason why the image is building.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"startedAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Time when the build started.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_DockerImageStateCompleted(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "DockerImageStateCompleted expresses when the image build is finished and no new images need to be built.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"reason": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The reason why the image was built.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"error": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Error message if the build failed.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"startedAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Time when we started building an image.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+					"finishedAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Time when we finished building an image",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_DockerImageStateWaiting(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "DockerImageStateWaiting expresses what we're waiting on to build an image.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"reason": {
+						SchemaProps: spec.SchemaProps{
+							Description: "(brief) reason the image build is waiting.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_DockerImageStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Description: "DockerImageStatus defines the observed state of DockerImage",
 				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"ref": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A fully-qualified image reference of a built image, as seen from the local network.\n\nUsually includes a name and an immutable tag.\n\nNB: If we're building to a particular registry, this may have a different hostname from the Spec `Ref` field.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"waiting": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Details about a waiting image build.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageStateWaiting"),
+						},
+					},
+					"building": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Details about a building image.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageStateBuilding"),
+						},
+					},
+					"completed": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Details about a finished image build.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageStateCompleted"),
+						},
+					},
+					"stageStatuses": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Status information about each individual build stage of the most recent image build.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageStageStatus"),
+									},
+								},
+							},
+						},
+					},
+				},
 			},
 		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageStageStatus", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageStateBuilding", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageStateCompleted", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageStateWaiting"},
 	}
 }
 
