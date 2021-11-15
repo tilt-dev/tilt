@@ -2416,7 +2416,7 @@ func schema_pkg_apis_core_v1alpha1_ImageMapStatus(ref common.ReferenceCallback) 
 				Properties: map[string]spec.Schema{
 					"image": {
 						SchemaProps: spec.SchemaProps{
-							Description: "A fully-qualified image reference, including a name and an immutable tag.\n\nThe image will not necessarily have the same repo URL as the selector. Many Kubernetes clusters let you push to a local registry for local development.",
+							Description: "A fully-qualified image reference, including a name and an immutable tag, as seen from the cluster container runtime that we're mapping this image to.\n\nNB: Container images often need to be referenced from different networks, including:\n\n1) The cluster container runtime 2) The local network 3) The cluster network\n\nAnd each of these cases may have distinct URLs.\n\nFor more details on image references in different networks, see: https://github.com/kubernetes/enhancements/tree/master/keps/sig-cluster-lifecycle/generic/1755-communicating-a-local-registry#specification-for-localregistryhosting-v1",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",

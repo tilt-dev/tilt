@@ -16,6 +16,7 @@ import (
 	"golang.org/x/mod/semver"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apis/dockerimage"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/apiset"
 	"github.com/tilt-dev/tilt/internal/localexec"
@@ -1400,6 +1401,8 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(mn model.ManifestName, 
 
 		switch image.Type() {
 		case DockerBuild:
+			iTarget.DockerImageName = dockerimage.GetName(mn, iTarget.ID())
+
 			spec := v1alpha1.DockerImageSpec{
 				DockerfileContents: image.dbDockerfile.String(),
 				Context:            image.dbBuildPath,

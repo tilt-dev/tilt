@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apis/dockerimage"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -153,9 +154,13 @@ func (b ManifestBuilder) WithResourceDeps(deps ...string) ManifestBuilder {
 func (b ManifestBuilder) Build() model.Manifest {
 	var m model.Manifest
 
-	// Adjust images to use the live update reconciler or the BuildAndDeployer.
+	// Adjust images to use their API server object names, when appropriate.
 	// Currently,
 	for index, iTarget := range b.iTargets {
+		if iTarget.IsDockerBuild() {
+			iTarget.DockerImageName = dockerimage.GetName(m.Name, iTarget.ID())
+		}
+
 		if liveupdate.IsEmptySpec(iTarget.LiveUpdateSpec) {
 			iTarget.LiveUpdateReconciler = false
 		} else if b.useLiveUpdateBAD {

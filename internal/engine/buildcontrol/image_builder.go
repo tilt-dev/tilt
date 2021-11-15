@@ -46,7 +46,7 @@ func (icb *ImageBuilder) Build(ctx context.Context, iTarget model.ImageTarget,
 		ps.StartPipelineStep(ctx, "Building Dockerfile: [%s]", userFacingRefName)
 		defer ps.EndPipelineStep(ctx)
 
-		refs, err = icb.db.BuildImage(ctx, ps, iTarget.Refs, bd,
+		refs, err = icb.db.BuildImage(ctx, ps, iTarget.Refs, bd.DockerImageSpec,
 			ignore.CreateBuildContextFilter(iTarget))
 
 		if err != nil {
