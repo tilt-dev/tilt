@@ -145,6 +145,11 @@ func TestImageMapCreate(t *testing.T) {
 	var im v1alpha1.ImageMap
 	assert.NoError(t, c.Get(ctx, types.NamespacedName{Name: name}, &im))
 	assert.Contains(t, im.Spec.Selector, SanchoRef.String())
+
+	diName := apis.SanitizeName(fmt.Sprintf("fe:%s", SanchoRef.String()))
+	var di v1alpha1.DockerImage
+	assert.NoError(t, c.Get(ctx, types.NamespacedName{Name: diName}, &di))
+	assert.Contains(t, di.Spec.Ref, SanchoRef.String())
 }
 
 func TestAPITwoTiltfiles(t *testing.T) {

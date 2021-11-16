@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 
+	"github.com/docker/distribution/reference"
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/tilt-dev/tilt/internal/container"
@@ -19,6 +20,9 @@ type ImageTarget struct {
 	LiveUpdateName       string
 	LiveUpdateSpec       v1alpha1.LiveUpdateSpec
 	LiveUpdateReconciler bool
+
+	// An apiserver-driven data model for using docker to build images.
+	DockerImageName string
 
 	Refs         container.RefSet
 	BuildDetails BuildDetails
@@ -156,7 +160,14 @@ func (i ImageTarget) WithDockerImage(spec v1alpha1.DockerImageSpec) ImageTarget 
 }
 
 func (i ImageTarget) WithBuildDetails(details BuildDetails) ImageTarget {
+	db, ok := details.(DockerBuild)
+	if ok {
+		db.DockerImageSpec.Ref = reference.FamiliarString(i.Refs.ConfigurationRef)
+		details = db
+	}
+
 	i.BuildDetails = details
+
 	cb, ok := details.(CustomBuild)
 	isEmptyLiveUpdateSpec := len(i.LiveUpdateSpec.Syncs) == 0 && len(i.LiveUpdateSpec.Execs) == 0
 	if ok && cmp.Equal(cb.Command.Argv, ToHostCmd(":").Argv) && !isEmptyLiveUpdateSpec {

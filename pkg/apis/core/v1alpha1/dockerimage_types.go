@@ -145,6 +145,10 @@ type DockerImageSpec struct {
 var _ resource.Object = &DockerImage{}
 var _ resourcestrategy.Validater = &DockerImage{}
 
+func (in *DockerImage) GetSpec() interface{} {
+	return in.Spec
+}
+
 func (in *DockerImage) GetObjectMeta() *metav1.ObjectMeta {
 	return &in.ObjectMeta
 }
