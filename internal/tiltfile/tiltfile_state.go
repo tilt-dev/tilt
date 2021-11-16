@@ -80,7 +80,8 @@ type tiltfileState struct {
 	k8sContextExt k8scontext.Plugin
 	versionExt    version.Plugin
 	configExt     *config.Plugin
-	localRegistry container.Registry
+	k8sClient     k8s.Client
+	localRegistry *container.Registry
 	features      feature.FeatureSet
 
 	// added to during execution
@@ -152,7 +153,7 @@ func newTiltfileState(
 	k8sContextExt k8scontext.Plugin,
 	versionExt version.Plugin,
 	configExt *config.Plugin,
-	localRegistry container.Registry,
+	k8sClient k8s.Client,
 	features feature.FeatureSet) *tiltfileState {
 	return &tiltfileState{
 		ctx:                       ctx,
@@ -162,7 +163,7 @@ func newTiltfileState(
 		k8sContextExt:             k8sContextExt,
 		versionExt:                versionExt,
 		configExt:                 configExt,
-		localRegistry:             localRegistry,
+		k8sClient:                 k8sClient,
 		buildIndex:                newBuildIndex(),
 		k8sObjectIndex:            tiltfile_k8s.NewState(),
 		k8sByName:                 make(map[string]*k8sResource),
@@ -1000,12 +1001,23 @@ func (s *tiltfileState) k8sResourceForName(name string) (*k8sResource, error) {
 // Otherwise, we'll return the zero value of `s.defaultReg`, which is an empty registry.
 // It has side-effects (a log line) and so should only be called once.
 func (s *tiltfileState) decideRegistry() container.Registry {
-	if s.orchestrator() == model.OrchestratorK8s && !s.localRegistry.Empty() {
+	if s.orchestrator() != model.OrchestratorK8s {
+		return s.defaultReg
+	}
+
+	// Defer lookup of registry until now
+	if s.localRegistry == nil {
+		registry := s.k8sClient.LocalRegistry(s.ctx)
+		s.localRegistry = &registry
+	}
+
+	if !s.localRegistry.Empty() {
 		// If we've found a local registry in the cluster at run-time, use that
 		// instead of the default_registry (if any) declared in the Tiltfile
-		s.logger.Infof("Auto-detected local registry from environment: %s", s.localRegistry)
-		return s.localRegistry
+		s.logger.Infof("Auto-detected local registry from environment: %s", *s.localRegistry)
+		return *s.localRegistry
 	}
+
 	return s.defaultReg
 }
 

@@ -156,10 +156,8 @@ func (tfl tiltfileLoader) Load(ctx context.Context, tf *corev1alpha1.Tiltfile) T
 
 	tlr.Tiltignore = tiltignore
 
-	localRegistry := tfl.kCli.LocalRegistry(ctx)
-
 	s := newTiltfileState(ctx, tfl.dcCli, tfl.webHost, tfl.execer, tfl.k8sContextExt, tfl.versionExt,
-		tfl.configExt, localRegistry, feature.FromDefaults(tfl.fDefaults))
+		tfl.configExt, tfl.kCli, feature.FromDefaults(tfl.fDefaults))
 
 	manifests, result, err := s.loadManifests(tf)
 
