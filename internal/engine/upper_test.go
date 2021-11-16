@@ -3938,6 +3938,44 @@ local_resource('foo', serve_cmd='echo hi; sleep 10')`)
 	require.Equal(t, f.log.String(), "")
 }
 
+func TestDisabledResourceRemovedFromTriggerQueue(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	m := manifestbuilder.New(f, "foo").WithLocalResource("foo", []string{f.Path()}).Build()
+
+	f.Start([]model.Manifest{m})
+
+	f.waitForCompletedBuildCount(1)
+
+	f.bc.DisableForTesting()
+
+	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: m.Name, Reason: model.BuildReasonFlagTriggerCLI})
+
+	f.WaitUntil("in trigger queue", func(state store.EngineState) bool {
+		return state.ManifestInTriggerQueue(m.Name)
+	})
+
+	cm := v1alpha1.ConfigMap{}
+	err := f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: "foo-disable"}, &cm)
+	require.NoError(t, err)
+
+	cm.Data["isDisabled"] = "true"
+	err = f.ctrlClient.Update(f.ctx, &cm)
+	require.NoError(t, err)
+
+	f.WaitUntil("resource is disabled", func(state store.EngineState) bool {
+		if uir, ok := state.UIResources["foo"]; ok {
+			return uir.Status.DisableStatus.DisabledCount > 0
+		}
+		return false
+	})
+
+	f.WaitUntil("is removed from trigger queue", func(state store.EngineState) bool {
+		return !state.ManifestInTriggerQueue(m.Name)
+	})
+}
+
 type testFixture struct {
 	*tempdir.TempDirFixture
 	t                          *testing.T
