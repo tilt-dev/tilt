@@ -10,7 +10,7 @@ import {
   nButtonView,
   nResourceView,
   nResourceWithLabelsView,
-  tenResourceView,
+  oneResourceNoAlerts,
   tiltfileResource,
   twoResourceView,
 } from "./testdata"
@@ -22,6 +22,7 @@ export default {
     (Story: any, context: any) => {
       const features = new Features({
         [Flag.Labels]: context?.args?.labelsEnabled ?? true,
+        [Flag.DisableResources]: context?.args?.disableResourcesEnabled ?? true,
       })
       return (
         <MemoryRouter initialEntries={["/"]}>
@@ -43,6 +44,13 @@ export default {
   argTypes: {
     labelsEnabled: {
       name: "Group resources by label enabled",
+      control: {
+        type: "boolean",
+      },
+      defaultValue: true,
+    },
+    disableResourcesEnabled: {
+      name: "See disabled resources",
       control: {
         type: "boolean",
       },
@@ -80,11 +88,31 @@ export const TiltfileWarning = () => {
 }
 
 export const TenResources = () => {
-  return <OverviewTable view={tenResourceView()} />
+  const view = nResourceView(8)
+
+  // Add a couple disabled resources
+  const disableResource9 = oneResourceNoAlerts({ disabled: true, name: "_8" })
+  const disableResource10 = oneResourceNoAlerts({ disabled: true, name: "_9" })
+  view.uiResources.push(disableResource9)
+  view.uiResources.push(disableResource10)
+
+  return <OverviewTable view={view} />
 }
 
 export const TenResourceWithLabels = () => {
-  return <OverviewTable view={nResourceWithLabelsView(10)} />
+  const view = nResourceWithLabelsView(8)
+
+  // Add a couple disabled resources
+  const disableResource9 = oneResourceNoAlerts({
+    disabled: true,
+    name: "_8",
+    labels: 2,
+  })
+  const disableResource10 = oneResourceNoAlerts({ disabled: true, name: "_9" })
+  view.uiResources.push(disableResource9)
+  view.uiResources.push(disableResource10)
+
+  return <OverviewTable view={view} />
 }
 
 export const OneHundredResources = () => {

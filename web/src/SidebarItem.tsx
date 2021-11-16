@@ -34,7 +34,7 @@ class SidebarItem {
   queued: boolean
   lastBuild: Build | null = null
   hold: Hold | null = null
-  disabled: boolean
+  disabled: boolean // TODO (lizz): Refactor sidebar logic to refer to other status fields, since this is redundant
   targetType: string
 
   /**

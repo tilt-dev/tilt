@@ -124,6 +124,8 @@ const StarredResourceRoot = styled.div`
     animation: ${barberpole} 8s linear infinite;
   }
 
+  /* TODO (lizz): add "isDisabled" class styles */
+
   // implement margins as padding on child buttons, to ensure the buttons consume the
   // whole bounding box
   ${StarButton} {
