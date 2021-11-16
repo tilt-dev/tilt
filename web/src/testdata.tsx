@@ -1,5 +1,6 @@
 import { Href, UnregisterCallback } from "history"
 import { RouteComponentProps } from "react-router-dom"
+import { AnnotationButtonType, ToggleDisableButtonType } from "./ApiButton"
 import { ResourceName, TriggerMode } from "./types"
 
 type UIResource = Proto.v1alpha1UIResource
@@ -440,6 +441,27 @@ function oneButton(i: number, resourceName: string): UIButton {
     metadata: { name: `button${i + 1}` },
     spec: {
       text: `text${i + 1}`,
+      location: {
+        componentID: resourceName,
+        componentType: "resource",
+      },
+    },
+  }
+}
+
+export function disableButton(
+  resourceName: string,
+  enabled: boolean
+): UIButton {
+  return {
+    metadata: {
+      name: `toggle-${resourceName}-disable`,
+      annotations: {
+        [AnnotationButtonType]: ToggleDisableButtonType,
+      },
+    },
+    spec: {
+      text: enabled ? "Disable Resource" : "Enable Resource",
       location: {
         componentID: resourceName,
         componentType: "resource",

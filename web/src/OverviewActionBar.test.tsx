@@ -10,9 +10,11 @@ import {
   expectIncrs,
   mockAnalyticsCalls,
 } from "./analytics_test_helpers"
+import { ApiButton } from "./ApiButton"
 import { InstrumentedButton } from "./instrumentedComponents"
 import { EMPTY_FILTER_TERM, FilterLevel, FilterSource } from "./logfilters"
 import OverviewActionBar, {
+  ActionBarBottomRow,
   ActionBarTopRow,
   ButtonLeftPill,
   createLogSearch,
@@ -109,12 +111,32 @@ describe("buttons", () => {
       term: EMPTY_FILTER_TERM,
     }
     let root = mountBar(
-      <OverviewActionBar filterSet={filterSet} buttons={uiButtons} />
+      <OverviewActionBar
+        filterSet={filterSet}
+        buttons={{ normal: uiButtons }}
+      />
     )
     let topBar = root.find(ActionBarTopRow)
     let buttons = topBar.find(InstrumentedButton)
     expect(buttons).toHaveLength(1)
     expect(buttons.at(0).prop("disabled")).toBe(true)
+  })
+
+  it("renders disable-resource buttons separately from other buttons", () => {
+    const root = mountBar(<FullBar />)
+
+    const topRowButtons = root.find(ActionBarTopRow).find(ApiButton)
+    expect(topRowButtons).toHaveLength(1)
+    expect(topRowButtons.at(0).prop("uiButton").metadata?.name).toEqual(
+      "button2"
+    )
+
+    const bottomRowButtons = root.find(ActionBarBottomRow).find(ApiButton)
+    expect(bottomRowButtons.length).toBeGreaterThanOrEqual(1)
+    expect(
+      bottomRowButtons.at(bottomRowButtons.length - 1).prop("uiButton").metadata
+        ?.name
+    ).toEqual("toggle-vigoda-disable")
   })
 })
 

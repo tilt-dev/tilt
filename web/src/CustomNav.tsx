@@ -44,6 +44,7 @@ const CustomNavButton = styled(ApiButton)`
 
 export function CustomNav(props: CustomNavProps) {
   const buttons = buttonsForComponent(props.view.uiButtons, "global", "nav")
+    .normal
 
   return (
     <React.Fragment>

@@ -1,13 +1,23 @@
 import { mount } from "enzyme"
+import { SnackbarProvider } from "notistack"
+import React from "react"
 import { MemoryRouter } from "react-router-dom"
 import { FilterLevel } from "./logfilters"
 import LogStore, { LogStoreProvider } from "./LogStore"
-import { ButtonLeftPill, FilterRadioButton } from "./OverviewActionBar"
+import OverviewActionBar, {
+  ButtonLeftPill,
+  FilterRadioButton,
+} from "./OverviewActionBar"
 import OverviewResourcePane from "./OverviewResourcePane"
 import { NotFound } from "./OverviewResourcePane.stories"
 import OverviewResourceSidebar from "./OverviewResourceSidebar"
-import { ResourceNavProvider } from "./ResourceNav"
-import { oneResourceView } from "./testdata"
+import { ResourceNavContextProvider, ResourceNavProvider } from "./ResourceNav"
+import {
+  disableButton,
+  oneButton,
+  oneResource,
+  oneResourceView,
+} from "./testdata"
 import { appendLinesForManifestAndSpan, Line } from "./testlogs"
 import { LogLevel } from "./types"
 
@@ -108,5 +118,34 @@ describe("alert filtering", () => {
         } as Line,
       ])
     })
+  })
+
+  it("categorizes buttons", () => {
+    const view = {
+      uiResources: [oneResource()],
+      uiButtons: [oneButton(0, "vigoda"), disableButton("vigoda", true)],
+    }
+    const root = mount(
+      <MemoryRouter initialEntries={["/"]}>
+        <LogStoreProvider value={new LogStore()}>
+          <SnackbarProvider>
+            <ResourceNavContextProvider
+              value={{
+                selectedResource: "vigoda",
+                invalidResource: "",
+                openResource: () => {},
+              }}
+            >
+              <OverviewResourcePane view={view} />
+            </ResourceNavContextProvider>
+          </SnackbarProvider>
+        </LogStoreProvider>
+      </MemoryRouter>
+    )
+
+    const b = root.find(OverviewActionBar)
+    const buttons = root.find(OverviewActionBar).prop("buttons")
+    expect(buttons?.normal).toEqual([view.uiButtons[0]])
+    expect(buttons?.toggleDisable).toEqual(view.uiButtons[1])
   })
 })

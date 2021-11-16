@@ -301,12 +301,10 @@ func toToggleButtons(tlr *tiltfile.TiltfileLoadResult, disableSources disableSou
 						ComponentType: v1alpha1.ComponentTypeResource,
 					},
 					On: v1alpha1.ToggleButtonStateSpec{
-						Text:     "Enable",
-						IconName: "play_arrow",
+						Text: "Enable Resource",
 					},
 					Off: v1alpha1.ToggleButtonStateSpec{
-						Text:                 "Disable",
-						IconName:             "stop",
+						Text:                 "Disable Resource",
 						RequiresConfirmation: true,
 					},
 					StateSource: v1alpha1.StateSource{
