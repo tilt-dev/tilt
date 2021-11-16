@@ -190,6 +190,32 @@ func (in *DockerImageList) GetListMeta() *metav1.ListMeta {
 
 // DockerImageStatus defines the observed state of DockerImage
 type DockerImageStatus struct {
+	// A fully-qualified image reference of a built image, as seen from the local
+	// network.
+	//
+	// Usually includes a name and an immutable tag.
+	//
+	// NB: If we're building to a particular registry, this may
+	// have a different hostname from the Spec `Ref` field.
+	//
+	// +optional
+	Ref string `json:"ref,omitempty" protobuf:"bytes,1,opt,name=ref"`
+
+	// Details about a waiting image build.
+	// +optional
+	Waiting *DockerImageStateWaiting `json:"waiting,omitempty" protobuf:"bytes,2,opt,name=waiting"`
+
+	// Details about a building image.
+	// +optional
+	Building *DockerImageStateBuilding `json:"building,omitempty" protobuf:"bytes,3,opt,name=building"`
+
+	// Details about a finished image build.
+	// +optional
+	Completed *DockerImageStateCompleted `json:"completed,omitempty" protobuf:"bytes,4,opt,name=completed"`
+
+	// Status information about each individual build stage
+	// of the most recent image build.
+	StageStatuses []DockerImageStageStatus `json:"stageStatuses,omitempty" protobuf:"bytes,5,rep,name=stageStatuses"`
 }
 
 // DockerImage implements ObjectWithStatusSubResource interface.
@@ -204,4 +230,69 @@ var _ resource.StatusSubResource = &DockerImageStatus{}
 
 func (in DockerImageStatus) CopyTo(parent resource.ObjectWithStatusSubResource) {
 	parent.(*DockerImage).Status = in
+}
+
+// DockerImageStateWaiting expresses what we're waiting on to build an image.
+type DockerImageStateWaiting struct {
+	// (brief) reason the image build is waiting.
+	// +optional
+	Reason string `json:"reason,omitempty" protobuf:"bytes,1,opt,name=reason"`
+}
+
+// DockerImageStateBuilding expresses that an image build is in-progress.
+type DockerImageStateBuilding struct {
+	// The reason why the image is building.
+	// +optional
+	Reason string `json:"reason,omitempty" protobuf:"bytes,1,opt,name=reason"`
+
+	// Time when the build started.
+	StartedAt metav1.MicroTime `json:"startedAt,omitempty" protobuf:"bytes,2,opt,name=startedAt"`
+}
+
+// DockerImageStateCompleted expresses when the image build is finished and
+// no new images need to be built.
+type DockerImageStateCompleted struct {
+	// The reason why the image was built.
+	// +optional
+	Reason string `json:"reason,omitempty" protobuf:"bytes,1,opt,name=reason"`
+
+	// Error message if the build failed.
+	// +optional
+	Error string `json:"error,omitempty" protobuf:"bytes,2,opt,name=error"`
+
+	// Time when we started building an image.
+	StartedAt metav1.MicroTime `json:"startedAt,omitempty" protobuf:"bytes,3,opt,name=startedAt"`
+
+	// Time when we finished building an image
+	FinishedAt metav1.MicroTime `json:"finishedAt,omitempty" protobuf:"bytes,4,opt,name=finishedAt"`
+}
+
+// DockerImageStageStatus gives detailed report of each stage
+// of the most recent image build.
+//
+// Most stages are derived from Buildkit's StatusResponse
+// https://github.com/moby/buildkit/blob/35fcb28a009d6454b2915a5c8084b25ad851cf38/api/services/control/control.proto#L108
+// but Tilt may synthesize its own stages for the steps it
+// owns.
+//
+// Stages may be executed in parallel.
+type DockerImageStageStatus struct {
+	// A human-readable name of the stage.
+	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
+
+	// Whether Buildkit was able to cache the stage based on inputs.
+	// +optional
+	Cached bool `json:"cached,omitempty" protobuf:"varint,2,opt,name=cached"`
+
+	// The timestamp when we started working on the stage.
+	// +optional
+	StartedAt *metav1.MicroTime `json:"startedAt,omitempty" protobuf:"bytes,6,opt,name=startedAt"`
+
+	// The timetsamp when we completed the work on the stage.
+	// +optional
+	FinishedAt *metav1.MicroTime `json:"finishedAt,omitempty" protobuf:"bytes,7,opt,name=finishedAt"`
+
+	// Error message if the stage failed. If empty, the stage succeeded.
+	// +optional
+	Error string `json:"error,omitempty" protobuf:"bytes,5,opt,name=error"`
 }
