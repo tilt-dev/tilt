@@ -250,6 +250,8 @@ type fakeBuildAndDeployer struct {
 	kClient *k8s.FakeK8sClient
 
 	ctrlClient ctrlclient.Client
+
+	kaReconciler *kubernetesapply.Reconciler
 }
 
 var _ buildcontrol.BuildAndDeployer = &fakeBuildAndDeployer{}
@@ -361,8 +363,8 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 	}
 
 	if kTarg := call.k8s(); !kTarg.Empty() {
-		status, nextK8sResult := b.nextK8sDeployResult(kTarg)
-		err = b.updateKubernetesApplyStatus(ctx, kTarg, *status)
+		nextK8sResult := b.nextK8sDeployResult(kTarg)
+		err = b.updateKubernetesApplyStatus(ctx, kTarg, iTargets)
 		if err != nil {
 			return result, err
 		}
@@ -381,25 +383,34 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 	return result, err
 }
 
-func (b *fakeBuildAndDeployer) updateKubernetesApplyStatus(ctx context.Context, kTarg model.K8sTarget, status v1alpha1.KubernetesApplyStatus) error {
-	var ka v1alpha1.KubernetesApply
-	err := b.ctrlClient.Get(ctx, types.NamespacedName{Name: kTarg.ID().Name.String()}, &ka)
-	if err != nil {
+func (b *fakeBuildAndDeployer) updateKubernetesApplyStatus(ctx context.Context, kTarg model.K8sTarget, iTargets []model.ImageTarget) error {
+	imageMapSet := make(map[types.NamespacedName]*v1alpha1.ImageMap, len(kTarg.ImageMaps))
+	for _, iTarget := range iTargets {
+		if iTarget.IsLiveUpdateOnly {
+			continue
+		}
+
+		var im v1alpha1.ImageMap
+		nn := types.NamespacedName{Name: iTarget.ImageMapName()}
+		err := b.ctrlClient.Get(ctx, nn, &im)
+		if err != nil {
+			return err
+		}
+		im.Status.Image = iTarget.Refs.ClusterRef().String()
+		imageMapSet[nn] = &im
+	}
+
+	nn := types.NamespacedName{Name: kTarg.ID().Name.String()}
+	if _, err := b.kaReconciler.ForceApply(ctx, nn, kTarg.KubernetesApplySpec, imageMapSet); err != nil {
 		return err
 	}
-	require.NoError(b.t, err)
 
-	ka.Status = status
-	return b.ctrlClient.Status().Update(ctx, &ka)
+	return nil
 }
 
-func (b *fakeBuildAndDeployer) nextK8sDeployResult(kTarg model.K8sTarget) (*v1alpha1.KubernetesApplyStatus, store.K8sBuildResult) {
+func (b *fakeBuildAndDeployer) nextK8sDeployResult(kTarg model.K8sTarget) store.K8sBuildResult {
 	var err error
 	var deployed []k8s.K8sEntity
-	var status = v1alpha1.KubernetesApplyStatus{
-		LastApplyTime:    apis.NowMicro(),
-		AppliedInputHash: "x",
-	}
 
 	explicitDeploymentEntities := b.targetObjectTree[kTarg.ID()]
 	if len(explicitDeploymentEntities) != 0 {
@@ -449,11 +460,12 @@ func (b *fakeBuildAndDeployer) nextK8sDeployResult(kTarg model.K8sTarget) (*v1al
 
 	resultYAML, err := k8s.SerializeSpecYAML(deployed)
 	require.NoError(b.t, err)
-	status.ResultYAML = resultYAML
 
-	filter, err := k8sconv.NewKubernetesApplyFilter(&status)
+	b.kClient.UpsertResult = deployed
+
+	filter, err := k8sconv.NewKubernetesApplyFilter(&v1alpha1.KubernetesApplyStatus{ResultYAML: resultYAML})
 	require.NoError(b.t, err)
-	return &status, store.NewK8sDeployResult(kTarg.ID(), filter)
+	return store.NewK8sDeployResult(kTarg.ID(), filter)
 }
 
 func (b *fakeBuildAndDeployer) getOrCreateBuildCompletionChannel(key string) buildCompletionChannel {
@@ -487,7 +499,7 @@ func (b *fakeBuildAndDeployer) waitUntilBuildCompleted(ctx context.Context, key 
 	}
 }
 
-func newFakeBuildAndDeployer(t *testing.T, kClient *k8s.FakeK8sClient, ctrlClient ctrlclient.Client) *fakeBuildAndDeployer {
+func newFakeBuildAndDeployer(t *testing.T, kClient *k8s.FakeK8sClient, ctrlClient ctrlclient.Client, kaReconciler *kubernetesapply.Reconciler) *fakeBuildAndDeployer {
 	return &fakeBuildAndDeployer{
 		t:                t,
 		calls:            make(chan buildAndDeployCall, 20),
@@ -495,6 +507,7 @@ func newFakeBuildAndDeployer(t *testing.T, kClient *k8s.FakeK8sClient, ctrlClien
 		resultsByID:      store.BuildResultSet{},
 		kClient:          kClient,
 		ctrlClient:       ctrlClient,
+		kaReconciler:     kaReconciler,
 		targetObjectTree: make(map[model.TargetID]podbuilder.PodObjectTree),
 	}
 }
@@ -3984,7 +3997,6 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 
 	watcher := fsevent.NewFakeMultiWatcher()
 	kClient := k8s.NewFakeK8sClient(t)
-	b := newFakeBuildAndDeployer(t, kClient, cdc)
 
 	timerMaker := fsevent.MakeFakeTimerMaker(t)
 
@@ -3994,8 +4006,6 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	st := store.NewStore(UpperReducer, store.LogActionsFlag(false))
 	require.NoError(t, st.AddSubscriber(ctx, fSub))
 
-	bc := NewBuildController(b)
-
 	err := os.Mkdir(f.JoinPath(".git"), os.FileMode(0777))
 	if err != nil {
 		t.Fatal(err)
@@ -4003,16 +4013,16 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 
 	clock := clockwork.NewRealClock()
 	env := k8s.EnvDockerDesktop
-	podSource := podlogstream.NewPodSource(ctx, b.kClient, v1alpha1.NewScheme())
-	plsc := podlogstream.NewController(ctx, cdc, st, b.kClient, podSource)
+	podSource := podlogstream.NewPodSource(ctx, kClient, v1alpha1.NewScheme())
+	plsc := podlogstream.NewController(ctx, cdc, st, kClient, podSource)
 	au := engineanalytics.NewAnalyticsUpdater(ta, engineanalytics.CmdTags{}, engineMode)
-	ar := engineanalytics.ProvideAnalyticsReporter(ta, st, b.kClient, env)
+	ar := engineanalytics.ProvideAnalyticsReporter(ta, st, kClient, env)
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	k8sContextExt := k8scontext.NewPlugin("fake-context", env)
 	versionExt := version.NewPlugin(model.TiltBuild{Version: "0.5.0"})
 	configExt := config.NewPlugin("up")
 	execer := localexec.NewFakeExecer(t)
-	realTFL := tiltfile.ProvideTiltfileLoader(ta, b.kClient, k8sContextExt, versionExt, configExt, fakeDcc, "localhost", execer, feature.MainDefaults, env)
+	realTFL := tiltfile.ProvideTiltfileLoader(ta, kClient, k8sContextExt, versionExt, configExt, fakeDcc, "localhost", execer, feature.MainDefaults, env)
 	tfl := tiltfile.NewFakeTiltfileLoader()
 	buildSource := ctrltiltfile.NewBuildSource()
 	cc := configs.NewConfigsController(cdc)
@@ -4027,11 +4037,11 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		nil, "tilt-default", webListener, serverOptions,
 		&server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
 	ns := k8s.Namespace("default")
-	of := k8s.ProvideOwnerFetcher(ctx, b.kClient)
+	of := k8s.ProvideOwnerFetcher(ctx, kClient)
 	rd := kubernetesdiscovery.NewContainerRestartDetector()
-	kdc := kubernetesdiscovery.NewReconciler(cdc, b.kClient, of, rd, st)
-	sw := k8swatch.NewServiceWatcher(b.kClient, of, ns)
-	ewm := k8swatch.NewEventWatchManager(b.kClient, of, ns)
+	kdc := kubernetesdiscovery.NewReconciler(cdc, kClient, of, rd, st)
+	sw := k8swatch.NewServiceWatcher(kClient, of, ns)
+	ewm := k8swatch.NewEventWatchManager(kClient, of, ns)
 	tcum := cloud.NewStatusManager(httptest.NewFakeClientEmptyJSON(), clock)
 	fe := cmd.NewFakeExecer()
 	fpm := cmd.NewFakeProberManager()
@@ -4056,11 +4066,11 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		cdc,
 		uncached)
 	require.NoError(t, err, "Failed to create Tilt API server controller manager")
-	pfr := apiportforward.NewReconciler(cdc, st, b.kClient)
+	pfr := apiportforward.NewReconciler(cdc, st, kClient)
 
 	wsl := server.NewWebsocketList()
 
-	kar := kubernetesapply.NewReconciler(cdc, b.kClient, sch, docker.Env{}, k8s.KubeContext("kind-kind"), st, "default", execer)
+	kar := kubernetesapply.NewReconciler(cdc, kClient, sch, docker.Env{}, k8s.KubeContext("kind-kind"), st, "default", execer)
 
 	tfr := ctrltiltfile.NewReconciler(st, tfl, dockerClient, cdc, sch, buildSource, engineMode)
 	tbr := togglebutton.NewReconciler(cdc, sch)
@@ -4091,6 +4101,9 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 
 	dp := dockerprune.NewDockerPruner(dockerClient)
 	dp.DisabledForTesting(true)
+
+	b := newFakeBuildAndDeployer(t, kClient, cdc, kar)
+	bc := NewBuildController(b)
 
 	ret := &testFixture{
 		TempDirFixture:        f,
