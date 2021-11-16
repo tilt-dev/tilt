@@ -30,17 +30,6 @@ jobs:
           path: test-results
       - slack/notify-on-failure:
           only_for_branches: master
-  helm2:
-    docker:
-      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:1185c8fe8c863dc09552c5a52bb1b66c1e60e5eb6ef9a84c1408d6eed0473f5c
-    steps:
-      - checkout
-      - run: sudo mv /usr/bin/helm2 /usr/bin/helm
-      - run: make test-go-helm-only
-      - store_test_results:
-          path: test-results
-      - slack/notify-on-failure:
-          only_for_branches: master
 
   build-js:
     docker:
@@ -188,7 +177,6 @@ workflows:
     # The linux job is cheaper than the others, so run that first.
     jobs:
       - build-linux
-      - helm2
       - build-js:
           requires:
             - build-linux

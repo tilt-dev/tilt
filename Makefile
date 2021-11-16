@@ -36,14 +36,6 @@ else
 		gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./... -mod vendor -p $(GO_PARALLEL_JOBS) -timeout 100s
 endif
 
-test-go-helm-only:
-ifneq ($(CIRCLECI),true)
-		go test -mod vendor -p $(GO_PARALLEL_JOBS) -timeout 100s ./internal/tiltfile -run "(?i)(.*)Helm(.*)"
-else
-		mkdir -p test-results
-		gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./internal/tiltfile -mod vendor -p $(GO_PARALLEL_JOBS) -timeout 100s -run "(?i)(.*)Helm(.*)"
-endif
-
 test: test-go test-js
 
 # skip some tests that are slow and not always relevant
