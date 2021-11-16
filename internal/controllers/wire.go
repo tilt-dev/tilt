@@ -6,6 +6,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
 	"github.com/tilt-dev/tilt/internal/controllers/core/configmap"
+	"github.com/tilt-dev/tilt/internal/controllers/core/dockerimage"
 	"github.com/tilt-dev/tilt/internal/controllers/core/extension"
 	"github.com/tilt-dev/tilt/internal/controllers/core/extensionrepo"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch"
@@ -48,6 +49,7 @@ func ProvideControllers(
 	extrr *extensionrepo.Reconciler,
 	lur *liveupdate.Reconciler,
 	cmr *configmap.Reconciler,
+	dir *dockerimage.Reconciler,
 ) []Controller {
 	return []Controller{
 		fileWatch,
@@ -65,6 +67,7 @@ func ProvideControllers(
 		extrr,
 		lur,
 		cmr,
+		dir,
 	}
 }
 
@@ -88,4 +91,5 @@ var WireSet = wire.NewSet(
 	extension.WireSet,
 	liveupdate.WireSet,
 	configmap.WireSet,
+	dockerimage.WireSet,
 )

@@ -40,6 +40,7 @@ import (
 	apitiltfile "github.com/tilt-dev/tilt/internal/controllers/apis/tiltfile"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
 	"github.com/tilt-dev/tilt/internal/controllers/core/configmap"
+	"github.com/tilt-dev/tilt/internal/controllers/core/dockerimage"
 	"github.com/tilt-dev/tilt/internal/controllers/core/extension"
 	"github.com/tilt-dev/tilt/internal/controllers/core/extensionrepo"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch"
@@ -4119,6 +4120,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 
 	cu := &containerupdate.FakeContainerUpdater{}
 	lur := liveupdate.NewFakeReconciler(st, cu, cdc)
+	dir := dockerimage.NewReconciler(cdc)
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
 		fwc,
 		cmds,
@@ -4135,6 +4137,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		extrr,
 		lur,
 		cmr,
+		dir,
 	))
 
 	dp := dockerprune.NewDockerPruner(dockerClient)
