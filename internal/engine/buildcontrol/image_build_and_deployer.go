@@ -9,6 +9,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -16,6 +17,8 @@ import (
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
+	"github.com/tilt-dev/tilt/internal/controllers/core/dockerimage"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesapply"
 	"github.com/tilt-dev/tilt/internal/dockerfile"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -188,16 +191,21 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		// if you want the live container to keep receiving updates
 		// while an image build is going on in parallel.
 		startTime := apis.NowMicro()
+		ibd.maybeUpdateStatus(ctx, iTarget, dockerimage.ToBuildingStatus(iTarget, startTime))
 
-		refs, err := ibd.ib.Build(ctx, iTarget, ps)
+		refs, stages, err := ibd.ib.Build(ctx, iTarget, ps)
 		if err != nil {
+			ibd.maybeUpdateStatus(ctx, iTarget, dockerimage.ToCompletedFailStatus(iTarget, startTime, stages, err))
 			return store.ImageBuildResult{}, err
 		}
 
 		err = ibd.push(ctx, refs.LocalRef, ps, iTarget, kTarget)
 		if err != nil {
+			ibd.maybeUpdateStatus(ctx, iTarget, dockerimage.ToCompletedFailStatus(iTarget, startTime, stages, err))
 			return store.ImageBuildResult{}, err
 		}
+
+		ibd.maybeUpdateStatus(ctx, iTarget, dockerimage.ToCompletedSuccessStatus(iTarget, startTime, stages, refs))
 
 		result := store.NewImageBuildResult(iTarget.ID(), refs.LocalRef, refs.ClusterRef)
 		result.ImageMapStatus.BuildStartTime = &startTime
@@ -230,6 +238,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 	return newResults, nil
 }
 
+// TODO(nick): Express the push() step as a DockerImageStageStatus.
 func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedTagged, ps *build.PipelineState, iTarget model.ImageTarget, kTarget model.K8sTarget) error {
 	ps.StartPipelineStep(ctx, "Pushing %s", container.FamiliarString(ref))
 	defer ps.EndPipelineStep(ctx)
@@ -342,6 +351,36 @@ func (ibd *ImageBuildAndDeployer) delete(ctx context.Context, k8sTarget model.K8
 	entities = k8s.ReverseSortedEntities(entities)
 
 	return ibd.k8sClient.Delete(ctx, entities)
+}
+
+// Write the image status to the API server, if necessary.
+// If the image write fails, log it to the debug logs and move on.
+func (ibd *ImageBuildAndDeployer) maybeUpdateStatus(ctx context.Context, iTarget model.ImageTarget, status v1alpha1.DockerImageStatus) {
+	if iTarget.DockerImageName == "" {
+		return
+	}
+
+	nn := types.NamespacedName{Name: iTarget.DockerImageName}
+	var di v1alpha1.DockerImage
+	err := ibd.ctrlClient.Get(ctx, nn, &di)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return
+		}
+		logger.Get(ctx).Debugf("fetching dockerimage %s: %v", nn.Name, err)
+		return
+	}
+
+	if apicmp.DeepEqual(status, di.Status) {
+		return
+	}
+
+	updated := di.DeepCopy()
+	updated.Status = status
+	err = ibd.ctrlClient.Status().Update(ctx, updated)
+	if err != nil {
+		logger.Get(ctx).Debugf("updating dockerimage %s: %v", nn.Name, err)
+	}
 }
 
 // Create a new ImageTarget with the Dockerfiles rewritten with the injected images.
