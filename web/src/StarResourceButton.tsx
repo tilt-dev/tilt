@@ -1,5 +1,6 @@
 import React from "react"
 import styled from "styled-components"
+import { Tags } from "./analytics"
 import { ReactComponent as StarSvg } from "./assets/svg/star.svg"
 import { InstrumentedButton } from "./instrumentedComponents"
 import { useStarredResources } from "./StarredResourcesContext"
@@ -52,13 +53,14 @@ type StarResourceButtonProps = {
   resourceName: string
   persistShow?: boolean
   analyticsName: string
+  analyticsTags: Tags
 }
 
 export default function StarResourceButton(
   props: StarResourceButtonProps
 ): JSX.Element {
   let ctx = useStarredResources()
-  let { resourceName, persistShow } = props
+  let { resourceName, persistShow, analyticsTags } = props
   let isStarred =
     ctx.starredResources && ctx.starredResources.includes(resourceName)
 
@@ -93,7 +95,10 @@ export default function StarResourceButton(
       onClick={onClick}
       className={className}
       analyticsName={props.analyticsName}
-      analyticsTags={{ newStarState: (!isStarred).toString() }}
+      analyticsTags={{
+        newStarState: (!isStarred).toString(),
+        ...analyticsTags,
+      }}
     >
       {icon}
     </StarResourceButtonRoot>

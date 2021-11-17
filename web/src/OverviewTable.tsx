@@ -19,7 +19,7 @@ import {
 import TimeAgo from "react-timeago"
 import styled from "styled-components"
 import { buildAlerts, runtimeAlerts } from "./alerts"
-import { AnalyticsAction, AnalyticsType, incr } from "./analytics"
+import { AnalyticsAction, AnalyticsType, incr, Tags } from "./analytics"
 import { ApiButton, ApiIcon, buttonsForComponent } from "./ApiButton"
 import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
@@ -60,6 +60,7 @@ import {
 } from "./ResourceListOptionsContext"
 import { matchesResourceName, ResourceNameFilter } from "./ResourceNameFilter"
 import { useResourceNav } from "./ResourceNav"
+import { resourceTargetType } from "./ResourceStatus"
 import { TableGroupStatusSummary } from "./ResourceStatusSummary"
 import { useStarredResources } from "./StarredResourcesContext"
 import { buildStatus, runtimeStatus } from "./status"
@@ -118,6 +119,7 @@ export type RowValues = {
   endpoints: UILink[]
   triggerMode: TriggerMode
   buttons: UIButton[]
+  analyticsTags: Tags
 }
 
 type OverviewTableTrigger = {
@@ -391,6 +393,7 @@ function TableStarColumn({ row }: CellProps<RowValues>) {
     <OverviewTableStarResourceButton
       resourceName={row.values.name}
       analyticsName="ui.web.overviewStarButton"
+      analyticsTags={row.values.analyticsTags}
       ctx={ctx}
     />
   )
@@ -415,6 +418,7 @@ function TableTriggerColumn({ row }: CellProps<RowValues>) {
       triggerMode={row.values.triggerMode}
       isQueued={trigger.isQueued}
       resourceName={row.values.name}
+      analyticsTags={row.values.analyticsTags}
     />
   )
 }
@@ -776,6 +780,7 @@ function uiResourceToCell(
   let isBuilding = !isZeroTime(currentBuildStartTime)
   let hasBuilt = lastBuild !== null
   let buttons = buttonsForComponent(allButtons, "resource", r.metadata?.name)
+  let analyticsTags = { target: resourceTargetType(r) }
 
   return {
     lastDeployTime: res.lastDeployTime ?? "",
@@ -799,6 +804,7 @@ function uiResourceToCell(
     endpoints: res.endpointLinks ?? [],
     triggerMode: res.triggerMode ?? TriggerMode.TriggerModeAuto,
     buttons: buttons,
+    analyticsTags: analyticsTags,
   }
 }
 

@@ -76,12 +76,12 @@ function vigodaSpecs(): any {
     {
       hasLiveUpdate: false,
       id: "image:vigoda",
-      type: "TARGET_TYPE_IMAGE",
+      type: "image",
     },
     {
       hasLiveUpdate: false,
       id: "k8s:vigoda",
-      type: "TARGET_TYPE_K8S",
+      type: "k8s",
     },
   ]
 }
@@ -302,7 +302,7 @@ function oneResourceTestWithName(name: string): UIResource {
       specs: [
         {
           id: "local:boop",
-          type: "TARGET_TYPE_LOCAL",
+          type: "local",
           hasLiveUpdate: false,
         },
       ],

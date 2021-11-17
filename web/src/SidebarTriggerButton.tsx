@@ -1,5 +1,6 @@
 import React from "react"
 import styled from "styled-components"
+import { Tags } from "./analytics"
 import { ReactComponent as TriggerButtonManualSvg } from "./assets/svg/trigger-button-manual.svg"
 import { ReactComponent as TriggerButtonSvg } from "./assets/svg/trigger-button.svg"
 import { InstrumentedButton } from "./instrumentedComponents"
@@ -88,6 +89,7 @@ type SidebarTriggerButtonProps = {
   hasPendingChanges: boolean
   isQueued: boolean
   onTrigger: () => void
+  analyticsTags: Tags
 }
 
 const titleText = (
@@ -160,6 +162,7 @@ function SidebarTriggerButton(props: SidebarTriggerButtonProps) {
       title={titleText(clickable, clickMe, props.isQueued)}
       style={{ padding }}
       analyticsName={"ui.web.triggerResource"}
+      analyticsTags={props.analyticsTags}
     >
       {clickMe ? <TriggerButtonManualSvg /> : <TriggerButtonSvg />}
     </SidebarTriggerButtonRoot>

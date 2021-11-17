@@ -64,8 +64,12 @@ class SidebarKeyboardShortcuts extends Component<Props> {
         if (e.metaKey || e.ctrlKey) {
           return
         }
+        let item = items.find((item) => item.name == selected)
         this.props.onTrigger()
-        incr("ui.web.triggerResource", { action: AnalyticsAction.Shortcut })
+        incr("ui.web.triggerResource", {
+          action: AnalyticsAction.Shortcut,
+          target: item?.targetType || "",
+        })
         e.preventDefault()
         break
     }

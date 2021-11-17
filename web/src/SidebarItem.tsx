@@ -3,7 +3,7 @@ import { buildAlerts, runtimeAlerts } from "./alerts"
 import { Hold } from "./Hold"
 import { getResourceLabels } from "./labels"
 import { LogAlertIndex } from "./LogStore"
-import { resourceIsDisabled } from "./ResourceStatus"
+import { resourceIsDisabled, resourceTargetType } from "./ResourceStatus"
 import { buildStatus, runtimeStatus } from "./status"
 import { timeDiff } from "./time"
 import {
@@ -35,6 +35,7 @@ class SidebarItem {
   lastBuild: Build | null = null
   hold: Hold | null = null
   disabled: boolean
+  targetType: string
 
   /**
    * Create a pared down SidebarItem from a ResourceView
@@ -65,6 +66,7 @@ class SidebarItem {
     this.lastBuild = lastBuild
     this.hold = status.waiting ? new Hold(status.waiting) : null
     this.disabled = resourceIsDisabled(res)
+    this.targetType = resourceTargetType(res)
   }
 }
 
