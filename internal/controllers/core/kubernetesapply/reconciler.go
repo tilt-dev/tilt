@@ -420,17 +420,27 @@ func (r *Reconciler) runCmdDeploy(ctx context.Context, spec v1alpha1.KubernetesA
 	if err != nil {
 		return nil, fmt.Errorf("apply command failed: %v", err)
 	} else if exitCode != 0 {
-		return nil, fmt.Errorf("apply command exited with status %d\nstdout:\n%s\n", exitCode, stdoutBuf.String())
+		return nil, fmt.Errorf("apply command exited with status %d\nstdout:\n%s\n", exitCode, overflowEllipsis(stdoutBuf.String()))
 	}
 
 	// don't pass the bytes.Buffer directly to the YAML parser or it'll consume it and we can't print it out on failure
 	stdout := stdoutBuf.Bytes()
 	entities, err := k8s.ParseYAML(bytes.NewReader(stdout))
 	if err != nil {
-		return nil, fmt.Errorf("apply command returned malformed YAML: %v\nstdout:\n%s\n", err, string(stdout))
+		return nil, fmt.Errorf("apply command returned malformed YAML: %v\nstdout:\n%s\n", err, overflowEllipsis(string(stdout)))
 	}
 
 	return entities, nil
+}
+
+const maxOverflow = 500
+
+// The stdout of a well-behaved apply function can be 100K+ (especially for CRDs)
+func overflowEllipsis(str string) string {
+	if len(str) > maxOverflow {
+		return fmt.Sprintf("%s\n... [truncated by Tilt] ...\n%s", str[0:maxOverflow/2], str[len(str)-maxOverflow/2:])
+	}
+	return str
 }
 
 func (r *Reconciler) indentLogger(ctx context.Context) context.Context {

@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	ctrltiltfile "github.com/tilt-dev/tilt/internal/controllers/apis/tiltfile"
@@ -75,7 +76,7 @@ func (c *downCmd) down(ctx context.Context, downDeps DownDeps, args []string) er
 		return err
 	}
 
-	if err := deleteK8sEntities(ctx, tlr.Manifests, downDeps, c.deleteNamespaces); err != nil {
+	if err := deleteK8sEntities(ctx, tlr.Manifests, tlr.UpdateSettings, downDeps, c.deleteNamespaces); err != nil {
 		return err
 	}
 
@@ -98,7 +99,7 @@ func (c *downCmd) down(ctx context.Context, downDeps DownDeps, args []string) er
 	return nil
 }
 
-func deleteK8sEntities(ctx context.Context, manifests []model.Manifest, downDeps DownDeps, deleteNamespaces bool) error {
+func deleteK8sEntities(ctx context.Context, manifests []model.Manifest, updateSettings model.UpdateSettings, downDeps DownDeps, deleteNamespaces bool) error {
 	entities, deleteCmds, err := k8sToDelete(manifests...)
 	if err != nil {
 		return errors.Wrap(err, "Parsing manifest YAML")
@@ -132,20 +133,27 @@ func deleteK8sEntities(ctx context.Context, manifests []model.Manifest, downDeps
 		}
 	}
 
+	errs := []error{}
 	if len(entities) > 0 {
-		err = downDeps.kClient.Delete(ctx, entities)
+		dCtx, cancel := context.WithTimeout(ctx, updateSettings.K8sUpsertTimeout())
+		err = downDeps.kClient.Delete(dCtx, entities)
+		cancel()
 		if err != nil {
-			return errors.Wrap(err, "Deleting k8s entities")
+			errs = append(errs, errors.Wrap(err, "Deleting k8s entities"))
 		}
 	}
 
 	for i := range deleteCmds {
-		if err := localexec.OneShotToLogger(ctx, downDeps.execer, deleteCmds[i]); err != nil {
-			return errors.Wrapf(err, "Deleting k8s entities for cmd: %s", deleteCmds[i].String())
+		dCtx, cancel := context.WithTimeout(ctx, updateSettings.K8sUpsertTimeout())
+		err := localexec.OneShotToLogger(dCtx, downDeps.execer, deleteCmds[i])
+		cancel()
+
+		if err != nil {
+			errs = append(errs, errors.Wrapf(err, "Deleting k8s entities for cmd: %s", deleteCmds[i].String()))
 		}
 	}
 
-	return nil
+	return utilerrors.NewAggregate(errs)
 }
 
 func k8sToDelete(manifests ...model.Manifest) ([]k8s.K8sEntity, []model.Cmd, error) {
