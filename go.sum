@@ -1114,8 +1114,8 @@ github.com/tilt-dev/opencensus-go v0.22.5-0.20200904175236-275b1754f353 h1:lxM1v
 github.com/tilt-dev/opencensus-go v0.22.5-0.20200904175236-275b1754f353/go.mod h1:yxeiOL68Rb0Xd1ddK5vPZ/oVn4vY4Ynel7k9FzqtOIw=
 github.com/tilt-dev/probe v0.3.1 h1:PQhXSBkgcGBUU/eKt4vgAUKsAWWjBr2F53xNAc0E7zs=
 github.com/tilt-dev/probe v0.3.1/go.mod h1:F53NFbqblwu5oyIk2t+BPkswiboxuF8e5D3wbPnY4JA=
-github.com/tilt-dev/tilt-apiserver v0.5.1 h1:1HcLZlDz1sgkDCmBJ1uRhUVVcZnhmfu2ctz2qwJhjMw=
-github.com/tilt-dev/tilt-apiserver v0.5.1/go.mod h1:WfOq4XyMpYqXpMaIXZZodR9GX6clNkueNQCV2u1q5os=
+github.com/tilt-dev/tilt-apiserver v0.5.2 h1:QRLB8bt4v76MURLNCUs4bqNhsZLfbP9/gIJuCQ9GR6U=
+github.com/tilt-dev/tilt-apiserver v0.5.2/go.mod h1:WfOq4XyMpYqXpMaIXZZodR9GX6clNkueNQCV2u1q5os=
 github.com/tilt-dev/wmclient v0.0.0-20201109174454-1839d0355fbc h1:wGkAoZhrvnmq93B4W2v+agiPl7xzqUaxXkxmKrwJ6bc=
 github.com/tilt-dev/wmclient v0.0.0-20201109174454-1839d0355fbc/go.mod h1:n01fG3LbImzxBP3GGCTHkgXuPeJusWg6xv0QYGm9HtE=
 github.com/tmc/grpc-websocket-proxy v0.0.0-20170815181823-89b8d40f7ca8/go.mod h1:ncp9v5uamzpCO7NfCPTXjqaC+bZgJeR0sMTm6dMHP7U=
