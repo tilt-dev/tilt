@@ -5,8 +5,10 @@ import { SnackbarProvider } from "notistack"
 import React from "react"
 import { act } from "react-dom/test-utils"
 import { MemoryRouter } from "react-router"
+import { AnalyticsAction } from "./analytics"
 import {
   cleanupMockAnalyticsCalls,
+  expectIncrs,
   mockAnalyticsCalls,
 } from "./analytics_test_helpers"
 import {
@@ -70,6 +72,17 @@ describe("ApiButton", () => {
     expect(button.find(ApiButtonLabel).text()).toEqual(b.spec!.text)
   })
 
+  it("sends analytics", async () => {
+    const b = makeUIButton()
+    const root = mountButton(b)
+    const button = root.find(ApiButton).find("button")
+    await click(button)
+    expectIncrs({
+      name: "ui.web.uibutton",
+      tags: { action: AnalyticsAction.Click, component: "Global" },
+    })
+  })
+
   it("renders an options button when the button has inputs", () => {
     const inputs = [1, 2, 3].map((i) => textField(`text${i}`))
     const root = mountButton(makeUIButton({ inputSpecs: inputs }))
@@ -86,12 +99,12 @@ describe("ApiButton", () => {
     ).toEqual(0)
   })
 
-  it("shows the options form when the options button is clicked", () => {
+  it("shows the options form when the options button is clicked", async () => {
     const inputs = [1, 2, 3].map((i) => textField(`text${i}`))
     const root = mountButton(makeUIButton({ inputSpecs: inputs }))
 
     const optionsButton = root.find(ApiButtonInputsToggleButton)
-    optionsButton.simulate("click")
+    await click(optionsButton)
     root.update()
 
     const optionsForm = root.find(ApiButtonForm)
@@ -104,12 +117,12 @@ describe("ApiButton", () => {
     expect(actualInputNames).toEqual(expectedInputNames)
   })
 
-  it("allows an empty text string when there's a default value", () => {
+  it("allows an empty text string when there's a default value", async () => {
     const input = textField("text1", "default_text")
     const root = mountButton(makeUIButton({ inputSpecs: [input] }))
 
     const optionsButton = root.find(ApiButtonInputsToggleButton)
-    optionsButton.simulate("click")
+    await click(optionsButton)
     root.update()
 
     const tf = root.find(ApiButtonForm).find("input#text1")
@@ -127,7 +140,7 @@ describe("ApiButton", () => {
     const root = mountButton(makeUIButton({ inputSpecs: inputSpecs }))
 
     const optionsButton = root.find(ApiButtonInputsToggleButton)
-    optionsButton.simulate("click")
+    await click(optionsButton)
     root.update()
 
     const tf = root.find(ApiButtonForm).find("input#text1")
@@ -137,13 +150,7 @@ describe("ApiButton", () => {
     root.update()
 
     const submit = root.find(ApiButton).find(Button).at(0)
-    await act(async () => {
-      submit.simulate("click")
-      // the button's onclick updates the button so we need to wait for that to resolve
-      // within the act() before continuing
-      // some related info: https://github.com/testing-library/react-testing-library/issues/281
-      await flushPromises()
-    })
+    await click(submit)
     root.update()
 
     const calls = fetchMock
@@ -196,13 +203,7 @@ describe("ApiButton", () => {
     const root = mountButton(makeUIButton({ inputSpecs: inputSpecs }))
 
     const submit = root.find(ApiButton).find(Button).at(0)
-    await act(async () => {
-      submit.simulate("click")
-      // the button's onclick updates the button so we need to wait for that to resolve
-      // within the act() before continuing
-      // some related info: https://github.com/testing-library/react-testing-library/issues/281
-      await flushPromises()
-    })
+    await click(submit)
     root.update()
 
     const calls = fetchMock
@@ -246,7 +247,7 @@ describe("ApiButton", () => {
     expect(actualStatus).toEqual(expectedStatus)
   })
 
-  it("reads options from local storage", () => {
+  it("reads options from local storage", async () => {
     buttonInputsAccessor.set({
       text1: "text value",
       bool1: true,
@@ -255,7 +256,7 @@ describe("ApiButton", () => {
     const root = mountButton(makeUIButton({ inputSpecs: inputSpecs }))
 
     const optionsButton = root.find(ApiButtonInputsToggleButton)
-    optionsButton.simulate("click")
+    await click(optionsButton)
     root.update()
 
     const tf = root.find(ApiButtonForm).find("input#text1")
@@ -264,12 +265,12 @@ describe("ApiButton", () => {
     expect(bf.props().checked).toEqual(true)
   })
 
-  it("writes options to local storage", () => {
+  it("writes options to local storage", async () => {
     const inputSpecs = [textField("text1"), boolField("bool1")]
     const root = mountButton(makeUIButton({ inputSpecs: inputSpecs }))
 
     const optionsButton = root.find(ApiButtonInputsToggleButton)
-    optionsButton.simulate("click")
+    await click(optionsButton)
     root.update()
 
     const tf = root.find(ApiButtonForm).find("input#text1")
@@ -302,15 +303,19 @@ describe("ApiButton", () => {
     )
 
     const submit = root.find(ApiButton).find(Button).at(0)
-    await act(async () => {
-      submit.simulate("click")
-      // the button's onclick updates the button so we need to wait for that to resolve
-      // within the act() before continuing
-      // some related info: https://github.com/testing-library/react-testing-library/issues/281
-      await flushPromises()
-    })
+    await click(submit)
     root.update()
 
     expect(error).toEqual("Error submitting button click: broken!")
   })
 })
+
+async function click(button: any) {
+  await act(async () => {
+    button.simulate("click")
+    // the button's onclick updates the button so we need to wait for that to resolve
+    // within the act() before continuing
+    // some related info: https://github.com/testing-library/react-testing-library/issues/281
+    await flushPromises()
+  })
+}
