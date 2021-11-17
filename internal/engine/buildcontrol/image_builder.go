@@ -9,6 +9,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/ignore"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -38,7 +39,7 @@ func (icb *ImageBuilder) CanReuseRef(ctx context.Context, iTarget model.ImageTar
 }
 
 func (icb *ImageBuilder) Build(ctx context.Context, iTarget model.ImageTarget,
-	ps *build.PipelineState) (refs container.TaggedRefs, err error) {
+	ps *build.PipelineState) (container.TaggedRefs, []v1alpha1.DockerImageStageStatus, error) {
 	userFacingRefName := container.FamiliarString(iTarget.Refs.ConfigurationRef)
 
 	switch bd := iTarget.BuildDetails.(type) {
@@ -46,25 +47,18 @@ func (icb *ImageBuilder) Build(ctx context.Context, iTarget model.ImageTarget,
 		ps.StartPipelineStep(ctx, "Building Dockerfile: [%s]", userFacingRefName)
 		defer ps.EndPipelineStep(ctx)
 
-		refs, err = icb.db.BuildImage(ctx, ps, iTarget.Refs, bd.DockerImageSpec,
+		return icb.db.BuildImage(ctx, ps, iTarget.Refs, bd.DockerImageSpec,
 			ignore.CreateBuildContextFilter(iTarget))
 
-		if err != nil {
-			return container.TaggedRefs{}, err
-		}
 	case model.CustomBuild:
 		ps.StartPipelineStep(ctx, "Building Custom Build: [%s]", userFacingRefName)
 		defer ps.EndPipelineStep(ctx)
-		refs, err = icb.custb.Build(ctx, iTarget.Refs, bd)
-		if err != nil {
-			return container.TaggedRefs{}, err
-		}
-	default:
-		// Theoretically this should never trip b/c we `validate` the manifest beforehand...?
-		// If we get here, something is very wrong.
-		return container.TaggedRefs{}, fmt.Errorf("image %q has no valid buildDetails (neither "+
-			"DockerBuild nor CustomBuild)", iTarget.Refs.ConfigurationRef)
+		refs, err := icb.custb.Build(ctx, iTarget.Refs, bd)
+		return refs, nil, err
 	}
 
-	return refs, nil
+	// Theoretically this should never trip b/c we `validate` the manifest beforehand...?
+	// If we get here, something is very wrong.
+	return container.TaggedRefs{}, nil, fmt.Errorf("image %q has no valid buildDetails (neither "+
+		"DockerBuild nor CustomBuild)", iTarget.Refs.ConfigurationRef)
 }

@@ -117,7 +117,7 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		// NOTE(maia): we assume that this func takes one DC target and up to one image target
 		// corresponding to that service. If this func ever supports specs for more than one
 		// service at once, we'll have to match up image build results to DC target by ref.
-		refs, err := bd.ib.Build(ctx, iTarget, ps)
+		refs, _, err := bd.ib.Build(ctx, iTarget, ps)
 		if err != nil {
 			return store.ImageBuildResult{}, err
 		}

@@ -9,6 +9,8 @@ import (
 	digest "github.com/opencontainers/go-digest"
 	"github.com/tonistiigi/units"
 
+	"github.com/tilt-dev/tilt/pkg/apis"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
@@ -23,7 +25,9 @@ type vertex struct {
 	name            string
 	error           string
 	started         bool
+	startedTime     *time.Time
 	completed       bool
+	completedTime   *time.Time
 	startPrinted    bool
 	errorPrinted    bool
 	completePrinted bool
@@ -115,11 +119,39 @@ func newBuildkitPrinter(l logger.Logger) *buildkitPrinter {
 	}
 }
 
+func (b *buildkitPrinter) toStageStatuses() []v1alpha1.DockerImageStageStatus {
+	result := make([]v1alpha1.DockerImageStageStatus, 0)
+	for _, digest := range b.vOrder {
+		if vl, ok := b.vData[digest]; ok {
+			v := vl.vertex
+			status := v1alpha1.DockerImageStageStatus{
+				Name:   v.name,
+				Cached: v.cached,
+			}
+			if v.startedTime != nil {
+				st := apis.NewMicroTime(*v.startedTime)
+				status.StartedAt = &st
+			}
+			if v.completedTime != nil {
+				ct := apis.NewMicroTime(*v.completedTime)
+				status.FinishedAt = &ct
+			}
+			if v.isError() {
+				status.Error = v.error
+			}
+			result = append(result, status)
+		}
+	}
+	return result
+}
+
 func (b *buildkitPrinter) parseAndPrint(vertexes []*vertex, logs []*vertexLog, statuses []*vertexStatus) error {
 	for _, v := range vertexes {
 		if vl, ok := b.vData[v.digest]; ok {
 			vl.vertex.started = v.started
 			vl.vertex.completed = v.completed
+			vl.vertex.startedTime = v.startedTime
+			vl.vertex.completedTime = v.completedTime
 			vl.vertex.cached = v.cached
 
 			// NOTE(nick): Fun fact! The buildkit protocol sends down multiple completion timestamps.

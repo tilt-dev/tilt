@@ -45,7 +45,7 @@ type DockerKubeConnection interface {
 type DockerBuilder interface {
 	DockerKubeConnection
 
-	BuildImage(ctx context.Context, ps *PipelineState, refs container.RefSet, spec v1alpha1.DockerImageSpec, filter model.PathMatcher) (container.TaggedRefs, error)
+	BuildImage(ctx context.Context, ps *PipelineState, refs container.RefSet, spec v1alpha1.DockerImageSpec, filter model.PathMatcher) (container.TaggedRefs, []v1alpha1.DockerImageStageStatus, error)
 	DumpImageDeployRef(ctx context.Context, ref string) (reference.NamedTagged, error)
 	PushImage(ctx context.Context, name reference.NamedTagged) error
 	TagRefs(ctx context.Context, refs container.RefSet, dig digest.Digest) (container.TaggedRefs, error)
@@ -67,16 +67,6 @@ func NewDockerImageBuilder(dCli docker.Client, extraLabels dockerfile.Labels) *d
 
 func (d *dockerImageBuilder) WillBuildToKubeContext(kctx k8s.KubeContext) bool {
 	return d.dCli.Env().WillBuildToKubeContext(kctx)
-}
-
-func (d *dockerImageBuilder) BuildImage(ctx context.Context, ps *PipelineState, refs container.RefSet, spec v1alpha1.DockerImageSpec, filter model.PathMatcher) (container.TaggedRefs, error) {
-	paths := []PathMapping{
-		{
-			LocalPath:     spec.Context,
-			ContainerPath: "/",
-		},
-	}
-	return d.buildFromDf(ctx, ps, spec, paths, filter, refs)
 }
 
 func (d *dockerImageBuilder) DumpImageDeployRef(ctx context.Context, ref string) (reference.NamedTagged, error) {
@@ -145,7 +135,7 @@ func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedT
 		}
 	}()
 
-	_, err = readDockerOutput(ctx, imagePushResponse)
+	_, _, err = readDockerOutput(ctx, imagePushResponse)
 	if err != nil {
 		return errors.Wrapf(err, "pushing image %q", ref.Name())
 	}
@@ -164,22 +154,13 @@ func (d *dockerImageBuilder) ImageExists(ctx context.Context, ref reference.Name
 	return true, nil
 }
 
-func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState, spec v1alpha1.DockerImageSpec, paths []PathMapping, filter model.PathMatcher, refs container.RefSet) (container.TaggedRefs, error) {
+func (d *dockerImageBuilder) BuildImage(ctx context.Context, ps *PipelineState, refs container.RefSet, spec v1alpha1.DockerImageSpec, filter model.PathMatcher) (container.TaggedRefs, []v1alpha1.DockerImageStageStatus, error) {
 	logger.Get(ctx).Infof("Building Dockerfile:\n%s\n", indent(spec.DockerfileContents, "  "))
-
-	// NOTE(maia): some people want to know what files we're adding (b/c `ADD . /` isn't descriptive)
-	if logger.Get(ctx).Level().ShouldDisplay(logger.VerboseLvl) {
-		ps.StartBuildStep(ctx, "Tarring context…")
-
-		for _, pm := range paths {
-			ps.Printf(ctx, pm.PrettyStr())
-		}
-	}
 
 	ps.StartBuildStep(ctx, "Building image")
 	allowBuildkit := true
 	ctx = ps.AttachLogger(ctx)
-	digest, err := d.buildFromDfToDigest(ctx, spec, paths, filter, allowBuildkit)
+	digest, stages, err := d.buildToDigest(ctx, spec, filter, allowBuildkit)
 	if err != nil {
 		isMysteriousCorruption := strings.Contains(err.Error(), "failed precondition") &&
 			strings.Contains(err.Error(), "failed commit on ref")
@@ -200,30 +181,37 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState,
 			// If this happens, just try again without buildkit.
 			allowBuildkit = false
 			logger.Get(ctx).Infof("Detected Buildkit corruption. Rebuilding without Buildkit")
-			digest, err = d.buildFromDfToDigest(ctx, spec, paths, filter, allowBuildkit)
+			digest, stages, err = d.buildToDigest(ctx, spec, filter, allowBuildkit)
 		}
 
 		if err != nil {
-			return container.TaggedRefs{}, err
+			return container.TaggedRefs{}, stages, err
 		}
 	}
 
 	tagged, err := d.TagRefs(ctx, refs, digest)
 	if err != nil {
-		return container.TaggedRefs{}, errors.Wrap(err, "PushImage")
+		return container.TaggedRefs{}, stages, errors.Wrap(err, "docker tag")
 	}
 
-	return tagged, nil
+	return tagged, stages, nil
 }
 
 // A helper function that builds the paths to the given docker image,
 // then returns the output digest.
-func (d *dockerImageBuilder) buildFromDfToDigest(ctx context.Context, spec v1alpha1.DockerImageSpec, paths []PathMapping, filter model.PathMatcher, allowBuildkit bool) (digest.Digest, error) {
+func (d *dockerImageBuilder) buildToDigest(ctx context.Context, spec v1alpha1.DockerImageSpec, filter model.PathMatcher, allowBuildkit bool) (digest.Digest, []v1alpha1.DockerImageStageStatus, error) {
 	pr, pw := io.Pipe()
 	w := NewProgressWriter(ctx, pw)
 	w.Init()
 
+	// TODO(nick): Express tarring as a build stage.
 	go func(ctx context.Context) {
+		paths := []PathMapping{
+			{
+				LocalPath:     spec.Context,
+				ContainerPath: "/",
+			},
+		}
 		err := tarContextAndUpdateDf(ctx, w, dockerfile.Dockerfile(spec.DockerfileContents), paths, filter)
 		if err != nil {
 			_ = pw.CloseWithError(err)
@@ -247,7 +235,7 @@ func (d *dockerImageBuilder) buildFromDfToDigest(ctx context.Context, spec v1alp
 		options,
 	)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	defer func() {
@@ -260,18 +248,18 @@ func (d *dockerImageBuilder) buildFromDfToDigest(ctx context.Context, spec v1alp
 	return d.getDigestFromBuildOutput(ctx, imageBuildResponse.Body)
 }
 
-func (d *dockerImageBuilder) getDigestFromBuildOutput(ctx context.Context, reader io.Reader) (digest.Digest, error) {
-	result, err := readDockerOutput(ctx, reader)
+func (d *dockerImageBuilder) getDigestFromBuildOutput(ctx context.Context, reader io.Reader) (digest.Digest, []v1alpha1.DockerImageStageStatus, error) {
+	result, stageStatuses, err := readDockerOutput(ctx, reader)
 	if err != nil {
-		return "", errors.Wrap(err, "ImageBuild")
+		return "", stageStatuses, errors.Wrap(err, "ImageBuild")
 	}
 
 	digest, err := d.getDigestFromDockerOutput(ctx, result)
 	if err != nil {
-		return "", errors.Wrap(err, "getDigestFromBuildOutput")
+		return "", stageStatuses, errors.Wrap(err, "getDigestFromBuildOutput")
 	}
 
-	return digest, nil
+	return digest, stageStatuses, nil
 }
 
 var dockerBuildCleanupRexes = []*regexp.Regexp{
@@ -312,7 +300,7 @@ type dockerMessageID string
 // NOTE(nick): I haven't found a good document describing this protocol
 // but you can find it implemented in Docker here:
 // https://github.com/moby/moby/blob/1da7d2eebf0a7a60ce585f89a05cebf7f631019c/pkg/jsonmessage/jsonmessage.go#L139
-func readDockerOutput(ctx context.Context, reader io.Reader) (dockerOutput, error) {
+func readDockerOutput(ctx context.Context, reader io.Reader) (dockerOutput, []v1alpha1.DockerImageStageStatus, error) {
 	progressLastPrinted := make(map[dockerMessageID]time.Time)
 
 	result := dockerOutput{}
@@ -323,7 +311,7 @@ func readDockerOutput(ctx context.Context, reader io.Reader) (dockerOutput, erro
 		message := jsonmessage.JSONMessage{}
 		err := decoder.Decode(&message)
 		if err != nil {
-			return dockerOutput{}, errors.Wrap(err, "decoding docker output")
+			return dockerOutput{}, b.toStageStatuses(), errors.Wrap(err, "decoding docker output")
 		}
 
 		if len(message.Stream) > 0 {
@@ -339,11 +327,11 @@ func readDockerOutput(ctx context.Context, reader io.Reader) (dockerOutput, erro
 		}
 
 		if message.ErrorMessage != "" {
-			return dockerOutput{}, errors.New(cleanupDockerBuildError(message.ErrorMessage))
+			return dockerOutput{}, b.toStageStatuses(), errors.New(cleanupDockerBuildError(message.ErrorMessage))
 		}
 
 		if message.Error != nil {
-			return dockerOutput{}, errors.New(cleanupDockerBuildError(message.Error.Message))
+			return dockerOutput{}, b.toStageStatuses(), errors.New(cleanupDockerBuildError(message.Error.Message))
 		}
 
 		id := dockerMessageID(message.ID)
@@ -369,7 +357,7 @@ func readDockerOutput(ctx context.Context, reader io.Reader) (dockerOutput, erro
 		if messageIsFromBuildkit(message) {
 			err := toBuildkitStatus(message.Aux, b)
 			if err != nil {
-				return dockerOutput{}, err
+				return dockerOutput{}, b.toStageStatuses(), err
 			}
 		}
 
@@ -379,9 +367,9 @@ func readDockerOutput(ctx context.Context, reader io.Reader) (dockerOutput, erro
 	}
 
 	if ctx.Err() != nil {
-		return dockerOutput{}, ctx.Err()
+		return dockerOutput{}, b.toStageStatuses(), ctx.Err()
 	}
-	return result, nil
+	return result, b.toStageStatuses(), nil
 }
 
 func toBuildkitStatus(aux *json.RawMessage, b *buildkitPrinter) error {
@@ -410,13 +398,15 @@ func toVertexes(resp controlapi.StatusResponse) ([]*vertex, []*vertexLog, []*ver
 			duration = (*v.Completed).Sub((*v.Started))
 		}
 		vertexes = append(vertexes, &vertex{
-			digest:    v.Digest,
-			name:      v.Name,
-			error:     v.Error,
-			started:   started,
-			completed: completed,
-			cached:    v.Cached,
-			duration:  duration,
+			digest:        v.Digest,
+			name:          v.Name,
+			error:         v.Error,
+			started:       started,
+			completed:     completed,
+			cached:        v.Cached,
+			duration:      duration,
+			startedTime:   v.Started,
+			completedTime: v.Completed,
 		})
 
 	}

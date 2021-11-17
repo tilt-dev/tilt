@@ -15,7 +15,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
-	"github.com/tilt-dev/tilt/internal/controllers/apis/dockerimage"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/apiset"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
@@ -400,11 +399,10 @@ func toDockerImageObjects(tlr *tiltfile.TiltfileLoadResult, disableSources disab
 
 	for _, m := range tlr.Manifests {
 		for _, iTarget := range m.ImageTargets {
-			if !iTarget.IsDockerBuild() {
+			name := iTarget.DockerImageName
+			if name == "" {
 				continue
 			}
-
-			name := dockerimage.GetName(m.Name, iTarget.ID())
 
 			// Currently, if a DockerImage is in more than one manifest,
 			// we will create one per manifest.

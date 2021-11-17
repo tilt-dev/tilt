@@ -158,7 +158,7 @@ func (b ManifestBuilder) Build() model.Manifest {
 	// Currently,
 	for index, iTarget := range b.iTargets {
 		if iTarget.IsDockerBuild() {
-			iTarget.DockerImageName = dockerimage.GetName(m.Name, iTarget.ID())
+			iTarget.DockerImageName = dockerimage.GetName(b.name, iTarget.ID())
 		}
 
 		if liveupdate.IsEmptySpec(iTarget.LiveUpdateSpec) {
