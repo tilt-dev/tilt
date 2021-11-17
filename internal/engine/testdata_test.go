@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/tilt-dev/tilt/internal/container"
-	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -167,12 +166,11 @@ func NewSanchoLiveUpdateMultiStageManifest(fixture Fixture) model.Manifest {
 		WithBuildDetails(dbInfo).
 		WithDependencyIDs([]model.TargetID{baseImage.ID()})
 
-	kTarget := k8s.MustTarget("sancho", SanchoYAML).
-		WithImageDependencies([]model.TargetID{srcImage.ID()}, nil)
-
-	return model.Manifest{Name: "sancho"}.
-		WithImageTargets([]model.ImageTarget{baseImage, srcImage}).
-		WithDeployTarget(kTarget)
+	return manifestbuilder.New(fixture, "sancho").
+		WithK8sYAML(testyaml.Deployment("sancho", srcImage.Refs.ConfigurationRef.String())).
+		WithImageTargets(baseImage, srcImage).
+		WithLiveUpdateBAD().
+		Build()
 }
 
 func NewManifestsWithCommonAncestor(fixture Fixture) (model.Manifest, model.Manifest) {

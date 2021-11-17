@@ -21,6 +21,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockerfile"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -44,7 +45,7 @@ type DockerKubeConnection interface {
 type DockerBuilder interface {
 	DockerKubeConnection
 
-	BuildImage(ctx context.Context, ps *PipelineState, refs container.RefSet, db model.DockerBuild, filter model.PathMatcher) (container.TaggedRefs, error)
+	BuildImage(ctx context.Context, ps *PipelineState, refs container.RefSet, spec v1alpha1.DockerImageSpec, filter model.PathMatcher) (container.TaggedRefs, error)
 	DumpImageDeployRef(ctx context.Context, ref string) (reference.NamedTagged, error)
 	PushImage(ctx context.Context, name reference.NamedTagged) error
 	TagRefs(ctx context.Context, refs container.RefSet, dig digest.Digest) (container.TaggedRefs, error)
@@ -68,14 +69,14 @@ func (d *dockerImageBuilder) WillBuildToKubeContext(kctx k8s.KubeContext) bool {
 	return d.dCli.Env().WillBuildToKubeContext(kctx)
 }
 
-func (d *dockerImageBuilder) BuildImage(ctx context.Context, ps *PipelineState, refs container.RefSet, db model.DockerBuild, filter model.PathMatcher) (container.TaggedRefs, error) {
+func (d *dockerImageBuilder) BuildImage(ctx context.Context, ps *PipelineState, refs container.RefSet, spec v1alpha1.DockerImageSpec, filter model.PathMatcher) (container.TaggedRefs, error) {
 	paths := []PathMapping{
 		{
-			LocalPath:     db.Context,
+			LocalPath:     spec.Context,
 			ContainerPath: "/",
 		},
 	}
-	return d.buildFromDf(ctx, ps, db, paths, filter, refs)
+	return d.buildFromDf(ctx, ps, spec, paths, filter, refs)
 }
 
 func (d *dockerImageBuilder) DumpImageDeployRef(ctx context.Context, ref string) (reference.NamedTagged, error) {
@@ -163,8 +164,8 @@ func (d *dockerImageBuilder) ImageExists(ctx context.Context, ref reference.Name
 	return true, nil
 }
 
-func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState, db model.DockerBuild, paths []PathMapping, filter model.PathMatcher, refs container.RefSet) (container.TaggedRefs, error) {
-	logger.Get(ctx).Infof("Building Dockerfile:\n%s\n", indent(db.DockerfileContents, "  "))
+func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState, spec v1alpha1.DockerImageSpec, paths []PathMapping, filter model.PathMatcher, refs container.RefSet) (container.TaggedRefs, error) {
+	logger.Get(ctx).Infof("Building Dockerfile:\n%s\n", indent(spec.DockerfileContents, "  "))
 
 	// NOTE(maia): some people want to know what files we're adding (b/c `ADD . /` isn't descriptive)
 	if logger.Get(ctx).Level().ShouldDisplay(logger.VerboseLvl) {
@@ -178,7 +179,7 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState,
 	ps.StartBuildStep(ctx, "Building image")
 	allowBuildkit := true
 	ctx = ps.AttachLogger(ctx)
-	digest, err := d.buildFromDfToDigest(ctx, db, paths, filter, allowBuildkit)
+	digest, err := d.buildFromDfToDigest(ctx, spec, paths, filter, allowBuildkit)
 	if err != nil {
 		isMysteriousCorruption := strings.Contains(err.Error(), "failed precondition") &&
 			strings.Contains(err.Error(), "failed commit on ref")
@@ -199,7 +200,7 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState,
 			// If this happens, just try again without buildkit.
 			allowBuildkit = false
 			logger.Get(ctx).Infof("Detected Buildkit corruption. Rebuilding without Buildkit")
-			digest, err = d.buildFromDfToDigest(ctx, db, paths, filter, allowBuildkit)
+			digest, err = d.buildFromDfToDigest(ctx, spec, paths, filter, allowBuildkit)
 		}
 
 		if err != nil {
@@ -217,13 +218,13 @@ func (d *dockerImageBuilder) buildFromDf(ctx context.Context, ps *PipelineState,
 
 // A helper function that builds the paths to the given docker image,
 // then returns the output digest.
-func (d *dockerImageBuilder) buildFromDfToDigest(ctx context.Context, db model.DockerBuild, paths []PathMapping, filter model.PathMatcher, allowBuildkit bool) (digest.Digest, error) {
+func (d *dockerImageBuilder) buildFromDfToDigest(ctx context.Context, spec v1alpha1.DockerImageSpec, paths []PathMapping, filter model.PathMatcher, allowBuildkit bool) (digest.Digest, error) {
 	pr, pw := io.Pipe()
 	w := NewProgressWriter(ctx, pw)
 	w.Init()
 
 	go func(ctx context.Context) {
-		err := tarContextAndUpdateDf(ctx, w, dockerfile.Dockerfile(db.DockerfileContents), paths, filter)
+		err := tarContextAndUpdateDf(ctx, w, dockerfile.Dockerfile(spec.DockerfileContents), paths, filter)
 		if err != nil {
 			_ = pw.CloseWithError(err)
 		} else {
@@ -236,7 +237,7 @@ func (d *dockerImageBuilder) buildFromDfToDigest(ctx context.Context, db model.D
 		_ = pr.Close()
 	}()
 
-	options := Options(pr, db)
+	options := Options(pr, spec)
 	if !allowBuildkit {
 		options.ForceLegacyBuilder = true
 	}

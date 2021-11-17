@@ -254,16 +254,36 @@ func (f *filepathREST) Update(
 		}
 	}
 
-	objMeta, err := meta.Accessor(updatedObj)
+	oldMeta, err := meta.Accessor(oldObj)
 	if err != nil {
 		return nil, false, err
 	}
-	objMeta.SetResourceVersion(fmt.Sprintf("%d", atomic.AddInt64(&f.currentVersion, 1)))
+	updatedMeta, err := meta.Accessor(updatedObj)
+	if err != nil {
+		return nil, false, err
+	}
+
+	// TODO(milas): when we read the old object, we should take a lock on it so that no other
+	// 	write actions can occur until our "transaction" is done; currently, there's still the
+	// 	possibility for two concurrent updates to read in the same old object, resulting in a
+	// 	race; similarly, it's possible for a delete to happen mid-update, with both operations
+	// 	succeeding, resulting in a deleted object being re-created by the update
+	// 	(alternatively, the FS layer could track versions and provide these guarantees)
+	if oldMeta.GetResourceVersion() != updatedMeta.GetResourceVersion() {
+		kinds, _, _ := f.strategy.ObjectKinds(updatedObj)
+		conflictErr := apierrors.NewConflict(
+			schema.GroupResource{Group: kinds[0].Group, Resource: kinds[0].Kind},
+			name,
+			errors.New("object was modified"))
+		return nil, false, conflictErr
+	}
+
+	updatedMeta.SetResourceVersion(fmt.Sprintf("%d", atomic.AddInt64(&f.currentVersion, 1)))
 
 	// handle 2-phase deletes -> for entities with finalizers, DeletionTimestamp is set and reconcilers execute +
 	// remove them (triggering more updates); once drained, it can be deleted from the final update operation
 	// loosely based off https://github.com/kubernetes/apiserver/blob/947ebe755ed8aed2e0f0f5d6420caad07fc04cc2/pkg/registry/generic/registry/store.go#L624
-	if len(objMeta.GetFinalizers()) == 0 && !objMeta.GetDeletionTimestamp().IsZero() {
+	if len(updatedMeta.GetFinalizers()) == 0 && !updatedMeta.GetDeletionTimestamp().IsZero() {
 		if err := f.fs.Remove(filename); err != nil {
 			return nil, false, err
 		}

@@ -878,6 +878,9 @@ func (f *bdFixture) assertK8sUpsertCalled(called bool) {
 }
 
 func (f *bdFixture) upsert(obj ctrlclient.Object) {
+	require.True(f.T(), obj.GetName() != "",
+		"object has empty name")
+
 	err := f.ctrlClient.Create(f.ctx, obj)
 	if err == nil {
 		return
@@ -923,6 +926,14 @@ func (f *bdFixture) BuildAndDeploy(specs []model.TargetSpec, stateSet store.Buil
 					Spec:       iTarget.LiveUpdateSpec,
 				}
 				f.upsert(&lu)
+			}
+
+			if iTarget.IsDockerBuild() {
+				di := v1alpha1.DockerImage{
+					ObjectMeta: metav1.ObjectMeta{Name: iTarget.DockerImageName},
+					Spec:       iTarget.DockerBuildInfo().DockerImageSpec,
+				}
+				f.upsert(&di)
 			}
 		}
 

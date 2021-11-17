@@ -458,8 +458,99 @@ message DockerImageSpec {
   repeated string extraTags = 11;
 }
 
+// DockerImageStageStatus gives detailed report of each stage
+// of the most recent image build.
+//
+// Most stages are derived from Buildkit's StatusResponse
+// https://github.com/moby/buildkit/blob/35fcb28a009d6454b2915a5c8084b25ad851cf38/api/services/control/control.proto#L108
+// but Tilt may synthesize its own stages for the steps it
+// owns.
+//
+// Stages may be executed in parallel.
+message DockerImageStageStatus {
+  // A human-readable name of the stage.
+  optional string name = 1;
+
+  // Whether Buildkit was able to cache the stage based on inputs.
+  // +optional
+  optional bool cached = 2;
+
+  // The timestamp when we started working on the stage.
+  // +optional
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startedAt = 6;
+
+  // The timetsamp when we completed the work on the stage.
+  // +optional
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime finishedAt = 7;
+
+  // Error message if the stage failed. If empty, the stage succeeded.
+  // +optional
+  optional string error = 5;
+}
+
+// DockerImageStateBuilding expresses that an image build is in-progress.
+message DockerImageStateBuilding {
+  // The reason why the image is building.
+  // +optional
+  optional string reason = 1;
+
+  // Time when the build started.
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startedAt = 2;
+}
+
+// DockerImageStateCompleted expresses when the image build is finished and
+// no new images need to be built.
+message DockerImageStateCompleted {
+  // The reason why the image was built.
+  // +optional
+  optional string reason = 1;
+
+  // Error message if the build failed.
+  // +optional
+  optional string error = 2;
+
+  // Time when we started building an image.
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startedAt = 3;
+
+  // Time when we finished building an image
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime finishedAt = 4;
+}
+
+// DockerImageStateWaiting expresses what we're waiting on to build an image.
+message DockerImageStateWaiting {
+  // (brief) reason the image build is waiting.
+  // +optional
+  optional string reason = 1;
+}
+
 // DockerImageStatus defines the observed state of DockerImage
 message DockerImageStatus {
+  // A fully-qualified image reference of a built image, as seen from the local
+  // network.
+  //
+  // Usually includes a name and an immutable tag.
+  //
+  // NB: If we're building to a particular registry, this may
+  // have a different hostname from the Spec `Ref` field.
+  //
+  // +optional
+  optional string ref = 1;
+
+  // Details about a waiting image build.
+  // +optional
+  optional DockerImageStateWaiting waiting = 2;
+
+  // Details about a building image.
+  // +optional
+  optional DockerImageStateBuilding building = 3;
+
+  // Details about a finished image build.
+  // +optional
+  optional DockerImageStateCompleted completed = 4;
+
+  // Status information about each individual build stage
+  // of the most recent image build.
+  repeated DockerImageStageStatus stageStatuses = 5;
 }
 
 // ExecAction describes a "run in container" action.
@@ -866,10 +957,20 @@ message ImageMapSpec {
 
 // ImageMapStatus defines the observed state of ImageMap
 message ImageMapStatus {
-  // A fully-qualified image reference, including a name and an immutable tag.
+  // A fully-qualified image reference, including a name and an immutable tag,
+  // as seen from the cluster container runtime that we're mapping this image to.
   //
-  // The image will not necessarily have the same repo URL as the selector. Many
-  // Kubernetes clusters let you push to a local registry for local development.
+  // NB: Container images often need to be referenced from different networks,
+  // including:
+  //
+  // 1) The cluster container runtime
+  // 2) The local network
+  // 3) The cluster network
+  //
+  // And each of these cases may have distinct URLs.
+  //
+  // For more details on image references in different networks, see:
+  // https://github.com/kubernetes/enhancements/tree/master/keps/sig-cluster-lifecycle/generic/1755-communicating-a-local-registry#specification-for-localregistryhosting-v1
   optional string image = 1;
 
   // Timestamp indicating when the image started building.

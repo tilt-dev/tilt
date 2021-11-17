@@ -26,10 +26,6 @@ RUN curl --silent --show-error --location --fail --retry 3 --output /tmp/kustomi
   && tar -xz -C /tmp -f /tmp/kustomize.tar.gz \
   && mv /tmp/kustomize /usr/bin/kustomize
 
-RUN curl --silent --show-error --location --fail --retry 3 --output /tmp/helm.tar.gz https://get.helm.sh/helm-v2.16.1-linux-amd64.tar.gz \
-  && tar -xz -C /tmp -f /tmp/helm.tar.gz \
-  && mv /tmp/linux-amd64/helm /usr/bin/helm2
-
 RUN curl --silent --show-error --location --fail --retry 3 --output /tmp/helm.tar.gz  https://get.helm.sh/helm-v3.5.0-linux-amd64.tar.gz \
   && tar -xz -C /tmp -f /tmp/helm.tar.gz \
   && mv /tmp/linux-amd64/helm /usr/bin/helm3

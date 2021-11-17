@@ -151,14 +151,14 @@ func TestBuildControllerIgnoresImageTags(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	ref := container.MustParseNamed("image-foo:tagged")
+	ref := container.MustParseNamed("gcr.io/blorg-dev/blorg-backend:devel-nick")
 	refSel := container.NewRefSelector(ref)
 
 	iTarget := NewSanchoLiveUpdateImageTarget(f)
 	iTarget = iTarget.MustWithRef(refSel)
 
 	manifest := manifestbuilder.New(f, "fe").
-		WithK8sYAML(SanchoYAML).
+		WithK8sYAML(testyaml.BlorgJobYAML).
 		WithLiveUpdateBAD().
 		WithImageTarget(iTarget).
 		Build()
@@ -171,7 +171,7 @@ func TestBuildControllerIgnoresImageTags(t *testing.T) {
 
 	pod := basePB.
 		WithPodName("pod-id").
-		WithImage("image-foo:othertag").
+		WithImage("gcr.io/blorg-dev/blorg-backend:othertag").
 		Build()
 	f.podEvent(pod)
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
@@ -496,7 +496,7 @@ func TestCrashRebuildTwoContainersTwoImages(t *testing.T) {
 	defer f.TearDown()
 
 	manifest := manifestbuilder.New(f, "sancho").
-		WithK8sYAML(testyaml.SanchoTwoContainersOneImageYAML).
+		WithK8sYAML(testyaml.SanchoSidecarYAML).
 		WithLiveUpdateBAD().
 		WithImageTarget(NewSanchoLiveUpdateImageTarget(f)).
 		WithImageTarget(NewSanchoSidecarLiveUpdateImageTarget(f)).
