@@ -25,6 +25,9 @@ install-debug:
 
 lint: golangci-lint
 
+lintfix:
+	LINT_FLAGS=--fix make golangci-lint
+
 build:
 	go test -mod vendor -p $(GO_PARALLEL_JOBS) -timeout 60s ./... -run nonsenseregex
 
@@ -104,7 +107,7 @@ benchmark:
 
 golangci-lint:
 ifneq ($(CIRCLECI),true)
-	GOFLAGS="-mod=vendor" golangci-lint run -v --timeout 180s
+	GOFLAGS="-mod=vendor" golangci-lint run $(LINT_FLAGS) -v --timeout 180s
 else
 	mkdir -p test-results
 	GOFLAGS="-mod=vendor" golangci-lint run -v --timeout 180s --out-format junit-xml > test-results/lint.xml

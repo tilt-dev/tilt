@@ -1,4 +1,5 @@
-//+build !skiplargetiltfiletests
+//go:build !skiplargetiltfiletests
+// +build !skiplargetiltfiletests
 
 // On windows, running Helm can take ~0.5 seconds,
 // which starts to blow up test times.

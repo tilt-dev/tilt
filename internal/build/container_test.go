@@ -1,4 +1,5 @@
-//+build !skipcontainertests,!windows
+//go:build !skipcontainertests && !windows
+// +build !skipcontainertests,!windows
 
 // Tests that involve spinning up/interacting with actual containers
 package build
