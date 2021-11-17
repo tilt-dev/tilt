@@ -320,6 +320,7 @@ export function DisabledSidebarItemView(props: SidebarItemViewProps) {
   const { item, selected, groupView } = props
   const isSelectedClass = selected ? "isSelected" : ""
   const groupViewIndentClass = groupView ? "groupViewIndent" : ""
+  let analyticsTags = { target: item.targetType }
 
   return (
     <SidebarItemRoot
@@ -328,6 +329,7 @@ export function DisabledSidebarItemView(props: SidebarItemViewProps) {
       <StarResourceButton
         resourceName={item.name}
         analyticsName="ui.web.sidebarStarButton"
+        analyticsTags={analyticsTags}
       />
       <DisabledSidebarItemBox
         className={`${isSelectedClass}`}
@@ -355,6 +357,7 @@ export function EnabledSidebarItemView(props: SidebarItemViewProps) {
   let onTrigger = triggerUpdate.bind(null, item.name)
   let onModeToggle = toggleTriggerMode.bind(null, item.name)
   const groupViewIndentClass = props.groupView ? "groupViewIndent" : ""
+  let analyticsTags = { target: item.targetType }
 
   return (
     <SidebarItemRoot
@@ -364,6 +367,7 @@ export function EnabledSidebarItemView(props: SidebarItemViewProps) {
       <StarResourceButton
         resourceName={item.name}
         analyticsName="ui.web.sidebarStarButton"
+        analyticsTags={analyticsTags}
       />
       <SidebarItemBox
         className={`${isSelectedClass} ${isBuildingClass}`}
@@ -392,6 +396,7 @@ export function EnabledSidebarItemView(props: SidebarItemViewProps) {
               triggerMode={item.triggerMode}
               isQueued={item.queued}
               onTrigger={onTrigger}
+              analyticsTags={analyticsTags}
             />
           </SidebarItemRuntimeBox>
           <SidebarItemBuildBox>

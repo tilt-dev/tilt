@@ -132,7 +132,11 @@ describe("SidebarResources", () => {
       },
       {
         name: "ui.web.sidebarStarButton",
-        tags: { action: AnalyticsAction.Click, newStarState: "true" },
+        tags: {
+          action: AnalyticsAction.Click,
+          newStarState: "true",
+          target: "k8s",
+        },
       },
       {
         name: "ui.web.star",
@@ -175,7 +179,11 @@ describe("SidebarResources", () => {
       },
       {
         name: "ui.web.sidebarStarButton",
-        tags: { action: AnalyticsAction.Click, newStarState: "false" },
+        tags: {
+          action: AnalyticsAction.Click,
+          newStarState: "false",
+          target: "k8s",
+        },
       },
       {
         name: "ui.web.star",
