@@ -1477,7 +1477,6 @@ func TestPodEventOrdering(t *testing.T) {
 			call := f.nextCall()
 			assert.True(t, call.oneImageState().IsEmpty())
 			f.WaitUntilManifestState("uid deployed", "fe", func(ms store.ManifestState) bool {
-
 				return k8sconv.ContainsUID(ms.K8sRuntimeState().ApplyFilter, uidNow)
 			})
 
@@ -1485,18 +1484,20 @@ func TestPodEventOrdering(t *testing.T) {
 				f.podEvent(pb.Build())
 			}
 
-			// ensure that the pod events have been processed
+			// ensure that the pod events have been processed - the end state should always have "pod-a" and "pod-b"
 			f.WaitUntilManifestState("pods seen", "fe", func(ms store.ManifestState) bool {
-				return len(ms.K8sRuntimeState().Pods) == 2
+				pods := ms.K8sRuntimeState().Pods
+				a := pods["pod-a"]
+				b := pods["pod-b"]
+				return a != nil && b != nil
 			})
 
 			f.upper.store.Dispatch(
 				store.NewLogAction("fe", k8sconv.SpanIDForPod(manifest.Name, podBNow.PodName()), logger.InfoLvl, nil, []byte("pod b log\n")))
 
 			f.WaitUntil("pod log seen", func(state store.EngineState) bool {
-				ms, _ := state.ManifestState(manifest.Name)
-				spanID := k8sconv.SpanIDForPod(manifest.Name, k8s.PodID(ms.MostRecentPod().Name))
-				return spanID != "" && strings.Contains(state.LogStore.SpanLog(spanID), "pod b log")
+				spanID := k8sconv.SpanIDForPod(manifest.Name, podBNow.PodName())
+				return strings.Contains(state.LogStore.SpanLog(spanID), "pod b log")
 			})
 
 			f.withManifestState("fe", func(ms store.ManifestState) {
@@ -4419,6 +4420,8 @@ func (f *testFixture) WaitUntil(msg string, isDone func(store.EngineState) bool)
 		}
 
 		if isCanceled {
+			encoder := store.CreateEngineStateEncoder(os.Stderr)
+			require.NoError(f.T(), encoder.Encode(state))
 			f.T().Fatalf("Timed out waiting for: %s", msg)
 		}
 
