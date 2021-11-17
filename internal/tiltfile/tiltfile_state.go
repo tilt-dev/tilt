@@ -81,7 +81,6 @@ type tiltfileState struct {
 	versionExt    version.Plugin
 	configExt     *config.Plugin
 	k8sClient     k8s.Client
-	localRegistry *container.Registry
 	features      feature.FeatureSet
 
 	// added to during execution
@@ -1005,17 +1004,13 @@ func (s *tiltfileState) decideRegistry() container.Registry {
 		return s.defaultReg
 	}
 
-	// Defer lookup of registry until now
-	if s.localRegistry == nil {
-		registry := s.k8sClient.LocalRegistry(s.ctx)
-		s.localRegistry = &registry
-	}
+	registry := s.k8sClient.LocalRegistry(s.ctx)
 
-	if !s.localRegistry.Empty() {
+	if !registry.Empty() {
 		// If we've found a local registry in the cluster at run-time, use that
 		// instead of the default_registry (if any) declared in the Tiltfile
-		s.logger.Infof("Auto-detected local registry from environment: %s", *s.localRegistry)
-		return *s.localRegistry
+		s.logger.Infof("Auto-detected local registry from environment: %s", registry)
+		return registry
 	}
 
 	return s.defaultReg
