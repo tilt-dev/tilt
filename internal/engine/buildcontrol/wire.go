@@ -82,6 +82,7 @@ func ProvideDockerComposeBuildAndDeployer(
 	ctx context.Context,
 	dcCli dockercompose.DockerComposeClient,
 	dCli docker.Client,
+	ctrlclient ctrlclient.Client,
 	dir *dirs.TiltDevDir) (*DockerComposeBuildAndDeployer, error) {
 	wire.Build(
 		BaseWireSet,

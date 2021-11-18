@@ -56,7 +56,7 @@ func provideFakeBuildAndDeployer(ctx context.Context, docker2 docker.Client, kCl
 	kubernetesapplyReconciler := kubernetesapply.NewReconciler(ctrlClient, kClient, scheme, dockerBuilder, kubeContext, st, namespace, execer)
 	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, kClient, env, kubeContext, analytics2, clock, kp, ctrlClient, kubernetesapplyReconciler)
 	imageBuilder := buildcontrol.NewImageBuilder(dockerBuilder, execCustomBuilder)
-	dockerComposeBuildAndDeployer := buildcontrol.NewDockerComposeBuildAndDeployer(dcc, docker2, imageBuilder, clock)
+	dockerComposeBuildAndDeployer := buildcontrol.NewDockerComposeBuildAndDeployer(dcc, docker2, imageBuilder, clock, ctrlClient)
 	localexecEnv := provideFakeEnv()
 	cmdExecer := cmd.ProvideExecer(localexecEnv)
 	proberManager := cmd.ProvideProberManager()

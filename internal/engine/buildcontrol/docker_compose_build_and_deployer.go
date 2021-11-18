@@ -8,34 +8,40 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/go-connections/nat"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/internal/controllers/core/dockerimage"
 
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type DockerComposeBuildAndDeployer struct {
-	dcc   dockercompose.DockerComposeClient
-	dc    docker.Client
-	ib    *ImageBuilder
-	clock build.Clock
+	dcc        dockercompose.DockerComposeClient
+	dc         docker.Client
+	ib         *ImageBuilder
+	clock      build.Clock
+	ctrlClient ctrlclient.Client
 }
 
 var _ BuildAndDeployer = &DockerComposeBuildAndDeployer{}
 
 func NewDockerComposeBuildAndDeployer(dcc dockercompose.DockerComposeClient, dc docker.Client,
-	ib *ImageBuilder, c build.Clock) *DockerComposeBuildAndDeployer {
+	ib *ImageBuilder, c build.Clock,
+	ctrlClient ctrlclient.Client) *DockerComposeBuildAndDeployer {
 	return &DockerComposeBuildAndDeployer{
-		dcc:   dcc,
-		dc:    dc,
-		ib:    ib,
-		clock: c,
+		dcc:        dcc,
+		dc:         dc,
+		ib:         ib,
+		clock:      c,
+		ctrlClient: ctrlClient,
 	}
 }
 
@@ -112,15 +118,20 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 			return store.ImageBuildResult{}, err
 		}
 
+		startTime := apis.NowMicro()
+		dockerimage.MaybeUpdateStatus(ctx, bd.ctrlClient, iTarget, dockerimage.ToBuildingStatus(iTarget, startTime))
+
 		expectedRef := iTarget.Refs.ConfigurationRef
 
 		// NOTE(maia): we assume that this func takes one DC target and up to one image target
 		// corresponding to that service. If this func ever supports specs for more than one
 		// service at once, we'll have to match up image build results to DC target by ref.
-		refs, _, err := bd.ib.Build(ctx, iTarget, ps)
+		refs, stages, err := bd.ib.Build(ctx, iTarget, ps)
 		if err != nil {
+			dockerimage.MaybeUpdateStatus(ctx, bd.ctrlClient, iTarget, dockerimage.ToCompletedFailStatus(iTarget, startTime, stages, err))
 			return store.ImageBuildResult{}, err
 		}
+		dockerimage.MaybeUpdateStatus(ctx, bd.ctrlClient, iTarget, dockerimage.ToCompletedSuccessStatus(iTarget, startTime, stages, refs))
 
 		ref, err := bd.tagWithExpected(ctx, refs.LocalRef, expectedRef)
 		if err != nil {
