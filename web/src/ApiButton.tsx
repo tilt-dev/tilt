@@ -169,6 +169,9 @@ function ApiButtonWithOptions(props: ApiButtonWithOptionsProps & ButtonProps) {
   const { submit, uiButton, setInputValue, getInputValue, ...buttonProps } =
     props
 
+  let componentType = uiButton.spec?.location?.componentType
+  let tags = { component: componentType }
+
   return (
     <>
       <ApiButtonRoot
@@ -184,6 +187,7 @@ function ApiButtonWithOptions(props: ApiButtonWithOptionsProps & ButtonProps) {
             setOpen((prevOpen) => !prevOpen)
           }}
           analyticsName="ui.web.uiButton.inputMenu"
+          analyticsTags={tags}
           aria-label={`Open ${props.uiButton.spec?.text} options`}
           {...buttonProps}
         >
@@ -308,6 +312,8 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
   const pb = usePathBuilder()
 
   const { setError } = useHudErrorContext()
+  let componentType = uiButton.spec?.location?.componentType
+  let tags = { component: componentType }
 
   const onClick = async () => {
     // TODO(milas): currently the loading state just disables the button for the duration of
@@ -325,7 +331,7 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
     }
 
     const snackbarLogsLink =
-      uiButton.spec?.location?.componentType === "Global" ? (
+      componentType === "Global" ? (
         <LogLink to="/r/(all)/overview">Global Logs</LogLink>
       ) : (
         <LogLink
@@ -350,6 +356,7 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
   const button = (
     <InstrumentedButton
       analyticsName={"ui.web.uibutton"}
+      analyticsTags={tags}
       onClick={onClick}
       disabled={disabled}
       aria-label={`Trigger ${uiButton.spec?.text}`}
