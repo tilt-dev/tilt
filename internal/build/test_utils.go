@@ -53,9 +53,8 @@ func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 	_, ok := dCli.(*docker.Cli)
 	// If it wasn't an actual Docker client, it's an exploding client
 	if !ok {
-		cli := dCli.(docker.Client)
 		// Call the simplest interface function that returns the error which originally occurred in NewDockerClient()
-		t.Fatal(cli.CheckConnected())
+		t.Fatal(dCli.CheckConnected())
 	}
 	ps := NewPipelineState(ctx, 3, fakeClock{})
 

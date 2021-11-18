@@ -35,18 +35,12 @@ func normalizeGitRemote(s string) string {
 
 	// treat "http://", "https://", "git://", "ssh://", etc as equiv
 	u.Scheme = ""
-
 	u.User = nil
 
 	// github.com/tilt-dev/tilt is the same as github.com/tilt-dev/tilt/
-	if strings.HasSuffix(u.Path, "/") {
-		u.Path = u.Path[:len(u.Path)-1]
-	}
-
+	u.Path = strings.TrimSuffix(u.Path, "/")
 	// github.com/tilt-dev/tilt is the same as github.com/tilt-dev/tilt.git
-	if strings.HasSuffix(u.Path, ".git") {
-		u.Path = u.Path[:len(u.Path)-4]
-	}
+	u.Path = strings.TrimSuffix(u.Path, ".git")
 
 	return u.String()
 }

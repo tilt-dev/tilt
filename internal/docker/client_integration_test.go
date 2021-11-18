@@ -1,4 +1,5 @@
-//+build !skipcontainertests
+//go:build !skipcontainertests
+// +build !skipcontainertests
 
 package docker
 
