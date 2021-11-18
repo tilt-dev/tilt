@@ -45,12 +45,14 @@ func HandleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 
 	if ms.IsK8s() {
 		krs := ms.K8sRuntimeState()
-		for podID := range krs.Pods {
-			krs.UpdateStartTime[podID] = action.StartTime
+		podIDSet := map[k8s.PodID]bool{}
+		for _, pod := range krs.GetPods() {
+			podIDSet[k8s.PodID(pod.Name)] = true
+			krs.UpdateStartTime[k8s.PodID(pod.Name)] = action.StartTime
 		}
 		// remove stale pods
 		for podID := range krs.UpdateStartTime {
-			if _, ok := krs.Pods[podID]; !ok {
+			if !podIDSet[podID] {
 				delete(krs.UpdateStartTime, podID)
 			}
 		}

@@ -190,12 +190,12 @@ func TestRuntimeStateJob(t *testing.T) {
 
 			runtimeState.HasEverDeployedSuccessfully = true
 
-			pod := &v1alpha1.Pod{
+			pod := v1alpha1.Pod{
 				Name:      "pod",
 				CreatedAt: apis.Now(),
 				Phase:     string(tc.phase),
 			}
-			runtimeState.Pods[k8s.PodID(pod.Name)] = pod
+			runtimeState.FilteredPods = []v1alpha1.Pod{pod}
 
 			assert.Equal(t, tc.expectedRuntimeStatus, runtimeState.RuntimeStatus())
 		})

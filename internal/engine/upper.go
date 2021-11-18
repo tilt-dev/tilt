@@ -131,8 +131,6 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 	// the api models directly.
 	case filewatch.FileWatchUpdateStatusAction:
 		filewatch.HandleFileWatchUpdateStatusEvent(ctx, state, action)
-	case k8swatch.KubernetesDiscoveryUpdateStatusAction:
-		k8swatch.HandleKubernetesDiscoveryUpdateStatusAction(ctx, state, action)
 
 	case k8swatch.ServiceChangeAction:
 		handleServiceEvent(ctx, state, action)

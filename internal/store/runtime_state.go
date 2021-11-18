@@ -11,7 +11,6 @@ import (
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -69,15 +68,12 @@ func (l LocalRuntimeState) HasEverBeenReadyOrSucceeded() bool {
 }
 
 type K8sRuntimeState struct {
-	// The ancestor that we match pods against to associate them with this manifest.
-	// If we deployed Pod YAML, this will be the Pod UID.
-	// In many cases, this will be a Deployment UID.
-	PodAncestorUID types.UID
-
-	Pods PodSet
-	LBs  map[k8s.ServiceName]*url.URL
+	LBs map[k8s.ServiceName]*url.URL
 
 	ApplyFilter *k8sconv.KubernetesApplyFilter
+
+	// This must match the FilteredPods field of k8sconv.KubernetesResource
+	FilteredPods []v1alpha1.Pod
 
 	LastReadyOrSucceededTime    time.Time
 	HasEverDeployedSuccessfully bool
@@ -93,10 +89,7 @@ var _ RuntimeState = K8sRuntimeState{}
 
 func NewK8sRuntimeStateWithPods(m model.Manifest, pods ...v1alpha1.Pod) K8sRuntimeState {
 	state := NewK8sRuntimeState(m)
-	for _, pod := range pods {
-		p := pod
-		state.Pods[k8s.PodID(p.Name)] = &p
-	}
+	state.FilteredPods = pods
 	state.HasEverDeployedSuccessfully = len(pods) > 0
 	return state
 }
@@ -104,7 +97,6 @@ func NewK8sRuntimeStateWithPods(m model.Manifest, pods ...v1alpha1.Pod) K8sRunti
 func NewK8sRuntimeState(m model.Manifest) K8sRuntimeState {
 	return K8sRuntimeState{
 		PodReadinessMode: m.PodReadinessMode(),
-		Pods:             PodSet{},
 		LBs:              make(map[k8s.ServiceName]*url.URL),
 		UpdateStartTime:  make(map[k8s.PodID]time.Time),
 	}
@@ -164,20 +156,21 @@ func (s K8sRuntimeState) HasEverBeenReadyOrSucceeded() bool {
 }
 
 func (s K8sRuntimeState) PodLen() int {
-	return len(s.Pods)
+	return len(s.FilteredPods)
 }
 
 func (s K8sRuntimeState) ContainsID(id k8s.PodID) bool {
-	_, ok := s.Pods[id]
-	return ok
+	name := string(id)
+	for _, pod := range s.FilteredPods {
+		if pod.Name == name {
+			return true
+		}
+	}
+	return false
 }
 
-func (s K8sRuntimeState) PodList() []v1alpha1.Pod {
-	pods := make([]v1alpha1.Pod, 0, len(s.Pods))
-	for _, pod := range s.Pods {
-		pods = append(pods, *pod)
-	}
-	return pods
+func (s K8sRuntimeState) GetPods() []v1alpha1.Pod {
+	return s.FilteredPods
 }
 
 func (s K8sRuntimeState) EntityDisplayNames() []string {
@@ -216,7 +209,7 @@ func (o objectRefMeta) GVK() schema.GroupVersionKind {
 // So most of this time, this will return the only pod.
 // And in other cases, it will return a reasonable, consistent default.
 func (s K8sRuntimeState) MostRecentPod() v1alpha1.Pod {
-	return s.Pods.MostRecentPod()
+	return MostRecentPod(s.GetPods())
 }
 
 func AllPodContainers(p v1alpha1.Pod) []v1alpha1.Container {
@@ -248,11 +241,13 @@ func AllPodContainerRestarts(p v1alpha1.Pod) int32 {
 }
 
 func (s K8sRuntimeState) VisiblePodContainerRestarts(podID k8s.PodID) int32 {
-	p := s.Pods[podID]
-	if p == nil {
-		return 0
+	name := string(podID)
+	for _, pod := range s.GetPods() {
+		if pod.Name == name {
+			return AllPodContainerRestarts(pod)
+		}
 	}
-	return AllPodContainerRestarts(*p)
+	return 0
 }
 
 func AllPodContainerPorts(p v1alpha1.Pod) []int32 {
@@ -263,28 +258,16 @@ func AllPodContainerPorts(p v1alpha1.Pod) []int32 {
 	return result
 }
 
-type PodSet map[k8s.PodID]*v1alpha1.Pod
-
-func (ps PodSet) MostRecentPod() v1alpha1.Pod {
+func MostRecentPod(list []v1alpha1.Pod) v1alpha1.Pod {
 	bestPod := v1alpha1.Pod{}
 	found := false
 
-	for _, v := range ps {
-		if !found || k8sconv.PodCompare(*v, bestPod) {
-			bestPod = *v
+	for _, pod := range list {
+		if !found || k8sconv.PodCompare(pod, bestPod) {
+			bestPod = pod
 			found = true
 		}
 	}
 
 	return bestPod
-}
-
-func (ps PodSet) Filter(filter func(pod *v1alpha1.Pod) bool) PodSet {
-	newSet := PodSet{}
-	for k, v := range ps {
-		if filter(v) {
-			newSet[k] = v
-		}
-	}
-	return newSet
 }

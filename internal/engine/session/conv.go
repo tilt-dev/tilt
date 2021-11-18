@@ -32,7 +32,7 @@ func targetsForResource(mt *store.ManifestTarget, holds buildcontrol.HoldSet) []
 
 func k8sRuntimeTarget(mt *store.ManifestTarget) *session.Target {
 	krs := mt.State.K8sRuntimeState()
-	if mt.Manifest.PodReadinessMode() == model.PodReadinessIgnore && krs.HasEverDeployedSuccessfully && len(krs.Pods) == 0 {
+	if mt.Manifest.PodReadinessMode() == model.PodReadinessIgnore && krs.HasEverDeployedSuccessfully && krs.PodLen() == 0 {
 		// HACK: engine assumes anything with an image will create a pod; PodReadinessIgnore is used in these
 		// 	instances to avoid getting stuck in pending forever; in reality, there's no "runtime" target being
 		// 	monitored by Tilt, so instead of faking it, just omit it (note: only applies AFTER first deploy so

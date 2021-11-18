@@ -186,7 +186,7 @@ func TestExitControlCI_PodRunningContainerError(t *testing.T) {
 
 	f.store.WithState(func(state *store.EngineState) {
 		mt := state.ManifestTargets["fe"]
-		pod := mt.State.K8sRuntimeState().Pods["pod-a"]
+		pod := mt.State.K8sRuntimeState().GetPods()[0]
 		c1 := pod.Containers[0]
 		c1.Ready = true
 		c1.Restarts++
