@@ -141,7 +141,15 @@ func (f *TempDirFixture) Rm(pathInRepo string) {
 }
 
 func (f *TempDirFixture) NewFile(prefix string) (*os.File, error) {
-	return ioutil.TempFile(f.dir.Path(), prefix)
+	file, err := ioutil.TempFile(f.dir.Path(), prefix)
+	if err == nil {
+		f.t.Cleanup(
+			func() {
+				_ = file.Close()
+			},
+		)
+	}
+	return file, err
 }
 
 func (f *TempDirFixture) TempDir(prefix string) string {

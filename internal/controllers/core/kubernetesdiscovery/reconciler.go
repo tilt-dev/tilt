@@ -363,8 +363,8 @@ func (w *Reconciler) updateStatus(ctx context.Context, watcherID watcherID) erro
 		return fmt.Errorf("failed to update KubernetesDiscovery status for %q: %v", watcherID, err)
 	}
 
-	w.dispatcher.Dispatch(k8swatch.NewKubernetesDiscoveryUpdateStatusAction(kd))
 	w.restartDetector.Detect(w.dispatcher, watcher.lastUpdate, *kd)
+	w.dispatcher.Dispatch(k8swatch.NewKubernetesDiscoveryUpdateStatusAction(kd))
 	watcher.lastUpdate = *status.DeepCopy()
 	w.watchers[watcherID] = watcher
 	return nil

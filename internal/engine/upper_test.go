@@ -1539,9 +1539,9 @@ func TestPodEventContainerStatus(t *testing.T) {
 	f.podEvent(pod)
 
 	podState := v1alpha1.Pod{}
-	f.WaitUntilManifestState("container status", "foobar", func(ms store.ManifestState) bool {
-		podState = ms.MostRecentPod()
-		return podState.Name == pod.Name && len(podState.Containers) > 0
+	f.WaitUntilPod("containers populated", "foobar", pb.PodName(), func(pod v1alpha1.Pod) bool {
+		podState = pod
+		return len(pod.Containers) > 0
 	})
 
 	container := podState.Containers[0]
@@ -1594,9 +1594,9 @@ func TestPodEventContainerStatusWithoutImage(t *testing.T) {
 	f.podEvent(pod)
 
 	podState := v1alpha1.Pod{}
-	f.WaitUntilManifestState("container status", "foobar", func(ms store.ManifestState) bool {
-		podState = ms.MostRecentPod()
-		return podState.Name == pod.Name && len(podState.Containers) > 0
+	f.WaitUntilPod("containers populated", "foobar", pb.PodName(), func(pod v1alpha1.Pod) bool {
+		podState = pod
+		return len(pod.Containers) > 0
 	})
 
 	// If we have no image target to match container by image ref, we just take the first one
@@ -1959,18 +1959,15 @@ func TestPodContainerStatus(t *testing.T) {
 	startedAt := f.Now()
 	pb = pb.WithCreationTime(startedAt)
 	pod := pb.Build()
-	f.podEvent(pod)
-	f.WaitUntilManifestState("pod appears", "fe", func(ms store.ManifestState) bool {
-		return ms.MostRecentPod().Name == pod.Name
-	})
+	f.startPod(pod, "fe")
 
 	pod = pb.Build()
 	pod.Spec = k8s.FakePodSpec(ref)
 	pod.Status = k8s.FakePodStatus(ref, "Running")
 	f.podEvent(pod)
 
-	f.WaitUntilManifestState("container is ready", "fe", func(ms store.ManifestState) bool {
-		ports := store.AllPodContainerPorts(ms.MostRecentPod())
+	f.WaitUntilPod("container is ready", "fe", pb.PodName(), func(pod v1alpha1.Pod) bool {
+		ports := store.AllPodContainerPorts(pod)
 		return len(ports) == 1 && ports[0] == 8080
 	})
 
@@ -2218,8 +2215,7 @@ func TestUpper_ShowErrorPodLog(t *testing.T) {
 	f.podLog(pod, name, "second string")
 
 	f.withState(func(state store.EngineState) {
-		ms, _ := state.ManifestState(name)
-		spanID := k8sconv.SpanIDForPod(name, k8s.PodID(ms.MostRecentPod().Name))
+		spanID := k8sconv.SpanIDForPod(name, pb.PodName())
 		assert.Equal(t, "first string\nsecond string\n", state.LogStore.SpanLog(spanID))
 	})
 
@@ -2247,8 +2243,7 @@ func TestUpperPodLogInCrashLoopThirdInstanceStillUp(t *testing.T) {
 
 	// the third instance is still up, so we want to show the log from the last crashed pod plus the log from the current pod
 	f.withState(func(es store.EngineState) {
-		ms, _ := es.ManifestState(name)
-		spanID := k8sconv.SpanIDForPod(name, k8s.PodID(ms.MostRecentPod().Name))
+		spanID := k8sconv.SpanIDForPod(name, pb.PodName())
 		assert.Contains(t, es.LogStore.SpanLog(spanID), "third string\n")
 		assert.Contains(t, es.LogStore.ManifestLog(name), "second string\n")
 		assert.Contains(t, es.LogStore.ManifestLog(name), "third string\n")
@@ -2279,13 +2274,13 @@ func TestUpperPodLogInCrashLoopPodCurrentlyDown(t *testing.T) {
 
 	pod := pb.Build()
 	pod.Status.ContainerStatuses[0].Ready = false
-	f.notifyAndWaitForPodStatus(pod, name, func(pod v1alpha1.Pod) bool {
+	f.podEvent(pod)
+	f.WaitUntilPod("containers not ready", name, pb.PodName(), func(pod v1alpha1.Pod) bool {
 		return !store.AllPodContainersReady(pod)
 	})
 
 	f.withState(func(state store.EngineState) {
-		ms, _ := state.ManifestState(name)
-		spanID := k8sconv.SpanIDForPod(name, k8s.PodID(ms.MostRecentPod().Name))
+		spanID := k8sconv.SpanIDForPod(name, pb.PodName())
 		assert.Equal(t, "first string\nWARNING: Detected container restart. Pod: foobar-fakePodID. Container: sancho.\nsecond string\n",
 			state.LogStore.SpanLog(spanID))
 	})
@@ -2336,7 +2331,7 @@ func TestUpperRecordPodWithMultipleContainers(t *testing.T) {
 	})
 
 	f.startPod(pod, manifest.Name)
-	f.notifyAndWaitForPodStatus(pod, manifest.Name, func(pod v1alpha1.Pod) bool {
+	f.WaitUntilPod("containers populated", manifest.Name, pb.PodName(), func(pod v1alpha1.Pod) bool {
 		if len(pod.Containers) != 2 {
 			return false
 		}
@@ -2385,7 +2380,7 @@ func TestUpperProcessOtherContainersIfOneErrors(t *testing.T) {
 	})
 
 	f.startPod(pod, manifest.Name)
-	f.notifyAndWaitForPodStatus(pod, manifest.Name, func(pod v1alpha1.Pod) bool {
+	f.WaitUntilPod("valid containers populated", manifest.Name, pb.PodName(), func(pod v1alpha1.Pod) bool {
 		if len(pod.Containers) != 2 {
 			return false
 		}
@@ -3874,6 +3869,7 @@ func TestDisablingResourcePreventsBuild(t *testing.T) {
 
 func TestDisableButtonIsCreated(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", `
@@ -4420,8 +4416,6 @@ func (f *testFixture) WaitUntil(msg string, isDone func(store.EngineState) bool)
 		}
 
 		if isCanceled {
-			encoder := store.CreateEngineStateEncoder(os.Stderr)
-			require.NoError(f.T(), encoder.Encode(state))
 			f.T().Fatalf("Timed out waiting for: %s", msg)
 		}
 
@@ -4481,11 +4475,24 @@ func (f *testFixture) PollUntil(msg string, isDone func() bool) {
 func (f *testFixture) WaitUntilManifest(msg string, name model.ManifestName, isDone func(store.ManifestTarget) bool) {
 	f.t.Helper()
 	f.WaitUntil(msg, func(es store.EngineState) bool {
-		mt, ok := es.ManifestTargets[model.ManifestName(name)]
+		mt, ok := es.ManifestTargets[name]
 		if !ok {
 			return false
 		}
 		return isDone(*mt)
+	})
+}
+
+func (f *testFixture) WaitUntilPod(msg string, name model.ManifestName, podName k8s.PodID, isDone func(pod v1alpha1.Pod) bool) {
+	f.t.Helper()
+
+	msg = fmt.Sprintf("pod %q state: %s", podName, msg)
+	f.WaitUntilManifestState(msg, name, func(ms store.ManifestState) bool {
+		pod := ms.K8sRuntimeState().Pods[podName]
+		if pod == nil {
+			return false
+		}
+		return isDone(*pod)
 	})
 }
 
@@ -4563,18 +4570,23 @@ func (f *testFixture) lastDeployedUID(manifestName model.ManifestName) types.UID
 func (f *testFixture) startPod(pod *v1.Pod, manifestName model.ManifestName) {
 	f.t.Helper()
 	f.podEvent(pod)
-	f.WaitUntilManifestState("pod appears", manifestName, func(ms store.ManifestState) bool {
-		return ms.MostRecentPod().Name == pod.Name
+	f.WaitUntilPod("pod seen", manifestName, k8s.PodID(pod.Name), func(pod v1alpha1.Pod) bool {
+		// all we care about is existence
+		return true
 	})
 }
 
 func (f *testFixture) podLog(pod *v1.Pod, manifestName model.ManifestName, s string) {
+	f.t.Helper()
 	podID := k8s.PodID(pod.Name)
-	f.upper.store.Dispatch(store.NewLogAction(manifestName, k8sconv.SpanIDForPod(manifestName, podID), logger.InfoLvl, nil, []byte(s+"\n")))
+	f.withManifestState(manifestName, func(ms store.ManifestState) {
+		require.NotNil(f.t, ms.K8sRuntimeState().Pods[podID],
+			"Pod %q does not exist in manifest %q", podID, manifestName)
+	})
 
-	f.WaitUntil("pod log seen", func(es store.EngineState) bool {
-		ms, _ := es.ManifestState(manifestName)
-		spanID := k8sconv.SpanIDForPod(manifestName, k8s.PodID(ms.MostRecentPod().Name))
+	spanID := k8sconv.SpanIDForPod(manifestName, podID)
+	f.upper.store.Dispatch(store.NewLogAction(manifestName, spanID, logger.InfoLvl, nil, []byte(s+"\n")))
+	f.WaitUntil(fmt.Sprintf("pod %q log seen", pod.Name), func(es store.EngineState) bool {
 		return strings.Contains(es.LogStore.SpanLog(spanID), s)
 	})
 }
@@ -4585,17 +4597,10 @@ func (f *testFixture) restartPod(pb podbuilder.PodBuilder) podbuilder.PodBuilder
 
 	f.podEvent(pb.Build())
 
-	f.WaitUntilManifestState("pod restart seen", pb.ManifestName(), func(ms store.ManifestState) bool {
-		return store.AllPodContainerRestarts(ms.MostRecentPod()) == int32(restartCount)
+	f.WaitUntilPod("restart seen", pb.ManifestName(), pb.PodName(), func(pod v1alpha1.Pod) bool {
+		return store.AllPodContainerRestarts(pod) == int32(restartCount)
 	})
 	return pb
-}
-
-func (f *testFixture) notifyAndWaitForPodStatus(pod *v1.Pod, mn model.ManifestName, pred func(pod v1alpha1.Pod) bool) {
-	f.podEvent(pod)
-	f.WaitUntilManifestState("pod status change seen", mn, func(state store.ManifestState) bool {
-		return pred(state.MostRecentPod())
-	})
 }
 
 func (f *testFixture) waitForCompletedBuildCount(count int) {
@@ -4612,7 +4617,14 @@ func (f *testFixture) LogLines() []string {
 func (f *testFixture) TearDown() {
 	if f.T().Failed() {
 		f.withState(func(es store.EngineState) {
+			fmt.Println("==== ENGINE STATE ====")
+			encoder := store.CreateEngineStateEncoder(os.Stdout)
+			require.NoError(f.T(), encoder.Encode(es))
+			fmt.Println("==== ENGINE STATE ====")
+
+			fmt.Println("==== LOG STORE ====")
 			fmt.Println(es.LogStore.String())
+			fmt.Println("==== LOG STORE ====")
 		})
 	}
 	f.TempDirFixture.TearDown()

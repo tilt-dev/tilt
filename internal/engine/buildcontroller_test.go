@@ -567,6 +567,9 @@ func TestRecordLiveUpdatedContainerIDsForFailedLiveUpdate(t *testing.T) {
 		WithContainerIDAtIndex("c1", 0).
 		WithContainerIDAtIndex("c2", 1).
 		Build())
+	f.WaitUntilPod("containers populated", "sancho", basePB.PodName(), func(pod v1alpha1.Pod) bool {
+		return len(pod.Containers) == 2
+	})
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
 
 	call = f.nextCall()
