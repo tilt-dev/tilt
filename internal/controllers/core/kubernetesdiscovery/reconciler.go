@@ -83,7 +83,8 @@ type Reconciler struct {
 	knownDescendentPodUIDs map[types.UID]k8s.UIDSet
 
 	// knownPods is an index of all the known pods and associated Tilt-derived metadata, by UID.
-	knownPods map[types.UID]*v1.Pod
+	knownPods             map[types.UID]*v1.Pod
+	knownPodOwnerCreation map[types.UID]metav1.Time
 }
 
 func (w *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
@@ -107,6 +108,7 @@ func NewReconciler(ctrlClient ctrlclient.Client, kCli k8s.Client, ownerFetcher k
 		watchers:               make(map[watcherID]watcher),
 		knownDescendentPodUIDs: make(map[types.UID]k8s.UIDSet),
 		knownPods:              make(map[types.UID]*v1.Pod),
+		knownPodOwnerCreation:  make(map[types.UID]metav1.Time),
 	}
 }
 
@@ -381,7 +383,11 @@ func (w *Reconciler) buildStatus(ctx context.Context, watcher watcher) v1alpha1.
 			return
 		}
 		seenPodUIDs.Add(pod.UID)
-		pods = append(pods, *k8sconv.Pod(ctx, pod, ancestorUID))
+		podObj := *k8sconv.Pod(ctx, pod, ancestorUID)
+		if podObj.Owner != nil {
+			podObj.Owner.CreationTimestamp = w.knownPodOwnerCreation[pod.UID]
+		}
+		pods = append(pods, podObj)
 	}
 
 	for i := range watcher.spec.Watches {
@@ -451,6 +457,9 @@ type triageResult struct {
 // KubernetesDiscovery spec update propagates.
 func (w *Reconciler) triagePodTree(pod *v1.Pod, objTree k8s.ObjectRefTree) []triageResult {
 	uid := pod.UID
+	if len(objTree.Owners) > 0 {
+		w.knownPodOwnerCreation[uid] = objTree.Owners[0].CreationTimestamp
+	}
 
 	// Set up the descendent pod UID index
 	for _, ownerUID := range objTree.UIDs() {
@@ -534,6 +543,7 @@ func (w *Reconciler) handlePodDelete(ctx context.Context, namespace k8s.Namespac
 	for uid, pod := range w.knownPods {
 		if pod.Namespace == namespace.String() && pod.Name == name {
 			delete(w.knownPods, uid)
+			delete(w.knownPodOwnerCreation, uid)
 			podUID = uid
 			break
 		}
