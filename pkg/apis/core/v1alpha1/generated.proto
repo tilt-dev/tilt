@@ -1627,6 +1627,9 @@ message Pod {
 
   // Errors are aggregated error messages for the Pod and its containers.
   repeated string errors = 13;
+
+  // Direct owner of this pod, if available.
+  optional PodOwner owner = 16;
 }
 
 // PodCondition is a lifecycle condition for a Pod.
@@ -1751,6 +1754,27 @@ message PodLogStreamTemplateSpec {
   //
   // +optional
   repeated string ignoreContainers = 3;
+}
+
+// PodOwner contains information of the direct owner of the
+// pod, if available.
+//
+// Tools that need to select a most relevant pod or set of pods
+// can use this info to group pods by owner.
+message PodOwner {
+  // The name of the owner.
+  optional string name = 1;
+
+  // API version of the owner.
+  optional string apiVersion = 3;
+
+  // Kind of the owner
+  // More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+  optional string kind = 4;
+
+  // The creation timestamp of the owner.
+  // +optional
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.Time creationTimestamp = 2;
 }
 
 // PortForward
