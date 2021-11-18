@@ -220,13 +220,6 @@ func HandleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 			engineState.FatalError = err
 			return
 		}
-	} else {
-		krs := ms.K8sRuntimeState()
-		for podID, pod := range krs.Pods {
-			// Reset the baseline, so that we don't show restarts
-			// from before any live-updates
-			krs.BaselineRestarts[podID] = store.AllPodContainerRestarts(*pod)
-		}
 	}
 
 	// Track the container ids that have been live-updated whether the
