@@ -24,10 +24,14 @@ import OverviewTable, {
   ResourceTableRow,
   RowValues,
   Table,
+  TableEndpointColumn,
   TableGroupedByLabels,
   TableNameColumn,
   TableNoMatchesFound,
+  TablePodIDColumn,
   TableResourceResultCount,
+  TableTriggerColumn,
+  TableTriggerModeColumn,
   TableWithoutGroups,
 } from "./OverviewTable"
 import { ResourceGroupsInfoTip } from "./ResourceGroups"
@@ -49,6 +53,7 @@ import {
   nResourceView,
   nResourceWithLabelsView,
   oneButton,
+  oneResourceNoAlerts,
   TestDataView,
 } from "./testdata"
 import { RuntimeStatus, UpdateStatus } from "./types"
@@ -57,13 +62,18 @@ import { RuntimeStatus, UpdateStatus } from "./types"
 const tableViewWithSettings = ({
   view,
   labelsEnabled,
+  disableResourcesEnabled,
   resourceListOptions,
 }: {
   view: TestDataView
   labelsEnabled?: boolean
+  disableResourcesEnabled?: boolean
   resourceListOptions?: ResourceListOptions
 }) => {
-  const features = new Features({ [Flag.Labels]: labelsEnabled ?? true })
+  const features = new Features({
+    [Flag.Labels]: labelsEnabled ?? true,
+    [Flag.DisableResources]: disableResourcesEnabled ?? true,
+  })
   return (
     <MemoryRouter initialEntries={["/"]}>
       <SnackbarProvider>
@@ -137,7 +147,12 @@ it("sorts by status", () => {
   let view = nResourceView(10)
   view.uiResources[3].status!.updateStatus = UpdateStatus.Error
   view.uiResources[7].status!.runtimeStatus = RuntimeStatus.Error
-  const root = mount(tableViewWithSettings({ view }))
+  view.uiResources.unshift(
+    oneResourceNoAlerts({ disabled: true, name: "disabled_resource" })
+  )
+  const root = mount(
+    tableViewWithSettings({ view, disableResourcesEnabled: true })
+  )
 
   const statusHeader = root
     .find(ResourceTableHeader)
@@ -149,7 +164,8 @@ it("sorts by status", () => {
   const actualResources = rows.map((row) =>
     row.find(ResourceTableData).at(3).text()
   )
-  // 3 and 7 go first because they're failing, then it's alpha
+  // 3 and 7 go first because they're failing, then it's alpha,
+  // followed by disabled resources
   const expectedResources = [
     "_3",
     "_7",
@@ -161,6 +177,7 @@ it("sorts by status", () => {
     "_6",
     "_8",
     "_9",
+    "disabled_resource",
   ]
   expect(expectedResources).toEqual(actualResources)
 })
@@ -590,5 +607,121 @@ describe("overview table with groups", () => {
 
       expect(wrapper.find(TableGroupedByLabels).length).toBe(0)
     })
+  })
+})
+
+describe("when disable resources feature is enabled", () => {
+  let view: TestDataView
+  let wrapper: ReactWrapper<OverviewTableProps, typeof OverviewTable>
+
+  beforeEach(() => {
+    view = nResourceView(4)
+    // Add two disabled resources to view and place them throughout list
+    const firstDisabledResource = oneResourceNoAlerts({
+      name: "zee_disabled_resource",
+      disabled: true,
+    })
+    const secondDisabledResource = oneResourceNoAlerts({
+      name: "_0_disabled_resource",
+      disabled: true,
+    })
+    view.uiResources.unshift(firstDisabledResource)
+    view.uiResources.push(secondDisabledResource)
+
+    wrapper = mount(
+      tableViewWithSettings({ view, disableResourcesEnabled: true })
+    )
+  })
+
+  it("displays disabled resources at the bottom of the table", () => {
+    const visibleResources = wrapper.find(TableNameColumn)
+    const resourceNamesInOrder = visibleResources.map((r) => r.text())
+    expect(resourceNamesInOrder.length).toBe(6)
+
+    const expectedNameOrder = [
+      "(Tiltfile)",
+      "_1",
+      "_2",
+      "_3",
+      "zee_disabled_resource",
+      "_0_disabled_resource",
+    ]
+
+    expect(resourceNamesInOrder).toStrictEqual(expectedNameOrder)
+  })
+
+  it("sorts disabled resources along with enabled resources", () => {
+    // Click twice to sort by resource name descending (Z -> A)
+    findTableHeaderByName(wrapper, "Resource Name", true)
+      .simulate("click")
+      .simulate("click")
+    wrapper.update()
+    const resourceNamesInOrder = wrapper
+      .find(TableNameColumn)
+      .map((r) => r.text())
+
+    const expectedNameOrder = [
+      "zee_disabled_resource",
+      "_3",
+      "_2",
+      "_1",
+      "_0_disabled_resource",
+      "(Tiltfile)",
+    ]
+
+    expect(resourceNamesInOrder).toStrictEqual(expectedNameOrder)
+  })
+
+  it("does NOT display trigger button, pod ID, endpoints, and trigger mode toggle for a disabled resource", () => {
+    // Get the last resource table row, which should be a disabled resource
+    const disabledResource = wrapper.find(ResourceTableRow).at(5)
+    const resourceName = disabledResource.find(TableNameColumn)
+    const triggerButton = disabledResource.find(TableTriggerColumn)
+    const podId = disabledResource.find(TablePodIDColumn)
+    const endpointList = disabledResource.find(TableEndpointColumn)
+    const triggerModeToggle = disabledResource.find(TableTriggerModeColumn)
+
+    expect(resourceName.text()).toBe("zee_disabled_resource")
+    expect(triggerButton.html()).toBe(null)
+    expect(podId.html()).toBe(null)
+    expect(endpointList.html()).toBe(null)
+    expect(triggerModeToggle.html()).toBe(null)
+  })
+
+  it("adds `isDisabled` class to table rows for disabled resources", () => {
+    // Expect two disabled resources based on hardcoded test data
+    const disabledRows = wrapper
+      .find(ResourceTableRow)
+      .map((row) => row.props())
+      .filter(
+        (props) => props.className && props.className.includes("isDisabled")
+      )
+    expect(disabledRows.length).toBe(2)
+  })
+})
+
+describe("when disable resources feature is NOT enabled", () => {
+  let view: TestDataView
+  let wrapper: ReactWrapper<OverviewTableProps, typeof OverviewTable>
+
+  beforeEach(() => {
+    view = nResourceView(8)
+    // Add a disabled resource to view
+    const disabledResource = oneResourceNoAlerts({
+      name: "disabled_resource",
+      disabled: true,
+    })
+    view.uiResources.push(disabledResource)
+
+    wrapper = mount(
+      tableViewWithSettings({ view, disableResourcesEnabled: false })
+    )
+  })
+
+  it("does NOT display disabled resources", () => {
+    const visibleResources = wrapper.find(TableNameColumn)
+    const resourceNames = visibleResources.map((r) => r.text())
+    expect(resourceNames.length).toBe(8)
+    expect(resourceNames).not.toContain("disabled_resource")
   })
 })

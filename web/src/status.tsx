@@ -1,14 +1,21 @@
 import { buildWarningCount, runtimeWarningCount } from "./alerts"
 import { Hold } from "./Hold"
 import { LogAlertIndex } from "./LogStore"
-import { ResourceStatus, RuntimeStatus, UpdateStatus } from "./types"
-
-type UIResource = Proto.v1alpha1UIResource
-type UIResourceStatus = Proto.v1alpha1UIResourceStatus
+import { resourceIsDisabled } from "./ResourceStatus"
+import {
+  ResourceStatus,
+  RuntimeStatus,
+  UIResource,
+  UIResourceStatus,
+  UpdateStatus,
+} from "./types"
 
 function buildStatus(r: UIResource, alertIndex: LogAlertIndex): ResourceStatus {
-  let res = r.status || {}
-  if (res.updateStatus == UpdateStatus.InProgress) {
+  let res: UIResourceStatus = r.status || {}
+
+  if (resourceIsDisabled(r)) {
+    return ResourceStatus.Disabled
+  } else if (res.updateStatus == UpdateStatus.InProgress) {
     return ResourceStatus.Building
   } else if (res.updateStatus == UpdateStatus.Pending) {
     return ResourceStatus.Pending
@@ -33,7 +40,13 @@ function runtimeStatus(
   r: UIResource,
   alertIndex: LogAlertIndex
 ): ResourceStatus {
-  let res = r.status || {}
+  let res: UIResourceStatus = r.status || {}
+
+  // Regardless of warning logs, check if a resource
+  // is disabled to return a disabled status
+  if (resourceIsDisabled(r)) {
+    return ResourceStatus.Disabled
+  }
 
   // Warnings are derived from the log store, so that clearing
   // logs clears the warning indicator.

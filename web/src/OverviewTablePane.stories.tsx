@@ -2,6 +2,7 @@ import React from "react"
 import { MemoryRouter } from "react-router"
 import Features, { FeaturesProvider, Flag } from "./feature"
 import OverviewTablePane from "./OverviewTablePane"
+import { ResourceGroupsContextProvider } from "./ResourceGroupsContext"
 import { ResourceListOptionsProvider } from "./ResourceListOptionsContext"
 import { StarredResourceMemoryProvider } from "./StarredResourcesContext"
 import {
@@ -17,15 +18,18 @@ export default {
     (Story: any, context: any) => {
       const features = new Features({
         [Flag.Labels]: context?.args?.labelsEnabled ?? true,
+        [Flag.DisableResources]: context?.args?.disableResourcesEnabled ?? true,
       })
       return (
         <MemoryRouter initialEntries={["/"]}>
           <FeaturesProvider value={features}>
             <ResourceListOptionsProvider>
               <StarredResourceMemoryProvider>
-                <div style={{ margin: "-1rem", height: "80vh" }}>
-                  <Story />
-                </div>
+                <ResourceGroupsContextProvider>
+                  <div style={{ margin: "-1rem", height: "80vh" }}>
+                    <Story />
+                  </div>
+                </ResourceGroupsContextProvider>
               </StarredResourceMemoryProvider>
             </ResourceListOptionsProvider>
           </FeaturesProvider>
@@ -36,6 +40,13 @@ export default {
   argTypes: {
     labelsEnabled: {
       name: "Group resources by label enabled",
+      control: {
+        type: "boolean",
+      },
+      defaultValue: true,
+    },
+    disableResourcesEnabled: {
+      name: "See disabled resources",
       control: {
         type: "boolean",
       },
