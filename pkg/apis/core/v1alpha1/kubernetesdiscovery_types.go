@@ -281,6 +281,30 @@ type Pod struct {
 	Status string `json:"status" protobuf:"bytes,12,opt,name=status"`
 	// Errors are aggregated error messages for the Pod and its containers.
 	Errors []string `json:"errors" protobuf:"bytes,13,rep,name=errors"`
+
+	// Direct owner of this pod, if available.
+	Owner *PodOwner `json:"owner,omitempty" protobuf:"bytes,16,opt,name=owner"`
+}
+
+// PodOwner contains information of the direct owner of the
+// pod, if available.
+//
+// Tools that need to select a most relevant pod or set of pods
+// can use this info to group pods by owner.
+type PodOwner struct {
+	// The name of the owner.
+	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
+
+	// API version of the owner.
+	APIVersion string `json:"apiVersion" protobuf:"bytes,3,opt,name=apiVersion"`
+
+	// Kind of the owner
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	Kind string `json:"kind" protobuf:"bytes,4,opt,name=kind"`
+
+	// The creation timestamp of the owner.
+	// +optional
+	CreationTimestamp metav1.Time `json:"creationTimestamp,omitempty" protobuf:"bytes,2,opt,name=creationTimestamp"`
 }
 
 // PodCondition is a lifecycle condition for a Pod.

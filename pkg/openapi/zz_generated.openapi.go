@@ -118,6 +118,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamSpec":                schema_pkg_apis_core_v1alpha1_PodLogStreamSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamStatus":              schema_pkg_apis_core_v1alpha1_PodLogStreamStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamTemplateSpec":        schema_pkg_apis_core_v1alpha1_PodLogStreamTemplateSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodOwner":                        schema_pkg_apis_core_v1alpha1_PodOwner(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForward":                     schema_pkg_apis_core_v1alpha1_PortForward(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForwardList":                 schema_pkg_apis_core_v1alpha1_PortForwardList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForwardSpec":                 schema_pkg_apis_core_v1alpha1_PortForwardSpec(ref),
@@ -3940,12 +3941,18 @@ func schema_pkg_apis_core_v1alpha1_Pod(ref common.ReferenceCallback) common.Open
 							},
 						},
 					},
+					"owner": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Direct owner of this pod, if available.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodOwner"),
+						},
+					},
 				},
 				Required: []string{"uid", "name", "namespace", "createdAt", "phase", "deleting", "containers", "status", "errors"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Container", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodCondition", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Container", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodCondition", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodOwner", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
 	}
 }
 
@@ -4236,6 +4243,53 @@ func schema_pkg_apis_core_v1alpha1_PodLogStreamTemplateSpec(ref common.Reference
 						},
 					},
 				},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_PodOwner(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "PodOwner contains information of the direct owner of the pod, if available.\n\nTools that need to select a most relevant pod or set of pods can use this info to group pods by owner.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The name of the owner.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "API version of the owner.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind of the owner More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"creationTimestamp": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The creation timestamp of the owner.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+				},
+				Required: []string{"name", "apiVersion", "kind"},
 			},
 		},
 		Dependencies: []string{
