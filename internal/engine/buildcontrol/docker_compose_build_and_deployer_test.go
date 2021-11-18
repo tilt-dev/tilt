@@ -11,6 +11,7 @@ import (
 	"github.com/tilt-dev/wmclient/pkg/dirs"
 
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -183,12 +184,13 @@ func newDCBDFixture(t *testing.T) *dcbdFixture {
 	dir := dirs.NewTiltDevDirAt(f.Path())
 	dcCli := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	dCli := docker.NewFakeClient()
+	cdc := fake.NewFakeTiltClient()
 
 	// Make the fake ImageExists always return true, which is the behavior we want
 	// when testing the BuildAndDeployers.
 	dCli.ImageAlwaysExists = true
 
-	dcbad, err := ProvideDockerComposeBuildAndDeployer(ctx, dcCli, dCli, dir)
+	dcbad, err := ProvideDockerComposeBuildAndDeployer(ctx, dcCli, dCli, cdc, dir)
 	if err != nil {
 		t.Fatal(err)
 	}
