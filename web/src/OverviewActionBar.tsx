@@ -10,7 +10,7 @@ import { useHistory, useLocation } from "react-router"
 import styled from "styled-components"
 import { Alert } from "./alerts"
 import { AnalyticsAction, incr } from "./analytics"
-import { ApiButton } from "./ApiButton"
+import { ApiButton, ButtonSet } from "./ApiButton"
 import { ReactComponent as AlertSvg } from "./assets/svg/alert.svg"
 import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
@@ -63,7 +63,7 @@ type OverviewActionBarProps = {
   filterSet: FilterSet
 
   // buttons for this resource
-  buttons?: UIButton[]
+  buttons?: ButtonSet
 }
 
 type FilterSourceMenuProps = {
@@ -184,6 +184,20 @@ const CustomActionButton = styled(ApiButton)`
   & + & {
     margin-left: ${SizeUnit(0.25)};
   }
+`
+
+const DisableButton = styled(ApiButton)`
+  button {
+    ${OverviewButtonMixin};
+  }
+
+  .MuiButton-label {
+    // hardcode a width to workaround this bug:
+    // https://app.shortcut.com/windmill/story/12912/uibuttons-created-by-togglebuttons-have-different-sizes-when-toggled
+    width: ${SizeUnit(3.6)};
+  }
+
+  margin-left: ${SizeUnit(0.5)};
 `
 
 const ButtonRoot = styled(InstrumentedButton)`
@@ -600,7 +614,7 @@ export let ActionBarTopRow = styled.div`
   padding: ${SizeUnit(0.25)} ${SizeUnit(0.5)};
 `
 
-let ActionBarBottomRow = styled.div`
+export let ActionBarBottomRow = styled.div`
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -660,6 +674,14 @@ export function OverviewWidgets(props: { buttons?: UIButton[] }) {
   )
 }
 
+function DisableButtonSection(props: { button?: UIButton }) {
+  if (!props.button) {
+    return null
+  }
+
+  return <DisableButton uiButton={props.button} />
+}
+
 export default function OverviewActionBar(props: OverviewActionBarProps) {
   let { resource, filterSet, alerts, buttons } = props
   let endpoints = resource?.status?.endpointLinks || []
@@ -703,7 +725,7 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
     topRowEls.push(<CopyButton podId={podId} key="copyPodId" />)
   }
 
-  const widgets = OverviewWidgets({ buttons })
+  const widgets = OverviewWidgets({ buttons: buttons?.default })
   if (widgets) {
     topRowEls.push(widgets)
   }
@@ -739,6 +761,7 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
         />
         <FilterTermField termFromUrl={filterSet.term} />
         <LogActions resourceName={resourceName} isSnapshot={isSnapshot} />
+        <DisableButtonSection button={buttons?.toggleDisable} />
       </ActionBarBottomRow>
     </ActionBarRoot>
   )

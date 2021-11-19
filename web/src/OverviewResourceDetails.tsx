@@ -1,6 +1,7 @@
 import React from "react"
 import styled from "styled-components"
 import { Alert } from "./alerts"
+import { ButtonSet } from "./ApiButton"
 import { useFilterSet } from "./logfilters"
 import OverviewActionBar from "./OverviewActionBar"
 import OverviewLogPane from "./OverviewLogPane"
@@ -12,7 +13,7 @@ type UIButton = Proto.v1alpha1UIButton
 
 type OverviewResourceDetailsProps = {
   resource?: UIResource
-  buttons?: UIButton[]
+  buttons?: ButtonSet
   alerts?: Alert[]
   name: string
 }

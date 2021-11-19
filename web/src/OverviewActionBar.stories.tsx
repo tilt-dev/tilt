@@ -1,6 +1,7 @@
 import { createMemoryHistory } from "history"
 import React from "react"
 import { Router } from "react-router"
+import { ButtonSet } from "./ApiButton"
 import {
   EMPTY_FILTER_TERM,
   FilterLevel,
@@ -11,7 +12,7 @@ import {
 import OverviewActionBar from "./OverviewActionBar"
 import { TiltSnackbarProvider } from "./Snackbar"
 import { StarredResourceMemoryProvider } from "./StarredResourcesContext"
-import { oneButton, oneResource } from "./testdata"
+import { disableButton, oneButton, oneResource } from "./testdata"
 
 export default {
   title: "New UI/Log View/OverviewActionBar",
@@ -81,7 +82,10 @@ export const FullBar = () => {
     { url: "http://localhost:4002" },
   ]
   res.status.k8sResourceInfo = { podName: "my-pod-deadbeef" }
-  let buttons = [oneButton(1, "vigoda")]
+  let buttons: ButtonSet = {
+    default: [oneButton(1, "vigoda")],
+    toggleDisable: disableButton("vigoda", true),
+  }
   return (
     <OverviewActionBar resource={res} filterSet={filterSet} buttons={buttons} />
   )

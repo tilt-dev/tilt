@@ -855,7 +855,7 @@ function uiResourceToCell(
     podId: res.k8sResourceInfo?.podName ?? "",
     endpoints: res.endpointLinks ?? [],
     triggerMode: res.triggerMode ?? TriggerMode.TriggerModeAuto,
-    buttons: buttons,
+    buttons: buttons.default,
     analyticsTags: analyticsTags,
   }
 }

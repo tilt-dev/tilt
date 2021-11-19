@@ -13,6 +13,7 @@ import { convertFromNode, convertFromString } from "react-from-dom"
 import { Link } from "react-router-dom"
 import styled from "styled-components"
 import { Tags } from "./analytics"
+import { annotations } from "./annotations"
 import FloatDialog from "./FloatDialog"
 import { useHudErrorContext } from "./HudErrorContext"
 import {
@@ -425,19 +426,40 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
   }
 }
 
+// UIButtons for a location, sorted into types
+export type ButtonSet = {
+  default: UIButton[]
+  toggleDisable?: UIButton
+}
+
+export const AnnotationButtonType = "tilt.dev/uibutton-type"
+export const ToggleDisableButtonType = "DisableToggle"
+
 export function buttonsForComponent(
   buttons: UIButton[] | undefined,
   componentType: string,
   componentID: string | undefined
-): UIButton[] {
+): ButtonSet {
+  let result: ButtonSet = {
+    default: [],
+  }
   if (!buttons) {
-    return []
+    return result
   }
 
-  return buttons.filter(
-    (b) =>
+  buttons.forEach((b) => {
+    if (
       b.spec?.location?.componentType?.toUpperCase() ===
         componentType.toUpperCase() &&
       b.spec?.location?.componentID === componentID
-  )
+    ) {
+      if (annotations(b)[AnnotationButtonType] === ToggleDisableButtonType) {
+        result.toggleDisable = b
+      } else {
+        result.default.push(b)
+      }
+    }
+  })
+
+  return result
 }
