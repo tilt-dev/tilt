@@ -2294,28 +2294,6 @@ func TestUpperPodLogInCrashLoopPodCurrentlyDown(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestUpperPodRestartsBeforeTiltStart(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-
-	name := model.ManifestName("fe")
-	manifest := f.newManifest(name.String())
-	pb := f.registerForDeployer(manifest)
-
-	f.Start([]model.Manifest{manifest})
-	f.waitForCompletedBuildCount(1)
-
-	f.startPod(pb.WithRestartCount(1).Build(), manifest.Name)
-
-	f.withManifestState(name, func(ms store.ManifestState) {
-		krs := ms.K8sRuntimeState()
-		assert.Equal(t, int32(1), krs.BaselineRestarts[pb.PodName()])
-	})
-
-	err := f.Stop()
-	assert.NoError(t, err)
-}
-
 func TestUpperRecordPodWithMultipleContainers(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
