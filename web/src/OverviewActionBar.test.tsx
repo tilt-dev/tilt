@@ -113,7 +113,7 @@ describe("buttons", () => {
     let root = mountBar(
       <OverviewActionBar
         filterSet={filterSet}
-        buttons={{ normal: uiButtons }}
+        buttons={{ default: uiButtons }}
       />
     )
     let topBar = root.find(ActionBarTopRow)

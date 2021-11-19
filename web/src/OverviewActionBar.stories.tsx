@@ -83,7 +83,7 @@ export const FullBar = () => {
   ]
   res.status.k8sResourceInfo = { podName: "my-pod-deadbeef" }
   let buttons: ButtonSet = {
-    normal: [oneButton(1, "vigoda")],
+    default: [oneButton(1, "vigoda")],
     toggleDisable: disableButton("vigoda", true),
   }
   return (

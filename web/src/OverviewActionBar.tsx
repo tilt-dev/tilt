@@ -197,7 +197,7 @@ const DisableButton = styled(ApiButton)`
     width: ${SizeUnit(3.6)};
   }
 
-  margin-left: ${SizeUnit(0.25)};
+  margin-left: ${SizeUnit(0.5)};
 `
 
 const ButtonRoot = styled(InstrumentedButton)`
@@ -725,7 +725,7 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
     topRowEls.push(<CopyButton podId={podId} key="copyPodId" />)
   }
 
-  const widgets = OverviewWidgets({ buttons: buttons?.normal })
+  const widgets = OverviewWidgets({ buttons: buttons?.default })
   if (widgets) {
     topRowEls.push(widgets)
   }

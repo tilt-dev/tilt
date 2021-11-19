@@ -413,7 +413,7 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
 
 // UIButtons for a location, sorted into types
 export type ButtonSet = {
-  normal: UIButton[]
+  default: UIButton[]
   toggleDisable?: UIButton
 }
 
@@ -426,7 +426,7 @@ export function buttonsForComponent(
   componentID: string | undefined
 ): ButtonSet {
   let result: ButtonSet = {
-    normal: [],
+    default: [],
   }
   if (!buttons) {
     return result
@@ -441,7 +441,7 @@ export function buttonsForComponent(
       if (annotations(b)[AnnotationButtonType] === ToggleDisableButtonType) {
         result.toggleDisable = b
       } else {
-        result.normal.push(b)
+        result.default.push(b)
       }
     }
   })

@@ -145,7 +145,7 @@ describe("alert filtering", () => {
 
     const b = root.find(OverviewActionBar)
     const buttons = root.find(OverviewActionBar).prop("buttons")
-    expect(buttons?.normal).toEqual([view.uiButtons[0]])
+    expect(buttons?.default).toEqual([view.uiButtons[0]])
     expect(buttons?.toggleDisable).toEqual(view.uiButtons[1])
   })
 })
