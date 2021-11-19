@@ -21,7 +21,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
-	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
@@ -365,7 +364,6 @@ func (w *Reconciler) updateStatus(ctx context.Context, watcherID watcherID) erro
 		return fmt.Errorf("failed to update KubernetesDiscovery status for %q: %v", watcherID, err)
 	}
 
-	w.dispatcher.Dispatch(k8swatch.NewKubernetesDiscoveryUpdateStatusAction(kd))
 	w.restartDetector.Detect(w.dispatcher, watcher.lastUpdate, *kd)
 	watcher.lastUpdate = *status.DeepCopy()
 	w.watchers[watcherID] = watcher

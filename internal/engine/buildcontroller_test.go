@@ -80,7 +80,7 @@ func TestBuildControllerTooManyPodsForLiveUpdateErrorMessage(t *testing.T) {
 
 	// must wait for both pods to be seen BEFORE the build is triggered
 	f.WaitUntilManifestState("pods were not seen", manifest.Name, func(state store.ManifestState) bool {
-		return len(state.K8sRuntimeState().Pods) == 2
+		return state.K8sRuntimeState().PodLen() == 2
 	})
 
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
@@ -125,7 +125,7 @@ func TestBuildControllerTooManyPodsForDockerBuildNoErrorMessage(t *testing.T) {
 	// need to wait for both pods to be seen or the next build call might only know about one of them (and so
 	// would have container info)
 	f.WaitUntilManifestState("pods not seen", manifest.Name, func(state store.ManifestState) bool {
-		return len(state.K8sRuntimeState().Pods) == 2
+		return state.K8sRuntimeState().PodLen() == 2
 	})
 
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
@@ -262,7 +262,7 @@ func TestBuildControllerWontContainerBuildWithTwoPods(t *testing.T) {
 
 	// must wait for both pods to be seen BEFORE the build is triggered
 	f.WaitUntilManifestState("pods were not seen", manifest.Name, func(state store.ManifestState) bool {
-		return len(state.K8sRuntimeState().Pods) == 2
+		return state.K8sRuntimeState().PodLen() == 2
 	})
 
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
@@ -773,7 +773,7 @@ func TestFullBuildTriggerClearsLiveUpdate(t *testing.T) {
 
 	f.podEvent(basePB.Build())
 	f.WaitUntilManifestState("foobar loaded", "foobar", func(ms store.ManifestState) bool {
-		return len(ms.K8sRuntimeState().Pods) == 1
+		return ms.K8sRuntimeState().PodLen() == 1
 	})
 	f.WaitUntil("foobar k8sresource loaded", func(s store.EngineState) bool {
 		return s.KubernetesResources["foobar"] != nil && len(s.KubernetesResources["foobar"].FilteredPods) == 1
@@ -790,7 +790,7 @@ func TestFullBuildTriggerClearsLiveUpdate(t *testing.T) {
 
 	f.podEvent(basePB.WithDeletionTime(time.Now()).Build())
 	f.WaitUntilManifestState("foobar deleting", "foobar", func(ms store.ManifestState) bool {
-		return len(ms.K8sRuntimeState().Pods) == 0
+		return ms.K8sRuntimeState().PodLen() == 0
 	})
 	assert.Contains(t, f.log.String(), "Initial Build • foobar")
 	f.WaitUntil("Trigger appears", func(st store.EngineState) bool {

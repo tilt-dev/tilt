@@ -35,6 +35,9 @@ type KubernetesResource struct {
 
 	// A set of pods that belong to the current Discovery
 	// and the current ApplyStatus (if available).
+	//
+	// Excludes pods that are being deleted
+	// or which belong to a previous apply.
 	FilteredPods []v1alpha1.Pod
 }
 
@@ -135,24 +138,26 @@ func HasOKPodTemplateSpecHash(pod *v1alpha1.Pod, filter *KubernetesApplyFilter) 
 	return ContainsHash(filter, hash)
 }
 
+// Filter out any pods that are being deleted.
 // Only keep pods that belong in the current filter.
 // If no filter is specified, return all pods.
 func FilterPods(filter *KubernetesApplyFilter, pods []v1alpha1.Pod) []v1alpha1.Pod {
-	if filter == nil {
-		return pods
-	}
-
 	result := []v1alpha1.Pod{}
 
 	for _, pod := range pods {
+		// Ignore pods that are currently being deleted.
+		if pod.Deleting {
+			continue
+		}
+
 		// Ignore pods that have a stale pod template hash
-		if !HasOKPodTemplateSpecHash(&pod, filter) {
+		if filter != nil && !HasOKPodTemplateSpecHash(&pod, filter) {
 			continue
 		}
 
 		// Ignore pods that were tracked by UID but
 		// aren't owned by a current Apply.
-		if pod.AncestorUID != "" && !ContainsUID(filter, types.UID(pod.AncestorUID)) {
+		if filter != nil && pod.AncestorUID != "" && !ContainsUID(filter, types.UID(pod.AncestorUID)) {
 			continue
 		}
 
