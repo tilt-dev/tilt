@@ -64,6 +64,7 @@ up-to-date in real-time. Think 'docker build && kubectl apply' or 'docker-compos
 	addCommand(rootCmd, &logsCmd{})
 	addCommand(rootCmd, newDescribeCmd())
 	addCommand(rootCmd, newGetCmd())
+	addCommand(rootCmd, newExplainCmd())
 	addCommand(rootCmd, newEditCmd())
 	addCommand(rootCmd, newApiresourcesCmd())
 	addCommand(rootCmd, newDeleteCmd())

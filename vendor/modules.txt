@@ -1590,6 +1590,7 @@ k8s.io/kubectl/pkg/cmd/apply
 k8s.io/kubectl/pkg/cmd/create
 k8s.io/kubectl/pkg/cmd/delete
 k8s.io/kubectl/pkg/cmd/describe
+k8s.io/kubectl/pkg/cmd/explain
 k8s.io/kubectl/pkg/cmd/get
 k8s.io/kubectl/pkg/cmd/patch
 k8s.io/kubectl/pkg/cmd/util
@@ -1597,6 +1598,7 @@ k8s.io/kubectl/pkg/cmd/util/editor
 k8s.io/kubectl/pkg/cmd/util/editor/crlf
 k8s.io/kubectl/pkg/cmd/wait
 k8s.io/kubectl/pkg/describe
+k8s.io/kubectl/pkg/explain
 k8s.io/kubectl/pkg/generate
 k8s.io/kubectl/pkg/proxy
 k8s.io/kubectl/pkg/rawhttp
