@@ -19,8 +19,9 @@ import (
 // The ObjectRefTree only contains immutable properties
 // of a Kubernetes object: the name, namespace, and UID
 type ObjectRefTree struct {
-	Ref    v1.ObjectReference
-	Owners []ObjectRefTree
+	Ref               v1.ObjectReference
+	CreationTimestamp metav1.Time
+	Owners            []ObjectRefTree
 }
 
 func (t ObjectRefTree) UIDs() []types.UID {
@@ -208,7 +209,7 @@ func (v OwnerFetcher) OwnerTreeOf(ctx context.Context, entity K8sEntity) (result
 }
 
 func (v OwnerFetcher) ownerTreeOfHelper(ctx context.Context, ref v1.ObjectReference, meta metav1.Object) (ObjectRefTree, error) {
-	tree := ObjectRefTree{Ref: ref}
+	tree := ObjectRefTree{Ref: ref, CreationTimestamp: meta.GetCreationTimestamp()}
 	owners := meta.GetOwnerReferences()
 	for _, owner := range owners {
 		ownerRef := OwnerRefToObjectRef(owner, meta.GetNamespace())
