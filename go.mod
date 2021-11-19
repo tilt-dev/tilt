@@ -50,7 +50,7 @@ require (
 	github.com/tilt-dev/go-get v0.2.1
 	github.com/tilt-dev/localregistry-go v0.0.0-20200615231835-07e386f4ebd7
 	github.com/tilt-dev/probe v0.3.1
-	github.com/tilt-dev/tilt-apiserver v0.5.1
+	github.com/tilt-dev/tilt-apiserver v0.5.2
 	github.com/tilt-dev/wmclient v0.0.0-20201109174454-1839d0355fbc
 	github.com/tonistiigi/units v0.0.0-20180711220420-6950e57a87ea
 	github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa
@@ -238,7 +238,6 @@ replace (
 	// can remove if/when https://github.com/pkg/browser/pull/30 is merged
 	github.com/pkg/browser => github.com/tilt-dev/browser v0.0.1
 
-	go.opencensus.io => github.com/tilt-dev/opencensus-go v0.22.5-0.20200904175236-275b1754f353
 	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
 
 	k8s.io/apimachinery => github.com/tilt-dev/apimachinery v0.22.2-tilt-20210928

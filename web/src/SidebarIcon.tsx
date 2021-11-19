@@ -78,7 +78,8 @@ let SidebarIconRoot = styled.div`
     }
   }
 `
-
+// Sidenote: Resources with a `disabled` status are displayed without any icons,
+// so that status case is not handled here
 export default class SidebarIcon extends PureComponent<SidebarIconProps> {
   render() {
     let icon = <span>&nbsp;</span>

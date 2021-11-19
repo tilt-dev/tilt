@@ -48,6 +48,10 @@ export function makeUIButton(args?: {
       text: "Click Me!",
       iconName: "flight_takeoff",
       inputs: args?.inputSpecs,
+      location: {
+        componentType: "Global",
+        componentID: "nav",
+      },
     },
     status: {
       inputs: args?.inputStatuses,

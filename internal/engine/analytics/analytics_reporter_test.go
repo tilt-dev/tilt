@@ -45,13 +45,36 @@ var (
 func TestAnalyticsReporter_Everything(t *testing.T) {
 	tf := newAnalyticsReporterTestFixture(t)
 
-	tf.addManifest(tf.nextManifest().WithImageTarget(imgTargDB).WithDeployTarget(kTarg))       // k8s
-	tf.addManifest(tf.nextManifest().WithImageTarget(imgTargDBWithLU))                         // liveupdate
-	tf.addManifest(tf.nextManifest().WithDeployTarget(kTarg))                                  // k8s, unbuilt
-	tf.addManifest(tf.nextManifest().WithDeployTarget(kTarg))                                  // k8s, unbuilt
-	tf.addManifest(tf.nextManifest().WithDeployTarget(kTarg))                                  // k8s, unbuilt
-	tf.addManifest(tf.nextManifest().WithDeployTarget(dTarg))                                  // dc
-	tf.addManifest(tf.nextManifest().WithDeployTarget(dTarg))                                  // dc
+	tf.addManifest(
+		tf.nextManifest().
+			WithLabels(map[string]string{"k8s": "k8s"}).
+			WithImageTarget(imgTargDB).
+			WithDeployTarget(kTarg)) // k8s
+
+	tf.addManifest(tf.nextManifest().WithImageTarget(imgTargDBWithLU)) // liveupdate
+
+	tf.addManifest(
+		tf.nextManifest().
+			WithLabels(map[string]string{"k8s": "k8s1"}).
+			WithDeployTarget(kTarg)) // k8s, unbuilt
+	tf.addManifest(
+		tf.nextManifest().
+			WithLabels(map[string]string{"k8s": "k8s2"}).
+			WithDeployTarget(kTarg)) // k8s, unbuilt
+	tf.addManifest(
+		tf.nextManifest().
+			WithLabels(map[string]string{"k8s": "k8s3"}).
+			WithDeployTarget(kTarg)) // k8s, unbuilt
+
+	tf.addManifest(
+		tf.nextManifest().
+			WithLabels(map[string]string{"dc": "dc1"}).
+			WithDeployTarget(dTarg)) // dc
+	tf.addManifest(
+		tf.nextManifest().
+			WithLabels(map[string]string{"dc": "dc2"}).
+			WithDeployTarget(dTarg)) // dc
+
 	tf.addManifest(tf.nextManifest().WithImageTarget(imgTargDBWithLU).WithDeployTarget(dTarg)) // dc, liveupdate
 	tf.addManifest(tf.nextManifest().WithImageTargets(
 		[]model.ImageTarget{imgTargDBWithLU, imgTargDBWithLU})) // liveupdate, multipleimageliveupdate
@@ -82,6 +105,7 @@ func TestAnalyticsReporter_Everything(t *testing.T) {
 		"k8s.runtime":                                         "docker",
 		"k8s.registry.host":                                   "1",
 		"k8s.registry.hostFromCluster":                        "1",
+		"label.count":                                         "2",
 	}
 
 	tf.assertStats(t, expectedTags)

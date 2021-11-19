@@ -185,10 +185,20 @@ func (in *ImageMapList) GetListMeta() *metav1.ListMeta {
 
 // ImageMapStatus defines the observed state of ImageMap
 type ImageMapStatus struct {
-	// A fully-qualified image reference, including a name and an immutable tag.
+	// A fully-qualified image reference, including a name and an immutable tag,
+	// as seen from the cluster container runtime that we're mapping this image to.
 	//
-	// The image will not necessarily have the same repo URL as the selector. Many
-	// Kubernetes clusters let you push to a local registry for local development.
+	// NB: Container images often need to be referenced from different networks,
+	// including:
+	//
+	// 1) The cluster container runtime
+	// 2) The local network
+	// 3) The cluster network
+	//
+	// And each of these cases may have distinct URLs.
+	//
+	// For more details on image references in different networks, see:
+	// https://github.com/kubernetes/enhancements/tree/master/keps/sig-cluster-lifecycle/generic/1755-communicating-a-local-registry#specification-for-localregistryhosting-v1
 	Image string `json:"image" protobuf:"bytes,1,opt,name=image"`
 
 	// Timestamp indicating when the image started building.

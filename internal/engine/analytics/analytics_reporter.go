@@ -77,7 +77,14 @@ func (ar *AnalyticsReporter) report(ctx context.Context) {
 	defer ar.store.RUnlockState()
 	var dcCount, k8sCount, liveUpdateCount, unbuiltCount,
 		sameImgMultiContainerLiveUpdate, multiImgLiveUpdate int
+
+	labelKeySet := make(map[string]bool)
+
 	for _, m := range st.Manifests() {
+		for key := range m.Labels {
+			labelKeySet[key] = true
+		}
+
 		var refInjectCounts map[string]int
 		if m.IsK8s() {
 			k8sCount++
@@ -145,6 +152,7 @@ func (ar *AnalyticsReporter) report(ctx context.Context) {
 		stats["resource.unbuiltresources.count"] = strconv.Itoa(unbuiltCount)
 		stats["resource.sameimagemultiplecontainerliveupdate.count"] = strconv.Itoa(sameImgMultiContainerLiveUpdate)
 		stats["resource.multipleimageliveupdate.count"] = strconv.Itoa(multiImgLiveUpdate)
+		stats["label.count"] = strconv.Itoa(len(labelKeySet))
 	}
 
 	stats["tiltfile.error"] = tiltfileIsInError

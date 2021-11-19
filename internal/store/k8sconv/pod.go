@@ -36,6 +36,16 @@ func Pod(ctx context.Context, pod *v1.Pod, ancestorUID types.UID) *v1alpha1.Pod 
 		Status:              PodStatusToString(*pod),
 		Errors:              PodStatusErrorMessages(*pod),
 	}
+
+	if len(pod.OwnerReferences) > 0 {
+		owner := pod.OwnerReferences[0]
+		podInfo.Owner = &v1alpha1.PodOwner{
+			Name:       owner.Name,
+			APIVersion: owner.APIVersion,
+			Kind:       owner.Kind,
+		}
+	}
+
 	return podInfo
 }
 

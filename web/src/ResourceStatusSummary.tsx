@@ -325,7 +325,7 @@ function ResourceStatusSummary(props: ResourceStatusSummaryProps) {
 // throughout the app with different data types.
 
 type StatusSummaryProps<T> = {
-  resources: T[]
+  resources: readonly T[]
 } & ResourceStatusSummaryOptions
 
 export function SidebarGroupStatusSummary(

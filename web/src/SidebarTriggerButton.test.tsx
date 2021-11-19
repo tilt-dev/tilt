@@ -69,6 +69,7 @@ describe("SidebarTriggerButton", () => {
         hasPendingChanges={false}
         isQueued={false}
         onTrigger={() => triggerUpdate("doggos")}
+        analyticsTags={{ target: "k8s" }}
       />
     )
 
@@ -86,7 +87,7 @@ describe("SidebarTriggerButton", () => {
     expect(fetchMock.calls().length).toEqual(2)
     expectIncrs({
       name: "ui.web.triggerResource",
-      tags: { action: AnalyticsAction.Click },
+      tags: { action: AnalyticsAction.Click, target: "k8s" },
     })
 
     expect(fetchMock.calls()[1][0]).toEqual("http://localhost/api/trigger")
@@ -110,6 +111,7 @@ describe("SidebarTriggerButton", () => {
         hasPendingChanges={false}
         isQueued={true}
         onTrigger={() => triggerUpdate("doggos")}
+        analyticsTags={{ target: "k8s" }}
       />
     )
 
@@ -131,6 +133,7 @@ describe("SidebarTriggerButton", () => {
         hasPendingChanges={false}
         isQueued={false}
         onTrigger={() => triggerUpdate("doggos")}
+        analyticsTags={{ target: "k8s" }}
       />
     )
 

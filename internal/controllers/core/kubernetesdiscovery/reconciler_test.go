@@ -89,6 +89,15 @@ func TestPodDiscoveryAncestorMatch(t *testing.T) {
 
 	f.requireObservedPods(key, ancestorMap{pod.UID: rs.UID})
 
+	// Make sure the owner is filled in.
+	f.MustGet(key, kd)
+	assert.Equal(t, &v1alpha1.PodOwner{
+		Name:              "dep-rs",
+		APIVersion:        "apps/v1",
+		Kind:              "ReplicaSet",
+		CreationTimestamp: rs.CreationTimestamp,
+	}, kd.Status.Pods[0].Owner)
+
 	// update the spec, changing the UID
 	f.Get(key, kd)
 	kd.Spec.Watches[0].UID = "unknown-uid"
@@ -451,18 +460,20 @@ func (f *fixture) requireState(key types.NamespacedName, cond func(kd *v1alpha1.
 func (f *fixture) simulateDeployment(namespace k8s.Namespace, name string) (*appsv1.Deployment, *appsv1.ReplicaSet) {
 	d := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			UID:       types.UID(name + "-uid"),
-			Namespace: namespace.String(),
-			Name:      name,
+			UID:               types.UID(name + "-uid"),
+			Namespace:         namespace.String(),
+			Name:              name,
+			CreationTimestamp: apis.Now(),
 		},
 	}
 	rsName := name + "-rs"
 	rs := &appsv1.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
-			UID:             types.UID(rsName + "-uid"),
-			Namespace:       namespace.String(),
-			Name:            rsName,
-			OwnerReferences: []metav1.OwnerReference{k8s.RuntimeObjToOwnerRef(d)},
+			UID:               types.UID(rsName + "-uid"),
+			Namespace:         namespace.String(),
+			Name:              rsName,
+			CreationTimestamp: apis.Now(),
+			OwnerReferences:   []metav1.OwnerReference{k8s.RuntimeObjToOwnerRef(d)},
 		},
 	}
 

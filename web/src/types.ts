@@ -53,6 +53,7 @@ export enum ResourceStatus {
   Healthy, // e.g., build succeeded and pod is running and healthy
   Unhealthy, // e.g., last build failed, or CrashLoopBackOff
   Warning, // e.g., an undismissed restart
+  Disabled, // e.g., a resource is disabled by the user through the API
   None, // e.g., a manual build that has never executed
 }
 
@@ -142,6 +143,7 @@ export enum ResourceName {
 }
 
 // TODO (lizz): Centralize other redundant type definitions
+export type UISession = Proto.v1alpha1UISession
 export type UIResource = Proto.v1alpha1UIResource
 export type UIResourceStatus = Proto.v1alpha1UIResourceStatus
 export type Build = Proto.v1alpha1UIBuildTerminated

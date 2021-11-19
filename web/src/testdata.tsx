@@ -1,15 +1,18 @@
 import { Href, UnregisterCallback } from "history"
 import { RouteComponentProps } from "react-router-dom"
 import { AnnotationButtonType, ToggleDisableButtonType } from "./ApiButton"
-import { ResourceName, TriggerMode } from "./types"
+import {
+  ResourceName,
+  TriggerMode,
+  UIButton,
+  UILink,
+  UIResource,
+  UIResourceStatus,
+  UISession,
+} from "./types"
 
-type UIResource = Proto.v1alpha1UIResource
-type UIButton = Proto.v1alpha1UIButton
-type UISession = Proto.v1alpha1UISession
-type Link = Proto.v1alpha1UIResourceLink
-
-const unnamedEndpointLink: Link = { url: "1.2.3.4:8080" }
-const namedEndpointLink: Link = { url: "1.2.3.4:9090", name: "debugger" }
+const unnamedEndpointLink: UILink = { url: "1.2.3.4:8080" }
+const namedEndpointLink: UILink = { url: "1.2.3.4:9090", name: "debugger" }
 
 export type TestDataView = {
   uiResources: Array<UIResource>
@@ -18,12 +21,40 @@ export type TestDataView = {
   logList?: Proto.webviewLogList
 }
 
+// TODO (lizz): Refactor test data to be more configurable,
+// so there are fewer test generator functions with repeated code
+// and each generator function takes a configurable list of options
+// for generating resources
+type TestResourceOptions = {
+  name?: string
+  disabled?: boolean
+  labels?: number
+}
+
 let runningTiltBuild = {
   commitSHA: "658f2719f3380bee8e7119c7eb29f4a4a986ac6e",
   date: "2020-12-10",
   dev: true,
   version: "0.17.13",
 }
+
+const ENABLED_RESOURCE_STATUS: UIResourceStatus["disableStatus"] = {
+  disabledCount: 0,
+  enabledCount: 1,
+}
+
+const DISABLED_RESOURCE_STATUS: UIResourceStatus["disableStatus"] = {
+  disabledCount: 1,
+  enabledCount: 0,
+}
+
+const TEST_DATA_LABELS = [
+  "frontend",
+  "test",
+  "backend",
+  "very_long_long_long_label",
+  "javascript",
+]
 
 // NOTE(dmiller) 4-02-19 this function is currently unused but I'm going to keep it around.
 // I have a feeling that it will come in handy later.
@@ -77,12 +108,12 @@ function vigodaSpecs(): any {
     {
       hasLiveUpdate: false,
       id: "image:vigoda",
-      type: "TARGET_TYPE_IMAGE",
+      type: "image",
     },
     {
       hasLiveUpdate: false,
       id: "k8s:vigoda",
-      type: "TARGET_TYPE_K8S",
+      type: "k8s",
     },
   ]
 }
@@ -156,11 +187,33 @@ function oneResource(): UIResource {
   return resource
 }
 
-function oneResourceNoAlerts(): UIResource {
+function oneResourceNoAlerts({
+  name,
+  disabled,
+  labels,
+}: TestResourceOptions): UIResource {
   const ts = new Date(Date.now()).toISOString()
-  const resource = {
+  const disableStatus = disabled
+    ? { ...DISABLED_RESOURCE_STATUS }
+    : { ...ENABLED_RESOURCE_STATUS }
+
+  // Add the number of labels specified
+  const labelsToAdd: string[] = []
+  let labelIdx = 0
+  while (labels !== undefined && labelsToAdd.length < labels) {
+    // Exit early if there are no more test labels to add to this resource
+    if (labelsToAdd.length === TEST_DATA_LABELS.length) {
+      break
+    }
+
+    labelsToAdd.push(TEST_DATA_LABELS[labelIdx])
+    labelIdx++
+  }
+
+  const resource: UIResource = {
     metadata: {
-      name: "vigoda",
+      name: name ?? "vigoda",
+      labels: labels !== undefined ? labelsToAdd : undefined,
     },
     status: {
       lastDeployTime: ts,
@@ -182,6 +235,7 @@ function oneResourceNoAlerts(): UIResource {
       endpointLinks: [unnamedEndpointLink],
       runtimeStatus: "ok",
       specs: vigodaSpecs(),
+      disableStatus,
     },
   }
   return resource
@@ -303,7 +357,7 @@ function oneResourceTestWithName(name: string): UIResource {
       specs: [
         {
           id: "local:boop",
-          type: "TARGET_TYPE_LOCAL",
+          type: "local",
           hasLiveUpdate: false,
         },
       ],
@@ -382,7 +436,7 @@ export function nResourceView(n: number): TestDataView {
       let res = tiltfileResource()
       resources.push(res)
     } else {
-      let res = oneResourceNoAlerts()
+      let res = oneResourceNoAlerts({})
       res.metadata = { name: "_" + i }
       res.status!.order = i
       resources.push(res)
@@ -397,20 +451,23 @@ export function nResourceView(n: number): TestDataView {
 
 export const nResourceWithLabelsView = (n: number) => {
   const view = nResourceView(n)
+
+  const [firstLabel, secondLabel, thirdLabel, fourthLabel, fifthLabel] =
+    TEST_DATA_LABELS
   const firstLabelLimit = Math.floor(n / 5)
   const secondLabelLimit = n < 10 ? 2 : 5
   for (let i = 0; i < n; i++) {
     const labels: { [key: string]: string } = {}
     // The first item is a Tiltfile, so don't apply a label to it
     if (i > 0 && i < firstLabelLimit) {
-      labels["frontend"] = "frontend"
+      labels[firstLabel] = firstLabel
     }
     if (i % secondLabelLimit) {
-      labels["test"] = "test"
+      labels[secondLabel] = secondLabel
     }
 
     if (i === 3) {
-      labels["very_long_long_long_label"] = "very_long_long_long_label"
+      labels[fourthLabel] = fourthLabel
     }
 
     view.uiResources[i].metadata!.labels = labels
@@ -419,16 +476,16 @@ export const nResourceWithLabelsView = (n: number) => {
   // Non-happy path resources
   const [failedBuild] = oneResourceFailedToBuild()
   failedBuild.metadata!.labels = {
-    test: "test",
-    backend: "backend",
+    [secondLabel]: secondLabel,
+    [thirdLabel]: thirdLabel,
   }
   failedBuild.metadata!.name = "a_failed_build"
   view.uiResources.push(failedBuild)
 
   const [crashedStart] = oneResourceCrashedOnStart()
   crashedStart.metadata!.labels = {
-    javascript: "javascript",
-    backend: "frontend",
+    [firstLabel]: firstLabel,
+    [fifthLabel]: fifthLabel,
   }
   crashedStart.metadata!.name = "crash_on_start_and_wont_restart"
   view.uiResources.push(crashedStart)

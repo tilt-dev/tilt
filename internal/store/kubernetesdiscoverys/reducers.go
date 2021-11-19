@@ -1,11 +1,16 @@
 package kubernetesdiscoverys
 
 import (
+	"time"
+
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func HandleKubernetesDiscoveryUpsertAction(state *store.EngineState, action KubernetesDiscoveryUpsertAction) {
@@ -53,4 +58,29 @@ func RefreshKubernetesResource(state *store.EngineState, name string) {
 		return
 	}
 	state.KubernetesResources[name] = r
+
+	if d != nil {
+		mn := model.ManifestName(d.Annotations[v1alpha1.AnnotationManifest])
+		ms, ok := state.ManifestState(mn)
+		if ok {
+			krs := ms.K8sRuntimeState()
+			krs.FilteredPods = r.FilteredPods
+
+			isReadyOrSucceeded := false
+			for _, pod := range r.FilteredPods {
+				if krs.PodReadinessMode == model.PodReadinessSucceeded {
+					// for jobs, we don't care about whether it's ready, only whether it's succeeded
+					isReadyOrSucceeded = pod.Phase == string(v1.PodSucceeded)
+				} else {
+					isReadyOrSucceeded = len(pod.Containers) != 0 && store.AllPodContainersReady(pod)
+				}
+				if isReadyOrSucceeded {
+					// NOTE(nick): It doesn't seem right to update this timestamp everytime
+					// we get a new event, but it's what the old code did.
+					krs.LastReadyOrSucceededTime = time.Now()
+				}
+			}
+			ms.RuntimeState = krs
+		}
+	}
 }

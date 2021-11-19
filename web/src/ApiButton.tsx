@@ -12,6 +12,7 @@ import React, { useRef, useState } from "react"
 import { convertFromNode, convertFromString } from "react-from-dom"
 import { Link } from "react-router-dom"
 import styled from "styled-components"
+import { Tags } from "./analytics"
 import { annotations } from "./annotations"
 import FloatDialog from "./FloatDialog"
 import { useHudErrorContext } from "./HudErrorContext"
@@ -167,13 +168,11 @@ function ApiButtonWithOptions(props: ApiButtonWithOptionsProps & ButtonProps) {
   const [open, setOpen] = useState(false)
   const anchorRef = useRef(null)
 
-  const {
-    submit,
-    uiButton,
-    setInputValue,
-    getInputValue,
-    ...buttonProps
-  } = props
+  const { submit, uiButton, setInputValue, getInputValue, ...buttonProps } =
+    props
+
+  let componentType = uiButton.spec?.location?.componentType
+  let tags = { component: componentType }
 
   return (
     <>
@@ -190,6 +189,7 @@ function ApiButtonWithOptions(props: ApiButtonWithOptionsProps & ButtonProps) {
             setOpen((prevOpen) => !prevOpen)
           }}
           analyticsName="ui.web.uiButton.inputMenu"
+          analyticsTags={tags}
           aria-label={`Open ${props.uiButton.spec?.text} options`}
           {...buttonProps}
         >
@@ -314,6 +314,20 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
   const pb = usePathBuilder()
 
   const { setError } = useHudErrorContext()
+  let componentType = uiButton.spec?.location?.componentType
+  let tags = { component: componentType } as Tags
+  let annotations = (uiButton.metadata?.annotations || {}) as {
+    [key: string]: string
+  }
+  let hash = annotations["uibuttonspec-hash"]
+  if (hash) {
+    tags.specHash = hash
+  }
+
+  let buttonType = annotations["tilt.dev/uibutton-type"]
+  if (buttonType) {
+    tags.buttonType = buttonType
+  }
 
   const onClick = async () => {
     // TODO(milas): currently the loading state just disables the button for the duration of
@@ -331,7 +345,7 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
     }
 
     const snackbarLogsLink =
-      uiButton.spec?.location?.componentType === "Global" ? (
+      componentType === "Global" ? (
         <LogLink to="/r/(all)/overview">Global Logs</LogLink>
       ) : (
         <LogLink
@@ -356,6 +370,7 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
   const button = (
     <InstrumentedButton
       analyticsName={"ui.web.uibutton"}
+      analyticsTags={tags}
       onClick={onClick}
       disabled={disabled}
       aria-label={`Trigger ${uiButton.spec?.text}`}

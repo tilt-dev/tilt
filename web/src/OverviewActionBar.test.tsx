@@ -176,7 +176,7 @@ describe("Term filter input", () => {
     const inputField = root.find(FILTER_INPUT)
     inputField.simulate("change", { target: { value: "docker" } })
 
-    jest.runTimersToTime(FILTER_INPUT_DEBOUNCE)
+    jest.advanceTimersByTime(FILTER_INPUT_DEBOUNCE)
 
     expect(history.location.search.toString()).toEqual("?term=docker")
   })
@@ -189,7 +189,7 @@ describe("Term filter input", () => {
     const inputField = root.find(FILTER_INPUT)
     inputField.simulate("change", { target: { value: "doc" } })
 
-    jest.runTimersToTime(FILTER_INPUT_DEBOUNCE / 2)
+    jest.advanceTimersByTime(FILTER_INPUT_DEBOUNCE / 2)
 
     // The debouncing time hasn't passed yet, so we don't expect to see any changes
     expect(history.location.search.toString()).toEqual("")
@@ -199,7 +199,7 @@ describe("Term filter input", () => {
     // The debouncing time hasn't passed yet, so we don't expect to see any changes
     expect(history.location.search.toString()).toEqual("")
 
-    jest.runTimersToTime(FILTER_INPUT_DEBOUNCE)
+    jest.advanceTimersByTime(FILTER_INPUT_DEBOUNCE)
 
     // Since the debouncing time has passed, we expect to see the final
     // change reflected
@@ -216,7 +216,7 @@ describe("Term filter input", () => {
     const inputField = root.find(FILTER_INPUT)
     inputField.simulate("change", { target: { value: "help" } })
 
-    jest.runTimersToTime(FILTER_INPUT_DEBOUNCE)
+    jest.advanceTimersByTime(FILTER_INPUT_DEBOUNCE)
 
     expect(history.location.search.toString()).toEqual(
       "?level=warn&source=build&term=help"

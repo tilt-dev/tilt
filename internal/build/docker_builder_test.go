@@ -66,7 +66,7 @@ func TestDigestFromSingleStepOutput(t *testing.T) {
 
 	input := docker.ExampleBuildOutput1
 	expected := digest.Digest("sha256:11cd0b38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
-	actual, err := f.b.getDigestFromBuildOutput(f.ctx, bytes.NewBuffer([]byte(input)))
+	actual, _, err := f.b.getDigestFromBuildOutput(f.ctx, bytes.NewBuffer([]byte(input)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,7 +82,7 @@ func TestDigestFromOutputV1_23(t *testing.T) {
 	input := docker.ExampleBuildOutputV1_23
 	expected := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
 	f.fakeDocker.Images["11cd0b38bc3c"] = types.ImageInspect{ID: string(expected)}
-	actual, err := f.b.getDigestFromBuildOutput(f.ctx, bytes.NewBuffer([]byte(input)))
+	actual, _, err := f.b.getDigestFromBuildOutput(f.ctx, bytes.NewBuffer([]byte(input)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,7 +171,7 @@ func TestCleanUpBuildKitErrors(t *testing.T) {
 
 			ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 			s := makeDockerBuildErrorOutput(tc.buildKitError)
-			_, err := f.b.getDigestFromBuildOutput(ctx, strings.NewReader(s))
+			_, _, err := f.b.getDigestFromBuildOutput(ctx, strings.NewReader(s))
 			require.NotNil(t, err)
 			require.Equal(t, fmt.Sprintf("ImageBuild: %s", tc.expectedTiltError), err.Error())
 		})

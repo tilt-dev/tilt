@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -23,6 +24,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/restarton"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -57,11 +59,23 @@ type Reconciler struct {
 	results map[types.NamespacedName]*Result
 }
 
+// Partial KubernetesApplyStatus that represents
+// the fields returned by `ForceApply`
+type ForceApplyStatus struct {
+	ResultYAML         string
+	Error              string
+	LastApplyTime      metav1.MicroTime
+	LastApplyStartTime metav1.MicroTime
+	AppliedInputHash   string
+}
+
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	b := ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.KubernetesApply{}).
 		Owns(&v1alpha1.KubernetesDiscovery{}).
 		Watches(&source.Kind{Type: &v1alpha1.ImageMap{}},
+			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
+		Watches(&source.Kind{Type: &v1alpha1.ConfigMap{}},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue))
 
 	restarton.SetupController(b, r.indexer, func(obj ctrlclient.Object) (*v1alpha1.RestartOnSpec, *v1alpha1.StartOnSpec) {
@@ -98,10 +112,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	}
 
 	if apierrors.IsNotFound(err) || !ka.ObjectMeta.DeletionTimestamp.IsZero() {
-		toDelete := r.updateResult(nn, nil)
-		r.bestEffortDelete(ctx, toDelete)
-
-		err := r.manageOwnedKubernetesDiscovery(ctx, nn, nil)
+		err := r.deleteCreatedObjects(ctx, nn)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -112,6 +123,31 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 	// The apiserver is the source of truth, and will ensure the engine state is up to date.
 	r.st.Dispatch(kubernetesapplys.NewKubernetesApplyUpsertAction(&ka))
+
+	// Get configmap's disable status
+	disableStatus, err := configmap.MaybeNewDisableStatus(ctx, r.ctrlClient, ka.Spec.DisableSource, ka.Status.DisableStatus)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	// Update kubernetesapply's disable status
+	if disableStatus != ka.Status.DisableStatus {
+		ka.Status.DisableStatus = disableStatus
+		if err := r.ctrlClient.Status().Update(ctx, &ka); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
+	// Delete kubernetesapply if it's disabled
+	if disableStatus.Disabled {
+		err := r.deleteCreatedObjects(ctx, nn)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		r.st.Dispatch(kubernetesapplys.NewKubernetesApplyUpsertAction(&ka))
+		return ctrl.Result{}, nil
+	}
 
 	ctx = store.MustObjectLogHandler(ctx, r.st, &ka)
 	err = r.manageOwnedKubernetesDiscovery(ctx, nn, &ka)
@@ -233,12 +269,26 @@ func (r *Reconciler) ForceApply(
 	nn types.NamespacedName,
 	spec v1alpha1.KubernetesApplySpec,
 	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) (v1alpha1.KubernetesApplyStatus, error) {
+	forceApplyStatus, appliedObjects := r.forceApplyHelper(ctx, spec, imageMaps)
 
-	status, appliedObjects := r.forceApplyHelper(ctx, spec, imageMaps)
-	statusCopy := status.DeepCopy()
+	var ka v1alpha1.KubernetesApply
+	err := r.ctrlClient.Get(ctx, nn, &ka)
+	if err != nil {
+		return v1alpha1.KubernetesApplyStatus{}, err
+	}
+
+	// Copy over status information from `forceApplyHelper`
+	// so other existing status information isn't overwritten
+	updatedStatus := ka.Status.DeepCopy()
+	updatedStatus.ResultYAML = forceApplyStatus.ResultYAML
+	updatedStatus.Error = forceApplyStatus.Error
+	updatedStatus.LastApplyStartTime = forceApplyStatus.LastApplyStartTime
+	updatedStatus.LastApplyTime = forceApplyStatus.LastApplyTime
+	updatedStatus.AppliedInputHash = forceApplyStatus.AppliedInputHash
+
 	result := Result{
 		Spec:           spec,
-		Status:         *statusCopy,
+		Status:         *updatedStatus,
 		AppliedObjects: newObjectRefSet(appliedObjects),
 	}
 
@@ -253,22 +303,16 @@ func (r *Reconciler) ForceApply(
 		result.ImageMapStatuses = append(result.ImageMapStatuses, im.Status)
 	}
 
-	var ka v1alpha1.KubernetesApply
-	err := r.ctrlClient.Get(ctx, nn, &ka)
-	if err != nil {
-		return status, err
-	}
-
-	ka.Status = status
+	ka.Status = *updatedStatus
 	err = r.ctrlClient.Status().Update(ctx, &ka)
 	if err != nil {
-		return status, err
+		return *updatedStatus, err
 	}
 
 	toDelete := r.updateResult(nn, &result)
 	r.bestEffortDelete(ctx, toDelete)
 
-	return status, nil
+	return *updatedStatus, nil
 }
 
 // A helper that applies the given specs to the cluster, but doesn't update the APIServer.
@@ -279,14 +323,15 @@ func (r *Reconciler) ForceApply(
 func (r *Reconciler) forceApplyHelper(
 	ctx context.Context,
 	spec v1alpha1.KubernetesApplySpec,
-	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) (v1alpha1.KubernetesApplyStatus, []k8s.K8sEntity) {
+	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap,
+) (ForceApplyStatus, []k8s.K8sEntity) {
 
 	startTime := apis.NowMicro()
-	status := v1alpha1.KubernetesApplyStatus{
+	status := ForceApplyStatus{
 		LastApplyStartTime: startTime,
 	}
 
-	errorStatus := func(err error) v1alpha1.KubernetesApplyStatus {
+	errorStatus := func(err error) ForceApplyStatus {
 		status.LastApplyTime = apis.NowMicro()
 		status.Error = err.Error()
 		return status
@@ -375,17 +420,27 @@ func (r *Reconciler) runCmdDeploy(ctx context.Context, spec v1alpha1.KubernetesA
 	if err != nil {
 		return nil, fmt.Errorf("apply command failed: %v", err)
 	} else if exitCode != 0 {
-		return nil, fmt.Errorf("apply command exited with status %d\nstdout:\n%s\n", exitCode, stdoutBuf.String())
+		return nil, fmt.Errorf("apply command exited with status %d\nstdout:\n%s\n", exitCode, overflowEllipsis(stdoutBuf.String()))
 	}
 
 	// don't pass the bytes.Buffer directly to the YAML parser or it'll consume it and we can't print it out on failure
 	stdout := stdoutBuf.Bytes()
 	entities, err := k8s.ParseYAML(bytes.NewReader(stdout))
 	if err != nil {
-		return nil, fmt.Errorf("apply command returned malformed YAML: %v\nstdout:\n%s\n", err, string(stdout))
+		return nil, fmt.Errorf("apply command returned malformed YAML: %v\nstdout:\n%s\n", err, overflowEllipsis(string(stdout)))
 	}
 
 	return entities, nil
+}
+
+const maxOverflow = 500
+
+// The stdout of a well-behaved apply function can be 100K+ (especially for CRDs)
+func overflowEllipsis(str string) string {
+	if len(str) > maxOverflow {
+		return fmt.Sprintf("%s\n... [truncated by Tilt] ...\n%s", str[0:maxOverflow/2], str[len(str)-maxOverflow/2:])
+	}
+	return str
 }
 
 func (r *Reconciler) indentLogger(ctx context.Context) context.Context {
@@ -554,6 +609,23 @@ func (r *Reconciler) updateResult(nn types.NamespacedName, result *Result) delet
 	return deleteSpec{entities: toDelete}
 }
 
+// A helper that deletes all kubernetesapply objects and the
+// related kubernetesdiscovery objects it owns
+func (r *Reconciler) deleteCreatedObjects(
+	ctx context.Context,
+	nn types.NamespacedName,
+) error {
+	toDelete := r.updateResult(nn, nil)
+	r.bestEffortDelete(ctx, toDelete)
+
+	err := r.manageOwnedKubernetesDiscovery(ctx, nn, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (r *Reconciler) bestEffortDelete(ctx context.Context, toDelete deleteSpec) {
 	if len(toDelete.entities) == 0 && toDelete.deleteCmd == nil {
 		return
@@ -595,6 +667,17 @@ func indexKubernetesApply(obj client.Object) []indexer.Key {
 			Name: types.NamespacedName{Name: name},
 			GVK:  imGVK,
 		})
+	}
+
+	if ka.Spec.DisableSource != nil {
+		cm := ka.Spec.DisableSource.ConfigMap
+		if cm != nil {
+			cmGVK := v1alpha1.SchemeGroupVersion.WithKind("ConfigMap")
+			result = append(result, indexer.Key{
+				Name: types.NamespacedName{Name: cm.Name},
+				GVK:  cmGVK,
+			})
+		}
 	}
 	return result
 }

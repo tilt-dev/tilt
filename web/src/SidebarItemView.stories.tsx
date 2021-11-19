@@ -105,7 +105,7 @@ function withArgs(args: Args): optionFn {
 
 function itemView(...options: optionFn[]) {
   let ls = new LogStore()
-  let item = new SidebarItem(oneResourceNoAlerts(), ls)
+  let item = new SidebarItem(oneResourceNoAlerts({}), ls)
   let props = {
     item: item,
     selected: false,

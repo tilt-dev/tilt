@@ -241,19 +241,16 @@ func TestReadinessCheckFailing(t *testing.T) {
 		Name: "foo",
 	}.WithDeployTarget(model.K8sTarget{})
 	state := newState([]model.Manifest{m})
-	state.ManifestTargets[m.Name].State.RuntimeState = store.K8sRuntimeState{
-		Pods: map[k8s.PodID]*v1alpha1.Pod{
-			"pod id": {
-				Status: "Running",
-				Phase:  "Running",
-				Containers: []v1alpha1.Container{
-					{
-						Ready: false,
-					},
-				},
+	state.ManifestTargets[m.Name].State.RuntimeState = store.NewK8sRuntimeStateWithPods(m, v1alpha1.Pod{
+		Name:   "pod-id",
+		Status: "Running",
+		Phase:  "Running",
+		Containers: []v1alpha1.Container{
+			{
+				Ready: false,
 			},
 		},
-	}
+	})
 
 	v := completeProtoView(t, *state)
 	rv, ok := findResource(m.Name, v)

@@ -40,6 +40,7 @@ import (
 	apitiltfile "github.com/tilt-dev/tilt/internal/controllers/apis/tiltfile"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
 	"github.com/tilt-dev/tilt/internal/controllers/core/configmap"
+	"github.com/tilt-dev/tilt/internal/controllers/core/dockerimage"
 	"github.com/tilt-dev/tilt/internal/controllers/core/extension"
 	"github.com/tilt-dev/tilt/internal/controllers/core/extensionrepo"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch"
@@ -250,6 +251,8 @@ type fakeBuildAndDeployer struct {
 	kClient *k8s.FakeK8sClient
 
 	ctrlClient ctrlclient.Client
+
+	kaReconciler *kubernetesapply.Reconciler
 }
 
 var _ buildcontrol.BuildAndDeployer = &fakeBuildAndDeployer{}
@@ -361,8 +364,8 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 	}
 
 	if kTarg := call.k8s(); !kTarg.Empty() {
-		status, nextK8sResult := b.nextK8sDeployResult(kTarg)
-		err = b.updateKubernetesApplyStatus(ctx, kTarg, *status)
+		nextK8sResult := b.nextK8sDeployResult(kTarg)
+		err = b.updateKubernetesApplyStatus(ctx, kTarg, iTargets)
 		if err != nil {
 			return result, err
 		}
@@ -381,25 +384,34 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 	return result, err
 }
 
-func (b *fakeBuildAndDeployer) updateKubernetesApplyStatus(ctx context.Context, kTarg model.K8sTarget, status v1alpha1.KubernetesApplyStatus) error {
-	var ka v1alpha1.KubernetesApply
-	err := b.ctrlClient.Get(ctx, types.NamespacedName{Name: kTarg.ID().Name.String()}, &ka)
-	if err != nil {
+func (b *fakeBuildAndDeployer) updateKubernetesApplyStatus(ctx context.Context, kTarg model.K8sTarget, iTargets []model.ImageTarget) error {
+	imageMapSet := make(map[types.NamespacedName]*v1alpha1.ImageMap, len(kTarg.ImageMaps))
+	for _, iTarget := range iTargets {
+		if iTarget.IsLiveUpdateOnly {
+			continue
+		}
+
+		var im v1alpha1.ImageMap
+		nn := types.NamespacedName{Name: iTarget.ImageMapName()}
+		err := b.ctrlClient.Get(ctx, nn, &im)
+		if err != nil {
+			return err
+		}
+		im.Status.Image = iTarget.Refs.ClusterRef().String()
+		imageMapSet[nn] = &im
+	}
+
+	nn := types.NamespacedName{Name: kTarg.ID().Name.String()}
+	if _, err := b.kaReconciler.ForceApply(ctx, nn, kTarg.KubernetesApplySpec, imageMapSet); err != nil {
 		return err
 	}
-	require.NoError(b.t, err)
 
-	ka.Status = status
-	return b.ctrlClient.Status().Update(ctx, &ka)
+	return nil
 }
 
-func (b *fakeBuildAndDeployer) nextK8sDeployResult(kTarg model.K8sTarget) (*v1alpha1.KubernetesApplyStatus, store.K8sBuildResult) {
+func (b *fakeBuildAndDeployer) nextK8sDeployResult(kTarg model.K8sTarget) store.K8sBuildResult {
 	var err error
 	var deployed []k8s.K8sEntity
-	var status = v1alpha1.KubernetesApplyStatus{
-		LastApplyTime:    apis.NowMicro(),
-		AppliedInputHash: "x",
-	}
 
 	explicitDeploymentEntities := b.targetObjectTree[kTarg.ID()]
 	if len(explicitDeploymentEntities) != 0 {
@@ -449,11 +461,12 @@ func (b *fakeBuildAndDeployer) nextK8sDeployResult(kTarg model.K8sTarget) (*v1al
 
 	resultYAML, err := k8s.SerializeSpecYAML(deployed)
 	require.NoError(b.t, err)
-	status.ResultYAML = resultYAML
 
-	filter, err := k8sconv.NewKubernetesApplyFilter(&status)
+	b.kClient.UpsertResult = deployed
+
+	filter, err := k8sconv.NewKubernetesApplyFilter(&v1alpha1.KubernetesApplyStatus{ResultYAML: resultYAML})
 	require.NoError(b.t, err)
-	return &status, store.NewK8sDeployResult(kTarg.ID(), filter)
+	return store.NewK8sDeployResult(kTarg.ID(), filter)
 }
 
 func (b *fakeBuildAndDeployer) getOrCreateBuildCompletionChannel(key string) buildCompletionChannel {
@@ -487,7 +500,7 @@ func (b *fakeBuildAndDeployer) waitUntilBuildCompleted(ctx context.Context, key 
 	}
 }
 
-func newFakeBuildAndDeployer(t *testing.T, kClient *k8s.FakeK8sClient, ctrlClient ctrlclient.Client) *fakeBuildAndDeployer {
+func newFakeBuildAndDeployer(t *testing.T, kClient *k8s.FakeK8sClient, ctrlClient ctrlclient.Client, kaReconciler *kubernetesapply.Reconciler) *fakeBuildAndDeployer {
 	return &fakeBuildAndDeployer{
 		t:                t,
 		calls:            make(chan buildAndDeployCall, 20),
@@ -495,6 +508,7 @@ func newFakeBuildAndDeployer(t *testing.T, kClient *k8s.FakeK8sClient, ctrlClien
 		resultsByID:      store.BuildResultSet{},
 		kClient:          kClient,
 		ctrlClient:       ctrlClient,
+		kaReconciler:     kaReconciler,
 		targetObjectTree: make(map[model.TargetID]podbuilder.PodObjectTree),
 	}
 }
@@ -1417,92 +1431,6 @@ func TestPodEvent(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
-func TestPodEventOrdering(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-
-	manifest := f.newManifest("fe")
-
-	past := f.Now().Add(-time.Minute)
-	now := f.Now()
-	uidPast := types.UID("deployment-uid-past")
-	uidNow := types.UID("deployment-uid-now")
-	pb := podbuilder.New(f.T(), manifest)
-	pbA := pb.WithPodName("pod-a")
-	pbB := pb.WithPodName("pod-b")
-	pbC := pb.WithPodName("pod-c")
-	podAPast := pbA.WithPodUID("pod-a-past").WithCreationTime(past).WithDeploymentUID(uidPast)
-	podBPast := pbB.WithPodUID("pod-b-past").WithCreationTime(past).WithDeploymentUID(uidPast)
-	podANow := pbA.WithPodUID("pod-a-now").WithCreationTime(now).WithDeploymentUID(uidNow)
-	podBNow := pbB.WithPodUID("pod-b-now").WithCreationTime(now).WithDeploymentUID(uidNow)
-	podCNow := pbC.WithCreationTime(now).WithDeploymentUID(uidNow)
-	podCNowDeleting := podCNow.WithDeletionTime(now)
-
-	// Test the pod events coming in in different orders,
-	// and the manifest ends up with podANow and podBNow
-	podOrders := [][]podbuilder.PodBuilder{
-		{podAPast, podBPast, podANow, podBNow},
-		{podAPast, podANow, podBPast, podBNow},
-		{podAPast, podBPast, podANow, podCNow, podCNowDeleting, podBNow},
-	}
-
-	for i, order := range podOrders {
-		t.Run(fmt.Sprintf("TestPodOrder%d", i), func(t *testing.T) {
-			f := newTestFixture(t)
-			defer f.TearDown()
-
-			// simulate the old deployment as already existing (but don't associate with this manifest)
-			oldEntities := pb.WithDeploymentUID(uidPast).ObjectTreeEntities()
-			f.kClient.Inject(oldEntities.Deployment(), oldEntities.ReplicaSet())
-
-			// register the current deployment UID so that it will be "deployed" on build
-			f.b.targetObjectTree[manifest.K8sTarget().ID()] = pb.WithDeploymentUID(uidNow).ObjectTreeEntities()
-
-			f.Start([]model.Manifest{manifest})
-
-			call := f.nextCall()
-			assert.True(t, call.oneImageState().IsEmpty())
-			f.WaitUntilManifestState("uid deployed", "fe", func(ms store.ManifestState) bool {
-
-				return k8sconv.ContainsUID(ms.K8sRuntimeState().ApplyFilter, uidNow)
-			})
-
-			for _, pb := range order {
-				f.podEvent(pb.Build())
-			}
-
-			// ensure that the pod events have been processed
-			f.WaitUntilManifestState("pods seen", "fe", func(ms store.ManifestState) bool {
-				return len(ms.K8sRuntimeState().Pods) == 2
-			})
-
-			f.upper.store.Dispatch(
-				store.NewLogAction("fe", k8sconv.SpanIDForPod(manifest.Name, podBNow.PodName()), logger.InfoLvl, nil, []byte("pod b log\n")))
-
-			f.WaitUntil("pod log seen", func(state store.EngineState) bool {
-				ms, _ := state.ManifestState(manifest.Name)
-				spanID := k8sconv.SpanIDForPod(manifest.Name, k8s.PodID(ms.MostRecentPod().Name))
-				return spanID != "" && strings.Contains(state.LogStore.SpanLog(spanID), "pod b log")
-			})
-
-			f.withManifestState("fe", func(ms store.ManifestState) {
-				krs := ms.K8sRuntimeState()
-				require.Equal(t, uidNow, krs.PodAncestorUID)
-				podA := krs.Pods["pod-a"]
-				if assert.Equal(t, "pod-a-now", podA.UID) {
-					timecmp.AssertTimeEqual(t, now, podA.CreatedAt)
-				}
-				podB := krs.Pods["pod-b"]
-				if assert.Equal(t, "pod-b-now", podB.UID) {
-					timecmp.AssertTimeEqual(t, now, podB.CreatedAt)
-				}
-			})
-
-			assert.NoError(t, f.Stop())
-		})
-	}
-}
-
 func TestPodEventContainerStatus(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -1965,198 +1893,6 @@ func TestPodContainerStatus(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
-// TODO(milas): rewrite this test as part of pod_watcher_test to better simulate initial state
-// 	currently, to seed state in PodWatcher, it has to emit events, which is concerningly close to the actual logic
-// 	it's trying to actually test
-func TestPodAddedToStateOrNotByTemplateHash(t *testing.T) {
-	deployedHash := k8s.PodTemplateSpecHash("some-hash-abc")
-	nonMatchingHash := k8s.PodTemplateSpecHash("danger-will-robinson")
-	ancestorUID := types.UID("some-ancestor")
-	podUID := types.UID("special-pod-uid")
-	podName := k8s.PodID("special-pod")
-	otherPodID := k8s.PodID("other-pod")
-	mName := model.ManifestName("foobar")
-
-	tests := []struct {
-		name                      string
-		ptshMatch                 bool // does the pod template spec hash of incoming pod event match the PTSH we most recently deployed?
-		ancestorSeen              bool // does the k8s runtime state already know about the ancestor UID of our pod?
-		podSeen                   bool // instantiate runtime state with an old version of the pod we're getting events for
-		haveAdditionalPod         bool // runtime state knows about another pod besides the one we're getting events for
-		expectUpdatePodOnManifest bool // expect pod event to cause an update to manifestState.Pods
-	}{
-		{name: "new ancestor + ptsh OK",
-			ptshMatch:                 true,
-			ancestorSeen:              false,
-			podSeen:                   false,
-			haveAdditionalPod:         false,
-			expectUpdatePodOnManifest: true,
-		}, {name: "new ancestor + ptsh not OK",
-			ptshMatch:                 false,
-			ancestorSeen:              false,
-			podSeen:                   false,
-			haveAdditionalPod:         false,
-			expectUpdatePodOnManifest: false,
-		}, {name: "existing ancestor/new pod + ptsh OK",
-			ptshMatch:                 true,
-			ancestorSeen:              true,
-			podSeen:                   false,
-			haveAdditionalPod:         false,
-			expectUpdatePodOnManifest: true,
-		}, {name: "existing ancestor/new pod + ptsh OK + additional pod",
-			ptshMatch:                 true,
-			ancestorSeen:              true,
-			podSeen:                   false,
-			haveAdditionalPod:         true,
-			expectUpdatePodOnManifest: true,
-		}, {name: "existing ancestor/new pod + ptsh not OK",
-			ptshMatch:                 false,
-			ancestorSeen:              true,
-			podSeen:                   false,
-			haveAdditionalPod:         false,
-			expectUpdatePodOnManifest: false,
-		}, {name: "existing ancestor/new pod + ptsh not OK + additional pod",
-			ptshMatch:                 false,
-			ancestorSeen:              true,
-			podSeen:                   false,
-			haveAdditionalPod:         true,
-			expectUpdatePodOnManifest: false,
-		}, {name: "existing pod + ptsh OK",
-			ptshMatch:                 true,
-			ancestorSeen:              true,
-			podSeen:                   true,
-			haveAdditionalPod:         false,
-			expectUpdatePodOnManifest: true,
-		}, {name: "existing pod + ptsh OK + additional pod",
-			ptshMatch:                 true,
-			ancestorSeen:              true,
-			podSeen:                   true,
-			haveAdditionalPod:         true,
-			expectUpdatePodOnManifest: true,
-		}, {name: "existing pod + ptsh not OK",
-			ptshMatch:                 false,
-			ancestorSeen:              true,
-			podSeen:                   true,
-			haveAdditionalPod:         false,
-			expectUpdatePodOnManifest: true,
-		},
-		{name: "existing pod + ptsh not OK + additional pod",
-			ptshMatch:                 false,
-			ancestorSeen:              true,
-			podSeen:                   true,
-			haveAdditionalPod:         true,
-			expectUpdatePodOnManifest: true,
-		},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			f := newTestFixture(t)
-			defer f.TearDown()
-			manifest := f.newManifest(mName.String())
-
-			// this test has very specific requirements, so need to set up K8s stuff manually
-			pb := podbuilder.New(t, manifest).WithDeploymentUID(ancestorUID)
-			entities := pb.ObjectTreeEntities()
-			f.kClient.Inject(entities.Deployment(), entities.ReplicaSet())
-
-			f.b.nextDeployedUID = ancestorUID
-			f.b.nextPodTemplateSpecHash = deployedHash
-			f.Start([]model.Manifest{manifest})
-
-			_ = f.nextCallComplete()
-
-			if test.ancestorSeen {
-				st := f.store.LockMutableStateForTesting()
-				ms, ok := st.ManifestState(mName)
-				require.True(t, ok, "couldn't find manifest state for %s", mName)
-				krs := ms.K8sRuntimeState()
-				krs.PodAncestorUID = ancestorUID
-				ms.RuntimeState = krs
-				f.store.UnlockMutableState()
-			}
-
-			if test.podSeen {
-				existing := pb.
-					WithPodUID(podUID).
-					WithPodName(podName.String()).
-					WithTemplateSpecHash(deployedHash).
-					WithPhase("Running").Build()
-				// because PodWatcher is the source of truth, anything written to EngineState will just get
-				// overwritten/ignored; an event must be emitted and go through the flow to end up in the store
-				f.podEvent(existing)
-			}
-			if test.haveAdditionalPod {
-				additional := pb.
-					WithPodUID("other-pod-uid").
-					WithPodName(otherPodID.String()).
-					WithNoTemplateSpecHash().
-					WithPhase("Running").
-					Build()
-				// because PodWatcher is the source of truth, anything written to EngineState will just get
-				// overwritten/ignored; an event must be emitted and go through the flow to end up in the store
-				f.podEvent(additional)
-			}
-
-			// since we're dispatching real events to seed the initial state, evaluate things holistically to
-			// ensure that the individual events didn't clobber each other in some way, i.e. we care about the
-			// steady state
-			f.WaitUntilManifestState("initial pod state incorrect", mName, func(ms store.ManifestState) bool {
-				initialStateOK := true
-				if test.podSeen {
-					_, ok := ms.PodWithID(podName)
-					initialStateOK = initialStateOK && ok
-				}
-				if test.haveAdditionalPod {
-					_, ok := ms.PodWithID(otherPodID)
-					initialStateOK = initialStateOK && ok
-				}
-				return initialStateOK
-			})
-
-			// Dispatch pod event
-			podHash := deployedHash
-			if !test.ptshMatch {
-				podHash = nonMatchingHash
-			}
-			pb = pb.
-				WithPodUID(podUID).
-				WithPodName(podName.String()).
-				WithTemplateSpecHash(podHash).
-				WithPhase("CrashLoopBackOff")
-			pod := pb.Build()
-			f.podEvent(pod)
-
-			if test.expectUpdatePodOnManifest {
-				f.WaitUntilManifestState("pod on manifest state with updated status", mName,
-					func(ms store.ManifestState) bool {
-						foundPod, ok := ms.PodWithID(podName)
-						return ok && foundPod.Status == "CrashLoopBackOff"
-					})
-				f.withManifestState(mName, func(ms store.ManifestState) {
-					assert.Equal(t, ancestorUID, ms.K8sRuntimeState().PodAncestorUID,
-						"expect k8s runtime state to have current pod ancestor UID")
-				})
-			} else {
-				time.Sleep(10 * time.Millisecond)
-				f.withManifestState(mName, func(ms store.ManifestState) {
-					_, ok := ms.PodWithID(podName)
-					assert.False(t, ok, "expect manifest to NOT have pod with ID %q", podName)
-				})
-			}
-
-			if test.haveAdditionalPod {
-				f.withManifestState(mName, func(ms store.ManifestState) {
-					_, ok := ms.PodWithID(otherPodID)
-					assert.True(t, ok, "expect manifest to have pod with ID %q", otherPodID)
-				})
-			}
-
-			assert.NoError(t, f.Stop())
-			f.assertAllBuildsConsumed()
-		})
-	}
-}
-
 func TestUpper_WatchDockerIgnoredFiles(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -2273,28 +2009,6 @@ func TestUpperPodLogInCrashLoopPodCurrentlyDown(t *testing.T) {
 		spanID := k8sconv.SpanIDForPod(name, k8s.PodID(ms.MostRecentPod().Name))
 		assert.Equal(t, "first string\nWARNING: Detected container restart. Pod: foobar-fakePodID. Container: sancho.\nsecond string\n",
 			state.LogStore.SpanLog(spanID))
-	})
-
-	err := f.Stop()
-	assert.NoError(t, err)
-}
-
-func TestUpperPodRestartsBeforeTiltStart(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-
-	name := model.ManifestName("fe")
-	manifest := f.newManifest(name.String())
-	pb := f.registerForDeployer(manifest)
-
-	f.Start([]model.Manifest{manifest})
-	f.waitForCompletedBuildCount(1)
-
-	f.startPod(pb.WithRestartCount(1).Build(), manifest.Name)
-
-	f.withManifestState(name, func(ms store.ManifestState) {
-		krs := ms.K8sRuntimeState()
-		assert.Equal(t, int32(1), krs.BaselineRestarts[pb.PodName()])
 	})
 
 	err := f.Stop()
@@ -3925,6 +3639,44 @@ local_resource('foo', serve_cmd='echo hi; sleep 10')`)
 	require.Equal(t, f.log.String(), "")
 }
 
+func TestDisabledResourceRemovedFromTriggerQueue(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	m := manifestbuilder.New(f, "foo").WithLocalResource("foo", []string{f.Path()}).Build()
+
+	f.Start([]model.Manifest{m})
+
+	f.waitForCompletedBuildCount(1)
+
+	f.bc.DisableForTesting()
+
+	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: m.Name, Reason: model.BuildReasonFlagTriggerCLI})
+
+	f.WaitUntil("in trigger queue", func(state store.EngineState) bool {
+		return state.ManifestInTriggerQueue(m.Name)
+	})
+
+	cm := v1alpha1.ConfigMap{}
+	err := f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: "foo-disable"}, &cm)
+	require.NoError(t, err)
+
+	cm.Data["isDisabled"] = "true"
+	err = f.ctrlClient.Update(f.ctx, &cm)
+	require.NoError(t, err)
+
+	f.WaitUntil("resource is disabled", func(state store.EngineState) bool {
+		if uir, ok := state.UIResources["foo"]; ok {
+			return uir.Status.DisableStatus.DisabledCount > 0
+		}
+		return false
+	})
+
+	f.WaitUntil("is removed from trigger queue", func(state store.EngineState) bool {
+		return !state.ManifestInTriggerQueue(m.Name)
+	})
+}
+
 type testFixture struct {
 	*tempdir.TempDirFixture
 	t                          *testing.T
@@ -3984,7 +3736,6 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 
 	watcher := fsevent.NewFakeMultiWatcher()
 	kClient := k8s.NewFakeK8sClient(t)
-	b := newFakeBuildAndDeployer(t, kClient, cdc)
 
 	timerMaker := fsevent.MakeFakeTimerMaker(t)
 
@@ -3994,8 +3745,6 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	st := store.NewStore(UpperReducer, store.LogActionsFlag(false))
 	require.NoError(t, st.AddSubscriber(ctx, fSub))
 
-	bc := NewBuildController(b)
-
 	err := os.Mkdir(f.JoinPath(".git"), os.FileMode(0777))
 	if err != nil {
 		t.Fatal(err)
@@ -4003,16 +3752,16 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 
 	clock := clockwork.NewRealClock()
 	env := k8s.EnvDockerDesktop
-	podSource := podlogstream.NewPodSource(ctx, b.kClient, v1alpha1.NewScheme())
-	plsc := podlogstream.NewController(ctx, cdc, st, b.kClient, podSource)
+	podSource := podlogstream.NewPodSource(ctx, kClient, v1alpha1.NewScheme())
+	plsc := podlogstream.NewController(ctx, cdc, st, kClient, podSource)
 	au := engineanalytics.NewAnalyticsUpdater(ta, engineanalytics.CmdTags{}, engineMode)
-	ar := engineanalytics.ProvideAnalyticsReporter(ta, st, b.kClient, env)
+	ar := engineanalytics.ProvideAnalyticsReporter(ta, st, kClient, env)
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	k8sContextExt := k8scontext.NewPlugin("fake-context", env)
 	versionExt := version.NewPlugin(model.TiltBuild{Version: "0.5.0"})
 	configExt := config.NewPlugin("up")
 	execer := localexec.NewFakeExecer(t)
-	realTFL := tiltfile.ProvideTiltfileLoader(ta, b.kClient, k8sContextExt, versionExt, configExt, fakeDcc, "localhost", execer, feature.MainDefaults, env)
+	realTFL := tiltfile.ProvideTiltfileLoader(ta, kClient, k8sContextExt, versionExt, configExt, fakeDcc, "localhost", execer, feature.MainDefaults, env)
 	tfl := tiltfile.NewFakeTiltfileLoader()
 	buildSource := ctrltiltfile.NewBuildSource()
 	cc := configs.NewConfigsController(cdc)
@@ -4027,11 +3776,11 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		nil, "tilt-default", webListener, serverOptions,
 		&server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
 	ns := k8s.Namespace("default")
-	of := k8s.ProvideOwnerFetcher(ctx, b.kClient)
+	of := k8s.ProvideOwnerFetcher(ctx, kClient)
 	rd := kubernetesdiscovery.NewContainerRestartDetector()
-	kdc := kubernetesdiscovery.NewReconciler(cdc, b.kClient, of, rd, st)
-	sw := k8swatch.NewServiceWatcher(b.kClient, of, ns)
-	ewm := k8swatch.NewEventWatchManager(b.kClient, of, ns)
+	kdc := kubernetesdiscovery.NewReconciler(cdc, kClient, of, rd, st)
+	sw := k8swatch.NewServiceWatcher(kClient, of, ns)
+	ewm := k8swatch.NewEventWatchManager(kClient, of, ns)
 	tcum := cloud.NewStatusManager(httptest.NewFakeClientEmptyJSON(), clock)
 	fe := cmd.NewFakeExecer()
 	fpm := cmd.NewFakeProberManager()
@@ -4056,11 +3805,11 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		cdc,
 		uncached)
 	require.NoError(t, err, "Failed to create Tilt API server controller manager")
-	pfr := apiportforward.NewReconciler(cdc, st, b.kClient)
+	pfr := apiportforward.NewReconciler(cdc, st, kClient)
 
 	wsl := server.NewWebsocketList()
 
-	kar := kubernetesapply.NewReconciler(cdc, b.kClient, sch, docker.Env{}, k8s.KubeContext("kind-kind"), st, "default", execer)
+	kar := kubernetesapply.NewReconciler(cdc, kClient, sch, docker.Env{}, k8s.KubeContext("kind-kind"), st, "default", execer)
 
 	tfr := ctrltiltfile.NewReconciler(st, tfl, dockerClient, cdc, sch, buildSource, engineMode)
 	tbr := togglebutton.NewReconciler(cdc, sch)
@@ -4071,6 +3820,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 
 	cu := &containerupdate.FakeContainerUpdater{}
 	lur := liveupdate.NewFakeReconciler(st, cu, cdc)
+	dir := dockerimage.NewReconciler(cdc)
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
 		fwc,
 		cmds,
@@ -4087,10 +3837,14 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		extrr,
 		lur,
 		cmr,
+		dir,
 	))
 
 	dp := dockerprune.NewDockerPruner(dockerClient)
 	dp.DisabledForTesting(true)
+
+	b := newFakeBuildAndDeployer(t, kClient, cdc, kar)
+	bc := NewBuildController(b)
 
 	ret := &testFixture{
 		TempDirFixture:        f,
@@ -4365,6 +4119,9 @@ func (f *testFixture) WaitUntil(msg string, isDone func(store.EngineState) bool)
 		}
 
 		if isCanceled {
+			_, _ = fmt.Fprintf(os.Stderr, "Test canceled. Dumping engine state:\n")
+			encoder := store.CreateEngineStateEncoder(os.Stderr)
+			require.NoError(f.T(), encoder.Encode(state))
 			f.T().Fatalf("Timed out waiting for: %s", msg)
 		}
 

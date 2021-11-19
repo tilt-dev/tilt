@@ -120,6 +120,7 @@ func (c *dumpCliDocsCmd) filePrepender(path string) string {
 	return `---
 title: Tilt CLI Reference
 layout: docs
+sidebar: reference
 hideEditButton: true
 ---
 `

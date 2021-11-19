@@ -1,5 +1,6 @@
 import React from "react"
 import styled from "styled-components"
+import { Tags } from "./analytics"
 import { ReactComponent as TriggerButtonSvg } from "./assets/svg/trigger-button.svg"
 import { InstrumentedButton } from "./instrumentedComponents"
 import { AnimDuration, Color, mixinResetButtonStyle } from "./style-helpers"
@@ -62,6 +63,7 @@ type TriggerButtonProps = {
   hasPendingChanges: boolean
   isQueued: boolean
   resourceName: string
+  analyticsTags: Tags
 }
 
 const titleText = (
@@ -137,6 +139,7 @@ function OverviewTableTriggerButton(props: TriggerButtonProps) {
       className={classes.join(" ")}
       title={titleText(isDisabled, shouldBeClicked, props.isQueued)}
       analyticsName={"ui.web.triggerResource"}
+      analyticsTags={props.analyticsTags}
     >
       <TriggerButtonSvg />
     </TriggerButtonRoot>

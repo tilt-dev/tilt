@@ -19,14 +19,14 @@ import {
 import TimeAgo from "react-timeago"
 import styled from "styled-components"
 import { buildAlerts, runtimeAlerts } from "./alerts"
-import { AnalyticsAction, AnalyticsType, incr } from "./analytics"
+import { AnalyticsAction, AnalyticsType, incr, Tags } from "./analytics"
 import { ApiButton, ApiIcon, buttonsForComponent } from "./ApiButton"
 import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
 import { ReactComponent as StarSvg } from "./assets/svg/star.svg"
 import { linkToTiltDocs, TiltDocsPage } from "./constants"
-import { Flag, useFeatures } from "./feature"
+import Features, { Flag, useFeatures } from "./feature"
 import { Hold } from "./Hold"
 import { InstrumentedButton } from "./instrumentedComponents"
 import {
@@ -60,6 +60,11 @@ import {
 } from "./ResourceListOptionsContext"
 import { matchesResourceName, ResourceNameFilter } from "./ResourceNameFilter"
 import { useResourceNav } from "./ResourceNav"
+import {
+  disabledResourceStyleMixin,
+  resourceIsDisabled,
+  resourceTargetType,
+} from "./ResourceStatus"
 import { TableGroupStatusSummary } from "./ResourceStatusSummary"
 import { useStarredResources } from "./StarredResourcesContext"
 import { buildStatus, runtimeStatus } from "./status"
@@ -113,11 +118,12 @@ export type RowValues = {
   trigger: OverviewTableTrigger
   name: string
   resourceTypeLabel: string
-  statusLine: OverviewTableStatus
+  statusLine: OverviewTableResourceStatus
   podId: string
   endpoints: UILink[]
   triggerMode: TriggerMode
   buttons: UIButton[]
+  analyticsTags: Tags
 }
 
 type OverviewTableTrigger = {
@@ -127,7 +133,7 @@ type OverviewTableTrigger = {
   isQueued: boolean
 }
 
-type OverviewTableStatus = {
+type OverviewTableResourceStatus = {
   buildStatus: ResourceStatus
   buildAlertCount: number
   lastBuildDur: moment.Duration | null
@@ -191,11 +197,16 @@ const ResourceTableHead = styled.thead`
 `
 export const ResourceTableRow = styled.tr`
   border-bottom: 1px solid ${Color.grayLighter};
-`
-export const ResourceTableData = styled.td`
   font-family: ${Font.monospace};
   font-size: ${FontSize.small};
+  font-style: none;
   color: ${Color.gray6};
+
+  &.isDisabled {
+    ${disabledResourceStyleMixin}
+  }
+`
+export const ResourceTableData = styled.td`
   box-sizing: border-box;
 
   &.isSorted {
@@ -261,6 +272,11 @@ const Name = styled.button`
 
   &.has-error {
     color: ${Color.red};
+  }
+
+  &.isDisabled {
+    ${disabledResourceStyleMixin}
+    color: ${Color.gray6};
   }
 `
 
@@ -391,6 +407,7 @@ function TableStarColumn({ row }: CellProps<RowValues>) {
     <OverviewTableStarResourceButton
       resourceName={row.values.name}
       analyticsName="ui.web.overviewStarButton"
+      analyticsTags={row.values.analyticsTags}
       ctx={ctx}
     />
   )
@@ -405,7 +422,12 @@ function TableUpdateColumn({ row }: CellProps<RowValues>) {
   )
 }
 
-function TableTriggerColumn({ row }: CellProps<RowValues>) {
+export function TableTriggerColumn({ row }: CellProps<RowValues>) {
+  // If resource is disabled, don't display trigger button
+  if (rowIsDisabled(row)) {
+    return null
+  }
+
   const trigger = row.original.trigger
   return (
     <OverviewTableTriggerButton
@@ -415,6 +437,7 @@ function TableTriggerColumn({ row }: CellProps<RowValues>) {
       triggerMode={row.values.triggerMode}
       isQueued={trigger.isQueued}
       resourceName={row.values.name}
+      analyticsTags={row.values.analyticsTags}
     />
   )
 }
@@ -424,10 +447,11 @@ export function TableNameColumn({ row }: CellProps<RowValues>) {
   let hasError =
     row.original.statusLine.buildStatus === ResourceStatus.Unhealthy ||
     row.original.statusLine.runtimeStatus === ResourceStatus.Unhealthy
-
+  const errorClass = hasError ? "has-error" : ""
+  const disabledClass = rowIsDisabled(row) ? "isDisabled" : ""
   return (
     <Name
-      className={hasError ? "has-error" : ""}
+      className={`${errorClass} ${disabledClass}`}
       onClick={(e) => nav.openResource(row.values.name)}
     >
       {row.values.name}
@@ -437,6 +461,18 @@ export function TableNameColumn({ row }: CellProps<RowValues>) {
 
 function TableStatusColumn({ row }: CellProps<RowValues>) {
   const status = row.original.statusLine
+  const runtimeStatus = (
+    <OverviewTableStatus
+      status={status.runtimeStatus}
+      resourceName={row.values.name}
+    />
+  )
+
+  // If a resource is disabled, only one status needs to be displayed
+  if (rowIsDisabled(row)) {
+    return runtimeStatus
+  }
+
   return (
     <>
       <OverviewTableStatus
@@ -446,15 +482,12 @@ function TableStatusColumn({ row }: CellProps<RowValues>) {
         resourceName={row.values.name}
         hold={status.hold}
       />
-      <OverviewTableStatus
-        status={status.runtimeStatus}
-        resourceName={row.values.name}
-      />
+      {runtimeStatus}
     </>
   )
 }
 
-function TablePodIDColumn({ row }: CellProps<RowValues>) {
+export function TablePodIDColumn({ row }: CellProps<RowValues>) {
   let [showCopySuccess, setShowCopySuccess] = useState(false)
 
   let copyClick = () => {
@@ -467,13 +500,18 @@ function TablePodIDColumn({ row }: CellProps<RowValues>) {
     })
   }
 
+  // If resource is disabled, don't display pod information
+  if (rowIsDisabled(row)) {
+    return null
+  }
+
   let icon = showCopySuccess ? (
     <CheckmarkSvg width="15" height="15" />
   ) : (
     <CopySvg width="15" height="15" />
   )
 
-  function selectPodIdInput(podId: string | null) {
+  function selectPodIdInput() {
     const input = document.getElementById(
       `pod-${row.values.podId}`
     ) as HTMLInputElement
@@ -487,7 +525,7 @@ function TablePodIDColumn({ row }: CellProps<RowValues>) {
         id={`pod-${row.values.podId}`}
         value={row.values.podId}
         readOnly={true}
-        onClick={() => selectPodIdInput(row.values.podId)}
+        onClick={() => selectPodIdInput()}
       />
       <PodIdCopy
         onClick={copyClick}
@@ -500,7 +538,12 @@ function TablePodIDColumn({ row }: CellProps<RowValues>) {
   )
 }
 
-function TableEndpointColumn({ row }: CellProps<RowValues>) {
+export function TableEndpointColumn({ row }: CellProps<RowValues>) {
+  // If a resource is disabled, don't display any endpoints
+  if (rowIsDisabled(row)) {
+    return null
+  }
+
   let endpoints = row.original.endpoints.map((ep: any) => {
     return (
       <Endpoint
@@ -522,10 +565,11 @@ function TableEndpointColumn({ row }: CellProps<RowValues>) {
   return <>{endpoints}</>
 }
 
-function TableTriggerModeColumn({ row }: CellProps<RowValues>) {
+export function TableTriggerModeColumn({ row }: CellProps<RowValues>) {
   let isTiltfile = row.values.name == "(Tiltfile)"
+  const isDisabled = rowIsDisabled(row)
 
-  if (isTiltfile) return null
+  if (isTiltfile || isDisabled) return null
   return (
     <OverviewTableTriggerModeToggle
       resourceName={row.values.name}
@@ -560,6 +604,12 @@ function TableWidgetsColumn({ row }: CellProps<RowValues>) {
   return <WidgetCell>{buttons}</WidgetCell>
 }
 
+function rowIsDisabled(row: Row<RowValues>): boolean {
+  // If a resource is disabled, both runtime and build statuses should
+  // be `disabled` and it won't matter which one we look at
+  return row.original.statusLine.runtimeStatus === ResourceStatus.Disabled
+}
+
 function statusSortKey(row: RowValues): string {
   const status = row.statusLine
   let order
@@ -570,6 +620,12 @@ function statusSortKey(row: RowValues): string {
     order = 0
   } else if (status.buildAlertCount || status.runtimeAlertCount) {
     order = 1
+  } else if (
+    status.runtimeStatus === ResourceStatus.Disabled ||
+    status.buildStatus === ResourceStatus.Disabled
+  ) {
+    // Disabled resources should appear last
+    order = 3
   } else {
     order = 2
   }
@@ -776,6 +832,7 @@ function uiResourceToCell(
   let isBuilding = !isZeroTime(currentBuildStartTime)
   let hasBuilt = lastBuild !== null
   let buttons = buttonsForComponent(allButtons, "resource", r.metadata?.name)
+  let analyticsTags = { target: resourceTargetType(r) }
 
   return {
     lastDeployTime: res.lastDeployTime ?? "",
@@ -799,6 +856,7 @@ function uiResourceToCell(
     endpoints: res.endpointLinks ?? [],
     triggerMode: res.triggerMode ?? TriggerMode.TriggerModeAuto,
     buttons: buttons.default,
+    analyticsTags: analyticsTags,
   }
 }
 
@@ -823,6 +881,29 @@ function resourceTypeLabel(r: UIResource): string {
     }
   }
   return "Unknown"
+}
+
+function resourceListByStatus(
+  resources: UIResource[] = [],
+  features: Features
+) {
+  // If disabling resources feature is enabled, then sort by disabled status,
+  // so disabled resources appear at the end of each table list.
+  // Note: this initial sort is done here so it doesn't interfere with the sorting
+  // managed by react-table
+  if (features.isEnabled(Flag.DisableResources)) {
+    const sorted = [...resources].sort((a, b) => {
+      const resourceAOrder = resourceIsDisabled(a) ? 1 : 0
+      const resourceBOrder = resourceIsDisabled(b) ? 1 : 0
+
+      return resourceAOrder - resourceBOrder
+    })
+    return sorted
+  } else {
+    // If disabling resources feature is NOT enabled, then filter
+    // out disabled resources from display
+    return resources.filter((r) => !resourceIsDisabled(r))
+  }
 }
 
 export function labeledResourcesToTableCells(
@@ -935,21 +1016,16 @@ export function Table(props: TableProps) {
     return null
   }
 
-  const {
-    getTableProps,
-    getTableBodyProps,
-    headerGroups,
-    rows,
-    prepareRow,
-  } = useTable(
-    {
-      columns: columnDefs,
-      data: props.data,
-      autoResetSortBy: false,
-      useControlledState: props.useControlledState,
-    },
-    useSortBy
-  )
+  const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } =
+    useTable(
+      {
+        columns: columnDefs,
+        data: props.data,
+        autoResetSortBy: false,
+        useControlledState: props.useControlledState,
+      },
+      useSortBy
+    )
 
   // TODO (lizz): Consider adding `aria-sort` markup to table headings
   return (
@@ -967,7 +1043,11 @@ export function Table(props: TableProps) {
         {rows.map((row: Row<RowValues>) => {
           prepareRow(row)
           return (
-            <ResourceTableRow {...row.getRowProps()}>
+            <ResourceTableRow
+              {...row.getRowProps({
+                className: rowIsDisabled(row) ? "isDisabled" : "",
+              })}
+            >
               {row.cells.map((cell) => (
                 <ResourceTableData
                   {...cell.getCellProps()}
@@ -1029,9 +1109,8 @@ export function TableGroupedByLabels({
   // Global table settings are currently used to sort multiple
   // tables by the same column
   // See: https://react-table.tanstack.com/docs/faq#how-can-i-manually-control-the-table-state
-  const [globalTableSettings, setGlobalTableSettings] = useState<
-    TableState<RowValues>
-  >()
+  const [globalTableSettings, setGlobalTableSettings] =
+    useState<TableState<RowValues>>()
 
   const useControlledState = (state: TableState<RowValues>) =>
     useMemo(() => {
@@ -1094,6 +1173,9 @@ function OverviewTableContent(props: OverviewTableProps) {
   const { options } = useResourceListOptions()
   const resourceFilterApplied = options.resourceNameFilter.length > 0
 
+  // Adjust the resource list based on feature flags
+  const resourceList = resourceListByStatus(props.view.uiResources, features)
+
   // Table groups are displayed when feature is enabled, resources have labels,
   // and no resource name filter is applied
   const displayResourceGroups =
@@ -1102,7 +1184,7 @@ function OverviewTableContent(props: OverviewTableProps) {
   if (displayResourceGroups) {
     return (
       <TableGroupedByLabels
-        resources={props.view.uiResources}
+        resources={resourceList}
         buttons={props.view.uiButtons}
       />
     )
@@ -1111,19 +1193,20 @@ function OverviewTableContent(props: OverviewTableProps) {
     const displayLabelGroupsTip = labelsEnabled && !resourcesHaveLabels
 
     // Apply any display filters or options to resources
-    const resources = applyOptionsToResources(props.view.uiResources, options)
+    const resourcesToDisplay = applyOptionsToResources(resourceList, options)
+
     return (
       <>
         {displayLabelGroupsTip && (
           <ResourceGroupsInfoTip idForIcon={GROUP_INFO_TOOLTIP_ID} />
         )}
-        <TableResourceResultCount resources={resources} />
-        <TableNoMatchesFound resources={resources} />
+        <TableResourceResultCount resources={resourcesToDisplay} />
+        <TableNoMatchesFound resources={resourcesToDisplay} />
         <TableWithoutGroups
           aria-describedby={
             displayLabelGroupsTip ? GROUP_INFO_TOOLTIP_ID : undefined
           }
-          resources={resources}
+          resources={resourcesToDisplay}
           buttons={props.view.uiButtons}
         />
       </>

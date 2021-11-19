@@ -7,23 +7,23 @@ import (
 	"github.com/docker/cli/opts"
 
 	"github.com/tilt-dev/tilt/internal/docker"
-	"github.com/tilt-dev/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
-func Options(archive io.Reader, db model.DockerBuild) docker.BuildOptions {
+func Options(archive io.Reader, spec v1alpha1.DockerImageSpec) docker.BuildOptions {
 	return docker.BuildOptions{
 		Context:     archive,
 		Dockerfile:  "Dockerfile",
 		Remove:      shouldRemoveImage(),
-		BuildArgs:   opts.ConvertKVStringsToMapWithNil(db.Args),
-		Target:      db.Target,
-		SSHSpecs:    db.SSHAgentConfigs,
-		Network:     db.Network,
-		ExtraTags:   db.ExtraTags,
-		SecretSpecs: db.Secrets,
-		CacheFrom:   db.CacheFrom,
-		PullParent:  db.Pull,
-		Platform:    db.Platform,
+		BuildArgs:   opts.ConvertKVStringsToMapWithNil(spec.Args),
+		Target:      spec.Target,
+		SSHSpecs:    spec.SSHAgentConfigs,
+		Network:     spec.Network,
+		ExtraTags:   spec.ExtraTags,
+		SecretSpecs: spec.Secrets,
+		CacheFrom:   spec.CacheFrom,
+		PullParent:  spec.Pull,
+		Platform:    spec.Platform,
 	}
 }
 

@@ -80,7 +80,7 @@ func TestBuildControllerTooManyPodsForLiveUpdateErrorMessage(t *testing.T) {
 
 	// must wait for both pods to be seen BEFORE the build is triggered
 	f.WaitUntilManifestState("pods were not seen", manifest.Name, func(state store.ManifestState) bool {
-		return len(state.K8sRuntimeState().Pods) == 2
+		return state.K8sRuntimeState().PodLen() == 2
 	})
 
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
@@ -125,7 +125,7 @@ func TestBuildControllerTooManyPodsForDockerBuildNoErrorMessage(t *testing.T) {
 	// need to wait for both pods to be seen or the next build call might only know about one of them (and so
 	// would have container info)
 	f.WaitUntilManifestState("pods not seen", manifest.Name, func(state store.ManifestState) bool {
-		return len(state.K8sRuntimeState().Pods) == 2
+		return state.K8sRuntimeState().PodLen() == 2
 	})
 
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
@@ -151,14 +151,14 @@ func TestBuildControllerIgnoresImageTags(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	ref := container.MustParseNamed("image-foo:tagged")
+	ref := container.MustParseNamed("gcr.io/blorg-dev/blorg-backend:devel-nick")
 	refSel := container.NewRefSelector(ref)
 
 	iTarget := NewSanchoLiveUpdateImageTarget(f)
 	iTarget = iTarget.MustWithRef(refSel)
 
 	manifest := manifestbuilder.New(f, "fe").
-		WithK8sYAML(SanchoYAML).
+		WithK8sYAML(testyaml.BlorgJobYAML).
 		WithLiveUpdateBAD().
 		WithImageTarget(iTarget).
 		Build()
@@ -171,7 +171,7 @@ func TestBuildControllerIgnoresImageTags(t *testing.T) {
 
 	pod := basePB.
 		WithPodName("pod-id").
-		WithImage("image-foo:othertag").
+		WithImage("gcr.io/blorg-dev/blorg-backend:othertag").
 		Build()
 	f.podEvent(pod)
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
@@ -262,7 +262,7 @@ func TestBuildControllerWontContainerBuildWithTwoPods(t *testing.T) {
 
 	// must wait for both pods to be seen BEFORE the build is triggered
 	f.WaitUntilManifestState("pods were not seen", manifest.Name, func(state store.ManifestState) bool {
-		return len(state.K8sRuntimeState().Pods) == 2
+		return state.K8sRuntimeState().PodLen() == 2
 	})
 
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
@@ -496,7 +496,7 @@ func TestCrashRebuildTwoContainersTwoImages(t *testing.T) {
 	defer f.TearDown()
 
 	manifest := manifestbuilder.New(f, "sancho").
-		WithK8sYAML(testyaml.SanchoTwoContainersOneImageYAML).
+		WithK8sYAML(testyaml.SanchoSidecarYAML).
 		WithLiveUpdateBAD().
 		WithImageTarget(NewSanchoLiveUpdateImageTarget(f)).
 		WithImageTarget(NewSanchoSidecarLiveUpdateImageTarget(f)).
@@ -773,7 +773,7 @@ func TestFullBuildTriggerClearsLiveUpdate(t *testing.T) {
 
 	f.podEvent(basePB.Build())
 	f.WaitUntilManifestState("foobar loaded", "foobar", func(ms store.ManifestState) bool {
-		return len(ms.K8sRuntimeState().Pods) == 1
+		return ms.K8sRuntimeState().PodLen() == 1
 	})
 	f.WaitUntil("foobar k8sresource loaded", func(s store.EngineState) bool {
 		return s.KubernetesResources["foobar"] != nil && len(s.KubernetesResources["foobar"].FilteredPods) == 1
@@ -790,7 +790,7 @@ func TestFullBuildTriggerClearsLiveUpdate(t *testing.T) {
 
 	f.podEvent(basePB.WithDeletionTime(time.Now()).Build())
 	f.WaitUntilManifestState("foobar deleting", "foobar", func(ms store.ManifestState) bool {
-		return len(ms.K8sRuntimeState().Pods) == 0
+		return ms.K8sRuntimeState().PodLen() == 0
 	})
 	assert.Contains(t, f.log.String(), "Initial Build • foobar")
 	f.WaitUntil("Trigger appears", func(st store.EngineState) bool {

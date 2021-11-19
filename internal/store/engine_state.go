@@ -639,9 +639,10 @@ func (ms *ManifestState) MostRecentPod() v1alpha1.Pod {
 }
 
 func (ms *ManifestState) PodWithID(pid k8s.PodID) (*v1alpha1.Pod, bool) {
-	for id, pod := range ms.K8sRuntimeState().Pods {
-		if id == pid {
-			return pod, true
+	name := string(pid)
+	for _, pod := range ms.K8sRuntimeState().GetPods() {
+		if name == pod.Name {
+			return &pod, true
 		}
 	}
 	return nil, false

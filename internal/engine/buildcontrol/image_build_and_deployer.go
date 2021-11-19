@@ -16,6 +16,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/controllers/core/dockerimage"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesapply"
 	"github.com/tilt-dev/tilt/internal/dockerfile"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -188,16 +189,21 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		// if you want the live container to keep receiving updates
 		// while an image build is going on in parallel.
 		startTime := apis.NowMicro()
+		dockerimage.MaybeUpdateStatus(ctx, ibd.ctrlClient, iTarget, dockerimage.ToBuildingStatus(iTarget, startTime))
 
-		refs, err := ibd.ib.Build(ctx, iTarget, ps)
+		refs, stages, err := ibd.ib.Build(ctx, iTarget, ps)
 		if err != nil {
+			dockerimage.MaybeUpdateStatus(ctx, ibd.ctrlClient, iTarget, dockerimage.ToCompletedFailStatus(iTarget, startTime, stages, err))
 			return store.ImageBuildResult{}, err
 		}
 
 		err = ibd.push(ctx, refs.LocalRef, ps, iTarget, kTarget)
 		if err != nil {
+			dockerimage.MaybeUpdateStatus(ctx, ibd.ctrlClient, iTarget, dockerimage.ToCompletedFailStatus(iTarget, startTime, stages, err))
 			return store.ImageBuildResult{}, err
 		}
+
+		dockerimage.MaybeUpdateStatus(ctx, ibd.ctrlClient, iTarget, dockerimage.ToCompletedSuccessStatus(iTarget, startTime, stages, refs))
 
 		result := store.NewImageBuildResult(iTarget.ID(), refs.LocalRef, refs.ClusterRef)
 		result.ImageMapStatus.BuildStartTime = &startTime
@@ -230,6 +236,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 	return newResults, nil
 }
 
+// TODO(nick): Express the push() step as a DockerImageStageStatus.
 func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedTagged, ps *build.PipelineState, iTarget model.ImageTarget, kTarget model.K8sTarget) error {
 	ps.StartPipelineStep(ctx, "Pushing %s", container.FamiliarString(ref))
 	defer ps.EndPipelineStep(ctx)
@@ -306,6 +313,9 @@ func (ibd *ImageBuildAndDeployer) deploy(
 	ps.StartBuildStep(ctx, "Injecting images into Kubernetes YAML")
 
 	kTargetNN := types.NamespacedName{Name: kTargetID.Name.String()}
+	// Note: `KubernetesApply` object may not exist yet when this `ForceApply` is called
+	// and may cause a race-condition-related "Not found" error here.
+	// https://github.com/tilt-dev/tilt/issues/5125
 	status, err := ibd.r.ForceApply(ctx, kTargetNN, spec, imageMaps)
 	if err != nil {
 		return store.K8sBuildResult{}, fmt.Errorf("applying %s: %v", kTargetID, err)
