@@ -44,6 +44,22 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, nil
 	}
 
+	// Add an annotation to each button that hashes the spec,
+	// so that we can determine that a button is unique.
+	hash, err := hashUIButtonSpec(button.Spec)
+	if err == nil && hash != button.Annotations[annotationSpecHash] {
+		update := button.DeepCopy()
+		if update.Annotations == nil {
+			update.Annotations = make(map[string]string)
+		}
+		update.Annotations[annotationSpecHash] = hash
+		err := r.client.Update(ctx, update)
+		if err != nil {
+			return ctrl.Result{}, nil
+		}
+		button = update
+	}
+
 	r.wsList.ForEach(func(ws *server.WebsocketSubscriber) {
 		ws.SendUIButtonUpdate(ctx, req.NamespacedName, button)
 	})
