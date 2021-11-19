@@ -162,7 +162,7 @@ See the [Jest snapshot testing documentation](https://jestjs.io/docs/en/snapshot
 ## Remove token to force signing out of Tilt Cloud
 
 Once you've connected Tilt to Tilt Cloud via GitHub, you cannot sign out to break the connection.
-But sometimes during development and testing, you need to do this. Remove the token file named `token` 
+But sometimes during development and testing, you need to do this. Remove the token file named `token`
 located at `~/.windmill` on your machine. Restart Tilt, and you will be signed out.
 
 ## Performance
@@ -332,10 +332,18 @@ git tag -a v0.x.y -m "v0.x.y"
 git push origin v0.x.y
 ```
 
+Once the release is done (i.e., its binaries show up on https://github.com/tilt-dev/tilt/releases), run:
+
+```
+brew bump-formula-pr --version=0.x.y tilt
+```
+
 CircleCI will automatically start building your release, and notify the
 #notify-circleci slack channel when it's done. The releaser generates a release on
 at https://github.com/tilt-dev/tilt/releases, with a Changelog prepopulated automatically.
 (Give it a few moments. It appears as a tag first, before turning into a full release.)
+
+The `brew bump-formula-pr` command will create a PR to bump the brew formula, which will be reviewed and merged by a brew contributor.
 
 ### Version numbers
 For pre-v1.0:
