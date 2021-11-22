@@ -64,6 +64,14 @@ func (m *TiltServerControllerManager) SetUp(ctx context.Context, _ store.RStore)
 	// we don't care about.
 	ctxLog := logger.Get(ctx)
 	logr := genericr.New(func(e genericr.Entry) {
+		if ctx.Err() != nil {
+			// when the root context is canceled, any in-flight reconcile operations
+			// will inevitably return context-cancellation-wrapping errors, which
+			// results in a bunch of unhelpful log messages to that effect, so all
+			// logs after teardown has started are ignored
+			return
+		}
+
 		if e.Error != nil {
 			// Print errors to the global log on all builds.
 			//
