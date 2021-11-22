@@ -102,14 +102,23 @@ func (s RefSelector) Empty() bool {
 }
 
 func (s RefSelector) RefName() string {
+	if s.ref == nil {
+		return ""
+	}
 	return s.ref.Name()
 }
 
 func (s RefSelector) RefFamiliarName() string {
+	if s.ref == nil {
+		return ""
+	}
 	return reference.FamiliarName(s.ref)
 }
 
 func (s RefSelector) RefFamiliarString() string {
+	if s.ref == nil {
+		return ""
+	}
 	return reference.FamiliarString(s.ref)
 }
 
