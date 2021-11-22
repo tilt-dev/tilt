@@ -85,6 +85,7 @@ type ApiButtonInputProps = {
   status: UIInputStatus | undefined
   value: any | undefined
   setValue: (name: string, value: any) => void
+  analyticsTags: Tags
 }
 
 function ApiButtonInput(props: ApiButtonInputProps) {
@@ -97,7 +98,7 @@ function ApiButtonInput(props: ApiButtonInputProps) {
         value={props.value ?? props.spec.text?.defaultValue ?? ""}
         onChange={(e) => props.setValue(props.spec.name!, e.target.value)}
         analyticsName="ui.web.uibutton.inputValue"
-        analyticsTags={{ inputType: "text" }}
+        analyticsTags={{ inputType: "text", ...props.analyticsTags }}
         fullWidth
       />
     )
@@ -110,7 +111,7 @@ function ApiButtonInput(props: ApiButtonInputProps) {
             id={props.spec.name}
             checked={isChecked}
             analyticsName="ui.web.uibutton.inputValue"
-            analyticsTags={{ inputType: "bool" }}
+            analyticsTags={{ inputType: "bool", ...props.analyticsTags }}
           />
         }
         label={props.spec.label ?? props.spec.name}
@@ -128,6 +129,7 @@ function ApiButtonInput(props: ApiButtonInputProps) {
 
 type ApiButtonFormProps = {
   uiButton: UIButton
+  analyticsTags: Tags
   setInputValue: (name: string, value: any) => void
   getInputValue: (name: string) => any | undefined
 }
@@ -148,6 +150,7 @@ export function ApiButtonForm(props: ApiButtonFormProps) {
             status={status}
             value={value}
             setValue={props.setInputValue}
+            analyticsTags={props.analyticsTags}
           />
         )
       })}
@@ -159,6 +162,7 @@ export function ApiButtonForm(props: ApiButtonFormProps) {
 type ApiButtonWithOptionsProps = {
   submit: JSX.Element
   uiButton: UIButton
+  analyticsTags: Tags
   setInputValue: (name: string, value: any) => void
   getInputValue: (name: string) => any | undefined
   className?: string
@@ -172,7 +176,6 @@ function ApiButtonWithOptions(props: ApiButtonWithOptionsProps & ButtonProps) {
     props
 
   let componentType = uiButton.spec?.location?.componentType
-  let tags = { component: componentType }
 
   return (
     <>
@@ -188,8 +191,7 @@ function ApiButtonWithOptions(props: ApiButtonWithOptionsProps & ButtonProps) {
           onClick={() => {
             setOpen((prevOpen) => !prevOpen)
           }}
-          analyticsName="ui.web.uiButton.inputMenu"
-          analyticsTags={tags}
+          analyticsName="ui.web.uibutton.inputMenu"
           aria-label={`Open ${props.uiButton.spec?.text} options`}
           {...buttonProps}
         >
@@ -404,6 +406,7 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
         setInputValue={setInputValue}
         getInputValue={getInputValue}
         aria-label={uiButton.spec?.text}
+        analyticsTags={tags}
         // use-case-wise, it'd probably be better to leave the options button enabled
         // regardless of the submit button's state.
         // However, that's currently a low-impact difference, and this is a really
