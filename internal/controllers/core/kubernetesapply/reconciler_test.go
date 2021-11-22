@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -102,6 +103,10 @@ func TestBasicApplyYAML(t *testing.T) {
 	assert.Contains(f.T(), ka.Status.ResultYAML, "name: sancho")
 	assert.Contains(f.T(), ka.Status.ResultYAML, "uid:")
 
+	assert.Contains(t, f.storeLogs(),
+		"Objects applied to cluster:\n       → sancho:deployment\n",
+		"Log output did not include applied objects")
+
 	// Make sure that re-reconciling doesn't re-apply the YAML"
 	f.kClient.Yaml = ""
 	f.MustReconcile(types.NamespacedName{Name: "a"})
@@ -127,6 +132,10 @@ func TestBasicApplyCmd(t *testing.T) {
 	assert.Empty(t, ka.Status.Error)
 	assert.NotZero(t, ka.Status.LastApplyTime)
 	assert.Equal(t, yamlOut, ka.Status.ResultYAML)
+
+	assert.Contains(t, f.storeLogs(),
+		"Objects applied to cluster:\n       → sancho:deployment\n",
+		"Log output did not include applied objects")
 
 	// verify that a re-reconcile does NOT re-invoke the command
 	f.execer.RegisterCommandError("custom-apply-cmd", errors.New("this should not get invoked"))
@@ -179,7 +188,7 @@ func TestBasicApplyCmd_NonZeroExitCode(t *testing.T) {
 
 	if assert.Equal(t, "apply command exited with status 77\nstdout:\nwhoops\n\n", ka.Status.Error) {
 		logAction := f.st.WaitForAction(t, reflect.TypeOf(store.LogAction{}))
-		assert.Equal(t, `manifest: foo, spanID: KubernetesApply-a, msg: "oh no\n"`, logAction.(store.LogAction).String())
+		assert.Equal(t, `manifest: foo, spanID: KubernetesApply-a, msg: "     oh no\n"`, logAction.(store.LogAction).String())
 	}
 }
 
@@ -571,4 +580,15 @@ func (f *fixture) createApplyCmd(name string, yaml string) (v1alpha1.KubernetesA
 	return v1alpha1.KubernetesApplyCmd{
 		Args: []string{name},
 	}, yamlOut
+}
+
+func (f *fixture) storeLogs() string {
+	actions := f.st.Actions()
+	var sb strings.Builder
+	for i := range actions {
+		if logAction, ok := actions[i].(store.LogAction); ok {
+			sb.Write(logAction.Message())
+		}
+	}
+	return sb.String()
 }

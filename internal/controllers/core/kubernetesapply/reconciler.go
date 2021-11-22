@@ -343,16 +343,26 @@ func (r *Reconciler) forceApplyHelper(
 	}
 
 	var deployed []k8s.K8sEntity
+	deployCtx := r.indentLogger(ctx)
 	if spec.YAML != "" {
-		deployed, err = r.runYAMLDeploy(ctx, spec, imageMaps)
+		deployed, err = r.runYAMLDeploy(deployCtx, spec, imageMaps)
 		if err != nil {
 			return errorStatus(err), nil
 		}
 	} else {
-		deployed, err = r.runCmdDeploy(ctx, spec)
+		deployed, err = r.runCmdDeploy(deployCtx, spec)
 		if err != nil {
 			return errorStatus(err), nil
 		}
+	}
+
+	// Use a min component count of 2 for computing names,
+	// so that the resource type appears
+	l := logger.Get(r.indentLogger(ctx))
+	l.Infof("Objects applied to cluster:")
+	displayNames := k8s.UniqueNames(deployed, 2)
+	for _, displayName := range displayNames {
+		l.Infof("  → %s", displayName)
 	}
 
 	status.LastApplyTime = apis.NowMicro()
@@ -377,17 +387,7 @@ func (r *Reconciler) runYAMLDeploy(ctx context.Context, spec v1alpha1.Kubernetes
 		return newK8sEntities, err
 	}
 
-	ctx = r.indentLogger(ctx)
-	l := logger.Get(ctx)
-
-	l.Infof("Applying via kubectl:")
-
-	// Use a min component count of 2 for computing names,
-	// so that the resource type appears
-	displayNames := k8s.UniqueNames(newK8sEntities, 2)
-	for _, displayName := range displayNames {
-		l.Infof("→ %s", displayName)
-	}
+	logger.Get(ctx).Infof("Applying YAML to cluster")
 
 	timeout := spec.Timeout.Duration
 	if timeout == 0 {
@@ -449,6 +449,11 @@ func (r *Reconciler) indentLogger(ctx context.Context) context.Context {
 	return logger.WithLogger(ctx, newL)
 }
 
+type injectResult struct {
+	meta     k8s.EntityMeta
+	imageMap *v1alpha1.ImageMap
+}
+
 func (r *Reconciler) createEntitiesToDeploy(ctx context.Context,
 	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap,
 	spec v1alpha1.KubernetesApplySpec) ([]k8s.K8sEntity, error) {
@@ -501,6 +506,7 @@ func (r *Reconciler) createEntitiesToDeploy(ctx context.Context,
 			policy = v1.PullNever
 		}
 
+		var injectResults []injectResult
 		for _, imageMapName := range imageMapNames {
 			imageMap := imageMaps[types.NamespacedName{Name: imageMapName}]
 			imageMapSpec := imageMap.Spec
@@ -526,6 +532,10 @@ func (r *Reconciler) createEntitiesToDeploy(ctx context.Context,
 			}
 			if replaced {
 				injectedImageMaps[imageMapName] = true
+				injectResults = append(injectResults, injectResult{
+					meta:     e,
+					imageMap: imageMap,
+				})
 
 				if imageMapSpec.OverrideCommand != nil || imageMapSpec.OverrideArgs != nil {
 					e, err = k8s.InjectCommandAndArgs(e, ref, imageMapSpec.OverrideCommand, imageMapSpec.OverrideArgs)
@@ -533,6 +543,28 @@ func (r *Reconciler) createEntitiesToDeploy(ctx context.Context,
 						return nil, err
 					}
 				}
+			}
+		}
+
+		l := logger.Get(ctx)
+		if l.Level().ShouldDisplay(logger.DebugLvl) {
+			if len(injectResults) != 0 {
+				l.Debugf("Injecting images into Kubernetes YAML:")
+				meta := make([]k8s.EntityMeta, len(injectResults))
+				for i := range injectResults {
+					meta[i] = injectResults[i].meta
+				}
+				names := k8s.UniqueNamesMeta(meta, 2)
+				for i := range injectResults {
+					l.Debugf(
+						"  → %s: %s ⇒ %s",
+						names[i],
+						injectResults[i].imageMap.Spec.Selector,
+						injectResults[i].imageMap.Status.Image,
+					)
+				}
+			} else {
+				l.Debugf("No images injected into Kubernetes YAML")
 			}
 		}
 
