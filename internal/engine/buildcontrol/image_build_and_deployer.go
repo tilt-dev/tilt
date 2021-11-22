@@ -197,8 +197,13 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 			return store.ImageBuildResult{}, err
 		}
 
-		err = ibd.push(ctx, refs.LocalRef, ps, iTarget, kTarget)
-		if err != nil {
+		pushStage := ibd.push(ctx, refs.LocalRef, ps, iTarget, kTarget)
+		if pushStage != nil {
+			stages = append(stages, *pushStage)
+		}
+
+		if pushStage != nil && pushStage.Error != "" {
+			err := fmt.Errorf("%s", pushStage.Error)
 			dockerimage.MaybeUpdateStatus(ctx, ibd.ctrlClient, iTarget, dockerimage.ToCompletedFailStatus(iTarget, startTime, stages, err))
 			return store.ImageBuildResult{}, err
 		}
@@ -236,8 +241,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 	return newResults, nil
 }
 
-// TODO(nick): Express the push() step as a DockerImageStageStatus.
-func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedTagged, ps *build.PipelineState, iTarget model.ImageTarget, kTarget model.K8sTarget) error {
+func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedTagged, ps *build.PipelineState, iTarget model.ImageTarget, kTarget model.K8sTarget) *v1alpha1.DockerImageStageStatus {
 	ps.StartPipelineStep(ctx, "Pushing %s", container.FamiliarString(ref))
 	defer ps.EndPipelineStep(ctx)
 
@@ -260,22 +264,36 @@ func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedT
 		return nil
 	}
 
+	startTime := apis.NowMicro()
 	var err error
 	if ibd.shouldUseKINDLoad(ctx, iTarget) {
 		ps.Printf(ctx, "Loading image to KIND")
 		err := ibd.kl.LoadToKIND(ps.AttachLogger(ctx), ref)
-		if err != nil {
-			return fmt.Errorf("Error loading image to KIND: %v", err)
+		endTime := apis.NowMicro()
+		stage := &v1alpha1.DockerImageStageStatus{
+			Name:       "kind load",
+			StartedAt:  &startTime,
+			FinishedAt: &endTime,
 		}
-	} else {
-		ps.Printf(ctx, "Pushing with Docker client")
-		err = ibd.db.PushImage(ps.AttachLogger(ctx), ref)
 		if err != nil {
-			return err
+			stage.Error = fmt.Sprintf("Error loading image to KIND: %v", err)
 		}
+		return stage
 	}
 
-	return nil
+	ps.Printf(ctx, "Pushing with Docker client")
+	err = ibd.db.PushImage(ps.AttachLogger(ctx), ref)
+
+	endTime := apis.NowMicro()
+	stage := &v1alpha1.DockerImageStageStatus{
+		Name:       "docker push",
+		StartedAt:  &startTime,
+		FinishedAt: &endTime,
+	}
+	if err != nil {
+		stage.Error = fmt.Sprintf("docker push: %v", err)
+	}
+	return stage
 }
 
 func (ibd *ImageBuildAndDeployer) shouldUseKINDLoad(ctx context.Context, iTarg model.ImageTarget) bool {

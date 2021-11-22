@@ -3,7 +3,6 @@ package model
 import (
 	"fmt"
 
-	"github.com/docker/distribution/reference"
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/tilt-dev/tilt/internal/container"
@@ -162,7 +161,7 @@ func (i ImageTarget) WithDockerImage(spec v1alpha1.DockerImageSpec) ImageTarget 
 func (i ImageTarget) WithBuildDetails(details BuildDetails) ImageTarget {
 	db, ok := details.(DockerBuild)
 	if ok {
-		db.DockerImageSpec.Ref = reference.FamiliarString(i.Refs.ConfigurationRef)
+		db.DockerImageSpec.Ref = i.Refs.ConfigurationRef.RefFamiliarString()
 		details = db
 	}
 
