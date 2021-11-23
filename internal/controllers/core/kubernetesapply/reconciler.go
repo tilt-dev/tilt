@@ -419,8 +419,18 @@ func (r *Reconciler) runCmdDeploy(ctx context.Context, spec v1alpha1.KubernetesA
 	exitCode, err := r.execer.Run(ctx, toModelCmd(*spec.ApplyCmd), runIO)
 	if err != nil {
 		return nil, fmt.Errorf("apply command failed: %v", err)
-	} else if exitCode != 0 {
-		return nil, fmt.Errorf("apply command exited with status %d\nstdout:\n%s\n", exitCode, overflowEllipsis(stdoutBuf.String()))
+	}
+
+	if exitCode != 0 {
+		var stdoutLog string
+		if stdoutBuf.Len() != 0 {
+			stdoutLog = fmt.Sprintf("\nstdout:\n%s\n", overflowEllipsis(stdoutBuf.String()))
+		}
+		if ctx.Err() != nil {
+			// process returned a non-zero exit code (generally 137) because it was killed by us
+			return nil, fmt.Errorf("apply command timed out after %s - see https://docs.tilt.dev/api.html#api.update_settings for how to increase%s", timeout.String(), stdoutLog)
+		}
+		return nil, fmt.Errorf("apply command exited with status %d%s", exitCode, stdoutLog)
 	}
 
 	// don't pass the bytes.Buffer directly to the YAML parser or it'll consume it and we can't print it out on failure
