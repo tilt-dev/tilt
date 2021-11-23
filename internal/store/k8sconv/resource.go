@@ -139,14 +139,35 @@ func HasOKPodTemplateSpecHash(pod *v1alpha1.Pod, filter *KubernetesApplyFilter) 
 }
 
 // Filter out any pods that are being deleted.
+// Filter pods from old replica sets.
 // Only keep pods that belong in the current filter.
-// If no filter is specified, return all pods.
 func FilterPods(filter *KubernetesApplyFilter, pods []v1alpha1.Pod) []v1alpha1.Pod {
 	result := []v1alpha1.Pod{}
+
+	// We want to make sure that if one Deployment
+	// creates 2 ReplicaSets, we prune pods from the older ReplicaSet.
+	newestOwnerByAncestorUID := make(map[string]*v1alpha1.PodOwner)
+	for _, pod := range pods {
+		if pod.AncestorUID == "" || !hasValidOwner(pod) {
+			continue
+		}
+
+		owner := pod.Owner
+		existing := newestOwnerByAncestorUID[pod.AncestorUID]
+		if existing == nil || owner.CreationTimestamp.After(existing.CreationTimestamp.Time) {
+			newestOwnerByAncestorUID[pod.AncestorUID] = owner
+		}
+	}
 
 	for _, pod := range pods {
 		// Ignore pods that are currently being deleted.
 		if pod.Deleting {
+			continue
+		}
+
+		// Ignore pods from an old replicaset.
+		newestOwner := newestOwnerByAncestorUID[pod.AncestorUID]
+		if hasValidOwner(pod) && newestOwner != nil && pod.Owner.Name != newestOwner.Name {
 			continue
 		}
 
@@ -165,6 +186,10 @@ func FilterPods(filter *KubernetesApplyFilter, pods []v1alpha1.Pod) []v1alpha1.P
 	}
 
 	return result
+}
+
+func hasValidOwner(pod v1alpha1.Pod) bool {
+	return pod.Owner != nil && pod.Owner.Name != "" && !pod.Owner.CreationTimestamp.IsZero()
 }
 
 func MostRecentPod(pod []v1alpha1.Pod) v1alpha1.Pod {
