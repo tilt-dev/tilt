@@ -131,6 +131,33 @@ describe("ApiButton", () => {
     expect(root.find(ApiButtonForm).find(TextField).prop("value")).toEqual("")
   })
 
+  it("propagates analytics tags to text inputs", async () => {
+    const input = boolField("bool1")
+    const root = mountButton(makeUIButton({ inputSpecs: [input] }))
+
+    const optionsButton = root.find(ApiButtonInputsToggleButton)
+    await click(optionsButton)
+    root.update()
+
+    const tf = root.find(ApiButtonForm).find("input#bool1")
+    tf.simulate("change", { target: { value: true } })
+
+    expectIncrs(
+      {
+        name: "ui.web.uibutton.inputMenu",
+        tags: { action: AnalyticsAction.Click, component: "Global" },
+      },
+      {
+        name: "ui.web.uibutton.inputValue",
+        tags: {
+          action: AnalyticsAction.Edit,
+          component: "Global",
+          inputType: "bool",
+        },
+      }
+    )
+  })
+
   it("submits the current options when the submit button is clicked", async () => {
     const inputSpecs = [
       textField("text1"),
