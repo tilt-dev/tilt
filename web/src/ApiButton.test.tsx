@@ -10,6 +10,7 @@ import {
   cleanupMockAnalyticsCalls,
   expectIncrs,
   mockAnalyticsCalls,
+  nonAnalyticsCalls,
 } from "./analytics_test_helpers"
 import {
   ApiButton,
@@ -24,6 +25,7 @@ import {
   textField,
 } from "./ApiButton.testhelpers"
 import { HudErrorContextProvider } from "./HudErrorContext"
+import { InstrumentedButton } from "./instrumentedComponents"
 import { accessorsForTesting, tiltfileKeyContext } from "./LocalStorage"
 import { flushPromises } from "./promise"
 
@@ -180,9 +182,7 @@ describe("ApiButton", () => {
     await click(submit)
     root.update()
 
-    const calls = fetchMock
-      .calls()
-      .filter((c) => c[0] !== "http://localhost/api/analytics")
+    const calls = nonAnalyticsCalls()
     expect(calls.length).toEqual(1)
     const call = calls[0]
     expect(call[0]).toEqual(
@@ -233,9 +233,7 @@ describe("ApiButton", () => {
     await click(submit)
     root.update()
 
-    const calls = fetchMock
-      .calls()
-      .filter((c) => c[0] !== "http://localhost/api/analytics")
+    const calls = nonAnalyticsCalls()
     expect(calls.length).toEqual(1)
     const call = calls[0]
     expect(call[0]).toEqual(
@@ -334,6 +332,59 @@ describe("ApiButton", () => {
     root.update()
 
     expect(error).toEqual("Error submitting button click: broken!")
+  })
+
+  it("when requiresConfirmation is set, a second confirmation click to submit", async () => {
+    const b = makeUIButton()
+    b.spec!.requiresConfirmation = true
+    const root = mountButton(b)
+
+    let button = root.find(InstrumentedButton)
+    expect(button.find(ApiButtonLabel).text()).toEqual(b.spec?.text)
+
+    await click(button.find(Button).at(0))
+    root.update()
+
+    // after first click, should show a "Confirm", and not have submitted the click to the backend
+    button = root.find(InstrumentedButton)
+    expect(button.find(ApiButtonLabel).text()).toEqual("Confirm")
+    expect(nonAnalyticsCalls().length).toEqual(0)
+
+    await click(button.find(Button).at(0))
+    root.update()
+
+    // after second click, button text reverts and click is submitted
+    button = root.find(InstrumentedButton)
+    expect(button.find(ApiButtonLabel).text()).toEqual(b.spec?.text)
+    expect(nonAnalyticsCalls().length).toEqual(1)
+  })
+
+  it("when requiresConfirmation is set, allows canceling instead of confirming", async () => {
+    const b = makeUIButton()
+    b.spec!.requiresConfirmation = true
+    const root = mountButton(b)
+
+    let button = root.find(InstrumentedButton)
+    expect(button.find(ApiButtonLabel).text()).toEqual(b.spec?.text)
+
+    await click(button.find(Button).at(0))
+    root.update()
+
+    button = root.find(InstrumentedButton)
+    expect(button.find(ApiButtonLabel).text()).toEqual("Confirm")
+    expect(nonAnalyticsCalls().length).toEqual(0)
+
+    // second button cancels confirmation
+    const cancelButton = button.find(Button).at(1)
+    expect(cancelButton.props()["aria-label"]).toEqual(`Cancel ${b.spec?.text}`)
+
+    await click(cancelButton)
+    root.update()
+
+    // upon clicking, the button click is aborted and no update is sent to the server
+    button = root.find(InstrumentedButton)
+    expect(button.find(ApiButtonLabel).text()).toEqual(b.spec?.text)
+    expect(nonAnalyticsCalls().length).toEqual(0)
   })
 })
 
