@@ -174,6 +174,12 @@ let SidebarItemNameTruncate = styled.span`
   ${mixinTruncateText}
 `
 
+export function sidebarItemIsDisabled(item: SidebarItem) {
+  // Both build and runtime status are disabled when a resource
+  // is disabled, so just reference runtime status here
+  return item.runtimeStatus === ResourceStatus.Disabled
+}
+
 let SidebarItemName = (props: { name: string }) => {
   // A common complaint is that long names get truncated, so we
   // use a title prop so that the user can see the full name.
@@ -422,9 +428,10 @@ export function EnabledSidebarItemView(props: SidebarItemViewProps) {
 export default function SidebarItemView(props: SidebarItemViewProps) {
   const features = useFeatures()
   const showDisabledResources = features.isEnabled(Flag.DisableResources)
-  if (props.item.disabled && !showDisabledResources) {
+  const itemIsDisabled = sidebarItemIsDisabled(props.item)
+  if (itemIsDisabled && !showDisabledResources) {
     return null
-  } else if (props.item.disabled && showDisabledResources) {
+  } else if (itemIsDisabled && showDisabledResources) {
     return <DisabledSidebarItemView {...props}></DisabledSidebarItemView>
   } else {
     return <EnabledSidebarItemView {...props}></EnabledSidebarItemView>

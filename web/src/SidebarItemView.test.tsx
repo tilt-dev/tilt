@@ -8,7 +8,7 @@ import SidebarItemView, {
   DisabledSidebarItemView,
   EnabledSidebarItemView,
 } from "./SidebarItemView"
-import { nResourceView } from "./testdata"
+import { oneResourceNoAlerts, TestResourceOptions } from "./testdata"
 import { ResourceView } from "./types"
 
 const PATH_BUILDER = PathBuilder.forTesting("localhost", "/")
@@ -39,15 +39,14 @@ const SidebarItemViewTestWrapper = ({
   )
 }
 
-const oneSidebarItem = () => {
-  return new SidebarItem(nResourceView(1).uiResources[0], LOG_ALERT_INDEX)
+const oneSidebarItem = (options: TestResourceOptions) => {
+  return new SidebarItem(oneResourceNoAlerts(options), LOG_ALERT_INDEX)
 }
 
 describe("SidebarItemView", () => {
   describe("when `disable_resources` flag is NOT enabled", () => {
     it("does NOT display a disabled resource", () => {
-      const item = oneSidebarItem()
-      item.disabled = true
+      const item = oneSidebarItem({ disabled: true })
       const wrapper = mount(
         <SidebarItemViewTestWrapper
           item={item}
@@ -58,7 +57,7 @@ describe("SidebarItemView", () => {
     })
 
     it("does render an enabled resource with enabled view", () => {
-      const item = oneSidebarItem()
+      const item = oneSidebarItem({ disabled: false })
       const wrapper = mount(
         <SidebarItemViewTestWrapper
           item={item}
@@ -71,8 +70,7 @@ describe("SidebarItemView", () => {
 
   describe("when `disable_resources` flag is enabled", () => {
     it("does display a disabled resource with disabled view", () => {
-      const item = oneSidebarItem()
-      item.disabled = true
+      const item = oneSidebarItem({ disabled: true })
       const wrapper = mount(
         <SidebarItemViewTestWrapper
           item={item}
@@ -83,7 +81,7 @@ describe("SidebarItemView", () => {
     })
 
     it("does render an enabled resource with enabled view", () => {
-      const item = oneSidebarItem()
+      const item = oneSidebarItem({ disabled: false })
       const wrapper = mount(
         <SidebarItemViewTestWrapper
           item={item}

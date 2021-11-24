@@ -38,7 +38,7 @@ import {
   oneResourceTestWithName,
   twoResourceView,
 } from "./testdata"
-import { ResourceView } from "./types"
+import { ResourceStatus, ResourceView } from "./types"
 
 let pathBuilder = PathBuilder.forTesting("localhost", "/")
 
@@ -304,8 +304,8 @@ describe("SidebarResources", () => {
       beforeEach(() => {
         // Create a list of sidebar items with disable resources interspersed
         const items = createSidebarItems(5)
-        items[1].disabled = true
-        items[3].disabled = true
+        items[1].runtimeStatus = ResourceStatus.Disabled
+        items[3].runtimeStatus = ResourceStatus.Disabled
 
         wrapper = mount(
           <SidebarResourcesTestWrapper
@@ -337,9 +337,9 @@ describe("SidebarResources", () => {
         beforeEach(() => {
           // Create a list of sidebar items with disable resources interspersed
           const items = createSidebarItems(11)
-          items[1].disabled = true
-          items[3].disabled = true
-          items[8].disabled = true
+          items[1].runtimeStatus = ResourceStatus.Disabled
+          items[3].runtimeStatus = ResourceStatus.Disabled
+          items[8].runtimeStatus = ResourceStatus.Disabled
 
           wrapper = mount(
             <SidebarResourcesTestWrapper
@@ -383,8 +383,8 @@ describe("SidebarResources", () => {
         it("displays disabled resources within each group", () => {
           const items = createSidebarItems(10, true)
           // Add disabled items in different label groups based on hardcoded data
-          items[2].disabled = true
-          items[5].disabled = true
+          items[2].runtimeStatus = ResourceStatus.Disabled
+          items[5].runtimeStatus = ResourceStatus.Disabled
 
           wrapper = mount(
             <SidebarResourcesTestWrapper
@@ -403,7 +403,7 @@ describe("SidebarResources", () => {
       beforeEach(() => {
         // Create a list of sidebar items with disable resources interspersed
         const items = createSidebarItems(3)
-        items[1].disabled = true
+        items[1].runtimeStatus = ResourceStatus.Disabled
 
         wrapper = mount(
           <SidebarResourcesTestWrapper
@@ -426,7 +426,7 @@ describe("SidebarResources", () => {
         it("does NOT display the group section", () => {
           const items = createSidebarItems(5, true)
           // Disable the resource that's in the label group with only one resource
-          items[3].disabled = true
+          items[3].runtimeStatus = ResourceStatus.Disabled
 
           wrapper = mount(
             <SidebarResourcesTestWrapper

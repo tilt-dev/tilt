@@ -5,6 +5,8 @@ version_settings(constraint='>=0.22.1')
 #v1alpha1.extension_repo(name='default', url='file:///home/nick/src/tilt-extensions')
 #v1alpha1.extension(name='cancel', repo_name='default', repo_path='cancel')
 
+load("ext://uibutton", "cmd_button", "location")
+
 enable_feature("labels")
 enable_feature("disable_resources")
 
@@ -49,3 +51,32 @@ local_resource(
   auto_init=False,
   trigger_mode=TRIGGER_MODE_MANUAL,
   labels=["test"])
+
+# Add button versions for the local resources on Storybook resource
+
+cmd_button(
+  name='2prettier',
+  resource='storybook',
+  argv=['sh', '-c', 'tilt trigger check:prettier'],
+  text='Run prettier',
+  location=location.RESOURCE,
+  icon_name='cleaning_services',
+)
+
+cmd_button(
+  name='1ts-compile',
+  resource='storybook',
+  argv=['sh', '-c', 'tilt trigger check:tsc'],
+  text='Verify compile',
+  location=location.RESOURCE,
+  icon_name='handyman',
+)
+
+cmd_button(
+  name='3check-js',
+  resource='storybook',
+  argv=['sh', '-c', 'tilt trigger check:check-js'],
+  text='Check lint + compile',
+  location=location.RESOURCE,
+  icon_name='card_giftcard',
+)

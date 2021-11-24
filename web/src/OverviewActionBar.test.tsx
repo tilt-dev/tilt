@@ -10,21 +10,24 @@ import {
   expectIncrs,
   mockAnalyticsCalls,
 } from "./analytics_test_helpers"
-import { ApiButton } from "./ApiButton"
+import { ApiButton, ButtonSet } from "./ApiButton"
 import { InstrumentedButton } from "./instrumentedComponents"
+import LogActions from "./LogActions"
 import { EMPTY_FILTER_TERM, FilterLevel, FilterSource } from "./logfilters"
 import OverviewActionBar, {
   ActionBarBottomRow,
   ActionBarTopRow,
   ButtonLeftPill,
+  CopyButton,
   createLogSearch,
   Endpoint,
   FilterRadioButton,
+  FilterTermField,
   FILTER_FIELD_ID,
   FILTER_INPUT_DEBOUNCE,
 } from "./OverviewActionBar"
 import { EmptyBar, FullBar } from "./OverviewActionBar.stories"
-import { oneButton } from "./testdata"
+import { disableButton, oneButton, oneResourceNoAlerts } from "./testdata"
 
 let history: MemoryHistory
 beforeEach(() => {
@@ -53,6 +56,14 @@ it("shows endpoints", () => {
 
   let endpoints = topBar.find(Endpoint)
   expect(endpoints).toHaveLength(2)
+})
+
+it("shows pod ID", () => {
+  const root = mountBar(<FullBar />)
+  const podId = root.find(ActionBarTopRow).find(CopyButton)
+
+  expect(podId).toHaveLength(1)
+  expect(podId.text()).toContain("my-pod-deadbeef Pod ID") // Hardcoded from test data
 })
 
 it("skips the top bar when empty", () => {
@@ -92,6 +103,69 @@ it("navigates to build warning filter", () => {
   expect(history.location.search).toEqual("?level=warn&source=build")
 })
 
+describe("disabled resource view", () => {
+  let root: ReactWrapper<any, any>
+
+  beforeEach(() => {
+    const resource = oneResourceNoAlerts({
+      name: "i-am-not-enabled",
+      disabled: true,
+    })
+    const filterSet = {
+      level: FilterLevel.all,
+      source: FilterSource.all,
+      term: EMPTY_FILTER_TERM,
+    }
+    const buttonSet: ButtonSet = {
+      default: [oneButton(0, "i-am-not-enabled")],
+      toggleDisable: disableButton("i-am-not-enabled", false),
+    }
+
+    root = mountBar(
+      <OverviewActionBar
+        resource={resource}
+        filterSet={filterSet}
+        buttons={buttonSet}
+      />
+    )
+  })
+
+  it("should display the disable toggle button", () => {
+    const bottomRowButtons = root.find(ActionBarBottomRow).find(ApiButton)
+    expect(bottomRowButtons.length).toBeGreaterThanOrEqual(1)
+    expect(
+      bottomRowButtons.at(bottomRowButtons.length - 1).prop("uiButton").metadata
+        ?.name
+    ).toEqual("toggle-i-am-not-enabled-disable")
+  })
+
+  it("should NOT display any `default` custom buttons", () => {
+    const topRowButtons = root.find(ActionBarTopRow).find(ApiButton)
+    expect(topRowButtons.length).toBe(0)
+  })
+
+  it("should NOT display the filter menu", () => {
+    const bottomRow = root.find(ActionBarBottomRow)
+    const filterButtons = bottomRow.find(FilterRadioButton)
+    const filterTermField = bottomRow.find(FilterTermField)
+    const logActionsMenu = bottomRow.find(LogActions)
+
+    expect(filterButtons).toHaveLength(0)
+    expect(filterTermField).toHaveLength(0)
+    expect(logActionsMenu).toHaveLength(0)
+  })
+
+  it("should NOT display endpoint information", () => {
+    const endpoints = root.find(ActionBarTopRow).find(Endpoint)
+    expect(endpoints).toHaveLength(0)
+  })
+
+  it("should NOT display podId information", () => {
+    const podInfo = root.find(ActionBarTopRow).find(CopyButton)
+    expect(podInfo).toHaveLength(0)
+  })
+})
+
 describe("buttons", () => {
   it("shows endpoint buttons", () => {
     let root = mountBar(<FullBar />)
@@ -102,7 +176,7 @@ describe("buttons", () => {
     expect(endpoints).toHaveLength(2)
   })
 
-  it("disables disabled buttons", () => {
+  it("disables a button that should be disabled", () => {
     let uiButtons = [oneButton(1, "vigoda")]
     uiButtons[0].spec!.disabled = true
     let filterSet = {
@@ -140,7 +214,7 @@ describe("buttons", () => {
   })
 })
 
-describe("Term filter input", () => {
+describe("term filter input", () => {
   const FILTER_INPUT = `input#${FILTER_FIELD_ID}`
   let root: ReactWrapper<any, Readonly<{}>, React.Component<{}, {}, any>>
 

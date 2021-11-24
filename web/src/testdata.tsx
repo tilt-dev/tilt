@@ -25,7 +25,7 @@ export type TestDataView = {
 // so there are fewer test generator functions with repeated code
 // and each generator function takes a configurable list of options
 // for generating resources
-type TestResourceOptions = {
+export type TestResourceOptions = {
   name?: string
   disabled?: boolean
   labels?: number
@@ -193,6 +193,7 @@ function oneResourceNoAlerts({
   labels,
 }: TestResourceOptions): UIResource {
   const ts = new Date(Date.now()).toISOString()
+  const resourceName = name ?? "vigoda"
   const disableStatus = disabled
     ? { ...DISABLED_RESOURCE_STATUS }
     : { ...ENABLED_RESOURCE_STATUS }
@@ -212,7 +213,7 @@ function oneResourceNoAlerts({
 
   const resource: UIResource = {
     metadata: {
-      name: name ?? "vigoda",
+      name: resourceName,
       labels: labels !== undefined ? labelsToAdd : undefined,
     },
     status: {
@@ -226,7 +227,7 @@ function oneResourceNoAlerts({
       pendingBuildSince: ts,
       currentBuild: {},
       k8sResourceInfo: {
-        podName: "vigoda-pod",
+        podName: resourceName + "-pod",
         podCreationTime: ts,
         podStatus: "Running",
         podRestarts: 0,

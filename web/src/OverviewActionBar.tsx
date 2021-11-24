@@ -5,7 +5,7 @@ import { PopoverOrigin } from "@material-ui/core/Popover"
 import { makeStyles } from "@material-ui/core/styles"
 import ExpandMoreIcon from "@material-ui/icons/ExpandMore"
 import { History } from "history"
-import React, { ChangeEvent, useEffect, useRef, useState } from "react"
+import React, { ChangeEvent, useEffect, useState } from "react"
 import { useHistory, useLocation } from "react-router"
 import styled from "styled-components"
 import { Alert } from "./alerts"
@@ -36,6 +36,7 @@ import { useLogStore } from "./LogStore"
 import OverviewActionBarKeyboardShortcuts from "./OverviewActionBarKeyboardShortcuts"
 import { OverviewButtonMixin } from "./OverviewButton"
 import { usePathBuilder } from "./PathBuilder"
+import { resourceIsDisabled } from "./ResourceStatus"
 import SrOnly from "./SrOnly"
 import {
   AnimDuration,
@@ -91,7 +92,7 @@ let useMenuStyles = makeStyles((theme) => ({
 
 // Menu to filter logs by source (e.g., build-only, runtime-only).
 function FilterSourceMenu(props: FilterSourceMenuProps) {
-  let { id, anchorEl, level, open, filterSet, onClose } = props
+  let { id, anchorEl, level, open, onClose } = props
   let alerts = props.alerts || []
 
   let classes = useMenuStyles()
@@ -187,8 +188,15 @@ const CustomActionButton = styled(ApiButton)`
 `
 
 const DisableButton = styled(ApiButton)`
+  margin-right: ${SizeUnit(0.5)};
+
   button {
     ${OverviewButtonMixin};
+    background-color: ${Color.grayDark};
+
+    &:hover {
+      background-color: ${Color.grayDark};
+    }
   }
 
   .MuiButton-label {
@@ -196,8 +204,6 @@ const DisableButton = styled(ApiButton)`
     // https://app.shortcut.com/windmill/story/12912/uibuttons-created-by-togglebuttons-have-different-sizes-when-toggled
     width: ${SizeUnit(3.6)};
   }
-
-  margin-left: ${SizeUnit(0.5)};
 `
 
 const ButtonRoot = styled(InstrumentedButton)`
@@ -213,6 +219,11 @@ const WidgetRoot = styled.div`
 
 let ButtonPill = styled.div`
   display: flex;
+  margin-right: ${SizeUnit(0.5)};
+
+  &.isCentered {
+    margin-left: auto;
+  }
 `
 
 export let ButtonLeftPill = styled(ButtonRoot)`
@@ -308,6 +319,8 @@ type FilterRadioButtonProps = {
 
   // All the alerts for the current resource.
   alerts?: Alert[]
+
+  className?: string
 }
 
 export function createLogSearch(
@@ -390,7 +403,6 @@ export function FilterRadioButton(props: FilterRadioButtonProps) {
     })
   }
 
-  let rightPillRef = useRef(null as any)
   let [sourceMenuAnchor, setSourceMenuAnchor] = useState(null)
   let onMenuOpen = (e: any) => {
     setSourceMenuAnchor(e.currentTarget)
@@ -398,7 +410,7 @@ export function FilterRadioButton(props: FilterRadioButtonProps) {
   let sourceMenuOpen = !!sourceMenuAnchor
 
   return (
-    <ButtonPill style={{ marginRight: SizeUnit(0.5) }}>
+    <ButtonPill className={props.className}>
       <ButtonLeftPill
         className={leftClassName}
         onClick={onClick}
@@ -573,7 +585,7 @@ let TruncateText = styled.div`
   max-width: 250px;
 `
 
-function CopyButton(props: CopyButtonProps) {
+export function CopyButton(props: CopyButtonProps) {
   let [showCopySuccess, setShowCopySuccess] = useState(false)
 
   let copyClick = () => {
@@ -619,6 +631,7 @@ export let ActionBarBottomRow = styled.div`
   flex-wrap: wrap;
   align-items: center;
   border-bottom: 1px solid ${Color.grayLighter};
+  min-height: ${SizeUnit(1)};
   padding-left: ${SizeUnit(0.5)};
   padding-right: ${SizeUnit(0.5)};
   padding-top: ${SizeUnit(0.35)};
@@ -684,33 +697,37 @@ function DisableButtonSection(props: { button?: UIButton }) {
 
 export default function OverviewActionBar(props: OverviewActionBarProps) {
   let { resource, filterSet, alerts, buttons } = props
+  const logStore = useLogStore()
+  const isSnapshot = usePathBuilder().isSnapshot()
+  const isDisabled = resourceIsDisabled(resource)
+
   let endpoints = resource?.status?.endpointLinks || []
   let podId = resource?.status?.k8sResourceInfo?.podName || ""
   const resourceName = resource
     ? resource.metadata?.name || ""
     : ResourceName.all
-  const isSnapshot = usePathBuilder().isSnapshot()
-  const logStore = useLogStore()
 
-  let endpointEls: any = []
-  endpoints.forEach((ep, i) => {
-    if (i !== 0) {
-      endpointEls.push(<span key={`spacer-${i}`}>,&nbsp;</span>)
-    }
-    endpointEls.push(
-      <Endpoint
-        onClick={() =>
-          void incr("ui.web.endpoint", { action: AnalyticsAction.Click })
-        }
-        href={ep.url}
-        // We use ep.url as the target, so that clicking the link re-uses the tab.
-        target={ep.url}
-        key={ep.url}
-      >
-        <TruncateText>{ep.name || displayURL(ep)}</TruncateText>
-      </Endpoint>
-    )
-  })
+  let endpointEls: JSX.Element[] = []
+  if (endpoints.length && !isDisabled) {
+    endpoints.forEach((ep, i) => {
+      if (i !== 0) {
+        endpointEls.push(<span key={`spacer-${i}`}>,&nbsp;</span>)
+      }
+      endpointEls.push(
+        <Endpoint
+          onClick={() =>
+            void incr("ui.web.endpoint", { action: AnalyticsAction.Click })
+          }
+          href={ep.url}
+          // We use ep.url as the target, so that clicking the link re-uses the tab.
+          target={ep.url}
+          key={ep.url}
+        >
+          <TruncateText>{ep.name || displayURL(ep)}</TruncateText>
+        </Endpoint>
+      )
+    })
+  }
 
   let topRowEls = new Array<JSX.Element>()
   if (endpointEls.length) {
@@ -721,18 +738,67 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
       </EndpointSet>
     )
   }
-  if (podId) {
+  if (podId && !isDisabled) {
     topRowEls.push(<CopyButton podId={podId} key="copyPodId" />)
   }
 
   const widgets = OverviewWidgets({ buttons: buttons?.default })
-  if (widgets) {
+  if (widgets && !isDisabled) {
     topRowEls.push(widgets)
   }
 
   const topRow = topRowEls.length ? (
     <ActionBarTopRow key="top">{topRowEls}</ActionBarTopRow>
   ) : null
+
+  // By default, add the disable toggle button regardless of a resource's disabled status
+  const bottomRow: JSX.Element[] = [
+    <DisableButtonSection
+      key="toggleDisable"
+      button={buttons?.toggleDisable}
+    />,
+  ]
+  const disableButtonVisible = !!buttons?.toggleDisable
+  const firstFilterButtonClass = disableButtonVisible ? "isCentered" : ""
+
+  // Only display log filter controls if a resource is enabled
+  if (!isDisabled) {
+    bottomRow.push(
+      <FilterRadioButton
+        key="filterLevelAll"
+        className={firstFilterButtonClass}
+        level={FilterLevel.all}
+        filterSet={filterSet}
+        alerts={alerts}
+      />
+    )
+    bottomRow.push(
+      <FilterRadioButton
+        key="filterLevelError"
+        level={FilterLevel.error}
+        filterSet={filterSet}
+        alerts={alerts}
+      />
+    )
+    bottomRow.push(
+      <FilterRadioButton
+        key="filterLevelWarn"
+        level={FilterLevel.warn}
+        filterSet={filterSet}
+        alerts={alerts}
+      />
+    )
+    bottomRow.push(
+      <FilterTermField key="filterTermField" termFromUrl={filterSet.term} />
+    )
+    bottomRow.push(
+      <LogActions
+        key="logActions"
+        resourceName={resourceName}
+        isSnapshot={isSnapshot}
+      />
+    )
+  }
 
   return (
     <ActionBarRoot>
@@ -743,26 +809,7 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
         openEndpointUrl={openEndpointUrl}
       />
       {topRow}
-      <ActionBarBottomRow>
-        <FilterRadioButton
-          level={FilterLevel.all}
-          filterSet={filterSet}
-          alerts={alerts}
-        />
-        <FilterRadioButton
-          level={FilterLevel.error}
-          filterSet={filterSet}
-          alerts={alerts}
-        />
-        <FilterRadioButton
-          level={FilterLevel.warn}
-          filterSet={filterSet}
-          alerts={alerts}
-        />
-        <FilterTermField termFromUrl={filterSet.term} />
-        <LogActions resourceName={resourceName} isSnapshot={isSnapshot} />
-        <DisableButtonSection button={buttons?.toggleDisable} />
-      </ActionBarBottomRow>
+      <ActionBarBottomRow>{bottomRow}</ActionBarBottomRow>
     </ActionBarRoot>
   )
 }
