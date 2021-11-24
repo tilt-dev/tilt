@@ -8,23 +8,6 @@ export function cleanupMockAnalyticsCalls() {
   fetchMock.reset()
 }
 
-// TODO(matt) migrate uses of this to `expectIncrs`
-export function expectIncr(fetchMockIndex: number, name: string, tags: Tags) {
-  expect(fetchMock.calls().length).toBeGreaterThan(fetchMockIndex)
-  expect(fetchMock.calls()[fetchMockIndex][0]).toEqual(
-    "//localhost/api/analytics"
-  )
-  expect(fetchMock.calls()[fetchMockIndex][1]?.body).toEqual(
-    JSON.stringify([
-      {
-        verb: "incr",
-        name: name,
-        tags: tags,
-      },
-    ])
-  )
-}
-
 export function expectIncrs(...incrs: { name: string; tags: Tags }[]) {
   const expectedRequestBodies = incrs.map((i) => [
     {

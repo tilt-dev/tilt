@@ -11,8 +11,7 @@ import {
   nResourceView,
   nResourceWithLabelsView,
   oneResource,
-  oneResourceNoAlerts,
-  oneResourceTest,
+  oneTestResource,
   tenResourceView,
   tiltfileResource,
   twoResourceView,
@@ -86,12 +85,11 @@ export const OneHundredResources = () => (
 export function TwoResourcesTwoTests() {
   let all: UIResource[] = [
     tiltfileResource(),
-    oneResource(),
-    oneResourceNoAlerts({}),
-    oneResourceTest(),
-    oneResourceTest(),
+    oneResource({ isBuilding: true }),
+    oneResource({ name: "snack" }),
+    oneTestResource(),
+    oneTestResource(),
   ]
-  all[2].metadata = { name: "snack" }
   all[3].metadata = { name: "beep" }
   let view = { uiResources: all, tiltfileKey: "test" }
   return <OverviewResourceSidebar name={""} view={view} />
@@ -103,7 +101,7 @@ export function TestsWithErrors() {
   let spans = {} as any
   let all: UIResource[] = [tiltfileResource()]
   for (let i = 0; i < 8; i++) {
-    let test = oneResourceTest()
+    let test = oneTestResource()
     let name = "test_" + i
     test.metadata = { name: name }
 

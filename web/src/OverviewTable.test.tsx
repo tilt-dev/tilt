@@ -53,7 +53,7 @@ import {
   nResourceView,
   nResourceWithLabelsView,
   oneButton,
-  oneResourceNoAlerts,
+  oneResource,
   TestDataView,
 } from "./testdata"
 import { RuntimeStatus, UpdateStatus } from "./types"
@@ -148,7 +148,7 @@ it("sorts by status", () => {
   view.uiResources[3].status!.updateStatus = UpdateStatus.Error
   view.uiResources[7].status!.runtimeStatus = RuntimeStatus.Error
   view.uiResources.unshift(
-    oneResourceNoAlerts({ disabled: true, name: "disabled_resource" })
+    oneResource({ disabled: true, name: "disabled_resource" })
   )
   const root = mount(
     tableViewWithSettings({ view, disableResourcesEnabled: true })
@@ -617,11 +617,11 @@ describe("when disable resources feature is enabled", () => {
   beforeEach(() => {
     view = nResourceView(4)
     // Add two disabled resources to view and place them throughout list
-    const firstDisabledResource = oneResourceNoAlerts({
+    const firstDisabledResource = oneResource({
       name: "zee_disabled_resource",
       disabled: true,
     })
-    const secondDisabledResource = oneResourceNoAlerts({
+    const secondDisabledResource = oneResource({
       name: "_0_disabled_resource",
       disabled: true,
     })
@@ -707,7 +707,7 @@ describe("when disable resources feature is NOT enabled", () => {
   beforeEach(() => {
     view = nResourceView(8)
     // Add a disabled resource to view
-    const disabledResource = oneResourceNoAlerts({
+    const disabledResource = oneResource({
       name: "disabled_resource",
       disabled: true,
     })

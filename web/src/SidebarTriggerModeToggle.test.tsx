@@ -19,11 +19,7 @@ import {
   StyledSidebarTriggerModeToggle,
   ToggleTriggerModeTooltip,
 } from "./SidebarTriggerModeToggle"
-import {
-  oneResourceTest,
-  oneResourceTestWithName,
-  twoResourceView,
-} from "./testdata"
+import { oneTestResource, twoResourceView } from "./testdata"
 import { ResourceView, TriggerMode } from "./types"
 
 let pathBuilder = PathBuilder.forTesting("localhost", "/")
@@ -48,7 +44,7 @@ describe("SidebarTriggerButton", () => {
   it("shows toggle button only for test cards", () => {
     let ls = new LogStore()
     let view = twoResourceView()
-    view.uiResources.push(oneResourceTest())
+    view.uiResources.push(oneTestResource())
     let items = view.uiResources.map((r) => new SidebarItem(r, ls))
 
     const root = mount(
@@ -69,10 +65,10 @@ describe("SidebarTriggerButton", () => {
 
   it("shows different icon depending on current trigger mode", () => {
     let resources = [
-      oneResourceTestWithName("auto_auto-init"),
-      oneResourceTestWithName("auto_no-init"),
-      oneResourceTestWithName("manual_auto-init"),
-      oneResourceTestWithName("manual_no-init"),
+      oneTestResource("auto_auto-init"),
+      oneTestResource("auto_no-init"),
+      oneTestResource("manual_auto-init"),
+      oneTestResource("manual_no-init"),
     ]
     resources[0].status!.triggerMode = TriggerMode.TriggerModeAuto
     resources[1].status!.triggerMode = TriggerMode.TriggerModeAutoWithManualInit

@@ -19,7 +19,7 @@ class FakeAlertIndex implements LogAlertIndex {
 }
 
 function emptyResource() {
-  let res = oneResource()
+  let res = oneResource({})
   res.status!.currentBuild = { startTime: zeroTime }
   res.status!.buildHistory = []
   res.status!.pendingBuildSince = zeroTime
@@ -50,7 +50,6 @@ describe("combinedStatus", () => {
 
   it("healthy when runtime ok", () => {
     let ls = new LogStore()
-    const ts = Date.now().toLocaleString()
     let res = emptyResource()
     res.status!.updateStatus = UpdateStatus.Ok
     res.status!.runtimeStatus = RuntimeStatus.Ok
@@ -61,7 +60,6 @@ describe("combinedStatus", () => {
 
   it("unhealthy when runtime error", () => {
     let ls = new LogStore()
-    const ts = Date.now().toLocaleString()
     let res = emptyResource()
     res.status!.updateStatus = UpdateStatus.Ok
     res.status!.runtimeStatus = RuntimeStatus.Error
@@ -72,7 +70,6 @@ describe("combinedStatus", () => {
 
   it("unhealthy when last build error", () => {
     let ls = new LogStore()
-    const ts = Date.now().toLocaleString()
     let res = emptyResource()
     res.status!.updateStatus = UpdateStatus.Error
     res.status!.runtimeStatus = RuntimeStatus.Ok
@@ -83,7 +80,6 @@ describe("combinedStatus", () => {
 
   it("building when runtime status error, but also building", () => {
     let ls = new LogStore()
-    const ts = Date.now().toLocaleString()
     let res = emptyResource()
     res.status!.updateStatus = UpdateStatus.InProgress
     res.status!.runtimeStatus = RuntimeStatus.Error
@@ -130,7 +126,6 @@ describe("combinedStatus", () => {
 
   it("healthy when n/a runtime status and last build succeeded", () => {
     let ls = new LogStore()
-    const ts = Date.now().toLocaleString()
     let res = emptyResource()
     res.status!.runtimeStatus = RuntimeStatus.NotApplicable
     res.status!.updateStatus = UpdateStatus.Ok
@@ -141,7 +136,6 @@ describe("combinedStatus", () => {
 
   it("unhealthy when n/a runtime status and last build failed", () => {
     let ls = new LogStore()
-    const ts = Date.now().toLocaleString()
     let res = emptyResource()
     res.status!.runtimeStatus = RuntimeStatus.NotApplicable
     res.status!.updateStatus = UpdateStatus.Error

@@ -6,7 +6,7 @@ import { ResourceNavContextProvider } from "./ResourceNav"
 import SidebarItem from "./SidebarItem"
 import SidebarItemView, { SidebarItemViewProps } from "./SidebarItemView"
 import { Width } from "./style-helpers"
-import { oneResourceNoAlerts } from "./testdata"
+import { oneResource } from "./testdata"
 import {
   ResourceName,
   ResourceStatus,
@@ -105,7 +105,7 @@ function withArgs(args: Args): optionFn {
 
 function itemView(...options: optionFn[]) {
   let ls = new LogStore()
-  let item = new SidebarItem(oneResourceNoAlerts({}), ls)
+  let item = new SidebarItem(oneResource({}), ls)
   let props = {
     item: item,
     selected: false,

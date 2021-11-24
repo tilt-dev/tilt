@@ -18,8 +18,8 @@ import SidebarTriggerButton, {
   SidebarTriggerButtonRoot,
   TriggerButtonTooltip,
 } from "./SidebarTriggerButton"
-import { oneResource, twoResourceView } from "./testdata"
-import { ResourceName, ResourceView, TriggerMode } from "./types"
+import { oneResource, tiltfileResource, twoResourceView } from "./testdata"
+import { ResourceView, TriggerMode } from "./types"
 
 type UIResource = Proto.v1alpha1UIResource
 
@@ -156,6 +156,7 @@ describe("SidebarTriggerButton", () => {
           // only first resource has pending changes -- only this one should have class `isDirty`
           res.hasPendingChanges = true
           res.pendingBuildSince = new Date(Date.now()).toISOString()
+          res.queued = false
         } else {
           res.hasPendingChanges = false
           res.pendingBuildSince = "0001-01-01T00:00:00Z"
@@ -239,6 +240,7 @@ describe("SidebarTriggerButton", () => {
         if (i == 0) {
           res.hasPendingChanges = true
           res.pendingBuildSince = new Date(Date.now()).toISOString()
+          res.queued = false
         } else {
           res.hasPendingChanges = false
           res.pendingBuildSince = "0001-01-01T00:00:00Z"
@@ -276,7 +278,8 @@ describe("SidebarTriggerButton", () => {
   })
 
   it("trigger button not clickable if resource is building", () => {
-    let res = oneResource() // by default this resource is in the process of building
+    let res = oneResource({ isBuilding: true })
+    res.status!.queued = false
     let items = [newSidebarItem(res)]
 
     const root = mount(
@@ -301,13 +304,9 @@ describe("SidebarTriggerButton", () => {
   })
 
   it("trigger button not clickable if resource waiting for first build", () => {
-    let r = oneResource()
-    let res = r.status!
-    res.currentBuild = {}
-    res.buildHistory = []
-    res.lastDeployTime = ""
-    res.hasPendingChanges = false
-    res.pendingBuildSince = ""
+    let r = oneResource({})
+    r.status!.buildHistory = []
+    r.status!.lastDeployTime = ""
     let items = [newSidebarItem(r)]
 
     const root = mount(
@@ -332,9 +331,7 @@ describe("SidebarTriggerButton", () => {
   })
 
   it("renders queued resource with class .isQueued and NOT .clickable", () => {
-    let res = oneResource()
-    res.status!.currentBuild = {}
-    res.status!.queued = true
+    let res = oneResource({ isBuilding: true })
     let items = [newSidebarItem(res)]
 
     const root = mount(
@@ -359,11 +356,9 @@ describe("SidebarTriggerButton", () => {
   })
 
   it("shows a trigger button for resource that failed its initial build", () => {
-    let res = oneResource()
-    res.status!.lastDeployTime = ""
+    let res = oneResource({ isBuilding: true })
     res.status!.currentBuild = {}
-    res.status!.hasPendingChanges = false
-    res.status!.pendingBuildSince = ""
+    res.status!.queued = false
     let items = [newSidebarItem(res)]
 
     const root = mount(
@@ -388,13 +383,7 @@ describe("SidebarTriggerButton", () => {
   })
 
   it("shows trigger button for Tiltfile", () => {
-    let res = oneResource()
-    res.metadata = { name: ResourceName.tiltfile }
-    res.status = res.status || {}
-    res.status.currentBuild = {} // not currently building
-    res.status.hasPendingChanges = false
-    res.status.pendingBuildSince = "0001-01-01T00:00:00Z"
-
+    let res = tiltfileResource()
     let items = [newSidebarItem(res)]
 
     const root = mount(

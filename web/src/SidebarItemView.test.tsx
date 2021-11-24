@@ -8,7 +8,7 @@ import SidebarItemView, {
   DisabledSidebarItemView,
   EnabledSidebarItemView,
 } from "./SidebarItemView"
-import { oneResourceNoAlerts, TestResourceOptions } from "./testdata"
+import { oneResource, TestResourceOptions } from "./testdata"
 import { ResourceView } from "./types"
 
 const PATH_BUILDER = PathBuilder.forTesting("localhost", "/")
@@ -40,7 +40,7 @@ const SidebarItemViewTestWrapper = ({
 }
 
 const oneSidebarItem = (options: TestResourceOptions) => {
-  return new SidebarItem(oneResourceNoAlerts(options), LOG_ALERT_INDEX)
+  return new SidebarItem(oneResource(options), LOG_ALERT_INDEX)
 }
 
 describe("SidebarItemView", () => {

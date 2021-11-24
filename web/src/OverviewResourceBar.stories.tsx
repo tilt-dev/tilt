@@ -3,7 +3,7 @@ import { MemoryRouter } from "react-router"
 import OverviewResourceBar from "./OverviewResourceBar"
 import {
   nResourceView,
-  oneResourceTest,
+  oneTestResource,
   tenResourceView,
   twoResourceView,
 } from "./testdata"
@@ -53,6 +53,6 @@ export const UpgradeAvailable = () => {
 
 export const WithTests = () => {
   let view = twoResourceView()
-  view.uiResources.push(oneResourceTest(), oneResourceTest())
+  view.uiResources.push(oneTestResource(), oneTestResource())
   return <OverviewResourceBar view={view} />
 }
