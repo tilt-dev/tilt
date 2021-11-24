@@ -169,7 +169,7 @@ export function SidebarListSection(props: SidebarSectionProps): JSX.Element {
     })
 
     return [enabledItems, disabledItems]
-  }, props.items)
+  }, [props.items])
 
   // The title for the disabled resource list is semantically important,
   // but should only be visible when there's no filter term
