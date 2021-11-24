@@ -149,7 +149,7 @@ storybook:
 	cd web && yarn storybook
 
 tilt-toast-container:
-	docker build -t gcr.io/windmill-public-containers/tilt-toast -f Dockerfile.toast .circleci
+	docker build --platform linux/amd64 -t gcr.io/windmill-public-containers/tilt-toast -f Dockerfile.toast .circleci
 	docker push gcr.io/windmill-public-containers/tilt-toast
 
 ensure: vendor
