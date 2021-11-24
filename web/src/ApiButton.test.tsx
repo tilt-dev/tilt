@@ -335,8 +335,7 @@ describe("ApiButton", () => {
   })
 
   it("when requiresConfirmation is set, a second confirmation click to submit", async () => {
-    const b = makeUIButton()
-    b.spec!.requiresConfirmation = true
+    const b = makeUIButton({ requiresConfirmation: true })
     const root = mountButton(b)
 
     let button = root.find(InstrumentedButton)
@@ -360,8 +359,7 @@ describe("ApiButton", () => {
   })
 
   it("when requiresConfirmation is set, allows canceling instead of confirming", async () => {
-    const b = makeUIButton()
-    b.spec!.requiresConfirmation = true
+    const b = makeUIButton({ requiresConfirmation: true })
     const root = mountButton(b)
 
     let button = root.find(InstrumentedButton)

@@ -61,9 +61,20 @@ export const LogLink = styled(Link)`
 const ConfirmButton = styled(InstrumentedButton)`
   && {
     background-color: ${Color.red};
-    &:hover {
+    border-color: ${Color.gray};
+    color: ${Color.black};
+
+    &:hover,
+    &:active,
+    &:focus {
       background-color: ${Color.red};
+      border-color: ${Color.redLight};
+      color: ${Color.black};
     }
+  }
+
+  .fillStd {
+    fill: ${Color.black} !important; /* there's some style somewhere with a higher level of specificity than this one that i did not spend time trying to find... */
   }
 `
 
