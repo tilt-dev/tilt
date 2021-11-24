@@ -1,6 +1,7 @@
 package uiresources
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -25,8 +26,8 @@ func TestLogging(t *testing.T) {
 		old, new    *v1alpha1.UIResource
 		expectedLog string
 	}{
-		{"enable", resourceWithDisableCount(1), resourceWithDisableCount(0), "Resource \"foo\" enabled.\n"},
-		{"disable", resourceWithDisableCount(0), resourceWithDisableCount(1), "Resource \"foo\" disabled.\n"},
+		{"enable", resourceWithDisableCount(1), resourceWithDisableCount(0), "Resource \"foo\" enabled."},
+		{"disable", resourceWithDisableCount(0), resourceWithDisableCount(1), "Resource \"foo\" disabled."},
 		{"old nil", nil, resourceWithDisableCount(0), ""},
 		{"enabled, no change", resourceWithDisableCount(0), resourceWithDisableCount(0), ""},
 		{"disabled, no change", resourceWithDisableCount(1), resourceWithDisableCount(1), ""},
@@ -39,7 +40,15 @@ func TestLogging(t *testing.T) {
 
 			HandleUIResourceUpsertAction(state, action)
 
-			require.Equal(t, tc.expectedLog, state.LogStore.ManifestLog("foo"))
+			log := state.LogStore.ManifestLog("foo")
+			if tc.expectedLog == "" {
+				require.Equal(t, "", log)
+			} else {
+				lines := strings.Split(log, "\n")
+				require.Equal(t, 2, len(lines))
+				require.Contains(t, lines[0], tc.expectedLog)
+				require.Equal(t, "", lines[1])
+			}
 		})
 	}
 }

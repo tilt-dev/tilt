@@ -17,14 +17,15 @@ func HandleUIResourceUpsertAction(state *store.EngineState, action UIResourceUps
 		oldCount := old.Status.DisableStatus.DisabledCount
 		newCount := uir.Status.DisableStatus.DisabledCount
 
-		message := ""
+		verb := ""
 		if oldCount == 0 && newCount > 0 {
-			message = fmt.Sprintf("Resource %q disabled.\n", n)
+			verb = "disabled"
 		} else if oldCount > 0 && newCount == 0 {
-			message = fmt.Sprintf("Resource %q enabled.\n", n)
+			verb = "enabled"
 		}
 
-		if message != "" {
+		if verb != "" {
+			message := fmt.Sprintf("Resource %q %s. To enable/disable it, use the Tilt Web UI.\n", n, verb)
 			a := store.NewLogAction(model.ManifestName(n), logstore.SpanID(fmt.Sprintf("disabletoggle-%s", n)), logger.InfoLvl, nil, []byte(message))
 			state.LogStore.Append(a, state.Secrets)
 		}
