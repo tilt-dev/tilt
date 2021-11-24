@@ -70,6 +70,20 @@ brews:
   url_template: "https://github.com/tilt-dev/tilt/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
   homepage: "https://tilt.dev/"
   description: "A dev environment as code for microservice apps"
+  install: |
+    bin.install "tilt"
+    
+    # Install bash completion
+    output = Utils.safe_popen_read("#{bin}/tilt", "completion", "bash")
+    (bash_completion/"tilt").write output
+
+    # Install zsh completion
+    output = Utils.safe_popen_read("#{bin}/tilt", "completion", "zsh")
+    (zsh_completion/"_tilt").write output
+
+    # Install fish completion
+    output = Utils.safe_popen_read("#{bin}/tilt", "completion", "fish")
+    (fish_completion/"tilt.fish").write output
   test: |
     system "#{bin}/tilt version"
     system "#{bin}/tilt verify-install"

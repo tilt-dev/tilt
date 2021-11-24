@@ -26,7 +26,11 @@ export function ClassNameFromResourceStatus(rs: ResourceStatus): string {
   }
 }
 
-export function resourceIsDisabled(resource: UIResource): boolean {
+export function resourceIsDisabled(resource: UIResource | undefined): boolean {
+  if (!resource) {
+    return false
+  }
+
   const disableCount = resource.status?.disableStatus?.disabledCount ?? 0
   if (disableCount > 0) {
     return true

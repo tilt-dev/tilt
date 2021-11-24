@@ -3,7 +3,7 @@ import { buildAlerts, runtimeAlerts } from "./alerts"
 import { Hold } from "./Hold"
 import { getResourceLabels } from "./labels"
 import { LogAlertIndex } from "./LogStore"
-import { resourceIsDisabled, resourceTargetType } from "./ResourceStatus"
+import { resourceTargetType } from "./ResourceStatus"
 import { buildStatus, runtimeStatus } from "./status"
 import { timeDiff } from "./time"
 import {
@@ -34,7 +34,6 @@ class SidebarItem {
   queued: boolean
   lastBuild: Build | null = null
   hold: Hold | null = null
-  disabled: boolean // TODO (lizz): Refactor sidebar logic to refer to other status fields, since this is redundant
   targetType: string
 
   /**
@@ -65,7 +64,6 @@ class SidebarItem {
     this.queued = !!status.queued
     this.lastBuild = lastBuild
     this.hold = status.waiting ? new Hold(status.waiting) : null
-    this.disabled = resourceIsDisabled(res)
     this.targetType = resourceTargetType(res)
   }
 }

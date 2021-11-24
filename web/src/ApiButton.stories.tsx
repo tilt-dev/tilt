@@ -4,6 +4,7 @@ import styled from "styled-components"
 import { ApiButton } from "./ApiButton"
 import { makeUIButton, textField } from "./ApiButton.testhelpers"
 import { OverviewButtonMixin } from "./OverviewButton"
+import { TiltSnackbarProvider } from "./Snackbar"
 
 type UIButton = Proto.v1alpha1UIButton
 type UIInputSpec = Proto.v1alpha1UIInputSpec
@@ -15,9 +16,11 @@ export default {
   decorators: [
     (Story: any) => (
       <MemoryRouter initialEntries={["/"]}>
-        <div style={{ margin: "-1rem" }}>
-          <Story />
-        </div>
+        <TiltSnackbarProvider>
+          <div style={{ margin: "-1rem" }}>
+            <Story />
+          </div>
+        </TiltSnackbarProvider>
       </MemoryRouter>
     ),
   ],

@@ -29,6 +29,7 @@ import { matchesResourceName } from "./ResourceNameFilter"
 import { SidebarGroupStatusSummary } from "./ResourceStatusSummary"
 import SidebarItem from "./SidebarItem"
 import SidebarItemView, {
+  sidebarItemIsDisabled,
   SidebarItemRoot,
   triggerUpdate,
 } from "./SidebarItemView"
@@ -160,7 +161,7 @@ export function SidebarListSection(props: SidebarSectionProps): JSX.Element {
     const disabledItems: SidebarItem[] = []
 
     props.items.forEach((item) => {
-      if (item.disabled) {
+      if (sidebarItemIsDisabled(item)) {
         disabledItems.push(item)
       } else {
         enabledItems.push(item)
@@ -168,7 +169,7 @@ export function SidebarListSection(props: SidebarSectionProps): JSX.Element {
     })
 
     return [enabledItems, disabledItems]
-  }, props.items)
+  }, [props.items])
 
   // The title for the disabled resource list is semantically important,
   // but should only be visible when there's no filter term
@@ -227,7 +228,9 @@ function SidebarGroupListSection(props: { label: string } & SidebarProps) {
   // flag isn't enabled, don't display any group information
   const features = useFeatures()
   const showDisabledResources = features.isEnabled(Flag.DisableResources)
-  const allResourcesDisabled = props.items.every((item) => item.disabled)
+  const allResourcesDisabled = props.items.every((item) =>
+    sidebarItemIsDisabled(item)
+  )
 
   if (!showDisabledResources && allResourcesDisabled) {
     return null
