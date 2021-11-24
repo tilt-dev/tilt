@@ -39,10 +39,10 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore, summ
 func (cc *ConfigsController) maybeCreateInitialTiltfile(ctx context.Context, st store.RStore) error {
 	state := st.RLockState()
 	desired := state.DesiredTiltfilePath
-	args := state.InitialTiltArgs
+	ucs := state.UserConfigState
 	st.RUnlockState()
 
-	err := cc.ctrlClient.Create(ctx, tiltfile.MainTiltfile(desired, args))
+	err := cc.ctrlClient.Create(ctx, tiltfile.MainTiltfile(desired, ucs.args))
 	if err != nil && !apierrors.IsAlreadyExists(err) {
 		return err
 	}

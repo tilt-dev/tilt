@@ -19,7 +19,7 @@ func TestCreateTiltfile(t *testing.T) {
 	st := store.NewTestingStore()
 	st.WithState(func(s *store.EngineState) {
 		s.DesiredTiltfilePath = "./fake-tiltfile-path"
-		s.InitialTiltArgs = []string{"arg1", "arg2"}
+		s.UserConfigState = model.NewUserConfigState([]string{"arg1", "arg2"})
 	})
 	ctx := context.Background()
 	client := fake.NewFakeTiltClient()

@@ -261,7 +261,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.TiltStartTime = action.StartTime
 	engineState.DesiredTiltfilePath = action.TiltfilePath
 	engineState.TiltfileConfigPaths[model.MainTiltfileManifestName] = action.ConfigFiles
-	engineState.InitialTiltArgs = action.UserArgs
+	engineState.UserConfigState = model.NewUserConfigState(action.UserArgs)
 	engineState.AnalyticsUserOpt = action.AnalyticsUserOpt
 	engineState.CloudAddress = action.CloudAddress
 	engineState.Token = action.Token
