@@ -42,7 +42,7 @@ func (cc *ConfigsController) maybeCreateInitialTiltfile(ctx context.Context, st 
 	ucs := state.UserConfigState
 	st.RUnlockState()
 
-	err := cc.ctrlClient.Create(ctx, tiltfile.MainTiltfile(desired, ucs.args))
+	err := cc.ctrlClient.Create(ctx, tiltfile.MainTiltfile(desired, ucs.Args))
 	if err != nil && !apierrors.IsAlreadyExists(err) {
 		return err
 	}
