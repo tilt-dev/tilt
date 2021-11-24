@@ -175,7 +175,7 @@ func TestDownArgs(t *testing.T) {
 	err := cmd.Execute()
 	require.NoError(t, err)
 
-	require.Equal(t, []string{"foo", "bar"}, f.tfl.PassedUserConfigState().Args)
+	require.Equal(t, []string{"foo", "bar"}, f.tfl.PassedArgs())
 }
 
 func newK8sManifest() []model.Manifest {

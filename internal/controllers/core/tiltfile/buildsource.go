@@ -22,7 +22,7 @@ type BuildEntry struct {
 	Name                  model.ManifestName
 	FilesChanged          []string
 	BuildReason           model.BuildReason
-	UserConfigState       model.UserConfigState
+	Args                  []string
 	TiltfilePath          string
 	CheckpointAtExecStart logstore.Checkpoint
 	LoadCount             int

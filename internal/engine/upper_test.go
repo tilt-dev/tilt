@@ -2626,7 +2626,7 @@ func TestUpperStart(t *testing.T) {
 	})
 
 	f.withState(func(state store.EngineState) {
-		require.Equal(t, []string{"foo", "bar"}, state.UserConfigState.Args)
+		require.Equal(t, []string{"foo", "bar"}, state.InitialTiltArgs)
 		require.Equal(t, f.JoinPath("Tiltfile"), state.DesiredTiltfilePath)
 		require.Equal(t, tok, state.Token)
 		require.Equal(t, analytics.OptIn, state.AnalyticsEffectiveOpt())

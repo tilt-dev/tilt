@@ -12,12 +12,6 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-type SetTiltfileArgsAction struct {
-	Args []string
-}
-
-func (SetTiltfileArgsAction) Action() {}
-
 func SetTiltfileArgs(ctx context.Context, st store.RStore, client client.Client, args []string) error {
 	nn := types.NamespacedName{Name: model.MainTiltfileManifestName.String()}
 	var tf v1alpha1.Tiltfile
@@ -37,6 +31,5 @@ func SetTiltfileArgs(ctx context.Context, st store.RStore, client client.Client,
 		return err
 	}
 
-	st.Dispatch(SetTiltfileArgsAction{args})
 	return nil
 }

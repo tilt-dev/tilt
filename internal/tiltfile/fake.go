@@ -4,13 +4,12 @@ import (
 	"context"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
-	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type FakeTiltfileLoader struct {
-	Result          TiltfileLoadResult
-	userConfigState model.UserConfigState
-	Delegate        TiltfileLoader
+	Result   TiltfileLoadResult
+	Args     []string
+	Delegate TiltfileLoader
 }
 
 var _ TiltfileLoader = &FakeTiltfileLoader{}
@@ -20,15 +19,14 @@ func NewFakeTiltfileLoader() *FakeTiltfileLoader {
 }
 
 func (tfl *FakeTiltfileLoader) Load(ctx context.Context, tf *v1alpha1.Tiltfile) TiltfileLoadResult {
-	userConfigState := model.NewUserConfigState(tf.Spec.Args)
-	tfl.userConfigState = userConfigState
+	tfl.Args = tf.Spec.Args
 	if tfl.Delegate != nil {
 		return tfl.Delegate.Load(ctx, tf)
 	}
 	return tfl.Result
 }
 
-// the UserConfigState that was passed to the last invocation of Load
-func (tfl *FakeTiltfileLoader) PassedUserConfigState() model.UserConfigState {
-	return tfl.userConfigState
+// the Args that was passed to the last invocation of Load
+func (tfl *FakeTiltfileLoader) PassedArgs() []string {
+	return tfl.Args
 }

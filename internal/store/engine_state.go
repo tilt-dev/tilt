@@ -106,7 +106,10 @@ type EngineState struct {
 
 	TelemetrySettings model.TelemetrySettings
 
-	UserConfigState model.UserConfigState
+	// args initially passed to Tilt
+	// This field is only used to initially create the Tiltfile API object
+	// subsequent updates to the args will be reflected in the Tiltfile API object, but not here
+	InitialTiltArgs []string
 
 	// The initialization sequence is unfortunate. Currently we have:
 	// 1) Dispatch an InitAction

@@ -197,7 +197,6 @@ func (r *Reconciler) needsBuild(ctx context.Context, nn types.NamespacedName, tf
 		}
 	}
 
-	userConfigState := model.NewUserConfigState(tf.Spec.Args)
 	if !lastStartTime.IsZero() && !apicmp.DeepEqual(tf.Spec.Args, lastStartArgs) {
 		reason = reason.With(model.BuildReasonFlagTiltfileArgs)
 	}
@@ -219,7 +218,7 @@ func (r *Reconciler) needsBuild(ctx context.Context, nn types.NamespacedName, tf
 		Name:                  model.ManifestName(nn.Name),
 		FilesChanged:          filesChanged,
 		BuildReason:           reason,
-		UserConfigState:       userConfigState,
+		Args:                  tf.Spec.Args,
 		TiltfilePath:          tf.Spec.Path,
 		CheckpointAtExecStart: state.LogStore.Checkpoint(),
 		LoadCount:             r.loadCount,
@@ -238,7 +237,7 @@ func (r *Reconciler) startRunAsync(ctx context.Context, nn types.NamespacedName,
 		spec:      tf.Spec.DeepCopy(),
 		entry:     entry,
 		startTime: time.Now(),
-		startArgs: entry.UserConfigState.Args,
+		startArgs: entry.Args,
 	}
 	go r.run(ctx, nn, tf, entry)
 }
@@ -260,9 +259,8 @@ func (r *Reconciler) run(ctx context.Context, nn types.NamespacedName, tf *v1alp
 		FilesChanged: entry.FilesChanged,
 	})
 
-	userConfigState := entry.UserConfigState
 	if entry.BuildReason.Has(model.BuildReasonFlagTiltfileArgs) {
-		logger.Get(ctx).Infof("Tiltfile args changed to: %v", userConfigState.Args)
+		logger.Get(ctx).Infof("Tiltfile args changed to: %v", entry.Args)
 	}
 
 	tlr := r.tfl.Load(ctx, tf)
