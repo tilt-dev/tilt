@@ -113,23 +113,13 @@ describe("ResourceGroupsContext", () => {
           <TestConsumer labelName="test" />
         </ResourceGroupsContextProvider>
       )
-      let loadIncr = {
-        name: "ui.web.resourceGroup",
-        tags: { action: AnalyticsAction.Load, expanded: "1", collapsed: "0" },
-      }
-      expectIncrs(loadIncr)
       clickButton()
       // Expect the "collapse" action value because the test label group is expanded
       // when it's clicked on and the "grid" type value because it's hardcoded in the
       // test component
-      expectIncrs(loadIncr, {
+      expectIncrs({
         name: "ui.web.resourceGroup",
-        tags: {
-          action: AnalyticsAction.Collapse,
-          type: AnalyticsType.Grid,
-          expanded: "1",
-          collapsed: "0",
-        },
+        tags: { action: AnalyticsAction.Collapse, type: AnalyticsType.Grid },
       })
     })
   })
