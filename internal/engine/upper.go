@@ -160,8 +160,6 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleUserStartedTiltCloudRegistrationAction(state)
 	case store.PanicAction:
 		handlePanicAction(state, action)
-	case tiltfiles.SetTiltfileArgsAction:
-		handleSetTiltfileArgsAction(state, action)
 	case store.LogAction:
 		handleLogAction(state, action)
 	case session.SessionUpdateStatusAction:
@@ -263,7 +261,7 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.TiltStartTime = action.StartTime
 	engineState.DesiredTiltfilePath = action.TiltfilePath
 	engineState.TiltfileConfigPaths[model.MainTiltfileManifestName] = action.ConfigFiles
-	engineState.UserConfigState.Args = action.UserArgs
+	engineState.UserConfigState = model.NewUserConfigState(action.UserArgs)
 	engineState.AnalyticsUserOpt = action.AnalyticsUserOpt
 	engineState.CloudAddress = action.CloudAddress
 	engineState.Token = action.Token
@@ -280,10 +278,6 @@ func handleHudExitAction(state *store.EngineState, action hud.ExitAction) {
 
 func handlePanicAction(state *store.EngineState, action store.PanicAction) {
 	state.PanicExited = action.Err
-}
-
-func handleSetTiltfileArgsAction(state *store.EngineState, action tiltfiles.SetTiltfileArgsAction) {
-	state.UserConfigState = state.UserConfigState.WithArgs(action.Args)
 }
 
 func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineState, action dcwatch.EventAction) {

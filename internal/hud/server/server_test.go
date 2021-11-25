@@ -15,22 +15,23 @@ import (
 	"testing"
 	"time"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/tilt-dev/tilt/internal/controllers/fake"
-	"github.com/tilt-dev/tilt/internal/store/tiltfiles"
-	"github.com/tilt-dev/tilt/internal/testutils"
-
 	grpcRuntime "github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tilt-dev/wmclient/pkg/analytics"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/cloud"
 	"github.com/tilt-dev/tilt/internal/cloud/cloudurl"
+	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/hud/server"
+	"github.com/tilt-dev/tilt/internal/hud/view"
+	"github.com/tilt-dev/tilt/internal/sliceutils"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/assets"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -376,20 +377,26 @@ func TestSetTiltfileArgs(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 	require.Equal(t, http.StatusOK, rr.Code)
 
-	a := store.WaitForAction(t, reflect.TypeOf(tiltfiles.SetTiltfileArgsAction{}), f.getActions)
-	action, ok := a.(tiltfiles.SetTiltfileArgsAction)
-	if !ok {
-		t.Fatalf("Action was not of type '%T': %+v", tiltfiles.SetTiltfileArgsAction{}, action)
-	}
-	assert.Equal(t, []string{"--foo", "bar", "as df"}, action.Args)
+	require.Eventuallyf(t, func() bool {
+		var tf v1alpha1.Tiltfile
+		err := f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: view.TiltfileResourceName}, &tf)
+		if err != nil {
+			return false
+		}
+		return sliceutils.StringSliceEquals(tf.Spec.Args, []string{"--foo", "bar", "as df"})
+	},
+		time.Second, time.Millisecond, "args didn't show up in Tiltfile API object",
+	)
 }
 
 type serverFixture struct {
 	t            *testing.T
+	ctx          context.Context
 	serv         *server.HeadsUpServer
 	a            *analytics.MemoryAnalytics
 	ta           *tiltanalytics.TiltAnalytics
 	st           *store.Store
+	ctrlClient   ctrlclient.Client
 	getActions   func() []store.Action
 	snapshotHTTP *fakeHTTPClient
 }
@@ -411,17 +418,21 @@ func newTestFixture(t *testing.T) *serverFixture {
 		ObjectMeta: metav1.ObjectMeta{Name: model.MainTiltfileManifestName.String()},
 	})
 
-	serv, err := server.ProvideHeadsUpServer(context.Background(), st, assets.NewFakeServer(), ta, uploader, wsl, ctrlClient)
+	ctx := context.Background()
+
+	serv, err := server.ProvideHeadsUpServer(ctx, st, assets.NewFakeServer(), ta, uploader, wsl, ctrlClient)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	return &serverFixture{
 		t:            t,
+		ctx:          ctx,
 		serv:         serv,
 		a:            a,
 		ta:           ta,
 		st:           st,
+		ctrlClient:   ctrlClient,
 		getActions:   getActions,
 		snapshotHTTP: snapshotHTTP,
 	}

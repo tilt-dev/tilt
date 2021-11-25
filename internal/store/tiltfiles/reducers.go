@@ -18,6 +18,10 @@ func HandleTiltfileUpsertAction(state *store.EngineState, action TiltfileUpsertA
 		}
 	}
 
+	if mn == model.MainTiltfileManifestName {
+		state.UserConfigState.Args = action.Tiltfile.Spec.Args
+	}
+
 	for _, x := range state.TiltfileDefinitionOrder {
 		if x == mn {
 			return // already in the order array
