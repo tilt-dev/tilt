@@ -199,11 +199,13 @@ const DisableButton = styled(ApiButton)`
     }
   }
 
-  .MuiButton-label {
-    // hardcode a width to workaround this bug:
-    // https://app.shortcut.com/windmill/story/12912/uibuttons-created-by-togglebuttons-have-different-sizes-when-toggled
-    width: ${SizeUnit(3.6)};
+  button:first-child {
+    width: 100%;
   }
+
+  // hardcode a width to workaround this bug:
+  // https://app.shortcut.com/windmill/story/12912/uibuttons-created-by-togglebuttons-have-different-sizes-when-toggled
+  width: ${SizeUnit(4.4)};
 `
 
 const ButtonRoot = styled(InstrumentedButton)`

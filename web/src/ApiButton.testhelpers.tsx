@@ -39,6 +39,7 @@ export function hiddenField(name: string, value: string): UIInputSpec {
 export function makeUIButton(args?: {
   inputSpecs?: UIInputSpec[]
   inputStatuses?: UIInputStatus[]
+  requiresConfirmation?: boolean
 }): UIButton {
   return {
     metadata: {
@@ -52,6 +53,7 @@ export function makeUIButton(args?: {
         componentType: "Global",
         componentID: "nav",
       },
+      requiresConfirmation: args?.requiresConfirmation,
     },
     status: {
       inputs: args?.inputStatuses,

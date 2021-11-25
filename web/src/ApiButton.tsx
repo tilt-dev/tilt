@@ -14,6 +14,7 @@ import { Link } from "react-router-dom"
 import styled from "styled-components"
 import { Tags } from "./analytics"
 import { annotations } from "./annotations"
+import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
 import FloatDialog from "./FloatDialog"
 import { useHudErrorContext } from "./HudErrorContext"
 import {
@@ -56,6 +57,25 @@ export const ApiButtonRoot = styled(ButtonGroup)<{ disabled?: boolean }>`
 export const LogLink = styled(Link)`
   font-size: ${FontSize.smallest};
   padding-left: ${SizeUnit(0.5)};
+`
+const ConfirmButton = styled(InstrumentedButton)`
+  && {
+    background-color: ${Color.red};
+    border-color: ${Color.gray};
+    color: ${Color.black};
+
+    &:hover,
+    &:active,
+    &:focus {
+      background-color: ${Color.red};
+      border-color: ${Color.redLight};
+      color: ${Color.black};
+    }
+  }
+
+  .fillStd {
+    fill: ${Color.black} !important; /* there's some style somewhere with a higher level of specificity than this one that i did not spend time trying to find... */
+  }
 `
 
 type ApiButtonProps = ButtonProps & {
@@ -287,17 +307,6 @@ async function updateButtonStatus(
   await tiltApiPut("uibuttons", "status", toUpdate)
 }
 
-function setHiddenInputs(
-  uiButton: UIButton,
-  inputValues: { [name: string]: any }
-) {
-  uiButton.spec?.inputs?.forEach((i) => {
-    if (i.hidden && i.name) {
-      inputValues[i.name] = i.hidden.value
-    }
-  })
-}
-
 // Renders a UIButton.
 // NB: The `Button` in `ApiButton` refers to a UIButton, not an html <button>.
 // This can be confusing because each ApiButton consists of one or two <button>s:
@@ -311,6 +320,8 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
   const [inputValues, setInputValues] = usePersistentState<{
     [name: string]: any
   }>(`apibutton-${uiButton.metadata?.name}`, {})
+
+  const [confirming, setConfirming] = useState(false)
 
   const { enqueueSnackbar } = useSnackbar()
   const pb = usePathBuilder()
@@ -332,6 +343,15 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
   }
 
   const onClick = async () => {
+    if (uiButton.spec?.requiresConfirmation && !confirming) {
+      setConfirming(true)
+      return
+    }
+
+    if (confirming) {
+      setConfirming(false)
+    }
+
     // TODO(milas): currently the loading state just disables the button for the duration of
     //  the AJAX request to avoid duplicate clicks - there is no progress tracking at the
     //  moment, so there's no fancy spinner animation or propagation of result of action(s)
@@ -367,6 +387,37 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
   }
 
   const disabled = loading || uiButton.spec?.disabled
+
+  if (confirming) {
+    return (
+      <ApiButtonRoot
+        className={className}
+        disableRipple={true}
+        aria-label={uiButton.spec?.text}
+        disabled={disabled}
+      >
+        <ConfirmButton
+          analyticsName={"ui.web.uibutton"}
+          analyticsTags={{ confirm: "true" }}
+          onClick={onClick}
+          disabled={disabled}
+          aria-label={`Confirm ${uiButton.spec?.text}`}
+          {...buttonProps}
+        >
+          <ApiButtonLabel>Confirm</ApiButtonLabel>
+        </ConfirmButton>
+        <ConfirmButton
+          analyticsName={"ui.web.uibutton"}
+          analyticsTags={{ unconfirm: "true" }}
+          onClick={() => setConfirming(false)}
+          aria-label={`Cancel ${uiButton.spec?.text}`}
+          {...buttonProps}
+        >
+          <CloseSvg />
+        </ConfirmButton>
+      </ApiButtonRoot>
+    )
+  }
 
   // button text is not included in analytics name since that can be user data
   const button = (

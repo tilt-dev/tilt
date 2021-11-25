@@ -41,3 +41,9 @@ export function expectIncrs(...incrs: { name: string; tags: Tags }[]) {
   )
   expect(actualRequestBodies).toEqual(expectedRequestBodies)
 }
+
+export function nonAnalyticsCalls() {
+  return fetchMock
+    .calls()
+    .filter((c) => c[0] !== "http://localhost/api/analytics")
+}
