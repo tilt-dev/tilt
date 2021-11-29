@@ -198,6 +198,14 @@ type UIResourceStatus struct {
 	//
 	// +optional
 	Waiting *UIResourceStateWaiting `json:"waiting,omitempty" protobuf:"bytes,17,opt,name=waiting"`
+
+	// Represents the latest available observations of a UIResource's current state.
+	//
+	// Designed for compatibility with 'wait' and cross-resource status reporting.
+	// https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
+	//
+	// +optional
+	Conditions []UIResourceCondition `json:"conditions,omitempty" protobuf:"bytes,18,rep,name=conditions"`
 }
 
 // UIResource implements ObjectWithStatusSubResource interface.
@@ -383,4 +391,29 @@ type UIResourceStateWaitingOnRef struct {
 
 	// Name of the object being waiting on.
 	Name string `json:"name" protobuf:"bytes,4,opt,name=name"`
+}
+
+type UIResourceConditionType string
+
+// Ready means the UI Resource has built, deployed, and passed any readiness checks.
+const UIResourceReady UIResourceConditionType = "Ready"
+
+type UIResourceCondition struct {
+	// Type of UI Resource condition.
+	Type UIResourceConditionType `json:"type" protobuf:"bytes,1,opt,name=type,casttype=UIResourceConditionType"`
+
+	// Status of the condition, one of True, False, Unknown.
+	Status metav1.ConditionStatus `json:"status" protobuf:"bytes,6,opt,name=status,casttype=k8s.io/apimachinery/pkg/apis/meta/v1.ConditionStatus"`
+
+	// Last time the condition transitioned from one status to another.
+	// +optional
+	LastTransitionTime metav1.MicroTime `json:"lastTransitionTime,omitempty" protobuf:"bytes,3,opt,name=lastTransitionTime"`
+
+	// The reason for the condition's last transition.
+	// +optional
+	Reason string `json:"reason,omitempty" protobuf:"bytes,4,opt,name=reason"`
+
+	// A human readable message indicating details about the transition.
+	// +optional
+	Message string `json:"message,omitempty" protobuf:"bytes,5,opt,name=message"`
 }

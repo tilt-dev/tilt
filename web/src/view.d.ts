@@ -458,6 +458,15 @@ declare namespace Proto {
      * +optional
      */
     waiting?: v1alpha1UIResourceStateWaiting;
+    /**
+     * Represents the latest available observations of a UIResource's current state.
+     *
+     * Designed for compatibility with 'wait' and cross-resource status reporting.
+     * https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
+     *
+     * +optional
+     */
+    conditions?: v1alpha1UIResourceCondition[];
   }
   export interface v1alpha1UIResourceStateWaitingOnRef {
     /**
@@ -519,6 +528,19 @@ declare namespace Proto {
     podRestarts?: number;
     spanID?: string;
     displayNames?: string[];
+  }
+  export interface v1alpha1UIResourceCondition {
+    /**
+     * Type of UI Resource condition.
+     */
+    type?: string;
+    /**
+     * Status of the condition, one of True, False, Unknown.
+     */
+    status?: string;
+    lastTransitionTime?: string;
+    reason?: string;
+    message?: string;
   }
   export interface v1alpha1UIResource {
     metadata?: v1ObjectMeta;
