@@ -167,6 +167,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIInputSpec":                     schema_pkg_apis_core_v1alpha1_UIInputSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIInputStatus":                   schema_pkg_apis_core_v1alpha1_UIInputStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResource":                      schema_pkg_apis_core_v1alpha1_UIResource(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceCondition":             schema_pkg_apis_core_v1alpha1_UIResourceCondition(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceKubernetes":            schema_pkg_apis_core_v1alpha1_UIResourceKubernetes(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLink":                  schema_pkg_apis_core_v1alpha1_UIResourceLink(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceList":                  schema_pkg_apis_core_v1alpha1_UIResourceList(ref),
@@ -6226,6 +6227,58 @@ func schema_pkg_apis_core_v1alpha1_UIResource(ref common.ReferenceCallback) comm
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_UIResourceCondition(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"type": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Type of UI Resource condition.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Status of the condition, one of True, False, Unknown.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"lastTransitionTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Last time the condition transitioned from one status to another.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+					"reason": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The reason for the condition's last transition.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"message": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A human readable message indicating details about the transition.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"type", "status"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_UIResourceKubernetes(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -6644,11 +6697,25 @@ func schema_pkg_apis_core_v1alpha1_UIResourceStatus(ref common.ReferenceCallback
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceStateWaiting"),
 						},
 					},
+					"conditions": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Represents the latest available observations of a UIResource's current state.\n\nDesigned for compatibility with 'wait' and cross-resource status reporting. https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceCondition"),
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableResourceStatus", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildRunning", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildTerminated", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceKubernetes", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLink", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLocal", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceStateWaiting", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceTargetSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableResourceStatus", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildRunning", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildTerminated", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceCondition", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceKubernetes", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLink", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLocal", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceStateWaiting", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceTargetSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
 	}
 }
 

@@ -2459,6 +2459,26 @@ message UIResource {
   optional UIResourceStatus status = 3;
 }
 
+message UIResourceCondition {
+  // Type of UI Resource condition.
+  optional string type = 1;
+
+  // Status of the condition, one of True, False, Unknown.
+  optional string status = 6;
+
+  // Last time the condition transitioned from one status to another.
+  // +optional
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastTransitionTime = 3;
+
+  // The reason for the condition's last transition.
+  // +optional
+  optional string reason = 4;
+
+  // A human readable message indicating details about the transition.
+  // +optional
+  optional string message = 5;
+}
+
 // UIResourceKubernetes contains status information specific to Kubernetes.
 message UIResourceKubernetes {
   // The name of the active pod.
@@ -2646,6 +2666,14 @@ message UIResourceStatus {
   //
   // +optional
   optional UIResourceStateWaiting waiting = 17;
+
+  // Represents the latest available observations of a UIResource's current state.
+  //
+  // Designed for compatibility with 'wait' and cross-resource status reporting.
+  // https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
+  //
+  // +optional
+  repeated UIResourceCondition conditions = 18;
 }
 
 // UIResourceTargetSpec represents the spec of a build or deploy that a resource summarizes.

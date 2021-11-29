@@ -656,6 +656,31 @@
       },
       "description": "UIResource represents per-resource status data for rendering the web UI.\n\nTreat this as a legacy data structure that's more intended to make transition\neasier rather than a robust long-term API.\n\n+k8s:openapi-gen=true"
     },
+    "v1alpha1UIResourceCondition": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Type of UI Resource condition."
+        },
+        "status": {
+          "type": "string",
+          "description": "Status of the condition, one of True, False, Unknown."
+        },
+        "lastTransitionTime": {
+          "type": "string", "format": "date-time",
+          "title": "Last time the condition transitioned from one status to another.\n+optional"
+        },
+        "reason": {
+          "type": "string",
+          "title": "The reason for the condition's last transition.\n+optional"
+        },
+        "message": {
+          "type": "string",
+          "title": "A human readable message indicating details about the transition.\n+optional"
+        }
+      }
+    },
     "v1alpha1UIResourceKubernetes": {
       "type": "object",
       "properties": {
@@ -849,6 +874,13 @@
         "waiting": {
           "$ref": "#/definitions/v1alpha1UIResourceStateWaiting",
           "description": "Waiting provides detail on why the resource is currently blocked from updating.\n\n+optional"
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1alpha1UIResourceCondition"
+          },
+          "description": "Represents the latest available observations of a UIResource's current state.\n\nDesigned for compatibility with 'wait' and cross-resource status reporting.\nhttps://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties\n\n+optional"
         }
       },
       "title": "UIResourceStatus defines the observed state of UIResource"
