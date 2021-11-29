@@ -3677,6 +3677,40 @@ func TestDisabledResourceRemovedFromTriggerQueue(t *testing.T) {
 	})
 }
 
+func TestLocalResourceNoServeCmdDeps(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	f.useRealTiltfileLoader()
+
+	// create a Tiltfile with 2 resources:
+	// 	1. foo - update only, i.e. a job, with a readiness_probe also defined
+	// 		(which should be ignored as there's no server to be ready!)
+	// 	2. bar - local_resource w/ dep on foo
+	f.WriteFile("Tiltfile", `
+local_resource('foo', cmd='true', readiness_probe=probe(http_get=http_get_action(port=12345)))
+local_resource('bar', serve_cmd='while true; do echo hi; sleep 30; done', resource_deps=['foo'])
+`)
+	f.loadAndStart()
+
+	f.waitForCompletedBuildCount(2)
+
+	f.withState(func(es store.EngineState) {
+		require.True(t, strings.Contains(es.LogStore.ManifestLog("(Tiltfile)"),
+			`WARNING: Ignoring readiness probe for local resource "foo" (no serve_cmd was defined)`),
+			"Log did not contain ignored readiness probe warning")
+	})
+
+	// foo should indicate that it has succeeded since there is no serve_cmd and thus no runtime status
+	f.withManifestState("foo", func(ms store.ManifestState) {
+		require.True(t, ms.RuntimeState.HasEverBeenReadyOrSucceeded())
+		require.Equal(t, v1alpha1.RuntimeStatusNotApplicable, ms.RuntimeState.RuntimeStatus())
+	})
+
+	f.WaitUntilManifestState("bar ready", "bar", func(ms store.ManifestState) bool {
+		return ms.RuntimeState.HasEverBeenReadyOrSucceeded() && ms.RuntimeState.RuntimeStatus() == v1alpha1.RuntimeStatusOK
+	})
+}
+
 type testFixture struct {
 	*tempdir.TempDirFixture
 	t                          *testing.T
