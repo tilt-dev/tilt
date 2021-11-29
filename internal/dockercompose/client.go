@@ -32,6 +32,17 @@ import (
 // (See TestParseComposeVersionOutput for various cases.)
 var versionRegex = regexp.MustCompile(`(?mi)^docker[ -]compose(?: version)?:? v?([^\s,]+),?(?: build ([a-z0-9-]+))?`)
 
+// dcProjectOptions are used when loading Docker Compose projects via the Go library.
+//
+// See also: dcLoaderOption which is used for loading projects from the CLI fallback and for tests, which should
+// be kept in sync behavior-wise.
+var dcProjectOptions = []compose.ProjectOptionsFn{
+	compose.WithResolvedPaths(true),
+	compose.WithNormalization(true),
+	compose.WithOsEnv,
+	compose.WithDotEnv,
+}
+
 type DockerComposeClient interface {
 	Up(ctx context.Context, spec model.DockerComposeUpSpec, shouldBuild bool, stdout, stderr io.Writer) error
 	Down(ctx context.Context, spec model.DockerComposeProject, stdout, stderr io.Writer) error
@@ -255,9 +266,8 @@ func (c *cmdDCClient) Version(ctx context.Context) (string, string, error) {
 }
 
 func (c *cmdDCClient) loadProjectNative(configPaths []string) (*types.Project, error) {
-	// NOTE: take care to keep relevant options in sync with FakeDCClient::Project() and cmdDCClient::loadProjectCLI()
-	// 	which work differently so cannot directly share options but need to behave similarly
-	opts, err := compose.NewProjectOptions(configPaths, compose.WithOsEnv, compose.WithResolvedPaths(true), compose.WithDotEnv)
+	// NOTE: take care to keep behavior in sync with loadProjectCLI()
+	opts, err := compose.NewProjectOptions(configPaths, dcProjectOptions...)
 	if err != nil {
 		return nil, err
 	}
@@ -293,9 +303,17 @@ func (c *cmdDCClient) loadProjectCLI(ctx context.Context, proj model.DockerCompo
 			},
 		},
 		// no environment specified because the CLI call will already have resolved all variables
-	}, func(options *loader.Options) {
-		options.ResolvePaths = true
-	})
+	}, dcLoaderOption)
+}
+
+// dcLoaderOption is used when loading Docker Compose projects via the CLI and fallback and for tests.
+//
+// See also: dcProjectOptions which is used for loading projects from the Go library, which should
+// be kept in sync behavior-wise.
+func dcLoaderOption(opts *loader.Options) {
+	opts.ResolvePaths = true
+	opts.SkipNormalization = false
+	opts.SkipInterpolation = false
 }
 
 func dcExecutablePath() string {

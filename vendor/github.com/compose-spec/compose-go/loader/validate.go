@@ -45,13 +45,6 @@ func checkConsistency(project *types.Project) error {
 			}
 		}
 
-		if strings.HasPrefix(s.NetworkMode, types.ContainerPrefix) {
-			containerName := s.NetworkMode[len(types.ContainerPrefix):]
-			if _, err := project.GetByContainerName(containerName); err != nil {
-				return fmt.Errorf("service with container_name %q not found for network_mode 'container:%s'", containerName, containerName)
-			}
-		}
-
 		for _, volume := range s.Volumes {
 			switch volume.Type {
 			case types.VolumeTypeVolume:

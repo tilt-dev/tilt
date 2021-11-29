@@ -331,7 +331,7 @@
         "privileged": {"type": "boolean"},
         "profiles": {"$ref": "#/definitions/list_of_strings"},
         "pull_policy": {"type": "string", "enum": [
-          "always", "never", "if_not_present", "build"
+          "always", "never", "if_not_present", "build", "missing"
         ]},
         "read_only": {"type": "boolean"},
         "restart": {"type": "string"},
@@ -367,6 +367,7 @@
         "stdin_open": {"type": "boolean"},
         "stop_grace_period": {"type": "string", "format": "duration"},
         "stop_signal": {"type": "string"},
+        "storage_opt": {"type": "object"},
         "tmpfs": {"$ref": "#/definitions/string_or_list"},
         "tty": {"type": "boolean"},
         "ulimits": {
@@ -426,8 +427,10 @@
                     "type": "object",
                     "properties": {
                       "size": {
-                        "type": "integer",
-                        "minimum": 0
+                        "oneOf": [
+                          {"type": "integer", "minimum": 0},
+                          {"type": "string"}
+                        ]
                       }
                     },
                     "additionalProperties": false,
@@ -599,12 +602,12 @@
       "items": {
         "type": "object",
         "properties": {
-          "capabilities": {"$ref": "#/definitions/list_of_strings"},
-          "count": {"type": ["string", "integer"]},
-          "device_ids": {"$ref": "#/definitions/list_of_strings"},
-          "driver":{"type": "string"},
-          "options":{"$ref": "#/definitions/list_or_dict"}
-        },
+            "capabilities": {"$ref": "#/definitions/list_of_strings"},
+            "count": {"type": ["string", "integer"]},
+            "device_ids": {"$ref": "#/definitions/list_of_strings"},
+            "driver":{"type": "string"},
+            "options":{"$ref": "#/definitions/list_or_dict"}
+          },
         "additionalProperties": false,
         "patternProperties": {"^x-": {}}
       }

@@ -41,6 +41,10 @@ func normalize(project *types.Project, resolvePaths bool) error {
 	}
 	project.ComposeFiles = absComposeFiles
 
+	if project.Networks == nil {
+		project.Networks = make(map[string]types.NetworkConfig)
+	}
+
 	// If not declared explicitly, Compose model involves an implicit "default" network
 	if _, ok := project.Networks["default"]; !ok {
 		project.Networks["default"] = types.NetworkConfig{}
@@ -74,7 +78,6 @@ func normalize(project *types.Project, resolvePaths bool) error {
 			if _, err := os.Stat(localContext); err == nil {
 				if resolvePaths {
 					s.Build.Context = localContext
-					s.Build.Dockerfile = absPath(localContext, s.Build.Dockerfile)
 				}
 			} else {
 				// might be a remote http/git context. Unfortunately supported "remote" syntax is highly ambiguous
@@ -84,17 +87,22 @@ func normalize(project *types.Project, resolvePaths bool) error {
 		}
 		s.Environment = s.Environment.Resolve(fn)
 
-		err := relocateLogDriver(s)
+		err := relocateLogDriver(&s)
 		if err != nil {
 			return err
 		}
 
-		err = relocateLogOpt(s)
+		err = relocateLogOpt(&s)
 		if err != nil {
 			return err
 		}
 
-		err = relocateDockerfile(s)
+		err = relocateDockerfile(&s)
+		if err != nil {
+			return err
+		}
+
+		err = relocateScale(&s)
 		if err != nil {
 			return err
 		}
@@ -104,6 +112,21 @@ func normalize(project *types.Project, resolvePaths bool) error {
 
 	setNameFromKey(project)
 
+	return nil
+}
+
+func relocateScale(s *types.ServiceConfig) error {
+	scale := uint64(s.Scale)
+	if scale != 1 {
+		logrus.Warn("`scale` is deprecated. Use the `deploy.replicas` element")
+		if s.Deploy == nil {
+			s.Deploy = &types.DeployConfig{}
+		}
+		if s.Deploy.Replicas != nil && *s.Deploy.Replicas != scale {
+			return errors.Wrap(errdefs.ErrInvalid, "can't use both 'scale' (deprecated) and 'deploy.replicas'")
+		}
+		s.Deploy.Replicas = &scale
+	}
 	return nil
 }
 
@@ -193,7 +216,7 @@ func relocateExternalName(project *types.Project) error {
 	return nil
 }
 
-func relocateLogOpt(s types.ServiceConfig) error {
+func relocateLogOpt(s *types.ServiceConfig) error {
 	if len(s.LogOpt) != 0 {
 		logrus.Warn("`log_opts` is deprecated. Use the `logging` element")
 		if s.Logging == nil {
@@ -210,7 +233,7 @@ func relocateLogOpt(s types.ServiceConfig) error {
 	return nil
 }
 
-func relocateLogDriver(s types.ServiceConfig) error {
+func relocateLogDriver(s *types.ServiceConfig) error {
 	if s.LogDriver != "" {
 		logrus.Warn("`log_driver` is deprecated. Use the `logging` element")
 		if s.Logging == nil {
@@ -225,7 +248,7 @@ func relocateLogDriver(s types.ServiceConfig) error {
 	return nil
 }
 
-func relocateDockerfile(s types.ServiceConfig) error {
+func relocateDockerfile(s *types.ServiceConfig) error {
 	if s.Dockerfile != "" {
 		logrus.Warn("`dockerfile` is deprecated. Use the `build` element")
 		if s.Build == nil {

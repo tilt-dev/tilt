@@ -33,7 +33,7 @@ func (d Duration) String() string {
 	return time.Duration(d).String()
 }
 
-// ConvertDurationPtr converts a typedefined Duration pointer to a time.Duration pointer with the same value.
+// ConvertDurationPtr converts a type defined Duration pointer to a time.Duration pointer with the same value.
 func ConvertDurationPtr(d *Duration) *time.Duration {
 	if d == nil {
 		return nil
@@ -89,7 +89,7 @@ type ServiceConfig struct {
 	Profiles []string `mapstructure:"profiles" yaml:"profiles,omitempty" json:"profiles,omitempty"`
 
 	Build           *BuildConfig                     `yaml:",omitempty" json:"build,omitempty"`
-	BlkioConfig     *BlkioConfig                     `yaml:",omitempty" json:"blkio_config,omitempty"`
+	BlkioConfig     *BlkioConfig                     `mapstructure:"blkio_config" yaml:",omitempty" json:"blkio_config,omitempty"`
 	CapAdd          []string                         `mapstructure:"cap_add" yaml:"cap_add,omitempty" json:"cap_add,omitempty"`
 	CapDrop         []string                         `mapstructure:"cap_drop" yaml:"cap_drop,omitempty" json:"cap_drop,omitempty"`
 	CgroupParent    string                           `mapstructure:"cgroup_parent" yaml:"cgroup_parent,omitempty" json:"cgroup_parent,omitempty"`
@@ -121,7 +121,7 @@ type ServiceConfig struct {
 	Extends         ExtendsConfig                    `yaml:"extends,omitempty" json:"extends,omitempty"`
 	ExternalLinks   []string                         `mapstructure:"external_links" yaml:"external_links,omitempty" json:"external_links,omitempty"`
 	ExtraHosts      HostsList                        `mapstructure:"extra_hosts" yaml:"extra_hosts,omitempty" json:"extra_hosts,omitempty"`
-	GroupAdd        []string                         `mapstructure:"group_app" yaml:"group_add,omitempty" json:"group_add,omitempty"`
+	GroupAdd        []string                         `mapstructure:"group_add" yaml:"group_add,omitempty" json:"group_add,omitempty"`
 	Hostname        string                           `yaml:",omitempty" json:"hostname,omitempty"`
 	HealthCheck     *HealthCheckConfig               `yaml:",omitempty" json:"healthcheck,omitempty"`
 	Image           string                           `yaml:",omitempty" json:"image,omitempty"`
@@ -152,7 +152,7 @@ type ServiceConfig struct {
 	ReadOnly        bool                             `mapstructure:"read_only" yaml:"read_only,omitempty" json:"read_only,omitempty"`
 	Restart         string                           `yaml:",omitempty" json:"restart,omitempty"`
 	Runtime         string                           `yaml:",omitempty" json:"runtime,omitempty"`
-	Scale           int                              `yaml:",omitempty" json:"scale,omitempty"`
+	Scale           int                              `yaml:"-" json:"-"`
 	Secrets         []ServiceSecretConfig            `yaml:",omitempty" json:"secrets,omitempty"`
 	SecurityOpt     []string                         `mapstructure:"security_opt" yaml:"security_opt,omitempty" json:"security_opt,omitempty"`
 	ShmSize         UnitBytes                        `mapstructure:"shm_size" yaml:"shm_size,omitempty" json:"shm_size,omitempty"`
@@ -208,7 +208,7 @@ const (
 	PullPolicyNever = "never"
 	//PullPolicyIfNotPresent pull missing images
 	PullPolicyIfNotPresent = "if_not_present"
-	//PullPolicyIfNotPresent pull missing images
+	//PullPolicyMissing pull missing images
 	PullPolicyMissing = "missing"
 	//PullPolicyBuild force building images
 	PullPolicyBuild = "build"
@@ -611,7 +611,7 @@ func ParsePortConfig(value string) ([]ServicePortConfig, error) {
 }
 
 func convertPortToPortConfig(port nat.Port, portBindings map[nat.Port][]nat.PortBinding) ([]ServicePortConfig, error) {
-	portConfigs := []ServicePortConfig{}
+	var portConfigs []ServicePortConfig
 	for _, binding := range portBindings[port] {
 		startHostPort, endHostPort, err := nat.ParsePortRange(binding.HostPort)
 
@@ -647,13 +647,13 @@ type ServiceVolumeConfig struct {
 }
 
 const (
-	// TypeBind is the type for mounting host dir
+	// VolumeTypeBind is the type for mounting host dir
 	VolumeTypeBind = "bind"
-	// TypeVolume is the type for remote storage volumes
+	// VolumeTypeVolume is the type for remote storage volumes
 	VolumeTypeVolume = "volume"
-	// TypeTmpfs is the type for mounting tmpfs
+	// VolumeTypeTmpfs is the type for mounting tmpfs
 	VolumeTypeTmpfs = "tmpfs"
-	// TypeNamedPipe is the type for mounting Windows named pipes
+	// VolumeTypeNamedPipe is the type for mounting Windows named pipes
 	VolumeTypeNamedPipe = "npipe"
 )
 
@@ -690,7 +690,7 @@ type ServiceVolumeVolume struct {
 
 // ServiceVolumeTmpfs are options for a service volume of type tmpfs
 type ServiceVolumeTmpfs struct {
-	Size int64 `yaml:",omitempty" json:"size,omitempty"`
+	Size UnitBytes `yaml:",omitempty" json:"size,omitempty"`
 
 	Extensions map[string]interface{} `yaml:",inline" json:"-"`
 }
@@ -748,6 +748,7 @@ type NetworkConfig struct {
 	Internal   bool                   `yaml:",omitempty" json:"internal,omitempty"`
 	Attachable bool                   `yaml:",omitempty" json:"attachable,omitempty"`
 	Labels     Labels                 `yaml:",omitempty" json:"labels,omitempty"`
+	EnableIPv6 bool                   `mapstructure:"enable_ipv6" yaml:"enable_ipv6,omitempty" json:"enable_ipv6,omitempty"`
 	Extensions map[string]interface{} `yaml:",inline" json:"-"`
 }
 

@@ -7,7 +7,7 @@ require (
 	github.com/akutz/memconn v0.1.0
 	github.com/alessio/shellescape v1.2.2
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/compose-spec/compose-go v0.0.0-20210910070419-813d4ccb40f8
+	github.com/compose-spec/compose-go v1.0.8
 	github.com/containerd/continuity v0.0.0-20201208142359-180525291bb7
 	github.com/davecgh/go-spew v1.1.1
 	github.com/docker/cli v20.10.5+incompatible
@@ -104,6 +104,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
 	github.com/chai2010/gettext-go v0.0.0-20170215093142-bf70f2a70fb1 // indirect
 	github.com/cloudflare/cfssl v1.4.1 // indirect
+	github.com/compose-spec/godotenv v1.1.1 // indirect
 	github.com/containerd/containerd v1.4.4 // indirect
 	github.com/containerd/ttrpc v1.0.1 // indirect
 	github.com/containerd/typeurl v1.0.1 // indirect
@@ -155,7 +156,7 @@ require (
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
 	github.com/miekg/pkcs11 v0.0.0-20180817151620-df0db7a16a9e // indirect
 	github.com/mitchellh/go-wordwrap v1.0.0 // indirect
-	github.com/mitchellh/mapstructure v1.4.1 // indirect
+	github.com/mitchellh/mapstructure v1.4.2 // indirect
 	github.com/moby/spdystream v0.2.0 // indirect
 	github.com/moby/sys/mount v0.1.0 // indirect
 	github.com/moby/sys/mountinfo v0.1.3 // indirect
@@ -178,7 +179,6 @@ require (
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/theupdateframework/notary v0.6.1 // indirect
-	github.com/ulyssessouza/godotenv v1.3.1-0.20210806120901-e417b721114e // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect

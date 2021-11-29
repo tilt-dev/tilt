@@ -143,7 +143,7 @@ func (c *FakeDCClient) Project(_ context.Context, m model.DockerComposeProject) 
 	// this is a dummy ProjectOptions that lets us use compose's logic to apply options
 	// for consistency, but we have to then pull the data out ourselves since we're calling
 	// loader.Load ourselves
-	opts, err := compose.NewProjectOptions(nil, compose.WithDotEnv, compose.WithOsEnv)
+	opts, err := compose.NewProjectOptions(nil, dcProjectOptions...)
 	if err != nil {
 		return nil, err
 	}
@@ -156,9 +156,7 @@ func (c *FakeDCClient) Project(_ context.Context, m model.DockerComposeProject) 
 			},
 		},
 		Environment: opts.Environment,
-	}, func(options *loader.Options) {
-		options.ResolvePaths = true
-	})
+	}, dcLoaderOption)
 	return p, err
 }
 
