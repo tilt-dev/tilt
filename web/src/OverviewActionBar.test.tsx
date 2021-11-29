@@ -27,7 +27,7 @@ import OverviewActionBar, {
   FILTER_INPUT_DEBOUNCE,
 } from "./OverviewActionBar"
 import { EmptyBar, FullBar } from "./OverviewActionBar.stories"
-import { disableButton, oneButton, oneResourceNoAlerts } from "./testdata"
+import { disableButton, oneButton, oneResource } from "./testdata"
 
 let history: MemoryHistory
 beforeEach(() => {
@@ -63,7 +63,7 @@ it("shows pod ID", () => {
   const podId = root.find(ActionBarTopRow).find(CopyButton)
 
   expect(podId).toHaveLength(1)
-  expect(podId.text()).toContain("my-pod-deadbeef Pod ID") // Hardcoded from test data
+  expect(podId.text()).toContain("my-deadbeef-pod Pod ID") // Hardcoded from test data
 })
 
 it("skips the top bar when empty", () => {
@@ -107,7 +107,7 @@ describe("disabled resource view", () => {
   let root: ReactWrapper<any, any>
 
   beforeEach(() => {
-    const resource = oneResourceNoAlerts({
+    const resource = oneResource({
       name: "i-am-not-enabled",
       disabled: true,
     })

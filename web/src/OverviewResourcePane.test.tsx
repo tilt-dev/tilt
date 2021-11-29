@@ -122,7 +122,7 @@ describe("alert filtering", () => {
 
   it("categorizes buttons", () => {
     const view = {
-      uiResources: [oneResource()],
+      uiResources: [oneResource({ isBuilding: true })],
       uiButtons: [oneButton(0, "vigoda"), disableButton("vigoda", true)],
     }
     const root = mount(

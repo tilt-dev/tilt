@@ -21,14 +21,13 @@ export type TestDataView = {
   logList?: Proto.webviewLogList
 }
 
-// TODO (lizz): Refactor test data to be more configurable,
-// so there are fewer test generator functions with repeated code
-// and each generator function takes a configurable list of options
-// for generating resources
 export type TestResourceOptions = {
-  name?: string
   disabled?: boolean
+  endpoints?: number
+  isBuilding?: boolean
   labels?: number
+  name?: string
+  order?: number
 }
 
 let runningTiltBuild = {
@@ -103,16 +102,16 @@ function getMockRouterProps<P>(data: P) {
   return props
 }
 
-function vigodaSpecs(): any {
+function resourceSpecs(name = "vigoda"): UIResourceStatus["specs"] {
   return [
     {
       hasLiveUpdate: false,
-      id: "image:vigoda",
+      id: `image:${name}`,
       type: "image",
     },
     {
       hasLiveUpdate: false,
-      id: "k8s:vigoda",
+      id: `k8s:${name}`,
       type: "k8s",
     },
   ]
@@ -146,57 +145,38 @@ export function tiltfileResource(): UIResource {
   return resource
 }
 
-function oneResource(): UIResource {
-  const ts = new Date(Date.now()).toISOString()
-  const tsPast = new Date(Date.now() - 12300).toISOString()
-  const resource: UIResource = {
-    metadata: {
-      name: "vigoda",
-    },
-    status: {
-      lastDeployTime: ts,
-      buildHistory: [
-        {
-          error: "the build failed!",
-          finishTime: ts,
-          startTime: tsPast,
-        },
-      ],
-      pendingBuildSince: ts,
-      currentBuild: {
-        startTime: ts,
-      },
-      k8sResourceInfo: {
-        podName: "vigoda-pod",
-        podCreationTime: ts,
-        podStatus: "Running",
-        podStatusMessage: "",
-        podRestarts: 0,
-        podUpdateStartTime: ts,
-      },
-      updateStatus: "in_progress",
-      runtimeStatus: "ok",
-      triggerMode: TriggerMode.TriggerModeAuto,
-      hasPendingChanges: false,
-      endpointLinks: [],
-      queued: false,
-      specs: vigodaSpecs(),
-      order: 1,
-    },
-  }
-  return resource
-}
-
-function oneResourceNoAlerts({
-  name,
+function oneResource({
   disabled,
+  endpoints,
+  isBuilding,
   labels,
+  name,
+  order,
 }: TestResourceOptions): UIResource {
   const ts = new Date(Date.now()).toISOString()
+  const tsPast = new Date(Date.now() - 12300).toISOString()
+
   const resourceName = name ?? "vigoda"
+  const updateStatus = isBuilding ? "in_progress" : "ok"
+  const queued = !!isBuilding
   const disableStatus = disabled
     ? { ...DISABLED_RESOURCE_STATUS }
     : { ...ENABLED_RESOURCE_STATUS }
+  const resourceOrder = order ?? 1
+
+  // Compose the build history based on whether the resource is building
+  const buildHistory: UIResourceStatus["buildHistory"] = []
+  const currentBuild: UIResourceStatus["currentBuild"] = {}
+  if (isBuilding) {
+    buildHistory.push({
+      error: "the build failed!",
+      finishTime: ts,
+      startTime: tsPast,
+    })
+    currentBuild.startTime = ts
+  } else {
+    buildHistory.push({ finishTime: ts, startTime: ts })
+  }
 
   // Add the number of labels specified
   const labelsToAdd: string[] = []
@@ -211,6 +191,19 @@ function oneResourceNoAlerts({
     labelIdx++
   }
 
+  // Add the number of endpoints specified, but default to one
+  const endpointLinks: UILink[] = []
+  if (endpoints !== undefined) {
+    while (endpointLinks.length < endpoints) {
+      const portNumber = 4000 + endpointLinks.length
+      endpointLinks.push({
+        url: `http://${resourceName}:${portNumber}`,
+      })
+    }
+  } else {
+    endpointLinks.push(unnamedEndpointLink)
+  }
+
   const resource: UIResource = {
     metadata: {
       name: resourceName,
@@ -218,123 +211,29 @@ function oneResourceNoAlerts({
     },
     status: {
       lastDeployTime: ts,
-      buildHistory: [
-        {
-          finishTime: ts,
-          startTime: ts,
-        },
-      ],
+      buildHistory,
       pendingBuildSince: ts,
-      currentBuild: {},
+      currentBuild,
       k8sResourceInfo: {
         podName: resourceName + "-pod",
         podCreationTime: ts,
         podStatus: "Running",
         podRestarts: 0,
       },
-      updateStatus: "ok",
-      endpointLinks: [unnamedEndpointLink],
+      updateStatus,
+      endpointLinks,
       runtimeStatus: "ok",
-      specs: vigodaSpecs(),
+      queued,
+      triggerMode: TriggerMode.TriggerModeAuto,
+      specs: resourceSpecs(resourceName),
       disableStatus,
+      order: resourceOrder,
     },
   }
   return resource
 }
 
-function oneResourceImagePullBackOff(): UIResource {
-  const ts = new Date(Date.now()).toISOString()
-  const resource = {
-    metadata: {
-      name: "vigoda",
-    },
-    status: {
-      lastDeployTime: ts,
-      buildHistory: [
-        {
-          finishTime: ts,
-          startTime: ts,
-        },
-      ],
-      pendingBuildSince: ts,
-      currentBuild: {},
-      k8sResourceInfo: {
-        podName: "vigoda-pod",
-        podCreationTime: ts,
-        podStatus: "ImagePullBackOff",
-        podRestarts: 0,
-      },
-      endpointLinks: [unnamedEndpointLink],
-      updateStatus: "ok",
-      runtimeStatus: "ok",
-      specs: vigodaSpecs(),
-    },
-  }
-  return resource
-}
-
-function oneResourceErrImgPull(): UIResource {
-  const ts = new Date(Date.now()).toISOString()
-  const resource = {
-    metadata: {
-      name: "vigoda",
-    },
-    status: {
-      lastDeployTime: ts,
-      buildHistory: [
-        {
-          finishTime: ts,
-          startTime: ts,
-        },
-      ],
-      pendingBuildSince: ts,
-      currentBuild: {},
-      k8sResourceInfo: {
-        podName: "vigoda-pod",
-        podCreationTime: ts,
-        podStatus: "ErrImagePull",
-        podRestarts: 0,
-      },
-      endpointLinks: [unnamedEndpointLink],
-      updateStatus: "ok",
-      runtimeStatus: "ok",
-      specs: vigodaSpecs(),
-    },
-  }
-  return resource
-}
-
-function oneResourceUnrecognizedError(): UIResource {
-  const ts = new Date(Date.now()).toISOString()
-  const resource = {
-    metadata: {
-      name: "vigoda",
-    },
-    status: {
-      lastDeployTime: ts,
-      buildHistory: [
-        {
-          finishTime: ts,
-          startTime: ts,
-        },
-      ],
-      pendingBuildSince: ts,
-      currentBuild: {},
-      k8sResourceInfo: {
-        podName: "vigoda-pod",
-        podCreationTime: ts,
-        podStatus: "GarbleError",
-        podStatusMessage: "Detailed message on GarbleError",
-      },
-      updateStatus: "ok",
-      runtimeStatus: "ok",
-      specs: vigodaSpecs(),
-    },
-  }
-  return resource
-}
-
-function oneResourceTestWithName(name: string): UIResource {
+function oneTestResource(name: string = "boop"): UIResource {
   const ts = new Date(Date.now()).toISOString()
   const resource = {
     metadata: {
@@ -367,13 +266,9 @@ function oneResourceTestWithName(name: string): UIResource {
   return resource
 }
 
-function oneResourceTest(): UIResource {
-  return oneResourceTestWithName("boop")
-}
-
 function oneResourceView(): TestDataView {
   return {
-    uiResources: [oneResource()],
+    uiResources: [oneResource({ isBuilding: true })],
     uiSession: { status: { tiltfileKey: "test", runningTiltBuild } },
     uiButtons: [],
   }
@@ -382,7 +277,7 @@ function oneResourceView(): TestDataView {
 function twoResourceView(): TestDataView {
   const time = Date.now()
   const ts = new Date(time).toISOString()
-  const vigoda = oneResource()
+  const vigoda = oneResource({ isBuilding: true })
 
   const snack: UIResource = {
     metadata: {
@@ -415,7 +310,7 @@ function twoResourceView(): TestDataView {
       },
       hasPendingChanges: false,
       queued: false,
-      specs: vigodaSpecs(),
+      specs: resourceSpecs(),
       order: 2,
     },
   }
@@ -437,7 +332,7 @@ export function nResourceView(n: number): TestDataView {
       let res = tiltfileResource()
       resources.push(res)
     } else {
-      let res = oneResourceNoAlerts({})
+      let res = oneResource({})
       res.metadata = { name: "_" + i }
       res.status!.order = i
       resources.push(res)
@@ -550,7 +445,7 @@ function nButtonView(n: number): TestDataView {
           updateStatus: "ok",
           endpointLinks: [],
           runtimeStatus: "ok",
-          specs: vigodaSpecs(),
+          specs: resourceSpecs(),
         },
       },
     ],
@@ -4631,19 +4526,14 @@ c<br>
 </section>`
 
 export {
-  oneResource,
   oneResourceView,
   twoResourceView,
   getMockRouterProps,
   oneResourceFailedToBuild,
   oneResourceCrashedOnStart,
   oneResourceBuilding,
-  oneResourceNoAlerts,
-  oneResourceImagePullBackOff,
-  oneResourceErrImgPull,
-  oneResourceUnrecognizedError,
-  oneResourceTest,
-  oneResourceTestWithName,
+  oneResource,
+  oneTestResource,
   logList,
   oneButton,
   nButtonView,

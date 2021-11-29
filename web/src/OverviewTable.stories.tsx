@@ -10,7 +10,7 @@ import {
   nButtonView,
   nResourceView,
   nResourceWithLabelsView,
-  oneResourceNoAlerts,
+  oneResource,
   tiltfileResource,
   twoResourceView,
 } from "./testdata"
@@ -91,8 +91,8 @@ export const TenResources = () => {
   const view = nResourceView(8)
 
   // Add a couple disabled resources
-  const disableResource9 = oneResourceNoAlerts({ disabled: true, name: "_8" })
-  const disableResource10 = oneResourceNoAlerts({ disabled: true, name: "_9" })
+  const disableResource9 = oneResource({ disabled: true, name: "_8" })
+  const disableResource10 = oneResource({ disabled: true, name: "_9" })
   view.uiResources.push(disableResource9)
   view.uiResources.push(disableResource10)
 
@@ -103,12 +103,12 @@ export const TenResourceWithLabels = () => {
   const view = nResourceWithLabelsView(8)
 
   // Add a couple disabled resources
-  const disableResource9 = oneResourceNoAlerts({
+  const disableResource9 = oneResource({
     disabled: true,
     name: "_8",
     labels: 2,
   })
-  const disableResource10 = oneResourceNoAlerts({ disabled: true, name: "_9" })
+  const disableResource10 = oneResource({ disabled: true, name: "_9" })
   view.uiResources.push(disableResource9)
   view.uiResources.push(disableResource10)
 

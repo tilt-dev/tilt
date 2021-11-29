@@ -2,13 +2,7 @@ import { createMemoryHistory } from "history"
 import React from "react"
 import { Router } from "react-router"
 import { ButtonSet } from "./ApiButton"
-import {
-  EMPTY_FILTER_TERM,
-  FilterLevel,
-  FilterSet,
-  FilterSource,
-  useFilterSet,
-} from "./logfilters"
+import { FilterLevel, FilterSource, useFilterSet } from "./logfilters"
 import OverviewActionBar from "./OverviewActionBar"
 import { TiltSnackbarProvider } from "./Snackbar"
 import { StarredResourceMemoryProvider } from "./StarredResourcesContext"
@@ -53,35 +47,19 @@ export default {
   },
 }
 
-let defaultFilter: FilterSet = {
-  source: FilterSource.all,
-  level: FilterLevel.all,
-  term: EMPTY_FILTER_TERM,
-}
-
 export const OverflowTextBar = () => {
   let filterSet = useFilterSet()
-  let res = oneResource()
-  res.status = res.status || {}
-  res.status.endpointLinks = [
-    { url: "http://my-pod-grafana-long-service-name-deadbeef:4001" },
-    { url: "http://my-pod-grafana-long-service-name-deadbeef:4002" },
-  ]
-  res.status.k8sResourceInfo = {
-    podName: "my-pod-grafana-long-service-name-deadbeef",
-  }
+  let res = oneResource({
+    isBuilding: true,
+    name: "my-grafana-long-service-name-deadbeef",
+    endpoints: 2,
+  })
   return <OverviewActionBar resource={res} filterSet={filterSet} />
 }
 
 export const FullBar = () => {
   let filterSet = useFilterSet()
-  let res = oneResource()
-  res.status = res.status || {}
-  res.status.endpointLinks = [
-    { url: "http://localhost:4001" },
-    { url: "http://localhost:4002" },
-  ]
-  res.status.k8sResourceInfo = { podName: "my-pod-deadbeef" }
+  let res = oneResource({ isBuilding: true, name: "my-deadbeef", endpoints: 2 })
   let buttons: ButtonSet = {
     default: [oneButton(1, "vigoda")],
     toggleDisable: disableButton("vigoda", true),
@@ -93,7 +71,7 @@ export const FullBar = () => {
 
 export const EmptyBar = () => {
   let filterSet = useFilterSet()
-  let res = oneResource()
+  let res = oneResource({ isBuilding: true })
   res.status = res.status || {}
   res.status.endpointLinks = []
   res.status.k8sResourceInfo = {}
