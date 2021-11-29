@@ -10,7 +10,7 @@ def go(name, entrypoint, all_go_files, srv=""):
   local_resource(name, "go build -o /tmp/%s %s" % (name, entrypoint), serve_cmd=srv, deps=all_go_files)
 
 def go_test_changes(all_go_files):
-  local_resource('go_test_changes', "make testchanges", deps=all_go_files)
+  local_resource('go_test_changes', "make testchanges", auto_init=False, deps=all_go_files)
 
 def go_lint(all_go_files):
   local_resource("go_lint", "make lint", deps=all_go_files)
