@@ -32,6 +32,7 @@ import OverviewTable, {
   TableResourceResultCount,
   TableTriggerColumn,
   TableTriggerModeColumn,
+  TableWidgetsColumn,
   TableWithoutGroups,
 } from "./OverviewTable"
 import { ResourceGroupsInfoTip } from "./ResourceGroups"
@@ -627,7 +628,10 @@ describe("when disable resources feature is enabled", () => {
     })
     view.uiResources.unshift(firstDisabledResource)
     view.uiResources.push(secondDisabledResource)
-
+    // Add a button to the first disabled resource
+    view.uiButtons = [
+      oneButton(0, firstDisabledResource.metadata?.name as string),
+    ]
     wrapper = mount(
       tableViewWithSettings({ view, disableResourcesEnabled: true })
     )
@@ -672,7 +676,7 @@ describe("when disable resources feature is enabled", () => {
     expect(resourceNamesInOrder).toStrictEqual(expectedNameOrder)
   })
 
-  it("does NOT display trigger button, pod ID, endpoints, and trigger mode toggle for a disabled resource", () => {
+  it("does NOT display trigger button, pod ID, endpoints, widgets, and trigger mode toggle for a disabled resource", () => {
     // Get the last resource table row, which should be a disabled resource
     const disabledResource = wrapper.find(ResourceTableRow).at(5)
     const resourceName = disabledResource.find(TableNameColumn)
@@ -680,12 +684,14 @@ describe("when disable resources feature is enabled", () => {
     const podId = disabledResource.find(TablePodIDColumn)
     const endpointList = disabledResource.find(TableEndpointColumn)
     const triggerModeToggle = disabledResource.find(TableTriggerModeColumn)
+    const widgets = disabledResource.find(TableWidgetsColumn)
 
     expect(resourceName.text()).toBe("zee_disabled_resource")
     expect(triggerButton.html()).toBe(null)
     expect(podId.html()).toBe(null)
     expect(endpointList.html()).toBe(null)
     expect(triggerModeToggle.html()).toBe(null)
+    expect(widgets.html()).toBe(null)
   })
 
   it("adds `isDisabled` class to table rows for disabled resources", () => {
