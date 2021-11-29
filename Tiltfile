@@ -9,6 +9,9 @@ def get_all_go_files(path):
 def go(name, entrypoint, all_go_files, srv=""):
   local_resource(name, "go build -o /tmp/%s %s" % (name, entrypoint), serve_cmd=srv, deps=all_go_files)
 
+def go_test_changed(all_go_files):
+  local_resource('go_test_changed', "make testchanges", deps=all_go_files)
+
 def go_lint(all_go_files):
   local_resource("go_lint", "make lint", deps=all_go_files)
 
@@ -32,6 +35,7 @@ def go_vendor():
 all_go_files = get_all_go_files(".")
 
 go("Tilt", "cmd/tilt/main.go", all_go_files, srv="cd /tmp/ && ./tilt up --hud=false --web-mode=prod --port=9765")
+go_test_changed(all_go_files)
 go_lint(all_go_files)
 go_vendor()
 
