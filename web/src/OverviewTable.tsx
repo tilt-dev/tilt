@@ -336,6 +336,7 @@ const WidgetCell = styled.span`
   .MuiButtonGroup-root {
     margin-bottom: ${SizeUnit(0.125)};
     margin-right: ${SizeUnit(0.125)};
+    margin-top: ${SizeUnit(0.125)};
   }
 `
 
@@ -578,7 +579,12 @@ export function TableTriggerModeColumn({ row }: CellProps<RowValues>) {
   )
 }
 
-function TableWidgetsColumn({ row }: CellProps<RowValues>) {
+export function TableWidgetsColumn({ row }: CellProps<RowValues>) {
+  // If a resource is disabled, don't display any buttons
+  if (rowIsDisabled(row)) {
+    return null
+  }
+
   const buttons = row.original.buttons.map((b: UIButton) => {
     let content = (
       <CustomActionButton key={b.metadata?.name} uiButton={b}>
