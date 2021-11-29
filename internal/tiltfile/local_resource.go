@@ -10,7 +10,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/links"
 	"github.com/tilt-dev/tilt/internal/tiltfile/probe"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
-
 	"github.com/tilt-dev/tilt/internal/tiltfile/value"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -122,6 +121,12 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		return nil, fmt.Errorf("local_resource must have a cmd and/or a serve_cmd, but both were empty")
 	}
 
+	probeSpec := readinessProbe.Spec()
+	if probeSpec != nil && serveCmd.Empty() {
+		s.logger.Warnf("Ignoring readiness probe for local resource %q (no serve_cmd was defined)", name)
+		probeSpec = nil
+	}
+
 	res := localResource{
 		name:           string(name),
 		updateCmd:      updateCmd,
@@ -138,7 +143,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		labels:         labels.Values,
 		tags:           tags,
 		isTest:         isTest,
-		readinessProbe: readinessProbe.Spec(),
+		readinessProbe: probeSpec,
 	}
 
 	// check for duplicate resources by name and throw error if found
