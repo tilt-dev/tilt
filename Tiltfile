@@ -3,30 +3,10 @@ username = str(local('whoami')).rstrip('\n')
 experimental_analytics_report({'user.name': username})
 analytics_settings(enable=True)
 
-def remove_all_empty_and_whitespace(my_list):
-  ret = []
-  for x in my_list:
-    s = x.strip()
-    if s:
-      ret.append(s)
-
-  return ret
-
- #TODO(dmiller): can I memoize this or something?
 def get_all_go_files(path):
   return str(local('cd %s && find . -type f -name "*.go"' % path)).split("\n")
 
-def get_deps_for_pkg(pkg):
-  cmd = """go list -f '{{ join .GoFiles "\\n" }} {{ join .TestGoFiles "\\n" }} {{ join .XTestGoFiles "\\n"}}' '%s'""" % pkg
-  split = str(local(cmd)).split("\n")
-  return remove_all_empty_and_whitespace(split)
-
 def go(name, entrypoint, all_go_files, srv=""):
-  all_packages = remove_all_empty_and_whitespace(str(local('go list ./...')).rstrip().split("\n"))
-  # for pkg in all_packages:
-  #   pkg_deps = get_deps_for_pkg(pkg)
-  #   local_resource("go_test_%s" % pkg, "go test %s" % pkg, deps=pkg_deps)
-
   local_resource(name, "go build -o /tmp/%s %s" % (name, entrypoint), serve_cmd=srv, deps=all_go_files)
 
 def go_lint(all_go_files):
