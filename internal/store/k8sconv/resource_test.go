@@ -3,10 +3,12 @@ package k8sconv
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
@@ -35,6 +37,38 @@ func TestFilteredPodByPodTemplateHash(t *testing.T) {
 	res, err := NewKubernetesResource(discovery, applyStatus)
 	require.NoError(t, err)
 	assert.Equal(t, []v1alpha1.Pod{podA, podB}, res.FilteredPods)
+}
+
+func TestFilteredPodByOwner(t *testing.T) {
+	time1 := metav1.Time{Time: time.Now().Add(-time.Hour)}
+	time2 := metav1.Time{Time: time.Now().Add(-time.Minute)}
+
+	ownerA := &v1alpha1.PodOwner{Name: "rs-rev-1", CreationTimestamp: time1}
+	ownerB := &v1alpha1.PodOwner{Name: "rs-rev-2", CreationTimestamp: time2}
+	ownerC := &v1alpha1.PodOwner{Name: "alt-rs", CreationTimestamp: time1}
+	podA := v1alpha1.Pod{Name: "pod-1", Owner: ownerA, AncestorUID: "dep-1"}
+	podB := v1alpha1.Pod{Name: "pod-2", Owner: ownerA, AncestorUID: "dep-1"}
+	podAlt := v1alpha1.Pod{Name: "pod-alt", Owner: ownerC, AncestorUID: "alt-server"}
+	podC := v1alpha1.Pod{Name: "pod-3", Owner: ownerB, AncestorUID: "dep-1"}
+
+	filter := func(pods ...v1alpha1.Pod) []v1alpha1.Pod {
+		discovery := newDiscovery(pods)
+		res, err := NewKubernetesResource(discovery, nil)
+		require.NoError(t, err)
+		return res.FilteredPods
+	}
+
+	assert.Equal(t, []v1alpha1.Pod{podA, podB}, filter(podA, podB))
+	assert.Equal(t, []v1alpha1.Pod{podA, podAlt}, filter(podA, podAlt))
+
+	// Ensure that if one deployment has a new replicaset,
+	// the pods from the old replicaset are filtered out.
+	assert.Equal(t, []v1alpha1.Pod{podC}, filter(podA, podB, podC))
+	assert.Equal(t, []v1alpha1.Pod{podC}, filter(podC, podB, podA))
+
+	// Ensure that if we have pods coming from multiple deployments,
+	// we keep pods from all deployments.
+	assert.Equal(t, []v1alpha1.Pod{podAlt, podC}, filter(podAlt, podC, podB, podA))
 }
 
 func TestNewKubernetesApplyFilter_Sorted(t *testing.T) {
