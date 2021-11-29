@@ -49,7 +49,7 @@ shorttest:
 
 # Run recent changes as seen by Tilt, called from Tiltfile
 uniq = $(if $1,$(firstword $1) $(call uniq,$(filter-out $(firstword $1),$1)))
-seen_files = $(shell tilt get filewatch local:go_test_changed -o json | jq -r '.status.fileEvents[-1].seenFiles[]')
+seen_files = $(shell tilt get filewatch local:go_test_changes -o json | jq -r '.status.fileEvents[-1].seenFiles[]')
 seen_files_rel = $(subst $(PWD),.,$(seen_files))
 go_files = $(filter-out ./vendor/%,$(filter %.go, $(seen_files_rel)))
 go_pkgs = $(call uniq,$(dir $(go_files)))
@@ -60,7 +60,7 @@ testchanges:
 	go test -v -mod vendor -p $(GO_PARALLEL_JOBS) -timeout 60s $(go_pkgs)
 else
 testchanges:
-	@echo No go packages changed
+	@echo No go package changes detected by Tilt
 endif
 
 shorttestsum:
