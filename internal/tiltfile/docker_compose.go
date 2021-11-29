@@ -103,6 +103,7 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 	var resourceDepsVal starlark.Sequence
 	var links links.LinkList
 	var labels value.LabelSet
+	var autoInit = value.BoolOrNone{Value: true}
 
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
@@ -120,6 +121,7 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 		"resource_deps?", &resourceDepsVal,
 		"links?", &links,
 		"labels?", &labels,
+		"auto_init?", &autoInit,
 	); err != nil {
 		return nil, err
 	}
@@ -163,6 +165,7 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 		return nil, errors.Wrapf(err, "%s: resource_deps", fn.Name())
 	}
 	svc.resourceDeps = append(svc.resourceDeps, rds...)
+	svc.AutoInit = autoInit
 
 	return starlark.None, nil
 }
@@ -202,6 +205,7 @@ type dcService struct {
 
 	TriggerMode triggerMode
 	Links       []model.Link
+	AutoInit    value.BoolOrNone
 
 	Labels map[string]string
 
@@ -316,7 +320,11 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResource
 		WithPublishedPorts(service.PublishedPorts).
 		WithIgnoredLocalDirectories(service.MountedLocalDirs)
 
-	um, err := starlarkTriggerModeToModel(s.triggerModeForResource(service.TriggerMode), true)
+	autoInit := true
+	if service.AutoInit.IsSet {
+		autoInit = service.AutoInit.Value
+	}
+	um, err := starlarkTriggerModeToModel(s.triggerModeForResource(service.TriggerMode), autoInit)
 	if err != nil {
 		return model.Manifest{}, err
 	}
