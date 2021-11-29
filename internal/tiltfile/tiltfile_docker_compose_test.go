@@ -696,15 +696,21 @@ func TestTriggerModeDC(t *testing.T) {
 		name                string
 		globalSetting       triggerMode
 		dcResourceSetting   triggerMode
+		specifyAutoInit     bool
+		autoInit            bool
 		expectedTriggerMode model.TriggerMode
 	}{
-		{"default", TriggerModeUnset, TriggerModeUnset, model.TriggerModeAuto},
-		{"explicit global auto", TriggerModeAuto, TriggerModeUnset, model.TriggerModeAuto},
-		{"explicit global manual", TriggerModeManual, TriggerModeUnset, model.TriggerModeManualWithAutoInit},
-		{"dc auto", TriggerModeUnset, TriggerModeUnset, model.TriggerModeAuto},
-		{"dc manual", TriggerModeUnset, TriggerModeManual, model.TriggerModeManualWithAutoInit},
-		{"dc override auto", TriggerModeManual, TriggerModeAuto, model.TriggerModeAuto},
-		{"dc override manual", TriggerModeAuto, TriggerModeManual, model.TriggerModeManualWithAutoInit},
+		{"default", TriggerModeUnset, TriggerModeUnset, false, false, model.TriggerModeAuto},
+		{"explicit global auto", TriggerModeAuto, TriggerModeUnset, false, false, model.TriggerModeAuto},
+		{"explicit global manual", TriggerModeManual, TriggerModeUnset, false, false, model.TriggerModeManualWithAutoInit},
+		{"dc auto", TriggerModeUnset, TriggerModeUnset, false, false, model.TriggerModeAuto},
+		{"dc manual", TriggerModeUnset, TriggerModeManual, false, false, model.TriggerModeManualWithAutoInit},
+		{"dc manual, auto_init=False", TriggerModeUnset, TriggerModeManual, true, false, model.TriggerModeManual},
+		{"dc manual, auto_init=True", TriggerModeUnset, TriggerModeManual, true, true, model.TriggerModeManualWithAutoInit},
+		{"dc override auto", TriggerModeManual, TriggerModeAuto, false, false, model.TriggerModeAuto},
+		{"dc override manual", TriggerModeAuto, TriggerModeManual, false, false, model.TriggerModeManualWithAutoInit},
+		{"dc override manual, auto_init=False", TriggerModeAuto, TriggerModeManual, true, false, model.TriggerModeManual},
+		{"dc override manual, auto_init=True", TriggerModeAuto, TriggerModeManual, true, true, model.TriggerModeManualWithAutoInit},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			f := newFixture(t)
@@ -717,20 +723,25 @@ func TestTriggerModeDC(t *testing.T) {
 			switch testCase.globalSetting {
 			case TriggerModeUnset:
 				globalTriggerModeDirective = ""
-			case TriggerModeManual:
-				globalTriggerModeDirective = "trigger_mode(TRIGGER_MODE_MANUAL)"
-			case TriggerModeAuto:
-				globalTriggerModeDirective = "trigger_mode(TRIGGER_MODE_AUTO)"
+			default:
+				globalTriggerModeDirective = fmt.Sprintf("trigger_mode(%s)", testCase.globalSetting.String())
 			}
 
 			var dcResourceDirective string
 			switch testCase.dcResourceSetting {
 			case TriggerModeUnset:
 				dcResourceDirective = ""
-			case TriggerModeManual:
-				dcResourceDirective = "dc_resource('foo', trigger_mode=TRIGGER_MODE_MANUAL)"
-			case TriggerModeAuto:
-				dcResourceDirective = "dc_resource('foo', trigger_mode=TRIGGER_MODE_AUTO)"
+			default:
+				autoInitOption := ""
+				if testCase.specifyAutoInit {
+					autoInitOption = ", auto_init="
+					if testCase.autoInit {
+						autoInitOption += "True"
+					} else {
+						autoInitOption += "False"
+					}
+				}
+				dcResourceDirective = fmt.Sprintf("dc_resource('foo', trigger_mode=%s%s)", testCase.dcResourceSetting.String(), autoInitOption)
 			}
 
 			f.file("Tiltfile", fmt.Sprintf(`
