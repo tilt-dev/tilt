@@ -14,10 +14,10 @@
 package godotenv
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"regexp"
@@ -28,29 +28,26 @@ import (
 
 const doubleQuoteSpecialChars = "\\\n\r\"!$`"
 
-// LoadWithLookupFn will read your env file(s), lookup the inherited variables with `lookupFn`
-//
-// and load them into ENV for this process.
-//
-// Call this function as close as possible to the start of your program (ideally in main)
-//
-// If you call Load without any args it will default to loading .env in the current path
-//
-// You can otherwise tell it which files to load (there can be more than one) like
-//
-//		godotenv.Load("fileone", "filetwo")
-//
-// It's important to note that it WILL NOT OVERRIDE an env variable that already exists - consider the .env file to set dev vars or sensible defaults
-func LoadWithLookupFn(lookupFn func(string) (string, bool), filenames ...string) (err error) {
-	filenames = filenamesOrDefault(filenames)
+// LookupFn represents a lookup function to resolve variables from
+type LookupFn func(string) (string, bool)
 
-	for _, filename := range filenames {
-		err = loadFile(filename, false, lookupFn)
-		if err != nil {
-			return // return early on a spazout
-		}
+var noLookupFn = func(s string) (string, bool) {
+	return "", false
+}
+
+// Parse reads an env file from io.Reader, returning a map of keys and values.
+func Parse(r io.Reader) (map[string]string, error) {
+	return ParseWithLookup(r, nil)
+}
+
+// ParseWithLookup reads an env file from io.Reader, returning a map of keys and values.
+func ParseWithLookup(r io.Reader, lookupFn LookupFn) (map[string]string, error) {
+	data, err := ioutil.ReadAll(r)
+	if err != nil {
+		return nil, err
 	}
-	return
+
+	return UnmarshalBytesWithLookup(data, lookupFn)
 }
 
 // Load will read your env file(s) and load them into ENV for this process.
@@ -65,9 +62,7 @@ func LoadWithLookupFn(lookupFn func(string) (string, bool), filenames ...string)
 //
 // It's important to note that it WILL NOT OVERRIDE an env variable that already exists - consider the .env file to set dev vars or sensible defaults
 func Load(filenames ...string) (err error) {
-	return LoadWithLookupFn(func(string) (string, bool){
-		return "", true
-	}, filenames...)
+	return load(false, filenames...)
 }
 
 // Overload will read your env file(s) and load them into ENV for this process.
@@ -82,12 +77,14 @@ func Load(filenames ...string) (err error) {
 //
 // It's important to note this WILL OVERRIDE an env variable that already exists - consider the .env file to forcefilly set all vars.
 func Overload(filenames ...string) (err error) {
+	return load(true, filenames...)
+}
+
+func load(overload bool, filenames ...string) (err error) {
 	filenames = filenamesOrDefault(filenames)
 
 	for _, filename := range filenames {
-		err = loadFile(filename, true, func(string) (string, bool) {
-			return "", true
-		})
+		err = loadFile(filename, overload)
 		if err != nil {
 			return // return early on a spazout
 		}
@@ -95,31 +92,9 @@ func Overload(filenames ...string) (err error) {
 	return
 }
 
-// Read all env (with same file loading semantics as Load) but return values as
+// ReadWithLookup gets all env vars from the files and/or lookup function and return values as
 // a map rather than automatically writing values into env
-func Read(filenames ...string) (envMap map[string]string, err error) {
-	filenames = filenamesOrDefault(filenames)
-	envMap = make(map[string]string)
-
-	for _, filename := range filenames {
-		individualEnvMap, individualErr := readFile(filename, noLookupFn)
-
-		if individualErr != nil {
-			err = individualErr
-			return // return early on a spazout
-		}
-
-		for key, value := range individualEnvMap {
-			envMap[key] = value
-		}
-	}
-
-	return
-}
-
-// ReadWithLookup all env (with same file loading semantics as Load) but return values as
-// a map rather than automatically writing values into env
-func ReadWithLookup(lookupFn func(string)(string, bool), filenames ...string) (envMap map[string]string, err error) {
+func ReadWithLookup(lookupFn LookupFn, filenames ...string) (envMap map[string]string, err error) {
 	filenames = filenamesOrDefault(filenames)
 	envMap = make(map[string]string)
 
@@ -139,44 +114,27 @@ func ReadWithLookup(lookupFn func(string)(string, bool), filenames ...string) (e
 	return
 }
 
-// ParseWithLookup reads an env file from io.Reader resolving variables with lookupFn, returning a map of keys and values.
-func ParseWithLookup(r io.Reader, lookupFn func(string)(string, bool)) (map[string]string, error) {
-	envMap := make(map[string]string)
-
-	var lines []string
-	scanner := bufio.NewScanner(r)
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-	}
-
-	if err := scanner.Err(); err != nil {
-		return envMap, err
-	}
-
-	for _, fullLine := range lines {
-		if !isIgnoredLine(fullLine) {
-			var key, value string
-			key, value, err := parseLine(fullLine, envMap, lookupFn)
-			if err != nil {
-				return envMap, err
-			}
-			if key == "" {
-				continue
-			}
-			envMap[key] = value
-		}
-	}
-	return envMap, nil
+// Read all env (with same file loading semantics as Load) but return values as
+// a map rather than automatically writing values into env
+func Read(filenames ...string) (envMap map[string]string, err error) {
+	return ReadWithLookup(nil, filenames...)
 }
 
-// Parse reads an env file from io.Reader, returning a map of keys and values.
-func Parse(r io.Reader) (map[string]string, error) {
-	return ParseWithLookup(r, noLookupFn)
-}
-
-//Unmarshal reads an env file from a string, returning a map of keys and values.
+// Unmarshal reads an env file from a string, returning a map of keys and values.
 func Unmarshal(str string) (envMap map[string]string, err error) {
-	return Parse(strings.NewReader(str))
+	return UnmarshalBytes([]byte(str))
+}
+
+// UnmarshalBytes parses env file from byte slice of chars, returning a map of keys and values.
+func UnmarshalBytes(src []byte) (map[string]string, error) {
+	return UnmarshalBytesWithLookup(src, nil)
+}
+
+// UnmarshalBytesWithLookup parses env file from byte slice of chars, returning a map of keys and values.
+func UnmarshalBytesWithLookup(src []byte, lookupFn LookupFn) (map[string]string, error) {
+	out := make(map[string]string)
+	err := parseBytes(src, out, lookupFn)
+	return out, err
 }
 
 // Exec loads env vars from the specified filenames (empty map falls back to default)
@@ -187,7 +145,9 @@ func Unmarshal(str string) (envMap map[string]string, err error) {
 // If you want more fine grained control over your command it's recommended
 // that you use `Load()` or `Read()` and the `os/exec` package yourself.
 func Exec(filenames []string, cmd string, cmdArgs []string) error {
-	Load(filenames...)
+	if err := Load(filenames...); err != nil {
+		return err
+	}
 
 	command := exec.Command(cmd, cmdArgs...)
 	command.Stdin = os.Stdin
@@ -211,8 +171,7 @@ func Write(envMap map[string]string, filename string) error {
 	if err != nil {
 		return err
 	}
-	file.Sync()
-	return err
+	return file.Sync()
 }
 
 // Marshal outputs the given environment as a dotenv-formatted environment file.
@@ -237,8 +196,8 @@ func filenamesOrDefault(filenames []string) []string {
 	return filenames
 }
 
-func loadFile(filename string, overload bool, lookupFn func(string)(string, bool)) error {
-	envMap, err := readFile(filename, lookupFn)
+func loadFile(filename string, overload bool) error {
+	envMap, err := readFile(filename, nil)
 	if err != nil {
 		return err
 	}
@@ -252,14 +211,14 @@ func loadFile(filename string, overload bool, lookupFn func(string)(string, bool
 
 	for key, value := range envMap {
 		if !currentEnv[key] || overload {
-			os.Setenv(key, value)
+			_ = os.Setenv(key, value)
 		}
 	}
 
 	return nil
 }
 
-func readFile(filename string, lookupFn func(string)(string, bool)) (envMap map[string]string, err error) {
+func readFile(filename string, lookupFn LookupFn) (envMap map[string]string, err error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		return
@@ -271,7 +230,10 @@ func readFile(filename string, lookupFn func(string)(string, bool)) (envMap map[
 
 var exportRegex = regexp.MustCompile(`^\s*(?:export\s+)?(.*?)\s*$`)
 
-func parseLine(line string, envMap map[string]string, lookupFn func(string)(string, bool)) (key string, value string, err error) {
+func parseLine(line string, envMap map[string]string) (key string, value string, err error) {
+	return parseLineWithLookup(line, envMap, nil)
+}
+func parseLineWithLookup(line string, envMap map[string]string, lookupFn LookupFn) (key string, value string, err error) {
 	if len(line) == 0 {
 		err = errors.New("zero length string")
 		return
@@ -304,43 +266,19 @@ func parseLine(line string, envMap map[string]string, lookupFn func(string)(stri
 	firstColon := strings.Index(line, ":")
 	splitString := strings.SplitN(line, "=", 2)
 	if firstColon != -1 && (firstColon < firstEquals || firstEquals == -1) {
-		//this is a yaml-style line
+		// This is a yaml-style line
 		splitString = strings.SplitN(line, ":", 2)
 	}
 
-	// Parse the key
-	key = strings.TrimSpace(strings.TrimPrefix(splitString[0], "export "))
-	key = exportRegex.ReplaceAllString(key, "$1")
-	if err = validateVariableName(key); err != nil {
-		return
-	}
-
-	// Environment inherited variable
-	if firstEquals < 0 && firstColon < 0 {
-		value = ""
-		v, ok := lookupFn(strings.TrimSpace(key))
-		if ok {
-			value = v
-		}
-		return
-	}
-
 	if len(splitString) != 2 {
-		err = errors.New("Can't separate key from value")
+		err = errors.New("can't separate key from value")
 		return
 	}
+	key = exportRegex.ReplaceAllString(splitString[0], "$1")
 
 	// Parse the value
-	value = parseValue(splitString[1], envMap)
+	value = parseValue(splitString[1], envMap, lookupFn)
 	return
-}
-
-func validateVariableName(key string) error {
-	key = strings.TrimSpace(strings.TrimPrefix(key, "export "))
-	if !variableNameRegex.MatchString(key) {
-		return fmt.Errorf("invalid variable name %q", key)
-	}
-	return nil
 }
 
 var (
@@ -348,12 +286,9 @@ var (
 	doubleQuotesRegex  = regexp.MustCompile(`\A"(.*)"\z`)
 	escapeRegex        = regexp.MustCompile(`\\.`)
 	unescapeCharsRegex = regexp.MustCompile(`\\([^$])`)
-	variableNameRegex  = regexp.MustCompile(`^[_\\.a-zA-Z0-9]+$`)
-
-	noLookupFn = func(string)(string, bool) {return "", true}
 )
 
-func parseValue(value string, envMap map[string]string) string {
+func parseValue(value string, envMap map[string]string, lookupFn LookupFn) string {
 
 	// trim
 	value = strings.Trim(value, " ")
@@ -387,7 +322,7 @@ func parseValue(value string, envMap map[string]string) string {
 		}
 
 		if singleQuotes == nil {
-			value = expandVariables(value, envMap)
+			value = expandVariables(value, envMap, lookupFn)
 		}
 	}
 
@@ -396,7 +331,7 @@ func parseValue(value string, envMap map[string]string) string {
 
 var expandVarRegex = regexp.MustCompile(`(\\)?(\$)(\()?\{?([A-Z0-9_]+)?\}?`)
 
-func expandVariables(v string, m map[string]string) string {
+func expandVariables(v string, envMap map[string]string, lookupFn LookupFn) string {
 	return expandVarRegex.ReplaceAllStringFunc(v, func(s string) string {
 		submatch := expandVarRegex.FindStringSubmatch(s)
 
@@ -406,15 +341,23 @@ func expandVariables(v string, m map[string]string) string {
 		if submatch[1] == "\\" || submatch[2] == "(" {
 			return submatch[0][1:]
 		} else if submatch[4] != "" {
-			return m[submatch[4]]
+			// first check if we have defined this already earlier
+			if envMap[submatch[4]] != "" {
+				return envMap[submatch[4]]
+			}
+			if lookupFn == nil {
+				return ""
+			}
+			// if we have not defined it, check the lookup function provided
+			// by the user
+			s2, ok := lookupFn(submatch[4])
+			if ok {
+				return s2
+			}
+			return ""
 		}
 		return s
 	})
-}
-
-func isIgnoredLine(line string) bool {
-	trimmedLine := strings.TrimSpace(line)
-	return len(trimmedLine) == 0 || strings.HasPrefix(trimmedLine, "#")
 }
 
 func doubleQuoteEscape(line string) string {

@@ -27,9 +27,9 @@ import (
 	"github.com/compose-spec/compose-go/errdefs"
 	"github.com/compose-spec/compose-go/loader"
 	"github.com/compose-spec/compose-go/types"
+	"github.com/compose-spec/godotenv"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/ulyssessouza/godotenv"
 )
 
 // ProjectOptions groups the command line options recommended for a Compose implementation
@@ -131,7 +131,8 @@ func WithDefaultConfigPath(o *ProjectOptions) error {
 		}
 		parent := filepath.Dir(pwd)
 		if parent == pwd {
-			return errors.Wrap(errdefs.ErrNotFound, "can't find a suitable configuration file in this directory or any parent")
+			// no config file found, but that's not a blocker if caller only needs project name
+			return nil
 		}
 		pwd = parent
 	}
@@ -206,9 +207,10 @@ func WithDotEnv(o *ProjectOptions) error {
 	}
 
 	if s.IsDir() {
-		if o.EnvFile != "" {
-			return errors.Errorf("%s is a directory", dotEnvFile)
+		if o.EnvFile == "" {
+			return nil
 		}
+		return errors.Errorf("%s is a directory", dotEnvFile)
 	}
 
 	file, err := os.Open(dotEnvFile)
@@ -243,6 +245,16 @@ func WithInterpolation(interpolation bool) ProjectOptionsFn {
 	return func(o *ProjectOptions) error {
 		o.loadOptions = append(o.loadOptions, func(options *loader.Options) {
 			options.SkipInterpolation = !interpolation
+		})
+		return nil
+	}
+}
+
+// WithNormalization set ProjectOptions to enable/skip normalization
+func WithNormalization(normalization bool) ProjectOptionsFn {
+	return func(o *ProjectOptions) error {
+		o.loadOptions = append(o.loadOptions, func(options *loader.Options) {
+			options.SkipNormalization = !normalization
 		})
 		return nil
 	}
@@ -332,9 +344,9 @@ func ProjectFromOptions(options *ProjectOptions) (*types.Project, error) {
 		} else if nameFromEnv, ok := options.Environment[ComposeProjectName]; ok && nameFromEnv != "" {
 			opts.Name = nameFromEnv
 		} else {
-			opts.Name = regexp.MustCompile(`(?m)[a-z]+[-_a-z0-9]*`).FindString(strings.ToLower(filepath.Base(absWorkingDir)))
+			opts.Name = filepath.Base(absWorkingDir)
 		}
-		opts.Name = strings.ToLower(opts.Name)
+		opts.Name = normalizeName(opts.Name)
 	}
 	options.loadOptions = append(options.loadOptions, nameLoadOpt)
 
@@ -351,13 +363,19 @@ func ProjectFromOptions(options *ProjectOptions) (*types.Project, error) {
 	return project, nil
 }
 
+func normalizeName(s string) string {
+	r := regexp.MustCompile("[a-z0-9_-]")
+	s = strings.ToLower(s)
+	s = strings.Join(r.FindAllString(s, -1), "")
+	return strings.TrimLeft(s, "_-")
+}
+
 // getConfigPathsFromOptions retrieves the config files for project based on project options
 func getConfigPathsFromOptions(options *ProjectOptions) ([]string, error) {
 	if len(options.ConfigPaths) != 0 {
 		return absolutePaths(options.ConfigPaths)
 	}
-
-	return nil, errors.New("no configuration file provided")
+	return nil, errors.Wrap(errdefs.ErrNotFound, "no configuration file provided")
 }
 
 func findFiles(names []string, pwd string) []string {

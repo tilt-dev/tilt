@@ -268,7 +268,7 @@ services:
       - .:/code
       - ./static:/var/www/html
       # User-relative path
-      - ~/configs:/etc/configs/:ro
+      - ~/configs:/etc/configs:ro
       # Named volume
       - datavolume:/var/lib/mysql
       - type: bind

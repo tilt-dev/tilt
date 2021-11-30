@@ -77,7 +77,7 @@ github.com/chai2010/gettext-go/gettext/plural
 github.com/chai2010/gettext-go/gettext/po
 # github.com/cloudflare/cfssl v1.4.1
 ## explicit; go 1.13
-# github.com/compose-spec/compose-go v0.0.0-20210910070419-813d4ccb40f8
+# github.com/compose-spec/compose-go v1.0.8
 ## explicit; go 1.16
 github.com/compose-spec/compose-go/cli
 github.com/compose-spec/compose-go/errdefs
@@ -86,6 +86,9 @@ github.com/compose-spec/compose-go/loader
 github.com/compose-spec/compose-go/schema
 github.com/compose-spec/compose-go/template
 github.com/compose-spec/compose-go/types
+# github.com/compose-spec/godotenv v1.1.1
+## explicit; go 1.16
+github.com/compose-spec/godotenv
 # github.com/containerd/containerd v1.4.4
 ## explicit
 github.com/containerd/containerd/archive/compression
@@ -422,7 +425,7 @@ github.com/mitchellh/go-homedir
 # github.com/mitchellh/go-wordwrap v1.0.0
 ## explicit
 github.com/mitchellh/go-wordwrap
-# github.com/mitchellh/mapstructure v1.4.1
+# github.com/mitchellh/mapstructure v1.4.2
 ## explicit; go 1.14
 github.com/mitchellh/mapstructure
 # github.com/moby/buildkit v0.7.1-0.20200925001807-2b6cccb9b3e9
@@ -625,9 +628,6 @@ github.com/tilt-dev/wmclient/pkg/os/temp
 # github.com/tonistiigi/units v0.0.0-20180711220420-6950e57a87ea
 ## explicit
 github.com/tonistiigi/units
-# github.com/ulyssessouza/godotenv v1.3.1-0.20210806120901-e417b721114e
-## explicit; go 1.12
-github.com/ulyssessouza/godotenv
 # github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa
 ## explicit
 github.com/whilp/git-urls

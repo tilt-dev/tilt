@@ -63,7 +63,7 @@ func TestVariableInterpolation(t *testing.T) {
 		if assert.NotNil(t, svc.Build) {
 			assert.Equal(t, f.tmpdir.JoinPath("0"), svc.Build.Context)
 			// resolved Dockerfile path is relative to the context
-			assert.Equal(t, f.tmpdir.JoinPath("0", "Y"), svc.Build.Dockerfile)
+			assert.Equal(t, "Y", svc.Build.Dockerfile)
 		}
 		if assert.Len(t, svc.Ports, 1) {
 			assert.Equal(t, 8081, int(svc.Ports[0].Target))

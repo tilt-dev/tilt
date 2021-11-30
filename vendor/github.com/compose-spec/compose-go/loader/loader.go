@@ -31,12 +31,12 @@ import (
 	"github.com/compose-spec/compose-go/schema"
 	"github.com/compose-spec/compose-go/template"
 	"github.com/compose-spec/compose-go/types"
+	"github.com/compose-spec/godotenv"
 	"github.com/docker/go-units"
 	"github.com/mattn/go-shellwords"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/ulyssessouza/godotenv"
 	"gopkg.in/yaml.v2"
 )
 
@@ -145,7 +145,7 @@ func Load(configDetails types.ConfigDetails, options ...func(*Options)) (*types.
 		op(opts)
 	}
 
-	configs := []*types.Config{}
+	var configs []*types.Config
 	for i, file := range configDetails.ConfigFiles {
 		configDict := file.Config
 		if configDict == nil {
@@ -222,14 +222,14 @@ func Load(configDetails types.ConfigDetails, options ...func(*Options)) (*types.
 }
 
 func parseConfig(b []byte, opts *Options) (map[string]interface{}, error) {
-	yaml, err := ParseYAML(b)
+	yml, err := ParseYAML(b)
 	if err != nil {
 		return nil, err
 	}
 	if !opts.SkipInterpolation {
-		return interp.Interpolate(yaml, *opts.Interpolate)
+		return interp.Interpolate(yml, *opts.Interpolate)
 	}
-	return yaml, err
+	return yml, err
 }
 
 func groupXFieldsIntoExtensions(dict map[string]interface{}) map[string]interface{} {
@@ -342,8 +342,8 @@ func createTransformHook(additionalTransformers ...Transformer) mapstructure.Dec
 		reflect.TypeOf(types.UlimitsConfig{}):                    transformUlimits,
 		reflect.TypeOf(types.UnitBytes(0)):                       transformSize,
 		reflect.TypeOf([]types.ServicePortConfig{}):              transformServicePort,
-		reflect.TypeOf(types.ServiceSecretConfig{}):              transformStringSourceMap,
-		reflect.TypeOf(types.ServiceConfigObjConfig{}):           transformStringSourceMap,
+		reflect.TypeOf(types.ServiceSecretConfig{}):              transformFileReferenceConfig,
+		reflect.TypeOf(types.ServiceConfigObjConfig{}):           transformFileReferenceConfig,
 		reflect.TypeOf(types.StringOrNumberList{}):               transformStringOrNumberList,
 		reflect.TypeOf(map[string]*types.ServiceNetworkConfig{}): transformServiceNetworkMap,
 		reflect.TypeOf(types.Mapping{}):                          transformMappingOrListFunc("=", false),
@@ -372,7 +372,7 @@ func createTransformHook(additionalTransformers ...Transformer) mapstructure.Dec
 	}
 }
 
-// keys needs to be converted to strings for jsonschema
+// keys need to be converted to strings for jsonschema
 func convertToStringKeysRecursive(value interface{}, keyPrefix string) (interface{}, error) {
 	if mapping, ok := value.(map[interface{}]interface{}); ok {
 		dict := make(map[string]interface{})
@@ -396,7 +396,7 @@ func convertToStringKeysRecursive(value interface{}, keyPrefix string) (interfac
 		return dict, nil
 	}
 	if list, ok := value.([]interface{}); ok {
-		convertedList := []interface{}{}
+		var convertedList []interface{}
 		for index, entry := range list {
 			newKeyPrefix := fmt.Sprintf("%s[%d]", keyPrefix, index)
 			convertedEntry, err := convertToStringKeysRecursive(entry, newKeyPrefix)
@@ -450,7 +450,12 @@ func loadServiceWithExtends(filename, name string, servicesDict map[string]inter
 		return nil, err
 	}
 
-	serviceConfig, err := LoadService(name, servicesDict[name].(map[string]interface{}), workingDir, lookupEnv, opts.ResolvePaths)
+	target, ok := servicesDict[name]
+	if !ok {
+		return nil, fmt.Errorf("cannot extend service %q in %s: service not found", name, filename)
+	}
+
+	serviceConfig, err := LoadService(name, target.(map[string]interface{}), workingDir, lookupEnv, opts.ResolvePaths)
 	if err != nil {
 		return nil, err
 	}
@@ -472,15 +477,7 @@ func loadServiceWithExtends(filename, name string, servicesDict map[string]inter
 				return nil, err
 			}
 
-			if !opts.SkipInterpolation {
-				substitute, err := opts.Interpolate.Substitute(string(bytes), template.Mapping(opts.Interpolate.LookupValue))
-				if err != nil {
-					return nil, err
-				}
-				bytes = []byte(substitute)
-			}
-
-			baseFile, err := ParseYAML(bytes)
+			baseFile, err := parseConfig(bytes, opts)
 			if err != nil {
 				return nil, err
 			}
@@ -522,7 +519,9 @@ func loadServiceWithExtends(filename, name string, servicesDict map[string]inter
 // LoadService produces a single ServiceConfig from a compose file Dict
 // the serviceDict is not validated if directly used. Use Load() to enable validation
 func LoadService(name string, serviceDict map[string]interface{}, workingDir string, lookupEnv template.Mapping, resolvePaths bool) (*types.ServiceConfig, error) {
-	serviceConfig := &types.ServiceConfig{}
+	serviceConfig := &types.ServiceConfig{
+		Scale: 1,
+	}
 	if err := Transform(serviceDict, serviceConfig); err != nil {
 		return nil, err
 	}
@@ -533,7 +532,7 @@ func LoadService(name string, serviceDict map[string]interface{}, workingDir str
 	}
 
 	for i, volume := range serviceConfig.Volumes {
-		if volume.Type != "bind" {
+		if volume.Type != types.VolumeTypeBind {
 			continue
 		}
 
@@ -553,14 +552,14 @@ func resolveEnvironment(serviceConfig *types.ServiceConfig, workingDir string, l
 	environment := types.MappingWithEquals{}
 
 	if len(serviceConfig.EnvFile) > 0 {
-		for _, file := range serviceConfig.EnvFile {
-			filePath := absPath(workingDir, file)
+		for _, envFile := range serviceConfig.EnvFile {
+			filePath := absPath(workingDir, envFile)
 			file, err := os.Open(filePath)
 			if err != nil {
 				return err
 			}
 			defer file.Close()
-			fileVars, err := godotenv.Parse(file)
+			fileVars, err := godotenv.ParseWithLookup(file, godotenv.LookupFn(lookupEnv))
 			if err != nil {
 				return err
 			}
@@ -798,7 +797,7 @@ var transformServicePort TransformerFunc = func(data interface{}) (interface{}, 
 		// We process the list instead of individual items here.
 		// The reason is that one entry might be mapped to multiple ServicePortConfig.
 		// Therefore we take an input of a list and return an output of a list.
-		ports := []interface{}{}
+		var ports []interface{}
 		for _, entry := range entries {
 			switch value := entry.(type) {
 			case int:
@@ -853,15 +852,25 @@ var transformServiceDeviceRequest TransformerFunc = func(data interface{}) (inte
 	}
 }
 
-var transformStringSourceMap TransformerFunc = func(data interface{}) (interface{}, error) {
+var transformFileReferenceConfig TransformerFunc = func(data interface{}) (interface{}, error) {
 	switch value := data.(type) {
 	case string:
 		return map[string]interface{}{"source": value}, nil
 	case map[string]interface{}:
-		return groupXFieldsIntoExtensions(data.(map[string]interface{})), nil
+		if target, ok := value["target"]; ok {
+			value["target"] = cleanTarget(target.(string))
+		}
+		return groupXFieldsIntoExtensions(value), nil
 	default:
 		return data, errors.Errorf("invalid type %T for secret", value)
 	}
+}
+
+func cleanTarget(target string) string {
+	if target == "" {
+		return ""
+	}
+	return path.Clean(target)
 }
 
 var transformBuildConfig TransformerFunc = func(data interface{}) (interface{}, error) {
@@ -907,9 +916,15 @@ var transformExtendsConfig TransformerFunc = func(data interface{}) (interface{}
 var transformServiceVolumeConfig TransformerFunc = func(data interface{}) (interface{}, error) {
 	switch value := data.(type) {
 	case string:
-		return ParseVolume(value)
+		volume, err := ParseVolume(value)
+		volume.Target = cleanTarget(volume.Target)
+		return volume, err
 	case map[string]interface{}:
-		return groupXFieldsIntoExtensions(data.(map[string]interface{})), nil
+		data := groupXFieldsIntoExtensions(data.(map[string]interface{}))
+		if target, ok := data["target"]; ok {
+			data["target"] = cleanTarget(target.(string))
+		}
+		return data, nil
 	default:
 		return data, errors.Errorf("invalid type %T for service volume", value)
 	}
@@ -972,7 +987,7 @@ func transformMappingOrList(mappingOrList interface{}, sep string, allowNil bool
 	switch value := mappingOrList.(type) {
 	case map[string]interface{}:
 		return toMapStringString(value, allowNil)
-	case ([]interface{}):
+	case []interface{}:
 		result := make(map[string]interface{})
 		for _, value := range value {
 			parts := strings.SplitN(value.(string), sep, 2)
@@ -1013,10 +1028,13 @@ var transformSize TransformerFunc = func(value interface{}) (interface{}, error)
 	switch value := value.(type) {
 	case int:
 		return int64(value), nil
+	case int64, types.UnitBytes:
+		return value, nil
 	case string:
 		return units.RAMInBytes(value)
+	default:
+		return value, errors.Errorf("invalid type for size %T", value)
 	}
-	panic(errors.Errorf("invalid type for size %T", value))
 }
 
 var transformStringToDuration TransformerFunc = func(value interface{}) (interface{}, error) {
@@ -1052,7 +1070,7 @@ func toString(value interface{}, allowNil bool) interface{} {
 }
 
 func toStringList(value map[string]interface{}, separator string, allowNil bool) []string {
-	output := []string{}
+	var output []string
 	for key, value := range value {
 		if value == nil && !allowNil {
 			continue

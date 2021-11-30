@@ -72,7 +72,7 @@ services:
 func (f *fixture) simpleConfigAfterParse() string {
 	return fmt.Sprintf(`build:
     context: %s
-    dockerfile: %s
+    dockerfile: Dockerfile
 command:
     - sleep
     - "100"
@@ -82,7 +82,7 @@ ports:
     - mode: ingress
       target: 80
       published: 12312
-      protocol: tcp`, f.JoinPath("foo"), f.JoinPath("foo", "Dockerfile"))
+      protocol: tcp`, f.JoinPath("foo"))
 }
 
 func TestDockerComposeManifest(t *testing.T) {
@@ -153,10 +153,10 @@ services:
 
 	expectedYAML := fmt.Sprintf(`build:
     context: %s
-    dockerfile: %s
+    dockerfile: alternate-Dockerfile
 networks:
     default: null`,
-		f.JoinPath("baz"), f.JoinPath("baz", "alternate-Dockerfile"))
+		f.JoinPath("baz"))
 
 	f.load("baz")
 	f.assertDcManifest("baz",
@@ -220,10 +220,10 @@ services:
 
 	expectedYAML := fmt.Sprintf(`build:
     context: %s
-    dockerfile: %s
+    dockerfile: alternate-Dockerfile
 networks:
     default: null`,
-		f.JoinPath("baz"), f.JoinPath("baz", "alternate-Dockerfile"))
+		f.JoinPath("baz"))
 
 	f.load("baz")
 	f.assertDcManifest("baz",
