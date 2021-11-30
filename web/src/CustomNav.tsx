@@ -52,9 +52,8 @@ export function CustomNav(props: CustomNavProps) {
   return (
     <React.Fragment>
       {buttons.map((b) => (
-        <MenuButtonLabeled label={b.spec?.text}>
+        <MenuButtonLabeled label={b.spec?.text} key={b.metadata?.name}>
           <CustomNavButton
-            key={b.metadata?.name}
             uiButton={b}
             variant="contained"
             aria-label={b.spec?.text}

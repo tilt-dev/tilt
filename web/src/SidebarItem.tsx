@@ -7,10 +7,10 @@ import { resourceTargetType } from "./ResourceStatus"
 import { buildStatus, runtimeStatus } from "./status"
 import { timeDiff } from "./time"
 import {
-  Build,
   ResourceName,
   ResourceStatus,
   TriggerMode,
+  UIBuild,
   UIResource,
   UIResourceStatus,
 } from "./types"
@@ -32,7 +32,7 @@ class SidebarItem {
   triggerMode: TriggerMode
   hasPendingChanges: boolean
   queued: boolean
-  lastBuild: Build | null = null
+  lastBuild: UIBuild | null = null
   hold: Hold | null = null
   targetType: string
 

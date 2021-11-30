@@ -8,7 +8,7 @@ import {
 import ArrowDropDownIcon from "@material-ui/icons/ArrowDropDown"
 import moment from "moment"
 import { useSnackbar } from "notistack"
-import React, { useRef, useState } from "react"
+import React, { useMemo, useRef, useState } from "react"
 import { convertFromNode, convertFromString } from "react-from-dom"
 import { Link } from "react-router-dom"
 import styled from "styled-components"
@@ -26,22 +26,65 @@ import { usePersistentState } from "./LocalStorage"
 import { usePathBuilder } from "./PathBuilder"
 import { Color, FontSize, SizeUnit } from "./style-helpers"
 import { apiTimeFormat, tiltApiPut } from "./tiltApi"
+import { UIButton, UIInputSpec, UIInputStatus } from "./types"
 
-type UIButton = Proto.v1alpha1UIButton
-type UIInputSpec = Proto.v1alpha1UIInputSpec
-type UIInputStatus = Proto.v1alpha1UIInputStatus
+/**
+ * Note on nomenclature: both `ApiButton` and `UIButton` are used to refer to
+ * custom action buttons here. On the Tilt backend, these are generally called
+ * `UIButton`s, but to avoid confusion on the frontend, (where there are many
+ * UI buttons,) they're generally called `ApiButton`s.
+ */
 
+// Types
+type ApiButtonProps = ButtonProps & {
+  className?: string
+  uiButton: UIButton
+}
+
+type ApiIconProps = { iconName?: string; iconSVG?: string }
+
+type ApiButtonInputProps = {
+  spec: UIInputSpec
+  status: UIInputStatus | undefined
+  value: any | undefined
+  setValue: (name: string, value: any) => void
+  analyticsTags: Tags
+}
+
+// UIButtons for a location, sorted into types
+export type ButtonSet = {
+  default: UIButton[]
+  toggleDisable?: UIButton
+}
+
+export enum ApiButtonType {
+  Nav = "Global",
+  Resource = "Resource",
+}
+
+enum ApiButtonToggleState {
+  On = "on",
+  Off = "off",
+}
+
+// Constants
+export const UIBUTTON_SPEC_HASH = "uibuttonspec-hash"
+export const UIBUTTON_ANNOTATION_TYPE = "tilt.dev/uibutton-type"
+export const UIBUTTON_TOGGLE_DISABLE_TYPE = "DisableToggle"
+const UIBUTTON_TOGGLE_INPUT_NAME = "action"
+
+// Styles
 const ApiButtonFormRoot = styled.div`
   z-index: 20;
 `
 const ApiButtonFormFooter = styled.div`
   margin-top: ${SizeUnit(0.5)};
   text-align: right;
-  font-color: ${Color.grayLighter};
+  color: ${Color.grayLighter};
   font-size: ${FontSize.smallester};
 `
 const ApiIconRoot = styled.div``
-export const ApiButtonLabel = styled.div``
+export const ApiButtonLabel = styled.span``
 // MUI makes it tricky to get cursor: not-allowed on disabled buttons
 // https://material-ui.com/components/buttons/#cursor-not-allowed
 export const ApiButtonRoot = styled(ButtonGroup)<{ disabled?: boolean }>`
@@ -78,13 +121,6 @@ const ConfirmButton = styled(InstrumentedButton)`
   }
 `
 
-type ApiButtonProps = ButtonProps & {
-  className?: string
-  uiButton: UIButton
-}
-
-type ApiIconProps = { iconName?: string; iconSVG?: string }
-
 export const ApiButtonInputsToggleButton = styled(InstrumentedButton)`
   &&&& {
     padding: 0 0;
@@ -98,14 +134,6 @@ const svgElement = (src: string): React.ReactElement => {
     nodeOnly: true,
   }) as SVGSVGElement
   return convertFromNode(node) as React.ReactElement
-}
-
-type ApiButtonInputProps = {
-  spec: UIInputSpec
-  status: UIInputStatus | undefined
-  value: any | undefined
-  setValue: (name: string, value: any) => void
-  analyticsTags: Tags
 }
 
 function ApiButtonInput(props: ApiButtonInputProps) {
@@ -194,8 +222,6 @@ function ApiButtonWithOptions(props: ApiButtonWithOptionsProps & ButtonProps) {
 
   const { submit, uiButton, setInputValue, getInputValue, ...buttonProps } =
     props
-
-  let componentType = uiButton.spec?.location?.componentType
 
   return (
     <>
@@ -307,6 +333,49 @@ async function updateButtonStatus(
   await tiltApiPut("uibuttons", "status", toUpdate)
 }
 
+function getButtonTags(button: UIButton): Tags {
+  // The location of the button in the UI
+  const component = button.spec?.location?.componentType as ApiButtonType
+
+  const buttonAnnotations = annotations(button)
+
+  // A unique hash of the button text to help identify which button was clicked
+  const specHash = buttonAnnotations[UIBUTTON_SPEC_HASH]
+
+  // Tilt-specific button annotation, currently only used to differentiate disable toggles
+  const buttonType = buttonAnnotations[UIBUTTON_ANNOTATION_TYPE]
+
+  // A toggle button will have a hidden input field with the current value of the toggle
+  // e.g., when a disable button is clicked, the hidden input will be "on" because that's
+  // the toggle's value when it's clicked, _not_ the value it's being toggled to.
+  let toggleInput: UIInputSpec | undefined
+  if (button.spec?.inputs) {
+    toggleInput = button.spec.inputs.find(
+      (input) => input.name === UIBUTTON_TOGGLE_INPUT_NAME
+    )
+  }
+
+  let toggleValue: ApiButtonToggleState | undefined
+  if (toggleInput !== undefined) {
+    const definedValue = toggleInput.hidden?.value
+    // Only use values defined in `ApiButtonToggleState`, so no user-specific information is saved.
+    // When toggle buttons are exposed in the button extension, this mini allowlist can be revisited.
+    if (
+      definedValue === ApiButtonToggleState.On ||
+      definedValue === ApiButtonToggleState.Off
+    ) {
+      toggleValue = definedValue
+    }
+  }
+
+  return {
+    buttonType,
+    component,
+    specHash,
+    toggleValue,
+  }
+}
+
 // Renders a UIButton.
 // NB: The `Button` in `ApiButton` refers to a UIButton, not an html <button>.
 // This can be confusing because each ApiButton consists of one or two <button>s:
@@ -327,20 +396,9 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
   const pb = usePathBuilder()
 
   const { setError } = useHudErrorContext()
-  let componentType = uiButton.spec?.location?.componentType
-  let tags = { component: componentType } as Tags
-  let annotations = (uiButton.metadata?.annotations || {}) as {
-    [key: string]: string
-  }
-  let hash = annotations["uibuttonspec-hash"]
-  if (hash) {
-    tags.specHash = hash
-  }
 
-  let buttonType = annotations["tilt.dev/uibutton-type"]
-  if (buttonType) {
-    tags.buttonType = buttonType
-  }
+  const tags = useMemo(() => getButtonTags(uiButton), [uiButton])
+  const componentType = uiButton.spec?.location?.componentType as ApiButtonType
 
   const onClick = async () => {
     if (uiButton.spec?.requiresConfirmation && !confirming) {
@@ -367,7 +425,7 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
     }
 
     const snackbarLogsLink =
-      componentType === "Global" ? (
+      componentType === ApiButtonType.Nav ? (
         <LogLink to="/r/(all)/overview">Global Logs</LogLink>
       ) : (
         <LogLink
@@ -398,7 +456,7 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
       >
         <ConfirmButton
           analyticsName={"ui.web.uibutton"}
-          analyticsTags={{ confirm: "true" }}
+          analyticsTags={{ confirm: "true", ...tags }}
           onClick={onClick}
           disabled={disabled}
           aria-label={`Confirm ${uiButton.spec?.text}`}
@@ -408,7 +466,7 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
         </ConfirmButton>
         <ConfirmButton
           analyticsName={"ui.web.uibutton"}
-          analyticsTags={{ unconfirm: "true" }}
+          analyticsTags={{ confirm: "false", ...tags }}
           onClick={() => setConfirming(false)}
           aria-label={`Cancel ${uiButton.spec?.text}`}
           {...buttonProps}
@@ -480,15 +538,6 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
   }
 }
 
-// UIButtons for a location, sorted into types
-export type ButtonSet = {
-  default: UIButton[]
-  toggleDisable?: UIButton
-}
-
-export const AnnotationButtonType = "tilt.dev/uibutton-type"
-export const ToggleDisableButtonType = "DisableToggle"
-
 export function buttonsForComponent(
   buttons: UIButton[] | undefined,
   componentType: string,
@@ -507,7 +556,10 @@ export function buttonsForComponent(
         componentType.toUpperCase() &&
       b.spec?.location?.componentID === componentID
     ) {
-      if (annotations(b)[AnnotationButtonType] === ToggleDisableButtonType) {
+      if (
+        annotations(b)[UIBUTTON_ANNOTATION_TYPE] ===
+        UIBUTTON_TOGGLE_DISABLE_TYPE
+      ) {
         result.toggleDisable = b
       } else {
         result.default.push(b)

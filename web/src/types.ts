@@ -53,7 +53,7 @@ export enum ResourceStatus {
   Healthy, // e.g., build succeeded and pod is running and healthy
   Unhealthy, // e.g., last build failed, or CrashLoopBackOff
   Warning, // e.g., an undismissed restart
-  Disabled, // e.g., a resource is disabled by the user through the API
+  Disabled, // e.g., a resource is disabled by the user through the API / UI
   None, // e.g., a manual build that has never executed
 }
 
@@ -146,6 +146,8 @@ export enum ResourceName {
 export type UISession = Proto.v1alpha1UISession
 export type UIResource = Proto.v1alpha1UIResource
 export type UIResourceStatus = Proto.v1alpha1UIResourceStatus
-export type Build = Proto.v1alpha1UIBuildTerminated
+export type UIBuild = Proto.v1alpha1UIBuildTerminated
 export type UILink = Proto.v1alpha1UIResourceLink
 export type UIButton = Proto.v1alpha1UIButton
+export type UIInputSpec = Proto.v1alpha1UIInputSpec
+export type UIInputStatus = Proto.v1alpha1UIInputStatus
