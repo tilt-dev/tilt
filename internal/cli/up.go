@@ -218,16 +218,18 @@ func provideWebPort() model.WebPort {
 
 func provideServerPort() model.WebPort {
 	host := provideWebHost()
-	port := int(provideWebPort())
-	for {
+	max_port := ((1 << 16) - 1)
+
+	for port := int(provideWebPort()); port < max_port; port++ {
 		listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", string(host), port))
 		if err == nil {
 			listener.Close()
 			webPortFlag = port
 			return model.WebPort(port)
 		}
-		port++
 	}
+
+	panic("Error: unable to find a free web port to serve")
 }
 
 func provideWebURL(webHost model.WebHost, webPort model.WebPort) (model.WebURL, error) {
