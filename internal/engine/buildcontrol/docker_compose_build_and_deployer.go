@@ -46,31 +46,63 @@ func NewDockerComposeBuildAndDeployer(dcc dockercompose.DockerComposeClient, dc 
 }
 
 // Extract the targets we can apply -- DCBaD supports ImageTargets and DockerComposeTargets.
-func (bd *DockerComposeBuildAndDeployer) extract(specs []model.TargetSpec) ([]model.ImageTarget, []model.DockerComposeTarget) {
-	var iTargets []model.ImageTarget
+//
+// A given Docker Compose service can be built one of two ways:
+// 	* Tilt-managed: Tiltfile includes a `docker_build` or `custom_build` directive for the service's image, so Tilt
+// 		will handle the image lifecycle including building/tagging and Live Update (if configured)
+// 	* Docker Compose-managed: Building is delegated to Docker Compose via the `--build` flag to the `up` call;
+// 		Tilt is responsible for watching file changes but does not handle the builds.
+//
+// It's also possible for a service to reference an image but NOT have any corresponding build (e.g. public/registry
+// hosted images are common for infra deps like nginx). These will not have any ImageTarget.
+func (bd *DockerComposeBuildAndDeployer) extract(specs []model.TargetSpec) (buildPlan, error) {
+	var tiltManagedImageTargets []model.ImageTarget
+	var dockerComposeImageTarget *model.ImageTarget
 	var dcTargets []model.DockerComposeTarget
 
 	for _, s := range specs {
 		switch s := s.(type) {
 		case model.ImageTarget:
-			iTargets = append(iTargets, s)
+			if s.IsDockerComposeBuild() {
+				if dockerComposeImageTarget != nil {
+					return buildPlan{}, DontFallBackErrorf(
+						"Target has more than one Docker Compose managed image target")
+				}
+				dcTarget := s
+				dockerComposeImageTarget = &dcTarget
+			} else {
+				tiltManagedImageTargets = append(tiltManagedImageTargets, s)
+			}
 		case model.DockerComposeTarget:
 			dcTargets = append(dcTargets, s)
 		default:
 			// unrecognized target
-			return nil, nil
+			return buildPlan{}, SilentRedirectToNextBuilderf("DockerComposeBuildAndDeployer does not support target type %T", s)
 		}
 	}
-	return iTargets, dcTargets
+
+	if len(dcTargets) != 1 {
+		return buildPlan{}, SilentRedirectToNextBuilderf(
+			"DockerComposeBuildAndDeployer requires exactly one dcTarget (got %d)", len(dcTargets))
+	}
+
+	if len(tiltManagedImageTargets) != 0 && dockerComposeImageTarget != nil {
+		return buildPlan{}, DontFallBackErrorf(
+			"Docker Compose target cannot have both Tilt-managed and Docker Compose-managed image targets")
+	}
+
+	return buildPlan{
+		dockerComposeTarget:      dcTargets[0],
+		tiltManagedImageTargets:  tiltManagedImageTargets,
+		dockerComposeImageTarget: dockerComposeImageTarget,
+	}, nil
 }
 
 func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, currentState store.BuildStateSet) (res store.BuildResultSet, err error) {
-	iTargets, dcTargets := bd.extract(specs)
-	if len(dcTargets) != 1 {
-		return store.BuildResultSet{}, SilentRedirectToNextBuilderf(
-			"DockerComposeBuildAndDeployer requires exactly one dcTarget (got %d)", len(dcTargets))
+	plan, err := bd.extract(specs)
+	if err != nil {
+		return store.BuildResultSet{}, err
 	}
-	dcTarget := dcTargets[0]
 
 	startTime := time.Now()
 	defer func() {
@@ -79,12 +111,14 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		})
 	}()
 
-	q, err := NewImageTargetQueue(ctx, iTargets, currentState, bd.ib.CanReuseRef)
+	q, err := NewImageTargetQueue(ctx, plan.tiltManagedImageTargets, currentState, bd.ib.CanReuseRef)
 	if err != nil {
 		return store.BuildResultSet{}, err
 	}
 
-	numStages := q.CountBuilds()
+	// base number of stages is the Tilt-managed image builds + the Docker Compose up step (which might be launching
+	// a Tilt-built image OR might build+launch a Docker Compose-managed image)
+	numStages := q.CountBuilds() + 1
 
 	reused := q.ReusedResults()
 	hasReusedStep := len(reused) > 0
@@ -92,10 +126,8 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		numStages++
 	}
 
-	haveImage := len(iTargets) > 0
-
 	ps := build.NewPipelineState(ctx, numStages, bd.clock)
-	defer func() { ps.End(ctx, err) }()
+	defer ps.End(ctx, err)
 
 	if hasReusedStep {
 		ps.StartPipelineStep(ctx, "Loading cached images")
@@ -106,7 +138,7 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		ps.EndPipelineStep(ctx)
 	}
 
-	iTargetMap := model.ImageTargetsByID(iTargets)
+	iTargetMap := model.ImageTargetsByID(plan.tiltManagedImageTargets)
 	err = q.RunBuilds(func(target model.TargetSpec, depResults []store.ImageBuildResult) (store.ImageBuildResult, error) {
 		iTarget, ok := target.(model.ImageTarget)
 		if !ok {
@@ -146,16 +178,25 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		return newResults, err
 	}
 
+	dcManagedBuild := plan.dockerComposeImageTarget != nil
+	var stepName string
+	if dcManagedBuild {
+		stepName = "Building & deploying"
+	} else {
+		stepName = "Deploying"
+	}
+	ps.StartPipelineStep(ctx, stepName)
 	stdout := logger.Get(ctx).Writer(logger.InfoLvl)
 	stderr := logger.Get(ctx).Writer(logger.InfoLvl)
-	err = bd.dcc.Up(ctx, dcTarget.Spec, !haveImage, stdout, stderr)
+	err = bd.dcc.Up(ctx, plan.dockerComposeTarget.Spec, dcManagedBuild, stdout, stderr)
+	ps.EndPipelineStep(ctx)
 	if err != nil {
 		return newResults, err
 	}
 
 	// NOTE(dmiller): right now we only need this the first time. In the future
 	// it might be worth it to move this somewhere else
-	cid, err := bd.dcc.ContainerID(ctx, dcTarget.Spec)
+	cid, err := bd.dcc.ContainerID(ctx, plan.dockerComposeTarget.Spec)
 	if err != nil {
 		return newResults, err
 	}
@@ -176,7 +217,8 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		ports = containerJSON.NetworkSettings.NetworkSettingsBase.Ports
 	}
 
-	newResults[dcTarget.ID()] = store.NewDockerComposeDeployResult(dcTarget.ID(), cid, containerState, ports)
+	dcTargetID := plan.dockerComposeTarget.ID()
+	newResults[dcTargetID] = store.NewDockerComposeDeployResult(dcTargetID, cid, containerState, ports)
 	return newResults, nil
 }
 
@@ -200,4 +242,12 @@ func (bd *DockerComposeBuildAndDeployer) tagWithExpected(ctx context.Context, re
 
 	err = bd.dc.ImageTag(ctx, ref.String(), tagAs.String())
 	return tagAs, err
+}
+
+type buildPlan struct {
+	dockerComposeTarget model.DockerComposeTarget
+
+	tiltManagedImageTargets []model.ImageTarget
+
+	dockerComposeImageTarget *model.ImageTarget
 }

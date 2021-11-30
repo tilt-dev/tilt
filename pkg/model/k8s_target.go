@@ -106,11 +106,6 @@ func (k8s K8sTarget) Dockerignores() []Dockerignore {
 	return nil
 }
 
-// IgnoredLocalDirectories is part of the WatchableTarget interface.
-func (k8s K8sTarget) IgnoredLocalDirectories() []string {
-	return nil
-}
-
 // Dependencies are files required by this target.
 //
 // Part of the WatchableTarget interface.

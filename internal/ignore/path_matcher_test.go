@@ -35,10 +35,6 @@ func (t FakeTarget) TiltFilename() string {
 	return filepath.Join(t.path, "Tiltfile")
 }
 
-func (t FakeTarget) IgnoredLocalDirectories() []string {
-	return nil
-}
-
 type ignoreTestCase struct {
 	target               FakeTarget
 	change               string

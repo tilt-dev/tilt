@@ -87,6 +87,7 @@ func (s *tiltfileState) k8sCustomDeploy(thread *starlark.Thread, fn *starlark.Bu
 		}
 
 		img := &dockerImage{
+			buildType:        CustomBuild,
 			configurationRef: container.NewRefSelector(ref),
 			// HACK(milas): this is treated specially in the BuildAndDeployer to
 			// 	mark this as a "LiveUpdateOnly" ImageTarget, so that no builds

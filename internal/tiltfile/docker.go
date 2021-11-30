@@ -30,6 +30,7 @@ var cacheObsoleteWarning = "docker_build(cache=...) is obsolete, and currently a
 	"You should switch to live_update to optimize your builds."
 
 type dockerImage struct {
+	buildType        dockerImageBuildType
 	workDir          string
 	configurationRef container.RefSelector
 	matchInEnvVars   bool
@@ -72,6 +73,9 @@ type dockerImage struct {
 
 	// TODO(milas): we should have a better way of passing the Tiltfile path around during resource assembly
 	tiltfilePath string
+
+	dockerComposeService          string
+	dockerComposeLocalVolumePaths []string
 }
 
 func (d *dockerImage) ID() model.TargetID {
@@ -84,18 +88,11 @@ const (
 	UnknownBuild = iota
 	DockerBuild
 	CustomBuild
+	DockerComposeBuild
 )
 
 func (d *dockerImage) Type() dockerImageBuildType {
-	if d.dbBuildPath != "" {
-		return DockerBuild
-	}
-
-	if !d.customCommand.Empty() {
-		return CustomBuild
-	}
-
-	return UnknownBuild
+	return d.buildType
 }
 
 func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -241,6 +238,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 	sort.Strings(buildArgsList)
 
 	r := &dockerImage{
+		buildType:        DockerBuild,
 		workDir:          starkit.CurrentExecPath(thread),
 		dbDockerfilePath: dockerfilePath,
 		dbDockerfile:     dockerfile.Dockerfile(dockerfileContents),
@@ -369,6 +367,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 	}
 
 	img := &dockerImage{
+		buildType:         CustomBuild,
 		workDir:           starkit.AbsWorkingDir(thread),
 		configurationRef:  container.NewRefSelector(ref),
 		customCommand:     command,
@@ -591,6 +590,9 @@ func (s *tiltfileState) dockerignoresForImage(image *dockerImage) ([]model.Docke
 	case CustomBuild:
 		paths = append(paths, image.customDeps...)
 		source = fmt.Sprintf("custom_build(%q)", ref)
+	case DockerComposeBuild:
+		paths = append(paths, image.dbBuildPath)
+		source = fmt.Sprintf("docker_compose(%q)", ref)
 	}
 	return s.dockerignoresFromPathsAndContextFilters(
 		source,

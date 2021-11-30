@@ -132,7 +132,3 @@ func (lt LocalTarget) LocalRepos() []LocalGitRepo {
 func (lt LocalTarget) Dockerignores() []Dockerignore {
 	return lt.ignores
 }
-
-func (lt LocalTarget) IgnoredLocalDirectories() []string {
-	return nil
-}

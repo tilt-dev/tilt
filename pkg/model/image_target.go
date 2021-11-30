@@ -115,9 +115,13 @@ func (i ImageTarget) Validate() error {
 				"[Validate] CustomBuild command must not be empty",
 			)
 		}
+	case DockerComposeBuild:
+		if bd.Service == "" {
+			return fmt.Errorf("[Validate] DockerComposeBuild missing service name")
+		}
 	default:
-		return fmt.Errorf("[Validate] Image %q has neither DockerBuild nor "+
-			"CustomBuild details", confRef)
+		return fmt.Errorf(
+			"[Validate] Image %q has unsupported %T build details", confRef, bd)
 	}
 
 	return nil
@@ -151,6 +155,16 @@ func (i ImageTarget) CustomBuildInfo() CustomBuild {
 
 func (i ImageTarget) IsCustomBuild() bool {
 	_, ok := i.BuildDetails.(CustomBuild)
+	return ok
+}
+
+func (i ImageTarget) DockerComposeBuildInfo() DockerComposeBuild {
+	ret, _ := i.BuildDetails.(DockerComposeBuild)
+	return ret
+}
+
+func (i ImageTarget) IsDockerComposeBuild() bool {
+	_, ok := i.BuildDetails.(DockerComposeBuild)
 	return ok
 }
 
@@ -204,6 +218,10 @@ func (i ImageTarget) MaybeIgnoreRegistry() ImageTarget {
 	if ok && customBuild.SkipsLocalDocker && customBuild.Tag != "" {
 		i.Refs = i.Refs.WithoutRegistry()
 	}
+	_, ok = i.BuildDetails.(DockerComposeBuild)
+	if ok {
+		i.Refs = i.Refs.WithoutRegistry()
+	}
 	return i
 }
 
@@ -234,16 +252,14 @@ func (i ImageTarget) LocalPaths() []string {
 		return []string{bd.Context}
 	case CustomBuild:
 		return append([]string(nil), bd.Deps...)
+	case DockerComposeBuild:
+		return []string{bd.Context}
 	}
 	return nil
 }
 
 func (i ImageTarget) LocalRepos() []LocalGitRepo {
 	return i.repos
-}
-
-func (i ImageTarget) IgnoredLocalDirectories() []string {
-	return nil
 }
 
 func (i ImageTarget) TiltFilename() string {
@@ -304,4 +320,16 @@ func (cb CustomBuild) WithTag(t string) CustomBuild {
 
 func (cb CustomBuild) SkipsPush() bool {
 	return cb.SkipsLocalDocker || cb.DisablePush
+}
+
+type DockerComposeBuild struct {
+	Service string
+	Context string
+	// TODO(milas): these should _not_ be filtered from the build context, but should NOT be watched/trigger re-builds
+	// 	(this combination is not currently supported - Dockerignores() is used both to make the FW obj and for build
+	// 	context filtering)
+	LocalVolumePaths []string
+}
+
+func (d DockerComposeBuild) buildDetails() {
 }

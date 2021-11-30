@@ -691,16 +691,62 @@ func (s *tiltfileState) assembleDC() error {
 	}
 
 	for _, svc := range s.dc.services {
-		if svc.ImageRef() != nil {
-			builder := s.buildIndex.findBuilderForConsumedImage(svc.ImageRef())
-			if builder != nil {
-				svc.DependencyIDs = append(svc.DependencyIDs, builder.ID())
+		builder := s.buildIndex.findBuilderForConsumedImage(svc.ImageRef())
+		if builder != nil {
+			// there's a Tilt-managed builder (e.g. docker_build or custom_build) for this image reference, so use that
+			svc.DependencyIDs = append(svc.DependencyIDs, builder.ID())
+		} else {
+			// create a DockerComposeBuild image target and consume it if this service has a build section in YAML
+			err := s.maybeAddDockerComposeImageBuilder(svc)
+			if err != nil {
+				return err
 			}
-			// TODO(maia): throw warning if
-			//  a. there is an img ref from config, and img ref from user doesn't match
-			//  b. there is no img ref from config, and img ref from user is not of form .*_<svc_name>
 		}
+		// TODO(maia): throw warning if
+		//  a. there is an img ref from config, and img ref from user doesn't match
+		//  b. there is no img ref from config, and img ref from user is not of form .*_<svc_name>
 	}
+	return nil
+}
+
+func (s *tiltfileState) maybeAddDockerComposeImageBuilder(svc *dcService) error {
+	build := svc.ServiceConfig.Build
+	if build == nil || build.Context == "" {
+		// this Docker Compose service has no build info - it relies purely on
+		// a pre-existing image (e.g. from a registry)
+		return nil
+	}
+
+	buildContext := build.Context
+	if !filepath.IsAbs(buildContext) {
+		// the Compose loader should always ensure that context paths are absolute upfront
+		return fmt.Errorf("Docker Compose service %q has a relative build path: %q", svc.Name, buildContext)
+	}
+
+	dfPath := build.Dockerfile
+	if dfPath == "" {
+		// Per Compose spec, the default is "Dockerfile" (in the context dir)
+		dfPath = "Dockerfile"
+	}
+
+	if !filepath.IsAbs(dfPath) {
+		dfPath = filepath.Join(buildContext, dfPath)
+	}
+
+	imageRef := svc.ImageRef()
+	err := s.buildIndex.addImage(
+		&dockerImage{
+			buildType:            DockerComposeBuild,
+			configurationRef:     container.NewRefSelector(imageRef),
+			dockerComposeService: svc.Name,
+			dbBuildPath:          buildContext,
+			dbDockerfilePath:     dfPath,
+		})
+	if err != nil {
+		return err
+	}
+	b := s.buildIndex.findBuilderForConsumedImage(imageRef)
+	svc.DependencyIDs = append(svc.DependencyIDs, b.ID())
 	return nil
 }
 
@@ -1436,7 +1482,14 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(mn model.ManifestName, 
 			}
 			iTarget = iTarget.WithBuildDetails(r).
 				MaybeIgnoreRegistry()
-
+		case DockerComposeBuild:
+			bd := model.DockerComposeBuild{
+				Service:          image.dockerComposeService,
+				Context:          image.dbBuildPath,
+				LocalVolumePaths: image.dockerComposeLocalVolumePaths,
+			}
+			iTarget = iTarget.WithBuildDetails(bd).
+				MaybeIgnoreRegistry()
 		case UnknownBuild:
 			return nil, fmt.Errorf("no build info for image %s", image.configurationRef.RefFamiliarString())
 		}

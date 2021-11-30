@@ -6347,22 +6347,19 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 			}
 
 			expectedFilter := opt.missing
-			filter := ignore.CreateBuildContextFilter(m.ImageTargetAt(0))
-			if m.IsDC() {
-				filter = ignore.CreateBuildContextFilter(m.DockerComposeTarget())
-			}
-			filterName := "BuildContextFilter"
+
+			var filterName string
+			var filter model.PathMatcher
 			if opt.fileChange {
 				var err error
-				if m.IsDC() {
-					filter, err = ignore.CreateFileChangeFilter(m.DockerComposeTarget())
-				} else {
-					filter, err = ignore.CreateFileChangeFilter(m.ImageTargetAt(0))
-				}
+				filter, err = ignore.CreateFileChangeFilter(m.ImageTargetAt(0))
 				if err != nil {
 					f.t.Fatalf("Error creating file change filter: %v", err)
 				}
 				filterName = "FileChangeFilter"
+			} else {
+				filter = ignore.CreateBuildContextFilter(m.ImageTargetAt(0))
+				filterName = "BuildContextFilter"
 			}
 
 			actualFilter, err := filter.Matches(path)
@@ -6478,6 +6475,7 @@ func (f *fixture) assertNumManifests(expected int) {
 }
 
 func (f *fixture) assertConfigFiles(filenames ...string) {
+	f.t.Helper()
 	var expected []string
 	for _, filename := range filenames {
 		expected = append(expected, f.JoinPath(filename))

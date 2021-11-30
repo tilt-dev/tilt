@@ -1,6 +1,9 @@
 package manifestbuilder
 
-import "github.com/tilt-dev/tilt/pkg/model"
+import (
+	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/pkg/model"
+)
 
 // Assemble these targets into a manifest, that deploys to k8s,
 // wiring up all the dependency ids so that the K8sTarget depends on all
@@ -50,6 +53,19 @@ func assembleDC(m model.Manifest, dcTarg model.DockerComposeTarget, iTargets ...
 		}
 		ids = append(ids, iTarget.ID())
 	}
+
+	if len(ids) == 0 {
+		ref := container.MustParseNamed(dcTarg.Spec.Service)
+		iTarget := model.ImageTarget{
+			Refs: container.MustSimpleRefSet(container.NewRefSelector(ref)),
+			BuildDetails: model.DockerComposeBuild{
+				Service: dcTarg.Spec.Service,
+			},
+		}
+		ids = append(ids, iTarget.ID())
+		iTargets = append(iTargets, iTarget)
+	}
+
 	dc := dcTarg.WithDependencyIDs(ids)
 	return m.
 		WithImageTargets(iTargets).
