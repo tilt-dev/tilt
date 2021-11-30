@@ -297,6 +297,7 @@ func toUIResource(mt *store.ManifestTarget, s store.EngineState, disableSources 
 	}
 
 	r.Status.Conditions = []v1alpha1.UIResourceCondition{
+		UIResourceUpToDateCondition(r.Status),
 		UIResourceReadyCondition(r.Status),
 	}
 	return r, nil
@@ -341,6 +342,31 @@ func UIResourceReadyCondition(r v1alpha1.UIResourceStatus) v1alpha1.UIResourceCo
 	return c
 }
 
+// The "UpToDate" condition is a cross-resource status report that's synthesized
+// from the more type-specific fields of UIResource.
+func UIResourceUpToDateCondition(r v1alpha1.UIResourceStatus) v1alpha1.UIResourceCondition {
+	c := v1alpha1.UIResourceCondition{
+		Type:               v1alpha1.UIResourceUpToDate,
+		Status:             metav1.ConditionUnknown,
+		LastTransitionTime: apis.NowMicro(),
+	}
+
+	if r.UpdateStatus == v1alpha1.UpdateStatusOK || r.UpdateStatus == v1alpha1.UpdateStatusNotApplicable {
+		c.Status = metav1.ConditionTrue
+		return c
+	}
+
+	c.Status = metav1.ConditionFalse
+	if r.UpdateStatus == v1alpha1.UpdateStatusError {
+		c.Reason = "UpdateError"
+	} else if r.UpdateStatus == v1alpha1.UpdateStatusPending {
+		c.Reason = "UpdatePending"
+	} else {
+		c.Reason = "Unknown"
+	}
+	return c
+}
+
 // TODO(nick): We should build this from the Tiltfile in the apiserver,
 // not the Tiltfile state in EngineState.
 func TiltfileResource(name model.ManifestName, ms *store.ManifestState, logStore *logstore.LogStore) *v1alpha1.UIResource {
@@ -372,6 +398,7 @@ func TiltfileResource(name model.ManifestName, ms *store.ManifestState, logStore
 	}
 
 	tr.Status.Conditions = []v1alpha1.UIResourceCondition{
+		UIResourceUpToDateCondition(tr.Status),
 		UIResourceReadyCondition(tr.Status),
 	}
 
