@@ -1,4 +1,6 @@
+//go:build wireinject
 // +build wireinject
+
 // The build tag makes sure the stub is not built in the final build.
 
 package cli
@@ -134,7 +136,6 @@ var BaseWireSet = wire.NewSet(
 	provideWebVersion,
 	provideWebMode,
 	provideWebURL,
-	provideWebPort,
 	provideWebHost,
 	server.WireSet,
 	provideAssetServer,
@@ -154,11 +155,19 @@ var BaseWireSet = wire.NewSet(
 
 var CLIClientWireSet = wire.NewSet(
 	BaseWireSet,
+	provideWebPort,
 	cliclient.WireSet,
 )
 
 var UpWireSet = wire.NewSet(
 	BaseWireSet,
+	provideWebPort,
+	engine.ProvideSubscribers,
+)
+
+var ServerWireSet = wire.NewSet(
+	BaseWireSet,
+	provideServerPort,
 	engine.ProvideSubscribers,
 )
 
@@ -173,7 +182,7 @@ func wireDockerPrune(ctx context.Context, analytics *analytics.TiltAnalytics, su
 }
 
 func wireCmdUp(ctx context.Context, analytics *analytics.TiltAnalytics, cmdTags engineanalytics.CmdTags, subcommand model.TiltSubcommand) (CmdUpDeps, error) {
-	wire.Build(UpWireSet,
+	wire.Build(ServerWireSet,
 		cloud.NewSnapshotter,
 		wire.Value(store.EngineModeUp),
 		wire.Struct(new(CmdUpDeps), "*"))
@@ -187,10 +196,12 @@ type CmdUpDeps struct {
 	CloudAddress cloudurl.Address
 	Prompt       *prompt.TerminalPrompt
 	Snapshotter  *cloud.Snapshotter
+	Host         model.WebHost
+	Port         model.WebPort
 }
 
 func wireCmdCI(ctx context.Context, analytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (CmdCIDeps, error) {
-	wire.Build(UpWireSet,
+	wire.Build(ServerWireSet,
 		cloud.NewSnapshotter,
 		wire.Value(store.EngineModeCI),
 		wire.Value(engineanalytics.CmdTags(map[string]string{})),
@@ -205,6 +216,8 @@ type CmdCIDeps struct {
 	Token        token.Token
 	CloudAddress cloudurl.Address
 	Snapshotter  *cloud.Snapshotter
+	Host         model.WebHost
+	Port         model.WebPort
 }
 
 func wireCmdUpdog(ctx context.Context,
@@ -213,6 +226,7 @@ func wireCmdUpdog(ctx context.Context,
 	subcommand model.TiltSubcommand,
 	objects []ctrlclient.Object) (CmdUpdogDeps, error) {
 	wire.Build(BaseWireSet,
+		provideServerPort,
 		provideUpdogSubscriber,
 		provideUpdogCmdSubscribers,
 		wire.Value(store.EngineModeCI),

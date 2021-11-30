@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"net/url"
 	"os"
 	"strconv"
@@ -130,12 +131,6 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 
 	log.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
 
-	webHost := provideWebHost()
-	webURL, _ := provideWebURL(webHost, provideWebPort())
-	startLine := prompt.StartStatusLine(webURL, webHost)
-	log.Print(startLine)
-	log.Print(buildStamp())
-
 	if ok, reason := analytics.IsAnalyticsDisabledFromEnv(); ok {
 		log.Printf("Tilt analytics disabled: %s", reason)
 	}
@@ -145,6 +140,11 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		deferred.SetOutput(deferred.Original())
 		return err
 	}
+
+	webURL, _ := provideWebURL(cmdUpDeps.Host, cmdUpDeps.Port)
+	startLine := prompt.StartStatusLine(webURL, cmdUpDeps.Host)
+	log.Print(startLine)
+	log.Print(buildStamp())
 
 	upper := cmdUpDeps.Upper
 	if termMode == store.TerminalModePrompt {
@@ -214,6 +214,20 @@ func provideWebHost() model.WebHost {
 
 func provideWebPort() model.WebPort {
 	return model.WebPort(webPortFlag)
+}
+
+func provideServerPort() model.WebPort {
+	host := provideWebHost()
+	port := int(provideWebPort())
+	for {
+		listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", string(host), port))
+		if err == nil {
+			listener.Close()
+			webPortFlag = port
+			return model.WebPort(port)
+		}
+		port++
+	}
 }
 
 func provideWebURL(webHost model.WebHost, webPort model.WebPort) (model.WebURL, error) {

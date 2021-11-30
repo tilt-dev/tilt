@@ -67,20 +67,19 @@ func (c *ciCmd) run(ctx context.Context, args []string) error {
 
 	log.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
 
-	webHost := provideWebHost()
-	webURL, _ := provideWebURL(webHost, provideWebPort())
-	startLine := prompt.StartStatusLine(webURL, webHost)
+	cmdCIDeps, err := wireCmdCI(ctx, a, "ci")
+	if err != nil {
+		deferred.SetOutput(deferred.Original())
+		return err
+	}
+
+	webURL, _ := provideWebURL(cmdCIDeps.Host, cmdCIDeps.Port)
+	startLine := prompt.StartStatusLine(webURL, cmdCIDeps.Host)
 	log.Print(startLine)
 	log.Print(buildStamp())
 
 	if ok, reason := analytics.IsAnalyticsDisabledFromEnv(); ok {
 		log.Printf("Tilt analytics disabled: %s", reason)
-	}
-
-	cmdCIDeps, err := wireCmdCI(ctx, a, "ci")
-	if err != nil {
-		deferred.SetOutput(deferred.Original())
-		return err
 	}
 
 	upper := cmdCIDeps.Upper

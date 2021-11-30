@@ -177,7 +177,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 		return CmdUpDeps{}, err
 	}
 	configAccess := server.ProvideConfigAccess(tiltDevDir)
-	webPort := provideWebPort()
+	webPort := provideServerPort()
 	apiServerName := model.ProvideAPIServerName(webPort)
 	webHost := provideWebHost()
 	webListener, err := server.ProvideWebListener(webHost, webPort)
@@ -364,6 +364,8 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 		CloudAddress: address,
 		Prompt:       terminalPrompt,
 		Snapshotter:  snapshotter,
+		Host:         webHost,
+		Port:         webPort,
 	}
 	return cmdUpDeps, nil
 }
@@ -385,7 +387,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 		return CmdCIDeps{}, err
 	}
 	configAccess := server.ProvideConfigAccess(tiltDevDir)
-	webPort := provideWebPort()
+	webPort := provideServerPort()
 	apiServerName := model.ProvideAPIServerName(webPort)
 	webHost := provideWebHost()
 	webListener, err := server.ProvideWebListener(webHost, webPort)
@@ -572,6 +574,8 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 		Token:        tokenToken,
 		CloudAddress: address,
 		Snapshotter:  snapshotter,
+		Host:         webHost,
+		Port:         webPort,
 	}
 	return cmdCIDeps, nil
 }
@@ -590,7 +594,7 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 		return CmdUpdogDeps{}, err
 	}
 	configAccess := server.ProvideConfigAccess(tiltDevDir)
-	webPort := provideWebPort()
+	webPort := provideServerPort()
 	apiServerName := model.ProvideAPIServerName(webPort)
 	webHost := provideWebHost()
 	webListener, err := server.ProvideWebListener(webHost, webPort)
@@ -1043,16 +1047,22 @@ var BaseWireSet = wire.NewSet(
 	K8sWireSet, tiltfile.WireSet, git.ProvideGitRemote, localexec.DefaultEnv, localexec.NewProcessExecer, wire.Bind(new(localexec.Execer), new(*localexec.ProcessExecer)), docker.SwitchWireSet, dockercompose.NewDockerComposeClient, clockwork.NewRealClock, engine.DeployerWireSet, engine.NewBuildController, local.NewServerController, kubernetesdiscovery.NewContainerRestartDetector, k8swatch.NewServiceWatcher, k8swatch.NewEventWatchManager, uisession2.NewSubscriber, uiresource2.NewSubscriber, configs.NewConfigsController, configs.NewTriggerQueueSubscriber, telemetry.NewController, dcwatch.NewEventWatcher, runtimelog.NewDockerComposeLogManager, cloud.WireSet, cloudurl.ProvideAddress, k8srollout.NewPodMonitor, telemetry.NewStartTracker, session.NewController, build.ProvideClock, provideClock, hud.WireSet, prompt.WireSet, wire.Value(openurl.OpenURL(openurl.BrowserOpen)), provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(*store.Store)), dockerprune.NewDockerPruner, provideTiltInfo, engine.NewUpper, analytics2.NewAnalyticsUpdater, analytics2.ProvideAnalyticsReporter, provideUpdateModeFlag, fsevent.ProvideWatcherMaker, fsevent.ProvideTimerMaker, controllers.WireSet, provideWebVersion,
 	provideWebMode,
 	provideWebURL,
-	provideWebPort,
 	provideWebHost, server.WireSet, provideAssetServer, tracer.NewSpanCollector, wire.Bind(new(trace.SpanExporter), new(*tracer.SpanCollector)), wire.Bind(new(tracer.SpanSource), new(*tracer.SpanCollector)), dirs.UseTiltDevDir, xdg.NewTiltDevBase, token.GetOrCreateToken, buildcontrol.NewKINDLoader, wire.Value(feature.MainDefaults),
 )
 
 var CLIClientWireSet = wire.NewSet(
-	BaseWireSet, client2.WireSet,
+	BaseWireSet,
+	provideWebPort, client2.WireSet,
 )
 
 var UpWireSet = wire.NewSet(
-	BaseWireSet, engine.ProvideSubscribers,
+	BaseWireSet,
+	provideWebPort, engine.ProvideSubscribers,
+)
+
+var ServerWireSet = wire.NewSet(
+	BaseWireSet,
+	provideServerPort, engine.ProvideSubscribers,
 )
 
 type CmdUpDeps struct {
@@ -1062,6 +1072,8 @@ type CmdUpDeps struct {
 	CloudAddress cloudurl.Address
 	Prompt       *prompt.TerminalPrompt
 	Snapshotter  *cloud.Snapshotter
+	Host         model.WebHost
+	Port         model.WebPort
 }
 
 type CmdCIDeps struct {
@@ -1070,6 +1082,8 @@ type CmdCIDeps struct {
 	Token        token.Token
 	CloudAddress cloudurl.Address
 	Snapshotter  *cloud.Snapshotter
+	Host         model.WebHost
+	Port         model.WebPort
 }
 
 type CmdUpdogDeps struct {
