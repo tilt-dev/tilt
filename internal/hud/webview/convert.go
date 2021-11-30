@@ -198,7 +198,7 @@ func ToUIResourceList(state store.EngineState, disableSources map[string][]v1alp
 			continue
 		}
 
-		r := TiltfileResourceProtoView(name, ms, state.LogStore)
+		r := TiltfileResource(name, ms, state.LogStore)
 		r.Status.Order = int32(len(ret) + 1)
 		ret = append(ret, r)
 	}
@@ -295,12 +295,55 @@ func toUIResource(mt *store.ManifestTarget, s store.EngineState, disableSources 
 	if err != nil {
 		return nil, err
 	}
+
+	r.Status.Conditions = []v1alpha1.UIResourceCondition{
+		UIResourceReadyCondition(r.Status),
+	}
 	return r, nil
+}
+
+// The "Ready" condition is a cross-resource status report that's synthesized
+// from the more type-specific fields of UIResource.
+func UIResourceReadyCondition(r v1alpha1.UIResourceStatus) v1alpha1.UIResourceCondition {
+	c := v1alpha1.UIResourceCondition{
+		Type:   v1alpha1.UIResourceReady,
+		Status: metav1.ConditionUnknown,
+
+		// LastTransitionTime will be computed by diffing against the current
+		// Condition. This doesn't really fit into the usual reconciler pattern,
+		// but is considered a worthwhile trade-off for the semantics we want, see discussion here:
+		// https://maelvls.dev/kubernetes-conditions/
+		LastTransitionTime: apis.NowMicro(),
+	}
+
+	if r.RuntimeStatus == v1alpha1.RuntimeStatusOK {
+		c.Status = metav1.ConditionTrue
+		return c
+	}
+
+	if r.RuntimeStatus == v1alpha1.RuntimeStatusNotApplicable && r.UpdateStatus == v1alpha1.UpdateStatusOK {
+		c.Status = metav1.ConditionTrue
+		return c
+	}
+
+	c.Status = metav1.ConditionFalse
+	if r.RuntimeStatus == v1alpha1.RuntimeStatusError {
+		c.Reason = "RuntimeError"
+	} else if r.UpdateStatus == v1alpha1.UpdateStatusError {
+		c.Reason = "UpdateError"
+	} else if r.UpdateStatus == v1alpha1.UpdateStatusOK && r.RuntimeStatus == v1alpha1.RuntimeStatusPending {
+		c.Reason = "RuntimePending"
+	} else if r.UpdateStatus == v1alpha1.UpdateStatusPending {
+		c.Reason = "UpdatePending"
+	} else {
+		c.Reason = "Unknown"
+	}
+	return c
 }
 
 // TODO(nick): We should build this from the Tiltfile in the apiserver,
 // not the Tiltfile state in EngineState.
-func TiltfileResourceProtoView(name model.ManifestName, ms *store.ManifestState, logStore *logstore.LogStore) *v1alpha1.UIResource {
+func TiltfileResource(name model.ManifestName, ms *store.ManifestState, logStore *logstore.LogStore) *v1alpha1.UIResource {
 	ltfb := ms.LastBuild()
 	ctfb := ms.CurrentBuild
 
@@ -327,16 +370,17 @@ func TiltfileResourceProtoView(name model.ManifestName, ms *store.ManifestState,
 	} else {
 		tr.Status.LastDeployTime = finish
 	}
+
+	tr.Status.Conditions = []v1alpha1.UIResourceCondition{
+		UIResourceReadyCondition(tr.Status),
+	}
+
 	return tr
 }
 
 func populateResourceInfoView(mt *store.ManifestTarget, r *v1alpha1.UIResource) error {
 	r.Status.UpdateStatus = mt.UpdateStatus()
 	r.Status.RuntimeStatus = v1alpha1.RuntimeStatusNotApplicable
-
-	if mt.Manifest.PodReadinessMode() == model.PodReadinessIgnore {
-		return nil
-	}
 
 	if mt.Manifest.IsDC() {
 		dcState := mt.State.DCRuntimeState()
