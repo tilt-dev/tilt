@@ -43,6 +43,7 @@ func TestUpdateTiltfile(t *testing.T) {
 	require.NotNil(t, r)
 	assert.Equal(t, "3", r.ObjectMeta.ResourceVersion)
 	assert.Equal(t, "False", string(readyCondition(r).Status))
+	assert.Equal(t, "False", string(upToDateCondition(r).Status))
 
 	// Make sure OnChange is idempotent.
 	_ = f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
@@ -63,6 +64,7 @@ func TestUpdateTiltfile(t *testing.T) {
 	r = f.resource("(Tiltfile)")
 	require.NotNil(t, r)
 	assert.Equal(t, "4", r.ObjectMeta.ResourceVersion)
+	assert.Equal(t, "True", string(upToDateCondition(r).Status))
 	assert.Equal(t, "True", string(readyCondition(r).Status))
 }
 
@@ -99,6 +101,15 @@ func (f *fixture) resource(name string) *v1alpha1.UIResource {
 func readyCondition(r *v1alpha1.UIResource) *v1alpha1.UIResourceCondition {
 	for _, c := range r.Status.Conditions {
 		if c.Type == v1alpha1.UIResourceReady {
+			return &c
+		}
+	}
+	return nil
+}
+
+func upToDateCondition(r *v1alpha1.UIResource) *v1alpha1.UIResourceCondition {
+	for _, c := range r.Status.Conditions {
+		if c.Type == v1alpha1.UIResourceUpToDate {
 			return &c
 		}
 	}

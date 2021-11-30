@@ -398,6 +398,10 @@ type UIResourceConditionType string
 // Ready means the UI Resource has built, deployed, and passed any readiness checks.
 const UIResourceReady UIResourceConditionType = "Ready"
 
+// UpToDate means that the UI Resource has successfully built and deployed all
+// its components. Runtime checks may not be passing yet.
+const UIResourceUpToDate UIResourceConditionType = "UpToDate"
+
 type UIResourceCondition struct {
 	// Type of UI Resource condition.
 	Type UIResourceConditionType `json:"type" protobuf:"bytes,1,opt,name=type,casttype=UIResourceConditionType"`

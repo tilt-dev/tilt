@@ -81,6 +81,11 @@ func TestWriteSnapshotTo(t *testing.T) {
           "order": 1,
           "conditions": [
             {
+              "type": "UpToDate",
+              "status": "False",
+              "reason": "UpdatePending"
+            },
+            {
               "type": "Ready",
               "status": "False",
               "reason": "UpdatePending"
