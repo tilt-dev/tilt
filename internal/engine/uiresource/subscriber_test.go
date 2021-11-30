@@ -42,6 +42,7 @@ func TestUpdateTiltfile(t *testing.T) {
 	r = f.resource("(Tiltfile)")
 	require.NotNil(t, r)
 	assert.Equal(t, "3", r.ObjectMeta.ResourceVersion)
+	assert.Equal(t, "False", string(readyCondition(r).Status))
 
 	// Make sure OnChange is idempotent.
 	_ = f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
@@ -49,6 +50,20 @@ func TestUpdateTiltfile(t *testing.T) {
 	r = f.resource("(Tiltfile)")
 	require.NotNil(t, r)
 	assert.Equal(t, "3", r.ObjectMeta.ResourceVersion)
+
+	f.store.WithState(func(es *store.EngineState) {
+		ms := es.TiltfileStates[model.MainTiltfileManifestName]
+		b := ms.CurrentBuild
+		b.FinishTime = time.Now()
+		ms.AddCompletedBuild(b)
+		ms.CurrentBuild = model.BuildRecord{}
+	})
+
+	_ = f.sub.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	r = f.resource("(Tiltfile)")
+	require.NotNil(t, r)
+	assert.Equal(t, "4", r.ObjectMeta.ResourceVersion)
+	assert.Equal(t, "True", string(readyCondition(r).Status))
 }
 
 type fixture struct {
@@ -79,4 +94,13 @@ func (f *fixture) resource(name string) *v1alpha1.UIResource {
 
 	require.NoError(f.T(), err)
 	return r
+}
+
+func readyCondition(r *v1alpha1.UIResource) *v1alpha1.UIResourceCondition {
+	for _, c := range r.Status.Conditions {
+		if c.Type == v1alpha1.UIResourceReady {
+			return &c
+		}
+	}
+	return nil
 }

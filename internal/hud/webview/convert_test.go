@@ -256,6 +256,7 @@ func TestReadinessCheckFailing(t *testing.T) {
 	rv, ok := findResource(m.Name, v)
 	require.True(t, ok)
 	require.Equal(t, v1alpha1.RuntimeStatusPending, v1alpha1.RuntimeStatus(rv.RuntimeStatus))
+	require.Equal(t, "False", string(readyCondition(rv).Status))
 }
 
 func TestLocalResource(t *testing.T) {
@@ -278,6 +279,7 @@ func TestLocalResource(t *testing.T) {
 	rs := r.Status
 	assert.Equal(t, "test", r.Name)
 	assert.Equal(t, v1alpha1.RuntimeStatusNotApplicable, rs.RuntimeStatus)
+	require.Equal(t, "False", string(readyCondition(rs).Status))
 	require.Len(t, rs.Specs, 1)
 	spec := rs.Specs[0]
 	require.Equal(t, v1alpha1.UIResourceTargetTypeLocal, spec.Type)
@@ -433,4 +435,13 @@ func lastBuild(r v1alpha1.UIResourceStatus) v1alpha1.UIBuildTerminated {
 	}
 
 	return r.BuildHistory[0]
+}
+
+func readyCondition(rs v1alpha1.UIResourceStatus) *v1alpha1.UIResourceCondition {
+	for _, c := range rs.Conditions {
+		if c.Type == v1alpha1.UIResourceReady {
+			return &c
+		}
+	}
+	return nil
 }

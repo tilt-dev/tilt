@@ -41,6 +41,14 @@ func TestWriteSnapshotTo(t *testing.T) {
 	snapshot.View.UiResources = resources
 
 	now := time.Unix(1551202573, 0)
+	for _, r := range resources {
+		for i, cond := range r.Status.Conditions {
+			// Clear the transition timestamps so that the test is hermetic.
+			cond.LastTransitionTime = metav1.MicroTime{}
+			r.Status.Conditions[i] = cond
+		}
+	}
+
 	startTime, err := ptypes.TimestampProto(now)
 	require.NoError(t, err)
 	snapshot.View.TiltStartTime = startTime
@@ -70,7 +78,14 @@ func TestWriteSnapshotTo(t *testing.T) {
         "status": {
           "runtimeStatus": "not_applicable",
           "updateStatus": "pending",
-          "order": 1
+          "order": 1,
+          "conditions": [
+            {
+              "type": "Ready",
+              "status": "False",
+              "reason": "UpdatePending"
+            }
+          ]
         }
       }
     ]

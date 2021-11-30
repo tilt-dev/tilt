@@ -70,6 +70,8 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 			continue
 		}
 
+		reconcileConditions(r.Status.Conditions, stored.Status.Conditions)
+
 		if !apicmp.DeepEqual(r.Status, stored.Status) {
 			// If the current version is different than what's stored, update it.
 			update := stored.DeepCopy()
@@ -83,6 +85,27 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 	}
 
 	return nil
+}
+
+// Update the LastTransitionTime against the currently stored conditions.
+func reconcileConditions(conds []v1alpha1.UIResourceCondition, stored []v1alpha1.UIResourceCondition) {
+	storedMap := make(map[v1alpha1.UIResourceConditionType]v1alpha1.UIResourceCondition, len(stored))
+	for _, c := range stored {
+		storedMap[c.Type] = c
+	}
+
+	for i, c := range conds {
+		existing, ok := storedMap[c.Type]
+		if !ok {
+			continue
+		}
+
+		// If the status hasn't changed, fall back to the previous transition time.
+		if existing.Status == c.Status {
+			c.LastTransitionTime = existing.LastTransitionTime
+		}
+		conds[i] = c
+	}
 }
 
 var _ store.Subscriber = &Subscriber{}
