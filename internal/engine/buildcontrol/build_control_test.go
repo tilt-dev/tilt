@@ -58,6 +58,27 @@ func TestCurrentlyBuildingK8sResourceDisablesLocalScheduling(t *testing.T) {
 	f.assertNoTargetNextToBuild()
 }
 
+func TestCurrentlyBuildingK8sResourceDoesNotCreateHoldIfResourceNotPending(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	k8s1 := f.upsertK8sManifest("k8s1")
+	k8s2 := f.upsertK8sManifest("k8s2")
+	f.upsertLocalManifest("local1", func(m manifestbuilder.ManifestBuilder) manifestbuilder.ManifestBuilder {
+		return m.WithTriggerMode(model.TriggerModeManual)
+	})
+
+	f.assertHold("local1", store.HoldReasonNone)
+
+	k8s1.State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}
+	f.assertNextTargetToBuild("k8s2")
+	f.assertHold("local1", store.HoldReasonNone)
+
+	k8s2.State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}
+	f.assertNoTargetNextToBuild()
+	f.assertHold("local1", store.HoldReasonNone)
+}
+
 func TestCurrentlyBuildingUncategorizedDisablesOtherK8sTargets(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
