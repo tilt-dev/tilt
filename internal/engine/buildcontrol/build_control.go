@@ -21,7 +21,10 @@ import (
 // Algorithm to choose a manifest to build next.
 func NextTargetToBuild(state store.EngineState) (*store.ManifestTarget, HoldSet) {
 	holds := HoldSet{}
-	targets := state.Targets()
+
+	// Only grab the targets that need any builds at all,
+	// so that we don't put holds on builds that aren't even eligible.
+	targets := FindTargetsNeedingAnyBuild(state)
 
 	// Don't build anything if there are pending config file changes.
 	// We want the Tiltfile to re-run first.
@@ -60,7 +63,7 @@ func NextTargetToBuild(state store.EngineState) (*store.ManifestTarget, HoldSet)
 		HoldK8sTargets(targets, holds)
 	}
 
-	HoldTargetsWithBuildingComponents(targets, holds)
+	HoldTargetsWithBuildingComponents(state, targets, holds)
 	HoldTargetsWaitingOnDependencies(state, targets, holds)
 	HoldDisabledTargets(state, targets, holds)
 
@@ -168,10 +171,10 @@ func canReuseImageTargetHeuristic(spec model.TargetSpec, status store.BuildStatu
 	return false
 }
 
-func HoldTargetsWithBuildingComponents(mts []*store.ManifestTarget, holds HoldSet) {
+func HoldTargetsWithBuildingComponents(state store.EngineState, mts []*store.ManifestTarget, holds HoldSet) {
 	building := make(map[model.TargetID]bool)
 
-	for _, mt := range mts {
+	for _, mt := range state.Targets() {
 		if mt.State.IsBuilding() {
 			building[mt.Manifest.ID()] = true
 
@@ -374,6 +377,45 @@ func EarliestPendingAutoTriggerTarget(targets []*store.ManifestTarget) *store.Ma
 	}
 
 	return choice
+}
+
+// Grab all the targets that are build-eligible from
+// the engine state.
+//
+// We apply this filter first, then layer on individual build decisions about
+// what to build next. This MUST be the union of all checks in all downstream
+// build decisions in NextTargetToBuild.
+func FindTargetsNeedingAnyBuild(state store.EngineState) []*store.ManifestTarget {
+	queue := make(map[model.ManifestName]bool, len(state.TriggerQueue))
+	for _, mn := range state.TriggerQueue {
+		queue[mn] = true
+	}
+
+	result := []*store.ManifestTarget{}
+	for _, target := range state.Targets() {
+		if !target.State.StartedFirstBuild() && target.Manifest.TriggerMode.AutoInitial() {
+			result = append(result, target)
+			continue
+		}
+
+		if target.State.NeedsRebuildFromCrash {
+			result = append(result, target)
+			continue
+		}
+
+		if queue[target.Manifest.Name] {
+			result = append(result, target)
+			continue
+		}
+
+		hasPendingChanges, _ := target.State.HasPendingChanges()
+		if hasPendingChanges && target.Manifest.TriggerMode.AutoOnChange() {
+			result = append(result, target)
+			continue
+		}
+	}
+
+	return result
 }
 
 func FindTargetsNeedingInitialBuild(targets []*store.ManifestTarget) []*store.ManifestTarget {
