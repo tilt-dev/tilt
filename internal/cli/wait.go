@@ -52,8 +52,9 @@ var (
 		# Wait for the tiltfile to load.
 		tilt wait --for=condition=Ready "uiresource/(Tiltfile)"
 
-		# Wait for a deployment to become ready.
-		tilt wait --for=condition=Ready "uiresource/my-deployment"`))
+		# When used with a Kubernetes resource, waits for the pod
+    # to deploy, start running, and pass all readiness probes.
+		tilt wait --for=condition=Ready "uiresource/my-kubernetes-deployment"`))
 )
 
 type waitCmd struct {
