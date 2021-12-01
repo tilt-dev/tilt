@@ -1,27 +1,27 @@
 package cli
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
-	"os"
+	"strings"
 
+	"github.com/kballard/go-shellquote"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/kubectl/pkg/cmd/util/editor"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type argsCmd struct {
 	clear bool
-	post  httpPoster
 }
 
 func newArgsCmd() *argsCmd {
-	return &argsCmd{post: http.Post}
+	return &argsCmd{}
 }
 
 func (c *argsCmd) name() model.TiltSubcommand { return "args" }
@@ -33,12 +33,18 @@ func (c *argsCmd) register() *cobra.Command {
 		Short:                 "Changes the Tiltfile args in use by a running Tilt",
 		Long: `Changes the Tiltfile args in use by a running Tilt.
 
+# Edit the args
+tilt args
+
+# Use an alternate editor
+EDITOR=nano tilt args
+
+# skip the editor
+# note: "--" here indicates the end of the tilt args and the start of the tiltfile args
+tilt args -- --foo=bar frontend backend
+
 Note that this does not affect built-in Tilt args (e.g. --hud, --host), but rather the extra args that come after,
 i.e., those specifying which resources to run and/or handled by a Tiltfile calling config.parse.
-
-To provide args starting with --, insert a standalone --, e.g.:
-
-tilt args -- --foo=bar frontend backend
 `,
 	}
 
@@ -48,44 +54,86 @@ tilt args -- --foo=bar frontend backend
 	return cmd
 }
 
-type httpPoster func(url string, contentType string, body io.Reader) (*http.Response, error)
+func newClient(ctx context.Context) (client.Client, error) {
+	getter, err := wireClientGetter(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg, err := getter.ToRESTConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	ctrlclient, err := client.New(cfg, client.Options{Scheme: v1alpha1.NewScheme()})
+	if err != nil {
+		return nil, err
+	}
+
+	return ctrlclient, err
+}
+
+func parseEditResult(b []byte) ([]string, error) {
+	lines := strings.Split(string(b), "\n")
+	var argsLine *string
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if len(line) == 0 || line[0] == '#' {
+			continue
+		}
+		if argsLine != nil {
+			return nil, errors.New("cannot have multiple non-comment lines")
+		}
+		s := line
+		argsLine = &s
+	}
+	if argsLine == nil {
+		return nil, errors.New("must have exactly one non-comment line, found zero. If you want to clear the args, use `tilt args --clear`")
+	}
+	args, err := shellquote.Split(*argsLine)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error parsing %q", string(b))
+	}
+
+	return args, nil
+}
 
 func (c *argsCmd) run(ctx context.Context, args []string) error {
-	// require --clear instead of an empty args list to ensure an experimental `tilt flags` doesn't unintentionally wipe state
-	if len(args) == 0 {
-		if !c.clear {
-			return errors.New("no args specified. If your intent is to empty the args, run `tilt args --clear`.")
-		}
-	} else {
-		if c.clear {
-			return errors.New("--clear cannot be specified with other values. either use --clear to clear the args or specify args to replace the args with a new (non-empty) value")
-		}
-	}
-	url := apiURL("set_tiltfile_args")
-	body := &bytes.Buffer{}
-	err := json.NewEncoder(body).Encode(args)
+	ctrlclient, err := newClient(ctx)
 	if err != nil {
-		return errors.Wrap(err, "failed to encode args as json")
+		return err
 	}
 
-	res, err := c.post(url, "application/json", body)
+	var tf v1alpha1.Tiltfile
+	err = ctrlclient.Get(ctx, types.NamespacedName{Name: model.MainTiltfileManifestName.String()}, &tf)
 	if err != nil {
-		fmt.Println("tilt args requires a running Tilt instance")
-		return errors.Wrapf(err, "error making http request to Tilt at %s", url)
+		return err
 	}
-	defer func() {
-		_ = res.Body.Close()
-	}()
 
-	if res.StatusCode != http.StatusOK {
-		// don't print the response body for 404 since it's full of html and more noise than it's worth on the command line
-		if res.StatusCode != http.StatusNotFound {
-			_, err := io.Copy(os.Stderr, res.Body)
-			if err != nil {
-				return errors.Wrapf(err, "http request to Tilt returned non-OK status %s and writing the content of the http response failed", res.Status)
-			}
+	if c.clear {
+		if len(args) != 0 {
+			return errors.New("--clear cannot be specified with other values")
 		}
-		return fmt.Errorf("http request to Tilt failed: %s", res.Status)
+		args = nil
+	} else if len(args) == 0 {
+		input := fmt.Sprintf("# edit args for the running Tilt here\n%s\n", shellquote.Join(tf.Spec.Args...))
+		e := editor.NewDefaultEditor([]string{"EDITOR"})
+		b, _, err := e.LaunchTempFile("", "", strings.NewReader(input))
+		if err != nil {
+			return err
+		}
+
+		args, err = parseEditResult(b)
+		if err != nil {
+			return err
+		}
+	}
+
+	tf.Spec.Args = args
+
+	err = ctrlclient.Update(ctx, &tf)
+	if err != nil {
+		return err
 	}
 
 	fmt.Printf("changed config args for Tilt running at %s to %v\n", apiHost(), args)
