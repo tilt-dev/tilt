@@ -1,6 +1,10 @@
 import { Href, UnregisterCallback } from "history"
 import { RouteComponentProps } from "react-router-dom"
-import { AnnotationButtonType, ToggleDisableButtonType } from "./ApiButton"
+import {
+  ApiButtonType,
+  UIBUTTON_ANNOTATION_TYPE,
+  UIBUTTON_TOGGLE_DISABLE_TYPE,
+} from "./ApiButton"
 import {
   ResourceName,
   TriggerMode,
@@ -410,14 +414,14 @@ export function disableButton(
     metadata: {
       name: `toggle-${resourceName}-disable`,
       annotations: {
-        [AnnotationButtonType]: ToggleDisableButtonType,
+        [UIBUTTON_ANNOTATION_TYPE]: UIBUTTON_TOGGLE_DISABLE_TYPE,
       },
     },
     spec: {
       text: enabled ? "Disable Resource" : "Enable Resource",
       location: {
         componentID: resourceName,
-        componentType: "resource",
+        componentType: ApiButtonType.Resource,
       },
     },
   }
