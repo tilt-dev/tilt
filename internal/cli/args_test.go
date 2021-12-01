@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"runtime"
 	"testing"
 
 	"github.com/alessio/shellescape"
@@ -62,6 +63,9 @@ func TestArgsClearAndNewValue(t *testing.T) {
 }
 
 func TestArgsEdit(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("haven't figured out an appropriate $EDITOR for windows")
+	}
 	for _, tc := range []struct {
 		name          string
 		contents      string
