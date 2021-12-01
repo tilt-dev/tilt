@@ -76,6 +76,9 @@ func TestArgsEdit(t *testing.T) {
 		{"multiple lines", "foo\nbar\n", nil, "cannot have multiple non-comment lines"},
 		{"empty lines ignored", "1 2\n\n\n", []string{"1", "2"}, ""},
 		{"dashes", "--foo --bar", []string{"--foo", "--bar"}, ""},
+		{"quoted hash", "1 '2 # not a comment'", []string{"1", "2 # not a comment"}, ""},
+		// TODO - fix comment parsing so the below passes
+		// {"mid-line comment", "1 2 # comment", []string{"1", "2"}, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newServerFixture(t)
