@@ -334,16 +334,27 @@ async function updateButtonStatus(
 }
 
 function getButtonTags(button: UIButton): Tags {
+  const tags: Tags = {}
+
   // The location of the button in the UI
   const component = button.spec?.location?.componentType as ApiButtonType
+  if (component !== undefined) {
+    tags.component = component
+  }
 
   const buttonAnnotations = annotations(button)
 
   // A unique hash of the button text to help identify which button was clicked
   const specHash = buttonAnnotations[UIBUTTON_SPEC_HASH]
+  if (specHash !== undefined) {
+    tags.specHash = specHash
+  }
 
   // Tilt-specific button annotation, currently only used to differentiate disable toggles
   const buttonType = buttonAnnotations[UIBUTTON_ANNOTATION_TYPE]
+  if (buttonType !== undefined) {
+    tags.buttonType = buttonType
+  }
 
   // A toggle button will have a hidden input field with the current value of the toggle
   // e.g., when a disable button is clicked, the hidden input will be "on" because that's
@@ -355,25 +366,19 @@ function getButtonTags(button: UIButton): Tags {
     )
   }
 
-  let toggleValue: ApiButtonToggleState | undefined
   if (toggleInput !== undefined) {
-    const definedValue = toggleInput.hidden?.value
+    const toggleValue = toggleInput.hidden?.value
     // Only use values defined in `ApiButtonToggleState`, so no user-specific information is saved.
     // When toggle buttons are exposed in the button extension, this mini allowlist can be revisited.
     if (
-      definedValue === ApiButtonToggleState.On ||
-      definedValue === ApiButtonToggleState.Off
+      toggleValue === ApiButtonToggleState.On ||
+      toggleValue === ApiButtonToggleState.Off
     ) {
-      toggleValue = definedValue
+      tags.toggleValue = toggleValue
     }
   }
 
-  return {
-    buttonType,
-    component,
-    specHash,
-    toggleValue,
-  }
+  return tags
 }
 
 // Renders a UIButton.
