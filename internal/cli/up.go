@@ -218,9 +218,16 @@ func provideWebPort() model.WebPort {
 
 func provideServerPort() model.WebPort {
 	host := provideWebHost()
+	port := int(provideWebPort())
+
+	// Return the port as requested if not the default port
+	if port != defaultWebPort {
+		return model.WebPort(port)
+	}
+
 	max_port := ((1 << 16) - 1)
 
-	for port := int(provideWebPort()); port < max_port; port++ {
+	for ; port < max_port; port++ {
 		listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", string(host), port))
 		if err == nil {
 			listener.Close()
