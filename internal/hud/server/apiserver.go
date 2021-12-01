@@ -93,8 +93,7 @@ func ProvideWebListener(host model.WebHost, port model.WebPort) (WebListener, er
 	webListener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", string(host), int(port)))
 	if err != nil {
 		return nil, fmt.Errorf("Tilt cannot start because you already have another process on port %d\n"+
-			"If you want to run multiple Tilt instances simultaneously,\n"+
-			"use the --port flag or TILT_PORT env variable to set a custom port\nOriginal error: %v",
+			"Choose another port, or run Tilt without the --port flag to find an open port\nOriginal error: %v",
 			port, err)
 	}
 	return WebListener(webListener), nil
