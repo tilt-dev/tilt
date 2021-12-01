@@ -1,6 +1,10 @@
 package docker
 
-import "io"
+import (
+	"io"
+
+	"github.com/moby/buildkit/session/filesync"
+)
 
 type BuildOptions struct {
 	Context            io.Reader
@@ -16,4 +20,5 @@ type BuildOptions struct {
 	Platform           string
 	ExtraTags          []string
 	ForceLegacyBuilder bool
+	SyncedDirs         []filesync.SyncedDir
 }
