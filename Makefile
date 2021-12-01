@@ -55,9 +55,11 @@ else
 	gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml --rerun-fails=2 --rerun-fails-max-failures=10 --packages="./..." -- -mod vendor -count 1 -p $(GO_PARALLEL_JOBS) -short -tags skipcontainertests,skiplargetiltfiletests -timeout 100s
 endif
 
+TEST_RUN_ARG = $(if $(TEST_RUN),-run $(TEST_RUN),)
+
 integration:
 ifneq ($(CIRCLECI),true)
-		go test -mod vendor -v -count 1 -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s ./integration
+		go test -mod vendor -v -count 1 -p $(GO_PARALLEL_JOBS) $(TEST_RUN_ARG) -tags 'integration' -timeout 700s ./integration
 else
 		mkdir -p test-results
 		gotestsum --format dots --junitfile test-results/unit-tests.xml -- ./integration -mod vendor -count 1 -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s
