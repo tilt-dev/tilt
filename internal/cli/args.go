@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"strings"
@@ -32,6 +34,11 @@ func (c *argsCmd) register() *cobra.Command {
 		DisableFlagsInUseLine: true,
 		Short:                 "Changes the Tiltfile args in use by a running Tilt",
 		Long: `Changes the Tiltfile args in use by a running Tilt.
+If no args are specified, (i.e., just "tilt args"), opens the current args for editing in
+the editor defined by your TILT_EDITOR or EDITOR environment variables, or fall back to
+an OS-appropriate default.
+
+The editor can be skipped by providing new args on the command line, e.g.: "tilt args svc1 svc2".
 
 # Edit the args
 tilt args
@@ -74,10 +81,10 @@ func newClient(ctx context.Context) (client.Client, error) {
 }
 
 func parseEditResult(b []byte) ([]string, error) {
-	lines := strings.Split(string(b), "\n")
+	sc := bufio.NewScanner(bytes.NewReader(b))
 	var argsLine *string
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
+	for sc.Scan() {
+		line := strings.TrimSpace(sc.Text())
 		if len(line) == 0 || line[0] == '#' {
 			continue
 		}
@@ -117,7 +124,7 @@ func (c *argsCmd) run(ctx context.Context, args []string) error {
 		args = nil
 	} else if len(args) == 0 {
 		input := fmt.Sprintf("# edit args for the running Tilt here\n%s\n", shellquote.Join(tf.Spec.Args...))
-		e := editor.NewDefaultEditor([]string{"EDITOR"})
+		e := editor.NewDefaultEditor([]string{"TILT_EDITOR", "EDITOR"})
 		b, _, err := e.LaunchTempFile("", "", strings.NewReader(input))
 		if err != nil {
 			return err

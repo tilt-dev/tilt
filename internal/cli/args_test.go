@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/alessio/shellescape"
@@ -63,9 +64,34 @@ func TestArgsClearAndNewValue(t *testing.T) {
 }
 
 func TestArgsEdit(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("haven't figured out an appropriate $EDITOR for windows")
+	editorForString := func(contents string) string {
+		switch runtime.GOOS {
+		case "windows":
+			// This is trying to minimize windows weirdness:
+			// 1. If EDITOR includes a ` ` and a `\`, then the editor library will prepend a cmd /c,
+			//    but then pass the whole $EDITOR as a single element of argv, while cmd /c
+			//    seems to want everything as separate argvs. Since we're on Windows, any paths
+			//    we get will have a `\`.
+			// 2. Windows' echo gave surprising quoting behavior that I didn't take the time to understand.
+			// So: generate one txt file that contains the desired contents and one bat file that
+			// simply writes the txt file to the first arg, so that the EDITOR we pass to the editor library
+			// has no spaces or quotes.
+			argFile, err := os.CreateTemp(t.TempDir(), "newargs*.txt")
+			require.NoError(t, err)
+			_, err = argFile.WriteString(contents)
+			require.NoError(t, err)
+			require.NoError(t, argFile.Close())
+			f, err := os.CreateTemp(t.TempDir(), "writeargs*.bat")
+			require.NoError(t, err)
+			_, err = f.WriteString(fmt.Sprintf(`type %s > %%1`, argFile.Name()))
+			err = f.Close()
+			require.NoError(t, err)
+			return f.Name()
+		default:
+			return fmt.Sprintf("echo %s >", shellescape.Quote(contents))
+		}
 	}
+
 	for _, tc := range []struct {
 		name          string
 		contents      string
@@ -89,7 +115,11 @@ func TestArgsEdit(t *testing.T) {
 			defer f.TearDown()
 
 			origEditor := os.Getenv("EDITOR")
-			err := os.Setenv("EDITOR", fmt.Sprintf("echo %s >", shellescape.Quote(tc.contents)))
+			contents := tc.contents
+			if runtime.GOOS == "windows" {
+				contents = strings.ReplaceAll(contents, "\n", "\r\n")
+			}
+			err := os.Setenv("EDITOR", editorForString(contents))
 			require.NoError(t, err)
 			defer func() {
 				err := os.Setenv("EDITOR", origEditor)
