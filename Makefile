@@ -47,6 +47,7 @@ test: test-go test-js
 shorttest:
 	go test -mod vendor -p $(GO_PARALLEL_JOBS) -short -tags skipcontainertests,skiplargetiltfiletests -timeout 100s ./...
 
+ifneq ($(TILT_HOST):$(TILT_PORT),:)
 # Run recent changes as seen by Tilt, called from Tiltfile
 uniq = $(if $1,$(firstword $1) $(call uniq,$(filter-out $(firstword $1),$1)))
 seen_files = $(shell tilt get filewatch local:go_test_changes -o json | jq -r '.status.fileEvents[-1].seenFiles[]')
@@ -61,6 +62,7 @@ testchanges:
 else
 testchanges:
 	@echo No go package changes detected by Tilt
+endif
 endif
 
 shorttestsum:
