@@ -84,6 +84,7 @@ func TestArgsEdit(t *testing.T) {
 			f, err := os.CreateTemp(t.TempDir(), "writeargs*.bat")
 			require.NoError(t, err)
 			_, err = f.WriteString(fmt.Sprintf(`type %s > %%1`, argFile.Name()))
+			require.NoError(t, err)
 			err = f.Close()
 			require.NoError(t, err)
 			return f.Name()
