@@ -44,6 +44,9 @@ func CreateBuildContextFilter(m repoTarget) model.PathMatcher {
 type IgnorableTarget interface {
 	LocalRepos() []model.LocalGitRepo
 	Dockerignores() []model.Dockerignore
+
+	// These directories and their children will not trigger file change events
+	IgnoredLocalDirectories() []string
 }
 
 // Interpret the FileWatch Ignores as a path matcher.
@@ -91,6 +94,11 @@ func TargetToFileWatchIgnores(t IgnorableTarget) (ignores []v1alpha1.IgnoreDef) 
 		ignores = append(ignores, v1alpha1.IgnoreDef{
 			BasePath: di.LocalPath,
 			Patterns: append([]string(nil), di.Patterns...),
+		})
+	}
+	for _, ild := range t.IgnoredLocalDirectories() {
+		ignores = append(ignores, v1alpha1.IgnoreDef{
+			BasePath: ild,
 		})
 	}
 	return ignores

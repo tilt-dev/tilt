@@ -262,6 +262,13 @@ func (i ImageTarget) LocalRepos() []LocalGitRepo {
 	return i.repos
 }
 
+func (i ImageTarget) IgnoredLocalDirectories() []string {
+	if bd, ok := i.BuildDetails.(DockerComposeBuild); ok {
+		return bd.LocalVolumePaths
+	}
+	return nil
+}
+
 func (i ImageTarget) TiltFilename() string {
 	return i.tiltFilename
 }
@@ -323,11 +330,13 @@ func (cb CustomBuild) SkipsPush() bool {
 }
 
 type DockerComposeBuild struct {
+	// Service is the name of the Docker Compose service as defined in docker-compose.yaml.
 	Service string
+
+	// Context is the build context absolute path.
 	Context string
-	// TODO(milas): these should _not_ be filtered from the build context, but should NOT be watched/trigger re-builds
-	// 	(this combination is not currently supported - Dockerignores() is used both to make the FW obj and for build
-	// 	context filtering)
+
+	// LocalVolumePaths are ignored for triggering builds but are still included in the build context.
 	LocalVolumePaths []string
 }
 

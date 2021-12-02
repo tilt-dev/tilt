@@ -736,11 +736,12 @@ func (s *tiltfileState) maybeAddDockerComposeImageBuilder(svc *dcService) error 
 	imageRef := svc.ImageRef()
 	err := s.buildIndex.addImage(
 		&dockerImage{
-			buildType:            DockerComposeBuild,
-			configurationRef:     container.NewRefSelector(imageRef),
-			dockerComposeService: svc.Name,
-			dbBuildPath:          buildContext,
-			dbDockerfilePath:     dfPath,
+			buildType:                     DockerComposeBuild,
+			configurationRef:              container.NewRefSelector(imageRef),
+			dockerComposeService:          svc.Name,
+			dockerComposeLocalVolumePaths: svc.MountedLocalDirs,
+			dbBuildPath:                   buildContext,
+			dbDockerfilePath:              dfPath,
 		})
 	if err != nil {
 		return err

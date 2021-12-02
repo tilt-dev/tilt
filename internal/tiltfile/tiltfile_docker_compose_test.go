@@ -377,8 +377,6 @@ RUN echo hi`
 }
 
 func TestDockerComposeIgnoresFileChangesOnMountedVolumes(t *testing.T) {
-	t.Skip("TODO(milas): add support for ignoring mounted volumes")
-
 	f := newFixture(t)
 	defer f.TearDown()
 
