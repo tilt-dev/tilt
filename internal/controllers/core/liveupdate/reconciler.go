@@ -500,10 +500,18 @@ func (r *Reconciler) visitSelectedContainers(
 	visit func(pod v1alpha1.Pod, c v1alpha1.Container) bool) {
 	for _, pod := range kResource.FilteredPods {
 		for _, c := range pod.Containers {
-			// Only visit well-formed containers matching our image
-			imageRef, err := container.ParseNamed(c.Image)
-			if err != nil || c.Name == "" || imageRef == nil ||
-				kSelector.Image != reference.FamiliarName(imageRef) {
+			if c.Name == "" {
+				// ignore any blatantly invalid containers
+				continue
+			}
+
+			// LiveUpdateKubernetesSelector must specify EITHER image OR container name
+			if kSelector.Image != "" {
+				imageRef, err := container.ParseNamed(c.Image)
+				if err != nil || imageRef == nil || kSelector.Image != reference.FamiliarName(imageRef) {
+					continue
+				}
+			} else if kSelector.ContainerName != c.Name {
 				continue
 			}
 			stop := visit(pod, c)
