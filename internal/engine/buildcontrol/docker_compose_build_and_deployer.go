@@ -127,7 +127,7 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	}
 
 	ps := build.NewPipelineState(ctx, numStages, bd.clock)
-	defer ps.End(ctx, err)
+	defer func() { ps.End(ctx, err) }()
 
 	if hasReusedStep {
 		ps.StartPipelineStep(ctx, "Loading cached images")
