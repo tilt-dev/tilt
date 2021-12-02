@@ -5,22 +5,27 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/docker/distribution/reference"
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	controlapi "github.com/moby/buildkit/api/services/control"
+	"github.com/moby/buildkit/session/filesync"
 	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
+	fsutiltypes "github.com/tonistiigi/fsutil/types"
 
 	"github.com/tilt-dev/tilt/internal/container"
-	"github.com/tilt-dev/tilt/internal/k8s"
-
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockerfile"
+	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -200,38 +205,57 @@ func (d *dockerImageBuilder) BuildImage(ctx context.Context, ps *PipelineState, 
 // A helper function that builds the paths to the given docker image,
 // then returns the output digest.
 func (d *dockerImageBuilder) buildToDigest(ctx context.Context, spec v1alpha1.DockerImageSpec, filter model.PathMatcher, allowBuildkit bool) (digest.Digest, []v1alpha1.DockerImageStageStatus, error) {
-	pr, pw := io.Pipe()
-	w := NewProgressWriter(ctx, pw)
-	w.Init()
+	var contextReader io.Reader
 
-	// TODO(nick): Express tarring as a build stage.
-	go func(ctx context.Context) {
-		paths := []PathMapping{
-			{
-				LocalPath:     spec.Context,
-				ContainerPath: "/",
-			},
-		}
-		err := tarContextAndUpdateDf(ctx, w, dockerfile.Dockerfile(spec.DockerfileContents), paths, filter)
+	// Buildkit allows us to use a fs sync server instead of uploading up-front.
+	useFSSync := allowBuildkit && d.dCli.BuilderVersion() == types.BuilderBuildKit
+	if !useFSSync {
+		pipeReader, pipeWriter := io.Pipe()
+		w := NewProgressWriter(ctx, pipeWriter)
+		w.Init()
+
+		// TODO(nick): Express tarring as a build stage.
+		go func(ctx context.Context) {
+			paths := []PathMapping{
+				{
+					LocalPath:     spec.Context,
+					ContainerPath: "/",
+				},
+			}
+			err := tarContextAndUpdateDf(ctx, w, dockerfile.Dockerfile(spec.DockerfileContents), paths, filter)
+			if err != nil {
+				_ = pipeWriter.CloseWithError(err)
+			} else {
+				_ = pipeWriter.Close()
+			}
+			w.Close() // Print the final progress message
+		}(ctx)
+
+		contextReader = pipeReader
+		defer func() {
+			_ = pipeReader.Close()
+		}()
+	}
+
+	options := Options(contextReader, spec)
+	if useFSSync {
+		dockerfileDir, err := writeTempDockerfile(spec.DockerfileContents)
 		if err != nil {
-			_ = pw.CloseWithError(err)
-		} else {
-			_ = pw.Close()
+			return "", nil, err
 		}
-		w.Close() // Print the final progress message
-	}(ctx)
+		options.SyncedDirs = toSyncedDirs(spec.Context, dockerfileDir, filter)
+		options.Dockerfile = DockerfileName
 
-	defer func() {
-		_ = pr.Close()
-	}()
-
-	options := Options(pr, spec)
+		defer func() {
+			_ = os.RemoveAll(dockerfileDir)
+		}()
+	}
 	if !allowBuildkit {
 		options.ForceLegacyBuilder = true
 	}
 	imageBuildResponse, err := d.dCli.ImageBuild(
 		ctx,
-		pr,
+		contextReader,
 		options,
 	)
 	if err != nil {
@@ -504,4 +528,59 @@ func indent(text, indent string) string {
 		result += indent + j + "\n"
 	}
 	return result[:len(result)-1]
+}
+
+const DockerfileName = "Dockerfile"
+
+// Creates a specification for the buildkit filesyncer
+func toSyncedDirs(context string, dockerfileDir string, filter model.PathMatcher) []filesync.SyncedDir {
+	fileMap := func(path string, s *fsutiltypes.Stat) bool {
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(context, path)
+		}
+
+		matches, _ := filter.Matches(path)
+		if matches {
+			isDir := s != nil && s.IsDir()
+			if !isDir {
+				return false
+			}
+
+			entireDir, _ := filter.MatchesEntireDir(path)
+			if entireDir {
+				return false
+			}
+		}
+		s.Uid = 0
+		s.Gid = 0
+		return true
+	}
+
+	return []filesync.SyncedDir{
+		{
+			Name: "context",
+			Dir:  context,
+			Map:  fileMap,
+		},
+		{
+			Name: "dockerfile",
+			Dir:  dockerfileDir,
+		},
+	}
+}
+
+// Writes a docker file to a temporary directory.
+func writeTempDockerfile(contents string) (string, error) {
+	// err is a named return value, due to the defer call below.
+	dockerfileDir, err := ioutil.TempDir("", "tilt-tempdockerfile-")
+	if err != nil {
+		return "", fmt.Errorf("creating temp dockerfile directory: %v", err)
+	}
+
+	err = ioutil.WriteFile(filepath.Join(dockerfileDir, "Dockerfile"), []byte(contents), 0777)
+	if err != nil {
+		_ = os.RemoveAll(dockerfileDir)
+		return "", fmt.Errorf("creating temp dockerfile: %v", err)
+	}
+	return dockerfileDir, nil
 }

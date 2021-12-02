@@ -29,6 +29,7 @@ import (
 	"github.com/moby/buildkit/identity"
 	"github.com/moby/buildkit/session"
 	"github.com/moby/buildkit/session/auth/authprovider"
+	"github.com/moby/buildkit/session/filesync"
 	"github.com/pkg/errors"
 
 	"github.com/tilt-dev/tilt/internal/container"
@@ -47,6 +48,8 @@ var (
 	BuiltByTiltLabel    = map[string]string{BuiltByLabel: BuiltByValue}
 	BuiltByTiltLabelStr = fmt.Sprintf("%s=%s", BuiltByLabel, BuiltByValue)
 )
+
+const clientSessionRemote = "client-session"
 
 // Minimum docker version we've tested on.
 // A good way to test old versions is to connect to an old version of Minikube,
@@ -304,11 +307,14 @@ func CreateClientOpts(_ context.Context, env Env) ([]client.Opt, error) {
 	return result, nil
 }
 
-func (c *Cli) startBuildkitSession(ctx context.Context, key string, sshSpecs []string, secretSpecs []string) (*session.Session, error) {
+func (c *Cli) startBuildkitSession(ctx context.Context, key string, syncedDirs []filesync.SyncedDir, sshSpecs []string, secretSpecs []string) (*session.Session, error) {
 	session, err := session.NewSession(ctx, "tilt", key)
 	if err != nil {
 		return nil, err
+	}
 
+	if len(syncedDirs) > 0 {
+		session.Allow(filesync.NewFSSyncProvider(syncedDirs))
 	}
 
 	provider := authprovider.NewDockerAuthProvider(logger.Get(ctx).Writer(logger.InfoLvl))
@@ -506,7 +512,7 @@ func (c *Cli) ImageBuild(ctx context.Context, buildContext io.Reader, options Bu
 	var oneTimeSession *session.Session
 	sessionID := ""
 
-	mustUseBuildkit := len(options.SSHSpecs) > 0 || len(options.SecretSpecs) > 0
+	mustUseBuildkit := len(options.SSHSpecs) > 0 || len(options.SecretSpecs) > 0 || len(options.SyncedDirs) > 0
 	builderVersion := c.builderVersion
 	if options.ForceLegacyBuilder {
 		builderVersion = types.BuilderV1
@@ -515,7 +521,7 @@ func (c *Cli) ImageBuild(ctx context.Context, buildContext io.Reader, options Bu
 	isUsingBuildkit := builderVersion == types.BuilderBuildKit
 	if isUsingBuildkit {
 		var err error
-		oneTimeSession, err = c.startBuildkitSession(ctx, identity.NewID(), options.SSHSpecs, options.SecretSpecs)
+		oneTimeSession, err = c.startBuildkitSession(ctx, identity.NewID(), options.SyncedDirs, options.SSHSpecs, options.SecretSpecs)
 		if err != nil {
 			return types.ImageBuildResponse{}, errors.Wrapf(err, "ImageBuild")
 		}
@@ -545,6 +551,10 @@ func (c *Cli) ImageBuild(ctx context.Context, buildContext io.Reader, options Bu
 	opts.CacheFrom = options.CacheFrom
 	opts.PullParent = options.PullParent
 	opts.Platform = options.Platform
+
+	if len(options.SyncedDirs) > 0 {
+		opts.RemoteContext = clientSessionRemote
+	}
 
 	opts.Labels = BuiltByTiltLabel // label all images as built by us
 
