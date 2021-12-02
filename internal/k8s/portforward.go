@@ -132,7 +132,7 @@ func (c portForwardClient) CreatePortForwarder(ctx context.Context, namespace Na
 	} else {
 		addresses, lookupErr := net.LookupHost(host)
 		if lookupErr != nil {
-			return nil, errors.Wrap(err, fmt.Sprintf("failed to look up address for %s", host))
+			return nil, errors.Wrap(lookupErr, fmt.Sprintf("failed to look up address for %s", host))
 		}
 		pf, err = portforward.NewOnAddresses(
 			ctx,
