@@ -31,9 +31,11 @@ func TestFileWatch_basic(t *testing.T) {
 	f := newFWFixture(t)
 	defer f.TearDown()
 
-	target := model.DockerComposeTarget{Name: "foo"}.
-		WithBuildPath(".")
-	f.SetManifestDCTarget(target)
+	target := model.LocalTarget{
+		Name: "foo",
+		Deps: []string{"."},
+	}
+	f.SetManifestLocalTarget(target)
 
 	f.RequireFileWatchSpecEqual(target.ID(), v1alpha1.FileWatchSpec{WatchedPaths: []string{"."}})
 }
@@ -42,10 +44,11 @@ func TestFileWatch_localRepo(t *testing.T) {
 	f := newFWFixture(t)
 	defer f.TearDown()
 
-	target := model.DockerComposeTarget{Name: "foo"}.
-		WithBuildPath(".").
-		WithRepos([]model.LocalGitRepo{model.LocalGitRepo{LocalPath: "."}})
-	f.SetManifestDCTarget(target)
+	target := model.LocalTarget{
+		Name: "foo",
+		Deps: []string{"."},
+	}.WithRepos([]model.LocalGitRepo{{LocalPath: "."}})
+	f.SetManifestLocalTarget(target)
 
 	f.RequireFileWatchSpecEqual(target.ID(), v1alpha1.FileWatchSpec{
 		WatchedPaths: []string{"."},
@@ -61,9 +64,11 @@ func TestFileWatch_disabledOnCIMode(t *testing.T) {
 
 	f.inputs.EngineMode = store.EngineModeCI
 
-	target := model.DockerComposeTarget{Name: "foo"}.
-		WithBuildPath(".")
-	f.SetManifestDCTarget(target)
+	target := model.LocalTarget{
+		Name: "foo",
+		Deps: []string{"."},
+	}
+	f.SetManifestLocalTarget(target)
 	m := model.Manifest{Name: "foo"}.WithDeployTarget(target)
 	f.SetManifest(m)
 
@@ -71,31 +76,15 @@ func TestFileWatch_disabledOnCIMode(t *testing.T) {
 	assert.Empty(t, actualSet)
 }
 
-func TestFileWatch_IgnoredLocalDirectories(t *testing.T) {
-	f := newFWFixture(t)
-	defer f.TearDown()
-
-	target := model.DockerComposeTarget{Name: "foo"}.
-		WithIgnoredLocalDirectories([]string{"bar"}).
-		WithBuildPath(".")
-	f.SetManifestDCTarget(target)
-
-	f.RequireFileWatchSpecEqual(target.ID(), v1alpha1.FileWatchSpec{
-		WatchedPaths: []string{"."},
-		Ignores: []v1alpha1.IgnoreDef{
-			{BasePath: "bar"},
-		},
-	})
-}
-
 func TestFileWatch_Dockerignore(t *testing.T) {
 	f := newFWFixture(t)
 	defer f.TearDown()
 
-	target := model.DockerComposeTarget{Name: "foo"}.
-		WithDockerignores([]model.Dockerignore{{LocalPath: ".", Patterns: []string{"bar"}}}).
-		WithBuildPath(".")
-	f.SetManifestDCTarget(target)
+	target := model.LocalTarget{
+		Name: "foo",
+		Deps: []string{"."},
+	}.WithIgnores([]model.Dockerignore{{LocalPath: ".", Patterns: []string{"bar"}}})
+	f.SetManifestLocalTarget(target)
 
 	f.RequireFileWatchSpecEqual(target.ID(), v1alpha1.FileWatchSpec{
 		WatchedPaths: []string{"."},
@@ -129,42 +118,6 @@ func TestFileWatch_IgnoreOutputsImageRefs(t *testing.T) {
 	})
 }
 
-func TestFileWatch_WatchesReappliedOnDockerComposeSyncChange(t *testing.T) {
-	f := newFWFixture(t)
-	defer f.TearDown()
-
-	target := model.DockerComposeTarget{Name: "foo"}.
-		WithBuildPath(".")
-	f.SetManifestDCTarget(target.WithIgnoredLocalDirectories([]string{"bar"}))
-	f.RequireFileWatchSpecEqual(target.ID(), v1alpha1.FileWatchSpec{
-		WatchedPaths: []string{"."},
-		Ignores: []v1alpha1.IgnoreDef{
-			{BasePath: "bar"},
-		},
-	})
-
-	f.SetManifestDCTarget(target)
-	f.RequireFileWatchSpecEqual(target.ID(), v1alpha1.FileWatchSpec{WatchedPaths: []string{"."}})
-}
-
-func TestFileWatch_WatchesReappliedOnDockerIgnoreChange(t *testing.T) {
-	f := newFWFixture(t)
-	defer f.TearDown()
-
-	target := model.DockerComposeTarget{Name: "foo"}.
-		WithBuildPath(".")
-	f.SetManifestDCTarget(target.WithDockerignores([]model.Dockerignore{{LocalPath: ".", Patterns: []string{"bar"}}}))
-	f.RequireFileWatchSpecEqual(target.ID(), v1alpha1.FileWatchSpec{
-		WatchedPaths: []string{"."},
-		Ignores: []v1alpha1.IgnoreDef{
-			{BasePath: ".", Patterns: []string{"bar"}},
-		},
-	})
-
-	f.SetManifestDCTarget(target)
-	f.RequireFileWatchSpecEqual(target.ID(), v1alpha1.FileWatchSpec{WatchedPaths: []string{"."}})
-}
-
 func TestFileWatch_ConfigFiles(t *testing.T) {
 	f := newFWFixture(t)
 	defer f.TearDown()
@@ -185,9 +138,11 @@ func TestFileWatch_IgnoreTiltIgnore(t *testing.T) {
 	f := newFWFixture(t)
 	defer f.TearDown()
 
-	target := model.DockerComposeTarget{Name: "foo"}.
-		WithBuildPath(".")
-	f.SetManifestDCTarget(target)
+	target := model.LocalTarget{
+		Name: "foo",
+		Deps: []string{"."},
+	}
+	f.SetManifestLocalTarget(target)
 	f.SetTiltIgnoreContents("**/foo")
 	f.RequireFileWatchSpecEqual(target.ID(), v1alpha1.FileWatchSpec{
 		WatchedPaths: []string{"."},
@@ -201,9 +156,11 @@ func TestFileWatch_IgnoreWatchSettings(t *testing.T) {
 	f := newFWFixture(t)
 	defer f.TearDown()
 
-	target := model.DockerComposeTarget{Name: "foo"}.
-		WithBuildPath(".")
-	f.SetManifestDCTarget(target)
+	target := model.LocalTarget{
+		Name: "foo",
+		Deps: []string{"."},
+	}
+	f.SetManifestLocalTarget(target)
 
 	f.inputs.WatchSettings.Ignores = append(f.inputs.WatchSettings.Ignores, model.Dockerignore{
 		LocalPath: f.Path(),
@@ -222,9 +179,11 @@ func TestFileWatch_PickUpTiltIgnoreChanges(t *testing.T) {
 	f := newFWFixture(t)
 	defer f.TearDown()
 
-	target := model.DockerComposeTarget{Name: "foo"}.
-		WithBuildPath(".")
-	f.SetManifestDCTarget(target)
+	target := model.LocalTarget{
+		Name: "foo",
+		Deps: []string{"."},
+	}
+	f.SetManifestLocalTarget(target)
 	f.SetTiltIgnoreContents("**/foo")
 	f.RequireFileWatchSpecEqual(target.ID(), v1alpha1.FileWatchSpec{
 		WatchedPaths: []string{"."},
@@ -277,11 +236,11 @@ func newFWFixture(t *testing.T) *fwFixture {
 
 type fileWatchDiffer struct {
 	expected v1alpha1.FileWatchSpec
-	actual   *v1alpha1.FileWatchSpec
+	actual   v1alpha1.FileWatchSpec
 }
 
 func (f fileWatchDiffer) String() string {
-	return cmp.Diff(&f.expected, f.actual)
+	return cmp.Diff(f.expected, f.actual)
 }
 
 func (f *fwFixture) RequireFileWatchSpecEqual(targetID model.TargetID, spec v1alpha1.FileWatchSpec) {
@@ -290,11 +249,11 @@ func (f *fwFixture) RequireFileWatchSpecEqual(targetID model.TargetID, spec v1al
 	actualSet := ToFileWatchObjects(f.inputs, make(disableSourceMap))
 	actual, ok := actualSet[apis.SanitizeName(targetID.String())]
 	require.True(f.T(), ok, "No filewatch found for %s", targetID)
-	fwd := &fileWatchDiffer{expected: spec}
+	fwd := &fileWatchDiffer{expected: spec, actual: actual.GetSpec().(v1alpha1.FileWatchSpec)}
 	require.True(f.T(), equality.Semantic.DeepEqual(actual.GetSpec(), spec), "FileWatch spec was not equal: %v", fwd)
 }
 
-func (f *fwFixture) SetManifestDCTarget(target model.DockerComposeTarget) {
+func (f *fwFixture) SetManifestLocalTarget(target model.LocalTarget) {
 	m := model.Manifest{Name: "foo"}.WithDeployTarget(target)
 	f.SetManifest(m)
 }

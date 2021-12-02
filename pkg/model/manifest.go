@@ -211,13 +211,10 @@ func (m Manifest) IsImageDeployed(iTarget ImageTarget) bool {
 }
 
 func (m Manifest) LocalPaths() []string {
-	// TODO(matt?) DC syncs should probably stored somewhere more consistent with Docker/Custom
 	switch di := m.DeployTarget.(type) {
-	case DockerComposeTarget:
-		return di.LocalPaths()
 	case LocalTarget:
 		return di.Dependencies()
-	case ImageTarget, K8sTarget:
+	case ImageTarget, K8sTarget, DockerComposeTarget:
 		// fall through to paths for image targets, below
 	}
 	paths := []string{}

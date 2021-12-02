@@ -103,9 +103,9 @@ func TestDCBADRejectsAllSpecsIfOneUnsupported(t *testing.T) {
 
 	specs := []model.TargetSpec{model.DockerComposeTarget{}, model.ImageTarget{}, model.K8sTarget{}}
 
-	iTarg, dcTarg := f.dcbad.extract(specs)
-	assert.Empty(t, iTarg)
-	assert.Empty(t, dcTarg)
+	plan, err := f.dcbad.extract(specs)
+	assert.Empty(t, plan)
+	assert.EqualError(t, err, "DockerComposeBuildAndDeployer does not support target type model.K8sTarget")
 }
 
 func TestMultiStageDockerCompose(t *testing.T) {

@@ -3,8 +3,6 @@ package tiltfile
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
-	"path/filepath"
 	"reflect"
 	"strings"
 
@@ -72,18 +70,6 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 		return nil, err
 	}
 
-	for _, s := range services {
-		dfPath := s.DfPath
-		if dfPath == "" {
-			continue
-		}
-
-		err = io.RecordReadPath(thread, io.WatchFileOnly, s.DfPath)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	s.dc = dcResourceSet{
 		Project:      project,
 		configPaths:  allConfigPaths,
@@ -107,16 +93,9 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
-
-		// TODO(maia): if you docker_build('myimg') and dc.yml refers to 'myimg', we
-		//  associate the docker_build with your dc resource automatically. What we
-		//  CAN'T do is use the arg to dc_resource.image to OVERRIDE the image named
-		//  in dc.yml, which we should probs be able to do?
-		// (If your dc.yml does NOT specify `Image`, DC will expect an image of name
-		// <directory>_<service>, and Tilt has no way of figuring this out yet, so
-		// can't auto-associate that image, you need to use dc_resource.)
+		// TODO(milas): this argument is undocumented and arguably unnecessary
+		// 	now that Tilt correctly infers the Docker Compose image ref format
 		"image?", &imageVal,
-
 		"trigger_mode?", &triggerMode,
 		"resource_deps?", &resourceDepsVal,
 		"links?", &links,
@@ -184,9 +163,8 @@ func (s *tiltfileState) getDCService(name string) (*dcService, error) {
 
 // A docker-compose service, according to Tilt.
 type dcService struct {
-	Name         string
-	BuildContext string
-	DfPath       string
+	Name string
+
 	// these are the host machine paths that DC will sync from the local volume into the container
 	// https://docs.docker.com/compose/compose-file/#volumes
 	MountedLocalDirs []string
@@ -196,9 +174,10 @@ type dcService struct {
 	imageRefFromConfig reference.Named // from docker-compose.yml `Image` field
 	imageRefFromUser   reference.Named // set via dc_resource
 
-	// Currently just use these to diff against when config files are edited to see if manifest has changed
-	ServiceConfig []byte
-	DfContents    []byte
+	ServiceConfig types.ServiceConfig
+
+	// Currently just use this to diff against when config files are edited to see if manifest has changed
+	ServiceYAML []byte
 
 	DependencyIDs  []model.TargetID
 	PublishedPorts []int
@@ -219,23 +198,7 @@ func (svc dcService) ImageRef() reference.Named {
 	return svc.imageRefFromConfig
 }
 
-func DockerComposeConfigToService(svcConfig types.ServiceConfig) (dcService, error) {
-	var buildContext, dfPath string
-	if svcConfig.Build != nil {
-		buildContext = svcConfig.Build.Context
-		dfPath = svcConfig.Build.Dockerfile
-		if buildContext != "" {
-			if dfPath == "" {
-				// We only expect a Dockerfile if there's a build context specified.
-				dfPath = "Dockerfile"
-			}
-
-			if !filepath.IsAbs(dfPath) {
-				dfPath = filepath.Join(buildContext, dfPath)
-			}
-		}
-	}
-
+func dockerComposeConfigToService(projectName string, svcConfig types.ServiceConfig) (dcService, error) {
 	var mountedLocalDirs []string
 	for _, v := range svcConfig.Volumes {
 		mountedLocalDirs = append(mountedLocalDirs, v.Source)
@@ -253,34 +216,28 @@ func DockerComposeConfigToService(svcConfig types.ServiceConfig) (dcService, err
 		return dcService{}, err
 	}
 
+	imageName := svcConfig.Image
+	if imageName == "" {
+		// see https://github.com/docker/compose/blob/7b84f2c2a538a1241dcf65f4b2828232189ef0ad/pkg/compose/create.go#L221-L227
+		imageName = fmt.Sprintf("%s_%s", projectName, svcConfig.Name)
+	}
+
+	imageRef, err := container.ParseNamed(imageName)
+	if err != nil {
+		// TODO(nick): This doesn't seem like the right place to report this
+		// error, but we don't really have a better way right now.
+		return dcService{}, fmt.Errorf("Error parsing image name %q: %v", imageName, err)
+	}
+
 	svc := dcService{
-		Name:             svcConfig.Name,
-		BuildContext:     buildContext,
-		DfPath:           dfPath,
-		MountedLocalDirs: mountedLocalDirs,
-
-		ServiceConfig:  rawConfig,
-		PublishedPorts: publishedPorts,
+		Name:               svcConfig.Name,
+		ServiceConfig:      svcConfig,
+		MountedLocalDirs:   mountedLocalDirs,
+		ServiceYAML:        rawConfig,
+		PublishedPorts:     publishedPorts,
+		imageRefFromConfig: imageRef,
 	}
 
-	if svcConfig.Image != "" {
-		ref, err := container.ParseNamed(svcConfig.Image)
-		if err != nil {
-			// TODO(nick): This doesn't seem like the right place to report this
-			// error, but we don't really have a better way right now.
-			return dcService{}, fmt.Errorf("Error parsing image name %q: %v", ref, err)
-		} else {
-			svc.imageRefFromConfig = ref
-		}
-	}
-
-	if dfPath != "" {
-		dfContents, err := ioutil.ReadFile(dfPath)
-		if err != nil {
-			return svc, err
-		}
-		svc.DfContents = dfContents
-	}
 	return svc, nil
 }
 
@@ -292,7 +249,7 @@ func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, s
 
 	var services []*dcService
 	err = proj.WithServices(proj.ServiceNames(), func(svcConfig types.ServiceConfig) error {
-		svc, err := DockerComposeConfigToService(svcConfig)
+		svc, err := dockerComposeConfigToService(proj.Name, svcConfig)
 		if err != nil {
 			return errors.Wrapf(err, "getting service %s", svcConfig.Name)
 		}
@@ -313,12 +270,11 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResource
 			Service: service.Name,
 			Project: dcSet.Project,
 		},
-		ServiceYAML: string(service.ServiceConfig),
-		DfRaw:       service.DfContents,
-		Links:       service.Links,
+		ServiceYAML:      string(service.ServiceYAML),
+		Links:            service.Links,
+		LocalVolumePaths: service.MountedLocalDirs,
 	}.WithDependencyIDs(service.DependencyIDs).
-		WithPublishedPorts(service.PublishedPorts).
-		WithIgnoredLocalDirectories(service.MountedLocalDirs)
+		WithPublishedPorts(service.PublishedPorts)
 
 	autoInit := true
 	if service.AutoInit.IsSet {
@@ -338,44 +294,8 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResource
 		Name:                 model.ManifestName(service.Name),
 		TriggerMode:          um,
 		ResourceDependencies: mds,
-	}.WithDeployTarget(dcInfo)
-
-	m = m.WithLabels(service.Labels)
-
-	if service.DfPath == "" {
-		// DC service may not have Dockerfile -- e.g. may be just an image that we pull and run.
-		return m, nil
-	}
-
-	dcInfo = dcInfo.WithBuildPath(service.BuildContext)
-
-	paths := []string{filepath.Dir(service.DfPath)}
-	for _, configPath := range dcSet.configPaths {
-		paths = append(paths, filepath.Dir(configPath))
-	}
-	paths = append(paths, dcInfo.LocalPaths()...)
-	paths = append(paths, filepath.Dir(dcSet.tiltfilePath))
-
-	dIgnores, err := s.dockerignoresFromPathsAndContextFilters(
-		fmt.Sprintf("docker-compose %s", service.Name),
-		paths, []string{}, []string{}, service.DfPath)
-	if err != nil {
-		return model.Manifest{}, fmt.Errorf("Reading dockerignore for %s: %v", service.Name, err)
-	}
-
-	dcInfo = dcInfo.WithDockerignores(dIgnores)
-
-	localPaths := []string{dcSet.tiltfilePath}
-	for _, p := range paths {
-		if !filepath.IsAbs(p) {
-			return model.Manifest{}, fmt.Errorf("internal error: path not resolved correctly! Please report to https://github.com/tilt-dev/tilt/issues : %s", p)
-		}
-		localPaths = append(localPaths, p)
-	}
-	dcInfo = dcInfo.WithRepos(reposForPaths(localPaths)).
-		WithTiltFilename(dcSet.tiltfilePath)
-
-	m = m.WithDeployTarget(dcInfo)
+	}.WithDeployTarget(dcInfo).
+		WithLabels(service.Labels)
 
 	return m, nil
 }

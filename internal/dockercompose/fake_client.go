@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -148,15 +150,30 @@ func (c *FakeDCClient) Project(_ context.Context, m model.DockerComposeProject) 
 		return nil, err
 	}
 
+	workDir := c.WorkDir
+	projectNameOpt := func(opt *loader.Options) {
+		if workDir != "" {
+			name := filepath.Base(workDir)
+			// normalization logic from https://github.com/compose-spec/compose-go/blob/c39f6e771fe5034fe1bec40ba5f0285ec60f5efe/cli/options.go#L366-L371
+			r := regexp.MustCompile("[a-z0-9_-]")
+			name = strings.ToLower(name)
+			name = strings.Join(r.FindAllString(name, -1), "")
+			name = strings.TrimLeft(name, "_-")
+			opt.Name = name
+		} else {
+			opt.Name = "fakedc"
+		}
+	}
+
 	p, err := loader.Load(types.ConfigDetails{
-		WorkingDir: c.WorkDir,
+		WorkingDir: workDir,
 		ConfigFiles: []types.ConfigFile{
 			{
 				Content: []byte(c.ConfigOutput),
 			},
 		},
 		Environment: opts.Environment,
-	}, dcLoaderOption)
+	}, dcLoaderOption, projectNameOpt)
 	return p, err
 }
 

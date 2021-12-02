@@ -2314,7 +2314,7 @@ func TestDockerComposeRedeployFromFileChange(t *testing.T) {
 	// Change a file -- should trigger build
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("package.json"))
 	call = f.nextCall()
-	assert.Equal(t, []string{f.JoinPath("package.json")}, call.dcState().FilesChanged())
+	assert.Equal(t, []string{f.JoinPath("package.json")}, call.oneImageState().FilesChanged())
 }
 
 // TODO(maia): TestDockerComposeEditConfigFiles once DC manifests load faster (http://bit.ly/2RBX4g5)

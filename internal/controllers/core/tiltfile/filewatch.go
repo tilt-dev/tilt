@@ -32,7 +32,6 @@ type WatchableTarget interface {
 
 var _ WatchableTarget = model.ImageTarget{}
 var _ WatchableTarget = model.LocalTarget{}
-var _ WatchableTarget = model.DockerComposeTarget{}
 
 func specForTarget(t WatchableTarget, globalIgnores []model.Dockerignore) *v1alpha1.FileWatchSpec {
 	watchedPaths := append([]string(nil), t.Dependencies()...)

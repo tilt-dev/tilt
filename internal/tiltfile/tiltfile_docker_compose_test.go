@@ -3,7 +3,6 @@ package tiltfile
 import (
 	"fmt"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -96,7 +95,7 @@ func TestDockerComposeManifest(t *testing.T) {
 	f.load("foo")
 	f.assertDcManifest("foo",
 		dcServiceYAML(f.simpleConfigAfterParse()),
-		dcDfRaw(simpleDockerfile),
+		dockerComposeManagedImage(f.JoinPath("foo", "Dockerfile"), f.JoinPath("foo")),
 		dcPublishedPorts(12312),
 		// TODO(maia): assert m.tiltFilename
 	)
@@ -104,10 +103,8 @@ func TestDockerComposeManifest(t *testing.T) {
 	expectedConfFiles := []string{
 		"Tiltfile",
 		".tiltignore",
-		".dockerignore",
 		"docker-compose.yml",
-		filepath.Join("foo", "Dockerfile"),
-		filepath.Join("foo", ".dockerignore"),
+		f.JoinPath("foo", ".dockerignore"),
 	}
 	f.assertConfigFiles(expectedConfFiles...)
 }
@@ -129,7 +126,7 @@ networks:
 	f.load("bar")
 	f.assertDcManifest("bar",
 		dcServiceYAML(expectedYAML),
-		dcDfRaw(""),
+		noImage(),
 		// TODO(maia): assert m.tiltFilename
 	)
 
@@ -161,11 +158,11 @@ networks:
 	f.load("baz")
 	f.assertDcManifest("baz",
 		dcServiceYAML(expectedYAML),
-		dcDfRaw(simpleDockerfile),
+		dockerComposeManagedImage(f.JoinPath("baz", "alternate-Dockerfile"), f.JoinPath("baz")),
 		// TODO(maia): assert m.tiltFilename
 	)
 
-	expectedConfFiles := []string{"Tiltfile", ".tiltignore", ".dockerignore", "docker-compose.yml", "baz/alternate-Dockerfile", "baz/.dockerignore"}
+	expectedConfFiles := []string{"Tiltfile", ".tiltignore", "docker-compose.yml", "baz/.dockerignore"}
 	f.assertConfigFiles(expectedConfFiles...)
 }
 
@@ -195,11 +192,11 @@ networks:
 	f.load("baz")
 	f.assertDcManifest("baz",
 		dcServiceYAML(expectedYAML),
-		dcDfRaw(simpleDockerfile),
+		dockerComposeManagedImage(f.JoinPath("baz", "alternate-Dockerfile"), f.JoinPath("baz")),
 		// TODO(maia): assert m.tiltFilename
 	)
 
-	expectedConfFiles := []string{"Tiltfile", ".tiltignore", ".dockerignore", "docker-compose.yml", "baz/Dockerfile", "baz/.dockerignore"}
+	expectedConfFiles := []string{"Tiltfile", ".tiltignore", "docker-compose.yml", "baz/.dockerignore"}
 	f.assertConfigFiles(expectedConfFiles...)
 }
 
@@ -228,11 +225,16 @@ networks:
 	f.load("baz")
 	f.assertDcManifest("baz",
 		dcServiceYAML(expectedYAML),
-		dcDfRaw(simpleDockerfile),
+		dockerComposeManagedImage(f.JoinPath("baz", "alternate-Dockerfile"), f.JoinPath("baz")),
 		// TODO(maia): assert m.tiltFilename
 	)
 
-	expectedConfFiles := []string{"Tiltfile", ".tiltignore", "docker-compose.yml", "baz/alternate-Dockerfile", "baz/alternate-Dockerfile.dockerignore"}
+	expectedConfFiles := []string{
+		"Tiltfile",
+		".tiltignore",
+		"docker-compose.yml",
+		"baz/alternate-Dockerfile.dockerignore",
+	}
 	f.assertConfigFiles(expectedConfFiles...)
 }
 
@@ -308,39 +310,6 @@ services:
 	f.assertDcManifest("foo")
 }
 
-func TestDockerComposeManifestComputesLocalPaths(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	df := `FROM alpine
-
-ADD ./src /app
-COPY ./thing.go /stuff
-RUN echo hi`
-	f.file(filepath.Join("foo", "Dockerfile"), df)
-
-	f.file("docker-compose.yml", simpleConfig)
-	f.file("Tiltfile", "docker_compose('docker-compose.yml')")
-
-	f.load("foo")
-	f.assertDcManifest("foo",
-		dcServiceYAML(f.simpleConfigAfterParse()),
-		dcDfRaw(df),
-		dcLocalPaths([]string{f.JoinPath("foo")}),
-		// TODO(maia): assert m.tiltFilename
-	)
-
-	expectedConfFiles := []string{
-		"Tiltfile",
-		".tiltignore",
-		"docker-compose.yml",
-		filepath.Join("foo", "Dockerfile"),
-		".dockerignore",
-		filepath.Join("foo", ".dockerignore"),
-	}
-	f.assertConfigFiles(expectedConfFiles...)
-}
-
 func TestDockerComposeMultiStageBuild(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -365,8 +334,7 @@ services:
 	f.load("foo")
 	f.assertDcManifest("foo",
 		dcServiceYAML(f.simpleConfigAfterParse()),
-		dcDfRaw(df),
-		dcLocalPaths([]string{f.JoinPath("foo")}),
+		dockerComposeManagedImage(f.JoinPath("foo", "Dockerfile"), f.JoinPath("foo")),
 		dcPublishedPorts(12312),
 	)
 
@@ -374,8 +342,6 @@ services:
 		"Tiltfile",
 		".tiltignore",
 		filepath.Join("foo", "docker-compose.yml"),
-		filepath.Join("foo", "Dockerfile"),
-		".dockerignore",
 		filepath.Join("foo", ".dockerignore"),
 	}
 	f.assertConfigFiles(expectedConfFiles...)
@@ -395,14 +361,16 @@ RUN echo hi`
 	f.file("docker-compose.yml", simpleConfig)
 	f.file("Tiltfile", "docker_compose('docker-compose.yml')")
 
+	// the build context is ./foo so tmp should be ignored
 	f.file(filepath.Join("foo", ".dockerignore"), "tmp")
+	// this dockerignore is unrelated despite being a sibling to docker-compose.yml, so won't be used
 	f.file(".dockerignore", "foo/tmp2")
 
 	f.load("foo")
 
 	f.assertNextManifest("foo",
-		buildFilters(filepath.Join("foo", "tmp2")),
-		fileChangeFilters(filepath.Join("foo", "tmp2")),
+		buildMatches(filepath.Join("foo", "tmp2")),
+		fileChangeMatches(filepath.Join("foo", "tmp2")),
 		buildFilters(filepath.Join("foo", "tmp")),
 		fileChangeFilters(filepath.Join("foo", "tmp")),
 	)
@@ -843,6 +811,7 @@ func TestDockerComposeVersionWarnings(t *testing.T) {
 }
 
 func (f *fixture) assertDcManifest(name model.ManifestName, opts ...interface{}) model.Manifest {
+	f.t.Helper()
 	m := f.assertNextManifest(name)
 
 	if !m.IsDC() {
@@ -852,12 +821,16 @@ func (f *fixture) assertDcManifest(name model.ManifestName, opts ...interface{})
 
 	for _, opt := range opts {
 		switch opt := opt.(type) {
-		case dcLocalPathsHelper:
-			assert.ElementsMatch(f.t, opt.paths, dcInfo.LocalPaths(), "docker compose local paths")
 		case dcServiceYAMLHelper:
 			assert.YAMLEq(f.t, opt.yaml, string(dcInfo.ServiceYAML), "docker compose YAML")
-		case dcDfRawHelper:
-			assert.Equal(f.t, strings.TrimSpace(opt.df), strings.TrimSpace(string(dcInfo.DfRaw)), "docker compose Dockerfile raw")
+		case noImageHelper:
+			assert.Empty(f.t, m.ImageTargets, "Manifest should have had no ImageTargets")
+		case dockerComposeImageHelper:
+			ok, iTarget := assertImageTargetType(f.t, m.ImageTargets, model.DockerComposeBuild{})
+			if ok {
+				assert.Equal(f.t, opt.buildContext, iTarget.DockerComposeBuildInfo().Context,
+					"Build context path did not match")
+			}
 		case dcPublishedPortsHelper:
 			assert.Equal(f.t, opt.ports, dcInfo.PublishedPorts(), "docker compose published ports")
 		default:
@@ -865,6 +838,18 @@ func (f *fixture) assertDcManifest(name model.ManifestName, opts ...interface{})
 		}
 	}
 	return m
+}
+
+func assertImageTargetType(t *testing.T, iTargets []model.ImageTarget,
+	buildDetailsType interface{}) (bool, model.ImageTarget) {
+	t.Helper()
+	if !assert.Len(t, iTargets, 1, "Manifest should have exactly one image target") {
+		return false, model.ImageTarget{}
+	}
+	if !assert.IsType(t, buildDetailsType, iTargets[0].BuildDetails, "BuildDetails was not of expected type") {
+		return false, model.ImageTarget{}
+	}
+	return true, iTargets[0]
 }
 
 type dcServiceYAMLHelper struct {
@@ -875,20 +860,22 @@ func dcServiceYAML(yaml string) dcServiceYAMLHelper {
 	return dcServiceYAMLHelper{yaml}
 }
 
-type dcDfRawHelper struct {
-	df string
+type dockerComposeImageHelper struct {
+	dfPath       string
+	buildContext string
 }
 
-func dcDfRaw(df string) dcDfRawHelper {
-	return dcDfRawHelper{df}
+func dockerComposeManagedImage(dfPath string, buildContext string) dockerComposeImageHelper {
+	return dockerComposeImageHelper{
+		dfPath:       dfPath,
+		buildContext: buildContext,
+	}
 }
 
-type dcLocalPathsHelper struct {
-	paths []string
-}
+type noImageHelper struct{}
 
-func dcLocalPaths(paths []string) dcLocalPathsHelper {
-	return dcLocalPathsHelper{paths: paths}
+func noImage() noImageHelper {
+	return noImageHelper{}
 }
 
 type dcPublishedPortsHelper struct {

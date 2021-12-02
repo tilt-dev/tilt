@@ -115,9 +115,13 @@ func (i ImageTarget) Validate() error {
 				"[Validate] CustomBuild command must not be empty",
 			)
 		}
+	case DockerComposeBuild:
+		if bd.Service == "" {
+			return fmt.Errorf("[Validate] DockerComposeBuild missing service name")
+		}
 	default:
-		return fmt.Errorf("[Validate] Image %q has neither DockerBuild nor "+
-			"CustomBuild details", confRef)
+		return fmt.Errorf(
+			"[Validate] Image %q has unsupported %T build details", confRef, bd)
 	}
 
 	return nil
@@ -151,6 +155,16 @@ func (i ImageTarget) CustomBuildInfo() CustomBuild {
 
 func (i ImageTarget) IsCustomBuild() bool {
 	_, ok := i.BuildDetails.(CustomBuild)
+	return ok
+}
+
+func (i ImageTarget) DockerComposeBuildInfo() DockerComposeBuild {
+	ret, _ := i.BuildDetails.(DockerComposeBuild)
+	return ret
+}
+
+func (i ImageTarget) IsDockerComposeBuild() bool {
+	_, ok := i.BuildDetails.(DockerComposeBuild)
 	return ok
 }
 
@@ -204,6 +218,10 @@ func (i ImageTarget) MaybeIgnoreRegistry() ImageTarget {
 	if ok && customBuild.SkipsLocalDocker && customBuild.Tag != "" {
 		i.Refs = i.Refs.WithoutRegistry()
 	}
+	_, ok = i.BuildDetails.(DockerComposeBuild)
+	if ok {
+		i.Refs = i.Refs.WithoutRegistry()
+	}
 	return i
 }
 
@@ -234,6 +252,8 @@ func (i ImageTarget) LocalPaths() []string {
 		return []string{bd.Context}
 	case CustomBuild:
 		return append([]string(nil), bd.Deps...)
+	case DockerComposeBuild:
+		return []string{bd.Context}
 	}
 	return nil
 }
@@ -243,6 +263,9 @@ func (i ImageTarget) LocalRepos() []LocalGitRepo {
 }
 
 func (i ImageTarget) IgnoredLocalDirectories() []string {
+	if bd, ok := i.BuildDetails.(DockerComposeBuild); ok {
+		return bd.LocalVolumePaths
+	}
 	return nil
 }
 
@@ -304,4 +327,18 @@ func (cb CustomBuild) WithTag(t string) CustomBuild {
 
 func (cb CustomBuild) SkipsPush() bool {
 	return cb.SkipsLocalDocker || cb.DisablePush
+}
+
+type DockerComposeBuild struct {
+	// Service is the name of the Docker Compose service as defined in docker-compose.yaml.
+	Service string
+
+	// Context is the build context absolute path.
+	Context string
+
+	// LocalVolumePaths are ignored for triggering builds but are still included in the build context.
+	LocalVolumePaths []string
+}
+
+func (d DockerComposeBuild) buildDetails() {
 }
