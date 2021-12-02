@@ -1147,6 +1147,11 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource, updateSettings mo
 		}
 
 		m = m.WithDeployTarget(k8sTarget)
+
+		if err := m.InferLiveUpdateSelectors(); err != nil {
+			return nil, fmt.Errorf("could not infer Live Update selectors for %q: %v", m.Name, err)
+		}
+
 		result = append(result, m)
 	}
 
@@ -1480,6 +1485,14 @@ func (s *tiltfileState) imgTargetsForDepsHelper(mn model.ManifestName, imageMapD
 			WithTiltFilename(image.tiltfilePath).
 			WithImageMapDeps(image.imageMapDeps)
 
+		// once loaded to apiserver, the reconciler will take care of keeping
+		// this up-to-date, but we ensure the properties are initialized based
+		// on the values we've got so far
+		iTarget, err = iTarget.InferImagePropertiesFromCluster(s.defaultReg)
+		if err != nil {
+			return nil, err
+		}
+
 		depTargets, err := s.imgTargetsForDepsHelper(mn, image.imageMapDeps, claimStatus)
 		if err != nil {
 			return nil, err
@@ -1490,6 +1503,7 @@ func (s *tiltfileState) imgTargetsForDepsHelper(mn model.ManifestName, imageMapD
 
 		claimStatus[imName] = claimFinished
 	}
+
 	return iTargets, nil
 }
 

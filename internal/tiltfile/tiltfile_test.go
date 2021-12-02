@@ -3439,12 +3439,38 @@ docker_build('gcr.io/some-project-162817/sancho-sidecar', './sidecar',
 	expectedLU1 := v1alpha1.LiveUpdateSpec{
 		BasePath: f.Path(),
 		Syncs:    []v1alpha1.LiveUpdateSync{sync1},
+		Selector: v1alpha1.LiveUpdateSelector{
+			Kubernetes: &v1alpha1.LiveUpdateKubernetesSelector{
+				DiscoveryName: "sancho",
+				ApplyName:     "sancho",
+				Image:         "gcr.io/some-project-162817/sancho",
+			},
+		},
+		Sources: []v1alpha1.LiveUpdateSource{
+			{
+				FileWatch: "image:gcr.io_some-project-162817_sancho",
+				ImageMap:  "gcr.io_some-project-162817_sancho",
+			},
+		},
 	}
 
 	sync2 := v1alpha1.LiveUpdateSync{LocalPath: filepath.Join("sidecar", "baz"), ContainerPath: "/quux"}
 	expectedLU2 := v1alpha1.LiveUpdateSpec{
 		BasePath: f.Path(),
 		Syncs:    []v1alpha1.LiveUpdateSync{sync2},
+		Selector: v1alpha1.LiveUpdateSelector{
+			Kubernetes: &v1alpha1.LiveUpdateKubernetesSelector{
+				DiscoveryName: "sancho",
+				ApplyName:     "sancho",
+				Image:         "gcr.io/some-project-162817/sancho-sidecar",
+			},
+		},
+		Sources: []v1alpha1.LiveUpdateSource{
+			{
+				FileWatch: "image:gcr.io_some-project-162817_sancho-sidecar",
+				ImageMap:  "gcr.io_some-project-162817_sancho-sidecar",
+			},
+		},
 	}
 
 	f.load()

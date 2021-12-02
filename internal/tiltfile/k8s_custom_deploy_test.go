@@ -1,10 +1,10 @@
 package tiltfile
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -23,17 +23,20 @@ k8s_custom_deploy('foo', 'apply', 'delete', deps=['foo'], image_selector='foo-im
 
 	f.load("foo")
 
-	m := f.assertNextManifest("foo", cb(image("foo-img"), f.expectedLU))
+	expectedLU := f.expectedLU()
+	expectedLU.Sources[0] = v1alpha1.LiveUpdateSource{
+		// no image map exists because Tilt isn't actually building the image
+		ImageMap:  "",
+		FileWatch: "image:foo-img",
+	}
+	expectedLU.Selector.Kubernetes.ContainerName = ""
+	// NO registry rewriting should be applied here because Tilt isn't actually building the image
+	expectedLU.Selector.Kubernetes.Image = "foo-img"
+
+	m := f.assertNextManifest("foo", cb(image("foo-img"), expectedLU))
 	assert.True(t, m.ImageTargets[0].IsLiveUpdateOnly)
 	// this ref will never actually be used since the image isn't being built but the registry is applied here
 	assert.Equal(t, "gcr.io/myrepo/foo-img", m.ImageTargets[0].Refs.LocalRef().String())
-
-	require.NoError(t, m.InferLiveUpdateSelectors(), "Failed to infer Live Update selectors")
-	luSpec := m.ImageTargets[0].LiveUpdateSpec
-	require.NotNil(t, luSpec.Selector.Kubernetes)
-	assert.Empty(t, luSpec.Selector.Kubernetes.ContainerName)
-	// NO registry rewriting should be applied here because Tilt isn't actually building the image
-	assert.Equal(t, "foo-img", luSpec.Selector.Kubernetes.Image)
 }
 
 func TestK8sCustomDeployLiveUpdateContainerNameSelector(t *testing.T) {
@@ -46,22 +49,22 @@ k8s_custom_deploy('foo', 'apply', 'delete', deps=['foo'], container_selector='ba
 `
 	f.init()
 
-	f.load("foo")
-	f.expectedLU.Selector.Kubernetes = &v1alpha1.LiveUpdateKubernetesSelector{
-		ContainerName: "bar",
-	}
-
 	// NOTE: because there is no known image name, the manifest name is used to
 	// 	generate one since an image target without a ref is not valid
-	m := f.assertNextManifest("foo", cb(image("k8s_custom_deploy:foo"), f.expectedLU))
-	assert.True(t, m.ImageTargets[0].IsLiveUpdateOnly)
+	const generatedImageName = "k8s_custom_deploy:foo"
 
-	require.NoError(t, m.InferLiveUpdateSelectors(), "Failed to infer Live Update selectors")
-	luSpec := m.ImageTargets[0].LiveUpdateSpec
-	require.NotNil(t, luSpec.Selector.Kubernetes)
-	assert.Empty(t, luSpec.Selector.Kubernetes.Image)
-	// NO registry rewriting should be applied here because Tilt isn't actually building the image
-	assert.Equal(t, "bar", luSpec.Selector.Kubernetes.ContainerName)
+	f.load("foo")
+	expectedLU := f.expectedLU()
+	expectedLU.Sources[0] = v1alpha1.LiveUpdateSource{
+		// no image map exists because Tilt isn't actually building the image
+		ImageMap:  "",
+		FileWatch: fmt.Sprintf("image:%s", generatedImageName),
+	}
+	expectedLU.Selector.Kubernetes.Image = ""
+	expectedLU.Selector.Kubernetes.ContainerName = "bar"
+
+	m := f.assertNextManifest("foo", cb(image(generatedImageName), expectedLU))
+	assert.True(t, m.ImageTargets[0].IsLiveUpdateOnly)
 }
 
 func TestK8sCustomDeployNoLiveUpdate(t *testing.T) {

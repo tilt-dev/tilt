@@ -146,17 +146,17 @@ func (in *LiveUpdate) IsStorageVersion() bool {
 	return true
 }
 
-func (in *LiveUpdate) Validate(ctx context.Context) field.ErrorList {
-	errors := field.ErrorList{}
-	if len(in.Spec.Syncs) == 0 && len(in.Spec.Execs) == 0 {
+func (in *LiveUpdateSpec) ValidateSteps(ctx context.Context) field.ErrorList {
+	var errors field.ErrorList
+	if len(in.Syncs) == 0 && len(in.Execs) == 0 {
 		errors = append(errors,
 			field.Invalid(
 				field.NewPath("spec.syncs"),
-				in.Spec.Syncs,
+				in.Syncs,
 				"must contain at least 1 sync or 1 exec to run on live update"))
 	}
 
-	for i, sync := range in.Spec.Syncs {
+	for i, sync := range in.Syncs {
 		// We assume a Linux container, and so use `path` to check that
 		// the sync dest is a LINUX abs path! (`filepath.IsAbs` varies depending on
 		// OS the binary was installed for; `path` deals with Linux paths only.)
@@ -168,6 +168,12 @@ func (in *LiveUpdate) Validate(ctx context.Context) field.ErrorList {
 					"sync destination is not absolute"))
 		}
 	}
+	return errors
+}
+
+func (in *LiveUpdate) Validate(ctx context.Context) field.ErrorList {
+	var errors field.ErrorList
+	errors = append(errors, in.Spec.ValidateSteps(ctx)...)
 
 	// TODO(milas): require that exactly one selector type is specified once Docker Compose selector support is added
 	selectorPath := field.NewPath("spec.selector")

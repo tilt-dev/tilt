@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -132,7 +133,7 @@ func TestLiveUpdateDockerBuildUnqualifiedImageName(t *testing.T) {
 
 	f.load("foo")
 
-	f.assertNextManifest("foo", db(image("foo"), f.expectedLU))
+	f.assertNextManifest("foo", db(image("foo"), f.expectedLU()))
 }
 
 func TestLiveUpdateDockerBuildQualifiedImageName(t *testing.T) {
@@ -145,7 +146,7 @@ func TestLiveUpdateDockerBuildQualifiedImageName(t *testing.T) {
 
 	f.load("foo")
 
-	f.assertNextManifest("foo", db(image("gcr.io/foo"), f.expectedLU))
+	f.assertNextManifest("foo", db(image("gcr.io/foo"), f.expectedLU()))
 }
 
 func TestLiveUpdateDockerBuildDefaultRegistry(t *testing.T) {
@@ -161,7 +162,12 @@ docker_build('foo', 'foo', live_update=%s)`
 
 	i := image("foo")
 	i.localRef = "gcr.io/foo"
-	f.assertNextManifest("foo", db(i, f.expectedLU))
+
+	// the expected image is "foo" but the fully-qualified version for K8s selector will have the registry
+	expectedLU := f.expectedLU()
+	expectedLU.Selector.Kubernetes.Image = "gcr.io/foo"
+
+	f.assertNextManifest("foo", db(i, expectedLU))
 }
 
 func TestLiveUpdateCustomBuild(t *testing.T) {
@@ -173,7 +179,7 @@ func TestLiveUpdateCustomBuild(t *testing.T) {
 
 	f.load("foo")
 
-	f.assertNextManifest("foo", cb(image("foo"), f.expectedLU))
+	f.assertNextManifest("foo", cb(image("foo"), f.expectedLU()))
 }
 
 func TestLiveUpdateOnlyCustomBuild(t *testing.T) {
@@ -188,7 +194,11 @@ custom_build('foo', ':', ['foo'], live_update=%s)
 
 	f.load("foo")
 
-	m := f.assertNextManifest("foo", cb(image("foo"), f.expectedLU))
+	expectedLU := f.expectedLU()
+	// there is no ImageMap since this is a Live Update only target
+	expectedLU.Sources[0].ImageMap = ""
+
+	m := f.assertNextManifest("foo", cb(image("foo"), expectedLU))
 	assert.True(t, m.ImageTargets[0].IsLiveUpdateOnly)
 	// this ref will never actually be used since the image isn't being built but the registry is applied here
 	assert.Equal(t, "gcr.io/myrepo/foo", m.ImageTargets[0].Refs.LocalRef().String())
@@ -246,6 +256,23 @@ k8s_yaml('foo.yaml')
 				ContainerPath: "/src/message.txt",
 			},
 		},
+		Selector: v1alpha1.LiveUpdateSelector{
+			Kubernetes: &v1alpha1.LiveUpdateKubernetesSelector{
+				DiscoveryName: "foo",
+				ApplyName:     "foo",
+				Image:         "gcr.io/image-b",
+			},
+		},
+		Sources: []v1alpha1.LiveUpdateSource{
+			{
+				FileWatch: "image:gcr.io_image-a",
+				ImageMap:  "gcr.io_image-a",
+			},
+			{
+				FileWatch: "image:gcr.io_image-b",
+				ImageMap:  "gcr.io_image-b",
+			},
+		},
 	}
 
 	f.assertNextManifest("foo",
@@ -283,6 +310,19 @@ k8s_yaml('foo.yaml')
 				Execs: []v1alpha1.LiveUpdateExec{
 					v1alpha1.LiveUpdateExec{
 						Args: tc.expectedArgv,
+					},
+				},
+				Selector: v1alpha1.LiveUpdateSelector{
+					Kubernetes: &v1alpha1.LiveUpdateKubernetesSelector{
+						DiscoveryName: "foo",
+						ApplyName:     "foo",
+						Image:         "gcr.io/image-a",
+					},
+				},
+				Sources: []v1alpha1.LiveUpdateSource{
+					{
+						FileWatch: "image:gcr.io_image-a",
+						ImageMap:  "gcr.io_image-a",
 					},
 				},
 			}
@@ -429,7 +469,6 @@ type liveUpdateFixture struct {
 
 	tiltfileCode  string
 	expectedImage string
-	expectedLU    v1alpha1.LiveUpdateSpec
 
 	skipYAML bool
 }
@@ -461,7 +500,13 @@ func newLiveUpdateFixture(t *testing.T) *liveUpdateFixture {
 		fixture: newFixture(t),
 	}
 
-	f.expectedLU = v1alpha1.LiveUpdateSpec{
+	f.expectedImage = "foo"
+
+	return f
+}
+
+func (f *liveUpdateFixture) expectedLU() v1alpha1.LiveUpdateSpec {
+	return v1alpha1.LiveUpdateSpec{
 		BasePath:  f.Path(),
 		StopPaths: []string{filepath.Join("foo", "i"), filepath.Join("foo", "j")},
 		Syncs: []v1alpha1.LiveUpdateSync{
@@ -476,8 +521,18 @@ func newLiveUpdateFixture(t *testing.T) *liveUpdateFixture {
 				TriggerPaths: []string{"g", "h"},
 			},
 		},
+		Selector: v1alpha1.LiveUpdateSelector{
+			Kubernetes: &v1alpha1.LiveUpdateKubernetesSelector{
+				DiscoveryName: "foo",
+				ApplyName:     "foo",
+				Image:         f.expectedImage,
+			},
+		},
+		Sources: []v1alpha1.LiveUpdateSource{
+			{
+				FileWatch: fmt.Sprintf("image:%s", apis.SanitizeName(f.expectedImage)),
+				ImageMap:  apis.SanitizeName(f.expectedImage),
+			},
+		},
 	}
-	f.expectedImage = "foo"
-
-	return f
 }

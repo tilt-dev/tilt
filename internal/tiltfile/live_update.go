@@ -292,7 +292,7 @@ func (s *tiltfileState) liveUpdateFromSteps(t *starlark.Thread, maybeSteps starl
 		s.consumeLiveUpdateStep(step)
 	}
 
-	errs := (&v1alpha1.LiveUpdate{Spec: spec}).Validate(s.ctx)
+	errs := spec.ValidateSteps(s.ctx)
 	if len(errs) > 0 {
 		return v1alpha1.LiveUpdateSpec{}, errs.ToAggregate()
 	}
