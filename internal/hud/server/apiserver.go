@@ -92,10 +92,13 @@ func ProvideConfigAccess(dir *dirs.TiltDevDir) clientcmd.ConfigAccess {
 func ProvideWebListener(host model.WebHost, port model.WebPort) (WebListener, error) {
 	webListener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", string(host), int(port)))
 	if err != nil {
-		return nil, fmt.Errorf("Tilt cannot start because you already have another process on port %d\n"+
-			"If you want to run multiple Tilt instances simultaneously,\n"+
-			"use the --port flag or TILT_PORT env variable to set a custom port\nOriginal error: %v",
-			port, err)
+		if strings.HasSuffix(err.Error(), "address already in use") {
+			return nil, fmt.Errorf("Tilt cannot start because you already have another process on port %d\n"+
+				"If you want to run multiple Tilt instances simultaneously,\n"+
+				"use the --port flag or TILT_PORT env variable to set a custom port\nOriginal error: %v",
+				port, err)
+		}
+		return nil, err
 	}
 	return WebListener(webListener), nil
 }
