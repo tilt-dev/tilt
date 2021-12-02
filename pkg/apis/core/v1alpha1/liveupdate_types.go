@@ -168,6 +168,22 @@ func (in *LiveUpdate) Validate(ctx context.Context) field.ErrorList {
 					"sync destination is not absolute"))
 		}
 	}
+
+	// TODO(milas): require that exactly one selector type is specified once Docker Compose selector support is added
+	selectorPath := field.NewPath("spec.selector")
+	if kSelector := in.Spec.Selector.Kubernetes; kSelector != nil {
+		p := selectorPath.Child("kubernetes")
+		if kSelector.DiscoveryName == "" {
+			errors = append(errors, field.Required(p.Child("discoveryName"), "KubernetesDiscovery name is required"))
+		}
+		if kSelector.Image == "" && kSelector.ContainerName == "" {
+			errors = append(errors, field.Required(p, "exactly one of image or containerName is required"))
+		} else if kSelector.Image != "" && kSelector.ContainerName != "" {
+			errors = append(errors,
+				field.Forbidden(p.Child("containerName"), "cannot specify both image and containerName"))
+		}
+	}
+
 	return errors
 }
 
@@ -237,7 +253,7 @@ type LiveUpdateSelector struct {
 // Specifies how to select containers to live update inside K8s.
 type LiveUpdateKubernetesSelector struct {
 	// The name of a KubernetesDiscovery object for finding pods.
-	DiscoveryName string `json:"discoveryName,omitempty" protobuf:"bytes,1,opt,name=discoveryName"`
+	DiscoveryName string `json:"discoveryName" protobuf:"bytes,1,opt,name=discoveryName"`
 
 	// ApplyName is the name of a KubernetesApply object for filtering discovered pods to prevent updating old
 	// deployments.
@@ -248,9 +264,21 @@ type LiveUpdateKubernetesSelector struct {
 	ApplyName string `json:"applyName,omitempty" protobuf:"bytes,3,opt,name=applyName"`
 
 	// Image specifies the name of the image that we're copying files into.
+	//
 	// Determines which containers in a pod to live-update.
 	// Matches images by name unless tag is explicitly specified.
+	//
+	// Exactly one of Image or ContainerName MUST be specified.
+	//
+	// +optional
 	Image string `json:"image,omitempty" protobuf:"bytes,2,opt,name=image"`
+
+	// ContainerName specifies the name of the container that we're copying files into.
+	//
+	// Exactly one of Image or ContainerName MUST be specified.
+	//
+	// +optional
+	ContainerName string `json:"containerName,omitempty" protobuf:"bytes,4,opt,name=containerName"`
 }
 
 // Determines how a local path maps into a container image.

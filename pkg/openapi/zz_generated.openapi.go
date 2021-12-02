@@ -3451,6 +3451,7 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateKubernetesSelector(ref common.Refer
 					"discoveryName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The name of a KubernetesDiscovery object for finding pods.",
+							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -3464,12 +3465,20 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateKubernetesSelector(ref common.Refer
 					},
 					"image": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Image specifies the name of the image that we're copying files into. Determines which containers in a pod to live-update. Matches images by name unless tag is explicitly specified.",
+							Description: "Image specifies the name of the image that we're copying files into.\n\nDetermines which containers in a pod to live-update. Matches images by name unless tag is explicitly specified.\n\nExactly one of Image or ContainerName MUST be specified.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"containerName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ContainerName specifies the name of the container that we're copying files into.\n\nExactly one of Image or ContainerName MUST be specified.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
 				},
+				Required: []string{"discoveryName"},
 			},
 		},
 	}
