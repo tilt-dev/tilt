@@ -3,6 +3,7 @@ package tiltfile
 import (
 	"fmt"
 
+	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 	"github.com/tilt-dev/tilt/internal/tiltfile/value"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -24,7 +26,7 @@ func (s *tiltfileState) k8sCustomDeploy(thread *starlark.Thread, fn *starlark.Bu
 	var applyCmdVal, applyCmdBatVal, applyCmdDirVal starlark.Value
 	var deleteCmdVal, deleteCmdBatVal, deleteCmdDirVal starlark.Value
 	var applyCmdEnv, deleteCmdEnv value.StringStringMap
-	var imageSelector string
+	var imageSelector, containerSelector string
 	var liveUpdateVal starlark.Value
 
 	deps := value.NewLocalPathListUnpacker(thread)
@@ -42,6 +44,7 @@ func (s *tiltfileState) k8sCustomDeploy(thread *starlark.Thread, fn *starlark.Bu
 		"delete_dir?", &deleteCmdDirVal,
 		"delete_env?", &deleteCmdEnv,
 		"delete_cmd_bat?", &deleteCmdBatVal,
+		"container_selector?", &containerSelector,
 	); err != nil {
 		return nil, err
 	}
@@ -77,13 +80,43 @@ func (s *tiltfileState) k8sCustomDeploy(thread *starlark.Thread, fn *starlark.Bu
 	}
 
 	if !liveupdate.IsEmptySpec(liveUpdate) {
-		if imageSelector == "" {
-			return nil, fmt.Errorf("k8s_custom_deploy: image_selector cannot be empty")
+		var ref reference.Named
+		var selectorCount int
+
+		if imageSelector != "" {
+			selectorCount++
+
+			// the ref attached to the image target will be inferred as the image selector
+			// for the LiveUpdateSpec by Manifest::InferLiveUpdateSelectors
+			ref, err = container.ParseNamed(imageSelector)
+			if err != nil {
+				return nil, fmt.Errorf("can't parse %q: %v", imageSelector, err)
+			}
 		}
 
-		ref, err := container.ParseNamed(imageSelector)
-		if err != nil {
-			return nil, fmt.Errorf("can't parse %q: %v", imageSelector, err)
+		if containerSelector != "" {
+			selectorCount++
+
+			// pre-populate the container name selector as this cannot be inferred from
+			// the image target by Manifest::InferLiveUpdateSelectors
+			liveUpdate.Selector.Kubernetes = &v1alpha1.LiveUpdateKubernetesSelector{
+				ContainerName: containerSelector,
+			}
+
+			// the image target needs a valid ref even though it'll never be
+			// built/used, so create one named after the manifest that won't
+			// collide with anything else
+			fakeImageName := fmt.Sprintf("k8s_custom_deploy:%s", name)
+			ref, err = container.ParseNamed(fakeImageName)
+			if err != nil {
+				return nil, fmt.Errorf("can't parse %q: %v", fakeImageName, err)
+			}
+		}
+
+		if selectorCount == 0 {
+			return nil, fmt.Errorf("k8s_custom_deploy: no Live Update selector specified")
+		} else if selectorCount > 1 {
+			return nil, fmt.Errorf("k8s_custom_deploy: cannot specify more than one Live Update selector")
 		}
 
 		img := &dockerImage{
@@ -99,6 +132,9 @@ func (s *tiltfileState) k8sCustomDeploy(thread *starlark.Thread, fn *starlark.Bu
 			skipsLocalDocker: true,
 			tiltfilePath:     starkit.CurrentExecPath(thread),
 		}
+		// N.B. even in the case that we're creating a fake image name, we need
+		// 	to reference it so that it can be "consumed" by this target to avoid
+		// 	producing warnings about unused image targets
 		res.imageRefs = append(res.imageRefs, ref)
 
 		if err := s.buildIndex.addImage(img); err != nil {

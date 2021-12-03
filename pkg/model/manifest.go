@@ -274,13 +274,29 @@ func (m *Manifest) InferLiveUpdateSelectors() error {
 
 		// TODO(nick): Also set docker-compose selectors once the model supports it.
 		if m.IsK8s() {
-			luSpec.Selector.Kubernetes = &v1alpha1.LiveUpdateKubernetesSelector{
-				Image:         reference.FamiliarName(iTarget.Refs.ClusterRef()),
-				ApplyName:     m.Name.String(),
-				DiscoveryName: m.Name.String(),
+			kSelector := luSpec.Selector.Kubernetes
+			if kSelector == nil {
+				kSelector = &v1alpha1.LiveUpdateKubernetesSelector{}
+				luSpec.Selector.Kubernetes = kSelector
 			}
-			if iTarget.IsLiveUpdateOnly {
-				luSpec.Selector.Kubernetes.Image = reference.FamiliarName(iTarget.Refs.WithoutRegistry().LocalRef())
+
+			if kSelector.ApplyName == "" {
+				kSelector.ApplyName = m.Name.String()
+			}
+			if kSelector.DiscoveryName == "" {
+				kSelector.DiscoveryName = m.Name.String()
+			}
+
+			// infer an image name from the ImageTarget if a container name selector was not specified
+			// (currently, this is always done except in some k8s_custom_deploy configurations)
+			if kSelector.ContainerName == "" {
+				var image string
+				if iTarget.IsLiveUpdateOnly {
+					image = reference.FamiliarName(iTarget.Refs.WithoutRegistry().LocalRef())
+				} else {
+					image = reference.FamiliarName(iTarget.Refs.ClusterRef())
+				}
+				kSelector.Image = image
 			}
 		}
 
