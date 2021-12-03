@@ -26,6 +26,60 @@ import "k8s.io/apimachinery/pkg/runtime/schema/generated.proto";
 // Package-wide variables from generator "generated".
 option go_package = "v1alpha1";
 
+// Cluster defines any runtime for running containers, in the broadest
+// sense of the word "runtime".
+//
+// +k8s:openapi-gen=true
+message Cluster {
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+
+  optional ClusterSpec spec = 2;
+
+  optional ClusterStatus status = 3;
+}
+
+// Connection spec for an existing cluster.
+message ClusterConnection {
+  // Defines connection to a Kubernetes cluster.
+  optional KubernetesClusterConnection kubernetes = 1;
+
+  // Defines connection to a Docker daemon.
+  optional DockerClusterConnection docker = 2;
+}
+
+// ClusterList
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+message ClusterList {
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+
+  repeated Cluster items = 2;
+}
+
+// ClusterSpec defines how to find the cluster we're running
+// containers on.
+//
+// Tilt currently supports connecting to an existing Kubernetes
+// cluster or an existing Docker Daemon (for Docker Compose).
+message ClusterSpec {
+  // Connection spec for an existing cluster.
+  optional ClusterConnection connect = 1;
+}
+
+// ClusterStatus defines the observed state of Cluster
+message ClusterStatus {
+  // The preferred chip architecture of the cluster.
+  //
+  // On Kubernetes, this will correspond to the kubernetes.io/arch annotation on
+  // a node.
+  //
+  // On Docker, this will be the Architecture of the Docker daemon.
+  //
+  // Note that many clusters support multiple chipsets. This field doesn't intend
+  // that this is the only architecture a cluster supports, only that it's one
+  // of the architectures.
+  optional string arch = 1;
+}
+
 // Cmd represents a process on the host machine.
 //
 // When the process exits, we will make a best-effort attempt
@@ -347,6 +401,14 @@ message DisableStatus {
 
   // The reason this status was updated.
   optional string reason = 3;
+}
+
+message DockerClusterConnection {
+  // The docker host to use.
+  //
+  // If not specified, will read the DOCKER_HOST env or use the default docker
+  // host.
+  optional string host = 1;
 }
 
 // DockerImage describes an image to build with Docker.
@@ -1186,6 +1248,18 @@ message KubernetesApplyStatus {
   // Details about whether/why this is disabled.
   // +optional
   optional DisableStatus disableStatus = 5;
+}
+
+message KubernetesClusterConnection {
+  // The name of the kubeconfig context to use.
+  //
+  // If not specified, will use the default context in the kubeconfig.
+  optional string context = 1;
+
+  // The default namespace to use.
+  //
+  // If not specified, will use the namespace in the kubeconfig.
+  optional string namespace = 2;
 }
 
 // KubernetesDiscovery
