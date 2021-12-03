@@ -566,6 +566,56 @@ func TestStopPathConsumedByKubernetesApply(t *testing.T) {
 	assert.Equal(t, 1, len(f.cu.Calls))
 }
 
+func TestKubernetesContainerNameSelector(t *testing.T) {
+	f := newFixture(t)
+
+	p, _ := os.Getwd()
+	nowMicro := apis.NowMicro()
+	txtPath := filepath.Join(p, "a.txt")
+	txtChangeTime := metav1.MicroTime{Time: nowMicro.Add(time.Second)}
+
+	f.setupFrontend()
+
+	// change from default image selector to a container name selector
+	var lu v1alpha1.LiveUpdate
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	lu.Spec.Selector.Kubernetes.Image = ""
+	lu.Spec.Selector.Kubernetes.ContainerName = "main"
+	f.Update(&lu)
+
+	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
+		Pods: []v1alpha1.Pod{
+			{
+				Name:      "pod-1",
+				Namespace: "default",
+				Containers: []v1alpha1.Container{
+					{
+						Name:  "main",
+						ID:    "main-id",
+						Image: "frontend-image",
+						State: v1alpha1.ContainerState{
+							Running: &v1alpha1.ContainerStateRunning{},
+						},
+					},
+				},
+			},
+		},
+	})
+
+	// Trigger a file event, and make sure that the status reflects the sync.
+	f.addFileEvent("frontend-fw", txtPath, txtChangeTime)
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	assert.Equal(t, "main", lu.Spec.Selector.Kubernetes.ContainerName)
+	assert.Nil(t, lu.Status.Failed)
+	if assert.Equal(t, 1, len(lu.Status.Containers)) {
+		assert.Equal(t, txtChangeTime, lu.Status.Containers[0].LastFileTimeSynced)
+	}
+
+	f.assertSteadyState(&lu)
+}
+
 type TestingStore struct {
 	*store.TestingStore
 	ctx                 context.Context
