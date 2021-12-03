@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // registers gcp auth provider
@@ -131,14 +132,10 @@ func (c portForwardClient) CreatePortForwarder(ctx context.Context, namespace Na
 			ports,
 			readyChan)
 	} else {
-		// handle IPv6 literals like `[::1]`
-		url, hostErr := url.Parse(fmt.Sprintf("http://%s/", host))
-		if hostErr != nil {
-			return nil, errors.Wrap(hostErr, fmt.Sprintf("invalid host %s", host))
-		}
-		addresses, hostErr := net.LookupHost(url.Hostname())
-		if hostErr != nil {
-			return nil, errors.Wrap(hostErr, fmt.Sprintf("failed to look up address for %s", host))
+		var addresses []string
+		addresses, err = getListenableAddresses(host)
+		if err != nil {
+			return nil, err
 		}
 		pf, err = portforward.NewOnAddresses(
 			ctx,
@@ -155,6 +152,36 @@ func (c portForwardClient) CreatePortForwarder(ctx context.Context, namespace Na
 		PortForwarder: pf,
 		localPort:     localPort,
 	}, nil
+}
+
+func getListenableAddresses(host string) ([]string, error) {
+	// handle IPv6 literals like `[::1]`
+	url, hostErr := url.Parse(fmt.Sprintf("http://%s/", host))
+	if hostErr != nil {
+		return nil, errors.Wrap(hostErr, fmt.Sprintf("invalid host %s", host))
+	}
+	addresses, hostErr := net.LookupHost(url.Hostname())
+	if hostErr != nil {
+		return nil, errors.Wrap(hostErr, fmt.Sprintf("failed to look up address for %s", host))
+	}
+	listenable := make([]string, 0)
+	for _, addr := range addresses {
+		var l net.Listener
+		var err error
+		if ipv6 := strings.Contains(addr, ":"); ipv6 {
+			l, err = net.Listen("tcp6", fmt.Sprintf("[%s]:0", addr))
+		} else {
+			l, err = net.Listen("tcp4", fmt.Sprintf("%s:0", addr))
+		}
+		if err == nil {
+			l.Close()
+			listenable = append(listenable, addr)
+		}
+	}
+	if len(listenable) == 0 {
+		return nil, errors.New(fmt.Sprintf("host %s: cannot listen on any resolved addresses: %v", host, addresses))
+	}
+	return listenable, nil
 }
 
 func getAvailablePort() (int, error) {
