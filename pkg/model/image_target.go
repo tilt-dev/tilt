@@ -110,7 +110,7 @@ func (i ImageTarget) Validate() error {
 			return fmt.Errorf("[Validate] Image %q missing build path", confRef)
 		}
 	case CustomBuild:
-		if bd.Command.Empty() {
+		if !i.IsLiveUpdateOnly && bd.Command.Empty() {
 			return fmt.Errorf(
 				"[Validate] CustomBuild command must not be empty",
 			)

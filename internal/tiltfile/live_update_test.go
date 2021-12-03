@@ -3,9 +3,11 @@ package tiltfile
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -178,13 +180,25 @@ func TestLiveUpdateOnlyCustomBuild(t *testing.T) {
 	f := newLiveUpdateFixture(t)
 	defer f.TearDown()
 
-	f.tiltfileCode = "custom_build('foo', ':', ['foo'], live_update=%s)"
+	f.tiltfileCode = `
+default_registry('gcr.io/myrepo')
+custom_build('foo', ':', ['foo'], live_update=%s)
+`
 	f.init()
 
 	f.load("foo")
 
 	m := f.assertNextManifest("foo", cb(image("foo"), f.expectedLU))
 	assert.True(t, m.ImageTargets[0].IsLiveUpdateOnly)
+	// this ref will never actually be used since the image isn't being built but the registry is applied here
+	assert.Equal(t, "gcr.io/myrepo/foo", m.ImageTargets[0].Refs.LocalRef().String())
+
+	require.NoError(t, m.InferLiveUpdateSelectors(), "Failed to infer Live Update selectors")
+	luSpec := m.ImageTargets[0].LiveUpdateSpec
+	require.NotNil(t, luSpec.Selector.Kubernetes)
+	assert.Empty(t, luSpec.Selector.Kubernetes.ContainerName)
+	// NO registry rewriting should be applied here because Tilt isn't actually building the image
+	assert.Equal(t, "foo", luSpec.Selector.Kubernetes.Image)
 }
 
 func TestLiveUpdateSyncFilesOutsideOfDockerBuildContext(t *testing.T) {
@@ -416,11 +430,16 @@ type liveUpdateFixture struct {
 	tiltfileCode  string
 	expectedImage string
 	expectedLU    v1alpha1.LiveUpdateSpec
+
+	skipYAML bool
 }
 
 func (f *liveUpdateFixture) init() {
 	f.dockerfile("foo/Dockerfile")
-	f.yaml("foo.yaml", deployment("foo", image(f.expectedImage)))
+
+	if !f.skipYAML {
+		f.yaml("foo.yaml", deployment("foo", image(f.expectedImage)))
+	}
 
 	luSteps := `[
     fall_back_on(['foo/i', 'foo/j']),
@@ -428,10 +447,12 @@ func (f *liveUpdateFixture) init() {
 	run('f', ['g', 'h']),
 ]`
 	codeToInsert := fmt.Sprintf(f.tiltfileCode, luSteps)
-	tiltfile := fmt.Sprintf(`
-k8s_yaml('foo.yaml')
-%s
-`, codeToInsert)
+
+	var tiltfile string
+	if !f.skipYAML {
+		tiltfile = `k8s_yaml('foo.yaml')`
+	}
+	tiltfile = strings.Join([]string{tiltfile, codeToInsert}, "\n")
 	f.file("Tiltfile", tiltfile)
 }
 
