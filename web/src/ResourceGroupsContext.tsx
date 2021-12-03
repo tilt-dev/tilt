@@ -1,6 +1,6 @@
 import { createContext, PropsWithChildren, useContext } from "react"
 import { AnalyticsAction, AnalyticsType, incr } from "./analytics"
-import { usePersistentState } from "./LocalStorage"
+import { usePersistentState } from "./BrowserStorage"
 
 export type GroupState = { expanded: boolean }
 

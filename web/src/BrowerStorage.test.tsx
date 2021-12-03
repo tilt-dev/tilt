@@ -1,6 +1,10 @@
 import { mount } from "enzyme"
 import React from "react"
-import { makeKey, tiltfileKeyContext, usePersistentState } from "./LocalStorage"
+import {
+  makeKey,
+  tiltfileKeyContext,
+  usePersistentState,
+} from "./BrowserStorage"
 
 describe("localStorageContext", () => {
   afterEach(() => {
