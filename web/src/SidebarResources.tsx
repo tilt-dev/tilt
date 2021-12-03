@@ -34,7 +34,6 @@ import SidebarItemView, {
   triggerUpdate,
 } from "./SidebarItemView"
 import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
-import SrOnly from "./SrOnly"
 import { Color, Font, FontSize, SizeUnit } from "./style-helpers"
 import { ResourceView } from "./types"
 
@@ -171,17 +170,6 @@ export function SidebarListSection(props: SidebarSectionProps): JSX.Element {
     return [enabledItems, disabledItems]
   }, [props.items])
 
-  // The title for the disabled resource list is semantically important,
-  // but should only be visible when there's no filter term
-  const disableTitle = (
-    <SidebarDisabledSectionTitle>Disabled</SidebarDisabledSectionTitle>
-  )
-  const disableSectionTitle = resourceNameFilterApplied ? (
-    <SrOnly>{disableTitle}</SrOnly>
-  ) : (
-    disableTitle
-  )
-
   const displayDisabledResources =
     features.isEnabled(Flag.DisableResources) && disabledItems.length > 0
   return (
@@ -191,7 +179,7 @@ export function SidebarListSection(props: SidebarSectionProps): JSX.Element {
         <SidebarListSectionItems {...props} items={enabledItems} />
         {displayDisabledResources && (
           <SidebarDisabledSectionList>
-            {disableSectionTitle}
+            <SidebarDisabledSectionTitle>Disabled</SidebarDisabledSectionTitle>
             <ul>
               <SidebarListSectionItems {...props} items={disabledItems} />
             </ul>

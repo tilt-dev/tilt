@@ -45,7 +45,7 @@ export const AlertsOnTopToggle = styled(InstrumentedButton)`
   background-color: ${Color.gray};
   padding: ${SizeUnit(0.125)} ${SizeUnit(0.25)};
   border-radius: ${toggleBorderRadius};
-  font-size: ${FontSize.smallester};
+  font-size: 12px;
 
   &.is-enabled {
     color: ${Color.grayDarkest};

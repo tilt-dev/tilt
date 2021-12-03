@@ -367,16 +367,6 @@ describe("SidebarResources", () => {
             .map((item) => item.prop("item").name)
           expect(disabledItemsNames).toEqual(["_1"])
         })
-
-        it("displays the disabled resources list title with screen-reader-only class", () => {
-          const disabledItemsList = wrapper.find(SidebarDisabledSectionList)
-          expect(
-            disabledItemsList.find(SidebarDisabledSectionTitle).length
-          ).toBe(1)
-          // The disabled section title should always be present on the DOM if disabled
-          // resources are present, but it should only be available to assistive technology
-          expect(disabledItemsList.find(SrOnly).length).toBe(1)
-        })
       })
 
       describe("when there are groups and multiple groups have disabled resources", () => {
