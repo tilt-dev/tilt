@@ -1,6 +1,6 @@
-.PHONY: all install lint test test-go check-js test-js test-storybook integration wire-check wire ensure check-go goimports vendor shellcheck release-container update-codegen update-codegen-go update-codegen-starlark update-codegen-ts
+.PHONY: all install lint test test-go check-js test-js test-storybook integration wire-check wire ensure goimports vendor shellcheck release-container update-codegen update-codegen-go update-codegen-starlark update-codegen-ts
 
-all: check-go check-js test-js test-storybook
+all: check-js test-js test-storybook
 
 # There are 2 Go bugs that cause problems on CI:
 # 1) Linker memory usage blew up in Go 1.11
