@@ -52,6 +52,31 @@ func StringSliceEquals(a, b []string) bool {
 	return true
 }
 
+// return true iff `a` has the same elements as `b`, ignoring order
+func StringSliceSameElements(a, b []string) bool {
+	aElems := make(map[string]int)
+	bElems := make(map[string]int)
+	for _, s := range a {
+		aElems[s] += 1
+	}
+
+	for _, s := range b {
+		bElems[s] += 1
+	}
+
+	if len(aElems) != len(bElems) {
+		return false
+	}
+
+	for s, c1 := range aElems {
+		if c1 != bElems[s] {
+			return false
+		}
+	}
+
+	return true
+}
+
 // StringSliceStartsWith returns true if slice A starts with the given elem.
 func StringSliceStartsWith(a []string, elem string) bool {
 	if len(a) == 0 {

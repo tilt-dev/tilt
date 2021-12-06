@@ -12,8 +12,10 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	ctrltiltfile "github.com/tilt-dev/tilt/internal/controllers/apis/tiltfile"
+	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/localexec"
+	"github.com/tilt-dev/tilt/internal/sliceutils"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -80,23 +82,53 @@ func (c *downCmd) down(ctx context.Context, downDeps DownDeps, args []string) er
 		return err
 	}
 
-	var dcProject model.DockerComposeProject
+	var dcServices []model.DockerComposeUpSpec
 	for _, m := range tlr.Manifests {
 		if m.IsDC() {
-			dcProject = m.DockerComposeTarget().Spec.Project
-			break
+			dcServices = append(dcServices, m.DockerComposeTarget().Spec)
 		}
 	}
 
-	if !model.IsEmptyDockerComposeProject(dcProject) {
+	if len(dcServices) > 0 {
 		dcc := downDeps.dcClient
-		err = dcc.Down(ctx, dcProject, logger.Get(ctx).Writer(logger.InfoLvl), logger.Get(ctx).Writer(logger.InfoLvl))
+		// at the time of writing, a Tiltfile can only have one DC project
+		proj := dcServices[0].Project
+
+		// `docker-compose down` removes all services in the config
+		// if we are only stopping a subset, we use `docker-compose rm` instead
+		// (don't *always* use `rm` because it doesn't remove networks)
+		useDown, err := isAllServicesInProject(ctx, dcc, proj, dcServices)
 		if err != nil {
-			return errors.Wrap(err, "Running `docker-compose down`")
+			return err
+		}
+		if useDown {
+			err := dcc.Down(ctx, proj, logger.Get(ctx).Writer(logger.InfoLvl), logger.Get(ctx).Writer(logger.InfoLvl))
+			if err != nil {
+				return errors.Wrap(err, "Running `docker-compose down`")
+			}
+		} else {
+			err := dcc.Rm(ctx, dcServices, logger.Get(ctx).Writer(logger.InfoLvl), logger.Get(ctx).Writer(logger.InfoLvl))
+			if err != nil {
+				return errors.Wrap(err, "Running `docker-compose rm`")
+			}
 		}
 	}
 
 	return nil
+}
+
+// returns true iff `services` is the full list of services in `proj`
+func isAllServicesInProject(ctx context.Context, dcc dockercompose.DockerComposeClient, proj model.DockerComposeProject, services []model.DockerComposeUpSpec) (bool, error) {
+	p, err := dcc.Project(ctx, proj)
+	if err != nil {
+		return false, errors.Wrap(err, "parsing docker compose project")
+	}
+	var specifiedServiceNames []string
+	for _, s := range services {
+		specifiedServiceNames = append(specifiedServiceNames, s.Service)
+	}
+	serviceNamesInProject := p.ServiceNames()
+	return sliceutils.StringSliceSameElements(specifiedServiceNames, serviceNamesInProject), nil
 }
 
 func deleteK8sEntities(ctx context.Context, manifests []model.Manifest, updateSettings model.UpdateSettings, downDeps DownDeps, deleteNamespaces bool) error {

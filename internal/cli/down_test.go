@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/compose-spec/compose-go/types"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	composeyaml "gopkg.in/yaml.v2"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
@@ -153,12 +155,30 @@ func TestDownDCFails(t *testing.T) {
 	f := newDownFixture(t)
 	defer f.TearDown()
 
-	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: newDCManifest()}
+	manifests, err := newDCManifests("foo")
+	require.NoError(t, err)
+	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: manifests}
 	f.dcc.DownError = fmt.Errorf("GARBLEGARBLE")
-	err := f.cmd.down(f.ctx, f.deps, nil)
+	f.dcc.ConfigOutput = manifests[0].DockerComposeTarget().Spec.Project.YAML
+	err = f.cmd.down(f.ctx, f.deps, nil)
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "GARBLEGARBLE")
 	}
+}
+
+func TestDownDCArgs(t *testing.T) {
+	f := newDownFixture(t)
+	defer f.TearDown()
+
+	manifests, err := newDCManifests("foo", "bar", "baz")
+	require.NoError(t, err)
+	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: manifests[1:]}
+	f.dcc.ConfigOutput = manifests[0].DockerComposeTarget().Spec.Project.YAML
+	err = f.cmd.down(f.ctx, f.deps, []string{"bar", "baz"})
+	require.NoError(t, err)
+	require.Equal(t, 1, len(f.dcc.RmCalls))
+	require.Equal(t, "bar", f.dcc.RmCalls[0].Specs[0].Service)
+	require.Equal(t, "baz", f.dcc.RmCalls[0].Specs[1].Service)
 }
 
 func TestDownArgs(t *testing.T) {
@@ -182,16 +202,40 @@ func newK8sManifest() []model.Manifest {
 	return []model.Manifest{model.Manifest{Name: "fe"}.WithDeployTarget(k8s.MustTarget("fe", testyaml.SanchoYAML))}
 }
 
-func newDCManifest() []model.Manifest {
-	return []model.Manifest{model.Manifest{Name: "fe"}.WithDeployTarget(model.DockerComposeTarget{
-		Name: "fe",
-		Spec: model.DockerComposeUpSpec{
-			Service: "fe",
-			Project: model.DockerComposeProject{
-				ConfigPaths: []string{"dc.yaml"},
+func dcProjectYaml(names []string) (string, error) {
+	proj := types.Project{}
+	for _, name := range names {
+		svc := types.ServiceConfig{
+			Name:  name,
+			Image: name,
+		}
+		proj.Services = append(proj.Services, svc)
+	}
+	b, err := composeyaml.Marshal(proj)
+	return string(b), err
+}
+
+func newDCManifests(names ...string) ([]model.Manifest, error) {
+	yaml, err := dcProjectYaml(names)
+	if err != nil {
+		return nil, err
+	}
+	proj := model.DockerComposeProject{
+		ConfigPaths: []string{"dc.yaml"},
+		YAML:        yaml,
+	}
+	var result []model.Manifest
+	for _, name := range names {
+		m := model.Manifest{Name: model.ManifestName(name)}.WithDeployTarget(model.DockerComposeTarget{
+			Name: model.TargetName(name),
+			Spec: model.DockerComposeUpSpec{
+				Service: name,
+				Project: proj,
 			},
-		},
-	})}
+		})
+		result = append(result, m)
+	}
+	return result, nil
 }
 
 func newK8sNamespaceManifest(name string) model.Manifest {
