@@ -1350,7 +1350,7 @@ func (s *tiltfileState) validateDockerComposeVersion() error {
 			dcVersion)
 	} else if semver.Major(dcVersion) == "v2" && semver.Compare(dcVersion, "v2.2") < 0 {
 		logger.Get(s.ctx).Warnf("Using Docker Compose %s (version < 2.2) may result in errors or broken functionality.\n"+
-			"For best results, we recommend upgrading to Docker Compose >= v2.2.0 with Tilt.", dcVersion)
+			"For best results, we recommend upgrading to Docker Compose >= v2.2.0.", dcVersion)
 	} else if semver.Prerelease(dcVersion) != "" {
 		logger.Get(s.ctx).Warnf("You are running a pre-release version of Docker Compose (%s), which is unsupported.\n"+
 			"You might encounter errors or broken functionality.", dcVersion)
