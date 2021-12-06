@@ -317,11 +317,11 @@ func dcLoaderOption(opts *loader.Options) {
 }
 
 func dcExecutablePath() string {
-	v1Name := "docker-compose-v1"
+	composeName := "docker-compose"
 	if runtime.GOOS == "windows" {
-		v1Name += ".exe"
+		composeName += ".exe"
 	}
-	composePath, err := exec.LookPath(v1Name)
+	composePath, err := exec.LookPath(composeName)
 	if err != nil {
 		composePath = "docker-compose"
 	}

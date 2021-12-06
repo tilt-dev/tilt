@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 
@@ -1349,20 +1348,9 @@ func (s *tiltfileState) validateDockerComposeVersion() error {
 			"Tilt requires Docker Compose %s+ (you have %s). Please upgrade and re-launch Tilt.",
 			minimumDockerComposeVersion,
 			dcVersion)
-	} else if semver.Major(dcVersion) == "v2" {
-		var downgradeInstructions string
-		if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
-			// `docker-compose` on Docker Desktop is a shim that conditionally execs either v1 or v2
-			downgradeInstructions = "Run `docker-compose disable-v2` and re-launch Tilt."
-		} else {
-			// Compose v2 on Linux is a Docker plugin, used by running "docker compose" (notice the lack of hyphen -
-			// it's a subcommand found by searching `~/.docker/cli-plugins`), so if `docker-compose` points to v2,
-			// there must be a custom symlink; this will likely become more common over time as users want to
-			// maintain compatibility with existing tooling
-			downgradeInstructions = "Ensure `docker-compose` in your PATH points to Compose v1 and re-launch Tilt.\n"
-		}
-		logger.Get(s.ctx).Warnf("Support for Docker Compose v2.x is experimental, and you might encounter errors or broken functionality.\n"+
-			"For best results, we recommend using Docker Compose v1.x with Tilt.\n%s", downgradeInstructions)
+	} else if semver.Major(dcVersion) == "v2" && semver.Compare(dcVersion, "v2.2") < 0 {
+		logger.Get(s.ctx).Warnf("Using Docker Compose %s (version < 2.2) may result in errors or broken functionality.\n"+
+			"For best results, we recommend upgrading to Docker Compose >= v2.2.0.", dcVersion)
 	} else if semver.Prerelease(dcVersion) != "" {
 		logger.Get(s.ctx).Warnf("You are running a pre-release version of Docker Compose (%s), which is unsupported.\n"+
 			"You might encounter errors or broken functionality.", dcVersion)

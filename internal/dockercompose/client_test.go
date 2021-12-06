@@ -2,9 +2,6 @@ package dockercompose
 
 import (
 	"context"
-	"os"
-	"path/filepath"
-	"runtime"
 	"testing"
 
 	"github.com/compose-spec/compose-go/types"
@@ -69,33 +66,6 @@ func TestVariableInterpolation(t *testing.T) {
 			assert.Equal(t, 8081, int(svc.Ports[0].Target))
 		}
 	}
-}
-
-func TestPreferComposeV1(t *testing.T) {
-	t.Run("v1 Symlink Exists", func(t *testing.T) {
-		tmpdir := t.TempDir()
-		v1Name := "docker-compose-v1"
-		if runtime.GOOS == "windows" {
-			v1Name += ".exe"
-		}
-		binPath := filepath.Join(tmpdir, v1Name)
-		require.NoError(t, os.WriteFile(binPath, nil, 0777),
-			"Failed to create fake docker-compose-v1 binary")
-
-		testutils.Setenv(t, "PATH", tmpdir)
-		cli, ok := NewDockerComposeClient(docker.LocalEnv{}).(*cmdDCClient)
-		require.True(t, ok, "Unexpected type for Compose client: %T", cli)
-		assert.Equal(t, binPath, cli.composePath)
-	})
-
-	t.Run("No v1 Symlink Exists", func(t *testing.T) {
-		testutils.Unsetenv(t, "PATH")
-		cli, ok := NewDockerComposeClient(docker.LocalEnv{}).(*cmdDCClient)
-		require.True(t, ok, "Unexpected type for Compose client: %T", cli)
-		// if docker-compose-v1 isn't in path, we just set the path to the unqualified binary name and let it get
-		// resolved at exec time
-		assert.Equal(t, "docker-compose", cli.composePath)
-	})
 }
 
 func TestParseComposeVersionOutput(t *testing.T) {
