@@ -764,7 +764,7 @@ func TestDockerComposeVersionWarnings(t *testing.T) {
 	}
 	tcs := []tc{
 		{version: "v1.28.0", error: "Tilt requires Docker Compose v1.28.3+ (you have v1.28.0). Please upgrade and re-launch Tilt."},
-		{version: "v2.0.0-rc.3", warning: "Docker Compose v2.0.0-rc.3 (version < 2.2) may result in errors or broken functionality.\n" +
+		{version: "v2.0.0-rc.3", warning: "Using Docker Compose v2.0.0-rc.3 (version < 2.2) may result in errors or broken functionality.\n" +
 			"For best results, we recommend upgrading to Docker Compose >= v2.2.0 with Tilt."},
 		{version: "v1.29.2" /* no errors or warnings */},
 		{version: "v2.2.0" /* no errors or warnings */},
