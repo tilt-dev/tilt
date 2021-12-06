@@ -31,6 +31,11 @@ import (
 
 func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenAPIDefinition {
 	return map[string]common.OpenAPIDefinition{
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Cluster":                         schema_pkg_apis_core_v1alpha1_Cluster(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ClusterConnection":               schema_pkg_apis_core_v1alpha1_ClusterConnection(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ClusterList":                     schema_pkg_apis_core_v1alpha1_ClusterList(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ClusterSpec":                     schema_pkg_apis_core_v1alpha1_ClusterSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ClusterStatus":                   schema_pkg_apis_core_v1alpha1_ClusterStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Cmd":                             schema_pkg_apis_core_v1alpha1_Cmd(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdList":                         schema_pkg_apis_core_v1alpha1_CmdList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdSpec":                         schema_pkg_apis_core_v1alpha1_CmdSpec(ref),
@@ -51,6 +56,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableResourceStatus":           schema_pkg_apis_core_v1alpha1_DisableResourceStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource":                   schema_pkg_apis_core_v1alpha1_DisableSource(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableStatus":                   schema_pkg_apis_core_v1alpha1_DisableStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerClusterConnection":         schema_pkg_apis_core_v1alpha1_DockerClusterConnection(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImage":                     schema_pkg_apis_core_v1alpha1_DockerImage(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageList":                 schema_pkg_apis_core_v1alpha1_DockerImageList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageSpec":                 schema_pkg_apis_core_v1alpha1_DockerImageSpec(ref),
@@ -90,6 +96,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApplyList":             schema_pkg_apis_core_v1alpha1_KubernetesApplyList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApplySpec":             schema_pkg_apis_core_v1alpha1_KubernetesApplySpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApplyStatus":           schema_pkg_apis_core_v1alpha1_KubernetesApplyStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesClusterConnection":     schema_pkg_apis_core_v1alpha1_KubernetesClusterConnection(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscovery":             schema_pkg_apis_core_v1alpha1_KubernetesDiscovery(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryList":         schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoverySpec":         schema_pkg_apis_core_v1alpha1_KubernetesDiscoverySpec(ref),
@@ -236,6 +243,170 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"k8s.io/apimachinery/pkg/runtime.TypeMeta":                                        schema_k8sio_apimachinery_pkg_runtime_TypeMeta(ref),
 		"k8s.io/apimachinery/pkg/runtime.Unknown":                                         schema_k8sio_apimachinery_pkg_runtime_Unknown(ref),
 		"k8s.io/apimachinery/pkg/version.Info":                                            schema_k8sio_apimachinery_pkg_version_Info(ref),
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_Cluster(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Cluster defines any runtime for running containers, in the broadest sense of the word \"runtime\".",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ClusterSpec"),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ClusterStatus"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ClusterSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ClusterStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_ClusterConnection(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Connection spec for an existing cluster.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kubernetes": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Defines connection to a Kubernetes cluster.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesClusterConnection"),
+						},
+					},
+					"docker": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Defines connection to a Docker daemon.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerClusterConnection"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerClusterConnection", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesClusterConnection"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_ClusterList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ClusterList",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Cluster"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Cluster", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_ClusterSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ClusterSpec defines how to find the cluster we're running containers on.\n\nTilt currently supports connecting to an existing Kubernetes cluster or an existing Docker Daemon (for Docker Compose).",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"connect": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Connection spec for an existing cluster.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ClusterConnection"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ClusterConnection"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_ClusterStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ClusterStatus defines the observed state of Cluster",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"arch": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The preferred chip architecture of the cluster.\n\nOn Kubernetes, this will correspond to the kubernetes.io/arch annotation on a node.\n\nOn Docker, this will be the Architecture of the Docker daemon.\n\nNote that many clusters support multiple chipsets. This field doesn't intend that this is the only architecture a cluster supports, only that it's one of the architectures.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
 	}
 }
 
@@ -1080,6 +1251,25 @@ func schema_pkg_apis_core_v1alpha1_DisableStatus(ref common.ReferenceCallback) c
 		},
 		Dependencies: []string{
 			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_DockerClusterConnection(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"host": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The docker host to use.\n\nIf not specified, will read the DOCKER_HOST env or use the default docker host.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
 	}
 }
 
@@ -2935,6 +3125,32 @@ func schema_pkg_apis_core_v1alpha1_KubernetesApplyStatus(ref common.ReferenceCal
 		},
 		Dependencies: []string{
 			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_KubernetesClusterConnection(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"context": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The name of the kubeconfig context to use.\n\nIf not specified, will use the default context in the kubeconfig.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"namespace": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The default namespace to use.\n\nIf not specified, will use the namespace in the kubeconfig.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
 	}
 }
 
