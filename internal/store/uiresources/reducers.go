@@ -29,6 +29,13 @@ func HandleUIResourceUpsertAction(state *store.EngineState, action UIResourceUps
 			a := store.NewLogAction(model.ManifestName(n), logstore.SpanID(fmt.Sprintf("disabletoggle-%s", n)), logger.InfoLvl, nil, []byte(message))
 			state.LogStore.Append(a, state.Secrets)
 		}
+
+		// For now, as a sledgehammer, force a rebuild when a resource becomes enabled.
+		// more discussion here:
+		// https://app.shortcut.com/windmill/story/13040/behavior-on-re-enabling-resources-is-generally-buggy
+		if oldCount > 0 && newCount == 0 {
+			state.AppendToTriggerQueue(model.ManifestName(n), model.BuildReasonEnabled)
+		}
 	}
 
 	state.UIResources[n] = uir

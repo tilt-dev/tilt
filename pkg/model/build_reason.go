@@ -29,6 +29,8 @@ const (
 	// Building manifestA will mark imageB
 	// with changed dependencies.
 	BuildReasonFlagChangedDeps
+
+	BuildReasonEnabled
 )
 
 func (r BuildReason) With(flag BuildReason) BuildReason {
