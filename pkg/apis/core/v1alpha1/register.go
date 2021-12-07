@@ -70,6 +70,7 @@ func AllResourceObjects() []resource.Object {
 		&LiveUpdate{},
 		&ToggleButton{},
 		&DockerImage{},
+		&Cluster{},
 
 		// Hey! You! If you're adding a new top-level type, add the type object here.
 	}
@@ -94,6 +95,7 @@ func AllResourceLists() []runtime.Object {
 		&LiveUpdateList{},
 		&ToggleButtonList{},
 		&DockerImageList{},
+		&ClusterList{},
 
 		// Hey! You! If you're adding a new top-level type, add the List type here.
 	}

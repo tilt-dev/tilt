@@ -4,6 +4,7 @@ import (
 	"github.com/google/wire"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/tilt-dev/tilt/internal/controllers/core/cluster"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
 	"github.com/tilt-dev/tilt/internal/controllers/core/configmap"
 	"github.com/tilt-dev/tilt/internal/controllers/core/dockerimage"
@@ -29,6 +30,7 @@ var controllerSet = wire.NewSet(
 	podlogstream.NewController,
 	podlogstream.NewPodSource,
 	kubernetesapply.NewReconciler,
+	cluster.NewReconciler,
 
 	ProvideControllers,
 )
@@ -50,6 +52,7 @@ func ProvideControllers(
 	lur *liveupdate.Reconciler,
 	cmr *configmap.Reconciler,
 	dir *dockerimage.Reconciler,
+	clr *cluster.Reconciler,
 ) []Controller {
 	return []Controller{
 		fileWatch,
@@ -68,6 +71,7 @@ func ProvideControllers(
 		lur,
 		cmr,
 		dir,
+		clr,
 	}
 }
 
