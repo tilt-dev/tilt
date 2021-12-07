@@ -376,7 +376,7 @@ func schema_pkg_apis_core_v1alpha1_ClusterSpec(ref common.ReferenceCallback) com
 				Description: "ClusterSpec defines how to find the cluster we're running containers on.\n\nTilt currently supports connecting to an existing Kubernetes cluster or an existing Docker Daemon (for Docker Compose).",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"connect": {
+					"connection": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Connection spec for an existing cluster.",
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ClusterConnection"),
@@ -400,6 +400,13 @@ func schema_pkg_apis_core_v1alpha1_ClusterStatus(ref common.ReferenceCallback) c
 					"arch": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The preferred chip architecture of the cluster.\n\nOn Kubernetes, this will correspond to the kubernetes.io/arch annotation on a node.\n\nOn Docker, this will be the Architecture of the Docker daemon.\n\nNote that many clusters support multiple chipsets. This field doesn't intend that this is the only architecture a cluster supports, only that it's one of the architectures.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"error": {
+						SchemaProps: spec.SchemaProps{
+							Description: "An unrecoverable error connecting to the cluster.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
