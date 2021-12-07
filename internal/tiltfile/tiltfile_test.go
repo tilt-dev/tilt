@@ -4932,6 +4932,7 @@ func TestLocalResourceAllowParallel(t *testing.T) {
 	f.file("Tiltfile", `
 local_resource("a", ["echo", "hi"], allow_parallel=True)
 local_resource("b", ["echo", "hi"])
+local_resource("c", serve_cmd=["echo", "hi"])
 `)
 
 	f.load()
@@ -4939,6 +4940,12 @@ local_resource("b", ["echo", "hi"])
 	assert.True(t, a.LocalTarget().AllowParallel)
 	b := f.assertNextManifest("b")
 	assert.False(t, b.LocalTarget().AllowParallel)
+
+	// local_resource serve_cmd is currently modeled as a no-op local cmd that
+	// triggers a server restart. It's always OK for those no-op local cmds to
+	// run in parallel.
+	c := f.assertNextManifest("c")
+	assert.True(t, c.LocalTarget().AllowParallel)
 }
 
 func TestLocalResourceInvalidName(t *testing.T) {

@@ -1607,7 +1607,7 @@ func (s *tiltfileState) translateLocal() ([]model.Manifest, error) {
 		lt := model.NewLocalTarget(model.TargetName(r.name), r.updateCmd, r.serveCmd, r.deps).
 			WithRepos(reposForPaths(paths)).
 			WithIgnores(ignores).
-			WithAllowParallel(r.allowParallel).
+			WithAllowParallel(r.allowParallel || r.updateCmd.Empty()).
 			WithLinks(r.links).
 			WithTags(r.tags).
 			WithIsTest(r.isTest).
