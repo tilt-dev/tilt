@@ -46,7 +46,7 @@ export function InstrumentedButton(props: ButtonProps & InstrumentationProps) {
 // event per this duration. These don't need to be submitted super
 // urgently, and we want to be closer to sending one per user intent than
 // one per keystroke.
-const textFieldEditDebounceMilliseconds = 5000
+export const textFieldEditDebounceMilliseconds = 5000
 
 export function InstrumentedTextField(
   props: TextFieldProps & InstrumentationProps
@@ -57,17 +57,17 @@ export function InstrumentedTextField(
   const debouncedIncr = useMemo(
     () =>
       // debounce so we don't send analytics for every single keypress
-      debounce(() => {
-        incr(analyticsName, {
+      debounce((name: string, tags?: Tags) => {
+        incr(name, {
           action: AnalyticsAction.Edit,
-          ...(analyticsTags ?? {}),
+          ...(tags ?? {}),
         })
       }, textFieldEditDebounceMilliseconds),
-    [analyticsName, analyticsTags]
+    []
   )
 
   const instrumentedOnChange: typeof onChange = (e) => {
-    debouncedIncr()
+    debouncedIncr(analyticsName, analyticsTags)
     if (onChange) {
       onChange(e)
     }
