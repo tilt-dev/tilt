@@ -84,6 +84,24 @@ ports:
       protocol: tcp`, f.JoinPath("foo"))
 }
 
+func TestDockerComposeNothingError(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", "docker_compose(None)")
+
+	f.loadErrString("Nothing to compose")
+}
+
+func TestDockerComposeBadTypeError(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", "docker_compose(True)")
+
+	f.loadErrString("expected blob | path (string). Actual type: starlark.Bool")
+}
+
 func TestDockerComposeManifest(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -92,12 +110,35 @@ func TestDockerComposeManifest(t *testing.T) {
 	f.file("docker-compose.yml", simpleConfig)
 	f.file("Tiltfile", "docker_compose('docker-compose.yml')")
 
-	f.load("foo")
+	f.load()
 	f.assertDcManifest("foo",
 		dcServiceYAML(f.simpleConfigAfterParse()),
 		dockerComposeManagedImage(f.JoinPath("foo", "Dockerfile"), f.JoinPath("foo")),
 		dcPublishedPorts(12312),
-		// TODO(maia): assert m.tiltFilename
+	)
+
+	expectedConfFiles := []string{
+		"Tiltfile",
+		".tiltignore",
+		"docker-compose.yml",
+		f.JoinPath("foo", ".dockerignore"),
+	}
+	f.assertConfigFiles(expectedConfFiles...)
+}
+
+func TestDockerComposeYAMLBlob(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile(filepath.Join("foo", "Dockerfile"))
+	f.file("docker-compose.yml", simpleConfig)
+	f.file("Tiltfile", "docker_compose(read_file('docker-compose.yml'))")
+
+	f.load()
+	f.assertDcManifest("foo",
+		dcServiceYAML(f.simpleConfigAfterParse()),
+		dockerComposeManagedImage(f.JoinPath("foo", "Dockerfile"), f.JoinPath("foo")),
+		dcPublishedPorts(12312),
 	)
 
 	expectedConfFiles := []string{

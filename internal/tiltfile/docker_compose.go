@@ -37,33 +37,48 @@ type dcResourceSet struct {
 func (dc dcResourceSet) Empty() bool { return reflect.DeepEqual(dc, dcResourceSet{}) }
 
 func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	configPaths := value.NewLocalPathListUnpacker(thread)
+	var configPaths starlark.Value
 
 	err := s.unpackArgs(fn.Name(), args, kwargs, "configPaths", &configPaths)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, v := range configPaths.Value {
-		err = io.RecordReadPath(thread, io.WatchFileOnly, v)
-		if err != nil {
-			return nil, err
-		}
+	paths := starlarkValueOrSequenceToSlice(configPaths)
+
+	if len(paths) == 0 {
+		return nil, fmt.Errorf("Nothing to compose")
 	}
 
 	dc := s.dc
+	project := model.DockerComposeProject{ConfigPaths: dc.configPaths, YAML: dc.Project.YAML, ProjectPath: dc.Project.ProjectPath}
+
+	for _, val := range paths {
+		switch v := val.(type) {
+		case nil:
+			continue
+		case io.Blob:
+			project.YAML = v.String()
+		default:
+			path, err := value.ValueToAbsPath(thread, val)
+			if err != nil {
+				return starlark.None, fmt.Errorf("expected blob | path (string). Actual type: %T", val)
+			}
+
+			project.ConfigPaths = append(project.ConfigPaths, path)
+			err = io.RecordReadPath(thread, io.WatchFileOnly, path)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	currentTiltfilePath := starkit.CurrentExecPath(thread)
 	if dc.tiltfilePath != "" && dc.tiltfilePath != currentTiltfilePath {
 		return starlark.None, fmt.Errorf("Cannot load docker-compose files from two different Tiltfiles.\n"+
 			"docker-compose must have a single working directory:\n"+
 			"(%s, %s)", dc.tiltfilePath, currentTiltfilePath)
 	}
-
-	// To make sure all the docker-compose files are compatible together,
-	// parse them all together.
-	allConfigPaths := append([]string{}, dc.configPaths...)
-	allConfigPaths = append(allConfigPaths, configPaths.Value...)
-	project := model.DockerComposeProject{ConfigPaths: allConfigPaths}
 
 	services, err := parseDCConfig(s.ctx, s.dcCli, project)
 	if err != nil {
@@ -72,7 +87,7 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 
 	s.dc = dcResourceSet{
 		Project:      project,
-		configPaths:  allConfigPaths,
+		configPaths:  project.ConfigPaths,
 		services:     services,
 		tiltfilePath: starkit.CurrentExecPath(thread),
 	}

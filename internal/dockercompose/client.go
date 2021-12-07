@@ -303,17 +303,35 @@ func (c *cmdDCClient) loadProjectCLI(ctx context.Context, proj model.DockerCompo
 			},
 		},
 		// no environment specified because the CLI call will already have resolved all variables
-	}, dcLoaderOption)
+	}, dcLoaderOption(workDir))
 }
 
 // dcLoaderOption is used when loading Docker Compose projects via the CLI and fallback and for tests.
 //
 // See also: dcProjectOptions which is used for loading projects from the Go library, which should
 // be kept in sync behavior-wise.
-func dcLoaderOption(opts *loader.Options) {
-	opts.ResolvePaths = true
-	opts.SkipNormalization = false
-	opts.SkipInterpolation = false
+func dcLoaderOption(workDir string) func(opts *loader.Options) {
+	return func(opts *loader.Options) {
+		path := workDir
+		if path == "" {
+			path = "."
+		}
+		if !filepath.IsAbs(path) {
+			path, _ = filepath.Abs(path)
+		}
+
+		name := filepath.Base(path)
+		// normalization logic from https://github.com/compose-spec/compose-go/blob/c39f6e771fe5034fe1bec40ba5f0285ec60f5efe/cli/options.go#L366-L371
+		r := regexp.MustCompile("[a-z0-9_-]")
+		name = strings.ToLower(name)
+		name = strings.Join(r.FindAllString(name, -1), "")
+		name = strings.TrimLeft(name, "_-")
+
+		opts.Name = name
+		opts.ResolvePaths = true
+		opts.SkipNormalization = false
+		opts.SkipInterpolation = false
+	}
 }
 
 func dcExecutablePath() string {
