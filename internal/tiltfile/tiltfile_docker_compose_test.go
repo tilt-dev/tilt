@@ -150,6 +150,36 @@ func TestDockerComposeYAMLBlob(t *testing.T) {
 	f.assertConfigFiles(expectedConfFiles...)
 }
 
+func TestDockerComposeTwoInlineBlobs(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile(filepath.Join("foo", "Dockerfile"))
+	f.file("Tiltfile", fmt.Sprintf(`docker_compose([blob("""\n%s\n"""), blob("""\n%s\n""")])`, simpleConfig, barServiceConfig))
+
+	f.load()
+
+	assert.Equal(t, 2, len(f.loadResult.Manifests))
+}
+
+func TestDockerComposeBlobAndFileUsesFileDirForProjectPath(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile(filepath.Join("foo", "Dockerfile"))
+	f.file("docker-compose.yml", simpleConfig)
+	f.file("Tiltfile", fmt.Sprintf(`docker_compose([blob("""\n%s\n"""), 'docker-compose.yml'])`, barServiceConfig))
+
+	f.load()
+
+	assert.Equal(t, 2, len(f.loadResult.Manifests))
+	f.assertDcManifest("foo",
+		dcServiceYAML(f.simpleConfigAfterParse()),
+		dockerComposeManagedImage(f.JoinPath("foo", "Dockerfile"), f.JoinPath("foo")),
+		dcPublishedPorts(12312),
+	)
+}
+
 func TestDockerComposeManifestNoDockerfile(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
