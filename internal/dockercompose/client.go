@@ -223,7 +223,7 @@ func (c *cmdDCClient) Project(ctx context.Context, spec model.DockerComposeProje
 
 	// First, use compose-go to natively load the project.
 	if len(spec.ConfigPaths) > 0 {
-		parsed, err := c.loadProjectNative(spec.ConfigPaths)
+		parsed, err := c.loadProjectNative(spec.ConfigPaths, spec.ProjectPath)
 		if err == nil {
 			proj = parsed
 		}
@@ -265,9 +265,10 @@ func (c *cmdDCClient) Version(ctx context.Context) (string, string, error) {
 	return parseComposeVersionOutput(stdout)
 }
 
-func (c *cmdDCClient) loadProjectNative(configPaths []string) (*types.Project, error) {
+func (c *cmdDCClient) loadProjectNative(configPaths []string, projectPath string) (*types.Project, error) {
 	// NOTE: take care to keep behavior in sync with loadProjectCLI()
-	opts, err := compose.NewProjectOptions(configPaths, dcProjectOptions...)
+	allProjectOptions := append(dcProjectOptions, compose.WithWorkingDirectory(projectPath))
+	opts, err := compose.NewProjectOptions(configPaths, allProjectOptions...)
 	if err != nil {
 		return nil, err
 	}
