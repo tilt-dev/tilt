@@ -136,7 +136,7 @@ func deleteK8sEntities(ctx context.Context, manifests []model.Manifest, updateSe
 	errs := []error{}
 	if len(entities) > 0 {
 		dCtx, cancel := context.WithTimeout(ctx, updateSettings.K8sUpsertTimeout())
-		err = downDeps.kClient.Delete(dCtx, entities)
+		err = downDeps.kClient.Delete(dCtx, entities, false)
 		cancel()
 		if err != nil {
 			errs = append(errs, errors.Wrap(err, "Deleting k8s entities"))

@@ -80,12 +80,11 @@ type Client interface {
 	// than they were passed in) and with UUIDs from the Kube API
 	Upsert(ctx context.Context, entities []K8sEntity, timeout time.Duration) ([]K8sEntity, error)
 
-	// Delete all given entities, waiting for them to be fully deleted, so that
-	// it's safe to re-create entities with the same names immediately.
+	// Delete all given entities, optionally waiting for them to be fully deleted.
 	//
 	// Currently ignores any "not found" errors, because that seems like the correct
 	// behavior for our use cases.
-	Delete(ctx context.Context, entities []K8sEntity) error
+	Delete(ctx context.Context, entities []K8sEntity, wait bool) error
 
 	GetMetaByReference(ctx context.Context, ref v1.ObjectReference) (metav1.Object, error)
 	ListMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) ([]metav1.Object, error)
@@ -516,7 +515,7 @@ func maybeAnnotationsTooLong(stderr string) (string, bool) {
 //
 // Currently ignores any "not found" errors, because that seems like the correct
 // behavior for our use cases.
-func (k *K8sClient) Delete(ctx context.Context, entities []K8sEntity) error {
+func (k *K8sClient) Delete(ctx context.Context, entities []K8sEntity, wait bool) error {
 	l := logger.Get(ctx)
 	l.Infof("Deleting kubernetes objects:")
 	for _, e := range entities {
@@ -541,9 +540,9 @@ func (k *K8sClient) Delete(ctx context.Context, entities []K8sEntity) error {
 		return errors.Wrap(err, "kubernetes delete")
 	}
 
-	// if the delete request was successful, wait for it to finish, so that
-	// it's safe to re-create entities with the same names
-	k.waitForDelete(resources)
+	if wait {
+		k.waitForDelete(resources)
+	}
 
 	return nil
 }
