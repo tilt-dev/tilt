@@ -62,7 +62,7 @@ message ClusterList {
 // cluster or an existing Docker Daemon (for Docker Compose).
 message ClusterSpec {
   // Connection spec for an existing cluster.
-  optional ClusterConnection connect = 1;
+  optional ClusterConnection connection = 1;
 }
 
 // ClusterStatus defines the observed state of Cluster
@@ -78,6 +78,11 @@ message ClusterStatus {
   // that this is the only architecture a cluster supports, only that it's one
   // of the architectures.
   optional string arch = 1;
+
+  // An unrecoverable error connecting to the cluster.
+  //
+  // +optional
+  optional string error = 2;
 }
 
 // Cmd represents a process on the host machine.

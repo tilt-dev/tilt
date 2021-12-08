@@ -17,6 +17,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/version"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -586,6 +587,10 @@ func (c *FakeK8sClient) Exec(ctx context.Context, podID PodID, cName container.N
 		return err
 	}
 	return nil
+}
+
+func (c *FakeK8sClient) CheckConnected(ctx context.Context) (*version.Info, error) {
+	return &version.Info{}, nil
 }
 
 type ReaderCloser struct {
