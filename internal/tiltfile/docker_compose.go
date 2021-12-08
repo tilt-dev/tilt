@@ -3,10 +3,13 @@ package tiltfile
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 
 	"github.com/compose-spec/compose-go/types"
+
 	// DANGER: some compose-go types are not friendly to being marshaled with gopkg.in/yaml.v3
 	// and will trigger a stack overflow panic
 	// see https://github.com/tilt-dev/tilt/issues/4797
@@ -53,16 +56,42 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 	dc := s.dc
 	project := model.DockerComposeProject{ConfigPaths: dc.configPaths, YAML: dc.Project.YAML, ProjectPath: dc.Project.ProjectPath}
 
+	currentTiltfilePath := starkit.CurrentExecPath(thread)
+	if dc.tiltfilePath != "" && dc.tiltfilePath != currentTiltfilePath {
+		return starlark.None, fmt.Errorf("Cannot load docker-compose files from two different Tiltfiles.\n"+
+			"docker-compose must have a single working directory:\n"+
+			"(%s, %s)", dc.tiltfilePath, currentTiltfilePath)
+	}
+
 	for _, val := range paths {
 		switch v := val.(type) {
 		case nil:
 			continue
 		case io.Blob:
-			project.YAML = v.String()
+			yaml := v.String()
+			message := "unable to store yaml blob"
+			tmpfile, err := os.CreateTemp("", fmt.Sprintf("%s-docker-compose-*.yml", filepath.Base(filepath.Dir(currentTiltfilePath))))
+			if err != nil {
+				return nil, errors.Wrap(err, message)
+			}
+			_, err = tmpfile.WriteString(yaml)
+			if err != nil {
+				return nil, errors.Wrap(err, message)
+			}
+			err = tmpfile.Close()
+			if err != nil {
+				return nil, errors.Wrap(err, message)
+			}
+			project.ConfigPaths = append(project.ConfigPaths, tmpfile.Name())
 		default:
 			path, err := value.ValueToAbsPath(thread, val)
 			if err != nil {
 				return starlark.None, fmt.Errorf("expected blob | path (string). Actual type: %T", val)
+			}
+
+			// Set project path to dir of first compose file, like DC CLI does
+			if project.ProjectPath == "" {
+				project.ProjectPath = filepath.Dir(path)
 			}
 
 			project.ConfigPaths = append(project.ConfigPaths, path)
@@ -73,11 +102,9 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 		}
 	}
 
-	currentTiltfilePath := starkit.CurrentExecPath(thread)
-	if dc.tiltfilePath != "" && dc.tiltfilePath != currentTiltfilePath {
-		return starlark.None, fmt.Errorf("Cannot load docker-compose files from two different Tiltfiles.\n"+
-			"docker-compose must have a single working directory:\n"+
-			"(%s, %s)", dc.tiltfilePath, currentTiltfilePath)
+	// Set to tiltfile directory for YAML blob tempfiles
+	if project.ProjectPath == "" {
+		project.ProjectPath = filepath.Dir(currentTiltfilePath)
 	}
 
 	services, err := parseDCConfig(s.ctx, s.dcCli, project)
