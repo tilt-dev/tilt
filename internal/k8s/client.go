@@ -148,7 +148,6 @@ type K8sClient struct {
 var _ Client = &K8sClient{}
 
 func ProvideK8sClient(
-	ctx context.Context,
 	env Env,
 	maybeRESTConfig RESTConfigOrError,
 	maybeClientset ClientsetOrError,
