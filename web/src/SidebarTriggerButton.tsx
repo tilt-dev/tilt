@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useCallback } from "react"
 import styled from "styled-components"
 import { Tags } from "./analytics"
 import { ReactComponent as TriggerButtonManualSvg } from "./assets/svg/trigger-button-manual.svg"
@@ -11,6 +11,7 @@ import {
   overviewItemBorderRadius,
   SizeUnit,
 } from "./style-helpers"
+import { triggerTooltip } from "./trigger"
 import { TriggerMode } from "./types"
 
 export let SidebarTriggerButtonRoot = styled(InstrumentedButton)`
@@ -27,21 +28,21 @@ export let SidebarTriggerButtonRoot = styled(InstrumentedButton)`
   opacity: 0;
   pointer-events: none;
 
-  &.clickable {
+  &.is-clickable {
     pointer-events: auto;
     cursor: pointer;
   }
-  &.clickable,
-  &.isQueued {
+  &.is-clickable,
+  &.is-queued {
     opacity: 1;
   }
-  &.isSelected {
+  &.is-selected {
     background-color: ${Color.gray7};
   }
   &:hover {
     background-color: ${Color.grayDark};
   }
-  &.isSelected:hover {
+  &.is-selected:hover {
     background-color: ${Color.grayLightest};
   }
 
@@ -52,13 +53,13 @@ export let SidebarTriggerButtonRoot = styled(InstrumentedButton)`
   &.is-manual .fillStd {
     fill: ${Color.blue};
   }
-  &.isSelected .fillStd {
+  &.is-selected .fillStd {
     fill: ${Color.black};
   }
   &:hover .fillStd {
     fill: ${Color.white};
   }
-  &.isSelected:hover .fillStd {
+  &.is-selected:hover .fillStd {
     fill: ${Color.blueDark};
   }
   & > svg {
@@ -67,18 +68,10 @@ export let SidebarTriggerButtonRoot = styled(InstrumentedButton)`
   &:active > svg {
     transform: scale(1.2);
   }
-  &.isQueued > svg {
+  &.is-queued > svg {
     animation: spin 1s linear infinite;
   }
 `
-
-// TODO: Some of these aren't currently visible, since Trigger button is hidden when building
-export const TriggerButtonTooltip = {
-  AlreadyQueued: "Resource already queued!",
-  NeedsManualTrigger: "Trigger update to sync changes",
-  UpdateInProgOrPending: "Resource already updating!",
-  Default: "Trigger update",
-}
 
 type SidebarTriggerButtonProps = {
   isTiltfile: boolean
@@ -92,66 +85,56 @@ type SidebarTriggerButtonProps = {
   analyticsTags: Tags
 }
 
-const titleText = (
-  clickable: boolean,
-  clickMe: boolean,
-  isQueued: boolean
-): string => {
-  if (isQueued) {
-    return TriggerButtonTooltip.AlreadyQueued
-  } else if (!clickable) {
-    return TriggerButtonTooltip.UpdateInProgOrPending
-  } else if (clickMe) {
-    return TriggerButtonTooltip.NeedsManualTrigger
-  } else {
-    return TriggerButtonTooltip.Default
-  }
-}
-
 function SidebarTriggerButton(props: SidebarTriggerButtonProps) {
-  let isManualTriggerMode = props.triggerMode !== TriggerMode.TriggerModeAuto
-  let isManualTriggerIncludingInitial =
-    props.triggerMode === TriggerMode.TriggerModeManual
+  let isManual =
+    props.triggerMode === TriggerMode.TriggerModeManual ||
+    props.triggerMode === TriggerMode.TriggerModeManualWithAutoInit
+  let isAutoInit =
+    props.triggerMode === TriggerMode.TriggerModeAuto ||
+    props.triggerMode === TriggerMode.TriggerModeManualWithAutoInit
 
   // clickable (i.e. trigger button will appear) if it doesn't already have some kind of pending / active build
   let clickable =
     !props.isQueued && // already queued for manual run
     !props.isBuilding && // currently building
-    !(!isManualTriggerIncludingInitial && !props.hasBuilt) // waiting to perform its initial build
+    !(isAutoInit && !props.hasBuilt) // waiting to perform its initial build
 
-  let clickMe = false
+  let isBold = false
   if (clickable) {
-    if (props.hasPendingChanges && isManualTriggerMode) {
-      clickMe = true
-    } else if (!props.hasBuilt && isManualTriggerIncludingInitial) {
-      clickMe = true
+    if (props.hasPendingChanges && isManual) {
+      isBold = true
+    } else if (!props.hasBuilt && !isAutoInit) {
+      isBold = true
     }
   }
 
-  let onClick = (e: any) => {
-    // SidebarTriggerButton is nested in a link,
-    // and preventDefault is the standard way to cancel the navigation.
-    e.preventDefault()
+  let onClick = useCallback(
+    (e: any) => {
+      // SidebarTriggerButton is nested in a link,
+      // and preventDefault is the standard way to cancel the navigation.
+      e.preventDefault()
 
-    // stopPropagation prevents the overview card from opening.
-    e.stopPropagation()
+      // stopPropagation prevents the overview card from opening.
+      e.stopPropagation()
 
-    props.onTrigger()
-  }
+      props.onTrigger()
+    },
+    [props.onTrigger]
+  )
 
   // Add padding to center the icon better.
-  let padding = clickMe ? "0" : "0 0 0 2px"
+  let padding = isBold ? "0" : "0 0 0 2px"
   let classes = []
   if (props.isSelected) {
-    classes.push("isSelected")
+    classes.push("is-selected")
   }
   if (clickable) {
-    classes.push("clickable")
+    classes.push("is-clickable")
   }
   if (props.isQueued) {
-    classes.push("isQueued")
+    classes.push("is-queued")
   }
-  if (isManualTriggerMode) {
+  if (isManual) {
     classes.push("is-manual")
   }
   return (
@@ -159,12 +142,12 @@ function SidebarTriggerButton(props: SidebarTriggerButtonProps) {
       onClick={onClick}
       className={classes.join(" ")}
       disabled={!clickable}
-      title={titleText(clickable, clickMe, props.isQueued)}
+      title={triggerTooltip(clickable, isBold, props.isQueued)}
       style={{ padding }}
       analyticsName={"ui.web.triggerResource"}
       analyticsTags={props.analyticsTags}
     >
-      {clickMe ? <TriggerButtonManualSvg /> : <TriggerButtonSvg />}
+      {isBold ? <TriggerButtonManualSvg /> : <TriggerButtonSvg />}
     </SidebarTriggerButtonRoot>
   )
 }

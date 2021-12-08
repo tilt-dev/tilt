@@ -3,7 +3,7 @@ import {
   AccordionDetails,
   AccordionSummary,
 } from "@material-ui/core"
-import React, { ChangeEvent, useMemo, useState } from "react"
+import React, { ChangeEvent, useCallback, useMemo, useState } from "react"
 import {
   CellProps,
   Column,
@@ -79,6 +79,7 @@ import {
 import { isZeroTime, timeDiff } from "./time"
 import { timeAgoFormatter } from "./timeFormatters"
 import TiltTooltip, { TiltInfoTooltip } from "./Tooltip"
+import { triggerUpdate } from "./trigger"
 import {
   ResourceName,
   ResourceStatus,
@@ -430,6 +431,10 @@ export function TableTriggerColumn({ row }: CellProps<RowValues>) {
   }
 
   const trigger = row.original.trigger
+  let onTrigger = useCallback(
+    () => triggerUpdate(row.values.name),
+    [row.values.name]
+  )
   return (
     <OverviewTableTriggerButton
       hasPendingChanges={trigger.hasPendingChanges}
@@ -439,6 +444,7 @@ export function TableTriggerColumn({ row }: CellProps<RowValues>) {
       isQueued={trigger.isQueued}
       resourceName={row.values.name}
       analyticsTags={row.values.analyticsTags}
+      onTrigger={onTrigger}
     />
   )
 }

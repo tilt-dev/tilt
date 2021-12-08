@@ -31,10 +31,10 @@ import SidebarItem from "./SidebarItem"
 import SidebarItemView, {
   sidebarItemIsDisabled,
   SidebarItemRoot,
-  triggerUpdate,
 } from "./SidebarItemView"
 import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
 import { Color, Font, FontSize, SizeUnit } from "./style-helpers"
+import { triggerUpdate } from "./trigger"
 import { ResourceView } from "./types"
 
 export type SidebarProps = {

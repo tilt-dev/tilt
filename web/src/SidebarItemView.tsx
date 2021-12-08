@@ -27,7 +27,8 @@ import {
 } from "./style-helpers"
 import { formatBuildDuration, isZeroTime } from "./time"
 import { timeAgoFormatter } from "./timeFormatters"
-import { ResourceStatus, ResourceView, TriggerMode } from "./types"
+import { toggleTriggerMode, triggerUpdate } from "./trigger"
+import { ResourceStatus, ResourceView } from "./types"
 
 export const SidebarItemRoot = styled.li`
   & + & {
@@ -200,38 +201,6 @@ let SidebarItemTimeAgo = styled.span`
   white-space: nowrap;
   padding-right: ${SizeUnit(0.25)};
 `
-
-export function triggerUpdate(name: string) {
-  let url = `//${window.location.host}/api/trigger`
-
-  fetch(url, {
-    method: "post",
-    body: JSON.stringify({
-      manifest_names: [name],
-      build_reason: 16 /* BuildReasonFlagTriggerWeb */,
-    }),
-  }).then((response) => {
-    if (!response.ok) {
-      console.log(response)
-    }
-  })
-}
-
-export function toggleTriggerMode(name: string, mode: TriggerMode) {
-  let url = "/api/override/trigger_mode"
-
-  fetch(url, {
-    method: "post",
-    body: JSON.stringify({
-      manifest_names: [name],
-      trigger_mode: mode,
-    }),
-  }).then((response) => {
-    if (!response.ok) {
-      console.log(response)
-    }
-  })
-}
 
 export type SidebarItemViewProps = {
   item: SidebarItem
