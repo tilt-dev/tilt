@@ -42,7 +42,7 @@ export let TriggerButtonRoot = styled(InstrumentedButton)`
   &.is-disabled:active svg {
     transform: scale(1);
   }
-  &.is-bold .fillStd {
+  &.is-emphasized .fillStd {
     fill: ${Color.blue};
   }
 `
@@ -72,12 +72,12 @@ function OverviewTableTriggerButton(props: TriggerButtonProps) {
     !props.isBuilding && // currently building
     !(isAutoInit && !props.hasBuilt) // waiting to perform its initial build
 
-  let isBold = false
+  let isEmphasized = false
   if (clickable) {
     if (props.hasPendingChanges && isManual) {
-      isBold = true
+      isEmphasized = true
     } else if (!props.hasBuilt && !isAutoInit) {
-      isBold = true
+      isEmphasized = true
     }
   }
 
@@ -88,15 +88,15 @@ function OverviewTableTriggerButton(props: TriggerButtonProps) {
   if (props.isBuilding) {
     classes.push("is-building")
   }
-  if (isBold) {
-    classes.push("is-bold")
+  if (isEmphasized) {
+    classes.push("is-emphasized")
   }
   return (
     <TriggerButtonRoot
       aria-disabled={!clickable}
       onClick={() => triggerUpdate(props.resourceName)}
       className={classes.join(" ")}
-      title={triggerTooltip(clickable, isBold, props.isQueued)}
+      title={triggerTooltip(clickable, isEmphasized, props.isQueued)}
       analyticsName={"ui.web.triggerResource"}
       analyticsTags={props.analyticsTags}
     >

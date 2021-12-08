@@ -11,14 +11,14 @@ export const TriggerButtonTooltip = {
 
 export function triggerTooltip(
   isClickable: boolean,
-  isBold: boolean,
+  isEmphasized: boolean,
   isQueued: boolean
 ): string {
   if (isQueued) {
     return TriggerButtonTooltip.AlreadyQueued
   } else if (!isClickable) {
     return TriggerButtonTooltip.UpdateInProgOrPending
-  } else if (isBold) {
+  } else if (isEmphasized) {
     return TriggerButtonTooltip.NeedsManualTrigger
   } else {
     return TriggerButtonTooltip.Default

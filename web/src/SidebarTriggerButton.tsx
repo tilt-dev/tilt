@@ -99,12 +99,12 @@ function SidebarTriggerButton(props: SidebarTriggerButtonProps) {
     !props.isBuilding && // currently building
     !(isAutoInit && !props.hasBuilt) // waiting to perform its initial build
 
-  let isBold = false
+  let isEmphasized = false
   if (clickable) {
     if (props.hasPendingChanges && isManual) {
-      isBold = true
+      isEmphasized = true
     } else if (!props.hasBuilt && !isAutoInit) {
-      isBold = true
+      isEmphasized = true
     }
   }
 
@@ -123,7 +123,7 @@ function SidebarTriggerButton(props: SidebarTriggerButtonProps) {
   )
 
   // Add padding to center the icon better.
-  let padding = isBold ? "0" : "0 0 0 2px"
+  let padding = isEmphasized ? "0" : "0 0 0 2px"
   let classes = []
   if (props.isSelected) {
     classes.push("is-selected")
@@ -142,12 +142,12 @@ function SidebarTriggerButton(props: SidebarTriggerButtonProps) {
       onClick={onClick}
       className={classes.join(" ")}
       disabled={!clickable}
-      title={triggerTooltip(clickable, isBold, props.isQueued)}
+      title={triggerTooltip(clickable, isEmphasized, props.isQueued)}
       style={{ padding }}
       analyticsName={"ui.web.triggerResource"}
       analyticsTags={props.analyticsTags}
     >
-      {isBold ? <TriggerButtonManualSvg /> : <TriggerButtonSvg />}
+      {isEmphasized ? <TriggerButtonManualSvg /> : <TriggerButtonSvg />}
     </SidebarTriggerButtonRoot>
   )
 }
