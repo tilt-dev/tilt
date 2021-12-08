@@ -12,13 +12,12 @@ import LogStore from "./LogStore"
 import PathBuilder from "./PathBuilder"
 import { DEFAULT_OPTIONS } from "./ResourceListOptionsContext"
 import SidebarItem from "./SidebarItem"
-import { triggerUpdate } from "./SidebarItemView"
 import SidebarResources from "./SidebarResources"
 import SidebarTriggerButton, {
   SidebarTriggerButtonRoot,
-  TriggerButtonTooltip,
 } from "./SidebarTriggerButton"
 import { oneResource, tiltfileResource, twoResourceView } from "./testdata"
+import { TriggerButtonTooltip, triggerUpdate } from "./trigger"
 import { ResourceView, TriggerMode } from "./types"
 
 type UIResource = Proto.v1alpha1UIResource
@@ -26,7 +25,7 @@ type UIResource = Proto.v1alpha1UIResource
 let pathBuilder = PathBuilder.forTesting("localhost", "/")
 
 let expectClickable = (button: any, expected: boolean) => {
-  expect(button.hasClass("clickable")).toEqual(expected)
+  expect(button.hasClass("is-clickable")).toEqual(expected)
   expect(button.prop("disabled")).toEqual(!expected)
 }
 let expectManualTriggerIcon = (button: any, expected: boolean) => {
@@ -34,10 +33,10 @@ let expectManualTriggerIcon = (button: any, expected: boolean) => {
   expect(button.getDOMNode().innerHTML).toContain(icon)
 }
 let expectIsSelected = (button: any, expected: boolean) => {
-  expect(button.hasClass("isSelected")).toEqual(expected)
+  expect(button.hasClass("is-selected")).toEqual(expected)
 }
 let expectIsQueued = (button: any, expected: boolean) => {
-  expect(button.hasClass("isQueued")).toEqual(expected)
+  expect(button.hasClass("is-queued")).toEqual(expected)
 }
 let expectWithTooltip = (button: any, expected: string) => {
   expect(button.prop("title")).toEqual(expected)
@@ -49,9 +48,8 @@ let newSidebarItem = (r: UIResource): SidebarItem => {
 
 describe("SidebarTriggerButton", () => {
   beforeEach(() => {
-    fetchMock.reset()
     mockAnalyticsCalls()
-    fetchMock.mock("http://localhost/api/trigger", JSON.stringify({}))
+    fetchMock.mock("/api/trigger", JSON.stringify({}))
   })
 
   afterEach(() => {
@@ -84,13 +82,13 @@ describe("SidebarTriggerButton", () => {
     })
     expect(preventDefaulted).toEqual(true)
 
-    expect(fetchMock.calls().length).toEqual(2)
     expectIncrs({
       name: "ui.web.triggerResource",
       tags: { action: AnalyticsAction.Click, target: "k8s" },
     })
 
-    expect(fetchMock.calls()[1][0]).toEqual("http://localhost/api/trigger")
+    expect(fetchMock.calls().length).toEqual(2)
+    expect(fetchMock.calls()[1][0]).toEqual("/api/trigger")
     expect(fetchMock.calls()[1][1]?.method).toEqual("post")
     expect(fetchMock.calls()[1][1]?.body).toEqual(
       JSON.stringify({
@@ -146,7 +144,7 @@ describe("SidebarTriggerButton", () => {
     expect(fetchMock.calls().length).toEqual(2)
   })
 
-  it("shows clickable + clickMe trigger button for manual resource with pending changes", () => {
+  it("shows clickable + bold trigger button for manual resource with pending changes", () => {
     let items = twoResourceView().uiResources.map(
       (r: UIResource, i: number) => {
         let res = r.status!
@@ -231,7 +229,7 @@ describe("SidebarTriggerButton", () => {
   // A pending resource may mean that a pod is being rolled out, but is not
   // ready yet. In that case, the trigger button will delete the pod (cancelling
   // the rollout) and rebuild.
-  it("shows clickMe trigger button when pending", () => {
+  it("shows bold trigger button when pending", () => {
     let items = twoResourceView().uiResources.map(
       (r: UIResource, i: number) => {
         let res = r.status!

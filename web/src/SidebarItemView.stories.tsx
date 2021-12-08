@@ -86,6 +86,14 @@ function withManualTrigger(): optionFn {
   }
 }
 
+function withManualInit(): optionFn {
+  return (props: SidebarItemViewProps) => {
+    let item = props.item
+    item.triggerMode = TriggerMode.TriggerModeAutoWithManualInit
+    item.lastBuild = null
+  }
+}
+
 function withQueuedTrigger(): optionFn {
   return (props: SidebarItemViewProps) => {
     let item = props.item
@@ -121,7 +129,7 @@ function itemView(...options: optionFn[]) {
 }
 
 export default {
-  title: "Legacy UI/SidebarItemView",
+  title: "New UI / SidebarItemView",
   args: { selected: false },
 }
 
@@ -149,6 +157,9 @@ export const OneItemTrigger = (args: Args) =>
     withStatus(ResourceStatus.Pending),
     withManualTrigger()
   )
+
+export const OneItemManualInit = (args: Args) =>
+  itemView(withArgs(args), withStatus(ResourceStatus.None), withManualInit())
 
 export const OneItemQueuedTrigger = (args: Args) =>
   itemView(

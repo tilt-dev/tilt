@@ -4,6 +4,7 @@ import { Tags } from "./analytics"
 import { ReactComponent as TriggerButtonSvg } from "./assets/svg/trigger-button.svg"
 import { InstrumentedButton } from "./instrumentedComponents"
 import { AnimDuration, Color, mixinResetButtonStyle } from "./style-helpers"
+import { triggerTooltip, triggerUpdate } from "./trigger"
 import { TriggerMode } from "./types"
 
 export let TriggerButtonRoot = styled(InstrumentedButton)`
@@ -32,7 +33,6 @@ export let TriggerButtonRoot = styled(InstrumentedButton)`
     animation: spin 1s linear infinite;
   }
 
-  // DISABLED BUTTON
   &.is-disabled {
     cursor: not-allowed;
   }
@@ -42,19 +42,10 @@ export let TriggerButtonRoot = styled(InstrumentedButton)`
   &.is-disabled:active svg {
     transform: scale(1);
   }
-
-  // SHOULD BE CLICKED
-  &.shouldBeClicked .fillStd {
+  &.is-emphasized .fillStd {
     fill: ${Color.blue};
   }
 `
-
-export const TriggerButtonTooltip = {
-  AlreadyQueued: "Resource already queued!",
-  NeedsManualTrigger: "Trigger update to sync changes",
-  UpdateInProgOrPending: "Resource already updating!",
-  Default: "Trigger update",
-}
 
 type TriggerButtonProps = {
   isBuilding: boolean
@@ -64,80 +55,48 @@ type TriggerButtonProps = {
   isQueued: boolean
   resourceName: string
   analyticsTags: Tags
-}
-
-const titleText = (
-  isDisabled: boolean,
-  shouldbeClicked: boolean,
-  isQueued: boolean
-): string => {
-  if (isQueued) {
-    return TriggerButtonTooltip.AlreadyQueued
-  } else if (isDisabled) {
-    return TriggerButtonTooltip.UpdateInProgOrPending
-  } else if (shouldbeClicked) {
-    return TriggerButtonTooltip.NeedsManualTrigger
-  } else {
-    return TriggerButtonTooltip.Default
-  }
+  onTrigger: () => void
 }
 
 function OverviewTableTriggerButton(props: TriggerButtonProps) {
-  let isManualTriggerMode = props.triggerMode !== TriggerMode.TriggerModeAuto
-  let isManualTriggerIncludingInitial =
-    props.triggerMode === TriggerMode.TriggerModeManual
+  let isManual =
+    props.triggerMode === TriggerMode.TriggerModeManual ||
+    props.triggerMode === TriggerMode.TriggerModeManualWithAutoInit
+  let isAutoInit =
+    props.triggerMode === TriggerMode.TriggerModeAuto ||
+    props.triggerMode === TriggerMode.TriggerModeManualWithAutoInit
 
-  // trigger button will only look actionable if there isn't any pending / active build
-  let isDisabled =
-    props.isQueued || // already queued for manual run
-    props.isBuilding || // currently building
-    (!isManualTriggerIncludingInitial && !props.hasBuilt) // waiting to perform its initial build
+  // clickable (i.e. trigger button will appear) if it doesn't already have some kind of pending / active build
+  let clickable =
+    !props.isQueued && // already queued for manual run
+    !props.isBuilding && // currently building
+    !(isAutoInit && !props.hasBuilt) // waiting to perform its initial build
 
-  let shouldBeClicked = false
-  if (!isDisabled) {
-    if (props.hasPendingChanges && isManualTriggerMode) {
-      shouldBeClicked = true
-    } else if (!props.hasBuilt && isManualTriggerIncludingInitial) {
-      shouldBeClicked = true
+  let isEmphasized = false
+  if (clickable) {
+    if (props.hasPendingChanges && isManual) {
+      isEmphasized = true
+    } else if (!props.hasBuilt && !isAutoInit) {
+      isEmphasized = true
     }
   }
 
-  function triggerUpdate(name: string) {
-    let url = `/api/trigger`
-
-    !isDisabled &&
-      fetch(url, {
-        method: "post",
-        body: JSON.stringify({
-          manifest_names: [name],
-          build_reason: 16 /* BuildReasonFlagTriggerWeb */,
-        }),
-      }).then((response) => {
-        if (!response.ok) {
-          console.log(response)
-        }
-      })
-  }
-
   let classes = []
-  if (isDisabled) {
+  if (!clickable) {
     classes.push("is-disabled")
-  }
-  if (props.isQueued) {
-    classes.push("is-queued")
   }
   if (props.isBuilding) {
     classes.push("is-building")
   }
-  if (shouldBeClicked) {
-    classes.push("shouldBeClicked")
+  if (isEmphasized) {
+    classes.push("is-emphasized")
   }
   return (
     <TriggerButtonRoot
-      aria-disabled={isDisabled}
+      aria-disabled={!clickable}
       onClick={() => triggerUpdate(props.resourceName)}
       className={classes.join(" ")}
-      title={titleText(isDisabled, shouldBeClicked, props.isQueued)}
+      title={triggerTooltip(clickable, isEmphasized, props.isQueued)}
       analyticsName={"ui.web.triggerResource"}
       analyticsTags={props.analyticsTags}
     >
