@@ -116,7 +116,7 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 		Project:      project,
 		configPaths:  project.ConfigPaths,
 		services:     services,
-		tiltfilePath: starkit.CurrentExecPath(thread),
+		tiltfilePath: currentTiltfilePath,
 	}
 
 	return starlark.None, nil
