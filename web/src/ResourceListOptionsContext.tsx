@@ -1,5 +1,5 @@
 import { createContext, PropsWithChildren, useContext } from "react"
-import { usePersistentState } from "./LocalStorage"
+import { useSessionState } from "./BrowserStorage"
 
 /**
  * The ResourceListOptions state keeps track of filters and sorting
@@ -55,7 +55,7 @@ export function ResourceListOptionsProvider(
     ...DEFAULT_OPTIONS,
   }
   const [options, setResourceListOptions] =
-    usePersistentState<ResourceListOptions>(
+    useSessionState<ResourceListOptions>(
       RESOURCE_LIST_OPTIONS_KEY,
       defaultPersistentValue,
       maybeUpgradeSavedOptions

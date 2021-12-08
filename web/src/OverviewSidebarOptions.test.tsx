@@ -5,7 +5,7 @@ import {
   cleanupMockAnalyticsCalls,
   mockAnalyticsCalls,
 } from "./analytics_test_helpers"
-import { accessorsForTesting, tiltfileKeyContext } from "./LocalStorage"
+import { accessorsForTesting, tiltfileKeyContext } from "./BrowserStorage"
 import {
   TestsWithErrors,
   TwoResourcesTwoTests,
@@ -26,7 +26,8 @@ import SidebarResources, { SidebarListSection } from "./SidebarResources"
 import { StarredResourcesContextProvider } from "./StarredResourcesContext"
 
 const resourceListOptionsAccessor = accessorsForTesting<ResourceListOptions>(
-  RESOURCE_LIST_OPTIONS_KEY
+  RESOURCE_LIST_OPTIONS_KEY,
+  sessionStorage
 )
 
 export function assertSidebarItemsAndOptions(

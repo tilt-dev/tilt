@@ -24,15 +24,18 @@ import {
   makeUIButton,
   textField,
 } from "./ApiButton.testhelpers"
+import { accessorsForTesting, tiltfileKeyContext } from "./BrowserStorage"
 import { HudErrorContextProvider } from "./HudErrorContext"
 import { InstrumentedButton } from "./instrumentedComponents"
-import { accessorsForTesting, tiltfileKeyContext } from "./LocalStorage"
 import { flushPromises } from "./promise"
 
 type UIButtonStatus = Proto.v1alpha1UIButtonStatus
 type UIButton = Proto.v1alpha1UIButton
 
-const buttonInputsAccessor = accessorsForTesting(`apibutton-TestButton`)
+const buttonInputsAccessor = accessorsForTesting(
+  `apibutton-TestButton`,
+  localStorage
+)
 
 function wrappedMount(e: JSX.Element) {
   return mount(

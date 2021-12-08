@@ -13,10 +13,10 @@ export type accessor<S> = {
   set: (s: S) => void
 }
 
-export function accessorsForTesting<S>(name: string) {
+export function accessorsForTesting<S>(name: string, storage: Storage) {
   const key = makeKey("test", name)
   function get(): S | null {
-    const v = localStorage.getItem(key)
+    const v = storage.getItem(key)
     if (!v) {
       return null
     }
@@ -24,7 +24,7 @@ export function accessorsForTesting<S>(name: string) {
   }
 
   function set(s: S): void {
-    localStorage.setItem(key, JSON.stringify(s))
+    storage.setItem(key, JSON.stringify(s))
   }
 
   return {
@@ -41,9 +41,42 @@ export function usePersistentState<S>(
   defaultValue: S,
   maybeUpgradeSavedState?: (state: S) => S
 ): [state: S, setState: Dispatch<SetStateAction<S>>] {
+  return useBrowserStorageState(
+    name,
+    defaultValue,
+    localStorage,
+    maybeUpgradeSavedState
+  )
+}
+
+// Like `useState`, but backed by sessionStorage and namespaced by the tiltfileKey
+// maybeUpgradeSavedState: transforms any state read from storage - allows, e.g., filling in default values for
+//                         fields added since the state was saved
+export function useSessionState<S>(
+  name: string,
+  defaultValue: S,
+  maybeUpgradeSavedState?: (state: S) => S
+): [state: S, setState: Dispatch<SetStateAction<S>>] {
+  return useBrowserStorageState(
+    name,
+    defaultValue,
+    sessionStorage,
+    maybeUpgradeSavedState
+  )
+}
+
+// Like `useState`, but backed by localStorage and namespaced by the tiltfileKey
+// maybeUpgradeSavedState: transforms any state read from storage - allows, e.g., filling in default values for
+//                         fields added since the state was saved
+export function useBrowserStorageState<S>(
+  name: string,
+  defaultValue: S,
+  storage: Storage,
+  maybeUpgradeSavedState?: (state: S) => S
+): [state: S, setState: Dispatch<SetStateAction<S>>] {
   const tiltfileKey = useContext(tiltfileKeyContext)
   let [state, setState] = useStorageState<S>(
-    localStorage,
+    storage,
     makeKey(tiltfileKey, name),
     defaultValue
   )

@@ -7,8 +7,8 @@ import {
   expectIncrs,
   mockAnalyticsCalls,
 } from "./analytics_test_helpers"
+import { accessorsForTesting, tiltfileKeyContext } from "./BrowserStorage"
 import Features, { FeaturesProvider, Flag } from "./feature"
-import { accessorsForTesting, tiltfileKeyContext } from "./LocalStorage"
 import LogStore from "./LogStore"
 import { AlertsOnTopToggle } from "./OverviewSidebarOptions"
 import { assertSidebarItemsAndOptions } from "./OverviewSidebarOptions.test"
@@ -43,9 +43,13 @@ import { ResourceStatus, ResourceView } from "./types"
 let pathBuilder = PathBuilder.forTesting("localhost", "/")
 
 const resourceListOptionsAccessor = accessorsForTesting<ResourceListOptions>(
-  RESOURCE_LIST_OPTIONS_KEY
+  RESOURCE_LIST_OPTIONS_KEY,
+  sessionStorage
 )
-const starredItemsAccessor = accessorsForTesting<string[]>("pinned-resources")
+const starredItemsAccessor = accessorsForTesting<string[]>(
+  "pinned-resources",
+  localStorage
+)
 
 const SidebarResourcesTestWrapper = ({
   items,
@@ -95,10 +99,13 @@ function clickStar(
 describe("SidebarResources", () => {
   beforeEach(() => {
     mockAnalyticsCalls()
+    sessionStorage.clear()
+    localStorage.clear()
   })
 
   afterEach(() => {
     cleanupMockAnalyticsCalls()
+    sessionStorage.clear()
     localStorage.clear()
   })
 
@@ -207,7 +214,7 @@ describe("SidebarResources", () => {
     ],
   ]
   test.each(loadCases)(
-    "loads %p from localStorage",
+    "loads %p from browser storage",
     (name, options, expectedItems) => {
       resourceListOptionsAccessor.set(options)
 
@@ -248,7 +255,7 @@ describe("SidebarResources", () => {
     ["resourceNameFilter", { ...DEFAULT_OPTIONS, resourceNameFilter: "foo" }],
   ]
   test.each(saveCases)(
-    "saves option %s to localStorage",
+    "saves option %s to browser storage",
     (name, expectedOptions) => {
       let ls = new LogStore()
       const items = [

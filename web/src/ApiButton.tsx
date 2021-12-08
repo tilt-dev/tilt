@@ -15,6 +15,7 @@ import styled from "styled-components"
 import { Tags } from "./analytics"
 import { annotations } from "./annotations"
 import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
+import { usePersistentState } from "./BrowserStorage"
 import FloatDialog from "./FloatDialog"
 import { useHudErrorContext } from "./HudErrorContext"
 import {
@@ -22,7 +23,6 @@ import {
   InstrumentedCheckbox,
   InstrumentedTextField,
 } from "./instrumentedComponents"
-import { usePersistentState } from "./LocalStorage"
 import { usePathBuilder } from "./PathBuilder"
 import { Color, FontSize, SizeUnit } from "./style-helpers"
 import { apiTimeFormat, tiltApiPut } from "./tiltApi"
