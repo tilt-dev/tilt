@@ -54,7 +54,7 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 	}
 
 	dc := s.dc
-	project := model.DockerComposeProject{ConfigPaths: dc.configPaths, YAML: dc.Project.YAML, ProjectPath: dc.Project.ProjectPath}
+	project := model.DockerComposeProject{ConfigPaths: dc.configPaths, ProjectPath: dc.Project.ProjectPath}
 
 	currentTiltfilePath := starkit.CurrentExecPath(thread)
 	if dc.tiltfilePath != "" && dc.tiltfilePath != currentTiltfilePath {
