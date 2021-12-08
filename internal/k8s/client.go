@@ -80,7 +80,8 @@ type Client interface {
 	// than they were passed in) and with UUIDs from the Kube API
 	Upsert(ctx context.Context, entities []K8sEntity, timeout time.Duration) ([]K8sEntity, error)
 
-	// Deletes all given entities.
+	// Delete all given entities, waiting for them to be fully deleted, so that
+	// it's safe to re-create entities with the same names immediately.
 	//
 	// Currently ignores any "not found" errors, because that seems like the correct
 	// behavior for our use cases.
@@ -441,25 +442,8 @@ func (k *K8sClient) deleteAndCreate(list kube.ResourceList) (*kube.Result, error
 		return nil, errors.Wrap(err, "kubernetes delete")
 	}
 
-	var wg sync.WaitGroup
-
-	for _, r := range list {
-
-		wg.Add(1)
-		go func(resourceInfo *resource.Info) {
-			waitOpt := &wait.WaitOptions{
-				DynamicClient: k.dynamic,
-				IOStreams:     genericclioptions.NewTestIOStreamsDiscard(),
-				Timeout:       30 * time.Second,
-				ForCondition:  "delete",
-			}
-
-			_, _, _ = wait.IsDeleted(resourceInfo, waitOpt)
-			wg.Done()
-		}(r)
-	}
-
-	wg.Wait()
+	// ensure the delete has finished before attempting to recreate
+	k.waitForDelete(list)
 
 	result, err := k.resourceClient.Create(list)
 	if err != nil {
@@ -557,6 +541,10 @@ func (k *K8sClient) Delete(ctx context.Context, entities []K8sEntity) error {
 		return errors.Wrap(err, "kubernetes delete")
 	}
 
+	// if the delete request was successful, wait for it to finish, so that
+	// it's safe to re-create entities with the same names
+	k.waitForDelete(resources)
+
 	return nil
 }
 
@@ -580,6 +568,25 @@ func (k *K8sClient) forceDiscovery(ctx context.Context, gvk schema.GroupVersionK
 		}
 	}
 	return rm.Resource, nil
+}
+
+func (k *K8sClient) waitForDelete(list kube.ResourceList) {
+	var wg sync.WaitGroup
+	for _, r := range list {
+		wg.Add(1)
+		go func(resourceInfo *resource.Info) {
+			waitOpt := &wait.WaitOptions{
+				DynamicClient: k.dynamic,
+				IOStreams:     genericclioptions.NewTestIOStreamsDiscard(),
+				Timeout:       30 * time.Second,
+				ForCondition:  "delete",
+			}
+
+			_, _, _ = wait.IsDeleted(resourceInfo, waitOpt)
+			wg.Done()
+		}(r)
+	}
+	wg.Wait()
 }
 
 func (k *K8sClient) ListMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) ([]metav1.Object, error) {
