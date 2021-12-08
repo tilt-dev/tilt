@@ -119,6 +119,7 @@ const findTableColumnByName = (
 // End helpers
 
 afterEach(() => {
+  sessionStorage.clear()
   localStorage.clear()
 })
 
@@ -353,11 +354,13 @@ describe("overview table with groups", () => {
     )
 
     mockAnalyticsCalls()
+    sessionStorage.clear()
     localStorage.clear()
   })
 
   afterEach(() => {
     cleanupMockAnalyticsCalls()
+    sessionStorage.clear()
     localStorage.clear()
   })
 

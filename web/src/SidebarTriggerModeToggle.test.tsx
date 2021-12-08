@@ -12,7 +12,6 @@ import LogStore from "./LogStore"
 import PathBuilder from "./PathBuilder"
 import { DEFAULT_OPTIONS } from "./ResourceListOptionsContext"
 import SidebarItem from "./SidebarItem"
-import { toggleTriggerMode } from "./SidebarItemView"
 import SidebarResources from "./SidebarResources"
 import {
   SidebarTriggerModeToggle,
@@ -20,6 +19,7 @@ import {
   ToggleTriggerModeTooltip,
 } from "./SidebarTriggerModeToggle"
 import { oneTestResource, twoResourceView } from "./testdata"
+import { toggleTriggerMode } from "./trigger"
 import { ResourceView, TriggerMode } from "./types"
 
 let pathBuilder = PathBuilder.forTesting("localhost", "/")

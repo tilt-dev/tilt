@@ -7,7 +7,7 @@ import {
   expectIncrs,
   mockAnalyticsCalls,
 } from "./analytics_test_helpers"
-import { accessorsForTesting, tiltfileKeyContext } from "./LocalStorage"
+import { accessorsForTesting, tiltfileKeyContext } from "./BrowserStorage"
 import {
   DEFAULT_OPTIONS,
   ResourceListOptions,
@@ -21,7 +21,8 @@ import {
 } from "./ResourceNameFilter"
 
 const resourceListOptionsAccessor = accessorsForTesting<ResourceListOptions>(
-  RESOURCE_LIST_OPTIONS_KEY
+  RESOURCE_LIST_OPTIONS_KEY,
+  sessionStorage
 )
 
 const ResourceNameFilterTestWrapper = () => (
@@ -37,10 +38,13 @@ const ResourceNameFilterTestWrapper = () => (
 describe("ResourceNameFilter", () => {
   beforeEach(() => {
     mockAnalyticsCalls()
+    sessionStorage.clear()
+    localStorage.clear()
   })
 
   afterEach(() => {
     cleanupMockAnalyticsCalls()
+    sessionStorage.clear()
     localStorage.clear()
   })
 

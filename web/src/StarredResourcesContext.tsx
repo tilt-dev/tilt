@@ -5,7 +5,7 @@ import React, {
   useState,
 } from "react"
 import { AnalyticsAction, incr } from "./analytics"
-import { usePersistentState } from "./LocalStorage"
+import { usePersistentState } from "./BrowserStorage"
 
 export type StarredResourcesContext = {
   starredResources: string[]

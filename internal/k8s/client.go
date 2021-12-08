@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/url"
@@ -40,6 +41,14 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
+
+// Due to the way the Kubernetes apiserver works, there's no easy way to
+// distinguish between "server is taking a long time to respond because it's
+// gone" and "server is taking a long time to respond because it has a slow auth
+// plugin".
+//
+// So our health check timeout is a bit longer than we'd like.
+const healthCheckTimeout = 5 * time.Second
 
 type Namespace string
 type NamespaceOverride string
@@ -106,6 +115,9 @@ type Client interface {
 	NodeIP(ctx context.Context) NodeIP
 
 	Exec(ctx context.Context, podID PodID, cName container.Name, n Namespace, cmd []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error
+
+	// Returns version information about the apiserver, or an error if we're not connected.
+	CheckConnected(ctx context.Context) (*version.Info, error)
 }
 
 type RESTMapper interface {
@@ -263,9 +275,37 @@ func timeoutError(timeout time.Duration) error {
 func (k *K8sClient) ToRESTConfig() (*rest.Config, error) {
 	return rest.CopyConfig(k.restConfig), nil
 }
+
 func (k *K8sClient) ToDiscoveryClient() (discovery.CachedDiscoveryInterface, error) {
 	return k.discovery, nil
 }
+
+// Loosely adapted from ctlptl.
+func (k *K8sClient) CheckConnected(ctx context.Context) (*version.Info, error) {
+	ctx, cancel := context.WithTimeout(ctx, healthCheckTimeout)
+	defer cancel()
+	discoClient, err := k.ToDiscoveryClient()
+	if err != nil {
+		return nil, err
+	}
+
+	restClient := discoClient.RESTClient()
+	if restClient == nil {
+		return discoClient.ServerVersion()
+	}
+
+	body, err := restClient.Get().AbsPath("/version").Do(ctx).Raw()
+	if err != nil {
+		return nil, err
+	}
+	var info version.Info
+	err = json.Unmarshal(body, &info)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse the server version: %v", err)
+	}
+	return &info, nil
+}
+
 func (k *K8sClient) ToRESTMapper() (meta.RESTMapper, error) {
 	return k.drm, nil
 }

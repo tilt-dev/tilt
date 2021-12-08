@@ -60,7 +60,7 @@ type ClusterList struct {
 // cluster or an existing Docker Daemon (for Docker Compose).
 type ClusterSpec struct {
 	// Connection spec for an existing cluster.
-	Connect *ClusterConnection `json:"connect,omitempty" protobuf:"bytes,1,opt,name=connect"`
+	Connection *ClusterConnection `json:"connection,omitempty" protobuf:"bytes,1,opt,name=connection"`
 }
 
 // Connection spec for an existing cluster.
@@ -147,6 +147,11 @@ type ClusterStatus struct {
 	// that this is the only architecture a cluster supports, only that it's one
 	// of the architectures.
 	Arch string `json:"arch,omitempty" protobuf:"bytes,1,opt,name=arch"`
+
+	// An unrecoverable error connecting to the cluster.
+	//
+	// +optional
+	Error string `json:"error,omitempty" protobuf:"bytes,2,opt,name=error"`
 }
 
 // Cluster implements ObjectWithStatusSubResource interface.
