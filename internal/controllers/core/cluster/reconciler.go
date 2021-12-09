@@ -6,6 +6,7 @@ import (
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -20,6 +21,8 @@ import (
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
+
+const ArchUnknown string = "unknown"
 
 type Reconciler struct {
 	ctrlClient     ctrlclient.Client
@@ -78,7 +81,14 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		connection.spec = obj.Spec
 	}
 
-	// TODO(nick): Populate the cluster architecture.
+	if connection != nil && connection.arch == "" {
+		if connection.k8sClient != nil {
+			connection.arch = r.readKubernetesArch(ctx, connection.k8sClient)
+		} else if connection.dockerClient != nil {
+			connection.arch = r.readDockerArch(ctx, connection.dockerClient)
+		}
+	}
+
 	status := connection.toStatus()
 	err = r.maybeUpdateStatus(ctx, &obj, status)
 	if err != nil {
@@ -138,6 +148,42 @@ func (r *Reconciler) createKubernetesConnection(ctx context.Context, obj *v1alph
 	return &connection{k8sClient: client}
 }
 
+// Reads the arch from a kubernetes cluster, or "unknown" if we can't
+// figure out the architecture.
+//
+// Note that it's normal that users may not have access to the kubernetes
+// arch if there are RBAC rules restricting read access on nodes.
+//
+// We only need to read SOME arch that the cluster supports.
+func (r *Reconciler) readKubernetesArch(ctx context.Context, client k8s.Client) string {
+	nodeMetas, err := client.ListMeta(ctx, schema.GroupVersionKind{Version: "v1", Kind: "Node"}, "")
+	if err != nil || len(nodeMetas) == 0 {
+		return ArchUnknown
+	}
+
+	// https://github.com/kubernetes/enhancements/blob/0e4d5df19d396511fe41ed0860b0ab9b96f46a2d/keps/sig-node/793-node-os-arch-labels/README.md
+	// https://kubernetes.io/docs/reference/labels-annotations-taints/#kubernetes-io-arch
+	arch := nodeMetas[0].GetLabels()["kubernetes.io/arch"]
+	if arch == "" {
+		arch = nodeMetas[0].GetLabels()["beta.kubernetes.io/arch"]
+	}
+
+	if arch == "" {
+		return ArchUnknown
+	}
+	return arch
+}
+
+// Reads the arch from a Docker cluster, or "unknown" if we can't
+// figure out the architecture.
+func (r *Reconciler) readDockerArch(ctx context.Context, client docker.Client) string {
+	arch := client.ServerVersion().Arch
+	if arch == "" {
+		return ArchUnknown
+	}
+	return arch
+}
+
 func (r *Reconciler) maybeUpdateStatus(ctx context.Context, obj *v1alpha1.Cluster, newStatus v1alpha1.ClusterStatus) error {
 	if apicmp.DeepEqual(obj.Status, newStatus) {
 		return nil
@@ -162,11 +208,13 @@ type connection struct {
 	k8sClient    k8s.Client
 	error        string
 	createdAt    time.Time
+	arch         string
 }
 
 func (c *connection) toStatus() v1alpha1.ClusterStatus {
 	return v1alpha1.ClusterStatus{
 		Error: c.error,
+		Arch:  c.arch,
 	}
 }
 
