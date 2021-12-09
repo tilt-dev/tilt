@@ -54,13 +54,18 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 	}
 
 	dc := s.dc
-	project := model.DockerComposeProject{ConfigPaths: dc.configPaths, ProjectPath: dc.Project.ProjectPath}
 
 	currentTiltfilePath := starkit.CurrentExecPath(thread)
 	if dc.tiltfilePath != "" && dc.tiltfilePath != currentTiltfilePath {
 		return starlark.None, fmt.Errorf("Cannot load docker-compose files from two different Tiltfiles.\n"+
 			"docker-compose must have a single working directory:\n"+
 			"(%s, %s)", dc.tiltfilePath, currentTiltfilePath)
+	}
+
+	project := model.DockerComposeProject{
+		ConfigPaths: dc.configPaths,
+		ProjectPath: dc.Project.ProjectPath,
+		Name:        model.NormalizeName(filepath.Base(currentTiltfilePath)),
 	}
 
 	for _, val := range paths {

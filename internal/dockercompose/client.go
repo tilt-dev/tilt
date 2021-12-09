@@ -8,7 +8,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
@@ -223,7 +222,7 @@ func (c *cmdDCClient) Project(ctx context.Context, spec model.DockerComposeProje
 
 	// First, use compose-go to natively load the project.
 	if len(spec.ConfigPaths) > 0 {
-		parsed, err := c.loadProjectNative(spec.ConfigPaths, spec.ProjectPath)
+		parsed, err := c.loadProjectNative(spec)
 		if err == nil {
 			proj = parsed
 		}
@@ -265,10 +264,12 @@ func (c *cmdDCClient) Version(ctx context.Context) (string, string, error) {
 	return parseComposeVersionOutput(stdout)
 }
 
-func (c *cmdDCClient) loadProjectNative(configPaths []string, projectPath string) (*types.Project, error) {
+func (c *cmdDCClient) loadProjectNative(modelProj model.DockerComposeProject) (*types.Project, error) {
 	// NOTE: take care to keep behavior in sync with loadProjectCLI()
-	allProjectOptions := append(dcProjectOptions, compose.WithWorkingDirectory(projectPath))
-	opts, err := compose.NewProjectOptions(configPaths, allProjectOptions...)
+	allProjectOptions := append(dcProjectOptions,
+		compose.WithWorkingDirectory(modelProj.ProjectPath),
+		compose.WithName(modelProj.Name))
+	opts, err := compose.NewProjectOptions(modelProj.ConfigPaths, allProjectOptions...)
 	if err != nil {
 		return nil, err
 	}
@@ -289,12 +290,6 @@ func (c *cmdDCClient) loadProjectCLI(ctx context.Context, proj model.DockerCompo
 	// v1 and v2 as well as even different releases within v2, so set the workdir and force the loader to resolve
 	// any relative paths
 	workDir := proj.ProjectPath
-	if len(proj.ConfigPaths) != 0 {
-		// from the compose Docs:
-		// 	> When you use multiple Compose files, all paths in the files are relative to the first configuration file specified with -f
-		// https://docs.docker.com/compose/reference/#use--f-to-specify-name-and-path-of-one-or-more-compose-files
-		workDir = filepath.Dir(proj.ConfigPaths[0])
-	}
 
 	return loader.Load(types.ConfigDetails{
 		WorkingDir: workDir,
@@ -311,23 +306,8 @@ func (c *cmdDCClient) loadProjectCLI(ctx context.Context, proj model.DockerCompo
 //
 // See also: dcProjectOptions which is used for loading projects from the Go library, which should
 // be kept in sync behavior-wise.
-func dcLoaderOption(workDir string) func(opts *loader.Options) {
+func dcLoaderOption(name string) func(opts *loader.Options) {
 	return func(opts *loader.Options) {
-		path := workDir
-		if path == "" {
-			path = "."
-		}
-		if !filepath.IsAbs(path) {
-			path, _ = filepath.Abs(path)
-		}
-
-		name := filepath.Base(path)
-		// normalization logic from https://github.com/compose-spec/compose-go/blob/c39f6e771fe5034fe1bec40ba5f0285ec60f5efe/cli/options.go#L366-L371
-		r := regexp.MustCompile("[a-z0-9_-]")
-		name = strings.ToLower(name)
-		name = strings.Join(r.FindAllString(name, -1), "")
-		name = strings.TrimLeft(name, "_-")
-
 		opts.Name = name
 		opts.ResolvePaths = true
 		opts.SkipNormalization = false
