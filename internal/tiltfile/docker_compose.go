@@ -81,6 +81,7 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 			}
 			_, err = tmpfile.WriteString(yaml)
 			if err != nil {
+				tmpfile.Close()
 				return nil, errors.Wrap(err, message)
 			}
 			err = tmpfile.Close()
