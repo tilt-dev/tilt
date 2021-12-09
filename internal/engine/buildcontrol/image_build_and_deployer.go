@@ -367,7 +367,8 @@ func (ibd *ImageBuildAndDeployer) delete(ctx context.Context, k8sTarget model.K8
 
 	entities = k8s.ReverseSortedEntities(entities)
 
-	return ibd.k8sClient.Delete(ctx, entities)
+	// wait for entities to be fully deleted from the server so that it's safe to re-create them
+	return ibd.k8sClient.Delete(ctx, entities, true)
 }
 
 // Create a new ImageTarget with the Dockerfiles rewritten with the injected images.

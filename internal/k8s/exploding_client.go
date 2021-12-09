@@ -27,7 +27,7 @@ func (ec *explodingClient) Upsert(ctx context.Context, entities []K8sEntity, tim
 	return nil, errors.Wrap(ec.err, "could not set up kubernetes client")
 }
 
-func (ec *explodingClient) Delete(ctx context.Context, entities []K8sEntity) error {
+func (ec *explodingClient) Delete(ctx context.Context, entities []K8sEntity, wait bool) error {
 	return errors.Wrap(ec.err, "could not set up kubernetes client")
 }
 

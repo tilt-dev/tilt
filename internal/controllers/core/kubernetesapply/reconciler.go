@@ -684,7 +684,7 @@ func (r *Reconciler) bestEffortDelete(ctx context.Context, toDelete deleteSpec) 
 			l.Infof("→ %s", displayName)
 		}
 
-		err := r.k8sClient.Delete(ctx, toDelete.entities)
+		err := r.k8sClient.Delete(ctx, toDelete.entities, false)
 		if err != nil {
 			l.Errorf("Error garbage collecting Kubernetes resources: %v", err)
 		}
