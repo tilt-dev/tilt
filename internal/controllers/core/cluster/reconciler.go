@@ -130,7 +130,7 @@ func (r *Reconciler) createKubernetesConnection(ctx context.Context, obj *v1alph
 		return &connection{error: err.Error()}
 	}
 	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
-	client := k8s.ProvideK8sClient(ctx, env, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
+	client := k8s.ProvideK8sClient(env, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
 	_, err = client.CheckConnected(ctx)
 	if err != nil {
 		return &connection{error: err.Error()}
