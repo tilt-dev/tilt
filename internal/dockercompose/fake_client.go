@@ -151,7 +151,7 @@ func (c *FakeDCClient) Project(_ context.Context, m model.DockerComposeProject) 
 	workDir := c.WorkDir
 	projectName := m.Name
 	if projectName == "" {
-		projectName = workDir
+		projectName = model.NormalizeName(workDir)
 	}
 	if projectName == "" {
 		projectName = "fakedc"
