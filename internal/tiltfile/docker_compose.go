@@ -65,7 +65,7 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 	project := model.DockerComposeProject{
 		ConfigPaths: dc.configPaths,
 		ProjectPath: dc.Project.ProjectPath,
-		Name:        model.NormalizeName(filepath.Base(currentTiltfilePath)),
+		Name:        model.NormalizeName(filepath.Base(filepath.Dir(currentTiltfilePath))),
 	}
 
 	for _, val := range paths {
