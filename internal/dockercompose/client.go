@@ -69,17 +69,24 @@ func NewDockerComposeClient(env docker.LocalEnv) DockerComposeClient {
 }
 
 func (c *cmdDCClient) projectArgs(p model.DockerComposeProject) []string {
-	if p.YAML != "" {
-		args := []string{"-f", "-"}
-		if p.ProjectPath != "" {
-			args = append(args, "--project-directory", p.ProjectPath)
-		}
-		return args
-	}
 	result := []string{}
+
+	if p.Name != "" {
+		result = append(result, "--project-name", p.Name)
+	}
+
+	if p.ProjectPath != "" {
+		result = append(result, "--project-directory", p.ProjectPath)
+	}
+
+	if p.YAML != "" {
+		result = append(result, "-f", "-")
+	}
+
 	for _, cp := range p.ConfigPaths {
 		result = append(result, "-f", cp)
 	}
+
 	return result
 }
 
@@ -289,17 +296,15 @@ func (c *cmdDCClient) loadProjectCLI(ctx context.Context, proj model.DockerCompo
 	// docker-compose is very inconsistent about whether it fully resolves paths or not via CLI, both between
 	// v1 and v2 as well as even different releases within v2, so set the workdir and force the loader to resolve
 	// any relative paths
-	workDir := proj.ProjectPath
-
 	return loader.Load(types.ConfigDetails{
-		WorkingDir: workDir,
+		WorkingDir: proj.ProjectPath,
 		ConfigFiles: []types.ConfigFile{
 			{
 				Content: []byte(resolvedYAML),
 			},
 		},
 		// no environment specified because the CLI call will already have resolved all variables
-	}, dcLoaderOption(workDir))
+	}, dcLoaderOption(proj.Name))
 }
 
 // dcLoaderOption is used when loading Docker Compose projects via the CLI and fallback and for tests.
