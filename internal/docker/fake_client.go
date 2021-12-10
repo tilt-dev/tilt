@@ -159,7 +159,9 @@ func (c *FakeClient) BuilderVersion() types.BuilderVersion {
 	return types.BuilderV1
 }
 func (c *FakeClient) ServerVersion() types.Version {
-	return types.Version{}
+	return types.Version{
+		Arch: "amd64",
+	}
 }
 
 func (c *FakeClient) SetExecError(err error) {

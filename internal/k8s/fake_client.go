@@ -437,7 +437,7 @@ func (c *FakeK8sClient) ListMeta(_ context.Context, gvk schema.GroupVersionKind,
 	result := make([]metav1.Object, 0)
 	for _, uid := range c.currentVersions {
 		entity := c.entities[uid]
-		if entity.Namespace() != ns {
+		if entity.Namespace().String() != ns.String() {
 			continue
 		}
 		if entity.GVK() != gvk {
