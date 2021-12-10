@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"strings"
 	"testing"
@@ -102,4 +103,20 @@ func (f *dcFixture) CurlUntil(ctx context.Context, service string, url string, e
 		err = cmd.Run()
 		return out.String(), err
 	}, expectedContents)
+}
+
+func (f *dcFixture) doV1V2(body func()) {
+	os.Setenv("TILT_DOCKER_COMPOSE_CMD", "docker-compose-v1")
+	fmt.Println("Running with docker-compose-v1")
+	body()
+	os.Unsetenv("TILT_DOCKER_COMPOSE_CMD")
+	fmt.Println("Running with docker-compose")
+	cmd := exec.Command("docker-compose", "version")
+	out, err := cmd.Output()
+	if err != nil {
+		fmt.Printf("error: %v\n", err)
+	} else {
+		fmt.Print(string(out))
+	}
+	body()
 }
