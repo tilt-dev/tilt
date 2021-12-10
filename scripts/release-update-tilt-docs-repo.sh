@@ -40,7 +40,7 @@ sed -i -E "s|/download/v$SED_VERSION_PATTERN/tilt.$SED_VERSION_PATTERN|/download
 sed -i -E "s|/download/v$SED_VERSION_PATTERN/tilt.$SED_VERSION_PATTERN|/download/v$VERSION/tilt.$VERSION|" docs/upgrade.md
 git add .
 
-git config --global user.email "hi@tilt.dev"
+git config --global user.email "it@tilt.dev"
 git config --global user.name "Tilt Dev"
 git commit -a -m "Update docs to Tilt version: $VERSION"
 git push origin master

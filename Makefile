@@ -155,9 +155,6 @@ ci-integration-container:
 clean:
 	go clean -cache -testcache -r -i ./...
 
-release:
-	./scripts/release.sh
-
 prettier:
 	cd web && yarn install
 	cd web && yarn prettier
