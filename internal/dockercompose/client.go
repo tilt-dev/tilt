@@ -115,7 +115,9 @@ func (c *cmdDCClient) Up(ctx context.Context, spec model.DockerComposeUpSpec, sh
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	runArgs := append([]string{}, genArgs...)
-	runArgs = append(runArgs, "up", "--no-deps", "--no-build", "-d")
+	// Omit --no-build for now to get v2 working.
+	// https://github.com/docker/compose/issues/8785
+	runArgs = append(runArgs, "up", "--no-deps", "-d")
 
 	runArgs = append(runArgs, spec.Service)
 	cmd := c.dcCommand(ctx, runArgs)
