@@ -258,6 +258,18 @@ func (m Manifest) Validate() error {
 	return nil
 }
 
+// Infer image properties for each image.
+func (m *Manifest) InferImagePropertiesFromCluster(reg container.Registry) error {
+	for i, iTarget := range m.ImageTargets {
+		iTarget, err := iTarget.InferImagePropertiesFromCluster(reg)
+		if err != nil {
+			return fmt.Errorf("manifest %s: %v", m.Name, err)
+		}
+		m.ImageTargets[i] = iTarget
+	}
+	return nil
+}
+
 // Assemble selectors that point to other API objects created by this manifest.
 func (m *Manifest) InferLiveUpdateSelectors() error {
 	dag, err := NewTargetGraph(m.TargetSpecs())

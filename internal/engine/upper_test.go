@@ -3796,7 +3796,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	versionExt := version.NewPlugin(model.TiltBuild{Version: "0.5.0"})
 	configExt := config.NewPlugin("up")
 	execer := localexec.NewFakeExecer(t)
-	realTFL := tiltfile.ProvideTiltfileLoader(ta, kClient, k8sContextExt, versionExt, configExt, fakeDcc, "localhost", execer, feature.MainDefaults, env)
+	realTFL := tiltfile.ProvideTiltfileLoader(ta, k8sContextExt, versionExt, configExt, fakeDcc, "localhost", execer, feature.MainDefaults, env)
 	tfl := tiltfile.NewFakeTiltfileLoader()
 	buildSource := ctrltiltfile.NewBuildSource()
 	cc := configs.NewConfigsController(cdc)
@@ -3846,7 +3846,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 
 	kar := kubernetesapply.NewReconciler(cdc, kClient, sch, docker.Env{}, k8s.KubeContext("kind-kind"), st, "default", execer)
 
-	tfr := ctrltiltfile.NewReconciler(st, tfl, dockerClient, cdc, sch, buildSource, engineMode)
+	tfr := ctrltiltfile.NewReconciler(st, tfl, kClient, dockerClient, cdc, sch, buildSource, engineMode)
 	tbr := togglebutton.NewReconciler(cdc, sch)
 	extr := extension.NewReconciler(cdc, sch, ta)
 	extrr, err := extensionrepo.NewReconciler(cdc, base)
@@ -4478,6 +4478,10 @@ func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
 
 	if len(tlr.Manifests) != 2 {
 		f.T().Fatalf("Expected two manifests. Actual: %v", tlr.Manifests)
+	}
+
+	for _, m := range tlr.Manifests {
+		require.NoError(f.t, m.InferImagePropertiesFromCluster(container.Registry{}))
 	}
 
 	return tlr.Manifests[0], tlr.Manifests[1]

@@ -2987,51 +2987,6 @@ default_registry('bar.com')
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml")
 }
 
-func TestLocalRegistry(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.kCli.Registry = container.MustNewRegistry("localhost:32000")
-
-	f.setupFoo()
-	f.file("Tiltfile", `
-default_registry('bar.com')  # localRegistry should override this
-docker_build('gcr.io/foo', 'foo')
-k8s_yaml('foo.yaml')
-`)
-
-	f.load()
-
-	f.assertNextManifest("foo",
-		db(image("gcr.io/foo").withLocalRef("localhost:32000/gcr.io_foo")),
-		deployment("foo"))
-}
-
-func TestLocalRegistryDockerCompose(t *testing.T) {
-	f := newFixture(t)
-	defer f.TearDown()
-
-	f.kCli.Registry = container.MustNewRegistry("localhost:32000")
-
-	f.setupFoo()
-	f.file("docker-compose.yml", `version: '3'
-services:
-  foo:
-    image: gcr.io/foo
-`)
-	f.file("Tiltfile", `
-docker_build('gcr.io/foo', 'foo')
-docker_compose('docker-compose.yml')
-`)
-
-	f.load()
-
-	// Assert that when we use a docker-compose orchestrator, we don't
-	// use the k8s private registry.
-	f.assertNextManifest("foo",
-		db(image("gcr.io/foo")))
-}
-
 func TestDefaultRegistryTwoImagesOnlyDifferByTag(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -5906,7 +5861,6 @@ type fixture struct {
 	out *bytes.Buffer
 	t   *testing.T
 	*tempdir.TempDirFixture
-	kCli       *k8s.FakeK8sClient
 	k8sContext k8s.KubeContext
 	k8sEnv     k8s.Env
 	webHost    model.WebHost
@@ -5934,7 +5888,7 @@ func (f *fixture) newTiltfileLoader() TiltfileLoader {
 	configExt := config.NewPlugin("up")
 	localEnv := localexec.DefaultEnv(12345, f.webHost)
 	execer := localexec.NewProcessExecer(localEnv)
-	return ProvideTiltfileLoader(f.ta, f.kCli, k8sContextExt, versionExt, configExt, dcc, f.webHost, execer, features, f.k8sEnv)
+	return ProvideTiltfileLoader(f.ta, k8sContextExt, versionExt, configExt, dcc, f.webHost, execer, features, f.k8sEnv)
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -5943,7 +5897,6 @@ func newFixture(t *testing.T) *fixture {
 	f := tempdir.NewTempDirFixture(t)
 	f.Chdir()
 
-	kCli := k8s.NewFakeK8sClient(t)
 	ctrlclient := fake.NewFakeTiltClient()
 
 	r := &fixture{
@@ -5953,7 +5906,6 @@ func newFixture(t *testing.T) *fixture {
 		TempDirFixture: f,
 		an:             ma,
 		ta:             ta,
-		kCli:           kCli,
 		k8sContext:     "fake-context",
 		k8sEnv:         k8s.EnvDockerDesktop,
 		ctrlclient:     ctrlclient,
@@ -6098,6 +6050,11 @@ func (f *fixture) loadAllowWarnings(args ...string) {
 		f.t.Fatal(err)
 	}
 	f.loadResult = tlr
+
+	for _, m := range f.loadResult.Manifests {
+		err := m.InferImagePropertiesFromCluster(f.loadResult.DefaultRegistry)
+		require.NoError(f.t, err)
+	}
 }
 
 func unusedImageWarning(unusedImage string, suggestedImages []string, configType string) string {
@@ -6134,6 +6091,11 @@ func (f *fixture) loadErrString(msgs ...string) {
 		if !strings.Contains(errText, msg) {
 			f.t.Fatalf("error %q does not contain string %q", errText, msg)
 		}
+	}
+
+	for _, m := range f.loadResult.Manifests {
+		err := m.InferImagePropertiesFromCluster(f.loadResult.DefaultRegistry)
+		require.NoError(f.t, err)
 	}
 }
 
