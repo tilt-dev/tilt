@@ -57,6 +57,7 @@ type cmdDCClient struct {
 	env         docker.Env
 	mu          *sync.Mutex
 	composePath string
+	version     string
 }
 
 // TODO(dmiller): we might want to make this take a path to the docker-compose config so we don't
@@ -115,11 +116,13 @@ func (c *cmdDCClient) Up(ctx context.Context, spec model.DockerComposeUpSpec, sh
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	runArgs := append([]string{}, genArgs...)
+	runArgs = append(runArgs, "up", "--no-deps")
 	// Omit --no-build for now to get v2 working.
 	// https://github.com/docker/compose/issues/8785
-	runArgs = append(runArgs, "up", "--no-deps", "-d")
-
-	runArgs = append(runArgs, spec.Service)
+	if semver.Major(c.version) != "v2" {
+		runArgs = append(runArgs, "--no-build")
+	}
+	runArgs = append(runArgs, "-d", spec.Service)
 	cmd := c.dcCommand(ctx, runArgs)
 	cmd.Stdin = strings.NewReader(spec.Project.YAML)
 	cmd.Stdout = stdout
@@ -264,7 +267,11 @@ func (c *cmdDCClient) Version(ctx context.Context) (string, string, error) {
 	if err != nil {
 		return "", "", FormatError(cmd, stdout, err)
 	}
-	return parseComposeVersionOutput(stdout)
+	ver, build, err := parseComposeVersionOutput(stdout)
+	if err == nil {
+		c.version = ver
+	}
+	return ver, build, err
 }
 
 func (c *cmdDCClient) loadProjectNative(configPaths []string) (*types.Project, error) {
@@ -319,6 +326,10 @@ func dcLoaderOption(opts *loader.Options) {
 }
 
 func dcExecutablePath() string {
+	if cmd := os.Getenv("TILT_DOCKER_COMPOSE_CMD"); cmd != "" {
+		return cmd
+	}
+
 	composeName := "docker-compose"
 	if runtime.GOOS == "windows" {
 		composeName += ".exe"
