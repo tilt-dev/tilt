@@ -3,8 +3,8 @@
 # Updates the Tilt repo with the latest version info.
 #
 # Usage:
-# scripts/update-tilt-repo.sh $VERSION
-# where VERSION is of the form 0.1.0
+# scripts/release-update-tilt-repo.sh $VERSION
+# where VERSION is of the form v0.1.0
 
 set -euo pipefail
 
@@ -32,7 +32,7 @@ sed -i -E "s/version = \".*\"/version = \"$VERSION\"/" scripts/install.ps1
 sed -i -E "s/VERSION=\".*\"/VERSION=\"$VERSION\"/" scripts/install.sh
 sed -i -E "s/devVersion = \".*\"/devVersion = \"$VERSION\"/" internal/cli/build.go
 git add .
-git config --global user.email "hi@tilt.dev"
+git config --global user.email "it@tilt.dev"
 git config --global user.name "Tilt Dev"
 git commit -a -m "Update version numbers: $VERSION"
 git push origin master
