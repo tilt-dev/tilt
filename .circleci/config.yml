@@ -68,6 +68,7 @@ jobs:
       - run: choco upgrade -y --allow-downgrade golang --version=1.17.2
       - run: go get -u gotest.tools/gotestsum
       - checkout
+      - run: iex ./scripts/install-dc2.ps1
       # Check to make sure Windows binaries compile
       - run: go install -mod vendor ./cmd/tilt
       - run: make shorttestsum
