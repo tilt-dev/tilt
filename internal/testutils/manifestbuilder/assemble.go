@@ -1,7 +1,7 @@
 package manifestbuilder
 
 import (
-	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -55,9 +55,10 @@ func assembleDC(m model.Manifest, dcTarg model.DockerComposeTarget, iTargets ...
 	}
 
 	if len(ids) == 0 {
-		ref := container.MustParseNamed(dcTarg.Spec.Service)
 		iTarget := model.ImageTarget{
-			Refs: container.MustSimpleRefSet(container.NewRefSelector(ref)),
+			ImageMapSpec: v1alpha1.ImageMapSpec{
+				Selector: dcTarg.Spec.Service,
+			},
 			BuildDetails: model.DockerComposeBuild{
 				Service: dcTarg.Spec.Service,
 			},

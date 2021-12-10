@@ -21,7 +21,7 @@ type RefSelector struct {
 }
 
 func SelectorFromImageMap(spec v1alpha1.ImageMapSpec) (RefSelector, error) {
-	ref, err := reference.ParseNamed(spec.Selector)
+	ref, err := reference.ParseNormalizedNamed(spec.Selector)
 	if err != nil {
 		return RefSelector{}, fmt.Errorf("parsing image map spec (%s): %v", spec.Selector, err)
 	}

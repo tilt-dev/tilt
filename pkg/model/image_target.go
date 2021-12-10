@@ -67,7 +67,7 @@ func (i ImageTarget) ImageMapName() string {
 
 func (i ImageTarget) MustWithRef(ref container.RefSelector) ImageTarget {
 	i.Refs = container.MustSimpleRefSet(ref)
-	i.ImageMapSpec.Selector = ref.String()
+	i.ImageMapSpec.Selector = ref.RefFamiliarString()
 	i.ImageMapSpec.MatchExact = ref.MatchExact()
 	return i
 }
@@ -82,7 +82,10 @@ func (i ImageTarget) WithLiveUpdateSpec(name string, luSpec v1alpha1.LiveUpdateS
 }
 
 func (i ImageTarget) ID() TargetID {
-	return ImageID(i.Refs.ConfigurationRef)
+	return TargetID{
+		Type: TargetTypeImage,
+		Name: TargetName(apis.SanitizeName(i.ImageMapSpec.Selector)),
+	}
 }
 
 func (i ImageTarget) DependencyIDs() []TargetID {
@@ -95,19 +98,28 @@ func (i ImageTarget) WithDependencyIDs(ids []TargetID) ImageTarget {
 }
 
 func (i ImageTarget) Validate() error {
-	confRef := i.Refs.ConfigurationRef
-	if confRef.Empty() {
+	if i.ImageMapSpec.Selector == "" {
 		return fmt.Errorf("[Validate] Image target missing image ref: %+v", i.BuildDetails)
 	}
 
-	if err := i.Refs.Validate(); err != nil {
-		return fmt.Errorf("[Validate] Image %q refset failed validation: %v", confRef, err)
+	selector, err := container.SelectorFromImageMap(i.ImageMapSpec)
+	if err != nil {
+		return fmt.Errorf("[Validate]: %v", err)
+	}
+
+	refs, err := container.NewRefSet(selector, container.Registry{})
+	if err != nil {
+		return fmt.Errorf("[Validate]: %v", err)
+	}
+
+	if err := refs.Validate(); err != nil {
+		return fmt.Errorf("[Validate] Image %q refset failed validation: %v", i.ImageMapSpec.Selector, err)
 	}
 
 	switch bd := i.BuildDetails.(type) {
 	case DockerBuild:
 		if bd.Context == "" {
-			return fmt.Errorf("[Validate] Image %q missing build path", confRef)
+			return fmt.Errorf("[Validate] Image %q missing build path", i.ImageMapSpec.Selector)
 		}
 	case CustomBuild:
 		if !i.IsLiveUpdateOnly && bd.Command.Empty() {
@@ -121,7 +133,7 @@ func (i ImageTarget) Validate() error {
 		}
 	default:
 		return fmt.Errorf(
-			"[Validate] Image %q has unsupported %T build details", confRef, bd)
+			"[Validate] Image %q has unsupported %T build details", i.ImageMapSpec.Selector, bd)
 	}
 
 	return nil
@@ -173,12 +185,6 @@ func (i ImageTarget) WithDockerImage(spec v1alpha1.DockerImageSpec) ImageTarget 
 }
 
 func (i ImageTarget) WithBuildDetails(details BuildDetails) ImageTarget {
-	db, ok := details.(DockerBuild)
-	if ok {
-		db.DockerImageSpec.Ref = i.Refs.ConfigurationRef.RefFamiliarString()
-		details = db
-	}
-
 	i.BuildDetails = details
 
 	cb, ok := details.(CustomBuild)
@@ -188,39 +194,6 @@ func (i ImageTarget) WithBuildDetails(details BuildDetails) ImageTarget {
 		// until we come up with a real API for specifying live update
 		// without an image build.
 		i.IsLiveUpdateOnly = true
-	}
-	return i
-}
-
-// I (Nick) am deeply unhappy with the parameters of CustomBuild.  They're not
-// well-specified, and often interact in weird and unpredictable ways.  This
-// function is a good example.
-//
-// custom_build(tag) means "My custom_build script already has a tag that it
-// wants to use". In practice, it becomes the "You can't tell me what to do"
-// flag.
-//
-// custom_build(skips_local_docker) means "My custom_build script doesn't use
-// Docker for storage, so you shouldn't expect to find the image there." In
-// practice, it becomes the "You can't touch my outputs" flag.
-//
-// When used together, you have a script that takes no inputs and doesn't let Tilt
-// fix the outputs. So people use custom_build(tag=x, skips_local_docker=True) to
-// enable all sorts of off-road experimental image-building flows that need better
-// primitives.
-//
-// For now, when we detect this case, we strip off registry information, since
-// the script isn't going to use it anyway.  This is tightly coupled with
-// CustomBuilder, which already has similar logic for handling these two cases
-// together.
-func (i ImageTarget) MaybeIgnoreRegistry() ImageTarget {
-	customBuild, ok := i.BuildDetails.(CustomBuild)
-	if ok && customBuild.SkipsLocalDocker && customBuild.Tag != "" {
-		i.Refs = i.Refs.WithoutRegistry()
-	}
-	_, ok = i.BuildDetails.(DockerComposeBuild)
-	if ok {
-		i.Refs = i.Refs.WithoutRegistry()
 	}
 	return i
 }
@@ -282,6 +255,64 @@ func (i ImageTarget) WithTiltFilename(f string) ImageTarget {
 // when we create it, rather than have a duplicate method that does the "right" thing.
 func (i ImageTarget) Dependencies() []string {
 	return sliceutils.DedupedAndSorted(i.LocalPaths())
+}
+
+// Once images are in the API server, they'll depend on the cluster:
+//
+// - The RefSet (where the image is built) will depend on the cluster registry.
+// - The architecture (the image chipset) will depend on the default arch of the cluster.
+//
+// In the meantime, we handle this by inferring them after tiltfile assembly.
+func (i ImageTarget) InferImagePropertiesFromCluster(reg container.Registry) (ImageTarget, error) {
+	selector, err := container.SelectorFromImageMap(i.ImageMapSpec)
+	if err != nil {
+		return i, fmt.Errorf("validating image: %v", err)
+	}
+
+	refs, err := container.NewRefSet(selector, reg)
+	if err != nil {
+		return i, fmt.Errorf("applying image %s to registry %s: %v", i.ImageMapSpec.Selector, reg, err)
+	}
+
+	db, ok := i.BuildDetails.(DockerBuild)
+	if ok {
+		db.DockerImageSpec.Ref = i.ImageMapSpec.Selector
+		i.BuildDetails = db
+	}
+
+	// I (Nick) am deeply unhappy with the parameters of CustomBuild.  They're not
+	// well-specified, and often interact in weird and unpredictable ways.  This
+	// function is a good example.
+	//
+	// custom_build(tag) means "My custom_build script already has a tag that it
+	// wants to use". In practice, it becomes the "You can't tell me what to do"
+	// flag.
+	//
+	// custom_build(skips_local_docker) means "My custom_build script doesn't use
+	// Docker for storage, so you shouldn't expect to find the image there." In
+	// practice, it becomes the "You can't touch my outputs" flag.
+	//
+	// When used together, you have a script that takes no inputs and doesn't let Tilt
+	// fix the outputs. So people use custom_build(tag=x, skips_local_docker=True) to
+	// enable all sorts of off-road experimental image-building flows that need better
+	// primitives.
+	//
+	// For now, when we detect this case, we strip off registry information, since
+	// the script isn't going to use it anyway.  This is tightly coupled with
+	// CustomBuilder, which already has similar logic for handling these two cases
+	// together.
+	customBuild, ok := i.BuildDetails.(CustomBuild)
+	if ok && customBuild.SkipsLocalDocker && customBuild.Tag != "" {
+		refs = refs.WithoutRegistry()
+	}
+	_, ok = i.BuildDetails.(DockerComposeBuild)
+	if ok {
+		refs = refs.WithoutRegistry()
+	}
+
+	i.Refs = refs
+
+	return i, nil
 }
 
 func ImageTargetsByID(iTargets []ImageTarget) map[TargetID]ImageTarget {

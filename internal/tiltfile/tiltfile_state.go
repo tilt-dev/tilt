@@ -80,7 +80,6 @@ type tiltfileState struct {
 	k8sContextExt k8scontext.Plugin
 	versionExt    version.Plugin
 	configExt     *config.Plugin
-	k8sClient     k8s.Client
 	features      feature.FeatureSet
 
 	// added to during execution
@@ -152,7 +151,6 @@ func newTiltfileState(
 	k8sContextExt k8scontext.Plugin,
 	versionExt version.Plugin,
 	configExt *config.Plugin,
-	k8sClient k8s.Client,
 	features feature.FeatureSet) *tiltfileState {
 	return &tiltfileState{
 		ctx:                       ctx,
@@ -162,7 +160,6 @@ func newTiltfileState(
 		k8sContextExt:             k8sContextExt,
 		versionExt:                versionExt,
 		configExt:                 configExt,
-		k8sClient:                 k8sClient,
 		buildIndex:                newBuildIndex(),
 		k8sObjectIndex:            tiltfile_k8s.NewState(),
 		k8sByName:                 make(map[string]*k8sResource),
@@ -584,17 +581,6 @@ func (s *tiltfileState) OnStart(e *starkit.Environment) error {
 	}
 
 	return nil
-}
-
-// Returns the current orchestrator.
-//
-// Note that assemble() will eventually error out if this has
-// both DC and K8s resources.
-func (s *tiltfileState) orchestrator() model.Orchestrator {
-	if !s.dc.Empty() {
-		return model.OrchestratorDC
-	}
-	return model.OrchestratorK8s
 }
 
 func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
@@ -1042,27 +1028,6 @@ func (s *tiltfileState) k8sResourceForName(name string) (*k8sResource, error) {
 	return s.makeK8sResource(name)
 }
 
-// decideRegistry returns the image registry we should use; if detected, a pre-configured
-// local registry; otherwise, the registry specified by the user via default_registry.
-// Otherwise, we'll return the zero value of `s.defaultReg`, which is an empty registry.
-// It has side-effects (a log line) and so should only be called once.
-func (s *tiltfileState) decideRegistry() container.Registry {
-	if s.orchestrator() != model.OrchestratorK8s {
-		return s.defaultReg
-	}
-
-	registry := s.k8sClient.LocalRegistry(s.ctx)
-
-	if !registry.Empty() {
-		// If we've found a local registry in the cluster at run-time, use that
-		// instead of the default_registry (if any) declared in the Tiltfile
-		s.logger.Infof("Auto-detected local registry from environment: %s", registry)
-		return registry
-	}
-
-	return s.defaultReg
-}
-
 // Auto-infer the readiness mode
 //
 // CONVO:
@@ -1116,7 +1081,6 @@ func (s *tiltfileState) inferPodReadinessMode(r *k8sResource) model.PodReadiness
 
 func (s *tiltfileState) translateK8s(resources []*k8sResource, updateSettings model.UpdateSettings) ([]model.Manifest, error) {
 	var result []model.Manifest
-	registry := s.decideRegistry()
 	for _, r := range resources {
 		mn := model.ManifestName(r.name)
 		tm, err := starlarkTriggerModeToModel(s.triggerModeForResource(r.triggerMode), r.autoInit)
@@ -1136,7 +1100,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource, updateSettings mo
 
 		m = m.WithLabels(r.labels)
 
-		iTargets, err := s.imgTargetsForDependencyIDs(mn, r.dependencyIDs, registry)
+		iTargets, err := s.imgTargetsForDependencyIDs(mn, r.dependencyIDs)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting image build info for %s", r.name)
 		}
@@ -1390,12 +1354,12 @@ func needsRestartContainerDeprecationError(m model.Manifest) bool {
 
 // Grabs all image targets for the given references,
 // as well as any of their transitive dependencies.
-func (s *tiltfileState) imgTargetsForDependencyIDs(mn model.ManifestName, ids []model.TargetID, reg container.Registry) ([]model.ImageTarget, error) {
+func (s *tiltfileState) imgTargetsForDependencyIDs(mn model.ManifestName, ids []model.TargetID) ([]model.ImageTarget, error) {
 	claimStatus := make(map[model.TargetID]claim, len(ids))
-	return s.imgTargetsForDependencyIDsHelper(mn, ids, claimStatus, reg)
+	return s.imgTargetsForDependencyIDsHelper(mn, ids, claimStatus)
 }
 
-func (s *tiltfileState) imgTargetsForDependencyIDsHelper(mn model.ManifestName, ids []model.TargetID, claimStatus map[model.TargetID]claim, reg container.Registry) ([]model.ImageTarget, error) {
+func (s *tiltfileState) imgTargetsForDependencyIDsHelper(mn model.ManifestName, ids []model.TargetID, claimStatus map[model.TargetID]claim) ([]model.ImageTarget, error) {
 	iTargets := make([]model.ImageTarget, 0, len(ids))
 	for _, id := range ids {
 		image := s.buildIndex.findBuilderByID(id)
@@ -1412,13 +1376,6 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(mn model.ManifestName, 
 		}
 		claimStatus[id] = claimPending
 
-		refs, err := container.NewRefSet(image.configurationRef, reg)
-		if err != nil {
-			return nil, errors.Wrapf(err, "Something went wrong deriving "+
-				"references for your image: %q. Check the image name (and your "+
-				"`default_registry()` call, if any) for errors", image.configurationRef)
-		}
-
 		var overrideCommand *v1alpha1.ImageMapOverrideCommand
 		if !image.entrypoint.Empty() {
 			overrideCommand = &v1alpha1.ImageMapOverrideCommand{
@@ -1427,11 +1384,10 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(mn model.ManifestName, 
 		}
 
 		iTarget := model.ImageTarget{
-			Refs: refs,
 			ImageMapSpec: v1alpha1.ImageMapSpec{
-				Selector:        refs.ConfigurationRef.String(),
+				Selector:        image.configurationRef.RefFamiliarString(),
 				MatchInEnvVars:  image.matchInEnvVars,
-				MatchExact:      refs.ConfigurationRef.MatchExact(),
+				MatchExact:      image.configurationRef.MatchExact(),
 				OverrideCommand: overrideCommand,
 				OverrideArgs:    image.overrideArgs,
 			},
@@ -1469,16 +1425,14 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(mn model.ManifestName, 
 				SkipsLocalDocker:  image.skipsLocalDocker,
 				OutputsImageRefTo: image.outputsImageRefTo,
 			}
-			iTarget = iTarget.WithBuildDetails(r).
-				MaybeIgnoreRegistry()
+			iTarget = iTarget.WithBuildDetails(r)
 		case DockerComposeBuild:
 			bd := model.DockerComposeBuild{
 				Service:          image.dockerComposeService,
 				Context:          image.dbBuildPath,
 				LocalVolumePaths: image.dockerComposeLocalVolumePaths,
 			}
-			iTarget = iTarget.WithBuildDetails(bd).
-				MaybeIgnoreRegistry()
+			iTarget = iTarget.WithBuildDetails(bd)
 		case UnknownBuild:
 			return nil, fmt.Errorf("no build info for image %s", image.configurationRef.RefFamiliarString())
 		}
@@ -1494,7 +1448,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(mn model.ManifestName, 
 			WithTiltFilename(image.tiltfilePath).
 			WithDependencyIDs(image.dependencyIDs)
 
-		depTargets, err := s.imgTargetsForDependencyIDsHelper(mn, image.dependencyIDs, claimStatus, reg)
+		depTargets, err := s.imgTargetsForDependencyIDsHelper(mn, image.dependencyIDs, claimStatus)
 		if err != nil {
 			return nil, err
 		}
@@ -1516,7 +1470,7 @@ func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) 
 			return nil, err
 		}
 
-		iTargets, err := s.imgTargetsForDependencyIDs(m.Name, svc.DependencyIDs, container.Registry{}) // Registry not relevant to DC
+		iTargets, err := s.imgTargetsForDependencyIDs(m.Name, svc.DependencyIDs)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting image build info for %s", svc.Name)
 		}

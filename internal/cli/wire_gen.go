@@ -93,21 +93,21 @@ func wireTiltfileResult(ctx context.Context, analytics2 *analytics.TiltAnalytics
 	if err != nil {
 		return cmdTiltfileResultDeps{}, err
 	}
-	env := k8s.ProvideEnv(ctx, apiConfig)
-	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
-	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
-	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
-	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	kubeContext, err := k8s.ProvideKubeContext(apiConfig)
 	if err != nil {
 		return cmdTiltfileResultDeps{}, err
 	}
-	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
-	client := k8s.ProvideK8sClient(env, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
+	env := k8s.ProvideEnv(ctx, apiConfig)
 	plugin := k8scontext.NewPlugin(kubeContext, env)
 	tiltBuild := provideTiltInfo()
 	versionPlugin := version.NewPlugin(tiltBuild)
 	configPlugin := config.NewPlugin(subcommand)
+	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
+	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
+	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
+	namespace := k8s.ProvideConfigNamespace(clientConfig)
+	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
+	client := k8s.ProvideK8sClient(env, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
 	runtime := k8s.ProvideContainerRuntime(ctx, client)
 	clusterEnv := docker.ProvideClusterEnv(ctx, kubeContext, env, runtime, minikubeClient)
 	localEnv := docker.ProvideLocalEnv(ctx, kubeContext, env, clusterEnv)
@@ -117,7 +117,7 @@ func wireTiltfileResult(ctx context.Context, analytics2 *analytics.TiltAnalytics
 	localexecEnv := localexec.DefaultEnv(webPort, webHost)
 	processExecer := localexec.NewProcessExecer(localexecEnv)
 	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, client, plugin, versionPlugin, configPlugin, dockerComposeClient, webHost, processExecer, defaults, env)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, plugin, versionPlugin, configPlugin, dockerComposeClient, webHost, processExecer, defaults, env)
 	cliCmdTiltfileResultDeps := newTiltfileResultDeps(tiltfileLoader)
 	return cliCmdTiltfileResultDeps, nil
 }
@@ -164,7 +164,7 @@ func wireDockerPrune(ctx context.Context, analytics2 *analytics.TiltAnalytics, s
 	localexecEnv := localexec.DefaultEnv(webPort, webHost)
 	processExecer := localexec.NewProcessExecer(localexecEnv)
 	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, client, plugin, versionPlugin, configPlugin, dockerComposeClient, webHost, processExecer, defaults, env)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, plugin, versionPlugin, configPlugin, dockerComposeClient, webHost, processExecer, defaults, env)
 	cliDpDeps := newDPDeps(switchCli, tiltfileLoader)
 	return cliDpDeps, nil
 }
@@ -287,10 +287,10 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	configPlugin := config.NewPlugin(subcommand)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, client, plugin, versionPlugin, configPlugin, dockerComposeClient, webHost, processExecer, defaults, k8sEnv)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, plugin, versionPlugin, configPlugin, dockerComposeClient, webHost, processExecer, defaults, k8sEnv)
 	buildSource := tiltfile2.NewBuildSource()
 	engineMode := _wireEngineModeValue
-	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, switchCli, deferredClient, scheme, buildSource, engineMode)
+	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, client, switchCli, deferredClient, scheme, buildSource, engineMode)
 	togglebuttonReconciler := togglebutton.NewReconciler(deferredClient, scheme)
 	extensionReconciler := extension.NewReconciler(deferredClient, scheme, analytics3)
 	extensionrepoReconciler, err := extensionrepo.NewReconciler(deferredClient, base)
@@ -496,10 +496,10 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	configPlugin := config.NewPlugin(subcommand)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, client, plugin, versionPlugin, configPlugin, dockerComposeClient, webHost, processExecer, defaults, k8sEnv)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, plugin, versionPlugin, configPlugin, dockerComposeClient, webHost, processExecer, defaults, k8sEnv)
 	buildSource := tiltfile2.NewBuildSource()
 	engineMode := _wireStoreEngineModeValue
-	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, switchCli, deferredClient, scheme, buildSource, engineMode)
+	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, client, switchCli, deferredClient, scheme, buildSource, engineMode)
 	togglebuttonReconciler := togglebutton.NewReconciler(deferredClient, scheme)
 	extensionReconciler := extension.NewReconciler(deferredClient, scheme, analytics3)
 	extensionrepoReconciler, err := extensionrepo.NewReconciler(deferredClient, base)
@@ -702,10 +702,10 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	configPlugin := config.NewPlugin(subcommand)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, k8sClient, plugin, versionPlugin, configPlugin, dockerComposeClient, webHost, processExecer, defaults, k8sEnv)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, plugin, versionPlugin, configPlugin, dockerComposeClient, webHost, processExecer, defaults, k8sEnv)
 	buildSource := tiltfile2.NewBuildSource()
 	engineMode := _wireEngineModeValue2
-	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, switchCli, deferredClient, scheme, buildSource, engineMode)
+	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, k8sClient, switchCli, deferredClient, scheme, buildSource, engineMode)
 	togglebuttonReconciler := togglebutton.NewReconciler(deferredClient, scheme)
 	extensionReconciler := extension.NewReconciler(deferredClient, scheme, analytics3)
 	extensionrepoReconciler, err := extensionrepo.NewReconciler(deferredClient, base)
@@ -932,21 +932,21 @@ func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, s
 	if err != nil {
 		return DownDeps{}, err
 	}
-	env := k8s.ProvideEnv(ctx, apiConfig)
-	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
-	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
-	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
-	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	kubeContext, err := k8s.ProvideKubeContext(apiConfig)
 	if err != nil {
 		return DownDeps{}, err
 	}
-	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
-	k8sClient := k8s.ProvideK8sClient(env, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
+	env := k8s.ProvideEnv(ctx, apiConfig)
 	plugin := k8scontext.NewPlugin(kubeContext, env)
 	tiltBuild := provideTiltInfo()
 	versionPlugin := version.NewPlugin(tiltBuild)
 	configPlugin := config.NewPlugin(subcommand)
+	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
+	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
+	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
+	namespace := k8s.ProvideConfigNamespace(clientConfig)
+	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
+	k8sClient := k8s.ProvideK8sClient(env, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
 	runtime := k8s.ProvideContainerRuntime(ctx, k8sClient)
 	clusterEnv := docker.ProvideClusterEnv(ctx, kubeContext, env, runtime, minikubeClient)
 	localEnv := docker.ProvideLocalEnv(ctx, kubeContext, env, clusterEnv)
@@ -956,7 +956,7 @@ func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, s
 	localexecEnv := localexec.DefaultEnv(webPort, webHost)
 	processExecer := localexec.NewProcessExecer(localexecEnv)
 	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(tiltAnalytics, k8sClient, plugin, versionPlugin, configPlugin, dockerComposeClient, webHost, processExecer, defaults, env)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(tiltAnalytics, plugin, versionPlugin, configPlugin, dockerComposeClient, webHost, processExecer, defaults, env)
 	downDeps := ProvideDownDeps(tiltfileLoader, dockerComposeClient, k8sClient, processExecer)
 	return downDeps, nil
 }

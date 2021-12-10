@@ -14,6 +14,7 @@ import (
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/apiset"
@@ -46,14 +47,20 @@ type disableSourceMap map[model.ManifestName]*v1alpha1.DisableSource
 // In the future, anything that creates objects based on the Tiltfile (e.g., FileWatch specs,
 // LocalServer specs) should go here.
 func updateOwnedObjects(ctx context.Context, client ctrlclient.Client, nn types.NamespacedName,
-	tf *v1alpha1.Tiltfile, tlr *tiltfile.TiltfileLoadResult, mode store.EngineMode) error {
+	tf *v1alpha1.Tiltfile, tlr *tiltfile.TiltfileLoadResult, mode store.EngineMode, registry container.Registry) error {
 
 	disableSources := toDisableSources(tlr)
 
 	if tlr != nil {
 		for i, m := range tlr.Manifests {
+			// Apply the registry to the image refs.
+			err := m.InferImagePropertiesFromCluster(registry)
+			if err != nil {
+				return err
+			}
+
 			// Assemble the LiveUpdate selectors, connecting objects together.
-			err := m.InferLiveUpdateSelectors()
+			err = m.InferLiveUpdateSelectors()
 			if err != nil {
 				return err
 			}

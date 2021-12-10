@@ -11,6 +11,7 @@ import (
 	wmanalytics "github.com/tilt-dev/wmclient/pkg/analytics"
 	"go.starlark.net/starlark"
 
+	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apiset"
 	"github.com/tilt-dev/tilt/internal/tiltfile/tiltextension"
 	"github.com/tilt-dev/tilt/internal/tiltfile/v1alpha1"
@@ -54,6 +55,7 @@ type TiltfileLoadResult struct {
 	VersionSettings     model.VersionSettings
 	UpdateSettings      model.UpdateSettings
 	WatchSettings       model.WatchSettings
+	DefaultRegistry     container.Registry
 	ObjectSet           apiset.ObjectSet
 
 	// For diagnostic purposes only
@@ -83,7 +85,6 @@ type TiltfileLoader interface {
 
 func ProvideTiltfileLoader(
 	analytics *analytics.TiltAnalytics,
-	kCli k8s.Client,
 	k8sContextExt k8scontext.Plugin,
 	versionExt version.Plugin,
 	configExt *config.Plugin,
@@ -94,7 +95,6 @@ func ProvideTiltfileLoader(
 	env k8s.Env) TiltfileLoader {
 	return tiltfileLoader{
 		analytics:     analytics,
-		kCli:          kCli,
 		k8sContextExt: k8sContextExt,
 		versionExt:    versionExt,
 		configExt:     configExt,
@@ -108,7 +108,6 @@ func ProvideTiltfileLoader(
 
 type tiltfileLoader struct {
 	analytics *analytics.TiltAnalytics
-	kCli      k8s.Client
 	dcCli     dockercompose.DockerComposeClient
 	webHost   model.WebHost
 	execer    localexec.Execer
@@ -157,11 +156,12 @@ func (tfl tiltfileLoader) Load(ctx context.Context, tf *corev1alpha1.Tiltfile) T
 	tlr.Tiltignore = tiltignore
 
 	s := newTiltfileState(ctx, tfl.dcCli, tfl.webHost, tfl.execer, tfl.k8sContextExt, tfl.versionExt,
-		tfl.configExt, tfl.kCli, feature.FromDefaults(tfl.fDefaults))
+		tfl.configExt, feature.FromDefaults(tfl.fDefaults))
 
 	manifests, result, err := s.loadManifests(tf)
 
 	tlr.BuiltinCalls = result.BuiltinCalls
+	tlr.DefaultRegistry = s.defaultReg
 
 	// All data models are loaded with GetState. We ignore the error if the state
 	// isn't properly loaded. This is necessary for handling partial Tiltfile

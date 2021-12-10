@@ -11,7 +11,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/feature"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
@@ -25,140 +27,115 @@ import (
 )
 
 func TestAPICreate(t *testing.T) {
-	f := tempdir.NewTempDirFixture(t)
-	defer f.TearDown()
-
-	ctx := context.Background()
-	c := fake.NewFakeTiltClient()
+	f := newAPIFixture(t)
 	fe := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
 	nn := types.NamespacedName{Name: "tiltfile"}
 	tf := &v1alpha1.Tiltfile{ObjectMeta: metav1.ObjectMeta{Name: "tiltfile"}}
-	err := updateOwnedObjects(ctx, c, nn, tf,
-		&tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}}, store.EngineModeUp)
+	err := f.updateOwnedObjects(nn, tf,
+		&tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}})
 	assert.NoError(t, err)
 
 	var ka v1alpha1.KubernetesApply
-	assert.NoError(t, c.Get(ctx, types.NamespacedName{Name: "fe"}, &ka))
+	assert.NoError(t, f.Get(types.NamespacedName{Name: "fe"}, &ka))
 	assert.Contains(t, ka.Spec.YAML, "name: sancho")
 }
 
 func TestAPIDelete(t *testing.T) {
-	f := tempdir.NewTempDirFixture(t)
-	defer f.TearDown()
-
-	ctx := context.Background()
-	c := fake.NewFakeTiltClient()
+	f := newAPIFixture(t)
 	fe := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
 	nn := types.NamespacedName{Name: "tiltfile"}
 	tf := &v1alpha1.Tiltfile{ObjectMeta: metav1.ObjectMeta{Name: "tiltfile"}}
-	err := updateOwnedObjects(ctx, c, nn, tf,
-		&tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}}, store.EngineModeUp)
+	err := f.updateOwnedObjects(nn, tf,
+		&tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}})
 	assert.NoError(t, err)
 
 	var ka1 v1alpha1.KubernetesApply
-	assert.NoError(t, c.Get(ctx, types.NamespacedName{Name: "fe"}, &ka1))
+	assert.NoError(t, f.Get(types.NamespacedName{Name: "fe"}, &ka1))
 
-	err = updateOwnedObjects(ctx, c, nn, tf,
-		&tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{}}, store.EngineModeUp)
+	err = f.updateOwnedObjects(nn, tf,
+		&tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{}})
 	assert.NoError(t, err)
 
 	var ka2 v1alpha1.KubernetesApply
-	err = c.Get(ctx, types.NamespacedName{Name: "fe"}, &ka2)
+	err = f.Get(types.NamespacedName{Name: "fe"}, &ka2)
 	if assert.Error(t, err) {
 		assert.True(t, apierrors.IsNotFound(err))
 	}
 }
 
 func TestAPINoGarbageCollectOnError(t *testing.T) {
-	f := tempdir.NewTempDirFixture(t)
-	defer f.TearDown()
-
-	ctx := context.Background()
-	c := fake.NewFakeTiltClient()
+	f := newAPIFixture(t)
 	fe := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
 	nn := types.NamespacedName{Name: "tiltfile"}
 	tf := &v1alpha1.Tiltfile{ObjectMeta: metav1.ObjectMeta{Name: "tiltfile"}}
-	err := updateOwnedObjects(ctx, c, nn, tf,
-		&tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}}, store.EngineModeUp)
+	err := f.updateOwnedObjects(nn, tf,
+		&tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}})
 	assert.NoError(t, err)
 
 	var ka1 v1alpha1.KubernetesApply
-	assert.NoError(t, c.Get(ctx, types.NamespacedName{Name: "fe"}, &ka1))
+	assert.NoError(t, f.Get(types.NamespacedName{Name: "fe"}, &ka1))
 
-	err = updateOwnedObjects(ctx, c, nn, tf, &tiltfile.TiltfileLoadResult{
+	err = f.updateOwnedObjects(nn, tf, &tiltfile.TiltfileLoadResult{
 		Error:     fmt.Errorf("random failure"),
 		Manifests: []model.Manifest{},
-	}, store.EngineModeUp)
+	})
 	assert.NoError(t, err)
 
 	var ka2 v1alpha1.KubernetesApply
-	assert.NoError(t, c.Get(ctx, types.NamespacedName{Name: "fe"}, &ka2))
+	assert.NoError(t, f.Get(types.NamespacedName{Name: "fe"}, &ka2))
 	assert.Equal(t, ka1, ka2)
 }
 
 func TestAPIUpdate(t *testing.T) {
-	f := tempdir.NewTempDirFixture(t)
-	defer f.TearDown()
-
-	ctx := context.Background()
-	c := fake.NewFakeTiltClient()
+	f := newAPIFixture(t)
 	fe := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
 	nn := types.NamespacedName{Name: "tiltfile"}
 	tf := &v1alpha1.Tiltfile{ObjectMeta: metav1.ObjectMeta{Name: "tiltfile"}}
-	err := updateOwnedObjects(ctx, c, nn, tf,
-		&tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}}, store.EngineModeUp)
+	err := f.updateOwnedObjects(nn, tf,
+		&tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}})
 	assert.NoError(t, err)
 
 	var ka v1alpha1.KubernetesApply
-	assert.NoError(t, c.Get(ctx, types.NamespacedName{Name: "fe"}, &ka))
+	assert.NoError(t, f.Get(types.NamespacedName{Name: "fe"}, &ka))
 	assert.Contains(t, ka.Spec.YAML, "name: sancho")
 	assert.NotContains(t, ka.Spec.YAML, "sidecar")
 
 	fe = manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoSidecarYAML).Build()
-	err = updateOwnedObjects(ctx, c, nn, tf,
-		&tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}}, store.EngineModeUp)
+	err = f.updateOwnedObjects(nn, tf,
+		&tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}})
 	assert.NoError(t, err)
 
-	err = c.Get(ctx, types.NamespacedName{Name: "fe"}, &ka)
+	err = f.Get(types.NamespacedName{Name: "fe"}, &ka)
 	assert.NoError(t, err)
 	assert.Contains(t, ka.Spec.YAML, "sidecar")
 }
 
 func TestImageMapCreate(t *testing.T) {
-	f := tempdir.NewTempDirFixture(t)
-	defer f.TearDown()
-
-	ctx := context.Background()
-	c := fake.NewFakeTiltClient()
+	f := newAPIFixture(t)
 	fe := manifestbuilder.New(f, "fe").
 		WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
 		WithK8sYAML(testyaml.SanchoYAML).
 		Build()
 	nn := types.NamespacedName{Name: "tiltfile"}
 	tf := &v1alpha1.Tiltfile{ObjectMeta: metav1.ObjectMeta{Name: "tiltfile"}}
-	err := updateOwnedObjects(ctx, c, nn, tf,
-		&tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}}, store.EngineModeUp)
+	err := f.updateOwnedObjects(nn, tf,
+		&tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}})
 	assert.NoError(t, err)
 
 	name := apis.SanitizeName(SanchoRef.String())
 
 	var im v1alpha1.ImageMap
-	assert.NoError(t, c.Get(ctx, types.NamespacedName{Name: name}, &im))
+	assert.NoError(t, f.Get(types.NamespacedName{Name: name}, &im))
 	assert.Contains(t, im.Spec.Selector, SanchoRef.String())
 
 	diName := apis.SanitizeName(fmt.Sprintf("fe:%s", SanchoRef.String()))
 	var di v1alpha1.DockerImage
-	assert.NoError(t, c.Get(ctx, types.NamespacedName{Name: diName}, &di))
+	assert.NoError(t, f.Get(types.NamespacedName{Name: diName}, &di))
 	assert.Contains(t, di.Spec.Ref, SanchoRef.String())
 }
 
 func TestAPITwoTiltfiles(t *testing.T) {
-	f := tempdir.NewTempDirFixture(t)
-	defer f.TearDown()
-
-	ctx := context.Background()
-	c := fake.NewFakeTiltClient()
-
+	f := newAPIFixture(t)
 	feA := manifestbuilder.New(f, "fe-a").WithK8sYAML(testyaml.SanchoYAML).Build()
 	nnA := types.NamespacedName{Name: "tiltfile-a"}
 	tfA := &v1alpha1.Tiltfile{ObjectMeta: metav1.ObjectMeta{Name: "tiltfile-a"}}
@@ -167,39 +144,35 @@ func TestAPITwoTiltfiles(t *testing.T) {
 	nnB := types.NamespacedName{Name: "tiltfile-b"}
 	tfB := &v1alpha1.Tiltfile{ObjectMeta: metav1.ObjectMeta{Name: "tiltfile-b"}}
 
-	err := updateOwnedObjects(ctx, c, nnA, tfA,
-		&tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{feA}}, store.EngineModeUp)
+	err := f.updateOwnedObjects(nnA, tfA,
+		&tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{feA}})
 	assert.NoError(t, err)
 
-	err = updateOwnedObjects(ctx, c, nnB, tfB,
-		&tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{feB}}, store.EngineModeUp)
+	err = f.updateOwnedObjects(nnB, tfB,
+		&tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{feB}})
 	assert.NoError(t, err)
 
 	var ka v1alpha1.KubernetesApply
-	assert.NoError(t, c.Get(ctx, types.NamespacedName{Name: "fe-a"}, &ka))
+	assert.NoError(t, f.Get(types.NamespacedName{Name: "fe-a"}, &ka))
 	assert.Contains(t, ka.Name, "fe-a")
-	assert.NoError(t, c.Get(ctx, types.NamespacedName{Name: "fe-b"}, &ka))
+	assert.NoError(t, f.Get(types.NamespacedName{Name: "fe-b"}, &ka))
 	assert.Contains(t, ka.Name, "fe-b")
 
-	err = updateOwnedObjects(ctx, c, nnA, nil, nil, store.EngineModeUp)
+	err = f.updateOwnedObjects(nnA, nil, nil)
 	assert.NoError(t, err)
 
 	// Assert that fe-a was deleted but fe-b was not.
-	assert.NoError(t, c.Get(ctx, types.NamespacedName{Name: "fe-b"}, &ka))
+	assert.NoError(t, f.Get(types.NamespacedName{Name: "fe-b"}, &ka))
 	assert.Contains(t, ka.Name, "fe-b")
 
-	err = c.Get(ctx, types.NamespacedName{Name: "fe-a"}, &ka)
+	err = f.Get(types.NamespacedName{Name: "fe-a"}, &ka)
 	if assert.Error(t, err) {
 		assert.True(t, apierrors.IsNotFound(err))
 	}
 }
 
 func TestCreateUiResourceForTiltfile(t *testing.T) {
-	f := tempdir.NewTempDirFixture(t)
-	defer f.TearDown()
-
-	ctx := context.Background()
-	c := fake.NewFakeTiltClient()
+	f := newAPIFixture(t)
 	fe := manifestbuilder.New(f, "fe").
 		WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
 		WithK8sYAML(testyaml.SanchoYAML).
@@ -207,12 +180,12 @@ func TestCreateUiResourceForTiltfile(t *testing.T) {
 	lr := manifestbuilder.New(f, "be").WithLocalResource("ls", []string{"be"}).Build()
 	nn := types.NamespacedName{Name: "tiltfile"}
 	tf := &v1alpha1.Tiltfile{ObjectMeta: metav1.ObjectMeta{Name: "tiltfile", Labels: map[string]string{"some": "sweet-label"}}}
-	err := updateOwnedObjects(ctx, c, nn, tf,
-		&tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe, lr}}, store.EngineModeUp)
+	err := f.updateOwnedObjects(nn, tf,
+		&tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe, lr}})
 	assert.NoError(t, err)
 
 	var uir v1alpha1.UIResource
-	require.NoError(t, c.Get(ctx, types.NamespacedName{Name: "tiltfile"}, &uir))
+	require.NoError(t, f.Get(types.NamespacedName{Name: "tiltfile"}, &uir))
 	require.Equal(t, map[string]string{"some": "sweet-label"}, uir.ObjectMeta.Labels)
 	require.Equal(t, "tiltfile", uir.ObjectMeta.Name)
 }
@@ -221,11 +194,7 @@ func TestCreateUiResourceForTiltfile(t *testing.T) {
 func TestDisableObjects(t *testing.T) {
 	for _, disableFeatureOn := range []bool{true, false} {
 		t.Run(fmt.Sprintf("disable buttons enabled: %v", disableFeatureOn), func(t *testing.T) {
-			f := tempdir.NewTempDirFixture(t)
-			defer f.TearDown()
-
-			ctx := context.Background()
-			c := fake.NewFakeTiltClient()
+			f := newAPIFixture(t)
 			fe := manifestbuilder.New(f, "fe").
 				WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
 				WithK8sYAML(testyaml.SanchoYAML).
@@ -233,11 +202,11 @@ func TestDisableObjects(t *testing.T) {
 			lr := manifestbuilder.New(f, "be").WithLocalResource("ls", []string{"be"}).Build()
 			nn := types.NamespacedName{Name: "tiltfile"}
 			tf := &v1alpha1.Tiltfile{ObjectMeta: metav1.ObjectMeta{Name: "tiltfile"}}
-			err := updateOwnedObjects(ctx, c, nn, tf,
+			err := f.updateOwnedObjects(nn, tf,
 				&tiltfile.TiltfileLoadResult{
 					Manifests:    []model.Manifest{fe, lr},
 					FeatureFlags: map[string]bool{feature.DisableResources: disableFeatureOn},
-				}, store.EngineModeUp)
+				})
 			assert.NoError(t, err)
 
 			feDisable := &v1alpha1.DisableSource{
@@ -248,16 +217,16 @@ func TestDisableObjects(t *testing.T) {
 			}
 
 			var cm v1alpha1.ConfigMap
-			require.NoError(t, c.Get(ctx, types.NamespacedName{Name: feDisable.ConfigMap.Name}, &cm))
+			require.NoError(t, f.Get(types.NamespacedName{Name: feDisable.ConfigMap.Name}, &cm))
 			require.Equal(t, "false", cm.Data[feDisable.ConfigMap.Key])
 
 			name := apis.SanitizeName(SanchoRef.String())
 			var im v1alpha1.ImageMap
-			require.NoError(t, c.Get(ctx, types.NamespacedName{Name: name}, &im))
+			require.NoError(t, f.Get(types.NamespacedName{Name: name}, &im))
 			require.Equal(t, feDisable, im.Spec.DisableSource)
 
 			var ka v1alpha1.KubernetesApply
-			require.NoError(t, c.Get(ctx, types.NamespacedName{Name: "fe"}, &ka))
+			require.NoError(t, f.Get(types.NamespacedName{Name: "fe"}, &ka))
 			require.Equal(t, feDisable, ka.Spec.DisableSource)
 
 			beDisable := &v1alpha1.DisableSource{
@@ -268,19 +237,19 @@ func TestDisableObjects(t *testing.T) {
 			}
 
 			var fw v1alpha1.FileWatch
-			require.NoError(t, c.Get(ctx, types.NamespacedName{Name: "local:be"}, &fw))
+			require.NoError(t, f.Get(types.NamespacedName{Name: "local:be"}, &fw))
 			require.Equal(t, beDisable, fw.Spec.DisableSource)
 
 			var cmd v1alpha1.Cmd
-			require.NoError(t, c.Get(ctx, types.NamespacedName{Name: "be:update"}, &cmd))
+			require.NoError(t, f.Get(types.NamespacedName{Name: "be:update"}, &cmd))
 			require.Equal(t, beDisable, cmd.Spec.DisableSource)
 
 			var uir v1alpha1.UIResource
-			require.NoError(t, c.Get(ctx, types.NamespacedName{Name: "be"}, &uir))
+			require.NoError(t, f.Get(types.NamespacedName{Name: "be"}, &uir))
 			require.Equal(t, []v1alpha1.DisableSource{*beDisable}, uir.Status.DisableStatus.Sources)
 
 			var tb v1alpha1.ToggleButton
-			err = c.Get(ctx, types.NamespacedName{Name: "fe-disable"}, &tb)
+			err = f.Get(types.NamespacedName{Name: "fe-disable"}, &tb)
 			if disableFeatureOn {
 				require.NoError(t, err)
 				require.Equal(t, feDisable.ConfigMap.Name, tb.Spec.StateSource.ConfigMap.Name)
@@ -288,7 +257,7 @@ func TestDisableObjects(t *testing.T) {
 				require.True(t, apierrors.IsNotFound(err))
 			}
 
-			err = c.Get(ctx, types.NamespacedName{Name: "be-disable"}, &tb)
+			err = f.Get(types.NamespacedName{Name: "be-disable"}, &tb)
 			if disableFeatureOn {
 				require.NoError(t, err)
 				require.Equal(t, beDisable.ConfigMap.Name, tb.Spec.StateSource.ConfigMap.Name)
@@ -301,28 +270,24 @@ func TestDisableObjects(t *testing.T) {
 
 // If a DisableSource ConfigMap already exists, don't replace its data
 func TestUpdateDisableSource(t *testing.T) {
-	f := tempdir.NewTempDirFixture(t)
-	defer f.TearDown()
-
-	ctx := context.Background()
-	c := fake.NewFakeTiltClient()
+	f := newAPIFixture(t)
 	fe := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
 	nn := types.NamespacedName{Name: "tiltfile"}
 	tf := &v1alpha1.Tiltfile{ObjectMeta: metav1.ObjectMeta{Name: "tiltfile"}}
-	err := updateOwnedObjects(ctx, c, nn, tf,
-		&tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}}, store.EngineModeUp)
+	err := f.updateOwnedObjects(nn, tf,
+		&tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}})
 	assert.NoError(t, err)
 
 	var cm v1alpha1.ConfigMap
-	require.NoError(t, c.Get(ctx, types.NamespacedName{Name: "fe-disable"}, &cm))
+	require.NoError(t, f.Get(types.NamespacedName{Name: "fe-disable"}, &cm))
 	cm.Data["isDisabled"] = "true"
-	require.NoError(t, c.Update(ctx, &cm))
+	require.NoError(t, f.c.Update(f.ctx, &cm))
 
-	err = updateOwnedObjects(ctx, c, nn, tf,
-		&tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}}, store.EngineModeUp)
+	err = f.updateOwnedObjects(nn, tf,
+		&tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}})
 	assert.NoError(t, err)
 
-	require.NoError(t, c.Get(ctx, types.NamespacedName{Name: cm.Name}, &cm))
+	require.NoError(t, f.Get(types.NamespacedName{Name: cm.Name}, &cm))
 	require.Equal(t, "true", cm.Data["isDisabled"])
 }
 
@@ -331,9 +296,7 @@ func TestUpdateDisableSource(t *testing.T) {
 // note: this test is not exhaustive, since not all branches generate all types that are possibly
 // generated by a Tiltfile, but hopefully it at least catches most common cases
 func TestReconciledTypesCompleteness(t *testing.T) {
-	f := tempdir.NewTempDirFixture(t)
-	defer f.TearDown()
-
+	f := newAPIFixture(t)
 	nn := types.NamespacedName{Name: "tiltfile"}
 	tf := &v1alpha1.Tiltfile{ObjectMeta: metav1.ObjectMeta{Name: "tiltfile"}}
 	fe := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
@@ -356,4 +319,31 @@ func TestReconciledTypesCompleteness(t *testing.T) {
 				v.GetGroupVersionResource())
 		}
 	}
+}
+
+type apiFixture struct {
+	ctx context.Context
+	c   ctrlclient.Client
+	*tempdir.TempDirFixture
+}
+
+func newAPIFixture(t testing.TB) *apiFixture {
+	f := tempdir.NewTempDirFixture(t)
+	t.Cleanup(func() { f.TearDown() })
+
+	ctx := context.Background()
+	c := fake.NewFakeTiltClient()
+	return &apiFixture{
+		ctx:            ctx,
+		c:              c,
+		TempDirFixture: f,
+	}
+}
+
+func (f *apiFixture) updateOwnedObjects(nn types.NamespacedName, tf *v1alpha1.Tiltfile, tlr *tiltfile.TiltfileLoadResult) error {
+	return updateOwnedObjects(f.ctx, f.c, nn, tf, tlr, store.EngineModeUp, container.Registry{})
+}
+
+func (f *apiFixture) Get(nn types.NamespacedName, obj ctrlclient.Object) error {
+	return f.c.Get(f.ctx, nn, obj)
 }

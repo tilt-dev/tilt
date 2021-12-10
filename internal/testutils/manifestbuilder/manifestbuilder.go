@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/dockerimage"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -230,7 +231,11 @@ func (b ManifestBuilder) Build() model.Manifest {
 		return model.Manifest{}
 	}
 	m = m.WithTriggerMode(b.triggerMode)
-	err := m.InferLiveUpdateSelectors()
+
+	err := m.InferImagePropertiesFromCluster(container.Registry{})
+	require.NoError(b.f.T(), err)
+
+	err = m.InferLiveUpdateSelectors()
 	require.NoError(b.f.T(), err)
 	return m
 }

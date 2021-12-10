@@ -19,11 +19,13 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/restarton"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/buildcontrols"
 	"github.com/tilt-dev/tilt/internal/store/tiltfiles"
@@ -38,6 +40,7 @@ type Reconciler struct {
 	mu           sync.Mutex
 	st           store.RStore
 	tfl          tiltfile.TiltfileLoader
+	k8sClient    k8s.Client
 	dockerClient docker.Client
 	ctrlClient   ctrlclient.Client
 	indexer      *indexer.Indexer
@@ -63,12 +66,13 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	return b, nil
 }
 
-func NewReconciler(st store.RStore, tfl tiltfile.TiltfileLoader, dockerClient docker.Client,
+func NewReconciler(st store.RStore, tfl tiltfile.TiltfileLoader, k8sClient k8s.Client, dockerClient docker.Client,
 	ctrlClient ctrlclient.Client, scheme *runtime.Scheme,
 	buildSource *BuildSource, engineMode store.EngineMode) *Reconciler {
 	return &Reconciler{
 		st:           st,
 		tfl:          tfl,
+		k8sClient:    k8sClient,
 		dockerClient: dockerClient,
 		ctrlClient:   ctrlClient,
 		indexer:      indexer.NewIndexer(scheme, indexTiltfile),
@@ -95,7 +99,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		r.deleteExistingRun(nn)
 
 		// Delete owned objects
-		err := updateOwnedObjects(ctx, r.ctrlClient, nn, nil, nil, r.engineMode)
+		err := updateOwnedObjects(ctx, r.ctrlClient, nn, nil, nil, r.engineMode, container.Registry{})
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -110,7 +114,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	run := r.runs[nn]
 	if run == nil {
 		// Initialize the UISession and filewatch if this has never been initialized before.
-		err := updateOwnedObjects(ctx, r.ctrlClient, nn, &tf, nil, r.engineMode)
+		err := updateOwnedObjects(ctx, r.ctrlClient, nn, &tf, nil, r.engineMode, container.Registry{})
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -299,7 +303,7 @@ func (r *Reconciler) run(ctx context.Context, nn types.NamespacedName, tf *v1alp
 // apiserver.
 func (r *Reconciler) handleLoaded(ctx context.Context, nn types.NamespacedName, tf *v1alpha1.Tiltfile, entry *BuildEntry, tlr *tiltfile.TiltfileLoadResult) error {
 	// TODO(nick): Rewrite to handle multiple tiltfiles.
-	err := updateOwnedObjects(ctx, r.ctrlClient, nn, tf, tlr, r.engineMode)
+	err := updateOwnedObjects(ctx, r.ctrlClient, nn, tf, tlr, r.engineMode, r.decideRegistry(ctx, tlr))
 	if err != nil {
 		// If updating the API server fails, just return the error, so that the
 		// reconciler will retry.
@@ -383,6 +387,27 @@ func (r *Reconciler) enqueueTriggerQueue(obj client.Object) []reconcile.Request 
 		}
 	}
 	return requests
+}
+
+// decideRegistry returns the image registry we should use; if detected, a pre-configured
+// local registry; otherwise, the registry specified by the user via default_registry.
+// Otherwise, we'll return the zero value of `s.defaultReg`, which is an empty registry.
+// It has side-effects (a log line) and so should only be called once.
+func (r *Reconciler) decideRegistry(ctx context.Context, tlr *tiltfile.TiltfileLoadResult) container.Registry {
+	if tlr.Orchestrator() != model.OrchestratorK8s {
+		return tlr.DefaultRegistry
+	}
+
+	registry := r.k8sClient.LocalRegistry(ctx)
+
+	if !registry.Empty() {
+		// If we've found a local registry in the cluster at run-time, use that
+		// instead of the default_registry (if any) declared in the Tiltfile
+		logger.Get(ctx).Infof("Auto-detected local registry from environment: %s", registry)
+		return registry
+	}
+
+	return tlr.DefaultRegistry
 }
 
 func requiresDocker(tlr tiltfile.TiltfileLoadResult) bool {
