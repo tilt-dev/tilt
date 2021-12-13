@@ -290,7 +290,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, plugin, versionPlugin, configPlugin, dockerComposeClient, webHost, processExecer, defaults, k8sEnv)
 	buildSource := tiltfile2.NewBuildSource()
 	engineMode := _wireEngineModeValue
-	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, client, switchCli, deferredClient, scheme, buildSource, engineMode)
+	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, client, switchCli, deferredClient, scheme, buildSource, engineMode, k8sKubeContextOverride, k8sNamespaceOverride)
 	togglebuttonReconciler := togglebutton.NewReconciler(deferredClient, scheme)
 	extensionReconciler := extension.NewReconciler(deferredClient, scheme, analytics3)
 	extensionrepoReconciler, err := extensionrepo.NewReconciler(deferredClient, base)
@@ -499,7 +499,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, plugin, versionPlugin, configPlugin, dockerComposeClient, webHost, processExecer, defaults, k8sEnv)
 	buildSource := tiltfile2.NewBuildSource()
 	engineMode := _wireStoreEngineModeValue
-	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, client, switchCli, deferredClient, scheme, buildSource, engineMode)
+	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, client, switchCli, deferredClient, scheme, buildSource, engineMode, k8sKubeContextOverride, k8sNamespaceOverride)
 	togglebuttonReconciler := togglebutton.NewReconciler(deferredClient, scheme)
 	extensionReconciler := extension.NewReconciler(deferredClient, scheme, analytics3)
 	extensionrepoReconciler, err := extensionrepo.NewReconciler(deferredClient, base)
@@ -705,7 +705,7 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, plugin, versionPlugin, configPlugin, dockerComposeClient, webHost, processExecer, defaults, k8sEnv)
 	buildSource := tiltfile2.NewBuildSource()
 	engineMode := _wireEngineModeValue2
-	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, k8sClient, switchCli, deferredClient, scheme, buildSource, engineMode)
+	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, k8sClient, switchCli, deferredClient, scheme, buildSource, engineMode, k8sKubeContextOverride, k8sNamespaceOverride)
 	togglebuttonReconciler := togglebutton.NewReconciler(deferredClient, scheme)
 	extensionReconciler := extension.NewReconciler(deferredClient, scheme, analytics3)
 	extensionrepoReconciler, err := extensionrepo.NewReconciler(deferredClient, base)
