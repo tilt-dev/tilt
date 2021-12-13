@@ -26,6 +26,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/buildcontrols"
+	"github.com/tilt-dev/tilt/internal/store/clusters"
 	"github.com/tilt-dev/tilt/internal/store/configmaps"
 	"github.com/tilt-dev/tilt/internal/store/filewatches"
 	"github.com/tilt-dev/tilt/internal/store/kubernetesapplys"
@@ -202,6 +203,10 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		liveupdates.HandleLiveUpdateUpsertAction(state, action)
 	case liveupdates.LiveUpdateDeleteAction:
 		liveupdates.HandleLiveUpdateDeleteAction(state, action)
+	case clusters.ClusterUpsertAction:
+		clusters.HandleClusterUpsertAction(state, action)
+	case clusters.ClusterDeleteAction:
+		clusters.HandleClusterDeleteAction(state, action)
 	default:
 		state.FatalError = fmt.Errorf("unrecognized action: %T", action)
 	}
