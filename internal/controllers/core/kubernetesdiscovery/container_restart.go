@@ -53,8 +53,8 @@ func (c *ContainerRestartDetector) logRestarts(dispatcher Dispatcher, mn model.M
 
 func podsByUID(status v1alpha1.KubernetesDiscoveryStatus) map[types.UID]*v1alpha1.Pod {
 	pods := make(map[types.UID]*v1alpha1.Pod)
-	for _, p := range status.Pods {
-		pods[types.UID(p.UID)] = &p
+	for i := range status.Pods {
+		pods[types.UID(status.Pods[i].UID)] = status.Pods[i].DeepCopy()
 	}
 	return pods
 }
