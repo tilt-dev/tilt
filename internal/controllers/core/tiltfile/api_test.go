@@ -302,7 +302,7 @@ func TestReconciledTypesCompleteness(t *testing.T) {
 	fe := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
 	tlr := &tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}, FeatureFlags: map[string]bool{feature.DisableResources: true}}
 	ds := toDisableSources(tlr)
-	objs := toAPIObjects(nn, tf, tlr, store.EngineModeCI, ds)
+	objs := toAPIObjects(nn, tf, tlr, store.EngineModeCI, &v1alpha1.KubernetesClusterConnection{}, ds)
 
 	reconciledTypes := make(map[schema.GroupVersionResource]bool)
 	for _, t := range typesToReconcile {
@@ -341,7 +341,7 @@ func newAPIFixture(t testing.TB) *apiFixture {
 }
 
 func (f *apiFixture) updateOwnedObjects(nn types.NamespacedName, tf *v1alpha1.Tiltfile, tlr *tiltfile.TiltfileLoadResult) error {
-	return updateOwnedObjects(f.ctx, f.c, nn, tf, tlr, store.EngineModeUp, container.Registry{})
+	return updateOwnedObjects(f.ctx, f.c, nn, tf, tlr, store.EngineModeUp, container.Registry{}, &v1alpha1.KubernetesClusterConnection{})
 }
 
 func (f *apiFixture) Get(nn types.NamespacedName, obj ctrlclient.Object) error {

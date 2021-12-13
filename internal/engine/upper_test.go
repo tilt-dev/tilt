@@ -3846,7 +3846,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 
 	kar := kubernetesapply.NewReconciler(cdc, kClient, sch, docker.Env{}, k8s.KubeContext("kind-kind"), st, "default", execer)
 
-	tfr := ctrltiltfile.NewReconciler(st, tfl, kClient, dockerClient, cdc, sch, buildSource, engineMode)
+	tfr := ctrltiltfile.NewReconciler(st, tfl, kClient, dockerClient, cdc, sch, buildSource, engineMode, "", "")
 	tbr := togglebutton.NewReconciler(cdc, sch)
 	extr := extension.NewReconciler(cdc, sch, ta)
 	extrr, err := extensionrepo.NewReconciler(cdc, base)
