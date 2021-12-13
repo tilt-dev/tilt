@@ -8,7 +8,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
@@ -70,17 +69,24 @@ func NewDockerComposeClient(env docker.LocalEnv) DockerComposeClient {
 }
 
 func (c *cmdDCClient) projectArgs(p model.DockerComposeProject) []string {
-	if p.YAML != "" {
-		args := []string{"-f", "-"}
-		if p.ProjectPath != "" {
-			args = append(args, "--project-directory", p.ProjectPath)
-		}
-		return args
-	}
 	result := []string{}
+
+	if p.Name != "" {
+		result = append(result, "--project-name", p.Name)
+	}
+
+	if p.ProjectPath != "" {
+		result = append(result, "--project-directory", p.ProjectPath)
+	}
+
+	if p.YAML != "" {
+		result = append(result, "-f", "-")
+	}
+
 	for _, cp := range p.ConfigPaths {
 		result = append(result, "-f", cp)
 	}
+
 	return result
 }
 
@@ -223,7 +229,7 @@ func (c *cmdDCClient) Project(ctx context.Context, spec model.DockerComposeProje
 
 	// First, use compose-go to natively load the project.
 	if len(spec.ConfigPaths) > 0 {
-		parsed, err := c.loadProjectNative(spec.ConfigPaths)
+		parsed, err := c.loadProjectNative(spec)
 		if err == nil {
 			proj = parsed
 		}
@@ -265,9 +271,12 @@ func (c *cmdDCClient) Version(ctx context.Context) (string, string, error) {
 	return parseComposeVersionOutput(stdout)
 }
 
-func (c *cmdDCClient) loadProjectNative(configPaths []string) (*types.Project, error) {
+func (c *cmdDCClient) loadProjectNative(modelProj model.DockerComposeProject) (*types.Project, error) {
 	// NOTE: take care to keep behavior in sync with loadProjectCLI()
-	opts, err := compose.NewProjectOptions(configPaths, dcProjectOptions...)
+	allProjectOptions := append(dcProjectOptions,
+		compose.WithWorkingDirectory(modelProj.ProjectPath),
+		compose.WithName(modelProj.Name))
+	opts, err := compose.NewProjectOptions(modelProj.ConfigPaths, allProjectOptions...)
 	if err != nil {
 		return nil, err
 	}
@@ -287,33 +296,28 @@ func (c *cmdDCClient) loadProjectCLI(ctx context.Context, proj model.DockerCompo
 	// docker-compose is very inconsistent about whether it fully resolves paths or not via CLI, both between
 	// v1 and v2 as well as even different releases within v2, so set the workdir and force the loader to resolve
 	// any relative paths
-	workDir := proj.ProjectPath
-	if len(proj.ConfigPaths) != 0 {
-		// from the compose Docs:
-		// 	> When you use multiple Compose files, all paths in the files are relative to the first configuration file specified with -f
-		// https://docs.docker.com/compose/reference/#use--f-to-specify-name-and-path-of-one-or-more-compose-files
-		workDir = filepath.Dir(proj.ConfigPaths[0])
-	}
-
 	return loader.Load(types.ConfigDetails{
-		WorkingDir: workDir,
+		WorkingDir: proj.ProjectPath,
 		ConfigFiles: []types.ConfigFile{
 			{
 				Content: []byte(resolvedYAML),
 			},
 		},
 		// no environment specified because the CLI call will already have resolved all variables
-	}, dcLoaderOption)
+	}, dcLoaderOption(proj.Name))
 }
 
 // dcLoaderOption is used when loading Docker Compose projects via the CLI and fallback and for tests.
 //
 // See also: dcProjectOptions which is used for loading projects from the Go library, which should
 // be kept in sync behavior-wise.
-func dcLoaderOption(opts *loader.Options) {
-	opts.ResolvePaths = true
-	opts.SkipNormalization = false
-	opts.SkipInterpolation = false
+func dcLoaderOption(name string) func(opts *loader.Options) {
+	return func(opts *loader.Options) {
+		opts.Name = name
+		opts.ResolvePaths = true
+		opts.SkipNormalization = false
+		opts.SkipInterpolation = false
+	}
 }
 
 func dcExecutablePath() string {

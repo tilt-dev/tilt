@@ -53,6 +53,7 @@ import (
 	tfv1alpha1 "github.com/tilt-dev/tilt/internal/tiltfile/v1alpha1"
 	"github.com/tilt-dev/tilt/internal/tiltfile/version"
 	"github.com/tilt-dev/tilt/internal/tiltfile/watch"
+	fwatch "github.com/tilt-dev/tilt/internal/watch"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -141,6 +142,10 @@ type tiltfileState struct {
 	// postExecReadFiles is generally a mistake -- it means that if tiltfile execution fails,
 	// these will never be read. Remove these when you can!!!
 	postExecReadFiles []string
+
+	// Temporary directory for storing generated artifacts during the lifetime of the tiltfile context.
+	// The directory is recursively deleted when the context is done.
+	scratchDir *fwatch.TempDir
 }
 
 func newTiltfileState(
@@ -1582,6 +1587,21 @@ func (s *tiltfileState) translateLocal() ([]model.Manifest, error) {
 	}
 
 	return result, nil
+}
+
+func (s *tiltfileState) tempDir() (*fwatch.TempDir, error) {
+	if s.scratchDir == nil {
+		dir, err := fwatch.NewDir("tiltfile")
+		if err != nil {
+			return dir, err
+		}
+		s.scratchDir = dir
+		go func() {
+			<-s.ctx.Done()
+			_ = s.scratchDir.TearDown()
+		}()
+	}
+	return s.scratchDir, nil
 }
 
 func validateResourceDependencies(ms []model.Manifest) error {
