@@ -17,6 +17,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/clusters"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -56,9 +57,13 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	var obj v1alpha1.Cluster
 	err := r.ctrlClient.Get(ctx, nn, &obj)
 	if err != nil && !apierrors.IsNotFound(err) {
+		r.store.Dispatch(clusters.NewClusterDeleteAction(request.Name))
 		delete(r.connections, nn)
 		return ctrl.Result{}, err
 	}
+
+	// The apiserver is the source of truth, and will ensure the engine state is up to date.
+	r.store.Dispatch(clusters.NewClusterUpsertAction(&obj))
 
 	connection, hasConnection := r.connections[nn]
 	if hasConnection {
