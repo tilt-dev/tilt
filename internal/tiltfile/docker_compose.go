@@ -2,6 +2,7 @@ package tiltfile
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -75,7 +76,11 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 		case io.Blob:
 			yaml := v.String()
 			message := "unable to store yaml blob"
-			tmpfile, err := os.CreateTemp("", fmt.Sprintf("%s-docker-compose-*.yml", filepath.Base(filepath.Dir(currentTiltfilePath))))
+			tmpdir, err := s.tempDir()
+			if err != nil {
+				return nil, errors.Wrap(err, message)
+			}
+			tmpfile, err := os.Create(filepath.Join(tmpdir.Path(), fmt.Sprintf("%x.yml", sha256.Sum256([]byte(yaml)))))
 			if err != nil {
 				return nil, errors.Wrap(err, message)
 			}
