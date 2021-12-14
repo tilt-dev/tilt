@@ -2366,7 +2366,7 @@ func TestDockerComposeStartsEventWatcher(t *testing.T) {
 	// Actual behavior is that we init with zero manifests, and add in manifests
 	// after Tiltfile loads. Mimic that here.
 	f.Start([]model.Manifest{})
-	time.Sleep(10 * time.Millisecond)
+	f.ensureCluster()
 
 	f.store.Dispatch(ctrltiltfile.ConfigsReloadedAction{
 		Name:       model.MainTiltfileManifestName,
@@ -2769,6 +2769,7 @@ func TestFeatureFlagsStoredOnState(t *testing.T) {
 	defer f.TearDown()
 
 	f.Start([]model.Manifest{})
+	f.ensureCluster()
 
 	f.store.Dispatch(ctrltiltfile.ConfigsReloadedAction{
 		Name:       model.MainTiltfileManifestName,
@@ -2796,6 +2797,7 @@ func TestTeamIDStoredOnState(t *testing.T) {
 	defer f.TearDown()
 
 	f.Start([]model.Manifest{})
+	f.ensureCluster()
 
 	f.store.Dispatch(ctrltiltfile.ConfigsReloadedAction{
 		Name:       model.MainTiltfileManifestName,
@@ -3138,6 +3140,7 @@ func TestVersionSettingsStoredOnState(t *testing.T) {
 	defer f.TearDown()
 
 	f.Start([]model.Manifest{})
+	f.ensureCluster()
 
 	vs := model.VersionSettings{
 		CheckUpdates: false,
@@ -3158,6 +3161,7 @@ func TestAnalyticsTiltfileOpt(t *testing.T) {
 	defer f.TearDown()
 
 	f.Start([]model.Manifest{})
+	f.ensureCluster()
 
 	f.withState(func(state store.EngineState) {
 		assert.Equal(t, analytics.OptDefault, state.AnalyticsEffectiveOpt())
@@ -3857,6 +3861,8 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	lur := liveupdate.NewFakeReconciler(st, cu, cdc)
 	dir := dockerimage.NewReconciler(cdc)
 	clr := cluster.NewReconciler(cdc, st, docker.LocalEnv{})
+	clr.SetFakeClientsForTesting(kClient, dockerClient)
+
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
 		fwc,
 		cmds,
@@ -4536,6 +4542,20 @@ type fixtureSub struct {
 func (s fixtureSub) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) error {
 	s.ch <- true
 	return nil
+}
+
+func (f *testFixture) ensureCluster() {
+	err := f.ctrlClient.Create(f.ctx, &v1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "default",
+		},
+		Spec: v1alpha1.ClusterSpec{
+			Connection: &v1alpha1.ClusterConnection{
+				Kubernetes: &v1alpha1.KubernetesClusterConnection{},
+			},
+		},
+	})
+	require.NoError(f.T(), err)
 }
 
 func (f *testFixture) dispatchDCEvent(m model.Manifest, action dockercompose.Action, containerState dockertypes.ContainerState) {

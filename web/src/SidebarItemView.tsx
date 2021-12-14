@@ -234,6 +234,10 @@ function holdStatusText(hold?: Hold | null): string {
     return "Pending"
   }
 
+  if (hold.clusters.length) {
+    return "Waiting for cluster connection"
+  }
+
   if (hold.images.length) {
     return "Waiting for shared image build"
   }

@@ -155,6 +155,25 @@ func TestLocalDependsOnNonWorkloadK8s(t *testing.T) {
 	_ = k8s2
 }
 
+func TestK8sDependsOnCluster(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.st.Clusters["default"].Status.Error = "connection error"
+
+	_ = f.upsertK8sManifest("k8s1")
+	f.assertNoTargetNextToBuild()
+	f.assertHoldOnRefs("k8s1", store.HoldReasonCluster, v1alpha1.UIResourceStateWaitingOnRef{
+		Group:      "tilt.dev",
+		APIVersion: "v1alpha1",
+		Kind:       "Cluster",
+		Name:       "default",
+	})
+
+	f.st.Clusters["default"].Status.Error = ""
+	f.assertNextTargetToBuild("k8s1")
+}
+
 func TestCurrentlyBuildingLocalResourceDisablesK8sScheduling(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -491,10 +510,16 @@ type testFixture struct {
 
 func newTestFixture(t *testing.T) testFixture {
 	f := tempdir.NewTempDirFixture(t)
+	st := store.NewState()
+	st.Clusters["default"] = &v1alpha1.Cluster{
+		Status: v1alpha1.ClusterStatus{
+			Arch: "amd64",
+		},
+	}
 	return testFixture{
 		TempDirFixture: f,
 		t:              t,
-		st:             store.NewState(),
+		st:             st,
 	}
 }
 
@@ -504,6 +529,16 @@ func (f *testFixture) assertHold(m model.ManifestName, reason store.HoldReason, 
 	hold := store.Hold{
 		Reason: reason,
 		HoldOn: holdOn,
+	}
+	assert.Equal(f.t, hold, hs[m])
+}
+
+func (f *testFixture) assertHoldOnRefs(m model.ManifestName, reason store.HoldReason, onRefs ...v1alpha1.UIResourceStateWaitingOnRef) {
+	f.T().Helper()
+	_, hs := NextTargetToBuild(*f.st)
+	hold := store.Hold{
+		Reason: reason,
+		OnRefs: onRefs,
 	}
 	assert.Equal(f.t, hold, hs[m])
 }

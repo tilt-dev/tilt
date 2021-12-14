@@ -30,6 +30,9 @@ type Reconciler struct {
 	localDockerEnv docker.LocalEnv
 	store          store.RStore
 
+	fakeK8sClient    k8s.Client
+	fakeDockerClient docker.Client
+
 	// TODO(nick): We should have all reconcilers share a client cache, and
 	// be able to wait on the connection to complete.
 	connections map[types.NamespacedName]*connection
@@ -48,6 +51,11 @@ func NewReconciler(ctrlClient ctrlclient.Client, store store.RStore, localDocker
 		localDockerEnv: localDockerEnv,
 		connections:    make(map[types.NamespacedName]*connection),
 	}
+}
+
+func (r *Reconciler) SetFakeClientsForTesting(k8sClient k8s.Client, dockerClient docker.Client) {
+	r.fakeK8sClient = k8sClient
+	r.fakeDockerClient = dockerClient
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
@@ -105,6 +113,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 // Creates a docker connection from the spec.
 func (r *Reconciler) createDockerConnection(ctx context.Context, obj *v1alpha1.DockerClusterConnection) *connection {
+	if r.fakeDockerClient != nil {
+		return &connection{dockerClient: r.fakeDockerClient}
+	}
+
 	// If no Host is specified, use the default Env from environment variables.
 	env := docker.Env(r.localDockerEnv)
 	if obj.Host != "" {
@@ -127,6 +139,10 @@ func (r *Reconciler) createDockerConnection(ctx context.Context, obj *v1alpha1.D
 // If you have to edit the below, it's easier to let wire generate the
 // factory code for you, then adapt it here.
 func (r *Reconciler) createKubernetesConnection(ctx context.Context, obj *v1alpha1.KubernetesClusterConnection) *connection {
+	if r.fakeK8sClient != nil {
+		return &connection{k8sClient: r.fakeK8sClient}
+	}
+
 	k8sKubeContextOverride := k8s.KubeContextOverride(obj.Context)
 	k8sNamespaceOverride := k8s.NamespaceOverride(obj.Namespace)
 	clientConfig := k8s.ProvideClientConfig(k8sKubeContextOverride, k8sNamespaceOverride)
