@@ -202,6 +202,16 @@ describe("PendingBuildDescription", () => {
     )
   })
 
+  it("shows cluster name", () => {
+    let hold = new Hold({
+      reason: "waiting-for-cluster",
+      on: [{ kind: "Cluster", name: "default" }],
+    })
+    expect(PendingBuildDescription(hold)).toBe(
+      "Update: waiting on cluster: default"
+    )
+  })
+
   it("prefers image over resource", () => {
     let hold = new Hold({
       reason: "waiting-for-deploy",

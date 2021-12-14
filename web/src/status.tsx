@@ -110,6 +110,9 @@ export function PendingBuildDescription(hold?: Hold | null): string {
   } else if (hold?.resources.length) {
     text += hold.resources.length > 1 ? "resources: " : "resource: "
     toShow = hold.resources
+  } else if (hold?.clusters.length) {
+    text += hold.clusters.length > 1 ? "clusters: " : "cluster: "
+    toShow = hold.clusters
   } else {
     text += `${hold.count} object${hold.count > 1 ? "s" : ""}`
     return text
