@@ -4545,7 +4545,7 @@ func (s fixtureSub) OnChange(ctx context.Context, st store.RStore, _ store.Chang
 }
 
 func (f *testFixture) ensureCluster() {
-	_ = f.ctrlClient.Create(f.ctx, &v1alpha1.Cluster{
+	err := f.ctrlClient.Create(f.ctx, &v1alpha1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "default",
 		},
@@ -4555,6 +4555,7 @@ func (f *testFixture) ensureCluster() {
 			},
 		},
 	})
+	require.NoError(f.T(), err)
 }
 
 func (f *testFixture) dispatchDCEvent(m model.Manifest, action dockercompose.Action, containerState dockertypes.ContainerState) {
