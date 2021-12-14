@@ -116,7 +116,8 @@ type DirectoryMatcher struct {
 var _ model.PathMatcher = DirectoryMatcher{}
 
 func NewDirectoryMatcher(dir string) (DirectoryMatcher, error) {
-	dir, err := filepath.Abs(dir)
+	dir, err := ospath.RealAbs(dir)
+	fmt.Println("newdir absolute path:", dir)
 	if err != nil {
 		return DirectoryMatcher{}, errors.Wrapf(err, "failed to get abs path of '%s'", dir)
 	}

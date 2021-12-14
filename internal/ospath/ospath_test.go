@@ -47,6 +47,7 @@ func TestCaseInsensitiveFileSystem(t *testing.T) {
 	} else {
 		f.assertChild("Parent", fileA, "")
 	}
+
 }
 
 func TestIsBrokenSymlink(t *testing.T) {

@@ -388,3 +388,40 @@ func TestController_IgnoreErrorsOnCancel(t *testing.T) {
 			`Ignored stale error for "TestController_IgnoreErrorsOnCancel/test-file-watch": apiserver update status error: context canceled`)
 	}, time.Second, 10*time.Millisecond, "Error ignored log message never seen")
 }
+
+func TestController_CaseInsensitiveDirectory(t *testing.T) {
+	f := newFixture(t)
+
+	// A directory with a specific casing
+	f.tmpdir.MkdirAll("A")
+
+	// A filewatch with a spec that includes a different casing than the directory
+	fw := &filewatches.FileWatch{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: apis.SanitizeName(f.t.Name()),
+			Name:      "test-file-watch",
+		},
+		Spec: filewatches.FileWatchSpec{
+			WatchedPaths: []string{f.tmpdir.JoinPath("a")},
+			Ignores: []filewatches.IgnoreDef{
+				{
+					BasePath: f.tmpdir.JoinPath("a"),
+					Patterns: []string{"ignore_me"},
+				},
+			},
+		},
+	}
+	f.Create(fw)
+
+	key := f.KeyForObject(fw)
+
+	// Change files with the directory's casing
+	// and expect that the spec is case-insensitive when
+	// watching and ignoring files
+	f.ChangeFile("A/ignore_me")
+	f.ChangeAndWaitForSeenFile(key, "A/see_me")
+
+	f.MustGet(key, fw)
+	require.Equal(t, 1, len(fw.Status.FileEvents), "Wrong file event count")
+	assert.Equal(t, []string{f.tmpdir.JoinPath("A", "see_me")}, fw.Status.FileEvents[0].SeenFiles)
+}

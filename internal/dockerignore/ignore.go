@@ -8,6 +8,7 @@ import (
 
 	"github.com/docker/docker/builder/dockerignore"
 	tiltDockerignore "github.com/tilt-dev/dockerignore"
+	"github.com/yookoala/realpath"
 
 	"github.com/tilt-dev/tilt/internal/ospath"
 )
@@ -47,7 +48,7 @@ func (i dockerPathMatcher) MatchesEntireDir(f string) (bool, error) {
 }
 
 func NewDockerIgnoreTester(repoRoot string) (*dockerPathMatcher, error) {
-	absRoot, err := filepath.Abs(repoRoot)
+	absRoot, err := ospath.RealAbs(repoRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -91,8 +92,14 @@ func absPatterns(absRoot string, patterns []string) []string {
 }
 
 func NewDockerPatternMatcher(repoRoot string, patterns []string) (*dockerPathMatcher, error) {
-	absRoot, err := filepath.Abs(repoRoot)
-	if err != nil {
+	absRoot, err := ospath.RealAbs(repoRoot)
+	realAbsRoot, errDos := realpath.Realpath(repoRoot)
+
+	fmt.Println("docker abspath", absRoot)
+	fmt.Println("docker abspath from package:", realAbsRoot)
+	fmt.Println("are they the same?", absRoot == realAbsRoot)
+
+	if err != nil || errDos != nil {
 		return nil, err
 	}
 

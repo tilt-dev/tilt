@@ -1,6 +1,7 @@
 package fsevent
 
 import (
+	"fmt"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -75,6 +76,7 @@ func (w *FakeMultiWatcher) loop() {
 			}
 			w.mu.Lock()
 			for _, watcher := range w.watchers {
+				fmt.Println(e.Path(), "matches", watcher.matches(e.Path()))
 				if watcher.matches(e.Path()) {
 					watcher.inboundCh <- e
 				}
