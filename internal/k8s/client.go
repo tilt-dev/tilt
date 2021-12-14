@@ -586,7 +586,7 @@ func (k *K8sClient) Delete(ctx context.Context, entities []K8sEntity, wait bool)
 	return nil
 }
 
-func (k *K8sClient) forceDiscovery(ctx context.Context, gvk schema.GroupVersionKind) (schema.GroupVersionResource, error) {
+func (k *K8sClient) forceDiscovery(ctx context.Context, gvk schema.GroupVersionKind) (*meta.RESTMapping, error) {
 	rm, err := k.drm.RESTMapping(gvk.GroupKind(), gvk.Version)
 	if err != nil {
 		// The REST mapper doesn't have any sort of internal invalidation
@@ -602,10 +602,10 @@ func (k *K8sClient) forceDiscovery(ctx context.Context, gvk schema.GroupVersionK
 
 		rm, err = k.drm.RESTMapping(gvk.GroupKind(), gvk.Version)
 		if err != nil {
-			return schema.GroupVersionResource{}, errors.Wrapf(err, "error mapping %s/%s", gvk.Group, gvk.Kind)
+			return nil, errors.Wrapf(err, "error mapping %s/%s", gvk.Group, gvk.Kind)
 		}
 	}
-	return rm.Resource, nil
+	return rm, nil
 }
 
 func (k *K8sClient) waitForDelete(list kube.ResourceList) {
@@ -628,12 +628,20 @@ func (k *K8sClient) waitForDelete(list kube.ResourceList) {
 }
 
 func (k *K8sClient) ListMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) ([]metav1.Object, error) {
-	gvr, err := k.forceDiscovery(ctx, gvk)
+	mapping, err := k.forceDiscovery(ctx, gvk)
 	if err != nil {
 		return nil, err
 	}
 
-	metaList, err := k.metadata.Resource(gvr).Namespace(ns.String()).List(ctx, metav1.ListOptions{})
+	gvr := mapping.Resource
+	isRoot := mapping.Scope != nil && mapping.Scope.Name() == meta.RESTScopeNameRoot
+	var metaList *metav1.PartialObjectMetadataList
+	if isRoot {
+		metaList, err = k.metadata.Resource(gvr).List(ctx, metav1.ListOptions{})
+	} else {
+		metaList, err = k.metadata.Resource(gvr).Namespace(ns.String()).List(ctx, metav1.ListOptions{})
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -649,11 +657,12 @@ func (k *K8sClient) ListMeta(ctx context.Context, gvk schema.GroupVersionKind, n
 
 func (k *K8sClient) GetMetaByReference(ctx context.Context, ref v1.ObjectReference) (metav1.Object, error) {
 	gvk := ReferenceGVK(ref)
-	gvr, err := k.forceDiscovery(ctx, gvk)
+	mapping, err := k.forceDiscovery(ctx, gvk)
 	if err != nil {
 		return nil, err
 	}
 
+	gvr := mapping.Resource
 	namespace := ref.Namespace
 	name := ref.Name
 	resourceVersion := ref.ResourceVersion
