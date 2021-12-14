@@ -160,7 +160,11 @@ func (d *dockerImageBuilder) ImageExists(ctx context.Context, ref reference.Name
 }
 
 func (d *dockerImageBuilder) BuildImage(ctx context.Context, ps *PipelineState, refs container.RefSet, spec v1alpha1.DockerImageSpec, filter model.PathMatcher) (container.TaggedRefs, []v1alpha1.DockerImageStageStatus, error) {
-	logger.Get(ctx).Infof("Building Dockerfile:\n%s\n", indent(spec.DockerfileContents, "  "))
+	platformSuffix := ""
+	if spec.Platform != "" {
+		platformSuffix = fmt.Sprintf(" for platform %s", spec.Platform)
+	}
+	logger.Get(ctx).Infof("Building Dockerfile%s:\n%s\n", platformSuffix, indent(spec.DockerfileContents, "  "))
 
 	ps.StartBuildStep(ctx, "Building image")
 	allowBuildkit := true

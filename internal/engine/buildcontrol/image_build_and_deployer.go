@@ -156,6 +156,10 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		ps.EndPipelineStep(ctx)
 	}
 
+	var cluster v1alpha1.Cluster
+	// If the cluster fetch fails, that's OK.
+	_ = ibd.ctrlClient.Get(ctx, types.NamespacedName{Name: "default"}, &cluster)
+
 	iTargetMap := model.ImageTargetsByID(iTargets)
 	imageMapSet := make(map[types.NamespacedName]*v1alpha1.ImageMap, len(kTarget.ImageMaps))
 	for _, iTarget := range iTargets {
@@ -182,6 +186,8 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		if err != nil {
 			return store.ImageBuildResult{}, err
 		}
+
+		iTarget = InjectClusterPlatform(iTarget, &cluster)
 
 		// TODO(nick): It might make sense to reset the ImageMapStatus here
 		// to an empty image while the image is building. maybe?
@@ -369,6 +375,52 @@ func (ibd *ImageBuildAndDeployer) delete(ctx context.Context, k8sTarget model.K8
 
 	// wait for entities to be fully deleted from the server so that it's safe to re-create them
 	return ibd.k8sClient.Delete(ctx, entities, true)
+}
+
+// Derived from
+// https://github.com/moby/buildkit/blob/175e8415e38228dbb75e6b54efd2c8e9fc5b1cbf/util/archutil/detect.go#L15
+var validBuildkitArchSet = map[string]bool{
+	"amd64":    true,
+	"arm64":    true,
+	"riscv64":  true,
+	"ppc64le":  true,
+	"s390x":    true,
+	"386":      true,
+	"mips64le": true,
+	"mips64":   true,
+	"arm":      true,
+}
+
+// Create a new ImageTarget with the platform OS/Arch from the target cluster.
+func InjectClusterPlatform(iTarget model.ImageTarget, cluster *v1alpha1.Cluster) model.ImageTarget {
+	bd, ok := iTarget.BuildDetails.(model.DockerBuild)
+	if !ok {
+		return iTarget
+	}
+
+	// If the platform is specified explicitly, we should skip this.
+	if bd.DockerImageSpec.Platform != "" {
+		return iTarget
+	}
+
+	// Eventually, it might make sense to read the supported platforms
+	// off the buildkit server and negotiate the right one, but for
+	// now we hard-code a whitelist.
+	targetArch := cluster.Status.Arch
+	if !validBuildkitArchSet[targetArch] {
+		return iTarget
+	}
+
+	if targetArch == "arm" {
+		// This is typically communicated with GOARM.
+		// For now, just assume arm/v7
+		targetArch = "arm/v7"
+	}
+
+	// Currently Tilt only supports linux containers.
+	// We don't even build windows-compatible docker contexts.
+	bd.DockerImageSpec.Platform = fmt.Sprintf("linux/%s", targetArch)
+	return iTarget.WithBuildDetails(bd)
 }
 
 // Create a new ImageTarget with the Dockerfiles rewritten with the injected images.
