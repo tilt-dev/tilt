@@ -145,11 +145,11 @@ release-container:
 	scripts/build-tilt-releaser.sh
 
 ci-container:
-	docker build -t gcr.io/windmill-public-containers/tilt-ci -f .circleci/Dockerfile .circleci
+	docker build --platform linux/amd64 -t gcr.io/windmill-public-containers/tilt-ci -f .circleci/Dockerfile .circleci
 	docker push gcr.io/windmill-public-containers/tilt-ci
 
 ci-integration-container:
-	docker build -t gcr.io/windmill-public-containers/tilt-integration-ci -f .circleci/Dockerfile.integration .circleci
+	docker build --platform linux/amd64 -t gcr.io/windmill-public-containers/tilt-integration-ci -f .circleci/Dockerfile.integration .circleci
 	docker push gcr.io/windmill-public-containers/tilt-integration-ci
 
 clean:
