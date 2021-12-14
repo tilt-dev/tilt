@@ -2,6 +2,7 @@ package build
 
 import (
 	"archive/tar"
+	"bytes"
 	"context"
 	"io"
 	"os"
@@ -232,6 +233,27 @@ func (a *ArchiveBuilder) writeEntry(entry archiveEntry) error {
 		_ = file.Close()
 	}()
 
+	// We want to balance two needs:
+	//
+	// 1) Don't blow up heap size when copying large binary blobs.
+	// 2) If there's a race condition (e.g., a user is actively
+	//    writing to a file while we tar it up), we want to make sure
+	//    there's not a mismatch between the size of the file contents
+	//    in the tar, and the size we declare in the header.
+	//
+	// So for sufficiently small files, we copy the file into an in-memory buffer
+	// and use the size as the source of truth.
+	useBuf := header.Size < 5000000
+	var buf *bytes.Buffer
+	if useBuf {
+		buf = bytes.NewBuffer(make([]byte, 0, header.Size))
+		_, err = io.Copy(buf, file)
+		if err != nil && err != io.EOF {
+			return errors.Wrapf(err, "%s: copying Contents", path)
+		}
+		header.Size = int64(len(buf.Bytes()))
+	}
+
 	// wait to write the header until _after_ the file is successfully opened
 	// to avoid generating an invalid tar entry that has a header but no contents
 	// in the case the file has been deleted
@@ -240,11 +262,12 @@ func (a *ArchiveBuilder) writeEntry(entry archiveEntry) error {
 		return errors.Wrapf(err, "%s: writing header", path)
 	}
 
-	// N.B. intentionally do not limit the number of bytes - TarWriter::Write() will
-	// 	return an error if _more_ than the header specified is written and Flush()
-	// 	will error if _less_ was written; this is desirable to handle concurrent file
-	// 	writes while we are reading (e.g. truncate/append)
-	_, err = io.Copy(a.tw, file)
+	if useBuf {
+		_, err = io.Copy(a.tw, buf)
+	} else {
+		_, err = io.Copy(a.tw, file)
+	}
+
 	if err != nil && err != io.EOF {
 		return errors.Wrapf(err, "%s: copying Contents", path)
 	}
