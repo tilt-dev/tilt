@@ -9,11 +9,13 @@ import (
 	"time"
 
 	"github.com/tilt-dev/go-get"
+
+	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 type Downloader interface {
 	RootDir() string
-	Download(pkg string) (string, error)
+	Download(ctx context.Context, pkg string) (string, error)
 }
 
 type TempDirDownloader struct {
@@ -32,8 +34,10 @@ func (d *TempDirDownloader) RootDir() string {
 	return d.rootDir
 }
 
-func (d *TempDirDownloader) Download(pkg string) (string, error) {
+func (d *TempDirDownloader) Download(ctx context.Context, pkg string) (string, error) {
 	dlr := get.NewDownloader(d.rootDir)
+	dlr.Stderr = logger.Get(ctx).Writer(logger.InfoLvl)
+
 	return dlr.Download(pkg)
 }
 
@@ -50,7 +54,7 @@ func (f *GithubFetcher) CleanUp() error {
 }
 
 func (f *GithubFetcher) Fetch(ctx context.Context, moduleName string) (ModuleContents, error) {
-	dir, err := f.dlr.Download(path.Join("github.com/tilt-dev/tilt-extensions", moduleName))
+	dir, err := f.dlr.Download(ctx, path.Join("github.com/tilt-dev/tilt-extensions", moduleName))
 	if err != nil {
 		return ModuleContents{}, fmt.Errorf("Fetching tilt-extensions: %v", err)
 	}
