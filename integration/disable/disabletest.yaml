@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: disabletest
+  namespace: tilt-integration
+  labels:
+    app: disabletest
+spec:
+  selector:
+    matchLabels:
+      app: disabletest
+  template:
+    metadata:
+      labels:
+        app: disabletest
+    spec:
+      containers:
+        - name: disabletest
+          image: disabletest
+          ports:
+            - containerPort: 8000
