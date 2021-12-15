@@ -2,6 +2,7 @@ package build
 
 import (
 	"archive/tar"
+	"bytes"
 	"context"
 	"io"
 	"os"
@@ -22,6 +23,9 @@ type ArchiveBuilder struct {
 	tw     *tar.Writer
 	filter model.PathMatcher
 	paths  []string // local paths archived
+
+	// A shared I/O buffer to help with file copying.
+	copyBuf *bytes.Buffer
 }
 
 func NewArchiveBuilder(writer io.Writer, filter model.PathMatcher) *ArchiveBuilder {
@@ -30,7 +34,7 @@ func NewArchiveBuilder(writer io.Writer, filter model.PathMatcher) *ArchiveBuild
 		filter = model.EmptyMatcher
 	}
 
-	return &ArchiveBuilder{tw: tw, filter: filter}
+	return &ArchiveBuilder{tw: tw, filter: filter, copyBuf: bytes.NewBuffer(nil)}
 }
 
 func (a *ArchiveBuilder) Close() error {
@@ -232,6 +236,29 @@ func (a *ArchiveBuilder) writeEntry(entry archiveEntry) error {
 		_ = file.Close()
 	}()
 
+	// The size header must match the number of contents bytes.
+	//
+	// There is room for a race condition here if something writes to the file
+	// after we've read the file size.
+	//
+	// For small files, we avoid this by first copying the file into a buffer,
+	// and using the size of the buffer to populate the header.
+	//
+	// For larger files, we don't want to copy the whole thing into a buffer,
+	// because that would blow up heap size. There is some danger that this
+	// will lead to a spurious error when the tar writer validates the sizes.
+	// That error will be disruptive but will be handled as best as we
+	// can downstream.
+	useBuf := header.Size < 5000000
+	if useBuf {
+		a.copyBuf.Reset()
+		_, err = io.Copy(a.copyBuf, file)
+		if err != nil && err != io.EOF {
+			return errors.Wrapf(err, "%s: copying Contents", path)
+		}
+		header.Size = int64(len(a.copyBuf.Bytes()))
+	}
+
 	// wait to write the header until _after_ the file is successfully opened
 	// to avoid generating an invalid tar entry that has a header but no contents
 	// in the case the file has been deleted
@@ -240,11 +267,12 @@ func (a *ArchiveBuilder) writeEntry(entry archiveEntry) error {
 		return errors.Wrapf(err, "%s: writing header", path)
 	}
 
-	// N.B. intentionally do not limit the number of bytes - TarWriter::Write() will
-	// 	return an error if _more_ than the header specified is written and Flush()
-	// 	will error if _less_ was written; this is desirable to handle concurrent file
-	// 	writes while we are reading (e.g. truncate/append)
-	_, err = io.Copy(a.tw, file)
+	if useBuf {
+		_, err = io.Copy(a.tw, a.copyBuf)
+	} else {
+		_, err = io.Copy(a.tw, file)
+	}
+
 	if err != nil && err != io.EOF {
 		return errors.Wrapf(err, "%s: copying Contents", path)
 	}
