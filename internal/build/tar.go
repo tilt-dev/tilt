@@ -23,6 +23,9 @@ type ArchiveBuilder struct {
 	tw     *tar.Writer
 	filter model.PathMatcher
 	paths  []string // local paths archived
+
+	// A shared I/O buffer to help with file copying.
+	copyBuf *bytes.Buffer
 }
 
 func NewArchiveBuilder(writer io.Writer, filter model.PathMatcher) *ArchiveBuilder {
@@ -31,7 +34,7 @@ func NewArchiveBuilder(writer io.Writer, filter model.PathMatcher) *ArchiveBuild
 		filter = model.EmptyMatcher
 	}
 
-	return &ArchiveBuilder{tw: tw, filter: filter}
+	return &ArchiveBuilder{tw: tw, filter: filter, copyBuf: bytes.NewBuffer(nil)}
 }
 
 func (a *ArchiveBuilder) Close() error {
@@ -233,25 +236,27 @@ func (a *ArchiveBuilder) writeEntry(entry archiveEntry) error {
 		_ = file.Close()
 	}()
 
-	// We want to balance two needs:
+	// The size header must match the number of contents bytes.
 	//
-	// 1) Don't blow up heap size when copying large binary blobs.
-	// 2) If there's a race condition (e.g., a user is actively
-	//    writing to a file while we tar it up), we want to make sure
-	//    there's not a mismatch between the size of the file contents
-	//    in the tar, and the size we declare in the header.
+	// There is room for a race condition here if something writes to the file
+	// after we've read the file size.
 	//
-	// So for sufficiently small files, we copy the file into an in-memory buffer
-	// and use the size as the source of truth.
+	// For small files, we avoid this by first copying the file into a buffer,
+	// and using the size of the buffer to populate the header.
+	//
+	// For larger files, we don't want to copy the whole thing into a buffer,
+	// because that would blow up heap size. There is some danger that this
+	// will lead to a spurious error when the tar writer validates the sizes.
+	// That error will be disruptive but will be handled as best as we
+	// can downstream.
 	useBuf := header.Size < 5000000
-	var buf *bytes.Buffer
 	if useBuf {
-		buf = bytes.NewBuffer(make([]byte, 0, header.Size))
-		_, err = io.Copy(buf, file)
+		a.copyBuf.Reset()
+		_, err = io.Copy(a.copyBuf, file)
 		if err != nil && err != io.EOF {
 			return errors.Wrapf(err, "%s: copying Contents", path)
 		}
-		header.Size = int64(len(buf.Bytes()))
+		header.Size = int64(len(a.copyBuf.Bytes()))
 	}
 
 	// wait to write the header until _after_ the file is successfully opened
@@ -263,7 +268,7 @@ func (a *ArchiveBuilder) writeEntry(entry archiveEntry) error {
 	}
 
 	if useBuf {
-		_, err = io.Copy(a.tw, buf)
+		_, err = io.Copy(a.tw, a.copyBuf)
 	} else {
 		_, err = io.Copy(a.tw, file)
 	}
