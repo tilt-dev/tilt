@@ -132,8 +132,9 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 	// Update kubernetesapply's disable status
 	if disableStatus != ka.Status.DisableStatus {
+		patchBase := client.MergeFrom(ka.DeepCopy())
 		ka.Status.DisableStatus = disableStatus
-		if err := r.ctrlClient.Status().Update(ctx, &ka); err != nil {
+		if err := r.ctrlClient.Status().Patch(ctx, &ka, patchBase); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
@@ -276,6 +277,7 @@ func (r *Reconciler) ForceApply(
 	if err != nil {
 		return v1alpha1.KubernetesApplyStatus{}, err
 	}
+	patchBase := client.MergeFrom(ka.DeepCopy())
 
 	// Copy over status information from `forceApplyHelper`
 	// so other existing status information isn't overwritten
@@ -304,7 +306,7 @@ func (r *Reconciler) ForceApply(
 	}
 
 	ka.Status = *updatedStatus
-	err = r.ctrlClient.Status().Update(ctx, &ka)
+	err = r.ctrlClient.Status().Patch(ctx, &ka, patchBase)
 	if err != nil {
 		return *updatedStatus, err
 	}
