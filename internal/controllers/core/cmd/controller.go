@@ -413,14 +413,14 @@ func (c *Controller) handleProbeResultFunc(ctx context.Context, name types.Names
 		}
 
 		ready := result == prober.Success || result == prober.Warning
-		if statusChanged {
-			c.updateStatus(name, func(status *CmdStatus) {
-				//
-				if status.Running != nil {
-					status.Ready = ready
-				}
-			}, stillHasSameProcNum)
-		}
+		c.updateStatus(name, func(status *CmdStatus) {
+			// TODO(milas): this isn't quite right - we might end up setting
+			// 	a terminated process to ready, for example; in practice, we
+			// 	should update internal state on any goroutine/async trackers
+			// 	and trigger a reconciliation, which can then evaluate the full
+			// 	state + current spec
+			status.Ready = ready
+		}, stillHasSameProcNum)
 	}
 }
 
