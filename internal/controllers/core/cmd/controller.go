@@ -383,8 +383,6 @@ func (c *Controller) runInternal(ctx context.Context,
 }
 
 func (c *Controller) handleProbeResultFunc(ctx context.Context, name types.NamespacedName, stillHasSameProcNum func() bool) probe.ResultFunc {
-	existingReady := false
-
 	return func(result prober.Result, statusChanged bool, output string, err error) {
 		if !stillHasSameProcNum() {
 			return
@@ -415,9 +413,13 @@ func (c *Controller) handleProbeResultFunc(ctx context.Context, name types.Names
 		}
 
 		ready := result == prober.Success || result == prober.Warning
-		if existingReady != ready {
-			existingReady = ready
-			c.updateStatus(name, func(status *CmdStatus) { status.Ready = ready }, stillHasSameProcNum)
+		if statusChanged {
+			c.updateStatus(name, func(status *CmdStatus) {
+				//
+				if status.Running != nil {
+					status.Ready = ready
+				}
+			}, stillHasSameProcNum)
 		}
 	}
 }
@@ -466,12 +468,12 @@ func (c *Controller) updateStatus(name types.NamespacedName, update func(status 
 
 	lastCmd, ok := c.updateCmds[name]
 	if ok {
-		cmd.Status = lastCmd.Status
+		cmd.Status = *lastCmd.Status.DeepCopy()
 	}
+	patchBase := ctrlclient.MergeFrom(cmd.DeepCopy())
 	update(&cmd.Status)
-	c.updateCmds[name] = cmd.DeepCopy()
 
-	err = c.client.Status().Update(c.globalCtx, &cmd)
+	err = c.client.Status().Patch(c.globalCtx, &cmd, patchBase)
 	if err != nil && !apierrors.IsNotFound(err) {
 		if c.globalCtx.Err() == nil {
 			// if the global context has been canceled, the controller is being torn down,
@@ -481,6 +483,7 @@ func (c *Controller) updateStatus(name types.NamespacedName, update func(status 
 		return
 	}
 
+	c.updateCmds[name] = cmd.DeepCopy()
 	c.st.Dispatch(local.NewCmdUpdateStatusAction(&cmd))
 }
 
@@ -542,6 +545,7 @@ func (c *Controller) processStatuses(
 
 			c.updateStatus(name, func(status *CmdStatus) {
 				status.Waiting = nil
+				status.Terminated = nil
 				status.Running = &CmdStateRunning{
 					PID:       int32(sm.pid),
 					StartedAt: startedAt,
