@@ -119,7 +119,7 @@ jobs:
       - run: go install -mod vendor ./cmd/tilt
       # Only run watch tests, because these are currently the only tests that are OS-specific.
       # In other Tilt tests, we mock out OS-specific components.
-      - run: gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- -mod vendor ./internal/watch/...
+      - run: gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- -mod vendor ./internal/watch/... ./internal/ospath/...
       - store_test_results:
           path: test-results
       - slack/notify-on-failure:
