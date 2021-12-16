@@ -1016,6 +1016,12 @@ func (s *tiltfileState) validateK8s(r *k8sResource) error {
 		builder := s.buildIndex.findBuilderForConsumedImage(ref)
 		if builder != nil {
 			r.dependencyIDs = append(r.dependencyIDs, builder.ID())
+			continue
+		}
+
+		metadata, ok := r.imageDepsMetadata[ref.String()]
+		if ok && metadata.required {
+			return fmt.Errorf("resource %q: image build %q not found", r.name, container.FamiliarString(ref))
 		}
 	}
 
@@ -1193,7 +1199,7 @@ func (s *tiltfileState) k8sDeployTarget(targetName model.TargetName, r *k8sResou
 	}
 
 	t = t.WithImageDependencies(r.dependencyIDs, model.ToLiveUpdateOnlyMap(imageTargets)).
-		WithRefInjectCounts(r.imageRefMap).
+		WithRefInjectCounts(r.imageRefInjectCounts()).
 		WithPathDependencies(deps, reposForPaths(deps))
 
 	return t, nil

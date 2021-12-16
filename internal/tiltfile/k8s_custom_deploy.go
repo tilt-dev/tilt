@@ -28,6 +28,7 @@ func (s *tiltfileState) k8sCustomDeploy(thread *starlark.Thread, fn *starlark.Bu
 	var applyCmdEnv, deleteCmdEnv value.StringStringMap
 	var imageSelector, containerSelector string
 	var liveUpdateVal starlark.Value
+	var imageDeps value.ImageList
 
 	deps := value.NewLocalPathListUnpacker(thread)
 
@@ -45,6 +46,7 @@ func (s *tiltfileState) k8sCustomDeploy(thread *starlark.Thread, fn *starlark.Bu
 		"delete_env?", &deleteCmdEnv,
 		"delete_cmd_bat?", &deleteCmdBatVal,
 		"container_selector?", &containerSelector,
+		"image_deps", &imageDeps,
 	); err != nil {
 		return nil, err
 	}
@@ -77,6 +79,9 @@ func (s *tiltfileState) k8sCustomDeploy(thread *starlark.Thread, fn *starlark.Bu
 		applyCmd:  applyCmd,
 		deleteCmd: deleteCmd,
 		deps:      deps.Value,
+	}
+	for _, imageDep := range imageDeps {
+		res.addImageDep(imageDep, true)
 	}
 
 	if !liveupdate.IsEmptySpec(liveUpdate) {
@@ -135,7 +140,7 @@ func (s *tiltfileState) k8sCustomDeploy(thread *starlark.Thread, fn *starlark.Bu
 		// N.B. even in the case that we're creating a fake image name, we need
 		// 	to reference it so that it can be "consumed" by this target to avoid
 		// 	producing warnings about unused image targets
-		res.imageRefs = append(res.imageRefs, ref)
+		res.addImageDep(ref, false)
 
 		if err := s.buildIndex.addImage(img); err != nil {
 			return nil, err
