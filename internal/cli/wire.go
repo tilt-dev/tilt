@@ -1,4 +1,6 @@
+//go:build wireinject
 // +build wireinject
+
 // The build tag makes sure the stub is not built in the final build.
 
 package cli
@@ -102,6 +104,7 @@ var BaseWireSet = wire.NewSet(
 	configs.NewTriggerQueueSubscriber,
 	telemetry.NewController,
 	dcwatch.NewEventWatcher,
+	dcwatch.NewDisableSubscriber,
 	runtimelog.NewDockerComposeLogManager,
 	cloud.WireSet,
 	cloudurl.ProvideAddress,

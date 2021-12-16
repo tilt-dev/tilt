@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 	"unicode"
@@ -25,14 +26,19 @@ type FakeDCClient struct {
 	t   *testing.T
 	ctx context.Context
 
+	mu sync.Mutex
+
 	RunLogOutput      map[string]<-chan string
 	ContainerIdOutput container.ID
 	eventJson         chan string
 	ConfigOutput      string
 	VersionOutput     string
 
-	UpCalls   []UpCall
+	upCalls   []UpCall
+	downCalls []DownCall
+	rmCalls   []RmCall
 	DownError error
+	RmError   error
 	WorkDir   string
 }
 
@@ -42,6 +48,15 @@ var _ DockerComposeClient = &FakeDCClient{}
 type UpCall struct {
 	Spec        model.DockerComposeUpSpec
 	ShouldBuild bool
+}
+
+// Represents a single call to Down
+type DownCall struct {
+	Proj model.DockerComposeProject
+}
+
+type RmCall struct {
+	Specs []model.DockerComposeUpSpec
 }
 
 func NewFakeDockerComposeClient(t *testing.T, ctx context.Context) *FakeDCClient {
@@ -55,14 +70,34 @@ func NewFakeDockerComposeClient(t *testing.T, ctx context.Context) *FakeDCClient
 
 func (c *FakeDCClient) Up(ctx context.Context, spec model.DockerComposeUpSpec,
 	shouldBuild bool, stdout, stderr io.Writer) error {
-	c.UpCalls = append(c.UpCalls, UpCall{spec, shouldBuild})
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.upCalls = append(c.upCalls, UpCall{spec, shouldBuild})
 	return nil
 }
 
-func (c *FakeDCClient) Down(ctx context.Context, p model.DockerComposeProject, stdout, stderr io.Writer) error {
+func (c *FakeDCClient) Down(ctx context.Context, proj model.DockerComposeProject, stdout, stderr io.Writer) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.downCalls = append(c.downCalls, DownCall{proj})
 	if c.DownError != nil {
 		err := c.DownError
 		c.DownError = err
+		return err
+	}
+	return nil
+}
+
+func (c *FakeDCClient) Rm(ctx context.Context, specs []model.DockerComposeUpSpec, stdout, stderr io.Writer) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.rmCalls = append(c.rmCalls, RmCall{specs})
+	if c.RmError != nil {
+		err := c.RmError
+		c.RmError = err
 		return err
 	}
 	return nil
@@ -179,4 +214,22 @@ func (c *FakeDCClient) Version(_ context.Context) (string, string, error) {
 	}
 	// default to a "known good" version that won't produce warnings
 	return "v1.29.2", "tilt-fake", nil
+}
+
+func (c *FakeDCClient) UpCalls() []UpCall {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return append([]UpCall{}, c.upCalls...)
+}
+
+func (c *FakeDCClient) DownCalls() []DownCall {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return append([]DownCall{}, c.downCalls...)
+}
+
+func (c *FakeDCClient) RmCalls() []RmCall {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return append([]RmCall{}, c.rmCalls...)
 }

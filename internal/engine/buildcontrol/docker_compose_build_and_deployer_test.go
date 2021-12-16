@@ -35,8 +35,9 @@ func TestDockerComposeTargetBuilt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if assert.Len(t, f.dcCli.UpCalls, 1, "expect one call to `docker-compose up`") {
-		call := f.dcCli.UpCalls[0]
+	upCalls := f.dcCli.UpCalls()
+	if assert.Len(t, upCalls, 1, "expect one call to `docker-compose up`") {
+		call := upCalls[0]
 		assert.Equal(t, dcTarg.Spec, call.Spec)
 		assert.Equal(t, "fe", call.Spec.Service)
 		assert.True(t, call.ShouldBuild)
@@ -67,8 +68,9 @@ func TestTiltBuildsImage(t *testing.T) {
 	expectedTag := fmt.Sprintf("%s:%s", iTarget.Refs.LocalRef(), docker.TagLatest)
 	assert.Equal(t, expectedTag, f.dCli.TagTarget)
 
-	if assert.Len(t, f.dcCli.UpCalls, 1, "expect one call to `docker-compose up`") {
-		call := f.dcCli.UpCalls[0]
+	upCalls := f.dcCli.UpCalls()
+	if assert.Len(t, upCalls, 1, "expect one call to `docker-compose up`") {
+		call := upCalls[0]
 		assert.Equal(t, dcTarg.Spec, call.Spec)
 		assert.Equal(t, "fe", call.Spec.Service)
 		assert.False(t, call.ShouldBuild, "should call `up` without `--build` b/c Tilt is doing the building")

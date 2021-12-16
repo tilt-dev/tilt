@@ -1,0 +1,11 @@
+version: "3"
+services:
+  disabletest:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: disabletest
+    ports:
+      # Use the host:port:container-port syntax to verify
+      # https://github.com/tilt-dev/tilt/issues/5030
+      - "0.0.0.0:31235:8000"

@@ -6,14 +6,15 @@ package integration
 import (
 	"context"
 	"fmt"
+	"os/exec"
 	"strconv"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestDisable(t *testing.T) {
+func TestDisableK8s(t *testing.T) {
 	f := newK8sFixture(t, "disable")
 	defer f.TearDown()
 
@@ -23,21 +24,57 @@ func TestDisable(t *testing.T) {
 	defer cancel()
 	f.WaitForAllPodsReady(ctx, "app=disabletest")
 
-	setDisabled(f, "disabletest", true)
+	setDisabled(f.fixture, "disabletest", true)
 
 	f.WaitUntil(ctx, "pod gone", func() (string, error) {
 		out, err := f.runCommand("kubectl", "get", "pod", namespaceFlag, "-lapp=disabletest", "--no-headers")
 		return out.String(), err
 	}, "No resources found")
 
-	setDisabled(f, "disabletest", false)
+	setDisabled(f.fixture, "disabletest", false)
 
 	f.WaitForAllPodsReady(ctx, "app=disabletest")
 }
 
-func setDisabled(f *k8sFixture, resourceName string, isDisabled bool) {
-	out, err := f.runCommand(
-		"tilt",
+func TestDisableDC(t *testing.T) {
+	f := newDCFixture(t, "disable")
+	defer f.TearDown()
+
+	f.TiltUp("-f", "Tiltfile.dc")
+
+	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
+	defer cancel()
+
+	psArgs := []string{
+		"ps", "-f", "name=disabletest", "--format", "{{.Image}}",
+	}
+
+	f.WaitUntil(ctx, "service up", func() (string, error) {
+		return f.dockerCmdOutput(psArgs)
+	}, "disabletest")
+
+	f.WaitUntil(ctx, "disable configmap available", func() (string, error) {
+		cmd := exec.Command("tilt", "--port", fmt.Sprintf("%d", f.tilt.port), "get", "cm")
+		out, err := cmd.CombinedOutput()
+		return string(out), err
+	}, "disabletest-disable")
+
+	setDisabled(f.fixture, "disabletest", true)
+
+	require.Eventually(t, func() bool {
+		out, _ := f.dockerCmdOutput(psArgs)
+		return len(out) == 0
+	}, time.Minute, 15*time.Millisecond, "dc service stopped")
+
+	setDisabled(f.fixture, "disabletest", false)
+
+	f.WaitUntil(ctx, "service up", func() (string, error) {
+		return f.dockerCmdOutput(psArgs)
+	}, "disabletest")
+}
+
+func setDisabled(f *fixture, resourceName string, isDisabled bool) {
+	cmd := exec.Command("tilt",
 		"--port",
 		fmt.Sprintf("%d", f.tilt.port),
 		"patch",
@@ -46,7 +83,5 @@ func setDisabled(f *k8sFixture, resourceName string, isDisabled bool) {
 		fmt.Sprintf("{\"data\": {\"isDisabled\": \"%s\"}}", strconv.FormatBool(isDisabled)),
 		"--",
 		fmt.Sprintf("%s-disable", resourceName))
-	if !assert.NoError(f.t, err) {
-		f.t.Fatalf("setting service disable state failed: %s", out.String())
-	}
+	f.runOrFail(cmd, fmt.Sprintf("setting disable state for %s to %v", resourceName, isDisabled))
 }
