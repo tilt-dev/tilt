@@ -15,7 +15,6 @@ import (
 	"github.com/pkg/errors"
 	"helm.sh/helm/v3/pkg/kube"
 	v1 "k8s.io/api/core/v1"
-	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/validation"
@@ -546,7 +545,9 @@ var MetadataAnnotationsTooLongRe = regexp.MustCompile(`metadata.annotations: Too
 // We've also seen this reported differently, with a 413 HTTP error.
 // https://github.com/tilt-dev/tilt/issues/5279
 func maybeTooLargeError(err error) (string, bool) {
-	statusErr, isStatusErr := err.(*apiErrors.StatusError)
+	// We don't have an easy way to reproduce some of these problems, so we check
+	// for both the structured form of the error and the unstructured form.
+	statusErr, isStatusErr := err.(*apierrors.StatusError)
 	if isStatusErr && statusErr.ErrStatus.Code == http.StatusRequestEntityTooLarge {
 		return err.Error(), true
 	}
@@ -556,6 +557,7 @@ func maybeTooLargeError(err error) (string, bool) {
 		if MetadataAnnotationsTooLongRe.MatchString(line) {
 			return line, true
 		}
+
 		if strings.Contains(line, "the server responded with the status code 413") {
 			return line, true
 		}
