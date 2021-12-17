@@ -160,15 +160,7 @@ func genericRuntimeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) 
 		Type:      session.TargetTypeServer,
 	}
 
-	// HACK: RuntimeState is not populated until engine starts builds in some cases; to avoid weird race conditions,
-	// 	it defaults to pending assuming the resource isn't _actually_ disabled on startup via auto_init=False
-	var runtimeStatus v1alpha1.RuntimeStatus
-	if mt.State.RuntimeState != nil {
-		runtimeStatus = mt.State.RuntimeState.RuntimeStatus()
-	} else if mt.Manifest.TriggerMode.AutoInitial() {
-		runtimeStatus = v1alpha1.RuntimeStatusPending
-	}
-
+	runtimeStatus := mt.RuntimeStatus()
 	switch runtimeStatus {
 	case v1alpha1.RuntimeStatusPending:
 		target.State.Waiting = waitingFromHolds(mt.Manifest.Name, holds)

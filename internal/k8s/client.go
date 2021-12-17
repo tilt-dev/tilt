@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
@@ -496,7 +497,7 @@ func (k *K8sClient) escalatingUpdate(ctx context.Context, entity K8sEntity) ([]K
 	fallback := false
 	result, err := k.applyEntity(ctx, entity)
 	if err != nil {
-		msg, match := maybeAnnotationsTooLong(err.Error())
+		msg, match := maybeTooLargeError(err)
 		if match {
 			fallback = true
 			logger.Get(ctx).Infof("Updating %q failed: %s", entity.Name(), msg)
@@ -540,9 +541,24 @@ var MetadataAnnotationsTooLongRe = regexp.MustCompile(`metadata.annotations: Too
 // However, annotations have a max size of 256k. Large objects such as configmaps can exceed 256k, which makes
 // apply unusable, so we need to fall back to delete/create
 // https://github.com/kubernetes/kubectl/issues/712
-func maybeAnnotationsTooLong(stderr string) (string, bool) {
+//
+// We've also seen this reported differently, with a 413 HTTP error.
+// https://github.com/tilt-dev/tilt/issues/5279
+func maybeTooLargeError(err error) (string, bool) {
+	// We don't have an easy way to reproduce some of these problems, so we check
+	// for both the structured form of the error and the unstructured form.
+	statusErr, isStatusErr := err.(*apierrors.StatusError)
+	if isStatusErr && statusErr.ErrStatus.Code == http.StatusRequestEntityTooLarge {
+		return err.Error(), true
+	}
+
+	stderr := err.Error()
 	for _, line := range strings.Split(stderr, "\n") {
 		if MetadataAnnotationsTooLongRe.MatchString(line) {
+			return line, true
+		}
+
+		if strings.Contains(line, "the server responded with the status code 413") {
 			return line, true
 		}
 	}

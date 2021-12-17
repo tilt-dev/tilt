@@ -65,4 +65,13 @@ func (mt *ManifestTarget) UpdateStatus() v1alpha1.UpdateStatus {
 	return us
 }
 
+// Compute the runtime status for the whole Manifest.
+func (mt *ManifestTarget) RuntimeStatus() v1alpha1.RuntimeStatus {
+	m := mt.Manifest
+	if m.IsLocal() && m.LocalTarget().ServeCmd.Empty() {
+		return v1alpha1.RuntimeStatusNotApplicable
+	}
+	return mt.State.RuntimeStatus(m.TriggerMode)
+}
+
 var _ model.Target = &ManifestTarget{}

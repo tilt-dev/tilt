@@ -18,4 +18,8 @@ const (
 
 	// There's no server runtime for this resource and never will be.
 	RuntimeStatusNotApplicable RuntimeStatus = "not_applicable"
+
+	// This server hasn't had any reason to start yet.
+	// This usually indicates that it's a manual trigger with no auto_init.
+	RuntimeStatusNone RuntimeStatus = "none"
 )
