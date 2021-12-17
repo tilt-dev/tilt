@@ -490,7 +490,7 @@ func toClusterObjects(nn types.NamespacedName, tlr *tiltfile.TiltfileLoadResult,
 		return result
 	}
 
-	name := "default"
+	name := v1alpha1.ClusterNameDefault
 	result[name] = &v1alpha1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,

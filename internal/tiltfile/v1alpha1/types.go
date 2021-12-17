@@ -414,6 +414,7 @@ func (p Plugin) kubernetesDiscovery(t *starlark.Thread, fn *starlark.Builtin, ar
 		"extra_selectors?", &extraSelectors,
 		"port_forward_template_spec?", &portForwardTemplateSpec,
 		"pod_log_stream_template_spec?", &podLogStreamTemplateSpec,
+		"cluster?", &obj.Spec.Cluster,
 	)
 	if err != nil {
 		return nil, err

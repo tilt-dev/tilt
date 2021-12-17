@@ -90,6 +90,13 @@ type KubernetesDiscoverySpec struct {
 	//
 	// +optional
 	PodLogStreamTemplateSpec *PodLogStreamTemplateSpec `json:"podLogStreamTemplateSpec,omitempty" protobuf:"bytes,4,opt,name=podLogStreamTemplateSpec"`
+
+	// Cluster name to determine the Kubernetes cluster.
+	//
+	// If not provided, "default" will be used.
+	//
+	// +optional
+	Cluster string `json:"cluster" protobuf:"bytes,5,opt,name=cluster"`
 }
 
 // KubernetesWatchRef is similar to v1.ObjectReference from the Kubernetes API and is used to determine
@@ -149,7 +156,14 @@ type PodLogStreamTemplateSpec struct {
 	IgnoreContainers []string `json:"ignoreContainers,omitempty" protobuf:"bytes,3,rep,name=ignoreContainers"`
 }
 
+func (in *KubernetesDiscovery) Default() {
+	if in.Spec.Cluster == "" {
+		in.Spec.Cluster = ClusterNameDefault
+	}
+}
+
 var _ resource.Object = &KubernetesDiscovery{}
+var _ resourcestrategy.Defaulter = &KubernetesDiscovery{}
 var _ resourcestrategy.Validater = &KubernetesDiscovery{}
 var _ resourcerest.ShortNamesProvider = &KubernetesDiscovery{}
 
