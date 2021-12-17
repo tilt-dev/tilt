@@ -25,6 +25,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/imagemap"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/restarton"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -350,7 +351,7 @@ func (r *Reconciler) forceApplyHelper(
 			return errorStatus(err), nil
 		}
 	} else {
-		deployed, err = r.runCmdDeploy(deployCtx, spec)
+		deployed, err = r.runCmdDeploy(deployCtx, spec, imageMaps)
 		if err != nil {
 			return errorStatus(err), nil
 		}
@@ -402,7 +403,7 @@ func (r *Reconciler) runYAMLDeploy(ctx context.Context, spec v1alpha1.Kubernetes
 	return deployed, nil
 }
 
-func (r *Reconciler) runCmdDeploy(ctx context.Context, spec v1alpha1.KubernetesApplySpec) ([]k8s.K8sEntity, error) {
+func (r *Reconciler) runCmdDeploy(ctx context.Context, spec v1alpha1.KubernetesApplySpec, imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) ([]k8s.K8sEntity, error) {
 	timeout := spec.Timeout.Duration
 	if timeout == 0 {
 		timeout = v1alpha1.KubernetesApplyTimeoutDefault
@@ -416,7 +417,13 @@ func (r *Reconciler) runCmdDeploy(ctx context.Context, spec v1alpha1.KubernetesA
 		Stderr: logger.Get(ctx).Writer(logger.InfoLvl),
 	}
 
-	exitCode, err := r.execer.Run(ctx, toModelCmd(*spec.ApplyCmd), runIO)
+	cmd := toModelCmd(*spec.ApplyCmd)
+	err := imagemap.InjectIntoDeployEnv(&cmd, spec.ImageMaps, imageMaps)
+	if err != nil {
+		return nil, err
+	}
+
+	exitCode, err := r.execer.Run(ctx, cmd, runIO)
 	if err != nil {
 		return nil, fmt.Errorf("apply command failed: %v", err)
 	}
