@@ -12,7 +12,7 @@ import (
 )
 
 type clientOrErr struct {
-	watermarkedClient
+	clientRevision
 	err error
 }
 
@@ -62,21 +62,26 @@ func (f *FakeClientProvider) GetK8sClient(clusterKey types.NamespacedName) (k8s.
 }
 
 // AddK8sClient adds the client if there is currently no client/error for the cluster key.
-func (f *FakeClientProvider) AddK8sClient(key types.NamespacedName, client k8s.Client) {
+func (f *FakeClientProvider) AddK8sClient(key types.NamespacedName, client k8s.Client) (bool, time.Time) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
 	if _, ok := f.clients[key]; !ok {
-		f.clients[key] = clientOrErr{watermarkedClient: watermarkedClient{client: client, connectedAt: time.Now()}}
+		now := time.Now()
+		f.clients[key] = clientOrErr{clientRevision: clientRevision{client: client, connectedAt: now}}
+		return true, now
 	}
+	return false, time.Time{}
 }
 
 // SetK8sClient sets a client for the cluster key, overwriting any that exists.
-func (f *FakeClientProvider) SetK8sClient(key types.NamespacedName, client k8s.Client) {
+func (f *FakeClientProvider) SetK8sClient(key types.NamespacedName, client k8s.Client) time.Time {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	f.clients[key] = clientOrErr{watermarkedClient: watermarkedClient{client: client, connectedAt: time.Now()}}
+	now := time.Now()
+	f.clients[key] = clientOrErr{clientRevision: clientRevision{client: client, connectedAt: now}}
+	return now
 }
 
 // SetClusterError sets an error for the cluster key.

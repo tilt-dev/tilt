@@ -10,8 +10,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
-
 	"k8s.io/apimachinery/pkg/api/validation/path"
 	"k8s.io/apimachinery/pkg/util/validation"
 )
@@ -22,8 +20,13 @@ var invalidLabelCharacters = regexp.MustCompile("[^-A-Za-z0-9_.]")
 
 var invalidPathCharacters = regexp.MustCompile(`[` + strings.Join(path.NameMayNotContain, "") + `]`)
 
-func Key(o resource.Object) types.NamespacedName {
-	return KeyFromMeta(*o.GetObjectMeta())
+type KeyableObject interface {
+	GetName() string
+	GetNamespace() string
+}
+
+func Key(o KeyableObject) types.NamespacedName {
+	return types.NamespacedName{Name: o.GetName(), Namespace: o.GetNamespace()}
 }
 
 func KeyFromMeta(objMeta metav1.ObjectMeta) types.NamespacedName {
