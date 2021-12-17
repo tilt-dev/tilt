@@ -3578,6 +3578,7 @@ func TestDisablingResourcePreventsBuild(t *testing.T) {
 
 func TestDisableButtonIsCreated(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", `

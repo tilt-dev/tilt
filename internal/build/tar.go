@@ -294,18 +294,10 @@ func tarContextAndUpdateDf(ctx context.Context, writer io.Writer, df dockerfile.
 
 	err = ab.archiveDf(ctx, df)
 	if err != nil {
+		_ = ab.Close()
 		return errors.Wrap(err, "archiveDf")
 	}
 
-	return ab.Close()
-}
-
-func TarDfOnly(ctx context.Context, writer io.Writer, df dockerfile.Dockerfile) error {
-	ab := NewArchiveBuilder(writer, model.EmptyMatcher)
-	err := ab.archiveDf(ctx, df)
-	if err != nil {
-		return errors.Wrap(err, "tarDfOnly")
-	}
 	return ab.Close()
 }
 
@@ -318,13 +310,14 @@ func TarPath(ctx context.Context, writer io.Writer, path string) error {
 		},
 	})
 	if err != nil {
+		_ = ab.Close()
 		return errors.Wrap(err, "TarPath")
 	}
 
 	return ab.Close()
 }
 
-func TarArchiveForPaths(ctx context.Context, toArchive []PathMapping, filter model.PathMatcher) io.Reader {
+func TarArchiveForPaths(ctx context.Context, toArchive []PathMapping, filter model.PathMatcher) io.ReadCloser {
 	pr, pw := io.Pipe()
 	go tarArchiveForPaths(ctx, pw, toArchive, filter)
 	return pr
