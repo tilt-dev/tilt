@@ -21,12 +21,8 @@ var NotFoundError = errors.New("cluster client does not exist")
 // All clients are goroutine-safe.
 type ClientCache interface {
 	// GetK8sClient returns the Kubernetes client for the cluster or an error for unknown clusters, connections
-	// in a transient error state, or if the connection is of a different type (i.e. Docker).
+	// in a transient error state, or if the connection is of a different type (i.e. Docker Compose).
 	GetK8sClient(clusterKey types.NamespacedName) (k8s.Client, error)
-
-	// GetDockerClient returns the Docker client for the cluster or an error for unknown clusters, connections
-	// in a transient error state, or if the connection is of a different type (i.e. Kubernetes).
-	GetDockerClient(clusterKey types.NamespacedName) (docker.Client, error)
 }
 
 func NewConnectionManager() *ConnectionManager {
@@ -64,7 +60,11 @@ func (k *ConnectionManager) GetK8sClient(key types.NamespacedName) (k8s.Client, 
 	return conn.k8sClient, nil
 }
 
-func (k *ConnectionManager) GetDockerClient(key types.NamespacedName) (docker.Client, error) {
+// GetComposeDockerClient gets the Docker client for the instance that Docker Compose is deploying to.
+//
+// This is not currently exposed by the ClientCache interface as Docker Compose logic has not been migrated
+// to the apiserver.
+func (k *ConnectionManager) GetComposeDockerClient(key types.NamespacedName) (docker.Client, error) {
 	conn, err := k.validConnOrError(key, connectionTypeDocker)
 	if err != nil {
 		return nil, err

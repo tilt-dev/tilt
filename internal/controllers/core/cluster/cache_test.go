@@ -80,7 +80,7 @@ func TestConnectionManager(t *testing.T) {
 				}
 			}
 
-			dCli, err := cm.GetDockerClient(nn)
+			dCli, err := cm.GetComposeDockerClient(nn)
 			if tcs[i].expectedDockerErr != "" {
 				if assert.EqualError(t, err, tcs[i].expectedDockerErr) {
 					assert.Nil(t, dCli, "DockerClient should be nil on error")
