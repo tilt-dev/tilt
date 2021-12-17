@@ -131,6 +131,7 @@ func (c *FakeK8sClient) UpsertService(s *v1.Service) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	s = s.DeepCopy()
 	c.services[types.NamespacedName{Name: s.Name, Namespace: s.Namespace}] = s
 	for _, w := range c.serviceWatches {
 		if w.ns != Namespace(s.Namespace) {
@@ -144,6 +145,8 @@ func (c *FakeK8sClient) UpsertService(s *v1.Service) {
 func (c *FakeK8sClient) UpsertPod(pod *v1.Pod) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
+	pod = pod.DeepCopy()
 	c.pods[types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}] = pod
 	for _, w := range c.podWatches {
 		if w.ns != Namespace(pod.Namespace) {
@@ -158,6 +161,7 @@ func (c *FakeK8sClient) UpsertEvent(event *v1.Event) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	event = event.DeepCopy()
 	c.events[types.NamespacedName{Name: event.Name, Namespace: event.Namespace}] = event
 	for _, w := range c.eventWatches {
 		if w.ns != Namespace(event.Namespace) {

@@ -3884,7 +3884,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		&server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
 	ns := k8s.Namespace("default")
 	rd := kubernetesdiscovery.NewContainerRestartDetector()
-	kdc := kubernetesdiscovery.NewReconciler(cdc, sch, kClient, rd, st)
+	kdc := kubernetesdiscovery.NewReconciler(cdc, sch, clusterClients, rd, st)
 	sw := k8swatch.NewServiceWatcher(clusterClients, ns)
 	ewm := k8swatch.NewEventWatchManager(clusterClients, ns)
 	tcum := cloud.NewStatusManager(httptest.NewFakeClientEmptyJSON(), clock)

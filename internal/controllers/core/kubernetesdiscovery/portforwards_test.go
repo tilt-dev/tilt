@@ -36,9 +36,9 @@ func TestPortForwardCreateAndUpdate(t *testing.T) {
 	}
 
 	f.Create(kd)
-	f.kClient.UpsertPod(pod)
+	f.injectK8sObjects(*kd, pod)
 
-	f.requireObservedPods(key, ancestorMap{pod.UID: pod.UID})
+	f.requireObservedPods(key, ancestorMap{pod.UID: pod.UID}, nil)
 
 	// Simulate the reconcile (which would normally be invoked by the manager on status update).
 	f.MustReconcile(key)
@@ -83,8 +83,8 @@ func TestPortForwardIdempotent(t *testing.T) {
 	}
 
 	f.Create(kd)
-	f.kClient.UpsertPod(pod)
-	f.requireObservedPods(key, ancestorMap{pod.UID: pod.UID})
+	f.injectK8sObjects(*kd, pod)
+	f.requireObservedPods(key, ancestorMap{pod.UID: pod.UID}, nil)
 
 	// Simulate the reconcile (which would normally be invoked by the manager on status update).
 	f.MustReconcile(key)
@@ -124,9 +124,9 @@ func TestPortForwardCreateAndDelete(t *testing.T) {
 	}
 
 	f.Create(kd)
-	f.kClient.UpsertPod(pod)
+	f.injectK8sObjects(*kd, pod)
 
-	f.requireObservedPods(key, ancestorMap{pod.UID: pod.UID})
+	f.requireObservedPods(key, ancestorMap{pod.UID: pod.UID}, nil)
 
 	// Simulate the reconcile (which would normally be invoked by the manager on status update).
 	f.MustReconcile(key)
@@ -166,9 +166,9 @@ func TestPortForwardCreateAndDeleteOwner(t *testing.T) {
 	}
 
 	f.Create(kd)
-	f.kClient.UpsertPod(pod)
+	f.injectK8sObjects(*kd, pod)
 
-	f.requireObservedPods(key, ancestorMap{pod.UID: pod.UID})
+	f.requireObservedPods(key, ancestorMap{pod.UID: pod.UID}, nil)
 
 	// Simulate the reconcile (which would normally be invoked by the manager on status update).
 	f.MustReconcile(key)
@@ -208,7 +208,7 @@ func TestPortForwardNotForPending(t *testing.T) {
 	}
 
 	f.Create(kd)
-	f.kClient.UpsertPod(pod)
+	f.injectK8sObjects(*kd, pod)
 
 	f.MustReconcile(key)
 
@@ -218,7 +218,7 @@ func TestPortForwardNotForPending(t *testing.T) {
 	// Assert that setting the pod to running will lead to the port forward
 	// being created.
 	pod.Status.Phase = v1.PodRunning
-	f.kClient.UpsertPod(pod)
+	f.injectK8sObjects(*kd, pod)
 
 	f.requireState(key, func(kd *v1alpha1.KubernetesDiscovery) bool {
 		return kd.Status.Pods[0].Phase == string(v1.PodRunning)
