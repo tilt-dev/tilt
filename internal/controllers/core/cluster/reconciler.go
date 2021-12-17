@@ -70,7 +70,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	// The apiserver is the source of truth, and will ensure the engine state is up to date.
 	r.store.Dispatch(clusters.NewClusterUpsertAction(&obj))
 
-	var connectionChanged bool
 	conn, hasConnection := r.connManager.load(nn)
 	if hasConnection {
 		// If the spec changed, delete the connection and recreate it.
@@ -78,12 +77,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 			r.connManager.delete(nn)
 			conn = connection{}
 			hasConnection = false
-			connectionChanged = true
 		}
 	}
 
 	if !hasConnection {
-		connectionChanged = true
 		// Create the initial connection to the cluster.
 		if obj.Spec.Connection != nil && obj.Spec.Connection.Kubernetes != nil {
 			conn = r.createKubernetesConnection(ctx, obj.Spec.Connection.Kubernetes)
@@ -95,7 +92,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	}
 
 	if conn.error == "" && conn.arch == "" {
-		connectionChanged = true
 		if conn.k8sClient != nil {
 			conn.arch = r.readKubernetesArch(ctx, conn.k8sClient)
 		} else if conn.dockerClient != nil {
@@ -103,9 +99,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		}
 	}
 
-	if connectionChanged {
-		r.connManager.store(nn, conn)
-	}
+	r.connManager.store(nn, conn)
 
 	status := conn.toStatus()
 	err = r.maybeUpdateStatus(ctx, &obj, status)
