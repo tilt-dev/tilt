@@ -1,7 +1,9 @@
 package containerupdate
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"io"
 
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
@@ -28,9 +30,14 @@ func (cu *FakeContainerUpdater) SetUpdateErr(err error) {
 
 func (cu *FakeContainerUpdater) UpdateContainer(ctx context.Context, cInfo liveupdates.Container,
 	archiveToCopy io.Reader, filesToDelete []string, cmds []model.Cmd, hotReload bool) error {
+
+	var archive bytes.Buffer
+	if _, err := io.Copy(&archive, archiveToCopy); err != nil {
+		return fmt.Errorf("FakeContainerUpdater failed to read archive: %v", err)
+	}
 	cu.Calls = append(cu.Calls, UpdateContainerCall{
 		ContainerInfo: cInfo,
-		Archive:       archiveToCopy,
+		Archive:       &archive,
 		ToDelete:      filesToDelete,
 		Cmds:          cmds,
 		HotReload:     hotReload,

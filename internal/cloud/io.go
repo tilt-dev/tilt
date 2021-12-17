@@ -39,6 +39,9 @@ func (s *Snapshotter) WriteSnapshot(ctx context.Context, path string) {
 		logger.Get(ctx).Errorf("Writing snapshot to file: %v", err)
 		return
 	}
+	defer func() {
+		_ = f.Close()
+	}()
 
 	err = WriteSnapshotTo(ctx, &proto_webview.Snapshot{View: view}, f)
 	if err != nil {
