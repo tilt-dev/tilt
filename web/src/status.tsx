@@ -67,6 +67,7 @@ function runtimeStatus(
     case RuntimeStatus.Ok:
       return ResourceStatus.Healthy
     case RuntimeStatus.NotApplicable:
+    case RuntimeStatus.None:
       return ResourceStatus.None
   }
   return ResourceStatus.None

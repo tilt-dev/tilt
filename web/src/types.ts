@@ -33,6 +33,7 @@ export enum RuntimeStatus {
   Pending = "pending",
   Error = "error",
   NotApplicable = "not_applicable",
+  None = "none",
 }
 
 // what is the status of the update
