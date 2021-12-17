@@ -3773,6 +3773,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 
 	cdc := controllers.ProvideDeferredClient()
+	sch := v1alpha1.NewScheme()
 
 	watcher := fsevent.NewFakeMultiWatcher()
 	kClient := k8s.NewFakeK8sClient(t)
@@ -3818,7 +3819,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	ns := k8s.Namespace("default")
 	of := k8s.ProvideOwnerFetcher(ctx, kClient)
 	rd := kubernetesdiscovery.NewContainerRestartDetector()
-	kdc := kubernetesdiscovery.NewReconciler(cdc, kClient, of, rd, st)
+	kdc := kubernetesdiscovery.NewReconciler(cdc, sch, kClient, of, rd, st)
 	sw := k8swatch.NewServiceWatcher(kClient, of, ns)
 	ewm := k8swatch.NewEventWatchManager(kClient, of, ns)
 	tcum := cloud.NewStatusManager(httptest.NewFakeClientEmptyJSON(), clock)
@@ -3832,7 +3833,6 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	tp := prompt.NewTerminalPrompt(ta, prompt.TTYOpen, openurl.BrowserOpen,
 		log, "localhost", model.WebURL{})
 	h := hud.NewFakeHud()
-	sch := v1alpha1.NewScheme()
 
 	uncached := controllers.UncachedObjects{}
 	for _, obj := range v1alpha1.AllResourceObjects() {
