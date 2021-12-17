@@ -3777,6 +3777,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 
 	watcher := fsevent.NewFakeMultiWatcher()
 	kClient := k8s.NewFakeK8sClient(t)
+	clusterClients := cluster.NewFakeClientCache(kClient)
 
 	timerMaker := fsevent.MakeFakeTimerMaker(t)
 
@@ -3819,7 +3820,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	ns := k8s.Namespace("default")
 	of := k8s.ProvideOwnerFetcher(ctx, kClient)
 	rd := kubernetesdiscovery.NewContainerRestartDetector()
-	kdc := kubernetesdiscovery.NewReconciler(cdc, sch, kClient, of, rd, st)
+	kdc := kubernetesdiscovery.NewReconciler(cdc, sch, clusterClients, rd, st)
 	sw := k8swatch.NewServiceWatcher(kClient, of, ns)
 	ewm := k8swatch.NewEventWatchManager(kClient, of, ns)
 	tcum := cloud.NewStatusManager(httptest.NewFakeClientEmptyJSON(), clock)

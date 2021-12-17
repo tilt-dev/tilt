@@ -2,6 +2,7 @@ package kubernetesdiscovery
 
 import (
 	"context"
+	"errors"
 	"sort"
 	"strings"
 	"testing"
@@ -14,10 +15,13 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/controllers/core/cluster"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -55,7 +59,7 @@ func TestPodDiscoveryExactMatch(t *testing.T) {
 	// we should not have observed any pods yet
 	f.requireObservedPods(key, nil)
 
-	f.kClient.UpsertPod(pod)
+	f.k8sClient(*kd).UpsertPod(pod)
 
 	f.requireObservedPods(key, ancestorMap{pod.UID: pod.UID})
 }
@@ -64,7 +68,7 @@ func TestPodDiscoveryAncestorMatch(t *testing.T) {
 	f := newFixture(t)
 
 	ns := k8s.Namespace("ns")
-	_, rs := f.simulateDeployment(ns, "dep")
+	dep, rs := f.buildK8sDeployment(ns, "dep")
 
 	key := types.NamespacedName{Namespace: "some-ns", Name: "kd"}
 	kd := &v1alpha1.KubernetesDiscovery{
@@ -80,13 +84,15 @@ func TestPodDiscoveryAncestorMatch(t *testing.T) {
 		},
 	}
 
+	f.injectK8sObjects(*kd, dep, rs)
+
 	f.Create(kd)
 	f.requireMonitorStarted(key)
 	// we should not have observed any pods yet
 	f.requireObservedPods(key, nil)
 
 	pod := f.buildPod(ns, "pod", nil, rs)
-	f.kClient.UpsertPod(pod)
+	f.injectK8sObjects(*kd, pod)
 
 	f.requireObservedPods(key, ancestorMap{pod.UID: rs.UID})
 
@@ -126,10 +132,10 @@ func TestPodDiscoveryPreexisting(t *testing.T) {
 	// we should not have observed any pods yet
 	f.requireObservedPods(key, nil)
 
-	_, rs := f.simulateDeployment(ns, "dep")
+	_, rs := f.buildK8sDeployment(ns, "dep")
 	pod := f.buildPod(ns, "pod", nil, rs)
 	// pod is deployed before it or its ancestors are ever referenced by spec
-	f.kClient.UpsertPod(pod)
+	f.injectK8sObjects(*kd, pod)
 
 	// typically, the reconciler will see the Pod event BEFORE any client is able to create
 	// a spec that references it via ancestor UID and we still want those included on the status
@@ -145,7 +151,7 @@ func TestPodDiscoveryLabelMatch(t *testing.T) {
 
 	ns := k8s.Namespace("ns")
 
-	_, knownRS := f.simulateDeployment(ns, "known")
+	knownDep, knownRS := f.buildK8sDeployment(ns, "known")
 
 	key := types.NamespacedName{Namespace: "some-ns", Name: "kd"}
 	kd := &v1alpha1.KubernetesDiscovery{
@@ -161,6 +167,7 @@ func TestPodDiscoveryLabelMatch(t *testing.T) {
 			},
 		},
 	}
+	f.injectK8sObjects(*kd, knownDep, knownRS)
 
 	f.Create(kd)
 	f.requireMonitorStarted(key)
@@ -168,17 +175,11 @@ func TestPodDiscoveryLabelMatch(t *testing.T) {
 	f.requireObservedPods(key, nil)
 
 	pod1 := f.buildPod(ns, "pod1", labels.Set{"k1": "v1", "k2": "v2", "other": "other1"}, nil)
-	f.kClient.UpsertPod(pod1)
-
 	pod2 := f.buildPod(ns, "pod2", labels.Set{"k1": "v1", "other": "other2"}, nil)
-	f.kClient.UpsertPod(pod2)
-
-	_, unknownRS := f.simulateDeployment(ns, "unknown")
+	_, unknownRS := f.buildK8sDeployment(ns, "unknown")
 	pod3 := f.buildPod(ns, "pod3", labels.Set{"k3": "v3"}, unknownRS)
-	f.kClient.UpsertPod(pod3)
-
 	pod4 := f.buildPod(ns, "pod4", labels.Set{"k3": "v3"}, knownRS)
-	f.kClient.UpsertPod(pod4)
+	f.injectK8sObjects(*kd, pod1, pod2, pod3, pod4)
 
 	// pod1 matches on labels and doesn't have any associated Deployment
 	// pod2 does NOT match on labels - it must match ALL labels from a given set (it's missing k2:v2)
@@ -204,9 +205,8 @@ func TestPodDiscoveryDuplicates(t *testing.T) {
 
 	ns := k8s.Namespace("ns")
 
-	_, sharedRS := f.simulateDeployment(ns, "known")
+	sharedDep, sharedRS := f.buildK8sDeployment(ns, "known")
 	preExistingPod := f.buildPod(ns, "preexisting", nil, sharedRS)
-	f.kClient.UpsertPod(preExistingPod)
 
 	key1 := types.NamespacedName{Namespace: "some-ns", Name: "kd1"}
 	kd1 := &v1alpha1.KubernetesDiscovery{
@@ -221,9 +221,10 @@ func TestPodDiscoveryDuplicates(t *testing.T) {
 			},
 		},
 	}
+	f.injectK8sObjects(*kd1, preExistingPod, sharedDep, sharedRS)
 	f.Create(kd1)
 
-	_, kd2RS := f.simulateDeployment(ns, "kd2only")
+	kd2Dep, kd2RS := f.buildK8sDeployment(ns, "kd2only")
 
 	key2 := types.NamespacedName{Namespace: "some-ns", Name: "kd2"}
 	kd2 := &v1alpha1.KubernetesDiscovery{
@@ -239,6 +240,7 @@ func TestPodDiscoveryDuplicates(t *testing.T) {
 			},
 		},
 	}
+	f.injectK8sObjects(*kd2, kd2Dep, kd2RS)
 	f.Create(kd2)
 
 	for _, k := range []types.NamespacedName{key1, key2} {
@@ -249,15 +251,14 @@ func TestPodDiscoveryDuplicates(t *testing.T) {
 
 	// pod1 matches on labels for both kd/kd2 and doesn't have any associated Deployment
 	pod1 := f.buildPod(ns, "pod1", labels.Set{"k": "v"}, nil)
-	f.kClient.UpsertPod(pod1)
 
 	// pod2 is another pod for the known, shared RS
 	pod2 := f.buildPod(ns, "pod2", nil, nil)
-	f.kClient.UpsertPod(pod2)
 
 	// pod3 is for the replicaset only known by KD2 but has labels that match KD1 as well
 	pod3 := f.buildPod(ns, "pod3", labels.Set{"k": "v"}, kd2RS)
-	f.kClient.UpsertPod(pod3)
+
+	f.injectK8sObjects(*kd1, pod1, pod2, pod3)
 
 	f.requireObservedPods(key1, ancestorMap{
 		preExistingPod.UID: sharedRS.UID,
@@ -277,9 +278,7 @@ func TestReconcileCreatesPodLogStream(t *testing.T) {
 
 	ns := k8s.Namespace("ns")
 	pod1 := f.buildPod(ns, "pod1", nil, nil)
-	f.kClient.UpsertPod(pod1)
 	pod2 := f.buildPod(ns, "pod2", nil, nil)
-	f.kClient.UpsertPod(pod2)
 
 	key := types.NamespacedName{Namespace: "some-ns", Name: "kd"}
 	sinceTime := apis.NewTime(time.Now())
@@ -309,6 +308,8 @@ func TestReconcileCreatesPodLogStream(t *testing.T) {
 			PodLogStreamTemplateSpec: podLogStreamTemplateSpec,
 		},
 	}
+
+	f.injectK8sObjects(*kd, pod1, pod2)
 
 	f.Create(kd)
 	// make sure the pods have been seen so that it knows what to create resources for
@@ -343,7 +344,7 @@ func TestReconcileCreatesPodLogStream(t *testing.T) {
 	}
 
 	// simulate a pod delete and ensure that after it's observed + reconciled, the PLS is also deleted
-	f.kClient.EmitPodDelete(pod1)
+	f.k8sClient(*kd).EmitPodDelete(pod1)
 	f.requireObservedPods(key, ancestorMap{pod2.UID: pod2.UID})
 	f.MustReconcile(key)
 	f.List(&podLogStreams)
@@ -367,17 +368,34 @@ func TestKubernetesDiscoveryIndexing(t *testing.T) {
 
 	pod := f.buildPod("pod-ns", "pod", nil, nil)
 
-	f.Create(&v1alpha1.Cluster{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "some-ns", Name: "my-cluster"},
-		Spec: v1alpha1.ClusterSpec{
-			Connection: &v1alpha1.ClusterConnection{
-				Kubernetes: &v1alpha1.KubernetesClusterConnection{
-					Namespace: "foo",
-					Context:   "bar",
+	key := types.NamespacedName{Namespace: "some-ns", Name: "kd"}
+	kd := &v1alpha1.KubernetesDiscovery{
+		ObjectMeta: metav1.ObjectMeta{Namespace: key.Namespace, Name: key.Name},
+		Spec: v1alpha1.KubernetesDiscoverySpec{
+			Cluster: "my-cluster",
+			Watches: []v1alpha1.KubernetesWatchRef{
+				{
+					UID:       string(pod.UID),
+					Namespace: pod.Namespace,
+					Name:      pod.Name,
 				},
 			},
 		},
-	})
+	}
+
+	// fixture will automatically create a cluster object
+	f.Create(kd)
+
+	reqs := f.r.indexer.Enqueue(&v1alpha1.Cluster{ObjectMeta: metav1.ObjectMeta{Namespace: "some-ns", Name: "my-cluster"}})
+	assert.ElementsMatch(t, []reconcile.Request{
+		{NamespacedName: types.NamespacedName{Namespace: "some-ns", Name: "kd"}},
+	}, reqs)
+}
+
+func TestKubernetesDiscoveryClusterError(t *testing.T) {
+	f := newFixture(t)
+
+	pod := f.buildPod("pod-ns", "pod", nil, nil)
 
 	key := types.NamespacedName{Namespace: "some-ns", Name: "kd"}
 	kd := &v1alpha1.KubernetesDiscovery{
@@ -394,26 +412,29 @@ func TestKubernetesDiscoveryIndexing(t *testing.T) {
 		},
 	}
 
-	f.Create(kd)
+	// cannot use normal fixture create flow because we want to intentionally
+	// set things up in a bad state
+	f.ensureCluster(*kd)
+	f.clients.SetClusterError(clusterNN(*kd), errors.New("oh no"))
+	require.NoError(t, f.Client.Create(f.Context(), kd), "Could not create KubernetesDiscovery")
 
-	reqs := f.r.indexer.Enqueue(&v1alpha1.Cluster{ObjectMeta: metav1.ObjectMeta{Namespace: "some-ns", Name: "my-cluster"}})
-	assert.ElementsMatch(t, []reconcile.Request{
-		{NamespacedName: types.NamespacedName{Namespace: "some-ns", Name: "kd"}},
-	}, reqs)
+	// TODO(milas): we need to add an Error field to KubernetesDiscoveryStatus
+	// 	to report these problems
+	_, err := f.Reconcile(key)
+	require.EqualError(t, err, `failed to reconcile some-ns:kd: cluster "my-cluster" connection error: oh no`)
 }
 
 type fixture struct {
 	*fake.ControllerFixture
 	t       *testing.T
-	kClient *k8s.FakeK8sClient
+	clients *cluster.FakeClientCache
 	r       *Reconciler
 	ctx     context.Context
 	store   *store.TestingStore
 }
 
 func newFixture(t *testing.T) *fixture {
-	kClient := k8s.NewFakeK8sClient(t)
-	t.Cleanup(kClient.TearDown)
+	clients := cluster.NewFakeClientCache(nil)
 
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	ctx, cancel := context.WithCancel(ctx)
@@ -421,14 +442,13 @@ func newFixture(t *testing.T) *fixture {
 
 	st := store.NewTestingStore()
 
-	of := k8s.ProvideOwnerFetcher(ctx, kClient)
 	rd := NewContainerRestartDetector()
 	cfb := fake.NewControllerFixtureBuilder(t)
-	pw := NewReconciler(cfb.Client, cfb.Scheme(), kClient, of, rd, st)
+	pw := NewReconciler(cfb.Client, cfb.Scheme(), clients, rd, st)
 
 	ret := &fixture{
 		ControllerFixture: cfb.Build(pw),
-		kClient:           kClient,
+		clients:           clients,
 		r:                 pw,
 		ctx:               ctx,
 		t:                 t,
@@ -496,9 +516,8 @@ func (f *fixture) requireState(key types.NamespacedName, cond func(kd *v1alpha1.
 	}, stdTimeout, 20*time.Millisecond, msg, args...)
 }
 
-// simulateDeployment creates a Deployment + associated ReplicaSet and injects them into the K8s client for subsequent
-// retrieval (this allow the reconciler to build object owner trees).
-func (f *fixture) simulateDeployment(namespace k8s.Namespace, name string) (*appsv1.Deployment, *appsv1.ReplicaSet) {
+// buildK8sDeployment creates fake Deployment + associated ReplicaSet objects.
+func (f *fixture) buildK8sDeployment(namespace k8s.Namespace, name string) (*appsv1.Deployment, *appsv1.ReplicaSet) {
 	d := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			UID:               types.UID(name + "-uid"),
@@ -518,10 +537,27 @@ func (f *fixture) simulateDeployment(namespace k8s.Namespace, name string) (*app
 		},
 	}
 
-	// inject these so that their metadata can be found later for owner reference matching
-	f.kClient.Inject(k8s.NewK8sEntity(d), k8s.NewK8sEntity(rs))
-
 	return d, rs
+}
+
+// injectK8sObjects seeds objects in the fake K8s client for subsequent retrieval.
+// This allow the reconciler to build object owner trees.
+func (f *fixture) injectK8sObjects(kd v1alpha1.KubernetesDiscovery, objs ...runtime.Object) {
+	f.t.Helper()
+	kCli := f.k8sClient(kd)
+
+	var k8sEntities []k8s.K8sEntity
+	for _, obj := range objs {
+		if pod, ok := obj.(*v1.Pod); ok {
+			kCli.UpsertPod(pod)
+			continue
+		}
+
+		k8sEntities = append(k8sEntities, k8s.NewK8sEntity(obj))
+	}
+
+	// inject these so that their metadata can be found later for owner reference matching
+	kCli.Inject(k8sEntities...)
 }
 
 // buildPod makes a fake Pod object but does not simulate its deployment.
@@ -552,4 +588,56 @@ func (f *fixture) buildPod(namespace k8s.Namespace, name string, podLabels label
 	}
 
 	return p
+}
+
+func clusterNN(kd v1alpha1.KubernetesDiscovery) types.NamespacedName {
+	nn := types.NamespacedName{Namespace: kd.Namespace, Name: kd.Spec.Cluster}
+	if nn.Name == "" {
+		nn.Name = v1alpha1.ClusterNameDefault
+	}
+	return nn
+}
+
+func (f *fixture) k8sClient(kd v1alpha1.KubernetesDiscovery) *k8s.FakeK8sClient {
+	f.t.Helper()
+
+	clusterNN := clusterNN(kd)
+	kCli, err := f.clients.GetK8sClient(clusterNN)
+	if errors.Is(err, cluster.NotFoundError) {
+		fakeCli := k8s.NewFakeK8sClient(f.t)
+		f.t.Cleanup(fakeCli.TearDown)
+		f.clients.AddK8sClient(clusterNN, fakeCli)
+		kCli, err = f.clients.GetK8sClient(clusterNN)
+	}
+	require.NoError(f.t, err, "Couldn't get K8s client for cluster %s", clusterNN)
+	require.IsType(f.t, &k8s.FakeK8sClient{}, kCli)
+	return kCli.(*k8s.FakeK8sClient)
+}
+
+func (f *fixture) ensureCluster(kd v1alpha1.KubernetesDiscovery) {
+	f.t.Helper()
+
+	// seed the k8s client if it doesn't already exist
+	f.k8sClient(kd)
+
+	nn := clusterNN(kd)
+
+	f.ControllerFixture.Upsert(&v1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: nn.Namespace,
+			Name:      nn.Name,
+		},
+		Spec: v1alpha1.ClusterSpec{
+			Connection: &v1alpha1.ClusterConnection{
+				Kubernetes: &v1alpha1.KubernetesClusterConnection{},
+			},
+		},
+	})
+}
+
+func (f *fixture) Create(kd *v1alpha1.KubernetesDiscovery) controllerruntime.Result {
+	f.t.Helper()
+	kd.Default()
+	f.ensureCluster(*kd)
+	return f.ControllerFixture.Create(kd)
 }
