@@ -357,6 +357,7 @@ func (w *Reconciler) updateStatus(ctx context.Context, watcherID watcherID) erro
 		// if the spec got deleted, there's nothing to update
 		return nil
 	}
+	patchBase := ctrlclient.MergeFrom(kd.DeepCopy())
 
 	if !equality.Semantic.DeepEqual(watcher.spec, kd.Spec) {
 		// the spec has changed and we haven't reconciled that change yet; this state update is
@@ -365,7 +366,7 @@ func (w *Reconciler) updateStatus(ctx context.Context, watcherID watcherID) erro
 	}
 
 	kd.Status = status
-	if err := w.ctrlClient.Status().Update(ctx, kd); err != nil {
+	if err := w.ctrlClient.Status().Patch(ctx, kd, patchBase); err != nil {
 		if apierrors.IsNotFound(err) {
 			// similar to above but for the event that it gets deleted between get + update
 			return nil
