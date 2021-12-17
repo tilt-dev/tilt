@@ -46,7 +46,7 @@ func (s *tiltfileState) k8sCustomDeploy(thread *starlark.Thread, fn *starlark.Bu
 		"delete_env?", &deleteCmdEnv,
 		"delete_cmd_bat?", &deleteCmdBatVal,
 		"container_selector?", &containerSelector,
-		"image_deps", &imageDeps,
+		"image_deps?", &imageDeps,
 	); err != nil {
 		return nil, err
 	}

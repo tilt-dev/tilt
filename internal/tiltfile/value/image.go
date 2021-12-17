@@ -24,6 +24,8 @@ func (s *ImageList) Unpack(v starlark.Value) error {
 		iter = x.Iterate()
 	case starlark.Tuple:
 		iter = x.Iterate()
+	case starlark.NoneType:
+		return nil
 	default:
 		return fmt.Errorf("value should be a List or Tuple of strings, but is of type %s", v.Type())
 	}
