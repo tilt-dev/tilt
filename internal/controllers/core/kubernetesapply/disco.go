@@ -101,6 +101,10 @@ func (r *Reconciler) toDesiredKubernetesDiscovery(ka *v1alpha1.KubernetesApply) 
 			},
 		},
 		Spec: v1alpha1.KubernetesDiscoverySpec{
+			// TODO(milas): this should come from the KA spec once added, but
+			// 	in the meantime, it's necessary to explicitly set so we can
+			// 	do comparisons against the current server version
+			Cluster:                  v1alpha1.ClusterNameDefault,
 			Watches:                  watchRefs,
 			ExtraSelectors:           extraSelectors,
 			PodLogStreamTemplateSpec: kapp.PodLogStreamTemplateSpec.DeepCopy(),
