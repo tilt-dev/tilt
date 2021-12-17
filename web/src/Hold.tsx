@@ -3,6 +3,7 @@ export class Hold {
   count: number = 0
   resources: string[] = []
   images: string[] = []
+  clusters: string[] = []
 
   constructor(waiting: Proto.v1alpha1UIResourceStateWaiting) {
     this.reason = waiting.reason ?? ""
@@ -13,6 +14,9 @@ export class Hold {
       }
       if (ref.kind === "ImageMap" && ref.name) {
         this.images.push(ref.name)
+      }
+      if (ref.kind === "Cluster" && ref.name) {
+        this.clusters.push(ref.name)
       }
     }
   }

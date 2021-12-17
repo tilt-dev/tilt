@@ -1,4 +1,4 @@
-FROM golang:1.11-alpine
+FROM golang:1.17-alpine
 RUN apk add curl
 WORKDIR /go/src/github.com/tilt-dev/integration/onedc
 ADD . .

@@ -340,10 +340,11 @@ func supportsPartialMetadata(v *version.Info) bool {
 }
 
 func (kCli *K8sClient) WatchMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) (<-chan metav1.Object, error) {
-	gvr, err := kCli.forceDiscovery(ctx, gvk)
+	mapping, err := kCli.forceDiscovery(ctx, gvk)
 	if err != nil {
 		return nil, errors.Wrap(err, "WatchMeta")
 	}
+	gvr := mapping.Resource
 
 	version, err := kCli.discovery.ServerVersion()
 	if err != nil {

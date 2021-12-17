@@ -95,6 +95,10 @@ type DockerClusterConnection struct {
 var _ resource.Object = &Cluster{}
 var _ resourcestrategy.Validater = &Cluster{}
 
+func (in *Cluster) GetSpec() interface{} {
+	return in.Spec
+}
+
 func (in *Cluster) GetObjectMeta() *metav1.ObjectMeta {
 	return &in.ObjectMeta
 }

@@ -464,6 +464,12 @@ func holdToWaiting(hold store.Hold) *v1alpha1.UIResourceStateWaiting {
 	waiting := &v1alpha1.UIResourceStateWaiting{
 		Reason: string(hold.Reason),
 	}
+
+	if hold.OnRefs != nil {
+		waiting.On = hold.OnRefs
+		return waiting
+	}
+
 	for _, targetID := range hold.HoldOn {
 		var gvk schema.GroupVersionKind
 		switch targetID.Type {

@@ -166,6 +166,60 @@ func TestLiveUpdate(t *testing.T) {
 	}
 }
 
+func TestCluster(t *testing.T) {
+	f := newFixture(t)
+	p := f.tempdir.JoinPath("Tiltfile")
+	f.r.k8sContextOverride = "context-override"
+	f.r.k8sNamespaceOverride = "namespace-override"
+
+	expected := &v1alpha1.ClusterConnection{
+		Kubernetes: &v1alpha1.KubernetesClusterConnection{
+			Context:   string(f.r.k8sContextOverride),
+			Namespace: string(f.r.k8sNamespaceOverride),
+		},
+	}
+
+	sancho := manifestbuilder.New(f.tempdir, "sancho").
+		WithK8sYAML(testyaml.SanchoYAML).
+		Build()
+	f.tfl.Result = tiltfile.TiltfileLoadResult{
+		Manifests: []model.Manifest{sancho},
+	}
+
+	name := model.MainTiltfileManifestName.String()
+	nn := types.NamespacedName{Name: name}
+	tf := v1alpha1.Tiltfile{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Spec: v1alpha1.TiltfileSpec{
+			Path: p,
+		},
+	}
+	f.Create(&tf)
+
+	assert.Eventually(t, func() bool {
+		f.MustGet(nn, &tf)
+		return tf.Status.Running != nil
+	}, time.Second, time.Millisecond)
+
+	f.popQueue()
+
+	assert.Eventually(t, func() bool {
+		f.MustGet(nn, &tf)
+		return tf.Status.Terminated != nil
+	}, time.Second, time.Millisecond)
+
+	assert.Equal(t, "", tf.Status.Terminated.Error)
+
+	var clList = v1alpha1.ClusterList{}
+	f.List(&clList)
+	if assert.Equal(t, 1, len(clList.Items)) {
+		assert.Equal(t, "default", clList.Items[0].Name)
+		assert.Equal(t, expected, clList.Items[0].Spec.Connection)
+	}
+}
+
 func TestLocalServe(t *testing.T) {
 	f := newFixture(t)
 	p := f.tempdir.JoinPath("Tiltfile")
@@ -251,7 +305,7 @@ func newFixture(t *testing.T) *fixture {
 	d := docker.NewFakeClient()
 	kClient := k8s.NewFakeK8sClient(t)
 	bs := NewBuildSource()
-	r := NewReconciler(st, tfl, kClient, d, cfb.Client, v1alpha1.NewScheme(), bs, store.EngineModeUp)
+	r := NewReconciler(st, tfl, kClient, d, cfb.Client, v1alpha1.NewScheme(), bs, store.EngineModeUp, "", "")
 	q := workqueue.NewRateLimitingQueue(
 		workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, time.Millisecond))
 	_ = bs.Start(context.Background(), handler.Funcs{}, q)

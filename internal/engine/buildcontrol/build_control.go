@@ -66,6 +66,7 @@ func NextTargetToBuild(state store.EngineState) (*store.ManifestTarget, HoldSet)
 	HoldTargetsWithBuildingComponents(state, targets, holds)
 	HoldTargetsWaitingOnDependencies(state, targets, holds)
 	HoldDisabledTargets(state, targets, holds)
+	HoldTargetsWaitingOnCluster(state, targets, holds)
 
 	// If any of the manifest targets haven't been built yet, build them now.
 	targets = holds.RemoveIneligibleTargets(targets)
@@ -216,6 +217,35 @@ func HoldTargetsWithBuildingComponents(state store.EngineState, mts []*store.Man
 			holds.AddHold(mt, store.Hold{
 				Reason: store.HoldReasonBuildingComponent,
 				HoldOn: waitingOn,
+			})
+		}
+	}
+}
+
+// We use the cluster to detect what architecture we're building for.
+// Until the cluster connection has been established, we block any
+// image builds.
+func HoldTargetsWaitingOnCluster(state store.EngineState, mts []*store.ManifestTarget, holds HoldSet) {
+	// TODO(nick): In the future, K8s objects may reference the cluster
+	// they're deploying to.
+	clusterName := "default"
+	cluster, ok := state.Clusters[clusterName]
+	isClusterOK := ok && cluster.Status.Error == "" && cluster.Status.Arch != ""
+	if isClusterOK {
+		return
+	}
+
+	gvk := v1alpha1.SchemeGroupVersion.WithKind("Cluster")
+	for _, mt := range mts {
+		if mt.Manifest.IsK8s() || mt.Manifest.IsDC() {
+			holds.AddHold(mt, store.Hold{
+				Reason: store.HoldReasonCluster,
+				OnRefs: []v1alpha1.UIResourceStateWaitingOnRef{{
+					Group:      gvk.Group,
+					APIVersion: gvk.Version,
+					Kind:       gvk.Kind,
+					Name:       clusterName,
+				}},
 			})
 		}
 	}
@@ -551,7 +581,7 @@ func HoldLiveUpdateTargetsHandledByReconciler(state store.EngineState, mts []*st
 			lu := state.LiveUpdates[iTarget.LiveUpdateName]
 			isFailing := lu != nil && lu.Status.Failed != nil
 			if !isFailing {
-				holds.AddHold(mt, store.Hold{Reason: store.HoldReconciling})
+				holds.AddHold(mt, store.Hold{Reason: store.HoldReasonReconciling})
 			}
 		}
 	}

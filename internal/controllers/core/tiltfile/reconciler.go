@@ -37,16 +37,18 @@ import (
 )
 
 type Reconciler struct {
-	mu           sync.Mutex
-	st           store.RStore
-	tfl          tiltfile.TiltfileLoader
-	k8sClient    k8s.Client
-	dockerClient docker.Client
-	ctrlClient   ctrlclient.Client
-	indexer      *indexer.Indexer
-	buildSource  *BuildSource
-	engineMode   store.EngineMode
-	loadCount    int // used to differentiate spans
+	mu                   sync.Mutex
+	st                   store.RStore
+	tfl                  tiltfile.TiltfileLoader
+	k8sClient            k8s.Client
+	dockerClient         docker.Client
+	ctrlClient           ctrlclient.Client
+	k8sContextOverride   k8s.KubeContextOverride
+	k8sNamespaceOverride k8s.NamespaceOverride
+	indexer              *indexer.Indexer
+	buildSource          *BuildSource
+	engineMode           store.EngineMode
+	loadCount            int // used to differentiate spans
 
 	runs map[types.NamespacedName]*runStatus
 }
@@ -68,17 +70,21 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 
 func NewReconciler(st store.RStore, tfl tiltfile.TiltfileLoader, k8sClient k8s.Client, dockerClient docker.Client,
 	ctrlClient ctrlclient.Client, scheme *runtime.Scheme,
-	buildSource *BuildSource, engineMode store.EngineMode) *Reconciler {
+	buildSource *BuildSource, engineMode store.EngineMode,
+	k8sContextOverride k8s.KubeContextOverride,
+	k8sNamespaceOverride k8s.NamespaceOverride) *Reconciler {
 	return &Reconciler{
-		st:           st,
-		tfl:          tfl,
-		k8sClient:    k8sClient,
-		dockerClient: dockerClient,
-		ctrlClient:   ctrlClient,
-		indexer:      indexer.NewIndexer(scheme, indexTiltfile),
-		runs:         make(map[types.NamespacedName]*runStatus),
-		buildSource:  buildSource,
-		engineMode:   engineMode,
+		st:                   st,
+		tfl:                  tfl,
+		k8sClient:            k8sClient,
+		dockerClient:         dockerClient,
+		ctrlClient:           ctrlClient,
+		indexer:              indexer.NewIndexer(scheme, indexTiltfile),
+		runs:                 make(map[types.NamespacedName]*runStatus),
+		buildSource:          buildSource,
+		engineMode:           engineMode,
+		k8sContextOverride:   k8sContextOverride,
+		k8sNamespaceOverride: k8sNamespaceOverride,
 	}
 }
 
@@ -99,7 +105,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		r.deleteExistingRun(nn)
 
 		// Delete owned objects
-		err := updateOwnedObjects(ctx, r.ctrlClient, nn, nil, nil, r.engineMode, container.Registry{})
+		err := updateOwnedObjects(ctx, r.ctrlClient, nn, nil, nil, r.engineMode, container.Registry{}, r.defaultK8sConnection())
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -114,7 +120,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	run := r.runs[nn]
 	if run == nil {
 		// Initialize the UISession and filewatch if this has never been initialized before.
-		err := updateOwnedObjects(ctx, r.ctrlClient, nn, &tf, nil, r.engineMode, container.Registry{})
+		err := updateOwnedObjects(ctx, r.ctrlClient, nn, &tf, nil, r.engineMode, container.Registry{}, r.defaultK8sConnection())
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -303,7 +309,7 @@ func (r *Reconciler) run(ctx context.Context, nn types.NamespacedName, tf *v1alp
 // apiserver.
 func (r *Reconciler) handleLoaded(ctx context.Context, nn types.NamespacedName, tf *v1alpha1.Tiltfile, entry *BuildEntry, tlr *tiltfile.TiltfileLoadResult) error {
 	// TODO(nick): Rewrite to handle multiple tiltfiles.
-	err := updateOwnedObjects(ctx, r.ctrlClient, nn, tf, tlr, r.engineMode, r.decideRegistry(ctx, tlr))
+	err := updateOwnedObjects(ctx, r.ctrlClient, nn, tf, tlr, r.engineMode, r.decideRegistry(ctx, tlr), r.defaultK8sConnection())
 	if err != nil {
 		// If updating the API server fails, just return the error, so that the
 		// reconciler will retry.
@@ -408,6 +414,14 @@ func (r *Reconciler) decideRegistry(ctx context.Context, tlr *tiltfile.TiltfileL
 	}
 
 	return tlr.DefaultRegistry
+}
+
+// The kubernetes connection defined by the CLI.
+func (r *Reconciler) defaultK8sConnection() *v1alpha1.KubernetesClusterConnection {
+	return &v1alpha1.KubernetesClusterConnection{
+		Context:   string(r.k8sContextOverride),
+		Namespace: string(r.k8sNamespaceOverride),
+	}
 }
 
 func requiresDocker(tlr tiltfile.TiltfileLoadResult) bool {
