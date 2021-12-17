@@ -84,6 +84,7 @@ var WireSet = wire.NewSet(
 	ProvideDeferredClient,
 	wire.Bind(new(ctrlclient.Client), new(*DeferredClient)),
 
+	cluster.WireSet,
 	cmd.WireSet,
 	controllerSet,
 	uiresource.WireSet,

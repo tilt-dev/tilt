@@ -3860,7 +3860,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	cu := &containerupdate.FakeContainerUpdater{}
 	lur := liveupdate.NewFakeReconciler(st, cu, cdc)
 	dir := dockerimage.NewReconciler(cdc)
-	clr := cluster.NewReconciler(cdc, st, docker.LocalEnv{})
+	clr := cluster.NewReconciler(cdc, st, docker.LocalEnv{}, cluster.NewConnectionManager())
 	clr.SetFakeClientsForTesting(kClient, dockerClient)
 
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
