@@ -14,7 +14,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"helm.sh/helm/v3/pkg/kube"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/cli-runtime/pkg/resource"
 	dynfake "k8s.io/client-go/dynamic/fake"
@@ -114,6 +116,36 @@ func TestUpsertAnnotationTooLong(t *testing.T) {
 	postgres := MustParseYAMLFromString(t, testyaml.PostgresYAML)
 
 	f.resourceClient.updateErr = fmt.Errorf(`The ConfigMap "postgres-config" is invalid: metadata.annotations: Too long: must have at most 262144 bytes`)
+	_, err := f.k8sUpsert(f.ctx, postgres)
+	assert.Nil(t, err)
+	assert.Equal(t, 0, len(f.resourceClient.creates))
+	assert.Equal(t, 1, len(f.resourceClient.createOrReplaces))
+	assert.Equal(t, 4, len(f.resourceClient.updates))
+}
+
+func TestUpsert413(t *testing.T) {
+	f := newClientTestFixture(t)
+	postgres := MustParseYAMLFromString(t, testyaml.PostgresYAML)
+
+	f.resourceClient.updateErr = fmt.Errorf(`the server responded with the status code 413 but did not return more information (post customresourcedefinitions.apiextensions.k8s.io)`)
+	_, err := f.k8sUpsert(f.ctx, postgres)
+	assert.Nil(t, err)
+	assert.Equal(t, 0, len(f.resourceClient.creates))
+	assert.Equal(t, 1, len(f.resourceClient.createOrReplaces))
+	assert.Equal(t, 4, len(f.resourceClient.updates))
+}
+
+func TestUpsert413Structured(t *testing.T) {
+	f := newClientTestFixture(t)
+	postgres := MustParseYAMLFromString(t, testyaml.PostgresYAML)
+
+	f.resourceClient.updateErr = &errors.StatusError{
+		ErrStatus: metav1.Status{
+			Message: "too large",
+			Reason:  "TooLarge",
+			Code:    http.StatusRequestEntityTooLarge,
+		},
+	}
 	_, err := f.k8sUpsert(f.ctx, postgres)
 	assert.Nil(t, err)
 	assert.Equal(t, 0, len(f.resourceClient.creates))
