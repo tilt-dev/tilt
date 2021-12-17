@@ -52,7 +52,11 @@ var _ RuntimeState = LocalRuntimeState{}
 func (LocalRuntimeState) RuntimeState() {}
 
 func (l LocalRuntimeState) RuntimeStatus() v1alpha1.RuntimeStatus {
-	return l.Status
+	status := l.Status
+	if status == "" {
+		status = v1alpha1.RuntimeStatusUnknown
+	}
+	return status
 }
 
 func (l LocalRuntimeState) RuntimeStatusError() error {
