@@ -15,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
@@ -361,11 +362,51 @@ func TestReconcileCreatesPodLogStream(t *testing.T) {
 	assert.Equal(t, "pod2", podLogStreams.Items[0].Spec.Pod)
 }
 
+func TestKubernetesDiscoveryIndexing(t *testing.T) {
+	f := newFixture(t)
+
+	pod := f.buildPod("pod-ns", "pod", nil, nil)
+
+	f.Create(&v1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "some-ns", Name: "my-cluster"},
+		Spec: v1alpha1.ClusterSpec{
+			Connection: &v1alpha1.ClusterConnection{
+				Kubernetes: &v1alpha1.KubernetesClusterConnection{
+					Namespace: "foo",
+					Context:   "bar",
+				},
+			},
+		},
+	})
+
+	key := types.NamespacedName{Namespace: "some-ns", Name: "kd"}
+	kd := &v1alpha1.KubernetesDiscovery{
+		ObjectMeta: metav1.ObjectMeta{Namespace: key.Namespace, Name: key.Name},
+		Spec: v1alpha1.KubernetesDiscoverySpec{
+			Cluster: "my-cluster",
+			Watches: []v1alpha1.KubernetesWatchRef{
+				{
+					UID:       string(pod.UID),
+					Namespace: pod.Namespace,
+					Name:      pod.Name,
+				},
+			},
+		},
+	}
+
+	f.Create(kd)
+
+	reqs := f.r.indexer.Enqueue(&v1alpha1.Cluster{ObjectMeta: metav1.ObjectMeta{Namespace: "some-ns", Name: "my-cluster"}})
+	assert.ElementsMatch(t, []reconcile.Request{
+		{NamespacedName: types.NamespacedName{Namespace: "some-ns", Name: "kd"}},
+	}, reqs)
+}
+
 type fixture struct {
 	*fake.ControllerFixture
 	t       *testing.T
 	kClient *k8s.FakeK8sClient
-	pw      *Reconciler
+	r       *Reconciler
 	ctx     context.Context
 	store   *store.TestingStore
 }
@@ -383,12 +424,12 @@ func newFixture(t *testing.T) *fixture {
 	of := k8s.ProvideOwnerFetcher(ctx, kClient)
 	rd := NewContainerRestartDetector()
 	cfb := fake.NewControllerFixtureBuilder(t)
-	pw := NewReconciler(cfb.Client, kClient, of, rd, st)
+	pw := NewReconciler(cfb.Client, cfb.Scheme(), kClient, of, rd, st)
 
 	ret := &fixture{
 		ControllerFixture: cfb.Build(pw),
 		kClient:           kClient,
-		pw:                pw,
+		r:                 pw,
 		ctx:               ctx,
 		t:                 t,
 		store:             st,
