@@ -319,7 +319,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	terminalStream := hud.NewTerminalStream(incrementalPrinter, storeStore)
 	openInput := _wireOpenInputValue
 	terminalPrompt := prompt.NewTerminalPrompt(analytics3, openInput, openURL, stdout, webHost, webURL)
-	serviceWatcher := k8swatch.NewServiceWatcher(client, namespace)
+	serviceWatcher := k8swatch.NewServiceWatcher(connectionManager, namespace)
 	buildClock := build.ProvideClock()
 	liveUpdateBuildAndDeployer := buildcontrol.NewLiveUpdateBuildAndDeployer(liveupdateReconciler, buildClock)
 	execCustomBuilder := build.NewExecCustomBuilder(switchCli, buildClock)
@@ -340,7 +340,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	dockerComposeLogManager := runtimelog.NewDockerComposeLogManager(dockerComposeClient)
 	analyticsReporter := analytics2.ProvideAnalyticsReporter(analytics3, storeStore, client, k8sEnv)
 	analyticsUpdater := analytics2.NewAnalyticsUpdater(analytics3, cmdTags, engineMode)
-	eventWatchManager := k8swatch.NewEventWatchManager(client, namespace)
+	eventWatchManager := k8swatch.NewEventWatchManager(connectionManager, namespace)
 	cloudStatusManager := cloud.NewStatusManager(httpClient, clock)
 	dockerPruner := dockerprune.NewDockerPruner(switchCli)
 	telemetryController := telemetry.NewController(buildClock, spanCollector)
@@ -528,7 +528,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	terminalStream := hud.NewTerminalStream(incrementalPrinter, storeStore)
 	openInput := _wireOpenInputValue
 	terminalPrompt := prompt.NewTerminalPrompt(analytics3, openInput, openURL, stdout, webHost, webURL)
-	serviceWatcher := k8swatch.NewServiceWatcher(client, namespace)
+	serviceWatcher := k8swatch.NewServiceWatcher(connectionManager, namespace)
 	buildClock := build.ProvideClock()
 	liveUpdateBuildAndDeployer := buildcontrol.NewLiveUpdateBuildAndDeployer(liveupdateReconciler, buildClock)
 	execCustomBuilder := build.NewExecCustomBuilder(switchCli, buildClock)
@@ -550,7 +550,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	analyticsReporter := analytics2.ProvideAnalyticsReporter(analytics3, storeStore, client, k8sEnv)
 	cmdTags := _wireCmdTagsValue
 	analyticsUpdater := analytics2.NewAnalyticsUpdater(analytics3, cmdTags, engineMode)
-	eventWatchManager := k8swatch.NewEventWatchManager(client, namespace)
+	eventWatchManager := k8swatch.NewEventWatchManager(connectionManager, namespace)
 	cloudStatusManager := cloud.NewStatusManager(httpClient, clock)
 	dockerPruner := dockerprune.NewDockerPruner(switchCli)
 	telemetryController := telemetry.NewController(buildClock, spanCollector)

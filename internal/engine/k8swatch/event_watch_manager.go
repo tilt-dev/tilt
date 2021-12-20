@@ -5,11 +5,13 @@ import (
 	"sync"
 	"time"
 
+	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/tilt-dev/tilt/internal/controllers/core/cluster"
 	"github.com/tilt-dev/tilt/internal/timecmp"
 
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -26,27 +28,28 @@ import (
 // TODO(nick): We should also add garbage collection and/or handle Delete events
 // from the kubernetes informer properly.
 type EventWatchManager struct {
-	kClient k8s.Client
+	mu sync.RWMutex
 
-	mu                sync.RWMutex
+	clients cluster.ClientCache
+
 	watcherKnownState watcherKnownState
 
 	// An index that maps the UID of Kubernetes resources to the UIDs of
 	// all events that they own (transitively).
 	//
 	// For example, a Deployment UID might contain a set of N event UIDs.
-	knownDescendentEventUIDs map[types.UID]k8s.UIDSet
+	knownDescendentEventUIDs map[clusterUID]k8s.UIDSet
 
 	// An index of all the known events, by UID
-	knownEvents map[types.UID]*v1.Event
+	knownEvents map[clusterUID]*v1.Event
 }
 
-func NewEventWatchManager(kClient k8s.Client, cfgNS k8s.Namespace) *EventWatchManager {
+func NewEventWatchManager(clients cluster.ClientCache, cfgNS k8s.Namespace) *EventWatchManager {
 	return &EventWatchManager{
-		kClient:                  kClient,
+		clients:                  clients,
 		watcherKnownState:        newWatcherKnownState(cfgNS),
-		knownDescendentEventUIDs: make(map[types.UID]k8s.UIDSet),
-		knownEvents:              make(map[types.UID]*v1.Event),
+		knownDescendentEventUIDs: make(map[clusterUID]k8s.UIDSet),
+		knownEvents:              make(map[clusterUID]*v1.Event),
 	}
 }
 
@@ -93,10 +96,18 @@ func (m *EventWatchManager) OnChange(ctx context.Context, st store.RStore, _ sto
 	return nil
 }
 
-func (m *EventWatchManager) setupWatch(ctx context.Context, st store.RStore, ns k8s.Namespace, tiltStartTime time.Time) {
-	ch, err := m.kClient.WatchEvents(ctx, ns)
+func (m *EventWatchManager) setupWatch(ctx context.Context, st store.RStore, ns clusterNamespace, tiltStartTime time.Time) {
+	kCli, err := m.clients.GetK8sClient(ns.cluster)
 	if err != nil {
-		err = errors.Wrapf(err, "Error watching events. Are you connected to kubernetes?\nTry running `kubectl get events -n %q`", ns)
+		// ignore errors, if the cluster status changes, the subscriber
+		// will be re-run and the namespaces will be picked up again as new
+		// since watcherKnownState isn't updated
+		return
+	}
+
+	ch, err := kCli.WatchEvents(ctx, ns.namespace)
+	if err != nil {
+		err = errors.Wrapf(err, "Error watching events. Are you connected to kubernetes?\nTry running `kubectl get events -n %q`", ns.namespace)
 		st.Dispatch(store.NewErrorAction(err))
 		return
 	}
@@ -104,20 +115,20 @@ func (m *EventWatchManager) setupWatch(ctx context.Context, st store.RStore, ns 
 	ctx, cancel := context.WithCancel(ctx)
 	m.watcherKnownState.namespaceWatches[ns] = namespaceWatch{cancel: cancel}
 
-	go m.dispatchEventsLoop(ctx, ch, st, tiltStartTime)
+	go m.dispatchEventsLoop(ctx, kCli.OwnerFetcher(), ns.cluster, ch, st, tiltStartTime)
 }
 
 // When new UIDs are deployed, go through all our known events and dispatch
 // new actions. This handles the case where we get the event
 // before the deploy id shows up in the manifest, which is way more common than
 // you would think.
-func (m *EventWatchManager) setupNewUIDs(ctx context.Context, st store.RStore, newUIDs map[types.UID]model.ManifestName) {
-	for uid, mn := range newUIDs {
-		m.watcherKnownState.knownDeployedUIDs[uid] = mn
+func (m *EventWatchManager) setupNewUIDs(ctx context.Context, st store.RStore, newUIDs map[clusterUID]model.ManifestName) {
+	for newUID, mn := range newUIDs {
+		m.watcherKnownState.knownDeployedUIDs[newUID] = mn
 
-		descendants := m.knownDescendentEventUIDs[uid]
+		descendants := m.knownDescendentEventUIDs[newUID]
 		for uid := range descendants {
-			event, ok := m.knownEvents[uid]
+			event, ok := m.knownEvents[clusterUID{cluster: newUID.cluster, uid: uid}]
 			if ok {
 				st.Dispatch(store.NewK8sEventAction(event, mn))
 			}
@@ -133,26 +144,28 @@ func (m *EventWatchManager) setupNewUIDs(ctx context.Context, st store.RStore, n
 //
 // If the event doesn't match an existing deployed resource, keep it in local
 // state, so we can match it later if the owner UID shows up.
-func (m *EventWatchManager) triageEventUpdate(event *v1.Event, objTree k8s.ObjectRefTree) model.ManifestName {
+func (m *EventWatchManager) triageEventUpdate(clusterNN types.NamespacedName, event *v1.Event,
+	objTree k8s.ObjectRefTree) model.ManifestName {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	uid := event.UID
+	uid := clusterUID{cluster: clusterNN, uid: event.UID}
 	m.knownEvents[uid] = event
 
 	// Set up the descendent index of the involved object
 	for _, ownerUID := range objTree.UIDs() {
-		set, ok := m.knownDescendentEventUIDs[ownerUID]
+		ownerKey := clusterUID{cluster: clusterNN, uid: ownerUID}
+		set, ok := m.knownDescendentEventUIDs[ownerKey]
 		if !ok {
 			set = k8s.NewUIDSet()
-			m.knownDescendentEventUIDs[ownerUID] = set
+			m.knownDescendentEventUIDs[ownerKey] = set
 		}
-		set.Add(uid)
+		set.Add(uid.uid)
 	}
 
 	// Find the manifest name
 	for _, ownerUID := range objTree.UIDs() {
-		mn, ok := m.watcherKnownState.knownDeployedUIDs[ownerUID]
+		mn, ok := m.watcherKnownState.knownDeployedUIDs[clusterUID{cluster: clusterNN, uid: ownerUID}]
 		if ok {
 			return mn
 		}
@@ -161,14 +174,14 @@ func (m *EventWatchManager) triageEventUpdate(event *v1.Event, objTree k8s.Objec
 	return ""
 }
 
-func (m *EventWatchManager) dispatchEventChange(ctx context.Context, event *v1.Event, st store.RStore) {
-	objTree, err := m.kClient.OwnerFetcher().OwnerTreeOfRef(ctx, event.InvolvedObject)
+func (m *EventWatchManager) dispatchEventChange(ctx context.Context, of k8s.OwnerFetcher, clusterNN types.NamespacedName, event *v1.Event, st store.RStore) {
+	objTree, err := of.OwnerTreeOfRef(ctx, event.InvolvedObject)
 	if err != nil {
 		logger.Get(ctx).Infof("Error handling event update (%q): %v", event.Name, err)
 		return
 	}
 
-	mn := m.triageEventUpdate(event, objTree)
+	mn := m.triageEventUpdate(clusterNN, event, objTree)
 	if mn == "" {
 		return
 	}
@@ -176,7 +189,7 @@ func (m *EventWatchManager) dispatchEventChange(ctx context.Context, event *v1.E
 	st.Dispatch(store.NewK8sEventAction(event, mn))
 }
 
-func (m *EventWatchManager) dispatchEventsLoop(ctx context.Context, ch <-chan *v1.Event, st store.RStore, tiltStartTime time.Time) {
+func (m *EventWatchManager) dispatchEventsLoop(ctx context.Context, of k8s.OwnerFetcher, clusterNN types.NamespacedName, ch <-chan *v1.Event, st store.RStore, tiltStartTime time.Time) {
 	for {
 		select {
 		case event, ok := <-ch:
@@ -200,7 +213,7 @@ func (m *EventWatchManager) dispatchEventsLoop(ctx context.Context, ch <-chan *v
 				continue
 			}
 
-			go m.dispatchEventChange(ctx, event, st)
+			go m.dispatchEventChange(ctx, of, clusterNN, event, st)
 
 		case <-ctx.Done():
 			return
