@@ -7,15 +7,26 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
+type clusterNamespace struct {
+	cluster   types.NamespacedName
+	namespace k8s.Namespace
+}
+
+type clusterUID struct {
+	cluster types.NamespacedName
+	uid     types.UID
+}
+
 // Common utility methods for watching kubernetes resources
 type watcherTaskList struct {
-	watchableNamespaces []k8s.Namespace
-	setupNamespaces     []k8s.Namespace
-	teardownNamespaces  []k8s.Namespace
-	newUIDs             map[types.UID]model.ManifestName
+	watchableNamespaces []clusterNamespace
+	setupNamespaces     []clusterNamespace
+	teardownNamespaces  []clusterNamespace
+	newUIDs             map[clusterUID]model.ManifestName
 }
 
 type namespaceWatch struct {
@@ -24,15 +35,15 @@ type namespaceWatch struct {
 
 type watcherKnownState struct {
 	cfgNS             k8s.Namespace
-	namespaceWatches  map[k8s.Namespace]namespaceWatch
-	knownDeployedUIDs map[types.UID]model.ManifestName
+	namespaceWatches  map[clusterNamespace]namespaceWatch
+	knownDeployedUIDs map[clusterUID]model.ManifestName
 }
 
 func newWatcherKnownState(cfgNS k8s.Namespace) watcherKnownState {
 	return watcherKnownState{
 		cfgNS:             cfgNS,
-		namespaceWatches:  make(map[k8s.Namespace]namespaceWatch),
-		knownDeployedUIDs: make(map[types.UID]model.ManifestName),
+		namespaceWatches:  make(map[clusterNamespace]namespaceWatch),
+		knownDeployedUIDs: make(map[clusterUID]model.ManifestName),
 	}
 }
 
@@ -41,13 +52,16 @@ func newWatcherKnownState(cfgNS k8s.Namespace) watcherKnownState {
 //
 // Assumes we're holding an RLock on both states.
 func (ks *watcherKnownState) createTaskList(state store.EngineState) watcherTaskList {
-	newUIDs := make(map[types.UID]model.ManifestName)
-	seenUIDs := make(map[types.UID]bool)
-	namespaces := make(map[k8s.Namespace]bool)
+	newUIDs := make(map[clusterUID]model.ManifestName)
+	seenUIDs := make(map[clusterUID]bool)
+	namespaces := make(map[clusterNamespace]bool)
 	for _, mt := range state.Targets() {
 		if !mt.Manifest.IsK8s() {
 			continue
 		}
+
+		// TODO(milas): read the Cluster object name from the spec once available
+		clusterNN := types.NamespacedName{Name: v1alpha1.ClusterNameDefault}
 
 		name := mt.Manifest.Name
 
@@ -62,7 +76,8 @@ func (ks *watcherKnownState) createTaskList(state store.EngineState) watcherTask
 				if namespace == "" {
 					namespace = k8s.DefaultNamespace
 				}
-				namespaces[namespace] = true
+				nsKey := clusterNamespace{cluster: clusterNN, namespace: namespace}
+				namespaces[nsKey] = true
 
 				// Our data model allows people to have the same resource defined in
 				// multiple manifests, and so we can have the same deployed UID in
@@ -72,15 +87,15 @@ func (ks *watcherKnownState) createTaskList(state store.EngineState) watcherTask
 				// between the two manifests.
 				//
 				// Ideally, our data model would prevent this from happening entirely.
-				id := ref.UID
-				if seenUIDs[id] {
+				uidKey := clusterUID{cluster: clusterNN, uid: ref.UID}
+				if seenUIDs[uidKey] {
 					continue
 				}
-				seenUIDs[id] = true
+				seenUIDs[uidKey] = true
 
-				oldName := ks.knownDeployedUIDs[id]
+				oldName := ks.knownDeployedUIDs[uidKey]
 				if name != oldName {
-					newUIDs[id] = name
+					newUIDs[uidKey] = name
 				}
 			}
 		}
@@ -94,9 +109,9 @@ func (ks *watcherKnownState) createTaskList(state store.EngineState) watcherTask
 		}
 	}
 
-	var watchableNamespaces []k8s.Namespace
-	var setupNamespaces []k8s.Namespace
-	var teardownNamespaces []k8s.Namespace
+	var watchableNamespaces []clusterNamespace
+	var setupNamespaces []clusterNamespace
+	var teardownNamespaces []clusterNamespace
 
 	for needed := range namespaces {
 		watchableNamespaces = append(watchableNamespaces, needed)

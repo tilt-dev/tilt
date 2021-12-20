@@ -12,12 +12,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/tilt-dev/tilt/internal/controllers/core/cluster"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/servicebuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -144,7 +146,7 @@ func newSWFixture(t *testing.T) *swFixture {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	ctx, cancel := context.WithCancel(ctx)
 
-	sw := NewServiceWatcher(kClient, k8s.DefaultNamespace)
+	sw := NewServiceWatcher(cluster.NewFakeClientCache(kClient), k8s.DefaultNamespace)
 	st := store.NewTestingStore()
 
 	return &swFixture{
@@ -188,10 +190,11 @@ func (f *swFixture) assertObservedServiceChangeActions(expectedSCAs ...ServiceCh
 }
 
 func (f *swFixture) waitUntilServiceKnown(uid types.UID) {
+	clusterNN := types.NamespacedName{Name: v1alpha1.ClusterNameDefault}
 	start := time.Now()
 	for time.Since(start) < time.Second {
 		f.sw.mu.Lock()
-		_, known := f.sw.knownServices[uid]
+		_, known := f.sw.knownServices[clusterUID{cluster: clusterNN, uid: uid}]
 		f.sw.mu.Unlock()
 		if known {
 			return
