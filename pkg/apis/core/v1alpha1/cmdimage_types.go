@@ -182,11 +182,11 @@ type CmdImageOutputMode string
 
 const (
 	// Written to the Docker image store only.
-	CmdImageOutputLocalDocker CmdImageOutputMode = "docker-local"
+	CmdImageOutputLocalDocker CmdImageOutputMode = "local-docker"
 
 	// Written to the Docker image store and pushed to the remote
 	// destination.
-	CmdImageOutputLocalDockerAndRemote CmdImageOutputMode = "docker-local-and-remote"
+	CmdImageOutputLocalDockerAndRemote CmdImageOutputMode = "local-docker-and-remote"
 
 	// Written directly to the remote destination.
 	CmdImageOutputRemote CmdImageOutputMode = "remote"
