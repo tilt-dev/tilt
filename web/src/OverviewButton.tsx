@@ -21,8 +21,7 @@ export const OverviewButtonMixin = `
   border-radius: 4px;
   cursor: pointer;
   transition: color ${AnimDuration.default} ease,
-    border-color ${AnimDuration.default} ease
-    z-index ${AnimDuration.default} ease;
+    border-color ${AnimDuration.default} ease;
   color: ${Color.gray7};
 
   &.isEnabled {

@@ -122,21 +122,30 @@ const ApiButtonElementRoot = styled(InstrumentedButton)`
       background-color: ${Color.red};
       border-color: ${Color.redLight};
       color: ${Color.black};
-      z-index: 2; /* Hacky override for disappearing right outline on hover */
     }
 
     .fillStd {
       fill: ${Color.black} !important; /* TODO (lizz): find this style source! */
     }
   }
+
+  /* Manually manage the border that both left and right
+     buttons share on the edge between them, so border
+     color changes work as expected */
+  &.leftButtonInGroup {
+    border-right: 0;
+
+    &:active + .rightButtonInGroup,
+    &:focus + .rightButtonInGroup,
+    &:hover + .rightButtonInGroup {
+      border-left-color: ${Color.redLight};
+    }
+  }
 `
 
 export const ApiButtonInputsToggleButton = styled(InstrumentedButton)`
-  /* TODO (lizz): Find a better way to override this style, which is inherited / 
-  passed down in "className" props from <CustomActionButton> within <OverviewActionBar> */
-  margin-left: unset !important;
-
   &&&& {
+    margin-left: unset; /* Override any margins passed down through "className" props */
     padding: 0 0;
   }
 `
@@ -406,7 +415,9 @@ function ApiCancelButton(props: ApiButtonElementProps) {
 
   const buttonDisplayText: string = uiButton.spec?.text ?? "Button"
   // To pass classes to a MUI component, it's necessary to use `classes`, instead of `className`
-  const classes: Partial<ClassNameMap<ButtonClassKey>> = { root: "confirming" }
+  const classes: Partial<ClassNameMap<ButtonClassKey>> = {
+    root: "confirming rightButtonInGroup",
+  }
 
   return (
     <ApiButtonElementRoot
@@ -475,7 +486,7 @@ function ApiSubmitButton(props: PropsWithChildren<ApiButtonElementProps>) {
   }
 
   // To pass classes to a MUI component, it's necessary to use `classes`, instead of `className`
-  const isConfirmingClass = confirming ? "confirming" : ""
+  const isConfirmingClass = confirming ? "confirming leftButtonInGroup" : ""
   const classes: Partial<ClassNameMap<ButtonClassKey>> = {
     root: isConfirmingClass,
   }
