@@ -53,9 +53,15 @@ type resourceNamespace struct {
 	GVK       schema.GroupVersionKind
 }
 
+type MetaClient interface {
+	GetMetaByReference(ctx context.Context, ref v1.ObjectReference) (metav1.Object, error)
+	ListMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) ([]metav1.Object, error)
+	WatchMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) (<-chan metav1.Object, error)
+}
+
 type OwnerFetcher struct {
 	globalCtx context.Context
-	kCli      Client
+	cli       MetaClient
 	cache     map[types.UID]*objectTreePromise
 	mu        *sync.Mutex
 
@@ -63,10 +69,10 @@ type OwnerFetcher struct {
 	resourceFetches map[resourceNamespace]*sync.Once
 }
 
-func ProvideOwnerFetcher(ctx context.Context, kCli Client) OwnerFetcher {
+func NewOwnerFetcher(ctx context.Context, metaClient MetaClient) OwnerFetcher {
 	return OwnerFetcher{
 		globalCtx: ctx,
-		kCli:      kCli,
+		cli:       metaClient,
 		cache:     make(map[types.UID]*objectTreePromise),
 		mu:        &sync.Mutex{},
 
@@ -92,7 +98,7 @@ func (v OwnerFetcher) getOrCreateResourceFetch(gvk schema.GroupVersionKind, ns N
 func (v OwnerFetcher) ensureResourceFetched(gvk schema.GroupVersionKind, ns Namespace) {
 	fetch := v.getOrCreateResourceFetch(gvk, ns)
 	fetch.Do(func() {
-		metas, err := v.kCli.ListMeta(v.globalCtx, gvk, ns)
+		metas, err := v.cli.ListMeta(v.globalCtx, gvk, ns)
 		if err != nil {
 			logger.Get(v.globalCtx).Debugf("Error fetching metadata: %v", err)
 			return
@@ -104,7 +110,7 @@ func (v OwnerFetcher) ensureResourceFetched(gvk schema.GroupVersionKind, ns Name
 		}
 		v.mu.Unlock()
 
-		ch, err := v.kCli.WatchMeta(v.globalCtx, gvk, ns)
+		ch, err := v.cli.WatchMeta(v.globalCtx, gvk, ns)
 		if err != nil {
 			logger.Get(v.globalCtx).Debugf("Error watching metadata: %v", err)
 			return
@@ -181,7 +187,7 @@ func (v OwnerFetcher) getMetaByReference(ctx context.Context, ref v1.ObjectRefer
 		return meta, nil
 	}
 
-	return v.kCli.GetMetaByReference(ctx, ref)
+	return v.cli.GetMetaByReference(ctx, ref)
 }
 
 func (v OwnerFetcher) OwnerTreeOf(ctx context.Context, entity K8sEntity) (result ObjectRefTree, err error) {

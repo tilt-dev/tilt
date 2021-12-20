@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"io/ioutil"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -40,8 +41,9 @@ type PodAndCName struct {
 }
 
 type FakeK8sClient struct {
-	t  testing.TB
-	mu sync.Mutex
+	t            testing.TB
+	mu           sync.Mutex
+	ownerFetcher OwnerFetcher
 
 	FakePortForwardClient
 
@@ -95,6 +97,8 @@ type FakeK8sClient struct {
 	ExecOutputs []io.Reader
 	ExecErrors  []error
 }
+
+var _ Client = &FakeK8sClient{}
 
 type ExecCall struct {
 	PID   PodID
@@ -311,7 +315,7 @@ func (c *FakeK8sClient) WatchPods(ctx context.Context, ns Namespace) (<-chan Obj
 }
 
 func NewFakeK8sClient(t testing.TB) *FakeK8sClient {
-	return &FakeK8sClient{
+	cli := &FakeK8sClient{
 		t:                        t,
 		PodLogsByPodAndContainer: make(map[PodAndCName]ReaderCloser),
 		pods:                     make(map[types.NamespacedName]*v1.Pod),
@@ -320,6 +324,10 @@ func NewFakeK8sClient(t testing.TB) *FakeK8sClient {
 		entities:                 make(map[types.UID]K8sEntity),
 		currentVersions:          make(map[string]types.UID),
 	}
+	ctx, cancel := context.WithCancel(logger.WithLogger(context.Background(), logger.NewTestLogger(os.Stdout)))
+	t.Cleanup(cancel)
+	cli.ownerFetcher = NewOwnerFetcher(ctx, cli)
+	return cli
 }
 
 func (c *FakeK8sClient) TearDown() {
@@ -591,6 +599,10 @@ func (c *FakeK8sClient) Exec(ctx context.Context, podID PodID, cName container.N
 
 func (c *FakeK8sClient) CheckConnected(ctx context.Context) (*version.Info, error) {
 	return &version.Info{}, nil
+}
+
+func (c *FakeK8sClient) OwnerFetcher() OwnerFetcher {
+	return c.ownerFetcher
 }
 
 type ReaderCloser struct {

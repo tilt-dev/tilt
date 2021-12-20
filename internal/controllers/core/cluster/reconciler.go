@@ -25,6 +25,7 @@ import (
 const ArchUnknown string = "unknown"
 
 type Reconciler struct {
+	globalCtx      context.Context
 	ctrlClient     ctrlclient.Client
 	localDockerEnv docker.LocalEnv
 	store          store.RStore
@@ -41,8 +42,9 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	return b, nil
 }
 
-func NewReconciler(ctrlClient ctrlclient.Client, store store.RStore, localDockerEnv docker.LocalEnv, connManager *ConnectionManager) *Reconciler {
+func NewReconciler(globalCtx context.Context, ctrlClient ctrlclient.Client, store store.RStore, localDockerEnv docker.LocalEnv, connManager *ConnectionManager) *Reconciler {
 	return &Reconciler{
+		globalCtx:      globalCtx,
 		ctrlClient:     ctrlClient,
 		store:          store,
 		localDockerEnv: localDockerEnv,
@@ -160,7 +162,7 @@ func (r *Reconciler) createKubernetesConnection(ctx context.Context, obj *v1alph
 		return connection{connType: connectionTypeK8s, error: err.Error()}
 	}
 	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
-	client := k8s.ProvideK8sClient(env, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
+	client := k8s.ProvideK8sClient(r.globalCtx, env, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
 	_, err = client.CheckConnected(ctx)
 	if err != nil {
 		return connection{connType: connectionTypeK8s, error: err.Error()}

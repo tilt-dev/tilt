@@ -15,18 +15,16 @@ import (
 )
 
 type ServiceWatcher struct {
-	kCli         k8s.Client
-	ownerFetcher k8s.OwnerFetcher
+	kCli k8s.Client
 
 	mu                sync.RWMutex
 	watcherKnownState watcherKnownState
 	knownServices     map[types.UID]*v1.Service
 }
 
-func NewServiceWatcher(kCli k8s.Client, ownerFetcher k8s.OwnerFetcher, cfgNS k8s.Namespace) *ServiceWatcher {
+func NewServiceWatcher(kCli k8s.Client, cfgNS k8s.Namespace) *ServiceWatcher {
 	return &ServiceWatcher{
 		kCli:              kCli,
-		ownerFetcher:      ownerFetcher,
 		watcherKnownState: newWatcherKnownState(cfgNS),
 		knownServices:     make(map[types.UID]*v1.Service),
 	}

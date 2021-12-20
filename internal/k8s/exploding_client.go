@@ -94,3 +94,7 @@ func (ec *explodingClient) Exec(ctx context.Context, podID PodID, cName containe
 func (ec *explodingClient) CheckConnected(ctx context.Context) (*version.Info, error) {
 	return nil, errors.Wrap(ec.err, "could not set up kubernetes client")
 }
+
+func (ec *explodingClient) OwnerFetcher() OwnerFetcher {
+	return NewOwnerFetcher(context.Background(), ec)
+}
