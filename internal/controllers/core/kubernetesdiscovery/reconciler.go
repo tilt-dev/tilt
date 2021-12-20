@@ -427,9 +427,13 @@ func (w *Reconciler) buildStatus(ctx context.Context, watcher watcher) v1alpha1.
 		}
 	}
 
+	startTime := apis.NewMicroTime(watcher.startTime)
 	return v1alpha1.KubernetesDiscoveryStatus{
-		MonitorStartTime: apis.NewMicroTime(watcher.startTime),
+		MonitorStartTime: startTime,
 		Pods:             pods,
+		Running: &v1alpha1.KubernetesDiscoveryStateRunning{
+			StartTime: startTime,
+		},
 	}
 }
 

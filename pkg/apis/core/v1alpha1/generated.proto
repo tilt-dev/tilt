@@ -1331,6 +1331,16 @@ message KubernetesDiscoverySpec {
   optional string cluster = 5;
 }
 
+message KubernetesDiscoveryStateRunning {
+  // StartTime is when Kubernetes resource discovery began.
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startTime = 1;
+}
+
+message KubernetesDiscoveryStateWaiting {
+  // Reason the monitor has not yet been started.
+  optional string reason = 1;
+}
+
 // KubernetesDiscoveryStatus defines the observed state of KubernetesDiscovery
 message KubernetesDiscoveryStatus {
   // MonitorStartTime is the timestamp of when Kubernetes resource discovery was started.
@@ -1340,6 +1350,16 @@ message KubernetesDiscoveryStatus {
 
   // Pods that have been discovered based on the criteria in the spec.
   repeated Pod pods = 1;
+
+  // Waiting contains information about why the monitor has not started.
+  //
+  // +optional
+  optional KubernetesDiscoveryStateWaiting waiting = 3;
+
+  // Running contains information about the currently running monitor.
+  //
+  // +optional
+  optional KubernetesDiscoveryStateRunning running = 4;
 }
 
 message KubernetesDiscoveryTemplateSpec {

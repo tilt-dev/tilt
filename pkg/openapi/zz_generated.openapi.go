@@ -100,6 +100,8 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscovery":             schema_pkg_apis_core_v1alpha1_KubernetesDiscovery(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryList":         schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoverySpec":         schema_pkg_apis_core_v1alpha1_KubernetesDiscoverySpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryStateRunning": schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryStateRunning(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryStateWaiting": schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryStateWaiting(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryStatus":       schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryTemplateSpec": schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryTemplateSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesImageLocator":          schema_pkg_apis_core_v1alpha1_KubernetesImageLocator(ref),
@@ -3321,6 +3323,49 @@ func schema_pkg_apis_core_v1alpha1_KubernetesDiscoverySpec(ref common.ReferenceC
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryStateRunning(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"startTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StartTime is when Kubernetes resource discovery began.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+				},
+				Required: []string{"startTime"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryStateWaiting(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"reason": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Reason the monitor has not yet been started.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"reason"},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -3349,12 +3394,24 @@ func schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryStatus(ref common.Referenc
 							},
 						},
 					},
+					"waiting": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Waiting contains information about why the monitor has not started.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryStateWaiting"),
+						},
+					},
+					"running": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Running contains information about the currently running monitor.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryStateRunning"),
+						},
+					},
 				},
 				Required: []string{"pods"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Pod", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryStateRunning", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryStateWaiting", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Pod", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
 	}
 }
 
