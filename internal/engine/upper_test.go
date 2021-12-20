@@ -3817,11 +3817,10 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		nil, "tilt-default", webListener, serverOptions,
 		&server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
 	ns := k8s.Namespace("default")
-	of := k8s.ProvideOwnerFetcher(ctx, kClient)
 	rd := kubernetesdiscovery.NewContainerRestartDetector()
-	kdc := kubernetesdiscovery.NewReconciler(cdc, sch, kClient, of, rd, st)
-	sw := k8swatch.NewServiceWatcher(kClient, of, ns)
-	ewm := k8swatch.NewEventWatchManager(kClient, of, ns)
+	kdc := kubernetesdiscovery.NewReconciler(cdc, sch, kClient, rd, st)
+	sw := k8swatch.NewServiceWatcher(kClient, ns)
+	ewm := k8swatch.NewEventWatchManager(kClient, ns)
 	tcum := cloud.NewStatusManager(httptest.NewFakeClientEmptyJSON(), clock)
 	fe := cmd.NewFakeExecer()
 	fpm := cmd.NewFakeProberManager()
@@ -3861,7 +3860,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	cu := &containerupdate.FakeContainerUpdater{}
 	lur := liveupdate.NewFakeReconciler(st, cu, cdc)
 	dir := dockerimage.NewReconciler(cdc)
-	clr := cluster.NewReconciler(cdc, st, docker.LocalEnv{}, cluster.NewConnectionManager())
+	clr := cluster.NewReconciler(ctx, cdc, st, docker.LocalEnv{}, cluster.NewConnectionManager())
 	clr.SetFakeClientsForTesting(kClient, dockerClient)
 
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(

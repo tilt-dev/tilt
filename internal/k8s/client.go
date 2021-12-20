@@ -119,6 +119,8 @@ type Client interface {
 
 	// Returns version information about the apiserver, or an error if we're not connected.
 	CheckConnected(ctx context.Context) (*version.Info, error)
+
+	OwnerFetcher() OwnerFetcher
 }
 
 type RESTMapper interface {
@@ -144,11 +146,13 @@ type K8sClient struct {
 	drm               RESTMapper
 	clientLoader      clientcmd.ClientConfig
 	resourceClient    ResourceClient
+	ownerFetcher      OwnerFetcher
 }
 
 var _ Client = &K8sClient{}
 
 func ProvideK8sClient(
+	globalCtx context.Context,
 	env Env,
 	maybeRESTConfig RESTConfigOrError,
 	maybeClientset ClientsetOrError,
@@ -214,6 +218,7 @@ func ProvideK8sClient(
 		clientLoader:      clientLoader,
 	}
 	c.resourceClient = newResourceClient(c)
+	c.ownerFetcher = NewOwnerFetcher(globalCtx, c)
 	return c
 }
 
@@ -347,6 +352,10 @@ func (k *K8sClient) Upsert(ctx context.Context, entities []K8sEntity, timeout ti
 	}
 
 	return result, nil
+}
+
+func (k *K8sClient) OwnerFetcher() OwnerFetcher {
+	return k.ownerFetcher
 }
 
 // Update an entity like kubectl apply does.

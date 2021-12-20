@@ -50,11 +50,10 @@ func (w watcherID) String() string {
 }
 
 type Reconciler struct {
-	kCli         k8s.Client
-	ownerFetcher k8s.OwnerFetcher
-	dispatcher   Dispatcher
-	indexer      *indexer.Indexer
-	ctrlClient   ctrlclient.Client
+	kCli       k8s.Client
+	dispatcher Dispatcher
+	indexer    *indexer.Indexer
+	ctrlClient ctrlclient.Client
 
 	// restartDetector compares a previous version of status with the latest and emits log events
 	// for any containers on the pod that restarted.
@@ -101,12 +100,11 @@ func (w *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	return b, nil
 }
 
-func NewReconciler(ctrlClient ctrlclient.Client, scheme *runtime.Scheme, kCli k8s.Client, ownerFetcher k8s.OwnerFetcher, restartDetector *ContainerRestartDetector,
+func NewReconciler(ctrlClient ctrlclient.Client, scheme *runtime.Scheme, kCli k8s.Client, restartDetector *ContainerRestartDetector,
 	st store.RStore) *Reconciler {
 	return &Reconciler{
 		ctrlClient:             ctrlClient,
 		kCli:                   kCli,
-		ownerFetcher:           ownerFetcher,
 		restartDetector:        restartDetector,
 		dispatcher:             st,
 		indexer:                indexer.NewIndexer(scheme, indexKubernetesDiscovery),
@@ -524,7 +522,7 @@ func (w *Reconciler) triagePodTree(pod *v1.Pod, objTree k8s.ObjectRefTree) []tri
 }
 
 func (w *Reconciler) handlePodChange(ctx context.Context, pod *v1.Pod) {
-	objTree, err := w.ownerFetcher.OwnerTreeOf(ctx, k8s.NewK8sEntity(pod))
+	objTree, err := w.kCli.OwnerFetcher().OwnerTreeOf(ctx, k8s.NewK8sEntity(pod))
 	if err != nil {
 		return
 	}

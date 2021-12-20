@@ -26,8 +26,7 @@ import (
 // TODO(nick): We should also add garbage collection and/or handle Delete events
 // from the kubernetes informer properly.
 type EventWatchManager struct {
-	kClient      k8s.Client
-	ownerFetcher k8s.OwnerFetcher
+	kClient k8s.Client
 
 	mu                sync.RWMutex
 	watcherKnownState watcherKnownState
@@ -42,10 +41,9 @@ type EventWatchManager struct {
 	knownEvents map[types.UID]*v1.Event
 }
 
-func NewEventWatchManager(kClient k8s.Client, ownerFetcher k8s.OwnerFetcher, cfgNS k8s.Namespace) *EventWatchManager {
+func NewEventWatchManager(kClient k8s.Client, cfgNS k8s.Namespace) *EventWatchManager {
 	return &EventWatchManager{
 		kClient:                  kClient,
-		ownerFetcher:             ownerFetcher,
 		watcherKnownState:        newWatcherKnownState(cfgNS),
 		knownDescendentEventUIDs: make(map[types.UID]k8s.UIDSet),
 		knownEvents:              make(map[types.UID]*v1.Event),
@@ -164,7 +162,7 @@ func (m *EventWatchManager) triageEventUpdate(event *v1.Event, objTree k8s.Objec
 }
 
 func (m *EventWatchManager) dispatchEventChange(ctx context.Context, event *v1.Event, st store.RStore) {
-	objTree, err := m.ownerFetcher.OwnerTreeOfRef(ctx, event.InvolvedObject)
+	objTree, err := m.kClient.OwnerFetcher().OwnerTreeOfRef(ctx, event.InvolvedObject)
 	if err != nil {
 		logger.Get(ctx).Infof("Error handling event update (%q): %v", event.Name, err)
 		return

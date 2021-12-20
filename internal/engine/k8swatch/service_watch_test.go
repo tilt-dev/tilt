@@ -144,8 +144,7 @@ func newSWFixture(t *testing.T) *swFixture {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	ctx, cancel := context.WithCancel(ctx)
 
-	of := k8s.ProvideOwnerFetcher(ctx, kClient)
-	sw := NewServiceWatcher(kClient, of, k8s.DefaultNamespace)
+	sw := NewServiceWatcher(kClient, k8s.DefaultNamespace)
 	st := store.NewTestingStore()
 
 	return &swFixture{

@@ -421,10 +421,9 @@ func newFixture(t *testing.T) *fixture {
 
 	st := store.NewTestingStore()
 
-	of := k8s.ProvideOwnerFetcher(ctx, kClient)
 	rd := NewContainerRestartDetector()
 	cfb := fake.NewControllerFixtureBuilder(t)
-	pw := NewReconciler(cfb.Client, cfb.Scheme(), kClient, of, rd, st)
+	pw := NewReconciler(cfb.Client, cfb.Scheme(), kClient, rd, st)
 
 	ret := &fixture{
 		ControllerFixture: cfb.Build(pw),

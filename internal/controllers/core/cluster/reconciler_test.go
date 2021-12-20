@@ -111,7 +111,7 @@ func newFixture(t *testing.T) *fixture {
 	cfb := fake.NewControllerFixtureBuilder(t)
 	st := store.NewTestingStore()
 
-	r := NewReconciler(cfb.Client, st, docker.LocalEnv{}, NewConnectionManager())
+	r := NewReconciler(cfb.Context(), cfb.Client, st, docker.LocalEnv{}, NewConnectionManager())
 	return &fixture{
 		ControllerFixture: cfb.Build(r),
 		r:                 r,
