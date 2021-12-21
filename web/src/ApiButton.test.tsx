@@ -2,7 +2,7 @@ import { Button, Icon, TextField } from "@material-ui/core"
 import { mount } from "enzyme"
 import fetchMock from "fetch-mock"
 import { SnackbarProvider } from "notistack"
-import React from "react"
+import React, { PropsWithChildren } from "react"
 import { act } from "react-dom/test-utils"
 import { MemoryRouter } from "react-router"
 import { AnalyticsAction } from "./analytics"
@@ -37,18 +37,23 @@ const buttonInputsAccessor = accessorsForTesting(
   localStorage
 )
 
-function wrappedMount(e: JSX.Element) {
-  return mount(
+function Wrapper(props: PropsWithChildren<{ setError?: () => {} }>) {
+  return (
     <MemoryRouter>
-      <tiltfileKeyContext.Provider value="test">
-        <SnackbarProvider>{e}</SnackbarProvider>
-      </tiltfileKeyContext.Provider>
+      <HudErrorContextProvider setError={props.setError ?? (() => {})}>
+        <tiltfileKeyContext.Provider value="test">
+          <SnackbarProvider>{props.children}</SnackbarProvider>
+        </tiltfileKeyContext.Provider>
+      </HudErrorContextProvider>
     </MemoryRouter>
   )
 }
 
-function mountButton(b: UIButton) {
-  return wrappedMount(<ApiButton uiButton={b} />)
+function mountButton(b: UIButton, wrapperProps?: {}) {
+  return mount(<ApiButton uiButton={b} />, {
+    wrappingComponent: Wrapper,
+    wrappingComponentProps: wrapperProps,
+  })
 }
 
 describe("ApiButton", () => {
@@ -317,11 +322,8 @@ describe("ApiButton", () => {
     const setError = (e: string) => {
       error = e
     }
-    const root = wrappedMount(
-      <HudErrorContextProvider setError={setError}>
-        <ApiButton uiButton={makeUIButton()} />
-      </HudErrorContextProvider>
-    )
+
+    const root = mountButton(makeUIButton(), { setError })
 
     fetchMock.reset()
     mockAnalyticsCalls()
@@ -386,6 +388,38 @@ describe("ApiButton", () => {
     button = root.find(InstrumentedButton)
     expect(button.find(ApiButtonLabel).text()).toEqual(b.spec?.text)
     expect(nonAnalyticsCalls().length).toEqual(0)
+  })
+
+  // This test makes sure that the `confirming` state resets if a user
+  // clicks a toggle button once, then navigates to another resource
+  // with a toggle button (which will have a different button name)
+  it("it resets the `confirming` state when the button's name changes", async () => {
+    const toggleButton = makeUIButton({
+      requiresConfirmation: true,
+      name: "toggle-button-1",
+    })
+    const root = mountButton(toggleButton)
+
+    let buttonComponent = root.find(ApiButton)
+    const buttonElement = buttonComponent.find(Button).at(0)
+    await click(buttonElement)
+    root.update()
+
+    buttonComponent = root.find(ApiButton)
+    expect(buttonComponent.find(ApiButtonLabel).text()).toEqual("Confirm")
+
+    const anotherToggleButton = makeUIButton({
+      requiresConfirmation: true,
+      name: "toggle-button-2",
+    })
+    root.setProps({ uiButton: anotherToggleButton })
+    root.update()
+
+    buttonComponent = root.find(ApiButton)
+    expect(buttonComponent.find(ApiButtonLabel).text()).not.toEqual("Confirm")
+    expect(buttonComponent.find(ApiButtonLabel).text()).toEqual(
+      anotherToggleButton.spec?.text
+    )
   })
 })
 
