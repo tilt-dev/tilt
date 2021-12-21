@@ -28,6 +28,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cluster"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
+	"github.com/tilt-dev/tilt/internal/controllers/core/cmdimage"
 	"github.com/tilt-dev/tilt/internal/controllers/core/configmap"
 	"github.com/tilt-dev/tilt/internal/controllers/core/dockerimage"
 	"github.com/tilt-dev/tilt/internal/controllers/core/extension"
@@ -306,9 +307,10 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	liveupdateReconciler := liveupdate.NewReconciler(storeStore, dockerUpdater, execUpdater, updateMode, kubeContext, deferredClient, scheme)
 	configmapReconciler := configmap.NewReconciler(deferredClient, storeStore)
 	dockerimageReconciler := dockerimage.NewReconciler(deferredClient)
+	cmdimageReconciler := cmdimage.NewReconciler(deferredClient)
 	connectionManager := cluster.NewConnectionManager()
 	clusterReconciler := cluster.NewReconciler(ctx, deferredClient, storeStore, localEnv, connectionManager)
-	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler, togglebuttonReconciler, extensionReconciler, extensionrepoReconciler, liveupdateReconciler, configmapReconciler, dockerimageReconciler, clusterReconciler)
+	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler, togglebuttonReconciler, extensionReconciler, extensionrepoReconciler, liveupdateReconciler, configmapReconciler, dockerimageReconciler, cmdimageReconciler, clusterReconciler)
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	v2 := provideClock()
 	renderer := hud.NewRenderer(v2)
@@ -515,9 +517,10 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	liveupdateReconciler := liveupdate.NewReconciler(storeStore, dockerUpdater, execUpdater, updateMode, kubeContext, deferredClient, scheme)
 	configmapReconciler := configmap.NewReconciler(deferredClient, storeStore)
 	dockerimageReconciler := dockerimage.NewReconciler(deferredClient)
+	cmdimageReconciler := cmdimage.NewReconciler(deferredClient)
 	connectionManager := cluster.NewConnectionManager()
 	clusterReconciler := cluster.NewReconciler(ctx, deferredClient, storeStore, localEnv, connectionManager)
-	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler, togglebuttonReconciler, extensionReconciler, extensionrepoReconciler, liveupdateReconciler, configmapReconciler, dockerimageReconciler, clusterReconciler)
+	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler, togglebuttonReconciler, extensionReconciler, extensionrepoReconciler, liveupdateReconciler, configmapReconciler, dockerimageReconciler, cmdimageReconciler, clusterReconciler)
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	v2 := provideClock()
 	renderer := hud.NewRenderer(v2)
@@ -721,9 +724,10 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	liveupdateReconciler := liveupdate.NewReconciler(storeStore, dockerUpdater, execUpdater, updateMode, kubeContext, deferredClient, scheme)
 	configmapReconciler := configmap.NewReconciler(deferredClient, storeStore)
 	dockerimageReconciler := dockerimage.NewReconciler(deferredClient)
+	cmdimageReconciler := cmdimage.NewReconciler(deferredClient)
 	connectionManager := cluster.NewConnectionManager()
 	clusterReconciler := cluster.NewReconciler(ctx, deferredClient, storeStore, localEnv, connectionManager)
-	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler, togglebuttonReconciler, extensionReconciler, extensionrepoReconciler, liveupdateReconciler, configmapReconciler, dockerimageReconciler, clusterReconciler)
+	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler, togglebuttonReconciler, extensionReconciler, extensionrepoReconciler, liveupdateReconciler, configmapReconciler, dockerimageReconciler, cmdimageReconciler, clusterReconciler)
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	stdout := hud.ProvideStdout()
 	incrementalPrinter := hud.NewIncrementalPrinter(stdout)
