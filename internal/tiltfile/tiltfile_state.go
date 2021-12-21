@@ -15,6 +15,7 @@ import (
 	"golang.org/x/mod/semver"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apis/cmdimage"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/dockerimage"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/apiset"
@@ -1427,14 +1428,24 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(mn model.ManifestName, 
 			}
 			iTarget = iTarget.WithBuildDetails(model.DockerBuild{DockerImageSpec: spec})
 		case CustomBuild:
-			r := model.CustomBuild{
-				WorkDir:           image.workDir,
-				Command:           image.customCommand,
-				Deps:              image.customDeps,
-				Tag:               image.customTag,
-				DisablePush:       image.disablePush,
-				SkipsLocalDocker:  image.skipsLocalDocker,
+			iTarget.CmdImageName = cmdimage.GetName(mn, iTarget.ID())
+
+			spec := v1alpha1.CmdImageSpec{
+				Args:              image.customCommand.Argv,
+				Dir:               image.workDir,
+				OutputTag:         image.customTag,
 				OutputsImageRefTo: image.outputsImageRefTo,
+			}
+			if image.skipsLocalDocker {
+				spec.OutputMode = v1alpha1.CmdImageOutputRemote
+			} else if image.disablePush {
+				spec.OutputMode = v1alpha1.CmdImageOutputLocalDockerAndRemote
+			} else {
+				spec.OutputMode = v1alpha1.CmdImageOutputLocalDocker
+			}
+			r := model.CustomBuild{
+				CmdImageSpec: spec,
+				Deps:         image.customDeps,
 			}
 			iTarget = iTarget.WithBuildDetails(r)
 		case DockerComposeBuild:

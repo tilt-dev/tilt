@@ -120,6 +120,9 @@ message CmdImageList {
 
 // CmdImageSpec describes how the custom script builds images and where it puts them.
 message CmdImageSpec {
+  // The named reference of the image.
+  optional string ref = 7;
+
   // Command-line arguments. Must have length at least 1.
   repeated string args = 1;
 

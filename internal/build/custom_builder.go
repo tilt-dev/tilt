@@ -13,6 +13,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -34,11 +35,7 @@ func NewExecCustomBuilder(dCli docker.Client, clock Clock) *ExecCustomBuilder {
 }
 
 func (b *ExecCustomBuilder) Build(ctx context.Context, refs container.RefSet, cb model.CustomBuild) (container.TaggedRefs, error) {
-	workDir := cb.WorkDir
-	expectedTag := cb.Tag
-	command := cb.Command
-
-	skipsLocalDocker := cb.SkipsLocalDocker
+	expectedTag := cb.OutputTag
 	outputsImageRefTo := cb.OutputsImageRefTo
 
 	var expectedBuildRefs container.TaggedRefs
@@ -74,8 +71,9 @@ func (b *ExecCustomBuilder) Build(ctx context.Context, refs container.RefSet, cb
 
 	expectedBuildResult := expectedBuildRefs.LocalRef
 
-	cmd := exec.CommandContext(ctx, command.Argv[0], command.Argv[1:]...)
-	cmd.Dir = workDir
+	// TODO(nick): Use the Cmd API.
+	cmd := exec.CommandContext(ctx, cb.Args[0], cb.Args[1:]...)
+	cmd.Dir = cb.Dir
 	cmd.Env = logger.DefaultEnv(ctx)
 
 	l := logger.Get(ctx)
@@ -106,7 +104,7 @@ func (b *ExecCustomBuilder) Build(ctx context.Context, refs container.RefSet, cb
 	cmd.Stdout = w
 	cmd.Stderr = w
 
-	l.Infof("Running custom build cmd %q", command)
+	l.Infof("Running custom build cmd %q", model.Cmd{Argv: cb.Args}.String())
 	err = cmd.Run()
 	if err != nil {
 		return container.TaggedRefs{}, errors.Wrap(err, "Custom build command failed")
@@ -122,7 +120,7 @@ func (b *ExecCustomBuilder) Build(ctx context.Context, refs container.RefSet, cb
 
 	// If the command skips the local docker registry, then we don't expect the image
 	// to be available (because the command has its own registry).
-	if skipsLocalDocker {
+	if cb.OutputMode == v1alpha1.CmdImageOutputRemote {
 		return expectedBuildRefs, nil
 	}
 

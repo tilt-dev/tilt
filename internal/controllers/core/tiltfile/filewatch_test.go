@@ -100,8 +100,8 @@ func TestFileWatch_IgnoreOutputsImageRefs(t *testing.T) {
 
 	target := model.MustNewImageTarget(container.MustParseSelector("img")).
 		WithBuildDetails(model.CustomBuild{
-			Deps:              []string{f.Path()},
-			OutputsImageRefTo: f.JoinPath("ref.txt"),
+			CmdImageSpec: v1alpha1.CmdImageSpec{OutputsImageRefTo: f.JoinPath("ref.txt")},
+			Deps:         []string{f.Path()},
 		})
 
 	m := manifestbuilder.New(f, "sancho").

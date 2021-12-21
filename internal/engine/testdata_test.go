@@ -69,9 +69,8 @@ func NewSanchoCustomBuildImageTarget(fixture Fixture) model.ImageTarget {
 
 func NewSanchoCustomBuildImageTargetWithTag(fixture Fixture, tag string) model.ImageTarget {
 	cb := model.CustomBuild{
-		Command: model.ToHostCmd("exit 0"),
-		Deps:    []string{fixture.JoinPath("app")},
-		Tag:     tag,
+		CmdImageSpec: v1alpha1.CmdImageSpec{Args: model.ToHostCmd("exit 0").Argv, OutputTag: tag},
+		Deps:         []string{fixture.JoinPath("app")},
 	}
 	return model.MustNewImageTarget(SanchoRef).WithBuildDetails(cb)
 }

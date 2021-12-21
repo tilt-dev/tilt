@@ -134,6 +134,35 @@ func TestImageMapCreate(t *testing.T) {
 	assert.Contains(t, di.Spec.Ref, SanchoRef.String())
 }
 
+func TestCmdImageCreate(t *testing.T) {
+	f := newAPIFixture(t)
+	target := model.MustNewImageTarget(SanchoRef).
+		WithBuildDetails(model.CustomBuild{
+			CmdImageSpec: v1alpha1.CmdImageSpec{Args: []string{"echo"}},
+			Deps:         []string{f.Path()},
+		})
+	fe := manifestbuilder.New(f, "fe").
+		WithImageTarget(target).
+		WithK8sYAML(testyaml.SanchoYAML).
+		Build()
+	nn := types.NamespacedName{Name: "tiltfile"}
+	tf := &v1alpha1.Tiltfile{ObjectMeta: metav1.ObjectMeta{Name: "tiltfile"}}
+	err := f.updateOwnedObjects(nn, tf,
+		&tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}})
+	assert.NoError(t, err)
+
+	name := apis.SanitizeName(SanchoRef.String())
+
+	var im v1alpha1.ImageMap
+	assert.NoError(t, f.Get(types.NamespacedName{Name: name}, &im))
+	assert.Contains(t, im.Spec.Selector, SanchoRef.String())
+
+	ciName := apis.SanitizeName(fmt.Sprintf("fe:%s", SanchoRef.String()))
+	var ci v1alpha1.CmdImage
+	assert.NoError(t, f.Get(types.NamespacedName{Name: ciName}, &ci))
+	assert.Contains(t, ci.Spec.Ref, SanchoRef.String())
+}
+
 func TestAPITwoTiltfiles(t *testing.T) {
 	f := newAPIFixture(t)
 	feA := manifestbuilder.New(f, "fe-a").WithK8sYAML(testyaml.SanchoYAML).Build()
