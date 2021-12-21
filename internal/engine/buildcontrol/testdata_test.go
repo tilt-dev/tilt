@@ -54,9 +54,8 @@ func NewSanchoCustomBuildManifest(fixture Fixture) model.Manifest {
 
 func NewSanchoCustomBuildImageTargetWithTag(fixture Fixture, tag string) model.ImageTarget {
 	cb := model.CustomBuild{
-		Command: model.ToHostCmd("exit 0"),
-		Deps:    []string{fixture.JoinPath("app")},
-		Tag:     tag,
+		CmdImageSpec: v1alpha1.CmdImageSpec{Args: model.ToHostCmd("exit 0").Argv, OutputTag: tag},
+		Deps:         []string{fixture.JoinPath("app")},
 	}
 	return model.MustNewImageTarget(SanchoRef).WithBuildDetails(cb)
 }
@@ -70,10 +69,12 @@ func NewSanchoCustomBuildManifestWithTag(fixture Fixture, tag string) model.Mani
 
 func NewSanchoCustomBuildManifestWithPushDisabled(fixture Fixture) model.Manifest {
 	cb := model.CustomBuild{
-		Command:     model.ToHostCmd("exit 0"),
-		Deps:        []string{fixture.JoinPath("app")},
-		DisablePush: true,
-		Tag:         "tilt-build",
+		CmdImageSpec: v1alpha1.CmdImageSpec{
+			Args:       model.ToHostCmd("exit 0").Argv,
+			OutputTag:  "tilt-build",
+			OutputMode: v1alpha1.CmdImageOutputLocalDockerAndRemote,
+		},
+		Deps: []string{fixture.JoinPath("app")},
 	}
 
 	return manifestbuilder.New(fixture, "sancho").

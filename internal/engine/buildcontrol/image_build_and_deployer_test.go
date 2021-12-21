@@ -518,10 +518,12 @@ func TestCustomBuildSkipsLocalDocker(t *testing.T) {
 	f.docker.Images["gcr.io/some-project-162817/sancho:tilt-build"] = types.ImageInspect{ID: string(sha)}
 
 	cb := model.CustomBuild{
-		Command:          model.ToHostCmd("exit 0"),
-		Deps:             []string{f.JoinPath("app")},
-		SkipsLocalDocker: true,
-		Tag:              "tilt-build",
+		CmdImageSpec: v1alpha1.CmdImageSpec{
+			Args:       model.ToHostCmd("exit 0").Argv,
+			OutputTag:  "tilt-build",
+			OutputMode: v1alpha1.CmdImageOutputRemote,
+		},
+		Deps: []string{f.JoinPath("app")},
 	}
 
 	manifest := manifestbuilder.New(f, "sancho").

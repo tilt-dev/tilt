@@ -122,7 +122,7 @@ func (i ImageTarget) Validate() error {
 			return fmt.Errorf("[Validate] Image %q missing build path", i.ImageMapSpec.Selector)
 		}
 	case CustomBuild:
-		if !i.IsLiveUpdateOnly && bd.Command.Empty() {
+		if !i.IsLiveUpdateOnly && len(bd.Args) == 0 {
 			return fmt.Errorf(
 				"[Validate] CustomBuild command must not be empty",
 			)
@@ -189,7 +189,7 @@ func (i ImageTarget) WithBuildDetails(details BuildDetails) ImageTarget {
 
 	cb, ok := details.(CustomBuild)
 	isEmptyLiveUpdateSpec := len(i.LiveUpdateSpec.Syncs) == 0 && len(i.LiveUpdateSpec.Execs) == 0
-	if ok && cmp.Equal(cb.Command.Argv, ToHostCmd(":").Argv) && !isEmptyLiveUpdateSpec {
+	if ok && cmp.Equal(cb.Args, ToHostCmd(":").Argv) && !isEmptyLiveUpdateSpec {
 		// NOTE(nick): This is a hack for the file_sync_only extension
 		// until we come up with a real API for specifying live update
 		// without an image build.
@@ -302,7 +302,7 @@ func (i ImageTarget) InferImagePropertiesFromCluster(reg container.Registry) (Im
 	// CustomBuilder, which already has similar logic for handling these two cases
 	// together.
 	customBuild, ok := i.BuildDetails.(CustomBuild)
-	if ok && customBuild.SkipsLocalDocker && customBuild.Tag != "" {
+	if ok && customBuild.OutputMode == v1alpha1.CmdImageOutputRemote && customBuild.OutputTag != "" {
 		refs = refs.WithoutRegistry()
 	}
 	_, ok = i.BuildDetails.(DockerComposeBuild)
@@ -330,34 +330,25 @@ type DockerBuild struct {
 func (DockerBuild) buildDetails() {}
 
 type CustomBuild struct {
-	WorkDir string
-	Command Cmd
+	v1alpha1.CmdImageSpec
+
 	// Deps is a list of file paths that are dependencies of this command.
+	//
+	// TODO(nick): This creates a FileWatch. We should add a RestartOn field
+	// to CmdImageSpec that points to the FileWatch.
 	Deps []string
-
-	// Optional: tag we expect the image to be built with (we use this to check that
-	// the expected image+tag has been created).
-	// If empty, we create an expected tag at the beginning of CustomBuild (and
-	// export $EXPECTED_REF=name:expected_tag )
-	Tag string
-
-	DisablePush      bool
-	SkipsLocalDocker bool
-
-	// We expect the custom build script to print the image ref to this file,
-	// so that Tilt can read it out when we're done.
-	OutputsImageRefTo string
 }
 
 func (CustomBuild) buildDetails() {}
 
 func (cb CustomBuild) WithTag(t string) CustomBuild {
-	cb.Tag = t
+	cb.CmdImageSpec.OutputTag = t
 	return cb
 }
 
 func (cb CustomBuild) SkipsPush() bool {
-	return cb.SkipsLocalDocker || cb.DisablePush
+	return cb.OutputMode == v1alpha1.CmdImageOutputLocalDockerAndRemote ||
+		cb.OutputMode == v1alpha1.CmdImageOutputRemote
 }
 
 type DockerComposeBuild struct {
