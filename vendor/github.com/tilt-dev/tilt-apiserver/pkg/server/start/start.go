@@ -216,8 +216,11 @@ func (o TiltServerOptions) loopbackClientConfig(cert dynamiccertificates.CertKey
 
 func (o TiltServerOptions) GetRESTOptions(resource schema.GroupResource) (generic.RESTOptions, error) {
 	return generic.RESTOptions{
-		StorageConfig: &storagebackend.Config{
-			Codec: o.codec,
+		StorageConfig: &storagebackend.ConfigForResource{
+			GroupResource: resource,
+			Config: storagebackend.Config{
+				Codec: o.codec,
+			},
 		},
 	}, nil
 }

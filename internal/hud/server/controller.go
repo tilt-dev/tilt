@@ -272,7 +272,7 @@ func newAPIServerProxyHandler(config *rest.Config) (http.Handler, error) {
 	}
 
 	// the prefix here must be kept in sync with the route definition on the mux
-	return proxy.NewProxyHandler(apiServerProxyPrefix, fs, config, 0)
+	return proxy.NewProxyHandler(apiServerProxyPrefix, fs, config, 0, false)
 }
 
 var _ store.SetUpper = &HeadsUpServerController{}

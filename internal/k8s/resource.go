@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"helm.sh/helm/v3/pkg/kube"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/cli-runtime/pkg/resource"
@@ -32,32 +33,58 @@ type resourceClient struct {
 // so we use the kubectl apply code directly.
 func (c *resourceClient) Apply(target kube.ResourceList) (*kube.Result, error) {
 	f := c.factory
-	o := apply.NewApplyOptions(genericclioptions.IOStreams{
+	iostreams := genericclioptions.IOStreams{
 		In:     strings.NewReader(""),
 		Out:    ioutil.Discard,
 		ErrOut: ioutil.Discard,
-	})
+	}
+	flags := apply.NewApplyFlags(f, iostreams)
 
-	var err error
-	o.DynamicClient, err = f.DynamicClient()
+	dynamicClient, err := f.DynamicClient()
 	if err != nil {
 		return nil, err
 	}
 
-	deleteOptions, _ := delete.NewDeleteFlags("").ToOptions(o.DynamicClient, o.IOStreams)
-	o.DeleteOptions = deleteOptions
-	o.ToPrinter = func(s string) (printers.ResourcePrinter, error) {
+	deleteOptions, _ := delete.NewDeleteFlags("").ToOptions(dynamicClient, iostreams)
+	toPrinter := func(s string) (printers.ResourcePrinter, error) {
 		return genericclioptions.NewPrintFlags("created").ToPrinter()
 	}
-	o.Builder = f.NewBuilder()
-	o.Mapper, err = f.ToRESTMapper()
+	openAPISchema, _ := f.OpenAPISchema()
+	builder := f.NewBuilder()
+	mapper, err := f.ToRESTMapper()
 	if err != nil {
 		return nil, err
 	}
 
-	o.Namespace, o.EnforceNamespace, err = f.ToRawKubeConfigLoader().Namespace()
+	namespace, enforceNamespace, err := f.ToRawKubeConfigLoader().Namespace()
 	if err != nil {
 		return nil, err
+	}
+
+	o := &apply.ApplyOptions{
+		PrintFlags: flags.PrintFlags,
+
+		DeleteOptions:  deleteOptions,
+		ToPrinter:      toPrinter,
+		Selector:       flags.Selector,
+		Prune:          flags.Prune,
+		PruneResources: flags.PruneResources,
+		All:            flags.All,
+		Overwrite:      flags.Overwrite,
+		OpenAPIPatch:   flags.OpenAPIPatch,
+		PruneWhitelist: flags.PruneWhitelist,
+
+		Namespace:        namespace,
+		EnforceNamespace: enforceNamespace,
+		Builder:          builder,
+		Mapper:           mapper,
+		DynamicClient:    dynamicClient,
+		OpenAPISchema:    openAPISchema,
+
+		IOStreams: flags.IOStreams,
+
+		VisitedUids:       sets.NewString(),
+		VisitedNamespaces: sets.NewString(),
 	}
 
 	o.SetObjects(target)

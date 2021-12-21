@@ -23,7 +23,6 @@ package cli
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"time"
 
@@ -39,7 +38,7 @@ import (
 
 type applyCmd struct {
 	streams genericclioptions.IOStreams
-	options *apply.ApplyOptions
+	flags   *apply.ApplyFlags
 	cmd     *cobra.Command
 }
 
@@ -55,7 +54,7 @@ func newApplyCmd() *applyCmd {
 func (c *applyCmd) name() model.TiltSubcommand { return "apply" }
 
 func (c *applyCmd) register() *cobra.Command {
-	o := apply.NewApplyOptions(c.streams)
+	flags := apply.NewApplyFlags(nil, c.streams)
 
 	cmd := &cobra.Command{
 		Use:                   "apply (-f FILENAME | -k DIRECTORY)",
@@ -63,24 +62,12 @@ func (c *applyCmd) register() *cobra.Command {
 		Short:                 "Apply a configuration to a resource by filename or stdin",
 	}
 
-	// bind flag structs
-	o.DeleteFlags.AddFlags(cmd)
-	o.RecordFlags.AddFlags(cmd)
-	o.PrintFlags.AddFlags(cmd)
-
-	cmd.Flags().BoolVar(&o.Overwrite, "overwrite", o.Overwrite, "Automatically resolve conflicts between the modified and live configuration by using values from the modified configuration")
-	cmd.Flags().BoolVar(&o.Prune, "prune", o.Prune, "Automatically delete resource objects, including the uninitialized ones, that do not appear in the configs and are created by either apply or create --save-config. Should be used with either -l or --all.")
-	cmdutil.AddValidateFlags(cmd)
-	cmd.Flags().StringVarP(&o.Selector, "selector", "l", o.Selector, "Selector (label query) to filter on, supports '=', '==', and '!='.(e.g. -l key1=value1,key2=value2)")
-	cmd.Flags().BoolVar(&o.All, "all", o.All, "Select all resources in the namespace of the specified resource types.")
-	cmd.Flags().StringArrayVar(&o.PruneWhitelist, "prune-whitelist", o.PruneWhitelist, "Overwrite the default whitelist with <group/version/kind> for --prune")
-	cmd.Flags().BoolVar(&o.OpenAPIPatch, "openapi-patch", o.OpenAPIPatch, "If true, use openapi to calculate diff when the openapi presents and the resource can be found in the openapi spec. Otherwise, fall back to use baked-in types.")
-	cmdutil.AddDryRunFlag(cmd)
+	flags.AddFlags(cmd)
 
 	addConnectServerFlags(cmd)
 
 	c.cmd = cmd
-	c.options = o
+	c.flags = flags
 	return cmd
 }
 
@@ -96,35 +83,16 @@ func (c *applyCmd) run(ctx context.Context, args []string) error {
 	}
 
 	f := cmdutil.NewFactory(getter)
+	c.flags.Factory = f
+
 	cmd := c.cmd
-	o := c.options
+	o, err := c.flags.ToOptions(cmd, "tilt", args)
+	if err != nil {
+		return err
+	}
 
-	// NOTE(nick): the Complete() operation requires server-side apply flags
-	// to exist. But Tilt doesn't support these flags. So add the flags
-	// after flag-parsing.
-	cmdutil.AddServerSideApplyFlags(cmd)
-	cmdutil.AddFieldManagerFlagVar(cmd, &o.FieldManager, apply.FieldManagerClientSideApply)
-
-	cmdutil.CheckErr(o.Complete(f, cmd))
-	cmdutil.CheckErr(validateArgs(cmd, args))
-	cmdutil.CheckErr(validatePruneAll(o.Prune, o.All, o.Selector))
+	cmdutil.CheckErr(err)
+	cmdutil.CheckErr(o.Validate(cmd, args))
 	cmdutil.CheckErr(o.Run())
-	return nil
-}
-
-func validateArgs(cmd *cobra.Command, args []string) error {
-	if len(args) != 0 {
-		return cmdutil.UsageErrorf(cmd, "Unexpected args: %v", args)
-	}
-	return nil
-}
-
-func validatePruneAll(prune, all bool, selector string) error {
-	if all && len(selector) > 0 {
-		return fmt.Errorf("cannot set --all and --selector at the same time")
-	}
-	if prune && !all && selector == "" {
-		return fmt.Errorf("all resources selected for prune without explicitly passing --all. To prune all resources, pass the --all flag. If you did not mean to prune all resources, specify a label selector")
-	}
 	return nil
 }
