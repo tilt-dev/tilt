@@ -10,7 +10,13 @@ import ArrowDropDownIcon from "@material-ui/icons/ArrowDropDown"
 import { ClassNameMap } from "@material-ui/styles"
 import moment from "moment"
 import { useSnackbar } from "notistack"
-import React, { PropsWithChildren, useMemo, useRef, useState } from "react"
+import React, {
+  PropsWithChildren,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import { convertFromNode, convertFromString } from "react-from-dom"
 import { Link } from "react-router-dom"
 import styled from "styled-components"
@@ -521,16 +527,20 @@ function ApiSubmitButton(props: PropsWithChildren<ApiButtonElementProps>) {
 //    options used on submit.
 export function ApiButton(props: PropsWithChildren<ApiButtonProps>) {
   const { className, uiButton, ...buttonProps } = props
+  const buttonName = uiButton.metadata?.name || ""
 
   const [inputValues, setInputValues] = usePersistentState<{
     [name: string]: any
-  }>(`apibutton-${uiButton.metadata?.name}`, {})
+  }>(`apibutton-${buttonName}`, {})
   const { enqueueSnackbar } = useSnackbar()
   const pb = usePathBuilder()
   const { setError } = useHudErrorContext()
 
   const [loading, setLoading] = useState(false)
   const [confirming, setConfirming] = useState(false)
+
+  // Reset the confirmation state when the button's name changes
+  useLayoutEffect(() => setConfirming(false), [buttonName])
 
   const tags = useMemo(() => getButtonTags(uiButton), [uiButton])
   const componentType = uiButton.spec?.location?.componentType as ApiButtonType
