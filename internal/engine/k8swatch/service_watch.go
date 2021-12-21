@@ -11,12 +11,13 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/apis/cluster"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type ServiceWatcher struct {
-	clients cluster.ClientProvider
+	clients *cluster.ClientManager
 
 	mu                sync.RWMutex
 	watcherKnownState watcherKnownState
@@ -25,7 +26,7 @@ type ServiceWatcher struct {
 
 func NewServiceWatcher(clients cluster.ClientProvider, cfgNS k8s.Namespace) *ServiceWatcher {
 	return &ServiceWatcher{
-		clients:           clients,
+		clients:           cluster.NewClientManager(clients),
 		watcherKnownState: newWatcherKnownState(cfgNS),
 		knownServices:     make(map[clusterUID]*v1.Service),
 	}
@@ -35,17 +36,20 @@ func (w *ServiceWatcher) diff(st store.RStore) watcherTaskList {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
-	w.mu.RLock()
-	defer w.mu.RUnlock()
-
 	return w.watcherKnownState.createTaskList(state)
 }
 
-func (w *ServiceWatcher) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) error {
-	taskList := w.diff(st)
+func (w *ServiceWatcher) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) error {
+	if summary.IsLogOnly() {
+		return nil
+	}
 
 	w.mu.Lock()
 	defer w.mu.Unlock()
+
+	clusters := w.handleClusterChanges(st, summary)
+
+	taskList := w.diff(st)
 
 	for _, teardown := range taskList.teardownNamespaces {
 		watcher, ok := w.watcherKnownState.namespaceWatches[teardown]
@@ -56,18 +60,46 @@ func (w *ServiceWatcher) OnChange(ctx context.Context, st store.RStore, _ store.
 	}
 
 	for _, setup := range taskList.setupNamespaces {
-		w.setupWatch(ctx, st, setup)
+		w.setupWatch(ctx, st, clusters, setup)
 	}
 
 	if len(taskList.newUIDs) > 0 {
-		w.setupNewUIDs(ctx, st, taskList.newUIDs)
+		w.setupNewUIDs(ctx, st, clusters, taskList.newUIDs)
 	}
 
 	return nil
 }
 
-func (w *ServiceWatcher) setupWatch(ctx context.Context, st store.RStore, ns clusterNamespace) {
-	kCli, _, err := w.clients.GetK8sClient(ns.cluster)
+func (w *ServiceWatcher) handleClusterChanges(st store.RStore, summary store.ChangeSummary) map[types.NamespacedName]*v1alpha1.Cluster {
+	clusters := make(map[types.NamespacedName]*v1alpha1.Cluster)
+	state := st.RLockState()
+	for k, v := range state.Clusters {
+		clusters[types.NamespacedName{Name: k}] = v.DeepCopy()
+	}
+	st.RUnlockState()
+
+	for clusterNN := range summary.Clusters.Changes {
+		c := clusters[clusterNN]
+		if c != nil && !w.clients.Refresh(c) {
+			// cluster config didn't change
+			continue
+		}
+
+		// cluster config changed, remove all state so it can be re-built
+		for key := range w.knownServices {
+			if key.cluster == clusterNN {
+				delete(w.knownServices, key)
+			}
+		}
+
+		w.watcherKnownState.resetStateForCluster(clusterNN)
+	}
+
+	return clusters
+}
+
+func (w *ServiceWatcher) setupWatch(ctx context.Context, st store.RStore, clusters map[types.NamespacedName]*v1alpha1.Cluster, key clusterNamespace) {
+	kCli, err := w.clients.GetK8sClient(clusters[key.cluster])
 	if err != nil {
 		// ignore errors, if the cluster status changes, the subscriber
 		// will be re-run and the namespaces will be picked up again as new
@@ -75,26 +107,26 @@ func (w *ServiceWatcher) setupWatch(ctx context.Context, st store.RStore, ns clu
 		return
 	}
 
-	ch, err := kCli.WatchServices(ctx, ns.namespace)
+	ch, err := kCli.WatchServices(ctx, key.namespace)
 	if err != nil {
-		err = errors.Wrapf(err, "Error watching services. Are you connected to kubernetes?\nTry running `kubectl get services -n %q`", ns.namespace)
+		err = errors.Wrapf(err, "Error watching services. Are you connected to kubernetes?\nTry running `kubectl get services -n %q`", key.namespace)
 		st.Dispatch(store.NewErrorAction(err))
 		return
 	}
 
 	ctx, cancel := context.WithCancel(ctx)
-	w.watcherKnownState.namespaceWatches[ns] = namespaceWatch{cancel: cancel}
+	w.watcherKnownState.namespaceWatches[key] = namespaceWatch{cancel: cancel}
 
-	go w.dispatchServiceChangesLoop(ctx, kCli, ns.cluster, ch, st)
+	go w.dispatchServiceChangesLoop(ctx, kCli, key.cluster, ch, st)
 }
 
 // When new UIDs are deployed, go through all our known services and dispatch
 // new events. This handles the case where we get the Service change event
 // before the deploy id shows up in the manifest, which is way more common than
 // you would think.
-func (w *ServiceWatcher) setupNewUIDs(ctx context.Context, st store.RStore, newUIDs map[clusterUID]model.ManifestName) {
+func (w *ServiceWatcher) setupNewUIDs(ctx context.Context, st store.RStore, clusters map[types.NamespacedName]*v1alpha1.Cluster, newUIDs map[clusterUID]model.ManifestName) {
 	for uid, mn := range newUIDs {
-		kCli, _, err := w.clients.GetK8sClient(uid.cluster)
+		kCli, err := w.clients.GetK8sClient(clusters[uid.cluster])
 		if err != nil {
 			// ignore errors, if the cluster status changes, the subscriber
 			// will be re-run and the namespaces will be picked up again as new

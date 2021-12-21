@@ -7,7 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/types"
@@ -19,6 +21,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/servicebuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -42,6 +45,8 @@ func TestServiceWatch(t *testing.T) {
 		Build()
 	f.addDeployedService(manifest, s)
 	f.kClient.UpsertService(s)
+
+	require.NoError(f.t, f.sw.OnChange(f.ctx, f.store, store.LegacyChangeSummary()))
 
 	expectedSCA := ServiceChangeAction{
 		Service:      s,
@@ -97,6 +102,67 @@ func TestServiceWatchUIDDelayed(t *testing.T) {
 	f.assertObservedServiceChangeActions(expected...)
 }
 
+func TestServiceWatchClusterChange(t *testing.T) {
+	f := newSWFixture(t)
+	defer f.TearDown()
+
+	port := int32(1234)
+	uid := types.UID("fake-uid")
+	manifest := f.addManifest("server")
+
+	s := servicebuilder.New(f.t, manifest).
+		WithPort(port).
+		WithNodePort(9998).
+		WithIP(string(f.nip)).
+		WithUID(uid).
+		Build()
+	f.addDeployedService(manifest, s)
+	f.kClient.UpsertService(s)
+
+	expectedSCA := ServiceChangeAction{
+		Service:      s,
+		ManifestName: manifest.Name,
+		URL: &url.URL{
+			Scheme: "http",
+			Host:   fmt.Sprintf("%s:%d", f.nip, port),
+			Path:   "/",
+		},
+	}
+
+	f.assertObservedServiceChangeActions(expectedSCA)
+	f.store.ClearActions()
+
+	newClusterClient := k8s.NewFakeK8sClient(t)
+	newSvc := s.DeepCopy()
+	port = 4567
+	newSvc.Spec.Ports[0].NodePort = 9997
+	newSvc.Spec.Ports[0].Port = port
+	newClusterClient.UpsertService(newSvc)
+	clusterNN := types.NamespacedName{Name: "default"}
+	// add the new client to
+	f.clients.SetK8sClient(clusterNN, newClusterClient)
+	_, createdAt, err := f.clients.GetK8sClient(clusterNN)
+	require.NoError(t, err, "Could not get cluster client hash")
+	connectedAt := apis.NewMicroTime(createdAt)
+	state := f.store.LockMutableStateForTesting()
+	state.Clusters["default"].Status.ConnectedAt = &connectedAt
+	f.store.UnlockMutableState()
+
+	err = f.sw.OnChange(f.ctx, f.store, store.ChangeSummary{
+		Clusters: store.NewChangeSet(clusterNN),
+	})
+	require.NoError(t, err, "OnChange failed")
+	f.assertObservedServiceChangeActions(ServiceChangeAction{
+		Service:      newSvc,
+		ManifestName: manifest.Name,
+		URL: &url.URL{
+			Scheme: "http",
+			Host:   fmt.Sprintf("%s:%d", f.nip, port),
+			Path:   "/",
+		},
+	})
+}
+
 func (f *swFixture) addManifest(manifestName model.ManifestName) model.Manifest {
 	state := f.store.LockMutableStateForTesting()
 	defer f.store.UnlockMutableState()
@@ -110,7 +176,7 @@ func (f *swFixture) addManifest(manifestName model.ManifestName) model.Manifest 
 
 func (f *swFixture) addDeployedService(m model.Manifest, svc *v1.Service) {
 	defer func() {
-		_ = f.sw.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+		require.NoError(f.t, f.sw.OnChange(f.ctx, f.store, store.LegacyChangeSummary()))
 	}()
 
 	state := f.store.LockMutableStateForTesting()
@@ -129,6 +195,7 @@ func (f *swFixture) addDeployedService(m model.Manifest, svc *v1.Service) {
 type swFixture struct {
 	*tempdir.TempDirFixture
 	t       *testing.T
+	clients *cluster.FakeClientProvider
 	kClient *k8s.FakeK8sClient
 	nip     k8s.NodeIP
 	sw      *ServiceWatcher
@@ -146,11 +213,33 @@ func newSWFixture(t *testing.T) *swFixture {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	ctx, cancel := context.WithCancel(ctx)
 
-	sw := NewServiceWatcher(cluster.NewFakeClientProvider(kClient), k8s.DefaultNamespace)
+	clients := cluster.NewFakeClientProvider(kClient)
+	sw := NewServiceWatcher(clients, k8s.DefaultNamespace)
 	st := store.NewTestingStore()
+
+	state := st.LockMutableStateForTesting()
+	_, createdAt, err := clients.GetK8sClient(types.NamespacedName{Name: "default"})
+	require.NoError(t, err, "Failed to get default cluster client hash")
+	connectedAt := apis.NewMicroTime(createdAt)
+	state.Clusters["default"] = &v1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "default",
+		},
+		Spec: v1alpha1.ClusterSpec{
+			Connection: &v1alpha1.ClusterConnection{
+				Kubernetes: &v1alpha1.KubernetesClusterConnection{},
+			},
+		},
+		Status: v1alpha1.ClusterStatus{
+			Arch:        "fake-arch",
+			ConnectedAt: &connectedAt,
+		},
+	}
+	st.UnlockMutableState()
 
 	return &swFixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),
+		clients:        clients,
 		kClient:        kClient,
 		sw:             sw,
 		nip:            nip,
@@ -168,6 +257,7 @@ func (f *swFixture) TearDown() {
 }
 
 func (f *swFixture) assertObservedServiceChangeActions(expectedSCAs ...ServiceChangeAction) {
+	f.t.Helper()
 	start := time.Now()
 	for time.Since(start) < time.Second {
 		actions := f.store.Actions()
