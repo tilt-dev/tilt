@@ -156,7 +156,8 @@ func TestApplyCmdWithImages(t *testing.T) {
 			Name: "image-a",
 		},
 		Status: v1alpha1.ImageMapStatus{
-			Image: "image-a:my-tag",
+			Image:            "image-a:my-tag",
+			ImageFromCluster: "image-a:my-tag",
 		},
 	})
 

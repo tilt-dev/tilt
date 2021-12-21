@@ -399,7 +399,11 @@ func (b *fakeBuildAndDeployer) updateKubernetesApplyStatus(ctx context.Context, 
 		if err != nil {
 			return err
 		}
-		im.Status.Image = iTarget.Refs.ClusterRef().String()
+		im.Status = v1alpha1.ImageMapStatus{
+			Image:            container.FamiliarString(iTarget.Refs.ClusterRef()),
+			ImageFromCluster: container.FamiliarString(iTarget.Refs.ClusterRef()),
+			ImageFromLocal:   container.FamiliarString(iTarget.Refs.LocalRef()),
+		}
 		imageMapSet[nn] = &im
 	}
 
@@ -1443,7 +1447,7 @@ func TestPodEventContainerStatus(t *testing.T) {
 	var ref reference.NamedTagged
 	f.WaitUntilManifestState("image appears", "foobar", func(ms store.ManifestState) bool {
 		result := ms.BuildStatus(manifest.ImageTargetAt(0).ID()).LastResult
-		ref = store.ClusterImageRefFromBuildResult(result)
+		ref, _ = container.ParseNamedTagged(store.ClusterImageRefFromBuildResult(result))
 		return ref != nil
 	})
 
@@ -1867,7 +1871,7 @@ func TestPodContainerStatus(t *testing.T) {
 	var ref reference.NamedTagged
 	f.WaitUntilManifestState("image appears", "fe", func(ms store.ManifestState) bool {
 		result := ms.BuildStatus(manifest.ImageTargetAt(0).ID()).LastResult
-		ref = store.ClusterImageRefFromBuildResult(result)
+		ref, _ = container.ParseNamedTagged(store.ClusterImageRefFromBuildResult(result))
 		return ref != nil
 	})
 

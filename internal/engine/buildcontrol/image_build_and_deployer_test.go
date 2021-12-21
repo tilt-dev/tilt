@@ -55,7 +55,7 @@ func TestDeployTwinImages(t *testing.T) {
 	id := manifest.ImageTargetAt(0).ID()
 	expectedImage := "gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
 	image := store.ClusterImageRefFromBuildResult(result[id])
-	assert.Equal(t, expectedImage, image.String())
+	assert.Equal(t, expectedImage, image)
 	assert.Equalf(t, 2, strings.Count(f.k8s.Yaml, expectedImage),
 		"Expected image to update twice in YAML: %s", f.k8s.Yaml)
 }
@@ -141,13 +141,13 @@ func TestDeployPodWithMultipleImages(t *testing.T) {
 
 	expectedSanchoRef := "gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
 	image := store.ClusterImageRefFromBuildResult(result[iTarget1.ID()])
-	assert.Equal(t, expectedSanchoRef, image.String())
+	assert.Equal(t, expectedSanchoRef, image)
 	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, expectedSanchoRef),
 		"Expected image to appear once in YAML: %s", f.k8s.Yaml)
 
 	expectedSidecarRef := "gcr.io/some-project-162817/sancho-sidecar:tilt-11cd0b38bc3ceb95"
 	image = store.ClusterImageRefFromBuildResult(result[iTarget2.ID()])
-	assert.Equal(t, expectedSidecarRef, image.String())
+	assert.Equal(t, expectedSidecarRef, image)
 	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, expectedSidecarRef),
 		"Expected image to appear once in YAML: %s", f.k8s.Yaml)
 }
@@ -172,13 +172,13 @@ func TestDeployPodWithMultipleLiveUpdateImages(t *testing.T) {
 
 	expectedSanchoRef := "gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
 	image := store.ClusterImageRefFromBuildResult(result[iTarget1.ID()])
-	assert.Equal(t, expectedSanchoRef, image.String())
+	assert.Equal(t, expectedSanchoRef, image)
 	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, expectedSanchoRef),
 		"Expected image to appear once in YAML: %s", f.k8s.Yaml)
 
 	expectedSidecarRef := "gcr.io/some-project-162817/sancho-sidecar:tilt-11cd0b38bc3ceb95"
 	image = store.ClusterImageRefFromBuildResult(result[iTarget2.ID()])
-	assert.Equal(t, expectedSidecarRef, image.String())
+	assert.Equal(t, expectedSidecarRef, image)
 	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, expectedSidecarRef),
 		"Expected image to appear once in YAML: %s", f.k8s.Yaml)
 }
@@ -587,7 +587,8 @@ func TestBuildAndDeployUsesCorrectRef(t *testing.T) {
 			for i := range manifest.ImageTargets {
 				id := manifest.ImageTargets[i].ID()
 				image := store.LocalImageRefFromBuildResult(result[id])
-				observedImages = append(observedImages, image.Name())
+				imageRef := container.MustParseNamedTagged(image)
+				observedImages = append(observedImages, imageRef.Name())
 			}
 
 			assert.ElementsMatch(t, test.expectBuilt, observedImages)

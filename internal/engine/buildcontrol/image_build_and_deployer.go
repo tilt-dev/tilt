@@ -150,8 +150,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 	if hasReusedStep {
 		ps.StartPipelineStep(ctx, "Loading cached images")
 		for _, result := range reused {
-			ref := store.LocalImageRefFromBuildResult(result)
-			ps.Printf(ctx, "- %s", container.FamiliarString(ref))
+			ps.Printf(ctx, "- %s", store.LocalImageRefFromBuildResult(result))
 		}
 		ps.EndPipelineStep(ctx)
 	}
@@ -445,9 +444,14 @@ func InjectImageDependencies(iTarget model.ImageTarget, iTargetMap map[model.Tar
 	}
 
 	for _, dep := range deps {
-		image := dep.ImageLocalRef
+		image := dep.ImageMapStatus.ImageFromLocal
+		imageRef, err := container.ParseNamedTagged(image)
+		if err != nil {
+			return model.ImageTarget{}, errors.Wrap(err, "injectImageDependencies")
+		}
+
 		id := dep.TargetID()
-		modified, err := ast.InjectImageDigest(iTargetMap[id].Refs.ConfigurationRef, image, buildArgs)
+		modified, err := ast.InjectImageDigest(iTargetMap[id].Refs.ConfigurationRef, imageRef, buildArgs)
 		if err != nil {
 			return model.ImageTarget{}, errors.Wrap(err, "injectImageDependencies")
 		} else if !modified {
