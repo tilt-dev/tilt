@@ -8,22 +8,11 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apis/cluster"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
-
-// NotFoundError indicates there is no cluster client for the given key.
-var NotFoundError = errors.New("cluster client does not exist")
-
-// ClientCache provides cached clients for use by reconcilers.
-//
-// All clients are goroutine-safe.
-type ClientCache interface {
-	// GetK8sClient returns the Kubernetes client for the cluster or an error for unknown clusters, connections
-	// in a transient error state, or if the connection is of a different type (i.e. Docker Compose).
-	GetK8sClient(clusterKey types.NamespacedName) (k8s.Client, error)
-}
 
 func NewConnectionManager() *ConnectionManager {
 	return &ConnectionManager{}
@@ -33,7 +22,7 @@ type ConnectionManager struct {
 	connections sync.Map
 }
 
-var _ ClientCache = &ConnectionManager{}
+var _ cluster.ClientProvider = &ConnectionManager{}
 
 type connectionType string
 
@@ -52,12 +41,12 @@ type connection struct {
 	arch         string
 }
 
-func (k *ConnectionManager) GetK8sClient(key types.NamespacedName) (k8s.Client, error) {
+func (k *ConnectionManager) GetK8sClient(key types.NamespacedName) (k8s.Client, time.Time, error) {
 	conn, err := k.validConnOrError(key, connectionTypeK8s)
 	if err != nil {
-		return nil, err
+		return nil, time.Time{}, err
 	}
-	return conn.k8sClient, nil
+	return conn.k8sClient, conn.createdAt, nil
 }
 
 // GetComposeDockerClient gets the Docker client for the instance that Docker Compose is deploying to.
@@ -75,7 +64,7 @@ func (k *ConnectionManager) GetComposeDockerClient(key types.NamespacedName) (do
 func (k *ConnectionManager) validConnOrError(key types.NamespacedName, connType connectionType) (connection, error) {
 	conn, ok := k.load(key)
 	if !ok {
-		return connection{}, NotFoundError
+		return connection{}, cluster.NotFoundError
 	}
 	if conn.connType != connType {
 		return connection{}, fmt.Errorf("incorrect cluster client type: got %s, expected %s",

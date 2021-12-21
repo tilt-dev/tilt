@@ -8,7 +8,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/tilt-dev/tilt/internal/controllers/core/cluster"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/cluster"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -16,14 +16,14 @@ import (
 )
 
 type ServiceWatcher struct {
-	clients cluster.ClientCache
+	clients cluster.ClientProvider
 
 	mu                sync.RWMutex
 	watcherKnownState watcherKnownState
 	knownServices     map[clusterUID]*v1.Service
 }
 
-func NewServiceWatcher(clients cluster.ClientCache, cfgNS k8s.Namespace) *ServiceWatcher {
+func NewServiceWatcher(clients cluster.ClientProvider, cfgNS k8s.Namespace) *ServiceWatcher {
 	return &ServiceWatcher{
 		clients:           clients,
 		watcherKnownState: newWatcherKnownState(cfgNS),
@@ -67,7 +67,7 @@ func (w *ServiceWatcher) OnChange(ctx context.Context, st store.RStore, _ store.
 }
 
 func (w *ServiceWatcher) setupWatch(ctx context.Context, st store.RStore, ns clusterNamespace) {
-	kCli, err := w.clients.GetK8sClient(ns.cluster)
+	kCli, _, err := w.clients.GetK8sClient(ns.cluster)
 	if err != nil {
 		// ignore errors, if the cluster status changes, the subscriber
 		// will be re-run and the namespaces will be picked up again as new
@@ -94,7 +94,7 @@ func (w *ServiceWatcher) setupWatch(ctx context.Context, st store.RStore, ns clu
 // you would think.
 func (w *ServiceWatcher) setupNewUIDs(ctx context.Context, st store.RStore, newUIDs map[clusterUID]model.ManifestName) {
 	for uid, mn := range newUIDs {
-		kCli, err := w.clients.GetK8sClient(uid.cluster)
+		kCli, _, err := w.clients.GetK8sClient(uid.cluster)
 		if err != nil {
 			// ignore errors, if the cluster status changes, the subscriber
 			// will be re-run and the namespaces will be picked up again as new

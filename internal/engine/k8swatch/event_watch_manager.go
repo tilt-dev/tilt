@@ -7,7 +7,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/tilt-dev/tilt/internal/controllers/core/cluster"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/cluster"
 	"github.com/tilt-dev/tilt/internal/timecmp"
 
 	"github.com/pkg/errors"
@@ -30,7 +30,7 @@ import (
 type EventWatchManager struct {
 	mu sync.RWMutex
 
-	clients cluster.ClientCache
+	clients cluster.ClientProvider
 
 	watcherKnownState watcherKnownState
 
@@ -44,7 +44,7 @@ type EventWatchManager struct {
 	knownEvents map[clusterUID]*v1.Event
 }
 
-func NewEventWatchManager(clients cluster.ClientCache, cfgNS k8s.Namespace) *EventWatchManager {
+func NewEventWatchManager(clients cluster.ClientProvider, cfgNS k8s.Namespace) *EventWatchManager {
 	return &EventWatchManager{
 		clients:                  clients,
 		watcherKnownState:        newWatcherKnownState(cfgNS),
@@ -97,7 +97,7 @@ func (m *EventWatchManager) OnChange(ctx context.Context, st store.RStore, _ sto
 }
 
 func (m *EventWatchManager) setupWatch(ctx context.Context, st store.RStore, ns clusterNamespace, tiltStartTime time.Time) {
-	kCli, err := m.clients.GetK8sClient(ns.cluster)
+	kCli, _, err := m.clients.GetK8sClient(ns.cluster)
 	if err != nil {
 		// ignore errors, if the cluster status changes, the subscriber
 		// will be re-run and the namespaces will be picked up again as new
