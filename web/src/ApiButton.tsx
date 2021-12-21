@@ -1,4 +1,5 @@
 import {
+  ButtonClassKey,
   ButtonGroup,
   ButtonProps,
   FormControlLabel,
@@ -6,9 +7,10 @@ import {
   SvgIcon,
 } from "@material-ui/core"
 import ArrowDropDownIcon from "@material-ui/icons/ArrowDropDown"
+import { ClassNameMap } from "@material-ui/styles"
 import moment from "moment"
 import { useSnackbar } from "notistack"
-import React, { useMemo, useRef, useState } from "react"
+import React, { PropsWithChildren, useMemo, useRef, useState } from "react"
 import { convertFromNode, convertFromString } from "react-from-dom"
 import { Link } from "react-router-dom"
 import styled from "styled-components"
@@ -51,6 +53,12 @@ type ApiButtonInputProps = {
   analyticsTags: Tags
 }
 
+type ApiButtonElementProps = ApiButtonProps & {
+  confirming: boolean
+  disabled: boolean
+  tags: Tags
+}
+
 // UIButtons for a location, sorted into types
 export type ButtonSet = {
   default: UIButton[]
@@ -83,7 +91,7 @@ const ApiButtonFormFooter = styled.div`
   color: ${Color.grayLighter};
   font-size: ${FontSize.smallester};
 `
-const ApiIconRoot = styled.div``
+const ApiIconRoot = styled.span``
 export const ApiButtonLabel = styled.span``
 // MUI makes it tricky to get cursor: not-allowed on disabled buttons
 // https://material-ui.com/components/buttons/#cursor-not-allowed
@@ -101,8 +109,9 @@ export const LogLink = styled(Link)`
   font-size: ${FontSize.smallest};
   padding-left: ${SizeUnit(0.5)};
 `
-const ConfirmButton = styled(InstrumentedButton)`
-  && {
+
+const ApiButtonElementRoot = styled(InstrumentedButton)`
+  &.confirming {
     background-color: ${Color.red};
     border-color: ${Color.gray};
     color: ${Color.black};
@@ -114,15 +123,29 @@ const ConfirmButton = styled(InstrumentedButton)`
       border-color: ${Color.redLight};
       color: ${Color.black};
     }
+
+    .fillStd {
+      fill: ${Color.black} !important; /* TODO (lizz): find this style source! */
+    }
   }
 
-  .fillStd {
-    fill: ${Color.black} !important; /* there's some style somewhere with a higher level of specificity than this one that i did not spend time trying to find... */
+  /* Manually manage the border that both left and right
+     buttons share on the edge between them, so border
+     color changes work as expected */
+  &.leftButtonInGroup {
+    border-right: 0;
+
+    &:active + .rightButtonInGroup,
+    &:focus + .rightButtonInGroup,
+    &:hover + .rightButtonInGroup {
+      border-left-color: ${Color.redLight};
+    }
   }
 `
 
 export const ApiButtonInputsToggleButton = styled(InstrumentedButton)`
   &&&& {
+    margin-left: unset; /* Override any margins passed down through "className" props */
     padding: 0 0;
   }
 `
@@ -258,7 +281,7 @@ function ApiButtonWithOptions(props: ApiButtonWithOptionsProps & ButtonProps) {
   )
 }
 
-export const ApiIcon: React.FC<ApiIconProps> = (props) => {
+export const ApiIcon = (props: ApiIconProps) => {
   if (props.iconSVG) {
     // the material SvgIcon handles accessibility/sizing/colors well but can't accept a raw SVG string
     // create a ReactElement by parsing the source and then use that as the component, passing through
@@ -381,29 +404,137 @@ function getButtonTags(button: UIButton): Tags {
   return tags
 }
 
+function ApiCancelButton(props: ApiButtonElementProps) {
+  const { confirming, onClick, tags, uiButton, ...buttonProps } = props
+
+  // Don't display the cancel confirmation button if the button
+  // group's state isn't confirming
+  if (!confirming) {
+    return null
+  }
+
+  const buttonDisplayText: string = uiButton.spec?.text ?? "Button"
+  // To pass classes to a MUI component, it's necessary to use `classes`, instead of `className`
+  const classes: Partial<ClassNameMap<ButtonClassKey>> = {
+    root: "confirming rightButtonInGroup",
+  }
+
+  return (
+    <ApiButtonElementRoot
+      analyticsName={"ui.web.uibutton"}
+      aria-label={`Cancel ${buttonDisplayText}`}
+      analyticsTags={{ confirm: "false", ...tags }}
+      classes={classes}
+      onClick={onClick}
+      {...buttonProps}
+    >
+      <CloseSvg role="presentation" />
+    </ApiButtonElementRoot>
+  )
+}
+
+// The inner content of an ApiSubmitButton
+function ApiSubmitButtonContent(
+  props: PropsWithChildren<{
+    confirming: boolean
+    uiButton: UIButton
+    displayButtonText: string
+  }>
+) {
+  if (props.confirming) {
+    return <ApiButtonLabel>{props.displayButtonText}</ApiButtonLabel>
+  }
+
+  if (props.children && props.children !== true) {
+    return <>{props.children}</>
+  }
+
+  return (
+    <>
+      <ApiIcon
+        iconName={props.uiButton.spec?.iconName}
+        iconSVG={props.uiButton.spec?.iconSVG}
+      />
+      <ApiButtonLabel>{props.displayButtonText}</ApiButtonLabel>
+    </>
+  )
+}
+
+// For a toggle button that requires confirmation to trigger a UIButton's
+// action, this component will render both the "submit" and the "confirm submit"
+// HTML buttons. For keyboard navigation and accessibility, this component
+// intentionally renders both buttons as the same element with different props.
+// This makes sure that keyboard focus is moved to (or rather, stays on)
+// the "confirm submit" button when the "submit" button is clicked. People
+// using assistive tech like screenreaders will know they need to confirm.
+// (Screenreaders should announce the "confirm submit" button to users because
+// the `aria-label` changes when the "submit" button is clicked.)
+function ApiSubmitButton(props: PropsWithChildren<ApiButtonElementProps>) {
+  const { confirming, disabled, onClick, tags, uiButton, ...buttonProps } =
+    props
+
+  // Determine display text and accessible button label based on confirmation state
+  const buttonText = uiButton.spec?.text || "Button"
+  const displayButtonText = confirming ? "Confirm" : buttonText
+  const ariaLabel = confirming
+    ? `Confirm ${buttonText}`
+    : `Trigger ${buttonText}`
+
+  const analyticsTags = { ...tags }
+  if (confirming) {
+    analyticsTags.confirm = "true"
+  }
+
+  // To pass classes to a MUI component, it's necessary to use `classes`, instead of `className`
+  const isConfirmingClass = confirming ? "confirming leftButtonInGroup" : ""
+  const classes: Partial<ClassNameMap<ButtonClassKey>> = {
+    root: isConfirmingClass,
+  }
+
+  // Note: button text is not included in analytics name since that can be user data
+  return (
+    <ApiButtonElementRoot
+      analyticsName={"ui.web.uibutton"}
+      analyticsTags={analyticsTags}
+      aria-label={ariaLabel}
+      classes={classes}
+      disabled={disabled}
+      onClick={onClick}
+      {...buttonProps}
+    >
+      <ApiSubmitButtonContent
+        confirming={confirming}
+        displayButtonText={displayButtonText}
+        uiButton={uiButton}
+      >
+        {props.children}
+      </ApiSubmitButtonContent>
+    </ApiButtonElementRoot>
+  )
+}
+
 // Renders a UIButton.
 // NB: The `Button` in `ApiButton` refers to a UIButton, not an html <button>.
 // This can be confusing because each ApiButton consists of one or two <button>s:
 // 1. A submit <button>, which fires the button's action.
 // 2. Optionally, an options <button>, which allows the user to configure the
 //    options used on submit.
-export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
+export function ApiButton(props: PropsWithChildren<ApiButtonProps>) {
   const { className, uiButton, ...buttonProps } = props
 
-  const [loading, setLoading] = useState(false)
   const [inputValues, setInputValues] = usePersistentState<{
     [name: string]: any
   }>(`apibutton-${uiButton.metadata?.name}`, {})
-
-  const [confirming, setConfirming] = useState(false)
-
   const { enqueueSnackbar } = useSnackbar()
   const pb = usePathBuilder()
-
   const { setError } = useHudErrorContext()
+
+  const [loading, setLoading] = useState(false)
+  const [confirming, setConfirming] = useState(false)
 
   const tags = useMemo(() => getButtonTags(uiButton), [uiButton])
   const componentType = uiButton.spec?.location?.componentType as ApiButtonType
+  const disabled = loading || uiButton.spec?.disabled || false
 
   const onClick = async () => {
     if (uiButton.spec?.requiresConfirmation && !confirming) {
@@ -449,59 +580,16 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
     )
   }
 
-  const disabled = loading || uiButton.spec?.disabled
-
-  if (confirming) {
-    return (
-      <ApiButtonRoot
-        className={className}
-        disableRipple={true}
-        aria-label={uiButton.spec?.text}
-        disabled={disabled}
-      >
-        <ConfirmButton
-          analyticsName={"ui.web.uibutton"}
-          analyticsTags={{ confirm: "true", ...tags }}
-          onClick={onClick}
-          disabled={disabled}
-          aria-label={`Confirm ${uiButton.spec?.text}`}
-          {...buttonProps}
-        >
-          <ApiButtonLabel>Confirm</ApiButtonLabel>
-        </ConfirmButton>
-        <ConfirmButton
-          analyticsName={"ui.web.uibutton"}
-          analyticsTags={{ confirm: "false", ...tags }}
-          onClick={() => setConfirming(false)}
-          aria-label={`Cancel ${uiButton.spec?.text}`}
-          {...buttonProps}
-        >
-          <CloseSvg />
-        </ConfirmButton>
-      </ApiButtonRoot>
-    )
-  }
-
-  // button text is not included in analytics name since that can be user data
-  const button = (
-    <InstrumentedButton
-      analyticsName={"ui.web.uibutton"}
-      analyticsTags={tags}
-      onClick={onClick}
+  const submitButton = (
+    <ApiSubmitButton
+      confirming={confirming}
       disabled={disabled}
-      aria-label={`Trigger ${uiButton.spec?.text}`}
-      {...buttonProps}
+      onClick={onClick}
+      tags={tags}
+      {...props}
     >
-      {props.children || (
-        <>
-          <ApiIcon
-            iconName={uiButton.spec?.iconName}
-            iconSVG={uiButton.spec?.iconSVG}
-          />
-          <ApiButtonLabel>{uiButton.spec?.text ?? "Button"}</ApiButtonLabel>
-        </>
-      )}
-    </InstrumentedButton>
+      {props.children}
+    </ApiSubmitButton>
   )
 
   // show the options button if there are any non-hidden inputs
@@ -515,7 +603,7 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
     return (
       <ApiButtonWithOptions
         className={className}
-        submit={button}
+        submit={submitButton}
         uiButton={uiButton}
         setInputValue={setInputValue}
         getInputValue={getInputValue}
@@ -537,7 +625,15 @@ export function ApiButton(props: React.PropsWithChildren<ApiButtonProps>) {
         aria-label={uiButton.spec?.text}
         disabled={disabled}
       >
-        {button}
+        {submitButton}
+        <ApiCancelButton
+          confirming={confirming}
+          disabled={disabled}
+          onClick={() => setConfirming(false)}
+          tags={tags}
+          uiButton={uiButton}
+          {...buttonProps}
+        />
       </ApiButtonRoot>
     )
   }
