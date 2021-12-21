@@ -574,6 +574,14 @@ func schema_pkg_apis_core_v1alpha1_CmdImageSpec(ref common.ReferenceCallback) co
 				Description: "CmdImageSpec describes how the custom script builds images and where it puts them.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
+					"ref": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The named reference of the image.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"args": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Command-line arguments. Must have length at least 1.",
@@ -633,6 +641,7 @@ func schema_pkg_apis_core_v1alpha1_CmdImageSpec(ref common.ReferenceCallback) co
 						},
 					},
 				},
+				Required: []string{"ref"},
 			},
 		},
 	}

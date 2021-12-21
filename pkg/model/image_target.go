@@ -22,6 +22,7 @@ type ImageTarget struct {
 
 	// An apiserver-driven data model for using docker to build images.
 	DockerImageName string
+	CmdImageName    string
 
 	Refs         container.RefSet
 	BuildDetails BuildDetails
@@ -278,6 +279,12 @@ func (i ImageTarget) InferImagePropertiesFromCluster(reg container.Registry) (Im
 	if ok {
 		db.DockerImageSpec.Ref = i.ImageMapSpec.Selector
 		i.BuildDetails = db
+	}
+
+	cb, ok := i.BuildDetails.(CustomBuild)
+	if ok {
+		cb.CmdImageSpec.Ref = i.ImageMapSpec.Selector
+		i.BuildDetails = cb
 	}
 
 	// I (Nick) am deeply unhappy with the parameters of CustomBuild.  They're not
