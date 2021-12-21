@@ -53,6 +53,9 @@ type CmdImageList struct {
 
 // CmdImageSpec describes how the custom script builds images and where it puts them.
 type CmdImageSpec struct {
+	// The named reference of the image.
+	Ref string `json:"ref" protobuf:"bytes,7,opt,name=ref"`
+
 	// Command-line arguments. Must have length at least 1.
 	Args []string `json:"args,omitempty" protobuf:"bytes,1,rep,name=args"`
 
@@ -97,6 +100,10 @@ type CmdImageSpec struct {
 
 var _ resource.Object = &CmdImage{}
 var _ resourcestrategy.Validater = &CmdImage{}
+
+func (in *CmdImage) GetSpec() interface{} {
+	return in.Spec
+}
 
 func (in *CmdImage) GetObjectMeta() *metav1.ObjectMeta {
 	return &in.ObjectMeta
