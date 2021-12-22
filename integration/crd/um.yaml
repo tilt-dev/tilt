@@ -7,3 +7,12 @@ spec:
   image: bobo
   nonImage: bobo
   imagePullPolicy: Always
+---
+apiVersion: tilt.dev/v1alpha1
+kind: UselessMachine
+metadata:
+  name: bobo2
+  namespace: tilt-integration
+spec:
+  nonImage: bobo
+  imagePullPolicy: Always
