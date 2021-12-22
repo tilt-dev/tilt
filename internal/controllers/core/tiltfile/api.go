@@ -22,7 +22,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/feature"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/tiltfile"
-	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -488,7 +487,7 @@ func toImageMapObjects(tlr *tiltfile.TiltfileLoadResult, disableSources disableS
 				continue
 			}
 
-			name := apis.SanitizeName(iTarget.ID().Name.String())
+			name := iTarget.ImageMapName()
 			// Note that an ImageMap might be in more than one Manifest, so we
 			// can't annotate them to a particular manifest.
 			im := &v1alpha1.ImageMap{

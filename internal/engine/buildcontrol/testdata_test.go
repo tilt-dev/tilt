@@ -145,7 +145,7 @@ RUN go install github.com/tilt-dev/sancho
 ENTRYPOINT /go/bin/sancho
 `,
 			Context: fixture.JoinPath("sancho"),
-		}).WithDependencyIDs([]model.TargetID{baseImage.ID()})
+		}).WithImageMapDeps([]string{baseImage.ImageMapName()})
 
 	return manifestbuilder.New(fixture, "sancho").
 		WithK8sYAML(SanchoYAML).
@@ -166,7 +166,7 @@ func NewSanchoLiveUpdateMultiStageManifest(fixture Fixture) model.Manifest {
 
 	srcImage = srcImage.
 		WithBuildDetails(dbInfo).
-		WithDependencyIDs([]model.TargetID{baseImage.ID()})
+		WithImageMapDeps([]string{baseImage.ImageMapName()})
 
 	return manifestbuilder.New(fixture, "sancho").
 		WithK8sYAML(testyaml.Deployment("sancho", srcImage.Refs.ConfigurationRef.String())).
@@ -193,12 +193,12 @@ func NewManifestsWithCommonAncestor(fixture Fixture) (model.Manifest, model.Mani
 		WithDockerImage(v1alpha1.DockerImageSpec{
 			DockerfileContents: `FROM ` + refCommon.String(),
 			Context:            fixture.JoinPath("image-1"),
-		}).WithDependencyIDs([]model.TargetID{targetCommon.ID()})
+		}).WithImageMapDeps([]string{targetCommon.ImageMapName()})
 	target2 := model.MustNewImageTarget(ref2).
 		WithDockerImage(v1alpha1.DockerImageSpec{
 			DockerfileContents: `FROM ` + refCommon.String(),
 			Context:            fixture.JoinPath("image-2"),
-		}).WithDependencyIDs([]model.TargetID{targetCommon.ID()})
+		}).WithImageMapDeps([]string{targetCommon.ImageMapName()})
 
 	m1 := manifestbuilder.New(fixture, "image-1").
 		WithK8sYAML(testyaml.Deployment("image-1", ref1.String())).
@@ -231,17 +231,17 @@ func NewManifestsWithTwoCommonAncestors(fixture Fixture) (model.Manifest, model.
 		WithDockerImage(v1alpha1.DockerImageSpec{
 			DockerfileContents: `FROM ` + refBase.String(),
 			Context:            fixture.JoinPath("common"),
-		}).WithDependencyIDs([]model.TargetID{targetBase.ID()})
+		}).WithImageMapDeps([]string{targetBase.ImageMapName()})
 	target1 := model.MustNewImageTarget(ref1).
 		WithDockerImage(v1alpha1.DockerImageSpec{
 			DockerfileContents: `FROM ` + refCommon.String(),
 			Context:            fixture.JoinPath("image-1"),
-		}).WithDependencyIDs([]model.TargetID{targetCommon.ID()})
+		}).WithImageMapDeps([]string{targetCommon.ImageMapName()})
 	target2 := model.MustNewImageTarget(ref2).
 		WithDockerImage(v1alpha1.DockerImageSpec{
 			DockerfileContents: `FROM ` + refCommon.String(),
 			Context:            fixture.JoinPath("image-2"),
-		}).WithDependencyIDs([]model.TargetID{targetCommon.ID()})
+		}).WithImageMapDeps([]string{targetCommon.ImageMapName()})
 
 	m1 := manifestbuilder.New(fixture, "image-1").
 		WithK8sYAML(testyaml.Deployment("image-1", ref1.String())).
@@ -270,7 +270,7 @@ func NewManifestsWithSameTwoImages(fixture Fixture) (model.Manifest, model.Manif
 		WithDockerImage(v1alpha1.DockerImageSpec{
 			DockerfileContents: `FROM ` + refCommon.String(),
 			Context:            fixture.JoinPath("image-1"),
-		}).WithDependencyIDs([]model.TargetID{targetCommon.ID()})
+		}).WithImageMapDeps([]string{targetCommon.ImageMapName()})
 
 	m1 := manifestbuilder.New(fixture, "dep-1").
 		WithK8sYAML(testyaml.Deployment("dep-1", ref1.String())).

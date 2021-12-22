@@ -1825,6 +1825,21 @@ func schema_pkg_apis_core_v1alpha1_DockerImageSpec(ref common.ReferenceCallback)
 							},
 						},
 					},
+					"imageMaps": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Names of image maps that this build depends on.\n\nThe controller will watch all the image maps, rebuild the image if any of the maps resolve to a new image, and inject them into the dockerfile.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
 				},
 				Required: []string{"ref"},
 			},

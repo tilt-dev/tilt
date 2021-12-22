@@ -897,6 +897,11 @@ func (in *DockerImageSpec) DeepCopyInto(out *DockerImageSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.ImageMaps != nil {
+		in, out := &in.ImageMaps, &out.ImageMaps
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

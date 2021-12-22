@@ -45,7 +45,7 @@ func TestDeployTwinImages(t *testing.T) {
 
 	sancho := NewSanchoDockerBuildManifest(f)
 	newK8sTarget := k8s.MustTarget("sancho", yaml.ConcatYAML(SanchoYAML, SanchoTwinYAML)).
-		WithImageDependencies(sancho.K8sTarget().DependencyIDs(), nil)
+		WithImageDependencies(sancho.K8sTarget().ImageMaps)
 	manifest := sancho.WithDeployTarget(newK8sTarget)
 	result, err := f.BuildAndDeploy(BuildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
@@ -129,7 +129,7 @@ func TestDeployPodWithMultipleImages(t *testing.T) {
 	iTarget1 := NewSanchoDockerBuildImageTarget(f)
 	iTarget2 := NewSanchoSidecarDockerBuildImageTarget(f)
 	kTarget := k8s.MustTarget("sancho", testyaml.SanchoSidecarYAML).
-		WithImageDependencies([]model.TargetID{iTarget1.ID(), iTarget2.ID()}, nil)
+		WithImageDependencies([]string{iTarget1.ImageMapName(), iTarget2.ImageMapName()})
 	targets := []model.TargetSpec{iTarget1, iTarget2, kTarget}
 
 	result, err := f.BuildAndDeploy(targets, store.BuildStateSet{})
@@ -160,7 +160,7 @@ func TestDeployPodWithMultipleLiveUpdateImages(t *testing.T) {
 	iTarget2 := NewSanchoSidecarLiveUpdateImageTarget(f)
 
 	kTarget := k8s.MustTarget("sancho", testyaml.SanchoSidecarYAML).
-		WithImageDependencies([]model.TargetID{iTarget1.ID(), iTarget2.ID()}, nil)
+		WithImageDependencies([]string{iTarget1.ImageMapName(), iTarget2.ImageMapName()})
 	targets := []model.TargetSpec{iTarget1, iTarget2, kTarget}
 
 	result, err := f.BuildAndDeploy(targets, store.BuildStateSet{})
@@ -234,7 +234,7 @@ func TestStatefulSetPodManagementPolicy(t *testing.T) {
 	_, err = f.BuildAndDeploy(
 		[]model.TargetSpec{
 			iTarget,
-			kTarget.WithImageDependencies([]model.TargetID{iTarget.ID()}, nil),
+			kTarget.WithImageDependencies([]string{iTarget.ImageMapName()}),
 		},
 		store.BuildStateSet{})
 	if err != nil {
@@ -336,7 +336,7 @@ RUN go install github.com/tilt-dev/sancho
 ENTRYPOINT /go/bin/sancho
 `,
 			Context: f.JoinPath("sancho"),
-		}).WithDependencyIDs([]model.TargetID{baseImage.ID()})
+		}).WithImageMapDeps([]string{baseImage.ImageMapName()})
 
 	m := manifestbuilder.New(f, "sancho").
 		WithK8sYAML(SanchoYAML).
@@ -831,7 +831,7 @@ func TestInjectOverrideCommandsMultipleImages(t *testing.T) {
 	iTarget1 := NewSanchoDockerBuildImageTarget(f).WithOverrideCommand(cmd1)
 	iTarget2 := NewSanchoSidecarDockerBuildImageTarget(f).WithOverrideCommand(cmd2)
 	kTarget := k8s.MustTarget("sancho", testyaml.SanchoSidecarYAML).
-		WithImageDependencies([]model.TargetID{iTarget1.ID(), iTarget2.ID()}, nil)
+		WithImageDependencies([]string{iTarget1.ImageMapName(), iTarget2.ImageMapName()})
 	targets := []model.TargetSpec{iTarget1, iTarget2, kTarget}
 
 	_, err := f.BuildAndDeploy(targets, store.BuildStateSet{})

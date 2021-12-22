@@ -649,6 +649,14 @@ message DockerImageSpec {
   //
   // +optional
   repeated string extraTags = 11;
+
+  // Names of image maps that this build depends on.
+  //
+  // The controller will watch all the image maps, rebuild the image if any of
+  // the maps resolve to a new image, and inject them into the dockerfile.
+  //
+  // +optional
+  repeated string imageMaps = 13;
 }
 
 // DockerImageStageStatus gives detailed report of each stage

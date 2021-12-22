@@ -57,7 +57,7 @@ type k8sResource struct {
 
 	discoveryStrategy v1alpha1.KubernetesDiscoveryStrategy
 
-	dependencyIDs []model.TargetID
+	imageMapDeps []string
 
 	triggerMode triggerMode
 	autoInit    bool

@@ -42,7 +42,6 @@ type ImageTarget struct {
 	tiltFilename  string
 	dockerignores []Dockerignore
 	repos         []LocalGitRepo
-	dependencyIDs []TargetID
 }
 
 var _ TargetSpec = ImageTarget{}
@@ -90,11 +89,40 @@ func (i ImageTarget) ID() TargetID {
 }
 
 func (i ImageTarget) DependencyIDs() []TargetID {
-	return i.dependencyIDs
+	deps := i.ImageMapDeps()
+	result := make([]TargetID, 0, len(deps))
+	for _, im := range deps {
+		result = append(result, TargetID{
+			Type: TargetTypeImage,
+			Name: TargetName(im),
+		})
+	}
+	return result
 }
 
-func (i ImageTarget) WithDependencyIDs(ids []TargetID) ImageTarget {
-	i.dependencyIDs = DedupeTargetIDs(ids)
+func (i ImageTarget) ImageMapDeps() []string {
+	switch bd := i.BuildDetails.(type) {
+	case DockerBuild:
+		return bd.ImageMaps
+	case CustomBuild:
+		return bd.ImageMaps
+	}
+	return nil
+}
+
+func (i ImageTarget) WithImageMapDeps(names []string) ImageTarget {
+	switch bd := i.BuildDetails.(type) {
+	case DockerBuild:
+		bd.ImageMaps = sliceutils.Dedupe(names)
+		i.BuildDetails = bd
+	case CustomBuild:
+		bd.ImageMaps = sliceutils.Dedupe(names)
+		i.BuildDetails = bd
+	default:
+		if len(names) > 0 {
+			panic(fmt.Sprintf("image does not support image deps: %v", i.ID()))
+		}
+	}
 	return i
 }
 

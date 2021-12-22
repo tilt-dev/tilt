@@ -8,7 +8,6 @@ import (
 	"github.com/schollz/closestmatch"
 
 	"github.com/tilt-dev/tilt/internal/container"
-	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // An index of all the images that we know how to build.
@@ -18,7 +17,7 @@ type buildIndex struct {
 
 	imagesByName     map[string]*dockerImage
 	imagesBySelector map[string]*dockerImage
-	byTargetID       map[model.TargetID]*dockerImage
+	byImageMapName   map[string]*dockerImage
 
 	consumedImageNames   []string
 	consumedImageNameMap map[string]bool
@@ -28,7 +27,7 @@ func newBuildIndex() *buildIndex {
 	return &buildIndex{
 		imagesBySelector:     make(map[string]*dockerImage),
 		imagesByName:         make(map[string]*dockerImage),
-		byTargetID:           make(map[model.TargetID]*dockerImage),
+		byImageMapName:       make(map[string]*dockerImage),
 		consumedImageNameMap: make(map[string]bool),
 	}
 }
@@ -58,13 +57,13 @@ func (idx *buildIndex) addImage(img *dockerImage) error {
 	}
 
 	idx.imagesByName[name] = img
-	idx.byTargetID[img.ID()] = img
+	idx.byImageMapName[img.ImageMapName()] = img
 	idx.images = append(idx.images, img)
 	return nil
 }
 
-func (idx *buildIndex) findBuilderByID(id model.TargetID) *dockerImage {
-	return idx.byTargetID[id]
+func (idx *buildIndex) findBuilderByImageMapName(im string) *dockerImage {
+	return idx.byImageMapName[im]
 }
 
 // Many things can consume image builds:
