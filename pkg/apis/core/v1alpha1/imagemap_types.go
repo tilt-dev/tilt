@@ -196,10 +196,20 @@ type ImageMapStatus struct {
 	// 3) The cluster network
 	//
 	// And each of these cases may have distinct URLs.
+	// We might deprecate this field and only use fields
+	// of the form `ImageFromX`.
 	//
 	// For more details on image references in different networks, see:
 	// https://github.com/kubernetes/enhancements/tree/master/keps/sig-cluster-lifecycle/generic/1755-communicating-a-local-registry#specification-for-localregistryhosting-v1
-	Image string `json:"image" protobuf:"bytes,1,opt,name=image"`
+	Image string `json:"image,omitempty" protobuf:"bytes,1,opt,name=image"`
+
+	// A fully-qualified image reference, including a name and an immutable tag,
+	// as seen from the local network.
+	ImageFromLocal string `json:"imageFromLocal,omitempty" protobuf:"bytes,3,opt,name=imageFromLocal"`
+
+	// A fully-qualified image reference, including a name and an immutable tag,
+	// as seen from the cluster container runtime.
+	ImageFromCluster string `json:"imageFromCluster,omitempty" protobuf:"bytes,4,opt,name=imageFromCluster"`
 
 	// Timestamp indicating when the image started building.
 	//

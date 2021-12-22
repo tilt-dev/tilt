@@ -132,8 +132,7 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	if hasReusedStep {
 		ps.StartPipelineStep(ctx, "Loading cached images")
 		for _, result := range reused {
-			ref := store.LocalImageRefFromBuildResult(result)
-			ps.Printf(ctx, "- %s", container.FamiliarString(ref))
+			ps.Printf(ctx, "- %s", store.LocalImageRefFromBuildResult(result))
 		}
 		ps.EndPipelineStep(ctx)
 	}

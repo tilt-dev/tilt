@@ -50,8 +50,10 @@ func TestTargetQueue_DepsBuilt(t *testing.T) {
 
 	f.run(targets, buildStateSet)
 
+	ref := container.MustParseNamedTagged(
+		store.LocalImageRefFromBuildResult(s1.LastResult))
 	barCall := newFakeBuildHandlerCall(barTarget, 1, []store.ImageBuildResult{
-		store.NewImageBuildResultSingleRef(fooTarget.ID(), store.LocalImageRefFromBuildResult(s1.LastResult)),
+		store.NewImageBuildResultSingleRef(fooTarget.ID(), ref),
 	})
 
 	// foo has a valid last result, so only bar gets rebuilt
@@ -150,13 +152,18 @@ func TestTargetQueue_DepsBuiltButReaped(t *testing.T) {
 		barTarget.ID(): s2,
 	}
 
-	f.setMissingImage(store.LocalImageRefFromBuildResult(s1.LastResult))
+	ref := container.MustParseNamedTagged(
+		store.LocalImageRefFromBuildResult(s1.LastResult))
+	f.setMissingImage(ref)
 
 	f.run(targets, buildStateSet)
 
 	fooCall := newFakeBuildHandlerCall(fooTarget, 1, []store.ImageBuildResult{})
+
+	fooRef := container.MustParseNamedTagged(
+		store.LocalImageRefFromBuildResult(fooCall.result))
 	barCall := newFakeBuildHandlerCall(barTarget, 2, []store.ImageBuildResult{
-		store.NewImageBuildResultSingleRef(fooTarget.ID(), store.LocalImageRefFromBuildResult(fooCall.result)),
+		store.NewImageBuildResultSingleRef(fooTarget.ID(), fooRef),
 	})
 
 	// foo has a valid last result, but its image is missing, so we have to rebuild it and its deps

@@ -3121,8 +3121,21 @@ func schema_pkg_apis_core_v1alpha1_ImageMapStatus(ref common.ReferenceCallback) 
 				Properties: map[string]spec.Schema{
 					"image": {
 						SchemaProps: spec.SchemaProps{
-							Description: "A fully-qualified image reference, including a name and an immutable tag, as seen from the cluster container runtime that we're mapping this image to.\n\nNB: Container images often need to be referenced from different networks, including:\n\n1) The cluster container runtime 2) The local network 3) The cluster network\n\nAnd each of these cases may have distinct URLs.\n\nFor more details on image references in different networks, see: https://github.com/kubernetes/enhancements/tree/master/keps/sig-cluster-lifecycle/generic/1755-communicating-a-local-registry#specification-for-localregistryhosting-v1",
-							Default:     "",
+							Description: "A fully-qualified image reference, including a name and an immutable tag, as seen from the cluster container runtime that we're mapping this image to.\n\nNB: Container images often need to be referenced from different networks, including:\n\n1) The cluster container runtime 2) The local network 3) The cluster network\n\nAnd each of these cases may have distinct URLs. We might deprecate this field and only use fields of the form `ImageFromX`.\n\nFor more details on image references in different networks, see: https://github.com/kubernetes/enhancements/tree/master/keps/sig-cluster-lifecycle/generic/1755-communicating-a-local-registry#specification-for-localregistryhosting-v1",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"imageFromLocal": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A fully-qualified image reference, including a name and an immutable tag, as seen from the local network.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"imageFromCluster": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A fully-qualified image reference, including a name and an immutable tag, as seen from the cluster container runtime.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -3134,7 +3147,6 @@ func schema_pkg_apis_core_v1alpha1_ImageMapStatus(ref common.ReferenceCallback) 
 						},
 					},
 				},
-				Required: []string{"image"},
 			},
 		},
 		Dependencies: []string{

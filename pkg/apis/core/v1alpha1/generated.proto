@@ -1161,10 +1161,20 @@ message ImageMapStatus {
   // 3) The cluster network
   //
   // And each of these cases may have distinct URLs.
+  // We might deprecate this field and only use fields
+  // of the form `ImageFromX`.
   //
   // For more details on image references in different networks, see:
   // https://github.com/kubernetes/enhancements/tree/master/keps/sig-cluster-lifecycle/generic/1755-communicating-a-local-registry#specification-for-localregistryhosting-v1
   optional string image = 1;
+
+  // A fully-qualified image reference, including a name and an immutable tag,
+  // as seen from the local network.
+  optional string imageFromLocal = 3;
+
+  // A fully-qualified image reference, including a name and an immutable tag,
+  // as seen from the cluster container runtime.
+  optional string imageFromCluster = 4;
 
   // Timestamp indicating when the image started building.
   //

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -539,7 +538,7 @@ func (r *Reconciler) createEntitiesToDeploy(ctx context.Context,
 				return nil, fmt.Errorf("internal error: missing image status")
 			}
 
-			ref, err := reference.ParseNamed(imageMap.Status.Image)
+			ref, err := container.ParseNamed(imageMap.Status.ImageFromCluster)
 			if err != nil {
 				return nil, fmt.Errorf("parsing image map status: %v", err)
 			}

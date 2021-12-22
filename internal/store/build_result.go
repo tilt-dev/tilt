@@ -46,18 +46,7 @@ func NewLocalBuildResult(id model.TargetID) LocalBuildResult {
 }
 
 type ImageBuildResult struct {
-	id model.TargetID
-
-	// TODO(maia): it would make the most sense for the ImageBuildResult to know what it BUILT, and for us
-	//   to calculate the ClusterRef (if different from LocalRef) when we have to inject it, but
-	//   storing all the info on ImageBuildResult for now was the fastest/safest way to ship this.
-	// Note: image tag is derived from a content-addressable digest.
-	ImageLocalRef   reference.NamedTagged // built image, as referenced from outside the cluster (in Dockerfile, docker push etc.)
-	ImageClusterRef reference.NamedTagged // built image, as referenced from the cluster (in K8s YAML, etc.)
-	// Often ImageLocalRef and ImageClusterRef will be the same, but may diverge: e.g.
-	// when using KIND + local registry, localRef is localhost:1234/my-img:tilt-abc,
-	// ClusterRef is http://registry/my-img:tilt-abc
-
+	id             model.TargetID
 	ImageMapStatus v1alpha1.ImageMapStatus
 }
 
@@ -67,11 +56,11 @@ func (r ImageBuildResult) BuildType() model.BuildType { return model.BuildTypeIm
 // For image targets.
 func NewImageBuildResult(id model.TargetID, localRef, clusterRef reference.NamedTagged) ImageBuildResult {
 	return ImageBuildResult{
-		id:              id,
-		ImageLocalRef:   localRef,
-		ImageClusterRef: clusterRef,
+		id: id,
 		ImageMapStatus: v1alpha1.ImageMapStatus{
-			Image: clusterRef.String(),
+			Image:            container.FamiliarString(clusterRef),
+			ImageFromCluster: container.FamiliarString(clusterRef),
+			ImageFromLocal:   container.FamiliarString(localRef),
 		},
 	}
 }
@@ -150,20 +139,20 @@ func NewK8sDeployResult(id model.TargetID, filter *k8sconv.KubernetesApplyFilter
 	}
 }
 
-func LocalImageRefFromBuildResult(r BuildResult) reference.NamedTagged {
+func LocalImageRefFromBuildResult(r BuildResult) string {
 	switch r := r.(type) {
 	case ImageBuildResult:
-		return r.ImageLocalRef
+		return r.ImageMapStatus.ImageFromLocal
 	}
-	return nil
+	return ""
 }
 
-func ClusterImageRefFromBuildResult(r BuildResult) reference.NamedTagged {
+func ClusterImageRefFromBuildResult(r BuildResult) string {
 	switch r := r.(type) {
 	case ImageBuildResult:
-		return r.ImageClusterRef
+		return r.ImageMapStatus.ImageFromCluster
 	}
-	return nil
+	return ""
 }
 
 type BuildResultSet map[model.TargetID]BuildResult
@@ -316,11 +305,7 @@ func (b BuildState) WithFullBuildTriggered(isImageBuildTrigger bool) BuildState 
 }
 
 func (b BuildState) LastLocalImageAsString() string {
-	img := LocalImageRefFromBuildResult(b.LastResult)
-	if img == nil {
-		return ""
-	}
-	return img.String()
+	return LocalImageRefFromBuildResult(b.LastResult)
 }
 
 // Return the files changed since the last result in sorted order.
