@@ -16,6 +16,7 @@ export enum Flag {
   Facets = "facets",
   Labels = "labels",
   DisableResources = "disable_resources",
+  BulkDisableResources = "bulk_disable_resources",
 }
 
 export default class Features {
