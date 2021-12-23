@@ -274,8 +274,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	}
 	switchCli := docker.ProvideSwitchCli(clusterClient, localClient)
 	labels := _wireLabelsValue
-	dockerImageBuilder := build.NewDockerImageBuilder(switchCli, labels)
-	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
+	dockerBuilder := build.NewDockerBuilder(switchCli, labels)
 	processExecer := localexec.NewProcessExecer(env)
 	kubernetesapplyReconciler := kubernetesapply.NewReconciler(deferredClient, client, scheme, dockerBuilder, kubeContext, storeStore, namespace, processExecer)
 	uisessionReconciler := uisession.NewReconciler(deferredClient, websocketList)
@@ -324,11 +323,11 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	serviceWatcher := k8swatch.NewServiceWatcher(connectionManager, namespace)
 	buildClock := build.ProvideClock()
 	liveUpdateBuildAndDeployer := buildcontrol.NewLiveUpdateBuildAndDeployer(liveupdateReconciler, buildClock)
-	execCustomBuilder := build.NewExecCustomBuilder(switchCli, buildClock)
+	customBuilder := build.NewCustomBuilder(switchCli, buildClock)
 	clusterName := k8s.ProvideClusterName(ctx, apiConfig)
 	kindLoader := buildcontrol.NewKINDLoader(k8sEnv, clusterName)
-	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, client, k8sEnv, kubeContext, analytics3, buildClock, kindLoader, deferredClient, kubernetesapplyReconciler)
-	imageBuilder := buildcontrol.NewImageBuilder(dockerBuilder, execCustomBuilder)
+	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, customBuilder, client, k8sEnv, kubeContext, analytics3, buildClock, kindLoader, deferredClient, kubernetesapplyReconciler)
+	imageBuilder := buildcontrol.NewImageBuilder(dockerBuilder, customBuilder)
 	dockerComposeBuildAndDeployer := buildcontrol.NewDockerComposeBuildAndDeployer(dockerComposeClient, switchCli, imageBuilder, buildClock, deferredClient)
 	localTargetBuildAndDeployer := buildcontrol.NewLocalTargetBuildAndDeployer(buildClock, deferredClient, cmdController)
 	buildOrder := engine.DefaultBuildOrder(liveUpdateBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, localTargetBuildAndDeployer, updateMode, k8sEnv, runtime)
@@ -484,8 +483,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	}
 	switchCli := docker.ProvideSwitchCli(clusterClient, localClient)
 	labels := _wireLabelsValue
-	dockerImageBuilder := build.NewDockerImageBuilder(switchCli, labels)
-	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
+	dockerBuilder := build.NewDockerBuilder(switchCli, labels)
 	processExecer := localexec.NewProcessExecer(env)
 	kubernetesapplyReconciler := kubernetesapply.NewReconciler(deferredClient, client, scheme, dockerBuilder, kubeContext, storeStore, namespace, processExecer)
 	uisessionReconciler := uisession.NewReconciler(deferredClient, websocketList)
@@ -534,11 +532,11 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	serviceWatcher := k8swatch.NewServiceWatcher(connectionManager, namespace)
 	buildClock := build.ProvideClock()
 	liveUpdateBuildAndDeployer := buildcontrol.NewLiveUpdateBuildAndDeployer(liveupdateReconciler, buildClock)
-	execCustomBuilder := build.NewExecCustomBuilder(switchCli, buildClock)
+	customBuilder := build.NewCustomBuilder(switchCli, buildClock)
 	clusterName := k8s.ProvideClusterName(ctx, apiConfig)
 	kindLoader := buildcontrol.NewKINDLoader(k8sEnv, clusterName)
-	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, client, k8sEnv, kubeContext, analytics3, buildClock, kindLoader, deferredClient, kubernetesapplyReconciler)
-	imageBuilder := buildcontrol.NewImageBuilder(dockerBuilder, execCustomBuilder)
+	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, customBuilder, client, k8sEnv, kubeContext, analytics3, buildClock, kindLoader, deferredClient, kubernetesapplyReconciler)
+	imageBuilder := buildcontrol.NewImageBuilder(dockerBuilder, customBuilder)
 	dockerComposeBuildAndDeployer := buildcontrol.NewDockerComposeBuildAndDeployer(dockerComposeClient, switchCli, imageBuilder, buildClock, deferredClient)
 	localTargetBuildAndDeployer := buildcontrol.NewLocalTargetBuildAndDeployer(buildClock, deferredClient, cmdController)
 	buildOrder := engine.DefaultBuildOrder(liveUpdateBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, localTargetBuildAndDeployer, updateMode, k8sEnv, runtime)
@@ -691,8 +689,7 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	}
 	switchCli := docker.ProvideSwitchCli(clusterClient, localClient)
 	labels := _wireLabelsValue
-	dockerImageBuilder := build.NewDockerImageBuilder(switchCli, labels)
-	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
+	dockerBuilder := build.NewDockerBuilder(switchCli, labels)
 	processExecer := localexec.NewProcessExecer(env)
 	kubernetesapplyReconciler := kubernetesapply.NewReconciler(deferredClient, k8sClient, scheme, dockerBuilder, kubeContext, storeStore, namespace, processExecer)
 	uisessionReconciler := uisession.NewReconciler(deferredClient, websocketList)
@@ -1007,8 +1004,7 @@ func wireDumpImageDeployRefDeps(ctx context.Context) (DumpImageDeployRefDeps, er
 	}
 	switchCli := docker.ProvideSwitchCli(clusterClient, localClient)
 	labels := _wireLabelsValue
-	dockerImageBuilder := build.NewDockerImageBuilder(switchCli, labels)
-	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
+	dockerBuilder := build.NewDockerBuilder(switchCli, labels)
 	dumpImageDeployRefDeps := DumpImageDeployRefDeps{
 		DockerBuilder: dockerBuilder,
 		DockerClient:  switchCli,
@@ -1125,6 +1121,6 @@ func provideClock() func() time.Time {
 }
 
 type DumpImageDeployRefDeps struct {
-	DockerBuilder build.DockerBuilder
+	DockerBuilder *build.DockerBuilder
 	DockerClient  docker.Client
 }

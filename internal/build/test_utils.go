@@ -31,7 +31,7 @@ type dockerBuildFixture struct {
 	ctx          context.Context
 	dCli         *docker.Cli
 	fakeDocker   *docker.FakeClient
-	b            *dockerImageBuilder
+	b            *DockerBuilder
 	registry     *exec.Cmd
 	reaper       ImageReaper
 	containerIDs []wmcontainer.ID
@@ -66,7 +66,7 @@ func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 		t:              t,
 		ctx:            ctx,
 		dCli:           dCli.(*docker.Cli),
-		b:              NewDockerImageBuilder(dCli, labels),
+		b:              NewDockerBuilder(dCli, labels),
 		reaper:         NewImageReaper(dCli),
 		ps:             ps,
 	}
@@ -86,7 +86,7 @@ func newFakeDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 		t:              t,
 		ctx:            ctx,
 		fakeDocker:     dCli,
-		b:              NewDockerImageBuilder(dCli, labels),
+		b:              NewDockerBuilder(dCli, labels),
 		reaper:         NewImageReaper(dCli),
 		ps:             ps,
 	}

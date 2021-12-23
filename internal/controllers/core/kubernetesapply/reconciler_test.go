@@ -585,7 +585,7 @@ func newFixture(t *testing.T) *fixture {
 
 	execer := localexec.NewFakeExecer(t)
 
-	db := build.NewDockerImageBuilder(dockerClient, dockerfile.Labels{})
+	db := build.NewDockerBuilder(dockerClient, dockerfile.Labels{})
 	r := NewReconciler(cfb.Client, kClient, v1alpha1.NewScheme(), db, kubeContext, st, "default", execer)
 
 	return &fixture{

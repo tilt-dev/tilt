@@ -32,13 +32,12 @@ import (
 
 func ProvideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, env k8s.Env, kubeContext k8s.KubeContext, clusterEnv docker.ClusterEnv, dir *dirs.TiltDevDir, clock build.Clock, kp KINDLoader, analytics2 *analytics.TiltAnalytics, ctrlclient client.Client, st store.RStore, execer localexec.Execer) (*ImageBuildAndDeployer, error) {
 	labels := _wireLabelsValue
-	dockerImageBuilder := build.NewDockerImageBuilder(docker2, labels)
-	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
-	execCustomBuilder := build.NewExecCustomBuilder(docker2, clock)
+	dockerBuilder := build.NewDockerBuilder(docker2, labels)
+	customBuilder := build.NewCustomBuilder(docker2, clock)
 	scheme := v1alpha1.NewScheme()
 	namespace := provideFakeK8sNamespace()
 	reconciler := kubernetesapply.NewReconciler(ctrlclient, kClient, scheme, dockerBuilder, kubeContext, st, namespace, execer)
-	imageBuildAndDeployer := NewImageBuildAndDeployer(dockerBuilder, execCustomBuilder, kClient, env, kubeContext, analytics2, clock, kp, ctrlclient, reconciler)
+	imageBuildAndDeployer := NewImageBuildAndDeployer(dockerBuilder, customBuilder, kClient, env, kubeContext, analytics2, clock, kp, ctrlclient, reconciler)
 	return imageBuildAndDeployer, nil
 }
 
@@ -48,18 +47,17 @@ var (
 
 func ProvideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompose.DockerComposeClient, dCli docker.Client, ctrlclient client.Client, dir *dirs.TiltDevDir) (*DockerComposeBuildAndDeployer, error) {
 	labels := _wireLabelsValue
-	dockerImageBuilder := build.NewDockerImageBuilder(dCli, labels)
-	dockerBuilder := build.DefaultDockerBuilder(dockerImageBuilder)
+	dockerBuilder := build.NewDockerBuilder(dCli, labels)
 	clock := build.ProvideClock()
-	execCustomBuilder := build.NewExecCustomBuilder(dCli, clock)
-	imageBuilder := NewImageBuilder(dockerBuilder, execCustomBuilder)
+	customBuilder := build.NewCustomBuilder(dCli, clock)
+	imageBuilder := NewImageBuilder(dockerBuilder, customBuilder)
 	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(dcCli, dCli, imageBuilder, clock, ctrlclient)
 	return dockerComposeBuildAndDeployer, nil
 }
 
 // wire.go:
 
-var BaseWireSet = wire.NewSet(wire.Value(dockerfile.Labels{}), v1alpha1.NewScheme, k8s.ProvideMinikubeClient, build.DefaultDockerBuilder, build.NewDockerImageBuilder, build.NewExecCustomBuilder, wire.Bind(new(build.CustomBuilder), new(*build.ExecCustomBuilder)), wire.Bind(new(build.DockerKubeConnection), new(build.DockerBuilder)), NewDockerComposeBuildAndDeployer,
+var BaseWireSet = wire.NewSet(wire.Value(dockerfile.Labels{}), v1alpha1.NewScheme, k8s.ProvideMinikubeClient, build.NewDockerBuilder, build.NewCustomBuilder, wire.Bind(new(build.DockerKubeConnection), new(*build.DockerBuilder)), NewDockerComposeBuildAndDeployer,
 	NewImageBuildAndDeployer,
 	NewLiveUpdateBuildAndDeployer,
 	NewLocalTargetBuildAndDeployer, containerupdate.NewDockerUpdater, containerupdate.NewExecUpdater, NewImageBuilder, tracer.InitOpenTelemetry, liveupdates.ProvideUpdateMode,

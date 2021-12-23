@@ -63,7 +63,7 @@ func NewKINDLoader(env k8s.Env, clusterName k8s.ClusterName) KINDLoader {
 }
 
 type ImageBuildAndDeployer struct {
-	db          build.DockerBuilder
+	db          *build.DockerBuilder
 	ib          *ImageBuilder
 	k8sClient   k8s.Client
 	env         k8s.Env
@@ -76,8 +76,8 @@ type ImageBuildAndDeployer struct {
 }
 
 func NewImageBuildAndDeployer(
-	db build.DockerBuilder,
-	customBuilder build.CustomBuilder,
+	db *build.DockerBuilder,
+	customBuilder *build.CustomBuilder,
 	k8sClient k8s.Client,
 	env k8s.Env,
 	kubeContext k8s.KubeContext,
