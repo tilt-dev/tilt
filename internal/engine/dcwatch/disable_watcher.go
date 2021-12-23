@@ -1,7 +1,6 @@
 package dcwatch
 
 import (
-	"bytes"
 	"context"
 
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -16,7 +15,6 @@ type DisableSubscriber struct {
 	dcc dockercompose.DockerComposeClient
 }
 
-// How does the `New` function relate to the subscriber we're creating?
 func NewDisableSubscriber(dcc dockercompose.DockerComposeClient) *DisableSubscriber {
 	return &DisableSubscriber{
 		dcc: dcc,
@@ -28,6 +26,10 @@ func (w *DisableSubscriber) OnChange(ctx context.Context, st store.RStore, summa
 		return nil
 	}
 
+	if len(summary.UIResources.Changes) == 0 {
+		return nil
+	}
+
 	state := st.RLockState()
 	project := state.DockerComposeProject()
 
@@ -36,8 +38,13 @@ func (w *DisableSubscriber) OnChange(ctx context.Context, st store.RStore, summa
 		return nil
 	}
 
-	var specsToDisable []model.DockerComposeUpSpec
-	for _, uir := range state.UIResources {
+	var uirToDisable *v1alpha1.UIResource
+	var specToDisable model.DockerComposeUpSpec
+	for nn := range summary.UIResources.Changes {
+		uir, ok := state.UIResources[nn.Name]
+		if !ok {
+			continue
+		}
 		if uir.Status.DisableStatus.DisabledCount > 0 {
 			manifest, exists := state.ManifestTargets[model.ManifestName(uir.Name)]
 			if !exists {
@@ -50,34 +57,39 @@ func (w *DisableSubscriber) OnChange(ctx context.Context, st store.RStore, summa
 
 			rs := manifest.State.DCRuntimeState().RuntimeStatus()
 			if rs == v1alpha1.RuntimeStatusOK || rs == v1alpha1.RuntimeStatusPending {
-				dcSpec := model.DockerComposeUpSpec{
+				specToDisable = model.DockerComposeUpSpec{
 					Service: string(manifest.State.Name),
 					Project: manifest.Manifest.DockerComposeTarget().Spec.Project,
 				}
-				specsToDisable = append(specsToDisable, dcSpec)
+
+				// for now, only disable one at a time
+				// https://app.shortcut.com/windmill/story/13140/support-logging-to-multiple-manifests
+				uirToDisable = uir
+				break
 			}
 		}
 	}
 
 	st.RUnlockState()
 
-	if len(specsToDisable) > 0 {
+	if uirToDisable != nil {
 		// Upon disabling, the DC event watcher will notice the container has stopped and update
 		// the resource's RuntimeStatus, preventing it from being re-added to specsToDisable.
 		// There is a race here, since this OnChange might get called again before EngineState
 		// gets updated with the new RuntimeStatus. This is fine--calling `docker-compose rm` on
 		// a down service is a no-op.
-		var out bytes.Buffer
-		err := w.dcc.Rm(ctx, specsToDisable, &out, &out)
+
+		ctx, err := store.WithObjectLogHandler(ctx, st, uirToDisable)
 		if err != nil {
-			var names []string
-			for _, spec := range specsToDisable {
-				names = append(names, spec.Service)
-			}
-			if out.Len() != 0 {
-				logger.Get(ctx).Errorf("%s", out.String())
-			}
-			logger.Get(ctx).Errorf("error stopping disabled docker compose services %v, error: %v", names, err)
+			logger.Get(ctx).Errorf("error creating logger for %s: %v", uirToDisable.Name, err)
+			// continue anyway:
+			// probably better to try stopping the service instead of re-logging error infinitely
+		}
+		out := logger.Get(ctx).Writer(logger.InfoLvl)
+
+		err = w.dcc.Rm(ctx, []model.DockerComposeUpSpec{specToDisable}, out, out)
+		if err != nil {
+			logger.Get(ctx).Errorf("error stopping disabled docker compose service %s, error: %v", specToDisable.Service, err)
 		}
 	}
 

@@ -6,7 +6,6 @@ package integration
 import (
 	"context"
 	"fmt"
-	"os/exec"
 	"strconv"
 	"testing"
 	"time"
@@ -54,8 +53,7 @@ func TestDisableDC(t *testing.T) {
 	}, "disabletest")
 
 	f.WaitUntil(ctx, "disable configmap available", func() (string, error) {
-		cmd := exec.Command("tilt", "--port", fmt.Sprintf("%d", f.tilt.port), "get", "cm")
-		out, err := cmd.CombinedOutput()
+		out, err := f.tilt.Get(ctx, "configmap")
 		return string(out), err
 	}, "disabletest-disable")
 
@@ -74,14 +72,12 @@ func TestDisableDC(t *testing.T) {
 }
 
 func setDisabled(f *fixture, resourceName string, isDisabled bool) {
-	cmd := exec.Command("tilt",
-		"--port",
-		fmt.Sprintf("%d", f.tilt.port),
-		"patch",
+	err := f.tilt.Patch(
+		f.ctx,
 		"configmap",
-		"-p",
 		fmt.Sprintf("{\"data\": {\"isDisabled\": \"%s\"}}", strconv.FormatBool(isDisabled)),
-		"--",
-		fmt.Sprintf("%s-disable", resourceName))
-	f.runOrFail(cmd, fmt.Sprintf("setting disable state for %s to %v", resourceName, isDisabled))
+		fmt.Sprintf("%s-disable", resourceName),
+	)
+
+	require.NoErrorf(f.t, err, "setting disable state for %s to %v", resourceName, isDisabled)
 }

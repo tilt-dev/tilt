@@ -171,6 +171,12 @@ func (d *TiltDriver) Get(ctx context.Context, apiType string, names ...string) (
 	return out.Bytes(), err
 }
 
+func (d *TiltDriver) Patch(ctx context.Context, apiType string, patch string, name string) error {
+	args := []string{"patch", apiType, "-p", patch, "--", name}
+	var out bytes.Buffer
+	return d.cmd(ctx, args, &out).Run()
+}
+
 type TiltUpResponse struct {
 	done chan struct{}
 	err  error

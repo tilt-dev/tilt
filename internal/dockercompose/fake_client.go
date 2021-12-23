@@ -84,7 +84,7 @@ func (c *FakeDCClient) Down(ctx context.Context, proj model.DockerComposeProject
 	c.downCalls = append(c.downCalls, DownCall{proj})
 	if c.DownError != nil {
 		err := c.DownError
-		c.DownError = err
+		c.DownError = nil
 		return err
 	}
 	return nil
@@ -97,7 +97,7 @@ func (c *FakeDCClient) Rm(ctx context.Context, specs []model.DockerComposeUpSpec
 	c.rmCalls = append(c.rmCalls, RmCall{specs})
 	if c.RmError != nil {
 		err := c.RmError
-		c.RmError = err
+		c.RmError = nil
 		return err
 	}
 	return nil

@@ -184,6 +184,11 @@ func (c *cmdDCClient) Rm(ctx context.Context, specs []model.DockerComposeUpSpec,
 		serviceNames = append(serviceNames, s.Service)
 	}
 
+	// `docker-compose rm` does not support a `--timeout` option, so it possibly defaults to 10,
+	// like `docker-compose stop` or `docker-compose down`.
+	// If it turns out this command's timeout is too long, we might want to change this to first
+	// call `docker-compose stop --timeout $NUM`, to do the presumably slow part under a smaller
+	// timeout.
 	args = append(args, []string{"rm", "--stop", "--force"}...)
 	args = append(args, serviceNames...)
 	cmd := c.dcCommand(ctx, args)

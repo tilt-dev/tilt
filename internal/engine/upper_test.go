@@ -2653,7 +2653,9 @@ func TestDockerComposeDisableRmError(t *testing.T) {
 	f.setDisableState(m.Name, true)
 
 	require.Eventually(t, func() bool {
-		return strings.Contains(f.log.String(), s)
+		st := f.store.RLockState()
+		defer f.store.RUnlockState()
+		return strings.Contains(st.LogStore.String(), s)
 	}, stdTimeout, time.Millisecond)
 }
 
