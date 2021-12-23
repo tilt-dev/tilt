@@ -232,7 +232,7 @@ type dcService struct {
 	// Currently just use this to diff against when config files are edited to see if manifest has changed
 	ServiceYAML []byte
 
-	DependencyIDs  []model.TargetID
+	ImageMapDeps   []string
 	PublishedPorts []int
 
 	TriggerMode triggerMode
@@ -316,7 +316,7 @@ func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, s
 	return services, nil
 }
 
-func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResourceSet) (model.Manifest, error) {
+func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResourceSet, iTargets []model.ImageTarget) (model.Manifest, error) {
 	dcInfo := model.DockerComposeTarget{
 		Name: model.TargetName(service.Name),
 		Spec: model.DockerComposeUpSpec{
@@ -326,7 +326,7 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResource
 		ServiceYAML:      string(service.ServiceYAML),
 		Links:            service.Links,
 		LocalVolumePaths: service.MountedLocalDirs,
-	}.WithDependencyIDs(service.DependencyIDs).
+	}.WithImageMapDeps(model.FilterLiveUpdateOnly(service.ImageMapDeps, iTargets)).
 		WithPublishedPorts(service.PublishedPorts)
 
 	autoInit := true
@@ -348,7 +348,8 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResource
 		TriggerMode:          um,
 		ResourceDependencies: mds,
 	}.WithDeployTarget(dcInfo).
-		WithLabels(service.Labels)
+		WithLabels(service.Labels).
+		WithImageTargets(iTargets)
 
 	return m, nil
 }

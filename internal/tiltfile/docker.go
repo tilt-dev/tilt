@@ -62,7 +62,7 @@ type dockerImage struct {
 	// Whether this has been matched up yet to a deploy resource.
 	matched bool
 
-	dependencyIDs []model.TargetID
+	imageMapDeps []string
 
 	// Only applicable to custom_build
 	disablePush       bool
@@ -80,6 +80,10 @@ type dockerImage struct {
 
 func (d *dockerImage) ID() model.TargetID {
 	return model.ImageID(d.configurationRef)
+}
+
+func (d *dockerImage) ImageMapName() string {
+	return string(model.ImageID(d.configurationRef).Name)
 }
 
 type dockerImageBuildType int

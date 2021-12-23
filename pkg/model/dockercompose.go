@@ -15,6 +15,9 @@ type DockerComposeUpSpec struct {
 
 	// A specification of the project the service belongs to
 	Project DockerComposeProject
+
+	// The image maps that this deploy depends on.
+	ImageMaps []string
 }
 
 type DockerComposeProject struct {

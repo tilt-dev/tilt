@@ -45,8 +45,6 @@ type K8sTarget struct {
 	// in addition to any port forwards/LB endpoints)
 	Links []Link
 
-	imageDeps []TargetID
-
 	// pathDependencies are files required by this target.
 	//
 	// For Tiltfile-based, YAML-driven (i.e. `k8s_yaml()`) resources, this is
@@ -69,7 +67,14 @@ func NewK8sTargetForTesting(yaml string) K8sTarget {
 func (k8s K8sTarget) Empty() bool { return reflect.DeepEqual(k8s, K8sTarget{}) }
 
 func (k8s K8sTarget) DependencyIDs() []TargetID {
-	return append([]TargetID{}, k8s.imageDeps...)
+	result := make([]TargetID, 0, len(k8s.ImageMaps))
+	for _, im := range k8s.ImageMaps {
+		result = append(result, TargetID{
+			Type: TargetTypeImage,
+			Name: TargetName(im),
+		})
+	}
+	return result
 }
 
 func (k8s K8sTarget) RefInjectCounts() map[string]int {
@@ -119,35 +124,9 @@ func (k8s K8sTarget) Dependencies() []string {
 	return k8s.pathDependencies
 }
 
-// Track which objects this target depends on inside the manifest.
-//
-// We're disentangling ImageTarget and live updates -
-// image builds may or may not have live updates attached, but
-// also live updates may or may not have image builds attached.
-//
-// KubernetesApplySpec only depends on ImageTargets with an Image build.
-//
-// The imageDeps field depends on ImageTargets that have image builds OR have live
-// updates.
-//
-// ids: a list of the images we directly depend on.
-// isLiveUpdateOnly: a map of images that are live-update-only
-func (k8s K8sTarget) WithImageDependencies(ids []TargetID, isLiveUpdateOnly map[TargetID]bool) K8sTarget {
-	ids = DedupeTargetIDs(ids)
-	k8s.imageDeps = ids
-
-	k8s.ImageMaps = make([]string, 0, len(ids))
-
-	for _, id := range ids {
-		if id.Type != TargetTypeImage {
-			panic(fmt.Sprintf("Invalid k8s dependency: %+v", id))
-		}
-		if isLiveUpdateOnly[id] {
-			continue
-		}
-		k8s.ImageMaps = append(k8s.ImageMaps, string(id.Name))
-	}
-
+// Track which images this depends on.
+func (k8s K8sTarget) WithImageDependencies(imageMapDeps []string) K8sTarget {
+	k8s.ImageMaps = sliceutils.Dedupe(imageMapDeps)
 	return k8s
 }
 
@@ -165,10 +144,17 @@ func (k8s K8sTarget) WithRefInjectCounts(ric map[string]int) K8sTarget {
 
 var _ TargetSpec = K8sTarget{}
 
-func ToLiveUpdateOnlyMap(imageTargets []ImageTarget) map[TargetID]bool {
-	result := make(map[TargetID]bool, len(imageTargets))
+func FilterLiveUpdateOnly(imageMapDeps []string, imageTargets []ImageTarget) []string {
+	result := make([]string, 0, len(imageMapDeps))
+	isLiveUpdateOnly := make(map[string]bool, len(imageTargets))
 	for _, image := range imageTargets {
-		result[image.ID()] = image.IsLiveUpdateOnly
+		isLiveUpdateOnly[image.ImageMapName()] = image.IsLiveUpdateOnly
+	}
+	for _, im := range imageMapDeps {
+		if isLiveUpdateOnly[im] {
+			continue
+		}
+		result = append(result, im)
 	}
 	return result
 }

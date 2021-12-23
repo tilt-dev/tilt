@@ -18,7 +18,7 @@ import (
 func TestTargetQueue_Simple(t *testing.T) {
 	f := newTargetQueueFixture(t)
 
-	t1 := model.MustNewImageTarget(container.MustParseSelector("vigoda"))
+	t1 := newDockerImageTarget("vigoda")
 	s1 := store.BuildState{}
 
 	targets := []model.ImageTarget{t1}
@@ -37,9 +37,10 @@ func TestTargetQueue_Simple(t *testing.T) {
 func TestTargetQueue_DepsBuilt(t *testing.T) {
 	f := newTargetQueueFixture(t)
 
-	fooTarget := model.MustNewImageTarget(container.MustParseSelector("foo"))
+	fooTarget := newDockerImageTarget("foo")
 	s1 := store.BuildState{LastResult: store.NewImageBuildResultSingleRef(fooTarget.ID(), container.MustParseNamedTagged("foo:1234"))}
-	barTarget := model.MustNewImageTarget(container.MustParseSelector("bar")).WithDependencyIDs([]model.TargetID{fooTarget.ID()})
+	barTarget := newDockerImageTarget("bar").
+		WithImageMapDeps([]string{fooTarget.ImageMapName()})
 	s2 := store.BuildState{}
 
 	targets := []model.ImageTarget{fooTarget, barTarget}
@@ -66,9 +67,10 @@ func TestTargetQueue_DepsBuilt(t *testing.T) {
 func TestTargetQueue_DepsUnbuilt(t *testing.T) {
 	f := newTargetQueueFixture(t)
 
-	fooTarget := model.MustNewImageTarget(container.MustParseSelector("foo"))
+	fooTarget := newDockerImageTarget("foo")
 	s1 := store.BuildState{}
-	barTarget := model.MustNewImageTarget(container.MustParseSelector("bar")).WithDependencyIDs([]model.TargetID{fooTarget.ID()})
+	barTarget := newDockerImageTarget("bar").
+		WithImageMapDeps([]string{fooTarget.ImageMapName()})
 	var s2 = store.BuildState{LastResult: store.NewImageBuildResultSingleRef(
 		barTarget.ID(),
 		container.MustParseNamedTagged("bar:54321"),
@@ -95,7 +97,7 @@ func TestTargetQueue_DepsUnbuilt(t *testing.T) {
 func TestTargetQueue_IncrementalBuild(t *testing.T) {
 	f := newTargetQueueFixture(t)
 
-	fooTarget := model.MustNewImageTarget(container.MustParseSelector("foo"))
+	fooTarget := newDockerImageTarget("foo")
 	s1 := store.BuildState{
 		LastResult: store.NewImageBuildResultSingleRef(
 			fooTarget.ID(),
@@ -120,7 +122,7 @@ func TestTargetQueue_IncrementalBuild(t *testing.T) {
 func TestTargetQueue_CachedBuild(t *testing.T) {
 	f := newTargetQueueFixture(t)
 
-	fooTarget := model.MustNewImageTarget(container.MustParseSelector("foo"))
+	fooTarget := newDockerImageTarget("foo")
 	s1 := store.BuildState{
 		LastResult: store.NewImageBuildResultSingleRef(
 			fooTarget.ID(),
@@ -141,9 +143,10 @@ func TestTargetQueue_CachedBuild(t *testing.T) {
 func TestTargetQueue_DepsBuiltButReaped(t *testing.T) {
 	f := newTargetQueueFixture(t)
 
-	fooTarget := model.MustNewImageTarget(container.MustParseSelector("foo"))
+	fooTarget := newDockerImageTarget("foo")
 	s1 := store.BuildState{LastResult: store.NewImageBuildResultSingleRef(fooTarget.ID(), container.MustParseNamedTagged("foo:1234"))}
-	barTarget := model.MustNewImageTarget(container.MustParseSelector("bar")).WithDependencyIDs([]model.TargetID{fooTarget.ID()})
+	barTarget := newDockerImageTarget("bar").
+		WithImageMapDeps([]string{fooTarget.ImageMapName()})
 	s2 := store.BuildState{}
 
 	targets := []model.ImageTarget{fooTarget, barTarget}
@@ -250,4 +253,9 @@ func (f *targetQueueFixture) run(targets []model.ImageTarget, buildStateSet stor
 	if err != nil {
 		f.t.Fatal(err)
 	}
+}
+
+func newDockerImageTarget(ref string) model.ImageTarget {
+	return model.MustNewImageTarget(container.MustParseSelector(ref)).
+		WithBuildDetails(model.DockerBuild{})
 }
