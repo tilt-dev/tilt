@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/docker/distribution/reference"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/container"
@@ -38,7 +39,10 @@ func (icb *ImageBuilder) CanReuseRef(ctx context.Context, iTarget model.ImageTar
 		"DockerBuild nor CustomBuild)", iTarget.Refs.ConfigurationRef)
 }
 
-func (icb *ImageBuilder) Build(ctx context.Context, iTarget model.ImageTarget,
+func (icb *ImageBuilder) Build(ctx context.Context,
+	iTarget model.ImageTarget,
+	cluster *v1alpha1.Cluster,
+	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap,
 	ps *build.PipelineState) (container.TaggedRefs, []v1alpha1.DockerImageStageStatus, error) {
 	userFacingRefName := container.FamiliarString(iTarget.Refs.ConfigurationRef)
 
@@ -48,12 +52,14 @@ func (icb *ImageBuilder) Build(ctx context.Context, iTarget model.ImageTarget,
 		defer ps.EndPipelineStep(ctx)
 
 		return icb.db.BuildImage(ctx, ps, iTarget.Refs, bd.DockerImageSpec,
+			cluster,
+			imageMaps,
 			ignore.CreateBuildContextFilter(iTarget))
 
 	case model.CustomBuild:
 		ps.StartPipelineStep(ctx, "Building Custom Build: [%s]", userFacingRefName)
 		defer ps.EndPipelineStep(ctx)
-		refs, err := icb.custb.Build(ctx, iTarget.Refs, bd)
+		refs, err := icb.custb.Build(ctx, iTarget.Refs, bd.CmdImageSpec, imageMaps)
 		return refs, nil, err
 	}
 

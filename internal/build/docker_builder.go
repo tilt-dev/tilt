@@ -21,6 +21,7 @@ import (
 	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
 	fsutiltypes "github.com/tonistiigi/fsutil/types"
+	ktypes "k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/docker"
@@ -143,7 +144,17 @@ func (d *DockerBuilder) ImageExists(ctx context.Context, ref reference.NamedTagg
 	return true, nil
 }
 
-func (d *DockerBuilder) BuildImage(ctx context.Context, ps *PipelineState, refs container.RefSet, spec v1alpha1.DockerImageSpec, filter model.PathMatcher) (container.TaggedRefs, []v1alpha1.DockerImageStageStatus, error) {
+func (d *DockerBuilder) BuildImage(ctx context.Context, ps *PipelineState, refs container.RefSet,
+	spec v1alpha1.DockerImageSpec,
+	cluster *v1alpha1.Cluster,
+	imageMaps map[ktypes.NamespacedName]*v1alpha1.ImageMap,
+	filter model.PathMatcher) (container.TaggedRefs, []v1alpha1.DockerImageStageStatus, error) {
+	spec = InjectClusterPlatform(spec, cluster)
+	spec, err := InjectImageDependencies(spec, imageMaps)
+	if err != nil {
+		return container.TaggedRefs{}, nil, err
+	}
+
 	platformSuffix := ""
 	if spec.Platform != "" {
 		platformSuffix = fmt.Sprintf(" for platform %s", spec.Platform)

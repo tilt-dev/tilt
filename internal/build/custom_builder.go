@@ -10,6 +10,7 @@ import (
 
 	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
+	ktypes "k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/docker"
@@ -30,9 +31,11 @@ func NewCustomBuilder(dCli docker.Client, clock Clock) *CustomBuilder {
 	}
 }
 
-func (b *CustomBuilder) Build(ctx context.Context, refs container.RefSet, cb model.CustomBuild) (container.TaggedRefs, error) {
-	expectedTag := cb.OutputTag
-	outputsImageRefTo := cb.OutputsImageRefTo
+func (b *CustomBuilder) Build(ctx context.Context, refs container.RefSet,
+	spec v1alpha1.CmdImageSpec,
+	imageMaps map[ktypes.NamespacedName]*v1alpha1.ImageMap) (container.TaggedRefs, error) {
+	expectedTag := spec.OutputTag
+	outputsImageRefTo := spec.OutputsImageRefTo
 
 	var expectedBuildRefs container.TaggedRefs
 	var registryHost string
@@ -68,8 +71,9 @@ func (b *CustomBuilder) Build(ctx context.Context, refs container.RefSet, cb mod
 	expectedBuildResult := expectedBuildRefs.LocalRef
 
 	// TODO(nick): Use the Cmd API.
-	cmd := exec.CommandContext(ctx, cb.Args[0], cb.Args[1:]...)
-	cmd.Dir = cb.Dir
+	// TODO(nick): Inject the image maps into the command environment.
+	cmd := exec.CommandContext(ctx, spec.Args[0], spec.Args[1:]...)
+	cmd.Dir = spec.Dir
 	cmd.Env = logger.DefaultEnv(ctx)
 
 	l := logger.Get(ctx)
@@ -100,7 +104,7 @@ func (b *CustomBuilder) Build(ctx context.Context, refs container.RefSet, cb mod
 	cmd.Stdout = w
 	cmd.Stderr = w
 
-	l.Infof("Running custom build cmd %q", model.Cmd{Argv: cb.Args}.String())
+	l.Infof("Running custom build cmd %q", model.Cmd{Argv: spec.Args}.String())
 	err = cmd.Run()
 	if err != nil {
 		return container.TaggedRefs{}, errors.Wrap(err, "Custom build command failed")
@@ -116,7 +120,7 @@ func (b *CustomBuilder) Build(ctx context.Context, refs container.RefSet, cb mod
 
 	// If the command skips the local docker registry, then we don't expect the image
 	// to be available (because the command has its own registry).
-	if cb.OutputMode == v1alpha1.CmdImageOutputRemote {
+	if spec.OutputMode == v1alpha1.CmdImageOutputRemote {
 		return expectedBuildRefs, nil
 	}
 
