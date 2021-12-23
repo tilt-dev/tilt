@@ -560,7 +560,7 @@ definitions:
         format: "int64"
         minimum: 0
         maximum: 100
-      NanoCPUs:
+      NanoCpus:
         description: "CPU quota in units of 10<sup>-9</sup> CPUs."
         type: "integer"
         format: "int64"
@@ -3306,6 +3306,22 @@ definitions:
               type: "string"
             example:
               - "CAP_NET_RAW"
+          Ulimits:
+            description: |
+              A list of resource limits to set in the container. For example: `{"Name": "nofile", "Soft": 1024, "Hard": 2048}`"
+            type: "array"
+            items:
+              type: "object"
+              properties:
+                Name:
+                  description: "Name of ulimit"
+                  type: "string"
+                Soft:
+                  description: "Soft limit"
+                  type: "integer"
+                Hard:
+                  description: "Hard limit"
+                  type: "integer"
       NetworkAttachmentSpec:
         description: |
           Read-only spec type for non-swarm containers attached to swarm overlay
@@ -4590,7 +4606,7 @@ definitions:
         example: 4
       MemTotal:
         description: |
-          Total amount of physical memory available on the host, in kilobytes (kB).
+          Total amount of physical memory available on the host, in bytes.
         type: "integer"
         format: "int64"
         example: 2095882240
@@ -5450,7 +5466,7 @@ paths:
                 MemorySwap: 0
                 MemoryReservation: 0
                 KernelMemory: 0
-                NanoCPUs: 500000
+                NanoCpus: 500000
                 CpuPercent: 80
                 CpuShares: 512
                 CpuPeriod: 100000
@@ -6907,7 +6923,7 @@ paths:
           type: "string"
         - name: "v"
           in: "query"
-          description: "Remove the volumes associated with the container."
+          description: "Remove anonymous volumes associated with the container."
           type: "boolean"
           default: false
         - name: "force"
@@ -7294,7 +7310,7 @@ paths:
 
 
             For example, the build arg `FOO=bar` would become `{"FOO":"bar"}` in JSON. This would result in the
-            the query parameter `buildargs={"FOO":"bar"}`. Note that `{"FOO":"bar"}` should be URI component encoded.
+            query parameter `buildargs={"FOO":"bar"}`. Note that `{"FOO":"bar"}` should be URI component encoded.
 
 
             [Read more about the buildargs instruction.](https://docs.docker.com/engine/reference/builder/#arg)
@@ -8007,7 +8023,7 @@ paths:
             API-Version:
               type: "string"
               description: "Max API Version the server supports"
-            BuildKit-Version:
+            Builder-Version:
               type: "string"
               description: "Default version of docker image builder"
             Docker-Experimental:
@@ -8046,7 +8062,7 @@ paths:
             API-Version:
               type: "string"
               description: "Max API Version the server supports"
-            BuildKit-Version:
+            Builder-Version:
               type: "string"
               description: "Default version of docker image builder"
             Docker-Experimental:
