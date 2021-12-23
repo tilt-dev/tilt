@@ -208,7 +208,7 @@ type fakeCustomBuildFixture struct {
 	t    *testing.T
 	ctx  context.Context
 	dCli *docker.FakeClient
-	cb   *ExecCustomBuilder
+	cb   *CustomBuilder
 	tdf  *tempdir.TempDirFixture
 }
 
@@ -221,7 +221,7 @@ func newFakeCustomBuildFixture(t *testing.T) *fakeCustomBuildFixture {
 
 	tdf := tempdir.NewTempDirFixture(t)
 
-	cb := NewExecCustomBuilder(dCli, clock)
+	cb := NewCustomBuilder(dCli, clock)
 
 	f := &fakeCustomBuildFixture{
 		t:    t,

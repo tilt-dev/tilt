@@ -14,11 +14,11 @@ import (
 )
 
 type ImageBuilder struct {
-	db    build.DockerBuilder
-	custb build.CustomBuilder
+	db    *build.DockerBuilder
+	custb *build.CustomBuilder
 }
 
-func NewImageBuilder(db build.DockerBuilder, custb build.CustomBuilder) *ImageBuilder {
+func NewImageBuilder(db *build.DockerBuilder, custb *build.CustomBuilder) *ImageBuilder {
 	return &ImageBuilder{
 		db:    db,
 		custb: custb,

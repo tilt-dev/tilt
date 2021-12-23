@@ -330,7 +330,7 @@ func provideClock() func() time.Time {
 }
 
 type DumpImageDeployRefDeps struct {
-	DockerBuilder build.DockerBuilder
+	DockerBuilder *build.DockerBuilder
 	DockerClient  docker.Client
 }
 

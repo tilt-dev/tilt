@@ -18,23 +18,19 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-type CustomBuilder interface {
-	Build(ctx context.Context, refs container.RefSet, cb model.CustomBuild) (container.TaggedRefs, error)
-}
-
-type ExecCustomBuilder struct {
+type CustomBuilder struct {
 	dCli  docker.Client
 	clock Clock
 }
 
-func NewExecCustomBuilder(dCli docker.Client, clock Clock) *ExecCustomBuilder {
-	return &ExecCustomBuilder{
+func NewCustomBuilder(dCli docker.Client, clock Clock) *CustomBuilder {
+	return &CustomBuilder{
 		dCli:  dCli,
 		clock: clock,
 	}
 }
 
-func (b *ExecCustomBuilder) Build(ctx context.Context, refs container.RefSet, cb model.CustomBuild) (container.TaggedRefs, error) {
+func (b *CustomBuilder) Build(ctx context.Context, refs container.RefSet, cb model.CustomBuild) (container.TaggedRefs, error) {
 	expectedTag := cb.OutputTag
 	outputsImageRefTo := cb.OutputsImageRefTo
 
@@ -158,7 +154,7 @@ func (b *ExecCustomBuilder) Build(ctx context.Context, refs container.RefSet, cb
 	return taggedWithDigest, nil
 }
 
-func (b *ExecCustomBuilder) readImageRef(ctx context.Context, outputsImageRefTo string) (container.TaggedRefs, error) {
+func (b *CustomBuilder) readImageRef(ctx context.Context, outputsImageRefTo string) (container.TaggedRefs, error) {
 	contents, err := ioutil.ReadFile(outputsImageRefTo)
 	if err != nil {
 		return container.TaggedRefs{}, fmt.Errorf("Could not find image ref in output. Your custom_build script should have written to %s: %v", outputsImageRefTo, err)
