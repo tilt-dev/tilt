@@ -37,6 +37,13 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ClusterSpec":                     schema_pkg_apis_core_v1alpha1_ClusterSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ClusterStatus":                   schema_pkg_apis_core_v1alpha1_ClusterStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Cmd":                             schema_pkg_apis_core_v1alpha1_Cmd(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdImage":                        schema_pkg_apis_core_v1alpha1_CmdImage(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdImageList":                    schema_pkg_apis_core_v1alpha1_CmdImageList(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdImageSpec":                    schema_pkg_apis_core_v1alpha1_CmdImageSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdImageStateBuilding":           schema_pkg_apis_core_v1alpha1_CmdImageStateBuilding(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdImageStateCompleted":          schema_pkg_apis_core_v1alpha1_CmdImageStateCompleted(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdImageStateWaiting":            schema_pkg_apis_core_v1alpha1_CmdImageStateWaiting(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdImageStatus":                  schema_pkg_apis_core_v1alpha1_CmdImageStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdList":                         schema_pkg_apis_core_v1alpha1_CmdList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdSpec":                         schema_pkg_apis_core_v1alpha1_CmdSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdStateRunning":                 schema_pkg_apis_core_v1alpha1_CmdStateRunning(ref),
@@ -100,6 +107,8 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscovery":             schema_pkg_apis_core_v1alpha1_KubernetesDiscovery(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryList":         schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoverySpec":         schema_pkg_apis_core_v1alpha1_KubernetesDiscoverySpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryStateRunning": schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryStateRunning(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryStateWaiting": schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryStateWaiting(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryStatus":       schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryTemplateSpec": schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryTemplateSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesImageLocator":          schema_pkg_apis_core_v1alpha1_KubernetesImageLocator(ref),
@@ -461,6 +470,314 @@ func schema_pkg_apis_core_v1alpha1_Cmd(ref common.ReferenceCallback) common.Open
 		},
 		Dependencies: []string{
 			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_CmdImage(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "CmdImage describes an image to build with an arbitrary shell command.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdImageSpec"),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdImageStatus"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdImageSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdImageStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_CmdImageList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "CmdImageList",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdImage"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdImage", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_CmdImageSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "CmdImageSpec describes how the custom script builds images and where it puts them.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"ref": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The named reference of the image.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"args": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Command-line arguments. Must have length at least 1.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"dir": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Process working directory.\n\nIf the working directory is not specified, the command is run in the default Tilt working directory.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"imageMaps": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Names of image maps that this build depends on.\n\nThe controller will watch all the image maps, and rebuild the image if any of the maps resolve to a new image.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"outputMode": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Specifies where the image is built. If not specified, we assume the image was built to the local Docker image store.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"outputTag": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Tag we expect the image to be built with (we use this to check that the expected image+tag has been created).\n\nIf empty, we create an expected tag at the beginning of CustomBuild (and export $EXPECTED_REF=name:expected_tag )",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"outputsImageRefTo": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Specifies a filepath where the cmd script prints the result image ref.\n\nTilt will read it out when we're done to find the image.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"ref"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_CmdImageStateBuilding(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "CmdImageStateBuilding expresses that an image build is in-progress.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"reason": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The reason why the image is building.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"startedAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Time when the build started.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_CmdImageStateCompleted(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "CmdImageStateCompleted expresses when the image build is finished and no new images need to be built.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"reason": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The reason why the image was built.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"error": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Error message if the build failed.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"startedAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Time when we started building an image.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+					"finishedAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Time when we finished building an image",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_CmdImageStateWaiting(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "CmdImageStateWaiting expresses what we're waiting on to build an image.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"reason": {
+						SchemaProps: spec.SchemaProps{
+							Description: "(brief) reason the image build is waiting.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_CmdImageStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "CmdImageStatus describes the result of the image build.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"ref": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A fully-qualified image reference of a built image, as seen from the local network.\n\nUsually includes a name and an immutable tag.\n\nNB: If we're building to a particular registry, this may have a different hostname from the Spec `Ref` field.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"waiting": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Details about a waiting image build.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdImageStateWaiting"),
+						},
+					},
+					"building": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Details about a building image.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdImageStateBuilding"),
+						},
+					},
+					"completed": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Details about a finished image build.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdImageStateCompleted"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdImageStateBuilding", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdImageStateCompleted", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdImageStateWaiting"},
 	}
 }
 
@@ -1496,6 +1813,21 @@ func schema_pkg_apis_core_v1alpha1_DockerImageSpec(ref common.ReferenceCallback)
 					"extraTags": {
 						SchemaProps: spec.SchemaProps{
 							Description: "By default, Tilt creates a new temporary image reference for each build. The user can also specify their own reference, to integrate with other tooling (like build IDs for Jenkins build pipelines)\n\nEquivalent to the docker build --tag flag.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"imageMaps": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Names of image maps that this build depends on.\n\nThe controller will watch all the image maps, rebuild the image if any of the maps resolve to a new image, and inject them into the dockerfile.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -2804,8 +3136,21 @@ func schema_pkg_apis_core_v1alpha1_ImageMapStatus(ref common.ReferenceCallback) 
 				Properties: map[string]spec.Schema{
 					"image": {
 						SchemaProps: spec.SchemaProps{
-							Description: "A fully-qualified image reference, including a name and an immutable tag, as seen from the cluster container runtime that we're mapping this image to.\n\nNB: Container images often need to be referenced from different networks, including:\n\n1) The cluster container runtime 2) The local network 3) The cluster network\n\nAnd each of these cases may have distinct URLs.\n\nFor more details on image references in different networks, see: https://github.com/kubernetes/enhancements/tree/master/keps/sig-cluster-lifecycle/generic/1755-communicating-a-local-registry#specification-for-localregistryhosting-v1",
-							Default:     "",
+							Description: "A fully-qualified image reference, including a name and an immutable tag, as seen from the cluster container runtime that we're mapping this image to.\n\nNB: Container images often need to be referenced from different networks, including:\n\n1) The cluster container runtime 2) The local network 3) The cluster network\n\nAnd each of these cases may have distinct URLs. We might deprecate this field and only use fields of the form `ImageFromX`.\n\nFor more details on image references in different networks, see: https://github.com/kubernetes/enhancements/tree/master/keps/sig-cluster-lifecycle/generic/1755-communicating-a-local-registry#specification-for-localregistryhosting-v1",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"imageFromLocal": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A fully-qualified image reference, including a name and an immutable tag, as seen from the local network.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"imageFromCluster": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A fully-qualified image reference, including a name and an immutable tag, as seen from the cluster container runtime.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -2817,7 +3162,6 @@ func schema_pkg_apis_core_v1alpha1_ImageMapStatus(ref common.ReferenceCallback) 
 						},
 					},
 				},
-				Required: []string{"image"},
 			},
 		},
 		Dependencies: []string{
@@ -3304,12 +3648,63 @@ func schema_pkg_apis_core_v1alpha1_KubernetesDiscoverySpec(ref common.ReferenceC
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamTemplateSpec"),
 						},
 					},
+					"cluster": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Cluster name to determine the Kubernetes cluster.\n\nIf not provided, \"default\" will be used.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"watches"},
 			},
 		},
 		Dependencies: []string{
 			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesWatchRef", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamTemplateSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForwardTemplateSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.LabelSelector"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryStateRunning(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"startTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StartTime is when Kubernetes resource discovery began.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+				},
+				Required: []string{"startTime"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryStateWaiting(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"reason": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Reason the monitor has not yet been started.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"reason"},
+			},
+		},
 	}
 }
 
@@ -3341,12 +3736,24 @@ func schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryStatus(ref common.Referenc
 							},
 						},
 					},
+					"waiting": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Waiting contains information about why the monitor has not started.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryStateWaiting"),
+						},
+					},
+					"running": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Running contains information about the currently running monitor.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryStateRunning"),
+						},
+					},
 				},
 				Required: []string{"pods"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Pod", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryStateRunning", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryStateWaiting", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Pod", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
 	}
 }
 

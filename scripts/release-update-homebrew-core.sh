@@ -13,6 +13,7 @@ if [[ "${GITHUB_TOKEN-}" == "" ]]; then
     exit 1
 fi
 
+export HOMEBREW_GITHUB_API_TOKEN="$GITHUB_TOKEN"
 VERSION=${1//v/}
 VERSION_PATTERN="^[0-9]+\\.[0-9]+\\.[0-9]+$"
 if ! [[ $VERSION =~ $VERSION_PATTERN ]]; then

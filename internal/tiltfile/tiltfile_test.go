@@ -2472,7 +2472,7 @@ custom_build(
 			image("gcr.io/foo"),
 		),
 		deployment("foo"))
-	assert.True(t, m.ImageTargets[0].CustomBuildInfo().SkipsLocalDocker)
+	assert.Equal(t, v1alpha1.CmdImageOutputRemote, m.ImageTargets[0].CustomBuildInfo().OutputMode)
 	assert.True(t, m.ImageTargets[0].CustomBuildInfo().SkipsPush())
 }
 
@@ -6222,11 +6222,11 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 				case depsHelper:
 					assert.Equal(f.t, matcher.deps, cbInfo.Deps)
 				case cmdHelper:
-					assert.Equal(f.t, matcher.cmd, cbInfo.Command)
+					assert.Equal(f.t, matcher.cmd.Argv, cbInfo.Args)
 				case tagHelper:
-					assert.Equal(f.t, matcher.tag, cbInfo.Tag)
+					assert.Equal(f.t, matcher.tag, cbInfo.OutputTag)
 				case disablePushHelper:
-					assert.Equal(f.t, matcher.disabled, cbInfo.DisablePush)
+					assert.Equal(f.t, matcher.disabled, cbInfo.OutputMode == v1alpha1.CmdImageOutputLocalDockerAndRemote)
 				case entrypointHelper:
 					if !sliceutils.StringSliceEquals(matcher.cmd.Argv, image.OverrideCommand.Command) {
 						f.t.Fatalf("expected OverrideCommand (aka entrypoint) %v, got %v",

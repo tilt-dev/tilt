@@ -13,7 +13,7 @@ import (
 
 func TestVisitOneParent(t *testing.T) {
 	kCli := NewFakeK8sClient(t)
-	ov := ProvideOwnerFetcher(context.Background(), kCli)
+	ov := NewOwnerFetcher(context.Background(), kCli)
 
 	pod, rs := fakeOneParentChain()
 	kCli.Inject(NewK8sEntity(rs))
@@ -26,7 +26,7 @@ func TestVisitOneParent(t *testing.T) {
 
 func TestVisitTwoParentsEnsureListCaching(t *testing.T) {
 	kCli := NewFakeK8sClient(t)
-	ov := ProvideOwnerFetcher(context.Background(), kCli)
+	ov := NewOwnerFetcher(context.Background(), kCli)
 
 	pod, rs, dep := fakeTwoParentChain()
 	kCli.Inject(NewK8sEntity(rs), NewK8sEntity(dep))
@@ -43,7 +43,7 @@ func TestVisitTwoParentsEnsureListCaching(t *testing.T) {
 func TestVisitTwoParentsNoList(t *testing.T) {
 	kCli := NewFakeK8sClient(t)
 	kCli.listReturnsEmpty = true
-	ov := ProvideOwnerFetcher(context.Background(), kCli)
+	ov := NewOwnerFetcher(context.Background(), kCli)
 
 	pod, rs, dep := fakeTwoParentChain()
 	kCli.Inject(NewK8sEntity(rs), NewK8sEntity(dep))
@@ -60,7 +60,7 @@ func TestVisitTwoParentsNoList(t *testing.T) {
 func TestOwnerFetcherParallelism(t *testing.T) {
 	kCli := NewFakeK8sClient(t)
 	kCli.listReturnsEmpty = true
-	ov := ProvideOwnerFetcher(context.Background(), kCli)
+	ov := NewOwnerFetcher(context.Background(), kCli)
 
 	pod, rs := fakeOneParentChain()
 	kCli.Inject(NewK8sEntity(rs))

@@ -100,6 +100,132 @@ message Cmd {
   optional CmdStatus status = 3;
 }
 
+// CmdImage describes an image to build with an arbitrary shell command.
+// +k8s:openapi-gen=true
+message CmdImage {
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+
+  optional CmdImageSpec spec = 2;
+
+  optional CmdImageStatus status = 3;
+}
+
+// CmdImageList
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+message CmdImageList {
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+
+  repeated CmdImage items = 2;
+}
+
+// CmdImageSpec describes how the custom script builds images and where it puts them.
+message CmdImageSpec {
+  // The named reference of the image.
+  optional string ref = 7;
+
+  // Command-line arguments. Must have length at least 1.
+  repeated string args = 1;
+
+  // Process working directory.
+  //
+  // If the working directory is not specified, the command is run
+  // in the default Tilt working directory.
+  //
+  // +optional
+  // +tilt:local-path=true
+  optional string dir = 2;
+
+  // Names of image maps that this build depends on.
+  //
+  // The controller will watch all the image maps, and rebuild the image
+  // if any of the maps resolve to a new image.
+  //
+  // +optional
+  repeated string imageMaps = 3;
+
+  // Specifies where the image is built. If not specified, we assume the image
+  // was built to the local Docker image store.
+  optional string outputMode = 4;
+
+  // Tag we expect the image to be built with (we use this to check that
+  // the expected image+tag has been created).
+  //
+  // If empty, we create an expected tag at the beginning of CustomBuild (and
+  // export $EXPECTED_REF=name:expected_tag )
+  //
+  // +optional
+  optional string outputTag = 5;
+
+  // Specifies a filepath where the cmd script prints the result image ref.
+  //
+  // Tilt will read it out when we're done to find the image.
+  //
+  // +optional
+  // +tilt:local-path=true
+  optional string outputsImageRefTo = 6;
+}
+
+// CmdImageStateBuilding expresses that an image build is in-progress.
+message CmdImageStateBuilding {
+  // The reason why the image is building.
+  // +optional
+  optional string reason = 1;
+
+  // Time when the build started.
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startedAt = 2;
+}
+
+// CmdImageStateCompleted expresses when the image build is finished and
+// no new images need to be built.
+message CmdImageStateCompleted {
+  // The reason why the image was built.
+  // +optional
+  optional string reason = 1;
+
+  // Error message if the build failed.
+  // +optional
+  optional string error = 2;
+
+  // Time when we started building an image.
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startedAt = 3;
+
+  // Time when we finished building an image
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime finishedAt = 4;
+}
+
+// CmdImageStateWaiting expresses what we're waiting on to build an image.
+message CmdImageStateWaiting {
+  // (brief) reason the image build is waiting.
+  // +optional
+  optional string reason = 1;
+}
+
+// CmdImageStatus describes the result of the image build.
+message CmdImageStatus {
+  // A fully-qualified image reference of a built image, as seen from the local
+  // network.
+  //
+  // Usually includes a name and an immutable tag.
+  //
+  // NB: If we're building to a particular registry, this may
+  // have a different hostname from the Spec `Ref` field.
+  //
+  // +optional
+  optional string ref = 1;
+
+  // Details about a waiting image build.
+  // +optional
+  optional CmdImageStateWaiting waiting = 2;
+
+  // Details about a building image.
+  // +optional
+  optional CmdImageStateBuilding building = 3;
+
+  // Details about a finished image build.
+  // +optional
+  optional CmdImageStateCompleted completed = 4;
+}
+
 // CmdList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 message CmdList {
@@ -523,6 +649,14 @@ message DockerImageSpec {
   //
   // +optional
   repeated string extraTags = 11;
+
+  // Names of image maps that this build depends on.
+  //
+  // The controller will watch all the image maps, rebuild the image if any of
+  // the maps resolve to a new image, and inject them into the dockerfile.
+  //
+  // +optional
+  repeated string imageMaps = 13;
 }
 
 // DockerImageStageStatus gives detailed report of each stage
@@ -1035,10 +1169,20 @@ message ImageMapStatus {
   // 3) The cluster network
   //
   // And each of these cases may have distinct URLs.
+  // We might deprecate this field and only use fields
+  // of the form `ImageFromX`.
   //
   // For more details on image references in different networks, see:
   // https://github.com/kubernetes/enhancements/tree/master/keps/sig-cluster-lifecycle/generic/1755-communicating-a-local-registry#specification-for-localregistryhosting-v1
   optional string image = 1;
+
+  // A fully-qualified image reference, including a name and an immutable tag,
+  // as seen from the local network.
+  optional string imageFromLocal = 3;
+
+  // A fully-qualified image reference, including a name and an immutable tag,
+  // as seen from the cluster container runtime.
+  optional string imageFromCluster = 4;
 
   // Timestamp indicating when the image started building.
   //
@@ -1322,6 +1466,23 @@ message KubernetesDiscoverySpec {
   //
   // +optional
   optional PodLogStreamTemplateSpec podLogStreamTemplateSpec = 4;
+
+  // Cluster name to determine the Kubernetes cluster.
+  //
+  // If not provided, "default" will be used.
+  //
+  // +optional
+  optional string cluster = 5;
+}
+
+message KubernetesDiscoveryStateRunning {
+  // StartTime is when Kubernetes resource discovery began.
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startTime = 1;
+}
+
+message KubernetesDiscoveryStateWaiting {
+  // Reason the monitor has not yet been started.
+  optional string reason = 1;
 }
 
 // KubernetesDiscoveryStatus defines the observed state of KubernetesDiscovery
@@ -1333,6 +1494,16 @@ message KubernetesDiscoveryStatus {
 
   // Pods that have been discovered based on the criteria in the spec.
   repeated Pod pods = 1;
+
+  // Waiting contains information about why the monitor has not started.
+  //
+  // +optional
+  optional KubernetesDiscoveryStateWaiting waiting = 3;
+
+  // Running contains information about the currently running monitor.
+  //
+  // +optional
+  optional KubernetesDiscoveryStateRunning running = 4;
 }
 
 message KubernetesDiscoveryTemplateSpec {

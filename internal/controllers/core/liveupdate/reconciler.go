@@ -933,6 +933,7 @@ func (r *Reconciler) applyInternal(
 		archive := build.TarArchiveForPaths(ctx, toArchive, nil)
 		err = cu.UpdateContainer(ctx, cInfo, archive,
 			build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
+		_ = archive.Close()
 
 		lastFileTimeSynced := input.LastFileTimeSynced
 		if lastFileTimeSynced.IsZero() {

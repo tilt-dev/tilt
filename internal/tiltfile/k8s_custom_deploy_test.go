@@ -93,6 +93,59 @@ k8s_custom_deploy('foo',
 		spec.DeleteCmd)
 }
 
+func TestK8sCustomDeployImageDepsMissing(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+k8s_custom_deploy('foo',
+                  apply_cmd='apply',
+                  delete_cmd='delete',
+                  deps=[],
+                  image_deps=['image-a'])
+`)
+
+	f.loadErrString(`resource "foo": image build "image-a" not found`)
+}
+
+func TestK8sCustomDeployImageDepsMalformed(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+k8s_custom_deploy('foo',
+                  apply_cmd='apply',
+                  delete_cmd='delete',
+                  deps=[],
+                  image_deps=['image a'])
+`)
+
+	f.loadErrString(`k8s_custom_deploy: for parameter "image_deps": must be a valid image reference: invalid reference format`)
+}
+
+func TestK8sCustomDeployImageDepExists(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Dockerfile", "FROM golang:1.10")
+	f.file("Tiltfile", `
+k8s_custom_deploy('foo',
+                  apply_cmd='apply',
+                  delete_cmd='delete',
+                  deps=[],
+                  image_deps=['image-a'])
+
+docker_build('image-a', '.')
+`)
+
+	f.load()
+	m := f.assertNextManifest("foo")
+	assert.Equal(t, 1, len(m.ImageTargets))
+
+	spec := m.K8sTarget().KubernetesApplySpec
+	assert.Equal(t, []string{"image-a"}, spec.ImageMaps)
+}
+
 func assertK8sApplyCmdEqual(f *fixture, expected model.Cmd, actual *v1alpha1.KubernetesApplyCmd) bool {
 	t := f.t
 	t.Helper()

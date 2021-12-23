@@ -31,11 +31,9 @@ var BaseWireSet = wire.NewSet(
 
 	v1alpha1.NewScheme,
 	k8s.ProvideMinikubeClient,
-	build.DefaultDockerBuilder,
-	build.NewDockerImageBuilder,
-	build.NewExecCustomBuilder,
-	wire.Bind(new(build.CustomBuilder), new(*build.ExecCustomBuilder)),
-	wire.Bind(new(build.DockerKubeConnection), new(build.DockerBuilder)),
+	build.NewDockerBuilder,
+	build.NewCustomBuilder,
+	wire.Bind(new(build.DockerKubeConnection), new(*build.DockerBuilder)),
 
 	// BuildOrder
 	NewDockerComposeBuildAndDeployer,

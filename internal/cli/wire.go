@@ -74,7 +74,6 @@ var K8sWireSet = wire.NewSet(
 	k8s.ProvideContainerRuntime,
 	k8s.ProvideServerVersion,
 	k8s.ProvideK8sClient,
-	k8s.ProvideOwnerFetcher,
 	ProvideKubeContextOverride,
 	ProvideNamespaceOverride)
 
@@ -334,7 +333,7 @@ func provideClock() func() time.Time {
 }
 
 type DumpImageDeployRefDeps struct {
-	DockerBuilder build.DockerBuilder
+	DockerBuilder *build.DockerBuilder
 	DockerClient  docker.Client
 }
 

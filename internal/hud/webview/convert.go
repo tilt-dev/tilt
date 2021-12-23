@@ -291,10 +291,7 @@ func toUIResource(mt *store.ManifestTarget, s store.EngineState, disableSources 
 		},
 	}
 
-	err = populateResourceInfoView(mt, r)
-	if err != nil {
-		return nil, err
-	}
+	populateResourceInfoView(mt, r)
 
 	r.Status.Conditions = []v1alpha1.UIResourceCondition{
 		UIResourceUpToDateCondition(r.Status),
@@ -405,20 +402,13 @@ func TiltfileResource(name model.ManifestName, ms *store.ManifestState, logStore
 	return tr
 }
 
-func populateResourceInfoView(mt *store.ManifestTarget, r *v1alpha1.UIResource) error {
+func populateResourceInfoView(mt *store.ManifestTarget, r *v1alpha1.UIResource) {
 	r.Status.UpdateStatus = mt.UpdateStatus()
-	r.Status.RuntimeStatus = v1alpha1.RuntimeStatusNotApplicable
+	r.Status.RuntimeStatus = mt.RuntimeStatus()
 
-	if mt.Manifest.IsDC() {
-		dcState := mt.State.DCRuntimeState()
-		r.Status.RuntimeStatus = v1alpha1.RuntimeStatus(dcState.RuntimeStatus())
-		return nil
-	}
 	if mt.Manifest.IsLocal() {
 		lState := mt.State.LocalRuntimeState()
 		r.Status.LocalResourceInfo = &v1alpha1.UIResourceLocal{PID: int64(lState.PID), IsTest: mt.Manifest.LocalTarget().IsTest}
-		r.Status.RuntimeStatus = v1alpha1.RuntimeStatus(lState.RuntimeStatus())
-		return nil
 	}
 	if mt.Manifest.IsK8s() {
 		kState := mt.State.K8sRuntimeState()
@@ -438,11 +428,7 @@ func populateResourceInfoView(mt *store.ManifestTarget, r *v1alpha1.UIResource) 
 			rK8s.SpanID = string(k8sconv.SpanIDForPod(mt.Manifest.Name, podID))
 		}
 		r.Status.K8sResourceInfo = rK8s
-		r.Status.RuntimeStatus = v1alpha1.RuntimeStatus(kState.RuntimeStatus())
-		return nil
 	}
-
-	panic("Unrecognized manifest type (not one of: k8s, DC, local)")
 }
 
 func LogSegmentToEvent(seg *proto_webview.LogSegment, spans map[string]*proto_webview.LogSpan) store.LogAction {

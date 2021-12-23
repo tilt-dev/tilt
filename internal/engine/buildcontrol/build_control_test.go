@@ -234,11 +234,11 @@ func TestTwoK8sTargetsWithBaseImage(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	baseImage := model.MustNewImageTarget(container.MustParseSelector("sancho-base"))
-	sanchoOneImage := model.MustNewImageTarget(container.MustParseSelector("sancho-one")).
-		WithDependencyIDs([]model.TargetID{baseImage.ID()})
-	sanchoTwoImage := model.MustNewImageTarget(container.MustParseSelector("sancho-two")).
-		WithDependencyIDs([]model.TargetID{baseImage.ID()})
+	baseImage := newDockerImageTarget("sancho-base")
+	sanchoOneImage := newDockerImageTarget("sancho-one").
+		WithImageMapDeps([]string{baseImage.ImageMapName()})
+	sanchoTwoImage := newDockerImageTarget("sancho-two").
+		WithImageMapDeps([]string{baseImage.ImageMapName()})
 
 	sanchoOne := f.upsertManifest(manifestbuilder.New(f, "sancho-one").
 		WithImageTargets(baseImage, sanchoOneImage).
@@ -269,11 +269,11 @@ func TestTwoK8sTargetsWithBaseImagePrebuilt(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	baseImage := model.MustNewImageTarget(container.MustParseSelector("sancho-base"))
-	sanchoOneImage := model.MustNewImageTarget(container.MustParseSelector("sancho-one")).
-		WithDependencyIDs([]model.TargetID{baseImage.ID()})
-	sanchoTwoImage := model.MustNewImageTarget(container.MustParseSelector("sancho-two")).
-		WithDependencyIDs([]model.TargetID{baseImage.ID()})
+	baseImage := newDockerImageTarget("sancho-base")
+	sanchoOneImage := newDockerImageTarget("sancho-one").
+		WithImageMapDeps([]string{baseImage.ImageMapName()})
+	sanchoTwoImage := newDockerImageTarget("sancho-two").
+		WithImageMapDeps([]string{baseImage.ImageMapName()})
 
 	sanchoOne := f.upsertManifest(manifestbuilder.New(f, "sancho-one").
 		WithImageTargets(baseImage, sanchoOneImage).
@@ -311,7 +311,7 @@ func TestHoldForDeploy(t *testing.T) {
 		StopPaths: []string{filepath.Join("src", "package.json")},
 		Syncs:     []v1alpha1.LiveUpdateSync{{LocalPath: "src", ContainerPath: "/src"}},
 	}
-	sanchoImage := model.MustNewImageTarget(container.MustParseSelector("sancho")).
+	sanchoImage := newDockerImageTarget("sancho").
 		WithLiveUpdateSpec("sancho", luSpec).
 		WithDockerImage(v1alpha1.DockerImageSpec{Context: f.Path()})
 	sancho := f.upsertManifest(manifestbuilder.New(f, "sancho").

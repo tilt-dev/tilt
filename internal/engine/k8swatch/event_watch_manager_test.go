@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tilt-dev/tilt/internal/controllers/core/cluster"
 	"github.com/tilt-dev/tilt/pkg/apis"
 
 	"github.com/jonboulle/clockwork"
@@ -266,15 +267,13 @@ func newEWMFixture(t *testing.T) *ewmFixture {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	ctx, cancel := context.WithCancel(ctx)
 
-	of := k8s.ProvideOwnerFetcher(ctx, kClient)
-
 	clock := clockwork.NewFakeClock()
 	st := store.NewTestingStore()
 
 	ret := &ewmFixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),
 		kClient:        kClient,
-		ewm:            NewEventWatchManager(kClient, of, k8s.DefaultNamespace),
+		ewm:            NewEventWatchManager(cluster.NewFakeClientCache(kClient), k8s.DefaultNamespace),
 		ctx:            ctx,
 		cancel:         cancel,
 		t:              t,

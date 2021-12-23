@@ -6,16 +6,22 @@ import (
 	"strings"
 )
 
-// Deduplicate and sort a slice of strings.
-func DedupedAndSorted(slice []string) (result []string) {
+// De-duplicate strings, maintaining order.
+func Dedupe(ids []string) []string {
 	seen := map[string]bool{}
-
-	for _, s := range slice {
+	result := make([]string, 0, len(ids))
+	for _, s := range ids {
 		if !seen[s] {
 			seen[s] = true
 			result = append(result, s)
 		}
 	}
+	return result
+}
+
+// Deduplicate and sort a slice of strings.
+func DedupedAndSorted(slice []string) []string {
+	result := Dedupe(slice)
 	sort.Strings(result)
 	return result
 }

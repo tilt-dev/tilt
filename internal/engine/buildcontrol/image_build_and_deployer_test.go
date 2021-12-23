@@ -45,7 +45,7 @@ func TestDeployTwinImages(t *testing.T) {
 
 	sancho := NewSanchoDockerBuildManifest(f)
 	newK8sTarget := k8s.MustTarget("sancho", yaml.ConcatYAML(SanchoYAML, SanchoTwinYAML)).
-		WithImageDependencies(sancho.K8sTarget().DependencyIDs(), nil)
+		WithImageDependencies(sancho.K8sTarget().ImageMaps)
 	manifest := sancho.WithDeployTarget(newK8sTarget)
 	result, err := f.BuildAndDeploy(BuildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
@@ -55,7 +55,7 @@ func TestDeployTwinImages(t *testing.T) {
 	id := manifest.ImageTargetAt(0).ID()
 	expectedImage := "gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
 	image := store.ClusterImageRefFromBuildResult(result[id])
-	assert.Equal(t, expectedImage, image.String())
+	assert.Equal(t, expectedImage, image)
 	assert.Equalf(t, 2, strings.Count(f.k8s.Yaml, expectedImage),
 		"Expected image to update twice in YAML: %s", f.k8s.Yaml)
 }
@@ -129,7 +129,7 @@ func TestDeployPodWithMultipleImages(t *testing.T) {
 	iTarget1 := NewSanchoDockerBuildImageTarget(f)
 	iTarget2 := NewSanchoSidecarDockerBuildImageTarget(f)
 	kTarget := k8s.MustTarget("sancho", testyaml.SanchoSidecarYAML).
-		WithImageDependencies([]model.TargetID{iTarget1.ID(), iTarget2.ID()}, nil)
+		WithImageDependencies([]string{iTarget1.ImageMapName(), iTarget2.ImageMapName()})
 	targets := []model.TargetSpec{iTarget1, iTarget2, kTarget}
 
 	result, err := f.BuildAndDeploy(targets, store.BuildStateSet{})
@@ -141,13 +141,13 @@ func TestDeployPodWithMultipleImages(t *testing.T) {
 
 	expectedSanchoRef := "gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
 	image := store.ClusterImageRefFromBuildResult(result[iTarget1.ID()])
-	assert.Equal(t, expectedSanchoRef, image.String())
+	assert.Equal(t, expectedSanchoRef, image)
 	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, expectedSanchoRef),
 		"Expected image to appear once in YAML: %s", f.k8s.Yaml)
 
 	expectedSidecarRef := "gcr.io/some-project-162817/sancho-sidecar:tilt-11cd0b38bc3ceb95"
 	image = store.ClusterImageRefFromBuildResult(result[iTarget2.ID()])
-	assert.Equal(t, expectedSidecarRef, image.String())
+	assert.Equal(t, expectedSidecarRef, image)
 	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, expectedSidecarRef),
 		"Expected image to appear once in YAML: %s", f.k8s.Yaml)
 }
@@ -160,7 +160,7 @@ func TestDeployPodWithMultipleLiveUpdateImages(t *testing.T) {
 	iTarget2 := NewSanchoSidecarLiveUpdateImageTarget(f)
 
 	kTarget := k8s.MustTarget("sancho", testyaml.SanchoSidecarYAML).
-		WithImageDependencies([]model.TargetID{iTarget1.ID(), iTarget2.ID()}, nil)
+		WithImageDependencies([]string{iTarget1.ImageMapName(), iTarget2.ImageMapName()})
 	targets := []model.TargetSpec{iTarget1, iTarget2, kTarget}
 
 	result, err := f.BuildAndDeploy(targets, store.BuildStateSet{})
@@ -172,13 +172,13 @@ func TestDeployPodWithMultipleLiveUpdateImages(t *testing.T) {
 
 	expectedSanchoRef := "gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
 	image := store.ClusterImageRefFromBuildResult(result[iTarget1.ID()])
-	assert.Equal(t, expectedSanchoRef, image.String())
+	assert.Equal(t, expectedSanchoRef, image)
 	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, expectedSanchoRef),
 		"Expected image to appear once in YAML: %s", f.k8s.Yaml)
 
 	expectedSidecarRef := "gcr.io/some-project-162817/sancho-sidecar:tilt-11cd0b38bc3ceb95"
 	image = store.ClusterImageRefFromBuildResult(result[iTarget2.ID()])
-	assert.Equal(t, expectedSidecarRef, image.String())
+	assert.Equal(t, expectedSidecarRef, image)
 	assert.Equalf(t, 1, strings.Count(f.k8s.Yaml, expectedSidecarRef),
 		"Expected image to appear once in YAML: %s", f.k8s.Yaml)
 }
@@ -234,7 +234,7 @@ func TestStatefulSetPodManagementPolicy(t *testing.T) {
 	_, err = f.BuildAndDeploy(
 		[]model.TargetSpec{
 			iTarget,
-			kTarget.WithImageDependencies([]model.TargetID{iTarget.ID()}, nil),
+			kTarget.WithImageDependencies([]string{iTarget.ImageMapName()}),
 		},
 		store.BuildStateSet{})
 	if err != nil {
@@ -336,7 +336,7 @@ RUN go install github.com/tilt-dev/sancho
 ENTRYPOINT /go/bin/sancho
 `,
 			Context: f.JoinPath("sancho"),
-		}).WithDependencyIDs([]model.TargetID{baseImage.ID()})
+		}).WithImageMapDeps([]string{baseImage.ImageMapName()})
 
 	m := manifestbuilder.New(f, "sancho").
 		WithK8sYAML(SanchoYAML).
@@ -518,10 +518,12 @@ func TestCustomBuildSkipsLocalDocker(t *testing.T) {
 	f.docker.Images["gcr.io/some-project-162817/sancho:tilt-build"] = types.ImageInspect{ID: string(sha)}
 
 	cb := model.CustomBuild{
-		Command:          model.ToHostCmd("exit 0"),
-		Deps:             []string{f.JoinPath("app")},
-		SkipsLocalDocker: true,
-		Tag:              "tilt-build",
+		CmdImageSpec: v1alpha1.CmdImageSpec{
+			Args:       model.ToHostCmd("exit 0").Argv,
+			OutputTag:  "tilt-build",
+			OutputMode: v1alpha1.CmdImageOutputRemote,
+		},
+		Deps: []string{f.JoinPath("app")},
 	}
 
 	manifest := manifestbuilder.New(f, "sancho").
@@ -585,7 +587,8 @@ func TestBuildAndDeployUsesCorrectRef(t *testing.T) {
 			for i := range manifest.ImageTargets {
 				id := manifest.ImageTargets[i].ID()
 				image := store.LocalImageRefFromBuildResult(result[id])
-				observedImages = append(observedImages, image.Name())
+				imageRef := container.MustParseNamedTagged(image)
+				observedImages = append(observedImages, imageRef.Name())
 			}
 
 			assert.ElementsMatch(t, test.expectBuilt, observedImages)
@@ -828,7 +831,7 @@ func TestInjectOverrideCommandsMultipleImages(t *testing.T) {
 	iTarget1 := NewSanchoDockerBuildImageTarget(f).WithOverrideCommand(cmd1)
 	iTarget2 := NewSanchoSidecarDockerBuildImageTarget(f).WithOverrideCommand(cmd2)
 	kTarget := k8s.MustTarget("sancho", testyaml.SanchoSidecarYAML).
-		WithImageDependencies([]model.TargetID{iTarget1.ID(), iTarget2.ID()}, nil)
+		WithImageDependencies([]string{iTarget1.ImageMapName(), iTarget2.ImageMapName()})
 	targets := []model.TargetSpec{iTarget1, iTarget2, kTarget}
 
 	_, err := f.BuildAndDeploy(targets, store.BuildStateSet{})

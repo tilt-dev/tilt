@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -64,6 +65,7 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 		return nil
 	}
 
+	errs := []error{}
 	for _, r := range currentResources {
 		stored, isStored := storedMap[r.Name]
 		if !isStored {
@@ -78,13 +80,13 @@ func (s *Subscriber) OnChange(ctx context.Context, st store.RStore, summary stor
 			update.Status = r.Status
 			err = s.client.Status().Update(ctx, update)
 			if err != nil {
-				return err
+				errs = append(errs, err)
 			}
 			continue
 		}
 	}
 
-	return nil
+	return utilerrors.NewAggregate(errs)
 }
 
 // Update the LastTransitionTime against the currently stored conditions.

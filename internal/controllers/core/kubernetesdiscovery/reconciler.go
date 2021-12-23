@@ -12,13 +12,16 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	errorutil "k8s.io/apimachinery/pkg/util/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -31,9 +34,10 @@ import (
 )
 
 var (
-	apiGVStr = v1alpha1.SchemeGroupVersion.String()
-	apiKind  = "KubernetesDiscovery"
-	apiType  = metav1.TypeMeta{Kind: apiKind, APIVersion: apiGVStr}
+	apiGVStr   = v1alpha1.SchemeGroupVersion.String()
+	apiKind    = "KubernetesDiscovery"
+	apiType    = metav1.TypeMeta{Kind: apiKind, APIVersion: apiGVStr}
+	clusterGVK = v1alpha1.SchemeGroupVersion.WithKind("Cluster")
 )
 
 type watcherSet map[watcherID]bool
@@ -46,10 +50,10 @@ func (w watcherID) String() string {
 }
 
 type Reconciler struct {
-	kCli         k8s.Client
-	ownerFetcher k8s.OwnerFetcher
-	dispatcher   Dispatcher
-	ctrlClient   ctrlclient.Client
+	kCli       k8s.Client
+	dispatcher Dispatcher
+	indexer    *indexer.Indexer
+	ctrlClient ctrlclient.Client
 
 	// restartDetector compares a previous version of status with the latest and emits log events
 	// for any containers on the pod that restarted.
@@ -90,18 +94,20 @@ func (w *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	b := ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.KubernetesDiscovery{}).
 		Owns(&v1alpha1.PodLogStream{}).
-		Owns(&v1alpha1.PortForward{})
+		Owns(&v1alpha1.PortForward{}).
+		Watches(&source.Kind{Type: &v1alpha1.Cluster{}},
+			handler.EnqueueRequestsFromMapFunc(w.indexer.Enqueue))
 	return b, nil
 }
 
-func NewReconciler(ctrlClient ctrlclient.Client, kCli k8s.Client, ownerFetcher k8s.OwnerFetcher, restartDetector *ContainerRestartDetector,
+func NewReconciler(ctrlClient ctrlclient.Client, scheme *runtime.Scheme, kCli k8s.Client, restartDetector *ContainerRestartDetector,
 	st store.RStore) *Reconciler {
 	return &Reconciler{
 		ctrlClient:             ctrlClient,
 		kCli:                   kCli,
-		ownerFetcher:           ownerFetcher,
 		restartDetector:        restartDetector,
 		dispatcher:             st,
+		indexer:                indexer.NewIndexer(scheme, indexKubernetesDiscovery),
 		watchedNamespaces:      make(map[k8s.Namespace]nsWatch),
 		uidWatchers:            make(map[types.UID]watcherSet),
 		watchers:               make(map[watcherID]watcher),
@@ -140,6 +146,7 @@ func (w *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	existing, hasExisting := w.watchers[key]
 
 	kd, err := w.getKubernetesDiscovery(ctx, key)
+	w.indexer.OnReconcile(request.NamespacedName, kd)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -348,6 +355,7 @@ func (w *Reconciler) updateStatus(ctx context.Context, watcherID watcherID) erro
 		// if the spec got deleted, there's nothing to update
 		return nil
 	}
+	patchBase := ctrlclient.MergeFrom(kd.DeepCopy())
 
 	if !equality.Semantic.DeepEqual(watcher.spec, kd.Spec) {
 		// the spec has changed and we haven't reconciled that change yet; this state update is
@@ -356,7 +364,7 @@ func (w *Reconciler) updateStatus(ctx context.Context, watcherID watcherID) erro
 	}
 
 	kd.Status = status
-	if err := w.ctrlClient.Status().Update(ctx, kd); err != nil {
+	if err := w.ctrlClient.Status().Patch(ctx, kd, patchBase); err != nil {
 		if apierrors.IsNotFound(err) {
 			// similar to above but for the event that it gets deleted between get + update
 			return nil
@@ -419,9 +427,13 @@ func (w *Reconciler) buildStatus(ctx context.Context, watcher watcher) v1alpha1.
 		}
 	}
 
+	startTime := apis.NewMicroTime(watcher.startTime)
 	return v1alpha1.KubernetesDiscoveryStatus{
-		MonitorStartTime: apis.NewMicroTime(watcher.startTime),
+		MonitorStartTime: startTime,
 		Pods:             pods,
+		Running: &v1alpha1.KubernetesDiscoveryStateRunning{
+			StartTime: startTime,
+		},
 	}
 }
 
@@ -514,7 +526,7 @@ func (w *Reconciler) triagePodTree(pod *v1.Pod, objTree k8s.ObjectRefTree) []tri
 }
 
 func (w *Reconciler) handlePodChange(ctx context.Context, pod *v1.Pod) {
-	objTree, err := w.ownerFetcher.OwnerTreeOf(ctx, k8s.NewK8sEntity(pod))
+	objTree, err := w.kCli.OwnerFetcher().OwnerTreeOf(ctx, k8s.NewK8sEntity(pod))
 	if err != nil {
 		return
 	}
@@ -712,4 +724,22 @@ func namespacesAndUIDsFromSpec(watches []v1alpha1.KubernetesWatchRef) (namespace
 	}
 
 	return seenNamespaces, seenUIDs
+}
+
+// indexKubernetesDiscovery returns keys for all the objects we need to watch based on the spec.
+func indexKubernetesDiscovery(obj ctrlclient.Object) []indexer.Key {
+	var result []indexer.Key
+
+	kd := obj.(*v1alpha1.KubernetesDiscovery)
+	if kd != nil && kd.Spec.Cluster != "" {
+		result = append(result, indexer.Key{
+			Name: types.NamespacedName{
+				Namespace: kd.Namespace,
+				Name:      kd.Spec.Cluster,
+			},
+			GVK: clusterGVK,
+		})
+	}
+
+	return result
 }

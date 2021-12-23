@@ -41,6 +41,7 @@ import (
 	apitiltfile "github.com/tilt-dev/tilt/internal/controllers/apis/tiltfile"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cluster"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
+	"github.com/tilt-dev/tilt/internal/controllers/core/cmdimage"
 	"github.com/tilt-dev/tilt/internal/controllers/core/configmap"
 	"github.com/tilt-dev/tilt/internal/controllers/core/dockerimage"
 	"github.com/tilt-dev/tilt/internal/controllers/core/extension"
@@ -399,7 +400,11 @@ func (b *fakeBuildAndDeployer) updateKubernetesApplyStatus(ctx context.Context, 
 		if err != nil {
 			return err
 		}
-		im.Status.Image = iTarget.Refs.ClusterRef().String()
+		im.Status = v1alpha1.ImageMapStatus{
+			Image:            container.FamiliarString(iTarget.Refs.ClusterRef()),
+			ImageFromCluster: container.FamiliarString(iTarget.Refs.ClusterRef()),
+			ImageFromLocal:   container.FamiliarString(iTarget.Refs.LocalRef()),
+		}
 		imageMapSet[nn] = &im
 	}
 
@@ -1443,7 +1448,7 @@ func TestPodEventContainerStatus(t *testing.T) {
 	var ref reference.NamedTagged
 	f.WaitUntilManifestState("image appears", "foobar", func(ms store.ManifestState) bool {
 		result := ms.BuildStatus(manifest.ImageTargetAt(0).ID()).LastResult
-		ref = store.ClusterImageRefFromBuildResult(result)
+		ref, _ = container.ParseNamedTagged(store.ClusterImageRefFromBuildResult(result))
 		return ref != nil
 	})
 
@@ -1867,7 +1872,7 @@ func TestPodContainerStatus(t *testing.T) {
 	var ref reference.NamedTagged
 	f.WaitUntilManifestState("image appears", "fe", func(ms store.ManifestState) bool {
 		result := ms.BuildStatus(manifest.ImageTargetAt(0).ID()).LastResult
-		ref = store.ClusterImageRefFromBuildResult(result)
+		ref, _ = container.ParseNamedTagged(store.ClusterImageRefFromBuildResult(result))
 		return ref != nil
 	})
 
@@ -3651,6 +3656,7 @@ func TestDisablingResourcePreventsBuild(t *testing.T) {
 
 func TestDisableButtonIsCreated(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", `
@@ -3832,9 +3838,11 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 
 	cdc := controllers.ProvideDeferredClient()
+	sch := v1alpha1.NewScheme()
 
 	watcher := fsevent.NewFakeMultiWatcher()
 	kClient := k8s.NewFakeK8sClient(t)
+	clusterClients := cluster.NewFakeClientCache(kClient)
 
 	timerMaker := fsevent.MakeFakeTimerMaker(t)
 
@@ -3876,11 +3884,10 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		nil, "tilt-default", webListener, serverOptions,
 		&server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
 	ns := k8s.Namespace("default")
-	of := k8s.ProvideOwnerFetcher(ctx, kClient)
 	rd := kubernetesdiscovery.NewContainerRestartDetector()
-	kdc := kubernetesdiscovery.NewReconciler(cdc, kClient, of, rd, st)
-	sw := k8swatch.NewServiceWatcher(kClient, of, ns)
-	ewm := k8swatch.NewEventWatchManager(kClient, of, ns)
+	kdc := kubernetesdiscovery.NewReconciler(cdc, sch, kClient, rd, st)
+	sw := k8swatch.NewServiceWatcher(clusterClients, ns)
+	ewm := k8swatch.NewEventWatchManager(clusterClients, ns)
 	tcum := cloud.NewStatusManager(httptest.NewFakeClientEmptyJSON(), clock)
 	fe := cmd.NewFakeExecer()
 	fpm := cmd.NewFakeProberManager()
@@ -3892,7 +3899,6 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	tp := prompt.NewTerminalPrompt(ta, prompt.TTYOpen, openurl.BrowserOpen,
 		log, "localhost", model.WebURL{})
 	h := hud.NewFakeHud()
-	sch := v1alpha1.NewScheme()
 
 	uncached := controllers.UncachedObjects{}
 	for _, obj := range v1alpha1.AllResourceObjects() {
@@ -3921,7 +3927,8 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	cu := &containerupdate.FakeContainerUpdater{}
 	lur := liveupdate.NewFakeReconciler(st, cu, cdc)
 	dir := dockerimage.NewReconciler(cdc)
-	clr := cluster.NewReconciler(cdc, st, docker.LocalEnv{})
+	cir := cmdimage.NewReconciler(cdc)
+	clr := cluster.NewReconciler(ctx, cdc, st, docker.LocalEnv{}, cluster.NewConnectionManager())
 	clr.SetFakeClientsForTesting(kClient, dockerClient)
 
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
@@ -3941,6 +3948,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		lur,
 		cmr,
 		dir,
+		cir,
 		clr,
 	))
 

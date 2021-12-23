@@ -5,6 +5,11 @@
 
 set -ex
 
+if [[ "$(which brew)" == "" ]]; then
+    echo "Missing Homebrew"
+    exit 1
+fi
+
 if [[ "$GITHUB_TOKEN" == "" ]]; then
     echo "Missing GITHUB_TOKEN"
     exit 1

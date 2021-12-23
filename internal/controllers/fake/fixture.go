@@ -69,6 +69,10 @@ func NewControllerFixtureBuilder(t testing.TB) *ControllerFixtureBuilder {
 	}
 }
 
+func (b ControllerFixtureBuilder) Scheme() *runtime.Scheme {
+	return b.Client.Scheme()
+}
+
 func (b ControllerFixtureBuilder) Build(c controller) *ControllerFixture {
 	b.t.Helper()
 

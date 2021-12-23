@@ -7,7 +7,6 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -26,6 +25,7 @@ import (
 const ArchUnknown string = "unknown"
 
 type Reconciler struct {
+	globalCtx      context.Context
 	ctrlClient     ctrlclient.Client
 	localDockerEnv docker.LocalEnv
 	store          store.RStore
@@ -33,9 +33,7 @@ type Reconciler struct {
 	fakeK8sClient    k8s.Client
 	fakeDockerClient docker.Client
 
-	// TODO(nick): We should have all reconcilers share a client cache, and
-	// be able to wait on the connection to complete.
-	connections map[types.NamespacedName]*connection
+	connManager *ConnectionManager
 }
 
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
@@ -44,12 +42,13 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	return b, nil
 }
 
-func NewReconciler(ctrlClient ctrlclient.Client, store store.RStore, localDockerEnv docker.LocalEnv) *Reconciler {
+func NewReconciler(globalCtx context.Context, ctrlClient ctrlclient.Client, store store.RStore, localDockerEnv docker.LocalEnv, connManager *ConnectionManager) *Reconciler {
 	return &Reconciler{
+		globalCtx:      globalCtx,
 		ctrlClient:     ctrlClient,
 		store:          store,
 		localDockerEnv: localDockerEnv,
-		connections:    make(map[types.NamespacedName]*connection),
+		connManager:    connManager,
 	}
 }
 
@@ -66,19 +65,19 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	err := r.ctrlClient.Get(ctx, nn, &obj)
 	if err != nil && !apierrors.IsNotFound(err) {
 		r.store.Dispatch(clusters.NewClusterDeleteAction(request.Name))
-		delete(r.connections, nn)
+		r.connManager.delete(nn)
 		return ctrl.Result{}, err
 	}
 
 	// The apiserver is the source of truth, and will ensure the engine state is up to date.
 	r.store.Dispatch(clusters.NewClusterUpsertAction(&obj))
 
-	connection, hasConnection := r.connections[nn]
+	conn, hasConnection := r.connManager.load(nn)
 	if hasConnection {
 		// If the spec changed, delete the connection and recreate it.
-		if !apicmp.DeepEqual(connection.spec, obj.Spec) {
-			delete(r.connections, nn)
-			connection = nil
+		if !apicmp.DeepEqual(conn.spec, obj.Spec) {
+			r.connManager.delete(nn)
+			conn = connection{}
 			hasConnection = false
 		}
 	}
@@ -86,23 +85,25 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	if !hasConnection {
 		// Create the initial connection to the cluster.
 		if obj.Spec.Connection != nil && obj.Spec.Connection.Kubernetes != nil {
-			connection = r.createKubernetesConnection(ctx, obj.Spec.Connection.Kubernetes)
+			conn = r.createKubernetesConnection(ctx, obj.Spec.Connection.Kubernetes)
 		} else if obj.Spec.Connection != nil && obj.Spec.Connection.Docker != nil {
-			connection = r.createDockerConnection(ctx, obj.Spec.Connection.Docker)
+			conn = r.createDockerConnection(ctx, obj.Spec.Connection.Docker)
 		}
-		connection.createdAt = time.Now()
-		connection.spec = obj.Spec
+		conn.createdAt = time.Now()
+		conn.spec = obj.Spec
 	}
 
-	if connection != nil && connection.arch == "" {
-		if connection.k8sClient != nil {
-			connection.arch = r.readKubernetesArch(ctx, connection.k8sClient)
-		} else if connection.dockerClient != nil {
-			connection.arch = r.readDockerArch(ctx, connection.dockerClient)
+	if conn.error == "" && conn.arch == "" {
+		if conn.k8sClient != nil {
+			conn.arch = r.readKubernetesArch(ctx, conn.k8sClient)
+		} else if conn.dockerClient != nil {
+			conn.arch = r.readDockerArch(ctx, conn.dockerClient)
 		}
 	}
 
-	status := connection.toStatus()
+	r.connManager.store(nn, conn)
+
+	status := conn.toStatus()
 	err = r.maybeUpdateStatus(ctx, &obj, status)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -112,9 +113,9 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 }
 
 // Creates a docker connection from the spec.
-func (r *Reconciler) createDockerConnection(ctx context.Context, obj *v1alpha1.DockerClusterConnection) *connection {
+func (r *Reconciler) createDockerConnection(ctx context.Context, obj *v1alpha1.DockerClusterConnection) connection {
 	if r.fakeDockerClient != nil {
-		return &connection{dockerClient: r.fakeDockerClient}
+		return connection{connType: connectionTypeDocker, dockerClient: r.fakeDockerClient}
 	}
 
 	// If no Host is specified, use the default Env from environment variables.
@@ -126,21 +127,21 @@ func (r *Reconciler) createDockerConnection(ctx context.Context, obj *v1alpha1.D
 	client := docker.NewDockerClient(ctx, env)
 	err := client.CheckConnected()
 	if err != nil {
-		return &connection{error: err.Error()}
+		return connection{connType: connectionTypeDocker, error: err.Error()}
 	}
-	return &connection{dockerClient: client}
+	return connection{connType: connectionTypeDocker, dockerClient: client}
 }
 
 // Creates a Kubernetes connection from the spec.
 //
 // The Kubernetes Client APIs are really defined for automatic dependency injection.
-// (as opposed to the Kuberentes convention of nested factory structs.)
+// (as opposed to the Kubernetes convention of nested factory structs.)
 //
 // If you have to edit the below, it's easier to let wire generate the
 // factory code for you, then adapt it here.
-func (r *Reconciler) createKubernetesConnection(ctx context.Context, obj *v1alpha1.KubernetesClusterConnection) *connection {
+func (r *Reconciler) createKubernetesConnection(ctx context.Context, obj *v1alpha1.KubernetesClusterConnection) connection {
 	if r.fakeK8sClient != nil {
-		return &connection{k8sClient: r.fakeK8sClient}
+		return connection{connType: connectionTypeK8s, k8sClient: r.fakeK8sClient}
 	}
 
 	k8sKubeContextOverride := k8s.KubeContextOverride(obj.Context)
@@ -148,7 +149,7 @@ func (r *Reconciler) createKubernetesConnection(ctx context.Context, obj *v1alph
 	clientConfig := k8s.ProvideClientConfig(k8sKubeContextOverride, k8sNamespaceOverride)
 	apiConfig, err := k8s.ProvideKubeConfig(clientConfig, k8sKubeContextOverride)
 	if err != nil {
-		return &connection{error: err.Error()}
+		return connection{connType: connectionTypeK8s, error: err.Error()}
 	}
 	env := k8s.ProvideEnv(ctx, apiConfig)
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
@@ -158,15 +159,15 @@ func (r *Reconciler) createKubernetesConnection(ctx context.Context, obj *v1alph
 	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	kubeContext, err := k8s.ProvideKubeContext(apiConfig)
 	if err != nil {
-		return &connection{error: err.Error()}
+		return connection{connType: connectionTypeK8s, error: err.Error()}
 	}
 	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
-	client := k8s.ProvideK8sClient(env, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
+	client := k8s.ProvideK8sClient(r.globalCtx, env, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
 	_, err = client.CheckConnected(ctx)
 	if err != nil {
-		return &connection{error: err.Error()}
+		return connection{connType: connectionTypeK8s, error: err.Error()}
 	}
-	return &connection{k8sClient: client}
+	return connection{connType: connectionTypeK8s, k8sClient: client}
 }
 
 // Reads the arch from a kubernetes cluster, or "unknown" if we can't
@@ -221,15 +222,6 @@ func (r *Reconciler) maybeUpdateStatus(ctx context.Context, obj *v1alpha1.Cluste
 		logger.Get(ctx).Errorf("Cluster status error: %v", newStatus.Error)
 	}
 	return nil
-}
-
-type connection struct {
-	spec         v1alpha1.ClusterSpec
-	dockerClient docker.Client
-	k8sClient    k8s.Client
-	error        string
-	createdAt    time.Time
-	arch         string
 }
 
 func (c *connection) toStatus() v1alpha1.ClusterStatus {

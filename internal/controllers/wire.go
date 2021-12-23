@@ -6,6 +6,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/controllers/core/cluster"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
+	"github.com/tilt-dev/tilt/internal/controllers/core/cmdimage"
 	"github.com/tilt-dev/tilt/internal/controllers/core/configmap"
 	"github.com/tilt-dev/tilt/internal/controllers/core/dockerimage"
 	"github.com/tilt-dev/tilt/internal/controllers/core/extension"
@@ -52,6 +53,7 @@ func ProvideControllers(
 	lur *liveupdate.Reconciler,
 	cmr *configmap.Reconciler,
 	dir *dockerimage.Reconciler,
+	cir *cmdimage.Reconciler,
 	clr *cluster.Reconciler,
 ) []Controller {
 	return []Controller{
@@ -71,6 +73,7 @@ func ProvideControllers(
 		lur,
 		cmr,
 		dir,
+		dir,
 		clr,
 	}
 }
@@ -84,6 +87,7 @@ var WireSet = wire.NewSet(
 	ProvideDeferredClient,
 	wire.Bind(new(ctrlclient.Client), new(*DeferredClient)),
 
+	cluster.WireSet,
 	cmd.WireSet,
 	controllerSet,
 	uiresource.WireSet,
@@ -96,4 +100,5 @@ var WireSet = wire.NewSet(
 	liveupdate.WireSet,
 	configmap.WireSet,
 	dockerimage.WireSet,
+	cmdimage.WireSet,
 )

@@ -2,6 +2,7 @@ package filepath
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -12,13 +13,15 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
+var VersionError = errors.New("incorrect object version")
+
 // A filesystem interface so we can sub out filesystem-based storage
 // with memory-based storage.
 type FS interface {
 	Remove(filepath string) error
 	Exists(filepath string) bool
 	EnsureDir(dirname string) error
-	Write(encoder runtime.Encoder, filepath string, obj runtime.Object) error
+	Write(encoder runtime.Encoder, filepath string, obj runtime.Object, storageVersion uint64) error
 	Read(decoder runtime.Decoder, path string, newFunc func() runtime.Object) (runtime.Object, error)
 	VisitDir(dirname string, newFunc func() runtime.Object, codec runtime.Decoder, visitFunc func(string, runtime.Object) error) error
 }
@@ -44,7 +47,14 @@ func (fs RealFS) EnsureDir(dirname string) error {
 	return nil
 }
 
-func (fs RealFS) Write(encoder runtime.Encoder, filepath string, obj runtime.Object) error {
+func (fs RealFS) Write(encoder runtime.Encoder, filepath string, obj runtime.Object, storageVersion uint64) error {
+	// TODO(milas): use storageVersion to ensure we don't perform stale writes
+	// 	(currently, this isn't a critical priority as our use cases that rely
+	// 	on RealFS do not have simultaneous writers)
+	if err := setResourceVersion(obj, storageVersion+1); err != nil {
+		return err
+	}
+
 	buf := new(bytes.Buffer)
 	if err := encoder.Encode(obj, buf); err != nil {
 		return err
@@ -89,6 +99,7 @@ func (fs RealFS) VisitDir(dirname string, newFunc func() runtime.Object, codec r
 type MemoryFS struct {
 	mu  sync.Mutex
 	dir map[string]interface{}
+	rev uint64
 }
 
 func NewMemoryFS() *MemoryFS {
@@ -98,6 +109,11 @@ func NewMemoryFS() *MemoryFS {
 }
 
 var _ FS = &MemoryFS{}
+
+type versionedData struct {
+	version uint64
+	data    []byte
+}
 
 // Ensures the given directory exists in our in-memory map.
 func (fs *MemoryFS) ensureDir(pathToDir string) (map[string]interface{}, error) {
@@ -166,7 +182,17 @@ func (fs *MemoryFS) EnsureDir(dirname string) error {
 }
 
 // Write a copy of the object to our in-memory filesystem.
-func (fs *MemoryFS) Write(encoder runtime.Encoder, p string, obj runtime.Object) error {
+func (fs *MemoryFS) Write(encoder runtime.Encoder, p string, obj runtime.Object, storageVersion uint64) error {
+	// temporarily remove the resource version from the object before
+	// serialization, so that objects that are identical besides resource
+	// version serialize the same, allowing us to skip unnecessary writes
+	// (beneficial for preventing unnecessary optimistic concurrency failures
+	// where an update fails because of a changed version despite the object
+	// actually being identical)
+	if err := clearResourceVersion(obj); err != nil {
+		return err
+	}
+
 	// Encoding the object as bytes ensures that our in-memory filesystem
 	// has the same immutability semantics as a real storage system.
 	buf := new(bytes.Buffer)
@@ -177,12 +203,41 @@ func (fs *MemoryFS) Write(encoder runtime.Encoder, p string, obj runtime.Object)
 	fs.mu.Lock()
 	defer fs.mu.Unlock()
 
+	if rawObj, err := fs.readBuffer(p); err != nil {
+		if os.IsNotExist(err) {
+			// storageVersion == 0 -> this is a create, so it's expected to not exist (continue)
+			// storageVersion != 0 -> object has been deleted, propagate err to avoid a zombie update
+			if storageVersion != 0 {
+				return err
+			}
+		} else {
+			return err
+		}
+	} else if rawObj.version != storageVersion {
+		// this write is outdated
+		return VersionError
+	} else if bytes.Equal(rawObj.data, buf.Bytes()) {
+		// object serialized identically, skip write & version increment
+		return nil
+	}
+
 	dir, err := fs.ensureDir(filepath.Dir(p))
 	if err != nil {
 		return err
 	}
 
-	dir[filepath.Base(p)] = buf
+	// increment the resource version - it's applied to the object pointer for
+	// the caller in addition to being used to ensure the write is valid
+	newVersion := fs.incrementRev()
+	if err := setResourceVersion(obj, newVersion); err != nil {
+		return err
+	}
+
+	dir[filepath.Base(p)] = versionedData{
+		version: newVersion,
+		data:    buf.Bytes(),
+	}
+
 	return nil
 }
 
@@ -194,30 +249,39 @@ func (fs *MemoryFS) Read(decoder runtime.Decoder, p string, newFunc func() runti
 	if err != nil {
 		return nil, err
 	}
-	return fs.decodeBuffer(decoder, buf, newFunc)
-}
 
-func (fs *MemoryFS) readBuffer(p string) (*bytes.Buffer, error) {
-	dir, err := fs.ensureDir(filepath.Dir(p))
+	obj, err := fs.decodeBuffer(decoder, buf, newFunc)
 	if err != nil {
 		return nil, err
 	}
 
-	contents, ok := dir[filepath.Base(p)]
-	if !ok {
-		return nil, os.ErrNotExist
-	}
-	buf, ok := contents.(*bytes.Buffer)
-	if !ok {
-		return nil, os.ErrNotExist
-	}
-	return buf, nil
+	return obj, nil
 }
 
-func (fs *MemoryFS) decodeBuffer(decoder runtime.Decoder, buf *bytes.Buffer, newFunc func() runtime.Object) (runtime.Object, error) {
-	newObj := newFunc()
-	decodedObj, _, err := decoder.Decode(buf.Bytes(), nil, newObj)
+func (fs *MemoryFS) readBuffer(p string) (versionedData, error) {
+	dir, err := fs.ensureDir(filepath.Dir(p))
 	if err != nil {
+		return versionedData{}, err
+	}
+
+	contents, ok := dir[filepath.Base(p)]
+	if !ok {
+		return versionedData{}, os.ErrNotExist
+	}
+	data, ok := contents.(versionedData)
+	if !ok {
+		return versionedData{}, os.ErrNotExist
+	}
+	return data, nil
+}
+
+func (fs *MemoryFS) decodeBuffer(decoder runtime.Decoder, rawObj versionedData, newFunc func() runtime.Object) (runtime.Object, error) {
+	newObj := newFunc()
+	decodedObj, _, err := decoder.Decode(rawObj.data, nil, newObj)
+	if err != nil {
+		return nil, err
+	}
+	if err := setResourceVersion(decodedObj, rawObj.version); err != nil {
 		return nil, err
 	}
 	return decodedObj, nil
@@ -248,14 +312,14 @@ func (fs *MemoryFS) VisitDir(dirname string, newFunc func() runtime.Object, code
 }
 
 // Internal helper for reading the directory. Must hold the mutex.
-func (fs *MemoryFS) readDir(dirname string) ([]string, []*bytes.Buffer, error) {
+func (fs *MemoryFS) readDir(dirname string) ([]string, []versionedData, error) {
 	dir, err := fs.ensureDir(dirname)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	keyPaths := []string{}
-	buffers := []*bytes.Buffer{}
+	buffers := []versionedData{}
 
 	var walk func(ancestorPath string, dir map[string]interface{}) error
 	walk = func(ancestorPath string, dir map[string]interface{}) error {
@@ -274,16 +338,24 @@ func (fs *MemoryFS) readDir(dirname string) ([]string, []*bytes.Buffer, error) {
 				continue
 			}
 
-			newBuf, err := fs.readBuffer(keyPath)
+			rawObj, err := fs.readBuffer(keyPath)
 			if err != nil {
 				return err
 			}
 			keyPaths = append(keyPaths, keyPath)
-			buffers = append(buffers, newBuf)
+			buffers = append(buffers, rawObj)
 		}
 		return nil
 	}
 
 	err = walk(dirname, dir)
 	return keyPaths, buffers, err
+}
+
+// incrementRev increases the revision counter and returns the new value.
+//
+// mu must be held.
+func (fs *MemoryFS) incrementRev() uint64 {
+	fs.rev++
+	return fs.rev
 }

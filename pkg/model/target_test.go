@@ -102,17 +102,19 @@ func TestTopSort(t *testing.T) {
 
 func newDepTarget(name string, deps ...string) ImageTarget {
 	ref := container.MustParseSelector(name)
-	depIDs := make([]TargetID, len(deps))
+	depIDs := make([]string, len(deps))
 	for i, dep := range deps {
-		depIDs[i] = ImageID(container.MustParseSelector(dep))
+		depIDs[i] = string(ImageID(container.MustParseSelector(dep)).Name)
 	}
-	return MustNewImageTarget(ref).WithDependencyIDs(depIDs)
+	return MustNewImageTarget(ref).
+		WithBuildDetails(DockerBuild{}).
+		WithImageMapDeps(depIDs)
 }
 
 func newK8sTarget(name string, deps ...string) K8sTarget {
-	depIDs := make([]TargetID, len(deps))
+	depIDs := make([]string, len(deps))
 	for i, dep := range deps {
-		depIDs[i] = ImageID(container.MustParseSelector(dep))
+		depIDs[i] = string(ImageID(container.MustParseSelector(dep)).Name)
 	}
-	return K8sTarget{Name: TargetName(name)}.WithImageDependencies(depIDs, nil)
+	return K8sTarget{Name: TargetName(name)}.WithImageDependencies(depIDs)
 }

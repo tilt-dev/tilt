@@ -228,7 +228,7 @@ func HoldTargetsWithBuildingComponents(state store.EngineState, mts []*store.Man
 func HoldTargetsWaitingOnCluster(state store.EngineState, mts []*store.ManifestTarget, holds HoldSet) {
 	// TODO(nick): In the future, K8s objects may reference the cluster
 	// they're deploying to.
-	clusterName := "default"
+	clusterName := v1alpha1.ClusterNameDefault
 	cluster, ok := state.Clusters[clusterName]
 	isClusterOK := ok && cluster.Status.Error == "" && cluster.Status.Arch != ""
 	if isClusterOK {

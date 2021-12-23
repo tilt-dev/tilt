@@ -8,6 +8,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/tilt-dev/tilt/internal/controllers/core/cluster"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -15,20 +16,18 @@ import (
 )
 
 type ServiceWatcher struct {
-	kCli         k8s.Client
-	ownerFetcher k8s.OwnerFetcher
+	clients cluster.ClientCache
 
 	mu                sync.RWMutex
 	watcherKnownState watcherKnownState
-	knownServices     map[types.UID]*v1.Service
+	knownServices     map[clusterUID]*v1.Service
 }
 
-func NewServiceWatcher(kCli k8s.Client, ownerFetcher k8s.OwnerFetcher, cfgNS k8s.Namespace) *ServiceWatcher {
+func NewServiceWatcher(clients cluster.ClientCache, cfgNS k8s.Namespace) *ServiceWatcher {
 	return &ServiceWatcher{
-		kCli:              kCli,
-		ownerFetcher:      ownerFetcher,
+		clients:           clients,
 		watcherKnownState: newWatcherKnownState(cfgNS),
-		knownServices:     make(map[types.UID]*v1.Service),
+		knownServices:     make(map[clusterUID]*v1.Service),
 	}
 }
 
@@ -67,10 +66,18 @@ func (w *ServiceWatcher) OnChange(ctx context.Context, st store.RStore, _ store.
 	return nil
 }
 
-func (w *ServiceWatcher) setupWatch(ctx context.Context, st store.RStore, ns k8s.Namespace) {
-	ch, err := w.kCli.WatchServices(ctx, ns)
+func (w *ServiceWatcher) setupWatch(ctx context.Context, st store.RStore, ns clusterNamespace) {
+	kCli, err := w.clients.GetK8sClient(ns.cluster)
 	if err != nil {
-		err = errors.Wrapf(err, "Error watching services. Are you connected to kubernetes?\nTry running `kubectl get services -n %q`", ns)
+		// ignore errors, if the cluster status changes, the subscriber
+		// will be re-run and the namespaces will be picked up again as new
+		// since watcherKnownState isn't updated
+		return
+	}
+
+	ch, err := kCli.WatchServices(ctx, ns.namespace)
+	if err != nil {
+		err = errors.Wrapf(err, "Error watching services. Are you connected to kubernetes?\nTry running `kubectl get services -n %q`", ns.namespace)
 		st.Dispatch(store.NewErrorAction(err))
 		return
 	}
@@ -78,15 +85,23 @@ func (w *ServiceWatcher) setupWatch(ctx context.Context, st store.RStore, ns k8s
 	ctx, cancel := context.WithCancel(ctx)
 	w.watcherKnownState.namespaceWatches[ns] = namespaceWatch{cancel: cancel}
 
-	go w.dispatchServiceChangesLoop(ctx, ch, st)
+	go w.dispatchServiceChangesLoop(ctx, kCli, ns.cluster, ch, st)
 }
 
 // When new UIDs are deployed, go through all our known services and dispatch
 // new events. This handles the case where we get the Service change event
 // before the deploy id shows up in the manifest, which is way more common than
 // you would think.
-func (w *ServiceWatcher) setupNewUIDs(ctx context.Context, st store.RStore, newUIDs map[types.UID]model.ManifestName) {
+func (w *ServiceWatcher) setupNewUIDs(ctx context.Context, st store.RStore, newUIDs map[clusterUID]model.ManifestName) {
 	for uid, mn := range newUIDs {
+		kCli, err := w.clients.GetK8sClient(uid.cluster)
+		if err != nil {
+			// ignore errors, if the cluster status changes, the subscriber
+			// will be re-run and the namespaces will be picked up again as new
+			// since watcherKnownState isn't updated
+			continue
+		}
+
 		w.watcherKnownState.knownDeployedUIDs[uid] = mn
 
 		service, ok := w.knownServices[uid]
@@ -94,7 +109,7 @@ func (w *ServiceWatcher) setupNewUIDs(ctx context.Context, st store.RStore, newU
 			continue
 		}
 
-		err := DispatchServiceChange(st, service, mn, w.kCli.NodeIP(ctx))
+		err = DispatchServiceChange(st, service, mn, kCli.NodeIP(ctx))
 		if err != nil {
 			logger.Get(ctx).Infof("error resolving service url %s: %v", service.Name, err)
 		}
@@ -105,11 +120,11 @@ func (w *ServiceWatcher) setupNewUIDs(ctx context.Context, st store.RStore, newU
 //
 // The division between triageServiceUpdate and recordServiceUpdate is a bit artificial,
 // but is designed this way to be consistent with PodWatcher and EventWatchManager.
-func (w *ServiceWatcher) triageServiceUpdate(service *v1.Service) model.ManifestName {
+func (w *ServiceWatcher) triageServiceUpdate(clusterNN types.NamespacedName, service *v1.Service) model.ManifestName {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	uid := service.UID
+	uid := clusterUID{cluster: clusterNN, uid: service.UID}
 	w.knownServices[uid] = service
 
 	manifestName, ok := w.watcherKnownState.knownDeployedUIDs[uid]
@@ -120,7 +135,7 @@ func (w *ServiceWatcher) triageServiceUpdate(service *v1.Service) model.Manifest
 	return manifestName
 }
 
-func (w *ServiceWatcher) dispatchServiceChangesLoop(ctx context.Context, ch <-chan *v1.Service, st store.RStore) {
+func (w *ServiceWatcher) dispatchServiceChangesLoop(ctx context.Context, kCli k8s.Client, clusterNN types.NamespacedName, ch <-chan *v1.Service, st store.RStore) {
 	for {
 		select {
 		case service, ok := <-ch:
@@ -128,12 +143,12 @@ func (w *ServiceWatcher) dispatchServiceChangesLoop(ctx context.Context, ch <-ch
 				return
 			}
 
-			manifestName := w.triageServiceUpdate(service)
+			manifestName := w.triageServiceUpdate(clusterNN, service)
 			if manifestName == "" {
 				continue
 			}
 
-			err := DispatchServiceChange(st, service, manifestName, w.kCli.NodeIP(ctx))
+			err := DispatchServiceChange(st, service, manifestName, kCli.NodeIP(ctx))
 			if err != nil {
 				logger.Get(ctx).Infof("error resolving service url %s: %v", service.Name, err)
 			}

@@ -29,10 +29,10 @@ func TestKubernetesError(t *testing.T) {
 
 	// Create a fake client.
 	nn := types.NamespacedName{Name: "default"}
-	f.r.connections[nn] = &connection{
+	f.r.connManager.store(nn, connection{
 		spec:  cluster.Spec,
 		error: "connection error",
-	}
+	})
 	f.Create(cluster)
 
 	assert.Equal(t, "", cluster.Status.Error)
@@ -68,10 +68,10 @@ func TestKubernetesArch(t *testing.T) {
 			},
 		},
 	})
-	f.r.connections[nn] = &connection{
+	f.r.connManager.store(nn, connection{
 		spec:      cluster.Spec,
 		k8sClient: client,
-	}
+	})
 	f.Create(cluster)
 	f.MustGet(nn, cluster)
 	assert.Equal(t, "amd64", cluster.Status.Arch)
@@ -93,10 +93,10 @@ func TestDockerArch(t *testing.T) {
 	// Create a fake client.
 	nn := types.NamespacedName{Name: "default"}
 	client := docker.NewFakeClient()
-	f.r.connections[nn] = &connection{
+	f.r.connManager.store(nn, connection{
 		spec:         cluster.Spec,
 		dockerClient: client,
-	}
+	})
 	f.Create(cluster)
 	f.MustGet(nn, cluster)
 	assert.Equal(t, "amd64", cluster.Status.Arch)
@@ -111,7 +111,7 @@ func newFixture(t *testing.T) *fixture {
 	cfb := fake.NewControllerFixtureBuilder(t)
 	st := store.NewTestingStore()
 
-	r := NewReconciler(cfb.Client, st, docker.LocalEnv{})
+	r := NewReconciler(cfb.Context(), cfb.Client, st, docker.LocalEnv{}, NewConnectionManager())
 	return &fixture{
 		ControllerFixture: cfb.Build(r),
 		r:                 r,

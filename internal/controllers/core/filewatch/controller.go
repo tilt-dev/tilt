@@ -100,8 +100,9 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	// Update filewatch's disable status
 	if disableStatus != fw.Status.DisableStatus {
+		patchBase := ctrlclient.MergeFrom(fw.DeepCopy())
 		fw.Status.DisableStatus = disableStatus
-		if err := c.Client.Status().Update(ctx, &fw); err != nil {
+		if err := c.Client.Status().Patch(ctx, &fw, patchBase); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
@@ -159,13 +160,15 @@ func (c *Controller) addOrReplace(ctx context.Context, st store.RStore, name typ
 		return fmt.Errorf("failed to initialize filesystem watch: %v", err)
 	}
 
+	patchBase := ctrlclient.MergeFrom(fw.DeepCopy())
+
 	// Clear out any old events
 	fw.Status.FileEvents = nil
 	fw.Status.LastEventTime = metav1.MicroTime{}
 	fw.Status.MonitorStartTime = metav1.NowMicro()
 	fw.Status.Error = ""
 
-	if err := c.Client.Status().Update(ctx, fw); err != nil {
+	if err := c.Client.Status().Patch(ctx, fw, patchBase); err != nil {
 		_ = notify.Close()
 		return fmt.Errorf("failed to update monitor start time: %v", err)
 	}

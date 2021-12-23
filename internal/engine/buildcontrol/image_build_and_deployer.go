@@ -63,7 +63,7 @@ func NewKINDLoader(env k8s.Env, clusterName k8s.ClusterName) KINDLoader {
 }
 
 type ImageBuildAndDeployer struct {
-	db          build.DockerBuilder
+	db          *build.DockerBuilder
 	ib          *ImageBuilder
 	k8sClient   k8s.Client
 	env         k8s.Env
@@ -76,8 +76,8 @@ type ImageBuildAndDeployer struct {
 }
 
 func NewImageBuildAndDeployer(
-	db build.DockerBuilder,
-	customBuilder build.CustomBuilder,
+	db *build.DockerBuilder,
+	customBuilder *build.CustomBuilder,
 	k8sClient k8s.Client,
 	env k8s.Env,
 	kubeContext k8s.KubeContext,
@@ -150,8 +150,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 	if hasReusedStep {
 		ps.StartPipelineStep(ctx, "Loading cached images")
 		for _, result := range reused {
-			ref := store.LocalImageRefFromBuildResult(result)
-			ps.Printf(ctx, "- %s", container.FamiliarString(ref))
+			ps.Printf(ctx, "- %s", store.LocalImageRefFromBuildResult(result))
 		}
 		ps.EndPipelineStep(ctx)
 	}
@@ -445,9 +444,14 @@ func InjectImageDependencies(iTarget model.ImageTarget, iTargetMap map[model.Tar
 	}
 
 	for _, dep := range deps {
-		image := dep.ImageLocalRef
+		image := dep.ImageMapStatus.ImageFromLocal
+		imageRef, err := container.ParseNamedTagged(image)
+		if err != nil {
+			return model.ImageTarget{}, errors.Wrap(err, "injectImageDependencies")
+		}
+
 		id := dep.TargetID()
-		modified, err := ast.InjectImageDigest(iTargetMap[id].Refs.ConfigurationRef, image, buildArgs)
+		modified, err := ast.InjectImageDigest(iTargetMap[id].Refs.ConfigurationRef, imageRef, buildArgs)
 		if err != nil {
 			return model.ImageTarget{}, errors.Wrap(err, "injectImageDependencies")
 		} else if !modified {
