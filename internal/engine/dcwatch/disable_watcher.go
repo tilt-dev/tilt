@@ -57,13 +57,9 @@ func (w *DisableSubscriber) OnChange(ctx context.Context, st store.RStore, summa
 
 			rs := manifest.State.DCRuntimeState().RuntimeStatus()
 			if rs == v1alpha1.RuntimeStatusOK || rs == v1alpha1.RuntimeStatusPending {
-				specToDisable = model.DockerComposeUpSpec{
-					Service: string(manifest.State.Name),
-					Project: manifest.Manifest.DockerComposeTarget().Spec.Project,
-				}
-
 				// for now, only disable one at a time
 				// https://app.shortcut.com/windmill/story/13140/support-logging-to-multiple-manifests
+				specToDisable = manifest.Manifest.DockerComposeTarget().Spec
 				uirToDisable = uir
 				break
 			}
