@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -2578,6 +2579,91 @@ func TestDockerComposeBuildCompletedSetsStatusToUpIfSuccessful(t *testing.T) {
 	})
 }
 
+func TestDockerComposeStopOnDisable(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	f.useRealTiltfileLoader()
+
+	m, _ := f.setupDCFixture()
+
+	expected := container.ID("aaaaaa")
+	f.b.nextDockerComposeContainerID = expected
+
+	containerState := docker.NewRunningContainerState()
+	f.b.nextDockerComposeContainerState = &containerState
+
+	f.loadAndStart()
+
+	f.waitForCompletedBuildCount(2)
+
+	f.setDisableState(m.Name, true)
+
+	require.Eventually(t, func() bool {
+		return len(f.dcc.RmCalls()) > 0
+	}, stdTimeout, time.Millisecond)
+
+	expectedCall := dockercompose.RmCall{
+		Specs: []model.DockerComposeUpSpec{m.DockerComposeTarget().Spec},
+	}
+	require.Equal(t, expectedCall, f.dcc.RmCalls()[0])
+}
+
+func TestDockerComposeStartOnReenable(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	f.useRealTiltfileLoader()
+
+	m, _ := f.setupDCFixture()
+
+	expected := container.ID("aaaaaa")
+	f.b.nextDockerComposeContainerID = expected
+
+	containerState := docker.NewRunningContainerState()
+	f.b.nextDockerComposeContainerState = &containerState
+
+	f.loadAndStart()
+
+	f.waitForCompletedBuildCount(2)
+
+	f.setDisableState(m.Name, true)
+
+	require.Eventually(t, func() bool {
+		return len(f.dcc.RmCalls()) > 0
+	}, stdTimeout, time.Millisecond, "DC rm")
+
+	f.setDisableState(m.Name, false)
+
+	f.waitForCompletedBuildCount(3)
+}
+
+func TestDockerComposeDisableRmError(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	f.useRealTiltfileLoader()
+
+	m, _ := f.setupDCFixture()
+
+	expected := container.ID("aaaaaa")
+	f.b.nextDockerComposeContainerID = expected
+
+	containerState := docker.NewRunningContainerState()
+	f.b.nextDockerComposeContainerState = &containerState
+
+	f.loadAndStart()
+
+	f.waitForCompletedBuildCount(2)
+
+	s := "fake dc error"
+	f.dcc.RmError = errors.New(s)
+	f.setDisableState(m.Name, true)
+
+	require.Eventually(t, func() bool {
+		st := f.store.RLockState()
+		defer f.store.RUnlockState()
+		return strings.Contains(st.LogStore.String(), s)
+	}, stdTimeout, time.Millisecond)
+}
+
 func TestEmptyTiltfile(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -3557,20 +3643,7 @@ func TestDisablingResourcePreventsBuild(t *testing.T) {
 
 	f.Start([]model.Manifest{m})
 
-	cm := v1alpha1.ConfigMap{}
-	err := f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: "foo-disable"}, &cm)
-	require.NoError(t, err)
-
-	cm.Data["isDisabled"] = "true"
-	err = f.ctrlClient.Update(f.ctx, &cm)
-	require.NoError(t, err)
-
-	f.WaitUntil("resource is disabled", func(state store.EngineState) bool {
-		if uir, ok := state.UIResources["foo"]; ok {
-			return uir.Status.DisableStatus.DisabledCount > 0
-		}
-		return false
-	})
+	f.setDisableState(m.Name, true)
 
 	action := server.AppendToTriggerQueueAction{Name: "foo", Reason: 123}
 	f.store.Dispatch(action)
@@ -3668,20 +3741,7 @@ func TestDisabledResourceRemovedFromTriggerQueue(t *testing.T) {
 		return state.ManifestInTriggerQueue(m.Name)
 	})
 
-	cm := v1alpha1.ConfigMap{}
-	err := f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: "foo-disable"}, &cm)
-	require.NoError(t, err)
-
-	cm.Data["isDisabled"] = "true"
-	err = f.ctrlClient.Update(f.ctx, &cm)
-	require.NoError(t, err)
-
-	f.WaitUntil("resource is disabled", func(state store.EngineState) bool {
-		if uir, ok := state.UIResources["foo"]; ok {
-			return uir.Status.DisableStatus.DisabledCount > 0
-		}
-		return false
-	})
+	f.setDisableState(m.Name, true)
 
 	f.WaitUntil("is removed from trigger queue", func(state store.EngineState) bool {
 		return !state.ManifestInTriggerQueue(m.Name)
@@ -3814,6 +3874,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	cc := configs.NewConfigsController(cdc)
 	tqs := configs.NewTriggerQueueSubscriber(cdc)
 	dcw := dcwatch.NewEventWatcher(fakeDcc, dockerClient)
+	dcds := dcwatch.NewDisableSubscriber(fakeDcc)
 	dclm := runtimelog.NewDockerComposeLogManager(fakeDcc)
 	serverOptions, err := server.ProvideTiltServerOptionsForTesting(ctx)
 	require.NoError(t, err)
@@ -3936,7 +3997,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	uss := uisession.NewSubscriber(cdc)
 	urs := uiresource.NewSubscriber(cdc)
 
-	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, sw, bc, cc, tqs, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, uss, urs)
+	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, sw, bc, cc, tqs, dcw, dcds, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, uss, urs)
 	ret.upper, err = NewUpper(ctx, st, subs)
 	require.NoError(t, err)
 
@@ -4541,6 +4602,23 @@ func (f *testFixture) setK8sApplyResult(name model.ManifestName, hash k8s.PodTem
 	}
 	ms.RuntimeState = krs
 	f.store.UnlockMutableState()
+}
+
+func (f *testFixture) setDisableState(mn model.ManifestName, isDisabled bool) {
+	cm := v1alpha1.ConfigMap{}
+	err := f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: fmt.Sprintf("%s-disable", mn)}, &cm)
+	require.NoError(f.t, err)
+
+	cm.Data["isDisabled"] = strconv.FormatBool(isDisabled)
+	err = f.ctrlClient.Update(f.ctx, &cm)
+	require.NoError(f.t, err)
+
+	f.WaitUntil("new disable state reflected in UIResource", func(state store.EngineState) bool {
+		if uir, ok := state.UIResources[mn.String()]; ok {
+			return uir.Status.DisableStatus.DisabledCount > 0 == isDisabled
+		}
+		return false
+	})
 }
 
 type fixtureSub struct {

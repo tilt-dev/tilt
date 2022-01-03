@@ -45,6 +45,7 @@ var dcProjectOptions = []compose.ProjectOptionsFn{
 type DockerComposeClient interface {
 	Up(ctx context.Context, spec model.DockerComposeUpSpec, shouldBuild bool, stdout, stderr io.Writer) error
 	Down(ctx context.Context, spec model.DockerComposeProject, stdout, stderr io.Writer) error
+	Rm(ctx context.Context, specs []model.DockerComposeUpSpec, stdout, stderr io.Writer) error
 	StreamLogs(ctx context.Context, spec model.DockerComposeUpSpec) io.ReadCloser
 	StreamEvents(ctx context.Context, spec model.DockerComposeProject) (<-chan string, error)
 	Project(ctx context.Context, spec model.DockerComposeProject) (*types.Project, error)
@@ -149,6 +150,47 @@ func (c *cmdDCClient) Down(ctx context.Context, p model.DockerComposeProject, st
 	}
 
 	args = append(args, "down")
+	cmd := c.dcCommand(ctx, args)
+	cmd.Stdin = strings.NewReader(p.YAML)
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+
+	err := cmd.Run()
+	if err != nil {
+		return FormatError(cmd, nil, err)
+	}
+
+	return nil
+}
+
+func (c *cmdDCClient) Rm(ctx context.Context, specs []model.DockerComposeUpSpec, stdout, stderr io.Writer) error {
+	if len(specs) == 0 {
+		return nil
+	}
+
+	// To be safe, we try not to run two docker-compose downs in parallel,
+	// because we know docker-compose up is not thread-safe.
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	p := specs[0].Project
+	args := c.projectArgs(p)
+	if logger.Get(ctx).Level().ShouldDisplay(logger.VerboseLvl) {
+		args = append(args, "--verbose")
+	}
+
+	var serviceNames []string
+	for _, s := range specs {
+		serviceNames = append(serviceNames, s.Service)
+	}
+
+	// `docker-compose rm` does not support a `--timeout` option, so it possibly defaults to 10,
+	// like `docker-compose stop` or `docker-compose down`.
+	// If it turns out this command's timeout is too long, we might want to change this to first
+	// call `docker-compose stop --timeout $NUM`, to do the presumably slow part under a smaller
+	// timeout.
+	args = append(args, []string{"rm", "--stop", "--force"}...)
+	args = append(args, serviceNames...)
 	cmd := c.dcCommand(ctx, args)
 	cmd.Stdin = strings.NewReader(p.YAML)
 	cmd.Stdout = stdout
