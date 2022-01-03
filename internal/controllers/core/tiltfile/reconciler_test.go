@@ -290,7 +290,6 @@ type fixture struct {
 	tempdir *tempdir.TempDirFixture
 	st      *testStore
 	r       *Reconciler
-	bs      *BuildSource
 	q       workqueue.RateLimitingInterface
 	tfl     *tiltfile.FakeTiltfileLoader
 }
@@ -304,18 +303,16 @@ func newFixture(t *testing.T) *fixture {
 	tfl := tiltfile.NewFakeTiltfileLoader()
 	d := docker.NewFakeClient()
 	kClient := k8s.NewFakeK8sClient(t)
-	bs := NewBuildSource()
-	r := NewReconciler(st, tfl, kClient, d, cfb.Client, v1alpha1.NewScheme(), bs, store.EngineModeUp, "", "")
+	r := NewReconciler(st, tfl, kClient, d, cfb.Client, v1alpha1.NewScheme(), store.EngineModeUp, "", "")
 	q := workqueue.NewRateLimitingQueue(
 		workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, time.Millisecond))
-	_ = bs.Start(context.Background(), handler.Funcs{}, q)
+	_ = r.requeuer.Start(context.Background(), handler.Funcs{}, q)
 
 	return &fixture{
 		ControllerFixture: cfb.Build(r),
 		tempdir:           tf,
 		st:                st,
 		r:                 r,
-		bs:                bs,
 		q:                 q,
 		tfl:               tfl,
 	}

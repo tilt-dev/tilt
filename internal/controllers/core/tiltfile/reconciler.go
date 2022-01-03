@@ -46,7 +46,7 @@ type Reconciler struct {
 	k8sContextOverride   k8s.KubeContextOverride
 	k8sNamespaceOverride k8s.NamespaceOverride
 	indexer              *indexer.Indexer
-	buildSource          *BuildSource
+	requeuer             *indexer.Requeuer
 	engineMode           store.EngineMode
 	loadCount            int // used to differentiate spans
 
@@ -58,7 +58,7 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 		For(&v1alpha1.Tiltfile{}).
 		Watches(&source.Kind{Type: &v1alpha1.ConfigMap{}},
 			handler.EnqueueRequestsFromMapFunc(r.enqueueTriggerQueue)).
-		Watches(r.buildSource, handler.Funcs{})
+		Watches(r.requeuer, handler.Funcs{})
 
 	restarton.SetupController(b, r.indexer, func(obj ctrlclient.Object) (*v1alpha1.RestartOnSpec, *v1alpha1.StartOnSpec) {
 		tf := obj.(*v1alpha1.Tiltfile)
@@ -70,7 +70,7 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 
 func NewReconciler(st store.RStore, tfl tiltfile.TiltfileLoader, k8sClient k8s.Client, dockerClient docker.Client,
 	ctrlClient ctrlclient.Client, scheme *runtime.Scheme,
-	buildSource *BuildSource, engineMode store.EngineMode,
+	engineMode store.EngineMode,
 	k8sContextOverride k8s.KubeContextOverride,
 	k8sNamespaceOverride k8s.NamespaceOverride) *Reconciler {
 	return &Reconciler{
@@ -81,7 +81,7 @@ func NewReconciler(st store.RStore, tfl tiltfile.TiltfileLoader, k8sClient k8s.C
 		ctrlClient:           ctrlClient,
 		indexer:              indexer.NewIndexer(scheme, indexTiltfile),
 		runs:                 make(map[types.NamespacedName]*runStatus),
-		buildSource:          buildSource,
+		requeuer:             indexer.NewRequeuer(),
 		engineMode:           engineMode,
 		k8sContextOverride:   k8sContextOverride,
 		k8sNamespaceOverride: k8sNamespaceOverride,
@@ -302,7 +302,7 @@ func (r *Reconciler) run(ctx context.Context, nn types.NamespacedName, tf *v1alp
 	r.mu.Unlock()
 
 	// Schedule a reconcile to create the API objects.
-	r.buildSource.Add(nn)
+	r.requeuer.Add(nn)
 }
 
 // After the tiltfile has been evaluated, create all the objects in the
@@ -347,7 +347,7 @@ func (r *Reconciler) handleLoaded(ctx context.Context, nn types.NamespacedName, 
 
 	// Schedule a reconcile in case any triggers happened while we were updating
 	// API objects.
-	r.buildSource.Add(nn)
+	r.requeuer.Add(nn)
 
 	return nil
 }
