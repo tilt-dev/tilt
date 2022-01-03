@@ -3870,7 +3870,6 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	execer := localexec.NewFakeExecer(t)
 	realTFL := tiltfile.ProvideTiltfileLoader(ta, k8sContextExt, versionExt, configExt, fakeDcc, "localhost", execer, feature.MainDefaults, env)
 	tfl := tiltfile.NewFakeTiltfileLoader()
-	buildSource := ctrltiltfile.NewBuildSource()
 	cc := configs.NewConfigsController(cdc)
 	tqs := configs.NewTriggerQueueSubscriber(cdc)
 	dcw := dcwatch.NewEventWatcher(fakeDcc, dockerClient)
@@ -3917,7 +3916,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 
 	kar := kubernetesapply.NewReconciler(cdc, kClient, sch, docker.Env{}, k8s.KubeContext("kind-kind"), st, "default", execer)
 
-	tfr := ctrltiltfile.NewReconciler(st, tfl, kClient, dockerClient, cdc, sch, buildSource, engineMode, "", "")
+	tfr := ctrltiltfile.NewReconciler(st, tfl, kClient, dockerClient, cdc, sch, engineMode, "", "")
 	tbr := togglebutton.NewReconciler(cdc, sch)
 	extr := extension.NewReconciler(cdc, sch, ta)
 	extrr, err := extensionrepo.NewReconciler(cdc, base)
