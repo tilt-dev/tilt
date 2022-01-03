@@ -11,6 +11,7 @@ import (
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/internal/controllers/core/cmdimage"
 	"github.com/tilt-dev/tilt/internal/controllers/core/dockerimage"
 
 	"github.com/tilt-dev/tilt/internal/build"
@@ -151,6 +152,7 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 
 		startTime := apis.NowMicro()
 		dockerimage.MaybeUpdateStatus(ctx, bd.ctrlClient, iTarget, dockerimage.ToBuildingStatus(iTarget, startTime))
+		cmdimage.MaybeUpdateStatus(ctx, bd.ctrlClient, iTarget, cmdimage.ToBuildingStatus(iTarget, startTime))
 
 		expectedRef := iTarget.Refs.ConfigurationRef
 
@@ -160,9 +162,11 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		refs, stages, err := bd.ib.Build(ctx, iTarget, ps)
 		if err != nil {
 			dockerimage.MaybeUpdateStatus(ctx, bd.ctrlClient, iTarget, dockerimage.ToCompletedFailStatus(iTarget, startTime, stages, err))
+			cmdimage.MaybeUpdateStatus(ctx, bd.ctrlClient, iTarget, cmdimage.ToCompletedFailStatus(iTarget, startTime, err))
 			return store.ImageBuildResult{}, err
 		}
 		dockerimage.MaybeUpdateStatus(ctx, bd.ctrlClient, iTarget, dockerimage.ToCompletedSuccessStatus(iTarget, startTime, stages, refs))
+		cmdimage.MaybeUpdateStatus(ctx, bd.ctrlClient, iTarget, cmdimage.ToCompletedSuccessStatus(iTarget, startTime, refs))
 
 		ref, err := bd.tagWithExpected(ctx, refs.LocalRef, expectedRef)
 		if err != nil {
