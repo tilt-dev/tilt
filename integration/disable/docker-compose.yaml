@@ -8,4 +8,4 @@ services:
     ports:
       # Use the host:port:container-port syntax to verify
       # https://github.com/tilt-dev/tilt/issues/5030
-      - "0.0.0.0:31235:8000"
+      - "0.0.0.0:31237:8000"

@@ -39,6 +39,7 @@ func TestDisableDC(t *testing.T) {
 	f := newDCFixture(t, "disable")
 	defer f.TearDown()
 
+	f.dockerKillAll("tilt")
 	f.TiltUp("-f", "Tiltfile.dc")
 
 	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
