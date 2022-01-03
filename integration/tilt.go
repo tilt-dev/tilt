@@ -68,7 +68,7 @@ func (d *TiltDriver) cmd(ctx context.Context, args []string, out io.Writer) *exe
 	}
 	if d.port > 0 {
 		for _, arg := range args {
-			if strings.HasPrefix("--port=", arg) {
+			if strings.HasPrefix(arg, "--port=") {
 				d.t.Fatalf("Cannot specify port argument when using automatic port mode: %s", arg)
 			}
 		}
