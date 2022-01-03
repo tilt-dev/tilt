@@ -42,6 +42,8 @@ ADD dir/c.txt .
 		Context:            f.Path(),
 	}
 	refs, _, err := f.b.BuildImage(f.ctx, f.ps, f.getNameFromTest(), spec,
+		defaultCluster,
+		nil,
 		model.EmptyMatcher)
 	if err != nil {
 		t.Fatal(err)
@@ -76,6 +78,8 @@ ADD $some_variable_name /test.txt`)
 		Args:               []string{"some_variable_name=awesome_variable"},
 	}
 	refs, _, err := f.b.BuildImage(f.ctx, f.ps, f.getNameFromTest(), spec,
+		defaultCluster,
+		nil,
 		model.EmptyMatcher)
 	if err != nil {
 		t.Fatal(err)
@@ -105,6 +109,8 @@ ADD a.txt .`)
 		Args:               []string{"some_variable_name=awesome_variable"},
 	}
 	refs, _, err := f.b.BuildImage(f.ctx, f.ps, f.getNameFromTest(), spec,
+		defaultCluster,
+		nil,
 		model.EmptyMatcher)
 	if err != nil {
 		t.Fatal(err)
@@ -133,7 +139,10 @@ RUN echo 'failed to create LLB definition: failed commit on ref "unknown-sha256:
 `,
 		Context: f.Path(),
 	}
-	_, _, err := f.b.BuildImage(ctx, ps, f.getNameFromTest(), spec, model.EmptyMatcher)
+	_, _, err := f.b.BuildImage(ctx, ps, f.getNameFromTest(), spec,
+		defaultCluster,
+		nil,
+		model.EmptyMatcher)
 	assert.Error(t, err)
 	assert.Contains(t, out.String(), "Detected Buildkit corruption. Rebuilding without Buildkit")
 	assert.Contains(t, out.String(), "[1/2] FROM docker.io/library/alpine") // buildkit-style output
