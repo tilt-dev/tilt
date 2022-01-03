@@ -106,6 +106,16 @@ func (f *TempDirFixture) CopyFile(originalPath, newPath string) {
 	f.WriteFile(newPath, string(contents))
 }
 
+// Read the file.
+func (f *TempDirFixture) ReadFile(path string) string {
+	fullPath := f.JoinPath(path)
+	contents, err := ioutil.ReadFile(fullPath)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	return string(contents)
+}
+
 func (f *TempDirFixture) WriteSymlink(linkContents, destPath string) {
 	fullDestPath := f.JoinPath(destPath)
 	err := os.MkdirAll(filepath.Dir(fullDestPath), os.FileMode(0777))

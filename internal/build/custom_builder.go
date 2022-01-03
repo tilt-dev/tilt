@@ -13,6 +13,7 @@ import (
 	ktypes "k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/imagemap"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -58,13 +59,13 @@ func (b *CustomBuilder) Build(ctx context.Context, refs container.RefSet,
 		// the registry, and re-add it later.
 		expectedBuildRefs, err = refs.WithoutRegistry().AddTagSuffix(expectedTag)
 		if err != nil {
-			return container.TaggedRefs{}, errors.Wrap(err, "CustomBuilder.Build")
+			return container.TaggedRefs{}, errors.Wrap(err, "custom_build")
 		}
 	} else {
 		// In "normal" mode, the user's script should use whichever registry tag we give it.
 		expectedBuildRefs, err = refs.AddTagSuffix(fmt.Sprintf("tilt-build-%d", b.clock.Now().Unix()))
 		if err != nil {
-			return container.TaggedRefs{}, errors.Wrap(err, "CustomBuilder.Build")
+			return container.TaggedRefs{}, errors.Wrap(err, "custom_build")
 		}
 	}
 
@@ -99,6 +100,10 @@ func (b *CustomBuilder) Build(ctx context.Context, refs container.RefSet,
 		}
 	}
 	cmd.Env = append(os.Environ(), extraEnvVars...)
+	err = imagemap.InjectIntoLocalEnv(cmd, spec.ImageMaps, imageMaps)
+	if err != nil {
+		return container.TaggedRefs{}, errors.Wrap(err, "custom_build")
+	}
 
 	w := l.Writer(logger.InfoLvl)
 	cmd.Stdout = w
@@ -141,18 +146,18 @@ func (b *CustomBuilder) Build(ctx context.Context, refs container.RefSet,
 
 	tag, err := digestAsTag(dig)
 	if err != nil {
-		return container.TaggedRefs{}, errors.Wrap(err, "CustomBuilder.Build")
+		return container.TaggedRefs{}, errors.Wrap(err, "custom_build")
 	}
 
 	taggedWithDigest, err := refs.AddTagSuffix(tag)
 	if err != nil {
-		return container.TaggedRefs{}, errors.Wrap(err, "CustomBuilder.Build")
+		return container.TaggedRefs{}, errors.Wrap(err, "custom_build")
 	}
 
 	// Docker client only needs to care about the localImage
 	err = b.dCli.ImageTag(ctx, dig.String(), taggedWithDigest.LocalRef.String())
 	if err != nil {
-		return container.TaggedRefs{}, errors.Wrap(err, "CustomBuilder.Build")
+		return container.TaggedRefs{}, errors.Wrap(err, "custom_build")
 	}
 
 	return taggedWithDigest, nil

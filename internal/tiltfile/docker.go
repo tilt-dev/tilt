@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/builder/dockerignore"
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
@@ -58,6 +59,7 @@ type dockerImage struct {
 	customCommand    model.Cmd
 	customDeps       []string
 	customTag        string
+	customImgDeps    []reference.Named
 
 	// Whether this has been matched up yet to a deploy resource.
 	matched bool
@@ -301,6 +303,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 	var entrypoint starlark.Value
 	var overrideArgsVal starlark.Sequence
 	var skipsLocalDocker bool
+	var imageDeps value.ImageList
 	outputsImageRefTo := value.NewLocalPathUnpacker(thread)
 
 	err := s.unpackArgs(fn.Name(), args, kwargs,
@@ -321,6 +324,8 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		// This is a crappy fix for https://github.com/tilt-dev/tilt/issues/4061
 		// so that we don't break things.
 		"command_bat", &commandBat,
+
+		"image_deps", &imageDeps,
 	)
 	if err != nil {
 		return nil, err
@@ -377,6 +382,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		customCommand:     command,
 		customDeps:        deps.Value,
 		customTag:         tag,
+		customImgDeps:     []reference.Named(imageDeps),
 		disablePush:       disablePush,
 		skipsLocalDocker:  skipsLocalDocker,
 		liveUpdate:        liveUpdate,

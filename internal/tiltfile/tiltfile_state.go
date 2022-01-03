@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/distribution/reference"
 	"github.com/looplab/tarjan"
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
@@ -655,23 +654,34 @@ func (s *tiltfileState) assertAllImagesMatched(us model.UpdateSettings) error {
 
 func (s *tiltfileState) assembleImages() error {
 	for _, imageBuilder := range s.buildIndex.images {
-		var err error
-
-		var depImages []reference.Named
 		if imageBuilder.dbDockerfile != "" {
-			depImages, err = imageBuilder.dbDockerfile.FindImages(imageBuilder.dbBuildArgs)
-		}
+			depImages, err := imageBuilder.dbDockerfile.FindImages(imageBuilder.dbBuildArgs)
+			if err != nil {
+				return err
+			}
+			for _, depImage := range depImages {
+				depBuilder := s.buildIndex.findBuilderForConsumedImage(depImage)
+				if depBuilder == nil {
+					// Images in the Dockerfile that don't have docker_build
+					// instructions are OK. We'll pull them as prebuilt images.
+					continue
+				}
 
-		if err != nil {
-			return err
-		}
-
-		for _, depImage := range depImages {
-			depBuilder := s.buildIndex.findBuilderForConsumedImage(depImage)
-			if depBuilder != nil {
 				imageBuilder.imageMapDeps = append(imageBuilder.imageMapDeps, depBuilder.ImageMapName())
 			}
 		}
+
+		for _, depImage := range imageBuilder.customImgDeps {
+			depBuilder := s.buildIndex.findBuilderForConsumedImage(depImage)
+			if depBuilder == nil {
+				// If the user specifically said to depend on this image, there
+				// must be a build instruction for it.
+				return fmt.Errorf("image %q: image dep %q not found",
+					imageBuilder.configurationRef.RefFamiliarString(), container.FamiliarString(depImage))
+			}
+			imageBuilder.imageMapDeps = append(imageBuilder.imageMapDeps, depBuilder.ImageMapName())
+		}
+
 	}
 	return nil
 }
