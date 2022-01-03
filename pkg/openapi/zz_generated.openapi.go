@@ -420,6 +420,13 @@ func schema_pkg_apis_core_v1alpha1_ClusterStatus(ref common.ReferenceCallback) c
 							Format:      "",
 						},
 					},
+					"configHash": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ConfigHash represents the state of the current cluster client config, so that consumers can detect when the underlying config has changed and refresh their client/connection accordingly.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},

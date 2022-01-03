@@ -83,6 +83,13 @@ message ClusterStatus {
   //
   // +optional
   optional string error = 2;
+
+  // ConfigHash represents the state of the current cluster client config, so
+  // that consumers can detect when the underlying config has changed and
+  // refresh their client/connection accordingly.
+  //
+  // +optional
+  optional string configHash = 3;
 }
 
 // Cmd represents a process on the host machine.

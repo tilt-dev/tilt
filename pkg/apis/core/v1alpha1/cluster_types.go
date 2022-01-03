@@ -158,6 +158,13 @@ type ClusterStatus struct {
 	//
 	// +optional
 	Error string `json:"error,omitempty" protobuf:"bytes,2,opt,name=error"`
+
+	// ConfigHash represents the state of the current cluster client config, so
+	// that consumers can detect when the underlying config has changed and
+	// refresh their client/connection accordingly.
+	//
+	// +optional
+	ConfigHash string `json:"configHash,omitempty" protobuf:"bytes,3,opt,name=configHash"`
 }
 
 // Cluster implements ObjectWithStatusSubResource interface.
