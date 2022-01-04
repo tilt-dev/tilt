@@ -129,7 +129,7 @@ func (r *k8sResource) addEntities(entities []k8s.K8sEntity,
 	for _, entity := range entities {
 		images, err := entity.FindImages(locators, envVarImages)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "finding image in %s/%s", entity.GVK().Kind, entity.Name())
 		}
 		for _, image := range images {
 			r.addImageDep(image, false)
