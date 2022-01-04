@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tilt-dev/tilt/internal/timecmp"
@@ -225,14 +226,7 @@ func TestLogReconnection(t *testing.T) {
 	f.kClient.SetLogReaderForPodContainer(podID, cName, reader)
 
 	// Set up fake time
-	startTime := time.Now()
-	currentTime := startTime.Add(5 * time.Second)
-	timeCh := make(chan time.Time)
-	ticker := time.Ticker{C: timeCh}
-	f.plsc.now = func() time.Time { return currentTime }
-	f.plsc.since = func(t time.Time) time.Duration { return currentTime.Sub(t) }
-	f.plsc.newTicker = func(d time.Duration) *time.Ticker { return &ticker }
-
+	startTime := f.clock.Now()
 	f.Create(plsFromPod("server", pb, startTime))
 
 	_, err := writer.Write([]byte("hello world!"))
@@ -240,8 +234,8 @@ func TestLogReconnection(t *testing.T) {
 	f.AssertOutputContains("hello world!")
 	f.AssertLogStartTime(startTime)
 
-	currentTime = currentTime.Add(20 * time.Second)
-	lastRead := currentTime
+	f.clock.Advance(20 * time.Second)
+	lastRead := f.clock.Now()
 	_, _ = writer.Write([]byte("hello world2!"))
 	f.AssertOutputContains("hello world2!")
 
@@ -256,18 +250,15 @@ func TestLogReconnection(t *testing.T) {
 	}()
 	f.AssertOutputDoesNotContain("goodbye world!")
 
-	currentTime = currentTime.Add(5 * time.Second)
-	timeCh <- currentTime
+	f.clock.Advance(5 * time.Second)
 	f.AssertOutputDoesNotContain("goodbye world!")
 
-	currentTime = currentTime.Add(5 * time.Second)
-	timeCh <- currentTime
+	f.clock.Advance(5 * time.Second)
 	f.AssertOutputDoesNotContain("goodbye world!")
 	f.AssertLogStartTime(startTime)
 
 	// simulate 15s since we last read a log; this triggers a reconnect
-	currentTime = currentTime.Add(5 * time.Second)
-	timeCh <- currentTime
+	f.clock.Advance(15 * time.Second)
 	time.Sleep(20 * time.Millisecond)
 	assert.Error(t, f.kClient.LastPodLogContext.Err())
 	require.NoError(t, writer.Close())
@@ -405,6 +396,7 @@ type plmFixture struct {
 	plsc    *Controller
 	out     *bufsync.ThreadSafeBuffer
 	store   *plmStore
+	clock   clockwork.FakeClock
 }
 
 func newPLMFixture(t testing.TB) *plmFixture {
@@ -418,9 +410,10 @@ func newPLMFixture(t testing.TB) *plmFixture {
 
 	cfb := fake.NewControllerFixtureBuilder(t)
 
+	clock := clockwork.NewFakeClock()
 	st := newPLMStore(t, out)
 	podSource := NewPodSource(ctx, kClient, cfb.Client.Scheme())
-	plsc := NewController(ctx, cfb.Client, st, kClient, podSource)
+	plsc := NewController(ctx, cfb.Client, st, kClient, podSource, clock)
 
 	return &plmFixture{
 		t:                 t,
@@ -430,6 +423,7 @@ func newPLMFixture(t testing.TB) *plmFixture {
 		ctx:               ctx,
 		out:               out,
 		store:             st,
+		clock:             clock,
 	}
 }
 
