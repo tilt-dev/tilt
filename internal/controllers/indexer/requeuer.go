@@ -47,10 +47,14 @@ type reconciler interface {
 	Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error)
 }
 
-func StartRequeuerForTesting(ctx context.Context, requeuer *Requeuer, reconciler reconciler) {
+func StartRequeuerForTesting(ctx context.Context, r *Requeuer, reconciler reconciler) {
+	StartSourceForTesting(ctx, r, reconciler)
+}
+
+func StartSourceForTesting(ctx context.Context, s source.Source, reconciler reconciler) {
 	q := workqueue.NewRateLimitingQueue(
 		workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, time.Millisecond))
-	_ = requeuer.Start(ctx, handler.Funcs{}, q)
+	_ = s.Start(ctx, handler.Funcs{}, q)
 
 	go func() {
 		for ctx.Err() == nil {

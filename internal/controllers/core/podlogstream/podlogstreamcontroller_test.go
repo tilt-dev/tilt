@@ -150,6 +150,8 @@ func TestLogsCanceledUnexpectedly(t *testing.T) {
 	// Set new logs, as if the pod restarted.
 	f.kClient.SetLogsForPodContainer(podID, cName, "goodbye world!\n")
 	f.triggerPodEvent(podID)
+	f.clock.Advance(10 * time.Second)
+	f.MustReconcile(types.NamespacedName{Name: pls.Name})
 	f.AssertOutputContains("goodbye world!\n")
 }
 
@@ -453,6 +455,7 @@ func newPLMFixture(t testing.TB) *plmFixture {
 	st := newPLMStore(t, out)
 	podSource := NewPodSource(ctx, kClient, cfb.Client.Scheme())
 	plsc := NewController(ctx, cfb.Client, cfb.Scheme(), st, kClient, podSource, clock)
+	indexer.StartSourceForTesting(cfb.Context(), plsc.podSource, plsc)
 
 	return &plmFixture{
 		t:                 t,

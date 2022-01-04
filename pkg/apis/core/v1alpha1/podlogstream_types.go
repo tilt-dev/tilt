@@ -158,13 +158,16 @@ func (in *PodLogStreamList) GetListMeta() *metav1.ListMeta {
 }
 
 // PodLogStreamStatus defines the observed state of PodLogStream
-//
-// TODO(nick): rewrite this status field, i don't think this is quite right.
 type PodLogStreamStatus struct {
 	// A list of containers being watched.
 	//
 	// +optional
 	ContainerStatuses []ContainerLogStreamStatus `json:"containerStatuses,omitempty" protobuf:"bytes,1,rep,name=containerStatuses"`
+
+	// Error message encountered while setting up the stream.
+	//
+	// +optional
+	Error string `json:"error,omitempty" protobuf:"bytes,2,opt,name=error"`
 }
 
 // ContainerLogStreamStatus defines the current status of each individual
