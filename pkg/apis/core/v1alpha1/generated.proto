@@ -84,12 +84,13 @@ message ClusterStatus {
   // +optional
   optional string error = 2;
 
-  // ConfigHash represents the state of the current cluster client config, so
-  // that consumers can detect when the underlying config has changed and
-  // refresh their client/connection accordingly.
+  // ConnectedAt indicates the time at which the cluster connection was established.
+  //
+  // Consumers can use this to detect when the underlying config has changed
+  // and refresh their client/connection accordingly.
   //
   // +optional
-  optional string configHash = 3;
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime connectedAt = 3;
 }
 
 // Cmd represents a process on the host machine.
