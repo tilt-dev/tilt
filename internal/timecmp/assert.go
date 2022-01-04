@@ -2,6 +2,7 @@ package timecmp
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -16,12 +17,27 @@ type stringableTimeValue interface {
 //
 // This simplifies comparing Go stdlib time.Time values with apiserver metav1.Time / metav1.MicroTime values
 // based on the minimum granularity between the two values.
-func AssertTimeEqual(t testing.TB, expected stringableTimeValue, actual stringableTimeValue) bool {
+func AssertTimeEqual(t testing.TB, expected stringableTimeValue, actual stringableTimeValue) (equal bool) {
 	t.Helper()
+
+	defer func() {
+		if !equal {
+			assert.Fail(t, fmt.Sprintf("Not equal: \n"+
+				"expected: %s\n"+
+				"actual  : %s", expected, actual))
+		}
+	}()
+
+	expectedNil := isNilValue(expected)
+	actualNil := isNilValue(actual)
+	if expectedNil && actualNil {
+		return true
+	} else if expectedNil || actualNil {
+		return false
+	}
+
 	if !Equal(expected, actual) {
-		return assert.Fail(t, fmt.Sprintf("Not equal: \n"+
-			"expected: %s\n"+
-			"actual  : %s", expected.String(), actual.String()))
+		return false
 	}
 	return true
 }
@@ -35,4 +51,17 @@ func RequireTimeEqual(t testing.TB, expected stringableTimeValue, actual stringa
 	if !AssertTimeEqual(t, expected, actual) {
 		t.FailNow()
 	}
+}
+
+// K8s types will come back with typed nils, so normal comparisons won't
+// work; since this is purely for tests, reflection is easiest option
+func isNilValue(t stringableTimeValue) bool {
+	if t == nil {
+		return true
+	}
+	v := reflect.ValueOf(t)
+	if v.Kind() == reflect.Ptr {
+		return v.IsNil()
+	}
+	return false
 }
