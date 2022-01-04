@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"testing"
+	"time"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,6 +14,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
@@ -38,6 +40,7 @@ func TestKubernetesError(t *testing.T) {
 	assert.Equal(t, "", cluster.Status.Error)
 	f.MustGet(nn, cluster)
 	assert.Equal(t, "connection error", cluster.Status.Error)
+	assert.Nil(t, cluster.Status.ConnectedAt, "ConnectedAt should be empty")
 
 	f.assertSteadyState(cluster)
 }
@@ -68,13 +71,16 @@ func TestKubernetesArch(t *testing.T) {
 			},
 		},
 	})
+	createdAt := time.Now()
 	f.r.connManager.store(nn, connection{
 		spec:      cluster.Spec,
 		k8sClient: client,
+		createdAt: createdAt,
 	})
 	f.Create(cluster)
 	f.MustGet(nn, cluster)
 	assert.Equal(t, "amd64", cluster.Status.Arch)
+	timecmp.AssertTimeEqual(t, createdAt, cluster.Status.ConnectedAt)
 
 	f.assertSteadyState(cluster)
 }
@@ -93,13 +99,16 @@ func TestDockerArch(t *testing.T) {
 	// Create a fake client.
 	nn := types.NamespacedName{Name: "default"}
 	client := docker.NewFakeClient()
+	createdAt := time.Now()
 	f.r.connManager.store(nn, connection{
 		spec:         cluster.Spec,
 		dockerClient: client,
+		createdAt:    createdAt,
 	})
 	f.Create(cluster)
 	f.MustGet(nn, cluster)
 	assert.Equal(t, "amd64", cluster.Status.Arch)
+	timecmp.AssertTimeEqual(t, createdAt, cluster.Status.ConnectedAt)
 }
 
 type fixture struct {
@@ -124,4 +133,5 @@ func (f *fixture) assertSteadyState(o *v1alpha1.Cluster) {
 	var o2 v1alpha1.Cluster
 	f.MustGet(types.NamespacedName{Name: o.Name}, &o2)
 	assert.Equal(f.T(), o.ResourceVersion, o2.ResourceVersion)
+	timecmp.AssertTimeEqual(f.T(), o.Status.ConnectedAt, o.Status.ConnectedAt)
 }

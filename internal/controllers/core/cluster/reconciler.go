@@ -6,6 +6,7 @@ import (
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -17,6 +18,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/clusters"
+	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -225,9 +227,16 @@ func (r *Reconciler) maybeUpdateStatus(ctx context.Context, obj *v1alpha1.Cluste
 }
 
 func (c *connection) toStatus() v1alpha1.ClusterStatus {
+	var connectedAt *metav1.MicroTime
+	if !c.createdAt.IsZero() {
+		t := apis.NewMicroTime(c.createdAt)
+		connectedAt = &t
+	}
+
 	return v1alpha1.ClusterStatus{
-		Error: c.error,
-		Arch:  c.arch,
+		Error:       c.error,
+		Arch:        c.arch,
+		ConnectedAt: connectedAt,
 	}
 }
 
