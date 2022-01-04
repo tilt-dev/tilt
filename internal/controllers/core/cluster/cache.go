@@ -8,6 +8,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apis/cluster"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -50,6 +51,7 @@ type connection struct {
 	error        string
 	createdAt    time.Time
 	arch         string
+	clientHash   cluster.ClientConfigHash
 }
 
 func (k *ConnectionManager) GetK8sClient(key types.NamespacedName) (k8s.Client, error) {

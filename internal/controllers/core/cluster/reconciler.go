@@ -13,6 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/cluster"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -167,7 +168,16 @@ func (r *Reconciler) createKubernetesConnection(ctx context.Context, obj *v1alph
 	if err != nil {
 		return connection{connType: connectionTypeK8s, error: err.Error()}
 	}
-	return connection{connType: connectionTypeK8s, k8sClient: client}
+
+	var clientHash cluster.ClientConfigHash
+	if restConfigOrError.Config != nil {
+		// exploding config will have a default value for hash, which is fine
+		// because if we replace it with a valid client later, it'll get a real
+		// hash and no longer match
+		clientHash = hashClientConfig(restConfigOrError.Config, namespace)
+	}
+
+	return connection{connType: connectionTypeK8s, k8sClient: client, clientHash: clientHash}
 }
 
 // Reads the arch from a kubernetes cluster, or "unknown" if we can't
