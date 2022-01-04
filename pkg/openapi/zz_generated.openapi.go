@@ -420,9 +420,17 @@ func schema_pkg_apis_core_v1alpha1_ClusterStatus(ref common.ReferenceCallback) c
 							Format:      "",
 						},
 					},
+					"connectedAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ConnectedAt indicates the time at which the cluster connection was established.\n\nConsumers can use this to detect when the underlying config has changed and refresh their client/connection accordingly.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
 				},
 			},
 		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
 	}
 }
 

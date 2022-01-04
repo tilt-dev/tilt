@@ -158,6 +158,14 @@ type ClusterStatus struct {
 	//
 	// +optional
 	Error string `json:"error,omitempty" protobuf:"bytes,2,opt,name=error"`
+
+	// ConnectedAt indicates the time at which the cluster connection was established.
+	//
+	// Consumers can use this to detect when the underlying config has changed
+	// and refresh their client/connection accordingly.
+	//
+	// +optional
+	ConnectedAt *metav1.MicroTime `json:"connectedAt,omitempty" protobuf:"bytes,3,opt,name=connectedAt"`
 }
 
 // Cluster implements ObjectWithStatusSubResource interface.
