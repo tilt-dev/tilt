@@ -10,10 +10,10 @@ def go(name, entrypoint, all_go_files, srv=""):
   local_resource(name, "go build -o /tmp/%s %s" % (name, entrypoint), serve_cmd=srv, deps=all_go_files)
 
 def go_test_changes(all_go_files):
-  test('go_test_changes', "make testchanges", auto_init=False, deps=all_go_files)
+  local_resource('go_test_changes', "make testchanges", auto_init=False, deps=all_go_files, allow_parallel=True)
 
 def go_lint(all_go_files):
-  test("go_lint", "make lint", deps=all_go_files)
+  local_resource("go_lint", "make lint", deps=all_go_files, allow_parallel=True)
 
 def get_all_ts_files(path):
   res = str(local('cd %s && find . -type f -name "*.ts*" | grep -v node_modules | grep -v __snapshots__' % path)).rstrip().split("\n")
@@ -23,11 +23,11 @@ def yarn_install():
   local_resource("yarn_install", "cd web && yarn", deps=['web/package.json', 'web/yarn.lock'])
 
 def jest(path):
-  test("web_jest", serve_cmd="cd %s && yarn run test --notify " % path, resource_deps=["yarn_install"])
+  local_resource("web_jest", serve_cmd="cd %s && yarn run test --notify " % path, resource_deps=["yarn_install"], allow_parallel=True)
 
 def web_lint():
   ts_deps = get_all_ts_files("web")
-  test("web_lint", "cd web && yarn run check", deps=ts_deps, resource_deps=["yarn_install"])
+  local_resource("web_lint", "cd web && yarn run check", deps=ts_deps, resource_deps=["yarn_install"], allow_parallel=True)
 
 def go_vendor():
   local_resource("go_vendor", "make vendor", deps=['go.sum', 'go.mod'])

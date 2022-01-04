@@ -31,10 +31,6 @@ type localResource struct {
 	links         []model.Link
 	labels        map[string]string
 
-	// for use in testing mvp
-	tags   []string
-	isTest bool
-
 	readinessProbe *v1alpha1.Probe
 }
 
@@ -48,26 +44,13 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 
 	deps := value.NewLocalPathListUnpacker(thread)
 
-	var resourceDepsVal, tagsVal starlark.Sequence
+	var resourceDepsVal starlark.Sequence
 	var ignoresVal starlark.Value
 	var allowParallel bool
 	var links links.LinkList
 	var labels value.LabelSet
 	autoInit := true
 
-	var isTest bool
-	if fn.Name() == testN {
-		// If we're initializing a test, by default parallelism is on
-		allowParallel = true
-
-		isTest = true
-
-		// TODO: implement timeout
-		//   (Maybe all local resources should accept a timeout, not just tests?)
-	}
-
-	// TODO: using this func for both `local_resource()` and `test()`, but in future
-	//   we should probably unpack args separately
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
 		"cmd?", &updateCmdVal,
@@ -82,7 +65,6 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		"allow_parallel?", &allowParallel,
 		"links?", &links,
 		"labels?", &labels,
-		"tags?", &tagsVal,
 		"env?", &updateEnv,
 		"serve_env?", &serveEnv,
 		"readiness_probe?", &readinessProbe,
@@ -95,10 +77,6 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 	repos := reposForPaths(deps.Value)
 
 	resourceDeps, err := value.SequenceToStringSlice(resourceDepsVal)
-	if err != nil {
-		return nil, errors.Wrapf(err, "%s: resource_deps", fn.Name())
-	}
-	tags, err := value.SequenceToStringSlice(tagsVal)
 	if err != nil {
 		return nil, errors.Wrapf(err, "%s: resource_deps", fn.Name())
 	}
@@ -141,8 +119,6 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		allowParallel:  allowParallel,
 		links:          links.Links,
 		labels:         labels.Values,
-		tags:           tags,
-		isTest:         isTest,
 		readinessProbe: probeSpec,
 	}
 

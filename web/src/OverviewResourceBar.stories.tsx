@@ -1,12 +1,7 @@
 import React from "react"
 import { MemoryRouter } from "react-router"
 import OverviewResourceBar from "./OverviewResourceBar"
-import {
-  nResourceView,
-  oneTestResource,
-  tenResourceView,
-  twoResourceView,
-} from "./testdata"
+import { nResourceView, tenResourceView, twoResourceView } from "./testdata"
 import { UpdateStatus } from "./types"
 
 export default {
@@ -48,11 +43,5 @@ export const UpgradeAvailable = () => {
   status!.suggestedTiltVersion = "0.18.1"
   status!.runningTiltBuild = { version: "0.18.0", dev: false }
   status!.versionSettings = { checkUpdates: true }
-  return <OverviewResourceBar view={view} />
-}
-
-export const WithTests = () => {
-  let view = twoResourceView()
-  view.uiResources.push(oneTestResource(), oneTestResource())
   return <OverviewResourceBar view={view} />
 }

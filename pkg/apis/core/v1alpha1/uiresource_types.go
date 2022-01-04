@@ -361,6 +361,9 @@ type UIResourceLocal struct {
 	PID int64 `json:"pid,omitempty" protobuf:"varint,1,opt,name=pid"`
 
 	// Whether this represents a test job.
+	//
+	// Deprecated: Users should use labels for marking services as tests.
+	//
 	// +optional
 	IsTest bool `json:"isTest,omitempty" protobuf:"varint,2,opt,name=isTest"`
 }

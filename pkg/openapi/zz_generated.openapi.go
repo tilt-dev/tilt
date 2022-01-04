@@ -7104,7 +7104,7 @@ func schema_pkg_apis_core_v1alpha1_UIResourceLocal(ref common.ReferenceCallback)
 					},
 					"isTest": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Whether this represents a test job.",
+							Description: "Whether this represents a test job.\n\nDeprecated: Users should use labels for marking services as tests.",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},

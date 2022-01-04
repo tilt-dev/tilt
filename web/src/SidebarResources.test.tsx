@@ -35,7 +35,6 @@ import {
   nResourceView,
   nResourceWithLabelsView,
   oneResource,
-  oneTestResource,
   twoResourceView,
 } from "./testdata"
 import { ResourceStatus, ResourceView } from "./types"
@@ -221,8 +220,8 @@ describe("SidebarResources", () => {
       let ls = new LogStore()
       const items = [
         oneResource({ isBuilding: true }),
-        oneTestResource("a"),
-        oneTestResource("b"),
+        oneResource({ name: "a" }),
+        oneResource({ name: "b" }),
       ].map((res) => new SidebarItem(res, ls))
 
       const root = mount(
@@ -260,8 +259,8 @@ describe("SidebarResources", () => {
       let ls = new LogStore()
       const items = [
         oneResource({ isBuilding: true }),
-        oneTestResource("a"),
-        oneTestResource("b"),
+        oneResource({ name: "a" }),
+        oneResource({ name: "b" }),
       ].map((res) => new SidebarItem(res, ls))
 
       const root = mount(

@@ -369,7 +369,6 @@ const (
 
 	// local resource functions
 	localResourceN = "local_resource"
-	testN          = "test" // test is just a fork of local resource
 
 	// file functions
 	localN     = "local"
@@ -549,7 +548,6 @@ func (s *tiltfileState) OnStart(e *starkit.Environment) error {
 		{k8sResourceN, s.k8sResource},
 		{k8sCustomDeployN, s.k8sCustomDeploy},
 		{localResourceN, s.localResource},
-		{testN, s.localResource}, // test is just a fork of local resource, w/ some switches based on fn.Name()
 		{portForwardN, s.portForward},
 		{k8sKindN, s.k8sKind},
 		{k8sImageJSONPathN, s.k8sImageJsonPath},
@@ -1594,8 +1592,6 @@ func (s *tiltfileState) translateLocal() ([]model.Manifest, error) {
 			WithIgnores(ignores).
 			WithAllowParallel(r.allowParallel || r.updateCmd.Empty()).
 			WithLinks(r.links).
-			WithTags(r.tags).
-			WithIsTest(r.isTest).
 			WithReadinessProbe(r.readinessProbe)
 		var mds []model.ManifestName
 		for _, md := range r.resourceDeps {

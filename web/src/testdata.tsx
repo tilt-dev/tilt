@@ -237,39 +237,6 @@ function oneResource({
   return resource
 }
 
-function oneTestResource(name: string = "boop"): UIResource {
-  const ts = new Date(Date.now()).toISOString()
-  const resource = {
-    metadata: {
-      name: name,
-    },
-    status: {
-      lastDeployTime: ts,
-      buildHistory: [
-        {
-          startTime: ts,
-          finishTime: ts,
-          spanId: "build:1",
-        },
-      ],
-      localResourceInfo: {
-        pid: "0",
-        isTest: true,
-      },
-      runtimeStatus: "not_applicable",
-      updateStatus: "ok",
-      specs: [
-        {
-          id: "local:boop",
-          type: "local",
-          hasLiveUpdate: false,
-        },
-      ],
-    },
-  }
-  return resource
-}
-
 function oneResourceView(): TestDataView {
   return {
     uiResources: [oneResource({ isBuilding: true })],
@@ -4537,7 +4504,6 @@ export {
   oneResourceCrashedOnStart,
   oneResourceBuilding,
   oneResource,
-  oneTestResource,
   logList,
   oneButton,
   nButtonView,

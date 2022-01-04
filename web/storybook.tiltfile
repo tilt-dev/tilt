@@ -38,12 +38,13 @@ local_resource(
   trigger_mode=TRIGGER_MODE_MANUAL,
   labels=["lint"])
 
-test(
+local_resource(
   'test:test-js',
   'cd .. && make test-js',
   auto_init=False,
   trigger_mode=TRIGGER_MODE_MANUAL,
-  labels=["test"])
+  labels=["test"],
+  allow_parallel=True)
 
 local_resource(
   'test:update-snapshots',
