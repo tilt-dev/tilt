@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -168,6 +169,10 @@ func (c *FakeK8sClient) UpsertEvent(event *v1.Event) {
 }
 
 func (c *FakeK8sClient) PodFromInformerCache(ctx context.Context, nn types.NamespacedName) (*v1.Pod, error) {
+	if nn.Namespace == "" {
+		return nil, fmt.Errorf("missing namespace from pod request")
+	}
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	pod, ok := c.pods[nn]
@@ -178,6 +183,10 @@ func (c *FakeK8sClient) PodFromInformerCache(ctx context.Context, nn types.Names
 }
 
 func (c *FakeK8sClient) WatchServices(ctx context.Context, ns Namespace) (<-chan *v1.Service, error) {
+	if ns == "" {
+		return nil, fmt.Errorf("missing namespace from watch request")
+	}
+
 	ctx, cancel := context.WithCancel(ctx)
 
 	c.mu.Lock()
@@ -216,6 +225,10 @@ func (c *FakeK8sClient) WatchServices(ctx context.Context, ns Namespace) (<-chan
 }
 
 func (c *FakeK8sClient) WatchEvents(ctx context.Context, ns Namespace) (<-chan *v1.Event, error) {
+	if ns == "" {
+		return nil, fmt.Errorf("missing namespace from watch request")
+	}
+
 	if c.EventsWatchErr != nil {
 		err := c.EventsWatchErr
 		c.EventsWatchErr = nil
@@ -259,6 +272,10 @@ func (c *FakeK8sClient) WatchEvents(ctx context.Context, ns Namespace) (<-chan *
 }
 
 func (c *FakeK8sClient) WatchMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) (<-chan metav1.Object, error) {
+	if ns == "" {
+		return nil, fmt.Errorf("missing namespace from watch request")
+	}
+
 	return make(chan metav1.Object), nil
 }
 
@@ -277,6 +294,10 @@ func (c *FakeK8sClient) EmitPodDelete(p *v1.Pod) {
 }
 
 func (c *FakeK8sClient) WatchPods(ctx context.Context, ns Namespace) (<-chan ObjectUpdate, error) {
+	if ns == "" {
+		return nil, fmt.Errorf("missing namespace from watch request")
+	}
+
 	ctx, cancel := context.WithCancel(ctx)
 
 	c.mu.Lock()
