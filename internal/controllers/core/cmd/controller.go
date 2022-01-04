@@ -23,6 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/restarton"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
@@ -41,16 +42,12 @@ type Controller struct {
 	execer        Execer
 	procs         map[types.NamespacedName]*currentProcess
 	proberManager ProberManager
-	updateCmds    map[types.NamespacedName]*Cmd
 	client        ctrlclient.Client
 	st            store.RStore
 	clock         clockwork.Clock
+	requeuer      *indexer.Requeuer
 
-	// Ensures that we're only updating one Cmd Status at a time.
-	updateMu sync.Mutex
-
-	// Ensures that we're only reonciling one Cmd at a time.
-	reconcileMu sync.Mutex
+	mu sync.Mutex
 }
 
 var _ store.TearDowner = &Controller{}
@@ -59,7 +56,8 @@ func (r *Controller) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	b := ctrl.NewControllerManagedBy(mgr).
 		For(&Cmd{}).
 		Watches(&source.Kind{Type: &ConfigMap{}},
-			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue))
+			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
+		Watches(r.requeuer, handler.Funcs{})
 
 	restarton.SetupController(b, r.indexer, func(obj ctrlclient.Object) (*v1alpha1.RestartOnSpec, *v1alpha1.StartOnSpec) {
 		cmd := obj.(*v1alpha1.Cmd)
@@ -78,16 +76,9 @@ func NewController(ctx context.Context, execer Execer, proberManager ProberManag
 		procs:         make(map[types.NamespacedName]*currentProcess),
 		proberManager: proberManager,
 		client:        client,
-		updateCmds:    make(map[types.NamespacedName]*Cmd),
 		st:            st,
+		requeuer:      indexer.NewRequeuer(),
 	}
-}
-
-func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	c.reconcileMu.Lock()
-	defer c.reconcileMu.Unlock()
-	err := c.reconcile(ctx, req.NamespacedName)
-	return ctrl.Result{}, err
 }
 
 // Stop the command, and wait for it to finish before continuing.
@@ -150,49 +141,59 @@ func (c *Controller) lastRestartEvent(restartOn *RestartOnSpec, restartObjs rest
 	return cur, inputs
 }
 
-func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) error {
+func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	name := req.NamespacedName
 	cmd := &Cmd{}
 	err := c.client.Get(ctx, name, cmd)
 	c.indexer.OnReconcile(name, cmd)
 	if err != nil && !apierrors.IsNotFound(err) {
-		return fmt.Errorf("cmd reconcile: %v", err)
+		return ctrl.Result{}, fmt.Errorf("cmd reconcile: %v", err)
 	}
 
 	if apierrors.IsNotFound(err) || cmd.ObjectMeta.DeletionTimestamp != nil {
 		c.stop(name)
 		delete(c.procs, name)
-		return nil
+		return ctrl.Result{}, nil
 	}
 
 	disableStatus, err := configmap.MaybeNewDisableStatus(ctx, c.client, cmd.Spec.DisableSource, cmd.Status.DisableStatus)
 	if err != nil {
-		return err
+		return ctrl.Result{}, err
 	}
 
-	if disableStatus != cmd.Status.DisableStatus {
-		c.updateStatus(name, func(status *CmdStatus) {
-			status.DisableStatus = disableStatus
-		}, func() bool {
-			return true
-		})
-	}
+	proc := c.ensureProc(name)
+	proc.mutateStatus(func(status *v1alpha1.CmdStatus) {
+		status.DisableStatus = disableStatus
+	})
 
-	if disableStatus.Disabled {
+	disabled := disableStatus.Disabled
+	if disabled {
+		// Disabling should both stop the process, and make it look like
+		// it didn't previously run.
 		c.stop(name)
-		delete(c.procs, name)
-		return nil
+		proc.spec = v1alpha1.CmdSpec{}
+		proc.lastStartOnEventTime = time.Time{}
+		proc.lastRestartOnEventTime = time.Time{}
 	}
 
 	if cmd.Annotations[v1alpha1.AnnotationManagedBy] == "local_resource" {
 		// Until resource dependencies are expressed in the API,
 		// we can't use reconciliation to deploy Cmd objects
 		// that are part of local_resource.
-		return nil
+		err := c.maybeUpdateObjectStatus(ctx, cmd)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		return ctrl.Result{}, nil
 	}
 
 	restartObjs, err := restarton.FetchObjects(ctx, c.client, cmd.Spec.RestartOn, cmd.Spec.StartOn)
 	if err != nil {
-		return err
+		return ctrl.Result{}, err
 	}
 
 	lastRestartEventTime, _ := c.lastRestartEvent(cmd.Spec.RestartOn, restartObjs)
@@ -200,36 +201,59 @@ func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) e
 	startOn := cmd.Spec.StartOn
 	waitsOnStartOn := startOn != nil && len(startOn.UIButtons) > 0
 
-	proc, hasExistingProc := c.procs[name]
-
-	lastSpec := v1alpha1.CmdSpec{}
-	lastRestartOnEventTime := time.Time{}
-	lastStartOnEventTime := time.Time{}
-	if hasExistingProc {
-		lastSpec = proc.spec
-		lastRestartOnEventTime = proc.lastRestartOnEventTime
-		lastStartOnEventTime = proc.lastStartOnEventTime
-	}
+	lastSpec := proc.spec
+	lastRestartOnEventTime := proc.lastRestartOnEventTime
+	lastStartOnEventTime := proc.lastStartOnEventTime
 
 	restartOnTriggered := lastRestartEventTime.After(lastRestartOnEventTime)
 	startOnTriggered := lastStartEventTime.After(lastStartOnEventTime)
 	execSpecChanged := !cmdExecEqual(lastSpec, cmd.Spec)
 
-	// any change to the spec means we should stop the command immediately
-	if execSpecChanged {
-		c.stop(name)
+	if !disabled {
+		// any change to the spec means we should stop the command immediately
+		if execSpecChanged {
+			c.stop(name)
+		}
+
+		if execSpecChanged && waitsOnStartOn && !startOnTriggered {
+			// If the cmd spec has changed since the last run,
+			// and StartOn hasn't triggered yet, set the status to waiting.
+			proc.mutateStatus(func(status *v1alpha1.CmdStatus) {
+				status.Waiting = &CmdStateWaiting{
+					Reason: waitingOnStartOnReason,
+				}
+				status.Running = nil
+				status.Terminated = nil
+				status.Ready = false
+			})
+		} else if execSpecChanged || restartOnTriggered || startOnTriggered {
+			// Otherwise, any change, new start event, or new restart event
+			// should restart the process to pick up changes.
+			_ = c.runInternal(ctx, cmd, restartObjs)
+		}
 	}
 
-	if execSpecChanged && waitsOnStartOn && !startOnTriggered {
-		// If the cmd spec has changed since the last run,
-		// and StartOn hasn't triggered yet, set the status to waiting.
-		c.setStatusWaitingOnStartOn(name, cmd)
-	} else if execSpecChanged || restartOnTriggered || startOnTriggered {
-		// Otherwise, any change, new start event, or new restart event
-		// should restart the process to pick up changes.
-		_ = c.runInternal(ctx, cmd, restartObjs)
+	err = c.maybeUpdateObjectStatus(ctx, cmd)
+	if err != nil {
+		return ctrl.Result{}, err
 	}
 
+	return ctrl.Result{}, nil
+}
+
+func (c *Controller) maybeUpdateObjectStatus(ctx context.Context, cmd *v1alpha1.Cmd) error {
+	newStatus := c.ensureProc(types.NamespacedName{Name: cmd.Name}).copyStatus()
+	if apicmp.DeepEqual(newStatus, cmd.Status) {
+		return nil
+	}
+
+	update := cmd.DeepCopy()
+	update.Status = newStatus
+	err := c.client.Status().Update(ctx, update)
+	if err != nil {
+		return err
+	}
+	c.st.Dispatch(local.NewCmdUpdateStatusAction(update))
 	return nil
 }
 
@@ -240,9 +264,9 @@ func (c *Controller) reconcile(ctx context.Context, name types.NamespacedName) e
 //
 // Blocks until the command is finished, then returns its status.
 func (c *Controller) ForceRun(ctx context.Context, cmd *v1alpha1.Cmd) (*v1alpha1.CmdStatus, error) {
-	c.reconcileMu.Lock()
+	c.mu.Lock()
 	doneCh := c.runInternal(ctx, cmd, restarton.Objects{})
-	c.reconcileMu.Unlock()
+	c.mu.Unlock()
 
 	select {
 	case <-ctx.Done():
@@ -250,15 +274,10 @@ func (c *Controller) ForceRun(ctx context.Context, cmd *v1alpha1.Cmd) (*v1alpha1
 	case <-doneCh:
 	}
 
-	c.updateMu.Lock()
-	defer c.updateMu.Unlock()
-
-	result, ok := c.updateCmds[types.NamespacedName{Name: cmd.Name}]
-	if !ok {
-		return nil, fmt.Errorf("internal error: no cmd status")
-	}
-
-	return result.Status.DeepCopy(), nil
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	status := c.ensureProc(types.NamespacedName{Name: cmd.Name}).copyStatus()
+	return &status, nil
 }
 
 func (i input) stringValue() string {
@@ -289,6 +308,16 @@ type input struct {
 	status v1alpha1.UIInputStatus
 }
 
+// Ensures there's a current cmd tracker.
+func (c *Controller) ensureProc(name types.NamespacedName) *currentProcess {
+	proc, ok := c.procs[name]
+	if !ok {
+		proc = &currentProcess{}
+		c.procs[name] = proc
+	}
+	return proc
+}
+
 // Runs the command unconditionally, stopping any currently running command.
 //
 // The filewatches and buttons are needed for bookkeeping on how the command
@@ -297,20 +326,11 @@ type input struct {
 // Returns a channel that closes when the Cmd is finished.
 func (c *Controller) runInternal(ctx context.Context,
 	cmd *v1alpha1.Cmd,
-	restartObjs restarton.Objects) (doneCh chan struct{}) {
+	restartObjs restarton.Objects) chan struct{} {
 	name := types.NamespacedName{Name: cmd.Name}
-	proc, ok := c.procs[name]
-	if ok {
-		// change the process's current number so that any further events received
-		// by the existing process will be considered out of date
-		proc.incrProcNum()
+	c.stop(name)
 
-		c.stop(name)
-	} else {
-		proc = &currentProcess{}
-		c.procs[name] = proc
-	}
-
+	proc := c.ensureProc(name)
 	proc.spec = cmd.Spec
 	proc.isServer = cmd.ObjectMeta.Annotations[local.AnnotationOwnerKind] == "CmdServer"
 
@@ -325,35 +345,33 @@ func (c *Controller) runInternal(ctx context.Context,
 	}
 
 	ctx, proc.cancelFunc = context.WithCancel(ctx)
+	proc.statusMu.Lock()
+	defer proc.statusMu.Unlock()
 
-	stillHasSameProcNum := proc.stillHasSameProcNum()
-	c.updateStatus(name, func(status *CmdStatus) {
-		status.Running = nil
-		status.Waiting = &CmdStateWaiting{}
-		status.Terminated = nil
-		status.Ready = false
-	}, stillHasSameProcNum)
+	status := &(proc.statusInternal)
+	status.Running = nil
+	status.Waiting = &CmdStateWaiting{}
+	status.Terminated = nil
+	status.Ready = false
 
 	ctx = store.MustObjectLogHandler(ctx, c.st, cmd)
 	spec := cmd.Spec
 
 	if spec.ReadinessProbe != nil {
-		probeResultFunc := c.handleProbeResultFunc(ctx, name, stillHasSameProcNum)
+		probeResultFunc := c.handleProbeResultFunc(ctx, name, proc)
 		probeWorker, err := probeWorkerFromSpec(
 			c.proberManager,
 			spec.ReadinessProbe,
 			probeResultFunc)
 		if err != nil {
 			logger.Get(ctx).Errorf("Invalid readiness probe: %v", err)
-			c.updateStatus(name, func(status *CmdStatus) {
-				status.Terminated = &CmdStateTerminated{
-					ExitCode: 1,
-					Reason:   fmt.Sprintf("Invalid readiness probe: %v", err),
-				}
-				status.Waiting = nil
-				status.Running = nil
-				status.Ready = false
-			}, stillHasSameProcNum)
+			status.Terminated = &CmdStateTerminated{
+				ExitCode: 1,
+				Reason:   fmt.Sprintf("Invalid readiness probe: %v", err),
+			}
+			status.Waiting = nil
+			status.Running = nil
+			status.Ready = false
 
 			proc.doneCh = make(chan struct{})
 			close(proc.doneCh)
@@ -377,14 +395,14 @@ func (c *Controller) runInternal(ctx context.Context,
 	statusCh := c.execer.Start(ctx, cmdModel, logger.Get(ctx).Writer(logger.InfoLvl))
 	proc.doneCh = make(chan struct{})
 
-	go c.processStatuses(ctx, statusCh, proc, name, startedAt, stillHasSameProcNum)
+	go c.processStatuses(ctx, statusCh, proc, name, startedAt)
 
 	return proc.doneCh
 }
 
-func (c *Controller) handleProbeResultFunc(ctx context.Context, name types.NamespacedName, stillHasSameProcNum func() bool) probe.ResultFunc {
+func (c *Controller) handleProbeResultFunc(ctx context.Context, name types.NamespacedName, proc *currentProcess) probe.ResultFunc {
 	return func(result prober.Result, statusChanged bool, output string, err error) {
-		if !stillHasSameProcNum() {
+		if ctx.Err() != nil {
 			return
 		}
 
@@ -413,14 +431,20 @@ func (c *Controller) handleProbeResultFunc(ctx context.Context, name types.Names
 		}
 
 		ready := result == prober.Success || result == prober.Warning
-		c.updateStatus(name, func(status *CmdStatus) {
-			// TODO(milas): this isn't quite right - we might end up setting
-			// 	a terminated process to ready, for example; in practice, we
-			// 	should update internal state on any goroutine/async trackers
-			// 	and trigger a reconciliation, which can then evaluate the full
-			// 	state + current spec
+
+		// TODO(milas): this isn't quite right - we might end up setting
+		// 	a terminated process to ready, for example; in practice, we
+		// 	should update internal state on any goroutine/async trackers
+		// 	and trigger a reconciliation, which can then evaluate the full
+		// 	state + current spec
+		proc.statusMu.Lock()
+		defer proc.statusMu.Unlock()
+
+		status := &(proc.statusInternal)
+		if status.Ready != ready {
 			status.Ready = ready
-		}, stillHasSameProcNum)
+			c.requeuer.Add(name)
+		}
 	}
 }
 
@@ -447,75 +471,20 @@ func logProbeOutput(ctx context.Context, level logger.Level, result prober.Resul
 	}
 }
 
-// Update the stored status.
-//
-// In a real K8s controller, this would be a queue to make sure we don't miss updates.
-//
-// update() -> a pure function that applies a delta to the status object.
-func (c *Controller) updateStatus(name types.NamespacedName, update func(status *CmdStatus), stillHasSameProcNum func() bool) {
-	c.updateMu.Lock()
-	defer c.updateMu.Unlock()
-
-	if !stillHasSameProcNum() {
-		return
-	}
-
-	var cmd v1alpha1.Cmd
-	err := c.client.Get(c.globalCtx, name, &cmd)
-	if err != nil {
-		return
-	}
-
-	lastCmd, ok := c.updateCmds[name]
-	if ok {
-		cmd.Status = *lastCmd.Status.DeepCopy()
-	}
-	patchBase := ctrlclient.MergeFrom(cmd.DeepCopy())
-	update(&cmd.Status)
-
-	err = c.client.Status().Patch(c.globalCtx, &cmd, patchBase)
-	if err != nil && !apierrors.IsNotFound(err) {
-		if c.globalCtx.Err() == nil {
-			// if the global context has been canceled, the controller is being torn down,
-			// so don't propagate a store error
-			c.st.Dispatch(store.NewErrorAction(fmt.Errorf("syncing to apiserver: %v", err)))
-		}
-		return
-	}
-
-	c.updateCmds[name] = cmd.DeepCopy()
-	c.st.Dispatch(local.NewCmdUpdateStatusAction(&cmd))
-}
-
 const waitingOnStartOnReason = "cmd StartOn has not been triggered"
-
-func (c *Controller) setStatusWaitingOnStartOn(name types.NamespacedName, cmd *Cmd) {
-	if cmd.Status.Waiting != nil && cmd.Status.Waiting.Reason == waitingOnStartOnReason {
-		return
-	}
-	c.updateStatus(name, func(status *CmdStatus) {
-		status.Waiting = &CmdStateWaiting{
-			Reason: waitingOnStartOnReason,
-		}
-		status.Running = nil
-		status.Terminated = nil
-		status.Ready = false
-	}, func() bool { return true })
-}
 
 func (c *Controller) processStatuses(
 	ctx context.Context,
 	statusCh chan statusAndMetadata,
 	proc *currentProcess,
 	name types.NamespacedName,
-	startedAt metav1.MicroTime,
-	stillHasSameProcNum func() bool) {
+	startedAt metav1.MicroTime) {
 	defer close(proc.doneCh)
 
 	var initProbeWorker sync.Once
 
 	for sm := range statusCh {
-		if !stillHasSameProcNum() || sm.status == Unknown {
+		if sm.status == Unknown {
 			continue
 		}
 
@@ -525,7 +494,7 @@ func (c *Controller) processStatuses(
 				logger.Get(ctx).Errorf("Server exited with exit code 0")
 			}
 
-			c.updateStatus(name, func(status *CmdStatus) {
+			proc.mutateStatus(func(status *v1alpha1.CmdStatus) {
 				status.Waiting = nil
 				status.Running = nil
 				status.Terminated = &CmdStateTerminated{
@@ -533,9 +502,10 @@ func (c *Controller) processStatuses(
 					Reason:     sm.reason,
 					ExitCode:   int32(sm.exitCode),
 					StartedAt:  startedAt,
-					FinishedAt: metav1.NowMicro(),
+					FinishedAt: apis.NewMicroTime(c.clock.Now()),
 				}
-			}, stillHasSameProcNum)
+			})
+			c.requeuer.Add(name)
 		} else if sm.status == Running {
 			if proc.probeWorker != nil {
 				initProbeWorker.Do(func() {
@@ -543,7 +513,7 @@ func (c *Controller) processStatuses(
 				})
 			}
 
-			c.updateStatus(name, func(status *CmdStatus) {
+			proc.mutateStatus(func(status *v1alpha1.CmdStatus) {
 				status.Waiting = nil
 				status.Terminated = nil
 				status.Running = &CmdStateRunning{
@@ -554,7 +524,8 @@ func (c *Controller) processStatuses(
 				if proc.probeWorker == nil {
 					status.Ready = true
 				}
-			}, stillHasSameProcNum)
+			})
+			c.requeuer.Add(name)
 		}
 	}
 }
@@ -581,7 +552,6 @@ func indexCmd(obj client.Object) []indexer.Key {
 // (note: it may not be running yet, or may have already finished)
 type currentProcess struct {
 	spec       CmdSpec
-	procNum    int
 	cancelFunc context.CancelFunc
 	// closed when the process finishes executing, intentionally or not
 	doneCh      chan struct{}
@@ -591,28 +561,21 @@ type currentProcess struct {
 	lastRestartOnEventTime time.Time
 	lastStartOnEventTime   time.Time
 
-	mu sync.Mutex
+	// We have a lock that ONLY protects the status.
+	statusMu       sync.Mutex
+	statusInternal v1alpha1.CmdStatus
 }
 
-func (p *currentProcess) stillHasSameProcNum() func() bool {
-	s := p.currentProcNum()
-	return func() bool {
-		return s == p.currentProcNum()
-	}
+func (p *currentProcess) copyStatus() v1alpha1.CmdStatus {
+	p.statusMu.Lock()
+	defer p.statusMu.Unlock()
+	return *(p.statusInternal.DeepCopy())
 }
 
-func (p *currentProcess) incrProcNum() {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	p.procNum++
-}
-
-func (p *currentProcess) currentProcNum() int {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	return p.procNum
+func (p *currentProcess) mutateStatus(update func(status *v1alpha1.CmdStatus)) {
+	p.statusMu.Lock()
+	defer p.statusMu.Unlock()
+	update(&p.statusInternal)
 }
 
 type statusAndMetadata struct {
