@@ -9,6 +9,8 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 
+	"github.com/jonboulle/clockwork"
+
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -40,21 +42,18 @@ type Controller struct {
 	kClient   k8s.Client
 	podSource *PodSource
 	mu        sync.Mutex
+	clock     clockwork.Clock
 
 	watches         map[podLogKey]PodLogWatch
 	hasClosedStream map[podLogKey]bool
 	statuses        map[types.NamespacedName]*PodLogStreamStatus
 	lastUpdate      map[types.NamespacedName]*PodLogStreamStatus
-
-	newTicker func(d time.Duration) *time.Ticker
-	since     func(t time.Time) time.Duration
-	now       func() time.Time
 }
 
 var _ reconcile.Reconciler = &Controller{}
 var _ store.TearDowner = &Controller{}
 
-func NewController(ctx context.Context, client ctrlclient.Client, st store.RStore, kClient k8s.Client, podSource *PodSource) *Controller {
+func NewController(ctx context.Context, client ctrlclient.Client, st store.RStore, kClient k8s.Client, podSource *PodSource, clock clockwork.Clock) *Controller {
 	return &Controller{
 		ctx:             ctx,
 		client:          client,
@@ -65,9 +64,7 @@ func NewController(ctx context.Context, client ctrlclient.Client, st store.RStor
 		hasClosedStream: make(map[podLogKey]bool),
 		statuses:        make(map[types.NamespacedName]*PodLogStreamStatus),
 		lastUpdate:      make(map[types.NamespacedName]*PodLogStreamStatus),
-		newTicker:       time.NewTicker,
-		since:           time.Since,
-		now:             time.Now,
+		clock:           clock,
 	}
 }
 
@@ -290,7 +287,7 @@ func (m *Controller) consumeLogs(watch PodLogWatch, st store.RStore) {
 			logger.Get(ctx).Infof("Error streaming %s logs: %v", pID, exitError)
 		}
 
-		watch.terminationTime <- m.now()
+		watch.terminationTime <- m.clock.Now()
 		watch.cancel()
 	}()
 
@@ -315,7 +312,7 @@ func (m *Controller) consumeLogs(watch PodLogWatch, st store.RStore) {
 		}
 
 		reader := runtimelog.NewHardCancelReader(ctx, readCloser)
-		reader.Now = m.now
+		reader.Now = m.clock.Now
 
 		// A hacky workaround for
 		// https://github.com/tilt-dev/tilt/issues/3908
@@ -323,15 +320,15 @@ func (m *Controller) consumeLogs(watch PodLogWatch, st store.RStore) {
 		// If they have, reconnect to the log stream.
 		done := make(chan bool)
 		go func() {
-			ticker := m.newTicker(podLogHealthCheck)
+			ticker := m.clock.NewTicker(podLogHealthCheck)
 			for {
 				select {
 				case <-done:
 					return
 
-				case <-ticker.C:
+				case <-ticker.Chan():
 					lastRead := reader.LastReadTime()
-					if lastRead.IsZero() || m.since(lastRead) < podLogHealthCheck {
+					if lastRead.IsZero() || m.clock.Since(lastRead) < podLogHealthCheck {
 						continue
 					}
 
