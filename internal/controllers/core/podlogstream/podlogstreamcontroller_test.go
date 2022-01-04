@@ -42,7 +42,7 @@ func TestLogs(t *testing.T) {
 
 	f.kClient.SetLogsForPodContainer(podID, cName, "hello world!")
 
-	start := time.Now()
+	start := f.clock.Now()
 
 	pb := newPodBuilder(podID).addRunningContainer(cName, cID)
 	f.kClient.UpsertPod(pb.toPod())
@@ -60,6 +60,29 @@ func TestLogs(t *testing.T) {
 	assert.Equal(t, []reconcile.Request{
 		{NamespacedName: streamNN},
 	}, f.plsc.podSource.indexer.EnqueueKey(indexer.Key{Name: podNN, GVK: podGVK}))
+}
+
+func TestLogCleanup(t *testing.T) {
+	f := newPLMFixture(t)
+
+	f.kClient.SetLogsForPodContainer(podID, cName, "hello world!")
+
+	start := f.clock.Now()
+	pb := newPodBuilder(podID).addRunningContainer(cName, cID)
+	f.kClient.UpsertPod(pb.toPod())
+
+	pls := plsFromPod("server", pb, start)
+	f.Create(pls)
+
+	f.triggerPodEvent(podID)
+	f.AssertOutputContains("hello world!")
+
+	f.Delete(pls)
+	assert.Len(t, f.plsc.watches, 0)
+
+	// TODO(nick): Currently, namespace watches are never cleanedup,
+	// because the user might restart them again.
+	assert.Len(t, f.plsc.podSource.watchesByNamespace, 1)
 }
 
 func TestLogActions(t *testing.T) {

@@ -79,12 +79,14 @@ func (s *PodSource) handleReconcileRequest(ctx context.Context, name types.Names
 	s.indexer.OnReconcile(name, pls)
 
 	ns := pls.Spec.Namespace
-	_, ok := s.watchesByNamespace[ns]
-	if !ok {
-		ctx, cancel := context.WithCancel(ctx)
-		pw := podWatch{ctx: ctx, cancel: cancel, namespace: ns}
-		s.watchesByNamespace[ns] = pw
-		go s.doWatch(pw)
+	if ns != "" {
+		_, ok := s.watchesByNamespace[ns]
+		if !ok {
+			ctx, cancel := context.WithCancel(ctx)
+			pw := podWatch{ctx: ctx, cancel: cancel, namespace: ns}
+			s.watchesByNamespace[ns] = pw
+			go s.doWatch(pw)
+		}
 	}
 }
 

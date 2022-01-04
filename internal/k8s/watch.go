@@ -139,6 +139,10 @@ func (s *informerSet) makeInformer(
 	ctx context.Context,
 	ns Namespace,
 	gvr schema.GroupVersionResource) (cache.SharedInformer, error) {
+	if ns == "" {
+		return nil, fmt.Errorf("missing namespace from watch request")
+	}
+
 	key := fmt.Sprintf("%s/%s", ns, gvr)
 	result, err, _ := s.singleflight.Do(key, func() (interface{}, error) {
 		s.mu.Lock()
@@ -169,10 +173,6 @@ func (s *informerSet) makeInformerHelper(
 	ctx context.Context,
 	ns Namespace,
 	gvr schema.GroupVersionResource) (cache.SharedInformer, error) {
-	if ns == "" {
-		return nil, fmt.Errorf("makeInformer no longer supports watching all namespaces")
-	}
-
 	// HACK(dmiller): There's no way to get errors out of an informer. See https://github.com/kubernetes/client-go/issues/155
 	// In the meantime, at least to get authorization and some other errors let's try to set up a watcher and then just
 	// throw it away.
