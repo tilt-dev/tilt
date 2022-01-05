@@ -38,6 +38,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/containerupdate"
 	"github.com/tilt-dev/tilt/internal/controllers"
+	apicluster "github.com/tilt-dev/tilt/internal/controllers/apis/cluster"
 	apitiltfile "github.com/tilt-dev/tilt/internal/controllers/apis/tiltfile"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cluster"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
@@ -3842,7 +3843,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 
 	watcher := fsevent.NewFakeMultiWatcher()
 	kClient := k8s.NewFakeK8sClient(t)
-	clusterClients := cluster.NewFakeClientCache(kClient)
+	clusterClients := apicluster.NewFakeClientProvider(kClient)
 
 	timerMaker := fsevent.MakeFakeTimerMaker(t)
 

@@ -3,10 +3,12 @@ package cluster
 import (
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apis/cluster"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/k8s"
 )
@@ -26,6 +28,7 @@ func TestConnectionManager(t *testing.T) {
 			input: &connection{
 				connType:  connectionTypeK8s,
 				k8sClient: fakeK8s,
+				createdAt: time.Now(),
 			},
 			expectedDockerErr: "incorrect cluster client type: got kubernetes, expected docker",
 		},
@@ -40,8 +43,8 @@ func TestConnectionManager(t *testing.T) {
 		},
 		{
 			input:             nil,
-			expectedK8sErr:    NotFoundError.Error(),
-			expectedDockerErr: NotFoundError.Error(),
+			expectedK8sErr:    cluster.NotFoundError.Error(),
+			expectedDockerErr: cluster.NotFoundError.Error(),
 		},
 		{
 			input: &connection{
@@ -69,14 +72,15 @@ func TestConnectionManager(t *testing.T) {
 				cm.store(nn, *tcs[i].input)
 			}
 
-			kCli, err := cm.GetK8sClient(nn)
+			kCli, createdAt, err := cm.GetK8sClient(nn)
 			if tcs[i].expectedK8sErr != "" {
 				if assert.EqualError(t, err, tcs[i].expectedK8sErr) {
 					assert.Nil(t, kCli, "K8sClient should be nil on error")
 				}
 			} else {
 				if assert.NoError(t, err, "Unexpected error getting K8sClient") {
-					assert.NotNil(t, kCli, "K8sClient should not be nil when no error")
+					assert.NotNil(t, kCli, "K8sClient should not be nil")
+					assert.Equal(t, tcs[i].input.createdAt, createdAt, "Client hash did not match")
 				}
 			}
 

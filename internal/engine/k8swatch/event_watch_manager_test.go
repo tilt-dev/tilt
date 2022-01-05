@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tilt-dev/tilt/internal/controllers/core/cluster"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/cluster"
 	"github.com/tilt-dev/tilt/pkg/apis"
 
 	"github.com/jonboulle/clockwork"
@@ -273,7 +273,7 @@ func newEWMFixture(t *testing.T) *ewmFixture {
 	ret := &ewmFixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),
 		kClient:        kClient,
-		ewm:            NewEventWatchManager(cluster.NewFakeClientCache(kClient), k8s.DefaultNamespace),
+		ewm:            NewEventWatchManager(cluster.NewFakeClientProvider(kClient), k8s.DefaultNamespace),
 		ctx:            ctx,
 		cancel:         cancel,
 		t:              t,

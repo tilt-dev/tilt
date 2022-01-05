@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/tilt-dev/tilt/internal/controllers/core/cluster"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/cluster"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/internal/testutils"
@@ -146,7 +146,7 @@ func newSWFixture(t *testing.T) *swFixture {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	ctx, cancel := context.WithCancel(ctx)
 
-	sw := NewServiceWatcher(cluster.NewFakeClientCache(kClient), k8s.DefaultNamespace)
+	sw := NewServiceWatcher(cluster.NewFakeClientProvider(kClient), k8s.DefaultNamespace)
 	st := store.NewTestingStore()
 
 	return &swFixture{
