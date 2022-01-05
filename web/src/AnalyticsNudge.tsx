@@ -1,45 +1,93 @@
 import React, { Component } from "react"
-import "./AnalyticsNudge.scss"
+import styled from "styled-components"
 import { linkToTiltDocs, TiltDocsPage } from "./constants"
+import { Color, SizeUnit } from "./style-helpers"
+
+const AnalyticsNudgeRoot = styled.section`
+  color: ${Color.grayDarkest};
+  position: fixed;
+  width: 100%;
+  box-sizing: border-box;
+  padding: ${SizeUnit(0.5)};
+  justify-content: space-between;
+  bottom: 0;
+  background-color: ${Color.gray};
+  color: ${Color.white};
+  z-index: $z-analyticsNudge;
+  display: none;
+
+  &.is-visible {
+    display: flex;
+  }
+`
+
+const AnalyticsNudgeButtons = styled.span`
+  display: flex;
+`
+
+const AnalyticsNudgeButton = styled.button`
+  align-content: center;
+  background-color: ${Color.grayDark};
+  color: ${Color.grayLightest};
+  border: 1px solid ${Color.grayLight};
+  padding: ${SizeUnit(0.5)};
+  margin-left: ${SizeUnit(0.5)};
+`
+
+const AnalyticsNudgeButtonConfirm = styled(AnalyticsNudgeButton)`
+  color: ${Color.green};
+`
+
+/**
+ * Clean-up of Analytics nudge:
+ * - (done) location may inconvience people and illicit a quick NOPE response
+ * - (done) wording
+ * - a11y issue (lizz will check)
+ * - buttons and colors don't vibe with rest of design (han will refine)
+ * - refactor with styled-components
+ * - (skip) use existing button component
+ * - (skip) refactor to simplify code
+ */
 
 const nudgeTimeoutMs = 15000
-const nudgeElem = (): JSX.Element => {
+const DefaultMessage = (): JSX.Element => {
   return (
     <p>
-      Welcome to Tilt! We collect anonymized usage data to help us improve. Is
-      that OK? (
+      Help us improve Tilt by letting us collect anonymized usage data! We
+      respect your privacy. You can{" "}
       <a
         href={linkToTiltDocs(TiltDocsPage.TelemetryFaq)}
         target="_blank"
         rel="noopener noreferrer"
       >
-        Read more
-      </a>
-      )
+        learn more
+      </a>{" "}
+      about exactly what data we collect and how we use it.
     </p>
   )
 }
-const reqInProgMsg = "Okay, making it so..."
-const successOptInElem = (): JSX.Element => {
+const reqInProgMsg = "…updating…"
+const OptInSuccess = (): JSX.Element => {
   return (
     <p>
-      Thanks for helping us improve Tilt for you and everyone! (You can change
-      your mind by running <pre>tilt analytics opt out</pre> in your terminal.)
+      Thank you so much! ✨ If you change your mind, you can opt out via command
+      line: <code>tilt analytics opt out</code>.
     </p>
   )
 }
-const successOptOutElem = (): JSX.Element => {
+const OptOutSuccess = (): JSX.Element => {
   return (
     <p>
-      Okay, opting you out of telemetry. If you change your mind, you can run{" "}
-      <pre>tilt analytics opt in</pre> in your terminal.
+      Opted out of telemetry. If you change your mind, you can opt in via
+      command line: <code>tilt analytics opt in</code>.
     </p>
   )
 }
-const errorElem = (respBody: string): JSX.Element => {
+const ErrorMessage = (props: { respBody: string }): JSX.Element => {
   return (
     <p>
-      Oh no, something went wrong! Request failed with: <pre>{respBody}</pre> (
+      Oh no, something went wrong! Request failed with:{" "}
+      <code>{props.respBody}</code> (
       <a
         href="https://tilt.dev/contact"
         target="_blank"
@@ -126,7 +174,7 @@ class AnalyticsNudge extends Component<
           // User opted in
           return (
             <>
-              {successOptInElem()}
+              <OptInSuccess />
               <span>
                 <button
                   className="AnalyticsNudge-button"
@@ -141,7 +189,7 @@ class AnalyticsNudge extends Component<
         // User opted out
         return (
           <>
-            {successOptOutElem()}
+            <OptOutSuccess />
             <span>
               <button
                 className="AnalyticsNudge-button"
@@ -156,7 +204,7 @@ class AnalyticsNudge extends Component<
         return (
           // Error calling the opt endpt.
           <>
-            {errorElem(this.state.responseBody)}
+            <ErrorMessage respBody={this.state.responseBody} />
             <span>
               <button
                 className="AnalyticsNudge-button"
@@ -176,21 +224,21 @@ class AnalyticsNudge extends Component<
     }
     return (
       <>
-        {nudgeElem()}
-        <span>
-          <button
+        <DefaultMessage />
+        <AnalyticsNudgeButtons>
+          <AnalyticsNudgeButton
             className="AnalyticsNudge-button"
             onClick={() => this.analyticsOpt(false)}
           >
-            Nope
-          </button>
-          <button
-            className="AnalyticsNudge-button opt-in"
+            No Thanks
+          </AnalyticsNudgeButton>
+          <AnalyticsNudgeButtonConfirm
+            className="AnalyticsNudge-button"
             onClick={() => this.analyticsOpt(true)}
           >
-            I'm in
-          </button>
-        </span>
+            I'm In!
+          </AnalyticsNudgeButtonConfirm>
+        </AnalyticsNudgeButtons>
       </>
     )
   }
@@ -200,7 +248,11 @@ class AnalyticsNudge extends Component<
       classes.push("is-visible")
     }
 
-    return <section className={classes.join(" ")}>{this.messageElem()}</section>
+    return (
+      <AnalyticsNudgeRoot role="alert" className={classes.join(" ")}>
+        {this.messageElem()}
+      </AnalyticsNudgeRoot>
+    )
   }
 }
 
