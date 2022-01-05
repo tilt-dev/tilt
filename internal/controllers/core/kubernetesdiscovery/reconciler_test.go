@@ -421,10 +421,12 @@ func TestKubernetesDiscoveryClusterError(t *testing.T) {
 	f.clients.SetClusterError(clusterNN(*kd), errors.New("oh no"))
 	require.NoError(t, f.Client.Create(f.Context(), kd), "Could not create KubernetesDiscovery")
 
-	// TODO(milas): we need to add an Error field to KubernetesDiscoveryStatus
-	// 	to report these problems
-	_, err := f.Reconcile(key)
-	require.EqualError(t, err, `failed to reconcile some-ns:kd: cluster "my-cluster" connection error: oh no`)
+	f.MustReconcile(key)
+	f.MustGet(key, kd)
+	require.NotNil(t, kd.Status.Waiting, "Waiting should be present")
+	require.Equal(t, "ClusterUnavailable", kd.Status.Waiting.Reason)
+	require.Zero(t, kd.Status.MonitorStartTime, "MonitorStartTime should not be populated")
+	require.Nil(t, kd.Status.Running, "Running should not be populated")
 }
 
 func TestClusterChange(t *testing.T) {
@@ -509,10 +511,12 @@ func TestClusterChange(t *testing.T) {
 	f.MustGet(apis.Key(kd2ClusterA), kd2ClusterA)
 	kd2ClusterA.Spec.ExtraSelectors = append(kd2ClusterA.Spec.ExtraSelectors,
 		metav1.LabelSelector{MatchLabels: map[string]string{"foo": "bar"}})
+
 	require.NoError(f.t, f.Client.Update(f.ctx, kd2ClusterA))
-	_, err := f.Reconcile(apis.Key(kd2ClusterA))
-	require.EqualError(t, err,
-		`failed to reconcile some-ns:kd2ClusterA: cluster "clusterA" connection error: cluster revision is stale`)
+	f.MustReconcile(apis.Key(kd2ClusterA))
+	f.MustGet(apis.Key(kd2ClusterA), kd2ClusterA)
+	require.NotNil(t, kd2ClusterA.Status.Waiting, "kd2clusterA should be in waiting state")
+	require.Equal(t, "ClusterUnavailable", kd2ClusterA.Status.Waiting.Reason)
 
 	// cluster B can reconcile even if it has spec changes since it's using a
 	// different cluster

@@ -131,6 +131,7 @@ type watcher struct {
 	// extraSelectors are label selectors used to match pods that don't transitively match any known UID.
 	extraSelectors []labels.Selector
 	cluster        clusterKey
+	errorReason    string
 }
 
 // nsWatch tracks the watchers for the given namespace and allows the watch to be canceled.
@@ -237,33 +238,35 @@ func (w *Reconciler) addOrReplace(ctx context.Context, watcherKey watcherID, kd 
 		w.teardown(watcherKey)
 	}
 
-	kCli, err := w.clients.GetK8sClient(kd, cluster)
-	if err != nil {
-		return fmt.Errorf("cluster %q connection error: %v", kd.Spec.Cluster, err)
-	}
+	defer func() {
+		// ensure that any namespaces of which this was the last watcher have their watch stopped
+		w.cleanupAbandonedNamespaces()
+	}()
 
-	currentNamespaces, currentUIDs := namespacesAndUIDsFromSpec(kd.Spec.Watches)
-	for namespace := range currentNamespaces {
-		nsKey := newNsKey(cluster, namespace)
-		w.setupNamespaceWatch(ctx, nsKey, watcherKey, kCli)
-	}
-
-	for watchUID := range currentUIDs {
-		w.setupUIDWatch(ctx, newUIDKey(cluster, watchUID), watcherKey)
-	}
-
-	pw := watcher{
+	newWatcher := watcher{
 		spec:           *kd.Spec.DeepCopy(),
-		startTime:      time.Now(),
 		extraSelectors: extraSelectors,
 		cluster:        newClusterKey(cluster),
 	}
 
-	w.watchers[watcherKey] = pw
+	kCli, err := w.clients.GetK8sClient(kd, cluster)
+	if err != nil {
+		newWatcher.errorReason = "ClusterUnavailable"
+	} else {
+		currentNamespaces, currentUIDs := namespacesAndUIDsFromSpec(kd.Spec.Watches)
+		for namespace := range currentNamespaces {
+			nsKey := newNsKey(cluster, namespace)
+			w.setupNamespaceWatch(ctx, nsKey, watcherKey, kCli)
+		}
 
-	// now that we've finished setup, ensure that any namespaces of which this was the last watcher
-	// have their watch stopped
-	w.cleanupAbandonedNamespaces()
+		for watchUID := range currentUIDs {
+			w.setupUIDWatch(ctx, newUIDKey(cluster, watchUID), watcherKey)
+		}
+
+		newWatcher.startTime = time.Now()
+	}
+
+	w.watchers[watcherKey] = newWatcher
 
 	// always emit an update status event so that any Pods that the reconciler _already_ knows about get populated
 	// this is extremely common as usually the reconciler receives the Pod event before the caller is able to
@@ -416,6 +419,14 @@ func (w *Reconciler) updateStatus(ctx context.Context, watcherID watcherID) erro
 //
 // mu must be held by caller.
 func (w *Reconciler) buildStatus(ctx context.Context, watcher watcher) v1alpha1.KubernetesDiscoveryStatus {
+	if watcher.errorReason != "" {
+		return v1alpha1.KubernetesDiscoveryStatus{
+			Waiting: &v1alpha1.KubernetesDiscoveryStateWaiting{
+				Reason: watcher.errorReason,
+			},
+		}
+	}
+
 	seenPodUIDs := k8s.NewUIDSet()
 	var pods []v1alpha1.Pod
 	maybeTrackPod := func(pod *v1.Pod, ancestorUID types.UID) {
