@@ -3,9 +3,11 @@ package indexer
 import (
 	"context"
 	"sync"
+	"time"
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -39,4 +41,26 @@ func (s *Requeuer) Add(nn types.NamespacedName) {
 			NamespacedName: nn,
 		})
 	}
+}
+
+type reconciler interface {
+	Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error)
+}
+
+func StartRequeuerForTesting(ctx context.Context, requeuer *Requeuer, reconciler reconciler) {
+	q := workqueue.NewRateLimitingQueue(
+		workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, time.Millisecond))
+	_ = requeuer.Start(ctx, handler.Funcs{}, q)
+
+	go func() {
+		for ctx.Err() == nil {
+			next, shutdown := q.Get()
+			if shutdown {
+				return
+			}
+
+			_, _ = reconciler.Reconcile(ctx, next.(reconcile.Request))
+			q.Done(next)
+		}
+	}()
 }
