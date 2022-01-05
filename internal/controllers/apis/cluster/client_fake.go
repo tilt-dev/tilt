@@ -67,7 +67,7 @@ func (f *FakeClientProvider) AddK8sClient(key types.NamespacedName, client k8s.C
 	defer f.mu.Unlock()
 
 	if _, ok := f.clients[key]; !ok {
-		now := time.Now()
+		now := time.Now().Truncate(0)
 		f.clients[key] = clientOrErr{clientRevision: clientRevision{client: client, connectedAt: now}}
 		return true, now
 	}
@@ -79,7 +79,16 @@ func (f *FakeClientProvider) SetK8sClient(key types.NamespacedName, client k8s.C
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	now := time.Now()
+	// in apiserver, it's not feasible for a client to get updated repeatedly
+	// at sub-microsecond level speed, but this ensures things play nicely in
+	// tests by making the timestamp always move forward
+	now := time.Now().Truncate(0)
+	if existing, ok := f.clients[key]; ok {
+		if !now.After(existing.connectedAt) {
+			now = existing.connectedAt.Add(time.Microsecond)
+		}
+	}
+
 	f.clients[key] = clientOrErr{clientRevision: clientRevision{client: client, connectedAt: now}}
 	return now
 }
