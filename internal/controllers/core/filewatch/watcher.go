@@ -19,6 +19,8 @@ import (
 // MaxFileEventHistory is the maximum number of file events that will be retained on the FileWatch status.
 const MaxFileEventHistory = 20
 
+const maxRestartBackoff = 5 * time.Minute
+
 const DetectedOverflowErrMsg = `It looks like the inotify event queue has overflowed. Check these instructions for how to raise the queue limit: https://facebook.github.io/watchman/docs/install#system-specific-preparation`
 
 type watcher struct {
@@ -60,6 +62,9 @@ func (w *watcher) cleanupWatch(ctx context.Context) {
 	}
 
 	w.restartBackoff = w.restartBackoff * 2
+	if w.restartBackoff > maxRestartBackoff {
+		w.restartBackoff = maxRestartBackoff
+	}
 	w.doneAt = w.clock.Now()
 	if ctx.Err() == nil && w.status.Error == "" {
 		w.status.Error = "unexpected close"
