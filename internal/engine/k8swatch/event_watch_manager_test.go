@@ -6,8 +6,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/types"
+
 	"github.com/tilt-dev/tilt/internal/controllers/apis/cluster"
 	"github.com/tilt-dev/tilt/pkg/apis"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
 	"github.com/jonboulle/clockwork"
 	"github.com/pkg/errors"
@@ -42,7 +46,7 @@ func TestEventWatchManager_dispatchesEvent(t *testing.T) {
 
 	evt := f.makeEvent(k8s.NewK8sEntity(pb.Build()))
 
-	_ = f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	require.NoError(t, f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary()))
 	f.kClient.UpsertEvent(evt)
 	expected := store.K8sEventAction{Event: evt, ManifestName: mn}
 	f.assertActions(expected)
@@ -66,7 +70,7 @@ func TestEventWatchManager_dispatchesNamespaceEvent(t *testing.T) {
 
 	evt2 := f.makeEvent(k8s.NewK8sEntity(pb.Build()))
 
-	_ = f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	require.NoError(t, f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary()))
 	f.kClient.UpsertEvent(evt1)
 	f.kClient.UpsertEvent(evt2)
 
@@ -93,8 +97,8 @@ func TestEventWatchManager_duplicateDeployIDs(t *testing.T) {
 	evt := f.makeEvent(k8s.NewK8sEntity(pb.Build()))
 
 	f.kClient.UpsertEvent(evt)
-	_ = f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	_ = f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	require.NoError(t, f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary()))
+	require.NoError(t, f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary()))
 	expected := store.K8sEventAction{Event: evt, ManifestName: fe1}
 	f.assertActions(expected)
 }
@@ -131,7 +135,7 @@ func TestEventWatchManagerDifferentEvents(t *testing.T) {
 			evt.Reason = c.Reason
 			evt.Type = c.Type
 
-			_ = f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+			require.NoError(t, f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary()))
 			f.kClient.UpsertEvent(evt)
 			if c.Expected {
 				expected := store.K8sEventAction{Event: evt, ManifestName: mn}
@@ -152,10 +156,10 @@ func TestEventWatchManager_listensOnce(t *testing.T) {
 	f.addDeployedEntity(m, entities.Deployment())
 	f.kClient.Inject(entities...)
 
-	_ = f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	require.NoError(t, f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary()))
 
 	f.kClient.EventsWatchErr = fmt.Errorf("Multiple watches forbidden")
-	_ = f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	require.NoError(t, f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary()))
 
 	f.assertNoActions()
 }
@@ -172,7 +176,7 @@ func TestEventWatchManager_watchError(t *testing.T) {
 	f.addDeployedEntity(m, entities.Deployment())
 	f.kClient.Inject(entities...)
 
-	_ = f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	require.NoError(t, f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary()))
 
 	expectedErr := errors.Wrap(err, "Error watching events. Are you connected to kubernetes?\nTry running `kubectl get events -n \"default\"`")
 	expected := store.ErrorAction{Error: expectedErr}
@@ -188,7 +192,7 @@ func TestEventWatchManager_eventBeforeUID(t *testing.T) {
 
 	// Seed the k8s client with a pod and its owner tree
 	manifest := f.addManifest(mn)
-	_ = f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	require.NoError(t, f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary()))
 
 	pb := podbuilder.New(t, manifest)
 	entities := pb.ObjectTreeEntities()
@@ -270,10 +274,12 @@ func newEWMFixture(t *testing.T) *ewmFixture {
 	clock := clockwork.NewFakeClock()
 	st := store.NewTestingStore()
 
+	cc := cluster.NewFakeClientProvider(kClient)
+
 	ret := &ewmFixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),
 		kClient:        kClient,
-		ewm:            NewEventWatchManager(cluster.NewFakeClientProvider(kClient), k8s.DefaultNamespace),
+		ewm:            NewEventWatchManager(cc, k8s.DefaultNamespace),
 		ctx:            ctx,
 		cancel:         cancel,
 		t:              t,
@@ -283,6 +289,23 @@ func newEWMFixture(t *testing.T) *ewmFixture {
 
 	state := ret.store.LockMutableStateForTesting()
 	state.TiltStartTime = clock.Now()
+	_, createdAt, err := cc.GetK8sClient(types.NamespacedName{Name: "default"})
+	require.NoError(t, err, "Failed to get default cluster client hash")
+	connectedAt := apis.NewMicroTime(createdAt)
+	state.Clusters["default"] = &v1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "default",
+		},
+		Spec: v1alpha1.ClusterSpec{
+			Connection: &v1alpha1.ClusterConnection{
+				Kubernetes: &v1alpha1.KubernetesClusterConnection{},
+			},
+		},
+		Status: v1alpha1.ClusterStatus{
+			Arch:        "fake-arch",
+			ConnectedAt: &connectedAt,
+		},
+	}
 	ret.store.UnlockMutableState()
 
 	return ret
@@ -308,7 +331,7 @@ func (f *ewmFixture) addManifest(manifestName model.ManifestName) model.Manifest
 
 func (f *ewmFixture) addDeployedEntity(m model.Manifest, entity k8s.K8sEntity) {
 	defer func() {
-		_ = f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+		require.NoError(f.t, f.ewm.OnChange(f.ctx, f.store, store.LegacyChangeSummary()))
 	}()
 
 	state := f.store.LockMutableStateForTesting()

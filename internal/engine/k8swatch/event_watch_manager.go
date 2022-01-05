@@ -9,6 +9,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/controllers/apis/cluster"
 	"github.com/tilt-dev/tilt/internal/timecmp"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
@@ -30,7 +31,7 @@ import (
 type EventWatchManager struct {
 	mu sync.RWMutex
 
-	clients cluster.ClientProvider
+	clients *cluster.ClientManager
 
 	watcherKnownState watcherKnownState
 
@@ -46,7 +47,7 @@ type EventWatchManager struct {
 
 func NewEventWatchManager(clients cluster.ClientProvider, cfgNS k8s.Namespace) *EventWatchManager {
 	return &EventWatchManager{
-		clients:                  clients,
+		clients:                  cluster.NewClientManager(clients),
 		watcherKnownState:        newWatcherKnownState(cfgNS),
 		knownDescendentEventUIDs: make(map[clusterUID]k8s.UIDSet),
 		knownEvents:              make(map[clusterUID]*v1.Event),
@@ -62,9 +63,6 @@ func (m *EventWatchManager) diff(st store.RStore) eventWatchTaskList {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
 	watcherTaskList := m.watcherKnownState.createTaskList(state)
 	return eventWatchTaskList{
 		watcherTaskList: watcherTaskList,
@@ -72,11 +70,17 @@ func (m *EventWatchManager) diff(st store.RStore) eventWatchTaskList {
 	}
 }
 
-func (m *EventWatchManager) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) error {
-	taskList := m.diff(st)
+func (m *EventWatchManager) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) error {
+	if summary.IsLogOnly() {
+		return nil
+	}
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	clusters := m.handleClusterChanges(st, summary)
+
+	taskList := m.diff(st)
 
 	for _, teardown := range taskList.teardownNamespaces {
 		watcher, ok := m.watcherKnownState.namespaceWatches[teardown]
@@ -87,7 +91,7 @@ func (m *EventWatchManager) OnChange(ctx context.Context, st store.RStore, _ sto
 	}
 
 	for _, setup := range taskList.setupNamespaces {
-		m.setupWatch(ctx, st, setup, taskList.tiltStartTime)
+		m.setupWatch(ctx, st, clusters, setup, taskList.tiltStartTime)
 	}
 
 	if len(taskList.newUIDs) > 0 {
@@ -96,8 +100,44 @@ func (m *EventWatchManager) OnChange(ctx context.Context, st store.RStore, _ sto
 	return nil
 }
 
-func (m *EventWatchManager) setupWatch(ctx context.Context, st store.RStore, ns clusterNamespace, tiltStartTime time.Time) {
-	kCli, _, err := m.clients.GetK8sClient(ns.cluster)
+func (m *EventWatchManager) handleClusterChanges(st store.RStore, summary store.ChangeSummary) map[types.NamespacedName]*v1alpha1.Cluster {
+	clusters := make(map[types.NamespacedName]*v1alpha1.Cluster)
+	state := st.RLockState()
+	for k, v := range state.Clusters {
+		clusters[types.NamespacedName{Name: k}] = v.DeepCopy()
+	}
+	st.RUnlockState()
+
+	for clusterNN := range summary.Clusters.Changes {
+		c := clusters[clusterNN]
+		if c != nil && !m.clients.Refresh(c) {
+			// cluster config didn't change
+			// N.B. if the cluster is nil (does not exist in state), we'll
+			// 	clear everything for it as well
+			continue
+		}
+
+		// cluster config changed, remove all state so it can be re-built
+		for key := range m.knownEvents {
+			if key.cluster == clusterNN {
+				delete(m.knownEvents, key)
+			}
+		}
+
+		for key := range m.knownDescendentEventUIDs {
+			if key.cluster == clusterNN {
+				delete(m.knownDescendentEventUIDs, key)
+			}
+		}
+
+		m.watcherKnownState.resetStateForCluster(clusterNN)
+	}
+
+	return clusters
+}
+
+func (m *EventWatchManager) setupWatch(ctx context.Context, st store.RStore, clusters map[types.NamespacedName]*v1alpha1.Cluster, key clusterNamespace, tiltStartTime time.Time) {
+	kCli, err := m.clients.GetK8sClient(clusters[key.cluster])
 	if err != nil {
 		// ignore errors, if the cluster status changes, the subscriber
 		// will be re-run and the namespaces will be picked up again as new
@@ -105,17 +145,17 @@ func (m *EventWatchManager) setupWatch(ctx context.Context, st store.RStore, ns 
 		return
 	}
 
-	ch, err := kCli.WatchEvents(ctx, ns.namespace)
+	ch, err := kCli.WatchEvents(ctx, key.namespace)
 	if err != nil {
-		err = errors.Wrapf(err, "Error watching events. Are you connected to kubernetes?\nTry running `kubectl get events -n %q`", ns.namespace)
+		err = errors.Wrapf(err, "Error watching events. Are you connected to kubernetes?\nTry running `kubectl get events -n %q`", key.namespace)
 		st.Dispatch(store.NewErrorAction(err))
 		return
 	}
 
 	ctx, cancel := context.WithCancel(ctx)
-	m.watcherKnownState.namespaceWatches[ns] = namespaceWatch{cancel: cancel}
+	m.watcherKnownState.namespaceWatches[key] = namespaceWatch{cancel: cancel}
 
-	go m.dispatchEventsLoop(ctx, kCli.OwnerFetcher(), ns.cluster, ch, st, tiltStartTime)
+	go m.dispatchEventsLoop(ctx, kCli.OwnerFetcher(), key.cluster, ch, st, tiltStartTime)
 }
 
 // When new UIDs are deployed, go through all our known events and dispatch

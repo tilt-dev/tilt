@@ -133,3 +133,18 @@ func (ks *watcherKnownState) createTaskList(state store.EngineState) watcherTask
 		newUIDs:             newUIDs,
 	}
 }
+
+func (ks *watcherKnownState) resetStateForCluster(clusterKey types.NamespacedName) {
+	for key, watch := range ks.namespaceWatches {
+		if key.cluster == clusterKey {
+			watch.cancel()
+			delete(ks.namespaceWatches, key)
+		}
+	}
+
+	for key := range ks.knownDeployedUIDs {
+		if key.cluster == clusterKey {
+			delete(ks.knownDeployedUIDs, key)
+		}
+	}
+}

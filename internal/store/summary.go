@@ -63,6 +63,8 @@ type ChangeSummary struct {
 	UISessions  ChangeSet
 	UIResources ChangeSet
 
+	Clusters ChangeSet
+
 	// If non-zero, that means we tried to apply this change and got
 	// an error.
 	LastBackoff time.Duration
@@ -79,6 +81,7 @@ func (s *ChangeSummary) Add(other ChangeSummary) {
 	s.Sessions.AddAll(other.Sessions)
 	s.UISessions.AddAll(other.UISessions)
 	s.UIResources.AddAll(other.UIResources)
+	s.Clusters.AddAll(other.Clusters)
 	if other.LastBackoff > s.LastBackoff {
 		s.LastBackoff = other.LastBackoff
 	}
