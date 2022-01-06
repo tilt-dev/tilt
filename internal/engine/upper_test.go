@@ -38,7 +38,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/containerupdate"
 	"github.com/tilt-dev/tilt/internal/controllers"
-	apicluster "github.com/tilt-dev/tilt/internal/controllers/apis/cluster"
 	apitiltfile "github.com/tilt-dev/tilt/internal/controllers/apis/tiltfile"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cluster"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
@@ -3843,7 +3842,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 
 	watcher := fsevent.NewFakeMultiWatcher()
 	kClient := k8s.NewFakeK8sClient(t)
-	clusterClients := apicluster.NewFakeClientProvider(kClient)
+	clusterClients := cluster.NewConnectionManager()
 
 	timerMaker := fsevent.MakeFakeTimerMaker(t)
 
@@ -3928,7 +3927,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	lur := liveupdate.NewFakeReconciler(st, cu, cdc)
 	dir := dockerimage.NewReconciler(cdc)
 	cir := cmdimage.NewReconciler(cdc)
-	clr := cluster.NewReconciler(ctx, cdc, st, docker.LocalEnv{}, cluster.NewConnectionManager())
+	clr := cluster.NewReconciler(ctx, cdc, st, docker.LocalEnv{}, clusterClients)
 	clr.SetFakeClientsForTesting(kClient, dockerClient)
 
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
@@ -4631,6 +4630,7 @@ func (s fixtureSub) OnChange(ctx context.Context, st store.RStore, _ store.Chang
 }
 
 func (f *testFixture) ensureCluster() {
+	f.t.Helper()
 	err := f.ctrlClient.Create(f.ctx, &v1alpha1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "default",

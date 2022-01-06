@@ -148,3 +148,24 @@ func (ks *watcherKnownState) resetStateForCluster(clusterKey types.NamespacedNam
 		}
 	}
 }
+
+// watcherClientKey bridges apiserver and engine subscriber semantics.
+//
+// In apiserver reconcilers, each object is evaluated individually, so each
+// one needs to be notified of client changes and reset its own state.
+//
+// The engine subscribers evaluate on global engine state, so this acts as a
+// singleton key for them. The name is purely informative for debugging
+// purposes (collisions aren't an issue - the subscribers do not share a
+// ClientManager instance as there's no real advantage to doing so).
+type watcherClientKey struct {
+	name string
+}
+
+func (w watcherClientKey) GetName() string {
+	return w.name
+}
+
+func (w watcherClientKey) GetNamespace() string {
+	return "tilt-engine"
+}

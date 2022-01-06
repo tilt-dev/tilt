@@ -31,7 +31,8 @@ import (
 type EventWatchManager struct {
 	mu sync.RWMutex
 
-	clients *cluster.ClientManager
+	clients   *cluster.ClientManager
+	clientKey watcherClientKey
 
 	watcherKnownState watcherKnownState
 
@@ -48,6 +49,7 @@ type EventWatchManager struct {
 func NewEventWatchManager(clients cluster.ClientProvider, cfgNS k8s.Namespace) *EventWatchManager {
 	return &EventWatchManager{
 		clients:                  cluster.NewClientManager(clients),
+		clientKey:                watcherClientKey{name: "events"},
 		watcherKnownState:        newWatcherKnownState(cfgNS),
 		knownDescendentEventUIDs: make(map[clusterUID]k8s.UIDSet),
 		knownEvents:              make(map[clusterUID]*v1.Event),
@@ -110,7 +112,7 @@ func (m *EventWatchManager) handleClusterChanges(st store.RStore, summary store.
 
 	for clusterNN := range summary.Clusters.Changes {
 		c := clusters[clusterNN]
-		if c != nil && !m.clients.Refresh(c) {
+		if c != nil && !m.clients.Refresh(m.clientKey, c) {
 			// cluster config didn't change
 			// N.B. if the cluster is nil (does not exist in state), we'll
 			// 	clear everything for it as well
@@ -137,7 +139,7 @@ func (m *EventWatchManager) handleClusterChanges(st store.RStore, summary store.
 }
 
 func (m *EventWatchManager) setupWatch(ctx context.Context, st store.RStore, clusters map[types.NamespacedName]*v1alpha1.Cluster, key clusterNamespace, tiltStartTime time.Time) {
-	kCli, err := m.clients.GetK8sClient(clusters[key.cluster])
+	kCli, err := m.clients.GetK8sClient(m.clientKey, clusters[key.cluster])
 	if err != nil {
 		// ignore errors, if the cluster status changes, the subscriber
 		// will be re-run and the namespaces will be picked up again as new

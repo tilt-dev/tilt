@@ -17,7 +17,8 @@ import (
 )
 
 type ServiceWatcher struct {
-	clients *cluster.ClientManager
+	clients   *cluster.ClientManager
+	clientKey watcherClientKey
 
 	mu                sync.RWMutex
 	watcherKnownState watcherKnownState
@@ -27,6 +28,7 @@ type ServiceWatcher struct {
 func NewServiceWatcher(clients cluster.ClientProvider, cfgNS k8s.Namespace) *ServiceWatcher {
 	return &ServiceWatcher{
 		clients:           cluster.NewClientManager(clients),
+		clientKey:         watcherClientKey{name: "services"},
 		watcherKnownState: newWatcherKnownState(cfgNS),
 		knownServices:     make(map[clusterUID]*v1.Service),
 	}
@@ -80,7 +82,7 @@ func (w *ServiceWatcher) handleClusterChanges(st store.RStore, summary store.Cha
 
 	for clusterNN := range summary.Clusters.Changes {
 		c := clusters[clusterNN]
-		if c != nil && !w.clients.Refresh(c) {
+		if c != nil && !w.clients.Refresh(w.clientKey, c) {
 			// cluster config didn't change
 			continue
 		}
@@ -99,7 +101,7 @@ func (w *ServiceWatcher) handleClusterChanges(st store.RStore, summary store.Cha
 }
 
 func (w *ServiceWatcher) setupWatch(ctx context.Context, st store.RStore, clusters map[types.NamespacedName]*v1alpha1.Cluster, key clusterNamespace) {
-	kCli, err := w.clients.GetK8sClient(clusters[key.cluster])
+	kCli, err := w.clients.GetK8sClient(w.clientKey, clusters[key.cluster])
 	if err != nil {
 		// ignore errors, if the cluster status changes, the subscriber
 		// will be re-run and the namespaces will be picked up again as new
@@ -126,7 +128,7 @@ func (w *ServiceWatcher) setupWatch(ctx context.Context, st store.RStore, cluste
 // you would think.
 func (w *ServiceWatcher) setupNewUIDs(ctx context.Context, st store.RStore, clusters map[types.NamespacedName]*v1alpha1.Cluster, newUIDs map[clusterUID]model.ManifestName) {
 	for uid, mn := range newUIDs {
-		kCli, err := w.clients.GetK8sClient(clusters[uid.cluster])
+		kCli, err := w.clients.GetK8sClient(w.clientKey, clusters[uid.cluster])
 		if err != nil {
 			// ignore errors, if the cluster status changes, the subscriber
 			// will be re-run and the namespaces will be picked up again as new
