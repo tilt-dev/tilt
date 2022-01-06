@@ -490,7 +490,7 @@ func TestClusterChange(t *testing.T) {
 	// create a NEW client for A
 	kCliClusterA2 := k8s.NewFakeK8sClient(t)
 	t.Cleanup(kCliClusterA2.TearDown)
-	updatedRev := f.clients.SetK8sClient(clusterNN(*kd1ClusterA), kCliClusterA2)
+	connectedAtA2 := f.clients.SetK8sClient(clusterNN(*kd1ClusterA), kCliClusterA2)
 
 	// create copies of the old pods with slightly different names so we can
 	// be sure we received the new ones
@@ -528,8 +528,7 @@ func TestClusterChange(t *testing.T) {
 
 	// write the updated cluster obj to apiserver
 	clusterA := f.getCluster(clusterNN(*kd1ClusterA))
-	connectedAtA := apis.NewMicroTime(updatedRev)
-	clusterA.Status.ConnectedAt = &connectedAtA
+	clusterA.Status.ConnectedAt = connectedAtA2.DeepCopy()
 	require.NoError(f.t, f.Client.Update(f.ctx, clusterA))
 
 	// kd1 still only matches by UID but should see the Pod from the new cluster now
@@ -737,7 +736,7 @@ func clusterNN(kd v1alpha1.KubernetesDiscovery) types.NamespacedName {
 	return nn
 }
 
-func (f *fixture) k8sClient(kd v1alpha1.KubernetesDiscovery) (*k8s.FakeK8sClient, time.Time) {
+func (f *fixture) k8sClient(kd v1alpha1.KubernetesDiscovery) (*k8s.FakeK8sClient, metav1.MicroTime) {
 	f.t.Helper()
 
 	clusterNN := clusterNN(kd)
@@ -759,7 +758,6 @@ func (f *fixture) ensureCluster(kd v1alpha1.KubernetesDiscovery) {
 
 	// seed the k8s client if it doesn't already exist
 	_, rev := f.k8sClient(kd)
-	connectedAt := apis.NewMicroTime(rev)
 
 	nn := clusterNN(kd)
 
@@ -775,7 +773,7 @@ func (f *fixture) ensureCluster(kd v1alpha1.KubernetesDiscovery) {
 		},
 		Status: v1alpha1.ClusterStatus{
 			Arch:        "amd64",
-			ConnectedAt: &connectedAt,
+			ConnectedAt: rev.DeepCopy(),
 		},
 	})
 }

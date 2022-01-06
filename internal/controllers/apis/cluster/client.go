@@ -3,8 +3,8 @@ package cluster
 import (
 	"errors"
 	"sync"
-	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -37,7 +37,7 @@ type ClientProvider interface {
 	//
 	// In addition to the client, the timestamp at which the client was created is returned so callers can track
 	// when the client instance has changed.
-	GetK8sClient(clusterKey types.NamespacedName) (k8s.Client, time.Time, error)
+	GetK8sClient(clusterKey types.NamespacedName) (k8s.Client, metav1.MicroTime, error)
 }
 
 type clusterRef struct {
@@ -46,7 +46,7 @@ type clusterRef struct {
 }
 
 type clientRevision struct {
-	connectedAt time.Time
+	connectedAt metav1.MicroTime
 	client      k8s.Client
 }
 
@@ -63,13 +63,13 @@ type ClientManager struct {
 	mu       sync.Mutex
 	provider ClientProvider
 
-	revisions map[clusterRef]time.Time
+	revisions map[clusterRef]metav1.MicroTime
 }
 
 func NewClientManager(clientProvider ClientProvider) *ClientManager {
 	return &ClientManager{
 		provider:  clientProvider,
-		revisions: make(map[clusterRef]time.Time),
+		revisions: make(map[clusterRef]metav1.MicroTime),
 	}
 }
 

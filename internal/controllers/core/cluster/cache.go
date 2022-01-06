@@ -6,11 +6,13 @@ import (
 	"sync"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/controllers/apis/cluster"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
@@ -41,12 +43,12 @@ type connection struct {
 	arch         string
 }
 
-func (k *ConnectionManager) GetK8sClient(key types.NamespacedName) (k8s.Client, time.Time, error) {
-	conn, err := k.validConnOrError(key, connectionTypeK8s)
+func (k *ConnectionManager) GetK8sClient(clusterKey types.NamespacedName) (k8s.Client, metav1.MicroTime, error) {
+	conn, err := k.validConnOrError(clusterKey, connectionTypeK8s)
 	if err != nil {
-		return nil, time.Time{}, err
+		return nil, metav1.MicroTime{}, err
 	}
-	return conn.k8sClient, conn.createdAt, nil
+	return conn.k8sClient, apis.NewMicroTime(conn.createdAt), nil
 }
 
 // GetComposeDockerClient gets the Docker client for the instance that Docker Compose is deploying to.

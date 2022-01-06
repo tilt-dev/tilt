@@ -21,7 +21,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/servicebuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
-	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -143,9 +142,8 @@ func TestServiceWatchClusterChange(t *testing.T) {
 	f.clients.SetK8sClient(clusterNN, newClusterClient)
 	_, createdAt, err := f.clients.GetK8sClient(clusterNN)
 	require.NoError(t, err, "Could not get cluster client hash")
-	connectedAt := apis.NewMicroTime(createdAt)
 	state := f.store.LockMutableStateForTesting()
-	state.Clusters["default"].Status.ConnectedAt = &connectedAt
+	state.Clusters["default"].Status.ConnectedAt = createdAt.DeepCopy()
 	f.store.UnlockMutableState()
 
 	err = f.sw.OnChange(f.ctx, f.store, store.ChangeSummary{
@@ -220,7 +218,6 @@ func newSWFixture(t *testing.T) *swFixture {
 	state := st.LockMutableStateForTesting()
 	_, createdAt, err := clients.GetK8sClient(types.NamespacedName{Name: "default"})
 	require.NoError(t, err, "Failed to get default cluster client hash")
-	connectedAt := apis.NewMicroTime(createdAt)
 	state.Clusters["default"] = &v1alpha1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "default",
@@ -232,7 +229,7 @@ func newSWFixture(t *testing.T) *swFixture {
 		},
 		Status: v1alpha1.ClusterStatus{
 			Arch:        "fake-arch",
-			ConnectedAt: &connectedAt,
+			ConnectedAt: createdAt.DeepCopy(),
 		},
 	}
 	st.UnlockMutableState()
