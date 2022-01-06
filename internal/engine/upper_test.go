@@ -619,20 +619,6 @@ func TestUpper_CI(t *testing.T) {
 	require.NoError(t, <-storeErr)
 }
 
-func TestUpper_UpWatchError(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-	manifest := f.newManifest("foobar")
-	f.Start([]model.Manifest{manifest})
-
-	f.fsWatcher.Errors <- context.Canceled
-
-	err := <-f.upperInitResult
-	if assert.NotNil(t, err) {
-		assert.Equal(t, "context canceled", err.Error())
-	}
-}
-
 func TestUpper_UpWatchFileChange(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -3890,7 +3876,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	tcum := cloud.NewStatusManager(httptest.NewFakeClientEmptyJSON(), clock)
 	fe := cmd.NewFakeExecer()
 	fpm := cmd.NewFakeProberManager()
-	fwc := filewatch.NewController(cdc, st, watcher.NewSub, timerMaker.Maker(), v1alpha1.NewScheme())
+	fwc := filewatch.NewController(cdc, st, watcher.NewSub, timerMaker.Maker(), v1alpha1.NewScheme(), clock)
 	cmds := cmd.NewController(ctx, fe, fpm, cdc, st, clock, v1alpha1.NewScheme())
 	lsc := local.NewServerController(cdc)
 	sessionController := session.NewController(cdc, engineMode)

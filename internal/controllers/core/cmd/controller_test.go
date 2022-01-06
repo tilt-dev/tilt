@@ -15,13 +15,12 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/util/workqueue"
 	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
+	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/engine/local"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis"
@@ -924,21 +923,7 @@ func newFixture(t *testing.T) *fixture {
 	sc := local.NewServerController(f.Client)
 	clock := clockwork.NewFakeClock()
 	c := NewController(f.Context(), fe, fpm, f.Client, st, clock, v1alpha1.NewScheme())
-	q := workqueue.NewRateLimitingQueue(
-		workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, time.Millisecond))
-	_ = c.requeuer.Start(f.Context(), handler.Funcs{}, q)
-
-	go func() {
-		for f.Context().Err() == nil {
-			next, shutdown := q.Get()
-			if shutdown {
-				return
-			}
-
-			_, _ = c.Reconcile(f.Context(), next.(reconcile.Request))
-			q.Done(next)
-		}
-	}()
+	indexer.StartRequeuerForTesting(f.Context(), c.requeuer, c)
 
 	return &fixture{
 		ControllerFixture: f.Build(c),
