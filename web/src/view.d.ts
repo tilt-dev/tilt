@@ -505,6 +505,13 @@ declare namespace Proto {
   export interface v1alpha1UIResourceSpec {}
   export interface v1alpha1UIResourceLocal {
     pid?: string;
+    /**
+     * Whether this represents a test job.
+     *
+     * Deprecated: Users should use labels for marking services as tests.
+     *
+     * +optional
+     */
     isTest?: boolean;
   }
   export interface v1alpha1UIResourceLink {

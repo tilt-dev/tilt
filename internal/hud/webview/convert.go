@@ -408,7 +408,7 @@ func populateResourceInfoView(mt *store.ManifestTarget, r *v1alpha1.UIResource) 
 
 	if mt.Manifest.IsLocal() {
 		lState := mt.State.LocalRuntimeState()
-		r.Status.LocalResourceInfo = &v1alpha1.UIResourceLocal{PID: int64(lState.PID), IsTest: mt.Manifest.LocalTarget().IsTest}
+		r.Status.LocalResourceInfo = &v1alpha1.UIResourceLocal{PID: int64(lState.PID)}
 	}
 	if mt.Manifest.IsK8s() {
 		kState := mt.State.K8sRuntimeState()

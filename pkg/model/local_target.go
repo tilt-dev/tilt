@@ -23,10 +23,6 @@ type LocalTarget struct {
 	// resources  (by default, this is presumed unsafe and is not allowed).
 	AllowParallel bool
 
-	// For testing MVP
-	Tags   []string // eventually we might want tags to be more widespread -- stored on manifest maybe?
-	IsTest bool     // does this target represent a Test?
-
 	ReadinessProbe *v1alpha1.Probe
 
 	// Move this to CmdServerSpec when we move CmdServer to API
@@ -81,16 +77,6 @@ func (lt LocalTarget) WithIgnores(ignores []Dockerignore) LocalTarget {
 
 func (lt LocalTarget) WithLinks(links []Link) LocalTarget {
 	lt.Links = links
-	return lt
-}
-
-func (lt LocalTarget) WithIsTest(isTest bool) LocalTarget {
-	lt.IsTest = isTest
-	return lt
-}
-
-func (lt LocalTarget) WithTags(tags []string) LocalTarget {
-	lt.Tags = tags
 	return lt
 }
 

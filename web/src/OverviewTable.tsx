@@ -886,9 +886,6 @@ function resourceTypeLabel(r: UIResource): string {
     } else if (spec.type === TargetType.DockerCompose) {
       return "Docker Compose Service"
     } else if (spec.type === TargetType.Local) {
-      if (res.localResourceInfo && !!res.localResourceInfo.isTest) {
-        return "Test"
-      }
       return "Local Script"
     }
   }

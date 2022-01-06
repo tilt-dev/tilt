@@ -751,7 +751,7 @@
         },
         "isTest": {
           "type": "boolean",
-          "title": "Whether this represents a test job.\n+optional"
+          "description": "Whether this represents a test job.\n\nDeprecated: Users should use labels for marking services as tests.\n\n+optional"
         }
       },
       "description": "UIResourceLocal contains status information specific to local commands."

@@ -8,7 +8,6 @@ import { useResourceNav } from "./ResourceNav"
 import SidebarIcon from "./SidebarIcon"
 import SidebarItem from "./SidebarItem"
 import SidebarTriggerButton from "./SidebarTriggerButton"
-import { SidebarTriggerModeToggle } from "./SidebarTriggerModeToggle"
 import StarResourceButton, {
   StarResourceButtonRoot,
 } from "./StarResourceButton"
@@ -385,12 +384,6 @@ export function EnabledSidebarItemView(props: SidebarItemViewProps) {
               alertCount={item.buildAlertCount}
             />
             <SidebarItemText>{buildStatusText(item)}</SidebarItemText>
-            {item.isTest && (
-              <SidebarTriggerModeToggle
-                triggerMode={item.triggerMode}
-                onModeToggle={onModeToggle}
-              />
-            )}
           </SidebarItemBuildBox>
         </SidebarItemInnerBox>
       </SidebarItemBox>

@@ -2819,6 +2819,9 @@ message UIResourceLocal {
   optional int64 pid = 1;
 
   // Whether this represents a test job.
+  //
+  // Deprecated: Users should use labels for marking services as tests.
+  //
   // +optional
   optional bool isTest = 2;
 }
