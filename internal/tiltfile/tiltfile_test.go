@@ -2500,6 +2500,25 @@ docker_build('tilt.dev/frontend', '.')
 		m.ImageTargets[0].Refs.LocalRef().String())
 }
 
+func TestImageObjectJSONPathNoMatch(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.file("um.yaml", `apiVersion: tilt.dev/v1alpha1
+kind: UselessMachine
+metadata:
+  name: um
+spec:
+  repo: tilt.dev/frontend`)
+	f.dockerfile("Dockerfile")
+	f.file("Tiltfile", `
+k8s_yaml('um.yaml')
+k8s_kind(kind='UselessMachine', image_object={'json_path': '{.spec.image}', 'repo_field': 'repo', 'tag_field': 'tag'})
+docker_build('tilt.dev/frontend', '.')
+`)
+
+	f.loadErrString("finding image", "UselessMachine/um", ".spec.image")
+}
+
 func TestImageObjectJSONPathPodReadinessIgnore(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
