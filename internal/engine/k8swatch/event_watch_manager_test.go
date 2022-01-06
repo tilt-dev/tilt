@@ -291,7 +291,6 @@ func newEWMFixture(t *testing.T) *ewmFixture {
 	state.TiltStartTime = clock.Now()
 	_, createdAt, err := cc.GetK8sClient(types.NamespacedName{Name: "default"})
 	require.NoError(t, err, "Failed to get default cluster client hash")
-	connectedAt := apis.NewMicroTime(createdAt)
 	state.Clusters["default"] = &v1alpha1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "default",
@@ -303,7 +302,7 @@ func newEWMFixture(t *testing.T) *ewmFixture {
 		},
 		Status: v1alpha1.ClusterStatus{
 			Arch:        "fake-arch",
-			ConnectedAt: &connectedAt,
+			ConnectedAt: createdAt.DeepCopy(),
 		},
 	}
 	ret.store.UnlockMutableState()

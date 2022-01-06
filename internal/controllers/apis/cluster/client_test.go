@@ -92,8 +92,7 @@ func TestClientManager_GetK8sClient_Refresh(t *testing.T) {
 	// update the client
 	updatedCluster := origCluster.DeepCopy()
 	newRevision := f.cp.SetK8sClient(apis.Key(updatedCluster), k8s.NewFakeK8sClient(t))
-	connectedAt := apis.NewMicroTime(newRevision)
-	updatedCluster.Status.ConnectedAt = &connectedAt
+	updatedCluster.Status.ConnectedAt = newRevision.DeepCopy()
 
 	for _, obj := range []apis.KeyableObject{objA, objB} {
 		clusterRef := clusterRef{clusterKey: apis.Key(origCluster), objKey: apis.Key(obj)}
@@ -169,8 +168,7 @@ func (f *cmFixture) setupSuccessCluster() *v1alpha1.Cluster {
 
 	// get the timestamp from the fake client provider and set it
 	ts := f.cp.SetK8sClient(apis.Key(c), k8s.NewFakeK8sClient(f.t))
-	connectedAt := apis.NewMicroTime(ts)
-	c.Status.ConnectedAt = &connectedAt
+	c.Status.ConnectedAt = ts.DeepCopy()
 
 	return c
 }

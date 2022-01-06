@@ -11,6 +11,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/apis/cluster"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/timecmp"
 )
 
 func TestConnectionManager(t *testing.T) {
@@ -80,7 +81,7 @@ func TestConnectionManager(t *testing.T) {
 			} else {
 				if assert.NoError(t, err, "Unexpected error getting K8sClient") {
 					assert.NotNil(t, kCli, "K8sClient should not be nil")
-					assert.Equal(t, tcs[i].input.createdAt, createdAt, "Client hash did not match")
+					timecmp.AssertTimeEqual(t, tcs[i].input.createdAt, createdAt)
 				}
 			}
 
