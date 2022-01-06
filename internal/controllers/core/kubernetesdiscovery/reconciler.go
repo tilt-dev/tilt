@@ -41,6 +41,7 @@ var (
 	clusterGVK = v1alpha1.SchemeGroupVersion.WithKind("Cluster")
 )
 
+type namespaceSet map[string]bool
 type watcherSet map[watcherID]bool
 
 // watcherID is to disambiguate between K8s object keys and tilt-apiserver KubernetesDiscovery object keys.
@@ -255,7 +256,7 @@ func (w *Reconciler) addOrReplace(ctx context.Context, watcherKey watcherID, kd 
 	} else {
 		currentNamespaces, currentUIDs := namespacesAndUIDsFromSpec(kd.Spec.Watches)
 		for namespace := range currentNamespaces {
-			nsKey := newNsKey(cluster, namespace)
+			nsKey := newNsKey(cluster, string(namespace))
 			w.setupNamespaceWatch(ctx, nsKey, watcherKey, kCli)
 		}
 
@@ -335,7 +336,7 @@ func (w *Reconciler) setupNamespaceWatch(ctx context.Context, nsKey nsKey, watch
 	}
 
 	ns := nsKey.namespace
-	ch, err := kCli.WatchPods(ctx, ns)
+	ch, err := kCli.WatchPods(ctx, k8s.Namespace(ns))
 	if err != nil {
 		err = errors.Wrapf(err, "Error watching pods. Are you connected to kubernetes?\nTry running `kubectl get pods -n %q`", ns)
 		w.dispatcher.Dispatch(store.NewErrorAction(err))
@@ -761,14 +762,12 @@ func (w *Reconciler) dispatchPodChangesLoop(ctx context.Context, nsKey nsKey, ow
 	}
 }
 
-type namespaceSet map[k8s.Namespace]bool
-
 func namespacesAndUIDsFromSpec(watches []v1alpha1.KubernetesWatchRef) (namespaceSet, k8s.UIDSet) {
 	seenNamespaces := make(namespaceSet)
 	seenUIDs := k8s.NewUIDSet()
 
 	for i := range watches {
-		seenNamespaces[k8s.Namespace(watches[i].Namespace)] = true
+		seenNamespaces[watches[i].Namespace] = true
 		uid := types.UID(watches[i].UID)
 		if uid != "" {
 			// a watch ref might not have a UID:

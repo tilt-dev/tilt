@@ -5,7 +5,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
@@ -17,10 +16,10 @@ import (
 // object can change, so there might be multiple revisions active at once.
 type nsKey struct {
 	cluster   clusterKey
-	namespace k8s.Namespace
+	namespace string
 }
 
-func newNsKey(cluster *v1alpha1.Cluster, ns k8s.Namespace) nsKey {
+func newNsKey(cluster *v1alpha1.Cluster, ns string) nsKey {
 	return nsKey{
 		cluster:   newClusterKey(cluster),
 		namespace: ns,
