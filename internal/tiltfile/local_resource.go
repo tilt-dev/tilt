@@ -12,8 +12,12 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 	"github.com/tilt-dev/tilt/internal/tiltfile/value"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
+
+const testDeprecationMsg = "test() is deprecated and will be removed in a future release.\n" +
+	"Change this call to use `local_resource(..., allow_parallel=True)`"
 
 type localResource struct {
 	name      string
@@ -50,6 +54,11 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 	var links links.LinkList
 	var labels value.LabelSet
 	autoInit := true
+	if fn.Name() == testN {
+		// If we're initializing a test, by default parallelism is on
+		allowParallel = true
+		logger.Get(s.ctx).Warnf("%s", testDeprecationMsg)
+	}
 
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
