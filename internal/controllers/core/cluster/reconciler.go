@@ -104,10 +104,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		}
 	}
 
-	if !hasConnection {
-		r.reportConnectionEvent(ctx, conn)
-	}
-
 	r.connManager.store(nn, conn)
 
 	status := conn.toStatus()
@@ -228,16 +224,28 @@ func (r *Reconciler) maybeUpdateStatus(ctx context.Context, obj *v1alpha1.Cluste
 	if newStatus.Error != "" && obj.Status.Error != newStatus.Error {
 		logger.Get(ctx).Errorf("Cluster status error: %v", newStatus.Error)
 	}
+
+	r.reportConnectionEvent(ctx, updated)
+
 	return nil
 }
 
-func (r *Reconciler) reportConnectionEvent(ctx context.Context, conn connection) {
-	tags := map[string]string{
-		"type": string(conn.connType),
-		"arch": conn.arch,
+func (r *Reconciler) reportConnectionEvent(ctx context.Context, cluster *v1alpha1.Cluster) {
+	tags := make(map[string]string)
+
+	if cluster.Spec.Connection != nil {
+		if cluster.Spec.Connection.Kubernetes != nil {
+			tags["type"] = "kubernetes"
+		} else if cluster.Spec.Connection.Docker != nil {
+			tags["type"] = "docker"
+		}
 	}
 
-	if conn.error == "" {
+	if cluster.Status.Arch != "" {
+		tags["arch"] = cluster.Status.Arch
+	}
+
+	if cluster.Status.Error == "" {
 		tags["status"] = "connected"
 	} else {
 		tags["status"] = "error"
