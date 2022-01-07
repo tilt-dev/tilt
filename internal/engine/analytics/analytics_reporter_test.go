@@ -181,12 +181,13 @@ func TestAnalyticsReporter_TiltfileError(t *testing.T) {
 	tf.run()
 
 	expectedTags := map[string]string{
-		"builds.completed_count": "3",
-		"tiltfile.error":         "true",
-		"up.starttime":           state.TiltStartTime.Format(time.RFC3339),
-		"env":                    string(k8s.EnvDockerDesktop),
-		"term_mode":              "0",
-		"k8s.runtime":            "docker",
+		"builds.completed_count":           "3",
+		"tiltfile.error":                   "true",
+		"up.starttime":                     state.TiltStartTime.Format(time.RFC3339),
+		"env":                              string(k8s.EnvDockerDesktop),
+		"term_mode":                        "0",
+		"k8s.runtime":                      "docker",
+		"feature.testflag_enabled.enabled": "true",
 	}
 
 	tf.assertStats(t, expectedTags)
