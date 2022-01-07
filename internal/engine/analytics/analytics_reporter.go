@@ -163,7 +163,7 @@ func (ar *AnalyticsReporter) report(ctx context.Context) {
 	stats["tiltfile.error"] = tiltfileIsInError
 
 	for k, v := range st.Features {
-		if ar.featureDefaults[k].Status == feature.Active && v != ar.featureDefaults[k].Enabled {
+		if ar.featureDefaults[k].Status == feature.Active && v {
 			stats[fmt.Sprintf("feature.%s.enabled", k)] = strconv.FormatBool(v)
 		}
 	}
