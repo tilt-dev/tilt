@@ -385,6 +385,22 @@ func TestInfiniteLoop(t *testing.T) {
 	}, 200*time.Millisecond, 10*time.Millisecond)
 }
 
+func TestReconcilerIndexing(t *testing.T) {
+	f := newPLMFixture(t)
+
+	pls := plsFromPod("server", newPodBuilder(podID), f.clock.Now())
+	pls.Namespace = "some-ns"
+	pls.Spec.Cluster = "my-cluster"
+	f.Create(pls)
+
+	reqs := f.plsc.indexer.Enqueue(&v1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "some-ns", Name: "my-cluster"},
+	})
+	assert.ElementsMatch(t, []reconcile.Request{
+		{NamespacedName: types.NamespacedName{Namespace: "some-ns", Name: "default-pod-id"}},
+	}, reqs)
+}
+
 type plmStore struct {
 	t testing.TB
 	*store.TestingStore
@@ -436,7 +452,7 @@ func newPLMFixture(t testing.TB) *plmFixture {
 	clock := clockwork.NewFakeClock()
 	st := newPLMStore(t, out)
 	podSource := NewPodSource(ctx, kClient, cfb.Client.Scheme())
-	plsc := NewController(ctx, cfb.Client, st, kClient, podSource, clock)
+	plsc := NewController(ctx, cfb.Client, cfb.Scheme(), st, kClient, podSource, clock)
 
 	return &plmFixture{
 		t:                 t,
