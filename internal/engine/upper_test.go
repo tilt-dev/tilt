@@ -3846,7 +3846,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	clock := clockwork.NewRealClock()
 	env := k8s.EnvDockerDesktop
 	podSource := podlogstream.NewPodSource(ctx, kClient, v1alpha1.NewScheme())
-	plsc := podlogstream.NewController(ctx, cdc, st, kClient, podSource, clock)
+	plsc := podlogstream.NewController(ctx, cdc, sch, st, kClient, podSource, clock)
 	au := engineanalytics.NewAnalyticsUpdater(ta, engineanalytics.CmdTags{}, engineMode)
 	ar := engineanalytics.ProvideAnalyticsReporter(ta, st, kClient, env)
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)

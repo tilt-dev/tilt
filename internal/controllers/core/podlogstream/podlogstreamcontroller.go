@@ -7,10 +7,12 @@ import (
 	"sync"
 	"time"
 
+	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 
 	"github.com/jonboulle/clockwork"
 
+	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -32,12 +34,15 @@ import (
 var podLogHealthCheck = 15 * time.Second
 var podLogReconnectGap = 2 * time.Second
 
+var clusterGVK = v1alpha1.SchemeGroupVersion.WithKind("Cluster")
+
 // Reconciles the PodLogStream API object.
 //
 // Collects logs from deployed containers.
 type Controller struct {
 	ctx       context.Context
 	client    ctrlclient.Client
+	indexer   *indexer.Indexer
 	st        store.RStore
 	kClient   k8s.Client
 	podSource *PodSource
@@ -53,10 +58,11 @@ type Controller struct {
 var _ reconcile.Reconciler = &Controller{}
 var _ store.TearDowner = &Controller{}
 
-func NewController(ctx context.Context, client ctrlclient.Client, st store.RStore, kClient k8s.Client, podSource *PodSource, clock clockwork.Clock) *Controller {
+func NewController(ctx context.Context, client ctrlclient.Client, scheme *runtime.Scheme, st store.RStore, kClient k8s.Client, podSource *PodSource, clock clockwork.Clock) *Controller {
 	return &Controller{
 		ctx:             ctx,
 		client:          client,
+		indexer:         indexer.NewIndexer(scheme, indexPodLogStreamForTiltAPI),
 		st:              st,
 		kClient:         kClient,
 		podSource:       podSource,
@@ -129,6 +135,7 @@ func (r *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reco
 	stream := &PodLogStream{}
 	streamName := req.NamespacedName
 	err := r.client.Get(ctx, req.NamespacedName, stream)
+	r.indexer.OnReconcile(req.NamespacedName, stream)
 	if apierrors.IsNotFound(err) {
 		r.podSource.handleReconcileRequest(ctx, req.NamespacedName, stream)
 		r.deleteStreams(streamName)
@@ -479,4 +486,22 @@ type podLogKey struct {
 	streamName types.NamespacedName
 	podID      k8s.PodID
 	cID        container.ID
+}
+
+// indexPodLogStreamForTiltAPI indexes a PodLogStream object and returns keys
+// for objects from the Tilt apiserver that it watches.
+//
+// See also: indexPodLogStreamForKubernetes which indexes a PodLogStream object
+// and returns keys for objects from the Kubernetes cluster that it watches via
+// PodSource.
+func indexPodLogStreamForTiltAPI(obj ctrlclient.Object) []indexer.Key {
+	var results []indexer.Key
+	pls := obj.(*v1alpha1.PodLogStream)
+	if pls != nil && pls.Spec.Cluster != "" {
+		results = append(results, indexer.Key{
+			Name: types.NamespacedName{Namespace: pls.Namespace, Name: pls.Spec.Cluster},
+			GVK:  clusterGVK,
+		})
+	}
+	return results
 }

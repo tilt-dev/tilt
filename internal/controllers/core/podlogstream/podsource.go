@@ -45,7 +45,7 @@ var _ source.Source = &PodSource{}
 func NewPodSource(ctx context.Context, kClient k8s.Client, scheme *runtime.Scheme) *PodSource {
 	return &PodSource{
 		ctx:                ctx,
-		indexer:            indexer.NewIndexer(scheme, indexPodLogStream),
+		indexer:            indexer.NewIndexer(scheme, indexPodLogStreamForKubernetes),
 		kClient:            kClient,
 		watchesByNamespace: make(map[string]podWatch),
 	}
@@ -139,8 +139,12 @@ func (s *PodSource) handlePod(obj k8s.ObjectUpdate) {
 	}
 }
 
-// Find all the objects we need to watch based on the PodLogStream
-func indexPodLogStream(obj client.Object) []indexer.Key {
+// indexPodLogStreamForKubernetes indexes a PodLogStream object and returns keys
+// for Pods from the K8s cluster that it watches.
+//
+// See also: indexPodLogStreamForTiltAPI which indexes a PodLogStream object
+// and returns keys for objects from the Tilt apiserver that it watches.
+func indexPodLogStreamForKubernetes(obj client.Object) []indexer.Key {
 	pls := obj.(*v1alpha1.PodLogStream)
 	if pls.Spec.Pod == "" {
 		return nil
