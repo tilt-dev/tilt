@@ -58,8 +58,8 @@ type FakeK8sClient struct {
 	LastPodQueryImage     reference.NamedTagged
 
 	PodLogsByPodAndContainer map[PodAndCName]ReaderCloser
-	LastPodLogStartTime      time.Time
-	LastPodLogContext        context.Context
+	lastPodLogStartTime      time.Time
+	lastPodLogContext        context.Context
 	LastPodLogPipeWriter     *io.PipeWriter
 	ContainerLogsError       error
 
@@ -503,8 +503,8 @@ func (c *FakeK8sClient) ContainerLogs(ctx context.Context, pID PodID, cName cont
 
 	// metav1.Time truncates to the nearest second when serializing across the
 	// wire, so truncate here to replicate that behavior.
-	c.LastPodLogStartTime = startTime.Truncate(time.Second)
-	c.LastPodLogContext = ctx
+	c.lastPodLogStartTime = startTime.Truncate(time.Second)
+	c.lastPodLogContext = ctx
 
 	// If we have specific logs for this pod/container combo, return those
 	if buf, ok := c.PodLogsByPodAndContainer[PodAndCName{pID, cName}]; ok {
@@ -515,6 +515,20 @@ func (c *FakeK8sClient) ContainerLogs(ctx context.Context, pID PodID, cName cont
 	c.LastPodLogPipeWriter = w
 
 	return ReaderCloser{Reader: r}, nil
+}
+
+func (c *FakeK8sClient) LastPodLogStartTime() time.Time {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	return c.lastPodLogStartTime
+}
+
+func (c *FakeK8sClient) LastPodLogContext() context.Context {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	return c.lastPodLogContext
 }
 
 func FakePodStatus(image reference.NamedTagged, phase string) v1.PodStatus {

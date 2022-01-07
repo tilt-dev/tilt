@@ -78,11 +78,8 @@ func TestLogCleanup(t *testing.T) {
 	f.AssertOutputContains("hello world!")
 
 	f.Delete(pls)
-	assert.Len(t, f.plsc.watches, 0)
-
-	// TODO(nick): Currently, namespace watches are never cleanedup,
-	// because the user might restart them again.
-	assert.Len(t, f.plsc.podSource.watchesByNamespace, 1)
+	assert.Empty(t, f.plsc.watches)
+	assert.Empty(t, f.plsc.podSource.watchesByNamespace)
 }
 
 func TestLogActions(t *testing.T) {
@@ -283,7 +280,7 @@ func TestLogReconnection(t *testing.T) {
 	// simulate 15s since we last read a log; this triggers a reconnect
 	f.clock.Advance(15 * time.Second)
 	time.Sleep(20 * time.Millisecond)
-	assert.Error(t, f.kClient.LastPodLogContext.Err())
+	assert.Error(t, f.kClient.LastPodLogContext().Err())
 	require.NoError(t, writer.Close())
 
 	f.AssertOutputContains("goodbye world!")
@@ -509,7 +506,7 @@ func (f *plmFixture) AssertLogStartTime(t time.Time) {
 	f.t.Helper()
 
 	// Truncate the time to match the behavior of metav1.Time
-	timecmp.AssertTimeEqual(f.t, t.Truncate(time.Second), f.kClient.LastPodLogStartTime)
+	timecmp.AssertTimeEqual(f.t, t.Truncate(time.Second), f.kClient.LastPodLogStartTime())
 }
 
 type podBuilder v1.Pod

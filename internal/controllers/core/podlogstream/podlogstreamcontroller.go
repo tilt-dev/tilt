@@ -137,17 +137,17 @@ func (r *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reco
 	err := r.client.Get(ctx, req.NamespacedName, stream)
 	r.indexer.OnReconcile(req.NamespacedName, stream)
 	if apierrors.IsNotFound(err) {
-		r.podSource.handleReconcileRequest(ctx, req.NamespacedName, stream)
+		r.podSource.handleReconcileRequest(req.NamespacedName, stream)
 		r.deleteStreams(streamName)
 		return reconcile.Result{}, nil
 	} else if err != nil {
 		return reconcile.Result{}, err
 	}
 
-	ctx = store.MustObjectLogHandler(ctx, r.st, stream)
-	r.podSource.handleReconcileRequest(ctx, req.NamespacedName, stream)
+	r.podSource.handleReconcileRequest(req.NamespacedName, stream)
 
 	podNN := types.NamespacedName{Name: stream.Spec.Pod, Namespace: stream.Spec.Namespace}
+	ctx = store.MustObjectLogHandler(ctx, r.st, stream)
 	pod, err := r.kClient.PodFromInformerCache(ctx, podNN)
 	if (err != nil && apierrors.IsNotFound(err)) ||
 		(pod != nil && pod.DeletionTimestamp != nil && !pod.DeletionTimestamp.IsZero()) {
