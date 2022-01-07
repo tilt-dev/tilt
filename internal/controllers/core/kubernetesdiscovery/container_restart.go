@@ -20,7 +20,7 @@ func NewContainerRestartDetector() *ContainerRestartDetector {
 	return &ContainerRestartDetector{}
 }
 
-func (c *ContainerRestartDetector) Detect(dispatcher Dispatcher, prevStatus v1alpha1.KubernetesDiscoveryStatus, current v1alpha1.KubernetesDiscovery) {
+func (c *ContainerRestartDetector) Detect(dispatcher Dispatcher, prevStatus v1alpha1.KubernetesDiscoveryStatus, current *v1alpha1.KubernetesDiscovery) {
 	mn := model.ManifestName(current.Annotations[v1alpha1.AnnotationManifest])
 	if mn == "" {
 		// log actions are dispatched by manifest, so if this spec isn't associated with a manifest,

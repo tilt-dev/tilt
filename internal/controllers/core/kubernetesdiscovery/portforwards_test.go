@@ -221,7 +221,7 @@ func TestPortForwardNotForPending(t *testing.T) {
 	f.injectK8sObjects(*kd, pod)
 
 	f.requireState(key, func(kd *v1alpha1.KubernetesDiscovery) bool {
-		return kd.Status.Pods[0].Phase == string(v1.PodRunning)
+		return len(kd.Status.Pods) > 0 && kd.Status.Pods[0].Phase == string(v1.PodRunning)
 	}, "pod phase did not change to Running")
 	f.MustReconcile(key)
 

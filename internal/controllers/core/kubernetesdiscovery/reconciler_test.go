@@ -23,9 +23,9 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/cluster"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
+	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
-	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -562,21 +562,18 @@ type fixture struct {
 func newFixture(t *testing.T) *fixture {
 	clients := cluster.NewFakeClientProvider(nil)
 
-	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
-	ctx, cancel := context.WithCancel(ctx)
-	t.Cleanup(cancel)
-
 	st := store.NewTestingStore()
 
 	rd := NewContainerRestartDetector()
 	cfb := fake.NewControllerFixtureBuilder(t)
 	pw := NewReconciler(cfb.Client, cfb.Scheme(), clients, rd, st)
+	indexer.StartRequeuerForTesting(cfb.Context(), pw.requeuer, pw)
 
 	ret := &fixture{
 		ControllerFixture: cfb.Build(pw),
 		clients:           clients,
 		r:                 pw,
-		ctx:               ctx,
+		ctx:               cfb.Context(),
 		t:                 t,
 		store:             st,
 	}
