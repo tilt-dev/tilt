@@ -13,6 +13,7 @@ import (
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -101,6 +102,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		} else if conn.dockerClient != nil {
 			conn.arch = r.readDockerArch(ctx, conn.dockerClient)
 		}
+	}
+
+	if !hasConnection {
+		r.reportConnectionEvent(ctx, conn)
 	}
 
 	r.connManager.store(nn, conn)
@@ -224,6 +229,21 @@ func (r *Reconciler) maybeUpdateStatus(ctx context.Context, obj *v1alpha1.Cluste
 		logger.Get(ctx).Errorf("Cluster status error: %v", newStatus.Error)
 	}
 	return nil
+}
+
+func (r *Reconciler) reportConnectionEvent(ctx context.Context, conn connection) {
+	tags := map[string]string{
+		"type": string(conn.connType),
+		"arch": conn.arch,
+	}
+
+	if conn.error == "" {
+		tags["status"] = "connected"
+	} else {
+		tags["status"] = "error"
+	}
+
+	analytics.Get(ctx).Incr("api.cluster.connect", tags)
 }
 
 func (c *connection) toStatus() v1alpha1.ClusterStatus {
