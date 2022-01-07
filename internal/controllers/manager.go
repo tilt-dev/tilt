@@ -3,10 +3,12 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/wojas/genericr"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apiserver/pkg/registry/generic/registry"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -73,6 +75,12 @@ func (m *TiltServerControllerManager) SetUp(ctx context.Context, _ store.RStore)
 		}
 
 		if e.Error != nil {
+			// It's normal for reconcilers to fail with optimistic lock errors.
+			// They'll just retry.
+			if strings.Contains(e.Error.Error(), registry.OptimisticLockErrorMsg) {
+				return
+			}
+
 			// Print errors to the global log on all builds.
 			//
 			// TODO(nick): Once we have resource grouping, we should consider having some
