@@ -21,7 +21,9 @@ func TestCli_Run(t *testing.T) {
 	cli := NewDockerClient(ctx, Env(dEnv))
 	defer func() {
 		// release any idle connections to avoid out of file errors if running test many times
-		_ = cli.(*Cli).Close()
+		if dockerCli, ok := cli.(*Cli); ok {
+			_ = dockerCli.Close()
+		}
 	}()
 
 	ref, err := reference.ParseNamed("docker.io/library/hello-world")

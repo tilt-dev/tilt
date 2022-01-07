@@ -86,7 +86,7 @@ type ClusterEnv Env
 type LocalEnv Env
 
 func ProvideLocalEnv(ctx context.Context, kubeContext k8s.KubeContext, env k8s.Env, cEnv ClusterEnv) LocalEnv {
-	result := overlayOSEnvVars(Env{Type: "local"})
+	result := overlayOSEnvVars(Env{})
 
 	// The user may have already configured their local docker client
 	// to use Minikube's docker server. We check for that by comparing
@@ -100,18 +100,19 @@ func ProvideLocalEnv(ctx context.Context, kubeContext k8s.KubeContext, env k8s.E
 		result.BuildToKubeContexts = append(result.BuildToKubeContexts, string(kubeContext))
 	}
 
+	result.Type = "local"
 	return LocalEnv(result)
 }
 
 func ProvideClusterEnv(ctx context.Context, kubeContext k8s.KubeContext, env k8s.Env, runtime container.Runtime, minikubeClient k8s.MinikubeClient) ClusterEnv {
-	result := Env{Type: "cluster"}
+	result := Env{}
 
 	if runtime == container.RuntimeDocker {
 		if env == k8s.EnvMinikube {
 			// If we're running Minikube with a docker runtime, talk to Minikube's docker socket.
 			envMap, ok, err := minikubeClient.DockerEnv(ctx)
 			if err != nil {
-				return ClusterEnv{Error: err}
+				return ClusterEnv{Type: "cluster", Error: err}
 			}
 
 			if ok {
@@ -150,6 +151,7 @@ func ProvideClusterEnv(ctx context.Context, kubeContext k8s.KubeContext, env k8s
 		result.BuildToKubeContexts = append(result.BuildToKubeContexts, string(kubeContext))
 	}
 
+	result.Type = "cluster"
 	return ClusterEnv(result)
 }
 
