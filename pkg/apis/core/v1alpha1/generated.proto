@@ -1985,6 +1985,13 @@ message PodLogStreamSpec {
   //
   // +optional
   repeated string ignoreContainers = 5;
+
+  // Cluster the Pod belongs to.
+  //
+  // If not provided, "default" will be used.
+  //
+  // +optional
+  optional string cluster = 6;
 }
 
 // PodLogStreamStatus defines the observed state of PodLogStream
