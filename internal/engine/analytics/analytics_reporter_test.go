@@ -83,7 +83,6 @@ func TestAnalyticsReporter_Everything(t *testing.T) {
 
 	state.CompletedBuildCount = 3
 
-	state.Features["obsoleteflag_enabled"] = false
 	tf.st.UnlockMutableState()
 	tf.kClient.Registry, _ = container.NewRegistryWithHostFromCluster("localhost:5000", "registry:5000")
 
