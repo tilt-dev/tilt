@@ -48,6 +48,9 @@ type Env struct {
 	// If the env failed to load for some reason, propagate that error
 	// so that we can report it when the user tries to do a docker_build.
 	Error error
+
+	// Type of the env (local or cluster). This field is purely informative.
+	Type string
 }
 
 // Determines if this docker client can build images directly to the given cluster.
@@ -83,7 +86,7 @@ type ClusterEnv Env
 type LocalEnv Env
 
 func ProvideLocalEnv(ctx context.Context, kubeContext k8s.KubeContext, env k8s.Env, cEnv ClusterEnv) LocalEnv {
-	result := overlayOSEnvVars(Env{})
+	result := overlayOSEnvVars(Env{Type: "local"})
 
 	// The user may have already configured their local docker client
 	// to use Minikube's docker server. We check for that by comparing
@@ -101,7 +104,7 @@ func ProvideLocalEnv(ctx context.Context, kubeContext k8s.KubeContext, env k8s.E
 }
 
 func ProvideClusterEnv(ctx context.Context, kubeContext k8s.KubeContext, env k8s.Env, runtime container.Runtime, minikubeClient k8s.MinikubeClient) ClusterEnv {
-	result := Env{}
+	result := Env{Type: "cluster"}
 
 	if runtime == container.RuntimeDocker {
 		if env == k8s.EnvMinikube {

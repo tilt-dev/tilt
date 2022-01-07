@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 type LocalClient Client
@@ -18,7 +19,7 @@ func ProvideClusterCli(ctx context.Context, lEnv LocalEnv, cEnv ClusterEnv, lCli
 	// If the Cluster Env and the LocalEnv are the same, we can re-use the cluster
 	// client as a local client.
 	var cClient ClusterClient
-	if cmp.Equal(Env(lEnv), Env(cEnv)) {
+	if cmp.Equal(Env(lEnv), Env(cEnv), cmpopts.IgnoreFields(Env{}, "Type")) {
 		cClient = ClusterClient(lClient)
 	} else {
 		cClient = NewDockerClient(ctx, Env(cEnv))

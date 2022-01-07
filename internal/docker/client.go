@@ -32,6 +32,7 @@ import (
 	"github.com/moby/buildkit/session/filesync"
 	"github.com/pkg/errors"
 
+	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/docker/buildkit"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -134,25 +135,36 @@ type Cli struct {
 }
 
 func NewDockerClient(ctx context.Context, env Env) Client {
+	var failureReason string
+	var serverVersion types.Version
+	defer func() {
+		reportDockerClientConnect(ctx, failureReason, env, serverVersion)
+	}()
+
 	if env.Error != nil {
+		failureReason = "InvalidEnv"
 		return newExplodingClient(env.Error)
 	}
 
 	opts, err := CreateClientOpts(ctx, env)
 	if err != nil {
+		failureReason = "InvalidEnv"
 		return newExplodingClient(err)
 	}
 	d, err := client.NewClientWithOpts(opts...)
 	if err != nil {
+		failureReason = "ClientInitFailure"
 		return newExplodingClient(err)
 	}
 
-	serverVersion, err := d.ServerVersion(ctx)
+	serverVersion, err = d.ServerVersion(ctx)
 	if err != nil {
+		failureReason = "ConnectionFailure"
 		return newExplodingClient(err)
 	}
 
 	if !SupportedVersion(serverVersion) {
+		failureReason = "UnsupportedVersion"
 		return newExplodingClient(
 			fmt.Errorf("Tilt requires a Docker server newer than %s. Current Docker server: %s",
 				minDockerVersion, serverVersion.APIVersion))
@@ -160,6 +172,8 @@ func NewDockerClient(ctx context.Context, env Env) Client {
 
 	builderVersion, err := getDockerBuilderVersion(serverVersion, env)
 	if err != nil {
+		// N.B. this is really an environment issue as it means the DOCKER_BUILDKIT var is not a bool
+		failureReason = "InvalidEnv"
 		return newExplodingClient(err)
 	}
 
@@ -766,4 +780,28 @@ func (c *Cli) Run(ctx context.Context, opts RunConfig) (RunResult, error) {
 	}
 
 	return result, nil
+}
+
+func reportDockerClientConnect(ctx context.Context, failureReason string, env Env, serverVersion types.Version) {
+	tags := make(map[string]string)
+	if failureReason != "" {
+		tags["status"] = "error"
+		tags["error"] = failureReason
+	} else {
+		tags["status"] = "connected"
+	}
+
+	if serverVersion.Version != "" {
+		tags["server.version"] = serverVersion.Version
+	}
+
+	if serverVersion.Arch != "" {
+		tags["arch"] = serverVersion.Arch
+	}
+
+	if env.Type != "" {
+		tags["env.type"] = env.Type
+	}
+
+	analytics.Get(ctx).Incr("docker.connect", tags)
 }
