@@ -4810,6 +4810,14 @@ func schema_pkg_apis_core_v1alpha1_PodLogStreamSpec(ref common.ReferenceCallback
 							},
 						},
 					},
+					"cluster": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Cluster the Pod belongs to.\n\nIf not provided, \"default\" will be used.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},
