@@ -50,11 +50,11 @@ var MainDefaults = Defaults{
 	},
 	Snapshots: Value{
 		Enabled: true,
-		Status:  Active,
+		Status:  Obsolete,
 	},
 	UpdateHistory: Value{
 		Enabled: false,
-		Status:  Active,
+		Status:  Obsolete,
 	},
 	Facets: Value{
 		Enabled: true,
@@ -62,7 +62,7 @@ var MainDefaults = Defaults{
 	},
 	Labels: Value{
 		Enabled: true,
-		Status:  Active,
+		Status:  Obsolete,
 	},
 	LiveUpdateV2: Value{
 		Enabled: true,
