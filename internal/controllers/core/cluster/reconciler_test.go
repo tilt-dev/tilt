@@ -4,12 +4,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/tilt-dev/wmclient/pkg/analytics"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -71,18 +74,24 @@ func TestKubernetesArch(t *testing.T) {
 			},
 		},
 	})
-	createdAt := time.Now()
-	f.r.connManager.store(nn, connection{
-		spec:      cluster.Spec,
-		k8sClient: client,
-		createdAt: createdAt,
-	})
+	f.r.SetFakeClientsForTesting(client, nil)
+
 	f.Create(cluster)
 	f.MustGet(nn, cluster)
 	assert.Equal(t, "amd64", cluster.Status.Arch)
-	timecmp.AssertTimeEqual(t, createdAt, cluster.Status.ConnectedAt)
 
 	f.assertSteadyState(cluster)
+
+	connectEvt := analytics.CountEvent{
+		Name: "api.cluster.connect",
+		Tags: map[string]string{
+			"type":   "kubernetes",
+			"arch":   "amd64",
+			"status": "connected",
+		},
+		N: 1,
+	}
+	assert.ElementsMatch(t, []analytics.CountEvent{connectEvt}, f.ma.Counts)
 }
 
 func TestDockerArch(t *testing.T) {
@@ -113,7 +122,8 @@ func TestDockerArch(t *testing.T) {
 
 type fixture struct {
 	*fake.ControllerFixture
-	r *Reconciler
+	r  *Reconciler
+	ma *analytics.MemoryAnalytics
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -124,6 +134,7 @@ func newFixture(t *testing.T) *fixture {
 	return &fixture{
 		ControllerFixture: cfb.Build(r),
 		r:                 r,
+		ma:                cfb.Analytics(),
 	}
 }
 
@@ -132,6 +143,6 @@ func (f *fixture) assertSteadyState(o *v1alpha1.Cluster) {
 	f.MustReconcile(types.NamespacedName{Name: o.Name})
 	var o2 v1alpha1.Cluster
 	f.MustGet(types.NamespacedName{Name: o.Name}, &o2)
-	assert.Equal(f.T(), o.ResourceVersion, o2.ResourceVersion)
-	timecmp.AssertTimeEqual(f.T(), o.Status.ConnectedAt, o.Status.ConnectedAt)
+	assert.True(f.T(), apicmp.DeepEqual(o, &o2), cmp.Diff(o, &o2),
+		"Cluster object should have been in steady state but changed")
 }

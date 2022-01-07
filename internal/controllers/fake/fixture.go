@@ -3,10 +3,10 @@ package fake
 import (
 	"context"
 	"io"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/tilt-dev/wmclient/pkg/analytics"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -17,8 +17,8 @@ import (
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
 
+	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
-	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 // controller just exists to prevent an import cycle for controllers.
@@ -50,27 +50,34 @@ type ControllerFixtureBuilder struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	out    *bufsync.ThreadSafeBuffer
+	ma     *analytics.MemoryAnalytics
 	Client ctrlclient.Client
 }
 
 func NewControllerFixtureBuilder(t testing.TB) *ControllerFixtureBuilder {
 	out := bufsync.NewThreadSafeBuffer()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, ma, _ := testutils.ForkedCtxAndAnalyticsForTest(out)
+
+	ctx, cancel := context.WithCancel(ctx)
 	t.Cleanup(cancel)
-	ctx = logger.WithLogger(ctx, logger.NewTestLogger(io.MultiWriter(out, os.Stdout)))
 
 	return &ControllerFixtureBuilder{
 		t:      t,
 		ctx:    ctx,
 		cancel: cancel,
 		out:    out,
+		ma:     ma,
 		Client: NewFakeTiltClient(),
 	}
 }
 
 func (b ControllerFixtureBuilder) Scheme() *runtime.Scheme {
 	return b.Client.Scheme()
+}
+
+func (b ControllerFixtureBuilder) Analytics() *analytics.MemoryAnalytics {
+	return b.ma
 }
 
 func (b ControllerFixtureBuilder) Build(c controller) *ControllerFixture {

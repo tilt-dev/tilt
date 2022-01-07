@@ -13,6 +13,7 @@ import (
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -223,7 +224,34 @@ func (r *Reconciler) maybeUpdateStatus(ctx context.Context, obj *v1alpha1.Cluste
 	if newStatus.Error != "" && obj.Status.Error != newStatus.Error {
 		logger.Get(ctx).Errorf("Cluster status error: %v", newStatus.Error)
 	}
+
+	r.reportConnectionEvent(ctx, updated)
+
 	return nil
+}
+
+func (r *Reconciler) reportConnectionEvent(ctx context.Context, cluster *v1alpha1.Cluster) {
+	tags := make(map[string]string)
+
+	if cluster.Spec.Connection != nil {
+		if cluster.Spec.Connection.Kubernetes != nil {
+			tags["type"] = "kubernetes"
+		} else if cluster.Spec.Connection.Docker != nil {
+			tags["type"] = "docker"
+		}
+	}
+
+	if cluster.Status.Arch != "" {
+		tags["arch"] = cluster.Status.Arch
+	}
+
+	if cluster.Status.Error == "" {
+		tags["status"] = "connected"
+	} else {
+		tags["status"] = "error"
+	}
+
+	analytics.Get(ctx).Incr("api.cluster.connect", tags)
 }
 
 func (c *connection) toStatus() v1alpha1.ClusterStatus {
