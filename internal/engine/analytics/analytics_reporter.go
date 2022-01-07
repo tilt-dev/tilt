@@ -2,11 +2,13 @@ package analytics
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"time"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
+	"github.com/tilt-dev/tilt/internal/feature"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 )
@@ -15,11 +17,12 @@ import (
 const analyticsReportingInterval = time.Minute * 15
 
 type AnalyticsReporter struct {
-	a       *analytics.TiltAnalytics
-	store   store.RStore
-	kClient k8s.Client
-	env     k8s.Env
-	started bool
+	a               *analytics.TiltAnalytics
+	store           store.RStore
+	kClient         k8s.Client
+	env             k8s.Env
+	featureDefaults feature.Defaults
+	started         bool
 }
 
 func (ar *AnalyticsReporter) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) error {
@@ -62,13 +65,15 @@ func ProvideAnalyticsReporter(
 	a *analytics.TiltAnalytics,
 	st store.RStore,
 	kClient k8s.Client,
-	env k8s.Env) *AnalyticsReporter {
+	env k8s.Env,
+	fDefaults feature.Defaults) *AnalyticsReporter {
 	return &AnalyticsReporter{
-		a:       a,
-		store:   st,
-		kClient: kClient,
-		env:     env,
-		started: false,
+		a:               a,
+		store:           st,
+		kClient:         kClient,
+		env:             env,
+		featureDefaults: fDefaults,
+		started:         false,
 	}
 }
 
@@ -156,6 +161,12 @@ func (ar *AnalyticsReporter) report(ctx context.Context) {
 	}
 
 	stats["tiltfile.error"] = tiltfileIsInError
+
+	for k, v := range st.Features {
+		if ar.featureDefaults[k].Status == feature.Active && v != ar.featureDefaults[k].Enabled {
+			stats[fmt.Sprintf("feature.%s.enabled", k)] = strconv.FormatBool(v)
+		}
+	}
 
 	ar.a.Incr("up.running", stats)
 }

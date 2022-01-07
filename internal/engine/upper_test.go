@@ -3862,7 +3862,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	podSource := podlogstream.NewPodSource(ctx, kClient, v1alpha1.NewScheme())
 	plsc := podlogstream.NewController(ctx, cdc, st, kClient, podSource)
 	au := engineanalytics.NewAnalyticsUpdater(ta, engineanalytics.CmdTags{}, engineMode)
-	ar := engineanalytics.ProvideAnalyticsReporter(ta, st, kClient, env)
+	ar := engineanalytics.ProvideAnalyticsReporter(ta, st, kClient, env, feature.MainDefaults)
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	k8sContextExt := k8scontext.NewPlugin("fake-context", env)
 	versionExt := version.NewPlugin(model.TiltBuild{Version: "0.5.0"})
