@@ -8,13 +8,12 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/tilt-dev/wmclient/pkg/analytics"
 
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/feature"
 	"github.com/tilt-dev/tilt/internal/k8s"
-
-	"github.com/tilt-dev/wmclient/pkg/analytics"
-
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -106,6 +105,7 @@ func TestAnalyticsReporter_Everything(t *testing.T) {
 		"k8s.registry.host":                                   "1",
 		"k8s.registry.hostFromCluster":                        "1",
 		"label.count":                                         "2",
+		"feature.testflag_enabled.enabled":                    "true",
 	}
 
 	tf.assertStats(t, expectedTags)
@@ -181,12 +181,13 @@ func TestAnalyticsReporter_TiltfileError(t *testing.T) {
 	tf.run()
 
 	expectedTags := map[string]string{
-		"builds.completed_count": "3",
-		"tiltfile.error":         "true",
-		"up.starttime":           state.TiltStartTime.Format(time.RFC3339),
-		"env":                    string(k8s.EnvDockerDesktop),
-		"term_mode":              "0",
-		"k8s.runtime":            "docker",
+		"builds.completed_count":           "3",
+		"tiltfile.error":                   "true",
+		"up.starttime":                     state.TiltStartTime.Format(time.RFC3339),
+		"env":                              string(k8s.EnvDockerDesktop),
+		"term_mode":                        "0",
+		"k8s.runtime":                      "docker",
+		"feature.testflag_enabled.enabled": "true",
 	}
 
 	tf.assertStats(t, expectedTags)
@@ -205,7 +206,18 @@ func newAnalyticsReporterTestFixture(t testing.TB) *analyticsReporterTestFixture
 	opter := tiltanalytics.NewFakeOpter(analytics.OptIn)
 	ma, a := tiltanalytics.NewMemoryTiltAnalyticsForTest(opter)
 	kClient := k8s.NewFakeK8sClient(t)
-	ar := ProvideAnalyticsReporter(a, st, kClient, k8s.EnvDockerDesktop)
+	features := feature.Defaults{
+		"testflag_disabled":     feature.Value{Enabled: false},
+		"testflag_enabled":      feature.Value{Enabled: true},
+		"obsoleteflag_enabled":  feature.Value{Status: feature.Obsolete, Enabled: true},
+		"obsoleteflag_disabled": feature.Value{Status: feature.Obsolete, Enabled: false},
+	}
+
+	state := st.LockMutableStateForTesting()
+	state.Features = feature.FromDefaults(features).ToEnabled()
+	st.UnlockMutableState()
+
+	ar := ProvideAnalyticsReporter(a, st, kClient, k8s.EnvDockerDesktop, features)
 	return &analyticsReporterTestFixture{
 		manifestCount: 0,
 		ar:            ar,
