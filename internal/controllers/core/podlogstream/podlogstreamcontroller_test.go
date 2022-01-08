@@ -123,6 +123,16 @@ func TestLogsFailed(t *testing.T) {
 			},
 		},
 	})
+
+	result := f.MustReconcile(f.KeyForObject(pls))
+	assert.Equal(t, 2*time.Second, result.RequeueAfter)
+
+	f.clock.Advance(2 * time.Second)
+
+	assert.Eventually(f.t, func() bool {
+		result = f.MustReconcile(f.KeyForObject(pls))
+		return result.RequeueAfter == 4*time.Second
+	}, time.Second, 5*time.Millisecond, "should re-stream and backoff again")
 }
 
 func TestLogsCanceledUnexpectedly(t *testing.T) {
@@ -453,7 +463,7 @@ func newPLMFixture(t testing.TB) *plmFixture {
 
 	clock := clockwork.NewFakeClock()
 	st := newPLMStore(t, out)
-	podSource := NewPodSource(ctx, kClient, cfb.Client.Scheme())
+	podSource := NewPodSource(ctx, kClient, cfb.Client.Scheme(), clock)
 	plsc := NewController(ctx, cfb.Client, cfb.Scheme(), st, kClient, podSource, clock)
 	indexer.StartSourceForTesting(cfb.Context(), plsc.podSource, plsc)
 

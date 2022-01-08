@@ -16,6 +16,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	"github.com/jonboulle/clockwork"
+
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -32,8 +34,9 @@ type PodSource struct {
 	kClient k8s.Client
 	handler handler.EventHandler
 	q       workqueue.RateLimitingInterface
+	clock   clockwork.Clock
 
-	watchesByNamespace map[string]podWatch
+	watchesByNamespace map[string]*podWatch
 	mu                 sync.Mutex
 }
 
@@ -49,12 +52,13 @@ type podWatch struct {
 
 var _ source.Source = &PodSource{}
 
-func NewPodSource(ctx context.Context, kClient k8s.Client, scheme *runtime.Scheme) *PodSource {
+func NewPodSource(ctx context.Context, kClient k8s.Client, scheme *runtime.Scheme, clock clockwork.Clock) *PodSource {
 	return &PodSource{
 		ctx:                ctx,
 		indexer:            indexer.NewIndexer(scheme, indexPodLogStreamForKubernetes),
 		kClient:            kClient,
-		watchesByNamespace: make(map[string]podWatch),
+		watchesByNamespace: make(map[string]*podWatch),
+		clock:              clock,
 	}
 }
 
@@ -91,7 +95,7 @@ func (s *PodSource) handleReconcileRequest(ctx context.Context, name types.Names
 		pw, ok := s.watchesByNamespace[ns]
 		if !ok {
 			ctx, cancel := context.WithCancel(ctx)
-			pw = podWatch{ctx: ctx, cancel: cancel, namespace: ns}
+			pw = &podWatch{ctx: ctx, cancel: cancel, namespace: ns}
 			s.watchesByNamespace[ns] = pw
 			go s.doWatch(pw)
 		}
@@ -107,7 +111,7 @@ func (s *PodSource) handleReconcileRequest(ctx context.Context, name types.Names
 }
 
 // Process pod events and make sure they trigger a reconcile.
-func (s *PodSource) doWatch(pw podWatch) {
+func (s *PodSource) doWatch(pw *podWatch) {
 	defer func() {
 		// If the watch wasn't cancelled and there's no other error,
 		// record a generic error.
@@ -115,7 +119,7 @@ func (s *PodSource) doWatch(pw podWatch) {
 			pw.error = fmt.Errorf("watch disconnected")
 		}
 
-		pw.finishedAt = time.Now()
+		pw.finishedAt = s.clock.Now()
 		pw.cancel()
 		s.requeueIndexerKey(indexer.Key{Name: types.NamespacedName{Name: pw.namespace}, GVK: nsGVK})
 	}()

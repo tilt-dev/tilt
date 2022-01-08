@@ -923,7 +923,7 @@ func newFixture(t *testing.T) *fixture {
 	sc := local.NewServerController(f.Client)
 	clock := clockwork.NewFakeClock()
 	c := NewController(f.Context(), fe, fpm, f.Client, st, clock, v1alpha1.NewScheme())
-	indexer.StartRequeuerForTesting(f.Context(), c.requeuer, c)
+	indexer.StartSourceForTesting(f.Context(), c.requeuer, c)
 
 	return &fixture{
 		ControllerFixture: f.Build(c),

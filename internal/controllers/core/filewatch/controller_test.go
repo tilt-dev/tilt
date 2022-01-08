@@ -76,7 +76,7 @@ func newFixture(t *testing.T) *fixture {
 	clock := clockwork.NewFakeClock()
 	controller := NewController(cfb.Client, testingStore, fakeMultiWatcher.NewSub, timerMaker.Maker(), filewatches.NewScheme(), clock)
 
-	indexer.StartRequeuerForTesting(cfb.Context(), controller.requeuer, controller)
+	indexer.StartSourceForTesting(cfb.Context(), controller.requeuer, controller)
 
 	return &fixture{
 		ControllerFixture: cfb.Build(controller),
