@@ -260,7 +260,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	}
 	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
 	client := k8s.ProvideK8sClient(ctx, k8sEnv, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
-	podSource := podlogstream.NewPodSource(ctx, client, scheme)
+	podSource := podlogstream.NewPodSource(ctx, client, scheme, clock)
 	podlogstreamController := podlogstream.NewController(ctx, deferredClient, scheme, storeStore, client, podSource, clock)
 	connectionManager := cluster.NewConnectionManager()
 	containerRestartDetector := kubernetesdiscovery.NewContainerRestartDetector()
@@ -469,7 +469,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	}
 	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
 	client := k8s.ProvideK8sClient(ctx, k8sEnv, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
-	podSource := podlogstream.NewPodSource(ctx, client, scheme)
+	podSource := podlogstream.NewPodSource(ctx, client, scheme, clock)
 	podlogstreamController := podlogstream.NewController(ctx, deferredClient, scheme, storeStore, client, podSource, clock)
 	connectionManager := cluster.NewConnectionManager()
 	containerRestartDetector := kubernetesdiscovery.NewContainerRestartDetector()
@@ -675,7 +675,7 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	}
 	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
 	k8sClient := k8s.ProvideK8sClient(ctx, k8sEnv, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
-	podSource := podlogstream.NewPodSource(ctx, k8sClient, scheme)
+	podSource := podlogstream.NewPodSource(ctx, k8sClient, scheme, clock)
 	podlogstreamController := podlogstream.NewController(ctx, deferredClient, scheme, storeStore, k8sClient, podSource, clock)
 	connectionManager := cluster.NewConnectionManager()
 	containerRestartDetector := kubernetesdiscovery.NewContainerRestartDetector()

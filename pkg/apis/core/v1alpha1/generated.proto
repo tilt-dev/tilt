@@ -1995,13 +1995,16 @@ message PodLogStreamSpec {
 }
 
 // PodLogStreamStatus defines the observed state of PodLogStream
-//
-// TODO(nick): rewrite this status field, i don't think this is quite right.
 message PodLogStreamStatus {
   // A list of containers being watched.
   //
   // +optional
   repeated ContainerLogStreamStatus containerStatuses = 1;
+
+  // Error message encountered while setting up the stream.
+  //
+  // +optional
+  optional string error = 2;
 }
 
 // PodLogStreamTemplateSpec describes common attributes for PodLogStreams

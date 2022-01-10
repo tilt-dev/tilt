@@ -4847,6 +4847,13 @@ func schema_pkg_apis_core_v1alpha1_PodLogStreamStatus(ref common.ReferenceCallba
 							},
 						},
 					},
+					"error": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Error message encountered while setting up the stream.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},
