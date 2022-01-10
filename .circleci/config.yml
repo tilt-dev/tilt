@@ -10,7 +10,7 @@ jobs:
   build-linux:
     resource_class: medium+
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:762fbb9b8c08d4ff6b73a46565ce6f87d9b4535e0edff2cbcbde4c2fc1438c07
+      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:2f11a26fc7401a7f0bea1c7d1bf8e5d6aaff846c5d344c1c69d2283430f07ad0
     # apiserver code generation scripts require being in GOPATH
     working_directory: /go/src/github.com/tilt-dev/tilt
 
@@ -50,7 +50,7 @@ jobs:
 
   publish-assets:
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:762fbb9b8c08d4ff6b73a46565ce6f87d9b4535e0edff2cbcbde4c2fc1438c07
+      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:2f11a26fc7401a7f0bea1c7d1bf8e5d6aaff846c5d344c1c69d2283430f07ad0
     steps:
       - checkout
       - run: echo $GCLOUD_SERVICE_KEY > /tmp/gcloud-service-key.json

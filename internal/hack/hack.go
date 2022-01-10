@@ -1,3 +1,4 @@
+//go:build hack
 // +build hack
 
 // A hack to make sure code-generator is vendored

@@ -63,7 +63,6 @@ linters:
     - ineffassign
     - misspell
     - exportloopref
-    - unconvert
 issues:
   exclude-rules:
     - linters:
