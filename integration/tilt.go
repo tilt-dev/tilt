@@ -68,7 +68,7 @@ func (d *TiltDriver) cmd(ctx context.Context, args []string, out io.Writer) *exe
 	}
 	if d.port > 0 {
 		for _, arg := range args {
-			if strings.HasPrefix("--port=", arg) {
+			if strings.HasPrefix(arg, "--port=") {
 				d.t.Fatalf("Cannot specify port argument when using automatic port mode: %s", arg)
 			}
 		}
@@ -169,6 +169,12 @@ func (d *TiltDriver) Get(ctx context.Context, apiType string, names ...string) (
 	cmd := d.cmd(ctx, args, &out)
 	err := cmd.Run()
 	return out.Bytes(), err
+}
+
+func (d *TiltDriver) Patch(ctx context.Context, apiType string, patch string, name string) error {
+	args := []string{"patch", apiType, "-p", patch, "--", name}
+	var out bytes.Buffer
+	return d.cmd(ctx, args, &out).Run()
 }
 
 type TiltUpResponse struct {

@@ -8,9 +8,11 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/go-connections/nat"
+	ktypes "k8s.io/apimachinery/pkg/types"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/internal/controllers/core/cmdimage"
 	"github.com/tilt-dev/tilt/internal/controllers/core/dockerimage"
 
 	"github.com/tilt-dev/tilt/internal/build"
@@ -19,6 +21,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -111,6 +114,7 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		})
 	}()
 
+	iTargets := plan.tiltManagedImageTargets
 	q, err := NewImageTargetQueue(ctx, plan.tiltManagedImageTargets, currentState, bd.ib.CanReuseRef)
 	if err != nil {
 		return store.BuildResultSet{}, err
@@ -132,45 +136,69 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	if hasReusedStep {
 		ps.StartPipelineStep(ctx, "Loading cached images")
 		for _, result := range reused {
-			ref := store.LocalImageRefFromBuildResult(result)
-			ps.Printf(ctx, "- %s", container.FamiliarString(ref))
+			ps.Printf(ctx, "- %s", store.LocalImageRefFromBuildResult(result))
 		}
 		ps.EndPipelineStep(ctx)
 	}
 
-	iTargetMap := model.ImageTargetsByID(plan.tiltManagedImageTargets)
+	imageMapSet := make(map[ktypes.NamespacedName]*v1alpha1.ImageMap, len(plan.dockerComposeTarget.Spec.ImageMaps))
+	for _, iTarget := range iTargets {
+		if iTarget.IsLiveUpdateOnly {
+			continue
+		}
+
+		var im v1alpha1.ImageMap
+		nn := ktypes.NamespacedName{Name: iTarget.ImageMapName()}
+		err := bd.ctrlClient.Get(ctx, nn, &im)
+		if err != nil {
+			return nil, err
+		}
+		imageMapSet[nn] = im.DeepCopy()
+	}
+
 	err = q.RunBuilds(func(target model.TargetSpec, depResults []store.ImageBuildResult) (store.ImageBuildResult, error) {
 		iTarget, ok := target.(model.ImageTarget)
 		if !ok {
 			return store.ImageBuildResult{}, fmt.Errorf("Not an image target: %T", target)
 		}
 
-		iTarget, err := InjectImageDependencies(iTarget, iTargetMap, depResults)
-		if err != nil {
-			return store.ImageBuildResult{}, err
-		}
-
 		startTime := apis.NowMicro()
 		dockerimage.MaybeUpdateStatus(ctx, bd.ctrlClient, iTarget, dockerimage.ToBuildingStatus(iTarget, startTime))
+		cmdimage.MaybeUpdateStatus(ctx, bd.ctrlClient, iTarget, cmdimage.ToBuildingStatus(iTarget, startTime))
 
 		expectedRef := iTarget.Refs.ConfigurationRef
 
 		// NOTE(maia): we assume that this func takes one DC target and up to one image target
 		// corresponding to that service. If this func ever supports specs for more than one
 		// service at once, we'll have to match up image build results to DC target by ref.
-		refs, stages, err := bd.ib.Build(ctx, iTarget, ps)
+		refs, stages, err := bd.ib.Build(ctx, iTarget, nil, imageMapSet, ps)
 		if err != nil {
 			dockerimage.MaybeUpdateStatus(ctx, bd.ctrlClient, iTarget, dockerimage.ToCompletedFailStatus(iTarget, startTime, stages, err))
+			cmdimage.MaybeUpdateStatus(ctx, bd.ctrlClient, iTarget, cmdimage.ToCompletedFailStatus(iTarget, startTime, err))
 			return store.ImageBuildResult{}, err
 		}
 		dockerimage.MaybeUpdateStatus(ctx, bd.ctrlClient, iTarget, dockerimage.ToCompletedSuccessStatus(iTarget, startTime, stages, refs))
+		cmdimage.MaybeUpdateStatus(ctx, bd.ctrlClient, iTarget, cmdimage.ToCompletedSuccessStatus(iTarget, startTime, refs))
 
 		ref, err := bd.tagWithExpected(ctx, refs.LocalRef, expectedRef)
 		if err != nil {
 			return store.ImageBuildResult{}, err
 		}
 
-		return store.NewImageBuildResultSingleRef(iTarget.ID(), ref), nil
+		result := store.NewImageBuildResultSingleRef(iTarget.ID(), ref)
+		result.ImageMapStatus.BuildStartTime = &startTime
+		nn := ktypes.NamespacedName{Name: iTarget.ImageMapName()}
+		im, ok := imageMapSet[nn]
+		if !ok {
+			return store.ImageBuildResult{}, fmt.Errorf("apiserver missing ImageMap: %s", iTarget.ID().Name)
+		}
+		im.Status = result.ImageMapStatus
+		err = bd.ctrlClient.Status().Update(ctx, im)
+		if err != nil {
+			return store.ImageBuildResult{}, fmt.Errorf("updating ImageMap: %v", err)
+		}
+
+		return result, nil
 	})
 
 	newResults := q.NewResults().ToBuildResultSet()

@@ -18,7 +18,6 @@ import {
 class SidebarItem {
   name: string
   isTiltfile: boolean
-  isTest: boolean
   buildStatus: ResourceStatus
   buildAlertCount: number
   runtimeStatus: ResourceStatus
@@ -45,7 +44,6 @@ class SidebarItem {
     let lastBuild = buildHistory.length > 0 ? buildHistory[0] : null
     this.name = res.metadata?.name ?? ""
     this.isTiltfile = this.name === ResourceName.tiltfile
-    this.isTest = !!status.localResourceInfo?.isTest
     this.buildStatus = buildStatus(res, logAlertIndex)
     this.buildAlertCount = buildAlerts(res, logAlertIndex).length
     this.runtimeStatus = runtimeStatus(res, logAlertIndex)

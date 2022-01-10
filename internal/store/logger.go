@@ -23,7 +23,7 @@ func NewLogActionLogger(ctx context.Context, dispatch func(action Action)) logge
 
 // Read labels and annotations of the given API object to determine where to log,
 // panicking if there's no info available.
-func MustObjectLogHandler(ctx context.Context, st RStore, obj metav1.Object) context.Context {
+func MustObjectLogHandler(ctx context.Context, st Dispatcher, obj metav1.Object) context.Context {
 	ctx, err := WithObjectLogHandler(ctx, st, obj)
 	if err != nil {
 		panic(err)
@@ -32,7 +32,7 @@ func MustObjectLogHandler(ctx context.Context, st RStore, obj metav1.Object) con
 }
 
 // Read labels and annotations of the given API object to determine where to log.
-func WithObjectLogHandler(ctx context.Context, st RStore, obj metav1.Object) (context.Context, error) {
+func WithObjectLogHandler(ctx context.Context, st Dispatcher, obj metav1.Object) (context.Context, error) {
 	// It's ok if the manifest or span id don't exist, they will just
 	// get dumped in the global log.
 	mn := obj.GetAnnotations()[v1alpha1.AnnotationManifest]
@@ -54,7 +54,7 @@ func WithObjectLogHandler(ctx context.Context, st RStore, obj metav1.Object) (co
 }
 
 type apiLogWriter struct {
-	store        RStore
+	store        Dispatcher
 	manifestName model.ManifestName
 	spanID       model.LogSpanID
 }
@@ -62,4 +62,8 @@ type apiLogWriter struct {
 func (w apiLogWriter) Write(level logger.Level, fields logger.Fields, p []byte) error {
 	w.store.Dispatch(NewLogAction(w.manifestName, w.spanID, level, fields, p))
 	return nil
+}
+
+type Dispatcher interface {
+	Dispatch(action Action)
 }

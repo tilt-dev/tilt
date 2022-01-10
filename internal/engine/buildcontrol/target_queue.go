@@ -65,12 +65,16 @@ func NewImageTargetQueue(ctx context.Context, iTargets []model.ImageTarget, stat
 			needsOwnBuild[id] = true
 		} else if state[id].LastResult != nil {
 			image := store.LocalImageRefFromBuildResult(state[id].LastResult)
-			ok, err := canReuseRef(ctx, target.(model.ImageTarget), image)
+			imageRef, err := container.ParseNamedTagged(image)
 			if err != nil {
-				return nil, errors.Wrapf(err, "error looking up whether last image built for %s exists", image.String())
+				return nil, errors.Wrapf(err, "parsing image")
+			}
+			ok, err := canReuseRef(ctx, target.(model.ImageTarget), imageRef)
+			if err != nil {
+				return nil, errors.Wrapf(err, "error looking up whether last image built for %s exists", image)
 			}
 			if !ok {
-				logger.Get(ctx).Infof("Rebuilding %s because image not found in image store", container.FamiliarString(image))
+				logger.Get(ctx).Infof("Rebuilding %s because image not found in image store", image)
 				needsOwnBuild[id] = true
 			}
 		}

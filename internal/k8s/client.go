@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
@@ -118,6 +119,8 @@ type Client interface {
 
 	// Returns version information about the apiserver, or an error if we're not connected.
 	CheckConnected(ctx context.Context) (*version.Info, error)
+
+	OwnerFetcher() OwnerFetcher
 }
 
 type RESTMapper interface {
@@ -143,11 +146,13 @@ type K8sClient struct {
 	drm               RESTMapper
 	clientLoader      clientcmd.ClientConfig
 	resourceClient    ResourceClient
+	ownerFetcher      OwnerFetcher
 }
 
 var _ Client = &K8sClient{}
 
 func ProvideK8sClient(
+	globalCtx context.Context,
 	env Env,
 	maybeRESTConfig RESTConfigOrError,
 	maybeClientset ClientsetOrError,
@@ -213,6 +218,7 @@ func ProvideK8sClient(
 		clientLoader:      clientLoader,
 	}
 	c.resourceClient = newResourceClient(c)
+	c.ownerFetcher = NewOwnerFetcher(globalCtx, c)
 	return c
 }
 
@@ -346,6 +352,10 @@ func (k *K8sClient) Upsert(ctx context.Context, entities []K8sEntity, timeout ti
 	}
 
 	return result, nil
+}
+
+func (k *K8sClient) OwnerFetcher() OwnerFetcher {
+	return k.ownerFetcher
 }
 
 // Update an entity like kubectl apply does.
@@ -496,7 +506,7 @@ func (k *K8sClient) escalatingUpdate(ctx context.Context, entity K8sEntity) ([]K
 	fallback := false
 	result, err := k.applyEntity(ctx, entity)
 	if err != nil {
-		msg, match := maybeAnnotationsTooLong(err.Error())
+		msg, match := maybeTooLargeError(err)
 		if match {
 			fallback = true
 			logger.Get(ctx).Infof("Updating %q failed: %s", entity.Name(), msg)
@@ -540,9 +550,24 @@ var MetadataAnnotationsTooLongRe = regexp.MustCompile(`metadata.annotations: Too
 // However, annotations have a max size of 256k. Large objects such as configmaps can exceed 256k, which makes
 // apply unusable, so we need to fall back to delete/create
 // https://github.com/kubernetes/kubectl/issues/712
-func maybeAnnotationsTooLong(stderr string) (string, bool) {
+//
+// We've also seen this reported differently, with a 413 HTTP error.
+// https://github.com/tilt-dev/tilt/issues/5279
+func maybeTooLargeError(err error) (string, bool) {
+	// We don't have an easy way to reproduce some of these problems, so we check
+	// for both the structured form of the error and the unstructured form.
+	statusErr, isStatusErr := err.(*apierrors.StatusError)
+	if isStatusErr && statusErr.ErrStatus.Code == http.StatusRequestEntityTooLarge {
+		return err.Error(), true
+	}
+
+	stderr := err.Error()
 	for _, line := range strings.Split(stderr, "\n") {
 		if MetadataAnnotationsTooLongRe.MatchString(line) {
+			return line, true
+		}
+
+		if strings.Contains(line, "the server responded with the status code 413") {
 			return line, true
 		}
 	}
@@ -586,7 +611,7 @@ func (k *K8sClient) Delete(ctx context.Context, entities []K8sEntity, wait bool)
 	return nil
 }
 
-func (k *K8sClient) forceDiscovery(ctx context.Context, gvk schema.GroupVersionKind) (schema.GroupVersionResource, error) {
+func (k *K8sClient) forceDiscovery(ctx context.Context, gvk schema.GroupVersionKind) (*meta.RESTMapping, error) {
 	rm, err := k.drm.RESTMapping(gvk.GroupKind(), gvk.Version)
 	if err != nil {
 		// The REST mapper doesn't have any sort of internal invalidation
@@ -602,10 +627,10 @@ func (k *K8sClient) forceDiscovery(ctx context.Context, gvk schema.GroupVersionK
 
 		rm, err = k.drm.RESTMapping(gvk.GroupKind(), gvk.Version)
 		if err != nil {
-			return schema.GroupVersionResource{}, errors.Wrapf(err, "error mapping %s/%s", gvk.Group, gvk.Kind)
+			return nil, errors.Wrapf(err, "error mapping %s/%s", gvk.Group, gvk.Kind)
 		}
 	}
-	return rm.Resource, nil
+	return rm, nil
 }
 
 func (k *K8sClient) waitForDelete(list kube.ResourceList) {
@@ -628,12 +653,20 @@ func (k *K8sClient) waitForDelete(list kube.ResourceList) {
 }
 
 func (k *K8sClient) ListMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) ([]metav1.Object, error) {
-	gvr, err := k.forceDiscovery(ctx, gvk)
+	mapping, err := k.forceDiscovery(ctx, gvk)
 	if err != nil {
 		return nil, err
 	}
 
-	metaList, err := k.metadata.Resource(gvr).Namespace(ns.String()).List(ctx, metav1.ListOptions{})
+	gvr := mapping.Resource
+	isRoot := mapping.Scope != nil && mapping.Scope.Name() == meta.RESTScopeNameRoot
+	var metaList *metav1.PartialObjectMetadataList
+	if isRoot {
+		metaList, err = k.metadata.Resource(gvr).List(ctx, metav1.ListOptions{})
+	} else {
+		metaList, err = k.metadata.Resource(gvr).Namespace(ns.String()).List(ctx, metav1.ListOptions{})
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -649,11 +682,12 @@ func (k *K8sClient) ListMeta(ctx context.Context, gvk schema.GroupVersionKind, n
 
 func (k *K8sClient) GetMetaByReference(ctx context.Context, ref v1.ObjectReference) (metav1.Object, error) {
 	gvk := ReferenceGVK(ref)
-	gvr, err := k.forceDiscovery(ctx, gvk)
+	mapping, err := k.forceDiscovery(ctx, gvk)
 	if err != nil {
 		return nil, err
 	}
 
+	gvr := mapping.Resource
 	namespace := ref.Namespace
 	name := ref.Name
 	resourceVersion := ref.ResourceVersion

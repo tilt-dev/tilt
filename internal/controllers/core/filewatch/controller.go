@@ -16,18 +16,20 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	"github.com/jonboulle/clockwork"
+
+	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 
 	"github.com/tilt-dev/fsnotify"
-	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 
@@ -39,6 +41,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/filewatches"
 	"github.com/tilt-dev/tilt/internal/watch"
+	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
@@ -52,10 +55,12 @@ type Controller struct {
 	fsWatcherMaker fsevent.WatcherMaker
 	timerMaker     fsevent.TimerMaker
 	mu             sync.Mutex
+	clock          clockwork.Clock
 	indexer        *indexer.Indexer
+	requeuer       *indexer.Requeuer
 }
 
-func NewController(client ctrlclient.Client, store store.RStore, fsWatcherMaker fsevent.WatcherMaker, timerMaker fsevent.TimerMaker, scheme *runtime.Scheme) *Controller {
+func NewController(client ctrlclient.Client, store store.RStore, fsWatcherMaker fsevent.WatcherMaker, timerMaker fsevent.TimerMaker, scheme *runtime.Scheme, clock clockwork.Clock) *Controller {
 	return &Controller{
 		Client:         client,
 		Store:          store,
@@ -63,6 +68,8 @@ func NewController(client ctrlclient.Client, store store.RStore, fsWatcherMaker 
 		fsWatcherMaker: fsWatcherMaker,
 		timerMaker:     timerMaker,
 		indexer:        indexer.NewIndexer(scheme, indexFw),
+		requeuer:       indexer.NewRequeuer(),
+		clock:          clock,
 	}
 }
 
@@ -92,44 +99,76 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	// The apiserver is the source of truth, and will ensure the engine state is up to date.
 	c.Store.Dispatch(filewatches.NewFileWatchUpsertAction(&fw))
 
+	ctx = store.MustObjectLogHandler(ctx, c.Store, &fw)
+
 	// Get configmap's disable status
 	disableStatus, err := configmap.MaybeNewDisableStatus(ctx, c.Client, fw.Spec.DisableSource, fw.Status.DisableStatus)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	// Update filewatch's disable status
-	if disableStatus != fw.Status.DisableStatus {
-		fw.Status.DisableStatus = disableStatus
-		if err := c.Client.Status().Update(ctx, &fw); err != nil {
-			return ctrl.Result{}, err
-		}
-	}
-
 	// Clean up existing filewatches if it's disabled
+	result := ctrl.Result{}
 	if disableStatus.Disabled {
 		if hasExisting {
 			existing.cleanupWatch(ctx)
 			c.removeWatch(existing)
 		}
+	} else {
+		// Determine if we the filewatch needs to be refreshed.
+		shouldRestart := !hasExisting || !apicmp.DeepEqual(existing.spec, fw.Spec)
+		if hasExisting && !shouldRestart {
+			shouldRestart, result = existing.shouldRestart()
+		}
 
-		return ctrl.Result{}, nil
-	}
-
-	if !hasExisting || !equality.Semantic.DeepEqual(existing.spec, fw.Spec) {
-		if err := c.addOrReplace(ctx, c.Store, req.NamespacedName, &fw); err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to create/update filesystem watch: %v", err)
+		if shouldRestart {
+			c.addOrReplace(ctx, req.NamespacedName, &fw)
 		}
 	}
 
-	return ctrl.Result{}, nil
+	watch, ok := c.targetWatches[req.NamespacedName]
+	status := &v1alpha1.FileWatchStatus{DisableStatus: disableStatus}
+	if ok {
+		status = watch.copyStatus()
+		status.DisableStatus = disableStatus
+	}
+
+	err = c.maybeUpdateObjectStatus(ctx, &fw, status)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	return result, nil
+}
+
+func (c *Controller) maybeUpdateObjectStatus(ctx context.Context, fw *v1alpha1.FileWatch, newStatus *v1alpha1.FileWatchStatus) error {
+	if apicmp.DeepEqual(newStatus, &fw.Status) {
+		return nil
+	}
+
+	oldError := fw.Status.Error
+
+	update := fw.DeepCopy()
+	update.Status = *newStatus
+	err := c.Client.Status().Update(ctx, update)
+	if err != nil {
+		return err
+	}
+
+	if update.Status.Error != "" && oldError != update.Status.Error {
+		logger.Get(ctx).Errorf("filewatch %s: %s", fw.Name, update.Status.Error)
+	}
+
+	c.Store.Dispatch(NewFileWatchUpdateStatusAction(update))
+	return nil
 }
 
 func (c *Controller) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	b := ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.FileWatch{}).
 		Watches(&source.Kind{Type: &v1alpha1.ConfigMap{}},
-			handler.EnqueueRequestsFromMapFunc((c.indexer.Enqueue)))
+			handler.EnqueueRequestsFromMapFunc((c.indexer.Enqueue))).
+		Watches(c.requeuer, handler.Funcs{})
 
 	return b, nil
 }
@@ -143,62 +182,62 @@ func (c *Controller) removeWatch(tw *watcher) {
 	}
 }
 
-func (c *Controller) addOrReplace(ctx context.Context, st store.RStore, name types.NamespacedName, fw *v1alpha1.FileWatch) error {
+func (c *Controller) addOrReplace(ctx context.Context, name types.NamespacedName, fw *v1alpha1.FileWatch) {
+	existing, hasExisting := c.targetWatches[name]
+	status := &v1alpha1.FileWatchStatus{}
+	w := &watcher{
+		name:           name,
+		spec:           *fw.Spec.DeepCopy(),
+		clock:          c.clock,
+		restartBackoff: time.Second,
+	}
+	if hasExisting && apicmp.DeepEqual(existing.spec, w.spec) {
+		w.restartBackoff = existing.restartBackoff
+		status.Error = existing.status.Error
+	}
+
+	var notify watch.Notify
 	ignoreMatcher, err := ignore.IgnoresToMatcher(fw.Spec.Ignores)
 	if err != nil {
-		return err
-	}
-	notify, err := c.fsWatcherMaker(
-		append([]string{}, fw.Spec.WatchedPaths...),
-		ignoreMatcher,
-		logger.Get(ctx))
-	if err != nil {
-		return fmt.Errorf("failed to initialize filesystem watch: %v", err)
-	}
-	if err := notify.Start(); err != nil {
-		return fmt.Errorf("failed to initialize filesystem watch: %v", err)
-	}
-
-	// Clear out any old events
-	fw.Status.FileEvents = nil
-	fw.Status.LastEventTime = metav1.MicroTime{}
-	fw.Status.MonitorStartTime = metav1.NowMicro()
-	fw.Status.Error = ""
-
-	if err := c.Client.Status().Update(ctx, fw); err != nil {
-		_ = notify.Close()
-		return fmt.Errorf("failed to update monitor start time: %v", err)
-	}
-	c.Store.Dispatch(NewFileWatchUpdateStatusAction(fw))
-
-	ctx, cancel := context.WithCancel(ctx)
-	w := &watcher{
-		name:   name,
-		spec:   *fw.Spec.DeepCopy(),
-		status: fw.Status.DeepCopy(),
-		notify: notify,
-		cancel: cancel,
+		status.Error = err.Error()
+	} else {
+		notify, err = c.fsWatcherMaker(
+			append([]string{}, fw.Spec.WatchedPaths...),
+			ignoreMatcher,
+			logger.Get(ctx))
+		if err != nil {
+			status.Error = fmt.Sprintf("failed to initialize filesystem watch: %v", err)
+		} else if err := notify.Start(); err != nil {
+			status.Error = fmt.Sprintf("failed to initialize filesystem watch: %v", err)
+		}
 	}
 
-	go c.dispatchFileChangesLoop(ctx, st, w)
-
-	if existing, ok := c.targetWatches[name]; ok {
-		// no need to remove from map, will be overwritten
+	if hasExisting {
+		// Clean up the existing watch AFTER the new watch has been started.
 		existing.cleanupWatch(ctx)
 	}
 
+	if notify != nil {
+		w.notify = notify
+		status.MonitorStartTime = apis.NowMicro()
+		ctx, cancel := context.WithCancel(ctx)
+		w.cancel = cancel
+
+		go c.dispatchFileChangesLoop(ctx, w)
+	}
+
+	w.status = status
 	c.targetWatches[name] = w
-	return nil
 }
 
-func (c *Controller) dispatchFileChangesLoop(ctx context.Context, st store.RStore, w *watcher) {
+func (c *Controller) dispatchFileChangesLoop(ctx context.Context, w *watcher) {
 	eventsCh := fsevent.Coalesce(c.timerMaker, w.notify.Events())
 
 	defer func() {
 		c.mu.Lock()
 		defer c.mu.Unlock()
 		w.cleanupWatch(ctx)
-		c.removeWatch(w)
+		c.requeuer.Add(w.name)
 	}()
 
 	for {
@@ -208,40 +247,30 @@ func (c *Controller) dispatchFileChangesLoop(ctx context.Context, st store.RStor
 				return
 			}
 
-			// TODO(milas): these should probably update the error field and emit FileWatchUpdateAction
 			if watch.IsWindowsShortReadError(err) {
-				st.Dispatch(store.NewErrorAction(fmt.Errorf("Windows I/O overflow.\n"+
+				w.recordError(fmt.Errorf("Windows I/O overflow.\n"+
 					"You may be able to fix this by setting the env var %s.\n"+
 					"Current buffer size: %d\n"+
 					"More details: https://github.com/tilt-dev/tilt/issues/3556\n"+
 					"Caused by: %v",
 					watch.WindowsBufferSizeEnvVar,
 					watch.DesiredWindowsBufferSize(),
-					err)))
+					err))
 			} else if err.Error() == fsnotify.ErrEventOverflow.Error() {
-				st.Dispatch(store.NewErrorAction(fmt.Errorf("%s\nerror: %v", DetectedOverflowErrMsg, err)))
+				w.recordError(fmt.Errorf("%s\nerror: %v", DetectedOverflowErrMsg, err))
 			} else {
-				st.Dispatch(store.NewErrorAction(err))
+				w.recordError(err)
 			}
+			c.requeuer.Add(w.name)
+
 		case <-ctx.Done():
 			return
 		case fsEvents, ok := <-eventsCh:
 			if !ok {
 				return
 			}
-			if err := w.recordEvent(ctx, c.Client, st, fsEvents); err != nil {
-				if ctx.Err() == nil {
-					// there's an unavoidable race here - the context might have
-					// been canceled while we were recording the event, which will
-					// cause a failure, so we just ignore _any_ errors in this case
-					// (even if it was a non-context related error, this watcher is
-					// being disposed of, so it's no longer relevant)
-					st.Dispatch(store.NewErrorAction(err))
-				} else {
-					logger.Get(ctx).Debugf("Ignored stale error for %q: %v", w.name, err)
-				}
-				return
-			}
+			w.recordEvent(fsEvents)
+			c.requeuer.Add(w.name)
 		}
 	}
 }

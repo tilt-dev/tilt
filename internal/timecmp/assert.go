@@ -16,12 +16,13 @@ type stringableTimeValue interface {
 //
 // This simplifies comparing Go stdlib time.Time values with apiserver metav1.Time / metav1.MicroTime values
 // based on the minimum granularity between the two values.
-func AssertTimeEqual(t testing.TB, expected stringableTimeValue, actual stringableTimeValue) bool {
+func AssertTimeEqual(t testing.TB, expected stringableTimeValue, actual stringableTimeValue) (equal bool) {
 	t.Helper()
+
 	if !Equal(expected, actual) {
 		return assert.Fail(t, fmt.Sprintf("Not equal: \n"+
-			"expected: %s\n"+
-			"actual  : %s", expected.String(), actual.String()))
+			"expected: %v\n"+
+			"actual  : %v", expected, actual))
 	}
 	return true
 }

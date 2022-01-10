@@ -499,8 +499,9 @@ func TestStopPathConsumedByImageBuild(t *testing.T) {
 	f.Upsert(&v1alpha1.ImageMap{
 		ObjectMeta: metav1.ObjectMeta{Name: "frontend-image-map"},
 		Status: v1alpha1.ImageMapStatus{
-			Image:          "frontend-image:my-tag",
-			BuildStartTime: &metav1.MicroTime{Time: nowMicro.Add(2 * time.Second)},
+			Image:            "frontend-image:my-tag",
+			ImageFromCluster: "frontend-image:my-tag",
+			BuildStartTime:   &metav1.MicroTime{Time: nowMicro.Add(2 * time.Second)},
 		},
 	})
 
@@ -695,8 +696,9 @@ func (f *fixture) setupFrontend() {
 	f.Create(&v1alpha1.ImageMap{
 		ObjectMeta: metav1.ObjectMeta{Name: "frontend-image-map"},
 		Status: v1alpha1.ImageMapStatus{
-			Image:          "frontend-image:my-tag",
-			BuildStartTime: &nowMicro,
+			Image:            "frontend-image:my-tag",
+			ImageFromCluster: "frontend-image:my-tag",
+			BuildStartTime:   &nowMicro,
 		},
 	})
 	f.Create(&v1alpha1.KubernetesDiscovery{

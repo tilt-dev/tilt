@@ -7,8 +7,12 @@ import (
 	"sync"
 	"time"
 
+	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 
+	"github.com/jonboulle/clockwork"
+
+	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -30,34 +34,35 @@ import (
 var podLogHealthCheck = 15 * time.Second
 var podLogReconnectGap = 2 * time.Second
 
+var clusterGVK = v1alpha1.SchemeGroupVersion.WithKind("Cluster")
+
 // Reconciles the PodLogStream API object.
 //
 // Collects logs from deployed containers.
 type Controller struct {
 	ctx       context.Context
 	client    ctrlclient.Client
+	indexer   *indexer.Indexer
 	st        store.RStore
 	kClient   k8s.Client
 	podSource *PodSource
 	mu        sync.Mutex
+	clock     clockwork.Clock
 
 	watches         map[podLogKey]PodLogWatch
 	hasClosedStream map[podLogKey]bool
 	statuses        map[types.NamespacedName]*PodLogStreamStatus
 	lastUpdate      map[types.NamespacedName]*PodLogStreamStatus
-
-	newTicker func(d time.Duration) *time.Ticker
-	since     func(t time.Time) time.Duration
-	now       func() time.Time
 }
 
 var _ reconcile.Reconciler = &Controller{}
 var _ store.TearDowner = &Controller{}
 
-func NewController(ctx context.Context, client ctrlclient.Client, st store.RStore, kClient k8s.Client, podSource *PodSource) *Controller {
+func NewController(ctx context.Context, client ctrlclient.Client, scheme *runtime.Scheme, st store.RStore, kClient k8s.Client, podSource *PodSource, clock clockwork.Clock) *Controller {
 	return &Controller{
 		ctx:             ctx,
 		client:          client,
+		indexer:         indexer.NewIndexer(scheme, indexPodLogStreamForTiltAPI),
 		st:              st,
 		kClient:         kClient,
 		podSource:       podSource,
@@ -65,9 +70,7 @@ func NewController(ctx context.Context, client ctrlclient.Client, st store.RStor
 		hasClosedStream: make(map[podLogKey]bool),
 		statuses:        make(map[types.NamespacedName]*PodLogStreamStatus),
 		lastUpdate:      make(map[types.NamespacedName]*PodLogStreamStatus),
-		newTicker:       time.NewTicker,
-		since:           time.Since,
-		now:             time.Now,
+		clock:           clock,
 	}
 }
 
@@ -132,6 +135,7 @@ func (r *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reco
 	stream := &PodLogStream{}
 	streamName := req.NamespacedName
 	err := r.client.Get(ctx, req.NamespacedName, stream)
+	r.indexer.OnReconcile(req.NamespacedName, stream)
 	if apierrors.IsNotFound(err) {
 		r.podSource.handleReconcileRequest(ctx, req.NamespacedName, stream)
 		r.deleteStreams(streamName)
@@ -290,7 +294,7 @@ func (m *Controller) consumeLogs(watch PodLogWatch, st store.RStore) {
 			logger.Get(ctx).Infof("Error streaming %s logs: %v", pID, exitError)
 		}
 
-		watch.terminationTime <- m.now()
+		watch.terminationTime <- m.clock.Now()
 		watch.cancel()
 	}()
 
@@ -315,7 +319,7 @@ func (m *Controller) consumeLogs(watch PodLogWatch, st store.RStore) {
 		}
 
 		reader := runtimelog.NewHardCancelReader(ctx, readCloser)
-		reader.Now = m.now
+		reader.Now = m.clock.Now
 
 		// A hacky workaround for
 		// https://github.com/tilt-dev/tilt/issues/3908
@@ -323,15 +327,15 @@ func (m *Controller) consumeLogs(watch PodLogWatch, st store.RStore) {
 		// If they have, reconnect to the log stream.
 		done := make(chan bool)
 		go func() {
-			ticker := m.newTicker(podLogHealthCheck)
+			ticker := m.clock.NewTicker(podLogHealthCheck)
 			for {
 				select {
 				case <-done:
 					return
 
-				case <-ticker.C:
+				case <-ticker.Chan():
 					lastRead := reader.LastReadTime()
-					if lastRead.IsZero() || m.since(lastRead) < podLogHealthCheck {
+					if lastRead.IsZero() || m.clock.Since(lastRead) < podLogHealthCheck {
 						continue
 					}
 
@@ -482,4 +486,22 @@ type podLogKey struct {
 	streamName types.NamespacedName
 	podID      k8s.PodID
 	cID        container.ID
+}
+
+// indexPodLogStreamForTiltAPI indexes a PodLogStream object and returns keys
+// for objects from the Tilt apiserver that it watches.
+//
+// See also: indexPodLogStreamForKubernetes which indexes a PodLogStream object
+// and returns keys for objects from the Kubernetes cluster that it watches via
+// PodSource.
+func indexPodLogStreamForTiltAPI(obj ctrlclient.Object) []indexer.Key {
+	var results []indexer.Key
+	pls := obj.(*v1alpha1.PodLogStream)
+	if pls != nil && pls.Spec.Cluster != "" {
+		results = append(results, indexer.Key{
+			Name: types.NamespacedName{Namespace: pls.Namespace, Name: pls.Spec.Cluster},
+			GVK:  clusterGVK,
+		})
+	}
+	return results
 }

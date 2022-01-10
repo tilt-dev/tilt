@@ -13,6 +13,7 @@ if [[ "${GITHUB_TOKEN-}" == "" ]]; then
     exit 1
 fi
 
+export HOMEBREW_GITHUB_API_TOKEN="$GITHUB_TOKEN"
 VERSION=${1//v/}
 VERSION_PATTERN="^[0-9]+\\.[0-9]+\\.[0-9]+$"
 if ! [[ $VERSION =~ $VERSION_PATTERN ]]; then
@@ -24,4 +25,4 @@ git config --global user.email "it@tilt.dev"
 git config --global user.name "Tilt Dev"
 
 # send the brew team a PR to upgrade homebrew-core
-brew bump-formula-pr --version="$VERSION" tilt
+brew bump-formula-pr --no-browse --version="$VERSION" tilt

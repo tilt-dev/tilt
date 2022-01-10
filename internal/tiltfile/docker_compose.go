@@ -2,11 +2,15 @@ package tiltfile
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 
 	"github.com/compose-spec/compose-go/types"
+
 	// DANGER: some compose-go types are not friendly to being marshaled with gopkg.in/yaml.v3
 	// and will trigger a stack overflow panic
 	// see https://github.com/tilt-dev/tilt/issues/4797
@@ -37,21 +41,21 @@ type dcResourceSet struct {
 func (dc dcResourceSet) Empty() bool { return reflect.DeepEqual(dc, dcResourceSet{}) }
 
 func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	configPaths := value.NewLocalPathListUnpacker(thread)
+	var configPaths starlark.Value
 
 	err := s.unpackArgs(fn.Name(), args, kwargs, "configPaths", &configPaths)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, v := range configPaths.Value {
-		err = io.RecordReadPath(thread, io.WatchFileOnly, v)
-		if err != nil {
-			return nil, err
-		}
+	paths := starlarkValueOrSequenceToSlice(configPaths)
+
+	if len(paths) == 0 {
+		return nil, fmt.Errorf("Nothing to compose")
 	}
 
 	dc := s.dc
+
 	currentTiltfilePath := starkit.CurrentExecPath(thread)
 	if dc.tiltfilePath != "" && dc.tiltfilePath != currentTiltfilePath {
 		return starlark.None, fmt.Errorf("Cannot load docker-compose files from two different Tiltfiles.\n"+
@@ -59,11 +63,60 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 			"(%s, %s)", dc.tiltfilePath, currentTiltfilePath)
 	}
 
-	// To make sure all the docker-compose files are compatible together,
-	// parse them all together.
-	allConfigPaths := append([]string{}, dc.configPaths...)
-	allConfigPaths = append(allConfigPaths, configPaths.Value...)
-	project := model.DockerComposeProject{ConfigPaths: allConfigPaths}
+	project := model.DockerComposeProject{
+		ConfigPaths: dc.configPaths,
+		ProjectPath: dc.Project.ProjectPath,
+		Name:        model.NormalizeName(filepath.Base(filepath.Dir(currentTiltfilePath))),
+	}
+
+	for _, val := range paths {
+		switch v := val.(type) {
+		case nil:
+			continue
+		case io.Blob:
+			yaml := v.String()
+			message := "unable to store yaml blob"
+			tmpdir, err := s.tempDir()
+			if err != nil {
+				return nil, errors.Wrap(err, message)
+			}
+			tmpfile, err := os.Create(filepath.Join(tmpdir.Path(), fmt.Sprintf("%x.yml", sha256.Sum256([]byte(yaml)))))
+			if err != nil {
+				return nil, errors.Wrap(err, message)
+			}
+			_, err = tmpfile.WriteString(yaml)
+			if err != nil {
+				tmpfile.Close()
+				return nil, errors.Wrap(err, message)
+			}
+			err = tmpfile.Close()
+			if err != nil {
+				return nil, errors.Wrap(err, message)
+			}
+			project.ConfigPaths = append(project.ConfigPaths, tmpfile.Name())
+		default:
+			path, err := value.ValueToAbsPath(thread, val)
+			if err != nil {
+				return starlark.None, fmt.Errorf("expected blob | path (string). Actual type: %T", val)
+			}
+
+			// Set project path to dir of first compose file, like DC CLI does
+			if project.ProjectPath == "" {
+				project.ProjectPath = filepath.Dir(path)
+			}
+
+			project.ConfigPaths = append(project.ConfigPaths, path)
+			err = io.RecordReadPath(thread, io.WatchFileOnly, path)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	// Set to tiltfile directory for YAML blob tempfiles
+	if project.ProjectPath == "" {
+		project.ProjectPath = filepath.Dir(currentTiltfilePath)
+	}
 
 	services, err := parseDCConfig(s.ctx, s.dcCli, project)
 	if err != nil {
@@ -72,9 +125,9 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 
 	s.dc = dcResourceSet{
 		Project:      project,
-		configPaths:  allConfigPaths,
+		configPaths:  project.ConfigPaths,
 		services:     services,
-		tiltfilePath: starkit.CurrentExecPath(thread),
+		tiltfilePath: currentTiltfilePath,
 	}
 
 	return starlark.None, nil
@@ -179,7 +232,7 @@ type dcService struct {
 	// Currently just use this to diff against when config files are edited to see if manifest has changed
 	ServiceYAML []byte
 
-	DependencyIDs  []model.TargetID
+	ImageMapDeps   []string
 	PublishedPorts []int
 
 	TriggerMode triggerMode
@@ -263,7 +316,7 @@ func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, s
 	return services, nil
 }
 
-func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResourceSet) (model.Manifest, error) {
+func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResourceSet, iTargets []model.ImageTarget) (model.Manifest, error) {
 	dcInfo := model.DockerComposeTarget{
 		Name: model.TargetName(service.Name),
 		Spec: model.DockerComposeUpSpec{
@@ -273,7 +326,7 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResource
 		ServiceYAML:      string(service.ServiceYAML),
 		Links:            service.Links,
 		LocalVolumePaths: service.MountedLocalDirs,
-	}.WithDependencyIDs(service.DependencyIDs).
+	}.WithImageMapDeps(model.FilterLiveUpdateOnly(service.ImageMapDeps, iTargets)).
 		WithPublishedPorts(service.PublishedPorts)
 
 	autoInit := true
@@ -295,7 +348,8 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResource
 		TriggerMode:          um,
 		ResourceDependencies: mds,
 	}.WithDeployTarget(dcInfo).
-		WithLabels(service.Labels)
+		WithLabels(service.Labels).
+		WithImageTargets(iTargets)
 
 	return m, nil
 }

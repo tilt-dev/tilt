@@ -20,6 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
+	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/engine/local"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis"
@@ -922,6 +923,7 @@ func newFixture(t *testing.T) *fixture {
 	sc := local.NewServerController(f.Client)
 	clock := clockwork.NewFakeClock()
 	c := NewController(f.Context(), fe, fpm, f.Client, st, clock, v1alpha1.NewScheme())
+	indexer.StartRequeuerForTesting(f.Context(), c.requeuer, c)
 
 	return &fixture{
 		ControllerFixture: f.Build(c),
@@ -1002,7 +1004,8 @@ func (f *fixture) setDisabled(cmdName string, isDisabled bool) {
 
 	// block until the change has been processed
 	f.requireCmdMatchesInAPI(cmdName, func(cmd *Cmd) bool {
-		return cmd.Status.DisableStatus.Disabled == isDisabled
+		return cmd.Status.DisableStatus != nil &&
+			cmd.Status.DisableStatus.Disabled == isDisabled
 	})
 }
 

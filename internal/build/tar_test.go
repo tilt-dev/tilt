@@ -6,8 +6,10 @@ import (
 	"context"
 	"io"
 	"net"
+	"os"
 	"runtime"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -260,6 +262,64 @@ func TestArchiveException(t *testing.T) {
 
 	actual := tar.NewReader(buf)
 	f.assertFileInTar(actual, expectedFile{Path: "target/foo.txt", Contents: "bar"})
+}
+
+// Write a file continuously, and make sure we don't get tar errors.
+func TestRapidWrite(t *testing.T) {
+	f := newFixture(t)
+	defer f.tearDown()
+
+	f.WriteFile("log.txt", "a")
+
+	errCh := make(chan error)
+	ctx, cancel := context.WithCancel(f.ctx)
+	defer cancel()
+
+	// Continuously open the file for writing.
+	go func() {
+		defer close(errCh)
+
+		for {
+			if ctx.Err() != nil {
+				return
+			}
+
+			path := f.JoinPath("log.txt")
+			f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0755)
+			if err != nil {
+				errCh <- err
+				return
+			}
+
+			_, err = f.Write([]byte("a\n"))
+			_ = f.Close()
+			if err != nil {
+				errCh <- err
+				return
+			}
+			time.Sleep(100 * time.Microsecond)
+		}
+	}()
+
+	paths := []PathMapping{
+		PathMapping{
+			LocalPath:     f.JoinPath("log.txt"),
+			ContainerPath: "/a.txt",
+		},
+	}
+
+	// Archive the file 10 times and make sure it's a success.
+	for i := 0; i < 10; i++ {
+		buf := new(bytes.Buffer)
+		ab := NewArchiveBuilder(buf, model.EmptyMatcher)
+		err := ab.ArchivePathsIfExist(f.ctx, paths)
+		require.NoError(t, err)
+		assert.Equal(t, ab.Paths(), []string{f.JoinPath("log.txt")})
+		require.NoError(t, ab.Close())
+		time.Sleep(100 * time.Microsecond)
+	}
+	cancel()
+	assert.NoError(t, <-errCh)
 }
 
 type fixture struct {

@@ -95,6 +95,13 @@ type PodLogStreamSpec struct {
 	//
 	// +optional
 	IgnoreContainers []string `json:"ignoreContainers,omitempty" protobuf:"bytes,5,rep,name=ignoreContainers"`
+
+	// Cluster the Pod belongs to.
+	//
+	// If not provided, "default" will be used.
+	//
+	// +optional
+	Cluster string `json:"cluster" protobuf:"bytes,6,opt,name=cluster"`
 }
 
 var _ resource.Object = &PodLogStream{}
@@ -131,6 +138,12 @@ func (in *PodLogStream) IsStorageVersion() bool {
 
 func (in *PodLogStream) ShortNames() []string {
 	return []string{"pls"}
+}
+
+func (in *PodLogStream) Default() {
+	if in.Spec.Cluster == "" {
+		in.Spec.Cluster = ClusterNameDefault
+	}
 }
 
 func (in *PodLogStream) Validate(ctx context.Context) field.ErrorList {

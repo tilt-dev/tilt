@@ -8,18 +8,22 @@ import (
 
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	errorutil "k8s.io/apimachinery/pkg/util/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/cluster"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -27,15 +31,18 @@ import (
 	"github.com/tilt-dev/tilt/internal/store/kubernetesdiscoverys"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 var (
-	apiGVStr = v1alpha1.SchemeGroupVersion.String()
-	apiKind  = "KubernetesDiscovery"
-	apiType  = metav1.TypeMeta{Kind: apiKind, APIVersion: apiGVStr}
+	apiGVStr   = v1alpha1.SchemeGroupVersion.String()
+	apiKind    = "KubernetesDiscovery"
+	apiType    = metav1.TypeMeta{Kind: apiKind, APIVersion: apiGVStr}
+	clusterGVK = v1alpha1.SchemeGroupVersion.WithKind("Cluster")
 )
 
+type namespaceSet map[string]bool
 type watcherSet map[watcherID]bool
 
 // watcherID is to disambiguate between K8s object keys and tilt-apiserver KubernetesDiscovery object keys.
@@ -46,10 +53,11 @@ func (w watcherID) String() string {
 }
 
 type Reconciler struct {
-	kCli         k8s.Client
-	ownerFetcher k8s.OwnerFetcher
-	dispatcher   Dispatcher
-	ctrlClient   ctrlclient.Client
+	clients    *cluster.ClientManager
+	st         store.Dispatcher
+	indexer    *indexer.Indexer
+	ctrlClient ctrlclient.Client
+	requeuer   *indexer.Requeuer
 
 	// restartDetector compares a previous version of status with the latest and emits log events
 	// for any containers on the pod that restarted.
@@ -64,7 +72,7 @@ type Reconciler struct {
 	// For efficiency, a single watch is created for a given namespace and keys of watchers
 	// are tracked; once there are no more watchers, cleanupAbandonedNamespaces will cancel
 	// the watch.
-	watchedNamespaces map[k8s.Namespace]nsWatch
+	watchedNamespaces map[nsKey]nsWatch
 
 	// watchers reflects the current state of the Reconciler namespace + UID watches.
 	//
@@ -73,41 +81,45 @@ type Reconciler struct {
 
 	// uidWatchers are the KubernetesDiscovery objects that have a watch ref for a particular K8s UID,
 	// and so will receive events for changes to it (in addition to specs that match based on Pod labels).
-	uidWatchers map[types.UID]watcherSet
+	uidWatchers map[uidKey]watcherSet
 
 	// knownDescendentPodUIDs maps the UID of Kubernetes resources to the UIDs of
 	// all pods that they own (transitively).
 	//
 	// For example, a Deployment UID might contain a set of N pod UIDs.
-	knownDescendentPodUIDs map[types.UID]k8s.UIDSet
+	knownDescendentPodUIDs map[uidKey]k8s.UIDSet
 
 	// knownPods is an index of all the known pods and associated Tilt-derived metadata, by UID.
-	knownPods             map[types.UID]*v1.Pod
-	knownPodOwnerCreation map[types.UID]metav1.Time
+	knownPods             map[uidKey]*v1.Pod
+	knownPodOwnerCreation map[uidKey]metav1.Time
 }
 
 func (w *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	b := ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.KubernetesDiscovery{}).
 		Owns(&v1alpha1.PodLogStream{}).
-		Owns(&v1alpha1.PortForward{})
+		Owns(&v1alpha1.PortForward{}).
+		Watches(&source.Kind{Type: &v1alpha1.Cluster{}},
+			handler.EnqueueRequestsFromMapFunc(w.indexer.Enqueue)).
+		Watches(w.requeuer, handler.Funcs{})
 	return b, nil
 }
 
-func NewReconciler(ctrlClient ctrlclient.Client, kCli k8s.Client, ownerFetcher k8s.OwnerFetcher, restartDetector *ContainerRestartDetector,
+func NewReconciler(ctrlClient ctrlclient.Client, scheme *runtime.Scheme, clients cluster.ClientProvider, restartDetector *ContainerRestartDetector,
 	st store.RStore) *Reconciler {
 	return &Reconciler{
 		ctrlClient:             ctrlClient,
-		kCli:                   kCli,
-		ownerFetcher:           ownerFetcher,
+		clients:                cluster.NewClientManager(clients),
 		restartDetector:        restartDetector,
-		dispatcher:             st,
-		watchedNamespaces:      make(map[k8s.Namespace]nsWatch),
-		uidWatchers:            make(map[types.UID]watcherSet),
+		requeuer:               indexer.NewRequeuer(),
+		st:                     st,
+		indexer:                indexer.NewIndexer(scheme, indexKubernetesDiscovery),
+		watchedNamespaces:      make(map[nsKey]nsWatch),
+		uidWatchers:            make(map[uidKey]watcherSet),
 		watchers:               make(map[watcherID]watcher),
-		knownDescendentPodUIDs: make(map[types.UID]k8s.UIDSet),
-		knownPods:              make(map[types.UID]*v1.Pod),
-		knownPodOwnerCreation:  make(map[types.UID]metav1.Time),
+		knownDescendentPodUIDs: make(map[uidKey]k8s.UIDSet),
+		knownPods:              make(map[uidKey]*v1.Pod),
+		knownPodOwnerCreation:  make(map[uidKey]metav1.Time),
 	}
 }
 
@@ -117,12 +129,11 @@ type watcher struct {
 	// It's used to simplify diffing logic and determine if action is needed.
 	spec      v1alpha1.KubernetesDiscoverySpec
 	startTime time.Time
-	// lastUpdate is the last version of the status that was persisted.
-	//
-	// It's used for diffing to detect container restarts as well as avoid spurious updates.
-	lastUpdate v1alpha1.KubernetesDiscoveryStatus
+
 	// extraSelectors are label selectors used to match pods that don't transitively match any known UID.
 	extraSelectors []labels.Selector
+	cluster        clusterKey
+	errorReason    string
 }
 
 // nsWatch tracks the watchers for the given namespace and allows the watch to be canceled.
@@ -140,6 +151,7 @@ func (w *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	existing, hasExisting := w.watchers[key]
 
 	kd, err := w.getKubernetesDiscovery(ctx, key)
+	w.indexer.OnReconcile(request.NamespacedName, kd)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -155,18 +167,28 @@ func (w *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 			return ctrl.Result{}, err
 		}
 
-		w.dispatcher.Dispatch(kubernetesdiscoverys.NewKubernetesDiscoveryDeleteAction(request.NamespacedName.Name))
+		w.st.Dispatch(kubernetesdiscoverys.NewKubernetesDiscoveryDeleteAction(request.NamespacedName.Name))
 		return ctrl.Result{}, nil
 	}
 
-	// The apiserver is the source of truth, and will ensure the engine state is up to date.
-	w.dispatcher.Dispatch(kubernetesdiscoverys.NewKubernetesDiscoveryUpsertAction(kd))
+	ctx = store.MustObjectLogHandler(ctx, w.st, kd)
 
-	if !hasExisting || !equality.Semantic.DeepEqual(existing.spec, kd.Spec) {
-		if err := w.addOrReplace(ctx, key, kd); err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to reconcile %s:%s: %v",
-				key.Namespace, key.Name, err)
-		}
+	// The apiserver is the source of truth, and will ensure the engine state is up to date.
+	w.st.Dispatch(kubernetesdiscoverys.NewKubernetesDiscoveryUpsertAction(kd))
+
+	cluster, err := w.getCluster(ctx, kd)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	needsRefresh := w.clients.Refresh(kd, cluster)
+
+	if !hasExisting || needsRefresh || !apicmp.DeepEqual(existing.spec, kd.Spec) {
+		w.addOrReplace(ctx, key, kd, cluster)
+	}
+
+	kd, err = w.maybeUpdateObjectStatus(ctx, kd, key)
+	if err != nil {
+		return ctrl.Result{}, err
 	}
 
 	if err := w.manageOwnedObjects(ctx, request.NamespacedName, kd); err != nil {
@@ -174,6 +196,20 @@ func (w *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func (w *Reconciler) getCluster(ctx context.Context, kd *v1alpha1.KubernetesDiscovery) (*v1alpha1.Cluster, error) {
+	if kd.Spec.Cluster == "" {
+		return nil, errors.New("cluster name is empty")
+	}
+
+	clusterNN := types.NamespacedName{Namespace: kd.Namespace, Name: kd.Spec.Cluster}
+	var cluster v1alpha1.Cluster
+	err := w.ctrlClient.Get(ctx, clusterNN, &cluster)
+	if err != nil {
+		return nil, fmt.Errorf("could not fetch cluster %s: %v", kd.Spec.Cluster, err)
+	}
+	return &cluster, nil
 }
 
 // getKubernetesDiscovery returns the KubernetesDiscovery object for the given key.
@@ -192,50 +228,62 @@ func (w *Reconciler) getKubernetesDiscovery(ctx context.Context, key watcherID) 
 	return &kd, nil
 }
 
-func (w *Reconciler) addOrReplace(ctx context.Context, key watcherID, kd *store.KubernetesDiscovery) error {
+func (w *Reconciler) addOrReplace(ctx context.Context, watcherKey watcherID, kd *store.KubernetesDiscovery, cluster *v1alpha1.Cluster) {
+	if _, ok := w.watchers[watcherKey]; ok {
+		// if a watcher already exists, just tear it down and we'll set it up from scratch so that
+		// we don't have to diff a bunch of different pieces
+		w.teardown(watcherKey)
+	}
+
+	defer func() {
+		// ensure that any namespaces of which this was the last watcher have their watch stopped
+		w.cleanupAbandonedNamespaces()
+	}()
+
 	var extraSelectors []labels.Selector
 	for _, s := range kd.Spec.ExtraSelectors {
 		selector, err := metav1.LabelSelectorAsSelector(&s)
 		if err != nil {
-			return fmt.Errorf("invalid label selectors: %v", err)
+			w.watchers[watcherKey] = watcher{
+				spec:        *kd.Spec.DeepCopy(),
+				cluster:     newClusterKey(cluster),
+				errorReason: fmt.Sprintf("invalid label selectors: %v", err),
+			}
+			return
 		}
 		extraSelectors = append(extraSelectors, selector)
 	}
 
-	if _, ok := w.watchers[key]; ok {
-		// if a watcher already exists, just tear it down and we'll set it up from scratch so that
-		// we don't have to diff a bunch of different pieces
-		w.teardown(key)
-	}
-
-	currentNamespaces, currentUIDs := namespacesAndUIDsFromSpec(kd.Spec.Watches)
-	for namespace := range currentNamespaces {
-		w.setupNamespaceWatch(ctx, namespace, key)
-	}
-
-	for watchUID := range currentUIDs {
-		w.setupUIDWatch(ctx, watchUID, key)
-	}
-
-	pw := watcher{
+	newWatcher := watcher{
 		spec:           *kd.Spec.DeepCopy(),
-		startTime:      time.Now(),
 		extraSelectors: extraSelectors,
+		cluster:        newClusterKey(cluster),
 	}
 
-	w.watchers[key] = pw
+	kCli, err := w.clients.GetK8sClient(kd, cluster)
+	if err != nil {
+		newWatcher.errorReason = "ClusterUnavailable"
+	} else {
+		currentNamespaces, currentUIDs := namespacesAndUIDsFromSpec(kd.Spec.Watches)
+		for namespace := range currentNamespaces {
+			nsKey := newNsKey(cluster, string(namespace))
+			err := w.setupNamespaceWatch(ctx, nsKey, watcherKey, kCli)
+			if err != nil {
+				newWatcher.errorReason = err.Error()
+				break
+			}
+		}
 
-	// now that we've finished setup, ensure that any namespaces of which this was the last watcher
-	// have their watch stopped
-	w.cleanupAbandonedNamespaces()
+		if newWatcher.errorReason == "" {
+			for watchUID := range currentUIDs {
+				w.setupUIDWatch(ctx, newUIDKey(cluster, watchUID), watcherKey)
+			}
 
-	// always emit an update status event so that any Pods that the reconciler _already_ knows about get populated
-	// this is extremely common as usually the reconciler receives the Pod event before the caller is able to
-	// propagate their watch via the KubernetesDiscovery spec to be seen here
-	if err := w.updateStatus(ctx, key); err != nil {
-		return fmt.Errorf("failed to update KubernetesDiscovery %q: %v", key, err)
+			newWatcher.startTime = time.Now()
+		}
 	}
-	return nil
+
+	w.watchers[watcherKey] = newWatcher
 }
 
 // teardown removes the watcher from all namespace + UIDs it was watching.
@@ -244,18 +292,22 @@ func (w *Reconciler) addOrReplace(ctx context.Context, key watcherID, kd *store.
 // This is done by calling cleanupAbandonedNamespaces explicitly, which allows addOrReplace to have simpler logic
 // by always calling teardown on a resource, then treating it as "new" and only cleaning up after it has (re-)added
 // the watches without needlessly removing + recreating the lower-level namespace watch.
-func (w *Reconciler) teardown(key watcherID) {
-	watcher := w.watchers[key]
+func (w *Reconciler) teardown(watcherKey watcherID) {
+	watcher := w.watchers[watcherKey]
 	namespaces, uids := namespacesAndUIDsFromSpec(watcher.spec.Watches)
-	for namespace := range namespaces {
-		delete(w.watchedNamespaces[namespace].watchers, key)
+	for nsKey, nsWatch := range w.watchedNamespaces {
+		if namespaces[nsKey.namespace] {
+			delete(nsWatch.watchers, watcherKey)
+		}
 	}
 
-	for uid := range uids {
-		delete(w.uidWatchers[uid], key)
+	for uidKey, watchers := range w.uidWatchers {
+		if uids[uidKey.uid] {
+			delete(watchers, watcherKey)
+		}
 	}
 
-	delete(w.watchers, key)
+	delete(w.watchers, watcherKey)
 }
 
 // cleanupAbandonedNamespaces removes the watch on any namespaces that no longer have any active watchers.
@@ -264,10 +316,10 @@ func (w *Reconciler) teardown(key watcherID) {
 //
 // See watchedNamespaces for more details (for efficiency, we don't want duplicative namespace watches).
 func (w *Reconciler) cleanupAbandonedNamespaces() {
-	for ns, watcher := range w.watchedNamespaces {
+	for nsKey, watcher := range w.watchedNamespaces {
 		if len(watcher.watchers) == 0 {
 			watcher.cancel()
-			delete(w.watchedNamespaces, ns)
+			delete(w.watchedNamespaces, nsKey)
 		}
 	}
 }
@@ -284,96 +336,100 @@ func (w *Reconciler) cleanupAbandonedNamespaces() {
 // This ensures it can be safely called by reconcile on each invocation for any namespace that the watcher cares about.
 // Additionally, for efficiency, duplicative watches on the same namespace will not be created; see watchedNamespaces
 // for more details.
-func (w *Reconciler) setupNamespaceWatch(ctx context.Context, ns k8s.Namespace, watcherKey watcherID) {
-	if watcher, ok := w.watchedNamespaces[ns]; ok {
+func (w *Reconciler) setupNamespaceWatch(ctx context.Context, nsKey nsKey, watcherKey watcherID, kCli k8s.Client) error {
+	if watcher, ok := w.watchedNamespaces[nsKey]; ok {
 		// already watching this namespace -- just add this watcher to the list for cleanup tracking
 		watcher.watchers[watcherKey] = true
-		return
+		return nil
 	}
 
-	ch, err := w.kCli.WatchPods(ctx, ns)
+	ns := nsKey.namespace
+	ch, err := kCli.WatchPods(ctx, k8s.Namespace(ns))
 	if err != nil {
-		err = errors.Wrapf(err, "Error watching pods. Are you connected to kubernetes?\nTry running `kubectl get pods -n %q`", ns)
-		w.dispatcher.Dispatch(store.NewErrorAction(err))
-		return
+		return errors.Wrapf(err, "Error watching pods. Are you connected to kubernetes?\nTry running `kubectl get pods -n %q`", ns)
 	}
 
 	ctx, cancel := context.WithCancel(ctx)
-	w.watchedNamespaces[ns] = nsWatch{
+	w.watchedNamespaces[nsKey] = nsWatch{
 		watchers: map[watcherID]bool{watcherKey: true},
 		cancel:   cancel,
 	}
 
-	go w.dispatchPodChangesLoop(ctx, ch)
+	go w.dispatchPodChangesLoop(ctx, nsKey, kCli.OwnerFetcher(), ch)
+	return nil
 }
 
 // setupUIDWatch registers a watcher to receive updates for any Pods transitively owned by this UID (or that exactly
 // match this UID).
 //
 // mu must be held by caller.
-func (w *Reconciler) setupUIDWatch(_ context.Context, uid types.UID, watcherID watcherID) {
-	if w.uidWatchers[uid][watcherID] {
+func (w *Reconciler) setupUIDWatch(_ context.Context, uidKey uidKey, watcherID watcherID) {
+	if w.uidWatchers[uidKey][watcherID] {
 		return
 	}
 
 	// add this key as a watcher for the UID
-	uidWatchers, ok := w.uidWatchers[uid]
+	uidWatchers, ok := w.uidWatchers[uidKey]
 	if !ok {
 		uidWatchers = make(watcherSet)
-		w.uidWatchers[uid] = uidWatchers
+		w.uidWatchers[uidKey] = uidWatchers
 	}
 	uidWatchers[watcherID] = true
 }
 
-// updateStatus builds the latest status for the given KubernetesDiscovery spec key and persists it.
+// updateStatus builds the latest status for the given KubernetesDiscovery spec
+// key and persists it. Should only be called in the main reconciler thread.
 //
-// mu must be held by caller.
+// If the status has not changed since the last status update performed (by the
+// Reconciler), it will be skipped.
 //
-// If the status has not changed since the last status update performed (by the Reconciler), it will be skipped.
-// Additionally, if the spec that is being used by the watcher does not match the current spec from the server, it
-// will be skipped to avoid stale/inconsistent status data.
-func (w *Reconciler) updateStatus(ctx context.Context, watcherID watcherID) error {
+// Returns the latest object on success.
+func (w *Reconciler) maybeUpdateObjectStatus(ctx context.Context, kd *v1alpha1.KubernetesDiscovery, watcherID watcherID) (*v1alpha1.KubernetesDiscovery, error) {
 	watcher := w.watchers[watcherID]
 	status := w.buildStatus(ctx, watcher)
-	if equality.Semantic.DeepEqual(watcher.lastUpdate, status) {
+	if apicmp.DeepEqual(kd.Status, status) {
 		// the status hasn't changed - avoid a spurious update
-		return nil
+		return kd, nil
 	}
 
-	kd, err := w.getKubernetesDiscovery(ctx, watcherID)
+	oldStatus := kd.Status
+	oldError := w.statusError(kd.Status)
+
+	update := kd.DeepCopy()
+	update.Status = status
+	err := w.ctrlClient.Status().Update(ctx, update)
 	if err != nil {
-		return err
-	}
-	if kd == nil {
-		// if the spec got deleted, there's nothing to update
-		return nil
+		return nil, err
 	}
 
-	if !equality.Semantic.DeepEqual(watcher.spec, kd.Spec) {
-		// the spec has changed and we haven't reconciled that change yet; this state update is
-		// outdated, so just discard it
-		return nil
+	newError := w.statusError(update.Status)
+	if newError != "" && oldError != newError {
+		logger.Get(ctx).Errorf("kubernetesdiscovery %s: %s", update.Name, newError)
 	}
 
-	kd.Status = status
-	if err := w.ctrlClient.Status().Update(ctx, kd); err != nil {
-		if apierrors.IsNotFound(err) {
-			// similar to above but for the event that it gets deleted between get + update
-			return nil
-		}
-		return fmt.Errorf("failed to update KubernetesDiscovery status for %q: %v", watcherID, err)
-	}
+	w.restartDetector.Detect(w.st, oldStatus, update)
+	return update, nil
+}
 
-	w.restartDetector.Detect(w.dispatcher, watcher.lastUpdate, *kd)
-	watcher.lastUpdate = *status.DeepCopy()
-	w.watchers[watcherID] = watcher
-	return nil
+func (w *Reconciler) statusError(status v1alpha1.KubernetesDiscoveryStatus) string {
+	if status.Waiting != nil {
+		return status.Waiting.Reason
+	}
+	return ""
 }
 
 // buildStatus creates the current state for the given KubernetesDiscovery object key.
 //
 // mu must be held by caller.
 func (w *Reconciler) buildStatus(ctx context.Context, watcher watcher) v1alpha1.KubernetesDiscoveryStatus {
+	if watcher.errorReason != "" {
+		return v1alpha1.KubernetesDiscoveryStatus{
+			Waiting: &v1alpha1.KubernetesDiscoveryStateWaiting{
+				Reason: watcher.errorReason,
+			},
+		}
+	}
+
 	seenPodUIDs := k8s.NewUIDSet()
 	var pods []v1alpha1.Pod
 	maybeTrackPod := func(pod *v1.Pod, ancestorUID types.UID) {
@@ -383,7 +439,8 @@ func (w *Reconciler) buildStatus(ctx context.Context, watcher watcher) v1alpha1.
 		seenPodUIDs.Add(pod.UID)
 		podObj := *k8sconv.Pod(ctx, pod, ancestorUID)
 		if podObj.Owner != nil {
-			podObj.Owner.CreationTimestamp = w.knownPodOwnerCreation[pod.UID]
+			podKey := uidKey{cluster: watcher.cluster, uid: pod.UID}
+			podObj.Owner.CreationTimestamp = w.knownPodOwnerCreation[podKey]
 		}
 		pods = append(pods, podObj)
 	}
@@ -394,19 +451,19 @@ func (w *Reconciler) buildStatus(ctx context.Context, watcher watcher) v1alpha1.
 			continue
 		}
 		// UID could either refer directly to a Pod OR its ancestor (e.g. Deployment)
-		maybeTrackPod(w.knownPods[watchUID], watchUID)
-		for podUID := range w.knownDescendentPodUIDs[watchUID] {
-			maybeTrackPod(w.knownPods[podUID], watchUID)
+		watchedObjKey := uidKey{cluster: watcher.cluster, uid: watchUID}
+		maybeTrackPod(w.knownPods[watchedObjKey], watchUID)
+		for podUID := range w.knownDescendentPodUIDs[watchedObjKey] {
+			podKey := uidKey{cluster: watcher.cluster, uid: podUID}
+			maybeTrackPod(w.knownPods[podKey], watchUID)
 		}
 	}
 
 	// TODO(milas): we should only match against Pods in namespaces referenced by the WatchRefs for this spec
 	if len(watcher.spec.ExtraSelectors) != 0 {
-		for podUID, pod := range w.knownPods {
-			if seenPodUIDs.Contains(podUID) {
-				// because we're brute forcing this - make an attempt to
-				// reduce work and not bother to try matching on Pods that
-				// have already been seen
+		for podKey, pod := range w.knownPods {
+			if podKey.cluster != watcher.cluster || seenPodUIDs.Contains(podKey.uid) {
+				// ignore pods that are for other clusters or that we've already seen
 				continue
 			}
 			podLabels := labels.Set(pod.Labels)
@@ -419,16 +476,21 @@ func (w *Reconciler) buildStatus(ctx context.Context, watcher watcher) v1alpha1.
 		}
 	}
 
+	startTime := apis.NewMicroTime(watcher.startTime)
 	return v1alpha1.KubernetesDiscoveryStatus{
-		MonitorStartTime: apis.NewMicroTime(watcher.startTime),
+		MonitorStartTime: startTime,
 		Pods:             pods,
+		Running: &v1alpha1.KubernetesDiscoveryStateRunning{
+			StartTime: startTime,
+		},
 	}
 }
 
-func (w *Reconciler) upsertPod(pod *v1.Pod) {
+func (w *Reconciler) upsertPod(cluster clusterKey, pod *v1.Pod) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	w.knownPods[pod.UID] = pod
+	podKey := uidKey{cluster: cluster, uid: pod.UID}
+	w.knownPods[podKey] = pod
 }
 
 // triageResult is a KubernetesDiscovery key and the UID (if any) of the watch ref that matched the Pod event.
@@ -453,24 +515,26 @@ type triageResult struct {
 // so we can match it later if a KubernetesDiscovery spec is modified to match it; this is actually
 // extremely common because new Pods are typically observed by Reconciler _before_ the respective
 // KubernetesDiscovery spec update propagates.
-func (w *Reconciler) triagePodTree(pod *v1.Pod, objTree k8s.ObjectRefTree) []triageResult {
-	uid := pod.UID
+func (w *Reconciler) triagePodTree(nsKey nsKey, pod *v1.Pod, objTree k8s.ObjectRefTree) []triageResult {
+	podUID := pod.UID
 	if len(objTree.Owners) > 0 {
-		w.knownPodOwnerCreation[uid] = objTree.Owners[0].CreationTimestamp
+		podKey := uidKey{cluster: nsKey.cluster, uid: podUID}
+		w.knownPodOwnerCreation[podKey] = objTree.Owners[0].CreationTimestamp
 	}
 
 	// Set up the descendent pod UID index
 	for _, ownerUID := range objTree.UIDs() {
-		if uid == ownerUID {
+		if podUID == ownerUID {
 			continue
 		}
 
-		set, ok := w.knownDescendentPodUIDs[ownerUID]
+		ownerKey := uidKey{cluster: nsKey.cluster, uid: ownerUID}
+		set, ok := w.knownDescendentPodUIDs[ownerKey]
 		if !ok {
 			set = k8s.NewUIDSet()
-			w.knownDescendentPodUIDs[ownerUID] = set
+			w.knownDescendentPodUIDs[ownerKey] = set
 		}
-		set.Add(uid)
+		set.Add(podUID)
 	}
 
 	seenWatchers := make(map[watcherID]bool)
@@ -478,7 +542,8 @@ func (w *Reconciler) triagePodTree(pod *v1.Pod, objTree k8s.ObjectRefTree) []tri
 
 	// Find any watchers that have a ref to a UID in the object tree (i.e. the Pod itself or a transitive owner)
 	for _, ownerUID := range objTree.UIDs() {
-		for watcherID := range w.uidWatchers[ownerUID] {
+		ownerKey := uidKey{cluster: nsKey.cluster, uid: ownerUID}
+		for watcherID := range w.uidWatchers[ownerKey] {
 			if seenWatchers[watcherID] {
 				// in practice, it's not really logical that a watcher would have more than one part of the
 				// object tree watched, but since we already need to track seen watchers to skip duplicative
@@ -513,8 +578,8 @@ func (w *Reconciler) triagePodTree(pod *v1.Pod, objTree k8s.ObjectRefTree) []tri
 	return results
 }
 
-func (w *Reconciler) handlePodChange(ctx context.Context, pod *v1.Pod) {
-	objTree, err := w.ownerFetcher.OwnerTreeOf(ctx, k8s.NewK8sEntity(pod))
+func (w *Reconciler) handlePodChange(ctx context.Context, nsKey nsKey, ownerFetcher k8s.OwnerFetcher, pod *v1.Pod) {
+	objTree, err := ownerFetcher.OwnerTreeOf(ctx, k8s.NewK8sEntity(pod))
 	if err != nil {
 		return
 	}
@@ -522,14 +587,10 @@ func (w *Reconciler) handlePodChange(ctx context.Context, pod *v1.Pod) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	triageResults := w.triagePodTree(pod, objTree)
-
+	triageResults := w.triagePodTree(nsKey, pod, objTree)
 	for i := range triageResults {
 		watcherID := triageResults[i].watcherID
-		if err := w.updateStatus(ctx, watcherID); err != nil {
-			w.dispatcher.Dispatch(store.NewErrorAction(err))
-			return
-		}
+		w.requeuer.Add(types.NamespacedName(watcherID))
 	}
 }
 
@@ -537,28 +598,30 @@ func (w *Reconciler) handlePodDelete(ctx context.Context, namespace k8s.Namespac
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	var podUID types.UID
-	for uid, pod := range w.knownPods {
+	var matchedPodKey uidKey
+	for podKey, pod := range w.knownPods {
 		if pod.Namespace == namespace.String() && pod.Name == name {
-			delete(w.knownPods, uid)
-			delete(w.knownPodOwnerCreation, uid)
-			podUID = uid
+			delete(w.knownPods, podKey)
+			delete(w.knownPodOwnerCreation, podKey)
+			matchedPodKey = podKey
 			break
 		}
 	}
 
-	if podUID == "" {
+	if matchedPodKey.uid == "" {
 		// this pod wasn't known/tracked
 		return
 	}
 
 	// because we don't know if any watchers matched on this Pod by label previously,
-	// trigger an update on every watcher, which will return early if it didn't change
-	for watcherID := range w.watchers {
-		if err := w.updateStatus(ctx, watcherID); err != nil {
-			w.dispatcher.Dispatch(store.NewErrorAction(err))
-			return
+	// trigger an update on every watcher for the Pod's cluster, which will return
+	// early if it didn't change
+	for watcherID, watcher := range w.watchers {
+		if watcher.cluster != matchedPodKey.cluster {
+			continue
 		}
+
+		w.requeuer.Add(types.NamespacedName(watcherID))
 	}
 }
 
@@ -668,7 +731,8 @@ func (w *Reconciler) createPodLogStream(ctx context.Context, kd *v1alpha1.Kubern
 	return nil
 }
 
-func (w *Reconciler) dispatchPodChangesLoop(ctx context.Context, ch <-chan k8s.ObjectUpdate) {
+func (w *Reconciler) dispatchPodChangesLoop(ctx context.Context, nsKey nsKey, ownerFetcher k8s.OwnerFetcher,
+	ch <-chan k8s.ObjectUpdate) {
 	for {
 		select {
 		case obj, ok := <-ch:
@@ -678,8 +742,8 @@ func (w *Reconciler) dispatchPodChangesLoop(ctx context.Context, ch <-chan k8s.O
 
 			pod, ok := obj.AsPod()
 			if ok {
-				w.upsertPod(pod)
-				go w.handlePodChange(ctx, pod)
+				w.upsertPod(nsKey.cluster, pod)
+				go w.handlePodChange(ctx, nsKey, ownerFetcher, pod)
 				continue
 			}
 
@@ -694,14 +758,12 @@ func (w *Reconciler) dispatchPodChangesLoop(ctx context.Context, ch <-chan k8s.O
 	}
 }
 
-type namespaceSet map[k8s.Namespace]bool
-
 func namespacesAndUIDsFromSpec(watches []v1alpha1.KubernetesWatchRef) (namespaceSet, k8s.UIDSet) {
 	seenNamespaces := make(namespaceSet)
 	seenUIDs := k8s.NewUIDSet()
 
 	for i := range watches {
-		seenNamespaces[k8s.Namespace(watches[i].Namespace)] = true
+		seenNamespaces[watches[i].Namespace] = true
 		uid := types.UID(watches[i].UID)
 		if uid != "" {
 			// a watch ref might not have a UID:
@@ -712,4 +774,22 @@ func namespacesAndUIDsFromSpec(watches []v1alpha1.KubernetesWatchRef) (namespace
 	}
 
 	return seenNamespaces, seenUIDs
+}
+
+// indexKubernetesDiscovery returns keys for all the objects we need to watch based on the spec.
+func indexKubernetesDiscovery(obj ctrlclient.Object) []indexer.Key {
+	var result []indexer.Key
+
+	kd := obj.(*v1alpha1.KubernetesDiscovery)
+	if kd != nil && kd.Spec.Cluster != "" {
+		result = append(result, indexer.Key{
+			Name: types.NamespacedName{
+				Namespace: kd.Namespace,
+				Name:      kd.Spec.Cluster,
+			},
+			GVK: clusterGVK,
+		})
+	}
+
+	return result
 }

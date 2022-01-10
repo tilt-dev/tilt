@@ -7,6 +7,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	ktypes "k8s.io/apimachinery/pkg/types"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/wmclient/pkg/dirs"
 
@@ -18,6 +21,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -31,12 +35,13 @@ func TestDockerComposeTargetBuilt(t *testing.T) {
 	manifest := manifestbuilder.New(f, "fe").WithDockerCompose().Build()
 	dcTarg := manifest.DockerComposeTarget()
 
-	res, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), store.BuildStateSet{})
+	res, err := f.BuildAndDeploy(BuildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if assert.Len(t, f.dcCli.UpCalls, 1, "expect one call to `docker-compose up`") {
-		call := f.dcCli.UpCalls[0]
+	upCalls := f.dcCli.UpCalls()
+	if assert.Len(t, upCalls, 1, "expect one call to `docker-compose up`") {
+		call := upCalls[0]
 		assert.Equal(t, dcTarg.Spec, call.Spec)
 		assert.Equal(t, "fe", call.Spec.Service)
 		assert.True(t, call.ShouldBuild)
@@ -57,7 +62,7 @@ func TestTiltBuildsImage(t *testing.T) {
 		Build()
 	dcTarg := manifest.DockerComposeTarget()
 
-	res, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), store.BuildStateSet{})
+	res, err := f.BuildAndDeploy(BuildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,8 +72,9 @@ func TestTiltBuildsImage(t *testing.T) {
 	expectedTag := fmt.Sprintf("%s:%s", iTarget.Refs.LocalRef(), docker.TagLatest)
 	assert.Equal(t, expectedTag, f.dCli.TagTarget)
 
-	if assert.Len(t, f.dcCli.UpCalls, 1, "expect one call to `docker-compose up`") {
-		call := f.dcCli.UpCalls[0]
+	upCalls := f.dcCli.UpCalls()
+	if assert.Len(t, upCalls, 1, "expect one call to `docker-compose up`") {
+		call := upCalls[0]
 		assert.Equal(t, dcTarg.Spec, call.Spec)
 		assert.Equal(t, "fe", call.Spec.Service)
 		assert.False(t, call.ShouldBuild, "should call `up` without `--build` b/c Tilt is doing the building")
@@ -89,7 +95,7 @@ func TestTiltBuildsImageWithTag(t *testing.T) {
 		WithImageTarget(iTarget).
 		Build()
 
-	_, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), store.BuildStateSet{})
+	_, err := f.BuildAndDeploy(BuildTargets(manifest), store.BuildStateSet{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +122,7 @@ func TestMultiStageDockerCompose(t *testing.T) {
 		WithDeployTarget(defaultDockerComposeTarget(f, "sancho"))
 
 	stateSet := store.BuildStateSet{}
-	_, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), stateSet)
+	_, err := f.BuildAndDeploy(BuildTargets(manifest), stateSet)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,7 +153,7 @@ func TestMultiStageDockerComposeWithOnlyOneDirtyImage(t *testing.T) {
 	result := store.NewImageBuildResultSingleRef(iTargetID, container.MustParseNamedTagged("sancho-base:tilt-prebuilt"))
 	state := store.NewBuildState(result, nil, nil)
 	stateSet := store.BuildStateSet{iTargetID: state}
-	_, err := f.dcbad.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), stateSet)
+	_, err := f.BuildAndDeploy(BuildTargets(manifest), stateSet)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,11 +175,12 @@ ENTRYPOINT /go/bin/sancho
 
 type dcbdFixture struct {
 	*tempdir.TempDirFixture
-	ctx   context.Context
-	dcCli *dockercompose.FakeDCClient
-	dCli  *docker.FakeClient
-	dcbad *DockerComposeBuildAndDeployer
-	st    *store.TestingStore
+	ctx        context.Context
+	dcCli      *dockercompose.FakeDCClient
+	dCli       *docker.FakeClient
+	dcbad      *DockerComposeBuildAndDeployer
+	st         *store.TestingStore
+	ctrlClient ctrlclient.Client
 }
 
 func newDCBDFixture(t *testing.T) *dcbdFixture {
@@ -202,7 +209,45 @@ func newDCBDFixture(t *testing.T) *dcbdFixture {
 		dCli:           dCli,
 		dcbad:          dcbad,
 		st:             st,
+		ctrlClient:     cdc,
 	}
+}
+
+func (f *dcbdFixture) upsert(obj ctrlclient.Object) {
+	err := f.ctrlClient.Create(f.ctx, obj)
+	if err == nil {
+		return
+	}
+
+	copy := obj.DeepCopyObject().(ctrlclient.Object)
+	err = f.ctrlClient.Get(f.ctx, ktypes.NamespacedName{Name: obj.GetName()}, copy)
+	assert.NoError(f.T(), err)
+
+	obj.SetResourceVersion(copy.GetResourceVersion())
+
+	err = f.ctrlClient.Update(f.ctx, obj)
+	assert.NoError(f.T(), err)
+}
+
+func (f *dcbdFixture) BuildAndDeploy(specs []model.TargetSpec, stateSet store.BuildStateSet) (store.BuildResultSet, error) {
+	for _, spec := range specs {
+		iTarget, ok := spec.(model.ImageTarget)
+		if !ok || iTarget.IsLiveUpdateOnly {
+			continue
+		}
+
+		im := v1alpha1.ImageMap{
+			ObjectMeta: metav1.ObjectMeta{Name: iTarget.ID().Name.String()},
+			Spec:       iTarget.ImageMapSpec,
+		}
+		state := stateSet[iTarget.ID()]
+		imageBuildResult, ok := state.LastResult.(store.ImageBuildResult)
+		if ok {
+			im.Status = imageBuildResult.ImageMapStatus
+		}
+		f.upsert(&im)
+	}
+	return f.dcbad.BuildAndDeploy(f.ctx, f.st, specs, stateSet)
 }
 
 func defaultDockerComposeTarget(f Fixture, name string) model.DockerComposeTarget {

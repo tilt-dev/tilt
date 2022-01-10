@@ -2,8 +2,10 @@ package k8s
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -40,8 +42,9 @@ type PodAndCName struct {
 }
 
 type FakeK8sClient struct {
-	t  testing.TB
-	mu sync.Mutex
+	t            testing.TB
+	mu           sync.Mutex
+	ownerFetcher OwnerFetcher
 
 	FakePortForwardClient
 
@@ -96,6 +99,8 @@ type FakeK8sClient struct {
 	ExecErrors  []error
 }
 
+var _ Client = &FakeK8sClient{}
+
 type ExecCall struct {
 	PID   PodID
 	CName container.Name
@@ -126,6 +131,7 @@ func (c *FakeK8sClient) UpsertService(s *v1.Service) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	s = s.DeepCopy()
 	c.services[types.NamespacedName{Name: s.Name, Namespace: s.Namespace}] = s
 	for _, w := range c.serviceWatches {
 		if w.ns != Namespace(s.Namespace) {
@@ -139,6 +145,8 @@ func (c *FakeK8sClient) UpsertService(s *v1.Service) {
 func (c *FakeK8sClient) UpsertPod(pod *v1.Pod) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
+	pod = pod.DeepCopy()
 	c.pods[types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}] = pod
 	for _, w := range c.podWatches {
 		if w.ns != Namespace(pod.Namespace) {
@@ -153,6 +161,7 @@ func (c *FakeK8sClient) UpsertEvent(event *v1.Event) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	event = event.DeepCopy()
 	c.events[types.NamespacedName{Name: event.Name, Namespace: event.Namespace}] = event
 	for _, w := range c.eventWatches {
 		if w.ns != Namespace(event.Namespace) {
@@ -164,6 +173,10 @@ func (c *FakeK8sClient) UpsertEvent(event *v1.Event) {
 }
 
 func (c *FakeK8sClient) PodFromInformerCache(ctx context.Context, nn types.NamespacedName) (*v1.Pod, error) {
+	if nn.Namespace == "" {
+		return nil, fmt.Errorf("missing namespace from pod request")
+	}
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	pod, ok := c.pods[nn]
@@ -174,6 +187,10 @@ func (c *FakeK8sClient) PodFromInformerCache(ctx context.Context, nn types.Names
 }
 
 func (c *FakeK8sClient) WatchServices(ctx context.Context, ns Namespace) (<-chan *v1.Service, error) {
+	if ns == "" {
+		return nil, fmt.Errorf("missing namespace from watch request")
+	}
+
 	ctx, cancel := context.WithCancel(ctx)
 
 	c.mu.Lock()
@@ -212,6 +229,10 @@ func (c *FakeK8sClient) WatchServices(ctx context.Context, ns Namespace) (<-chan
 }
 
 func (c *FakeK8sClient) WatchEvents(ctx context.Context, ns Namespace) (<-chan *v1.Event, error) {
+	if ns == "" {
+		return nil, fmt.Errorf("missing namespace from watch request")
+	}
+
 	if c.EventsWatchErr != nil {
 		err := c.EventsWatchErr
 		c.EventsWatchErr = nil
@@ -255,6 +276,10 @@ func (c *FakeK8sClient) WatchEvents(ctx context.Context, ns Namespace) (<-chan *
 }
 
 func (c *FakeK8sClient) WatchMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) (<-chan metav1.Object, error) {
+	if ns == "" {
+		return nil, fmt.Errorf("missing namespace from watch request")
+	}
+
 	return make(chan metav1.Object), nil
 }
 
@@ -273,6 +298,10 @@ func (c *FakeK8sClient) EmitPodDelete(p *v1.Pod) {
 }
 
 func (c *FakeK8sClient) WatchPods(ctx context.Context, ns Namespace) (<-chan ObjectUpdate, error) {
+	if ns == "" {
+		return nil, fmt.Errorf("missing namespace from watch request")
+	}
+
 	ctx, cancel := context.WithCancel(ctx)
 
 	c.mu.Lock()
@@ -311,7 +340,7 @@ func (c *FakeK8sClient) WatchPods(ctx context.Context, ns Namespace) (<-chan Obj
 }
 
 func NewFakeK8sClient(t testing.TB) *FakeK8sClient {
-	return &FakeK8sClient{
+	cli := &FakeK8sClient{
 		t:                        t,
 		PodLogsByPodAndContainer: make(map[PodAndCName]ReaderCloser),
 		pods:                     make(map[types.NamespacedName]*v1.Pod),
@@ -320,6 +349,10 @@ func NewFakeK8sClient(t testing.TB) *FakeK8sClient {
 		entities:                 make(map[types.UID]K8sEntity),
 		currentVersions:          make(map[string]types.UID),
 	}
+	ctx, cancel := context.WithCancel(logger.WithLogger(context.Background(), logger.NewTestLogger(os.Stdout)))
+	t.Cleanup(cancel)
+	cli.ownerFetcher = NewOwnerFetcher(ctx, cli)
+	return cli
 }
 
 func (c *FakeK8sClient) TearDown() {
@@ -591,6 +624,10 @@ func (c *FakeK8sClient) Exec(ctx context.Context, podID PodID, cName container.N
 
 func (c *FakeK8sClient) CheckConnected(ctx context.Context) (*version.Info, error) {
 	return &version.Info{}, nil
+}
+
+func (c *FakeK8sClient) OwnerFetcher() OwnerFetcher {
+	return c.ownerFetcher
 }
 
 type ReaderCloser struct {

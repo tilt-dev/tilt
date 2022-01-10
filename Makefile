@@ -75,16 +75,16 @@ endif
 
 integration:
 ifneq ($(CIRCLECI),true)
-		go test -mod vendor -v -count 1 -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s ./integration
+		go test -mod vendor -v -count 1 -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 1000s ./integration
 else
 		mkdir -p test-results
-		gotestsum --format dots --junitfile test-results/unit-tests.xml -- ./integration -mod vendor -count 1 -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s
+		gotestsum --format dots --junitfile test-results/unit-tests.xml -- ./integration -mod vendor -count 1 -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 1000s
 endif
 
 # Run the integration tests on kind
 integration-kind:
 	KIND_CLUSTER_NAME=integration ./integration/kind-with-registry.sh
-	KUBECONFIG="$(kind get kubeconfig-path --name="integration")" go test -mod vendor -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 700s ./integration -count 1
+	KUBECONFIG="$(kind get kubeconfig-path --name="integration")" go test -mod vendor -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 1000s ./integration -count 1
 	kind delete cluster --name=integration
 
 # Run the extension integration tests against the current kubecontext
@@ -145,11 +145,11 @@ release-container:
 	scripts/build-tilt-releaser.sh
 
 ci-container:
-	docker build -t gcr.io/windmill-public-containers/tilt-ci -f .circleci/Dockerfile .circleci
+	docker build --platform linux/amd64 -t gcr.io/windmill-public-containers/tilt-ci -f .circleci/Dockerfile .circleci
 	docker push gcr.io/windmill-public-containers/tilt-ci
 
 ci-integration-container:
-	docker build -t gcr.io/windmill-public-containers/tilt-integration-ci -f .circleci/Dockerfile.integration .circleci
+	docker build --platform linux/amd64 -t gcr.io/windmill-public-containers/tilt-integration-ci -f .circleci/Dockerfile.integration .circleci
 	docker push gcr.io/windmill-public-containers/tilt-integration-ci
 
 clean:

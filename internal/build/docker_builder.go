@@ -21,6 +21,7 @@ import (
 	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
 	fsutiltypes "github.com/tonistiigi/fsutil/types"
+	ktypes "k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/docker"
@@ -31,7 +32,7 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-type dockerImageBuilder struct {
+type DockerBuilder struct {
 	dCli docker.Client
 
 	// A set of extra labels to attach to all builds
@@ -47,34 +48,18 @@ type DockerKubeConnection interface {
 	WillBuildToKubeContext(kctx k8s.KubeContext) bool
 }
 
-type DockerBuilder interface {
-	DockerKubeConnection
-
-	BuildImage(ctx context.Context, ps *PipelineState, refs container.RefSet, spec v1alpha1.DockerImageSpec, filter model.PathMatcher) (container.TaggedRefs, []v1alpha1.DockerImageStageStatus, error)
-	DumpImageDeployRef(ctx context.Context, ref string) (reference.NamedTagged, error)
-	PushImage(ctx context.Context, name reference.NamedTagged) error
-	TagRefs(ctx context.Context, refs container.RefSet, dig digest.Digest) (container.TaggedRefs, error)
-	ImageExists(ctx context.Context, ref reference.NamedTagged) (bool, error)
-}
-
-func DefaultDockerBuilder(b *dockerImageBuilder) DockerBuilder {
-	return b
-}
-
-var _ DockerBuilder = &dockerImageBuilder{}
-
-func NewDockerImageBuilder(dCli docker.Client, extraLabels dockerfile.Labels) *dockerImageBuilder {
-	return &dockerImageBuilder{
+func NewDockerBuilder(dCli docker.Client, extraLabels dockerfile.Labels) *DockerBuilder {
+	return &DockerBuilder{
 		dCli:        dCli,
 		extraLabels: extraLabels,
 	}
 }
 
-func (d *dockerImageBuilder) WillBuildToKubeContext(kctx k8s.KubeContext) bool {
+func (d *DockerBuilder) WillBuildToKubeContext(kctx k8s.KubeContext) bool {
 	return d.dCli.Env().WillBuildToKubeContext(kctx)
 }
 
-func (d *dockerImageBuilder) DumpImageDeployRef(ctx context.Context, ref string) (reference.NamedTagged, error) {
+func (d *DockerBuilder) DumpImageDeployRef(ctx context.Context, ref string) (reference.NamedTagged, error) {
 	refParsed, err := container.ParseNamed(ref)
 	if err != nil {
 		return nil, errors.Wrap(err, "DumpImageDeployRef")
@@ -100,7 +85,7 @@ func (d *dockerImageBuilder) DumpImageDeployRef(ctx context.Context, ref string)
 }
 
 // Tag the digest with the given name and wm-tilt tag.
-func (d *dockerImageBuilder) TagRefs(ctx context.Context, refs container.RefSet, dig digest.Digest) (container.TaggedRefs, error) {
+func (d *DockerBuilder) TagRefs(ctx context.Context, refs container.RefSet, dig digest.Digest) (container.TaggedRefs, error) {
 	tag, err := digestAsTag(dig)
 	if err != nil {
 		return container.TaggedRefs{}, errors.Wrap(err, "TagImage")
@@ -125,7 +110,7 @@ func (d *dockerImageBuilder) TagRefs(ctx context.Context, refs container.RefSet,
 // TODO(nick) In the future, I would like us to be smarter about checking if the kubernetes cluster
 // we're running in has access to the given registry. And if it doesn't, we should either emit an
 // error, or push to a registry that kubernetes does have access to (e.g., a local registry).
-func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedTagged) error {
+func (d *DockerBuilder) PushImage(ctx context.Context, ref reference.NamedTagged) error {
 	l := logger.Get(ctx)
 
 	imagePushResponse, err := d.dCli.ImagePush(ctx, ref)
@@ -148,7 +133,7 @@ func (d *dockerImageBuilder) PushImage(ctx context.Context, ref reference.NamedT
 	return nil
 }
 
-func (d *dockerImageBuilder) ImageExists(ctx context.Context, ref reference.NamedTagged) (bool, error) {
+func (d *DockerBuilder) ImageExists(ctx context.Context, ref reference.NamedTagged) (bool, error) {
 	_, _, err := d.dCli.ImageInspectWithRaw(ctx, ref.String())
 	if err != nil {
 		if client.IsErrNotFound(err) {
@@ -159,8 +144,22 @@ func (d *dockerImageBuilder) ImageExists(ctx context.Context, ref reference.Name
 	return true, nil
 }
 
-func (d *dockerImageBuilder) BuildImage(ctx context.Context, ps *PipelineState, refs container.RefSet, spec v1alpha1.DockerImageSpec, filter model.PathMatcher) (container.TaggedRefs, []v1alpha1.DockerImageStageStatus, error) {
-	logger.Get(ctx).Infof("Building Dockerfile:\n%s\n", indent(spec.DockerfileContents, "  "))
+func (d *DockerBuilder) BuildImage(ctx context.Context, ps *PipelineState, refs container.RefSet,
+	spec v1alpha1.DockerImageSpec,
+	cluster *v1alpha1.Cluster,
+	imageMaps map[ktypes.NamespacedName]*v1alpha1.ImageMap,
+	filter model.PathMatcher) (container.TaggedRefs, []v1alpha1.DockerImageStageStatus, error) {
+	spec = InjectClusterPlatform(spec, cluster)
+	spec, err := InjectImageDependencies(spec, imageMaps)
+	if err != nil {
+		return container.TaggedRefs{}, nil, err
+	}
+
+	platformSuffix := ""
+	if spec.Platform != "" {
+		platformSuffix = fmt.Sprintf(" for platform %s", spec.Platform)
+	}
+	logger.Get(ctx).Infof("Building Dockerfile%s:\n%s\n", platformSuffix, indent(spec.DockerfileContents, "  "))
 
 	ps.StartBuildStep(ctx, "Building image")
 	allowBuildkit := true
@@ -204,7 +203,7 @@ func (d *dockerImageBuilder) BuildImage(ctx context.Context, ps *PipelineState, 
 
 // A helper function that builds the paths to the given docker image,
 // then returns the output digest.
-func (d *dockerImageBuilder) buildToDigest(ctx context.Context, spec v1alpha1.DockerImageSpec, filter model.PathMatcher, allowBuildkit bool) (digest.Digest, []v1alpha1.DockerImageStageStatus, error) {
+func (d *DockerBuilder) buildToDigest(ctx context.Context, spec v1alpha1.DockerImageSpec, filter model.PathMatcher, allowBuildkit bool) (digest.Digest, []v1alpha1.DockerImageStageStatus, error) {
 	var contextReader io.Reader
 
 	// Buildkit allows us to use a fs sync server instead of uploading up-front.
@@ -272,7 +271,7 @@ func (d *dockerImageBuilder) buildToDigest(ctx context.Context, spec v1alpha1.Do
 	return d.getDigestFromBuildOutput(ctx, imageBuildResponse.Body)
 }
 
-func (d *dockerImageBuilder) getDigestFromBuildOutput(ctx context.Context, reader io.Reader) (digest.Digest, []v1alpha1.DockerImageStageStatus, error) {
+func (d *DockerBuilder) getDigestFromBuildOutput(ctx context.Context, reader io.Reader) (digest.Digest, []v1alpha1.DockerImageStageStatus, error) {
 	result, stageStatuses, err := readDockerOutput(ctx, reader)
 	if err != nil {
 		return "", stageStatuses, errors.Wrap(err, "ImageBuild")
@@ -456,7 +455,7 @@ func messageIsFromBuildkit(msg jsonmessage.JSONMessage) bool {
 	return msg.ID == "moby.buildkit.trace"
 }
 
-func (d *dockerImageBuilder) getDigestFromDockerOutput(ctx context.Context, output dockerOutput) (digest.Digest, error) {
+func (d *DockerBuilder) getDigestFromDockerOutput(ctx context.Context, output dockerOutput) (digest.Digest, error) {
 	if output.aux != nil {
 		return getDigestFromAux(*output.aux)
 	}

@@ -1,5 +1,10 @@
 package model
 
+import (
+	"regexp"
+	"strings"
+)
+
 // A DockerComposeUpSpec describes how to apply
 // DockerCompose service.
 //
@@ -10,6 +15,9 @@ type DockerComposeUpSpec struct {
 
 	// A specification of the project the service belongs to
 	Project DockerComposeProject
+
+	// The image maps that this deploy depends on.
+	ImageMaps []string
 }
 
 type DockerComposeProject struct {
@@ -36,8 +44,20 @@ type DockerComposeProject struct {
 	// If you have multiple docker-compose.yaml files, you can combine them into a
 	// single YAML with `docker-compose -f file1.yaml -f file2.yaml config`.
 	YAML string
+
+	// The docker-compose project name. The default is to use the NormalizedName
+	// of the ProjectPath base name.
+	Name string
 }
 
 func IsEmptyDockerComposeProject(p DockerComposeProject) bool {
 	return len(p.ConfigPaths) == 0 && p.YAML == ""
+}
+
+// normalization logic from https://github.com/compose-spec/compose-go/blob/c39f6e771fe5034fe1bec40ba5f0285ec60f5efe/cli/options.go#L366-L371
+func NormalizeName(s string) string {
+	r := regexp.MustCompile("[a-z0-9_-]")
+	s = strings.ToLower(s)
+	s = strings.Join(r.FindAllString(s, -1), "")
+	return strings.TrimLeft(s, "_-")
 }

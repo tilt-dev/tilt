@@ -2,25 +2,25 @@ package filewatch
 
 import (
 	"fmt"
+	"io"
 	"path/filepath"
-	"reflect"
 	"runtime"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/jonboulle/clockwork"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
+	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/internal/watch"
@@ -32,14 +32,35 @@ import (
 const timeout = time.Second
 const interval = 5 * time.Millisecond
 
+type testStore struct {
+	*store.TestingStore
+	out io.Writer
+}
+
+func NewTestingStore(out io.Writer) *testStore {
+	return &testStore{
+		TestingStore: store.NewTestingStore(),
+		out:          out,
+	}
+}
+
+func (s *testStore) Dispatch(action store.Action) {
+	s.TestingStore.Dispatch(action)
+	switch action := action.(type) {
+	case store.LogAction:
+		_, _ = s.out.Write(action.Message())
+	}
+}
+
 type fixture struct {
 	*fake.ControllerFixture
 	t                testing.TB
 	tmpdir           *tempdir.TempDirFixture
 	controller       *Controller
-	store            *store.TestingStore
+	store            *testStore
 	fakeMultiWatcher *fsevent.FakeMultiWatcher
 	fakeTimerMaker   fsevent.FakeTimerMaker
+	clock            clockwork.FakeClock
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -50,10 +71,12 @@ func newFixture(t *testing.T) *fixture {
 	timerMaker := fsevent.MakeFakeTimerMaker(t)
 	fakeMultiWatcher := fsevent.NewFakeMultiWatcher()
 
-	testingStore := store.NewTestingStore()
-
 	cfb := fake.NewControllerFixtureBuilder(t)
-	controller := NewController(cfb.Client, testingStore, fakeMultiWatcher.NewSub, timerMaker.Maker(), filewatches.NewScheme())
+	testingStore := NewTestingStore(cfb.OutWriter())
+	clock := clockwork.NewFakeClock()
+	controller := NewController(cfb.Client, testingStore, fakeMultiWatcher.NewSub, timerMaker.Maker(), filewatches.NewScheme(), clock)
+
+	indexer.StartRequeuerForTesting(cfb.Context(), controller.requeuer, controller)
 
 	return &fixture{
 		ControllerFixture: cfb.Build(controller),
@@ -63,6 +86,7 @@ func newFixture(t *testing.T) *fixture {
 		store:             testingStore,
 		fakeMultiWatcher:  fakeMultiWatcher,
 		fakeTimerMaker:    timerMaker,
+		clock:             clock,
 	}
 }
 
@@ -192,16 +216,21 @@ func TestController_LimitFileEventsHistory(t *testing.T) {
 
 func TestController_ShortRead(t *testing.T) {
 	f := newFixture(t)
-	f.CreateSimpleFileWatch()
+	key, _ := f.CreateSimpleFileWatch()
 
 	f.fakeMultiWatcher.Errors <- fmt.Errorf("short read on readEvents()")
 
-	errorAction := f.store.WaitForAction(t, reflect.TypeOf(store.ErrorAction{}))
-	storeErr := errorAction.(store.ErrorAction).Error
+	require.Eventuallyf(t, func() bool {
+		return strings.Contains(f.Stdout(), "short read")
+	}, time.Second, 10*time.Millisecond, "short read error was not propagated")
 
-	if assert.Contains(t, storeErr.Error(), "short read") && runtime.GOOS == "windows" {
-		assert.Contains(t, storeErr.Error(), "https://github.com/tilt-dev/tilt/issues/3556")
+	if runtime.GOOS == "windows" {
+		assert.Contains(t, f.Stdout(), "https://github.com/tilt-dev/tilt/issues/3556")
 	}
+
+	var fw filewatches.FileWatch
+	f.MustGet(key, &fw)
+	assert.Contains(t, fw.Status.Error, "short read on readEvents()")
 }
 
 func TestController_IgnoreEphemeralFiles(t *testing.T) {
@@ -348,43 +377,4 @@ func TestController_Disable_Ignores_File_Changes(t *testing.T) {
 	var fwAfterDisable filewatches.FileWatch
 	f.MustGet(key, &fwAfterDisable)
 	require.Equal(t, 0, len(fwAfterDisable.Status.FileEvents))
-}
-
-func TestController_IgnoreErrorsOnCancel(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode")
-	}
-
-	f := newFixture(t)
-	key, _ := f.CreateSimpleFileWatch()
-
-	tw := f.controller.targetWatches[key]
-	require.NotNil(t, tw, "Watcher never created")
-
-	// HACK(milas): this is seriously misusing the internals of this controller to
-	// 	force the synchronization so we can cancel the context at the right time
-	tw.mu.Lock()
-
-	watcher := tw.notify.(*fsevent.FakeWatcher)
-	require.Zero(t, watcher.TotalEventCount(), "No events should have been seen yet")
-
-	f.ChangeFile("a", "1")
-
-	require.Eventually(t, func() bool {
-		return watcher.TotalEventCount() == 1
-	}, time.Second, 20*time.Millisecond, "Event never seen")
-
-	require.Eventually(t, func() bool {
-		return watcher.QueuedCount() == 0
-	}, time.Second, 20*time.Millisecond, "Event never consumed")
-
-	// at this point, the watcher is blocked trying to report the event, so
-	// we'll cancel the context on it, simulating a race, to force a failure
-	tw.cancel()
-	tw.mu.Unlock()
-
-	require.Eventually(t, func() bool {
-		return strings.Contains(f.Stdout(),
-			`Ignored stale error for "TestController_IgnoreErrorsOnCancel/test-file-watch": apiserver update status error: context canceled`)
-	}, time.Second, 10*time.Millisecond, "Error ignored log message never seen")
 }

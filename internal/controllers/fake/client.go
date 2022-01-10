@@ -62,3 +62,22 @@ func (f fakeStatusWriter) Update(ctx context.Context, obj client.Object, opts ..
 	}
 	return json.Unmarshal(content, obj)
 }
+
+func (f fakeStatusWriter) Patch(ctx context.Context, obj ctrlclient.Object, patch ctrlclient.Patch, opts ...ctrlclient.PatchOption) error {
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		// controller-runtime fake ignores context; check it here to allow controllers to test
+		// handling of cancellation related errors
+		return ctxErr
+	}
+
+	err := f.StatusWriter.Patch(ctx, obj, patch, opts...)
+	if err != nil {
+		return err
+	}
+
+	content, err := json.Marshal(obj)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(content, obj)
+}

@@ -33,6 +33,11 @@ func (l referenceList) Len() int           { return len(l) }
 func (l referenceList) Less(i, j int) bool { return l[i].String() < l[j].String() }
 func (l referenceList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
 
+type imageDepMetadata struct {
+	required bool
+	count    int
+}
+
 type k8sResource struct {
 	// The name of this group, for display in the UX.
 	name string
@@ -40,10 +45,8 @@ type k8sResource struct {
 	// All k8s resources to be deployed.
 	entities []k8s.K8sEntity
 
-	imageRefs referenceList
-
-	// Map of imageRefs -> count, to avoid dupes / know how many times we've injected each
-	imageRefMap map[string]int
+	imageRefs         referenceList
+	imageDepsMetadata map[string]*imageDepMetadata
 
 	portForwards []model.PortForward
 
@@ -54,7 +57,7 @@ type k8sResource struct {
 
 	discoveryStrategy v1alpha1.KubernetesDiscoveryStrategy
 
-	dependencyIDs []model.TargetID
+	imageMapDeps []string
 
 	triggerMode triggerMode
 	autoInit    bool
@@ -89,6 +92,36 @@ type k8sResourceOptions struct {
 	labels            map[string]string
 }
 
+// Count image injection for analytics.
+func (r *k8sResource) imageRefInjectCounts() map[string]int {
+	result := make(map[string]int, len(r.imageDepsMetadata))
+	for key, value := range r.imageDepsMetadata {
+		result[key] = value.count
+	}
+	return result
+}
+
+// Add a dependency on an image.
+//
+// Most image deps are optional. e.g., if you apply an nginx deployment,
+// but don't build an nginx image, your cluster can pull the production
+// nginx image. But if you want to use your own nginx image, you can specify one.
+//
+// But you can also specify required deps. e.g., a k8s_custom_deploy
+// can declare that an image must be built locally and injected into the
+// deploy command.
+func (r *k8sResource) addImageDep(image reference.Named, required bool) {
+	metadata, ok := r.imageDepsMetadata[image.String()]
+	if !ok {
+		r.imageRefs = append(r.imageRefs, image)
+
+		metadata = &imageDepMetadata{}
+		r.imageDepsMetadata[image.String()] = metadata
+	}
+	metadata.count++
+	metadata.required = metadata.required || required
+}
+
 func (r *k8sResource) addEntities(entities []k8s.K8sEntity,
 	locators []k8s.ImageLocator, envVarImages []container.RefSelector) error {
 	r.entities = append(r.entities, entities...)
@@ -96,14 +129,10 @@ func (r *k8sResource) addEntities(entities []k8s.K8sEntity,
 	for _, entity := range entities {
 		images, err := entity.FindImages(locators, envVarImages)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "finding image in %s/%s", entity.GVK().Kind, entity.Name())
 		}
 		for _, image := range images {
-			count := r.imageRefMap[image.String()]
-			if count == 0 {
-				r.imageRefs = append(r.imageRefs, image)
-			}
-			r.imageRefMap[image.String()]++
+			r.addImageDep(image, false)
 		}
 	}
 
@@ -608,10 +637,10 @@ func (s *tiltfileState) makeK8sResource(name string) (*k8sResource, error) {
 		return nil, fmt.Errorf("k8s_resource named %q already exists", name)
 	}
 	r := &k8sResource{
-		name:        name,
-		imageRefMap: make(map[string]int),
-		autoInit:    true,
-		labels:      make(map[string]string),
+		name:              name,
+		imageDepsMetadata: make(map[string]*imageDepMetadata),
+		autoInit:          true,
+		labels:            make(map[string]string),
 	}
 	s.k8s = append(s.k8s, r)
 	s.k8sByName[name] = r

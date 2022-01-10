@@ -140,6 +140,14 @@ type DockerImageSpec struct {
 	//
 	// +optional
 	ExtraTags []string `json:"extraTags,omitempty" protobuf:"bytes,11,rep,name=extraTags"`
+
+	// Names of image maps that this build depends on.
+	//
+	// The controller will watch all the image maps, rebuild the image if any of
+	// the maps resolve to a new image, and inject them into the dockerfile.
+	//
+	// +optional
+	ImageMaps []string `json:"imageMaps,omitempty" protobuf:"bytes,13,rep,name=imageMaps"`
 }
 
 var _ resource.Object = &DockerImage{}

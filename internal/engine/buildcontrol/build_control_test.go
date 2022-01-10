@@ -155,6 +155,25 @@ func TestLocalDependsOnNonWorkloadK8s(t *testing.T) {
 	_ = k8s2
 }
 
+func TestK8sDependsOnCluster(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.st.Clusters["default"].Status.Error = "connection error"
+
+	_ = f.upsertK8sManifest("k8s1")
+	f.assertNoTargetNextToBuild()
+	f.assertHoldOnRefs("k8s1", store.HoldReasonCluster, v1alpha1.UIResourceStateWaitingOnRef{
+		Group:      "tilt.dev",
+		APIVersion: "v1alpha1",
+		Kind:       "Cluster",
+		Name:       "default",
+	})
+
+	f.st.Clusters["default"].Status.Error = ""
+	f.assertNextTargetToBuild("k8s1")
+}
+
 func TestCurrentlyBuildingLocalResourceDisablesK8sScheduling(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -215,11 +234,11 @@ func TestTwoK8sTargetsWithBaseImage(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	baseImage := model.MustNewImageTarget(container.MustParseSelector("sancho-base"))
-	sanchoOneImage := model.MustNewImageTarget(container.MustParseSelector("sancho-one")).
-		WithDependencyIDs([]model.TargetID{baseImage.ID()})
-	sanchoTwoImage := model.MustNewImageTarget(container.MustParseSelector("sancho-two")).
-		WithDependencyIDs([]model.TargetID{baseImage.ID()})
+	baseImage := newDockerImageTarget("sancho-base")
+	sanchoOneImage := newDockerImageTarget("sancho-one").
+		WithImageMapDeps([]string{baseImage.ImageMapName()})
+	sanchoTwoImage := newDockerImageTarget("sancho-two").
+		WithImageMapDeps([]string{baseImage.ImageMapName()})
 
 	sanchoOne := f.upsertManifest(manifestbuilder.New(f, "sancho-one").
 		WithImageTargets(baseImage, sanchoOneImage).
@@ -250,11 +269,11 @@ func TestTwoK8sTargetsWithBaseImagePrebuilt(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
 
-	baseImage := model.MustNewImageTarget(container.MustParseSelector("sancho-base"))
-	sanchoOneImage := model.MustNewImageTarget(container.MustParseSelector("sancho-one")).
-		WithDependencyIDs([]model.TargetID{baseImage.ID()})
-	sanchoTwoImage := model.MustNewImageTarget(container.MustParseSelector("sancho-two")).
-		WithDependencyIDs([]model.TargetID{baseImage.ID()})
+	baseImage := newDockerImageTarget("sancho-base")
+	sanchoOneImage := newDockerImageTarget("sancho-one").
+		WithImageMapDeps([]string{baseImage.ImageMapName()})
+	sanchoTwoImage := newDockerImageTarget("sancho-two").
+		WithImageMapDeps([]string{baseImage.ImageMapName()})
 
 	sanchoOne := f.upsertManifest(manifestbuilder.New(f, "sancho-one").
 		WithImageTargets(baseImage, sanchoOneImage).
@@ -292,7 +311,7 @@ func TestHoldForDeploy(t *testing.T) {
 		StopPaths: []string{filepath.Join("src", "package.json")},
 		Syncs:     []v1alpha1.LiveUpdateSync{{LocalPath: "src", ContainerPath: "/src"}},
 	}
-	sanchoImage := model.MustNewImageTarget(container.MustParseSelector("sancho")).
+	sanchoImage := newDockerImageTarget("sancho").
 		WithLiveUpdateSpec("sancho", luSpec).
 		WithDockerImage(v1alpha1.DockerImageSpec{Context: f.Path()})
 	sancho := f.upsertManifest(manifestbuilder.New(f, "sancho").
@@ -491,10 +510,16 @@ type testFixture struct {
 
 func newTestFixture(t *testing.T) testFixture {
 	f := tempdir.NewTempDirFixture(t)
+	st := store.NewState()
+	st.Clusters["default"] = &v1alpha1.Cluster{
+		Status: v1alpha1.ClusterStatus{
+			Arch: "amd64",
+		},
+	}
 	return testFixture{
 		TempDirFixture: f,
 		t:              t,
-		st:             store.NewState(),
+		st:             st,
 	}
 }
 
@@ -504,6 +529,16 @@ func (f *testFixture) assertHold(m model.ManifestName, reason store.HoldReason, 
 	hold := store.Hold{
 		Reason: reason,
 		HoldOn: holdOn,
+	}
+	assert.Equal(f.t, hold, hs[m])
+}
+
+func (f *testFixture) assertHoldOnRefs(m model.ManifestName, reason store.HoldReason, onRefs ...v1alpha1.UIResourceStateWaitingOnRef) {
+	f.T().Helper()
+	_, hs := NextTargetToBuild(*f.st)
+	hold := store.Hold{
+		Reason: reason,
+		OnRefs: onRefs,
 	}
 	assert.Equal(f.t, hold, hs[m])
 }

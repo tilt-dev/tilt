@@ -12,21 +12,21 @@ func assembleK8s(m model.Manifest, k model.K8sTarget, iTargets ...model.ImageTar
 	// images on which another image depends -- we assume they are base
 	// images, i.e. not deployed directly, and so the deploy target
 	// should not depend on them.
-	baseImages := make(map[model.TargetID]bool)
+	baseImages := make(map[string]bool)
 	for _, iTarget := range iTargets {
-		for _, id := range iTarget.DependencyIDs() {
+		for _, id := range iTarget.ImageMapDeps() {
 			baseImages[id] = true
 		}
 	}
 
-	ids := make([]model.TargetID, 0, len(iTargets))
+	imageMapNames := make([]string, 0, len(iTargets))
 	for _, iTarget := range iTargets {
-		if baseImages[iTarget.ID()] {
+		if baseImages[iTarget.ImageMapName()] {
 			continue
 		}
-		ids = append(ids, iTarget.ID())
+		imageMapNames = append(imageMapNames, iTarget.ImageMapName())
 	}
-	k = k.WithImageDependencies(ids, model.ToLiveUpdateOnlyMap(iTargets))
+	k = k.WithImageDependencies(model.FilterLiveUpdateOnly(imageMapNames, iTargets))
 	return m.
 		WithImageTargets(iTargets).
 		WithDeployTarget(k)
@@ -39,22 +39,22 @@ func assembleDC(m model.Manifest, dcTarg model.DockerComposeTarget, iTargets ...
 	// images on which another image depends -- we assume they are base
 	// images, i.e. not deployed directly, and so the deploy target
 	// should not depend on them.
-	baseImages := make(map[model.TargetID]bool)
+	baseImages := make(map[string]bool)
 	for _, iTarget := range iTargets {
-		for _, id := range iTarget.DependencyIDs() {
+		for _, id := range iTarget.ImageMapDeps() {
 			baseImages[id] = true
 		}
 	}
 
-	ids := make([]model.TargetID, 0, len(iTargets))
+	imageMapNames := make([]string, 0, len(iTargets))
 	for _, iTarget := range iTargets {
-		if baseImages[iTarget.ID()] {
+		if baseImages[iTarget.ImageMapName()] {
 			continue
 		}
-		ids = append(ids, iTarget.ID())
+		imageMapNames = append(imageMapNames, iTarget.ImageMapName())
 	}
 
-	if len(ids) == 0 {
+	if len(imageMapNames) == 0 {
 		iTarget := model.ImageTarget{
 			ImageMapSpec: v1alpha1.ImageMapSpec{
 				Selector: dcTarg.Spec.Service,
@@ -63,11 +63,11 @@ func assembleDC(m model.Manifest, dcTarg model.DockerComposeTarget, iTargets ...
 				Service: dcTarg.Spec.Service,
 			},
 		}
-		ids = append(ids, iTarget.ID())
+		imageMapNames = append(imageMapNames, iTarget.ImageMapName())
 		iTargets = append(iTargets, iTarget)
 	}
 
-	dc := dcTarg.WithDependencyIDs(ids)
+	dc := dcTarg.WithImageMapDeps(model.FilterLiveUpdateOnly(imageMapNames, iTargets))
 	return m.
 		WithImageTargets(iTargets).
 		WithDeployTarget(dc)

@@ -37,13 +37,14 @@ export function hiddenField(name: string, value: string): UIInputSpec {
 }
 
 export function makeUIButton(args?: {
+  name?: string
   inputSpecs?: UIInputSpec[]
   inputStatuses?: UIInputStatus[]
   requiresConfirmation?: boolean
 }): UIButton {
   return {
     metadata: {
-      name: "TestButton",
+      name: args?.name ?? "TestButton",
     },
     spec: {
       text: "Click Me!",

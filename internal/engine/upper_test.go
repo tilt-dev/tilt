@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -40,6 +41,7 @@ import (
 	apitiltfile "github.com/tilt-dev/tilt/internal/controllers/apis/tiltfile"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cluster"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
+	"github.com/tilt-dev/tilt/internal/controllers/core/cmdimage"
 	"github.com/tilt-dev/tilt/internal/controllers/core/configmap"
 	"github.com/tilt-dev/tilt/internal/controllers/core/dockerimage"
 	"github.com/tilt-dev/tilt/internal/controllers/core/extension"
@@ -398,7 +400,11 @@ func (b *fakeBuildAndDeployer) updateKubernetesApplyStatus(ctx context.Context, 
 		if err != nil {
 			return err
 		}
-		im.Status.Image = iTarget.Refs.ClusterRef().String()
+		im.Status = v1alpha1.ImageMapStatus{
+			Image:            container.FamiliarString(iTarget.Refs.ClusterRef()),
+			ImageFromCluster: container.FamiliarString(iTarget.Refs.ClusterRef()),
+			ImageFromLocal:   container.FamiliarString(iTarget.Refs.LocalRef()),
+		}
 		imageMapSet[nn] = &im
 	}
 
@@ -611,20 +617,6 @@ func TestUpper_CI(t *testing.T) {
 
 	f.startPod(pb.WithPhase(string(v1.PodRunning)).Build(), manifest.Name)
 	require.NoError(t, <-storeErr)
-}
-
-func TestUpper_UpWatchError(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-	manifest := f.newManifest("foobar")
-	f.Start([]model.Manifest{manifest})
-
-	f.fsWatcher.Errors <- context.Canceled
-
-	err := <-f.upperInitResult
-	if assert.NotNil(t, err) {
-		assert.Equal(t, "context canceled", err.Error())
-	}
 }
 
 func TestUpper_UpWatchFileChange(t *testing.T) {
@@ -1442,7 +1434,7 @@ func TestPodEventContainerStatus(t *testing.T) {
 	var ref reference.NamedTagged
 	f.WaitUntilManifestState("image appears", "foobar", func(ms store.ManifestState) bool {
 		result := ms.BuildStatus(manifest.ImageTargetAt(0).ID()).LastResult
-		ref = store.ClusterImageRefFromBuildResult(result)
+		ref, _ = container.ParseNamedTagged(store.ClusterImageRefFromBuildResult(result))
 		return ref != nil
 	})
 
@@ -1866,7 +1858,7 @@ func TestPodContainerStatus(t *testing.T) {
 	var ref reference.NamedTagged
 	f.WaitUntilManifestState("image appears", "fe", func(ms store.ManifestState) bool {
 		result := ms.BuildStatus(manifest.ImageTargetAt(0).ID()).LastResult
-		ref = store.ClusterImageRefFromBuildResult(result)
+		ref, _ = container.ParseNamedTagged(store.ClusterImageRefFromBuildResult(result))
 		return ref != nil
 	})
 
@@ -2366,7 +2358,7 @@ func TestDockerComposeStartsEventWatcher(t *testing.T) {
 	// Actual behavior is that we init with zero manifests, and add in manifests
 	// after Tiltfile loads. Mimic that here.
 	f.Start([]model.Manifest{})
-	time.Sleep(10 * time.Millisecond)
+	f.ensureCluster()
 
 	f.store.Dispatch(ctrltiltfile.ConfigsReloadedAction{
 		Name:       model.MainTiltfileManifestName,
@@ -2573,6 +2565,91 @@ func TestDockerComposeBuildCompletedSetsStatusToUpIfSuccessful(t *testing.T) {
 	})
 }
 
+func TestDockerComposeStopOnDisable(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	f.useRealTiltfileLoader()
+
+	m, _ := f.setupDCFixture()
+
+	expected := container.ID("aaaaaa")
+	f.b.nextDockerComposeContainerID = expected
+
+	containerState := docker.NewRunningContainerState()
+	f.b.nextDockerComposeContainerState = &containerState
+
+	f.loadAndStart()
+
+	f.waitForCompletedBuildCount(2)
+
+	f.setDisableState(m.Name, true)
+
+	require.Eventually(t, func() bool {
+		return len(f.dcc.RmCalls()) > 0
+	}, stdTimeout, time.Millisecond)
+
+	expectedCall := dockercompose.RmCall{
+		Specs: []model.DockerComposeUpSpec{m.DockerComposeTarget().Spec},
+	}
+	require.Equal(t, expectedCall, f.dcc.RmCalls()[0])
+}
+
+func TestDockerComposeStartOnReenable(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	f.useRealTiltfileLoader()
+
+	m, _ := f.setupDCFixture()
+
+	expected := container.ID("aaaaaa")
+	f.b.nextDockerComposeContainerID = expected
+
+	containerState := docker.NewRunningContainerState()
+	f.b.nextDockerComposeContainerState = &containerState
+
+	f.loadAndStart()
+
+	f.waitForCompletedBuildCount(2)
+
+	f.setDisableState(m.Name, true)
+
+	require.Eventually(t, func() bool {
+		return len(f.dcc.RmCalls()) > 0
+	}, stdTimeout, time.Millisecond, "DC rm")
+
+	f.setDisableState(m.Name, false)
+
+	f.waitForCompletedBuildCount(3)
+}
+
+func TestDockerComposeDisableRmError(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+	f.useRealTiltfileLoader()
+
+	m, _ := f.setupDCFixture()
+
+	expected := container.ID("aaaaaa")
+	f.b.nextDockerComposeContainerID = expected
+
+	containerState := docker.NewRunningContainerState()
+	f.b.nextDockerComposeContainerState = &containerState
+
+	f.loadAndStart()
+
+	f.waitForCompletedBuildCount(2)
+
+	s := "fake dc error"
+	f.dcc.RmError = errors.New(s)
+	f.setDisableState(m.Name, true)
+
+	require.Eventually(t, func() bool {
+		st := f.store.RLockState()
+		defer f.store.RUnlockState()
+		return strings.Contains(st.LogStore.String(), s)
+	}, stdTimeout, time.Millisecond)
+}
+
 func TestEmptyTiltfile(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -2769,6 +2846,7 @@ func TestFeatureFlagsStoredOnState(t *testing.T) {
 	defer f.TearDown()
 
 	f.Start([]model.Manifest{})
+	f.ensureCluster()
 
 	f.store.Dispatch(ctrltiltfile.ConfigsReloadedAction{
 		Name:       model.MainTiltfileManifestName,
@@ -2796,6 +2874,7 @@ func TestTeamIDStoredOnState(t *testing.T) {
 	defer f.TearDown()
 
 	f.Start([]model.Manifest{})
+	f.ensureCluster()
 
 	f.store.Dispatch(ctrltiltfile.ConfigsReloadedAction{
 		Name:       model.MainTiltfileManifestName,
@@ -3138,6 +3217,7 @@ func TestVersionSettingsStoredOnState(t *testing.T) {
 	defer f.TearDown()
 
 	f.Start([]model.Manifest{})
+	f.ensureCluster()
 
 	vs := model.VersionSettings{
 		CheckUpdates: false,
@@ -3158,6 +3238,7 @@ func TestAnalyticsTiltfileOpt(t *testing.T) {
 	defer f.TearDown()
 
 	f.Start([]model.Manifest{})
+	f.ensureCluster()
 
 	f.withState(func(state store.EngineState) {
 		assert.Equal(t, analytics.OptDefault, state.AnalyticsEffectiveOpt())
@@ -3548,20 +3629,7 @@ func TestDisablingResourcePreventsBuild(t *testing.T) {
 
 	f.Start([]model.Manifest{m})
 
-	cm := v1alpha1.ConfigMap{}
-	err := f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: "foo-disable"}, &cm)
-	require.NoError(t, err)
-
-	cm.Data["isDisabled"] = "true"
-	err = f.ctrlClient.Update(f.ctx, &cm)
-	require.NoError(t, err)
-
-	f.WaitUntil("resource is disabled", func(state store.EngineState) bool {
-		if uir, ok := state.UIResources["foo"]; ok {
-			return uir.Status.DisableStatus.DisabledCount > 0
-		}
-		return false
-	})
+	f.setDisableState(m.Name, true)
 
 	action := server.AppendToTriggerQueueAction{Name: "foo", Reason: 123}
 	f.store.Dispatch(action)
@@ -3574,6 +3642,7 @@ func TestDisablingResourcePreventsBuild(t *testing.T) {
 
 func TestDisableButtonIsCreated(t *testing.T) {
 	f := newTestFixture(t)
+	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", `
@@ -3658,20 +3727,7 @@ func TestDisabledResourceRemovedFromTriggerQueue(t *testing.T) {
 		return state.ManifestInTriggerQueue(m.Name)
 	})
 
-	cm := v1alpha1.ConfigMap{}
-	err := f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: "foo-disable"}, &cm)
-	require.NoError(t, err)
-
-	cm.Data["isDisabled"] = "true"
-	err = f.ctrlClient.Update(f.ctx, &cm)
-	require.NoError(t, err)
-
-	f.WaitUntil("resource is disabled", func(state store.EngineState) bool {
-		if uir, ok := state.UIResources["foo"]; ok {
-			return uir.Status.DisableStatus.DisabledCount > 0
-		}
-		return false
-	})
+	f.setDisableState(m.Name, true)
 
 	f.WaitUntil("is removed from trigger queue", func(state store.EngineState) bool {
 		return !state.ManifestInTriggerQueue(m.Name)
@@ -3768,9 +3824,11 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 
 	cdc := controllers.ProvideDeferredClient()
+	sch := v1alpha1.NewScheme()
 
 	watcher := fsevent.NewFakeMultiWatcher()
 	kClient := k8s.NewFakeK8sClient(t)
+	clusterClients := cluster.NewConnectionManager()
 
 	timerMaker := fsevent.MakeFakeTimerMaker(t)
 
@@ -3788,9 +3846,9 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	clock := clockwork.NewRealClock()
 	env := k8s.EnvDockerDesktop
 	podSource := podlogstream.NewPodSource(ctx, kClient, v1alpha1.NewScheme())
-	plsc := podlogstream.NewController(ctx, cdc, st, kClient, podSource)
+	plsc := podlogstream.NewController(ctx, cdc, sch, st, kClient, podSource, clock)
 	au := engineanalytics.NewAnalyticsUpdater(ta, engineanalytics.CmdTags{}, engineMode)
-	ar := engineanalytics.ProvideAnalyticsReporter(ta, st, kClient, env)
+	ar := engineanalytics.ProvideAnalyticsReporter(ta, st, kClient, env, feature.MainDefaults)
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	k8sContextExt := k8scontext.NewPlugin("fake-context", env)
 	versionExt := version.NewPlugin(model.TiltBuild{Version: "0.5.0"})
@@ -3798,10 +3856,10 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	execer := localexec.NewFakeExecer(t)
 	realTFL := tiltfile.ProvideTiltfileLoader(ta, k8sContextExt, versionExt, configExt, fakeDcc, "localhost", execer, feature.MainDefaults, env)
 	tfl := tiltfile.NewFakeTiltfileLoader()
-	buildSource := ctrltiltfile.NewBuildSource()
 	cc := configs.NewConfigsController(cdc)
 	tqs := configs.NewTriggerQueueSubscriber(cdc)
 	dcw := dcwatch.NewEventWatcher(fakeDcc, dockerClient)
+	dcds := dcwatch.NewDisableSubscriber(fakeDcc)
 	dclm := runtimelog.NewDockerComposeLogManager(fakeDcc)
 	serverOptions, err := server.ProvideTiltServerOptionsForTesting(ctx)
 	require.NoError(t, err)
@@ -3811,15 +3869,14 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		nil, "tilt-default", webListener, serverOptions,
 		&server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
 	ns := k8s.Namespace("default")
-	of := k8s.ProvideOwnerFetcher(ctx, kClient)
 	rd := kubernetesdiscovery.NewContainerRestartDetector()
-	kdc := kubernetesdiscovery.NewReconciler(cdc, kClient, of, rd, st)
-	sw := k8swatch.NewServiceWatcher(kClient, of, ns)
-	ewm := k8swatch.NewEventWatchManager(kClient, of, ns)
+	kdc := kubernetesdiscovery.NewReconciler(cdc, sch, clusterClients, rd, st)
+	sw := k8swatch.NewServiceWatcher(clusterClients, ns)
+	ewm := k8swatch.NewEventWatchManager(clusterClients, ns)
 	tcum := cloud.NewStatusManager(httptest.NewFakeClientEmptyJSON(), clock)
 	fe := cmd.NewFakeExecer()
 	fpm := cmd.NewFakeProberManager()
-	fwc := filewatch.NewController(cdc, st, watcher.NewSub, timerMaker.Maker(), v1alpha1.NewScheme())
+	fwc := filewatch.NewController(cdc, st, watcher.NewSub, timerMaker.Maker(), v1alpha1.NewScheme(), clock)
 	cmds := cmd.NewController(ctx, fe, fpm, cdc, st, clock, v1alpha1.NewScheme())
 	lsc := local.NewServerController(cdc)
 	sessionController := session.NewController(cdc, engineMode)
@@ -3827,7 +3884,6 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	tp := prompt.NewTerminalPrompt(ta, prompt.TTYOpen, openurl.BrowserOpen,
 		log, "localhost", model.WebURL{})
 	h := hud.NewFakeHud()
-	sch := v1alpha1.NewScheme()
 
 	uncached := controllers.UncachedObjects{}
 	for _, obj := range v1alpha1.AllResourceObjects() {
@@ -3846,7 +3902,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 
 	kar := kubernetesapply.NewReconciler(cdc, kClient, sch, docker.Env{}, k8s.KubeContext("kind-kind"), st, "default", execer)
 
-	tfr := ctrltiltfile.NewReconciler(st, tfl, kClient, dockerClient, cdc, sch, buildSource, engineMode)
+	tfr := ctrltiltfile.NewReconciler(st, tfl, kClient, dockerClient, cdc, sch, engineMode, "", "")
 	tbr := togglebutton.NewReconciler(cdc, sch)
 	extr := extension.NewReconciler(cdc, sch, ta)
 	extrr, err := extensionrepo.NewReconciler(cdc, base)
@@ -3856,7 +3912,10 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	cu := &containerupdate.FakeContainerUpdater{}
 	lur := liveupdate.NewFakeReconciler(st, cu, cdc)
 	dir := dockerimage.NewReconciler(cdc)
-	clr := cluster.NewReconciler(cdc, st, docker.LocalEnv{})
+	cir := cmdimage.NewReconciler(cdc)
+	clr := cluster.NewReconciler(ctx, cdc, st, docker.LocalEnv{}, clusterClients)
+	clr.SetFakeClientsForTesting(kClient, dockerClient)
+
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
 		fwc,
 		cmds,
@@ -3874,6 +3933,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		lur,
 		cmr,
 		dir,
+		cir,
 		clr,
 	))
 
@@ -3922,7 +3982,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	uss := uisession.NewSubscriber(cdc)
 	urs := uiresource.NewSubscriber(cdc)
 
-	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, sw, bc, cc, tqs, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, uss, urs)
+	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, sw, bc, cc, tqs, dcw, dcds, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, uss, urs)
 	ret.upper, err = NewUpper(ctx, st, subs)
 	require.NoError(t, err)
 
@@ -4529,6 +4589,23 @@ func (f *testFixture) setK8sApplyResult(name model.ManifestName, hash k8s.PodTem
 	f.store.UnlockMutableState()
 }
 
+func (f *testFixture) setDisableState(mn model.ManifestName, isDisabled bool) {
+	cm := v1alpha1.ConfigMap{}
+	err := f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: fmt.Sprintf("%s-disable", mn)}, &cm)
+	require.NoError(f.t, err)
+
+	cm.Data["isDisabled"] = strconv.FormatBool(isDisabled)
+	err = f.ctrlClient.Update(f.ctx, &cm)
+	require.NoError(f.t, err)
+
+	f.WaitUntil("new disable state reflected in UIResource", func(state store.EngineState) bool {
+		if uir, ok := state.UIResources[mn.String()]; ok {
+			return uir.Status.DisableStatus.DisabledCount > 0 == isDisabled
+		}
+		return false
+	})
+}
+
 type fixtureSub struct {
 	ch chan bool
 }
@@ -4536,6 +4613,21 @@ type fixtureSub struct {
 func (s fixtureSub) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) error {
 	s.ch <- true
 	return nil
+}
+
+func (f *testFixture) ensureCluster() {
+	f.t.Helper()
+	err := f.ctrlClient.Create(f.ctx, &v1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "default",
+		},
+		Spec: v1alpha1.ClusterSpec{
+			Connection: &v1alpha1.ClusterConnection{
+				Kubernetes: &v1alpha1.KubernetesClusterConnection{},
+			},
+		},
+	})
+	require.NoError(f.T(), err)
 }
 
 func (f *testFixture) dispatchDCEvent(m model.Manifest, action dockercompose.Action, containerState dockertypes.ContainerState) {

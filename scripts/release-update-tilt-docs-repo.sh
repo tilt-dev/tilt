@@ -29,6 +29,10 @@ git clone https://tilt-releaser:"$GITHUB_TOKEN"@github.com/tilt-dev/tilt.build "
 set -x
 go run -mod=vendor ./cmd/tilt/main.go dump cli-docs --dir="$ROOT/docs/cli"
 cd "$ROOT"
+
+# Generate the CLI TOC
+make cli-toc
+
 sed -i -E "s/asdf install tilt .*/asdf install tilt $VERSION/" docs/install.md
 sed -i -E "s/asdf global tilt .*/asdf global tilt $VERSION/" docs/install.md
 sed -i -E "s/asdf install tilt .*/asdf install tilt $VERSION/" docs/upgrade.md

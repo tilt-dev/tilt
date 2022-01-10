@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/distribution/reference"
 	"github.com/looplab/tarjan"
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
@@ -15,6 +14,7 @@ import (
 	"golang.org/x/mod/semver"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apis/cmdimage"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/dockerimage"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/apiset"
@@ -53,6 +53,7 @@ import (
 	tfv1alpha1 "github.com/tilt-dev/tilt/internal/tiltfile/v1alpha1"
 	"github.com/tilt-dev/tilt/internal/tiltfile/version"
 	"github.com/tilt-dev/tilt/internal/tiltfile/watch"
+	fwatch "github.com/tilt-dev/tilt/internal/watch"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -141,6 +142,10 @@ type tiltfileState struct {
 	// postExecReadFiles is generally a mistake -- it means that if tiltfile execution fails,
 	// these will never be read. Remove these when you can!!!
 	postExecReadFiles []string
+
+	// Temporary directory for storing generated artifacts during the lifetime of the tiltfile context.
+	// The directory is recursively deleted when the context is done.
+	scratchDir *fwatch.TempDir
 }
 
 func newTiltfileState(
@@ -364,7 +369,7 @@ const (
 
 	// local resource functions
 	localResourceN = "local_resource"
-	testN          = "test" // test is just a fork of local resource
+	testN          = "test" // a deprecated fork of local resource
 
 	// file functions
 	localN     = "local"
@@ -544,7 +549,7 @@ func (s *tiltfileState) OnStart(e *starkit.Environment) error {
 		{k8sResourceN, s.k8sResource},
 		{k8sCustomDeployN, s.k8sCustomDeploy},
 		{localResourceN, s.localResource},
-		{testN, s.localResource}, // test is just a fork of local resource, w/ some switches based on fn.Name()
+		{testN, s.localResource},
 		{portForwardN, s.portForward},
 		{k8sKindN, s.k8sKind},
 		{k8sImageJSONPathN, s.k8sImageJsonPath},
@@ -649,23 +654,34 @@ func (s *tiltfileState) assertAllImagesMatched(us model.UpdateSettings) error {
 
 func (s *tiltfileState) assembleImages() error {
 	for _, imageBuilder := range s.buildIndex.images {
-		var err error
-
-		var depImages []reference.Named
 		if imageBuilder.dbDockerfile != "" {
-			depImages, err = imageBuilder.dbDockerfile.FindImages(imageBuilder.dbBuildArgs)
-		}
+			depImages, err := imageBuilder.dbDockerfile.FindImages(imageBuilder.dbBuildArgs)
+			if err != nil {
+				return err
+			}
+			for _, depImage := range depImages {
+				depBuilder := s.buildIndex.findBuilderForConsumedImage(depImage)
+				if depBuilder == nil {
+					// Images in the Dockerfile that don't have docker_build
+					// instructions are OK. We'll pull them as prebuilt images.
+					continue
+				}
 
-		if err != nil {
-			return err
-		}
-
-		for _, depImage := range depImages {
-			depBuilder := s.buildIndex.findBuilderForConsumedImage(depImage)
-			if depBuilder != nil {
-				imageBuilder.dependencyIDs = append(imageBuilder.dependencyIDs, depBuilder.ID())
+				imageBuilder.imageMapDeps = append(imageBuilder.imageMapDeps, depBuilder.ImageMapName())
 			}
 		}
+
+		for _, depImage := range imageBuilder.customImgDeps {
+			depBuilder := s.buildIndex.findBuilderForConsumedImage(depImage)
+			if depBuilder == nil {
+				// If the user specifically said to depend on this image, there
+				// must be a build instruction for it.
+				return fmt.Errorf("image %q: image dep %q not found",
+					imageBuilder.configurationRef.RefFamiliarString(), container.FamiliarString(depImage))
+			}
+			imageBuilder.imageMapDeps = append(imageBuilder.imageMapDeps, depBuilder.ImageMapName())
+		}
+
 	}
 	return nil
 }
@@ -679,7 +695,7 @@ func (s *tiltfileState) assembleDC() error {
 		builder := s.buildIndex.findBuilderForConsumedImage(svc.ImageRef())
 		if builder != nil {
 			// there's a Tilt-managed builder (e.g. docker_build or custom_build) for this image reference, so use that
-			svc.DependencyIDs = append(svc.DependencyIDs, builder.ID())
+			svc.ImageMapDeps = append(svc.ImageMapDeps, builder.ImageMapName())
 		} else {
 			// create a DockerComposeBuild image target and consume it if this service has a build section in YAML
 			err := s.maybeAddDockerComposeImageBuilder(svc)
@@ -732,7 +748,7 @@ func (s *tiltfileState) maybeAddDockerComposeImageBuilder(svc *dcService) error 
 		return err
 	}
 	b := s.buildIndex.findBuilderForConsumedImage(imageRef)
-	svc.DependencyIDs = append(svc.DependencyIDs, b.ID())
+	svc.ImageMapDeps = append(svc.ImageMapDeps, b.ImageMapName())
 	return nil
 }
 
@@ -1010,7 +1026,13 @@ func (s *tiltfileState) validateK8s(r *k8sResource) error {
 	for _, ref := range r.imageRefs {
 		builder := s.buildIndex.findBuilderForConsumedImage(ref)
 		if builder != nil {
-			r.dependencyIDs = append(r.dependencyIDs, builder.ID())
+			r.imageMapDeps = append(r.imageMapDeps, builder.ImageMapName())
+			continue
+		}
+
+		metadata, ok := r.imageDepsMetadata[ref.String()]
+		if ok && metadata.required {
+			return fmt.Errorf("resource %q: image build %q not found", r.name, container.FamiliarString(ref))
 		}
 	}
 
@@ -1072,7 +1094,7 @@ func (s *tiltfileState) inferPodReadinessMode(r *k8sResource) model.PodReadiness
 	// 2) doesn't have pod selectors, and
 	// 3) doesn't depend on images
 	// assume that it will never create pods.
-	if r.manuallyGrouped && len(r.extraPodSelectors) == 0 && len(r.dependencyIDs) == 0 {
+	if r.manuallyGrouped && len(r.extraPodSelectors) == 0 && len(r.imageMapDeps) == 0 {
 		return model.PodReadinessIgnore
 	}
 
@@ -1100,7 +1122,7 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource, updateSettings mo
 
 		m = m.WithLabels(r.labels)
 
-		iTargets, err := s.imgTargetsForDependencyIDs(mn, r.dependencyIDs)
+		iTargets, err := s.imgTargetsForDeps(mn, r.imageMapDeps)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting image build info for %s", r.name)
 		}
@@ -1187,8 +1209,8 @@ func (s *tiltfileState) k8sDeployTarget(targetName model.TargetName, r *k8sResou
 		return model.K8sTarget{}, err
 	}
 
-	t = t.WithImageDependencies(r.dependencyIDs, model.ToLiveUpdateOnlyMap(imageTargets)).
-		WithRefInjectCounts(r.imageRefMap).
+	t = t.WithImageDependencies(model.FilterLiveUpdateOnly(r.imageMapDeps, imageTargets)).
+		WithRefInjectCounts(r.imageRefInjectCounts()).
 		WithPathDependencies(deps, reposForPaths(deps))
 
 	return t, nil
@@ -1354,27 +1376,27 @@ func needsRestartContainerDeprecationError(m model.Manifest) bool {
 
 // Grabs all image targets for the given references,
 // as well as any of their transitive dependencies.
-func (s *tiltfileState) imgTargetsForDependencyIDs(mn model.ManifestName, ids []model.TargetID) ([]model.ImageTarget, error) {
-	claimStatus := make(map[model.TargetID]claim, len(ids))
-	return s.imgTargetsForDependencyIDsHelper(mn, ids, claimStatus)
+func (s *tiltfileState) imgTargetsForDeps(mn model.ManifestName, imageMapDeps []string) ([]model.ImageTarget, error) {
+	claimStatus := make(map[string]claim, len(imageMapDeps))
+	return s.imgTargetsForDepsHelper(mn, imageMapDeps, claimStatus)
 }
 
-func (s *tiltfileState) imgTargetsForDependencyIDsHelper(mn model.ManifestName, ids []model.TargetID, claimStatus map[model.TargetID]claim) ([]model.ImageTarget, error) {
-	iTargets := make([]model.ImageTarget, 0, len(ids))
-	for _, id := range ids {
-		image := s.buildIndex.findBuilderByID(id)
+func (s *tiltfileState) imgTargetsForDepsHelper(mn model.ManifestName, imageMapDeps []string, claimStatus map[string]claim) ([]model.ImageTarget, error) {
+	iTargets := make([]model.ImageTarget, 0, len(imageMapDeps))
+	for _, imName := range imageMapDeps {
+		image := s.buildIndex.findBuilderByImageMapName(imName)
 		if image == nil {
-			return nil, fmt.Errorf("Internal error: no image builder found for id %s", id)
+			return nil, fmt.Errorf("Internal error: no image builder found for id %s", imName)
 		}
 
-		claim := claimStatus[id]
+		claim := claimStatus[imName]
 		if claim == claimFinished {
 			// Skip this target, an earlier call has already built it
 			continue
 		} else if claim == claimPending {
 			return nil, fmt.Errorf("Image dependency cycle: %s", image.configurationRef)
 		}
-		claimStatus[id] = claimPending
+		claimStatus[imName] = claimPending
 
 		var overrideCommand *v1alpha1.ImageMapOverrideCommand
 		if !image.entrypoint.Empty() {
@@ -1416,14 +1438,24 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(mn model.ManifestName, 
 			}
 			iTarget = iTarget.WithBuildDetails(model.DockerBuild{DockerImageSpec: spec})
 		case CustomBuild:
-			r := model.CustomBuild{
-				WorkDir:           image.workDir,
-				Command:           image.customCommand,
-				Deps:              image.customDeps,
-				Tag:               image.customTag,
-				DisablePush:       image.disablePush,
-				SkipsLocalDocker:  image.skipsLocalDocker,
+			iTarget.CmdImageName = cmdimage.GetName(mn, iTarget.ID())
+
+			spec := v1alpha1.CmdImageSpec{
+				Args:              image.customCommand.Argv,
+				Dir:               image.workDir,
+				OutputTag:         image.customTag,
 				OutputsImageRefTo: image.outputsImageRefTo,
+			}
+			if image.skipsLocalDocker {
+				spec.OutputMode = v1alpha1.CmdImageOutputRemote
+			} else if image.disablePush {
+				spec.OutputMode = v1alpha1.CmdImageOutputLocalDockerAndRemote
+			} else {
+				spec.OutputMode = v1alpha1.CmdImageOutputLocalDocker
+			}
+			r := model.CustomBuild{
+				CmdImageSpec: spec,
+				Deps:         image.customDeps,
 			}
 			iTarget = iTarget.WithBuildDetails(r)
 		case DockerComposeBuild:
@@ -1446,9 +1478,9 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(mn model.ManifestName, 
 			WithRepos(s.reposForImage(image)).
 			WithDockerignores(dIgnores). // used even for custom build
 			WithTiltFilename(image.tiltfilePath).
-			WithDependencyIDs(image.dependencyIDs)
+			WithImageMapDeps(image.imageMapDeps)
 
-		depTargets, err := s.imgTargetsForDependencyIDsHelper(mn, image.dependencyIDs, claimStatus)
+		depTargets, err := s.imgTargetsForDepsHelper(mn, image.imageMapDeps, claimStatus)
 		if err != nil {
 			return nil, err
 		}
@@ -1456,7 +1488,7 @@ func (s *tiltfileState) imgTargetsForDependencyIDsHelper(mn model.ManifestName, 
 		iTargets = append(iTargets, depTargets...)
 		iTargets = append(iTargets, iTarget)
 
-		claimStatus[id] = claimFinished
+		claimStatus[imName] = claimFinished
 	}
 	return iTargets, nil
 }
@@ -1465,12 +1497,8 @@ func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) 
 	var result []model.Manifest
 
 	for _, svc := range dc.services {
-		m, err := s.dcServiceToManifest(svc, dc)
-		if err != nil {
-			return nil, err
-		}
 
-		iTargets, err := s.imgTargetsForDependencyIDs(m.Name, svc.DependencyIDs)
+		iTargets, err := s.imgTargetsForDeps(model.ManifestName(svc.Name), svc.ImageMapDeps)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting image build info for %s", svc.Name)
 		}
@@ -1481,7 +1509,10 @@ func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) 
 			}
 		}
 
-		m = m.WithImageTargets(iTargets)
+		m, err := s.dcServiceToManifest(svc, dc, iTargets)
+		if err != nil {
+			return nil, err
+		}
 
 		result = append(result, m)
 	}
@@ -1563,8 +1594,6 @@ func (s *tiltfileState) translateLocal() ([]model.Manifest, error) {
 			WithIgnores(ignores).
 			WithAllowParallel(r.allowParallel || r.updateCmd.Empty()).
 			WithLinks(r.links).
-			WithTags(r.tags).
-			WithIsTest(r.isTest).
 			WithReadinessProbe(r.readinessProbe)
 		var mds []model.ManifestName
 		for _, md := range r.resourceDeps {
@@ -1582,6 +1611,21 @@ func (s *tiltfileState) translateLocal() ([]model.Manifest, error) {
 	}
 
 	return result, nil
+}
+
+func (s *tiltfileState) tempDir() (*fwatch.TempDir, error) {
+	if s.scratchDir == nil {
+		dir, err := fwatch.NewDir("tiltfile")
+		if err != nil {
+			return dir, err
+		}
+		s.scratchDir = dir
+		go func() {
+			<-s.ctx.Done()
+			_ = s.scratchDir.TearDown()
+		}()
+	}
+	return s.scratchDir, nil
 }
 
 func validateResourceDependencies(ms []model.Manifest) error {

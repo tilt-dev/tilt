@@ -469,7 +469,7 @@ func TestDockerComposeImageBuild(t *testing.T) {
 	assert.Equal(t, 1, f.docker.BuildCount)
 	assert.Equal(t, 0, f.docker.PushCount)
 	assert.Empty(t, f.k8s.Yaml, "expect no k8s YAML for DockerCompose resource")
-	assert.Len(t, f.dcCli.UpCalls, 1)
+	assert.Len(t, f.dcCli.UpCalls(), 1)
 }
 
 func TestDockerComposeLiveUpdate(t *testing.T) {

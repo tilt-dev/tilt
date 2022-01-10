@@ -28,6 +28,8 @@ import (
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcestrategy"
 )
 
+const ClusterNameDefault = "default"
+
 // +genclient
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -95,6 +97,10 @@ type DockerClusterConnection struct {
 var _ resource.Object = &Cluster{}
 var _ resourcestrategy.Validater = &Cluster{}
 
+func (in *Cluster) GetSpec() interface{} {
+	return in.Spec
+}
+
 func (in *Cluster) GetObjectMeta() *metav1.ObjectMeta {
 	return &in.ObjectMeta
 }
@@ -152,6 +158,14 @@ type ClusterStatus struct {
 	//
 	// +optional
 	Error string `json:"error,omitempty" protobuf:"bytes,2,opt,name=error"`
+
+	// ConnectedAt indicates the time at which the cluster connection was established.
+	//
+	// Consumers can use this to detect when the underlying config has changed
+	// and refresh their client/connection accordingly.
+	//
+	// +optional
+	ConnectedAt *metav1.MicroTime `json:"connectedAt,omitempty" protobuf:"bytes,3,opt,name=connectedAt"`
 }
 
 // Cluster implements ObjectWithStatusSubResource interface.

@@ -10,36 +10,33 @@ import (
 
 	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
+	ktypes "k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/imagemap"
 	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-type CustomBuilder interface {
-	Build(ctx context.Context, refs container.RefSet, cb model.CustomBuild) (container.TaggedRefs, error)
-}
-
-type ExecCustomBuilder struct {
+type CustomBuilder struct {
 	dCli  docker.Client
 	clock Clock
 }
 
-func NewExecCustomBuilder(dCli docker.Client, clock Clock) *ExecCustomBuilder {
-	return &ExecCustomBuilder{
+func NewCustomBuilder(dCli docker.Client, clock Clock) *CustomBuilder {
+	return &CustomBuilder{
 		dCli:  dCli,
 		clock: clock,
 	}
 }
 
-func (b *ExecCustomBuilder) Build(ctx context.Context, refs container.RefSet, cb model.CustomBuild) (container.TaggedRefs, error) {
-	workDir := cb.WorkDir
-	expectedTag := cb.Tag
-	command := cb.Command
-
-	skipsLocalDocker := cb.SkipsLocalDocker
-	outputsImageRefTo := cb.OutputsImageRefTo
+func (b *CustomBuilder) Build(ctx context.Context, refs container.RefSet,
+	spec v1alpha1.CmdImageSpec,
+	imageMaps map[ktypes.NamespacedName]*v1alpha1.ImageMap) (container.TaggedRefs, error) {
+	expectedTag := spec.OutputTag
+	outputsImageRefTo := spec.OutputsImageRefTo
 
 	var expectedBuildRefs container.TaggedRefs
 	var registryHost string
@@ -62,20 +59,22 @@ func (b *ExecCustomBuilder) Build(ctx context.Context, refs container.RefSet, cb
 		// the registry, and re-add it later.
 		expectedBuildRefs, err = refs.WithoutRegistry().AddTagSuffix(expectedTag)
 		if err != nil {
-			return container.TaggedRefs{}, errors.Wrap(err, "CustomBuilder.Build")
+			return container.TaggedRefs{}, errors.Wrap(err, "custom_build")
 		}
 	} else {
 		// In "normal" mode, the user's script should use whichever registry tag we give it.
 		expectedBuildRefs, err = refs.AddTagSuffix(fmt.Sprintf("tilt-build-%d", b.clock.Now().Unix()))
 		if err != nil {
-			return container.TaggedRefs{}, errors.Wrap(err, "CustomBuilder.Build")
+			return container.TaggedRefs{}, errors.Wrap(err, "custom_build")
 		}
 	}
 
 	expectedBuildResult := expectedBuildRefs.LocalRef
 
-	cmd := exec.CommandContext(ctx, command.Argv[0], command.Argv[1:]...)
-	cmd.Dir = workDir
+	// TODO(nick): Use the Cmd API.
+	// TODO(nick): Inject the image maps into the command environment.
+	cmd := exec.CommandContext(ctx, spec.Args[0], spec.Args[1:]...)
+	cmd.Dir = spec.Dir
 	cmd.Env = logger.DefaultEnv(ctx)
 
 	l := logger.Get(ctx)
@@ -101,12 +100,16 @@ func (b *ExecCustomBuilder) Build(ctx context.Context, refs container.RefSet, cb
 		}
 	}
 	cmd.Env = append(os.Environ(), extraEnvVars...)
+	err = imagemap.InjectIntoLocalEnv(cmd, spec.ImageMaps, imageMaps)
+	if err != nil {
+		return container.TaggedRefs{}, errors.Wrap(err, "custom_build")
+	}
 
 	w := l.Writer(logger.InfoLvl)
 	cmd.Stdout = w
 	cmd.Stderr = w
 
-	l.Infof("Running custom build cmd %q", command)
+	l.Infof("Running custom build cmd %q", model.Cmd{Argv: spec.Args}.String())
 	err = cmd.Run()
 	if err != nil {
 		return container.TaggedRefs{}, errors.Wrap(err, "Custom build command failed")
@@ -122,7 +125,7 @@ func (b *ExecCustomBuilder) Build(ctx context.Context, refs container.RefSet, cb
 
 	// If the command skips the local docker registry, then we don't expect the image
 	// to be available (because the command has its own registry).
-	if skipsLocalDocker {
+	if spec.OutputMode == v1alpha1.CmdImageOutputRemote {
 		return expectedBuildRefs, nil
 	}
 
@@ -143,24 +146,24 @@ func (b *ExecCustomBuilder) Build(ctx context.Context, refs container.RefSet, cb
 
 	tag, err := digestAsTag(dig)
 	if err != nil {
-		return container.TaggedRefs{}, errors.Wrap(err, "CustomBuilder.Build")
+		return container.TaggedRefs{}, errors.Wrap(err, "custom_build")
 	}
 
 	taggedWithDigest, err := refs.AddTagSuffix(tag)
 	if err != nil {
-		return container.TaggedRefs{}, errors.Wrap(err, "CustomBuilder.Build")
+		return container.TaggedRefs{}, errors.Wrap(err, "custom_build")
 	}
 
 	// Docker client only needs to care about the localImage
 	err = b.dCli.ImageTag(ctx, dig.String(), taggedWithDigest.LocalRef.String())
 	if err != nil {
-		return container.TaggedRefs{}, errors.Wrap(err, "CustomBuilder.Build")
+		return container.TaggedRefs{}, errors.Wrap(err, "custom_build")
 	}
 
 	return taggedWithDigest, nil
 }
 
-func (b *ExecCustomBuilder) readImageRef(ctx context.Context, outputsImageRefTo string) (container.TaggedRefs, error) {
+func (b *CustomBuilder) readImageRef(ctx context.Context, outputsImageRefTo string) (container.TaggedRefs, error) {
 	contents, err := ioutil.ReadFile(outputsImageRefTo)
 	if err != nil {
 		return container.TaggedRefs{}, fmt.Errorf("Could not find image ref in output. Your custom_build script should have written to %s: %v", outputsImageRefTo, err)

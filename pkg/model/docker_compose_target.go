@@ -2,6 +2,8 @@ package model
 
 import (
 	"fmt"
+
+	"github.com/tilt-dev/tilt/internal/sliceutils"
 )
 
 type DockerComposeTarget struct {
@@ -10,8 +12,6 @@ type DockerComposeTarget struct {
 	Name TargetName
 
 	ServiceYAML string // for diff'ing when config files change
-
-	dependencyIDs []TargetID
 
 	publishedPorts []int
 
@@ -39,7 +39,14 @@ func (t DockerComposeTarget) ID() TargetID {
 }
 
 func (t DockerComposeTarget) DependencyIDs() []TargetID {
-	return t.dependencyIDs
+	result := make([]TargetID, 0, len(t.Spec.ImageMaps))
+	for _, im := range t.Spec.ImageMaps {
+		result = append(result, TargetID{
+			Type: TargetTypeImage,
+			Name: TargetName(im),
+		})
+	}
+	return result
 }
 
 func (t DockerComposeTarget) PublishedPorts() []int {
@@ -56,8 +63,8 @@ func (t DockerComposeTarget) WithPublishedPorts(ports []int) DockerComposeTarget
 	return t
 }
 
-func (t DockerComposeTarget) WithDependencyIDs(ids []TargetID) DockerComposeTarget {
-	t.dependencyIDs = DedupeTargetIDs(ids)
+func (t DockerComposeTarget) WithImageMapDeps(names []string) DockerComposeTarget {
+	t.Spec.ImageMaps = sliceutils.Dedupe(names)
 	return t
 }
 

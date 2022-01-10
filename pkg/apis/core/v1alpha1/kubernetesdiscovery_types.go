@@ -90,6 +90,13 @@ type KubernetesDiscoverySpec struct {
 	//
 	// +optional
 	PodLogStreamTemplateSpec *PodLogStreamTemplateSpec `json:"podLogStreamTemplateSpec,omitempty" protobuf:"bytes,4,opt,name=podLogStreamTemplateSpec"`
+
+	// Cluster name to determine the Kubernetes cluster.
+	//
+	// If not provided, "default" will be used.
+	//
+	// +optional
+	Cluster string `json:"cluster" protobuf:"bytes,5,opt,name=cluster"`
 }
 
 // KubernetesWatchRef is similar to v1.ObjectReference from the Kubernetes API and is used to determine
@@ -149,7 +156,14 @@ type PodLogStreamTemplateSpec struct {
 	IgnoreContainers []string `json:"ignoreContainers,omitempty" protobuf:"bytes,3,rep,name=ignoreContainers"`
 }
 
+func (in *KubernetesDiscovery) Default() {
+	if in.Spec.Cluster == "" {
+		in.Spec.Cluster = ClusterNameDefault
+	}
+}
+
 var _ resource.Object = &KubernetesDiscovery{}
+var _ resourcestrategy.Defaulter = &KubernetesDiscovery{}
 var _ resourcestrategy.Validater = &KubernetesDiscovery{}
 var _ resourcerest.ShortNamesProvider = &KubernetesDiscovery{}
 
@@ -218,6 +232,26 @@ type KubernetesDiscoveryStatus struct {
 
 	// Pods that have been discovered based on the criteria in the spec.
 	Pods []Pod `json:"pods" protobuf:"bytes,1,rep,name=pods"`
+
+	// Waiting contains information about why the monitor has not started.
+	//
+	// +optional
+	Waiting *KubernetesDiscoveryStateWaiting `json:"waiting,omitempty" protobuf:"bytes,3,opt,name=waiting"`
+
+	// Running contains information about the currently running monitor.
+	//
+	// +optional
+	Running *KubernetesDiscoveryStateRunning `json:"running,omitempty" protobuf:"bytes,4,opt,name=running"`
+}
+
+type KubernetesDiscoveryStateWaiting struct {
+	// Reason the monitor has not yet been started.
+	Reason string `json:"reason" protobuf:"bytes,1,opt,name=reason"`
+}
+
+type KubernetesDiscoveryStateRunning struct {
+	// StartTime is when Kubernetes resource discovery began.
+	StartTime metav1.MicroTime `json:"startTime" protobuf:"bytes,1,opt,name=startTime"`
 }
 
 // KubernetesDiscovery implements ObjectWithStatusSubResource interface.

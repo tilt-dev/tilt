@@ -8,7 +8,6 @@ import { useResourceNav } from "./ResourceNav"
 import SidebarIcon from "./SidebarIcon"
 import SidebarItem from "./SidebarItem"
 import SidebarTriggerButton from "./SidebarTriggerButton"
-import { SidebarTriggerModeToggle } from "./SidebarTriggerModeToggle"
 import StarResourceButton, {
   StarResourceButtonRoot,
 } from "./StarResourceButton"
@@ -234,6 +233,10 @@ function holdStatusText(hold?: Hold | null): string {
     return "Pending"
   }
 
+  if (hold.clusters.length) {
+    return "Waiting for cluster connection"
+  }
+
   if (hold.images.length) {
     return "Waiting for shared image build"
   }
@@ -381,12 +384,6 @@ export function EnabledSidebarItemView(props: SidebarItemViewProps) {
               alertCount={item.buildAlertCount}
             />
             <SidebarItemText>{buildStatusText(item)}</SidebarItemText>
-            {item.isTest && (
-              <SidebarTriggerModeToggle
-                triggerMode={item.triggerMode}
-                onModeToggle={onModeToggle}
-              />
-            )}
           </SidebarItemBuildBox>
         </SidebarItemInnerBox>
       </SidebarItemBox>

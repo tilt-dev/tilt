@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tilt-dev/tilt/internal/timecmp"
@@ -41,7 +42,7 @@ func TestLogs(t *testing.T) {
 
 	f.kClient.SetLogsForPodContainer(podID, cName, "hello world!")
 
-	start := time.Now()
+	start := f.clock.Now()
 
 	pb := newPodBuilder(podID).addRunningContainer(cName, cID)
 	f.kClient.UpsertPod(pb.toPod())
@@ -59,6 +60,29 @@ func TestLogs(t *testing.T) {
 	assert.Equal(t, []reconcile.Request{
 		{NamespacedName: streamNN},
 	}, f.plsc.podSource.indexer.EnqueueKey(indexer.Key{Name: podNN, GVK: podGVK}))
+}
+
+func TestLogCleanup(t *testing.T) {
+	f := newPLMFixture(t)
+
+	f.kClient.SetLogsForPodContainer(podID, cName, "hello world!")
+
+	start := f.clock.Now()
+	pb := newPodBuilder(podID).addRunningContainer(cName, cID)
+	f.kClient.UpsertPod(pb.toPod())
+
+	pls := plsFromPod("server", pb, start)
+	f.Create(pls)
+
+	f.triggerPodEvent(podID)
+	f.AssertOutputContains("hello world!")
+
+	f.Delete(pls)
+	assert.Len(t, f.plsc.watches, 0)
+
+	// TODO(nick): Currently, namespace watches are never cleanedup,
+	// because the user might restart them again.
+	assert.Len(t, f.plsc.podSource.watchesByNamespace, 1)
 }
 
 func TestLogActions(t *testing.T) {
@@ -225,14 +249,7 @@ func TestLogReconnection(t *testing.T) {
 	f.kClient.SetLogReaderForPodContainer(podID, cName, reader)
 
 	// Set up fake time
-	startTime := time.Now()
-	currentTime := startTime.Add(5 * time.Second)
-	timeCh := make(chan time.Time)
-	ticker := time.Ticker{C: timeCh}
-	f.plsc.now = func() time.Time { return currentTime }
-	f.plsc.since = func(t time.Time) time.Duration { return currentTime.Sub(t) }
-	f.plsc.newTicker = func(d time.Duration) *time.Ticker { return &ticker }
-
+	startTime := f.clock.Now()
 	f.Create(plsFromPod("server", pb, startTime))
 
 	_, err := writer.Write([]byte("hello world!"))
@@ -240,8 +257,8 @@ func TestLogReconnection(t *testing.T) {
 	f.AssertOutputContains("hello world!")
 	f.AssertLogStartTime(startTime)
 
-	currentTime = currentTime.Add(20 * time.Second)
-	lastRead := currentTime
+	f.clock.Advance(20 * time.Second)
+	lastRead := f.clock.Now()
 	_, _ = writer.Write([]byte("hello world2!"))
 	f.AssertOutputContains("hello world2!")
 
@@ -256,18 +273,15 @@ func TestLogReconnection(t *testing.T) {
 	}()
 	f.AssertOutputDoesNotContain("goodbye world!")
 
-	currentTime = currentTime.Add(5 * time.Second)
-	timeCh <- currentTime
+	f.clock.Advance(5 * time.Second)
 	f.AssertOutputDoesNotContain("goodbye world!")
 
-	currentTime = currentTime.Add(5 * time.Second)
-	timeCh <- currentTime
+	f.clock.Advance(5 * time.Second)
 	f.AssertOutputDoesNotContain("goodbye world!")
 	f.AssertLogStartTime(startTime)
 
 	// simulate 15s since we last read a log; this triggers a reconnect
-	currentTime = currentTime.Add(5 * time.Second)
-	timeCh <- currentTime
+	f.clock.Advance(15 * time.Second)
 	time.Sleep(20 * time.Millisecond)
 	assert.Error(t, f.kClient.LastPodLogContext.Err())
 	require.NoError(t, writer.Close())
@@ -371,6 +385,22 @@ func TestInfiniteLoop(t *testing.T) {
 	}, 200*time.Millisecond, 10*time.Millisecond)
 }
 
+func TestReconcilerIndexing(t *testing.T) {
+	f := newPLMFixture(t)
+
+	pls := plsFromPod("server", newPodBuilder(podID), f.clock.Now())
+	pls.Namespace = "some-ns"
+	pls.Spec.Cluster = "my-cluster"
+	f.Create(pls)
+
+	reqs := f.plsc.indexer.Enqueue(&v1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "some-ns", Name: "my-cluster"},
+	})
+	assert.ElementsMatch(t, []reconcile.Request{
+		{NamespacedName: types.NamespacedName{Namespace: "some-ns", Name: "default-pod-id"}},
+	}, reqs)
+}
+
 type plmStore struct {
 	t testing.TB
 	*store.TestingStore
@@ -405,6 +435,7 @@ type plmFixture struct {
 	plsc    *Controller
 	out     *bufsync.ThreadSafeBuffer
 	store   *plmStore
+	clock   clockwork.FakeClock
 }
 
 func newPLMFixture(t testing.TB) *plmFixture {
@@ -418,9 +449,10 @@ func newPLMFixture(t testing.TB) *plmFixture {
 
 	cfb := fake.NewControllerFixtureBuilder(t)
 
+	clock := clockwork.NewFakeClock()
 	st := newPLMStore(t, out)
 	podSource := NewPodSource(ctx, kClient, cfb.Client.Scheme())
-	plsc := NewController(ctx, cfb.Client, st, kClient, podSource)
+	plsc := NewController(ctx, cfb.Client, cfb.Scheme(), st, kClient, podSource, clock)
 
 	return &plmFixture{
 		t:                 t,
@@ -430,6 +462,7 @@ func newPLMFixture(t testing.TB) *plmFixture {
 		ctx:               ctx,
 		out:               out,
 		store:             st,
+		clock:             clock,
 	}
 }
 

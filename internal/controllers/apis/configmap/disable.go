@@ -6,10 +6,10 @@ import (
 	"strconv"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
@@ -58,7 +58,7 @@ func MaybeNewDisableStatus(ctx context.Context, client client.Client, disableSou
 	if statusDiffers {
 		return &v1alpha1.DisableStatus{
 			Disabled:       isDisabled,
-			LastUpdateTime: metav1.Now(),
+			LastUpdateTime: apis.Now(),
 			Reason:         reason,
 		}, nil
 	}

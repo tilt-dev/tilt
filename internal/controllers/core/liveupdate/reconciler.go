@@ -927,9 +927,13 @@ func (r *Reconciler) applyInternal(
 
 	var lastExecErrorStatus *v1alpha1.LiveUpdateContainerStatus
 	for _, cInfo := range containers {
+		// TODO(nick): We should try to distinguish between cases where the tar writer
+		// fails (which is recoverable) vs when the server-side unpacking
+		// fails (which may not be recoverable).
 		archive := build.TarArchiveForPaths(ctx, toArchive, nil)
 		err = cu.UpdateContainer(ctx, cInfo, archive,
 			build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
+		_ = archive.Close()
 
 		lastFileTimeSynced := input.LastFileTimeSynced
 		if lastFileTimeSynced.IsZero() {

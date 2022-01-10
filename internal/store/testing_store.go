@@ -105,9 +105,11 @@ func WaitForAction(t testing.TB, typ reflect.Type, getActions func() []Action) A
 	start := time.Now()
 	timeout := 500 * time.Millisecond
 
+	current := 0
 	for time.Since(start) < timeout {
 		actions := getActions()
-		for _, a := range actions {
+		for ; current < len(actions); current++ {
+			a := actions[current]
 			if reflect.TypeOf(a) == typ {
 				return a
 			} else if la, ok := a.(LogAction); ok {
@@ -127,9 +129,11 @@ func AssertNoActionOfType(t testing.TB, typ reflect.Type, getActions func() []Ac
 	start := time.Now()
 	timeout := 300 * time.Millisecond
 
+	current := 0
 	for time.Since(start) < timeout {
 		actions := getActions()
-		for _, a := range actions {
+		for ; current < len(actions); current++ {
+			a := actions[current]
 			if reflect.TypeOf(a) == typ {
 				t.Fatalf("Found action of type %s where none was expected: %+v", typ.Name(), a)
 			} else if la, ok := a.(LogAction); ok {

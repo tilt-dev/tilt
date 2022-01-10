@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -12,24 +13,30 @@ import (
 	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	ktypes "k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
+var defaultCluster = &v1alpha1.Cluster{
+	ObjectMeta: metav1.ObjectMeta{Name: "default"},
+}
 var TwoURLRegistry = container.MustNewRegistryWithHostFromCluster("localhost:1234", "registry:1234")
 
 func TestCustomBuildSuccess(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
-	defer f.teardown()
+	defer f.TearDown()
 
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
 	f.dCli.Images["gcr.io/foo/bar:tilt-build-1551202573"] = types.ImageInspect{ID: string(sha)}
-	cb := model.CustomBuild{WorkDir: f.tdf.Path(), Command: model.ToHostCmd("exit 0")}
-	refs, err := f.cb.Build(f.ctx, refSetFromString("gcr.io/foo/bar"), cb)
+	cb := f.customBuild("exit 0")
+	refs, err := f.cb.Build(f.ctx, refSetFromString("gcr.io/foo/bar"), cb.CmdImageSpec, nil)
 	require.NoError(t, err)
 
 	assert.Equal(f.t, container.MustParseNamed("gcr.io/foo/bar:tilt-11cd0eb38bc3ceb9"), refs.LocalRef)
@@ -38,12 +45,12 @@ func TestCustomBuildSuccess(t *testing.T) {
 
 func TestCustomBuildSuccessClusterRefTaggedWithDigest(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
-	defer f.teardown()
+	defer f.TearDown()
 
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
 	f.dCli.Images["localhost:1234/foo_bar:tilt-build-1551202573"] = types.ImageInspect{ID: string(sha)}
-	cb := model.CustomBuild{WorkDir: f.tdf.Path(), Command: model.ToHostCmd("exit 0")}
-	refs, err := f.cb.Build(f.ctx, refSetWithRegistryFromString("foo/bar", TwoURLRegistry), cb)
+	cb := f.customBuild("exit 0")
+	refs, err := f.cb.Build(f.ctx, refSetWithRegistryFromString("foo/bar", TwoURLRegistry), cb.CmdImageSpec, nil)
 	require.NoError(t, err)
 
 	assert.Equal(f.t, container.MustParseNamed("localhost:1234/foo_bar:tilt-11cd0eb38bc3ceb9"), refs.LocalRef)
@@ -52,12 +59,13 @@ func TestCustomBuildSuccessClusterRefTaggedWithDigest(t *testing.T) {
 
 func TestCustomBuildSuccessClusterRefWithCustomTag(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
-	defer f.teardown()
+	defer f.TearDown()
 
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
 	f.dCli.Images["gcr.io/foo/bar:my-tag"] = types.ImageInspect{ID: string(sha)}
-	cb := model.CustomBuild{WorkDir: f.tdf.Path(), Command: model.ToHostCmd("exit 0"), Tag: "my-tag"}
-	refs, err := f.cb.Build(f.ctx, refSetWithRegistryFromString("gcr.io/foo/bar", TwoURLRegistry), cb)
+	cb := f.customBuild("exit 0")
+	cb.CmdImageSpec.OutputTag = "my-tag"
+	refs, err := f.cb.Build(f.ctx, refSetWithRegistryFromString("gcr.io/foo/bar", TwoURLRegistry), cb.CmdImageSpec, nil)
 	require.NoError(t, err)
 
 	assert.Equal(f.t, container.MustParseNamed("localhost:1234/gcr.io_foo_bar:tilt-11cd0eb38bc3ceb9"), refs.LocalRef)
@@ -66,10 +74,11 @@ func TestCustomBuildSuccessClusterRefWithCustomTag(t *testing.T) {
 
 func TestCustomBuildSuccessSkipsLocalDocker(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
-	defer f.teardown()
+	defer f.TearDown()
 
-	cb := model.CustomBuild{WorkDir: f.tdf.Path(), Command: model.ToHostCmd("exit 0"), SkipsLocalDocker: true}
-	refs, err := f.cb.Build(f.ctx, refSetFromString("gcr.io/foo/bar"), cb)
+	cb := f.customBuild("exit 0")
+	cb.CmdImageSpec.OutputMode = v1alpha1.CmdImageOutputRemote
+	refs, err := f.cb.Build(f.ctx, refSetFromString("gcr.io/foo/bar"), cb.CmdImageSpec, nil)
 	require.NoError(f.t, err)
 
 	assert.Equal(f.t, container.MustParseNamed("gcr.io/foo/bar:tilt-build-1551202573"), refs.LocalRef)
@@ -78,10 +87,11 @@ func TestCustomBuildSuccessSkipsLocalDocker(t *testing.T) {
 
 func TestCustomBuildSuccessClusterRefTaggedIfSkipsLocalDocker(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
-	defer f.teardown()
+	defer f.TearDown()
 
-	cb := model.CustomBuild{WorkDir: f.tdf.Path(), Command: model.ToHostCmd("exit 0"), SkipsLocalDocker: true}
-	refs, err := f.cb.Build(f.ctx, refSetWithRegistryFromString("foo/bar", TwoURLRegistry), cb)
+	cb := f.customBuild("exit 0")
+	cb.CmdImageSpec.OutputMode = v1alpha1.CmdImageOutputRemote
+	refs, err := f.cb.Build(f.ctx, refSetWithRegistryFromString("foo/bar", TwoURLRegistry), cb.CmdImageSpec, nil)
 	require.NoError(f.t, err)
 
 	assert.Equal(f.t, container.MustParseNamed("localhost:1234/foo_bar:tilt-build-1551202573"), refs.LocalRef)
@@ -90,31 +100,33 @@ func TestCustomBuildSuccessClusterRefTaggedIfSkipsLocalDocker(t *testing.T) {
 
 func TestCustomBuildCmdFails(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
-	defer f.teardown()
+	defer f.TearDown()
 
-	cb := model.CustomBuild{WorkDir: f.tdf.Path(), Command: model.ToHostCmd("exit 1")}
-	_, err := f.cb.Build(f.ctx, refSetFromString("gcr.io/foo/bar"), cb)
+	cb := f.customBuild("exit 1")
+	_, err := f.cb.Build(f.ctx, refSetFromString("gcr.io/foo/bar"), cb.CmdImageSpec, nil)
 	// TODO(dmiller) better error message
 	assert.EqualError(t, err, "Custom build command failed: exit status 1")
 }
 
 func TestCustomBuildImgNotFound(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
-	defer f.teardown()
+	defer f.TearDown()
 
-	cb := model.CustomBuild{WorkDir: f.tdf.Path(), Command: model.ToHostCmd("exit 0")}
-	_, err := f.cb.Build(f.ctx, refSetFromString("gcr.io/foo/bar"), cb)
+	cb := f.customBuild("exit 0")
+	_, err := f.cb.Build(f.ctx, refSetFromString("gcr.io/foo/bar"), cb.CmdImageSpec, nil)
 	assert.Contains(t, err.Error(), "fake docker client error: object not found")
 }
 
 func TestCustomBuildExpectedTag(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
-	defer f.teardown()
+	defer f.TearDown()
 
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
 	f.dCli.Images["gcr.io/foo/bar:the-tag"] = types.ImageInspect{ID: string(sha)}
-	cb := model.CustomBuild{WorkDir: f.tdf.Path(), Command: model.ToHostCmd("exit 0"), Tag: "the-tag"}
-	refs, err := f.cb.Build(f.ctx, refSetFromString("gcr.io/foo/bar"), cb)
+
+	cb := f.customBuild("exit 0")
+	cb.CmdImageSpec.OutputTag = "the-tag"
+	refs, err := f.cb.Build(f.ctx, refSetFromString("gcr.io/foo/bar"), cb.CmdImageSpec, nil)
 	require.NoError(t, err)
 
 	assert.Equal(f.t, container.MustParseNamed("gcr.io/foo/bar:tilt-11cd0eb38bc3ceb9"), refs.LocalRef)
@@ -126,14 +138,15 @@ func TestCustomBuilderExecsRelativeToTiltfile(t *testing.T) {
 		t.Skip("no sh on windows")
 	}
 	f := newFakeCustomBuildFixture(t)
-	defer f.teardown()
+	defer f.TearDown()
 
-	f.tdf.WriteFile("proj/build.sh", "exit 0")
+	f.WriteFile("proj/build.sh", "exit 0")
 
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
 	f.dCli.Images["gcr.io/foo/bar:tilt-build-1551202573"] = types.ImageInspect{ID: string(sha)}
-	cb := model.CustomBuild{WorkDir: filepath.Join(f.tdf.Path(), "proj"), Command: model.ToHostCmd("./build.sh")}
-	refs, err := f.cb.Build(f.ctx, refSetFromString("gcr.io/foo/bar"), cb)
+	cb := f.customBuild("./build.sh")
+	cb.CmdImageSpec.Dir = filepath.Join(f.Path(), "proj")
+	refs, err := f.cb.Build(f.ctx, refSetFromString("gcr.io/foo/bar"), cb.CmdImageSpec, nil)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -143,17 +156,14 @@ func TestCustomBuilderExecsRelativeToTiltfile(t *testing.T) {
 
 func TestCustomBuildOutputsToImageRefSuccess(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
-	defer f.teardown()
+	defer f.TearDown()
 
 	myTag := "gcr.io/foo/bar:dev"
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
 	f.dCli.Images[myTag] = types.ImageInspect{ID: string(sha)}
-	cb := model.CustomBuild{
-		WorkDir:           f.tdf.Path(),
-		Command:           model.ToHostCmd("echo gcr.io/foo/bar:dev > ref.txt"),
-		OutputsImageRefTo: f.tdf.JoinPath("ref.txt"),
-	}
-	refs, err := f.cb.Build(f.ctx, refSetFromString("gcr.io/foo/bar"), cb)
+	cb := f.customBuild("echo gcr.io/foo/bar:dev > ref.txt")
+	cb.CmdImageSpec.OutputsImageRefTo = f.JoinPath("ref.txt")
+	refs, err := f.cb.Build(f.ctx, refSetFromString("gcr.io/foo/bar"), cb.CmdImageSpec, nil)
 	require.NoError(t, err)
 
 	assert.Equal(f.t, container.MustParseNamed(myTag), refs.LocalRef)
@@ -162,15 +172,12 @@ func TestCustomBuildOutputsToImageRefSuccess(t *testing.T) {
 
 func TestCustomBuildOutputsToImageRefMissingImage(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
-	defer f.teardown()
+	defer f.TearDown()
 
 	myTag := "gcr.io/foo/bar:dev"
-	cb := model.CustomBuild{
-		WorkDir:           f.tdf.Path(),
-		Command:           model.ToHostCmd(fmt.Sprintf("echo %s > ref.txt", myTag)),
-		OutputsImageRefTo: f.tdf.JoinPath("ref.txt"),
-	}
-	_, err := f.cb.Build(f.ctx, refSetFromString("gcr.io/foo/bar"), cb)
+	cb := f.customBuild(fmt.Sprintf("echo %s > ref.txt", myTag))
+	cb.CmdImageSpec.OutputsImageRefTo = f.JoinPath("ref.txt")
+	_, err := f.cb.Build(f.ctx, refSetFromString("gcr.io/foo/bar"), cb.CmdImageSpec, nil)
 	require.NotNil(t, err)
 	assert.Contains(t, err.Error(),
 		fmt.Sprintf("fake docker client error: object not found (fakeClient.Images key: %s)", myTag))
@@ -178,43 +185,65 @@ func TestCustomBuildOutputsToImageRefMissingImage(t *testing.T) {
 
 func TestCustomBuildOutputsToImageRefMalformedImage(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
-	defer f.teardown()
+	defer f.TearDown()
 
-	cb := model.CustomBuild{
-		WorkDir:           f.tdf.Path(),
-		Command:           model.ToHostCmd("echo 999 > ref.txt"),
-		OutputsImageRefTo: f.tdf.JoinPath("ref.txt"),
-	}
-	_, err := f.cb.Build(f.ctx, refSetFromString("gcr.io/foo/bar"), cb)
+	cb := f.customBuild("echo 999 > ref.txt")
+	cb.CmdImageSpec.OutputsImageRefTo = f.JoinPath("ref.txt")
+	_, err := f.cb.Build(f.ctx, refSetFromString("gcr.io/foo/bar"), cb.CmdImageSpec, nil)
 	require.NotNil(t, err)
 	assert.Contains(t, err.Error(),
 		fmt.Sprintf("Output image ref in file %s was invalid: Expected reference \"999\" to contain a tag",
-			f.tdf.JoinPath("ref.txt")))
+			f.JoinPath("ref.txt")))
 }
 
 func TestCustomBuildOutputsToImageRefSkipsLocalDocker(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
-	defer f.teardown()
+	defer f.TearDown()
 
 	myTag := "gcr.io/foo/bar:dev"
-	cb := model.CustomBuild{
-		WorkDir:           f.tdf.Path(),
-		Command:           model.ToHostCmd(fmt.Sprintf("echo %s > ref.txt", myTag)),
-		OutputsImageRefTo: f.tdf.JoinPath("ref.txt"),
-		SkipsLocalDocker:  true,
-	}
-	refs, err := f.cb.Build(f.ctx, refSetFromString("gcr.io/foo/bar"), cb)
+	cb := f.customBuild(fmt.Sprintf("echo %s > ref.txt", myTag))
+	cb.CmdImageSpec.OutputsImageRefTo = f.JoinPath("ref.txt")
+	cb.CmdImageSpec.OutputMode = v1alpha1.CmdImageOutputRemote
+	refs, err := f.cb.Build(f.ctx, refSetFromString("gcr.io/foo/bar"), cb.CmdImageSpec, nil)
 	require.NoError(t, err)
 	assert.Equal(f.t, container.MustParseNamed(myTag), refs.LocalRef)
 	assert.Equal(f.t, container.MustParseNamed(myTag), refs.ClusterRef)
 }
 
+func TestCustomBuildImageDep(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("no sh on windows")
+	}
+
+	f := newFakeCustomBuildFixture(t)
+	defer f.TearDown()
+
+	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
+	f.dCli.Images["gcr.io/foo/bar:tilt-build-1551202573"] = types.ImageInspect{ID: string(sha)}
+	cb := f.customBuild("echo $TILT_IMAGE_0 > image-0.txt")
+	cb.CmdImageSpec.ImageMaps = []string{"base"}
+
+	imageMaps := map[ktypes.NamespacedName]*v1alpha1.ImageMap{
+		ktypes.NamespacedName{Name: "base"}: &v1alpha1.ImageMap{
+			Status: v1alpha1.ImageMapStatus{
+				ImageFromLocal: "base:tilt-12345",
+			},
+		},
+	}
+
+	_, err := f.cb.Build(f.ctx, refSetFromString("gcr.io/foo/bar"), cb.CmdImageSpec, imageMaps)
+	require.NoError(t, err)
+
+	assert.Equal(f.t, "base:tilt-12345", strings.TrimSpace(f.ReadFile("image-0.txt")))
+}
+
 type fakeCustomBuildFixture struct {
+	*tempdir.TempDirFixture
+
 	t    *testing.T
 	ctx  context.Context
 	dCli *docker.FakeClient
-	cb   *ExecCustomBuilder
-	tdf  *tempdir.TempDirFixture
+	cb   *CustomBuilder
 }
 
 func newFakeCustomBuildFixture(t *testing.T) *fakeCustomBuildFixture {
@@ -224,19 +253,24 @@ func newFakeCustomBuildFixture(t *testing.T) *fakeCustomBuildFixture {
 		now: time.Unix(1551202573, 0),
 	}
 
-	tdf := tempdir.NewTempDirFixture(t)
+	cb := NewCustomBuilder(dCli, clock)
 
-	cb := NewExecCustomBuilder(dCli, clock)
-
-	f := &fakeCustomBuildFixture{
-		t:    t,
-		tdf:  tdf,
-		ctx:  ctx,
-		dCli: dCli,
-		cb:   cb,
+	return &fakeCustomBuildFixture{
+		TempDirFixture: tempdir.NewTempDirFixture(t),
+		t:              t,
+		ctx:            ctx,
+		dCli:           dCli,
+		cb:             cb,
 	}
+}
 
-	return f
+func (f *fakeCustomBuildFixture) customBuild(args string) model.CustomBuild {
+	return model.CustomBuild{
+		CmdImageSpec: v1alpha1.CmdImageSpec{
+			Args: model.ToHostCmd(args).Argv,
+			Dir:  f.Path(),
+		},
+	}
 }
 
 func refSetFromString(s string) container.RefSet {
@@ -250,8 +284,4 @@ func refSetWithRegistryFromString(ref string, reg container.Registry) container.
 		panic(err)
 	}
 	return r
-}
-
-func (f *fakeCustomBuildFixture) teardown() {
-	f.tdf.TearDown()
 }

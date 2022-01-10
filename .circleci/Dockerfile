@@ -14,6 +14,12 @@ RUN curl -sL https://deb.nodesource.com/setup_16.x | bash -
 
 RUN apt-get install -y nodejs
 
+RUN mv /usr/bin/docker-compose /usr/bin/docker-compose-v1
+ARG DOCKER_COMPOSE_V2_VERSION=v2.2.2
+RUN curl -fL "https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_V2_VERSION}/docker-compose-$(uname -s | tr '[A-Z]' '[a-z]')-$(uname -m)" -o /usr/local/bin/docker-compose \
+  && chmod a+x /usr/local/bin/docker-compose \
+  && docker-compose version
+
 USER circleci
 
 RUN sudo npm install -g firebase-tools

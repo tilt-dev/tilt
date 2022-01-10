@@ -73,6 +73,8 @@ func (ls *LabelSet) Unpack(v starlark.Value) error {
 		iter = x.Iterate()
 	case starlark.Tuple:
 		iter = x.Iterate()
+	case starlark.NoneType:
+		return nil
 	default:
 		return fmt.Errorf("value should be a label or List or Tuple of labels, but is of type %s", v.Type())
 	}

@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/docker/distribution/reference"
-	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -16,9 +15,9 @@ import (
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/controllers/core/cmdimage"
 	"github.com/tilt-dev/tilt/internal/controllers/core/dockerimage"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesapply"
-	"github.com/tilt-dev/tilt/internal/dockerfile"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
@@ -63,7 +62,7 @@ func NewKINDLoader(env k8s.Env, clusterName k8s.ClusterName) KINDLoader {
 }
 
 type ImageBuildAndDeployer struct {
-	db          build.DockerBuilder
+	db          *build.DockerBuilder
 	ib          *ImageBuilder
 	k8sClient   k8s.Client
 	env         k8s.Env
@@ -76,8 +75,8 @@ type ImageBuildAndDeployer struct {
 }
 
 func NewImageBuildAndDeployer(
-	db build.DockerBuilder,
-	customBuilder build.CustomBuilder,
+	db *build.DockerBuilder,
+	customBuilder *build.CustomBuilder,
 	k8sClient k8s.Client,
 	env k8s.Env,
 	kubeContext k8s.KubeContext,
@@ -150,13 +149,15 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 	if hasReusedStep {
 		ps.StartPipelineStep(ctx, "Loading cached images")
 		for _, result := range reused {
-			ref := store.LocalImageRefFromBuildResult(result)
-			ps.Printf(ctx, "- %s", container.FamiliarString(ref))
+			ps.Printf(ctx, "- %s", store.LocalImageRefFromBuildResult(result))
 		}
 		ps.EndPipelineStep(ctx)
 	}
 
-	iTargetMap := model.ImageTargetsByID(iTargets)
+	var cluster v1alpha1.Cluster
+	// If the cluster fetch fails, that's OK.
+	_ = ibd.ctrlClient.Get(ctx, types.NamespacedName{Name: "default"}, &cluster)
+
 	imageMapSet := make(map[types.NamespacedName]*v1alpha1.ImageMap, len(kTarget.ImageMaps))
 	for _, iTarget := range iTargets {
 		if iTarget.IsLiveUpdateOnly {
@@ -178,11 +179,6 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 			return store.ImageBuildResult{}, fmt.Errorf("Not an image target: %T", target)
 		}
 
-		iTarget, err := InjectImageDependencies(iTarget, iTargetMap, depResults)
-		if err != nil {
-			return store.ImageBuildResult{}, err
-		}
-
 		// TODO(nick): It might make sense to reset the ImageMapStatus here
 		// to an empty image while the image is building. maybe?
 		// I guess it depends on how image reconciliation works, and
@@ -190,10 +186,12 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		// while an image build is going on in parallel.
 		startTime := apis.NowMicro()
 		dockerimage.MaybeUpdateStatus(ctx, ibd.ctrlClient, iTarget, dockerimage.ToBuildingStatus(iTarget, startTime))
+		cmdimage.MaybeUpdateStatus(ctx, ibd.ctrlClient, iTarget, cmdimage.ToBuildingStatus(iTarget, startTime))
 
-		refs, stages, err := ibd.ib.Build(ctx, iTarget, ps)
+		refs, stages, err := ibd.ib.Build(ctx, iTarget, &cluster, imageMapSet, ps)
 		if err != nil {
 			dockerimage.MaybeUpdateStatus(ctx, ibd.ctrlClient, iTarget, dockerimage.ToCompletedFailStatus(iTarget, startTime, stages, err))
+			cmdimage.MaybeUpdateStatus(ctx, ibd.ctrlClient, iTarget, cmdimage.ToCompletedFailStatus(iTarget, startTime, err))
 			return store.ImageBuildResult{}, err
 		}
 
@@ -205,10 +203,12 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		if pushStage != nil && pushStage.Error != "" {
 			err := fmt.Errorf("%s", pushStage.Error)
 			dockerimage.MaybeUpdateStatus(ctx, ibd.ctrlClient, iTarget, dockerimage.ToCompletedFailStatus(iTarget, startTime, stages, err))
+			cmdimage.MaybeUpdateStatus(ctx, ibd.ctrlClient, iTarget, cmdimage.ToCompletedFailStatus(iTarget, startTime, err))
 			return store.ImageBuildResult{}, err
 		}
 
 		dockerimage.MaybeUpdateStatus(ctx, ibd.ctrlClient, iTarget, dockerimage.ToCompletedSuccessStatus(iTarget, startTime, stages, refs))
+		cmdimage.MaybeUpdateStatus(ctx, ibd.ctrlClient, iTarget, cmdimage.ToCompletedSuccessStatus(iTarget, startTime, refs))
 
 		result := store.NewImageBuildResult(iTarget.ID(), refs.LocalRef, refs.ClusterRef)
 		result.ImageMapStatus.BuildStartTime = &startTime
@@ -369,48 +369,4 @@ func (ibd *ImageBuildAndDeployer) delete(ctx context.Context, k8sTarget model.K8
 
 	// wait for entities to be fully deleted from the server so that it's safe to re-create them
 	return ibd.k8sClient.Delete(ctx, entities, true)
-}
-
-// Create a new ImageTarget with the Dockerfiles rewritten with the injected images.
-func InjectImageDependencies(iTarget model.ImageTarget, iTargetMap map[model.TargetID]model.ImageTarget, deps []store.ImageBuildResult) (model.ImageTarget, error) {
-	if len(deps) == 0 {
-		return iTarget, nil
-	}
-
-	df := dockerfile.Dockerfile("")
-	var buildArgs []string
-	switch bd := iTarget.BuildDetails.(type) {
-	case model.DockerBuild:
-		df = dockerfile.Dockerfile(bd.DockerfileContents)
-		buildArgs = bd.Args
-	default:
-		return model.ImageTarget{}, fmt.Errorf("image %q has no valid buildDetails", iTarget.Refs.ConfigurationRef)
-	}
-
-	ast, err := dockerfile.ParseAST(df)
-	if err != nil {
-		return model.ImageTarget{}, errors.Wrap(err, "injectImageDependencies")
-	}
-
-	for _, dep := range deps {
-		image := dep.ImageLocalRef
-		id := dep.TargetID()
-		modified, err := ast.InjectImageDigest(iTargetMap[id].Refs.ConfigurationRef, image, buildArgs)
-		if err != nil {
-			return model.ImageTarget{}, errors.Wrap(err, "injectImageDependencies")
-		} else if !modified {
-			return model.ImageTarget{}, fmt.Errorf("Could not inject image %q into Dockerfile of image %q", image, iTarget.Refs.ConfigurationRef)
-		}
-	}
-
-	newDf, err := ast.Print()
-	if err != nil {
-		return model.ImageTarget{}, errors.Wrap(err, "injectImageDependencies")
-	}
-
-	bd := iTarget.DockerBuildInfo()
-	bd.DockerImageSpec.DockerfileContents = newDf.String()
-	iTarget = iTarget.WithBuildDetails(bd)
-
-	return iTarget, nil
 }

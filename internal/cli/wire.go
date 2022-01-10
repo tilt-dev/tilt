@@ -1,4 +1,6 @@
+//go:build wireinject
 // +build wireinject
+
 // The build tag makes sure the stub is not built in the final build.
 
 package cli
@@ -72,7 +74,6 @@ var K8sWireSet = wire.NewSet(
 	k8s.ProvideContainerRuntime,
 	k8s.ProvideServerVersion,
 	k8s.ProvideK8sClient,
-	k8s.ProvideOwnerFetcher,
 	ProvideKubeContextOverride,
 	ProvideNamespaceOverride)
 
@@ -102,6 +103,7 @@ var BaseWireSet = wire.NewSet(
 	configs.NewTriggerQueueSubscriber,
 	telemetry.NewController,
 	dcwatch.NewEventWatcher,
+	dcwatch.NewDisableSubscriber,
 	runtimelog.NewDockerComposeLogManager,
 	cloud.WireSet,
 	cloudurl.ProvideAddress,
@@ -331,7 +333,7 @@ func provideClock() func() time.Time {
 }
 
 type DumpImageDeployRefDeps struct {
-	DockerBuilder build.DockerBuilder
+	DockerBuilder *build.DockerBuilder
 	DockerClient  docker.Client
 }
 

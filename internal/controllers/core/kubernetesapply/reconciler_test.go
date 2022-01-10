@@ -148,6 +148,41 @@ func TestBasicApplyCmd(t *testing.T) {
 	assert.Len(t, f.execer.Calls(), 1)
 }
 
+func TestApplyCmdWithImages(t *testing.T) {
+	f := newFixture(t)
+
+	f.Create(&v1alpha1.ImageMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "image-a",
+		},
+		Status: v1alpha1.ImageMapStatus{
+			Image:            "image-a:my-tag",
+			ImageFromCluster: "image-a:my-tag",
+		},
+	})
+
+	applyCmd, _ := f.createApplyCmd("custom-apply-cmd", testyaml.SanchoYAML)
+	ka := v1alpha1.KubernetesApply{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "a",
+		},
+		Spec: v1alpha1.KubernetesApplySpec{
+			ImageMaps: []string{"image-a"},
+			ApplyCmd:  &applyCmd,
+			DeleteCmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-delete-cmd"}},
+		},
+	}
+	f.Create(&ka)
+
+	if assert.Len(t, f.execer.Calls(), 1) {
+		call := f.execer.Calls()[0]
+		assert.Equal(t, []string{
+			"TILT_IMAGE_MAP_0=image-a",
+			"TILT_IMAGE_0=image-a:my-tag",
+		}, call.Cmd.Env)
+	}
+}
+
 func TestBasicApplyCmd_ExecError(t *testing.T) {
 	f := newFixture(t)
 
@@ -550,7 +585,7 @@ func newFixture(t *testing.T) *fixture {
 
 	execer := localexec.NewFakeExecer(t)
 
-	db := build.NewDockerImageBuilder(dockerClient, dockerfile.Labels{})
+	db := build.NewDockerBuilder(dockerClient, dockerfile.Labels{})
 	r := NewReconciler(cfb.Client, kClient, v1alpha1.NewScheme(), db, kubeContext, st, "default", execer)
 
 	return &fixture{

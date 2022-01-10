@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/cmdimage"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/dockerimage"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -160,6 +161,8 @@ func (b ManifestBuilder) Build() model.Manifest {
 	for index, iTarget := range b.iTargets {
 		if iTarget.IsDockerBuild() {
 			iTarget.DockerImageName = dockerimage.GetName(b.name, iTarget.ID())
+		} else if iTarget.IsCustomBuild() {
+			iTarget.CmdImageName = cmdimage.GetName(b.name, iTarget.ID())
 		}
 
 		if liveupdate.IsEmptySpec(iTarget.LiveUpdateSpec) {

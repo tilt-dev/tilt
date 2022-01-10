@@ -26,6 +26,7 @@ const Facets = "facets"
 const Labels = "labels"
 const LiveUpdateV2 = "live_update_v2"
 const DisableResources = "disable_resources"
+const BulkDisableResources = "bulk_disable_resources"
 
 // The Value a flag can have. Status should never be changed.
 type Value struct {
@@ -49,11 +50,11 @@ var MainDefaults = Defaults{
 	},
 	Snapshots: Value{
 		Enabled: true,
-		Status:  Active,
+		Status:  Obsolete,
 	},
 	UpdateHistory: Value{
 		Enabled: false,
-		Status:  Active,
+		Status:  Obsolete,
 	},
 	Facets: Value{
 		Enabled: true,
@@ -61,13 +62,17 @@ var MainDefaults = Defaults{
 	},
 	Labels: Value{
 		Enabled: true,
-		Status:  Active,
+		Status:  Obsolete,
 	},
 	LiveUpdateV2: Value{
 		Enabled: true,
 		Status:  Active,
 	},
 	DisableResources: Value{
+		Enabled: false,
+		Status:  Active,
+	},
+	BulkDisableResources: Value{
 		Enabled: false,
 		Status:  Active,
 	},
