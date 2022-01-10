@@ -1,0 +1,31 @@
+# Welcome to Tilt!
+# To get you started as quickly as possible, we have created this generic Tiltfile. 
+# Modify and comment out any commands to make them work for you.
+# Happy Tilting!
+
+
+# use a custom remote registry
+# more info on https://docs.tilt.dev/personal_registry.html
+# default_registry('gcr.io/my-public-registry')
+
+# run a one-time command e.g. to customize your cluster
+# more info on https://docs.tilt.dev/local_resource.html
+# local_resource('my-command', cmd='./scripts/my-command.sh', deps=['scripts/my-command.sh'], allow_parallel=True, auto_init=False)
+
+# build docker image for a resource
+# more info on https://docs.tilt.dev/api.html#api.docker_build
+# docker_build('my-resource', '.', dockerfile='deploy/docs.dockerfile',
+              # define the only files that are relevant for the docker build
+              # only=['./src', './healthcheck.sh', './docs'],
+              # define steps for updating a running container, more info on https://docs.tilt.dev/live_update_reference.html
+              # live_update=[
+                # specify where files should be synced to from host to container system
+                # sync('./src', '/src/'),
+                # specify the command to be executed when updating a container, run only when files defined in "trigger" list changed
+                # run('sync.sh', trigger=['watched-file'])
+              # ]
+# )
+
+# Apply k8s manifests
+# more info on https://docs.tilt.dev/api.html#api.k8s_yaml
+# k8s_yaml(['k8s/deployment.yaml', 'k8s/service.yaml'])
