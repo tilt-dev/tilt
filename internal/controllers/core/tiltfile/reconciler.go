@@ -51,6 +51,14 @@ type Reconciler struct {
 	loadCount            int // used to differentiate spans
 
 	runs map[types.NamespacedName]*runStatus
+
+	// dockerConnectMetricReporter ensures we only report a single Docker connect status
+	// event per `tilt up`. Currently, a client is initialized on start (via wire/DI)
+	// and if there's an error, an exploding client is created; we'll never attempt
+	// to make a new one after that, so reporting on subsequent Tiltfile loads is
+	// not useful, as there's no way its status can change currently (a restart of
+	// Tilt is required).
+	dockerConnectMetricReporter sync.Once
 }
 
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
@@ -291,7 +299,7 @@ func (r *Reconciler) run(ctx context.Context, nn types.NamespacedName, tf *v1alp
 		if tlr.Error == nil && dockerErr != nil {
 			tlr.Error = errors.Wrap(dockerErr, "Failed to connect to Docker")
 		}
-		reportDockerConnectionEvent(ctx, dockerErr == nil, r.dockerClient.ServerVersion())
+		r.reportDockerConnectionEvent(ctx, dockerErr == nil, r.dockerClient.ServerVersion())
 	}
 
 	r.mu.Lock()
