@@ -2,6 +2,8 @@ package cli
 
 import (
 	"context"
+	_ "embed"
+	"errors"
 	"fmt"
 	"log"
 	"net/url"
@@ -31,6 +33,11 @@ const DefaultWebDevPort = 46764
 var updateModeFlag string = string(liveupdates.UpdateModeAuto)
 var webDevPort = 0
 var logActionsFlag bool = false
+
+var userExitError = errors.New("user requested Tilt exit")
+
+//go:embed Tiltfile.starter
+var starterTiltfile []byte
 
 type upCmd struct {
 	fileName             string
@@ -114,21 +121,33 @@ func (c *upCmd) initialTermMode(isTerminal bool) store.TerminalMode {
 }
 
 func (c *upCmd) run(ctx context.Context, args []string) error {
-	a := analytics.Get(ctx)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
-	termMode := c.initialTermMode(isatty.IsTerminal(os.Stdout.Fd()))
+	a := analytics.Get(ctx)
+	defer a.Flush(time.Second)
+
+	log.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
+	isTTY := isatty.IsTerminal(os.Stdout.Fd())
+	termMode := c.initialTermMode(isTTY)
 
 	cmdUpTags := engineanalytics.CmdTags(map[string]string{
 		"update_mode": updateModeFlag, // before 7/8/20 this was just called "mode"
 		"term_mode":   strconv.Itoa(int(termMode)),
 	})
+
+	generateTiltfileResult, err := maybeGenerateTiltfile(c.fileName)
+	// N.B. report the command before handling the error; result enum is always valid
+	cmdUpTags["generate_tiltfile.result"] = string(generateTiltfileResult)
 	a.Incr("cmd.up", cmdUpTags.AsMap())
-	defer a.Flush(time.Second)
+	if err == userExitError {
+		return nil
+	} else if err != nil {
+		return err
+	}
 
 	deferred := logger.NewDeferredLogger(ctx)
 	ctx = redirectLogs(ctx, deferred)
-
-	log.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
 
 	webHost := provideWebHost()
 	webURL, _ := provideWebURL(webHost, provideWebPort())
@@ -159,9 +178,6 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 	if c.outputSnapshotOnExit != "" {
 		defer cmdUpDeps.Snapshotter.WriteSnapshot(ctx, c.outputSnapshotOnExit)
 	}
-
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
 
 	err = upper.Start(ctx, args, cmdUpDeps.TiltBuild,
 		c.fileName, termMode, a.UserOpt(), cmdUpDeps.Token, string(cmdUpDeps.CloudAddress))
