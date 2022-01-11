@@ -2,7 +2,7 @@
 # To get you started as quickly as possible, we have created this generic Tiltfile. 
 # Modify and comment out any commands to make them work for you.
 # Happy Tilting!
-
+print("Hello Tilt! This appears in the (Tiltfile) pane whenever Tilt evaluates this file.")
 
 # use a custom remote registry
 # more info on https://docs.tilt.dev/personal_registry.html
