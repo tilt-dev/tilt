@@ -291,6 +291,7 @@ func (r *Reconciler) run(ctx context.Context, nn types.NamespacedName, tf *v1alp
 		if tlr.Error == nil && dockerErr != nil {
 			tlr.Error = errors.Wrap(dockerErr, "Failed to connect to Docker")
 		}
+		reportDockerConnectionEvent(ctx, dockerErr == nil, r.dockerClient.ServerVersion())
 	}
 
 	r.mu.Lock()

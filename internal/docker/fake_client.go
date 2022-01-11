@@ -160,7 +160,8 @@ func (c *FakeClient) BuilderVersion() types.BuilderVersion {
 }
 func (c *FakeClient) ServerVersion() types.Version {
 	return types.Version{
-		Arch: "amd64",
+		Arch:    "amd64",
+		Version: "20.10.11",
 	}
 }
 
