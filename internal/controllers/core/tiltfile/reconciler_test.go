@@ -11,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tilt-dev/wmclient/pkg/analytics"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
@@ -264,6 +265,49 @@ func TestLocalServe(t *testing.T) {
 	require.Equal(t, "foo-disable", lt.ServeCmdDisableSource.ConfigMap.Name)
 }
 
+func TestDockerMetrics(t *testing.T) {
+	f := newFixture(t)
+	p := f.tempdir.JoinPath("Tiltfile")
+
+	sanchoImage := model.MustNewImageTarget(container.MustParseSelector("sancho-image")).
+		WithDockerImage(v1alpha1.DockerImageSpec{Context: f.tempdir.Path()})
+	sancho := manifestbuilder.New(f.tempdir, "sancho").
+		WithImageTargets(sanchoImage).
+		WithK8sYAML(testyaml.SanchoYAML).
+		Build()
+
+	f.tfl.Result = tiltfile.TiltfileLoadResult{
+		Manifests: []model.Manifest{sancho},
+	}
+
+	tf := v1alpha1.Tiltfile{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "my-tf",
+		},
+		Spec: v1alpha1.TiltfileSpec{
+			Path: p,
+		},
+	}
+	f.Create(&tf)
+	f.popQueue()
+
+	assert.Eventually(t, func() bool {
+		f.MustGet(types.NamespacedName{Name: "my-tf"}, &tf)
+		return tf.Status.Terminated != nil
+	}, time.Second, time.Millisecond)
+
+	connectEvt := analytics.CountEvent{
+		Name: "api.tiltfile.docker.connect",
+		Tags: map[string]string{
+			"server.arch":    "amd64",
+			"server.version": "20.10.11",
+			"status":         "connected",
+		},
+		N: 1,
+	}
+	assert.ElementsMatch(t, []analytics.CountEvent{connectEvt}, f.ma.Counts)
+}
+
 type testStore struct {
 	*store.TestingStore
 	out *bytes.Buffer
@@ -292,6 +336,7 @@ type fixture struct {
 	r       *Reconciler
 	q       workqueue.RateLimitingInterface
 	tfl     *tiltfile.FakeTiltfileLoader
+	ma      *analytics.MemoryAnalytics
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -315,6 +360,7 @@ func newFixture(t *testing.T) *fixture {
 		r:                 r,
 		q:                 q,
 		tfl:               tfl,
+		ma:                cfb.Analytics(),
 	}
 }
 
