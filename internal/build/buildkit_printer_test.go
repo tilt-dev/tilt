@@ -41,6 +41,8 @@ func (c buildkitTestCase) readResponse(reader io.Reader) ([]controlapi.StatusRes
 
 func TestBuildkitPrinter(t *testing.T) {
 	cases := []buildkitTestCase{
+		{"add-success", "add-success.response.txt"},
+		{"add-failure", "add-failure.response.txt"},
 		{"echo-hi-success", "echo-hi-success.response.txt"},
 		{"echo-hi-success-verbose", "echo-hi-success.response.txt"},
 		{"echo-hi-failure", "echo-hi-failure.response.txt"},

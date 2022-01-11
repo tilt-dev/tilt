@@ -6,15 +6,18 @@ import (
 	"flag"
 	"io"
 	"log"
+	"net"
 	"os"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	controlapi "github.com/moby/buildkit/api/services/control"
+	"github.com/moby/buildkit/identity"
+	"github.com/moby/buildkit/session"
+	"github.com/moby/buildkit/session/filesync"
 	"github.com/pkg/errors"
-
-	"github.com/tilt-dev/tilt/internal/build"
+	fsutiltypes "github.com/tonistiigi/fsutil/types"
 )
 
 var useCache bool
@@ -41,25 +44,53 @@ func run() error {
 
 	d.NegotiateAPIVersion(ctx)
 
-	pr, pw := io.Pipe()
+	session, err := session.NewSession(ctx, "tilt", identity.NewID())
+	if err != nil {
+		return err
+	}
+
+	fileMap := func(path string, s *fsutiltypes.Stat) bool {
+		s.Uid = 0
+		s.Gid = 0
+		return true
+	}
+
+	dir, _ := os.Getwd()
+	session.Allow(filesync.NewFSSyncProvider([]filesync.SyncedDir{
+		{
+			Name: "context",
+			Dir:  dir,
+			Map:  fileMap,
+		},
+		{
+			Name: "dockerfile",
+			Dir:  dir,
+		},
+	}))
+
 	go func() {
-		err := build.TarPath(ctx, pw, ".")
-		if err != nil {
-			_ = pw.CloseWithError(err)
-		} else {
-			_ = pw.Close()
+		defer func() {
+			_ = session.Close()
+		}()
+
+		// Start the server
+		dialSession := func(ctx context.Context, proto string, meta map[string][]string) (net.Conn, error) {
+			return d.DialHijack(ctx, "/session", proto, meta)
 		}
+		_ = session.Run(ctx, dialSession)
 	}()
 
 	opts := types.ImageBuildOptions{}
 	opts.Version = types.BuilderBuildKit
 	opts.Dockerfile = "Dockerfile"
-	opts.Context = pr
+	opts.RemoteContext = "client-session"
+	opts.SessionID = session.ID()
 	if !useCache {
 		opts.NoCache = true
 	}
+	defer session.Close()
 
-	response, err := d.ImageBuild(ctx, pr, opts)
+	response, err := d.ImageBuild(ctx, nil, opts)
 	if err != nil {
 		return err
 	}
