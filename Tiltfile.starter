@@ -14,7 +14,7 @@ print("Hello Tilt! This appears in the (Tiltfile) pane whenever Tilt evaluates t
 
 # build docker image for a resource
 # more info on https://docs.tilt.dev/api.html#api.docker_build
-# docker_build('my-resource', '.', dockerfile='deploy/docs.dockerfile',
+# docker_build('my-resource-image-name', '.', dockerfile='deploy/docs.dockerfile',
               # define the only files that are relevant for the docker build
               # only=['./src', './healthcheck.sh', './docs'],
               # define steps for updating a running container, more info on https://docs.tilt.dev/live_update_reference.html
