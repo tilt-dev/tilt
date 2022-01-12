@@ -35,8 +35,9 @@ def tilt_demo():
     watch_file('tilt-avatars-main/Tiltfile')
     url      = 'https://github.com/tilt-dev/tilt-avatars/archive/refs/heads/main'
     curl_cmd = 'curl -L {}.tar.gz | tar zxvf -'.format(url)
-    ps_cmd   = ('PowerShell -Command "Invoke-WebRequest -Uri {}.zip -UseBasicParsing -OutFile tilt-avatars-main.zip; ' +
-                'Expand-Archive tilt-avatars-main.zip -DestinationPath .; Remove-Item tilt-avatars-main.zip"').format(url)
+    ps_cmd   = ['powershell.exe', '-Noninteractive', '-Command', '& {' +
+                'Invoke-WebRequest -Uri {}.zip -UseBasicParsing -OutFile tilt-avatars-main.zip; '.format(url) +
+                'Expand-Archive tilt-avatars-main.zip -DestinationPath .; Remove-Item tilt-avatars-main.zip;}']
     local_resource('get-tilt-avatars', cmd=curl_cmd, cmd_bat=ps_cmd, labels=['demo'])
 
 # Uncomment the tilt_demo() invocation to see it in action.
