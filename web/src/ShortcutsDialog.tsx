@@ -6,6 +6,7 @@ import ButtonLink from "./ButtonLink"
 import { linkToTiltDocs } from "./constants"
 import FloatDialog, { HR } from "./FloatDialog"
 import { AnimDuration, Color } from "./style-helpers"
+import { HelpSearchBar } from "./HelpSearchBar"
 
 type props = {
   open: boolean
@@ -83,13 +84,7 @@ export default function ShortcutsDialog(props: props) {
   return (
     <FloatDialog id="shortcuts" title="Help" {...props}>
       <ShortcutRow style={{ marginBottom: "24px" }}>
-        <ButtonLink
-          href={linkToTiltDocs()}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Read Tilt Docs
-        </ButtonLink>
+        <HelpSearchBar />
       </ShortcutRow>
       <ShortcutRow style={{ marginBottom: "24px" }}>
         <HelpLink
