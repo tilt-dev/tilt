@@ -4,7 +4,7 @@ set -ex
 
 DIR=$(realpath $(dirname $0))
 
-#go install github.com/tilt-dev/tilt/cmd/buildkitapi
+go install github.com/tilt-dev/tilt/cmd/buildkitapi
 
 cd $DIR/add-success
 buildkitapi > $DIR/add-success.response.txt

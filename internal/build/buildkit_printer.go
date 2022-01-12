@@ -42,7 +42,7 @@ const logPrefix = "  → "
 
 var stageNameRegexp = regexp.MustCompile(`^\[.+\]`)
 
-func (v *vertex) isInternal() bool {
+func (v *vertex) shouldHide() bool {
 	return strings.HasPrefix(v.name, internalPrefix) && v.name != internalLoader
 }
 
@@ -204,7 +204,7 @@ func (b *buildkitPrinter) parseAndPrint(vertexes []*vertex, logs []*vertexLog, s
 		}
 
 		v := vl.vertex
-		if v.started && !v.startPrinted && !v.isInternal() {
+		if v.started && !v.startPrinted && !v.shouldHide() {
 			cacheSuffix := ""
 			if v.cached {
 				cacheSuffix = " [cached]"
@@ -220,11 +220,11 @@ func (b *buildkitPrinter) parseAndPrint(vertexes []*vertex, logs []*vertexLog, s
 			v.errorPrinted = true
 		}
 
-		if v.isError() || !v.isInternal() {
+		if v.isError() || !v.shouldHide() {
 			b.flushLogs(vl)
 		}
 
-		if !v.isInternal() &&
+		if !v.shouldHide() &&
 			!v.cached &&
 			!v.isError() {
 
