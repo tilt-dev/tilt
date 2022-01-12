@@ -2366,6 +2366,9 @@ message TiltfileSpec {
   //
   // +optional
   repeated string args = 4;
+
+  // The contents of the Tiltfile as a string.
+  optional string contents = 5;
 }
 
 // TiltfileStateRunning is a running state of a tiltfile execution.
@@ -2422,6 +2425,10 @@ message TiltfileStatus {
   // Details about a terminated tiltfile.
   // +optional
   optional TiltfileStateTerminated terminated = 3;
+
+  // SHA256 of the Tiltfile Contents
+  // +optional
+  optional string contentsSHA256 = 5;
 }
 
 // ToggleButton

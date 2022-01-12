@@ -5909,6 +5909,13 @@ func schema_pkg_apis_core_v1alpha1_TiltfileSpec(ref common.ReferenceCallback) co
 							},
 						},
 					},
+					"contents": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The contents of the Tiltfile as a string.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"path"},
 			},
@@ -6056,6 +6063,13 @@ func schema_pkg_apis_core_v1alpha1_TiltfileStatus(ref common.ReferenceCallback) 
 						SchemaProps: spec.SchemaProps{
 							Description: "Details about a terminated tiltfile.",
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileStateTerminated"),
+						},
+					},
+					"contentsSHA256": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SHA256 of the Tiltfile Contents",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 				},

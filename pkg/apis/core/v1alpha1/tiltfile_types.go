@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The Tilt Dev Authors
+Copyright 2020-2022 The Tilt Dev Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -76,6 +76,9 @@ type TiltfileSpec struct {
 	//
 	// +optional
 	Args []string `json:"args,omitempty" protobuf:"bytes,4,rep,name=args"`
+
+	// The contents of the Tiltfile as a string.
+	Contents string `json:"contents,omitempty" protobuf:"bytes,5,opt,name=contents"`
 }
 
 var _ resource.Object = &Tiltfile{}
@@ -133,6 +136,10 @@ type TiltfileStatus struct {
 	// Details about a terminated tiltfile.
 	// +optional
 	Terminated *TiltfileStateTerminated `json:"terminated,omitempty" protobuf:"bytes,3,opt,name=terminated"`
+
+	// SHA256 of the Tiltfile Contents
+	// +optional
+	ContentsSHA256 string `json:"contentsSHA256,omitempty" protobuf:"bytes,5,opt,name=contentsSHA256"`
 }
 
 // Tiltfile implements ObjectWithStatusSubResource interface.
