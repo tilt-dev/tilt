@@ -82,34 +82,6 @@ function cmdOrCtrlShortcut(key: string) {
 export default function ShortcutsDialog(props: props) {
   return (
     <FloatDialog id="shortcuts" title="Keyboard Shortcuts" {...props}>
-      <Shortcut label="Navigate Resource">
-        <ShortcutBox>j</ShortcutBox> or <ShortcutBox>k</ShortcutBox>
-      </Shortcut>
-      <Shortcut label="Trigger rebuild for a resource">
-        <ShortcutBox>r</ShortcutBox>
-      </Shortcut>
-      <Shortcut label="Open Endpoint">
-        <ShortcutBox>Shift</ShortcutBox> + <ShortcutBox>1</ShortcutBox>,{" "}
-        <ShortcutBox>2</ShortcutBox> …
-      </Shortcut>
-      {props.isOverview ? null : (
-        <React.Fragment>
-          <Shortcut label="View Logs">
-            <ShortcutBox>1</ShortcutBox>
-          </Shortcut>
-          <Shortcut label="View Alerts">
-            <ShortcutBox>2</ShortcutBox>
-          </Shortcut>
-        </React.Fragment>
-      )}
-      <Shortcut label="Clear Logs">{cmdOrCtrlShortcut("Backspace")}</Shortcut>
-      <Shortcut label="Make Snapshot">
-        <ShortcutBox>s</ShortcutBox>
-      </Shortcut>
-      <Shortcut label="Help">
-        <ShortcutBox>?</ShortcutBox>
-      </Shortcut>
-      <HR />
       <ShortcutRow style={{ marginBottom: "24px" }}>
         <ButtonLink
           href={linkToTiltDocs()}
@@ -138,7 +110,36 @@ export default function ShortcutsDialog(props: props) {
           <GithubSvg style={{ marginRight: "8px" }} />
           File an Issue
         </HelpLink>
+        <HR />
       </ShortcutRow>
+      <HR />
+      <Shortcut label="Navigate Resource">
+        <ShortcutBox>j</ShortcutBox> or <ShortcutBox>k</ShortcutBox>
+      </Shortcut>
+      <Shortcut label="Trigger rebuild for a resource">
+        <ShortcutBox>r</ShortcutBox>
+      </Shortcut>
+      <Shortcut label="Open Endpoint">
+        <ShortcutBox>Shift</ShortcutBox> + <ShortcutBox>1</ShortcutBox>,{" "}
+        <ShortcutBox>2</ShortcutBox> …
+      </Shortcut>
+      {props.isOverview ? null : (
+        <React.Fragment>
+          <Shortcut label="View Logs">
+            <ShortcutBox>1</ShortcutBox>
+          </Shortcut>
+          <Shortcut label="View Alerts">
+            <ShortcutBox>2</ShortcutBox>
+          </Shortcut>
+        </React.Fragment>
+      )}
+      <Shortcut label="Clear Logs">{cmdOrCtrlShortcut("Backspace")}</Shortcut>
+      <Shortcut label="Make Snapshot">
+        <ShortcutBox>s</ShortcutBox>
+      </Shortcut>
+      <Shortcut label="Help">
+        <ShortcutBox>?</ShortcutBox>
+      </Shortcut>
     </FloatDialog>
   )
 }
