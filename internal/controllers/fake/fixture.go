@@ -17,6 +17,7 @@ import (
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
 
+	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
 )
@@ -41,6 +42,7 @@ type ControllerFixture struct {
 	ctx        context.Context
 	cancel     context.CancelFunc
 	controller controller
+	Store      store.RStore
 	Scheme     *runtime.Scheme
 	Client     ctrlclient.Client
 }
@@ -52,6 +54,7 @@ type ControllerFixtureBuilder struct {
 	out    *bufsync.ThreadSafeBuffer
 	ma     *analytics.MemoryAnalytics
 	Client ctrlclient.Client
+	Store  store.RStore
 }
 
 func NewControllerFixtureBuilder(t testing.TB) *ControllerFixtureBuilder {
@@ -69,6 +72,7 @@ func NewControllerFixtureBuilder(t testing.TB) *ControllerFixtureBuilder {
 		out:    out,
 		ma:     ma,
 		Client: NewFakeTiltClient(),
+		Store:  NewTestingStore(out),
 	}
 }
 
@@ -98,6 +102,7 @@ func (b ControllerFixtureBuilder) Build(c controller) *ControllerFixture {
 		cancel:     b.cancel,
 		Scheme:     b.Client.Scheme(),
 		Client:     b.Client,
+		Store:      b.Store,
 		controller: c,
 	}
 }
