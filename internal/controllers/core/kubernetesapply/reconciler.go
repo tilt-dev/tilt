@@ -358,15 +358,6 @@ func (r *Reconciler) forceApplyHelper(
 		}
 	}
 
-	// Use a min component count of 2 for computing names,
-	// so that the resource type appears
-	l := logger.Get(r.indentLogger(ctx))
-	l.Infof("Objects applied to cluster:")
-	displayNames := k8s.UniqueNames(deployed, 2)
-	for _, displayName := range displayNames {
-		l.Infof("  → %s", displayName)
-	}
-
 	status.LastApplyTime = apis.NowMicro()
 	status.AppliedInputHash = inputHash
 	for _, d := range deployed {
@@ -380,6 +371,18 @@ func (r *Reconciler) forceApplyHelper(
 
 	status.ResultYAML = resultYAML
 	return status, deployed
+}
+
+func (r *Reconciler) printAppliedReport(ctx context.Context, msg string, deployed []k8s.K8sEntity) {
+	l := logger.Get(ctx)
+	l.Infof("%s", msg)
+
+	// Use a min component count of 2 for computing names,
+	// so that the resource type appears
+	displayNames := k8s.UniqueNames(deployed, 2)
+	for _, displayName := range displayNames {
+		l.Infof("  → %s", displayName)
+	}
 }
 
 func (r *Reconciler) runYAMLDeploy(ctx context.Context, spec v1alpha1.KubernetesApplySpec, imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) ([]k8s.K8sEntity, error) {
@@ -398,8 +401,10 @@ func (r *Reconciler) runYAMLDeploy(ctx context.Context, spec v1alpha1.Kubernetes
 
 	deployed, err := r.k8sClient.Upsert(ctx, newK8sEntities, timeout)
 	if err != nil {
+		r.printAppliedReport(ctx, "Tried to apply objects to cluster:", newK8sEntities)
 		return nil, err
 	}
+	r.printAppliedReport(ctx, "Objects applied to cluster:", deployed)
 
 	return deployed, nil
 }
@@ -447,6 +452,8 @@ func (r *Reconciler) runCmdDeploy(ctx context.Context, spec v1alpha1.KubernetesA
 	if err != nil {
 		return nil, fmt.Errorf("apply command returned malformed YAML: %v\nstdout:\n%s\n", err, overflowEllipsis(string(stdout)))
 	}
+
+	r.printAppliedReport(ctx, "Objects applied to cluster:", entities)
 
 	return entities, nil
 }

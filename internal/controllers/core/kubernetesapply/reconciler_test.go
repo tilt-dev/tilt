@@ -3,9 +3,7 @@ package kubernetesapply
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -25,7 +23,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/localexec"
-	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -103,7 +100,7 @@ func TestBasicApplyYAML(t *testing.T) {
 	assert.Contains(f.T(), ka.Status.ResultYAML, "name: sancho")
 	assert.Contains(f.T(), ka.Status.ResultYAML, "uid:")
 
-	assert.Contains(t, f.storeLogs(),
+	assert.Contains(t, f.Stdout(),
 		"Objects applied to cluster:\n       → sancho:deployment\n",
 		"Log output did not include applied objects")
 
@@ -133,7 +130,7 @@ func TestBasicApplyCmd(t *testing.T) {
 	assert.NotZero(t, ka.Status.LastApplyTime)
 	assert.Equal(t, yamlOut, ka.Status.ResultYAML)
 
-	assert.Contains(t, f.storeLogs(),
+	assert.Contains(t, f.Stdout(),
 		"Objects applied to cluster:\n       → sancho:deployment\n",
 		"Log output did not include applied objects")
 
@@ -222,8 +219,7 @@ func TestBasicApplyCmd_NonZeroExitCode(t *testing.T) {
 	f.MustGet(types.NamespacedName{Name: "a"}, &ka)
 
 	if assert.Equal(t, "apply command exited with status 77\nstdout:\nwhoops\n\n", ka.Status.Error) {
-		logAction := f.st.WaitForAction(t, reflect.TypeOf(store.LogAction{}))
-		assert.Equal(t, `manifest: foo, spanID: KubernetesApply-a, msg: "     oh no\n"`, logAction.(store.LogAction).String())
+		assert.Contains(t, f.Stdout(), `oh no`)
 	}
 }
 
@@ -350,6 +346,8 @@ func TestGarbageCollectAfterErrorDuringApply(t *testing.T) {
 		assert.Contains(f.T(), f.kClient.Yaml, "name: sancho")
 		assert.Contains(f.T(), f.kClient.Yaml, "name: infra-kafka-zookeeper")
 	}
+
+	assert.Contains(f.T(), f.Stdout(), "Tried to apply objects")
 }
 
 func TestGarbageCollect_DeleteCmdNotInvokedOnChange(t *testing.T) {
@@ -569,13 +567,11 @@ type fixture struct {
 	r       *Reconciler
 	kClient *k8s.FakeK8sClient
 	execer  *localexec.FakeExecer
-	st      *store.TestingStore
 }
 
 func newFixture(t *testing.T) *fixture {
 	kClient := k8s.NewFakeK8sClient(t)
 	cfb := fake.NewControllerFixtureBuilder(t)
-	st := store.NewTestingStore()
 	dockerClient := docker.NewFakeClient()
 	kubeContext := k8s.KubeContext("kind-kind")
 
@@ -586,14 +582,13 @@ func newFixture(t *testing.T) *fixture {
 	execer := localexec.NewFakeExecer(t)
 
 	db := build.NewDockerBuilder(dockerClient, dockerfile.Labels{})
-	r := NewReconciler(cfb.Client, kClient, v1alpha1.NewScheme(), db, kubeContext, st, "default", execer)
+	r := NewReconciler(cfb.Client, kClient, v1alpha1.NewScheme(), db, kubeContext, cfb.Store, "default", execer)
 
 	return &fixture{
 		ControllerFixture: cfb.Build(r),
 		r:                 r,
 		kClient:           kClient,
 		execer:            execer,
-		st:                st,
 	}
 }
 
@@ -615,15 +610,4 @@ func (f *fixture) createApplyCmd(name string, yaml string) (v1alpha1.KubernetesA
 	return v1alpha1.KubernetesApplyCmd{
 		Args: []string{name},
 	}, yamlOut
-}
-
-func (f *fixture) storeLogs() string {
-	actions := f.st.Actions()
-	var sb strings.Builder
-	for i := range actions {
-		if logAction, ok := actions[i].(store.LogAction); ok {
-			sb.Write(logAction.Message())
-		}
-	}
-	return sb.String()
 }
