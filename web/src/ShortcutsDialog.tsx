@@ -81,7 +81,7 @@ function cmdOrCtrlShortcut(key: string) {
 
 export default function ShortcutsDialog(props: props) {
   return (
-    <FloatDialog id="shortcuts" title="Keyboard Shortcuts" {...props}>
+    <FloatDialog id="shortcuts" title="Help" {...props}>
       <ShortcutRow style={{ marginBottom: "24px" }}>
         <ButtonLink
           href={linkToTiltDocs()}
@@ -113,6 +113,9 @@ export default function ShortcutsDialog(props: props) {
         <HR />
       </ShortcutRow>
       <HR />
+      <ShortcutRow style={{ textDecoration: "underline", fontSize: "18px", marginBottom: "8px" }}>
+        Keyboard shortcuts
+      </ShortcutRow>
       <Shortcut label="Navigate Resource">
         <ShortcutBox>j</ShortcutBox> or <ShortcutBox>k</ShortcutBox>
       </Shortcut>
