@@ -1,0 +1,7 @@
+[1/3] FROM docker.io/library/busybox@sha256:5acba83a746c7608ed544dc1533b87c737a0b0fb730301639a0179f9344b1678
+[background] read source files
+[background] read source files 362B [done: 35ms]
+[2/3] ADD hi.txt hi.txt [cached]
+[3/3] ADD bye.txt bye.txt
+
+ERROR IN: [3/3] ADD bye.txt bye.txt

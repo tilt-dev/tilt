@@ -1,0 +1,9 @@
+[background] read source files
+[1/3] FROM docker.io/library/busybox@sha256:5acba83a746c7608ed544dc1533b87c737a0b0fb730301639a0179f9344b1678
+[background] read source files 362B [done: 50ms]
+[2/3] ADD hi.txt hi.txt
+[2/3] ADD hi.txt hi.txt [done: 16ms]
+[3/3] RUN head -n hi.txt
+  → head: invalid number 'hi.txt'
+
+ERROR IN: [3/3] RUN head -n hi.txt

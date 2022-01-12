@@ -1,9 +1,5 @@
-[1/2] FROM docker.io/library/busybox@sha256:c94cf1b87ccb80f2e6414ef913c748b105060debda482058d2b8d0fce39f11b9
-[1/2] FROM docker.io/library/busybox@sha256:c94cf1b87ccb80f2e6414ef913c748b105060debda482058d2b8d0fce39f11b9 2.39kB / 2.39kB
-[1/2] FROM docker.io/library/busybox@sha256:c94cf1b87ccb80f2e6414ef913c748b105060debda482058d2b8d0fce39f11b9 3.89kB / 766.62kB
-[1/2] FROM docker.io/library/busybox@sha256:c94cf1b87ccb80f2e6414ef913c748b105060debda482058d2b8d0fce39f11b9 766.62kB / 766.62kB [done: 702ms]
+[1/2] FROM docker.io/library/busybox@sha256:5acba83a746c7608ed544dc1533b87c737a0b0fb730301639a0179f9344b1678
 [2/2] RUN echo hi
   → hi
-[2/2] RUN echo hi [done: 1.365s]
+[2/2] RUN echo hi [done: 339ms]
 exporting to image
-exporting to image [done: 66ms]

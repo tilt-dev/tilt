@@ -6,6 +6,12 @@ DIR=$(realpath $(dirname $0))
 
 go install github.com/tilt-dev/tilt/cmd/buildkitapi
 
+cd $DIR/add-success
+buildkitapi > $DIR/add-success.response.txt
+
+cd $DIR/add-failure
+buildkitapi > $DIR/add-failure.response.txt
+
 cd $DIR/echo-hi-success
 buildkitapi > $DIR/echo-hi-success.response.txt
 

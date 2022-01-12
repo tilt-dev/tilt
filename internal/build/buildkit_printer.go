@@ -37,25 +37,33 @@ type vertex struct {
 }
 
 const internalPrefix = "[internal]"
+const internalLoader = "[internal] load build context"
 const logPrefix = "  → "
 
 var stageNameRegexp = regexp.MustCompile(`^\[.+\]`)
 
-func (v *vertex) isInternal() bool {
-	return strings.HasPrefix(v.name, internalPrefix)
+func (v *vertex) shouldHide() bool {
+	return strings.HasPrefix(v.name, internalPrefix) && v.name != internalLoader
 }
 
 func (v *vertex) isError() bool {
 	return len(v.error) > 0
 }
 
+func (v *vertex) humanName() string {
+	if v.name == internalLoader {
+		return "[background] read source files"
+	}
+	return v.name
+}
+
 func (v *vertex) stageName() string {
 	match := stageNameRegexp.FindString(v.name)
 	if match == "" {
 		// If we couldn't find a match, just return the whole
-		// vertex name, so that the user has some hope of figuring out
+		// human-readable name, so that the user has some hope of figuring out
 		// what went wrong.
-		return v.name
+		return v.humanName()
 	}
 	return match
 }
@@ -196,27 +204,27 @@ func (b *buildkitPrinter) parseAndPrint(vertexes []*vertex, logs []*vertexLog, s
 		}
 
 		v := vl.vertex
-		if v.started && !v.startPrinted && !v.isInternal() {
+		if v.started && !v.startPrinted && !v.shouldHide() {
 			cacheSuffix := ""
 			if v.cached {
 				cacheSuffix = " [cached]"
 			}
 			b.logger.WithFields(logger.Fields{logger.FieldNameProgressID: v.stageName()}).
-				Infof("%s%s", v.name, cacheSuffix)
+				Infof("%s%s", v.humanName(), cacheSuffix)
 			v.startPrinted = true
 		}
 
 		if v.isError() && !v.errorPrinted {
 			// TODO(nick): Should this be logger.Errorf?
-			b.logger.Infof("\nERROR IN: %s", v.name)
+			b.logger.Infof("\nERROR IN: %s", v.humanName())
 			v.errorPrinted = true
 		}
 
-		if v.isError() || !v.isInternal() {
+		if v.isError() || !v.shouldHide() {
 			b.flushLogs(vl)
 		}
 
-		if !v.isInternal() &&
+		if !v.shouldHide() &&
 			!v.cached &&
 			!v.isError() {
 
@@ -258,7 +266,7 @@ func (b *buildkitPrinter) parseAndPrint(vertexes []*vertex, logs []*vertexLog, s
 
 			if shouldPrintCompletion || shouldPrintProgress {
 				b.logger.WithFields(fields).
-					Infof("%s%s%s", v.name, progressInBytes, doneSuffix)
+					Infof("%s%s%s", v.humanName(), progressInBytes, doneSuffix)
 
 				vl.lastPrintedStatus = status
 			}
