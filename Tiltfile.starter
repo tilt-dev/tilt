@@ -11,24 +11,31 @@ print("Hello Tilt! This appears in the (Tiltfile) pane whenever Tilt evaluates t
 #                cmd='which helm > /dev/null || brew install helm',
 #                cmd_bat=['powershell.exe', '-Noninteractive', '-Command', '& {if (!(Get-Command helm -ErrorAction SilentlyContinue)) {scoop install helm}}'])
 
-# build docker image for a resource
-# more info on https://docs.tilt.dev/api.html#api.docker_build
+
+# Build docker image for a resource
+# More info on https://docs.tilt.dev/api.html#api.docker_build
+#
 # docker_build('my-resource-image-name', '.', dockerfile='deploy/docs.dockerfile',
-              # define the only files that are relevant for the docker build
+              # Define the only files that are relevant for the docker build
               # only=['./src', './healthcheck.sh', './docs'],
-              # define steps for updating a running container, more info on https://docs.tilt.dev/live_update_reference.html
+              # Define steps for updating a running container, more info on https://docs.tilt.dev/live_update_reference.html
               # live_update=[
-                # specify where files should be synced to from host to container system
+                # Specify where files should be synced to from host to container system
                 # sync('./src', '/src/'),
-                # specify the command to be executed when updating a container, run only when files defined in "trigger" list changed
+                # Specify the command to be executed when updating a container, run only when files defined in "trigger" list changed
                 # run('sync.sh', trigger=['watched-file'])
               # ]
 # )
 
 # Apply k8s manifests
-# more info on https://docs.tilt.dev/api.html#api.k8s_yaml
+# More info: https://docs.tilt.dev/api.html#api.k8s_yaml
+#
 # k8s_yaml(['k8s/deployment.yaml', 'k8s/service.yaml'])
 
+# Configure a k8s resource for port forwarding
+# More info: https://docs.tilt.dev/api.html#api.k8s_resource
+#
+# k8s_resource('my-resource', port_forwards=[5000])
 
 # You can package related resources and statements in a function. Here we
 # add a local resource that downloads and loads the tilt-avatars demo app.
