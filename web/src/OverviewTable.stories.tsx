@@ -5,6 +5,7 @@ import LogStore, { LogStoreProvider } from "./LogStore"
 import OverviewTable from "./OverviewTable"
 import { ResourceGroupsContextProvider } from "./ResourceGroupsContext"
 import { ResourceListOptionsProvider } from "./ResourceListOptionsContext"
+import { ResourceSelectionProvider } from "./ResourceSelectionContext"
 import { TiltSnackbarProvider } from "./Snackbar"
 import {
   nButtonView,
@@ -23,6 +24,8 @@ export default {
       const features = new Features({
         [Flag.Labels]: context?.args?.labelsEnabled ?? true,
         [Flag.DisableResources]: context?.args?.disableResourcesEnabled ?? true,
+        [Flag.BulkDisableResources]:
+          context?.args?.bulkDisableResourcesEnabled ?? true,
       })
       return (
         <MemoryRouter initialEntries={["/"]}>
@@ -30,9 +33,11 @@ export default {
             <FeaturesProvider value={features}>
               <ResourceGroupsContextProvider>
                 <ResourceListOptionsProvider>
-                  <div style={{ margin: "-1rem" }}>
-                    <Story />
-                  </div>
+                  <ResourceSelectionProvider>
+                    <div style={{ margin: "-1rem" }}>
+                      <Story />
+                    </div>
+                  </ResourceSelectionProvider>
                 </ResourceListOptionsProvider>
               </ResourceGroupsContextProvider>
             </FeaturesProvider>
@@ -51,6 +56,13 @@ export default {
     },
     disableResourcesEnabled: {
       name: "See disabled resources",
+      control: {
+        type: "boolean",
+      },
+      defaultValue: true,
+    },
+    bulkDisableResourcesEnabled: {
+      name: "See bulk disabling functionality",
       control: {
         type: "boolean",
       },

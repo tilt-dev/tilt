@@ -4,6 +4,7 @@ import Features, { FeaturesProvider, Flag } from "./feature"
 import OverviewTablePane from "./OverviewTablePane"
 import { ResourceGroupsContextProvider } from "./ResourceGroupsContext"
 import { ResourceListOptionsProvider } from "./ResourceListOptionsContext"
+import { ResourceSelectionProvider } from "./ResourceSelectionContext"
 import { StarredResourceMemoryProvider } from "./StarredResourcesContext"
 import {
   nResourceView,
@@ -19,6 +20,8 @@ export default {
       const features = new Features({
         [Flag.Labels]: context?.args?.labelsEnabled ?? true,
         [Flag.DisableResources]: context?.args?.disableResourcesEnabled ?? true,
+        [Flag.BulkDisableResources]:
+          context?.args?.bulkDisableResourcesEnabled ?? true,
       })
       return (
         <MemoryRouter initialEntries={["/"]}>
@@ -26,9 +29,11 @@ export default {
             <ResourceListOptionsProvider>
               <StarredResourceMemoryProvider>
                 <ResourceGroupsContextProvider>
-                  <div style={{ margin: "-1rem", height: "80vh" }}>
-                    <Story />
-                  </div>
+                  <ResourceSelectionProvider>
+                    <div style={{ margin: "-1rem", height: "80vh" }}>
+                      <Story />
+                    </div>
+                  </ResourceSelectionProvider>
                 </ResourceGroupsContextProvider>
               </StarredResourceMemoryProvider>
             </ResourceListOptionsProvider>
@@ -47,6 +52,13 @@ export default {
     },
     disableResourcesEnabled: {
       name: "See disabled resources",
+      control: {
+        type: "boolean",
+      },
+      defaultValue: true,
+    },
+    bulkDisableResourcesEnabled: {
+      name: "See bulk disabling functionality",
       control: {
         type: "boolean",
       },

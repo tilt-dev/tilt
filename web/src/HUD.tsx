@@ -23,6 +23,7 @@ import PathBuilder, { PathBuilderProvider } from "./PathBuilder"
 import { ResourceGroupsContextProvider } from "./ResourceGroupsContext"
 import { ResourceListOptionsProvider } from "./ResourceListOptionsContext"
 import { ResourceNavProvider } from "./ResourceNav"
+import { ResourceSelectionProvider } from "./ResourceSelectionContext"
 import ShareSnapshotModal from "./ShareSnapshotModal"
 import { TiltSnackbarProvider } from "./Snackbar"
 import { SnapshotActionProvider } from "./snapshot"
@@ -259,19 +260,21 @@ export default class HUD extends Component<HudProps, HudState> {
               <LogStoreProvider value={this.state.logStore || new LogStore()}>
                 <ResourceGroupsContextProvider>
                   <ResourceListOptionsProvider>
-                    <Switch>
-                      <Route
-                        path={this.path("/r/:name/overview")}
-                        render={(props: RouteComponentProps<any>) => (
-                          <OverviewResourcePane view={this.state.view} />
-                        )}
-                      />
-                      <Route
-                        render={() => (
-                          <OverviewTablePane view={this.state.view} />
-                        )}
-                      />
-                    </Switch>
+                    <ResourceSelectionProvider>
+                      <Switch>
+                        <Route
+                          path={this.path("/r/:name/overview")}
+                          render={(props: RouteComponentProps<any>) => (
+                            <OverviewResourcePane view={this.state.view} />
+                          )}
+                        />
+                        <Route
+                          render={() => (
+                            <OverviewTablePane view={this.state.view} />
+                          )}
+                        />
+                      </Switch>
+                    </ResourceSelectionProvider>
                   </ResourceListOptionsProvider>
                 </ResourceGroupsContextProvider>
               </LogStoreProvider>

@@ -90,5 +90,11 @@ export function InstrumentedCheckbox(
     }
   }
 
-  return <Checkbox onChange={instrumentedOnChange} {...checkboxProps} />
+  return (
+    <Checkbox
+      onChange={instrumentedOnChange}
+      disableRipple={true}
+      {...checkboxProps}
+    />
+  )
 }
