@@ -4,10 +4,6 @@
 # Happy Tilting!
 print("Hello Tilt! This appears in the (Tiltfile) pane whenever Tilt evaluates this file.")
 
-# use a custom remote registry
-# more info on https://docs.tilt.dev/personal_registry.html
-# default_registry('gcr.io/my-public-registry')
-
 # run a one-time command e.g. to customize your cluster
 # more info on https://docs.tilt.dev/local_resource.html
 # local_resource('my-command', cmd='./scripts/my-command.sh', deps=['scripts/my-command.sh'], allow_parallel=True, auto_init=False)
