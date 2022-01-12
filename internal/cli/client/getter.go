@@ -83,7 +83,7 @@ func (f *Getter) ToDiscoveryClient() (discovery.CachedDiscoveryInterface, error)
 	httpCacheDir := filepath.Join(cacheDir, "http")
 	discoveryCacheDir := computeDiscoverCacheDir(filepath.Join(cacheDir, "discovery"), config.Host)
 
-	return diskcached.NewCachedDiscoveryClientForConfig(config, discoveryCacheDir, httpCacheDir, time.Duration(10*time.Minute))
+	return diskcached.NewCachedDiscoveryClientForConfig(config, discoveryCacheDir, httpCacheDir, 10*time.Minute)
 }
 
 func (f *Getter) ToRESTMapper() (meta.RESTMapper, error) {

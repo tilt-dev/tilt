@@ -223,7 +223,7 @@ func (r *TiltUpResponse) KillAndDumpThreads() error {
 		return nil
 	}
 
-	err := r.process.Signal(syscall.Signal(syscall.SIGINT))
+	err := r.process.Signal(syscall.SIGINT)
 	if err != nil {
 		return err
 	}

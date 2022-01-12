@@ -62,6 +62,7 @@ linters:
     - structcheck
     - ineffassign
     - misspell
+    - exportloopref
 issues:
   exclude-rules:
     - linters:
@@ -70,6 +71,3 @@ issues:
     - linters:
         - gosimple
       text: "S1008:"
-
-
-

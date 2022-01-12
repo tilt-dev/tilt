@@ -43,7 +43,7 @@ RUN curl --silent --show-error --location --fail --retry 3 --output /tmp/google-
 
 RUN /tmp/google-cloud-sdk/install.sh
 
-RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.35.2
+RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.43.0
 
 RUN curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.22.10
 

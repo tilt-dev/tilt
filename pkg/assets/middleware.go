@@ -66,7 +66,7 @@ func InferVersion(defaultVersion model.WebVersion, h http.Handler) http.Handler 
 		*r2 = *r
 		r2.URL = new(url.URL)
 		*r2.URL = *r.URL
-		r2.URL.Path = path.Join(string(version), origPath)
+		r2.URL.Path = path.Join(version, origPath)
 		h.ServeHTTP(w, appendPublicPathPrefixForVersion(version, r2))
 	})
 }
