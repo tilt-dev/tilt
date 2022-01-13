@@ -100,6 +100,7 @@ export function HelpSearchBar(props: { className?: string }) {
 
   return (
     <HelpSearchBarTextField
+      aria-label="Search Tilt Docs"
       className={props.className}
       value={searchValue}
       placeholder="Search Tilt Docs..."

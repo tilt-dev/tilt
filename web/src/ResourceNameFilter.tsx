@@ -104,6 +104,7 @@ export function ResourceNameFilter(props: { className?: string }) {
 
   return (
     <ResourceNameFilterTextField
+      aria-label="Filter resources by name"
       className={props.className}
       value={resourceNameFilter ?? ""}
       onChange={(e) => setResourceNameFilter(e.target.value)}
