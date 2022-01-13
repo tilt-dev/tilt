@@ -78,7 +78,7 @@ function cmdOrCtrlShortcut(key: string) {
   )
 }
 
-export default function ShortcutsDialog(props: props) {
+export default function HelpDialog(props: props) {
   return (
     <FloatDialog id="shortcuts" title="Help" {...props}>
       <ShortcutRow>
