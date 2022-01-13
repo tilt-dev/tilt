@@ -84,7 +84,7 @@ export function HelpSearchBar(props: { className?: string }) {
   }
 
   // only show the "x" to clear if there's any input to clear
-  if (HelpSearchBar.length) {
+  if (helpSearchBar.length) {
     const onClearClick = () => setHelpSearchBar("")
 
     inputProps.endAdornment = (
