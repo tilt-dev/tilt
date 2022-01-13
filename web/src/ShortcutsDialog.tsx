@@ -2,8 +2,6 @@ import React from "react"
 import styled from "styled-components"
 import { ReactComponent as GithubSvg } from "./assets/svg/github.svg"
 import { ReactComponent as SlackSvg } from "./assets/svg/slack.svg"
-import ButtonLink from "./ButtonLink"
-import { linkToTiltDocs } from "./constants"
 import FloatDialog, { HR } from "./FloatDialog"
 import { AnimDuration, Color } from "./style-helpers"
 import { HelpSearchBar } from "./HelpSearchBar"
@@ -83,9 +81,10 @@ function cmdOrCtrlShortcut(key: string) {
 export default function ShortcutsDialog(props: props) {
   return (
     <FloatDialog id="shortcuts" title="Help" {...props}>
-      <ShortcutRow style={{ marginBottom: "24px" }}>
+      <ShortcutRow>
         <HelpSearchBar />
       </ShortcutRow>
+      <HR />
       <ShortcutRow style={{ marginBottom: "24px" }}>
         <HelpLink
           href="http://slack.k8s.io/"

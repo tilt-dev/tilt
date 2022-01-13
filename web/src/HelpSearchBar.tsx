@@ -35,8 +35,7 @@ export function matchesResourceName(
 export const HelpSearchBarTextField = styled(InstrumentedTextField)`
   & .MuiOutlinedInput-root {
     border-radius: ${SizeUnit(0.5)};
-    border: 1px solid ${Color.grayLighter};
-    background-color: ${Color.gray};
+    background-color: ${Color.white};
 
     & fieldset {
       border-color: 1px solid ${Color.grayLighter};
@@ -57,7 +56,7 @@ export const HelpSearchBarTextField = styled(InstrumentedTextField)`
 
   & .MuiInputBase-input {
     font-family: ${Font.monospace};
-    color: ${Color.offWhite};
+    color: ${Color.grayLighter};
     font-size: ${FontSize.small};
   }
 `
@@ -107,7 +106,7 @@ export function HelpSearchBar(props: { className?: string }) {
       className={props.className}
       value={HelpSearchBar ?? ""}
       onChange={(e) => setHelpSearchBar(e.target.value)}
-      placeholder="Filter resources by name"
+      placeholder="Search Tilt Docs..."
       InputProps={inputProps}
       variant="outlined"
       analyticsName="ui.web.HelpSearchBar"
