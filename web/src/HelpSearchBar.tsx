@@ -8,7 +8,6 @@ import {
   InstrumentedButton,
   InstrumentedTextField,
 } from "./instrumentedComponents"
-import { useHelpSearchBarOptions } from "./HelpSearchBarOptionsContext"
 import {
   Color,
   Font,
