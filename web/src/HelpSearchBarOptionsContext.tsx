@@ -33,15 +33,6 @@ const HelpSearchBarOptionsContext = createContext<HelpSearchBarOptionsContext>({
   },
 })
 
-// Note: non-nullable fields added to `HelpSearchBarOptions` (formerly `SidebarOptions`)
-// after its initial release need to have default values filled in here
-function maybeUpgradeSavedOptions(savedOptions: HelpSearchBarOptions) {
-  return {
-    ...savedOptions,
-    resourceNameFilter: savedOptions.helpSearchBar ?? "",
-  }
-}
-
 export function useHelpSearchBarOptions(): HelpSearchBarOptionsContext {
   return useContext(HelpSearchBarOptionsContext)
 }
@@ -55,8 +46,7 @@ export function HelpSearchBarOptionsProvider(
   const [options, setHelpSearchBarOptions] =
     useSessionState<HelpSearchBarOptions>(
       HELP_SEARCH_BAR_OPTIONS_KEY,
-      defaultPersistentValue,
-      maybeUpgradeSavedOptions
+      defaultPersistentValue
     )
 
   function setOptions(options: Partial<HelpSearchBarOptions>) {

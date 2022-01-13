@@ -1,3 +1,4 @@
+import React, { ChangeEvent, useState } from "react"
 import { InputAdornment } from "@material-ui/core"
 import { InputProps as StandardInputProps } from "@material-ui/core/Input/Input"
 import styled from "styled-components"
@@ -58,14 +59,7 @@ export const ClearHelpSearchBarButton = styled(InstrumentedButton)`
 `
 
 export function HelpSearchBar(props: { className?: string }) {
-  const {
-    options: { helpSearchBar },
-    setOptions,
-  } = useHelpSearchBarOptions()
-
-  function setHelpSearchBar(newValue: string) {
-    setOptions({ helpSearchBar: newValue })
-  }
+  const [ searchValue, setSearchValue ] = useState("")
 
   let inputProps: Partial<StandardInputProps> = {
     startAdornment: (
@@ -76,16 +70,21 @@ export function HelpSearchBar(props: { className?: string }) {
   }
 
   function handleKeyPress(e: any) {
-    if ("Enter" == e.key) {
-      searchDocs(helpSearchBar)
-    } else {
-      setHelpSearchBar(helpSearchBar+e.key)
+    if ("Enter" === e.key) {
+      searchDocs(searchValue)
+      setSearchValue("")
     }
   }
 
+  function handleChange(e: ChangeEvent<HTMLInputElement>) {
+    const { value } = e.target
+    console.log(value)
+    setSearchValue(value)
+  }
+
   // only show the "x" to clear if there's any input to clear
-  if (helpSearchBar.length) {
-    const onClearClick = () => setHelpSearchBar("")
+  if (searchValue.length) {
+    const onClearClick = () => setSearchValue("")
 
     inputProps.endAdornment = (
       <InputAdornment position="end">
@@ -102,12 +101,13 @@ export function HelpSearchBar(props: { className?: string }) {
   return (
     <HelpSearchBarTextField
       className={props.className}
-      value={helpSearchBar ?? ""}
+      value={searchValue}
       placeholder="Search Tilt Docs..."
       InputProps={inputProps}
       variant="outlined"
       analyticsName="ui.web.HelpSearchBar"
       onKeyPress={handleKeyPress}
+      onChange={handleChange}
     />
   )
 }
