@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"time"
 
@@ -113,12 +114,14 @@ func (c *Controller) TearDown(ctx context.Context) {
 	c.podSource.TearDown()
 }
 
-func (c *Controller) shouldStreamContainerLogs(co v1alpha1.Container, key podLogKey) bool {
+func (c *Controller) shouldStreamContainerLogs(pod *v1.Pod, co v1alpha1.Container, key podLogKey) bool {
 	if co.ID == "" {
 		return false
 	}
 
-	if co.State.Terminated != nil && c.hasClosedStream[key] {
+	isTerminating := co.State.Terminated != nil ||
+		(pod.DeletionTimestamp != nil && !pod.DeletionTimestamp.IsZero())
+	if isTerminating && c.hasClosedStream[key] {
 		return false
 	}
 
@@ -158,16 +161,17 @@ func (c *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reco
 	} else {
 		podNN := types.NamespacedName{Name: stream.Spec.Pod, Namespace: stream.Spec.Namespace}
 		pod, err := c.kClient.PodFromInformerCache(ctx, podNN)
-		if (err != nil && apierrors.IsNotFound(err)) ||
-			(pod != nil && pod.DeletionTimestamp != nil && !pod.DeletionTimestamp.IsZero()) {
+		deleting := false
+		if err != nil && apierrors.IsNotFound(err) {
 			c.deleteStreams(streamName)
+			deleting = true
 		}
 
-		if err != nil {
-			c.setErrorStatus(streamName, fmt.Errorf("streaming logs: %v", err))
-		} else if pod == nil {
-			c.setErrorStatus(streamName, fmt.Errorf("streaming logs: pod not found: %s", podNN))
-		} else {
+		if pod == nil || apierrors.IsNotFound(err) {
+			c.setErrorStatus(streamName, fmt.Errorf("pod not found: %s", podNN))
+		} else if err != nil {
+			c.setErrorStatus(streamName, fmt.Errorf("reading pod: %v", err))
+		} else if !deleting {
 			result = c.addOrUpdateContainerWatches(ctx, streamName, stream, podNN, pod)
 		}
 	}
@@ -198,7 +202,7 @@ func (c *Controller) addOrUpdateContainerWatches(ctx context.Context, streamName
 			podID:      k8s.PodID(podNN.Name),
 			cID:        container.ID(co.ID),
 		}
-		if !c.shouldStreamContainerLogs(co, key) {
+		if !c.shouldStreamContainerLogs(pod, co, key) {
 			continue
 		}
 
@@ -500,7 +504,11 @@ func (c *Controller) maybeUpdateObjectStatus(ctx context.Context, nn types.Names
 		return err
 	}
 
-	if newError != "" && newError != oldError {
+	// Only show new errors.
+	//
+	// Don't show errors about the pod not being found. Those are pretty common
+	// when the pod hasn't shown up in the informer cache yet.
+	if newError != "" && !strings.HasPrefix(newError, "pod not found:") && newError != oldError {
 		logger.Get(ctx).Errorf("podlogstream %s: %s", obj.Name, newError)
 	}
 	return nil
