@@ -5,8 +5,8 @@
 print("Hello Tilt! This appears in the (Tiltfile) pane whenever Tilt evaluates this file.")
 
 # Run a one-time command e.g. to install prerequisites
-# More info: https://docs.tilt.dev/local_resource.html
 # `cmd_bat`, when present, is used instead of `cmd` on Windows.
+# More info: https://docs.tilt.dev/local_resource.html
 #
 # local_resource('install-commands',
 #                cmd='which helm > /dev/null || brew install helm',
