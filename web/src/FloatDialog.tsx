@@ -22,17 +22,19 @@ let TitleBar = styled.div`
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 24px;
 `
 
 let Title = styled.div`
   font-family: ${Font.monospace};
-  font-size: ${FontSize.small};
+  font-size: ${FontSize.default};
   line-height: 17px;
 `
 
 export let HR = styled.hr`
   border-top: 1px dashed ${Color.grayLight};
   margin: 16px -20px 24px -20px;
+  color: white;
 `
 
 let CloseButton = styled.button`
@@ -106,7 +108,7 @@ export default function FloatDialog(props: props) {
           <CloseSvg />
         </CloseButton>
       </TitleBar>
-      <HR />
+
       <Content>{props.children}</Content>
     </Popover>
   )
