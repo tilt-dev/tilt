@@ -14,7 +14,6 @@ import { useSessionState } from "./BrowserStorage"
 export const HELP_SEARCH_BAR_OPTIONS_KEY = "help_searchbar_options"
 
 export type HelpSearchBarOptions = {
-  alertsOnTop: boolean // Note: this is only used/implemented in OverviewSidebar
   helpSearchBar: string
 }
 
@@ -24,14 +23,13 @@ type HelpSearchBarOptionsContext = {
 }
 
 export const DEFAULT_OPTIONS: HelpSearchBarOptions = {
-  alertsOnTop: false,
   helpSearchBar: "",
 }
 
 const HelpSearchBarOptionsContext = createContext<HelpSearchBarOptionsContext>({
   options: { ...DEFAULT_OPTIONS },
   setOptions: () => {
-    console.warn("Resource list options context is not set.")
+    console.warn("Help Searchbar options context is not set.")
   },
 })
 

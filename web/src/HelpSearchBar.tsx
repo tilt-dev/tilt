@@ -1,6 +1,5 @@
 import { InputAdornment } from "@material-ui/core"
 import { InputProps as StandardInputProps } from "@material-ui/core/Input/Input"
-import React from "react"
 import styled from "styled-components"
 import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
 import { ReactComponent as SearchSvg } from "./assets/svg/search.svg"
@@ -17,19 +16,10 @@ import {
   SizeUnit,
 } from "./style-helpers"
 
-export function matchesResourceName(
-  resourceName: string,
-  filter: string
-): boolean {
-  filter = filter.trim()
-  // this is functionally redundant but probably an important enough case to make its own thing
-  if (filter === "") {
-    return true
-  }
-  // a resource matches the query if the resource name contains all tokens in the query
-  return filter
-    .split(" ")
-    .every((token) => resourceName.toLowerCase().includes(token.toLowerCase()))
+export function searchDocs(
+  query: string
+) {
+  window.open("https://docs.tilt.dev/search?q=tilt")
 }
 
 export const HelpSearchBarTextField = styled(InstrumentedTextField)`
@@ -85,6 +75,14 @@ export function HelpSearchBar(props: { className?: string }) {
     ),
   }
 
+  function handleKeyPress(e: any) {
+    if ("Enter" == e.key) {
+      searchDocs(helpSearchBar)
+    } else {
+      setHelpSearchBar(helpSearchBar+e.key)
+    }
+  }
+
   // only show the "x" to clear if there's any input to clear
   if (HelpSearchBar.length) {
     const onClearClick = () => setHelpSearchBar("")
@@ -104,12 +102,12 @@ export function HelpSearchBar(props: { className?: string }) {
   return (
     <HelpSearchBarTextField
       className={props.className}
-      value={HelpSearchBar ?? ""}
-      onChange={(e) => setHelpSearchBar(e.target.value)}
+      value={helpSearchBar ?? ""}
       placeholder="Search Tilt Docs..."
       InputProps={inputProps}
       variant="outlined"
       analyticsName="ui.web.HelpSearchBar"
+      onKeyPress={handleKeyPress}
     />
   )
 }
