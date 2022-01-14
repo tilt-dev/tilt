@@ -33,4 +33,13 @@ describe("HelpSearchBar", () => {
     expect(button.length).toBe(1)
   })
 
+  it("should change the search value on input change", () => {
+    const searchTerm = "so search"
+    const root = mount(<HelpSearchBarTestWrapper />)
+    const searchField = root.find("input")
+    searchField.simulate("change", { target: { value: searchTerm } })
+
+    expect(searchValue).toBe(searchTerm)
+  })
+
 })
