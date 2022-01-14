@@ -11,6 +11,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -41,6 +42,9 @@ import (
 type deleteSpec struct {
 	entities  []k8s.K8sEntity
 	deleteCmd *v1alpha1.KubernetesApplyCmd
+
+	// waits for the entities to fully delete
+	wait bool
 }
 
 type Reconciler struct {
@@ -112,7 +116,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	}
 
 	if apierrors.IsNotFound(err) || !ka.ObjectMeta.DeletionTimestamp.IsZero() {
-		err := r.deleteCreatedObjects(ctx, nn)
+		err := r.deleteCreatedObjects(ctx, nn, "garbage collecting Kubernetes objects")
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -141,7 +145,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 	// Delete kubernetesapply if it's disabled
 	if disableStatus.Disabled {
-		err := r.deleteCreatedObjects(ctx, nn)
+		err := r.deleteCreatedObjects(ctx, nn, "deleting disabled Kubernetes objects")
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -312,7 +316,7 @@ func (r *Reconciler) ForceApply(
 	}
 
 	toDelete := r.updateResult(nn, &result)
-	r.bestEffortDelete(ctx, toDelete)
+	r.bestEffortDelete(ctx, toDelete, "garbage collecting Kubernetes objects")
 
 	return *updatedStatus, nil
 }
@@ -666,30 +670,64 @@ func (r *Reconciler) updateResult(nn types.NamespacedName, result *Result) delet
 	return deleteSpec{entities: toDelete}
 }
 
-// A helper that deletes all kubernetesapply objects and the
-// related kubernetesdiscovery objects it owns
+// A helper that deletes all Kuberentes objects, even if they haven't been applied yet.
+//
+// Namespaces are not deleted by default. Similar to `tilt down`, deleting namespaces
+// is likely to be more destructive than most users want from this operation.
+//
+// TODO(nick): Delete operations aren't currently reflected in the KubernetesApplyStatus
+// in any meaningful way. ForceDelete() deletes our internal bookkeeping, but
+// doesn't otherwise change the KubernetesApplyStatus. We should probably change
+// this, but that's lower priority than a bigger level-based refactor
+// and getting this to be pure API objects.
+func (r *Reconciler) ForceDelete(ctx context.Context, nn types.NamespacedName,
+	spec v1alpha1.KubernetesApplySpec, reason string) error {
+
+	toDelete := deleteSpec{wait: true}
+	if spec.YAML != "" {
+		entities, err := k8s.ParseYAMLFromString(spec.YAML)
+		if err != nil {
+			return fmt.Errorf("force delete: %v", err)
+		}
+
+		entities, _, err = k8s.Filter(entities, func(e k8s.K8sEntity) (b bool, err error) {
+			return e.GVK() != schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Namespace"}, nil
+		})
+		if err != nil {
+			return err
+		}
+
+		toDelete.entities = k8s.ReverseSortedEntities(entities)
+	} else if spec.DeleteCmd != nil {
+		toDelete.deleteCmd = spec.DeleteCmd
+	}
+
+	// Ignore the delete spec from what's already been applied.
+	_ = r.updateResult(nn, nil)
+
+	r.bestEffortDelete(ctx, toDelete, reason)
+	return r.manageOwnedKubernetesDiscovery(ctx, nn, nil)
+}
+
+// A helper that deletes all kubernetesapply objects that have been applied and
+// the related kubernetesdiscovery objects it owns
 func (r *Reconciler) deleteCreatedObjects(
 	ctx context.Context,
 	nn types.NamespacedName,
+	reason string,
 ) error {
 	toDelete := r.updateResult(nn, nil)
-	r.bestEffortDelete(ctx, toDelete)
-
-	err := r.manageOwnedKubernetesDiscovery(ctx, nn, nil)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	r.bestEffortDelete(ctx, toDelete, reason)
+	return r.manageOwnedKubernetesDiscovery(ctx, nn, nil)
 }
 
-func (r *Reconciler) bestEffortDelete(ctx context.Context, toDelete deleteSpec) {
+func (r *Reconciler) bestEffortDelete(ctx context.Context, toDelete deleteSpec, reason string) {
 	if len(toDelete.entities) == 0 && toDelete.deleteCmd == nil {
 		return
 	}
 
 	l := logger.Get(ctx)
-	l.Infof("Garbage collecting Kubernetes resources:")
+	l.Infof("Begin %s:", reason)
 
 	if len(toDelete.entities) != 0 {
 		// Use a min component count of 2 for computing names,
@@ -699,16 +737,16 @@ func (r *Reconciler) bestEffortDelete(ctx context.Context, toDelete deleteSpec) 
 			l.Infof("→ %s", displayName)
 		}
 
-		err := r.k8sClient.Delete(ctx, toDelete.entities, false)
+		err := r.k8sClient.Delete(ctx, toDelete.entities, toDelete.wait)
 		if err != nil {
-			l.Errorf("Error garbage collecting Kubernetes resources: %v", err)
+			l.Errorf("Error %s: %v", reason, err)
 		}
 	}
 
 	if toDelete.deleteCmd != nil {
 		deleteCmd := toModelCmd(*toDelete.deleteCmd)
 		if err := localexec.OneShotToLogger(ctx, r.execer, deleteCmd); err != nil {
-			l.Errorf("Error garbage collecting Kubernetes resources: %v", err)
+			l.Errorf("Error %s: %v", reason, err)
 		}
 	}
 }

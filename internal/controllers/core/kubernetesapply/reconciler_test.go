@@ -485,6 +485,55 @@ func TestIgnoreManagedObjects(t *testing.T) {
 	assert.Equal(f.T(), result, ka.Status)
 }
 
+func TestForceDelete(t *testing.T) {
+	f := newFixture(t)
+	nn := types.NamespacedName{Name: "a"}
+	ka := v1alpha1.KubernetesApply{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "a",
+			Annotations: map[string]string{
+				v1alpha1.AnnotationManagedBy: "buildcontrol",
+			},
+		},
+		Spec: v1alpha1.KubernetesApplySpec{
+			YAML: testyaml.SanchoYAML,
+		},
+	}
+	f.Create(&ka)
+
+	err := f.r.ForceDelete(f.Context(), nn, ka.Spec, "testing")
+	assert.Nil(f.T(), err)
+	assert.Contains(f.T(), f.kClient.DeletedYaml, "sancho")
+}
+
+func TestForceDeleteWithCmd(t *testing.T) {
+	f := newFixture(t)
+
+	nn := types.NamespacedName{Name: "a"}
+	applyCmd, _ := f.createApplyCmd("custom-apply-cmd", testyaml.SanchoYAML)
+	ka := v1alpha1.KubernetesApply{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "a",
+			Annotations: map[string]string{
+				v1alpha1.AnnotationManagedBy: "buildcontrol",
+			},
+		},
+		Spec: v1alpha1.KubernetesApplySpec{
+			ApplyCmd:  &applyCmd,
+			DeleteCmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-delete-cmd"}},
+		},
+	}
+	f.Create(&ka)
+
+	err := f.r.ForceDelete(f.Context(), nn, ka.Spec, "testing")
+	assert.Nil(f.T(), err)
+
+	calls := f.execer.Calls()
+	if assert.Len(t, calls, 1, "Expected 1x delete calls") {
+		assert.Equal(t, []string{"custom-delete-cmd"}, calls[0].Cmd.Argv)
+	}
+}
+
 func TestDisableByConfigmap(t *testing.T) {
 	f := newFixture(t)
 	ka := v1alpha1.KubernetesApply{
