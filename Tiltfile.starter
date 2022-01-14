@@ -1,8 +1,7 @@
 # Welcome to Tilt!
 # To get you started as quickly as possible, we have created this generic Tiltfile. 
 # Modify and comment out any commands to make them work for you.
-# Happy Tilting!
-print("Hello Tilt! This appears in the (Tiltfile) pane whenever Tilt evaluates this file.")
+print("✨ Hello Tilt! This appears in the (Tiltfile) pane whenever Tilt evaluates this file.")
 
 # Run a one-time command e.g. to install prerequisites
 # `cmd_bat`, when present, is used instead of `cmd` on Windows.
@@ -34,6 +33,8 @@ print("Hello Tilt! This appears in the (Tiltfile) pane whenever Tilt evaluates t
 # k8s_yaml(['k8s/deployment.yaml', 'k8s/service.yaml'])
 
 # Configure a k8s resource for port forwarding
+# 'my-resource' can be anything you wish, but often will align with a name
+# of a deployment in the deployment manifest (k8s/deployment.yaml above).
 # More info: https://docs.tilt.dev/api.html#api.k8s_resource
 #
 # k8s_resource('my-resource', port_forwards=[5000])
@@ -41,15 +42,11 @@ print("Hello Tilt! This appears in the (Tiltfile) pane whenever Tilt evaluates t
 # You can package related resources and statements in a function. Here we
 # add a local resource that downloads and loads the tilt-avatars demo app.
 def tilt_demo():
-    if os.path.exists('tilt-avatars-main'):
-        load_dynamic('tilt-avatars-main/Tiltfile')
-    watch_file('tilt-avatars-main/Tiltfile')
-    url      = 'https://github.com/tilt-dev/tilt-avatars/archive/refs/heads/main'
-    curl_cmd = 'curl -L {}.tar.gz | tar zxvf -'.format(url)
-    ps_cmd   = ['powershell.exe', '-Noninteractive', '-Command', '& {' +
-                'Invoke-WebRequest -Uri {}.zip -UseBasicParsing -OutFile tilt-avatars-main.zip; '.format(url) +
-                'Expand-Archive tilt-avatars-main.zip -DestinationPath .; Remove-Item tilt-avatars-main.zip;}']
-    local_resource('get-tilt-avatars', cmd=curl_cmd, cmd_bat=ps_cmd, labels=['demo'])
+    if os.path.exists('tilt-avatars/Tiltfile'):
+        load_dynamic('tilt-avatars/Tiltfile')
+    watch_file('tilt-avatars/Tiltfile')
+    load('ext://git_resource', 'git_checkout')
+    git_checkout('https://github.com/tilt-dev/tilt-avatars.git', checkout_dir='tilt-avatars')
 
 # Uncomment the tilt_demo() invocation to see it in action.
 #tilt_demo()
