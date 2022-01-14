@@ -7,15 +7,6 @@ print("""
 Open {tiltfile_path} in your favorite editor to get started.
 """.format(tiltfile_path=config.main_path))
 
-# Run a one-time command e.g. to install prerequisites
-# `cmd_bat`, when present, is used instead of `cmd` on Windows.
-# More info: https://docs.tilt.dev/local_resource.html
-#
-# local_resource('install-commands',
-#                cmd='which helm > /dev/null || brew install helm',
-#                cmd_bat=['powershell.exe', '-Noninteractive', '-Command', '& {if (!(Get-Command helm -ErrorAction SilentlyContinue)) {scoop install helm}}'])
-
-
 # Build docker image for a resource
 # More info on https://docs.tilt.dev/api.html#api.docker_build
 #
@@ -42,6 +33,14 @@ Open {tiltfile_path} in your favorite editor to get started.
 # More info: https://docs.tilt.dev/api.html#api.k8s_resource
 #
 # k8s_resource('my-resource', port_forwards=[5000])
+
+# Run a one-time command e.g. to install prerequisites
+# `cmd_bat`, when present, is used instead of `cmd` on Windows.
+# More info: https://docs.tilt.dev/local_resource.html
+#
+# local_resource('install-commands',
+#                cmd='which helm > /dev/null || brew install helm',
+#                cmd_bat=['powershell.exe', '-Noninteractive', '-Command', '& {if (!(Get-Command helm -ErrorAction SilentlyContinue)) {scoop install helm}}'])
 
 # You can package related resources and statements in a function. Here we
 # checkout and load the tilt-avatars demo app from Github using `git_checkout`
