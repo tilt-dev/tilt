@@ -413,6 +413,38 @@ func TestReconcilerIndexing(t *testing.T) {
 	}, reqs)
 }
 
+func TestDeletionTimestamp(t *testing.T) {
+	f := newPLMFixture(t)
+
+	f.kClient.SetLogsForPodContainer(podID, cName, "hello world!")
+
+	start := f.clock.Now()
+
+	pb := newPodBuilder(podID).addRunningContainer(cName, cID).addDeletionTimestamp()
+	f.kClient.UpsertPod(pb.toPod())
+
+	pls := plsFromPod("server", pb, start)
+	f.Create(pls)
+
+	f.triggerPodEvent(podID)
+
+	nn := types.NamespacedName{Name: pls.Name}
+	f.MustReconcile(nn)
+
+	f.AssertOutputContains("hello world!")
+	f.Get(nn, pls)
+
+	// No log streams should be active.
+	assert.Equal(t, pls.Status, v1alpha1.PodLogStreamStatus{
+		ContainerStatuses: []v1alpha1.ContainerLogStreamStatus{
+			v1alpha1.ContainerLogStreamStatus{Name: "cname"},
+		},
+	})
+
+	// The cname stream is closed forever.
+	assert.Len(t, f.plsc.hasClosedStream, 1)
+}
+
 type plmStore struct {
 	t testing.TB
 	*store.TestingStore
@@ -534,6 +566,12 @@ func newPodBuilder(id k8s.PodID) *podBuilder {
 			Namespace: "default",
 		},
 	})
+}
+
+func (pb *podBuilder) addDeletionTimestamp() *podBuilder {
+	now := metav1.Now()
+	pb.ObjectMeta.DeletionTimestamp = &now
+	return pb
 }
 
 func (pb *podBuilder) addRunningContainer(name container.Name, id container.ID) *podBuilder {
