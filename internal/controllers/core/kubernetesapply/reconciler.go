@@ -727,7 +727,7 @@ func (r *Reconciler) bestEffortDelete(ctx context.Context, toDelete deleteSpec, 
 	}
 
 	l := logger.Get(ctx)
-	l.Infof("%s:", reason)
+	l.Infof("Begin %s:", reason)
 
 	if len(toDelete.entities) != 0 {
 		// Use a min component count of 2 for computing names,
