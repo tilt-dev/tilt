@@ -1,7 +1,11 @@
 # Welcome to Tilt!
 # To get you started as quickly as possible, we have created this generic Tiltfile. 
 # Modify and comment out any commands to make them work for you.
-print("✨ Hello Tilt! This appears in the (Tiltfile) pane whenever Tilt evaluates this file.")
+print("""
+✨ Hello Tilt! This appears in the (Tiltfile) pane whenever Tilt evaluates this file.
+
+Open {tiltfile_path} in your favorite editor to get started.
+""".format(tiltfile_path=config.main_path))
 
 # Run a one-time command e.g. to install prerequisites
 # `cmd_bat`, when present, is used instead of `cmd` on Windows.
