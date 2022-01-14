@@ -3,8 +3,8 @@ import { mount } from "enzyme"
 import React from "react"
 import { act } from "react-dom/test-utils"
 import { MemoryRouter } from "react-router-dom"
-import { TwoResources } from "./OverviewResourceBar.stories"
 import HelpDialog from "./HelpDialog"
+import { TwoResources } from "./OverviewResourceBar.stories"
 import { SnapshotActionProvider } from "./snapshot"
 
 it("renders shortcuts dialog on ?", () => {

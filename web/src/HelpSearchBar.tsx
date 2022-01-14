@@ -1,6 +1,6 @@
-import React, { KeyboardEvent, ChangeEvent, useState } from "react"
 import { InputAdornment } from "@material-ui/core"
 import { InputProps as StandardInputProps } from "@material-ui/core/Input/Input"
+import React, { ChangeEvent, KeyboardEvent, useState } from "react"
 import styled from "styled-components"
 import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
 import { ReactComponent as SearchSvg } from "./assets/svg/search.svg"
@@ -16,10 +16,10 @@ import {
   SizeUnit,
 } from "./style-helpers"
 
-export function searchDocs(
-  query: string
-) {
-  window.open(`https://docs.tilt.dev/search?q=${encodeURI(query)}&utm_source=tiltui`)
+export function searchDocs(query: string) {
+  window.open(
+    `https://docs.tilt.dev/search?q=${encodeURI(query)}&utm_source=tiltui`
+  )
 }
 
 export const HelpSearchBarTextField = styled(InstrumentedTextField)`
@@ -56,11 +56,11 @@ export const ClearHelpSearchBarButton = styled(InstrumentedButton)`
   display: flex;
   align-items: center;
 `
-export let searchValue:string;
-let setSearchValue: React.Dispatch<React.SetStateAction<string>>;
+export let searchValue: string
+let setSearchValue: React.Dispatch<React.SetStateAction<string>>
 
 export function HelpSearchBar(props: { className?: string }) {
-  [ searchValue, setSearchValue ] = useState("")
+  ;[searchValue, setSearchValue] = useState("")
 
   let inputProps: Partial<StandardInputProps> = {
     startAdornment: (

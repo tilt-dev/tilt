@@ -7,8 +7,8 @@ import { ReactComponent as HelpIcon } from "./assets/svg/help.svg"
 import { ReactComponent as SnapshotIcon } from "./assets/svg/snapshot.svg"
 import { ReactComponent as UpdateAvailableIcon } from "./assets/svg/update-available.svg"
 import FloatDialog from "./FloatDialog"
-import { isTargetEditable } from "./shortcut"
 import HelpDialog from "./HelpDialog"
+import { isTargetEditable } from "./shortcut"
 import { SnapshotAction } from "./snapshot"
 import {
   AnimDuration,
@@ -281,9 +281,7 @@ export function GlobalNav(props: GlobalNavProps) {
         isNewInterface={true}
       />
       <GlobalNavShortcuts
-        toggleHelpDialog={() =>
-          toggleHelpDialog(AnalyticsAction.Shortcut)
-        }
+        toggleHelpDialog={() => toggleHelpDialog(AnalyticsAction.Shortcut)}
         snapshot={props.snapshot}
       />
     </GlobalNavRoot>

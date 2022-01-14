@@ -1,11 +1,10 @@
 import { mount } from "enzyme"
 import { MemoryRouter } from "react-router"
 import { tiltfileKeyContext } from "./BrowserStorage"
-
 import {
   ClearHelpSearchBarButton,
+  HelpSearchBar,
   searchValue,
-  HelpSearchBar
 } from "./HelpSearchBar"
 
 const HelpSearchBarTestWrapper = () => (
@@ -43,17 +42,19 @@ describe("HelpSearchBar", () => {
   })
 
   it("should open search in new tab on submision", () => {
-    const windowOpenSpy =jest.fn();
-    window.open = windowOpenSpy;
+    const windowOpenSpy = jest.fn()
+    window.open = windowOpenSpy
     const searchTerm = "such term"
-    const searchResultsPage = `https://docs.tilt.dev/search?q=${encodeURI(searchTerm)}&utm_source=tiltui`;
+    const searchResultsPage = `https://docs.tilt.dev/search?q=${encodeURI(
+      searchTerm
+    )}&utm_source=tiltui`
 
     const root = mount(<HelpSearchBarTestWrapper />)
     const searchField = root.find("input")
     searchField.simulate("change", { target: { value: searchTerm } })
     searchField.simulate("keyPress", { key: "Enter" })
 
-    expect(windowOpenSpy).toBeCalledWith(searchResultsPage);
+    expect(windowOpenSpy).toBeCalledWith(searchResultsPage)
   })
 
   it("should clear the search value after submission", () => {

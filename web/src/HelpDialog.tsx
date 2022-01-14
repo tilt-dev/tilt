@@ -3,8 +3,8 @@ import styled from "styled-components"
 import { ReactComponent as GithubSvg } from "./assets/svg/github.svg"
 import { ReactComponent as SlackSvg } from "./assets/svg/slack.svg"
 import FloatDialog, { HR } from "./FloatDialog"
-import { AnimDuration, Color } from "./style-helpers"
 import { HelpSearchBar } from "./HelpSearchBar"
+import { AnimDuration, Color } from "./style-helpers"
 
 type props = {
   open: boolean
@@ -107,7 +107,13 @@ export default function HelpDialog(props: props) {
         <HR />
       </ShortcutRow>
       <HR />
-      <ShortcutRow style={{ textDecoration: "underline", fontSize: "18px", marginBottom: "8px" }}>
+      <ShortcutRow
+        style={{
+          textDecoration: "underline",
+          fontSize: "18px",
+          marginBottom: "8px",
+        }}
+      >
         Keyboard shortcuts
       </ShortcutRow>
       <Shortcut label="Navigate Resource">
