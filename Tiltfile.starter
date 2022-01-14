@@ -40,7 +40,8 @@ print("✨ Hello Tilt! This appears in the (Tiltfile) pane whenever Tilt evaluat
 # k8s_resource('my-resource', port_forwards=[5000])
 
 # You can package related resources and statements in a function. Here we
-# add a local resource that downloads and loads the tilt-avatars demo app.
+# checkout and load the tilt-avatars demo app from Github using `git_checkout`
+# from the `git_resource` extension.
 def tilt_demo():
     if os.path.exists('tilt-avatars/Tiltfile'):
         load_dynamic('tilt-avatars/Tiltfile')
