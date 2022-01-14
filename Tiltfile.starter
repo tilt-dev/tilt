@@ -1,5 +1,5 @@
 # Welcome to Tilt!
-# To get you started as quickly as possible, we have created this generic Tiltfile. 
+# To get you started as quickly as possible, we have created this generic Tiltfile.
 # Modify and comment out any commands to make them work for you.
 print("""
 ✨ Hello Tilt! This appears in the (Tiltfile) pane whenever Tilt evaluates this file.
@@ -11,15 +11,15 @@ Open {tiltfile_path} in your favorite editor to get started.
 # More info on https://docs.tilt.dev/api.html#api.docker_build
 #
 # docker_build('my-resource-image-name', '.', dockerfile='deploy/docs.dockerfile',
-              # Define the only files that are relevant for the docker build
-              # only=['./src', './healthcheck.sh', './docs'],
-              # Define steps for updating a running container, more info on https://docs.tilt.dev/live_update_reference.html
-              # live_update=[
-                # Specify where files should be synced to from host to container system
-                # sync('./src', '/src/'),
-                # Specify the command to be executed when updating a container, run only when files defined in "trigger" list changed
-                # run('sync.sh', trigger=['watched-file'])
-              # ]
+#              # Define the only files that are relevant for the docker build
+#              only=['./src', './healthcheck.sh', './docs'],
+#              # Define steps for updating a running container, more info on https://docs.tilt.dev/live_update_reference.html
+#              live_update=[
+#                 # Specify where files should be synced to from host to container system
+#                 sync('./src', '/src/'),
+#                 # Specify the command to be executed when updating a container, run only when files defined in "trigger" list changed
+#                 run('sync.sh', trigger=['watched-file'])
+#              ]
 # )
 
 # Apply k8s manifests
