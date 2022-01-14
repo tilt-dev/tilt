@@ -1,4 +1,4 @@
-import React, { ChangeEvent, useState } from "react"
+import React, { KeyboardEvent, ChangeEvent, useState } from "react"
 import { InputAdornment } from "@material-ui/core"
 import { InputProps as StandardInputProps } from "@material-ui/core/Input/Input"
 import styled from "styled-components"
@@ -57,8 +57,8 @@ export const ClearHelpSearchBarButton = styled(InstrumentedButton)`
   align-items: center;
 `
 
-export function HelpSearchBar(props: { className?: string }) {
-  const [ searchValue, setSearchValue ] = useState("")
+export function HelpSearchBar(props: { className?: string, defaultValue?: string }) {
+  const [ searchValue, setSearchValue ] = useState(props.defaultValue ?? "")
 
   let inputProps: Partial<StandardInputProps> = {
     startAdornment: (
@@ -68,7 +68,7 @@ export function HelpSearchBar(props: { className?: string }) {
     ),
   }
 
-  function handleKeyPress(e: any) {
+  function handleKeyPress(e: KeyboardEvent) {
     if ("Enter" === e.key) {
       searchDocs(searchValue)
       setSearchValue("")
@@ -77,7 +77,6 @@ export function HelpSearchBar(props: { className?: string }) {
 
   function handleChange(e: ChangeEvent<HTMLInputElement>) {
     const { value } = e.target
-    console.log(value)
     setSearchValue(value)
   }
 
