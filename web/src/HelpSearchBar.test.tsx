@@ -42,4 +42,27 @@ describe("HelpSearchBar", () => {
     expect(searchValue).toBe(searchTerm)
   })
 
+  it("should open search in new tab on submision", () => {
+    const windowOpenSpy =jest.fn();
+    window.open = windowOpenSpy;
+    const searchTerm = "such term"
+    const searchResultsPage = `https://docs.tilt.dev/search?q=${encodeURI(searchTerm)}&utm_source=tiltui`;
+
+    const root = mount(<HelpSearchBarTestWrapper />)
+    const searchField = root.find("input")
+    searchField.simulate("change", { target: { value: searchTerm } })
+    searchField.simulate("keyPress", { key: "Enter" })
+
+    expect(windowOpenSpy).toBeCalledWith(searchResultsPage);
+  })
+
+  it("should clear the search value after submission", () => {
+    const searchTerm = "much find"
+    const root = mount(<HelpSearchBarTestWrapper />)
+    const searchField = root.find("input")
+    searchField.simulate("change", { target: { value: searchTerm } })
+    searchField.simulate("keyPress", { key: "Enter" })
+
+    expect(searchValue.length).toBe(0)
+  })
 })
