@@ -75,7 +75,7 @@ warn('ℹ️ Open {tiltfile_path} in your favorite editor to get started.'.forma
 # )
 
 
-# Run a local commands
+# Run local commands
 #   Local commands can be helpful for one-time tasks like installing
 #   project prerequisites. They can also manage long-lived processes
 #   for non-containerized services or dependencies.
