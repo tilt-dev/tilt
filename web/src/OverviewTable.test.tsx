@@ -22,21 +22,23 @@ import OverviewTable, {
   ResourceTableHeaderSortTriangle,
   ResourceTableHeadRow,
   ResourceTableRow,
+  Table,
+  TableGroupedByLabels,
+  TableNoMatchesFound,
+  TableResourceResultCount,
+  TableWithoutGroups,
+} from "./OverviewTable"
+import {
   RowValues,
   SelectionCheckbox,
-  Table,
   TableEndpointColumn,
-  TableGroupedByLabels,
   TableNameColumn,
-  TableNoMatchesFound,
   TablePodIDColumn,
-  TableResourceResultCount,
   TableSelectionColumn,
   TableTriggerColumn,
   TableTriggerModeColumn,
   TableWidgetsColumn,
-  TableWithoutGroups,
-} from "./OverviewTable"
+} from "./OverviewTableColumns"
 import { ResourceGroupsInfoTip } from "./ResourceGroups"
 import {
   DEFAULT_GROUP_STATE,
