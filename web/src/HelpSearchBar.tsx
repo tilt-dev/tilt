@@ -56,9 +56,11 @@ export const ClearHelpSearchBarButton = styled(InstrumentedButton)`
   display: flex;
   align-items: center;
 `
+export let searchValue:string;
+let setSearchValue: React.Dispatch<React.SetStateAction<string>>;
 
-export function HelpSearchBar(props: { className?: string, defaultValue?: string }) {
-  const [ searchValue, setSearchValue ] = useState(props.defaultValue ?? "")
+export function HelpSearchBar(props: { className?: string }) {
+  [ searchValue, setSearchValue ] = useState("")
 
   let inputProps: Partial<StandardInputProps> = {
     startAdornment: (
