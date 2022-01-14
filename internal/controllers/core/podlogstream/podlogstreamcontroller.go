@@ -161,17 +161,12 @@ func (c *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reco
 	} else {
 		podNN := types.NamespacedName{Name: stream.Spec.Pod, Namespace: stream.Spec.Namespace}
 		pod, err := c.kClient.PodFromInformerCache(ctx, podNN)
-		deleting := false
 		if err != nil && apierrors.IsNotFound(err) {
 			c.deleteStreams(streamName)
-			deleting = true
-		}
-
-		if pod == nil || apierrors.IsNotFound(err) {
 			c.setErrorStatus(streamName, fmt.Errorf("pod not found: %s", podNN))
 		} else if err != nil {
 			c.setErrorStatus(streamName, fmt.Errorf("reading pod: %v", err))
-		} else if !deleting {
+		} else if pod != nil {
 			result = c.addOrUpdateContainerWatches(ctx, streamName, stream, podNN, pod)
 		}
 	}
