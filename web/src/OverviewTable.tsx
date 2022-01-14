@@ -28,7 +28,10 @@ import { ReactComponent as StarSvg } from "./assets/svg/star.svg"
 import { linkToTiltDocs, TiltDocsPage } from "./constants"
 import Features, { Flag, useFeatures } from "./feature"
 import { Hold } from "./Hold"
-import { InstrumentedButton } from "./instrumentedComponents"
+import {
+  InstrumentedButton,
+  InstrumentedCheckbox,
+} from "./instrumentedComponents"
 import {
   getResourceLabels,
   GroupByLabelView,
@@ -60,6 +63,7 @@ import {
 } from "./ResourceListOptionsContext"
 import { matchesResourceName, ResourceNameFilter } from "./ResourceNameFilter"
 import { useResourceNav } from "./ResourceNav"
+import { useResourceSelection } from "./ResourceSelectionContext"
 import {
   disabledResourceStyleMixin,
   resourceIsDisabled,
@@ -125,6 +129,7 @@ export type RowValues = {
   triggerMode: TriggerMode
   buttons: UIButton[]
   analyticsTags: Tags
+  selectable: boolean
 }
 
 type OverviewTableTrigger = {
@@ -251,9 +256,18 @@ export const ResourceTableHeaderSortTriangle = styled.div`
   }
 `
 
+export const SelectionCheckbox = styled(InstrumentedCheckbox)`
+  &.MuiCheckbox-root,
+  &.Mui-checked {
+    color: ${Color.gray6};
+  }
+`
+
 const TableHeaderStarIcon = styled(StarSvg)`
   fill: ${Color.gray7};
   height: 13px;
+  margin-left: auto;
+  margin-right: auto;
   width: 13px;
 `
 
@@ -403,6 +417,7 @@ export function TableNoMatchesFound(props: { resources?: UIResource[] }) {
   return null
 }
 
+// Table columns
 function TableStarColumn({ row }: CellProps<RowValues>) {
   let ctx = useStarredResources()
   return (
@@ -421,6 +436,41 @@ function TableUpdateColumn({ row }: CellProps<RowValues>) {
   }
   return (
     <TimeAgo date={row.values.lastDeployTime} formatter={timeAgoFormatter} />
+  )
+}
+
+export function TableSelectionColumn({ row }: CellProps<RowValues>) {
+  // Don't allow a row to be selected if it can't be disabled
+  // This rule can be adjusted when/if there are other bulk actions
+  if (!row.original.selectable) {
+    return null
+  }
+
+  const selections = useResourceSelection()
+  const resourceName = row.original.name
+  const checked = selections.isSelected(resourceName)
+
+  const onChange = (_e: ChangeEvent<HTMLInputElement>) => {
+    if (!checked) {
+      selections.select(resourceName)
+    } else {
+      selections.deselect(resourceName)
+    }
+  }
+
+  const analyticsTags = {
+    ...row.original.analyticsTags,
+    type: AnalyticsType.Grid,
+  }
+
+  return (
+    <SelectionCheckbox
+      analyticsName={"ui.web.checkbox.resourceSelection"}
+      analyticsTags={analyticsTags}
+      checked={checked}
+      onChange={onChange}
+      size="small"
+    />
   )
 }
 
@@ -645,17 +695,23 @@ function statusSortKey(row: RowValues): string {
   return `${order}${row.name}`
 }
 
+const RESOURCE_SELECTION_COLUMN: Column<RowValues> = {
+  Header: "Select",
+  disableSortBy: true,
+  Cell: TableSelectionColumn,
+}
+
 // https://react-table.tanstack.com/docs/api/useTable#column-options
 // The docs on this are not very clear!
 // `accessor` should return a primitive, and that primitive is used for sorting and filtering
 // the Cell function can get whatever it needs to render via row.original
 // best evidence I've (Matt) found: https://github.com/tannerlinsley/react-table/discussions/2429#discussioncomment-25582
 //   (from the author)
-const columnDefs: Column<RowValues>[] = [
+const DEFAULT_COLUMNS: Column<RowValues>[] = [
   {
     Header: () => <TableHeaderStarIcon title="Starred" />,
     id: "starred",
-    accessor: "name", // Note: this accessor is meaningless but required when `Header` returns JSX.The starred column gets its data directly from the StarredResources context and sort on this column is disabled.
+    accessor: "name", // Note: this accessor is meaningless but required when `Header` returns JSX. The starred column gets its data directly from the StarredResources context and sort on this column is disabled.
     disableSortBy: true,
     width: "10px",
     Cell: TableStarColumn,
@@ -716,6 +772,19 @@ const columnDefs: Column<RowValues>[] = [
     Cell: TableTriggerModeColumn,
   },
 ]
+
+function getTableColumns(features?: Features) {
+  if (!features) {
+    return DEFAULT_COLUMNS
+  }
+
+  // If bulk disable is enabled, render the selection column
+  if (features.isEnabled(Flag.BulkDisableResources)) {
+    return [RESOURCE_SELECTION_COLUMN, ...DEFAULT_COLUMNS]
+  }
+
+  return DEFAULT_COLUMNS
+}
 
 const columnNameToInfoTooltip: {
   [key: string]: NonNullable<React.ReactNode>
@@ -845,6 +914,8 @@ function uiResourceToCell(
   let hasBuilt = lastBuild !== null
   let buttons = buttonsForComponent(allButtons, "resource", r.metadata?.name)
   let analyticsTags = { target: resourceTargetType(r) }
+  // Consider a resource `selectable` if it can be disabled
+  const selectable = !!buttons.toggleDisable
 
   return {
     lastDeployTime: res.lastDeployTime ?? "",
@@ -869,6 +940,7 @@ function uiResourceToCell(
     triggerMode: res.triggerMode ?? TriggerMode.TriggerModeAuto,
     buttons: buttons.default,
     analyticsTags: analyticsTags,
+    selectable,
   }
 }
 
@@ -1028,7 +1100,7 @@ export function Table(props: TableProps) {
   const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } =
     useTable(
       {
-        columns: columnDefs,
+        columns: props.columns,
         data: props.data,
         autoResetSortBy: false,
         useControlledState: props.useControlledState,
@@ -1109,11 +1181,13 @@ export function TableGroupedByLabels({
   resources,
   buttons,
 }: TableWrapperProps) {
+  const features = useFeatures()
   const logAlertIndex = useLogAlertIndex()
   const data = useMemo(
     () => labeledResourcesToTableCells(resources, buttons, logAlertIndex),
     [resources, buttons]
   )
+  const columns = getTableColumns(features)
 
   // Global table settings are currently used to sort multiple
   // tables by the same column
@@ -1138,7 +1212,7 @@ export function TableGroupedByLabels({
           key={label}
           label={label}
           data={data.labelsToResources[label]}
-          columns={columnDefs}
+          columns={columns}
           useControlledState={useControlledState}
           setGlobalSortBy={setGlobalSortBy}
         />
@@ -1146,14 +1220,14 @@ export function TableGroupedByLabels({
       <TableGroup
         label={UNLABELED_LABEL}
         data={data.unlabeled}
-        columns={columnDefs}
+        columns={columns}
         useControlledState={useControlledState}
         setGlobalSortBy={setGlobalSortBy}
       />
       <TableGroup
         label={TILTFILE_LABEL}
         data={data.tiltfile}
-        columns={columnDefs}
+        columns={columns}
         useControlledState={useControlledState}
         setGlobalSortBy={setGlobalSortBy}
       />
@@ -1162,14 +1236,16 @@ export function TableGroupedByLabels({
 }
 
 export function TableWithoutGroups({ resources, buttons }: TableWrapperProps) {
+  const features = useFeatures()
   const logAlertIndex = useLogAlertIndex()
   const data = useMemo(() => {
     return (
       resources?.map((r) => uiResourceToCell(r, buttons, logAlertIndex)) || []
     )
   }, [resources, buttons])
+  const columns = getTableColumns(features)
 
-  return <Table columns={columnDefs} data={data} />
+  return <Table columns={columns} data={data} />
 }
 
 function OverviewTableContent(props: OverviewTableProps) {

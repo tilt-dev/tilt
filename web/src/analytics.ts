@@ -18,7 +18,7 @@ export type Tags = {
 export enum AnalyticsType {
   Account = "account",
   Detail = "resource-detail",
-  Grid = "grid",
+  Grid = "grid", // aka Table View
   Shortcut = "shortcuts",
   Unknown = "unknown",
   Update = "update",

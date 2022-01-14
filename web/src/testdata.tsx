@@ -297,21 +297,24 @@ export function tenResourceView(): TestDataView {
 }
 
 export function nResourceView(n: number): TestDataView {
-  let resources: UIResource[] = []
+  let uiResources: UIResource[] = []
+  const uiButtons: UIButton[] = []
   for (let i = 0; i < n; i++) {
     if (i === 0) {
       let res = tiltfileResource()
-      resources.push(res)
+      uiResources.push(res)
     } else {
-      let res = oneResource({})
-      res.metadata = { name: "_" + i }
-      res.status!.order = i
-      resources.push(res)
+      const name = `_${i}`
+      let res = oneResource({ name, order: i })
+      uiResources.push(res)
+      // Add a disable button for each non-Tiltfile resource
+      uiButtons.push(disableButton(name, true))
     }
   }
+
   return {
-    uiResources: resources,
-    uiButtons: [],
+    uiResources,
+    uiButtons,
     uiSession: { status: { tiltfileKey: "test", runningTiltBuild } },
   }
 }
