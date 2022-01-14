@@ -46,11 +46,11 @@ Open {tiltfile_path} in your favorite editor to get started.
 # You can package related resources and statements in a function. Here we
 # checkout and load the tilt-avatars demo app from Github using `git_checkout`
 # from the `git_resource` extension.
+load('ext://git_resource', 'git_checkout')
 def tilt_demo():
     if os.path.exists('tilt-avatars/Tiltfile'):
         load_dynamic('tilt-avatars/Tiltfile')
     watch_file('tilt-avatars/Tiltfile')
-    load('ext://git_resource', 'git_checkout')
     git_checkout('https://github.com/tilt-dev/tilt-avatars.git', checkout_dir='tilt-avatars')
 
 # Uncomment the tilt_demo() invocation to see it in action.
