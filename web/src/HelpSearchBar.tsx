@@ -107,7 +107,7 @@ export function HelpSearchBar(props: { className?: string }) {
       placeholder="Search Tilt Docs..."
       InputProps={inputProps}
       variant="outlined"
-      analyticsName="ui.web.HelpSearchBar"
+      analyticsName="ui.web.helpSearchBar"
       onKeyPress={handleKeyPress}
       onChange={handleChange}
     />
