@@ -2,7 +2,9 @@ package tiltfile
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -134,6 +136,11 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		}
 	}
 
+	contentsResult, err := r.reconcileTiltfileContents(ctx, &tf)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	step := runStepNone
 	if run != nil {
 		step = run.step
@@ -170,11 +177,18 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 	run = r.runs[nn]
 	if run != nil {
-		newStatus := run.TiltfileStatus()
+		newStatus := run.TiltfileStatus(contentsResult.sha256)
 		if !apicmp.DeepEqual(newStatus, tf.Status) {
 			update := tf.DeepCopy()
-			update.Status = run.TiltfileStatus()
-			err := r.ctrlClient.Status().Update(ctx, update)
+			if len(contentsResult.contents) > 0 {
+				update.Spec.Contents = string(contentsResult.contents)
+				err = r.ctrlClient.Update(ctx, update)
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+			}
+			update.Status = run.TiltfileStatus(contentsResult.sha256)
+			err = r.ctrlClient.Status().Update(ctx, update)
 			if err != nil {
 				return ctrl.Result{}, err
 			}
@@ -182,6 +196,46 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	}
 
 	return ctrl.Result{}, nil
+}
+
+type tiltfileContentsResult struct {
+	sha256   string
+	contents []byte
+}
+
+func (r *Reconciler) reconcileTiltfileContents(ctx context.Context, tf *v1alpha1.Tiltfile) (tiltfileContentsResult, error) {
+	result := tiltfileContentsResult{sha256: tf.Status.ContentsSHA256}
+	bytes, err := os.ReadFile(tf.Spec.Path)
+	if err != nil {
+		// If the file doesn't exist, don't do any reconciliation of contents
+		// and avoid emitting a reconciler error to the UI
+		if os.IsNotExist(err) {
+			return result, nil
+		}
+
+		return result, err
+	}
+
+	fileSha256 := fmt.Sprintf("%x", sha256.Sum256(bytes))
+	result.sha256 = fileSha256
+
+	// TODO(nicksieger): bail here if a disable-contents-api feature flag is set
+
+	// File update wins, return contents with which to update API server
+	if fileSha256 != tf.Status.ContentsSHA256 {
+		result.contents = bytes
+		return result, nil
+	}
+
+	contentsSha256 := fmt.Sprintf("%x", sha256.Sum256([]byte(tf.Spec.Contents)))
+
+	// Contents changed via API, update file on disk
+	if contentsSha256 != tf.Status.ContentsSHA256 {
+		result.sha256 = contentsSha256
+		err = os.WriteFile(tf.Spec.Path, []byte(tf.Spec.Contents), 0644)
+	}
+
+	return result, err
 }
 
 // Modeled after BuildController.needsBuild and NextBuildReason(). Check to see that:
@@ -479,13 +533,14 @@ type runStatus struct {
 	finishTime time.Time
 }
 
-func (rs *runStatus) TiltfileStatus() v1alpha1.TiltfileStatus {
+func (rs *runStatus) TiltfileStatus(sha string) v1alpha1.TiltfileStatus {
 	switch rs.step {
 	case runStepRunning, runStepLoaded:
 		return v1alpha1.TiltfileStatus{
 			Running: &v1alpha1.TiltfileStateRunning{
 				StartedAt: apis.NewMicroTime(rs.startTime),
 			},
+			ContentsSHA256: sha,
 		}
 	case runStepDone:
 		error := ""
@@ -498,6 +553,7 @@ func (rs *runStatus) TiltfileStatus() v1alpha1.TiltfileStatus {
 				FinishedAt: apis.NewMicroTime(rs.finishTime),
 				Error:      error,
 			},
+			ContentsSHA256: sha,
 		}
 	}
 
@@ -505,5 +561,6 @@ func (rs *runStatus) TiltfileStatus() v1alpha1.TiltfileStatus {
 		Waiting: &v1alpha1.TiltfileStateWaiting{
 			Reason: "Unknown",
 		},
+		ContentsSHA256: sha,
 	}
 }
