@@ -1,8 +1,7 @@
-import { Button } from "@material-ui/core"
-import { mount } from "enzyme"
+import { render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import React from "react"
-import { act } from "react-test-renderer"
-import TiltTooltip, { TiltInfoTooltip } from "./Tooltip"
+import { TiltInfoTooltip } from "./Tooltip"
 
 describe("TiltInfoTooltip", () => {
   beforeEach(() => {
@@ -14,19 +13,16 @@ describe("TiltInfoTooltip", () => {
   })
 
   it("hides info button when clicked", () => {
-    const root = mount(
+    let { container } = render(
       <TiltInfoTooltip title="Hello!" dismissId="test-tooltip" open={true} />
     )
 
-    expect(root.find(TiltTooltip).length).toEqual(1)
+    expect(container.querySelectorAll("svg").length).toEqual(1)
+    userEvent.hover(container.querySelector("svg")!)
 
-    act(() => {
-      root.find(Button).simulate("click")
-    })
-    root.update()
-
-    // the tooltip is gone!
-    expect(root.find(TiltTooltip).length).toEqual(0)
+    expect(screen.getByText("Don't show this tip")).toBeInTheDocument()
+    userEvent.click(screen.getByText("Don't show this tip"))
+    expect(screen.queryByText("Don't show this tip")).not.toBeInTheDocument()
 
     // and the setting is in localStorage
     expect(localStorage.getItem("tooltip-dismissed-test-tooltip")).toEqual(
