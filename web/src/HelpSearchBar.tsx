@@ -17,9 +17,10 @@ import {
 } from "./style-helpers"
 
 export function searchDocs(query: string) {
-  window.open(
-    `https://docs.tilt.dev/search?q=${encodeURI(query)}&utm_source=tiltui`
-  )
+  const docsSearchUrl = new URL("https://docs.tilt.dev/search")
+  docsSearchUrl.searchParams.set("q", query)
+  docsSearchUrl.searchParams.set("utm_source", "tiltui")
+  window.open(docsSearchUrl)
 }
 
 export const HelpSearchBarTextField = styled(InstrumentedTextField)`
