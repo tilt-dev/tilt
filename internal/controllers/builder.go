@@ -60,7 +60,6 @@ func (c *ControllerBuilder) OnChange(_ context.Context, _ store.RStore, _ store.
 func (c *ControllerBuilder) SetUp(ctx context.Context, st store.RStore) error {
 	mgr := c.tscm.GetManager()
 	client := c.tscm.GetClient()
-	_ = logger.Get(ctx)
 
 	if mgr == nil || client == nil {
 		return errors.New("controller manager not initialized")

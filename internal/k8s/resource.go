@@ -45,7 +45,14 @@ func (c *resourceClient) Apply(target kube.ResourceList) (*kube.Result, error) {
 		return nil, err
 	}
 
-	deleteOptions, _ := delete.NewDeleteFlags("").ToOptions(dynamicClient, iostreams)
+	recorder, err := genericclioptions.NewRecordFlags().ToRecorder()
+	if err != nil {
+		return nil, err
+	}
+	deleteOptions, err := delete.NewDeleteFlags("").ToOptions(dynamicClient, iostreams)
+	if err != nil {
+		return nil, err
+	}
 	toPrinter := func(s string) (printers.ResourcePrinter, error) {
 		return genericclioptions.NewPrintFlags("created").ToPrinter()
 	}
@@ -74,6 +81,7 @@ func (c *resourceClient) Apply(target kube.ResourceList) (*kube.Result, error) {
 		OpenAPIPatch:   flags.OpenAPIPatch,
 		PruneWhitelist: flags.PruneWhitelist,
 
+		Recorder:         recorder,
 		Namespace:        namespace,
 		EnforceNamespace: enforceNamespace,
 		Builder:          builder,
