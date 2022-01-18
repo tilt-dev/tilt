@@ -1,0 +1,14 @@
+# -*- mode: Python -*-
+
+include('../Tiltfile')
+
+docker_build('gcr.io/tilt-dev/image-for-prune', '.', dockerfile_contents='FROM nginx\n')
+
+k8s_yaml('pod.yaml')
+
+# we want to set unrealistically aggressive prune settings (i.e. will prune
+# EVERYTHING for this Tiltfile) for the purposes of testing
+# however, since `tilt ci` will run prune, we only set the opts when explicitly
+# running `tilt docker-prune` so we can control it for assert purposes
+if config.tilt_subcommand == 'docker-prune':
+    docker_prune_settings(keep_recent=0, max_age_mins=-1, num_builds=9999)
