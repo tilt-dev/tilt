@@ -166,7 +166,7 @@ func wireDockerPrune(ctx context.Context, analytics2 *analytics.TiltAnalytics, s
 	processExecer := localexec.NewProcessExecer(localexecEnv)
 	defaults := _wireDefaultsValue
 	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, plugin, versionPlugin, configPlugin, dockerComposeClient, webHost, processExecer, defaults, env)
-	cliDpDeps := newDPDeps(switchCli, tiltfileLoader)
+	cliDpDeps := newDPDeps(switchCli, client, tiltfileLoader)
 	return cliDpDeps, nil
 }
 

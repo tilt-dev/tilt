@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: site
+spec:
+  containers:
+    - name: site
+      image: gcr.io/tilt-dev/image-for-prune
+      imagePullPolicy: IfNotPresent

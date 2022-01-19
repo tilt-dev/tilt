@@ -13,7 +13,6 @@ import (
 	"github.com/docker/docker/api/types/filters"
 
 	"github.com/tilt-dev/tilt/internal/container"
-
 	"github.com/tilt-dev/tilt/pkg/model"
 
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
@@ -302,7 +301,7 @@ func (dp *DockerPruner) sufficientVersionError() error {
 }
 
 func prettyPrintImagesPruneReport(report types.ImagesPruneReport, l logger.Logger) {
-	if len(report.ImagesDeleted) == 0 && !l.Level().ShouldDisplay(logger.DebugLvl) {
+	if len(report.ImagesDeleted) == 0 && !l.Level().ShouldDisplay(logger.InfoLvl) {
 		return
 	}
 
@@ -326,7 +325,7 @@ func prettyStringImgDeleteItem(img types.ImageDeleteResponseItem) string {
 }
 
 func prettyPrintCachePruneReport(report *types.BuildCachePruneReport, l logger.Logger) {
-	if len(report.CachesDeleted) == 0 && !l.Level().ShouldDisplay(logger.DebugLvl) {
+	if len(report.CachesDeleted) == 0 && !l.Level().ShouldDisplay(logger.InfoLvl) {
 		return
 	}
 
@@ -338,7 +337,7 @@ func prettyPrintCachePruneReport(report *types.BuildCachePruneReport, l logger.L
 }
 
 func prettyPrintContainersPruneReport(report types.ContainersPruneReport, l logger.Logger) {
-	if len(report.ContainersDeleted) == 0 && !l.Level().ShouldDisplay(logger.DebugLvl) {
+	if len(report.ContainersDeleted) == 0 && !l.Level().ShouldDisplay(logger.InfoLvl) {
 		return
 	}
 
