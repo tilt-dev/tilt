@@ -569,20 +569,41 @@ func HoldLiveUpdateTargetsHandledByReconciler(state store.EngineState, mts []*st
 			continue
 		}
 
+		// Changes to the deploy target can't be live-updated.
+		if mt.Manifest.DeployTarget != nil {
+			bs, hasBuildStatus := mt.State.BuildStatuses[mt.Manifest.DeployTarget.ID()]
+			hasPendingChanges := hasBuildStatus && len(bs.PendingFileChanges) > 0
+			if hasPendingChanges {
+				continue
+			}
+		}
+
+		allChangesHandledByReconciler := true
 		iTargets := mt.Manifest.ImageTargets
 		for _, iTarget := range iTargets {
+			bs, hasBuildStatus := mt.State.BuildStatuses[iTarget.ID()]
+			hasPendingChanges := hasBuildStatus && len(bs.PendingFileChanges) > 0
+			if !hasPendingChanges {
+				continue
+			}
+
 			isHandledByReconciler := !liveupdate.IsEmptySpec(iTarget.LiveUpdateSpec) &&
 				iTarget.LiveUpdateReconciler
 			if !isHandledByReconciler {
-				continue
+				allChangesHandledByReconciler = false
+				break
 			}
 
 			// Live update should hold back a target if it's not failing.
 			lu := state.LiveUpdates[iTarget.LiveUpdateName]
 			isFailing := lu != nil && lu.Status.Failed != nil
-			if !isFailing {
-				holds.AddHold(mt, store.Hold{Reason: store.HoldReasonReconciling})
+			if isFailing {
+				allChangesHandledByReconciler = false
 			}
+		}
+
+		if allChangesHandledByReconciler {
+			holds.AddHold(mt, store.Hold{Reason: store.HoldReasonReconciling})
 		}
 	}
 }
