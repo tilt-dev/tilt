@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"os"
 	"strings"
 	"time"
 
@@ -55,9 +56,15 @@ func (c *dockerPruneCmd) run(ctx context.Context, args []string) error {
 	a.Incr("cmd.dockerPrune", nil)
 	defer a.Flush(time.Second)
 
-	// // (Most relevant output from dockerpruner is at the `debug` level)
-	// l := logger.NewLogger(logger.DebugLvl, os.Stdout)
-	// ctx = logger.WithLogger(ctx, l)
+	if !logger.Get(ctx).Level().ShouldDisplay(logger.VerboseLvl) {
+		// Docker Pruner filters output when nothing is pruned if not in verbose
+		// logging mode, which is suitable for when it runs in the background
+		// during `tilt up`, but we always want to include that for the CLI cmd
+		// N.B. we only override if we're not already showing verbose so that
+		// 	`--debug` flag isn't impacted
+		l := logger.NewLogger(logger.VerboseLvl, os.Stdout)
+		ctx = logger.WithLogger(ctx, l)
+	}
 
 	deps, err := wireDockerPrune(ctx, a, "docker-prune")
 	if err != nil {
