@@ -3,15 +3,15 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
-	"github.com/wojas/genericr"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apiserver/pkg/registry/generic/registry"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/go-logr/logr"
+	"github.com/go-logr/logr/funcr"
 
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -64,49 +64,7 @@ func (m *TiltServerControllerManager) SetUp(ctx context.Context, _ store.RStore)
 	// controller-runtime internals don't really make use of verbosity levels, so in lieu of a better
 	// mechanism, all its logs are redirected to a custom logger that filters out logs
 	// we don't care about.
-	ctxLog := logger.Get(ctx)
-	logr := genericr.New(func(e genericr.Entry) {
-		if ctx.Err() != nil {
-			// when the root context is canceled, any in-flight reconcile operations
-			// will inevitably return context-cancellation-wrapping errors, which
-			// results in a bunch of unhelpful log messages to that effect, so all
-			// logs after teardown has started are ignored
-			return
-		}
-
-		if e.Error != nil {
-			// It's normal for reconcilers to fail with optimistic lock errors.
-			// They'll just retry.
-			if strings.Contains(e.Error.Error(), registry.OptimisticLockErrorMsg) {
-				return
-			}
-
-			// Print errors to the global log on all builds.
-			//
-			// TODO(nick): Once we have resource grouping, we should consider having some
-			// some sort of system resource that we can hide by default and print
-			// these kinds of apiserver problems to.
-			ctxLog.Errorf("%s", e.String())
-			return
-		}
-
-		// We don't care about the startup or teardown sequence.
-		if e.Message == "Starting EventSource" ||
-			e.Message == "Starting Controller" ||
-			e.Message == "Starting workers" ||
-			e.Message == "error received after stop sequence was engaged" ||
-			e.Message == "Shutdown signal received, waiting for all workers to finish" ||
-			e.Message == "All workers finished" {
-			return
-		}
-
-		// V(3) was picked because while controller-runtime is a bit chatty at
-		// startup, once steady state is reached, most of the logging is generally
-		// useful.
-		if e.Level <= 3 {
-			ctxLog.Debugf("%s", e.String())
-		}
-	})
+	logr := logr.New(&logSink{ctx: ctx, logger: logger.Get(ctx), Formatter: funcr.NewFormatter(funcr.Options{})})
 	timeout := time.Duration(0)
 
 	mgr, err := ctrl.NewManager(m.config, ctrl.Options{

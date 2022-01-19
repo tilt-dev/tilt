@@ -51,6 +51,7 @@ type versionedTracker struct {
 type fakeClient struct {
 	tracker         versionedTracker
 	scheme          *runtime.Scheme
+	restMapper      meta.RESTMapper
 	schemeWriteLock sync.Mutex
 }
 
@@ -87,6 +88,7 @@ func NewClientBuilder() *ClientBuilder {
 // ClientBuilder builds a fake client.
 type ClientBuilder struct {
 	scheme             *runtime.Scheme
+	restMapper         meta.RESTMapper
 	initObject         []client.Object
 	initLists          []client.ObjectList
 	initRuntimeObjects []runtime.Object
@@ -96,6 +98,15 @@ type ClientBuilder struct {
 // If not set, defaults to client-go's global scheme.Scheme.
 func (f *ClientBuilder) WithScheme(scheme *runtime.Scheme) *ClientBuilder {
 	f.scheme = scheme
+	return f
+}
+
+// WithRESTMapper sets this builder's restMapper.
+// The restMapper is directly set as mapper in the Client. This can be used for example
+// with a meta.DefaultRESTMapper to provide a static rest mapping.
+// If not set, defaults to an empty meta.DefaultRESTMapper.
+func (f *ClientBuilder) WithRESTMapper(restMapper meta.RESTMapper) *ClientBuilder {
+	f.restMapper = restMapper
 	return f
 }
 
@@ -122,6 +133,9 @@ func (f *ClientBuilder) Build() client.WithWatch {
 	if f.scheme == nil {
 		f.scheme = scheme.Scheme
 	}
+	if f.restMapper == nil {
+		f.restMapper = meta.NewDefaultRESTMapper([]schema.GroupVersion{})
+	}
 
 	tracker := versionedTracker{ObjectTracker: testing.NewObjectTracker(f.scheme, scheme.Codecs.UniversalDecoder()), scheme: f.scheme}
 	for _, obj := range f.initObject {
@@ -140,8 +154,9 @@ func (f *ClientBuilder) Build() client.WithWatch {
 		}
 	}
 	return &fakeClient{
-		tracker: tracker,
-		scheme:  f.scheme,
+		tracker:    tracker,
+		scheme:     f.scheme,
+		restMapper: f.restMapper,
 	}
 }
 
@@ -417,8 +432,7 @@ func (c *fakeClient) Scheme() *runtime.Scheme {
 }
 
 func (c *fakeClient) RESTMapper() meta.RESTMapper {
-	// TODO: Implement a fake RESTMapper.
-	return nil
+	return c.restMapper
 }
 
 func (c *fakeClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
