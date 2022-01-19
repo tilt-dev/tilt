@@ -632,10 +632,25 @@ func makeWorkloadToResourceFunction(f *starlark.Function) (workloadToResourceFun
 	}, nil
 }
 
-func (s *tiltfileState) makeK8sResource(name string) (*k8sResource, error) {
+func (s *tiltfileState) checkResourceConflict(name string) error {
 	if s.k8sByName[name] != nil {
-		return nil, fmt.Errorf("k8s_resource named %q already exists", name)
+		return fmt.Errorf("k8s_resource named %q already exists", name)
 	}
+	if s.localByName[name] != nil {
+		return fmt.Errorf("local_resource named %q already exists", name)
+	}
+	if s.dcByName[name] != nil {
+		return fmt.Errorf("dc_resource named %q already exists", name)
+	}
+	return nil
+}
+
+func (s *tiltfileState) makeK8sResource(name string) (*k8sResource, error) {
+	err := s.checkResourceConflict(name)
+	if err != nil {
+		return nil, err
+	}
+
 	r := &k8sResource{
 		name:              name,
 		imageDepsMetadata: make(map[string]*imageDepMetadata),

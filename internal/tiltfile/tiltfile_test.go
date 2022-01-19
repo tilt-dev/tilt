@@ -1566,7 +1566,7 @@ local_resource('foo', 'echo foo')
 local_resource('foo', 'echo foo')
 `)
 
-	f.loadErrString("Local resource foo has been defined multiple times")
+	f.loadErrString(`local_resource named "foo" already exists`)
 }
 
 // These tests are for behavior that we specifically enabled in Starlark
@@ -3244,7 +3244,7 @@ k8s_yaml(['foo.yaml', 'bar.yaml'])
 k8s_resource('foo', new_name='bar')
 `)
 
-	f.loadErrString("\"foo\" to \"bar\"", "already exists a resource with that name")
+	f.loadErrString("\"foo\" to \"bar\"", "already exists")
 }
 
 func TestK8sResourceRenameConflictingNames(t *testing.T) {

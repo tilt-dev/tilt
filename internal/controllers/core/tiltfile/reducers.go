@@ -145,7 +145,12 @@ func HandleConfigsReloaded(
 			continue
 		}
 
-		if !ok {
+		// Create a new manifest if it changed types.
+		createNew := !ok ||
+			mt.Manifest.IsK8s() != m.IsK8s() ||
+			mt.Manifest.IsLocal() != m.IsLocal() ||
+			mt.Manifest.IsDC() != m.IsDC()
+		if createNew {
 			mt = store.NewManifestTarget(m)
 		}
 

@@ -114,7 +114,7 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		probeSpec = nil
 	}
 
-	res := localResource{
+	res := &localResource{
 		name:           string(name),
 		updateCmd:      updateCmd,
 		serveCmd:       serveCmd,
@@ -132,12 +132,12 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 	}
 
 	// check for duplicate resources by name and throw error if found
-	for _, elem := range s.localResources {
-		if elem.name == res.name {
-			return starlark.None, fmt.Errorf("Local resource %s has been defined multiple times", res.name)
-		}
+	err = s.checkResourceConflict(res.name)
+	if err != nil {
+		return nil, err
 	}
 	s.localResources = append(s.localResources, res)
+	s.localByName[res.name] = res
 
 	return starlark.None, nil
 }
