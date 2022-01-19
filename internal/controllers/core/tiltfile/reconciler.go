@@ -318,7 +318,7 @@ func (r *Reconciler) run(ctx context.Context, nn types.NamespacedName, tf *v1alp
 // apiserver.
 func (r *Reconciler) handleLoaded(ctx context.Context, nn types.NamespacedName, tf *v1alpha1.Tiltfile, entry *BuildEntry, tlr *tiltfile.TiltfileLoadResult) error {
 	// TODO(nick): Rewrite to handle multiple tiltfiles.
-	err := updateOwnedObjects(ctx, r.ctrlClient, nn, tf, tlr, r.engineMode, r.decideRegistry(ctx, tlr), r.defaultK8sConnection())
+	err := updateOwnedObjects(ctx, r.ctrlClient, nn, tf, tlr, r.engineMode, DecideRegistry(ctx, r.k8sClient, tlr), r.defaultK8sConnection())
 	if err != nil {
 		// If updating the API server fails, just return the error, so that the
 		// reconciler will retry.
@@ -404,16 +404,16 @@ func (r *Reconciler) enqueueTriggerQueue(obj client.Object) []reconcile.Request 
 	return requests
 }
 
-// decideRegistry returns the image registry we should use; if detected, a pre-configured
+// DecideRegistry returns the image registry we should use; if detected, a pre-configured
 // local registry; otherwise, the registry specified by the user via default_registry.
 // Otherwise, we'll return the zero value of `s.defaultReg`, which is an empty registry.
 // It has side-effects (a log line) and so should only be called once.
-func (r *Reconciler) decideRegistry(ctx context.Context, tlr *tiltfile.TiltfileLoadResult) container.Registry {
+func DecideRegistry(ctx context.Context, kCli k8s.Client, tlr *tiltfile.TiltfileLoadResult) container.Registry {
 	if tlr.Orchestrator() != model.OrchestratorK8s {
 		return tlr.DefaultRegistry
 	}
 
-	registry := r.k8sClient.LocalRegistry(ctx)
+	registry := kCli.LocalRegistry(ctx)
 
 	if !registry.Empty() {
 		// If we've found a local registry in the cluster at run-time, use that
