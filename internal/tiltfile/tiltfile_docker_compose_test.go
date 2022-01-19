@@ -126,6 +126,20 @@ func TestDockerComposeManifest(t *testing.T) {
 	f.assertConfigFiles(expectedConfFiles...)
 }
 
+func TestDockerComposeConflict(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.dockerfile(filepath.Join("foo", "Dockerfile"))
+	f.file("docker-compose.yml", simpleConfig)
+	f.file("Tiltfile", `
+local_resource("foo", "foo")
+docker_compose('docker-compose.yml')
+`)
+
+	f.loadErrString(`local_resource named "foo" already exists`)
+}
+
 func TestDockerComposeYAMLBlob(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
@@ -350,11 +364,10 @@ func TestDockerComposeAndK8sNotSupported(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
 
-	f.setupFoo()
+	f.setupFooAndBar()
 	f.file("docker-compose.yml", simpleConfig)
 	tf := `docker_compose('docker-compose.yml')
-docker_build('gcr.io/foo', 'foo')
-k8s_yaml('foo.yaml')`
+k8s_yaml('bar.yaml')`
 	f.file("Tiltfile", tf)
 
 	f.loadErrString("can't declare both k8s " +

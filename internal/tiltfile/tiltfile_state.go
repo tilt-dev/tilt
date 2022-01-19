@@ -98,9 +98,12 @@ type tiltfileState struct {
 	k8sByName      map[string]*k8sResource
 	k8sUnresourced []k8s.K8sEntity
 
-	dc                 dcResourceSet // currently only support one d-c.yml
+	dc       dcResourceSet // currently only support one d-c.yml
+	dcByName map[string]*dcService
+
 	k8sResourceOptions []k8sResourceOptions
-	localResources     []localResource
+	localResources     []*localResource
+	localByName        map[string]*localResource
 
 	// ensure that any images are pushed to/pulled from this registry, rewriting names if needed
 	defaultReg container.Registry
@@ -168,12 +171,14 @@ func newTiltfileState(
 		buildIndex:                newBuildIndex(),
 		k8sObjectIndex:            tiltfile_k8s.NewState(),
 		k8sByName:                 make(map[string]*k8sResource),
+		dcByName:                  make(map[string]*dcService),
+		localByName:               make(map[string]*localResource),
 		usedImages:                make(map[string]bool),
 		logger:                    logger.Get(ctx),
 		builtinCallCounts:         make(map[string]int),
 		builtinArgCounts:          make(map[string]map[string]int),
 		unconsumedLiveUpdateSteps: make(map[string]liveUpdateStep),
-		localResources:            []localResource{},
+		localResources:            []*localResource{},
 		triggerMode:               TriggerModeAuto,
 		features:                  features,
 		secretSettings:            model.DefaultSecretSettings(),
@@ -808,8 +813,10 @@ func (s *tiltfileState) assembleK8s() error {
 				r.labels[k] = v
 			}
 			if opts.newName != "" && opts.newName != r.name {
-				if _, ok := s.k8sByName[opts.newName]; ok {
-					return fmt.Errorf("k8s_resource at %s specified to rename %q to %q, but there already exists a resource with that name", opts.tiltfilePosition.String(), r.name, opts.newName)
+				err := s.checkResourceConflict(opts.newName)
+				if err != nil {
+					return fmt.Errorf("k8s_resource at %s specified to rename %q to %q: %v",
+						opts.tiltfilePosition.String(), r.name, opts.newName, err)
 				}
 				delete(s.k8sByName, r.name)
 				r.name = opts.newName
@@ -859,7 +866,8 @@ func (s *tiltfileState) assembleK8s() error {
 			for name := range s.k8sByName {
 				knownResources = append(knownResources, name)
 			}
-			return fmt.Errorf("k8s_resource at %s specified unknown resource %q. known resources: %s", opts.tiltfilePosition.String(), opts.workload, strings.Join(knownResources, ", "))
+			return fmt.Errorf("k8s_resource at %s specified unknown resource %q. known resources: %s",
+				opts.tiltfilePosition.String(), opts.workload, strings.Join(knownResources, ", "))
 		}
 	}
 

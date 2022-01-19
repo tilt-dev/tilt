@@ -146,6 +146,39 @@ docker_build('image-a', '.')
 	assert.Equal(t, []string{"image-a"}, spec.ImageMaps)
 }
 
+func TestK8sCustomDeployConflict(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+k8s_custom_deploy('foo',
+                  apply_cmd='apply',
+                  delete_cmd='delete',
+                  deps=[])
+k8s_custom_deploy('foo',
+                  apply_cmd='apply',
+                  delete_cmd='delete',
+                  deps=[])
+`)
+
+	f.loadErrString(`k8s_resource named "foo" already exists`)
+}
+
+func TestK8sCustomDeployLocalResourceConflict(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", `
+k8s_custom_deploy('foo',
+                  apply_cmd='apply',
+                  delete_cmd='delete',
+                  deps=[])
+local_resource('foo', 'foo')
+`)
+
+	f.loadErrString(`k8s_resource named "foo" already exists`)
+}
+
 func assertK8sApplyCmdEqual(f *fixture, expected model.Cmd, actual *v1alpha1.KubernetesApplyCmd) bool {
 	t := f.t
 	t.Helper()
