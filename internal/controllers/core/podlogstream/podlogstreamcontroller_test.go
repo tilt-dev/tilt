@@ -432,7 +432,11 @@ func TestDeletionTimestamp(t *testing.T) {
 	f.MustReconcile(nn)
 
 	f.AssertOutputContains("hello world!")
-	f.Get(nn, pls)
+
+	assert.Eventually(f.t, func() bool {
+		f.Get(nn, pls)
+		return len(pls.Status.ContainerStatuses) == 1 && !pls.Status.ContainerStatuses[0].Active
+	}, time.Second, 5*time.Millisecond, "should stream then stop")
 
 	// No log streams should be active.
 	assert.Equal(t, pls.Status, v1alpha1.PodLogStreamStatus{
