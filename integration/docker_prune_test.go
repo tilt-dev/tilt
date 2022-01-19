@@ -4,9 +4,10 @@
 package integration
 
 import (
-	"context"
+	"io"
+	"os"
+	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,14 +18,26 @@ func TestCLI_DockerPrune(t *testing.T) {
 	defer f.TearDown()
 	f.SetRestrictedCredentials()
 
+	t.Log("Running `tilt ci` to trigger a build")
 	f.TiltCI()
+	t.Log("Running `tilt down` to stop running Pod so it can be pruned")
+	var outBuf strings.Builder
+	require.NoErrorf(t, f.tilt.Down(f.ctx, &outBuf),
+		"Error running `tilt down`. Output:\n%s\n", &outBuf)
 
-	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
-	defer cancel()
-
-	c := f.tilt.cmd(ctx, []string{"docker-prune", "--debug"}, nil)
+	outBuf.Reset()
+	c := f.tilt.cmd(f.ctx, []string{"docker-prune", "--debug"}, io.MultiWriter(&outBuf, os.Stdout))
 	t.Logf("Running command: %s", c.String())
-	out, err := c.CombinedOutput()
-	require.NoErrorf(t, err, "Error while running command. Output:\n%s\n", string(out))
-	assert.Contains(t, string(out), "[Docker Prune] removed 2 caches")
+	err := c.Run()
+	require.NoError(t, err, "Error while running command")
+	// use assert.True (instead of assert.Contains) - the cmd output is already
+	// output for debugging purposes and assert.Contains produces duplicative
+	// output (but hard to read due to embedded newlines)
+	out := outBuf.String()
+	assert.True(t,
+		strings.Contains(out, "- untagged:"),
+		"Image was not untagged")
+	assert.True(t,
+		strings.Contains(out, "- deleted: sha256:"),
+		"Image was not deleted")
 }
