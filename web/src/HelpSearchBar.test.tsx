@@ -38,16 +38,17 @@ describe("HelpSearchBar", () => {
     const searchField = root.find("input")
     searchField.simulate("change", { target: { value: searchTerm } })
 
-    expect(searchValue).toBe(searchTerm)
+    const searchFieldAfterChange = root.find("input")
+    expect(searchFieldAfterChange.prop("value")).toBe(searchTerm)
   })
 
   it("should open search in new tab on submision", () => {
     const windowOpenSpy = jest.fn()
     window.open = windowOpenSpy
     const searchTerm = "such term"
-    const searchResultsPage = `https://docs.tilt.dev/search?q=${encodeURI(
-      searchTerm
-    )}&utm_source=tiltui`
+    const searchResultsPage = new URL(`https://docs.tilt.dev/search`)
+    searchResultsPage.searchParams.set("q", searchTerm)
+    searchResultsPage.searchParams.set("utm_source", "tiltui")
 
     const root = mount(<HelpSearchBarTestWrapper />)
     const searchField = root.find("input")
