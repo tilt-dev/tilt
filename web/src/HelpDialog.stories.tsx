@@ -1,13 +1,13 @@
 import React from "react"
 import { MemoryRouter } from "react-router"
-import ShortcutsDialog from "./ShortcutsDialog"
+import HelpDialog from "./HelpDialog"
 
 function onRequestClose() {
   console.log("onRequestClose")
 }
 
 export default {
-  title: "New UI/Shared/ShortcutsDialog",
+  title: "New UI/Shared/HelpDialog",
   decorators: [
     (Story: any) => (
       <MemoryRouter initialEntries={["/"]}>
@@ -18,7 +18,7 @@ export default {
 }
 
 export const DialogOverview = () => (
-  <ShortcutsDialog
+  <HelpDialog
     open={true}
     onClose={onRequestClose}
     anchorEl={document.body}
@@ -26,7 +26,7 @@ export const DialogOverview = () => (
   />
 )
 export const DialogLegacy = () => (
-  <ShortcutsDialog
+  <HelpDialog
     open={true}
     onClose={onRequestClose}
     anchorEl={document.body}

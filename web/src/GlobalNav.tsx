@@ -7,8 +7,8 @@ import { ReactComponent as HelpIcon } from "./assets/svg/help.svg"
 import { ReactComponent as SnapshotIcon } from "./assets/svg/snapshot.svg"
 import { ReactComponent as UpdateAvailableIcon } from "./assets/svg/update-available.svg"
 import FloatDialog from "./FloatDialog"
+import HelpDialog from "./HelpDialog"
 import { isTargetEditable } from "./shortcut"
-import ShortcutsDialog from "./ShortcutsDialog"
 import { SnapshotAction } from "./snapshot"
 import {
   AnimDuration,
@@ -92,7 +92,7 @@ const UpdateAvailableFloatIcon = styled(UpdateAvailableIcon)`
 `
 
 type GlobalNavShortcutsProps = {
-  toggleShortcutsDialog: () => void
+  toggleHelpDialog: () => void
   snapshot: SnapshotAction
 }
 
@@ -121,7 +121,7 @@ class GlobalNavShortcuts extends Component<GlobalNavShortcutsProps> {
       return
     }
     if (e.key === "?") {
-      this.props.toggleShortcutsDialog()
+      this.props.toggleHelpDialog()
       e.preventDefault()
     } else if (e.key === "s" && this.props.snapshot.enabled) {
       this.props.snapshot.openModal()
@@ -161,7 +161,7 @@ export function GlobalNav(props: GlobalNavProps) {
   const shortcutButton = useRef(null as any)
   const accountButton = useRef(null as any)
   const updateButton = useRef(null as any)
-  const [shortcutsDialogAnchor, setShortcutsDialogAnchor] = useState(
+  const [helpDialogAnchor, setHelpDialogAnchor] = useState(
     null as Element | null
   )
   const [accountMenuAnchor, setAccountMenuAnchor] = useState(
@@ -170,7 +170,7 @@ export function GlobalNav(props: GlobalNavProps) {
   const [updateDialogAnchor, setUpdateDialogAnchor] = useState(
     null as Element | null
   )
-  const shortcutsDialogOpen = !!shortcutsDialogAnchor
+  const helpDialogOpen = !!helpDialogAnchor
   const accountMenuOpen = !!accountMenuAnchor
   const updateDialogOpen = !!updateDialogAnchor
   let isSnapshot = props.isSnapshot
@@ -187,12 +187,12 @@ export function GlobalNav(props: GlobalNavProps) {
     )
   }
 
-  let toggleShortcutsDialog = (action: AnalyticsAction) => {
-    if (!shortcutsDialogOpen) {
+  let toggleHelpDialog = (action: AnalyticsAction) => {
+    if (!helpDialogOpen) {
       incr("ui.web.menu", { type: AnalyticsType.Shortcut, action: action })
     }
-    setShortcutsDialogAnchor(
-      shortcutsDialogOpen ? null : (shortcutButton.current as Element)
+    setHelpDialogAnchor(
+      helpDialogOpen ? null : (shortcutButton.current as Element)
     )
   }
 
@@ -239,8 +239,8 @@ export function GlobalNav(props: GlobalNavProps) {
       <MenuButtonLabeled label="Help">
         <MenuButton
           ref={shortcutButton}
-          onClick={() => toggleShortcutsDialog(AnalyticsAction.Click)}
-          data-open={shortcutsDialogOpen}
+          onClick={() => toggleHelpDialog(AnalyticsAction.Click)}
+          data-open={helpDialogOpen}
           aria-label="Help"
         >
           <HelpIcon width="24" height="24" />
@@ -266,10 +266,10 @@ export function GlobalNav(props: GlobalNavProps) {
       >
         {accountMenuContent}
       </FloatDialog>
-      <ShortcutsDialog
-        open={shortcutsDialogOpen}
-        anchorEl={shortcutsDialogAnchor}
-        onClose={() => toggleShortcutsDialog(AnalyticsAction.Close)}
+      <HelpDialog
+        open={helpDialogOpen}
+        anchorEl={helpDialogAnchor}
+        onClose={() => toggleHelpDialog(AnalyticsAction.Close)}
         isOverview={true}
       />
       <UpdateDialog
@@ -281,9 +281,7 @@ export function GlobalNav(props: GlobalNavProps) {
         isNewInterface={true}
       />
       <GlobalNavShortcuts
-        toggleShortcutsDialog={() =>
-          toggleShortcutsDialog(AnalyticsAction.Shortcut)
-        }
+        toggleHelpDialog={() => toggleHelpDialog(AnalyticsAction.Shortcut)}
         snapshot={props.snapshot}
       />
     </GlobalNavRoot>

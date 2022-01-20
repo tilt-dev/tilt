@@ -3,8 +3,8 @@ import { mount } from "enzyme"
 import React from "react"
 import { act } from "react-dom/test-utils"
 import { MemoryRouter } from "react-router-dom"
+import HelpDialog from "./HelpDialog"
 import { TwoResources } from "./OverviewResourceBar.stories"
-import ShortcutsDialog from "./ShortcutsDialog"
 import { SnapshotActionProvider } from "./snapshot"
 
 it("renders shortcuts dialog on ?", () => {
@@ -12,10 +12,10 @@ it("renders shortcuts dialog on ?", () => {
     <MemoryRouter initialEntries={["/"]}>{TwoResources()}</MemoryRouter>
   )
 
-  expect(root.find(ShortcutsDialog).props().open).toEqual(false)
+  expect(root.find(HelpDialog).props().open).toEqual(false)
   act(() => void fireEvent.keyDown(document.body, { key: "?" }))
   root.update()
-  expect(root.find(ShortcutsDialog).props().open).toEqual(true)
+  expect(root.find(HelpDialog).props().open).toEqual(true)
   root.unmount()
 })
 

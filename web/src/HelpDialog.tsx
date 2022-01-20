@@ -2,9 +2,8 @@ import React from "react"
 import styled from "styled-components"
 import { ReactComponent as GithubSvg } from "./assets/svg/github.svg"
 import { ReactComponent as SlackSvg } from "./assets/svg/slack.svg"
-import ButtonLink from "./ButtonLink"
-import { linkToTiltDocs } from "./constants"
 import FloatDialog, { HR } from "./FloatDialog"
+import { HelpSearchBar } from "./HelpSearchBar"
 import { AnimDuration, Color } from "./style-helpers"
 
 type props = {
@@ -79,9 +78,44 @@ function cmdOrCtrlShortcut(key: string) {
   )
 }
 
-export default function ShortcutsDialog(props: props) {
+export default function HelpDialog(props: props) {
   return (
-    <FloatDialog id="shortcuts" title="Keyboard Shortcuts" {...props}>
+    <FloatDialog id="shortcuts" title="Help" {...props}>
+      <ShortcutRow>
+        <HelpSearchBar />
+      </ShortcutRow>
+      <HR />
+      <ShortcutRow style={{ marginBottom: "24px" }}>
+        <HelpLink
+          href="http://slack.k8s.io/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <SlackSvg style={{ marginRight: "8px" }} />
+          Connect in #tilt on Kubernetes Slack
+        </HelpLink>
+      </ShortcutRow>
+      <ShortcutRow style={{ marginBottom: "8px" }}>
+        <HelpLink
+          href="https://github.com/tilt-dev/tilt/issues/new/choose"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <GithubSvg style={{ marginRight: "8px" }} />
+          File an Issue
+        </HelpLink>
+        <HR />
+      </ShortcutRow>
+      <HR />
+      <ShortcutRow
+        style={{
+          textDecoration: "underline",
+          fontSize: "18px",
+          marginBottom: "8px",
+        }}
+      >
+        Keyboard shortcuts
+      </ShortcutRow>
       <Shortcut label="Navigate Resource">
         <ShortcutBox>j</ShortcutBox> or <ShortcutBox>k</ShortcutBox>
       </Shortcut>
@@ -109,36 +143,6 @@ export default function ShortcutsDialog(props: props) {
       <Shortcut label="Help">
         <ShortcutBox>?</ShortcutBox>
       </Shortcut>
-      <HR />
-      <ShortcutRow style={{ marginBottom: "24px" }}>
-        <ButtonLink
-          href={linkToTiltDocs()}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Read Tilt Docs
-        </ButtonLink>
-      </ShortcutRow>
-      <ShortcutRow style={{ marginBottom: "24px" }}>
-        <HelpLink
-          href="http://slack.k8s.io/"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <SlackSvg style={{ marginRight: "8px" }} />
-          Connect in #tilt on Kubernetes Slack
-        </HelpLink>
-      </ShortcutRow>
-      <ShortcutRow style={{ marginBottom: "8px" }}>
-        <HelpLink
-          href="https://github.com/tilt-dev/tilt/issues/new/choose"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <GithubSvg style={{ marginRight: "8px" }} />
-          File an Issue
-        </HelpLink>
-      </ShortcutRow>
     </FloatDialog>
   )
 }
