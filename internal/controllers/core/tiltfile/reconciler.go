@@ -27,6 +27,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/apis/restarton"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/internal/feature"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/buildcontrols"
@@ -136,11 +137,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		}
 	}
 
-	contentsResult, err := r.reconcileTiltfileContents(ctx, &tf)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
 	step := runStepNone
 	if run != nil {
 		step = run.step
@@ -177,6 +173,11 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 	run = r.runs[nn]
 	if run != nil {
+		contentsResult, err := r.reconcileTiltfileContents(ctx, &tf, run.tlr)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
 		newStatus := run.TiltfileStatus(contentsResult.sha256)
 		if !apicmp.DeepEqual(newStatus, tf.Status) {
 			update := tf.DeepCopy()
@@ -203,7 +204,7 @@ type tiltfileContentsResult struct {
 	contents []byte
 }
 
-func (r *Reconciler) reconcileTiltfileContents(ctx context.Context, tf *v1alpha1.Tiltfile) (tiltfileContentsResult, error) {
+func (r *Reconciler) reconcileTiltfileContents(ctx context.Context, tf *v1alpha1.Tiltfile, tlr *tiltfile.TiltfileLoadResult) (tiltfileContentsResult, error) {
 	result := tiltfileContentsResult{sha256: tf.Status.ContentsSHA256}
 	bytes, err := os.ReadFile(tf.Spec.Path)
 	if err != nil {
@@ -219,7 +220,9 @@ func (r *Reconciler) reconcileTiltfileContents(ctx context.Context, tf *v1alpha1
 	fileSha256 := fmt.Sprintf("%x", sha256.Sum256(bytes))
 	result.sha256 = fileSha256
 
-	// TODO(nicksieger): bail here if a disable-contents-api feature flag is set
+	if tlr == nil || !tlr.FeatureFlags[feature.TiltfileEditAPI] {
+		return result, nil
+	}
 
 	// File update wins, return contents with which to update API server
 	if fileSha256 != tf.Status.ContentsSHA256 {
