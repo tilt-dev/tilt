@@ -264,10 +264,8 @@ func HoldTargetsWaitingOnDependencies(state store.EngineState, mts []*store.Mani
 
 func HoldDisabledTargets(state store.EngineState, mts []*store.ManifestTarget, holds HoldSet) {
 	for _, mt := range mts {
-		if uir, ok := state.UIResources[string(mt.Manifest.Name)]; ok {
-			if uir.Status.DisableStatus.DisabledCount > 0 {
-				holds.AddHold(mt, store.Hold{Reason: store.HoldReasonDisabled})
-			}
+		if !mt.State.Enabled {
+			holds.AddHold(mt, store.Hold{Reason: store.HoldReasonDisabled})
 		}
 	}
 }

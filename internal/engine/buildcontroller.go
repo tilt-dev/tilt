@@ -161,9 +161,9 @@ func (c *BuildController) cleanupDisabledBuilds(st store.RStore) {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
-	for _, uir := range state.UIResources {
-		if uir.Status.DisableStatus.DisabledCount > 0 {
-			c.cleanupBuildContext(model.ManifestName(uir.Name))
+	for _, ms := range state.ManifestStates() {
+		if !ms.Enabled {
+			c.cleanupBuildContext(ms.Name)
 		}
 	}
 }

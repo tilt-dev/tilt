@@ -45,17 +45,13 @@ func (w *DisableSubscriber) OnChange(ctx context.Context, st store.RStore, summa
 		if !ok {
 			continue
 		}
-		if uir.Status.DisableStatus.DisabledCount > 0 {
-			manifest, exists := state.ManifestTargets[model.ManifestName(uir.Name)]
-			if !exists {
-				continue
-			}
-
-			if !manifest.State.IsDC() {
-				continue
-			}
-
-			rs := manifest.State.DCRuntimeState().RuntimeStatus()
+		manifest, exists := state.ManifestTargets[model.ManifestName(uir.Name)]
+		if !exists {
+			continue
+		}
+		ms := manifest.State
+		if !manifest.State.Enabled && ms.IsDC() {
+			rs := ms.DCRuntimeState().RuntimeStatus()
 			if rs == v1alpha1.RuntimeStatusOK || rs == v1alpha1.RuntimeStatusPending {
 				// for now, only disable one at a time
 				// https://app.shortcut.com/windmill/story/13140/support-logging-to-multiple-manifests
