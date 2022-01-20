@@ -3946,6 +3946,7 @@ k8s_yaml('foo.yaml')
 
 func TestEnableFeature(t *testing.T) {
 	f := newFixture(t)
+	f.features["testflag_disabled"] = feature.Value{Enabled: false}
 	f.setupFoo()
 
 	f.file("Tiltfile", `enable_feature('testflag_disabled')`)
@@ -3956,6 +3957,7 @@ func TestEnableFeature(t *testing.T) {
 
 func TestEnableFeatureWithError(t *testing.T) {
 	f := newFixture(t)
+	f.features["testflag_disabled"] = feature.Value{Enabled: false}
 	f.setupFoo()
 
 	f.file("Tiltfile", `
@@ -3969,6 +3971,7 @@ fail('goodnight moon')
 
 func TestDisableFeature(t *testing.T) {
 	f := newFixture(t)
+	f.features["testflag_enabled"] = feature.Value{Enabled: true}
 	f.setupFoo()
 
 	f.file("Tiltfile", `disable_feature('testflag_enabled')`)
@@ -3997,6 +4000,7 @@ func TestDisableFeatureThatDoesNotExist(t *testing.T) {
 
 func TestDisableObsoleteFeature(t *testing.T) {
 	f := newFixture(t)
+	f.features["obsoleteflag"] = feature.Value{Status: feature.Obsolete, Enabled: true}
 	f.setupFoo()
 
 	f.file("Tiltfile", `disable_feature('obsoleteflag')`)
@@ -5890,24 +5894,18 @@ type fixture struct {
 
 	loadResult TiltfileLoadResult
 	warnings   []string
+	features   feature.Defaults
 }
 
 func (f *fixture) newTiltfileLoader() TiltfileLoader {
 	dcc := dockercompose.NewDockerComposeClient(docker.LocalEnv{})
-	features := feature.Defaults{
-		"testflag_disabled":  feature.Value{Enabled: false},
-		"testflag_enabled":   feature.Value{Enabled: true},
-		"obsoleteflag":       feature.Value{Status: feature.Obsolete, Enabled: true},
-		feature.Snapshots:    feature.Value{Enabled: true},
-		feature.LiveUpdateV2: feature.Value{Enabled: false},
-	}
 
 	k8sContextExt := k8scontext.NewPlugin(f.k8sContext, f.k8sEnv)
 	versionExt := version.NewPlugin(model.TiltBuild{Version: "0.5.0"})
 	configExt := config.NewPlugin("up")
 	localEnv := localexec.DefaultEnv(12345, f.webHost)
 	execer := localexec.NewProcessExecer(localEnv)
-	return ProvideTiltfileLoader(f.ta, k8sContextExt, versionExt, configExt, dcc, f.webHost, execer, features, f.k8sEnv)
+	return ProvideTiltfileLoader(f.ta, k8sContextExt, versionExt, configExt, dcc, f.webHost, execer, f.features, f.k8sEnv)
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -5917,6 +5915,12 @@ func newFixture(t *testing.T) *fixture {
 	f.Chdir()
 
 	ctrlclient := fake.NewFakeTiltClient()
+
+	// copy the features to avoid unintentional mutation by tests
+	features := make(feature.Defaults)
+	for k, v := range feature.MainDefaults {
+		features[k] = v
+	}
 
 	r := &fixture{
 		ctx:            ctx,
@@ -5928,6 +5932,7 @@ func newFixture(t *testing.T) *fixture {
 		k8sContext:     "fake-context",
 		k8sEnv:         k8s.EnvDockerDesktop,
 		ctrlclient:     ctrlclient,
+		features:       features,
 	}
 
 	// Collect the warnings
