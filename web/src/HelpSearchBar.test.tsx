@@ -4,7 +4,6 @@ import { tiltfileKeyContext } from "./BrowserStorage"
 import {
   ClearHelpSearchBarButton,
   HelpSearchBar,
-  searchValue,
 } from "./HelpSearchBar"
 
 const HelpSearchBarTestWrapper = () => (
@@ -65,6 +64,7 @@ describe("HelpSearchBar", () => {
     searchField.simulate("change", { target: { value: searchTerm } })
     searchField.simulate("keyPress", { key: "Enter" })
 
-    expect(searchValue.length).toBe(0)
+    const searchFieldAfterChange = root.find("input")
+    expect(searchFieldAfterChange.prop("value").length).toBe(0)
   })
 })
