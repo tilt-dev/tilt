@@ -62,6 +62,6 @@ describe("HelpSearchBar", () => {
     searchField.simulate("keyPress", { key: "Enter" })
 
     const searchFieldAfterChange = root.find("input")
-    expect(searchFieldAfterChange.prop("value").length).toBe(0)
+    expect(searchFieldAfterChange.prop("value")).toBe("")
   })
 })
