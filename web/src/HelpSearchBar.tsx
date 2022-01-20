@@ -59,7 +59,7 @@ export const ClearHelpSearchBarButton = styled(InstrumentedButton)`
 `
 
 export function HelpSearchBar(props: { className?: string }) {
-  const[searchValue, setSearchValue] = useState("")
+  const [searchValue, setSearchValue] = useState("")
 
   let inputProps: Partial<StandardInputProps> = {
     startAdornment: (

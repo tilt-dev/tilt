@@ -1,10 +1,7 @@
 import { mount } from "enzyme"
 import { MemoryRouter } from "react-router"
 import { tiltfileKeyContext } from "./BrowserStorage"
-import {
-  ClearHelpSearchBarButton,
-  HelpSearchBar,
-} from "./HelpSearchBar"
+import { ClearHelpSearchBarButton, HelpSearchBar } from "./HelpSearchBar"
 
 const HelpSearchBarTestWrapper = () => (
   <MemoryRouter>
