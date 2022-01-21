@@ -218,23 +218,27 @@ func (r *Reconciler) reconcileTiltfileContents(ctx context.Context, tf *v1alpha1
 	}
 
 	fileSha256 := fmt.Sprintf("%x", sha256.Sum256(bytes))
+	contentsSha256 := fmt.Sprintf("%x", sha256.Sum256([]byte(tf.Spec.Contents)))
 	result.sha256 = fileSha256
+
+	// File different from contents; file wins by default
+	if fileSha256 != contentsSha256 {
+		result.contents = bytes
+	}
 
 	if tlr == nil || !tlr.FeatureFlags[feature.TiltfileEditAPI] {
 		return result, nil
 	}
 
-	// File update wins, return contents with which to update API server
+	// File contents changed since last hash
 	if fileSha256 != tf.Status.ContentsSHA256 {
-		result.contents = bytes
 		return result, nil
 	}
 
-	contentsSha256 := fmt.Sprintf("%x", sha256.Sum256([]byte(tf.Spec.Contents)))
-
-	// Contents changed via API, update file on disk
+	// API contents changed since last hash, update file on disk
 	if contentsSha256 != tf.Status.ContentsSHA256 {
 		result.sha256 = contentsSha256
+		result.contents = []byte{}
 		err = os.WriteFile(tf.Spec.Path, []byte(tf.Spec.Contents), 0644)
 	}
 
