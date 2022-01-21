@@ -48,30 +48,34 @@ func k8sRuntimeTarget(mt *store.ManifestTarget) *session.Target {
 		Resources: []string{mt.Manifest.Name.String()},
 	}
 
-	// a lot of this logic is duplicated from K8sRuntimeState::RuntimeStatus()
-	// but ensures Job containers are handled correctly and adds additional
-	// metadata
+	status := mt.RuntimeStatus()
 	pod := krs.MostRecentPod()
-	if krs.HasEverDeployedSuccessfully && pod.Name != "" {
-		switch v1.PodPhase(pod.Phase) {
-		case v1.PodRunning:
-			target.State.Active = &session.TargetStateActive{
-				StartTime: apis.NewMicroTime(pod.CreatedAt.Time),
-				Ready:     mt.Manifest.PodReadinessMode() == model.PodReadinessIgnore || store.AllPodContainersReady(pod),
-			}
-			return target
-		case v1.PodSucceeded:
+	phase := v1.PodPhase(pod.Phase)
+	createdAt := apis.NewMicroTime(pod.CreatedAt.Time)
+
+	if status == v1alpha1.RuntimeStatusOK {
+		if v1.PodSucceeded == phase {
 			target.State.Terminated = &session.TargetStateTerminated{
-				StartTime: apis.NewMicroTime(pod.CreatedAt.Time),
+				StartTime: createdAt,
 			}
 			return target
-		case v1.PodFailed:
+		}
+
+		target.State.Active = &session.TargetStateActive{
+			StartTime: createdAt,
+			Ready:     true,
+		}
+		return target
+	}
+
+	if status == v1alpha1.RuntimeStatusError {
+		if phase == v1.PodFailed {
 			podErr := strings.Join(pod.Errors, "; ")
 			if podErr == "" {
 				podErr = fmt.Sprintf("Pod %q failed", pod.Name)
 			}
 			target.State.Terminated = &session.TargetStateTerminated{
-				StartTime: apis.NewMicroTime(pod.CreatedAt.Time),
+				StartTime: createdAt,
 				Error:     podErr,
 			}
 			return target
@@ -87,12 +91,23 @@ func k8sRuntimeTarget(mt *store.ManifestTarget) *session.Target {
 				return target
 			}
 		}
+
+		target.State.Terminated = &session.TargetStateTerminated{
+			StartTime: createdAt,
+			Error:     "unknown error",
+		}
+		return target
 	}
 
-	// for resources with auto_init=True, fake a fallback waiting state
-	// for resources with auto_init=False (and the user has never triggered it),
-	// 	don't populate anything to signal that the target is _intentionally_ in an "inactive" state
-	if mt.Manifest.TriggerMode.AutoInitial() {
+	if status == v1alpha1.RuntimeStatusPending {
+		if v1.PodRunning == phase {
+			target.State.Active = &session.TargetStateActive{
+				StartTime: createdAt,
+				Ready:     false,
+			}
+			return target
+		}
+
 		waitReason := pod.Status
 		if waitReason == "" {
 			if pod.Name == "" {
@@ -237,12 +252,8 @@ func k8sTargetType(mt *store.ManifestTarget) session.TargetType {
 	}
 
 	krs := mt.State.K8sRuntimeState()
-	if krs.ApplyFilter != nil {
-		for _, ref := range krs.ApplyFilter.DeployedRefs {
-			if strings.Contains(ref.Kind, "Job") {
-				return session.TargetTypeJob
-			}
-		}
+	if krs.PodReadinessMode == model.PodReadinessSucceeded {
+		return session.TargetTypeJob
 	}
 
 	return session.TargetTypeServer

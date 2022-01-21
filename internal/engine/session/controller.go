@@ -5,17 +5,14 @@ import (
 	"fmt"
 	"os"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/model"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 
-	"github.com/tilt-dev/tilt/pkg/logger"
-
-	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -37,9 +34,6 @@ type Controller struct {
 	startTime  time.Time
 	client     ctrlclient.Client
 	engineMode store.EngineMode
-
-	// The last status object sent to the server.
-	lastStatus *session.SessionStatus
 
 	// The last session object returned by the server.
 	// Note that the server may annotate and transform this
@@ -74,14 +68,7 @@ func (c *Controller) OnChange(ctx context.Context, st store.RStore, summary stor
 	}
 
 	newStatus := c.makeLatestStatus(st)
-	if err := c.handleLatestStatus(ctx, st, newStatus); err != nil {
-		if strings.Contains(err.Error(), context.Canceled.Error()) {
-			return nil
-		}
-		logger.Get(ctx).Debugf("failed to update Session status: %v", err)
-	}
-
-	return nil
+	return c.handleLatestStatus(ctx, st, newStatus)
 }
 
 func (c *Controller) initialize(ctx context.Context, st store.RStore) (bool, error) {
@@ -170,17 +157,13 @@ func (c *Controller) makeLatestStatus(st store.RStore) *session.SessionStatus {
 }
 
 func (c *Controller) handleLatestStatus(ctx context.Context, st store.RStore, newStatus *session.SessionStatus) error {
-	// Use the lastStatus to check for changes, so we don't have to worry
-	// about server-side changes affecting the equality check.
-	if equality.Semantic.DeepEqual(c.lastStatus, newStatus) {
+	if apicmp.DeepEqual(c.session.Status, *newStatus) {
 		return nil
 	}
-	c.lastStatus = newStatus.DeepCopy()
 
 	// deep copy is made to avoid tainting local version on failure
 	updated := c.session.DeepCopy()
 	updated.Status = *newStatus
-
 	if err := c.client.Status().Update(ctx, updated); err != nil {
 		return err
 	}
