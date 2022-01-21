@@ -1,6 +1,12 @@
 import React from "react"
 import styled from "styled-components"
-import { ApiButton, ApiIcon, buttonsForComponent } from "./ApiButton"
+import {
+  ApiButton,
+  ApiButtonType,
+  ApiIcon,
+  buttonsForComponent,
+  UIBUTTON_NAV_COMPONENT_ID,
+} from "./ApiButton"
 import { MenuButtonLabeled, MenuButtonMixin } from "./GlobalNav"
 import { Color, SizeUnit } from "./style-helpers"
 
@@ -45,8 +51,8 @@ const CustomNavButton = styled(ApiButton)`
 export function CustomNav(props: CustomNavProps) {
   const buttons = buttonsForComponent(
     props.view.uiButtons,
-    "global",
-    "nav"
+    ApiButtonType.Global,
+    UIBUTTON_NAV_COMPONENT_ID
   ).default
 
   return (
@@ -60,7 +66,7 @@ export function CustomNav(props: CustomNavProps) {
           >
             <ApiIcon
               iconName={b.spec?.iconName || "smart_button"}
-              iconSVG={b.spec?.iconSVG}
+              iconSvg={b.spec?.iconSVG}
             />
           </CustomNavButton>
         </MenuButtonLabeled>
