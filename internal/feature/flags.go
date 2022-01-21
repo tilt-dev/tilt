@@ -2,6 +2,9 @@ package feature
 
 import (
 	"fmt"
+	"log"
+	"os"
+	"strings"
 )
 
 // The status of a feature flag
@@ -87,6 +90,35 @@ var MainDefaults = Defaults{
 
 // FeatureSet is a mutable set of Features.
 type FeatureSet map[string]Value
+
+func WithEnvironmentOverrides(d Defaults) Defaults {
+	updated := make(Defaults)
+	for k, v := range d {
+		env_name := fmt.Sprintf("TILT_FLAG_%s", strings.ToUpper(k))
+		env_val, found := os.LookupEnv(env_name)
+		value := v
+		if found {
+			var status string
+			switch env_val {
+			case "1":
+				status = "enabled"
+				value.Enabled = true
+			case "0":
+				status = "disabled"
+				value.Enabled = false
+			default:
+				status = fmt.Sprintf("value ignored (value %s not '0' or '1')", env_val)
+			}
+			log.Printf("Tilt feature %s %s: Environment variable %s=%s\n", k, status, env_name, env_val)
+		}
+		updated[k] = value
+	}
+	return updated
+}
+
+func DefaultsWithEnvironmentOverrides() Defaults {
+	return WithEnvironmentOverrides(MainDefaults)
+}
 
 // Create a FeatureSet from defaults.
 func FromDefaults(d Defaults) FeatureSet {

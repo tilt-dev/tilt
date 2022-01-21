@@ -82,6 +82,8 @@ import (
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
+
+	_ "embed"
 )
 
 // Injectors from wire.go:
@@ -117,15 +119,11 @@ func wireTiltfileResult(ctx context.Context, analytics2 *analytics.TiltAnalytics
 	webPort := provideWebPort()
 	localexecEnv := localexec.DefaultEnv(webPort, webHost)
 	processExecer := localexec.NewProcessExecer(localexecEnv)
-	defaults := _wireDefaultsValue
+	defaults := feature.DefaultsWithEnvironmentOverrides()
 	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, plugin, versionPlugin, configPlugin, dockerComposeClient, webHost, processExecer, defaults, env)
 	cliCmdTiltfileResultDeps := newTiltfileResultDeps(tiltfileLoader)
 	return cliCmdTiltfileResultDeps, nil
 }
-
-var (
-	_wireDefaultsValue = feature.MainDefaults
-)
 
 func wireDockerPrune(ctx context.Context, analytics2 *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (dpDeps, error) {
 	k8sKubeContextOverride := ProvideKubeContextOverride()
@@ -164,7 +162,7 @@ func wireDockerPrune(ctx context.Context, analytics2 *analytics.TiltAnalytics, s
 	webPort := provideWebPort()
 	localexecEnv := localexec.DefaultEnv(webPort, webHost)
 	processExecer := localexec.NewProcessExecer(localexecEnv)
-	defaults := _wireDefaultsValue
+	defaults := feature.DefaultsWithEnvironmentOverrides()
 	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, plugin, versionPlugin, configPlugin, dockerComposeClient, webHost, processExecer, defaults, env)
 	cliDpDeps := newDPDeps(switchCli, client, tiltfileLoader)
 	return cliDpDeps, nil
@@ -286,7 +284,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	versionPlugin := version.NewPlugin(tiltBuild)
 	configPlugin := config.NewPlugin(subcommand)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
-	defaults := _wireDefaultsValue
+	defaults := feature.DefaultsWithEnvironmentOverrides()
 	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, plugin, versionPlugin, configPlugin, dockerComposeClient, webHost, processExecer, defaults, k8sEnv)
 	engineMode := _wireEngineModeValue
 	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, client, switchCli, deferredClient, scheme, engineMode, k8sKubeContextOverride, k8sNamespaceOverride)
@@ -495,7 +493,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	versionPlugin := version.NewPlugin(tiltBuild)
 	configPlugin := config.NewPlugin(subcommand)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
-	defaults := _wireDefaultsValue
+	defaults := feature.DefaultsWithEnvironmentOverrides()
 	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, plugin, versionPlugin, configPlugin, dockerComposeClient, webHost, processExecer, defaults, k8sEnv)
 	engineMode := _wireStoreEngineModeValue
 	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, client, switchCli, deferredClient, scheme, engineMode, k8sKubeContextOverride, k8sNamespaceOverride)
@@ -701,7 +699,7 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	versionPlugin := version.NewPlugin(tiltBuild)
 	configPlugin := config.NewPlugin(subcommand)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
-	defaults := _wireDefaultsValue
+	defaults := feature.DefaultsWithEnvironmentOverrides()
 	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, plugin, versionPlugin, configPlugin, dockerComposeClient, webHost, processExecer, defaults, k8sEnv)
 	engineMode := _wireEngineModeValue2
 	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, k8sClient, switchCli, deferredClient, scheme, engineMode, k8sKubeContextOverride, k8sNamespaceOverride)
@@ -955,7 +953,7 @@ func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, s
 	webPort := provideWebPort()
 	localexecEnv := localexec.DefaultEnv(webPort, webHost)
 	processExecer := localexec.NewProcessExecer(localexecEnv)
-	defaults := _wireDefaultsValue
+	defaults := feature.DefaultsWithEnvironmentOverrides()
 	tiltfileLoader := tiltfile.ProvideTiltfileLoader(tiltAnalytics, plugin, versionPlugin, configPlugin, dockerComposeClient, webHost, processExecer, defaults, env)
 	downDeps := ProvideDownDeps(tiltfileLoader, dockerComposeClient, k8sClient, processExecer)
 	return downDeps, nil
@@ -1047,7 +1045,7 @@ var BaseWireSet = wire.NewSet(
 	provideWebMode,
 	provideWebURL,
 	provideWebPort,
-	provideWebHost, server.WireSet, provideAssetServer, tracer.NewSpanCollector, wire.Bind(new(trace.SpanExporter), new(*tracer.SpanCollector)), wire.Bind(new(tracer.SpanSource), new(*tracer.SpanCollector)), dirs.UseTiltDevDir, xdg.NewTiltDevBase, token.GetOrCreateToken, buildcontrol.NewKINDLoader, wire.Value(feature.MainDefaults),
+	provideWebHost, server.WireSet, provideAssetServer, tracer.NewSpanCollector, wire.Bind(new(trace.SpanExporter), new(*tracer.SpanCollector)), wire.Bind(new(tracer.SpanSource), new(*tracer.SpanCollector)), dirs.UseTiltDevDir, xdg.NewTiltDevBase, token.GetOrCreateToken, buildcontrol.NewKINDLoader, feature.DefaultsWithEnvironmentOverrides,
 )
 
 var CLIClientWireSet = wire.NewSet(

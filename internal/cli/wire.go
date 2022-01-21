@@ -151,7 +151,7 @@ var BaseWireSet = wire.NewSet(
 
 	buildcontrol.NewKINDLoader,
 
-	wire.Value(feature.MainDefaults),
+	feature.DefaultsWithEnvironmentOverrides,
 )
 
 var CLIClientWireSet = wire.NewSet(
