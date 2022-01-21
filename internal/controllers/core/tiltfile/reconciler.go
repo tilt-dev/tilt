@@ -62,6 +62,8 @@ type Reconciler struct {
 	// not useful, as there's no way its status can change currently (a restart of
 	// Tilt is required).
 	dockerConnectMetricReporter sync.Once
+
+	defaults feature.Defaults
 }
 
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
@@ -83,7 +85,8 @@ func NewReconciler(st store.RStore, tfl tiltfile.TiltfileLoader, k8sClient k8s.C
 	ctrlClient ctrlclient.Client, scheme *runtime.Scheme,
 	engineMode store.EngineMode,
 	k8sContextOverride k8s.KubeContextOverride,
-	k8sNamespaceOverride k8s.NamespaceOverride) *Reconciler {
+	k8sNamespaceOverride k8s.NamespaceOverride,
+	defaults feature.Defaults) *Reconciler {
 	return &Reconciler{
 		st:                   st,
 		tfl:                  tfl,
@@ -96,6 +99,7 @@ func NewReconciler(st store.RStore, tfl tiltfile.TiltfileLoader, k8sClient k8s.C
 		engineMode:           engineMode,
 		k8sContextOverride:   k8sContextOverride,
 		k8sNamespaceOverride: k8sNamespaceOverride,
+		defaults:             defaults,
 	}
 }
 
@@ -226,7 +230,9 @@ func (r *Reconciler) reconcileTiltfileContents(ctx context.Context, tf *v1alpha1
 		result.contents = bytes
 	}
 
-	if tlr == nil || !tlr.FeatureFlags[feature.TiltfileEditAPI] {
+	// Short-circuit here when feature is disabled to prevent modifying disk file
+	if (tlr != nil && !tlr.FeatureFlags[feature.TiltfileEditAPI]) ||
+		(tlr == nil && !r.defaults[feature.TiltfileEditAPI].Enabled) {
 		return result, nil
 	}
 
