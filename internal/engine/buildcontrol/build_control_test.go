@@ -265,60 +265,6 @@ func TestTwoK8sTargetsWithBaseImage(t *testing.T) {
 	f.assertNextTargetToBuild("sancho-two")
 }
 
-func TestLiveUpdateHold(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-
-	srcFile := f.JoinPath("src", "a.txt")
-	f.WriteFile(srcFile, "hello")
-	luSpec := v1alpha1.LiveUpdateSpec{
-		BasePath: f.Path(),
-		Syncs:    []v1alpha1.LiveUpdateSync{{LocalPath: "src", ContainerPath: "/src"}},
-	}
-
-	baseImage := newDockerImageTarget("sancho-base")
-	sanchoImage := newDockerImageTarget("sancho").
-		WithLiveUpdateSpec("sancho", luSpec).
-		WithImageMapDeps([]string{baseImage.ImageMapName()})
-
-	sancho := f.upsertManifest(manifestbuilder.New(f, "sancho").
-		WithImageTargets(baseImage, sanchoImage).
-		WithK8sYAML(testyaml.SanchoYAML).
-		Build())
-
-	f.assertNextTargetToBuild("sancho")
-	sancho.State.AddCompletedBuild(model.BuildRecord{
-		StartTime:  time.Now(),
-		FinishTime: time.Now(),
-	})
-
-	resource := &k8sconv.KubernetesResource{
-		FilteredPods: []v1alpha1.Pod{
-			*readyPod("pod-1", sanchoImage.Refs.ClusterRef()),
-		},
-	}
-	f.st.KubernetesResources["sancho"] = resource
-
-	sancho.State.MutableBuildStatus(sanchoImage.ID()).PendingFileChanges[srcFile] = time.Now()
-	f.assertNoTargetNextToBuild()
-	f.assertHold("sancho", store.HoldReasonReconciling)
-
-	// If the live update is failing, we have to rebuild.
-	f.st.LiveUpdates["sancho"] = &v1alpha1.LiveUpdate{
-		Spec:   luSpec,
-		Status: v1alpha1.LiveUpdateStatus{Failed: &v1alpha1.LiveUpdateStateFailed{Reason: "fake-reason"}},
-	}
-	f.assertNextTargetToBuild("sancho")
-
-	// reset to a good state.
-	delete(f.st.LiveUpdates, "sancho")
-	f.assertNoTargetNextToBuild()
-
-	// If the base image has a change, we have to rebuild.
-	sancho.State.MutableBuildStatus(baseImage.ID()).PendingFileChanges[srcFile] = time.Now()
-	f.assertNextTargetToBuild("sancho")
-}
-
 func TestTwoK8sTargetsWithBaseImagePrebuilt(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
