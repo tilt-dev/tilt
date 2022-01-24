@@ -3,6 +3,7 @@ package tiltfile
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"path/filepath"
 	"reflect"
@@ -21,6 +22,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/internal/feature"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -308,6 +310,88 @@ func TestDockerMetrics(t *testing.T) {
 	assert.ElementsMatch(t, []analytics.CountEvent{connectEvt}, f.ma.Counts)
 }
 
+func TestTiltfileContentsFilled(t *testing.T) {
+	f := newFixture(t)
+	p := f.tempdir.JoinPath("Tiltfile")
+	contents := "print('hello-world')"
+	contentsSHA256 := fmt.Sprintf("%x", sha256.Sum256([]byte(contents)))
+	f.tempdir.WriteFile(p, contents)
+
+	tf := v1alpha1.Tiltfile{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "my-tf",
+		},
+		Spec: v1alpha1.TiltfileSpec{
+			Path: p,
+		},
+	}
+	f.Create(&tf)
+
+	assert.Eventually(t, func() bool {
+		f.MustGet(types.NamespacedName{Name: "my-tf"}, &tf)
+		return tf.Spec.Contents == contents &&
+			tf.Status.ContentsSHA256 == contentsSHA256
+	}, time.Second, time.Millisecond)
+}
+
+func TestTiltfileWrittenByAPI(t *testing.T) {
+	f := newFixtureWithFlags(t, feature.Defaults{
+		feature.TiltfileEditAPI: feature.Value{
+			Enabled: true,
+			Status:  feature.Active,
+		}})
+	p := f.tempdir.JoinPath("Tiltfile")
+	f.tempdir.WriteFile(p, "")
+	contents := "print('hello-world')"
+	contentsSHA256 := fmt.Sprintf("%x", sha256.Sum256([]byte(contents)))
+
+	tf := v1alpha1.Tiltfile{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "my-tf",
+		},
+		Spec: v1alpha1.TiltfileSpec{
+			Path:     p,
+			Contents: contents,
+		},
+		Status: v1alpha1.TiltfileStatus{
+			ContentsSHA256: fmt.Sprintf("%x", sha256.Sum256([]byte{})),
+		},
+	}
+	f.Create(&tf)
+
+	assert.Eventually(t, func() bool {
+		f.MustGet(types.NamespacedName{Name: "my-tf"}, &tf)
+		return f.tempdir.ReadFile(p) == contents &&
+			tf.Status.ContentsSHA256 == contentsSHA256
+	}, time.Second, time.Millisecond)
+}
+
+func TestTiltfileNotWrittenByAPIWhenDisabled(t *testing.T) {
+	f := newFixtureWithFlags(t, feature.Defaults{
+		feature.TiltfileEditAPI: feature.Value{
+			Enabled: false,
+			Status:  feature.Active,
+		}})
+	p := f.tempdir.JoinPath("Tiltfile")
+	f.tempdir.WriteFile(p, "")
+	contents := "print('hello-world')"
+
+	tf := v1alpha1.Tiltfile{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "my-tf",
+		},
+		Spec: v1alpha1.TiltfileSpec{
+			Path:     p,
+			Contents: contents,
+		},
+	}
+	f.Create(&tf)
+
+	assert.Never(t, func() bool {
+		return f.tempdir.ReadFile(p) == contents
+	}, time.Second, 100*time.Millisecond)
+}
+
 type testStore struct {
 	*store.TestingStore
 	out *bytes.Buffer
@@ -340,6 +424,10 @@ type fixture struct {
 }
 
 func newFixture(t *testing.T) *fixture {
+	return newFixtureWithFlags(t, feature.Defaults{})
+}
+
+func newFixtureWithFlags(t *testing.T, flags feature.Defaults) *fixture {
 	cfb := fake.NewControllerFixtureBuilder(t)
 	tf := tempdir.NewTempDirFixture(t)
 	t.Cleanup(tf.TearDown)
@@ -348,7 +436,7 @@ func newFixture(t *testing.T) *fixture {
 	tfl := tiltfile.NewFakeTiltfileLoader()
 	d := docker.NewFakeClient()
 	kClient := k8s.NewFakeK8sClient(t)
-	r := NewReconciler(st, tfl, kClient, d, cfb.Client, v1alpha1.NewScheme(), store.EngineModeUp, "", "")
+	r := NewReconciler(st, tfl, kClient, d, cfb.Client, v1alpha1.NewScheme(), store.EngineModeUp, "", "", flags)
 	q := workqueue.NewRateLimitingQueue(
 		workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, time.Millisecond))
 	_ = r.requeuer.Start(context.Background(), handler.Funcs{}, q)
