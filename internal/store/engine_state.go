@@ -494,6 +494,8 @@ type ManifestState struct {
 
 	// If the build was manually triggered, record why.
 	TriggerReason model.BuildReason
+
+	Enabled bool
 }
 
 func NewState() *EngineState {
@@ -515,6 +517,7 @@ func NewState() *EngineState {
 		model.MainTiltfileManifestName: &ManifestState{
 			Name:          model.MainTiltfileManifestName,
 			BuildStatuses: make(map[model.TargetID]*BuildStatus),
+			Enabled:       true,
 		},
 	}
 	ret.TiltfileConfigPaths = map[model.ManifestName][]string{}
@@ -537,12 +540,13 @@ func NewState() *EngineState {
 	return ret
 }
 
-func newManifestState(m model.Manifest) *ManifestState {
+func NewManifestState(m model.Manifest) *ManifestState {
 	mn := m.Name
 	ms := &ManifestState{
 		Name:                    mn,
 		BuildStatuses:           make(map[model.TargetID]*BuildStatus),
 		LiveUpdatedContainerIDs: container.NewIDSet(),
+		Enabled:                 true,
 	}
 
 	if m.IsK8s() {

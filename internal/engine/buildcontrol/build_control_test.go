@@ -492,15 +492,8 @@ func TestHoldDisabled(t *testing.T) {
 	defer f.TearDown()
 
 	f.upsertLocalManifest("local")
-	f.st.UIResources = map[string]*v1alpha1.UIResource{
-		"local": {
-			Status: v1alpha1.UIResourceStatus{
-				DisableStatus: v1alpha1.DisableResourceStatus{
-					DisabledCount: 5,
-				},
-			},
-		},
-	}
+	f.st.ManifestTargets["local"].State.Enabled = false
+
 	f.assertHold("local", store.HoldReasonDisabled)
 	f.assertNoTargetNextToBuild()
 }

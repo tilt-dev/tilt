@@ -30,22 +30,27 @@ func HandleUIResourceUpsertAction(state *store.EngineState, action UIResourceUps
 			state.LogStore.Append(a, state.Secrets)
 		}
 
-		ms, ok := state.ManifestState(model.ManifestName(n))
-		if uir.Status.DisableStatus.DisabledCount > 0 && ok {
-			// since file watches are disabled while a resource is disabled, we can't
-			// have confidence in any previous build state
-			ms.BuildHistory = nil
-			if len(ms.BuildStatuses) > 0 {
-				ms.BuildStatuses = make(map[model.TargetID]*store.BuildStatus)
+		// if a uiresource doesn't have any disablesources, it's always treated as enabled
+		if len(uir.Status.DisableStatus.Sources) > 0 {
+			ms, ok := state.ManifestState(model.ManifestName(n))
+			if ok {
+				// don't consider a resource enabled when its counts are 0/0, since that just means it
+				// hasn't been reconciled yet
+				ms.Enabled = uir.Status.DisableStatus.DisabledCount == 0 && uir.Status.DisableStatus.EnabledCount > 0
+				if !ms.Enabled {
+					// since file watches are disabled while a resource is disabled, we can't
+					// have confidence in any previous build state
+					ms.BuildHistory = nil
+					if len(ms.BuildStatuses) > 0 {
+						ms.BuildStatuses = make(map[model.TargetID]*store.BuildStatus)
+					}
+					state.RemoveFromTriggerQueue(ms.Name)
+				}
 			}
 		}
 	}
 
 	state.UIResources[n] = uir
-
-	if uir != nil && uir.Status.DisableStatus.DisabledCount > 0 {
-		state.RemoveFromTriggerQueue(model.ManifestName(n))
-	}
 }
 
 func HandleUIResourceDeleteAction(state *store.EngineState, action UIResourceDeleteAction) {
