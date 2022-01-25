@@ -1,6 +1,10 @@
 import React, { useMemo } from "react"
 import styled from "styled-components"
-import { ApiButtonToggleState, buttonsByComponent } from "./ApiButton"
+import {
+  ApiButtonToggleState,
+  buttonsByComponent,
+  ButtonSet,
+} from "./ApiButton"
 import { BulkApiButton } from "./BulkApiButton"
 import { Flag, useFeatures } from "./feature"
 import { useResourceSelection } from "./ResourceSelectionContext"
@@ -8,6 +12,7 @@ import SrOnly from "./SrOnly"
 import { Color, FontSize, SizeUnit } from "./style-helpers"
 import { UIButton } from "./types"
 
+// Types
 type OverviewTableBulkActionsProps = {
   uiButtons?: UIButton[]
 }
@@ -18,6 +23,7 @@ export enum BulkAction {
   Disable = "disable", // Enable / disable are states of the same toggle, so use a single name
 }
 
+// Styles
 const BulkActionMenu = styled.div`
   align-items: center;
   display: flex;
@@ -32,6 +38,26 @@ const SelectedCount = styled.p`
   color: ${Color.gray7};
 `
 
+// Helpers
+export function buttonsByAction(
+  resourceButtons: { [key: string]: ButtonSet },
+  selectedResources: string[]
+) {
+  const actionButtons: ActionButtons = {
+    [BulkAction.Disable]: [],
+  }
+
+  selectedResources.forEach((resource) => {
+    const buttonSet = resourceButtons[resource]
+    if (buttonSet && buttonSet.toggleDisable) {
+      actionButtons[BulkAction.Disable].push(buttonSet.toggleDisable)
+    }
+  })
+
+  return actionButtons
+}
+
+// Components
 function BulkSelectedCount({ count }: { count: number }) {
   if (!count) {
     return null
@@ -55,27 +81,12 @@ export function OverviewTableBulkActions({
     [uiButtons]
   )
 
-  const actionButtons = useMemo(() => {
-    const buttonsByAction: ActionButtons = {
-      [BulkAction.Disable]: [],
-    }
+  const actionButtons = useMemo(
+    () => buttonsByAction(resourceButtons, selected),
+    [selected, uiButtons]
+  )
 
-    selected.forEach((resource) => {
-      const buttonSet = resourceButtons[resource]
-      if (buttonSet && buttonSet.toggleDisable) {
-        buttonsByAction[BulkAction.Disable].push(buttonSet.toggleDisable)
-      }
-    })
-
-    return buttonsByAction
-  }, [selected, uiButtons])
-
-  // TODO (lizz): Do more testing to investigate "memory leak" warning
-  // from unmounting this component when its `setState` hooks haven't
-  // finished running
-
-  // Don't render the bulk actions is feature flag is off
-  // or if there are no selections
+  // Don't render if feature flag is off or if there are no selections
   if (!features.isEnabled(Flag.BulkDisableResources) || selected.length === 0) {
     return null
   }
@@ -83,7 +94,7 @@ export function OverviewTableBulkActions({
   const onClickCallback = () => clearSelections()
 
   return (
-    <BulkActionMenu>
+    <BulkActionMenu aria-label="Bulk resource actions">
       <BulkApiButton
         bulkAction={BulkAction.Disable}
         buttonText="Enable"

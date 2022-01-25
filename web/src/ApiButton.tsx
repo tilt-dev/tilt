@@ -731,8 +731,6 @@ export function buttonsForComponent(
   return result
 }
 
-// TODO: i'll def want to write tests for this
-// also consider implementing this as a potential optimization in table view
 export function buttonsByComponent(buttons: UIButton[] | undefined) {
   const buttonsByComponent: { [key: string]: ButtonSet } = {}
 

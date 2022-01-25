@@ -17,6 +17,8 @@ import {
   ApiButtonForm,
   ApiButtonInputsToggleButton,
   ApiButtonLabel,
+  buttonsByComponent,
+  ButtonSet,
 } from "./ApiButton"
 import {
   boolField,
@@ -28,6 +30,7 @@ import { accessorsForTesting, tiltfileKeyContext } from "./BrowserStorage"
 import { HudErrorContextProvider } from "./HudErrorContext"
 import { InstrumentedButton } from "./instrumentedComponents"
 import { flushPromises } from "./promise"
+import { disableButton } from "./testdata"
 
 type UIButtonStatus = Proto.v1alpha1UIButtonStatus
 type UIButton = Proto.v1alpha1UIButton
@@ -420,6 +423,37 @@ describe("ApiButton", () => {
     expect(buttonComponent.find(ApiButtonLabel).text()).toEqual(
       anotherToggleButton.spec?.text
     )
+  })
+
+  describe("helper functions", () => {
+    describe("buttonsByComponent", () => {
+      it("returns an empty object if there are no buttons", () => {
+        expect(buttonsByComponent(undefined)).toStrictEqual({})
+      })
+
+      it("returns a map of resources names to button sets", () => {
+        const buttons = [
+          makeUIButton({ componentID: "frontend", name: "Lint" }),
+          makeUIButton({ componentID: "frontend", name: "Compile" }),
+          disableButton("frontend", true),
+          makeUIButton({ componentID: "backend", name: "Random scripts" }),
+          disableButton("backend", false),
+          makeUIButton({ componentID: "data-warehouse", name: "Flush" }),
+          makeUIButton({ componentID: "" }),
+        ]
+
+        const expectedOutput: { [key: string]: ButtonSet } = {
+          frontend: {
+            default: [buttons[0], buttons[1]],
+            toggleDisable: buttons[2],
+          },
+          backend: { default: [buttons[3]], toggleDisable: buttons[4] },
+          ["data-warehouse"]: { default: [buttons[5]] },
+        }
+
+        expect(buttonsByComponent(buttons)).toStrictEqual(expectedOutput)
+      })
+    })
   })
 })
 

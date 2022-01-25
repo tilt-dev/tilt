@@ -111,20 +111,20 @@ const BulkButtonGroup = styled(ButtonGroup)<{ disabled?: boolean }>`
 `
 
 // Helpers
-function canButtonBeToggled(
+export function canButtonBeToggled(
   uiButton: UIButton,
   targetToggleState?: ApiButtonToggleState
 ) {
-  if (!targetToggleState) {
-    return true
-  }
-
   const toggleInput = uiButton.spec?.inputs?.find(
     (input) => input.name === UIBUTTON_TOGGLE_INPUT_NAME
   )
 
   if (!toggleInput) {
     return false
+  }
+
+  if (!targetToggleState) {
+    return true
   }
 
   const toggleValue = toggleInput.hidden?.value
@@ -140,7 +140,7 @@ function canButtonBeToggled(
  * ex: all buttons are on and target toggle is on   => bulk button cannot be toggled
  * ex: all buttons are not toggle buttons           => bulk button cannot be toggled
  */
-function canBulkButtonBeToggled(
+export function canBulkButtonBeToggled(
   uiButtons: UIButton[],
   targetToggleState: ApiButtonToggleState
 ) {
@@ -173,13 +173,11 @@ function isBulkButtonDisabled(
 }
 
 async function bulkUpdateButtonStatus(uiButtons: UIButton[]) {
-  const buttonClicks: Promise<void>[] = uiButtons.map((button) =>
-    updateButtonStatus(button, {})
-  )
-
   try {
-    await Promise.all(buttonClicks)
+    await Promise.all(uiButtons.map((button) => updateButtonStatus(button, {})))
+    // console.log("all requests have finished")
   } catch (err) {
+    // console.log("yikes, there's been an error")
     throw err
   }
 }
@@ -329,11 +327,12 @@ export function BulkApiButton(props: BulkApiButtonProps) {
       setError(`Error triggering ${bulkAction} action: ${err}`)
       return
     } finally {
+      setLoading(false)
+
       if (onClickCallback) {
+        // console.log("finally, callback!")
         onClickCallback()
       }
-
-      setLoading(false)
     }
   }
 

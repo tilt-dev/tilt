@@ -1,6 +1,5 @@
-type UIButton = Proto.v1alpha1UIButton
-type UIInputSpec = Proto.v1alpha1UIInputSpec
-type UIInputStatus = Proto.v1alpha1UIInputStatus
+import { ApiButtonType, UIBUTTON_NAV_COMPONENT_ID } from "./ApiButton"
+import { UIButton, UIInputSpec, UIInputStatus } from "./types"
 
 export function textField(
   name: string,
@@ -36,11 +35,13 @@ export function hiddenField(name: string, value: string): UIInputSpec {
   }
 }
 
+// TODO: Consider merging this test helper with `oneButton` in `testdata`
 export function makeUIButton(args?: {
   name?: string
   inputSpecs?: UIInputSpec[]
   inputStatuses?: UIInputStatus[]
   requiresConfirmation?: boolean
+  componentID?: string
 }): UIButton {
   return {
     metadata: {
@@ -51,8 +52,10 @@ export function makeUIButton(args?: {
       iconName: "flight_takeoff",
       inputs: args?.inputSpecs,
       location: {
-        componentType: "Global",
-        componentID: "nav",
+        componentType: args?.componentID
+          ? ApiButtonType.Resource
+          : ApiButtonType.Global,
+        componentID: args?.componentID ?? UIBUTTON_NAV_COMPONENT_ID,
       },
       requiresConfirmation: args?.requiresConfirmation,
     },
