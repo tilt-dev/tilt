@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/tilt-dev/wmclient/pkg/analytics"
@@ -98,8 +99,9 @@ func NewK8sEventAction(event *v1.Event, manifestName model.ManifestName) K8sEven
 }
 
 func (kEvt K8sEventAction) ToLogAction(mn model.ManifestName) LogAction {
-	msg := fmt.Sprintf("[K8s EVENT: %s] %s\n",
-		objRefHumanReadable(kEvt.Event.InvolvedObject), kEvt.Event.Message)
+	msg := fmt.Sprintf("[event: %s] %s\n",
+		objRefHumanReadable(kEvt.Event.InvolvedObject),
+		strings.TrimSpace(kEvt.Event.Message))
 
 	return LogAction{
 		mn:        mn,
@@ -111,11 +113,11 @@ func (kEvt K8sEventAction) ToLogAction(mn model.ManifestName) LogAction {
 }
 
 func objRefHumanReadable(obj v1.ObjectReference) string {
-	s := fmt.Sprintf("%s %s", obj.Kind, obj.Name)
-	if obj.Namespace != "" {
-		s += fmt.Sprintf(" (ns: %s)", obj.Namespace)
+	kind := strings.ToLower(obj.Kind)
+	if obj.Namespace == "" || obj.Namespace == "default" {
+		return fmt.Sprintf("%s %s", kind, obj.Name)
 	}
-	return s
+	return fmt.Sprintf("%s %s/%s", kind, obj.Namespace, obj.Name)
 }
 
 type AnalyticsUserOptAction struct {
