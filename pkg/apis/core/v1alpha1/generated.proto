@@ -2428,7 +2428,7 @@ message TiltfileStatus {
 
   // SHA256 of the Tiltfile Contents
   // +optional
-  optional string contentsSHA256 = 5;
+  optional string contentsSHA256 = 4;
 }
 
 // ToggleButton

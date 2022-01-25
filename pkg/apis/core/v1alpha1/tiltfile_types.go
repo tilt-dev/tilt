@@ -139,7 +139,7 @@ type TiltfileStatus struct {
 
 	// SHA256 of the Tiltfile Contents
 	// +optional
-	ContentsSHA256 string `json:"contentsSHA256,omitempty" protobuf:"bytes,5,opt,name=contentsSHA256"`
+	ContentsSHA256 string `json:"contentsSHA256,omitempty" protobuf:"bytes,4,opt,name=contentsSHA256"`
 }
 
 // Tiltfile implements ObjectWithStatusSubResource interface.
