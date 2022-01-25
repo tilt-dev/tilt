@@ -121,37 +121,45 @@ export const LogLink = styled(Link)`
   padding-left: ${SizeUnit(0.5)};
 `
 
-const ApiButtonElementRoot = styled(InstrumentedButton)`
-  &.confirming {
+export const confirmingButtonStateMixin = `
+&.confirming {
+  background-color: ${Color.red};
+  border-color: ${Color.gray};
+  color: ${Color.black};
+
+  &:hover,
+  &:active,
+  &:focus {
     background-color: ${Color.red};
-    border-color: ${Color.gray};
+    border-color: ${Color.redLight};
     color: ${Color.black};
-
-    &:hover,
-    &:active,
-    &:focus {
-      background-color: ${Color.red};
-      border-color: ${Color.redLight};
-      color: ${Color.black};
-    }
-
-    .fillStd {
-      fill: ${Color.black} !important; /* TODO (lizz): find this style source! */
-    }
   }
 
-  /* Manually manage the border that both left and right
-     buttons share on the edge between them, so border
-     color changes work as expected */
-  &.leftButtonInGroup {
-    border-right: 0;
-
-    &:active + .rightButtonInGroup,
-    &:focus + .rightButtonInGroup,
-    &:hover + .rightButtonInGroup {
-      border-left-color: ${Color.redLight};
-    }
+  .fillStd {
+    fill: ${Color.black} !important; /* TODO (lizz): find this style source! */
   }
+}
+`
+
+/* Manually manage the border that both left and right
+ * buttons share on the edge between them, so border
+ * color changes work as expected
+ */
+export const confirmingButtonGroupBorderMixin = `
+&.leftButtonInGroup {
+  border-right: 0;
+
+  &:active + .rightButtonInGroup,
+  &:focus + .rightButtonInGroup,
+  &:hover + .rightButtonInGroup {
+    border-left-color: ${Color.redLight};
+  }
+}
+`
+
+const ApiButtonElementRoot = styled(InstrumentedButton)`
+  ${confirmingButtonStateMixin}
+  ${confirmingButtonGroupBorderMixin}
 `
 
 export const ApiButtonInputsToggleButton = styled(InstrumentedButton)`
@@ -516,11 +524,11 @@ export function ApiSubmitButton(
 
   // Determine display text and accessible button label based on confirmation state
   const displayButtonText = confirming ? "Confirm" : text
-  const ariaLabel = confirming ? `Confirm ${text}` : `Trigger ${Text}`
+  const ariaLabel = confirming ? `Confirm ${text}` : `Trigger ${text}`
 
   const tags = { ...analyticsTags }
   if (confirming) {
-    analyticsTags.confirm = "true"
+    tags.confirm = "true"
   }
 
   // To pass classes to a MUI component, it's necessary to use `classes`, instead of `className`

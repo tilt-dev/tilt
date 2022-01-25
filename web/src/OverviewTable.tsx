@@ -118,6 +118,12 @@ const OverviewTableRoot = styled.section`
   margin-right: ${SizeUnit(1 / 2)};
 `
 
+const OverviewTableMenu = styled.section`
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+`
+
 const ResourceTable = styled.table`
   margin-top: ${SizeUnit(0.5)};
   border-collapse: collapse;
@@ -727,8 +733,10 @@ function OverviewTableContent(props: OverviewTableProps) {
 export default function OverviewTable(props: OverviewTableProps) {
   return (
     <OverviewTableRoot aria-label="Resources overview">
-      <OverviewTableResourceNameFilter />
-      <OverviewTableBulkActions uiButtons={props.view.uiButtons} />
+      <OverviewTableMenu>
+        <OverviewTableResourceNameFilter />
+        <OverviewTableBulkActions uiButtons={props.view.uiButtons} />
+      </OverviewTableMenu>
       <OverviewTableContent {...props} />
     </OverviewTableRoot>
   )
