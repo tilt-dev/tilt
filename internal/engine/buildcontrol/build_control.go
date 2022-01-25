@@ -569,20 +569,87 @@ func HoldLiveUpdateTargetsHandledByReconciler(state store.EngineState, mts []*st
 			continue
 		}
 
+		// Changes to the deploy target can't be live-updated.
+		if mt.Manifest.DeployTarget != nil {
+			bs, hasBuildStatus := mt.State.BuildStatuses[mt.Manifest.DeployTarget.ID()]
+			hasPendingChanges := hasBuildStatus && len(bs.PendingFileChanges) > 0
+			if hasPendingChanges {
+				continue
+			}
+		}
+
+		allHandledByLiveUpdate := true
 		iTargets := mt.Manifest.ImageTargets
 		for _, iTarget := range iTargets {
-			isHandledByReconciler := !liveupdate.IsEmptySpec(iTarget.LiveUpdateSpec) &&
-				iTarget.LiveUpdateReconciler
-			if !isHandledByReconciler {
+			bs, hasBuildStatus := mt.State.BuildStatuses[iTarget.ID()]
+			hasPendingChanges := hasBuildStatus && len(bs.PendingFileChanges) > 0
+			if !hasPendingChanges {
 				continue
 			}
 
-			// Live update should hold back a target if it's not failing.
-			lu := state.LiveUpdates[iTarget.LiveUpdateName]
-			isFailing := lu != nil && lu.Status.Failed != nil
-			if !isFailing {
-				holds.AddHold(mt, store.Hold{Reason: store.HoldReasonReconciling})
+			handlers := findLiveUpdateHandlers(iTarget, mt, &state)
+			if len(handlers) == 0 {
+				allHandledByLiveUpdate = false
+			}
+
+			for _, lu := range handlers {
+				isFailing := lu.Status.Failed != nil
+				if isFailing {
+					allHandledByLiveUpdate = false
+				}
+			}
+
+			if !allHandledByLiveUpdate {
+				break
 			}
 		}
+
+		if allHandledByLiveUpdate {
+			holds.AddHold(mt, store.Hold{Reason: store.HoldReasonReconciling})
+		}
 	}
+}
+
+// Find all the live update objects responsible for syncing this image.
+//
+// Base image live updates are modeled with a LiveUpdate object attached to
+// each deploy image.
+//
+// The LiveUpdate watches:
+// - The Deploy image's container
+// - The Base image's filewatch
+//
+// The Tiltfile assembler will guarantee that there will be one LiveUpdate
+// object for each deployed image, and they will all sync in the same way.
+func findLiveUpdateHandlers(changedImage model.ImageTarget, mt *store.ManifestTarget, state *store.EngineState) []*v1alpha1.LiveUpdate {
+	result := []*v1alpha1.LiveUpdate{}
+
+	for _, candidate := range mt.Manifest.ImageTargets {
+		isHandledByReconciler := !liveupdate.IsEmptySpec(candidate.LiveUpdateSpec) &&
+			candidate.LiveUpdateReconciler
+		if !isHandledByReconciler {
+			continue
+		}
+
+		lu := state.LiveUpdates[candidate.LiveUpdateName]
+		if lu == nil {
+			continue
+		}
+
+		isHandled := false
+		for _, source := range lu.Spec.Sources {
+			// Relies on the assumption that image targets create filewatches
+			// with the same name.
+			if source.FileWatch == changedImage.ID().String() {
+				isHandled = true
+				break
+			}
+		}
+
+		if isHandled {
+			result = append(result, lu)
+		}
+	}
+
+	return result
 }
