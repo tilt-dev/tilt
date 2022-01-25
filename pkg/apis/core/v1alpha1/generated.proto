@@ -521,6 +521,8 @@ message DisableResourceStatus {
   // How many of the resource's sources are disabled.
   optional int32 disabledCount = 2;
 
+  optional int32 pendingCount = 4;
+
   // All unique sources that control the resource's objects' disable status.
   repeated DisableSource sources = 3;
 }

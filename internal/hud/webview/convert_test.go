@@ -375,7 +375,8 @@ func TestDisableResourceStatus(t *testing.T) {
 	m1 := model.Manifest{Name: "m1"}.WithDeployTarget(model.LocalTarget{})
 	m2 := model.Manifest{Name: "m2"}.WithDeployTarget(model.LocalTarget{})
 	m3 := model.Manifest{Name: "m3"}.WithDeployTarget(model.LocalTarget{})
-	state := newState([]model.Manifest{m1, m2, m3})
+	m4 := model.Manifest{Name: "m4"}.WithDeployTarget(model.LocalTarget{})
+	state := newState([]model.Manifest{m1, m2, m3, m4})
 
 	state.ConfigMaps = map[string]*v1alpha1.ConfigMap{
 		"disable-m1":  {Data: map[string]string{"isDisabled": "true"}},
@@ -390,6 +391,9 @@ func TestDisableResourceStatus(t *testing.T) {
 			{ConfigMap: &v1alpha1.ConfigMapDisableSource{Name: "disable-m2a", Key: "isDisabled"}},
 			{ConfigMap: &v1alpha1.ConfigMapDisableSource{Name: "disable-m2b", Key: "isDisabled"}},
 			{ConfigMap: &v1alpha1.ConfigMapDisableSource{Name: "disable-m2c", Key: "isDisabled"}},
+		},
+		"m4": {
+			{ConfigMap: &v1alpha1.ConfigMapDisableSource{Name: "disable-m4", Key: "isDisabled"}},
 		},
 	}
 
@@ -412,6 +416,12 @@ func TestDisableResourceStatus(t *testing.T) {
 			EnabledCount:  0,
 			DisabledCount: 0,
 			Sources:       nil,
+		},
+		{
+			EnabledCount:  0,
+			DisabledCount: 0,
+			PendingCount:  1,
+			Sources:       disableSources["m4"],
 		},
 	}
 

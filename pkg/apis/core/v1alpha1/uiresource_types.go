@@ -115,6 +115,8 @@ type DisableResourceStatus struct {
 	// How many of the resource's sources are disabled.
 	DisabledCount int32 `json:"disabledCount" protobuf:"varint,2,opt,name=disabledCount"`
 
+	PendingCount int32 `json:"pendingCount" protobuf:"varint,4,opt,name=pendingCount"`
+
 	// All unique sources that control the resource's objects' disable status.
 	Sources []DisableSource `json:"sources" protobuf:"bytes,3,rep,name=sources"`
 }

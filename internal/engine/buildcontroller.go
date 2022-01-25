@@ -162,7 +162,7 @@ func (c *BuildController) cleanupDisabledBuilds(st store.RStore) {
 	defer st.RUnlockState()
 
 	for _, ms := range state.ManifestStates() {
-		if !ms.Enabled {
+		if ms.EnabledStatus == store.EnabledStatusDisabled {
 			c.cleanupBuildContext(ms.Name)
 		}
 	}

@@ -15,7 +15,7 @@ func HandleTiltfileUpsertAction(state *store.EngineState, action TiltfileUpsertA
 		state.TiltfileStates[mn] = &store.ManifestState{
 			Name:          mn,
 			BuildStatuses: make(map[model.TargetID]*store.BuildStatus),
-			Enabled:       true,
+			EnabledStatus: store.EnabledStatusEnabled,
 		}
 	}
 

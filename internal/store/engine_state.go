@@ -465,6 +465,14 @@ func (s *BuildStatus) ClearPendingChangesBefore(startTime time.Time) {
 	}
 }
 
+type EnabledStatus int
+
+const (
+	EnabledStatusPending = iota
+	EnabledStatusEnabled
+	EnabledStatusDisabled
+)
+
 type ManifestState struct {
 	Name model.ManifestName
 
@@ -495,7 +503,7 @@ type ManifestState struct {
 	// If the build was manually triggered, record why.
 	TriggerReason model.BuildReason
 
-	Enabled bool
+	EnabledStatus EnabledStatus
 }
 
 func NewState() *EngineState {
@@ -517,7 +525,7 @@ func NewState() *EngineState {
 		model.MainTiltfileManifestName: &ManifestState{
 			Name:          model.MainTiltfileManifestName,
 			BuildStatuses: make(map[model.TargetID]*BuildStatus),
-			Enabled:       true,
+			EnabledStatus: EnabledStatusEnabled,
 		},
 	}
 	ret.TiltfileConfigPaths = map[model.ManifestName][]string{}
@@ -546,7 +554,7 @@ func NewManifestState(m model.Manifest) *ManifestState {
 		Name:                    mn,
 		BuildStatuses:           make(map[model.TargetID]*BuildStatus),
 		LiveUpdatedContainerIDs: container.NewIDSet(),
-		Enabled:                 true,
+		EnabledStatus:           EnabledStatusPending,
 	}
 
 	if m.IsK8s() {

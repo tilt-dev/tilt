@@ -19,6 +19,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/engine/local"
@@ -593,6 +594,9 @@ func TestDisableServeCmd(t *testing.T) {
 	t1 := time.Unix(1, 0)
 	localTarget := model.NewLocalTarget("foo", model.Cmd{}, model.ToHostCmd("."), nil)
 	localTarget.ServeCmdDisableSource = &ds
+	err := configmap.UpsertDisableConfigMap(f.Context(), f.Client, ds.ConfigMap.Name, ds.ConfigMap.Key, false)
+	require.NoError(t, err)
+
 	f.resourceFromTarget("foo", localTarget, t1)
 
 	f.step()
@@ -600,13 +604,7 @@ func TestDisableServeCmd(t *testing.T) {
 		return cmd != nil && cmd.Status.Running != nil
 	})
 
-	cm := ConfigMap{
-		ObjectMeta: ObjectMeta{Name: ds.ConfigMap.Name},
-		Data: map[string]string{
-			ds.ConfigMap.Key: "true",
-		},
-	}
-	err := f.Client.Create(f.Context(), &cm)
+	err = configmap.UpsertDisableConfigMap(f.Context(), f.Client, ds.ConfigMap.Name, ds.ConfigMap.Key, true)
 	require.NoError(t, err)
 
 	f.step()
@@ -617,13 +615,7 @@ func TestEnableServeCmd(t *testing.T) {
 	f := newFixture(t)
 
 	ds := v1alpha1.DisableSource{ConfigMap: &v1alpha1.ConfigMapDisableSource{Name: "disable-foo", Key: "isDisabled"}}
-	cm := ConfigMap{
-		ObjectMeta: ObjectMeta{Name: ds.ConfigMap.Name},
-		Data: map[string]string{
-			ds.ConfigMap.Key: "true",
-		},
-	}
-	err := f.Client.Create(f.Context(), &cm)
+	err := configmap.UpsertDisableConfigMap(f.Context(), f.Client, ds.ConfigMap.Name, ds.ConfigMap.Key, true)
 	require.NoError(t, err)
 
 	t1 := time.Unix(1, 0)
@@ -633,8 +625,7 @@ func TestEnableServeCmd(t *testing.T) {
 
 	f.step()
 	f.assertCmdCount(0)
-	cm.Data[ds.ConfigMap.Key] = "false"
-	err = f.Client.Update(f.Context(), &cm)
+	err = configmap.UpsertDisableConfigMap(f.Context(), f.Client, ds.ConfigMap.Name, ds.ConfigMap.Key, false)
 	require.NoError(t, err)
 
 	f.step()

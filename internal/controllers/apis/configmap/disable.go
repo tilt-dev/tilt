@@ -13,33 +13,48 @@ import (
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
-func DisableStatus(getCM func(name string) (v1alpha1.ConfigMap, error), disableSource *v1alpha1.DisableSource) (isDisabled bool, reason string, err error) {
+type DisableResult int
+
+const (
+	DisableResultPending = iota
+	DisableResultError
+	DisableResultEnabled
+	DisableResultDisabled
+)
+
+func DisableStatus(getCM func(name string) (v1alpha1.ConfigMap, error), disableSource *v1alpha1.DisableSource) (result DisableResult, reason string, err error) {
 	if disableSource == nil {
-		return false, "object does not specify a DisableSource", nil
+		// if there is no source, assume the object has opted out of being disabled and is always eanbled
+		return DisableResultEnabled, "object does not specify a DisableSource", nil
 	}
 
 	if disableSource.ConfigMap == nil {
-		return false, "DisableSource specifies no ConfigMap", nil
+		return DisableResultError, "DisableSource specifies no ConfigMap", nil
 	}
 
 	cm, err := getCM(disableSource.ConfigMap.Name)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			return false, fmt.Sprintf("ConfigMap %q does not exist", disableSource.ConfigMap.Name), nil
+			return DisableResultPending, fmt.Sprintf("ConfigMap %q does not exist", disableSource.ConfigMap.Name), nil
 		}
-		return false, fmt.Sprintf("error reading ConfigMap %q", disableSource.ConfigMap.Name), err
+		return DisableResultPending, fmt.Sprintf("error reading ConfigMap %q", disableSource.ConfigMap.Name), err
 	}
 
 	cmVal, ok := cm.Data[disableSource.ConfigMap.Key]
 	if !ok {
-		return false, fmt.Sprintf("ConfigMap %q has no key %q", disableSource.ConfigMap.Name, disableSource.ConfigMap.Key), nil
+		return DisableResultError, fmt.Sprintf("ConfigMap %q has no key %q", disableSource.ConfigMap.Name, disableSource.ConfigMap.Key), nil
 	}
-	isDisabled, err = strconv.ParseBool(cmVal)
+	isDisabled, err := strconv.ParseBool(cmVal)
 	if err != nil {
-		return false, fmt.Sprintf("error parsing ConfigMap/key %q/%q value %q as a bool: %v", disableSource.ConfigMap.Name, disableSource.ConfigMap.Key, cmVal, err.Error()), nil
+		return DisableResultError, fmt.Sprintf("error parsing ConfigMap/key %q/%q value %q as a bool: %v", disableSource.ConfigMap.Name, disableSource.ConfigMap.Key, cmVal, err.Error()), nil
 	}
 
-	return isDisabled, fmt.Sprintf("ConfigMap/key %q/%q is %v", disableSource.ConfigMap.Name, disableSource.ConfigMap.Key, isDisabled), nil
+	if isDisabled {
+		result = DisableResultDisabled
+	} else {
+		result = DisableResultEnabled
+	}
+	return result, fmt.Sprintf("ConfigMap/key %q/%q is %v", disableSource.ConfigMap.Name, disableSource.ConfigMap.Key, isDisabled), nil
 }
 
 // Returns a new DisableStatus if the disable status has changed, or the prev status if it hasn't.
@@ -50,10 +65,15 @@ func MaybeNewDisableStatus(ctx context.Context, client client.Client, disableSou
 		return cm, err
 	}
 
-	isDisabled, reason, err := DisableStatus(getCM, disableSource)
+	result, reason, err := DisableStatus(getCM, disableSource)
 	if err != nil {
 		return nil, err
 	}
+	// we treat pending as disabled
+	// eventually we should probably represent isDisabled by an enum in the API, but for now
+	// we treat pending as disabled, with the understanding that it's better to momentarily delay the start of an
+	// object than to spin it up and quickly kill it, as the latter might generate undesired side effects / logs
+	isDisabled := result == DisableResultDisabled || result == DisableResultPending || result == DisableResultError
 	statusDiffers := prevStatus == nil || prevStatus.Disabled != isDisabled || prevStatus.Reason != reason
 	if statusDiffers {
 		return &v1alpha1.DisableStatus{

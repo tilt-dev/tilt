@@ -50,7 +50,7 @@ func (w *DisableSubscriber) OnChange(ctx context.Context, st store.RStore, summa
 			continue
 		}
 		ms := manifest.State
-		if !manifest.State.Enabled && ms.IsDC() {
+		if manifest.State.EnabledStatus == store.EnabledStatusDisabled && ms.IsDC() {
 			rs := ms.DCRuntimeState().RuntimeStatus()
 			if rs == v1alpha1.RuntimeStatusOK || rs == v1alpha1.RuntimeStatusPending {
 				// for now, only disable one at a time

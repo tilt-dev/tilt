@@ -31,7 +31,7 @@ func TestMaybeNewDisableStatusNoConfigMapDisableSource(t *testing.T) {
 	newStatus, err := MaybeNewDisableStatus(f.ctx, f.fc, &v1alpha1.DisableSource{}, nil)
 	require.NoError(t, err)
 	require.NotNil(t, newStatus)
-	require.Equal(t, false, newStatus.Disabled)
+	require.Equal(t, true, newStatus.Disabled)
 	require.Contains(t, newStatus.Reason, "specifies no ConfigMap")
 }
 
@@ -40,7 +40,7 @@ func TestMaybeNewDisableStatusNoConfigMap(t *testing.T) {
 	newStatus, err := MaybeNewDisableStatus(f.ctx, f.fc, disableSource(), nil)
 	require.NoError(t, err)
 	require.NotNil(t, newStatus)
-	require.Equal(t, false, newStatus.Disabled)
+	require.Equal(t, true, newStatus.Disabled)
 	require.Contains(t, newStatus.Reason, "ConfigMap \"fe-disable\" does not exist")
 }
 
@@ -50,7 +50,7 @@ func TestMaybeNewDisableStatusNoKey(t *testing.T) {
 	newStatus, err := MaybeNewDisableStatus(f.ctx, f.fc, disableSource(), nil)
 	require.NoError(t, err)
 	require.NotNil(t, newStatus)
-	require.Equal(t, false, newStatus.Disabled)
+	require.Equal(t, true, newStatus.Disabled)
 	require.Contains(t, newStatus.Reason, "has no key")
 }
 
@@ -80,7 +80,7 @@ func TestMaybeNewDisableStatusGobbledygookValue(t *testing.T) {
 	newStatus, err := MaybeNewDisableStatus(f.ctx, f.fc, disableSource(), nil)
 	require.NoError(t, err)
 	require.NotNil(t, newStatus)
-	require.Equal(t, false, newStatus.Disabled)
+	require.Equal(t, true, newStatus.Disabled)
 	require.Contains(t, newStatus.Reason, "strconv.ParseBool: parsing \"asdf\"")
 }
 

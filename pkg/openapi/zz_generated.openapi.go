@@ -1504,6 +1504,13 @@ func schema_pkg_apis_core_v1alpha1_DisableResourceStatus(ref common.ReferenceCal
 							Format:      "int32",
 						},
 					},
+					"pendingCount": {
+						SchemaProps: spec.SchemaProps{
+							Default: 0,
+							Type:    []string{"integer"},
+							Format:  "int32",
+						},
+					},
 					"sources": {
 						SchemaProps: spec.SchemaProps{
 							Description: "All unique sources that control the resource's objects' disable status.",
@@ -1519,7 +1526,7 @@ func schema_pkg_apis_core_v1alpha1_DisableResourceStatus(ref common.ReferenceCal
 						},
 					},
 				},
-				Required: []string{"enabledCount", "disabledCount", "sources"},
+				Required: []string{"enabledCount", "disabledCount", "pendingCount", "sources"},
 			},
 		},
 		Dependencies: []string{

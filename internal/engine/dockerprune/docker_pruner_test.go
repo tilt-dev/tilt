@@ -448,6 +448,7 @@ func (dpf *dockerPruneFixture) withK8sOnlyManifest() {
 }
 
 func (dpf *dockerPruneFixture) withManifestTarget(mt *store.ManifestTarget, alreadyBuilt bool) {
+	mt.State.EnabledStatus = store.EnabledStatusEnabled
 	if alreadyBuilt {
 		// spoof build history so we think this manifest has already been built (i.e. isn't pending)
 		mt.State.BuildHistory = buildHistory

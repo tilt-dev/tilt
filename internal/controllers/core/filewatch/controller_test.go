@@ -13,11 +13,11 @@ import (
 	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
@@ -151,6 +151,8 @@ func (f *fixture) CreateSimpleFileWatch() (types.NamespacedName, *filewatches.Fi
 		},
 	}
 	f.Create(fw)
+
+	f.setDisabled(types.NamespacedName{Namespace: fw.Namespace, Name: fw.Name}, false)
 	return f.KeyForObject(fw), fw
 }
 
@@ -168,22 +170,9 @@ func (f *fixture) setDisabled(key types.NamespacedName, isDisabled bool) {
 	require.NotNil(f.T(), fw.Spec.DisableSource)
 	require.NotNil(f.T(), fw.Spec.DisableSource.ConfigMap)
 
-	// Make sure that the configmap exists
-	configmap := &filewatches.ConfigMap{}
-	err = f.Client.Get(f.Context(), types.NamespacedName{Name: fw.Spec.DisableSource.ConfigMap.Name}, configmap)
-	// If the configmap doesn't exist, create it
-	if apierrors.IsNotFound(err) {
-		configmap.ObjectMeta.Name = fw.Spec.DisableSource.ConfigMap.Name
-		configmap.Data = map[string]string{fw.Spec.DisableSource.ConfigMap.Key: strconv.FormatBool(isDisabled)}
-		err = f.Client.Create(f.Context(), configmap)
-		require.NoError(f.T(), err)
-	} else {
-		// Otherwise, update the existing configmap
-		require.Nil(f.T(), err)
-		configmap.Data[fw.Spec.DisableSource.ConfigMap.Key] = strconv.FormatBool(isDisabled)
-		err = f.Client.Update(f.Context(), configmap)
-		require.NoError(f.T(), err)
-	}
+	ds := fw.Spec.DisableSource.ConfigMap
+	err = configmap.UpsertDisableConfigMap(f.Context(), f.Client, ds.Name, ds.Key, isDisabled)
+	require.NoError(f.T(), err)
 
 	f.reconcileFw(key)
 
@@ -355,13 +344,13 @@ func TestController_Disable_By_Configmap(t *testing.T) {
 	key, _ := f.CreateSimpleFileWatch()
 
 	// when enabling the configmap, the filewatch object is enabled
-	f.setDisabled(key, true)
-
-	// when disabling the configmap, the filewatch object is disabled
 	f.setDisabled(key, false)
 
-	// when enabling the configmap, the filewatch object is enabled
+	// when disabling the configmap, the filewatch object is disabled
 	f.setDisabled(key, true)
+
+	// when enabling the configmap, the filewatch object is enabled
+	f.setDisabled(key, false)
 }
 
 func TestController_Disable_Ignores_File_Changes(t *testing.T) {

@@ -30,14 +30,20 @@ func HandleUIResourceUpsertAction(state *store.EngineState, action UIResourceUps
 			state.LogStore.Append(a, state.Secrets)
 		}
 
-		// if a uiresource doesn't have any disablesources, it's always treated as enabled
-		if len(uir.Status.DisableStatus.Sources) > 0 {
-			ms, ok := state.ManifestState(model.ManifestName(n))
-			if ok {
-				// don't consider a resource enabled when its counts are 0/0, since that just means it
-				// hasn't been reconciled yet
-				ms.Enabled = uir.Status.DisableStatus.DisabledCount == 0 && uir.Status.DisableStatus.EnabledCount > 0
-				if !ms.Enabled {
+		ms, ok := state.ManifestState(model.ManifestName(n))
+
+		if ok {
+			if len(uir.Status.DisableStatus.Sources) > 0 {
+				if uir.Status.DisableStatus.PendingCount > 0 {
+					ms.EnabledStatus = store.EnabledStatusPending
+				} else {
+					if uir.Status.DisableStatus.DisabledCount > 0 {
+						ms.EnabledStatus = store.EnabledStatusDisabled
+					} else if uir.Status.DisableStatus.EnabledCount > 0 {
+						ms.EnabledStatus = store.EnabledStatusEnabled
+					}
+				}
+				if ms.EnabledStatus == store.EnabledStatusDisabled {
 					// since file watches are disabled while a resource is disabled, we can't
 					// have confidence in any previous build state
 					ms.BuildHistory = nil
@@ -46,8 +52,12 @@ func HandleUIResourceUpsertAction(state *store.EngineState, action UIResourceUps
 					}
 					state.RemoveFromTriggerQueue(ms.Name)
 				}
+			} else {
+				// if a uiresource doesn't have any disablesources, it's always treated as enabled
+				ms.EnabledStatus = store.EnabledStatusEnabled
 			}
 		}
+
 	}
 
 	state.UIResources[n] = uir

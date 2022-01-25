@@ -230,14 +230,21 @@ func disableResourceStatus(disableSources []v1alpha1.DisableSource, s store.Engi
 			}
 			return *cm, nil
 		}
-		isDisabled, _, err := configmap.DisableStatus(getCM, &source)
+		dr, _, err := configmap.DisableStatus(getCM, &source)
 		if err != nil {
 			return v1alpha1.DisableResourceStatus{}, err
 		}
-		if isDisabled {
-			result.DisabledCount += 1
-		} else {
+		switch dr {
+		case configmap.DisableResultEnabled:
 			result.EnabledCount += 1
+		case configmap.DisableResultDisabled:
+			result.DisabledCount += 1
+		case configmap.DisableResultPending:
+			result.PendingCount += 1
+		case configmap.DisableResultError:
+			// TODO(matt) - there are arguments for incrementing any of the three fields in this case, or adding an ErrorCount
+			// but none seem compelling. We could add an ErrorCount later, but that's just another case to handle downstream.
+			result.DisabledCount += 1
 		}
 	}
 	result.Sources = disableSources

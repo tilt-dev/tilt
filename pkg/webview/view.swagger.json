@@ -385,6 +385,10 @@
           "format": "int32",
           "description": "How many of the resource's sources are disabled."
         },
+        "pendingCount": {
+          "type": "integer",
+          "format": "int32"
+        },
         "sources": {
           "type": "array",
           "items": {
