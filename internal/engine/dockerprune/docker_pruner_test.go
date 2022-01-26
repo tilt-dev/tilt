@@ -7,21 +7,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/go-units"
-
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/go-units"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tilt-dev/tilt/internal/container"
-
-	"github.com/tilt-dev/tilt/internal/store"
-	"github.com/tilt-dev/tilt/pkg/model"
-
 	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 var (
@@ -448,7 +446,7 @@ func (dpf *dockerPruneFixture) withK8sOnlyManifest() {
 }
 
 func (dpf *dockerPruneFixture) withManifestTarget(mt *store.ManifestTarget, alreadyBuilt bool) {
-	mt.State.EnabledStatus = store.EnabledStatusEnabled
+	mt.State.DisableState = v1alpha1.DisableStateEnabled
 	if alreadyBuilt {
 		// spoof build history so we think this manifest has already been built (i.e. isn't pending)
 		mt.State.BuildHistory = buildHistory

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
@@ -33,17 +34,9 @@ func HandleUIResourceUpsertAction(state *store.EngineState, action UIResourceUps
 		ms, ok := state.ManifestState(model.ManifestName(n))
 
 		if ok {
+			ms.DisableState = uir.Status.DisableStatus.State
 			if len(uir.Status.DisableStatus.Sources) > 0 {
-				if uir.Status.DisableStatus.PendingCount > 0 {
-					ms.EnabledStatus = store.EnabledStatusPending
-				} else {
-					if uir.Status.DisableStatus.DisabledCount > 0 {
-						ms.EnabledStatus = store.EnabledStatusDisabled
-					} else if uir.Status.DisableStatus.EnabledCount > 0 {
-						ms.EnabledStatus = store.EnabledStatusEnabled
-					}
-				}
-				if ms.EnabledStatus == store.EnabledStatusDisabled {
+				if ms.DisableState == v1alpha1.DisableStateDisabled {
 					// since file watches are disabled while a resource is disabled, we can't
 					// have confidence in any previous build state
 					ms.BuildHistory = nil
@@ -52,9 +45,6 @@ func HandleUIResourceUpsertAction(state *store.EngineState, action UIResourceUps
 					}
 					state.RemoveFromTriggerQueue(ms.Name)
 				}
-			} else {
-				// if a uiresource doesn't have any disablesources, it's always treated as enabled
-				ms.EnabledStatus = store.EnabledStatusEnabled
 			}
 		}
 

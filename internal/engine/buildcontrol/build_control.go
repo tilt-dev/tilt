@@ -48,7 +48,7 @@ func NextTargetToBuild(state store.EngineState) (*store.ManifestTarget, HoldSet)
 	//   a build that might immediately be canceled.
 	if pending := TargetsWithPendingEnableStatus(targets); len(pending) > 0 {
 		holds.Fill(targets, store.Hold{
-			Reason: store.HoldReasonResourceInitializing,
+			Reason: store.HoldReasonTiltfileReload,
 			HoldOn: pending,
 		})
 		return nil, holds
@@ -279,7 +279,7 @@ func HoldTargetsWaitingOnDependencies(state store.EngineState, mts []*store.Mani
 
 func HoldDisabledTargets(mts []*store.ManifestTarget, holds HoldSet) {
 	for _, mt := range mts {
-		if mt.State.EnabledStatus == store.EnabledStatusDisabled {
+		if mt.State.DisableState == v1alpha1.DisableStateDisabled {
 			holds.AddHold(mt, store.Hold{Reason: store.HoldReasonDisabled})
 		}
 	}
@@ -363,7 +363,7 @@ func HoldK8sTargets(targets []*store.ManifestTarget, holds HoldSet) {
 func TargetsWithPendingEnableStatus(targets []*store.ManifestTarget) []model.TargetID {
 	var result []model.TargetID
 	for _, target := range targets {
-		if target.State.EnabledStatus == store.EnabledStatusPending {
+		if target.State.DisableState == v1alpha1.DisableStatePending {
 			result = append(result, target.Spec().ID())
 		}
 	}

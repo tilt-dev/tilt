@@ -144,7 +144,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	}
 
 	// Delete kubernetesapply if it's disabled
-	if disableStatus.Disabled {
+	if disableStatus.State == v1alpha1.DisableStateDisabled {
 		err := r.deleteCreatedObjects(ctx, nn, "deleting disabled Kubernetes objects")
 		if err != nil {
 			return ctrl.Result{}, err

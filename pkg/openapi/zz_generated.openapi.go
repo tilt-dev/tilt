@@ -1504,11 +1504,12 @@ func schema_pkg_apis_core_v1alpha1_DisableResourceStatus(ref common.ReferenceCal
 							Format:      "int32",
 						},
 					},
-					"pendingCount": {
+					"state": {
 						SchemaProps: spec.SchemaProps{
-							Default: 0,
-							Type:    []string{"integer"},
-							Format:  "int32",
+							Description: "Whether this is currently disabled (if known)",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"sources": {
@@ -1526,7 +1527,7 @@ func schema_pkg_apis_core_v1alpha1_DisableResourceStatus(ref common.ReferenceCal
 						},
 					},
 				},
-				Required: []string{"enabledCount", "disabledCount", "pendingCount", "sources"},
+				Required: []string{"enabledCount", "disabledCount", "state", "sources"},
 			},
 		},
 		Dependencies: []string{
@@ -1563,7 +1564,7 @@ func schema_pkg_apis_core_v1alpha1_DisableStatus(ref common.ReferenceCallback) c
 				Properties: map[string]spec.Schema{
 					"disabled": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Whether this is currently disabled.",
+							Description: "Whether this is currently disabled. Deprecated in favor of `State`.",
 							Default:     false,
 							Type:        []string{"boolean"},
 							Format:      "",
@@ -1584,8 +1585,16 @@ func schema_pkg_apis_core_v1alpha1_DisableStatus(ref common.ReferenceCallback) c
 							Format:      "",
 						},
 					},
+					"state": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether this is currently disabled (if known)",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
-				Required: []string{"disabled", "lastUpdateTime", "reason"},
+				Required: []string{"disabled", "lastUpdateTime", "reason", "state"},
 			},
 		},
 		Dependencies: []string{

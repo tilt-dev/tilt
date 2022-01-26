@@ -230,7 +230,7 @@ func (c *ServerController) reconcile(ctx context.Context, server CmdServer, owne
 		server.Status.DisableStatus = disableStatus
 		c.upsert(server)
 	}
-	if disableStatus.Disabled {
+	if disableStatus.State == v1alpha1.DisableStateDisabled {
 		for _, cmd := range ownedCmds {
 			logger.Get(ctx).Infof("Resource is disabled, stopping cmd %q", cmd.Spec.Args)
 			c.deleteOwnedCmd(ctx, name, st, cmd)

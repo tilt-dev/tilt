@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
@@ -372,61 +374,118 @@ func TestSpecs(t *testing.T) {
 }
 
 func TestDisableResourceStatus(t *testing.T) {
-	m1 := model.Manifest{Name: "m1"}.WithDeployTarget(model.LocalTarget{})
-	m2 := model.Manifest{Name: "m2"}.WithDeployTarget(model.LocalTarget{})
-	m3 := model.Manifest{Name: "m3"}.WithDeployTarget(model.LocalTarget{})
-	m4 := model.Manifest{Name: "m4"}.WithDeployTarget(model.LocalTarget{})
-	state := newState([]model.Manifest{m1, m2, m3, m4})
-
-	state.ConfigMaps = map[string]*v1alpha1.ConfigMap{
-		"disable-m1":  {Data: map[string]string{"isDisabled": "true"}},
-		"disable-m2a": {Data: map[string]string{"isDisabled": "true"}},
-		"disable-m2b": {Data: map[string]string{"isDisabled": "true"}},
-		"disable-m2c": {Data: map[string]string{"isDisabled": "false"}},
-	}
-
-	disableSources := map[string][]v1alpha1.DisableSource{
-		"m1": {{ConfigMap: &v1alpha1.ConfigMapDisableSource{Name: "disable-m1", Key: "isDisabled"}}},
-		"m2": {
-			{ConfigMap: &v1alpha1.ConfigMapDisableSource{Name: "disable-m2a", Key: "isDisabled"}},
-			{ConfigMap: &v1alpha1.ConfigMapDisableSource{Name: "disable-m2b", Key: "isDisabled"}},
-			{ConfigMap: &v1alpha1.ConfigMapDisableSource{Name: "disable-m2c", Key: "isDisabled"}},
-		},
-		"m4": {
-			{ConfigMap: &v1alpha1.ConfigMapDisableSource{Name: "disable-m4", Key: "isDisabled"}},
-		},
-	}
-
-	uiResources, err := ToUIResourceList(*state, disableSources)
-	require.NoError(t, err)
-
-	expected := []v1alpha1.DisableResourceStatus{
-		{}, // The first UIResource is the Tiltfile
+	for _, tc := range []struct {
+		name           string
+		configMaps     []*v1alpha1.ConfigMap
+		disableSources []v1alpha1.DisableSource
+		// `expected.Sources` will be automatically set to `disableSources`'s value
+		expected v1alpha1.DisableResourceStatus
+	}{
 		{
-			EnabledCount:  0,
-			DisabledCount: 1,
-			Sources:       disableSources["m1"],
+			"disabled",
+			[]*v1alpha1.ConfigMap{{ObjectMeta: metav1.ObjectMeta{Name: "disable-m1"}, Data: map[string]string{"isDisabled": "true"}}},
+			[]v1alpha1.DisableSource{{ConfigMap: &v1alpha1.ConfigMapDisableSource{Name: "disable-m1", Key: "isDisabled"}}},
+			v1alpha1.DisableResourceStatus{
+				EnabledCount:  0,
+				DisabledCount: 1,
+				State:         v1alpha1.DisableStateDisabled,
+			},
 		},
 		{
-			EnabledCount:  1,
-			DisabledCount: 2,
-			Sources:       disableSources["m2"],
+			"some disabled",
+			[]*v1alpha1.ConfigMap{
+				{ObjectMeta: metav1.ObjectMeta{Name: "disable-m1a"}, Data: map[string]string{"isDisabled": "true"}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "disable-m1b"}, Data: map[string]string{"isDisabled": "true"}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "disable-m1c"}, Data: map[string]string{"isDisabled": "false"}},
+			},
+			[]v1alpha1.DisableSource{
+				{ConfigMap: &v1alpha1.ConfigMapDisableSource{Name: "disable-m1a", Key: "isDisabled"}},
+				{ConfigMap: &v1alpha1.ConfigMapDisableSource{Name: "disable-m1b", Key: "isDisabled"}},
+				{ConfigMap: &v1alpha1.ConfigMapDisableSource{Name: "disable-m1c", Key: "isDisabled"}},
+			},
+			v1alpha1.DisableResourceStatus{
+				EnabledCount:  1,
+				DisabledCount: 2,
+				State:         v1alpha1.DisableStateDisabled,
+			},
 		},
 		{
-			EnabledCount:  0,
-			DisabledCount: 0,
-			Sources:       nil,
+			"no sources - enabled",
+			nil,
+			nil,
+			v1alpha1.DisableResourceStatus{
+				EnabledCount:  0,
+				DisabledCount: 0,
+				Sources:       nil,
+				State:         v1alpha1.DisableStateEnabled,
+			},
 		},
 		{
-			EnabledCount:  0,
-			DisabledCount: 0,
-			PendingCount:  1,
-			Sources:       disableSources["m4"],
+			"missing ConfigMap - pending",
+			nil,
+			[]v1alpha1.DisableSource{{ConfigMap: &v1alpha1.ConfigMapDisableSource{Name: "disable-m1", Key: "isDisabled"}}},
+			v1alpha1.DisableResourceStatus{
+				EnabledCount:  0,
+				DisabledCount: 0,
+				State:         v1alpha1.DisableStatePending,
+			},
 		},
-	}
+		{
+			"error trumps all",
+			[]*v1alpha1.ConfigMap{
+				{ObjectMeta: metav1.ObjectMeta{Name: "enabled"}, Data: map[string]string{"isDisabled": "false"}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "disabled"}, Data: map[string]string{"isDisabled": "true"}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "error"}, Data: map[string]string{}},
+			},
+			[]v1alpha1.DisableSource{
+				{ConfigMap: &v1alpha1.ConfigMapDisableSource{Name: "enabled", Key: "isDisabled"}},
+				{ConfigMap: &v1alpha1.ConfigMapDisableSource{Name: "disabled", Key: "isDisabled"}},
+				{ConfigMap: &v1alpha1.ConfigMapDisableSource{Name: "error", Key: "isDisabled"}},
+				{ConfigMap: &v1alpha1.ConfigMapDisableSource{Name: "pending", Key: "isDisabled"}},
+			},
+			v1alpha1.DisableResourceStatus{
+				EnabledCount:  1,
+				DisabledCount: 2,
+				State:         v1alpha1.DisableStateError,
+			},
+		},
+		{
+			"pending trumps enabled/disabled",
+			[]*v1alpha1.ConfigMap{
+				{ObjectMeta: metav1.ObjectMeta{Name: "enabled"}, Data: map[string]string{"isDisabled": "false"}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "disabled"}, Data: map[string]string{"isDisabled": "true"}},
+			},
+			[]v1alpha1.DisableSource{
+				{ConfigMap: &v1alpha1.ConfigMapDisableSource{Name: "enabled", Key: "isDisabled"}},
+				{ConfigMap: &v1alpha1.ConfigMapDisableSource{Name: "pending", Key: "isDisabled"}},
+				{ConfigMap: &v1alpha1.ConfigMapDisableSource{Name: "disabled", Key: "isDisabled"}},
+			},
+			v1alpha1.DisableResourceStatus{
+				EnabledCount:  1,
+				DisabledCount: 1,
+				State:         v1alpha1.DisableStatePending,
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := model.Manifest{Name: "testmanifest"}.WithDeployTarget(model.LocalTarget{})
+			state := newState([]model.Manifest{m})
+			state.ConfigMaps = make(map[string]*v1alpha1.ConfigMap)
+			for _, cm := range tc.configMaps {
+				state.ConfigMaps[cm.Name] = cm
+			}
+			disableSources := map[string][]v1alpha1.DisableSource{
+				m.Name.String(): tc.disableSources,
+			}
+			uiResources, err := ToUIResourceList(*state, disableSources)
+			require.NoError(t, err)
 
-	for i, uir := range uiResources {
-		require.Equal(t, expected[i], uir.Status.DisableStatus)
+			require.Equal(t, 2, len(uiResources))
+			require.Equal(t, "(Tiltfile)", uiResources[0].Name)
+			require.Equal(t, m.Name.String(), uiResources[1].Name)
+			tc.expected.Sources = tc.disableSources
+			require.Equal(t, tc.expected, uiResources[1].Status.DisableStatus)
+		})
 	}
 }
 

@@ -23,6 +23,7 @@ func TestMaybeNewDisableStatusNoSource(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, newStatus)
 	require.Equal(t, false, newStatus.Disabled)
+	require.Equal(t, v1alpha1.DisableStateEnabled, newStatus.State)
 	require.Contains(t, newStatus.Reason, "does not specify a DisableSource")
 }
 
@@ -32,6 +33,7 @@ func TestMaybeNewDisableStatusNoConfigMapDisableSource(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, newStatus)
 	require.Equal(t, true, newStatus.Disabled)
+	require.Equal(t, v1alpha1.DisableStateError, newStatus.State)
 	require.Contains(t, newStatus.Reason, "specifies no ConfigMap")
 }
 
@@ -41,6 +43,7 @@ func TestMaybeNewDisableStatusNoConfigMap(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, newStatus)
 	require.Equal(t, true, newStatus.Disabled)
+	require.Equal(t, v1alpha1.DisableStatePending, newStatus.State)
 	require.Contains(t, newStatus.Reason, "ConfigMap \"fe-disable\" does not exist")
 }
 
@@ -51,6 +54,7 @@ func TestMaybeNewDisableStatusNoKey(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, newStatus)
 	require.Equal(t, true, newStatus.Disabled)
+	require.Equal(t, v1alpha1.DisableStateError, newStatus.State)
 	require.Contains(t, newStatus.Reason, "has no key")
 }
 
@@ -61,6 +65,7 @@ func TestMaybeNewDisableStatusTrue(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, newStatus)
 	require.Equal(t, true, newStatus.Disabled)
+	require.Equal(t, v1alpha1.DisableStateDisabled, newStatus.State)
 	require.Contains(t, newStatus.Reason, "is true")
 }
 
@@ -71,6 +76,7 @@ func TestMaybeNewDisableStatusFalse(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, newStatus)
 	require.Equal(t, false, newStatus.Disabled)
+	require.Equal(t, v1alpha1.DisableStateEnabled, newStatus.State)
 	require.Contains(t, newStatus.Reason, "is false")
 }
 
@@ -81,6 +87,7 @@ func TestMaybeNewDisableStatusGobbledygookValue(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, newStatus)
 	require.Equal(t, true, newStatus.Disabled)
+	require.Equal(t, v1alpha1.DisableStateError, newStatus.State)
 	require.Contains(t, newStatus.Reason, "strconv.ParseBool: parsing \"asdf\"")
 }
 

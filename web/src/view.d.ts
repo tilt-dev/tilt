@@ -686,7 +686,7 @@ declare namespace Proto {
      * How many of the resource's sources are disabled.
      */
     disabledCount?: number;
-    pendingCount?: number;
+    state?: string;
     /**
      * All unique sources that control the resource's objects' disable status.
      */

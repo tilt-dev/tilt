@@ -37,7 +37,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/containerupdate"
 	"github.com/tilt-dev/tilt/internal/controllers"
-	tiltconfigmap "github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
 	apitiltfile "github.com/tilt-dev/tilt/internal/controllers/apis/tiltfile"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cluster"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
@@ -88,6 +87,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/store/tiltfiles"
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
+	tiltconfigmap "github.com/tilt-dev/tilt/internal/testutils/configmap"
 	"github.com/tilt-dev/tilt/internal/testutils/httptest"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/podbuilder"
@@ -2371,7 +2371,7 @@ func TestDockerComposeStartsEventWatcher(t *testing.T) {
 		return target.State != nil
 	})
 	st := f.store.LockMutableStateForTesting()
-	st.ManifestTargets[m.Name].State.EnabledStatus = store.EnabledStatusEnabled
+	st.ManifestTargets[m.Name].State.DisableState = v1alpha1.DisableStateEnabled
 	f.store.UnlockMutableState()
 
 	f.waitForCompletedBuildCount(1)
