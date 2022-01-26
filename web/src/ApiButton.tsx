@@ -49,7 +49,7 @@ type ApiButtonProps = ButtonProps & {
   uiButton: UIButton
 }
 
-type ApiIconProps = { iconName?: string; iconSvg?: string }
+type ApiIconProps = { iconName?: string; iconSVG?: string }
 
 type ApiButtonInputProps = {
   spec: UIInputSpec
@@ -64,7 +64,7 @@ type ApiButtonElementProps = ButtonProps & {
   confirming: boolean
   disabled: boolean
   iconName?: string
-  iconSvg?: string
+  iconSVG?: string
   analyticsTags: Tags
   analyticsName: string
 }
@@ -315,12 +315,12 @@ function ApiButtonWithOptions(props: ApiButtonWithOptionsProps & ButtonProps) {
   )
 }
 
-export const ApiIcon = ({ iconName, iconSvg }: ApiIconProps) => {
-  if (iconSvg) {
+export const ApiIcon = ({ iconName, iconSVG }: ApiIconProps) => {
+  if (iconSVG) {
     // the material SvgIcon handles accessibility/sizing/colors well but can't accept a raw SVG string
     // create a ReactElement by parsing the source and then use that as the component, passing through
     // the props so that it's correctly styled
-    const svgEl = svgElement(iconSvg)
+    const svgEl = svgElement(iconSVG)
     const svg = (props: React.PropsWithChildren<any>) => {
       // merge the props from material-ui while keeping the children of the actual SVG
       return React.cloneElement(svgEl, { ...props }, ...svgEl.props.children)
@@ -479,7 +479,7 @@ export function ApiSubmitButtonContent(
     confirming: boolean
     displayButtonText: string
     iconName?: string
-    iconSvg?: string
+    iconSVG?: string
   }>
 ) {
   if (props.confirming) {
@@ -492,7 +492,7 @@ export function ApiSubmitButtonContent(
 
   return (
     <>
-      <ApiIcon iconName={props.iconName} iconSvg={props.iconSvg} />
+      <ApiIcon iconName={props.iconName} iconSVG={props.iconSVG} />
       <ApiButtonLabel>{props.displayButtonText}</ApiButtonLabel>
     </>
   )
@@ -517,7 +517,7 @@ export function ApiSubmitButton(
     disabled,
     onClick,
     iconName,
-    iconSvg,
+    iconSVG,
     text,
     ...buttonProps
   } = props
@@ -552,7 +552,7 @@ export function ApiSubmitButton(
         confirming={confirming}
         displayButtonText={displayButtonText}
         iconName={iconName}
-        iconSvg={iconSvg}
+        iconSVG={iconSVG}
       >
         {props.children}
       </ApiSubmitButtonContent>
@@ -638,7 +638,7 @@ export function ApiButton(props: PropsWithChildren<ApiButtonProps>) {
       confirming={confirming}
       disabled={disabled}
       iconName={uiButton.spec?.iconName}
-      iconSvg={uiButton.spec?.iconSVG}
+      iconSVG={uiButton.spec?.iconSVG}
       onClick={onClick}
       analyticsName="ui.web.uibutton"
       analyticsTags={tags}

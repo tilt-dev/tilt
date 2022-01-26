@@ -66,7 +66,7 @@ export type RowValues = {
   triggerMode: TriggerMode
   buttons: UIButton[]
   analyticsTags: Tags
-  selectable: boolean // TODO: rename this?
+  selectable: boolean
 }
 
 /**
@@ -440,7 +440,7 @@ export function TableWidgetsColumn({ row }: CellProps<RowValues>) {
       <CustomActionButton key={b.metadata?.name} uiButton={b}>
         <ApiIcon
           iconName={b.spec?.iconName || "smart_button"}
-          iconSvg={b.spec?.iconSVG}
+          iconSVG={b.spec?.iconSVG}
         />
       </CustomActionButton>
     )

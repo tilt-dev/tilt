@@ -66,7 +66,7 @@ export function CustomNav(props: CustomNavProps) {
           >
             <ApiIcon
               iconName={b.spec?.iconName || "smart_button"}
-              iconSvg={b.spec?.iconSVG}
+              iconSVG={b.spec?.iconSVG}
             />
           </CustomNavButton>
         </MenuButtonLabeled>
