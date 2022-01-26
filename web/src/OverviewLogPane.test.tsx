@@ -33,26 +33,26 @@ let logPaneMount = (pane: any) => {
 it("renders 3 lines in resource view", () => {
   let root = logPaneMount(<ThreeLines />)
   let el = root.getDOMNode()
-  expect(el.querySelectorAll(".LogPaneLine")).toHaveLength(3)
+  expect(el.querySelectorAll(".LogLine")).toHaveLength(3)
 })
 
 it("renders 3 lines in all log view", () => {
   let root = logPaneMount(<ThreeLinesAllLog />)
   let el = root.getDOMNode()
-  expect(el.querySelectorAll(".LogPaneLine")).toHaveLength(3)
+  expect(el.querySelectorAll(".LogLine")).toHaveLength(3)
 })
 
 it("escapes html and linkifies", () => {
   let root = logPaneMount(<StyledLines />)
   let el = root.getDOMNode()
-  expect(el.querySelectorAll(".LogPaneLine a")).toHaveLength(2)
-  expect(el.querySelectorAll(".LogPaneLine button")).toHaveLength(0)
+  expect(el.querySelectorAll(".LogLine a")).toHaveLength(2)
+  expect(el.querySelectorAll(".LogLine button")).toHaveLength(0)
 })
 
 it("filters by source", () => {
   let root = logPaneMount(<BuildLogAndRunLog />)
   let el = root.getDOMNode()
-  expect(el.querySelectorAll(".LogPaneLine")).toHaveLength(40)
+  expect(el.querySelectorAll(".LogLine")).toHaveLength(40)
 
   let root2 = logPaneMount(
     <BuildLogAndRunLog
@@ -62,7 +62,7 @@ it("filters by source", () => {
     />
   )
   let el2 = root2.getDOMNode()
-  expect(el2.querySelectorAll(".LogPaneLine")).toHaveLength(20)
+  expect(el2.querySelectorAll(".LogLine")).toHaveLength(20)
   expect(el2.innerHTML).toEqual(expect.stringContaining("Vigoda pod line"))
   expect(el2.innerHTML).toEqual(
     expect.not.stringContaining("Vigoda build line")
@@ -76,7 +76,7 @@ it("filters by source", () => {
     />
   )
   let el3 = root3.getDOMNode()
-  expect(el3.querySelectorAll(".LogPaneLine")).toHaveLength(20)
+  expect(el3.querySelectorAll(".LogLine")).toHaveLength(20)
   expect(el3.innerHTML).toEqual(expect.not.stringContaining("Vigoda pod line"))
   expect(el3.innerHTML).toEqual(expect.stringContaining("Vigoda build line"))
 })
@@ -86,7 +86,7 @@ it("filters by level", () => {
     <BuildLogAndRunLog source="" level="" term={EMPTY_FILTER_TERM} />
   )
   let el = root.getDOMNode()
-  expect(el.querySelectorAll(".LogPaneLine")).toHaveLength(40)
+  expect(el.querySelectorAll(".LogLine")).toHaveLength(40)
 
   let root2 = logPaneMount(
     <BuildLogAndRunLog
@@ -96,7 +96,7 @@ it("filters by level", () => {
     />
   )
   let el2 = root2.getDOMNode()
-  expect(el2.querySelectorAll(".LogPaneLine")).toHaveLength(
+  expect(el2.querySelectorAll(".LogLine")).toHaveLength(
     2 * (1 + PROLOGUE_LENGTH)
   )
 
@@ -120,7 +120,7 @@ it("filters by level", () => {
     />
   )
   let el3 = root3.getDOMNode()
-  expect(el3.querySelectorAll(".LogPaneLine")).toHaveLength(
+  expect(el3.querySelectorAll(".LogLine")).toHaveLength(
     2 * (1 + PROLOGUE_LENGTH)
   )
 
@@ -142,7 +142,7 @@ it("filters by term", () => {
     <BuildLogAndRunLog source="" level="" term={EMPTY_FILTER_TERM} />
   )
   const noTermEl = noFilterRoot.getDOMNode()
-  expect(noTermEl.querySelectorAll(".LogPaneLine")).toHaveLength(40)
+  expect(noTermEl.querySelectorAll(".LogLine")).toHaveLength(40)
 
   const termWithResults = createFilterTermState("line 5")
   const filterWithResults = logPaneMount(
@@ -150,7 +150,7 @@ it("filters by term", () => {
   )
   const elWithResults = filterWithResults.getDOMNode()
 
-  expect(elWithResults.querySelectorAll(".LogPaneLine")).toHaveLength(2)
+  expect(elWithResults.querySelectorAll(".LogLine")).toHaveLength(2)
   expect(elWithResults.innerHTML).toEqual(expect.stringContaining("line 5"))
   expect(elWithResults.innerHTML).toEqual(
     expect.not.stringContaining("line 15")
@@ -162,7 +162,7 @@ it("filters by term", () => {
   )
   const elWithNoResults = filterWithNoResults.getDOMNode()
 
-  expect(elWithNoResults.querySelectorAll(".LogPaneLine")).toHaveLength(0)
+  expect(elWithNoResults.querySelectorAll(".LogLine")).toHaveLength(0)
   expect(elWithNoResults.innerHTML).toEqual(
     expect.not.stringContaining("Vigoda")
   )
@@ -208,7 +208,7 @@ it("renders bottom logs first", () => {
 
   // Make sure no logs have been rendered yet.
   let rootEl = root.getDOMNode()
-  let lineEls = () => rootEl.querySelectorAll(".LogPaneLine")
+  let lineEls = () => rootEl.querySelectorAll(".LogLine")
   let component = root
     .find(OverviewLogComponent)
     .instance() as OverviewLogComponent
@@ -248,7 +248,7 @@ it("renders new logs first", () => {
   )
 
   let rootEl = root.getDOMNode()
-  let lineEls = () => rootEl.querySelectorAll(".LogPaneLine")
+  let lineEls = () => rootEl.querySelectorAll(".LogLine")
   let component = root
     .find(OverviewLogComponent)
     .instance() as OverviewLogComponent

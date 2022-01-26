@@ -11,8 +11,8 @@ import {
   FilterSource,
   TermState,
 } from "./logfilters"
+import "./LogLine.scss"
 import "./LogPane.scss"
-import "./LogPaneLine.scss"
 import LogStore, {
   LogUpdateAction,
   LogUpdateEvent,
@@ -76,7 +76,7 @@ function newLineEl(
   let text = line.text
   let level = line.level
   let buildEvent = line.buildEvent
-  let classes = ["LogPaneLine"]
+  let classes = ["LogLine"]
   classes.push(...extraClasses)
   if (level === "WARN") {
     classes.push("is-warning")
@@ -108,7 +108,7 @@ function newLineEl(
   }
 
   let code = document.createElement("code")
-  code.classList.add("LogPaneLine-content")
+  code.classList.add("LogLine-content")
 
   // newline ensures this takes up at least one line
   let spacer = "\n"
@@ -581,7 +581,7 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
   // Creates a DOM element with a permalink to an alert.
   newAlertNavEl(line: LogLine) {
     let div = document.createElement("button")
-    div.className = "LogPaneLine-alertNav"
+    div.className = "LogLine-alertNav"
     div.innerHTML = "… (more) …"
     div.onclick = (e) => {
       let storedLineIndex = line.storedLineIndex
