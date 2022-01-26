@@ -881,6 +881,9 @@ func TestMultipleChangesOnlyDeployOneManifest(t *testing.T) {
 	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", `
+# ensure builds happen in deterministic order
+update_settings(max_parallel_updates=1)
+
 docker_build("gcr.io/windmill-public-containers/servantes/snack", "./snack", dockerfile="Dockerfile1")
 docker_build("gcr.io/windmill-public-containers/servantes/doggos", "./doggos", dockerfile="Dockerfile2")
 
