@@ -4,13 +4,13 @@ import {
   waitForElementToBeRemoved,
 } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import fetchMock from "fetch-mock"
 import React from "react"
 import {
   cleanupMockAnalyticsCalls,
   mockAnalyticsCalls,
 } from "./analytics_test_helpers"
 import { buttonsByComponent } from "./ApiButton"
+import { mockUIButtonUpdates } from "./ApiButton.testhelpers"
 import Features, { FeaturesProvider, Flag } from "./feature"
 import {
   BulkAction,
@@ -47,10 +47,7 @@ const OverviewTableBulkActionsTestWrapper = (props: {
 describe("OverviewTableBulkActions", () => {
   beforeEach(() => {
     mockAnalyticsCalls()
-    fetchMock.mock(
-      (url) => url.startsWith("/proxy/apis/tilt.dev/v1alpha1/uibuttons"),
-      JSON.stringify({})
-    )
+    mockUIButtonUpdates()
   })
 
   afterEach(() => {
@@ -104,14 +101,18 @@ describe("OverviewTableBulkActions", () => {
         ).not.toBeNull()
       })
 
-      it("renders an 'Enable' button that does NOT require confirmation", () => {
+      it("renders an 'Enable' button that does NOT require confirmation", async () => {
         const enableButton = screen.queryByLabelText("Trigger Enable")
         expect(enableButton).toBeTruthy()
 
         // Clicking the button should NOT bring up a confirmation step
         userEvent.click(enableButton as HTMLElement)
 
-        expect(screen.queryByLabelText("Confirm Enable")).toBeNull()
+        // Clicking an action button will remove the selected resources
+        // and the bulk action bar will no longer appear
+        await waitForElementToBeRemoved(
+          screen.queryByLabelText("Trigger Enable")
+        )
       })
 
       it("renders a 'Disable' button that does require confirmation", () => {

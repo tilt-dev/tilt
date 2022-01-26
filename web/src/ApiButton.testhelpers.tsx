@@ -1,3 +1,4 @@
+import fetchMock, { MockCall } from "fetch-mock"
 import { ApiButtonType, UIBUTTON_NAV_COMPONENT_ID } from "./ApiButton"
 import { UIButton, UIInputSpec, UIInputStatus } from "./types"
 
@@ -35,7 +36,7 @@ export function hiddenField(name: string, value: string): UIInputSpec {
   }
 }
 
-// TODO: Consider merging this test helper with `oneButton` in `testdata`
+// TODO (lizz): Consider merging this test helper with `oneButton` in `testdata`
 export function makeUIButton(args?: {
   name?: string
   inputSpecs?: UIInputSpec[]
@@ -63,4 +64,31 @@ export function makeUIButton(args?: {
       inputs: args?.inputStatuses,
     },
   }
+}
+
+export function mockUIButtonUpdates() {
+  fetchMock.mock(
+    (url) => url.startsWith("/proxy/apis/tilt.dev/v1alpha1/uibuttons"),
+    JSON.stringify({})
+  )
+}
+
+export function cleanupMockUIButtonUpdates() {
+  fetchMock.reset()
+}
+
+export function getUIButtonDataFromCall(call: MockCall): UIButton | undefined {
+  if (call.length < 2) {
+    return
+  }
+
+  const callRequest = call[1]
+
+  if (!callRequest?.body) {
+    return
+  }
+
+  const buttonData = JSON.parse(String(callRequest?.body))
+
+  return buttonData as UIButton
 }

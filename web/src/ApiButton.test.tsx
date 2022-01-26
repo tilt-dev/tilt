@@ -24,6 +24,7 @@ import {
   boolField,
   hiddenField,
   makeUIButton,
+  mockUIButtonUpdates,
   textField,
 } from "./ApiButton.testhelpers"
 import { accessorsForTesting, tiltfileKeyContext } from "./BrowserStorage"
@@ -64,10 +65,7 @@ describe("ApiButton", () => {
     localStorage.clear()
     fetchMock.reset()
     mockAnalyticsCalls()
-    fetchMock.mock(
-      (url) => url.startsWith("/proxy/apis/tilt.dev/v1alpha1/uibuttons"),
-      JSON.stringify({})
-    )
+    mockUIButtonUpdates()
     Date.now = jest.fn(() => 1482363367071)
   })
 

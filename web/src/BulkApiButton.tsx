@@ -175,9 +175,7 @@ function isBulkButtonDisabled(
 async function bulkUpdateButtonStatus(uiButtons: UIButton[]) {
   try {
     await Promise.all(uiButtons.map((button) => updateButtonStatus(button, {})))
-    // console.log("all requests have finished")
   } catch (err) {
-    // console.log("yikes, there's been an error")
     throw err
   }
 }
@@ -291,7 +289,7 @@ export function BulkApiButton(props: BulkApiButtonProps) {
 
   const bulkActionDisabled = isBulkButtonDisabled(uiButtons, targetToggleState)
   const disabled = loading || bulkActionDisabled || false
-  const buttonGroupClassName = `${className} ${
+  const buttonGroupClassName = `${className || ""} ${
     disabled ? "isDisabled" : "isEnabled"
   }`
 
@@ -330,7 +328,6 @@ export function BulkApiButton(props: BulkApiButtonProps) {
       setLoading(false)
 
       if (onClickCallback) {
-        // console.log("finally, callback!")
         onClickCallback()
       }
     }
