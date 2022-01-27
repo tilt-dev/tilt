@@ -238,7 +238,7 @@ func (d *DockerBuilder) buildToDigest(ctx context.Context, spec v1alpha1.DockerI
 
 	options := Options(contextReader, spec)
 	if useFSSync {
-		dockerfileDir, err := writeTempDockerfile(spec.DockerfileContents)
+		dockerfileDir, err := writeTempDockerfileSyncdir(spec.DockerfileContents)
 		if err != nil {
 			return "", nil, err
 		}
@@ -532,7 +532,35 @@ func indent(text, indent string) string {
 const DockerfileName = "Dockerfile"
 
 // Creates a specification for the buildkit filesyncer
-func toSyncedDirs(context string, dockerfileDir string, filter model.PathMatcher) []filesync.SyncedDir {
+//
+// Welcome to the magnificent complexity of the fssync protocol!
+//
+// Originally, the Docker CLI was responsible for creating a context (basically a tarball)
+// and sending it to the build server. The Docker CLI used .dockerignore to exclude things
+// from that tarball.
+//
+// Soon, people realized that tarballing the docker context was a huge bottleneck
+// for monorepos.
+//
+// Buildkit solves this problem with the fssync server. You create a fssync.SyncedDir
+// for two directories:
+// - the "context" dir (with the main build contents)
+// - the "dockerfile" dir (with build instructions, i.e., my.Dockerfile and my.Dockerfile.dockerignore)
+// and Buildkit requests the files it needs lazily.
+//
+// As part of this, they decided to do all .dockerignore interpretation
+// server-side.  There's a little dance Buildkit does to determine whether to
+// grab my.Dockerfile.dockerignore from the dockerfile dir, or whether to grab
+// .dockerignore from the context dir.
+//
+// Tilt has its own context filtering rules (ignore= and only= in particular).
+// So Tilt can't rely on Buildkit's logic. Instead, Tilt
+// - creates a "context" dir (with the main build contents filtered client-side)
+// - the "dockerfile" dir with a Dockerfile and a fake Dockerfile.dockerignore
+//
+// The fake Dockerfile.dockerignore tells buildkit not do to its server-side
+// filtering dance.
+func toSyncedDirs(context string, dockerfileSyncDir string, filter model.PathMatcher) []filesync.SyncedDir {
 	fileMap := func(path string, s *fsutiltypes.Stat) bool {
 		if !filepath.IsAbs(path) {
 			path = filepath.Join(context, path)
@@ -563,13 +591,13 @@ func toSyncedDirs(context string, dockerfileDir string, filter model.PathMatcher
 		},
 		{
 			Name: "dockerfile",
-			Dir:  dockerfileDir,
+			Dir:  dockerfileSyncDir,
 		},
 	}
 }
 
-// Writes a docker file to a temporary directory.
-func writeTempDockerfile(contents string) (string, error) {
+// Writes Dockerfile and Dockerfile.dockerignore to a temporary directory.
+func writeTempDockerfileSyncdir(contents string) (string, error) {
 	// err is a named return value, due to the defer call below.
 	dockerfileDir, err := ioutil.TempDir("", "tilt-tempdockerfile-")
 	if err != nil {
@@ -580,6 +608,13 @@ func writeTempDockerfile(contents string) (string, error) {
 	if err != nil {
 		_ = os.RemoveAll(dockerfileDir)
 		return "", fmt.Errorf("creating temp dockerfile: %v", err)
+	}
+
+	dockerignoreContents := `# Tilt's fake dockerignore file`
+	err = ioutil.WriteFile(filepath.Join(dockerfileDir, "Dockerfile.dockerignore"), []byte(dockerignoreContents), 0777)
+	if err != nil {
+		_ = os.RemoveAll(dockerfileDir)
+		return "", fmt.Errorf("creating temp dockerignore file: %v", err)
 	}
 	return dockerfileDir, nil
 }
