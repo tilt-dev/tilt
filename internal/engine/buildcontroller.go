@@ -12,6 +12,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/store/buildcontrols"
 	"github.com/tilt-dev/tilt/internal/store/dcconv"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
@@ -162,7 +163,7 @@ func (c *BuildController) cleanupDisabledBuilds(st store.RStore) {
 	defer st.RUnlockState()
 
 	for _, ms := range state.ManifestStates() {
-		if !ms.Enabled {
+		if ms.DisableState == v1alpha1.DisableStateDisabled {
 			c.cleanupBuildContext(ms.Name)
 		}
 	}

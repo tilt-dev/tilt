@@ -11,8 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
@@ -21,6 +19,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
+	"github.com/tilt-dev/tilt/internal/testutils/configmap"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/podbuilder"
 	"github.com/tilt-dev/tilt/internal/watch"
@@ -1640,15 +1639,7 @@ func TestDisablingCancelsBuild(t *testing.T) {
 	f.waitUntilManifestBuilding("local")
 
 	ds := manifest.DeployTarget.(model.LocalTarget).ServeCmdDisableSource
-	cm := &v1alpha1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: ds.ConfigMap.Name,
-		},
-		Data: map[string]string{
-			ds.ConfigMap.Key: "true",
-		},
-	}
-	err := f.ctrlClient.Patch(f.ctx, cm, client.Merge)
+	err := configmap.UpsertDisableConfigMap(f.ctx, f.ctrlClient, ds.ConfigMap.Name, ds.ConfigMap.Key, true)
 	require.NoError(t, err)
 
 	f.waitForCompletedBuildCount(1)

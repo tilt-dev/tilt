@@ -521,6 +521,9 @@ message DisableResourceStatus {
   // How many of the resource's sources are disabled.
   optional int32 disabledCount = 2;
 
+  // Whether this is currently disabled (if known)
+  optional string state = 4;
+
   // All unique sources that control the resource's objects' disable status.
   repeated DisableSource sources = 3;
 }
@@ -532,7 +535,7 @@ message DisableSource {
 }
 
 message DisableStatus {
-  // Whether this is currently disabled.
+  // Whether this is currently disabled. Deprecated in favor of `State`.
   optional bool disabled = 1;
 
   // The last time this status was updated.
@@ -540,6 +543,9 @@ message DisableStatus {
 
   // The reason this status was updated.
   optional string reason = 3;
+
+  // Whether this is currently disabled (if known)
+  optional string state = 4;
 }
 
 message DockerClusterConnection {

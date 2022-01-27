@@ -39,6 +39,21 @@ func NextTargetToBuild(state store.EngineState) (*store.ManifestTarget, HoldSet)
 		}
 	}
 
+	// We do not know whether targets are enabled or disabled until their configmaps + uiresources are synced
+	// and reconciled. This happens very quickly after the first Tiltfile execution.
+	// If any targets have an unknown EnableStatus, then we don't have enough information to schedule builds:
+	// - If we treat an unknown as disabled but it is actually enabled, then we break our heuristic prioritization
+	//   (e.g., we might schedule k8s resources before local resources).
+	// - If we treat an unknown as enabled but it is actually disabled, then we start logging + side-effecting
+	//   a build that might immediately be canceled.
+	if pending := TargetsWithPendingEnableStatus(targets); len(pending) > 0 {
+		holds.Fill(targets, store.Hold{
+			Reason: store.HoldReasonTiltfileReload,
+			HoldOn: pending,
+		})
+		return nil, holds
+	}
+
 	// If we're already building an unparallelizable local target, bail immediately.
 	if mn, _, building := IsBuildingUnparallelizableLocalTarget(state); building {
 		holds.Fill(targets, store.Hold{
@@ -65,7 +80,7 @@ func NextTargetToBuild(state store.EngineState) (*store.ManifestTarget, HoldSet)
 
 	HoldTargetsWithBuildingComponents(state, targets, holds)
 	HoldTargetsWaitingOnDependencies(state, targets, holds)
-	HoldDisabledTargets(state, targets, holds)
+	HoldDisabledTargets(targets, holds)
 	HoldTargetsWaitingOnCluster(state, targets, holds)
 
 	// If any of the manifest targets haven't been built yet, build them now.
@@ -262,9 +277,9 @@ func HoldTargetsWaitingOnDependencies(state store.EngineState, mts []*store.Mani
 	}
 }
 
-func HoldDisabledTargets(state store.EngineState, mts []*store.ManifestTarget, holds HoldSet) {
+func HoldDisabledTargets(mts []*store.ManifestTarget, holds HoldSet) {
 	for _, mt := range mts {
-		if !mt.State.Enabled {
+		if mt.State.DisableState == v1alpha1.DisableStateDisabled {
 			holds.AddHold(mt, store.Hold{Reason: store.HoldReasonDisabled})
 		}
 	}
@@ -343,6 +358,16 @@ func HoldK8sTargets(targets []*store.ManifestTarget, holds HoldSet) {
 			})
 		}
 	}
+}
+
+func TargetsWithPendingEnableStatus(targets []*store.ManifestTarget) []model.TargetID {
+	var result []model.TargetID
+	for _, target := range targets {
+		if target.State.DisableState == v1alpha1.DisableStatePending {
+			result = append(result, target.Spec().ID())
+		}
+	}
+	return result
 }
 
 func IsBuildingAnything(state store.EngineState) bool {

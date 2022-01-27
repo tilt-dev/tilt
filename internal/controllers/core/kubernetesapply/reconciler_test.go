@@ -3,18 +3,16 @@ package kubernetesapply
 import (
 	"errors"
 	"fmt"
-	"strconv"
 	"testing"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
@@ -23,6 +21,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/localexec"
+	"github.com/tilt-dev/tilt/internal/testutils/configmap"
 	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -552,11 +551,11 @@ func TestDisableByConfigmap(t *testing.T) {
 	}
 	f.Create(&ka)
 
-	f.setDisabled(ka.GetObjectMeta().Name, true)
-
 	f.setDisabled(ka.GetObjectMeta().Name, false)
 
 	f.setDisabled(ka.GetObjectMeta().Name, true)
+
+	f.setDisabled(ka.GetObjectMeta().Name, false)
 }
 
 func (f *fixture) requireKaMatchesInApi(name string, matcher func(ka *v1alpha1.KubernetesApply) bool) *v1alpha1.KubernetesApply {
@@ -577,25 +576,21 @@ func (f *fixture) setDisabled(name string, isDisabled bool) {
 	require.NotNil(f.T(), ka.Spec.DisableSource)
 	require.NotNil(f.T(), ka.Spec.DisableSource.ConfigMap)
 
-	cm := v1alpha1.ConfigMap{}
-	cmExists := f.Get(types.NamespacedName{Name: ka.Spec.DisableSource.ConfigMap.Name}, &cm)
-	if !cmExists {
-		cm.ObjectMeta.Name = ka.Spec.DisableSource.ConfigMap.Name
-		cm.Data = map[string]string{ka.Spec.DisableSource.ConfigMap.Key: strconv.FormatBool(isDisabled)}
-		err := f.Client.Create(f.Context(), &cm)
-		require.NoError(f.T(), err)
-	} else {
-		cm.Data[ka.Spec.DisableSource.ConfigMap.Key] = strconv.FormatBool(isDisabled)
-		err := f.Client.Update(f.Context(), &cm)
-		require.NoError(f.T(), err)
-	}
+	ds := ka.Spec.DisableSource.ConfigMap
+	err := configmap.UpsertDisableConfigMap(f.Context(), f.Client, ds.Name, ds.Key, isDisabled)
+	require.NoError(f.T(), err)
 
-	_, err := f.Reconcile(types.NamespacedName{Name: name})
+	_, err = f.Reconcile(types.NamespacedName{Name: name})
 	require.NoError(f.T(), err)
 
 	f.requireKaMatchesInApi(name, func(ka *v1alpha1.KubernetesApply) bool {
 		return ka.Status.DisableStatus != nil && ka.Status.DisableStatus.Disabled == isDisabled
 	})
+
+	// the KA reconciler only creates a KD if the yaml is already in the KA's status,
+	// which means we need a second call to Reconcile to get the KD
+	_, err = f.Reconcile(types.NamespacedName{Name: name})
+	require.NoError(f.T(), err)
 
 	kd := v1alpha1.KubernetesDiscovery{}
 	kdExists := f.Get(types.NamespacedName{Name: name}, &kd)

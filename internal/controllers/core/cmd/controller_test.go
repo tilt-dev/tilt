@@ -23,6 +23,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/engine/local"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/testutils/configmap"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -529,7 +530,7 @@ func TestDisableCmd(t *testing.T) {
 	f.requireCmdMatchesInAPI(cmd.Name, func(cmd *Cmd) bool {
 		return cmd.Status.Running != nil &&
 			cmd.Status.DisableStatus != nil &&
-			!cmd.Status.DisableStatus.Disabled
+			cmd.Status.DisableStatus.State == v1alpha1.DisableStateEnabled
 	})
 
 	f.setDisabled(cmd.Name, true)
@@ -537,7 +538,7 @@ func TestDisableCmd(t *testing.T) {
 	f.requireCmdMatchesInAPI(cmd.Name, func(cmd *Cmd) bool {
 		return cmd.Status.Terminated != nil &&
 			cmd.Status.DisableStatus != nil &&
-			cmd.Status.DisableStatus.Disabled
+			cmd.Status.DisableStatus.State == v1alpha1.DisableStateDisabled
 	})
 
 	f.setDisabled(cmd.Name, false)
@@ -545,7 +546,7 @@ func TestDisableCmd(t *testing.T) {
 	f.requireCmdMatchesInAPI(cmd.Name, func(cmd *Cmd) bool {
 		return cmd.Status.Running != nil &&
 			cmd.Status.DisableStatus != nil &&
-			!cmd.Status.DisableStatus.Disabled
+			cmd.Status.DisableStatus.State == v1alpha1.DisableStateEnabled
 	})
 }
 
@@ -574,7 +575,7 @@ func TestReenable(t *testing.T) {
 	f.requireCmdMatchesInAPI(cmd.Name, func(cmd *Cmd) bool {
 		return cmd.Status.Running == nil &&
 			cmd.Status.DisableStatus != nil &&
-			cmd.Status.DisableStatus.Disabled
+			cmd.Status.DisableStatus.State == v1alpha1.DisableStateDisabled
 	})
 
 	f.setDisabled(cmd.Name, false)
@@ -582,7 +583,7 @@ func TestReenable(t *testing.T) {
 	f.requireCmdMatchesInAPI(cmd.Name, func(cmd *Cmd) bool {
 		return cmd.Status.Running != nil &&
 			cmd.Status.DisableStatus != nil &&
-			!cmd.Status.DisableStatus.Disabled
+			cmd.Status.DisableStatus.State == v1alpha1.DisableStateEnabled
 	})
 }
 
@@ -593,6 +594,9 @@ func TestDisableServeCmd(t *testing.T) {
 	t1 := time.Unix(1, 0)
 	localTarget := model.NewLocalTarget("foo", model.Cmd{}, model.ToHostCmd("."), nil)
 	localTarget.ServeCmdDisableSource = &ds
+	err := configmap.UpsertDisableConfigMap(f.Context(), f.Client, ds.ConfigMap.Name, ds.ConfigMap.Key, false)
+	require.NoError(t, err)
+
 	f.resourceFromTarget("foo", localTarget, t1)
 
 	f.step()
@@ -600,13 +604,7 @@ func TestDisableServeCmd(t *testing.T) {
 		return cmd != nil && cmd.Status.Running != nil
 	})
 
-	cm := ConfigMap{
-		ObjectMeta: ObjectMeta{Name: ds.ConfigMap.Name},
-		Data: map[string]string{
-			ds.ConfigMap.Key: "true",
-		},
-	}
-	err := f.Client.Create(f.Context(), &cm)
+	err = configmap.UpsertDisableConfigMap(f.Context(), f.Client, ds.ConfigMap.Name, ds.ConfigMap.Key, true)
 	require.NoError(t, err)
 
 	f.step()
@@ -617,13 +615,7 @@ func TestEnableServeCmd(t *testing.T) {
 	f := newFixture(t)
 
 	ds := v1alpha1.DisableSource{ConfigMap: &v1alpha1.ConfigMapDisableSource{Name: "disable-foo", Key: "isDisabled"}}
-	cm := ConfigMap{
-		ObjectMeta: ObjectMeta{Name: ds.ConfigMap.Name},
-		Data: map[string]string{
-			ds.ConfigMap.Key: "true",
-		},
-	}
-	err := f.Client.Create(f.Context(), &cm)
+	err := configmap.UpsertDisableConfigMap(f.Context(), f.Client, ds.ConfigMap.Name, ds.ConfigMap.Key, true)
 	require.NoError(t, err)
 
 	t1 := time.Unix(1, 0)
@@ -633,8 +625,7 @@ func TestEnableServeCmd(t *testing.T) {
 
 	f.step()
 	f.assertCmdCount(0)
-	cm.Data[ds.ConfigMap.Key] = "false"
-	err = f.Client.Update(f.Context(), &cm)
+	err = configmap.UpsertDisableConfigMap(f.Context(), f.Client, ds.ConfigMap.Name, ds.ConfigMap.Key, false)
 	require.NoError(t, err)
 
 	f.step()
@@ -1002,10 +993,17 @@ func (f *fixture) setDisabled(cmdName string, isDisabled bool) {
 
 	f.reconcileCmd(cmdName)
 
+	var expectedDisableState v1alpha1.DisableState
+	if isDisabled {
+		expectedDisableState = v1alpha1.DisableStateDisabled
+	} else {
+		expectedDisableState = v1alpha1.DisableStateEnabled
+	}
+
 	// block until the change has been processed
 	f.requireCmdMatchesInAPI(cmdName, func(cmd *Cmd) bool {
 		return cmd.Status.DisableStatus != nil &&
-			cmd.Status.DisableStatus.Disabled == isDisabled
+			cmd.Status.DisableStatus.State == expectedDisableState
 	})
 }
 

@@ -495,7 +495,7 @@ type ManifestState struct {
 	// If the build was manually triggered, record why.
 	TriggerReason model.BuildReason
 
-	Enabled bool
+	DisableState v1alpha1.DisableState
 }
 
 func NewState() *EngineState {
@@ -517,7 +517,7 @@ func NewState() *EngineState {
 		model.MainTiltfileManifestName: &ManifestState{
 			Name:          model.MainTiltfileManifestName,
 			BuildStatuses: make(map[model.TargetID]*BuildStatus),
-			Enabled:       true,
+			DisableState:  v1alpha1.DisableStateEnabled,
 		},
 	}
 	ret.TiltfileConfigPaths = map[model.ManifestName][]string{}
@@ -546,7 +546,7 @@ func NewManifestState(m model.Manifest) *ManifestState {
 		Name:                    mn,
 		BuildStatuses:           make(map[model.TargetID]*BuildStatus),
 		LiveUpdatedContainerIDs: container.NewIDSet(),
-		Enabled:                 true,
+		DisableState:            v1alpha1.DisableStatePending,
 	}
 
 	if m.IsK8s() {

@@ -109,7 +109,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	// Clean up existing filewatches if it's disabled
 	result := ctrl.Result{}
-	if disableStatus.Disabled {
+	if disableStatus.State == v1alpha1.DisableStateDisabled {
 		if hasExisting {
 			existing.cleanupWatch(ctx)
 			c.removeWatch(existing)

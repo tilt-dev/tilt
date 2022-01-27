@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
@@ -30,14 +31,12 @@ func HandleUIResourceUpsertAction(state *store.EngineState, action UIResourceUps
 			state.LogStore.Append(a, state.Secrets)
 		}
 
-		// if a uiresource doesn't have any disablesources, it's always treated as enabled
-		if len(uir.Status.DisableStatus.Sources) > 0 {
-			ms, ok := state.ManifestState(model.ManifestName(n))
-			if ok {
-				// don't consider a resource enabled when its counts are 0/0, since that just means it
-				// hasn't been reconciled yet
-				ms.Enabled = uir.Status.DisableStatus.DisabledCount == 0 && uir.Status.DisableStatus.EnabledCount > 0
-				if !ms.Enabled {
+		ms, ok := state.ManifestState(model.ManifestName(n))
+
+		if ok {
+			ms.DisableState = uir.Status.DisableStatus.State
+			if len(uir.Status.DisableStatus.Sources) > 0 {
+				if ms.DisableState == v1alpha1.DisableStateDisabled {
 					// since file watches are disabled while a resource is disabled, we can't
 					// have confidence in any previous build state
 					ms.BuildHistory = nil
@@ -48,6 +47,7 @@ func HandleUIResourceUpsertAction(state *store.EngineState, action UIResourceUps
 				}
 			}
 		}
+
 	}
 
 	state.UIResources[n] = uir

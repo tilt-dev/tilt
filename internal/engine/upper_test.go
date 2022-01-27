@@ -13,7 +13,6 @@ import (
 	"regexp"
 	"runtime"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -88,6 +87,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/store/tiltfiles"
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
+	tiltconfigmap "github.com/tilt-dev/tilt/internal/testutils/configmap"
 	"github.com/tilt-dev/tilt/internal/testutils/httptest"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/podbuilder"
@@ -2365,6 +2365,15 @@ func TestDockerComposeStartsEventWatcher(t *testing.T) {
 		Manifests:  []model.Manifest{m},
 		FinishTime: f.Now(),
 	})
+
+	// since we're not going through the Tiltfile reconciler, we have to manually enable the manifest
+	f.WaitUntilManifest("exists", m.Name, func(target store.ManifestTarget) bool {
+		return target.State != nil
+	})
+	st := f.store.LockMutableStateForTesting()
+	st.ManifestTargets[m.Name].State.DisableState = v1alpha1.DisableStateEnabled
+	f.store.UnlockMutableState()
+
 	f.waitForCompletedBuildCount(1)
 
 	// Is DockerComposeEventWatcher watching for events??
@@ -4590,12 +4599,7 @@ func (f *testFixture) setK8sApplyResult(name model.ManifestName, hash k8s.PodTem
 }
 
 func (f *testFixture) setDisableState(mn model.ManifestName, isDisabled bool) {
-	cm := v1alpha1.ConfigMap{}
-	err := f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: fmt.Sprintf("%s-disable", mn)}, &cm)
-	require.NoError(f.t, err)
-
-	cm.Data["isDisabled"] = strconv.FormatBool(isDisabled)
-	err = f.ctrlClient.Update(f.ctx, &cm)
+	err := tiltconfigmap.UpsertDisableConfigMap(f.ctx, f.ctrlClient, fmt.Sprintf("%s-disable", mn), "isDisabled", isDisabled)
 	require.NoError(f.t, err)
 
 	f.WaitUntil("new disable state reflected in UIResource", func(state store.EngineState) bool {

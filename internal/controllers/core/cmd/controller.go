@@ -169,7 +169,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		status.DisableStatus = disableStatus
 	})
 
-	disabled := disableStatus.Disabled
+	disabled := disableStatus.State == v1alpha1.DisableStateDisabled
 	if disabled {
 		// Disabling should both stop the process, and make it look like
 		// it didn't previously run.

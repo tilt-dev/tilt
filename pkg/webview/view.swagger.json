@@ -385,6 +385,10 @@
           "format": "int32",
           "description": "How many of the resource's sources are disabled."
         },
+        "state": {
+          "type": "string",
+          "title": "Whether this is currently disabled (if known)"
+        },
         "sources": {
           "type": "array",
           "items": {

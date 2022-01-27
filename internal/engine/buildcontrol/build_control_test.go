@@ -492,9 +492,24 @@ func TestHoldDisabled(t *testing.T) {
 	defer f.TearDown()
 
 	f.upsertLocalManifest("local")
-	f.st.ManifestTargets["local"].State.Enabled = false
+	f.st.ManifestTargets["local"].State.DisableState = v1alpha1.DisableStateDisabled
 
 	f.assertHold("local", store.HoldReasonDisabled)
+	f.assertNoTargetNextToBuild()
+}
+
+func TestHoldIfAnyDisableStatusPending(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	f.upsertLocalManifest("local1")
+	f.upsertLocalManifest("local2")
+	f.upsertLocalManifest("local3")
+	f.st.ManifestTargets["local2"].State.DisableState = v1alpha1.DisableStatePending
+
+	f.assertHold("local1", store.HoldReasonTiltfileReload, model.TargetID{Type: "manifest", Name: "local2"})
+	f.assertHold("local2", store.HoldReasonTiltfileReload, model.TargetID{Type: "manifest", Name: "local2"})
+	f.assertHold("local3", store.HoldReasonTiltfileReload, model.TargetID{Type: "manifest", Name: "local2"})
 	f.assertNoTargetNextToBuild()
 }
 
@@ -662,8 +677,8 @@ func (f *testFixture) assertHoldOnRefs(m model.ManifestName, reason store.HoldRe
 
 func (f *testFixture) assertNextTargetToBuild(expected model.ManifestName) {
 	f.T().Helper()
-	next, _ := NextTargetToBuild(*f.st)
-	require.NotNil(f.t, next, "expected next target %s but got: nil", expected)
+	next, holds := NextTargetToBuild(*f.st)
+	require.NotNil(f.t, next, "expected next target %s but got: nil. holds: %v", expected, holds)
 	actual := next.Manifest.Name
 	assert.Equal(f.t, expected, actual, "expected next target to be %s but got %s", expected, actual)
 }
@@ -678,6 +693,7 @@ func (f *testFixture) assertNoTargetNextToBuild() {
 
 func (f *testFixture) upsertManifest(m model.Manifest) *store.ManifestTarget {
 	mt := store.NewManifestTarget(m)
+	mt.State.DisableState = v1alpha1.DisableStateEnabled
 	f.st.UpsertManifestTarget(mt)
 	return mt
 }
@@ -710,6 +726,7 @@ func (f *testFixture) manifestNeedingCrashRebuild() *store.ManifestTarget {
 		},
 	}
 	mt.State.NeedsRebuildFromCrash = true
+	mt.State.DisableState = v1alpha1.DisableStateEnabled
 	return mt
 }
 
