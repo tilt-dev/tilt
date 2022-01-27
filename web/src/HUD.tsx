@@ -198,7 +198,12 @@ export default class HUD extends Component<HudProps, HudState> {
     let needsNudge = session?.needsAnalyticsNudge ?? false
     let resources = view?.uiResources ?? []
     if (!resources?.length || !session?.tiltfileKey) {
-      return <HeroScreen message={"Loading…"} />
+      return (
+        <HeroScreen>
+          <SocketBar state={this.state.socketState} />
+          <div>Loading…</div>
+        </HeroScreen>
+      )
     }
 
     let tiltfileKey = session?.tiltfileKey

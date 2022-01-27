@@ -71,7 +71,7 @@ it("renders reconnecting bar", async () => {
   let socketBar = root.find(SocketBar)
   expect(socketBar).toHaveLength(1)
   expect(socketBar.at(0).text()).toEqual(
-    expect.stringContaining("Reconnecting")
+    expect.stringContaining("reconnecting")
   )
 })
 

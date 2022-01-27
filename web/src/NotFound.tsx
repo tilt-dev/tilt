@@ -7,12 +7,13 @@ type location = {
   }
 }
 let NotFound = ({ location }: location) => {
-  let message = (
-    <div>
-      No resource found at <code>{location.pathname}</code>
-    </div>
+  return (
+    <HeroScreen>
+      <div>
+        No resource found at <code>{location.pathname}</code>
+      </div>
+    </HeroScreen>
   )
-  return <HeroScreen message={message} />
 }
 
 export default NotFound
