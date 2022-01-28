@@ -1,13 +1,13 @@
-import React from "react"
-import "./HeroScreen.scss"
+import styled from "styled-components"
+import { FontSize } from "./style-helpers"
 
-type props = {
-  message?: string | React.ReactElement
-}
-
-function HeroScreen(props: props) {
-  let message = props.message || "Loading…"
-  return <section className="HeroScreen">{message}</section>
-}
+let HeroScreen = styled.section`
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: ${FontSize.large};
+`
 
 export default HeroScreen

@@ -98,9 +98,10 @@ class AppController {
       if (this.disposed) {
         return
       }
-      let state: SocketState = this.loadCount
-        ? SocketState.Reconnecting
-        : SocketState.Loading
+      let state: SocketState =
+        this.loadCount || this.tryConnectCount > 1
+          ? SocketState.Reconnecting
+          : SocketState.Loading
       this.component.onAppChange({
         socketState: state,
       })
