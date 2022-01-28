@@ -4,7 +4,7 @@ import SocketBar from "./SocketBar"
 import { SocketState } from "./types"
 
 export default {
-  title: "HeroScreen",
+  title: "New UI/HeroScreen",
 }
 
 export const Loading = () => <HeroScreen>Loading…</HeroScreen>
