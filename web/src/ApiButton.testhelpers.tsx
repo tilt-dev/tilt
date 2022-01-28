@@ -1,5 +1,5 @@
 import fetchMock, { MockCall } from "fetch-mock"
-import { ApiButtonType, UIBUTTON_NAV_COMPONENT_ID } from "./ApiButton"
+import { ApiButtonType, UIBUTTON_GLOBAL_COMPONENT_ID } from "./ApiButton"
 import { UIButton, UIInputSpec, UIInputStatus } from "./types"
 
 export function textField(
@@ -56,7 +56,7 @@ export function makeUIButton(args?: {
         componentType: args?.componentID
           ? ApiButtonType.Resource
           : ApiButtonType.Global,
-        componentID: args?.componentID ?? UIBUTTON_NAV_COMPONENT_ID,
+        componentID: args?.componentID ?? UIBUTTON_GLOBAL_COMPONENT_ID,
       },
       requiresConfirmation: args?.requiresConfirmation,
     },

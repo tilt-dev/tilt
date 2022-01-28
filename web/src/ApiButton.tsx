@@ -88,7 +88,7 @@ export enum ApiButtonToggleState {
 // Constants
 export const UIBUTTON_SPEC_HASH = "uibuttonspec-hash"
 export const UIBUTTON_ANNOTATION_TYPE = "tilt.dev/uibutton-type"
-export const UIBUTTON_NAV_COMPONENT_ID = "nav"
+export const UIBUTTON_GLOBAL_COMPONENT_ID = "nav"
 export const UIBUTTON_TOGGLE_DISABLE_TYPE = "DisableToggle"
 export const UIBUTTON_TOGGLE_INPUT_NAME = "action"
 

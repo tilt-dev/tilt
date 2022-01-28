@@ -5,7 +5,7 @@ import {
   ApiButtonType,
   ApiIcon,
   buttonsForComponent,
-  UIBUTTON_NAV_COMPONENT_ID,
+  UIBUTTON_GLOBAL_COMPONENT_ID,
 } from "./ApiButton"
 import { MenuButtonLabeled, MenuButtonMixin } from "./GlobalNav"
 import { Color, SizeUnit } from "./style-helpers"
@@ -52,7 +52,7 @@ export function CustomNav(props: CustomNavProps) {
   const buttons = buttonsForComponent(
     props.view.uiButtons,
     ApiButtonType.Global,
-    UIBUTTON_NAV_COMPONENT_ID
+    UIBUTTON_GLOBAL_COMPONENT_ID
   ).default
 
   return (

@@ -142,8 +142,18 @@ export function canButtonBeToggled(
  */
 export function canBulkButtonBeToggled(
   uiButtons: UIButton[],
-  targetToggleState: ApiButtonToggleState
+  targetToggleState?: ApiButtonToggleState
 ) {
+  // Bulk button cannot be toggled if there are no UIButtons
+  if (uiButtons.length === 0) {
+    return false
+  }
+
+  // Bulk button can always be toggled if there's no target toggle state
+  if (!targetToggleState) {
+    return true
+  }
+
   const individualButtonsCanBeToggled = uiButtons.map((b) =>
     canButtonBeToggled(b, targetToggleState)
   )
@@ -153,29 +163,11 @@ export function canBulkButtonBeToggled(
   )
 }
 
-function isBulkButtonDisabled(
-  uiButtons: UIButton[],
-  targetToggleState?: ApiButtonToggleState
-) {
-  // Bulk button is disabled if there are no UIButtons to trigger
-  if (uiButtons.length === 0) {
-    return true
-  }
-
-  // If there's a target toggle state, calculate whether the bulk button
-  // is disabled based on the toggle values of all UIButtons
-  if (targetToggleState) {
-    const isDisabled = !canBulkButtonBeToggled(uiButtons, targetToggleState)
-    return isDisabled
-  }
-
-  return false
-}
-
 async function bulkUpdateButtonStatus(uiButtons: UIButton[]) {
   try {
     await Promise.all(uiButtons.map((button) => updateButtonStatus(button, {})))
   } catch (err) {
+    // Expect that errors will be handled in the component caller
     throw err
   }
 }
@@ -287,7 +279,10 @@ export function BulkApiButton(props: BulkApiButtonProps) {
         : ApiButtonToggleState.On
   }
 
-  const bulkActionDisabled = isBulkButtonDisabled(uiButtons, targetToggleState)
+  const bulkActionDisabled = !canBulkButtonBeToggled(
+    uiButtons,
+    targetToggleState
+  )
   const disabled = loading || bulkActionDisabled || false
   const buttonGroupClassName = `${className || ""} ${
     disabled ? "isDisabled" : "isEnabled"
