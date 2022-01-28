@@ -9,8 +9,8 @@ import (
 	"strings"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -75,4 +75,28 @@ func TriggerQueueReason(cm *v1alpha1.ConfigMap, nn types.NamespacedName) model.B
 		return model.BuildReason(i)
 	}
 	return model.BuildReasonNone
+}
+
+type TriggerQueueEntry struct {
+	Name   model.ManifestName
+	Reason model.BuildReason
+}
+
+func TriggerQueueCreate(entries []TriggerQueueEntry) v1alpha1.ConfigMap {
+	cm := v1alpha1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: TriggerQueueName,
+		},
+		Data: make(map[string]string, len(entries)),
+	}
+
+	for i, entry := range entries {
+		cm.Data[fmt.Sprintf("%d-name", i)] = entry.Name.String()
+		reason := entry.Reason
+		if !reason.HasTrigger() {
+			reason = model.BuildReasonFlagTriggerUnknown
+		}
+		cm.Data[fmt.Sprintf("%d-reason-code", i)] = fmt.Sprintf("%d", reason)
+	}
+	return cm
 }

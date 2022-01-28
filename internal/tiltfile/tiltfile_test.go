@@ -1240,10 +1240,7 @@ k8s_yaml('bar.yaml')
 `)
 
 	f.load("foo")
-	f.assertNumManifests(1)
-	f.assertNextManifest("foo",
-		db(image("gcr.io/foo")),
-		deployment("foo"))
+	require.Equal(t, []model.ManifestName{"foo"}, f.loadResult.EnabledManifests)
 
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml", "bar/Dockerfile", "bar/.dockerignore", "bar.yaml")
 }
@@ -4895,10 +4892,7 @@ local_resource('e', 'echo e')
 				args = append(args, string(r))
 			}
 			f.load(args...)
-			f.assertNumManifests(len(tc.expected))
-			for _, e := range tc.expected {
-				f.assertNextManifest(e)
-			}
+			require.Equal(t, tc.expected, f.loadResult.EnabledManifests)
 		})
 	}
 }

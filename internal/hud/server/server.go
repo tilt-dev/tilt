@@ -225,7 +225,7 @@ func (s *HeadsUpServer) HandleSetTiltfileArgs(w http.ResponseWriter, req *http.R
 	}
 
 	ctx := req.Context()
-	err = tiltfiles.SetTiltfileArgs(ctx, s.store, s.ctrlClient, args)
+	err = tiltfiles.SetTiltfileArgs(ctx, s.ctrlClient, args)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error updating apiserver: %v", err), http.StatusInternalServerError)
 		return

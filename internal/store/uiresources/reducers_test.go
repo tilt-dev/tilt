@@ -11,13 +11,23 @@ import (
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
-func resourceWithDisableCount(count int) *v1alpha1.UIResource {
+func resourceWithDisableState(state v1alpha1.DisableState) *v1alpha1.UIResource {
 	return &v1alpha1.UIResource{
 		ObjectMeta: metav1.ObjectMeta{Name: "foo"},
 		Status: v1alpha1.UIResourceStatus{
-			DisableStatus: v1alpha1.DisableResourceStatus{DisabledCount: int32(count)},
+			DisableStatus: v1alpha1.DisableResourceStatus{
+				State: state,
+			},
 		},
 	}
+}
+
+func disabledResource() *v1alpha1.UIResource {
+	return resourceWithDisableState(v1alpha1.DisableStateDisabled)
+}
+
+func enabledResource() *v1alpha1.UIResource {
+	return resourceWithDisableState(v1alpha1.DisableStateEnabled)
 }
 
 func TestLogging(t *testing.T) {
@@ -26,11 +36,12 @@ func TestLogging(t *testing.T) {
 		old, new    *v1alpha1.UIResource
 		expectedLog string
 	}{
-		{"enable", resourceWithDisableCount(1), resourceWithDisableCount(0), "Resource \"foo\" enabled."},
-		{"disable", resourceWithDisableCount(0), resourceWithDisableCount(1), "Resource \"foo\" disabled."},
-		{"old nil", nil, resourceWithDisableCount(0), ""},
-		{"enabled, no change", resourceWithDisableCount(0), resourceWithDisableCount(0), ""},
-		{"disabled, no change", resourceWithDisableCount(1), resourceWithDisableCount(1), ""},
+		{"enable", disabledResource(), enabledResource(), "Resource \"foo\" enabled."},
+		{"disable", enabledResource(), disabledResource(), "Resource \"foo\" disabled."},
+		{"old nil", nil, enabledResource(), ""},
+		{"old pending", resourceWithDisableState(v1alpha1.DisableStatePending), enabledResource(), ""},
+		{"enabled, no change", enabledResource(), enabledResource(), ""},
+		{"disabled, no change", disabledResource(), disabledResource(), ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			state := store.NewState()

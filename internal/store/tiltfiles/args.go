@@ -7,12 +7,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
-	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-func SetTiltfileArgs(ctx context.Context, st store.RStore, client client.Client, args []string) error {
+func SetTiltfileArgs(ctx context.Context, client client.Client, args []string) error {
 	nn := types.NamespacedName{Name: model.MainTiltfileManifestName.String()}
 	var tf v1alpha1.Tiltfile
 	err := client.Get(ctx, nn, &tf)
