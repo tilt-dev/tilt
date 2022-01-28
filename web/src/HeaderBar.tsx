@@ -11,10 +11,9 @@ import {
 } from "./ResourceStatusSummary"
 import { useSnapshotAction } from "./snapshot"
 import { AnimDuration, Color, Font, FontSize, SizeUnit } from "./style-helpers"
-import { TargetType } from "./types"
 import { showUpdate } from "./UpdateDialog"
 
-const HeaderBarRoot = styled.div`
+const HeaderBarRoot = styled.header`
   display: flex;
   align-items: center;
   padding-left: ${SizeUnit(1)};
@@ -65,10 +64,6 @@ export default function HeaderBar(props: HeaderBarProps) {
   let runningBuild = session?.runningTiltBuild
   let suggestedVersion = session?.suggestedTiltVersion
   let resources = view?.uiResources || []
-  let hasK8s = resources.some((r) => {
-    let specs = r.status?.specs ?? []
-    return specs.some((spec) => spec.type === TargetType.K8s)
-  })
 
   let globalNavProps = {
     isSnapshot,
@@ -93,7 +88,11 @@ export default function HeaderBar(props: HeaderBarProps) {
       <AllResourcesLink to={pb.encpath`/r/(all)/overview`}>
         All Resources
       </AllResourcesLink>
-      <AllResourceStatusSummary resources={resources} />
+      <AllResourceStatusSummary
+        displayText="Resources"
+        labelText="Status summary for all resources"
+        resources={resources}
+      />
       <CustomNav view={props.view} />
       <GlobalNav {...globalNavProps} />
     </HeaderBarRoot>

@@ -27,11 +27,12 @@ function expectStatusCounts(
 }
 
 const testCounts: StatusCounts = {
-  total: 11,
+  totalEnabled: 11,
   healthy: 0,
   warning: 2,
   unhealthy: 4,
   pending: 0,
+  disabled: 2,
 }
 
 it("shows the counts it's given", () => {
@@ -40,7 +41,8 @@ it("shows the counts it's given", () => {
       <ResourceGroupStatus
         counts={testCounts}
         healthyLabel="healthy"
-        label="resources"
+        displayText="resources"
+        labelText="Testing resource status summary"
         unhealthyLabel="unhealthy"
         warningLabel="warning"
         linkToLogFilters={true}
@@ -48,12 +50,13 @@ it("shows the counts it's given", () => {
     </MemoryRouter>
   )
 
-  // "healthy" gets the denominator (total)
+  // "healthy" gets the denominator (totalEnabled)
   // 0 counts are not rendered, except for "healthy"
   expectStatusCounts(root, [
     { label: "unhealthy", counts: [4] },
     { label: "warning", counts: [2] },
     { label: "healthy", counts: [0, 11] },
+    { label: "disabled", counts: [2] },
   ])
 })
 
@@ -63,7 +66,8 @@ it("links to warning and unhealthy resources when `linkToLogFilters` is true", (
       <ResourceGroupStatus
         counts={testCounts}
         healthyLabel="healthy"
-        label="resources"
+        displayText="resources"
+        labelText="Testing resource status summary"
         unhealthyLabel="unhealthy"
         warningLabel="warning"
         linkToLogFilters={true}
@@ -90,7 +94,8 @@ it("does NOT link to warning and unhealthy resources when `linkToLogFilters` is 
       <ResourceGroupStatus
         counts={testCounts}
         healthyLabel="healthy"
-        label="resources"
+        displayText="resources"
+        labelText="Testing resource status summary"
         unhealthyLabel="unhealthy"
         warningLabel="warning"
         linkToLogFilters={false}

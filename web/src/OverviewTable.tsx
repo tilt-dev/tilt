@@ -586,7 +586,7 @@ function TableGroup(props: TableGroupProps) {
         <ResourceGroupSummaryIcon role="presentation" />
         <OverviewGroupName>{formattedLabel}</OverviewGroupName>
         <TableGroupStatusSummary
-          aria-label={`Status summary for ${label} group`}
+          labelText={`Status summary for ${label} group`}
           resources={tableProps.data}
         />
       </OverviewGroupSummary>

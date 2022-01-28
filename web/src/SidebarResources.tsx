@@ -241,7 +241,7 @@ function SidebarGroupListSection(props: { label: string } & SidebarProps) {
         <ResourceGroupSummaryIcon role="presentation" />
         <SidebarGroupName>{formattedLabel}</SidebarGroupName>
         <SidebarGroupStatusSummary
-          aria-label={`Status summary for ${props.label} group`}
+          labelText={`Status summary for ${props.label} group`}
           resources={props.items}
         />
       </SidebarGroupSummary>
