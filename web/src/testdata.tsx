@@ -1,9 +1,11 @@
 import { Href, UnregisterCallback } from "history"
 import { RouteComponentProps } from "react-router-dom"
 import {
+  ApiButtonToggleState,
   ApiButtonType,
   UIBUTTON_ANNOTATION_TYPE,
   UIBUTTON_TOGGLE_DISABLE_TYPE,
+  UIBUTTON_TOGGLE_INPUT_NAME,
 } from "./ApiButton"
 import {
   ResourceName,
@@ -393,6 +395,15 @@ export function disableButton(
         componentID: resourceName,
         componentType: ApiButtonType.Resource,
       },
+      inputs: [
+        {
+          name: UIBUTTON_TOGGLE_INPUT_NAME,
+          hidden: {
+            value: enabled ? ApiButtonToggleState.On : ApiButtonToggleState.Off,
+          },
+        },
+      ],
+      requiresConfirmation: true,
     },
   }
 }

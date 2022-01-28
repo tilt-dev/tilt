@@ -17,7 +17,7 @@ import {
 import styled from "styled-components"
 import { buildAlerts, runtimeAlerts } from "./alerts"
 import { AnalyticsType } from "./analytics"
-import { buttonsForComponent } from "./ApiButton"
+import { ApiButtonType, buttonsForComponent } from "./ApiButton"
 import Features, { Flag, useFeatures } from "./feature"
 import { Hold } from "./Hold"
 import {
@@ -28,6 +28,7 @@ import {
   UNLABELED_LABEL,
 } from "./labels"
 import { LogAlertIndex, useLogAlertIndex } from "./LogStore"
+import { OverviewTableBulkActions } from "./OverviewTableBulkActions"
 import {
   getTableColumns,
   ResourceTableHeaderTip,
@@ -115,6 +116,12 @@ const OverviewTableRoot = styled.section`
   margin-bottom: ${SizeUnit(1 / 2)};
   margin-left: ${SizeUnit(1 / 2)};
   margin-right: ${SizeUnit(1 / 2)};
+`
+
+const OverviewTableMenu = styled.section`
+  display: flex;
+  flex-direction: row;
+  align-items: center;
 `
 
 const ResourceTable = styled.table`
@@ -332,7 +339,11 @@ function uiResourceToCell(
   let currentBuildStartTime = res.currentBuild?.startTime ?? ""
   let isBuilding = !isZeroTime(currentBuildStartTime)
   let hasBuilt = lastBuild !== null
-  let buttons = buttonsForComponent(allButtons, "resource", r.metadata?.name)
+  let buttons = buttonsForComponent(
+    allButtons,
+    ApiButtonType.Resource,
+    r.metadata?.name
+  )
   let analyticsTags = { target: resourceTargetType(r) }
   // Consider a resource `selectable` if it can be disabled
   const selectable = !!buttons.toggleDisable
@@ -722,7 +733,10 @@ function OverviewTableContent(props: OverviewTableProps) {
 export default function OverviewTable(props: OverviewTableProps) {
   return (
     <OverviewTableRoot aria-label="Resources overview">
-      <OverviewTableResourceNameFilter />
+      <OverviewTableMenu>
+        <OverviewTableResourceNameFilter />
+        <OverviewTableBulkActions uiButtons={props.view.uiButtons} />
+      </OverviewTableMenu>
       <OverviewTableContent {...props} />
     </OverviewTableRoot>
   )

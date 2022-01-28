@@ -1,6 +1,6 @@
-type UIButton = Proto.v1alpha1UIButton
-type UIInputSpec = Proto.v1alpha1UIInputSpec
-type UIInputStatus = Proto.v1alpha1UIInputStatus
+import fetchMock, { MockCall } from "fetch-mock"
+import { ApiButtonType, UIBUTTON_GLOBAL_COMPONENT_ID } from "./ApiButton"
+import { UIButton, UIInputSpec, UIInputStatus } from "./types"
 
 export function textField(
   name: string,
@@ -36,11 +36,13 @@ export function hiddenField(name: string, value: string): UIInputSpec {
   }
 }
 
+// TODO (lizz): Consider merging this test helper with `oneButton` in `testdata`
 export function makeUIButton(args?: {
   name?: string
   inputSpecs?: UIInputSpec[]
   inputStatuses?: UIInputStatus[]
   requiresConfirmation?: boolean
+  componentID?: string
 }): UIButton {
   return {
     metadata: {
@@ -51,8 +53,10 @@ export function makeUIButton(args?: {
       iconName: "flight_takeoff",
       inputs: args?.inputSpecs,
       location: {
-        componentType: "Global",
-        componentID: "nav",
+        componentType: args?.componentID
+          ? ApiButtonType.Resource
+          : ApiButtonType.Global,
+        componentID: args?.componentID ?? UIBUTTON_GLOBAL_COMPONENT_ID,
       },
       requiresConfirmation: args?.requiresConfirmation,
     },
@@ -60,4 +64,31 @@ export function makeUIButton(args?: {
       inputs: args?.inputStatuses,
     },
   }
+}
+
+export function mockUIButtonUpdates() {
+  fetchMock.mock(
+    (url) => url.startsWith("/proxy/apis/tilt.dev/v1alpha1/uibuttons"),
+    JSON.stringify({})
+  )
+}
+
+export function cleanupMockUIButtonUpdates() {
+  fetchMock.reset()
+}
+
+export function getUIButtonDataFromCall(call: MockCall): UIButton | undefined {
+  if (call.length < 2) {
+    return
+  }
+
+  const callRequest = call[1]
+
+  if (!callRequest?.body) {
+    return
+  }
+
+  const buttonData = JSON.parse(String(callRequest?.body))
+
+  return buttonData as UIButton
 }

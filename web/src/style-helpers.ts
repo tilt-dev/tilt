@@ -57,7 +57,6 @@ export enum FontSize {
 }
 
 let unit = 32
-let heightUnit = unit // For cases when `Height.unit` shadows `unit`
 
 export function SizeUnit(multiplier: number) {
   return `${unit * multiplier}px`

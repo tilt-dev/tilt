@@ -59,10 +59,14 @@ type ApiButtonInputProps = {
   analyticsTags: Tags
 }
 
-type ApiButtonElementProps = ApiButtonProps & {
+type ApiButtonElementProps = ButtonProps & {
+  text: string
   confirming: boolean
   disabled: boolean
-  tags: Tags
+  iconName?: string
+  iconSVG?: string
+  analyticsTags: Tags
+  analyticsName: string
 }
 
 // UIButtons for a location, sorted into types
@@ -72,11 +76,11 @@ export type ButtonSet = {
 }
 
 export enum ApiButtonType {
-  Nav = "Global",
+  Global = "Global",
   Resource = "Resource",
 }
 
-enum ApiButtonToggleState {
+export enum ApiButtonToggleState {
   On = "on",
   Off = "off",
 }
@@ -84,8 +88,9 @@ enum ApiButtonToggleState {
 // Constants
 export const UIBUTTON_SPEC_HASH = "uibuttonspec-hash"
 export const UIBUTTON_ANNOTATION_TYPE = "tilt.dev/uibutton-type"
+export const UIBUTTON_GLOBAL_COMPONENT_ID = "nav"
 export const UIBUTTON_TOGGLE_DISABLE_TYPE = "DisableToggle"
-const UIBUTTON_TOGGLE_INPUT_NAME = "action"
+export const UIBUTTON_TOGGLE_INPUT_NAME = "action"
 
 // Styles
 const ApiButtonFormRoot = styled.div`
@@ -116,37 +121,45 @@ export const LogLink = styled(Link)`
   padding-left: ${SizeUnit(0.5)};
 `
 
-const ApiButtonElementRoot = styled(InstrumentedButton)`
-  &.confirming {
+export const confirmingButtonStateMixin = `
+&.confirming {
+  background-color: ${Color.red};
+  border-color: ${Color.gray};
+  color: ${Color.black};
+
+  &:hover,
+  &:active,
+  &:focus {
     background-color: ${Color.red};
-    border-color: ${Color.gray};
+    border-color: ${Color.redLight};
     color: ${Color.black};
-
-    &:hover,
-    &:active,
-    &:focus {
-      background-color: ${Color.red};
-      border-color: ${Color.redLight};
-      color: ${Color.black};
-    }
-
-    .fillStd {
-      fill: ${Color.black} !important; /* TODO (lizz): find this style source! */
-    }
   }
 
-  /* Manually manage the border that both left and right
-     buttons share on the edge between them, so border
-     color changes work as expected */
-  &.leftButtonInGroup {
-    border-right: 0;
-
-    &:active + .rightButtonInGroup,
-    &:focus + .rightButtonInGroup,
-    &:hover + .rightButtonInGroup {
-      border-left-color: ${Color.redLight};
-    }
+  .fillStd {
+    fill: ${Color.black} !important; /* TODO (lizz): find this style source! */
   }
+}
+`
+
+/* Manually manage the border that both left and right
+ * buttons share on the edge between them, so border
+ * color changes work as expected
+ */
+export const confirmingButtonGroupBorderMixin = `
+&.leftButtonInGroup {
+  border-right: 0;
+
+  &:active + .rightButtonInGroup,
+  &:focus + .rightButtonInGroup,
+  &:hover + .rightButtonInGroup {
+    border-left-color: ${Color.redLight};
+  }
+}
+`
+
+const ApiButtonElementRoot = styled(InstrumentedButton)`
+  ${confirmingButtonStateMixin}
+  ${confirmingButtonGroupBorderMixin}
 `
 
 export const ApiButtonInputsToggleButton = styled(InstrumentedButton)`
@@ -155,6 +168,12 @@ export const ApiButtonInputsToggleButton = styled(InstrumentedButton)`
     padding: 0 0;
   }
 `
+
+function isDisableToggleButton(b: UIButton) {
+  return (
+    annotations(b)[UIBUTTON_ANNOTATION_TYPE] === UIBUTTON_TOGGLE_DISABLE_TYPE
+  )
+}
 
 const svgElement = (src: string): React.ReactElement => {
   const node = convertFromString(src, {
@@ -243,14 +262,22 @@ type ApiButtonWithOptionsProps = {
   setInputValue: (name: string, value: any) => void
   getInputValue: (name: string) => any | undefined
   className?: string
+  text: string
 }
 
 function ApiButtonWithOptions(props: ApiButtonWithOptionsProps & ButtonProps) {
   const [open, setOpen] = useState(false)
   const anchorRef = useRef(null)
 
-  const { submit, uiButton, setInputValue, getInputValue, ...buttonProps } =
-    props
+  const {
+    submit,
+    uiButton,
+    setInputValue,
+    getInputValue,
+    text,
+    analyticsTags,
+    ...buttonProps
+  } = props
 
   return (
     <>
@@ -267,7 +294,8 @@ function ApiButtonWithOptions(props: ApiButtonWithOptionsProps & ButtonProps) {
             setOpen((prevOpen) => !prevOpen)
           }}
           analyticsName="ui.web.uibutton.inputMenu"
-          aria-label={`Open ${props.uiButton.spec?.text} options`}
+          analyticsTags={analyticsTags}
+          aria-label={`Open ${text} options`}
           {...buttonProps}
         >
           <ArrowDropDownIcon />
@@ -279,7 +307,7 @@ function ApiButtonWithOptions(props: ApiButtonWithOptionsProps & ButtonProps) {
           setOpen(false)
         }}
         anchorEl={anchorRef.current}
-        title={`Options for ${props.uiButton.spec?.text}`}
+        title={`Options for ${text}`}
       >
         <ApiButtonForm {...props} />
       </FloatDialog>
@@ -287,12 +315,12 @@ function ApiButtonWithOptions(props: ApiButtonWithOptionsProps & ButtonProps) {
   )
 }
 
-export const ApiIcon = (props: ApiIconProps) => {
-  if (props.iconSVG) {
+export const ApiIcon = ({ iconName, iconSVG }: ApiIconProps) => {
+  if (iconSVG) {
     // the material SvgIcon handles accessibility/sizing/colors well but can't accept a raw SVG string
     // create a ReactElement by parsing the source and then use that as the component, passing through
     // the props so that it's correctly styled
-    const svgEl = svgElement(props.iconSVG)
+    const svgEl = svgElement(iconSVG)
     const svg = (props: React.PropsWithChildren<any>) => {
       // merge the props from material-ui while keeping the children of the actual SVG
       return React.cloneElement(svgEl, { ...props }, ...svgEl.props.children)
@@ -304,10 +332,10 @@ export const ApiIcon = (props: ApiIconProps) => {
     )
   }
 
-  if (props.iconName) {
+  if (iconName) {
     return (
       <ApiIconRoot>
-        <Icon>{props.iconName}</Icon>
+        <Icon>{iconName}</Icon>
       </ApiIconRoot>
     )
   }
@@ -353,7 +381,7 @@ function buttonStatusWithInputs(
   return result
 }
 
-async function updateButtonStatus(
+export async function updateButtonStatus(
   button: UIButton,
   inputValues: { [name: string]: any }
 ) {
@@ -410,8 +438,15 @@ function getButtonTags(button: UIButton): Tags {
   return tags
 }
 
-function ApiCancelButton(props: ApiButtonElementProps) {
-  const { confirming, onClick, tags, uiButton, ...buttonProps } = props
+export function ApiCancelButton(props: ApiButtonElementProps) {
+  const {
+    confirming,
+    onClick,
+    analyticsTags,
+    text,
+    analyticsName,
+    ...buttonProps
+  } = props
 
   // Don't display the cancel confirmation button if the button
   // group's state isn't confirming
@@ -419,7 +454,6 @@ function ApiCancelButton(props: ApiButtonElementProps) {
     return null
   }
 
-  const buttonDisplayText: string = uiButton.spec?.text ?? "Button"
   // To pass classes to a MUI component, it's necessary to use `classes`, instead of `className`
   const classes: Partial<ClassNameMap<ButtonClassKey>> = {
     root: "confirming rightButtonInGroup",
@@ -427,9 +461,9 @@ function ApiCancelButton(props: ApiButtonElementProps) {
 
   return (
     <ApiButtonElementRoot
-      analyticsName={"ui.web.uibutton"}
-      aria-label={`Cancel ${buttonDisplayText}`}
-      analyticsTags={{ confirm: "false", ...tags }}
+      analyticsName={analyticsName}
+      aria-label={`Cancel ${text}`}
+      analyticsTags={{ confirm: "false", ...analyticsTags }}
       classes={classes}
       onClick={onClick}
       {...buttonProps}
@@ -440,11 +474,12 @@ function ApiCancelButton(props: ApiButtonElementProps) {
 }
 
 // The inner content of an ApiSubmitButton
-function ApiSubmitButtonContent(
+export function ApiSubmitButtonContent(
   props: PropsWithChildren<{
     confirming: boolean
-    uiButton: UIButton
     displayButtonText: string
+    iconName?: string
+    iconSVG?: string
   }>
 ) {
   if (props.confirming) {
@@ -457,10 +492,7 @@ function ApiSubmitButtonContent(
 
   return (
     <>
-      <ApiIcon
-        iconName={props.uiButton.spec?.iconName}
-        iconSVG={props.uiButton.spec?.iconSVG}
-      />
+      <ApiIcon iconName={props.iconName} iconSVG={props.iconSVG} />
       <ApiButtonLabel>{props.displayButtonText}</ApiButtonLabel>
     </>
   )
@@ -475,20 +507,28 @@ function ApiSubmitButtonContent(
 // using assistive tech like screenreaders will know they need to confirm.
 // (Screenreaders should announce the "confirm submit" button to users because
 // the `aria-label` changes when the "submit" button is clicked.)
-function ApiSubmitButton(props: PropsWithChildren<ApiButtonElementProps>) {
-  const { confirming, disabled, onClick, tags, uiButton, ...buttonProps } =
-    props
+export function ApiSubmitButton(
+  props: PropsWithChildren<ApiButtonElementProps>
+) {
+  const {
+    analyticsName,
+    analyticsTags,
+    confirming,
+    disabled,
+    onClick,
+    iconName,
+    iconSVG,
+    text,
+    ...buttonProps
+  } = props
 
   // Determine display text and accessible button label based on confirmation state
-  const buttonText = uiButton.spec?.text || "Button"
-  const displayButtonText = confirming ? "Confirm" : buttonText
-  const ariaLabel = confirming
-    ? `Confirm ${buttonText}`
-    : `Trigger ${buttonText}`
+  const displayButtonText = confirming ? "Confirm" : text
+  const ariaLabel = confirming ? `Confirm ${text}` : `Trigger ${text}`
 
-  const analyticsTags = { ...tags }
+  const tags = { ...analyticsTags }
   if (confirming) {
-    analyticsTags.confirm = "true"
+    tags.confirm = "true"
   }
 
   // To pass classes to a MUI component, it's necessary to use `classes`, instead of `className`
@@ -500,8 +540,8 @@ function ApiSubmitButton(props: PropsWithChildren<ApiButtonElementProps>) {
   // Note: button text is not included in analytics name since that can be user data
   return (
     <ApiButtonElementRoot
-      analyticsName={"ui.web.uibutton"}
-      analyticsTags={analyticsTags}
+      analyticsName={analyticsName}
+      analyticsTags={tags}
       aria-label={ariaLabel}
       classes={classes}
       disabled={disabled}
@@ -511,7 +551,8 @@ function ApiSubmitButton(props: PropsWithChildren<ApiButtonElementProps>) {
       <ApiSubmitButtonContent
         confirming={confirming}
         displayButtonText={displayButtonText}
-        uiButton={uiButton}
+        iconName={iconName}
+        iconSVG={iconSVG}
       >
         {props.children}
       </ApiSubmitButtonContent>
@@ -545,6 +586,7 @@ export function ApiButton(props: PropsWithChildren<ApiButtonProps>) {
   const tags = useMemo(() => getButtonTags(uiButton), [uiButton])
   const componentType = uiButton.spec?.location?.componentType as ApiButtonType
   const disabled = loading || uiButton.spec?.disabled || false
+  const buttonText = uiButton.spec?.text || "Button"
 
   const onClick = async () => {
     if (uiButton.spec?.requiresConfirmation && !confirming) {
@@ -571,7 +613,7 @@ export function ApiButton(props: PropsWithChildren<ApiButtonProps>) {
     }
 
     const snackbarLogsLink =
-      componentType === ApiButtonType.Nav ? (
+      componentType === ApiButtonType.Global ? (
         <LogLink to="/r/(all)/overview">Global Logs</LogLink>
       ) : (
         <LogLink
@@ -592,18 +634,23 @@ export function ApiButton(props: PropsWithChildren<ApiButtonProps>) {
 
   const submitButton = (
     <ApiSubmitButton
+      text={buttonText}
       confirming={confirming}
       disabled={disabled}
+      iconName={uiButton.spec?.iconName}
+      iconSVG={uiButton.spec?.iconSVG}
       onClick={onClick}
-      tags={tags}
-      {...props}
+      analyticsName="ui.web.uibutton"
+      analyticsTags={tags}
+      {...buttonProps}
     >
       {props.children}
     </ApiSubmitButton>
   )
 
   // show the options button if there are any non-hidden inputs
-  if (uiButton.spec?.inputs?.filter((i) => !i.hidden)?.length) {
+  const visibleInputs = uiButton.spec?.inputs?.filter((i) => !i.hidden) || []
+  if (visibleInputs.length) {
     const setInputValue = (name: string, value: any) => {
       // Copy to a new object so that the reference changes to force a rerender.
       setInputValues({ ...inputValues, [name]: value })
@@ -617,13 +664,14 @@ export function ApiButton(props: PropsWithChildren<ApiButtonProps>) {
         uiButton={uiButton}
         setInputValue={setInputValue}
         getInputValue={getInputValue}
-        aria-label={uiButton.spec?.text}
+        aria-label={buttonText}
         analyticsTags={tags}
         // use-case-wise, it'd probably be better to leave the options button enabled
         // regardless of the submit button's state.
         // However, that's currently a low-impact difference, and this is a really
         // cheap way to ensure the styling matches.
         disabled={disabled}
+        text={buttonText}
         {...buttonProps}
       />
     )
@@ -632,16 +680,17 @@ export function ApiButton(props: PropsWithChildren<ApiButtonProps>) {
       <ApiButtonRoot
         className={className}
         disableRipple={true}
-        aria-label={uiButton.spec?.text}
+        aria-label={buttonText}
         disabled={disabled}
       >
         {submitButton}
         <ApiCancelButton
+          analyticsName="ui.web.uibutton"
+          analyticsTags={tags}
+          text={buttonText}
           confirming={confirming}
           disabled={disabled}
           onClick={() => setConfirming(false)}
-          tags={tags}
-          uiButton={uiButton}
           {...buttonProps}
         />
       </ApiButtonRoot>
@@ -651,7 +700,7 @@ export function ApiButton(props: PropsWithChildren<ApiButtonProps>) {
 
 export function buttonsForComponent(
   buttons: UIButton[] | undefined,
-  componentType: string,
+  componentType: ApiButtonType,
   componentID: string | undefined
 ): ButtonSet {
   let result: ButtonSet = {
@@ -662,15 +711,16 @@ export function buttonsForComponent(
   }
 
   buttons.forEach((b) => {
-    if (
-      b.spec?.location?.componentType?.toUpperCase() ===
-        componentType.toUpperCase() &&
-      b.spec?.location?.componentID === componentID
-    ) {
-      if (
-        annotations(b)[UIBUTTON_ANNOTATION_TYPE] ===
-        UIBUTTON_TOGGLE_DISABLE_TYPE
-      ) {
+    const buttonType = b.spec?.location?.componentType || ""
+    const buttonID = b.spec?.location?.componentID || ""
+
+    const buttonTypesMatch =
+      buttonType.toUpperCase() === componentType.toUpperCase()
+    const buttonIDsMatch = buttonID === componentID
+
+    if (buttonTypesMatch && buttonIDsMatch) {
+      // Group the disable toggle buttons in their own category
+      if (isDisableToggleButton(b)) {
         result.toggleDisable = b
       } else {
         result.default.push(b)
@@ -679,4 +729,34 @@ export function buttonsForComponent(
   })
 
   return result
+}
+
+export function buttonsByComponent(buttons: UIButton[] | undefined) {
+  const buttonsByComponent: { [key: string]: ButtonSet } = {}
+
+  if (buttons === undefined) {
+    return buttonsByComponent
+  }
+
+  buttons.forEach((b) => {
+    const buttonID = b.spec?.location?.componentID || ""
+
+    // Disregard any buttons that aren't linked to a specific component or resource
+    if (!buttonID.length) {
+      return
+    }
+
+    if (!buttonsByComponent.hasOwnProperty(buttonID)) {
+      buttonsByComponent[buttonID] = { default: [] }
+    }
+
+    const buttonSet = buttonsByComponent[buttonID]
+    if (isDisableToggleButton(b)) {
+      buttonSet.toggleDisable = b
+    } else {
+      buttonSet.default.push(b)
+    }
+  })
+
+  return buttonsByComponent
 }
