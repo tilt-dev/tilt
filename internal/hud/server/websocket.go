@@ -15,6 +15,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes/timestamp"
 
+	"github.com/tilt-dev/tilt/internal/hud/server/gorilla"
 	"github.com/tilt-dev/tilt/internal/hud/webview"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -36,6 +37,23 @@ var upgrader = websocket.Upgrader{
 	// anyway, since it's not like you're using Tilt over
 	// a mobile network.
 	EnableCompression: false,
+
+	// Allow the connection if either:
+	//
+	// 1) The client has a CSRF token, or
+	// 2) The origin matches what we expect.
+	//
+	// Once a few releases have gone by we should remove the origin check.
+	// (since we know some tilt users expect tabs to stay open
+	// across releases).
+	CheckOrigin: func(req *http.Request) bool {
+		if websocketCSRFToken.String() == req.URL.Query().Get("csrf") {
+			return true
+		}
+
+		// If the CSRF check fails, fallback to an origin check.
+		return gorilla.CheckSameOrigin(req)
+	},
 }
 
 type WebsocketSubscriber struct {
