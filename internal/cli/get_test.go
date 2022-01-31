@@ -10,13 +10,12 @@ import (
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tilt-dev/wmclient/pkg/analytics"
+	"github.com/tilt-dev/wmclient/pkg/dirs"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/tilt-dev/wmclient/pkg/dirs"
-
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/testdata"
-
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils"
@@ -52,10 +51,11 @@ my-sleep`)
 
 type serverFixture struct {
 	*tempdir.TempDirFixture
-	ctx    context.Context
-	cancel func()
-	hudsc  *server.HeadsUpServerController
-	client ctrlclient.Client
+	ctx       context.Context
+	cancel    func()
+	hudsc     *server.HeadsUpServerController
+	client    ctrlclient.Client
+	analytics *analytics.MemoryAnalytics
 
 	origPort int
 }
@@ -65,7 +65,7 @@ func newServerFixture(t *testing.T) *serverFixture {
 
 	dir := dirs.NewTiltDevDirAt(f.Path())
 
-	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
+	ctx, a, _ := testutils.CtxAndAnalyticsForTest()
 	ctx, cancel := context.WithCancel(ctx)
 	memconn := server.ProvideMemConn()
 	webPort, err := freeport.GetFreePort()
@@ -103,6 +103,7 @@ func newServerFixture(t *testing.T) *serverFixture {
 		hudsc:          hudsc,
 		client:         client,
 		origPort:       origPort,
+		analytics:      a,
 	}
 }
 

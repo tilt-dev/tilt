@@ -9,6 +9,7 @@ import (
 
 	"github.com/alessio/shellescape"
 	"github.com/stretchr/testify/require"
+	"github.com/tilt-dev/wmclient/pkg/analytics"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -30,6 +31,9 @@ func TestArgsClear(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, 0, len(getTiltfile(f).Spec.Args))
+	require.Equal(t, []analytics.CountEvent{
+		{Name: "cmd.args", Tags: map[string]string{"clear": "true"}, N: 1},
+	}, f.analytics.Counts)
 }
 
 func TestArgsNewValue(t *testing.T) {
@@ -46,6 +50,10 @@ func TestArgsNewValue(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, []string{"--foo", "bar"}, getTiltfile(f).Spec.Args)
+	require.Equal(t, []analytics.CountEvent{
+		{Name: "cmd.args", Tags: map[string]string{"set": "true"}, N: 1},
+	}, f.analytics.Counts)
+
 }
 
 func TestArgsClearAndNewValue(t *testing.T) {
@@ -147,7 +155,13 @@ func TestArgsEdit(t *testing.T) {
 				expectedArgs = tc.expectedArgs
 			}
 			require.Equal(t, expectedArgs, getTiltfile(f).Spec.Args)
-
+			var expectedCounts []analytics.CountEvent
+			if tc.expectedError == "" {
+				expectedCounts = []analytics.CountEvent{
+					{Name: "cmd.args", Tags: map[string]string{"edit": "true"}, N: 1},
+				}
+			}
+			require.Equal(t, expectedCounts, f.analytics.Counts)
 		})
 	}
 }

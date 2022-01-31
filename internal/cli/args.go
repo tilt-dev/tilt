@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/kballard/go-shellquote"
 	"github.com/pkg/errors"
@@ -14,6 +15,8 @@ import (
 	"k8s.io/kubectl/pkg/cmd/util/editor"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/tilt-dev/tilt/internal/analytics"
+	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -117,11 +120,13 @@ func (c *argsCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
+	tags := make(engineanalytics.CmdTags)
 	if c.clear {
 		if len(args) != 0 {
 			return errors.New("--clear cannot be specified with other values")
 		}
 		args = nil
+		tags["clear"] = "true"
 	} else if len(args) == 0 {
 		input := fmt.Sprintf("# edit args for the running Tilt here\n%s\n", shellquote.Join(tf.Spec.Args...))
 		e := editor.NewDefaultEditor([]string{"TILT_EDITOR", "EDITOR"})
@@ -134,7 +139,14 @@ func (c *argsCmd) run(ctx context.Context, args []string) error {
 		if err != nil {
 			return err
 		}
+		tags["edit"] = "true"
+	} else {
+		tags["set"] = "true"
 	}
+
+	a := analytics.Get(ctx)
+	a.Incr("cmd.args", tags.AsMap())
+	defer a.Flush(time.Second)
 
 	tf.Spec.Args = args
 
