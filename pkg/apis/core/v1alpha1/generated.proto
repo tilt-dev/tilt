@@ -2253,7 +2253,7 @@ message Target {
 
 // TargetState describes the current execution status for a target.
 //
-// Either EXACTLY one of Waiting, Active, or Terminated will be populated or NONE of them will be.
+// Either EXACTLY one of Waiting, Active, Disabled, or Terminated will be populated or NONE of them will be.
 // In the event that all states are null, the target is currently inactive or disabled and should not
 // be expected to execute.
 message TargetState {
@@ -2271,6 +2271,11 @@ message TargetState {
   //
   // +optional
   optional TargetStateTerminated terminated = 3;
+
+  // Disabled being non-nil indicates that the target is disabled.
+  //
+  // +optional
+  optional TargetStateDisabled disabled = 4;
 }
 
 // TargetStateActive is a target that is currently running but has not yet finished.
@@ -2282,6 +2287,10 @@ message TargetStateActive {
   //
   // If the target does not use or support readiness checks, this is always true.
   optional bool ready = 2;
+}
+
+// TargetStateDisabled is a target that has been disabled.
+message TargetStateDisabled {
 }
 
 // TargetStateTerminated is a target that finished running, either because it completed successfully or

@@ -13,6 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -507,11 +509,52 @@ func TestExitControlCI_Disabled(t *testing.T) {
 	f.store.requireExitSignalWithNoError()
 }
 
+func TestStatusDisabled(t *testing.T) {
+	f := newFixture(t, store.EngineModeCI)
+	defer f.TearDown()
+
+	f.store.WithState(func(state *store.EngineState) {
+		m1 := manifestbuilder.New(f, "local_update").WithLocalResource("a", nil).Build()
+		m2 := manifestbuilder.New(f, "local_serve").WithLocalServeCmd("a").Build()
+		m3 := manifestbuilder.New(f, "k8s").WithK8sYAML(testyaml.JobYAML).Build()
+		m4 := manifestbuilder.New(f, "dc").WithDockerCompose().Build()
+		for _, m := range []model.Manifest{m1, m2, m3, m4} {
+			mt := store.NewManifestTarget(m)
+			mt.State.DisableState = v1alpha1.DisableStateDisabled
+			state.UpsertManifestTarget(mt)
+		}
+	})
+
+	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	status := f.sessionStatus()
+	targetbyName := make(map[string]v1alpha1.Target)
+	for _, target := range status.Targets {
+		targetbyName[target.Name] = target
+	}
+
+	expectedTargets := []string{
+		"dc:runtime",
+		"dc:update",
+		"k8s:runtime",
+		"k8s:update",
+		"local_update:update",
+		"local_serve:serve",
+	}
+	// + 1 for Tiltfile
+	require.Len(t, targetbyName, len(expectedTargets)+1)
+	for _, name := range expectedTargets {
+		target, ok := targetbyName[name]
+		require.Truef(t, ok, "no target named %q", name)
+		require.NotNil(t, target.State.Disabled)
+	}
+}
+
 type fixture struct {
 	*tempdir.TempDirFixture
 	ctx   context.Context
 	store *testStore
 	c     *Controller
+	cli   ctrlclient.Client
 }
 
 func newFixture(t *testing.T, engineMode store.EngineMode) *fixture {
@@ -544,6 +587,7 @@ func newFixture(t *testing.T, engineMode store.EngineMode) *fixture {
 		ctx:            ctx,
 		store:          st,
 		c:              c,
+		cli:            cli,
 	}
 }
 
@@ -553,6 +597,13 @@ func (f *fixture) upsertManifest(m model.Manifest) {
 		mt.State.DisableState = v1alpha1.DisableStateEnabled
 		state.UpsertManifestTarget(mt)
 	})
+}
+
+func (f *fixture) sessionStatus() v1alpha1.SessionStatus {
+	var session v1alpha1.Session
+	err := f.cli.Get(f.ctx, types.NamespacedName{Name: "Tiltfile"}, &session)
+	require.NoError(f.T(), err)
+	return session.Status
 }
 
 type testStore struct {
