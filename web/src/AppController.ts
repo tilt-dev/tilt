@@ -39,25 +39,33 @@ class AppController {
 
   createNewSocket() {
     this.tryConnectCount++
-    this.socket = new WebSocket(this.url)
-    let socket = this.socket
+    fetch("/api/websocket_token")
+      .then((res) => res.text())
+      .then((text) => {
+        this.socket = new WebSocket(`${this.url}?csrf=${text}`)
+        let socket = this.socket
 
-    this.socket.addEventListener("close", this.onSocketClose.bind(this))
-    this.socket.addEventListener("message", (event) => {
-      if (!this.liveSocket) {
-        this.loadCount++
-      }
-      this.liveSocket = true
-      this.tryConnectCount = 0
+        this.socket.addEventListener("close", this.onSocketClose.bind(this))
+        this.socket.addEventListener("message", (event) => {
+          if (!this.liveSocket) {
+            this.loadCount++
+          }
+          this.liveSocket = true
+          this.tryConnectCount = 0
 
-      let data: Proto.webviewView = JSON.parse(event.data)
+          let data: Proto.webviewView = JSON.parse(event.data)
 
-      // @ts-ignore
-      this.component.onAppChange({
-        view: data,
-        socketState: SocketState.Active,
+          // @ts-ignore
+          this.component.onAppChange({
+            view: data,
+            socketState: SocketState.Active,
+          })
+        })
       })
-    })
+      .catch((err) => {
+        console.error("fetching websocket token: " + err)
+        this.onSocketClose()
+      })
   }
 
   dispose() {

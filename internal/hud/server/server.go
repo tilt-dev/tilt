@@ -11,6 +11,7 @@ import (
 	_ "net/http/pprof"
 
 	"github.com/golang/protobuf/jsonpb"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	_ "github.com/gorilla/websocket"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
@@ -29,6 +30,11 @@ import (
 )
 
 const TiltTokenCookieName = "Tilt-Token"
+
+// CSRF token to protect the websocket. See:
+// https://dev.solita.fi/2018/11/07/securing-websocket-endpoints.html
+// https://christian-schneider.net/CrossSiteWebSocketHijacking.html
+var websocketCSRFToken = uuid.New()
 
 type analyticsPayload struct {
 	Verb string            `json:"verb"`
@@ -88,6 +94,7 @@ func ProvideHeadsUpServer(
 	r.HandleFunc("/api/snapshot/new", s.HandleNewSnapshot).Methods("POST")
 	// this endpoint is only used for testing snapshots in development
 	r.HandleFunc("/api/snapshot/{snapshot_id}", s.SnapshotJSON)
+	r.HandleFunc("/api/websocket_token", s.WebsocketToken)
 	r.HandleFunc("/ws/view", s.ViewWebsocket)
 	r.HandleFunc("/api/user_started_tilt_cloud_registration", s.userStartedTiltCloudRegistration)
 	r.HandleFunc("/api/set_tiltfile_args", s.HandleSetTiltfileArgs).Methods("POST")
@@ -370,6 +377,11 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 		return
 	}
 
+}
+
+func (s *HeadsUpServer) WebsocketToken(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "text/plain")
+	_, _ = w.Write([]byte(websocketCSRFToken.String()))
 }
 
 func (s *HeadsUpServer) userStartedTiltCloudRegistration(w http.ResponseWriter, req *http.Request) {
