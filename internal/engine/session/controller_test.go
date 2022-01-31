@@ -497,6 +497,31 @@ func TestExitControlCI_TriggerMode_K8s(t *testing.T) {
 	}
 }
 
+func TestExitControlCI_Disabled(t *testing.T) {
+	f := newFixture(t, store.EngineModeCI)
+	defer f.TearDown()
+
+	f.store.WithState(func(state *store.EngineState) {
+		m1 := manifestbuilder.New(f, "m1").WithLocalServeCmd("m1").Build()
+		mt1 := store.NewManifestTarget(m1)
+		mt1.State.DisableState = v1alpha1.DisableStateDisabled
+		state.UpsertManifestTarget(mt1)
+
+		m2 := manifestbuilder.New(f, "m2").WithLocalResource("m2", nil).Build()
+		mt2 := store.NewManifestTarget(m2)
+		mt2.State.AddCompletedBuild(model.BuildRecord{
+			StartTime:  time.Now(),
+			FinishTime: time.Now(),
+		})
+		mt2.State.DisableState = v1alpha1.DisableStateEnabled
+		state.UpsertManifestTarget(mt2)
+	})
+
+	// the manifest is disabled, so we should be ready to exit
+	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.store.requireExitSignalWithNoError()
+}
+
 type fixture struct {
 	*tempdir.TempDirFixture
 	ctx   context.Context

@@ -722,6 +722,32 @@ func TestFirstBuildFails_CI(t *testing.T) {
 	})
 }
 
+func TestCIIgnoresDisabledResources(t *testing.T) {
+	f := newTestFixture(t, fixtureOptions{engineMode: &store.EngineModeCI})
+	defer f.TearDown()
+
+	m1 := f.newManifest("m1")
+	pb := f.registerForDeployer(m1)
+	m2 := f.newManifest("m2")
+	f.setManifests([]model.Manifest{m1, m2})
+	f.tfl.Result.EnabledManifests = []model.ManifestName{m1.Name}
+
+	storeErr := make(chan error, 1)
+	go func() {
+		storeErr <- f.upper.Init(f.ctx, InitAction{
+			TiltfilePath: f.JoinPath("Tiltfile"),
+			StartTime:    f.Now(),
+		})
+	}()
+
+	call := f.nextCallComplete()
+	close(f.b.calls)
+	assert.Equal(t, "m1", call.k8s().ID().Name.String())
+
+	f.startPod(pb.WithPhase(string(v1.PodRunning)).Build(), m1.Name)
+	require.NoError(t, <-storeErr)
+}
+
 func TestRebuildWithChangedFiles(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()

@@ -145,7 +145,9 @@ func (c *Controller) makeLatestStatus(st store.RStore) *session.SessionStatus {
 	_, holds := buildcontrol.NextTargetToBuild(state)
 
 	for _, mt := range state.ManifestTargets {
-		status.Targets = append(status.Targets, targetsForResource(mt, holds)...)
+		if mt.State.DisableState == session.DisableStateEnabled {
+			status.Targets = append(status.Targets, targetsForResource(mt, holds)...)
+		}
 	}
 	// ensure consistent ordering to avoid unnecessary updates
 	sort.SliceStable(status.Targets, func(i, j int) bool {
