@@ -6,6 +6,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 var _ RStore = &TestingStore{}
@@ -43,6 +45,16 @@ func (s *TestingStore) WithState(f func(state *EngineState)) {
 	s.stateMu.Lock()
 	defer s.stateMu.Unlock()
 	f(s.state)
+}
+
+func (s *TestingStore) WithManifestState(name model.ManifestName, f func(ms *ManifestState)) {
+	s.WithState(func(state *EngineState) {
+		mt, ok := state.ManifestTargets[name]
+		if !ok {
+			panic(fmt.Sprintf("no manifest target for %s", name))
+		}
+		f(mt.State)
+	})
 }
 
 func (s *TestingStore) StateMutex() *sync.RWMutex {

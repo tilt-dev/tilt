@@ -2634,34 +2634,6 @@ func TestDockerComposeStartOnReenable(t *testing.T) {
 	f.waitForCompletedBuildCount(3)
 }
 
-func TestDockerComposeDisableRmError(t *testing.T) {
-	f := newTestFixture(t)
-	defer f.TearDown()
-	f.useRealTiltfileLoader()
-
-	m, _ := f.setupDCFixture()
-
-	expected := container.ID("aaaaaa")
-	f.b.nextDockerComposeContainerID = expected
-
-	containerState := docker.NewRunningContainerState()
-	f.b.nextDockerComposeContainerState = &containerState
-
-	f.loadAndStart()
-
-	f.waitForCompletedBuildCount(2)
-
-	s := "fake dc error"
-	f.dcc.RmError = errors.New(s)
-	f.setDisableState(m.Name, true)
-
-	require.Eventually(t, func() bool {
-		st := f.store.RLockState()
-		defer f.store.RUnlockState()
-		return strings.Contains(st.LogStore.String(), s)
-	}, stdTimeout, time.Millisecond)
-}
-
 func TestEmptyTiltfile(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -3871,7 +3843,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	cc := configs.NewConfigsController(cdc)
 	tqs := configs.NewTriggerQueueSubscriber(cdc)
 	dcw := dcwatch.NewEventWatcher(fakeDcc, dockerClient)
-	dcds := dcwatch.NewDisableSubscriber(fakeDcc)
+	dcds := dcwatch.NewDisableSubscriber(fakeDcc, clock)
 	dclm := runtimelog.NewDockerComposeLogManager(fakeDcc)
 	serverOptions, err := server.ProvideTiltServerOptionsForTesting(ctx)
 	require.NoError(t, err)
