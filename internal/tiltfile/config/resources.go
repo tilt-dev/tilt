@@ -106,7 +106,8 @@ func match(manifests []model.Manifest, requestedManifests []model.ManifestName) 
 
 	var result []model.ManifestName
 	for _, m := range manifests {
-		if manifestsToRun[m.Name] {
+		// Default to including UnresourcedYAML ("Uncategorized") to match historical behavior.
+		if manifestsToRun[m.Name] || m.Name == model.UnresourcedYAMLManifestName {
 			result = append(result, m.Name)
 		}
 	}
