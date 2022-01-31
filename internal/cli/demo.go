@@ -81,7 +81,7 @@ func (c *demoCmd) run(ctx context.Context, args []string) error {
 	a.Incr("cmd.demo", map[string]string{})
 	defer a.Flush(time.Second)
 
-	client, err := wireDockerClusterClient(ctx)
+	client, err := wireDockerLocalClient(ctx)
 	if err != nil {
 		return errors.Wrap(err, "Failed to init Docker client")
 	}
