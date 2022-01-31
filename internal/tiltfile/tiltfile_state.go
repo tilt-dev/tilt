@@ -202,7 +202,11 @@ func (s *tiltfileState) print(_ *starlark.Thread, msg string) {
 func (s *tiltfileState) loadManifests(tf *v1alpha1.Tiltfile) ([]model.Manifest, starkit.Model, error) {
 	s.logger.Infof("Loading Tiltfile at: %s", tf.Spec.Path)
 
-	dlr, err := tiltextension.NewTempDirDownloader()
+	dir, err := s.tempDir()
+	if err != nil {
+		return nil, starkit.Model{}, err
+	}
+	dlr, err := tiltextension.NewTempDirDownloader(dir)
 	if err != nil {
 		return nil, starkit.Model{}, err
 	}

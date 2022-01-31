@@ -3,13 +3,13 @@ package tiltextension
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"time"
 
 	"github.com/tilt-dev/go-get"
 
+	"github.com/tilt-dev/tilt/internal/watch"
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
@@ -22,12 +22,12 @@ type TempDirDownloader struct {
 	rootDir string
 }
 
-func NewTempDirDownloader() (*TempDirDownloader, error) {
-	dir, err := ioutil.TempDir("", "tilt-extensions")
+func NewTempDirDownloader(dir *watch.TempDir) (*TempDirDownloader, error) {
+	extdir, err := dir.NewDir("tilt-extensions")
 	if err != nil {
 		return nil, err
 	}
-	return &TempDirDownloader{rootDir: dir}, nil
+	return &TempDirDownloader{rootDir: extdir.Path()}, nil
 }
 
 func (d *TempDirDownloader) RootDir() string {
