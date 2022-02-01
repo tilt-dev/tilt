@@ -65,6 +65,7 @@ linters:
     - staticcheck
     - structcheck
     - misspell
+    - varcheck
 issues:
   exclude-rules:
     - linters:
