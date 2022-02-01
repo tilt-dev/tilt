@@ -543,22 +543,22 @@ func TestKustomizeBin(t *testing.T) {
 	sentinel := f.WriteFile("kustomize.txt", "")
 	var wrapper string
 	if runtime.GOOS == "windows" {
-		wrapper = f.WriteFile("kustomize.bat", `@echo off
-echo %* > `+sentinel+`
-kustomize.exe %*
-`)
+		wrapper = f.WriteFile("kustomize.bat", fmt.Sprintf(`@echo off
+echo %%* > %s
+kustomize.exe %%*
+`, sentinel))
 	} else {
-		wrapper = f.WriteFile("kustomize", `#!/bin/sh
-echo "$@" > `+sentinel+`
+		wrapper = f.WriteFile("kustomize", fmt.Sprintf(`#!/bin/sh
+echo "$@" > %s
 exec kustomize "$@"
-`)
+`, sentinel))
 		_ = os.Chmod(wrapper, 0755)
 	}
 
-	f.file("Tiltfile", `
-k8s_yaml(kustomize(".", kustomize_bin="`+wrapper+`"))
+	f.file("Tiltfile", fmt.Sprintf(`
+k8s_yaml(kustomize(".", kustomize_bin="%s"))
 k8s_resource("the-deployment", "foo")
-`)
+`, wrapper))
 	f.load()
 	sentinelContents, err := os.ReadFile(sentinel)
 	assert.Nil(t, err)
