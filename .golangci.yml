@@ -67,6 +67,7 @@ linters:
     - misspell
     - unconvert
     - unused
+    - varcheck
 issues:
   exclude-rules:
     - linters:
