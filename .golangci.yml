@@ -71,3 +71,6 @@ issues:
     - linters:
         - gosimple
       text: "S1008:"
+    - path: _test\.go
+      linters:
+        - errcheck
