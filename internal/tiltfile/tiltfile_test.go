@@ -541,11 +541,19 @@ func TestKustomizeBin(t *testing.T) {
 	f.file("deployment.yaml", kustomizeDeploymentText)
 	f.file("service.yaml", kustomizeServiceText)
 	sentinel := f.WriteFile("kustomize.txt", "")
-	wrapper := f.WriteFile("kustomize", `#!/bin/sh
+	var wrapper string
+	if runtime.GOOS == "windows" {
+		wrapper = f.WriteFile("kustomize.bat", `@echo off
+echo %* > `+sentinel+`
+kustomize.exe %*
+`)
+	} else {
+		wrapper = f.WriteFile("kustomize", `#!/bin/sh
 echo "$@" > `+sentinel+`
 exec kustomize "$@"
 `)
-	_ = os.Chmod(wrapper, 0755)
+		_ = os.Chmod(wrapper, 0755)
+	}
 
 	f.file("Tiltfile", `
 k8s_yaml(kustomize(".", kustomize_bin="`+wrapper+`"))
