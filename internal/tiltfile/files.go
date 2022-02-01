@@ -125,8 +125,8 @@ func (s *tiltfileState) execLocalCmd(t *starlark.Thread, cmd model.Cmd, options 
 }
 
 func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var path starlark.Value
-	err := s.unpackArgs(fn.Name(), args, kwargs, "paths", &path)
+	var path, kustomizeBin starlark.Value
+	err := s.unpackArgs(fn.Name(), args, kwargs, "paths", &path, "kustomize_bin?", &kustomizeBin)
 	if err != nil {
 		return nil, err
 	}
@@ -134,6 +134,24 @@ func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin,
 	absKustomizePath, err := value.ValueToAbsPath(thread, path)
 	if err != nil {
 		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
+	}
+
+	kustomizeArgs := []string{"kustomize", "build"}
+
+	switch kustomizeBin.(type) {
+	case nil, starlark.NoneType:
+	default:
+		binStr, ok := value.AsString(kustomizeBin)
+		if !ok {
+			return nil, fmt.Errorf("Could not convert kustomize_bin to string")
+		}
+		kustomizeArgs[0] = binStr
+	}
+
+	_, err = exec.LookPath(kustomizeArgs[0])
+	if err != nil {
+		s.logger.Infof("Falling back to `kubectl kustomize` since `%s` was not found in PATH", kustomizeArgs[0])
+		kustomizeArgs = []string{"kubectl", "kustomize"}
 	}
 
 	// NOTE(nick): There's a bug in kustomize where it doesn't properly
@@ -144,14 +162,7 @@ func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin,
 		return nil, err
 	}
 
-	cmd := model.Cmd{Argv: []string{"kustomize", "build", relKustomizePath}, Dir: starkit.AbsWorkingDir(thread)}
-
-	_, err = exec.LookPath(cmd.Argv[0])
-	if err != nil {
-		s.logger.Infof("Falling back to `kubectl kustomize` since `%s` was not found in PATH", cmd.Argv[0])
-		cmd.Argv = []string{"kubectl", "kustomize", relKustomizePath}
-	}
-
+	cmd := model.Cmd{Argv: append(kustomizeArgs, relKustomizePath), Dir: starkit.AbsWorkingDir(thread)}
 	yaml, err := s.execLocalCmd(thread, cmd, execCommandOptions{
 		logOutput:  false,
 		logCommand: false,
