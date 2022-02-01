@@ -65,7 +65,8 @@ linters:
     - staticcheck
     - structcheck
     - misspell
-    - varcheck
+    - unconvert
+    - unused
 issues:
   exclude-rules:
     - linters:
@@ -77,3 +78,6 @@ issues:
     - path: _test\.go
       linters:
         - errcheck
+    - path: types.go
+      linters:
+        - unconvert

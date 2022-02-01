@@ -26,12 +26,12 @@ func (Environ) Delete(k starlark.Value) (v starlark.Value, found bool, err error
 		return starlark.None, false, nil
 	}
 
-	val, found := os.LookupEnv(string(str))
+	val, found := os.LookupEnv(str)
 	if !found {
 		return starlark.None, false, nil
 	}
 
-	os.Unsetenv(string(str))
+	os.Unsetenv(str)
 
 	return starlark.String(val), true, nil
 }
@@ -42,7 +42,7 @@ func (Environ) Get(k starlark.Value) (v starlark.Value, found bool, err error) {
 		return starlark.None, false, nil
 	}
 
-	val, found := os.LookupEnv(string(str))
+	val, found := os.LookupEnv(str)
 	return starlark.String(val), found, nil
 }
 
@@ -71,7 +71,7 @@ func (Environ) SetKey(k, v starlark.Value) error {
 		return fmt.Errorf("putenv() value must be a string, not %s", v.Type())
 	}
 
-	os.Setenv(string(kStr), string(vStr))
+	os.Setenv(kStr, vStr)
 	return nil
 }
 

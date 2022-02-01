@@ -280,6 +280,6 @@ func (b *buildkitPrinter) flushLogs(vl *vertexAndLogs) {
 	for vl.logsPrinted < len(vl.logs) {
 		l := vl.logs[vl.logsPrinted]
 		vl.logsPrinted++
-		vl.logger.Write(logger.InfoLvl, []byte(l.msg))
+		vl.logger.Write(logger.InfoLvl, l.msg)
 	}
 }

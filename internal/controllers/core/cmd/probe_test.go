@@ -55,7 +55,7 @@ func TestProbeFromSpecTCP(t *testing.T) {
 				} else {
 					assert.Equal(t, "localhost", manager.tcpHost)
 				}
-				assert.Equal(t, int(tc.port), int(manager.tcpPort))
+				assert.Equal(t, int(tc.port), manager.tcpPort)
 			}
 		})
 	}

@@ -6171,7 +6171,7 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 	}
 
 	m := f.loadResult.Manifests[0]
-	if m.Name != model.ManifestName(name) {
+	if m.Name != name {
 		f.t.Fatalf("expected next manifest to be '%s' but found '%s'", name, m.Name)
 	}
 

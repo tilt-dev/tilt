@@ -13,7 +13,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
-	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -53,7 +52,7 @@ func (c *dockerCmd) run(ctx context.Context, args []string) error {
 	if builder == types.BuilderBuildKit {
 		buildkitEnv = "DOCKER_BUILDKIT=1"
 	}
-	env := append([]string{buildkitEnv}, docker.Env(dockerEnv).AsEnviron()...)
+	env := append([]string{buildkitEnv}, dockerEnv.AsEnviron()...)
 	fmt.Fprintf(os.Stderr,
 		"Running Docker command as:\n%s docker %s\n---\n",
 		strings.Join(env, " "),

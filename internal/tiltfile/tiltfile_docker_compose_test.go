@@ -907,7 +907,7 @@ func (f *fixture) assertDcManifest(name model.ManifestName, opts ...interface{})
 	for _, opt := range opts {
 		switch opt := opt.(type) {
 		case dcServiceYAMLHelper:
-			assert.YAMLEq(f.t, opt.yaml, string(dcInfo.ServiceYAML), "docker compose YAML")
+			assert.YAMLEq(f.t, opt.yaml, dcInfo.ServiceYAML, "docker compose YAML")
 		case noImageHelper:
 			assert.Empty(f.t, m.ImageTargets, "Manifest should have had no ImageTargets")
 		case dockerComposeImageHelper:

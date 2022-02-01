@@ -636,7 +636,7 @@ func (s *TestingStore) Dispatch(action store.Action) {
 	case buildcontrols.BuildCompleteAction:
 		s.lastCompletedAction = &action
 	case store.LogAction:
-		_, _ = logger.Get(s.ctx).Writer(action.Level()).Write([]byte(action.Message()))
+		_, _ = logger.Get(s.ctx).Writer(action.Level()).Write(action.Message())
 	}
 }
 

@@ -1356,7 +1356,7 @@ func TestHudUpdated(t *testing.T) {
 	assert.Equal(t, 2, len(f.fakeHud().LastView.Resources))
 	assert.Equal(t, store.MainTiltfileManifestName, f.fakeHud().LastView.Resources[0].Name)
 	rv := f.fakeHud().LastView.Resources[1]
-	assert.Equal(t, manifest.Name, model.ManifestName(rv.Name))
+	assert.Equal(t, manifest.Name, rv.Name)
 	f.assertAllBuildsConsumed()
 }
 
@@ -1510,8 +1510,8 @@ func TestPodEventContainerStatusWithoutImage(t *testing.T) {
 
 	// If we have no image target to match container by image ref, we just take the first one
 	container := podState.Containers[0]
-	assert.Equal(t, "great-container-id", string(container.ID))
-	assert.Equal(t, "first-container", string(container.Name))
+	assert.Equal(t, "great-container-id", container.ID)
+	assert.Equal(t, "first-container", container.Name)
 	assert.Equal(t, []int32{8080}, store.AllPodContainerPorts(podState))
 
 	err := f.Stop()
@@ -4290,7 +4290,7 @@ func (f *testFixture) PollUntil(msg string, isDone func() bool) {
 func (f *testFixture) WaitUntilManifest(msg string, name model.ManifestName, isDone func(store.ManifestTarget) bool) {
 	f.t.Helper()
 	f.WaitUntil(msg, func(es store.EngineState) bool {
-		mt, ok := es.ManifestTargets[model.ManifestName(name)]
+		mt, ok := es.ManifestTargets[name]
 		if !ok {
 			return false
 		}

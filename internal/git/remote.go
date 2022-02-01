@@ -28,7 +28,7 @@ func gitOrigin(fromDir string) string {
 }
 
 func normalizeGitRemote(s string) string {
-	u, err := giturls.Parse(string(s))
+	u, err := giturls.Parse(s)
 	if err != nil {
 		return s
 	}
