@@ -732,7 +732,7 @@ func TestBuildControllerManualTriggerWithFileChangesSinceLastSuccessfulBuildButB
 
 	f.podEvent(basePB.Build())
 
-	f.b.nextBuildError = errors.New("build failure!")
+	f.SetNextBuildError(errors.New("build failure!"))
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
 	f.nextCallComplete()
 
@@ -1158,14 +1158,14 @@ func TestBuildControllerResourceDepTrumpsInitialBuild(t *testing.T) {
 		WithResourceDeps("foo").
 		Build()
 	manifests := []model.Manifest{foo, bar}
-	f.b.nextBuildError = errors.New("failure")
+	f.SetNextBuildError(errors.New("failure"))
 	f.Start(manifests)
 
 	call := f.nextCall()
 	require.Equal(t, "foo", call.local().Name.String())
 
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("foo", "main.go"))
-	f.b.nextBuildError = errors.New("failure")
+	f.SetNextBuildError(errors.New("failure"))
 	call = f.nextCall()
 	require.Equal(t, "foo", call.local().Name.String())
 
@@ -1178,7 +1178,7 @@ func TestBuildControllerResourceDepTrumpsInitialBuild(t *testing.T) {
 	require.Equal(t, "bar", call.local().Name.String())
 }
 
-// bar depends on foo, we build foo three times before marking it ready, and make sure bar waits
+// bar depends on foo. make sure bar waits on foo even as foo fails
 func TestBuildControllerResourceDepTrumpsPendingBuild(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
@@ -1192,7 +1192,7 @@ func TestBuildControllerResourceDepTrumpsPendingBuild(t *testing.T) {
 		Build()
 
 	manifests := []model.Manifest{bar, foo}
-	f.b.nextBuildError = errors.New("failure")
+	f.SetNextBuildError(errors.New("failure"))
 	f.Start(manifests)
 
 	// trigger a change for bar so that it would try to build if not for its resource dep
@@ -1201,12 +1201,7 @@ func TestBuildControllerResourceDepTrumpsPendingBuild(t *testing.T) {
 	call := f.nextCall()
 	require.Equal(t, "foo", call.local().Name.String())
 
-	f.b.nextBuildError = errors.New("failure")
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("foo", "main.go"))
-	call = f.nextCall()
-	require.Equal(t, "foo", call.local().Name.String())
-
-	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("foo", "main2.go"))
 	call = f.nextCall()
 	require.Equal(t, "foo", call.local().Name.String())
 

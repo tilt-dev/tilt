@@ -48,6 +48,11 @@ func k8sRuntimeTarget(mt *store.ManifestTarget) *session.Target {
 		Resources: []string{mt.Manifest.Name.String()},
 	}
 
+	if mt.State.DisableState == session.DisableStateDisabled {
+		target.State.Disabled = &session.TargetStateDisabled{}
+		return target
+	}
+
 	status := mt.RuntimeStatus()
 	pod := krs.MostRecentPod()
 	phase := v1.PodPhase(pod.Phase)
@@ -137,6 +142,11 @@ func localServeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *ses
 		Type:      session.TargetTypeServer,
 	}
 
+	if mt.State.DisableState == session.DisableStateDisabled {
+		target.State.Disabled = &session.TargetStateDisabled{}
+		return target
+	}
+
 	lrs := mt.State.LocalRuntimeState()
 	if runtimeErr := lrs.RuntimeStatusError(); runtimeErr != nil {
 		target.State.Terminated = &session.TargetStateTerminated{
@@ -173,6 +183,11 @@ func genericRuntimeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) 
 		Name:      fmt.Sprintf("%s:runtime", mt.Manifest.Name.String()),
 		Resources: []string{mt.Manifest.Name.String()},
 		Type:      session.TargetTypeServer,
+	}
+
+	if mt.State.DisableState == session.DisableStateDisabled {
+		target.State.Disabled = &session.TargetStateDisabled{}
+		return target
 	}
 
 	runtimeStatus := mt.RuntimeStatus()
@@ -225,6 +240,11 @@ func buildTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *session.
 		Name:      fmt.Sprintf("%s:update", mt.Manifest.Name.String()),
 		Resources: []string{mt.Manifest.Name.String()},
 		Type:      session.TargetTypeJob,
+	}
+
+	if mt.State.DisableState == session.DisableStateDisabled {
+		res.State.Disabled = &session.TargetStateDisabled{}
+		return res
 	}
 
 	isPending := mt.NextBuildReason() != model.BuildReasonNone

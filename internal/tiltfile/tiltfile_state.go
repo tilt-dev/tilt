@@ -307,12 +307,6 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 	}
 	manifests = append(manifests, localManifests...)
 
-	configSettings, _ := config.GetState(result)
-	manifests, err = configSettings.EnabledResources(tf, manifests)
-	if err != nil {
-		return nil, starkit.Model{}, err
-	}
-
 	if len(unresourced) > 0 {
 		mn := model.UnresourcedYAMLManifestName
 		r := &k8sResource{

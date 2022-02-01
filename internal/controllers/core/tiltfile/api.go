@@ -3,8 +3,10 @@ package tiltfile
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -47,6 +49,7 @@ type disableSourceMap map[model.ManifestName]*v1alpha1.DisableSource
 // LocalServer specs) should go here.
 func updateOwnedObjects(ctx context.Context, client ctrlclient.Client, nn types.NamespacedName,
 	tf *v1alpha1.Tiltfile, tlr *tiltfile.TiltfileLoadResult,
+	changeEnabledResources bool,
 	mode store.EngineMode,
 	registry container.Registry,
 	defaultK8sConnection *v1alpha1.KubernetesClusterConnection) error {
@@ -100,6 +103,17 @@ func updateOwnedObjects(ctx context.Context, client ctrlclient.Client, nn types.
 			return err
 		}
 		break
+	}
+
+	if !changeEnabledResources {
+		// if we're not changing enabled resources, use existing values for disable configmaps
+		newConfigMaps := apiObjects.GetSetForType(&v1alpha1.ConfigMap{})
+		oldConfigMaps := existingObjects.GetSetForType(&v1alpha1.ConfigMap{})
+		for _, ds := range disableSources {
+			if old, ok := oldConfigMaps[ds.ConfigMap.Name]; ok {
+				newConfigMaps[ds.ConfigMap.Name] = old
+			}
+		}
 	}
 
 	err = updateNewObjects(ctx, client, apiObjects, existingObjects)
@@ -225,7 +239,7 @@ func toAPIObjects(
 		}
 
 		cmMap := result.GetOrCreateTypedSet(&v1alpha1.ConfigMap{})
-		for k, obj := range toDisableConfigMaps(disableSources) {
+		for k, obj := range toDisableConfigMaps(disableSources, tlr.EnabledManifests) {
 			cmMap[k] = obj
 		}
 
@@ -286,14 +300,19 @@ func toDisableSources(tlr *tiltfile.TiltfileLoadResult) disableSourceMap {
 	return result
 }
 
-func toDisableConfigMaps(disableSources disableSourceMap) apiset.TypedObjectSet {
+func toDisableConfigMaps(disableSources disableSourceMap, enabledResources []model.ManifestName) apiset.TypedObjectSet {
+	enabledResourceSet := make(map[model.ManifestName]bool)
+	for _, mn := range enabledResources {
+		enabledResourceSet[mn] = true
+	}
 	result := apiset.TypedObjectSet{}
-	for _, ds := range disableSources {
+	for mn, ds := range disableSources {
+		isDisabled := !enabledResourceSet[mn]
 		cm := &v1alpha1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: ds.ConfigMap.Name,
 			},
-			Data: map[string]string{ds.ConfigMap.Key: "false"},
+			Data: map[string]string{ds.ConfigMap.Key: strconv.FormatBool(isDisabled)},
 		}
 		result[cm.Name] = cm
 	}
@@ -589,6 +608,7 @@ func toUIResourceObjects(tf *v1alpha1.Tiltfile, tlr *tiltfile.TiltfileLoadResult
 
 			ds := disableSources[m.Name]
 			if ds != nil {
+				r.Status.DisableStatus.State = v1alpha1.DisableStatePending
 				r.Status.DisableStatus.Sources = []v1alpha1.DisableSource{*ds}
 			}
 
@@ -609,6 +629,26 @@ func toUIResourceObjects(tf *v1alpha1.Tiltfile, tlr *tiltfile.TiltfileLoadResult
 	}
 
 	return result
+}
+
+func needsUpdate(old, obj apiset.Object) bool {
+	// Are there other fields here we should check?
+	specChanged := !apicmp.DeepEqual(old.GetSpec(), obj.GetSpec())
+	labelsChanged := !apicmp.DeepEqual(old.GetLabels(), obj.GetLabels())
+	annsChanged := !apicmp.DeepEqual(old.GetAnnotations(), obj.GetAnnotations())
+	if specChanged || labelsChanged || annsChanged {
+		return true
+	}
+
+	// if this section ends up with more type-specific checks, we should probably move this
+	// to be a method on apiset.Object
+	if cm, ok := obj.(*v1alpha1.ConfigMap); ok {
+		if !cmp.Equal(cm.Data, old.(*v1alpha1.ConfigMap).Data) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // Reconcile the new API objects against the existing API objects.
@@ -633,21 +673,8 @@ func updateNewObjects(ctx context.Context, client ctrlclient.Client, newObjects,
 				continue
 			}
 
-			// Are there other fields here we should check?
-			specChanged := !apicmp.DeepEqual(old.GetSpec(), obj.GetSpec())
-			labelsChanged := !apicmp.DeepEqual(old.GetLabels(), obj.GetLabels())
-			annsChanged := !apicmp.DeepEqual(old.GetAnnotations(), obj.GetAnnotations())
-			if specChanged || labelsChanged || annsChanged {
+			if needsUpdate(old, obj) {
 				obj.SetResourceVersion(old.GetResourceVersion())
-				if cm, ok := obj.(*v1alpha1.ConfigMap); ok {
-					// Tiltfiles can create ConfigMaps with default values, but
-					// they shouldn't blow away values that were modified elsewhere.
-					// At some point, we might have a use case that contradicts this and
-					// need to make this more complicated.
-					for k, v := range old.(*v1alpha1.ConfigMap).Data {
-						cm.Data[k] = v
-					}
-				}
 				err := client.Update(ctx, obj)
 				if err != nil {
 					errs = append(errs, fmt.Errorf("update %s/%s: %v", obj.GetGroupVersionResource().Resource, obj.GetName(), err))

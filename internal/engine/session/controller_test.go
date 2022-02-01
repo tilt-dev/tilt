@@ -13,6 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -59,13 +61,10 @@ func TestExitControlCI_FirstBuildFailure(t *testing.T) {
 	f := newFixture(t, store.EngineModeCI)
 	defer f.TearDown()
 
-	f.store.WithState(func(state *store.EngineState) {
-		m := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
-		state.UpsertManifestTarget(store.NewManifestTarget(m))
-
-		m2 := manifestbuilder.New(f, "fe2").WithK8sYAML(testyaml.SanchoYAML).Build()
-		state.UpsertManifestTarget(store.NewManifestTarget(m2))
-	})
+	m := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
+	f.upsertManifest(m)
+	m2 := manifestbuilder.New(f, "fe2").WithK8sYAML(testyaml.SanchoYAML).Build()
+	f.upsertManifest(m2)
 
 	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	f.store.requireNoExitSignal()
@@ -86,13 +85,11 @@ func TestExitControlCI_FirstRuntimeFailure(t *testing.T) {
 	f := newFixture(t, store.EngineModeCI)
 	defer f.TearDown()
 
+	m := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
+	f.upsertManifest(m)
+	m2 := manifestbuilder.New(f, "fe2").WithK8sYAML(testyaml.SanchoYAML).Build()
+	f.upsertManifest(m2)
 	f.store.WithState(func(state *store.EngineState) {
-		m := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
-		state.UpsertManifestTarget(store.NewManifestTarget(m))
-
-		m2 := manifestbuilder.New(f, "fe2").WithK8sYAML(testyaml.SanchoYAML).Build()
-		state.UpsertManifestTarget(store.NewManifestTarget(m2))
-
 		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
 			StartTime:  time.Now(),
 			FinishTime: time.Now(),
@@ -135,10 +132,9 @@ func TestExitControlCI_PodRunningContainerError(t *testing.T) {
 	f := newFixture(t, store.EngineModeCI)
 	defer f.TearDown()
 
+	m := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
+	f.upsertManifest(m)
 	f.store.WithState(func(state *store.EngineState) {
-		m := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
-		state.UpsertManifestTarget(store.NewManifestTarget(m))
-
 		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
 			StartTime:  time.Now(),
 			FinishTime: time.Now(),
@@ -203,19 +199,19 @@ func TestExitControlCI_Success(t *testing.T) {
 	f := newFixture(t, store.EngineModeCI)
 	defer f.TearDown()
 
+	m := manifestbuilder.New(f, "fe").
+		WithK8sYAML(testyaml.SanchoYAML).
+		WithK8sPodReadiness(model.PodReadinessWait).
+		Build()
+	f.upsertManifest(m)
+
+	m2 := manifestbuilder.New(f, "fe2").
+		WithK8sYAML(testyaml.SanchoYAML).
+		WithK8sPodReadiness(model.PodReadinessWait).
+		Build()
+	f.upsertManifest(m2)
+
 	f.store.WithState(func(state *store.EngineState) {
-		m := manifestbuilder.New(f, "fe").
-			WithK8sYAML(testyaml.SanchoYAML).
-			WithK8sPodReadiness(model.PodReadinessWait).
-			Build()
-		state.UpsertManifestTarget(store.NewManifestTarget(m))
-
-		m2 := manifestbuilder.New(f, "fe2").
-			WithK8sYAML(testyaml.SanchoYAML).
-			WithK8sPodReadiness(model.PodReadinessWait).
-			Build()
-		state.UpsertManifestTarget(store.NewManifestTarget(m2))
-
 		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
 			StartTime:  time.Now(),
 			FinishTime: time.Now(),
@@ -245,13 +241,12 @@ func TestExitControlCI_PodReadinessMode_Wait(t *testing.T) {
 	f := newFixture(t, store.EngineModeCI)
 	defer f.TearDown()
 
+	m := manifestbuilder.New(f, "fe").
+		WithK8sYAML(testyaml.SanchoYAML).
+		WithK8sPodReadiness(model.PodReadinessWait).
+		Build()
+	f.upsertManifest(m)
 	f.store.WithState(func(state *store.EngineState) {
-		m := manifestbuilder.New(f, "fe").
-			WithK8sYAML(testyaml.SanchoYAML).
-			WithK8sPodReadiness(model.PodReadinessWait).
-			Build()
-		state.UpsertManifestTarget(store.NewManifestTarget(m))
-
 		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
 			StartTime:  time.Now(),
 			FinishTime: time.Now(),
@@ -280,13 +275,12 @@ func TestExitControlCI_PodReadinessMode_Ignore_Pods(t *testing.T) {
 	f := newFixture(t, store.EngineModeCI)
 	defer f.TearDown()
 
+	m := manifestbuilder.New(f, "fe").
+		WithK8sYAML(testyaml.SecretYaml).
+		WithK8sPodReadiness(model.PodReadinessIgnore).
+		Build()
+	f.upsertManifest(m)
 	f.store.WithState(func(state *store.EngineState) {
-		m := manifestbuilder.New(f, "fe").
-			WithK8sYAML(testyaml.SecretYaml).
-			WithK8sPodReadiness(model.PodReadinessIgnore).
-			Build()
-		state.UpsertManifestTarget(store.NewManifestTarget(m))
-
 		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
 			StartTime:  time.Now(),
 			FinishTime: time.Now(),
@@ -315,13 +309,12 @@ func TestExitControlCI_PodReadinessMode_Ignore_NoPods(t *testing.T) {
 	f := newFixture(t, store.EngineModeCI)
 	defer f.TearDown()
 
+	m := manifestbuilder.New(f, "fe").
+		WithK8sYAML(testyaml.SecretYaml).
+		WithK8sPodReadiness(model.PodReadinessIgnore).
+		Build()
+	f.upsertManifest(m)
 	f.store.WithState(func(state *store.EngineState) {
-		m := manifestbuilder.New(f, "fe").
-			WithK8sYAML(testyaml.SecretYaml).
-			WithK8sPodReadiness(model.PodReadinessIgnore).
-			Build()
-		state.UpsertManifestTarget(store.NewManifestTarget(m))
-
 		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
 			StartTime:  time.Now(),
 			FinishTime: time.Now(),
@@ -349,13 +342,12 @@ func TestExitControlCI_JobSuccess(t *testing.T) {
 	f := newFixture(t, store.EngineModeCI)
 	defer f.TearDown()
 
+	m := manifestbuilder.New(f, "fe").
+		WithK8sYAML(testyaml.JobYAML).
+		WithK8sPodReadiness(model.PodReadinessSucceeded).
+		Build()
+	f.upsertManifest(m)
 	f.store.WithState(func(state *store.EngineState) {
-		m := manifestbuilder.New(f, "fe").
-			WithK8sYAML(testyaml.JobYAML).
-			WithK8sPodReadiness(model.PodReadinessSucceeded).
-			Build()
-		state.UpsertManifestTarget(store.NewManifestTarget(m))
-
 		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
 			StartTime:  time.Now(),
 			FinishTime: time.Now(),
@@ -401,18 +393,15 @@ func TestExitControlCI_TriggerMode_Local(t *testing.T) {
 			f := newFixture(t, store.EngineModeCI)
 			defer f.TearDown()
 
-			f.store.WithState(func(state *store.EngineState) {
-				mb := manifestbuilder.New(f, "fe").
-					WithLocalResource("echo hi", nil).
-					WithTriggerMode(tc.triggerMode)
+			mb := manifestbuilder.New(f, "fe").
+				WithLocalResource("echo hi", nil).
+				WithTriggerMode(tc.triggerMode)
 
-				if tc.serveCmd {
-					mb = mb.WithLocalServeCmd("while true; echo hi; done")
-				}
+			if tc.serveCmd {
+				mb = mb.WithLocalServeCmd("while true; echo hi; done")
+			}
 
-				manifest := mb.Build()
-				state.UpsertManifestTarget(store.NewManifestTarget(manifest))
-			})
+			f.upsertManifest(mb.Build())
 
 			if tc.triggerMode.AutoInitial() {
 				// because this resource SHOULD start automatically, no exit signal should be received before
@@ -466,13 +455,11 @@ func TestExitControlCI_TriggerMode_K8s(t *testing.T) {
 			f := newFixture(t, store.EngineModeCI)
 			defer f.TearDown()
 
-			f.store.WithState(func(state *store.EngineState) {
-				manifest := manifestbuilder.New(f, "fe").
-					WithK8sYAML(testyaml.JobYAML).
-					WithTriggerMode(triggerMode).
-					Build()
-				state.UpsertManifestTarget(store.NewManifestTarget(manifest))
-			})
+			manifest := manifestbuilder.New(f, "fe").
+				WithK8sYAML(testyaml.JobYAML).
+				WithTriggerMode(triggerMode).
+				Build()
+			f.upsertManifest(manifest)
 
 			if triggerMode.AutoInitial() {
 				// because this resource SHOULD start automatically, no exit signal should be received until it's ready
@@ -497,11 +484,77 @@ func TestExitControlCI_TriggerMode_K8s(t *testing.T) {
 	}
 }
 
+func TestExitControlCI_Disabled(t *testing.T) {
+	f := newFixture(t, store.EngineModeCI)
+	defer f.TearDown()
+
+	f.store.WithState(func(state *store.EngineState) {
+		m1 := manifestbuilder.New(f, "m1").WithLocalServeCmd("m1").Build()
+		mt1 := store.NewManifestTarget(m1)
+		mt1.State.DisableState = v1alpha1.DisableStateDisabled
+		state.UpsertManifestTarget(mt1)
+
+		m2 := manifestbuilder.New(f, "m2").WithLocalResource("m2", nil).Build()
+		mt2 := store.NewManifestTarget(m2)
+		mt2.State.AddCompletedBuild(model.BuildRecord{
+			StartTime:  time.Now(),
+			FinishTime: time.Now(),
+		})
+		mt2.State.DisableState = v1alpha1.DisableStateEnabled
+		state.UpsertManifestTarget(mt2)
+	})
+
+	// the manifest is disabled, so we should be ready to exit
+	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.store.requireExitSignalWithNoError()
+}
+
+func TestStatusDisabled(t *testing.T) {
+	f := newFixture(t, store.EngineModeCI)
+	defer f.TearDown()
+
+	f.store.WithState(func(state *store.EngineState) {
+		m1 := manifestbuilder.New(f, "local_update").WithLocalResource("a", nil).Build()
+		m2 := manifestbuilder.New(f, "local_serve").WithLocalServeCmd("a").Build()
+		m3 := manifestbuilder.New(f, "k8s").WithK8sYAML(testyaml.JobYAML).Build()
+		m4 := manifestbuilder.New(f, "dc").WithDockerCompose().Build()
+		for _, m := range []model.Manifest{m1, m2, m3, m4} {
+			mt := store.NewManifestTarget(m)
+			mt.State.DisableState = v1alpha1.DisableStateDisabled
+			state.UpsertManifestTarget(mt)
+		}
+	})
+
+	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	status := f.sessionStatus()
+	targetbyName := make(map[string]v1alpha1.Target)
+	for _, target := range status.Targets {
+		targetbyName[target.Name] = target
+	}
+
+	expectedTargets := []string{
+		"dc:runtime",
+		"dc:update",
+		"k8s:runtime",
+		"k8s:update",
+		"local_update:update",
+		"local_serve:serve",
+	}
+	// + 1 for Tiltfile
+	require.Len(t, targetbyName, len(expectedTargets)+1)
+	for _, name := range expectedTargets {
+		target, ok := targetbyName[name]
+		require.Truef(t, ok, "no target named %q", name)
+		require.NotNil(t, target.State.Disabled)
+	}
+}
+
 type fixture struct {
 	*tempdir.TempDirFixture
 	ctx   context.Context
 	store *testStore
 	c     *Controller
+	cli   ctrlclient.Client
 }
 
 func newFixture(t *testing.T, engineMode store.EngineMode) *fixture {
@@ -534,7 +587,23 @@ func newFixture(t *testing.T, engineMode store.EngineMode) *fixture {
 		ctx:            ctx,
 		store:          st,
 		c:              c,
+		cli:            cli,
 	}
+}
+
+func (f *fixture) upsertManifest(m model.Manifest) {
+	f.store.WithState(func(state *store.EngineState) {
+		mt := store.NewManifestTarget(m)
+		mt.State.DisableState = v1alpha1.DisableStateEnabled
+		state.UpsertManifestTarget(mt)
+	})
+}
+
+func (f *fixture) sessionStatus() v1alpha1.SessionStatus {
+	var session v1alpha1.Session
+	err := f.cli.Get(f.ctx, types.NamespacedName{Name: "Tiltfile"}, &session)
+	require.NoError(f.T(), err)
+	return session.Status
 }
 
 type testStore struct {

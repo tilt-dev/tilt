@@ -2,9 +2,7 @@ package configs
 
 import (
 	"context"
-	"fmt"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -28,23 +26,23 @@ func (s *TriggerQueueSubscriber) fromState(st store.RStore) *v1alpha1.ConfigMap 
 	state := st.RLockState()
 	defer st.RUnlockState()
 
-	cm := &v1alpha1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: configmap.TriggerQueueName,
-		},
-		Data: make(map[string]string, len(state.TriggerQueue)),
-	}
+	var entries []configmap.TriggerQueueEntry
+	for _, mn := range state.TriggerQueue {
+		entry := configmap.TriggerQueueEntry{
+			Name: mn,
+		}
 
-	for i, v := range state.TriggerQueue {
-		cm.Data[fmt.Sprintf("%d-name", i)] = v.String()
-
-		ms, ok := state.ManifestState(v)
+		ms, ok := state.ManifestState(mn)
 		if !ok {
 			continue
 		}
-		cm.Data[fmt.Sprintf("%d-reason-code", i)] = fmt.Sprintf("%d", ms.TriggerReason)
+		entry.Reason = ms.TriggerReason
+
+		entries = append(entries, entry)
 	}
-	return cm
+
+	result := configmap.TriggerQueueCreate(entries)
+	return &result
 }
 
 func (s *TriggerQueueSubscriber) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) error {

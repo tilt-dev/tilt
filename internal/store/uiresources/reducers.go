@@ -15,13 +15,13 @@ func HandleUIResourceUpsertAction(state *store.EngineState, action UIResourceUps
 	old := state.UIResources[n]
 	uir := action.UIResource
 	if old != nil {
-		oldCount := old.Status.DisableStatus.DisabledCount
-		newCount := uir.Status.DisableStatus.DisabledCount
+		os := old.Status.DisableStatus.State
+		ns := uir.Status.DisableStatus.State
 
 		verb := ""
-		if oldCount == 0 && newCount > 0 {
+		if os == v1alpha1.DisableStateEnabled && ns == v1alpha1.DisableStateDisabled {
 			verb = "disabled"
-		} else if oldCount > 0 && newCount == 0 {
+		} else if os == v1alpha1.DisableStateDisabled && ns == v1alpha1.DisableStateEnabled {
 			verb = "enabled"
 		}
 

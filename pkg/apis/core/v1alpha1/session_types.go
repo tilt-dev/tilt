@@ -191,7 +191,7 @@ const (
 
 // TargetState describes the current execution status for a target.
 //
-// Either EXACTLY one of Waiting, Active, or Terminated will be populated or NONE of them will be.
+// Either EXACTLY one of Waiting, Active, Disabled, or Terminated will be populated or NONE of them will be.
 // In the event that all states are null, the target is currently inactive or disabled and should not
 // be expected to execute.
 type TargetState struct {
@@ -207,6 +207,11 @@ type TargetState struct {
 	//
 	// +optional
 	Terminated *TargetStateTerminated `json:"terminated,omitempty" protobuf:"bytes,3,opt,name=terminated"`
+
+	// Disabled being non-nil indicates that the target is disabled.
+	//
+	// +optional
+	Disabled *TargetStateDisabled `json:"disabled,omitempty" protobuf:"bytes,4,opt,name=disabled"`
 }
 
 // TargetStateWaiting is a target that has been enqueued for execution but has not yet started.
@@ -241,6 +246,10 @@ type TargetStateTerminated struct {
 	//
 	// +optional
 	Error string `json:"error,omitempty" protobuf:"bytes,3,opt,name=error"`
+}
+
+// TargetStateDisabled is a target that has been disabled.
+type TargetStateDisabled struct {
 }
 
 // Session implements ObjectWithStatusSubResource interface.

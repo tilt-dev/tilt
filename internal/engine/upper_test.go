@@ -29,7 +29,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	controllerruntime "sigs.k8s.io/controller-runtime"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
@@ -721,6 +720,32 @@ func TestFirstBuildFails_CI(t *testing.T) {
 	f.withState(func(es store.EngineState) {
 		assert.True(t, es.ExitSignal)
 	})
+}
+
+func TestCIIgnoresDisabledResources(t *testing.T) {
+	f := newTestFixture(t, fixtureOptions{engineMode: &store.EngineModeCI})
+	defer f.TearDown()
+
+	m1 := f.newManifest("m1")
+	pb := f.registerForDeployer(m1)
+	m2 := f.newManifest("m2")
+	f.setManifests([]model.Manifest{m1, m2})
+	f.tfl.Result.EnabledManifests = []model.ManifestName{m1.Name}
+
+	storeErr := make(chan error, 1)
+	go func() {
+		storeErr <- f.upper.Init(f.ctx, InitAction{
+			TiltfilePath: f.JoinPath("Tiltfile"),
+			StartTime:    f.Now(),
+		})
+	}()
+
+	call := f.nextCallComplete()
+	close(f.b.calls)
+	assert.Equal(t, "m1", call.k8s().ID().Name.String())
+
+	f.startPod(pb.WithPhase(string(v1.PodRunning)).Build(), m1.Name)
+	require.NoError(t, <-storeErr)
 }
 
 func TestRebuildWithChangedFiles(t *testing.T) {
@@ -2951,7 +2976,7 @@ func TestBuildErrorLoggedOnceByUpper(t *testing.T) {
 
 	manifest := f.newManifest("alert-injester")
 	err := errors.New("cats and dogs, living together")
-	f.b.nextBuildError = err
+	f.SetNextBuildError(err)
 
 	f.Start([]model.Manifest{manifest})
 
@@ -3187,7 +3212,7 @@ func TestHasEverBeenReadyLocal(t *testing.T) {
 	defer f.TearDown()
 
 	m := manifestbuilder.New(f, "foobar").WithLocalResource("foo", []string{f.Path()}).Build()
-	f.b.nextBuildError = errors.New("failure!")
+	f.SetNextBuildError(errors.New("failure!"))
 	f.Start([]model.Manifest{m})
 
 	// first build will fail, HasEverBeenReadyOrSucceeded should be false
@@ -3297,7 +3322,7 @@ print('foo=', cfg['foo'])`)
 		spanID := state.MainTiltfileState().LastBuild().SpanID
 		require.Contains(t, state.LogStore.SpanLog(spanID), `foo= ["bar"]`)
 	})
-	err := tiltfiles.SetTiltfileArgs(f.ctx, f.store, f.ctrlClient, []string{"--foo", "baz", "--foo", "quu"})
+	err := tiltfiles.SetTiltfileArgs(f.ctx, f.ctrlClient, []string{"--foo", "baz", "--foo", "quu"})
 	require.NoError(t, err)
 
 	f.WaitUntil("second tiltfile build finishes", func(state store.EngineState) bool {
@@ -3690,34 +3715,20 @@ func TestCmdServerDoesntStartWhenDisabled(t *testing.T) {
 
 	f.loadAndStart()
 
-	var tf v1alpha1.Tiltfile
-	err := f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: string(model.MainTiltfileManifestName)}, &tf)
-	require.NoError(t, err)
-	cm := v1alpha1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo-disable"},
-		Data:       map[string]string{"isDisabled": "true"},
-	}
-	err = controllerruntime.SetControllerReference(&tf, &cm, f.ctrlClient.Scheme())
-	require.NoError(t, err)
-	err = f.ctrlClient.Create(f.ctx, &cm)
-	require.NoError(t, err)
-
-	require.Eventually(t, func() bool {
-		var cm v1alpha1.ConfigMap
-		err := f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: "foo-disable"}, &cm)
-		return err == nil && cm.Data["isDisabled"] == "true"
-	}, time.Second, time.Millisecond)
-
 	f.WriteFile("Tiltfile", `print('tiltfile 1')
-local_resource('foo', serve_cmd='echo hi; sleep 10')`)
+local_resource('foo', serve_cmd='echo hi; sleep 10')
+local_resource('bar', 'true')
+config.set_enabled_resources(['bar'])
+`)
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("Tiltfile"))
 
+	// make sure we got to the point where we recognized the server is disabled without actually
+	// running the command
 	f.WaitUntil("disabled", func(state store.EngineState) bool {
 		ds := f.localServerController.Get("foo").Status.DisableStatus
 		return ds != nil && ds.Disabled
 	})
-	// make sure we got to the point where we recognized the server is disabled without actually
-	// running the command
+
 	require.Equal(t, f.log.String(), "")
 }
 
@@ -4040,6 +4051,7 @@ func (f *testFixture) useRealTiltfileLoader() {
 
 func (f *testFixture) setManifests(manifests []model.Manifest) {
 	f.tfl.Result.Manifests = manifests
+	f.tfl.Result = f.tfl.Result.WithAllManifestsEnabled()
 }
 
 func (f *testFixture) setMaxParallelUpdates(n int) {

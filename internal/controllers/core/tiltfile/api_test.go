@@ -18,6 +18,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/feature"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/testutils/configmap"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/internal/tiltfile"
@@ -247,7 +248,7 @@ func TestDisableObjects(t *testing.T) {
 
 			var cm v1alpha1.ConfigMap
 			require.NoError(t, f.Get(types.NamespacedName{Name: feDisable.ConfigMap.Name}, &cm))
-			require.Equal(t, "false", cm.Data[feDisable.ConfigMap.Key])
+			require.Equal(t, "true", cm.Data[feDisable.ConfigMap.Key])
 
 			name := apis.SanitizeName(SanchoRef.String())
 			var im v1alpha1.ImageMap
@@ -307,16 +308,15 @@ func TestUpdateDisableSource(t *testing.T) {
 		&tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}})
 	assert.NoError(t, err)
 
-	var cm v1alpha1.ConfigMap
-	require.NoError(t, f.Get(types.NamespacedName{Name: "fe-disable"}, &cm))
-	cm.Data["isDisabled"] = "true"
-	require.NoError(t, f.c.Update(f.ctx, &cm))
+	err = configmap.UpsertDisableConfigMap(f.ctx, f.c, "fe-disable", "isDisabled", true)
+	require.NoError(t, err)
 
 	err = f.updateOwnedObjects(nn, tf,
 		&tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}})
 	assert.NoError(t, err)
 
-	require.NoError(t, f.Get(types.NamespacedName{Name: cm.Name}, &cm))
+	var cm v1alpha1.ConfigMap
+	require.NoError(t, f.Get(types.NamespacedName{Name: "fe-disable"}, &cm))
 	require.Equal(t, "true", cm.Data["isDisabled"])
 }
 
@@ -370,7 +370,7 @@ func newAPIFixture(t testing.TB) *apiFixture {
 }
 
 func (f *apiFixture) updateOwnedObjects(nn types.NamespacedName, tf *v1alpha1.Tiltfile, tlr *tiltfile.TiltfileLoadResult) error {
-	return updateOwnedObjects(f.ctx, f.c, nn, tf, tlr, store.EngineModeUp, container.Registry{}, &v1alpha1.KubernetesClusterConnection{})
+	return updateOwnedObjects(f.ctx, f.c, nn, tf, tlr, false, store.EngineModeUp, container.Registry{}, &v1alpha1.KubernetesClusterConnection{})
 }
 
 func (f *apiFixture) Get(nn types.NamespacedName, obj ctrlclient.Object) error {

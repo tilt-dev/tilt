@@ -45,25 +45,25 @@ func setEnabledResources(thread *starlark.Thread, fn *starlark.Builtin, args sta
 }
 
 // for the given args and list of full manifests, figure out which manifests the user actually selected
-func (s Settings) EnabledResources(tf *v1alpha1.Tiltfile, manifests []model.Manifest) ([]model.Manifest, error) {
+func (s Settings) EnabledResources(tf *v1alpha1.Tiltfile, manifests []model.Manifest) ([]model.ManifestName, error) {
+	// by default, nil = match all resources
+	var requestedManifests []model.ManifestName
+
 	// if the user called set_enabled_resources, that trumps everything
 	if s.enabledResources != nil {
-		return match(manifests, s.enabledResources)
-	}
+		requestedManifests = s.enabledResources
+	} else {
+		args := tf.Spec.Args
 
-	args := tf.Spec.Args
-
-	// if the user has not called config.parse and has specified args, use those to select which resources
-	if args != nil && !s.configParseCalled {
-		var mns []model.ManifestName
-		for _, arg := range args {
-			mns = append(mns, model.ManifestName(arg))
+		// if the user has not called config.parse and has specified args, use those to select which resources
+		if args != nil && !s.configParseCalled {
+			for _, arg := range args {
+				requestedManifests = append(requestedManifests, model.ManifestName(arg))
+			}
 		}
-		return match(manifests, mns)
 	}
 
-	// otherwise, they get all resources
-	return manifests, nil
+	return match(manifests, requestedManifests)
 }
 
 // add `manifestToAdd` and all of its transitive deps to `result`
@@ -78,9 +78,13 @@ func addManifestAndDeps(result map[model.ManifestName]bool, allManifestsByName m
 }
 
 // If the user requested only a subset of manifests, get just those manifests
-func match(manifests []model.Manifest, requestedManifests []model.ManifestName) ([]model.Manifest, error) {
+func match(manifests []model.Manifest, requestedManifests []model.ManifestName) ([]model.ManifestName, error) {
 	if len(requestedManifests) == 0 {
-		return manifests, nil
+		var result []model.ManifestName
+		for _, m := range manifests {
+			result = append(result, m.Name)
+		}
+		return result, nil
 	}
 
 	manifestsByName := make(map[model.ManifestName]model.Manifest)
@@ -100,10 +104,11 @@ func match(manifests []model.Manifest, requestedManifests []model.ManifestName) 
 		addManifestAndDeps(manifestsToRun, manifestsByName, m)
 	}
 
-	var result []model.Manifest
+	var result []model.ManifestName
 	for _, m := range manifests {
-		if manifestsToRun[m.Name] {
-			result = append(result, m)
+		// Default to including UnresourcedYAML ("Uncategorized") to match historical behavior.
+		if manifestsToRun[m.Name] || m.Name == model.UnresourcedYAMLManifestName {
+			result = append(result, m.Name)
 		}
 	}
 

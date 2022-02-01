@@ -18,6 +18,7 @@ type BuildEntry struct {
 	TiltfilePath          string
 	CheckpointAtExecStart logstore.Checkpoint
 	LoadCount             int
+	ArgsChanged           bool
 }
 
 func (be *BuildEntry) WithLogger(ctx context.Context, st store.RStore) context.Context {

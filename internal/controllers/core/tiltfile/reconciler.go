@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -17,8 +18,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	"github.com/pkg/errors"
-
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
@@ -26,6 +25,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/sliceutils"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/buildcontrols"
 	"github.com/tilt-dev/tilt/internal/store/tiltfiles"
@@ -113,7 +113,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		r.deleteExistingRun(nn)
 
 		// Delete owned objects
-		err := updateOwnedObjects(ctx, r.ctrlClient, nn, nil, nil, r.engineMode, container.Registry{}, r.defaultK8sConnection())
+		err := updateOwnedObjects(ctx, r.ctrlClient, nn, nil, nil, false, r.engineMode, container.Registry{}, r.defaultK8sConnection())
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -128,7 +128,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	run := r.runs[nn]
 	if run == nil {
 		// Initialize the UISession and filewatch if this has never been initialized before.
-		err := updateOwnedObjects(ctx, r.ctrlClient, nn, &tf, nil, r.engineMode, container.Registry{}, r.defaultK8sConnection())
+		err := updateOwnedObjects(ctx, r.ctrlClient, nn, &tf, nil, false, r.engineMode, container.Registry{}, r.defaultK8sConnection())
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -240,6 +240,7 @@ func (r *Reconciler) needsBuild(ctx context.Context, nn types.NamespacedName, tf
 		TiltfilePath:          tf.Spec.Path,
 		CheckpointAtExecStart: state.LogStore.Checkpoint(),
 		LoadCount:             r.loadCount,
+		ArgsChanged:           !sliceutils.StringSliceEquals(lastStartArgs, tf.Spec.Args),
 	}
 }
 
@@ -316,9 +317,15 @@ func (r *Reconciler) run(ctx context.Context, nn types.NamespacedName, tf *v1alp
 
 // After the tiltfile has been evaluated, create all the objects in the
 // apiserver.
-func (r *Reconciler) handleLoaded(ctx context.Context, nn types.NamespacedName, tf *v1alpha1.Tiltfile, entry *BuildEntry, tlr *tiltfile.TiltfileLoadResult) error {
+func (r *Reconciler) handleLoaded(
+	ctx context.Context,
+	nn types.NamespacedName,
+	tf *v1alpha1.Tiltfile,
+	entry *BuildEntry,
+	tlr *tiltfile.TiltfileLoadResult) error {
 	// TODO(nick): Rewrite to handle multiple tiltfiles.
-	err := updateOwnedObjects(ctx, r.ctrlClient, nn, tf, tlr, r.engineMode, DecideRegistry(ctx, r.k8sClient, tlr), r.defaultK8sConnection())
+	changeEnabledResources := entry.ArgsChanged && tlr != nil && tlr.Error == nil
+	err := updateOwnedObjects(ctx, r.ctrlClient, nn, tf, tlr, changeEnabledResources, r.engineMode, DecideRegistry(ctx, r.k8sClient, tlr), r.defaultK8sConnection())
 	if err != nil {
 		// If updating the API server fails, just return the error, so that the
 		// reconciler will retry.

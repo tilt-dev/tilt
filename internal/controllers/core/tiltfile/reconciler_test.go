@@ -6,24 +6,29 @@ import (
 	"fmt"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tilt-dev/wmclient/pkg/analytics"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/tilt-dev/tilt/internal/container"
+	configmap2 "github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/testutils/configmap"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/internal/tiltfile"
@@ -44,6 +49,7 @@ func TestDefault(t *testing.T) {
 			Path: p,
 		},
 	}
+	ts := time.Now()
 	f.Create(&tf)
 
 	// Make sure the FileWatch was created
@@ -52,17 +58,11 @@ func TestDefault(t *testing.T) {
 	f.MustGet(fwKey, &fw)
 	assert.Equal(t, tf.Spec.Path, fw.Spec.WatchedPaths[0])
 
-	assert.Eventually(t, func() bool {
-		f.MustGet(types.NamespacedName{Name: "my-tf"}, &tf)
-		return tf.Status.Running != nil
-	}, time.Second, time.Millisecond)
+	f.waitForRunning(tf.Name)
 
 	f.popQueue()
 
-	assert.Eventually(t, func() bool {
-		f.MustGet(types.NamespacedName{Name: "my-tf"}, &tf)
-		return tf.Status.Terminated != nil
-	}, time.Second, time.Millisecond)
+	f.waitForTerminatedAfter(tf.Name, ts)
 
 	f.Delete(&tf)
 
@@ -83,19 +83,7 @@ func TestSteadyState(t *testing.T) {
 			Path: p,
 		},
 	}
-	f.Create(&tf)
-
-	assert.Eventually(t, func() bool {
-		f.MustGet(types.NamespacedName{Name: "my-tf"}, &tf)
-		return tf.Status.Running != nil
-	}, time.Second, time.Millisecond)
-
-	f.popQueue()
-
-	assert.Eventually(t, func() bool {
-		f.MustGet(types.NamespacedName{Name: "my-tf"}, &tf)
-		return tf.Status.Terminated != nil
-	}, time.Second, time.Millisecond)
+	f.createAndWaitForLoaded(&tf)
 
 	// Make sure a second reconcile doesn't update the status again.
 	var tf2 = v1alpha1.Tiltfile{}
@@ -143,19 +131,7 @@ func TestLiveUpdate(t *testing.T) {
 			Path: p,
 		},
 	}
-	f.Create(&tf)
-
-	assert.Eventually(t, func() bool {
-		f.MustGet(types.NamespacedName{Name: "my-tf"}, &tf)
-		return tf.Status.Running != nil
-	}, time.Second, time.Millisecond)
-
-	f.popQueue()
-
-	assert.Eventually(t, func() bool {
-		f.MustGet(types.NamespacedName{Name: "my-tf"}, &tf)
-		return tf.Status.Terminated != nil
-	}, time.Second, time.Millisecond)
+	f.createAndWaitForLoaded(&tf)
 
 	assert.Equal(t, "", tf.Status.Terminated.Error)
 
@@ -188,7 +164,6 @@ func TestCluster(t *testing.T) {
 	}
 
 	name := model.MainTiltfileManifestName.String()
-	nn := types.NamespacedName{Name: name}
 	tf := v1alpha1.Tiltfile{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
@@ -197,19 +172,7 @@ func TestCluster(t *testing.T) {
 			Path: p,
 		},
 	}
-	f.Create(&tf)
-
-	assert.Eventually(t, func() bool {
-		f.MustGet(nn, &tf)
-		return tf.Status.Running != nil
-	}, time.Second, time.Millisecond)
-
-	f.popQueue()
-
-	assert.Eventually(t, func() bool {
-		f.MustGet(nn, &tf)
-		return tf.Status.Terminated != nil
-	}, time.Second, time.Millisecond)
+	f.createAndWaitForLoaded(&tf)
 
 	assert.Equal(t, "", tf.Status.Terminated.Error)
 
@@ -238,19 +201,7 @@ func TestLocalServe(t *testing.T) {
 			Path: p,
 		},
 	}
-	f.Create(&tf)
-
-	assert.Eventually(t, func() bool {
-		f.MustGet(types.NamespacedName{Name: "my-tf"}, &tf)
-		return tf.Status.Running != nil
-	}, time.Second, time.Millisecond)
-
-	f.popQueue()
-
-	assert.Eventually(t, func() bool {
-		f.MustGet(types.NamespacedName{Name: "my-tf"}, &tf)
-		return tf.Status.Terminated != nil
-	}, time.Second, time.Millisecond)
+	f.createAndWaitForLoaded(&tf)
 
 	assert.Equal(t, "", tf.Status.Terminated.Error)
 
@@ -288,13 +239,7 @@ func TestDockerMetrics(t *testing.T) {
 			Path: p,
 		},
 	}
-	f.Create(&tf)
-	f.popQueue()
-
-	assert.Eventually(t, func() bool {
-		f.MustGet(types.NamespacedName{Name: "my-tf"}, &tf)
-		return tf.Status.Terminated != nil
-	}, time.Second, time.Millisecond)
+	f.createAndWaitForLoaded(&tf)
 
 	connectEvt := analytics.CountEvent{
 		Name: "api.tiltfile.docker.connect",
@@ -306,6 +251,121 @@ func TestDockerMetrics(t *testing.T) {
 		N: 1,
 	}
 	assert.ElementsMatch(t, []analytics.CountEvent{connectEvt}, f.ma.Counts)
+}
+
+func TestArgsChangeResetsEnabledResources(t *testing.T) {
+	f := newFixture(t)
+	p := f.tempdir.JoinPath("Tiltfile")
+
+	m1 := manifestbuilder.New(f.tempdir, "m1").WithLocalServeCmd("hi").Build()
+	m2 := manifestbuilder.New(f.tempdir, "m2").WithLocalServeCmd("hi").Build()
+	f.tfl.Result = tiltfile.TiltfileLoadResult{
+		Manifests:        []model.Manifest{m1, m2},
+		EnabledManifests: []model.ManifestName{"m1", "m2"},
+	}
+
+	tf := v1alpha1.Tiltfile{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "my-tf",
+		},
+		Spec: v1alpha1.TiltfileSpec{
+			Path: p,
+			Args: []string{"m1", "m2"},
+		},
+	}
+	f.createAndWaitForLoaded(&tf)
+
+	ts := time.Now()
+
+	f.setArgs("my-tf", []string{"m2"})
+	f.tfl.Result.EnabledManifests = []model.ManifestName{"m2"}
+
+	f.MustReconcile(types.NamespacedName{Name: "my-tf"})
+	f.waitForRunning("my-tf")
+	f.popQueue()
+	f.waitForTerminatedAfter("my-tf", ts)
+
+	f.requireEnabled(m1, false)
+	f.requireEnabled(m2, true)
+}
+
+func TestRunWithoutArgsChangePreservesEnabledResources(t *testing.T) {
+	f := newFixture(t)
+	p := f.tempdir.JoinPath("Tiltfile")
+
+	m1 := manifestbuilder.New(f.tempdir, "m1").WithLocalServeCmd("hi").Build()
+	m2 := manifestbuilder.New(f.tempdir, "m2").WithLocalServeCmd("hi").Build()
+	f.tfl.Result = tiltfile.TiltfileLoadResult{
+		Manifests:        []model.Manifest{m1, m2},
+		EnabledManifests: []model.ManifestName{"m1", "m2"},
+	}
+
+	tf := v1alpha1.Tiltfile{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "my-tf",
+		},
+		Spec: v1alpha1.TiltfileSpec{
+			Path: p,
+			Args: []string{"m1"},
+		},
+	}
+	f.createAndWaitForLoaded(&tf)
+
+	err := configmap.UpsertDisableConfigMap(f.Context(), f.Client, "m2-disable", "isDisabled", false)
+	require.NoError(t, err)
+
+	f.setArgs("my-tf", tf.Spec.Args)
+
+	f.triggerRun("my-tf")
+
+	ts := time.Now()
+	f.MustReconcile(types.NamespacedName{Name: "my-tf"})
+	f.waitForRunning("my-tf")
+	f.popQueue()
+	f.waitForTerminatedAfter("my-tf", ts)
+
+	f.requireEnabled(m1, true)
+	f.requireEnabled(m2, true)
+}
+
+func TestTiltfileFailurePreservesEnabledResources(t *testing.T) {
+	f := newFixture(t)
+	p := f.tempdir.JoinPath("Tiltfile")
+
+	m1 := manifestbuilder.New(f.tempdir, "m1").WithLocalServeCmd("hi").Build()
+	m2 := manifestbuilder.New(f.tempdir, "m2").WithLocalServeCmd("hi").Build()
+	f.tfl.Result = tiltfile.TiltfileLoadResult{
+		Manifests:        []model.Manifest{m1, m2},
+		EnabledManifests: []model.ManifestName{"m1"},
+	}
+
+	tf := v1alpha1.Tiltfile{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "my-tf",
+		},
+		Spec: v1alpha1.TiltfileSpec{
+			Path: p,
+			Args: []string{"m1"},
+		},
+	}
+	f.createAndWaitForLoaded(&tf)
+
+	f.tfl.Result = tiltfile.TiltfileLoadResult{
+		Manifests:        []model.Manifest{m1, m2},
+		EnabledManifests: []model.ManifestName{},
+		Error:            errors.New("unknown manifest: m3"),
+	}
+
+	f.triggerRun("my-tf")
+
+	ts := time.Now()
+	f.MustReconcile(types.NamespacedName{Name: "my-tf"})
+	f.waitForRunning("my-tf")
+	f.popQueue()
+	f.waitForTerminatedAfter("my-tf", ts)
+
+	f.requireEnabled(m1, true)
+	f.requireEnabled(m2, false)
 }
 
 type testStore struct {
@@ -382,4 +442,60 @@ func (f *fixture) popQueue() {
 	case err := <-done:
 		assert.NoError(f.T(), err)
 	}
+}
+
+func (f *fixture) waitForTerminatedAfter(name string, ts time.Time) {
+	require.Eventually(f.T(), func() bool {
+		var tf v1alpha1.Tiltfile
+		f.MustGet(types.NamespacedName{Name: name}, &tf)
+		return tf.Status.Terminated != nil && tf.Status.Terminated.FinishedAt.After(ts)
+	}, time.Second, time.Millisecond, "waiting for tiltfile to finish running")
+}
+
+func (f *fixture) waitForRunning(name string) {
+	require.Eventually(f.T(), func() bool {
+		var tf v1alpha1.Tiltfile
+		f.MustGet(types.NamespacedName{Name: name}, &tf)
+		return tf.Status.Running != nil
+	}, time.Second, time.Millisecond, "waiting for tiltfile to start running")
+}
+
+func (f *fixture) createAndWaitForLoaded(tf *v1alpha1.Tiltfile) {
+	ts := time.Now()
+	f.Create(tf)
+
+	f.waitForRunning(tf.Name)
+
+	f.popQueue()
+
+	f.waitForTerminatedAfter(tf.Name, ts)
+
+	f.MustGet(types.NamespacedName{Name: tf.Name}, tf)
+}
+
+func (f *fixture) triggerRun(name string) {
+	queue := configmap2.TriggerQueueCreate([]configmap2.TriggerQueueEntry{{Name: model.ManifestName(name)}})
+	f.Create(&queue)
+}
+
+func (f *fixture) setArgs(name string, args []string) {
+	tf := v1alpha1.Tiltfile{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+	}
+	_, err := controllerutil.CreateOrUpdate(f.Context(), f.Client, &tf, func() error {
+		tf.Spec.Args = args
+		return nil
+	})
+	require.NoError(f.T(), err)
+}
+
+func (f *fixture) requireEnabled(m model.Manifest, isEnabled bool) {
+	var cm v1alpha1.ConfigMap
+	f.MustGet(types.NamespacedName{Name: disableConfigMapName(m)}, &cm)
+	isDisabled, err := strconv.ParseBool(cm.Data["isDisabled"])
+	require.NoError(f.T(), err)
+	actualIsEnabled := !isDisabled
+	require.Equal(f.T(), isEnabled, actualIsEnabled, "is %s enabled", m.Name)
 }

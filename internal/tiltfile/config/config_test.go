@@ -64,17 +64,7 @@ config.parse()`
 			actual, err := MustState(result).EnabledResources(f.Tiltfile(), manifests)
 			require.NoError(t, err)
 
-			expectedResourcesByName := make(map[model.ManifestName]bool)
-			for _, er := range tc.expectedResources {
-				expectedResourcesByName[er] = true
-			}
-			var expected []model.Manifest
-			for _, m := range manifests {
-				if expectedResourcesByName[m.Name] {
-					expected = append(expected, m)
-				}
-			}
-			require.Equal(t, expected, actual)
+			require.Equal(t, tc.expectedResources, actual)
 		})
 	}
 }
@@ -288,7 +278,7 @@ config.set_enabled_resources(config.parse()['resources'])
 	manifests := []model.Manifest{{Name: "foo"}, {Name: "bar"}, {Name: "baz"}}
 	actual, err := MustState(result).EnabledResources(f.Tiltfile(), manifests)
 	require.NoError(t, err)
-	require.Equal(t, manifests[:2], actual)
+	require.Equal(t, []model.ManifestName{"foo", "bar"}, actual)
 }
 
 func TestSettingsFromConfigAndArgs(t *testing.T) {

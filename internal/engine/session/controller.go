@@ -7,17 +7,15 @@ import (
 	"sort"
 	"time"
 
-	"github.com/tilt-dev/tilt/pkg/apis"
-	"github.com/tilt-dev/tilt/pkg/model"
-
-	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
-	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
+	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/apis"
 	session "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // Controller summarizes engine state of resources for the active Tilt session (i.e. invocation of up/ci).

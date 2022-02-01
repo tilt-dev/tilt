@@ -1240,12 +1240,30 @@ k8s_yaml('bar.yaml')
 `)
 
 	f.load("foo")
-	f.assertNumManifests(1)
-	f.assertNextManifest("foo",
-		db(image("gcr.io/foo")),
-		deployment("foo"))
+	require.Equal(t, []model.ManifestName{"foo"}, f.loadResult.EnabledManifests)
 
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "foo.yaml", "bar/Dockerfile", "bar/.dockerignore", "bar.yaml")
+}
+
+func TestUncategorizedEnabledEvenIfNotSpecified(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.setupFooAndBar()
+	f.yaml("service.yaml", service("some-service"))
+
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+
+docker_build('gcr.io/bar', 'bar')
+k8s_yaml('bar.yaml')
+
+k8s_yaml('service.yaml')
+`)
+
+	f.load("foo")
+	require.Equal(t, []model.ManifestName{"foo", "uncategorized"}, f.loadResult.EnabledManifests)
 }
 
 func TestLoadTypoManifest(t *testing.T) {
@@ -4895,10 +4913,7 @@ local_resource('e', 'echo e')
 				args = append(args, string(r))
 			}
 			f.load(args...)
-			f.assertNumManifests(len(tc.expected))
-			for _, e := range tc.expected {
-				f.assertNextManifest(e)
-			}
+			require.Equal(t, tc.expected, f.loadResult.EnabledManifests)
 		})
 	}
 }

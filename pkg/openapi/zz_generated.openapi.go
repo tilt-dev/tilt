@@ -152,6 +152,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Target":                          schema_pkg_apis_core_v1alpha1_Target(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetState":                     schema_pkg_apis_core_v1alpha1_TargetState(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetStateActive":               schema_pkg_apis_core_v1alpha1_TargetStateActive(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetStateDisabled":             schema_pkg_apis_core_v1alpha1_TargetStateDisabled(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetStateTerminated":           schema_pkg_apis_core_v1alpha1_TargetStateTerminated(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetStateWaiting":              schema_pkg_apis_core_v1alpha1_TargetStateWaiting(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltBuild":                       schema_pkg_apis_core_v1alpha1_TiltBuild(ref),
@@ -5617,7 +5618,7 @@ func schema_pkg_apis_core_v1alpha1_TargetState(ref common.ReferenceCallback) com
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "TargetState describes the current execution status for a target.\n\nEither EXACTLY one of Waiting, Active, or Terminated will be populated or NONE of them will be. In the event that all states are null, the target is currently inactive or disabled and should not be expected to execute.",
+				Description: "TargetState describes the current execution status for a target.\n\nEither EXACTLY one of Waiting, Active, Disabled, or Terminated will be populated or NONE of them will be. In the event that all states are null, the target is currently inactive or disabled and should not be expected to execute.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"waiting": {
@@ -5638,11 +5639,17 @@ func schema_pkg_apis_core_v1alpha1_TargetState(ref common.ReferenceCallback) com
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetStateTerminated"),
 						},
 					},
+					"disabled": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Disabled being non-nil indicates that the target is disabled.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetStateDisabled"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetStateActive", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetStateTerminated", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetStateWaiting"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetStateActive", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetStateDisabled", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetStateTerminated", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetStateWaiting"},
 	}
 }
 
@@ -5674,6 +5681,17 @@ func schema_pkg_apis_core_v1alpha1_TargetStateActive(ref common.ReferenceCallbac
 		},
 		Dependencies: []string{
 			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_TargetStateDisabled(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "TargetStateDisabled is a target that has been disabled.",
+				Type:        []string{"object"},
+			},
+		},
 	}
 }
 

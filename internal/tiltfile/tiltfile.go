@@ -43,6 +43,7 @@ const FileName = "Tiltfile"
 
 type TiltfileLoadResult struct {
 	Manifests           []model.Manifest
+	EnabledManifests    []model.ManifestName
 	Tiltignore          model.Dockerignore
 	ConfigFiles         []string
 	FeatureFlags        map[string]bool
@@ -71,6 +72,14 @@ func (r TiltfileLoadResult) Orchestrator() model.Orchestrator {
 		}
 	}
 	return model.OrchestratorUnknown
+}
+
+func (r TiltfileLoadResult) WithAllManifestsEnabled() TiltfileLoadResult {
+	r.EnabledManifests = nil
+	for _, m := range r.Manifests {
+		r.EnabledManifests = append(r.EnabledManifests, m.Name)
+	}
+	return r
 }
 
 type TiltfileLoader interface {
@@ -203,6 +212,14 @@ func (tfl tiltfileLoader) Load(ctx context.Context, tf *corev1alpha1.Tiltfile) T
 
 	us, _ := updatesettings.GetState(result)
 	tlr.UpdateSettings = us
+
+	configSettings, _ := config.GetState(result)
+	enabledManifests, err := configSettings.EnabledResources(tf, manifests)
+	if err != nil {
+		tlr.Error = err
+		return tlr
+	}
+	tlr.EnabledManifests = enabledManifests
 
 	duration := time.Since(start)
 	if tlr.Error == nil {
