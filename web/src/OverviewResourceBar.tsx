@@ -46,7 +46,11 @@ export default function OverviewResourceBar(props: OverviewResourceBarProps) {
 
   return (
     <OverviewResourceBarRoot>
-      <AllResourceStatusSummary resources={resources} />
+      <AllResourceStatusSummary
+        displayText="Resources"
+        labelText="Status summary for all resources"
+        resources={resources}
+      />
       <GlobalNav {...globalNavProps} />
     </OverviewResourceBarRoot>
   )

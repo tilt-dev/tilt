@@ -3,6 +3,7 @@ import { Link } from "react-router-dom"
 import styled from "styled-components"
 import { ReactComponent as CheckmarkSmallSvg } from "./assets/svg/checkmark-small.svg"
 import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
+import { ReactComponent as DisabledSvg } from "./assets/svg/not-allowed.svg"
 import { ReactComponent as PendingSvg } from "./assets/svg/pending.svg"
 import { ReactComponent as WarningSvg } from "./assets/svg/warning.svg"
 import { FilterLevel } from "./logfilters"
@@ -10,6 +11,7 @@ import { useLogStore } from "./LogStore"
 import { RowValues } from "./OverviewTableColumns"
 import { usePathBuilder } from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
+import SrOnly from "./SrOnly"
 import { buildStatus, combinedStatus, runtimeStatus } from "./status"
 import {
   Color,
@@ -20,25 +22,7 @@ import {
   spin,
 } from "./style-helpers"
 import Tooltip from "./Tooltip"
-import { ResourceName, ResourceStatus } from "./types"
-
-type UIResource = Proto.v1alpha1UIResource
-
-const ResourceGroupStatusRoot = styled.div`
-  display: flex;
-  font-family: ${Font.sansSerif};
-  font-size: ${FontSize.smallest};
-  align-items: center;
-  color: ${Color.grayLightest};
-
-  .fillStd {
-    fill: ${Color.grayLighter};
-  }
-
-  & + & {
-    margin-left: ${SizeUnit(1.5)};
-  }
-`
+import { ResourceName, ResourceStatus, UIResource } from "./types"
 
 const ResourceGroupStatusLabel = styled.p`
   text-transform: uppercase;
@@ -48,7 +32,7 @@ const ResourceGroupStatusSummaryList = styled.ul`
   display: flex;
   ${mixinResetListStyle}
 `
-const ResourceGroupStatusSummaryItemRoot = styled.div`
+const ResourceGroupStatusSummaryItemRoot = styled.li`
   display: flex;
   align-items: center;
 
@@ -83,16 +67,34 @@ const ResourceGroupStatusSummaryItemRoot = styled.div`
     }
   }
 `
-export const ResourceGroupStatusSummaryItemCount = styled.div`
+export const ResourceGroupStatusSummaryItemCount = styled.span`
   font-weight: bold;
   padding-left: 4px;
   padding-right: 4px;
 `
-export const ResourceStatusSummaryRoot = styled.div`
+export const ResourceStatusSummaryRoot = styled.aside`
   display: flex;
+  font-family: ${Font.sansSerif};
+  font-size: ${FontSize.smallest};
+  align-items: center;
+  color: ${Color.grayLightest};
+
+  .fillStd {
+    fill: ${Color.grayLighter};
+  }
+
+  & + & {
+    margin-left: ${SizeUnit(1.5)};
+  }
 `
 export const PendingIcon = styled(PendingSvg)`
   animation: ${spin} 4s linear infinite;
+`
+
+const DisabledIcon = styled(DisabledSvg)`
+  .fillStd {
+    fill: ${Color.gray6};
+  }
 `
 
 type ResourceGroupStatusItemProps = {
@@ -120,16 +122,22 @@ export function ResourceGroupStatusItem(props: ResourceGroupStatusItemProps) {
     </>
   )
 
-  let inner = count
-  if (props.href) {
-    inner = <Link to={props.href}>{count}</Link>
-  }
+  const descriptiveCount = (
+    <>
+      {count} <SrOnly>&nbsp; {props.label}</SrOnly>
+    </>
+  )
+  const summaryContent = props.href ? (
+    <Link to={props.href}>{descriptiveCount}</Link>
+  ) : (
+    descriptiveCount
+  )
 
   return (
     <Tooltip title={props.label}>
       <ResourceGroupStatusSummaryItemRoot className={props.className}>
         {props.icon}
-        {inner}
+        {summaryContent}
       </ResourceGroupStatusSummaryItemRoot>
     </Tooltip>
   )
@@ -137,7 +145,8 @@ export function ResourceGroupStatusItem(props: ResourceGroupStatusItemProps) {
 
 type ResourceGroupStatusProps = {
   counts: StatusCounts
-  label: string
+  displayText?: string
+  labelText: string // Used for a11y markup, should be a descriptive title.
   healthyLabel: string
   unhealthyLabel: string
   warningLabel: string
@@ -145,7 +154,7 @@ type ResourceGroupStatusProps = {
 }
 
 export function ResourceGroupStatus(props: ResourceGroupStatusProps) {
-  if (props.counts.total === 0) {
+  if (props.counts.totalEnabled === 0 && props.counts.disabled === 0) {
     return null
   }
   let pb = usePathBuilder()
@@ -163,7 +172,7 @@ export function ResourceGroupStatus(props: ResourceGroupStatusProps) {
         count={props.counts.unhealthy}
         href={errorHref}
         className="is-highlightError"
-        icon={<CloseSvg width="11" key="icon" />}
+        icon={<CloseSvg role="presentation" width="11" key="icon" />}
       />
     )
   }
@@ -179,7 +188,7 @@ export function ResourceGroupStatus(props: ResourceGroupStatusProps) {
         count={props.counts.warning}
         href={warningHref}
         className="is-highlightWarning"
-        icon={<WarningSvg width="7" key="icon" />}
+        icon={<WarningSvg role="presentation" width="7" key="icon" />}
       />
     )
   }
@@ -191,64 +200,88 @@ export function ResourceGroupStatus(props: ResourceGroupStatusProps) {
         label="pending"
         count={props.counts.pending}
         className="is-highlightPending"
-        icon={<PendingIcon width="8" key="icon" />}
+        icon={<PendingIcon role="presentation" width="8" key="icon" />}
       />
     )
   }
 
-  // always show healthy count
-  items.push(
-    <ResourceGroupStatusItem
-      key={props.healthyLabel}
-      label={props.healthyLabel}
-      count={props.counts.healthy}
-      countOutOf={props.counts.total}
-      className="is-highlightHealthy"
-      icon={<CheckmarkSmallSvg key="icon" />}
-    />
-  )
+  // There might not always be enabled resources
+  // if all resources are disabled
+  if (props.counts.totalEnabled) {
+    items.push(
+      <ResourceGroupStatusItem
+        key={props.healthyLabel}
+        label={props.healthyLabel}
+        count={props.counts.healthy}
+        countOutOf={props.counts.totalEnabled}
+        className="is-highlightHealthy"
+        icon={<CheckmarkSmallSvg role="presentation" key="icon" />}
+      />
+    )
+  }
+
+  if (props.counts.disabled) {
+    items.push(
+      <ResourceGroupStatusItem
+        key="disabled"
+        label="disabled"
+        count={props.counts.disabled}
+        className="is-highlightDisabled"
+        icon={<DisabledIcon role="presentation" width="15" key="icon" />}
+      />
+    )
+  }
+
+  const displayLabel = props.displayText ? (
+    <ResourceGroupStatusLabel>{props.displayText}</ResourceGroupStatusLabel>
+  ) : null
 
   return (
-    <ResourceGroupStatusRoot>
-      <ResourceGroupStatusLabel>{props.label}</ResourceGroupStatusLabel>
+    <>
+      {displayLabel}
       <ResourceGroupStatusSummaryList>{items}</ResourceGroupStatusSummaryList>
-    </ResourceGroupStatusRoot>
+    </>
   )
 }
 
 export type StatusCounts = {
-  total: number
+  totalEnabled: number
   healthy: number
   unhealthy: number
   pending: number
   warning: number
+  disabled: number
 }
 
 function statusCounts(statuses: ResourceStatus[]): StatusCounts {
-  let allStatusCount = 0
+  let allEnabledStatusCount = 0
   let healthyStatusCount = 0
   let unhealthyStatusCount = 0
   let pendingStatusCount = 0
   let warningCount = 0
+  let disabledCount = 0
   statuses.forEach((status) => {
     switch (status) {
       case ResourceStatus.Warning:
-        allStatusCount++
+        allEnabledStatusCount++
         healthyStatusCount++
         warningCount++
         break
       case ResourceStatus.Healthy:
-        allStatusCount++
+        allEnabledStatusCount++
         healthyStatusCount++
         break
       case ResourceStatus.Unhealthy:
-        allStatusCount++
+        allEnabledStatusCount++
         unhealthyStatusCount++
         break
       case ResourceStatus.Pending:
       case ResourceStatus.Building:
-        allStatusCount++
+        allEnabledStatusCount++
         pendingStatusCount++
+        break
+      case ResourceStatus.Disabled:
+        disabledCount++
         break
       default:
       // Don't count None status in the overall resource count.
@@ -257,38 +290,40 @@ function statusCounts(statuses: ResourceStatus[]): StatusCounts {
   })
 
   return {
-    total: allStatusCount,
+    totalEnabled: allEnabledStatusCount,
     healthy: healthyStatusCount,
     unhealthy: unhealthyStatusCount,
     pending: pendingStatusCount,
     warning: warningCount,
+    disabled: disabledCount,
   }
 }
 
 function ResourceMetadata(props: { counts: StatusCounts }) {
-  let { total, healthy, pending, unhealthy } = props.counts
+  let { totalEnabled, healthy, pending, unhealthy } = props.counts
   useEffect(() => {
     let favicon: any = document.head.querySelector("#favicon")
     let faviconHref = ""
     if (unhealthy > 0) {
       document.title = `✖︎ ${unhealthy} ┊ Tilt`
       faviconHref = "/static/ico/favicon-red.ico"
-    } else if (pending || total === 0) {
-      document.title = `… ${healthy}/${total} ┊ Tilt`
+    } else if (pending || totalEnabled === 0) {
+      document.title = `… ${healthy}/${totalEnabled} ┊ Tilt`
       faviconHref = "/static/ico/favicon-gray.ico"
     } else {
-      document.title = `✔︎ ${healthy}/${total} ┊ Tilt`
+      document.title = `✔︎ ${healthy}/${totalEnabled} ┊ Tilt`
       faviconHref = "/static/ico/favicon-green.ico"
     }
     if (favicon) {
       favicon.href = faviconHref
     }
-  }, [total, healthy, pending, unhealthy])
+  }, [totalEnabled, healthy, pending, unhealthy])
   return <></>
 }
 
 type ResourceStatusSummaryOptions = {
-  label?: string
+  displayText?: string
+  labelText?: string
   updateMetadata?: boolean
   linkToLogFilters?: boolean
 }
@@ -301,16 +336,17 @@ function ResourceStatusSummary(props: ResourceStatusSummaryProps) {
   // Default the display options if no option is provided
   const updateMetadata = props.updateMetadata ?? true
   const linkToLogFilters = props.linkToLogFilters ?? true
-  const label = props.label ?? "Resources"
+  const labelText = props.labelText ?? "Resource status summary"
 
   return (
-    <ResourceStatusSummaryRoot>
+    <ResourceStatusSummaryRoot aria-label={labelText}>
       {updateMetadata && (
         <ResourceMetadata counts={statusCounts(props.statuses)} />
       )}
       <ResourceGroupStatus
         counts={statusCounts(props.statuses)}
-        label={label}
+        displayText={props.displayText}
+        labelText={labelText}
         healthyLabel={"healthy"}
         unhealthyLabel={"err"}
         warningLabel={"warn"}
@@ -340,7 +376,6 @@ export function SidebarGroupStatusSummary(
       statuses={allStatuses}
       linkToLogFilters={false}
       updateMetadata={false}
-      label=""
       {...props}
     />
   )
@@ -356,7 +391,6 @@ export function TableGroupStatusSummary(props: StatusSummaryProps<RowValues>) {
       statuses={allStatuses}
       linkToLogFilters={false}
       updateMetadata={false}
-      label=""
       {...props}
     />
   )
