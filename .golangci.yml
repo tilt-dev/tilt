@@ -56,13 +56,13 @@ linters:
   enable:
     - deadcode
     - errcheck
-    - megacheck
-    - govet
-    - goimports
-    - structcheck
-    - ineffassign
-    - misspell
     - exportloopref
+    - goimports
+    - govet
+    - ineffassign
+    - megacheck
+    - structcheck
+    - misspell
 issues:
   exclude-rules:
     - linters:
