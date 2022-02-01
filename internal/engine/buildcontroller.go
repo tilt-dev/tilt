@@ -13,7 +13,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/store/dcconv"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
-	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
@@ -144,17 +143,6 @@ func (c *BuildController) buildAndDeploy(ctx context.Context, st store.RStore, e
 	return c.b.BuildAndDeploy(ctx, st, targets, entry.buildStateSet)
 }
 
-type BuildLogActionWriter struct {
-	store        store.RStore
-	manifestName model.ManifestName
-	spanID       logstore.SpanID
-}
-
-func (w BuildLogActionWriter) Write(level logger.Level, fields logger.Fields, p []byte) error {
-	w.store.Dispatch(store.NewLogAction(w.manifestName, w.spanID, level, fields, p))
-	return nil
-}
-
 // cancel any in-progress builds associated with disabled UIResources
 // when builds are fully represented by api objects, cancellation should probably
 // be tied to those rather than the UIResource
@@ -171,12 +159,7 @@ func (c *BuildController) cleanupDisabledBuilds(st store.RStore) {
 
 func (c *BuildController) buildContext(ctx context.Context, entry buildEntry, st store.RStore) context.Context {
 	// Send the logs to both the EngineState and the normal log stream.
-	actionWriter := BuildLogActionWriter{
-		store:        st,
-		manifestName: entry.name,
-		spanID:       entry.spanID,
-	}
-	ctx = logger.CtxWithLogHandler(ctx, actionWriter)
+	ctx = store.WithManifestLogHandler(ctx, st, entry.name, entry.spanID)
 
 	ctx, cancel := context.WithCancel(ctx)
 	c.mu.Lock()

@@ -72,11 +72,7 @@ func (m *PodMonitor) diff(st store.RStore) []podStatus {
 func (m *PodMonitor) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) error {
 	updates := m.diff(st)
 	for _, update := range updates {
-		ctx := logger.CtxWithLogHandler(ctx, podStatusWriter{
-			store:        st,
-			manifestName: update.manifestName,
-			podID:        update.podID,
-		})
+		ctx := store.WithManifestLogHandler(ctx, st, update.manifestName, spanIDForPod(update.manifestName, update.podID))
 		m.print(ctx, update)
 	}
 
@@ -175,17 +171,6 @@ var podStatusAllowUnexported = cmp.AllowUnexported(podStatus{})
 
 func podStatusesEqual(a, b podStatus) bool {
 	return cmp.Equal(a, b, podStatusAllowUnexported)
-}
-
-type podStatusWriter struct {
-	store        store.RStore
-	podID        k8s.PodID
-	manifestName model.ManifestName
-}
-
-func (w podStatusWriter) Write(level logger.Level, fields logger.Fields, p []byte) error {
-	w.store.Dispatch(store.NewLogAction(w.manifestName, spanIDForPod(w.manifestName, w.podID), level, fields, p))
-	return nil
 }
 
 func spanIDForPod(mn model.ManifestName, podID k8s.PodID) logstore.SpanID {

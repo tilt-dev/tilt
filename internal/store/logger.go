@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
 
 func NewLogActionLogger(ctx context.Context, dispatch func(action Action)) logger.Logger {
@@ -45,21 +45,25 @@ func WithObjectLogHandler(ctx context.Context, st Dispatcher, obj metav1.Object)
 		spanID = fmt.Sprintf("%s-%s", typ.GetKind(), obj.GetName())
 	}
 
-	w := apiLogWriter{
-		store:        st,
-		manifestName: model.ManifestName(mn),
-		spanID:       model.LogSpanID(spanID),
-	}
-	return logger.CtxWithLogHandler(ctx, w), nil
+	return WithManifestLogHandler(ctx, st, model.ManifestName(mn), model.LogSpanID(spanID)), nil
 }
 
-type apiLogWriter struct {
+func WithManifestLogHandler(ctx context.Context, st Dispatcher, mn model.ManifestName, spanID logstore.SpanID) context.Context {
+	w := manifestLogWriter{
+		store:        st,
+		manifestName: mn,
+		spanID:       spanID,
+	}
+	return logger.CtxWithLogHandler(ctx, w)
+}
+
+type manifestLogWriter struct {
 	store        Dispatcher
 	manifestName model.ManifestName
 	spanID       model.LogSpanID
 }
 
-func (w apiLogWriter) Write(level logger.Level, fields logger.Fields, p []byte) error {
+func (w manifestLogWriter) Write(level logger.Level, fields logger.Fields, p []byte) error {
 	w.store.Dispatch(NewLogAction(w.manifestName, w.spanID, level, fields, p))
 	return nil
 }

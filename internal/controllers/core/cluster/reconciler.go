@@ -62,7 +62,7 @@ func (r *Reconciler) SetFakeClientsForTesting(k8sClient k8s.Client, dockerClient
 
 func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	nn := request.NamespacedName
-	ctx = logger.CtxWithLogHandler(ctx, logWriter{store: r.store})
+	ctx = store.WithManifestLogHandler(ctx, r.store, model.MainTiltfileManifestName, "cluster")
 
 	var obj v1alpha1.Cluster
 	err := r.ctrlClient.Get(ctx, nn, &obj)
@@ -266,13 +266,4 @@ func (c *connection) toStatus() v1alpha1.ClusterStatus {
 		Arch:        c.arch,
 		ConnectedAt: connectedAt,
 	}
-}
-
-type logWriter struct {
-	store store.RStore
-}
-
-func (w logWriter) Write(level logger.Level, fields logger.Fields, p []byte) error {
-	w.store.Dispatch(store.NewLogAction(model.MainTiltfileManifestName, "cluster", level, fields, p))
-	return nil
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/tilt-dev/tilt/internal/store"
-	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
@@ -22,6 +21,5 @@ type BuildEntry struct {
 }
 
 func (be *BuildEntry) WithLogger(ctx context.Context, st store.RStore) context.Context {
-	actionWriter := NewTiltfileLogWriter(be.Name, st, be.LoadCount)
-	return logger.CtxWithLogHandler(ctx, actionWriter)
+	return store.WithManifestLogHandler(ctx, st, be.Name, SpanIDForLoadCount(be.Name, be.LoadCount))
 }
