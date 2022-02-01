@@ -3928,7 +3928,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	tfr := ctrltiltfile.NewReconciler(st, tfl, kClient, dockerClient, cdc, sch, engineMode, "", "")
 	tbr := togglebutton.NewReconciler(cdc, sch)
 	extr := extension.NewReconciler(cdc, sch, ta)
-	extrr, err := extensionrepo.NewReconciler(cdc, base)
+	extrr, err := extensionrepo.NewReconciler(cdc, st, base)
 	require.NoError(t, err)
 	cmr := configmap.NewReconciler(cdc, st)
 

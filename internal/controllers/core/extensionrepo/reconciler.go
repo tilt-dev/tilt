@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
+	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/xdg"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -34,6 +35,7 @@ type Downloader interface {
 
 type Reconciler struct {
 	ctrlClient ctrlclient.Client
+	st         store.RStore
 	dlr        Downloader
 
 	repoStates map[types.NamespacedName]*repoState
@@ -46,13 +48,14 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	return b, nil
 }
 
-func NewReconciler(ctrlClient ctrlclient.Client, base xdg.Base) (*Reconciler, error) {
+func NewReconciler(ctrlClient ctrlclient.Client, st store.RStore, base xdg.Base) (*Reconciler, error) {
 	dlrPath, err := base.DataFile(tiltModulesRelDir)
 	if err != nil {
 		return nil, fmt.Errorf("creating extensionrepo controller: %v", err)
 	}
 	return &Reconciler{
 		ctrlClient: ctrlClient,
+		st:         st,
 		dlr:        get.NewDownloader(dlrPath),
 		repoStates: make(map[types.NamespacedName]*repoState),
 	}, nil
@@ -100,59 +103,70 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		return ctrl.Result{}, nil
 	}
 
+	ctx = store.MustObjectLogHandler(ctx, r.st, &repo)
+
 	state, ok = r.repoStates[nn]
 	if !ok {
 		state = &repoState{spec: repo.Spec}
 		r.repoStates[nn] = state
 	}
 
+	// Keep track of the Result in case it contains Requeue instructions.
+	var result ctrl.Result
 	if strings.HasPrefix(repo.Spec.URL, "file://") {
-		return r.reconcileFileRepo(ctx, &repo, strings.TrimPrefix(repo.Spec.URL, "file://"))
+		r.reconcileFileRepo(ctx, state, strings.TrimPrefix(repo.Spec.URL, "file://"))
+	} else {
+		// Check that the URL is valid.
+		importPath, err := getDownloaderImportPath(&repo)
+		if err != nil {
+			state.status = v1alpha1.ExtensionRepoStatus{Error: fmt.Sprintf("invalid: %v", err)}
+		} else {
+			result, err = r.reconcileDownloaderRepo(ctx, state, importPath)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+		}
 	}
 
-	// Check that the URL is valid.
-	importPath, err := getDownloaderImportPath(&repo)
+	err = r.maybeUpdateStatus(ctx, &repo, state)
 	if err != nil {
-		return r.updateError(ctx, &repo, fmt.Sprintf("invalid: %v", err))
+		return ctrl.Result{}, err
 	}
-
-	return r.reconcileDownloaderRepo(ctx, nn, &repo, importPath, state)
+	return result, nil
 }
 
 // Reconcile a repo that lives on disk, and shouldn't otherwise be modified.
-func (r *Reconciler) reconcileFileRepo(ctx context.Context, repo *v1alpha1.ExtensionRepo, filePath string) (reconcile.Result, error) {
-	if repo.Spec.Ref != "" {
-		return r.updateError(ctx, repo, "spec.ref not supported on file:// repos")
+func (r *Reconciler) reconcileFileRepo(ctx context.Context, state *repoState, filePath string) {
+	if state.spec.Ref != "" {
+		state.status = v1alpha1.ExtensionRepoStatus{Error: "spec.ref not supported on file:// repos"}
+		return
 	}
 
 	if !filepath.IsAbs(filePath) {
-		msg := fmt.Sprintf("file paths must be absolute. Url: %s", repo.Spec.URL)
-		return r.updateError(ctx, repo, msg)
+		state.status = v1alpha1.ExtensionRepoStatus{
+			Error: fmt.Sprintf("file paths must be absolute. Url: %s", state.spec.URL),
+		}
+		return
 	}
 
 	info, err := os.Stat(filePath)
 	if err != nil {
-		msg := fmt.Sprintf("loading: %v", err)
-		return r.updateError(ctx, repo, msg)
+		state.status = v1alpha1.ExtensionRepoStatus{Error: fmt.Sprintf("loading: %v", err)}
+		return
 	}
 
 	if !info.IsDir() {
-		msg := "loading: not a directory"
-		return r.updateError(ctx, repo, msg)
+		state.status = v1alpha1.ExtensionRepoStatus{Error: "loading: not a directory"}
+		return
 	}
 
 	timeFetched := apis.NewTime(info.ModTime())
-	return r.updateStatus(ctx, repo, func(status *v1alpha1.ExtensionRepoStatus) {
-		status.Error = ""
-		status.LastFetchedAt = timeFetched
-		status.Path = filePath
-	})
+	state.status = v1alpha1.ExtensionRepoStatus{LastFetchedAt: timeFetched, Path: filePath}
 }
 
 // Reconcile a repo that we need to fetch remotely, and store
 // under ~/.tilt-dev.
-func (r *Reconciler) reconcileDownloaderRepo(ctx context.Context, nn types.NamespacedName,
-	repo *v1alpha1.ExtensionRepo, importPath string, state *repoState) (reconcile.Result, error) {
+func (r *Reconciler) reconcileDownloaderRepo(ctx context.Context, state *repoState, importPath string) (reconcile.Result, error) {
 	getDlr, ok := r.dlr.(*get.Downloader)
 	if ok {
 		getDlr.Stderr = logger.Get(ctx).Writer(logger.InfoLvl)
@@ -184,11 +198,7 @@ func (r *Reconciler) reconcileDownloaderRepo(ctx context.Context, nn types.Names
 	if err != nil {
 		backoff := state.nextBackoff()
 		backoffMsg := fmt.Sprintf("download error: waiting %s before retrying. Original error: %v", backoff, err)
-		_, updateErr := r.updateError(ctx, repo, backoffMsg)
-		if updateErr != nil {
-			return ctrl.Result{}, updateErr
-		}
-
+		state.status = v1alpha1.ExtensionRepoStatus{Error: backoffMsg}
 		return ctrl.Result{RequeueAfter: backoff}, nil
 	}
 
@@ -197,16 +207,18 @@ func (r *Reconciler) reconcileDownloaderRepo(ctx context.Context, nn types.Names
 		return ctrl.Result{}, err
 	}
 
-	if repo.Spec.Ref != "" {
-		err := r.dlr.RefSync(importPath, repo.Spec.Ref)
+	if state.spec.Ref != "" {
+		err := r.dlr.RefSync(importPath, state.spec.Ref)
 		if err != nil {
-			return r.updateError(ctx, repo, fmt.Sprintf("sync to ref %s: %v", repo.Spec.Ref, err))
+			state.status = v1alpha1.ExtensionRepoStatus{Error: fmt.Sprintf("sync to ref %s: %v", state.spec.Ref, err)}
+			return ctrl.Result{}, nil
 		}
 	}
 
 	ref, err := r.dlr.HeadRef(importPath)
 	if err != nil {
-		return r.updateError(ctx, repo, fmt.Sprintf("determining head: %v", err))
+		state.status = v1alpha1.ExtensionRepoStatus{Error: fmt.Sprintf("determining head: %v", err)}
+		return ctrl.Result{}, nil
 	}
 
 	// Update the status.
@@ -214,41 +226,34 @@ func (r *Reconciler) reconcileDownloaderRepo(ctx context.Context, nn types.Names
 	state.lastSuccessfulDestPath = destPath
 
 	timeFetched := apis.NewTime(info.ModTime())
-	return r.updateStatus(ctx, repo, func(status *v1alpha1.ExtensionRepoStatus) {
-		status.Error = ""
-		status.LastFetchedAt = timeFetched
-		status.Path = destPath
-		status.CheckoutRef = ref
-	})
+	state.status = v1alpha1.ExtensionRepoStatus{
+		LastFetchedAt: timeFetched,
+		Path:          destPath,
+		CheckoutRef:   ref,
+	}
+	return ctrl.Result{}, nil
 }
 
 // Loosely inspired by controllerutil's Update status algorithm.
-func (r *Reconciler) updateStatus(ctx context.Context, repo *v1alpha1.ExtensionRepo, mutateFn func(*v1alpha1.ExtensionRepoStatus)) (ctrl.Result, error) {
-	update := repo.DeepCopy()
-	mutateFn(&(update.Status))
-
-	if apicmp.DeepEqual(update.Status, repo.Status) {
-		return ctrl.Result{}, nil
+func (r *Reconciler) maybeUpdateStatus(ctx context.Context, repo *v1alpha1.ExtensionRepo, state *repoState) error {
+	if apicmp.DeepEqual(repo.Status, state.status) {
+		return nil
 	}
 
-	err := r.ctrlClient.Status().Update(ctx, update)
-	return ctrl.Result{}, err
-}
-
-// Update status with an error message, logging the error.
-func (r *Reconciler) updateError(ctx context.Context, repo *v1alpha1.ExtensionRepo, errorMsg string) (ctrl.Result, error) {
+	oldError := repo.Status.Error
+	newError := state.status.Error
 	update := repo.DeepCopy()
-	update.Status.Error = errorMsg
-	update.Status.Path = ""
+	update.Status = *(state.status.DeepCopy())
 
-	if apicmp.DeepEqual(update.Status, repo.Status) {
-		return ctrl.Result{}, nil
+	err := r.ctrlClient.Status().Update(ctx, update)
+	if err != nil {
+		return err
 	}
 
-	logger.Get(ctx).Errorf("extensionrepo %s: %s", repo.Name, errorMsg)
-
-	err := r.ctrlClient.Status().Update(ctx, update)
-	return ctrl.Result{}, err
+	if newError != "" && oldError != newError {
+		logger.Get(ctx).Errorf("extensionrepo %s: %s", repo.Name, newError)
+	}
+	return err
 }
 
 func getDownloaderImportPath(repo *v1alpha1.ExtensionRepo) (string, error) {
@@ -268,6 +273,8 @@ type repoState struct {
 	lastFetch              time.Time
 	backoff                time.Duration
 	lastSuccessfulDestPath string
+
+	status v1alpha1.ExtensionRepoStatus
 }
 
 // Step up the backoff after an error.
