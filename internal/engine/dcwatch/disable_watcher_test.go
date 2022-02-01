@@ -53,7 +53,7 @@ func TestDockerComposeDontRetryOnSameStartTime(t *testing.T) {
 
 	f.onChange()
 
-	f.clock.BlockUntil(1)
+	f.clock.BlockUntil(2)
 	f.clock.Advance(2 * disableDebounceDelay)
 
 	call := f.rmCall(1)
