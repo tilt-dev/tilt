@@ -541,15 +541,14 @@ func TestKustomizeBin(t *testing.T) {
 	f.file("deployment.yaml", kustomizeDeploymentText)
 	f.file("service.yaml", kustomizeServiceText)
 	sentinel := f.WriteFile("kustomize.txt", "")
-	kbin := f.WriteFile("kustomize", `#!/bin/sh
+	wrapper := f.WriteFile("kustomize", `#!/bin/sh
 echo "$@" > `+sentinel+`
-shift
-exec kubectl kustomize "$@"
+exec kustomize "$@"
 `)
-	_ = os.Chmod(kbin, 0755)
+	_ = os.Chmod(wrapper, 0755)
 
 	f.file("Tiltfile", `
-k8s_yaml(kustomize(".", kustomize_bin="`+kbin+`"))
+k8s_yaml(kustomize(".", kustomize_bin="`+wrapper+`"))
 k8s_resource("the-deployment", "foo")
 `)
 	f.load()
