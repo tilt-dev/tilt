@@ -14,7 +14,7 @@ import (
 )
 
 func setEnabledResources(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var slResources starlark.Value
+	var slResources starlark.Sequence
 	err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs,
 		"resources",
 		&slResources,
@@ -23,29 +23,33 @@ func setEnabledResources(thread *starlark.Thread, fn *starlark.Builtin, args sta
 		return starlark.None, err
 	}
 
-	err = starkit.SetState(thread, func(settings Settings) (Settings, error) {
-		switch x := slResources.(type) {
-		case starlark.NoneType:
-			settings.disableAll = true
-			return settings, nil
-		case starlark.Sequence:
-			resources, err := value.SequenceToStringSlice(x)
-			if err != nil {
-				return settings, errors.Wrap(err, "resources must be a list of string")
-			}
+	resources, err := value.SequenceToStringSlice(slResources)
+	if err != nil {
+		return starlark.None, errors.Wrap(err, "resources must be a list of string")
+	}
 
-			var mns []model.ManifestName
-			for _, r := range resources {
-				mns = append(mns, model.ManifestName(r))
-			}
+	var mns []model.ManifestName
+	for _, r := range resources {
+		mns = append(mns, model.ManifestName(r))
+	}
 
-			settings.enabledResources = mns
-			return settings, nil
-		default:
-			return settings, errors.Wrap(err, "resources must be None or a list of string")
-		}
+	err = starkit.SetState(thread, func(settings Settings) Settings {
+		settings.disableAll = false
+		settings.enabledResources = mns
+		return settings
 	})
+	if err != nil {
+		return starlark.None, err
+	}
 
+	return starlark.None, nil
+}
+
+func clearEnabledResources(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	err := starkit.SetState(thread, func(settings Settings) Settings {
+		settings.disableAll = true
+		return settings
+	})
 	return starlark.None, err
 }
 

@@ -75,7 +75,7 @@ func TestDisableAllResources(t *testing.T) {
 	f := NewFixture(t, args, "")
 	defer f.TearDown()
 
-	f.File("Tiltfile", "config.set_enabled_resources(None)")
+	f.File("Tiltfile", "config.clear_enabled_resources()")
 
 	result, err := f.ExecFile("Tiltfile")
 	require.NoError(t, err)

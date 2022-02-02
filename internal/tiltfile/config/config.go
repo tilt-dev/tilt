@@ -61,6 +61,7 @@ func (e *Plugin) OnStart(env *starkit.Environment) error {
 		f    starkit.Function
 	}{
 		{"config.set_enabled_resources", setEnabledResources},
+		{"config.clear_enabled_resources", clearEnabledResources},
 		{"config.parse", e.parse},
 		{"config.define_string_list", configSettingDefinitionBuiltin(func() configValue {
 			return &stringList{}
