@@ -75,30 +75,9 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		return ctrl.Result{}, err
 	}
 
-	if apierrors.IsNotFound(err) {
-		return r.updateError(ctx, &ext, fmt.Sprintf("extension repo %s not found", ext.Spec.RepoName))
-	}
+	newStatus := r.apply(&ext, &repo)
 
-	if repo.Status.Path == "" {
-		return r.updateError(ctx, &ext, fmt.Sprintf("extension repo %s not loaded yet", ext.Spec.RepoName))
-	}
-
-	absPath := filepath.Join(repo.Status.Path, ext.Spec.RepoPath, "Tiltfile")
-
-	// Make sure the user isn't trying to use path tricks to "escape" the repo.
-	if !ospath.IsChild(repo.Status.Path, absPath) {
-		return r.updateError(ctx, &ext, fmt.Sprintf("invalid repo path: %s", ext.Spec.RepoPath))
-	}
-
-	info, err := os.Stat(absPath)
-	if err != nil || !info.Mode().IsRegular() {
-		return r.updateError(ctx, &ext, fmt.Sprintf("no extension tiltfile found at %s", absPath))
-	}
-
-	update, changed, err := r.updateStatus(ctx, &ext, func(status *v1alpha1.ExtensionStatus) {
-		status.Path = absPath
-		status.Error = ""
-	})
+	update, changed, err := r.maybeUpdateStatus(ctx, &ext, newStatus)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -110,7 +89,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		return ctrl.Result{}, err
 	}
 
-	if changed {
+	if changed && update.Status.Error == "" {
 		repoType := "http"
 		if strings.HasPrefix(repo.Spec.URL, "file://") {
 			repoType = "file"
@@ -125,46 +104,50 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	return ctrl.Result{}, nil
 }
 
-// Generic status update. Returns true if the server changed.
-func (r *Reconciler) updateStatus(ctx context.Context, ext *v1alpha1.Extension, mutateFn func(*v1alpha1.ExtensionStatus)) (*v1alpha1.Extension, bool, error) {
-	update := ext.DeepCopy()
-	mutateFn(&(update.Status))
+func (r *Reconciler) apply(ext *v1alpha1.Extension, repo *v1alpha1.ExtensionRepo) v1alpha1.ExtensionStatus {
+	if repo.Name == "" {
+		return v1alpha1.ExtensionStatus{Error: fmt.Sprintf("extension repo %s not found", ext.Spec.RepoName)}
+	}
 
-	if apicmp.DeepEqual(update.Status, ext.Status) {
-		return update, false, nil
+	if repo.Status.Path == "" {
+		return v1alpha1.ExtensionStatus{Error: fmt.Sprintf("extension repo %s not loaded yet", ext.Spec.RepoName)}
 	}
-	err := r.ctrlClient.Status().Update(ctx, update)
-	if err != nil {
-		return update, false, err
+
+	absPath := filepath.Join(repo.Status.Path, ext.Spec.RepoPath, "Tiltfile")
+
+	// Make sure the user isn't trying to use path tricks to "escape" the repo.
+	if !ospath.IsChild(repo.Status.Path, absPath) {
+		return v1alpha1.ExtensionStatus{Error: fmt.Sprintf("invalid repo path: %s", ext.Spec.RepoPath)}
 	}
-	return update, true, nil
+
+	info, err := os.Stat(absPath)
+	if err != nil || !info.Mode().IsRegular() {
+		return v1alpha1.ExtensionStatus{Error: fmt.Sprintf("no extension tiltfile found at %s", absPath)}
+	}
+
+	return v1alpha1.ExtensionStatus{Path: absPath}
 }
 
-// Update status with an error message, logging the error, and managing child objects.
-func (r *Reconciler) updateError(ctx context.Context, ext *v1alpha1.Extension, errorMsg string) (ctrl.Result, error) {
-	update := ext.DeepCopy()
-	update.Status.Error = errorMsg
-	update.Status.Path = ""
-
-	if apicmp.DeepEqual(update.Status, ext.Status) {
-		// We don't need to worry about managing the child object, because
-		// all error states are equivalent.
-		return ctrl.Result{}, nil
+// Update the status. Returns true if the status changed.
+func (r *Reconciler) maybeUpdateStatus(ctx context.Context, obj *v1alpha1.Extension, newStatus v1alpha1.ExtensionStatus) (*v1alpha1.Extension, bool, error) {
+	if apicmp.DeepEqual(obj.Status, newStatus) {
+		return obj, false, nil
 	}
 
-	logger.Get(ctx).Errorf("extension %s: %s", ext.Name, errorMsg)
+	oldError := obj.Status.Error
+	newError := newStatus.Error
+	update := obj.DeepCopy()
+	update.Status = *(newStatus.DeepCopy())
 
 	err := r.ctrlClient.Status().Update(ctx, update)
 	if err != nil {
-		return ctrl.Result{}, err
+		return obj, false, err
 	}
 
-	err = r.manageOwnedTiltfile(ctx, types.NamespacedName{Name: update.Name}, update)
-	if err != nil {
-		return ctrl.Result{}, err
+	if newError != "" && oldError != newError {
+		logger.Get(ctx).Errorf("extension %s: %s", obj.Name, newError)
 	}
-
-	return ctrl.Result{}, err
+	return update, true, err
 }
 
 // Find all the objects we need to watch based on the extension spec.
