@@ -121,10 +121,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		if err != nil {
 			state.status = v1alpha1.ExtensionRepoStatus{Error: fmt.Sprintf("invalid: %v", err)}
 		} else {
-			result, err = r.reconcileDownloaderRepo(ctx, state, importPath)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
+			result = r.reconcileDownloaderRepo(ctx, state, importPath)
 		}
 	}
 
@@ -166,7 +163,7 @@ func (r *Reconciler) reconcileFileRepo(ctx context.Context, state *repoState, fi
 
 // Reconcile a repo that we need to fetch remotely, and store
 // under ~/.tilt-dev.
-func (r *Reconciler) reconcileDownloaderRepo(ctx context.Context, state *repoState, importPath string) (reconcile.Result, error) {
+func (r *Reconciler) reconcileDownloaderRepo(ctx context.Context, state *repoState, importPath string) reconcile.Result {
 	getDlr, ok := r.dlr.(*get.Downloader)
 	if ok {
 		getDlr.Stderr = logger.Get(ctx).Writer(logger.InfoLvl)
@@ -175,21 +172,22 @@ func (r *Reconciler) reconcileDownloaderRepo(ctx context.Context, state *repoSta
 	destPath := r.dlr.DestinationPath(importPath)
 	_, err := os.Stat(destPath)
 	if err != nil && !os.IsNotExist(err) {
-		return ctrl.Result{}, err
+		state.status = v1alpha1.ExtensionRepoStatus{Error: fmt.Sprintf("loading download destination: %v", err)}
+		return ctrl.Result{}
 	}
 
 	// If the directory exists and has already been fetched successfully during this session,
 	// no reconciliation is needed.
 	exists := err == nil
 	if exists && state.lastSuccessfulDestPath != "" {
-		return ctrl.Result{}, nil
+		return ctrl.Result{}
 	}
 
 	lastFetch := state.lastFetch
 	lastBackoff := state.backoff
 	if time.Since(lastFetch) < lastBackoff {
 		// If we're already in the middle of a backoff period, requeue.
-		return ctrl.Result{RequeueAfter: lastBackoff}, nil
+		return ctrl.Result{RequeueAfter: lastBackoff}
 	}
 
 	state.lastFetch = time.Now()
@@ -199,26 +197,27 @@ func (r *Reconciler) reconcileDownloaderRepo(ctx context.Context, state *repoSta
 		backoff := state.nextBackoff()
 		backoffMsg := fmt.Sprintf("download error: waiting %s before retrying. Original error: %v", backoff, err)
 		state.status = v1alpha1.ExtensionRepoStatus{Error: backoffMsg}
-		return ctrl.Result{RequeueAfter: backoff}, nil
+		return ctrl.Result{RequeueAfter: backoff}
 	}
 
 	info, err := os.Stat(destPath)
 	if err != nil {
-		return ctrl.Result{}, err
+		state.status = v1alpha1.ExtensionRepoStatus{Error: fmt.Sprintf("verifying download destination: %v", err)}
+		return ctrl.Result{}
 	}
 
 	if state.spec.Ref != "" {
 		err := r.dlr.RefSync(importPath, state.spec.Ref)
 		if err != nil {
 			state.status = v1alpha1.ExtensionRepoStatus{Error: fmt.Sprintf("sync to ref %s: %v", state.spec.Ref, err)}
-			return ctrl.Result{}, nil
+			return ctrl.Result{}
 		}
 	}
 
 	ref, err := r.dlr.HeadRef(importPath)
 	if err != nil {
 		state.status = v1alpha1.ExtensionRepoStatus{Error: fmt.Sprintf("determining head: %v", err)}
-		return ctrl.Result{}, nil
+		return ctrl.Result{}
 	}
 
 	// Update the status.
@@ -231,7 +230,7 @@ func (r *Reconciler) reconcileDownloaderRepo(ctx context.Context, state *repoSta
 		Path:          destPath,
 		CheckoutRef:   ref,
 	}
-	return ctrl.Result{}, nil
+	return ctrl.Result{}
 }
 
 // Loosely inspired by controllerutil's Update status algorithm.
