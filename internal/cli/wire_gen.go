@@ -82,6 +82,8 @@ import (
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
+
+	_ "embed"
 )
 
 // Injectors from wire.go:
@@ -292,7 +294,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, client, switchCli, deferredClient, scheme, engineMode, k8sKubeContextOverride, k8sNamespaceOverride)
 	togglebuttonReconciler := togglebutton.NewReconciler(deferredClient, scheme)
 	extensionReconciler := extension.NewReconciler(deferredClient, scheme, analytics3)
-	extensionrepoReconciler, err := extensionrepo.NewReconciler(deferredClient, base)
+	extensionrepoReconciler, err := extensionrepo.NewReconciler(deferredClient, storeStore, base)
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
@@ -501,7 +503,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, client, switchCli, deferredClient, scheme, engineMode, k8sKubeContextOverride, k8sNamespaceOverride)
 	togglebuttonReconciler := togglebutton.NewReconciler(deferredClient, scheme)
 	extensionReconciler := extension.NewReconciler(deferredClient, scheme, analytics3)
-	extensionrepoReconciler, err := extensionrepo.NewReconciler(deferredClient, base)
+	extensionrepoReconciler, err := extensionrepo.NewReconciler(deferredClient, storeStore, base)
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
@@ -707,7 +709,7 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, k8sClient, switchCli, deferredClient, scheme, engineMode, k8sKubeContextOverride, k8sNamespaceOverride)
 	togglebuttonReconciler := togglebutton.NewReconciler(deferredClient, scheme)
 	extensionReconciler := extension.NewReconciler(deferredClient, scheme, analytics3)
-	extensionrepoReconciler, err := extensionrepo.NewReconciler(deferredClient, base)
+	extensionrepoReconciler, err := extensionrepo.NewReconciler(deferredClient, storeStore, base)
 	if err != nil {
 		return CmdUpdogDeps{}, err
 	}

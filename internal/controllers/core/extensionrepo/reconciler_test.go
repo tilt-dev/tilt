@@ -141,7 +141,7 @@ func newFixture(t *testing.T) *fixture {
 	t.Cleanup(func() { _ = os.RemoveAll(tmpDir.Path()) })
 
 	base := xdg.FakeBase{Dir: tmpDir.Path()}
-	r, err := NewReconciler(cfb.Client, base)
+	r, err := NewReconciler(cfb.Client, cfb.Store, base)
 	require.NoError(t, err)
 
 	dlr := &fakeDownloader{base: base, headRef: "fake-head"}
