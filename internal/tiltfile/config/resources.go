@@ -46,8 +46,14 @@ func setEnabledResources(thread *starlark.Thread, fn *starlark.Builtin, args sta
 }
 
 func clearEnabledResources(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	err := starkit.SetState(thread, func(settings Settings) Settings {
+	err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs)
+	if err != nil {
+		return starlark.None, err
+	}
+
+	err = starkit.SetState(thread, func(settings Settings) Settings {
 		settings.disableAll = true
+		settings.enabledResources = nil
 		return settings
 	})
 	return starlark.None, err
