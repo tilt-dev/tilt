@@ -564,7 +564,7 @@ k8s_resource("the-deployment", "foo")
 	f.load()
 	sentinelContents, err := os.ReadFile(sentinel)
 	assert.Nil(t, err)
-	assert.EqualValues(t, "build .\n", string(sentinelContents))
+	assert.EqualValues(t, "build .", strings.Trim(string(sentinelContents), " \r\n"))
 }
 
 func TestKustomizeError(t *testing.T) {
