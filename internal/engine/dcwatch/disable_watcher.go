@@ -2,22 +2,49 @@ package dcwatch
 
 import (
 	"context"
+	"sort"
+	"sync"
+	"time"
 
-	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/jonboulle/clockwork"
 
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
+const disableDebounceDelay = 200 * time.Millisecond
+
 type DisableSubscriber struct {
-	dcc dockercompose.DockerComposeClient
+	dcc            dockercompose.DockerComposeClient
+	clock          clockwork.Clock
+	mu             sync.Mutex
+	resourceStates map[string]resourceState
+
+	// track the start times of containers we've already tried to rm, so we don't try to rm state we've already
+	// processed
+	// (the subscriber will continue reporting that the resource needs cleanup until we successfully kill the
+	// container and the DC event watcher notices and updates EngineState)
+	lastDisableStartTimes map[string]time.Time
 }
 
-func NewDisableSubscriber(dcc dockercompose.DockerComposeClient) *DisableSubscriber {
+type resourceState struct {
+	Spec         model.DockerComposeUpSpec
+	NeedsCleanup bool
+	// the container's start time
+	StartTime time.Time
+	// the service's order wrt other services, to ensure logging in consistent order
+	Order int
+}
+
+func NewDisableSubscriber(dcc dockercompose.DockerComposeClient, clock clockwork.Clock) *DisableSubscriber {
 	return &DisableSubscriber{
-		dcc: dcc,
+		dcc:                   dcc,
+		clock:                 clock,
+		resourceStates:        make(map[string]resourceState),
+		lastDisableStartTimes: make(map[string]time.Time),
 	}
 }
 
@@ -26,64 +53,104 @@ func (w *DisableSubscriber) OnChange(ctx context.Context, st store.RStore, summa
 		return nil
 	}
 
-	if len(summary.UIResources.Changes) == 0 {
-		return nil
-	}
-
 	state := st.RLockState()
-	project := state.DockerComposeProject()
 
+	project := state.DockerComposeProject()
 	if model.IsEmptyDockerComposeProject(project) {
 		st.RUnlockState()
 		return nil
 	}
 
-	var uirToDisable *v1alpha1.UIResource
-	var specToDisable model.DockerComposeUpSpec
-	for nn := range summary.UIResources.Changes {
-		uir, ok := state.UIResources[nn.Name]
-		if !ok {
+	anyNeedCleanup := false
+
+	for i, mn := range state.ManifestDefinitionOrder {
+		mt := state.ManifestTargets[mn]
+		ms := mt.State
+
+		if !ms.IsDC() {
 			continue
 		}
-		manifest, exists := state.ManifestTargets[model.ManifestName(uir.Name)]
-		if !exists {
-			continue
+
+		runtimeStatus := ms.DCRuntimeState().RuntimeStatus()
+
+		isRunning := runtimeStatus == v1alpha1.RuntimeStatusOK || runtimeStatus == v1alpha1.RuntimeStatusPending
+		isDisabled := ms.DisableState == v1alpha1.DisableStateDisabled
+		needsCleanup := isRunning && isDisabled
+
+		anyNeedCleanup = anyNeedCleanup || needsCleanup
+
+		rs := resourceState{
+			Spec:         mt.Manifest.DockerComposeTarget().Spec,
+			NeedsCleanup: needsCleanup,
+			StartTime:    ms.DCRuntimeState().StartTime,
+			Order:        i,
 		}
-		ms := manifest.State
-		if manifest.State.DisableState == v1alpha1.DisableStateDisabled && ms.IsDC() {
-			rs := ms.DCRuntimeState().RuntimeStatus()
-			if rs == v1alpha1.RuntimeStatusOK || rs == v1alpha1.RuntimeStatusPending {
-				// for now, only disable one at a time
-				// https://app.shortcut.com/windmill/story/13140/support-logging-to-multiple-manifests
-				specToDisable = manifest.Manifest.DockerComposeTarget().Spec
-				uirToDisable = uir
-				break
-			}
-		}
+		w.mu.Lock()
+		w.resourceStates[rs.Spec.Service] = rs
+		w.mu.Unlock()
 	}
 
 	st.RUnlockState()
 
-	if uirToDisable != nil {
-		// Upon disabling, the DC event watcher will notice the container has stopped and update
-		// the resource's RuntimeStatus, preventing it from being re-added to specsToDisable.
-		// There is a race here, since this OnChange might get called again before EngineState
-		// gets updated with the new RuntimeStatus. This is fine--calling `docker-compose rm` on
-		// a down service is a no-op.
+	if anyNeedCleanup {
+		go func() {
+			// docker-compose rm can take 5-10 seconds
+			// we sleep a bit here so that if a bunch of resources are disabled in bulk, we do them all at once rather
+			// than starting the first one we see, and then getting the rest in a second docker-compose rm call
+			w.clock.Sleep(disableDebounceDelay)
 
-		ctx, err := store.WithObjectLogHandler(ctx, st, uirToDisable)
-		if err != nil {
-			logger.Get(ctx).Errorf("error creating logger for %s: %v", uirToDisable.Name, err)
-			// continue anyway:
-			// probably better to try stopping the service instead of re-logging error infinitely
-		}
-		out := logger.Get(ctx).Writer(logger.InfoLvl)
-
-		err = w.dcc.Rm(ctx, []model.DockerComposeUpSpec{specToDisable}, out, out)
-		if err != nil {
-			logger.Get(ctx).Errorf("error stopping disabled docker compose service %s, error: %v", specToDisable.Service, err)
-		}
+			w.Reconcile(ctx)
+		}()
 	}
 
 	return nil
+}
+
+func (w *DisableSubscriber) Reconcile(ctx context.Context) {
+	var toDisable []model.DockerComposeUpSpec
+
+	w.mu.Lock()
+
+	for _, entry := range w.resourceStates {
+		lastDisableStartTime := w.lastDisableStartTimes[entry.Spec.Service]
+		if entry.NeedsCleanup && entry.StartTime.After(lastDisableStartTime) {
+			toDisable = append(toDisable, entry.Spec)
+			w.lastDisableStartTimes[entry.Spec.Service] = entry.StartTime
+		}
+	}
+
+	sort.Slice(toDisable, func(i, j int) bool {
+		return w.resourceStates[toDisable[i].Service].Order < w.resourceStates[toDisable[j].Service].Order
+	})
+
+	w.mu.Unlock()
+
+	if len(toDisable) == 0 {
+		return
+	}
+
+	// Upon disabling, the DC event watcher will notice the container has stopped and update
+	// the resource's RuntimeStatus, preventing it from being re-added to specsToDisable.
+
+	// NB: For now, DC output only goes to the global log
+	// 1. `docker-compose` rm is slow, so we don't want to call it serially, once per resource
+	// 2. we've had bad luck with concurrent `docker-compose` processes, so we don't want to do it in parallel
+	// 3. we can't break the DC output up by resource
+	// 4. our logger doesn't support writing the same span to multiple manifests
+	//    (https://app.shortcut.com/windmill/story/13140/support-logging-to-multiple-manifests)
+
+	// `docker-compose rm` output is a bit of a pickle. On one hand, the command can take several seconds,
+	// so it's nice to let it write to the log in real time (rather than only on error), to give the user
+	// feedback that something is happening. On the other hand, `docker-compose rm` does tty tricks that
+	// don't work in the Tilt log, which makes it ugly.
+	out := logger.Get(ctx).Writer(logger.InfoLvl)
+
+	err := w.dcc.Rm(ctx, toDisable, out, out)
+	if err != nil {
+		var namesToDisable []string
+		for _, e := range toDisable {
+			namesToDisable = append(namesToDisable, e.Service)
+		}
+		logger.Get(ctx).Errorf("error stopping disabled docker compose services %v, error: %v", namesToDisable, err)
+	}
 }
