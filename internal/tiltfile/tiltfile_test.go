@@ -533,6 +533,40 @@ k8s_resource("the-deployment", "foo")
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "configMap.yaml", "deployment.yaml", "kustomization.yaml", "service.yaml")
 }
 
+func TestKustomizeBin(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+	f.file("kustomization.yaml", kustomizeFileText)
+	f.file("configMap.yaml", kustomizeConfigMapText)
+	f.file("deployment.yaml", kustomizeDeploymentText)
+	f.file("service.yaml", kustomizeServiceText)
+	sentinel := f.WriteFile("kustomize.txt", "")
+	var wrapper string
+	if runtime.GOOS == "windows" {
+		wrapper = f.WriteFile("kustomize.bat", fmt.Sprintf(`@echo off
+echo %%* > %s
+kustomize.exe %%*
+`, sentinel))
+		// convert backslashes in path
+		wrapper = strings.ReplaceAll(wrapper, "\\", "/")
+	} else {
+		wrapper = f.WriteFile("kustomize", fmt.Sprintf(`#!/bin/sh
+echo "$@" > %s
+exec kustomize "$@"
+`, sentinel))
+		_ = os.Chmod(wrapper, 0755)
+	}
+
+	f.file("Tiltfile", fmt.Sprintf(`
+k8s_yaml(kustomize(".", kustomize_bin="%s"))
+k8s_resource("the-deployment", "foo")
+`, wrapper))
+	f.load()
+	sentinelContents, err := os.ReadFile(sentinel)
+	assert.Nil(t, err)
+	assert.EqualValues(t, "build .", strings.Trim(string(sentinelContents), " \r\n"))
+}
+
 func TestKustomizeError(t *testing.T) {
 	f := newFixture(t)
 	defer f.TearDown()
