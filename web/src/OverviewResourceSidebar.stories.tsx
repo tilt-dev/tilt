@@ -53,7 +53,7 @@ export default {
       defaultValue: true,
     },
     disableResourcesEnabled: {
-      name: "See disabled resources",
+      name: "See disabled resources and bulk actions",
       control: {
         type: "boolean",
       },

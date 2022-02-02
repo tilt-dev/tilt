@@ -8,7 +8,6 @@ version_settings(constraint='>=0.22.1')
 load("ext://uibutton", "cmd_button", "location")
 
 enable_feature("disable_resources")
-enable_feature("bulk_disable_resources")
 
 local_resource(
   'storybook',

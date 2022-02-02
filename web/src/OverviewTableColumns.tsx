@@ -600,8 +600,8 @@ export function getTableColumns(features?: Features) {
     return DEFAULT_COLUMNS
   }
 
-  // If bulk disable is enabled, render the selection column
-  if (features.isEnabled(Flag.BulkDisableResources)) {
+  // If disable resources is enabled, render the selection column
+  if (features.isEnabled(Flag.DisableResources)) {
     return [RESOURCE_SELECTION_COLUMN, ...DEFAULT_COLUMNS]
   }
 

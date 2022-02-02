@@ -24,8 +24,6 @@ export default {
       const features = new Features({
         [Flag.Labels]: context?.args?.labelsEnabled ?? true,
         [Flag.DisableResources]: context?.args?.disableResourcesEnabled ?? true,
-        [Flag.BulkDisableResources]:
-          context?.args?.bulkDisableResourcesEnabled ?? true,
       })
       return (
         <MemoryRouter initialEntries={["/"]}>
@@ -55,14 +53,7 @@ export default {
       defaultValue: true,
     },
     disableResourcesEnabled: {
-      name: "See disabled resources",
-      control: {
-        type: "boolean",
-      },
-      defaultValue: true,
-    },
-    bulkDisableResourcesEnabled: {
-      name: "See bulk disabling functionality",
+      name: "See disabled resources and bulk actions",
       control: {
         type: "boolean",
       },

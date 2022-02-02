@@ -71,12 +71,12 @@ var MainDefaults = Defaults{
 		Status:  Active,
 	},
 	DisableResources: Value{
-		Enabled: false,
+		Enabled: true,
 		Status:  Active,
 	},
 	BulkDisableResources: Value{
 		Enabled: false,
-		Status:  Active,
+		Status:  Obsolete,
 	},
 }
 
