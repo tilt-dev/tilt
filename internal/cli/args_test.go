@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"runtime"
@@ -23,7 +24,7 @@ func TestArgsClear(t *testing.T) {
 
 	createTiltfile(f, []string{"foo", "bar"})
 
-	cmd := argsCmd{}
+	cmd := newArgsCmd()
 	c := cmd.register()
 	err := c.Flags().Parse([]string{"--clear"})
 	require.NoError(t, err)
@@ -42,7 +43,7 @@ func TestArgsNewValue(t *testing.T) {
 
 	createTiltfile(f, []string{"foo", "bar"})
 
-	cmd := argsCmd{}
+	cmd := newArgsCmd()
 	c := cmd.register()
 	err := c.Flags().Parse([]string{"--", "--foo", "bar"})
 	require.NoError(t, err)
@@ -62,13 +63,31 @@ func TestArgsClearAndNewValue(t *testing.T) {
 
 	createTiltfile(f, []string{"foo", "bar"})
 
-	cmd := argsCmd{}
+	cmd := newArgsCmd()
 	c := cmd.register()
 	err := c.Flags().Parse([]string{"--clear", "--", "--foo", "bar"})
 	require.NoError(t, err)
 	err = cmd.run(f.ctx, c.Flags().Args())
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "--clear cannot be specified with other values")
+}
+
+func TestArgsNoChange(t *testing.T) {
+	f := newServerFixture(t)
+	defer f.TearDown()
+
+	createTiltfile(f, []string{"foo", "bar"})
+
+	cmd := newArgsCmd()
+	out := &bytes.Buffer{}
+	cmd.streams.Out = out
+	cmd.streams.ErrOut = out
+	c := cmd.register()
+	err := c.Flags().Parse([]string{"foo", "bar"})
+	require.NoError(t, err)
+	err = cmd.run(f.ctx, c.Flags().Args())
+	require.NoError(t, err)
+	require.Contains(t, out.String(), "No action taken")
 }
 
 func TestArgsEdit(t *testing.T) {
@@ -138,7 +157,7 @@ func TestArgsEdit(t *testing.T) {
 			originalArgs := []string{"foo", "bar"}
 			createTiltfile(f, originalArgs)
 
-			cmd := argsCmd{}
+			cmd := newArgsCmd()
 			c := cmd.register()
 			err = c.Flags().Parse(nil)
 			require.NoError(t, err)

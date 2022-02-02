@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -12,21 +13,27 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/kubectl/pkg/cmd/util/editor"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
+	"github.com/tilt-dev/tilt/internal/sliceutils"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type argsCmd struct {
-	clear bool
+	streams genericclioptions.IOStreams
+	clear   bool
 }
 
 func newArgsCmd() *argsCmd {
-	return &argsCmd{}
+	return &argsCmd{
+		streams: genericclioptions.IOStreams{Out: os.Stdout, ErrOut: os.Stderr, In: os.Stdin},
+	}
 }
 
 func (c *argsCmd) name() model.TiltSubcommand { return "args" }
@@ -109,6 +116,9 @@ func parseEditResult(b []byte) ([]string, error) {
 }
 
 func (c *argsCmd) run(ctx context.Context, args []string) error {
+	logLvl := logger.Get(ctx).Level()
+	ctx = logger.WithLogger(ctx, logger.NewLogger(logLvl, c.streams.ErrOut))
+
 	ctrlclient, err := newClient(ctx)
 	if err != nil {
 		return err
@@ -148,6 +158,10 @@ func (c *argsCmd) run(ctx context.Context, args []string) error {
 	a.Incr("cmd.args", tags.AsMap())
 	defer a.Flush(time.Second)
 
+	if sliceutils.StringSliceEquals(tf.Spec.Args, args) {
+		logger.Get(ctx).Infof("Tilt is already running with those args. No action taken.")
+		return nil
+	}
 	tf.Spec.Args = args
 
 	err = ctrlclient.Update(ctx, &tf)
@@ -155,7 +169,7 @@ func (c *argsCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	fmt.Printf("changed config args for Tilt running at %s to %v\n", apiHost(), args)
+	logger.Get(ctx).Infof("changed config args for Tilt running at %s to %v", apiHost(), args)
 
 	return nil
 }
