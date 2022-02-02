@@ -69,6 +69,24 @@ config.parse()`
 	}
 }
 
+func TestDisableAllResources(t *testing.T) {
+	args := strings.Split("united states canada mexico panama haiti jamaica peru", " ")
+
+	f := NewFixture(t, args, "")
+	defer f.TearDown()
+
+	f.File("Tiltfile", "config.set_enabled_resources(None)")
+
+	result, err := f.ExecFile("Tiltfile")
+	require.NoError(t, err)
+
+	manifests := []model.Manifest{{Name: "a"}, {Name: "b"}}
+	actual, err := MustState(result).EnabledResources(f.Tiltfile(), manifests)
+	require.NoError(t, err)
+
+	require.Len(t, actual, 0)
+}
+
 func TestParsePositional(t *testing.T) {
 	args := strings.Split("united states canada mexico panama haiti jamaica peru", " ")
 

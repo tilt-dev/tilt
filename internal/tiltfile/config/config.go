@@ -15,6 +15,7 @@ import (
 const UserConfigFileName = "tilt_config.json"
 
 type Settings struct {
+	disableAll       bool
 	enabledResources []model.ManifestName
 	configDef        ConfigDef
 

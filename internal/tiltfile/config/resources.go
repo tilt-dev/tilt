@@ -14,7 +14,7 @@ import (
 )
 
 func setEnabledResources(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var slResources starlark.Sequence
+	var slResources starlark.Value
 	err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs,
 		"resources",
 		&slResources,
@@ -23,29 +23,38 @@ func setEnabledResources(thread *starlark.Thread, fn *starlark.Builtin, args sta
 		return starlark.None, err
 	}
 
-	resources, err := value.SequenceToStringSlice(slResources)
-	if err != nil {
-		return starlark.None, errors.Wrap(err, "resources must be a list of string")
-	}
+	err = starkit.SetState(thread, func(settings Settings) (Settings, error) {
+		switch x := slResources.(type) {
+		case starlark.NoneType:
+			settings.disableAll = true
+			return settings, nil
+		case starlark.Sequence:
+			resources, err := value.SequenceToStringSlice(x)
+			if err != nil {
+				return settings, errors.Wrap(err, "resources must be a list of string")
+			}
 
-	var mns []model.ManifestName
-	for _, r := range resources {
-		mns = append(mns, model.ManifestName(r))
-	}
+			var mns []model.ManifestName
+			for _, r := range resources {
+				mns = append(mns, model.ManifestName(r))
+			}
 
-	err = starkit.SetState(thread, func(settings Settings) Settings {
-		settings.enabledResources = mns
-		return settings
+			settings.enabledResources = mns
+			return settings, nil
+		default:
+			return settings, errors.Wrap(err, "resources must be None or a list of string")
+		}
 	})
-	if err != nil {
-		return starlark.None, err
-	}
 
-	return starlark.None, nil
+	return starlark.None, err
 }
 
 // for the given args and list of full manifests, figure out which manifests the user actually selected
 func (s Settings) EnabledResources(tf *v1alpha1.Tiltfile, manifests []model.Manifest) ([]model.ManifestName, error) {
+	if s.disableAll {
+		return nil, nil
+	}
+
 	// by default, nil = match all resources
 	var requestedManifests []model.ManifestName
 
