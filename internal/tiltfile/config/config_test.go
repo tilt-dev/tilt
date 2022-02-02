@@ -69,6 +69,38 @@ config.parse()`
 	}
 }
 
+func TestClearEnabledResources(t *testing.T) {
+	args := strings.Split("united states canada mexico panama haiti jamaica peru", " ")
+
+	f := NewFixture(t, args, "")
+	defer f.TearDown()
+
+	f.File("Tiltfile", "config.clear_enabled_resources()")
+
+	result, err := f.ExecFile("Tiltfile")
+	require.NoError(t, err)
+
+	manifests := []model.Manifest{{Name: "a"}, {Name: "b"}}
+	actual, err := MustState(result).EnabledResources(f.Tiltfile(), manifests)
+	require.NoError(t, err)
+
+	require.Len(t, actual, 0)
+}
+
+func TestClearEnabledResourcesWithArgs(t *testing.T) {
+	args := strings.Split("united states canada mexico panama haiti jamaica peru", " ")
+
+	f := NewFixture(t, args, "")
+	defer f.TearDown()
+
+	f.File("Tiltfile", "config.clear_enabled_resources('foo')")
+
+	_, err := f.ExecFile("Tiltfile")
+	require.Error(t, err)
+
+	require.Contains(t, err.Error(), "got 1 arguments, want at most 0")
+}
+
 func TestParsePositional(t *testing.T) {
 	args := strings.Split("united states canada mexico panama haiti jamaica peru", " ")
 

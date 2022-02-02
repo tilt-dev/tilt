@@ -34,6 +34,7 @@ func setEnabledResources(thread *starlark.Thread, fn *starlark.Builtin, args sta
 	}
 
 	err = starkit.SetState(thread, func(settings Settings) Settings {
+		settings.disableAll = false
 		settings.enabledResources = mns
 		return settings
 	})
@@ -44,8 +45,26 @@ func setEnabledResources(thread *starlark.Thread, fn *starlark.Builtin, args sta
 	return starlark.None, nil
 }
 
+func clearEnabledResources(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs)
+	if err != nil {
+		return starlark.None, err
+	}
+
+	err = starkit.SetState(thread, func(settings Settings) Settings {
+		settings.disableAll = true
+		settings.enabledResources = nil
+		return settings
+	})
+	return starlark.None, err
+}
+
 // for the given args and list of full manifests, figure out which manifests the user actually selected
 func (s Settings) EnabledResources(tf *v1alpha1.Tiltfile, manifests []model.Manifest) ([]model.ManifestName, error) {
+	if s.disableAll {
+		return nil, nil
+	}
+
 	// by default, nil = match all resources
 	var requestedManifests []model.ManifestName
 
