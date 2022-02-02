@@ -265,7 +265,7 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		return nil, err
 	}
 
-	yaml := filterHelmTestYAML(string(stdout))
+	yaml := filterHelmTestYAML(stdout)
 
 	if version == helmV3_0 {
 		// Helm v3.0 has a bug where it doesn't include CRDs in the template output

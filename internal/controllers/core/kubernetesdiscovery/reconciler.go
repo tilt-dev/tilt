@@ -266,7 +266,7 @@ func (w *Reconciler) addOrReplace(ctx context.Context, watcherKey watcherID, kd 
 	} else {
 		currentNamespaces, currentUIDs := namespacesAndUIDsFromSpec(kd.Spec.Watches)
 		for namespace := range currentNamespaces {
-			nsKey := newNsKey(cluster, string(namespace))
+			nsKey := newNsKey(cluster, namespace)
 			err := w.setupNamespaceWatch(ctx, nsKey, watcherKey, kCli)
 			if err != nil {
 				newWatcher.errorReason = err.Error()

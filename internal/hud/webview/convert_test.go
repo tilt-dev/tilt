@@ -189,8 +189,8 @@ func TestStateToViewTiltfileLog(t *testing.T) {
 	v := completeProtoView(t, *es)
 	_, ok := findResource("(Tiltfile)", v)
 	require.True(t, ok, "no resource named (Tiltfile) found")
-	assert.Equal(t, "hello", string(v.LogList.Segments[0].Text))
-	assert.Equal(t, "(Tiltfile)", string(v.LogList.Spans[string(spanID)].ManifestName))
+	assert.Equal(t, "hello", v.LogList.Segments[0].Text)
+	assert.Equal(t, "(Tiltfile)", v.LogList.Spans[string(spanID)].ManifestName)
 }
 
 func TestNeedsNudgeSet(t *testing.T) {
@@ -257,7 +257,7 @@ func TestReadinessCheckFailing(t *testing.T) {
 	v := completeProtoView(t, *state)
 	rv, ok := findResource(m.Name, v)
 	require.True(t, ok)
-	require.Equal(t, v1alpha1.RuntimeStatusPending, v1alpha1.RuntimeStatus(rv.RuntimeStatus))
+	require.Equal(t, v1alpha1.RuntimeStatusPending, rv.RuntimeStatus)
 	require.Equal(t, "False", string(readyCondition(rv).Status))
 }
 

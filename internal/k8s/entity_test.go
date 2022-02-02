@@ -222,7 +222,7 @@ func TestSortEntities(t *testing.T) {
 			[]string{"PersistentVolume", "PersistentVolumeClaim", "ConfigMap", "Service", "StatefulSet", "Job", "Pod"},
 		},
 	} {
-		t.Run(string(test.name), func(t *testing.T) {
+		t.Run(test.name, func(t *testing.T) {
 			input := entitiesWithKinds(test.inputKindOrder)
 			sorted := SortedEntities(input)
 			assertKindOrder(t, test.expectedKindOrder, sorted, "sorted entities")
@@ -259,7 +259,7 @@ func TestMutableAndImmutableEntities(t *testing.T) {
 			[]string{},
 		},
 	} {
-		t.Run(string(test.name), func(t *testing.T) {
+		t.Run(test.name, func(t *testing.T) {
 			input := entitiesWithKinds(test.inputKindOrder)
 			mutable, immutable := MutableAndImmutableEntities(input)
 			assertKindOrder(t, test.expectedMutableKindOrder, mutable, "mutable entities")

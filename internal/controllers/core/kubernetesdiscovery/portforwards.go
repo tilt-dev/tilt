@@ -119,10 +119,10 @@ func populateContainerPorts(pf *v1alpha1.PortForward, pod *v1alpha1.Pod) {
 	cPorts := store.AllPodContainerPorts(*pod)
 	for i, forward := range pf.Spec.Forwards {
 		if forward.ContainerPort == 0 && len(cPorts) > 0 {
-			forward.ContainerPort = int32(cPorts[0])
+			forward.ContainerPort = cPorts[0]
 			for _, cPort := range cPorts {
 				if int(forward.LocalPort) == int(cPort) {
-					forward.ContainerPort = int32(cPort)
+					forward.ContainerPort = cPort
 					break
 				}
 			}

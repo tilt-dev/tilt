@@ -430,7 +430,7 @@ func (c *Controller) ensureStatusActive(streamName types.NamespacedName, contain
 	isMatching := len(containers) == len(status.ContainerStatuses)
 	if isMatching {
 		for i, cs := range status.ContainerStatuses {
-			if string(containers[i].Name) != cs.Name {
+			if containers[i].Name != cs.Name {
 				isMatching = false
 				break
 			}
@@ -444,7 +444,7 @@ func (c *Controller) ensureStatusActive(streamName types.NamespacedName, contain
 	statuses := make([]ContainerLogStreamStatus, 0, len(containers))
 	for _, c := range containers {
 		statuses = append(statuses, ContainerLogStreamStatus{
-			Name: string(c.Name),
+			Name: c.Name,
 		})
 	}
 	status.ContainerStatuses = statuses

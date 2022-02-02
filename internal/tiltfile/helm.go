@@ -148,7 +148,7 @@ func localSubchartDependencies(dat []byte) ([]string, error) {
 	var deps []string
 	var metadata chartMetadata
 
-	err := yaml.Unmarshal([]byte(dat), &metadata)
+	err := yaml.Unmarshal(dat, &metadata)
 	if err != nil {
 		return deps, err
 	}
