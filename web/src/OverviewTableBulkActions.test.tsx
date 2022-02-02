@@ -34,7 +34,7 @@ const OverviewTableBulkActionsTestWrapper = (props: {
   resourceSelections: string[]
 }) => {
   const { flagEnabled, resourceSelections } = props
-  const features = new Features({ [Flag.BulkDisableResources]: flagEnabled })
+  const features = new Features({ [Flag.DisableResources]: flagEnabled })
   return (
     <FeaturesProvider value={features}>
       <ResourceSelectionProvider initialValuesForTesting={resourceSelections}>
@@ -54,7 +54,7 @@ describe("OverviewTableBulkActions", () => {
     cleanupMockAnalyticsCalls()
   })
 
-  describe("when bulk actions are NOT enabled", () => {
+  describe("when disable resources are NOT enabled", () => {
     it("does NOT display", () => {
       render(
         <OverviewTableBulkActionsTestWrapper
@@ -67,7 +67,7 @@ describe("OverviewTableBulkActions", () => {
     })
   })
 
-  describe("when bulk actions are enabled", () => {
+  describe("when disable resources are enabled", () => {
     describe("when there are NO resources selected", () => {
       it("does NOT display", () => {
         render(

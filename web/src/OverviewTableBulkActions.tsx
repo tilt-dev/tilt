@@ -87,7 +87,7 @@ export function OverviewTableBulkActions({
   )
 
   // Don't render if feature flag is off or if there are no selections
-  if (!features.isEnabled(Flag.BulkDisableResources) || selected.length === 0) {
+  if (!features.isEnabled(Flag.DisableResources) || selected.length === 0) {
     return null
   }
 

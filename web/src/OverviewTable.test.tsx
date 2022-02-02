@@ -69,21 +69,18 @@ const tableViewWithSettings = ({
   view,
   labelsEnabled,
   disableResourcesEnabled,
-  bulkActionsEnabled,
   resourceListOptions,
   resourceSelections,
 }: {
   view: TestDataView
   labelsEnabled?: boolean
   disableResourcesEnabled?: boolean
-  bulkActionsEnabled?: boolean
   resourceListOptions?: ResourceListOptions
   resourceSelections?: string[]
 }) => {
   const features = new Features({
     [Flag.Labels]: labelsEnabled ?? true,
     [Flag.DisableResources]: disableResourcesEnabled ?? true,
-    [Flag.BulkDisableResources]: bulkActionsEnabled ?? true,
   })
   return (
     <MemoryRouter initialEntries={["/"]}>
@@ -749,81 +746,85 @@ describe("when disable resources feature is NOT enabled", () => {
   })
 })
 
-describe("when bulk disable resources feature is enabled", () => {
-  let view: TestDataView
-  let wrapper: ReactWrapper<OverviewTableProps, typeof OverviewTable>
+describe("bulk disable actions", () => {
+  describe("when disable resources feature is enabled", () => {
+    let view: TestDataView
+    let wrapper: ReactWrapper<OverviewTableProps, typeof OverviewTable>
 
-  beforeEach(() => {
-    view = nResourceView(4)
-    wrapper = mount(tableViewWithSettings({ view, bulkActionsEnabled: true }))
-  })
-
-  it("renders the `Select` column", () => {
-    expect(wrapper.find(TableSelectionColumn).length).toBeGreaterThan(0)
-  })
-
-  it("renders a checkbox for every resource that is selectable", () => {
-    const expectedCheckBoxDisplay = {
-      "(Tiltfile)": false,
-      _1: true,
-      _2: true,
-      _3: true,
-    }
-    const actualCheckboxDisplay: { [key: string]: boolean } = {}
-    const rows = wrapper.find(ResourceTableRow).slice(1) // Ignore the header row
-    rows.forEach((row) => {
-      const name = row.find(TableNameColumn).text()
-      const checkbox = row.find(SelectionCheckbox)
-      actualCheckboxDisplay[name] = checkbox.length === 1
+    beforeEach(() => {
+      view = nResourceView(4)
+      wrapper = mount(
+        tableViewWithSettings({ view, disableResourcesEnabled: true })
+      )
     })
 
-    expect(actualCheckboxDisplay).toEqual(expectedCheckBoxDisplay)
+    it("renders the `Select` column", () => {
+      expect(wrapper.find(TableSelectionColumn).length).toBeGreaterThan(0)
+    })
+
+    it("renders a checkbox for every resource that is selectable", () => {
+      const expectedCheckBoxDisplay = {
+        "(Tiltfile)": false,
+        _1: true,
+        _2: true,
+        _3: true,
+      }
+      const actualCheckboxDisplay: { [key: string]: boolean } = {}
+      const rows = wrapper.find(ResourceTableRow).slice(1) // Ignore the header row
+      rows.forEach((row) => {
+        const name = row.find(TableNameColumn).text()
+        const checkbox = row.find(SelectionCheckbox)
+        actualCheckboxDisplay[name] = checkbox.length === 1
+      })
+
+      expect(actualCheckboxDisplay).toEqual(expectedCheckBoxDisplay)
+    })
+
+    it("selects a resource when checkbox is not checked", () => {
+      const checkbox = wrapper.find(SelectionCheckbox).at(0)
+      expect(checkbox).toBeTruthy()
+
+      checkbox.find("input").at(0).simulate("change")
+      wrapper.update()
+
+      const checkboxAfterClick = wrapper.find(SelectionCheckbox).at(0)
+      expect(checkboxAfterClick.prop("checked")).toBe(true)
+    })
+
+    it("deselects a resource when checkbox is checked", () => {
+      const checkbox = wrapper.find(SelectionCheckbox).at(0)
+      expect(checkbox).toBeTruthy()
+
+      // Click the checkbox once to get it to a selected state
+      checkbox.find("input").at(0).simulate("change")
+      wrapper.update()
+
+      const checkboxAfterFirstClick = wrapper.find(SelectionCheckbox).at(0)
+      expect(checkboxAfterFirstClick.prop("checked")).toBe(true)
+
+      // Click the checkbox a second time to deselect it
+      checkbox.find("input").at(0).simulate("change")
+      wrapper.update()
+
+      const checkboxAfterSecondClick = wrapper.find(SelectionCheckbox).at(0)
+      expect(checkboxAfterSecondClick.prop("checked")).toBe(false)
+    })
   })
 
-  it("selects a resource when checkbox is not checked", () => {
-    const checkbox = wrapper.find(SelectionCheckbox).at(0)
-    expect(checkbox).toBeTruthy()
+  describe("when disable resources feature is NOT enabled", () => {
+    it("does NOT render the `Select` column", () => {
+      const wrapper: ReactWrapper<OverviewTableProps, typeof OverviewTable> =
+        mount(
+          tableViewWithSettings({
+            view: nResourceView(5),
+            disableResourcesEnabled: false,
+          })
+        )
+      const firstColumnHeaderText = wrapper.find(ResourceTableRow).at(1).text()
 
-    checkbox.find("input").at(0).simulate("change")
-    wrapper.update()
-
-    const checkboxAfterClick = wrapper.find(SelectionCheckbox).at(0)
-    expect(checkboxAfterClick.prop("checked")).toBe(true)
-  })
-
-  it("deselects a resource when checkbox is checked", () => {
-    const checkbox = wrapper.find(SelectionCheckbox).at(0)
-    expect(checkbox).toBeTruthy()
-
-    // Click the checkbox once to get it to a selected state
-    checkbox.find("input").at(0).simulate("change")
-    wrapper.update()
-
-    const checkboxAfterFirstClick = wrapper.find(SelectionCheckbox).at(0)
-    expect(checkboxAfterFirstClick.prop("checked")).toBe(true)
-
-    // Click the checkbox a second time to deselect it
-    checkbox.find("input").at(0).simulate("change")
-    wrapper.update()
-
-    const checkboxAfterSecondClick = wrapper.find(SelectionCheckbox).at(0)
-    expect(checkboxAfterSecondClick.prop("checked")).toBe(false)
-  })
-})
-
-describe("when bulk disable resources feature is NOT enabled", () => {
-  it("does NOT render the `Select` column", () => {
-    const wrapper: ReactWrapper<OverviewTableProps, typeof OverviewTable> =
-      mount(
-        tableViewWithSettings({
-          view: nResourceView(5),
-          bulkActionsEnabled: false,
-        })
-      )
-    const firstColumnHeaderText = wrapper.find(ResourceTableRow).at(1).text()
-
-    expect(wrapper.find(TableSelectionColumn).length).toBe(0)
-    // Expect to see the Starred column first when the selection column isn't present
-    expect(firstColumnHeaderText.includes("star.svg")).toBe(true)
+      expect(wrapper.find(TableSelectionColumn).length).toBe(0)
+      // Expect to see the Starred column first when the selection column isn't present
+      expect(firstColumnHeaderText.includes("star.svg")).toBe(true)
+    })
   })
 })
