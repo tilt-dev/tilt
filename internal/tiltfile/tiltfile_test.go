@@ -547,6 +547,8 @@ func TestKustomizeBin(t *testing.T) {
 echo %%* > %s
 kustomize.exe %%*
 `, sentinel))
+		// convert backslashes in path
+		wrapper = strings.ReplaceAll(wrapper, "\\", "/")
 	} else {
 		wrapper = f.WriteFile("kustomize", fmt.Sprintf(`#!/bin/sh
 echo "$@" > %s
