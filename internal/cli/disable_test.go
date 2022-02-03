@@ -59,6 +59,7 @@ func TestDisable(t *testing.T) {
 			cmd := disableCmd{}
 			c := cmd.register()
 			err := c.Flags().Parse(tc.args)
+			require.NoError(t, err)
 			err = cmd.run(f.ctx, c.Flags().Args())
 			if tc.expectedError != "" {
 				require.Error(t, err)

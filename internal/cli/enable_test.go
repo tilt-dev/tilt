@@ -74,6 +74,7 @@ func TestEnable(t *testing.T) {
 			cmd := enableCmd{}
 			c := cmd.register()
 			err := c.Flags().Parse(tc.args)
+			require.NoError(t, err)
 			err = cmd.run(f.ctx, c.Flags().Args())
 			if tc.expectedError != "" {
 				require.Error(t, err)
