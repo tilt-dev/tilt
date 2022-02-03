@@ -116,8 +116,7 @@ func parseEditResult(b []byte) ([]string, error) {
 }
 
 func (c *argsCmd) run(ctx context.Context, args []string) error {
-	logLvl := logger.Get(ctx).Level()
-	ctx = logger.WithLogger(ctx, logger.NewLogger(logLvl, c.streams.ErrOut))
+	ctx = logger.WithLogger(ctx, logger.NewLogger(logger.Get(ctx).Level(), c.streams.ErrOut))
 
 	ctrlclient, err := newClient(ctx)
 	if err != nil {
@@ -159,7 +158,7 @@ func (c *argsCmd) run(ctx context.Context, args []string) error {
 	defer a.Flush(time.Second)
 
 	if sliceutils.StringSliceEquals(tf.Spec.Args, args) {
-		logger.Get(ctx).Infof("Tilt is already running with those args. No action taken.")
+		logger.Get(ctx).Infof("Tilt is already running with those args -- no action taken")
 		return nil
 	}
 	tf.Spec.Args = args
@@ -169,7 +168,7 @@ func (c *argsCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	logger.Get(ctx).Infof("changed config args for Tilt running at %s to %v", apiHost(), args)
+	logger.Get(ctx).Infof("Changed config args for Tilt running at %s to %v", apiHost(), args)
 
 	return nil
 }
