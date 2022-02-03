@@ -1,5 +1,5 @@
-import React, { ChangeEvent, useCallback, useState } from "react"
-import { CellProps, Column, Row } from "react-table"
+import React, { ChangeEvent, useCallback, useMemo, useState } from "react"
+import { CellProps, Column, HeaderProps, Row } from "react-table"
 import TimeAgo from "react-timeago"
 import styled from "styled-components"
 import { AnalyticsAction, AnalyticsType, incr, Tags } from "./analytics"
@@ -207,6 +207,86 @@ function statusSortKey(row: RowValues): string {
   }
   // add name after order just to keep things stable when orders are equal
   return `${order}${row.name}`
+}
+
+/**
+ * Header components
+ */
+export function ResourceSelectionHeader({
+  rows,
+  column,
+}: HeaderProps<RowValues>) {
+  const { selected, isSelected, select, deselect } = useResourceSelection()
+
+  const selectableResourcesInTable = useMemo(() => {
+    const resources: string[] = []
+    rows.forEach(({ original }) => {
+      if (original.selectable) {
+        resources.push(original.name)
+      }
+    })
+
+    return resources
+  }, [rows])
+
+  function getSelectionState(resourcesInTable: string[]): {
+    indeterminate: boolean
+    checked: boolean
+  } {
+    let anySelected = false
+    let anyUnselected = false
+    for (let i = 0; i < resourcesInTable.length; i++) {
+      if (isSelected(resourcesInTable[i])) {
+        anySelected = true
+      } else {
+        anyUnselected = true
+      }
+
+      if (anySelected && anyUnselected) {
+        break
+      }
+    }
+
+    return {
+      indeterminate: anySelected && anyUnselected,
+      checked: !anyUnselected,
+    }
+  }
+
+  const { indeterminate, checked } = useMemo(
+    () => getSelectionState(selectableResourcesInTable),
+    [selectableResourcesInTable, selected]
+  )
+
+  // If no resources in the table are selectable, don't render
+  if (selectableResourcesInTable.length === 0) {
+    return null
+  }
+
+  const onChange = (_e: ChangeEvent<HTMLInputElement>) => {
+    if (!checked) {
+      select(...selectableResourcesInTable)
+    } else {
+      deselect(...selectableResourcesInTable)
+    }
+  }
+
+  const analyticsTags: Tags = {
+    type: AnalyticsType.Grid,
+  }
+
+  return (
+    <SelectionCheckbox
+      aria-label="Resource group selection"
+      analyticsName={"ui.web.checkbox.resourceGroupSelection"}
+      analyticsTags={analyticsTags}
+      checked={checked}
+      indeterminate={indeterminate}
+      onChange={onChange}
+      size="small"
+      style={{ width: column.width, marginLeft: "5px" }}
+    />
+  )
 }
 
 /**
@@ -517,7 +597,8 @@ export function ResourceTableHeaderTip(props: { name?: string }) {
  * Column definitions
  */
 const RESOURCE_SELECTION_COLUMN: Column<RowValues> = {
-  Header: "Select",
+  Header: (props) => <ResourceSelectionHeader {...props} />,
+  id: "selection",
   disableSortBy: true,
   width: "10px",
   Cell: TableSelectionColumn,
@@ -533,7 +614,6 @@ const DEFAULT_COLUMNS: Column<RowValues>[] = [
   {
     Header: () => <TableHeaderStarIcon title="Starred" />,
     id: "starred",
-    accessor: "name", // Note: this accessor is meaningless but required when `Header` returns JSX. The starred column gets its data directly from the StarredResources context and sort on this column is disabled.
     disableSortBy: true,
     width: "10px",
     Cell: TableStarColumn,
