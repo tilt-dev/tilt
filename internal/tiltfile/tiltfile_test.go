@@ -893,7 +893,7 @@ docker_build('gcr.io/foo', 'foo')
 k8s_yaml('foo.yaml')
 k8s_resource('foo', port_forwards=EXPR)
 `
-			s = strings.Replace(s, "EXPR", c.expr, -1)
+			s = strings.ReplaceAll(s, "EXPR", c.expr)
 			f.file("Tiltfile", s)
 
 			if c.errorMsg != "" {
@@ -984,7 +984,7 @@ k8s_resource('foo', links=EXPR)
 k8s_resource('foo') # test that subsequent calls don't clear the links
 `
 
-			s = strings.Replace(s, "EXPR", c.expr, -1)
+			s = strings.ReplaceAll(s, "EXPR", c.expr)
 			f.file("Tiltfile", s)
 
 			if c.errorMsg != "" {
@@ -1014,7 +1014,7 @@ dc_resource('foo', links=EXPR)
 dc_resource('foo') # test that subsequent calls don't clear the links
 `
 
-			s = strings.Replace(s, "EXPR", c.expr, -1)
+			s = strings.ReplaceAll(s, "EXPR", c.expr)
 			f.file("Tiltfile", s)
 
 			if c.errorMsg != "" {
@@ -6019,9 +6019,9 @@ func (f *fixture) yaml(path string, entities ...k8sOpts) {
 		case deploymentHelper:
 			s := testyaml.SnackYaml
 			if e.image != "" {
-				s = strings.Replace(s, testyaml.SnackImage, e.image, -1)
+				s = strings.ReplaceAll(s, testyaml.SnackImage, e.image)
 			}
-			s = strings.Replace(s, testyaml.SnackName, e.name, -1)
+			s = strings.ReplaceAll(s, testyaml.SnackName, e.name)
 			objs, err := k8s.ParseYAMLFromString(s)
 			if err != nil {
 				f.t.Fatal(err)
@@ -6058,7 +6058,7 @@ func (f *fixture) yaml(path string, entities ...k8sOpts) {
 			entityObjs = append(entityObjs, objs...)
 		case serviceHelper:
 			s := testyaml.DoggosServiceYaml
-			s = strings.Replace(s, testyaml.DoggosName, e.name, -1)
+			s = strings.ReplaceAll(s, testyaml.DoggosName, e.name)
 			objs, err := k8s.ParseYAMLFromString(s)
 			if err != nil {
 				f.t.Fatal(err)
@@ -6077,7 +6077,7 @@ func (f *fixture) yaml(path string, entities ...k8sOpts) {
 
 		case secretHelper:
 			s := testyaml.SecretYaml
-			s = strings.Replace(s, testyaml.SecretName, e.name, -1)
+			s = strings.ReplaceAll(s, testyaml.SecretName, e.name)
 			objs, err := k8s.ParseYAMLFromString(s)
 			if err != nil {
 				f.t.Fatal(err)
@@ -6086,7 +6086,7 @@ func (f *fixture) yaml(path string, entities ...k8sOpts) {
 			entityObjs = append(entityObjs, objs...)
 		case namespaceHelper:
 			s := testyaml.MyNamespaceYAML
-			s = strings.Replace(s, testyaml.MyNamespaceName, e.namespace, -1)
+			s = strings.ReplaceAll(s, testyaml.MyNamespaceName, e.namespace)
 			objs, err := k8s.ParseYAMLFromString(s)
 			if err != nil {
 				f.t.Fatal(err)

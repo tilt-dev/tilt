@@ -287,7 +287,7 @@ func (f *fixture) ReplaceContents(fileBaseName, original, replacement string) {
 		f.originalFiles[file] = contents
 	}
 
-	newContents := strings.Replace(contents, original, replacement, -1)
+	newContents := strings.ReplaceAll(contents, original, replacement)
 	if newContents == contents {
 		f.t.Fatalf("Could not find contents %q to replace in file %s: %s", original, fileBaseName, contents)
 	}

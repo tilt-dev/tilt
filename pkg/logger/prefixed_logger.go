@@ -43,7 +43,7 @@ func (i *prefixedLogger) handleLog(level Level, fields Fields, buf []byte) error
 		output = output[:len(output)-1]
 	}
 
-	output = strings.Replace(output, "\n", "\n"+i.prefix, -1)
+	output = strings.ReplaceAll(output, "\n", "\n"+i.prefix)
 
 	if endsInNewline {
 		output = output + "\n"

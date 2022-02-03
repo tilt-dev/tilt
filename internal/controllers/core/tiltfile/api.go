@@ -488,7 +488,7 @@ func toCmdImageObjects(tlr *tiltfile.TiltfileLoadResult, disableSources disableS
 			}
 
 			// TODO(nick): Add DisableSource to image builds.
-			//di.Spec.DisableSource = disableSources[m.Name]
+			// di.Spec.DisableSource = disableSources[m.Name]
 
 			result[name] = ci
 		}

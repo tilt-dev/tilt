@@ -358,7 +358,7 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 		Url: s.uploader.IDToSnapshotURL(id),
 	}
 
-	//encode URL to JSON format
+	// encode URL to JSON format
 	urlJS, err := json.Marshal(responsePayload)
 	if err != nil {
 		msg := fmt.Sprintf("Error to marshal url JSON response %v", err)
@@ -367,7 +367,7 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 		return
 	}
 
-	//write URL to header
+	// write URL to header
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(urlJS)
 	if err != nil {

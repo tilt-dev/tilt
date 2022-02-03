@@ -133,7 +133,6 @@ func generateLocalResources() []localResource {
 }
 
 func (lr localResource) String() string {
-	//args := make(map[string]string)
 	var args []string
 	args = append(args, fmt.Sprintf("name=%q", lr.name))
 	var autoInitArgVal string

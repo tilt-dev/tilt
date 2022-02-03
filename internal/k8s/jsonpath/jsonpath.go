@@ -457,7 +457,7 @@ func (j *JSONPath) evalFilter(input []Value, node *FilterNode) ([]Value, error) 
 			temp := []Value{Wrap(value.Index(i))}
 			lefts, err := j.evalList(temp, node.Left)
 
-			//case exists
+			// case exists
 			if node.Operator == "exists" {
 				if len(lefts) > 0 {
 					results = append(results, Wrap(value.Index(i)))
