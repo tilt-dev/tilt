@@ -13,7 +13,6 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/kubectl/pkg/cmd/util/editor"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
@@ -62,25 +61,6 @@ i.e., those specifying which resources to run and/or handled by a Tiltfile calli
 	cmd.Flags().BoolVar(&c.clear, "clear", false, "Clear the Tiltfile args, as if you'd run tilt with no args")
 
 	return cmd
-}
-
-func newClient(ctx context.Context) (client.Client, error) {
-	getter, err := wireClientGetter(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	cfg, err := getter.ToRESTConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	ctrlclient, err := client.New(cfg, client.Options{Scheme: v1alpha1.NewScheme()})
-	if err != nil {
-		return nil, err
-	}
-
-	return ctrlclient, err
 }
 
 func parseEditResult(b []byte) ([]string, error) {
