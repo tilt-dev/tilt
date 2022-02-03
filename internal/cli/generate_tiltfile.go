@@ -51,7 +51,7 @@ func maybeGenerateTiltfile(tfPath string) (generateTiltfileResult, error) {
 		return generateTiltfileAlreadyExists, nil
 	}
 
-	t, restoreTerm, err := setupTerm(os.Stdin)
+	restoreTerm, err := setupTerm(os.Stdin)
 	if err != nil {
 		return generateTiltfileError, nil
 	}
@@ -76,6 +76,15 @@ func maybeGenerateTiltfile(tfPath string) (generateTiltfileResult, error) {
 			fmt.Println(postFinishMessage)
 		}
 	}()
+
+	// using os.Stdin directly works on *nix, but Windows needs the reads to
+	// happen from os.Stdin and critically, the writes to be on os.Stdout
+	// (this wrapper also works on *nix)
+	termIO := struct {
+		io.Reader
+		io.Writer
+	}{os.Stdin, os.Stdout}
+	t := term.NewTerminal(termIO, "✨ Create a starter Tiltfile? (y/n) ")
 
 	// Offer to create a Tiltfile
 	var intro bytes.Buffer
@@ -130,16 +139,15 @@ steps for your microservices.
 	return generateTiltfileCreated, nil
 }
 
-func setupTerm(f *os.File) (t *term.Terminal, restore func() error, err error) {
+func setupTerm(f *os.File) (restore func() error, err error) {
 	oldState, err := term.MakeRaw(int(f.Fd()))
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	restore = func() error {
 		return term.Restore(int(f.Fd()), oldState)
 	}
-	t = term.NewTerminal(os.Stdin, "✨ Create a starter Tiltfile? (y/n) ")
-	return t, restore, nil
+	return restore, nil
 }
 
 func checkTiltfileExists(tfPath string) (bool, error) {
