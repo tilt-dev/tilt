@@ -1593,8 +1593,8 @@ spec:
       - name: NAME
         image: IMAGE
 `
-	result = strings.Replace(result, "NAME", name, -1)
-	result = strings.Replace(result, "IMAGE", imageName, -1)
+	result = strings.ReplaceAll(result, "NAME", name)
+	result = strings.ReplaceAll(result, "IMAGE", imageName)
 	return result
 }
 

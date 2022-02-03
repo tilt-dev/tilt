@@ -112,7 +112,7 @@ func (ps *PipelineState) Printf(ctx context.Context, format string, a ...interfa
 		l.Infof(format, a...)
 	} else {
 		message := fmt.Sprintf(format, a...)
-		message = strings.Replace(message, "\n", "\n"+buildStepOutputPrefix, -1)
+		message = strings.ReplaceAll(message, "\n", "\n"+buildStepOutputPrefix)
 		l.Infof("%s%s", buildStepOutputPrefix, message)
 	}
 }

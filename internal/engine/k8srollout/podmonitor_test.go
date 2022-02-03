@@ -227,5 +227,5 @@ func assertSnapshot(t *testing.T, output string) {
 }
 
 func normalize(s string) string {
-	return strings.Replace(s, "\r\n", "\n", -1)
+	return strings.ReplaceAll(s, "\r\n", "\n")
 }

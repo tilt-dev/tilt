@@ -236,7 +236,7 @@ func (tcf *tcFixture) assertCmdOutput(expected string) {
 }
 
 func normalize(s string) string {
-	return strings.Replace(s, "\r\n", "\n", -1)
+	return strings.ReplaceAll(s, "\r\n", "\n")
 }
 
 func (tcf *tcFixture) assertSpansPresent() {

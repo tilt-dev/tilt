@@ -263,7 +263,7 @@ type caseCell struct {
 }
 
 func (i *InteractiveTester) filename(name string) string {
-	return filepath.Join(testDataDir, strings.Replace(name, "/", "_", -1)+".gob")
+	return filepath.Join(testDataDir, strings.ReplaceAll(name, "/", "_")+".gob")
 }
 
 func (i *InteractiveTester) loadGoldenFile(name string) Canvas {

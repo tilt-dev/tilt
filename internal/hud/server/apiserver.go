@@ -60,7 +60,7 @@ func ProvideMemConn() apiserver.ConnProvider {
 }
 
 func ProvideKeyCert(apiServerName model.APIServerName, host model.WebHost, port model.WebPort, base xdg.Base) (options.GeneratableKeyCert, error) {
-	pairName := strings.Replace(fmt.Sprintf("%s_%d", host, port), string(filepath.Separator), "_", -1)
+	pairName := strings.ReplaceAll(fmt.Sprintf("%s_%d", host, port), string(filepath.Separator), "_")
 	exampleCert, err := base.CacheFile(filepath.Join("certs", string(apiServerName), pairName))
 	if err != nil {
 		return options.GeneratableKeyCert{}, err
