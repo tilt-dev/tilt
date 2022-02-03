@@ -94,24 +94,26 @@ type TiltfileLoader interface {
 
 func ProvideTiltfileLoader(
 	analytics *analytics.TiltAnalytics,
-	k8sContextExt k8scontext.Plugin,
-	versionExt version.Plugin,
-	configExt *config.Plugin,
+	k8sContextPlugin k8scontext.Plugin,
+	versionPlugin version.Plugin,
+	configPlugin *config.Plugin,
+	extensionPlugin *tiltextension.Plugin,
 	dcCli dockercompose.DockerComposeClient,
 	webHost model.WebHost,
 	execer localexec.Execer,
 	fDefaults feature.Defaults,
 	env k8s.Env) TiltfileLoader {
 	return tiltfileLoader{
-		analytics:     analytics,
-		k8sContextExt: k8sContextExt,
-		versionExt:    versionExt,
-		configExt:     configExt,
-		dcCli:         dcCli,
-		webHost:       webHost,
-		execer:        execer,
-		fDefaults:     fDefaults,
-		env:           env,
+		analytics:        analytics,
+		k8sContextPlugin: k8sContextPlugin,
+		versionPlugin:    versionPlugin,
+		configPlugin:     configPlugin,
+		extensionPlugin:  extensionPlugin,
+		dcCli:            dcCli,
+		webHost:          webHost,
+		execer:           execer,
+		fDefaults:        fDefaults,
+		env:              env,
 	}
 }
 
@@ -121,11 +123,12 @@ type tiltfileLoader struct {
 	webHost   model.WebHost
 	execer    localexec.Execer
 
-	k8sContextExt k8scontext.Plugin
-	versionExt    version.Plugin
-	configExt     *config.Plugin
-	fDefaults     feature.Defaults
-	env           k8s.Env
+	k8sContextPlugin k8scontext.Plugin
+	versionPlugin    version.Plugin
+	configPlugin     *config.Plugin
+	extensionPlugin  *tiltextension.Plugin
+	fDefaults        feature.Defaults
+	env              k8s.Env
 }
 
 var _ TiltfileLoader = &tiltfileLoader{}
@@ -164,8 +167,8 @@ func (tfl tiltfileLoader) Load(ctx context.Context, tf *corev1alpha1.Tiltfile) T
 
 	tlr.Tiltignore = tiltignore
 
-	s := newTiltfileState(ctx, tfl.dcCli, tfl.webHost, tfl.execer, tfl.k8sContextExt, tfl.versionExt,
-		tfl.configExt, feature.FromDefaults(tfl.fDefaults))
+	s := newTiltfileState(ctx, tfl.dcCli, tfl.webHost, tfl.execer, tfl.k8sContextPlugin, tfl.versionPlugin,
+		tfl.configPlugin, tfl.extensionPlugin, feature.FromDefaults(tfl.fDefaults))
 
 	manifests, result, err := s.loadManifests(tf)
 

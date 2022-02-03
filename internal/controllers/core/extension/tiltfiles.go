@@ -85,6 +85,14 @@ func (r *Reconciler) toDesiredTiltfile(owner *v1alpha1.Extension) (*v1alpha1.Til
 		return nil, nil
 	}
 
+	// Extensions can be loaded as an independent resource, or can be loaded
+	// for their symbols into a tiltfile. If they're loaded for their symbols,
+	// we mark them as managedby the tiltfile loader, and don't bother loading
+	// the tiltfile independently.
+	if owner.Annotations[v1alpha1.AnnotationManagedBy] != "" {
+		return nil, nil
+	}
+
 	path := owner.Status.Path
 	if path == "" {
 		return nil, nil

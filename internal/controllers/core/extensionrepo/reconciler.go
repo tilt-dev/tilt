@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/tilt-dev/go-get"
@@ -37,6 +38,7 @@ type Reconciler struct {
 	ctrlClient ctrlclient.Client
 	st         store.RStore
 	dlr        Downloader
+	mu         sync.Mutex
 
 	repoStates map[types.NamespacedName]*repoState
 }
@@ -63,6 +65,9 @@ func NewReconciler(ctrlClient ctrlclient.Client, st store.RStore, base xdg.Base)
 
 // Downloads extension repos.
 func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	nn := request.NamespacedName
 
 	var repo v1alpha1.ExtensionRepo
@@ -71,7 +76,46 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		return ctrl.Result{}, err
 	}
 
-	isDelete := apierrors.IsNotFound(err) || !repo.ObjectMeta.DeletionTimestamp.IsZero()
+	ctx = store.MustObjectLogHandler(ctx, r.st, &repo)
+
+	result, state, err := r.apply(ctx, nn, &repo)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if state == nil {
+		return ctrl.Result{}, nil
+	}
+
+	err = r.maybeUpdateStatus(ctx, &repo, state)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	return result, nil
+}
+
+// Reconciles the extension repo without reading or writing from the API server.
+// Returns the resolved status.
+// Exposed for outside callers.
+func (r *Reconciler) ForceApply(ctx context.Context, repo *v1alpha1.ExtensionRepo) v1alpha1.ExtensionRepoStatus {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	nn := types.NamespacedName{Name: repo.Name, Namespace: repo.Namespace}
+	_, state, err := r.apply(ctx, nn, repo)
+	if err != nil {
+		return v1alpha1.ExtensionRepoStatus{Error: err.Error()}
+	}
+	if state == nil {
+		return v1alpha1.ExtensionRepoStatus{Error: "internal error: could not reconcile"}
+	}
+	return state.status
+}
+
+// Reconciles the extension repo without reading or writing from the API server.
+// Caller must hold the mutex.
+// Returns a nil state if the repo is being deleted.
+// Returns an error if the reconcile should be retried.
+func (r *Reconciler) apply(ctx context.Context, nn types.NamespacedName, repo *v1alpha1.ExtensionRepo) (ctrl.Result, *repoState, error) {
+	isDelete := repo.Name == "" || !repo.DeletionTimestamp.IsZero()
 	needsCleanup := isDelete
 
 	// If the spec has changed, clear the current repo state.
@@ -93,17 +137,15 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		if state != nil && state.lastSuccessfulDestPath != "" {
 			err := os.RemoveAll(state.lastSuccessfulDestPath)
 			if err != nil && !os.IsNotExist(err) {
-				return ctrl.Result{}, err
+				return ctrl.Result{}, nil, err
 			}
 		}
 		delete(r.repoStates, nn)
 	}
 
 	if isDelete {
-		return ctrl.Result{}, nil
+		return ctrl.Result{}, nil, nil
 	}
-
-	ctx = store.MustObjectLogHandler(ctx, r.st, &repo)
 
 	state, ok = r.repoStates[nn]
 	if !ok {
@@ -117,19 +159,14 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		r.reconcileFileRepo(ctx, state, strings.TrimPrefix(repo.Spec.URL, "file://"))
 	} else {
 		// Check that the URL is valid.
-		importPath, err := getDownloaderImportPath(&repo)
+		importPath, err := getDownloaderImportPath(repo)
 		if err != nil {
 			state.status = v1alpha1.ExtensionRepoStatus{Error: fmt.Sprintf("invalid: %v", err)}
 		} else {
 			result = r.reconcileDownloaderRepo(ctx, state, importPath)
 		}
 	}
-
-	err = r.maybeUpdateStatus(ctx, &repo, state)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-	return result, nil
+	return result, state, nil
 }
 
 // Reconcile a repo that lives on disk, and shouldn't otherwise be modified.

@@ -74,14 +74,15 @@ type resourceSet struct {
 
 type tiltfileState struct {
 	// set at creation
-	ctx           context.Context
-	dcCli         dockercompose.DockerComposeClient
-	webHost       model.WebHost
-	execer        localexec.Execer
-	k8sContextExt k8scontext.Plugin
-	versionExt    version.Plugin
-	configExt     *config.Plugin
-	features      feature.FeatureSet
+	ctx              context.Context
+	dcCli            dockercompose.DockerComposeClient
+	webHost          model.WebHost
+	execer           localexec.Execer
+	k8sContextPlugin k8scontext.Plugin
+	versionPlugin    version.Plugin
+	configPlugin     *config.Plugin
+	extensionPlugin  *tiltextension.Plugin
+	features         feature.FeatureSet
 
 	// added to during execution
 	buildIndex     *buildIndex
@@ -156,18 +157,20 @@ func newTiltfileState(
 	dcCli dockercompose.DockerComposeClient,
 	webHost model.WebHost,
 	execer localexec.Execer,
-	k8sContextExt k8scontext.Plugin,
-	versionExt version.Plugin,
-	configExt *config.Plugin,
+	k8sContextPlugin k8scontext.Plugin,
+	versionPlugin version.Plugin,
+	configPlugin *config.Plugin,
+	extensionPlugin *tiltextension.Plugin,
 	features feature.FeatureSet) *tiltfileState {
 	return &tiltfileState{
 		ctx:                       ctx,
 		dcCli:                     dcCli,
 		webHost:                   webHost,
 		execer:                    execer,
-		k8sContextExt:             k8sContextExt,
-		versionExt:                versionExt,
-		configExt:                 configExt,
+		k8sContextPlugin:          k8sContextPlugin,
+		versionPlugin:             versionPlugin,
+		configPlugin:              configPlugin,
+		extensionPlugin:           extensionPlugin,
 		buildIndex:                newBuildIndex(),
 		k8sObjectIndex:            tiltfile_k8s.NewState(),
 		k8sByName:                 make(map[string]*k8sResource),
@@ -202,16 +205,6 @@ func (s *tiltfileState) print(_ *starlark.Thread, msg string) {
 func (s *tiltfileState) loadManifests(tf *v1alpha1.Tiltfile) ([]model.Manifest, starkit.Model, error) {
 	s.logger.Infof("Loading Tiltfile at: %s", tf.Spec.Path)
 
-	dir, err := s.tempDir()
-	if err != nil {
-		return nil, starkit.Model{}, err
-	}
-	dlr, err := tiltextension.NewTempDirDownloader(dir)
-	if err != nil {
-		return nil, starkit.Model{}, err
-	}
-	fetcher := tiltextension.NewGithubFetcher(dlr)
-
 	result, err := starkit.ExecFile(tf,
 		s,
 		include.IncludeFn{},
@@ -219,11 +212,11 @@ func (s *tiltfileState) loadManifests(tf *v1alpha1.Tiltfile) ([]model.Manifest, 
 		os.NewPlugin(),
 		sys.NewPlugin(),
 		io.NewPlugin(),
-		s.k8sContextExt,
+		s.k8sContextPlugin,
 		dockerprune.NewPlugin(),
 		analytics.NewPlugin(),
-		s.versionExt,
-		s.configExt,
+		s.versionPlugin,
+		s.configPlugin,
 		starlarkstruct.NewPlugin(),
 		telemetry.NewPlugin(),
 		metrics.NewPlugin(),
@@ -233,7 +226,7 @@ func (s *tiltfileState) loadManifests(tf *v1alpha1.Tiltfile) ([]model.Manifest, 
 		shlex.NewPlugin(),
 		watch.NewPlugin(),
 		loaddynamic.NewPlugin(),
-		tiltextension.NewPlugin(fetcher, tiltextension.NewLocalStore(filepath.Dir(tf.Spec.Path))),
+		s.extensionPlugin,
 		links.NewPlugin(),
 		print.NewPlugin(),
 		probe.NewPlugin(),
