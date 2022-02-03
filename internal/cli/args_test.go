@@ -87,7 +87,7 @@ func TestArgsNoChange(t *testing.T) {
 	require.NoError(t, err)
 	err = cmd.run(f.ctx, c.Flags().Args())
 	require.NoError(t, err)
-	require.Contains(t, out.String(), "No action taken")
+	require.Contains(t, out.String(), "no action taken")
 }
 
 func TestArgsEdit(t *testing.T) {
