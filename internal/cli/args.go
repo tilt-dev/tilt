@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -29,9 +28,9 @@ type argsCmd struct {
 	clear   bool
 }
 
-func newArgsCmd() *argsCmd {
+func newArgsCmd(streams genericclioptions.IOStreams) *argsCmd {
 	return &argsCmd{
-		streams: genericclioptions.IOStreams{Out: os.Stdout, ErrOut: os.Stderr, In: os.Stdin},
+		streams: streams,
 	}
 }
 

@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"runtime"
@@ -12,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -24,7 +24,7 @@ func TestArgsClear(t *testing.T) {
 
 	createTiltfile(f, []string{"foo", "bar"})
 
-	cmd := newArgsCmd()
+	cmd := newArgsCmd(genericclioptions.NewTestIOStreamsDiscard())
 	c := cmd.register()
 	err := c.Flags().Parse([]string{"--clear"})
 	require.NoError(t, err)
@@ -43,7 +43,7 @@ func TestArgsNewValue(t *testing.T) {
 
 	createTiltfile(f, []string{"foo", "bar"})
 
-	cmd := newArgsCmd()
+	cmd := newArgsCmd(genericclioptions.NewTestIOStreamsDiscard())
 	c := cmd.register()
 	err := c.Flags().Parse([]string{"--", "--foo", "bar"})
 	require.NoError(t, err)
@@ -63,7 +63,7 @@ func TestArgsClearAndNewValue(t *testing.T) {
 
 	createTiltfile(f, []string{"foo", "bar"})
 
-	cmd := newArgsCmd()
+	cmd := newArgsCmd(genericclioptions.NewTestIOStreamsDiscard())
 	c := cmd.register()
 	err := c.Flags().Parse([]string{"--clear", "--", "--foo", "bar"})
 	require.NoError(t, err)
@@ -78,16 +78,14 @@ func TestArgsNoChange(t *testing.T) {
 
 	createTiltfile(f, []string{"foo", "bar"})
 
-	cmd := newArgsCmd()
-	out := &bytes.Buffer{}
-	cmd.streams.Out = out
-	cmd.streams.ErrOut = out
+	streams, _, _, errOut := genericclioptions.NewTestIOStreams()
+	cmd := newArgsCmd(streams)
 	c := cmd.register()
 	err := c.Flags().Parse([]string{"foo", "bar"})
 	require.NoError(t, err)
 	err = cmd.run(f.ctx, c.Flags().Args())
 	require.NoError(t, err)
-	require.Contains(t, out.String(), "no action taken")
+	require.Contains(t, errOut.String(), "no action taken")
 }
 
 func TestArgsEdit(t *testing.T) {
@@ -157,7 +155,7 @@ func TestArgsEdit(t *testing.T) {
 			originalArgs := []string{"foo", "bar"}
 			createTiltfile(f, originalArgs)
 
-			cmd := newArgsCmd()
+			cmd := newArgsCmd(genericclioptions.NewTestIOStreamsDiscard())
 			c := cmd.register()
 			err = c.Flags().Parse(nil)
 			require.NoError(t, err)

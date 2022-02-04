@@ -9,7 +9,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-
+	"k8s.io/cli-runtime/pkg/genericclioptions"
+	
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/output"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -50,6 +51,7 @@ and applies any changes to bring your environment
 up-to-date in real-time. Think 'docker build && kubectl apply' or 'docker-compose up'.
 `,
 	}
+	streams := genericclioptions.IOStreams{Out: os.Stdout, ErrOut: os.Stderr, In: os.Stdin}
 
 	addCommand(rootCmd, &ciCmd{})
 	addCommand(rootCmd, &upCmd{})
@@ -59,7 +61,7 @@ up-to-date in real-time. Think 'docker build && kubectl apply' or 'docker-compos
 	addCommand(rootCmd, &versionCmd{})
 	addCommand(rootCmd, &verifyInstallCmd{})
 	addCommand(rootCmd, &dockerPruneCmd{})
-	addCommand(rootCmd, newArgsCmd())
+	addCommand(rootCmd, newArgsCmd(streams))
 	addCommand(rootCmd, &logsCmd{})
 	addCommand(rootCmd, newDescribeCmd())
 	addCommand(rootCmd, newGetCmd())
