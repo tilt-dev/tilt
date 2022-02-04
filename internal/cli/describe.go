@@ -23,7 +23,6 @@ package cli
 
 import (
 	"context"
-	"os"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -45,8 +44,7 @@ type describeCmd struct {
 
 var _ tiltCmd = &describeCmd{}
 
-func newDescribeCmd() *describeCmd {
-	streams := genericclioptions.IOStreams{Out: os.Stdout, ErrOut: os.Stderr, In: os.Stdin}
+func newDescribeCmd(streams genericclioptions.IOStreams) *describeCmd {
 	o := &describe.DescribeOptions{
 		FilenameOptions: &resource.FilenameOptions{},
 		DescriberSettings: &pkgdescribe.DescriberSettings{

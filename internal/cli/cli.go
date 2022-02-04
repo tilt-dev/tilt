@@ -10,7 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	
+
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/output"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -63,11 +63,11 @@ up-to-date in real-time. Think 'docker build && kubectl apply' or 'docker-compos
 	addCommand(rootCmd, &dockerPruneCmd{})
 	addCommand(rootCmd, newArgsCmd(streams))
 	addCommand(rootCmd, &logsCmd{})
-	addCommand(rootCmd, newDescribeCmd())
-	addCommand(rootCmd, newGetCmd())
+	addCommand(rootCmd, newDescribeCmd(streams))
+	addCommand(rootCmd, newGetCmd(streams))
 	addCommand(rootCmd, newExplainCmd())
 	addCommand(rootCmd, newEditCmd())
-	addCommand(rootCmd, newApiresourcesCmd())
+	addCommand(rootCmd, newApiresourcesCmd(streams))
 	addCommand(rootCmd, newDeleteCmd())
 	addCommand(rootCmd, newApplyCmd())
 	addCommand(rootCmd, newCreateCmd())
@@ -80,7 +80,7 @@ up-to-date in real-time. Think 'docker build && kubectl apply' or 'docker-compos
 	rootCmd.AddCommand(analytics.NewCommand())
 	rootCmd.AddCommand(newDumpCmd(rootCmd))
 	rootCmd.AddCommand(newTriggerCmd())
-	rootCmd.AddCommand(newAlphaCmd())
+	rootCmd.AddCommand(newAlphaCmd(streams))
 
 	globalFlags := rootCmd.PersistentFlags()
 	globalFlags.BoolVarP(&debug, "debug", "d", false, "Enable debug logging")

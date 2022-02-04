@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"bytes"
 	"context"
 	"os"
 	"path/filepath"
@@ -11,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/testdata"
@@ -37,10 +37,9 @@ func TestGet(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	out := bytes.NewBuffer(nil)
-	get := newGetCmd()
+	streams, _, out, _ := genericclioptions.NewTestIOStreams()
+	get := newGetCmd(streams)
 	get.register()
-	get.options.IOStreams.Out = out
 
 	err = get.run(f.ctx, []string{"cmd", "my-sleep"})
 	require.NoError(t, err)

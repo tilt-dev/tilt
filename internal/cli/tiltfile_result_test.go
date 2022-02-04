@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,6 +8,8 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
 func TestTiltfileResult(t *testing.T) {
@@ -22,11 +23,8 @@ v1alpha1.extension_repo(name='default', url='https://github.com/tilt-dev/tilt-ex
 local_resource(name='hi', cmd='echo hi', serve_cmd='echo bye')
 `)
 
-	out := bytes.NewBuffer(nil)
-	errOut := bytes.NewBuffer(nil)
-	cmd := newTiltfileResultCmd()
-	cmd.streams.Out = out
-	cmd.streams.ErrOut = errOut
+	streams, _, out, _ := genericclioptions.NewTestIOStreams()
+	cmd := newTiltfileResultCmd(streams)
 	cmd.fileName = "Tiltfile"
 	cmd.exit = func(x int) {}
 

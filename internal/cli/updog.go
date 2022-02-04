@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 	"strings"
 	"time"
 
@@ -36,9 +35,9 @@ type updogCmd struct {
 
 var _ tiltCmd = &updogCmd{}
 
-func newUpdogCmd() *updogCmd {
+func newUpdogCmd(streams genericclioptions.IOStreams) *updogCmd {
 	c := &updogCmd{
-		IOStreams: genericclioptions.IOStreams{Out: os.Stdout, ErrOut: os.Stderr, In: os.Stdin},
+		IOStreams: streams,
 	}
 	c.FileNameFlags = &genericclioptions.FileNameFlags{Filenames: &c.Filenames}
 	return c
