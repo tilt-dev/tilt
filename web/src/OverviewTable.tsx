@@ -462,8 +462,11 @@ export function ResourceTableHeadRow({
 }: ResourceTableHeadRowProps) {
   const calculateToggleProps = (column: HeaderGroup<RowValues>) => {
     // If a column header is JSX, fall back on using its id as a descriptive title
+    // and capitalize for consistency
     const columnHeader =
-      typeof column.Header === "string" ? column.Header : column.id
+      typeof column.Header === "string"
+        ? column.Header
+        : `${column.id[0]?.toUpperCase()}${column.id?.slice(1)}`
 
     // Warning! Toggle props are not typed or documented well within react-table.
     // Modify toggle props with caution.

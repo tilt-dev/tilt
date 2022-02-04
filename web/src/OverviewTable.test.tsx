@@ -762,17 +762,24 @@ describe("bulk disable actions", () => {
       expect(wrapper.find(TableSelectionColumn).length).toBeGreaterThan(0)
     })
 
-    it("renders a checkbox for every resource that is selectable", () => {
+    it("renders a checkbox for the column header and every resource that is selectable", () => {
       const expectedCheckBoxDisplay = {
         "(Tiltfile)": false,
+        columnHeader: true,
         _1: true,
         _2: true,
         _3: true,
       }
       const actualCheckboxDisplay: { [key: string]: boolean } = {}
-      const rows = wrapper.find(ResourceTableRow).slice(1) // Ignore the header row
-      rows.forEach((row) => {
-        const name = row.find(TableNameColumn).text()
+      const rows = wrapper.find(ResourceTableRow)
+      rows.forEach((row, idx) => {
+        let name: string
+        if (idx === 0) {
+          name = "columnHeader"
+        } else {
+          name = row.find(TableNameColumn).text()
+        }
+
         const checkbox = row.find(SelectionCheckbox)
         actualCheckboxDisplay[name] = checkbox.length === 1
       })
@@ -781,33 +788,128 @@ describe("bulk disable actions", () => {
     })
 
     it("selects a resource when checkbox is not checked", () => {
-      const checkbox = wrapper.find(SelectionCheckbox).at(0)
+      const checkbox = wrapper.find(SelectionCheckbox).at(1)
       expect(checkbox).toBeTruthy()
 
       checkbox.find("input").at(0).simulate("change")
       wrapper.update()
 
-      const checkboxAfterClick = wrapper.find(SelectionCheckbox).at(0)
+      const checkboxAfterClick = wrapper.find(SelectionCheckbox).at(1)
       expect(checkboxAfterClick.prop("checked")).toBe(true)
     })
 
     it("deselects a resource when checkbox is checked", () => {
-      const checkbox = wrapper.find(SelectionCheckbox).at(0)
+      const checkbox = wrapper.find(SelectionCheckbox).at(1)
       expect(checkbox).toBeTruthy()
 
       // Click the checkbox once to get it to a selected state
       checkbox.find("input").at(0).simulate("change")
       wrapper.update()
 
-      const checkboxAfterFirstClick = wrapper.find(SelectionCheckbox).at(0)
+      const checkboxAfterFirstClick = wrapper.find(SelectionCheckbox).at(1)
       expect(checkboxAfterFirstClick.prop("checked")).toBe(true)
 
       // Click the checkbox a second time to deselect it
       checkbox.find("input").at(0).simulate("change")
       wrapper.update()
 
-      const checkboxAfterSecondClick = wrapper.find(SelectionCheckbox).at(0)
+      const checkboxAfterSecondClick = wrapper.find(SelectionCheckbox).at(1)
       expect(checkboxAfterSecondClick.prop("checked")).toBe(false)
+    })
+
+    describe("selection checkbox header", () => {
+      it("displays as unchecked if no resources in the table are checked", () => {
+        const allCheckboxes = wrapper.find(SelectionCheckbox)
+        const headerCheckboxCheckedState = allCheckboxes.at(0).prop("checked")
+        const headerCheckboxIndeterminateState = allCheckboxes
+          .at(0)
+          .prop("indeterminate")
+        const rowCheckboxesState = allCheckboxes
+          .slice(1)
+          .map((checkbox) => checkbox.prop("checked"))
+
+        expect(rowCheckboxesState).toStrictEqual([false, false, false])
+        expect(headerCheckboxCheckedState).toBe(false)
+        expect(headerCheckboxIndeterminateState).toBe(false)
+      })
+
+      it("displays as indeterminate if some but not all resources in the table are checked", () => {
+        // Choose a (random) table row to click and select
+        const resourceCheckbox = wrapper.find(SelectionCheckbox).at(2)
+        resourceCheckbox.find("input").at(0).simulate("change")
+        wrapper.update()
+
+        // Verify that the header checkbox displays as partially selected
+        const headerCheckboxCheckedState = wrapper
+          .find(SelectionCheckbox)
+          .at(0)
+          .prop("checked")
+        const headerCheckboxIndeterminateState = wrapper
+          .find(SelectionCheckbox)
+          .at(0)
+          .prop("indeterminate")
+
+        expect(headerCheckboxCheckedState).toBe(false)
+        expect(headerCheckboxIndeterminateState).toBe(true)
+      })
+
+      it("displays as checked if all resources in the table are checked", () => {
+        // Click all checkboxes for resource rows, skipping the first one (which is the table header row)
+        wrapper
+          .find(SelectionCheckbox)
+          .slice(1)
+          .forEach((resourceCheckbox) => {
+            resourceCheckbox.find("input").at(0).simulate("change")
+          })
+        wrapper.update()
+
+        // Verify that the header checkbox displays as partially selected
+        const headerCheckboxCheckedState = wrapper
+          .find(SelectionCheckbox)
+          .at(0)
+          .prop("checked")
+        const headerCheckboxIndeterminateState = wrapper
+          .find(SelectionCheckbox)
+          .at(0)
+          .prop("indeterminate")
+
+        expect(headerCheckboxCheckedState).toBe(true)
+        expect(headerCheckboxIndeterminateState).toBe(false)
+      })
+
+      it("selects every resource in the table when checkbox is not checked", () => {
+        // Click the header checkbox to select it
+        const headerCheckbox = wrapper.find(SelectionCheckbox).at(0)
+        headerCheckbox.find("input").at(0).simulate("change")
+        wrapper.update()
+
+        // Verify all table resources are now selected
+        const rowCheckboxesState = wrapper
+          .find(SelectionCheckbox)
+          .slice(1)
+          .map((checkbox) => checkbox.prop("checked"))
+        expect(rowCheckboxesState).toStrictEqual([true, true, true])
+      })
+
+      it("deselects every resource in the table when checkbox is checked", () => {
+        const headerCheckbox = wrapper.find(SelectionCheckbox).at(0)
+        headerCheckbox.find("input").at(0).simulate("change")
+        wrapper.update()
+
+        // Click the checkbox a second time to deselect it
+        const headerCheckboxAfterFirstClick = wrapper
+          .find(SelectionCheckbox)
+          .at(0)
+        headerCheckboxAfterFirstClick.find("input").at(0).simulate("change")
+        wrapper.update()
+
+        // Verify all table resources are now deselected
+        const rowCheckboxesState = wrapper
+          .find(SelectionCheckbox)
+          .slice(1)
+          .map((checkbox) => checkbox.prop("checked"))
+        expect(rowCheckboxesState).toStrictEqual([false, false, false])
+      })
     })
   })
 

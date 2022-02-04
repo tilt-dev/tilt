@@ -7,8 +7,8 @@ import { createContext, PropsWithChildren, useContext, useState } from "react"
 type ResourceSelectionContext = {
   selected: string[]
   isSelected: (resourceName: string) => boolean
-  select: (resourceName: string) => void
-  deselect: (resourceName: string) => void
+  select: (...resourceNames: string[]) => void
+  deselect: (...resourceNames: string[]) => void
   clearSelections: () => void
 }
 
@@ -18,10 +18,10 @@ const ResourceSelectionContext = createContext<ResourceSelectionContext>({
     console.warn("Resource selections context is not set.")
     return false
   },
-  select: (_resourceName: string) => {
+  select: (..._resourceNames: string[]) => {
     console.warn("Resource selections context is not set.")
   },
-  deselect: (_resourceName: string) => {
+  deselect: (..._resourceNames: string[]) => {
     console.warn("Resource selections context is not set.")
   },
   clearSelections: () => {
@@ -45,13 +45,15 @@ export function ResourceSelectionProvider(
     return selectedResources.includes(resourceName)
   }
 
-  function select(resourceName: string) {
-    return setSelectedResources([...selectedResources, resourceName])
+  function select(...resourceNames: string[]) {
+    // Filter out resources that are already selected
+    const newSelections = resourceNames.filter((r) => !isSelected(r))
+    return setSelectedResources([...selectedResources, ...newSelections])
   }
 
-  function deselect(resourceName: string) {
+  function deselect(...resourceNames: string[]) {
     return setSelectedResources(
-      selectedResources.filter((r) => r !== resourceName)
+      selectedResources.filter((r) => !resourceNames.includes(r))
     )
   }
 
