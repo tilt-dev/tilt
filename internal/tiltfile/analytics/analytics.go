@@ -1,11 +1,11 @@
 package analytics
 
 import (
-	"github.com/tilt-dev/wmclient/pkg/analytics"
 	"go.starlark.net/starlark"
 
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 	"github.com/tilt-dev/tilt/internal/tiltfile/value"
+	"github.com/tilt-dev/wmclient/pkg/analytics"
 )
 
 type Settings struct {

@@ -3,7 +3,6 @@ package engine
 import (
 	"time"
 
-	"github.com/tilt-dev/wmclient/pkg/analytics"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/token"
 	"github.com/tilt-dev/tilt/pkg/model"
+	"github.com/tilt-dev/wmclient/pkg/analytics"
 )
 
 func NewErrorAction(err error) store.ErrorAction {
