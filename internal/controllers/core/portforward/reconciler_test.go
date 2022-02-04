@@ -147,15 +147,16 @@ func TestMultipleForwardsForOnePod(t *testing.T) {
 	var contexts []context.Context
 	for _, call := range f.kCli.PortForwardCalls() {
 		assert.Equal(t, "pod-pf_foo", call.PodID.String())
-		if call.RemotePort == 8080 {
+		switch call.RemotePort {
+		case 8080:
 			seen8080 = true
 			contexts = append(contexts, call.Context)
 			assert.Equal(t, "hostA", call.Host, "unexpected host for port forward to 8080")
-		} else if call.RemotePort == 8081 {
+		case 8081:
 			seen8081 = true
 			contexts = append(contexts, call.Context)
 			assert.Equal(t, "hostB", call.Host, "unexpected host for port forward to 8081")
-		} else {
+		default:
 			t.Fatalf("found port forward call to unexpected remotePort: %+v", call)
 		}
 	}
