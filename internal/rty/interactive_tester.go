@@ -227,8 +227,7 @@ func (i *InteractiveTester) displayAndMaybeWrite(name string, actual, expected C
 		}
 
 		ev := screen.PollEvent()
-		switch ev := ev.(type) {
-		case *tcell.EventKey:
+		if ev, ok := ev.(*tcell.EventKey); ok {
 			switch ev.Rune() {
 			case 'y':
 				return true, i.writeGoldenFile(name, actual)
