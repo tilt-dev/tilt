@@ -551,8 +551,8 @@ func TestBuildAndDeployUsesCorrectRef(t *testing.T) {
 		expectBuilt    []string
 		expectDeployed []string
 	}{
-		{"docker build", func(f Fixture) model.Manifest { return NewSanchoDockerBuildManifest(f) }, false, expectedImages, expectedImages},
-		{"docker build + distinct clusterRef", func(f Fixture) model.Manifest { return NewSanchoDockerBuildManifest(f) }, true, expectedImages, expectedImagesClusterRef},
+		{"docker build", NewSanchoDockerBuildManifest, false, expectedImages, expectedImages},
+		{"docker build + distinct clusterRef", NewSanchoDockerBuildManifest, true, expectedImages, expectedImagesClusterRef},
 		{"custom build", NewSanchoCustomBuildManifest, false, expectedImages, expectedImages},
 		{"custom build + distinct clusterRef", NewSanchoCustomBuildManifest, true, expectedImages, expectedImagesClusterRef},
 		{"live multi stage", NewSanchoLiveUpdateMultiStageManifest, false, append(expectedImages, "foo.com/sancho-base"), expectedImages},
