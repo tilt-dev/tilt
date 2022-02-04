@@ -54,7 +54,7 @@ func DisableStatus(getCM func(name string) (v1alpha1.ConfigMap, error), disableS
 func MaybeNewDisableStatus(ctx context.Context, client client.Client, disableSource *v1alpha1.DisableSource, prevStatus *v1alpha1.DisableStatus) (*v1alpha1.DisableStatus, error) {
 	getCM := func(name string) (v1alpha1.ConfigMap, error) {
 		var cm v1alpha1.ConfigMap
-		err := client.Get(ctx, types.NamespacedName{Name: disableSource.ConfigMap.Name}, &cm)
+		err := client.Get(ctx, types.NamespacedName{Name: name}, &cm)
 		return cm, err
 	}
 
