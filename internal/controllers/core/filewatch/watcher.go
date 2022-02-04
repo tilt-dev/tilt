@@ -61,7 +61,7 @@ func (w *watcher) cleanupWatch(ctx context.Context) {
 		logger.Get(ctx).Debugf("Failed to close notifier for %q: %v", w.name.String(), err)
 	}
 
-	w.restartBackoff = w.restartBackoff * 2
+	w.restartBackoff *= 2
 	if w.restartBackoff > maxRestartBackoff {
 		w.restartBackoff = maxRestartBackoff
 	}

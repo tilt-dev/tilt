@@ -150,7 +150,7 @@ func (l *StringLayout) render(w Writer, width int, height int) (int, int, error)
 				if w != nil {
 					w.SetContent(nextX, nextY, r, nil)
 				}
-				nextX = nextX + 1
+				nextX += 1
 			}
 		}
 	}

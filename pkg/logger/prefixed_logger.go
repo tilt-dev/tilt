@@ -46,7 +46,7 @@ func (i *prefixedLogger) handleLog(level Level, fields Fields, buf []byte) error
 	output = strings.ReplaceAll(output, "\n", "\n"+i.prefix)
 
 	if endsInNewline {
-		output = output + "\n"
+		output += "\n"
 		i.indentBeforeNextWrite = true
 	} else {
 		i.indentBeforeNextWrite = false
