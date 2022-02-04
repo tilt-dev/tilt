@@ -15,18 +15,16 @@ import (
 //
 // Tilt should change all statefulsets to use a parallel policy.
 func InjectParallelPodManagementPolicy(entity K8sEntity) K8sEntity {
-	switch entity.Obj.(type) {
+	entity = entity.DeepCopy()
+	switch o := entity.Obj.(type) {
 	case *v1.StatefulSet:
-		entity = entity.DeepCopy()
-		entity.Obj.(*v1.StatefulSet).Spec.PodManagementPolicy = v1.ParallelPodManagement
+		o.Spec.PodManagementPolicy = v1.ParallelPodManagement
 		return entity
 	case *v1beta1.StatefulSet:
-		entity = entity.DeepCopy()
-		entity.Obj.(*v1beta1.StatefulSet).Spec.PodManagementPolicy = v1beta1.ParallelPodManagement
+		o.Spec.PodManagementPolicy = v1beta1.ParallelPodManagement
 		return entity
 	case *v1beta2.StatefulSet:
-		entity = entity.DeepCopy()
-		entity.Obj.(*v1beta2.StatefulSet).Spec.PodManagementPolicy = v1beta2.ParallelPodManagement
+		o.Spec.PodManagementPolicy = v1beta2.ParallelPodManagement
 		return entity
 	}
 	return entity
