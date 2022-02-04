@@ -429,7 +429,7 @@ func DecideRegistry(ctx context.Context, kCli k8s.Client, tlr *tiltfile.Tiltfile
 
 		if !tlr.DefaultRegistry.Empty() {
 			// The user has specified a default registry in their Tiltfile, but it will be ignored.
-			logger.Get(ctx).Warnf("Default registry specified, but will be ignored in favor of auto-detected registry.")
+			logger.Get(ctx).Infof("Default registry specified, but will be ignored in favor of auto-detected registry.")
 		}
 
 		return registry
