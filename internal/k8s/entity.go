@@ -106,8 +106,8 @@ func (e K8sEntity) Clean() {
 	}
 }
 
-func (e K8sEntity) SetUID(UID string) {
-	e.Meta().SetUID(types.UID(UID))
+func (e K8sEntity) SetUID(uid string) {
+	e.Meta().SetUID(types.UID(uid))
 }
 
 func (e K8sEntity) Name() string {
