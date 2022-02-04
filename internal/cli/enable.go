@@ -82,13 +82,7 @@ func (c *enableCmd) run(ctx context.Context, args []string) error {
 		names[name] = true
 	}
 
-	unselectedState := v1alpha1.DisableStatePending
-	if c.only {
-		unselectedState = v1alpha1.DisableStateDisabled
-	} else if c.all {
-		unselectedState = v1alpha1.DisableStateEnabled
-	}
-	err = changeEnabledResources(ctx, ctrlclient, args, v1alpha1.DisableStateEnabled, unselectedState)
+	err = changeEnabledResources(ctx, ctrlclient, args, enableOptions{enable: true, all: c.all, only: c.only})
 	if err != nil {
 		return err
 	}
@@ -96,18 +90,21 @@ func (c *enableCmd) run(ctx context.Context, args []string) error {
 	return nil
 }
 
+type enableOptions struct {
+	enable bool
+	all    bool
+	only   bool
+}
+
 // Changes which resources are enabled in Tilt.
-// For resources in `selectedResources`, ensures their disabled state is `selectedState`.
-// For all other resources:
-// - if `unselectedState` is Enabled or Disabled, ensure their disabled state is that
-// - otherwise, ignore them
+// For resources in `selectedResources`, enable them if `opts.enable` is true, else disable them.
+// If `opts.only` is true, enable/disable `selectedResources` as above, and do the opposite to all other resources.
+// If `opts.all` is true, ignore `selectedResources` and act on all resources.
 func changeEnabledResources(
 	ctx context.Context,
 	cli client.Client,
 	selectedResources []string,
-	selectedState v1alpha1.DisableState,
-	unselectedState v1alpha1.DisableState,
-) error {
+	opts enableOptions) error {
 	var uirs v1alpha1.UIResourceList
 	err := cli.List(ctx, &uirs)
 	if err != nil {
@@ -137,18 +134,14 @@ func changeEnabledResources(
 			continue
 		}
 
-		newState := unselectedState
+		var enable bool
 		if selectedResourcesByName[uir.Name] {
-			newState = selectedState
-		}
-
-		var newIsDisabled bool
-		switch newState {
-		case v1alpha1.DisableStateEnabled:
-			newIsDisabled = false
-		case v1alpha1.DisableStateDisabled:
-			newIsDisabled = true
-		default:
+			enable = opts.enable
+		} else if opts.all {
+			enable = opts.enable
+		} else if opts.only {
+			enable = !opts.enable
+		} else {
 			continue
 		}
 
@@ -161,7 +154,7 @@ func changeEnabledResources(
 				if cm.Data == nil {
 					cm.Data = make(map[string]string)
 				}
-				cm.Data[source.ConfigMap.Key] = strconv.FormatBool(newIsDisabled)
+				cm.Data[source.ConfigMap.Key] = strconv.FormatBool(!enable)
 				return nil
 			})
 			if err != nil {

@@ -10,7 +10,6 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
-	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -70,12 +69,7 @@ func (c *disableCmd) run(ctx context.Context, args []string) error {
 		names[name] = true
 	}
 
-	unselectedState := v1alpha1.DisableStatePending
-	if c.all {
-		unselectedState = v1alpha1.DisableStateDisabled
-	}
-
-	err = changeEnabledResources(ctx, ctrlclient, args, v1alpha1.DisableStateDisabled, unselectedState)
+	err = changeEnabledResources(ctx, ctrlclient, args, enableOptions{enable: false, all: c.all, only: false})
 	if err != nil {
 		return err
 	}
