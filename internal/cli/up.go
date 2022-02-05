@@ -91,6 +91,13 @@ local resources--i.e. those using serve_cmd--are terminated when you exit Tilt.
 	cmd.Flags().Lookup("logactions").Hidden = true
 	cmd.Flags().StringVar(&c.outputSnapshotOnExit, "output-snapshot-on-exit", "", "If specified, Tilt will dump a snapshot of its state to the specified path when it exits")
 
+	cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
+		if c.legacy && c.hud {
+			return errors.New("flags --hud and --legacy are mutually exclusive. please select one or the other")
+		}
+		return nil
+	}
+
 	cmd.PreRun = func(cmd *cobra.Command, args []string) {
 		c.hudFlagExplicitlySet = cmd.Flag("hud").Changed
 	}
