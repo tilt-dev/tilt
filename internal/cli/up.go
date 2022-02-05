@@ -95,11 +95,8 @@ local resources--i.e. those using serve_cmd--are terminated when you exit Tilt.
 		if c.legacy && c.hud && cmd.Flag("hud").Changed {
 			return errors.New("flags --hud and --legacy are mutually exclusive. please select one or the other")
 		}
-		return nil
-	}
-
-	cmd.PreRun = func(cmd *cobra.Command, args []string) {
 		c.hudFlagExplicitlySet = cmd.Flag("hud").Changed
+		return nil
 	}
 
 	return cmd
