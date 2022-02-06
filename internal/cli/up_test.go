@@ -28,7 +28,7 @@ func TestHudEnabled(t *testing.T) {
 			err := c.Flags().Parse(args)
 			require.NoError(t, err)
 
-			c.PreRun(c, args)
+			c.PreRunE(c, args)
 
 			require.Equal(t, test.expected, cmd.initialTermMode(true), test.args)
 		})
