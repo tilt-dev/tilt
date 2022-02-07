@@ -102,10 +102,9 @@ func (w *DisableSubscriber) OnChange(ctx context.Context, st store.RStore, summa
 	st.RUnlockState()
 
 	if len(toCleanup) > 0 {
+		w.goroutinesSpawnedForTesting += 1
+
 		go func() {
-			w.mu.Lock()
-			w.goroutinesSpawnedForTesting += 1
-			w.mu.Unlock()
 
 			// docker-compose rm can take 5-10 seconds
 			// we sleep a bit here so that if a bunch of resources are disabled in bulk, we do them all at once rather
