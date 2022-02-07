@@ -233,22 +233,9 @@ func toAPIObjects(
 			result.AddSetForType(obj, tlr.ObjectSet.GetSetForType(obj))
 		}
 
-		kaMap := result.GetOrCreateTypedSet(&v1alpha1.KubernetesApply{})
-		for k, obj := range toKubernetesApplyObjects(tlr, disableSources) {
-			kaMap[k] = obj
-		}
-
-		cmMap := result.GetOrCreateTypedSet(&v1alpha1.ConfigMap{})
-		for k, obj := range toDisableConfigMaps(disableSources, tlr.EnabledManifests) {
-			cmMap[k] = obj
-		}
-
-		updateCmds := toCmdObjects(tlr, disableSources)
-		cmdMap := result.GetOrCreateTypedSet(&v1alpha1.Cmd{})
-		for key, cmd := range updateCmds {
-			cmdMap[key] = cmd
-		}
-
+		result.AddSetForType(&v1alpha1.KubernetesApply{}, toKubernetesApplyObjects(tlr, disableSources))
+		result.AddSetForType(&v1alpha1.ConfigMap{}, toDisableConfigMaps(disableSources, tlr.EnabledManifests))
+		result.AddSetForType(&v1alpha1.Cmd{}, toCmdObjects(tlr, disableSources))
 		result.AddSetForType(&v1alpha1.ToggleButton{}, toToggleButtons(tlr, disableSources))
 		result.AddSetForType(&v1alpha1.Cluster{}, toClusterObjects(nn, tlr, defaultK8sConnection))
 	}
@@ -271,10 +258,7 @@ func toAPIObjects(
 		watchInputs.TiltfilePath = tf.Spec.Path
 	}
 
-	fwMap := result.GetOrCreateTypedSet(&v1alpha1.FileWatch{})
-	for k, fw := range ToFileWatchObjects(watchInputs, disableSources) {
-		fwMap[k] = fw
-	}
+	result.AddSetForType(&v1alpha1.FileWatch{}, ToFileWatchObjects(watchInputs, disableSources))
 
 	return result
 }
