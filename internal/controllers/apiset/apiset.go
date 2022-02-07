@@ -17,8 +17,18 @@ func (s ObjectSet) Add(o Object) {
 	s.GetOrCreateTypedSet(o)[o.GetName()] = o
 }
 
+// `o` is only used to indicate the type - it does not get added to the set
 func (s ObjectSet) AddSetForType(o Object, set TypedObjectSet) {
-	s[o.GetGroupVersionResource().String()] = set
+	gvk := o.GetGroupVersionResource()
+	dst := s[gvk.String()]
+	if dst == nil {
+		s[gvk.String()] = set
+		return
+	}
+
+	for k, v := range set {
+		dst[k] = v
+	}
 }
 
 func (s ObjectSet) GetOrCreateTypedSet(o Object) TypedObjectSet {
