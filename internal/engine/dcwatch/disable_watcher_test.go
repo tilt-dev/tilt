@@ -35,7 +35,7 @@ func TestDockerComposeDebounce(t *testing.T) {
 
 	f.onChange()
 
-	f.clock.BlockUntil(1)
+	f.clock.BlockUntil(2)
 	f.clock.Advance(20 * disableDebounceDelay)
 
 	call := f.rmCall(1)
@@ -185,6 +185,8 @@ func newDWFixture(t *testing.T) *dwFixture {
 	log := bufsync.NewThreadSafeBuffer()
 	out := io.MultiWriter(log, os.Stdout)
 	ctx := logger.WithLogger(context.Background(), logger.NewTestLogger(out))
+	ctx, cancel := context.WithCancel(ctx)
+	t.Cleanup(cancel)
 	dcClient := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	clock := clockwork.NewFakeClock()
 	watcher := NewDisableSubscriber(dcClient, clock)
