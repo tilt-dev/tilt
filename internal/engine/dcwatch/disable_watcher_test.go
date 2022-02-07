@@ -11,6 +11,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/jonboulle/clockwork"
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tilt-dev/tilt/internal/dockercompose"
@@ -138,6 +139,35 @@ func TestDisableError(t *testing.T) {
 	require.Eventually(t, func() bool {
 		return strings.Contains(f.log.String(), "fake dc error")
 	}, 20*time.Millisecond, time.Millisecond)
+}
+
+// Iterations of this subscriber have spawned goroutines for every onChange call, so try to
+// verify it's not doing that.
+func TestDontSpawnRedundantGoroutines(t *testing.T) {
+	f := newDWFixture(t)
+	f.createResource("m1", v1alpha1.DisableStateDisabled, "running")
+	f.createResource("m2", v1alpha1.DisableStateDisabled, "running")
+
+	for i := 0; i < 10; i++ {
+		f.onChange()
+	}
+
+	if !assert.Never(t, func() bool {
+		f.watcher.mu.Lock()
+		defer f.watcher.mu.Unlock()
+		return f.watcher.goroutinesSpawnedForTesting > 1
+	}, 20*time.Millisecond, 1*time.Millisecond) {
+		f.watcher.mu.Lock()
+		defer f.watcher.mu.Unlock()
+		require.Equal(t, 1, f.watcher.goroutinesSpawnedForTesting, "goroutines spawned")
+	}
+
+	f.clock.BlockUntil(1)
+	f.clock.Advance(20 * disableDebounceDelay)
+
+	call := f.rmCall(1)
+
+	require.Equal(t, []string{"m1", "m2"}, stoppedServices(call))
 }
 
 type dwFixture struct {
