@@ -26,16 +26,16 @@ func PrepareEnv(l Logger, env []string) []string {
 	for _, e := range env {
 		// LINES and COLUMNS are posix standards.
 		// https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap08.html
-		hasLines = hasLines || strings.HasPrefix("LINES=", e)
-		hasColumns = hasColumns || strings.HasPrefix("COLUMNS=", e)
+		hasLines = hasLines || strings.HasPrefix(e, "LINES=")
+		hasColumns = hasColumns || strings.HasPrefix(e, "COLUMNS=")
 
 		// FORCE_COLOR is common in nodejs https://github.com/tilt-dev/tilt/issues/3038
-		hasForceColor = hasForceColor || strings.HasPrefix("FORCE_COLOR=", e)
+		hasForceColor = hasForceColor || strings.HasPrefix(e, "FORCE_COLOR=")
 
 		// PYTHONUNBUFFERED tells old Python versions not to buffer their output (< Python 3.7)
 		// AIUI, older versions of Python buffer output aggressively when not connected to a TTY,
 		// because they assume they're connected to a file and don't need realtime streaming.
-		hasPythonUnbuffered = hasPythonUnbuffered || strings.HasPrefix("PYTHONUNBUFFERED=", e)
+		hasPythonUnbuffered = hasPythonUnbuffered || strings.HasPrefix(e, "PYTHONUNBUFFERED=")
 	}
 
 	if !hasLines {
