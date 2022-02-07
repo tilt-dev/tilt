@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -29,6 +30,7 @@ import (
 type Reconciler struct {
 	ctrlClient ctrlclient.Client
 	indexer    *indexer.Indexer
+	mu         sync.Mutex
 	analytics  *analytics.TiltAnalytics
 }
 
@@ -49,8 +51,11 @@ func NewReconciler(ctrlClient ctrlclient.Client, scheme *runtime.Scheme, analyti
 	}
 }
 
-// Downloads extension repos.
+// Verifies extension paths.
 func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	nn := request.NamespacedName
 
 	var ext v1alpha1.Extension
@@ -102,6 +107,15 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	}
 
 	return ctrl.Result{}, nil
+}
+
+// Reconciles the extension without reading or writing from the API server.
+// Returns the resolved status.
+// Exposed for outside callers.
+func (r *Reconciler) ForceApply(ext *v1alpha1.Extension, repo *v1alpha1.ExtensionRepo) v1alpha1.ExtensionStatus {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.apply(ext, repo)
 }
 
 func (r *Reconciler) apply(ext *v1alpha1.Extension, repo *v1alpha1.ExtensionRepo) v1alpha1.ExtensionStatus {

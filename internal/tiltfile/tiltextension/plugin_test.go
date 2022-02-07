@@ -1,9 +1,9 @@
 package tiltextension
 
 import (
-	"context"
 	"fmt"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -12,6 +12,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/internal/tiltfile/include"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
+	tiltfilev1alpha1 "github.com/tilt-dev/tilt/internal/tiltfile/v1alpha1"
 )
 
 func TestFetchableAlreadyPresentWorks(t *testing.T) {
@@ -28,7 +29,7 @@ printFoo()
 	f.assertLoadRecorded(res, "fetchable")
 }
 
-func TestUnfetchableAlreadyPresentWorks(t *testing.T) {
+func TestAlreadyPresentWorks(t *testing.T) {
 	f := newExtensionFixture(t)
 	defer f.tearDown()
 
@@ -42,30 +43,32 @@ printFoo()
 	f.assertLoadRecorded(res, "unfetchable")
 }
 
-func TestFetchFetchableWorks(t *testing.T) {
+func TestExtensionRepoApplyFails(t *testing.T) {
 	f := newExtensionFixture(t)
 	defer f.tearDown()
 
 	f.tiltfile(`
-load("ext://fetchable", "printFoo")
+load("ext://module", "printFoo")
 printFoo()
 `)
+	f.extrr.Error = "repo can't be fetched"
 
-	res := f.assertExecOutput("foo")
-	f.assertLoadRecorded(res, "fetchable")
+	res := f.assertError("loading extension repo default: repo can't be fetched")
+	f.assertNoLoadsRecorded(res)
 }
 
-func TestFetchUnfetchableFails(t *testing.T) {
+func TestExtensionApplyFails(t *testing.T) {
 	f := newExtensionFixture(t)
 	defer f.tearDown()
 
 	f.tiltfile(`
-load("ext://unfetchable", "printFoo")
+load("ext://module", "printFoo")
 printFoo()
 `)
+	f.extr.Error = "ext can't be fetched"
 
-	res := f.assertError("unfetchable can't be fetched")
-	f.assertNoLoadsRecorded(res) // don't record metrics for failed imports
+	res := f.assertError("loading extension module: ext can't be fetched")
+	f.assertNoLoadsRecorded(res)
 }
 
 func TestIncludedFileMayIncludeExtension(t *testing.T) {
@@ -122,25 +125,79 @@ printFoo()
 	f.assertLoadRecorded(res, "unfetchable")
 }
 
+func TestRepoAndExtOverride(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// We don't want to have to bother with file:// escaping on windows.
+		// The repo reconciler already tests this.
+		t.Skip()
+	}
+
+	f := newExtensionFixture(t)
+	defer f.tearDown()
+
+	f.tiltfile(fmt.Sprintf(`
+v1alpha1.extension_repo(name='default', url='file://%s/my-custom-repo')
+v1alpha1.extension(name='my-extension', repo_name='default', repo_path='my-custom-path')
+
+load("ext://my-extension", "printFoo")
+printFoo()
+`, f.tmp.Path()))
+
+	f.tmp.WriteFile(filepath.Join("my-custom-repo", "my-custom-path", "Tiltfile"), libText)
+
+	res := f.assertExecOutput("foo")
+	f.assertLoadRecorded(res, "my-extension")
+}
+
+func TestRepoOverride(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// We don't want to have to bother with file:// escaping on windows.
+		// The repo reconciler already tests this.
+		t.Skip()
+	}
+
+	f := newExtensionFixture(t)
+	defer f.tearDown()
+
+	f.tiltfile(fmt.Sprintf(`
+v1alpha1.extension_repo(name='default', url='file://%s/my-custom-repo')
+
+load("ext://my-extension", "printFoo")
+printFoo()
+`, f.tmp.Path()))
+
+	f.tmp.WriteFile(filepath.Join("my-custom-repo", "my-extension", "Tiltfile"), libText)
+
+	res := f.assertExecOutput("foo")
+	f.assertLoadRecorded(res, "my-extension")
+}
+
 type extensionFixture struct {
-	t   *testing.T
-	skf *starkit.Fixture
-	tmp *tempdir.TempDirFixture
+	t     *testing.T
+	skf   *starkit.Fixture
+	tmp   *tempdir.TempDirFixture
+	extr  *FakeExtReconciler
+	extrr *FakeExtRepoReconciler
 }
 
 func newExtensionFixture(t *testing.T) *extensionFixture {
 	tmp := tempdir.NewTempDirFixture(t)
-	ext := NewPlugin(
-		&fakeFetcher{t: t},
-		NewLocalStore(tmp.JoinPath("project")),
+	extr := NewFakeExtReconciler(tmp.Path())
+	extrr := NewFakeExtRepoReconciler(tmp.Path())
+
+	ext := NewFakePlugin(
+		extrr,
+		extr,
 	)
-	skf := starkit.NewFixture(t, ext, include.IncludeFn{})
+	skf := starkit.NewFixture(t, ext, include.IncludeFn{}, tiltfilev1alpha1.NewPlugin())
 	skf.UseRealFS()
 
 	return &extensionFixture{
-		t:   t,
-		skf: skf,
-		tmp: tmp,
+		t:     t,
+		skf:   skf,
+		tmp:   tmp,
+		extr:  extr,
+		extrr: extrr,
 	}
 }
 
@@ -170,7 +227,7 @@ func (f *extensionFixture) assertError(expected string) starkit.Model {
 		f.t.Fatalf("expected error; got none (output %q)", f.skf.PrintOutput())
 	}
 	if !strings.Contains(err.Error(), expected) {
-		f.t.Fatalf("error %v doens't contain expected text %q", err, expected)
+		f.t.Fatalf("error %v doesn't contain expected text %q", err, expected)
 	}
 	return result
 }
@@ -191,7 +248,7 @@ func (f *extensionFixture) assertNoLoadsRecorded(model starkit.Model) {
 }
 
 func (f *extensionFixture) writeModuleLocally(name string, contents string) {
-	f.tmp.WriteFile(filepath.Join("project", "tilt_modules", name, "Tiltfile"), contents)
+	f.tmp.WriteFile(filepath.Join("tilt-extensions", name, "Tiltfile"), contents)
 }
 
 const libText = `
@@ -211,22 +268,3 @@ def printFoo():
 	print("foo")
 	printBar()
 `
-
-type fakeFetcher struct {
-	t *testing.T
-}
-
-func (f *fakeFetcher) Fetch(ctx context.Context, moduleName string) (ModuleContents, error) {
-	if moduleName != "fetchable" {
-		return ModuleContents{}, fmt.Errorf("module %s can't be fetched because... reasons", moduleName)
-	}
-
-	return ModuleContents{
-		Name: "fetchable",
-		Dir:  dirWithTiltfile(f.t, libText),
-	}, nil
-}
-
-func (f *fakeFetcher) CleanUp() error {
-	return nil
-}

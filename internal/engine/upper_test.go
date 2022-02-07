@@ -95,6 +95,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile"
 	"github.com/tilt-dev/tilt/internal/tiltfile/config"
 	"github.com/tilt-dev/tilt/internal/tiltfile/k8scontext"
+	"github.com/tilt-dev/tilt/internal/tiltfile/tiltextension"
 	"github.com/tilt-dev/tilt/internal/tiltfile/version"
 	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/internal/token"
@@ -3845,11 +3846,16 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	au := engineanalytics.NewAnalyticsUpdater(ta, engineanalytics.CmdTags{}, engineMode)
 	ar := engineanalytics.ProvideAnalyticsReporter(ta, st, kClient, env, feature.MainDefaults)
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
-	k8sContextExt := k8scontext.NewPlugin("fake-context", env)
-	versionExt := version.NewPlugin(model.TiltBuild{Version: "0.5.0"})
-	configExt := config.NewPlugin("up")
+	k8sContextPlugin := k8scontext.NewPlugin("fake-context", env)
+	versionPlugin := version.NewPlugin(model.TiltBuild{Version: "0.5.0"})
+	configPlugin := config.NewPlugin("up")
 	execer := localexec.NewFakeExecer(t)
-	realTFL := tiltfile.ProvideTiltfileLoader(ta, k8sContextExt, versionExt, configExt, fakeDcc, "localhost", execer, feature.MainDefaults, env)
+
+	extPlugin := tiltextension.NewFakePlugin(
+		tiltextension.NewFakeExtRepoReconciler(f.Path()),
+		tiltextension.NewFakeExtReconciler(f.Path()))
+	realTFL := tiltfile.ProvideTiltfileLoader(ta, k8sContextPlugin, versionPlugin, configPlugin, extPlugin,
+		fakeDcc, "localhost", execer, feature.MainDefaults, env)
 	tfl := tiltfile.NewFakeTiltfileLoader()
 	cc := configs.NewConfigsController(cdc)
 	tqs := configs.NewTriggerQueueSubscriber(cdc)
