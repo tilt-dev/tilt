@@ -497,7 +497,7 @@ func (b *fakeBuildAndDeployer) waitUntilBuildCompleted(ctx context.Context, key 
 
 	defer b.buildCompletionChans.Delete(key)
 
-	// wait until channel for this build is closed, or context is canceled/finishes.
+	// wait until channel for this build is closed, or context is canceled/finished.
 	select {
 	case <-ch:
 		return nil
@@ -3919,7 +3919,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		kar,
 		ctrluisession.NewReconciler(cdc, wsl),
 		ctrluiresource.NewReconciler(cdc, wsl, st),
-		ctrluibutton.NewReconciler(cdc, wsl),
+		ctrluibutton.NewReconciler(cdc, wsl, st),
 		pfr,
 		tfr,
 		tbr,

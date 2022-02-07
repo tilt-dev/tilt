@@ -33,6 +33,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/store/kubernetesdiscoverys"
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/internal/store/tiltfiles"
+	"github.com/tilt-dev/tilt/internal/store/uibuttons"
 	"github.com/tilt-dev/tilt/internal/store/uiresources"
 	"github.com/tilt-dev/tilt/internal/token"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -207,6 +208,10 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		clusters.HandleClusterUpsertAction(state, action)
 	case clusters.ClusterDeleteAction:
 		clusters.HandleClusterDeleteAction(state, action)
+	case uibuttons.UIButtonUpsertAction:
+		uibuttons.HandleUIButtonUpsertAction(state, action)
+	case uibuttons.UIButtonDeleteAction:
+		uibuttons.HandleUIButtonDeleteAction(state, action)
 	default:
 		state.FatalError = fmt.Errorf("unrecognized action: %T", action)
 	}

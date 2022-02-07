@@ -3,13 +3,13 @@ package uibutton
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/hud/server"
+	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
@@ -38,7 +38,8 @@ type fixture struct {
 
 func newFixture(t *testing.T) *fixture {
 	cfb := fake.NewControllerFixtureBuilder(t)
-	r := NewReconciler(cfb.Client, server.NewWebsocketList())
+	st := store.NewTestingStore()
+	r := NewReconciler(cfb.Client, server.NewWebsocketList(), st)
 	return &fixture{
 		ControllerFixture: cfb.Build(r),
 		r:                 r,

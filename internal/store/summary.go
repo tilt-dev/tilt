@@ -62,6 +62,7 @@ type ChangeSummary struct {
 
 	UISessions  ChangeSet
 	UIResources ChangeSet
+	UIButtons   ChangeSet
 
 	Clusters ChangeSet
 

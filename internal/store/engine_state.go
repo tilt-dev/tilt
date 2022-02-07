@@ -130,6 +130,7 @@ type EngineState struct {
 	ConfigMaps           map[string]*v1alpha1.ConfigMap           `json:"-"`
 	LiveUpdates          map[string]*v1alpha1.LiveUpdate          `json:"-"`
 	Clusters             map[string]*v1alpha1.Cluster             `json:"-"`
+	UIButtons            map[string]*v1alpha1.UIButton            `json:"-"`
 }
 
 type CloudStatus struct {
@@ -536,6 +537,7 @@ func NewState() *EngineState {
 	ret.ConfigMaps = make(map[string]*v1alpha1.ConfigMap)
 	ret.LiveUpdates = make(map[string]*v1alpha1.LiveUpdate)
 	ret.Clusters = make(map[string]*v1alpha1.Cluster)
+	ret.UIButtons = make(map[string]*v1alpha1.UIButton)
 
 	return ret
 }
