@@ -28,11 +28,16 @@ type DisableSubscriber struct {
 	// (the subscriber will continue reporting that the resource needs cleanup until we successfully kill the
 	// container and the DC event watcher notices and updates EngineState)
 	lastDisableStartTimes map[string]time.Time
+
+	// since the goroutines are generally unobservable no-ops if we do something bad like spawn one for every OnChange,
+	// we need to instrument for observability in testing
+	goroutinesSpawnedForTesting int
 }
 
 type resourceState struct {
-	Spec         model.DockerComposeUpSpec
-	NeedsCleanup bool
+	Spec                model.DockerComposeUpSpec
+	NeedsCleanup        bool
+	CurrentlyCleaningUp bool
 	// the container's start time
 	StartTime time.Time
 	// the service's order wrt other services, to ensure logging in consistent order
@@ -61,9 +66,10 @@ func (w *DisableSubscriber) OnChange(ctx context.Context, st store.RStore, summa
 		return nil
 	}
 
-	anyNeedCleanup := false
+	var toCleanup []string
 
 	for i, mn := range state.ManifestDefinitionOrder {
+		name := mn.String()
 		mt := state.ManifestTargets[mn]
 		ms := mt.State
 
@@ -77,8 +83,6 @@ func (w *DisableSubscriber) OnChange(ctx context.Context, st store.RStore, summa
 		isDisabled := ms.DisableState == v1alpha1.DisableStateDisabled
 		needsCleanup := isRunning && isDisabled
 
-		anyNeedCleanup = anyNeedCleanup || needsCleanup
-
 		rs := resourceState{
 			Spec:         mt.Manifest.DockerComposeTarget().Spec,
 			NeedsCleanup: needsCleanup,
@@ -86,20 +90,35 @@ func (w *DisableSubscriber) OnChange(ctx context.Context, st store.RStore, summa
 			Order:        i,
 		}
 		w.mu.Lock()
-		w.resourceStates[rs.Spec.Service] = rs
+		rs.CurrentlyCleaningUp = w.resourceStates[name].CurrentlyCleaningUp
+		if rs.NeedsCleanup && !rs.CurrentlyCleaningUp {
+			rs.CurrentlyCleaningUp = true
+			toCleanup = append(toCleanup, name)
+		}
+		w.resourceStates[name] = rs
 		w.mu.Unlock()
 	}
 
 	st.RUnlockState()
 
-	if anyNeedCleanup {
+	if len(toCleanup) > 0 {
+		w.goroutinesSpawnedForTesting += 1
+
 		go func() {
+
 			// docker-compose rm can take 5-10 seconds
 			// we sleep a bit here so that if a bunch of resources are disabled in bulk, we do them all at once rather
 			// than starting the first one we see, and then getting the rest in a second docker-compose rm call
 			w.clock.Sleep(disableDebounceDelay)
 
 			w.Reconcile(ctx)
+			w.mu.Lock()
+			for _, name := range toCleanup {
+				rs := w.resourceStates[name]
+				rs.CurrentlyCleaningUp = false
+				w.resourceStates[name] = rs
+			}
+			w.mu.Unlock()
 		}()
 	}
 
