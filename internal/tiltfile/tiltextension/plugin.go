@@ -103,7 +103,8 @@ func (e *Plugin) LocalPath(t *starlark.Thread, arg string) (localPath string, er
 	repoStatus := e.repoReconciler.ForceApply(ctx, repo)
 	if repoStatus.Error != "" {
 		return "", fmt.Errorf("loading extension repo %s: %s", repo.Name, repoStatus.Error)
-	} else if repoStatus.Path == "" {
+	}
+	if repoStatus.Path == "" {
 		return "", fmt.Errorf("extension repo not resolved: %s", repo.Name)
 	}
 
@@ -112,7 +113,8 @@ func (e *Plugin) LocalPath(t *starlark.Thread, arg string) (localPath string, er
 	extStatus := e.extReconciler.ForceApply(ext, repoResolved)
 	if extStatus.Error != "" {
 		return "", fmt.Errorf("loading extension %s: %s", ext.Name, extStatus.Error)
-	} else if extStatus.Path == "" {
+	}
+	if extStatus.Path == "" {
 		return "", fmt.Errorf("extension not resolved: %s", ext.Name)
 	}
 
@@ -143,11 +145,8 @@ func (e *Plugin) ensureExtension(t *starlark.Thread, objSet apiset.ObjectSet, mo
 	existing, exists := typedSet[extName]
 	if exists {
 		ext := existing.(*v1alpha1.Extension)
-		if ext.ObjectMeta.Annotations == nil {
-			ext.ObjectMeta.Annotations = map[string]string{}
-		}
-		ext.ObjectMeta.Annotations[v1alpha1.AnnotationManagedBy] = "tiltfile.loader"
-		return existing.(*v1alpha1.Extension)
+		metav1.SetMetaDataAnnotation(&ext.ObjectMeta, v1alpha1.AnnotationManagedBy, "tiltfile.loader")
+		return ext
 	}
 
 	typedSet[extName] = defaultExt
