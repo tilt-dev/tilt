@@ -120,11 +120,11 @@ func (r *Reconciler) ForceApply(ext *v1alpha1.Extension, repo *v1alpha1.Extensio
 
 func (r *Reconciler) apply(ext *v1alpha1.Extension, repo *v1alpha1.ExtensionRepo) v1alpha1.ExtensionStatus {
 	if repo.Name == "" {
-		return v1alpha1.ExtensionStatus{Error: fmt.Sprintf("extension repo %s not found", ext.Spec.RepoName)}
+		return v1alpha1.ExtensionStatus{Error: fmt.Sprintf("extension repo not found: %s", ext.Spec.RepoName)}
 	}
 
 	if repo.Status.Path == "" {
-		return v1alpha1.ExtensionStatus{Error: fmt.Sprintf("extension repo %s not loaded yet", ext.Spec.RepoName)}
+		return v1alpha1.ExtensionStatus{Error: fmt.Sprintf("extension repo not loaded: %s", ext.Spec.RepoName)}
 	}
 
 	absPath := filepath.Join(repo.Status.Path, ext.Spec.RepoPath, "Tiltfile")
@@ -158,7 +158,10 @@ func (r *Reconciler) maybeUpdateStatus(ctx context.Context, obj *v1alpha1.Extens
 		return obj, false, err
 	}
 
-	if newError != "" && oldError != newError {
+	isLoggedError := newError != "" &&
+		!strings.HasPrefix(newError, "extension repo not loaded") &&
+		!strings.HasPrefix(newError, "extension repo not found")
+	if isLoggedError && oldError != newError {
 		logger.Get(ctx).Errorf("extension %s: %s", obj.Name, newError)
 	}
 	return update, true, err

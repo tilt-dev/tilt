@@ -136,6 +136,35 @@ func TestChangeArgs(t *testing.T) {
 	require.Equal(t, []string{"--namespace=foo"}, tf.Spec.Args)
 }
 
+// Verify that no errors get printed if the extension
+// appears in the apiserver before the repo appears.
+func TestExtensionBeforeRepo(t *testing.T) {
+	f := newFixture(t)
+
+	nn := types.NamespacedName{Name: "ext"}
+	ext := v1alpha1.Extension{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "ext",
+		},
+		Spec: v1alpha1.ExtensionSpec{
+			RepoName: "my-repo",
+			RepoPath: "my-ext",
+		},
+	}
+	f.Create(&ext)
+
+	f.MustGet(nn, &ext)
+	assert.Equal(t, "extension repo not found: my-repo", ext.Status.Error)
+	assert.Equal(t, "", f.Stdout())
+
+	f.setupRepo()
+	f.MustReconcile(nn)
+	f.MustGet(nn, &ext)
+	assert.Equal(t, "", ext.Status.Error)
+	assert.Equal(t, f.JoinPath("my-repo", "my-ext", "Tiltfile"), ext.Status.Path)
+	assert.Equal(t, "", f.Stdout())
+}
+
 type fixture struct {
 	*fake.ControllerFixture
 	*tempdir.TempDirFixture
