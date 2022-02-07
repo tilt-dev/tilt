@@ -11,8 +11,6 @@ import (
 	"time"
 	"unicode"
 
-	compose "github.com/compose-spec/compose-go/cli"
-
 	"github.com/compose-spec/compose-go/loader"
 	"github.com/stretchr/testify/require"
 
@@ -178,13 +176,13 @@ func (c *FakeDCClient) Project(_ context.Context, m model.DockerComposeProject) 
 	// this is a dummy ProjectOptions that lets us use compose's logic to apply options
 	// for consistency, but we have to then pull the data out ourselves since we're calling
 	// loader.Load ourselves
-	opts, err := compose.NewProjectOptions(nil, dcProjectOptions...)
+	opts, err := composeProjectOptions(m)
 	if err != nil {
 		return nil, err
 	}
 
-	workDir := c.WorkDir
-	projectName := m.Name
+	workDir := opts.WorkingDir
+	projectName := opts.Name
 	if projectName == "" {
 		projectName = model.NormalizeName(workDir)
 	}
