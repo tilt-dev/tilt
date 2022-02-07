@@ -80,7 +80,7 @@ func TestDockerComposeRetryIfStartTimeChanges(t *testing.T) {
 	f.setDisableState("m2", v1alpha1.DisableStateDisabled)
 	f.onChange()
 
-	f.clock.BlockUntil(1)
+	f.clock.BlockUntil(2)
 	f.clock.Advance(2 * disableDebounceDelay)
 
 	require.Eventually(t, func() bool {
