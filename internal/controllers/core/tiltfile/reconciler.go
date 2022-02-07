@@ -426,6 +426,12 @@ func DecideRegistry(ctx context.Context, kCli k8s.Client, tlr *tiltfile.Tiltfile
 		// If we've found a local registry in the cluster at run-time, use that
 		// instead of the default_registry (if any) declared in the Tiltfile
 		logger.Get(ctx).Infof("Auto-detected local registry from environment: %s", registry)
+
+		if !tlr.DefaultRegistry.Empty() {
+			// The user has specified a default registry in their Tiltfile, but it will be ignored.
+			logger.Get(ctx).Infof("Default registry specified, but will be ignored in favor of auto-detected registry.")
+		}
+
 		return registry
 	}
 
