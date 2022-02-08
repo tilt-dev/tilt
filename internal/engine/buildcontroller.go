@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tilt-dev/tilt/internal/timecmp"
+
 	"github.com/pkg/errors"
 
 	"github.com/tilt-dev/tilt/internal/controllers/apis/uibutton"
@@ -161,7 +163,7 @@ func (c *BuildController) cleanUpCanceledBuilds(st store.RStore) {
 		canceled := false
 		if cancelButton, ok := state.UIButtons[uibutton.CancelButtonName(ms.Name.String())]; ok {
 			lastCancelClick := cancelButton.Status.LastClickedAt
-			canceled = !lastCancelClick.Time.Before(ms.CurrentBuild.StartTime)
+			canceled = timecmp.AfterOrEqual(lastCancelClick.Time, ms.CurrentBuild.StartTime)
 		}
 		if disabled || canceled {
 			c.cleanupBuildContext(ms.Name)

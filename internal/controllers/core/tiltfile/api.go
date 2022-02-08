@@ -363,7 +363,7 @@ func toCancelButtons(tlr *tiltfile.TiltfileLoadResult) apiset.TypedObjectSet {
 					ComponentID:   m.Name.String(),
 					ComponentType: v1alpha1.ComponentTypeResource,
 				},
-				Text:     "cancel",
+				Text:     "Cancel",
 				IconName: "cancel",
 			},
 		}

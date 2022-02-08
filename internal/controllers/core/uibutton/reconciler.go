@@ -17,18 +17,18 @@ import (
 )
 
 type Reconciler struct {
-	client ctrlclient.Client
-	wsList *server.WebsocketList
-	store  store.RStore
+	client     ctrlclient.Client
+	wsList     *server.WebsocketList
+	dispatcher store.Dispatcher
 }
 
 var _ reconcile.Reconciler = &Reconciler{}
 
-func NewReconciler(client ctrlclient.Client, wsList *server.WebsocketList, store store.RStore) *Reconciler {
+func NewReconciler(client ctrlclient.Client, wsList *server.WebsocketList, dispatcher store.Dispatcher) *Reconciler {
 	return &Reconciler{
-		client: client,
-		wsList: wsList,
-		store:  store,
+		client:     client,
+		wsList:     wsList,
+		dispatcher: dispatcher,
 	}
 }
 
@@ -44,11 +44,13 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 			ws.SendUIButtonUpdate(ctx, req.NamespacedName, nil)
 		})
 
+		r.dispatcher.Dispatch(uibuttons.NewUIButtonDeleteAction(req.Name))
+
 		return ctrl.Result{}, nil
 	}
 
 	// The apiserver is the source of truth, and will ensure the engine state is up to date.
-	r.store.Dispatch(uibuttons.NewUIButtonUpsertAction(button))
+	r.dispatcher.Dispatch(uibuttons.NewUIButtonUpsertAction(button))
 
 	// Add an annotation to each button that hashes the spec,
 	// so that we can determine that a button is unique.
