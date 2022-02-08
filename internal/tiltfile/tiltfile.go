@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"time"
 
-	wmanalytics "github.com/tilt-dev/wmclient/pkg/analytics"
 	"go.starlark.net/starlark"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
@@ -36,6 +35,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/watch"
 	corev1alpha1 "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
+	wmanalytics "github.com/tilt-dev/wmclient/pkg/analytics"
 )
 
 const FileName = "Tiltfile"
