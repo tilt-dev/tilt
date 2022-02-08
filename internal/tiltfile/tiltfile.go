@@ -214,12 +214,9 @@ func (tfl tiltfileLoader) Load(ctx context.Context, tf *corev1alpha1.Tiltfile) T
 	tlr.UpdateSettings = us
 
 	configSettings, _ := config.GetState(result)
-	enabledManifests, err := configSettings.EnabledResources(tf, manifests)
-	if err != nil {
-		tlr.Error = err
-		return tlr
+	if tlr.Error == nil {
+		tlr.EnabledManifests, tlr.Error = configSettings.EnabledResources(tf, manifests)
 	}
-	tlr.EnabledManifests = enabledManifests
 
 	duration := time.Since(start)
 	if tlr.Error == nil {
