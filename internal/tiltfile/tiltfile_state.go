@@ -461,7 +461,7 @@ func (s *tiltfileState) OnBuiltinCall(name string, fn *starlark.Builtin) {
 	s.builtinCallCounts[name]++
 }
 
-func (s *tiltfileState) OnExec(t *starlark.Thread, tiltfilePath string) error {
+func (s *tiltfileState) OnExec(t *starlark.Thread, tiltfilePath string, contents []byte) error {
 	return nil
 }
 
