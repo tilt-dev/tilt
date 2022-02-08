@@ -24,11 +24,11 @@ type Reconciler struct {
 
 var _ reconcile.Reconciler = &Reconciler{}
 
-func NewReconciler(client ctrlclient.Client, wsList *server.WebsocketList, dispatcher store.Dispatcher) *Reconciler {
+func NewReconciler(client ctrlclient.Client, wsList *server.WebsocketList, store store.RStore) *Reconciler {
 	return &Reconciler{
 		client:     client,
 		wsList:     wsList,
-		dispatcher: dispatcher,
+		dispatcher: store,
 	}
 }
 
