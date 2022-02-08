@@ -109,7 +109,11 @@ func (w *DisableSubscriber) OnChange(ctx context.Context, st store.RStore, summa
 			// docker-compose rm can take 5-10 seconds
 			// we sleep a bit here so that if a bunch of resources are disabled in bulk, we do them all at once rather
 			// than starting the first one we see, and then getting the rest in a second docker-compose rm call
-			w.clock.Sleep(disableDebounceDelay)
+			select {
+			case <-ctx.Done():
+				return
+			case <-w.clock.After(disableDebounceDelay):
+			}
 
 			w.Reconcile(ctx)
 			w.mu.Lock()
