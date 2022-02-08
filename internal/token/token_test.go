@@ -4,9 +4,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tilt-dev/wmclient/pkg/dirs"
 
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/wmclient/pkg/dirs"
 )
 
 func TestGetOrCreateToken(t *testing.T) {

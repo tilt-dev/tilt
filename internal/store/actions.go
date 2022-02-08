@@ -5,12 +5,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tilt-dev/wmclient/pkg/analytics"
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
+	"github.com/tilt-dev/wmclient/pkg/analytics"
 )
 
 type ErrorAction struct {

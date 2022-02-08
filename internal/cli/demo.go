@@ -11,8 +11,8 @@ import (
 	"github.com/fatih/color"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"github.com/tilt-dev/go-get"
 
+	"github.com/tilt-dev/go-get"
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/cli/demo"
 	"github.com/tilt-dev/tilt/pkg/logger"

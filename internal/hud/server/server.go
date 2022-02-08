@@ -16,7 +16,6 @@ import (
 	_ "github.com/gorilla/websocket"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/tilt-dev/wmclient/pkg/analytics"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
@@ -27,6 +26,7 @@ import (
 	"github.com/tilt-dev/tilt/pkg/assets"
 	"github.com/tilt-dev/tilt/pkg/model"
 	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
+	"github.com/tilt-dev/wmclient/pkg/analytics"
 )
 
 const TiltTokenCookieName = "Tilt-Token"

@@ -25,7 +25,6 @@ import (
 	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tilt-dev/wmclient/pkg/analytics"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -95,6 +94,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile"
 	"github.com/tilt-dev/tilt/internal/tiltfile/config"
 	"github.com/tilt-dev/tilt/internal/tiltfile/k8scontext"
+	"github.com/tilt-dev/tilt/internal/tiltfile/tiltextension"
 	"github.com/tilt-dev/tilt/internal/tiltfile/version"
 	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/internal/token"
@@ -108,6 +108,7 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
 	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
+	"github.com/tilt-dev/wmclient/pkg/analytics"
 )
 
 var originalWD string
@@ -3845,11 +3846,16 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	au := engineanalytics.NewAnalyticsUpdater(ta, engineanalytics.CmdTags{}, engineMode)
 	ar := engineanalytics.ProvideAnalyticsReporter(ta, st, kClient, env, feature.MainDefaults)
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
-	k8sContextExt := k8scontext.NewPlugin("fake-context", env)
-	versionExt := version.NewPlugin(model.TiltBuild{Version: "0.5.0"})
-	configExt := config.NewPlugin("up")
+	k8sContextPlugin := k8scontext.NewPlugin("fake-context", env)
+	versionPlugin := version.NewPlugin(model.TiltBuild{Version: "0.5.0"})
+	configPlugin := config.NewPlugin("up")
 	execer := localexec.NewFakeExecer(t)
-	realTFL := tiltfile.ProvideTiltfileLoader(ta, k8sContextExt, versionExt, configExt, fakeDcc, "localhost", execer, feature.MainDefaults, env)
+
+	extPlugin := tiltextension.NewFakePlugin(
+		tiltextension.NewFakeExtRepoReconciler(f.Path()),
+		tiltextension.NewFakeExtReconciler(f.Path()))
+	realTFL := tiltfile.ProvideTiltfileLoader(ta, k8sContextPlugin, versionPlugin, configPlugin, extPlugin,
+		fakeDcc, "localhost", execer, feature.MainDefaults, env)
 	tfl := tiltfile.NewFakeTiltfileLoader()
 	cc := configs.NewConfigsController(cdc)
 	tqs := configs.NewTriggerQueueSubscriber(cdc)
@@ -4571,8 +4577,9 @@ func (f *testFixture) setK8sApplyResult(name model.ManifestName, hash k8s.PodTem
 	var ka v1alpha1.KubernetesApply
 	require.NoError(f.t, f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: string(name)}, &ka))
 
+	patchBase := ctrlclient.MergeFrom(ka.DeepCopy())
 	ka.Status = status
-	require.NoError(f.t, f.ctrlClient.Status().Update(f.ctx, &ka))
+	require.NoError(f.t, f.ctrlClient.Status().Patch(f.ctx, &ka, patchBase))
 
 	st := f.store.LockMutableStateForTesting()
 	ms, _ := st.ManifestState(name)

@@ -48,6 +48,9 @@ type DockerComposeProject struct {
 	// The docker-compose project name. The default is to use the NormalizedName
 	// of the ProjectPath base name.
 	Name string
+
+	// Path to an env file to use. Passed to docker-compose as `--env-file FILE`.
+	EnvFile string
 }
 
 func IsEmptyDockerComposeProject(p DockerComposeProject) bool {

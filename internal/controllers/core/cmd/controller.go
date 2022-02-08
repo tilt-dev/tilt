@@ -10,8 +10,6 @@ import (
 	"time"
 
 	"github.com/jonboulle/clockwork"
-	"github.com/tilt-dev/probe/pkg/probe"
-	"github.com/tilt-dev/probe/pkg/prober"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -23,6 +21,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	"github.com/tilt-dev/probe/pkg/probe"
+	"github.com/tilt-dev/probe/pkg/prober"
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/restarton"

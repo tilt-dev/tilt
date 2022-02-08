@@ -15,7 +15,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tilt-dev/wmclient/pkg/analytics"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -41,11 +40,13 @@ import (
 	tiltfile_k8s "github.com/tilt-dev/tilt/internal/tiltfile/k8s"
 	"github.com/tilt-dev/tilt/internal/tiltfile/k8scontext"
 	"github.com/tilt-dev/tilt/internal/tiltfile/testdata"
+	"github.com/tilt-dev/tilt/internal/tiltfile/tiltextension"
 	"github.com/tilt-dev/tilt/internal/tiltfile/version"
 	"github.com/tilt-dev/tilt/internal/yaml"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
+	"github.com/tilt-dev/wmclient/pkg/analytics"
 )
 
 type localResourceLinks []model.Link
@@ -5144,7 +5145,7 @@ load('ext://fooExt', 'printFoo')
 `)
 
 	// write the plugin locally so we don't need to deal with fake fetchers etc.
-	f.WriteFile(filepath.Join("tilt_modules", "fooExt", "Tiltfile"), `
+	f.WriteFile(f.JoinPath("tilt-extensions", "fooExt", "Tiltfile"), `
 def printFoo():
   print("foo")
 `)
@@ -5949,12 +5950,16 @@ type fixture struct {
 func (f *fixture) newTiltfileLoader() TiltfileLoader {
 	dcc := dockercompose.NewDockerComposeClient(docker.LocalEnv{})
 
-	k8sContextExt := k8scontext.NewPlugin(f.k8sContext, f.k8sEnv)
-	versionExt := version.NewPlugin(model.TiltBuild{Version: "0.5.0"})
-	configExt := config.NewPlugin("up")
+	k8sContextPlugin := k8scontext.NewPlugin(f.k8sContext, f.k8sEnv)
+	versionPlugin := version.NewPlugin(model.TiltBuild{Version: "0.5.0"})
+	configPlugin := config.NewPlugin("up")
 	localEnv := localexec.DefaultEnv(12345, f.webHost)
 	execer := localexec.NewProcessExecer(localEnv)
-	return ProvideTiltfileLoader(f.ta, k8sContextExt, versionExt, configExt, dcc, f.webHost, execer, f.features, f.k8sEnv)
+	extr := tiltextension.NewFakeExtReconciler(f.Path())
+	extrr := tiltextension.NewFakeExtRepoReconciler(f.Path())
+	extPlugin := tiltextension.NewFakePlugin(extrr, extr)
+	return ProvideTiltfileLoader(f.ta, k8sContextPlugin, versionPlugin, configPlugin,
+		extPlugin, dcc, f.webHost, execer, f.features, f.k8sEnv)
 }
 
 func newFixture(t *testing.T) *fixture {

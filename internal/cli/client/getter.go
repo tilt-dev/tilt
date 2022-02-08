@@ -27,7 +27,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tilt-dev/wmclient/pkg/dirs"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/discovery"
@@ -35,6 +34,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/clientcmd"
+
+	"github.com/tilt-dev/wmclient/pkg/dirs"
 )
 
 // Composes the set of values necessary
