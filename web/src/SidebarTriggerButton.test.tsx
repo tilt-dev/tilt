@@ -8,16 +8,16 @@ import {
   expectIncrs,
   mockAnalyticsCalls,
 } from "./analytics_test_helpers"
+import { InstrumentedButton } from "./instrumentedComponents"
 import LogStore from "./LogStore"
 import PathBuilder from "./PathBuilder"
 import { DEFAULT_OPTIONS } from "./ResourceListOptionsContext"
 import SidebarItem from "./SidebarItem"
 import SidebarResources from "./SidebarResources"
-import SidebarTriggerButton, {
-  SidebarTriggerButtonRoot,
-} from "./SidebarTriggerButton"
+import { SidebarTriggerButton } from "./SidebarTriggerButton"
 import { oneResource, tiltfileResource, twoResourceView } from "./testdata"
 import { TriggerButtonTooltip, triggerUpdate } from "./trigger"
+import TriggerButton from "./TriggerButton"
 import { ResourceView, TriggerMode } from "./types"
 
 type UIResource = Proto.v1alpha1UIResource
@@ -59,7 +59,6 @@ describe("SidebarTriggerButton", () => {
   it("POSTs to endpoint when clicked", () => {
     const root = mount(
       <SidebarTriggerButton
-        isTiltfile={false}
         isSelected={true}
         triggerMode={TriggerMode.TriggerModeManualWithAutoInit}
         hasBuilt={true}
@@ -71,7 +70,7 @@ describe("SidebarTriggerButton", () => {
       />
     )
 
-    let element = root.find(SidebarTriggerButtonRoot)
+    let element = root.find(TriggerButton).find(InstrumentedButton)
     expect(element).toHaveLength(1)
 
     let preventDefaulted = false
@@ -101,7 +100,6 @@ describe("SidebarTriggerButton", () => {
   it("disables button when resource is queued", () => {
     const root = mount(
       <SidebarTriggerButton
-        isTiltfile={false}
         isSelected={true}
         triggerMode={TriggerMode.TriggerModeManualWithAutoInit}
         hasBuilt={true}
@@ -113,7 +111,7 @@ describe("SidebarTriggerButton", () => {
       />
     )
 
-    let element = root.find(SidebarTriggerButtonRoot)
+    let element = root.find(TriggerButton).find(InstrumentedButton)
     expect(element).toHaveLength(1)
     element.simulate("click")
 
@@ -124,7 +122,6 @@ describe("SidebarTriggerButton", () => {
     const root = mount(
       <SidebarTriggerButton
         isSelected={true}
-        isTiltfile={false}
         triggerMode={TriggerMode.TriggerModeManual}
         hasBuilt={false}
         isBuilding={false}
@@ -135,7 +132,7 @@ describe("SidebarTriggerButton", () => {
       />
     )
 
-    let element = root.find(SidebarTriggerButtonRoot)
+    let element = root.find(TriggerButton).find(InstrumentedButton)
     expectManualTriggerIcon(element, true)
 
     expect(element).toHaveLength(1)
@@ -176,7 +173,7 @@ describe("SidebarTriggerButton", () => {
       </MemoryRouter>
     )
 
-    let buttons = root.find(SidebarTriggerButtonRoot)
+    let buttons = root.find(TriggerButton).find(InstrumentedButton)
     expect(buttons).toHaveLength(2)
 
     let b0 = buttons.at(0) // Manual resource with pending changes
@@ -219,7 +216,7 @@ describe("SidebarTriggerButton", () => {
       </MemoryRouter>
     )
 
-    let buttons = root.find(SidebarTriggerButtonRoot)
+    let buttons = root.find(TriggerButton).find(InstrumentedButton)
     expect(buttons).toHaveLength(2)
 
     expectIsSelected(buttons.at(0), true) // Selected resource
@@ -259,7 +256,7 @@ describe("SidebarTriggerButton", () => {
       </MemoryRouter>
     )
 
-    let buttons = root.find(SidebarTriggerButtonRoot)
+    let buttons = root.find(TriggerButton).find(InstrumentedButton)
     expect(buttons).toHaveLength(2)
     let b0 = buttons.at(0) // Automatic resource with pending changes
     let b1 = buttons.at(1) // Automatic resource, no pending changes
@@ -292,7 +289,7 @@ describe("SidebarTriggerButton", () => {
       </MemoryRouter>
     )
 
-    let button = root.find(SidebarTriggerButtonRoot)
+    let button = root.find(TriggerButton).find(InstrumentedButton)
     expect(button).toHaveLength(1)
 
     expectClickable(button, false)
@@ -319,7 +316,7 @@ describe("SidebarTriggerButton", () => {
       </MemoryRouter>
     )
 
-    let button = root.find(SidebarTriggerButtonRoot)
+    let button = root.find(TriggerButton).find(InstrumentedButton)
     expect(button).toHaveLength(1)
 
     expectClickable(button, false)
@@ -344,7 +341,7 @@ describe("SidebarTriggerButton", () => {
       </MemoryRouter>
     )
 
-    let button = root.find(SidebarTriggerButtonRoot)
+    let button = root.find(TriggerButton).find(InstrumentedButton)
     expect(button).toHaveLength(1)
 
     expectClickable(button, false)
@@ -371,7 +368,7 @@ describe("SidebarTriggerButton", () => {
       </MemoryRouter>
     )
 
-    let button = root.find(SidebarTriggerButtonRoot)
+    let button = root.find(TriggerButton).find(InstrumentedButton)
     expect(button).toHaveLength(1)
 
     expectClickable(button, true)
@@ -396,7 +393,7 @@ describe("SidebarTriggerButton", () => {
       </MemoryRouter>
     )
 
-    let button = root.find(SidebarTriggerButtonRoot)
+    let button = root.find(TriggerButton).find(InstrumentedButton)
     expect(button).toHaveLength(1)
 
     expectClickable(button, true)

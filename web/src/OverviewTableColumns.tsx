@@ -19,7 +19,7 @@ import { displayURL } from "./links"
 import { OverviewButtonMixin } from "./OverviewButton"
 import OverviewTableStarResourceButton from "./OverviewTableStarResourceButton"
 import OverviewTableStatus from "./OverviewTableStatus"
-import OverviewTableTriggerButton from "./OverviewTableTriggerButton"
+import { OverviewTableTriggerButton } from "./OverviewTableTriggerButton"
 import OverviewTableTriggerModeToggle from "./OverviewTableTriggerModeToggle"
 import { useResourceNav } from "./ResourceNav"
 import { useResourceSelection } from "./ResourceSelectionContext"
@@ -106,7 +106,7 @@ const Name = styled.button`
   }
 
   &.isDisabled {
-    ${disabledResourceStyleMixin}
+    ${disabledResourceStyleMixin};
     color: ${Color.gray6};
   }
 `
@@ -366,7 +366,6 @@ export function TableTriggerColumn({ row }: CellProps<RowValues>) {
       isBuilding={trigger.isBuilding}
       triggerMode={row.values.triggerMode}
       isQueued={trigger.isQueued}
-      resourceName={row.values.name}
       analyticsTags={row.values.analyticsTags}
       onTrigger={onTrigger}
     />
