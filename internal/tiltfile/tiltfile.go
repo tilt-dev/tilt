@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	wmanalytics "github.com/tilt-dev/wmclient/pkg/analytics"
 	"go.starlark.net/starlark"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
@@ -35,7 +36,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/watch"
 	corev1alpha1 "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
-	wmanalytics "github.com/tilt-dev/wmclient/pkg/analytics"
 )
 
 const FileName = "Tiltfile"
@@ -216,12 +216,9 @@ func (tfl tiltfileLoader) Load(ctx context.Context, tf *corev1alpha1.Tiltfile) T
 	tlr.UpdateSettings = us
 
 	configSettings, _ := config.GetState(result)
-	enabledManifests, err := configSettings.EnabledResources(tf, manifests)
-	if err != nil {
-		tlr.Error = err
-		return tlr
+	if tlr.Error == nil {
+		tlr.EnabledManifests, tlr.Error = configSettings.EnabledResources(tf, manifests)
 	}
-	tlr.EnabledManifests = enabledManifests
 
 	duration := time.Since(start)
 	if tlr.Error == nil {
