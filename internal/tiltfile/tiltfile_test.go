@@ -5929,6 +5929,15 @@ local_resource("test2", cmd="echo hi2", labels=["bar", "baz"])
 	f.assertNextManifest("test2", resourceLabels("bar", "baz"))
 }
 
+// https://github.com/tilt-dev/tilt/issues/5467
+func TestLoadErrorWithArgs(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", "asdf")
+	f.loadArgsErrString([]string{"foo"}, "undefined: asdf")
+}
+
 type fixture struct {
 	ctx context.Context
 	out *bytes.Buffer
@@ -6155,8 +6164,12 @@ func (f *fixture) loadAssertWarnings(warnings ...string) {
 }
 
 func (f *fixture) loadErrString(msgs ...string) {
+	f.loadArgsErrString(nil, msgs...)
+}
+
+func (f *fixture) loadArgsErrString(args []string, msgs ...string) {
 	f.t.Helper()
-	tlr := f.newTiltfileLoader().Load(f.ctx, ctrltiltfile.MainTiltfile(f.JoinPath("Tiltfile"), nil))
+	tlr := f.newTiltfileLoader().Load(f.ctx, ctrltiltfile.MainTiltfile(f.JoinPath("Tiltfile"), args))
 	err := tlr.Error
 
 	if err == nil {
