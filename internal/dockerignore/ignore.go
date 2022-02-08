@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/docker/docker/builder/dockerignore"
-	tiltDockerignore "github.com/tilt-dev/dockerignore"
 
+	tiltDockerignore "github.com/tilt-dev/dockerignore"
 	"github.com/tilt-dev/tilt/internal/ospath"
 )
 

@@ -10,12 +10,12 @@ import (
 
 	"github.com/alessio/shellescape"
 	"github.com/stretchr/testify/require"
-	"github.com/tilt-dev/wmclient/pkg/analytics"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
+	"github.com/tilt-dev/wmclient/pkg/analytics"
 )
 
 func TestArgsClear(t *testing.T) {

@@ -6,11 +6,11 @@ import (
 	"net"
 	"sync"
 
-	"github.com/tilt-dev/localregistry-go"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apiv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
+	"github.com/tilt-dev/localregistry-go"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/pkg/logger"
 )

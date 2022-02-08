@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/tilt-dev/wmclient/pkg/analytics"
 
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/wmclient/pkg/analytics"
 )
 
 const WindmillDirEnvVarName = "WINDMILL_DIR"

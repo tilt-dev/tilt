@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+
 	"github.com/tilt-dev/wmclient/pkg/analytics"
 )
 

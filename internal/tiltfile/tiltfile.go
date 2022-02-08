@@ -8,15 +8,11 @@ import (
 	"strconv"
 	"time"
 
-	wmanalytics "github.com/tilt-dev/wmclient/pkg/analytics"
 	"go.starlark.net/starlark"
 
+	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apiset"
-	"github.com/tilt-dev/tilt/internal/tiltfile/tiltextension"
-	"github.com/tilt-dev/tilt/internal/tiltfile/v1alpha1"
-
-	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/feature"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -31,12 +27,15 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/secretsettings"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 	"github.com/tilt-dev/tilt/internal/tiltfile/telemetry"
+	"github.com/tilt-dev/tilt/internal/tiltfile/tiltextension"
 	"github.com/tilt-dev/tilt/internal/tiltfile/updatesettings"
+	"github.com/tilt-dev/tilt/internal/tiltfile/v1alpha1"
 	"github.com/tilt-dev/tilt/internal/tiltfile/value"
 	"github.com/tilt-dev/tilt/internal/tiltfile/version"
 	"github.com/tilt-dev/tilt/internal/tiltfile/watch"
 	corev1alpha1 "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
+	wmanalytics "github.com/tilt-dev/wmclient/pkg/analytics"
 )
 
 const FileName = "Tiltfile"
