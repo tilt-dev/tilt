@@ -4577,8 +4577,9 @@ func (f *testFixture) setK8sApplyResult(name model.ManifestName, hash k8s.PodTem
 	var ka v1alpha1.KubernetesApply
 	require.NoError(f.t, f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: string(name)}, &ka))
 
+	patchBase := ctrlclient.MergeFrom(ka.DeepCopy())
 	ka.Status = status
-	require.NoError(f.t, f.ctrlClient.Status().Update(f.ctx, &ka))
+	require.NoError(f.t, f.ctrlClient.Status().Patch(f.ctx, &ka, patchBase))
 
 	st := f.store.LockMutableStateForTesting()
 	ms, _ := st.ManifestState(name)
