@@ -39,7 +39,6 @@ var dcProjectOptions = []compose.ProjectOptionsFn{
 	compose.WithResolvedPaths(true),
 	compose.WithNormalization(true),
 	compose.WithOsEnv,
-	compose.WithDotEnv,
 }
 
 type DockerComposeClient interface {
@@ -79,6 +78,10 @@ func (c *cmdDCClient) projectArgs(p model.DockerComposeProject) []string {
 
 	if p.ProjectPath != "" {
 		result = append(result, "--project-directory", p.ProjectPath)
+	}
+
+	if p.EnvFile != "" {
+		result = append(result, "--env-file", p.EnvFile)
 	}
 
 	if p.YAML != "" {
@@ -322,12 +325,20 @@ func (c *cmdDCClient) Version(ctx context.Context) (string, string, error) {
 	return ver, build, err
 }
 
-func (c *cmdDCClient) loadProjectNative(modelProj model.DockerComposeProject) (*types.Project, error) {
+func composeProjectOptions(modelProj model.DockerComposeProject) (*compose.ProjectOptions, error) {
 	// NOTE: take care to keep behavior in sync with loadProjectCLI()
 	allProjectOptions := append(dcProjectOptions,
 		compose.WithWorkingDirectory(modelProj.ProjectPath),
 		compose.WithName(modelProj.Name))
-	opts, err := compose.NewProjectOptions(modelProj.ConfigPaths, allProjectOptions...)
+	if modelProj.EnvFile != "" {
+		allProjectOptions = append(allProjectOptions, compose.WithEnvFile(modelProj.EnvFile))
+	}
+	allProjectOptions = append(allProjectOptions, compose.WithDotEnv)
+	return compose.NewProjectOptions(modelProj.ConfigPaths, allProjectOptions...)
+}
+
+func (c *cmdDCClient) loadProjectNative(modelProj model.DockerComposeProject) (*types.Project, error) {
+	opts, err := composeProjectOptions(modelProj)
 	if err != nil {
 		return nil, err
 	}
