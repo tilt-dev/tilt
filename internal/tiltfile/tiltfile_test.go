@@ -6147,13 +6147,13 @@ func (f *fixture) loadAllowWarnings(args ...string) {
 func unusedImageWarning(unusedImage string, suggestedImages []string, configType string) string {
 	ret := fmt.Sprintf("Image not used in any %s config:\n    ✕ %s", configType, unusedImage)
 	if len(suggestedImages) > 0 {
-		ret = ret + "\nDid you mean…"
+		ret += "\nDid you mean…"
 		for _, s := range suggestedImages {
-			ret = ret + fmt.Sprintf("\n    - %s", s)
+			ret += fmt.Sprintf("\n    - %s", s)
 		}
 	}
-	ret = ret + "\nSkipping this image build"
-	ret = ret + fmt.Sprintf("\nIf this is deliberate, suppress this warning with: update_settings(suppress_unused_image_warnings=[%q])", unusedImage)
+	ret += "\nSkipping this image build"
+	ret += fmt.Sprintf("\nIf this is deliberate, suppress this warning with: update_settings(suppress_unused_image_warnings=[%q])", unusedImage)
 	return ret
 }
 

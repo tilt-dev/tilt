@@ -74,7 +74,7 @@ func (c explodingClient) ImageList(ctx context.Context, options types.ImageListO
 func (c explodingClient) ImageRemove(ctx context.Context, imageID string, options types.ImageRemoveOptions) ([]types.ImageDeleteResponseItem, error) {
 	return nil, c.err
 }
-func (c explodingClient) NewVersionError(APIrequired, feature string) error {
+func (c explodingClient) NewVersionError(apiRequired, feature string) error {
 	return c.err
 }
 func (c explodingClient) BuildCachePrune(ctx context.Context, opts types.BuildCachePruneOptions) (*types.BuildCachePruneReport, error) {
