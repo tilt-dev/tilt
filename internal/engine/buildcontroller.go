@@ -7,6 +7,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tilt-dev/tilt/internal/timecmp"
+
+	"github.com/pkg/errors"
+
+	"github.com/tilt-dev/tilt/internal/controllers/apis/uibutton"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/buildcontrols"
@@ -95,7 +100,7 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore, summary
 		return nil
 	}
 
-	c.cleanupDisabledBuilds(st)
+	c.cleanUpCanceledBuilds(st)
 
 	if c.disabledForTesting {
 		return nil
@@ -126,6 +131,9 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore, summary
 		})
 
 		result, err := c.buildAndDeploy(ctx, st, entry)
+		if ctx.Err() == context.Canceled {
+			err = errors.New("build canceled")
+		}
 		st.Dispatch(buildcontrols.NewBuildCompleteAction(entry.name, entry.spanID, result, err))
 	}()
 
@@ -143,15 +151,21 @@ func (c *BuildController) buildAndDeploy(ctx context.Context, st store.RStore, e
 	return c.b.BuildAndDeploy(ctx, st, targets, entry.buildStateSet)
 }
 
-// cancel any in-progress builds associated with disabled UIResources
+// cancel any in-progress builds associated with canceled builds and disabled UIResources
 // when builds are fully represented by api objects, cancellation should probably
 // be tied to those rather than the UIResource
-func (c *BuildController) cleanupDisabledBuilds(st store.RStore) {
+func (c *BuildController) cleanUpCanceledBuilds(st store.RStore) {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
 	for _, ms := range state.ManifestStates() {
-		if ms.DisableState == v1alpha1.DisableStateDisabled {
+		disabled := ms.DisableState == v1alpha1.DisableStateDisabled
+		canceled := false
+		if cancelButton, ok := state.UIButtons[uibutton.CancelButtonName(ms.Name.String())]; ok {
+			lastCancelClick := cancelButton.Status.LastClickedAt
+			canceled = timecmp.AfterOrEqual(lastCancelClick.Time, ms.CurrentBuild.StartTime)
+		}
+		if disabled || canceled {
 			c.cleanupBuildContext(ms.Name)
 		}
 	}

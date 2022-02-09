@@ -27,6 +27,7 @@ const Labels = "labels"
 const LiveUpdateV2 = "live_update_v2"
 const DisableResources = "disable_resources"
 const BulkDisableResources = "bulk_disable_resources"
+const CancelBuild = "cancel_build"
 
 // The Value a flag can have. Status should never be changed.
 type Value struct {
@@ -77,6 +78,11 @@ var MainDefaults = Defaults{
 	BulkDisableResources: Value{
 		Enabled: false,
 		Status:  Obsolete,
+	},
+	// TODO(matt) - remove once the frontend styling is in place
+	CancelBuild: Value{
+		Enabled: false,
+		Status:  Active,
 	},
 }
 

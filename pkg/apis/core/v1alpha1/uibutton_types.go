@@ -122,6 +122,9 @@ type UIComponentLocationResource struct {
 // used by the backend to indicate to the frontend that this button is special
 const AnnotationButtonType = "tilt.dev/uibutton-type"
 
+const ButtonTypeDisableToggle = "DisableToggle"
+const ButtonTypeCancelUpdate = "CancelUpdate"
+
 var _ resource.Object = &UIButton{}
 var _ resourcestrategy.Validater = &UIButton{}
 
