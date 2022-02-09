@@ -1,4 +1,4 @@
-package restarton
+package trigger
 
 import (
 	"context"
@@ -71,7 +71,7 @@ func TestExtractKeysForIndexer(t *testing.T) {
 	}
 
 	for _, tc := range tcs {
-		keys := extractKeysForIndexer(ns, tc.restartOn, tc.startOn)
+		keys := extractKeysForIndexer(ns, TriggerSpecs{RestartOn: tc.restartOn, StartOn: tc.startOn})
 		assert.ElementsMatchf(t, tc.expected, keys,
 			"Indexer keys did not match\nRestartOnSpec: %s\nStartOnSpec: %s",
 			strings.TrimSpace(spew.Sdump(tc.restartOn)),
@@ -88,13 +88,15 @@ func TestFetchObjects(t *testing.T) {
 	f.Create(&v1alpha1.UIButton{ObjectMeta: metav1.ObjectMeta{Name: "btn2"}})
 
 	triggerObjs, err := FetchObjects(f.Context(), f.Client,
-		&v1alpha1.RestartOnSpec{
-			FileWatches: []string{"fw1", "fw2", "fw3"},
-			UIButtons:   []string{"btn1"},
-		},
-		&v1alpha1.StartOnSpec{
-			UIButtons: []string{"btn2", "btn3"},
-		})
+		TriggerSpecs{
+			RestartOn: &v1alpha1.RestartOnSpec{
+				FileWatches: []string{"fw1", "fw2", "fw3"},
+				UIButtons:   []string{"btn1"},
+			},
+			StartOn: &v1alpha1.StartOnSpec{
+				UIButtons: []string{"btn2", "btn3"},
+			}})
+
 	require.NoError(t, err)
 	assert.NotNil(t, triggerObjs.FileWatches["fw1"])
 	assert.NotNil(t, triggerObjs.FileWatches["fw2"])
@@ -111,7 +113,7 @@ func TestFetchObjects_Error(t *testing.T) {
 	cli := &explodingReader{err: errors.New("oh no")}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	triggerObjs, err := FetchObjects(ctx, cli, &v1alpha1.RestartOnSpec{FileWatches: []string{"fw"}}, nil)
+	triggerObjs, err := FetchObjects(ctx, cli, TriggerSpecs{RestartOn: &v1alpha1.RestartOnSpec{FileWatches: []string{"fw"}}})
 	require.Error(t, err, "FetchObjects should have failed with an error")
 	require.Empty(t, triggerObjs.FileWatches)
 	require.Empty(t, triggerObjs.UIButtons)

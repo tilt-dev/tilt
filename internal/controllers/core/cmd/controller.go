@@ -25,7 +25,7 @@ import (
 	"github.com/tilt-dev/probe/pkg/prober"
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
-	"github.com/tilt-dev/tilt/internal/controllers/apis/restarton"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/trigger"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/engine/local"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -59,9 +59,12 @@ func (r *Controller) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
 		Watches(r.requeuer, handler.Funcs{})
 
-	restarton.SetupController(b, r.indexer, func(obj ctrlclient.Object) (*v1alpha1.RestartOnSpec, *v1alpha1.StartOnSpec) {
+	trigger.SetupController(b, r.indexer, func(obj ctrlclient.Object) trigger.TriggerSpecs {
 		cmd := obj.(*v1alpha1.Cmd)
-		return cmd.Spec.RestartOn, cmd.Spec.StartOn
+		return trigger.TriggerSpecs{
+			RestartOn: cmd.Spec.RestartOn,
+			StartOn:   cmd.Spec.StartOn,
+		}
 	})
 
 	return b, nil
@@ -122,8 +125,8 @@ func inputsFromButton(button v1alpha1.UIButton) []input {
 }
 
 // Fetch the last time a start was requested from this target's dependencies.
-func (c *Controller) lastStartEvent(startOn *StartOnSpec, restartObjs restarton.Objects) (time.Time, []input) {
-	latestTime, latestButton := restarton.LastStartEvent(startOn, restartObjs)
+func (c *Controller) lastStartEvent(startOn *StartOnSpec, triggerObjs trigger.Objects) (time.Time, []input) {
+	latestTime, latestButton := trigger.LastStartEvent(startOn, triggerObjs)
 	var inputs []input
 	if latestButton != nil {
 		inputs = inputsFromButton(*latestButton)
@@ -132,8 +135,8 @@ func (c *Controller) lastStartEvent(startOn *StartOnSpec, restartObjs restarton.
 }
 
 // Fetch the last time a restart was requested from this target's dependencies.
-func (c *Controller) lastRestartEvent(restartOn *RestartOnSpec, restartObjs restarton.Objects) (time.Time, []input) {
-	cur, latestButton := restarton.LastRestartEvent(restartOn, restartObjs)
+func (c *Controller) lastRestartEvent(restartOn *RestartOnSpec, triggerObjs trigger.Objects) (time.Time, []input) {
+	cur, latestButton := trigger.LastRestartEvent(restartOn, triggerObjs)
 	var inputs []input
 	if latestButton != nil {
 		inputs = inputsFromButton(*latestButton)
@@ -191,13 +194,13 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, nil
 	}
 
-	restartObjs, err := restarton.FetchObjects(ctx, c.client, cmd.Spec.RestartOn, cmd.Spec.StartOn)
+	triggerObjs, err := trigger.FetchObjects(ctx, c.client, trigger.TriggerSpecs{RestartOn: cmd.Spec.RestartOn, StartOn: cmd.Spec.StartOn})
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	lastRestartEventTime, _ := c.lastRestartEvent(cmd.Spec.RestartOn, restartObjs)
-	lastStartEventTime, _ := c.lastStartEvent(cmd.Spec.StartOn, restartObjs)
+	lastRestartEventTime, _ := c.lastRestartEvent(cmd.Spec.RestartOn, triggerObjs)
+	lastStartEventTime, _ := c.lastStartEvent(cmd.Spec.StartOn, triggerObjs)
 	startOn := cmd.Spec.StartOn
 	waitsOnStartOn := startOn != nil && len(startOn.UIButtons) > 0
 
@@ -229,7 +232,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		} else if execSpecChanged || restartOnTriggered || startOnTriggered {
 			// Otherwise, any change, new start event, or new restart event
 			// should restart the process to pick up changes.
-			_ = c.runInternal(ctx, cmd, restartObjs)
+			_ = c.runInternal(ctx, cmd, triggerObjs)
 		}
 	}
 
@@ -265,7 +268,7 @@ func (c *Controller) maybeUpdateObjectStatus(ctx context.Context, cmd *v1alpha1.
 // Blocks until the command is finished, then returns its status.
 func (c *Controller) ForceRun(ctx context.Context, cmd *v1alpha1.Cmd) (*v1alpha1.CmdStatus, error) {
 	c.mu.Lock()
-	doneCh := c.runInternal(ctx, cmd, restarton.Objects{})
+	doneCh := c.runInternal(ctx, cmd, trigger.Objects{})
 	c.mu.Unlock()
 
 	select {
@@ -326,7 +329,7 @@ func (c *Controller) ensureProc(name types.NamespacedName) *currentProcess {
 // Returns a channel that closes when the Cmd is finished.
 func (c *Controller) runInternal(ctx context.Context,
 	cmd *v1alpha1.Cmd,
-	restartObjs restarton.Objects) chan struct{} {
+	triggerObjs trigger.Objects) chan struct{} {
 	name := types.NamespacedName{Name: cmd.Name}
 	c.stop(name)
 
@@ -336,8 +339,8 @@ func (c *Controller) runInternal(ctx context.Context,
 
 	var startInputs, restartInputs []input
 
-	proc.lastRestartOnEventTime, restartInputs = c.lastRestartEvent(cmd.Spec.RestartOn, restartObjs)
-	proc.lastStartOnEventTime, startInputs = c.lastStartEvent(cmd.Spec.StartOn, restartObjs)
+	proc.lastRestartOnEventTime, restartInputs = c.lastRestartEvent(cmd.Spec.RestartOn, triggerObjs)
+	proc.lastStartOnEventTime, startInputs = c.lastStartEvent(cmd.Spec.StartOn, triggerObjs)
 
 	mergedInputs := startInputs
 	if proc.lastRestartOnEventTime.After(proc.lastStartOnEventTime) {

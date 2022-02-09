@@ -21,7 +21,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
-	"github.com/tilt-dev/tilt/internal/controllers/apis/restarton"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/trigger"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -68,9 +68,9 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 			handler.EnqueueRequestsFromMapFunc(r.enqueueTriggerQueue)).
 		Watches(r.requeuer, handler.Funcs{})
 
-	restarton.SetupController(b, r.indexer, func(obj ctrlclient.Object) (*v1alpha1.RestartOnSpec, *v1alpha1.StartOnSpec) {
+	trigger.SetupController(b, r.indexer, func(obj ctrlclient.Object) trigger.TriggerSpecs {
 		tf := obj.(*v1alpha1.Tiltfile)
-		return tf.Spec.RestartOn, nil
+		return trigger.TriggerSpecs{RestartOn: tf.Spec.RestartOn}
 	})
 
 	return b, nil
@@ -142,18 +142,18 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 	// If the tiltfile isn't being run, check to see if anything has triggered a run.
 	if step == runStepNone || step == runStepDone {
-		restartObjs, err := restarton.FetchObjects(ctx, r.ctrlClient, tf.Spec.RestartOn, nil)
+		triggerObjs, err := trigger.FetchObjects(ctx, r.ctrlClient, trigger.TriggerSpecs{RestartOn: tf.Spec.RestartOn})
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 
-		lastRestartEventTime, _ := restarton.LastRestartEvent(tf.Spec.RestartOn, restartObjs)
+		lastRestartEventTime, _ := trigger.LastRestartEvent(tf.Spec.RestartOn, triggerObjs)
 		queue, err := configmap.TriggerQueue(ctx, r.ctrlClient)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 
-		be := r.needsBuild(ctx, nn, &tf, run, restartObjs.FileWatches, queue, lastRestartEventTime)
+		be := r.needsBuild(ctx, nn, &tf, run, triggerObjs.FileWatches, queue, lastRestartEventTime)
 		if be != nil {
 			r.startRunAsync(ctx, nn, &tf, be)
 		}
@@ -207,7 +207,7 @@ func (r *Reconciler) needsBuild(ctx context.Context, nn types.NamespacedName, tf
 	if step == runStepNone {
 		reason = reason.With(model.BuildReasonFlagInit)
 	} else {
-		filesChanged = restarton.FilesChanged(tf.Spec.RestartOn, fileWatches, lastStartTime)
+		filesChanged = trigger.FilesChanged(tf.Spec.RestartOn, fileWatches, lastStartTime)
 		if len(filesChanged) > 0 {
 			reason = reason.With(model.BuildReasonFlagChangedFiles)
 		} else if lastRestartEvent.After(lastStartTime) {
