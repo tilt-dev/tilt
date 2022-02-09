@@ -115,8 +115,7 @@ func (bd *LocalTargetBuildAndDeployer) BuildAndDeploy(ctx context.Context, st st
 func (bd *LocalTargetBuildAndDeployer) extract(specs []model.TargetSpec) []model.LocalTarget {
 	var targs []model.LocalTarget
 	for _, s := range specs {
-		switch s := s.(type) {
-		case model.LocalTarget:
+		if s, ok := s.(model.LocalTarget); ok {
 			targs = append(targs, s)
 		}
 	}

@@ -779,8 +779,7 @@ func NewTestingStore(out io.Writer) *testStore {
 func (s *testStore) Dispatch(action store.Action) {
 	s.TestingStore.Dispatch(action)
 
-	switch action := action.(type) {
-	case store.LogAction:
+	if action, ok := action.(store.LogAction); ok {
 		_, _ = s.out.Write(action.Message())
 	}
 }

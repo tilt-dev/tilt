@@ -156,10 +156,8 @@ func (tf *testFixture) AssertResult(path string, expectedMatches bool) {
 	isIgnored, err := tf.tester.Matches(path)
 	if err != nil {
 		tf.t.Fatal(err)
-	} else {
-		if assert.NoError(tf.t, err) {
-			assert.Equalf(tf.t, expectedMatches, isIgnored, "Expected isIgnored to be %t for file %s, got %t", expectedMatches, path, isIgnored)
-		}
+	} else if assert.NoError(tf.t, err) {
+		assert.Equalf(tf.t, expectedMatches, isIgnored, "Expected isIgnored to be %t for file %s, got %t", expectedMatches, path, isIgnored)
 	}
 }
 
@@ -167,10 +165,8 @@ func (tf *testFixture) AssertResultEntireDir(path string, expectedMatches bool) 
 	isIgnored, err := tf.tester.MatchesEntireDir(path)
 	if err != nil {
 		tf.t.Fatal(err)
-	} else {
-		if assert.NoError(tf.t, err) {
-			assert.Equalf(tf.t, expectedMatches, isIgnored, "Expected isIgnored to be %t for file %s, got %t", expectedMatches, path, isIgnored)
-		}
+	} else if assert.NoError(tf.t, err) {
+		assert.Equalf(tf.t, expectedMatches, isIgnored, "Expected isIgnored to be %t for file %s, got %t", expectedMatches, path, isIgnored)
 	}
 }
 

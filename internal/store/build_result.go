@@ -140,16 +140,14 @@ func NewK8sDeployResult(id model.TargetID, filter *k8sconv.KubernetesApplyFilter
 }
 
 func LocalImageRefFromBuildResult(r BuildResult) string {
-	switch r := r.(type) {
-	case ImageBuildResult:
+	if r, ok := r.(ImageBuildResult); ok {
 		return r.ImageMapStatus.ImageFromLocal
 	}
 	return ""
 }
 
 func ClusterImageRefFromBuildResult(r BuildResult) string {
-	switch r := r.(type) {
-	case ImageBuildResult:
+	if r, ok := r.(ImageBuildResult); ok {
 		return r.ImageMapStatus.ImageFromCluster
 	}
 	return ""
