@@ -22,6 +22,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/container"
 	configmap2 "github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/uibutton"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -368,6 +369,96 @@ func TestTiltfileFailurePreservesEnabledResources(t *testing.T) {
 	f.requireEnabled(m2, false)
 }
 
+func TestCancel(t *testing.T) {
+	f := newFixture(t)
+	p := f.tempdir.JoinPath("Tiltfile")
+	f.tempdir.WriteFile(p, "print('hello-world')")
+
+	f.tfl.Delegate = newBlockingTiltfileLoader()
+
+	tf := v1alpha1.Tiltfile{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "my-tf",
+		},
+		Spec: v1alpha1.TiltfileSpec{
+			Path:     p,
+			CancelOn: &v1alpha1.CancelOnSpec{UIButtons: []string{uibutton.CancelButtonName("my-tf")}},
+		},
+	}
+
+	cancelButton := uibutton.CancelButton(tf.Name)
+	err := f.Client.Create(f.Context(), cancelButton)
+	require.NoError(t, err)
+
+	ts := time.Now()
+	f.Create(&tf)
+
+	f.waitForRunning(tf.Name)
+
+	_, err = controllerutil.CreateOrUpdate(f.Context(), f.Client, cancelButton, func() error {
+		cancelButton.Status.LastClickedAt = metav1.NowMicro()
+		return nil
+	})
+	require.NoError(t, err)
+
+	f.MustReconcile(types.NamespacedName{Name: tf.Name})
+
+	f.popQueue()
+
+	f.waitForTerminatedAfter(tf.Name, ts)
+
+	f.Get(types.NamespacedName{Name: tf.Name}, &tf)
+	require.NotNil(t, tf.Status.Terminated)
+	require.Equal(t, "build canceled", tf.Status.Terminated.Error)
+}
+
+func TestCancelClickedBeforeLoad(t *testing.T) {
+	f := newFixture(t)
+	p := f.tempdir.JoinPath("Tiltfile")
+	f.tempdir.WriteFile(p, "print('hello-world')")
+
+	tfl := newBlockingTiltfileLoader()
+	f.tfl.Delegate = tfl
+
+	tf := v1alpha1.Tiltfile{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "my-tf",
+		},
+		Spec: v1alpha1.TiltfileSpec{
+			Path:     p,
+			CancelOn: &v1alpha1.CancelOnSpec{UIButtons: []string{uibutton.CancelButtonName("my-tf")}},
+		},
+	}
+
+	cancelButton := uibutton.CancelButton(tf.Name)
+	cancelButton.Status.LastClickedAt = metav1.NowMicro()
+	err := f.Client.Create(f.Context(), cancelButton)
+	require.NoError(t, err)
+
+	nn := types.NamespacedName{Name: tf.Name}
+
+	ts := time.Now()
+	f.Create(&tf)
+
+	f.waitForRunning(tf.Name)
+
+	// give the reconciler a chance to observe the cancel button click
+	f.MustReconcile(nn)
+
+	// finish the build
+	tfl.Complete()
+
+	f.MustReconcile(nn)
+
+	f.popQueue()
+
+	f.waitForTerminatedAfter(tf.Name, ts)
+
+	f.Get(nn, &tf)
+	require.NotNil(t, tf.Status.Terminated)
+	require.Equal(t, "", tf.Status.Terminated.Error)
+}
+
 type testStore struct {
 	*store.TestingStore
 	out *bytes.Buffer
@@ -498,4 +589,25 @@ func (f *fixture) requireEnabled(m model.Manifest, isEnabled bool) {
 	require.NoError(f.T(), err)
 	actualIsEnabled := !isDisabled
 	require.Equal(f.T(), isEnabled, actualIsEnabled, "is %s enabled", m.Name)
+}
+
+// builds block until canceled or manually completed
+type blockingTiltfileLoader struct {
+	completionChan chan struct{}
+}
+
+func newBlockingTiltfileLoader() blockingTiltfileLoader {
+	return blockingTiltfileLoader{completionChan: make(chan struct{})}
+}
+
+func (b blockingTiltfileLoader) Load(ctx context.Context, tf *v1alpha1.Tiltfile) tiltfile.TiltfileLoadResult {
+	select {
+	case <-ctx.Done():
+	case <-b.completionChan:
+	}
+	return tiltfile.TiltfileLoadResult{}
+}
+
+func (b blockingTiltfileLoader) Complete() {
+	close(b.completionChan)
 }

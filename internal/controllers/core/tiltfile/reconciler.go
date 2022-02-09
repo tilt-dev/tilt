@@ -30,6 +30,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/store/buildcontrols"
 	"github.com/tilt-dev/tilt/internal/store/tiltfiles"
 	"github.com/tilt-dev/tilt/internal/tiltfile"
+	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -70,7 +71,7 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 
 	trigger.SetupController(b, r.indexer, func(obj ctrlclient.Object) trigger.TriggerSpecs {
 		tf := obj.(*v1alpha1.Tiltfile)
-		return trigger.TriggerSpecs{RestartOn: tf.Spec.RestartOn}
+		return trigger.TriggerSpecs{RestartOn: tf.Spec.RestartOn, CancelOn: tf.Spec.CancelOn}
 	})
 
 	return b, nil
@@ -140,20 +141,31 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		ctx = run.entry.WithLogger(ctx, r.st)
 	}
 
+	if step == runStepRunning {
+		restartObjs, err := trigger.FetchObjects(ctx, r.ctrlClient, trigger.TriggerSpecs{CancelOn: tf.Spec.CancelOn})
+		if err != nil {
+			return reconcile.Result{}, errors.Wrap(err, "error fetching objects to check if run was canceled")
+		}
+		lastCancelTime, _ := trigger.LastCancelEvent(tf.Spec.CancelOn, restartObjs)
+		if timecmp.AfterOrEqual(lastCancelTime, run.startTime) {
+			run.cancel()
+		}
+	}
+
 	// If the tiltfile isn't being run, check to see if anything has triggered a run.
 	if step == runStepNone || step == runStepDone {
-		triggerObjs, err := trigger.FetchObjects(ctx, r.ctrlClient, trigger.TriggerSpecs{RestartOn: tf.Spec.RestartOn})
+		restartObjs, err := trigger.FetchObjects(ctx, r.ctrlClient, trigger.TriggerSpecs{RestartOn: tf.Spec.RestartOn})
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 
-		lastRestartEventTime, _ := trigger.LastRestartEvent(tf.Spec.RestartOn, triggerObjs)
+		lastRestartEventTime, _ := trigger.LastRestartEvent(tf.Spec.RestartOn, restartObjs)
 		queue, err := configmap.TriggerQueue(ctx, r.ctrlClient)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 
-		be := r.needsBuild(ctx, nn, &tf, run, triggerObjs.FileWatches, queue, lastRestartEventTime)
+		be := r.needsBuild(ctx, nn, &tf, run, restartObjs.FileWatches, queue, lastRestartEventTime)
 		if be != nil {
 			r.startRunAsync(ctx, nn, &tf, be)
 		}
@@ -301,6 +313,10 @@ func (r *Reconciler) run(ctx context.Context, nn types.NamespacedName, tf *v1alp
 			tlr.Error = errors.Wrap(dockerErr, "Failed to connect to Docker")
 		}
 		r.reportDockerConnectionEvent(ctx, dockerErr == nil, r.dockerClient.ServerVersion())
+	}
+
+	if ctx.Err() == context.Canceled {
+		tlr.Error = errors.New("build canceled")
 	}
 
 	r.mu.Lock()

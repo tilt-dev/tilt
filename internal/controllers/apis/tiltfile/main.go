@@ -6,6 +6,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apis/uibutton"
 	"github.com/tilt-dev/tilt/internal/ospath"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -38,6 +39,9 @@ func MainTiltfile(filename string, args []string) *v1alpha1.Tiltfile {
 			Args: args,
 			RestartOn: &v1alpha1.RestartOnSpec{
 				FileWatches: []string{fwName},
+			},
+			CancelOn: &v1alpha1.CancelOnSpec{
+				UIButtons: []string{uibutton.CancelButtonName(name)},
 			},
 		},
 	}
