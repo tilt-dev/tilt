@@ -381,8 +381,8 @@ func TestCancel(t *testing.T) {
 			Name: "my-tf",
 		},
 		Spec: v1alpha1.TiltfileSpec{
-			Path:     p,
-			CancelOn: &v1alpha1.CancelOnSpec{UIButtons: []string{uibutton.CancelButtonName("my-tf")}},
+			Path:   p,
+			StopOn: &v1alpha1.StopOnSpec{UIButtons: []string{uibutton.CancelButtonName("my-tf")}},
 		},
 	}
 
@@ -425,8 +425,8 @@ func TestCancelClickedBeforeLoad(t *testing.T) {
 			Name: "my-tf",
 		},
 		Spec: v1alpha1.TiltfileSpec{
-			Path:     p,
-			CancelOn: &v1alpha1.CancelOnSpec{UIButtons: []string{uibutton.CancelButtonName("my-tf")}},
+			Path:   p,
+			StopOn: &v1alpha1.StopOnSpec{UIButtons: []string{uibutton.CancelButtonName("my-tf")}},
 		},
 	}
 

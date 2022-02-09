@@ -24,12 +24,7 @@ type StartOnSpec struct {
 	UIButtons []string `json:"uiButtons" protobuf:"bytes,2,rep,name=uiButtons"`
 }
 
-type CancelOnSpec struct {
-	// StartAfter indicates that events before this time should be ignored.
-	//
-	// +optional
-	CancelAfter v1.Time `json:"cancelAfter,omitempty" protobuf:"bytes,1,opt,name=cancelAfter"`
-
-	// UIButtons that can trigger a cancel.
+type StopOnSpec struct {
+	// UIButtons that can trigger a stop.
 	UIButtons []string `json:"uiButtons" protobuf:"bytes,2,rep,name=uiButtons"`
 }

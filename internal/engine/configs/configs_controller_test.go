@@ -36,7 +36,7 @@ func TestCreateTiltfile(t *testing.T) {
 		RestartOn: &v1alpha1.RestartOnSpec{
 			FileWatches: []string{"configs:(Tiltfile)"},
 		},
-		CancelOn: &v1alpha1.CancelOnSpec{
+		StopOn: &v1alpha1.StopOnSpec{
 			UIButtons: []string{"(Tiltfile)-cancel"},
 		},
 	})
@@ -63,7 +63,7 @@ func TestCreateTiltfileCancelEnabled(t *testing.T) {
 		RestartOn: &v1alpha1.RestartOnSpec{
 			FileWatches: []string{"configs:(Tiltfile)"},
 		},
-		CancelOn: &v1alpha1.CancelOnSpec{
+		StopOn: &v1alpha1.StopOnSpec{
 			UIButtons: []string{"(Tiltfile)-cancel"},
 		},
 	}

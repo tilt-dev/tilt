@@ -40,7 +40,7 @@ func MainTiltfile(filename string, args []string) *v1alpha1.Tiltfile {
 			RestartOn: &v1alpha1.RestartOnSpec{
 				FileWatches: []string{fwName},
 			},
-			CancelOn: &v1alpha1.CancelOnSpec{
+			StopOn: &v1alpha1.StopOnSpec{
 				UIButtons: []string{uibutton.CancelButtonName(name)},
 			},
 		},

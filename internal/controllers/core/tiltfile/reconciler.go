@@ -71,7 +71,7 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 
 	trigger.SetupController(b, r.indexer, func(obj ctrlclient.Object) trigger.TriggerSpecs {
 		tf := obj.(*v1alpha1.Tiltfile)
-		return trigger.TriggerSpecs{RestartOn: tf.Spec.RestartOn, CancelOn: tf.Spec.CancelOn}
+		return trigger.TriggerSpecs{RestartOn: tf.Spec.RestartOn, StopOn: tf.Spec.StopOn}
 	})
 
 	return b, nil
@@ -142,12 +142,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	}
 
 	if step == runStepRunning {
-		restartObjs, err := trigger.FetchObjects(ctx, r.ctrlClient, trigger.TriggerSpecs{CancelOn: tf.Spec.CancelOn})
+		restartObjs, err := trigger.FetchObjects(ctx, r.ctrlClient, trigger.TriggerSpecs{StopOn: tf.Spec.StopOn})
 		if err != nil {
 			return reconcile.Result{}, errors.Wrap(err, "error fetching objects to check if run was canceled")
 		}
-		lastCancelTime, _ := trigger.LastCancelEvent(tf.Spec.CancelOn, restartObjs)
-		if timecmp.AfterOrEqual(lastCancelTime, run.startTime) {
+		lastStopTime, _ := trigger.LastStopEvent(tf.Spec.StopOn, restartObjs)
+		if timecmp.AfterOrEqual(lastStopTime, run.startTime) {
 			run.cancel()
 		}
 	}

@@ -35,7 +35,7 @@ type Objects struct {
 type TriggerSpecs struct {
 	RestartOn *v1alpha1.RestartOnSpec
 	StartOn   *v1alpha1.StartOnSpec
-	CancelOn  *v1alpha1.CancelOnSpec
+	StopOn    *v1alpha1.StopOnSpec
 }
 
 // SetupController creates watches for types referenced by the given specs and registers
@@ -89,8 +89,8 @@ func Buttons(ctx context.Context, client client.Reader, specs TriggerSpecs) (map
 		buttonNames = append(buttonNames, specs.RestartOn.UIButtons...)
 	}
 
-	if specs.CancelOn != nil {
-		buttonNames = append(buttonNames, specs.CancelOn.UIButtons...)
+	if specs.StopOn != nil {
+		buttonNames = append(buttonNames, specs.StopOn.UIButtons...)
 	}
 
 	result := make(map[string]*v1alpha1.UIButton, len(buttonNames))
@@ -279,8 +279,8 @@ func extractKeysForIndexer(
 		}
 	}
 
-	if specs.CancelOn != nil {
-		for _, name := range specs.CancelOn.UIButtons {
+	if specs.StopOn != nil {
+		for _, name := range specs.StopOn.UIButtons {
 			keys = append(keys, indexer.Key{
 				Name: types.NamespacedName{Namespace: namespace, Name: name},
 				GVK:  btnGVK,
@@ -295,21 +295,21 @@ func extractKeysForIndexer(
 //
 // Returns the most recent trigger time. If the most recent trigger is a button,
 // return the button. Some consumers use the button for text inputs.
-func LastCancelEvent(cancelOn *v1alpha1.CancelOnSpec, restartObjs Objects) (time.Time, *v1alpha1.UIButton) {
+func LastStopEvent(stopOn *v1alpha1.StopOnSpec, restartObjs Objects) (time.Time, *v1alpha1.UIButton) {
 	latestTime := time.Time{}
 	var latestButton *v1alpha1.UIButton
-	if cancelOn == nil {
+	if stopOn == nil {
 		return time.Time{}, nil
 	}
 
-	for _, bn := range cancelOn.UIButtons {
+	for _, bn := range stopOn.UIButtons {
 		b, ok := restartObjs.UIButtons[bn]
 		if !ok {
 			// ignore missing buttons
 			continue
 		}
 		lastEventTime := b.Status.LastClickedAt
-		if !lastEventTime.Time.Before(cancelOn.CancelAfter.Time) && lastEventTime.Time.After(latestTime) {
+		if lastEventTime.Time.After(latestTime) {
 			latestTime = lastEventTime.Time
 			latestButton = b
 		}

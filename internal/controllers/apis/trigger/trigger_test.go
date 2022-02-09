@@ -61,13 +61,13 @@ func TestExtractKeysForIndexer(t *testing.T) {
 			[]indexer.Key{btnKey("btn")},
 		},
 		{
-			TriggerSpecs{CancelOn: &v1alpha1.CancelOnSpec{UIButtons: []string{"btn"}}},
+			TriggerSpecs{StopOn: &v1alpha1.StopOnSpec{UIButtons: []string{"btn"}}},
 			[]indexer.Key{btnKey("btn")},
 		}, {
 			TriggerSpecs{
 				RestartOn: &v1alpha1.RestartOnSpec{FileWatches: []string{"foo"}, UIButtons: []string{"bar"}},
 				StartOn:   &v1alpha1.StartOnSpec{UIButtons: []string{"baz"}},
-				CancelOn:  &v1alpha1.CancelOnSpec{UIButtons: []string{"quu"}},
+				StopOn:    &v1alpha1.StopOnSpec{UIButtons: []string{"quu"}},
 			},
 			[]indexer.Key{fwKey("foo"), btnKey("bar"), btnKey("baz"), btnKey("quu")},
 		},
@@ -79,7 +79,7 @@ func TestExtractKeysForIndexer(t *testing.T) {
 			"Indexer keys did not match\nRestartOnSpec: %s\nStartOnSpec: %s\nCancelSpec: %s\n",
 			strings.TrimSpace(spew.Sdump(tc.specs.RestartOn)),
 			spew.Sdump(tc.specs.StartOn),
-			spew.Sdump(tc.specs.CancelOn))
+			spew.Sdump(tc.specs.StopOn))
 	}
 }
 
@@ -101,7 +101,7 @@ func TestFetchObjects(t *testing.T) {
 			StartOn: &v1alpha1.StartOnSpec{
 				UIButtons: []string{"btn2", "btn3"},
 			},
-			CancelOn: &v1alpha1.CancelOnSpec{
+			StopOn: &v1alpha1.StopOnSpec{
 				UIButtons: []string{"btn4", "btn5"},
 			},
 		})
