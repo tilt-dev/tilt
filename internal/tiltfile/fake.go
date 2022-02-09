@@ -18,10 +18,10 @@ func NewFakeTiltfileLoader() *FakeTiltfileLoader {
 	return &FakeTiltfileLoader{}
 }
 
-func (tfl *FakeTiltfileLoader) Load(ctx context.Context, tf *v1alpha1.Tiltfile) TiltfileLoadResult {
+func (tfl *FakeTiltfileLoader) Load(ctx context.Context, tf *v1alpha1.Tiltfile, prevResult *TiltfileLoadResult) TiltfileLoadResult {
 	tfl.Args = tf.Spec.Args
 	if tfl.Delegate != nil {
-		return tfl.Delegate.Load(ctx, tf)
+		return tfl.Delegate.Load(ctx, tf, prevResult)
 	}
 	return tfl.Result
 }

@@ -155,7 +155,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 		be := r.needsBuild(ctx, nn, &tf, run, restartObjs.FileWatches, queue, lastRestartEventTime)
 		if be != nil {
-			r.startRunAsync(ctx, nn, &tf, be)
+			r.startRunAsync(ctx, nn, &tf, be, run)
 		}
 	}
 
@@ -245,11 +245,16 @@ func (r *Reconciler) needsBuild(ctx context.Context, nn types.NamespacedName, tf
 }
 
 // Start a tiltfile run asynchronously, returning immediately.
-func (r *Reconciler) startRunAsync(ctx context.Context, nn types.NamespacedName, tf *v1alpha1.Tiltfile, entry *BuildEntry) {
+func (r *Reconciler) startRunAsync(ctx context.Context, nn types.NamespacedName, tf *v1alpha1.Tiltfile, entry *BuildEntry, prevRun *runStatus) {
 	ctx = entry.WithLogger(ctx, r.st)
 	ctx, cancel := context.WithCancel(ctx)
 
-	r.runs[nn] = &runStatus{
+	var prevResult *tiltfile.TiltfileLoadResult
+	if prevRun != nil {
+		prevResult = prevRun.tlr
+	}
+
+	run := &runStatus{
 		ctx:       ctx,
 		cancel:    cancel,
 		step:      runStepRunning,
@@ -257,12 +262,14 @@ func (r *Reconciler) startRunAsync(ctx context.Context, nn types.NamespacedName,
 		entry:     entry,
 		startTime: time.Now(),
 		startArgs: entry.Args,
+		tlr:       prevResult,
 	}
-	go r.run(ctx, nn, tf, entry)
+	r.runs[nn] = run
+	go r.run(ctx, nn, tf, run, entry)
 }
 
 // Executes the tiltfile on a non-blocking goroutine, and requests reconciliation on completion.
-func (r *Reconciler) run(ctx context.Context, nn types.NamespacedName, tf *v1alpha1.Tiltfile, entry *BuildEntry) {
+func (r *Reconciler) run(ctx context.Context, nn types.NamespacedName, tf *v1alpha1.Tiltfile, run *runStatus, entry *BuildEntry) {
 	startTime := time.Now()
 	r.st.Dispatch(ConfigsReloadStartedAction{
 		Name:         entry.Name,
@@ -282,7 +289,7 @@ func (r *Reconciler) run(ctx context.Context, nn types.NamespacedName, tf *v1alp
 		logger.Get(ctx).Infof("Tiltfile args changed to: %v", entry.Args)
 	}
 
-	tlr := r.tfl.Load(ctx, tf)
+	tlr := r.tfl.Load(ctx, tf, run.tlr)
 
 	// If the user is executing an empty main tiltfile, that probably means
 	// they need a tutorial. For now, we link to that tutorial, but a more interactive
@@ -304,11 +311,8 @@ func (r *Reconciler) run(ctx context.Context, nn types.NamespacedName, tf *v1alp
 	}
 
 	r.mu.Lock()
-	run, ok := r.runs[nn]
-	if ok {
-		run.tlr = &tlr
-		run.step = runStepLoaded
-	}
+	run.tlr = &tlr
+	run.step = runStepLoaded
 	r.mu.Unlock()
 
 	// Schedule a reconcile to create the API objects.

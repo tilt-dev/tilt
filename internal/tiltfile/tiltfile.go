@@ -22,6 +22,7 @@ import (
 	tiltfileanalytics "github.com/tilt-dev/tilt/internal/tiltfile/analytics"
 	"github.com/tilt-dev/tilt/internal/tiltfile/config"
 	"github.com/tilt-dev/tilt/internal/tiltfile/dockerprune"
+	"github.com/tilt-dev/tilt/internal/tiltfile/hasher"
 	"github.com/tilt-dev/tilt/internal/tiltfile/io"
 	"github.com/tilt-dev/tilt/internal/tiltfile/k8scontext"
 	"github.com/tilt-dev/tilt/internal/tiltfile/secretsettings"
@@ -57,6 +58,7 @@ type TiltfileLoadResult struct {
 	WatchSettings       model.WatchSettings
 	DefaultRegistry     container.Registry
 	ObjectSet           apiset.ObjectSet
+	Hashes              hasher.Hashes
 
 	// For diagnostic purposes only
 	BuiltinCalls []starkit.BuiltinCall `json:"-"`
@@ -88,7 +90,7 @@ type TiltfileLoader interface {
 	// We want to be very careful not to treat non-zero exit codes like an error.
 	// Because even if the Tiltfile has errors, we might need to watch files
 	// or return partial results (like enabled features).
-	Load(ctx context.Context, tf *corev1alpha1.Tiltfile) TiltfileLoadResult
+	Load(ctx context.Context, tf *corev1alpha1.Tiltfile, prevResult *TiltfileLoadResult) TiltfileLoadResult
 }
 
 func ProvideTiltfileLoader(
@@ -133,7 +135,7 @@ type tiltfileLoader struct {
 var _ TiltfileLoader = &tiltfileLoader{}
 
 // Load loads the Tiltfile in `filename`
-func (tfl tiltfileLoader) Load(ctx context.Context, tf *corev1alpha1.Tiltfile) TiltfileLoadResult {
+func (tfl tiltfileLoader) Load(ctx context.Context, tf *corev1alpha1.Tiltfile, prevResult *TiltfileLoadResult) TiltfileLoadResult {
 	start := time.Now()
 	filename := tf.Spec.Path
 	absFilename, err := ospath.RealAbs(tf.Spec.Path)
@@ -225,7 +227,16 @@ func (tfl tiltfileLoader) Load(ctx context.Context, tf *corev1alpha1.Tiltfile) T
 		s.logger.Infof("Successfully loaded Tiltfile (%s)", duration)
 	}
 	extState, _ := tiltextension.GetState(result)
-	tfl.reportTiltfileLoaded(s.builtinCallCounts, s.builtinArgCounts, duration, extState.ExtsLoaded)
+	hashState, _ := hasher.GetState(result)
+
+	var prevHashes hasher.Hashes
+	if prevResult != nil {
+		prevHashes = prevResult.Hashes
+	}
+	tlr.Hashes = hashState.GetHashes()
+
+	tfl.reportTiltfileLoaded(s.builtinCallCounts, s.builtinArgCounts, duration,
+		extState.ExtsLoaded, prevHashes, tlr.Hashes)
 
 	if len(aSettings.CustomTagsToReport) > 0 {
 		reportCustomTags(tfl.analytics, aSettings.CustomTagsToReport)
@@ -243,13 +254,20 @@ func reportCustomTags(a *analytics.TiltAnalytics, tags map[string]string) {
 }
 
 func (tfl *tiltfileLoader) reportTiltfileLoaded(
-	callCounts map[string]int, argCounts map[string]map[string]int,
-	loadDur time.Duration, pluginsLoaded map[string]bool) {
+	callCounts map[string]int,
+	argCounts map[string]map[string]int,
+	loadDur time.Duration,
+	pluginsLoaded map[string]bool,
+	prevHashes hasher.Hashes,
+	currHashes hasher.Hashes,
+) {
 	tags := make(map[string]string)
 
 	// env should really be a global tag, but there's a circular dependency
 	// between the global tags and env initialization, so we add it manually.
 	tags["env"] = string(tfl.env)
+	tags["tiltfile.changed"] = strconv.FormatBool(prevHashes.TiltfileSHA256 != "" && prevHashes.TiltfileSHA256 != currHashes.TiltfileSHA256)
+	tags["allfiles.changed"] = strconv.FormatBool(prevHashes.AllFilesSHA256 != "" && prevHashes.AllFilesSHA256 != currHashes.AllFilesSHA256)
 
 	for builtinName, count := range callCounts {
 		tags[fmt.Sprintf("tiltfile.invoked.%s", builtinName)] = strconv.Itoa(count)

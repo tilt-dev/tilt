@@ -280,7 +280,6 @@ func (e *Environment) doLoad(t *starlark.Thread, localPath string) (starlark.Str
 			return starlark.StringDict{}, fmt.Errorf("error reading file %s: %w", localPath, err)
 		}
 	}
-	var contentBytes interface{} = bytes
 
 	for _, ext := range e.plugins {
 		onExecExt, ok := ext.(OnExecPlugin)
@@ -299,7 +298,7 @@ func (e *Environment) doLoad(t *starlark.Thread, localPath string) (starlark.Str
 	}
 	predeclared["__file__"] = starlark.String(localPath)
 
-	return starlark.ExecFile(t, localPath, contentBytes, predeclared)
+	return starlark.ExecFile(t, localPath, bytes, predeclared)
 }
 
 type ArgUnpacker func(fnName string, args starlark.Tuple, kwargs []starlark.Tuple, pairs ...interface{}) error
