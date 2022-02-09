@@ -31,6 +31,7 @@ import (
 
 func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenAPIDefinition {
 	return map[string]common.OpenAPIDefinition{
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CancelOnSpec":                    schema_pkg_apis_core_v1alpha1_CancelOnSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Cluster":                         schema_pkg_apis_core_v1alpha1_Cluster(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ClusterConnection":               schema_pkg_apis_core_v1alpha1_ClusterConnection(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ClusterList":                     schema_pkg_apis_core_v1alpha1_ClusterList(ref),
@@ -253,6 +254,43 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"k8s.io/apimachinery/pkg/runtime.TypeMeta":                                        schema_k8sio_apimachinery_pkg_runtime_TypeMeta(ref),
 		"k8s.io/apimachinery/pkg/runtime.Unknown":                                         schema_k8sio_apimachinery_pkg_runtime_Unknown(ref),
 		"k8s.io/apimachinery/pkg/version.Info":                                            schema_k8sio_apimachinery_pkg_version_Info(ref),
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_CancelOnSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"cancelAfter": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StartAfter indicates that events before this time should be ignored.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"uiButtons": {
+						SchemaProps: spec.SchemaProps{
+							Description: "UIButtons that can trigger a cancel.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"uiButtons"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
 	}
 }
 
@@ -5943,12 +5981,18 @@ func schema_pkg_apis_core_v1alpha1_TiltfileSpec(ref common.ReferenceCallback) co
 							},
 						},
 					},
+					"cancelOn": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Objects that can trigger the cancellation of an execution of this Tiltfile.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CancelOnSpec"),
+						},
+					},
 				},
 				Required: []string{"path"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CancelOnSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec"},
 	}
 }
 

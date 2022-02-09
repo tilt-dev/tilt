@@ -79,7 +79,7 @@ type TiltfileSpec struct {
 
 	// Objects that can trigger the cancellation of an execution of this Tiltfile.
 	// +optional
-	CancelOn *CancelOnSpec `json:"cancelOn,omitempty"`
+	CancelOn *CancelOnSpec `json:"cancelOn,omitempty" protobuf:"bytes,5,opt,name=cancelOn"`
 }
 
 var _ resource.Object = &Tiltfile{}

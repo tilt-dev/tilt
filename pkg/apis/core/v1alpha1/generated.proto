@@ -26,6 +26,16 @@ import "k8s.io/apimachinery/pkg/runtime/schema/generated.proto";
 // Package-wide variables from generator "generated".
 option go_package = "v1alpha1";
 
+message CancelOnSpec {
+  // StartAfter indicates that events before this time should be ignored.
+  //
+  // +optional
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.Time cancelAfter = 1;
+
+  // UIButtons that can trigger a cancel.
+  repeated string uiButtons = 2;
+}
+
 // Cluster defines any runtime for running containers, in the broadest
 // sense of the word "runtime".
 //
@@ -2381,6 +2391,10 @@ message TiltfileSpec {
   //
   // +optional
   repeated string args = 4;
+
+  // Objects that can trigger the cancellation of an execution of this Tiltfile.
+  // +optional
+  optional CancelOnSpec cancelOn = 5;
 }
 
 // TiltfileStateRunning is a running state of a tiltfile execution.
