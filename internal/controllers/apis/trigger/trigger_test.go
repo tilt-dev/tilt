@@ -46,36 +46,40 @@ func TestExtractKeysForIndexer(t *testing.T) {
 	}
 
 	type tc struct {
-		restartOn *v1alpha1.RestartOnSpec
-		startOn   *v1alpha1.StartOnSpec
-		expected  []indexer.Key
+		specs    TriggerSpecs
+		expected []indexer.Key
 	}
 
 	tcs := []tc{
-		{nil, nil, []indexer.Key(nil)},
+		{TriggerSpecs{}, []indexer.Key(nil)},
 		{
-			&v1alpha1.RestartOnSpec{FileWatches: []string{"foo"}},
-			nil,
+			TriggerSpecs{RestartOn: &v1alpha1.RestartOnSpec{FileWatches: []string{"foo"}}},
 			[]indexer.Key{fwKey("foo")},
 		},
 		{
-			nil,
-			&v1alpha1.StartOnSpec{UIButtons: []string{"btn"}},
+			TriggerSpecs{StartOn: &v1alpha1.StartOnSpec{UIButtons: []string{"btn"}}},
 			[]indexer.Key{btnKey("btn")},
 		},
 		{
-			&v1alpha1.RestartOnSpec{FileWatches: []string{"foo"}, UIButtons: []string{"bar"}},
-			&v1alpha1.StartOnSpec{UIButtons: []string{"baz"}},
-			[]indexer.Key{fwKey("foo"), btnKey("bar"), btnKey("baz")},
+			TriggerSpecs{CancelOn: &v1alpha1.CancelOnSpec{UIButtons: []string{"btn"}}},
+			[]indexer.Key{btnKey("btn")},
+		}, {
+			TriggerSpecs{
+				RestartOn: &v1alpha1.RestartOnSpec{FileWatches: []string{"foo"}, UIButtons: []string{"bar"}},
+				StartOn:   &v1alpha1.StartOnSpec{UIButtons: []string{"baz"}},
+				CancelOn:  &v1alpha1.CancelOnSpec{UIButtons: []string{"quu"}},
+			},
+			[]indexer.Key{fwKey("foo"), btnKey("bar"), btnKey("baz"), btnKey("quu")},
 		},
 	}
 
 	for _, tc := range tcs {
-		keys := extractKeysForIndexer(ns, TriggerSpecs{RestartOn: tc.restartOn, StartOn: tc.startOn})
+		keys := extractKeysForIndexer(ns, tc.specs)
 		assert.ElementsMatchf(t, tc.expected, keys,
-			"Indexer keys did not match\nRestartOnSpec: %s\nStartOnSpec: %s",
-			strings.TrimSpace(spew.Sdump(tc.restartOn)),
-			spew.Sdump(tc.startOn))
+			"Indexer keys did not match\nRestartOnSpec: %s\nStartOnSpec: %s\nCancelSpec: %s\n",
+			strings.TrimSpace(spew.Sdump(tc.specs.RestartOn)),
+			spew.Sdump(tc.specs.StartOn),
+			spew.Sdump(tc.specs.CancelOn))
 	}
 }
 
@@ -86,6 +90,7 @@ func TestFetchObjects(t *testing.T) {
 	f.Create(&v1alpha1.FileWatch{ObjectMeta: metav1.ObjectMeta{Name: "fw2"}})
 	f.Create(&v1alpha1.UIButton{ObjectMeta: metav1.ObjectMeta{Name: "btn1"}})
 	f.Create(&v1alpha1.UIButton{ObjectMeta: metav1.ObjectMeta{Name: "btn2"}})
+	f.Create(&v1alpha1.UIButton{ObjectMeta: metav1.ObjectMeta{Name: "btn4"}})
 
 	triggerObjs, err := FetchObjects(f.Context(), f.Client,
 		TriggerSpecs{
@@ -95,7 +100,11 @@ func TestFetchObjects(t *testing.T) {
 			},
 			StartOn: &v1alpha1.StartOnSpec{
 				UIButtons: []string{"btn2", "btn3"},
-			}})
+			},
+			CancelOn: &v1alpha1.CancelOnSpec{
+				UIButtons: []string{"btn4", "btn5"},
+			},
+		})
 
 	require.NoError(t, err)
 	assert.NotNil(t, triggerObjs.FileWatches["fw1"])
@@ -107,6 +116,10 @@ func TestFetchObjects(t *testing.T) {
 	assert.NotNil(t, triggerObjs.UIButtons["btn2"])
 	// btn3 doesn't exist but should have been silently ignored
 	assert.Nil(t, triggerObjs.UIButtons["btn3"])
+
+	assert.NotNil(t, triggerObjs.UIButtons["btn4"])
+	// btn5 doesn't exist but should have been silently ignored
+	assert.Nil(t, triggerObjs.UIButtons["btn5"])
 }
 
 func TestFetchObjects_Error(t *testing.T) {

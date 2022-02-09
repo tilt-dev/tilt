@@ -23,3 +23,13 @@ type StartOnSpec struct {
 	// UIButtons that can trigger a start/restart.
 	UIButtons []string `json:"uiButtons" protobuf:"bytes,2,rep,name=uiButtons"`
 }
+
+type CancelOnSpec struct {
+	// StartAfter indicates that events before this time should be ignored.
+	//
+	// +optional
+	CancelAfter v1.Time `json:"cancelAfter,omitempty"`
+
+	// UIButtons that can trigger a cancel.
+	UIButtons []string `json:"uiButtons"`
+}

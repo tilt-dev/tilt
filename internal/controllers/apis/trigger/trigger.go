@@ -35,6 +35,7 @@ type Objects struct {
 type TriggerSpecs struct {
 	RestartOn *v1alpha1.RestartOnSpec
 	StartOn   *v1alpha1.StartOnSpec
+	CancelOn  *v1alpha1.CancelOnSpec
 }
 
 // SetupController creates watches for types referenced by the given specs and registers
@@ -86,6 +87,10 @@ func Buttons(ctx context.Context, client client.Reader, specs TriggerSpecs) (map
 
 	if specs.RestartOn != nil {
 		buttonNames = append(buttonNames, specs.RestartOn.UIButtons...)
+	}
+
+	if specs.CancelOn != nil {
+		buttonNames = append(buttonNames, specs.CancelOn.UIButtons...)
 	}
 
 	result := make(map[string]*v1alpha1.UIButton, len(buttonNames))
@@ -274,5 +279,41 @@ func extractKeysForIndexer(
 		}
 	}
 
+	if specs.CancelOn != nil {
+		for _, name := range specs.CancelOn.UIButtons {
+			keys = append(keys, indexer.Key{
+				Name: types.NamespacedName{Namespace: namespace, Name: name},
+				GVK:  btnGVK,
+			})
+		}
+	}
+
 	return keys
+}
+
+// Fetch the last time a start was requested from this target's dependencies.
+//
+// Returns the most recent trigger time. If the most recent trigger is a button,
+// return the button. Some consumers use the button for text inputs.
+func LastCancelEvent(cancelOn *v1alpha1.CancelOnSpec, restartObjs Objects) (time.Time, *v1alpha1.UIButton) {
+	latestTime := time.Time{}
+	var latestButton *v1alpha1.UIButton
+	if cancelOn == nil {
+		return time.Time{}, nil
+	}
+
+	for _, bn := range cancelOn.UIButtons {
+		b, ok := restartObjs.UIButtons[bn]
+		if !ok {
+			// ignore missing buttons
+			continue
+		}
+		lastEventTime := b.Status.LastClickedAt
+		if !lastEventTime.Time.Before(cancelOn.CancelAfter.Time) && lastEventTime.Time.After(latestTime) {
+			latestTime = lastEventTime.Time
+			latestButton = b
+		}
+	}
+
+	return latestTime, latestButton
 }
