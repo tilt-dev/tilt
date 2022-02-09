@@ -23,7 +23,7 @@ const demoResourcesPrefix = "tilt-demo-"
 const sampleProjPackage = "github.com/tilt-dev/tilt-avatars"
 
 type demoCmd struct {
-	hud bool
+	legacy bool
 
 	teardown bool
 
@@ -52,8 +52,11 @@ A sample project (%s) will be cloned locally to a temporary directory using Git 
 		"Removes any leftover tilt-demo Kubernetes clusters and exits")
 
 	// --hud flag only exists for integration tests to disable web console
-	cmd.Flags().BoolVar(&c.hud, "hud", true, "If true, tilt will open in HUD mode.")
+	cmd.Flags().BoolVar(&c.legacy, "hud", true, "If true, tilt will open in legacy HUD mode. (deprecated: please use --legacy)") // TODO: remove --hud completely by v0.27.0
 	cmd.Flags().Lookup("hud").Hidden = true
+
+	cmd.Flags().BoolVar(&c.legacy, "legacy", true, "If true, tilt will open in legacy HUD mode.")
+	cmd.Flags().Lookup("legacy").Hidden = true
 
 	// --tmpdir exists so that integration tests can inspect the output / use the Tiltfile
 	cmd.Flags().StringVarP(&c.tmpdir, "tmpdir", "", "",
@@ -72,6 +75,13 @@ A sample project (%s) will be cloned locally to a temporary directory using Git 
 
 	addStartServerFlags(cmd)
 	addDevServerFlags(cmd)
+
+	cmd.PreRun = func(cmd *cobra.Command, args []string) {
+		if cmd.Flag("hud").Changed {
+			fmt.Fprint(os.Stderr, "--hud is deprecated.  Please switch to --legacy.") // TODO: remove --hud completely by v0.27.0
+			time.Sleep(3 * time.Second)
+		}
+	}
 
 	return cmd
 }
@@ -190,8 +200,7 @@ Open the project directory in your preferred editor:
 	//
 	up := upCmd{
 		fileName: c.tiltfilePath,
-		hud:      c.hud,
-		legacy:   false,
+		legacy:   c.legacy,
 		stream:   false,
 	}
 	return up.run(ctx, args)
