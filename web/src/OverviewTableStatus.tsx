@@ -95,6 +95,7 @@ export default function OverviewTableStatus(props: OverviewTableStatusProps) {
   let msg = ""
   let tooltip = ""
   let classes = ""
+  let isDisabled = false
 
   switch (status) {
     case ResourceStatus.Building:
@@ -153,6 +154,7 @@ export default function OverviewTableStatus(props: OverviewTableStatusProps) {
       icon = <NotAllowedSvg role="presentation" />
       msg = "Disabled"
       classes = "is-disabled"
+      isDisabled = true
       break
 
     default:
@@ -166,6 +168,7 @@ export default function OverviewTableStatus(props: OverviewTableStatusProps) {
   let content = (
     <StyledOverviewTableStatus
       className={classes}
+      aria-disabled={isDisabled}
       onClick={() => void nav.openResource(resourceName)}
     >
       <StatusIcon>{icon}</StatusIcon>
