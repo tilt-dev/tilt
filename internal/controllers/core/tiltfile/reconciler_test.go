@@ -600,7 +600,7 @@ func newBlockingTiltfileLoader() blockingTiltfileLoader {
 	return blockingTiltfileLoader{completionChan: make(chan struct{})}
 }
 
-func (b blockingTiltfileLoader) Load(ctx context.Context, tf *v1alpha1.Tiltfile) tiltfile.TiltfileLoadResult {
+func (b blockingTiltfileLoader) Load(ctx context.Context, tf *v1alpha1.Tiltfile, prevResult *tiltfile.TiltfileLoadResult) tiltfile.TiltfileLoadResult {
 	select {
 	case <-ctx.Done():
 	case <-b.completionChan:
