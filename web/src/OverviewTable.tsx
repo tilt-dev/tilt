@@ -98,7 +98,7 @@ const OverviewTableResourceNameFilter = styled(ResourceNameFilter)`
   min-width: ${Width.sidebarDefault}px;
 `
 
-const ResourceResultCount = styled.p`
+export const ResourceResultCount = styled.p`
   color: ${Color.grayLight};
   font-size: ${FontSize.small};
   margin-top: ${SizeUnit(0.5)};
@@ -106,7 +106,7 @@ const ResourceResultCount = styled.p`
   text-transform: uppercase;
 `
 
-const NoMatchesFound = styled.p`
+export const NoMatchesFound = styled.p`
   color: ${Color.grayLightest};
   margin-left: ${SizeUnit(0.5)};
   margin-top: ${SizeUnit(1 / 4)};
