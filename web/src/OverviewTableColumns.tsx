@@ -381,12 +381,10 @@ export function TableNameColumn({ row }: CellProps<RowValues>) {
     row.original.statusLine.buildStatus === ResourceStatus.Unhealthy ||
     row.original.statusLine.runtimeStatus === ResourceStatus.Unhealthy
   const errorClass = hasError ? "has-error" : ""
-  let isDisabled = rowIsDisabled(row)
-  const disabledClass = isDisabled ? "isDisabled" : ""
+  const disabledClass = rowIsDisabled(row) ? "isDisabled" : ""
   return (
     <Name
       className={`${errorClass} ${disabledClass}`}
-      aria-disabled={isDisabled}
       onClick={(e) => nav.openResource(row.values.name)}
     >
       {row.values.name}

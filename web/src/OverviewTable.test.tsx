@@ -18,7 +18,6 @@ import OverviewTable, {
   OverviewGroupName,
   ResourceResultCount,
   ResourceTableData,
-  ResourceTableHeader,
   ResourceTableHeaderSortTriangle,
   ResourceTableRow,
   TableGroupedByLabels,
@@ -88,15 +87,9 @@ const tableViewWithSettings = ({
   )
 }
 
-const findTableHeaderByName = (
-  wrapper: any,
-  columnName: string,
-  sortable = true
-): any => {
+const findTableHeaderByName = (columnName: string, sortable = true): any => {
   const selector = sortable ? `Sort by ${columnName}` : columnName
-  return Array.from(wrapper.querySelectorAll(ResourceTableHeader)).filter(
-    (header: any) => header.title == selector
-  )[0]
+  return screen.getAllByTitle(selector)[0]
 }
 
 // End helpers
@@ -137,7 +130,7 @@ it("sorts by status", () => {
   view.uiResources.unshift(
     oneResource({ disabled: true, name: "disabled_resource" })
   )
-  
+
   const { container } = render(
     tableViewWithSettings({
       view,
@@ -176,34 +169,36 @@ it("sorts by status", () => {
 describe("resource name filter", () => {
   describe("when a filter is applied", () => {
     let view: TestDataView
-    let wrapper: any
+    let container: HTMLElement
 
     beforeEach(() => {
       view = nResourceView(100)
-      let { container } = render(
+      container = renderContainer(
         tableViewWithSettings({
           view,
-          resourceListOptions: { ...DEFAULT_OPTIONS, resourceNameFilter: "1" },
+          resourceListOptions: {
+            ...DEFAULT_OPTIONS,
+            resourceNameFilter: "1",
+          },
         })
       )
-      wrapper = container
     })
 
     it("displays an accurate result count", () => {
-      const resultCount = wrapper.querySelector(ResourceResultCount)
+      const resultCount = container.querySelector(ResourceResultCount)
       expect(resultCount).toBeDefined()
       // Expect 19 results because test data names resources with their index number
-      expect(resultCount.textContent).toMatch(/19/)
+      expect(resultCount!.textContent).toMatch(/19/)
     })
 
     it("displays only matching resources if there are matches", () => {
-      const matchingRows = wrapper.querySelectorAll("table tr")
+      const matchingRows = container.querySelectorAll("table tr")
 
       // Expect 20 results because test data names resources with their index number
       expect(matchingRows.length).toBe(20)
 
       const displayedResourceNames = Array.from(
-        wrapper.querySelectorAll(Name)
+        container.querySelectorAll(Name)
       ).map((nameCell: any) => nameCell.textContent)
       const everyNameMatchesFilterTerm = displayedResourceNames.every((name) =>
         matchesResourceName(name, "1")
@@ -213,10 +208,10 @@ describe("resource name filter", () => {
     })
 
     it("displays a `no matches` message if there are no matches", () => {
-      let el = wrapper.querySelector(`${ResourceNameFilterTextField} input`)
+      let el = container.querySelector(`${ResourceNameFilterTextField} input`)!
       userEvent.type(el, "eek no matches!")
 
-      expect(wrapper.querySelector(NoMatchesFound)).toBeDefined()
+      expect(container.querySelector(NoMatchesFound)).toBeDefined()
     })
   })
 
@@ -282,43 +277,41 @@ describe("when labels feature is enabled", () => {
 })
 
 describe("when labels feature is NOT enabled", () => {
-  let wrapper: any
+  let container: HTMLElement
 
   beforeEach(() => {
-    const { container } = render(
+    container = renderContainer(
       tableViewWithSettings({
         view: nResourceWithLabelsView(5),
         labelsEnabled: false,
       })
     )
-    wrapper = container
   })
 
   it("it displays a single table", () => {
-    expect(wrapper.querySelectorAll("table").length).toBe(1)
+    expect(container.querySelectorAll("table").length).toBe(1)
   })
 
   it("it does not display the resource grouping tooltip", () => {
-    expect(wrapper.querySelectorAll(".MuiTooltip").length).toBe(0)
+    expect(container.querySelectorAll(".MuiTooltip").length).toBe(0)
   })
 })
 
 describe("overview table without groups", () => {
   let view: TestDataView
-  let wrapper: any
+  let container: HTMLElement
 
   beforeEach(() => {
     view = nResourceView(8)
-    let { container } = render(
+    container = renderContainer(
       tableViewWithSettings({ view, labelsEnabled: true })
     )
-    wrapper = container
   })
 
   describe("sorting", () => {
     it("table column header displays ascending arrow when sorted ascending", () => {
-      userEvent.click(findTableHeaderByName(wrapper, "Pod ID"))
-      const arrowIcon = findTableHeaderByName(wrapper, "Pod ID").querySelector(
+      userEvent.click(findTableHeaderByName("Pod ID"))
+      const arrowIcon = findTableHeaderByName("Pod ID").querySelector(
         ResourceTableHeaderSortTriangle
       )
 
@@ -326,9 +319,9 @@ describe("overview table without groups", () => {
     })
 
     it("table column header displays descending arrow when sorted descending", () => {
-      userEvent.click(findTableHeaderByName(wrapper, "Pod ID"))
-      userEvent.click(findTableHeaderByName(wrapper, "Pod ID"))
-      const arrowIcon = findTableHeaderByName(wrapper, "Pod ID").querySelector(
+      userEvent.click(findTableHeaderByName("Pod ID"))
+      userEvent.click(findTableHeaderByName("Pod ID"))
+      const arrowIcon = findTableHeaderByName("Pod ID").querySelector(
         ResourceTableHeaderSortTriangle
       )
 
@@ -339,12 +332,12 @@ describe("overview table without groups", () => {
 
 describe("overview table with groups", () => {
   let view: TestDataView
-  let wrapper: any
+  let container: HTMLElement
   let resources: GroupByLabelView<RowValues>
 
   beforeEach(() => {
     view = nResourceWithLabelsView(8)
-    let { container } = render(
+    container = renderContainer(
       tableViewWithSettings({ view, labelsEnabled: true })
     )
     resources = labeledResourcesToTableCells(
@@ -352,7 +345,6 @@ describe("overview table with groups", () => {
       view.uiButtons,
       new LogStore()
     )
-    wrapper = container
 
     mockAnalyticsCalls()
     sessionStorage.clear()
@@ -367,12 +359,12 @@ describe("overview table with groups", () => {
 
   describe("display", () => {
     it("does not show the resource groups tooltip", () => {
-      expect(wrapper.querySelectorAll(".MuiTooltip").length).toBe(0)
+      expect(container.querySelectorAll(".MuiTooltip").length).toBe(0)
     })
 
     it("renders each label group in order", () => {
       const { labels: sortedLabels } = resources
-      const groupNames = wrapper.querySelectorAll(OverviewGroupName)
+      const groupNames = container.querySelectorAll(OverviewGroupName)
 
       // Loop through the sorted labels (which includes every label
       // attached to a resource, but not unlabeled or tiltfile "labels")
@@ -385,21 +377,15 @@ describe("overview table with groups", () => {
     // Note: the sample data generated in the test helper `nResourcesWithLabels`
     // always includes unlabeled resources
     it("renders a resource group for unlabeled resources and for Tiltfiles", () => {
-      const groupNames = Array.from(wrapper.querySelectorAll(OverviewGroupName))
-
-      const unlabeledLabel = groupNames.filter(
-        (name: any) => name.textContent == UNLABELED_LABEL
+      const groupNames = Array.from(
+        container.querySelectorAll(OverviewGroupName)
       )
-      expect(unlabeledLabel.length).toBe(1)
-
-      const tiltfileLabel = groupNames.filter(
-        (name: any) => name.textContent == TILTFILE_LABEL
-      )
-      expect(tiltfileLabel.length).toBe(1)
+      expect(screen.getAllByText(UNLABELED_LABEL)).toBeTruthy()
+      expect(screen.getAllByText(TILTFILE_LABEL)).toBeTruthy()
     })
 
     it("renders a table for each resource group", () => {
-      const tables = wrapper.querySelectorAll("table")
+      const tables = container.querySelectorAll("table")
       const totalLabelCount =
         resources.labels.length +
         (resources.tiltfile.length ? 1 : 0) +
@@ -410,7 +396,7 @@ describe("overview table with groups", () => {
 
     it("renders the correct resources in each label group", () => {
       const { labelsToResources, unlabeled, tiltfile } = resources
-      const resourceGroups = wrapper.querySelectorAll(OverviewGroup)
+      const resourceGroups = container.querySelectorAll(OverviewGroup)
 
       const actualResourcesFromTable: { [key: string]: string[] } = {}
       const expectedResourcesFromLabelGroups: { [key: string]: string[] } = {}
@@ -449,7 +435,7 @@ describe("overview table with groups", () => {
 
   describe("resource status summary", () => {
     it("renders summaries for each label group", () => {
-      const summaries = wrapper.querySelectorAll(ResourceStatusSummaryRoot)
+      const summaries = container.querySelectorAll(ResourceStatusSummaryRoot)
       const totalLabelCount =
         resources.labels.length +
         (resources.tiltfile.length ? 1 : 0) +
@@ -463,7 +449,7 @@ describe("overview table with groups", () => {
     let groups: any
 
     // Helpers
-    const getResourceGroups = () => wrapper.querySelectorAll(OverviewGroup)
+    const getResourceGroups = () => container.querySelectorAll(OverviewGroup)
 
     beforeEach(() => {
       groups = getResourceGroups()
@@ -485,9 +471,8 @@ describe("overview table with groups", () => {
 
         return groupsState
       }, {})
-
       // Re-mount the component with the initial groups context values
-      let { container } = render(
+      container = renderContainer(
         <ResourceGroupsContextProvider initialValuesForTesting={testData}>
           <TableGroupedByLabels
             resources={view.uiResources}
@@ -495,12 +480,11 @@ describe("overview table with groups", () => {
           />
         </ResourceGroupsContextProvider>
       )
-      wrapper = container
 
       // Loop through each resource group and expect that its expanded state
       // matches with the hardcoded test data
       const actualExpandedState: GroupsState = {}
-      wrapper.querySelectorAll(OverviewGroup).forEach((group: any) => {
+      container.querySelectorAll(OverviewGroup).forEach((group: any) => {
         const groupName = group.querySelector(OverviewGroupName).textContent
         actualExpandedState[groupName] = {
           expanded: group.classList.contains("Mui-expanded"),
@@ -534,7 +518,7 @@ describe("overview table with groups", () => {
       const group = getResourceGroups()[0]
       expect(group.classList.contains("Mui-expanded")).toBe(false)
 
-      userEvent.click(group.querySelector('[role="button"]'))
+      userEvent.click(group.querySelector('[role="button"]')!)
 
       const updatedGroup = getResourceGroups()[0]
       expect(updatedGroup.classList.contains("Mui-expanded")).toBe(true)
@@ -546,16 +530,14 @@ describe("overview table with groups", () => {
 
     beforeEach(() => {
       // Find and click the "Resource Name" column on the first table group
-      firstTableNameColumn = Array.from(
-        wrapper.querySelectorAll(ResourceTableHeader)
-      ).filter((header: any) => header.title == "Sort by Resource Name")[0]
+      firstTableNameColumn = screen.getAllByTitle("Sort by Resource Name")[0]
       userEvent.click(firstTableNameColumn)
     })
 
     it("tables sort by ascending values when clicked once", () => {
       // Use the fourth resource group table, since it has multiple resources in the test data generator
       const ascendingNames = Array.from(
-        wrapper.querySelectorAll("table")[3].querySelectorAll(Name)
+        container.querySelectorAll("table")[3].querySelectorAll(Name)
       )
       const expectedNames = ["_1", "_3", "_5", "_7", "a_failed_build"]
       const actualNames = ascendingNames.map((name: any) => name.textContent)
@@ -568,7 +550,7 @@ describe("overview table with groups", () => {
 
       // Use the fourth resource group table, since it has multiple resources in the test data generator
       const descendingNames = Array.from(
-        wrapper.querySelectorAll("table")[3].querySelectorAll(Name)
+        container.querySelectorAll("table")[3].querySelectorAll(Name)
       )
       const expectedNames = ["a_failed_build", "_7", "_5", "_3", "_1"]
       const actualNames = descendingNames.map((name: any) => name.textContent)
@@ -582,7 +564,7 @@ describe("overview table with groups", () => {
 
       // Use the fourth resource group table, since it has multiple resources in the test data generator
       const unsortedNames = Array.from(
-        wrapper.querySelectorAll("table")[3].querySelectorAll(Name)
+        container.querySelectorAll("table")[3].querySelectorAll(Name)
       )
       const expectedNames = ["_1", "_3", "_5", "_7", "a_failed_build"]
       const actualNames = unsortedNames.map((name: any) => name.textContent)
@@ -593,21 +575,21 @@ describe("overview table with groups", () => {
 
   describe("resource name filter", () => {
     it("does not display tables in groups when a resource filter is applied", () => {
-      expect(wrapper.querySelectorAll(OverviewGroupName).length).toBe(7)
+      expect(container.querySelectorAll(OverviewGroupName).length).toBe(7)
 
       userEvent.type(
-        wrapper.querySelector(`${ResourceNameFilterTextField} input`),
+        container.querySelector(`${ResourceNameFilterTextField} input`)!,
         "filtering!"
       )
 
-      expect(wrapper.querySelectorAll(OverviewGroupName).length).toBe(0)
+      expect(container.querySelectorAll(OverviewGroupName).length).toBe(0)
     })
   })
 })
 
 describe("when disable resources feature is enabled and `showDisabledResources` option is true", () => {
   let view: TestDataView
-  let wrapper: any
+  let container: HTMLElement
 
   beforeEach(() => {
     view = nResourceView(4)
@@ -626,7 +608,7 @@ describe("when disable resources feature is enabled and `showDisabledResources` 
     view.uiButtons = [
       oneButton(0, firstDisabledResource.metadata?.name as string),
     ]
-    let { container } = render(
+    container = renderContainer(
       tableViewWithSettings({
         view,
         disableResourcesEnabled: true,
@@ -636,11 +618,10 @@ describe("when disable resources feature is enabled and `showDisabledResources` 
         },
       })
     )
-    wrapper = container
   })
 
   it("displays disabled resources at the bottom of the table", () => {
-    const visibleResources = Array.from(wrapper.querySelectorAll(Name))
+    const visibleResources = Array.from(container.querySelectorAll(Name))
     const resourceNamesInOrder = visibleResources.map((r: any) => r.textContent)
     expect(resourceNamesInOrder.length).toBe(6)
 
@@ -658,13 +639,13 @@ describe("when disable resources feature is enabled and `showDisabledResources` 
 
   it("sorts disabled resources along with enabled resources", () => {
     // Click twice to sort by resource name descending (Z -> A)
-    let header = findTableHeaderByName(wrapper, "Resource Name", true)
+    let header = findTableHeaderByName("Resource Name", true)
     userEvent.click(header)
     userEvent.click(header)
 
-    const resourceNamesInOrder = Array.from(wrapper.querySelectorAll(Name)).map(
-      (r: any) => r.textContent
-    )
+    const resourceNamesInOrder = Array.from(
+      container.querySelectorAll(Name)
+    ).map((r: any) => r.textContent)
 
     const expectedNameOrder = [
       "zee_disabled_resource",
@@ -680,21 +661,22 @@ describe("when disable resources feature is enabled and `showDisabledResources` 
 
   it("does NOT display controls for a disabled resource", () => {
     // Get the last resource table row, which should be a disabled resource
-    const disabledResource = wrapper.querySelectorAll(ResourceTableRow)[5]
+    const disabledResource = container.querySelectorAll(ResourceTableRow)[5]
     const resourceName = disabledResource.querySelector(Name)
 
     let buttons = Array.from(disabledResource.querySelectorAll("button"))
       // Remove disabled buttons
-      .filter((button: any) => button.getAttribute("aria-disabled") != "true")
+      .filter((button: any) => !button.classList.contains("is-disabled"))
+      .filter((button: any) => !button.classList.contains("isDisabled"))
       // Remove the star button
       .filter((button: any) => button.title != "Star this Resource")
-    expect(resourceName.textContent).toBe("zee_disabled_resource")
+    expect(resourceName!.textContent).toBe("zee_disabled_resource")
     expect(buttons).toHaveLength(0)
   })
 
   it("adds `isDisabled` class to table rows for disabled resources", () => {
     // Expect two disabled resources based on hardcoded test data
-    const disabledRows = wrapper.querySelectorAll(
+    const disabledRows = container.querySelectorAll(
       ResourceTableRow + ".isDisabled"
     )
     expect(disabledRows.length).toBe(2)
@@ -711,11 +693,11 @@ describe("when disable resources feature is NOT enabled", () => {
     })
     view.uiResources.push(disabledResource)
 
-    const {container} = render(
+    const { container } = render(
       tableViewWithSettings({ view, disableResourcesEnabled: false })
     )
 
-    const visibleResources = container.querySelectorAll(TableNameColumn)
+    const visibleResources = Array.from(container.querySelectorAll(Name))
     const resourceNames = visibleResources.map((r) => r.textContent)
     expect(resourceNames.length).toBe(8)
     expect(resourceNames).not.toContain("disabled_resource")
@@ -732,7 +714,7 @@ describe("when disable resources feature is enabled, but `showDisabledResources`
     })
     view.uiResources.push(disabledResource)
 
-    const {container} = render(
+    const { container } = render(
       tableViewWithSettings({
         view,
         disableResourcesEnabled: true,
@@ -743,7 +725,7 @@ describe("when disable resources feature is enabled, but `showDisabledResources`
       })
     )
 
-    const visibleResources = container.querySelectorAll(TableNameColumn)
+    const visibleResources = Array.from(container.querySelectorAll(Name))
     const resourceNames = visibleResources.map((r) => r.textContent)
     expect(resourceNames.length).toBe(8)
     expect(resourceNames).not.toContain("disabled_resource")
@@ -753,19 +735,18 @@ describe("when disable resources feature is enabled, but `showDisabledResources`
 describe("bulk disable actions", () => {
   describe("when disable resources feature is enabled", () => {
     let view: TestDataView
-    let wrapper: any
+    let container: HTMLElement
 
     beforeEach(() => {
       view = nResourceView(4)
-      let { container } = render(
+      container = renderContainer(
         tableViewWithSettings({ view, disableResourcesEnabled: true })
       )
-      wrapper = container
     })
 
     it("renders the `Select` column", () => {
       expect(
-        wrapper.querySelectorAll(SelectionCheckbox).length
+        container.querySelectorAll(SelectionCheckbox).length
       ).toBeGreaterThan(0)
     })
 
@@ -778,7 +759,7 @@ describe("bulk disable actions", () => {
         _3: true,
       }
       const actualCheckboxDisplay: { [key: string]: boolean } = {}
-      const rows = Array.from(wrapper.querySelectorAll(ResourceTableRow))
+      const rows = Array.from(container.querySelectorAll(ResourceTableRow))
       rows.forEach((row: any, idx: number) => {
         let name: string
         if (idx === 0) {
@@ -795,31 +776,30 @@ describe("bulk disable actions", () => {
     })
 
     it("selects a resource when checkbox is not checked", () => {
-      const checkbox = wrapper.querySelectorAll(SelectionCheckbox)[1]
-      expect(checkbox).toBeTruthy()
+      const checkbox = container.querySelectorAll(SelectionCheckbox)[1]
+      userEvent.click(checkbox.querySelector("input")!)
 
-      userEvent.click(checkbox.querySelector("input"))
-
-      const checkboxAfterClick = wrapper.querySelectorAll(SelectionCheckbox)[1]
+      const checkboxAfterClick =
+        container.querySelectorAll(SelectionCheckbox)[1]
       expect(checkboxAfterClick.getAttribute("aria-checked")).toBe("true")
     })
 
     it("deselects a resource when checkbox is checked", () => {
-      const checkbox = wrapper.querySelectorAll(SelectionCheckbox)[1]
+      const checkbox = container.querySelectorAll(SelectionCheckbox)[1]
       expect(checkbox).toBeTruthy()
 
       // Click the checkbox once to get it to a selected state
-      userEvent.click(checkbox.querySelector("input"))
+      userEvent.click(checkbox.querySelector("input")!)
 
       const checkboxAfterFirstClick =
-        wrapper.querySelectorAll(SelectionCheckbox)[1]
+        container.querySelectorAll(SelectionCheckbox)[1]
       expect(checkboxAfterFirstClick.getAttribute("aria-checked")).toBe("true")
 
       // Click the checkbox a second time to deselect it
-      userEvent.click(checkbox.querySelector("input"))
+      userEvent.click(checkbox.querySelector("input")!)
 
       const checkboxAfterSecondClick =
-        wrapper.querySelectorAll(SelectionCheckbox)[1]
+        container.querySelectorAll(SelectionCheckbox)[1]
       expect(checkboxAfterSecondClick.getAttribute("aria-checked")).toBe(
         "false"
       )
@@ -828,7 +808,7 @@ describe("bulk disable actions", () => {
     describe("selection checkbox header", () => {
       it("displays as unchecked if no resources in the table are checked", () => {
         const allCheckboxes = Array.from(
-          wrapper.querySelectorAll(SelectionCheckbox)
+          container.querySelectorAll(SelectionCheckbox)
         )
         let checkbox: any = allCheckboxes[0]
         const headerCheckboxCheckedState = checkbox.getAttribute("aria-checked")
@@ -847,16 +827,15 @@ describe("bulk disable actions", () => {
       it("displays as indeterminate if some but not all resources in the table are checked", () => {
         // Choose a (random) table row to click and select
         const resourceCheckbox: any =
-          wrapper.querySelectorAll(SelectionCheckbox)[2]
+          container.querySelectorAll(SelectionCheckbox)[2]
         userEvent.click(resourceCheckbox.querySelector("input"))
 
         // Verify that the header checkbox displays as partially selected
-        const headerCheckboxCheckedState = wrapper
-          .querySelector(SelectionCheckbox)
+        const headerCheckboxCheckedState = container
+          .querySelector(SelectionCheckbox)!
           .getAttribute("aria-checked")
-        const headerCheckboxIndeterminateState = wrapper
-          .querySelector(SelectionCheckbox)
-          .querySelector("[data-indeterminate]")
+        const headerCheckboxIndeterminateState = container
+          .querySelector(`${SelectionCheckbox} [data-indeterminate]`)!
           .getAttribute("data-indeterminate")
 
         expect(headerCheckboxCheckedState).toBe("false")
@@ -865,19 +844,18 @@ describe("bulk disable actions", () => {
 
       it("displays as checked if all resources in the table are checked", () => {
         // Click all checkboxes for resource rows, skipping the first one (which is the table header row)
-        Array.from(wrapper.querySelectorAll(SelectionCheckbox))
+        Array.from(container.querySelectorAll(SelectionCheckbox))
           .slice(1)
           .forEach((resourceCheckbox: any) => {
             userEvent.click(resourceCheckbox.querySelector("input"))
           })
 
         // Verify that the header checkbox displays as partially selected
-        const headerCheckboxCheckedState = wrapper
-          .querySelector(SelectionCheckbox)
+        const headerCheckboxCheckedState = container
+          .querySelector(SelectionCheckbox)!
           .getAttribute("aria-checked")
-        const headerCheckboxIndeterminateState = wrapper
-          .querySelector(SelectionCheckbox)
-          .querySelector("[data-indeterminate]")
+        const headerCheckboxIndeterminateState = container
+          .querySelector(`${SelectionCheckbox} [data-indeterminate]`)!
           .getAttribute("data-indeterminate")
 
         expect(headerCheckboxCheckedState).toBe("true")
@@ -886,12 +864,12 @@ describe("bulk disable actions", () => {
 
       it("selects every resource in the table when checkbox is not checked", () => {
         // Click the header checkbox to select it
-        const headerCheckbox = wrapper.querySelectorAll(SelectionCheckbox)[0]
-        userEvent.click(headerCheckbox.querySelector("input"))
+        const headerCheckbox = container.querySelectorAll(SelectionCheckbox)[0]
+        userEvent.click(headerCheckbox.querySelector("input")!)
 
         // Verify all table resources are now selected
         const rowCheckboxesState = Array.from(
-          wrapper.querySelectorAll(SelectionCheckbox)
+          container.querySelectorAll(SelectionCheckbox)
         )
           .slice(1)
           .map((checkbox: any) => checkbox.getAttribute("aria-checked"))
@@ -899,17 +877,17 @@ describe("bulk disable actions", () => {
       })
 
       it("deselects every resource in the table when checkbox is checked", () => {
-        const headerCheckbox = wrapper.querySelector(SelectionCheckbox)
-        userEvent.click(headerCheckbox.querySelector("input"))
+        const headerCheckbox = container.querySelector(SelectionCheckbox)!
+        userEvent.click(headerCheckbox.querySelector("input")!)
 
         // Click the checkbox a second time to deselect it
         const headerCheckboxAfterFirstClick =
-          wrapper.querySelector(SelectionCheckbox)
-        userEvent.click(headerCheckboxAfterFirstClick.querySelector("input"))
+          container.querySelector(SelectionCheckbox)!
+        userEvent.click(headerCheckboxAfterFirstClick.querySelector("input")!)
 
         // Verify all table resources are now deselected
         const rowCheckboxesState = Array.from(
-          wrapper.querySelectorAll(SelectionCheckbox)
+          container.querySelectorAll(SelectionCheckbox)
         )
           .slice(1)
           .map((checkbox: any) => checkbox.getAttribute("aria-checked"))
@@ -935,3 +913,8 @@ describe("bulk disable actions", () => {
     })
   })
 })
+
+function renderContainer(x: any) {
+  let { container } = render(x)
+  return container
+}
