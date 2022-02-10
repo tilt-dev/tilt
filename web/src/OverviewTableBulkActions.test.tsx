@@ -144,7 +144,10 @@ describe("OverviewTableBulkActions", () => {
   describe("buttonsByAction", () => {
     it("groups UIButtons by the bulk action they perform", () => {
       const componentButtons = buttonsByComponent(TEST_UIBUTTONS)
-      const actionButtons = buttonsByAction(componentButtons, TEST_SELECTIONS)
+      const actionButtons = buttonsByAction(
+        componentButtons,
+        new Set(TEST_SELECTIONS)
+      )
 
       expect(actionButtons).toStrictEqual({
         [BulkAction.Disable]: [TEST_UIBUTTONS[1], TEST_UIBUTTONS[3]],

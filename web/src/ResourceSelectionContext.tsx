@@ -5,7 +5,7 @@ import { createContext, PropsWithChildren, useContext, useState } from "react"
  */
 
 type ResourceSelectionContext = {
-  selected: string[]
+  selected: Set<string>
   isSelected: (resourceName: string) => boolean
   select: (...resourceNames: string[]) => void
   deselect: (...resourceNames: string[]) => void
@@ -13,7 +13,7 @@ type ResourceSelectionContext = {
 }
 
 const ResourceSelectionContext = createContext<ResourceSelectionContext>({
-  selected: [],
+  selected: new Set(),
   isSelected: (_resourceName: string) => {
     console.warn("Resource selections context is not set.")
     return false
@@ -38,27 +38,27 @@ export function useResourceSelection(): ResourceSelectionContext {
 export function ResourceSelectionProvider(
   props: PropsWithChildren<{ initialValuesForTesting?: string[] }>
 ) {
-  const selections = props.initialValuesForTesting || []
+  const selections = new Set(props.initialValuesForTesting) || new Set()
   const [selectedResources, setSelectedResources] = useState(selections)
 
   function isSelected(resourceName: string) {
-    return selectedResources.includes(resourceName)
+    return selectedResources.has(resourceName)
   }
 
   function select(...resourceNames: string[]) {
-    // Filter out resources that are already selected
-    const newSelections = resourceNames.filter((r) => !isSelected(r))
-    return setSelectedResources([...selectedResources, ...newSelections])
+    const newSelections = new Set<string>(selectedResources)
+    resourceNames.forEach((name) => newSelections.add(name))
+    return setSelectedResources(newSelections)
   }
 
   function deselect(...resourceNames: string[]) {
-    return setSelectedResources(
-      selectedResources.filter((r) => !resourceNames.includes(r))
-    )
+    const newSelections = new Set<string>(selectedResources)
+    resourceNames.forEach((name) => newSelections.delete(name))
+    return setSelectedResources(newSelections)
   }
 
   function clearSelections() {
-    setSelectedResources([])
+    setSelectedResources(new Set())
   }
 
   const contextValue: ResourceSelectionContext = {
