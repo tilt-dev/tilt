@@ -30,6 +30,7 @@ export const OverviewTableTriggerButton = styled(TriggerButton)`
 
   &.is-disabled {
     cursor: not-allowed;
+    border: 0;
   }
   &.is-disabled:hover .fillStd {
     fill: ${Color.grayLight};
