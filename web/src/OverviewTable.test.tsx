@@ -46,6 +46,7 @@ import {
   ResourceGroupsContextProvider,
 } from "./ResourceGroupsContext"
 import {
+  DEFAULT_OPTIONS,
   ResourceListOptions,
   ResourceListOptionsProvider,
 } from "./ResourceListOptionsContext"
@@ -164,7 +165,11 @@ it("sorts by status", () => {
     oneResource({ disabled: true, name: "disabled_resource" })
   )
   const root = mount(
-    tableViewWithSettings({ view, disableResourcesEnabled: true })
+    tableViewWithSettings({
+      view,
+      disableResourcesEnabled: true,
+      resourceListOptions: { ...DEFAULT_OPTIONS, showDisabledResources: true },
+    })
   )
 
   const statusHeader = root
@@ -205,7 +210,7 @@ describe("resource name filter", () => {
       wrapper = mount(
         tableViewWithSettings({
           view,
-          resourceListOptions: { resourceNameFilter: "1", alertsOnTop: false },
+          resourceListOptions: { ...DEFAULT_OPTIONS, resourceNameFilter: "1" },
         })
       )
     })
@@ -249,7 +254,7 @@ describe("resource name filter", () => {
       const wrapper = mount(
         tableViewWithSettings({
           view: nResourceView(10),
-          resourceListOptions: { resourceNameFilter: "", alertsOnTop: false },
+          resourceListOptions: { ...DEFAULT_OPTIONS },
         })
       )
 
@@ -625,7 +630,7 @@ describe("overview table with groups", () => {
   })
 })
 
-describe("when disable resources feature is enabled", () => {
+describe("when disable resources feature is enabled and `showDisabledResources` option is true", () => {
   let view: TestDataView
   let wrapper: ReactWrapper<OverviewTableProps, typeof OverviewTable>
 
@@ -647,7 +652,14 @@ describe("when disable resources feature is enabled", () => {
       oneButton(0, firstDisabledResource.metadata?.name as string),
     ]
     wrapper = mount(
-      tableViewWithSettings({ view, disableResourcesEnabled: true })
+      tableViewWithSettings({
+        view,
+        disableResourcesEnabled: true,
+        resourceListOptions: {
+          ...DEFAULT_OPTIONS,
+          showDisabledResources: true,
+        },
+      })
     )
   })
 
@@ -721,11 +733,8 @@ describe("when disable resources feature is enabled", () => {
 })
 
 describe("when disable resources feature is NOT enabled", () => {
-  let view: TestDataView
-  let wrapper: ReactWrapper<OverviewTableProps, typeof OverviewTable>
-
-  beforeEach(() => {
-    view = nResourceView(8)
+  it("does NOT display disabled resources", () => {
+    const view = nResourceView(8)
     // Add a disabled resource to view
     const disabledResource = oneResource({
       name: "disabled_resource",
@@ -733,12 +742,38 @@ describe("when disable resources feature is NOT enabled", () => {
     })
     view.uiResources.push(disabledResource)
 
-    wrapper = mount(
+    const wrapper = mount(
       tableViewWithSettings({ view, disableResourcesEnabled: false })
     )
-  })
 
+    const visibleResources = wrapper.find(TableNameColumn)
+    const resourceNames = visibleResources.map((r) => r.text())
+    expect(resourceNames.length).toBe(8)
+    expect(resourceNames).not.toContain("disabled_resource")
+  })
+})
+
+describe("when disable resources feature is enabled, but `showDisabledResources` option is false", () => {
   it("does NOT display disabled resources", () => {
+    const view = nResourceView(8)
+    // Add a disabled resource to view
+    const disabledResource = oneResource({
+      name: "disabled_resource",
+      disabled: true,
+    })
+    view.uiResources.push(disabledResource)
+
+    const wrapper = mount(
+      tableViewWithSettings({
+        view,
+        disableResourcesEnabled: true,
+        resourceListOptions: {
+          ...DEFAULT_OPTIONS,
+          showDisabledResources: false,
+        },
+      })
+    )
+
     const visibleResources = wrapper.find(TableNameColumn)
     const resourceNames = visibleResources.map((r) => r.text())
     expect(resourceNames.length).toBe(8)

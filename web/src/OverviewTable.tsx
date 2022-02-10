@@ -35,6 +35,7 @@ import {
   rowIsDisabled,
   RowValues,
 } from "./OverviewTableColumns"
+import { OverviewTableDisplayOptions } from "./OverviewTableDisplayOptions"
 import { StyledTableStarResourceButton } from "./OverviewTableStarResourceButton"
 import {
   AccordionDetailsStyleResetMixin,
@@ -309,19 +310,40 @@ function calculateNextSort(
 
 function applyOptionsToResources(
   resources: UIResource[] | undefined,
-  options: ResourceListOptions
+  options: ResourceListOptions,
+  features: Features
 ): UIResource[] {
   if (!resources) {
     return []
   }
 
-  if (options.resourceNameFilter.length === 0) {
-    return resources
+  const hideDisabledResources =
+    !features.isEnabled(Flag.DisableResources) || !options.showDisabledResources
+  const resourceNameFilter = options.resourceNameFilter.length > 0
+
+  // If there are no options to apply to the resources, return the un-filtered, sorted list
+  if (!resourceNameFilter && !hideDisabledResources) {
+    return sortByDisableStatus(resources)
   }
 
-  return resources.filter((r) =>
-    matchesResourceName(r.metadata?.name || "", options.resourceNameFilter)
-  )
+  // Otherwise, apply the options to the resources and sort it
+  const filteredResources = resources.filter((r) => {
+    const resourceDisabled = resourceIsDisabled(r)
+    if (hideDisabledResources && resourceDisabled) {
+      return false
+    }
+
+    if (resourceNameFilter) {
+      return matchesResourceName(
+        r.metadata?.name || "",
+        options.resourceNameFilter
+      )
+    }
+
+    return true
+  })
+
+  return sortByDisableStatus(filteredResources)
 }
 
 function uiResourceToCell(
@@ -395,27 +417,18 @@ function resourceTypeLabel(r: UIResource): string {
   return "Unknown"
 }
 
-function resourceListByStatus(
-  resources: UIResource[] = [],
-  features: Features
-) {
-  // If disabling resources feature is enabled, then sort by disabled status,
-  // so disabled resources appear at the end of each table list.
+function sortByDisableStatus(resources: UIResource[] = []) {
+  // Sort by disabled status, so disabled resources appear at the end of each table list.
   // Note: this initial sort is done here so it doesn't interfere with the sorting
   // managed by react-table
-  if (features.isEnabled(Flag.DisableResources)) {
-    const sorted = [...resources].sort((a, b) => {
-      const resourceAOrder = resourceIsDisabled(a) ? 1 : 0
-      const resourceBOrder = resourceIsDisabled(b) ? 1 : 0
+  const sorted = [...resources].sort((a, b) => {
+    const resourceAOrder = resourceIsDisabled(a) ? 1 : 0
+    const resourceBOrder = resourceIsDisabled(b) ? 1 : 0
 
-      return resourceAOrder - resourceBOrder
-    })
-    return sorted
-  } else {
-    // If disabling resources feature is NOT enabled, then filter
-    // out disabled resources from display
-    return resources.filter((r) => !resourceIsDisabled(r))
-  }
+    return resourceAOrder - resourceBOrder
+  })
+
+  return sorted
 }
 
 export function labeledResourcesToTableCells(
@@ -692,8 +705,12 @@ function OverviewTableContent(props: OverviewTableProps) {
   const { options } = useResourceListOptions()
   const resourceFilterApplied = options.resourceNameFilter.length > 0
 
-  // Adjust the resource list based on feature flags
-  const resourceList = resourceListByStatus(props.view.uiResources, features)
+  // Apply any display filters or options to resources, plus sort for initial view
+  const resourcesToDisplay = applyOptionsToResources(
+    props.view.uiResources,
+    options,
+    features
+  )
 
   // Table groups are displayed when feature is enabled, resources have labels,
   // and no resource name filter is applied
@@ -703,16 +720,13 @@ function OverviewTableContent(props: OverviewTableProps) {
   if (displayResourceGroups) {
     return (
       <TableGroupedByLabels
-        resources={resourceList}
+        resources={resourcesToDisplay}
         buttons={props.view.uiButtons}
       />
     )
   } else {
     // The label group tip is only displayed if labels are enabled but not used
     const displayLabelGroupsTip = labelsEnabled && !resourcesHaveLabels
-
-    // Apply any display filters or options to resources
-    const resourcesToDisplay = applyOptionsToResources(resourceList, options)
 
     return (
       <>
@@ -736,9 +750,10 @@ function OverviewTableContent(props: OverviewTableProps) {
 export default function OverviewTable(props: OverviewTableProps) {
   return (
     <OverviewTableRoot aria-label="Resources overview">
-      <OverviewTableMenu>
+      <OverviewTableMenu aria-label="Resource menu">
         <OverviewTableResourceNameFilter />
         <OverviewTableBulkActions uiButtons={props.view.uiButtons} />
+        <OverviewTableDisplayOptions />
       </OverviewTableMenu>
       <OverviewTableContent {...props} />
     </OverviewTableRoot>
