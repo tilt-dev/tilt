@@ -8,7 +8,6 @@ require (
 	github.com/alessio/shellescape v1.2.2
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/compose-spec/compose-go v1.0.8
-	github.com/containerd/continuity v0.1.0
 	github.com/davecgh/go-spew v1.1.1
 	github.com/docker/cli v20.10.7+incompatible
 	github.com/docker/distribution v2.7.1+incompatible
@@ -110,6 +109,7 @@ require (
 	github.com/compose-spec/godotenv v1.1.1 // indirect
 	github.com/containerd/console v1.0.2 // indirect
 	github.com/containerd/containerd v1.5.8 // indirect
+	github.com/containerd/continuity v0.1.0 // indirect
 	github.com/containerd/ttrpc v1.1.0 // indirect
 	github.com/containerd/typeurl v1.0.2 // indirect
 	github.com/coreos/go-semver v0.3.0 // indirect
