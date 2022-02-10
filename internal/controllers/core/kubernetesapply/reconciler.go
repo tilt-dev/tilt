@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
@@ -82,9 +83,8 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 		Watches(&source.Kind{Type: &v1alpha1.ConfigMap{}},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue))
 
-	trigger.SetupController(b, r.indexer, func(obj ctrlclient.Object) trigger.TriggerSpecs {
-		ka := obj.(*v1alpha1.KubernetesApply)
-		return trigger.TriggerSpecs{RestartOn: ka.Spec.RestartOn}
+	trigger.SetupControllerRestartOn(b, r.indexer, func(obj ctrlclient.Object) *v1alpha1.RestartOnSpec {
+		return obj.(*v1alpha1.KubernetesApply).Spec.RestartOn
 	})
 
 	return b, nil
@@ -178,12 +178,11 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		imageMaps[nn] = &im
 	}
 
-	triggerObjs, err := trigger.FetchObjects(ctx, r.ctrlClient, trigger.TriggerSpecs{RestartOn: ka.Spec.RestartOn})
+	lastRestartEvent, _, _, err := trigger.LastRestartEvent(ctx, r.ctrlClient, ka.Spec.RestartOn)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-
-	if !r.shouldDeployOnReconcile(request.NamespacedName, &ka, imageMaps, triggerObjs) {
+	if !r.shouldDeployOnReconcile(request.NamespacedName, &ka, imageMaps, lastRestartEvent) {
 		// TODO(nick): Like with other reconcilers, there should always
 		// be a reason why we're not deploying, and we should update the
 		// Status field of KubernetesApply with that reason.
@@ -205,8 +204,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 // 1) We have enough info to deploy, and
 // 2) Either we haven't deployed before,
 //    or one of the inputs has changed since the last deploy.
-func (r *Reconciler) shouldDeployOnReconcile(nn types.NamespacedName, ka *v1alpha1.KubernetesApply,
-	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap, triggerObjs trigger.Objects) bool {
+func (r *Reconciler) shouldDeployOnReconcile(
+	nn types.NamespacedName,
+	ka *v1alpha1.KubernetesApply,
+	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap,
+	lastRestartEvent time.Time,
+) bool {
 	if ka.Annotations[v1alpha1.AnnotationManagedBy] != "" {
 		// Until resource dependencies are expressed in the API,
 		// we can't use reconciliation to deploy KubernetesApply objects
@@ -253,8 +256,7 @@ func (r *Reconciler) shouldDeployOnReconcile(nn types.NamespacedName, ka *v1alph
 		}
 	}
 
-	lastRestartTime, _ := trigger.LastRestartEvent(ka.Spec.RestartOn, triggerObjs)
-	if !timecmp.BeforeOrEqual(lastRestartTime, result.Status.LastApplyTime) {
+	if !timecmp.BeforeOrEqual(lastRestartEvent, result.Status.LastApplyTime) {
 		return true
 	}
 

@@ -69,9 +69,11 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 			handler.EnqueueRequestsFromMapFunc(r.enqueueTriggerQueue)).
 		Watches(r.requeuer, handler.Funcs{})
 
-	trigger.SetupController(b, r.indexer, func(obj ctrlclient.Object) trigger.TriggerSpecs {
-		tf := obj.(*v1alpha1.Tiltfile)
-		return trigger.TriggerSpecs{RestartOn: tf.Spec.RestartOn, StopOn: tf.Spec.StopOn}
+	trigger.SetupControllerRestartOn(b, r.indexer, func(obj ctrlclient.Object) *v1alpha1.RestartOnSpec {
+		return obj.(*v1alpha1.Tiltfile).Spec.RestartOn
+	})
+	trigger.SetupControllerStopOn(b, r.indexer, func(obj ctrlclient.Object) *v1alpha1.StopOnSpec {
+		return obj.(*v1alpha1.Tiltfile).Spec.StopOn
 	})
 
 	return b, nil
@@ -142,11 +144,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	}
 
 	if step == runStepRunning {
-		restartObjs, err := trigger.FetchObjects(ctx, r.ctrlClient, trigger.TriggerSpecs{StopOn: tf.Spec.StopOn})
+		lastStopTime, _, err := trigger.LastStopEvent(ctx, r.ctrlClient, tf.Spec.StopOn)
 		if err != nil {
-			return reconcile.Result{}, errors.Wrap(err, "error fetching objects to check if run was canceled")
+			return ctrl.Result{}, err
 		}
-		lastStopTime, _ := trigger.LastStopEvent(tf.Spec.StopOn, restartObjs)
 		if timecmp.AfterOrEqual(lastStopTime, run.startTime) {
 			run.cancel()
 		}
@@ -154,18 +155,16 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 	// If the tiltfile isn't being run, check to see if anything has triggered a run.
 	if step == runStepNone || step == runStepDone {
-		restartObjs, err := trigger.FetchObjects(ctx, r.ctrlClient, trigger.TriggerSpecs{RestartOn: tf.Spec.RestartOn})
+		lastRestartEventTime, _, fws, err := trigger.LastRestartEvent(ctx, r.ctrlClient, tf.Spec.RestartOn)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-
-		lastRestartEventTime, _ := trigger.LastRestartEvent(tf.Spec.RestartOn, restartObjs)
 		queue, err := configmap.TriggerQueue(ctx, r.ctrlClient)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 
-		be := r.needsBuild(ctx, nn, &tf, run, restartObjs.FileWatches, queue, lastRestartEventTime)
+		be := r.needsBuild(ctx, nn, &tf, run, fws, queue, lastRestartEventTime)
 		if be != nil {
 			r.startRunAsync(ctx, nn, &tf, be)
 		}
@@ -203,7 +202,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 //    (so that we don't keep re-running a failed build)
 // 4) OR the command-line args have changed since the last Tiltfile build
 // 5) OR user has manually triggered a Tiltfile build
-func (r *Reconciler) needsBuild(ctx context.Context, nn types.NamespacedName, tf *v1alpha1.Tiltfile, run *runStatus, fileWatches map[string]*v1alpha1.FileWatch, triggerQueue *v1alpha1.ConfigMap, lastRestartEvent time.Time) *BuildEntry {
+func (r *Reconciler) needsBuild(ctx context.Context, nn types.NamespacedName, tf *v1alpha1.Tiltfile, run *runStatus, fileWatches []*v1alpha1.FileWatch, triggerQueue *v1alpha1.ConfigMap, lastRestartEvent time.Time) *BuildEntry {
 	var reason model.BuildReason
 	filesChanged := []string{}
 

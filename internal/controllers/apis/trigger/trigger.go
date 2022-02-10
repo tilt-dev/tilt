@@ -5,6 +5,7 @@ import (
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -19,53 +20,66 @@ import (
 var fwGVK = v1alpha1.SchemeGroupVersion.WithKind("FileWatch")
 var btnGVK = v1alpha1.SchemeGroupVersion.WithKind("UIButton")
 
-var triggerTypes = []client.Object{
-	&v1alpha1.FileWatch{},
-	&v1alpha1.UIButton{},
-}
-
-type ExtractFunc func(obj client.Object) TriggerSpecs
-
-// Objects is a container for objects referenced by TriggerSpecs
-type Objects struct {
-	UIButtons   map[string]*v1alpha1.UIButton
-	FileWatches map[string]*v1alpha1.FileWatch
-}
-
-type TriggerSpecs struct {
-	RestartOn *v1alpha1.RestartOnSpec
-	StartOn   *v1alpha1.StartOnSpec
-	StopOn    *v1alpha1.StopOnSpec
-}
-
-// SetupController creates watches for types referenced by the given specs and registers
-// an index function for them.
-func SetupController(builder *builder.Builder, idxer *indexer.Indexer, extractFunc ExtractFunc) {
+// SetupControllerRestartOn sets up watchers / indexers for a type with a RestartOnSpec
+func SetupControllerRestartOn(builder *builder.Builder, idxer *indexer.Indexer, extract func(obj client.Object) *v1alpha1.RestartOnSpec) {
 	idxer.AddKeyFunc(
 		func(obj client.Object) []indexer.Key {
-			specs := extractFunc(obj)
-			return extractKeysForIndexer(obj.GetNamespace(), specs)
+			spec := extract(obj)
+			if spec == nil {
+				return nil
+			}
+			var keys []indexer.Key
+			keys = append(keys, indexerKeys(fwGVK, obj.GetNamespace(), spec.FileWatches)...)
+			keys = append(keys, indexerKeys(btnGVK, obj.GetNamespace(), spec.UIButtons)...)
+			return keys
 		})
 
-	registerWatches(builder, idxer)
+	registerWatches(builder, idxer, []client.Object{&v1alpha1.FileWatch{}, &v1alpha1.UIButton{}})
 }
 
-// FetchObjects retrieves all objects referenced in TriggerSpecs
-func FetchObjects(ctx context.Context, client client.Reader, specs TriggerSpecs) (Objects, error) {
-	buttons, err := Buttons(ctx, client, specs)
-	if err != nil {
-		return Objects{}, err
-	}
+// SetupControllerStartOn sets up watchers / indexers for a type with a StartOnSpec
+func SetupControllerStartOn(builder *builder.Builder, idxer *indexer.Indexer, extract func(obj client.Object) *v1alpha1.StartOnSpec) {
+	idxer.AddKeyFunc(
+		func(obj client.Object) []indexer.Key {
+			spec := extract(obj)
+			if spec == nil {
+				return nil
+			}
+			return indexerKeys(btnGVK, obj.GetNamespace(), spec.UIButtons)
+		})
 
-	fileWatches, err := FileWatches(ctx, client, specs.RestartOn)
-	if err != nil {
-		return Objects{}, err
-	}
+	registerWatches(builder, idxer, []client.Object{&v1alpha1.UIButton{}})
+}
 
-	return Objects{
-		UIButtons:   buttons,
-		FileWatches: fileWatches,
-	}, nil
+// SetupControllerStopOn sets up watchers / indexers for a type with a StopOnSpec
+func SetupControllerStopOn(builder *builder.Builder, idxer *indexer.Indexer, extract func(obj client.Object) *v1alpha1.StopOnSpec) {
+	idxer.AddKeyFunc(
+		func(obj client.Object) []indexer.Key {
+			spec := extract(obj)
+			if spec == nil {
+				return nil
+			}
+			return indexerKeys(btnGVK, obj.GetNamespace(), spec.UIButtons)
+		})
+
+	registerWatches(builder, idxer, []client.Object{&v1alpha1.UIButton{}})
+}
+
+func indexerKeys(gvk schema.GroupVersionKind, namespace string, names []string) []indexer.Key {
+	var keys []indexer.Key
+	for _, name := range names {
+		keys = append(keys, indexer.Key{
+			Name: types.NamespacedName{Namespace: namespace, Name: name},
+			GVK:  gvk,
+		})
+	}
+	return keys
+}
+
+func registerWatches(builder *builder.Builder, idxer *indexer.Indexer, typesToWatch []client.Object) {
+	for _, t := range typesToWatch {
+		builder.Watches(&source.Kind{Type: t}, handler.EnqueueRequestsFromMapFunc(idxer.Enqueue))
+	}
 }
 
 // Fetch all the buttons that this object depends on.
@@ -79,20 +93,7 @@ func FetchObjects(ctx context.Context, client client.Reader, specs TriggerSpecs)
 // resources should still run if their restarton button has been deleted).
 // We might eventually need some sort of StartOnStatus/RestartOnStatus to express errors
 // in lookup.
-func Buttons(ctx context.Context, client client.Reader, specs TriggerSpecs) (map[string]*v1alpha1.UIButton, error) {
-	buttonNames := []string{}
-	if specs.StartOn != nil {
-		buttonNames = append(buttonNames, specs.StartOn.UIButtons...)
-	}
-
-	if specs.RestartOn != nil {
-		buttonNames = append(buttonNames, specs.RestartOn.UIButtons...)
-	}
-
-	if specs.StopOn != nil {
-		buttonNames = append(buttonNames, specs.StopOn.UIButtons...)
-	}
-
+func Buttons(ctx context.Context, client client.Reader, buttonNames []string) (map[string]*v1alpha1.UIButton, error) {
 	result := make(map[string]*v1alpha1.UIButton, len(buttonNames))
 	for _, n := range buttonNames {
 		_, exists := result[n]
@@ -124,13 +125,9 @@ func Buttons(ctx context.Context, client client.Reader, specs TriggerSpecs) (map
 // resources should still run if their restarton filewatch has been deleted).
 // We might eventually need some sort of RestartOnStatus to express errors
 // in lookup.
-func FileWatches(ctx context.Context, client client.Reader, restartOn *v1alpha1.RestartOnSpec) (map[string]*v1alpha1.FileWatch, error) {
-	if restartOn == nil {
-		return nil, nil
-	}
-
-	result := make(map[string]*v1alpha1.FileWatch, len(restartOn.FileWatches))
-	for _, n := range restartOn.FileWatches {
+func FileWatches(ctx context.Context, client client.Reader, fwNames []string) ([]*v1alpha1.FileWatch, error) {
+	result := []*v1alpha1.FileWatch{}
+	for _, n := range fwNames {
 		fw := &v1alpha1.FileWatch{}
 		err := client.Get(ctx, types.NamespacedName{Name: n}, fw)
 		if err != nil {
@@ -139,7 +136,7 @@ func FileWatches(ctx context.Context, client client.Reader, restartOn *v1alpha1.
 			}
 			return nil, err
 		}
-		result[n] = fw
+		result = append(result, fw)
 	}
 	return result, nil
 }
@@ -148,19 +145,20 @@ func FileWatches(ctx context.Context, client client.Reader, restartOn *v1alpha1.
 //
 // Returns the most recent trigger time. If the most recent trigger is a button,
 // return the button. Some consumers use the button for text inputs.
-func LastStartEvent(startOn *v1alpha1.StartOnSpec, triggerObjs Objects) (time.Time, *v1alpha1.UIButton) {
-	latestTime := time.Time{}
-	var latestButton *v1alpha1.UIButton
+func LastStartEvent(ctx context.Context, cli client.Reader, startOn *v1alpha1.StartOnSpec) (time.Time, *v1alpha1.UIButton, error) {
 	if startOn == nil {
-		return time.Time{}, nil
+		return time.Time{}, nil, nil
 	}
 
-	for _, bn := range startOn.UIButtons {
-		b, ok := triggerObjs.UIButtons[bn]
-		if !ok {
-			// ignore missing buttons
-			continue
-		}
+	buttons, err := Buttons(ctx, cli, startOn.UIButtons)
+	if err != nil {
+		return time.Time{}, nil, err
+	}
+
+	latestTime := time.Time{}
+	var latestButton *v1alpha1.UIButton
+
+	for _, b := range buttons {
 		lastEventTime := b.Status.LastClickedAt
 		if !lastEventTime.Time.Before(startOn.StartAfter.Time) && lastEventTime.Time.After(latestTime) {
 			latestTime = lastEventTime.Time
@@ -168,38 +166,38 @@ func LastStartEvent(startOn *v1alpha1.StartOnSpec, triggerObjs Objects) (time.Ti
 		}
 	}
 
-	return latestTime, latestButton
+	return latestTime, latestButton, nil
 }
 
 // Fetch the last time a restart was requested from this target's dependencies.
 //
 // Returns the most recent trigger time. If the most recent trigger is a button,
 // return the button. Some consumers use the button for text inputs.
-func LastRestartEvent(restartOn *v1alpha1.RestartOnSpec, triggerObjs Objects) (time.Time, *v1alpha1.UIButton) {
-	cur := time.Time{}
-	var latestButton *v1alpha1.UIButton
+func LastRestartEvent(ctx context.Context, cli client.Reader, restartOn *v1alpha1.RestartOnSpec) (time.Time, *v1alpha1.UIButton, []*v1alpha1.FileWatch, error) {
+	var fws []*v1alpha1.FileWatch
 	if restartOn == nil {
-		return cur, nil
+		return time.Time{}, nil, fws, nil
+	}
+	buttons, err := Buttons(ctx, cli, restartOn.UIButtons)
+	if err != nil {
+		return time.Time{}, nil, fws, err
+	}
+	fws, err = FileWatches(ctx, cli, restartOn.FileWatches)
+	if err != nil {
+		return time.Time{}, nil, fws, err
 	}
 
-	for _, fwn := range restartOn.FileWatches {
-		fw, ok := triggerObjs.FileWatches[fwn]
-		if !ok {
-			// ignore missing filewatches
-			continue
-		}
+	cur := time.Time{}
+	var latestButton *v1alpha1.UIButton
+
+	for _, fw := range fws {
 		lastEventTime := fw.Status.LastEventTime
 		if lastEventTime.Time.After(cur) {
 			cur = lastEventTime.Time
 		}
 	}
 
-	for _, bn := range restartOn.UIButtons {
-		b, ok := triggerObjs.UIButtons[bn]
-		if !ok {
-			// ignore missing buttons
-			continue
-		}
+	for _, b := range buttons {
 		lastEventTime := b.Status.LastClickedAt
 		if lastEventTime.Time.After(cur) {
 			cur = lastEventTime.Time
@@ -207,24 +205,18 @@ func LastRestartEvent(restartOn *v1alpha1.RestartOnSpec, triggerObjs Objects) (t
 		}
 	}
 
-	return cur, latestButton
+	return cur, latestButton, fws, nil
 }
 
 // Fetch the set of files that have changed since the given timestamp.
 // We err on the side of undercounting (i.e., skipping files that may have triggered
 // this build but are not sure).
-func FilesChanged(restartOn *v1alpha1.RestartOnSpec, fileWatches map[string]*v1alpha1.FileWatch, lastBuild time.Time) []string {
+func FilesChanged(restartOn *v1alpha1.RestartOnSpec, fileWatches []*v1alpha1.FileWatch, lastBuild time.Time) []string {
 	filesChanged := []string{}
 	if restartOn == nil {
 		return filesChanged
 	}
-	for _, fwn := range restartOn.FileWatches {
-		fw, ok := fileWatches[fwn]
-		if !ok {
-			// ignore missing filewatches
-			continue
-		}
-
+	for _, fw := range fileWatches {
 		// Add files so that the most recent files are first.
 		for i := len(fw.Status.FileEvents) - 1; i >= 0; i-- {
 			e := fw.Status.FileEvents[i]
@@ -236,78 +228,24 @@ func FilesChanged(restartOn *v1alpha1.RestartOnSpec, fileWatches map[string]*v1a
 	return sliceutils.DedupedAndSorted(filesChanged)
 }
 
-// registerWatches ensures that reconciliation happens on changes to objects referenced by TriggerSpecs
-func registerWatches(builder *builder.Builder, indexer *indexer.Indexer) {
-	for _, t := range triggerTypes {
-		// this is arguably overly defensive, but a copy of the type object stub is made
-		// to avoid sharing references of it across different reconcilers
-		obj := t.DeepCopyObject().(client.Object)
-		builder.Watches(&source.Kind{Type: obj},
-			handler.EnqueueRequestsFromMapFunc(indexer.Enqueue))
-	}
-}
-
-// extractKeysForIndexer returns the keys of objects referenced in the RestartOnSpec and/or StartOnSpec.
-func extractKeysForIndexer(
-	namespace string,
-	specs TriggerSpecs,
-) []indexer.Key {
-	var keys []indexer.Key
-
-	if specs.RestartOn != nil {
-		for _, name := range specs.RestartOn.FileWatches {
-			keys = append(keys, indexer.Key{
-				Name: types.NamespacedName{Namespace: namespace, Name: name},
-				GVK:  fwGVK,
-			})
-		}
-
-		for _, name := range specs.RestartOn.UIButtons {
-			keys = append(keys, indexer.Key{
-				Name: types.NamespacedName{Namespace: namespace, Name: name},
-				GVK:  btnGVK,
-			})
-		}
-	}
-
-	if specs.StartOn != nil {
-		for _, name := range specs.StartOn.UIButtons {
-			keys = append(keys, indexer.Key{
-				Name: types.NamespacedName{Namespace: namespace, Name: name},
-				GVK:  btnGVK,
-			})
-		}
-	}
-
-	if specs.StopOn != nil {
-		for _, name := range specs.StopOn.UIButtons {
-			keys = append(keys, indexer.Key{
-				Name: types.NamespacedName{Namespace: namespace, Name: name},
-				GVK:  btnGVK,
-			})
-		}
-	}
-
-	return keys
-}
-
 // Fetch the last time a start was requested from this target's dependencies.
 //
 // Returns the most recent trigger time. If the most recent trigger is a button,
 // return the button. Some consumers use the button for text inputs.
-func LastStopEvent(stopOn *v1alpha1.StopOnSpec, restartObjs Objects) (time.Time, *v1alpha1.UIButton) {
-	latestTime := time.Time{}
-	var latestButton *v1alpha1.UIButton
+func LastStopEvent(ctx context.Context, cli client.Reader, stopOn *v1alpha1.StopOnSpec) (time.Time, *v1alpha1.UIButton, error) {
 	if stopOn == nil {
-		return time.Time{}, nil
+		return time.Time{}, nil, nil
 	}
 
-	for _, bn := range stopOn.UIButtons {
-		b, ok := restartObjs.UIButtons[bn]
-		if !ok {
-			// ignore missing buttons
-			continue
-		}
+	buttons, err := Buttons(ctx, cli, stopOn.UIButtons)
+	if err != nil {
+		return time.Time{}, nil, err
+	}
+
+	latestTime := time.Time{}
+	var latestButton *v1alpha1.UIButton
+
+	for _, b := range buttons {
 		lastEventTime := b.Status.LastClickedAt
 		if lastEventTime.Time.After(latestTime) {
 			latestTime = lastEventTime.Time
@@ -315,5 +253,5 @@ func LastStopEvent(stopOn *v1alpha1.StopOnSpec, restartObjs Objects) (time.Time,
 		}
 	}
 
-	return latestTime, latestButton
+	return latestTime, latestButton, nil
 }
