@@ -1,3 +1,5 @@
+import { render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { mount, ReactWrapper } from "enzyme"
 import React from "react"
 import { MemoryRouter } from "react-router"
@@ -10,8 +12,6 @@ import {
 import { accessorsForTesting, tiltfileKeyContext } from "./BrowserStorage"
 import Features, { FeaturesProvider, Flag } from "./feature"
 import LogStore from "./LogStore"
-import { AlertsOnTopToggle } from "./OverviewSidebarOptions"
-import { assertSidebarItemsAndOptions } from "./OverviewSidebarOptions.test"
 import PathBuilder from "./PathBuilder"
 import { ResourceGroupsContextProvider } from "./ResourceGroupsContext"
 import {
@@ -28,7 +28,6 @@ import SidebarResources, {
   SidebarGroupName,
   SidebarProps,
 } from "./SidebarResources"
-import SrOnly from "./SrOnly"
 import { StarredResourcesContextProvider } from "./StarredResourcesContext"
 import StarResourceButton from "./StarResourceButton"
 import {
@@ -61,7 +60,9 @@ const SidebarResourcesTestWrapper = ({
   flags?: { [key in Flag]?: boolean }
   resourceListOptions?: ResourceListOptions
 }) => {
-  const features = new Features(flags ?? {})
+  const features = new Features(
+    flags ?? { [Flag.DisableResources]: true, [Flag.Labels]: true }
+  )
   const listOptions = resourceListOptions ?? DEFAULT_OPTIONS
   return (
     <MemoryRouter>
@@ -211,10 +212,15 @@ describe("SidebarResources", () => {
       { ...DEFAULT_OPTIONS, resourceNameFilter: "vig" },
       ["vigoda"],
     ],
+    [
+      "showDisabledResources",
+      { ...DEFAULT_OPTIONS, showDisabledResources: true },
+      ["vigoda", "a", "b", "c"],
+    ],
   ]
   test.each(loadCases)(
     "loads %p from browser storage",
-    (name, options, expectedItems) => {
+    (_name, options, expectedItems) => {
       resourceListOptionsAccessor.set(options)
 
       let ls = new LogStore()
@@ -222,29 +228,38 @@ describe("SidebarResources", () => {
         oneResource({ isBuilding: true }),
         oneResource({ name: "a" }),
         oneResource({ name: "b" }),
+        oneResource({ name: "c", disabled: true }),
       ].map((res) => new SidebarItem(res, ls))
 
-      const root = mount(
-        <MemoryRouter>
-          <tiltfileKeyContext.Provider value="test">
-            <ResourceListOptionsProvider>
-              <SidebarResources
-                items={items}
-                selected={""}
-                resourceView={ResourceView.OverviewDetail}
-                pathBuilder={pathBuilder}
-                resourceListOptions={options}
-              />
-            </ResourceListOptionsProvider>
-          </tiltfileKeyContext.Provider>
-        </MemoryRouter>
+      render(
+        <SidebarResourcesTestWrapper
+          items={items}
+          resourceListOptions={options}
+        />
       )
 
-      assertSidebarItemsAndOptions(
-        root,
-        expectedItems,
-        options.alertsOnTop,
+      // Find the sidebar items for the expected list
+      expectedItems.forEach((item) => {
+        expect(screen.getByText(item, { exact: true })).toBeTruthy()
+      })
+
+      // Check that each option reflects the storage value
+      const aotToggle = screen.queryByLabelText("Alerts on top")
+      expect(aotToggle).toBeTruthy()
+      expect((aotToggle as HTMLInputElement).checked).toBe(options.alertsOnTop)
+
+      const resourceNameFilter = screen.queryByPlaceholderText(
+        "Filter resources by name"
+      )
+      expect(resourceNameFilter).toBeTruthy()
+      expect((resourceNameFilter as HTMLInputElement).value).toBe(
         options.resourceNameFilter
+      )
+
+      const disabledToggle = screen.queryByLabelText("Show disabled resources")
+      expect(disabledToggle).toBeTruthy()
+      expect((disabledToggle as HTMLInputElement).checked).toBe(
+        options.showDisabledResources
       )
     }
   )
@@ -252,42 +267,50 @@ describe("SidebarResources", () => {
   const saveCases: [string, ResourceListOptions][] = [
     ["alertsOnTop", { ...DEFAULT_OPTIONS, alertsOnTop: true }],
     ["resourceNameFilter", { ...DEFAULT_OPTIONS, resourceNameFilter: "foo" }],
+    [
+      "showDisabledResources",
+      { ...DEFAULT_OPTIONS, showDisabledResources: true },
+    ],
   ]
   test.each(saveCases)(
     "saves option %s to browser storage",
-    (name, expectedOptions) => {
+    (_name, expectedOptions) => {
       let ls = new LogStore()
       const items = [
         oneResource({ isBuilding: true }),
         oneResource({ name: "a" }),
         oneResource({ name: "b" }),
+        oneResource({ name: "c", disabled: true }),
       ].map((res) => new SidebarItem(res, ls))
 
-      const root = mount(
-        <MemoryRouter>
-          <tiltfileKeyContext.Provider value="test">
-            <ResourceListOptionsProvider>
-              <SidebarResources
-                items={items}
-                selected={""}
-                resourceView={ResourceView.OverviewDetail}
-                pathBuilder={pathBuilder}
-                resourceListOptions={DEFAULT_OPTIONS}
-              />
-            </ResourceListOptionsProvider>
-          </tiltfileKeyContext.Provider>
-        </MemoryRouter>
-      )
+      render(<SidebarResourcesTestWrapper items={items} />)
 
-      let aotToggle = root.find(AlertsOnTopToggle)
-      if (aotToggle.hasClass("is-enabled") !== expectedOptions.alertsOnTop) {
-        aotToggle.simulate("click")
+      const aotToggle = screen.queryByLabelText("Alerts on top")
+      expect(aotToggle).toBeTruthy()
+      if (
+        (aotToggle as HTMLInputElement).checked !== expectedOptions.alertsOnTop
+      ) {
+        userEvent.click(aotToggle as HTMLInputElement)
       }
 
-      if (expectedOptions.resourceNameFilter.length) {
-        root.find("input").simulate("change", {
-          target: { value: expectedOptions.resourceNameFilter },
-        })
+      const resourceNameFilter = screen.queryByPlaceholderText(
+        "Filter resources by name"
+      )
+      expect(resourceNameFilter).toBeTruthy()
+      if (expectedOptions.resourceNameFilter) {
+        userEvent.type(
+          resourceNameFilter as HTMLInputElement,
+          expectedOptions.resourceNameFilter
+        )
+      }
+
+      const disabledToggle = screen.queryByLabelText("Show disabled resources")
+      expect(disabledToggle).toBeTruthy()
+      if (
+        (disabledToggle as HTMLInputElement).checked !==
+        expectedOptions.showDisabledResources
+      ) {
+        userEvent.click(disabledToggle as HTMLInputElement)
       }
 
       const observedOptions = resourceListOptionsAccessor.get()
@@ -306,7 +329,7 @@ describe("SidebarResources", () => {
       )
     }
 
-    describe("when feature flag is enabled", () => {
+    describe("when feature flag is enabled and `showDisabledResources` option is true", () => {
       beforeEach(() => {
         // Create a list of sidebar items with disable resources interspersed
         const items = createSidebarItems(5)
@@ -317,6 +340,10 @@ describe("SidebarResources", () => {
           <SidebarResourcesTestWrapper
             items={items}
             flags={{ [Flag.DisableResources]: true }}
+            resourceListOptions={{
+              ...DEFAULT_OPTIONS,
+              showDisabledResources: true,
+            }}
           />
         )
       })
@@ -334,9 +361,6 @@ describe("SidebarResources", () => {
         expect(disabledItemsList.find(SidebarDisabledSectionTitle).length).toBe(
           1
         )
-        // The disabled section title should always be present on the DOM if disabled
-        // resources are present and it should be visible to users (and NOT using sr-only)
-        expect(disabledItemsList.find(SrOnly).length).toBe(0)
       })
 
       describe("when there is a resource name filter", () => {
@@ -354,6 +378,7 @@ describe("SidebarResources", () => {
               resourceListOptions={{
                 resourceNameFilter: "1",
                 alertsOnTop: true,
+                showDisabledResources: true,
               }}
             />
           )
@@ -386,6 +411,10 @@ describe("SidebarResources", () => {
             <SidebarResourcesTestWrapper
               items={items}
               flags={{ [Flag.DisableResources]: true, [Flag.Labels]: true }}
+              resourceListOptions={{
+                ...DEFAULT_OPTIONS,
+                showDisabledResources: true,
+              }}
             />
           )
 
@@ -428,6 +457,62 @@ describe("SidebarResources", () => {
             <SidebarResourcesTestWrapper
               items={items}
               flags={{ [Flag.DisableResources]: false, [Flag.Labels]: true }}
+            />
+          )
+
+          // Test data hardcodes six label groups (+ one for unlabelled items),
+          // so expect that only five total label groups show up when one group
+          // has only disabled resources
+          const labelGroupNames = wrapper
+            .find(SidebarGroupName)
+            .map((label) => label.text())
+          expect(labelGroupNames.length).toBe(5)
+          expect(labelGroupNames).not.toContain("very_long_long_long_label")
+        })
+      })
+    })
+
+    describe("when feature flag is enabled and `showDisabledResources` is false", () => {
+      beforeEach(() => {
+        // Create a list of sidebar items with disable resources interspersed
+        const items = createSidebarItems(3)
+        items[1].runtimeStatus = ResourceStatus.Disabled
+
+        wrapper = mount(
+          <SidebarResourcesTestWrapper
+            items={items}
+            flags={{ [Flag.DisableResources]: true }}
+            resourceListOptions={{
+              ...DEFAULT_OPTIONS,
+              showDisabledResources: false,
+            }}
+          />
+        )
+      })
+
+      it("does NOT display disabled resources at all", () => {
+        expect(wrapper.find(DisabledSidebarItemView).length).toEqual(0)
+        expect(wrapper.find(SidebarItemView).length).toEqual(2)
+      })
+
+      it("does NOT display disabled resources list title", () => {
+        expect(wrapper.find(SidebarDisabledSectionTitle).length).toBe(0)
+      })
+
+      describe("when there are groups and an entire group is disabled", () => {
+        it("does NOT display the group section", () => {
+          const items = createSidebarItems(5, true)
+          // Disable the resource that's in the label group with only one resource
+          items[3].runtimeStatus = ResourceStatus.Disabled
+
+          wrapper = mount(
+            <SidebarResourcesTestWrapper
+              items={items}
+              flags={{ [Flag.DisableResources]: false, [Flag.Labels]: true }}
+              resourceListOptions={{
+                ...DEFAULT_OPTIONS,
+                showDisabledResources: false,
+              }}
             />
           )
 

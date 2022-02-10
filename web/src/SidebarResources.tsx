@@ -35,7 +35,7 @@ import SidebarItemView, {
 import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
 import { Color, Font, FontSize, SizeUnit } from "./style-helpers"
 import { triggerUpdate } from "./trigger"
-import { ResourceView } from "./types"
+import { ResourceStatus, ResourceView } from "./types"
 
 export type SidebarProps = {
   items: SidebarItem[]
@@ -324,10 +324,23 @@ function applyOptionsToItems(
   options: ResourceListOptions
 ): SidebarItem[] {
   let itemsToDisplay: SidebarItem[] = [...items]
-  if (options.resourceNameFilter) {
-    itemsToDisplay = itemsToDisplay.filter((item) =>
-      matchesResourceName(item.name, options.resourceNameFilter)
-    )
+
+  const itemsShouldBeFiltered =
+    options.resourceNameFilter.length > 0 || !options.showDisabledResources
+
+  if (itemsShouldBeFiltered) {
+    itemsToDisplay = itemsToDisplay.filter((item) => {
+      const itemIsDisabled = item.runtimeStatus === ResourceStatus.Disabled
+      if (!options.showDisabledResources && itemIsDisabled) {
+        return false
+      }
+
+      if (options.resourceNameFilter) {
+        return matchesResourceName(item.name, options.resourceNameFilter)
+      }
+
+      return true
+    })
   }
 
   if (options.alertsOnTop) {

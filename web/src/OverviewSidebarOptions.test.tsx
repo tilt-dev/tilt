@@ -11,7 +11,7 @@ import {
   TwoResourcesTwoTests,
 } from "./OverviewResourceSidebar.stories"
 import {
-  AlertsOnTopToggle,
+  CheckboxToggle,
   OverviewSidebarOptions,
 } from "./OverviewSidebarOptions"
 import {
@@ -29,8 +29,14 @@ const resourceListOptionsAccessor = accessorsForTesting<ResourceListOptions>(
   RESOURCE_LIST_OPTIONS_KEY,
   sessionStorage
 )
+/**
+ * TODO (lizz): These tests behave more like integration tests
+ * and test the SidebarOptions component within the larger `SidebarResources`
+ * component. The tests should be moved over to that component's test suite
+ * and refactored with the react-testing-library changes.
+ */
 
-export function assertSidebarItemsAndOptions(
+function assertSidebarItemsAndOptions(
   root: ReactWrapper,
   names: string[],
   expectAlertsOnTop: boolean,
@@ -48,7 +54,7 @@ export function assertSidebarItemsAndOptions(
 
   let optSetter = sidebar.find(OverviewSidebarOptions)
   expect(optSetter).toHaveLength(1)
-  expect(optSetter.find(AlertsOnTopToggle).hasClass("is-enabled")).toEqual(
+  expect(optSetter.find(CheckboxToggle).prop("checked")).toEqual(
     expectAlertsOnTop
   )
   if (expectedResourceNameFilter !== undefined) {
@@ -58,8 +64,6 @@ export function assertSidebarItemsAndOptions(
   }
 }
 
-const allNames = ["(Tiltfile)", "vigoda", "snack", "beep", "boop"]
-
 describe("overview sidebar options", () => {
   beforeEach(() => {
     mockAnalyticsCalls()
@@ -68,37 +72,6 @@ describe("overview sidebar options", () => {
   afterEach(() => {
     cleanupMockAnalyticsCalls()
     localStorage.clear()
-  })
-
-  it("shows all resources by default", () => {
-    const root = mount(TwoResourcesTwoTests())
-    assertSidebarItemsAndOptions(root, allNames, false)
-  })
-
-  it("applies the name filter", () => {
-    // 'B p' tests both case insensitivity and a multi-term query
-    resourceListOptionsAccessor.set({
-      ...DEFAULT_OPTIONS,
-      resourceNameFilter: "B p",
-    })
-    const root = mount(
-      <MemoryRouter>
-        <tiltfileKeyContext.Provider value="test">
-          <ResourceListOptionsProvider>
-            <StarredResourcesContextProvider>
-              {TwoResourcesTwoTests()}
-            </StarredResourcesContextProvider>
-          </ResourceListOptionsProvider>
-        </tiltfileKeyContext.Provider>
-      </MemoryRouter>
-    )
-
-    assertSidebarItemsAndOptions(
-      root,
-      ["beep", "boop"],
-      DEFAULT_OPTIONS.alertsOnTop,
-      "B p"
-    )
   })
 
   it("says no matches found", () => {
@@ -152,7 +125,7 @@ it("toggles/untoggles Alerts On Top sorting when button clicked", () => {
   ]
   assertSidebarItemsAndOptions(root, origOrder, false)
 
-  let aotToggle = root.find(AlertsOnTopToggle)
+  let aotToggle = root.find(CheckboxToggle)
   aotToggle.simulate("click")
 
   assertSidebarItemsAndOptions(root, alertsOnTopOrder, true)

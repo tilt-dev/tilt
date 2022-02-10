@@ -79,6 +79,7 @@ export function ResourceNameFilter(props: { className?: string }) {
   }
 
   let inputProps: Partial<StandardInputProps> = {
+    "aria-label": "Filter resources by name",
     startAdornment: (
       <InputAdornment position="start">
         <SearchSvg fill={Color.grayLightest} />
@@ -104,7 +105,6 @@ export function ResourceNameFilter(props: { className?: string }) {
 
   return (
     <ResourceNameFilterTextField
-      aria-label="Filter resources by name"
       className={props.className}
       value={resourceNameFilter ?? ""}
       onChange={(e) => setResourceNameFilter(e.target.value)}
