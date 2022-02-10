@@ -55,14 +55,15 @@ function TriggerButton(props: TriggerButtonProps) {
     [props.onTrigger]
   )
 
-  // Add padding to center the icon better.
-  let padding = isEmphasized ? "0" : "0 0 0 2px"
+
   let classes = [props.className]
   if (props.isSelected) {
     classes.push("is-selected")
   }
   if (clickable) {
     classes.push("is-clickable")
+  } else {
+    classes.push("is-disabled")
   }
   if (props.isQueued) {
     classes.push("is-queued")
@@ -70,13 +71,15 @@ function TriggerButton(props: TriggerButtonProps) {
   if (isManual) {
     classes.push("is-manual")
   }
+  if (isEmphasized) {
+    classes.push("is-emphasized")
+  }
   return (
     <InstrumentedButton
       onClick={onClick}
       className={classes.join(" ")}
       disabled={!clickable}
       title={triggerTooltip(clickable, isEmphasized, props.isQueued)}
-      style={{ padding }}
       analyticsName={"ui.web.triggerResource"}
       analyticsTags={props.analyticsTags}
     >

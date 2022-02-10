@@ -64,4 +64,10 @@ export const SidebarTriggerButton = styled(TriggerButton)`
   &.is-queued > svg {
     animation: spin 1s linear infinite;
   }
+
+  padding: 0 0 0 2px;
+  &.is-emphasized {
+    // Add padding to center the icon better.
+    padding: 0;
+  }
 `
