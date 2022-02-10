@@ -65,9 +65,9 @@ export const SidebarTriggerButton = styled(TriggerButton)`
     animation: spin 1s linear infinite;
   }
 
+  // the emphasized svg is bigger, so pad the unemphasized svg to line it up
   padding: 0 0 0 2px;
   &.is-emphasized {
-    // Add padding to center the icon better.
     padding: 0;
   }
 `

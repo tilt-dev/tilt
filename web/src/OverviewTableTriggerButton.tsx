@@ -40,4 +40,10 @@ export const OverviewTableTriggerButton = styled(TriggerButton)`
   &.is-emphasized .fillStd {
     fill: ${Color.blue};
   }
+
+  // the emphasized svg is bigger, so pad the unemphasized svg to line it up
+  padding: 0 0 0 5px;
+  &.is-emphasized {
+    padding: 0;
+  }
 `
