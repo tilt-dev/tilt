@@ -351,22 +351,7 @@ func toCancelButtons(tlr *tiltfile.TiltfileLoadResult) apiset.TypedObjectSet {
 	}
 
 	for _, m := range tlr.Manifests {
-		button := &v1alpha1.UIButton{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: uibutton.CancelButtonName(m.Name.String()),
-				Annotations: map[string]string{
-					v1alpha1.AnnotationButtonType: v1alpha1.ButtonTypeCancelUpdate,
-				},
-			},
-			Spec: v1alpha1.UIButtonSpec{
-				Location: v1alpha1.UIComponentLocation{
-					ComponentID:   m.Name.String(),
-					ComponentType: v1alpha1.ComponentTypeResource,
-				},
-				Text:     "Cancel",
-				IconName: "cancel",
-			},
-		}
+		button := uibutton.CancelButton(m.Name.String())
 		result[button.Name] = button
 	}
 	return result

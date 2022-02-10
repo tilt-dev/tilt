@@ -76,6 +76,11 @@ type TiltfileSpec struct {
 	//
 	// +optional
 	Args []string `json:"args,omitempty" protobuf:"bytes,4,rep,name=args"`
+
+	// Objects that can stop execution of this Tiltfile.
+	//
+	// +optional
+	StopOn *StopOnSpec `json:"stopOn,omitempty" protobuf:"bytes,5,opt,name=stopOn"`
 }
 
 var _ resource.Object = &Tiltfile{}

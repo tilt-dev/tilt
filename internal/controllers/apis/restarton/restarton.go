@@ -138,7 +138,7 @@ func FileWatches(ctx context.Context, client client.Reader, restartOn *v1alpha1.
 //
 // Returns the most recent trigger time. If the most recent trigger is a button,
 // return the button. Some consumers use the button for text inputs.
-func LastStartEvent(startOn *v1alpha1.StartOnSpec, restartObjs Objects) (time.Time, *v1alpha1.UIButton) {
+func LastStartEvent(startOn *v1alpha1.StartOnSpec, triggerObjs Objects) (time.Time, *v1alpha1.UIButton) {
 	latestTime := time.Time{}
 	var latestButton *v1alpha1.UIButton
 	if startOn == nil {
@@ -146,7 +146,7 @@ func LastStartEvent(startOn *v1alpha1.StartOnSpec, restartObjs Objects) (time.Ti
 	}
 
 	for _, bn := range startOn.UIButtons {
-		b, ok := restartObjs.UIButtons[bn]
+		b, ok := triggerObjs.UIButtons[bn]
 		if !ok {
 			// ignore missing buttons
 			continue
@@ -165,7 +165,7 @@ func LastStartEvent(startOn *v1alpha1.StartOnSpec, restartObjs Objects) (time.Ti
 //
 // Returns the most recent trigger time. If the most recent trigger is a button,
 // return the button. Some consumers use the button for text inputs.
-func LastRestartEvent(restartOn *v1alpha1.RestartOnSpec, restartObjs Objects) (time.Time, *v1alpha1.UIButton) {
+func LastRestartEvent(restartOn *v1alpha1.RestartOnSpec, triggerObjs Objects) (time.Time, *v1alpha1.UIButton) {
 	cur := time.Time{}
 	var latestButton *v1alpha1.UIButton
 	if restartOn == nil {
@@ -173,7 +173,7 @@ func LastRestartEvent(restartOn *v1alpha1.RestartOnSpec, restartObjs Objects) (t
 	}
 
 	for _, fwn := range restartOn.FileWatches {
-		fw, ok := restartObjs.FileWatches[fwn]
+		fw, ok := triggerObjs.FileWatches[fwn]
 		if !ok {
 			// ignore missing filewatches
 			continue
@@ -185,7 +185,7 @@ func LastRestartEvent(restartOn *v1alpha1.RestartOnSpec, restartObjs Objects) (t
 	}
 
 	for _, bn := range restartOn.UIButtons {
-		b, ok := restartObjs.UIButtons[bn]
+		b, ok := triggerObjs.UIButtons[bn]
 		if !ok {
 			// ignore missing buttons
 			continue
