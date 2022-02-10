@@ -1,7 +1,7 @@
 import React from "react"
 import { MemoryRouter } from "react-router"
 import SplitPane from "react-split-pane"
-import Features, { FeaturesProvider, Flag } from "./feature"
+import Features, { FeaturesTestProvider, Flag } from "./feature"
 import LogStore, { LogStoreProvider } from "./LogStore"
 import OverviewResourceSidebar from "./OverviewResourceSidebar"
 import { ResourceGroupsContextProvider } from "./ResourceGroupsContext"
@@ -27,7 +27,7 @@ export default {
       })
       return (
         <MemoryRouter initialEntries={["/"]}>
-          <FeaturesProvider value={features}>
+          <FeaturesTestProvider value={features}>
             <ResourceGroupsContextProvider>
               <div style={{ margin: "-1rem", height: "80vh" }}>
                 <SplitPane
@@ -39,7 +39,7 @@ export default {
                 </SplitPane>
               </div>
             </ResourceGroupsContextProvider>
-          </FeaturesProvider>
+          </FeaturesTestProvider>
         </MemoryRouter>
       )
     },
