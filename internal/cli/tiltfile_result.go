@@ -102,7 +102,7 @@ func (c *tiltfileResultCmd) run(ctx context.Context, args []string) error {
 	}
 
 	start := time.Now()
-	tlr := deps.tfl.Load(ctx, ctrltiltfile.MainTiltfile(c.fileName, args))
+	tlr := deps.tfl.Load(ctx, ctrltiltfile.MainTiltfile(c.fileName, args), nil)
 	tflDur := time.Since(start)
 	if tlr.Error != nil {
 		c.maybePrintDeferredLogsToStderr(ctx, showTiltfileLogs)

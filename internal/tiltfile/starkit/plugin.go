@@ -12,7 +12,7 @@ type OnExecPlugin interface {
 	Plugin
 
 	// Called before each new Starlark file is loaded
-	OnExec(t *starlark.Thread, path string) error
+	OnExec(t *starlark.Thread, path string, contents []byte) error
 }
 
 type OnBuiltinCallPlugin interface {

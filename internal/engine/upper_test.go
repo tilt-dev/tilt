@@ -4533,7 +4533,7 @@ func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
 	f.dcc.WorkDir = f.Path()
 	f.dcc.ConfigOutput = string(dcpc)
 
-	tlr := f.realTFL.Load(f.ctx, apitiltfile.MainTiltfile(f.JoinPath("Tiltfile"), nil))
+	tlr := f.realTFL.Load(f.ctx, apitiltfile.MainTiltfile(f.JoinPath("Tiltfile"), nil), nil)
 	if tlr.Error != nil {
 		f.T().Fatal(tlr.Error)
 	}

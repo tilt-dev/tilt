@@ -19,6 +19,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/apiset"
 	"github.com/tilt-dev/tilt/internal/localexec"
+	"github.com/tilt-dev/tilt/internal/tiltfile/hasher"
 	"github.com/tilt-dev/tilt/internal/tiltfile/links"
 	"github.com/tilt-dev/tilt/internal/tiltfile/print"
 	"github.com/tilt-dev/tilt/internal/tiltfile/probe"
@@ -231,6 +232,7 @@ func (s *tiltfileState) loadManifests(tf *v1alpha1.Tiltfile) ([]model.Manifest, 
 		print.NewPlugin(),
 		probe.NewPlugin(),
 		tfv1alpha1.NewPlugin(),
+		hasher.NewPlugin(),
 	)
 	if err != nil {
 		return nil, result, starkit.UnpackBacktrace(err)
@@ -461,7 +463,7 @@ func (s *tiltfileState) OnBuiltinCall(name string, fn *starlark.Builtin) {
 	s.builtinCallCounts[name]++
 }
 
-func (s *tiltfileState) OnExec(t *starlark.Thread, tiltfilePath string) error {
+func (s *tiltfileState) OnExec(t *starlark.Thread, tiltfilePath string, contents []byte) error {
 	return nil
 }
 

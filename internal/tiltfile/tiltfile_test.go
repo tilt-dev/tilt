@@ -37,6 +37,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/internal/tiltfile/config"
+	"github.com/tilt-dev/tilt/internal/tiltfile/hasher"
 	tiltfile_k8s "github.com/tilt-dev/tilt/internal/tiltfile/k8s"
 	"github.com/tilt-dev/tilt/internal/tiltfile/k8scontext"
 	"github.com/tilt-dev/tilt/internal/tiltfile/testdata"
@@ -1314,7 +1315,7 @@ docker_build('gcr.io/bar', 'bar')
 k8s_yaml('bar.yaml')
 `)
 
-	tlr := f.newTiltfileLoader().Load(f.ctx, ctrltiltfile.MainTiltfile(f.JoinPath("Tiltfile"), []string{"baz"}))
+	tlr := f.newTiltfileLoader().Load(f.ctx, ctrltiltfile.MainTiltfile(f.JoinPath("Tiltfile"), []string{"baz"}), nil)
 	err := tlr.Error
 	if assert.Error(t, err) {
 		assert.Equal(t, `You specified some resources that could not be found: "baz"
@@ -5938,6 +5939,39 @@ func TestLoadErrorWithArgs(t *testing.T) {
 	f.loadArgsErrString([]string{"foo"}, "undefined: asdf")
 }
 
+func TestContentsChangedTag(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", "print('Hello')")
+	tiltfile := ctrltiltfile.MainTiltfile(f.JoinPath("Tiltfile"), []string{})
+	loader := f.newTiltfileLoader()
+
+	// *.changed = false on first load (no previous hash values)
+	tlr := loader.Load(f.ctx, tiltfile, nil)
+	assert.Equal(t, "0d4b93146f79968657afdad8b23d423973bf7a7e97690d146e6b6cfcc24e617e", tlr.Hashes.TiltfileSHA256)
+	assert.Equal(t, "0d4b93146f79968657afdad8b23d423973bf7a7e97690d146e6b6cfcc24e617e", tlr.Hashes.AllFilesSHA256)
+
+	event := f.SingleAnalyticsEvent("tiltfile.loaded")
+	assert.Equal(t, "false", event.Tags["tiltfile.changed"])
+	assert.Equal(t, "false", event.Tags["allfiles.changed"])
+
+	// *.changed = true because hash values differ
+	f.an.Counts = []analytics.CountEvent{}
+	tlr.Hashes = hasher.Hashes{TiltfileSHA256: "abc123", AllFilesSHA256: "abc123"}
+	tlr = loader.Load(f.ctx, tiltfile, &tlr)
+	event = f.SingleAnalyticsEvent("tiltfile.loaded")
+	assert.Equal(t, "true", event.Tags["tiltfile.changed"])
+	assert.Equal(t, "true", event.Tags["allfiles.changed"])
+
+	// *.changed = false because hash values match
+	f.an.Counts = []analytics.CountEvent{}
+	tlr = loader.Load(f.ctx, tiltfile, &tlr)
+	event = f.SingleAnalyticsEvent("tiltfile.loaded")
+	assert.Equal(t, "false", event.Tags["tiltfile.changed"])
+	assert.Equal(t, "false", event.Tags["allfiles.changed"])
+}
+
 type fixture struct {
 	ctx context.Context
 	out *bytes.Buffer
@@ -6131,7 +6165,7 @@ func (f *fixture) load(args ...string) {
 // Warnings should be asserted later with assertWarnings
 func (f *fixture) loadAllowWarnings(args ...string) {
 	f.t.Helper()
-	tlr := f.newTiltfileLoader().Load(f.ctx, ctrltiltfile.MainTiltfile(f.JoinPath("Tiltfile"), args))
+	tlr := f.newTiltfileLoader().Load(f.ctx, ctrltiltfile.MainTiltfile(f.JoinPath("Tiltfile"), args), nil)
 	err := tlr.Error
 	if err != nil {
 		f.t.Fatal(err)
@@ -6169,7 +6203,7 @@ func (f *fixture) loadErrString(msgs ...string) {
 
 func (f *fixture) loadArgsErrString(args []string, msgs ...string) {
 	f.t.Helper()
-	tlr := f.newTiltfileLoader().Load(f.ctx, ctrltiltfile.MainTiltfile(f.JoinPath("Tiltfile"), args))
+	tlr := f.newTiltfileLoader().Load(f.ctx, ctrltiltfile.MainTiltfile(f.JoinPath("Tiltfile"), args), nil)
 	err := tlr.Error
 
 	if err == nil {

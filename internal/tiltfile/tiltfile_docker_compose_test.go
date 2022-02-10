@@ -903,7 +903,7 @@ func TestDockerComposeVersionWarnings(t *testing.T) {
 				require.Fail(t, "Could not set up fake Docker Compose client")
 			}
 
-			f.loadResult = loader.Load(f.ctx, ctrltiltfile.MainTiltfile(f.JoinPath("Tiltfile"), nil))
+			f.loadResult = loader.Load(f.ctx, ctrltiltfile.MainTiltfile(f.JoinPath("Tiltfile"), nil), nil)
 			if tc.error == "" {
 				require.NoError(t, f.loadResult.Error, "Tiltfile load result had unexpected error")
 			} else {

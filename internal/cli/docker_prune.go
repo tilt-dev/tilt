@@ -71,7 +71,7 @@ func (c *dockerPruneCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	tlr := deps.tfl.Load(ctx, ctrltiltfile.MainTiltfile(c.fileName, args))
+	tlr := deps.tfl.Load(ctx, ctrltiltfile.MainTiltfile(c.fileName, args), nil)
 	if tlr.Error != nil {
 		return tlr.Error
 	}

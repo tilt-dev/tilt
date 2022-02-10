@@ -59,7 +59,7 @@ func (Plugin) OnStart(e *starkit.Environment) error {
 	return nil
 }
 
-func (Plugin) OnExec(t *starlark.Thread, tiltfilePath string) error {
+func (Plugin) OnExec(t *starlark.Thread, tiltfilePath string, contents []byte) error {
 	return RecordReadPath(t, WatchFileOnly, tiltfilePath)
 }
 
