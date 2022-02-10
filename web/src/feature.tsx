@@ -3,7 +3,7 @@
 // This is important because when the React app starts,
 // it starts with an empty state and there won't be _any_ feature flags
 // until the first engine state comes in over the Websocket.
-import { createContext, useContext } from "react"
+import { createContext, PropsWithChildren, useContext, useMemo } from "react"
 
 type featureFlags = { [featureFlag in Flag]?: boolean }
 
@@ -45,4 +45,27 @@ export function useFeatures(): Features {
   return useContext(FeaturesContext)
 }
 
-export const FeaturesProvider = FeaturesContext.Provider
+// Server-side flags are formatted as a list.
+// Many tests uses the {key: value} format.
+export function FeaturesProvider(
+  props: PropsWithChildren<{
+    featureFlags: Proto.v1alpha1UIFeatureFlag[] | null
+  }>
+) {
+  let flagList = props.featureFlags || []
+  let features = useMemo(() => {
+    let featureFlags = {} as { [key: string]: boolean }
+    flagList.forEach((flag) => {
+      featureFlags[flag.name || ""] = !!flag.value
+    })
+    return new Features(featureFlags)
+  }, [flagList])
+
+  return (
+    <FeaturesContext.Provider value={features}>
+      {props.children}
+    </FeaturesContext.Provider>
+  )
+}
+
+export let FeaturesValueProvider = FeaturesContext.Provider

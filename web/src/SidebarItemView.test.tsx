@@ -1,6 +1,6 @@
 import { mount } from "enzyme"
 import React from "react"
-import Features, { FeaturesProvider, Flag } from "./feature"
+import Features, { FeaturesValueProvider, Flag } from "./feature"
 import { LogAlertIndex } from "./LogStore"
 import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
@@ -27,7 +27,7 @@ const SidebarItemViewTestWrapper = ({
     [Flag.DisableResources]: disableResourcesEnabled ?? true,
   })
   return (
-    <FeaturesProvider value={features}>
+    <FeaturesValueProvider value={features}>
       <SidebarItemView
         item={item}
         selected={false}
@@ -35,7 +35,7 @@ const SidebarItemViewTestWrapper = ({
         pathBuilder={PATH_BUILDER}
         groupView={false}
       />
-    </FeaturesProvider>
+    </FeaturesValueProvider>
   )
 }
 

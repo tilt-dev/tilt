@@ -10,7 +10,7 @@ import AppController from "./AppController"
 import { tiltfileKeyContext } from "./BrowserStorage"
 import ErrorModal from "./ErrorModal"
 import FatalErrorModal from "./FatalErrorModal"
-import Features, { FeaturesProvider, Flag } from "./feature"
+import { FeaturesProvider } from "./feature"
 import HeroScreen from "./HeroScreen"
 import "./HUD.scss"
 import { HudErrorContextProvider } from "./HudErrorContext"
@@ -163,15 +163,6 @@ export default class HUD extends Component<HudProps, HudState> {
       })
   }
 
-  private getFeatures(): Features {
-    let featureFlags = {} as { [key: string]: boolean }
-    let flagList = this.state.view.uiSession?.status?.featureFlags || []
-    flagList.forEach((flag) => {
-      featureFlags[flag.name || ""] = !!flag.value
-    })
-    return new Features(featureFlags)
-  }
-
   handleShowCopySuccess() {
     this.setState(
       {
@@ -248,45 +239,36 @@ export default class HUD extends Component<HudProps, HudState> {
   }
 
   renderOverviewSwitch() {
-    const features = this.getFeatures()
-    let showSnapshot =
-      features.isEnabled(Flag.Snapshots) && !this.pathBuilder.isSnapshot()
-    let snapshotAction = {
-      enabled: showSnapshot,
-      openModal: this.handleOpenModal,
-    }
-
     return (
-      /* allow Styled Components to override MUI - https://material-ui.com/guides/interoperability/#controlling-priority-3*/
-      <StylesProvider injectFirst>
-        <FeaturesProvider value={features}>
-          <SnapshotActionProvider value={snapshotAction}>
-            <PathBuilderProvider value={this.pathBuilder}>
-              <LogStoreProvider value={this.state.logStore || new LogStore()}>
-                <ResourceGroupsContextProvider>
-                  <ResourceListOptionsProvider>
-                    <ResourceSelectionProvider>
-                      <Switch>
-                        <Route
-                          path={this.path("/r/:name/overview")}
-                          render={(props: RouteComponentProps<any>) => (
-                            <OverviewResourcePane view={this.state.view} />
-                          )}
-                        />
-                        <Route
-                          render={() => (
-                            <OverviewTablePane view={this.state.view} />
-                          )}
-                        />
-                      </Switch>
-                    </ResourceSelectionProvider>
-                  </ResourceListOptionsProvider>
-                </ResourceGroupsContextProvider>
-              </LogStoreProvider>
-            </PathBuilderProvider>
+      <FeaturesProvider
+        featureFlags={this.state.view.uiSession?.status?.featureFlags || null}
+      >
+        <PathBuilderProvider value={this.pathBuilder}>
+          <SnapshotActionProvider openModal={this.handleOpenModal}>
+            <LogStoreProvider value={this.state.logStore || new LogStore()}>
+              <ResourceGroupsContextProvider>
+                <ResourceListOptionsProvider>
+                  <ResourceSelectionProvider>
+                    <Switch>
+                      <Route
+                        path={this.path("/r/:name/overview")}
+                        render={(props: RouteComponentProps<any>) => (
+                          <OverviewResourcePane view={this.state.view} />
+                        )}
+                      />
+                      <Route
+                        render={() => (
+                          <OverviewTablePane view={this.state.view} />
+                        )}
+                      />
+                    </Switch>
+                  </ResourceSelectionProvider>
+                </ResourceListOptionsProvider>
+              </ResourceGroupsContextProvider>
+            </LogStoreProvider>
           </SnapshotActionProvider>
-        </FeaturesProvider>
-      </StylesProvider>
+        </PathBuilderProvider>
+      </FeaturesProvider>
     )
   }
 
@@ -356,7 +338,12 @@ export default class HUD extends Component<HudProps, HudState> {
 export function HUDFromContext(props: React.PropsWithChildren<{}>) {
   let history = useHistory()
   let interfaceVersion = useInterfaceVersion()
-  return <HUD history={history} interfaceVersion={interfaceVersion} />
+  return (
+    /* allow Styled Components to override MUI - https://material-ui.com/guides/interoperability/#controlling-priority-3*/
+    <StylesProvider injectFirst>
+      <HUD history={history} interfaceVersion={interfaceVersion} />
+    </StylesProvider>
+  )
 }
 
 function compareObjectsOrder<

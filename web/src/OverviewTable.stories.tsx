@@ -1,6 +1,6 @@
 import React from "react"
 import { MemoryRouter } from "react-router"
-import Features, { FeaturesProvider, Flag } from "./feature"
+import Features, { FeaturesValueProvider, Flag } from "./feature"
 import LogStore, { LogStoreProvider } from "./LogStore"
 import OverviewTable from "./OverviewTable"
 import { ResourceGroupsContextProvider } from "./ResourceGroupsContext"
@@ -28,7 +28,7 @@ export default {
       return (
         <MemoryRouter initialEntries={["/"]}>
           <TiltSnackbarProvider>
-            <FeaturesProvider value={features}>
+            <FeaturesValueProvider value={features}>
               <ResourceGroupsContextProvider>
                 <ResourceListOptionsProvider>
                   <ResourceSelectionProvider>
@@ -38,7 +38,7 @@ export default {
                   </ResourceSelectionProvider>
                 </ResourceListOptionsProvider>
               </ResourceGroupsContextProvider>
-            </FeaturesProvider>
+            </FeaturesValueProvider>
           </TiltSnackbarProvider>
         </MemoryRouter>
       )

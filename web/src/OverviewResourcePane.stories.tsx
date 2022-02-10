@@ -1,7 +1,7 @@
 import { StylesProvider } from "@material-ui/core/styles"
 import React from "react"
 import { MemoryRouter } from "react-router"
-import Features, { FeaturesProvider, Flag } from "./feature"
+import Features, { FeaturesValueProvider, Flag } from "./feature"
 import LogStore, { LogStoreProvider } from "./LogStore"
 import OverviewResourcePane from "./OverviewResourcePane"
 import { ResourceGroupsContextProvider } from "./ResourceGroupsContext"
@@ -27,7 +27,7 @@ export default {
       return (
         <MemoryRouter initialEntries={["/"]}>
           <TiltSnackbarProvider>
-            <FeaturesProvider value={features}>
+            <FeaturesValueProvider value={features}>
               <ResourceGroupsContextProvider>
                 <ResourceListOptionsProvider>
                   <StarredResourceMemoryProvider>
@@ -39,7 +39,7 @@ export default {
                   </StarredResourceMemoryProvider>
                 </ResourceListOptionsProvider>
               </ResourceGroupsContextProvider>
-            </FeaturesProvider>
+            </FeaturesValueProvider>
           </TiltSnackbarProvider>
         </MemoryRouter>
       )

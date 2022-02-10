@@ -8,7 +8,7 @@ import {
   mockAnalyticsCalls,
 } from "./analytics_test_helpers"
 import { ApiButtonRoot } from "./ApiButton"
-import Features, { FeaturesProvider, Flag } from "./feature"
+import Features, { FeaturesValueProvider, Flag } from "./feature"
 import { GroupByLabelView, TILTFILE_LABEL, UNLABELED_LABEL } from "./labels"
 import LogStore from "./LogStore"
 import OverviewTable, {
@@ -69,7 +69,7 @@ const tableViewWithSettings = ({
   return (
     <MemoryRouter initialEntries={["/"]}>
       <SnackbarProvider>
-        <FeaturesProvider value={features}>
+        <FeaturesValueProvider value={features}>
           <ResourceGroupsContextProvider>
             <ResourceListOptionsProvider
               initialValuesForTesting={resourceListOptions}
@@ -81,7 +81,7 @@ const tableViewWithSettings = ({
               </ResourceSelectionProvider>
             </ResourceListOptionsProvider>
           </ResourceGroupsContextProvider>
-        </FeaturesProvider>
+        </FeaturesValueProvider>
       </SnackbarProvider>
     </MemoryRouter>
   )

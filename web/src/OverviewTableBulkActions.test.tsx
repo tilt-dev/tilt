@@ -11,7 +11,7 @@ import {
 } from "./analytics_test_helpers"
 import { buttonsByComponent } from "./ApiButton"
 import { mockUIButtonUpdates } from "./ApiButton.testhelpers"
-import Features, { FeaturesProvider, Flag } from "./feature"
+import Features, { FeaturesValueProvider, Flag } from "./feature"
 import {
   BulkAction,
   buttonsByAction,
@@ -36,11 +36,11 @@ const OverviewTableBulkActionsTestWrapper = (props: {
   const { flagEnabled, resourceSelections } = props
   const features = new Features({ [Flag.DisableResources]: flagEnabled })
   return (
-    <FeaturesProvider value={features}>
+    <FeaturesValueProvider value={features}>
       <ResourceSelectionProvider initialValuesForTesting={resourceSelections}>
         <OverviewTableBulkActions uiButtons={TEST_UIBUTTONS} />
       </ResourceSelectionProvider>
-    </FeaturesProvider>
+    </FeaturesValueProvider>
   )
 }
 

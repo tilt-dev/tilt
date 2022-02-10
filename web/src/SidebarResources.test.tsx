@@ -10,7 +10,7 @@ import {
   mockAnalyticsCalls,
 } from "./analytics_test_helpers"
 import { accessorsForTesting, tiltfileKeyContext } from "./BrowserStorage"
-import Features, { FeaturesProvider, Flag } from "./feature"
+import Features, { FeaturesValueProvider, Flag } from "./feature"
 import LogStore from "./LogStore"
 import PathBuilder from "./PathBuilder"
 import { ResourceGroupsContextProvider } from "./ResourceGroupsContext"
@@ -67,7 +67,7 @@ const SidebarResourcesTestWrapper = ({
   return (
     <MemoryRouter>
       <tiltfileKeyContext.Provider value="test">
-        <FeaturesProvider value={features}>
+        <FeaturesValueProvider value={features}>
           <StarredResourcesContextProvider>
             <ResourceGroupsContextProvider>
               <ResourceListOptionsProvider>
@@ -81,7 +81,7 @@ const SidebarResourcesTestWrapper = ({
               </ResourceListOptionsProvider>
             </ResourceGroupsContextProvider>
           </StarredResourcesContextProvider>
-        </FeaturesProvider>
+        </FeaturesValueProvider>
       </tiltfileKeyContext.Provider>
     </MemoryRouter>
   )
