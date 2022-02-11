@@ -1,16 +1,17 @@
-import { mount, ReactWrapper } from "enzyme"
+import { render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import React, { ChangeEvent, useState } from "react"
 import {
   ResourceSelectionProvider,
   useResourceSelection,
 } from "./ResourceSelectionContext"
 
-const SELECTED_STATE_ID = "selected-state"
-const SELECTED_TEXT_ID = "selected-text"
-const SELECT_INPUT_ID = "select-input"
-const SELECT_BUTTON_ID = "select-button"
-const DESELECT_BUTTON_ID = "deselect-button"
-const CLEAR_BUTTON_ID = "clear-button"
+const SELECTION_STATE = "selected-state"
+const IS_SELECTED = "selected-text"
+const TO_SELECT_INPUT = "select-input"
+const SELECT_BUTTON = "select-button"
+const DESELECT_BUTTON = "deselect-button"
+const CLEAR_BUTTON = "clear-button"
 
 // This is a very basic test component that prints out the state
 // from the ResourceSelection context and provides buttons to trigger
@@ -22,24 +23,33 @@ const TestConsumer = () => {
   const [value, setValue] = useState("")
   const onChange = (e: ChangeEvent<HTMLInputElement>) =>
     setValue(e.target.value)
+
+  // To support selecting multiple items at once, accept a comma separated list
+  const parsedValues = (value: string) => value.split(",")
   return (
     <>
       {/* Print the `selected` state */}
-      <p id={SELECTED_STATE_ID}>{JSON.stringify(selected)}</p>
+      <p aria-label={SELECTION_STATE}>{JSON.stringify(Array.from(selected))}</p>
       {/* Use an input field to change the resource that can be selected/deselected */}
-      <input id={SELECT_INPUT_ID} type="text" onChange={onChange} />
+      <input aria-label={TO_SELECT_INPUT} type="text" onChange={onChange} />
       {/* Print the state for whatever resource is currently in the `input` */}
-      <p id={SELECTED_TEXT_ID}>{isSelected(value).toString()}</p>
+      <p aria-label={IS_SELECTED}>{isSelected(value).toString()}</p>
       {/* Select the resource that's currently in the `input` */}
-      <button id={SELECT_BUTTON_ID} onClick={() => select(value)}>
+      <button
+        aria-label={SELECT_BUTTON}
+        onClick={() => select(...parsedValues(value))}
+      >
         Select
       </button>
       {/* Deselect the resource that's currently in the `input` */}
-      <button id={DESELECT_BUTTON_ID} onClick={() => deselect(value)}>
+      <button
+        aria-label={DESELECT_BUTTON}
+        onClick={() => deselect(...parsedValues(value))}
+      >
         Deselect
       </button>
       {/* Clear all selections */}
-      <button id={CLEAR_BUTTON_ID} onClick={() => clearSelections()}>
+      <button aria-label={CLEAR_BUTTON} onClick={() => clearSelections()}>
         Clear selections
       </button>
     </>
@@ -47,33 +57,32 @@ const TestConsumer = () => {
 }
 
 describe("ResourceSelectionContext", () => {
-  let wrapper: ReactWrapper<typeof TestConsumer>
-
   // Helpers
-  const INITIAL_SELECTIONS = ["vigoda", "magic_beans"]
-  const selectedState = () => wrapper.find(`#${SELECTED_STATE_ID}`).text()
-  const isSelected = () => wrapper.find(`#${SELECTED_TEXT_ID}`).text()
-  const setCurrentResource = (value: string) =>
-    wrapper
-      .find(`#${SELECT_INPUT_ID}`)
-      .simulate("change", { target: { value } })
+  const INITIAL_SELECTIONS = ["vigoda", "magic_beans", "servantes"]
+  const selectedState = () =>
+    screen.queryByLabelText(SELECTION_STATE)?.textContent
+  const isSelected = () => screen.queryByLabelText(IS_SELECTED)?.textContent
+  const setCurrentResource = (value: string) => {
+    const inputField = screen.queryByLabelText(TO_SELECT_INPUT)
+    userEvent.type(inputField as HTMLInputElement, value)
+  }
   const selectResource = (value: string) => {
     setCurrentResource(value)
-    wrapper.find(`#${SELECT_BUTTON_ID}`).simulate("click")
-    wrapper.update()
+    const selectButton = screen.queryByLabelText(SELECT_BUTTON)
+    userEvent.click(selectButton as HTMLButtonElement)
   }
   const deselectResource = (value: string) => {
     setCurrentResource(value)
-    wrapper.find(`#${DESELECT_BUTTON_ID}`).simulate("click")
-    wrapper.update()
+    const deselectButton = screen.queryByLabelText(DESELECT_BUTTON)
+    userEvent.click(deselectButton as HTMLButtonElement)
   }
   const clearResources = () => {
-    wrapper.find(`#${CLEAR_BUTTON_ID}`).simulate("click")
-    wrapper.update()
+    const clearButton = screen.queryByLabelText(CLEAR_BUTTON)
+    userEvent.click(clearButton as HTMLButtonElement)
   }
 
   beforeEach(() => {
-    wrapper = mount(
+    render(
       <ResourceSelectionProvider initialValuesForTesting={INITIAL_SELECTIONS}>
         <TestConsumer />
       </ResourceSelectionProvider>
@@ -109,13 +118,36 @@ describe("ResourceSelectionContext", () => {
         JSON.stringify([...INITIAL_SELECTIONS, "cool_beans"])
       )
     })
+
+    it("adds multiple resources to the list of selections", () => {
+      selectResource("cool_beans,super_beans,fancy_beans")
+      expect(selectedState()).toBe(
+        JSON.stringify([
+          ...INITIAL_SELECTIONS,
+          "cool_beans",
+          "super_beans",
+          "fancy_beans",
+        ])
+      )
+    })
+
+    it("does NOT select the same resource twice", () => {
+      selectResource(INITIAL_SELECTIONS[0])
+      expect(isSelected()).toBe("true")
+      expect(selectedState()).toBe(JSON.stringify(INITIAL_SELECTIONS))
+    })
   })
 
   describe("deselect", () => {
-    it("removes a resource to the list of selections", () => {
+    it("removes a resource from the list of selections", () => {
       deselectResource(INITIAL_SELECTIONS[0])
       expect(isSelected()).toBe("false")
-      expect(selectedState()).toBe(JSON.stringify([INITIAL_SELECTIONS[1]]))
+      expect(selectedState()).toBe(JSON.stringify(INITIAL_SELECTIONS.slice(1)))
+    })
+
+    it("removes multiple resources from the list of selections", () => {
+      deselectResource(`${INITIAL_SELECTIONS[0]},${INITIAL_SELECTIONS[1]}`)
+      expect(selectedState()).toBe(JSON.stringify([INITIAL_SELECTIONS[2]]))
     })
   })
 
