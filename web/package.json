@@ -83,7 +83,7 @@
     "fetch-mock": "^9.11.0",
     "jest-junit": "^13.0.0",
     "jsdom": "^18.1.0",
-    "node-sass": "^6.0.1",
+    "node-sass": "^7.0.0",
     "prettier": "2.4.1",
     "prettier-plugin-organize-imports": "^2.3.4",
     "react-scripts": "^4.0.3",
