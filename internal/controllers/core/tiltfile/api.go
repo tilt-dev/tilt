@@ -547,10 +547,10 @@ func toClusterObjects(nn types.NamespacedName, tlr *tiltfile.TiltfileLoadResult,
 	}
 
 	if tlr.HasOrchestrator(model.OrchestratorDC) {
-		dockerName := "docker"
-		result[dockerName] = &v1alpha1.Cluster{
+		name := v1alpha1.ClusterNameDocker
+		result[name] = &v1alpha1.Cluster{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: dockerName,
+				Name: name,
 			},
 			Spec: v1alpha1.ClusterSpec{
 				Connection: &v1alpha1.ClusterConnection{

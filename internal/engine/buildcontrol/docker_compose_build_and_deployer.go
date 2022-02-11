@@ -145,7 +145,7 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 
 	var cluster v1alpha1.Cluster
 	// If the cluster fetch fails, that's OK.
-	_ = bd.ctrlClient.Get(ctx, ktypes.NamespacedName{Name: "docker"}, &cluster)
+	_ = bd.ctrlClient.Get(ctx, ktypes.NamespacedName{Name: v1alpha1.ClusterNameDocker}, &cluster)
 
 	imageMapSet := make(map[ktypes.NamespacedName]*v1alpha1.ImageMap, len(plan.dockerComposeTarget.Spec.ImageMaps))
 	for _, iTarget := range iTargets {

@@ -237,20 +237,24 @@ func HoldTargetsWithBuildingComponents(state store.EngineState, mts []*store.Man
 	}
 }
 
-func clusterNamesForTargets(mts []*store.ManifestTarget) []string {
+func targetsByCluster(mts []*store.ManifestTarget) map[string][]*store.ManifestTarget {
 	// TODO(nick): In the future, K8s objects may reference the cluster
 	// they're deploying to.
-	clusters := []string{}
-	var k8s, dc bool
+	clusters := make(map[string][]*store.ManifestTarget)
 	for _, mt := range mts {
-		k8s = k8s || mt.Manifest.IsK8s()
-		dc = dc || mt.Manifest.IsDC()
-	}
-	if k8s {
-		clusters = append(clusters, v1alpha1.ClusterNameDefault)
-	}
-	if dc {
-		clusters = append(clusters, "docker")
+		if mt.Manifest.IsK8s() {
+			targets, ok := clusters[v1alpha1.ClusterNameDefault]
+			if !ok {
+				targets = []*store.ManifestTarget{}
+			}
+			clusters[v1alpha1.ClusterNameDefault] = append(targets, mt)
+		} else if mt.Manifest.IsDC() {
+			targets, ok := clusters[v1alpha1.ClusterNameDocker]
+			if !ok {
+				targets = []*store.ManifestTarget{}
+			}
+			clusters[v1alpha1.ClusterNameDocker] = append(targets, mt)
+		}
 	}
 	return clusters
 }
@@ -259,7 +263,7 @@ func clusterNamesForTargets(mts []*store.ManifestTarget) []string {
 // Until the cluster connection has been established, we block any
 // image builds.
 func HoldTargetsWaitingOnCluster(state store.EngineState, mts []*store.ManifestTarget, holds HoldSet) {
-	for _, clusterName := range clusterNamesForTargets(mts) {
+	for clusterName, targets := range targetsByCluster(mts) {
 		cluster, ok := state.Clusters[clusterName]
 		isClusterOK := ok && cluster.Status.Error == "" && cluster.Status.Arch != ""
 		if isClusterOK {
@@ -267,18 +271,16 @@ func HoldTargetsWaitingOnCluster(state store.EngineState, mts []*store.ManifestT
 		}
 
 		gvk := v1alpha1.SchemeGroupVersion.WithKind("Cluster")
-		for _, mt := range mts {
-			if mt.Manifest.IsK8s() || mt.Manifest.IsDC() {
-				holds.AddHold(mt, store.Hold{
-					Reason: store.HoldReasonCluster,
-					OnRefs: []v1alpha1.UIResourceStateWaitingOnRef{{
-						Group:      gvk.Group,
-						APIVersion: gvk.Version,
-						Kind:       gvk.Kind,
-						Name:       clusterName,
-					}},
-				})
-			}
+		for _, mt := range targets {
+			holds.AddHold(mt, store.Hold{
+				Reason: store.HoldReasonCluster,
+				OnRefs: []v1alpha1.UIResourceStateWaitingOnRef{{
+					Group:      gvk.Group,
+					APIVersion: gvk.Version,
+					Kind:       gvk.Kind,
+					Name:       clusterName,
+				}},
+			})
 		}
 	}
 }
