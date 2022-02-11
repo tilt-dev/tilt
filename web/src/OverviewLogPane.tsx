@@ -114,7 +114,8 @@ function newLineEl(
   let spacer = "\n"
   code.innerHTML = anser.linkify(
     anser.ansiToHtml(anser.escapeForHtml(line.text) + spacer, {
-      use_classes: true,
+      // Let anser colorize the html as it appears from various consoles
+      use_classes: false,
     })
   )
   span.appendChild(code)
