@@ -119,7 +119,6 @@ github.com/containerd/containerd/services/content/contentserver
 github.com/containerd/containerd/version
 # github.com/containerd/continuity v0.1.0
 ## explicit; go 1.13
-github.com/containerd/continuity/fs
 github.com/containerd/continuity/sysx
 # github.com/containerd/ttrpc v1.1.0
 ## explicit; go 1.13
