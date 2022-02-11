@@ -325,7 +325,7 @@ func (c *Controller) consumeLogs(watch *podLogWatch, st store.RStore) {
 		if exitError != nil {
 			// TODO(nick): Should this be Warnf/Errorf?
 			logger.Get(ctx).Infof("Error streaming %s logs: %v", pID, exitError)
-			watch.debounce = watch.debounce * 2
+			watch.debounce *= 2
 			if watch.debounce > maxDebounceDuration {
 				watch.debounce = maxDebounceDuration
 			}

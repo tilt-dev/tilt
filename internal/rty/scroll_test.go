@@ -76,7 +76,7 @@ func TestTextScroll(t *testing.T) {
 	sl = NewTextScrollLayout("bar2")
 	s := ""
 	for i := 1; i <= 20; i++ {
-		s = s + fmt.Sprintf("%d\n", i)
+		s += fmt.Sprintf("%d\n", i)
 	}
 	sl.Add(TextString(s))
 	ts := i.rty.TextScroller(sl.name)

@@ -148,6 +148,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.SessionStatus":                   schema_pkg_apis_core_v1alpha1_SessionStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.StartOnSpec":                     schema_pkg_apis_core_v1alpha1_StartOnSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.StateSource":                     schema_pkg_apis_core_v1alpha1_StateSource(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.StopOnSpec":                      schema_pkg_apis_core_v1alpha1_StopOnSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TCPSocketAction":                 schema_pkg_apis_core_v1alpha1_TCPSocketAction(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Target":                          schema_pkg_apis_core_v1alpha1_Target(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TargetState":                     schema_pkg_apis_core_v1alpha1_TargetState(ref),
@@ -5531,6 +5532,34 @@ func schema_pkg_apis_core_v1alpha1_StateSource(ref common.ReferenceCallback) com
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_StopOnSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"uiButtons": {
+						SchemaProps: spec.SchemaProps{
+							Description: "UIButtons that can trigger a stop.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"uiButtons"},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_TCPSocketAction(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -5943,12 +5972,18 @@ func schema_pkg_apis_core_v1alpha1_TiltfileSpec(ref common.ReferenceCallback) co
 							},
 						},
 					},
+					"stopOn": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Objects that can stop execution of this Tiltfile.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.StopOnSpec"),
+						},
+					},
 				},
 				Required: []string{"path"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.StopOnSpec"},
 	}
 }
 

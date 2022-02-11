@@ -170,7 +170,7 @@ func (d *fakeDownloader) DestinationPath(pkg string) string {
 }
 
 func (d *fakeDownloader) Download(pkg string) (string, error) {
-	d.downloadCount = d.downloadCount + 1
+	d.downloadCount += 1
 	if d.downloadError != nil {
 		return "", fmt.Errorf("download error %d: %v", d.downloadCount, d.downloadError)
 	}

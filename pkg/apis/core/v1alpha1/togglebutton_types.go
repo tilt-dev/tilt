@@ -169,10 +169,8 @@ func (in *ToggleButton) Validate(ctx context.Context) field.ErrorList {
 	var result field.ErrorList
 	if in.Spec.StateSource.ConfigMap == nil {
 		result = append(result, field.Invalid(field.NewPath("Spec", "StateSource"), in.Spec.StateSource, "must specify exactly one kind of StateSource"))
-	} else {
-		if in.Spec.StateSource.ConfigMap.OffValue == in.Spec.StateSource.ConfigMap.OnValue {
-			result = append(result, field.Invalid(field.NewPath("Spec", "StateSource", "ConfigMap"), in.Spec.StateSource.ConfigMap, "OnValue and OffValue must differ"))
-		}
+	} else if in.Spec.StateSource.ConfigMap.OffValue == in.Spec.StateSource.ConfigMap.OnValue {
+		result = append(result, field.Invalid(field.NewPath("Spec", "StateSource", "ConfigMap"), in.Spec.StateSource.ConfigMap, "OnValue and OffValue must differ"))
 	}
 	return result
 }

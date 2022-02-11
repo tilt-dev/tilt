@@ -37,6 +37,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/internal/tiltfile/config"
+	"github.com/tilt-dev/tilt/internal/tiltfile/hasher"
 	tiltfile_k8s "github.com/tilt-dev/tilt/internal/tiltfile/k8s"
 	"github.com/tilt-dev/tilt/internal/tiltfile/k8scontext"
 	"github.com/tilt-dev/tilt/internal/tiltfile/testdata"
@@ -1314,7 +1315,7 @@ docker_build('gcr.io/bar', 'bar')
 k8s_yaml('bar.yaml')
 `)
 
-	tlr := f.newTiltfileLoader().Load(f.ctx, ctrltiltfile.MainTiltfile(f.JoinPath("Tiltfile"), []string{"baz"}))
+	tlr := f.newTiltfileLoader().Load(f.ctx, ctrltiltfile.MainTiltfile(f.JoinPath("Tiltfile"), []string{"baz"}), nil)
 	err := tlr.Error
 	if assert.Error(t, err) {
 		assert.Equal(t, `You specified some resources that could not be found: "baz"
@@ -5929,6 +5930,48 @@ local_resource("test2", cmd="echo hi2", labels=["bar", "baz"])
 	f.assertNextManifest("test2", resourceLabels("bar", "baz"))
 }
 
+// https://github.com/tilt-dev/tilt/issues/5467
+func TestLoadErrorWithArgs(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", "asdf")
+	f.loadArgsErrString([]string{"foo"}, "undefined: asdf")
+}
+
+func TestContentsChangedTag(t *testing.T) {
+	f := newFixture(t)
+	defer f.TearDown()
+
+	f.file("Tiltfile", "print('Hello')")
+	tiltfile := ctrltiltfile.MainTiltfile(f.JoinPath("Tiltfile"), []string{})
+	loader := f.newTiltfileLoader()
+
+	// *.changed = false on first load (no previous hash values)
+	tlr := loader.Load(f.ctx, tiltfile, nil)
+	assert.Equal(t, "0d4b93146f79968657afdad8b23d423973bf7a7e97690d146e6b6cfcc24e617e", tlr.Hashes.TiltfileSHA256)
+	assert.Equal(t, "0d4b93146f79968657afdad8b23d423973bf7a7e97690d146e6b6cfcc24e617e", tlr.Hashes.AllFilesSHA256)
+
+	event := f.SingleAnalyticsEvent("tiltfile.loaded")
+	assert.Equal(t, "false", event.Tags["tiltfile.changed"])
+	assert.Equal(t, "false", event.Tags["allfiles.changed"])
+
+	// *.changed = true because hash values differ
+	f.an.Counts = []analytics.CountEvent{}
+	tlr.Hashes = hasher.Hashes{TiltfileSHA256: "abc123", AllFilesSHA256: "abc123"}
+	tlr = loader.Load(f.ctx, tiltfile, &tlr)
+	event = f.SingleAnalyticsEvent("tiltfile.loaded")
+	assert.Equal(t, "true", event.Tags["tiltfile.changed"])
+	assert.Equal(t, "true", event.Tags["allfiles.changed"])
+
+	// *.changed = false because hash values match
+	f.an.Counts = []analytics.CountEvent{}
+	tlr = loader.Load(f.ctx, tiltfile, &tlr)
+	event = f.SingleAnalyticsEvent("tiltfile.loaded")
+	assert.Equal(t, "false", event.Tags["tiltfile.changed"])
+	assert.Equal(t, "false", event.Tags["allfiles.changed"])
+}
+
 type fixture struct {
 	ctx context.Context
 	out *bytes.Buffer
@@ -6122,7 +6165,7 @@ func (f *fixture) load(args ...string) {
 // Warnings should be asserted later with assertWarnings
 func (f *fixture) loadAllowWarnings(args ...string) {
 	f.t.Helper()
-	tlr := f.newTiltfileLoader().Load(f.ctx, ctrltiltfile.MainTiltfile(f.JoinPath("Tiltfile"), args))
+	tlr := f.newTiltfileLoader().Load(f.ctx, ctrltiltfile.MainTiltfile(f.JoinPath("Tiltfile"), args), nil)
 	err := tlr.Error
 	if err != nil {
 		f.t.Fatal(err)
@@ -6138,13 +6181,13 @@ func (f *fixture) loadAllowWarnings(args ...string) {
 func unusedImageWarning(unusedImage string, suggestedImages []string, configType string) string {
 	ret := fmt.Sprintf("Image not used in any %s config:\n    ✕ %s", configType, unusedImage)
 	if len(suggestedImages) > 0 {
-		ret = ret + "\nDid you mean…"
+		ret += "\nDid you mean…"
 		for _, s := range suggestedImages {
-			ret = ret + fmt.Sprintf("\n    - %s", s)
+			ret += fmt.Sprintf("\n    - %s", s)
 		}
 	}
-	ret = ret + "\nSkipping this image build"
-	ret = ret + fmt.Sprintf("\nIf this is deliberate, suppress this warning with: update_settings(suppress_unused_image_warnings=[%q])", unusedImage)
+	ret += "\nSkipping this image build"
+	ret += fmt.Sprintf("\nIf this is deliberate, suppress this warning with: update_settings(suppress_unused_image_warnings=[%q])", unusedImage)
 	return ret
 }
 
@@ -6155,8 +6198,12 @@ func (f *fixture) loadAssertWarnings(warnings ...string) {
 }
 
 func (f *fixture) loadErrString(msgs ...string) {
+	f.loadArgsErrString(nil, msgs...)
+}
+
+func (f *fixture) loadArgsErrString(args []string, msgs ...string) {
 	f.t.Helper()
-	tlr := f.newTiltfileLoader().Load(f.ctx, ctrltiltfile.MainTiltfile(f.JoinPath("Tiltfile"), nil))
+	tlr := f.newTiltfileLoader().Load(f.ctx, ctrltiltfile.MainTiltfile(f.JoinPath("Tiltfile"), args), nil)
 	err := tlr.Error
 
 	if err == nil {

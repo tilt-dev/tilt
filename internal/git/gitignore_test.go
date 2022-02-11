@@ -77,10 +77,8 @@ func (tf *testFixture) AssertResult(description, path string, expectedMatches bo
 		isIgnored, err := tf.tester.Matches(path)
 		if expectError {
 			assert.Error(t, err)
-		} else {
-			if assert.NoError(t, err) {
-				assert.Equal(t, expectedMatches, isIgnored)
-			}
+		} else if assert.NoError(t, err) {
+			assert.Equal(t, expectedMatches, isIgnored)
 		}
 	})
 }

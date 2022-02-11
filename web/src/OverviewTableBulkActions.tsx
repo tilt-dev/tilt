@@ -41,7 +41,7 @@ const SelectedCount = styled.p`
 // Helpers
 export function buttonsByAction(
   resourceButtons: { [key: string]: ButtonSet },
-  selectedResources: string[]
+  selectedResources: Set<string>
 ) {
   const actionButtons: ActionButtons = {
     [BulkAction.Disable]: [],
@@ -87,7 +87,7 @@ export function OverviewTableBulkActions({
   )
 
   // Don't render if feature flag is off or if there are no selections
-  if (!features.isEnabled(Flag.DisableResources) || selected.length === 0) {
+  if (!features.isEnabled(Flag.DisableResources) || selected.size === 0) {
     return null
   }
 
@@ -113,7 +113,7 @@ export function OverviewTableBulkActions({
         targetToggleState={ApiButtonToggleState.Off}
         onClickCallback={onClickCallback}
       />
-      <BulkSelectedCount count={selected.length} />
+      <BulkSelectedCount count={selected.size} />
     </BulkActionMenu>
   )
 }

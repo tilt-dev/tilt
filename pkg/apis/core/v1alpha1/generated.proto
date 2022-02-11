@@ -2222,6 +2222,11 @@ message StateSource {
   optional ConfigMapStateSource configMap = 1;
 }
 
+message StopOnSpec {
+  // UIButtons that can trigger a stop.
+  repeated string uiButtons = 2;
+}
+
 // TCPSocketAction describes an action based on opening a socket
 message TCPSocketAction {
   // Number or name of the port to access on the container.
@@ -2381,6 +2386,11 @@ message TiltfileSpec {
   //
   // +optional
   repeated string args = 4;
+
+  // Objects that can stop execution of this Tiltfile.
+  //
+  // +optional
+  optional StopOnSpec stopOn = 5;
 }
 
 // TiltfileStateRunning is a running state of a tiltfile execution.

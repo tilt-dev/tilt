@@ -11,8 +11,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/uibutton"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -1640,7 +1643,75 @@ func TestDisablingCancelsBuild(t *testing.T) {
 	f.waitForCompletedBuildCount(1)
 
 	f.withManifestState("local", func(ms store.ManifestState) {
-		require.Equal(t, "context canceled", ms.LastBuild().Error.Error())
+		require.Equal(t, "build canceled", ms.LastBuild().Error.Error())
+	})
+
+	err = f.Stop()
+	require.NoError(t, err)
+}
+
+func TestCancelButton(t *testing.T) {
+	f := newTestFixture(t)
+	f.b.completeBuildsManually = true
+	f.useRealTiltfileLoader()
+	f.WriteFile("Tiltfile", `
+enable_feature('cancel_build')
+local_resource('local', 'sleep 10000')
+`)
+	f.loadAndStart()
+	f.waitUntilManifestBuilding("local")
+
+	var cancelButton v1alpha1.UIButton
+	err := f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: uibutton.CancelButtonName("local")}, &cancelButton)
+	require.NoError(t, err)
+	cancelButton.Status.LastClickedAt = metav1.NowMicro()
+	err = f.ctrlClient.Status().Update(f.ctx, &cancelButton)
+	require.NoError(t, err)
+
+	f.waitForCompletedBuildCount(1)
+
+	f.withManifestState("local", func(ms store.ManifestState) {
+		require.Equal(t, "build canceled", ms.LastBuild().Error.Error())
+	})
+
+	err = f.Stop()
+	require.NoError(t, err)
+}
+
+func TestCancelButtonClickedBeforeBuild(t *testing.T) {
+	f := newTestFixture(t)
+	f.b.completeBuildsManually = true
+	f.useRealTiltfileLoader()
+	f.WriteFile("Tiltfile", `
+enable_feature('cancel_build')
+local_resource('local', 'sleep 10000')
+`)
+	// grab a timestamp now to represent clicking the button before the build started
+	ts := metav1.NowMicro()
+
+	f.loadAndStart()
+	f.waitUntilManifestBuilding("local")
+
+	var cancelButton v1alpha1.UIButton
+	err := f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: uibutton.CancelButtonName("local")}, &cancelButton)
+	require.NoError(t, err)
+	cancelButton.Status.LastClickedAt = ts
+	err = f.ctrlClient.Status().Update(f.ctx, &cancelButton)
+	require.NoError(t, err)
+
+	// give the build controller a little time to process the button click
+	require.Never(t, func() bool {
+		state := f.store.RLockState()
+		defer f.store.RUnlockState()
+		return state.CompletedBuildCount > 0
+	}, 20*time.Millisecond, 2*time.Millisecond, "build finished on its own even though manual build completion is enabled")
+
+	f.b.completeBuild("local:local")
+
+	f.waitForCompletedBuildCount(1)
+
+	f.withManifestState("local", func(ms store.ManifestState) {
+		require.NoError(t, ms.LastBuild().Error)
 	})
 
 	err = f.Stop()

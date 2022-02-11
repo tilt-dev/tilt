@@ -311,16 +311,16 @@ func (c *FakeClient) ImageRemove(ctx context.Context, imageID string, options ty
 	}, nil
 }
 
-func (c *FakeClient) NewVersionError(APIrequired, feature string) error {
+func (c *FakeClient) NewVersionError(apiRequired, feature string) error {
 	if c.ThrowNewVersionError {
 		c.ThrowNewVersionError = false
-		return c.VersionError(APIrequired, feature)
+		return c.VersionError(apiRequired, feature)
 	}
 	return nil
 }
 
-func (c *FakeClient) VersionError(APIrequired, feature string) error {
-	return fmt.Errorf("%q requires API version %s, but the Docker daemon API version is... something else", feature, APIrequired)
+func (c *FakeClient) VersionError(apiRequired, feature string) error {
+	return fmt.Errorf("%q requires API version %s, but the Docker daemon API version is... something else", feature, apiRequired)
 }
 
 func (c *FakeClient) BuildCachePrune(ctx context.Context, opts types.BuildCachePruneOptions) (*types.BuildCachePruneReport, error) {

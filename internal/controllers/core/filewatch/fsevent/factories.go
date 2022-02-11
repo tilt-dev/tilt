@@ -12,13 +12,9 @@ type WatcherMaker func(paths []string, ignore watch.PathMatcher, l logger.Logger
 type TimerMaker func(d time.Duration) <-chan time.Time
 
 func ProvideWatcherMaker() WatcherMaker {
-	return func(paths []string, ignore watch.PathMatcher, l logger.Logger) (watch.Notify, error) {
-		return watch.NewWatcher(paths, ignore, l)
-	}
+	return watch.NewWatcher
 }
 
 func ProvideTimerMaker() TimerMaker {
-	return func(t time.Duration) <-chan time.Time {
-		return time.After(t)
-	}
+	return time.After
 }

@@ -23,3 +23,8 @@ type StartOnSpec struct {
 	// UIButtons that can trigger a start/restart.
 	UIButtons []string `json:"uiButtons" protobuf:"bytes,2,rep,name=uiButtons"`
 }
+
+type StopOnSpec struct {
+	// UIButtons that can trigger a stop.
+	UIButtons []string `json:"uiButtons" protobuf:"bytes,2,rep,name=uiButtons"`
+}

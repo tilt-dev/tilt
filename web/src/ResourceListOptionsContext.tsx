@@ -16,6 +16,7 @@ export const RESOURCE_LIST_OPTIONS_KEY = "sidebar_options"
 export type ResourceListOptions = {
   alertsOnTop: boolean // Note: this is only used/implemented in OverviewSidebar
   resourceNameFilter: string
+  showDisabledResources: boolean
 }
 
 type ResourceListOptionsContext = {
@@ -26,6 +27,7 @@ type ResourceListOptionsContext = {
 export const DEFAULT_OPTIONS: ResourceListOptions = {
   alertsOnTop: false,
   resourceNameFilter: "",
+  showDisabledResources: false,
 }
 
 const ResourceListOptionsContext = createContext<ResourceListOptionsContext>({
@@ -41,6 +43,7 @@ function maybeUpgradeSavedOptions(savedOptions: ResourceListOptions) {
   return {
     ...savedOptions,
     resourceNameFilter: savedOptions.resourceNameFilter ?? "",
+    showDisabledResources: savedOptions.showDisabledResources ?? false,
   }
 }
 

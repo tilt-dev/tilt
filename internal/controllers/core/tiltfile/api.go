@@ -19,6 +19,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/uibutton"
 	"github.com/tilt-dev/tilt/internal/controllers/apiset"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/feature"
@@ -238,6 +239,7 @@ func toAPIObjects(
 		result.AddSetForType(&v1alpha1.Cmd{}, toCmdObjects(tlr, disableSources))
 		result.AddSetForType(&v1alpha1.ToggleButton{}, toToggleButtons(tlr, disableSources))
 		result.AddSetForType(&v1alpha1.Cluster{}, toClusterObjects(nn, tlr, defaultK8sConnection))
+		result.AddSetForType(&v1alpha1.UIButton{}, toCancelButtons(tlr))
 	}
 
 	result.AddSetForType(&v1alpha1.UIResource{}, toUIResourceObjects(tf, tlr, disableSources))
@@ -311,7 +313,7 @@ func toToggleButtons(tlr *tiltfile.TiltfileLoadResult, disableSources disableSou
 				ObjectMeta: metav1.ObjectMeta{
 					Name: fmt.Sprintf("%s-disable", name),
 					Annotations: map[string]string{
-						v1alpha1.AnnotationButtonType: "DisableToggle",
+						v1alpha1.AnnotationButtonType: v1alpha1.ButtonTypeDisableToggle,
 					},
 				},
 				Spec: v1alpha1.ToggleButtonSpec{
@@ -338,6 +340,19 @@ func toToggleButtons(tlr *tiltfile.TiltfileLoadResult, disableSources disableSou
 			}
 			result[tb.Name] = tb
 		}
+	}
+	return result
+}
+
+func toCancelButtons(tlr *tiltfile.TiltfileLoadResult) apiset.TypedObjectSet {
+	result := apiset.TypedObjectSet{}
+	if !tlr.FeatureFlags[feature.CancelBuild] {
+		return result
+	}
+
+	for _, m := range tlr.Manifests {
+		button := uibutton.CancelButton(m.Name.String())
+		result[button.Name] = button
 	}
 	return result
 }

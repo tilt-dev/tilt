@@ -87,7 +87,7 @@ const TableHeaderStarIcon = styled(StarSvg)`
   width: 13px;
 `
 
-const Name = styled.button`
+export const Name = styled.button`
   ${mixinResetButtonStyle};
   color: ${Color.offWhite};
   font-size: ${FontSize.small};
@@ -281,6 +281,7 @@ export function ResourceSelectionHeader({
       analyticsName={"ui.web.checkbox.resourceGroupSelection"}
       analyticsTags={analyticsTags}
       checked={checked}
+      aria-checked={checked}
       indeterminate={indeterminate}
       onChange={onChange}
       size="small"
@@ -342,6 +343,7 @@ export function TableSelectionColumn({ row }: CellProps<RowValues>) {
       analyticsName={"ui.web.checkbox.resourceSelection"}
       analyticsTags={analyticsTags}
       checked={checked}
+      aria-checked={checked}
       onChange={onChange}
       size="small"
     />

@@ -3,6 +3,7 @@ package starkit
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"path/filepath"
 	"strings"
 	"time"
@@ -265,23 +266,29 @@ func (e *Environment) getPath(t *starlark.Thread, path string) (string, error) {
 }
 
 func (e *Environment) doLoad(t *starlark.Thread, localPath string) (starlark.StringDict, error) {
-	for _, ext := range e.plugins {
-		onExecExt, ok := ext.(OnExecPlugin)
-		if ok {
-			err := onExecExt.OnExec(t, localPath)
-			if err != nil {
-				return starlark.StringDict{}, err
-			}
-		}
-	}
-
-	var contentBytes interface{} = nil
+	var bytes []byte
 	if e.fakeFileSystem != nil {
 		contents, ok := e.fakeFileSystem[localPath]
 		if !ok {
 			return starlark.StringDict{}, fmt.Errorf("Not in fake file system: %s", localPath)
 		}
-		contentBytes = []byte(contents)
+		bytes = []byte(contents)
+	} else {
+		var err error
+		bytes, err = ioutil.ReadFile(localPath)
+		if err != nil {
+			return starlark.StringDict{}, fmt.Errorf("error reading file %s: %w", localPath, err)
+		}
+	}
+
+	for _, ext := range e.plugins {
+		onExecExt, ok := ext.(OnExecPlugin)
+		if ok {
+			err := onExecExt.OnExec(t, localPath, bytes)
+			if err != nil {
+				return starlark.StringDict{}, err
+			}
+		}
 	}
 
 	// Create a copy of predeclared variables so we can specify Tiltfile-specific values.
@@ -291,7 +298,7 @@ func (e *Environment) doLoad(t *starlark.Thread, localPath string) (starlark.Str
 	}
 	predeclared["__file__"] = starlark.String(localPath)
 
-	return starlark.ExecFile(t, localPath, contentBytes, predeclared)
+	return starlark.ExecFile(t, localPath, bytes, predeclared)
 }
 
 type ArgUnpacker func(fnName string, args starlark.Tuple, kwargs []starlark.Tuple, pairs ...interface{}) error
