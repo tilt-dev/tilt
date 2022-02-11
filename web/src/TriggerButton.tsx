@@ -1,8 +1,10 @@
 import React, { useCallback } from "react"
+import styled from "styled-components"
 import { Tags } from "./analytics"
 import { ReactComponent as TriggerButtonManualSvg } from "./assets/svg/trigger-button-manual.svg"
 import { ReactComponent as TriggerButtonSvg } from "./assets/svg/trigger-button.svg"
 import { InstrumentedButton } from "./instrumentedComponents"
+import TiltTooltip from "./Tooltip"
 import { triggerTooltip } from "./trigger"
 import { TriggerMode } from "./types"
 
@@ -17,6 +19,16 @@ type TriggerButtonProps = {
   analyticsTags: Tags
   className?: string
 }
+
+// A wrapper to receive pointer events so that we get cursor and tooltip when disabled
+// https://mui.com/components/tooltips/#disabled-elements
+const TriggerButtonCursorWrapper = styled.div`
+  display: inline-block;
+  cursor: not-allowed;
+  .is-clickable {
+    cursor: pointer;
+  }
+`
 
 function TriggerButton(props: TriggerButtonProps) {
   let isManual =
@@ -55,7 +67,6 @@ function TriggerButton(props: TriggerButtonProps) {
     [props.onTrigger]
   )
 
-
   let classes = [props.className]
   if (props.isSelected) {
     classes.push("is-selected")
@@ -77,17 +88,26 @@ function TriggerButton(props: TriggerButtonProps) {
   if (props.isBuilding) {
     classes.push("is-building")
   }
+  const tooltip = triggerTooltip(clickable, isEmphasized, props.isQueued)
   return (
-    <InstrumentedButton
-      onClick={onClick}
-      className={classes.join(" ")}
-      disabled={!clickable}
-      title={triggerTooltip(clickable, isEmphasized, props.isQueued)}
-      analyticsName={"ui.web.triggerResource"}
-      analyticsTags={props.analyticsTags}
-    >
-      {isEmphasized ? <TriggerButtonManualSvg /> : <TriggerButtonSvg />}
-    </InstrumentedButton>
+    <TiltTooltip title={tooltip}>
+      <TriggerButtonCursorWrapper>
+        <InstrumentedButton
+          onClick={onClick}
+          className={classes.join(" ")}
+          disabled={!clickable}
+          aria-label={tooltip}
+          analyticsName={"ui.web.triggerResource"}
+          analyticsTags={props.analyticsTags}
+        >
+          {isEmphasized ? (
+            <TriggerButtonManualSvg role="presentation" />
+          ) : (
+            <TriggerButtonSvg role="presentation" />
+          )}
+        </InstrumentedButton>
+      </TriggerButtonCursorWrapper>
+    </TiltTooltip>
   )
 }
 
