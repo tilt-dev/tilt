@@ -34,6 +34,7 @@ import SidebarItemView, {
   SidebarItemRoot,
 } from "./SidebarItemView"
 import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
+import SrOnly from "./SrOnly"
 import {
   AnimDuration,
   Color,
@@ -203,7 +204,7 @@ const defaultMaxItems = 20
 
 const ShowMoreRow = styled.li`
   margin: ${SizeUnit(0.5)} ${SizeUnit(0.5)} 0 ${SizeUnit(0.5)};
-  color: ${Color.grayLight};
+  color: ${Color.gray7};
   font-size: ${FontSize.small};
   display: flex;
   align-items: center;
@@ -214,7 +215,7 @@ const ShowMoreRow = styled.li`
 const ShowMoreButton = styled(InstrumentedButton)`
   ${mixinResetButtonStyle};
   font-size: ${FontSize.small};
-  color: ${Color.offWhite};
+  color: ${Color.gray6};
   transition: color ${AnimDuration.default} ease;
   cursor: pointer;
   padding: 0 0.5em;
@@ -226,12 +227,12 @@ const ShowMoreButton = styled(InstrumentedButton)`
 
 function SidebarListSectionItems(props: SidebarSectionProps) {
   let [maxItems, setMaxItems] = useState(defaultMaxItems)
-  let items = props.items
+  let displayItems = props.items
   let remaining = 0
-  let moreItems = Math.max(items.length - maxItems, 0)
+  let moreItems = Math.max(displayItems.length - maxItems, 0)
   if (moreItems) {
-    remaining = items.length - maxItems
-    items = items.slice(0, maxItems)
+    remaining = displayItems.length - maxItems
+    displayItems = displayItems.slice(0, maxItems)
   }
 
   let showMore = useCallback(() => {
@@ -248,16 +249,18 @@ function SidebarListSectionItems(props: SidebarSectionProps) {
           analyticsName="ui.web.sidebarShowMore"
           analyticsTags={emptyTags}
         >
-          …Show More
+          …Show More <SrOnly>Resources</SrOnly>
         </ShowMoreButton>
-        <span>{text}</span>
+        <span>
+          {text} <SrOnly>hidden</SrOnly>
+        </span>
       </ShowMoreRow>
     )
   }
 
   return (
     <>
-      {items.map((item) => (
+      {displayItems.map((item) => (
         <SidebarItemView
           key={"sidebarItem-" + item.name}
           groupView={props.groupView}
