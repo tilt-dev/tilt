@@ -41,7 +41,7 @@ func NewDockerComposeBuildAndDeployer(dcc dockercompose.DockerComposeClient, dc 
 	ctrlClient ctrlclient.Client) *DockerComposeBuildAndDeployer {
 	return &DockerComposeBuildAndDeployer{
 		dcc:        dcc,
-		dc:         dc,
+		dc:         dc.ForOrchestrator(model.OrchestratorDC),
 		ib:         ib,
 		clock:      c,
 		ctrlClient: ctrlClient,
@@ -114,6 +114,8 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		})
 	}()
 
+	ctx = docker.WithOrchestrator(ctx, model.OrchestratorDC)
+
 	iTargets := plan.tiltManagedImageTargets
 	q, err := NewImageTargetQueue(ctx, plan.tiltManagedImageTargets, currentState, bd.ib.CanReuseRef)
 	if err != nil {
@@ -140,6 +142,10 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		}
 		ps.EndPipelineStep(ctx)
 	}
+
+	var cluster v1alpha1.Cluster
+	// If the cluster fetch fails, that's OK.
+	_ = bd.ctrlClient.Get(ctx, ktypes.NamespacedName{Name: "docker"}, &cluster)
 
 	imageMapSet := make(map[ktypes.NamespacedName]*v1alpha1.ImageMap, len(plan.dockerComposeTarget.Spec.ImageMaps))
 	for _, iTarget := range iTargets {
@@ -171,7 +177,7 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		// NOTE(maia): we assume that this func takes one DC target and up to one image target
 		// corresponding to that service. If this func ever supports specs for more than one
 		// service at once, we'll have to match up image build results to DC target by ref.
-		refs, stages, err := bd.ib.Build(ctx, iTarget, nil, imageMapSet, ps)
+		refs, stages, err := bd.ib.Build(ctx, iTarget, &cluster, imageMapSet, ps)
 		if err != nil {
 			dockerimage.MaybeUpdateStatus(ctx, bd.ctrlClient, iTarget, dockerimage.ToCompletedFailStatus(iTarget, startTime, stages, err))
 			cmdimage.MaybeUpdateStatus(ctx, bd.ctrlClient, iTarget, cmdimage.ToCompletedFailStatus(iTarget, startTime, err))

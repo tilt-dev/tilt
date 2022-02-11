@@ -253,17 +253,18 @@ func (s *tiltfileState) loadManifests(tf *v1alpha1.Tiltfile) ([]model.Manifest, 
 		s.logger.Warnf("%s", err.Error())
 	}
 
-	var manifests []model.Manifest
+	manifests := []model.Manifest{}
 	k8sContextState, err := k8scontext.GetState(result)
 	if err != nil {
 		return nil, result, err
 	}
 
 	if len(resources.k8s) > 0 || len(unresourced) > 0 {
-		manifests, err = s.translateK8s(resources.k8s, us)
+		ms, err := s.translateK8s(resources.k8s, us)
 		if err != nil {
 			return nil, result, err
 		}
+		manifests = append(manifests, ms...)
 
 		isAllowed := k8sContextState.IsAllowed(tf)
 		if !isAllowed {
@@ -273,17 +274,18 @@ If you're sure you want to deploy there, add:
 	allow_k8s_contexts('%s')
 to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext, kubeContext)
 		}
-	} else {
-		if !resources.dc.Empty() {
-			if err := s.validateDockerComposeVersion(); err != nil {
-				return nil, result, err
-			}
+	}
+
+	if !resources.dc.Empty() {
+		if err := s.validateDockerComposeVersion(); err != nil {
+			return nil, result, err
 		}
 
-		manifests, err = s.translateDC(resources.dc)
+		ms, err := s.translateDC(resources.dc)
 		if err != nil {
 			return nil, result, err
 		}
+		manifests = append(manifests, ms...)
 	}
 
 	err = s.validateLiveUpdatesForManifests(manifests)
@@ -600,11 +602,6 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 	err = s.assembleDC()
 	if err != nil {
 		return resourceSet{}, nil, err
-	}
-
-	if !s.dc.Empty() && (len(s.k8s) > 0 || len(s.k8sUnresourced) > 0) {
-		return resourceSet{}, nil, fmt.Errorf("can't declare both k8s " +
-			"resources/entities and docker-compose resources")
 	}
 
 	return resourceSet{

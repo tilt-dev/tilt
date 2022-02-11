@@ -309,8 +309,10 @@ func (r *Reconciler) run(ctx context.Context, nn types.NamespacedName, tf *v1alp
 		tlr.Error = fmt.Errorf("No resources found. Check out https://docs.tilt.dev/tutorial.html to get started!")
 	}
 
-	if tlr.Orchestrator() != model.OrchestratorUnknown {
-		r.dockerClient.SetOrchestrator(tlr.Orchestrator())
+	if tlr.HasOrchestrator(model.OrchestratorK8s) {
+		r.dockerClient.SetOrchestrator(model.OrchestratorK8s)
+	} else if tlr.HasOrchestrator(model.OrchestratorDC) {
+		r.dockerClient.SetOrchestrator(model.OrchestratorDC)
 	}
 
 	if requiresDocker(tlr) {
@@ -435,7 +437,7 @@ func (r *Reconciler) enqueueTriggerQueue(obj client.Object) []reconcile.Request 
 // Otherwise, we'll return the zero value of `s.defaultReg`, which is an empty registry.
 // It has side-effects (a log line) and so should only be called once.
 func DecideRegistry(ctx context.Context, kCli k8s.Client, tlr *tiltfile.TiltfileLoadResult) container.Registry {
-	if tlr.Orchestrator() != model.OrchestratorK8s {
+	if !tlr.HasOrchestrator(model.OrchestratorK8s) {
 		return tlr.DefaultRegistry
 	}
 
@@ -466,7 +468,7 @@ func (r *Reconciler) defaultK8sConnection() *v1alpha1.KubernetesClusterConnectio
 }
 
 func requiresDocker(tlr tiltfile.TiltfileLoadResult) bool {
-	if tlr.Orchestrator() == model.OrchestratorDC {
+	if tlr.HasOrchestrator(model.OrchestratorDC) {
 		return true
 	}
 

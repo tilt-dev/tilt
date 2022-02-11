@@ -82,6 +82,9 @@ type Client interface {
 	// Set the orchestrator we're talking to. This is only relevant to switchClient,
 	// which can talk to either the Local or in-cluster docker daemon.
 	SetOrchestrator(orc model.Orchestrator)
+	// Return a client suitable for use with the given orchestrator. Only
+	// relevant for the switchClient which has clients for both types.
+	ForOrchestrator(orc model.Orchestrator) Client
 
 	ContainerInspect(ctx context.Context, contianerID string) (types.ContainerJSON, error)
 	ContainerList(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error)
@@ -382,6 +385,9 @@ func (c *Cli) initAuthConfigs(ctx context.Context) {
 
 func (c *Cli) CheckConnected() error                  { return nil }
 func (c *Cli) SetOrchestrator(orc model.Orchestrator) {}
+func (c *Cli) ForOrchestrator(orc model.Orchestrator) Client {
+	return c
+}
 func (c *Cli) Env() Env {
 	return c.env
 }

@@ -237,31 +237,48 @@ func HoldTargetsWithBuildingComponents(state store.EngineState, mts []*store.Man
 	}
 }
 
+func clusterNamesForTargets(mts []*store.ManifestTarget) []string {
+	// TODO(nick): In the future, K8s objects may reference the cluster
+	// they're deploying to.
+	clusters := []string{}
+	var k8s, dc bool
+	for _, mt := range mts {
+		k8s = k8s || mt.Manifest.IsK8s()
+		dc = dc || mt.Manifest.IsDC()
+	}
+	if k8s {
+		clusters = append(clusters, v1alpha1.ClusterNameDefault)
+	}
+	if dc {
+		clusters = append(clusters, "docker")
+	}
+	return clusters
+}
+
 // We use the cluster to detect what architecture we're building for.
 // Until the cluster connection has been established, we block any
 // image builds.
 func HoldTargetsWaitingOnCluster(state store.EngineState, mts []*store.ManifestTarget, holds HoldSet) {
-	// TODO(nick): In the future, K8s objects may reference the cluster
-	// they're deploying to.
-	clusterName := v1alpha1.ClusterNameDefault
-	cluster, ok := state.Clusters[clusterName]
-	isClusterOK := ok && cluster.Status.Error == "" && cluster.Status.Arch != ""
-	if isClusterOK {
-		return
-	}
+	for _, clusterName := range clusterNamesForTargets(mts) {
+		cluster, ok := state.Clusters[clusterName]
+		isClusterOK := ok && cluster.Status.Error == "" && cluster.Status.Arch != ""
+		if isClusterOK {
+			return
+		}
 
-	gvk := v1alpha1.SchemeGroupVersion.WithKind("Cluster")
-	for _, mt := range mts {
-		if mt.Manifest.IsK8s() || mt.Manifest.IsDC() {
-			holds.AddHold(mt, store.Hold{
-				Reason: store.HoldReasonCluster,
-				OnRefs: []v1alpha1.UIResourceStateWaitingOnRef{{
-					Group:      gvk.Group,
-					APIVersion: gvk.Version,
-					Kind:       gvk.Kind,
-					Name:       clusterName,
-				}},
-			})
+		gvk := v1alpha1.SchemeGroupVersion.WithKind("Cluster")
+		for _, mt := range mts {
+			if mt.Manifest.IsK8s() || mt.Manifest.IsDC() {
+				holds.AddHold(mt, store.Hold{
+					Reason: store.HoldReasonCluster,
+					OnRefs: []v1alpha1.UIResourceStateWaitingOnRef{{
+						Group:      gvk.Group,
+						APIVersion: gvk.Version,
+						Kind:       gvk.Kind,
+						Name:       clusterName,
+					}},
+				})
+			}
 		}
 	}
 }
