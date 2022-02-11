@@ -73,8 +73,6 @@ function TriggerButton(props: TriggerButtonProps) {
   }
   if (clickable) {
     classes.push("is-clickable")
-  } else {
-    classes.push("is-disabled")
   }
   if (props.isQueued) {
     classes.push("is-queued")
@@ -91,7 +89,9 @@ function TriggerButton(props: TriggerButtonProps) {
   const tooltip = triggerTooltip(clickable, isEmphasized, props.isQueued)
   return (
     <TiltTooltip title={tooltip}>
-      <TriggerButtonCursorWrapper>
+      <TriggerButtonCursorWrapper
+        className={clickable ? ".is-clickable" : undefined}
+      >
         <InstrumentedButton
           onClick={onClick}
           className={classes.join(" ")}

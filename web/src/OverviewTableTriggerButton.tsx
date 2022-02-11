@@ -28,20 +28,6 @@ export const OverviewTableTriggerButton = styled(TriggerButton)`
     animation: spin 1s linear infinite;
   }
 
-  &.is-disabled {
-    cursor: not-allowed;
-    border: 0;
-  }
-  &.is-disabled:hover .fillStd {
-    fill: ${Color.grayLight};
-  }
-  &.is-disabled:active svg {
-    transform: scale(1);
-  }
-  &.is-emphasized .fillStd {
-    fill: ${Color.blue};
-  }
-
   // the emphasized svg is bigger, so pad the unemphasized svg to line it up
   padding: 0 0 0 5px;
   &.is-emphasized {
