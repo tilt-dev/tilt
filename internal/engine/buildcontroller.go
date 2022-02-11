@@ -159,6 +159,9 @@ func (c *BuildController) cleanUpCanceledBuilds(st store.RStore) {
 	defer st.RUnlockState()
 
 	for _, ms := range state.ManifestStates() {
+		if ms.CurrentBuild.Empty() {
+			continue
+		}
 		disabled := ms.DisableState == v1alpha1.DisableStateDisabled
 		canceled := false
 		if cancelButton, ok := state.UIButtons[uibutton.CancelButtonName(ms.Name.String())]; ok {
