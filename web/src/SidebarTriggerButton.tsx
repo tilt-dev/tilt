@@ -22,6 +22,9 @@ export const SidebarTriggerButton = styled(TriggerButton)`
   opacity: 0;
   pointer-events: none;
 
+  &.is-building {
+    display: none;
+  }
   &.is-clickable {
     pointer-events: auto;
     cursor: pointer;

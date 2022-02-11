@@ -74,6 +74,9 @@ function TriggerButton(props: TriggerButtonProps) {
   if (isEmphasized) {
     classes.push("is-emphasized")
   }
+  if (props.isBuilding) {
+    classes.push("is-building")
+  }
   return (
     <InstrumentedButton
       onClick={onClick}
