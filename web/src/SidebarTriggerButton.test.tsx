@@ -34,10 +34,14 @@ let expectManualTriggerIcon = (button: any, expected: boolean) => {
   expect(button.find(InstrumentedButton).getDOMNode().innerHTML).toContain(icon)
 }
 let expectIsSelected = (button: any, expected: boolean) => {
-  expect(button.find(InstrumentedButton).hasClass("is-selected")).toEqual(expected)
+  expect(button.find(InstrumentedButton).hasClass("is-selected")).toEqual(
+    expected
+  )
 }
 let expectIsQueued = (button: any, expected: boolean) => {
-  expect(button.find(InstrumentedButton).hasClass("is-queued")).toEqual(expected)
+  expect(button.find(InstrumentedButton).hasClass("is-queued")).toEqual(
+    expected
+  )
 }
 let expectWithTooltip = (button: any, expected: string) => {
   expect(button.find('div[role="tooltip"]').prop("title")).toEqual(expected)
