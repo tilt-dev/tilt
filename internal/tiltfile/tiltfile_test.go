@@ -4878,7 +4878,7 @@ func TestDependsOnMissingResource(t *testing.T) {
 local_resource('bar', 'echo bar', resource_deps=['foo'])
 `)
 
-	f.loadErrString("resource bar specified a dependency on unknown resource fo")
+	f.loadAssertWarnings("resource bar specified a dependency on unknown resource foo - dependency ignored")
 }
 
 func TestDependsOnSelf(t *testing.T) {
