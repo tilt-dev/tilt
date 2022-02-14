@@ -50,8 +50,12 @@ type clusterKey struct {
 }
 
 func newClusterKey(cluster *v1alpha1.Cluster) clusterKey {
+	rev := time.Time{}
+	if cluster.Status.ConnectedAt != nil {
+		rev = cluster.Status.ConnectedAt.Time
+	}
 	return clusterKey{
 		name:     apis.Key(cluster),
-		revision: cluster.Status.ConnectedAt.Time,
+		revision: rev,
 	}
 }
