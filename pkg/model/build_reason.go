@@ -48,6 +48,16 @@ func (r BuildReason) HasTrigger() bool {
 	return false
 }
 
+func (r BuildReason) WithoutTriggers() BuildReason {
+	result := int(r)
+	for _, v := range triggerBuildReasons {
+		if r.Has(v) {
+			result -= int(v)
+		}
+	}
+	return BuildReason(result)
+}
+
 func (r BuildReason) IsCrashOnly() bool {
 	return r == BuildReasonFlagCrash
 }
