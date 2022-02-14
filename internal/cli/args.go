@@ -59,7 +59,7 @@ EDITOR=nano tilt args
 # note: "--" here indicates the end of the tilt args and the start of the tiltfile args
 tilt args -- --foo=bar frontend backend
 
-Note that this does not affect built-in Tilt args (e.g. --hud, --host), but rather the extra args that come after,
+Note that this does not affect built-in Tilt args (e.g. --legacy, --host), but rather the extra args that come after,
 i.e., those specifying which resources to run and/or handled by a Tiltfile calling config.parse.
 `,
 	}

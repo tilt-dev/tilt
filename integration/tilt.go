@@ -110,7 +110,7 @@ func (d *TiltDriver) Up(ctx context.Context, command UpCommand, out io.Writer, a
 	}
 	mandatoryArgs := []string{string(command),
 		// Can't attach a HUD or install browsers in headless mode
-		"--hud=false",
+		"--legacy=false",
 
 		// Debug logging for integration tests
 		"--debug",
