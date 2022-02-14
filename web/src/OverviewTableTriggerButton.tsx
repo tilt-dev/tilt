@@ -27,6 +27,9 @@ export const OverviewTableTriggerButton = styled(TriggerButton)`
   &.is-queued > svg {
     animation: spin 1s linear infinite;
   }
+  &.is-manual .fillStd {
+    fill: ${Color.blue};
+  }
 
   // the emphasized svg is bigger, so pad the unemphasized svg to line it up
   padding: 0 0 0 5px;
