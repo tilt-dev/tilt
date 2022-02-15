@@ -5,7 +5,7 @@ import { act } from "react-dom/test-utils"
 import { MemoryRouter } from "react-router-dom"
 import HelpDialog from "./HelpDialog"
 import { TwoResources } from "./OverviewResourceBar.stories"
-import { SnapshotActionProvider } from "./snapshot"
+import { SnapshotActionTestProvider } from "./snapshot"
 
 it("renders shortcuts dialog on ?", () => {
   const root = mount(
@@ -29,9 +29,9 @@ it("opens snapshot modal on s", () => {
   }
   const root = mount(
     <MemoryRouter initialEntries={["/"]}>
-      <SnapshotActionProvider value={snapshot}>
+      <SnapshotActionTestProvider value={snapshot}>
         {TwoResources()}
-      </SnapshotActionProvider>
+      </SnapshotActionTestProvider>
     </MemoryRouter>
   )
 
