@@ -1,16 +1,19 @@
-import {mount} from "enzyme"
+import { mount } from "enzyme"
 import fetchMock from "fetch-mock"
+import { SnackbarProvider } from "notistack"
 import React from "react"
-import {MemoryRouter} from "react-router"
-import {AnalyticsAction} from "./analytics"
-import {cleanupMockAnalyticsCalls, expectIncrs, mockAnalyticsCalls,} from "./analytics_test_helpers"
-import {InstrumentedButton} from "./instrumentedComponents"
-import {SidebarBuildButton} from "./SidebarBuildButton"
-import {BuildButtonTooltip, startBuild} from "./trigger"
-import BuildButton, {BuildButtonProps} from "./BuildButton"
-import {TriggerMode} from "./types"
-import {SnackbarProvider} from "notistack"
+import { MemoryRouter } from "react-router"
+import { AnalyticsAction } from "./analytics"
+import {
+  cleanupMockAnalyticsCalls,
+  expectIncrs,
+  mockAnalyticsCalls,
+} from "./analytics_test_helpers"
+import BuildButton, { BuildButtonProps } from "./BuildButton"
+import { InstrumentedButton } from "./instrumentedComponents"
 import TiltTooltip from "./Tooltip"
+import { BuildButtonTooltip, startBuild } from "./trigger"
+import { TriggerMode } from "./types"
 
 function expectClickable(button: any, expected: boolean) {
   const ib = button.find(InstrumentedButton)
@@ -18,7 +21,9 @@ function expectClickable(button: any, expected: boolean) {
   expect(ib.prop("disabled")).toEqual(!expected)
 }
 function expectManualStartBuildIcon(button: any, expected: boolean) {
-  let icon = expected ? "start-build-button-manual.svg" : "start-build-button.svg"
+  let icon = expected
+    ? "start-build-button-manual.svg"
+    : "start-build-button.svg"
   expect(button.find(InstrumentedButton).getDOMNode().innerHTML).toContain(icon)
 }
 function expectIsSelected(button: any, expected: boolean) {
@@ -36,20 +41,22 @@ function expectWithTooltip(button: any, expected: string) {
 }
 
 function BuildButtonTestWrapper(props: Partial<BuildButtonProps>) {
-  return <MemoryRouter initialEntries={["/"]}>
-    <SnackbarProvider>
-      <BuildButton
-        onStartBuild={props.onStartBuild ?? (() => {})}
-        hasBuilt={props.hasBuilt ?? false}
-        isBuilding={props.isBuilding ?? false}
-        isSelected={props.isSelected}
-        isQueued={props.isQueued ?? false}
-        hasPendingChanges={props.hasPendingChanges ?? false}
-        triggerMode={props.triggerMode ?? TriggerMode.TriggerModeAuto}
-        analyticsTags={props.analyticsTags ?? {}}
-      />
-    </SnackbarProvider>
-  </MemoryRouter>
+  return (
+    <MemoryRouter initialEntries={["/"]}>
+      <SnackbarProvider>
+        <BuildButton
+          onStartBuild={props.onStartBuild ?? (() => {})}
+          hasBuilt={props.hasBuilt ?? false}
+          isBuilding={props.isBuilding ?? false}
+          isSelected={props.isSelected}
+          isQueued={props.isQueued ?? false}
+          hasPendingChanges={props.hasPendingChanges ?? false}
+          triggerMode={props.triggerMode ?? TriggerMode.TriggerModeAuto}
+          analyticsTags={props.analyticsTags ?? {}}
+        />
+      </SnackbarProvider>
+    </MemoryRouter>
+  )
 }
 
 describe("SidebarBuildButton", () => {
@@ -68,7 +75,8 @@ describe("SidebarBuildButton", () => {
         <BuildButtonTestWrapper
           onStartBuild={() => startBuild("doggos")}
           hasBuilt={true}
-          analyticsTags={{target: "k8s"}}/>
+          analyticsTags={{ target: "k8s" }}
+        />
       )
 
       let element = root.find(InstrumentedButton)
@@ -154,30 +162,27 @@ describe("SidebarBuildButton", () => {
         } else {
           expectWithTooltip(b, BuildButtonTooltip.Default)
         }
-      })
+      }
+    )
 
-    test.each([true, false])('shows selected trigger button for resource is selected: %p', (isSelected) => {
-      const root = mount(
-        <BuildButtonTestWrapper
-          isSelected={isSelected}
-        />
-      )
+    test.each([true, false])(
+      "shows selected trigger button for resource is selected: %p",
+      (isSelected) => {
+        const root = mount(<BuildButtonTestWrapper isSelected={isSelected} />)
 
-      let buttons = root.find(BuildButton)
-      expect(buttons).toHaveLength(1)
+        let buttons = root.find(BuildButton)
+        expect(buttons).toHaveLength(1)
 
-      expectIsSelected(buttons.at(0), isSelected) // Selected resource
-    })
+        expectIsSelected(buttons.at(0), isSelected) // Selected resource
+      }
+    )
 
     // A pending resource may mean that a pod is being rolled out, but is not
     // ready yet. In that case, the start build button will delete the pod (cancelling
     // the rollout) and rebuild.
     it("shows start build button when pending but no current build", () => {
       const root = mount(
-        <BuildButtonTestWrapper
-          hasPendingChanges={true}
-          hasBuilt={true}
-          />
+        <BuildButtonTestWrapper hasPendingChanges={true} hasBuilt={true} />
       )
 
       let buttons = root.find(BuildButton)
@@ -191,9 +196,7 @@ describe("SidebarBuildButton", () => {
     })
 
     it("renders an unclickable start build button if resource waiting for first build", () => {
-      const root = mount(
-        <BuildButtonTestWrapper />
-      )
+      const root = mount(<BuildButtonTestWrapper />)
 
       let button = root.find(BuildButton)
       expect(button).toHaveLength(1)
@@ -205,11 +208,7 @@ describe("SidebarBuildButton", () => {
     })
 
     it("renders queued resource with class .isQueued and NOT .clickable", () => {
-      const root = mount(
-        <BuildButtonTestWrapper
-          isQueued={true}
-        />
-      )
+      const root = mount(<BuildButtonTestWrapper isQueued={true} />)
 
       let button = root.find(BuildButton)
       expect(button).toHaveLength(1)
