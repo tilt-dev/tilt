@@ -7,8 +7,6 @@ import {
   TermState,
 } from "./logfilters"
 
-export const emptyTags = Object.freeze({})
-
 export type Tags = {
   [key: string]: string | undefined
   action?: AnalyticsAction | Action
