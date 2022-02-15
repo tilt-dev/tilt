@@ -487,6 +487,54 @@ func TestHoldForDeploy(t *testing.T) {
 	f.assertNextTargetToBuild("sancho")
 }
 
+func TestHoldForManualLiveUpdate(t *testing.T) {
+	f := newTestFixture(t)
+	defer f.TearDown()
+
+	srcFile := f.JoinPath("src", "a.txt")
+	f.WriteFile(srcFile, "hello")
+
+	luSpec := v1alpha1.LiveUpdateSpec{
+		BasePath: f.Path(),
+		Syncs:    []v1alpha1.LiveUpdateSync{{LocalPath: "src", ContainerPath: "/src"}},
+		Sources: []v1alpha1.LiveUpdateSource{
+			{FileWatch: "image:sancho"},
+		},
+	}
+	sanchoImage := newDockerImageTarget("sancho").
+		WithLiveUpdateSpec("sancho", luSpec).
+		WithDockerImage(v1alpha1.DockerImageSpec{Context: f.Path()})
+	sancho := f.upsertManifest(manifestbuilder.New(f, "sancho").
+		WithImageTargets(sanchoImage).
+		WithK8sYAML(testyaml.SanchoYAML).
+		WithTriggerMode(model.TriggerModeManualWithAutoInit).
+		Build())
+
+	f.assertNextTargetToBuild("sancho")
+
+	// Set the live-update state to healthy.
+	sancho.State.AddCompletedBuild(model.BuildRecord{
+		StartTime:  time.Now(),
+		FinishTime: time.Now(),
+	})
+	resource := &k8sconv.KubernetesResource{
+		FilteredPods: []v1alpha1.Pod{*completedPod("pod-1", sanchoImage.Refs.ClusterRef())},
+	}
+	f.st.KubernetesResources["sancho"] = resource
+	f.st.LiveUpdates["sancho"] = &v1alpha1.LiveUpdate{Spec: luSpec}
+	f.assertNoTargetNextToBuild()
+
+	// This shouldn't trigger a full-build, because it will be handled by the live-updater.
+	status := sancho.State.MutableBuildStatus(sanchoImage.ID())
+	f.st.AppendToTriggerQueue(sancho.Manifest.Name, model.BuildReasonFlagTriggerCLI)
+	status.PendingFileChanges[srcFile] = time.Now()
+	f.assertNoTargetNextToBuild()
+
+	// This should trigger a full-rebuild, because we have a trigger without pending changes.
+	delete(status.PendingFileChanges, srcFile)
+	f.assertNextTargetToBuild("sancho")
+}
+
 func TestHoldDisabled(t *testing.T) {
 	f := newTestFixture(t)
 	defer f.TearDown()
