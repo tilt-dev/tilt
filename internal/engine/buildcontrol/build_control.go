@@ -98,6 +98,10 @@ func NextTargetToBuild(state store.EngineState) (*store.ManifestTarget, HoldSet)
 		}
 	}
 
+	// Check to see if any targets are currently being successfully reconciled,
+	// and so full rebuilt should be held back. This takes manual triggers into account.
+	HoldLiveUpdateTargetsHandledByReconciler(state, targets, holds)
+
 	// Next prioritize builds that have been manually triggered.
 	for _, mn := range state.TriggerQueue {
 		mt, ok := state.ManifestTargets[mn]
@@ -117,8 +121,6 @@ func NextTargetToBuild(state store.EngineState) (*store.ManifestTarget, HoldSet)
 	//
 	// https://github.com/tilt-dev/tilt/issues/3759
 	HoldLiveUpdateTargetsWaitingOnDeploy(state, targets, holds)
-
-	HoldLiveUpdateTargetsHandledByReconciler(state, targets, holds)
 
 	targets = holds.RemoveIneligibleTargets(targets)
 
@@ -587,8 +589,16 @@ func IsLiveUpdateTargetWaitingOnDeploy(state store.EngineState, mt *store.Manife
 // handled by a reconciler.
 func HoldLiveUpdateTargetsHandledByReconciler(state store.EngineState, mts []*store.ManifestTarget, holds HoldSet) {
 	for _, mt := range mts {
-		// We only care about targets where file changes are the ONLY build reason.
-		if mt.NextBuildReason() != model.BuildReasonFlagChangedFiles {
+		// Most types of build reasons trigger a full rebuild. The two exceptions are:
+		// - File-change only
+		// - Live-update eligible manual triggers
+		reason := mt.NextBuildReason()
+		isLiveUpdateEligible := reason == model.BuildReasonFlagChangedFiles
+		if reason.HasTrigger() {
+			isLiveUpdateEligible = IsLiveUpdateEligibleTrigger(mt.Manifest, reason)
+		}
+
+		if !isLiveUpdateEligible {
 			continue
 		}
 
@@ -675,4 +685,16 @@ func findLiveUpdateHandlers(changedImage model.ImageTarget, mt *store.ManifestTa
 	}
 
 	return result
+}
+
+// In automatic trigger mode:
+// - Clicking the trigger button always triggers a full rebuild.
+//
+// In manual trigger mode:
+// - If there are no pending changes, clicking the trigger button triggers a full rebuild.
+// - If there are only pending changes, clicking the trigger button triggers a live-update.
+func IsLiveUpdateEligibleTrigger(manifest model.Manifest, reason model.BuildReason) bool {
+	return reason.HasTrigger() &&
+		reason.WithoutTriggers() == model.BuildReasonFlagChangedFiles &&
+		!manifest.TriggerMode.AutoOnChange()
 }
