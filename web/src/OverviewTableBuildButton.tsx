@@ -1,8 +1,8 @@
 import styled from "styled-components"
+import BuildButton from "./BuildButton"
 import { AnimDuration, Color, mixinResetButtonStyle } from "./style-helpers"
-import TriggerButton from "./TriggerButton"
 
-export const OverviewTableTriggerButton = styled(TriggerButton)`
+export const OverviewTableBuildButton = styled(BuildButton)`
   ${mixinResetButtonStyle};
   display: flex;
   align-items: center;

@@ -372,7 +372,7 @@ function uiResourceToCell(
 
   return {
     lastDeployTime: res.lastDeployTime ?? "",
-    trigger: {
+    buildButton: {
       isBuilding: isBuilding,
       hasBuilt: hasBuilt,
       hasPendingChanges: !!res.hasPendingChanges,

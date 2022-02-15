@@ -17,9 +17,9 @@ import {
 } from "./instrumentedComponents"
 import { displayURL } from "./links"
 import { OverviewButtonMixin } from "./OverviewButton"
+import { OverviewTableBuildButton } from "./OverviewTableBuildButton"
 import OverviewTableStarResourceButton from "./OverviewTableStarResourceButton"
 import OverviewTableStatus from "./OverviewTableStatus"
-import { OverviewTableTriggerButton } from "./OverviewTableTriggerButton"
 import OverviewTableTriggerModeToggle from "./OverviewTableTriggerModeToggle"
 import { useResourceNav } from "./ResourceNav"
 import { useResourceSelection } from "./ResourceSelectionContext"
@@ -33,13 +33,13 @@ import {
 } from "./style-helpers"
 import { timeAgoFormatter } from "./timeFormatters"
 import TiltTooltip, { TiltInfoTooltip } from "./Tooltip"
-import { triggerUpdate } from "./trigger"
+import { startBuild } from "./trigger"
 import { ResourceStatus, TriggerMode, UIButton, UILink } from "./types"
 
 /**
  * Types
  */
-type OverviewTableTrigger = {
+type OverviewTableBuildButtonStatus = {
   isBuilding: boolean
   hasBuilt: boolean
   hasPendingChanges: boolean
@@ -57,7 +57,7 @@ type OverviewTableResourceStatus = {
 
 export type RowValues = {
   lastDeployTime: string
-  trigger: OverviewTableTrigger
+  buildButton: OverviewTableBuildButtonStatus
   name: string
   resourceTypeLabel: string
   statusLine: OverviewTableResourceStatus
@@ -356,20 +356,20 @@ export function TableTriggerColumn({ row }: CellProps<RowValues>) {
     return null
   }
 
-  const trigger = row.original.trigger
-  let onTrigger = useCallback(
-    () => triggerUpdate(row.values.name),
+  const buildButton = row.original.buildButton
+  let onStartBuild = useCallback(
+    () => startBuild(row.values.name),
     [row.values.name]
   )
   return (
-    <OverviewTableTriggerButton
-      hasPendingChanges={trigger.hasPendingChanges}
-      hasBuilt={trigger.hasBuilt}
-      isBuilding={trigger.isBuilding}
+    <OverviewTableBuildButton
+      hasPendingChanges={buildButton.hasPendingChanges}
+      hasBuilt={buildButton.hasBuilt}
+      isBuilding={buildButton.isBuilding}
       triggerMode={row.values.triggerMode}
-      isQueued={trigger.isQueued}
+      isQueued={buildButton.isQueued}
       analyticsTags={row.values.analyticsTags}
-      onTrigger={onTrigger}
+      onStartBuild={onStartBuild}
     />
   )
 }
@@ -626,8 +626,8 @@ const DEFAULT_COLUMNS: Column<RowValues>[] = [
     Cell: TableUpdateColumn,
   },
   {
-    Header: "Trigger",
-    accessor: "trigger",
+    Header: "Build",
+    accessor: "buildButton",
     disableSortBy: true,
     width: "20px",
     Cell: TableTriggerColumn,

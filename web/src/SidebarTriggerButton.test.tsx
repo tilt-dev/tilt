@@ -14,10 +14,10 @@ import PathBuilder from "./PathBuilder"
 import { DEFAULT_OPTIONS } from "./ResourceListOptionsContext"
 import SidebarItem from "./SidebarItem"
 import SidebarResources from "./SidebarResources"
-import { SidebarTriggerButton } from "./SidebarTriggerButton"
+import { SidebarBuildButton } from "./SidebarBuildButton"
 import { oneResource, tiltfileResource, twoResourceView } from "./testdata"
-import { TriggerButtonTooltip, triggerUpdate } from "./trigger"
-import TriggerButton from "./TriggerButton"
+import { BuildButtonTooltip, startBuild } from "./trigger"
+import BuildButton from "./BuildButton"
 import { ResourceView, TriggerMode } from "./types"
 
 type UIResource = Proto.v1alpha1UIResource
@@ -29,8 +29,8 @@ let expectClickable = (button: any, expected: boolean) => {
   expect(ib.hasClass("is-clickable")).toEqual(expected)
   expect(ib.prop("disabled")).toEqual(!expected)
 }
-let expectManualTriggerIcon = (button: any, expected: boolean) => {
-  let icon = expected ? "trigger-button-manual.svg" : "trigger-button.svg"
+let expectManualStartBuildIcon = (button: any, expected: boolean) => {
+  let icon = expected ? "start-build-button-manual.svg" : "start-build-button.svg"
   expect(button.find(InstrumentedButton).getDOMNode().innerHTML).toContain(icon)
 }
 let expectIsSelected = (button: any, expected: boolean) => {
@@ -51,7 +51,7 @@ let newSidebarItem = (r: UIResource): SidebarItem => {
   return new SidebarItem(r, new LogStore())
 }
 
-describe("SidebarTriggerButton", () => {
+describe("BuildButton", () => {
   beforeEach(() => {
     mockAnalyticsCalls()
     fetchMock.mock("/api/trigger", JSON.stringify({}))
@@ -63,19 +63,19 @@ describe("SidebarTriggerButton", () => {
 
   it("POSTs to endpoint when clicked", () => {
     const root = mount(
-      <SidebarTriggerButton
+      <SidebarBuildButton
         isSelected={true}
         triggerMode={TriggerMode.TriggerModeManualWithAutoInit}
         hasBuilt={true}
         isBuilding={false}
         hasPendingChanges={false}
         isQueued={false}
-        onTrigger={() => triggerUpdate("doggos")}
+        onStartBuild={() => startBuild("doggos")}
         analyticsTags={{ target: "k8s" }}
       />
     )
 
-    let element = root.find(TriggerButton).find(InstrumentedButton)
+    let element = root.find(BuildButton).find(InstrumentedButton)
     expect(element).toHaveLength(1)
 
     let preventDefaulted = false
@@ -104,19 +104,19 @@ describe("SidebarTriggerButton", () => {
 
   it("disables button when resource is queued", () => {
     const root = mount(
-      <SidebarTriggerButton
+      <SidebarBuildButton
         isSelected={true}
         triggerMode={TriggerMode.TriggerModeManualWithAutoInit}
         hasBuilt={true}
         isBuilding={false}
         hasPendingChanges={false}
         isQueued={true}
-        onTrigger={() => triggerUpdate("doggos")}
+        onStartBuild={() => startBuild("doggos")}
         analyticsTags={{ target: "k8s" }}
       />
     )
 
-    let element = root.find(TriggerButton).find(InstrumentedButton)
+    let element = root.find(BuildButton).find(InstrumentedButton)
     expect(element).toHaveLength(1)
     element.simulate("click")
 
@@ -125,20 +125,20 @@ describe("SidebarTriggerButton", () => {
 
   it("shows the button for TriggerModeManual", () => {
     const root = mount(
-      <SidebarTriggerButton
+      <SidebarBuildButton
         isSelected={true}
         triggerMode={TriggerMode.TriggerModeManual}
         hasBuilt={false}
         isBuilding={false}
         hasPendingChanges={false}
         isQueued={false}
-        onTrigger={() => triggerUpdate("doggos")}
+        onStartBuild={() => startBuild("doggos")}
         analyticsTags={{ target: "k8s" }}
       />
     )
 
-    let element = root.find(TriggerButton).find(InstrumentedButton)
-    expectManualTriggerIcon(element, true)
+    let element = root.find(BuildButton).find(InstrumentedButton)
+    expectManualStartBuildIcon(element, true)
 
     expect(element).toHaveLength(1)
     element.simulate("click")
@@ -146,7 +146,7 @@ describe("SidebarTriggerButton", () => {
     expect(fetchMock.calls().length).toEqual(2)
   })
 
-  it("shows clickable + bold trigger button for manual resource with pending changes", () => {
+  it("shows clickable + bold start build button for manual resource with pending changes", () => {
     let items = twoResourceView().uiResources.map(
       (r: UIResource, i: number) => {
         let res = r.status!
@@ -178,24 +178,24 @@ describe("SidebarTriggerButton", () => {
       </MemoryRouter>
     )
 
-    let buttons = root.find(TriggerButton)
+    let buttons = root.find(BuildButton)
     expect(buttons).toHaveLength(2)
 
     let b0 = buttons.at(0) // Manual resource with pending changes
     let b1 = buttons.at(1) // Manual resource, no pending changes
 
     expectClickable(b0, true)
-    expectManualTriggerIcon(b0, true)
+    expectManualStartBuildIcon(b0, true)
     expectIsQueued(b0, false)
-    expectWithTooltip(b0, TriggerButtonTooltip.NeedsManualTrigger)
+    expectWithTooltip(b0, BuildButtonTooltip.NeedsManualTrigger)
 
     expectClickable(b1, true)
-    expectManualTriggerIcon(b1, false)
+    expectManualStartBuildIcon(b1, false)
     expectIsQueued(b1, false)
-    expectWithTooltip(b1, TriggerButtonTooltip.Default)
+    expectWithTooltip(b1, BuildButtonTooltip.Default)
   })
 
-  it("shows selected trigger button for selected resource", () => {
+  it("shows selected start build button for selected resource", () => {
     let items = twoResourceView().uiResources.map(
       (r: UIResource, i: number) => {
         let res = r.status!
@@ -221,7 +221,7 @@ describe("SidebarTriggerButton", () => {
       </MemoryRouter>
     )
 
-    let buttons = root.find(TriggerButton)
+    let buttons = root.find(BuildButton)
     expect(buttons).toHaveLength(2)
 
     expectIsSelected(buttons.at(0), true) // Selected resource
@@ -229,9 +229,9 @@ describe("SidebarTriggerButton", () => {
   })
 
   // A pending resource may mean that a pod is being rolled out, but is not
-  // ready yet. In that case, the trigger button will delete the pod (cancelling
+  // ready yet. In that case, the start build button will delete the pod (cancelling
   // the rollout) and rebuild.
-  it("shows bold trigger button when pending", () => {
+  it("shows bold start build button when pending", () => {
     let items = twoResourceView().uiResources.map(
       (r: UIResource, i: number) => {
         let res = r.status!
@@ -261,23 +261,23 @@ describe("SidebarTriggerButton", () => {
       </MemoryRouter>
     )
 
-    let buttons = root.find(TriggerButton)
+    let buttons = root.find(BuildButton)
     expect(buttons).toHaveLength(2)
     let b0 = buttons.at(0) // Automatic resource with pending changes
     let b1 = buttons.at(1) // Automatic resource, no pending changes
 
     expectClickable(b0, true)
-    expectManualTriggerIcon(b0, false)
+    expectManualStartBuildIcon(b0, false)
     expectIsQueued(b0, false)
-    expectWithTooltip(b0, TriggerButtonTooltip.Default)
+    expectWithTooltip(b0, BuildButtonTooltip.Default)
 
     expectClickable(b1, true)
-    expectManualTriggerIcon(b1, false)
+    expectManualStartBuildIcon(b1, false)
     expectIsQueued(b1, false)
-    expectWithTooltip(b1, TriggerButtonTooltip.Default)
+    expectWithTooltip(b1, BuildButtonTooltip.Default)
   })
 
-  it("trigger button not clickable if resource is building", () => {
+  it("start build button not clickable if resource is building", () => {
     let res = oneResource({ isBuilding: true })
     res.status!.queued = false
     let items = [newSidebarItem(res)]
@@ -294,16 +294,16 @@ describe("SidebarTriggerButton", () => {
       </MemoryRouter>
     )
 
-    let button = root.find(TriggerButton)
+    let button = root.find(BuildButton)
     expect(button).toHaveLength(1)
 
     expectClickable(button, false)
-    expectManualTriggerIcon(button, false)
+    expectManualStartBuildIcon(button, false)
     expectIsQueued(button, false)
-    expectWithTooltip(button, TriggerButtonTooltip.UpdateInProgOrPending)
+    expectWithTooltip(button, BuildButtonTooltip.UpdateInProgOrPending)
   })
 
-  it("trigger button not clickable if resource waiting for first build", () => {
+  it("start build button not clickable if resource waiting for first build", () => {
     let r = oneResource({})
     r.status!.buildHistory = []
     r.status!.lastDeployTime = ""
@@ -321,13 +321,13 @@ describe("SidebarTriggerButton", () => {
       </MemoryRouter>
     )
 
-    let button = root.find(TriggerButton)
+    let button = root.find(BuildButton)
     expect(button).toHaveLength(1)
 
     expectClickable(button, false)
-    expectManualTriggerIcon(button, false)
+    expectManualStartBuildIcon(button, false)
     expectIsQueued(button, false)
-    expectWithTooltip(button, TriggerButtonTooltip.UpdateInProgOrPending)
+    expectWithTooltip(button, BuildButtonTooltip.UpdateInProgOrPending)
   })
 
   it("renders queued resource with class .isQueued and NOT .clickable", () => {
@@ -346,16 +346,16 @@ describe("SidebarTriggerButton", () => {
       </MemoryRouter>
     )
 
-    let button = root.find(TriggerButton)
+    let button = root.find(BuildButton)
     expect(button).toHaveLength(1)
 
     expectClickable(button, false)
-    expectManualTriggerIcon(button, false)
+    expectManualStartBuildIcon(button, false)
     expectIsQueued(button, true)
-    expectWithTooltip(button, TriggerButtonTooltip.AlreadyQueued)
+    expectWithTooltip(button, BuildButtonTooltip.AlreadyQueued)
   })
 
-  it("shows a trigger button for resource that failed its initial build", () => {
+  it("shows a start build button for resource that failed its initial build", () => {
     let res = oneResource({ isBuilding: true })
     res.status!.currentBuild = {}
     res.status!.queued = false
@@ -373,16 +373,16 @@ describe("SidebarTriggerButton", () => {
       </MemoryRouter>
     )
 
-    let button = root.find(TriggerButton)
+    let button = root.find(BuildButton)
     expect(button).toHaveLength(1)
 
     expectClickable(button, true)
-    expectManualTriggerIcon(button, false)
+    expectManualStartBuildIcon(button, false)
     expectIsQueued(button, false)
-    expectWithTooltip(button, TriggerButtonTooltip.Default)
+    expectWithTooltip(button, BuildButtonTooltip.Default)
   })
 
-  it("shows trigger button for Tiltfile", () => {
+  it("shows start build button for Tiltfile", () => {
     let res = tiltfileResource()
     let items = [newSidebarItem(res)]
 
@@ -398,11 +398,11 @@ describe("SidebarTriggerButton", () => {
       </MemoryRouter>
     )
 
-    let button = root.find(TriggerButton)
+    let button = root.find(BuildButton)
     expect(button).toHaveLength(1)
 
     expectClickable(button, true)
-    expectManualTriggerIcon(button, false)
+    expectManualStartBuildIcon(button, false)
     expectIsQueued(button, false)
   })
 })

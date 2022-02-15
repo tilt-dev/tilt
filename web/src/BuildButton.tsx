@@ -1,28 +1,28 @@
 import React, { useCallback } from "react"
 import styled from "styled-components"
 import { Tags } from "./analytics"
-import { ReactComponent as TriggerButtonManualSvg } from "./assets/svg/trigger-button-manual.svg"
-import { ReactComponent as TriggerButtonSvg } from "./assets/svg/trigger-button.svg"
+import { ReactComponent as StartBuildButtonManualSvg } from "./assets/svg/start-build-button-manual.svg"
+import { ReactComponent as StartBuildButtonSvg } from "./assets/svg/start-build-button.svg"
 import { InstrumentedButton } from "./instrumentedComponents"
 import TiltTooltip from "./Tooltip"
-import { triggerTooltip } from "./trigger"
+import { buildButtonTooltip } from "./trigger"
 import { TriggerMode } from "./types"
 
-type TriggerButtonProps = {
+export type BuildButtonProps = {
   isBuilding: boolean
   hasBuilt: boolean
   triggerMode: TriggerMode
   isSelected?: boolean
   hasPendingChanges: boolean
   isQueued: boolean
-  onTrigger: () => void
+  onStartBuild: () => void
   analyticsTags: Tags
   className?: string
 }
 
 // A wrapper to receive pointer events so that we get cursor and tooltip when disabled
 // https://mui.com/components/tooltips/#disabled-elements
-const TriggerButtonCursorWrapper = styled.div`
+const BuildButtonCursorWrapper = styled.div`
   display: inline-block;
   cursor: not-allowed;
   .is-clickable {
@@ -30,7 +30,7 @@ const TriggerButtonCursorWrapper = styled.div`
   }
 `
 
-function TriggerButton(props: TriggerButtonProps) {
+function BuildButton(props: BuildButtonProps) {
   let isManual =
     props.triggerMode === TriggerMode.TriggerModeManual ||
     props.triggerMode === TriggerMode.TriggerModeManualWithAutoInit
@@ -38,7 +38,7 @@ function TriggerButton(props: TriggerButtonProps) {
     props.triggerMode === TriggerMode.TriggerModeAuto ||
     props.triggerMode === TriggerMode.TriggerModeManualWithAutoInit
 
-  // clickable (i.e. trigger button will appear) if it doesn't already have some kind of pending / active build
+  // clickable (i.e. start build button will appear) if it doesn't already have some kind of pending / active build
   let clickable =
     !props.isQueued && // already queued for manual run
     !props.isBuilding && // currently building
@@ -55,16 +55,16 @@ function TriggerButton(props: TriggerButtonProps) {
 
   let onClick = useCallback(
     (e: any) => {
-      // SidebarTriggerButton is nested in a link,
+      // SidebarBuildButton is nested in a link,
       // and preventDefault is the standard way to cancel the navigation.
       e.preventDefault()
 
       // stopPropagation prevents the overview card from opening.
       e.stopPropagation()
 
-      props.onTrigger()
+      props.onStartBuild()
     },
-    [props.onTrigger]
+    [props.onStartBuild]
   )
 
   let classes = [props.className]
@@ -86,10 +86,10 @@ function TriggerButton(props: TriggerButtonProps) {
   if (props.isBuilding) {
     classes.push("is-building")
   }
-  const tooltip = triggerTooltip(clickable, isEmphasized, props.isQueued)
+  const tooltip = buildButtonTooltip(clickable, isEmphasized, props.isQueued)
   return (
     <TiltTooltip title={tooltip}>
-      <TriggerButtonCursorWrapper
+      <BuildButtonCursorWrapper
         className={clickable ? ".is-clickable" : undefined}
       >
         <InstrumentedButton
@@ -101,14 +101,14 @@ function TriggerButton(props: TriggerButtonProps) {
           analyticsTags={props.analyticsTags}
         >
           {isEmphasized ? (
-            <TriggerButtonManualSvg role="presentation" />
+            <StartBuildButtonManualSvg role="presentation" />
           ) : (
-            <TriggerButtonSvg role="presentation" />
+            <StartBuildButtonSvg role="presentation" />
           )}
         </InstrumentedButton>
-      </TriggerButtonCursorWrapper>
+      </BuildButtonCursorWrapper>
     </TiltTooltip>
   )
 }
 
-export default React.memo(TriggerButton)
+export default React.memo(BuildButton)
