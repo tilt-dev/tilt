@@ -16,6 +16,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
+	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 
 	"github.com/tilt-dev/tilt/pkg/model"
 
@@ -282,23 +283,22 @@ type pfrFixture struct {
 	*fake.ControllerFixture
 	t    *testing.T
 	kCli *k8s.FakeK8sClient
-	st   *store.TestingStore
+	st   store.RStore
 	r    *Reconciler
 }
 
 func newPFRFixture(t *testing.T) *pfrFixture {
-	st := store.NewTestingStore()
-
 	kCli := k8s.NewFakeK8sClient(t)
 	t.Cleanup(kCli.TearDown)
 
 	cfb := fake.NewControllerFixtureBuilder(t)
-	r := NewReconciler(cfb.Client, st, kCli)
+	r := NewReconciler(cfb.Client, cfb.Store, kCli)
+	indexer.StartSourceForTesting(cfb.Context(), r.requeuer, r)
 
 	return &pfrFixture{
 		ControllerFixture: cfb.Build(r),
 		t:                 t,
-		st:                st,
+		st:                cfb.Store,
 		kCli:              kCli,
 		r:                 r,
 	}
