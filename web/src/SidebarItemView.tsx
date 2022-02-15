@@ -7,7 +7,7 @@ import PathBuilder from "./PathBuilder"
 import { useResourceNav } from "./ResourceNav"
 import SidebarIcon from "./SidebarIcon"
 import SidebarItem from "./SidebarItem"
-import SidebarTriggerButton from "./SidebarTriggerButton"
+import { SidebarTriggerButton } from "./SidebarTriggerButton"
 import StarResourceButton, {
   StarResourceButtonRoot,
 } from "./StarResourceButton"
@@ -26,7 +26,7 @@ import {
 } from "./style-helpers"
 import { formatBuildDuration, isZeroTime } from "./time"
 import { timeAgoFormatter } from "./timeFormatters"
-import { toggleTriggerMode, triggerUpdate } from "./trigger"
+import { triggerUpdate } from "./trigger"
 import { ResourceStatus, ResourceView } from "./types"
 
 export const SidebarItemRoot = styled.li`
@@ -67,7 +67,7 @@ const sidebarItemBoxMixin = `
 `
 
 export let SidebarItemBox = styled.div`
-  ${sidebarItemBoxMixin}
+  ${sidebarItemBoxMixin};
   background-color: ${Color.gray};
   border: 1px solid ${Color.grayLighter};
   color: ${Color.white};
@@ -103,7 +103,7 @@ export let SidebarItemBox = styled.div`
 `
 
 const DisabledSidebarItemBox = styled.div`
-  ${sidebarItemBoxMixin}
+  ${sidebarItemBoxMixin};
   color: ${Color.grayLight};
   font-family: ${Font.sansSerif};
   font-style: italic;
@@ -153,7 +153,7 @@ let SidebarItemBuildBox = styled.div`
   padding-right: 4px;
 `
 let SidebarItemText = styled.div`
-  ${mixinTruncateText}
+  ${mixinTruncateText};
   align-items: center;
   flex-grow: 1;
   padding-top: 4px;
@@ -333,7 +333,6 @@ export function EnabledSidebarItemView(props: SidebarItemViewProps) {
   let isSelectedClass = isSelected ? "isSelected" : ""
   let isBuildingClass = building ? "isBuilding" : ""
   let onTrigger = triggerUpdate.bind(null, item.name)
-  let onModeToggle = toggleTriggerMode.bind(null, item.name)
   const groupViewIndentClass = props.groupView ? "groupViewIndent" : ""
   let analyticsTags = { target: item.targetType }
 
@@ -366,7 +365,6 @@ export function EnabledSidebarItemView(props: SidebarItemViewProps) {
               {hasSuccessfullyDeployed ? timeAgo : "—"}
             </SidebarItemTimeAgo>
             <SidebarTriggerButton
-              isTiltfile={item.isTiltfile}
               isSelected={isSelected}
               hasPendingChanges={item.hasPendingChanges}
               hasBuilt={hasBuilt}
