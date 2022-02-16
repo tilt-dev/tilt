@@ -21,8 +21,9 @@ type dcFixture struct {
 
 func newDCFixture(t *testing.T, dir string) *dcFixture {
 	f := newFixture(t, dir)
-	t.Cleanup(f.TearDown)
-	return &dcFixture{fixture: f}
+	ret := &dcFixture{fixture: f}
+	t.Cleanup(ret.TearDown)
+	return ret
 }
 
 func (f *dcFixture) TearDown() {
