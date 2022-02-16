@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
@@ -18,9 +19,9 @@ func TestCreateFileWatch(t *testing.T) {
 	defer f.TearDown()
 
 	out := bytes.NewBuffer(nil)
+	streams := genericclioptions.IOStreams{Out: out}
 
-	cmd := newCreateFileWatchCmd()
-	cmd.helper.streams.Out = out
+	cmd := newCreateFileWatchCmd(streams)
 	c := cmd.register()
 	err := c.Flags().Parse([]string{
 		"--ignore", "web/node_modules",
@@ -50,9 +51,9 @@ func TestCreateFileWatchNoIgnore(t *testing.T) {
 	defer f.TearDown()
 
 	out := bytes.NewBuffer(nil)
+	streams := genericclioptions.IOStreams{Out: out}
 
-	cmd := newCreateFileWatchCmd()
-	cmd.helper.streams.Out = out
+	cmd := newCreateFileWatchCmd(streams)
 	c := cmd.register()
 	err := c.Flags().Parse([]string{"my-watch", "src"})
 	require.NoError(t, err)

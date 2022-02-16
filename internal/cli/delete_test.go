@@ -9,6 +9,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
@@ -26,9 +27,9 @@ func TestDelete(t *testing.T) {
 	require.NoError(t, err)
 
 	out := bytes.NewBuffer(nil)
-	deleteCmd := newDeleteCmd()
+	streams := genericclioptions.IOStreams{Out: out}
+	deleteCmd := newDeleteCmd(streams)
 	deleteCmd.register()
-	deleteCmd.streams.Out = out
 
 	err = deleteCmd.run(f.ctx, []string{"cmd", "my-sleep"})
 	require.NoError(t, err)

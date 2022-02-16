@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"os"
 
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,8 +24,7 @@ type createHelper struct {
 	printer       printers.ResourcePrinter
 }
 
-func newCreateHelper() *createHelper {
-	streams := genericclioptions.IOStreams{Out: os.Stdout, ErrOut: os.Stderr, In: os.Stdin}
+func newCreateHelper(streams genericclioptions.IOStreams) *createHelper {
 	return &createHelper{
 		streams:    streams,
 		printFlags: genericclioptions.NewPrintFlags("created"),

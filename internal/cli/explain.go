@@ -23,7 +23,6 @@ package cli
 
 import (
 	"context"
-	"os"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -61,8 +60,7 @@ type explainCmd struct {
 
 var _ tiltCmd = &explainCmd{}
 
-func newExplainCmd() *explainCmd {
-	streams := genericclioptions.IOStreams{Out: os.Stdout, ErrOut: os.Stderr, In: os.Stdin}
+func newExplainCmd(streams genericclioptions.IOStreams) *explainCmd {
 	o := explain.NewExplainOptions("tilt", streams)
 	return &explainCmd{
 		options: o,

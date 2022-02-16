@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
@@ -17,8 +18,8 @@ func TestCreateExt(t *testing.T) {
 
 	out := bytes.NewBuffer(nil)
 
-	cmd := newCreateExtCmd()
-	cmd.helper.streams.Out = out
+	streams := genericclioptions.IOStreams{Out: out}
+	cmd := newCreateExtCmd(streams)
 	c := cmd.register()
 	err := c.Flags().Parse([]string{
 		"cancel",

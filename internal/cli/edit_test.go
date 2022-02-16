@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
@@ -30,8 +31,9 @@ func TestEdit(t *testing.T) {
 	require.NoError(t, err)
 
 	out := bytes.NewBuffer(nil)
-	cmd := newEditCmd()
-	cmd.streams.ErrOut = out
+	streams := genericclioptions.IOStreams{Out: out, ErrOut: out, In: os.Stdin}
+
+	cmd := newEditCmd(streams)
 	cmd.register()
 
 	oldEditor := os.Getenv("EDITOR")

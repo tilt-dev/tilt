@@ -23,7 +23,6 @@ package cli
 
 import (
 	"context"
-	"os"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -44,8 +43,7 @@ type editCmd struct {
 
 var _ tiltCmd = &editCmd{}
 
-func newEditCmd() *editCmd {
-	streams := genericclioptions.IOStreams{Out: os.Stdout, ErrOut: os.Stderr, In: os.Stdin}
+func newEditCmd(streams genericclioptions.IOStreams) *editCmd {
 	return &editCmd{
 		streams: streams,
 	}
