@@ -37,7 +37,7 @@ func TestCreateTiltfile(t *testing.T) {
 			FileWatches: []string{"configs:(Tiltfile)"},
 		},
 		StopOn: &v1alpha1.StopOnSpec{
-			UIButtons: []string{"(Tiltfile)-cancel"},
+			UIButtons: []string{uibutton.StopBuildButtonName("(Tiltfile)")},
 		},
 	})
 }
@@ -64,7 +64,7 @@ func TestCreateTiltfileCancelEnabled(t *testing.T) {
 			FileWatches: []string{"configs:(Tiltfile)"},
 		},
 		StopOn: &v1alpha1.StopOnSpec{
-			UIButtons: []string{"(Tiltfile)-cancel"},
+			UIButtons: []string{uibutton.StopBuildButtonName("(Tiltfile)")},
 		},
 	}
 	assert.Equal(t, expectedTfSpec, tf.Spec)
