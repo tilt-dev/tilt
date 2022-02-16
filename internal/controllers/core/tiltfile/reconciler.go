@@ -8,6 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -202,7 +203,15 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 //    (so that we don't keep re-running a failed build)
 // 4) OR the command-line args have changed since the last Tiltfile build
 // 5) OR user has manually triggered a Tiltfile build
-func (r *Reconciler) needsBuild(ctx context.Context, nn types.NamespacedName, tf *v1alpha1.Tiltfile, run *runStatus, fileWatches []*v1alpha1.FileWatch, triggerQueue *v1alpha1.ConfigMap, lastRestartEvent time.Time) *BuildEntry {
+func (r *Reconciler) needsBuild(
+	_ context.Context,
+	nn types.NamespacedName,
+	tf *v1alpha1.Tiltfile,
+	run *runStatus,
+	fileWatches []*v1alpha1.FileWatch,
+	triggerQueue *v1alpha1.ConfigMap,
+	lastRestartEvent metav1.MicroTime,
+) *BuildEntry {
 	var reason model.BuildReason
 	filesChanged := []string{}
 
@@ -221,7 +230,7 @@ func (r *Reconciler) needsBuild(ctx context.Context, nn types.NamespacedName, tf
 		filesChanged = trigger.FilesChanged(tf.Spec.RestartOn, fileWatches, lastStartTime)
 		if len(filesChanged) > 0 {
 			reason = reason.With(model.BuildReasonFlagChangedFiles)
-		} else if lastRestartEvent.After(lastStartTime) {
+		} else if timecmp.After(lastRestartEvent, lastStartTime) {
 			reason = reason.With(model.BuildReasonFlagTriggerUnknown)
 		}
 	}

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/sliceutils"
+	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
@@ -82,21 +84,20 @@ func registerWatches(builder *builder.Builder, idxer *indexer.Indexer, typesToWa
 	}
 }
 
-// Fetch all the buttons that this object depends on.
+// fetchButtons retrieves all the buttons that this object depends on.
 //
 // If a button isn't in the API server yet, it will simply be missing from the map.
 //
 // Other errors reaching the API server will be returned to the caller.
 //
 // TODO(nick): If the user typos a button name, there's currently no feedback
-// that this is happening. This is probably the correct product behavior (in particular:
-// resources should still run if their restarton button has been deleted).
-// We might eventually need some sort of StartOnStatus/RestartOnStatus to express errors
-// in lookup.
-func Buttons(ctx context.Context, client client.Reader, buttonNames []string) (map[string]*v1alpha1.UIButton, error) {
-	result := make(map[string]*v1alpha1.UIButton, len(buttonNames))
+// 	that this is happening. This is probably the correct product behavior (in particular:
+// 	resources should still run if one of their triggers has been deleted).
+// 	We might eventually need trigger statuses to express errors in lookup.
+func fetchButtons(ctx context.Context, client client.Reader, buttonNames []string) (map[string]*v1alpha1.UIButton, error) {
+	buttons := make(map[string]*v1alpha1.UIButton, len(buttonNames))
 	for _, n := range buttonNames {
-		_, exists := result[n]
+		_, exists := buttons[n]
 		if exists {
 			continue
 		}
@@ -109,23 +110,22 @@ func Buttons(ctx context.Context, client client.Reader, buttonNames []string) (m
 			}
 			return nil, err
 		}
-		result[n] = b
+		buttons[n] = b
 	}
-	return result, nil
+	return buttons, nil
 }
 
-// Fetch all the filewatches that this object depends on.
+// fetchFileWatches retrieves all the filewatches that this object depends on.
 //
-// If a filewatch isn't in the API server yet, it will simply be missing from the map.
+// If a filewatch isn't in the API server yet, it will simply be missing from the slice.
 //
 // Other errors reaching the API server will be returned to the caller.
 //
 // TODO(nick): If the user typos a filewatch name, there's currently no feedback
-// that this is happening. This is probably the correct product behavior (in particular:
-// resources should still run if their restarton filewatch has been deleted).
-// We might eventually need some sort of RestartOnStatus to express errors
-// in lookup.
-func FileWatches(ctx context.Context, client client.Reader, fwNames []string) ([]*v1alpha1.FileWatch, error) {
+// 	that this is happening. This is probably the correct product behavior (in particular:
+// 	resources should still run if one of their triggers has been deleted).
+// 	We might eventually need trigger statuses to express errors in lookup.
+func fetchFileWatches(ctx context.Context, client client.Reader, fwNames []string) ([]*v1alpha1.FileWatch, error) {
 	result := []*v1alpha1.FileWatch{}
 	for _, n := range fwNames {
 		fw := &v1alpha1.FileWatch{}
@@ -141,27 +141,34 @@ func FileWatches(ctx context.Context, client client.Reader, fwNames []string) ([
 	return result, nil
 }
 
-// Fetch the last time a start was requested from this target's dependencies.
+// LastStartEvent determines the last time a start was requested from this target's dependencies.
 //
-// Returns the most recent trigger time. If the most recent trigger is a button,
+// Returns the most recent start time. If the most recent start is from a button,
 // return the button. Some consumers use the button for text inputs.
-func LastStartEvent(ctx context.Context, cli client.Reader, startOn *v1alpha1.StartOnSpec) (time.Time, *v1alpha1.UIButton, error) {
+func LastStartEvent(ctx context.Context, cli client.Reader, startOn *v1alpha1.StartOnSpec) (metav1.MicroTime, *v1alpha1.UIButton, error) {
 	if startOn == nil {
-		return time.Time{}, nil, nil
+		return metav1.MicroTime{}, nil, nil
 	}
 
-	buttons, err := Buttons(ctx, cli, startOn.UIButtons)
+	buttons, err := fetchButtons(ctx, cli, startOn.UIButtons)
 	if err != nil {
-		return time.Time{}, nil, err
+		return metav1.MicroTime{}, nil, err
 	}
 
-	latestTime := time.Time{}
+	var latestTime metav1.MicroTime
 	var latestButton *v1alpha1.UIButton
 
-	for _, b := range buttons {
+	// ensure predictable iteration order by using the list from the spec
+	// (currently, missing buttons are simply ignored)
+	for _, buttonName := range startOn.UIButtons {
+		b := buttons[buttonName]
+		if b == nil {
+			continue
+		}
+
 		lastEventTime := b.Status.LastClickedAt
-		if !lastEventTime.Time.Before(startOn.StartAfter.Time) && lastEventTime.Time.After(latestTime) {
-			latestTime = lastEventTime.Time
+		if timecmp.AfterOrEqual(lastEventTime, startOn.StartAfter) && timecmp.After(lastEventTime, latestTime) {
+			latestTime = lastEventTime
 			latestButton = b
 		}
 	}
@@ -169,38 +176,48 @@ func LastStartEvent(ctx context.Context, cli client.Reader, startOn *v1alpha1.St
 	return latestTime, latestButton, nil
 }
 
-// Fetch the last time a restart was requested from this target's dependencies.
+// LastRestartEvent determines the last time a restart was requested from this target's dependencies.
 //
-// Returns the most recent trigger time. If the most recent trigger is a button,
-// return the button. Some consumers use the button for text inputs.
-func LastRestartEvent(ctx context.Context, cli client.Reader, restartOn *v1alpha1.RestartOnSpec) (time.Time, *v1alpha1.UIButton, []*v1alpha1.FileWatch, error) {
+// Returns the most recent restart time.
+//
+// If the most recent restart is from a button, return the button. Some consumers use the button for text inputs.
+// If the most recent restart is from a FileWatch, return the FileWatch. Some consumers use the FileWatch to
+// determine if they should re-run or not to avoid repeated failures.
+func LastRestartEvent(ctx context.Context, cli client.Reader, restartOn *v1alpha1.RestartOnSpec) (metav1.MicroTime, *v1alpha1.UIButton, []*v1alpha1.FileWatch, error) {
 	var fws []*v1alpha1.FileWatch
 	if restartOn == nil {
-		return time.Time{}, nil, fws, nil
+		return metav1.MicroTime{}, nil, fws, nil
 	}
-	buttons, err := Buttons(ctx, cli, restartOn.UIButtons)
+	buttons, err := fetchButtons(ctx, cli, restartOn.UIButtons)
 	if err != nil {
-		return time.Time{}, nil, fws, err
+		return metav1.MicroTime{}, nil, fws, err
 	}
-	fws, err = FileWatches(ctx, cli, restartOn.FileWatches)
+	fws, err = fetchFileWatches(ctx, cli, restartOn.FileWatches)
 	if err != nil {
-		return time.Time{}, nil, fws, err
+		return metav1.MicroTime{}, nil, fws, err
 	}
 
-	cur := time.Time{}
+	var cur metav1.MicroTime
 	var latestButton *v1alpha1.UIButton
 
 	for _, fw := range fws {
 		lastEventTime := fw.Status.LastEventTime
-		if lastEventTime.Time.After(cur) {
-			cur = lastEventTime.Time
+		if timecmp.After(lastEventTime, cur) {
+			cur = lastEventTime
 		}
 	}
 
-	for _, b := range buttons {
+	// ensure predictable iteration order by using the list from the spec
+	// (currently, missing buttons are simply ignored)
+	for _, buttonName := range restartOn.UIButtons {
+		b := buttons[buttonName]
+		if b == nil {
+			continue
+		}
+
 		lastEventTime := b.Status.LastClickedAt
-		if lastEventTime.Time.After(cur) {
-			cur = lastEventTime.Time
+		if timecmp.After(lastEventTime, cur) {
+			cur = lastEventTime
 			latestButton = b
 		}
 	}
@@ -208,7 +225,7 @@ func LastRestartEvent(ctx context.Context, cli client.Reader, restartOn *v1alpha
 	return cur, latestButton, fws, nil
 }
 
-// Fetch the set of files that have changed since the given timestamp.
+// FilesChanged determines the set of files that have changed since the given timestamp.
 // We err on the side of undercounting (i.e., skipping files that may have triggered
 // this build but are not sure).
 func FilesChanged(restartOn *v1alpha1.RestartOnSpec, fileWatches []*v1alpha1.FileWatch, lastBuild time.Time) []string {
@@ -220,7 +237,7 @@ func FilesChanged(restartOn *v1alpha1.RestartOnSpec, fileWatches []*v1alpha1.Fil
 		// Add files so that the most recent files are first.
 		for i := len(fw.Status.FileEvents) - 1; i >= 0; i-- {
 			e := fw.Status.FileEvents[i]
-			if e.Time.Time.After(lastBuild) {
+			if timecmp.After(e.Time, lastBuild) {
 				filesChanged = append(filesChanged, e.SeenFiles...)
 			}
 		}
@@ -228,27 +245,34 @@ func FilesChanged(restartOn *v1alpha1.RestartOnSpec, fileWatches []*v1alpha1.Fil
 	return sliceutils.DedupedAndSorted(filesChanged)
 }
 
-// Fetch the last time a start was requested from this target's dependencies.
+// LastStopEvent determines the latest time a stop was requested from this target's dependencies.
 //
-// Returns the most recent trigger time. If the most recent trigger is a button,
+// Returns the most recent stop time. If the most recent stop is from a button,
 // return the button. Some consumers use the button for text inputs.
-func LastStopEvent(ctx context.Context, cli client.Reader, stopOn *v1alpha1.StopOnSpec) (time.Time, *v1alpha1.UIButton, error) {
+func LastStopEvent(ctx context.Context, cli client.Reader, stopOn *v1alpha1.StopOnSpec) (metav1.MicroTime, *v1alpha1.UIButton, error) {
 	if stopOn == nil {
-		return time.Time{}, nil, nil
+		return metav1.MicroTime{}, nil, nil
 	}
 
-	buttons, err := Buttons(ctx, cli, stopOn.UIButtons)
+	buttons, err := fetchButtons(ctx, cli, stopOn.UIButtons)
 	if err != nil {
-		return time.Time{}, nil, err
+		return metav1.MicroTime{}, nil, err
 	}
 
-	latestTime := time.Time{}
+	var latestTime metav1.MicroTime
 	var latestButton *v1alpha1.UIButton
 
-	for _, b := range buttons {
+	// ensure predictable iteration order by using the list from the spec
+	// (currently, missing buttons are simply ignored)
+	for _, buttonName := range stopOn.UIButtons {
+		b := buttons[buttonName]
+		if b == nil {
+			continue
+		}
+
 		lastEventTime := b.Status.LastClickedAt
-		if lastEventTime.Time.After(latestTime) {
-			latestTime = lastEventTime.Time
+		if timecmp.After(lastEventTime, latestTime) {
+			latestTime = lastEventTime
 			latestButton = b
 		}
 	}

@@ -7,7 +7,6 @@ import (
 	"io"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/jonboulle/clockwork"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -23,12 +22,14 @@ import (
 
 	"github.com/tilt-dev/probe/pkg/probe"
 	"github.com/tilt-dev/probe/pkg/prober"
+
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/trigger"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/engine/local"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -127,9 +128,9 @@ func inputsFromButton(button *v1alpha1.UIButton) []input {
 }
 
 type triggerEvents struct {
-	lastRestartEventTime time.Time
+	lastRestartEventTime metav1.MicroTime
 	lastRestartButton    *v1alpha1.UIButton
-	lastStartEventTime   time.Time
+	lastStartEventTime   metav1.MicroTime
 	lastStartButton      *v1alpha1.UIButton
 }
 
@@ -167,8 +168,8 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		// it didn't previously run.
 		c.stop(name)
 		proc.spec = v1alpha1.CmdSpec{}
-		proc.lastStartOnEventTime = time.Time{}
-		proc.lastRestartOnEventTime = time.Time{}
+		proc.lastStartOnEventTime = metav1.MicroTime{}
+		proc.lastRestartOnEventTime = metav1.MicroTime{}
 	}
 
 	if cmd.Annotations[v1alpha1.AnnotationManagedBy] == "local_resource" {
@@ -199,8 +200,8 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	lastRestartOnEventTime := proc.lastRestartOnEventTime
 	lastStartOnEventTime := proc.lastStartOnEventTime
 
-	restartOnTriggered := te.lastRestartEventTime.After(lastRestartOnEventTime)
-	startOnTriggered := te.lastStartEventTime.After(lastStartOnEventTime)
+	restartOnTriggered := timecmp.After(te.lastRestartEventTime, lastRestartOnEventTime)
+	startOnTriggered := timecmp.After(te.lastStartEventTime, lastStartOnEventTime)
 	execSpecChanged := !cmdExecEqual(lastSpec, cmd.Spec)
 
 	if !disabled {
@@ -332,7 +333,7 @@ func (c *Controller) runInternal(ctx context.Context,
 	proc.lastStartOnEventTime = te.lastStartEventTime
 
 	var inputs []input
-	if proc.lastRestartOnEventTime.After(proc.lastStartOnEventTime) {
+	if timecmp.After(proc.lastRestartOnEventTime, proc.lastStartOnEventTime) {
 		inputs = inputsFromButton(te.lastRestartButton)
 	} else {
 		inputs = inputsFromButton(te.lastStartButton)
@@ -552,8 +553,8 @@ type currentProcess struct {
 	probeWorker *probe.Worker
 	isServer    bool
 
-	lastRestartOnEventTime time.Time
-	lastStartOnEventTime   time.Time
+	lastRestartOnEventTime metav1.MicroTime
+	lastStartOnEventTime   metav1.MicroTime
 
 	// We have a lock that ONLY protects the status.
 	statusMu       sync.Mutex

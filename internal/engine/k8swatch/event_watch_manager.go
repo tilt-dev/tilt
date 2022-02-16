@@ -247,7 +247,7 @@ func (m *EventWatchManager) dispatchEventsLoop(ctx context.Context, of k8s.Owner
 			// TODO(nick): We might need to remove this check and optimize
 			// it in a different way. We want Tilt to be to attach to existing
 			// resources, and these resources might have pre-existing events.
-			if !timecmp.AfterOrEqual(event.ObjectMeta.CreationTimestamp, tiltStartTime) {
+			if timecmp.Before(event.ObjectMeta.CreationTimestamp, tiltStartTime) {
 				continue
 			}
 
