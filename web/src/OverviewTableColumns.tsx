@@ -3,7 +3,7 @@ import { CellProps, Column, HeaderProps, Row } from "react-table"
 import TimeAgo from "react-timeago"
 import styled from "styled-components"
 import { AnalyticsAction, AnalyticsType, incr, Tags } from "./analytics"
-import { ApiButton, ApiIcon } from "./ApiButton"
+import { ApiButton, ApiIcon, ButtonSet } from "./ApiButton"
 import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
@@ -64,7 +64,7 @@ export type RowValues = {
   podId: string
   endpoints: UILink[]
   triggerMode: TriggerMode
-  buttons: UIButton[]
+  buttons: ButtonSet
   analyticsTags: Tags
   selectable: boolean
 }
@@ -350,8 +350,8 @@ export function TableSelectionColumn({ row }: CellProps<RowValues>) {
   )
 }
 
-export function TableTriggerColumn({ row }: CellProps<RowValues>) {
-  // If resource is disabled, don't display trigger button
+export function TableBuildButtonColumn({ row }: CellProps<RowValues>) {
+  // If resource is disabled, don't display build button
   if (rowIsDisabled(row)) {
     return null
   }
@@ -370,6 +370,7 @@ export function TableTriggerColumn({ row }: CellProps<RowValues>) {
       isQueued={trigger.isQueued}
       analyticsTags={row.values.analyticsTags}
       onStartBuild={onStartBuild}
+      stopBuildButton={row.original.buttons.stopBuild}
     />
   )
 }
@@ -516,7 +517,7 @@ export function TableWidgetsColumn({ row }: CellProps<RowValues>) {
     return null
   }
 
-  const buttons = row.original.buttons.map((b: UIButton) => {
+  const buttons = row.original.buttons.default.map((b: UIButton) => {
     let content = (
       <CustomActionButton key={b.metadata?.name} uiButton={b}>
         <ApiIcon
@@ -630,7 +631,7 @@ const DEFAULT_COLUMNS: Column<RowValues>[] = [
     accessor: "trigger",
     disableSortBy: true,
     width: "20px",
-    Cell: TableTriggerColumn,
+    Cell: TableBuildButtonColumn,
   },
   {
     Header: "Resource Name",
@@ -658,7 +659,7 @@ const DEFAULT_COLUMNS: Column<RowValues>[] = [
   {
     Header: "Widgets",
     id: "widgets",
-    accessor: (row) => row.buttons.length,
+    accessor: (row) => row.buttons.default.length,
     Cell: TableWidgetsColumn,
   },
   {

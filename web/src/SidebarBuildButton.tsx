@@ -58,8 +58,10 @@ export const SidebarBuildButton = styled(BuildButton)`
   &.is-selected:hover .fillStd {
     fill: ${Color.blueDark};
   }
-  & > svg {
+  & .icon {
     transition: transform ${AnimDuration.short} linear;
+    width: ${SizeUnit(0.75)};
+    height: ${SizeUnit(0.75)};
   }
   &:active > svg {
     transform: scale(1.2);
@@ -68,9 +70,9 @@ export const SidebarBuildButton = styled(BuildButton)`
     animation: spin 1s linear infinite;
   }
 
-  // the emphasized svg is bigger, so pad the unemphasized svg to line it up
-  padding: 0 0 0 2px;
-  &.is-emphasized {
+  &.stop-button button {
+    min-width: 0;
+    border: 0;
     padding: 0;
   }
 `

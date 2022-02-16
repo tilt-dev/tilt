@@ -99,6 +99,7 @@ export let SidebarItemBox = styled.div`
     );
     background-size: 200% 200%;
     animation: ${barberpole} 8s linear infinite;
+    z-index: 0;
   }
 `
 
@@ -373,6 +374,7 @@ export function EnabledSidebarItemView(props: SidebarItemViewProps) {
               isQueued={item.queued}
               onStartBuild={onStartBuild}
               analyticsTags={analyticsTags}
+              stopBuildButton={item.stopBuildButton}
             />
           </SidebarItemRuntimeBox>
           <SidebarItemBuildBox>

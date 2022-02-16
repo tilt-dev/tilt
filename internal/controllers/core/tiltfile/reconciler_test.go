@@ -382,11 +382,11 @@ func TestCancel(t *testing.T) {
 		},
 		Spec: v1alpha1.TiltfileSpec{
 			Path:   p,
-			StopOn: &v1alpha1.StopOnSpec{UIButtons: []string{uibutton.CancelButtonName("my-tf")}},
+			StopOn: &v1alpha1.StopOnSpec{UIButtons: []string{uibutton.StopBuildButtonName("my-tf")}},
 		},
 	}
 
-	cancelButton := uibutton.CancelButton(tf.Name)
+	cancelButton := uibutton.StopBuildButton(tf.Name)
 	err := f.Client.Create(f.Context(), cancelButton)
 	require.NoError(t, err)
 
@@ -426,11 +426,11 @@ func TestCancelClickedBeforeLoad(t *testing.T) {
 		},
 		Spec: v1alpha1.TiltfileSpec{
 			Path:   p,
-			StopOn: &v1alpha1.StopOnSpec{UIButtons: []string{uibutton.CancelButtonName("my-tf")}},
+			StopOn: &v1alpha1.StopOnSpec{UIButtons: []string{uibutton.StopBuildButtonName("my-tf")}},
 		},
 	}
 
-	cancelButton := uibutton.CancelButton(tf.Name)
+	cancelButton := uibutton.StopBuildButton(tf.Name)
 	cancelButton.Status.LastClickedAt = metav1.NowMicro()
 	err := f.Client.Create(f.Context(), cancelButton)
 	require.NoError(t, err)

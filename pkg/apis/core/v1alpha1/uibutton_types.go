@@ -123,7 +123,7 @@ type UIComponentLocationResource struct {
 const AnnotationButtonType = "tilt.dev/uibutton-type"
 
 const ButtonTypeDisableToggle = "DisableToggle"
-const ButtonTypeCancelUpdate = "CancelUpdate"
+const ButtonTypeStopBuild = "StopBuild"
 
 var _ resource.Object = &UIButton{}
 var _ resourcestrategy.Validater = &UIButton{}

@@ -9,11 +9,12 @@ import {
   expectIncrs,
   mockAnalyticsCalls,
 } from "./analytics_test_helpers"
-import BuildButton, { BuildButtonProps } from "./BuildButton"
+import { ApiButton } from "./ApiButton"
+import BuildButton, { StartBuildButtonProps } from "./BuildButton"
 import { InstrumentedButton } from "./instrumentedComponents"
 import TiltTooltip from "./Tooltip"
 import { BuildButtonTooltip, startBuild } from "./trigger"
-import { TriggerMode } from "./types"
+import { TriggerMode, UIButton } from "./types"
 
 function expectClickable(button: any, expected: boolean) {
   const ib = button.find(InstrumentedButton)
@@ -39,12 +40,24 @@ function expectIsQueued(button: any, expected: boolean) {
 function expectWithTooltip(button: any, expected: string) {
   expect(button.find(TiltTooltip).prop("title")).toEqual(expected)
 }
+function expectIsStopButton(button: any, expected: boolean) {
+  expect(button.find(ApiButton).hasClass("stop-button")).toEqual(expected)
+}
 
-function BuildButtonTestWrapper(props: Partial<BuildButtonProps>) {
+function stopBuildButton(): UIButton {
+  return {
+    metadata: {
+      name: "stopBuild",
+    },
+  }
+}
+
+function BuildButtonTestWrapper(props: Partial<StartBuildButtonProps>) {
   return (
     <MemoryRouter initialEntries={["/"]}>
       <SnackbarProvider>
         <BuildButton
+          stopBuildButton={stopBuildButton()}
           onStartBuild={props.onStartBuild ?? (() => {})}
           hasBuilt={props.hasBuilt ?? false}
           isBuilding={props.isBuilding ?? false}
@@ -217,6 +230,20 @@ describe("SidebarBuildButton", () => {
       expectManualStartBuildIcon(button, false)
       expectIsQueued(button, true)
       expectWithTooltip(button, BuildButtonTooltip.AlreadyQueued)
+    })
+  })
+
+  describe("stop builds", () => {
+    it("renders a stop button when the build is in progress", () => {
+      const root = mount(<BuildButtonTestWrapper isBuilding={true} />)
+
+      const button = root.find(BuildButton)
+      expect(button).toHaveLength(1)
+
+      expectWithTooltip(button, BuildButtonTooltip.Stop)
+      expectIsStopButton(button, true)
+      const apiButton = button.find(ApiButton)
+      expect(apiButton.props().uiButton).toEqual(stopBuildButton())
     })
   })
 })

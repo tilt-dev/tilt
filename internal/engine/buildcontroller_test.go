@@ -1662,7 +1662,7 @@ local_resource('local', 'sleep 10000')
 	f.waitUntilManifestBuilding("local")
 
 	var cancelButton v1alpha1.UIButton
-	err := f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: uibutton.CancelButtonName("local")}, &cancelButton)
+	err := f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: uibutton.StopBuildButtonName("local")}, &cancelButton)
 	require.NoError(t, err)
 	cancelButton.Status.LastClickedAt = metav1.NowMicro()
 	err = f.ctrlClient.Status().Update(f.ctx, &cancelButton)
@@ -1693,7 +1693,7 @@ local_resource('local', 'sleep 10000')
 	f.waitUntilManifestBuilding("local")
 
 	var cancelButton v1alpha1.UIButton
-	err := f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: uibutton.CancelButtonName("local")}, &cancelButton)
+	err := f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: uibutton.StopBuildButtonName("local")}, &cancelButton)
 	require.NoError(t, err)
 	cancelButton.Status.LastClickedAt = ts
 	err = f.ctrlClient.Status().Update(f.ctx, &cancelButton)
