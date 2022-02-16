@@ -167,7 +167,7 @@ func LastStartEvent(ctx context.Context, cli client.Reader, startOn *v1alpha1.St
 		}
 
 		lastEventTime := b.Status.LastClickedAt
-		if timecmp.AfterOrEqual(lastEventTime, startOn.StartAfter) && !timecmp.BeforeOrEqual(lastEventTime, latestTime) {
+		if timecmp.AfterOrEqual(lastEventTime, startOn.StartAfter) && timecmp.After(lastEventTime, latestTime) {
 			latestTime = lastEventTime
 			latestButton = b
 		}
@@ -202,7 +202,7 @@ func LastRestartEvent(ctx context.Context, cli client.Reader, restartOn *v1alpha
 
 	for _, fw := range fws {
 		lastEventTime := fw.Status.LastEventTime
-		if !timecmp.BeforeOrEqual(lastEventTime, cur) {
+		if timecmp.After(lastEventTime, cur) {
 			cur = lastEventTime
 		}
 	}
@@ -216,7 +216,7 @@ func LastRestartEvent(ctx context.Context, cli client.Reader, restartOn *v1alpha
 		}
 
 		lastEventTime := b.Status.LastClickedAt
-		if !timecmp.BeforeOrEqual(lastEventTime, cur) {
+		if timecmp.After(lastEventTime, cur) {
 			cur = lastEventTime
 			latestButton = b
 		}
@@ -237,7 +237,7 @@ func FilesChanged(restartOn *v1alpha1.RestartOnSpec, fileWatches []*v1alpha1.Fil
 		// Add files so that the most recent files are first.
 		for i := len(fw.Status.FileEvents) - 1; i >= 0; i-- {
 			e := fw.Status.FileEvents[i]
-			if !timecmp.BeforeOrEqual(e.Time, lastBuild) {
+			if timecmp.After(e.Time, lastBuild) {
 				filesChanged = append(filesChanged, e.SeenFiles...)
 			}
 		}
@@ -271,7 +271,7 @@ func LastStopEvent(ctx context.Context, cli client.Reader, stopOn *v1alpha1.Stop
 		}
 
 		lastEventTime := b.Status.LastClickedAt
-		if !timecmp.BeforeOrEqual(lastEventTime, latestTime) {
+		if timecmp.After(lastEventTime, latestTime) {
 			latestTime = lastEventTime
 			latestButton = b
 		}

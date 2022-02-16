@@ -230,7 +230,7 @@ func (r *Reconciler) needsBuild(
 		filesChanged = trigger.FilesChanged(tf.Spec.RestartOn, fileWatches, lastStartTime)
 		if len(filesChanged) > 0 {
 			reason = reason.With(model.BuildReasonFlagChangedFiles)
-		} else if !timecmp.BeforeOrEqual(lastRestartEvent, lastStartTime) {
+		} else if timecmp.After(lastRestartEvent, lastStartTime) {
 			reason = reason.With(model.BuildReasonFlagTriggerUnknown)
 		}
 	}

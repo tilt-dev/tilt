@@ -255,7 +255,7 @@ func (r *Reconciler) shouldDeployOnReconcile(
 		}
 	}
 
-	if !timecmp.BeforeOrEqual(lastRestartEvent, result.Status.LastApplyTime) {
+	if timecmp.After(lastRestartEvent, result.Status.LastApplyTime) {
 		return true
 	}
 

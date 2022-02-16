@@ -45,6 +45,16 @@ func Equal(a, b commonTime) bool {
 	return aNorm.Equal(bNorm)
 }
 
+// Before returns true if the normalized version of a is strictly before the normalized version of b.
+//
+// Values are normalized to the lowest granularity between the two values: seconds if either
+// is metav1.Time, microseconds if either is metav1.MicroTime, or monotonically-stripped if
+// both are time.Time. Nil time values are normalized to the zero-time.
+func Before(a, b commonTime) bool {
+	aNorm, bNorm := normalize(a, b)
+	return aNorm.Before(bNorm)
+}
+
 // BeforeOrEqual returns true if the normalized version of a is before or equal to the normalized version of b.
 //
 // Values are normalized to the lowest granularity between the two values: seconds if either
@@ -53,6 +63,16 @@ func Equal(a, b commonTime) bool {
 func BeforeOrEqual(a, b commonTime) bool {
 	aNorm, bNorm := normalize(a, b)
 	return aNorm.Before(bNorm) || aNorm.Equal(bNorm)
+}
+
+// After returns true if the normalized version of a is strictly after the normalized version of b.
+//
+// Values are normalized to the lowest granularity between the two values: seconds if either
+// is metav1.Time, microseconds if either is metav1.MicroTime, or monotonically-stripped if
+// both are time.Time. Nil time values are normalized to the zero-time.
+func After(a, b commonTime) bool {
+	aNorm, bNorm := normalize(a, b)
+	return aNorm.After(bNorm)
 }
 
 // AfterOrEqual returns true if the normalized version of a is after or equal to the normalized version of b.

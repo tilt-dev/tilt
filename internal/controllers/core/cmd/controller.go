@@ -200,8 +200,8 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	lastRestartOnEventTime := proc.lastRestartOnEventTime
 	lastStartOnEventTime := proc.lastStartOnEventTime
 
-	restartOnTriggered := !timecmp.BeforeOrEqual(te.lastRestartEventTime, lastRestartOnEventTime)
-	startOnTriggered := !timecmp.BeforeOrEqual(te.lastStartEventTime, lastStartOnEventTime)
+	restartOnTriggered := timecmp.After(te.lastRestartEventTime, lastRestartOnEventTime)
+	startOnTriggered := timecmp.After(te.lastStartEventTime, lastStartOnEventTime)
 	execSpecChanged := !cmdExecEqual(lastSpec, cmd.Spec)
 
 	if !disabled {
@@ -333,7 +333,7 @@ func (c *Controller) runInternal(ctx context.Context,
 	proc.lastStartOnEventTime = te.lastStartEventTime
 
 	var inputs []input
-	if !timecmp.BeforeOrEqual(proc.lastRestartOnEventTime, proc.lastStartOnEventTime) {
+	if timecmp.After(proc.lastRestartOnEventTime, proc.lastStartOnEventTime) {
 		inputs = inputsFromButton(te.lastRestartButton)
 	} else {
 		inputs = inputsFromButton(te.lastStartButton)
