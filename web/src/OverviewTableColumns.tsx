@@ -57,7 +57,7 @@ type OverviewTableResourceStatus = {
 
 export type RowValues = {
   lastDeployTime: string
-  buildButton: OverviewTableBuildButtonStatus
+  trigger: OverviewTableBuildButtonStatus
   name: string
   resourceTypeLabel: string
   statusLine: OverviewTableResourceStatus
@@ -356,18 +356,18 @@ export function TableTriggerColumn({ row }: CellProps<RowValues>) {
     return null
   }
 
-  const buildButton = row.original.buildButton
+  const trigger = row.original.trigger
   let onStartBuild = useCallback(
     () => startBuild(row.values.name),
     [row.values.name]
   )
   return (
     <OverviewTableBuildButton
-      hasPendingChanges={buildButton.hasPendingChanges}
-      hasBuilt={buildButton.hasBuilt}
-      isBuilding={buildButton.isBuilding}
+      hasPendingChanges={trigger.hasPendingChanges}
+      hasBuilt={trigger.hasBuilt}
+      isBuilding={trigger.isBuilding}
       triggerMode={row.values.triggerMode}
-      isQueued={buildButton.isQueued}
+      isQueued={trigger.isQueued}
       analyticsTags={row.values.analyticsTags}
       onStartBuild={onStartBuild}
     />
@@ -626,8 +626,8 @@ const DEFAULT_COLUMNS: Column<RowValues>[] = [
     Cell: TableUpdateColumn,
   },
   {
-    Header: "Build",
-    accessor: "buildButton",
+    Header: "Trigger",
+    accessor: "trigger",
     disableSortBy: true,
     width: "20px",
     Cell: TableTriggerColumn,
