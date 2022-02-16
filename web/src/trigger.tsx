@@ -2,30 +2,30 @@
 
 import { TriggerMode } from "./types"
 
-export const TriggerButtonTooltip = {
+export const BuildButtonTooltip = {
   AlreadyQueued: "Resource already queued!",
   NeedsManualTrigger: "Trigger update to sync changes",
   UpdateInProgOrPending: "Resource already updating!",
   Default: "Trigger update",
 }
 
-export function triggerTooltip(
+export function buildButtonTooltip(
   isClickable: boolean,
   isEmphasized: boolean,
   isQueued: boolean
 ): string {
   if (isQueued) {
-    return TriggerButtonTooltip.AlreadyQueued
+    return BuildButtonTooltip.AlreadyQueued
   } else if (!isClickable) {
-    return TriggerButtonTooltip.UpdateInProgOrPending
+    return BuildButtonTooltip.UpdateInProgOrPending
   } else if (isEmphasized) {
-    return TriggerButtonTooltip.NeedsManualTrigger
+    return BuildButtonTooltip.NeedsManualTrigger
   } else {
-    return TriggerButtonTooltip.Default
+    return BuildButtonTooltip.Default
   }
 }
 
-export function triggerUpdate(name: string) {
+export function startBuild(name: string) {
   let url = `/api/trigger`
 
   fetch(url, {

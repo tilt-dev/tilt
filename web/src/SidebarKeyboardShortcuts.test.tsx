@@ -11,7 +11,7 @@ import { ResourceView } from "./types"
 
 var opened: any
 let component: any
-let triggered: any = false
+let buildStarted: any = false
 const shortcuts = (items: SidebarItem[], selected: string) => {
   let resourceNav = {
     selectedResource: "",
@@ -29,8 +29,8 @@ const shortcuts = (items: SidebarItem[], selected: string) => {
           items={items}
           selected={selected}
           resourceView={ResourceView.Log}
-          onTrigger={() => {
-            triggered = true
+          onStartBuild={() => {
+            buildStarted = true
           }}
         />
       </ResourceNavContextProvider>
@@ -91,7 +91,7 @@ it("triggers update", () => {
     (res) => new SidebarItem(res, ls)
   )
   let sks = shortcuts(items, "")
-  expect(triggered).toEqual(false)
+  expect(buildStarted).toEqual(false)
   fireEvent.keyDown(document.body, { key: "r" })
-  expect(triggered).toEqual(true)
+  expect(buildStarted).toEqual(true)
 })

@@ -5,9 +5,9 @@ import { Flag, useFeatures } from "./feature"
 import { Hold } from "./Hold"
 import PathBuilder from "./PathBuilder"
 import { useResourceNav } from "./ResourceNav"
+import { SidebarBuildButton } from "./SidebarBuildButton"
 import SidebarIcon from "./SidebarIcon"
 import SidebarItem from "./SidebarItem"
-import { SidebarTriggerButton } from "./SidebarTriggerButton"
 import StarResourceButton, {
   StarResourceButtonRoot,
 } from "./StarResourceButton"
@@ -26,7 +26,7 @@ import {
 } from "./style-helpers"
 import { formatBuildDuration, isZeroTime } from "./time"
 import { timeAgoFormatter } from "./timeFormatters"
-import { triggerUpdate } from "./trigger"
+import { startBuild } from "./trigger"
 import { ResourceStatus, ResourceView } from "./types"
 
 export const SidebarItemRoot = styled.li`
@@ -332,7 +332,7 @@ export function EnabledSidebarItemView(props: SidebarItemViewProps) {
 
   let isSelectedClass = isSelected ? "isSelected" : ""
   let isBuildingClass = building ? "isBuilding" : ""
-  let onTrigger = triggerUpdate.bind(null, item.name)
+  let onStartBuild = startBuild.bind(null, item.name)
   const groupViewIndentClass = props.groupView ? "groupViewIndent" : ""
   let analyticsTags = { target: item.targetType }
 
@@ -364,14 +364,14 @@ export function EnabledSidebarItemView(props: SidebarItemViewProps) {
             <SidebarItemTimeAgo>
               {hasSuccessfullyDeployed ? timeAgo : "—"}
             </SidebarItemTimeAgo>
-            <SidebarTriggerButton
+            <SidebarBuildButton
               isSelected={isSelected}
               hasPendingChanges={item.hasPendingChanges}
               hasBuilt={hasBuilt}
               isBuilding={building}
               triggerMode={item.triggerMode}
               isQueued={item.queued}
-              onTrigger={onTrigger}
+              onStartBuild={onStartBuild}
               analyticsTags={analyticsTags}
             />
           </SidebarItemRuntimeBox>

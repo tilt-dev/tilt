@@ -42,7 +42,7 @@ import {
   mixinResetButtonStyle,
   SizeUnit,
 } from "./style-helpers"
-import { triggerUpdate } from "./trigger"
+import { startBuild } from "./trigger"
 import { ResourceStatus, ResourceView } from "./types"
 
 export type SidebarProps = {
@@ -418,14 +418,14 @@ function applyOptionsToItems(
 export class SidebarResources extends React.Component<SidebarProps> {
   constructor(props: SidebarProps) {
     super(props)
-    this.triggerSelected = this.triggerSelected.bind(this)
+    this.startBuildOnSelected = this.startBuildOnSelected.bind(this)
   }
 
   static contextType = FeaturesContext
 
-  triggerSelected() {
+  startBuildOnSelected() {
     if (this.props.selected) {
-      triggerUpdate(this.props.selected)
+      startBuild(this.props.selected)
     }
   }
 
@@ -484,7 +484,7 @@ export class SidebarResources extends React.Component<SidebarProps> {
         <SidebarKeyboardShortcuts
           selected={this.props.selected}
           items={filteredItems}
-          onTrigger={this.triggerSelected}
+          onStartBuild={this.startBuildOnSelected}
           resourceView={this.props.resourceView}
         />
       </SidebarResourcesRoot>

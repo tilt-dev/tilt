@@ -10,7 +10,7 @@ type Props = {
   selected: string
   resourceNav: ResourceNav
   resourceView: ResourceView
-  onTrigger: () => void
+  onStartBuild: () => void
 }
 
 /**
@@ -65,7 +65,7 @@ class SidebarKeyboardShortcuts extends Component<Props> {
           return
         }
         let item = items.find((item) => item.name == selected)
-        this.props.onTrigger()
+        this.props.onStartBuild()
         incr("ui.web.triggerResource", {
           action: AnalyticsAction.Shortcut,
           target: item?.targetType || "",
@@ -83,7 +83,7 @@ class SidebarKeyboardShortcuts extends Component<Props> {
 type PublicProps = {
   items: SidebarItem[]
   selected: string
-  onTrigger: () => void
+  onStartBuild: () => void
   resourceView: ResourceView
 }
 

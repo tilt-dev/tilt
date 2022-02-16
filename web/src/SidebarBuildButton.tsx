@@ -1,4 +1,5 @@
 import styled from "styled-components"
+import BuildButton from "./BuildButton"
 import {
   AnimDuration,
   Color,
@@ -6,9 +7,8 @@ import {
   overviewItemBorderRadius,
   SizeUnit,
 } from "./style-helpers"
-import TriggerButton from "./TriggerButton"
 
-export const SidebarTriggerButton = styled(TriggerButton)`
+export const SidebarBuildButton = styled(BuildButton)`
   ${mixinResetButtonStyle};
   width: ${SizeUnit(1)};
   height: ${SizeUnit(1)};
