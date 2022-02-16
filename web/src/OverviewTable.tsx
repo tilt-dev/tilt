@@ -3,7 +3,7 @@ import {
   AccordionDetails,
   AccordionSummary,
 } from "@material-ui/core"
-import React, { ChangeEvent, useMemo, useState } from "react"
+import React, { ChangeEvent, MouseEvent, useMemo, useState } from "react"
 import {
   HeaderGroup,
   Row,
@@ -11,13 +11,19 @@ import {
   TableHeaderProps,
   TableOptions,
   TableState,
+  usePagination,
   useSortBy,
+  UseSortByState,
   useTable,
 } from "react-table"
 import styled from "styled-components"
 import { buildAlerts, runtimeAlerts } from "./alerts"
-import { AnalyticsType } from "./analytics"
+import { AnalyticsType, Tags } from "./analytics"
 import { ApiButtonType, buttonsForComponent } from "./ApiButton"
+import {
+  DEFAULT_RESOURCE_LIST_LIMIT,
+  RESOURCE_LIST_MULTIPLIER,
+} from "./constants"
 import Features, { Flag, useFeatures } from "./feature"
 import { Hold } from "./Hold"
 import {
@@ -57,6 +63,7 @@ import {
   resourceTargetType,
 } from "./ResourceStatus"
 import { TableGroupStatusSummary } from "./ResourceStatusSummary"
+import { ShowMoreButton } from "./ShowMoreButton"
 import { buildStatus, runtimeStatus } from "./status"
 import { Color, Font, FontSize, SizeUnit, Width } from "./style-helpers"
 import { isZeroTime, timeDiff } from "./time"
@@ -161,6 +168,11 @@ export const ResourceTableRow = styled.tr`
   &.isDisabled {
     ${disabledResourceStyleMixin}
   }
+
+  /* For visual consistency on rows */
+  &.isFixedHeight {
+    height: ${SizeUnit(1.4)};
+  }
 `
 export const ResourceTableData = styled.td`
   box-sizing: border-box;
@@ -168,7 +180,12 @@ export const ResourceTableData = styled.td`
   &.isSorted {
     background-color: ${Color.gray};
   }
+
+  &.alignRight {
+    text-align: right;
+  }
 `
+
 export const ResourceTableHeader = styled(ResourceTableData)`
   color: ${Color.gray7};
   font-size: ${FontSize.small};
@@ -236,6 +253,7 @@ export const OverviewGroupDetails = styled(AccordionDetails)`
     margin-top: 4px;
   }
 `
+const TABLE_TYPE_TAGS: Tags = { type: AnalyticsType.Grid }
 
 const GROUP_INFO_TOOLTIP_ID = "table-groups-info"
 
@@ -539,21 +557,63 @@ export function ResourceTableHeadRow({
   )
 }
 
+function ShowMoreResourcesRow({
+  colSpan,
+  itemCount,
+  pageSize,
+  onClick,
+}: {
+  colSpan: number
+  itemCount: number
+  pageSize: number
+  onClick: (e: MouseEvent) => void
+}) {
+  if (itemCount <= pageSize) {
+    return null
+  }
+
+  return (
+    <ResourceTableRow className="isFixedHeight">
+      <ResourceTableData colSpan={colSpan - 2} />
+      <ResourceTableData className="alignRight" colSpan={2}>
+        <ShowMoreButton
+          itemCount={itemCount}
+          currentListSize={pageSize}
+          onClick={onClick}
+          analyticsTags={TABLE_TYPE_TAGS}
+        />
+      </ResourceTableData>
+    </ResourceTableRow>
+  )
+}
+
 export function Table(props: TableProps) {
   if (props.data.length === 0) {
     return null
   }
 
-  const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } =
-    useTable(
-      {
-        columns: props.columns,
-        data: props.data,
-        autoResetSortBy: false,
-        useControlledState: props.useControlledState,
-      },
-      useSortBy
-    )
+  const {
+    getTableProps,
+    getTableBodyProps,
+    headerGroups,
+    rows, // Used to calculate the total number of rows
+    page, // Used to render the rows for the current page
+    prepareRow,
+    state: { pageSize },
+    setPageSize,
+  } = useTable(
+    {
+      columns: props.columns,
+      data: props.data,
+      autoResetSortBy: false,
+      useControlledState: props.useControlledState,
+      initialState: { pageSize: DEFAULT_RESOURCE_LIST_LIMIT },
+    },
+    useSortBy,
+    usePagination
+  )
+
+  const showMoreOnClick = () => setPageSize(pageSize * RESOURCE_LIST_MULTIPLIER)
 
   // TODO (lizz): Consider adding `aria-sort` markup to table headings
   return (
@@ -568,7 +628,7 @@ export function Table(props: TableProps) {
         ))}
       </ResourceTableHead>
       <tbody {...getTableBodyProps()}>
-        {rows.map((row: Row<RowValues>) => {
+        {page.map((row: Row<RowValues>) => {
           prepareRow(row)
           return (
             <ResourceTableRow
@@ -587,6 +647,12 @@ export function Table(props: TableProps) {
             </ResourceTableRow>
           )
         })}
+        <ShowMoreResourcesRow
+          itemCount={rows.length}
+          pageSize={pageSize}
+          onClick={showMoreOnClick}
+          colSpan={props.columns.length}
+        />
       </tbody>
     </ResourceTable>
   )
@@ -640,7 +706,7 @@ export function TableGroupedByLabels({
   // tables by the same column
   // See: https://react-table.tanstack.com/docs/faq#how-can-i-manually-control-the-table-state
   const [globalTableSettings, setGlobalTableSettings] =
-    useState<TableState<RowValues>>()
+    useState<UseSortByState<RowValues>>()
 
   const useControlledState = (state: TableState<RowValues>) =>
     useMemo(() => {
