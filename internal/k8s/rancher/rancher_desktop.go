@@ -26,9 +26,7 @@ const (
 // openFileFunc is a hack for testing.
 type openFileFunc func(name string) (io.ReadCloser, error)
 
-var openFile = func(name string) (io.ReadCloser, error) {
-	return os.Open(name)
-}
+var openFile = os.Open
 
 // settings we are interested in from Rancher Desktop.
 //
