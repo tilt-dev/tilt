@@ -346,10 +346,6 @@ func toToggleButtons(tlr *tiltfile.TiltfileLoadResult, disableSources disableSou
 
 func toCancelButtons(tlr *tiltfile.TiltfileLoadResult) apiset.TypedObjectSet {
 	result := apiset.TypedObjectSet{}
-	if !tlr.FeatureFlags[feature.CancelBuild] {
-		return result
-	}
-
 	for _, m := range tlr.Manifests {
 		button := uibutton.CancelButton(m.Name.String())
 		result[button.Name] = button
