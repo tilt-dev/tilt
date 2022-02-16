@@ -24,7 +24,6 @@ package cli
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -59,8 +58,7 @@ type patchCmd struct {
 
 var _ tiltCmd = &patchCmd{}
 
-func newPatchCmd() *patchCmd {
-	streams := genericclioptions.IOStreams{Out: os.Stdout, ErrOut: os.Stderr, In: os.Stdin}
+func newPatchCmd(streams genericclioptions.IOStreams) *patchCmd {
 	return &patchCmd{
 		streams: streams,
 	}

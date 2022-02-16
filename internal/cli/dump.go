@@ -11,12 +11,13 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-func newDumpCmd(rootCmd *cobra.Command) *cobra.Command {
+func newDumpCmd(rootCmd *cobra.Command, streams genericclioptions.IOStreams) *cobra.Command {
 	result := &cobra.Command{
 		Use:   "dump",
 		Short: "Dump internal Tilt state",
@@ -35,7 +36,7 @@ and may change frequently.
 	result.AddCommand(newDumpLogStoreCmd())
 	result.AddCommand(newDumpCliDocsCmd(rootCmd))
 	result.AddCommand(newDumpImageDeployRefCmd())
-	addCommand(result, newOpenapiCmd())
+	addCommand(result, newOpenapiCmd(streams))
 
 	return result
 }

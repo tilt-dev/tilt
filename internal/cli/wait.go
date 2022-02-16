@@ -23,7 +23,6 @@ package cli
 
 import (
 	"context"
-	"os"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -63,8 +62,7 @@ type waitCmd struct {
 
 var _ tiltCmd = &waitCmd{}
 
-func newWaitCmd() *waitCmd {
-	streams := genericclioptions.IOStreams{Out: os.Stdout, ErrOut: os.Stderr, In: os.Stdin}
+func newWaitCmd(streams genericclioptions.IOStreams) *waitCmd {
 	flags := wait.NewWaitFlags(nil, streams)
 	return &waitCmd{
 		flags: flags,

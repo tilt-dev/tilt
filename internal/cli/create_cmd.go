@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
@@ -30,8 +31,8 @@ type createCmdCmd struct {
 
 var _ tiltCmd = &createCmdCmd{}
 
-func newCreateCmdCmd() *createCmdCmd {
-	helper := newCreateHelper()
+func newCreateCmdCmd(streams genericclioptions.IOStreams) *createCmdCmd {
+	helper := newCreateHelper(streams)
 	return &createCmdCmd{
 		helper: helper,
 	}

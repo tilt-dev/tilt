@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/output"
@@ -50,6 +51,7 @@ and applies any changes to bring your environment
 up-to-date in real-time. Think 'docker build && kubectl apply' or 'docker-compose up'.
 `,
 	}
+	streams := genericclioptions.IOStreams{Out: os.Stdout, ErrOut: os.Stderr, In: os.Stdin}
 
 	addCommand(rootCmd, &ciCmd{})
 	addCommand(rootCmd, &upCmd{})
@@ -59,26 +61,26 @@ up-to-date in real-time. Think 'docker build && kubectl apply' or 'docker-compos
 	addCommand(rootCmd, &versionCmd{})
 	addCommand(rootCmd, &verifyInstallCmd{})
 	addCommand(rootCmd, &dockerPruneCmd{})
-	addCommand(rootCmd, newArgsCmd())
+	addCommand(rootCmd, newArgsCmd(streams))
 	addCommand(rootCmd, &logsCmd{})
-	addCommand(rootCmd, newDescribeCmd())
-	addCommand(rootCmd, newGetCmd())
-	addCommand(rootCmd, newExplainCmd())
-	addCommand(rootCmd, newEditCmd())
-	addCommand(rootCmd, newApiresourcesCmd())
-	addCommand(rootCmd, newDeleteCmd())
-	addCommand(rootCmd, newApplyCmd())
-	addCommand(rootCmd, newCreateCmd())
-	addCommand(rootCmd, newPatchCmd())
-	addCommand(rootCmd, newWaitCmd())
+	addCommand(rootCmd, newDescribeCmd(streams))
+	addCommand(rootCmd, newGetCmd(streams))
+	addCommand(rootCmd, newExplainCmd(streams))
+	addCommand(rootCmd, newEditCmd(streams))
+	addCommand(rootCmd, newApiresourcesCmd(streams))
+	addCommand(rootCmd, newDeleteCmd(streams))
+	addCommand(rootCmd, newApplyCmd(streams))
+	addCommand(rootCmd, newCreateCmd(streams))
+	addCommand(rootCmd, newPatchCmd(streams))
+	addCommand(rootCmd, newWaitCmd(streams))
 	addCommand(rootCmd, &demoCmd{})
 	addCommand(rootCmd, newEnableCmd())
 	addCommand(rootCmd, newDisableCmd())
 
 	rootCmd.AddCommand(analytics.NewCommand())
-	rootCmd.AddCommand(newDumpCmd(rootCmd))
+	rootCmd.AddCommand(newDumpCmd(rootCmd, streams))
 	rootCmd.AddCommand(newTriggerCmd())
-	rootCmd.AddCommand(newAlphaCmd())
+	rootCmd.AddCommand(newAlphaCmd(streams))
 
 	globalFlags := rootCmd.PersistentFlags()
 	globalFlags.BoolVarP(&debug, "debug", "d", false, "Enable debug logging")

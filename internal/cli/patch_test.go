@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
@@ -25,8 +26,9 @@ func TestPatch(t *testing.T) {
 	require.NoError(t, err)
 
 	out := bytes.NewBuffer(nil)
-	cmd := newPatchCmd()
-	cmd.streams.Out = out
+	streams := genericclioptions.IOStreams{Out: out}
+
+	cmd := newPatchCmd(streams)
 	c := cmd.register()
 	err = c.Flags().Parse([]string{"-p", `{"spec": {"dir": "/tmp"}}`})
 	require.NoError(t, err)

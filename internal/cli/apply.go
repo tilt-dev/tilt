@@ -23,7 +23,6 @@ package cli
 
 import (
 	"context"
-	"os"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -44,8 +43,7 @@ type applyCmd struct {
 
 var _ tiltCmd = &applyCmd{}
 
-func newApplyCmd() *applyCmd {
-	streams := genericclioptions.IOStreams{Out: os.Stdout, ErrOut: os.Stderr, In: os.Stdin}
+func newApplyCmd(streams genericclioptions.IOStreams) *applyCmd {
 	return &applyCmd{
 		streams: streams,
 	}

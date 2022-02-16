@@ -23,7 +23,6 @@ package cli
 
 import (
 	"context"
-	"os"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -43,8 +42,7 @@ type apiresourcesCmd struct {
 
 var _ tiltCmd = &apiresourcesCmd{}
 
-func newApiresourcesCmd() *apiresourcesCmd {
-	streams := genericclioptions.IOStreams{Out: os.Stdout, ErrOut: os.Stderr, In: os.Stdin}
+func newApiresourcesCmd(streams genericclioptions.IOStreams) *apiresourcesCmd {
 	o := apiresources.NewAPIResourceOptions(streams)
 	return &apiresourcesCmd{
 		options: o,

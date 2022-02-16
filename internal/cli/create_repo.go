@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
@@ -22,8 +23,8 @@ type createRepoCmd struct {
 
 var _ tiltCmd = &createRepoCmd{}
 
-func newCreateRepoCmd() *createRepoCmd {
-	helper := newCreateHelper()
+func newCreateRepoCmd(streams genericclioptions.IOStreams) *createRepoCmd {
+	helper := newCreateHelper(streams)
 	return &createRepoCmd{
 		helper: helper,
 	}

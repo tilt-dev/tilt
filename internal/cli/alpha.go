@@ -1,8 +1,11 @@
 package cli
 
-import "github.com/spf13/cobra"
+import (
+	"github.com/spf13/cobra"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
+)
 
-func newAlphaCmd() *cobra.Command {
+func newAlphaCmd(streams genericclioptions.IOStreams) *cobra.Command {
 	result := &cobra.Command{
 		Use:   "alpha",
 		Short: "unstable/advanced commands still in alpha",
@@ -12,10 +15,10 @@ The APIs of these commands may change frequently.
 `,
 	}
 
-	addCommand(result, newTiltfileResultCmd())
-	addCommand(result, newUpdogCmd())
-	addCommand(result, newGetCmd())
-	addCommand(result, newApiresourcesCmd())
+	addCommand(result, newTiltfileResultCmd(streams))
+	addCommand(result, newUpdogCmd(streams))
+	addCommand(result, newGetCmd(streams))
+	addCommand(result, newApiresourcesCmd(streams))
 
 	return result
 }

@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
@@ -27,8 +28,8 @@ type createFileWatchCmd struct {
 
 var _ tiltCmd = &createFileWatchCmd{}
 
-func newCreateFileWatchCmd() *createFileWatchCmd {
-	helper := newCreateHelper()
+func newCreateFileWatchCmd(streams genericclioptions.IOStreams) *createFileWatchCmd {
+	helper := newCreateHelper(streams)
 	return &createFileWatchCmd{
 		helper: helper,
 	}
