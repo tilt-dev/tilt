@@ -34,6 +34,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/docker/buildkit"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -107,6 +108,15 @@ type Client interface {
 	NewVersionError(APIrequired, feature string) error
 	BuildCachePrune(ctx context.Context, opts types.BuildCachePruneOptions) (*types.BuildCachePruneReport, error)
 	ContainersPrune(ctx context.Context, pruneFilters filters.Args) (types.ContainersPruneReport, error)
+}
+
+// Add-on interface for a client that manages multiple clients transparently.
+type CompositeClient interface {
+	Client
+	DefaultLocalClient() Client
+	DefaultClusterClient() Client
+	ClientFor(cluster v1alpha1.Cluster) Client
+	HasMultipleClients() bool
 }
 
 type ExitError struct {

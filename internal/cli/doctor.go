@@ -39,23 +39,22 @@ func (c *doctorCmd) run(ctx context.Context, args []string) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	clusterDocker, clusterDockerErr := wireDockerClusterClient(ctx)
-	if clusterDockerErr == nil {
-		clusterDockerErr = clusterDocker.CheckConnected()
+	var localDocker, clusterDocker docker.Client
+	var localDockerErr, clusterDockerErr error
+	multipleClients := false
+	client, err := wireDockerCompositeClient(ctx)
+	if err == nil {
+		localDocker = client.DefaultLocalClient()
+		clusterDocker = client.DefaultClusterClient()
+		multipleClients = client.HasMultipleClients()
+	} else { // Figure out which client(s) had errors so we can show them
+		localDocker, localDockerErr = wireDockerLocalClient(ctx)
+		clusterDocker, clusterDockerErr = wireDockerClusterClient(ctx)
+		multipleClients = (localDockerErr != nil) != (clusterDockerErr != nil)
 	}
-
-	localDocker, localDockerErr := wireDockerLocalClient(ctx)
-	if localDockerErr == nil {
-		localDockerErr = localDocker.CheckConnected()
-	}
-
-	isLocalDockerErr := localDockerErr != nil
-	isClusterDockerErr := clusterDockerErr != nil
-	twoDockerClients := (isLocalDockerErr != isClusterDockerErr) ||
-		(!isLocalDockerErr && !isClusterDockerErr && localDocker.Env().Host != clusterDocker.Env().Host)
 
 	fmt.Println("---")
-	if twoDockerClients {
+	if multipleClients {
 		fmt.Println("Docker (cluster)")
 	} else {
 		fmt.Println("Docker")
@@ -79,7 +78,7 @@ func (c *doctorCmd) run(ctx context.Context, args []string) error {
 		printField("Builder", builderVersion, nil)
 	}
 
-	if twoDockerClients {
+	if multipleClients {
 		fmt.Println("---")
 		fmt.Println("Docker (local)")
 
@@ -105,7 +104,7 @@ func (c *doctorCmd) run(ctx context.Context, args []string) error {
 	// in theory, the env shouldn't matter since we're just calling the version subcommand,
 	// but to be safe, we'll try to use the actual local env if available
 	composeEnv := docker.LocalEnv{}
-	if !isLocalDockerErr {
+	if localDockerErr == nil {
 		composeEnv = docker.LocalEnv(localDocker.Env())
 	}
 	dcCli := dockercompose.NewDockerComposeClient(composeEnv)

@@ -286,6 +286,11 @@ func wireDockerLocalClient(ctx context.Context) (docker.LocalClient, error) {
 	return nil, nil
 }
 
+func wireDockerCompositeClient(ctx context.Context) (docker.CompositeClient, error) {
+	wire.Build(UpWireSet)
+	return nil, nil
+}
+
 func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (DownDeps, error) {
 	wire.Build(UpWireSet, ProvideDownDeps)
 	return DownDeps{}, nil

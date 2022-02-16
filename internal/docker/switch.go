@@ -10,6 +10,7 @@ import (
 	"github.com/docker/docker/api/types/filters"
 
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -24,8 +25,9 @@ type switchCli struct {
 }
 
 var _ Client = &switchCli{}
+var _ CompositeClient = &switchCli{}
 
-func ProvideSwitchCli(clusterCli ClusterClient, localCli LocalClient) *switchCli {
+func ProvideSwitchCli(clusterCli ClusterClient, localCli LocalClient) CompositeClient {
 	return &switchCli{
 		localCli:   localCli,
 		clusterCli: clusterCli,
@@ -120,4 +122,21 @@ func (c *switchCli) ContainersPrune(ctx context.Context, pruneFilters filters.Ar
 	return c.client(ctx).ContainersPrune(ctx, pruneFilters)
 }
 
-var _ Client = &switchCli{}
+// CompositeClient
+func (c *switchCli) DefaultLocalClient() Client {
+	return c.localCli
+}
+func (c *switchCli) DefaultClusterClient() Client {
+	return c.clusterCli
+}
+func (c *switchCli) ClientFor(cluster v1alpha1.Cluster) Client {
+	conn := cluster.Spec.Connection
+	if conn.Kubernetes != nil {
+		// TODO: pick correct client in multiple cluster situation
+		return c.DefaultClusterClient()
+	}
+	return c.DefaultLocalClient()
+}
+func (c *switchCli) HasMultipleClients() bool {
+	return c.localCli.Env().Host != c.clusterCli.Env().Host
+}
