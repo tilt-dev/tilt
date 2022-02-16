@@ -10,8 +10,9 @@ import (
 	"context"
 
 	"github.com/google/wire"
-	"github.com/tilt-dev/wmclient/pkg/dirs"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/tilt-dev/wmclient/pkg/dirs"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"

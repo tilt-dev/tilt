@@ -27,7 +27,7 @@ tasks:
       sed -i 's|v1alpha1 "pkg/apis/core/v1alpha1"|v1alpha1 "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"|g' pkg/webview/view.pb.go 
       sed -i 's|"$ref": "#/definitions/v1Time",|"type": "string", "format": "date-time",|g' pkg/webview/view.swagger.json
       sed -i 's|"$ref": "#/definitions/v1MicroTime",|"type": "string", "format": "date-time",|g' pkg/webview/view.swagger.json
-      goimports -local github.com/tilt-dev/tilt -w pkg/webview/*.pb.go
+      goimports -local github.com/tilt-dev -w pkg/webview/*.pb.go
 
   proto-ts:
     dependencies:

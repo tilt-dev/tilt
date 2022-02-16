@@ -11,9 +11,10 @@ import (
 
 	"github.com/google/wire"
 	"github.com/jonboulle/clockwork"
-	"github.com/tilt-dev/wmclient/pkg/dirs"
 	"go.opentelemetry.io/otel/sdk/trace"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/tilt-dev/wmclient/pkg/dirs"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
