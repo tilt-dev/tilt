@@ -11,6 +11,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/k8s/rancher"
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
@@ -97,6 +98,13 @@ func ProvideLocalEnv(ctx context.Context, kubeContext k8s.KubeContext, env k8s.E
 		result.BuildToKubeContexts = append(result.BuildToKubeContexts, string(kubeContext))
 	}
 
+	if env == k8s.EnvRancherDesktop {
+		rancherRuntime := rancher.DetermineContainerRuntime(ctx)
+		if rancherRuntime == rancher.ContainerRuntimeDocker {
+			result.BuildToKubeContexts = append(result.BuildToKubeContexts, string(kubeContext))
+		}
+	}
+
 	return LocalEnv(result)
 }
 
@@ -139,6 +147,11 @@ func ProvideClusterEnv(ctx context.Context, kubeContext k8s.KubeContext, env k8s
 			// If we're running Microk8s with a docker runtime, talk to Microk8s's docker socket.
 			result.Host = microK8sDockerHost
 			result.BuildToKubeContexts = append(result.BuildToKubeContexts, string(kubeContext))
+		} else if env == k8s.EnvRancherDesktop {
+			rancherRuntime := rancher.DetermineContainerRuntime(ctx)
+			if rancherRuntime == rancher.ContainerRuntimeDocker {
+				result.BuildToKubeContexts = append(result.BuildToKubeContexts, string(kubeContext))
+			}
 		}
 	}
 
