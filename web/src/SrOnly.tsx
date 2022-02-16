@@ -12,6 +12,10 @@ import React, { ElementType, PropsWithChildren } from "react"
  * that allows useful content to be present in the DOM (and therefore
  * available to screen-readers), but not visible to sighted users.
  * https://material-ui.com/api/typography/
+ *
+ * Using this may cause layout problems, see discussion here:
+ * https://github.com/tilt-dev/tilt/pull/5504
+ * Prefer aria-label when possible.
  */
 
 // Note: types are copy-pasta'd and adapted from Typography.d.ts
