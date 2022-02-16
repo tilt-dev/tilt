@@ -318,7 +318,7 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 		manifests = append(manifests, yamlManifest)
 	}
 
-	err = validateResourceDependencies(manifests)
+	err = s.validateResourceDependencies(manifests)
 	if err != nil {
 		return nil, starkit.Model{}, err
 	}
@@ -1629,7 +1629,7 @@ func (s *tiltfileState) tempDir() (*fwatch.TempDir, error) {
 	return s.scratchDir, nil
 }
 
-func validateResourceDependencies(ms []model.Manifest) error {
+func (s *tiltfileState) validateResourceDependencies(ms []model.Manifest) error {
 	// make sure that:
 	// 1. all deps exist
 	// 2. we have a DAG
@@ -1647,7 +1647,8 @@ func validateResourceDependencies(ms []model.Manifest) error {
 				return fmt.Errorf("resource %s specified a dependency on itself", m.Name)
 			}
 			if _, ok := knownResources[b]; !ok {
-				return fmt.Errorf("resource %s specified a dependency on unknown resource %s", m.Name, b)
+				logger.Get(s.ctx).Warnf("resource %s specified a dependency on unknown resource %s - dependency ignored", m.Name, b)
+				continue
 			}
 			edges[m.Name] = append(edges[m.Name], b)
 		}

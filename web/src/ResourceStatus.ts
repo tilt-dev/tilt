@@ -1,5 +1,10 @@
 import { Font } from "./style-helpers"
-import { ResourceStatus, TargetType, UIResource } from "./types"
+import {
+  ResourceDisableState,
+  ResourceStatus,
+  TargetType,
+  UIResource,
+} from "./types"
 
 export const disabledResourceStyleMixin = `
 font-family: ${Font.sansSerif};
@@ -31,8 +36,12 @@ export function resourceIsDisabled(resource: UIResource | undefined): boolean {
     return false
   }
 
-  const disableCount = resource.status?.disableStatus?.disabledCount ?? 0
-  if (disableCount > 0) {
+  // Consider both "pending" and "disabled" states as disabled resources
+  const disableState = resource.status?.disableStatus?.state
+  if (
+    disableState === ResourceDisableState.Pending ||
+    disableState === ResourceDisableState.Disabled
+  ) {
     return true
   }
 

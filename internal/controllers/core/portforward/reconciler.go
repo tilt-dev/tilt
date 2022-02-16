@@ -7,13 +7,18 @@ import (
 	"time"
 
 	"sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
+	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/logger"
 
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -31,6 +36,7 @@ type Reconciler struct {
 	store      store.RStore
 	kClient    k8s.Client
 	ctrlClient ctrlclient.Client
+	requeuer   *indexer.Requeuer
 
 	// map of PortForward object name --> running forward(s)
 	activeForwards map[types.NamespacedName]*portForwardEntry
@@ -44,13 +50,15 @@ func NewReconciler(ctrlClient ctrlclient.Client, store store.RStore, kClient k8s
 		store:          store,
 		kClient:        kClient,
 		ctrlClient:     ctrlClient,
+		requeuer:       indexer.NewRequeuer(),
 		activeForwards: make(map[types.NamespacedName]*portForwardEntry),
 	}
 }
 
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	b := ctrl.NewControllerManagedBy(mgr).
-		For(&PortForward{})
+		For(&PortForward{}).
+		Watches(r.requeuer, handler.Funcs{})
 
 	return b, nil
 }
@@ -70,30 +78,35 @@ func (r *Reconciler) reconcile(ctx context.Context, name types.NamespacedName) e
 		return nil
 	}
 
+	needsCreate := true
 	if active, ok := r.activeForwards[name]; ok {
-		if equality.Semantic.DeepEqual(active.Spec, pf.Spec) &&
-			equality.Semantic.DeepEqual(active.ObjectMeta.Annotations[v1alpha1.AnnotationManifest],
+		if equality.Semantic.DeepEqual(active.spec, pf.Spec) &&
+			equality.Semantic.DeepEqual(active.meta.Annotations[v1alpha1.AnnotationManifest],
 				pf.ObjectMeta.Annotations[v1alpha1.AnnotationManifest]) {
-			// Nothing has changed, nothing to do
-			return nil
+
+			// No change needed.
+			needsCreate = false
+		} else {
+
+			// An update to a PortForward we're already running -- stop the existing one
+			r.stop(name)
 		}
-
-		// An update to a PortForward we're already running -- stop the existing one
-		r.stop(name)
 	}
 
-	// Create a new PortForward OR recreate a modified PortForward (stopped above)
-	entry := newEntry(ctx, pf)
-	r.activeForwards[name] = entry
+	if needsCreate {
+		// Create a new PortForward OR recreate a modified PortForward (stopped above)
+		entry := newEntry(ctx, pf)
+		r.activeForwards[name] = entry
 
-	// Treat port-forwarding errors as part of the pod log
-	ctx = store.MustObjectLogHandler(entry.ctx, r.store, entry.PortForward)
+		// Treat port-forwarding errors as part of the pod log
+		ctx = store.MustObjectLogHandler(entry.ctx, r.store, pf)
 
-	for _, forward := range entry.Spec.Forwards {
-		go r.portForwardLoop(ctx, entry, forward)
+		for _, forward := range entry.spec.Forwards {
+			go r.portForwardLoop(ctx, entry, forward)
+		}
 	}
 
-	return nil
+	return r.maybeUpdateStatus(ctx, pf, r.activeForwards[name])
 }
 
 func (r *Reconciler) portForwardLoop(ctx context.Context, entry *portForwardEntry, forward Forward) {
@@ -127,56 +140,40 @@ func (r *Reconciler) portForwardLoop(ctx context.Context, entry *portForwardEntr
 	}
 }
 
-func (r *Reconciler) updateForwardStatus(ctx context.Context, entry *portForwardEntry) {
-	var pf v1alpha1.PortForward
-	key := apis.Key(entry.PortForward)
-	if err := r.ctrlClient.Get(ctx, key, &pf); err != nil {
-		if !apierrors.IsNotFound(err) {
-			// short of dispatching a fatal error, there's nothing that can really be done here, so just log it
-			// for debugging purposes
-			logger.Get(ctx).Debugf("Failed to fetch PortForward %q for status update: %v", entry.Name, err)
-		}
-		return
-	}
-
+func (r *Reconciler) maybeUpdateStatus(ctx context.Context, pf *v1alpha1.PortForward, entry *portForwardEntry) error {
 	newStatuses := entry.statuses()
-	if equality.Semantic.DeepEqual(pf.Status.ForwardStatuses, newStatuses) {
+	if apicmp.DeepEqual(pf.Status.ForwardStatuses, newStatuses) {
 		// the forwards didn't actually change, so skip the update
-		return
+		return nil
 	}
 
-	pf.Status.ForwardStatuses = newStatuses
-	if err := r.ctrlClient.Status().Update(ctx, &pf); err != nil {
-		if !apierrors.IsNotFound(err) && !apierrors.IsConflict(err) {
-			logger.Get(ctx).Debugf("Failed to update status for PortForward %q: %v", entry.Name, err)
-		}
-	}
+	update := pf.DeepCopy()
+	update.Status.ForwardStatuses = newStatuses
+	return client.IgnoreNotFound(r.ctrlClient.Status().Update(ctx, update))
 }
 
 func (r *Reconciler) onePortForward(ctx context.Context, entry *portForwardEntry, forward Forward) {
 	logError := func(err error) {
 		logger.Get(ctx).Infof("Reconnecting... Error port-forwarding %s (%d -> %d): %v",
-			entry.ObjectMeta.Annotations[v1alpha1.AnnotationManifest],
+			entry.meta.Annotations[v1alpha1.AnnotationManifest],
 			forward.LocalPort, forward.ContainerPort, err)
 	}
 
 	pf, err := r.kClient.CreatePortForwarder(
 		ctx,
-		k8s.Namespace(entry.Spec.Namespace),
-		k8s.PodID(entry.Spec.PodName),
+		k8s.Namespace(entry.spec.Namespace),
+		k8s.PodID(entry.spec.PodName),
 		int(forward.LocalPort),
 		int(forward.ContainerPort),
 		forward.Host)
 	if err != nil {
 		logError(err)
-		shouldUpdate := entry.setStatus(forward, ForwardStatus{
+		entry.setStatus(forward, ForwardStatus{
 			LocalPort:     forward.LocalPort,
 			ContainerPort: forward.ContainerPort,
 			Error:         err.Error(),
 		})
-		if shouldUpdate {
-			r.updateForwardStatus(ctx, entry)
-		}
+		r.requeuer.Add(entry.name)
 		return
 	}
 
@@ -203,7 +200,7 @@ func (r *Reconciler) onePortForward(ctx context.Context, entry *portForwardEntry
 				Addresses:     pf.Addresses(),
 				StartedAt:     apis.NowMicro(),
 			})
-			r.updateForwardStatus(ctx, entry)
+			r.requeuer.Add(entry.name)
 		}
 	}()
 
@@ -211,15 +208,13 @@ func (r *Reconciler) onePortForward(ctx context.Context, entry *portForwardEntry
 	close(doneCh)
 	if err != nil {
 		logError(err)
-		shouldUpdate := entry.setStatus(forward, ForwardStatus{
+		entry.setStatus(forward, ForwardStatus{
 			LocalPort:     int32(pf.LocalPort()),
 			ContainerPort: forward.ContainerPort,
 			Addresses:     pf.Addresses(),
 			Error:         err.Error(),
 		})
-		if shouldUpdate {
-			r.updateForwardStatus(ctx, entry)
-		}
+		r.requeuer.Add(entry.name)
 		return
 	}
 }
@@ -240,51 +235,32 @@ func (r *Reconciler) stop(name types.NamespacedName) {
 }
 
 type portForwardEntry struct {
-	*PortForward
+	name   types.NamespacedName
+	meta   metav1.ObjectMeta
+	spec   v1alpha1.PortForwardSpec
 	ctx    context.Context
 	cancel func()
 
 	mu     sync.Mutex
-	status map[Forward]statusMeta
+	status map[Forward]ForwardStatus
 }
 
 func newEntry(ctx context.Context, pf *PortForward) *portForwardEntry {
 	ctx, cancel := context.WithCancel(ctx)
 	return &portForwardEntry{
-		PortForward: pf,
-		ctx:         ctx,
-		cancel:      cancel,
-		status:      make(map[Forward]statusMeta),
+		name:   types.NamespacedName{Name: pf.Name, Namespace: pf.Namespace},
+		meta:   pf.ObjectMeta,
+		spec:   pf.Spec,
+		ctx:    ctx,
+		cancel: cancel,
+		status: make(map[Forward]ForwardStatus),
 	}
 }
 
-type statusMeta struct {
-	status    ForwardStatus
-	lastError time.Time
-}
-
-// setStatus tracks the latest status for this Forward and returns a bool indicating whether
-// an API update should be performed.
-func (e *portForwardEntry) setStatus(spec Forward, status ForwardStatus) (shouldUpdate bool) {
+func (e *portForwardEntry) setStatus(spec Forward, status ForwardStatus) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-
-	var lastError time.Time
-	if status.Error != "" {
-		lastError = time.Now()
-		// if this port forward last failed more than a second ago (or had lastError reset
-		// by having gone into a success status), do an update
-		shouldUpdate = e.status[spec].lastError.Before(time.Now().Add(-time.Second))
-	} else {
-		// always update on success
-		shouldUpdate = true
-	}
-
-	e.status[spec] = statusMeta{
-		status:    status,
-		lastError: lastError,
-	}
-	return shouldUpdate
+	e.status[spec] = status
 }
 
 func (e *portForwardEntry) statuses() []ForwardStatus {
@@ -293,7 +269,7 @@ func (e *portForwardEntry) statuses() []ForwardStatus {
 
 	var statuses []ForwardStatus
 	for _, s := range e.status {
-		statuses = append(statuses, *s.status.DeepCopy())
+		statuses = append(statuses, *s.DeepCopy())
 	}
 	sort.SliceStable(statuses, func(i, j int) bool {
 		if statuses[i].ContainerPort < statuses[j].ContainerPort {

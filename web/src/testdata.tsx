@@ -8,6 +8,7 @@ import {
   UIBUTTON_TOGGLE_INPUT_NAME,
 } from "./ApiButton"
 import {
+  ResourceDisableState,
   ResourceName,
   TriggerMode,
   UIButton,
@@ -46,11 +47,13 @@ let runningTiltBuild = {
 const ENABLED_RESOURCE_STATUS: UIResourceStatus["disableStatus"] = {
   disabledCount: 0,
   enabledCount: 1,
+  state: ResourceDisableState.Enabled,
 }
 
 const DISABLED_RESOURCE_STATUS: UIResourceStatus["disableStatus"] = {
   disabledCount: 1,
   enabledCount: 0,
+  state: ResourceDisableState.Disabled,
 }
 
 const TEST_DATA_LABELS = [

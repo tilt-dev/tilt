@@ -34,7 +34,6 @@ import SidebarItemView, {
   SidebarItemRoot,
 } from "./SidebarItemView"
 import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
-import SrOnly from "./SrOnly"
 import {
   AnimDuration,
   Color,
@@ -249,11 +248,9 @@ function SidebarListSectionItems(props: SidebarSectionProps) {
           analyticsName="ui.web.sidebarShowMore"
           analyticsTags={emptyTags}
         >
-          …Show More <SrOnly>Resources</SrOnly>
+          …Show More
         </ShowMoreButton>
-        <span>
-          {text} <SrOnly>hidden</SrOnly>
-        </span>
+        <span aria-label={`${remaining} hidden`}>{`(${remaining})`}</span>
       </ShowMoreRow>
     )
   }

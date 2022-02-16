@@ -59,6 +59,14 @@ export enum ResourceStatus {
 }
 
 // These constants are duplicated from the Go constants.
+export enum ResourceDisableState {
+  Disabled = "Disabled",
+  Enabled = "Enabled",
+  Error = "Error",
+  Pending = "",
+}
+
+// These constants are duplicated from the Go constants.
 export enum TargetType {
   Unspecified = "unspecified",
   Image = "image",
