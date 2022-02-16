@@ -13,7 +13,7 @@ GO_PARALLEL_JOBS := 4
 
 CIRCLECI := $(if $(CIRCLECI),$(CIRCLECI),false)
 
-GOIMPORTS_LOCAL_ARG := -local github.com/tilt-dev/tilt
+GOIMPORTS_LOCAL_ARG := -local github.com/tilt-dev
 
 # Build a binary the current commit SHA
 install:
@@ -116,9 +116,7 @@ test-storybook:
 	cd web && yarn start-storybook --ci --smoke-test
 
 goimports:
-	goimports -w -l $(GOIMPORTS_LOCAL_ARG) internal
-	goimports -w -l $(GOIMPORTS_LOCAL_ARG) pkg
-	goimports -w -l $(GOIMPORTS_LOCAL_ARG) cmd
+	goimports -w -l $(GOIMPORTS_LOCAL_ARG) cmd/ integration/ internal/ pkg/
 
 benchmark:
 	go test -mod vendor -run=XXX -bench=. ./...
@@ -193,6 +191,7 @@ update-codegen-go:
 update-codegen-starlark:
 	go install github.com/tilt-dev/tilt-starlark-codegen@latest
 	tilt-starlark-codegen ./pkg/apis/core/v1alpha1 ./internal/tiltfile/v1alpha1
+	goimports -w -l $(GOIMPORTS_LOCAL_ARG) internal/
 
 update-codegen-ts:
 	toast proto-ts
