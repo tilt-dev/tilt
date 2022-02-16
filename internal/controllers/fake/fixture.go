@@ -3,6 +3,7 @@ package fake
 import (
 	"context"
 	"io"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -57,8 +58,9 @@ type ControllerFixtureBuilder struct {
 }
 
 func NewControllerFixtureBuilder(t testing.TB) *ControllerFixtureBuilder {
-	out := bufsync.NewThreadSafeBuffer()
+	outBuf := bufsync.NewThreadSafeBuffer()
 
+	out := io.MultiWriter(outBuf, os.Stdout)
 	ctx, ma, _ := testutils.ForkedCtxAndAnalyticsForTest(out)
 
 	ctx, cancel := context.WithCancel(ctx)
@@ -68,7 +70,7 @@ func NewControllerFixtureBuilder(t testing.TB) *ControllerFixtureBuilder {
 		t:      t,
 		ctx:    ctx,
 		cancel: cancel,
-		out:    out,
+		out:    outBuf,
 		ma:     ma,
 		Client: NewFakeTiltClient(),
 		Store:  NewTestingStore(out),
