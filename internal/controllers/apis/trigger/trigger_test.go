@@ -21,6 +21,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/apiset"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
+	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
@@ -172,7 +173,7 @@ func TestLastRestartEvent(t *testing.T) {
 			}
 
 			ts, btn, fws, err := LastRestartEvent(ctx, r, spec)
-			require.Equal(t, tc.expectedTime.UTC(), ts.UTC(), "timestamp")
+			timecmp.RequireTimeEqual(t, tc.expectedTime, ts)
 			buttonName := ""
 			if btn != nil {
 				buttonName = btn.Name
@@ -263,7 +264,7 @@ func TestLastStopEvent(t *testing.T) {
 			}
 
 			ts, btn, err := LastStopEvent(ctx, r, spec)
-			require.Equal(t, tc.expectedTime.UTC(), ts.UTC(), "timestamp")
+			timecmp.RequireTimeEqual(t, tc.expectedTime, ts)
 			buttonName := ""
 			if btn != nil {
 				buttonName = btn.Name
@@ -279,8 +280,11 @@ func TestLastRestartEventError(t *testing.T) {
 	cli := &explodingReader{err: expected}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	_, _, _, err := LastRestartEvent(ctx, cli, &v1alpha1.RestartOnSpec{FileWatches: []string{"foo"}})
+	ts, btn, fw, err := LastRestartEvent(ctx, cli, &v1alpha1.RestartOnSpec{FileWatches: []string{"foo"}})
 	require.Equal(t, expected, err)
+	require.Zero(t, ts, "Timestamp was not zero value")
+	require.Nil(t, btn, "Button was not nil")
+	require.Nil(t, fw, "FileWatch was not nil")
 }
 
 func TestLastStartEventError(t *testing.T) {
@@ -288,8 +292,10 @@ func TestLastStartEventError(t *testing.T) {
 	cli := &explodingReader{err: expected}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	_, _, err := LastStartEvent(ctx, cli, &v1alpha1.StartOnSpec{UIButtons: []string{"foo"}})
+	ts, btn, err := LastStartEvent(ctx, cli, &v1alpha1.StartOnSpec{UIButtons: []string{"foo"}})
 	require.Equal(t, expected, err)
+	require.Zero(t, ts, "Timestamp was not zero value")
+	require.Nil(t, btn, "Button was not nil")
 }
 
 func TestLastStopEventError(t *testing.T) {
@@ -297,8 +303,10 @@ func TestLastStopEventError(t *testing.T) {
 	cli := &explodingReader{err: expected}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	_, _, err := LastStopEvent(ctx, cli, &v1alpha1.StopOnSpec{UIButtons: []string{"foo"}})
+	ts, btn, err := LastStopEvent(ctx, cli, &v1alpha1.StopOnSpec{UIButtons: []string{"foo"}})
 	require.Equal(t, expected, err)
+	require.Zero(t, ts, "Timestamp was not zero value")
+	require.Nil(t, btn, "Button was not nil")
 }
 
 type explodingReader struct {

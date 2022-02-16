@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
@@ -208,7 +207,7 @@ func (r *Reconciler) shouldDeployOnReconcile(
 	nn types.NamespacedName,
 	ka *v1alpha1.KubernetesApply,
 	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap,
-	lastRestartEvent time.Time,
+	lastRestartEvent metav1.MicroTime,
 ) bool {
 	if ka.Annotations[v1alpha1.AnnotationManagedBy] != "" {
 		// Until resource dependencies are expressed in the API,

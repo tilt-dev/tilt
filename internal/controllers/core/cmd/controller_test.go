@@ -939,7 +939,7 @@ func (f *fixture) triggerFileWatch(name string) {
 
 func (f *fixture) triggerButton(name string, ts time.Time) {
 	f.updateButton(name, func(b *v1alpha1.UIButton) {
-		b.Status.LastClickedAt = metav1.NewMicroTime(ts)
+		b.Status.LastClickedAt = apis.NewMicroTime(ts)
 	})
 }
 
