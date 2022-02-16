@@ -15,7 +15,6 @@ import (
 
 func TestCreateFileWatch(t *testing.T) {
 	f := newServerFixture(t)
-	defer f.TearDown()
 
 	out := bytes.NewBuffer(nil)
 
@@ -47,7 +46,6 @@ func TestCreateFileWatch(t *testing.T) {
 
 func TestCreateFileWatchNoIgnore(t *testing.T) {
 	f := newServerFixture(t)
-	defer f.TearDown()
 
 	out := bytes.NewBuffer(nil)
 

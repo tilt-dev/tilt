@@ -27,7 +27,6 @@ import (
 
 func TestDockerComposeTargetBuilt(t *testing.T) {
 	f := newDCBDFixture(t)
-	defer f.TearDown()
 
 	expectedContainerID := "fake-container-id"
 	f.dcCli.ContainerIdOutput = container.ID(expectedContainerID)
@@ -53,7 +52,6 @@ func TestDockerComposeTargetBuilt(t *testing.T) {
 
 func TestTiltBuildsImage(t *testing.T) {
 	f := newDCBDFixture(t)
-	defer f.TearDown()
 
 	iTarget := NewSanchoDockerBuildImageTarget(f)
 	manifest := manifestbuilder.New(f, "fe").
@@ -85,7 +83,6 @@ func TestTiltBuildsImage(t *testing.T) {
 
 func TestTiltBuildsImageWithTag(t *testing.T) {
 	f := newDCBDFixture(t)
-	defer f.TearDown()
 
 	refWithTag := "gcr.io/foo:bar"
 	iTarget := model.MustNewImageTarget(container.MustParseSelector(refWithTag)).
@@ -105,7 +102,6 @@ func TestTiltBuildsImageWithTag(t *testing.T) {
 
 func TestDCBADRejectsAllSpecsIfOneUnsupported(t *testing.T) {
 	f := newDCBDFixture(t)
-	defer f.TearDown()
 
 	specs := []model.TargetSpec{model.DockerComposeTarget{}, model.ImageTarget{}, model.K8sTarget{}}
 
@@ -116,7 +112,6 @@ func TestDCBADRejectsAllSpecsIfOneUnsupported(t *testing.T) {
 
 func TestMultiStageDockerCompose(t *testing.T) {
 	f := newDCBDFixture(t)
-	defer f.TearDown()
 
 	manifest := NewSanchoDockerBuildMultiStageManifest(f).
 		WithDeployTarget(defaultDockerComposeTarget(f, "sancho"))
@@ -144,7 +139,6 @@ ENTRYPOINT /go/bin/sancho
 
 func TestMultiStageDockerComposeWithOnlyOneDirtyImage(t *testing.T) {
 	f := newDCBDFixture(t)
-	defer f.TearDown()
 
 	manifest := NewSanchoDockerBuildMultiStageManifest(f).
 		WithDeployTarget(defaultDockerComposeTarget(f, "sancho"))

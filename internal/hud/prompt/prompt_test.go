@@ -20,8 +20,7 @@ import (
 const FakeURL = "http://localhost:10350/"
 
 func TestOpenBrowser(t *testing.T) {
-	f := newFixture()
-	defer f.TearDown()
+	f := newFixture(t)
 
 	_ = f.prompt.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 
@@ -32,8 +31,7 @@ func TestOpenBrowser(t *testing.T) {
 }
 
 func TestOpenStream(t *testing.T) {
-	f := newFixture()
-	defer f.TearDown()
+	f := newFixture(t)
 
 	_ = f.prompt.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 
@@ -46,8 +44,7 @@ func TestOpenStream(t *testing.T) {
 }
 
 func TestOpenHUD(t *testing.T) {
-	f := newFixture()
-	defer f.TearDown()
+	f := newFixture(t)
 
 	_ = f.prompt.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 
@@ -60,8 +57,7 @@ func TestOpenHUD(t *testing.T) {
 }
 
 func TestInitOutput(t *testing.T) {
-	f := newFixture()
-	defer f.TearDown()
+	f := newFixture(t)
 
 	f.prompt.SetInitOutput(bytes.NewBuffer([]byte("this is a warning\n")))
 	_ = f.prompt.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
@@ -81,7 +77,7 @@ type fixture struct {
 	prompt *TerminalPrompt
 }
 
-func newFixture() *fixture {
+func newFixture(t *testing.T) *fixture {
 	ctx, _, ta := testutils.CtxAndAnalyticsForTest()
 	ctx, cancel := context.WithCancel(ctx)
 	out := bufsync.NewThreadSafeBuffer()
@@ -96,7 +92,7 @@ func newFixture() *fixture {
 	url, _ := url.Parse(FakeURL)
 
 	prompt := NewTerminalPrompt(ta, openInput, b.OpenURL, out, "localhost", model.WebURL(*url))
-	return &fixture{
+	ret := &fixture{
 		ctx:    ctx,
 		cancel: cancel,
 		out:    out,
@@ -105,6 +101,10 @@ func newFixture() *fixture {
 		b:      b,
 		prompt: prompt,
 	}
+
+	t.Cleanup(ret.TearDown)
+
+	return ret
 }
 
 func (f *fixture) TearDown() {

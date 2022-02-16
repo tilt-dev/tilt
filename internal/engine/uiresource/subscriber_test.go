@@ -21,7 +21,6 @@ import (
 
 func TestUpdateTiltfile(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	r := &v1alpha1.UIResource{ObjectMeta: metav1.ObjectMeta{Name: "(Tiltfile)"}}
 	err := f.tc.Create(f.ctx, r)

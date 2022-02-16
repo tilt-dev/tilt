@@ -13,7 +13,6 @@ import (
 
 func TestRestartProcessDifferentUser(t *testing.T) {
 	f := newK8sFixture(t, "restart_process_different_user")
-	defer f.TearDown()
 
 	f.TiltUp()
 

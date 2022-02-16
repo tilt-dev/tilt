@@ -13,7 +13,6 @@ import (
 
 func TestSameImgMultiContainer(t *testing.T) {
 	f := newK8sFixture(t, "same_img_multi_container")
-	defer f.TearDown()
 
 	f.TiltUp()
 

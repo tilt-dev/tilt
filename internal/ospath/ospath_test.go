@@ -11,7 +11,6 @@ import (
 
 func TestChild(t *testing.T) {
 	f := NewOspathFixture(t)
-	defer f.TearDown()
 
 	paths := []string{
 		filepath.Join("parent", "fileA"),
@@ -34,7 +33,6 @@ func TestChild(t *testing.T) {
 
 func TestCaseInsensitiveFileSystem(t *testing.T) {
 	f := NewOspathFixture(t)
-	defer f.TearDown()
 
 	fileA := filepath.Join("parent", "fileA")
 	f.TouchFiles([]string{fileA})
@@ -54,7 +52,6 @@ func TestIsBrokenSymlink(t *testing.T) {
 		t.Skip("windows does not support user-land symlinks")
 	}
 	f := NewOspathFixture(t)
-	defer f.TearDown()
 
 	f.TouchFiles([]string{
 		"fileA",
@@ -75,7 +72,6 @@ func TestIsBrokenSymlink(t *testing.T) {
 
 func TestInvalidDir(t *testing.T) {
 	f := NewOspathFixture(t)
-	defer f.TearDown()
 
 	// Passing "" as dir used to make Child hang forever. Let's make sure it doesn't do that.
 	_, isChild := Child("", "random")
@@ -86,7 +82,6 @@ func TestInvalidDir(t *testing.T) {
 
 func TestDirTrailingSlash(t *testing.T) {
 	f := NewOspathFixture(t)
-	defer f.TearDown()
 
 	f.TouchFiles([]string{filepath.Join("some", "dir", "file")})
 
@@ -99,7 +94,6 @@ func TestDirTrailingSlash(t *testing.T) {
 
 func TestTryAsCwdChildren(t *testing.T) {
 	f := NewOspathFixture(t)
-	defer f.TearDown()
 	f.Chdir()
 
 	results := TryAsCwdChildren([]string{f.Path()})
@@ -121,10 +115,11 @@ type OspathFixture struct {
 }
 
 func NewOspathFixture(t *testing.T) *OspathFixture {
-	return &OspathFixture{
+	ret := &OspathFixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),
 		t:              t,
 	}
+	return ret
 }
 
 // pass `expectedRelative` = "" to indicate that `file` is NOT a child of `dir`

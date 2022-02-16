@@ -60,7 +60,6 @@ const simpleDockerignore = "build/"
 
 func TestNoTiltfile(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.loadErrString("No Tiltfile found at")
 	f.assertConfigFiles("Tiltfile")
@@ -68,7 +67,6 @@ func TestNoTiltfile(t *testing.T) {
 
 func TestEmpty(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", "")
 	f.load()
@@ -76,7 +74,6 @@ func TestEmpty(t *testing.T) {
 
 func TestMissingDockerfile(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 docker_build('gcr.io/foo', 'foo')
@@ -88,7 +85,6 @@ k8s_resource('foo', 'foo.yaml')
 
 func TestCustomBuildBadMethodCall(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.setupFoo()
 	f.file("Tiltfile", `
 hfb = custom_build(
@@ -103,7 +99,6 @@ hfb = custom_build(
 
 func TestSimple(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -129,7 +124,6 @@ k8s_yaml('foo.yaml')
 // I.e. make sure that we handle de/normalization between `fooimage` <--> `docker.io/library/fooimage`
 func TestLocalImageRef(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile("foo/Dockerfile")
 	f.yaml("foo.yaml", deployment("foo", image("fooimage")))
@@ -150,7 +144,6 @@ k8s_yaml('foo.yaml')
 
 func TestExplicitDockerfileIsConfigFile(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.setupFoo()
 	f.dockerfile("other/Dockerfile")
 	f.file("Tiltfile", `
@@ -163,7 +156,6 @@ k8s_yaml('foo.yaml')
 
 func TestExplicitDockerfileAsLocalPath(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.setupFoo()
 	f.dockerfile("other/Dockerfile")
 	f.file("Tiltfile", `
@@ -177,7 +169,6 @@ k8s_yaml('foo.yaml')
 
 func TestExplicitDockerfileContents(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.setupFoo()
 	f.file("Tiltfile", `
 docker_build('gcr.io/foo', 'foo', dockerfile_contents='FROM alpine')
@@ -190,7 +181,6 @@ k8s_yaml('foo.yaml')
 
 func TestExplicitDockerfileContentsAsBlob(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.setupFoo()
 	f.dockerfile("other/Dockerfile")
 	f.file("Tiltfile", `
@@ -205,7 +195,6 @@ k8s_yaml('foo.yaml')
 
 func TestCantSpecifyDFPathAndContents(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.setupFoo()
 	f.dockerfile("other/Dockerfile")
 	f.file("Tiltfile", `
@@ -218,14 +207,12 @@ k8s_yaml('foo.yaml')
 
 func TestVerifiesGitRepo(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.file("Tiltfile", "local_git_repo('.')")
 	f.loadErrString("isn't a valid git repo")
 }
 
 func TestLocal(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -254,7 +241,6 @@ k8s_yaml(yaml)
 
 func TestLocalBat(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -280,7 +266,6 @@ k8s_yaml(yaml)
 
 func TestLocalEnv(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	// contrived example to ensure that the environment is correctly passed to local -- an env var is echoed back out
 	// which then gets passed as an ignore so that it's visible in the load result for assertion
@@ -296,7 +281,6 @@ watch_settings(ignore=ignore)
 
 func TestLocalEmptyArray(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 local([])
@@ -307,7 +291,6 @@ local([])
 
 func TestLocalEmptyString(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 local('')
@@ -318,7 +301,6 @@ local('')
 
 func TestCustomBuildBat(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -343,7 +325,6 @@ k8s_yaml('foo.yaml')
 
 func TestLocalQuiet(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -359,7 +340,6 @@ local('echo foobar', quiet=True)
 
 func TestLocalEchoOff(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -400,7 +380,6 @@ func TestLocalNoOutput(t *testing.T) {
 		name := fmt.Sprintf("EchoOff%s_Quiet%s", goBoolToStarlark(tc.echoOff), goBoolToStarlark(tc.quiet))
 		t.Run(name, func(t *testing.T) {
 			f := newFixture(t)
-			defer f.TearDown()
 
 			f.setupFoo()
 
@@ -432,7 +411,6 @@ func TestLocalArgvCmd(t *testing.T) {
 		t.Skip("windows doesn't support argv commands. Go converts it to a single string")
 	}
 	f := newFixture(t)
-	defer f.TearDown()
 
 	// this would generate a syntax error if evaluated by a shell
 	f.file("Tiltfile", `local(['echo', 'a"b'])`)
@@ -443,7 +421,6 @@ func TestLocalArgvCmd(t *testing.T) {
 
 func TestLocalTiltEnvPropagation(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	resetEnv := func() {
 		tiltVars := []string{"TILT_HOST", "TILT_PORT"}
@@ -497,7 +474,6 @@ local(command='echo Tilt port is $TILT_PORT', command_bat='echo Tilt port is %TI
 
 func TestReadFile(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -517,7 +493,6 @@ k8s_yaml(yaml)
 
 func TestKustomize(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.file("kustomization.yaml", kustomizeFileText)
@@ -537,7 +512,6 @@ k8s_resource("the-deployment", "foo")
 
 func TestKustomizeBin(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.file("kustomization.yaml", kustomizeFileText)
 	f.file("configMap.yaml", kustomizeConfigMapText)
 	f.file("deployment.yaml", kustomizeDeploymentText)
@@ -571,7 +545,6 @@ k8s_resource("the-deployment", "foo")
 
 func TestKustomizeError(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", "kustomize('.')")
 	f.loadErrString("unable to find one of 'kustomization.yaml', 'kustomization.yml' or 'Kustomization'")
@@ -579,7 +552,6 @@ func TestKustomizeError(t *testing.T) {
 
 func TestKustomization(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.file("Kustomization", kustomizeFileText)
@@ -599,7 +571,6 @@ k8s_resource("the-deployment", "foo")
 
 func TestDockerBuildTarget(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.file("Tiltfile", `
@@ -613,7 +584,6 @@ docker_build("gcr.io/foo", "foo", target='stage')
 
 func TestDockerBuildSSH(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.file("Tiltfile", `
@@ -627,7 +597,6 @@ docker_build("gcr.io/foo", "foo", ssh='default')
 
 func TestDockerBuildSecret(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.file("Tiltfile", `
@@ -641,7 +610,6 @@ docker_build("gcr.io/foo", "foo", secret='id=shibboleth')
 
 func TestDockerBuildNetwork(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.file("Tiltfile", `
@@ -655,7 +623,6 @@ docker_build("gcr.io/foo", "foo", network='default')
 
 func TestDockerBuildPull(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.file("Tiltfile", `
@@ -669,7 +636,6 @@ docker_build("gcr.io/foo", "foo", pull=True)
 
 func TestDockerBuildCacheFrom(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.file("Tiltfile", `
@@ -683,7 +649,6 @@ docker_build("gcr.io/foo", "foo", cache_from='gcr.io/foo')
 
 func TestDockerBuildExtraTagString(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.file("Tiltfile", `
@@ -698,7 +663,6 @@ docker_build("gcr.io/foo", "foo", extra_tag='foo:latest')
 
 func TestDockerBuildExtraTagList(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.file("Tiltfile", `
@@ -713,7 +677,6 @@ docker_build("gcr.io/foo", "foo", extra_tag=['foo:latest', 'foo:jenkins-1234'])
 
 func TestDockerBuildExtraTagListInvalid(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.file("Tiltfile", `
@@ -725,7 +688,6 @@ docker_build("gcr.io/foo", "foo", extra_tag='cherry bomb')
 
 func TestDockerBuildCache(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.file("Tiltfile", `
@@ -737,7 +699,6 @@ docker_build("gcr.io/foo", "foo", cache='/paths/to/cache')
 
 func TestK8sResourceAdditiveLinks(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupExpand()
 	f.file("Tiltfile", `
@@ -760,7 +721,6 @@ k8s_resource('b', links=['http://demo-b.localhost/api'])
 
 func TestDuplicateImageNames(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupExpand()
 	f.file("Tiltfile", `
@@ -774,7 +734,6 @@ docker_build('gcr.io/a', 'a')
 
 func TestInvalidImageNameInDockerBuild(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupExpand()
 	f.file("Tiltfile", `
@@ -787,7 +746,6 @@ docker_build("ceci n'est pas une valid image ref", 'a')
 
 func TestInvalidImageNameInK8SYAML(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 yaml_str = """
@@ -886,7 +844,6 @@ func TestPortForward(t *testing.T) {
 	for _, c := range portForwardCases {
 		t.Run(c.name, func(t *testing.T) {
 			f := newFixture(t)
-			defer f.TearDown()
 
 			f.webHost = c.webHost
 			f.setupFoo()
@@ -955,7 +912,6 @@ func TestResourceLinks(t *testing.T) {
 	for _, c := range cases {
 		t.Run("LocalResource-"+c.name, func(t *testing.T) {
 			f := newFixture(t)
-			defer f.TearDown()
 
 			tiltfile := fmt.Sprintf(`
 local_resource('foo', 'echo hi', links=%s)
@@ -976,7 +932,6 @@ local_resource('foo', 'echo hi', links=%s)
 
 		t.Run("K8s-"+c.name, func(t *testing.T) {
 			f := newFixture(t)
-			defer f.TearDown()
 
 			f.setupFoo()
 			s := `
@@ -1003,7 +958,6 @@ k8s_resource('foo') # test that subsequent calls don't clear the links
 
 		t.Run("dc-"+c.name, func(t *testing.T) {
 			f := newFixture(t)
-			defer f.TearDown()
 
 			f.file("docker-compose.yml", `version: '3.0'
 services:
@@ -1034,7 +988,6 @@ dc_resource('foo') # test that subsequent calls don't clear the links
 
 func TestK8sResourceWithLinksAndPortForwards(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.file("Tiltfile", `
@@ -1053,7 +1006,6 @@ k8s_resource('foo', port_forwards=[8000, 8001], links=link("www.zombo.com", name
 
 func TestExpand(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.setupExpand()
 	f.file("Tiltfile", `
 k8s_yaml('all.yaml')
@@ -1073,7 +1025,6 @@ docker_build('gcr.io/d', 'd')
 
 func TestExpandUnresourced(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.dockerfile("a/Dockerfile")
 
 	f.yaml("all.yaml",
@@ -1094,7 +1045,6 @@ docker_build('gcr.io/a', 'a')
 
 func TestUnresourcedPodCreatorYamlAsManifest(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.yaml("pod_creator.yaml", deployment("pod-creator"), secret("not-pod-creator"))
 
@@ -1109,7 +1059,6 @@ k8s_yaml('pod_creator.yaml')
 
 func TestUnresourcedYamlGroupingV1(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	labelsA := map[string]string{"keyA": "valueA"}
 	labelsB := map[string]string{"keyB": "valueB"}
@@ -1138,7 +1087,6 @@ func TestUnresourcedYamlGroupingV1(t *testing.T) {
 
 func TestUnresourcedYamlGroupingV2(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	labelsA := map[string]string{"keyA": "valueA"}
 	labelsB := map[string]string{"keyB": "valueB"}
@@ -1168,7 +1116,6 @@ k8s_yaml('all.yaml')`)
 
 func TestK8sGroupedWhenAddedToResource(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.setupExpand()
 
 	labelsA := map[string]string{"keyA": "valueA"}
@@ -1201,7 +1148,6 @@ docker_build('gcr.io/c', 'c')
 
 func TestImplicitK8sResourceWithoutDockerBuild(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.setupFoo()
 	f.file("Tiltfile", `
 
@@ -1214,7 +1160,6 @@ k8s_resource('foo', port_forwards=8000)
 
 func TestExpandTwoDeploymentsWithSameImage(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.setupExpand()
 	f.yaml("all.yaml",
 		deployment("a", image("gcr.io/a")),
@@ -1241,7 +1186,6 @@ docker_build('gcr.io/d', 'd')
 
 func TestMultipleYamlFiles(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupExpand()
 	f.yaml("a.yaml", deployment("a", image("gcr.io/a")))
@@ -1264,7 +1208,6 @@ docker_build('gcr.io/d', 'd')
 
 func TestLoadOneManifest(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFooAndBar()
 	f.file("Tiltfile", `
@@ -1283,7 +1226,6 @@ k8s_yaml('bar.yaml')
 
 func TestUncategorizedEnabledEvenIfNotSpecified(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFooAndBar()
 	f.yaml("service.yaml", service("some-service"))
@@ -1304,7 +1246,6 @@ k8s_yaml('service.yaml')
 
 func TestLoadTypoManifest(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFooAndBar()
 	f.file("Tiltfile", `
@@ -1325,7 +1266,6 @@ Is this a typo? Existing resources in Tiltfile: "foo", "bar"`, err.Error())
 
 func TestBasicGitPathFilter(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.gitInit("")
 	f.file("Dockerfile", "FROM golang:1.10")
@@ -1348,7 +1288,6 @@ k8s_yaml('foo.yaml')
 
 func TestCustomBuildGitPathFilter(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.gitInit("")
 	f.file("Dockerfile", "FROM golang:1.10")
@@ -1366,7 +1305,6 @@ k8s_yaml('foo.yaml')
 
 func TestDockerignorePathFilter(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.gitInit("")
 	f.file("Dockerfile", "FROM golang:1.10")
@@ -1390,7 +1328,6 @@ k8s_yaml('foo.yaml')
 // up the dockerignore from that directory.
 func TestDockerignoreCustomBuildRelativeDirs(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file(".dockerignore", "src/sub/a.txt")
 	f.file("src/.dockerignore", "sub/b.txt")
@@ -1417,7 +1354,6 @@ k8s_yaml('foo.yaml')
 // up the dockerignores from both those directories.
 func TestDockerignoreCustomBuildMultipleDeps(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file(".dockerignore", "src/sub/a.txt")
 	f.file("src/.dockerignore", "sub/b.txt")
@@ -1442,7 +1378,6 @@ k8s_yaml('foo.yaml')
 
 func TestDockerignorePathFilterSubdir(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.gitInit("")
 	f.file("foo/Dockerfile", "FROM golang:1.10")
@@ -1464,7 +1399,6 @@ k8s_yaml('foo.yaml')
 
 func TestK8sYAMLInputBareString(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.WriteFile("bar.yaml", "im not yaml")
@@ -1478,7 +1412,6 @@ docker_build("gcr.io/foo", "foo", cache='/paths/to/cache')
 
 func TestK8sYAMLInputFromReadFile(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.file("Tiltfile", `
@@ -1495,7 +1428,6 @@ docker_build("gcr.io/foo", "foo", cache='/paths/to/cache')
 
 func TestFilterYamlByLabel(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.file("k8s.yaml", yaml.ConcatYAML(
 		testyaml.DoggosDeploymentYaml, testyaml.DoggosServiceYaml,
 		testyaml.SnackYaml, testyaml.SanchoYAML))
@@ -1512,7 +1444,6 @@ k8s_yaml(doggos)
 
 func TestFilterYamlByName(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.file("k8s.yaml", yaml.ConcatYAML(
 		testyaml.DoggosDeploymentYaml, testyaml.DoggosServiceYaml,
 		testyaml.SnackYaml, testyaml.SanchoYAML))
@@ -1528,7 +1459,6 @@ k8s_yaml(doggos)
 
 func TestFilterYamlByNameKind(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.file("k8s.yaml", yaml.ConcatYAML(
 		testyaml.DoggosDeploymentYaml, testyaml.DoggosServiceYaml,
 		testyaml.SnackYaml, testyaml.SanchoYAML))
@@ -1544,7 +1474,6 @@ k8s_yaml(doggos)
 
 func TestFilterYamlByNamespace(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.file("k8s.yaml", yaml.ConcatYAML(
 		testyaml.DoggosDeploymentYaml, testyaml.DoggosServiceYaml,
 		testyaml.SnackYaml, testyaml.SanchoYAML))
@@ -1560,7 +1489,6 @@ k8s_yaml(doggos)
 
 func TestFilterYamlByApiVersion(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.file("k8s.yaml", yaml.ConcatYAML(
 		testyaml.DoggosDeploymentYaml, testyaml.DoggosServiceYaml,
 		testyaml.SnackYaml, testyaml.SanchoYAML))
@@ -1576,7 +1504,6 @@ k8s_yaml(doggos)
 
 func TestFilterYamlNoMatch(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.file("k8s.yaml", yaml.ConcatYAML(testyaml.DoggosDeploymentYaml, testyaml.DoggosServiceYaml))
 	f.file("Tiltfile", `
 doggos, rest = filter_yaml('k8s.yaml', namespace='dne', kind='deployment')
@@ -1587,7 +1514,6 @@ k8s_yaml(doggos)
 
 func TestYamlNone(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -1599,7 +1525,6 @@ k8s_yaml(None)
 
 func TestYamlEmptyBlob(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -1611,7 +1536,6 @@ k8s_yaml(blob(''))
 
 func TestDuplicateLocalResources(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -1627,7 +1551,6 @@ local_resource('foo', 'echo foo')
 // in the init() function
 func TestTopLevelIfStatement(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -1647,7 +1570,6 @@ if True:
 
 func TestTopLevelForLoop(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -1661,7 +1583,6 @@ for i in range(1, 3):
 
 func TestTopLevelVariableRename(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -1675,7 +1596,6 @@ x = 2
 
 func TestEmptyDockerfileDockerBuild(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.setupFoo()
 	f.file("foo/Dockerfile", "")
 	f.file("Tiltfile", `
@@ -1689,7 +1609,6 @@ k8s_yaml('foo.yaml')
 
 func TestSanchoSidecar(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.setupFoo()
 	f.file("Dockerfile", "FROM golang:1.10")
 	f.file("k8s.yaml", testyaml.SanchoSidecarYAML)
@@ -1711,7 +1630,6 @@ docker_build('gcr.io/some-project-162817/sancho-sidecar', '.')
 
 func TestSanchoRedisSidecar(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.setupFoo()
 	f.file("Dockerfile", "FROM golang:1.10")
 	f.file("k8s.yaml", testyaml.SanchoRedisSidecarYAML)
@@ -1730,7 +1648,6 @@ docker_build('gcr.io/some-project-162817/sancho', '.')
 
 func TestExtraPodSelectors(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupExtraPodSelectors("[{'foo': 'bar', 'baz': 'qux'}, {'quux': 'corge'}]")
 	f.load()
@@ -1742,7 +1659,6 @@ func TestExtraPodSelectors(t *testing.T) {
 
 func TestExtraPodSelectorsNotList(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupExtraPodSelectors("'hello'")
 	f.loadErrString("got starlark.String", "dict or a list")
@@ -1750,7 +1666,6 @@ func TestExtraPodSelectorsNotList(t *testing.T) {
 
 func TestExtraPodSelectorsDict(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupExtraPodSelectors("{'foo': 'bar'}")
 	f.load()
@@ -1761,7 +1676,6 @@ func TestExtraPodSelectorsDict(t *testing.T) {
 
 func TestExtraPodSelectorsElementNotDict(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupExtraPodSelectors("['hello']")
 	f.loadErrString("must be dicts", "starlark.String")
@@ -1769,7 +1683,6 @@ func TestExtraPodSelectorsElementNotDict(t *testing.T) {
 
 func TestExtraPodSelectorsKeyNotString(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupExtraPodSelectors("[{54321: 'hello'}]")
 	f.loadErrString("keys must be strings", "54321")
@@ -1777,7 +1690,6 @@ func TestExtraPodSelectorsKeyNotString(t *testing.T) {
 
 func TestExtraPodSelectorsValueNotString(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupExtraPodSelectors("[{'hello': 54321}]")
 	f.loadErrString("values must be strings", "54321")
@@ -1785,7 +1697,6 @@ func TestExtraPodSelectorsValueNotString(t *testing.T) {
 
 func TestPodReadinessDefaultDeployment(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo:stable")))
 	f.file("Tiltfile", `
@@ -1801,7 +1712,6 @@ k8s_yaml('foo.yaml')
 
 func TestPodReadinessDefaultConfigMap(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("config.yaml", `apiVersion: v1
 kind: ConfigMap
@@ -1823,7 +1733,6 @@ k8s_resource(new_name='config', objects=['config'])
 
 func TestPodReadinessDefaultJob(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("job.yaml", `apiVersion: batch/v1
 kind: Job
@@ -1842,7 +1751,6 @@ k8s_yaml('job.yaml')
 
 func TestK8sDiscoveryStrategy(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo:stable")))
 	f.file("Tiltfile", `
@@ -1859,7 +1767,6 @@ k8s_resource('foo', discovery_strategy='selectors-only')
 
 func TestK8sDiscoveryStrategyInvalid(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo:stable")))
 	f.file("Tiltfile", `
@@ -1872,7 +1779,6 @@ k8s_resource('foo', discovery_strategy='typo')
 
 func TestPodReadinessOverrideDeployment(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo:stable")))
 	f.file("Tiltfile", `
@@ -1889,7 +1795,6 @@ k8s_resource('foo', pod_readiness='ignore')
 
 func TestPodReadinessOverrideConfigMap(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("config.yaml", `apiVersion: v1
 kind: ConfigMap
@@ -1911,7 +1816,6 @@ k8s_resource(new_name='config', objects=['config'], pod_readiness='wait')
 
 func TestPodReadinessInvalid(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("config.yaml", `apiVersion: v1
 kind: ConfigMap
@@ -1930,7 +1834,6 @@ k8s_resource(new_name='config', objects=['config'], pod_readiness='w')
 
 func TestDockerBuildMatchingTag(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.gitInit("")
 	f.file("Dockerfile", "FROM golang:1.10")
@@ -1948,7 +1851,6 @@ k8s_yaml('foo.yaml')
 
 func TestDockerBuildButK8sMissing(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.gitInit("")
 	f.file("Dockerfile", "FROM golang:1.10")
@@ -1961,7 +1863,6 @@ docker_build('gcr.io/foo:stable', '.')
 
 func TestDockerBuildButK8sMissingTag(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.gitInit("")
 	f.file("Dockerfile", "FROM golang:1.10")
@@ -1977,7 +1878,6 @@ k8s_yaml('foo.yaml')
 
 func TestDockerBuildUnusedSuppressWarning(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.gitInit("")
 	f.file("Dockerfile", "FROM golang:1.10")
@@ -1993,7 +1893,6 @@ update_settings(suppress_unused_image_warnings=['b'])
 
 func TestDockerBuildButK8sNonMatchingTag(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.gitInit("")
 	f.file("Dockerfile", "FROM golang:1.10")
@@ -2009,7 +1908,6 @@ k8s_yaml('foo.yaml')
 
 func TestFail(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 fail("this is an error")
@@ -2022,7 +1920,6 @@ fail("or this")
 
 func TestBlob(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file(
 		"Tiltfile",
@@ -2036,7 +1933,6 @@ func TestBlob(t *testing.T) {
 
 func TestBlobErr(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file(
 		"Tiltfile",
@@ -2048,7 +1944,6 @@ func TestBlobErr(t *testing.T) {
 
 func TestImageDependency(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.gitInit("")
 	f.file("imageA.dockerfile", "FROM golang:1.10")
@@ -2067,7 +1962,6 @@ k8s_yaml('foo.yaml')
 
 func TestImageDependencyLiveUpdate(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.gitInit("")
 	f.file("message.txt", "Hello!")
@@ -2093,7 +1987,6 @@ k8s_yaml('foo.yaml')
 
 func TestImageDependencyCycle(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.gitInit("")
 	f.file("imageA.dockerfile", "FROM gcr.io/image-b")
@@ -2110,7 +2003,6 @@ k8s_yaml('foo.yaml')
 
 func TestImageDependencyDiamond(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.gitInit("")
 	f.file("imageA.dockerfile", "FROM golang:1.10")
@@ -2143,7 +2035,6 @@ k8s_yaml('foo.yaml')
 
 func TestImageDependencyTwice(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.gitInit("")
 	f.file("imageA.dockerfile", "FROM golang:1.10")
@@ -2201,7 +2092,6 @@ k8s_yaml('snack.yaml')
 
 func TestImageDependencyNormalization(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.gitInit("")
 	f.file("common.dockerfile", "FROM golang:1.10")
@@ -2224,7 +2114,6 @@ k8s_yaml('auth.yaml')
 
 func TestImagesWithSameNameAssembly(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.gitInit("")
 	f.file("app.dockerfile", "FROM golang:1.10")
@@ -2247,7 +2136,6 @@ k8s_yaml('app.yaml')
 
 func TestImagesWithSameNameDifferentManifests(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.gitInit("")
 	f.file("app.dockerfile", "FROM golang:1.10")
@@ -2276,7 +2164,6 @@ k8s_yaml('app.yaml')
 
 func TestImageRefSuggestion(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.file("Tiltfile", `
@@ -2290,7 +2177,6 @@ k8s_yaml('foo.yaml')
 
 func TestDir(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.gitInit("")
 	f.yaml("config/foo.yaml", deployment("foo", image("gcr.io/foo")))
@@ -2304,7 +2190,6 @@ func TestDir(t *testing.T) {
 
 func TestDirRecursive(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.gitInit("")
 	f.file("foo/bar", "bar")
@@ -2321,7 +2206,6 @@ for f in files:
 
 func TestCallCounts(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.gitInit("")
 	f.file("Dockerfile", "FROM golang:1.10")
@@ -2351,7 +2235,6 @@ k8s_yaml('foo.yaml')
 
 func TestArgCounts(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.gitInit("")
 	f.file("Dockerfile", "FROM golang:1.10")
@@ -2383,7 +2266,6 @@ k8s_yaml('foo.yaml')
 
 func TestK8sManifestRefInjectCounts(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.gitInit("")
 	f.file("Dockerfile", "FROM golang:1.10")
@@ -2420,7 +2302,6 @@ k8s_yaml(['sancho_twin.yaml', 'sancho_sidecar.yaml', 'blorg.yaml'])
 
 func TestYamlErrorFromLocal(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.file("Tiltfile", `
 yaml = local('echo hi')
 k8s_yaml(yaml)
@@ -2430,7 +2311,6 @@ k8s_yaml(yaml)
 
 func TestYamlErrorFromReadFile(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.file("foo.yaml", "hi")
 	f.file("Tiltfile", `
 k8s_yaml(read_file('foo.yaml'))
@@ -2440,7 +2320,6 @@ k8s_yaml(read_file('foo.yaml'))
 
 func TestYamlErrorFromBlob(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.file("Tiltfile", `
 k8s_yaml(blob('hi'))
 `)
@@ -2449,7 +2328,6 @@ k8s_yaml(blob('hi'))
 
 func TestCustomBuildWithTag(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	tiltfile := `k8s_yaml('foo.yaml')
 custom_build(
@@ -2478,7 +2356,6 @@ custom_build(
 
 func TestCustomBuildDisablePush(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	tiltfile := `k8s_yaml('foo.yaml')
 hfb = custom_build(
@@ -2506,7 +2383,6 @@ hfb = custom_build(
 
 func TestCustomBuildSkipsLocalDocker(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	tiltfile := `
 k8s_yaml('foo.yaml')
@@ -2532,7 +2408,6 @@ custom_build(
 
 func TestImageObjectJSONPath(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.file("um.yaml", `apiVersion: tilt.dev/v1alpha1
 kind: UselessMachine
 metadata:
@@ -2556,7 +2431,6 @@ docker_build('tilt.dev/frontend', '.')
 
 func TestImageObjectJSONPathNoMatch(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.file("um.yaml", `apiVersion: tilt.dev/v1alpha1
 kind: UselessMachine
 metadata:
@@ -2575,7 +2449,6 @@ docker_build('tilt.dev/frontend', '.')
 
 func TestImageObjectJSONPathPodReadinessIgnore(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.file("um.yaml", `apiVersion: tilt.dev/v1alpha1
 kind: UselessMachine
 metadata:
@@ -2600,7 +2473,6 @@ docker_build('tilt.dev/frontend', '.')
 
 func TestExtraImageLocationOneImage(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.setupCRD()
 	f.dockerfile("env/Dockerfile")
 	f.dockerfile("builder/Dockerfile")
@@ -2622,7 +2494,6 @@ docker_build('test/mycrd-env', 'env')
 
 func TestConflictingWorkloadNames(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile("foo1/Dockerfile")
 	f.dockerfile("foo2/Dockerfile")
@@ -2665,7 +2536,6 @@ func TestK8sKind(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			f := newFixture(t)
-			defer f.TearDown()
 			f.setupCRD()
 			f.dockerfile("env/Dockerfile")
 			f.dockerfile("builder/Dockerfile")
@@ -2718,7 +2588,6 @@ k8s_kind(%s)
 
 func TestK8sKindImageJSONPathPositional(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.setupCRD()
 	f.dockerfile("env/Dockerfile")
 	f.dockerfile("builder/Dockerfile")
@@ -2732,7 +2601,6 @@ docker_build('test/mycrd-env', 'env')
 
 func TestExtraImageLocationTwoImages(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.setupCRD()
 	f.dockerfile("env/Dockerfile")
 	f.dockerfile("builder/Dockerfile")
@@ -2758,7 +2626,6 @@ docker_build('test/mycrd-env', 'env')
 
 func TestExtraImageLocationDeploymentEnvVarByName(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile("foo/Dockerfile")
 	f.dockerfile("foo-fetcher/Dockerfile")
@@ -2792,7 +2659,6 @@ k8s_image_json_path("{.spec.template.spec.containers[*].env[?(@.name=='FETCHER_I
 
 func TestExtraImageLocationDeploymentEnvVarMatch(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile("foo/Dockerfile")
 	f.dockerfile("foo-fetcher/Dockerfile")
@@ -2816,7 +2682,6 @@ docker_build('gcr.io/foo-fetcher', 'foo-fetcher', match_in_env_vars=True)
 
 func TestExtraImageLocationDeploymentEnvVarDoesNotMatchIfNotSpecified(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile("foo/Dockerfile")
 	f.dockerfile("foo-fetcher/Dockerfile")
@@ -2901,7 +2766,6 @@ k8s_image_json_path("{.spec.template.spec.containers[*].env[?(@.name=='FETCHER_I
 
 func TestExtraImageLocationDeploymentEnvVarByNameAndNamespace(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile("foo/Dockerfile")
 	f.dockerfile("foo-fetcher/Dockerfile")
@@ -2926,7 +2790,6 @@ k8s_image_json_path("{.spec.template.spec.containers[*].env[?(@.name=='FETCHER_I
 
 func TestExtraImageLocationNoMatch(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.setupCRD()
 	f.dockerfile("env/Dockerfile")
 	f.dockerfile("builder/Dockerfile")
@@ -2940,7 +2803,6 @@ docker_build('test/mycrd-env', 'env')
 
 func TestExtraImageLocationInvalidJsonPath(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.setupCRD()
 	f.dockerfile("env/Dockerfile")
 	f.dockerfile("builder/Dockerfile")
@@ -2954,35 +2816,30 @@ docker_build('test/mycrd-env', 'env')
 
 func TestExtraImageLocationNoPaths(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.file("Tiltfile", `k8s_image_json_path(kind='MyType')`)
 	f.loadErrString("missing argument for paths")
 }
 
 func TestExtraImageLocationNotListOrString(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.file("Tiltfile", `k8s_image_json_path(kind='MyType', paths=8)`)
 	f.loadErrString("for parameter \"paths\": Expected string, got: 8")
 }
 
 func TestExtraImageLocationListContainsNonString(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.file("Tiltfile", `k8s_image_json_path(kind='MyType', paths=["foo", 8])`)
 	f.loadErrString("for parameter \"paths\": Expected string, got: 8")
 }
 
 func TestExtraImageLocationNoSelectorSpecified(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.file("Tiltfile", `k8s_image_json_path(paths=["foo"])`)
 	f.loadErrString("at least one of kind, name, or namespace must be specified")
 }
 
 func TestDockerBuildEmptyDockerFileArg(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.file("Tiltfile", `
 docker_build('web/api', '', dockerfile='')
 `)
@@ -2991,7 +2848,6 @@ docker_build('web/api', '', dockerfile='')
 
 func TestK8sYamlEmptyArg(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.file("Tiltfile", `
 k8s_yaml('')
 `)
@@ -3000,7 +2856,6 @@ k8s_yaml('')
 
 func TestTwoDefaultRegistries(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 default_registry("gcr.io")
@@ -3011,7 +2866,6 @@ default_registry("docker.io")`)
 
 func TestDefaultRegistryInvalid(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.file("Tiltfile", `
@@ -3024,7 +2878,6 @@ docker_build('gcr.io/foo', 'foo')
 
 func TestDefaultRegistryHostFromCluster(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.file("Tiltfile", `
@@ -3042,7 +2895,6 @@ docker_build('gcr.io/foo', 'foo')
 
 func TestDefaultRegistryAtEndOfTiltfile(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	// default_registry is the last entry to test that it doesn't only affect subsequently defined images
@@ -3062,7 +2914,6 @@ default_registry('bar.com')
 
 func TestDefaultRegistryTwoImagesOnlyDifferByTag(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile("bar/Dockerfile")
 	f.yaml("bar.yaml", deployment("bar", image("gcr.io/foo:bar")))
@@ -3093,7 +2944,6 @@ default_registry('example.com')
 
 func TestDefaultRegistrySingleName(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile("fe/Dockerfile")
 	f.yaml("fe.yaml", deployment("fe", image("fe")))
@@ -3134,7 +2984,6 @@ default_registry('123.dkr.ecr.us-east-1.amazonaws.com', single_name='team-a/dev'
 
 func TestDefaultReadFile(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.setupFooAndBar()
 	tiltfile := `
 result = read_file("this_file_does_not_exist", default="foo")
@@ -3155,7 +3004,6 @@ k8s_yaml(str(result) + '.yaml')
 
 func TestWatchFile(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -3176,7 +3024,6 @@ k8s_yaml('foo.yaml')
 
 func TestAssemblyBasic(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -3196,7 +3043,6 @@ k8s_yaml('foo.yaml')
 
 func TestAssemblyTwoWorkloadsSameImage(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.yaml("bar.yaml", deployment("bar", image("gcr.io/foo")))
@@ -3223,7 +3069,6 @@ k8s_yaml(['foo.yaml', 'bar.yaml'])
 // it with the first workload (https://github.com/tilt-dev/tilt/issues/4233)
 func TestAssemblyServiceWithoutSelectorMatchesNothing(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.yaml("all.yaml",
 		deployment("foo", withLabels(map[string]string{"app": "foo"})),
@@ -3243,7 +3088,6 @@ k8s_yaml('all.yaml')
 
 func TestK8sResourceNoMatch(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.file("Tiltfile", `
@@ -3257,7 +3101,6 @@ k8s_resource('bar', new_name='baz')
 
 func TestK8sResourceNewName(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.file("Tiltfile", `
@@ -3273,7 +3116,6 @@ k8s_resource('foo', new_name='bar')
 
 func TestK8sResourceRenameTwice(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.file("Tiltfile", `
@@ -3289,7 +3131,6 @@ k8s_resource('bar', new_name='baz')
 
 func TestK8sResourceNewNameConflict(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFooAndBar()
 	f.file("Tiltfile", `
@@ -3303,7 +3144,6 @@ k8s_resource('foo', new_name='bar')
 
 func TestK8sResourceRenameConflictingNames(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile("foo1/Dockerfile")
 	f.dockerfile("foo2/Dockerfile")
@@ -3325,7 +3165,6 @@ k8s_resource('foo:deployment:ns2', new_name='foo')
 
 func TestConflictingNewNames(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.yaml("ns1.yaml", namespace("ns1"))
 	f.yaml("ns2.yaml", namespace("ns2"))
@@ -3340,7 +3179,6 @@ k8s_resource(new_name='foo', objects=['ns2:namespace'])
 
 func TestAdditivePortForwards(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -3357,7 +3195,6 @@ k8s_resource('foo', port_forwards=8000)
 
 func TestWorkloadToResourceFunction(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -3378,7 +3215,6 @@ k8s_resource('hello-foo', port_forwards=8000)
 
 func TestWorkloadToResourceFunctionConflict(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFooAndBar()
 
@@ -3397,7 +3233,6 @@ workload_to_resource_function(wtrf)
 
 func TestWorkloadToResourceFunctionError(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -3416,7 +3251,6 @@ k8s_resource('hello-foo', port_forwards=8000)
 
 func TestWorkloadToResourceFunctionReturnsNonString(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -3435,7 +3269,6 @@ k8s_resource('hello-foo', port_forwards=8000)
 
 func TestWorkloadToResourceFunctionTakesNoArgs(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -3454,7 +3287,6 @@ k8s_resource('hello-foo', port_forwards=8000)
 
 func TestWorkloadToResourceFunctionTakesTwoArgs(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -3473,7 +3305,6 @@ k8s_resource('hello-foo', port_forwards=8000)
 
 func TestMultipleLiveUpdatesOnManifest(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.gitInit("")
 	f.file("sancho/Dockerfile", "FROM golang:1.10")
@@ -3510,7 +3341,6 @@ docker_build('gcr.io/some-project-162817/sancho-sidecar', './sidecar',
 
 func TestImpossibleLiveUpdatesOKNoLiveUpdate(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.gitInit("")
 	f.file("sancho/Dockerfile", "FROM golang:1.10")
@@ -3530,7 +3360,6 @@ docker_build('gcr.io/some-project-162817/sancho-sidecar', './sidecar')
 
 func TestImpossibleLiveUpdatesOKSecondContainerLiveUpdate(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.gitInit("")
 	f.file("sancho/Dockerfile", "FROM golang:1.10")
@@ -3570,7 +3399,6 @@ func TestTriggerModeK8S(t *testing.T) {
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			f := newFixture(t)
-			defer f.TearDown()
 
 			f.setupFoo()
 
@@ -3641,7 +3469,6 @@ func TestTriggerModeLocal(t *testing.T) {
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			f := newFixture(t)
-			defer f.TearDown()
 
 			var globalTriggerModeDirective string
 			switch testCase.globalSetting {
@@ -3687,7 +3514,6 @@ func TestTriggerModeLocal(t *testing.T) {
 
 func TestTriggerModeInt(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 trigger_mode(1)
@@ -3697,7 +3523,6 @@ trigger_mode(1)
 
 func TestMultipleTriggerMode(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 trigger_mode(TRIGGER_MODE_MANUAL)
@@ -3708,7 +3533,6 @@ trigger_mode(TRIGGER_MODE_MANUAL)
 
 func TestK8sContext(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -3729,7 +3553,6 @@ docker_build('gcr.io/foo', 'foo')
 
 func TestDockerbuildIgnoreAsString(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile("Dockerfile")
 	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
@@ -3750,7 +3573,6 @@ k8s_yaml('foo.yaml')
 
 func TestDockerbuildIgnoreAsArray(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile("Dockerfile")
 	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
@@ -3773,7 +3595,6 @@ k8s_yaml('foo.yaml')
 
 func TestDockerbuildInvalidIgnore(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile("foo/Dockerfile")
 	f.yaml("foo.yaml", deployment("foo", image("fooimage")))
@@ -3789,7 +3610,6 @@ k8s_yaml('foo.yaml')
 
 func TestDockerbuildOnly(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile("Dockerfile")
 	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
@@ -3809,7 +3629,6 @@ k8s_yaml('foo.yaml')
 
 func TestDockerbuildOnlyAsArray(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile("Dockerfile")
 	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
@@ -3831,7 +3650,6 @@ k8s_yaml('foo.yaml')
 
 func TestDockerbuildInvalidOnly(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile("foo/Dockerfile")
 	f.yaml("foo.yaml", deployment("foo", image("fooimage")))
@@ -3847,7 +3665,6 @@ k8s_yaml('foo.yaml')
 
 func TestDockerbuildInvalidOnlyGlob(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile("foo/Dockerfile")
 	f.yaml("foo.yaml", deployment("foo", image("fooimage")))
@@ -3863,7 +3680,6 @@ k8s_yaml('foo.yaml')
 
 func TestDockerbuildOnlyAndIgnore(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile("Dockerfile")
 	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
@@ -3888,7 +3704,6 @@ k8s_yaml('foo.yaml')
 // if the same file is ignored and included, the ignore takes precedence
 func TestDockerbuildOnlyAndIgnoreSameFile(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile("Dockerfile")
 	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
@@ -3908,7 +3723,6 @@ k8s_yaml('foo.yaml')
 // We don't do a double negative
 func TestDockerbuildOnlyHasException(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile("Dockerfile")
 	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
@@ -3930,7 +3744,6 @@ k8s_yaml('foo.yaml')
 // That's hard to make work easily, so let's just throw an error
 func TestDockerbuildIgnoreWithNewline(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile("Dockerfile")
 	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
@@ -3943,7 +3756,6 @@ k8s_yaml('foo.yaml')
 }
 func TestDockerbuildOnlyWithNewline(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile("Dockerfile")
 	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
@@ -4073,7 +3885,6 @@ func TestDisableSnapshots(t *testing.T) {
 
 func TestDockerBuildEntrypointString(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile("Dockerfile")
 	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
@@ -4088,7 +3899,6 @@ k8s_yaml('foo.yaml')
 
 func TestDockerBuildContainerArgs(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile("Dockerfile")
 	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
@@ -4107,7 +3917,6 @@ k8s_yaml('foo.yaml')
 
 func TestDockerBuildEntrypointArray(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile("Dockerfile")
 	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
@@ -4122,7 +3931,6 @@ k8s_yaml('foo.yaml')
 
 func TestDockerBuild_buildArgs(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -4145,7 +3953,6 @@ k8s_yaml('foo.yaml')
 
 func TestCustomBuildEntrypoint(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile("Dockerfile")
 	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
@@ -4166,7 +3973,6 @@ k8s_yaml('foo.yaml')
 
 func TestCustomBuildContainerArgs(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile("Dockerfile")
 	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
@@ -4185,7 +3991,6 @@ k8s_yaml('foo.yaml')
 // See comments on ImageTarget#MaybeIgnoreRegistry()
 func TestCustomBuildSkipsLocalDockerAndTagPassedIgnoresLocalRegistry(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile("Dockerfile")
 	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
@@ -4202,7 +4007,6 @@ k8s_yaml('foo.yaml')
 
 func TestDuplicateYAMLEntityWithinSingleResource(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.gitInit("")
 	f.yaml("resource.yaml",
@@ -4219,7 +4023,6 @@ k8s_yaml('resource.yaml')
 
 func TestDuplicateYAMLEntityWithinSingleResourceAllowed(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.gitInit("")
 	f.yaml("resource.yaml",
@@ -4233,7 +4036,6 @@ k8s_yaml('resource.yaml', allow_duplicates=True)
 
 func TestDuplicateYAMLEntityAcrossResources(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile("foo1/Dockerfile")
 	f.yaml("foo1.yaml", deployment("foo", image("gcr.io/foo1"), namespace("ns1")))
@@ -4252,7 +4054,6 @@ k8s_resource('foo:deployment:ns1', new_name='foo')
 func TestDuplicateYAMLEntityInSingleWorkload(t *testing.T) {
 	//Services corresponding to a deployment get pulled into the same resource.
 	f := newFixture(t)
-	defer f.TearDown()
 
 	labelsFoo := map[string]string{"foo": "bar"}
 	f.yaml("all.yaml",
@@ -4271,7 +4072,6 @@ k8s_yaml('all.yaml')
 
 func TestDuplicateYAMLEntityInUserAssembledNonWorkloadResource(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.gitInit("")
 	f.yaml("all.yaml",
 		service("foo-service"),
@@ -4289,7 +4089,6 @@ k8s_resource(objects=['foo-service:Service:default'], new_name='my-services')
 
 func TestSetTeamID(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", "set_team('sharks')")
 	f.load()
@@ -4299,7 +4098,6 @@ func TestSetTeamID(t *testing.T) {
 
 func TestSetTeamIDEmpty(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", "set_team('')")
 	f.loadErrString("team_id cannot be empty")
@@ -4307,7 +4105,6 @@ func TestSetTeamIDEmpty(t *testing.T) {
 
 func TestSetTeamIDMultiple(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 set_team('sharks')
@@ -4333,7 +4130,6 @@ func TestK8SContextAcceptance(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			f := newFixture(t)
-			defer f.TearDown()
 
 			f.file("Tiltfile", `
 k8s_yaml("foo.yaml")
@@ -4355,7 +4151,6 @@ allow_k8s_contexts("allowed-context")
 // Test for fix to https://github.com/tilt-dev/tilt/issues/4234
 func TestCheckK8SContextWhenOnlyUncategorizedK8s(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	// We'll only have Uncategorized k8s entities, no K8s resources--
 	// make sure we still check K8sContext and throw an error if need be
@@ -4387,7 +4182,6 @@ func TestLocalObeysAllowedK8sContexts(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			f := newFixture(t)
-			defer f.TearDown()
 
 			f.file("Tiltfile", `
 allow_k8s_contexts("allowed-context")
@@ -4408,7 +4202,6 @@ local('echo hi')
 
 func TestLocalResourceOnlyUpdateCmd(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 local_resource("test", "echo hi", deps=["foo/bar", "foo/a.txt"])
@@ -4431,7 +4224,6 @@ local_resource("test", "echo hi", deps=["foo/bar", "foo/a.txt"])
 
 func TestLocalResourceOnlyServeCmd(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 local_resource("test", serve_cmd="sleep 1000")
@@ -4447,7 +4239,6 @@ local_resource("test", serve_cmd="sleep 1000")
 
 func TestLocalResourceUpdateAndServeCmd(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 local_resource("test", cmd="echo hi", serve_cmd="sleep 1000")
@@ -4466,7 +4257,6 @@ local_resource("test", cmd="echo hi", serve_cmd="sleep 1000")
 
 func TestLocalResourceNeitherUpdateOrServeCmd(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 local_resource("test")
@@ -4477,7 +4267,6 @@ local_resource("test")
 
 func TestLocalResourceUpdateCmdArray(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 local_resource("test", ["echo", "hi"])
@@ -4490,7 +4279,6 @@ local_resource("test", ["echo", "hi"])
 
 func TestLocalResourceServeCmdArray(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 local_resource("test", serve_cmd=["echo", "hi"])
@@ -4503,7 +4291,6 @@ local_resource("test", serve_cmd=["echo", "hi"])
 
 func TestLocalResourceWorkdir(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("nested/Tiltfile", `
 local_resource("nested-local", "echo nested", deps=["foo/bar", "more_nested/repo"])
@@ -4541,7 +4328,6 @@ local_resource("toplvl-local", "echo hello world", deps=["foo/baz", "foo/a.txt"]
 
 func TestLocalResourceIgnore(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file(".dockerignore", "**/**.c")
 	f.file("Tiltfile", "include('proj/Tiltfile')")
@@ -4576,7 +4362,6 @@ local_resource("test", "echo hi", deps=["foo"], ignore=["**/*.a", "foo/bar.d"])
 
 func TestLocalResourceUpdateCmdEnv(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 local_resource("test", "echo hi", env={"KEY1": "value1", "KEY2": "value2"}, serve_cmd="sleep 1000")
@@ -4592,7 +4377,6 @@ local_resource("test", "echo hi", env={"KEY1": "value1", "KEY2": "value2"}, serv
 
 func TestLocalResourceServeCmdEnv(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 local_resource("test", "echo hi", serve_cmd="sleep 1000", serve_env={"KEY1": "value1", "KEY2": "value2"})
@@ -4608,7 +4392,6 @@ local_resource("test", "echo hi", serve_cmd="sleep 1000", serve_env={"KEY1": "va
 
 func TestLocalResourceUpdateCmdDir(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("nested/inside.txt", "inside the nested directory")
 	f.file("Tiltfile", `
@@ -4624,7 +4407,6 @@ local_resource("test", cmd="cat inside.txt", dir="nested")
 
 func TestLocalResourceUpdateCmdDirNone(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("here.txt", "same level")
 	f.file("Tiltfile", `
@@ -4640,7 +4422,6 @@ local_resource("test", cmd="cat here.txt", dir=None)
 
 func TestLocalResourceServeCmdDir(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("nested/inside.txt", "inside the nested directory")
 	f.file("Tiltfile", `
@@ -4656,7 +4437,6 @@ local_resource("test", serve_cmd="cat inside.txt", serve_dir="nested")
 
 func TestLocalResourceServeCmdDirNone(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("here.txt", "same level")
 	f.file("Tiltfile", `
@@ -4672,7 +4452,6 @@ local_resource("test", serve_cmd="cat here.txt", serve_dir=None)
 
 func TestCustomBuildStoresTiltfilePath(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `include('proj/Tiltfile')
 k8s_yaml("foo.yaml")`)
@@ -4706,7 +4485,6 @@ func (f *fixture) assertRepos(expectedLocalPaths []string, repos []model.LocalGi
 
 func TestSecretString(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("secret.yaml", `
 apiVersion: v1
@@ -4735,7 +4513,6 @@ k8s_yaml('secret.yaml')
 
 func TestSecretBytes(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("secret.yaml", `
 apiVersion: v1
@@ -4764,7 +4541,6 @@ k8s_yaml('secret.yaml')
 
 func TestSecretSettingsDisableScrub(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("secret.yaml", `
 apiVersion: v1
@@ -4788,7 +4564,6 @@ secret_settings(disable_scrub=True)
 
 func TestDockerPruneSettings(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 docker_prune_settings(max_age_mins=111, num_builds=222)
@@ -4805,7 +4580,6 @@ docker_prune_settings(max_age_mins=111, num_builds=222)
 
 func TestDockerPruneSettingsDefaultsWhenCalled(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 docker_prune_settings(num_builds=123)
@@ -4822,7 +4596,6 @@ docker_prune_settings(num_builds=123)
 
 func TestDockerPruneSettingsDefaultsWhenNotCalled(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 print('nothing to see here')
@@ -4839,7 +4612,6 @@ print('nothing to see here')
 
 func TestK8SDependsOn(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFooAndBar()
 	f.file("Tiltfile", `
@@ -4858,7 +4630,6 @@ k8s_resource('bar', resource_deps=['foo'])
 
 func TestLocalDependsOn(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 local_resource('foo', 'echo foo')
@@ -4872,7 +4643,6 @@ local_resource('bar', 'echo bar', resource_deps=['foo'])
 
 func TestDependsOnMissingResource(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 local_resource('bar', 'echo bar', resource_deps=['foo'])
@@ -4883,7 +4653,6 @@ local_resource('bar', 'echo bar', resource_deps=['foo'])
 
 func TestDependsOnSelf(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 local_resource('bar', 'echo bar', resource_deps=['bar'])
@@ -4894,7 +4663,6 @@ local_resource('bar', 'echo bar', resource_deps=['bar'])
 
 func TestDependsOnCycle(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 local_resource('foo', 'echo foo', resource_deps=['baz'])
@@ -4934,7 +4702,6 @@ func TestDependsOnPulledInOnPartialLoad(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newFixture(t)
-			defer f.TearDown()
 
 			f.file("Tiltfile", `
 local_resource('a', 'echo a')
@@ -4956,7 +4723,6 @@ local_resource('e', 'echo e')
 
 func TestLocalResourceAllowParallel(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 local_resource("a", ["echo", "hi"], allow_parallel=True)
@@ -4979,7 +4745,6 @@ local_resource("c", serve_cmd=["echo", "hi"])
 
 func TestLocalResourceInvalidName(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 local_resource("a/b", ["echo", "hi"])
@@ -5028,7 +4793,6 @@ func TestMaxParallelUpdates(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newFixture(t)
-			defer f.TearDown()
 
 			f.file("Tiltfile", tc.tiltfile)
 
@@ -5079,7 +4843,6 @@ func TestK8sUpsertTimeout(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newFixture(t)
-			defer f.TearDown()
 
 			f.file("Tiltfile", tc.tiltfile)
 
@@ -5097,7 +4860,6 @@ func TestK8sUpsertTimeout(t *testing.T) {
 
 func TestUpdateSettingsCalledTwice(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `update_settings(max_parallel_updates=123)
 update_settings(k8s_upsert_timeout_secs=456)`)
@@ -5110,7 +4872,6 @@ update_settings(k8s_upsert_timeout_secs=456)`)
 // recursion is disabled by default in Starlark. Make sure we've enabled it for Tiltfiles.
 func TestRecursionEnabled(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 def fact(n):
@@ -5128,7 +4889,6 @@ print("fact: %d" % (fact(10)))
 
 func TestBuiltinAnalytics(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	// covering:
 	// 1. a positional arg
@@ -5178,7 +4938,6 @@ def printFoo():
 
 func TestCustomTagsReported(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 experimental_analytics_report({'foo': 'bar'})
@@ -5193,7 +4952,6 @@ experimental_analytics_report({'foo': 'bar'})
 
 func TestK8sResourceObjectsAddsNonWorkload(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.yaml("secret.yaml", secret("bar"))
@@ -5216,7 +4974,6 @@ k8s_resource('foo', objects=['bar', 'baz:namespace:default'])
 
 func TestK8sResourceObjectsWithSameName(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.yaml("secret.yaml", secret("bar"))
@@ -5235,7 +4992,6 @@ k8s_resource('foo', objects=['bar', 'bar:namespace:default'])
 
 func TestK8sResourceObjectsCantIncludeSameObjectTwice(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.yaml("secret1.yaml", secret("bar"))
@@ -5255,7 +5011,6 @@ k8s_resource('foo', objects=['bar', 'bar:secret:default'])
 
 func TestK8sResourceObjectsMultipleAmbiguous(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.yaml("secret.yaml", secret("bar"))
@@ -5274,7 +5029,6 @@ k8s_resource('foo', objects=['bar', 'bar'])
 
 func TestK8sResourceObjectEmptySelector(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.yaml("secret.yaml", secret("bar"))
@@ -5293,7 +5047,6 @@ k8s_resource('foo', objects=[''])
 
 func TestK8sResourceObjectInvalidSelector(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.yaml("secret.yaml", secret("bar"))
@@ -5312,7 +5065,6 @@ k8s_resource('foo', objects=['baz:namespace:default:wot'])
 
 func TestK8sResourceObjectSelectorWithEscapedColon(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.yaml("secret.yaml", secret("quu:bar"))
@@ -5335,7 +5087,6 @@ k8s_resource('foo', objects=['quu\\:bar', 'baz:namespace:default'])
 
 func TestK8sResourceObjectSelectorWithEscapedBackslash(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.yaml("secret.yaml", secret("quu\\bar"))
@@ -5358,7 +5109,6 @@ k8s_resource('foo', objects=['quu\\\\bar', 'baz:namespace:default'])
 
 func TestK8sResourceObjectSelectorSuggestedObjectsAreEscaped(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.yaml("secret.yaml", secret("quu:bar"))
@@ -5380,7 +5130,6 @@ k8s_resource('foo', objects=['quu:bar', 'baz:namespace:default'])
 
 func TestK8sResourceObjectSelectorInvalidEscapeSequence(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.yaml("secret.yaml", secret("quu:bar"))
@@ -5401,7 +5150,6 @@ k8s_resource('foo', objects=['qu\\u:bar', 'baz:namespace:default'])
 
 func TestK8sResourceObjectIncludesSelectorThatDoesntExist(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.yaml("secret.yaml", secret("bar"))
@@ -5420,7 +5168,6 @@ k8s_resource('foo', objects=['baz:secret:default'])
 
 func TestK8sResourceObjectsPartialNames(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.yaml("secret.yaml", secret("bar"))
@@ -5441,7 +5188,6 @@ k8s_resource('foo', objects=['bar:secret', 'bar:namespace'])
 
 func TestK8sResourcePrefixesShouldntMatch(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.yaml("secret.yaml", secret("bar"))
@@ -5458,7 +5204,6 @@ k8s_resource('foo', objects=['ba'])
 
 func TestK8sResourceAmbiguousSelector(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.yaml("secret.yaml", secret("bar"))
@@ -5477,7 +5222,6 @@ k8s_resource('foo', objects=['bar'])
 
 func TestK8sResourceObjectDuplicate(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.yaml("secret.yaml", secret("bar"))
@@ -5497,7 +5241,6 @@ k8s_resource('baz', objects=['bar'])
 
 func TestK8sResourceObjectMultipleResources(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.yaml("secret.yaml", secret("bar"))
@@ -5523,7 +5266,6 @@ k8s_resource('baz')
 
 func TestMultipleResourcesMultipleObjects(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.yaml("secret.yaml", secret("bar"))
@@ -5548,7 +5290,6 @@ k8s_resource('baz', objects=['qux'])
 
 func TestK8sResourceAmbiguousWorkloadAmbiguousObject(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.yaml("secret.yaml", secret("foo"))
@@ -5565,7 +5306,6 @@ k8s_resource('foo', objects=['foo'])
 
 func TestK8sResourceObjectsWithWorkloadToResourceFunction(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.yaml("secret.yaml", secret("foo"))
@@ -5588,7 +5328,6 @@ k8s_resource('hello-foo', objects=['foo:secret'])
 
 func TestK8sResourceNewNameWithoutObjects(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 k8s_resource(new_name='foo')
@@ -5599,7 +5338,6 @@ k8s_resource(new_name='foo')
 
 func TestK8sResourceObjectsWithGroup(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.yaml("secret.yaml", secret("bar"))
@@ -5621,7 +5359,6 @@ k8s_resource('foo', objects=['bar', 'baz:namespace:default:core'])
 
 func TestK8sResourceObjectClusterScoped(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.yaml("namespace.yaml", namespace("baz"))
@@ -5644,7 +5381,6 @@ k8s_resource('foo', objects=['baz:namespace'])
 // For now we just leave them as "default"
 func TestK8sResourceObjectClusterScopedWithNamespace(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.yaml("namespace.yaml", namespace("baz"))
@@ -5661,7 +5397,6 @@ k8s_resource('foo', objects=['baz:namespace:qux'])
 
 func TestK8sResourceObjectsNonWorkloadOnly(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.yaml("secret.yaml", secret("bar"))
 	f.yaml("namespace.yaml", namespace("baz"))
@@ -5680,7 +5415,6 @@ k8s_resource(new_name='foo', objects=['bar', 'baz:namespace:default'])
 
 func TestK8sResourceNewNameAdditive(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.yaml("a.yaml", namespace("a"))
 	f.yaml("b.yaml", namespace("b"))
@@ -5698,7 +5432,6 @@ k8s_resource('namespaces', objects=['b'])
 
 func TestK8sExistingResourceAdditive(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.yaml("a.yaml", deployment("a"))
 	f.yaml("b.yaml", namespace("b"))
@@ -5719,7 +5452,6 @@ k8s_resource('a', objects=['c'])
 
 func TestK8sExistingResourceNewNameAdditive(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	// this was working non-deterministically based on hashtable order, so generate a bunch of resources
 	// to reduce the chance of false positives
@@ -5744,7 +5476,6 @@ for i in range(1, 26):
 
 func TestK8sExistingResourceNewNameAlreadyTaken(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.yaml("a.yaml", deployment("a"))
 	f.yaml("b.yaml", namespace("b"))
@@ -5763,7 +5494,6 @@ k8s_resource(new_name='a', objects=['c'])
 
 func TestK8sNonWorkloadOnlyResourceWithAllTheOptions(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.yaml("secret.yaml", secret("bar"))
@@ -5786,7 +5516,6 @@ k8s_resource(new_name='bar', objects=['bar', 'baz:namespace:default'], port_forw
 
 func TestK8sResourceEmptyWorkloadSpecifierAndNoObjects(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -5801,7 +5530,6 @@ k8s_resource('', port_forwards=8000)
 
 func TestK8sResourceNonWorkloadRequiresNewName(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.yaml("secret.yaml", secret("bar"))
 	f.yaml("namespace.yaml", namespace("baz"))
@@ -5817,7 +5545,6 @@ k8s_resource(objects=['bar', 'baz:namespace:default'])
 
 func TestK8sResourceNewNameCantOverwriteWorkload(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.yaml("secret.yaml", secret("bar"))
@@ -5838,7 +5565,6 @@ k8s_resource(new_name='bar', objects=['bar:secret'])
 
 func TestK8sResourceObjectsNonAmbiguousDefaultNamespace(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("serving-core.yaml", testyaml.KnativeServingCore)
 
@@ -5861,7 +5587,6 @@ k8s_resource(
 
 func TestK8sResourceObjectsAreNotCaseSensitive(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("serving-core.yaml", testyaml.KnativeServingCore)
 
@@ -5884,7 +5609,6 @@ k8s_resource(
 
 func TestK8sResourceLabels(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -5900,7 +5624,6 @@ k8s_resource('foo', labels="test")
 
 func TestK8sResourceLabelsAppend(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -5917,7 +5640,6 @@ k8s_resource('foo', labels="test2")
 
 func TestLocalResourceLabels(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 local_resource("test", cmd="echo hi", labels="foo")
@@ -5933,7 +5655,6 @@ local_resource("test2", cmd="echo hi2", labels=["bar", "baz"])
 // https://github.com/tilt-dev/tilt/issues/5467
 func TestLoadErrorWithArgs(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", "asdf")
 	f.loadArgsErrString([]string{"foo"}, "undefined: asdf")
@@ -5941,7 +5662,6 @@ func TestLoadErrorWithArgs(t *testing.T) {
 
 func TestContentsChangedTag(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", "print('Hello')")
 	tiltfile := ctrltiltfile.MainTiltfile(f.JoinPath("Tiltfile"), []string{})

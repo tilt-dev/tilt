@@ -27,7 +27,6 @@ func TestTiltDemo(t *testing.T) {
 				t.Errorf("Could not chdir to sample project dir (%q): %v", m[0], err)
 			}
 		}
-		f.TearDown()
 	}()
 
 	var extraArgs []string

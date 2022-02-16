@@ -30,7 +30,6 @@ import (
 
 func TestServiceWatch(t *testing.T) {
 	f := newSWFixture(t)
-	defer f.TearDown()
 
 	nodePort := 9998
 	uid := types.UID("fake-uid")
@@ -66,7 +65,6 @@ func TestServiceWatch(t *testing.T) {
 // shows up.
 func TestServiceWatchUIDDelayed(t *testing.T) {
 	f := newSWFixture(t)
-	defer f.TearDown()
 
 	uid := types.UID("fake-uid")
 	manifest := f.addManifest("server")
@@ -103,7 +101,6 @@ func TestServiceWatchUIDDelayed(t *testing.T) {
 
 func TestServiceWatchClusterChange(t *testing.T) {
 	f := newSWFixture(t)
-	defer f.TearDown()
 
 	port := int32(1234)
 	uid := types.UID("fake-uid")
@@ -234,7 +231,7 @@ func newSWFixture(t *testing.T) *swFixture {
 	}
 	st.UnlockMutableState()
 
-	return &swFixture{
+	ret := &swFixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),
 		clients:        clients,
 		kClient:        kClient,
@@ -245,10 +242,13 @@ func newSWFixture(t *testing.T) *swFixture {
 		t:              t,
 		store:          st,
 	}
+
+	t.Cleanup(ret.TearDown)
+
+	return ret
 }
 
 func (f *swFixture) TearDown() {
-	f.kClient.TearDown()
 	f.cancel()
 	f.store.AssertNoErrorActions(f.t)
 }

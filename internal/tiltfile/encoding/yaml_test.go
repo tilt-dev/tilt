@@ -12,7 +12,6 @@ import (
 
 func TestReadYAML(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	var document = `
 key1: foo
@@ -51,7 +50,6 @@ assert.equals(expected, observed)
 
 func TestReadYAMLDefaultValue(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 result = read_yaml("dne.yaml", "hello")
@@ -69,7 +67,6 @@ assert.equals('hello', result)
 
 func TestReadYAMLStreamDefaultValue(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 result = read_yaml_stream("dne.yaml", ["hello", "goodbye"])
@@ -87,7 +84,6 @@ assert.equals(['hello', 'goodbye'], result)
 
 func TestYAMLDoesNotExist(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.File("Tiltfile", `result = read_yaml("dne.yaml")`)
 	result, err := f.ExecFile("Tiltfile")
@@ -102,7 +98,6 @@ func TestYAMLDoesNotExist(t *testing.T) {
 
 func TestMalformedYAML(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.UseRealFS()
 
@@ -130,7 +125,6 @@ func TestDecodeYAMLDocument(t *testing.T) {
 	for _, blob := range []bool{false, true} {
 		t.Run(fmt.Sprintf("blob: %v", blob), func(t *testing.T) {
 			f := newFixture(t)
-			defer f.TearDown()
 
 			d := `'- "foo"\n- baz:\n  - "bar"\n  - ""\n  - 1\n  - 2'`
 			if blob {
@@ -161,7 +155,6 @@ assert.equals(expected, observed)
 
 func TestDecodeYAMLEmptyString(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	tf := `
 observed = decode_yaml('')
@@ -211,7 +204,6 @@ const yamlStreamAsStarlark = `[
 
 func TestReadYAMLStream(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.UseRealFS()
 
@@ -240,7 +232,6 @@ test()
 // call read_yaml on a stream, get an error
 func TestReadYAMLUnexpectedStream(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.UseRealFS()
 
@@ -258,7 +249,6 @@ func TestReadYAMLUnexpectedStream(t *testing.T) {
 
 func TestDecodeYAMLStream(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	d := yamlStream
 	d = fmt.Sprintf("observed = decode_yaml_stream('''%s''')\n", d)
@@ -279,7 +269,6 @@ assert.equals(expected, observed)
 
 func TestDecodeYAMLStreamEmptyEntries(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	yaml := `name: hello
 ---
@@ -306,7 +295,6 @@ assert.equals(['hello', 'goodbye'], [r['name'] for r in observed])
 
 func TestDecodeYAMLUnexpectedStream(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	tf := fmt.Sprintf("observed = decode_yaml('''%s''')\n", yamlStream)
 	f.File("Tiltfile", tf)
@@ -321,7 +309,6 @@ func TestDecodeYAMLUnexpectedStream(t *testing.T) {
 
 func TestEncodeYAML(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 expected = '''key1: foo
@@ -361,7 +348,6 @@ assert.equals(expected, str(observed))
 
 func TestEncodeYAMLStream(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	tf := fmt.Sprintf("expected = '''%s'''\n", yamlStream)
 	tf += fmt.Sprintf("observed = encode_yaml_stream(%s)\n", yamlStreamAsStarlark)
@@ -381,7 +367,6 @@ assert.equals(expected, str(observed))
 
 func TestEncodeYAMLNonStringMapKey(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.File("Tiltfile", `encode_yaml({1: 'hello'})`)
 
@@ -392,7 +377,6 @@ func TestEncodeYAMLNonStringMapKey(t *testing.T) {
 
 func TestEncodeYAMLNonYAMLable(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 encode_yaml(blob('hello'))

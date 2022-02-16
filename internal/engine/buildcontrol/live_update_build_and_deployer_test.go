@@ -42,7 +42,6 @@ var TestContainers = []liveupdates.Container{TestContainer}
 
 func TestBuildAndDeployBoilsSteps(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
 
 	packageJson := build.PathMapping{LocalPath: f.JoinPath("package.json"), ContainerPath: "/src/package.json"}
 	err := f.buildAndDeploy(f.ctx, f.ps, LiveUpdateInput{
@@ -78,7 +77,6 @@ func TestBuildAndDeployBoilsSteps(t *testing.T) {
 
 func TestUpdateInContainerArchivesFilesToCopyAndGetsFilesToRemove(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
 
 	// Write files so we know whether to cp to or rm from container
 	f.WriteFile("hi", "hello")
@@ -118,7 +116,6 @@ func TestUpdateInContainerArchivesFilesToCopyAndGetsFilesToRemove(t *testing.T) 
 
 func TestDontFallBackOnUserError(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
 
 	f.cu.SetUpdateErr(build.RunStepFailure{ExitCode: 12345})
 
@@ -134,7 +131,6 @@ func TestDontFallBackOnUserError(t *testing.T) {
 
 func TestUpdateContainerWithHotReload(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
 
 	expectedHotReloads := []bool{true, true, false, true}
 	for _, hotReload := range expectedHotReloads {
@@ -165,7 +161,6 @@ func TestUpdateContainerWithHotReload(t *testing.T) {
 
 func TestUpdateMultipleRunningContainers(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
 
 	container1 := liveupdates.Container{
 		PodID:         "mypod",
@@ -218,7 +213,6 @@ func TestUpdateMultipleRunningContainers(t *testing.T) {
 
 func TestErrorStopsSubsequentContainerUpdates(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
 
 	container1 := liveupdates.Container{
 		PodID:         "mypod",
@@ -248,7 +242,6 @@ func TestErrorStopsSubsequentContainerUpdates(t *testing.T) {
 
 func TestUpdateMultipleContainersWithSameTarArchive(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
 
 	container1 := liveupdates.Container{
 		PodID:         "mypod",
@@ -298,7 +291,6 @@ func TestUpdateMultipleContainersWithSameTarArchive(t *testing.T) {
 
 func TestUpdateMultipleContainersWithSameTarArchiveOnRunStepFailure(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
 
 	container1 := liveupdates.Container{
 		PodID:         "mypod",
@@ -348,7 +340,6 @@ func TestUpdateMultipleContainersWithSameTarArchiveOnRunStepFailure(t *testing.T
 
 func TestSkipLiveUpdateIfForceUpdate(t *testing.T) {
 	f := newFixture(t)
-	defer f.teardown()
 
 	m := manifestbuilder.New(f, "sancho").
 		WithK8sYAML(SanchoYAML).
@@ -405,10 +396,6 @@ func newFixture(t testing.TB) *lcbadFixture {
 		lubad:          lubad,
 		ctrlClient:     cfb.Client,
 	}
-}
-
-func (f *lcbadFixture) teardown() {
-	f.TempDirFixture.TearDown()
 }
 
 func (f *lcbadFixture) buildAndDeploy(ctx context.Context, ps *build.PipelineState, input LiveUpdateInput) error {

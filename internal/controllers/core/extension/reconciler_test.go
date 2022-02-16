@@ -175,7 +175,6 @@ type fixture struct {
 func newFixture(t *testing.T) *fixture {
 	cfb := fake.NewControllerFixtureBuilder(t)
 	tf := tempdir.NewTempDirFixture(t)
-	t.Cleanup(tf.TearDown)
 
 	o := tiltanalytics.NewFakeOpter(analytics.OptIn)
 	ma, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(o)

@@ -33,7 +33,6 @@ import (
 
 func TestEventWatchManager_dispatchesEvent(t *testing.T) {
 	f := newEWMFixture(t)
-	defer f.TearDown()
 
 	mn := model.ManifestName("someK8sManifest")
 
@@ -54,7 +53,6 @@ func TestEventWatchManager_dispatchesEvent(t *testing.T) {
 
 func TestEventWatchManager_dispatchesNamespaceEvent(t *testing.T) {
 	f := newEWMFixture(t)
-	defer f.TearDown()
 
 	mn := model.ManifestName("someK8sManifest")
 
@@ -80,7 +78,6 @@ func TestEventWatchManager_dispatchesNamespaceEvent(t *testing.T) {
 
 func TestEventWatchManager_duplicateDeployIDs(t *testing.T) {
 	f := newEWMFixture(t)
-	defer f.TearDown()
 
 	fe1 := model.ManifestName("fe1")
 	m1 := f.addManifest(fe1)
@@ -120,7 +117,6 @@ func TestEventWatchManagerDifferentEvents(t *testing.T) {
 	for i, c := range cases {
 		t.Run(fmt.Sprintf("Case%d", i), func(t *testing.T) {
 			f := newEWMFixture(t)
-			defer f.TearDown()
 
 			mn := model.ManifestName("someK8sManifest")
 
@@ -149,7 +145,6 @@ func TestEventWatchManagerDifferentEvents(t *testing.T) {
 
 func TestEventWatchManager_listensOnce(t *testing.T) {
 	f := newEWMFixture(t)
-	defer f.TearDown()
 
 	m := f.addManifest("fe")
 	entities := podbuilder.New(t, m).ObjectTreeEntities()
@@ -166,7 +161,6 @@ func TestEventWatchManager_listensOnce(t *testing.T) {
 
 func TestEventWatchManager_watchError(t *testing.T) {
 	f := newEWMFixture(t)
-	defer f.TearDown()
 
 	err := fmt.Errorf("oh noes")
 	f.kClient.EventsWatchErr = err
@@ -186,7 +180,6 @@ func TestEventWatchManager_watchError(t *testing.T) {
 
 func TestEventWatchManager_eventBeforeUID(t *testing.T) {
 	f := newEWMFixture(t)
-	defer f.TearDown()
 
 	mn := model.ManifestName("someK8sManifest")
 
@@ -214,7 +207,6 @@ func TestEventWatchManager_eventBeforeUID(t *testing.T) {
 
 func TestEventWatchManager_ignoresPreStartEvents(t *testing.T) {
 	f := newEWMFixture(t)
-	defer f.TearDown()
 
 	mn := model.ManifestName("someK8sManifest")
 
@@ -307,13 +299,12 @@ func newEWMFixture(t *testing.T) *ewmFixture {
 	}
 	ret.store.UnlockMutableState()
 
+	t.Cleanup(ret.TearDown)
 	return ret
 }
 
 func (f *ewmFixture) TearDown() {
 	f.cancel()
-	f.TempDirFixture.TearDown()
-	f.kClient.TearDown()
 	f.store.AssertNoErrorActions(f.t)
 }
 

@@ -35,6 +35,7 @@ func newAnalyticsFixture(t *testing.T) *analyticsFixture {
 
 	af.SetupAnalyticsServer()
 
+	t.Cleanup(af.TearDown)
 	return af
 }
 
@@ -54,8 +55,6 @@ func (af *analyticsFixture) TearDown() {
 	if err != nil {
 		af.t.Fatal(err)
 	}
-	af.tempDir.TearDown()
-	af.k8sFixture.TearDown()
 }
 
 type envVarValue struct {
@@ -99,7 +98,6 @@ func (af *analyticsFixture) SetOpt(opt analytics.Opt) {
 
 func TestOptedIn(t *testing.T) {
 	f := newAnalyticsFixture(t)
-	defer f.TearDown()
 
 	f.SetOpt(analytics.OptIn)
 
@@ -129,7 +127,6 @@ func TestOptedIn(t *testing.T) {
 
 func TestOptedOut(t *testing.T) {
 	f := newAnalyticsFixture(t)
-	defer f.TearDown()
 
 	f.SetOpt(analytics.OptOut)
 
@@ -144,7 +141,6 @@ func TestOptedOut(t *testing.T) {
 
 func TestOptDefault(t *testing.T) {
 	f := newAnalyticsFixture(t)
-	defer f.TearDown()
 
 	f.SetOpt(analytics.OptDefault)
 

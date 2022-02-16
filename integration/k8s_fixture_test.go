@@ -35,6 +35,7 @@ type k8sFixture struct {
 
 func newK8sFixture(t *testing.T, dir string) *k8sFixture {
 	f := newFixture(t, dir)
+
 	td := tempdir.NewTempDirFixture(t)
 
 	kf := &k8sFixture{fixture: f, tempDir: td}
@@ -50,6 +51,8 @@ func newK8sFixture(t *testing.T, dir string) *k8sFixture {
 	} else {
 		kf.ClearNamespace()
 	}
+
+	t.Cleanup(kf.TearDown)
 
 	return kf
 }
@@ -285,8 +288,6 @@ func (f *k8sFixture) SetRestrictedCredentials() {
 func (f *k8sFixture) TearDown() {
 	f.StartTearDown()
 	f.ClearNamespace()
-	f.fixture.TearDown()
-	f.tempDir.TearDown()
 }
 
 // waits for pods to be in a specified state, or times out and fails

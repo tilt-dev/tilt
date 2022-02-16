@@ -12,7 +12,6 @@ import (
 
 func TestIncludeThreeTiltfiles(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFooAndBar()
 	f.file("foo/Tiltfile", `
@@ -42,7 +41,6 @@ k8s_yaml(['foo.yaml', 'bar.yaml'])
 
 func TestIncludeCircular(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("foo/Tiltfile", `
 include('../Tiltfile')
@@ -56,7 +54,6 @@ include('./foo/Tiltfile')
 
 func TestIncludeTriangular(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("foo/Tiltfile", `
 print('foo')
@@ -84,7 +81,6 @@ include('./bar/Tiltfile')
 
 func TestIncludeMissing(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 include('./foo/Tiltfile')
@@ -97,7 +93,6 @@ include('./foo/Tiltfile')
 
 func TestIncludeError(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 include('./foo/Tiltfile')
@@ -114,7 +109,6 @@ local('exit 1')
 
 func TestLoadFunction(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("boo/Tiltfile", `
 def shout():
@@ -139,7 +133,6 @@ shout()
 
 func TestLoadError(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 load('./foo/Tiltfile', "x")
@@ -157,7 +150,6 @@ local('exit 1')
 
 func TestLoadDynamic(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("foo/Tiltfile", `
 x = 1

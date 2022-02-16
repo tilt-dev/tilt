@@ -35,7 +35,6 @@ func TestSetResources(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := NewFixture(t, tc.args, "")
-			defer f.TearDown()
 
 			setResources := ""
 			if len(tc.tiltfileResources) > 0 {
@@ -73,7 +72,6 @@ func TestClearEnabledResources(t *testing.T) {
 	args := strings.Split("united states canada mexico panama haiti jamaica peru", " ")
 
 	f := NewFixture(t, args, "")
-	defer f.TearDown()
 
 	f.File("Tiltfile", "config.clear_enabled_resources()")
 
@@ -91,7 +89,6 @@ func TestClearEnabledResourcesWithArgs(t *testing.T) {
 	args := strings.Split("united states canada mexico panama haiti jamaica peru", " ")
 
 	f := NewFixture(t, args, "")
-	defer f.TearDown()
 
 	f.File("Tiltfile", "config.clear_enabled_resources('foo')")
 
@@ -105,7 +102,6 @@ func TestParsePositional(t *testing.T) {
 	args := strings.Split("united states canada mexico panama haiti jamaica peru", " ")
 
 	f := NewFixture(t, args, "")
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 config.define_string_list('foo', args=True)
@@ -127,7 +123,6 @@ func TestParseKeyword(t *testing.T) {
 	}
 
 	f := NewFixture(t, args, "")
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 config.define_string_list('foo')
@@ -144,7 +139,6 @@ print(cfg['foo'])
 func TestParsePositionalAndMultipleInterspersedKeyword(t *testing.T) {
 	args := []string{"--bar", "puerto rico", "--baz", "colombia", "--bar", "venezuela", "--baz", "honduras", "--baz", "guyana", "and", "still"}
 	f := NewFixture(t, args, "")
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 config.define_string_list('foo', args=True)
@@ -167,7 +161,6 @@ print("baz:", cfg['baz'])
 func TestParseKeywordAfterPositional(t *testing.T) {
 	args := []string{"--bar", "puerto rico", "colombia"}
 	f := NewFixture(t, args, "")
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 config.define_string_list('foo', args=True)
@@ -186,7 +179,6 @@ print("bar:", cfg['bar'])
 
 func TestMultiplePositionalDefs(t *testing.T) {
 	f := NewFixture(t, nil, "")
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 config.define_string_list('foo', args=True)
@@ -200,7 +192,6 @@ config.define_string_list('bar', args=True)
 
 func TestMultipleArgsSameName(t *testing.T) {
 	f := NewFixture(t, nil, "")
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 config.define_string_list('foo')
@@ -214,7 +205,6 @@ config.define_string_list('foo')
 
 func TestUndefinedArg(t *testing.T) {
 	f := NewFixture(t, []string{"--bar", "hello"}, "")
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 config.define_string_list('foo')
@@ -233,7 +223,6 @@ Usage:
 
 func TestUnprovidedArg(t *testing.T) {
 	f := NewFixture(t, nil, "")
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 config.define_string_list('foo')
@@ -261,7 +250,6 @@ print("foo:",cfg['foo'])
 
 func TestProvidedButUnexpectedPositionalArgs(t *testing.T) {
 	f := NewFixture(t, []string{"do", "re", "mi"}, "")
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 cfg = config.parse()
@@ -277,7 +265,6 @@ cfg = config.parse()
 
 func TestUsage(t *testing.T) {
 	f := NewFixture(t, []string{"--bar", "hello"}, "")
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 config.define_string_list('foo', usage='what can I foo for you today?')
@@ -297,7 +284,6 @@ Usage:
 // i.e., tilt up foo bar gets you resources foo and bar
 func TestDefaultTiltBehavior(t *testing.T) {
 	f := NewFixture(t, []string{"foo", "bar"}, "")
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 config.define_string_list('resources', usage='which resources to load in Tilt', args=True)
@@ -358,7 +344,6 @@ func TestSettingsFromConfigAndArgs(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := NewFixture(t, tc.args, "")
-			defer f.TearDown()
 
 			f.File("Tiltfile", `
 config.define_string_list('a')
@@ -396,7 +381,6 @@ print("c=", cfg.get('c', 'missing'))
 
 func TestUndefinedArgInConfigFile(t *testing.T) {
 	f := NewFixture(t, nil, "")
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 config.define_string_list('foo')
@@ -413,7 +397,6 @@ print("foo:",cfg.get('foo', []))
 
 func TestWrongTypeArgInConfigFile(t *testing.T) {
 	f := NewFixture(t, nil, "")
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 config.define_string_list('foo')
@@ -430,7 +413,6 @@ print("foo:",cfg.get('foo', []))
 
 func TestConfigParseFromMultipleDirs(t *testing.T) {
 	f := NewFixture(t, nil, "")
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 config.define_string_list('foo')
@@ -451,7 +433,6 @@ cfg = config.parse()
 
 func TestDefineSettingAfterParse(t *testing.T) {
 	f := NewFixture(t, nil, "")
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 cfg = config.parse()
@@ -465,7 +446,6 @@ config.define_string_list('foo')
 
 func TestConfigFileRecordedRead(t *testing.T) {
 	f := NewFixture(t, nil, "")
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 cfg = config.parse()`)
@@ -480,7 +460,6 @@ cfg = config.parse()`)
 
 func TestSubCommand(t *testing.T) {
 	f := NewFixture(t, nil, "foo")
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 print(config.tilt_subcommand)
@@ -494,7 +473,6 @@ print(config.tilt_subcommand)
 
 func TestTiltfilePath(t *testing.T) {
 	f := NewFixture(t, nil, "foo")
-	defer f.TearDown()
 
 	f.File("foo/Tiltfile", `
 print(config.main_path)
@@ -513,7 +491,6 @@ print(config.main_path)
 
 func TestTiltfileDir(t *testing.T) {
 	f := NewFixture(t, nil, "foo")
-	defer f.TearDown()
 
 	f.File("foo/Tiltfile", `
 print(config.main_dir)
@@ -608,7 +585,6 @@ func TestTypes(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := NewFixture(t, tc.args, "")
-			defer f.TearDown()
 
 			tf := fmt.Sprintf(`
 %s

@@ -27,7 +27,6 @@ import (
 
 func TestGet(t *testing.T) {
 	f := newServerFixture(t)
-	defer f.TearDown()
 
 	err := f.client.Create(f.ctx, &v1alpha1.Cmd{
 		ObjectMeta: metav1.ObjectMeta{Name: "my-sleep"},
@@ -96,7 +95,7 @@ func newServerFixture(t *testing.T) *serverFixture {
 	origPort := defaultWebPort
 	defaultWebPort = webPort
 
-	return &serverFixture{
+	ret := &serverFixture{
 		TempDirFixture: f,
 		ctx:            ctx,
 		cancel:         cancel,
@@ -105,6 +104,9 @@ func newServerFixture(t *testing.T) *serverFixture {
 		origPort:       origPort,
 		analytics:      a,
 	}
+
+	t.Cleanup(ret.TearDown)
+	return ret
 }
 
 func (f *serverFixture) TearDown() {

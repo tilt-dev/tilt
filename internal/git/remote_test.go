@@ -27,7 +27,6 @@ func TestNormalizedGitRemoteUsername(t *testing.T) {
 
 func TestGitOrigin(t *testing.T) {
 	tf := tempdir.NewTempDirFixture(t)
-	defer tf.TearDown()
 
 	err := exec.Command("git", "init", tf.Path()).Run()
 	if err != nil {

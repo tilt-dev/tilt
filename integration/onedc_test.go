@@ -13,8 +13,6 @@ func TestOneDockerCompose(t *testing.T) {
 	f := newDCFixture(t, "onedc")
 
 	f.doV1V2(func() {
-		defer f.TearDown()
-
 		f.dockerKillAll("tilt")
 		f.TiltUp()
 

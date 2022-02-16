@@ -21,7 +21,6 @@ func TestStopsBackgroundGrandchildren(t *testing.T) {
 		t.Skip("no bash on windows")
 	}
 	f := newProcessExecFixture(t)
-	defer f.tearDown()
 
 	f.start(`bash -c 'sleep 100 &
 echo BACKGROUND $!

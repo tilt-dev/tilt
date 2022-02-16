@@ -23,7 +23,6 @@ import (
 
 func TestTelNoScriptTimeIsUpNoInvocation(t *testing.T) {
 	f := newTCFixture(t)
-	defer f.teardown()
 
 	f.run()
 
@@ -32,7 +31,6 @@ func TestTelNoScriptTimeIsUpNoInvocation(t *testing.T) {
 
 func TestTelNoScriptTimeIsNotUpNoInvocation(t *testing.T) {
 	f := newTCFixture(t)
-	defer f.teardown()
 	t1 := time.Now()
 	f.clock.now = t1
 
@@ -44,7 +42,6 @@ func TestTelNoScriptTimeIsNotUpNoInvocation(t *testing.T) {
 
 func TestTelScriptTimeIsNotUpNoInvocation(t *testing.T) {
 	f := newTCFixture(t)
-	defer f.teardown()
 	t1 := time.Now()
 	f.clock.now = t1
 
@@ -57,7 +54,6 @@ func TestTelScriptTimeIsNotUpNoInvocation(t *testing.T) {
 
 func TestTelScriptTimeIsUpNoSpansNoInvocation(t *testing.T) {
 	f := newTCFixture(t)
-	defer f.teardown()
 	t1 := time.Now()
 	f.clock.now = t1
 
@@ -71,7 +67,6 @@ func TestTelScriptTimeIsUpNoSpansNoInvocation(t *testing.T) {
 
 func TestTelScriptTimeIsUpShouldClearSpansAndSetTime(t *testing.T) {
 	f := newTCFixture(t)
-	defer f.teardown()
 	t1 := time.Now()
 	f.clock.now = t1
 
@@ -88,7 +83,6 @@ func TestTelScriptTimeIsUpShouldClearSpansAndSetTime(t *testing.T) {
 
 func TestTelScriptFailsTimeIsUpShouldDeleteFileAndSetTime(t *testing.T) {
 	f := newTCFixture(t)
-	defer f.teardown()
 	t1 := time.Now()
 	f.clock.now = t1
 
@@ -251,10 +245,6 @@ func (tcf *tcFixture) assertNoSpans() {
 	if err != io.EOF {
 		tcf.t.Fatalf("Didn't get EOF for spans: %v %v", r, err)
 	}
-}
-
-func (tcf *tcFixture) teardown() {
-	defer tcf.temp.TearDown()
 }
 
 type fakeClock struct {

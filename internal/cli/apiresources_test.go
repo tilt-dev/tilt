@@ -11,7 +11,6 @@ import (
 
 func TestAPIResources(t *testing.T) {
 	f := newServerFixture(t)
-	defer f.TearDown()
 
 	out := bytes.NewBuffer(nil)
 	cmd := newApiresourcesCmd()

@@ -31,10 +31,14 @@ func NewTempDirFixture(t testing.TB) *TempDirFixture {
 		t.Fatalf("Error making temp dir: %v", err)
 	}
 
-	return &TempDirFixture{
+	ret := &TempDirFixture{
 		t:   t,
 		dir: dir,
 	}
+
+	t.Cleanup(ret.tearDown)
+
+	return ret
 }
 
 func (f *TempDirFixture) T() testing.TB {
@@ -162,7 +166,7 @@ func (f *TempDirFixture) TempDir(prefix string) string {
 	return name
 }
 
-func (f *TempDirFixture) TearDown() {
+func (f *TempDirFixture) tearDown() {
 	if f.oldDir != "" {
 		err := os.Chdir(f.oldDir)
 		if err != nil {

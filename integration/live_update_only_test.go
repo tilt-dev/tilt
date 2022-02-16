@@ -15,7 +15,6 @@ import (
 
 func TestLiveUpdateOnly(t *testing.T) {
 	f := newK8sFixture(t, "live_update_only")
-	defer f.TearDown()
 	f.SetRestrictedCredentials()
 
 	f.TiltUp()

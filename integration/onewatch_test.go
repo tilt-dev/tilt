@@ -13,7 +13,6 @@ import (
 
 func TestOneWatch(t *testing.T) {
 	f := newK8sFixture(t, "onewatch")
-	defer f.TearDown()
 	f.SetRestrictedCredentials()
 
 	f.TiltUp()

@@ -67,7 +67,6 @@ var testContainerInfo = liveupdates.Container{
 
 func TestGKEDeploy(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
-	defer f.TearDown()
 
 	manifest := NewSanchoLiveUpdateManifest(f)
 	targets := buildcontrol.BuildTargets(manifest)
@@ -92,7 +91,6 @@ func TestGKEDeploy(t *testing.T) {
 
 func TestDockerForMacDeploy(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
-	defer f.TearDown()
 
 	manifest := NewSanchoDockerBuildManifest(f)
 	targets := buildcontrol.BuildTargets(manifest)
@@ -117,7 +115,6 @@ func TestDockerForMacDeploy(t *testing.T) {
 
 func TestYamlManifestDeploy(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
-	defer f.TearDown()
 
 	manifest := manifestbuilder.New(f, "some_yaml").
 		WithK8sYAML(testyaml.TracerYAML).Build()
@@ -134,7 +131,6 @@ func TestYamlManifestDeploy(t *testing.T) {
 
 func TestLiveUpdateTaskKilled(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
-	defer f.TearDown()
 
 	changed := f.WriteFile("a.txt", "a")
 
@@ -161,7 +157,6 @@ func TestLiveUpdateTaskKilled(t *testing.T) {
 
 func TestFallBackToImageDeploy(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
-	defer f.TearDown()
 
 	f.docker.SetExecError(errors.New("some random error"))
 
@@ -183,7 +178,6 @@ func TestFallBackToImageDeploy(t *testing.T) {
 
 func TestLiveUpdateFallbackMessagingRedirect(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
-	defer f.TearDown()
 
 	syncs := []v1alpha1.LiveUpdateSync{
 		{LocalPath: ".", ContainerPath: "/blah"},
@@ -217,7 +211,6 @@ func TestLiveUpdateFallbackMessagingRedirect(t *testing.T) {
 
 func TestLiveUpdateFallbackMessagingUnexpectedError(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
-	defer f.TearDown()
 
 	f.docker.SetExecError(errors.New("some random error"))
 
@@ -246,7 +239,6 @@ func TestLiveUpdateFallbackMessagingUnexpectedError(t *testing.T) {
 
 func TestLiveUpdateTwice(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
-	defer f.TearDown()
 
 	manifest := manifestbuilder.New(f, "sancho").
 		WithK8sYAML(SanchoYAML).
@@ -288,7 +280,6 @@ func TestLiveUpdateTwice(t *testing.T) {
 // and make sure the next image build gets the right file updates.
 func TestLiveUpdateTwiceDeadPod(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
-	defer f.TearDown()
 
 	manifest := manifestbuilder.New(f, "sancho").
 		WithK8sYAML(SanchoYAML).
@@ -331,7 +322,6 @@ func TestLiveUpdateTwiceDeadPod(t *testing.T) {
 
 func TestIgnoredFiles(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
-	defer f.TearDown()
 
 	manifest := NewSanchoDockerBuildManifest(f)
 
@@ -371,7 +361,6 @@ func TestIgnoredFiles(t *testing.T) {
 
 func TestCustomBuild(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
-	defer f.TearDown()
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
 	f.docker.Images["gcr.io/some-project-162817/sancho:tilt-build-1551202573"] = types.ImageInspect{ID: string(sha)}
 
@@ -394,7 +383,6 @@ func TestCustomBuild(t *testing.T) {
 
 func TestCustomBuildDeterministicTag(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
-	defer f.TearDown()
 	refStr := "gcr.io/some-project-162817/sancho:deterministic-tag"
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
 	f.docker.Images[refStr] = types.ImageInspect{ID: string(sha)}
@@ -418,7 +406,6 @@ func TestCustomBuildDeterministicTag(t *testing.T) {
 
 func TestContainerBuildMultiStage(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
-	defer f.TearDown()
 
 	manifest := NewSanchoLiveUpdateMultiStageManifest(f)
 	targets := buildcontrol.BuildTargets(manifest)
@@ -456,7 +443,6 @@ func TestContainerBuildMultiStage(t *testing.T) {
 
 func TestDockerComposeImageBuild(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
-	defer f.TearDown()
 
 	manifest := NewSanchoLiveUpdateDCManifest(f)
 	targets := buildcontrol.BuildTargets(manifest)
@@ -474,7 +460,6 @@ func TestDockerComposeImageBuild(t *testing.T) {
 
 func TestDockerComposeLiveUpdate(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeContainerd)
-	defer f.TearDown()
 
 	manifest := NewSanchoLiveUpdateDCManifest(f)
 	targets := buildcontrol.BuildTargets(manifest)
@@ -498,7 +483,6 @@ func TestDockerComposeLiveUpdate(t *testing.T) {
 
 func TestReturnLastUnexpectedError(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
-	defer f.TearDown()
 
 	// next Docker build will throw an unexpected error -- this is one we want to return,
 	// even if subsequent builders throw expected errors.
@@ -514,7 +498,6 @@ func TestReturnLastUnexpectedError(t *testing.T) {
 // errors get logged by the upper, so make sure our builder isn't logging the error redundantly
 func TestDockerBuildErrorNotLogged(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
-	defer f.TearDown()
 
 	// next Docker build will throw an unexpected error -- this is one we want to return,
 	// even if subsequent builders throw expected errors.
@@ -532,7 +515,6 @@ func TestDockerBuildErrorNotLogged(t *testing.T) {
 
 func TestLiveUpdateWithRunFailureReturnsContainerIDs(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
-	defer f.TearDown()
 
 	// LiveUpdate will failure with a RunStepFailure
 	f.docker.SetExecError(userFailureErrDocker)
@@ -566,7 +548,6 @@ func TestLiveUpdateWithRunFailureReturnsContainerIDs(t *testing.T) {
 
 func TestLiveUpdateMultipleImagesSamePod(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
-	defer f.TearDown()
 
 	manifest, bs := multiImageLiveUpdateManifestAndBuildState(f)
 	_, err := f.BuildAndDeploy(buildcontrol.BuildTargets(manifest), bs)
@@ -591,7 +572,6 @@ func TestLiveUpdateMultipleImagesSamePod(t *testing.T) {
 
 func TestOneLiveUpdateOneDockerBuildDoesImageBuild(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
-	defer f.TearDown()
 
 	sanchoTarg := NewSanchoLiveUpdateImageTarget(f)          // first target = LiveUpdate
 	sidecarTarg := NewSanchoSidecarDockerBuildImageTarget(f) // second target = DockerBuild
@@ -631,7 +611,6 @@ func TestLiveUpdateMultipleImagesOneRunErrorExecutesRestOfLiveUpdatesAndDoesntIm
 		t.Skip("TODO(nick): fix this")
 	}
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
-	defer f.TearDown()
 
 	// First LiveUpdate will simulate a failed Run step
 	f.docker.ExecErrorsToThrow = []error{userFailureErrDocker}
@@ -659,7 +638,6 @@ func TestLiveUpdateMultipleImagesOneRunErrorExecutesRestOfLiveUpdatesAndDoesntIm
 
 func TestLiveUpdateMultipleImagesOneUpdateErrorFallsBackToImageBuild(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
-	defer f.TearDown()
 
 	// Second LiveUpdate will throw an error
 	f.docker.ExecErrorsToThrow = []error{nil, fmt.Errorf("whelp ¯\\_(ツ)_/¯")}
@@ -682,7 +660,6 @@ func TestLiveUpdateMultipleImagesOneUpdateErrorFallsBackToImageBuild(t *testing.
 
 func TestLiveUpdateMultipleImagesOneWithUnsyncedChangeFileFallsBackToImageBuild(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
-	defer f.TearDown()
 
 	manifest, bs := multiImageLiveUpdateManifestAndBuildState(f)
 	bs[manifest.ImageTargetAt(1).ID()].FilesChangedSet["/not/synced"] = true // changed file not in a sync --> fall back to image build
@@ -699,7 +676,6 @@ func TestLiveUpdateMultipleImagesOneWithUnsyncedChangeFileFallsBackToImageBuild(
 
 func TestLocalTargetDeploy(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
-	defer f.TearDown()
 
 	lt := model.NewLocalTarget("hello-world", model.ToHostCmd("echo hello world"), model.Cmd{}, nil)
 	res, err := f.BuildAndDeploy([]model.TargetSpec{lt}, store.BuildStateSet{})
@@ -714,7 +690,6 @@ func TestLocalTargetDeploy(t *testing.T) {
 
 func TestLocalTargetFailure(t *testing.T) {
 	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
-	defer f.TearDown()
 
 	lt := model.NewLocalTarget("hello-world", model.ToHostCmd("echo 'oh no' && exit 1"), model.Cmd{}, nil)
 	res, err := f.BuildAndDeploy([]model.TargetSpec{lt}, store.BuildStateSet{})
@@ -830,7 +805,7 @@ func newBDFixtureWithUpdateMode(t *testing.T, env k8s.Env, runtime container.Run
 		fakeClock{now: time.Unix(1551202573, 0)}, kl, ta, ctrlClient, st, execer)
 	require.NoError(t, err)
 
-	return &bdFixture{
+	ret := &bdFixture{
 		TempDirFixture: f,
 		ctx:            ctx,
 		cancel:         cancel,
@@ -842,12 +817,13 @@ func newBDFixtureWithUpdateMode(t *testing.T, env k8s.Env, runtime container.Run
 		logs:           logs,
 		ctrlClient:     ctrlClient,
 	}
+
+	t.Cleanup(ret.TearDown)
+	return ret
 }
 
 func (f *bdFixture) TearDown() {
-	f.k8s.TearDown()
 	f.cancel()
-	f.TempDirFixture.TearDown()
 }
 
 func (f *bdFixture) NewPathSet(paths ...string) model.PathSet {

@@ -44,7 +44,6 @@ func markNodeSchedulable(f *k8sFixture, name string) {
 
 func TestEvent(t *testing.T) {
 	f := newK8sFixture(t, "event")
-	defer f.TearDown()
 
 	node := getNodeName(f)
 	markNodeUnschedulable(f, node)

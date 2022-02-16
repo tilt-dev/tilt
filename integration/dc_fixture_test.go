@@ -21,13 +21,11 @@ type dcFixture struct {
 
 func newDCFixture(t *testing.T, dir string) *dcFixture {
 	f := newFixture(t, dir)
+	t.Cleanup(f.TearDown)
 	return &dcFixture{fixture: f}
 }
 
 func (f *dcFixture) TearDown() {
-	f.StartTearDown()
-	f.fixture.TearDown()
-
 	// Double check it's all dead
 	f.dockerKillAll("tilt")
 	_ = exec.CommandContext(f.ctx, "pkill", "docker-compose").Run()

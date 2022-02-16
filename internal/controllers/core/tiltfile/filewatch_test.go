@@ -29,7 +29,6 @@ import (
 
 func TestFileWatch_basic(t *testing.T) {
 	f := newFWFixture(t)
-	defer f.TearDown()
 
 	target := model.LocalTarget{
 		Name: "foo",
@@ -42,7 +41,6 @@ func TestFileWatch_basic(t *testing.T) {
 
 func TestFileWatch_localRepo(t *testing.T) {
 	f := newFWFixture(t)
-	defer f.TearDown()
 
 	target := model.LocalTarget{
 		Name: "foo",
@@ -60,7 +58,6 @@ func TestFileWatch_localRepo(t *testing.T) {
 
 func TestFileWatch_disabledOnCIMode(t *testing.T) {
 	f := newFWFixture(t)
-	defer f.TearDown()
 
 	f.inputs.EngineMode = store.EngineModeCI
 
@@ -78,7 +75,6 @@ func TestFileWatch_disabledOnCIMode(t *testing.T) {
 
 func TestFileWatch_Dockerignore(t *testing.T) {
 	f := newFWFixture(t)
-	defer f.TearDown()
 
 	target := model.LocalTarget{
 		Name: "foo",
@@ -96,7 +92,6 @@ func TestFileWatch_Dockerignore(t *testing.T) {
 
 func TestFileWatch_IgnoreOutputsImageRefs(t *testing.T) {
 	f := newFWFixture(t)
-	defer f.TearDown()
 
 	target := model.MustNewImageTarget(container.MustParseSelector("img")).
 		WithBuildDetails(model.CustomBuild{
@@ -120,7 +115,6 @@ func TestFileWatch_IgnoreOutputsImageRefs(t *testing.T) {
 
 func TestFileWatch_ConfigFiles(t *testing.T) {
 	f := newFWFixture(t)
-	defer f.TearDown()
 
 	f.SetTiltIgnoreContents("**/foo")
 	f.inputs.ConfigFiles = append(f.inputs.ConfigFiles, "path_to_watch", "stop")
@@ -136,7 +130,6 @@ func TestFileWatch_ConfigFiles(t *testing.T) {
 
 func TestFileWatch_IgnoreTiltIgnore(t *testing.T) {
 	f := newFWFixture(t)
-	defer f.TearDown()
 
 	target := model.LocalTarget{
 		Name: "foo",
@@ -154,7 +147,6 @@ func TestFileWatch_IgnoreTiltIgnore(t *testing.T) {
 
 func TestFileWatch_IgnoreWatchSettings(t *testing.T) {
 	f := newFWFixture(t)
-	defer f.TearDown()
 
 	target := model.LocalTarget{
 		Name: "foo",
@@ -177,7 +169,6 @@ func TestFileWatch_IgnoreWatchSettings(t *testing.T) {
 
 func TestFileWatch_PickUpTiltIgnoreChanges(t *testing.T) {
 	f := newFWFixture(t)
-	defer f.TearDown()
 
 	target := model.LocalTarget{
 		Name: "foo",
@@ -227,7 +218,6 @@ func newFWFixture(t *testing.T) *fwFixture {
 	}
 
 	t.Cleanup(func() {
-		tmpdir.TearDown()
 		cancel()
 	})
 

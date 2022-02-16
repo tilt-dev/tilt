@@ -28,7 +28,6 @@ func TestArchiveDf(t *testing.T) {
 	buf := new(bytes.Buffer)
 	ab := NewArchiveBuilder(buf, model.EmptyMatcher)
 	defer ab.Close()
-	defer f.tearDown()
 
 	df := dockerfile.Dockerfile(dfText)
 	err := ab.archiveDf(f.ctx, df)
@@ -52,7 +51,6 @@ func TestArchivePathsIfExists(t *testing.T) {
 	go func() {
 		ab := NewArchiveBuilder(pw, model.EmptyMatcher)
 		defer ab.Close()
-		defer f.tearDown()
 
 		f.WriteFile("a", "a")
 
@@ -81,7 +79,6 @@ func TestArchivePathsIfExists(t *testing.T) {
 
 func TestDontArchiveTiltfile(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
 
 	filter, err := dockerignore.NewDockerPatternMatcher(f.Path(), []string{"Tiltfile"})
 	if err != nil {
@@ -138,7 +135,6 @@ func TestArchiveOverlapping(t *testing.T) {
 	buf := new(bytes.Buffer)
 	ab := NewArchiveBuilder(buf, model.EmptyMatcher)
 	defer ab.Close()
-	defer f.tearDown()
 
 	f.WriteFile("a/a.txt", "a.txt contents")
 	f.WriteFile("b/b.txt", "b.txt contents")
@@ -177,7 +173,6 @@ func TestArchiveSymlink(t *testing.T) {
 	buf := new(bytes.Buffer)
 	ab := NewArchiveBuilder(buf, model.EmptyMatcher)
 	defer ab.Close()
-	defer f.tearDown()
 
 	f.WriteFile("src/a.txt", "hello world")
 	f.WriteSymlink("a.txt", "src/b.txt")
@@ -210,7 +205,6 @@ func TestArchiveSocket(t *testing.T) {
 	buf := new(bytes.Buffer)
 	ab := NewArchiveBuilder(buf, model.EmptyMatcher)
 	defer ab.Close()
-	defer f.tearDown()
 
 	f.WriteFile("src/a.txt", "hello world")
 	c, err := net.Listen("unix", f.JoinPath("src/my.sock"))
@@ -240,7 +234,6 @@ func TestArchiveSocket(t *testing.T) {
 
 func TestArchiveException(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
 
 	filter, err := dockerignore.NewDockerPatternMatcher(f.Path(), []string{"*", "!target"})
 	if err != nil {
@@ -267,7 +260,6 @@ func TestArchiveException(t *testing.T) {
 // Write a file continuously, and make sure we don't get tar errors.
 func TestRapidWrite(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
 
 	f.WriteFile("log.txt", "a")
 
@@ -344,8 +336,4 @@ func (f *fixture) assertFileInTar(tr *tar.Reader, expected expectedFile) {
 
 func (f *fixture) assertFilesInTar(tr *tar.Reader, expected []expectedFile) {
 	testutils.AssertFilesInTar(f.t, tr, expected)
-}
-
-func (f *fixture) tearDown() {
-	f.TempDirFixture.TearDown()
 }

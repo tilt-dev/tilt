@@ -14,7 +14,6 @@ import (
 
 func TestWait(t *testing.T) {
 	f := newServerFixture(t)
-	defer f.TearDown()
 
 	err := f.client.Create(f.ctx, &v1alpha1.UIResource{
 		ObjectMeta: metav1.ObjectMeta{Name: "my-sleep"},

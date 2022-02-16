@@ -489,7 +489,6 @@ func TestClusterChange(t *testing.T) {
 
 	// create a NEW client for A
 	kCliClusterA2 := k8s.NewFakeK8sClient(t)
-	t.Cleanup(kCliClusterA2.TearDown)
 	connectedAtA2 := f.clients.SetK8sClient(clusterNN(*kd1ClusterA), kCliClusterA2)
 
 	// create copies of the old pods with slightly different names so we can
@@ -740,7 +739,6 @@ func (f *fixture) k8sClient(kd v1alpha1.KubernetesDiscovery) (*k8s.FakeK8sClient
 	kCli, rev, err := f.clients.GetK8sClient(clusterNN)
 	if errors.Is(err, cluster.NotFoundError) {
 		fakeCli := k8s.NewFakeK8sClient(f.t)
-		f.t.Cleanup(fakeCli.TearDown)
 		f.clients.AddK8sClient(clusterNN, fakeCli)
 		kCli, rev, err = f.clients.GetK8sClient(clusterNN)
 	}

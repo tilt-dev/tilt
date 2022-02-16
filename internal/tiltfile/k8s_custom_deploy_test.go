@@ -12,7 +12,6 @@ import (
 
 func TestK8sCustomDeployLiveUpdateImageSelector(t *testing.T) {
 	f := newLiveUpdateFixture(t)
-	defer f.TearDown()
 
 	f.skipYAML = true
 	f.tiltfileCode = `
@@ -38,7 +37,6 @@ k8s_custom_deploy('foo', 'apply', 'delete', deps=['foo'], image_selector='foo-im
 
 func TestK8sCustomDeployLiveUpdateContainerNameSelector(t *testing.T) {
 	f := newLiveUpdateFixture(t)
-	defer f.TearDown()
 
 	f.skipYAML = true
 	f.tiltfileCode = `
@@ -66,7 +64,6 @@ k8s_custom_deploy('foo', 'apply', 'delete', deps=['foo'], container_selector='ba
 
 func TestK8sCustomDeployNoLiveUpdate(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 k8s_custom_deploy('foo',
@@ -95,7 +92,6 @@ k8s_custom_deploy('foo',
 
 func TestK8sCustomDeployImageDepsMissing(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 k8s_custom_deploy('foo',
@@ -110,7 +106,6 @@ k8s_custom_deploy('foo',
 
 func TestK8sCustomDeployImageDepsMalformed(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 k8s_custom_deploy('foo',
@@ -125,7 +120,6 @@ k8s_custom_deploy('foo',
 
 func TestK8sCustomDeployImageDepExists(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Dockerfile", "FROM golang:1.10")
 	f.file("Tiltfile", `
@@ -148,7 +142,6 @@ docker_build('image-a', '.')
 
 func TestK8sCustomDeployConflict(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 k8s_custom_deploy('foo',
@@ -166,7 +159,6 @@ k8s_custom_deploy('foo',
 
 func TestK8sCustomDeployLocalResourceConflict(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 k8s_custom_deploy('foo',

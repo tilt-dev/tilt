@@ -17,7 +17,6 @@ import (
 
 func TestCRD(t *testing.T) {
 	f := newK8sFixture(t, "crd")
-	defer f.TearDown()
 
 	f.TiltUp()
 
@@ -45,7 +44,6 @@ func TestCRD(t *testing.T) {
 // yet handles 'not found' correctly
 func TestCRDNotFound(t *testing.T) {
 	f := newK8sFixture(t, "crd")
-	defer f.TearDown()
 
 	err := f.tilt.Down(f.ctx, ioutil.Discard)
 	require.NoError(t, err)
@@ -55,7 +53,6 @@ func TestCRDNotFound(t *testing.T) {
 // even when the CR doesn't exist.
 func TestCRDPartialNotFound(t *testing.T) {
 	f := newK8sFixture(t, "crd")
-	defer f.TearDown()
 
 	out, err := f.runCommand("kubectl", "apply", "-f", filepath.Join(f.dir, "crd.yaml"))
 	assert.NoError(t, err)

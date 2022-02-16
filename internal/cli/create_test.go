@@ -13,7 +13,6 @@ import (
 
 func TestCreate(t *testing.T) {
 	f := newServerFixture(t)
-	defer f.TearDown()
 
 	f.WriteFile("sleep.yaml", `
 apiVersion: tilt.dev/v1alpha1

@@ -13,7 +13,6 @@ import (
 
 func TestCreateRepo(t *testing.T) {
 	f := newServerFixture(t)
-	defer f.TearDown()
 
 	out := bytes.NewBuffer(nil)
 

@@ -13,7 +13,6 @@ import (
 
 func TestTiltArgs(t *testing.T) {
 	f := newFixture(t, "tilt_args")
-	defer f.TearDown()
 
 	f.TiltUp("foo")
 

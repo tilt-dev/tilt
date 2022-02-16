@@ -20,7 +20,6 @@ import (
 
 func TestHelm(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupHelm()
 
@@ -41,7 +40,6 @@ k8s_yaml(yml)
 
 func TestHelmArgs(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupHelm()
 
@@ -71,7 +69,6 @@ k8s_yaml(yml)
 
 func TestHelmNamespaceFlagDoesNotInsertNSEntityIfNSInChart(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupHelm()
 
@@ -103,7 +100,6 @@ k8s_yaml(yml)
 
 func TestHelmNamespaceFlagInsertsNSEntityIfDifferentNSInChart(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupHelm()
 
@@ -125,7 +121,6 @@ k8s_yaml(yml)
 
 func TestHelmInvalidDirectory(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 yml = helm('helm')
@@ -137,7 +132,6 @@ k8s_yaml(yml)
 
 func TestHelmFromRepoPath(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.gitInit(".")
 	f.setupHelm()
@@ -160,7 +154,6 @@ k8s_yaml(yml)
 
 func TestHelmMalformedChart(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.WriteFile("./helm/Chart.yaml", "brrrrr")
 
@@ -179,7 +172,6 @@ k8s_yaml(yml)
 
 func TestHelmNamespace(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupHelm()
 	f.file("helm/templates/public-config.yaml", `apiVersion: v1
@@ -209,7 +201,6 @@ k8s_yaml(yml)
 
 func TestHelmSetArgs(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupHelm()
 
@@ -241,7 +232,6 @@ k8s_yaml(yml)
 
 func TestHelmSetArgsMap(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupHelm()
 
@@ -330,7 +320,6 @@ func TestSubchartRemoteDependencies(t *testing.T) {
 
 func TestHelmReleaseName(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("helm/Chart.yaml", `apiVersion: v1
 description: grafana chart
@@ -358,7 +347,6 @@ k8s_yaml(helm('./helm'))
 
 func TestHelm3CRD(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("helm/Chart.yaml", `apiVersion: v1
 description: crd chart
@@ -408,7 +396,6 @@ func assertHelmVersion(t *testing.T, versionOutput string, expectedV helmVersion
 
 func TestYamlErrorFromHelm(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.setupHelm()
 	f.file("helm/templates/foo.yaml", "hi")
 	f.file("Tiltfile", `
@@ -430,7 +417,6 @@ k8s_yaml(helm('helm'))
 
 func TestHelmSkipsTests(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupHelmWithTest()
 	f.file("Tiltfile", `
@@ -466,7 +452,6 @@ func TestHelmIncludesRequirements(t *testing.T) {
 	}
 
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupHelmWithRequirements()
 	f.file("Tiltfile", `

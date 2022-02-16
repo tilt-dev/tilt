@@ -14,7 +14,6 @@ import (
 
 func TestConfigMap(t *testing.T) {
 	f := newK8sFixture(t, "configmap")
-	defer f.TearDown()
 
 	f.TiltUp()
 
