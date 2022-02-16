@@ -34,9 +34,8 @@ type k8sFixture struct {
 }
 
 func newK8sFixture(t *testing.T, dir string) *k8sFixture {
-	f := newFixture(t, dir)
-
 	td := tempdir.NewTempDirFixture(t)
+	f := newFixture(t, dir)
 
 	kf := &k8sFixture{fixture: f, tempDir: td}
 
