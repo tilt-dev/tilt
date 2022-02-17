@@ -23,7 +23,6 @@ package cli
 
 import (
 	"context"
-	"os"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -43,8 +42,7 @@ type getCmd struct {
 
 var _ tiltCmd = &getCmd{}
 
-func newGetCmd() *getCmd {
-	streams := genericclioptions.IOStreams{Out: os.Stdout, ErrOut: os.Stderr, In: os.Stdin}
+func newGetCmd(streams genericclioptions.IOStreams) *getCmd {
 	o := get.NewGetOptions("tilt", streams)
 	return &getCmd{
 		options: o,

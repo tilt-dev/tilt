@@ -14,7 +14,6 @@ import (
 
 func TestDockerignoreInSyncDir(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.yaml("fe.yaml", deployment("fe", image("gcr.io/fe")))
 	f.file("Dockerfile", `
@@ -47,7 +46,6 @@ docker_build('gcr.io/fe', '.', live_update=[
 
 func TestNonDefaultDockerignoreInSyncDir(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.yaml("fe.yaml", deployment("fe", image("gcr.io/fe")))
 	f.file("Dockerfile.custom", `
@@ -103,7 +101,6 @@ func TestCustomPlatform(t *testing.T) {
 				}
 
 				f := newFixture(t)
-				defer f.TearDown()
 
 				f.yaml("fe.yaml", deployment("fe", image("gcr.io/fe")))
 				f.file("Dockerfile", `FROM alpine`)
@@ -126,7 +123,6 @@ func TestCustomPlatform(t *testing.T) {
 
 func TestCustomBuildDepsAreLocalRepos(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.yaml("fe.yaml", deployment("fe", image("gcr.io/fe")))
 	f.file("Dockerfile", `
@@ -156,7 +152,6 @@ custom_build('gcr.io/fe', 'docker build -t $EXPECTED_REF .', ['src'])
 
 func TestCustomBuildDepsZeroArgs(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.yaml("fe.yaml", deployment("fe", image("gcr.io/fe")))
 	f.file("Tiltfile", `
@@ -169,7 +164,6 @@ custom_build('gcr.io/fe', 'docker build -t $EXPECTED_REF .', [])
 
 func TestCustomBuildOutputsImageRefsTo(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.yaml("fe.yaml", deployment("fe", image("gcr.io/fe")))
 	f.file("Dockerfile", `
@@ -192,7 +186,6 @@ custom_build('gcr.io/fe', 'export MY_REF="gcr.io/fe:dev" && docker build -t $MY_
 
 func TestCustomBuildOutputsImageRefsToIncompatibleWithTag(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 custom_build('gcr.io/fe', 'export MY_REF="gcr.io/fe:dev" && docker build -t $MY_REF . && echo $MY_REF > ref.txt',

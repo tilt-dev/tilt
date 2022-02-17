@@ -14,7 +14,6 @@ import (
 // Make sure that Tilt crashes if there are two tilts running on the same port.
 func TestCrash(t *testing.T) {
 	f := newK8sFixture(t, "oneup")
-	defer f.TearDown()
 
 	f.TiltUp()
 	time.Sleep(500 * time.Millisecond)

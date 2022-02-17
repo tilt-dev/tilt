@@ -16,7 +16,6 @@ import (
 
 func TestExporterSimple(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
 
 	sd1 := sd(1)
 	f.export(sd1)
@@ -30,7 +29,6 @@ func TestExporterSimple(t *testing.T) {
 
 func TestExporterReject(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
 
 	sd1 := sd(1)
 	f.export(sd1)
@@ -47,7 +45,6 @@ func TestExporterReject(t *testing.T) {
 // one test that makes sure the final string we're seeing is reasonable
 func TestExporterString(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
 
 	spanID, _ := trace.SpanIDFromHex("00f067aa0ba902b7")
 	sd := &sdktrace.SpanSnapshot{
@@ -68,7 +65,6 @@ func TestExporterString(t *testing.T) {
 
 func TestExporterTrims(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
 
 	var sds []*sdktrace.SpanSnapshot
 	for i := 0; i < 2048; i++ {
@@ -82,7 +78,6 @@ func TestExporterTrims(t *testing.T) {
 
 func TestExporterStartsEmpty(t *testing.T) {
 	f := newFixture(t)
-	defer f.tearDown()
 
 	f.assertEmpty()
 	f.assertEmpty()
@@ -105,11 +100,14 @@ type fixture struct {
 func newFixture(t *testing.T) *fixture {
 	ctx := context.Background()
 	sc := NewSpanCollector(ctx)
-	return &fixture{
+	ret := &fixture{
 		t:   t,
 		ctx: ctx,
 		sc:  sc,
 	}
+
+	t.Cleanup(ret.tearDown)
+	return ret
 }
 
 func (f *fixture) tearDown() {

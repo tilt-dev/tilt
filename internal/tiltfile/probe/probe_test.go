@@ -11,7 +11,6 @@ import (
 
 func TestProbeMetaOptions(t *testing.T) {
 	f := starkit.NewFixture(t, NewPlugin())
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 p = probe(initial_delay_secs=123,
@@ -51,7 +50,6 @@ tcp_socket: None
 
 func TestProbeActions_None(t *testing.T) {
 	f := starkit.NewFixture(t, NewPlugin())
-	defer f.TearDown()
 
 	f.File("Tiltfile", `p = probe()`)
 
@@ -61,7 +59,6 @@ func TestProbeActions_None(t *testing.T) {
 
 func TestProbeActions_Multiple(t *testing.T) {
 	f := starkit.NewFixture(t, NewPlugin())
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 p = probe(exec=exec_action([]), http_get=http_get_action(8000), tcp_socket=None)
@@ -73,7 +70,6 @@ p = probe(exec=exec_action([]), http_get=http_get_action(8000), tcp_socket=None)
 
 func TestProbeActions_Exec(t *testing.T) {
 	f := starkit.NewFixture(t, NewPlugin())
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 p = probe(exec=exec_action(command=["sleep", "60"]))
@@ -89,7 +85,6 @@ print(p.exec.command)
 
 func TestProbeActions_HTTPGet(t *testing.T) {
 	f := starkit.NewFixture(t, NewPlugin())
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 p = probe(http_get=http_get_action(host="example.com", port=8888, scheme='https', path='/status'))
@@ -115,7 +110,6 @@ https
 
 func TestProbeActions_HTTPGet_NoHost(t *testing.T) {
 	f := starkit.NewFixture(t, NewPlugin())
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 p = probe(http_get=http_get_action(8888, scheme='https', path='/status'))
@@ -140,7 +134,6 @@ https
 
 func TestProbeActions_TCPSocket(t *testing.T) {
 	f := starkit.NewFixture(t, NewPlugin())
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 p = probe(tcp_socket=tcp_socket_action(1234, "localhost"))

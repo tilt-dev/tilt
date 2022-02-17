@@ -15,7 +15,6 @@ import (
 
 func TestExtension(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 v1alpha1.extension_repo(name='default', url='https://github.com/tilt-dev/tilt-extensions', ref='HEAD')
@@ -38,7 +37,6 @@ v1alpha1.extension(name='cancel', repo_name='default', repo_path='cancel')
 
 func TestExtensionArgs(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 v1alpha1.extension_repo(name='default', url='https://github.com/tilt-dev/tilt-extensions', ref='HEAD')
@@ -56,7 +54,6 @@ v1alpha1.extension(name='cancel', repo_name='default', repo_path='cancel', args=
 
 func TestExtensionValidation(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 v1alpha1.extension_repo(name='default', url='ftp://github.com/tilt-dev/tilt-extensions')
@@ -68,7 +65,6 @@ v1alpha1.extension_repo(name='default', url='ftp://github.com/tilt-dev/tilt-exte
 
 func TestFileWatchAsDict(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 v1alpha1.file_watch(name='my-fw', watched_paths=['./dir'], ignores=[{'base_path': './dir/ignore', 'patterns': ['**']}])
@@ -93,7 +89,6 @@ v1alpha1.file_watch(name='my-fw', watched_paths=['./dir'], ignores=[{'base_path'
 
 func TestFileWatchDisableOn(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 v1alpha1.file_watch(name='my-fw',
@@ -120,7 +115,6 @@ v1alpha1.file_watch(name='my-fw',
 
 func TestFileWatchWithIgnoreBuiltin(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 v1alpha1.file_watch(
@@ -148,7 +142,6 @@ v1alpha1.file_watch(
 
 func TestCmdDefaultDir(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 v1alpha1.cmd(
@@ -170,7 +163,6 @@ v1alpha1.cmd(
 
 func TestUIButton(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 v1alpha1.ui_button(
@@ -202,7 +194,6 @@ v1alpha1.ui_button(
 
 func TestKubernetesDiscoveryu(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 v1alpha1.kubernetes_discovery(
@@ -230,7 +221,6 @@ v1alpha1.kubernetes_discovery(
 
 func TestConfigMap(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 v1alpha1.config_map(
@@ -256,7 +246,6 @@ v1alpha1.config_map(
 
 func TestKubernetesApply(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 

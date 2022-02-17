@@ -19,7 +19,6 @@ var SanchoRef = container.MustParseSelector(testyaml.SanchoImage)
 
 func TestNeedsCrashRebuildLiveUpdateV1(t *testing.T) {
 	f := tempdir.NewTempDirFixture(t)
-	defer f.TearDown()
 
 	iTarget := imageTarget()
 	m := manifestbuilder.New(f, model.ManifestName("sancho")).
@@ -40,7 +39,6 @@ func TestNeedsCrashRebuildLiveUpdateV1(t *testing.T) {
 
 func TestNeedsCrashRebuildLiveUpdateV2(t *testing.T) {
 	f := tempdir.NewTempDirFixture(t)
-	defer f.TearDown()
 
 	iTarget := imageTarget()
 	iTarget.LiveUpdateReconciler = true

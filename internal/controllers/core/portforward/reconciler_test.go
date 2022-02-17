@@ -289,7 +289,6 @@ type pfrFixture struct {
 
 func newPFRFixture(t *testing.T) *pfrFixture {
 	kCli := k8s.NewFakeK8sClient(t)
-	t.Cleanup(kCli.TearDown)
 
 	cfb := fake.NewControllerFixtureBuilder(t)
 	r := NewReconciler(cfb.Client, cfb.Store, kCli)

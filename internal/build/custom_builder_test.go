@@ -31,7 +31,6 @@ var TwoURLRegistry = container.MustNewRegistryWithHostFromCluster("localhost:123
 
 func TestCustomBuildSuccess(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
-	defer f.TearDown()
 
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
 	f.dCli.Images["gcr.io/foo/bar:tilt-build-1551202573"] = types.ImageInspect{ID: string(sha)}
@@ -45,7 +44,6 @@ func TestCustomBuildSuccess(t *testing.T) {
 
 func TestCustomBuildSuccessClusterRefTaggedWithDigest(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
-	defer f.TearDown()
 
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
 	f.dCli.Images["localhost:1234/foo_bar:tilt-build-1551202573"] = types.ImageInspect{ID: string(sha)}
@@ -59,7 +57,6 @@ func TestCustomBuildSuccessClusterRefTaggedWithDigest(t *testing.T) {
 
 func TestCustomBuildSuccessClusterRefWithCustomTag(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
-	defer f.TearDown()
 
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
 	f.dCli.Images["gcr.io/foo/bar:my-tag"] = types.ImageInspect{ID: string(sha)}
@@ -74,7 +71,6 @@ func TestCustomBuildSuccessClusterRefWithCustomTag(t *testing.T) {
 
 func TestCustomBuildSuccessSkipsLocalDocker(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
-	defer f.TearDown()
 
 	cb := f.customBuild("exit 0")
 	cb.CmdImageSpec.OutputMode = v1alpha1.CmdImageOutputRemote
@@ -87,7 +83,6 @@ func TestCustomBuildSuccessSkipsLocalDocker(t *testing.T) {
 
 func TestCustomBuildSuccessClusterRefTaggedIfSkipsLocalDocker(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
-	defer f.TearDown()
 
 	cb := f.customBuild("exit 0")
 	cb.CmdImageSpec.OutputMode = v1alpha1.CmdImageOutputRemote
@@ -100,7 +95,6 @@ func TestCustomBuildSuccessClusterRefTaggedIfSkipsLocalDocker(t *testing.T) {
 
 func TestCustomBuildCmdFails(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
-	defer f.TearDown()
 
 	cb := f.customBuild("exit 1")
 	_, err := f.cb.Build(f.ctx, refSetFromString("gcr.io/foo/bar"), cb.CmdImageSpec, nil)
@@ -110,7 +104,6 @@ func TestCustomBuildCmdFails(t *testing.T) {
 
 func TestCustomBuildImgNotFound(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
-	defer f.TearDown()
 
 	cb := f.customBuild("exit 0")
 	_, err := f.cb.Build(f.ctx, refSetFromString("gcr.io/foo/bar"), cb.CmdImageSpec, nil)
@@ -119,7 +112,6 @@ func TestCustomBuildImgNotFound(t *testing.T) {
 
 func TestCustomBuildExpectedTag(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
-	defer f.TearDown()
 
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
 	f.dCli.Images["gcr.io/foo/bar:the-tag"] = types.ImageInspect{ID: string(sha)}
@@ -138,7 +130,6 @@ func TestCustomBuilderExecsRelativeToTiltfile(t *testing.T) {
 		t.Skip("no sh on windows")
 	}
 	f := newFakeCustomBuildFixture(t)
-	defer f.TearDown()
 
 	f.WriteFile("proj/build.sh", "exit 0")
 
@@ -156,7 +147,6 @@ func TestCustomBuilderExecsRelativeToTiltfile(t *testing.T) {
 
 func TestCustomBuildOutputsToImageRefSuccess(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
-	defer f.TearDown()
 
 	myTag := "gcr.io/foo/bar:dev"
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
@@ -172,7 +162,6 @@ func TestCustomBuildOutputsToImageRefSuccess(t *testing.T) {
 
 func TestCustomBuildOutputsToImageRefMissingImage(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
-	defer f.TearDown()
 
 	myTag := "gcr.io/foo/bar:dev"
 	cb := f.customBuild(fmt.Sprintf("echo %s > ref.txt", myTag))
@@ -185,7 +174,6 @@ func TestCustomBuildOutputsToImageRefMissingImage(t *testing.T) {
 
 func TestCustomBuildOutputsToImageRefMalformedImage(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
-	defer f.TearDown()
 
 	cb := f.customBuild("echo 999 > ref.txt")
 	cb.CmdImageSpec.OutputsImageRefTo = f.JoinPath("ref.txt")
@@ -198,7 +186,6 @@ func TestCustomBuildOutputsToImageRefMalformedImage(t *testing.T) {
 
 func TestCustomBuildOutputsToImageRefSkipsLocalDocker(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
-	defer f.TearDown()
 
 	myTag := "gcr.io/foo/bar:dev"
 	cb := f.customBuild(fmt.Sprintf("echo %s > ref.txt", myTag))
@@ -216,7 +203,6 @@ func TestCustomBuildImageDep(t *testing.T) {
 	}
 
 	f := newFakeCustomBuildFixture(t)
-	defer f.TearDown()
 
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
 	f.dCli.Images["gcr.io/foo/bar:tilt-build-1551202573"] = types.ImageInspect{ID: string(sha)}

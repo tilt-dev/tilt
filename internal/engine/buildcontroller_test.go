@@ -33,7 +33,6 @@ import (
 
 func TestBuildControllerOnePod(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	manifest := f.newManifest("fe")
 	pb := f.registerForDeployer(manifest)
@@ -58,7 +57,6 @@ func TestBuildControllerOnePod(t *testing.T) {
 
 func TestBuildControllerTooManyPodsForLiveUpdateErrorMessage(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	manifest := manifestbuilder.New(f, "sancho").
 		WithK8sYAML(SanchoYAML).
@@ -106,7 +104,6 @@ func TestBuildControllerTooManyPodsForLiveUpdateErrorMessage(t *testing.T) {
 
 func TestBuildControllerTooManyPodsForDockerBuildNoErrorMessage(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	manifest := NewSanchoDockerBuildManifest(f)
 	// basePB is used for all pods so that they share the same deployment
@@ -151,7 +148,6 @@ func TestBuildControllerTooManyPodsForDockerBuildNoErrorMessage(t *testing.T) {
 
 func TestBuildControllerIgnoresImageTags(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	ref := container.MustParseNamed("gcr.io/blorg-dev/blorg-backend:devel-nick")
 	refSel := container.NewRefSelector(ref)
@@ -192,7 +188,6 @@ func TestBuildControllerIgnoresImageTags(t *testing.T) {
 
 func TestBuildControllerDockerCompose(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	manifest := NewSanchoLiveUpdateDCManifest(f)
 	f.Start([]model.Manifest{manifest})
@@ -217,7 +212,6 @@ func TestBuildControllerDockerCompose(t *testing.T) {
 
 func TestBuildControllerLocalResource(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	dep := f.JoinPath("stuff.json")
 	manifest := manifestbuilder.New(f, "local").
@@ -246,7 +240,6 @@ func TestBuildControllerLocalResource(t *testing.T) {
 
 func TestBuildControllerWontContainerBuildWithTwoPods(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	manifest := f.newManifest("fe")
 	basePB := f.registerForDeployer(manifest)
@@ -288,7 +281,6 @@ func TestBuildControllerWontContainerBuildWithTwoPods(t *testing.T) {
 
 func TestBuildControllerTwoContainers(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	manifest := f.newManifest("fe")
 	basePB := f.registerForDeployer(manifest)
@@ -350,7 +342,6 @@ func TestBuildControllerTwoContainers(t *testing.T) {
 
 func TestBuildControllerWontContainerBuildWithSomeButNotAllReadyContainers(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	manifest := f.newManifest("fe")
 	basePB := f.registerForDeployer(manifest)
@@ -389,7 +380,6 @@ func TestBuildControllerWontContainerBuildWithSomeButNotAllReadyContainers(t *te
 
 func TestBuildControllerCrashRebuild(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	manifest := manifestbuilder.New(f, "fe").
 		WithK8sYAML(SanchoYAML).
@@ -443,7 +433,6 @@ func TestBuildControllerCrashRebuild(t *testing.T) {
 
 func TestCrashRebuildTwoContainersOneImage(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	manifest := manifestbuilder.New(f, "sancho").
 		WithK8sYAML(testyaml.SanchoTwoContainersOneImageYAML).
@@ -495,7 +484,6 @@ func TestCrashRebuildTwoContainersTwoImages(t *testing.T) {
 		t.Skip("TODO(nick): investigate")
 	}
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	manifest := manifestbuilder.New(f, "sancho").
 		WithK8sYAML(testyaml.SanchoSidecarYAML).
@@ -548,7 +536,6 @@ func TestCrashRebuildTwoContainersTwoImages(t *testing.T) {
 
 func TestRecordLiveUpdatedContainerIDsForFailedLiveUpdate(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	manifest := manifestbuilder.New(f, "sancho").
 		WithK8sYAML(testyaml.SanchoTwoContainersOneImageYAML).
@@ -592,7 +579,6 @@ func TestBuildControllerManualTriggerBuildReasonInit(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newTestFixture(t)
-			defer f.TearDown()
 			mName := model.ManifestName("foobar")
 			manifest := f.newManifest(mName.String()).WithTriggerMode(tc.triggerMode)
 			manifests := []model.Manifest{manifest}
@@ -626,7 +612,6 @@ func TestTriggerModes(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newTestFixture(t)
-			defer f.TearDown()
 
 			manifest := f.simpleManifestWithTriggerMode("foobar", tc.triggerMode)
 			manifests := []model.Manifest{manifest}
@@ -674,7 +659,6 @@ func TestBuildControllerImageBuildTrigger(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newTestFixture(t)
-			defer f.TearDown()
 			mName := model.ManifestName("foobar")
 
 			manifest := f.simpleManifestWithTriggerMode(mName, tc.triggerMode)
@@ -724,7 +708,6 @@ func TestBuildControllerManualTriggerWithFileChangesSinceLastSuccessfulBuildButB
 		t.Skip("TODO(nick): fix this")
 	}
 	f := newTestFixture(t)
-	defer f.TearDown()
 	mName := model.ManifestName("foobar")
 
 	manifest := f.newManifest(mName.String())
@@ -760,7 +743,6 @@ func TestBuildControllerManualTriggerWithFileChangesSinceLastSuccessfulBuildButB
 // https://github.com/tilt-dev/tilt/issues/3915
 func TestFullBuildTriggerClearsLiveUpdate(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	mName := model.ManifestName("foobar")
 
 	manifest := f.newManifest(mName.String())
@@ -805,7 +787,6 @@ func TestFullBuildTriggerClearsLiveUpdate(t *testing.T) {
 
 func TestBuildQueueOrdering(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	m1 := f.newManifestWithRef("manifest1", container.MustParseNamed("manifest1")).
 		WithTriggerMode(model.TriggerModeManualWithAutoInit)
@@ -860,7 +841,6 @@ func TestBuildQueueOrdering(t *testing.T) {
 
 func TestBuildQueueAndAutobuildOrdering(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	// changes to this dir. will register with our manual manifests
 	dirManual := f.JoinPath("dirManual/")
@@ -923,7 +903,6 @@ func TestBuildQueueAndAutobuildOrdering(t *testing.T) {
 // any manifests without image targets should be deployed before any manifests WITH image targets
 func TestBuildControllerNoBuildManifestsFirst(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	manifests := make([]model.Manifest, 10)
 	for i := 0; i < 10; i++ {
@@ -962,7 +941,6 @@ func TestBuildControllerNoBuildManifestsFirst(t *testing.T) {
 
 func TestBuildControllerUnresourcedYAMLFirst(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	manifests := []model.Manifest{
 		f.newManifest("built1"),
@@ -993,7 +971,6 @@ func TestBuildControllerUnresourcedYAMLFirst(t *testing.T) {
 
 func TestBuildControllerRespectDockerComposeOrder(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	sancho := NewSanchoLiveUpdateDCManifest(f)
 	redis := manifestbuilder.New(f, "redis").WithDockerCompose().Build()
@@ -1022,7 +999,6 @@ func TestBuildControllerRespectDockerComposeOrder(t *testing.T) {
 
 func TestBuildControllerLocalResourcesBeforeClusterResources(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	manifests := []model.Manifest{
 		f.newManifest("clusterBuilt1"),
@@ -1064,7 +1040,6 @@ func TestBuildControllerLocalResourcesBeforeClusterResources(t *testing.T) {
 
 func TestBuildControllerResourceDeps(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	depGraph := map[string][]string{
 		"a": {"e"},
@@ -1122,7 +1097,6 @@ func TestBuildControllerResourceDeps(t *testing.T) {
 // if the local build depends on the k8s build, the k8s build should go first
 func TestBuildControllerResourceDepTrumpsLocalResourcePriority(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	k8sManifest := f.newManifest("foo")
 	pb := f.registerForDeployer(k8sManifest)
@@ -1151,7 +1125,6 @@ func TestBuildControllerResourceDepTrumpsLocalResourcePriority(t *testing.T) {
 // bar depends on foo, we build foo three times before marking it ready, and make sure bar waits
 func TestBuildControllerResourceDepTrumpsInitialBuild(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	foo := manifestbuilder.New(f, "foo").
 		WithLocalResource("foo cmd", []string{f.JoinPath("foo")}).
@@ -1184,7 +1157,6 @@ func TestBuildControllerResourceDepTrumpsInitialBuild(t *testing.T) {
 // bar depends on foo. make sure bar waits on foo even as foo fails
 func TestBuildControllerResourceDepTrumpsPendingBuild(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	foo := manifestbuilder.New(f, "foo").
 		WithLocalResource("foo cmd", []string{f.JoinPath("foo")}).
@@ -1215,7 +1187,6 @@ func TestBuildControllerResourceDepTrumpsPendingBuild(t *testing.T) {
 
 func TestLogsLongResourceName(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	mn := strings.Repeat("foobar", 30)
 
@@ -1242,7 +1213,6 @@ func TestLogsLongResourceName(t *testing.T) {
 
 func TestBuildControllerWontBuildManifestThatsAlreadyBuilding(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.b.completeBuildsManually = true
 
 	// allow multiple builds at once; we care that we can't start multiple builds
@@ -1289,7 +1259,6 @@ func TestBuildControllerWontBuildManifestThatsAlreadyBuilding(t *testing.T) {
 
 func TestBuildControllerWontBuildManifestIfNoSlotsAvailable(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.b.completeBuildsManually = true
 	f.setMaxParallelUpdates(2)
 
@@ -1325,7 +1294,6 @@ func TestBuildControllerWontBuildManifestIfNoSlotsAvailable(t *testing.T) {
 // maxParallelUpdates=3, nothing should explode.)
 func TestCurrentlyBuildingMayExceedMaxParallelUpdates(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.b.completeBuildsManually = true
 	f.setMaxParallelUpdates(3)
 
@@ -1380,7 +1348,6 @@ func TestCurrentlyBuildingMayExceedMaxParallelUpdates(t *testing.T) {
 
 func TestDontStartBuildIfControllerAndEngineUnsynced(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	f.b.completeBuildsManually = true
 	f.setMaxParallelUpdates(3)
@@ -1421,7 +1388,6 @@ func TestErrorHandlingWithMultipleBuilds(t *testing.T) {
 		t.Skip("TODO(nick): fix this")
 	}
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.b.completeBuildsManually = true
 	f.setMaxParallelUpdates(2)
 
@@ -1468,7 +1434,6 @@ func TestErrorHandlingWithMultipleBuilds(t *testing.T) {
 
 func TestManifestsWithSameTwoImages(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	m1, m2 := NewManifestsWithSameTwoImages(f)
 	f.Start([]model.Manifest{m1, m2})
 
@@ -1516,7 +1481,6 @@ func TestManifestsWithSameTwoImages(t *testing.T) {
 
 func TestManifestsWithTwoCommonAncestors(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	m1, m2 := NewManifestsWithTwoCommonAncestors(f)
 	f.Start([]model.Manifest{m1, m2})
 
@@ -1573,7 +1537,6 @@ func TestManifestsWithTwoCommonAncestors(t *testing.T) {
 
 func TestLocalDependsOnNonWorkloadK8s(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	local1 := manifestbuilder.New(f, "local").
 		WithLocalResource("exec-local", nil).
@@ -1600,7 +1563,6 @@ func TestLocalDependsOnNonWorkloadK8s(t *testing.T) {
 
 func TestManifestsWithCommonAncestorAndTrigger(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	m1, m2 := NewManifestsWithCommonAncestor(f)
 	f.Start([]model.Manifest{m1, m2})
 
@@ -1720,7 +1682,6 @@ local_resource('local', 'sleep 10000')
 
 func TestBuildControllerK8sFileDependencies(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	kt := k8s.MustTarget("fe", testyaml.SanchoYAML).
 		WithPathDependencies(

@@ -17,7 +17,6 @@ import (
 
 func TestFetchableAlreadyPresentWorks(t *testing.T) {
 	f := newExtensionFixture(t)
-	defer f.tearDown()
 
 	f.tiltfile(`
 load("ext://fetchable", "printFoo")
@@ -31,7 +30,6 @@ printFoo()
 
 func TestAlreadyPresentWorks(t *testing.T) {
 	f := newExtensionFixture(t)
-	defer f.tearDown()
 
 	f.tiltfile(`
 load("ext://unfetchable", "printFoo")
@@ -45,7 +43,6 @@ printFoo()
 
 func TestExtensionRepoApplyFails(t *testing.T) {
 	f := newExtensionFixture(t)
-	defer f.tearDown()
 
 	f.tiltfile(`
 load("ext://module", "printFoo")
@@ -59,7 +56,6 @@ printFoo()
 
 func TestExtensionApplyFails(t *testing.T) {
 	f := newExtensionFixture(t)
-	defer f.tearDown()
 
 	f.tiltfile(`
 load("ext://module", "printFoo")
@@ -73,7 +69,6 @@ printFoo()
 
 func TestIncludedFileMayIncludeExtension(t *testing.T) {
 	f := newExtensionFixture(t)
-	defer f.tearDown()
 
 	f.tiltfile(`include('Tiltfile.prime')`)
 
@@ -90,7 +85,6 @@ printFoo()
 
 func TestExtensionMayLoadExtension(t *testing.T) {
 	f := newExtensionFixture(t)
-	defer f.tearDown()
 
 	f.tiltfile(`
 load("ext://fooExt", "printFoo")
@@ -105,7 +99,6 @@ printFoo()
 
 func TestLoadedFilesResolveExtensionsFromRootTiltfile(t *testing.T) {
 	f := newExtensionFixture(t)
-	defer f.tearDown()
 
 	f.tiltfile(`include('./nested/Tiltfile')`)
 
@@ -133,7 +126,6 @@ func TestRepoAndExtOverride(t *testing.T) {
 	}
 
 	f := newExtensionFixture(t)
-	defer f.tearDown()
 
 	f.tiltfile(fmt.Sprintf(`
 v1alpha1.extension_repo(name='default', url='file://%s/my-custom-repo')
@@ -157,7 +149,6 @@ func TestRepoOverride(t *testing.T) {
 	}
 
 	f := newExtensionFixture(t)
-	defer f.tearDown()
 
 	f.tiltfile(fmt.Sprintf(`
 v1alpha1.extension_repo(name='default', url='file://%s/my-custom-repo')
@@ -199,11 +190,6 @@ func newExtensionFixture(t *testing.T) *extensionFixture {
 		extr:  extr,
 		extrr: extrr,
 	}
-}
-
-func (f *extensionFixture) tearDown() {
-	defer f.tmp.TearDown()
-	defer f.skf.TearDown()
 }
 
 func (f *extensionFixture) tiltfile(contents string) {

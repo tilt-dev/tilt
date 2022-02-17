@@ -28,7 +28,6 @@ import (
 
 func TestNoLocalTargets(t *testing.T) {
 	f := newLTFixture(t)
-	defer f.TearDown()
 
 	specs := []model.TargetSpec{
 		model.ImageTarget{}, model.K8sTarget{}, model.DockerComposeTarget{},
@@ -43,7 +42,6 @@ func TestNoLocalTargets(t *testing.T) {
 
 func TestTooManyLocalTargets(t *testing.T) {
 	f := newLTFixture(t)
-	defer f.TearDown()
 
 	specs := []model.TargetSpec{
 		model.LocalTarget{}, model.ImageTarget{}, model.K8sTarget{}, model.LocalTarget{},
@@ -58,7 +56,6 @@ func TestTooManyLocalTargets(t *testing.T) {
 
 func TestSuccessfulCommand(t *testing.T) {
 	f := newLTFixture(t)
-	defer f.TearDown()
 
 	targ := f.localTarget("echo hello world")
 
@@ -72,7 +69,6 @@ func TestSuccessfulCommand(t *testing.T) {
 
 func TestWorkdir(t *testing.T) {
 	f := newLTFixture(t)
-	defer f.TearDown()
 
 	f.MkdirAll(filepath.Join("some", "internal", "dir"))
 	workdir := f.JoinPath("some", "internal", "dir")
@@ -93,7 +89,6 @@ func TestWorkdir(t *testing.T) {
 
 func TestExtractOneLocalTarget(t *testing.T) {
 	f := newLTFixture(t)
-	defer f.TearDown()
 
 	targ := f.localTarget("echo hello world")
 
@@ -112,7 +107,6 @@ func TestExtractOneLocalTarget(t *testing.T) {
 
 func TestFailedCommand(t *testing.T) {
 	f := newLTFixture(t)
-	defer f.TearDown()
 
 	targ := f.localTarget("echo oh no && exit 1")
 

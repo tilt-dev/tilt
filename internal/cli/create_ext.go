@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
@@ -24,8 +25,8 @@ type createExtCmd struct {
 
 var _ tiltCmd = &createExtCmd{}
 
-func newCreateExtCmd() *createExtCmd {
-	helper := newCreateHelper()
+func newCreateExtCmd(streams genericclioptions.IOStreams) *createExtCmd {
+	helper := newCreateHelper(streams)
 	return &createExtCmd{
 		helper: helper,
 	}

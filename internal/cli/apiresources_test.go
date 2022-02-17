@@ -1,22 +1,21 @@
 package cli
 
 import (
-	"bytes"
 	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
 func TestAPIResources(t *testing.T) {
 	f := newServerFixture(t)
-	defer f.TearDown()
 
-	out := bytes.NewBuffer(nil)
-	cmd := newApiresourcesCmd()
+	streams, _, out, _ := genericclioptions.NewTestIOStreams()
+	cmd := newApiresourcesCmd(streams)
 	cmd.register()
-	cmd.options.IOStreams.Out = out
 
 	err := cmd.run(f.ctx, nil)
 	require.NoError(t, err)

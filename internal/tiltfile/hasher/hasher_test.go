@@ -26,7 +26,6 @@ func hexSha256(x string) string {
 
 func TestHashesTiltfile(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	contents := `print("Hello")`
 	f.File("Tiltfile", contents)
@@ -44,7 +43,6 @@ func TestHashesTiltfile(t *testing.T) {
 
 func TestHashesMultipleFiles(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	contents := `load('assert.tilt', 'assert')
 message = "Hello"

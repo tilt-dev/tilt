@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -14,7 +15,6 @@ import (
 
 func TestWait(t *testing.T) {
 	f := newServerFixture(t)
-	defer f.TearDown()
 
 	err := f.client.Create(f.ctx, &v1alpha1.UIResource{
 		ObjectMeta: metav1.ObjectMeta{Name: "my-sleep"},
@@ -31,9 +31,9 @@ func TestWait(t *testing.T) {
 	require.NoError(t, err)
 
 	out := bytes.NewBuffer(nil)
-	wait := newWaitCmd()
+	streams := genericclioptions.IOStreams{Out: out}
+	wait := newWaitCmd(streams)
 	cmd := wait.register()
-	wait.flags.IOStreams.Out = out
 
 	err = cmd.Flags().Parse([]string{"--for=condition=Ready"})
 	require.NoError(t, err)

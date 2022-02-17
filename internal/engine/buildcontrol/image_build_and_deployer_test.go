@@ -41,7 +41,6 @@ import (
 
 func TestDeployTwinImages(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
 
 	sancho := NewSanchoDockerBuildManifest(f)
 	newK8sTarget := k8s.MustTarget("sancho", yaml.ConcatYAML(SanchoYAML, SanchoTwinYAML)).
@@ -62,7 +61,6 @@ func TestDeployTwinImages(t *testing.T) {
 
 func TestForceUpdate(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
 
 	m := NewSanchoDockerBuildManifest(f)
 
@@ -79,7 +77,6 @@ func TestForceUpdate(t *testing.T) {
 
 func TestForceUpdateDoesNotDeleteNamespace(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
 
 	m := manifestbuilder.New(f, "sancho").
 		WithK8sYAML(SanchoYAML + `
@@ -112,7 +109,6 @@ metadata:
 
 func TestDeleteShouldHappenInReverseOrder(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
 
 	m := newK8sMultiEntityManifest("sancho")
 
@@ -124,7 +120,6 @@ func TestDeleteShouldHappenInReverseOrder(t *testing.T) {
 
 func TestDeployPodWithMultipleImages(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
 
 	iTarget1 := NewSanchoDockerBuildImageTarget(f)
 	iTarget2 := NewSanchoSidecarDockerBuildImageTarget(f)
@@ -154,7 +149,6 @@ func TestDeployPodWithMultipleImages(t *testing.T) {
 
 func TestDeployPodWithMultipleLiveUpdateImages(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
 
 	iTarget1 := NewSanchoLiveUpdateImageTarget(f)
 	iTarget2 := NewSanchoSidecarLiveUpdateImageTarget(f)
@@ -185,7 +179,6 @@ func TestDeployPodWithMultipleLiveUpdateImages(t *testing.T) {
 
 func TestNoImageTargets(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
 
 	targName := "some-k8s-manifest"
 	specs := []model.TargetSpec{
@@ -212,7 +205,6 @@ func TestNoImageTargets(t *testing.T) {
 
 func TestStatefulSetPodManagementPolicy(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
 
 	targName := "redis"
 
@@ -246,7 +238,6 @@ func TestStatefulSetPodManagementPolicy(t *testing.T) {
 
 func TestImageIsClean(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
 
 	manifest := NewSanchoDockerBuildManifest(f)
 	iTargetID1 := manifest.ImageTargets[0].ID()
@@ -268,7 +259,6 @@ func TestImageIsClean(t *testing.T) {
 
 func TestImageIsDirtyAfterContainerBuild(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
 
 	manifest := NewSanchoDockerBuildManifest(f)
 	iTargetID1 := manifest.ImageTargets[0].ID()
@@ -292,7 +282,6 @@ func TestImageIsDirtyAfterContainerBuild(t *testing.T) {
 
 func TestMultiStageDockerBuild(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
 
 	manifest := NewSanchoDockerBuildMultiStageManifest(f)
 	_, err := f.BuildAndDeploy(BuildTargets(manifest), store.BuildStateSet{})
@@ -318,7 +307,6 @@ ENTRYPOINT /go/bin/sancho
 
 func TestMultiStageDockerBuildPreservesSyntaxDirective(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
 
 	baseImage := model.MustNewImageTarget(SanchoBaseRef).
 		WithDockerImage(v1alpha1.DockerImageSpec{
@@ -367,7 +355,6 @@ ENTRYPOINT /go/bin/sancho
 
 func TestMultiStageDockerBuildWithFirstImageDirty(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
 
 	manifest := NewSanchoDockerBuildMultiStageManifest(f)
 	iTargetID1 := manifest.ImageTargets[0].ID()
@@ -403,7 +390,6 @@ ENTRYPOINT /go/bin/sancho
 
 func TestMultiStageDockerBuildWithSecondImageDirty(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
 
 	manifest := NewSanchoDockerBuildMultiStageManifest(f)
 	iTargetID1 := manifest.ImageTargets[0].ID()
@@ -438,7 +424,6 @@ ENTRYPOINT /go/bin/sancho
 
 func TestK8sUpsertTimeout(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
 
 	timeout := 123 * time.Second
 
@@ -457,7 +442,6 @@ func TestK8sUpsertTimeout(t *testing.T) {
 
 func TestKINDLoad(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvKIND6)
-	defer f.TearDown()
 
 	manifest := NewSanchoDockerBuildManifest(f)
 	_, err := f.BuildAndDeploy(BuildTargets(manifest), store.BuildStateSet{})
@@ -472,7 +456,6 @@ func TestKINDLoad(t *testing.T) {
 
 func TestDockerPushIfKINDAndClusterRef(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvKIND6)
-	defer f.TearDown()
 
 	manifest := NewSanchoDockerBuildManifest(f)
 	iTarg := manifest.ImageTargetAt(0)
@@ -496,7 +479,6 @@ func TestDockerPushIfKINDAndClusterRef(t *testing.T) {
 
 func TestCustomBuildDisablePush(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvKIND6)
-	defer f.TearDown()
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
 	f.docker.Images["gcr.io/some-project-162817/sancho:tilt-build"] = types.ImageInspect{ID: string(sha)}
 
@@ -513,7 +495,6 @@ func TestCustomBuildDisablePush(t *testing.T) {
 
 func TestCustomBuildSkipsLocalDocker(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvKIND6)
-	defer f.TearDown()
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
 	f.docker.Images["gcr.io/some-project-162817/sancho:tilt-build"] = types.ImageInspect{ID: string(sha)}
 
@@ -562,7 +543,6 @@ func TestBuildAndDeployUsesCorrectRef(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			f := newIBDFixture(t, k8s.EnvGKE)
-			defer f.TearDown()
 
 			if strings.Contains(test.name, "custom build") {
 				sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
@@ -602,7 +582,6 @@ func TestBuildAndDeployUsesCorrectRef(t *testing.T) {
 
 func TestDeployInjectImageEnvVar(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
 
 	manifest := NewSanchoManifestWithImageInEnvVar(f)
 	_, err := f.BuildAndDeploy(BuildTargets(manifest), store.BuildStateSet{})
@@ -638,7 +617,6 @@ func TestDeployInjectImageEnvVar(t *testing.T) {
 
 func TestDeployInjectsOverrideCommand(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
 
 	cmd := model.ToUnixCmd("./foo.sh bar")
 	manifest := NewSanchoDockerBuildManifest(f)
@@ -691,7 +669,6 @@ func (f *ibdFixture) firstPodTemplateSpecHash() k8s.PodTemplateSpecHash {
 
 func TestDeployInjectsPodTemplateSpecHash(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
 
 	manifest := NewSanchoDockerBuildManifest(f)
 
@@ -707,7 +684,6 @@ func TestDeployInjectsPodTemplateSpecHash(t *testing.T) {
 
 func TestDeployPodTemplateSpecHashChangesWhenImageChanges(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
 
 	manifest := NewSanchoDockerBuildManifest(f)
 
@@ -733,7 +709,6 @@ func TestDeployPodTemplateSpecHashChangesWhenImageChanges(t *testing.T) {
 
 func TestDeployInjectOverrideCommandClearsOldCommandButNotArgs(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
 
 	cmd := model.ToUnixCmd("./foo.sh bar")
 	manifest := NewSanchoDockerBuildManifestWithYaml(f, testyaml.SanchoYAMLWithCommand)
@@ -766,7 +741,6 @@ func TestDeployInjectOverrideCommandClearsOldCommandButNotArgs(t *testing.T) {
 
 func TestDeployInjectOverrideCommandAndArgs(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
 
 	cmd := model.ToUnixCmd("./foo.sh bar")
 	manifest := NewSanchoDockerBuildManifestWithYaml(f, testyaml.SanchoYAMLWithCommand)
@@ -800,7 +774,6 @@ func TestDeployInjectOverrideCommandAndArgs(t *testing.T) {
 
 func TestCantInjectOverrideCommandWithoutContainer(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
 
 	// CRD YAML: we WILL successfully inject the new image ref, but can't inject
 	// an override command for that image because it's not in a "container" block:
@@ -823,7 +796,6 @@ func TestCantInjectOverrideCommandWithoutContainer(t *testing.T) {
 
 func TestInjectOverrideCommandsMultipleImages(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
 
 	cmd1 := model.ToUnixCmd("./command1.sh foo")
 	cmd2 := model.ToUnixCmd("./command2.sh bar baz")
@@ -867,7 +839,6 @@ func TestInjectOverrideCommandsMultipleImages(t *testing.T) {
 
 func TestIBDDeployUIDs(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
 
 	manifest := NewSanchoDockerBuildManifest(f)
 	result, err := f.BuildAndDeploy(BuildTargets(manifest), store.BuildStateSet{})
@@ -882,7 +853,6 @@ func TestIBDDeployUIDs(t *testing.T) {
 
 func TestDockerBuildTargetStage(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
 
 	iTarget := NewSanchoDockerBuildImageTarget(f)
 	db := iTarget.BuildDetails.(model.DockerBuild)
@@ -902,7 +872,6 @@ func TestDockerBuildTargetStage(t *testing.T) {
 
 func TestDockerBuildStatus(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
 
 	iTarget := NewSanchoDockerBuildImageTarget(f)
 	manifest := manifestbuilder.New(f, "sancho").
@@ -929,7 +898,6 @@ func TestDockerBuildStatus(t *testing.T) {
 
 func TestCustomBuildStatus(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
 
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
 	f.docker.Images["gcr.io/some-project-162817/sancho:tilt-build"] = types.ImageInspect{ID: string(sha)}
@@ -963,7 +931,6 @@ func TestCustomBuildStatus(t *testing.T) {
 
 func TestTwoManifestsWithCommonImage(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
 
 	m1, m2 := NewManifestsWithCommonAncestor(f)
 	results1, err := f.BuildAndDeploy(BuildTargets(m1), store.BuildStateSet{})
@@ -984,7 +951,6 @@ func TestTwoManifestsWithCommonImage(t *testing.T) {
 
 func TestTwoManifestsWithCommonImagePrebuilt(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
 
 	m1, _ := NewManifestsWithCommonAncestor(f)
 	iTarget1 := m1.ImageTargets[0]
@@ -1005,7 +971,6 @@ func TestTwoManifestsWithCommonImagePrebuilt(t *testing.T) {
 
 func TestTwoManifestsWithTwoCommonAncestors(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
 
 	m1, m2 := NewManifestsWithTwoCommonAncestors(f)
 	results1, err := f.BuildAndDeploy(BuildTargets(m1), store.BuildStateSet{})
@@ -1026,7 +991,6 @@ func TestTwoManifestsWithTwoCommonAncestors(t *testing.T) {
 
 func TestTwoManifestsWithSameTwoImages(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
 
 	m1, m2 := NewManifestsWithSameTwoImages(f)
 	results1, err := f.BuildAndDeploy(BuildTargets(m1), store.BuildStateSet{})
@@ -1046,7 +1010,6 @@ func TestTwoManifestsWithSameTwoImages(t *testing.T) {
 
 func TestPlatformFromCluster(t *testing.T) {
 	f := newIBDFixture(t, k8s.EnvGKE)
-	defer f.TearDown()
 
 	f.upsert(&v1alpha1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "default"},
@@ -1112,7 +1075,7 @@ func newIBDFixture(t *testing.T, env k8s.Env) *ibdFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &ibdFixture{
+	ret := &ibdFixture{
 		TempDirFixture: f,
 		out:            out,
 		ctx:            ctx,
@@ -1123,6 +1086,8 @@ func newIBDFixture(t *testing.T, env k8s.Env) *ibdFixture {
 		kl:             kl,
 		ctrlClient:     ctrlClient,
 	}
+
+	return ret
 }
 
 func (f *ibdFixture) upsert(obj ctrlclient.Object) {
@@ -1167,11 +1132,6 @@ func (f *ibdFixture) BuildAndDeploy(specs []model.TargetSpec, stateSet store.Bui
 		f.upsert(&ka)
 	}
 	return f.ibd.BuildAndDeploy(f.ctx, f.st, specs, stateSet)
-}
-
-func (f *ibdFixture) TearDown() {
-	f.k8s.TearDown()
-	f.TempDirFixture.TearDown()
 }
 
 func (f *ibdFixture) resultsToNextState(results store.BuildResultSet) store.BuildStateSet {

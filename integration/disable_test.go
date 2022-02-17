@@ -15,7 +15,6 @@ import (
 
 func TestDisableK8s(t *testing.T) {
 	f := newK8sFixture(t, "disable")
-	defer f.TearDown()
 
 	f.TiltUp()
 
@@ -37,7 +36,6 @@ func TestDisableK8s(t *testing.T) {
 
 func TestDisableDC(t *testing.T) {
 	f := newDCFixture(t, "disable")
-	defer f.TearDown()
 
 	f.dockerKillAll("tilt")
 	f.TiltUp("-f", "Tiltfile.dc")

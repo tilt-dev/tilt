@@ -67,7 +67,6 @@ func TestEnable(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newEnableFixture(t)
-			defer f.TearDown()
 
 			f.createResources()
 

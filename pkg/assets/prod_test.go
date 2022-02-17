@@ -20,7 +20,6 @@ const (
 
 func TestIndexRequest(t *testing.T) {
 	f := newProdServerFixture(t)
-	defer f.TearDown()
 
 	req := httptest.NewRequest("GET", "/", bytes.NewBuffer(nil))
 	res := httptest.NewRecorder()
@@ -34,7 +33,6 @@ func TestIndexRequest(t *testing.T) {
 
 func TestFaviconRequest(t *testing.T) {
 	f := newProdServerFixture(t)
-	defer f.TearDown()
 
 	req := httptest.NewRequest("GET", "/favicon.ico", bytes.NewBuffer(nil))
 	res := httptest.NewRecorder()
@@ -46,7 +44,6 @@ func TestFaviconRequest(t *testing.T) {
 
 func TestFaviconGreenRequest(t *testing.T) {
 	f := newProdServerFixture(t)
-	defer f.TearDown()
 
 	req := httptest.NewRequest("GET", "/static/ico/favicon-green.ico", bytes.NewBuffer(nil))
 	res := httptest.NewRecorder()
@@ -58,7 +55,6 @@ func TestFaviconGreenRequest(t *testing.T) {
 
 func TestChunkRequest(t *testing.T) {
 	f := newProdServerFixture(t)
-	defer f.TearDown()
 
 	req := httptest.NewRequest("GET", "/v1.2.3/static/js/2.f1bd84e9.chunk.js", bytes.NewBuffer(nil))
 	res := httptest.NewRecorder()
@@ -71,7 +67,6 @@ func TestChunkRequest(t *testing.T) {
 
 func TestBuildUrlForReqRedirectsToIndex(t *testing.T) {
 	f := newProdServerFixture(t)
-	defer f.TearDown()
 
 	req := httptest.NewRequest("GET", "/some/random/path", bytes.NewBuffer(nil))
 	res := httptest.NewRecorder()
@@ -84,7 +79,6 @@ func TestBuildUrlForReqRedirectsToIndex(t *testing.T) {
 
 func TestBuildUrlForReqRespectsStatic(t *testing.T) {
 	f := newProdServerFixture(t)
-	defer f.TearDown()
 
 	req := httptest.NewRequest("GET", "/v1.2.3/static/stuff.html", bytes.NewBuffer(nil))
 	res := httptest.NewRecorder()
@@ -97,7 +91,6 @@ func TestBuildUrlForReqRespectsStatic(t *testing.T) {
 
 func TestBuildUrlForReqRespectsVersion(t *testing.T) {
 	f := newProdServerFixture(t)
-	defer f.TearDown()
 
 	req := httptest.NewRequest("GET", "/v111.222.333/stuff.html", bytes.NewBuffer(nil))
 	res := httptest.NewRecorder()
@@ -110,7 +103,6 @@ func TestBuildUrlForReqRespectsVersion(t *testing.T) {
 
 func TestBuildUrlForReqWithVersionParam(t *testing.T) {
 	f := newProdServerFixture(t)
-	defer f.TearDown()
 
 	req := httptest.NewRequest("GET", "/", bytes.NewBuffer(nil))
 	attachQueryVersion(req, string(version666))
@@ -125,7 +117,6 @@ func TestBuildUrlForReqWithVersionParam(t *testing.T) {
 
 func TestBuildUrlForReqWithVersionParamAndStaticPath(t *testing.T) {
 	f := newProdServerFixture(t)
-	defer f.TearDown()
 
 	req := httptest.NewRequest("GET", "/static/stuff.html", bytes.NewBuffer(nil))
 	attachQueryVersion(req, string(version666))
@@ -140,7 +131,6 @@ func TestBuildUrlForReqWithVersionParamAndStaticPath(t *testing.T) {
 
 func TestBuildUrlForReqWithVersionParamAndVersionPrefix(t *testing.T) {
 	f := newProdServerFixture(t)
-	defer f.TearDown()
 
 	req := httptest.NewRequest("GET", "/v111.222.333/stuff.html", bytes.NewBuffer(nil))
 	attachQueryVersion(req, string(version666))
@@ -155,7 +145,6 @@ func TestBuildUrlForReqWithVersionParamAndVersionPrefix(t *testing.T) {
 
 func TestSHARootUrlForReq(t *testing.T) {
 	f := newProdServerFixture(t)
-	defer f.TearDown()
 
 	sha := "8bf2ea29eacff3a407272eb5631edbd1a14a0936"
 	f.SetupServerWithVersion(model.WebVersion(sha))
@@ -170,7 +159,6 @@ func TestSHARootUrlForReq(t *testing.T) {
 
 func TestSHAStaticUrlForReq(t *testing.T) {
 	f := newProdServerFixture(t)
-	defer f.TearDown()
 
 	sha := "8bf2ea29eacff3a407272eb5631edbd1a14a0936"
 	f.SetupServerWithVersion(model.WebVersion(sha))
@@ -185,7 +173,6 @@ func TestSHAStaticUrlForReq(t *testing.T) {
 
 func TestStripPrefixIndexRequest(t *testing.T) {
 	f := newProdServerFixture(t)
-	defer f.TearDown()
 
 	req := httptest.NewRequest("GET", "/tilt-assets", bytes.NewBuffer(nil))
 	res := httptest.NewRecorder()
@@ -206,6 +193,7 @@ type fixture struct {
 
 func newProdServerFixture(t *testing.T) *fixture {
 	f := &fixture{t: t}
+	t.Cleanup(f.TearDown)
 
 	testServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		f.recvReq = req

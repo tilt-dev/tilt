@@ -12,7 +12,6 @@ import (
 
 func TestGitIgnoreTester_GitDirMatches(t *testing.T) {
 	tf := newTestFixture(t)
-	defer tf.TearDown()
 
 	tests := []struct {
 		description string
@@ -81,10 +80,4 @@ func (tf *testFixture) AssertResult(description, path string, expectedMatches bo
 			assert.Equal(t, expectedMatches, isIgnored)
 		}
 	})
-}
-
-func (tf *testFixture) TearDown() {
-	for _, tempDir := range tf.repoRoots {
-		tempDir.TearDown()
-	}
 }

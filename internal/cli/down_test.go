@@ -22,7 +22,6 @@ import (
 
 func TestDownK8sYAML(t *testing.T) {
 	f := newDownFixture(t)
-	defer f.TearDown()
 
 	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: newK8sManifest()}
 	err := f.cmd.down(f.ctx, f.deps, nil)
@@ -32,7 +31,6 @@ func TestDownK8sYAML(t *testing.T) {
 
 func TestDownPreservesEntitiesWithKeepLabel(t *testing.T) {
 	f := newDownFixture(t)
-	defer f.TearDown()
 
 	manifests := append([]model.Manifest{}, newK8sPVCManifest("foo", "keep"), newK8sPVCManifest("bar", "delete"))
 
@@ -45,7 +43,6 @@ func TestDownPreservesEntitiesWithKeepLabel(t *testing.T) {
 
 func TestDownPreservesNamespacesByDefault(t *testing.T) {
 	f := newDownFixture(t)
-	defer f.TearDown()
 
 	manifests := append([]model.Manifest{}, newK8sManifest()...)
 	manifests = append(manifests, newK8sNamespaceManifest("foo"), newK8sNamespaceManifest("bar"))
@@ -61,7 +58,6 @@ func TestDownPreservesNamespacesByDefault(t *testing.T) {
 
 func TestDownDeletesNamespacesIfSpecified(t *testing.T) {
 	f := newDownFixture(t)
-	defer f.TearDown()
 
 	manifests := append([]model.Manifest{}, newK8sManifest()...)
 	manifests = append(manifests, newK8sNamespaceManifest("foo"), newK8sNamespaceManifest("bar"))
@@ -77,7 +73,6 @@ func TestDownDeletesNamespacesIfSpecified(t *testing.T) {
 
 func TestDownDeletesInReverseOrder(t *testing.T) {
 	f := newDownFixture(t)
-	defer f.TearDown()
 
 	manifests := append([]model.Manifest{}, newK8sNamespaceManifest("foo"))
 	manifests = append(manifests, newK8sManifest()...)
@@ -91,7 +86,6 @@ func TestDownDeletesInReverseOrder(t *testing.T) {
 
 func TestDownK8sFails(t *testing.T) {
 	f := newDownFixture(t)
-	defer f.TearDown()
 
 	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: newK8sManifest()}
 	f.kCli.DeleteError = fmt.Errorf("GARBLEGARBLE")
@@ -103,7 +97,6 @@ func TestDownK8sFails(t *testing.T) {
 
 func TestDownK8sDeleteCmd(t *testing.T) {
 	f := newDownFixture(t)
-	defer f.TearDown()
 
 	kaSpec := v1alpha1.KubernetesApplySpec{
 		ApplyCmd:  &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-deploy-cmd"}},
@@ -126,7 +119,6 @@ func TestDownK8sDeleteCmd(t *testing.T) {
 
 func TestDownK8sDeleteCmd_Error(t *testing.T) {
 	f := newDownFixture(t)
-	defer f.TearDown()
 
 	f.execer.RegisterCommand("custom-delete-cmd", 321, "", "delete failed")
 
@@ -151,7 +143,6 @@ func TestDownK8sDeleteCmd_Error(t *testing.T) {
 
 func TestDownDCFails(t *testing.T) {
 	f := newDownFixture(t)
-	defer f.TearDown()
 
 	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: newDCManifest()}
 	f.dcc.DownError = fmt.Errorf("GARBLEGARBLE")
@@ -163,7 +154,6 @@ func TestDownDCFails(t *testing.T) {
 
 func TestDownArgs(t *testing.T) {
 	f := newDownFixture(t)
-	defer f.TearDown()
 
 	cmd := f.cmd.register()
 	cmd.SetArgs([]string{"foo", "bar"})
@@ -241,7 +231,7 @@ func newDownFixture(t *testing.T) downFixture {
 	cmd := &downCmd{downDepsProvider: func(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (deps DownDeps, err error) {
 		return downDeps, nil
 	}}
-	return downFixture{
+	ret := downFixture{
 		t:      t,
 		ctx:    ctx,
 		cancel: cancel,
@@ -252,6 +242,10 @@ func newDownFixture(t *testing.T) downFixture {
 		kCli:   kCli,
 		execer: execer,
 	}
+
+	t.Cleanup(ret.TearDown)
+
+	return ret
 }
 
 func (f *downFixture) TearDown() {

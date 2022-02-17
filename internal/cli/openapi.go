@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -28,8 +27,7 @@ type openapiCmd struct {
 
 var _ tiltCmd = &openapiCmd{}
 
-func newOpenapiCmd() *openapiCmd {
-	streams := genericclioptions.IOStreams{Out: os.Stdout, ErrOut: os.Stderr, In: os.Stdin}
+func newOpenapiCmd(streams genericclioptions.IOStreams) *openapiCmd {
 	return &openapiCmd{streams: streams}
 }
 

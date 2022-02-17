@@ -147,7 +147,6 @@ func newDCFixture(t testing.TB) *dcFixture {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 
 	tmpdir := tempdir.NewTempDirFixture(t)
-	t.Cleanup(tmpdir.TearDown)
 
 	return &dcFixture{
 		t:      t,

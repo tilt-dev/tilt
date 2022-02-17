@@ -488,7 +488,6 @@ type plmFixture struct {
 
 func newPLMFixture(t testing.TB) *plmFixture {
 	kClient := k8s.NewFakeK8sClient(t)
-	t.Cleanup(kClient.TearDown)
 
 	out := bufsync.NewThreadSafeBuffer()
 	ctx, cancel := context.WithCancel(context.Background())

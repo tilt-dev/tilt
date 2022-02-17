@@ -86,7 +86,6 @@ ports:
 
 func TestDockerComposeNothingError(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", "docker_compose(None)")
 
@@ -95,7 +94,6 @@ func TestDockerComposeNothingError(t *testing.T) {
 
 func TestDockerComposeBadTypeError(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", "docker_compose(True)")
 
@@ -104,7 +102,6 @@ func TestDockerComposeBadTypeError(t *testing.T) {
 
 func TestDockerComposeManifest(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile(filepath.Join("foo", "Dockerfile"))
 	f.file("docker-compose.yml", simpleConfig)
@@ -128,7 +125,6 @@ func TestDockerComposeManifest(t *testing.T) {
 
 func TestDockerComposeEnvFile(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("docker-compose.yml", `services:
   bar:
@@ -153,7 +149,6 @@ func TestDockerComposeEnvFile(t *testing.T) {
 
 func TestDockerComposeConflict(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile(filepath.Join("foo", "Dockerfile"))
 	f.file("docker-compose.yml", simpleConfig)
@@ -167,7 +162,6 @@ docker_compose('docker-compose.yml')
 
 func TestDockerComposeYAMLBlob(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile(filepath.Join("foo", "Dockerfile"))
 	f.file("docker-compose.yml", simpleConfig)
@@ -191,7 +185,6 @@ func TestDockerComposeYAMLBlob(t *testing.T) {
 
 func TestDockerComposeTwoInlineBlobs(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile(filepath.Join("foo", "Dockerfile"))
 	f.file("Tiltfile", fmt.Sprintf(`docker_compose([blob("""\n%s\n"""), blob("""\n%s\n""")])`, simpleConfig, barServiceConfig))
@@ -203,7 +196,6 @@ func TestDockerComposeTwoInlineBlobs(t *testing.T) {
 
 func TestDockerComposeBlobAndFileUsesFileDirForProjectPath(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile(filepath.Join("foo", "Dockerfile"))
 	f.file("docker-compose.yml", simpleConfig)
@@ -221,7 +213,6 @@ func TestDockerComposeBlobAndFileUsesFileDirForProjectPath(t *testing.T) {
 
 func TestDockerComposeManifestNoDockerfile(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("docker-compose.yml", `version: '3'
 services:
@@ -246,7 +237,6 @@ networks:
 
 func TestDockerComposeManifestAlternateDockerfile(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile("baz/alternate-Dockerfile")
 	f.file("docker-compose.yml", fmt.Sprintf(`
@@ -278,7 +268,6 @@ networks:
 
 func TestDockerComposeManifestAbsoluteDockerfile(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	dockerfilePath := f.JoinPath("baz", "Dockerfile")
 	f.dockerfile(dockerfilePath)
@@ -312,7 +301,6 @@ networks:
 
 func TestDockerComposeManifestAlternateDockerfileAndDockerIgnore(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile("baz/alternate-Dockerfile")
 	f.dockerignore("baz/alternate-Dockerfile.dockerignore")
@@ -350,7 +338,6 @@ networks:
 
 func TestMultipleDockerComposeDifferentDirsNotSupported(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile(filepath.Join("foo", "Dockerfile"))
 	f.file("docker-compose1.yml", simpleConfig)
@@ -369,7 +356,6 @@ docker_compose('docker-compose1.yml')`
 
 func TestMultipleDockerComposeSameDir(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile(filepath.Join("foo", "Dockerfile"))
 	f.file("docker-compose1.yml", simpleConfig)
@@ -387,7 +373,6 @@ docker_compose('docker-compose2.yml')`
 
 func TestDockerComposeAndK8sNotSupported(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFooAndBar()
 	f.file("docker-compose.yml", simpleConfig)
@@ -401,7 +386,6 @@ k8s_yaml('bar.yaml')`
 
 func TestDockerComposeResourceCreationFromAbsPath(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
 	f.dockerfile(filepath.Join("foo", "Dockerfile"))
@@ -421,7 +405,6 @@ services:
 
 func TestDockerComposeMultiStageBuild(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	df := `FROM alpine as builder
 ADD ./src /app
@@ -458,7 +441,6 @@ services:
 
 func TestDockerComposeHonorsDockerIgnore(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	df := `FROM alpine
 
@@ -487,7 +469,6 @@ RUN echo hi`
 
 func TestDockerComposeIgnoresFileChangesOnMountedVolumes(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	df := `FROM alpine
 
@@ -511,7 +492,6 @@ RUN echo hi`
 
 func TestDockerComposeWithDockerBuild(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile(filepath.Join("foo", "Dockerfile"))
 	f.file("docker-compose.yml", simpleConfig)
@@ -535,7 +515,6 @@ dc_resource('foo', 'gcr.io/foo')
 
 func TestDockerComposeWithDockerBuildAutoAssociate(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile(filepath.Join("foo", "Dockerfile"))
 	f.file("docker-compose.yml", `version: '3'
@@ -568,7 +547,6 @@ docker_compose('docker-compose.yml')
 // I.e. make sure that we handle de/normalization between `fooimage` <--> `docker.io/library/fooimage`
 func TestDockerComposeWithDockerBuildLocalRef(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile(filepath.Join("foo", "Dockerfile"))
 	f.file("docker-compose.yml", simpleConfig)
@@ -589,7 +567,6 @@ dc_resource('foo', 'fooimage')
 
 func TestMultipleDockerComposeWithDockerBuild(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile(filepath.Join("foo", "Dockerfile"))
 	f.dockerfile(filepath.Join("bar", "Dockerfile"))
@@ -616,7 +593,6 @@ dc_resource('bar', 'gcr.io/bar')
 
 func TestMultipleDockerComposeWithDockerBuildImageNames(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile(filepath.Join("foo", "Dockerfile"))
 	f.dockerfile(filepath.Join("bar", "Dockerfile"))
@@ -650,7 +626,6 @@ docker_compose('docker-compose.yml')
 
 func TestDCImageRefSuggestion(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.file("docker-compose.yml", `version: '3'
@@ -672,7 +647,6 @@ If this is deliberate, suppress this warning with: update_settings(suppress_unus
 
 func TestDockerComposeOnlySomeWithDockerBuild(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile(filepath.Join("foo", "Dockerfile"))
 	f.file("docker-compose.yml", twoServiceConfig)
@@ -697,7 +671,6 @@ dc_resource('foo', img_name)
 
 func TestDockerComposeResourceNoImageMatch(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile(filepath.Join("foo", "Dockerfile"))
 	f.file("docker-compose.yml", simpleConfig)
@@ -710,7 +683,6 @@ dc_resource('no-svc-with-this-name-eek', 'gcr.io/foo')
 
 func TestDockerComposeLoadConfigFilesOnFailure(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile(filepath.Join("foo", "Dockerfile"))
 	f.file("docker-compose.yml", simpleConfig)
@@ -727,7 +699,6 @@ fail("deliberate exit")
 
 func TestDockerComposeDoesntSupportEntrypointOverride(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile(filepath.Join("foo", "Dockerfile"))
 	f.file("docker-compose.yml", simpleConfig)
@@ -741,7 +712,6 @@ dc_resource('foo', 'gcr.io/foo')
 
 func TestDefaultRegistryWithDockerCompose(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile(filepath.Join("foo", "Dockerfile"))
 	f.file("docker-compose.yml", simpleConfig)
@@ -755,7 +725,6 @@ default_registry('bar.com')
 
 func TestDockerComposeLabels(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile(filepath.Join("foo", "Dockerfile"))
 	f.file("docker-compose.yml", simpleConfig)
@@ -791,7 +760,6 @@ func TestTriggerModeDC(t *testing.T) {
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			f := newFixture(t)
-			defer f.TearDown()
 
 			f.dockerfile(filepath.Join("foo", "Dockerfile"))
 			f.file("docker-compose.yml", simpleConfig)
@@ -837,7 +805,6 @@ docker_compose('docker-compose.yml')
 
 func TestDCResourceNoImage(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 	f.file("docker-compose.yml", simpleConfig)
@@ -851,7 +818,6 @@ dc_resource('foo', trigger_mode=TRIGGER_MODE_AUTO)
 
 func TestDCDependsOn(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.dockerfile(filepath.Join("foo", "Dockerfile"))
 	f.file("docker-compose.yml", twoServiceConfig)
@@ -884,7 +850,6 @@ func TestDockerComposeVersionWarnings(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.version, func(t *testing.T) {
 			f := newFixture(t)
-			defer f.TearDown()
 
 			f.dockerfile(filepath.Join("foo", "Dockerfile"))
 			f.file("docker-compose.yml", simpleConfig)

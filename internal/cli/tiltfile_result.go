@@ -48,9 +48,9 @@ func newTiltfileResultDeps(tfl tiltfile.TiltfileLoader) cmdTiltfileResultDeps {
 	}
 }
 
-func newTiltfileResultCmd() *tiltfileResultCmd {
+func newTiltfileResultCmd(streams genericclioptions.IOStreams) *tiltfileResultCmd {
 	return &tiltfileResultCmd{
-		streams: genericclioptions.IOStreams{Out: os.Stdout, ErrOut: os.Stderr, In: os.Stdin},
+		streams: streams,
 		exit:    os.Exit,
 	}
 }

@@ -39,7 +39,7 @@ func NewFixture(tb testing.TB, plugins ...Plugin) *Fixture {
 	temp := tempdir.NewTempDirFixture(tb)
 	temp.Chdir()
 
-	return &Fixture{
+	ret := &Fixture{
 		tb:      tb,
 		plugins: plugins,
 		path:    temp.Path(),
@@ -53,6 +53,8 @@ func NewFixture(tb testing.TB, plugins ...Plugin) *Fixture {
 			},
 		},
 	}
+
+	return ret
 }
 
 func (f *Fixture) SetContext(ctx context.Context) {
@@ -137,8 +139,4 @@ func (f *Fixture) UseRealFS() {
 	f.path = path
 	f.useRealFS = true
 	f.tf.Spec.Path = path
-}
-
-func (f *Fixture) TearDown() {
-	f.temp.TearDown()
 }

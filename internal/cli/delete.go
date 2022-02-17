@@ -23,7 +23,6 @@ package cli
 
 import (
 	"context"
-	"os"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -44,8 +43,7 @@ type deleteCmd struct {
 
 var _ tiltCmd = &deleteCmd{}
 
-func newDeleteCmd() *deleteCmd {
-	streams := genericclioptions.IOStreams{Out: os.Stdout, ErrOut: os.Stderr, In: os.Stdin}
+func newDeleteCmd(streams genericclioptions.IOStreams) *deleteCmd {
 	deleteFlags := delete.NewDeleteCommandFlags("containing the resource to delete.")
 	return &deleteCmd{
 		streams:     streams,

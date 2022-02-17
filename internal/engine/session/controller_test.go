@@ -30,7 +30,6 @@ import (
 
 func TestExitControlCI_TiltfileFailure(t *testing.T) {
 	f := newFixture(t, store.EngineModeCI)
-	defer f.TearDown()
 
 	// Tiltfile state is stored independent of resource state within engine
 	f.store.WithState(func(state *store.EngineState) {
@@ -47,7 +46,6 @@ func TestExitControlCI_TiltfileFailure(t *testing.T) {
 
 func TestExitControlIdempotent(t *testing.T) {
 	f := newFixture(t, store.EngineModeCI)
-	defer f.TearDown()
 
 	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
 	assert.NotNil(t, f.store.LastAction())
@@ -59,7 +57,6 @@ func TestExitControlIdempotent(t *testing.T) {
 
 func TestExitControlCI_FirstBuildFailure(t *testing.T) {
 	f := newFixture(t, store.EngineModeCI)
-	defer f.TearDown()
 
 	m := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
 	f.upsertManifest(m)
@@ -83,7 +80,6 @@ func TestExitControlCI_FirstBuildFailure(t *testing.T) {
 
 func TestExitControlCI_FirstRuntimeFailure(t *testing.T) {
 	f := newFixture(t, store.EngineModeCI)
-	defer f.TearDown()
 
 	m := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
 	f.upsertManifest(m)
@@ -130,7 +126,6 @@ func TestExitControlCI_FirstRuntimeFailure(t *testing.T) {
 
 func TestExitControlCI_PodRunningContainerError(t *testing.T) {
 	f := newFixture(t, store.EngineModeCI)
-	defer f.TearDown()
 
 	m := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
 	f.upsertManifest(m)
@@ -197,7 +192,6 @@ func TestExitControlCI_PodRunningContainerError(t *testing.T) {
 
 func TestExitControlCI_Success(t *testing.T) {
 	f := newFixture(t, store.EngineModeCI)
-	defer f.TearDown()
 
 	m := manifestbuilder.New(f, "fe").
 		WithK8sYAML(testyaml.SanchoYAML).
@@ -239,7 +233,6 @@ func TestExitControlCI_Success(t *testing.T) {
 
 func TestExitControlCI_PodReadinessMode_Wait(t *testing.T) {
 	f := newFixture(t, store.EngineModeCI)
-	defer f.TearDown()
 
 	m := manifestbuilder.New(f, "fe").
 		WithK8sYAML(testyaml.SanchoYAML).
@@ -273,7 +266,6 @@ func TestExitControlCI_PodReadinessMode_Wait(t *testing.T) {
 // TestExitControlCI_PodReadinessMode_Ignore_Pods covers the case where you don't care about a Pod's readiness state
 func TestExitControlCI_PodReadinessMode_Ignore_Pods(t *testing.T) {
 	f := newFixture(t, store.EngineModeCI)
-	defer f.TearDown()
 
 	m := manifestbuilder.New(f, "fe").
 		WithK8sYAML(testyaml.SecretYaml).
@@ -307,7 +299,6 @@ func TestExitControlCI_PodReadinessMode_Ignore_Pods(t *testing.T) {
 // runtime component (i.e. no pods) - this most commonly happens with "uncategorized"
 func TestExitControlCI_PodReadinessMode_Ignore_NoPods(t *testing.T) {
 	f := newFixture(t, store.EngineModeCI)
-	defer f.TearDown()
 
 	m := manifestbuilder.New(f, "fe").
 		WithK8sYAML(testyaml.SecretYaml).
@@ -340,7 +331,6 @@ func TestExitControlCI_PodReadinessMode_Ignore_NoPods(t *testing.T) {
 
 func TestExitControlCI_JobSuccess(t *testing.T) {
 	f := newFixture(t, store.EngineModeCI)
-	defer f.TearDown()
 
 	m := manifestbuilder.New(f, "fe").
 		WithK8sYAML(testyaml.JobYAML).
@@ -391,7 +381,6 @@ func TestExitControlCI_TriggerMode_Local(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			f := newFixture(t, store.EngineModeCI)
-			defer f.TearDown()
 
 			mb := manifestbuilder.New(f, "fe").
 				WithLocalResource("echo hi", nil).
@@ -453,7 +442,6 @@ func TestExitControlCI_TriggerMode_K8s(t *testing.T) {
 	for triggerMode := range model.TriggerModes {
 		t.Run(triggerModeString(triggerMode), func(t *testing.T) {
 			f := newFixture(t, store.EngineModeCI)
-			defer f.TearDown()
 
 			manifest := manifestbuilder.New(f, "fe").
 				WithK8sYAML(testyaml.JobYAML).
@@ -486,7 +474,6 @@ func TestExitControlCI_TriggerMode_K8s(t *testing.T) {
 
 func TestExitControlCI_Disabled(t *testing.T) {
 	f := newFixture(t, store.EngineModeCI)
-	defer f.TearDown()
 
 	f.store.WithState(func(state *store.EngineState) {
 		m1 := manifestbuilder.New(f, "m1").WithLocalServeCmd("m1").Build()
@@ -511,7 +498,6 @@ func TestExitControlCI_Disabled(t *testing.T) {
 
 func TestStatusDisabled(t *testing.T) {
 	f := newFixture(t, store.EngineModeCI)
-	defer f.TearDown()
 
 	f.store.WithState(func(state *store.EngineState) {
 		m1 := manifestbuilder.New(f, "local_update").WithLocalResource("a", nil).Build()

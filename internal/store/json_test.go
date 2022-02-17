@@ -16,7 +16,6 @@ import (
 
 func TestToJSON(t *testing.T) {
 	f := tempdir.NewTempDirFixture(t)
-	defer f.TearDown()
 
 	m := manifestbuilder.New(f, "fe").
 		WithK8sYAML(testyaml.SanchoYAML).

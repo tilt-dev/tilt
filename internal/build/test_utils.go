@@ -61,7 +61,7 @@ func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 	labels := dockerfile.Labels(map[dockerfile.Label]dockerfile.LabelValue{
 		TestImage: "1",
 	})
-	return &dockerBuildFixture{
+	ret := &dockerBuildFixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),
 		t:              t,
 		ctx:            ctx,
@@ -70,6 +70,9 @@ func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 		reaper:         NewImageReaper(dCli),
 		ps:             ps,
 	}
+
+	t.Cleanup(ret.teardown)
+	return ret
 }
 
 func newFakeDockerBuildFixture(t testing.TB) *dockerBuildFixture {
@@ -81,7 +84,7 @@ func newFakeDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 
 	ps := NewPipelineState(ctx, 3, realClock{})
 
-	return &dockerBuildFixture{
+	ret := &dockerBuildFixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),
 		t:              t,
 		ctx:            ctx,
@@ -90,6 +93,9 @@ func newFakeDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 		reaper:         NewImageReaper(dCli),
 		ps:             ps,
 	}
+
+	t.Cleanup(ret.teardown)
+	return ret
 }
 
 func (f *dockerBuildFixture) teardown() {
@@ -117,7 +123,6 @@ func (f *dockerBuildFixture) teardown() {
 		_ = exec.Command("docker", "kill", "tilt-registry").Run()
 		_ = exec.Command("docker", "rm", "tilt-registry").Run()
 	}
-	f.TempDirFixture.TearDown()
 }
 
 func (f *dockerBuildFixture) getNameFromTest() wmcontainer.RefSet {

@@ -62,7 +62,6 @@ func TestDigestAsTagToShort(t *testing.T) {
 
 func TestDigestFromSingleStepOutput(t *testing.T) {
 	f := newFakeDockerBuildFixture(t)
-	defer f.teardown()
 
 	input := docker.ExampleBuildOutput1
 	expected := digest.Digest("sha256:11cd0b38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
@@ -77,7 +76,6 @@ func TestDigestFromSingleStepOutput(t *testing.T) {
 
 func TestDigestFromOutputV1_23(t *testing.T) {
 	f := newFakeDockerBuildFixture(t)
-	defer f.teardown()
 
 	input := docker.ExampleBuildOutputV1_23
 	expected := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
@@ -93,7 +91,6 @@ func TestDigestFromOutputV1_23(t *testing.T) {
 
 func TestDumpImageDeployRef(t *testing.T) {
 	f := newFakeDockerBuildFixture(t)
-	defer f.teardown()
 
 	digest := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
 	f.fakeDocker.Images["example-image:dev"] = types.ImageInspect{ID: string(digest)}
@@ -167,7 +164,6 @@ func TestCleanUpBuildKitErrors(t *testing.T) {
 	} {
 		t.Run(tc.expectedTiltError, func(t *testing.T) {
 			f := newFakeDockerBuildFixture(t)
-			defer f.teardown()
 
 			ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 			s := makeDockerBuildErrorOutput(tc.buildKitError)

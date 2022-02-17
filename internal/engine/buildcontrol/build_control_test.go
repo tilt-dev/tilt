@@ -27,7 +27,6 @@ import (
 
 func TestNextTargetToBuildDoesntReturnCurrentlyBuildingTarget(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	mt := f.manifestNeedingCrashRebuild()
 	f.st.UpsertManifestTarget(mt)
@@ -42,7 +41,6 @@ func TestNextTargetToBuildDoesntReturnCurrentlyBuildingTarget(t *testing.T) {
 
 func TestCurrentlyBuildingK8sResourceDisablesLocalScheduling(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	k8s1 := f.upsertK8sManifest("k8s1")
 	k8s2 := f.upsertK8sManifest("k8s2")
@@ -60,7 +58,6 @@ func TestCurrentlyBuildingK8sResourceDisablesLocalScheduling(t *testing.T) {
 
 func TestCurrentlyBuildingK8sResourceDoesNotCreateHoldIfResourceNotPending(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	k8s1 := f.upsertK8sManifest("k8s1")
 	k8s2 := f.upsertK8sManifest("k8s2")
@@ -81,7 +78,6 @@ func TestCurrentlyBuildingK8sResourceDoesNotCreateHoldIfResourceNotPending(t *te
 
 func TestCurrentlyBuildingUncategorizedDisablesOtherK8sTargets(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	_ = f.upsertK8sManifest("k8s1")
 	k8sUnresourced := f.upsertK8sManifest(model.UnresourcedYAMLManifestName)
@@ -97,7 +93,6 @@ func TestCurrentlyBuildingUncategorizedDisablesOtherK8sTargets(t *testing.T) {
 
 func TestK8sDependsOnLocal(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	k8s1 := f.upsertK8sManifest("k8s1", withResourceDeps("local1"))
 	k8s2 := f.upsertK8sManifest("k8s2")
@@ -125,7 +120,6 @@ func TestK8sDependsOnLocal(t *testing.T) {
 
 func TestLocalDependsOnNonWorkloadK8s(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	local1 := f.upsertLocalManifest("local1", withResourceDeps("k8s1"))
 	k8s1 := f.upsertK8sManifest("k8s1", withK8sPodReadiness(model.PodReadinessIgnore))
@@ -157,7 +151,6 @@ func TestLocalDependsOnNonWorkloadK8s(t *testing.T) {
 
 func TestK8sDependsOnCluster(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	f.st.Clusters["default"].Status.Error = "connection error"
 
@@ -176,7 +169,6 @@ func TestK8sDependsOnCluster(t *testing.T) {
 
 func TestCurrentlyBuildingLocalResourceDisablesK8sScheduling(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	f.upsertK8sManifest("k8s1")
 	f.upsertK8sManifest("k8s2")
@@ -193,7 +185,6 @@ func TestCurrentlyBuildingLocalResourceDisablesK8sScheduling(t *testing.T) {
 
 func TestCurrentlyBuildingParallelLocalResource(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	f.upsertK8sManifest("k8s1")
 	local1 := f.upsertLocalManifest("local1", func(m manifestbuilder.ManifestBuilder) manifestbuilder.ManifestBuilder {
@@ -214,7 +205,6 @@ func TestCurrentlyBuildingParallelLocalResource(t *testing.T) {
 
 func TestTriggerIneligibleResource(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	// local1 has a build in progress
 	local1 := f.upsertLocalManifest("local1", func(m manifestbuilder.ManifestBuilder) manifestbuilder.ManifestBuilder {
@@ -232,7 +222,6 @@ func TestTriggerIneligibleResource(t *testing.T) {
 
 func TestTwoK8sTargetsWithBaseImage(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	baseImage := newDockerImageTarget("sancho-base")
 	sanchoOneImage := newDockerImageTarget("sancho-one").
@@ -267,7 +256,6 @@ func TestTwoK8sTargetsWithBaseImage(t *testing.T) {
 
 func TestLiveUpdateMainImageHold(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	srcFile := f.JoinPath("src", "a.txt")
 	f.WriteFile(srcFile, "hello")
@@ -330,7 +318,6 @@ func TestLiveUpdateMainImageHold(t *testing.T) {
 // and the image target matching the deployed container.
 func TestLiveUpdateBaseImageHold(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	srcFile := f.JoinPath("base", "a.txt")
 	f.WriteFile(srcFile, "hello")
@@ -391,7 +378,6 @@ func TestLiveUpdateBaseImageHold(t *testing.T) {
 
 func TestTwoK8sTargetsWithBaseImagePrebuilt(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	baseImage := newDockerImageTarget("sancho-base")
 	sanchoOneImage := newDockerImageTarget("sancho-one").
@@ -421,7 +407,6 @@ func TestTwoK8sTargetsWithBaseImagePrebuilt(t *testing.T) {
 
 func TestHoldForDeploy(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	srcFile := f.JoinPath("src", "a.txt")
 	objFile := f.JoinPath("obj", "a.out")
@@ -489,7 +474,6 @@ func TestHoldForDeploy(t *testing.T) {
 
 func TestHoldForManualLiveUpdate(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	srcFile := f.JoinPath("src", "a.txt")
 	f.WriteFile(srcFile, "hello")
@@ -537,7 +521,6 @@ func TestHoldForManualLiveUpdate(t *testing.T) {
 
 func TestHoldDisabled(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	f.upsertLocalManifest("local")
 	f.st.ManifestTargets["local"].State.DisableState = v1alpha1.DisableStateDisabled
@@ -548,7 +531,6 @@ func TestHoldDisabled(t *testing.T) {
 
 func TestHoldIfAnyDisableStatusPending(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	f.upsertLocalManifest("local1")
 	f.upsertLocalManifest("local2")

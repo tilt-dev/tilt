@@ -10,7 +10,6 @@ import (
 
 func TestMetricsEnabled(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.File("Tiltfile", "experimental_metrics_settings(enabled=True)")
 	_, err := f.ExecFile("Tiltfile")
 	assert.NoError(t, err)

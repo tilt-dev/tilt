@@ -12,7 +12,6 @@ import (
 
 func TestFilesToPathMappings(t *testing.T) {
 	f := tempdir.NewTempDirFixture(t)
-	defer f.TearDown()
 
 	paths := []string{
 		filepath.Join("sync1", "fileA"),
@@ -69,7 +68,6 @@ func TestFilesToPathMappings(t *testing.T) {
 
 func TestFileToDirectoryPathMapping(t *testing.T) {
 	f := tempdir.NewTempDirFixture(t)
-	defer f.TearDown()
 
 	paths := []string{
 		filepath.Join("sync1", "fileA"),
@@ -106,7 +104,6 @@ func TestFileToDirectoryPathMapping(t *testing.T) {
 
 func TestFileNotInSyncYieldsNoMapping(t *testing.T) {
 	f := tempdir.NewTempDirFixture(t)
-	defer f.TearDown()
 
 	files := []string{f.JoinPath("not/synced/fileA")}
 

@@ -527,7 +527,6 @@ func (b *fakeBuildAndDeployer) completeBuild(key string) {
 
 func TestUpper_Up(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	manifest := f.newManifest("foobar")
 
 	f.setManifests([]model.Manifest{manifest})
@@ -561,7 +560,6 @@ func TestUpper_Up(t *testing.T) {
 
 func TestUpper_UpK8sEntityOrdering(t *testing.T) {
 	f := newTestFixture(t, fixtureOptions{engineMode: &store.EngineModeCI})
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	postgresEntities, err := k8s.ParseYAMLFromString(testyaml.PostgresYAML)
@@ -596,7 +594,6 @@ func TestUpper_UpK8sEntityOrdering(t *testing.T) {
 
 func TestUpper_CI(t *testing.T) {
 	f := newTestFixture(t, fixtureOptions{engineMode: &store.EngineModeCI})
-	defer f.TearDown()
 
 	manifest := f.newManifest("foobar")
 	pb := f.registerForDeployer(manifest)
@@ -621,7 +618,6 @@ func TestUpper_CI(t *testing.T) {
 
 func TestUpper_UpWatchFileChange(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	manifest := f.newManifest("foobar")
 	pb := f.registerForDeployer(manifest)
 	f.Start([]model.Manifest{manifest})
@@ -656,7 +652,6 @@ func TestUpper_UpWatchFileChange(t *testing.T) {
 
 func TestFirstBuildFails_Up(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	manifest := f.newManifest("foobar")
 	f.SetNextBuildError(errors.New("Build failed"))
 
@@ -678,7 +673,6 @@ func TestFirstBuildFails_Up(t *testing.T) {
 
 func TestFirstBuildCancels_Up(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	manifest := f.newManifest("foobar")
 	f.SetNextBuildError(context.Canceled)
 
@@ -694,7 +688,6 @@ func TestFirstBuildCancels_Up(t *testing.T) {
 
 func TestFirstBuildFails_CI(t *testing.T) {
 	f := newTestFixture(t, fixtureOptions{engineMode: &store.EngineModeCI})
-	defer f.TearDown()
 	manifest := f.newManifest("foobar")
 	buildFailedToken := errors.New("doesn't compile")
 	f.SetNextBuildError(buildFailedToken)
@@ -725,7 +718,6 @@ func TestFirstBuildFails_CI(t *testing.T) {
 
 func TestCIIgnoresDisabledResources(t *testing.T) {
 	f := newTestFixture(t, fixtureOptions{engineMode: &store.EngineModeCI})
-	defer f.TearDown()
 
 	m1 := f.newManifest("m1")
 	pb := f.registerForDeployer(m1)
@@ -751,7 +743,6 @@ func TestCIIgnoresDisabledResources(t *testing.T) {
 
 func TestRebuildWithChangedFiles(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	manifest := f.newManifest("foobar")
 	pb := f.registerForDeployer(manifest)
 	f.Start([]model.Manifest{manifest})
@@ -785,7 +776,6 @@ func TestRebuildWithChangedFiles(t *testing.T) {
 
 func TestThreeBuilds(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	manifest := f.newManifest("fe")
 	pb := f.registerForDeployer(manifest)
 	f.Start([]model.Manifest{manifest})
@@ -819,7 +809,6 @@ func TestThreeBuilds(t *testing.T) {
 
 func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	manifest := f.newManifest("foobar")
 	pb := f.registerForDeployer(manifest)
 	f.Start([]model.Manifest{manifest})
@@ -850,7 +839,6 @@ func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
 
 func TestConfigFileChangeClearsBuildStateToForceImageBuild(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", `
@@ -903,7 +891,6 @@ k8s_yaml('snack.yaml')
 
 func TestMultipleChangesOnlyDeployOneManifest(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", `
@@ -967,7 +954,6 @@ k8s_resource('doggos', new_name='quux')
 
 func TestSecondResourceIsBuilt(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", `
@@ -1012,7 +998,6 @@ k8s_resource('doggos', new_name='quux')  # rename "doggos" --> "quux"
 
 func TestConfigChange_NoOpChange(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", `
@@ -1054,7 +1039,6 @@ k8s_yaml('snack.yaml')`)
 
 func TestConfigChange_TiltfileErrorAndFixWithNoChanges(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	origTiltfile := `
@@ -1089,7 +1073,6 @@ k8s_yaml('snack.yaml')`
 
 func TestConfigChange_TiltfileErrorAndFixWithFileChange(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	tiltfileWithCmd := func(cmd string) string {
@@ -1147,7 +1130,6 @@ k8s_yaml('snack.yaml')
 
 func TestConfigChange_TriggerModeChangePropagatesButDoesntInvalidateBuild(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	origTiltfile := `
@@ -1182,7 +1164,6 @@ trigger_mode(TRIGGER_MODE_MANUAL)`, origTiltfile)
 
 func TestConfigChange_ManifestWithPendingChangesBuildsIfTriggerModeChangedToAuto(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	baseTiltfile := `trigger_mode(%s)
@@ -1230,7 +1211,6 @@ k8s_yaml('snack.yaml')`
 
 func TestConfigChange_ManifestIncludingInitialBuildsIfTriggerModeChangedToManualAfterInitial(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	foo := f.newManifest("foo").WithTriggerMode(model.TriggerModeManual)
 	bar := f.newManifest("bar")
@@ -1268,7 +1248,6 @@ func TestConfigChange_ManifestIncludingInitialBuildsIfTriggerModeChangedToManual
 
 func TestConfigChange_FilenamesLoggedInManifestBuild(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", `
@@ -1304,7 +1283,6 @@ docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', ignor
 
 func TestConfigChange_LocalResourceChange(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", `print('tiltfile 1')
@@ -1330,7 +1308,6 @@ local_resource('local', 'echo red fish blue fish', deps='foo.bar')`)
 
 func TestDockerRebuildWithChangedFiles(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	df := `FROM golang
 ADD ./ ./
 go build ./...
@@ -1364,7 +1341,6 @@ go build ./...
 
 func TestHudUpdated(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	manifest := f.newManifest("foobar")
 
@@ -1391,7 +1367,6 @@ func TestDisabledHudUpdated(t *testing.T) {
 		t.Skip("TODO(nick): Investigate")
 	}
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	manifest := f.newManifest("foobar")
 	opt := func(ia InitAction) InitAction {
@@ -1430,7 +1405,6 @@ func TestDisabledHudUpdated(t *testing.T) {
 
 func TestPodEvent(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	manifest := f.newManifest("foobar")
 	pb := f.registerForDeployer(manifest)
 	f.Start([]model.Manifest{manifest})
@@ -1455,7 +1429,6 @@ func TestPodEvent(t *testing.T) {
 
 func TestPodEventContainerStatus(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	manifest := f.newManifest("foobar")
 	pb := f.registerForDeployer(manifest)
 	f.Start([]model.Manifest{manifest})
@@ -1490,7 +1463,6 @@ func TestPodEventContainerStatus(t *testing.T) {
 
 func TestPodEventContainerStatusWithoutImage(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	manifest := model.Manifest{
 		Name: model.ManifestName("foobar"),
 	}.WithDeployTarget(k8s.MustTarget("foobar", SanchoYAML))
@@ -1546,7 +1518,6 @@ func TestPodEventContainerStatusWithoutImage(t *testing.T) {
 
 func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.bc.DisableForTesting()
 
 	name := model.ManifestName("foobar")
@@ -1599,7 +1570,6 @@ func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
 
 func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.bc.DisableForTesting()
 
 	name := model.ManifestName("foobar")
@@ -1648,7 +1618,6 @@ func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
 
 func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.bc.DisableForTesting()
 
 	name := model.ManifestName("foobar")
@@ -1723,7 +1692,6 @@ func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
 
 func TestPodEventUpdateByTimestamp(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	manifest := f.newManifest("foobar")
 	pb := f.registerForDeployer(manifest)
 	f.Start([]model.Manifest{manifest})
@@ -1760,7 +1728,6 @@ func TestPodEventUpdateByTimestamp(t *testing.T) {
 
 func TestPodDeleted(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	mn := model.ManifestName("foobar")
 	manifest := f.newManifest(mn.String())
 	pb := f.registerForDeployer(manifest)
@@ -1805,7 +1772,6 @@ func TestPodDeleted(t *testing.T) {
 
 func TestPodEventUpdateByPodName(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	manifest := f.newManifest("foobar")
 	pb := f.registerForDeployer(manifest)
 	f.Start([]model.Manifest{manifest})
@@ -1843,7 +1809,6 @@ func TestPodEventUpdateByPodName(t *testing.T) {
 
 func TestPodEventIgnoreOlderPod(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	manifest := f.newManifest("foobar")
 	pb := f.registerForDeployer(manifest)
 	f.Start([]model.Manifest{manifest})
@@ -1877,7 +1842,6 @@ func TestPodEventIgnoreOlderPod(t *testing.T) {
 
 func TestPodContainerStatus(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	manifest := f.newManifest("fe")
 	pb := f.registerForDeployer(manifest)
 	f.Start([]model.Manifest{manifest})
@@ -1917,7 +1881,6 @@ func TestPodContainerStatus(t *testing.T) {
 
 func TestUpper_WatchDockerIgnoredFiles(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	manifest := f.newManifest("foobar")
 	manifest = manifest.WithImageTarget(manifest.ImageTargetAt(0).
 		WithDockerignores([]model.Dockerignore{
@@ -1942,7 +1905,6 @@ func TestUpper_WatchDockerIgnoredFiles(t *testing.T) {
 
 func TestUpper_ShowErrorPodLog(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	name := model.ManifestName("foobar")
 	manifest := f.newManifest(name.String())
@@ -1972,7 +1934,6 @@ func TestUpper_ShowErrorPodLog(t *testing.T) {
 
 func TestUpperPodLogInCrashLoopThirdInstanceStillUp(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	name := model.ManifestName("foobar")
 	manifest := f.newManifest(name.String())
@@ -2006,7 +1967,6 @@ func TestUpperPodLogInCrashLoopThirdInstanceStillUp(t *testing.T) {
 
 func TestUpperPodLogInCrashLoopPodCurrentlyDown(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	name := model.ManifestName("foobar")
 	manifest := f.newManifest(name.String())
@@ -2039,7 +1999,6 @@ func TestUpperPodLogInCrashLoopPodCurrentlyDown(t *testing.T) {
 
 func TestUpperRecordPodWithMultipleContainers(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	name := model.ManifestName("foobar")
 	manifest := f.newManifest(name.String())
@@ -2081,7 +2040,6 @@ func TestUpperRecordPodWithMultipleContainers(t *testing.T) {
 
 func TestUpperProcessOtherContainersIfOneErrors(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	name := model.ManifestName("foobar")
 	manifest := f.newManifest(name.String())
@@ -2123,7 +2081,6 @@ func TestUpperProcessOtherContainersIfOneErrors(t *testing.T) {
 
 func TestUpper_ServiceEvent(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	manifest := f.newManifest("foobar")
 
@@ -2156,7 +2113,6 @@ func TestUpper_ServiceEvent(t *testing.T) {
 
 func TestUpper_ServiceEventRemovesURL(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	manifest := f.newManifest("foobar")
 
@@ -2193,7 +2149,6 @@ func TestUpper_ServiceEventRemovesURL(t *testing.T) {
 
 func TestUpper_PodLogs(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	name := model.ManifestName("fe")
 	manifest := f.newManifest(string(name))
@@ -2212,7 +2167,6 @@ func TestUpper_PodLogs(t *testing.T) {
 
 func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	name := model.ManifestName("fe")
 	manifest := f.newManifest(string(name))
@@ -2246,7 +2200,6 @@ func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
 
 func TestK8sEventNotLoggedIfNoManifestForUID(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	name := model.ManifestName("fe")
 	manifest := f.newManifest(string(name))
@@ -2273,7 +2226,6 @@ func TestK8sEventNotLoggedIfNoManifestForUID(t *testing.T) {
 
 func TestHudExitNoError(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.Start([]model.Manifest{})
 	f.store.Dispatch(hud.NewExitAction(nil))
 	err := f.WaitForExit()
@@ -2282,7 +2234,6 @@ func TestHudExitNoError(t *testing.T) {
 
 func TestHudExitWithError(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.Start([]model.Manifest{})
 	e := errors.New("helllllo")
 	f.store.Dispatch(hud.NewExitAction(e))
@@ -2291,7 +2242,6 @@ func TestHudExitWithError(t *testing.T) {
 
 func TestNewConfigsAreWatchedAfterFailure(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 	f.loadAndStart()
 
@@ -2308,7 +2258,6 @@ func TestNewConfigsAreWatchedAfterFailure(t *testing.T) {
 
 func TestDockerComposeUp(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	redis, server := f.setupDCFixture()
 
 	f.Start([]model.Manifest{redis, server})
@@ -2324,7 +2273,6 @@ func TestDockerComposeUp(t *testing.T) {
 
 func TestDockerComposeRedeployFromFileChange(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	_, m := f.setupDCFixture()
 
 	f.Start([]model.Manifest{m})
@@ -2343,7 +2291,6 @@ func TestDockerComposeRedeployFromFileChange(t *testing.T) {
 
 func TestDockerComposeEventSetsStatus(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	_, m := f.setupDCFixture()
 
 	f.Start([]model.Manifest{m})
@@ -2381,7 +2328,6 @@ func TestDockerComposeEventSetsStatus(t *testing.T) {
 
 func TestDockerComposeStartsEventWatcher(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	_, m := f.setupDCFixture()
 
 	// Actual behavior is that we init with zero manifests, and add in manifests
@@ -2415,7 +2361,6 @@ func TestDockerComposeStartsEventWatcher(t *testing.T) {
 
 func TestDockerComposeRecordsBuildLogs(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	m, _ := f.setupDCFixture()
@@ -2437,7 +2382,6 @@ func TestDockerComposeRecordsBuildLogs(t *testing.T) {
 
 func TestDockerComposeRecordsRunLogs(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	m, _ := f.setupDCFixture()
@@ -2470,7 +2414,6 @@ func TestDockerComposeRecordsRunLogs(t *testing.T) {
 
 func TestDockerComposeFiltersRunLogs(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	// since this is a negative test case, we need to ensure our mock behaves properly first
@@ -2518,7 +2461,6 @@ fake-service exited with code 0
 // we inferred crash from ContainerState rather than sequences of events.
 func TestDockerComposeDetectsCrashes(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	m1, m2 := f.setupDCFixture()
@@ -2578,7 +2520,6 @@ func TestDockerComposeDetectsCrashes(t *testing.T) {
 
 func TestDockerComposeBuildCompletedSetsStatusToUpIfSuccessful(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	m1, _ := f.setupDCFixture()
@@ -2605,7 +2546,6 @@ func TestDockerComposeBuildCompletedSetsStatusToUpIfSuccessful(t *testing.T) {
 
 func TestDockerComposeStopOnDisable(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	m, _ := f.setupDCFixture()
@@ -2634,7 +2574,6 @@ func TestDockerComposeStopOnDisable(t *testing.T) {
 
 func TestDockerComposeStartOnReenable(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	m, _ := f.setupDCFixture()
@@ -2662,7 +2601,6 @@ func TestDockerComposeStartOnReenable(t *testing.T) {
 
 func TestEmptyTiltfile(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 	f.WriteFile("Tiltfile", "")
 
@@ -2694,7 +2632,6 @@ func TestEmptyTiltfile(t *testing.T) {
 
 func TestUpperStart(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	tok := token.Token("unit test token")
@@ -2729,7 +2666,6 @@ func TestUpperStart(t *testing.T) {
 
 func TestWatchManifestsWithCommonAncestor(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	m1, m2 := NewManifestsWithCommonAncestor(f)
 	f.Start([]model.Manifest{m1, m2})
 
@@ -2785,7 +2721,6 @@ func TestConfigChangeThatChangesManifestIsIncludedInManifestsChangedFile(t *test
 	t.Skip("TODO(nick): fix this")
 
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	tiltfile := `
@@ -2820,7 +2755,6 @@ k8s_yaml('snack.yaml')`
 
 func TestSetAnalyticsOpt(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	opt := func(ia InitAction) InitAction {
 		ia.AnalyticsUserOpt = analytics.OptIn
@@ -2853,7 +2787,6 @@ func TestSetAnalyticsOpt(t *testing.T) {
 
 func TestFeatureFlagsStoredOnState(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	f.Start([]model.Manifest{})
 	f.ensureCluster()
@@ -2881,7 +2814,6 @@ func TestFeatureFlagsStoredOnState(t *testing.T) {
 
 func TestTeamIDStoredOnState(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	f.Start([]model.Manifest{})
 	f.ensureCluster()
@@ -2909,7 +2841,6 @@ func TestTeamIDStoredOnState(t *testing.T) {
 
 func TestBuildLogAction(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.bc.DisableForTesting()
 
 	manifest := f.newManifest("alert-injester")
@@ -2945,7 +2876,6 @@ alert-injest… │ ghij`)
 
 func TestBuildErrorLoggedOnceByUpper(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	manifest := f.newManifest("alert-injester")
 	err := errors.New("cats and dogs, living together")
@@ -2963,7 +2893,6 @@ func TestBuildErrorLoggedOnceByUpper(t *testing.T) {
 
 func TestTiltfileChangedFilesOnlyLoggedAfterFirstBuild(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", `
@@ -3001,7 +2930,6 @@ k8s_yaml('snack.yaml')`)
 
 func TestDeployUIDsInEngineState(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	uid := types.UID("fake-uid")
 	f.b.nextDeployedUID = uid
@@ -3021,7 +2949,6 @@ func TestDeployUIDsInEngineState(t *testing.T) {
 
 func TestEnableFeatureOnFail(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", `
@@ -3041,7 +2968,6 @@ fail('goodnight moon')
 
 func TestSecretScrubbed(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	tiltfile := `
@@ -3072,7 +2998,6 @@ data:
 
 func TestShortSecretNotScrubbed(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	tiltfile := `
@@ -3101,7 +3026,6 @@ stringData:
 
 func TestDisableDockerPrune(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	f.WriteFile("Dockerfile", `FROM iron/go:prod`)
@@ -3123,7 +3047,6 @@ docker_prune_settings(disable=True)
 
 func TestDockerPruneEnabledByDefault(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", simpleTiltfile)
@@ -3144,7 +3067,6 @@ func TestDockerPruneEnabledByDefault(t *testing.T) {
 
 func TestHasEverBeenReadyK8s(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	m := f.newManifest("foobar")
 	pb := f.registerForDeployer(m)
@@ -3163,7 +3085,6 @@ func TestHasEverBeenReadyK8s(t *testing.T) {
 
 func TestHasEverBeenCompleteK8s(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	m := f.newManifest("foobar")
 	pb := f.registerForDeployer(m)
@@ -3182,7 +3103,6 @@ func TestHasEverBeenCompleteK8s(t *testing.T) {
 
 func TestHasEverBeenReadyLocal(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	m := manifestbuilder.New(f, "foobar").WithLocalResource("foo", []string{f.Path()}).Build()
 	f.SetNextBuildError(errors.New("failure!"))
@@ -3203,7 +3123,6 @@ func TestHasEverBeenReadyLocal(t *testing.T) {
 
 func TestHasEverBeenReadyDC(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	m, _ := f.setupDCFixture()
 	f.Start([]model.Manifest{m})
@@ -3224,7 +3143,6 @@ func TestHasEverBeenReadyDC(t *testing.T) {
 
 func TestVersionSettingsStoredOnState(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	f.Start([]model.Manifest{})
 	f.ensureCluster()
@@ -3245,7 +3163,6 @@ func TestVersionSettingsStoredOnState(t *testing.T) {
 
 func TestAnalyticsTiltfileOpt(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	f.Start([]model.Manifest{})
 	f.ensureCluster()
@@ -3271,7 +3188,6 @@ func TestAnalyticsTiltfileOpt(t *testing.T) {
 
 func TestConfigArgsChangeCausesTiltfileRerun(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", `
@@ -3310,7 +3226,6 @@ print('foo=', cfg['foo'])`)
 
 func TestTelemetryLogAction(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	f.Start([]model.Manifest{})
 
@@ -3340,7 +3255,6 @@ func TestLocalResourceServeWithNoUpdate(t *testing.T) {
 
 		t.Run(name, func(t *testing.T) {
 			f := newTestFixture(t)
-			defer f.TearDown()
 
 			m := manifestbuilder.New(f, "foo").
 				WithLocalServeCmd("true").
@@ -3386,7 +3300,6 @@ func TestLocalResourceServeWithNoUpdate(t *testing.T) {
 
 func TestLocalResourceServeChangeCmd(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", "local_resource('foo', serve_cmd='true')")
@@ -3412,7 +3325,6 @@ func TestLocalResourceServeChangeCmd(t *testing.T) {
 
 func TestDefaultUpdateSettings(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	f.WriteFile("Dockerfile", `FROM iron/go:prod`)
@@ -3432,7 +3344,6 @@ func TestDefaultUpdateSettings(t *testing.T) {
 
 func TestSetK8sUpsertTimeout(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	f.WriteFile("Dockerfile", `FROM iron/go:prod`)
@@ -3453,7 +3364,6 @@ update_settings(k8s_upsert_timeout_secs=123)
 
 func TestSetMaxBuildSlots(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	f.WriteFile("Dockerfile", `FROM iron/go:prod`)
@@ -3475,7 +3385,6 @@ update_settings(max_parallel_updates=123)
 // https://github.com/tilt-dev/tilt/issues/3514
 func TestTiltignoreRespectedOnError(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", `local("echo hi > a.txt")
@@ -3516,7 +3425,6 @@ fail('x')`)
 
 func TestHandleTiltfileTriggerQueue(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", `print("hello world")`)
@@ -3559,7 +3467,6 @@ func TestHandleTiltfileTriggerQueue(t *testing.T) {
 
 func TestOverrideTriggerModeEvent(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	manifest := f.newManifest("foo")
 	f.Start([]model.Manifest{manifest})
@@ -3587,7 +3494,6 @@ func TestOverrideTriggerModeBadManifestLogsError(t *testing.T) {
 	}
 
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	manifest := f.newManifest("foo")
 	f.Start([]model.Manifest{manifest})
@@ -3610,7 +3516,6 @@ func TestOverrideTriggerModeBadManifestLogsError(t *testing.T) {
 
 func TestOverrideTriggerModeBadTriggerModeLogsError(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	manifest := f.newManifest("foo")
 	f.Start([]model.Manifest{manifest})
@@ -3633,7 +3538,6 @@ func TestOverrideTriggerModeBadTriggerModeLogsError(t *testing.T) {
 
 func TestDisablingResourcePreventsBuild(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	m := manifestbuilder.New(f, "foo").WithLocalResource("foo", []string{f.Path()}).Build()
 
@@ -3652,7 +3556,6 @@ func TestDisablingResourcePreventsBuild(t *testing.T) {
 
 func TestDisableButtonIsCreated(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", `
@@ -3681,7 +3584,6 @@ local_resource('foo', 'echo hi')
 
 func TestCmdServerDoesntStartWhenDisabled(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", `print('dummy tiltfile with no resources')`)
@@ -3707,7 +3609,6 @@ config.set_enabled_resources(['bar'])
 
 func TestDisabledResourceRemovedFromTriggerQueue(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 
 	m := manifestbuilder.New(f, "foo").WithLocalResource("foo", []string{f.Path()}).Build()
 
@@ -3732,7 +3633,6 @@ func TestDisabledResourceRemovedFromTriggerQueue(t *testing.T) {
 
 func TestLocalResourceNoServeCmdDeps(t *testing.T) {
 	f := newTestFixture(t)
-	defer f.TearDown()
 	f.useRealTiltfileLoader()
 
 	// create a Tiltfile with 2 resources:
@@ -3992,6 +3892,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		testutils.FailOnNonCanceledErr(t, err, "hud.Run failed")
 	}()
 
+	t.Cleanup(ret.TearDown)
 	return ret
 }
 
@@ -4414,8 +4315,6 @@ func (f *testFixture) TearDown() {
 			fmt.Println(es.LogStore.String())
 		})
 	}
-	f.TempDirFixture.TearDown()
-	f.kClient.TearDown()
 	close(f.fsWatcher.Events)
 	close(f.fsWatcher.Errors)
 	f.cancel()

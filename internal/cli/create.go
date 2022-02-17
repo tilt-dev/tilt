@@ -23,7 +23,6 @@ package cli
 
 import (
 	"context"
-	"os"
 	"runtime"
 	"time"
 
@@ -45,8 +44,7 @@ type createCmd struct {
 
 var _ tiltCmd = &createCmd{}
 
-func newCreateCmd() *createCmd {
-	streams := genericclioptions.IOStreams{Out: os.Stdout, ErrOut: os.Stderr, In: os.Stdin}
+func newCreateCmd(streams genericclioptions.IOStreams) *createCmd {
 	return &createCmd{
 		streams: streams,
 	}
@@ -82,10 +80,10 @@ func (c *createCmd) register() *cobra.Command {
 	c.options = o
 	c.cmd = cmd
 
-	addCommand(cmd, newCreateFileWatchCmd())
-	addCommand(cmd, newCreateCmdCmd())
-	addCommand(cmd, newCreateRepoCmd())
-	addCommand(cmd, newCreateExtCmd())
+	addCommand(cmd, newCreateFileWatchCmd(c.streams))
+	addCommand(cmd, newCreateCmdCmd(c.streams))
+	addCommand(cmd, newCreateRepoCmd(c.streams))
+	addCommand(cmd, newCreateExtCmd(c.streams))
 
 	return cmd
 }

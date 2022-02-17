@@ -28,8 +28,6 @@ func TestViewsHandled(t *testing.T) {
 	f.sendView(v)
 	f.assertHandlerCallCount(2)
 	assert.Equal(t, "goodbye world", f.handler.lastViewLog)
-
-	f.tearDown()
 }
 
 func TestHandlerErrorDoesntStopLoop(t *testing.T) {
@@ -47,8 +45,6 @@ func TestHandlerErrorDoesntStopLoop(t *testing.T) {
 	f.sendView(v)
 	f.assertHandlerCallCount(2)
 	assert.Equal(t, "goodbye world", f.handler.lastViewLog)
-
-	f.tearDown()
 }
 
 func TestNonPersistentReaderExistsAfterHandling(t *testing.T) {
@@ -60,8 +56,6 @@ func TestNonPersistentReaderExistsAfterHandling(t *testing.T) {
 	f.assertHandlerCallCount(1)
 	assert.Equal(t, "hello world", f.handler.lastViewLog)
 	f.assertDone()
-
-	f.tearDown()
 }
 
 func TestWebsocketCloseOnNextReaderError(t *testing.T) {
@@ -92,7 +86,7 @@ func newWebsocketReaderFixture(t *testing.T) *websocketReaderFixture {
 	conn := newFakeConn()
 	handler := &fakeViewHandler{}
 
-	return &websocketReaderFixture{
+	ret := &websocketReaderFixture{
 		t:       t,
 		ctx:     ctx,
 		cancel:  cancel,
@@ -102,6 +96,9 @@ func newWebsocketReaderFixture(t *testing.T) *websocketReaderFixture {
 		wsr:     newWebsocketReader(conn, true, handler),
 		done:    make(chan error),
 	}
+
+	t.Cleanup(ret.tearDown)
+	return ret
 }
 
 func (f *websocketReaderFixture) withPersistent(persistent bool) *websocketReaderFixture {
