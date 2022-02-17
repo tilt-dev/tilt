@@ -524,8 +524,6 @@ func TestHoldDisabled(t *testing.T) {
 
 	f.upsertLocalManifest("local")
 	f.st.ManifestTargets["local"].State.DisableState = v1alpha1.DisableStateDisabled
-
-	f.assertHold("local", store.HoldReasonDisabled)
 	f.assertNoTargetNextToBuild()
 }
 

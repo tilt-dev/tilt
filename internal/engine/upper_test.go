@@ -3536,24 +3536,6 @@ func TestOverrideTriggerModeBadTriggerModeLogsError(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestDisablingResourcePreventsBuild(t *testing.T) {
-	f := newTestFixture(t)
-
-	m := manifestbuilder.New(f, "foo").WithLocalResource("foo", []string{f.Path()}).Build()
-
-	f.Start([]model.Manifest{m})
-
-	f.setDisableState(m.Name, true)
-
-	action := server.AppendToTriggerQueueAction{Name: "foo", Reason: 123}
-	f.store.Dispatch(action)
-
-	f.WaitUntil("is waiting+disabled", func(state store.EngineState) bool {
-		_, holds := buildcontrol.NextTargetToBuild(state)
-		return holds["foo"].Reason == store.HoldReasonDisabled
-	})
-}
-
 func TestDisableButtonIsCreated(t *testing.T) {
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
