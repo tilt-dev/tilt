@@ -15,7 +15,7 @@ const ANSI_COLORS = [
       , { color: "255,255,255",    "class": "ansi-white"   }
     ]
   , [
-        { color: "#001b20",     "class": "ansi-bright-black"   }
+        { color: "#586e75",     "class": "ansi-bright-black"   }
       , { color: "#f7aaa4",    "class": "ansi-bright-red"     }
       , { color: "#70d37b",      "class": "ansi-bright-green"   }
       , { color: "#fdcf6f",   "class": "ansi-bright-yellow"  }
@@ -587,7 +587,7 @@ class Anser {
                     jsonChunk.bg_truecolor = null;
                 }
             } else if (jsonChunk.bg[0] == '#') {
-                colors.push("color:" + jsonChunk.bg + ";");
+                colors.push("background-color:" + jsonChunk.bg + ";");
             } else {
               colors.push("background-color:rgb(" + jsonChunk.bg + ")");
             }
