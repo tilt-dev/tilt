@@ -14,11 +14,9 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-// NOTE(maia): we eventually want to move the BuildController into its own package
-// (as we do with all subscribers), but for now, just move the underlying functions
-// so they can be used from elsewhere.
-
 // Algorithm to choose a manifest to build next.
+//
+// The HoldSet is used in the UI to display why a resource is waiting.
 func NextTargetToBuild(state store.EngineState) (*store.ManifestTarget, HoldSet) {
 	holds := HoldSet{}
 
@@ -80,7 +78,6 @@ func NextTargetToBuild(state store.EngineState) (*store.ManifestTarget, HoldSet)
 
 	HoldTargetsWithBuildingComponents(state, targets, holds)
 	HoldTargetsWaitingOnDependencies(state, targets, holds)
-	HoldDisabledTargets(targets, holds)
 	HoldTargetsWaitingOnCluster(state, targets, holds)
 
 	// If any of the manifest targets haven't been built yet, build them now.
@@ -279,14 +276,6 @@ func HoldTargetsWaitingOnDependencies(state store.EngineState, mts []*store.Mani
 	}
 }
 
-func HoldDisabledTargets(mts []*store.ManifestTarget, holds HoldSet) {
-	for _, mt := range mts {
-		if mt.State.DisableState == v1alpha1.DisableStateDisabled {
-			holds.AddHold(mt, store.Hold{Reason: store.HoldReasonDisabled})
-		}
-	}
-}
-
 // Helper function for ordering targets that have never been built before.
 func NextUnbuiltTargetToBuild(unbuilt []*store.ManifestTarget) *store.ManifestTarget {
 	// Local resources come before all cluster resources, because they
@@ -448,6 +437,11 @@ func FindTargetsNeedingAnyBuild(state store.EngineState) []*store.ManifestTarget
 
 	result := []*store.ManifestTarget{}
 	for _, target := range state.Targets() {
+		// Skip disabled targets.
+		if target.State.DisableState == v1alpha1.DisableStateDisabled {
+			continue
+		}
+
 		if !target.State.StartedFirstBuild() && target.Manifest.TriggerMode.AutoInitial() {
 			result = append(result, target)
 			continue
