@@ -6,7 +6,7 @@ export const BuildButtonTooltip = {
   AlreadyQueued: "Resource already queued!",
   NeedsManualTrigger: "Trigger update to sync changes",
   UpdateInProgOrPending: "Resource already updating!",
-  Stop: "Stop this update",
+  Stop: "Stop update",
   Default: "Trigger update",
 }
 

@@ -10,11 +10,12 @@ import {
   mockAnalyticsCalls,
 } from "./analytics_test_helpers"
 import { ApiButton } from "./ApiButton"
+import { makeUIButton } from "./ApiButton.testhelpers"
 import BuildButton, { StartBuildButtonProps } from "./BuildButton"
 import { InstrumentedButton } from "./instrumentedComponents"
 import TiltTooltip from "./Tooltip"
 import { BuildButtonTooltip, startBuild } from "./trigger"
-import { TriggerMode, UIButton } from "./types"
+import { TriggerMode } from "./types"
 
 function expectClickable(button: any, expected: boolean) {
   const ib = button.find(InstrumentedButton)
@@ -44,20 +45,14 @@ function expectIsStopButton(button: any, expected: boolean) {
   expect(button.find(ApiButton).hasClass("stop-button")).toEqual(expected)
 }
 
-function stopBuildButton(): UIButton {
-  return {
-    metadata: {
-      name: "stopBuild",
-    },
-  }
-}
+const stopBuildButton = makeUIButton({ name: "stopBuild" })
 
 function BuildButtonTestWrapper(props: Partial<StartBuildButtonProps>) {
   return (
     <MemoryRouter initialEntries={["/"]}>
       <SnackbarProvider>
         <BuildButton
-          stopBuildButton={stopBuildButton()}
+          stopBuildButton={stopBuildButton}
           onStartBuild={props.onStartBuild ?? (() => {})}
           hasBuilt={props.hasBuilt ?? false}
           isBuilding={props.isBuilding ?? false}
@@ -243,7 +238,7 @@ describe("SidebarBuildButton", () => {
       expectWithTooltip(button, BuildButtonTooltip.Stop)
       expectIsStopButton(button, true)
       const apiButton = button.find(ApiButton)
-      expect(apiButton.props().uiButton).toEqual(stopBuildButton())
+      expect(apiButton.props().uiButton).toEqual(stopBuildButton)
     })
   })
 })

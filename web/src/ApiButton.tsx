@@ -619,24 +619,27 @@ export function ApiButton(props: PropsWithChildren<ApiButtonProps>) {
       setLoading(false)
     }
 
-    const snackbarLogsLink =
-      componentType === ApiButtonType.Global ? (
-        <LogLink to="/r/(all)/overview">Global Logs</LogLink>
-      ) : (
-        <LogLink
-          to={pb.encpath`/r/${
-            uiButton.spec?.location?.componentID || "(all)"
-          }/overview`}
-        >
-          Resource Logs
-        </LogLink>
+    // skip snackbar notifications for special buttons (e.g., disable, stop build)
+    if (!buttonType(uiButton)) {
+      const snackbarLogsLink =
+        componentType === ApiButtonType.Global ? (
+          <LogLink to="/r/(all)/overview">Global Logs</LogLink>
+        ) : (
+          <LogLink
+            to={pb.encpath`/r/${
+              uiButton.spec?.location?.componentID || "(all)"
+            }/overview`}
+          >
+            Resource Logs
+          </LogLink>
+        )
+      enqueueSnackbar(
+        <div>
+          Triggered button: {uiButton.spec?.text || uiButton.metadata?.name}
+          {snackbarLogsLink}
+        </div>
       )
-    enqueueSnackbar(
-      <div>
-        Triggered button: {uiButton.spec?.text || uiButton.metadata?.name}
-        {snackbarLogsLink}
-      </div>
-    )
+    }
   }
 
   const submitButton = (
@@ -706,7 +709,7 @@ export function ApiButton(props: PropsWithChildren<ApiButtonProps>) {
 }
 
 function addButtonToSet(bs: ButtonSet, b: UIButton) {
-  switch (annotations(b)[UIBUTTON_ANNOTATION_TYPE]) {
+  switch (buttonType(b)) {
     case UIBUTTON_TOGGLE_DISABLE_TYPE:
       bs.toggleDisable = b
       break

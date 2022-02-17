@@ -29,7 +29,7 @@ type StopBuildButtonProps = {
 export type BuildButtonProps = StartBuildButtonProps & StopBuildButtonProps
 
 function BuildButton(props: BuildButtonProps) {
-  const { stopBuildButton, ...startBuildButtonProps } = { ...props }
+  const { stopBuildButton, ...startBuildButtonProps } = props
   if (props.isBuilding) {
     if (!stopBuildButton) {
       return null
@@ -43,7 +43,7 @@ function BuildButton(props: BuildButtonProps) {
       <TiltTooltip title={BuildButtonTooltip.Stop}>
         <BuildButtonCursorWrapper>
           <ApiButton uiButton={stopBuildButton} className={classes.join(" ")}>
-            <StopBuildButtonSvg className={"icon"} />
+            <StopBuildButtonSvg className="icon" />
           </ApiButton>
         </BuildButtonCursorWrapper>
       </TiltTooltip>
@@ -128,8 +128,12 @@ function StartBuildButton(props: StartBuildButtonProps) {
     classes.push("is-building")
   }
   const tooltip = buildButtonTooltip(clickable, isEmphasized, props.isQueued)
+  // Set the tooltip key to the tooltip message so that each message is a different "component" and enterNextDelay
+  // applies when the message changes.
+  // Otherwise, we often display a flicker of "resource is already queued!" after clicking "start build" before
+  // the "stop build" button appears.
   return (
-    <TiltTooltip title={tooltip}>
+    <TiltTooltip title={tooltip} key={tooltip}>
       <BuildButtonCursorWrapper
         className={clickable ? ".is-clickable" : undefined}
       >
@@ -142,9 +146,9 @@ function StartBuildButton(props: StartBuildButtonProps) {
           analyticsTags={props.analyticsTags}
         >
           {isEmphasized ? (
-            <StartBuildButtonManualSvg role="presentation" className={"icon"} />
+            <StartBuildButtonManualSvg role="presentation" className="icon" />
           ) : (
-            <StartBuildButtonSvg role="presentation" className={"icon"} />
+            <StartBuildButtonSvg role="presentation" className="icon" />
           )}
         </InstrumentedButton>
       </BuildButtonCursorWrapper>
