@@ -135,8 +135,8 @@ func TestHandleTriggerNoManifestWithName(t *testing.T) {
 
 	// Expect SendToTriggerQueue to fail: make sure we reply to the HTTP request
 	// with an error when this happens
-	require.Equal(t, http.StatusBadRequest, status, "handler returned wrong status code")
-	require.Contains(t, respBody, "no manifest found with name")
+	require.Equal(t, http.StatusOK, status, "handler returned wrong status code")
+	require.Equal(t, respBody, "resource \"foo\" does not exist")
 }
 
 func TestHandleTriggerTooManyManifestNames(t *testing.T) {
@@ -175,6 +175,20 @@ func TestHandleTriggerTiltfileOK(t *testing.T) {
 	status, _ := f.makeReq("/api/trigger", f.serv.HandleTrigger, http.MethodPost, payload)
 
 	require.Equal(t, http.StatusOK, status, "handler returned wrong status code")
+}
+
+func TestHandleTriggerResourceDisabled(t *testing.T) {
+	f := newTestFixture(t)
+
+	f.withDummyManifests("foo")
+	state := f.st.LockMutableStateForTesting()
+	state.ManifestTargets["foo"].State.DisableState = v1alpha1.DisableStateDisabled
+	f.st.UnlockMutableState()
+	payload := `{"manifest_names": ["foo"]}`
+	status, body := f.makeReq("/api/trigger", f.serv.HandleTrigger, http.MethodPost, payload)
+
+	require.Equal(t, http.StatusOK, status, "handler returned wrong status code")
+	require.Equal(t, "resource \"foo\" is currently disabled", body)
 }
 
 func TestSendToTriggerQueue_manualManifest(t *testing.T) {
@@ -259,7 +273,7 @@ func TestSendToTriggerQueue_noManifestWithName(t *testing.T) {
 
 	err := server.SendToTriggerQueue(f.st, "foobar", model.BuildReasonFlagTriggerWeb)
 
-	assert.EqualError(t, err, "no manifest found with name 'foobar'")
+	assert.EqualError(t, err, "resource \"foobar\" does not exist")
 	store.AssertNoActionOfType(t, reflect.TypeOf(server.AppendToTriggerQueueAction{}), f.getActions)
 }
 

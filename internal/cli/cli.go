@@ -76,10 +76,10 @@ up-to-date in real-time. Think 'docker build && kubectl apply' or 'docker-compos
 	addCommand(rootCmd, &demoCmd{})
 	addCommand(rootCmd, newEnableCmd())
 	addCommand(rootCmd, newDisableCmd())
+	addCommand(rootCmd, newTriggerCmd(streams))
 
 	rootCmd.AddCommand(analytics.NewCommand())
 	rootCmd.AddCommand(newDumpCmd(rootCmd, streams))
-	rootCmd.AddCommand(newTriggerCmd())
 	rootCmd.AddCommand(newAlphaCmd(streams))
 
 	globalFlags := rootCmd.PersistentFlags()

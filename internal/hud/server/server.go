@@ -23,6 +23,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/hud/webview"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/tiltfiles"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/assets"
 	"github.com/tilt-dev/tilt/pkg/model"
 	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
@@ -239,6 +240,10 @@ func (s *HeadsUpServer) HandleSetTiltfileArgs(w http.ResponseWriter, req *http.R
 	}
 }
 
+// Responds with:
+// * 200/empty body on success
+// * 200/error message in body on well-formed, unservicable requests (e.g. resource is disabled or doesn't exist)
+// * 400/error message in body on badly formed requests (e.g., invalid json)
 func (s *HeadsUpServer) HandleTrigger(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodPost {
 		http.Error(w, "must be POST request", http.StatusBadRequest)
@@ -259,9 +264,11 @@ func (s *HeadsUpServer) HandleTrigger(w http.ResponseWriter, req *http.Request) 
 		return
 	}
 
-	err = SendToTriggerQueue(s.store, payload.ManifestNames[0], payload.BuildReason)
+	mn := payload.ManifestNames[0]
+
+	err = SendToTriggerQueue(s.store, mn, payload.BuildReason)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		_, _ = fmt.Fprint(w, err.Error())
 		return
 	}
 }
@@ -269,10 +276,17 @@ func (s *HeadsUpServer) HandleTrigger(w http.ResponseWriter, req *http.Request) 
 func SendToTriggerQueue(st store.RStore, name string, buildReason model.BuildReason) error {
 	mName := model.ManifestName(name)
 
-	err := checkManifestsExist(st, []string{name})
-	if err != nil {
-		return err
+	state := st.RLockState()
+	ms, ok := state.ManifestState(model.ManifestName(name))
+	if !ok {
+		st.RUnlockState()
+		return fmt.Errorf("resource %q does not exist", name)
 	}
+	if ms != nil && ms.DisableState == v1alpha1.DisableStateDisabled {
+		st.RUnlockState()
+		return fmt.Errorf("resource %q is currently disabled", name)
+	}
+	st.RUnlockState()
 
 	st.Dispatch(AppendToTriggerQueueAction{Name: mName, Reason: buildReason})
 	return nil
