@@ -22,7 +22,6 @@ import (
 
 func TestTrue(t *testing.T) {
 	f := newProcessExecFixture(t)
-	defer f.tearDown()
 
 	f.start("exit 0")
 
@@ -31,10 +30,8 @@ func TestTrue(t *testing.T) {
 
 func TestWorkdir(t *testing.T) {
 	f := newProcessExecFixture(t)
-	defer f.tearDown()
 
 	d := tempdir.NewTempDirFixture(t)
-	defer d.TearDown()
 
 	cmd := "pwd"
 	if runtime.GOOS == "windows" {
@@ -49,7 +46,6 @@ func TestWorkdir(t *testing.T) {
 
 func TestSleep(t *testing.T) {
 	f := newProcessExecFixture(t)
-	defer f.tearDown()
 
 	cmd := "sleep 1"
 	if runtime.GOOS == "windows" {
@@ -71,7 +67,6 @@ func TestShutdownOnCancel(t *testing.T) {
 		t.Skip("no bash on windows")
 	}
 	f := newProcessExecFixture(t)
-	defer f.tearDown()
 
 	cmd := `
 function cleanup()
@@ -93,7 +88,6 @@ sleep 100
 
 func TestPrintsLogs(t *testing.T) {
 	f := newProcessExecFixture(t)
-	defer f.tearDown()
 
 	f.start("echo testing123456")
 	f.assertCmdSucceeds()
@@ -102,7 +96,6 @@ func TestPrintsLogs(t *testing.T) {
 
 func TestHandlesExits(t *testing.T) {
 	f := newProcessExecFixture(t)
-	defer f.tearDown()
 
 	f.start("exit 1")
 
@@ -115,7 +108,6 @@ func TestStopsGrandchildren(t *testing.T) {
 		t.Skip("no bash on windows")
 	}
 	f := newProcessExecFixture(t)
-	defer f.tearDown()
 
 	f.start("bash -c '(for i in $(seq 1 20); do echo loop$i; sleep 1; done)'")
 	f.waitForStatus(Running)
@@ -140,7 +132,6 @@ func TestStopsGrandchildren(t *testing.T) {
 
 func TestHandlesProcessThatFailsToStart(t *testing.T) {
 	f := newProcessExecFixture(t)
-	defer f.tearDown()
 
 	f.startMalformedCommand()
 	f.waitForError()
@@ -149,7 +140,6 @@ func TestHandlesProcessThatFailsToStart(t *testing.T) {
 
 func TestExecEmpty(t *testing.T) {
 	f := newProcessExecFixture(t)
-	defer f.tearDown()
 
 	f.start("")
 	f.waitForError()
@@ -213,13 +203,16 @@ func newProcessExecFixture(t *testing.T) *processExecFixture {
 	ctx, _, _ := testutils.ForkedCtxAndAnalyticsForTest(testWriter)
 	ctx, cancel := context.WithCancel(ctx)
 
-	return &processExecFixture{
+	ret := &processExecFixture{
 		t:          t,
 		ctx:        ctx,
 		cancel:     cancel,
 		execer:     execer,
 		testWriter: testWriter,
 	}
+
+	t.Cleanup(ret.tearDown)
+	return ret
 }
 
 func (f *processExecFixture) tearDown() {

@@ -30,7 +30,6 @@ var PodmonitorWriteGoldenMaster = "0"
 
 func TestMonitorReady(t *testing.T) {
 	f := newPMFixture(t)
-	defer f.TearDown()
 
 	start := time.Now()
 	p := v1alpha1.Pod{
@@ -68,7 +67,6 @@ func TestMonitorReady(t *testing.T) {
 // https://github.com/tilt-dev/tilt/issues/3513
 func TestJobCompleted(t *testing.T) {
 	f := newPMFixture(t)
-	defer f.TearDown()
 
 	start := time.Now()
 	p := v1alpha1.Pod{
@@ -108,7 +106,6 @@ func TestJobCompleted(t *testing.T) {
 
 func TestJobCompletedAfterReady(t *testing.T) {
 	f := newPMFixture(t)
-	defer f.TearDown()
 
 	start := time.Now()
 	p := v1alpha1.Pod{
@@ -173,7 +170,7 @@ func newPMFixture(t *testing.T) *pmFixture {
 	ctx, cancel := context.WithCancel(context.Background())
 	ctx = logger.WithLogger(ctx, logger.NewTestLogger(out))
 
-	return &pmFixture{
+	ret := &pmFixture{
 		TempDirFixture: f,
 		pm:             pm,
 		ctx:            ctx,
@@ -181,11 +178,14 @@ func newPMFixture(t *testing.T) *pmFixture {
 		out:            out,
 		store:          st,
 	}
+
+	t.Cleanup(ret.TearDown)
+
+	return ret
 }
 
 func (f *pmFixture) TearDown() {
 	f.cancel()
-	f.TempDirFixture.TearDown()
 }
 
 type testStore struct {

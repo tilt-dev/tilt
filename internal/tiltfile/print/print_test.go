@@ -15,7 +15,6 @@ import (
 
 func TestWarn(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.File("Tiltfile", "warn('problem 1')")
 	_, err := f.ExecFile("Tiltfile")
@@ -25,7 +24,6 @@ func TestWarn(t *testing.T) {
 
 func TestFail(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.File("Tiltfile", "fail('problem 1')")
 	_, err := f.ExecFile("Tiltfile")
 	if assert.Error(t, err) {
@@ -52,7 +50,6 @@ func TestExitArgTypes(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newFixture(t)
-			defer f.TearDown()
 
 			f.File(
 				"Tiltfile", fmt.Sprintf(`
@@ -75,7 +72,6 @@ fail("this can't happen!")
 
 func TestExitLoadedTiltfile(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.File("exit.tiltfile", `exit("later alligator")`)
 

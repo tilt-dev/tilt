@@ -351,11 +351,12 @@ func NewFakeK8sClient(t testing.TB) *FakeK8sClient {
 	}
 	ctx, cancel := context.WithCancel(logger.WithLogger(context.Background(), logger.NewTestLogger(os.Stdout)))
 	t.Cleanup(cancel)
+	t.Cleanup(cli.tearDown)
 	cli.ownerFetcher = NewOwnerFetcher(ctx, cli)
 	return cli
 }
 
-func (c *FakeK8sClient) TearDown() {
+func (c *FakeK8sClient) tearDown() {
 	c.mu.Lock()
 	podWatches := append([]fakePodWatch{}, c.podWatches...)
 	serviceWatches := append([]fakeServiceWatch{}, c.serviceWatches...)

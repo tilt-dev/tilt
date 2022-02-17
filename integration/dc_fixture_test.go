@@ -20,14 +20,13 @@ type dcFixture struct {
 }
 
 func newDCFixture(t *testing.T, dir string) *dcFixture {
-	f := newFixture(t, dir)
-	return &dcFixture{fixture: f}
+	ret := &dcFixture{}
+	t.Cleanup(ret.TearDown)
+	ret.fixture = newFixture(t, dir)
+	return ret
 }
 
 func (f *dcFixture) TearDown() {
-	f.StartTearDown()
-	f.fixture.TearDown()
-
 	// Double check it's all dead
 	f.dockerKillAll("tilt")
 	_ = exec.CommandContext(f.ctx, "pkill", "docker-compose").Run()
@@ -105,18 +104,24 @@ func (f *dcFixture) CurlUntil(ctx context.Context, service string, url string, e
 	}, expectedContents)
 }
 
-func (f *dcFixture) doV1V2(body func()) {
-	os.Setenv("TILT_DOCKER_COMPOSE_CMD", "docker-compose-v1")
-	fmt.Println("Running with docker-compose-v1")
-	body()
-	os.Unsetenv("TILT_DOCKER_COMPOSE_CMD")
-	fmt.Println("Running with docker-compose")
+func doV1V2(t *testing.T, body func(t *testing.T)) {
+	t.Run("docker-compose-v1", func(t *testing.T) {
+		os.Setenv("TILT_DOCKER_COMPOSE_CMD", "docker-compose-v1")
+		fmt.Println("Running with docker-compose-v1")
+		body(t)
+		os.Unsetenv("TILT_DOCKER_COMPOSE_CMD")
+	})
+
 	cmd := exec.Command("docker-compose", "version")
 	out, err := cmd.Output()
 	if err != nil {
-		fmt.Printf("error: %v\n", err)
+		fmt.Printf("error: getting docker-compose version: %v\n", err)
 	} else {
 		fmt.Print(string(out))
 	}
-	body()
+	t.Run("docker-compose v2?", func(t *testing.T) {
+		fmt.Println("Running with docker-compose")
+		body(t)
+		fmt.Print(string(out))
+	})
 }

@@ -13,7 +13,6 @@ import (
 
 func TestMatches(t *testing.T) {
 	tf := newTestFixture(t, "node_modules")
-	defer tf.TearDown()
 	tf.AssertResult(tf.JoinPath("node_modules", "foo"), true)
 	tf.AssertResult(tf.JoinPath("node_modules", "foo", "bar", "baz"), true)
 	tf.AssertResultEntireDir(tf.JoinPath("node_modules"), true)
@@ -23,21 +22,18 @@ func TestMatches(t *testing.T) {
 
 func TestComment(t *testing.T) {
 	tf := newTestFixture(t, "# generated code")
-	defer tf.TearDown()
 	tf.AssertResult(tf.JoinPath("node_modules", "foo"), false)
 	tf.AssertResult(tf.JoinPath("foo", "bar"), false)
 }
 
 func TestGlob(t *testing.T) {
 	tf := newTestFixture(t, "*/temp*")
-	defer tf.TearDown()
 	tf.AssertResult(tf.JoinPath("somedir", "temporary.txt"), true)
 	tf.AssertResult(tf.JoinPath("somedir", "temp"), true)
 }
 
 func TestCurrentDirDoubleGlob(t *testing.T) {
 	tf := newTestFixture(t, "**/temp*")
-	defer tf.TearDown()
 	tf.AssertResult(tf.JoinPath("a", "temporary.txt"), true)
 	tf.AssertResult(tf.JoinPath("a", "b", "temporary.txt"), true)
 	tf.AssertResult(tf.JoinPath("a", "b", "c", "temporary.txt"), true)
@@ -47,7 +43,6 @@ func TestCurrentDirDoubleGlob(t *testing.T) {
 
 func TestInnerDirDoubleGlob(t *testing.T) {
 	tf := newTestFixture(t, "a/**/temp*")
-	defer tf.TearDown()
 	tf.AssertResult(tf.JoinPath("a", "temporary.txt"), true)
 	tf.AssertResult(tf.JoinPath("a", "b", "temporary.txt"), true)
 	tf.AssertResult(tf.JoinPath("a", "b", "c", "temporary.txt"), true)
@@ -57,21 +52,18 @@ func TestInnerDirDoubleGlob(t *testing.T) {
 
 func TestUplevel(t *testing.T) {
 	tf := newTestFixture(t, "../a/b.txt")
-	defer tf.TearDown()
 	tf.AssertResult(tf.JoinPath("..", "a", "b.txt"), true)
 	tf.AssertResult(tf.JoinPath("a", "b.txt"), false)
 }
 
 func TestUplevelDoubleGlob(t *testing.T) {
 	tf := newTestFixture(t, "../**/b.txt")
-	defer tf.TearDown()
 	tf.AssertResult(tf.JoinPath("..", "a", "b.txt"), true)
 	tf.AssertResult(tf.JoinPath("a", "b.txt"), true)
 }
 
 func TestUplevelMatchDirDoubleGlob(t *testing.T) {
 	tf := newTestFixture(t, "../**/b")
-	defer tf.TearDown()
 	tf.AssertResult(tf.JoinPath("a", "temporary.txt"), false)
 	tf.AssertResult(tf.JoinPath("a", "b"), true)
 	tf.AssertResult(tf.JoinPath("a", "b", "temporary.txt"), true)
@@ -82,7 +74,6 @@ func TestUplevelMatchDirDoubleGlob(t *testing.T) {
 
 func TestOneCharacterExtension(t *testing.T) {
 	tf := newTestFixture(t, "temp?")
-	defer tf.TearDown()
 	tf.AssertResult(tf.JoinPath("tempa"), true)
 	tf.AssertResult(tf.JoinPath("tempeh"), false)
 	tf.AssertResult(tf.JoinPath("temp"), false)
@@ -90,7 +81,6 @@ func TestOneCharacterExtension(t *testing.T) {
 
 func TestException(t *testing.T) {
 	tf := newTestFixture(t, "docs", "!docs/README.md")
-	defer tf.TearDown()
 	tf.AssertResult(tf.JoinPath("docs", "stuff.md"), true)
 	tf.AssertResult(tf.JoinPath("docs", "README.md"), false)
 	tf.AssertResultEntireDir(tf.JoinPath("docs"), false)
@@ -98,7 +88,6 @@ func TestException(t *testing.T) {
 
 func TestNestedException(t *testing.T) {
 	tf := newTestFixture(t, "a", "!a/b", "a/b/c")
-	defer tf.TearDown()
 	tf.AssertResultEntireDir(tf.JoinPath("a"), false)
 	tf.AssertResultEntireDir(tf.JoinPath("a", "b"), false)
 	tf.AssertResultEntireDir(tf.JoinPath("a", "b", "c"), true)
@@ -106,14 +95,12 @@ func TestNestedException(t *testing.T) {
 
 func TestOrthogonalException(t *testing.T) {
 	tf := newTestFixture(t, "a", "b", "!b/README.md")
-	defer tf.TearDown()
 	tf.AssertResultEntireDir(tf.JoinPath("a"), true)
 	tf.AssertResultEntireDir(tf.JoinPath("b"), false)
 }
 
 func TestNoDockerignoreFile(t *testing.T) {
 	tf := newTestFixture(t)
-	defer tf.TearDown()
 	tf.AssertResult(tf.JoinPath("hi"), false)
 	tf.AssertResult(tf.JoinPath("hi", "hello"), false)
 	tf.AssertResultEntireDir(tf.JoinPath("hi"), false)
@@ -168,8 +155,4 @@ func (tf *testFixture) AssertResultEntireDir(path string, expectedMatches bool) 
 	} else if assert.NoError(tf.t, err) {
 		assert.Equalf(tf.t, expectedMatches, isIgnored, "Expected isIgnored to be %t for file %s, got %t", expectedMatches, path, isIgnored)
 	}
-}
-
-func (tf *testFixture) TearDown() {
-	tf.repoRoot.TearDown()
 }

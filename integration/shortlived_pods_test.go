@@ -14,7 +14,6 @@ import (
 
 func TestShortlivedPods(t *testing.T) {
 	f := newK8sFixture(t, "shortlived_pods")
-	defer f.TearDown()
 
 	f.TiltUp()
 

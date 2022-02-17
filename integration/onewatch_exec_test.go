@@ -14,7 +14,6 @@ import (
 
 func TestWatchExec(t *testing.T) {
 	f := newK8sFixture(t, "onewatch_exec")
-	defer f.TearDown()
 
 	f.TiltUp("--update-mode=exec")
 

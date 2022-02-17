@@ -12,7 +12,6 @@ import (
 
 func TestReadJSON(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.UseRealFS()
 
@@ -60,7 +59,6 @@ test()
 
 func TestJSONDoesNotExist(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.File("Tiltfile", `result = read_json("dne.json")`)
 	result, err := f.ExecFile("Tiltfile")
@@ -75,7 +73,6 @@ func TestJSONDoesNotExist(t *testing.T) {
 
 func TestMalformedJSON(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.UseRealFS()
 
@@ -93,7 +90,6 @@ func TestMalformedJSON(t *testing.T) {
 
 func TestDecodeJSON(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	for _, blob := range []bool{false, true} {
 		t.Run(fmt.Sprintf("blob: %v", blob), func(t *testing.T) {
@@ -132,7 +128,6 @@ test()
 
 func TestEncodeJSON(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 expected = '''[
@@ -173,7 +168,6 @@ test()
 
 func TestEncodeJSONNonStringMapKey(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.File("Tiltfile", `encode_json({1: 'hello'})`)
 
@@ -184,7 +178,6 @@ func TestEncodeJSONNonStringMapKey(t *testing.T) {
 
 func TestEncodeJSONNonJSONable(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 encode_json(blob('hello'))

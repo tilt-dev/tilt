@@ -14,7 +14,6 @@ import (
 
 func TestNamespaceFlag(t *testing.T) {
 	f := newK8sFixture(t, "namespaceflag")
-	defer f.TearDown()
 	f.SetRestrictedCredentials()
 
 	// Specify the namespace in the Tilt Up invocation,

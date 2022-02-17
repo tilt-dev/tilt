@@ -19,7 +19,6 @@ const cleanupTxt = "cleanup.txt"
 
 func TestLocalResource(t *testing.T) {
 	f := newFixture(t, "local_resource")
-	defer f.TearDown()
 
 	removeTestFiles := func() {
 		require.NoError(t, os.RemoveAll(f.testDirPath(cleanupTxt)))

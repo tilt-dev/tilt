@@ -29,7 +29,6 @@ type localResource struct {
 // this due to the subtlety in various states.
 func TestTiltCI(t *testing.T) {
 	f := newK8sFixture(t, "tilt_ci")
-	defer f.TearDown()
 	f.SetRestrictedCredentials()
 
 	// dynamically generate a bunch of combinations of local_resource args and write out to

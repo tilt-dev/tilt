@@ -358,7 +358,6 @@ type apiFixture struct {
 
 func newAPIFixture(t testing.TB) *apiFixture {
 	f := tempdir.NewTempDirFixture(t)
-	t.Cleanup(func() { f.TearDown() })
 
 	ctx := context.Background()
 	c := fake.NewFakeTiltClient()

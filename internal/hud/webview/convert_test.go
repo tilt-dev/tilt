@@ -47,7 +47,6 @@ func completeProtoView(t *testing.T, s store.EngineState) *proto_webview.View {
 
 func TestStateToWebViewRelativeEditPaths(t *testing.T) {
 	f := tempdir.NewTempDirFixture(t)
-	defer f.TearDown()
 
 	m := model.Manifest{
 		Name: "foo",

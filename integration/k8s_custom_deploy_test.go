@@ -24,7 +24,6 @@ func TestK8sCustomDeploy(t *testing.T) {
 	}
 
 	f := newK8sFixture(t, "k8s_custom_deploy")
-	defer f.TearDown()
 	f.SetRestrictedCredentials()
 
 	f.TiltUp()

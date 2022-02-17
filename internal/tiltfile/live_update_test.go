@@ -15,7 +15,6 @@ import (
 
 func TestLiveUpdateStepNotUsed(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.WriteFile("Tiltfile", "restart_container()")
 
@@ -24,7 +23,6 @@ func TestLiveUpdateStepNotUsed(t *testing.T) {
 
 func TestLiveUpdateRestartContainerNotLast(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -41,7 +39,6 @@ docker_build('gcr.io/foo', 'foo',
 
 func TestLiveUpdateSyncRelDest(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -57,7 +54,6 @@ docker_build('gcr.io/foo', 'foo',
 
 func TestLiveUpdateRunBeforeSync(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -74,7 +70,6 @@ docker_build('gcr.io/foo', 'foo',
 
 func TestLiveUpdateNonStepInSteps(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -91,7 +86,6 @@ docker_build('gcr.io/foo', 'foo',
 
 func TestLiveUpdateNonStringInFullBuildTriggers(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -109,7 +103,6 @@ docker_build('gcr.io/foo', 'foo',
 
 func TestLiveUpdateNonStringInRunTriggers(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -125,7 +118,6 @@ docker_build('gcr.io/foo', 'foo',
 
 func TestLiveUpdateDockerBuildUnqualifiedImageName(t *testing.T) {
 	f := newLiveUpdateFixture(t)
-	defer f.TearDown()
 
 	f.tiltfileCode = "docker_build('foo', 'foo', live_update=%s)"
 	f.init()
@@ -137,7 +129,6 @@ func TestLiveUpdateDockerBuildUnqualifiedImageName(t *testing.T) {
 
 func TestLiveUpdateDockerBuildQualifiedImageName(t *testing.T) {
 	f := newLiveUpdateFixture(t)
-	defer f.TearDown()
 
 	f.expectedImage = "gcr.io/foo"
 	f.tiltfileCode = "docker_build('gcr.io/foo', 'foo', live_update=%s)"
@@ -150,7 +141,6 @@ func TestLiveUpdateDockerBuildQualifiedImageName(t *testing.T) {
 
 func TestLiveUpdateDockerBuildDefaultRegistry(t *testing.T) {
 	f := newLiveUpdateFixture(t)
-	defer f.TearDown()
 
 	f.tiltfileCode = `
 default_registry('gcr.io')
@@ -166,7 +156,6 @@ docker_build('foo', 'foo', live_update=%s)`
 
 func TestLiveUpdateCustomBuild(t *testing.T) {
 	f := newLiveUpdateFixture(t)
-	defer f.TearDown()
 
 	f.tiltfileCode = "custom_build('foo', 'docker build -t $TAG foo', ['foo'], live_update=%s)"
 	f.init()
@@ -178,7 +167,6 @@ func TestLiveUpdateCustomBuild(t *testing.T) {
 
 func TestLiveUpdateOnlyCustomBuild(t *testing.T) {
 	f := newLiveUpdateFixture(t)
-	defer f.TearDown()
 
 	f.tiltfileCode = `
 default_registry('gcr.io/myrepo')
@@ -203,7 +191,6 @@ custom_build('foo', ':', ['foo'], live_update=%s)
 
 func TestLiveUpdateSyncFilesOutsideOfDockerBuildContext(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -219,7 +206,6 @@ docker_build('gcr.io/foo', 'foo',
 
 func TestLiveUpdateSyncFilesImageDep(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.gitInit("")
 	f.file("a/message.txt", "message")
@@ -264,7 +250,6 @@ func TestLiveUpdateRun(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newFixture(t)
-			defer f.TearDown()
 
 			f.gitInit("")
 			f.yaml("foo.yaml", deployment("foo", image("gcr.io/image-a")))
@@ -294,7 +279,6 @@ k8s_yaml('foo.yaml')
 
 func TestLiveUpdateFallBackTriggersOutsideOfDockerBuildContext(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -311,7 +295,6 @@ docker_build('gcr.io/foo', 'foo',
 
 func TestLiveUpdateSyncFilesOutsideOfCustomBuildDeps(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -327,7 +310,6 @@ custom_build('gcr.io/foo', 'docker build -t $TAG foo', ['./foo'],
 
 func TestLiveUpdateFallBackTriggersOutsideOfCustomBuildDeps(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -344,7 +326,6 @@ custom_build('gcr.io/foo', 'docker build -t $TAG foo', ['./foo'],
 
 func TestLiveUpdateRestartContainerDeprecationErrorK8s(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -361,7 +342,6 @@ docker_build('gcr.io/foo', './foo',
 
 func TestLiveUpdateRestartContainerDeprecationErrorK8sCustomBuild(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupFoo()
 
@@ -379,7 +359,6 @@ custom_build('gcr.io/foo', 'docker build -t $TAG foo', ['./foo'],
 
 func TestLiveUpdateRestartContainerDeprecationErrorMultiple(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.setupExpand()
 
@@ -407,7 +386,6 @@ docker_build('gcr.io/d', './d',
 
 func TestLiveUpdateNoRestartContainerDeprecationErrorK8sDockerCompose(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.setupFoo()
 	f.file("docker-compose.yml", `version: '3'
 services:

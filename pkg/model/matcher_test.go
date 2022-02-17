@@ -11,7 +11,6 @@ import (
 
 func TestNewRelativeFileOrChildMatcher(t *testing.T) {
 	f := tempdir.NewTempDirFixture(t)
-	defer f.TearDown()
 
 	paths := []string{
 		"a",
@@ -30,9 +29,6 @@ func TestNewRelativeFileOrChildMatcher(t *testing.T) {
 }
 
 func TestFileOrChildMatcher(t *testing.T) {
-	f := tempdir.NewTempDirFixture(t)
-	defer f.TearDown()
-
 	matcher := fileOrChildMatcher{map[string]bool{
 		"file.txt":        true,
 		"nested/file.txt": true,

@@ -11,7 +11,6 @@ import (
 
 func TestOneUpCustom(t *testing.T) {
 	f := newK8sFixture(t, "oneup_custom")
-	defer f.TearDown()
 
 	f.TiltCI("oneup-custom")
 

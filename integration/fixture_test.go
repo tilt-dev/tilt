@@ -93,6 +93,7 @@ func newFixture(t *testing.T, dir string) *fixture {
 		installed = true
 	}
 
+	t.Cleanup(f.TearDown)
 	return f
 }
 

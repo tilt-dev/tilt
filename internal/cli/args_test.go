@@ -20,7 +20,6 @@ import (
 
 func TestArgsClear(t *testing.T) {
 	f := newServerFixture(t)
-	defer f.TearDown()
 
 	createTiltfile(f, []string{"foo", "bar"})
 
@@ -39,7 +38,6 @@ func TestArgsClear(t *testing.T) {
 
 func TestArgsNewValue(t *testing.T) {
 	f := newServerFixture(t)
-	defer f.TearDown()
 
 	createTiltfile(f, []string{"foo", "bar"})
 
@@ -59,7 +57,6 @@ func TestArgsNewValue(t *testing.T) {
 
 func TestArgsClearAndNewValue(t *testing.T) {
 	f := newServerFixture(t)
-	defer f.TearDown()
 
 	createTiltfile(f, []string{"foo", "bar"})
 
@@ -74,7 +71,6 @@ func TestArgsClearAndNewValue(t *testing.T) {
 
 func TestArgsNoChange(t *testing.T) {
 	f := newServerFixture(t)
-	defer f.TearDown()
 
 	createTiltfile(f, []string{"foo", "bar"})
 
@@ -138,7 +134,6 @@ func TestArgsEdit(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newServerFixture(t)
-			defer f.TearDown()
 
 			origEditor := os.Getenv("EDITOR")
 			contents := tc.contents

@@ -8,7 +8,6 @@ import (
 
 func TestCustomBuildImageDeps(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 custom_build(
@@ -37,7 +36,6 @@ k8s_yaml('fe.yaml')
 
 func TestCustomBuildMissingImageDeps(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.file("Tiltfile", `
 custom_build(

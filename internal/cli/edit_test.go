@@ -20,7 +20,6 @@ func TestEdit(t *testing.T) {
 	}
 
 	f := newServerFixture(t)
-	defer f.TearDown()
 
 	err := f.client.Create(f.ctx, &v1alpha1.Cmd{
 		ObjectMeta: metav1.ObjectMeta{Name: "my-sleep"},

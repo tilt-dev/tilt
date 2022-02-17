@@ -12,7 +12,6 @@ import (
 
 func TestAPIResources(t *testing.T) {
 	f := newServerFixture(t)
-	defer f.TearDown()
 
 	streams, _, out, _ := genericclioptions.NewTestIOStreams()
 	cmd := newApiresourcesCmd(streams)

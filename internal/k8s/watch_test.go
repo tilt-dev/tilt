@@ -33,7 +33,6 @@ import (
 
 func TestK8sClient_WatchPods(t *testing.T) {
 	tf := newWatchTestFixture(t)
-	defer tf.TearDown()
 
 	pod1 := fakePod(PodID("abcd"), "efgh")
 	pod2 := fakePod(PodID("1234"), "hieruyge")
@@ -44,7 +43,6 @@ func TestK8sClient_WatchPods(t *testing.T) {
 
 func TestPodFromInformerCacheAfterWatch(t *testing.T) {
 	tf := newWatchTestFixture(t)
-	defer tf.TearDown()
 
 	pod1 := fakePod(PodID("abcd"), "efgh")
 	pods := []runtime.Object{pod1}
@@ -64,7 +62,6 @@ func TestPodFromInformerCacheAfterWatch(t *testing.T) {
 
 func TestPodFromInformerCacheBeforeWatch(t *testing.T) {
 	tf := newWatchTestFixture(t)
-	defer tf.TearDown()
 
 	pod1 := fakePod(PodID("abcd"), "efgh")
 	pods := []runtime.Object{pod1}
@@ -86,7 +83,6 @@ func TestPodFromInformerCacheBeforeWatch(t *testing.T) {
 
 func TestK8sClient_WatchPodsNamespaces(t *testing.T) {
 	tf := newWatchTestFixture(t)
-	defer tf.TearDown()
 
 	pod1 := fakePod(PodID("pod1"), "pod1")
 	pod2 := fakePod(PodID("pod2-system"), "pod2-system")
@@ -100,7 +96,6 @@ func TestK8sClient_WatchPodsNamespaces(t *testing.T) {
 
 func TestK8sClient_WatchPodDeletion(t *testing.T) {
 	tf := newWatchTestFixture(t)
-	defer tf.TearDown()
 
 	podID := PodID("pod1")
 	pod := fakePod(podID, "image1")
@@ -130,7 +125,6 @@ func TestK8sClient_WatchPodDeletion(t *testing.T) {
 
 func TestK8sClient_WatchPodsFilterNonPods(t *testing.T) {
 	tf := newWatchTestFixture(t)
-	defer tf.TearDown()
 
 	pod := fakePod(PodID("abcd"), "efgh")
 	pods := []runtime.Object{pod}
@@ -145,7 +139,6 @@ func TestK8sClient_WatchServices(t *testing.T) {
 		t.Skip("TODO(nick): investigate")
 	}
 	tf := newWatchTestFixture(t)
-	defer tf.TearDown()
 
 	svc1 := fakeService("svc1")
 	svc2 := fakeService("svc2")
@@ -156,7 +149,6 @@ func TestK8sClient_WatchServices(t *testing.T) {
 
 func TestK8sClient_WatchServicesFilterNonServices(t *testing.T) {
 	tf := newWatchTestFixture(t)
-	defer tf.TearDown()
 
 	svc := fakeService("svc1")
 	svcs := []runtime.Object{svc}
@@ -168,7 +160,6 @@ func TestK8sClient_WatchServicesFilterNonServices(t *testing.T) {
 
 func TestK8sClient_WatchPodsError(t *testing.T) {
 	tf := newWatchTestFixture(t)
-	defer tf.TearDown()
 
 	tf.watchErr = newForbiddenError()
 	_, err := tf.kCli.WatchPods(tf.ctx, "default")
@@ -179,7 +170,6 @@ func TestK8sClient_WatchPodsError(t *testing.T) {
 
 func TestK8sClient_WatchPodsWithNamespaceRestriction(t *testing.T) {
 	tf := newWatchTestFixture(t)
-	defer tf.TearDown()
 
 	tf.nsRestriction = "sandbox"
 	tf.kCli.configNamespace = "sandbox"
@@ -194,7 +184,6 @@ func TestK8sClient_WatchPodsWithNamespaceRestriction(t *testing.T) {
 
 func TestK8sClient_WatchPodsBlockedByNamespaceRestriction(t *testing.T) {
 	tf := newWatchTestFixture(t)
-	defer tf.TearDown()
 
 	tf.nsRestriction = "sandbox"
 	tf.kCli.configNamespace = ""
@@ -207,7 +196,6 @@ func TestK8sClient_WatchPodsBlockedByNamespaceRestriction(t *testing.T) {
 
 func TestK8sClient_WatchServicesWithNamespaceRestriction(t *testing.T) {
 	tf := newWatchTestFixture(t)
-	defer tf.TearDown()
 
 	tf.nsRestriction = "sandbox"
 	tf.kCli.configNamespace = "sandbox"
@@ -222,7 +210,6 @@ func TestK8sClient_WatchServicesWithNamespaceRestriction(t *testing.T) {
 
 func TestK8sClient_WatchServicesBlockedByNamespaceRestriction(t *testing.T) {
 	tf := newWatchTestFixture(t)
-	defer tf.TearDown()
 
 	tf.nsRestriction = "sandbox"
 	tf.kCli.configNamespace = ""
@@ -235,7 +222,6 @@ func TestK8sClient_WatchServicesBlockedByNamespaceRestriction(t *testing.T) {
 
 func TestK8sClient_WatchEvents(t *testing.T) {
 	tf := newWatchTestFixture(t)
-	defer tf.TearDown()
 
 	event1 := fakeEvent("event1", "hello1", 1)
 	event2 := fakeEvent("event2", "hello2", 2)
@@ -246,7 +232,6 @@ func TestK8sClient_WatchEvents(t *testing.T) {
 
 func TestK8sClient_WatchEventsNamespaced(t *testing.T) {
 	tf := newWatchTestFixture(t)
-	defer tf.TearDown()
 
 	tf.kCli.configNamespace = "sandbox"
 
@@ -259,7 +244,6 @@ func TestK8sClient_WatchEventsNamespaced(t *testing.T) {
 
 func TestK8sClient_WatchEventsUpdate(t *testing.T) {
 	tf := newWatchTestFixture(t)
-	defer tf.TearDown()
 
 	event1 := fakeEvent("event1", "hello1", 1)
 	event2 := fakeEvent("event2", "hello2", 1)
@@ -286,7 +270,6 @@ func TestK8sClient_WatchEventsUpdate(t *testing.T) {
 
 func TestWatchPodsAfterAdding(t *testing.T) {
 	tf := newWatchTestFixture(t)
-	defer tf.TearDown()
 
 	pod1 := fakePod(PodID("abcd"), "efgh")
 	tf.addObjects(pod1)
@@ -296,7 +279,6 @@ func TestWatchPodsAfterAdding(t *testing.T) {
 
 func TestWatchServicesAfterAdding(t *testing.T) {
 	tf := newWatchTestFixture(t)
-	defer tf.TearDown()
 
 	svc := fakeService("svc1")
 	tf.addObjects(svc)
@@ -306,7 +288,6 @@ func TestWatchServicesAfterAdding(t *testing.T) {
 
 func TestWatchEventsAfterAdding(t *testing.T) {
 	tf := newWatchTestFixture(t)
-	defer tf.TearDown()
 
 	event := fakeEvent("event1", "hello1", 1)
 	tf.addObjects(event)
@@ -316,7 +297,6 @@ func TestWatchEventsAfterAdding(t *testing.T) {
 
 func TestK8sClient_WatchMeta(t *testing.T) {
 	tf := newWatchTestFixture(t)
-	defer tf.TearDown()
 
 	pod1 := fakePod(PodID("abcd"), "efgh")
 	pod2 := fakePod(PodID("1234"), "hieruyge")
@@ -335,7 +315,6 @@ func TestK8sClient_WatchMeta(t *testing.T) {
 
 func TestK8sClient_WatchMetaBackfillK8s14(t *testing.T) {
 	tf := newWatchTestFixture(t)
-	defer tf.TearDown()
 
 	tf.version.GitVersion = "v1.14.1"
 
@@ -404,6 +383,7 @@ type watchTestFixture struct {
 
 func newWatchTestFixture(t *testing.T) *watchTestFixture {
 	ret := &watchTestFixture{t: t}
+	t.Cleanup(ret.TearDown)
 
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	ret.ctx, ret.cancel = context.WithCancel(ctx)

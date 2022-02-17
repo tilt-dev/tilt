@@ -23,7 +23,6 @@ import (
 
 func TestDockerBuildDockerfile(t *testing.T) {
 	f := newDockerBuildFixture(t)
-	defer f.teardown()
 
 	df := dockerfile.Dockerfile(`
 FROM alpine
@@ -63,7 +62,6 @@ ADD dir/c.txt .
 
 func TestDockerBuildWithBuildArgs(t *testing.T) {
 	f := newDockerBuildFixture(t)
-	defer f.teardown()
 
 	df := dockerfile.Dockerfile(`FROM alpine
 ARG some_variable_name
@@ -93,7 +91,6 @@ ADD $some_variable_name /test.txt`)
 
 func TestDockerBuildWithExtraTags(t *testing.T) {
 	f := newDockerBuildFixture(t)
-	defer f.teardown()
 
 	df := dockerfile.Dockerfile(`
 FROM alpine
@@ -126,7 +123,6 @@ ADD a.txt .`)
 
 func TestDetectBuildkitCorruption(t *testing.T) {
 	f := newDockerBuildFixture(t)
-	defer f.teardown()
 
 	out := bytes.NewBuffer(nil)
 	ctx := logger.WithLogger(context.Background(), logger.NewTestLogger(out))

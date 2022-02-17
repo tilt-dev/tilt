@@ -13,7 +13,6 @@ import (
 
 func TestTelemetryCmdString(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.File("Tiltfile", "experimental_telemetry_cmd('foo.sh')")
 	result, err := f.ExecFile("Tiltfile")
 
@@ -24,7 +23,6 @@ func TestTelemetryCmdString(t *testing.T) {
 
 func TestTelemetryPeriod(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.File("Tiltfile", "experimental_telemetry_cmd('foo.sh', period='5s')")
 
 	result, err := f.ExecFile("Tiltfile")
@@ -34,7 +32,6 @@ func TestTelemetryPeriod(t *testing.T) {
 
 func TestTelemetryCmdArray(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.File("Tiltfile", "experimental_telemetry_cmd(['foo.sh'])")
 	result, err := f.ExecFile("Tiltfile")
 
@@ -44,7 +41,6 @@ func TestTelemetryCmdArray(t *testing.T) {
 
 func TestTelemetryCmdEmpty(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.File("Tiltfile", "experimental_telemetry_cmd('')")
 	_, err := f.ExecFile("Tiltfile")
 
@@ -53,7 +49,6 @@ func TestTelemetryCmdEmpty(t *testing.T) {
 
 func TestTelemetryCmdMultiple(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 	f.File("Tiltfile", `
 experimental_telemetry_cmd('foo.sh')
 experimental_telemetry_cmd('bar.sh')

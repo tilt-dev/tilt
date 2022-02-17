@@ -48,7 +48,6 @@ type ignoreTestCase struct {
 
 func TestIgnores(t *testing.T) {
 	f := tempdir.NewTempDirFixture(t)
-	defer f.TearDown()
 
 	target := FakeTarget{
 		path: f.Path(),

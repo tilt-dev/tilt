@@ -11,7 +11,6 @@ import (
 
 func TestTooManyDeployments(t *testing.T) {
 	f := newK8sFixture(t, "too_many_deployments")
-	defer f.TearDown()
 
 	f.runCommandSilently("kubectl", "apply", "-f", "namespace.yaml")
 	f.runCommandSilently("kubectl", "apply", "-f", "too_many_deployments/deployments.yaml")

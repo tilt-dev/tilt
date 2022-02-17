@@ -14,7 +14,6 @@ import (
 
 func TestTiltfileResult(t *testing.T) {
 	f := tempdir.NewTempDirFixture(t)
-	defer f.TearDown()
 	f.Chdir()
 
 	f.WriteFile("Tiltfile", `

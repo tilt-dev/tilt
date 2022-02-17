@@ -15,7 +15,6 @@ import (
 
 func BenchmarkArchivePaths(b *testing.B) {
 	f := tempdir.NewTempDirFixture(b)
-	defer f.TearDown()
 
 	fileCount := 10000
 	for i := 0; i < fileCount; i++ {

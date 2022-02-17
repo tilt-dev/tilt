@@ -64,7 +64,6 @@ type fixture struct {
 
 func newFixture(t *testing.T) *fixture {
 	tmpdir := tempdir.NewTempDirFixture(t)
-	t.Cleanup(tmpdir.TearDown)
 	tmpdir.Chdir()
 
 	timerMaker := fsevent.MakeFakeTimerMaker(t)

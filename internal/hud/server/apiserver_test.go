@@ -180,7 +180,6 @@ func newAPIServerFixture(t testing.TB) *apiserverFixture {
 	t.Helper()
 
 	tmpdir := tempdir.NewTempDirFixture(t)
-	t.Cleanup(tmpdir.TearDown)
 
 	dir := dirs.NewTiltDevDirAt(tmpdir.Path())
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()

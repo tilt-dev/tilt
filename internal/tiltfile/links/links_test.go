@@ -48,7 +48,6 @@ func TestMaybeAddScheme(t *testing.T) {
 
 func TestLinkProps(t *testing.T) {
 	f := starkit.NewFixture(t, NewPlugin())
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 l = link("localhost:4000", "web")
@@ -62,7 +61,6 @@ print(l.name)
 }
 func TestLinkPropsImmutable(t *testing.T) {
 	f := starkit.NewFixture(t, NewPlugin())
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 l = link("localhost:4000", "web")

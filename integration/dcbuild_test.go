@@ -11,7 +11,6 @@ import (
 
 func TestDockerComposeImageBuild(t *testing.T) {
 	f := newDCFixture(t, "dcbuild")
-	defer f.TearDown()
 
 	f.dockerKillAll("tilt")
 	f.TiltUp()

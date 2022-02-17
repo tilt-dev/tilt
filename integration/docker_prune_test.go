@@ -15,7 +15,6 @@ import (
 
 func TestCLI_DockerPrune(t *testing.T) {
 	f := newK8sFixture(t, "docker_prune")
-	defer f.TearDown()
 	f.SetRestrictedCredentials()
 
 	t.Log("Running `tilt ci` to trigger a build")

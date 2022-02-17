@@ -13,7 +13,6 @@ import (
 
 func TestLiveUpdateSelector(t *testing.T) {
 	f := newK8sFixture(t, "live_update_selector")
-	defer f.TearDown()
 	f.SetRestrictedCredentials()
 
 	f.TiltUp()

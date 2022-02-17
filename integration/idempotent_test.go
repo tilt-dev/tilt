@@ -15,7 +15,6 @@ import (
 // it attaches to the existing pods without redeploying
 func TestIdempotent(t *testing.T) {
 	f := newK8sFixture(t, "idempotent")
-	defer f.TearDown()
 
 	f.TiltCI("idempotent")
 

@@ -12,7 +12,6 @@ import (
 
 func TestReadFile(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.File("foo.txt", "foo")
 	f.File("Tiltfile", `
@@ -29,7 +28,6 @@ assert.equals('foo', str(s))
 
 func TestReadFileDefault(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 s = read_file('dne.txt', 'foo')
@@ -45,7 +43,6 @@ assert.equals('foo', str(s))
 
 func TestReadFileDefaultEmptyString(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 s = read_file('dne.txt', '')
@@ -62,7 +59,6 @@ assert.equals('', str(s))
 // make sure we generate an error on invalid type for default even if the file exists
 func TestReadFileInvalidDefaultFileExists(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.File("foo.txt", "foo")
 	f.File("Tiltfile", `
@@ -76,7 +72,6 @@ s = read_file('foo.txt', 5)
 
 func TestReadFileMissing(t *testing.T) {
 	f := newFixture(t)
-	defer f.TearDown()
 
 	f.File("Tiltfile", `
 s = read_file('dne.txt')

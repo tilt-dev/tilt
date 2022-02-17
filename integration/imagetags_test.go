@@ -11,7 +11,6 @@ import (
 
 func TestImageTags(t *testing.T) {
 	f := newK8sFixture(t, "imagetags")
-	defer f.TearDown()
 
 	f.TiltUp()
 

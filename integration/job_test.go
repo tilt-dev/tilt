@@ -15,7 +15,6 @@ import (
 // than a deployment (because it is immutable)
 func TestJob(t *testing.T) {
 	f := newK8sFixture(t, "job")
-	defer f.TearDown()
 	f.SetRestrictedCredentials()
 
 	f.TiltUp()

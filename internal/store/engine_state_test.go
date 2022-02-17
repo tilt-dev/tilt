@@ -55,7 +55,6 @@ func (c endpointsCase) validate() {
 
 func TestStateToViewRelativeEditPaths(t *testing.T) {
 	f := tempdir.NewTempDirFixture(t)
-	defer f.TearDown()
 	m := model.Manifest{
 		Name: "foo",
 	}.WithDeployTarget(model.K8sTarget{}).WithImageTarget(model.ImageTarget{}.
@@ -153,7 +152,6 @@ func TestStateToViewLocalResourceLinks(t *testing.T) {
 
 func TestRuntimeStateNonWorkload(t *testing.T) {
 	f := tempdir.NewTempDirFixture(t)
-	defer f.TearDown()
 
 	m := manifestbuilder.New(f, model.UnresourcedYAMLManifestName).
 		WithK8sYAML(testyaml.SecretYaml).
@@ -178,7 +176,6 @@ func TestRuntimeStateJob(t *testing.T) {
 	} {
 		t.Run(string(tc.phase), func(t *testing.T) {
 			f := tempdir.NewTempDirFixture(t)
-			defer f.TearDown()
 
 			m := manifestbuilder.New(f, "foo").
 				WithK8sYAML(testyaml.JobYAML).
