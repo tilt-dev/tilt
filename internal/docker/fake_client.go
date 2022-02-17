@@ -149,6 +149,9 @@ func NewFakeClient() *FakeClient {
 func (c *FakeClient) SetOrchestrator(orc model.Orchestrator) {
 	c.Orchestrator = orc
 }
+func (c *FakeClient) ForOrchestrator(orc model.Orchestrator) Client {
+	return c
+}
 func (c *FakeClient) CheckConnected() error {
 	return c.CheckConnectedErr
 }

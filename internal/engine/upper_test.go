@@ -2333,7 +2333,7 @@ func TestDockerComposeStartsEventWatcher(t *testing.T) {
 	// Actual behavior is that we init with zero manifests, and add in manifests
 	// after Tiltfile loads. Mimic that here.
 	f.Start([]model.Manifest{})
-	f.ensureCluster()
+	f.ensureClusterNamed("docker")
 
 	f.store.Dispatch(ctrltiltfile.ConfigsReloadedAction{
 		Name:       model.MainTiltfileManifestName,
@@ -4495,10 +4495,14 @@ func (s fixtureSub) OnChange(ctx context.Context, st store.RStore, _ store.Chang
 }
 
 func (f *testFixture) ensureCluster() {
+	f.ensureClusterNamed(v1alpha1.ClusterNameDefault)
+}
+
+func (f *testFixture) ensureClusterNamed(name string) {
 	f.t.Helper()
 	err := f.ctrlClient.Create(f.ctx, &v1alpha1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "default",
+			Name: name,
 		},
 		Spec: v1alpha1.ClusterSpec{
 			Connection: &v1alpha1.ClusterConnection{

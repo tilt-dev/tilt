@@ -236,22 +236,41 @@ func HoldTargetsWithBuildingComponents(state store.EngineState, mts []*store.Man
 	}
 }
 
+func targetsByCluster(mts []*store.ManifestTarget) map[string][]*store.ManifestTarget {
+	// TODO(nick): In the future, K8s objects may reference the cluster
+	// they're deploying to.
+	clusters := make(map[string][]*store.ManifestTarget)
+	for _, mt := range mts {
+		if mt.Manifest.IsK8s() {
+			targets, ok := clusters[v1alpha1.ClusterNameDefault]
+			if !ok {
+				targets = []*store.ManifestTarget{}
+			}
+			clusters[v1alpha1.ClusterNameDefault] = append(targets, mt)
+		} else if mt.Manifest.IsDC() {
+			targets, ok := clusters[v1alpha1.ClusterNameDocker]
+			if !ok {
+				targets = []*store.ManifestTarget{}
+			}
+			clusters[v1alpha1.ClusterNameDocker] = append(targets, mt)
+		}
+	}
+	return clusters
+}
+
 // We use the cluster to detect what architecture we're building for.
 // Until the cluster connection has been established, we block any
 // image builds.
 func HoldTargetsWaitingOnCluster(state store.EngineState, mts []*store.ManifestTarget, holds HoldSet) {
-	// TODO(nick): In the future, K8s objects may reference the cluster
-	// they're deploying to.
-	clusterName := v1alpha1.ClusterNameDefault
-	cluster, ok := state.Clusters[clusterName]
-	isClusterOK := ok && cluster.Status.Error == "" && cluster.Status.Arch != ""
-	if isClusterOK {
-		return
-	}
+	for clusterName, targets := range targetsByCluster(mts) {
+		cluster, ok := state.Clusters[clusterName]
+		isClusterOK := ok && cluster.Status.Error == "" && cluster.Status.Arch != ""
+		if isClusterOK {
+			return
+		}
 
-	gvk := v1alpha1.SchemeGroupVersion.WithKind("Cluster")
-	for _, mt := range mts {
-		if mt.Manifest.IsK8s() || mt.Manifest.IsDC() {
+		gvk := v1alpha1.SchemeGroupVersion.WithKind("Cluster")
+		for _, mt := range targets {
 			holds.AddHold(mt, store.Hold{
 				Reason: store.HoldReasonCluster,
 				OnRefs: []v1alpha1.UIResourceStateWaitingOnRef{{
