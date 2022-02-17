@@ -5,9 +5,12 @@ import {
 } from "@material-ui/core"
 import React, { ChangeEvent, useCallback, useMemo, useState } from "react"
 import styled from "styled-components"
-import { AnalyticsType, emptyTags } from "./analytics"
+import { AnalyticsType, Tags } from "./analytics"
+import {
+  DEFAULT_RESOURCE_LIST_LIMIT,
+  RESOURCE_LIST_MULTIPLIER,
+} from "./constants"
 import { FeaturesContext, Flag, useFeatures } from "./feature"
-import { InstrumentedButton } from "./instrumentedComponents"
 import {
   GroupByLabelView,
   orderLabels,
@@ -28,20 +31,14 @@ import { useResourceGroups } from "./ResourceGroupsContext"
 import { ResourceListOptions } from "./ResourceListOptionsContext"
 import { matchesResourceName } from "./ResourceNameFilter"
 import { SidebarGroupStatusSummary } from "./ResourceStatusSummary"
+import { ShowMoreButton } from "./ShowMoreButton"
 import SidebarItem from "./SidebarItem"
 import SidebarItemView, {
   sidebarItemIsDisabled,
   SidebarItemRoot,
 } from "./SidebarItemView"
 import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
-import {
-  AnimDuration,
-  Color,
-  Font,
-  FontSize,
-  mixinResetButtonStyle,
-  SizeUnit,
-} from "./style-helpers"
+import { Color, Font, FontSize, SizeUnit } from "./style-helpers"
 import { startBuild } from "./trigger"
 import { ResourceStatus, ResourceView } from "./types"
 
@@ -199,58 +196,36 @@ export function SidebarListSection(props: SidebarSectionProps): JSX.Element {
   )
 }
 
-const defaultMaxItems = 20
-
 const ShowMoreRow = styled.li`
   margin: ${SizeUnit(0.5)} ${SizeUnit(0.5)} 0 ${SizeUnit(0.5)};
-  color: ${Color.gray7};
-  font-size: ${FontSize.small};
   display: flex;
   align-items: center;
   justify-content: right;
-  font-family: ${Font.sansSerif};
 `
-
-const ShowMoreButton = styled(InstrumentedButton)`
-  ${mixinResetButtonStyle};
-  font-size: ${FontSize.small};
-  color: ${Color.gray6};
-  transition: color ${AnimDuration.default} ease;
-  cursor: pointer;
-  padding: 0 0.5em;
-
-  &:hover {
-    color: ${Color.blue};
-  }
-`
+const DETAIL_TYPE_TAGS: Tags = { type: AnalyticsType.Detail }
 
 function SidebarListSectionItems(props: SidebarSectionProps) {
-  let [maxItems, setMaxItems] = useState(defaultMaxItems)
+  let [maxItems, setMaxItems] = useState(DEFAULT_RESOURCE_LIST_LIMIT)
   let displayItems = props.items
-  let remaining = 0
   let moreItems = Math.max(displayItems.length - maxItems, 0)
   if (moreItems) {
-    remaining = displayItems.length - maxItems
     displayItems = displayItems.slice(0, maxItems)
   }
 
   let showMore = useCallback(() => {
-    setMaxItems(maxItems * 2)
+    setMaxItems(maxItems * RESOURCE_LIST_MULTIPLIER)
   }, [maxItems, setMaxItems])
 
   let showMoreItemsButton = null
   if (moreItems > 0) {
-    let text = ` (${remaining})`
     showMoreItemsButton = (
       <ShowMoreRow>
         <ShowMoreButton
           onClick={showMore}
-          analyticsName="ui.web.sidebarShowMore"
-          analyticsTags={emptyTags}
-        >
-          …Show More
-        </ShowMoreButton>
-        <span aria-label={`${remaining} hidden`}>{`(${remaining})`}</span>
+          analyticsTags={DETAIL_TYPE_TAGS}
+          currentListSize={maxItems}
+          itemCount={props.items.length}
+        />
       </ShowMoreRow>
     )
   }
