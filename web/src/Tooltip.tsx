@@ -46,6 +46,7 @@ export default function TiltTooltip(props: TooltipProps) {
       placement="top-start"
       classes={classes}
       role="tooltip"
+      enterNextDelay={500}
       {...props}
     />
   )

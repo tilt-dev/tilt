@@ -29,7 +29,7 @@ type BuildController struct {
 
 	// CancelFuncs for in-progress builds
 	mu           sync.Mutex
-	cancelBuilds map[model.ManifestName]context.CancelFunc
+	stopBuildFns map[model.ManifestName]context.CancelFunc
 }
 
 type buildEntry struct {
@@ -48,7 +48,7 @@ func (e buildEntry) BuildReason() model.BuildReason { return e.buildReason }
 func NewBuildController(b buildcontrol.BuildAndDeployer) *BuildController {
 	return &BuildController{
 		b:            b,
-		cancelBuilds: make(map[model.ManifestName]context.CancelFunc),
+		stopBuildFns: make(map[model.ManifestName]context.CancelFunc),
 	}
 }
 
@@ -164,7 +164,7 @@ func (c *BuildController) cleanUpCanceledBuilds(st store.RStore) {
 		}
 		disabled := ms.DisableState == v1alpha1.DisableStateDisabled
 		canceled := false
-		if cancelButton, ok := state.UIButtons[uibutton.CancelButtonName(ms.Name.String())]; ok {
+		if cancelButton, ok := state.UIButtons[uibutton.StopBuildButtonName(ms.Name.String())]; ok {
 			lastCancelClick := cancelButton.Status.LastClickedAt
 			canceled = timecmp.AfterOrEqual(lastCancelClick, ms.CurrentBuild.StartTime)
 		}
@@ -181,16 +181,16 @@ func (c *BuildController) buildContext(ctx context.Context, entry buildEntry, st
 	ctx, cancel := context.WithCancel(ctx)
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.cancelBuilds[entry.name] = cancel
+	c.stopBuildFns[entry.name] = cancel
 	return ctx
 }
 
 func (c *BuildController) cleanupBuildContext(mn model.ManifestName) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if cancel, ok := c.cancelBuilds[mn]; ok {
+	if cancel, ok := c.stopBuildFns[mn]; ok {
 		cancel()
-		delete(c.cancelBuilds, mn)
+		delete(c.stopBuildFns, mn)
 	}
 }
 

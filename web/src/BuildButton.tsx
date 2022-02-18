@@ -1,14 +1,16 @@
 import React, { useCallback } from "react"
 import styled from "styled-components"
 import { Tags } from "./analytics"
+import { ApiButton } from "./ApiButton"
 import { ReactComponent as StartBuildButtonManualSvg } from "./assets/svg/start-build-button-manual.svg"
 import { ReactComponent as StartBuildButtonSvg } from "./assets/svg/start-build-button.svg"
+import { ReactComponent as StopBuildButtonSvg } from "./assets/svg/stop-build-button.svg"
 import { InstrumentedButton } from "./instrumentedComponents"
 import TiltTooltip from "./Tooltip"
-import { buildButtonTooltip } from "./trigger"
-import { TriggerMode } from "./types"
+import { BuildButtonTooltip, buildButtonTooltip } from "./trigger"
+import { TriggerMode, UIButton } from "./types"
 
-export type BuildButtonProps = {
+export type StartBuildButtonProps = {
   isBuilding: boolean
   hasBuilt: boolean
   triggerMode: TriggerMode
@@ -20,17 +22,56 @@ export type BuildButtonProps = {
   className?: string
 }
 
+type StopBuildButtonProps = {
+  stopBuildButton?: UIButton
+}
+
+export type BuildButtonProps = StartBuildButtonProps & StopBuildButtonProps
+
+function BuildButton(props: BuildButtonProps) {
+  const { stopBuildButton, ...startBuildButtonProps } = props
+  if (props.isBuilding) {
+    if (!stopBuildButton) {
+      return null
+    }
+    let classes = [props.className, "stop-button", "is-clickable"]
+    if (props.isSelected) {
+      classes.push("is-selected")
+    }
+
+    return (
+      <TiltTooltip title={BuildButtonTooltip.Stop}>
+        <BuildButtonCursorWrapper>
+          <ApiButton uiButton={stopBuildButton} className={classes.join(" ")}>
+            <StopBuildButtonSvg className="icon" />
+          </ApiButton>
+        </BuildButtonCursorWrapper>
+      </TiltTooltip>
+    )
+  } else {
+    const classes = [props.className, "start-button"]
+    return (
+      <StartBuildButton
+        {...startBuildButtonProps}
+        className={classes.join(" ")}
+      />
+    )
+  }
+}
+
 // A wrapper to receive pointer events so that we get cursor and tooltip when disabled
 // https://mui.com/components/tooltips/#disabled-elements
 const BuildButtonCursorWrapper = styled.div`
   display: inline-block;
   cursor: not-allowed;
+  // keep the button in front of the "in-progress" barber pole animation
+  z-index: 1;
   .is-clickable {
     cursor: pointer;
   }
 `
 
-function BuildButton(props: BuildButtonProps) {
+function StartBuildButton(props: StartBuildButtonProps) {
   let isManual =
     props.triggerMode === TriggerMode.TriggerModeManual ||
     props.triggerMode === TriggerMode.TriggerModeManualWithAutoInit
@@ -54,8 +95,8 @@ function BuildButton(props: BuildButtonProps) {
   }
 
   let onClick = useCallback(
-    (e: any) => {
-      // SidebarBuildButton is nested in a link,
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      // In the sidebar, StartBuildButton is nested in a link,
       // and preventDefault is the standard way to cancel the navigation.
       e.preventDefault()
 
@@ -87,8 +128,12 @@ function BuildButton(props: BuildButtonProps) {
     classes.push("is-building")
   }
   const tooltip = buildButtonTooltip(clickable, isEmphasized, props.isQueued)
+  // Set the tooltip key to the tooltip message so that each message is a different "component" and enterNextDelay
+  // applies when the message changes.
+  // Otherwise, we often display a flicker of "resource is already queued!" after clicking "start build" before
+  // the "stop build" button appears.
   return (
-    <TiltTooltip title={tooltip}>
+    <TiltTooltip title={tooltip} key={tooltip}>
       <BuildButtonCursorWrapper
         className={clickable ? ".is-clickable" : undefined}
       >
@@ -101,9 +146,9 @@ function BuildButton(props: BuildButtonProps) {
           analyticsTags={props.analyticsTags}
         >
           {isEmphasized ? (
-            <StartBuildButtonManualSvg role="presentation" />
+            <StartBuildButtonManualSvg role="presentation" className="icon" />
           ) : (
-            <StartBuildButtonSvg role="presentation" />
+            <StartBuildButtonSvg role="presentation" className="icon" />
           )}
         </InstrumentedButton>
       </BuildButtonCursorWrapper>

@@ -8,16 +8,16 @@ import (
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
-func CancelButtonName(resourceName string) string {
-	return fmt.Sprintf("%s-cancel", resourceName)
+func StopBuildButtonName(resourceName string) string {
+	return fmt.Sprintf("%s-stopbuild", resourceName)
 }
 
-func CancelButton(resourceName string) *v1alpha1.UIButton {
+func StopBuildButton(resourceName string) *v1alpha1.UIButton {
 	return &v1alpha1.UIButton{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: CancelButtonName(resourceName),
+			Name: StopBuildButtonName(resourceName),
 			Annotations: map[string]string{
-				v1alpha1.AnnotationButtonType: v1alpha1.ButtonTypeCancelUpdate,
+				v1alpha1.AnnotationButtonType: v1alpha1.ButtonTypeStopBuild,
 			},
 		},
 		Spec: v1alpha1.UIButtonSpec{
@@ -25,7 +25,7 @@ func CancelButton(resourceName string) *v1alpha1.UIButton {
 				ComponentID:   resourceName,
 				ComponentType: v1alpha1.ComponentTypeResource,
 			},
-			Text:     "Cancel",
+			Text:     "Stop Build",
 			IconName: "cancel",
 		},
 	}

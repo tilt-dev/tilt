@@ -351,7 +351,7 @@ func toCancelButtons(tlr *tiltfile.TiltfileLoadResult) apiset.TypedObjectSet {
 	}
 
 	for _, m := range tlr.Manifests {
-		button := uibutton.CancelButton(m.Name.String())
+		button := uibutton.StopBuildButton(m.Name.String())
 		result[button.Name] = button
 	}
 	return result
