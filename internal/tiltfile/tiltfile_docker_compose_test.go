@@ -371,7 +371,7 @@ docker_compose('docker-compose2.yml')`
 	assert.Equal(t, 2, len(f.loadResult.Manifests))
 }
 
-func TestDockerComposeAndK8sNotSupported(t *testing.T) {
+func TestDockerComposeAndK8sSupported(t *testing.T) {
 	f := newFixture(t)
 
 	f.setupFooAndBar()
@@ -380,8 +380,9 @@ func TestDockerComposeAndK8sNotSupported(t *testing.T) {
 k8s_yaml('bar.yaml')`
 	f.file("Tiltfile", tf)
 
-	f.loadErrString("can't declare both k8s " +
-		"resources/entities and docker-compose resources")
+	f.load()
+
+	assert.Equal(t, 2, len(f.loadResult.Manifests))
 }
 
 func TestDockerComposeResourceCreationFromAbsPath(t *testing.T) {

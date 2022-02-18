@@ -32,7 +32,6 @@ const (
 	HoldReasonBuildingComponent                HoldReason = "building-component"
 	HoldReasonWaitingForDep                    HoldReason = "waiting-for-dep"
 	HoldReasonWaitingForDeploy                 HoldReason = "waiting-for-deploy"
-	HoldReasonDisabled                         HoldReason = "disabled"
 
 	// We're waiting for a reconciler to respond to the change,
 	// but don't know yet what it's waiting on.

@@ -1,6 +1,11 @@
 import styled from "styled-components"
 import BuildButton from "./BuildButton"
-import { AnimDuration, Color, mixinResetButtonStyle } from "./style-helpers"
+import {
+  AnimDuration,
+  Color,
+  mixinResetButtonStyle,
+  SizeUnit,
+} from "./style-helpers"
 
 export const OverviewTableBuildButton = styled(BuildButton)`
   ${mixinResetButtonStyle};
@@ -15,8 +20,10 @@ export const OverviewTableBuildButton = styled(BuildButton)`
   &:hover .fillStd {
     fill: ${Color.white};
   }
-  & > svg {
+  & .icon {
     transition: transform ${AnimDuration.short} linear;
+    width: ${SizeUnit(0.75)};
+    height: ${SizeUnit(0.75)};
   }
   &:active > svg {
     transform: scale(1.2);
@@ -31,9 +38,12 @@ export const OverviewTableBuildButton = styled(BuildButton)`
     fill: ${Color.blue};
   }
 
-  // the emphasized svg is bigger, so pad the unemphasized svg to line it up
-  padding: 0 0 0 5px;
-  &.is-emphasized {
+  &.stop-button {
+    display: block;
+  }
+  &.stop-button button {
+    min-width: 0;
+    border: 0;
     padding: 0;
   }
 `

@@ -26,6 +26,9 @@ func newExplodingClient(err error) explodingClient {
 
 func (c explodingClient) SetOrchestrator(orc model.Orchestrator) {
 }
+func (c explodingClient) ForOrchestrator(orc model.Orchestrator) Client {
+	return c
+}
 func (c explodingClient) CheckConnected() error {
 	return c.err
 }

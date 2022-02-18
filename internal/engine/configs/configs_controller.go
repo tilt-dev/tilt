@@ -49,7 +49,7 @@ func (cc *ConfigsController) maybeCreateInitialTiltfile(ctx context.Context, st 
 	if err != nil && !apierrors.IsAlreadyExists(err) {
 		return err
 	}
-	err = cc.ctrlClient.Create(ctx, uibutton.CancelButton(model.MainTiltfileManifestName.String()))
+	err = cc.ctrlClient.Create(ctx, uibutton.StopBuildButton(model.MainTiltfileManifestName.String()))
 	if err != nil && !apierrors.IsAlreadyExists(err) {
 		return err
 	}

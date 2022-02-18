@@ -1,9 +1,7 @@
-import Anser from "anser"
 import { History } from "history"
 import React, { Component } from "react"
 import { useHistory, useLocation } from "react-router"
 import styled, { keyframes } from "styled-components"
-import "./AnsiLine.scss" // for line color CSS classes
 import {
   FilterLevel,
   FilterSet,
@@ -21,6 +19,7 @@ import LogStore, {
 import PathBuilder, { usePathBuilder } from "./PathBuilder"
 import { RafContext, useRaf } from "./raf"
 import { Color, FontSize, SizeUnit } from "./style-helpers"
+import Anser from "./third-party/anser/index.js"
 import { LogLevel, LogLine } from "./types"
 
 // The number of lines to display before an error.

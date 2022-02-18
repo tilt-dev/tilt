@@ -64,15 +64,15 @@ type TiltfileLoadResult struct {
 	BuiltinCalls []starkit.BuiltinCall `json:"-"`
 }
 
-func (r TiltfileLoadResult) Orchestrator() model.Orchestrator {
+func (r TiltfileLoadResult) HasOrchestrator(orc model.Orchestrator) bool {
 	for _, manifest := range r.Manifests {
-		if manifest.IsK8s() {
-			return model.OrchestratorK8s
-		} else if manifest.IsDC() {
-			return model.OrchestratorDC
+		if manifest.IsK8s() && orc == model.OrchestratorK8s {
+			return true
+		} else if manifest.IsDC() && orc == model.OrchestratorDC {
+			return true
 		}
 	}
-	return model.OrchestratorUnknown
+	return false
 }
 
 func (r TiltfileLoadResult) WithAllManifestsEnabled() TiltfileLoadResult {

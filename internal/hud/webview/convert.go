@@ -429,7 +429,10 @@ func LogSegmentToEvent(seg *proto_webview.LogSegment, spans map[string]*proto_we
 }
 
 func holdToWaiting(hold store.Hold) *v1alpha1.UIResourceStateWaiting {
-	if hold.Reason == store.HoldReasonNone {
+	if hold.Reason == store.HoldReasonNone ||
+		// "Reconciling" just means the live update is handling the update (rather
+		// than the BuildController) and isn't indicative of a real waiting status.
+		hold.Reason == store.HoldReasonReconciling {
 		return nil
 	}
 	waiting := &v1alpha1.UIResourceStateWaiting{

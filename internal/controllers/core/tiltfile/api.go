@@ -347,7 +347,7 @@ func toToggleButtons(tlr *tiltfile.TiltfileLoadResult, disableSources disableSou
 func toCancelButtons(tlr *tiltfile.TiltfileLoadResult) apiset.TypedObjectSet {
 	result := apiset.TypedObjectSet{}
 	for _, m := range tlr.Manifests {
-		button := uibutton.CancelButton(m.Name.String())
+		button := uibutton.StopBuildButton(m.Name.String())
 		result[button.Name] = button
 	}
 	return result
@@ -528,26 +528,34 @@ func toClusterObjects(nn types.NamespacedName, tlr *tiltfile.TiltfileLoadResult,
 		return result
 	}
 
-	spec := v1alpha1.ClusterSpec{}
-	if tlr.Orchestrator() == model.OrchestratorK8s {
-		spec.Connection = &v1alpha1.ClusterConnection{
-			Kubernetes: defaultK8sConnection,
+	if tlr.HasOrchestrator(model.OrchestratorK8s) {
+		name := v1alpha1.ClusterNameDefault
+		result[name] = &v1alpha1.Cluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: name,
+			},
+			Spec: v1alpha1.ClusterSpec{
+				Connection: &v1alpha1.ClusterConnection{
+					Kubernetes: defaultK8sConnection,
+				},
+			},
 		}
-	} else if tlr.Orchestrator() == model.OrchestratorDC {
-		spec.Connection = &v1alpha1.ClusterConnection{
-			Docker: &v1alpha1.DockerClusterConnection{},
-		}
-	} else {
-		return result
 	}
 
-	name := v1alpha1.ClusterNameDefault
-	result[name] = &v1alpha1.Cluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-		},
-		Spec: spec,
+	if tlr.HasOrchestrator(model.OrchestratorDC) {
+		name := v1alpha1.ClusterNameDocker
+		result[name] = &v1alpha1.Cluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: name,
+			},
+			Spec: v1alpha1.ClusterSpec{
+				Connection: &v1alpha1.ClusterConnection{
+					Docker: &v1alpha1.DockerClusterConnection{},
+				},
+			},
+		}
 	}
+
 	return result
 }
 

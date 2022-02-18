@@ -40,7 +40,7 @@ const SelectedCount = styled.p`
 
 // Helpers
 export function buttonsByAction(
-  resourceButtons: { [key: string]: ButtonSet },
+  resourceButtons: Map<string, ButtonSet>,
   selectedResources: Set<string>
 ) {
   const actionButtons: ActionButtons = {
@@ -48,7 +48,7 @@ export function buttonsByAction(
   }
 
   selectedResources.forEach((resource) => {
-    const buttonSet = resourceButtons[resource]
+    const buttonSet = resourceButtons.get(resource)
     if (buttonSet && buttonSet.toggleDisable) {
       actionButtons[BulkAction.Disable].push(buttonSet.toggleDisable)
     }

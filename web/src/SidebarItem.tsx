@@ -11,6 +11,7 @@ import {
   ResourceStatus,
   TriggerMode,
   UIBuild,
+  UIButton,
   UIResource,
   UIResourceStatus,
 } from "./types"
@@ -34,11 +35,16 @@ class SidebarItem {
   lastBuild: UIBuild | null = null
   hold: Hold | null = null
   targetType: string
+  stopBuildButton?: UIButton
 
   /**
    * Create a pared down SidebarItem from a ResourceView
    */
-  constructor(res: UIResource, logAlertIndex: LogAlertIndex) {
+  constructor(
+    res: UIResource,
+    logAlertIndex: LogAlertIndex,
+    stopBuildButton?: UIButton
+  ) {
     let status = (res.status || {}) as UIResourceStatus
     let buildHistory = status.buildHistory || []
     let lastBuild = buildHistory.length > 0 ? buildHistory[0] : null
@@ -63,6 +69,7 @@ class SidebarItem {
     this.lastBuild = lastBuild
     this.hold = status.waiting ? new Hold(status.waiting) : null
     this.targetType = resourceTargetType(res)
+    this.stopBuildButton = stopBuildButton
   }
 }
 
