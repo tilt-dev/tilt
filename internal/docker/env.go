@@ -164,7 +164,7 @@ func ProvideClusterEnv(ctx context.Context, kubeContext k8s.KubeContext, env k8s
 	}
 
 	// overlay OS values, potentially throwing away the cluster-provided config
-	result = overlayOSEnvVars(Env{})
+	result = overlayOSEnvVars(result)
 	if runtime == container.RuntimeDocker && isDefaultHost(result) {
 		// currently both Docker Desktop + Rancher Desktop support running a
 		// K8s cluster that shares the default Docker socket (as compared to
