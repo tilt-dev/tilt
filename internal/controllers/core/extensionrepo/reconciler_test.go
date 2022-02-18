@@ -125,6 +125,32 @@ func TestRepoSync(t *testing.T) {
 	require.Equal(t, repo.Status.Error, "")
 	assert.Equal(t, 1, f.dlr.downloadCount)
 	assert.Equal(t, "other-ref", f.dlr.lastRefSync)
+	f.assertSteadyState(&repo)
+}
+
+func TestRepoSyncExisting(t *testing.T) {
+	f := newFixture(t)
+
+	key := types.NamespacedName{Name: "default"}
+	repo := v1alpha1.ExtensionRepo{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: key.Name,
+		},
+		Spec: v1alpha1.ExtensionRepoSpec{
+			URL: "https://github.com/tilt-dev/tilt-extensions",
+			Ref: "other-ref",
+		},
+	}
+
+	f.dlr.Download("github.com/tilt-dev/tilt-extensions")
+	f.dlr.RefSync("github.com/tilt-dev/tilt-extensions", "other-ref")
+
+	f.Create(&repo)
+	f.MustGet(key, &repo)
+	require.Equal(t, repo.Status.Error, "")
+	assert.Equal(t, 1, f.dlr.downloadCount)
+	assert.Equal(t, "other-ref", f.dlr.lastRefSync)
+	f.assertSteadyState(&repo)
 }
 
 type fixture struct {
@@ -155,6 +181,14 @@ func newFixture(t *testing.T) *fixture {
 	}
 }
 
+func (f *fixture) assertSteadyState(er *v1alpha1.ExtensionRepo) {
+	f.T().Helper()
+	f.MustReconcile(types.NamespacedName{Name: er.Name})
+	var er2 v1alpha1.ExtensionRepo
+	f.MustGet(types.NamespacedName{Name: er.Name}, &er2)
+	assert.Equal(f.T(), er.ResourceVersion, er2.ResourceVersion)
+}
+
 type fakeDownloader struct {
 	base xdg.Base
 
@@ -170,6 +204,7 @@ func (d *fakeDownloader) DestinationPath(pkg string) string {
 }
 
 func (d *fakeDownloader) Download(pkg string) (string, error) {
+
 	d.downloadCount += 1
 	if d.downloadError != nil {
 		return "", fmt.Errorf("download error %d: %v", d.downloadCount, d.downloadError)
@@ -178,6 +213,15 @@ func (d *fakeDownloader) Download(pkg string) (string, error) {
 	path, err := d.base.DataFile(filepath.Join(pkg, "Tiltfile"))
 	if err != nil {
 		return "", err
+	}
+
+	_, err = os.Stat(path)
+	exists := err == nil
+	if exists && d.lastRefSync != "" {
+		// If the current disk state is checked out to a ref, then
+		// we expect Download() to fail.
+		// https://github.com/tilt-dev/tilt/issues/5508
+		return "", fmt.Errorf("You are not currently on a branch.")
 	}
 
 	err = os.WriteFile(path,
