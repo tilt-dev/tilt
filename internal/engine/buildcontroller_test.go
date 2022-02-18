@@ -1617,7 +1617,6 @@ func TestCancelButton(t *testing.T) {
 	f.b.completeBuildsManually = true
 	f.useRealTiltfileLoader()
 	f.WriteFile("Tiltfile", `
-enable_feature('cancel_build')
 local_resource('local', 'sleep 10000')
 `)
 	f.loadAndStart()
@@ -1645,7 +1644,6 @@ func TestCancelButtonClickedBeforeBuild(t *testing.T) {
 	f.b.completeBuildsManually = true
 	f.useRealTiltfileLoader()
 	f.WriteFile("Tiltfile", `
-enable_feature('cancel_build')
 local_resource('local', 'sleep 10000')
 `)
 	// grab a timestamp now to represent clicking the button before the build started
