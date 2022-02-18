@@ -11,6 +11,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/feature"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
 // How often to periodically report data for analytics while Tilt is running
@@ -81,13 +82,28 @@ func (ar *AnalyticsReporter) report(ctx context.Context) {
 	st := ar.store.RLockState()
 	defer ar.store.RUnlockState()
 	var dcCount, k8sCount, liveUpdateCount, unbuiltCount,
-		sameImgMultiContainerLiveUpdate, multiImgLiveUpdate int
+		sameImgMultiContainerLiveUpdate, multiImgLiveUpdate,
+		localCount, localServeCount, enabledCount int
 
 	labelKeySet := make(map[string]bool)
 
-	for _, m := range st.Manifests() {
+	for _, mt := range st.ManifestTargets {
+		m := mt.Manifest
 		for key := range m.Labels {
 			labelKeySet[key] = true
+		}
+
+		if mt.State.DisableState == v1alpha1.DisableStateEnabled {
+			enabledCount++
+		}
+
+		if m.IsLocal() {
+			localCount++
+
+			lt := m.LocalTarget()
+			if !lt.ServeCmd.Empty() {
+				localServeCount++
+			}
 		}
 
 		var refInjectCounts map[string]int
@@ -151,6 +167,8 @@ func (ar *AnalyticsReporter) report(ctx context.Context) {
 	} else {
 		// only report when there's no tiltfile error, to avoid polluting aggregations
 		stats["resource.count"] = strconv.Itoa(len(st.ManifestDefinitionOrder))
+		stats["resource.local.count"] = strconv.Itoa(localCount)
+		stats["resource.localserve.count"] = strconv.Itoa(localServeCount)
 		stats["resource.dockercompose.count"] = strconv.Itoa(dcCount)
 		stats["resource.k8s.count"] = strconv.Itoa(k8sCount)
 		stats["resource.liveupdate.count"] = strconv.Itoa(liveUpdateCount)
@@ -158,6 +176,7 @@ func (ar *AnalyticsReporter) report(ctx context.Context) {
 		stats["resource.sameimagemultiplecontainerliveupdate.count"] = strconv.Itoa(sameImgMultiContainerLiveUpdate)
 		stats["resource.multipleimageliveupdate.count"] = strconv.Itoa(multiImgLiveUpdate)
 		stats["label.count"] = strconv.Itoa(len(labelKeySet))
+		stats["resource.enabled.count"] = strconv.Itoa(enabledCount)
 	}
 
 	stats["tiltfile.error"] = tiltfileIsInError
