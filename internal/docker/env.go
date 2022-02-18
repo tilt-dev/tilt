@@ -11,7 +11,6 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/k8s"
-	"github.com/tilt-dev/tilt/internal/k8s/rancher"
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
@@ -83,32 +82,46 @@ func (e Env) AsEnviron() []string {
 type ClusterEnv Env
 type LocalEnv Env
 
-func ProvideLocalEnv(ctx context.Context, kubeContext k8s.KubeContext, env k8s.Env, cEnv ClusterEnv) LocalEnv {
+func ProvideLocalEnv(_ context.Context, kubeContext k8s.KubeContext, env k8s.Env, cEnv ClusterEnv) LocalEnv {
 	result := overlayOSEnvVars(Env{})
 
-	// The user may have already configured their local docker client
-	// to use Minikube's docker server. We check for that by comparing
-	// the hosts of the LocalEnv and ClusterEnv.
+	// if the ClusterEnv host is the same, use it to infer some properties
 	if cEnv.Host == result.Host {
 		result.IsOldMinikube = cEnv.IsOldMinikube
 		result.BuildToKubeContexts = cEnv.BuildToKubeContexts
 	}
 
+	// TODO(milas): I'm fairly certain we're adding the `docker-desktop`
+	//  kubecontext twice - the logic above should already have copied it
+	// 	from the cluster env (this is harmless though because
+	// 	Env::WillBuildToKubeContext still works fine)
 	if env == k8s.EnvDockerDesktop && isDefaultHost(result) {
 		result.BuildToKubeContexts = append(result.BuildToKubeContexts, string(kubeContext))
-	}
-
-	if env == k8s.EnvRancherDesktop {
-		rancherRuntime := rancher.DetermineContainerRuntime(ctx)
-		if rancherRuntime == rancher.ContainerRuntimeDocker {
-			result.BuildToKubeContexts = append(result.BuildToKubeContexts, string(kubeContext))
-		}
 	}
 
 	return LocalEnv(result)
 }
 
 func ProvideClusterEnv(ctx context.Context, kubeContext k8s.KubeContext, env k8s.Env, runtime container.Runtime, minikubeClient k8s.MinikubeClient) ClusterEnv {
+	// start with an empty env, then populate with cluster-specific values if
+	// available, and then potentially throw that all away if there are OS env
+	// vars overriding those
+	//
+	// example: microk8s w/ Docker & no OS overrides -> use microk8s Docker socket
+	//
+	// example: minikube w/ Docker & DOCKER_HOST set via OS -> ignore result of
+	// 	`minikube docker-env` and use OS values
+	//
+	// from a user standpoint, the behavior is:
+	// 	- no values set at OS -> attempt to use cluster provided config
+	//		this happens if you've done no extra config after cluster setup
+	//	- values set at OS that differ from cluster config -> use OS values
+	//		this is probably not as common, but an advanced setup could use
+	//		e.g. a more powerful Docker host for builds but then run the images
+	// 		on the local cluster
+	// 	- values set at OS that match cluster config -> they're the same!
+	//		this happens if you've run `eval (minikube docker-env)` in your
+	// 		shell/profile so that you can use `docker` CLI with it too
 	result := Env{}
 
 	if runtime == container.RuntimeDocker {
@@ -120,6 +133,7 @@ func ProvideClusterEnv(ctx context.Context, kubeContext k8s.KubeContext, env k8s
 			}
 
 			if ok {
+				result := Env{}
 				host := envMap["DOCKER_HOST"]
 				if host != "" {
 					result.Host = host
@@ -147,17 +161,18 @@ func ProvideClusterEnv(ctx context.Context, kubeContext k8s.KubeContext, env k8s
 			// If we're running Microk8s with a docker runtime, talk to Microk8s's docker socket.
 			result.Host = microK8sDockerHost
 			result.BuildToKubeContexts = append(result.BuildToKubeContexts, string(kubeContext))
-		} else if env == k8s.EnvRancherDesktop {
-			rancherRuntime := rancher.DetermineContainerRuntime(ctx)
-			if rancherRuntime == rancher.ContainerRuntimeDocker {
-				result.BuildToKubeContexts = append(result.BuildToKubeContexts, string(kubeContext))
-			}
 		}
 	}
 
-	result = overlayOSEnvVars(result)
-	if env == k8s.EnvDockerDesktop && isDefaultHost(result) {
-		result.BuildToKubeContexts = append(result.BuildToKubeContexts, string(kubeContext))
+	// overlay OS values, potentially throwing away the cluster-provided config
+	result = overlayOSEnvVars(Env{})
+	if runtime == container.RuntimeDocker && isDefaultHost(result) {
+		// currently both Docker Desktop + Rancher Desktop support running a
+		// K8s cluster that shares the default Docker socket (as compared to
+		// minikube/microk8s which maintain their own independent Docker socket)
+		if env == k8s.EnvDockerDesktop || env == k8s.EnvRancherDesktop {
+			result.BuildToKubeContexts = append(result.BuildToKubeContexts, string(kubeContext))
+		}
 	}
 
 	return ClusterEnv(result)
