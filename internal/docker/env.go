@@ -133,7 +133,6 @@ func ProvideClusterEnv(ctx context.Context, kubeContext k8s.KubeContext, env k8s
 			}
 
 			if ok {
-				result := Env{}
 				host := envMap["DOCKER_HOST"]
 				if host != "" {
 					result.Host = host
