@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// +build go1.11
-// +build !gccgo,!appengine
+//go:build go1.11 && gc && !purego
+// +build go1.11,gc,!purego
 
 #include "textflag.h"
 
