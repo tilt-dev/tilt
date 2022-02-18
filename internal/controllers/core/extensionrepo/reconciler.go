@@ -239,17 +239,21 @@ func (r *Reconciler) reconcileDownloaderRepo(ctx context.Context, state *repoSta
 			// TODO(nick): The more efficient thing to do here would be to
 			// checkout the main branch and pull. But I don't think this case will
 			// happen very often, so it's safer to delete and re-download.
-			_ = os.RemoveAll(destPath)
+			err = os.RemoveAll(destPath)
+			if err != nil {
+				state.status = v1alpha1.ExtensionRepoStatus{
+					Error: fmt.Sprintf("clearing old extension repo at %s: %v", destPath, err),
+				}
+				return ctrl.Result{}
+			}
 		}
 	}
 
 	if needsDownload {
 		_, err = r.dlr.Download(importPath)
 		if err != nil {
-			if exists {
-				// Delete any partial state.
-				_ = os.RemoveAll(destPath)
-			}
+			// Delete any partial state.
+			_ = os.RemoveAll(destPath)
 
 			backoff := state.nextBackoff()
 			backoffMsg := fmt.Sprintf("download error: waiting %s before retrying. Original error: %v", backoff, err)
