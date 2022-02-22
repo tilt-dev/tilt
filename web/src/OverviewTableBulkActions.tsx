@@ -91,14 +91,13 @@ export function OverviewTableBulkActions({
     return null
   }
 
-  const onClickCallback = () => clearSelections()
+  const onClickCallback = clearSelections
 
   return (
     <BulkActionMenu aria-label="Bulk resource actions">
       <BulkApiButton
         bulkAction={BulkAction.Disable}
         buttonText="Enable"
-        className="firstButtonGroupInRow"
         requiresConfirmation={false}
         uiButtons={actionButtons[BulkAction.Disable]}
         targetToggleState={ApiButtonToggleState.On}
@@ -107,7 +106,6 @@ export function OverviewTableBulkActions({
       <BulkApiButton
         bulkAction={BulkAction.Disable}
         buttonText="Disable"
-        className="lastButtonGroupInRow"
         requiresConfirmation={true}
         uiButtons={actionButtons[BulkAction.Disable]}
         targetToggleState={ApiButtonToggleState.Off}

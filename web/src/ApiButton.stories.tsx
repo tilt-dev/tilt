@@ -17,9 +17,7 @@ export default {
     (Story: any) => (
       <MemoryRouter initialEntries={["/"]}>
         <TiltSnackbarProvider>
-          <div style={{ margin: "-1rem" }}>
-            <Story />
-          </div>
+          <Story />
         </TiltSnackbarProvider>
       </MemoryRouter>
     ),
@@ -34,6 +32,11 @@ const StyledButton = styled(ApiButton)`
 
 export const SimpleButton = () => {
   const button = makeUIButton()
+  return <StyledButton uiButton={button} />
+}
+
+export const RequiresConfirmation = () => {
+  const button = makeUIButton({ requiresConfirmation: true })
   return <StyledButton uiButton={button} />
 }
 
