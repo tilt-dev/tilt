@@ -24,6 +24,26 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
+// https://app.shortcut.com/windmill/story/13147/docker-compose-down-messages-for-disabled-resources-may-be-confusing
+func TestDockerComposeIgnoresGoingToRemoveMessage(t *testing.T) {
+	f := newDWFixture(t)
+	f.dcClient.RmOutput = `Stopping servantes_fortune_1 ... 
+Stopping servantes_fortune_1 ... done
+servantes_fortune_1 exited with code 137
+Removing servantes_fortune_1 ... 
+Removing servantes_fortune_1 ... done
+Going to remove servantes_fortune_1
+`
+	f.createResource("m1", v1alpha1.DisableStateDisabled, "running")
+	f.onChange()
+	f.clock.BlockUntil(1)
+	f.clock.Advance(20 * disableDebounceDelay)
+
+	require.NoError(t, f.log.WaitUntilContains("Stopping servantes", 20*time.Millisecond))
+	expectedOutput := strings.Replace(f.dcClient.RmOutput, "Going to remove servantes_fortune_1\n", "", -1)
+	require.Equal(t, expectedOutput, f.log.String())
+}
+
 func TestDockerComposeDebounce(t *testing.T) {
 	f := newDWFixture(t)
 	f.createResource("m1", v1alpha1.DisableStateDisabled, "running")

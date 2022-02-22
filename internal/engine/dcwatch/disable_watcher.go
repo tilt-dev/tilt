@@ -3,12 +3,14 @@ package dcwatch
 import (
 	"context"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/jonboulle/clockwork"
 
 	"github.com/tilt-dev/tilt/internal/dockercompose"
+	"github.com/tilt-dev/tilt/internal/filteredwriter"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -167,6 +169,11 @@ func (w *DisableSubscriber) Reconcile(ctx context.Context) {
 	// feedback that something is happening. On the other hand, `docker-compose rm` does tty tricks that
 	// don't work in the Tilt log, which makes it ugly.
 	out := logger.Get(ctx).Writer(logger.InfoLvl)
+
+	out = filteredwriter.New(out, func(s string) bool {
+		// https://app.shortcut.com/windmill/story/13147/docker-compose-down-messages-for-disabled-resources-may-be-confusing
+		return strings.HasPrefix(s, "Going to remove")
+	})
 
 	err := w.dcc.Rm(ctx, toDisable, out, out)
 	if err != nil {
