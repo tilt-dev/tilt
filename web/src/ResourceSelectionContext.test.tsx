@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react"
+import { act, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import React, { ChangeEvent, useState } from "react"
 import {
@@ -156,5 +156,34 @@ describe("ResourceSelectionContext", () => {
       clearResources()
       expect(selectedState()).toBe(JSON.stringify([]))
     })
+  })
+
+  it("memoizes renders", () => {
+    let renderCount = 0
+    let selection: any
+    let FakeEl = React.memo(() => {
+      selection = useResourceSelection()
+      renderCount++
+      return <div></div>
+    })
+
+    let tree = () => {
+      return (
+        <ResourceSelectionProvider initialValuesForTesting={INITIAL_SELECTIONS}>
+          <FakeEl />
+        </ResourceSelectionProvider>
+      )
+    }
+
+    let { rerender } = render(tree())
+
+    expect(renderCount).toEqual(1)
+    rerender(tree())
+
+    // Make sure we don't re-render on a no-op update.
+    expect(renderCount).toEqual(1)
+
+    act(() => selection.clearSelections())
+    expect(renderCount).toEqual(2)
   })
 })
