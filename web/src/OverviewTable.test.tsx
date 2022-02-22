@@ -733,6 +733,12 @@ describe("when disable resources feature is enabled, but `showDisabledResources`
 })
 
 describe("bulk disable actions", () => {
+  function allEnabledCheckboxes(el: HTMLElement) {
+    return Array.from(
+      el.querySelectorAll(`${SelectionCheckbox}:not(.Mui-disabled)`)
+    )
+  }
+
   describe("when disable resources feature is enabled", () => {
     let view: TestDataView
     let container: HTMLElement
@@ -768,7 +774,7 @@ describe("bulk disable actions", () => {
           name = row.querySelector(Name).textContent
         }
 
-        const checkbox = row.querySelectorAll(SelectionCheckbox)
+        const checkbox = allEnabledCheckboxes(row)
         actualCheckboxDisplay[name] = checkbox.length === 1
       })
 
@@ -776,30 +782,27 @@ describe("bulk disable actions", () => {
     })
 
     it("selects a resource when checkbox is not checked", () => {
-      const checkbox = container.querySelectorAll(SelectionCheckbox)[1]
+      const checkbox = allEnabledCheckboxes(container)[1]
       userEvent.click(checkbox.querySelector("input")!)
 
-      const checkboxAfterClick =
-        container.querySelectorAll(SelectionCheckbox)[1]
+      const checkboxAfterClick = allEnabledCheckboxes(container)[1]
       expect(checkboxAfterClick.getAttribute("aria-checked")).toBe("true")
     })
 
     it("deselects a resource when checkbox is checked", () => {
-      const checkbox = container.querySelectorAll(SelectionCheckbox)[1]
+      const checkbox = allEnabledCheckboxes(container)[1]
       expect(checkbox).toBeTruthy()
 
       // Click the checkbox once to get it to a selected state
       userEvent.click(checkbox.querySelector("input")!)
 
-      const checkboxAfterFirstClick =
-        container.querySelectorAll(SelectionCheckbox)[1]
+      const checkboxAfterFirstClick = allEnabledCheckboxes(container)[1]
       expect(checkboxAfterFirstClick.getAttribute("aria-checked")).toBe("true")
 
       // Click the checkbox a second time to deselect it
       userEvent.click(checkbox.querySelector("input")!)
 
-      const checkboxAfterSecondClick =
-        container.querySelectorAll(SelectionCheckbox)[1]
+      const checkboxAfterSecondClick = allEnabledCheckboxes(container)[1]
       expect(checkboxAfterSecondClick.getAttribute("aria-checked")).toBe(
         "false"
       )
@@ -807,9 +810,7 @@ describe("bulk disable actions", () => {
 
     describe("selection checkbox header", () => {
       it("displays as unchecked if no resources in the table are checked", () => {
-        const allCheckboxes = Array.from(
-          container.querySelectorAll(SelectionCheckbox)
-        )
+        const allCheckboxes = allEnabledCheckboxes(container)
         let checkbox: any = allCheckboxes[0]
         const headerCheckboxCheckedState = checkbox.getAttribute("aria-checked")
         const headerCheckboxIndeterminateState = checkbox
@@ -826,8 +827,7 @@ describe("bulk disable actions", () => {
 
       it("displays as indeterminate if some but not all resources in the table are checked", () => {
         // Choose a (random) table row to click and select
-        const resourceCheckbox: any =
-          container.querySelectorAll(SelectionCheckbox)[2]
+        const resourceCheckbox: any = allEnabledCheckboxes(container)[2]
         userEvent.click(resourceCheckbox.querySelector("input"))
 
         // Verify that the header checkbox displays as partially selected
@@ -844,7 +844,7 @@ describe("bulk disable actions", () => {
 
       it("displays as checked if all resources in the table are checked", () => {
         // Click all checkboxes for resource rows, skipping the first one (which is the table header row)
-        Array.from(container.querySelectorAll(SelectionCheckbox))
+        allEnabledCheckboxes(container)
           .slice(1)
           .forEach((resourceCheckbox: any) => {
             userEvent.click(resourceCheckbox.querySelector("input"))
@@ -864,13 +864,11 @@ describe("bulk disable actions", () => {
 
       it("selects every resource in the table when checkbox is not checked", () => {
         // Click the header checkbox to select it
-        const headerCheckbox = container.querySelectorAll(SelectionCheckbox)[0]
+        const headerCheckbox = allEnabledCheckboxes(container)[0]
         userEvent.click(headerCheckbox.querySelector("input")!)
 
         // Verify all table resources are now selected
-        const rowCheckboxesState = Array.from(
-          container.querySelectorAll(SelectionCheckbox)
-        )
+        const rowCheckboxesState = allEnabledCheckboxes(container)
           .slice(1)
           .map((checkbox: any) => checkbox.getAttribute("aria-checked"))
         expect(rowCheckboxesState).toStrictEqual(["true", "true", "true"])
@@ -886,9 +884,7 @@ describe("bulk disable actions", () => {
         userEvent.click(headerCheckboxAfterFirstClick.querySelector("input")!)
 
         // Verify all table resources are now deselected
-        const rowCheckboxesState = Array.from(
-          container.querySelectorAll(SelectionCheckbox)
-        )
+        const rowCheckboxesState = allEnabledCheckboxes(container)
           .slice(1)
           .map((checkbox: any) => checkbox.getAttribute("aria-checked"))
         expect(rowCheckboxesState).toStrictEqual(["false", "false", "false"])
@@ -907,7 +903,7 @@ describe("bulk disable actions", () => {
       const firstColumnHeaderText =
         container.querySelectorAll(ResourceTableRow)[0].innerHTML
 
-      expect(container.querySelectorAll(SelectionCheckbox).length).toBe(0)
+      expect(allEnabledCheckboxes(container).length).toBe(0)
       // Expect to see the Starred column first when the selection column isn't present
       expect(firstColumnHeaderText.includes("star.svg")).toBe(true)
     })
