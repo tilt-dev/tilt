@@ -81,6 +81,7 @@ export const SelectionCheckbox = styled(InstrumentedCheckbox)`
 
   &.Mui-disabled {
     opacity: 0.25;
+    cursor: not-allowed;
   }
 `
 
@@ -343,10 +344,8 @@ export function TableSelectionColumn({ row }: CellProps<RowValues>) {
 
   let disabled = !row.original.selectable
   let label = row.original.selectable
-    ? checked
-      ? "Select resource"
-      : "Unselect resource"
-    : "Cannot disable resource"
+    ? "Select resource"
+    : "Cannot select resource"
 
   return (
     <SelectionCheckbox

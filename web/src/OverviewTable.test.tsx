@@ -750,6 +750,19 @@ describe("bulk disable actions", () => {
       )
     })
 
+    it("renders labels on enabled checkbox", () => {
+      let els = container.querySelectorAll(
+        `${SelectionCheckbox}:not(.Mui-disabled)`
+      )
+      expect(els[0].getAttribute("aria-label")).toBe("Resource group selection")
+      expect(els[1].getAttribute("aria-label")).toBe("Select resource")
+    })
+
+    it("renders labels on disabled checkbox", () => {
+      let el = container.querySelector(`${SelectionCheckbox}.Mui-disabled`)
+      expect(el!.getAttribute("aria-label")).toBe("Cannot select resource")
+    })
+
     it("renders the `Select` column", () => {
       expect(
         container.querySelectorAll(SelectionCheckbox).length
