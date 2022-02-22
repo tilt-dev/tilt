@@ -1,4 +1,10 @@
-import { createContext, PropsWithChildren, useContext, useState } from "react"
+import {
+  createContext,
+  PropsWithChildren,
+  useContext,
+  useMemo,
+  useState,
+} from "react"
 
 /**
  * The ResourceSelection state keeps track of what resources are selected for bulk actions to be performed on them.
@@ -41,33 +47,34 @@ export function ResourceSelectionProvider(
   const selections = new Set(props.initialValuesForTesting) || new Set()
   const [selectedResources, setSelectedResources] = useState(selections)
 
-  function isSelected(resourceName: string) {
-    return selectedResources.has(resourceName)
-  }
+  const contextValue: ResourceSelectionContext = useMemo(() => {
+    function isSelected(resourceName: string) {
+      return selectedResources.has(resourceName)
+    }
 
-  function select(...resourceNames: string[]) {
-    const newSelections = new Set<string>(selectedResources)
-    resourceNames.forEach((name) => newSelections.add(name))
-    return setSelectedResources(newSelections)
-  }
+    function select(...resourceNames: string[]) {
+      const newSelections = new Set<string>(selectedResources)
+      resourceNames.forEach((name) => newSelections.add(name))
+      return setSelectedResources(newSelections)
+    }
 
-  function deselect(...resourceNames: string[]) {
-    const newSelections = new Set<string>(selectedResources)
-    resourceNames.forEach((name) => newSelections.delete(name))
-    return setSelectedResources(newSelections)
-  }
+    function deselect(...resourceNames: string[]) {
+      const newSelections = new Set<string>(selectedResources)
+      resourceNames.forEach((name) => newSelections.delete(name))
+      return setSelectedResources(newSelections)
+    }
 
-  function clearSelections() {
-    setSelectedResources(new Set())
-  }
-
-  const contextValue: ResourceSelectionContext = {
-    selected: selectedResources,
-    isSelected,
-    select,
-    deselect,
-    clearSelections,
-  }
+    function clearSelections() {
+      setSelectedResources(new Set())
+    }
+    return {
+      selected: selectedResources,
+      isSelected,
+      select,
+      deselect,
+      clearSelections,
+    }
+  }, [selectedResources, setSelectedResources])
 
   return (
     <ResourceSelectionContext.Provider value={contextValue}>
