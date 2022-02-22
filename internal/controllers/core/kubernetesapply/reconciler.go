@@ -499,6 +499,7 @@ func (r *Reconciler) createEntitiesToDeploy(ctx context.Context,
 		return nil, err
 	}
 
+	var injectResults []injectResult
 	imageMapNames := spec.ImageMaps
 	injectedImageMaps := map[string]bool{}
 	for _, e := range entities {
@@ -536,7 +537,6 @@ func (r *Reconciler) createEntitiesToDeploy(ctx context.Context,
 			policy = v1.PullNever
 		}
 
-		var injectResults []injectResult
 		for _, imageMapName := range imageMapNames {
 			imageMap := imageMaps[types.NamespacedName{Name: imageMapName}]
 			imageMapSpec := imageMap.Spec
@@ -576,28 +576,6 @@ func (r *Reconciler) createEntitiesToDeploy(ctx context.Context,
 			}
 		}
 
-		l := logger.Get(ctx)
-		if l.Level().ShouldDisplay(logger.DebugLvl) {
-			if len(injectResults) != 0 {
-				l.Debugf("Injecting images into Kubernetes YAML:")
-				meta := make([]k8s.EntityMeta, len(injectResults))
-				for i := range injectResults {
-					meta[i] = injectResults[i].meta
-				}
-				names := k8s.UniqueNamesMeta(meta, 2)
-				for i := range injectResults {
-					l.Debugf(
-						"  → %s: %s ⇒ %s",
-						names[i],
-						injectResults[i].imageMap.Spec.Selector,
-						injectResults[i].imageMap.Status.Image,
-					)
-				}
-			} else {
-				l.Debugf("No images injected into Kubernetes YAML")
-			}
-		}
-
 		// This needs to be after all the other injections, to ensure the hash includes the Tilt-generated
 		// image tag, etc
 		e, err := k8s.InjectPodTemplateSpecHashes(e)
@@ -611,6 +589,28 @@ func (r *Reconciler) createEntitiesToDeploy(ctx context.Context,
 	for _, name := range imageMapNames {
 		if !injectedImageMaps[name] {
 			return nil, fmt.Errorf("Docker image missing from yaml: %s", name)
+		}
+	}
+
+	l := logger.Get(ctx)
+	if l.Level().ShouldDisplay(logger.DebugLvl) {
+		if len(injectResults) != 0 {
+			l.Debugf("Injecting images into Kubernetes YAML:")
+			meta := make([]k8s.EntityMeta, len(injectResults))
+			for i := range injectResults {
+				meta[i] = injectResults[i].meta
+			}
+			names := k8s.UniqueNamesMeta(meta, 2)
+			for i := range injectResults {
+				l.Debugf(
+					"  → %s: %s ⇒ %s",
+					names[i],
+					injectResults[i].imageMap.Spec.Selector,
+					injectResults[i].imageMap.Status.Image,
+				)
+			}
+		} else {
+			l.Debugf("No images injected into Kubernetes YAML")
 		}
 	}
 
