@@ -25,8 +25,10 @@ var (
 	imgTargDB       = model.ImageTarget{BuildDetails: model.DockerBuild{}}
 	imgTargDBWithLU = model.ImageTarget{LiveUpdateSpec: lu, BuildDetails: model.DockerBuild{}}
 
-	kTarg = model.K8sTarget{}
-	dTarg = model.DockerComposeTarget{}
+	kTarg    = model.K8sTarget{}
+	dTarg    = model.DockerComposeTarget{}
+	lTarg    = model.LocalTarget{}
+	lSrvTarg = model.LocalTarget{ServeCmd: model.Cmd{Argv: []string{"echo", "hi"}}}
 )
 
 var (
@@ -78,6 +80,13 @@ func TestAnalyticsReporter_Everything(t *testing.T) {
 	tf.addManifest(tf.nextManifest().WithImageTargets(
 		[]model.ImageTarget{imgTargDBWithLU, imgTargDBWithLU})) // liveupdate, multipleimageliveupdate
 
+	tf.addManifest(tf.nextManifest().WithDeployTarget(lTarg))
+	tf.addManifest(tf.nextManifest().WithDeployTarget(lTarg))
+	tf.addManifest(tf.nextManifest().WithDeployTarget(lSrvTarg))
+	tf.addManifest(tf.nextManifest(), func(mt *store.ManifestTarget) {
+		mt.State.DisableState = v1alpha1.DisableStateDisabled
+	})
+
 	state := tf.st.LockMutableStateForTesting()
 	state.TiltStartTime = time.Now()
 
@@ -90,13 +99,16 @@ func TestAnalyticsReporter_Everything(t *testing.T) {
 
 	expectedTags := map[string]string{
 		"builds.completed_count":                              "3",
-		"resource.count":                                      "9",
+		"resource.count":                                      "13",
 		"resource.dockercompose.count":                        "3",
 		"resource.unbuiltresources.count":                     "3",
 		"resource.liveupdate.count":                           "3",
 		"resource.k8s.count":                                  "4",
 		"resource.sameimagemultiplecontainerliveupdate.count": "0", // tests for this below
 		"resource.multipleimageliveupdate.count":              "1",
+		"resource.local.count":                                "3",
+		"resource.localserve.count":                           "1",
+		"resource.enabled.count":                              "12",
 		"tiltfile.error":                                      "false",
 		"up.starttime":                                        state.TiltStartTime.Format(time.RFC3339),
 		"env":                                                 string(k8s.EnvDockerDesktop),
@@ -227,9 +239,16 @@ func newAnalyticsReporterTestFixture(t testing.TB) *analyticsReporterTestFixture
 	}
 }
 
-func (artf *analyticsReporterTestFixture) addManifest(m model.Manifest) {
+type addManifestOpt func(mt *store.ManifestTarget)
+
+func (artf *analyticsReporterTestFixture) addManifest(m model.Manifest, opts ...addManifestOpt) {
 	state := artf.st.LockMutableStateForTesting()
-	state.UpsertManifestTarget(store.NewManifestTarget(m))
+	mt := store.NewManifestTarget(m)
+	mt.State.DisableState = v1alpha1.DisableStateEnabled
+	for _, opt := range opts {
+		opt(mt)
+	}
+	state.UpsertManifestTarget(mt)
 	artf.st.UnlockMutableState()
 }
 
