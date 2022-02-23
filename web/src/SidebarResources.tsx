@@ -3,7 +3,7 @@ import {
   AccordionDetails,
   AccordionSummary,
 } from "@material-ui/core"
-import React, { ChangeEvent, useCallback, useMemo, useState } from "react"
+import React, { ChangeEvent, useCallback, useState } from "react"
 import styled from "styled-components"
 import { AnalyticsType, Tags } from "./analytics"
 import {
@@ -48,6 +48,10 @@ export type SidebarProps = {
   resourceView: ResourceView
   pathBuilder: PathBuilder
   resourceListOptions: ResourceListOptions
+}
+
+type SidebarGroupedByProps = SidebarProps & {
+  onStartBuild: () => void
 }
 
 type SidebarSectionProps = {
@@ -141,6 +145,18 @@ const SidebarGroupDetails = styled(AccordionDetails)`
 
 const GROUP_INFO_TOOLTIP_ID = "sidebar-groups-info"
 
+function onlyEnabledItems(items: SidebarItem[]): SidebarItem[] {
+  return items.filter((item) => !sidebarItemIsDisabled(item))
+}
+function onlyDisabledItems(items: SidebarItem[]): SidebarItem[] {
+  return items.filter((item) => sidebarItemIsDisabled(item))
+}
+function enabledItemsFirst(items: SidebarItem[]): SidebarItem[] {
+  let result = onlyEnabledItems(items)
+  result.push(...onlyDisabledItems(items))
+  return result
+}
+
 export function SidebarListSection(props: SidebarSectionProps): JSX.Element {
   const features = useFeatures()
   const sectionName = props.sectionName ? (
@@ -160,20 +176,9 @@ export function SidebarListSection(props: SidebarSectionProps): JSX.Element {
     )
   }
 
-  const [enabledItems, disabledItems] = useMemo(() => {
-    const enabledItems: SidebarItem[] = []
-    const disabledItems: SidebarItem[] = []
-
-    props.items.forEach((item) => {
-      if (sidebarItemIsDisabled(item)) {
-        disabledItems.push(item)
-      } else {
-        enabledItems.push(item)
-      }
-    })
-
-    return [enabledItems, disabledItems]
-  }, [props.items])
+  // TODO(nick): Figure out how to memoize filters effectively.
+  const enabledItems = onlyEnabledItems(props.items)
+  const disabledItems = onlyDisabledItems(props.items)
 
   const displayDisabledResources =
     features.isEnabled(Flag.DisableResources) && disabledItems.length > 0
@@ -269,7 +274,20 @@ function SidebarGroupListSection(props: { label: string } & SidebarProps) {
   const labelNameId = `sidebarItem-${props.label}`
 
   const { getGroup, toggleGroupExpanded } = useResourceGroups()
-  const { expanded } = getGroup(props.label)
+  let { expanded } = getGroup(props.label)
+
+  let isSelected = props.items.some((item) => item.name == props.selected)
+
+  if (isSelected) {
+    // If an item in the group is selected, expand the group
+    // without writing it back to persistent state.
+    //
+    // This creates a nice interaction, where if you're keyboard-navigating
+    // through sidebar items, we expand the group you navigate into and expand
+    // it when you navigate out again.
+    expanded = true
+  }
+
   const handleChange = (_e: ChangeEvent<{}>) =>
     toggleGroupExpanded(props.label, AnalyticsType.Detail)
 
@@ -321,10 +339,21 @@ function resourcesLabelView(
   return { labels, labelsToResources, tiltfile, unlabeled }
 }
 
-function SidebarGroupedByLabels(props: SidebarProps) {
+function SidebarGroupedByLabels(props: SidebarGroupedByProps) {
   const { labels, labelsToResources, tiltfile, unlabeled } = resourcesLabelView(
     props.items
   )
+
+  // NOTE(nick): We need the visual order of the items to pass
+  // to the keyboard navigation component. The problem is that
+  // each section component does its own ordering. So we cheat
+  // here and replicate the logic for determining the order.
+  let totalOrder: SidebarItem[] = []
+  labels.map((label) => {
+    totalOrder.push(...enabledItemsFirst(labelsToResources[label]))
+  })
+  totalOrder.push(...enabledItemsFirst(unlabeled))
+  totalOrder.push(...enabledItemsFirst(tiltfile))
 
   return (
     <>
@@ -346,6 +375,12 @@ function SidebarGroupedByLabels(props: SidebarProps) {
         sectionName={TILTFILE_LABEL}
         items={tiltfile}
         groupView={true}
+      />
+      <SidebarKeyboardShortcuts
+        selected={props.selected}
+        items={totalOrder}
+        onStartBuild={props.onStartBuild}
+        resourceView={props.resourceView}
       />
     </>
   )
@@ -447,7 +482,11 @@ export class SidebarResources extends React.Component<SidebarProps> {
         >
           <OverviewSidebarOptions />
           {displayLabelGroups ? (
-            <SidebarGroupedByLabels {...this.props} items={filteredItems} />
+            <SidebarGroupedByLabels
+              {...this.props}
+              items={filteredItems}
+              onStartBuild={this.startBuildOnSelected}
+            />
           ) : (
             <SidebarListSection
               {...this.props}
@@ -456,12 +495,15 @@ export class SidebarResources extends React.Component<SidebarProps> {
             />
           )}
         </SidebarResourcesContent>
-        <SidebarKeyboardShortcuts
-          selected={this.props.selected}
-          items={filteredItems}
-          onStartBuild={this.startBuildOnSelected}
-          resourceView={this.props.resourceView}
-        />
+        {/* The label groups display handles the keyboard shortcuts separately. */}
+        {displayLabelGroups ? null : (
+          <SidebarKeyboardShortcuts
+            selected={this.props.selected}
+            items={enabledItemsFirst(filteredItems)}
+            onStartBuild={this.startBuildOnSelected}
+            resourceView={this.props.resourceView}
+          />
+        )}
       </SidebarResourcesRoot>
     )
   }

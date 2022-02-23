@@ -1,4 +1,5 @@
-import { mount, ReactWrapper } from "enzyme"
+import { act, render } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import React from "react"
 import { AnalyticsAction, AnalyticsType } from "./analytics"
 import {
@@ -41,17 +42,19 @@ const TestConsumer = (props: { labelName?: string }) => {
 }
 
 describe("ResourceGroupsContext", () => {
-  let wrapper: ReactWrapper<typeof TestConsumer>
+  let wrapper: HTMLElement
 
   // Helpers
-  const groupState = () => wrapper.find(`#${GROUP_STATE_ID}`).text()
-  const labelState = () => wrapper.find(`#${LABEL_STATE_ID}`).text()
+  const groupState = () =>
+    wrapper.querySelector(`#${GROUP_STATE_ID}`)!.innerHTML
+  const labelState = () =>
+    wrapper.querySelector(`#${LABEL_STATE_ID}`)!.innerHTML
   const clickButton = () => {
-    wrapper.find("button").simulate("click")
-    wrapper.update()
+    userEvent.click(wrapper.querySelector("button")!)
   }
 
   beforeEach(() => {
+    localStorage.clear()
     mockAnalyticsCalls()
   })
 
@@ -61,7 +64,7 @@ describe("ResourceGroupsContext", () => {
   })
 
   it("defaults to an empty state with no groups", () => {
-    wrapper = mount(
+    wrapper = renderContainer(
       <ResourceGroupsContextProvider>
         <TestConsumer />
       </ResourceGroupsContextProvider>
@@ -73,7 +76,7 @@ describe("ResourceGroupsContext", () => {
   describe("toggleGroupExpanded", () => {
     it("sets expanded to `true` when group is collapsed", () => {
       const testValues = { test: { expanded: false } }
-      wrapper = mount(
+      wrapper = renderContainer(
         <ResourceGroupsContextProvider initialValuesForTesting={testValues}>
           <TestConsumer labelName="test" />
         </ResourceGroupsContextProvider>
@@ -85,7 +88,7 @@ describe("ResourceGroupsContext", () => {
 
     it("sets expanded to `false` when group is expanded", () => {
       const testValues = { test: { expanded: true } }
-      wrapper = mount(
+      wrapper = renderContainer(
         <ResourceGroupsContextProvider initialValuesForTesting={testValues}>
           <TestConsumer labelName="test" />
         </ResourceGroupsContextProvider>
@@ -96,7 +99,7 @@ describe("ResourceGroupsContext", () => {
     })
 
     it("sets expanded to `false` if a group isn't saved yet and is toggled", () => {
-      wrapper = mount(
+      wrapper = renderContainer(
         <ResourceGroupsContextProvider>
           <TestConsumer labelName="a-non-existent-group" />
         </ResourceGroupsContextProvider>
@@ -108,7 +111,7 @@ describe("ResourceGroupsContext", () => {
 
     it("makes an analytics call with the right payload", () => {
       const testValues = { test: { expanded: true } }
-      wrapper = mount(
+      wrapper = renderContainer(
         <ResourceGroupsContextProvider initialValuesForTesting={testValues}>
           <TestConsumer labelName="test" />
         </ResourceGroupsContextProvider>
@@ -127,7 +130,7 @@ describe("ResourceGroupsContext", () => {
   describe("getGroup", () => {
     it("returns the correct state of a resource group", () => {
       const testValues = { frontend: { expanded: false } }
-      wrapper = mount(
+      wrapper = renderContainer(
         <ResourceGroupsContextProvider initialValuesForTesting={testValues}>
           <TestConsumer labelName="frontend" />
         </ResourceGroupsContextProvider>
@@ -138,7 +141,7 @@ describe("ResourceGroupsContext", () => {
 
     it("returns a default state of a resource group if a group isn't saved yet", () => {
       const testValues = { frontend: { expanded: false } }
-      wrapper = mount(
+      wrapper = renderContainer(
         <ResourceGroupsContextProvider initialValuesForTesting={testValues}>
           <TestConsumer labelName="backend" />
         </ResourceGroupsContextProvider>
@@ -147,4 +150,39 @@ describe("ResourceGroupsContext", () => {
       expect(labelState()).toBe(JSON.stringify(DEFAULT_GROUP_STATE))
     })
   })
+
+  it("memoizes renders", () => {
+    let renderCount = 0
+    let toggleGroupExpanded: any
+    let FakeEl = React.memo(() => {
+      let context = useResourceGroups()
+      toggleGroupExpanded = context.toggleGroupExpanded
+      renderCount++
+      return <div></div>
+    })
+
+    let tree = () => {
+      const init = { frontend: { expanded: false } }
+      return (
+        <ResourceGroupsContextProvider initialValuesForTesting={init}>
+          <FakeEl />
+        </ResourceGroupsContextProvider>
+      )
+    }
+
+    let { rerender } = render(tree())
+    expect(renderCount).toEqual(1)
+
+    // Make sure we don't re-render
+    rerender(tree())
+    expect(renderCount).toEqual(1)
+
+    act(() => toggleGroupExpanded("frontend", ""))
+    expect(renderCount).toEqual(2)
+  })
 })
+
+function renderContainer(x: any) {
+  let { container } = render(x)
+  return container
+}
