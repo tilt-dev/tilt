@@ -78,6 +78,11 @@ export const SelectionCheckbox = styled(InstrumentedCheckbox)`
   &.Mui-checked {
     color: ${Color.gray6};
   }
+
+  &.Mui-disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+  }
 `
 
 const TableHeaderStarIcon = styled(StarSvg)`
@@ -315,28 +320,32 @@ export function TableUpdateColumn({ row }: CellProps<RowValues>) {
 }
 
 export function TableSelectionColumn({ row }: CellProps<RowValues>) {
-  // Don't allow a row to be selected if it can't be disabled
-  // This rule can be adjusted when/if there are other bulk actions
-  if (!row.original.selectable) {
-    return null
-  }
-
   const selections = useResourceSelection()
   const resourceName = row.original.name
   const checked = selections.isSelected(resourceName)
 
-  const onChange = (_e: ChangeEvent<HTMLInputElement>) => {
-    if (!checked) {
-      selections.select(resourceName)
-    } else {
-      selections.deselect(resourceName)
-    }
-  }
+  const onChange = useCallback(
+    (_e: ChangeEvent<HTMLInputElement>) => {
+      if (!checked) {
+        selections.select(resourceName)
+      } else {
+        selections.deselect(resourceName)
+      }
+    },
+    [checked, selections]
+  )
 
-  const analyticsTags = {
-    ...row.original.analyticsTags,
-    type: AnalyticsType.Grid,
-  }
+  const analyticsTags = useMemo(() => {
+    return {
+      ...row.original.analyticsTags,
+      type: AnalyticsType.Grid,
+    }
+  }, [row.original.analyticsTags])
+
+  let disabled = !row.original.selectable
+  let label = row.original.selectable
+    ? "Select resource"
+    : "Cannot select resource"
 
   return (
     <SelectionCheckbox
@@ -346,6 +355,8 @@ export function TableSelectionColumn({ row }: CellProps<RowValues>) {
       aria-checked={checked}
       onChange={onChange}
       size="small"
+      disabled={disabled}
+      aria-label={label}
     />
   )
 }
@@ -677,6 +688,8 @@ const DEFAULT_COLUMNS: Column<RowValues>[] = [
   },
 ]
 
+let ALL_COLUMNS = [RESOURCE_SELECTION_COLUMN, ...DEFAULT_COLUMNS]
+
 export function getTableColumns(features?: Features) {
   if (!features) {
     return DEFAULT_COLUMNS
@@ -684,7 +697,7 @@ export function getTableColumns(features?: Features) {
 
   // If disable resources is enabled, render the selection column
   if (features.isEnabled(Flag.DisableResources)) {
-    return [RESOURCE_SELECTION_COLUMN, ...DEFAULT_COLUMNS]
+    return ALL_COLUMNS
   }
 
   return DEFAULT_COLUMNS
