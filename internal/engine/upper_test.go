@@ -1770,6 +1770,32 @@ func TestPodDeleted(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
+func TestPodForgottenOnDisable(t *testing.T) {
+	f := newTestFixture(t)
+	manifest := f.newManifest("foobar")
+	pb := f.registerForDeployer(manifest)
+	f.Start([]model.Manifest{manifest})
+
+	call := f.nextCall()
+	assert.True(t, call.oneImageState().IsEmpty())
+
+	pod := pb.WithPhase("CrashLoopBackOff").Build()
+	f.podEvent(pod)
+
+	f.WaitUntilManifestState("pod seen", "foobar", func(ms store.ManifestState) bool {
+		return ms.K8sRuntimeState().MostRecentPod().Status == "CrashLoopBackOff"
+	})
+
+	f.setDisableState("foobar", true)
+
+	f.WaitUntilManifestState("pod unseen", "foobar", func(ms store.ManifestState) bool {
+		return ms.K8sRuntimeState().PodLen() == 0
+	})
+
+	assert.NoError(t, f.Stop())
+	f.assertAllBuildsConsumed()
+}
+
 func TestPodEventUpdateByPodName(t *testing.T) {
 	f := newTestFixture(t)
 	manifest := f.newManifest("foobar")

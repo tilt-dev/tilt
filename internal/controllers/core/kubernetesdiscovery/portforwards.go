@@ -23,7 +23,7 @@ func (r *Reconciler) manageOwnedPortForwards(ctx context.Context, nn types.Names
 	err := indexer.ListOwnedBy(ctx, r.ctrlClient, &pfList, nn, apiType)
 	if err != nil {
 		return fmt.Errorf("failed to fetch managed PortForward objects for KubernetesDiscovery %s: %v",
-			kd.Name, err)
+			nn.Name, err)
 	}
 
 	pf, err := r.toDesiredPortForward(kd)
