@@ -32,17 +32,14 @@ func apiGet(path string) (body io.ReadCloser) {
 	return res.Body
 }
 
-func apiPostJson(path string, payload []byte) (body io.ReadCloser) {
+func apiPostJson(path string, payload []byte) (body io.ReadCloser, status int) {
 	url := apiURL(path)
 	res, err := http.Post(url, "application/json", bytes.NewBuffer(payload))
 	if err != nil {
 		cmdFail(fmt.Errorf("Could not connect to Tilt at %s: %v", url, err))
 	}
 
-	if res.StatusCode != http.StatusOK {
-		failWithNonOKResponse(url, res)
-	}
-	return res.Body
+	return res.Body, res.StatusCode
 }
 
 func cmdFail(err error) {

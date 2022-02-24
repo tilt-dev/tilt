@@ -10,6 +10,8 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -239,6 +241,10 @@ func (s *HeadsUpServer) HandleSetTiltfileArgs(w http.ResponseWriter, req *http.R
 	}
 }
 
+// Responds with:
+// * 200/empty body on success
+// * 200/error message in body on well-formed, unservicable requests (e.g. resource is disabled or doesn't exist)
+// * 400/error message in body on badly formed requests (e.g., invalid json)
 func (s *HeadsUpServer) HandleTrigger(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodPost {
 		http.Error(w, "must be POST request", http.StatusBadRequest)
@@ -259,23 +265,18 @@ func (s *HeadsUpServer) HandleTrigger(w http.ResponseWriter, req *http.Request) 
 		return
 	}
 
-	err = SendToTriggerQueue(s.store, payload.ManifestNames[0], payload.BuildReason)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+	mn := model.ManifestName(payload.ManifestNames[0])
+
+	state := s.store.RLockState()
+	defer s.store.RUnlockState()
+	ms, ok := state.ManifestState(mn)
+	if !ok {
+		http.Error(w, fmt.Sprintf("resource %q does not exist", mn), http.StatusNotFound)
+	} else if ms != nil && ms.DisableState == v1alpha1.DisableStateDisabled {
+		_, _ = fmt.Fprintf(w, "resource %q is currently disabled", mn)
+	} else {
+		s.store.Dispatch(AppendToTriggerQueueAction{Name: mn, Reason: payload.BuildReason})
 	}
-}
-
-func SendToTriggerQueue(st store.RStore, name string, buildReason model.BuildReason) error {
-	mName := model.ManifestName(name)
-
-	err := checkManifestsExist(st, []string{name})
-	if err != nil {
-		return err
-	}
-
-	st.Dispatch(AppendToTriggerQueueAction{Name: mName, Reason: buildReason})
-	return nil
 }
 
 func (s *HeadsUpServer) HandleOverrideTriggerMode(w http.ResponseWriter, req *http.Request) {
