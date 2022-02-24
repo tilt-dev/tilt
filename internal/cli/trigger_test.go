@@ -24,7 +24,7 @@ func TestTriggerSuccess(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, "Successfully triggered update for resource: \"foo\"\n", out.String())
-	require.Equal(t, errOut.Len(), 0)
+	require.Equal(t, 0, errOut.Len())
 }
 
 func TestTriggerFailure(t *testing.T) {
@@ -36,15 +36,32 @@ func TestTriggerFailure(t *testing.T) {
 	err := c.Flags().Parse([]string{"foo"})
 	require.NoError(t, err)
 	err = cmd.run(f.ctx, c.Flags().Args())
-	require.Equal(t, err.Error(), "nothing ever works")
+	require.Equal(t, "nothing ever works", err.Error())
 
-	require.Equal(t, errOut.Len(), 0)
-	require.Equal(t, out.Len(), 0)
+	require.Equal(t, 0, errOut.Len())
+	require.Equal(t, 0, out.Len())
+}
+
+func TestTriggerNotFound(t *testing.T) {
+	f := newTriggerFixture(t)
+	f.responseBody = "nothing ever works"
+	f.responseStatus = http.StatusNotFound
+	streams, _, out, errOut := genericclioptions.NewTestIOStreams()
+	cmd := newTriggerCmd(streams)
+	c := cmd.register()
+	err := c.Flags().Parse([]string{"foo"})
+	require.NoError(t, err)
+	err = cmd.run(f.ctx, c.Flags().Args())
+	require.Equal(t, "(404): nothing ever works", err.Error())
+
+	require.Equal(t, 0, errOut.Len())
+	require.Equal(t, 0, out.Len())
 }
 
 type triggerFixture struct {
-	responseBody string
-	ctx          context.Context
+	responseBody   string
+	responseStatus int
+	ctx            context.Context
 }
 
 func newTriggerFixture(t *testing.T) *triggerFixture {
@@ -59,12 +76,13 @@ func newTriggerFixture(t *testing.T) *triggerFixture {
 	})
 
 	f := &triggerFixture{
-		ctx: ctx,
+		ctx:            ctx,
+		responseStatus: http.StatusOK,
 	}
 
 	mux := &http.ServeMux{}
 	mux.HandleFunc("/api/trigger", func(w http.ResponseWriter, req *http.Request) {
-		_, _ = fmt.Fprint(w, f.responseBody)
+		http.Error(w, f.responseBody, f.responseStatus)
 	})
 
 	srv := &http.Server{

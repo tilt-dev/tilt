@@ -10,6 +10,8 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -23,7 +25,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/hud/webview"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/tiltfiles"
-	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/assets"
 	"github.com/tilt-dev/tilt/pkg/model"
 	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
@@ -264,32 +265,18 @@ func (s *HeadsUpServer) HandleTrigger(w http.ResponseWriter, req *http.Request) 
 		return
 	}
 
-	mn := payload.ManifestNames[0]
+	mn := model.ManifestName(payload.ManifestNames[0])
 
-	err = SendToTriggerQueue(s.store, mn, payload.BuildReason)
-	if err != nil {
-		_, _ = fmt.Fprint(w, err.Error())
-		return
-	}
-}
-
-func SendToTriggerQueue(st store.RStore, name string, buildReason model.BuildReason) error {
-	mName := model.ManifestName(name)
-
-	state := st.RLockState()
-	ms, ok := state.ManifestState(model.ManifestName(name))
+	state := s.store.RLockState()
+	defer s.store.RUnlockState()
+	ms, ok := state.ManifestState(mn)
 	if !ok {
-		st.RUnlockState()
-		return fmt.Errorf("resource %q does not exist", name)
+		http.Error(w, fmt.Sprintf("resource %q does not exist", mn), http.StatusNotFound)
+	} else if ms != nil && ms.DisableState == v1alpha1.DisableStateDisabled {
+		_, _ = fmt.Fprintf(w, "resource %q is currently disabled", mn)
+	} else {
+		s.store.Dispatch(AppendToTriggerQueueAction{Name: mn, Reason: payload.BuildReason})
 	}
-	if ms != nil && ms.DisableState == v1alpha1.DisableStateDisabled {
-		st.RUnlockState()
-		return fmt.Errorf("resource %q is currently disabled", name)
-	}
-	st.RUnlockState()
-
-	st.Dispatch(AppendToTriggerQueueAction{Name: mName, Reason: buildReason})
-	return nil
 }
 
 func (s *HeadsUpServer) HandleOverrideTriggerMode(w http.ResponseWriter, req *http.Request) {

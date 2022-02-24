@@ -10,7 +10,6 @@ import (
 	"net/http/httptest"
 	"path/filepath"
 	"reflect"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -133,10 +132,8 @@ func TestHandleTriggerNoManifestWithName(t *testing.T) {
 	payload := `{"manifest_names":["foo"]}`
 	status, respBody := f.makeReq("/api/trigger", f.serv.HandleTrigger, http.MethodPost, payload)
 
-	// Expect SendToTriggerQueue to fail: make sure we reply to the HTTP request
-	// with an error when this happens
-	require.Equal(t, http.StatusOK, status, "handler returned wrong status code")
-	require.Equal(t, respBody, "resource \"foo\" does not exist")
+	require.Equal(t, http.StatusNotFound, status, "handler returned wrong status code")
+	require.Equal(t, respBody, "resource \"foo\" does not exist\n")
 }
 
 func TestHandleTriggerTooManyManifestNames(t *testing.T) {
@@ -171,10 +168,22 @@ func TestHandleTriggerMalformedPayload(t *testing.T) {
 func TestHandleTriggerTiltfileOK(t *testing.T) {
 	f := newTestFixture(t)
 
-	payload := fmt.Sprintf(`{"manifest_names":["%s"]}`, model.MainTiltfileManifestName)
-	status, _ := f.makeReq("/api/trigger", f.serv.HandleTrigger, http.MethodPost, payload)
+	payload := fmt.Sprintf(`{"manifest_names":["%s"], "build_reason": %d}`, model.MainTiltfileManifestName, model.BuildReasonFlagTriggerWeb)
+	status, resp := f.makeReq("/api/trigger", f.serv.HandleTrigger, http.MethodPost, payload)
+	assert.Equal(t, "", resp)
+	assert.Equal(t, http.StatusOK, status)
 
-	require.Equal(t, http.StatusOK, status, "handler returned wrong status code")
+	a := store.WaitForAction(t, reflect.TypeOf(server.AppendToTriggerQueueAction{}), f.getActions)
+	action, ok := a.(server.AppendToTriggerQueueAction)
+	if !ok {
+		t.Fatalf("Action was not of type 'AppendToTriggreQueueAction': %+v", action)
+	}
+
+	expected := server.AppendToTriggerQueueAction{
+		Name:   model.MainTiltfileManifestName,
+		Reason: model.BuildReasonFlagTriggerWeb,
+	}
+	assert.Equal(t, expected, action)
 }
 
 func TestHandleTriggerResourceDisabled(t *testing.T) {
@@ -191,37 +200,7 @@ func TestHandleTriggerResourceDisabled(t *testing.T) {
 	require.Equal(t, "resource \"foo\" is currently disabled", body)
 }
 
-func TestSendToTriggerQueue_manualManifest(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("TODO(nick): fix this")
-	}
-	f := newTestFixture(t)
-
-	mt := store.ManifestTarget{
-		Manifest: model.Manifest{
-			Name:        "foobar",
-			TriggerMode: model.TriggerModeManualWithAutoInit,
-		},
-	}
-	state := f.st.LockMutableStateForTesting()
-	state.UpsertManifestTarget(&mt)
-	f.st.UnlockMutableState()
-
-	err := server.SendToTriggerQueue(f.st, "foobar", model.BuildReasonFlagTriggerWeb)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	a := store.WaitForAction(t, reflect.TypeOf(server.AppendToTriggerQueueAction{}), f.getActions)
-	action, ok := a.(server.AppendToTriggerQueueAction)
-	if !ok {
-		t.Fatalf("Action was not of type 'AppendToTriggerQueueAction': %+v", action)
-	}
-	assert.Equal(t, "foobar", action.Name.String())
-	assert.Equal(t, model.BuildReasonFlagTriggerWeb, action.Reason)
-}
-
-func TestSendToTriggerQueue_automaticManifest(t *testing.T) {
+func TestHandleTriggerNonTiltfileManifest(t *testing.T) {
 	f := newTestFixture(t)
 
 	mt := store.ManifestTarget{
@@ -234,10 +213,10 @@ func TestSendToTriggerQueue_automaticManifest(t *testing.T) {
 	state.UpsertManifestTarget(&mt)
 	f.st.UnlockMutableState()
 
-	err := server.SendToTriggerQueue(f.st, "foobar", model.BuildReasonFlagTriggerWeb)
-	if err != nil {
-		t.Fatal(err)
-	}
+	payload := fmt.Sprintf(`{"manifest_names":["%s"]}`, mt.Manifest.Name)
+	status, resp := f.makeReq("/api/trigger", f.serv.HandleTrigger, http.MethodPost, payload)
+	assert.Equal(t, "", resp)
+	assert.Equal(t, http.StatusOK, status)
 
 	a := store.WaitForAction(t, reflect.TypeOf(server.AppendToTriggerQueueAction{}), f.getActions)
 	action, ok := a.(server.AppendToTriggerQueueAction)
@@ -245,36 +224,6 @@ func TestSendToTriggerQueue_automaticManifest(t *testing.T) {
 		t.Fatalf("Action was not of type 'AppendToTriggerQueueAction': %+v", action)
 	}
 	assert.Equal(t, "foobar", action.Name.String())
-}
-
-func TestSendToTriggerQueue_Tiltfile(t *testing.T) {
-	f := newTestFixture(t)
-
-	err := server.SendToTriggerQueue(f.st, model.MainTiltfileManifestName.String(), model.BuildReasonFlagTriggerWeb)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	a := store.WaitForAction(t, reflect.TypeOf(server.AppendToTriggerQueueAction{}), f.getActions)
-	action, ok := a.(server.AppendToTriggerQueueAction)
-	if !ok {
-		t.Fatalf("Action was not of type 'AppendToTriggreQueueAction': %+v", action)
-	}
-
-	expected := server.AppendToTriggerQueueAction{
-		Name:   model.MainTiltfileManifestName,
-		Reason: model.BuildReasonFlagTriggerWeb,
-	}
-	assert.Equal(t, expected, action)
-}
-
-func TestSendToTriggerQueue_noManifestWithName(t *testing.T) {
-	f := newTestFixture(t)
-
-	err := server.SendToTriggerQueue(f.st, "foobar", model.BuildReasonFlagTriggerWeb)
-
-	assert.EqualError(t, err, "resource \"foobar\" does not exist")
-	store.AssertNoActionOfType(t, reflect.TypeOf(server.AppendToTriggerQueueAction{}), f.getActions)
 }
 
 func TestHandleOverrideTriggerModeReturnsErrorForBadManifest(t *testing.T) {

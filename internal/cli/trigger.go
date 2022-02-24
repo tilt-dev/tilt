@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -58,16 +60,20 @@ func (t triggerCmd) run(ctx context.Context, args []string) error {
 	//   like a lot of code to move over (to avoid import cycles) for one call.
 	payload := []byte(fmt.Sprintf(`{"manifest_names":[%q], "build_reason": %d}`, resource, model.BuildReasonFlagTriggerCLI))
 
-	r := apiPostJson("trigger", payload)
+	r, status := apiPostJson("trigger", payload)
 
-	body, err := ioutil.ReadAll(r)
+	b, err := ioutil.ReadAll(r)
 	if err != nil {
 		return errors.Wrap(err, "error reading response from tilt api")
 	}
 	_ = r.Close()
 
+	body := strings.TrimSpace(string(b))
+	if status != http.StatusOK {
+		return fmt.Errorf("(%d): %s", status, body)
+	}
 	if len(body) > 0 {
-		return errors.New(string(body))
+		return errors.New(body)
 	}
 
 	_, _ = fmt.Fprintf(t.streams.Out, "Successfully triggered update for resource: %q\n", resource)
