@@ -44,3 +44,6 @@ export function linkToTiltDocs(page?: TiltDocsPage, anchor?: string) {
 
   return `${TILT_DOCS_LINK}/${page}${anchor ?? ""}`
 }
+
+export const DEFAULT_RESOURCE_LIST_LIMIT = 20
+export const RESOURCE_LIST_MULTIPLIER = 2

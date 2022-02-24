@@ -1770,6 +1770,32 @@ func TestPodDeleted(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
+func TestPodForgottenOnDisable(t *testing.T) {
+	f := newTestFixture(t)
+	manifest := f.newManifest("foobar")
+	pb := f.registerForDeployer(manifest)
+	f.Start([]model.Manifest{manifest})
+
+	call := f.nextCall()
+	assert.True(t, call.oneImageState().IsEmpty())
+
+	pod := pb.WithPhase("CrashLoopBackOff").Build()
+	f.podEvent(pod)
+
+	f.WaitUntilManifestState("pod seen", "foobar", func(ms store.ManifestState) bool {
+		return ms.K8sRuntimeState().MostRecentPod().Status == "CrashLoopBackOff"
+	})
+
+	f.setDisableState("foobar", true)
+
+	f.WaitUntilManifestState("pod unseen", "foobar", func(ms store.ManifestState) bool {
+		return ms.K8sRuntimeState().PodLen() == 0
+	})
+
+	assert.NoError(t, f.Stop())
+	f.assertAllBuildsConsumed()
+}
+
 func TestPodEventUpdateByPodName(t *testing.T) {
 	f := newTestFixture(t)
 	manifest := f.newManifest("foobar")
@@ -2333,7 +2359,7 @@ func TestDockerComposeStartsEventWatcher(t *testing.T) {
 	// Actual behavior is that we init with zero manifests, and add in manifests
 	// after Tiltfile loads. Mimic that here.
 	f.Start([]model.Manifest{})
-	f.ensureCluster()
+	f.ensureClusterNamed("docker")
 
 	f.store.Dispatch(ctrltiltfile.ConfigsReloadedAction{
 		Name:       model.MainTiltfileManifestName,
@@ -3536,24 +3562,6 @@ func TestOverrideTriggerModeBadTriggerModeLogsError(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestDisablingResourcePreventsBuild(t *testing.T) {
-	f := newTestFixture(t)
-
-	m := manifestbuilder.New(f, "foo").WithLocalResource("foo", []string{f.Path()}).Build()
-
-	f.Start([]model.Manifest{m})
-
-	f.setDisableState(m.Name, true)
-
-	action := server.AppendToTriggerQueueAction{Name: "foo", Reason: 123}
-	f.store.Dispatch(action)
-
-	f.WaitUntil("is waiting+disabled", func(state store.EngineState) bool {
-		_, holds := buildcontrol.NextTargetToBuild(state)
-		return holds["foo"].Reason == store.HoldReasonDisabled
-	})
-}
-
 func TestDisableButtonIsCreated(t *testing.T) {
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
@@ -4513,10 +4521,14 @@ func (s fixtureSub) OnChange(ctx context.Context, st store.RStore, _ store.Chang
 }
 
 func (f *testFixture) ensureCluster() {
+	f.ensureClusterNamed(v1alpha1.ClusterNameDefault)
+}
+
+func (f *testFixture) ensureClusterNamed(name string) {
 	f.t.Helper()
 	err := f.ctrlClient.Create(f.ctx, &v1alpha1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "default",
+			Name: name,
 		},
 		Spec: v1alpha1.ClusterSpec{
 			Connection: &v1alpha1.ClusterConnection{

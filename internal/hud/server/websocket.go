@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"sync"
 	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/workqueue"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
@@ -62,8 +64,11 @@ type WebsocketSubscriber struct {
 	ctrlClient ctrlclient.Client
 	mu         sync.Mutex
 	conn       WebsocketConn
-	initDone   chan bool
-	streamDone chan bool
+
+	q                workqueue.Interface
+	dirtyUIResources map[string]*v1alpha1.UIResource
+	dirtyUIButtons   map[string]*v1alpha1.UIButton
+	dirtyUISession   *v1alpha1.UISession
 
 	tiltStartTime    *timestamp.Timestamp
 	clientCheckpoint logstore.Checkpoint
@@ -79,12 +84,13 @@ var _ WebsocketConn = &websocket.Conn{}
 
 func NewWebsocketSubscriber(ctx context.Context, ctrlClient ctrlclient.Client, st store.RStore, conn WebsocketConn) *WebsocketSubscriber {
 	return &WebsocketSubscriber{
-		ctx:        ctx,
-		ctrlClient: ctrlClient,
-		st:         st,
-		conn:       conn,
-		initDone:   make(chan bool),
-		streamDone: make(chan bool),
+		ctx:              ctx,
+		ctrlClient:       ctrlClient,
+		st:               st,
+		conn:             conn,
+		q:                workqueue.New(),
+		dirtyUIButtons:   make(map[string]*v1alpha1.UIButton),
+		dirtyUIResources: make(map[string]*v1alpha1.UIResource),
 	}
 }
 
@@ -94,6 +100,9 @@ func (ws *WebsocketSubscriber) TearDown(ctx context.Context) {
 
 // Should be called exactly once. Consumes messages until the socket closes.
 func (ws *WebsocketSubscriber) Stream(ctx context.Context) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	go func() {
 		// No-op consumption of all control messages, as recommended here:
 		// https://godoc.org/github.com/gorilla/websocket#hdr-Control_Messages
@@ -101,43 +110,54 @@ func (ws *WebsocketSubscriber) Stream(ctx context.Context) {
 		for {
 			_, _, err := conn.NextReader()
 			if err != nil {
-				close(ws.streamDone)
+				ws.q.ShutDown()
+				cancel()
 				break
 			}
 		}
 	}()
 
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	// initialize the stream with a full view
+	view, err := webview.CompleteView(ctx, ws.ctrlClient, ws.st)
+	if err != nil {
+		// not much to do
+		return
+	}
 
-	go func() {
-		defer close(ws.initDone)
+	ws.sendView(ctx, view)
 
-		// initialize the stream with a full view
-		view, err := webview.CompleteView(ctx, ws.ctrlClient, ws.st)
-		if err != nil {
-			// not much to do
+	if view.UiSession != nil {
+		ws.onSessionUpdateSent(ctx, view.UiSession)
+	}
+
+	debouncer := time.NewTimer(200 * time.Millisecond)
+	defer func() {
+		if !debouncer.Stop() {
+			<-debouncer.C
+		}
+	}()
+	for {
+		item, shutdown := ws.q.Get()
+		if shutdown {
 			return
 		}
 
-		ws.sendView(ctx, view)
+		view := ws.toViewUpdate()
+		if view != nil {
+			ws.sendView(ctx, view)
 
-		if view.UiSession != nil {
-			ws.onSessionUpdateSent(ctx, view.UiSession)
+			if view.UiSession != nil {
+				ws.onSessionUpdateSent(ctx, view.UiSession)
+			}
 		}
-	}()
 
-	<-ws.streamDone
-}
+		ws.q.Done(item)
 
-func (ws *WebsocketSubscriber) waitForInitOrClose(ctx context.Context) bool {
-	select {
-	case <-ctx.Done():
-		return false
-	case <-ws.streamDone:
-		return false
-	case <-ws.initDone:
-		return true
+		select {
+		case <-debouncer.C:
+		case <-ctx.Done():
+		}
+		debouncer.Reset(200 * time.Millisecond)
 	}
 }
 
@@ -148,46 +168,17 @@ func (ws *WebsocketSubscriber) OnChange(ctx context.Context, s store.RStore, sum
 		return nil
 	}
 
-	if !ws.waitForInitOrClose(ctx) {
-		return nil
-	}
-
-	view, err := webview.LogUpdate(s, ws.clientCheckpoint)
-	if err != nil {
-		return nil // Not much we can do on error right now.
-	}
-
-	// [-1,-1) means there are no logs
-	if view.LogList.ToCheckpoint == -1 && view.LogList.FromCheckpoint == -1 {
-		return nil
-	}
-
-	ws.sendView(ctx, view)
-
-	// A simple throttle -- don't call ws.OnChange too many times in quick succession,
-	//     it eats up a lot of CPU/allocates a lot of memory.
-	// This is safe b/c (as long as we're not holding a lock on the state, which
-	//     at this point in the code, we're not) the only thing ws.OnChange blocks
-	//     is subsequent ws.OnChange calls.
-	//
-	// In future, we can maybe solve this problem more elegantly by replacing our
-	//     JSON marshaling with jsoniter (though changing json marshalers is
-	//     always fraught with peril).
-	time.Sleep(time.Millisecond * 100)
+	ws.q.Add(true)
 	return nil
 }
 
 // Sends a UISession update on the websocket.
 func (ws *WebsocketSubscriber) SendUISessionUpdate(ctx context.Context, uiSession *v1alpha1.UISession) {
-	if !ws.waitForInitOrClose(ctx) {
-		return
-	}
+	ws.mu.Lock()
+	ws.dirtyUISession = uiSession
+	ws.mu.Unlock()
 
-	ws.sendView(ctx, &proto_webview.View{
-		TiltStartTime: ws.tiltStartTime,
-		UiSession:     uiSession,
-	})
-	ws.onSessionUpdateSent(ctx, uiSession)
+	ws.q.Add(true)
 }
 
 // If a session update triggered an analytics nudge, record it so that we don't
@@ -206,10 +197,6 @@ func (ws *WebsocketSubscriber) onSessionUpdateSent(ctx context.Context, uiSessio
 
 // Sends a UIResource update on the websocket.
 func (ws *WebsocketSubscriber) SendUIResourceUpdate(ctx context.Context, nn types.NamespacedName, uiResource *v1alpha1.UIResource) {
-	if !ws.waitForInitOrClose(ctx) {
-		return
-	}
-
 	if uiResource == nil {
 		// If the UI resource doesn't exist, send a fake one down the
 		// stream that the UI will interpret as deletion.
@@ -222,18 +209,14 @@ func (ws *WebsocketSubscriber) SendUIResourceUpdate(ctx context.Context, nn type
 		}
 	}
 
-	ws.sendView(ctx, &proto_webview.View{
-		TiltStartTime: ws.tiltStartTime,
-		UiResources:   []*v1alpha1.UIResource{uiResource},
-	})
+	ws.mu.Lock()
+	ws.dirtyUIResources[nn.Name] = uiResource
+	ws.mu.Unlock()
+	ws.q.Add(true)
 }
 
 // Sends a UIButton update on the websocket.
 func (ws *WebsocketSubscriber) SendUIButtonUpdate(ctx context.Context, nn types.NamespacedName, uiButton *v1alpha1.UIButton) {
-	if !ws.waitForInitOrClose(ctx) {
-		return
-	}
-
 	if uiButton == nil {
 		// If the UI button doesn't exist, send a fake one down the
 		// stream that the UI will interpret as deletion.
@@ -246,18 +229,61 @@ func (ws *WebsocketSubscriber) SendUIButtonUpdate(ctx context.Context, nn types.
 		}
 	}
 
-	ws.sendView(ctx, &proto_webview.View{
-		TiltStartTime: ws.tiltStartTime,
-		UiButtons:     []*v1alpha1.UIButton{uiButton},
+	ws.mu.Lock()
+	ws.dirtyUIButtons[nn.Name] = uiButton
+	ws.mu.Unlock()
+	ws.q.Add(true)
+}
+
+// Sends all the objects that have changed since the last send.
+func (ws *WebsocketSubscriber) toViewUpdate() *proto_webview.View {
+	view, err := webview.LogUpdate(ws.st, ws.clientCheckpoint)
+	if err != nil {
+		return nil // Not much we can do on error right now.
+	}
+
+	ws.mu.Lock()
+	defer ws.mu.Unlock()
+
+	// [-1,-1) means there are no logs
+	if view.LogList.ToCheckpoint == -1 && view.LogList.FromCheckpoint == -1 {
+		view.LogList = nil
+	}
+	hasChanges := view.LogList != nil
+
+	if ws.dirtyUISession != nil {
+		view.UiSession = ws.dirtyUISession
+		ws.dirtyUISession = nil
+		hasChanges = true
+	}
+
+	for k, obj := range ws.dirtyUIResources {
+		view.UiResources = append(view.UiResources, obj)
+		delete(ws.dirtyUIResources, k)
+		hasChanges = true
+	}
+	sort.Slice(view.UiResources, func(i, j int) bool {
+		return view.UiResources[i].Name < view.UiResources[j].Name
 	})
+
+	for k, obj := range ws.dirtyUIButtons {
+		view.UiButtons = append(view.UiButtons, obj)
+		delete(ws.dirtyUIButtons, k)
+		hasChanges = true
+	}
+	sort.Slice(view.UiButtons, func(i, j int) bool {
+		return view.UiButtons[i].Name < view.UiButtons[j].Name
+	})
+
+	if !hasChanges {
+		return nil
+	}
+	return view
 }
 
 // Sends the view to the websocket.
 func (ws *WebsocketSubscriber) sendView(ctx context.Context, view *proto_webview.View) {
-	ws.mu.Lock()
-	defer ws.mu.Unlock()
-
-	if view.LogList != nil {
+	if view.LogList != nil && view.LogList.ToCheckpoint != -1 {
 		ws.clientCheckpoint = logstore.Checkpoint(view.LogList.ToCheckpoint)
 	}
 

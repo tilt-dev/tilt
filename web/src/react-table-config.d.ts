@@ -1,6 +1,9 @@
 // From https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react-table
 
 import {
+  UsePaginationInstanceProps,
+  UsePaginationOptions,
+  UsePaginationState,
   UseSortByColumnOptions,
   UseSortByColumnProps,
   UseSortByHooks,
@@ -13,12 +16,12 @@ declare module "react-table" {
   // take this file as-is, or comment out the sections that don't apply to your plugin configuration
 
   export interface TableOptions<D extends Record<string, unknown>>
-    extends UseSortByOptions<D> {
+    extends UseSortByOptions<D>,
+      UsePaginationOptions<D> {
     // UseExpandedOptions<D>,
     // UseFiltersOptions<D>,
     // UseGlobalFiltersOptions<D>,
     // UseGroupByOptions<D>,
-    // UsePaginationOptions<D>,
     // UseResizeColumnsOptions<D>,
     // UseRowSelectOptions<D>,
     // UseRowStateOptions<D>,
@@ -39,13 +42,13 @@ declare module "react-table" {
 
   export interface TableInstance<
     D extends Record<string, unknown> = Record<string, unknown>
-  > extends UseSortByInstanceProps<D> {
+  > extends UseSortByInstanceProps<D>,
+      UsePaginationInstanceProps<D> {
     // UseColumnOrderInstanceProps<D>,
     // UseExpandedInstanceProps<D>,
     // UseFiltersInstanceProps<D>,
     // UseGlobalFiltersInstanceProps<D>,
     // UseGroupByInstanceProps<D>,
-    // UsePaginationInstanceProps<D>,
     // UseRowSelectInstanceProps<D>,
     // UseRowStateInstanceProps<D>,
     // UseSortByInstanceProps<D>
@@ -53,13 +56,13 @@ declare module "react-table" {
 
   export interface TableState<
     D extends Record<string, unknown> = Record<string, unknown>
-  > extends UseSortByState<D> {
+  > extends UseSortByState<D>,
+      UsePaginationState<D> {
     // UseColumnOrderState<D>,
     // UseExpandedState<D>,
     // UseFiltersState<D>,
     // UseGlobalFiltersState<D>,
     // UseGroupByState<D>,
-    // UsePaginationState<D>,
     // UseResizeColumnsState<D>,
     // UseRowSelectState<D>,
     // UseRowStateState<D>,

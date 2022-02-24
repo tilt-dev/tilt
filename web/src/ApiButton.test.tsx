@@ -426,7 +426,9 @@ describe("ApiButton", () => {
   describe("helper functions", () => {
     describe("buttonsByComponent", () => {
       it("returns an empty object if there are no buttons", () => {
-        expect(buttonsByComponent(undefined)).toStrictEqual({})
+        expect(buttonsByComponent(undefined)).toStrictEqual(
+          new Map<string, ButtonSet>()
+        )
       })
 
       it("returns a map of resources names to button sets", () => {
@@ -440,14 +442,17 @@ describe("ApiButton", () => {
           makeUIButton({ componentID: "" }),
         ]
 
-        const expectedOutput: { [key: string]: ButtonSet } = {
-          frontend: {
-            default: [buttons[0], buttons[1]],
-            toggleDisable: buttons[2],
-          },
-          backend: { default: [buttons[3]], toggleDisable: buttons[4] },
-          ["data-warehouse"]: { default: [buttons[5]] },
-        }
+        const expectedOutput = new Map<string, ButtonSet>([
+          [
+            "frontend",
+            {
+              default: [buttons[0], buttons[1]],
+              toggleDisable: buttons[2],
+            },
+          ],
+          ["backend", { default: [buttons[3]], toggleDisable: buttons[4] }],
+          ["data-warehouse", { default: [buttons[5]] }],
+        ])
 
         expect(buttonsByComponent(buttons)).toStrictEqual(expectedOutput)
       })

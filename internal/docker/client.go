@@ -34,6 +34,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/docker/buildkit"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -82,6 +83,9 @@ type Client interface {
 	// Set the orchestrator we're talking to. This is only relevant to switchClient,
 	// which can talk to either the Local or in-cluster docker daemon.
 	SetOrchestrator(orc model.Orchestrator)
+	// Return a client suitable for use with the given orchestrator. Only
+	// relevant for the switchClient which has clients for both types.
+	ForOrchestrator(orc model.Orchestrator) Client
 
 	ContainerInspect(ctx context.Context, contianerID string) (types.ContainerJSON, error)
 	ContainerList(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error)
@@ -104,6 +108,15 @@ type Client interface {
 	NewVersionError(APIrequired, feature string) error
 	BuildCachePrune(ctx context.Context, opts types.BuildCachePruneOptions) (*types.BuildCachePruneReport, error)
 	ContainersPrune(ctx context.Context, pruneFilters filters.Args) (types.ContainersPruneReport, error)
+}
+
+// Add-on interface for a client that manages multiple clients transparently.
+type CompositeClient interface {
+	Client
+	DefaultLocalClient() Client
+	DefaultClusterClient() Client
+	ClientFor(cluster v1alpha1.Cluster) Client
+	HasMultipleClients() bool
 }
 
 type ExitError struct {
@@ -382,6 +395,9 @@ func (c *Cli) initAuthConfigs(ctx context.Context) {
 
 func (c *Cli) CheckConnected() error                  { return nil }
 func (c *Cli) SetOrchestrator(orc model.Orchestrator) {}
+func (c *Cli) ForOrchestrator(orc model.Orchestrator) Client {
+	return c
+}
 func (c *Cli) Env() Env {
 	return c.env
 }

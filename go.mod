@@ -262,8 +262,6 @@ replace (
 	go.opentelemetry.io/otel/trace => go.opentelemetry.io/otel/trace v0.20.0
 	go.opentelemetry.io/proto/otlp => go.opentelemetry.io/proto/otlp v0.7.0
 
-	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
-
 	k8s.io/apimachinery => github.com/tilt-dev/apimachinery v0.23.0-tilt-20211221
 	k8s.io/apiserver => github.com/tilt-dev/apiserver v0.23.0-tilt-20220118
 )

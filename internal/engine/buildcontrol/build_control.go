@@ -14,11 +14,9 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-// NOTE(maia): we eventually want to move the BuildController into its own package
-// (as we do with all subscribers), but for now, just move the underlying functions
-// so they can be used from elsewhere.
-
 // Algorithm to choose a manifest to build next.
+//
+// The HoldSet is used in the UI to display why a resource is waiting.
 func NextTargetToBuild(state store.EngineState) (*store.ManifestTarget, HoldSet) {
 	holds := HoldSet{}
 
@@ -80,7 +78,6 @@ func NextTargetToBuild(state store.EngineState) (*store.ManifestTarget, HoldSet)
 
 	HoldTargetsWithBuildingComponents(state, targets, holds)
 	HoldTargetsWaitingOnDependencies(state, targets, holds)
-	HoldDisabledTargets(targets, holds)
 	HoldTargetsWaitingOnCluster(state, targets, holds)
 
 	// If any of the manifest targets haven't been built yet, build them now.
@@ -239,22 +236,41 @@ func HoldTargetsWithBuildingComponents(state store.EngineState, mts []*store.Man
 	}
 }
 
+func targetsByCluster(mts []*store.ManifestTarget) map[string][]*store.ManifestTarget {
+	// TODO(nick): In the future, K8s objects may reference the cluster
+	// they're deploying to.
+	clusters := make(map[string][]*store.ManifestTarget)
+	for _, mt := range mts {
+		if mt.Manifest.IsK8s() {
+			targets, ok := clusters[v1alpha1.ClusterNameDefault]
+			if !ok {
+				targets = []*store.ManifestTarget{}
+			}
+			clusters[v1alpha1.ClusterNameDefault] = append(targets, mt)
+		} else if mt.Manifest.IsDC() {
+			targets, ok := clusters[v1alpha1.ClusterNameDocker]
+			if !ok {
+				targets = []*store.ManifestTarget{}
+			}
+			clusters[v1alpha1.ClusterNameDocker] = append(targets, mt)
+		}
+	}
+	return clusters
+}
+
 // We use the cluster to detect what architecture we're building for.
 // Until the cluster connection has been established, we block any
 // image builds.
 func HoldTargetsWaitingOnCluster(state store.EngineState, mts []*store.ManifestTarget, holds HoldSet) {
-	// TODO(nick): In the future, K8s objects may reference the cluster
-	// they're deploying to.
-	clusterName := v1alpha1.ClusterNameDefault
-	cluster, ok := state.Clusters[clusterName]
-	isClusterOK := ok && cluster.Status.Error == "" && cluster.Status.Arch != ""
-	if isClusterOK {
-		return
-	}
+	for clusterName, targets := range targetsByCluster(mts) {
+		cluster, ok := state.Clusters[clusterName]
+		isClusterOK := ok && cluster.Status.Error == "" && cluster.Status.Arch != ""
+		if isClusterOK {
+			return
+		}
 
-	gvk := v1alpha1.SchemeGroupVersion.WithKind("Cluster")
-	for _, mt := range mts {
-		if mt.Manifest.IsK8s() || mt.Manifest.IsDC() {
+		gvk := v1alpha1.SchemeGroupVersion.WithKind("Cluster")
+		for _, mt := range targets {
 			holds.AddHold(mt, store.Hold{
 				Reason: store.HoldReasonCluster,
 				OnRefs: []v1alpha1.UIResourceStateWaitingOnRef{{
@@ -275,14 +291,6 @@ func HoldTargetsWaitingOnDependencies(state store.EngineState, mts []*store.Mani
 				Reason: store.HoldReasonWaitingForDep,
 				HoldOn: waitingOn,
 			})
-		}
-	}
-}
-
-func HoldDisabledTargets(mts []*store.ManifestTarget, holds HoldSet) {
-	for _, mt := range mts {
-		if mt.State.DisableState == v1alpha1.DisableStateDisabled {
-			holds.AddHold(mt, store.Hold{Reason: store.HoldReasonDisabled})
 		}
 	}
 }
@@ -448,6 +456,11 @@ func FindTargetsNeedingAnyBuild(state store.EngineState) []*store.ManifestTarget
 
 	result := []*store.ManifestTarget{}
 	for _, target := range state.Targets() {
+		// Skip disabled targets.
+		if target.State.DisableState == v1alpha1.DisableStateDisabled {
+			continue
+		}
+
 		if !target.State.StartedFirstBuild() && target.Manifest.TriggerMode.AutoInitial() {
 			result = append(result, target)
 			continue

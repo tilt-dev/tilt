@@ -207,7 +207,7 @@ func (r *Reconciler) reconcileDownloaderRepo(ctx context.Context, state *repoSta
 	}
 
 	destPath := r.dlr.DestinationPath(importPath)
-	_, err := os.Stat(destPath)
+	info, err := os.Stat(destPath)
 	if err != nil && !os.IsNotExist(err) {
 		state.status = v1alpha1.ExtensionRepoStatus{Error: fmt.Sprintf("loading download destination: %v", err)}
 		return ctrl.Result{}
@@ -229,25 +229,50 @@ func (r *Reconciler) reconcileDownloaderRepo(ctx context.Context, state *repoSta
 
 	state.lastFetch = time.Now()
 
-	_, err = r.dlr.Download(importPath)
-	if err != nil {
-		backoff := state.nextBackoff()
-		backoffMsg := fmt.Sprintf("download error: waiting %s before retrying. Original error: %v", backoff, err)
-		state.status = v1alpha1.ExtensionRepoStatus{Error: backoffMsg}
-		return ctrl.Result{RequeueAfter: backoff}
-	}
-
-	info, err := os.Stat(destPath)
-	if err != nil {
-		state.status = v1alpha1.ExtensionRepoStatus{Error: fmt.Sprintf("verifying download destination: %v", err)}
-		return ctrl.Result{}
-	}
-
-	if state.spec.Ref != "" {
+	needsDownload := true
+	if exists && state.spec.Ref != "" {
+		// If an explicit ref is specified, there's no reason to pull a new version.
 		err := r.dlr.RefSync(importPath, state.spec.Ref)
+		if err == nil {
+			needsDownload = false
+		} else {
+			// TODO(nick): The more efficient thing to do here would be to
+			// checkout the main branch and pull. But I don't think this case will
+			// happen very often, so it's safer to delete and re-download.
+			err = os.RemoveAll(destPath)
+			if err != nil {
+				state.status = v1alpha1.ExtensionRepoStatus{
+					Error: fmt.Sprintf("clearing old extension repo at %s: %v", destPath, err),
+				}
+				return ctrl.Result{}
+			}
+		}
+	}
+
+	if needsDownload {
+		_, err = r.dlr.Download(importPath)
 		if err != nil {
-			state.status = v1alpha1.ExtensionRepoStatus{Error: fmt.Sprintf("sync to ref %s: %v", state.spec.Ref, err)}
+			// Delete any partial state.
+			_ = os.RemoveAll(destPath)
+
+			backoff := state.nextBackoff()
+			backoffMsg := fmt.Sprintf("download error: waiting %s before retrying. Original error: %v", backoff, err)
+			state.status = v1alpha1.ExtensionRepoStatus{Error: backoffMsg}
+			return ctrl.Result{RequeueAfter: backoff}
+		}
+
+		info, err = os.Stat(destPath)
+		if err != nil {
+			state.status = v1alpha1.ExtensionRepoStatus{Error: fmt.Sprintf("verifying download destination: %v", err)}
 			return ctrl.Result{}
+		}
+
+		if state.spec.Ref != "" {
+			err := r.dlr.RefSync(importPath, state.spec.Ref)
+			if err != nil {
+				state.status = v1alpha1.ExtensionRepoStatus{Error: fmt.Sprintf("sync to ref %s: %v", state.spec.Ref, err)}
+				return ctrl.Result{}
+			}
 		}
 	}
 

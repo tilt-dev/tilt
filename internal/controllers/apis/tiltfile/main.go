@@ -41,7 +41,7 @@ func MainTiltfile(filename string, args []string) *v1alpha1.Tiltfile {
 				FileWatches: []string{fwName},
 			},
 			StopOn: &v1alpha1.StopOnSpec{
-				UIButtons: []string{uibutton.CancelButtonName(name)},
+				UIButtons: []string{uibutton.StopBuildButtonName(name)},
 			},
 		},
 	}

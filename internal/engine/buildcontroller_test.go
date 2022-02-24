@@ -1617,14 +1617,13 @@ func TestCancelButton(t *testing.T) {
 	f.b.completeBuildsManually = true
 	f.useRealTiltfileLoader()
 	f.WriteFile("Tiltfile", `
-enable_feature('cancel_build')
 local_resource('local', 'sleep 10000')
 `)
 	f.loadAndStart()
 	f.waitUntilManifestBuilding("local")
 
 	var cancelButton v1alpha1.UIButton
-	err := f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: uibutton.CancelButtonName("local")}, &cancelButton)
+	err := f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: uibutton.StopBuildButtonName("local")}, &cancelButton)
 	require.NoError(t, err)
 	cancelButton.Status.LastClickedAt = metav1.NowMicro()
 	err = f.ctrlClient.Status().Update(f.ctx, &cancelButton)
@@ -1645,7 +1644,6 @@ func TestCancelButtonClickedBeforeBuild(t *testing.T) {
 	f.b.completeBuildsManually = true
 	f.useRealTiltfileLoader()
 	f.WriteFile("Tiltfile", `
-enable_feature('cancel_build')
 local_resource('local', 'sleep 10000')
 `)
 	// grab a timestamp now to represent clicking the button before the build started
@@ -1655,7 +1653,7 @@ local_resource('local', 'sleep 10000')
 	f.waitUntilManifestBuilding("local")
 
 	var cancelButton v1alpha1.UIButton
-	err := f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: uibutton.CancelButtonName("local")}, &cancelButton)
+	err := f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: uibutton.StopBuildButtonName("local")}, &cancelButton)
 	require.NoError(t, err)
 	cancelButton.Status.LastClickedAt = ts
 	err = f.ctrlClient.Status().Update(f.ctx, &cancelButton)

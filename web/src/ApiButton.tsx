@@ -73,6 +73,11 @@ type ApiButtonElementProps = ButtonProps & {
 export type ButtonSet = {
   default: UIButton[]
   toggleDisable?: UIButton
+  stopBuild?: UIButton
+}
+
+function newButtonSet(): ButtonSet {
+  return { default: [] }
 }
 
 export enum ApiButtonType {
@@ -91,6 +96,7 @@ export const UIBUTTON_ANNOTATION_TYPE = "tilt.dev/uibutton-type"
 export const UIBUTTON_GLOBAL_COMPONENT_ID = "nav"
 export const UIBUTTON_TOGGLE_DISABLE_TYPE = "DisableToggle"
 export const UIBUTTON_TOGGLE_INPUT_NAME = "action"
+export const UIBUTTON_STOP_BUILD_TYPE = "StopBuild"
 
 // Styles
 const ApiButtonFormRoot = styled.div`
@@ -169,10 +175,8 @@ export const ApiButtonInputsToggleButton = styled(InstrumentedButton)`
   }
 `
 
-function isDisableToggleButton(b: UIButton) {
-  return (
-    annotations(b)[UIBUTTON_ANNOTATION_TYPE] === UIBUTTON_TOGGLE_DISABLE_TYPE
-  )
+function buttonType(b: UIButton): string {
+  return annotations(b)[UIBUTTON_ANNOTATION_TYPE]
 }
 
 const svgElement = (src: string): React.ReactElement => {
@@ -588,7 +592,10 @@ export function ApiButton(props: PropsWithChildren<ApiButtonProps>) {
   const disabled = loading || uiButton.spec?.disabled || false
   const buttonText = uiButton.spec?.text || "Button"
 
-  const onClick = async () => {
+  const onClick = async (e: React.MouseEvent<HTMLElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+
     if (uiButton.spec?.requiresConfirmation && !confirming) {
       setConfirming(true)
       return
@@ -612,24 +619,27 @@ export function ApiButton(props: PropsWithChildren<ApiButtonProps>) {
       setLoading(false)
     }
 
-    const snackbarLogsLink =
-      componentType === ApiButtonType.Global ? (
-        <LogLink to="/r/(all)/overview">Global Logs</LogLink>
-      ) : (
-        <LogLink
-          to={pb.encpath`/r/${
-            uiButton.spec?.location?.componentID || "(all)"
-          }/overview`}
-        >
-          Resource Logs
-        </LogLink>
+    // skip snackbar notifications for special buttons (e.g., disable, stop build)
+    if (!buttonType(uiButton)) {
+      const snackbarLogsLink =
+        componentType === ApiButtonType.Global ? (
+          <LogLink to="/r/(all)/overview">Global Logs</LogLink>
+        ) : (
+          <LogLink
+            to={pb.encpath`/r/${
+              uiButton.spec?.location?.componentID || "(all)"
+            }/overview`}
+          >
+            Resource Logs
+          </LogLink>
+        )
+      enqueueSnackbar(
+        <div>
+          Triggered button: {uiButton.spec?.text || uiButton.metadata?.name}
+          {snackbarLogsLink}
+        </div>
       )
-    enqueueSnackbar(
-      <div>
-        Triggered button: {uiButton.spec?.text || uiButton.metadata?.name}
-        {snackbarLogsLink}
-      </div>
-    )
+    }
   }
 
   const submitButton = (
@@ -698,14 +708,26 @@ export function ApiButton(props: PropsWithChildren<ApiButtonProps>) {
   }
 }
 
+function addButtonToSet(bs: ButtonSet, b: UIButton) {
+  switch (buttonType(b)) {
+    case UIBUTTON_TOGGLE_DISABLE_TYPE:
+      bs.toggleDisable = b
+      break
+    case UIBUTTON_STOP_BUILD_TYPE:
+      bs.stopBuild = b
+      break
+    default:
+      bs.default.push(b)
+      break
+  }
+}
+
 export function buttonsForComponent(
   buttons: UIButton[] | undefined,
   componentType: ApiButtonType,
   componentID: string | undefined
 ): ButtonSet {
-  let result: ButtonSet = {
-    default: [],
-  }
+  let result = newButtonSet()
   if (!buttons) {
     return result
   }
@@ -719,44 +741,38 @@ export function buttonsForComponent(
     const buttonIDsMatch = buttonID === componentID
 
     if (buttonTypesMatch && buttonIDsMatch) {
-      // Group the disable toggle buttons in their own category
-      if (isDisableToggleButton(b)) {
-        result.toggleDisable = b
-      } else {
-        result.default.push(b)
-      }
+      addButtonToSet(result, b)
     }
   })
 
   return result
 }
 
-export function buttonsByComponent(buttons: UIButton[] | undefined) {
-  const buttonsByComponent: { [key: string]: ButtonSet } = {}
+export function buttonsByComponent(
+  buttons: UIButton[] | undefined
+): Map<string, ButtonSet> {
+  const result = new Map<string, ButtonSet>()
 
   if (buttons === undefined) {
-    return buttonsByComponent
+    return result
   }
 
   buttons.forEach((b) => {
-    const buttonID = b.spec?.location?.componentID || ""
+    const componentID = b.spec?.location?.componentID || ""
 
     // Disregard any buttons that aren't linked to a specific component or resource
-    if (!buttonID.length) {
+    if (!componentID.length) {
       return
     }
 
-    if (!buttonsByComponent.hasOwnProperty(buttonID)) {
-      buttonsByComponent[buttonID] = { default: [] }
+    let buttonSet = result.get(componentID)
+    if (!buttonSet) {
+      buttonSet = newButtonSet()
+      result.set(componentID, buttonSet)
     }
 
-    const buttonSet = buttonsByComponent[buttonID]
-    if (isDisableToggleButton(b)) {
-      buttonSet.toggleDisable = b
-    } else {
-      buttonSet.default.push(b)
-    }
+    addButtonToSet(buttonSet, b)
   })
 
-  return buttonsByComponent
+  return result
 }

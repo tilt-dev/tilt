@@ -3,7 +3,7 @@ import { CellProps, Column, HeaderProps, Row } from "react-table"
 import TimeAgo from "react-timeago"
 import styled from "styled-components"
 import { AnalyticsAction, AnalyticsType, incr, Tags } from "./analytics"
-import { ApiButton, ApiIcon } from "./ApiButton"
+import { ApiButton, ApiIcon, ButtonSet } from "./ApiButton"
 import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
@@ -64,7 +64,7 @@ export type RowValues = {
   podId: string
   endpoints: UILink[]
   triggerMode: TriggerMode
-  buttons: UIButton[]
+  buttons: ButtonSet
   analyticsTags: Tags
   selectable: boolean
 }
@@ -77,6 +77,11 @@ export const SelectionCheckbox = styled(InstrumentedCheckbox)`
   &.MuiCheckbox-root,
   &.Mui-checked {
     color: ${Color.gray6};
+  }
+
+  &.Mui-disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
   }
 `
 
@@ -315,28 +320,32 @@ export function TableUpdateColumn({ row }: CellProps<RowValues>) {
 }
 
 export function TableSelectionColumn({ row }: CellProps<RowValues>) {
-  // Don't allow a row to be selected if it can't be disabled
-  // This rule can be adjusted when/if there are other bulk actions
-  if (!row.original.selectable) {
-    return null
-  }
-
   const selections = useResourceSelection()
   const resourceName = row.original.name
   const checked = selections.isSelected(resourceName)
 
-  const onChange = (_e: ChangeEvent<HTMLInputElement>) => {
-    if (!checked) {
-      selections.select(resourceName)
-    } else {
-      selections.deselect(resourceName)
-    }
-  }
+  const onChange = useCallback(
+    (_e: ChangeEvent<HTMLInputElement>) => {
+      if (!checked) {
+        selections.select(resourceName)
+      } else {
+        selections.deselect(resourceName)
+      }
+    },
+    [checked, selections]
+  )
 
-  const analyticsTags = {
-    ...row.original.analyticsTags,
-    type: AnalyticsType.Grid,
-  }
+  const analyticsTags = useMemo(() => {
+    return {
+      ...row.original.analyticsTags,
+      type: AnalyticsType.Grid,
+    }
+  }, [row.original.analyticsTags])
+
+  let disabled = !row.original.selectable
+  let label = row.original.selectable
+    ? "Select resource"
+    : "Cannot select resource"
 
   return (
     <SelectionCheckbox
@@ -346,12 +355,14 @@ export function TableSelectionColumn({ row }: CellProps<RowValues>) {
       aria-checked={checked}
       onChange={onChange}
       size="small"
+      disabled={disabled}
+      aria-label={label}
     />
   )
 }
 
-export function TableTriggerColumn({ row }: CellProps<RowValues>) {
-  // If resource is disabled, don't display trigger button
+export function TableBuildButtonColumn({ row }: CellProps<RowValues>) {
+  // If resource is disabled, don't display build button
   if (rowIsDisabled(row)) {
     return null
   }
@@ -370,6 +381,7 @@ export function TableTriggerColumn({ row }: CellProps<RowValues>) {
       isQueued={trigger.isQueued}
       analyticsTags={row.values.analyticsTags}
       onStartBuild={onStartBuild}
+      stopBuildButton={row.original.buttons.stopBuild}
     />
   )
 }
@@ -516,7 +528,7 @@ export function TableWidgetsColumn({ row }: CellProps<RowValues>) {
     return null
   }
 
-  const buttons = row.original.buttons.map((b: UIButton) => {
+  const buttons = row.original.buttons.default.map((b: UIButton) => {
     let content = (
       <CustomActionButton key={b.metadata?.name} uiButton={b}>
         <ApiIcon
@@ -630,7 +642,7 @@ const DEFAULT_COLUMNS: Column<RowValues>[] = [
     accessor: "trigger",
     disableSortBy: true,
     width: "20px",
-    Cell: TableTriggerColumn,
+    Cell: TableBuildButtonColumn,
   },
   {
     Header: "Resource Name",
@@ -658,7 +670,7 @@ const DEFAULT_COLUMNS: Column<RowValues>[] = [
   {
     Header: "Widgets",
     id: "widgets",
-    accessor: (row) => row.buttons.length,
+    accessor: (row) => row.buttons.default.length,
     Cell: TableWidgetsColumn,
   },
   {
@@ -676,6 +688,8 @@ const DEFAULT_COLUMNS: Column<RowValues>[] = [
   },
 ]
 
+let ALL_COLUMNS = [RESOURCE_SELECTION_COLUMN, ...DEFAULT_COLUMNS]
+
 export function getTableColumns(features?: Features) {
   if (!features) {
     return DEFAULT_COLUMNS
@@ -683,7 +697,7 @@ export function getTableColumns(features?: Features) {
 
   // If disable resources is enabled, render the selection column
   if (features.isEnabled(Flag.DisableResources)) {
-    return [RESOURCE_SELECTION_COLUMN, ...DEFAULT_COLUMNS]
+    return ALL_COLUMNS
   }
 
   return DEFAULT_COLUMNS

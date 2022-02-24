@@ -1,5 +1,6 @@
-import React from "react"
+import React, { useMemo } from "react"
 import styled from "styled-components"
+import { buttonsByComponent } from "./ApiButton"
 import { useLogAlertIndex } from "./LogStore"
 import { usePathBuilder } from "./PathBuilder"
 import { useResourceListOptions } from "./ResourceListOptionsContext"
@@ -28,7 +29,14 @@ export default function OverviewResourceSidebar(
   let logAlertIndex = useLogAlertIndex()
   let pathBuilder = usePathBuilder()
   let resources = props.view.uiResources || []
-  let items = resources.map((res) => new SidebarItem(res, logAlertIndex))
+  let buttons = useMemo(
+    () => buttonsByComponent(props.view.uiButtons),
+    props.view.uiButtons
+  )
+  let items = resources.map((res) => {
+    let stopBuildButton = buttons.get(res.metadata?.name!)?.stopBuild
+    return new SidebarItem(res, logAlertIndex, stopBuildButton)
+  })
   let selected = props.name
   if (props.name === ResourceName.all) {
     selected = ""

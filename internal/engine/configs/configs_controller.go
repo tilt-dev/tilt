@@ -8,15 +8,13 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/controllers/apis/tiltfile"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/uibutton"
-	"github.com/tilt-dev/tilt/internal/feature"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type ConfigsController struct {
-	ctrlClient                           ctrlclient.Client
-	isInitialTiltfileCreated             bool
-	isInitialTiltfileCancelButtonCreated bool
+	ctrlClient               ctrlclient.Client
+	isInitialTiltfileCreated bool
 }
 
 func NewConfigsController(ctrlClient ctrlclient.Client) *ConfigsController {
@@ -36,12 +34,7 @@ func (cc *ConfigsController) OnChange(ctx context.Context, st store.RStore, summ
 			return err
 		}
 	}
-	if !cc.isInitialTiltfileCancelButtonCreated {
-		err := cc.maybeCreateInitialTiltfileCancelButton(ctx, st)
-		if err != nil {
-			return err
-		}
-	}
+
 	return nil
 }
 
@@ -56,25 +49,11 @@ func (cc *ConfigsController) maybeCreateInitialTiltfile(ctx context.Context, st 
 	if err != nil && !apierrors.IsAlreadyExists(err) {
 		return err
 	}
-
-	cc.isInitialTiltfileCreated = true
-	return nil
-}
-
-func (cc *ConfigsController) maybeCreateInitialTiltfileCancelButton(ctx context.Context, st store.RStore) error {
-	state := st.RLockState()
-	// TODO(matt) - once we enable the feature and remove the flag, just merge this into maybeCreateInitialTiltfile
-	cancelEnabled := state.Features[feature.CancelBuild]
-	st.RUnlockState()
-	if !cancelEnabled {
-		return nil
-	}
-	err := cc.ctrlClient.Create(ctx, uibutton.CancelButton(model.MainTiltfileManifestName.String()))
+	err = cc.ctrlClient.Create(ctx, uibutton.StopBuildButton(model.MainTiltfileManifestName.String()))
 	if err != nil && !apierrors.IsAlreadyExists(err) {
 		return err
 	}
 
-	cc.isInitialTiltfileCancelButtonCreated = true
-
+	cc.isInitialTiltfileCreated = true
 	return nil
 }

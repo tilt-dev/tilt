@@ -37,6 +37,7 @@ type FakeDCClient struct {
 	rmCalls   []RmCall
 	DownError error
 	RmError   error
+	RmOutput  string
 	WorkDir   string
 }
 
@@ -98,6 +99,8 @@ func (c *FakeDCClient) Rm(ctx context.Context, specs []model.DockerComposeUpSpec
 		c.RmError = nil
 		return err
 	}
+
+	_, _ = fmt.Fprint(stdout, c.RmOutput)
 	return nil
 }
 

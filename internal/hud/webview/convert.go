@@ -310,7 +310,9 @@ func UIResourceReadyCondition(r v1alpha1.UIResourceStatus) v1alpha1.UIResourceCo
 	}
 
 	c.Status = metav1.ConditionFalse
-	if r.RuntimeStatus == v1alpha1.RuntimeStatusError {
+	if r.DisableStatus.State == v1alpha1.DisableStateDisabled {
+		c.Reason = "Disabled"
+	} else if r.RuntimeStatus == v1alpha1.RuntimeStatusError {
 		c.Reason = "RuntimeError"
 	} else if r.UpdateStatus == v1alpha1.UpdateStatusError {
 		c.Reason = "UpdateError"
@@ -339,7 +341,9 @@ func UIResourceUpToDateCondition(r v1alpha1.UIResourceStatus) v1alpha1.UIResourc
 	}
 
 	c.Status = metav1.ConditionFalse
-	if r.UpdateStatus == v1alpha1.UpdateStatusError {
+	if r.DisableStatus.State == v1alpha1.DisableStateDisabled {
+		c.Reason = "Disabled"
+	} else if r.UpdateStatus == v1alpha1.UpdateStatusError {
 		c.Reason = "UpdateError"
 	} else if r.UpdateStatus == v1alpha1.UpdateStatusPending {
 		c.Reason = "UpdatePending"
@@ -391,6 +395,11 @@ func populateResourceInfoView(mt *store.ManifestTarget, r *v1alpha1.UIResource) 
 	r.Status.UpdateStatus = mt.UpdateStatus()
 	r.Status.RuntimeStatus = mt.RuntimeStatus()
 
+	if r.Status.DisableStatus.State == v1alpha1.DisableStateDisabled {
+		r.Status.UpdateStatus = v1alpha1.UpdateStatusNone
+		r.Status.RuntimeStatus = v1alpha1.RuntimeStatusNone
+	}
+
 	if mt.Manifest.IsLocal() {
 		lState := mt.State.LocalRuntimeState()
 		r.Status.LocalResourceInfo = &v1alpha1.UIResourceLocal{PID: int64(lState.PID)}
@@ -429,7 +438,10 @@ func LogSegmentToEvent(seg *proto_webview.LogSegment, spans map[string]*proto_we
 }
 
 func holdToWaiting(hold store.Hold) *v1alpha1.UIResourceStateWaiting {
-	if hold.Reason == store.HoldReasonNone {
+	if hold.Reason == store.HoldReasonNone ||
+		// "Reconciling" just means the live update is handling the update (rather
+		// than the BuildController) and isn't indicative of a real waiting status.
+		hold.Reason == store.HoldReasonReconciling {
 		return nil
 	}
 	waiting := &v1alpha1.UIResourceStateWaiting{

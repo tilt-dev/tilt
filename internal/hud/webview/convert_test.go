@@ -260,6 +260,44 @@ func TestReadinessCheckFailing(t *testing.T) {
 	require.Equal(t, "False", string(readyCondition(rv).Status))
 }
 
+func TestRuntimeErrorAndDisabled(t *testing.T) {
+	m := model.Manifest{
+		Name: "foo",
+	}.WithDeployTarget(model.K8sTarget{})
+	state := newState([]model.Manifest{m})
+	mt := state.ManifestTargets[m.Name]
+	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(m, v1alpha1.Pod{
+		Name:   "pod-id",
+		Status: "Error",
+		Phase:  string(v1.PodFailed),
+		Containers: []v1alpha1.Container{
+			{
+				Ready: false,
+			},
+		},
+	})
+
+	state.ConfigMaps["foo-disable"] = &v1alpha1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "disabled"}, Data: map[string]string{"isDisabled": "true"}}
+	disableSources := map[string][]v1alpha1.DisableSource{
+		"foo": {
+			{ConfigMap: &v1alpha1.ConfigMapDisableSource{Name: "foo-disable", Key: "isDisabled"}},
+		},
+	}
+	uiResources, err := ToUIResourceList(*state, disableSources)
+	require.NoError(t, err)
+	require.Equal(t, m.Name.String(), uiResources[1].Name)
+
+	rv := uiResources[1].Status
+	rc := readyCondition(rv)
+	require.Equal(t, "False", string(rc.Status))
+	require.Equal(t, "Disabled", rc.Reason)
+	uc := upToDateCondition(rv)
+	require.Equal(t, "False", string(uc.Status))
+	require.Equal(t, "Disabled", uc.Reason)
+	require.Equal(t, v1alpha1.RuntimeStatusNone, rv.RuntimeStatus)
+	require.Equal(t, v1alpha1.UpdateStatusNone, rv.UpdateStatus)
+}
+
 func TestLocalResource(t *testing.T) {
 	cmd := model.Cmd{
 		Argv: []string{"make", "test"},
@@ -508,6 +546,15 @@ func lastBuild(r v1alpha1.UIResourceStatus) v1alpha1.UIBuildTerminated {
 func readyCondition(rs v1alpha1.UIResourceStatus) *v1alpha1.UIResourceCondition {
 	for _, c := range rs.Conditions {
 		if c.Type == v1alpha1.UIResourceReady {
+			return &c
+		}
+	}
+	return nil
+}
+
+func upToDateCondition(rs v1alpha1.UIResourceStatus) *v1alpha1.UIResourceCondition {
+	for _, c := range rs.Conditions {
+		if c.Type == v1alpha1.UIResourceUpToDate {
 			return &c
 		}
 	}
