@@ -32,7 +32,7 @@ func (r *Reconciler) manageOwnedKubernetesDiscovery(ctx context.Context, nn type
 	isNotFound := apierrors.IsNotFound(err)
 	if err != nil && !isNotFound {
 		return fmt.Errorf("failed to fetch managed KubernetesDiscovery objects for KubernetesApply %s: %v",
-			ka.Name, err)
+			nn.Name, err)
 	}
 
 	kd, err := r.toDesiredKubernetesDiscovery(ka)
