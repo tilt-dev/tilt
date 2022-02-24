@@ -310,7 +310,9 @@ func UIResourceReadyCondition(r v1alpha1.UIResourceStatus) v1alpha1.UIResourceCo
 	}
 
 	c.Status = metav1.ConditionFalse
-	if r.RuntimeStatus == v1alpha1.RuntimeStatusError {
+	if r.DisableStatus.State == v1alpha1.DisableStateDisabled {
+		c.Reason = "Disabled"
+	} else if r.RuntimeStatus == v1alpha1.RuntimeStatusError {
 		c.Reason = "RuntimeError"
 	} else if r.UpdateStatus == v1alpha1.UpdateStatusError {
 		c.Reason = "UpdateError"
@@ -339,7 +341,9 @@ func UIResourceUpToDateCondition(r v1alpha1.UIResourceStatus) v1alpha1.UIResourc
 	}
 
 	c.Status = metav1.ConditionFalse
-	if r.UpdateStatus == v1alpha1.UpdateStatusError {
+	if r.DisableStatus.State == v1alpha1.DisableStateDisabled {
+		c.Reason = "Disabled"
+	} else if r.UpdateStatus == v1alpha1.UpdateStatusError {
 		c.Reason = "UpdateError"
 	} else if r.UpdateStatus == v1alpha1.UpdateStatusPending {
 		c.Reason = "UpdatePending"
@@ -390,6 +394,11 @@ func TiltfileResource(name model.ManifestName, ms *store.ManifestState, logStore
 func populateResourceInfoView(mt *store.ManifestTarget, r *v1alpha1.UIResource) {
 	r.Status.UpdateStatus = mt.UpdateStatus()
 	r.Status.RuntimeStatus = mt.RuntimeStatus()
+
+	if r.Status.DisableStatus.State == v1alpha1.DisableStateDisabled {
+		r.Status.UpdateStatus = v1alpha1.UpdateStatusNone
+		r.Status.RuntimeStatus = v1alpha1.RuntimeStatusNone
+	}
 
 	if mt.Manifest.IsLocal() {
 		lState := mt.State.LocalRuntimeState()
