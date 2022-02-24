@@ -153,6 +153,31 @@ func TestRepoSyncExisting(t *testing.T) {
 	f.assertSteadyState(&repo)
 }
 
+func TestRepoAlwaysSyncHead(t *testing.T) {
+	f := newFixture(t)
+
+	key := types.NamespacedName{Name: "default"}
+	repo := v1alpha1.ExtensionRepo{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: key.Name,
+		},
+		Spec: v1alpha1.ExtensionRepoSpec{
+			URL: "https://github.com/tilt-dev/tilt-extensions",
+			Ref: "HEAD",
+		},
+	}
+
+	f.dlr.Download("github.com/tilt-dev/tilt-extensions")
+	f.dlr.RefSync("github.com/tilt-dev/tilt-extensions", "HEAD")
+
+	f.Create(&repo)
+	f.MustGet(key, &repo)
+	require.Equal(t, repo.Status.Error, "")
+	assert.Equal(t, 2, f.dlr.downloadCount)
+	assert.Equal(t, "HEAD", f.dlr.lastRefSync)
+	f.assertSteadyState(&repo)
+}
+
 type fixture struct {
 	*fake.ControllerFixture
 	r    *Reconciler
@@ -217,7 +242,7 @@ func (d *fakeDownloader) Download(pkg string) (string, error) {
 
 	_, err = os.Stat(path)
 	exists := err == nil
-	if exists && d.lastRefSync != "" {
+	if exists && d.lastRefSync != "" && d.lastRefSync != "HEAD" {
 		// If the current disk state is checked out to a ref, then
 		// we expect Download() to fail.
 		// https://github.com/tilt-dev/tilt/issues/5508

@@ -165,7 +165,6 @@ func (e *Plugin) ensureRepo(t *starlark.Thread, objSet apiset.ObjectSet, repoNam
 		},
 		Spec: v1alpha1.ExtensionRepoSpec{
 			URL: "https://github.com/tilt-dev/tilt-extensions",
-			Ref: "HEAD",
 		},
 	}
 

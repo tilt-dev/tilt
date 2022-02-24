@@ -230,8 +230,11 @@ func (r *Reconciler) reconcileDownloaderRepo(ctx context.Context, state *repoSta
 	state.lastFetch = time.Now()
 
 	needsDownload := true
-	if exists && state.spec.Ref != "" {
-		// If an explicit ref is specified, there's no reason to pull a new version.
+	if exists && state.spec.Ref != "" && state.spec.Ref != "HEAD" {
+		// If an explicit ref is specified, we assume there's no reason to pull a new version.
+		//
+		// TODO(nick): Should we try to support cases where the ref can change server-side?
+		// e.g., a "stable" tag.
 		err := r.dlr.RefSync(importPath, state.spec.Ref)
 		if err == nil {
 			needsDownload = false

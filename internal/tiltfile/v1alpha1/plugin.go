@@ -7,6 +7,7 @@ import (
 	"go.starlark.net/starlark"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/controllers/apiset"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 )
@@ -45,8 +46,8 @@ func (p Plugin) register(t *starlark.Thread, obj apiset.Object) (starlark.Value,
 	err := starkit.SetState(t, func(set apiset.ObjectSet) (apiset.ObjectSet, error) {
 		typedSet := set.GetOrCreateTypedSet(obj)
 		name := obj.GetName()
-		_, exists := typedSet[name]
-		if exists {
+		existing, exists := typedSet[name]
+		if exists && !apicmp.DeepEqual(obj, existing) {
 			return set, fmt.Errorf("%s %q already registered", obj.GetGroupVersionResource().Resource, name)
 		}
 

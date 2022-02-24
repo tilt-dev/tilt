@@ -35,11 +35,29 @@ v1alpha1.extension(name='cancel', repo_name='default', repo_path='cancel')
 	require.Equal(t, "default", ext.Spec.RepoName)
 }
 
+func TestExtensionRepoTwice(t *testing.T) {
+	f := newFixture(t)
+
+	// Some teams include a team extension repo in each tiltfile. It's OK as long as they match.
+	f.File("Tiltfile", `
+v1alpha1.extension_repo(name='default', url='https://github.com/tilt-dev/tilt-extensions')
+v1alpha1.extension_repo(name='default', url='https://github.com/tilt-dev/tilt-extensions')
+`)
+	result, err := f.ExecFile("Tiltfile")
+	require.NoError(t, err)
+
+	set := MustState(result)
+
+	repo := set.GetSetForType(&v1alpha1.ExtensionRepo{})["default"].(*v1alpha1.ExtensionRepo)
+	require.NotNil(t, repo)
+	require.Equal(t, "https://github.com/tilt-dev/tilt-extensions", repo.Spec.URL)
+}
+
 func TestExtensionArgs(t *testing.T) {
 	f := newFixture(t)
 
 	f.File("Tiltfile", `
-v1alpha1.extension_repo(name='default', url='https://github.com/tilt-dev/tilt-extensions', ref='HEAD')
+v1alpha1.extension_repo(name='default', url='https://github.com/tilt-dev/tilt-extensions')
 v1alpha1.extension(name='cancel', repo_name='default', repo_path='cancel', args=['--namespace=foo'])
 `)
 	result, err := f.ExecFile("Tiltfile")
