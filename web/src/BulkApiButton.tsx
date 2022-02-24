@@ -1,6 +1,6 @@
 import { ButtonClassKey, ButtonGroup, ButtonProps } from "@material-ui/core"
 import { ClassNameMap } from "@material-ui/styles"
-import React, { useLayoutEffect, useState } from "react"
+import React, { useLayoutEffect, useMemo, useState } from "react"
 import styled from "styled-components"
 import { AnalyticsType, Tags } from "./analytics"
 import {
@@ -34,7 +34,6 @@ import { UIButton } from "./types"
 type BulkApiButtonProps = ButtonProps & {
   bulkAction: BulkAction
   buttonText: string
-  className?: string
   onClickCallback?: () => void
   requiresConfirmation: boolean
   targetToggleState?: ApiButtonToggleState
@@ -86,27 +85,16 @@ const BulkButtonGroup = styled(ButtonGroup)<{ disabled?: boolean }>`
     cursor: not-allowed;
   `}
 
-  /* Adjust the border radius of buttons to achieve the "rounded bar" look */
-  &.firstButtonGroupInRow {
-    ${BulkButtonElementRoot} {
-      border-top-right-radius: 0;
-      border-bottom-right-radius: 0;
-      border-right: 0;
-    }
-  }
-
-  &.middleButtonGroupInRow {
-    ${BulkButtonElementRoot} {
-      border-radius: 0;
-      border-right: 0;
-    }
-  }
-
-  &.lastButtonGroupInRow {
+  & + &:not(.isConfirming) {
+    margin-left: -4px;
     ${BulkButtonElementRoot} {
       border-top-left-radius: 0;
       border-bottom-left-radius: 0;
     }
+  }
+
+  & + &.isConfirming {
+    margin-left: 4px;
   }
 `
 
@@ -250,7 +238,6 @@ export function BulkApiButton(props: BulkApiButtonProps) {
   const {
     bulkAction,
     buttonText,
-    className,
     targetToggleState,
     requiresConfirmation,
     onClickCallback,
@@ -263,29 +250,34 @@ export function BulkApiButton(props: BulkApiButtonProps) {
   const [loading, setLoading] = useState(false)
   const [confirming, setConfirming] = useState(false)
 
-  const analyticsTags: Tags = {
-    component: ApiButtonType.Global,
-    type: AnalyticsType.Grid,
-    bulkCount: String(uiButtons.length),
-    bulkAction,
-  }
+  let buttonCount = String(uiButtons.length)
+  const analyticsTags: Tags = useMemo(() => {
+    let tags: Tags = {
+      component: ApiButtonType.Global,
+      type: AnalyticsType.Grid,
+      bulkCount: buttonCount,
+      bulkAction,
+    }
 
-  if (targetToggleState) {
-    // The `toggleValue` reflects the value of the buttons
-    // when they are clicked, not their updated values
-    analyticsTags.toggleValue =
-      targetToggleState === ApiButtonToggleState.On
-        ? ApiButtonToggleState.Off
-        : ApiButtonToggleState.On
-  }
+    if (targetToggleState) {
+      // The `toggleValue` reflects the value of the buttons
+      // when they are clicked, not their updated values
+      tags.toggleValue =
+        targetToggleState === ApiButtonToggleState.On
+          ? ApiButtonToggleState.Off
+          : ApiButtonToggleState.On
+    }
+
+    return tags
+  }, [buttonCount, bulkAction, targetToggleState])
 
   const bulkActionDisabled = !canBulkButtonBeToggled(
     uiButtons,
     targetToggleState
   )
   const disabled = loading || bulkActionDisabled || false
-  const buttonGroupClassName = `${className || ""} ${
-    disabled ? "isDisabled" : "isEnabled"
+  const buttonGroupClassName = `${disabled ? "isDisabled" : "isEnabled"} ${
+    confirming ? "isConfirming" : ""
   }`
 
   // If the bulk action isn't available while the bulk button

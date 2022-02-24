@@ -1,4 +1,4 @@
-import React, { useContext } from "react"
+import React, { useContext, useMemo } from "react"
 
 // allows consumers to set an error message to show up in the HUD
 type HudErrorContext = {
@@ -16,8 +16,11 @@ export function useHudErrorContext() {
 export function HudErrorContextProvider(
   props: React.PropsWithChildren<HudErrorContext>
 ) {
+  let value = useMemo(() => {
+    return { setError: props.setError }
+  }, [props.setError])
   return (
-    <hudErrorContext.Provider value={{ setError: props.setError }}>
+    <hudErrorContext.Provider value={value}>
       {props.children}
     </hudErrorContext.Provider>
   )
