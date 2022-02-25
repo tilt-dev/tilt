@@ -65,10 +65,10 @@ func TestTiltCI(t *testing.T) {
 			"Resource %q had auto_init=False and should not have been deployed", name)
 	}
 
-	for _, name := range []string{"k8s-server-enabled", "k8s-job-enabled"} {
-		assert.Truef(t, strings.Contains(logs, fmt.Sprintf("Initial Build • %s", name)),
-			"Resource %q did not deploy", name)
-	}
+	assert.True(t, strings.Contains(logs, "k8s-server-e… │ Initial Build"),
+		"Resource k8s-server-enabled did not deploy")
+	assert.True(t, strings.Contains(logs, "k8s-job-enab… │ Initial Build"),
+		"Resource k8s-job-enabled did not deploy")
 
 	assert.True(t, strings.Contains(logs, "k8s-job-enabled finished"),
 		`Resource "k8s-job-enabled" did not log via container`)

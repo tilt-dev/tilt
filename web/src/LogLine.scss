@@ -25,6 +25,12 @@
     padding-right: $spacing-unit;
     border-top: 1px solid rgba($color-gray-light, $translucent);
     border-bottom: 1px solid $color-blue-dark;
+    
+    &.is-sticky {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
   }
   &.is-buildEvent-fallback {
     background-color: $color-gray-darker;
@@ -40,9 +46,16 @@
   }
 }
 
-.LogLine:not(.is-buildEvent) + .LogLine.is-buildEvent,
-.LogLine.is-buildEvent + .LogLine:not(.is-buildEvent) {
+.LogLine:not(.is-buildEvent) + .LogLine.is-buildEvent {
   margin-top: 8px;
+}
+.LogLine.is-buildEvent + .LogLine:not(.is-buildEvent) > .LogLine-content,
+.LogLine.is-buildEvent + .LogLine:not(.is-buildEvent) > .logLinePrefix {
+  padding-top: 8px;
+}
+.LogLine:not(.is-buildEvent) + .LogLine.is-buildEvent.is-sticky,
+.LogLine.is-buildEvent.is-sticky:first-child {
+  top: -8px; // For position:sticky with padding on LogPane
 }
 
 // Make spacing around "header" text more generous for legibility

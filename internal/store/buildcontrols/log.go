@@ -15,24 +15,22 @@ type BuildEntry struct {
 }
 
 func LogBuildEntry(ctx context.Context, entry BuildEntry) {
-	name := entry.Name
 	buildReason := entry.BuildReason
 	changedFiles := entry.FilesChanged
 	firstBuild := buildReason.Has(model.BuildReasonFlagInit)
 
 	l := logger.Get(ctx).WithFields(logger.Fields{logger.FieldNameBuildEvent: "init"})
-	delimiter := "•"
 	if firstBuild {
-		l.Infof("Initial Build %s %s", delimiter, name)
+		l.Infof("Initial Build")
 	} else {
 		if len(changedFiles) > 0 {
 			t := "File"
 			if len(changedFiles) > 1 {
 				t = "Files"
 			}
-			l.Infof("%d %s Changed: %s %s %s", len(changedFiles), t, ospath.FormatFileChangeList(changedFiles), delimiter, name)
+			l.Infof("%d %s Changed: %s", len(changedFiles), t, ospath.FormatFileChangeList(changedFiles))
 		} else {
-			l.Infof("%s %s %s", buildReason, delimiter, name)
+			l.Infof("%s", buildReason)
 		}
 	}
 }

@@ -776,9 +776,9 @@ func TestFullBuildTriggerClearsLiveUpdate(t *testing.T) {
 	f.WaitUntilManifestState("foobar deleting", "foobar", func(ms store.ManifestState) bool {
 		return ms.K8sRuntimeState().PodLen() == 0
 	})
-	assert.Contains(t, f.log.String(), "Initial Build • foobar")
+	assert.Contains(t, f.log.String(), "Initial Build")
 	f.WaitUntil("Trigger appears", func(st store.EngineState) bool {
-		return strings.Contains(f.log.String(), "Unknown Trigger • foobar")
+		return strings.Contains(f.log.String(), "Unknown Trigger")
 	})
 	assert.NotContains(t, f.log.String(), "Detected a container change")
 
@@ -1183,32 +1183,6 @@ func TestBuildControllerResourceDepTrumpsPendingBuild(t *testing.T) {
 	// since the foo build succeeded, bar should now queue
 	call = f.nextCall()
 	require.Equal(t, "bar", call.local().Name.String())
-}
-
-func TestLogsLongResourceName(t *testing.T) {
-	f := newTestFixture(t)
-
-	mn := strings.Repeat("foobar", 30)
-
-	manifest := f.newManifest(mn)
-	f.Start([]model.Manifest{manifest})
-
-	call := f.nextCallComplete()
-	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
-	assert.Equal(t, []string{}, call.oneImageState().FilesChanged())
-
-	// this might be an annoying test since it depends on log formatting
-	// its goal is to ensure we don't have dumb math that causes integer underflow or panics when it gets a long manifest name
-	// thus, it just makes sure that we log that the manifest is building and we don't error,
-	// and tries to limit how much it checks the formatting
-	f.withState(func(state store.EngineState) {
-		expectedLine := fmt.Sprintf("Initial Build • %s", mn)
-		assert.Contains(t, state.LogStore.String(), expectedLine)
-	})
-
-	err := f.Stop()
-	assert.NoError(t, err)
-	f.assertAllBuildsConsumed()
 }
 
 func TestBuildControllerWontBuildManifestThatsAlreadyBuilding(t *testing.T) {
