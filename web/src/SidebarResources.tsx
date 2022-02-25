@@ -4,6 +4,7 @@ import {
   AccordionSummary,
 } from "@material-ui/core"
 import React, { ChangeEvent, useCallback, useState } from "react"
+import { Link } from "react-router-dom"
 import styled from "styled-components"
 import { AnalyticsType, Tags } from "./analytics"
 import {
@@ -38,7 +39,7 @@ import SidebarItemView, {
   SidebarItemRoot,
 } from "./SidebarItemView"
 import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
-import { Color, Font, FontSize, SizeUnit } from "./style-helpers"
+import { AnimDuration, Color, Font, FontSize, SizeUnit } from "./style-helpers"
 import { startBuild } from "./trigger"
 import { ResourceStatus, ResourceView } from "./types"
 
@@ -78,6 +79,31 @@ let SidebarListSectionName = styled.div`
   text-transform: uppercase;
   color: ${Color.grayLight};
   font-size: ${FontSize.small};
+`
+
+const AllResourceLinkRoot = styled(Link)`
+  background-color: ${Color.grayLighter};
+  border: 1px solid ${Color.grayLight};
+  border-radius: ${SizeUnit(1 / 8)};
+  color: ${Color.white};
+  display: block;
+  font-family: ${Font.sansSerif};
+  font-size: ${FontSize.smallest};
+  font-weight: normal;
+  margin: ${SizeUnit(1 / 3)} ${SizeUnit(1 / 2)};
+  padding: ${SizeUnit(1 / 5)} ${SizeUnit(1 / 3)};
+  text-decoration: none;
+  transition: all ${AnimDuration.default} ease;
+
+  &:is(:hover, :focus, :active) {
+    background-color: ${Color.gray};
+  }
+
+  &.isSelected {
+    background-color: ${Color.gray7};
+    color: ${Color.gray};
+    font-weight: 600;
+  }
 `
 
 const SidebarListSectionItemsRoot = styled.ul`
@@ -155,6 +181,22 @@ function enabledItemsFirst(items: SidebarItem[]): SidebarItem[] {
   let result = onlyEnabledItems(items)
   result.push(...onlyDisabledItems(items))
   return result
+}
+
+function AllResourcesLink(props: {
+  pathBuilder: PathBuilder
+  selected: string
+}) {
+  const isSelectedClass = props.selected === "" ? "isSelected" : ""
+  return (
+    <AllResourceLinkRoot
+      className={isSelectedClass}
+      aria-label="View all resource logs"
+      to={props.pathBuilder.encpath`/r/(all)/overview`}
+    >
+      All Resources
+    </AllResourceLinkRoot>
+  )
 }
 
 export function SidebarListSection(props: SidebarSectionProps): JSX.Element {
@@ -471,7 +513,10 @@ export class SidebarResources extends React.Component<SidebarProps> {
       !resourceFilterApplied && labelsEnabled && resourcesHaveLabels
 
     return (
-      <SidebarResourcesRoot className={`Sidebar-resources ${isOverviewClass}`}>
+      <SidebarResourcesRoot
+        aria-label="Resource logs"
+        className={`Sidebar-resources ${isOverviewClass}`}
+      >
         {displayLabelGroupsTip && (
           <ResourceGroupsInfoTip idForIcon={GROUP_INFO_TOOLTIP_ID} />
         )}
@@ -481,6 +526,10 @@ export class SidebarResources extends React.Component<SidebarProps> {
           }
         >
           <OverviewSidebarOptions />
+          <AllResourcesLink
+            pathBuilder={this.props.pathBuilder}
+            selected={this.props.selected}
+          />
           {displayLabelGroups ? (
             <SidebarGroupedByLabels
               {...this.props}

@@ -1,5 +1,6 @@
 import React from "react"
 import { MemoryRouter } from "react-router"
+import { AnalyticsType } from "./analytics"
 import HeaderBar from "./HeaderBar"
 import { nResourceView, tenResourceView, twoResourceView } from "./testdata"
 import { UpdateStatus } from "./types"
@@ -17,19 +18,25 @@ export default {
   ],
 }
 
-export const TwoResources = () => <HeaderBar view={twoResourceView()} />
+export const TwoResources = () => (
+  <HeaderBar view={twoResourceView()} currentPage={AnalyticsType.Detail} />
+)
 
-export const TenResources = () => <HeaderBar view={tenResourceView()} />
+export const TenResources = () => (
+  <HeaderBar view={tenResourceView()} currentPage={AnalyticsType.Detail} />
+)
 
 export const TenResourcesErrorsAndWarnings = () => {
   let view = tenResourceView() as any
   view.uiResources[0].status.updateStatus = UpdateStatus.Error
   view.uiResources[1].status.buildHistory[0].warnings = ["warning time"]
   view.uiResources[5].status.updateStatus = UpdateStatus.Error
-  return <HeaderBar view={view} />
+  return <HeaderBar view={view} currentPage={AnalyticsType.Grid} />
 }
 
-export const OneHundredResources = () => <HeaderBar view={nResourceView(100)} />
+export const OneHundredResources = () => (
+  <HeaderBar view={nResourceView(100)} currentPage={AnalyticsType.Grid} />
+)
 
 export const UpgradeAvailable = () => {
   let view = twoResourceView()
@@ -37,5 +44,5 @@ export const UpgradeAvailable = () => {
   status!.suggestedTiltVersion = "0.18.1"
   status!.runningTiltBuild = { version: "0.18.0", dev: false }
   status!.versionSettings = { checkUpdates: true }
-  return <HeaderBar view={view} />
+  return <HeaderBar view={view} currentPage={AnalyticsType.Detail} />
 }
