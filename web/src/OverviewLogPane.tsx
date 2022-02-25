@@ -310,14 +310,20 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
 
     // If we're scrolled horizontally, cancel the autoscroll.
     if (rootEl.scrollLeft > 0) {
-      this.autoscroll = false
+      if (this.autoscroll) {
+        this.autoscroll = false
+        this.maybeScheduleRender()
+      }
       return
     }
 
     // If we're autoscrolling, and the user scrolled up,
     // cancel the autoscroll.
     if (autoscroll && scrollTop < oldScrollTop) {
-      this.autoscroll = false
+      if (this.autoscroll) {
+        this.autoscroll = false
+        this.maybeScheduleRender()
+      }
       return
     }
 
@@ -509,11 +515,39 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
       })
     }
 
-    // Schedule a render job if there's not one already scheduled.
+    this.maybeScheduleRender()
+  }
+
+  // Schedule a render job if there's not one already scheduled.
+  maybeScheduleRender() {
     if (this.renderBufferRafId) return
     this.renderBufferRafId = this.props.raf.requestAnimationFrame(
       this.renderBuffer
     )
+  }
+
+  shouldRenderForwardBuffer(): boolean {
+    return this.forwardBuffer.length > 0
+  }
+
+  // When we're in autoscrolling mode, rendering the backwards buffer makes the
+  // screen jiggle, because we have to render a few rows, then scroll down, then
+  // render a few rows, then scroll down.
+  //
+  // So when in autoscrol mode, only render until we have the "last window" of logs.
+  shouldRenderBackwardBuffer(): boolean {
+    if (this.backwardBuffer.length == 0) {
+      // Skip rendering if there's no lines in the buffer.
+      return false
+    }
+
+    if (!this.autoscroll) {
+      // Do render if we're scrolling up.
+      return true
+    }
+
+    // In autoscroll mode, only render if there aren't enough lines to fill the viewport.
+    return this.rootRef.current.scrollTop == 0
   }
 
   // We have two render buffers:
@@ -534,8 +568,10 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
       return
     }
 
-    // If there are no lines in either buffer, we're done.
-    if (!this.backwardBuffer.length && !this.forwardBuffer.length) {
+    if (
+      !this.shouldRenderForwardBuffer() &&
+      !this.shouldRenderBackwardBuffer()
+    ) {
       return
     }
 
@@ -547,14 +583,15 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
       this.renderLineHelper(line)
     }
 
-    // Render the lines in the backward buffer next.
-    let backwardStart = Math.max(0, this.backwardBuffer.length - renderWindow)
-    let backwardLines = this.backwardBuffer.slice(backwardStart)
-    this.backwardBuffer = this.backwardBuffer.slice(0, backwardStart)
+    if (this.shouldRenderBackwardBuffer()) {
+      let backwardStart = Math.max(0, this.backwardBuffer.length - renderWindow)
+      let backwardLines = this.backwardBuffer.slice(backwardStart)
+      this.backwardBuffer = this.backwardBuffer.slice(0, backwardStart)
 
-    for (let i = backwardLines.length - 1; i >= 0; i--) {
-      let line = backwardLines[i]
-      this.renderLineHelper(line)
+      for (let i = backwardLines.length - 1; i >= 0; i--) {
+        let line = backwardLines[i]
+        this.renderLineHelper(line)
+      }
     }
 
     if (this.autoscroll) {
@@ -571,7 +608,7 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
       }
     }
 
-    if (this.forwardBuffer.length || this.backwardBuffer.length) {
+    if (this.shouldRenderForwardBuffer() || this.shouldRenderBackwardBuffer()) {
       this.renderBufferRafId = this.props.raf.requestAnimationFrame(
         this.renderBuffer
       )
