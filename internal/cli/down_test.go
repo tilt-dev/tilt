@@ -175,9 +175,9 @@ func newK8sManifest() []model.Manifest {
 func newDCManifest() []model.Manifest {
 	return []model.Manifest{model.Manifest{Name: "fe"}.WithDeployTarget(model.DockerComposeTarget{
 		Name: "fe",
-		Spec: model.DockerComposeUpSpec{
+		Spec: v1alpha1.DockerComposeServiceSpec{
 			Service: "fe",
-			Project: model.DockerComposeProject{
+			Project: v1alpha1.DockerComposeProject{
 				ConfigPaths: []string{"dc.yaml"},
 			},
 		},

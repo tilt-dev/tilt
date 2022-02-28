@@ -21,8 +21,8 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
-	"github.com/tilt-dev/tilt/pkg/model"
 
 	compose "github.com/compose-spec/compose-go/cli"
 )
@@ -42,13 +42,13 @@ var dcProjectOptions = []compose.ProjectOptionsFn{
 }
 
 type DockerComposeClient interface {
-	Up(ctx context.Context, spec model.DockerComposeUpSpec, shouldBuild bool, stdout, stderr io.Writer) error
-	Down(ctx context.Context, spec model.DockerComposeProject, stdout, stderr io.Writer) error
-	Rm(ctx context.Context, specs []model.DockerComposeUpSpec, stdout, stderr io.Writer) error
-	StreamLogs(ctx context.Context, spec model.DockerComposeUpSpec) io.ReadCloser
-	StreamEvents(ctx context.Context, spec model.DockerComposeProject) (<-chan string, error)
-	Project(ctx context.Context, spec model.DockerComposeProject) (*types.Project, error)
-	ContainerID(ctx context.Context, spec model.DockerComposeUpSpec) (container.ID, error)
+	Up(ctx context.Context, spec v1alpha1.DockerComposeServiceSpec, shouldBuild bool, stdout, stderr io.Writer) error
+	Down(ctx context.Context, spec v1alpha1.DockerComposeProject, stdout, stderr io.Writer) error
+	Rm(ctx context.Context, specs []v1alpha1.DockerComposeServiceSpec, stdout, stderr io.Writer) error
+	StreamLogs(ctx context.Context, spec v1alpha1.DockerComposeServiceSpec) io.ReadCloser
+	StreamEvents(ctx context.Context, spec v1alpha1.DockerComposeProject) (<-chan string, error)
+	Project(ctx context.Context, spec v1alpha1.DockerComposeProject) (*types.Project, error)
+	ContainerID(ctx context.Context, spec v1alpha1.DockerComposeServiceSpec) (container.ID, error)
 	Version(ctx context.Context) (canonicalVersion string, build string, err error)
 }
 
@@ -69,7 +69,7 @@ func NewDockerComposeClient(env docker.LocalEnv) DockerComposeClient {
 	}
 }
 
-func (c *cmdDCClient) projectArgs(p model.DockerComposeProject) []string {
+func (c *cmdDCClient) projectArgs(p v1alpha1.DockerComposeProject) []string {
 	result := []string{}
 
 	if p.Name != "" {
@@ -95,7 +95,7 @@ func (c *cmdDCClient) projectArgs(p model.DockerComposeProject) []string {
 	return result
 }
 
-func (c *cmdDCClient) Up(ctx context.Context, spec model.DockerComposeUpSpec, shouldBuild bool, stdout, stderr io.Writer) error {
+func (c *cmdDCClient) Up(ctx context.Context, spec v1alpha1.DockerComposeServiceSpec, shouldBuild bool, stdout, stderr io.Writer) error {
 	genArgs := c.projectArgs(spec.Project)
 	// TODO(milas): this causes docker-compose to output a truly excessive amount of logging; it might
 	// 	make sense to hide it behind a special environment variable instead or something
@@ -141,7 +141,7 @@ func (c *cmdDCClient) Up(ctx context.Context, spec model.DockerComposeUpSpec, sh
 	return FormatError(cmd, nil, cmd.Run())
 }
 
-func (c *cmdDCClient) Down(ctx context.Context, p model.DockerComposeProject, stdout, stderr io.Writer) error {
+func (c *cmdDCClient) Down(ctx context.Context, p v1alpha1.DockerComposeProject, stdout, stderr io.Writer) error {
 	// To be safe, we try not to run two docker-compose downs in parallel,
 	// because we know docker-compose up is not thread-safe.
 	c.mu.Lock()
@@ -166,7 +166,7 @@ func (c *cmdDCClient) Down(ctx context.Context, p model.DockerComposeProject, st
 	return nil
 }
 
-func (c *cmdDCClient) Rm(ctx context.Context, specs []model.DockerComposeUpSpec, stdout, stderr io.Writer) error {
+func (c *cmdDCClient) Rm(ctx context.Context, specs []v1alpha1.DockerComposeServiceSpec, stdout, stderr io.Writer) error {
 	if len(specs) == 0 {
 		return nil
 	}
@@ -207,7 +207,7 @@ func (c *cmdDCClient) Rm(ctx context.Context, specs []model.DockerComposeUpSpec,
 	return nil
 }
 
-func (c *cmdDCClient) StreamLogs(ctx context.Context, spec model.DockerComposeUpSpec) io.ReadCloser {
+func (c *cmdDCClient) StreamLogs(ctx context.Context, spec v1alpha1.DockerComposeServiceSpec) io.ReadCloser {
 	args := c.projectArgs(spec.Project)
 
 	r, w := io.Pipe()
@@ -237,7 +237,7 @@ func (c *cmdDCClient) StreamLogs(ctx context.Context, spec model.DockerComposeUp
 	return r
 }
 
-func (c *cmdDCClient) StreamEvents(ctx context.Context, p model.DockerComposeProject) (<-chan string, error) {
+func (c *cmdDCClient) StreamEvents(ctx context.Context, p v1alpha1.DockerComposeProject) (<-chan string, error) {
 	ch := make(chan string)
 
 	args := c.projectArgs(p)
@@ -273,7 +273,7 @@ func (c *cmdDCClient) StreamEvents(ctx context.Context, p model.DockerComposePro
 	return ch, nil
 }
 
-func (c *cmdDCClient) Project(ctx context.Context, spec model.DockerComposeProject) (*types.Project, error) {
+func (c *cmdDCClient) Project(ctx context.Context, spec v1alpha1.DockerComposeProject) (*types.Project, error) {
 	var proj *types.Project
 	var err error
 
@@ -299,7 +299,7 @@ func (c *cmdDCClient) Project(ctx context.Context, spec model.DockerComposeProje
 	return proj, nil
 }
 
-func (c *cmdDCClient) ContainerID(ctx context.Context, spec model.DockerComposeUpSpec) (container.ID, error) {
+func (c *cmdDCClient) ContainerID(ctx context.Context, spec v1alpha1.DockerComposeServiceSpec) (container.ID, error) {
 	id, err := c.dcOutput(ctx, spec.Project, "ps", "-q", spec.Service)
 	if err != nil {
 		return container.ID(""), err
@@ -325,7 +325,7 @@ func (c *cmdDCClient) Version(ctx context.Context) (string, string, error) {
 	return ver, build, err
 }
 
-func composeProjectOptions(modelProj model.DockerComposeProject) (*compose.ProjectOptions, error) {
+func composeProjectOptions(modelProj v1alpha1.DockerComposeProject) (*compose.ProjectOptions, error) {
 	// NOTE: take care to keep behavior in sync with loadProjectCLI()
 	allProjectOptions := append(dcProjectOptions,
 		compose.WithWorkingDirectory(modelProj.ProjectPath),
@@ -337,7 +337,7 @@ func composeProjectOptions(modelProj model.DockerComposeProject) (*compose.Proje
 	return compose.NewProjectOptions(modelProj.ConfigPaths, allProjectOptions...)
 }
 
-func (c *cmdDCClient) loadProjectNative(modelProj model.DockerComposeProject) (*types.Project, error) {
+func (c *cmdDCClient) loadProjectNative(modelProj v1alpha1.DockerComposeProject) (*types.Project, error) {
 	opts, err := composeProjectOptions(modelProj)
 	if err != nil {
 		return nil, err
@@ -349,7 +349,7 @@ func (c *cmdDCClient) loadProjectNative(modelProj model.DockerComposeProject) (*
 	return proj, nil
 }
 
-func (c *cmdDCClient) loadProjectCLI(ctx context.Context, proj model.DockerComposeProject) (*types.Project, error) {
+func (c *cmdDCClient) loadProjectCLI(ctx context.Context, proj v1alpha1.DockerComposeProject) (*types.Project, error) {
 	resolvedYAML, err := c.dcOutput(ctx, proj, "config")
 	if err != nil {
 		return nil, err
@@ -404,7 +404,7 @@ func (c *cmdDCClient) dcCommand(ctx context.Context, args []string) *exec.Cmd {
 	return cmd
 }
 
-func (c *cmdDCClient) dcOutput(ctx context.Context, p model.DockerComposeProject, args ...string) (string, error) {
+func (c *cmdDCClient) dcOutput(ctx context.Context, p v1alpha1.DockerComposeProject, args ...string) (string, error) {
 
 	tempArgs := c.projectArgs(p)
 	args = append(tempArgs, args...)

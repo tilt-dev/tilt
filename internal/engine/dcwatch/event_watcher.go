@@ -10,6 +10,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -55,7 +56,7 @@ func (w *EventWatcher) OnChange(ctx context.Context, st store.RStore, summary st
 	return nil
 }
 
-func (w *EventWatcher) startWatch(ctx context.Context, p model.DockerComposeProject) (<-chan string, error) {
+func (w *EventWatcher) startWatch(ctx context.Context, p v1alpha1.DockerComposeProject) (<-chan string, error) {
 	return w.dcc.StreamEvents(ctx, p)
 }
 

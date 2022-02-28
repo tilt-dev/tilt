@@ -558,7 +558,7 @@ var ignoreCustomBuildDepsField = cmpopts.IgnoreFields(CustomBuild{}, "Deps")
 var ignoreLocalTargetDepsField = cmpopts.IgnoreFields(LocalTarget{}, "Deps")
 var ignoreDockerBuildCacheFrom = cmpopts.IgnoreFields(DockerBuild{}, "CacheFrom")
 var ignoreLabels = cmpopts.IgnoreFields(Manifest{}, "Labels")
-var ignoreDockerComposeProject = cmpopts.IgnoreFields(DockerComposeUpSpec{}, "Project")
+var ignoreDockerComposeProject = cmpopts.IgnoreFields(v1alpha1.DockerComposeServiceSpec{}, "Project")
 
 // ignoreLinks ignores user-defined links for the purpose of build invalidation
 //

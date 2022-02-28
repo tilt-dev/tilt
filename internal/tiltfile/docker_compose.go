@@ -26,12 +26,13 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/links"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 	"github.com/tilt-dev/tilt/internal/tiltfile/value"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // dcResourceSet represents a single docker-compose config file and all its associated services
 type dcResourceSet struct {
-	Project model.DockerComposeProject
+	Project v1alpha1.DockerComposeProject
 
 	configPaths  []string
 	services     []*dcService
@@ -64,7 +65,7 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 			"(%s, %s)", dc.tiltfilePath, currentTiltfilePath)
 	}
 
-	project := model.DockerComposeProject{
+	project := v1alpha1.DockerComposeProject{
 		ConfigPaths: dc.configPaths,
 		ProjectPath: dc.Project.ProjectPath,
 		Name:        model.NormalizeName(filepath.Base(filepath.Dir(currentTiltfilePath))),
@@ -317,7 +318,7 @@ func dockerComposeConfigToService(projectName string, svcConfig types.ServiceCon
 	return svc, nil
 }
 
-func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, spec model.DockerComposeProject) ([]*dcService, error) {
+func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, spec v1alpha1.DockerComposeProject) ([]*dcService, error) {
 	proj, err := dcc.Project(ctx, spec)
 	if err != nil {
 		return nil, err
@@ -342,7 +343,7 @@ func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, s
 func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResourceSet, iTargets []model.ImageTarget) (model.Manifest, error) {
 	dcInfo := model.DockerComposeTarget{
 		Name: model.TargetName(service.Name),
-		Spec: model.DockerComposeUpSpec{
+		Spec: v1alpha1.DockerComposeServiceSpec{
 			Service: service.Name,
 			Project: dcSet.Project,
 		},

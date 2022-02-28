@@ -4,10 +4,11 @@ import (
 	"fmt"
 
 	"github.com/tilt-dev/tilt/internal/sliceutils"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
 type DockerComposeTarget struct {
-	Spec DockerComposeUpSpec
+	Spec v1alpha1.DockerComposeServiceSpec
 
 	Name TargetName
 

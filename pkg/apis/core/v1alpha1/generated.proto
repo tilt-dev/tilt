@@ -556,6 +556,78 @@ message DockerClusterConnection {
   optional string host = 1;
 }
 
+message DockerComposeProject {
+  // Configuration files to load.
+  //
+  // If both ConfigPaths and ProjectPath/YAML are specified,
+  // the YAML is the source of truth, and the ConfigPaths
+  // are used to print diagnostic information.
+  repeated string configPaths = 1;
+
+  // The base path of the docker-compose project.
+  //
+  // Expressed in docker-compose as --project-directory.
+  //
+  // When used on the command-line, the Docker Compose spec mandates that this
+  // must be the directory of the first yaml file.  All additional yaml files are
+  // evaluated relative to this project path.
+  optional string projectPath = 2;
+
+  // The docker-compose config YAML.
+  //
+  // Usually contains multiple services.
+  //
+  // If you have multiple docker-compose.yaml files, you can combine them into a
+  // single YAML with `docker-compose -f file1.yaml -f file2.yaml config`.
+  optional string yaml = 3;
+
+  // The docker-compose project name.
+  //
+  // If omitted, the default is to use the NormalizedName of the ProjectPath
+  // base name.
+  optional string name = 4;
+
+  // Path to an env file to use. Passed to docker-compose as `--env-file FILE`.
+  optional string envFile = 5;
+}
+
+// DockerComposeService represents a container orchestrated by Docker Compose.
+//
+// +k8s:openapi-gen=true
+message DockerComposeService {
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+
+  optional DockerComposeServiceSpec spec = 2;
+
+  optional DockerComposeServiceStatus status = 3;
+}
+
+// DockerComposeServiceList
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+message DockerComposeServiceList {
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+
+  repeated DockerComposeService items = 2;
+}
+
+// DockerComposeServiceSpec defines the desired state a Docker Compose container.
+message DockerComposeServiceSpec {
+  // The name of the service to create.
+  optional string service = 1;
+
+  // A specification of the project the service belongs to.
+  //
+  // Each service spec keeps its own copy of the project spec.
+  optional DockerComposeProject project = 2;
+
+  // The image maps that this deploy depends on.
+  repeated string imageMaps = 3;
+}
+
+// DockerComposeServiceStatus defines the observed state of DockerComposeService
+message DockerComposeServiceStatus {
+}
+
 // DockerImage describes an image to build with Docker.
 // +k8s:openapi-gen=true
 message DockerImage {

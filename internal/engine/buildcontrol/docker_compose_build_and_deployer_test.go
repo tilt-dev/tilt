@@ -247,7 +247,7 @@ func (f *dcbdFixture) BuildAndDeploy(specs []model.TargetSpec, stateSet store.Bu
 func defaultDockerComposeTarget(f Fixture, name string) model.DockerComposeTarget {
 	return model.DockerComposeTarget{
 		Name: model.TargetName(name),
-		Spec: model.DockerComposeUpSpec{
+		Spec: v1alpha1.DockerComposeServiceSpec{
 			Service: name,
 		},
 	}

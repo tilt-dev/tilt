@@ -199,9 +199,9 @@ func (b ManifestBuilder) Build() model.Manifest {
 		m = assembleDC(
 			model.Manifest{Name: b.name, ResourceDependencies: rds},
 			model.DockerComposeTarget{
-				Spec: model.DockerComposeUpSpec{
+				Spec: v1alpha1.DockerComposeServiceSpec{
 					Service: string(b.name),
-					Project: model.DockerComposeProject{
+					Project: v1alpha1.DockerComposeProject{
 						ConfigPaths: b.dcConfigPaths,
 					},
 				},
