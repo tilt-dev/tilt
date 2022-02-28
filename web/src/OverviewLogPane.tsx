@@ -36,7 +36,7 @@ type OverviewLogComponentProps = {
 }
 
 let LogPaneRoot = styled.section`
-  padding: ${SizeUnit(0.25)} 0;
+  padding: 0 0 ${SizeUnit(0.25)} 0;
   background-color: ${Color.grayDarkest};
   width: 100%;
   height: 100%;
@@ -87,6 +87,8 @@ function newLineEl(
     classes.push("is-buildEvent-init")
 
     if (showManifestPrefix) {
+      // For build event lines, we put the manifest name is a suffix
+      // rather than a prefix, because it looks nicer.
       text += ` • ${line.manifestName}`
     } else {
       // If we're viewing a single resource, we should make the build event log
