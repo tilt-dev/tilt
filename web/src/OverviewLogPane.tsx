@@ -36,7 +36,7 @@ type OverviewLogComponentProps = {
 }
 
 let LogPaneRoot = styled.section`
-  padding: ${SizeUnit(0.25)} 0;
+  padding: 0 0 ${SizeUnit(0.25)} 0;
   background-color: ${Color.grayDarkest};
   width: 100%;
   height: 100%;
@@ -85,6 +85,16 @@ function newLineEl(
   if (buildEvent === "init") {
     classes.push("is-buildEvent")
     classes.push("is-buildEvent-init")
+
+    if (showManifestPrefix) {
+      // For build event lines, we put the manifest name is a suffix
+      // rather than a prefix, because it looks nicer.
+      text += ` • ${line.manifestName}`
+    } else {
+      // If we're viewing a single resource, we should make the build event log
+      // lines sticky, so that we always know context of the current logs.
+      classes.push("is-sticky")
+    }
   }
   if (buildEvent === "fallback") {
     classes.push("is-buildEvent")
@@ -94,7 +104,7 @@ function newLineEl(
   span.setAttribute("data-sl-index", String(line.storedLineIndex))
   span.classList.add(...classes)
 
-  if (showManifestPrefix) {
+  if (showManifestPrefix && buildEvent !== "init") {
     let prefix = document.createElement("span")
     let name = line.manifestName
     if (!name) {
@@ -112,7 +122,7 @@ function newLineEl(
   // newline ensures this takes up at least one line
   let spacer = "\n"
   code.innerHTML = anser.linkify(
-    anser.ansiToHtml(anser.escapeForHtml(line.text) + spacer, {
+    anser.ansiToHtml(anser.escapeForHtml(text) + spacer, {
       // Let anser colorize the html as it appears from various consoles
       use_classes: false,
     })

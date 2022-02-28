@@ -1380,7 +1380,7 @@ func TestDisabledHudUpdated(t *testing.T) {
 
 	// Make sure we're done logging stuff, then grab # processed bytes
 	f.WaitUntil("foobar logs appear", func(es store.EngineState) bool {
-		return strings.Contains(f.log.String(), "Initial Build • foobar")
+		return strings.Contains(f.log.String(), "Initial Build")
 	})
 
 	assert.True(t, f.ts.ProcessedLogs > 0)
