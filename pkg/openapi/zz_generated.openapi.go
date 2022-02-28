@@ -64,6 +64,11 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource":                   schema_pkg_apis_core_v1alpha1_DisableSource(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableStatus":                   schema_pkg_apis_core_v1alpha1_DisableStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerClusterConnection":         schema_pkg_apis_core_v1alpha1_DockerClusterConnection(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeProject":            schema_pkg_apis_core_v1alpha1_DockerComposeProject(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeService":            schema_pkg_apis_core_v1alpha1_DockerComposeService(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeServiceList":        schema_pkg_apis_core_v1alpha1_DockerComposeServiceList(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeServiceSpec":        schema_pkg_apis_core_v1alpha1_DockerComposeServiceSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeServiceStatus":      schema_pkg_apis_core_v1alpha1_DockerComposeServiceStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImage":                     schema_pkg_apis_core_v1alpha1_DockerImage(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageList":                 schema_pkg_apis_core_v1alpha1_DockerImageList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageSpec":                 schema_pkg_apis_core_v1alpha1_DockerImageSpec(ref),
@@ -1618,6 +1623,214 @@ func schema_pkg_apis_core_v1alpha1_DockerClusterConnection(ref common.ReferenceC
 						},
 					},
 				},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_DockerComposeProject(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"configPaths": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Configuration files to load.\n\nIf both ConfigPaths and ProjectPath/YAML are specified, the YAML is the source of truth, and the ConfigPaths are used to print diagnostic information.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"projectPath": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The base path of the docker-compose project.\n\nExpressed in docker-compose as --project-directory.\n\nWhen used on the command-line, the Docker Compose spec mandates that this must be the directory of the first yaml file.  All additional yaml files are evaluated relative to this project path.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"yaml": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The docker-compose config YAML.\n\nUsually contains multiple services.\n\nIf you have multiple docker-compose.yaml files, you can combine them into a single YAML with `docker-compose -f file1.yaml -f file2.yaml config`.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The docker-compose project name.\n\nIf omitted, the default is to use the NormalizedName of the ProjectPath base name.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"envFile": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Path to an env file to use. Passed to docker-compose as `--env-file FILE`.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_DockerComposeService(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "DockerComposeService represents a container orchestrated by Docker Compose.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeServiceSpec"),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeServiceStatus"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeServiceSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeServiceStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_DockerComposeServiceList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "DockerComposeServiceList",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeService"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeService", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_DockerComposeServiceSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "DockerComposeServiceSpec defines the desired state a Docker Compose container.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"service": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The name of the service to create.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"project": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A specification of the project the service belongs to.\n\nEach service spec keeps its own copy of the project spec.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeProject"),
+						},
+					},
+					"imageMaps": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The image maps that this deploy depends on.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"service", "project"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeProject"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_DockerComposeServiceStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "DockerComposeServiceStatus defines the observed state of DockerComposeService",
+				Type:        []string{"object"},
 			},
 		},
 	}

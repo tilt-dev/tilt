@@ -37,7 +37,7 @@ type DisableSubscriber struct {
 }
 
 type resourceState struct {
-	Spec                model.DockerComposeUpSpec
+	Spec                v1alpha1.DockerComposeServiceSpec
 	NeedsCleanup        bool
 	CurrentlyCleaningUp bool
 	// the container's start time
@@ -132,7 +132,7 @@ func (w *DisableSubscriber) OnChange(ctx context.Context, st store.RStore, summa
 }
 
 func (w *DisableSubscriber) Reconcile(ctx context.Context) {
-	var toDisable []model.DockerComposeUpSpec
+	var toDisable []v1alpha1.DockerComposeServiceSpec
 
 	w.mu.Lock()
 

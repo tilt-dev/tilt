@@ -188,9 +188,9 @@ func TestManifestEquality(t *testing.T) {
 func TestDCTargetValidate(t *testing.T) {
 	targ := DockerComposeTarget{
 		Name: "blah",
-		Spec: DockerComposeUpSpec{
+		Spec: v1alpha1.DockerComposeServiceSpec{
 			Service: "blah",
-			Project: DockerComposeProject{
+			Project: v1alpha1.DockerComposeProject{
 				ConfigPaths: []string{"docker-compose.yml"},
 			},
 		},
@@ -205,9 +205,9 @@ func TestDCTargetValidate(t *testing.T) {
 	}
 
 	noName := DockerComposeTarget{
-		Spec: DockerComposeUpSpec{
+		Spec: v1alpha1.DockerComposeServiceSpec{
 			Service: "blah",
-			Project: DockerComposeProject{
+			Project: v1alpha1.DockerComposeProject{
 				ConfigPaths: []string{"docker-compose.yml"},
 			},
 		},

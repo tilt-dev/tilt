@@ -2446,7 +2446,7 @@ func TestDockerComposeFiltersRunLogs(t *testing.T) {
 	fakeServiceLog := make(chan string)
 	close(fakeServiceLog)
 	f.dcc.RunLogOutput["fake-service"] = fakeServiceLog
-	r := f.dcc.StreamLogs(f.ctx, model.DockerComposeUpSpec{Service: "fake-service"})
+	r := f.dcc.StreamLogs(f.ctx, v1alpha1.DockerComposeServiceSpec{Service: "fake-service"})
 	sampleDCLogOutput, err := io.ReadAll(r)
 	require.NoError(t, err, "Failed to read fake Docker Compose log stream")
 	assert.Equal(t, string(sampleDCLogOutput),
@@ -2593,7 +2593,7 @@ func TestDockerComposeStopOnDisable(t *testing.T) {
 	}, stdTimeout, time.Millisecond)
 
 	expectedCall := dockercompose.RmCall{
-		Specs: []model.DockerComposeUpSpec{m.DockerComposeTarget().Spec},
+		Specs: []v1alpha1.DockerComposeServiceSpec{m.DockerComposeTarget().Spec},
 	}
 	require.Equal(t, expectedCall, f.dcc.RmCalls()[0])
 }

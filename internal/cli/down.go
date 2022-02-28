@@ -14,6 +14,7 @@ import (
 	ctrltiltfile "github.com/tilt-dev/tilt/internal/controllers/apis/tiltfile"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/localexec"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -80,7 +81,7 @@ func (c *downCmd) down(ctx context.Context, downDeps DownDeps, args []string) er
 		return err
 	}
 
-	var dcProject model.DockerComposeProject
+	var dcProject v1alpha1.DockerComposeProject
 	for _, m := range tlr.Manifests {
 		if m.IsDC() {
 			dcProject = m.DockerComposeTarget().Spec.Project

@@ -1025,11 +1025,11 @@ func resourceInfoView(mt *ManifestTarget) view.ResourceInfoView {
 //
 // Current assumption is only one project per run, so we take the
 // path from the first d-c manifest we see.
-func (s EngineState) DockerComposeProject() model.DockerComposeProject {
+func (s EngineState) DockerComposeProject() v1alpha1.DockerComposeProject {
 	for _, mt := range s.ManifestTargets {
 		if mt.Manifest.IsDC() {
 			return mt.Manifest.DockerComposeTarget().Spec.Project
 		}
 	}
-	return model.DockerComposeProject{}
+	return v1alpha1.DockerComposeProject{}
 }

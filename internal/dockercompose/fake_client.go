@@ -17,6 +17,7 @@ import (
 	"github.com/compose-spec/compose-go/types"
 
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -45,17 +46,17 @@ var _ DockerComposeClient = &FakeDCClient{}
 
 // Represents a single call to Up
 type UpCall struct {
-	Spec        model.DockerComposeUpSpec
+	Spec        v1alpha1.DockerComposeServiceSpec
 	ShouldBuild bool
 }
 
 // Represents a single call to Down
 type DownCall struct {
-	Proj model.DockerComposeProject
+	Proj v1alpha1.DockerComposeProject
 }
 
 type RmCall struct {
-	Specs []model.DockerComposeUpSpec
+	Specs []v1alpha1.DockerComposeServiceSpec
 }
 
 func NewFakeDockerComposeClient(t *testing.T, ctx context.Context) *FakeDCClient {
@@ -67,7 +68,7 @@ func NewFakeDockerComposeClient(t *testing.T, ctx context.Context) *FakeDCClient
 	}
 }
 
-func (c *FakeDCClient) Up(ctx context.Context, spec model.DockerComposeUpSpec,
+func (c *FakeDCClient) Up(ctx context.Context, spec v1alpha1.DockerComposeServiceSpec,
 	shouldBuild bool, stdout, stderr io.Writer) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -76,7 +77,7 @@ func (c *FakeDCClient) Up(ctx context.Context, spec model.DockerComposeUpSpec,
 	return nil
 }
 
-func (c *FakeDCClient) Down(ctx context.Context, proj model.DockerComposeProject, stdout, stderr io.Writer) error {
+func (c *FakeDCClient) Down(ctx context.Context, proj v1alpha1.DockerComposeProject, stdout, stderr io.Writer) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -89,7 +90,7 @@ func (c *FakeDCClient) Down(ctx context.Context, proj model.DockerComposeProject
 	return nil
 }
 
-func (c *FakeDCClient) Rm(ctx context.Context, specs []model.DockerComposeUpSpec, stdout, stderr io.Writer) error {
+func (c *FakeDCClient) Rm(ctx context.Context, specs []v1alpha1.DockerComposeServiceSpec, stdout, stderr io.Writer) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -104,7 +105,7 @@ func (c *FakeDCClient) Rm(ctx context.Context, specs []model.DockerComposeUpSpec
 	return nil
 }
 
-func (c *FakeDCClient) StreamLogs(ctx context.Context, spec model.DockerComposeUpSpec) io.ReadCloser {
+func (c *FakeDCClient) StreamLogs(ctx context.Context, spec v1alpha1.DockerComposeServiceSpec) io.ReadCloser {
 	output := c.RunLogOutput[spec.Service]
 	reader, writer := io.Pipe()
 	go func() {
@@ -141,7 +142,7 @@ func (c *FakeDCClient) StreamLogs(ctx context.Context, spec model.DockerComposeU
 	return reader
 }
 
-func (c *FakeDCClient) StreamEvents(ctx context.Context, p model.DockerComposeProject) (<-chan string, error) {
+func (c *FakeDCClient) StreamEvents(ctx context.Context, p v1alpha1.DockerComposeProject) (<-chan string, error) {
 	events := make(chan string, 10)
 	go func() {
 		for {
@@ -175,7 +176,7 @@ func (c *FakeDCClient) Config(_ context.Context, _ []string) (string, error) {
 	return c.ConfigOutput, nil
 }
 
-func (c *FakeDCClient) Project(_ context.Context, m model.DockerComposeProject) (*types.Project, error) {
+func (c *FakeDCClient) Project(_ context.Context, m v1alpha1.DockerComposeProject) (*types.Project, error) {
 	// this is a dummy ProjectOptions that lets us use compose's logic to apply options
 	// for consistency, but we have to then pull the data out ourselves since we're calling
 	// loader.Load ourselves
@@ -205,7 +206,7 @@ func (c *FakeDCClient) Project(_ context.Context, m model.DockerComposeProject) 
 	return p, err
 }
 
-func (c *FakeDCClient) ContainerID(ctx context.Context, spec model.DockerComposeUpSpec) (container.ID, error) {
+func (c *FakeDCClient) ContainerID(ctx context.Context, spec v1alpha1.DockerComposeServiceSpec) (container.ID, error) {
 	return c.ContainerIdOutput, nil
 }
 
