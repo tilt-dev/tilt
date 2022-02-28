@@ -474,10 +474,12 @@ describe("overview table with groups", () => {
       // Re-mount the component with the initial groups context values
       container = renderContainer(
         <ResourceGroupsContextProvider initialValuesForTesting={testData}>
-          <TableGroupedByLabels
-            resources={view.uiResources}
-            buttons={view.uiButtons}
-          />
+          <ResourceSelectionProvider>
+            <TableGroupedByLabels
+              resources={view.uiResources}
+              buttons={view.uiButtons}
+            />
+          </ResourceSelectionProvider>
         </ResourceGroupsContextProvider>
       )
 

@@ -57,6 +57,7 @@ import {
   useResourceListOptions,
 } from "./ResourceListOptionsContext"
 import { matchesResourceName, ResourceNameFilter } from "./ResourceNameFilter"
+import { useResourceSelection } from "./ResourceSelectionContext"
 import {
   disabledResourceStyleMixin,
   resourceIsDisabled,
@@ -167,6 +168,10 @@ export const ResourceTableRow = styled.tr`
 
   &.isDisabled {
     ${disabledResourceStyleMixin}
+  }
+
+  &.isSelected {
+    background-color: ${Color.gray};
   }
 
   /* For visual consistency on rows */
@@ -614,6 +619,7 @@ export function Table(props: TableProps) {
   )
 
   const showMoreOnClick = () => setPageSize(pageSize * RESOURCE_LIST_MULTIPLIER)
+  const { isSelected } = useResourceSelection()
 
   // TODO (lizz): Consider adding `aria-sort` markup to table headings
   return (
@@ -630,10 +636,14 @@ export function Table(props: TableProps) {
       <tbody {...getTableBodyProps()}>
         {page.map((row: Row<RowValues>) => {
           prepareRow(row)
+
+          let rowClasses =
+            (rowIsDisabled(row) ? "isDisabled " : "") +
+            (isSelected(row.original.name) ? "isSelected " : "")
           return (
             <ResourceTableRow
               {...row.getRowProps({
-                className: rowIsDisabled(row) ? "isDisabled" : "",
+                className: rowClasses,
               })}
             >
               {row.cells.map((cell) => (
