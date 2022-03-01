@@ -183,20 +183,21 @@ func (fs *MemoryFS) EnsureDir(dirname string) error {
 
 // Write a copy of the object to our in-memory filesystem.
 func (fs *MemoryFS) Write(encoder runtime.Encoder, p string, obj runtime.Object, storageVersion uint64) error {
-	// temporarily remove the resource version from the object before
+	// use a copy of the object w/o a resource version for
 	// serialization, so that objects that are identical besides resource
 	// version serialize the same, allowing us to skip unnecessary writes
 	// (beneficial for preventing unnecessary optimistic concurrency failures
 	// where an update fails because of a changed version despite the object
 	// actually being identical)
-	if err := clearResourceVersion(obj); err != nil {
+	versionlessObj := obj.DeepCopyObject()
+	if err := clearResourceVersion(versionlessObj); err != nil {
 		return err
 	}
 
 	// Encoding the object as bytes ensures that our in-memory filesystem
 	// has the same immutability semantics as a real storage system.
 	buf := new(bytes.Buffer)
-	if err := encoder.Encode(obj, buf); err != nil {
+	if err := encoder.Encode(versionlessObj, buf); err != nil {
 		return err
 	}
 
