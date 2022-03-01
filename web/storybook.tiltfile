@@ -28,6 +28,7 @@ local_resource(
   'node_modules/.bin/tsc -p .',
   auto_init=False,
   trigger_mode=TRIGGER_MODE_MANUAL,
+  allow_parallel=True,
   labels=["lint"])
 
 local_resource(
@@ -35,6 +36,7 @@ local_resource(
   'cd .. && make check-js',
   auto_init=False,
   trigger_mode=TRIGGER_MODE_MANUAL,
+  allow_parallel=True,
   labels=["lint"])
 
 local_resource(
