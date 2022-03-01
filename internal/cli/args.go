@@ -51,7 +51,7 @@ If no args are explicitly specified, (i.e., just "tilt args"), it opens the curr
 the editor defined by your TILT_EDITOR or EDITOR environment variables, or fall back to
 an OS-appropriate default.
 
-Note that Tiltfile arguments do not affect built-in Tilt args (e.g. "--legacy", "--port"), and they
+Note that Tiltfile arguments do not affect built-in Tilt args (i.e., the things that show up in "tilt up --help", such as "--legacy", "--port"), and they
 are defined after built-in args, following a "--".`,
 		Example: `# Set new args
 tilt args frontend_service backend_service -- --debug on
