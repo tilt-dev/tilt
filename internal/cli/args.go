@@ -42,25 +42,25 @@ func (c *argsCmd) register() *cobra.Command {
 		DisableFlagsInUseLine: true,
 		Short:                 "Changes the Tiltfile args in use by a running Tilt",
 		Long: `Changes the Tiltfile args in use by a running Tilt.
-If no args are specified, (i.e., just "tilt args"), opens the current args for editing in
+
+The "args" can be used to specify what resources Tilt enables. They can also 
+be used to define custom key-value pairs that can be accessed in a Tiltfile
+by calling "config.parse()".
+
+If no args are explicitly specified, (i.e., just "tilt args"), it opens the current args for editing in
 the editor defined by your TILT_EDITOR or EDITOR environment variables, or fall back to
 an OS-appropriate default.
 
-The editor can be skipped by providing new args on the command line, e.g.: "tilt args svc1 svc2".
+Note that Tiltfile arguments do not affect built-in Tilt args (i.e., the things that show up in "tilt up --help", such as "--legacy", "--port"), and they
+are defined after built-in args, following a "--".`,
+		Example: `# Set new args
+tilt args frontend_service backend_service -- --debug on
 
-# Edit the args
+# Edit the current args
 tilt args
 
-# Use an alternate editor
-EDITOR=nano tilt args
-
-# skip the editor
-# note: "--" here indicates the end of the tilt args and the start of the tiltfile args
-tilt args -- --foo=bar frontend backend
-
-Note that this does not affect built-in Tilt args (e.g. --legacy, --host), but rather the extra args that come after,
-i.e., those specifying which resources to run and/or handled by a Tiltfile calling config.parse.
-`,
+# Use an alternative editor
+EDITOR=nano tilt args`,
 	}
 
 	addConnectServerFlags(cmd)
