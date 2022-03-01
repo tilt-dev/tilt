@@ -1,4 +1,4 @@
-import { createContext, PropsWithChildren, useContext } from "react"
+import { createContext, PropsWithChildren, useContext, useMemo } from "react"
 import { AnalyticsAction, AnalyticsType, incr } from "./analytics"
 import { usePersistentState } from "./BrowserStorage"
 
@@ -43,38 +43,39 @@ export function ResourceGroupsContextProvider(
     defaultPersistentValue
   )
 
-  function toggleGroupExpanded(groupLabel: string, page: AnalyticsType) {
-    const currentGroupState = groups[groupLabel] ?? { ...DEFAULT_GROUP_STATE }
-    const nextGroupState = {
-      ...currentGroupState,
-      expanded: !currentGroupState.expanded,
+  const value: ResourceGroupsContext = useMemo(() => {
+    function toggleGroupExpanded(groupLabel: string, page: AnalyticsType) {
+      const currentGroupState = groups[groupLabel] ?? { ...DEFAULT_GROUP_STATE }
+      const nextGroupState = {
+        ...currentGroupState,
+        expanded: !currentGroupState.expanded,
+      }
+
+      const action = nextGroupState.expanded
+        ? AnalyticsAction.Expand
+        : AnalyticsAction.Collapse
+      incr("ui.web.resourceGroup", { action, type: page })
+
+      setGroups((prevState) => {
+        return {
+          ...prevState,
+          [groupLabel]: nextGroupState,
+        }
+      })
     }
 
-    const action = nextGroupState.expanded
-      ? AnalyticsAction.Expand
-      : AnalyticsAction.Collapse
-    incr("ui.web.resourceGroup", { action, type: page })
-
-    setGroups((prevState) => {
-      return {
-        ...prevState,
-        [groupLabel]: nextGroupState,
-      }
-    })
-  }
-
-  function getGroup(groupLabel: string) {
-    return groups[groupLabel] ?? { ...DEFAULT_GROUP_STATE }
-  }
-
-  const defaultValue: ResourceGroupsContext = {
-    groups,
-    toggleGroupExpanded,
-    getGroup,
-  }
+    function getGroup(groupLabel: string) {
+      return groups[groupLabel] ?? { ...DEFAULT_GROUP_STATE }
+    }
+    return {
+      groups,
+      toggleGroupExpanded,
+      getGroup,
+    }
+  }, [groups, setGroups])
 
   return (
-    <resourceGroupsContext.Provider value={defaultValue}>
+    <resourceGroupsContext.Provider value={value}>
       {props.children}
     </resourceGroupsContext.Provider>
   )
