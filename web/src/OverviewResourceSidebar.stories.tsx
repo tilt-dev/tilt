@@ -125,10 +125,12 @@ export function TestsWithErrors() {
 
   let view = { uiResources: all, tiltfileKey: "test" }
   return (
-    <LogStoreProvider value={logStore}>
-      <ResourceListOptionsProvider>
-        <OverviewResourceSidebar name={""} view={view} />
-      </ResourceListOptionsProvider>
-    </LogStoreProvider>
+    <MemoryRouter>
+      <LogStoreProvider value={logStore}>
+        <ResourceListOptionsProvider>
+          <OverviewResourceSidebar name={""} view={view} />
+        </ResourceListOptionsProvider>
+      </LogStoreProvider>
+    </MemoryRouter>
   )
 }

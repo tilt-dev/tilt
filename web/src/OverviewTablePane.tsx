@@ -1,5 +1,6 @@
 import React from "react"
 import styled from "styled-components"
+import { AnalyticsType } from "./analytics"
 import HeaderBar from "./HeaderBar"
 import OverviewTable from "./OverviewTable"
 import StarredResourceBar, {
@@ -22,7 +23,7 @@ let OverviewTablePaneStyle = styled.div`
 export default function OverviewTablePane(props: OverviewTablePaneProps) {
   return (
     <OverviewTablePaneStyle>
-      <HeaderBar view={props.view} />
+      <HeaderBar view={props.view} currentPage={AnalyticsType.Grid} />
       <StarredResourceBar {...starredResourcePropsFromView(props.view, "")} />
       <OverviewTable view={props.view} />
     </OverviewTablePaneStyle>

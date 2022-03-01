@@ -1,7 +1,10 @@
 import React from "react"
 import { Link } from "react-router-dom"
 import styled from "styled-components"
+import { AnalyticsType } from "./analytics"
+import { ReactComponent as DetailViewSvg } from "./assets/svg/detail-view-icon.svg"
 import { ReactComponent as LogoWordmarkSvg } from "./assets/svg/logo-wordmark.svg"
+import { ReactComponent as TableViewSvg } from "./assets/svg/table-view-icon.svg"
 import { CustomNav } from "./CustomNav"
 import { GlobalNav } from "./GlobalNav"
 import { usePathBuilder } from "./PathBuilder"
@@ -13,7 +16,7 @@ import { useSnapshotAction } from "./snapshot"
 import { AnimDuration, Color, Font, FontSize, SizeUnit } from "./style-helpers"
 import { showUpdate } from "./UpdateDialog"
 
-const HeaderBarRoot = styled.header`
+const HeaderBarRoot = styled.nav`
   display: flex;
   align-items: center;
   padding-left: ${SizeUnit(1)};
@@ -41,25 +44,73 @@ const Logo = styled(LogoWordmarkSvg)`
 
 const HeaderDivider = styled.div`
   border-left: 1px solid ${Color.grayLighter};
-  height: ${SizeUnit(1)};
+  height: ${SizeUnit(0.7)};
   margin: ${SizeUnit(0.5)};
 `
 
-const AllResourcesLink = styled(Link)`
-  font-family: ${Font.monospace};
+const ViewLinkText = styled.span`
+  bottom: 0;
   color: ${Color.gray7};
-  font-size: ${FontSize.small};
-  text-decoration: none;
+  font-family: ${Font.monospace};
+  font-size: ${FontSize.smallest};
+  opacity: 0;
+  position: absolute;
+  transition: opacity ${AnimDuration.default} ease;
+  white-space: nowrap;
+  width: 100%;
+`
+
+const viewLinkIconMixin = `
+  display: flex;
+  transition: fill ${AnimDuration.default} ease;
+  height: 100%;
+  padding: ${SizeUnit(0.65)} 0;
+  fill: ${Color.grayLight};
+
+  &.isCurrent {
+    fill: ${Color.gray7};
+  }
+`
+
+const TableViewIcon = styled(TableViewSvg)`
+  ${viewLinkIconMixin}
+  /* "Hack" to right-align text */
+  padding-left: ${SizeUnit(0.5)};
+`
+
+const DetailViewIcon = styled(DetailViewSvg)`
+  ${viewLinkIconMixin}
+`
+
+const ViewLink = styled(Link)`
+  position: relative;
+
+  &:is(:hover, :focus, :active) {
+    ${ViewLinkText} {
+      opacity: 1;
+    }
+
+    ${TableViewIcon}, ${DetailViewIcon} {
+      fill: ${Color.blue};
+    }
+  }
+`
+
+const ViewLinkSection = styled.div`
+  align-items: center;
+  display: flex;
+  margin-left: ${SizeUnit(1)};
+  margin-right: ${SizeUnit(1)};
 `
 
 type HeaderBarProps = {
   view: Proto.webviewView
+  currentPage?: AnalyticsType.Detail | AnalyticsType.Grid
 }
 
-export default function HeaderBar(props: HeaderBarProps) {
+export default function HeaderBar({ view, currentPage }: HeaderBarProps) {
   let isSnapshot = usePathBuilder().isSnapshot()
   let snapshot = useSnapshotAction()
-  let view = props.view
   let session = view?.uiSession?.status
   let runningBuild = session?.runningTiltBuild
   let suggestedVersion = session?.suggestedTiltVersion
@@ -79,21 +130,42 @@ export default function HeaderBar(props: HeaderBarProps) {
 
   const pb = usePathBuilder()
 
+  const tableViewLinkClass =
+    currentPage === AnalyticsType.Grid ? "isCurrent" : ""
+  const detailViewLinkClass =
+    currentPage === AnalyticsType.Detail ? "isCurrent" : ""
+
+  // TODO (lizz): Consider refactoring nav to use more semantic pattern of ul + li
   return (
-    <HeaderBarRoot>
-      <Link to="/overview">
+    <HeaderBarRoot aria-label="Dashboard menu">
+      <Link to="/overview" aria-label="Tilt home">
         <Logo width="57px" />
       </Link>
-      <HeaderDivider />
-      <AllResourcesLink to={pb.encpath`/r/(all)/overview`}>
-        All Resources
-      </AllResourcesLink>
+      <ViewLinkSection>
+        <ViewLink
+          to="/overview"
+          aria-label="Table view"
+          aria-current={currentPage === AnalyticsType.Grid}
+        >
+          <TableViewIcon className={tableViewLinkClass} role="presentation" />
+          <ViewLinkText>Table</ViewLinkText>
+        </ViewLink>
+        <HeaderDivider role="presentation" />
+        <ViewLink
+          to={pb.encpath`/r/(all)/overview`}
+          aria-label="Detail view"
+          aria-current={currentPage === AnalyticsType.Detail}
+        >
+          <DetailViewIcon className={detailViewLinkClass} role="presentation" />
+          <ViewLinkText>Detail</ViewLinkText>
+        </ViewLink>
+      </ViewLinkSection>
       <AllResourceStatusSummary
         displayText="Resources"
         labelText="Status summary for all resources"
         resources={resources}
       />
-      <CustomNav view={props.view} />
+      <CustomNav view={view} />
       <GlobalNav {...globalNavProps} />
     </HeaderBarRoot>
   )
