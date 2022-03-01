@@ -215,7 +215,7 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 			url := h.webURL
 
 			// If the cursor is in the default position (Tiltfile), open the All log.
-			if r.Name != store.MainTiltfileManifestName {
+			if r.Name != MainTiltfileManifestName {
 				url.Path = fmt.Sprintf("/r/%s/", r.Name)
 			}
 
@@ -276,7 +276,7 @@ func (h *Hud) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSumma
 
 	toPrint := ""
 	state := st.RLockState()
-	view := store.StateToView(state, st.StateMutex())
+	view := StateToTerminalView(state, st.StateMutex())
 
 	// if the hud isn't running, make sure new logs are visible on stdout
 	if !h.isRunning {
