@@ -159,41 +159,6 @@ func CopyEntities(entities []K8sEntity) []K8sEntity {
 	return res
 }
 
-// MutableAndImmutableEntities returns two lists of k8s entities: mutable ones (that can simply be
-// `kubectl apply`'d), and immutable ones (such as jobs and pods, which will need to be `--force`'d).
-// (We assume input entities are already sorted in a safe order to apply -- see kustomize/ordering.go.)
-func MutableAndImmutableEntities(entities entityList) (mutable, immutable []K8sEntity) {
-	for _, e := range entities {
-		if e.ImmutableOnceCreated() {
-			immutable = append(immutable, e)
-			continue
-		}
-		mutable = append(mutable, e)
-	}
-
-	return mutable, immutable
-}
-
-func ImmutableEntities(entities []K8sEntity) []K8sEntity {
-	result := make([]K8sEntity, 0)
-	for _, e := range entities {
-		if e.ImmutableOnceCreated() {
-			result = append(result, e)
-		}
-	}
-	return result
-}
-
-func MutableEntities(entities []K8sEntity) []K8sEntity {
-	result := make([]K8sEntity, 0)
-	for _, e := range entities {
-		if !e.ImmutableOnceCreated() {
-			result = append(result, e)
-		}
-	}
-	return result
-}
-
 type LoadBalancerSpec struct {
 	Name      string
 	Namespace Namespace

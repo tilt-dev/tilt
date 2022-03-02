@@ -12,7 +12,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
-	"github.com/tilt-dev/tilt/internal/kustomize"
 )
 
 func TestTypedPodGVK(t *testing.T) {
@@ -48,43 +47,6 @@ func TestNamespace(t *testing.T) {
 
 	assert.Equal(t, 1, len(entities))
 	assert.Equal(t, "kube-system", string(entities[0].Namespace()))
-}
-
-func TestImmutableFilter(t *testing.T) {
-	yaml := fmt.Sprintf("%s\n---\n%s\n---\n%s", testyaml.JobYAML, testyaml.SanchoYAML, testyaml.PodYAML)
-	entities, err := ParseYAMLFromString(yaml)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	immEntities := ImmutableEntities(entities)
-	if len(immEntities) != 2 {
-		t.Fatalf("Expected 2 entities, actual: %d", len(immEntities))
-	}
-
-	if immEntities[0].GVK().Kind != "Job" {
-		t.Errorf("Expected Job entity, actual: %+v", immEntities)
-	}
-	if immEntities[1].GVK().Kind != "Pod" {
-		t.Errorf("Expected Pod entity, actual: %+v", immEntities)
-	}
-}
-
-func TestMutableFilter(t *testing.T) {
-	yaml := fmt.Sprintf("%s\n---\n%s", testyaml.JobYAML, testyaml.SanchoYAML)
-	entities, err := ParseYAMLFromString(yaml)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	results := MutableEntities(entities)
-	if len(results) != 1 {
-		t.Fatalf("Expected 1 entity, actual: %d", len(results))
-	}
-
-	if results[0].GVK().Kind != "Deployment" {
-		t.Errorf("Expected Deployment entity, actual: %+v", results)
-	}
 }
 
 func TestLoadBalancerSpecs(t *testing.T) {
@@ -226,44 +188,6 @@ func TestSortEntities(t *testing.T) {
 			input := entitiesWithKinds(test.inputKindOrder)
 			sorted := SortedEntities(input)
 			assertKindOrder(t, test.expectedKindOrder, sorted, "sorted entities")
-		})
-	}
-}
-
-func TestMutableAndImmutableEntities(t *testing.T) {
-	for _, test := range []struct {
-		name                       string
-		inputKindOrder             []string
-		expectedMutableKindOrder   []string
-		expectedImmutableKindOrder []string
-	}{
-		{"only mutable",
-			[]string{"Deployment", "Namespace", "Service"},
-			[]string{"Deployment", "Namespace", "Service"},
-			[]string{},
-		},
-		{"only immutable",
-			[]string{"Job", "Pod"},
-			[]string{},
-			[]string{"Job", "Pod"},
-		},
-		{"mutable and immutable interspersed",
-			[]string{"Deployment", "Job", "Namespace", "Pod", "Service"},
-			[]string{"Deployment", "Namespace", "Service"},
-			[]string{"Job", "Pod"},
-		},
-		{"no explicitly sorted kinds are immutable",
-			// If any kinds in the explicit sort list are also immutable, things will get weird
-			kustomize.OrderFirst,
-			kustomize.OrderFirst,
-			[]string{},
-		},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			input := entitiesWithKinds(test.inputKindOrder)
-			mutable, immutable := MutableAndImmutableEntities(input)
-			assertKindOrder(t, test.expectedMutableKindOrder, mutable, "mutable entities")
-			assertKindOrder(t, test.expectedImmutableKindOrder, immutable, "immutable entities")
 		})
 	}
 }
