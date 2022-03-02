@@ -8,6 +8,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmdimage"
 	"github.com/tilt-dev/tilt/internal/controllers/core/configmap"
+	"github.com/tilt-dev/tilt/internal/controllers/core/dockercomposeservice"
 	"github.com/tilt-dev/tilt/internal/controllers/core/dockerimage"
 	"github.com/tilt-dev/tilt/internal/controllers/core/extension"
 	"github.com/tilt-dev/tilt/internal/controllers/core/extensionrepo"
@@ -32,6 +33,7 @@ var controllerSet = wire.NewSet(
 	podlogstream.NewPodSource,
 	kubernetesapply.NewReconciler,
 	cluster.NewReconciler,
+	dockercomposeservice.NewReconciler,
 
 	ProvideControllers,
 )
@@ -55,6 +57,7 @@ func ProvideControllers(
 	dir *dockerimage.Reconciler,
 	cir *cmdimage.Reconciler,
 	clr *cluster.Reconciler,
+	dcr *dockercomposeservice.Reconciler,
 ) []Controller {
 	return []Controller{
 		fileWatch,
@@ -75,6 +78,7 @@ func ProvideControllers(
 		dir,
 		dir,
 		clr,
+		dcr,
 	}
 }
 

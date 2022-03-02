@@ -40,6 +40,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmdimage"
 	"github.com/tilt-dev/tilt/internal/controllers/core/configmap"
+	"github.com/tilt-dev/tilt/internal/controllers/core/dockercomposeservice"
 	"github.com/tilt-dev/tilt/internal/controllers/core/dockerimage"
 	"github.com/tilt-dev/tilt/internal/controllers/core/extension"
 	"github.com/tilt-dev/tilt/internal/controllers/core/extensionrepo"
@@ -3810,6 +3811,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	wsl := server.NewWebsocketList()
 
 	kar := kubernetesapply.NewReconciler(cdc, kClient, sch, docker.Env{}, k8s.KubeContext("kind-kind"), st, "default", execer)
+	dcr := dockercomposeservice.NewReconciler(cdc, st, sch)
 
 	tfr := ctrltiltfile.NewReconciler(st, tfl, kClient, dockerClient, cdc, sch, engineMode, "", "")
 	tbr := togglebutton.NewReconciler(cdc, sch)
@@ -3844,6 +3846,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		dir,
 		cir,
 		clr,
+		dcr,
 	))
 
 	dp := dockerprune.NewDockerPruner(dockerClient)
