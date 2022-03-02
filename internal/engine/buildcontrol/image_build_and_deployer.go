@@ -328,13 +328,7 @@ func (ibd *ImageBuildAndDeployer) deploy(
 	defer ps.EndPipelineStep(ctx)
 
 	kTargetNN := types.NamespacedName{Name: kTargetID.Name.String()}
-	// Note: `KubernetesApply` object may not exist yet when this `ForceApply` is called
-	// and may cause a race-condition-related "Not found" error here.
-	// https://github.com/tilt-dev/tilt/issues/5125
-	status, err := ibd.r.ForceApply(ctx, kTargetNN, spec, imageMaps)
-	if err != nil {
-		return store.K8sBuildResult{}, fmt.Errorf("applying %s: %v", kTargetID, err)
-	}
+	status := ibd.r.ForceApply(ctx, kTargetNN, spec, imageMaps)
 	if status.Error != "" {
 		return store.K8sBuildResult{}, fmt.Errorf("%s", status.Error)
 	}

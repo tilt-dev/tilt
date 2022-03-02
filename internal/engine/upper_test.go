@@ -409,9 +409,10 @@ func (b *fakeBuildAndDeployer) updateKubernetesApplyStatus(ctx context.Context, 
 	}
 
 	nn := types.NamespacedName{Name: kTarg.ID().Name.String()}
-	if _, err := b.kaReconciler.ForceApply(ctx, nn, kTarg.KubernetesApplySpec, imageMapSet); err != nil {
-		return err
-	}
+	status := b.kaReconciler.ForceApply(ctx, nn, kTarg.KubernetesApplySpec, imageMapSet)
+
+	// We want our fake stub to only propagate apiserver problems.
+	_ = status
 
 	return nil
 }
@@ -1514,180 +1515,6 @@ func TestPodEventContainerStatusWithoutImage(t *testing.T) {
 
 	err := f.Stop()
 	assert.Nil(t, err)
-}
-
-func TestPodUnexpectedContainerStartsImageBuild(t *testing.T) {
-	f := newTestFixture(t)
-	f.bc.DisableForTesting()
-
-	name := model.ManifestName("foobar")
-	manifest := f.newManifest(name.String())
-	f.Start([]model.Manifest{manifest})
-
-	// since build controller is disabled, we need to manually simulate the deployment
-	hash := k8s.PodTemplateSpecHash("fake-hash")
-	pb := podbuilder.New(t, manifest).
-		WithPodName("mypod").
-		WithTemplateSpecHash(hash).
-		WithContainerID("myfunnycontainerid")
-	entities := pb.ObjectTreeEntities()
-	f.kClient.Inject(entities...)
-
-	f.setK8sApplyResult(name, hash, entities.Deployment())
-
-	// Start and end a fake build to set manifestState.ExpectedContainerId
-	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("go/a"))
-
-	f.WaitUntil("builds ready & changed file recorded", func(st store.EngineState) bool {
-		ms, _ := st.ManifestState(manifest.Name)
-		return buildcontrol.NextManifestNameToBuild(st) == manifest.Name && ms.HasPendingFileChanges()
-	})
-	spanID0 := SpanIDForBuildLog(0)
-	f.store.Dispatch(buildcontrols.BuildStartedAction{
-		ManifestName: manifest.Name,
-		StartTime:    f.Now(),
-		SpanID:       spanID0,
-	})
-
-	f.store.Dispatch(buildcontrols.NewBuildCompleteAction(name,
-		spanID0,
-		liveUpdateResultSet(manifest, "theOriginalContainer"), nil))
-
-	f.WaitUntil("nothing waiting for build", func(st store.EngineState) bool {
-		return st.CompletedBuildCount == 1 && buildcontrol.NextManifestNameToBuild(st) == ""
-	})
-
-	f.podEvent(pb.Build())
-
-	f.WaitUntilManifestState("NeedsRebuildFromCrash set to True", "foobar", func(ms store.ManifestState) bool {
-		return ms.NeedsRebuildFromCrash
-	})
-
-	f.WaitUntil("manifest queued for build b/c it's crashing", func(st store.EngineState) bool {
-		return buildcontrol.NextManifestNameToBuild(st) == manifest.Name
-	})
-}
-
-func TestPodUnexpectedContainerStartsImageBuildOutOfOrderEvents(t *testing.T) {
-	f := newTestFixture(t)
-	f.bc.DisableForTesting()
-
-	name := model.ManifestName("foobar")
-	manifest := f.newManifest(name.String())
-
-	f.Start([]model.Manifest{manifest})
-
-	// since build controller is disabled, we need to manually simulate the deployment
-	ptsh := k8s.PodTemplateSpecHash("abc123hash")
-	pb := podbuilder.New(t, manifest).
-		WithTemplateSpecHash(ptsh).
-		WithContainerID("myfunnycontainerid")
-	entities := pb.ObjectTreeEntities()
-	f.kClient.Inject(entities...)
-
-	f.setK8sApplyResult(name, ptsh, entities.Deployment())
-
-	// Start a fake build
-	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("go/a"))
-	f.WaitUntil("builds ready & changed file recorded", func(st store.EngineState) bool {
-		ms, _ := st.ManifestState(manifest.Name)
-		return buildcontrol.NextManifestNameToBuild(st) == manifest.Name && ms.HasPendingFileChanges()
-	})
-	spanID0 := SpanIDForBuildLog(0)
-	f.store.Dispatch(buildcontrols.BuildStartedAction{
-		ManifestName: manifest.Name,
-		StartTime:    f.Now(),
-		SpanID:       spanID0,
-	})
-
-	// Simulate k8s restarting the container due to a crash.
-	f.podEvent(pb.Build())
-
-	// ...and finish the build. Even though this action comes in AFTER the pod
-	// event w/ unexpected container,  we should still be able to detect the mismatch.
-	f.store.Dispatch(buildcontrols.NewBuildCompleteAction(name, spanID0,
-		liveUpdateResultSet(manifest, "theOriginalContainer"), nil))
-
-	f.WaitUntilManifestState("NeedsRebuildFromCrash set to True", "foobar", func(ms store.ManifestState) bool {
-		return ms.NeedsRebuildFromCrash
-	})
-	f.WaitUntil("manifest queued for build b/c it's crashing", func(st store.EngineState) bool {
-		return buildcontrol.NextManifestNameToBuild(st) == manifest.Name
-	})
-}
-
-func TestPodUnexpectedContainerAfterSuccessfulUpdate(t *testing.T) {
-	f := newTestFixture(t)
-	f.bc.DisableForTesting()
-
-	name := model.ManifestName("foobar")
-	manifest := f.newManifest(name.String())
-	ptsh := k8s.PodTemplateSpecHash("abc123hash")
-
-	f.Start([]model.Manifest{manifest})
-
-	// Start and end a normal build
-	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("go/a"))
-	f.WaitUntil("builds ready & changed file recorded", func(st store.EngineState) bool {
-		ms, _ := st.ManifestState(manifest.Name)
-		return buildcontrol.NextManifestNameToBuild(st) == manifest.Name && ms.HasPendingFileChanges()
-	})
-
-	spanID0 := SpanIDForBuildLog(0)
-	f.store.Dispatch(buildcontrols.BuildStartedAction{
-		ManifestName: manifest.Name,
-		StartTime:    f.Now(),
-		SpanID:       spanID0,
-	})
-	ancestorUID := types.UID("fake-uid")
-	pb := podbuilder.New(t, manifest).
-		WithPodName("mypod").
-		WithContainerID("normal-container-id").
-		WithDeploymentUID(ancestorUID).
-		WithTemplateSpecHash(ptsh)
-
-	// since build controller is disabled, simulate the deployment manually
-	entities := pb.ObjectTreeEntities()
-	f.kClient.Inject(entities.Deployment(), entities.ReplicaSet())
-
-	f.setK8sApplyResult(name, ptsh, entities.Deployment())
-	f.store.Dispatch(buildcontrols.NewBuildCompleteAction(name,
-		spanID0,
-		deployResultSet(f.T(), manifest, pb, []k8s.PodTemplateSpecHash{ptsh}), nil))
-
-	f.podEvent(pb.Build())
-
-	f.WaitUntil("nothing waiting for build", func(st store.EngineState) bool {
-		return st.CompletedBuildCount == 1 && buildcontrol.NextManifestNameToBuild(st) == ""
-	})
-
-	// Start another fake build
-	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("go/a"))
-	f.WaitUntil("waiting for builds to be ready", func(st store.EngineState) bool {
-		return buildcontrol.NextManifestNameToBuild(st) == manifest.Name
-	})
-
-	spanID1 := SpanIDForBuildLog(1)
-	f.store.Dispatch(buildcontrols.BuildStartedAction{
-		ManifestName: manifest.Name,
-		StartTime:    f.Now(),
-		SpanID:       spanID1,
-	})
-
-	// Simulate a pod crash, then a build completion
-	f.podEvent(pb.WithContainerID("funny-container-id").Build())
-
-	f.store.Dispatch(buildcontrols.NewBuildCompleteAction(name,
-		spanID1,
-		liveUpdateResultSet(manifest, "normal-container-id"), nil))
-
-	f.WaitUntilManifestState("NeedsRebuildFromCrash set to True", "foobar", func(ms store.ManifestState) bool {
-		return ms.NeedsRebuildFromCrash
-	})
-
-	f.WaitUntil("manifest queued for build b/c it's crashing", func(st store.EngineState) bool {
-		return buildcontrol.NextManifestNameToBuild(st) == manifest.Name
-	})
 }
 
 func TestPodEventUpdateByTimestamp(t *testing.T) {
@@ -4476,29 +4303,6 @@ func (f *testFixture) completeBuildForManifest(m model.Manifest) {
 	f.b.completeBuild(targetIDStringForManifest(m))
 }
 
-func (f *testFixture) setK8sApplyResult(name model.ManifestName, hash k8s.PodTemplateSpecHash, entity k8s.K8sEntity) {
-	yaml, err := k8s.SerializeSpecYAML([]k8s.K8sEntity{entity})
-	require.NoError(f.t, err)
-
-	status := v1alpha1.KubernetesApplyStatus{ResultYAML: yaml}
-	var ka v1alpha1.KubernetesApply
-	require.NoError(f.t, f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: string(name)}, &ka))
-
-	patchBase := ctrlclient.MergeFrom(ka.DeepCopy())
-	ka.Status = status
-	require.NoError(f.t, f.ctrlClient.Status().Patch(f.ctx, &ka, patchBase))
-
-	st := f.store.LockMutableStateForTesting()
-	ms, _ := st.ManifestState(name)
-	krs := ms.K8sRuntimeState()
-	krs.ApplyFilter = &k8sconv.KubernetesApplyFilter{
-		PodTemplateSpecHashes: []k8s.PodTemplateSpecHash{hash},
-		DeployedRefs:          k8s.ObjRefList{entity.ToObjectReference()},
-	}
-	ms.RuntimeState = krs
-	f.store.UnlockMutableState()
-}
-
 func (f *testFixture) setDisableState(mn model.ManifestName, isDisabled bool) {
 	err := tiltconfigmap.UpsertDisableConfigMap(f.ctx, f.ctrlClient, fmt.Sprintf("%s-disable", mn), "isDisabled", isDisabled)
 	require.NoError(f.t, err)
@@ -4550,32 +4354,6 @@ func (f *testFixture) dispatchDCEvent(m model.Manifest, action dockercompose.Act
 		Time:           f.clock.Now(),
 		ContainerState: containerState,
 	})
-}
-
-func deployResultSet(t testing.TB, manifest model.Manifest, pb podbuilder.PodBuilder, hashes []k8s.PodTemplateSpecHash) store.BuildResultSet {
-	resultSet := store.BuildResultSet{}
-	tag := "deadbeef"
-	for _, iTarget := range manifest.ImageTargets {
-		localRefTagged := container.MustWithTag(iTarget.Refs.LocalRef(), tag)
-		clusterRefTagged := container.MustWithTag(iTarget.Refs.LocalRef(), tag)
-		resultSet[iTarget.ID()] = store.NewImageBuildResult(iTarget.ID(), localRefTagged, clusterRefTagged)
-	}
-	ktID := manifest.K8sTarget().ID()
-	entities := []k8s.K8sEntity{pb.ObjectTreeEntities().Deployment()}
-	filter := &k8sconv.KubernetesApplyFilter{
-		DeployedRefs:          k8s.ToRefList(entities),
-		PodTemplateSpecHashes: hashes,
-	}
-	resultSet[ktID] = store.NewK8sDeployResult(ktID, filter)
-	return resultSet
-}
-
-func liveUpdateResultSet(manifest model.Manifest, id container.ID) store.BuildResultSet {
-	resultSet := store.BuildResultSet{}
-	for _, iTarget := range manifest.ImageTargets {
-		resultSet[iTarget.ID()] = store.NewLiveUpdateBuildResult(iTarget.ID(), []container.ID{id})
-	}
-	return resultSet
 }
 
 func assertLineMatches(t *testing.T, lines []string, re *regexp.Regexp) {

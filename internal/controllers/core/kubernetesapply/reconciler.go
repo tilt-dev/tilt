@@ -56,6 +56,7 @@ type Reconciler struct {
 	ctrlClient  ctrlclient.Client
 	indexer     *indexer.Indexer
 	execer      localexec.Execer
+	requeuer    *indexer.Requeuer
 
 	mu sync.Mutex
 
@@ -63,20 +64,11 @@ type Reconciler struct {
 	results map[types.NamespacedName]*Result
 }
 
-// Partial KubernetesApplyStatus that represents
-// the fields returned by `ForceApply`
-type ForceApplyStatus struct {
-	ResultYAML         string
-	Error              string
-	LastApplyTime      metav1.MicroTime
-	LastApplyStartTime metav1.MicroTime
-	AppliedInputHash   string
-}
-
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	b := ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.KubernetesApply{}).
 		Owns(&v1alpha1.KubernetesDiscovery{}).
+		Watches(r.requeuer, handler.Funcs{}).
 		Watches(&source.Kind{Type: &v1alpha1.ImageMap{}},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
 		Watches(&source.Kind{Type: &v1alpha1.ConfigMap{}},
@@ -100,6 +92,7 @@ func NewReconciler(ctrlClient ctrlclient.Client, k8sClient k8s.Client, scheme *r
 		st:          st,
 		results:     make(map[types.NamespacedName]*Result),
 		cfgNS:       cfgNS,
+		requeuer:    indexer.NewRequeuer(),
 	}
 }
 
@@ -115,10 +108,15 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	}
 
 	if apierrors.IsNotFound(err) || !ka.ObjectMeta.DeletionTimestamp.IsZero() {
-		err := r.deleteCreatedObjects(ctx, nn, "garbage collecting Kubernetes objects")
+		err = r.manageOwnedKubernetesDiscovery(ctx, nn, nil)
 		if err != nil {
-			return ctrl.Result{}, err
+			return ctrl.Result{}, nil
 		}
+
+		r.recordDelete(nn)
+		toDelete := r.garbageCollect(nn, true)
+		r.bestEffortDelete(ctx, nn, toDelete, "garbage collecting Kubernetes objects")
+		r.clearRecord(nn)
 
 		r.st.Dispatch(kubernetesapplys.NewKubernetesApplyDeleteAction(request.NamespacedName.Name))
 		return ctrl.Result{}, nil
@@ -128,68 +126,62 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	r.st.Dispatch(kubernetesapplys.NewKubernetesApplyUpsertAction(&ka))
 
 	// Get configmap's disable status
+	ctx = store.MustObjectLogHandler(ctx, r.st, &ka)
 	disableStatus, err := configmap.MaybeNewDisableStatus(ctx, r.ctrlClient, ka.Spec.DisableSource, ka.Status.DisableStatus)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	// Update kubernetesapply's disable status
-	if disableStatus != ka.Status.DisableStatus {
-		patchBase := client.MergeFrom(ka.DeepCopy())
-		ka.Status.DisableStatus = disableStatus
-		if err := r.ctrlClient.Status().Patch(ctx, &ka, patchBase); err != nil {
-			return ctrl.Result{}, err
-		}
-	}
+	r.recordDisableStatus(nn, ka.Spec, *disableStatus)
 
 	// Delete kubernetesapply if it's disabled
+	gcReason := "garbage collecting Kubernetes objects"
 	if disableStatus.State == v1alpha1.DisableStateDisabled {
-		err := r.deleteCreatedObjects(ctx, nn, "deleting disabled Kubernetes objects")
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
-		r.st.Dispatch(kubernetesapplys.NewKubernetesApplyUpsertAction(&ka))
-		return ctrl.Result{}, nil
-	}
-
-	ctx = store.MustObjectLogHandler(ctx, r.st, &ka)
-	err = r.manageOwnedKubernetesDiscovery(ctx, nn, &ka)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	// Fetch all the images needed to apply this YAML.
-	imageMaps := make(map[types.NamespacedName]*v1alpha1.ImageMap)
-	for _, name := range ka.Spec.ImageMaps {
-		var im v1alpha1.ImageMap
-		nn := types.NamespacedName{Name: name}
-		err := r.ctrlClient.Get(ctx, nn, &im)
-		if err != nil {
-			if apierrors.IsNotFound(err) {
-				// If the map isn't found, keep going and let shouldDeployOnReconcile
-				// handle it.
-				continue
+		gcReason = "deleting disabled Kubernetes objects"
+	} else {
+		// Fetch all the images needed to apply this YAML.
+		imageMaps := make(map[types.NamespacedName]*v1alpha1.ImageMap)
+		for _, name := range ka.Spec.ImageMaps {
+			var im v1alpha1.ImageMap
+			nn := types.NamespacedName{Name: name}
+			err := r.ctrlClient.Get(ctx, nn, &im)
+			if err != nil {
+				if apierrors.IsNotFound(err) {
+					// If the map isn't found, keep going and let shouldDeployOnReconcile
+					// handle it.
+					continue
+				}
+				return ctrl.Result{}, err
 			}
+
+			imageMaps[nn] = &im
+		}
+
+		lastRestartEvent, _, _, err := trigger.LastRestartEvent(ctx, r.ctrlClient, ka.Spec.RestartOn)
+		if err != nil {
 			return ctrl.Result{}, err
 		}
 
-		imageMaps[nn] = &im
-	}
-
-	lastRestartEvent, _, _, err := trigger.LastRestartEvent(ctx, r.ctrlClient, ka.Spec.RestartOn)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-	if !r.shouldDeployOnReconcile(request.NamespacedName, &ka, imageMaps, lastRestartEvent) {
+		// Apply to the cluster if necessary.
+		//
 		// TODO(nick): Like with other reconcilers, there should always
 		// be a reason why we're not deploying, and we should update the
 		// Status field of KubernetesApply with that reason.
-		return ctrl.Result{}, nil
+		if r.shouldDeployOnReconcile(request.NamespacedName, &ka, imageMaps, lastRestartEvent) {
+			_ = r.forceApplyHelper(ctx, nn, ka.Spec, imageMaps)
+			gcReason = "garbage collecting removed Kubernetes objects"
+		}
 	}
 
-	// Update the apiserver with the result of this deploy.
-	_, err = r.ForceApply(ctx, nn, ka.Spec, imageMaps)
+	toDelete := r.garbageCollect(nn, false)
+	r.bestEffortDelete(ctx, nn, toDelete, gcReason)
+
+	newKA, err := r.maybeUpdateStatus(ctx, nn, &ka)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	err = r.manageOwnedKubernetesDiscovery(ctx, nn, newKA)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -264,7 +256,8 @@ func (r *Reconciler) shouldDeployOnReconcile(
 
 // Inject the images into the YAML and apply it to the cluster, unconditionally.
 //
-// Update the apiserver when finished.
+// Does not update the API server, but does trigger a re-reconcile
+// so that the reconciliation loop will handle it.
 //
 // We expose this as a public method as a hack! Currently, in Tilt, BuildController
 // handles dependencies between resources. The API server doesn't know about build
@@ -274,79 +267,35 @@ func (r *Reconciler) ForceApply(
 	ctx context.Context,
 	nn types.NamespacedName,
 	spec v1alpha1.KubernetesApplySpec,
-	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) (v1alpha1.KubernetesApplyStatus, error) {
-	forceApplyStatus, appliedObjects := r.forceApplyHelper(ctx, spec, imageMaps)
-
-	var ka v1alpha1.KubernetesApply
-	err := r.ctrlClient.Get(ctx, nn, &ka)
-	if err != nil {
-		return v1alpha1.KubernetesApplyStatus{}, err
-	}
-	patchBase := client.MergeFrom(ka.DeepCopy())
-
-	// Copy over status information from `forceApplyHelper`
-	// so other existing status information isn't overwritten
-	updatedStatus := ka.Status.DeepCopy()
-	updatedStatus.ResultYAML = forceApplyStatus.ResultYAML
-	updatedStatus.Error = forceApplyStatus.Error
-	updatedStatus.LastApplyStartTime = forceApplyStatus.LastApplyStartTime
-	updatedStatus.LastApplyTime = forceApplyStatus.LastApplyTime
-	updatedStatus.AppliedInputHash = forceApplyStatus.AppliedInputHash
-
-	result := Result{
-		Spec:           spec,
-		Status:         *updatedStatus,
-		AppliedObjects: newObjectRefSet(appliedObjects),
-	}
-
-	for _, imageMapName := range spec.ImageMaps {
-		im, ok := imageMaps[types.NamespacedName{Name: imageMapName}]
-		if !ok {
-			// this should never happen, but if it does, just continue quietly.
-			continue
-		}
-
-		result.ImageMapSpecs = append(result.ImageMapSpecs, im.Spec)
-		result.ImageMapStatuses = append(result.ImageMapStatuses, im.Status)
-	}
-
-	ka.Status = *updatedStatus
-	err = r.ctrlClient.Status().Patch(ctx, &ka, patchBase)
-	if err != nil {
-		return *updatedStatus, err
-	}
-
-	toDelete := r.updateResult(nn, &result)
-	r.bestEffortDelete(ctx, toDelete, "garbage collecting Kubernetes objects")
-
-	return *updatedStatus, nil
+	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) v1alpha1.KubernetesApplyStatus {
+	status := r.forceApplyHelper(ctx, nn, spec, imageMaps)
+	r.requeuer.Add(nn)
+	return status
 }
 
-// A helper that applies the given specs to the cluster, but doesn't update the APIServer.
-//
-// Returns:
-// - the new status to store in the apiserver
-// - the parsed entities that we tried to apply
+// A helper that applies the given specs to the cluster,
+// tracking the state of the deploy in the results map.
 func (r *Reconciler) forceApplyHelper(
 	ctx context.Context,
+	nn types.NamespacedName,
 	spec v1alpha1.KubernetesApplySpec,
 	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap,
-) (ForceApplyStatus, []k8s.K8sEntity) {
+) v1alpha1.KubernetesApplyStatus {
 
 	startTime := apis.NowMicro()
-	status := ForceApplyStatus{
+	status := applyResult{
 		LastApplyStartTime: startTime,
 	}
 
-	errorStatus := func(err error) ForceApplyStatus {
+	recordErrorStatus := func(err error) v1alpha1.KubernetesApplyStatus {
 		status.LastApplyTime = apis.NowMicro()
 		status.Error = err.Error()
-		return status
+		return r.recordApplyResult(nn, spec, imageMaps, status)
 	}
 
 	inputHash, err := ComputeInputHash(spec, imageMaps)
 	if err != nil {
-		return errorStatus(err), nil
+		return recordErrorStatus(err)
 	}
 
 	var deployed []k8s.K8sEntity
@@ -354,12 +303,12 @@ func (r *Reconciler) forceApplyHelper(
 	if spec.YAML != "" {
 		deployed, err = r.runYAMLDeploy(deployCtx, spec, imageMaps)
 		if err != nil {
-			return errorStatus(err), nil
+			return recordErrorStatus(err)
 		}
 	} else {
 		deployed, err = r.runCmdDeploy(deployCtx, spec, imageMaps)
 		if err != nil {
-			return errorStatus(err), nil
+			return recordErrorStatus(err)
 		}
 	}
 
@@ -371,11 +320,12 @@ func (r *Reconciler) forceApplyHelper(
 
 	resultYAML, err := k8s.SerializeSpecYAML(deployed)
 	if err != nil {
-		return errorStatus(err), deployed
+		return recordErrorStatus(err)
 	}
 
 	status.ResultYAML = resultYAML
-	return status, deployed
+	status.Objects = deployed
+	return r.recordApplyResult(nn, spec, imageMaps, status)
 }
 
 func (r *Reconciler) printAppliedReport(ctx context.Context, msg string, deployed []k8s.K8sEntity) {
@@ -617,61 +567,192 @@ func (r *Reconciler) createEntitiesToDeploy(ctx context.Context,
 	return newK8sEntities, nil
 }
 
-// We keep track of all the objects it's managing in the cluster, and
-// garbage-collect them when it no longer needs to manage them.
-//
-// A best-practices reconciler would store this info with the objects themselves
-// (in the cluster), similar to how Helm does it.
-//
-// But for now, we store this as in-memory state, because it's cheaper to implement
-// that way.
-//
-// Returns: objects to garbage-collect.
-func (r *Reconciler) updateResult(nn types.NamespacedName, result *Result) deleteSpec {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	existing := r.results[nn]
-	if result == nil {
-		delete(r.results, nn)
-	} else {
-		r.results[nn] = result
+type applyResult struct {
+	ResultYAML         string
+	Error              string
+	LastApplyTime      metav1.MicroTime
+	LastApplyStartTime metav1.MicroTime
+	AppliedInputHash   string
+	Objects            []k8s.K8sEntity
+}
+
+// Create a result object if necessary. Caller must hold the mutex.
+func (r *Reconciler) ensureResultExists(nn types.NamespacedName) *Result {
+	existing, hasExisting := r.results[nn]
+	if hasExisting {
+		return existing
 	}
 
-	if result != nil && result.Status.Error != "" {
+	result := &Result{
+		DanglingObjects: objectRefSet{},
+	}
+	r.results[nn] = result
+	return result
+}
+
+// Record the results of a deploy to the local Result map.
+func (r *Reconciler) recordApplyResult(
+	nn types.NamespacedName,
+	spec v1alpha1.KubernetesApplySpec,
+	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap,
+	applyResult applyResult) v1alpha1.KubernetesApplyStatus {
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	result := r.ensureResultExists(nn)
+
+	// Copy over status information from `forceApplyHelper`
+	// so other existing status information isn't overwritten
+	updatedStatus := result.Status.DeepCopy()
+	updatedStatus.ResultYAML = applyResult.ResultYAML
+	updatedStatus.Error = applyResult.Error
+	updatedStatus.LastApplyStartTime = applyResult.LastApplyStartTime
+	updatedStatus.LastApplyTime = applyResult.LastApplyTime
+	updatedStatus.AppliedInputHash = applyResult.AppliedInputHash
+
+	result.Spec = spec
+	result.Status = *updatedStatus
+	if spec.ApplyCmd != nil {
+		result.CmdApplied = true
+	}
+	result.SetAppliedObjects(newObjectRefSet(applyResult.Objects))
+
+	for _, imageMapName := range spec.ImageMaps {
+		im, ok := imageMaps[types.NamespacedName{Name: imageMapName}]
+		if !ok {
+			// this should never happen, but if it does, just continue quietly.
+			continue
+		}
+
+		result.ImageMapSpecs = append(result.ImageMapSpecs, im.Spec)
+		result.ImageMapStatuses = append(result.ImageMapStatuses, im.Status)
+	}
+
+	return result.Status
+}
+
+// Record that the apply has been disabled.
+func (r *Reconciler) recordDisableStatus(
+	nn types.NamespacedName,
+	spec v1alpha1.KubernetesApplySpec,
+	disableStatus v1alpha1.DisableStatus) {
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	result := r.ensureResultExists(nn)
+	if apicmp.DeepEqual(result.Status.DisableStatus, &disableStatus) {
+		return
+	}
+
+	isDisabled := disableStatus.State == v1alpha1.DisableStateDisabled
+
+	update := result.Status.DeepCopy()
+	if isDisabled {
+		update.Error = "" // Clear the error if the resource is disabled.
+	}
+	update.DisableStatus = &disableStatus
+	result.Status = *update
+
+	if isDisabled {
+		result.SetAppliedObjects(nil)
+	}
+}
+
+// Queue its applied objects for deletion.
+func (r *Reconciler) recordDelete(nn types.NamespacedName) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	result := r.ensureResultExists(nn)
+	result.Status = v1alpha1.KubernetesApplyStatus{}
+	result.SetAppliedObjects(nil)
+}
+
+// Record that the delete command was run.
+func (r *Reconciler) recordDeleteCmdRun(nn types.NamespacedName) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	result, isExisting := r.results[nn]
+	if isExisting {
+		result.CmdApplied = false
+	}
+}
+
+// Delete all state for a KubernetesApply, things have been cleaned up.
+func (r *Reconciler) clearRecord(nn types.NamespacedName) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	delete(r.results, nn)
+}
+
+// Perform garbage collection for a particular KubernetesApply object.
+//
+// isDeleting: indicates whether this is a full delete or just
+// a cleanup of dangling objects.
+//
+// For custom deploy commands, we run the delete cmd.
+//
+// For YAML deploys, this is more complex:
+//
+// There are typically 4 ways objects get marked "dangling".
+// 1) Their owner A has been deleted.
+// 2) Their owner A has been disabled.
+// 3) They've been moved from owner A to owner B.
+// 4) Owner A has been re-applied with different arguments.
+//
+// Because the reconciler handles one owner at a time,
+// cases (1) and (3) are basically indistinguishable, and can
+// lead to race conditions if we're not careful (e.g., owner A's GC
+// deletes objects deployed by B).
+//
+// TODO(milas): in the case that the KA object was deleted, should we respect `tilt.dev/down-policy`?
+func (r *Reconciler) garbageCollect(nn types.NamespacedName, isDeleting bool) deleteSpec {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	result, isExisting := r.results[nn]
+	if !isExisting {
+		return deleteSpec{}
+	}
+
+	if !isDeleting && result.Status.Error != "" {
 		// do not attempt to delete any objects if the apply failed
 		// N.B. if the result is nil, that means the object was deleted, so objects WILL be deleted
 		return deleteSpec{}
 	}
 
-	if existing == nil {
-		// there is no prior state, so we have nothing to GC
-		return deleteSpec{}
-	}
+	if isDeleting && result.Spec.DeleteCmd != nil {
+		if !result.CmdApplied {
+			// Make sure we only run the DeleteCmd once per apply.
+			return deleteSpec{}
+		}
 
-	if result == nil && existing.Spec.DeleteCmd != nil {
 		// the object was deleted (so result is nil) and we have a custom delete cmd, so use that
 		// and skip diffing managed entities entirely
-		return deleteSpec{deleteCmd: existing.Spec.DeleteCmd}
+		return deleteSpec{deleteCmd: result.Spec.DeleteCmd}
 	}
 
-	// Go through all the results, and check to see which objects
-	// we're not managing anymore.
-	// TODO(milas): in the case that the KA object was deleted, should we respect `tilt.dev/down-policy`?
-	toDeleteMap := existing.AppliedObjects.clone()
+	// Reconcile the dangling objects against applied objects, ensuring that we're
+	// not deleting an object that was moved to another resource.
 	for _, result := range r.results {
 		for objRef := range result.AppliedObjects {
-			delete(toDeleteMap, objRef)
+			delete(result.DanglingObjects, objRef)
 		}
 	}
 
-	toDelete := make([]k8s.K8sEntity, 0, len(toDeleteMap))
-	for _, e := range toDeleteMap {
-		toDelete = append(toDelete, e)
+	toDelete := make([]k8s.K8sEntity, 0, len(result.DanglingObjects))
+	for k, v := range result.DanglingObjects {
+		delete(result.DanglingObjects, k)
+		toDelete = append(toDelete, v)
 	}
 	return deleteSpec{entities: toDelete}
 }
 
-// A helper that deletes all Kuberentes objects, even if they haven't been applied yet.
+// A helper that deletes all Kubernetes objects, even if they haven't been applied yet.
 //
 // Namespaces are not deleted by default. Similar to `tilt down`, deleting namespaces
 // is likely to be more destructive than most users want from this operation.
@@ -703,26 +784,42 @@ func (r *Reconciler) ForceDelete(ctx context.Context, nn types.NamespacedName,
 		toDelete.deleteCmd = spec.DeleteCmd
 	}
 
-	// Ignore the delete spec from what's already been applied.
-	_ = r.updateResult(nn, nil)
-
-	r.bestEffortDelete(ctx, toDelete, reason)
-	return r.manageOwnedKubernetesDiscovery(ctx, nn, nil)
+	r.recordDelete(nn)
+	r.bestEffortDelete(ctx, nn, toDelete, reason)
+	r.requeuer.Add(nn)
+	return nil
 }
 
-// A helper that deletes all kubernetesapply objects that have been applied and
-// the related kubernetesdiscovery objects it owns
-func (r *Reconciler) deleteCreatedObjects(
-	ctx context.Context,
-	nn types.NamespacedName,
-	reason string,
-) error {
-	toDelete := r.updateResult(nn, nil)
-	r.bestEffortDelete(ctx, toDelete, reason)
-	return r.manageOwnedKubernetesDiscovery(ctx, nn, nil)
+// Update the status if necessary.
+func (r *Reconciler) maybeUpdateStatus(ctx context.Context, nn types.NamespacedName, obj *v1alpha1.KubernetesApply) (*v1alpha1.KubernetesApply, error) {
+	newStatus := v1alpha1.KubernetesApplyStatus{}
+	existing, ok := r.results[nn]
+	if ok {
+		newStatus = existing.Status
+	}
+
+	if apicmp.DeepEqual(obj.Status, newStatus) {
+		return obj, nil
+	}
+
+	oldError := obj.Status.Error
+	newError := newStatus.Error
+	update := obj.DeepCopy()
+	update.Status = *(newStatus.DeepCopy())
+
+	err := r.ctrlClient.Status().Update(ctx, update)
+	if err != nil {
+		return nil, err
+	}
+
+	// Print new errors on objects that aren't managed by the buildcontroller.
+	if newError != "" && oldError != newError && update.Annotations[v1alpha1.AnnotationManagedBy] == "" {
+		logger.Get(ctx).Errorf("kubernetesapply %s: %s", obj.Name, newError)
+	}
+	return update, nil
 }
 
-func (r *Reconciler) bestEffortDelete(ctx context.Context, toDelete deleteSpec, reason string) {
+func (r *Reconciler) bestEffortDelete(ctx context.Context, nn types.NamespacedName, toDelete deleteSpec, reason string) {
 	if len(toDelete.entities) == 0 && toDelete.deleteCmd == nil {
 		return
 	}
@@ -749,6 +846,7 @@ func (r *Reconciler) bestEffortDelete(ctx context.Context, toDelete deleteSpec, 
 		if err := localexec.OneShotToLogger(ctx, r.execer, deleteCmd); err != nil {
 			l.Errorf("Error %s: %v", reason, err)
 		}
+		r.recordDeleteCmdRun(nn)
 	}
 }
 
@@ -784,8 +882,21 @@ type Result struct {
 	ImageMapSpecs    []v1alpha1.ImageMapSpec
 	ImageMapStatuses []v1alpha1.ImageMapStatus
 
-	AppliedObjects objectRefSet
-	Status         v1alpha1.KubernetesApplyStatus
+	CmdApplied      bool
+	AppliedObjects  objectRefSet
+	DanglingObjects objectRefSet
+	Status          v1alpha1.KubernetesApplyStatus
+}
+
+// Set a new collection of applied objects.
+//
+// Move all the currently applied objects to the dangling
+// collection for garbage collection.
+func (r *Result) SetAppliedObjects(set objectRefSet) {
+	for k, v := range r.AppliedObjects {
+		r.DanglingObjects[k] = v
+	}
+	r.AppliedObjects = set
 }
 
 type objectRef struct {
@@ -810,14 +921,6 @@ func newObjectRefSet(entities []k8s.K8sEntity) objectRefSet {
 		r[oRef] = e
 	}
 	return r
-}
-
-func (s objectRefSet) clone() objectRefSet {
-	result := make(objectRefSet, len(s))
-	for k, v := range s {
-		result[k] = v
-	}
-	return result
 }
 
 func toModelCmd(cmd v1alpha1.KubernetesApplyCmd) model.Cmd {

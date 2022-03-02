@@ -473,13 +473,18 @@ func TestIgnoreManagedObjects(t *testing.T) {
 	assert.Empty(f.T(), ka.Status.ResultYAML)
 	assert.Zero(f.T(), ka.Status.LastApplyTime)
 
-	result, err := f.r.ForceApply(f.Context(), nn, ka.Spec, nil)
-	assert.Nil(f.T(), err)
+	result := f.r.ForceApply(f.Context(), nn, ka.Spec, nil)
 	assert.Contains(f.T(), result.ResultYAML, "sancho")
 	assert.True(f.T(), !result.LastApplyTime.IsZero())
 	assert.True(f.T(), !result.LastApplyStartTime.IsZero())
 	assert.Equal(f.T(), result.Error, "")
 
+	// ForceApply must NOT update the apiserver.
+	f.MustGet(nn, &ka)
+	assert.Empty(f.T(), ka.Status.ResultYAML)
+	assert.Zero(f.T(), ka.Status.LastApplyTime)
+
+	f.MustReconcile(nn)
 	f.MustGet(nn, &ka)
 	assert.Equal(f.T(), result, ka.Status)
 }
