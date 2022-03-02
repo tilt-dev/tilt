@@ -31,7 +31,7 @@ export default function OverviewResourceSidebar(
   let resources = props.view.uiResources || []
   let buttons = useMemo(
     () => buttonsByComponent(props.view.uiButtons),
-    props.view.uiButtons
+    [props.view.uiButtons]
   )
   let items = resources.map((res) => {
     let stopBuildButton = buttons.get(res.metadata?.name!)?.stopBuild
