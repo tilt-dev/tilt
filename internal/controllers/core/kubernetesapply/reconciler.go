@@ -110,7 +110,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	if apierrors.IsNotFound(err) || !ka.ObjectMeta.DeletionTimestamp.IsZero() {
 		err = r.manageOwnedKubernetesDiscovery(ctx, nn, nil)
 		if err != nil {
-			return ctrl.Result{}, nil
+			return ctrl.Result{}, err
 		}
 
 		r.recordDelete(nn)
@@ -618,6 +618,8 @@ func (r *Reconciler) recordApplyResult(
 	}
 	result.SetAppliedObjects(newObjectRefSet(applyResult.Objects))
 
+	result.ImageMapSpecs = nil
+	result.ImageMapStatuses = nil
 	for _, imageMapName := range spec.ImageMaps {
 		im, ok := imageMaps[types.NamespacedName{Name: imageMapName}]
 		if !ok {
