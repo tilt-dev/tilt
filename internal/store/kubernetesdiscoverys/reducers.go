@@ -59,34 +59,36 @@ func RefreshKubernetesResource(state *store.EngineState, name string) {
 	}
 	state.KubernetesResources[name] = r
 
-	mn := model.ManifestName(a.Annotations[v1alpha1.AnnotationManifest])
-	ms, ok := state.ManifestState(mn)
-	if ok {
-		krs := ms.K8sRuntimeState()
+	if a != nil {
+		mn := model.ManifestName(a.Annotations[v1alpha1.AnnotationManifest])
+		ms, ok := state.ManifestState(mn)
+		if ok {
+			krs := ms.K8sRuntimeState()
 
-		if d == nil {
-			// if the KubernetesDiscovery goes away, we no longer know about any pods
-			krs.FilteredPods = nil
+			if d == nil {
+				// if the KubernetesDiscovery goes away, we no longer know about any pods
+				krs.FilteredPods = nil
+				ms.RuntimeState = krs
+				return
+			}
+
+			krs.FilteredPods = r.FilteredPods
+
+			isReadyOrSucceeded := false
+			for _, pod := range r.FilteredPods {
+				if krs.PodReadinessMode == model.PodReadinessSucceeded {
+					// for jobs, we don't care about whether it's ready, only whether it's succeeded
+					isReadyOrSucceeded = pod.Phase == string(v1.PodSucceeded)
+				} else {
+					isReadyOrSucceeded = len(pod.Containers) != 0 && store.AllPodContainersReady(pod)
+				}
+				if isReadyOrSucceeded {
+					// NOTE(nick): It doesn't seem right to update this timestamp everytime
+					// we get a new event, but it's what the old code did.
+					krs.LastReadyOrSucceededTime = time.Now()
+				}
+			}
 			ms.RuntimeState = krs
-			return
 		}
-
-		krs.FilteredPods = r.FilteredPods
-
-		isReadyOrSucceeded := false
-		for _, pod := range r.FilteredPods {
-			if krs.PodReadinessMode == model.PodReadinessSucceeded {
-				// for jobs, we don't care about whether it's ready, only whether it's succeeded
-				isReadyOrSucceeded = pod.Phase == string(v1.PodSucceeded)
-			} else {
-				isReadyOrSucceeded = len(pod.Containers) != 0 && store.AllPodContainersReady(pod)
-			}
-			if isReadyOrSucceeded {
-				// NOTE(nick): It doesn't seem right to update this timestamp everytime
-				// we get a new event, but it's what the old code did.
-				krs.LastReadyOrSucceededTime = time.Now()
-			}
-		}
-		ms.RuntimeState = krs
 	}
 }
