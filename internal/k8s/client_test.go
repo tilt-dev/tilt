@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"helm.sh/helm/v3/pkg/kube"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -83,32 +82,6 @@ func TestDeleteMissingKind(t *testing.T) {
 	assert.Equal(t,
 		[]string{"ConfigMap", "PersistentVolume", "PersistentVolumeClaim", "Service"},
 		kinds)
-}
-
-func TestUpsertMutableAndImmutable(t *testing.T) {
-	f := newClientTestFixture(t)
-	eDeploy := MustParseYAMLFromString(t, testyaml.SanchoYAML)[0]
-	eJob := MustParseYAMLFromString(t, testyaml.JobYAML)[0]
-	eNamespace := MustParseYAMLFromString(t, testyaml.MyNamespaceYAML)[0]
-
-	_, err := f.k8sUpsert(f.ctx, []K8sEntity{eDeploy, eJob, eNamespace})
-	if !assert.Nil(t, err) {
-		t.FailNow()
-	}
-
-	require.Len(t, f.resourceClient.updates, 2)
-	require.Len(t, f.resourceClient.creates, 1)
-
-	// compare entities instead of strings because str > entity > string gets weird
-	call0Entity := NewK8sEntity(f.resourceClient.updates[0].Object)
-	call1Entity := NewK8sEntity(f.resourceClient.updates[1].Object)
-
-	// `apply` should preserve input order of entities (we sort them further upstream)
-	require.Equal(t, eDeploy, call0Entity, "expect call 0 to have applied deployment first (preserve input order)")
-	require.Equal(t, eNamespace, call1Entity, "expect call 0 to have applied namespace second (preserve input order)")
-
-	call2Entity := NewK8sEntity(f.resourceClient.creates[0].Object)
-	require.Equal(t, eJob, call2Entity, "expect create job")
 }
 
 func TestUpsertAnnotationTooLong(t *testing.T) {
