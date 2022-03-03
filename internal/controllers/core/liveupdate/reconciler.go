@@ -925,63 +925,87 @@ func (r *Reconciler) applyInternal(
 		}
 	}
 
-	var lastExecErrorStatus *v1alpha1.LiveUpdateContainerStatus
+	copierContext, cancelCopiers := context.WithCancel(ctx)
+	wg := sync.WaitGroup{}
+	results := make(chan *v1alpha1.LiveUpdateStatus)
 	for _, cInfo := range containers {
-		// TODO(nick): We should try to distinguish between cases where the tar writer
-		// fails (which is recoverable) vs when the server-side unpacking
-		// fails (which may not be recoverable).
-		archive := build.TarArchiveForPaths(ctx, toArchive, nil)
-		err = cu.UpdateContainer(ctx, cInfo, archive,
-			build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
-		_ = archive.Close()
+		go func(cInfo liveupdates.Container) {
+			wg.Add(1)
+			defer wg.Done()
 
-		lastFileTimeSynced := input.LastFileTimeSynced
-		if lastFileTimeSynced.IsZero() {
-			lastFileTimeSynced = apis.NowMicro()
-		}
+			var failed *v1alpha1.LiveUpdateStateFailed
 
-		cStatus := v1alpha1.LiveUpdateContainerStatus{
-			ContainerName:      cInfo.ContainerName.String(),
-			ContainerID:        cInfo.ContainerID.String(),
-			PodName:            cInfo.PodID.String(),
-			Namespace:          cInfo.Namespace.String(),
-			LastFileTimeSynced: lastFileTimeSynced,
-		}
+			// TODO(nick): We should try to distinguish between cases where the tar writer
+			// fails (which is recoverable) vs when the server-side unpacking
+			// fails (which may not be recoverable).
+			archive := build.TarArchiveForPaths(copierContext, toArchive, nil)
+			err = cu.UpdateContainer(copierContext, cInfo, archive,
+				build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
+			_ = archive.Close()
 
-		if err != nil {
-			if runFail, ok := build.MaybeRunStepFailure(err); ok {
-				// Keep running updates -- we want all containers to have the same files on them
-				// even if the Runs don't succeed
-				logger.Get(ctx).Infof("  → Failed to update container %s: run step %q failed with exit code: %d",
-					cInfo.DisplayName(), runFail.Cmd.String(), runFail.ExitCode)
-				cStatus.LastExecError = err.Error()
-				lastExecErrorStatus = &cStatus
+			lastFileTimeSynced := input.LastFileTimeSynced
+			if lastFileTimeSynced.IsZero() {
+				lastFileTimeSynced = apis.NowMicro()
+			}
+
+			cStatus := v1alpha1.LiveUpdateContainerStatus{
+				ContainerName:      cInfo.ContainerName.String(),
+				ContainerID:        cInfo.ContainerID.String(),
+				PodName:            cInfo.PodID.String(),
+				Namespace:          cInfo.Namespace.String(),
+				LastFileTimeSynced: lastFileTimeSynced,
+			}
+
+			if err != nil {
+				if runFail, ok := build.MaybeRunStepFailure(err); ok {
+					// Keep running updates -- we want all containers to have the same files on them
+					// even if the Runs don't succeed
+					logger.Get(copierContext).Infof("  → Failed to update container %s: run step %q failed with exit code: %d",
+						cInfo.DisplayName(), runFail.Cmd.String(), runFail.ExitCode)
+					cStatus.LastExecError = err.Error()
+
+				} else {
+					// Something went wrong with this update, and it's NOT the user's fault--
+					// likely an infrastructure error. Bail, and fall back to full build.
+					failed = &v1alpha1.LiveUpdateStateFailed{
+						Reason:  "UpdateFailed",
+						Message: fmt.Sprintf("Updating pod %s: %v", cStatus.PodName, err),
+					}
+				}
 			} else {
-				// Something went wrong with this update and it's NOT the user's fault--
-				// likely a infrastructure error. Bail, and fall back to full build.
-				result.Failed = &v1alpha1.LiveUpdateStateFailed{
-					Reason:  "UpdateFailed",
-					Message: fmt.Sprintf("Updating pod %s: %v", cStatus.PodName, err),
-				}
-				return result
+				logger.Get(copierContext).Infof("  → Container %s updated!", cInfo.DisplayName())
 			}
-		} else {
-			logger.Get(ctx).Infof("  → Container %s updated!", cInfo.DisplayName())
-			if lastExecErrorStatus != nil {
-				// This build succeeded, but previously at least one failed due to user error.
-				// We may have inconsistent state--bail, and fall back to full build.
-				result.Failed = &v1alpha1.LiveUpdateStateFailed{
-					Reason: "PodsInconsistent",
-					Message: fmt.Sprintf("Pods in inconsistent state. Success: pod %s. Failure: pod %s. Error: %v",
-						cStatus.PodName, lastExecErrorStatus.PodName, lastExecErrorStatus.LastExecError),
-				}
-				return result
+			results <- &v1alpha1.LiveUpdateStatus{
+				Containers: []v1alpha1.LiveUpdateContainerStatus{
+					cStatus,
+				},
+				Failed: failed,
 			}
-		}
-
-		result.Containers = append(result.Containers, cStatus)
+		}(cInfo)
 	}
-	return result
+
+	waitC := make(chan interface{})
+	go func() {
+		wg.Done()
+		close(waitC)
+	}()
+
+	for {
+		select {
+		case res := <-results:
+			if res.Failed != nil {
+				cancelCopiers()
+				result.Failed = res.Failed
+			}
+			for _, c := range res.Containers {
+				result.Containers = append(result.Containers, c)
+			}
+		case <-copierContext.Done():
+		case <-waitC:
+			cancelCopiers()
+			return result
+		}
+	}
 }
 
 func (r *Reconciler) containerUpdater(input Input) containerupdate.ContainerUpdater {
