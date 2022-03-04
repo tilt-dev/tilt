@@ -4,8 +4,9 @@ import (
 	"archive/tar"
 	"context"
 	"fmt"
-	"github.com/tilt-dev/tilt/internal/k8s"
 	"testing"
+
+	"github.com/tilt-dev/tilt/internal/k8s"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
