@@ -128,18 +128,22 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 		project.ProjectPath = filepath.Dir(currentTiltfilePath)
 	}
 
-	// NOTE(nick): We currently merge with the existing dockercompose project,
-	// so remove the current services from the name-reservation map.
-	for _, svc := range s.dc.services {
-		delete(s.dcByName, svc.Name)
-	}
-
 	services, err := parseDCConfig(s.ctx, s.dcCli, project)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, svc := range services {
+		previousSvc := s.dcByName[svc.Name]
+		if previousSvc != nil {
+			delete(s.dcByName, svc.Name)
+			// Copy any existing state declared by previous dc_resource calls
+			svc.AutoInit = previousSvc.AutoInit
+			svc.TriggerMode = previousSvc.TriggerMode
+			svc.resourceDeps = previousSvc.resourceDeps
+			svc.Labels = previousSvc.Labels
+			svc.Links = previousSvc.Links
+		}
 		err := s.checkResourceConflict(svc.Name)
 		if err != nil {
 			return nil, err
