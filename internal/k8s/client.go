@@ -62,7 +62,11 @@ type KubeContextOverride string
 // NOTE(nick): This isn't right. DefaultNamespace is a function of your kubectl context.
 const DefaultNamespace = Namespace("default")
 
-var ForbiddenFieldsRe = regexp.MustCompile(`updates to .* are forbidden`)
+// Kubernetes uses "Forbidden" errors for a variety of field immutability errors.
+//
+// https://github.com/kubernetes/kubernetes/blob/5d6a793221370d890af6ea766d056af4e33f1118/pkg/apis/core/validation/validation.go#L4383
+// https://github.com/kubernetes/kubernetes/blob/5d6a793221370d890af6ea766d056af4e33f1118/pkg/apis/core/validation/validation.go#L4196
+var ForbiddenFieldsPrefix = "Forbidden:"
 
 func (pID PodID) Empty() bool    { return pID.String() == "" }
 func (pID PodID) String() string { return string(pID) }
@@ -320,10 +324,7 @@ func (k *K8sClient) ToRawKubeConfigLoader() clientcmd.ClientConfig {
 
 func (k *K8sClient) Upsert(ctx context.Context, entities []K8sEntity, timeout time.Duration) ([]K8sEntity, error) {
 	result := make([]K8sEntity, 0, len(entities))
-
-	mutable, immutable := MutableAndImmutableEntities(entities)
-
-	for _, e := range mutable {
+	for _, e := range entities {
 		innerCtx, cancel := context.WithTimeout(ctx, timeout)
 		defer cancel()
 
@@ -335,20 +336,6 @@ func (k *K8sClient) Upsert(ctx context.Context, entities []K8sEntity, timeout ti
 			return nil, err
 		}
 		result = append(result, newEntity...)
-	}
-
-	for _, e := range immutable {
-		innerCtx, cancel := context.WithTimeout(ctx, timeout)
-		defer cancel()
-
-		newEntities, err := k.deleteAndCreateEntity(innerCtx, e)
-		if err != nil {
-			if ctx.Err() == context.DeadlineExceeded {
-				return nil, timeoutError(timeout)
-			}
-			return nil, err
-		}
-		result = append(result, newEntities...)
 	}
 
 	return result, nil
@@ -516,10 +503,11 @@ func (k *K8sClient) escalatingUpdate(ctx context.Context, entity K8sEntity) ([]K
 	}
 
 	if err != nil {
-		isImmutable := maybeImmutableFieldStderr(err.Error())
-		if isImmutable {
+		maybeImmutable := maybeImmutableFieldStderr(err.Error())
+		if maybeImmutable {
 			fallback = true
-			logger.Get(ctx).Infof("Updating %q failed: immutable field error", entity.Name())
+			logger.Get(ctx).Infof("Updating %q failed: %s", entity.Name(),
+				truncateErrorToOneLine(err.Error()))
 			logger.Get(ctx).Infof("Attempting to delete and re-create")
 			result, err = k.deleteAndCreateEntity(ctx, entity)
 		}
@@ -534,6 +522,14 @@ func (k *K8sClient) escalatingUpdate(ctx context.Context, entity K8sEntity) ([]K
 	return result, nil
 }
 
+func truncateErrorToOneLine(stderr string) string {
+	index := strings.Index(stderr, "\n")
+	if index != -1 {
+		return stderr[:index]
+	}
+	return stderr
+}
+
 // We're using kubectl, so we only get stderr, not structured errors.
 //
 // Take a wild guess if the update is failing due to immutable field errors.
@@ -541,7 +537,8 @@ func (k *K8sClient) escalatingUpdate(ctx context.Context, entity K8sEntity) ([]K
 // This should bias towards false positives (i.e., we think something is an
 // immutable field error when it's not).
 func maybeImmutableFieldStderr(stderr string) bool {
-	return strings.Contains(stderr, validation.FieldImmutableErrorMsg) || ForbiddenFieldsRe.Match([]byte(stderr))
+	return strings.Contains(stderr, validation.FieldImmutableErrorMsg) ||
+		strings.Contains(stderr, ForbiddenFieldsPrefix)
 }
 
 var MetadataAnnotationsTooLongRe = regexp.MustCompile(`metadata.annotations: Too long: must have at most \d+ bytes.*`)

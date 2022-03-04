@@ -77,6 +77,10 @@ func (r *Reconciler) toDesiredKubernetesDiscovery(ka *v1alpha1.KubernetesApply) 
 		return nil, nil
 	}
 
+	if ka.Status.DisableStatus != nil && ka.Status.DisableStatus.State == v1alpha1.DisableStateDisabled {
+		return nil, nil
+	}
+
 	watchRefs, err := r.toWatchRefs(ka)
 	if err != nil {
 		return nil, err
