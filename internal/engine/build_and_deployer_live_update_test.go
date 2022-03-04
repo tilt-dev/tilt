@@ -225,8 +225,8 @@ func TestLiveUpdateDockerBuildLocalContainerSameImgMultipleContainers(t *testing
 		expectDockerPushRange:     intRange{min: 0, max: 0},
 
 		// one of each operation per container
-		expectDockerCopyRange:    intRange{min: 3, max: 3},
-		expectDockerExecRange:    intRange{min: 3, max: 3},
+		expectDockerCopyRange:    intRange{min: 1, max: 3},
+		expectDockerExecRange:    intRange{min: 1, max: 3},
 		expectDockerRestartCount: 3,
 	}
 	runTestCase(t, f, tCase)
@@ -588,8 +588,8 @@ func TestLiveUpdateMultipleContainersUpdatesAllForUserRunFailuresAndDoesntFallBa
 		// attempted update for each container;
 		// for each, called copy and exec before hitting error
 		// (so did not call restart)
-		expectDockerCopyRange:    intRange{min: 3, max: 3},
-		expectDockerExecRange:    intRange{min: 3, max: 3},
+		expectDockerCopyRange:    intRange{min: 1, max: 3},
+		expectDockerExecRange:    intRange{min: 1, max: 3},
 		expectDockerRestartCount: 0,
 
 		// DO NOT fall back to image build
