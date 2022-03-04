@@ -30,7 +30,7 @@ func (k *K8sClient) Exec(_ context.Context, podID PodID, cName container.Name, n
 
 	exec, err := remotecommand.NewSPDYExecutor(k.restConfig, "POST", req.URL())
 	if err != nil {
-		return fmt.Errorf("failed to establish connection: %v", err)
+		return fmt.Errorf("establishing connection: %v", err)
 	}
 
 	err = exec.Stream(remotecommand.StreamOptions{
@@ -48,7 +48,7 @@ func (k *K8sClient) Exec(_ context.Context, podID PodID, cName container.Name, n
 			// can do here
 			err = errors.New("unknown server error")
 		}
-		return fmt.Errorf("failed to execute command: %v", err)
+		return fmt.Errorf("executing command: %v", err)
 	}
 	return nil
 }
