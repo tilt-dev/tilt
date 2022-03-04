@@ -170,7 +170,7 @@ func TestFallBackToImageDeploy(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	f.assertContainerRestarts(intRange{min: 0, max: 0})
+	f.assertContainerRestarts(0)
 	if f.docker.BuildCount != 1 {
 		t.Errorf("Expected 1 docker build, actual: %d", f.docker.BuildCount)
 	}
@@ -200,7 +200,7 @@ func TestLiveUpdateFallbackMessagingRedirect(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	f.assertContainerRestarts(intRange{min: 0, max: 0})
+	f.assertContainerRestarts(0)
 	if f.docker.BuildCount != 1 {
 		t.Errorf("Expected 1 docker build, actual: %d", f.docker.BuildCount)
 	}
@@ -228,7 +228,7 @@ func TestLiveUpdateFallbackMessagingUnexpectedError(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	f.assertContainerRestarts(intRange{min: 0, max: 0})
+	f.assertContainerRestarts(0)
 	if f.docker.BuildCount != 1 {
 		t.Errorf("Expected 1 docker build, actual: %d", f.docker.BuildCount)
 	}
@@ -273,7 +273,7 @@ func TestLiveUpdateTwice(t *testing.T) {
 	if len(f.docker.ExecCalls) != 2 {
 		t.Errorf("Expected 2 exec in container call, actual: %d", len(f.docker.ExecCalls))
 	}
-	f.assertContainerRestarts(intRange{min: 2, max: 2})
+	f.assertContainerRestarts(2)
 }
 
 // Kill the pod after the first container update,
@@ -317,7 +317,7 @@ func TestLiveUpdateTwiceDeadPod(t *testing.T) {
 	if len(f.docker.ExecCalls) != 2 {
 		t.Errorf("Expected 2 exec in container call, actual: %d", len(f.docker.ExecCalls))
 	}
-	f.assertContainerRestarts(intRange{min: 1, max: 1})
+	f.assertContainerRestarts(1)
 }
 
 func TestIgnoredFiles(t *testing.T) {
@@ -431,7 +431,7 @@ func TestContainerBuildMultiStage(t *testing.T) {
 	// Make sure we did a LiveUpdate (copy files to container, exec in container, restart)
 	assert.Equal(t, 1, f.docker.CopyCount)
 	assert.Equal(t, 1, len(f.docker.ExecCalls))
-	f.assertContainerRestarts(intRange{min: 1, max: 1})
+	f.assertContainerRestarts(1)
 
 	// The BuildComplete action handler expects to get exactly one result
 	_, hasResult0 := result[manifest.ImageTargetAt(0).ID()]
@@ -478,7 +478,7 @@ func TestDockerComposeLiveUpdate(t *testing.T) {
 	assert.Empty(t, f.k8s.Yaml, "expect no k8s YAML for DockerCompose resource")
 	assert.Empty(t, 0, f.k8s.ExecCalls,
 		"Expected no k8s Exec calls, actual: %d", f.k8s.ExecCalls)
-	f.assertContainerRestarts(intRange{min: 1, max: 1})
+	f.assertContainerRestarts(1)
 }
 
 func TestReturnLastUnexpectedError(t *testing.T) {
@@ -830,26 +830,20 @@ func (f *bdFixture) NewPathSet(paths ...string) model.PathSet {
 	return model.NewPathSet(paths, f.Path())
 }
 
-func (f *bdFixture) assertContainerRestarts(ir intRange) {
+func (f *bdFixture) assertContainerRestarts(count int) {
 	// Ensure that MagicTestContainerID was the only container id that saw
 	// restarts, and that it saw the right number of restarts.
-	min := map[string]int{}
-	max := map[string]int{}
-	if ir.min != 0 {
-		min[string(k8s.MagicTestContainerID)] = ir.min
-		max[string(k8s.MagicTestContainerID)] = ir.max
+	expected := map[string]int{}
+	if count != 0 {
+		expected[string(k8s.MagicTestContainerID)] = count
 	}
-	assert.GreaterOrEqual(f.T(), min, f.docker.RestartsByContainer,
-		"checking for expected # of container restarts")
-	assert.LessOrEqual(f.T(), max, f.docker.RestartsByContainer,
+	assert.Equal(f.T(), expected, f.docker.RestartsByContainer,
 		"checking for expected # of container restarts")
 }
 
 // Total number of restarts, regardless of which container.
-func (f *bdFixture) assertTotalContainerRestarts(ir intRange) {
-	assert.GreaterOrEqual(f.T(), len(f.docker.RestartsByContainer), ir.min,
-		"checking for expected # of container restarts")
-	assert.GreaterOrEqual(f.T(), len(f.docker.RestartsByContainer), ir.max,
+func (f *bdFixture) assertTotalContainerRestarts(count int) {
+	assert.Equal(f.T(), len(f.docker.RestartsByContainer), count,
 		"checking for expected # of container restarts")
 }
 
