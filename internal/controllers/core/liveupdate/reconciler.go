@@ -6,19 +6,20 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+
 	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/source"
-
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/docker/distribution/reference"
 
@@ -873,6 +874,16 @@ func (r *Reconciler) ForceApply(
 	return status, nil
 }
 
+// gErrorC provides a channel interface for errgroup.Group
+func gErrorC(g *errgroup.Group) chan error {
+	errorC := make(chan error)
+	go func() {
+		errorC <- g.Wait()
+		close(errorC)
+	}()
+	return errorC
+}
+
 // Like apply, but doesn't write the status to the apiserver.
 func (r *Reconciler) applyInternal(
 	ctx context.Context,
@@ -925,21 +936,19 @@ func (r *Reconciler) applyInternal(
 		}
 	}
 
-	copierContext, cancelCopiers := context.WithCancel(ctx)
-	wg := sync.WaitGroup{}
+	ctx, cancel := context.WithCancel(ctx)
 	results := make(chan *v1alpha1.LiveUpdateStatus)
+	g, ctx := errgroup.WithContext(ctx)
 	for _, cInfo := range containers {
-		go func(cInfo liveupdates.Container) {
-			wg.Add(1)
-			defer wg.Done()
-
+		cInfo := cInfo
+		g.Go(func() error {
 			var failed *v1alpha1.LiveUpdateStateFailed
 
 			// TODO(nick): We should try to distinguish between cases where the tar writer
 			// fails (which is recoverable) vs when the server-side unpacking
 			// fails (which may not be recoverable).
-			archive := build.TarArchiveForPaths(copierContext, toArchive, nil)
-			err = cu.UpdateContainer(copierContext, cInfo, archive,
+			archive := build.TarArchiveForPaths(ctx, toArchive, nil)
+			err = cu.UpdateContainer(ctx, cInfo, archive,
 				build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
 			_ = archive.Close()
 
@@ -960,10 +969,9 @@ func (r *Reconciler) applyInternal(
 				if runFail, ok := build.MaybeRunStepFailure(err); ok {
 					// Keep running updates -- we want all containers to have the same files on them
 					// even if the Runs don't succeed
-					logger.Get(copierContext).Infof("  → Failed to update container %s: run step %q failed with exit code: %d",
+					logger.Get(ctx).Infof("  → Failed to update container %s: run step %q failed with exit code: %d",
 						cInfo.DisplayName(), runFail.Cmd.String(), runFail.ExitCode)
 					cStatus.LastExecError = err.Error()
-
 				} else {
 					// Something went wrong with this update, and it's NOT the user's fault--
 					// likely an infrastructure error. Bail, and fall back to full build.
@@ -973,7 +981,7 @@ func (r *Reconciler) applyInternal(
 					}
 				}
 			} else {
-				logger.Get(copierContext).Infof("  → Container %s updated!", cInfo.DisplayName())
+				logger.Get(ctx).Infof("  → Container %s updated!", cInfo.DisplayName())
 			}
 			results <- &v1alpha1.LiveUpdateStatus{
 				Containers: []v1alpha1.LiveUpdateContainerStatus{
@@ -981,28 +989,23 @@ func (r *Reconciler) applyInternal(
 				},
 				Failed: failed,
 			}
-		}(cInfo)
+			return nil
+		})
 	}
-
-	waitC := make(chan interface{})
-	go func() {
-		wg.Wait()
-		close(waitC)
-	}()
 
 	for {
 		select {
 		case res := <-results:
 			if res.Failed != nil {
-				cancelCopiers()
+				cancel()
 				result.Failed = res.Failed
 			}
 			for _, c := range res.Containers {
 				result.Containers = append(result.Containers, c)
 			}
-		case <-copierContext.Done():
-		case <-waitC:
-			cancelCopiers()
+		case <-gErrorC(g):
+		case <-ctx.Done():
+			cancel()
 			return result
 		}
 	}
