@@ -44,17 +44,17 @@ export function showUpdate(view: Proto.webviewView): boolean {
 
 const GreenSwitch = withStyles({
   switchBase: {
-    color: Color.grayLight,
+    color: Color.gray50,
     "&$checked": {
       color: Color.green,
     },
     "&$checked + $track": {
-      backgroundColor: Color.gray,
+      backgroundColor: Color.gray30,
     },
   },
   checked: {},
   track: {
-    backgroundColor: Color.gray,
+    backgroundColor: Color.gray30,
   },
 })(Switch)
 

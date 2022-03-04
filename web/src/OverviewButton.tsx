@@ -22,11 +22,11 @@ export const OverviewButtonMixin = `
   cursor: pointer;
   transition: color ${AnimDuration.default} ease,
     border-color ${AnimDuration.default} ease;
-  color: ${Color.gray7};
+  color: ${Color.gray70};
 
   &.isEnabled {
-    background: ${Color.gray7};
-    color: ${Color.grayDark};
+    background: ${Color.gray70};
+    color: ${Color.gray20};
     border-color: ${Color.grayDarker};
   }
   &.isEnabled.isRadio {
@@ -36,15 +36,15 @@ export const OverviewButtonMixin = `
   &:disabled {
     opacity: 0.33;
     border: 1px solid ${ColorRGBA(Color.grayLightest, 0.5)};
-    color: ${Color.gray7};
+    color: ${Color.gray70};
   }
 
   & .fillStd {
-    fill: ${Color.gray7};
+    fill: ${Color.gray70};
     transition: fill ${AnimDuration.default} ease;
   }
   &.isEnabled .fillStd {
-    fill: ${Color.grayDark};
+    fill: ${Color.gray20};
   }
 
   &:active,
@@ -55,7 +55,7 @@ export const OverviewButtonMixin = `
   &.isEnabled:active,
   &.isEnabled:focus {
     outline: none;
-    border-color: ${Color.grayDarkest};
+    border-color: ${Color.gray10};
   }
 
   &:hover {

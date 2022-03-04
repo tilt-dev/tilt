@@ -45,7 +45,7 @@ let HelpLink = styled.a`
   transform: color ${AnimDuration.default} ease;
 
   &:hover {
-    color: ${Color.grayLight};
+    color: ${Color.gray50};
   }
 `
 

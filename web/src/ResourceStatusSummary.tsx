@@ -38,7 +38,7 @@ const ResourceGroupStatusSummaryItemRoot = styled.li`
 
   & + & {
     margin-left: ${SizeUnit(0.25)};
-    border-left: 1px solid ${Color.grayLighter};
+    border-left: 1px solid ${Color.gray40};
     padding-left: ${SizeUnit(0.25)};
   }
   &.is-highlightError {
@@ -54,10 +54,10 @@ const ResourceGroupStatusSummaryItemRoot = styled.li`
     }
   }
   &.is-highlightPending {
-    color: ${Color.gray7};
-    stroke: ${Color.gray7};
+    color: ${Color.gray70};
+    stroke: ${Color.gray70};
     .fillStd {
-      fill: ${Color.gray7};
+      fill: ${Color.gray70};
     }
   }
   &.is-highlightHealthy {
@@ -80,7 +80,7 @@ export const ResourceStatusSummaryRoot = styled.aside`
   color: ${Color.grayLightest};
 
   .fillStd {
-    fill: ${Color.grayLighter};
+    fill: ${Color.gray40};
   }
 
   & + & {
@@ -93,7 +93,7 @@ export const PendingIcon = styled(PendingSvg)`
 
 const DisabledIcon = styled(DisabledSvg)`
   .fillStd {
-    fill: ${Color.gray6};
+    fill: ${Color.gray60};
   }
 `
 

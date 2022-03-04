@@ -17,7 +17,7 @@ let OverviewTablePaneStyle = styled.div`
   flex-direction: column;
   width: 100%;
   height: 100vh;
-  background-color: ${Color.grayDark};
+  background-color: ${Color.gray20};
 `
 
 export default function OverviewTablePane(props: OverviewTablePaneProps) {

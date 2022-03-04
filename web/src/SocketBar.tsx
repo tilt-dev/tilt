@@ -29,14 +29,13 @@ let SocketBarRoot = styled.div`
 `
 
 let Bar = styled.div`
-  color: ${Color.grayDarkest};
+  color: ${Color.gray10};
   background-color: ${Color.yellow};
   margin: auto;
   margin-top: 64px;
   padding: 8px 16px;
   border-radius: 3px;
-  box-shadow: -5px 5px 0 0
-    ${ColorRGBA(Color.grayDarkest, ColorAlpha.almostOpaque)};
+  box-shadow: -5px 5px 0 0 ${ColorRGBA(Color.gray10, ColorAlpha.almostOpaque)};
   text-align: center;
   animation: ${pulse} 3s ease infinite;
 `

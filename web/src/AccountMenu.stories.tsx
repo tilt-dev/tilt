@@ -7,7 +7,7 @@ let Container = styled.div`
   display: flex;
   flex-direction: column;
   background: #ffffff;
-  color: ${Color.grayDarkest};
+  color: ${Color.gray10};
   box-shadow: 3px 3px 4px rgba(0, 0, 0, 0.5);
   border-radius: 8px;
   padding: 16px 20px;

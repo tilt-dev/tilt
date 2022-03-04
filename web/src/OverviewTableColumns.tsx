@@ -76,7 +76,7 @@ export type RowValues = {
 export const SelectionCheckbox = styled(InstrumentedCheckbox)`
   &.MuiCheckbox-root,
   &.Mui-checked {
-    color: ${Color.gray6};
+    color: ${Color.gray60};
   }
 
   &.Mui-disabled {
@@ -86,7 +86,7 @@ export const SelectionCheckbox = styled(InstrumentedCheckbox)`
 `
 
 const TableHeaderStarIcon = styled(StarSvg)`
-  fill: ${Color.gray7};
+  fill: ${Color.gray70};
   height: 13px;
   margin-left: 16px; /* Align the header icon with the column icon */
   width: 13px;
@@ -112,7 +112,7 @@ export const Name = styled.button`
 
   &.isDisabled {
     ${disabledResourceStyleMixin};
-    color: ${Color.gray6};
+    color: ${Color.gray60};
   }
 `
 
@@ -128,7 +128,7 @@ const DetailText = styled.div`
 `
 
 const StyledLinkSvg = styled(LinkSvg)`
-  fill: ${Color.grayLight};
+  fill: ${Color.gray50};
   margin-right: ${SizeUnit(0.2)};
 `
 
@@ -138,16 +138,16 @@ const PodId = styled.div`
 `
 const PodIdInput = styled.input`
   background-color: transparent;
-  color: ${Color.gray6};
+  color: ${Color.gray60};
   font-family: inherit;
   font-size: inherit;
-  border: 1px solid ${Color.grayDarkest};
+  border: 1px solid ${Color.gray10};
   border-radius: 2px;
   padding: ${SizeUnit(0.1)} ${SizeUnit(0.2)};
   width: 100px;
 
   &::selection {
-    background-color: ${Color.gray};
+    background-color: ${Color.gray30};
   }
 `
 const PodIdCopy = styled(InstrumentedButton)`
@@ -156,7 +156,7 @@ const PodIdCopy = styled(InstrumentedButton)`
   padding: ${SizeUnit(0.25)};
 
   svg {
-    fill: ${Color.gray6};
+    fill: ${Color.gray60};
   }
 `
 const CustomActionButton = styled(ApiButton)`

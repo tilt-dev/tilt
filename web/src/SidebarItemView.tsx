@@ -68,19 +68,19 @@ const sidebarItemBoxMixin = `
 
 export let SidebarItemBox = styled.div`
   ${sidebarItemBoxMixin};
-  background-color: ${Color.gray};
-  border: 1px solid ${Color.grayLighter};
+  background-color: ${Color.gray30};
+  border: 1px solid ${Color.gray40};
   color: ${Color.white};
   font-family: ${Font.monospace};
   position: relative; /* Anchor the .isBuilding::after psuedo-element */
 
   &:hover {
-    background-color: ${ColorRGBA(Color.gray, ColorAlpha.translucent)};
+    background-color: ${ColorRGBA(Color.gray30, ColorAlpha.translucent)};
   }
 
   &.isSelected {
     background-color: ${Color.white};
-    color: ${Color.gray};
+    color: ${Color.gray30};
   }
 
   &.isBuilding::after {
@@ -92,8 +92,8 @@ export let SidebarItemBox = styled.div`
     bottom: 0;
     background: repeating-linear-gradient(
       225deg,
-      ${ColorRGBA(Color.grayLight, ColorAlpha.translucent)},
-      ${ColorRGBA(Color.grayLight, ColorAlpha.translucent)} 1px,
+      ${ColorRGBA(Color.gray50, ColorAlpha.translucent)},
+      ${ColorRGBA(Color.gray50, ColorAlpha.translucent)} 1px,
       ${ColorRGBA(Color.black, 0)} 1px,
       ${ColorRGBA(Color.black, 0)} 6px
     );
@@ -105,7 +105,7 @@ export let SidebarItemBox = styled.div`
 
 const DisabledSidebarItemBox = styled.div`
   ${sidebarItemBoxMixin};
-  color: ${Color.grayLight};
+  color: ${Color.gray50};
   font-family: ${Font.sansSerif};
   font-style: italic;
   padding: ${SizeUnit(1 / 8)} ${SizeUnit(1 / 4)};
@@ -115,8 +115,8 @@ const DisabledSidebarItemBox = styled.div`
   }
 
   &.isSelected {
-    background-color: ${Color.gray7};
-    color: ${Color.grayDarkest};
+    background-color: ${Color.gray70};
+    color: ${Color.gray10};
     transition: color ${AnimDuration.default} linear,
       font-weight ${AnimDuration.default} linear;
     font-weight: normal;
@@ -139,7 +139,7 @@ let SidebarItemRuntimeBox = styled.div`
   flex-grow: 1;
   align-items: stretch;
   height: ${SizeUnit(1)};
-  border-bottom: 1px solid ${Color.grayLighter};
+  border-bottom: 1px solid ${Color.gray40};
   box-sizing: border-box;
   transition: border-color ${AnimDuration.default} linear;
 

@@ -107,7 +107,7 @@ const OverviewTableResourceNameFilter = styled(ResourceNameFilter)`
 `
 
 export const ResourceResultCount = styled.p`
-  color: ${Color.grayLight};
+  color: ${Color.gray50};
   font-size: ${FontSize.small};
   margin-top: ${SizeUnit(0.5)};
   margin-left: ${SizeUnit(0.5)};
@@ -136,7 +136,7 @@ const OverviewTableMenu = styled.section`
 const ResourceTable = styled.table`
   margin-top: ${SizeUnit(0.5)};
   border-collapse: collapse;
-  border: 1px ${Color.grayLighter} solid;
+  border: 1px ${Color.gray40} solid;
   border-radius: 0 ${SizeUnit(1 / 4)};
   width: 100%;
 
@@ -160,18 +160,18 @@ const ResourceTableHead = styled.thead`
   background-color: ${Color.grayDarker};
 `
 export const ResourceTableRow = styled.tr`
-  border-bottom: 1px solid ${Color.grayLighter};
+  border-bottom: 1px solid ${Color.gray40};
   font-family: ${Font.monospace};
   font-size: ${FontSize.small};
   font-style: none;
-  color: ${Color.gray6};
+  color: ${Color.gray60};
 
   &.isDisabled {
     ${disabledResourceStyleMixin}
   }
 
   &.isSelected {
-    background-color: ${Color.gray};
+    background-color: ${Color.gray30};
   }
 
   /* For visual consistency on rows */
@@ -183,7 +183,7 @@ export const ResourceTableData = styled.td`
   box-sizing: border-box;
 
   &.isSorted {
-    background-color: ${Color.gray};
+    background-color: ${Color.gray30};
   }
 
   &.alignRight {
@@ -192,7 +192,7 @@ export const ResourceTableData = styled.td`
 `
 
 export const ResourceTableHeader = styled(ResourceTableData)`
-  color: ${Color.gray7};
+  color: ${Color.gray70};
   font-size: ${FontSize.small};
   padding-top: ${SizeUnit(0.5)};
   padding-bottom: ${SizeUnit(0.5)};
@@ -200,7 +200,7 @@ export const ResourceTableHeader = styled(ResourceTableData)`
   white-space: nowrap;
 
   &.isSorted {
-    background-color: ${Color.grayDark};
+    background-color: ${Color.gray20};
   }
 `
 
@@ -217,7 +217,7 @@ export const ResourceTableHeaderSortTriangle = styled.div`
   height: 0;
   border-left: 5px solid transparent;
   border-right: 5px solid transparent;
-  border-bottom: 6px solid ${Color.grayLight};
+  border-bottom: 6px solid ${Color.gray50};
 
   &.is-sorted-asc {
     border-bottom: 6px solid ${Color.blue};

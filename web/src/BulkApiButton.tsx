@@ -50,9 +50,9 @@ type BulkApiButtonElementProps = ButtonProps & {
 
 // Styles
 const BulkButtonElementRoot = styled(InstrumentedButton)`
-  border: 1px solid ${Color.grayLight};
+  border: 1px solid ${Color.gray50};
   border-radius: 4px;
-  background-color: ${Color.grayLighter};
+  background-color: ${Color.gray40};
   color: ${Color.white};
   font-family: ${Font.monospace};
   font-size: ${FontSize.small};
@@ -64,13 +64,13 @@ const BulkButtonElementRoot = styled(InstrumentedButton)`
   &:hover,
   &:active,
   &:focus {
-    background-color: ${Color.grayLighter};
+    background-color: ${Color.gray40};
     color: ${Color.blue};
   }
 
   &.Mui-disabled {
-    border-color: ${Color.grayLight};
-    color: ${Color.gray6};
+    border-color: ${Color.gray50};
+    color: ${Color.gray60};
   }
 
   /* Use shared styles with ApiButton */
