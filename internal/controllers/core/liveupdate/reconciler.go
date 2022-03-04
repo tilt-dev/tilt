@@ -986,7 +986,7 @@ func (r *Reconciler) applyInternal(
 
 	waitC := make(chan interface{})
 	go func() {
-		wg.Done()
+		wg.Wait()
 		close(waitC)
 	}()
 
