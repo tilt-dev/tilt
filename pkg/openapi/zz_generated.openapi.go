@@ -1816,12 +1816,18 @@ func schema_pkg_apis_core_v1alpha1_DockerComposeServiceSpec(ref common.Reference
 							},
 						},
 					},
+					"disableSource": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Specifies how to disable this.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource"),
+						},
+					},
 				},
 				Required: []string{"service", "project"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeProject"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeProject"},
 	}
 }
 
@@ -1831,8 +1837,18 @@ func schema_pkg_apis_core_v1alpha1_DockerComposeServiceStatus(ref common.Referen
 			SchemaProps: spec.SchemaProps{
 				Description: "DockerComposeServiceStatus defines the observed state of DockerComposeService",
 				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"disableStatus": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Details about whether/why this is disabled.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableStatus"),
+						},
+					},
+				},
 			},
 		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableStatus"},
 	}
 }
 

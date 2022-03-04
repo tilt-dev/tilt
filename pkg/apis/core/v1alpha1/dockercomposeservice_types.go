@@ -65,11 +65,20 @@ type DockerComposeServiceSpec struct {
 
 	// The image maps that this deploy depends on.
 	ImageMaps []string `json:"imageMaps,omitempty" protobuf:"bytes,3,rep,name=imageMaps"`
+
+	// Specifies how to disable this.
+	//
+	// +optional
+	DisableSource *DisableSource `json:"disableSource,omitempty" protobuf:"bytes,4,opt,name=disableSource"`
 }
 
 var _ resource.Object = &DockerComposeService{}
 var _ resourcestrategy.Validater = &DockerComposeService{}
 var _ resourcerest.ShortNamesProvider = &DockerComposeService{}
+
+func (in *DockerComposeService) GetSpec() interface{} {
+	return in.Spec
+}
 
 func (in *DockerComposeService) GetObjectMeta() *metav1.ObjectMeta {
 	return &in.ObjectMeta
@@ -116,6 +125,9 @@ func (in *DockerComposeServiceList) GetListMeta() *metav1.ListMeta {
 
 // DockerComposeServiceStatus defines the observed state of DockerComposeService
 type DockerComposeServiceStatus struct {
+	// Details about whether/why this is disabled.
+	// +optional
+	DisableStatus *DisableStatus `json:"disableStatus,omitempty" protobuf:"bytes,1,opt,name=disableStatus"`
 }
 
 // DockerComposeService implements ObjectWithStatusSubResource interface.
