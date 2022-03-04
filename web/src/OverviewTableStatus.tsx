@@ -6,38 +6,26 @@ import { ReactComponent as NotAllowedSvg } from "./assets/svg/not-allowed.svg"
 import { ReactComponent as PendingSvg } from "./assets/svg/pending.svg"
 import { ReactComponent as WarningSvg } from "./assets/svg/warning.svg"
 import { Hold } from "./Hold"
-import { useResourceNav } from "./ResourceNav"
 import { disabledResourceStyleMixin } from "./ResourceStatus"
 import { PendingBuildDescription } from "./status"
-import {
-  Color,
-  FontSize,
-  Glow,
-  mixinResetButtonStyle,
-  SizeUnit,
-  spin,
-} from "./style-helpers"
+import { Color, FontSize, Glow, SizeUnit, spin } from "./style-helpers"
 import { formatBuildDuration } from "./time"
 import Tooltip from "./Tooltip"
 import { ResourceStatus } from "./types"
 
 const StatusMsg = styled.span``
-const StyledOverviewTableStatus = styled.button`
-  ${mixinResetButtonStyle};
+const StyledOverviewTableStatus = styled.div`
   color: inherit;
   display: flex;
   align-items: center;
   font-size: ${FontSize.small};
+  line-height: ${FontSize.small};
   text-align: left;
 
   & + & {
-    margin-top: ${SizeUnit(0.15)};
+    margin-top: -8px;
   }
 
-  &:hover ${StatusMsg} {
-    text-decoration: underline;
-    text-underline-position: under;
-  }
   &.is-healthy {
     svg {
       fill: ${Color.green};
@@ -159,15 +147,10 @@ export default function OverviewTableStatus(props: OverviewTableStatusProps) {
       msg = ""
   }
 
-  let nav = useResourceNav()
-
   if (!msg) return null
 
   let content = (
-    <StyledOverviewTableStatus
-      className={classes}
-      onClick={() => void nav.openResource(resourceName)}
-    >
+    <StyledOverviewTableStatus className={classes}>
       <StatusIcon>{icon}</StatusIcon>
       <StatusMsg>{msg}</StatusMsg>
     </StyledOverviewTableStatus>

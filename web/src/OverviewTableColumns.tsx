@@ -88,7 +88,6 @@ export const SelectionCheckbox = styled(InstrumentedCheckbox)`
 const TableHeaderStarIcon = styled(StarSvg)`
   fill: ${Color.gray70};
   height: 13px;
-  margin-left: 16px; /* Align the header icon with the column icon */
   width: 13px;
 `
 
@@ -290,7 +289,6 @@ export function ResourceSelectionHeader({
       indeterminate={indeterminate}
       onChange={onChange}
       size="small"
-      style={{ width: column.width, marginLeft: "5px" }}
     />
   )
 }
@@ -403,6 +401,14 @@ export function TableNameColumn({ row }: CellProps<RowValues>) {
   )
 }
 
+let TableStatusColumnRoot = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  justify-content: space-around;
+  min-height: 4em;
+`
+
 export function TableStatusColumn({ row }: CellProps<RowValues>) {
   const status = row.original.statusLine
   const runtimeStatus = (
@@ -414,11 +420,11 @@ export function TableStatusColumn({ row }: CellProps<RowValues>) {
 
   // If a resource is disabled, only one status needs to be displayed
   if (rowIsDisabled(row)) {
-    return runtimeStatus
+    return <TableStatusColumnRoot>{runtimeStatus}</TableStatusColumnRoot>
   }
 
   return (
-    <>
+    <TableStatusColumnRoot>
       <OverviewTableStatus
         status={status.buildStatus}
         lastBuildDur={status.lastBuildDur}
@@ -427,7 +433,7 @@ export function TableStatusColumn({ row }: CellProps<RowValues>) {
         hold={status.hold}
       />
       {runtimeStatus}
-    </>
+    </TableStatusColumnRoot>
   )
 }
 
@@ -613,7 +619,7 @@ const RESOURCE_SELECTION_COLUMN: Column<RowValues> = {
   Header: (props) => <ResourceSelectionHeader {...props} />,
   id: "selection",
   disableSortBy: true,
-  width: "10px",
+  width: "70px",
   Cell: TableSelectionColumn,
 }
 
@@ -628,43 +634,43 @@ const DEFAULT_COLUMNS: Column<RowValues>[] = [
     Header: () => <TableHeaderStarIcon title="Starred" />,
     id: "starred",
     disableSortBy: true,
-    width: "10px",
+    width: "40px",
     Cell: TableStarColumn,
   },
   {
     Header: "Updated",
-    width: "25px",
     accessor: "lastDeployTime",
+    width: "100px",
     Cell: TableUpdateColumn,
   },
   {
     Header: "Trigger",
     accessor: "trigger",
     disableSortBy: true,
-    width: "20px",
     Cell: TableBuildButtonColumn,
+    width: "80px",
   },
   {
     Header: "Resource Name",
-    width: "280px",
     accessor: "name",
     Cell: TableNameColumn,
+    width: "400px",
   },
   {
     Header: "Type",
     accessor: "resourceTypeLabel",
-    width: "150px",
+    width: "auto",
   },
   {
     Header: "Status",
     accessor: (row) => statusSortKey(row),
-    width: "200px",
-    Cell: TableStatusColumn,
+    Cell: TablePodIDColumn,
+    width: "auto",
   },
   {
     Header: "Pod ID",
     accessor: "podId",
-    width: "50px",
+    width: "auto",
     Cell: TablePodIDColumn,
   },
   {
@@ -672,6 +678,7 @@ const DEFAULT_COLUMNS: Column<RowValues>[] = [
     id: "widgets",
     accessor: (row) => row.buttons.default.length,
     Cell: TableWidgetsColumn,
+    width: "auto",
   },
   {
     Header: "Endpoints",
@@ -679,12 +686,13 @@ const DEFAULT_COLUMNS: Column<RowValues>[] = [
     accessor: (row) => row.endpoints.length,
     sortType: "basic",
     Cell: TableEndpointColumn,
+    width: "auto",
   },
   {
-    Header: "Trigger Mode",
+    Header: "Mode",
     accessor: "triggerMode",
-    width: "70px",
     Cell: TableTriggerModeColumn,
+    width: "auto",
   },
 ]
 

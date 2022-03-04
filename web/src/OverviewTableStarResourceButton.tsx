@@ -4,21 +4,20 @@ import { Tags } from "./analytics"
 import { ReactComponent as StarSvg } from "./assets/svg/star.svg"
 import { InstrumentedButton } from "./instrumentedComponents"
 import { StarredResourcesContext } from "./StarredResourcesContext"
-import {
-  AnimDuration,
-  Color,
-  mixinResetButtonStyle,
-  SizeUnit,
-} from "./style-helpers"
+import { AnimDuration, Color, mixinResetButtonStyle } from "./style-helpers"
 
 export const StyledTableStarResourceButton = styled(InstrumentedButton)`
   ${mixinResetButtonStyle};
+  line-height: 16px;
+
+  & > .MuiButton-label {
+    display: inline-block;
+  }
 `
 
 let StyledStarSvg = styled(StarSvg)`
-  width: ${SizeUnit(0.4)};
-  height: ${SizeUnit(0.4)};
-  padding: ${SizeUnit(0.5)};
+  width: 13px;
+  height: 13px;
   transition: transform ${AnimDuration.short} ease,
     opacity ${AnimDuration.short} ease;
 
