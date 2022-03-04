@@ -15,11 +15,11 @@ import (
 const TaskKillExitCode = 137
 
 func WrapCodeExitError(err error, cID container.ID, cmd model.Cmd) error {
-	exitErr, isExitErr := err.(exec.CodeExitError)
-	if isExitErr {
+	var exitCodeErr exec.CodeExitError
+	if errors.As(err, &exitCodeErr) {
 		return RunStepFailure{
 			Cmd:      cmd,
-			ExitCode: exitErr.ExitStatus(),
+			ExitCode: exitCodeErr.ExitStatus(),
 		}
 	}
 	return errors.Wrapf(err, "executing %v on container %s", cmd, cID.ShortStr())
