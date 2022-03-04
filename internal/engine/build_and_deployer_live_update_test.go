@@ -32,6 +32,17 @@ var userFailureErrExec = exec.CodeExitError{
 	Code: 123,
 }
 
+// intRange is used for cases where results are non-deterministic
+type intRange struct {
+	min int
+	max int
+}
+
+func (ir *intRange) AssertIn(t assert.TestingT, i int, msgAndArgs ...interface{}) {
+	assert.GreaterOrEqual(t, i, ir.min, msgAndArgs...)
+	assert.LessOrEqual(t, i, ir.max, msgAndArgs...)
+}
+
 type testCase struct {
 	manifest model.Manifest
 
@@ -49,11 +60,11 @@ type testCase struct {
 	expectErrorContains string
 
 	// Docker actions
-	expectDockerBuildCount   int
-	expectDockerPushCount    int
-	expectDockerCopyCount    int
-	expectDockerExecCount    int
-	expectDockerRestartCount int
+	expectDockerBuildRange   intRange
+	expectDockerPushRange    intRange
+	expectDockerCopyRange    intRange
+	expectDockerExecRange    intRange
+	expectDockerRestartRange intRange
 
 	// k8s/deploy actions
 	expectK8sExecCount int
@@ -108,14 +119,14 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, tCase.expectDockerBuildCount, f.docker.BuildCount, "docker build")
-	assert.Equal(t, tCase.expectDockerPushCount, f.docker.PushCount, "docker push")
-	assert.Equal(t, tCase.expectDockerCopyCount, f.docker.CopyCount, "docker copy")
-	assert.Equal(t, tCase.expectDockerExecCount, len(f.docker.ExecCalls), "docker exec")
+	tCase.expectDockerBuildRange.AssertIn(t, f.docker.BuildCount, f.docker.BuildCount, "docker build")
+	tCase.expectDockerPushRange.AssertIn(t, f.docker.PushCount, f.docker.PushCount, "docker push")
+	tCase.expectDockerCopyRange.AssertIn(t, f.docker.CopyCount, f.docker.CopyCount, "docker copy")
+	tCase.expectDockerExecRange.AssertIn(t, len(f.docker.ExecCalls), len(f.docker.ExecCalls), "docker exec")
 	if len(tCase.runningContainersByTarget) > 0 {
-		f.assertTotalContainerRestarts(tCase.expectDockerRestartCount)
+		f.assertTotalContainerRestarts(tCase.expectDockerRestartRange)
 	} else {
-		f.assertContainerRestarts(tCase.expectDockerRestartCount)
+		f.assertContainerRestarts(tCase.expectDockerRestartRange)
 	}
 
 	assert.Equal(t, tCase.expectK8sExecCount, len(f.k8s.ExecCalls), "# k8s exec calls")
@@ -188,11 +199,11 @@ func TestLiveUpdateDockerBuildLocalContainer(t *testing.T) {
 	tCase := testCase{
 		manifest:                 m,
 		changedFiles:             []string{"a.txt"},
-		expectDockerBuildCount:   0,
-		expectDockerPushCount:    0,
-		expectDockerCopyCount:    1,
-		expectDockerExecCount:    1,
-		expectDockerRestartCount: 1,
+		expectDockerBuildRange:   intRange{min: 0, max: 0},
+		expectDockerPushRange:    intRange{min: 0, max: 0},
+		expectDockerCopyRange:    intRange{min: 1, max: 1},
+		expectDockerExecRange:    intRange{min: 1, max: 1},
+		expectDockerRestartRange: intRange{min: 1, max: 1},
 	}
 	runTestCase(t, f, tCase)
 }
@@ -210,13 +221,13 @@ func TestLiveUpdateDockerBuildLocalContainerSameImgMultipleContainers(t *testing
 		manifest:                  m,
 		runningContainersByTarget: map[model.TargetID][]container.ID{m.ImageTargetAt(0).ID(): cIDs},
 		changedFiles:              []string{"a.txt"},
-		expectDockerBuildCount:    0,
-		expectDockerPushCount:     0,
+		expectDockerBuildRange:    intRange{min: 0, max: 0},
+		expectDockerPushRange:     intRange{min: 0, max: 0},
 
 		// one of each operation per container
-		expectDockerCopyCount:    3,
-		expectDockerExecCount:    3,
-		expectDockerRestartCount: 3,
+		expectDockerCopyRange:    intRange{min: 3, max: 3},
+		expectDockerExecRange:    intRange{min: 3, max: 3},
+		expectDockerRestartRange: intRange{min: 3, max: 3},
 	}
 	runTestCase(t, f, tCase)
 }
@@ -236,8 +247,8 @@ func TestLiveUpdateDockerBuildExecSameImgMultipleContainers(t *testing.T) {
 			Build(),
 		runningContainersByTarget: map[model.TargetID][]container.ID{iTarg.ID(): cIDs},
 		changedFiles:              []string{"a.txt"},
-		expectDockerBuildCount:    0,
-		expectDockerPushCount:     0,
+		expectDockerBuildRange:    intRange{min: 0, max: 0},
+		expectDockerPushRange:     intRange{min: 0, max: 0},
 
 		// 1 per container (tar archive) x 3 containers
 		expectK8sExecCount: 3,
@@ -261,13 +272,13 @@ func TestLiveUpdateDockerBuildLocalContainerDiffImgMultipleContainers(t *testing
 			sidecarTarg.ID(): []container.ID{"c2"},
 		},
 		changedFiles:           []string{"a.txt"},
-		expectDockerBuildCount: 0,
-		expectDockerPushCount:  0,
+		expectDockerBuildRange: intRange{min: 0, max: 0},
+		expectDockerPushRange:  intRange{min: 0, max: 0},
 
 		// one of each operation per container
-		expectDockerCopyCount:    2,
-		expectDockerExecCount:    2,
-		expectDockerRestartCount: 2,
+		expectDockerCopyRange:    intRange{min: 2, max: 2},
+		expectDockerExecRange:    intRange{min: 2, max: 2},
+		expectDockerRestartRange: intRange{min: 2, max: 2},
 	}
 	runTestCase(t, f, tCase)
 }
@@ -293,8 +304,8 @@ func TestLiveUpdateDockerBuildExecDiffImgMultipleContainers(t *testing.T) {
 			sidecarTarg.ID(): []container.ID{"c2"},
 		},
 		changedFiles:           []string{"a.txt"},
-		expectDockerBuildCount: 0,
-		expectDockerPushCount:  0,
+		expectDockerBuildRange: intRange{min: 0, max: 0},
+		expectDockerPushRange:  intRange{min: 0, max: 0},
 
 		// two (tar archive + run step) per container
 		expectK8sExecCount: 4,
@@ -341,8 +352,8 @@ func TestLiveUpdateDiffImgMultipleContainersOnlySomeSyncsMatch(t *testing.T) {
 		},
 		changedFiles:           []string{"sidecar/a.txt"},          // nothing matching Sancho's syncs
 		expectUpdatedTargets:   []model.TargetID{sidecarTarg.ID()}, // we should only update the Sidecar target
-		expectDockerBuildCount: 0,
-		expectDockerPushCount:  0,
+		expectDockerBuildRange: intRange{min: 0, max: 0},
+		expectDockerPushRange:  intRange{min: 0, max: 0},
 
 		// two (tar archive + run step) per container
 		// only the sidecar should be updated, so expect 2 calls
@@ -382,8 +393,8 @@ func TestLiveUpdateDiffImgMultipleContainersSameContextOnlyOneLiveUpdate(t *test
 			sidecarTarg.ID(): []container.ID{"c2"},
 		},
 		changedFiles:           []string{"sancho/a.txt"},
-		expectDockerBuildCount: 2,
-		expectDockerPushCount:  2,
+		expectDockerBuildRange: intRange{min: 2, max: 2},
+		expectDockerPushRange:  intRange{min: 2, max: 2},
 		expectK8sDeploy:        true,
 	}
 	runTestCase(t, f, tCase)
@@ -418,8 +429,8 @@ func TestLiveUpdateDiffImgMultipleContainersFallBackIfFilesDoesntMatchAnySyncs(t
 		changedFiles: []string{"sidecar/matches_sync.txt", "./doesnt_match.txt"},
 
 		// expect to fall back to image build b/c one file matches NO syncs
-		expectDockerBuildCount: 2,
-		expectDockerPushCount:  2,
+		expectDockerBuildRange: intRange{min: 2, max: 2},
+		expectDockerPushRange:  intRange{min: 2, max: 2},
 		expectK8sDeploy:        true,
 
 		// no container update, so expect no k8s exec calls
@@ -451,12 +462,12 @@ func TestLiveUpdateDockerContainerUserRunFailureDoesntFallBack(t *testing.T) {
 
 		// called copy and exec before hitting error
 		// (so, did not restart)
-		expectDockerCopyCount:    1,
-		expectDockerExecCount:    1,
-		expectDockerRestartCount: 0,
+		expectDockerCopyRange:    intRange{min: 1, max: 1},
+		expectDockerExecRange:    intRange{min: 1, max: 1},
+		expectDockerRestartRange: intRange{min: 0, max: 0},
 
 		// DO NOT fall back to image build
-		expectDockerBuildCount: 0,
+		expectDockerBuildRange: intRange{min: 0, max: 0},
 		expectK8sDeploy:        false,
 	}
 	runTestCase(t, f, tCase)
@@ -485,7 +496,7 @@ func TestLiveUpdateExecUserRunFailureDoesntFallBack(t *testing.T) {
 		expectK8sExecCount: 2,
 
 		// DO NOT fall back to image build
-		expectDockerBuildCount: 0,
+		expectDockerBuildRange: intRange{min: 0, max: 0},
 		expectK8sDeploy:        false,
 	}
 	runTestCase(t, f, tCase)
@@ -509,11 +520,11 @@ func TestLiveUpdateMultipleContainersFallsBackForFailure(t *testing.T) {
 		changedFiles:              []string{"a.txt"},
 
 		// attempted container update; called copy and exec before hitting error
-		expectDockerCopyCount: 1,
-		expectDockerExecCount: 1,
+		expectDockerCopyRange: intRange{min: 1, max: 3},
+		expectDockerExecRange: intRange{min: 1, max: 3},
 
 		// fell back to image build
-		expectDockerBuildCount: 1,
+		expectDockerBuildRange: intRange{min: 1, max: 1},
 		expectK8sDeploy:        true,
 	}
 	runTestCase(t, f, tCase)
@@ -540,12 +551,12 @@ func TestLiveUpdateMultipleContainersFallsBackForFailureAfterSuccess(t *testing.
 
 		// one successful update (copy, exec, restart);
 		// one truncated update (copy, exec) before hitting error
-		expectDockerCopyCount:    2,
-		expectDockerExecCount:    2,
-		expectDockerRestartCount: 1,
+		expectDockerCopyRange:    intRange{min: 1, max: 3},
+		expectDockerExecRange:    intRange{min: 1, max: 3},
+		expectDockerRestartRange: intRange{min: 1, max: 1},
 
 		// fell back to image build
-		expectDockerBuildCount: 1,
+		expectDockerBuildRange: intRange{min: 1, max: 1},
 		expectK8sDeploy:        true,
 	}
 	runTestCase(t, f, tCase)
@@ -577,12 +588,12 @@ func TestLiveUpdateMultipleContainersUpdatesAllForUserRunFailuresAndDoesntFallBa
 		// attempted update for each container;
 		// for each, called copy and exec before hitting error
 		// (so did not call restart)
-		expectDockerCopyCount:    3,
-		expectDockerExecCount:    3,
-		expectDockerRestartCount: 0,
+		expectDockerCopyRange:    intRange{min: 3, max: 3},
+		expectDockerExecRange:    intRange{min: 3, max: 3},
+		expectDockerRestartRange: intRange{min: 0, max: 0},
 
 		// DO NOT fall back to image build
-		expectDockerBuildCount: 0,
+		expectDockerBuildRange: intRange{min: 0, max: 0},
 		expectK8sDeploy:        false,
 	}
 	runTestCase(t, f, tCase)
@@ -609,12 +620,12 @@ func TestLiveUpdateMultipleContainersFallsBackForSomeUserRunFailuresSomeSuccess(
 		// one truncated update (copy and exec before hitting error)
 		// one successful update (copy, exec, restart)
 		// fall back before attempting third update
-		expectDockerCopyCount:    2,
-		expectDockerExecCount:    2,
-		expectDockerRestartCount: 1,
+		expectDockerCopyRange:    intRange{min: 2, max: 2},
+		expectDockerExecRange:    intRange{min: 2, max: 2},
+		expectDockerRestartRange: intRange{min: 1, max: 1},
 
 		// fell back to image build
-		expectDockerBuildCount: 1,
+		expectDockerBuildRange: intRange{min: 1, max: 1},
 		expectK8sDeploy:        true,
 	}
 	runTestCase(t, f, tCase)
@@ -642,12 +653,12 @@ func TestLiveUpdateMultipleContainersFallsBackForSomeUserRunFailuresSomeNonUserF
 
 		// two truncated updates (copy and exec before hitting error)
 		// fall back before attempting third update
-		expectDockerCopyCount:    2,
-		expectDockerExecCount:    2,
-		expectDockerRestartCount: 0,
+		expectDockerCopyRange:    intRange{min: 3, max: 3},
+		expectDockerExecRange:    intRange{min: 3, max: 3},
+		expectDockerRestartRange: intRange{min: 0, max: 0},
 
 		// fell back to image build
-		expectDockerBuildCount: 1,
+		expectDockerBuildRange: intRange{min: 1, max: 1},
 		expectK8sDeploy:        true,
 	}
 	runTestCase(t, f, tCase)
@@ -665,11 +676,11 @@ func TestLiveUpdateCustomBuildLocalContainer(t *testing.T) {
 			WithLiveUpdate(lu).
 			Build(),
 		changedFiles:             []string{"app/a.txt"},
-		expectDockerBuildCount:   0,
-		expectDockerPushCount:    0,
-		expectDockerCopyCount:    1,
-		expectDockerExecCount:    1,
-		expectDockerRestartCount: 1,
+		expectDockerBuildRange:   intRange{min: 0, max: 0},
+		expectDockerPushRange:    intRange{min: 0, max: 0},
+		expectDockerCopyRange:    intRange{min: 1, max: 1},
+		expectDockerExecRange:    intRange{min: 1, max: 1},
+		expectDockerRestartRange: intRange{min: 1, max: 1},
 	}
 	runTestCase(t, f, tCase)
 }
@@ -686,11 +697,11 @@ func TestLiveUpdateHotReloadLocalContainer(t *testing.T) {
 			WithLiveUpdate(lu).
 			Build(),
 		changedFiles:             []string{"a.txt"},
-		expectDockerBuildCount:   0,
-		expectDockerPushCount:    0,
-		expectDockerCopyCount:    1,
-		expectDockerExecCount:    1,
-		expectDockerRestartCount: 0,
+		expectDockerBuildRange:   intRange{min: 0, max: 0},
+		expectDockerPushRange:    intRange{min: 0, max: 0},
+		expectDockerCopyRange:    intRange{min: 1, max: 1},
+		expectDockerExecRange:    intRange{min: 1, max: 1},
+		expectDockerRestartRange: intRange{min: 0, max: 0},
 	}
 	runTestCase(t, f, tCase)
 }
@@ -712,11 +723,11 @@ func TestLiveUpdateRunTriggerLocalContainer(t *testing.T) {
 			WithLiveUpdate(lu).
 			Build(),
 		changedFiles:             []string{"a.txt"},
-		expectDockerBuildCount:   0,
-		expectDockerPushCount:    0,
-		expectDockerCopyCount:    1,
-		expectDockerExecCount:    2, // one run's triggers don't match -- should only exec the other two.
-		expectDockerRestartCount: 1,
+		expectDockerBuildRange:   intRange{min: 0, max: 0},
+		expectDockerPushRange:    intRange{min: 0, max: 0},
+		expectDockerCopyRange:    intRange{min: 1, max: 1},
+		expectDockerExecRange:    intRange{min: 2, max: 2}, // one run's triggers don't match -- should only exec the other two.
+		expectDockerRestartRange: intRange{min: 1, max: 1},
 	}
 	runTestCase(t, f, tCase)
 }
@@ -738,11 +749,11 @@ func TestLiveUpdateRunTriggerExec(t *testing.T) {
 			WithLiveUpdate(lu).
 			Build(),
 		changedFiles:             []string{"a.txt"},
-		expectDockerBuildCount:   0,
-		expectDockerPushCount:    0,
-		expectDockerCopyCount:    0,
-		expectDockerExecCount:    0, // one run's triggers don't match -- should only exec the other two.
-		expectDockerRestartCount: 0,
+		expectDockerBuildRange:   intRange{min: 0, max: 0},
+		expectDockerPushRange:    intRange{min: 0, max: 0},
+		expectDockerCopyRange:    intRange{min: 0, max: 0},
+		expectDockerExecRange:    intRange{min: 0, max: 0}, // one run's triggers don't match -- should only exec the other two.
+		expectDockerRestartRange: intRange{min: 0, max: 0},
 		expectK8sExecCount:       3, // one copy, two runs (third run's triggers don't match so don't exec it)
 	}
 	runTestCase(t, f, tCase)
@@ -760,11 +771,11 @@ func TestLiveUpdateCustomBuildExec(t *testing.T) {
 			WithLiveUpdate(lu).
 			Build(),
 		changedFiles:             []string{"app/a.txt"},
-		expectDockerBuildCount:   0,
-		expectDockerPushCount:    0,
-		expectDockerCopyCount:    0,
-		expectDockerExecCount:    0,
-		expectDockerRestartCount: 0,
+		expectDockerBuildRange:   intRange{min: 0, max: 0},
+		expectDockerPushRange:    intRange{min: 0, max: 0},
+		expectDockerCopyRange:    intRange{min: 0, max: 0},
+		expectDockerExecRange:    intRange{min: 0, max: 0},
+		expectDockerRestartRange: intRange{min: 0, max: 0},
 		expectK8sExecCount:       2,
 	}
 	runTestCase(t, f, tCase)
@@ -782,11 +793,11 @@ func TestLiveUpdateExecDoesNotSupportRestart(t *testing.T) {
 			WithLiveUpdate(lu).
 			Build(),
 		changedFiles:             []string{"a.txt"},
-		expectDockerBuildCount:   1, // we did a Docker build instead of an in-place update!
-		expectDockerPushCount:    1, // expect Docker push on GKE
-		expectDockerCopyCount:    0,
-		expectDockerExecCount:    0,
-		expectDockerRestartCount: 0,
+		expectDockerBuildRange:   intRange{min: 1, max: 1}, // we did a Docker build instead of an in-place update!
+		expectDockerPushRange:    intRange{min: 1, max: 1}, // expect Docker push on GKE
+		expectDockerCopyRange:    intRange{min: 0, max: 0},
+		expectDockerExecRange:    intRange{min: 0, max: 0},
+		expectDockerRestartRange: intRange{min: 0, max: 0},
 		expectK8sDeploy:          true, // Because we fell back to image builder, we also did a k8s deploy
 		logsContain:              []string{"unexpected error", "ExecUpdater does not support `restart_container()` step"},
 	}
@@ -805,8 +816,8 @@ func TestLiveUpdateDockerBuildExec(t *testing.T) {
 			WithLiveUpdate(lu).
 			Build(),
 		changedFiles:           []string{"a.txt"},
-		expectDockerBuildCount: 0,
-		expectDockerPushCount:  0,
+		expectDockerBuildRange: intRange{min: 0, max: 0},
+		expectDockerPushRange:  intRange{min: 0, max: 0},
 		expectK8sExecCount:     2, // one tar archive, one run cmd
 	}
 	runTestCase(t, f, tCase)
@@ -824,11 +835,11 @@ func TestLiveUpdateLocalContainerFallBackOn(t *testing.T) {
 			WithLiveUpdate(lu).
 			Build(),
 		changedFiles:             []string{"a.txt"},
-		expectDockerBuildCount:   1, // we did a Docker build instead of an in-place update!
-		expectDockerPushCount:    0,
-		expectDockerCopyCount:    0,
-		expectDockerExecCount:    0,
-		expectDockerRestartCount: 0,
+		expectDockerBuildRange:   intRange{min: 1, max: 1}, // we did a Docker build instead of an in-place update!
+		expectDockerPushRange:    intRange{min: 0, max: 0},
+		expectDockerCopyRange:    intRange{min: 0, max: 0},
+		expectDockerExecRange:    intRange{min: 0, max: 0},
+		expectDockerRestartRange: intRange{min: 0, max: 0},
 		expectK8sDeploy:          true, // Because we fell back to image builder, we also did a k8s deploy
 		logsContain:              []string{"Detected change to fall_back_on file", "a.txt"},
 	}
@@ -847,11 +858,11 @@ func TestLiveUpdateExecFallBackOn(t *testing.T) {
 			WithLiveUpdate(lu).
 			Build(),
 		changedFiles:             []string{"a.txt"},
-		expectDockerBuildCount:   1, // we did a Docker build instead of an in-place update!
-		expectDockerPushCount:    1,
-		expectDockerCopyCount:    0,
-		expectDockerExecCount:    0,
-		expectDockerRestartCount: 0,
+		expectDockerBuildRange:   intRange{min: 1, max: 1}, // we did a Docker build instead of an in-place update!
+		expectDockerPushRange:    intRange{min: 1, max: 1},
+		expectDockerCopyRange:    intRange{min: 0, max: 0},
+		expectDockerExecRange:    intRange{min: 0, max: 0},
+		expectDockerRestartRange: intRange{min: 0, max: 0},
 		expectK8sDeploy:          true, // because we fell back to image builder, we also did a k8s deploy
 		logsContain:              []string{"Detected change to fall_back_on file", "a.txt"},
 	}
@@ -876,11 +887,11 @@ func TestLiveUpdateLocalContainerChangedFileNotMatchingSyncFallsBack(t *testing.
 			Build(),
 		changedFiles: []string{f.JoinPath("a.txt")}, // matches context but not sync'd directory
 
-		expectDockerBuildCount:   1, // we did a Docker build instead of an in-place update!
-		expectDockerPushCount:    0,
-		expectDockerCopyCount:    0,
-		expectDockerExecCount:    0,
-		expectDockerRestartCount: 0,
+		expectDockerBuildRange:   intRange{min: 1, max: 1}, // we did a Docker build instead of an in-place update!
+		expectDockerPushRange:    intRange{min: 0, max: 0},
+		expectDockerCopyRange:    intRange{min: 0, max: 0},
+		expectDockerExecRange:    intRange{min: 0, max: 0},
+		expectDockerRestartRange: intRange{min: 0, max: 0},
 		expectK8sDeploy:          true, // Because we fell back to image builder, we also did a k8s deploy
 
 		logsContain:     []string{"Found file(s) not matching any sync", "a.txt"},
@@ -907,11 +918,11 @@ func TestLiveUpdateExecChangedFileNotMatchingSyncFallsBack(t *testing.T) {
 			Build(),
 		changedFiles: []string{f.JoinPath("a.txt")}, // matches context but not sync'd directory
 
-		expectDockerBuildCount:   1, // we did a Docker build instead of an in-place update!
-		expectDockerPushCount:    1,
-		expectDockerCopyCount:    0,
-		expectDockerExecCount:    0,
-		expectDockerRestartCount: 0,
+		expectDockerBuildRange:   intRange{min: 1, max: 1}, // we did a Docker build instead of an in-place update!
+		expectDockerPushRange:    intRange{min: 1, max: 1},
+		expectDockerCopyRange:    intRange{min: 0, max: 0},
+		expectDockerExecRange:    intRange{min: 0, max: 0},
+		expectDockerRestartRange: intRange{min: 0, max: 0},
 		expectK8sDeploy:          true, // because we fell back to image builder, we also did a k8s deploy
 
 		logsContain:     []string{"Found file(s) not matching any sync", "a.txt"},
@@ -950,11 +961,11 @@ func TestLiveUpdateManyFilesNotMatching(t *testing.T) {
 			Build(),
 		changedFiles: changedFiles,
 
-		expectDockerBuildCount:   1, // we did a Docker build instead of an in-place update!
-		expectDockerPushCount:    1,
-		expectDockerCopyCount:    0,
-		expectDockerExecCount:    0,
-		expectDockerRestartCount: 0,
+		expectDockerBuildRange:   intRange{min: 1, max: 1}, // we did a Docker build instead of an in-place update!
+		expectDockerPushRange:    intRange{min: 1, max: 1},
+		expectDockerCopyRange:    intRange{min: 0, max: 0},
+		expectDockerExecRange:    intRange{min: 0, max: 0},
+		expectDockerRestartRange: intRange{min: 0, max: 0},
 		expectK8sDeploy:          true, // because we fell back to image builder, we also did a k8s deploy
 
 		logsContain:     []string{"Found file(s) not matching any sync", expectedList},
@@ -982,11 +993,11 @@ func TestLiveUpdateSomeFilesMatchSyncSomeDontFallsBack(t *testing.T) {
 		// One file matches a sync, one does not -- we should still fall back.
 		changedFiles: f.JoinPaths([]string{"specific/directory/i_match", "a.txt"}),
 
-		expectDockerBuildCount:   1, // we did a Docker build instead of an in-place update!
-		expectDockerPushCount:    0,
-		expectDockerCopyCount:    0,
-		expectDockerExecCount:    0,
-		expectDockerRestartCount: 0,
+		expectDockerBuildRange:   intRange{min: 1, max: 1}, // we did a Docker build instead of an in-place update!
+		expectDockerPushRange:    intRange{min: 0, max: 0},
+		expectDockerCopyRange:    intRange{min: 0, max: 0},
+		expectDockerExecRange:    intRange{min: 0, max: 0},
+		expectDockerRestartRange: intRange{min: 0, max: 0},
 		expectK8sDeploy:          true, // Because we fell back to image builder, we also did a k8s deploy
 
 		logsContain:     []string{"Found file(s) not matching any sync", "a.txt"},
@@ -1013,9 +1024,9 @@ func TestLiveUpdateInFirstImageOfImageDependency(t *testing.T) {
 	tCase := testCase{
 		manifest:                 m,
 		changedFiles:             []string{"sancho-base/a.txt"},
-		expectDockerCopyCount:    1,
-		expectDockerExecCount:    1,
-		expectDockerRestartCount: 1,
+		expectDockerCopyRange:    intRange{min: 1, max: 1},
+		expectDockerExecRange:    intRange{min: 1, max: 1},
+		expectDockerRestartRange: intRange{min: 1, max: 1},
 		logsContain:              []string{f.JoinPath("sancho-base/a.txt")},
 	}
 	runTestCase(t, f, tCase)
@@ -1039,7 +1050,7 @@ func TestLiveUpdateInFirstImageOfImageDependencyWithoutSync(t *testing.T) {
 	tCase := testCase{
 		manifest:               m,
 		changedFiles:           []string{"sancho-base/a.txt"},
-		expectDockerBuildCount: 2,
+		expectDockerBuildRange: intRange{min: 2, max: 2},
 		expectK8sDeploy:        true,
 		logsContain:            []string{f.JoinPath("sancho-base/a.txt")},
 	}
@@ -1064,9 +1075,9 @@ func TestLiveUpdateInSecondImageOfImageDependency(t *testing.T) {
 	tCase := testCase{
 		manifest:                 m,
 		changedFiles:             []string{"sancho/a.txt"},
-		expectDockerCopyCount:    1,
-		expectDockerExecCount:    1,
-		expectDockerRestartCount: 1,
+		expectDockerCopyRange:    intRange{min: 1, max: 1},
+		expectDockerExecRange:    intRange{min: 1, max: 1},
+		expectDockerRestartRange: intRange{min: 1, max: 1},
 		logsContain:              []string{f.JoinPath("sancho/a.txt")},
 	}
 	runTestCase(t, f, tCase)

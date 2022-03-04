@@ -998,7 +998,7 @@ func (r *Reconciler) applyInternal(
 		case res := <-results:
 			if res.Failed != nil {
 				cancel()
-				result.Failed = res.Failed
+				return *res
 			}
 			result.Containers = append(result.Containers, res.Containers...)
 		case <-gErrorC(g):
