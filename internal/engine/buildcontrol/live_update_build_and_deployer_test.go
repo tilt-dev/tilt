@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"context"
 	"fmt"
+	"github.com/tilt-dev/tilt/internal/k8s"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -163,19 +164,23 @@ func TestUpdateMultipleRunningContainers(t *testing.T) {
 	f := newFixture(t)
 
 	container1 := liveupdates.Container{
-		PodID:         "mypod",
+		PodID:         "mypod-1",
 		ContainerID:   "cid1",
 		ContainerName: "container1",
 		Namespace:     "ns-foo",
 	}
 	container2 := liveupdates.Container{
-		PodID:         "mypod",
+		PodID:         "mypod-2",
 		ContainerID:   "cid2",
 		ContainerName: "container2",
 		Namespace:     "ns-foo",
 	}
 
 	containers := []liveupdates.Container{container1, container2}
+	containersMap := map[k8s.PodID]liveupdates.Container{
+		container1.PodID: container1,
+		container2.PodID: container2,
+	}
 
 	paths := []build.PathMapping{
 		// Will try to delete this file
@@ -201,8 +206,8 @@ func TestUpdateMultipleRunningContainers(t *testing.T) {
 
 	require.Len(t, f.cu.Calls, 2)
 
-	for i, call := range f.cu.Calls {
-		assert.Equal(t, containers[i], call.ContainerInfo)
+	for _, call := range f.cu.Calls {
+		assert.Equal(t, containersMap[call.ContainerInfo.PodID], call.ContainerInfo)
 		assert.Equal(t, expectedToDelete, call.ToDelete)
 		if assert.Len(t, call.Cmds, 1) {
 			assert.Equal(t, cmd, call.Cmds[0])
@@ -237,7 +242,7 @@ func TestErrorStopsSubsequentContainerUpdates(t *testing.T) {
 	})
 	require.NotNil(t, err)
 	assert.Contains(t, err.Error(), "👀")
-	require.Len(t, f.cu.Calls, 1, "should only call UpdateContainer once (error should stop subsequent calls)")
+	// Threads will race to complete the updates, so number of results is indeterminate
 }
 
 func TestUpdateMultipleContainersWithSameTarArchive(t *testing.T) {
@@ -293,19 +298,23 @@ func TestUpdateMultipleContainersWithSameTarArchiveOnRunStepFailure(t *testing.T
 	f := newFixture(t)
 
 	container1 := liveupdates.Container{
-		PodID:         "mypod",
+		PodID:         "mypod-1",
 		ContainerID:   "cid1",
 		ContainerName: "container1",
 		Namespace:     "ns-foo",
 	}
 	container2 := liveupdates.Container{
-		PodID:         "mypod",
+		PodID:         "mypod-2",
 		ContainerID:   "cid2",
 		ContainerName: "container2",
 		Namespace:     "ns-foo",
 	}
 
 	containers := []liveupdates.Container{container1, container2}
+	containersMap := map[k8s.PodID]liveupdates.Container{
+		container1.PodID: container1,
+		container2.PodID: container2,
+	}
 
 	// Write files so we know whether to cp to or rm from container
 	f.WriteFile("hi", "hello")
@@ -332,9 +341,10 @@ func TestUpdateMultipleContainersWithSameTarArchiveOnRunStepFailure(t *testing.T
 
 	require.Len(t, f.cu.Calls, 2)
 
-	for i, call := range f.cu.Calls {
-		assert.Equal(t, containers[i], call.ContainerInfo, "ContainerUpdater call[%d]", i)
-		testutils.AssertFilesInTar(f.t, tar.NewReader(call.Archive), expected, "ContainerUpdater call[%d]", i)
+	for _, call := range f.cu.Calls {
+		id := call.ContainerInfo.PodID
+		assert.Equal(t, containersMap[id], call.ContainerInfo, "ContainerUpdater call[%d]", id)
+		testutils.AssertFilesInTar(f.t, tar.NewReader(call.Archive), expected, "ContainerUpdater call[%d]", id)
 	}
 }
 
