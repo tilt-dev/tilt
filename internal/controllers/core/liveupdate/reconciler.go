@@ -1000,9 +1000,7 @@ func (r *Reconciler) applyInternal(
 				cancel()
 				result.Failed = res.Failed
 			}
-			for _, c := range res.Containers {
-				result.Containers = append(result.Containers, c)
-			}
+			result.Containers = append(result.Containers, res.Containers...)
 		case <-gErrorC(g):
 		case <-ctx.Done():
 			cancel()
