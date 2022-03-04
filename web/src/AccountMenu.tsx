@@ -7,7 +7,7 @@ import ButtonLink from "./ButtonLink"
 import { AnimDuration, Color, Font, FontSize, SizeUnit } from "./style-helpers"
 
 let AccountMenuContentRoot = styled.div`
-  color: ${Color.grayLight};
+  color: ${Color.gray50};
 
   p + p {
     margin-top: ${SizeUnit(0.25)};
@@ -142,7 +142,7 @@ let AccountMenuLogo = styled(TiltCloudLogoSvg)`
 let AccountMenuLearn = styled.a`
   font-family: ${Font.sansSerif};
   font-size: ${FontSize.smallest};
-  color: ${Color.grayLight};
+  color: ${Color.gray50};
 `
 
 export function AccountMenuHeader(props: AccountMenuProps) {

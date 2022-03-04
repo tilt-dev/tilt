@@ -51,30 +51,30 @@ let SidebarIconRoot = styled.div`
     background-color: ${ColorRGBA(Color.white, ColorAlpha.translucent)};
   }
   .isSelected &.isBuilding {
-    background-color: ${ColorRGBA(Color.gray, ColorAlpha.translucent)};
+    background-color: ${ColorRGBA(Color.gray30, ColorAlpha.translucent)};
   }
   &.isPending {
     background-color: ${ColorRGBA(Color.white, ColorAlpha.translucent)};
     animation: ${Glow.white} 2s linear infinite;
   }
   .isSelected &.isPending {
-    background-color: ${ColorRGBA(Color.gray, ColorAlpha.translucent)};
+    background-color: ${ColorRGBA(Color.gray30, ColorAlpha.translucent)};
     animation: ${Glow.dark} 2s linear infinite;
   }
   &.isNone {
-    border-right: 1px solid ${Color.grayLighter};
+    border-right: 1px solid ${Color.gray40};
     box-sizing: border-box;
     transition: border-color ${AnimDuration.default} linear;
 
     svg {
-      fill: ${Color.grayLight};
+      fill: ${Color.gray50};
     }
   }
   .isSelected &.isNone {
     border-right-color: ${Color.grayLightest};
 
     svg {
-      fill: ${Color.grayLighter};
+      fill: ${Color.gray40};
     }
   }
 `

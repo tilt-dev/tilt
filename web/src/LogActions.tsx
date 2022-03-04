@@ -22,7 +22,7 @@ const LogActionsGroup = styled.div`
 `
 
 const FontSizeControls = styled.div`
-  color: ${Color.gray6};
+  color: ${Color.gray60};
   vertical-align: middle;
   display: flex;
   flex-wrap: nowrap;
@@ -35,7 +35,7 @@ const FontSizeControlsDivider = styled.div`
 
 const FontSizeButton = styled(InstrumentedButton)`
   ${mixinResetButtonStyle};
-  color: ${Color.gray6};
+  color: ${Color.gray60};
   transition: color ${AnimDuration.default} ease;
   padding: 0 4px;
   user-select: none;

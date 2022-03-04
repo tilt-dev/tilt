@@ -24,7 +24,7 @@ let StarIcon = styled(StarSvg)`
 `
 let ActiveStarIcon = styled(StarIcon)`
   transition: transform ${AnimDuration.short} ease;
-  fill: ${Color.grayLight};
+  fill: ${Color.gray50};
 
   ${StarResourceButtonRoot}:hover & {
     fill: ${Color.blue};
@@ -39,7 +39,7 @@ let InactiveStarIcon = styled(StarIcon)`
   .u-showStarOnHover:hover &,
   ${StarResourceButtonRoot}:focus &,
   ${StarResourceButtonRoot}.u-persistShow & {
-    fill: ${Color.grayLight};
+    fill: ${Color.gray50};
     opacity: 1;
   }
 

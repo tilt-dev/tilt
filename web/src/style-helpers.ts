@@ -15,16 +15,18 @@ export enum Color {
   white = "#ffffff",
 
   offWhite = "#eef1f1",
-  gray7 = "#CCDADE",
-  gray6 = "#7095A0",
-  grayLightest = "#93a1a1", // Solarized base1 (darkest content tone)
-  grayLighter = "#2D4D55",
-  grayLight = "#586e75", // Solarized base01
-  gray = "#073642", // Solarized base02
-  grayDark = "#002b36", // Solarized base03 (darkest bg tone)
-  grayDarker = "#00242d",
-  grayDarkest = "#001b20", // Brand
+  gray70 = "#CCDADE",
+  gray60 = "#7095A0",
+  gray50 = "#586e75", // Solarized base01
+  gray40 = "#2D4D55",
+  gray30 = "#073642", // Solarized base02
+  gray20 = "#002b36", // Solarized base03 (darkest bg tone)
+  gray10 = "#001b20", // Brand
   black = "#000000",
+
+  // Legacy gray scale
+  grayLightest = "#93a1a1", // Solarized base1 (darkest content tone)
+  grayDarker = "#00242d",
 
   text = "#073642",
 }
@@ -133,10 +135,13 @@ export namespace Glow {
 
   export const dark = keyframes`
     0% {
-      background-color: ${ColorRGBA(Color.gray, ColorAlpha.translucent)};
+      background-color: ${ColorRGBA(Color.gray30, ColorAlpha.translucent)};
     }
     50% {
-      background-color: ${ColorRGBA(Color.gray, ColorAlpha.almostTransparent)};
+      background-color: ${ColorRGBA(
+        Color.gray30,
+        ColorAlpha.almostTransparent
+      )};
     }
   `
 

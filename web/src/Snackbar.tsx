@@ -8,9 +8,9 @@ const SnackbarContentRoot = styled(SnackbarContent)`
   font-family: ${Font.sansSerif};
   font-size: ${FontSize.small};
   font-weight: 400;
-  color: ${Color.grayDark};
+  color: ${Color.gray20};
   padding: ${SizeUnit(0.25)};
-  border: 1px solid ${Color.grayLight};
+  border: 1px solid ${Color.gray50};
   border-radius: ${SizeUnit(0.125)};
 `
 

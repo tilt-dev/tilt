@@ -20,10 +20,10 @@
   }
 
   &.is-buildEvent-init {
-    background-color: $color-gray;
+    background-color: $color-gray-30;
     text-align: right;
     padding-right: $spacing-unit;
-    border-top: 1px solid rgba($color-gray-light, $translucent);
+    border-top: 1px solid rgba($color-gray-50, $translucent);
     border-bottom: 1px solid $color-blue-dark;
     
     &.is-sticky {
@@ -109,7 +109,7 @@
   .LogLine.is-contextChange > & {
     // Border shouldn't add height:
     margin-top: -$logLine-separator-height;
-    border-top: $logLine-separator-height solid $color-gray;
+    border-top: $logLine-separator-height solid $color-gray-30;
   }
   .LogLine.is-buildEvent-init > & {
     visibility: hidden;
@@ -121,7 +121,7 @@
   white-space: pre-wrap;
   padding-left: $spacing-unit * 0.6;
   flex: 1;
-  border-left: $logLine-separator-height solid $color-gray;
+  border-left: $logLine-separator-height solid $color-gray-30;
   overflow-wrap: anywhere;
 
   // A left border draws your eye to notable log lines
