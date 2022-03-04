@@ -738,6 +738,25 @@ dc_resource("foo", labels="test")
 	f.assertNextManifest("foo", resourceLabels("test"))
 }
 
+func TestMultitleDockerComposeLabels(t *testing.T) {
+	f := newFixture(t)
+
+	f.dockerfile(filepath.Join("foo", "Dockerfile"))
+	f.file("docker-compose.yml", simpleConfig)
+	f.file("docker-compose2.yml", barServiceConfig)
+	f.file("Tiltfile", `
+docker_compose('docker-compose.yml')
+dc_resource("foo", labels="test")
+
+docker_compose('docker-compose2.yml')
+dc_resource("bar", labels="run")
+`)
+
+	f.load()
+	f.assertNextManifest("foo", resourceLabels("test"))
+	f.assertNextManifest("bar", resourceLabels("run"))
+}
+
 func TestTriggerModeDC(t *testing.T) {
 	for _, testCase := range []struct {
 		name                string
