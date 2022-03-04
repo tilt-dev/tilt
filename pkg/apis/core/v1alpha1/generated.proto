@@ -622,10 +622,18 @@ message DockerComposeServiceSpec {
 
   // The image maps that this deploy depends on.
   repeated string imageMaps = 3;
+
+  // Specifies how to disable this.
+  //
+  // +optional
+  optional DisableSource disableSource = 4;
 }
 
 // DockerComposeServiceStatus defines the observed state of DockerComposeService
 message DockerComposeServiceStatus {
+  // Details about whether/why this is disabled.
+  // +optional
+  optional DisableStatus disableStatus = 1;
 }
 
 // DockerImage describes an image to build with Docker.
