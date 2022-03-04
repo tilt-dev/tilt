@@ -209,12 +209,10 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 		options.TriggerMode = triggerMode
 	}
 
-	if len(links.Links) > 0 {
-		options.Links = links.Links
-	}
+	options.Links = append(options.Links, links.Links...)
 
-	if labels.Values != nil {
-		options.Labels = labels.Values
+	for key, val := range labels.Values {
+		options.Labels[key] = val
 	}
 
 	if imageRefAsStr != nil {
@@ -229,10 +227,7 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 	if err != nil {
 		return nil, errors.Wrapf(err, "%s: resource_deps", fn.Name())
 	}
-
-	if len(rds) > 0 {
-		options.resourceDeps = rds
-	}
+	options.resourceDeps = append(options.resourceDeps, rds...)
 
 	if autoInit.IsSet {
 		options.AutoInit = autoInit
