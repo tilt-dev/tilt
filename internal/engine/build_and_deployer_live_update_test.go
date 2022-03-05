@@ -216,7 +216,7 @@ func TestLiveUpdateDockerBuildLocalContainerSameImgMultipleContainers(t *testing
 		// one of each operation per container
 		expectDockerCopyCount:    3,
 		expectDockerExecCount:    3,
-		expectDockerRestartCount: 3,
+		expectDockerRestartCount: 3, // 0
 	}
 	runTestCase(t, f, tCase)
 }
@@ -509,8 +509,9 @@ func TestLiveUpdateMultipleContainersFallsBackForFailure(t *testing.T) {
 		changedFiles:              []string{"a.txt"},
 
 		// attempted container update; called copy and exec before hitting error
-		expectDockerCopyCount: 1,
-		expectDockerExecCount: 1,
+		expectDockerCopyCount:    3,
+		expectDockerExecCount:    3,
+		expectDockerRestartCount: 2,
 
 		// fell back to image build
 		expectDockerBuildCount: 1,
@@ -540,9 +541,9 @@ func TestLiveUpdateMultipleContainersFallsBackForFailureAfterSuccess(t *testing.
 
 		// one successful update (copy, exec, restart);
 		// one truncated update (copy, exec) before hitting error
-		expectDockerCopyCount:    2,
-		expectDockerExecCount:    2,
-		expectDockerRestartCount: 1,
+		expectDockerCopyCount:    3,
+		expectDockerExecCount:    3,
+		expectDockerRestartCount: 2,
 
 		// fell back to image build
 		expectDockerBuildCount: 1,
@@ -609,8 +610,8 @@ func TestLiveUpdateMultipleContainersFallsBackForSomeUserRunFailuresSomeSuccess(
 		// one truncated update (copy and exec before hitting error)
 		// one successful update (copy, exec, restart)
 		// fall back before attempting third update
-		expectDockerCopyCount:    2,
-		expectDockerExecCount:    2,
+		expectDockerCopyCount:    3,
+		expectDockerExecCount:    3,
 		expectDockerRestartCount: 1,
 
 		// fell back to image build
@@ -642,8 +643,8 @@ func TestLiveUpdateMultipleContainersFallsBackForSomeUserRunFailuresSomeNonUserF
 
 		// two truncated updates (copy and exec before hitting error)
 		// fall back before attempting third update
-		expectDockerCopyCount:    2,
-		expectDockerExecCount:    2,
+		expectDockerCopyCount:    3,
+		expectDockerExecCount:    3,
 		expectDockerRestartCount: 0,
 
 		// fell back to image build

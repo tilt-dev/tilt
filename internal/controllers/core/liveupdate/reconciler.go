@@ -981,19 +981,18 @@ func (r *Reconciler) applyInternal(
 			} else {
 				logger.Get(ctx).Infof("  → Container %s updated!", cInfo.DisplayName())
 			}
-			result.Containers[-i] = cStatus
+			result.Containers[i] = cStatus
 			return nil
 		})
 	}
 
-	_ = g.Wait()
+	_ = g.Wait() // our error handling logic is more complicated than what's provided
 
 	var runError int
 	for _, e := range errors {
 		if e == nil {
 			continue
-		}
-		if e.Reason == RunStepFailure {
+		} else if e.Reason == RunStepFailure {
 			runError += 1
 			continue
 		}

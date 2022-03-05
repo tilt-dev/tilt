@@ -843,7 +843,7 @@ func (f *bdFixture) assertContainerRestarts(count int) {
 
 // Total number of restarts, regardless of which container.
 func (f *bdFixture) assertTotalContainerRestarts(count int) {
-	assert.Equal(f.T(), len(f.docker.RestartsByContainer), count,
+	assert.Equal(f.T(), count, len(f.docker.RestartsByContainer),
 		"checking for expected # of container restarts")
 }
 
