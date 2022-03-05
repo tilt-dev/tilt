@@ -248,11 +248,12 @@ func buildTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *session.
 	}
 
 	isPending := mt.NextBuildReason() != model.BuildReasonNone
+	currentBuild := mt.State.CurrentBuild()
 	if isPending {
 		res.State.Waiting = waitingFromHolds(mt.Manifest.Name, holds)
-	} else if !mt.State.CurrentBuild.Empty() {
+	} else if !currentBuild.Empty() {
 		res.State.Active = &session.TargetStateActive{
-			StartTime: apis.NewMicroTime(mt.State.CurrentBuild.StartTime),
+			StartTime: apis.NewMicroTime(currentBuild.StartTime),
 		}
 	} else if len(mt.State.BuildHistory) != 0 {
 		lastBuild := mt.State.LastBuild()
@@ -306,9 +307,9 @@ func tiltfileTarget(name model.ManifestName, ms *store.ManifestState) session.Ta
 
 	// Tiltfile is special in engine state and doesn't have a target, just state, so
 	// this logic is largely duplicated from the generic resource build logic
-	if !ms.CurrentBuild.Empty() {
+	if !ms.CurrentBuild().Empty() {
 		target.State.Active = &session.TargetStateActive{
-			StartTime: apis.NewMicroTime(ms.CurrentBuild.StartTime),
+			StartTime: apis.NewMicroTime(ms.CurrentBuild().StartTime),
 		}
 	} else if hasPendingChanges, _ := ms.HasPendingChanges(); hasPendingChanges {
 		target.State.Waiting = &session.TargetStateWaiting{

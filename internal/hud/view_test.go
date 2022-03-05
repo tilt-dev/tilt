@@ -32,9 +32,12 @@ func TestStateToViewRelativeEditPaths(t *testing.T) {
 
 	state := newState([]model.Manifest{m})
 	ms := state.ManifestTargets[m.Name].State
-	ms.CurrentBuild.Edits = []string{
-		f.JoinPath("a", "b", "c", "foo"),
-		f.JoinPath("a", "b", "c", "d", "e")}
+	ms.CurrentBuilds["buildcontrol"] = model.BuildRecord{
+		Edits: []string{
+			f.JoinPath("a", "b", "c", "foo"),
+			f.JoinPath("a", "b", "c", "d", "e"),
+		},
+	}
 	ms.BuildHistory = []model.BuildRecord{
 		{
 			Edits: []string{

@@ -31,8 +31,11 @@ type EngineState struct {
 	// TODO(nick): This will eventually be a general Target index.
 	ManifestTargets map[model.ManifestName]*ManifestTarget
 
-	CurrentlyBuilding map[model.ManifestName]bool
-	TerminalMode      TerminalMode
+	// Keep a set of the current builds, so we can quickly count how many
+	// builds there are without looking at all builds in the list.
+	CurrentBuildSet map[model.ManifestName]bool
+
+	TerminalMode TerminalMode
 
 	// For synchronizing BuildController -- wait until engine records all builds started
 	// so far before starting another build
@@ -182,8 +185,12 @@ func (e *EngineState) ManifestNamesForTargetID(id model.TargetID) []model.Manife
 	return result
 }
 
-func (e *EngineState) IsCurrentlyBuilding(name model.ManifestName) bool {
-	return e.CurrentlyBuilding[name]
+func (e *EngineState) IsBuilding(name model.ManifestName) bool {
+	ms, ok := e.ManifestState(name)
+	if !ok {
+		return false
+	}
+	return ms.IsBuilding()
 }
 
 // Find the first build status. Only suitable for testing.
@@ -200,13 +207,13 @@ func (e *EngineState) BuildStatus(id model.TargetID) BuildStatus {
 }
 
 func (e *EngineState) AvailableBuildSlots() int {
-	currentlyBuilding := len(e.CurrentlyBuilding)
-	if currentlyBuilding >= e.UpdateSettings.MaxParallelUpdates() {
+	currentBuildCount := len(e.CurrentBuildSet)
+	if currentBuildCount >= e.UpdateSettings.MaxParallelUpdates() {
 		// this could happen if user decreases max build slots while
 		// multiple builds are in progress, no big deal
 		return 0
 	}
-	return e.UpdateSettings.MaxParallelUpdates() - currentlyBuilding
+	return e.UpdateSettings.MaxParallelUpdates() - currentBuildCount
 }
 
 func (e *EngineState) UpsertManifestTarget(mt *ManifestTarget) {
@@ -470,8 +477,14 @@ type ManifestState struct {
 
 	PendingManifestChange time.Time
 
-	// The current build
-	CurrentBuild model.BuildRecord
+	// Any current builds for this manifest.
+	//
+	// There can be multiple simultaneous image builds + deploys + live updates
+	// associated with a manifest.
+	//
+	// In an ideal world, we'd read these builds from the API models
+	// rather than do separate bookkeeping for them.
+	CurrentBuilds map[string]model.BuildRecord
 
 	LastSuccessfulDeployTime time.Time
 
@@ -505,7 +518,7 @@ func NewState() *EngineState {
 		CheckUpdates: true,
 	}
 	ret.UpdateSettings = model.DefaultUpdateSettings()
-	ret.CurrentlyBuilding = make(map[model.ManifestName]bool)
+	ret.CurrentBuildSet = make(map[model.ManifestName]bool)
 
 	// For most Tiltfiles, this is created by the TiltfileUpsertAction.  But
 	// lots of tests assume tha main tiltfile state exists on initialization.
@@ -515,6 +528,7 @@ func NewState() *EngineState {
 			Name:          model.MainTiltfileManifestName,
 			BuildStatuses: make(map[model.TargetID]*BuildStatus),
 			DisableState:  v1alpha1.DisableStateEnabled,
+			CurrentBuilds: make(map[string]model.BuildRecord),
 		},
 	}
 	ret.TiltfileConfigPaths = map[model.ManifestName][]string{}
@@ -545,6 +559,7 @@ func NewManifestState(m model.Manifest) *ManifestState {
 		BuildStatuses:           make(map[model.TargetID]*BuildStatus),
 		LiveUpdatedContainerIDs: container.NewIDSet(),
 		DisableState:            v1alpha1.DisableStatePending,
+		CurrentBuilds:           make(map[string]model.BuildRecord),
 	}
 
 	if m.IsK8s() {
@@ -612,12 +627,21 @@ func (ms *ManifestState) LocalRuntimeState() LocalRuntimeState {
 	return ret
 }
 
-func (ms *ManifestState) ActiveBuild() model.BuildRecord {
-	return ms.CurrentBuild
+// Return the current build that started first.
+func (ms *ManifestState) CurrentBuild() model.BuildRecord {
+	best := model.BuildRecord{}
+	bestKey := ""
+	for k, v := range ms.CurrentBuilds {
+		if best.StartTime.IsZero() || best.StartTime.After(v.StartTime) || (best.StartTime == v.StartTime && k < bestKey) {
+			best = v
+			bestKey = k
+		}
+	}
+	return best
 }
 
 func (ms *ManifestState) IsBuilding() bool {
-	return !ms.CurrentBuild.Empty()
+	return !ms.CurrentBuild().Empty()
 }
 
 func (ms *ManifestState) LastBuild() model.BuildRecord {
@@ -635,7 +659,7 @@ func (ms *ManifestState) AddCompletedBuild(bs model.BuildRecord) {
 }
 
 func (ms *ManifestState) StartedFirstBuild() bool {
-	return !ms.CurrentBuild.Empty() || len(ms.BuildHistory) > 0
+	return !ms.CurrentBuild().Empty() || len(ms.BuildHistory) > 0
 }
 
 func (ms *ManifestState) MostRecentPod() v1alpha1.Pod {
@@ -653,11 +677,11 @@ func (ms *ManifestState) PodWithID(pid k8s.PodID) (*v1alpha1.Pod, bool) {
 }
 
 func (ms *ManifestState) AddPendingFileChange(targetID model.TargetID, file string, timestamp time.Time) {
-	if !ms.CurrentBuild.Empty() {
-		if timestamp.Before(ms.CurrentBuild.StartTime) {
+	if !ms.CurrentBuild().Empty() {
+		if timestamp.Before(ms.CurrentBuild().StartTime) {
 			// this file change occurred before the build started, but if the current build already knows
 			// about it (from another target or rapid successive changes that weren't de-duped), it can be ignored
-			for _, edit := range ms.CurrentBuild.Edits {
+			for _, edit := range ms.CurrentBuild().Edits {
 				if edit == file {
 					return
 				}
@@ -773,7 +797,7 @@ func (ms *ManifestState) HasPendingChangesBeforeOrEqual(highWaterMark time.Time)
 }
 
 func (ms *ManifestState) UpdateStatus(triggerMode model.TriggerMode) v1alpha1.UpdateStatus {
-	currentBuild := ms.CurrentBuild
+	currentBuild := ms.CurrentBuild()
 	hasPendingChanges, _ := ms.HasPendingChanges()
 	lastBuild := ms.LastBuild()
 	lastBuildError := lastBuild.Error != nil

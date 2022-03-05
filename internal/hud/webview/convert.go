@@ -238,7 +238,8 @@ func toUIResource(mt *store.ManifestTarget, s store.EngineState, disableSources 
 
 	bh := ToBuildsTerminated(ms.BuildHistory, s.LogStore)
 	lastDeploy := metav1.NewMicroTime(ms.LastSuccessfulDeployTime)
-	cb := ToBuildRunning(ms.CurrentBuild)
+	currentBuild := ms.CurrentBuild()
+	cb := ToBuildRunning(currentBuild)
 
 	specs, err := ToAPITargetSpecs(mt.Manifest.TargetSpecs())
 	if err != nil {
@@ -357,7 +358,7 @@ func UIResourceUpToDateCondition(r v1alpha1.UIResourceStatus) v1alpha1.UIResourc
 // not the Tiltfile state in EngineState.
 func TiltfileResource(name model.ManifestName, ms *store.ManifestState, logStore *logstore.LogStore) *v1alpha1.UIResource {
 	ltfb := ms.LastBuild()
-	ctfb := ms.CurrentBuild
+	ctfb := ms.CurrentBuild()
 
 	pctfb := ToBuildRunning(ctfb)
 	history := []v1alpha1.UIBuildTerminated{}
