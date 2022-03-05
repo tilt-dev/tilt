@@ -44,6 +44,10 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
 
+const (
+	RunStepFailure = "RunStepFailure"
+)
+
 var discoveryGVK = v1alpha1.SchemeGroupVersion.WithKind("KubernetesDiscovery")
 var applyGVK = v1alpha1.SchemeGroupVersion.WithKind("KubernetesApply")
 var fwGVK = v1alpha1.SchemeGroupVersion.WithKind("FileWatch")
@@ -874,16 +878,6 @@ func (r *Reconciler) ForceApply(
 	return status, nil
 }
 
-// gErrorC provides a channel interface for errgroup.Group
-func gErrorC(g *errgroup.Group) chan error {
-	errorC := make(chan error)
-	go func() {
-		errorC <- g.Wait()
-		close(errorC)
-	}()
-	return errorC
-}
-
 // Like apply, but doesn't write the status to the apiserver.
 func (r *Reconciler) applyInternal(
 	ctx context.Context,
@@ -936,14 +930,13 @@ func (r *Reconciler) applyInternal(
 		}
 	}
 
-	ctx, cancel := context.WithCancel(ctx)
-	results := make(chan *v1alpha1.LiveUpdateStatus)
 	g, ctx := errgroup.WithContext(ctx)
-	for _, cInfo := range containers {
-		cInfo := cInfo
+	result.Containers = make([]v1alpha1.LiveUpdateContainerStatus, len(containers))
+	errors := make([]*v1alpha1.LiveUpdateStateFailed, len(containers))
+	for i, cInfo := range containers {
+		i, cInfo := i, cInfo
+		var err error
 		g.Go(func() error {
-			var failed *v1alpha1.LiveUpdateStateFailed
-
 			// TODO(nick): We should try to distinguish between cases where the tar writer
 			// fails (which is recoverable) vs when the server-side unpacking
 			// fails (which may not be recoverable).
@@ -967,15 +960,20 @@ func (r *Reconciler) applyInternal(
 
 			if err != nil {
 				if runFail, ok := build.MaybeRunStepFailure(err); ok {
+					// Container failed to update because of an error within user configuration.
 					// Keep running updates -- we want all containers to have the same files on them
 					// even if the Runs don't succeed
 					logger.Get(ctx).Infof("  → Failed to update container %s: run step %q failed with exit code: %d",
 						cInfo.DisplayName(), runFail.Cmd.String(), runFail.ExitCode)
 					cStatus.LastExecError = err.Error()
+					errors[i] = &v1alpha1.LiveUpdateStateFailed{
+						Reason:  RunStepFailure,
+						Message: fmt.Sprintf("Updating pod %s: %v", cStatus.PodName, err),
+					}
 				} else {
 					// Something went wrong with this update, and it's NOT the user's fault--
-					// likely an infrastructure error. Bail, and fall back to full build.
-					failed = &v1alpha1.LiveUpdateStateFailed{
+					// likely an infrastructure error. Trigger a fallback to full build.
+					errors[i] = &v1alpha1.LiveUpdateStateFailed{
 						Reason:  "UpdateFailed",
 						Message: fmt.Sprintf("Updating pod %s: %v", cStatus.PodName, err),
 					}
@@ -983,30 +981,36 @@ func (r *Reconciler) applyInternal(
 			} else {
 				logger.Get(ctx).Infof("  → Container %s updated!", cInfo.DisplayName())
 			}
-			results <- &v1alpha1.LiveUpdateStatus{
-				Containers: []v1alpha1.LiveUpdateContainerStatus{
-					cStatus,
-				},
-				Failed: failed,
-			}
+			result.Containers[-i] = cStatus
 			return nil
 		})
 	}
 
-	for {
-		select {
-		case res := <-results:
-			if res.Failed != nil {
-				cancel()
-				return *res
-			}
-			result.Containers = append(result.Containers, res.Containers...)
-		case <-gErrorC(g):
-		case <-ctx.Done():
-			cancel()
-			return result
+	_ = g.Wait()
+
+	var runError int
+	for _, e := range errors {
+		if e == nil {
+			continue
+		}
+		if e.Reason == RunStepFailure {
+			runError += 1
+			continue
+		}
+		result.Failed = e
+	}
+
+	if runError > 0 && runError != len(result.Containers) {
+		// Some builds succeeded, but at least one failed at the run step (likely a user error).
+		// We may have inconsistent state--bail, and fall back to full build.
+		result.Failed = &v1alpha1.LiveUpdateStateFailed{
+			Reason: "PodsInconsistent",
+			Message: fmt.Sprintf("Pods in inconsistent state. Success: %v. Failures: '%v'; ",
+				result.Containers, errors),
 		}
 	}
+
+	return result
 }
 
 func (r *Reconciler) containerUpdater(input Input) containerupdate.ContainerUpdater {
