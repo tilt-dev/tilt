@@ -100,8 +100,9 @@ type tiltfileState struct {
 	k8sByName      map[string]*k8sResource
 	k8sUnresourced []k8s.K8sEntity
 
-	dc       dcResourceSet // currently only support one d-c.yml
-	dcByName map[string]*dcService
+	dc           dcResourceSet // currently only support one d-c.yml
+	dcByName     map[string]*dcService
+	dcResOptions map[string]*dcResourceOptions
 
 	k8sResourceOptions []k8sResourceOptions
 	localResources     []*localResource
@@ -176,6 +177,7 @@ func newTiltfileState(
 		k8sObjectIndex:            tiltfile_k8s.NewState(),
 		k8sByName:                 make(map[string]*k8sResource),
 		dcByName:                  make(map[string]*dcService),
+		dcResOptions:              make(map[string]*dcResourceOptions),
 		localByName:               make(map[string]*localResource),
 		usedImages:                make(map[string]bool),
 		logger:                    logger.Get(ctx),

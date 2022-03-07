@@ -137,17 +137,12 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 		previousSvc := s.dcByName[svc.Name]
 		if previousSvc != nil {
 			delete(s.dcByName, svc.Name)
-			// Copy any existing state declared by previous dc_resource calls
-			svc.AutoInit = previousSvc.AutoInit
-			svc.TriggerMode = previousSvc.TriggerMode
-			svc.resourceDeps = previousSvc.resourceDeps
-			svc.Labels = previousSvc.Labels
-			svc.Links = previousSvc.Links
 		}
 		err := s.checkResourceConflict(svc.Name)
 		if err != nil {
 			return nil, err
 		}
+		svc.Options = s.dcResOptions[svc.Name]
 		s.dcByName[svc.Name] = svc
 	}
 
@@ -205,28 +200,41 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 		return nil, err
 	}
 
-	if triggerMode != TriggerModeUnset {
-		svc.TriggerMode = triggerMode
+	options := s.dcResOptions[name]
+	if options == nil {
+		options = newDcResourceOptions()
 	}
-	svc.Links = append(svc.Links, links.Links...)
 
-	svc.Labels = labels.Values
+	if triggerMode != TriggerModeUnset {
+		options.TriggerMode = triggerMode
+	}
+
+	options.Links = append(options.Links, links.Links...)
+
+	for key, val := range labels.Values {
+		options.Labels[key] = val
+	}
 
 	if imageRefAsStr != nil {
 		normalized, err := container.ParseNamed(*imageRefAsStr)
 		if err != nil {
 			return nil, err
 		}
-		svc.imageRefFromUser = normalized
+		options.imageRefFromUser = normalized
 	}
 
 	rds, err := value.SequenceToStringSlice(resourceDepsVal)
 	if err != nil {
 		return nil, errors.Wrapf(err, "%s: resource_deps", fn.Name())
 	}
-	svc.resourceDeps = append(svc.resourceDeps, rds...)
-	svc.AutoInit = autoInit
+	options.resourceDeps = append(options.resourceDeps, rds...)
 
+	if autoInit.IsSet {
+		options.AutoInit = autoInit
+	}
+
+	s.dcResOptions[name] = options
+	svc.Options = options
 	return starlark.None, nil
 }
 
@@ -253,7 +261,6 @@ type dcService struct {
 	// RefSelector of the image associated with this service
 	// The user-provided image ref overrides the config-provided image ref
 	imageRefFromConfig reference.Named // from docker-compose.yml `Image` field
-	imageRefFromUser   reference.Named // set via dc_resource
 
 	ServiceConfig types.ServiceConfig
 
@@ -263,18 +270,30 @@ type dcService struct {
 	ImageMapDeps   []string
 	PublishedPorts []int
 
-	TriggerMode triggerMode
-	Links       []model.Link
-	AutoInit    value.BoolOrNone
+	Options *dcResourceOptions
+}
+
+// Options set via dc_resource
+type dcResourceOptions struct {
+	imageRefFromUser reference.Named
+	TriggerMode      triggerMode
+	Links            []model.Link
+	AutoInit         value.BoolOrNone
 
 	Labels map[string]string
 
 	resourceDeps []string
 }
 
+func newDcResourceOptions() *dcResourceOptions {
+	return &dcResourceOptions{
+		Labels: make(map[string]string),
+	}
+}
+
 func (svc dcService) ImageRef() reference.Named {
-	if svc.imageRefFromUser != nil {
-		return svc.imageRefFromUser
+	if svc.Options != nil && svc.Options.imageRefFromUser != nil {
+		return svc.Options.imageRefFromUser
 	}
 	return svc.imageRefFromConfig
 }
@@ -345,6 +364,11 @@ func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, s
 }
 
 func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResourceSet, iTargets []model.ImageTarget) (model.Manifest, error) {
+	options := service.Options
+	if options == nil {
+		options = newDcResourceOptions()
+	}
+
 	dcInfo := model.DockerComposeTarget{
 		Name: model.TargetName(service.Name),
 		Spec: v1alpha1.DockerComposeServiceSpec{
@@ -352,22 +376,22 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResource
 			Project: dcSet.Project,
 		},
 		ServiceYAML:      string(service.ServiceYAML),
-		Links:            service.Links,
+		Links:            options.Links,
 		LocalVolumePaths: service.MountedLocalDirs,
 	}.WithImageMapDeps(model.FilterLiveUpdateOnly(service.ImageMapDeps, iTargets)).
 		WithPublishedPorts(service.PublishedPorts)
 
 	autoInit := true
-	if service.AutoInit.IsSet {
-		autoInit = service.AutoInit.Value
+	if options.AutoInit.IsSet {
+		autoInit = options.AutoInit.Value
 	}
-	um, err := starlarkTriggerModeToModel(s.triggerModeForResource(service.TriggerMode), autoInit)
+	um, err := starlarkTriggerModeToModel(s.triggerModeForResource(options.TriggerMode), autoInit)
 	if err != nil {
 		return model.Manifest{}, err
 	}
 
 	var mds []model.ManifestName
-	for _, md := range service.resourceDeps {
+	for _, md := range options.resourceDeps {
 		mds = append(mds, model.ManifestName(md))
 	}
 
@@ -376,7 +400,7 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResource
 		TriggerMode:          um,
 		ResourceDependencies: mds,
 	}.WithDeployTarget(dcInfo).
-		WithLabels(service.Labels).
+		WithLabels(options.Labels).
 		WithImageTargets(iTargets)
 
 	return m, nil
