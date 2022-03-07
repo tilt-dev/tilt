@@ -12,7 +12,7 @@ export const SidebarBuildButton = styled(BuildButton)`
   ${mixinResetButtonStyle};
   width: ${SizeUnit(1)};
   height: ${SizeUnit(1)};
-  background-color: ${Color.grayLighter};
+  background-color: ${Color.gray40};
   border-bottom-left-radius: ${overviewItemBorderRadius};
   border-top-right-radius: ${overviewItemBorderRadius};
   display: flex;
@@ -34,17 +34,17 @@ export const SidebarBuildButton = styled(BuildButton)`
     opacity: 1;
   }
   &.is-selected {
-    background-color: ${Color.gray7};
+    background-color: ${Color.gray70};
   }
   &:hover {
-    background-color: ${Color.grayDark};
+    background-color: ${Color.gray20};
   }
   &.is-selected:hover {
     background-color: ${Color.grayLightest};
   }
   & .fillStd {
     transition: fill ${AnimDuration.default} ease;
-    fill: ${Color.grayLight};
+    fill: ${Color.gray50};
   }
   &.is-manual .fillStd {
     fill: ${Color.blue};

@@ -16,7 +16,7 @@ const DisplayOptions = styled.div`
 const DisplayOptionCheckbox = styled(InstrumentedCheckbox)`
   &.MuiCheckbox-root,
   &.Mui-checked {
-    color: ${Color.gray6};
+    color: ${Color.gray60};
   }
 `
 

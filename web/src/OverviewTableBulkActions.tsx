@@ -35,7 +35,7 @@ const BulkActionMenu = styled.div`
 const SelectedCount = styled.p`
   margin: ${SizeUnit(0.25)};
   font-size: ${FontSize.small};
-  color: ${Color.gray7};
+  color: ${Color.gray70};
 `
 
 // Helpers

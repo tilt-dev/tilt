@@ -192,10 +192,10 @@ const DisableButton = styled(ApiButton)`
 
   button {
     ${OverviewButtonMixin};
-    background-color: ${Color.grayDark};
+    background-color: ${Color.gray20};
 
     &:hover {
-      background-color: ${Color.grayDark};
+      background-color: ${Color.gray20};
     }
   }
 
@@ -242,12 +242,12 @@ export let ButtonRightPill = styled(ButtonRoot)`
 
 const FilterTermTextField = styled(InstrumentedTextField)`
   & .MuiOutlinedInput-root {
-    background-color: ${Color.grayDark};
+    background-color: ${Color.gray20};
     position: relative;
     width: ${SizeUnit(9)};
 
     & fieldset {
-      border: 1px solid ${Color.grayLighter};
+      border: 1px solid ${Color.gray40};
       border-radius: ${SizeUnit(0.125)};
       transition: border-color ${AnimDuration.default} ease;
     }
@@ -266,7 +266,7 @@ const FilterTermTextField = styled(InstrumentedTextField)`
   }
 
   & .MuiInputBase-input {
-    color: ${Color.gray7};
+    color: ${Color.gray70};
     font-family: ${Font.monospace};
     font-size: ${FontSize.small};
   }
@@ -274,7 +274,7 @@ const FilterTermTextField = styled(InstrumentedTextField)`
 
 const FieldErrorTooltip = styled.span`
   align-items: center;
-  background-color: ${Color.grayDark};
+  background-color: ${Color.gray20};
   box-sizing: border-box;
   color: ${Color.red};
   display: flex;
@@ -290,7 +290,7 @@ const FieldErrorTooltip = styled.span`
   z-index: 1;
 
   ::before {
-    border-bottom: 8px solid ${Color.grayDark};
+    border-bottom: 8px solid ${Color.gray20};
     border-left: 8px solid transparent;
     border-right: 8px solid transparent;
     content: "";
@@ -516,7 +516,7 @@ export function FilterTermField({ termFromUrl }: { termFromUrl: FilterTerm }) {
   const inputProps: InputProps = {
     startAdornment: (
       <InputAdornment position="start" disablePointerEvents={true}>
-        <FilterSvg fill={Color.grayDark} role="presentation" />
+        <FilterSvg fill={Color.gray20} role="presentation" />
       </InputAdornment>
     ),
   }
@@ -617,14 +617,14 @@ export function CopyButton(props: CopyButtonProps) {
 }
 
 let ActionBarRoot = styled.div`
-  background-color: ${Color.grayDarkest};
+  background-color: ${Color.gray10};
 `
 
 export let ActionBarTopRow = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid ${Color.grayLighter};
+  border-bottom: 1px solid ${Color.gray40};
   padding: ${SizeUnit(0.25)} ${SizeUnit(0.5)};
 `
 
@@ -632,7 +632,7 @@ export let ActionBarBottomRow = styled.div`
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  border-bottom: 1px solid ${Color.grayLighter};
+  border-bottom: 1px solid ${Color.gray40};
   min-height: ${SizeUnit(1)};
   padding-left: ${SizeUnit(0.5)};
   padding-right: ${SizeUnit(0.5)};
@@ -653,7 +653,7 @@ let EndpointSet = styled.div`
 `
 
 export let Endpoint = styled.a`
-  color: ${Color.gray7};
+  color: ${Color.gray70};
   transition: color ${AnimDuration.default} ease;
 
   &:hover {
@@ -662,7 +662,7 @@ export let Endpoint = styled.a`
 `
 
 let EndpointIcon = styled(LinkSvg)`
-  fill: ${Color.gray7};
+  fill: ${Color.gray70};
   margin-right: ${SizeUnit(0.25)};
 `
 

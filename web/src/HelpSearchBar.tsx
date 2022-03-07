@@ -29,13 +29,13 @@ export const HelpSearchBarTextField = styled(InstrumentedTextField)`
     background-color: ${Color.white};
 
     & fieldset {
-      border-color: 1px solid ${Color.grayLighter};
+      border-color: 1px solid ${Color.gray40};
     }
     &:hover fieldset {
-      border: 1px solid ${Color.grayLighter};
+      border: 1px solid ${Color.gray40};
     }
     &.Mui-focused fieldset {
-      border: 1px solid ${Color.grayLighter};
+      border: 1px solid ${Color.gray40};
     }
     & .MuiOutlinedInput-input {
       padding: ${SizeUnit(0.2)};
@@ -47,7 +47,7 @@ export const HelpSearchBarTextField = styled(InstrumentedTextField)`
 
   & .MuiInputBase-input {
     font-family: ${Font.monospace};
-    color: ${Color.grayLighter};
+    color: ${Color.gray40};
     font-size: ${FontSize.small};
   }
 `

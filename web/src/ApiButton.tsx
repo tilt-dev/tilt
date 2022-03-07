@@ -105,7 +105,7 @@ const ApiButtonFormRoot = styled.div`
 const ApiButtonFormFooter = styled.div`
   margin-top: ${SizeUnit(0.5)};
   text-align: right;
-  color: ${Color.grayLighter};
+  color: ${Color.gray40};
   font-size: ${FontSize.smallester};
 `
 const ApiIconRoot = styled.span``
@@ -130,7 +130,7 @@ export const LogLink = styled(Link)`
 export const confirmingButtonStateMixin = `
 &.confirming {
   background-color: ${Color.red};
-  border-color: ${Color.gray};
+  border-color: ${Color.gray30};
   color: ${Color.black};
 
   &:hover,

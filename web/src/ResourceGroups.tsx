@@ -81,7 +81,7 @@ export const ResourceGroupSummaryIcon = styled(CaretSvg)`
   transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1) 0ms; /* Copied from MUI accordion */
 
   .fillStd {
-    fill: ${Color.grayLight};
+    fill: ${Color.gray50};
   }
 `
 

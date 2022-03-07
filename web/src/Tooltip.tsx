@@ -20,7 +20,7 @@ let useStyles = makeStyles((theme) => ({
   arrow: {
     color: Color.grayLightest,
     "&::before": {
-      border: `1px solid ${Color.grayLight}`,
+      border: `1px solid ${Color.gray50}`,
     },
   },
   tooltip: {
@@ -28,9 +28,9 @@ let useStyles = makeStyles((theme) => ({
     fontFamily: Font.sansSerif,
     fontSize: FontSize.smallest,
     fontWeight: 400,
-    color: Color.grayDark,
+    color: Color.gray20,
     padding: SizeUnit(0.25),
-    border: `1px solid ${Color.grayLight}`,
+    border: `1px solid ${Color.gray50}`,
   },
   popper: {
     filter: "drop-shadow(0px 4px 4px rgba(0, 0, 0, 0.25))",
@@ -58,11 +58,11 @@ const InfoIcon = styled(InfoSvg)`
 
   &.shadow {
     border-radius: 50%;
-    box-shadow: 0px 0px 5px 2px ${ColorRGBA(Color.grayDark, 0.6)};
+    box-shadow: 0px 0px 5px 2px ${ColorRGBA(Color.gray20, 0.6)};
   }
 
   .fillStd {
-    fill: ${Color.gray6};
+    fill: ${Color.gray60};
   }
 `
 const DismissButton = styled(InstrumentedButton)`
@@ -73,7 +73,7 @@ const DismissButton = styled(InstrumentedButton)`
   .MuiButton-label {
     font-size: ${FontSize.smallester};
     font-style: italic;
-    color: ${Color.grayLight};
+    color: ${Color.gray50};
     text-align: right;
     display: block;
   }

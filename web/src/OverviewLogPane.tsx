@@ -37,7 +37,7 @@ type OverviewLogComponentProps = {
 
 let LogPaneRoot = styled.section`
   padding: 0 0 ${SizeUnit(0.25)} 0;
-  background-color: ${Color.grayDarkest};
+  background-color: ${Color.gray10};
   width: 100%;
   height: 100%;
   overflow-y: auto;

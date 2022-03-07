@@ -12,7 +12,7 @@ import {
 
 const ShowMoreButtonRoot = styled(InstrumentedButton)`
   ${mixinResetButtonStyle};
-  color: ${Color.gray6};
+  color: ${Color.gray60};
   font-family: ${Font.sansSerif};
   font-size: ${FontSize.small};
   padding: 0 0.5em;
@@ -26,7 +26,7 @@ const ShowMoreButtonRoot = styled(InstrumentedButton)`
 `
 
 const ShowMoreCount = styled.span`
-  color: ${Color.gray7};
+  color: ${Color.gray70};
   font-family: ${Font.sansSerif};
   font-size: ${FontSize.small};
 `

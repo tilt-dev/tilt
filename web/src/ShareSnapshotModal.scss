@@ -9,7 +9,7 @@
   font-family: $font-sans-serif;
   font-size: $font-size-small;
   text-transform: uppercase;
-  background-color: $color-gray-light;
+  background-color: $color-gray-50;
   color: $color-white;
   padding-top: $spacing-unit / 2;
   padding-bottom: $spacing-unit / 2;
@@ -133,17 +133,17 @@
   text-decoration: none;
 }
 .ShareSnapshotModal-tiltCloudLink span {
-  border-bottom: 2px solid $color-gray;
+  border-bottom: 2px solid $color-gray-30;
   margin-right: $spacing-unit / 4;
 }
 .ShareSnapshotModal-tiltCloudLink svg {
-  fill: $color-gray-light;
+  fill: $color-gray-50;
 }
 .ShareSnapshotModal-tiltCloudLink:hover span {
   border-bottom-color: $color-blue;
 }
 .ShareSnapshotModal-tiltCloudLink:hover svg {
-  fill: $color-gray-darkest;
+  fill: $color-gray-10;
 }
 
 // Button Styles
@@ -165,7 +165,7 @@
 }
 .ShareSnapshotModal-button--inline {
   font-size: $font-size-smallest;
-  background-color: $color-gray-dark;
+  background-color: $color-gray-20;
   min-width: 95px; // Don't let button text wrap
   box-sizing: border-box;
 }
@@ -175,15 +175,15 @@
 .ShareSnapshotModal-button--cta {
   font-size: $font-size-small;
   background-color: $color-blue;
-  box-shadow: -5px 5px 0 0 $color-gray;
+  box-shadow: -5px 5px 0 0 $color-gray-30;
   margin-left: $spacing-unit;
   transition-property: box-shadow;
   transition-duration: 0.3s;
   transition-timing-function: linear;
 }
 .ShareSnapshotModal-button--cta:hover {
-  box-shadow: -3px 3px 0 0 $color-gray;
+  box-shadow: -3px 3px 0 0 $color-gray-30;
 }
 .ShareSnapshotModal-button--cta:active {
-  box-shadow: -1px 1px 0 0 $color-gray;
+  box-shadow: -1px 1px 0 0 $color-gray-30;
 }
