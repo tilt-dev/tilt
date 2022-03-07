@@ -51,7 +51,7 @@ func (m *DockerComposeLogManager) diff(ctx context.Context, st store.RStore) (se
 		// deleted. This affects tests more than normal builds.
 		// But we should have a better way to associate logs with a particular build.
 		ms := mt.State
-		if ms.CurrentBuild.StartTime.IsZero() && ms.LastBuild().StartTime.IsZero() {
+		if ms.EarliestCurrentBuild().StartTime.IsZero() && ms.LastBuild().StartTime.IsZero() {
 			continue
 		}
 		dcState := ms.DCRuntimeState()

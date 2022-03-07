@@ -35,7 +35,7 @@ func TestNextTargetToBuildDoesntReturnCurrentlyBuildingTarget(t *testing.T) {
 	f.assertNextTargetToBuild(mt.Manifest.Name)
 
 	// If target is currently building, should NOT be next-to-build
-	mt.State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}
+	mt.State.CurrentBuilds["buildcontrol"] = model.BuildRecord{StartTime: time.Now()}
 	f.assertNoTargetNextToBuild()
 }
 
@@ -48,11 +48,11 @@ func TestCurrentlyBuildingK8sResourceDisablesLocalScheduling(t *testing.T) {
 
 	f.assertNextTargetToBuild("local1")
 
-	k8s1.State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}
+	k8s1.State.CurrentBuilds["buildcontrol"] = model.BuildRecord{StartTime: time.Now()}
 	f.assertNextTargetToBuild("k8s2")
 	f.assertHold("local1", store.HoldReasonIsUnparallelizableTarget)
 
-	k8s2.State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}
+	k8s2.State.CurrentBuilds["buildcontrol"] = model.BuildRecord{StartTime: time.Now()}
 	f.assertNoTargetNextToBuild()
 }
 
@@ -67,11 +67,11 @@ func TestCurrentlyBuildingK8sResourceDoesNotCreateHoldIfResourceNotPending(t *te
 
 	f.assertHold("local1", store.HoldReasonNone)
 
-	k8s1.State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}
+	k8s1.State.CurrentBuilds["buildcontrol"] = model.BuildRecord{StartTime: time.Now()}
 	f.assertNextTargetToBuild("k8s2")
 	f.assertHold("local1", store.HoldReasonNone)
 
-	k8s2.State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}
+	k8s2.State.CurrentBuilds["buildcontrol"] = model.BuildRecord{StartTime: time.Now()}
 	f.assertNoTargetNextToBuild()
 	f.assertHold("local1", store.HoldReasonNone)
 }
@@ -84,7 +84,7 @@ func TestCurrentlyBuildingUncategorizedDisablesOtherK8sTargets(t *testing.T) {
 	_ = f.upsertK8sManifest("k8s2")
 
 	f.assertNextTargetToBuild(model.UnresourcedYAMLManifestName)
-	k8sUnresourced.State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}
+	k8sUnresourced.State.CurrentBuilds["buildcontrol"] = model.BuildRecord{StartTime: time.Now()}
 	f.assertNoTargetNextToBuild()
 	for _, mn := range []model.ManifestName{"k8s1", "k8s2"} {
 		f.assertHold(mn, store.HoldReasonWaitingForUncategorized, model.ManifestName("uncategorized").TargetID())
@@ -112,7 +112,7 @@ func TestK8sDependsOnLocal(t *testing.T) {
 	local1.State.RuntimeState = lrs
 
 	f.assertNextTargetToBuild("k8s1")
-	k8s1.State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}
+	k8s1.State.CurrentBuilds["buildcontrol"] = model.BuildRecord{StartTime: time.Now()}
 	f.assertNextTargetToBuild("k8s2")
 
 	_ = k8s2
@@ -176,7 +176,7 @@ func TestCurrentlyBuildingLocalResourceDisablesK8sScheduling(t *testing.T) {
 	f.upsertLocalManifest("local2")
 
 	f.assertNextTargetToBuild("local1")
-	local1.State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}
+	local1.State.CurrentBuilds["buildcontrol"] = model.BuildRecord{StartTime: time.Now()}
 	f.assertNoTargetNextToBuild()
 	for _, mn := range []model.ManifestName{"k8s1", "k8s2", "local2"} {
 		f.assertHold(mn, store.HoldReasonWaitingForUnparallelizableTarget, model.ManifestName("local1").TargetID())
@@ -196,10 +196,10 @@ func TestCurrentlyBuildingParallelLocalResource(t *testing.T) {
 
 	f.assertNextTargetToBuild("local1")
 
-	local1.State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}
+	local1.State.CurrentBuilds["buildcontrol"] = model.BuildRecord{StartTime: time.Now()}
 	f.assertNextTargetToBuild("local2")
 
-	local2.State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}
+	local2.State.CurrentBuilds["buildcontrol"] = model.BuildRecord{StartTime: time.Now()}
 	f.assertNextTargetToBuild("k8s1")
 }
 
@@ -210,7 +210,7 @@ func TestTriggerIneligibleResource(t *testing.T) {
 	local1 := f.upsertLocalManifest("local1", func(m manifestbuilder.ManifestBuilder) manifestbuilder.ManifestBuilder {
 		return m.WithLocalAllowParallel(true)
 	})
-	local1.State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}
+	local1.State.CurrentBuilds["buildcontrol"] = model.BuildRecord{StartTime: time.Now()}
 
 	// local2 is not parallelizable
 	local2 := f.upsertLocalManifest("local2")
@@ -240,12 +240,12 @@ func TestTwoK8sTargetsWithBaseImage(t *testing.T) {
 
 	f.assertNextTargetToBuild("sancho-one")
 
-	sanchoOne.State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}
+	sanchoOne.State.CurrentBuilds["buildcontrol"] = model.BuildRecord{StartTime: time.Now()}
 
 	f.assertNoTargetNextToBuild()
 	f.assertHold("sancho-two", store.HoldReasonBuildingComponent, baseImage.ID())
 
-	sanchoOne.State.CurrentBuild = model.BuildRecord{}
+	delete(sanchoOne.State.CurrentBuilds, "buildcontrol")
 	sanchoOne.State.AddCompletedBuild(model.BuildRecord{
 		StartTime:  time.Now(),
 		FinishTime: time.Now(),
@@ -399,7 +399,7 @@ func TestTwoK8sTargetsWithBaseImagePrebuilt(t *testing.T) {
 
 	f.assertNextTargetToBuild("sancho-one")
 
-	sanchoOne.State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}
+	sanchoOne.State.CurrentBuilds["buildcontrol"] = model.BuildRecord{StartTime: time.Now()}
 
 	// Make sure sancho-two can start while sanchoOne is still pending.
 	f.assertNextTargetToBuild("sancho-two")

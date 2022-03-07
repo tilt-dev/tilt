@@ -2704,6 +2704,7 @@ func TestBuildLogAction(t *testing.T) {
 		ManifestName: manifest.Name,
 		StartTime:    f.Now(),
 		SpanID:       SpanIDForBuildLog(1),
+		Source:       "buildcontrol",
 	})
 
 	f.store.Dispatch(store.NewLogAction(manifest.Name, SpanIDForBuildLog(1), logger.InfoLvl, nil, []byte(`a
@@ -2713,7 +2714,7 @@ ghij`)))
 
 	f.WaitUntil("log appears", func(es store.EngineState) bool {
 		ms, _ := es.ManifestState("alert-injester")
-		spanID := ms.CurrentBuild.SpanID
+		spanID := ms.EarliestCurrentBuild().SpanID
 		return spanID != "" && len(es.LogStore.SpanLog(spanID)) > 0
 	})
 

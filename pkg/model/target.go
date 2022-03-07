@@ -74,7 +74,6 @@ type TargetSpec interface {
 
 type TargetStatus interface {
 	TargetID() TargetID
-	ActiveBuild() BuildRecord
 	LastBuild() BuildRecord
 }
 

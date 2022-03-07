@@ -1688,7 +1688,7 @@ func (f *testFixture) waitUntilManifestBuilding(name model.ManifestName) {
 	})
 
 	f.withState(func(st store.EngineState) {
-		_, ok := st.CurrentlyBuilding[name]
+		ok := st.CurrentBuildSet[name]
 		require.True(f.t, ok, "expected EngineState to reflect that %q is currently building", name)
 	})
 }
@@ -1700,7 +1700,7 @@ func (f *testFixture) waitUntilManifestNotBuilding(name model.ManifestName) {
 	})
 
 	f.withState(func(st store.EngineState) {
-		_, ok := st.CurrentlyBuilding[name]
+		ok := st.CurrentBuildSet[name]
 		require.False(f.t, ok, "expected EngineState to reflect that %q is NOT currently building", name)
 	})
 }
