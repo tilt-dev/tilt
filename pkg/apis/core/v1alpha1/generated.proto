@@ -629,11 +629,55 @@ message DockerComposeServiceSpec {
   optional DisableSource disableSource = 4;
 }
 
-// DockerComposeServiceStatus defines the observed state of DockerComposeService
+// DockerComposeServiceStatus defines the observed state of DockerComposeService,
+// continuing to watch the container after it starts.
 message DockerComposeServiceStatus {
   // Details about whether/why this is disabled.
   // +optional
   optional DisableStatus disableStatus = 1;
+
+  // How docker binds container ports to the host network for this service.
+  // +optional
+  repeated DockerPortBinding portBindings = 2;
+
+  // Current state of the container for this service.
+  // +optional
+  optional DockerContainerState containerState = 3;
+
+  // Current container ID.
+  // +optional
+  optional string containerID = 4;
+}
+
+// State of a standalone container in Docker.
+//
+// An apiserver-compatible representation of this struct:
+// https://pkg.go.dev/github.com/docker/docker/api/types#ContainerState
+message DockerContainerState {
+  // String representation of the container state.
+  // Can be one of "created", "running", "paused", "restarting", "removing", "exited", or "dead".
+  // +optional
+  optional string status = 1;
+
+  // Whether the container is running.
+  // +optional
+  optional bool running = 2;
+
+  // Whether the container is in an error state.
+  // +optional
+  optional string error = 3;
+
+  // The exit code, if the container has exited.
+  // +optional
+  optional int32 exitCode = 4;
+
+  // When the container process started.
+  // +optional
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startedAt = 5;
+
+  // When the container process finished.
+  // +optional
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime finishedAt = 6;
 }
 
 // DockerImage describes an image to build with Docker.
@@ -846,6 +890,18 @@ message DockerImageStatus {
   // Status information about each individual build stage
   // of the most recent image build.
   repeated DockerImageStageStatus stageStatuses = 5;
+}
+
+// How docker binds container ports to the host network
+message DockerPortBinding {
+  // The port inside the container.
+  optional int32 containerPort = 1;
+
+  // The port on the host machine where Docker running.
+  optional int32 hostPort = 2;
+
+  // The IP on the host machine where Docker is binding the network.
+  optional string hostIP = 3;
 }
 
 // ExecAction describes a "run in container" action.

@@ -123,11 +123,24 @@ func (in *DockerComposeServiceList) GetListMeta() *metav1.ListMeta {
 	return &in.ListMeta
 }
 
-// DockerComposeServiceStatus defines the observed state of DockerComposeService
+// DockerComposeServiceStatus defines the observed state of DockerComposeService,
+// continuing to watch the container after it starts.
 type DockerComposeServiceStatus struct {
 	// Details about whether/why this is disabled.
 	// +optional
 	DisableStatus *DisableStatus `json:"disableStatus,omitempty" protobuf:"bytes,1,opt,name=disableStatus"`
+
+	// How docker binds container ports to the host network for this service.
+	// +optional
+	PortBindings []DockerPortBinding `json:"portBindings,omitempty" protobuf:"bytes,2,rep,name=portBindings"`
+
+	// Current state of the container for this service.
+	// +optional
+	ContainerState *DockerContainerState `json:"containerState,omitempty" protobuf:"bytes,3,opt,name=containerState"`
+
+	// Current container ID.
+	// +optional
+	ContainerID string `json:"containerID,omitempty" protobuf:"bytes,4,opt,name=containerID"`
 }
 
 // DockerComposeService implements ObjectWithStatusSubResource interface.
@@ -177,4 +190,47 @@ type DockerComposeProject struct {
 
 	// Path to an env file to use. Passed to docker-compose as `--env-file FILE`.
 	EnvFile string `json:"envFile,omitempty" protobuf:"bytes,5,opt,name=envFile"`
+}
+
+// State of a standalone container in Docker.
+//
+// An apiserver-compatible representation of this struct:
+// https://pkg.go.dev/github.com/docker/docker/api/types#ContainerState
+type DockerContainerState struct {
+	// String representation of the container state.
+	// Can be one of "created", "running", "paused", "restarting", "removing", "exited", or "dead".
+	// +optional
+	Status string `json:"status,omitempty" protobuf:"bytes,1,opt,name=status"`
+
+	// Whether the container is running.
+	// +optional
+	Running bool `json:"running,omitempty" protobuf:"varint,2,opt,name=running"`
+
+	// Whether the container is in an error state.
+	// +optional
+	Error string `json:"error,omitempty" protobuf:"bytes,3,opt,name=error"`
+
+	// The exit code, if the container has exited.
+	// +optional
+	ExitCode int32 `json:"exitCode,omitempty" protobuf:"varint,4,opt,name=exitCode"`
+
+	// When the container process started.
+	// +optional
+	StartedAt metav1.MicroTime `json:"startedAt,omitempty" protobuf:"bytes,5,opt,name=startedAt"`
+
+	// When the container process finished.
+	// +optional
+	FinishedAt metav1.MicroTime `json:"finishedAt,omitempty" protobuf:"bytes,6,opt,name=finishedAt"`
+}
+
+// How docker binds container ports to the host network
+type DockerPortBinding struct {
+	// The port inside the container.
+	ContainerPort int32 `json:"containerPort,omitempty" protobuf:"varint,1,opt,name=containerPort"`
+
+	// The port on the host machine where Docker running.
+	HostPort int32 `json:"hostPort,omitempty" protobuf:"varint,2,opt,name=hostPort"`
+
+	// The IP on the host machine where Docker is binding the network.
+	HostIP string `json:"hostIP,omitempty" protobuf:"bytes,3,opt,name=hostIP"`
 }

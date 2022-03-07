@@ -19,23 +19,23 @@ func NewCreatedContainerState() types.ContainerState {
 func NewRunningContainerState() types.ContainerState {
 	return types.ContainerState{
 		Running:    true,
-		StartedAt:  time.Now().String(),
+		StartedAt:  time.Now().Format(time.RFC3339Nano),
 		FinishedAt: ZeroTime,
 	}
 }
 
 func NewExitSuccessContainerState() types.ContainerState {
 	return types.ContainerState{
-		StartedAt:  time.Now().String(),
-		FinishedAt: time.Now().String(),
+		StartedAt:  time.Now().Format(time.RFC3339Nano),
+		FinishedAt: time.Now().Format(time.RFC3339Nano),
 		ExitCode:   0,
 	}
 }
 
 func NewExitErrorContainerState() types.ContainerState {
 	return types.ContainerState{
-		StartedAt:  time.Now().String(),
-		FinishedAt: time.Now().String(),
+		StartedAt:  time.Now().Format(time.RFC3339Nano),
+		FinishedAt: time.Now().Format(time.RFC3339Nano),
 		ExitCode:   1,
 	}
 }

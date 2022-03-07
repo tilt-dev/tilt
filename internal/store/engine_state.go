@@ -3,7 +3,6 @@ package store
 import (
 	"fmt"
 	"sort"
-	"strconv"
 	"time"
 
 	"github.com/tilt-dev/wmclient/pkg/analytics"
@@ -882,28 +881,25 @@ func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []model.Link) {
 	}
 
 	if mt.Manifest.IsDC() {
-		hostPorts := make(map[int]bool)
+		hostPorts := make(map[int32]bool)
 		publishedPorts := mt.Manifest.DockerComposeTarget().PublishedPorts()
 		for _, p := range publishedPorts {
-			if p == 0 || hostPorts[p] {
+			if p == 0 || hostPorts[int32(p)] {
+				continue
+			}
+			hostPorts[int32(p)] = true
+			endpoints = append(endpoints, model.MustNewLink(fmt.Sprintf("http://localhost:%d/", p), ""))
+		}
+
+		for _, binding := range mt.State.DCRuntimeState().Ports {
+			// Docker usually contains multiple bindings for each port - one for ipv4 (0.0.0.0)
+			// and one for ipv6 (::1).
+			p := binding.HostPort
+			if hostPorts[p] {
 				continue
 			}
 			hostPorts[p] = true
 			endpoints = append(endpoints, model.MustNewLink(fmt.Sprintf("http://localhost:%d/", p), ""))
-		}
-
-		for _, bindings := range mt.State.DCRuntimeState().Ports {
-			// Docker usually contains multiple bindings for each port - one for ipv4 (0.0.0.0)
-			// and one for ipv6 (::1).
-			for _, binding := range bindings {
-				pstring := binding.HostPort
-				p, err := strconv.Atoi(pstring)
-				if err != nil || p == 0 || hostPorts[p] {
-					continue
-				}
-				hostPorts[p] = true
-				endpoints = append(endpoints, model.MustNewLink(fmt.Sprintf("http://localhost:%d/", p), ""))
-			}
 		}
 
 		endpoints = append(endpoints, mt.Manifest.DockerComposeTarget().Links...)
