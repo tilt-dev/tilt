@@ -7,6 +7,8 @@ import (
 	"io"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
@@ -50,9 +52,18 @@ func (cu *ExecUpdater) UpdateContainer(ctx context.Context, cInfo liveupdates.Co
 	// copy files to container
 	buf := bytes.NewBuffer(nil)
 	tarWriter := io.MultiWriter(w, buf)
+	tarCmd := tarCmd()
 	err := cu.kCli.Exec(ctx, cInfo.PodID, cInfo.ContainerName, cInfo.Namespace,
-		tarArgv(), archiveToCopy, tarWriter, tarWriter)
+		tarCmd.Argv, archiveToCopy, tarWriter, tarWriter)
 	if err != nil {
+		if exitCodeErr, ok := build.WrapCodeExitError(err, tarCmd); ok {
+			switch exitCodeErr.ExitCode {
+			case TarExitCodePermissionDenied:
+				return permissionDeniedErr(err)
+			case GenericExitCodeCannotExec:
+				return cannotExecErr(err)
+			}
+		}
 		return fmt.Errorf("copying changed files: %v", handleK8sExecError(buf, err))
 	}
 
@@ -62,7 +73,10 @@ func (cu *ExecUpdater) UpdateContainer(ctx context.Context, cInfo liveupdates.Co
 		err := cu.kCli.Exec(ctx, cInfo.PodID, cInfo.ContainerName, cInfo.Namespace,
 			c.Argv, nil, w, w)
 		if err != nil {
-			return build.WrapCodeExitError(err, cInfo.ContainerID, c)
+			if exitCodeErr, ok := build.WrapCodeExitError(err, c); ok {
+				return exitCodeErr
+			}
+			return errors.Wrapf(err, "executing %v on container %s", c, cInfo.ContainerID.ShortStr())
 		}
 
 	}
@@ -73,12 +87,10 @@ func (cu *ExecUpdater) UpdateContainer(ctx context.Context, cInfo liveupdates.Co
 func handleK8sExecError(out *bytes.Buffer, err error) error {
 	msg := strings.ToLower(fmt.Sprintf("%s\n%s", out.String(), err.Error()))
 	if strings.Contains(msg, "permission denied") || strings.Contains(msg, "cannot open") {
-		return fmt.Errorf("%v\n"+
-			"This usually means the container filesystem denied access. Please check:\n"+
-			"  1) That the container image has writable files\n"+
-			"  2) That the container image default user has write access to the files\n"+
-			"  3) That the Pod spec doesn't have a SecurityContext that would block writes",
-			err)
+		return permissionDeniedErr(err)
+	}
+	if strings.Contains(msg, "executable file not found") {
+		return cannotExecErr(err)
 	}
 	return err
 }

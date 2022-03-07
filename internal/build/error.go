@@ -14,15 +14,15 @@ import (
 // https://success.docker.com/article/what-causes-a-container-to-exit-with-code-137
 const TaskKillExitCode = 137
 
-func WrapCodeExitError(err error, cID container.ID, cmd model.Cmd) error {
+func WrapCodeExitError(err error, cmd model.Cmd) (RunStepFailure, bool) {
 	var exitCodeErr exec.CodeExitError
 	if errors.As(err, &exitCodeErr) {
 		return RunStepFailure{
 			Cmd:      cmd,
 			ExitCode: exitCodeErr.ExitStatus(),
-		}
+		}, true
 	}
-	return errors.Wrapf(err, "executing %v on container %s", cmd, cID.ShortStr())
+	return RunStepFailure{}, false
 }
 
 // Convert a Docker exec error into our own internal error type.

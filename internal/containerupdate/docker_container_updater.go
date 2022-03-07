@@ -46,10 +46,17 @@ func (cu *DockerUpdater) UpdateContainer(ctx context.Context, cInfo liveupdates.
 	// (whereas the Exec API is part of the CRI and much more battle-tested).
 	// Discussion:
 	// https://github.com/tilt-dev/tilt/issues/3708
-	err = cu.dCli.ExecInContainer(ctx, cInfo.ContainerID, model.Cmd{
-		Argv: tarArgv(),
-	}, archiveToCopy, l.Writer(logger.InfoLvl))
+	err = cu.dCli.ExecInContainer(ctx, cInfo.ContainerID, tarCmd(), archiveToCopy, l.Writer(logger.InfoLvl))
 	if err != nil {
+		var exitErr docker.ExitError
+		if errors.As(err, &exitErr) {
+			switch exitErr.ExitCode {
+			case TarExitCodePermissionDenied:
+				return permissionDeniedErr(err)
+			case GenericExitCodeCannotExec:
+				return cannotExecErr(err)
+			}
+		}
 		return errors.Wrap(err, "copying files")
 	}
 

@@ -46,9 +46,9 @@ func (k *K8sClient) Exec(_ context.Context, podID PodID, cName container.Name, n
 			// field, which might be empty and there's no way for us to further
 			// introspect at this point, so a generic message is the best we
 			// can do here
-			err = errors.New("unknown server error")
+			return errors.New("unknown server failure")
 		}
-		return fmt.Errorf("executing command: %w", err)
+		return err
 	}
 	return nil
 }
