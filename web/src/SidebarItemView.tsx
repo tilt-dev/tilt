@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react"
+import React, { MutableRefObject, useEffect, useRef } from "react"
 import TimeAgo from "react-timeago"
 import styled from "styled-components"
 import { Flag, useFeatures } from "./feature"
@@ -336,7 +336,7 @@ export function EnabledSidebarItemView(props: SidebarItemViewProps) {
   let onStartBuild = startBuild.bind(null, item.name)
   const groupViewIndentClass = props.groupView ? "groupViewIndent" : ""
   let analyticsTags = { target: item.targetType }
-  let ref: any = useRef(null)
+  let ref: MutableRefObject<HTMLLIElement | null> = useRef(null)
 
   useEffect(() => {
     if (isSelected && ref.current?.scrollIntoView) {
