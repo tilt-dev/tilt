@@ -64,7 +64,7 @@ func StateToTerminalView(s store.EngineState, mu *sync.RWMutex) view.View {
 			buildHistory[i] = build
 		}
 
-		currentBuild := ms.CurrentBuild()
+		currentBuild := ms.EarliestCurrentBuild()
 		currentBuild.Edits = ospath.FileListDisplayNames(absWatchDirs, currentBuild.Edits)
 
 		// Sort the strings to make the outputs deterministic.
@@ -102,7 +102,7 @@ func StateToTerminalView(s store.EngineState, mu *sync.RWMutex) view.View {
 const MainTiltfileManifestName = model.MainTiltfileManifestName
 
 func tiltfileResourceView(ms *store.ManifestState) view.Resource {
-	currentBuild := ms.CurrentBuild()
+	currentBuild := ms.EarliestCurrentBuild()
 	tr := view.Resource{
 		Name:         MainTiltfileManifestName,
 		IsTiltfile:   true,

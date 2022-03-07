@@ -2714,7 +2714,7 @@ ghij`)))
 
 	f.WaitUntil("log appears", func(es store.EngineState) bool {
 		ms, _ := es.ManifestState("alert-injester")
-		spanID := ms.CurrentBuild().SpanID
+		spanID := ms.EarliestCurrentBuild().SpanID
 		return spanID != "" && len(es.LogStore.SpanLog(spanID)) > 0
 	})
 

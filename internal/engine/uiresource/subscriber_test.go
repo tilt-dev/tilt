@@ -53,7 +53,7 @@ func TestUpdateTiltfile(t *testing.T) {
 
 	f.store.WithState(func(es *store.EngineState) {
 		ms := es.TiltfileStates[model.MainTiltfileManifestName]
-		b := ms.CurrentBuild()
+		b := ms.EarliestCurrentBuild()
 		b.FinishTime = time.Now()
 		ms.AddCompletedBuild(b)
 		delete(ms.CurrentBuilds, "tiltfile")

@@ -628,7 +628,7 @@ func (ms *ManifestState) LocalRuntimeState() LocalRuntimeState {
 }
 
 // Return the current build that started first.
-func (ms *ManifestState) CurrentBuild() model.BuildRecord {
+func (ms *ManifestState) EarliestCurrentBuild() model.BuildRecord {
 	best := model.BuildRecord{}
 	bestKey := ""
 	for k, v := range ms.CurrentBuilds {
@@ -641,7 +641,7 @@ func (ms *ManifestState) CurrentBuild() model.BuildRecord {
 }
 
 func (ms *ManifestState) IsBuilding() bool {
-	return !ms.CurrentBuild().Empty()
+	return len(ms.CurrentBuilds) != 0
 }
 
 func (ms *ManifestState) LastBuild() model.BuildRecord {
@@ -659,7 +659,7 @@ func (ms *ManifestState) AddCompletedBuild(bs model.BuildRecord) {
 }
 
 func (ms *ManifestState) StartedFirstBuild() bool {
-	return !ms.CurrentBuild().Empty() || len(ms.BuildHistory) > 0
+	return ms.IsBuilding() || len(ms.BuildHistory) > 0
 }
 
 func (ms *ManifestState) MostRecentPod() v1alpha1.Pod {
@@ -677,11 +677,12 @@ func (ms *ManifestState) PodWithID(pid k8s.PodID) (*v1alpha1.Pod, bool) {
 }
 
 func (ms *ManifestState) AddPendingFileChange(targetID model.TargetID, file string, timestamp time.Time) {
-	if !ms.CurrentBuild().Empty() {
-		if timestamp.Before(ms.CurrentBuild().StartTime) {
+	if ms.IsBuilding() {
+		build := ms.EarliestCurrentBuild()
+		if timestamp.Before(build.StartTime) {
 			// this file change occurred before the build started, but if the current build already knows
 			// about it (from another target or rapid successive changes that weren't de-duped), it can be ignored
-			for _, edit := range ms.CurrentBuild().Edits {
+			for _, edit := range build.Edits {
 				if edit == file {
 					return
 				}
@@ -797,7 +798,7 @@ func (ms *ManifestState) HasPendingChangesBeforeOrEqual(highWaterMark time.Time)
 }
 
 func (ms *ManifestState) UpdateStatus(triggerMode model.TriggerMode) v1alpha1.UpdateStatus {
-	currentBuild := ms.CurrentBuild()
+	currentBuild := ms.EarliestCurrentBuild()
 	hasPendingChanges, _ := ms.HasPendingChanges()
 	lastBuild := ms.LastBuild()
 	lastBuildError := lastBuild.Error != nil

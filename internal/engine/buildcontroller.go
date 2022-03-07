@@ -168,7 +168,7 @@ func (c *BuildController) cleanUpCanceledBuilds(st store.RStore) {
 		canceled := false
 		if cancelButton, ok := state.UIButtons[uibutton.StopBuildButtonName(ms.Name.String())]; ok {
 			lastCancelClick := cancelButton.Status.LastClickedAt
-			canceled = timecmp.AfterOrEqual(lastCancelClick, ms.CurrentBuild().StartTime)
+			canceled = timecmp.AfterOrEqual(lastCancelClick, ms.EarliestCurrentBuild().StartTime)
 		}
 		if disabled || canceled {
 			c.cleanupBuildContext(ms.Name)
