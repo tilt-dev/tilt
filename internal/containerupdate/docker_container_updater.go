@@ -5,10 +5,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/pkg/errors"
 
-	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -46,25 +46,25 @@ func (cu *DockerUpdater) UpdateContainer(ctx context.Context, cInfo liveupdates.
 	// (whereas the Exec API is part of the CRI and much more battle-tested).
 	// Discussion:
 	// https://github.com/tilt-dev/tilt/issues/3708
-	err = cu.dCli.ExecInContainer(ctx, cInfo.ContainerID, tarCmd(), archiveToCopy, l.Writer(logger.InfoLvl))
+	tarCmd := tarCmd()
+	err = cu.dCli.ExecInContainer(ctx, cInfo.ContainerID, tarCmd, archiveToCopy, l.Writer(logger.InfoLvl))
 	if err != nil {
-		var exitErr docker.ExitError
-		if errors.As(err, &exitErr) {
-			switch exitErr.ExitCode {
-			case TarExitCodePermissionDenied:
-				return permissionDeniedErr(err)
-			case GenericExitCodeCannotExec:
-				return cannotExecErr(err)
-			}
+		if exitCode, ok := ExtractExitCode(err); ok {
+			return wrapTarExecErr(err, tarCmd, exitCode)
 		}
-		return errors.Wrap(err, "copying files")
+		return fmt.Errorf("copying changed files: %w", err)
 	}
 
 	// Exec run's on container
-	for _, s := range cmds {
-		err = cu.dCli.ExecInContainer(ctx, cInfo.ContainerID, s, nil, l.Writer(logger.InfoLvl))
+	for i, cmd := range cmds {
+		l.Infof("[CMD %d/%d] %s", i+1, len(cmds), strings.Join(cmd.Argv, " "))
+		err = cu.dCli.ExecInContainer(ctx, cInfo.ContainerID, cmd, nil, l.Writer(logger.InfoLvl))
 		if err != nil {
-			return build.WrapContainerExecError(err, cInfo.ContainerID, s)
+			return fmt.Errorf(
+				"executing on container %s: %w",
+				cInfo.ContainerID.ShortStr(),
+				wrapRunStepError(wrapDockerGenericExecErr(cmd, err)),
+			)
 		}
 	}
 
@@ -102,4 +102,11 @@ func makeRmCmd(paths []string) []string {
 	cmd := []string{"rm", "-rf"}
 	cmd = append(cmd, paths...)
 	return cmd
+}
+
+func wrapDockerGenericExecErr(cmd model.Cmd, err error) error {
+	if exitCode, ok := ExtractExitCode(err); ok {
+		return NewExecError(cmd, exitCode)
+	}
+	return err
 }

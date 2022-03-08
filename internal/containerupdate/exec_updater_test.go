@@ -3,6 +3,7 @@ package containerupdate
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -109,20 +110,37 @@ func TestUpdateContainerRunsFailure(t *testing.T) {
 	f := newExecFixture(t)
 
 	// The first exec() call is a copy, so won't trigger a RunStepFailure
-	f.kCli.ExecErrors = []error{nil, exec.CodeExitError{Err: fmt.Errorf("Compile error"), Code: 1}}
+	f.kCli.ExecErrors = []error{
+		nil,
+		exec.CodeExitError{Err: fmt.Errorf("Compile error"), Code: 1234},
+	}
 
 	err := f.ecu.UpdateContainer(f.ctx, TestContainerInfo, newReader("hello world"), nil, cmds, true)
 	if assert.True(t, build.IsRunStepFailure(err)) {
-		assert.Equal(t, "Run step \"a\" failed with exit code: 1", err.Error())
+		assert.Equal(t, `executing on container test_conta: command "a" failed with exit code: 1234`, err.Error())
 	}
 	assert.Equal(t, 2, len(f.kCli.ExecCalls))
+}
+
+func TestUpdateContainerMissingTarFailure(t *testing.T) {
+	f := newExecFixture(t)
+
+	f.kCli.ExecErrors = []error{
+		errors.New("opaque Kubernetes error that includes the phrase 'executable file not found' in it"),
+	}
+
+	err := f.ecu.UpdateContainer(f.ctx, TestContainerInfo, newReader("hello world"), nil, cmds, true)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "Please check that the container image includes `tar` in $PATH.")
+	}
+	assert.Equal(t, 1, len(f.kCli.ExecCalls))
 }
 
 func TestUpdateContainerPermissionDenied(t *testing.T) {
 	f := newExecFixture(t)
 
 	f.kCli.ExecOutputs = []io.Reader{strings.NewReader("tar: app/index.js: Cannot open: File exists\n")}
-	f.kCli.ExecErrors = []error{exec.CodeExitError{Err: fmt.Errorf("command terminated with exit code 2"), Code: 1}}
+	f.kCli.ExecErrors = []error{exec.CodeExitError{Err: fmt.Errorf("command terminated with exit code 2"), Code: 2}}
 
 	err := f.ecu.UpdateContainer(f.ctx, TestContainerInfo, newReader("hello world"), nil, cmds, true)
 	if assert.Error(t, err) {

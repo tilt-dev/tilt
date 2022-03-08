@@ -3,6 +3,7 @@ package buildcontrol
 import (
 	"archive/tar"
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 
@@ -26,10 +27,9 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-var rsf = build.RunStepFailure{
-	Cmd:      model.ToUnixCmd("omgwtfbbq"),
-	ExitCode: 123,
-}
+var rsf = build.NewRunStepFailure(
+	containerupdate.NewExecError(model.ToUnixCmd("omgwtfbbq"), 123),
+)
 
 var TestContainer = liveupdates.Container{
 	PodID:         "somepod",
@@ -117,7 +117,7 @@ func TestUpdateInContainerArchivesFilesToCopyAndGetsFilesToRemove(t *testing.T) 
 func TestDontFallBackOnUserError(t *testing.T) {
 	f := newFixture(t)
 
-	f.cu.SetUpdateErr(build.RunStepFailure{ExitCode: 12345})
+	f.cu.SetUpdateErr(build.NewRunStepFailure(errors.New("oh no")))
 
 	err := f.buildAndDeploy(f.ctx, f.ps, LiveUpdateInput{
 		Input: liveupdate.Input{
@@ -328,7 +328,7 @@ func TestUpdateMultipleContainersWithSameTarArchiveOnRunStepFailure(t *testing.T
 		},
 	})
 	require.NotNil(t, err)
-	assert.Contains(t, err.Error(), "Run step \"omgwtfbbq\" failed with exit code: 123")
+	assert.Contains(t, err.Error(), "command \"omgwtfbbq\" failed with exit code: 123")
 
 	require.Len(t, f.cu.Calls, 2)
 

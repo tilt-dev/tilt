@@ -22,7 +22,7 @@ import (
 	ktypes "k8s.io/apimachinery/pkg/types"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/tilt-dev/tilt/internal/build"
+	"github.com/tilt-dev/tilt/internal/containerupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
@@ -140,7 +140,7 @@ func TestLiveUpdateTaskKilled(t *testing.T) {
 		WithImageTarget(NewSanchoLiveUpdateImageTarget(f)).
 		Build()
 	bs := resultToStateSet(manifest, alreadyBuiltSet, []string{changed}, testContainerInfo)
-	f.docker.SetExecError(docker.ExitError{ExitCode: build.TaskKillExitCode})
+	f.docker.SetExecError(docker.ExitError{ExitCode: containerupdate.GenericExitCodeKilled})
 
 	targets := buildcontrol.BuildTargets(manifest)
 	_, err := f.BuildAndDeploy(targets, bs)
@@ -617,8 +617,8 @@ func TestLiveUpdateMultipleImagesOneRunErrorExecutesRestOfLiveUpdatesAndDoesntIm
 
 	manifest, bs := multiImageLiveUpdateManifestAndBuildState(f)
 	result, err := f.BuildAndDeploy(buildcontrol.BuildTargets(manifest), bs)
-	require.NotNil(t, err)
-	assert.Contains(t, err.Error(), "Run step \"go install github.com/tilt-dev/sancho\" failed with exit code: 123")
+	assert.EqualError(t, err,
+		`executing on container sancho-c: command "go install github.com/tilt-dev/sancho" failed with exit code: 123`)
 
 	// one for each container update
 	assert.Equal(t, 2, f.docker.CopyCount)
