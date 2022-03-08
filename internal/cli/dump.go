@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -14,6 +16,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/tiltfile"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -31,6 +34,7 @@ and may change frequently.
 `,
 	}
 
+	result.AddCommand(newDumpApiStubsCmd())
 	result.AddCommand(newDumpWebviewCmd())
 	result.AddCommand(newDumpEngineCmd())
 	result.AddCommand(newDumpLogStoreCmd())
@@ -39,6 +43,21 @@ and may change frequently.
 	addCommand(result, newOpenapiCmd(streams))
 
 	return result
+}
+
+func newDumpApiStubsCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "api-stubs DIR",
+		Short: "dump the Tiltfile api stub files",
+		Long: `Dumps the api stub files to the provided directory.
+
+The api stub files define the builtin functions, modules, and types used in Tiltfiles.
+`,
+		Run:  dumpApiStubs,
+		Args: cobra.ExactArgs(1),
+	}
+	addConnectServerFlags(cmd)
+	return cmd
 }
 
 func newDumpWebviewCmd() *cobra.Command {
@@ -241,6 +260,39 @@ func dumpLogStore(cmd *cobra.Command, args []string) {
 	err = encodeJSON(os.Stdout, logStore)
 	if err != nil {
 		cmdFail(fmt.Errorf("dump LogStore: %v", err))
+	}
+}
+
+func dumpApiStubs(cmd *cobra.Command, args []string) {
+	dir := args[0]
+	stat, err := os.Stat(dir)
+	if err != nil || !stat.IsDir() {
+		cmdFail(fmt.Errorf("Provided name %v doesn't exist or isn't a directory", dir))
+	}
+	apifs := tiltfile.ApiStubs().(fs.ReadFileFS)
+	err = tiltfile.WalkApiStubs(func(path string, d fs.DirEntry, e error) error {
+		if e != nil {
+			return e
+		}
+		var err error
+		dest := filepath.Join(dir, path)
+		if d.IsDir() {
+			err = os.MkdirAll(dest, 0755)
+		} else {
+			var bytes []byte
+			bytes, err = apifs.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			err = os.WriteFile(dest, bytes, 0644)
+		}
+		if err == nil {
+			fmt.Printf("wrote %s\n", dest)
+		}
+		return err
+	})
+	if err != nil {
+		cmdFail(fmt.Errorf("dump api-stubs: %v", err))
 	}
 }
 
