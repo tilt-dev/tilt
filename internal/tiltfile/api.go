@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 )
 
-//go:embed api/*.py api/config/*.py api/os/*.py api/shlex/*.py api/sys/*.py api/v1alpha1/*.py
+//go:embed api/*.py api/*/*.py
 var api embed.FS
 
 func ApiStubs() fs.FS {
