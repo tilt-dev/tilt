@@ -28,6 +28,7 @@ git clone https://tilt-releaser:"$GITHUB_TOKEN"@github.com/tilt-dev/tilt.build "
 
 set -x
 go run -mod=vendor ./cmd/tilt/main.go dump cli-docs --dir="$ROOT/docs/cli"
+go run -mod=vendor ./cmd/tilt/main.go dump api-docs --dir="$ROOT/api"
 cd "$ROOT"
 
 # Generate the CLI TOC
