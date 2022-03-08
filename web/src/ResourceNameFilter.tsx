@@ -35,17 +35,17 @@ export function matchesResourceName(
 export const ResourceNameFilterTextField = styled(InstrumentedTextField)`
   & .MuiOutlinedInput-root {
     border-radius: ${SizeUnit(0.5)};
-    border: 1px solid ${Color.grayLighter};
-    background-color: ${Color.gray};
+    border: 1px solid ${Color.gray40};
+    background-color: ${Color.gray30};
 
     & fieldset {
-      border-color: 1px solid ${Color.grayLighter};
+      border-color: 1px solid ${Color.gray40};
     }
     &:hover fieldset {
-      border: 1px solid ${Color.grayLighter};
+      border: 1px solid ${Color.gray40};
     }
     &.Mui-focused fieldset {
-      border: 1px solid ${Color.grayLighter};
+      border: 1px solid ${Color.gray40};
     }
     & .MuiOutlinedInput-input {
       padding: ${SizeUnit(0.2)};

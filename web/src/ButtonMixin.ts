@@ -7,7 +7,7 @@ export const ButtonMixin = css`
   font-size: ${FontSize.default};
   text-decoration: none;
   background-color: ${Color.blue};
-  color: ${Color.gray};
+  color: ${Color.gray30};
   border-radius: 4px;
   padding: 4px 8px;
   line-height: 21px;
@@ -17,6 +17,6 @@ export const ButtonMixin = css`
 
   &:hover {
     background-color: ${Color.blueLight};
-    color: ${Color.grayLighter};
+    color: ${Color.gray40};
   }
 `

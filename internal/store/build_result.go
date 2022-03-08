@@ -4,8 +4,6 @@ import (
 	"sort"
 
 	"github.com/docker/distribution/reference"
-	dockertypes "github.com/docker/docker/api/types"
-	"github.com/docker/go-connections/nat"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/store/dcconv"
@@ -94,31 +92,21 @@ func NewLiveUpdateBuildResult(id model.TargetID, containerIDs []container.ID) Li
 type DockerComposeBuildResult struct {
 	id model.TargetID
 
-	// The ID of the container that Docker Compose created.
-	//
 	// When we deploy a Docker Compose service, we wait synchronously for the
 	// container to start. Note that this is a different concurrency model than
 	// we use for Kubernetes, where the pods appear some time later via an
 	// asynchronous event.
-	DockerComposeContainerID container.ID
-
-	// The initial state of the container.
-	ContainerState *dockertypes.ContainerState
-
-	// Runtime port bindings
-	Ports nat.PortMap
+	Status v1alpha1.DockerComposeServiceStatus
 }
 
 func (r DockerComposeBuildResult) TargetID() model.TargetID   { return r.id }
 func (r DockerComposeBuildResult) BuildType() model.BuildType { return model.BuildTypeDockerCompose }
 
 // For docker compose deploy targets.
-func NewDockerComposeDeployResult(id model.TargetID, containerID container.ID, state *dockertypes.ContainerState, ports nat.PortMap) DockerComposeBuildResult {
+func NewDockerComposeDeployResult(id model.TargetID, status v1alpha1.DockerComposeServiceStatus) DockerComposeBuildResult {
 	return DockerComposeBuildResult{
-		id:                       id,
-		DockerComposeContainerID: containerID,
-		ContainerState:           state,
-		Ports:                    ports,
+		id:     id,
+		Status: status,
 	}
 }
 

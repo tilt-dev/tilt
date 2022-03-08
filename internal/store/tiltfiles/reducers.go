@@ -17,6 +17,7 @@ func HandleTiltfileUpsertAction(state *store.EngineState, action TiltfileUpsertA
 			Name:          mn,
 			BuildStatuses: make(map[model.TargetID]*store.BuildStatus),
 			DisableState:  v1alpha1.DisableStateEnabled,
+			CurrentBuilds: make(map[string]model.BuildRecord),
 		}
 	}
 

@@ -32,7 +32,7 @@ let Title = styled.div`
 `
 
 export let HR = styled.hr`
-  border-top: 1px dashed ${Color.grayLight};
+  border-top: 1px dashed ${Color.gray50};
   margin: 16px -20px 24px -20px;
   color: white;
 `
@@ -48,7 +48,7 @@ let CloseButton = styled.button`
   padding: 0;
 
   svg {
-    fill: ${Color.grayDark};
+    fill: ${Color.gray20};
   }
 
   &:hover,
@@ -68,7 +68,7 @@ let useStyles = makeStyles((theme) => ({
     display: "flex",
     flexDirection: "column",
     background: "#fff",
-    color: Color.grayDarkest,
+    color: Color.gray10,
     boxShadow: "3px 3px 4px rgba(0, 0, 0, 0.5)",
     borderRadius: "8px",
     padding: "16px 20px",

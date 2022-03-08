@@ -20,7 +20,7 @@ const HeaderBarRoot = styled.nav`
   display: flex;
   align-items: center;
   padding-left: ${SizeUnit(1)};
-  background-color: ${Color.grayDarkest};
+  background-color: ${Color.gray10};
 
   ${ResourceStatusSummaryRoot} {
     justify-self: center;
@@ -37,20 +37,20 @@ const Logo = styled(LogoWordmarkSvg)`
   }
   &:hover .fillStd,
   &.isSelected .fillStd {
-    fill: ${Color.gray7};
+    fill: ${Color.gray70};
   }
   display: block;
 `
 
 const HeaderDivider = styled.div`
-  border-left: 1px solid ${Color.grayLighter};
+  border-left: 1px solid ${Color.gray40};
   height: ${SizeUnit(0.7)};
   margin: ${SizeUnit(0.5)};
 `
 
 const ViewLinkText = styled.span`
   bottom: 0;
-  color: ${Color.gray7};
+  color: ${Color.gray70};
   font-family: ${Font.monospace};
   font-size: ${FontSize.smallest};
   opacity: 0;
@@ -65,10 +65,10 @@ const viewLinkIconMixin = `
   transition: fill ${AnimDuration.default} ease;
   height: 100%;
   padding: ${SizeUnit(0.65)} 0;
-  fill: ${Color.grayLight};
+  fill: ${Color.gray50};
 
   &.isCurrent {
-    fill: ${Color.gray7};
+    fill: ${Color.gray70};
   }
 `
 

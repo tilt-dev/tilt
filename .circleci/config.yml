@@ -79,7 +79,7 @@ jobs:
   build-integration:
     resource_class: medium+
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:fe3fc66c8f2cae4070ea4c9c825b15549791b7e01a919cb76dc325ab8291746c
+      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:4102b3ffa97dfe23ff2c7835e2a501be7f770afcc53342960929cfadc878a2c9
     steps:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
@@ -93,7 +93,7 @@ jobs:
 
   test-extensions:
     docker:
-      - image: tiltdev/tilt-extensions-ci@sha256:caf9617f44d0d34e115904ef403689d303466feb663415cf185cc629e40873f9
+      - image: gcr.io/windmill-public-containers/tilt-extensions-ci@sha256:d5fcfd084e6f901eae7892f7eac5b7dace616a02c16e2f8311b24e4ac3e15ceb
     steps:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV

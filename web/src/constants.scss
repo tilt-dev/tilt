@@ -12,12 +12,14 @@ $font-size-icon: 24px;
 $color-white: #ffffff;
 $color-off-white: #eef1f1;
 $color-black: #000000;
-$color-gray-lightest: #93a1a1; // Solarized base1 (darkest content tone)
-$color-gray-light: #586e75; // Solarized base01
-$color-gray: #073642; // Solarized base02
-$color-gray-dark: #002b36; // Solarized base03 (darkest bg tone)
+$color-gray-50: #586e75; // Solarized base01
+$color-gray-30: #073642; // Solarized base02
+$color-gray-20: #002b36; // Solarized base03 (darkest bg tone)
+$color-gray-10: #001b20; // Brand
+
+// Legacy grayscale
 $color-gray-darker: #00242d;
-$color-gray-darkest: #001b20; // Brand
+$color-gray-lightest: #93a1a1; // Solarized base1 (darkest content tone)
 
 // Brand Colors
 $color-green: #20ba31;

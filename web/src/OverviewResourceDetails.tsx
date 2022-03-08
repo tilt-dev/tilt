@@ -31,7 +31,7 @@ let NotFound = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: ${Color.grayDarkest};
+  background-color: ${Color.gray10};
 `
 
 export default function OverviewResourceDetails(

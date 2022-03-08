@@ -49,7 +49,7 @@ export const SidebarOptionsLabel = styled(FormControlLabel)`
 export const CheckboxToggle = styled(InstrumentedCheckbox)`
   &.MuiCheckbox-root,
   &.Mui-checked {
-    color: ${Color.gray6};
+    color: ${Color.gray60};
   }
 `
 

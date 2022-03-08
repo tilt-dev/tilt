@@ -5,13 +5,13 @@
   min-height: $analyticsNudge-height;
   background-color: $color-purple;
   opacity: 0.98;
-  color: $color-gray-darkest;
+  color: $color-gray-10;
   padding: $spacing-unit / 2;
   box-sizing: border-box;
   position: fixed;
   z-index: $z-analyticsNudge;
-  border: 1px solid $color-gray-light;
-  box-shadow: 0px 3px 10px 0px rgba($color-gray-dark, $translucent-ish);
+  border: 1px solid $color-gray-50;
+  box-shadow: 0px 3px 10px 0px rgba($color-gray-20, $translucent-ish);
 
   // by default, it's hidden
   display: flex;
@@ -32,17 +32,17 @@
 
 .AnalyticsNudge-button {
   align-content: center;
-  background-color: $color-gray-dark;
+  background-color: $color-gray-20;
   color: $color-gray-lightest;
   @include button-text;
-  border: 1px solid $color-gray-light;
+  border: 1px solid $color-gray-50;
   padding: $spacing-unit/3;
   margin-left: $spacing-unit/2;
   min-width: $spacing-unit * 3;
 }
 
 .AnalyticsNudge-button:hover {
-  background-color: $color-gray-light;
+  background-color: $color-gray-50;
   cursor: pointer;
 }
 .opt-in {

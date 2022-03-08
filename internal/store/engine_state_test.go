@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/go-connections/nat"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -27,7 +26,7 @@ type endpointsCase struct {
 	lbURLs   []string
 
 	dcPublishedPorts []int
-	dcPortMap        nat.PortMap
+	dcPortBindings   []v1alpha1.DockerPortBinding
 
 	k8sResLinks   []model.Link
 	localResLinks []model.Link
@@ -174,16 +173,16 @@ func TestManifestTargetEndpoints(t *testing.T) {
 			expected: []model.Link{
 				model.MustNewLink("http://localhost:8000/", ""),
 			},
-			dcPortMap: nat.PortMap{
-				"8080/tcp": []nat.PortBinding{
-					{
-						HostIP:   "0.0.0.0",
-						HostPort: "8000",
-					},
-					{
-						HostIP:   "::",
-						HostPort: "8000",
-					},
+			dcPortBindings: []v1alpha1.DockerPortBinding{
+				{
+					ContainerPort: 8080,
+					HostIP:        "0.0.0.0",
+					HostPort:      8000,
+				},
+				{
+					ContainerPort: 8080,
+					HostIP:        "::",
+					HostPort:      8000,
 				},
 			},
 		},
@@ -253,14 +252,14 @@ func TestManifestTargetEndpoints(t *testing.T) {
 				m = m.WithDeployTarget(model.DockerComposeTarget{Links: c.dcResLinks})
 			}
 
-			if len(c.dcPortMap) > 0 && !m.IsDC() {
+			if len(c.dcPortBindings) > 0 && !m.IsDC() {
 				m = m.WithDeployTarget(model.DockerComposeTarget{})
 			}
 
 			mt := newManifestTargetWithLoadBalancerURLs(m, c.lbURLs)
-			if len(c.dcPortMap) > 0 {
+			if len(c.dcPortBindings) > 0 {
 				dcState := mt.State.DCRuntimeState()
-				dcState.Ports = c.dcPortMap
+				dcState.Ports = c.dcPortBindings
 				mt.State.RuntimeState = dcState
 			}
 			actual := ManifestTargetEndpoints(mt)

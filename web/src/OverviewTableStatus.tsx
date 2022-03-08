@@ -63,7 +63,7 @@ const StyledOverviewTableStatus = styled.button`
     }
   }
   &.is-none {
-    color: ${Color.grayLight};
+    color: ${Color.gray50};
   }
   &.is-disabled {
     ${disabledResourceStyleMixin}

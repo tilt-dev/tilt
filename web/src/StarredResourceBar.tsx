@@ -47,7 +47,7 @@ const StarIcon = styled(StarSvg)`
 export const StarButton = styled(InstrumentedButton)`
   ${mixinResetButtonStyle};
   ${StarIcon} {
-    fill: ${Color.grayLight};
+    fill: ${Color.gray50};
   }
   &:hover {
     ${StarIcon} {
@@ -62,13 +62,13 @@ const StarredResourceRoot = styled.div`
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  background-color: ${Color.gray};
+  background-color: ${Color.gray30};
   padding-top: ${SizeUnit(0.125)};
   padding-bottom: ${SizeUnit(0.125)};
   position: relative; // Anchor the .isBuilding::after psuedo-element
 
   &:hover {
-    background-color: ${ColorRGBA(Color.gray, ColorAlpha.translucent)};
+    background-color: ${ColorRGBA(Color.gray30, ColorAlpha.translucent)};
   }
 
   &.isWarning {
@@ -87,23 +87,23 @@ const StarredResourceRoot = styled.div`
     color: ${ColorRGBA(Color.white, ColorAlpha.translucent)};
   }
   .isSelected &.isBuilding {
-    color: ${ColorRGBA(Color.gray, ColorAlpha.translucent)};
+    color: ${ColorRGBA(Color.gray30, ColorAlpha.translucent)};
   }
   &.isPending {
     color: ${ColorRGBA(Color.white, ColorAlpha.translucent)};
     animation: ${Glow.white} 2s linear infinite;
   }
   .isSelected &.isPending {
-    color: ${ColorRGBA(Color.gray, ColorAlpha.translucent)};
+    color: ${ColorRGBA(Color.gray30, ColorAlpha.translucent)};
     animation: ${Glow.dark} 2s linear infinite;
   }
   &.isNone {
-    color: ${Color.grayLighter};
+    color: ${Color.gray40};
     transition: border-color ${AnimDuration.default} linear;
   }
   &.isSelected {
     background-color: ${Color.white};
-    color: ${Color.gray};
+    color: ${Color.gray30};
   }
 
   &.isBuilding::after {
@@ -115,8 +115,8 @@ const StarredResourceRoot = styled.div`
     bottom: 0;
     background: repeating-linear-gradient(
       225deg,
-      ${ColorRGBA(Color.grayLight, ColorAlpha.translucent)},
-      ${ColorRGBA(Color.grayLight, ColorAlpha.translucent)} 1px,
+      ${ColorRGBA(Color.gray50, ColorAlpha.translucent)},
+      ${ColorRGBA(Color.gray50, ColorAlpha.translucent)} 1px,
       ${ColorRGBA(Color.black, 0)} 1px,
       ${ColorRGBA(Color.black, 0)} 6px
     );

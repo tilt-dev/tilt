@@ -11,10 +11,10 @@ let StyledTriggerModeToggle = styled(InstrumentedButton)`
   align-items: center;
 
   .fillStd {
-    fill: ${Color.grayDark};
+    fill: ${Color.gray20};
   }
   .strokeStd {
-    stroke: ${Color.grayLight};
+    stroke: ${Color.gray50};
     transition: stroke ${AnimDuration.short} linear;
   }
   .triggerModeSvg-isManual {
@@ -23,7 +23,7 @@ let StyledTriggerModeToggle = styled(InstrumentedButton)`
     transition: opacity ${AnimDuration.default} ease;
   }
   .triggerModeSvg-isAuto {
-    fill: ${Color.grayLight};
+    fill: ${Color.gray50};
     transition: opacity ${AnimDuration.default} ease;
   }
 

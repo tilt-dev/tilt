@@ -77,13 +77,13 @@ let SidebarListSectionName = styled.div`
   margin-top: ${SizeUnit(0.5)};
   margin-left: ${SizeUnit(0.5)};
   text-transform: uppercase;
-  color: ${Color.grayLight};
+  color: ${Color.gray50};
   font-size: ${FontSize.small};
 `
 
 const AllResourceLinkRoot = styled(Link)`
-  background-color: ${Color.grayLighter};
-  border: 1px solid ${Color.grayLight};
+  background-color: ${Color.gray40};
+  border: 1px solid ${Color.gray50};
   border-radius: ${SizeUnit(1 / 8)};
   color: ${Color.white};
   display: block;
@@ -96,12 +96,12 @@ const AllResourceLinkRoot = styled(Link)`
   transition: all ${AnimDuration.default} ease;
 
   &:is(:hover, :focus, :active) {
-    background-color: ${Color.gray};
+    background-color: ${Color.gray30};
   }
 
   &.isSelected {
-    background-color: ${Color.gray7};
-    color: ${Color.gray};
+    background-color: ${Color.gray70};
+    color: ${Color.gray30};
     font-weight: 600;
   }
 `
@@ -112,7 +112,7 @@ const SidebarListSectionItemsRoot = styled.ul`
 `
 
 export const SidebarDisabledSectionList = styled.li`
-  color: ${Color.gray6};
+  color: ${Color.gray60};
   font-family: ${Font.sansSerif};
   font-size: ${FontSize.small};
 `
@@ -145,8 +145,8 @@ const SidebarGroupSummary = styled(AccordionSummary)`
 
   /* Set specific background and borders for sidebar */
   .MuiAccordionSummary-content {
-    background-color: ${Color.grayLighter};
-    border: 1px solid ${Color.grayLight};
+    background-color: ${Color.gray40};
+    border: 1px solid ${Color.gray50};
     border-radius: ${SizeUnit(1 / 8)};
     font-size: ${FontSize.small};
   }

@@ -15,7 +15,7 @@ export const OverviewTableBuildButton = styled(BuildButton)`
 
   & .fillStd {
     transition: fill ${AnimDuration.default} ease;
-    fill: ${Color.grayLight};
+    fill: ${Color.gray50};
   }
   &:hover .fillStd {
     fill: ${Color.white};

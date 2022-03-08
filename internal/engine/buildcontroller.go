@@ -22,6 +22,8 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
 
+const BuildControlSource = "buildcontrol"
+
 type BuildController struct {
 	b                  buildcontrol.BuildAndDeployer
 	buildsStartedCount int // used to synchronize with state
@@ -117,7 +119,7 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore, summary
 		Reason:             entry.buildReason,
 		SpanID:             entry.spanID,
 		FullBuildTriggered: entry.buildStateSet.FullBuildTriggered(),
-		IsBuildController:  true,
+		Source:             BuildControlSource,
 	})
 
 	go func() {
@@ -134,7 +136,7 @@ func (c *BuildController) OnChange(ctx context.Context, st store.RStore, summary
 		if ctx.Err() == context.Canceled {
 			err = errors.New("build canceled")
 		}
-		st.Dispatch(buildcontrols.NewBuildCompleteAction(entry.name, entry.spanID, result, err))
+		st.Dispatch(buildcontrols.NewBuildCompleteAction(entry.name, BuildControlSource, entry.spanID, result, err))
 	}()
 
 	return nil
@@ -159,14 +161,14 @@ func (c *BuildController) cleanUpCanceledBuilds(st store.RStore) {
 	defer st.RUnlockState()
 
 	for _, ms := range state.ManifestStates() {
-		if ms.CurrentBuild.Empty() {
+		if !ms.IsBuilding() {
 			continue
 		}
 		disabled := ms.DisableState == v1alpha1.DisableStateDisabled
 		canceled := false
 		if cancelButton, ok := state.UIButtons[uibutton.StopBuildButtonName(ms.Name.String())]; ok {
 			lastCancelClick := cancelButton.Status.LastClickedAt
-			canceled = timecmp.AfterOrEqual(lastCancelClick, ms.CurrentBuild.StartTime)
+			canceled = timecmp.AfterOrEqual(lastCancelClick, ms.EarliestCurrentBuild().StartTime)
 		}
 		if disabled || canceled {
 			c.cleanupBuildContext(ms.Name)

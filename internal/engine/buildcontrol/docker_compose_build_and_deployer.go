@@ -252,7 +252,8 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	}
 
 	dcTargetID := plan.dockerComposeTarget.ID()
-	newResults[dcTargetID] = store.NewDockerComposeDeployResult(dcTargetID, cid, containerState, ports)
+	status := dockercompose.ToServiceStatus(cid, containerState, ports)
+	newResults[dcTargetID] = store.NewDockerComposeDeployResult(dcTargetID, status)
 	return newResults, nil
 }
 
