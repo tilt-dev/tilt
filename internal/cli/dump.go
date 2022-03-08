@@ -272,7 +272,7 @@ func (a *apiDocsCmd) run(cmd *cobra.Command, args []string) {
 	if err != nil || !stat.IsDir() {
 		cmdFail(fmt.Errorf("Provided name %v doesn't exist or isn't a directory", a.dir))
 	}
-	err = tiltfile.DumpApiStubs(a.dir, func(path string, e error) {
+	err = tiltfile.DumpApiStubs(a.dir, tiltInfo(), func(path string, e error) {
 		if e == nil {
 			fmt.Printf("wrote %s\n", filepath.Join(a.dir, path))
 		}
