@@ -33,7 +33,7 @@ and may change frequently.
 `,
 	}
 
-	result.AddCommand(newDumpApiStubsCmd())
+	result.AddCommand(newDumpApiDocsCmd())
 	result.AddCommand(newDumpWebviewCmd())
 	result.AddCommand(newDumpEngineCmd())
 	result.AddCommand(newDumpLogStoreCmd())
@@ -44,18 +44,19 @@ and may change frequently.
 	return result
 }
 
-func newDumpApiStubsCmd() *cobra.Command {
+func newDumpApiDocsCmd() *cobra.Command {
+	c := &apiDocsCmd{}
 	cmd := &cobra.Command{
-		Use:   "api-stubs DIR",
-		Short: "dump the Tiltfile api stub files",
-		Long: `Dumps the api stub files to the provided directory.
+		Use:   "api-docs",
+		Short: "dump the Tiltfile api documentation stub files",
+		Long: `Dumps the api documentation stub files to the provided directory.
 
 The api stub files define the builtin functions, modules, and types used in Tiltfiles.
 `,
-		Run:  dumpApiStubs,
-		Args: cobra.ExactArgs(1),
+		Run:  c.run,
+		Args: cobra.NoArgs,
 	}
-	addConnectServerFlags(cmd)
+	cmd.Flags().StringVar(&c.dir, "dir", ".", "The directory to dump to")
 	return cmd
 }
 
@@ -262,19 +263,22 @@ func dumpLogStore(cmd *cobra.Command, args []string) {
 	}
 }
 
-func dumpApiStubs(cmd *cobra.Command, args []string) {
-	dir := args[0]
-	stat, err := os.Stat(dir)
+type apiDocsCmd struct {
+	dir string
+}
+
+func (a *apiDocsCmd) run(cmd *cobra.Command, args []string) {
+	stat, err := os.Stat(a.dir)
 	if err != nil || !stat.IsDir() {
-		cmdFail(fmt.Errorf("Provided name %v doesn't exist or isn't a directory", dir))
+		cmdFail(fmt.Errorf("Provided name %v doesn't exist or isn't a directory", a.dir))
 	}
-	err = tiltfile.DumpApiStubs(dir, func(path string, e error) {
+	err = tiltfile.DumpApiStubs(a.dir, func(path string, e error) {
 		if e == nil {
-			fmt.Printf("wrote %s\n", filepath.Join(dir, path))
+			fmt.Printf("wrote %s\n", filepath.Join(a.dir, path))
 		}
 	})
 	if err != nil {
-		cmdFail(fmt.Errorf("dump api-stubs: %v", err))
+		cmdFail(fmt.Errorf("dump api-docs: %v", err))
 	}
 }
 
