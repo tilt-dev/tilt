@@ -364,7 +364,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 
 		dcContainerState := b.nextDockerComposeContainerState
 		result[call.dc().ID()] = store.NewDockerComposeDeployResult(
-			call.dc().ID(), dcContainerID, dcContainerState, nil)
+			call.dc().ID(), dockercompose.ToServiceStatus(dcContainerID, dcContainerState, nil))
 	}
 
 	if kTarg := call.k8s(); !kTarg.Empty() {

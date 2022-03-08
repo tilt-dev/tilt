@@ -268,15 +268,15 @@ func HandleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 
 		result := cb.Result[mt.Manifest.DockerComposeTarget().ID()]
 		dcResult, _ := result.(store.DockerComposeBuildResult)
-		cid := dcResult.DockerComposeContainerID
+		cid := dcResult.Status.ContainerID
 		if cid != "" {
-			state = state.WithContainerID(cid)
+			state = state.WithContainerID(container.ID(cid))
 		}
 
-		cState := dcResult.ContainerState
+		cState := dcResult.Status.ContainerState
 		if cState != nil {
 			state = state.WithContainerState(*cState)
-			state = state.WithPorts(dcResult.Ports)
+			state = state.WithPorts(dcResult.Status.PortBindings)
 
 			if docker.HasStarted(*cState) {
 				if state.StartTime.IsZero() {
