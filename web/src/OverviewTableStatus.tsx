@@ -1,4 +1,5 @@
 import React from "react"
+import { Link } from "react-router-dom"
 import styled from "styled-components"
 import { ReactComponent as CheckmarkSmallSvg } from "./assets/svg/checkmark-small.svg"
 import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
@@ -6,6 +7,7 @@ import { ReactComponent as NotAllowedSvg } from "./assets/svg/not-allowed.svg"
 import { ReactComponent as PendingSvg } from "./assets/svg/pending.svg"
 import { ReactComponent as WarningSvg } from "./assets/svg/warning.svg"
 import { Hold } from "./Hold"
+import { usePathBuilder } from "./PathBuilder"
 import { PendingBuildDescription } from "./status"
 import { Color, FontSize, Glow, SizeUnit, spin } from "./style-helpers"
 import { formatBuildDuration } from "./time"
@@ -16,8 +18,9 @@ const StatusMsg = styled.span`
   text-overflow: ellipsis;
   overflow: hidden;
 `
-const StyledOverviewTableStatus = styled.div`
+const StyledOverviewTableStatus = styled(Link)`
   color: inherit;
+  text-decoration: none;
   display: flex;
   align-items: center;
   font-size: ${FontSize.small};
@@ -60,6 +63,7 @@ const StyledOverviewTableStatus = styled.div`
   }
   &.is-disabled {
     color: ${Color.gray60};
+    pointer-events: none;
   }
 `
 const StatusIcon = styled.span`
@@ -152,10 +156,13 @@ export default function OverviewTableStatus(props: OverviewTableStatusProps) {
       msg = ""
   }
 
+  const pb = usePathBuilder()
+  let url = pb.encpath`/r/${resourceName}/overview`
+
   if (!msg) return null
 
   let content = (
-    <StyledOverviewTableStatus className={classes}>
+    <StyledOverviewTableStatus to={url} className={classes}>
       <StatusIcon>{icon}</StatusIcon>
       <StatusMsg>{msg}</StatusMsg>
     </StyledOverviewTableStatus>

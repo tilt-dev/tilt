@@ -473,14 +473,16 @@ describe("overview table with groups", () => {
       }, {})
       // Re-mount the component with the initial groups context values
       container = renderContainer(
-        <ResourceGroupsContextProvider initialValuesForTesting={testData}>
-          <ResourceSelectionProvider>
-            <TableGroupedByLabels
-              resources={view.uiResources}
-              buttons={view.uiButtons}
-            />
-          </ResourceSelectionProvider>
-        </ResourceGroupsContextProvider>
+        <MemoryRouter initialEntries={["/"]}>
+          <ResourceGroupsContextProvider initialValuesForTesting={testData}>
+            <ResourceSelectionProvider>
+              <TableGroupedByLabels
+                resources={view.uiResources}
+                buttons={view.uiButtons}
+              />
+            </ResourceSelectionProvider>
+          </ResourceGroupsContextProvider>
+        </MemoryRouter>
       )
 
       // Loop through each resource group and expect that its expanded state

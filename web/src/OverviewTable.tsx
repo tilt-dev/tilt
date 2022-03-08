@@ -169,7 +169,7 @@ const ResourceTableHead = styled.thead`
 export const ResourceTableRow = styled.tr`
   border-top: 1px solid ${Color.gray40};
   font-family: ${Font.monospace};
-  font-size: ${FontSize.smallest};
+  font-size: ${FontSize.small};
   font-style: none;
   color: ${Color.gray60};
   padding-top: 6px;
@@ -201,7 +201,7 @@ export const ResourceTableData = styled.td`
 
 export const ResourceTableHeader = styled(ResourceTableData)`
   color: ${Color.gray70};
-  font-size: ${FontSize.smallest};
+  font-size: ${FontSize.small};
   box-sizing: border-box;
   white-space: nowrap;
 
