@@ -64,7 +64,7 @@ jobs:
       name: win/default
       size: "large"
     steps:
-      - run: choco install make kustomize kubernetes-helm docker-compose
+      - run: choco install make kustomize kubernetes-helm docker-compose mingw
       - run: choco upgrade -y --allow-downgrade golang --version=1.17.2
       - run: go get -u gotest.tools/gotestsum
       - checkout
