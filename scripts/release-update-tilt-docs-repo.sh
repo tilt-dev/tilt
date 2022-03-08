@@ -27,7 +27,9 @@ ROOT=$(mktemp -d)
 git clone https://tilt-releaser:"$GITHUB_TOKEN"@github.com/tilt-dev/tilt.build "$ROOT"
 
 set -x
-go run -mod=vendor ./cmd/tilt/main.go dump cli-docs --dir="$ROOT/docs/cli"
+VERSION_ARGS="-X main.version=$VERSION -X main.date=$(date +%Y-%m-%d)"
+go run -mod=vendor -ldflags "$VERSION_ARGS" ./cmd/tilt/main.go dump cli-docs --dir="$ROOT/docs/cli"
+go run -mod=vendor -ldflags "$VERSION_ARGS" ./cmd/tilt/main.go dump api-docs --dir="$ROOT/api"
 cd "$ROOT"
 
 # Generate the CLI TOC

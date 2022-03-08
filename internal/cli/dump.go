@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -14,6 +15,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/tiltfile"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -31,6 +33,7 @@ and may change frequently.
 `,
 	}
 
+	result.AddCommand(newDumpApiDocsCmd())
 	result.AddCommand(newDumpWebviewCmd())
 	result.AddCommand(newDumpEngineCmd())
 	result.AddCommand(newDumpLogStoreCmd())
@@ -39,6 +42,22 @@ and may change frequently.
 	addCommand(result, newOpenapiCmd(streams))
 
 	return result
+}
+
+func newDumpApiDocsCmd() *cobra.Command {
+	c := &apiDocsCmd{}
+	cmd := &cobra.Command{
+		Use:   "api-docs",
+		Short: "dump the Tiltfile api documentation stub files",
+		Long: `Dumps the api documentation stub files to the provided directory.
+
+The api stub files define the builtin functions, modules, and types used in Tiltfiles.
+`,
+		Run:  c.run,
+		Args: cobra.NoArgs,
+	}
+	cmd.Flags().StringVar(&c.dir, "dir", ".", "The directory to dump to")
+	return cmd
 }
 
 func newDumpWebviewCmd() *cobra.Command {
@@ -241,6 +260,25 @@ func dumpLogStore(cmd *cobra.Command, args []string) {
 	err = encodeJSON(os.Stdout, logStore)
 	if err != nil {
 		cmdFail(fmt.Errorf("dump LogStore: %v", err))
+	}
+}
+
+type apiDocsCmd struct {
+	dir string
+}
+
+func (a *apiDocsCmd) run(cmd *cobra.Command, args []string) {
+	stat, err := os.Stat(a.dir)
+	if err != nil || !stat.IsDir() {
+		cmdFail(fmt.Errorf("Provided name %v doesn't exist or isn't a directory", a.dir))
+	}
+	err = tiltfile.DumpApiStubs(a.dir, tiltInfo(), func(path string, e error) {
+		if e == nil {
+			fmt.Printf("wrote %s\n", filepath.Join(a.dir, path))
+		}
+	})
+	if err != nil {
+		cmdFail(fmt.Errorf("dump api-docs: %v", err))
 	}
 }
 
