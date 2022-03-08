@@ -952,11 +952,11 @@ func (r *Reconciler) applyInternal(
 		}
 
 		if err != nil {
-			if runFail, ok := build.MaybeRunStepFailure(err); ok {
+			if build.IsRunStepFailure(err) {
 				// Keep running updates -- we want all containers to have the same files on them
 				// even if the Runs don't succeed
-				logger.Get(ctx).Infof("  → Failed to update container %s: run step %q failed with exit code: %d",
-					cInfo.DisplayName(), runFail.Cmd.String(), runFail.ExitCode)
+				logger.Get(ctx).Infof("  → Failed to update container %s: %v",
+					cInfo.DisplayName(), err)
 				cStatus.LastExecError = err.Error()
 				lastExecErrorStatus = &cStatus
 			} else {

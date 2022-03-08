@@ -11,8 +11,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/internal/testutils"
 
-	"github.com/tilt-dev/tilt/internal/build"
-
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -90,11 +88,11 @@ func TestUpdateContainerHotReloadDoesNotRestartContainer(t *testing.T) {
 func TestUpdateContainerKillTask(t *testing.T) {
 	f := newDCUFixture(t)
 
-	f.dCli.SetExecError(docker.ExitError{ExitCode: build.TaskKillExitCode})
+	f.dCli.SetExecError(docker.ExitError{ExitCode: GenericExitCodeKilled})
 
 	cmdA := model.Cmd{Argv: []string{"cat"}}
 	err := f.dcu.UpdateContainer(f.ctx, TestContainerInfo, nil, nil, []model.Cmd{cmdA}, false)
-	msg := "killed by container engine"
+	msg := "killed by container runtime"
 	if err == nil || !strings.Contains(err.Error(), msg) {
 		f.t.Errorf("Expected error %q, actual: %v", msg, err)
 	}
