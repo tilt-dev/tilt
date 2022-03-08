@@ -149,8 +149,8 @@ func preCommand(ctx context.Context, cmdName model.TiltSubcommand) context.Conte
 
 func addCommand(parent *cobra.Command, child tiltCmd) {
 	cobraChild := child.register()
-	cobraChild.Run = func(_ *cobra.Command, args []string) {
-		ctx := preCommand(parent.Context(), child.name())
+	cobraChild.Run = func(cmd *cobra.Command, args []string) {
+		ctx := preCommand(cmd.Context(), child.name())
 
 		err := child.run(ctx, args)
 		if err != nil {
