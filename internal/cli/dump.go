@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -269,27 +268,10 @@ func dumpApiStubs(cmd *cobra.Command, args []string) {
 	if err != nil || !stat.IsDir() {
 		cmdFail(fmt.Errorf("Provided name %v doesn't exist or isn't a directory", dir))
 	}
-	apifs := tiltfile.ApiStubs().(fs.ReadFileFS)
-	err = tiltfile.WalkApiStubs(func(path string, d fs.DirEntry, e error) error {
-		if e != nil {
-			return e
+	err = tiltfile.DumpApiStubs(dir, func(path string, e error) {
+		if e == nil {
+			fmt.Printf("wrote %s\n", filepath.Join(dir, path))
 		}
-		var err error
-		dest := filepath.Join(dir, path)
-		if d.IsDir() {
-			err = os.MkdirAll(dest, 0755)
-		} else {
-			var bytes []byte
-			bytes, err = apifs.ReadFile(path)
-			if err != nil {
-				return err
-			}
-			err = os.WriteFile(dest, bytes, 0644)
-		}
-		if err == nil {
-			fmt.Printf("wrote %s\n", dest)
-		}
-		return err
 	})
 	if err != nil {
 		cmdFail(fmt.Errorf("dump api-stubs: %v", err))
