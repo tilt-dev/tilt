@@ -9,8 +9,10 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"go.lsp.dev/protocol"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
+	"github.com/tilt-dev/starlark-lsp/pkg/cli"
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/output"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -81,13 +83,16 @@ up-to-date in real-time. Think 'docker build && kubectl apply' or 'docker-compos
 	rootCmd.AddCommand(analytics.NewCommand())
 	rootCmd.AddCommand(newDumpCmd(rootCmd, streams))
 	rootCmd.AddCommand(newAlphaCmd(streams))
+	rootCmd.AddCommand(newLspCmd())
 
 	globalFlags := rootCmd.PersistentFlags()
 	globalFlags.BoolVarP(&debug, "debug", "d", false, "Enable debug logging")
 	globalFlags.BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")
 	globalFlags.IntVar(&klogLevel, "klog", 0, "Enable Kubernetes API logging. Uses klog v-levels (0-4 are debug logs, 5-9 are tracing logs)")
 
-	if err := rootCmd.Execute(); err != nil {
+	ctx, cleanup := createContext()
+	defer cleanup()
+	if err := rootCmd.ExecuteContext(ctx); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
@@ -97,6 +102,11 @@ type tiltCmd interface {
 	name() model.TiltSubcommand
 	register() *cobra.Command
 	run(ctx context.Context, args []string) error
+}
+
+func createContext() (ctx context.Context, cleanup func()) {
+	l, cleanup := cli.NewLogger()
+	return protocol.WithLogger(context.Background(), l), cleanup
 }
 
 func preCommand(ctx context.Context, cmdName model.TiltSubcommand) context.Context {
@@ -140,7 +150,7 @@ func preCommand(ctx context.Context, cmdName model.TiltSubcommand) context.Conte
 func addCommand(parent *cobra.Command, child tiltCmd) {
 	cobraChild := child.register()
 	cobraChild.Run = func(_ *cobra.Command, args []string) {
-		ctx := preCommand(context.Background(), child.name())
+		ctx := preCommand(parent.Context(), child.name())
 
 		err := child.run(ctx, args)
 		if err != nil {
