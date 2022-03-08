@@ -1,4 +1,5 @@
 import React from "react"
+import { Link } from "react-router-dom"
 import styled from "styled-components"
 import { ReactComponent as CheckmarkSmallSvg } from "./assets/svg/checkmark-small.svg"
 import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
@@ -6,38 +7,33 @@ import { ReactComponent as NotAllowedSvg } from "./assets/svg/not-allowed.svg"
 import { ReactComponent as PendingSvg } from "./assets/svg/pending.svg"
 import { ReactComponent as WarningSvg } from "./assets/svg/warning.svg"
 import { Hold } from "./Hold"
-import { useResourceNav } from "./ResourceNav"
-import { disabledResourceStyleMixin } from "./ResourceStatus"
+import { usePathBuilder } from "./PathBuilder"
 import { PendingBuildDescription } from "./status"
-import {
-  Color,
-  FontSize,
-  Glow,
-  mixinResetButtonStyle,
-  SizeUnit,
-  spin,
-} from "./style-helpers"
+import { Color, FontSize, Glow, SizeUnit, spin } from "./style-helpers"
 import { formatBuildDuration } from "./time"
 import Tooltip from "./Tooltip"
 import { ResourceStatus } from "./types"
 
-const StatusMsg = styled.span``
-const StyledOverviewTableStatus = styled.button`
-  ${mixinResetButtonStyle};
+const StatusMsg = styled.span`
+  text-overflow: ellipsis;
+  overflow: hidden;
+`
+const StyledOverviewTableStatus = styled(Link)`
   color: inherit;
+  text-decoration: none;
   display: flex;
   align-items: center;
   font-size: ${FontSize.small};
+  line-height: ${FontSize.small};
   text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  width: 100%;
 
   & + & {
-    margin-top: ${SizeUnit(0.15)};
+    margin-top: -8px;
   }
 
-  &:hover ${StatusMsg} {
-    text-decoration: underline;
-    text-underline-position: under;
-  }
   &.is-healthy {
     svg {
       fill: ${Color.green};
@@ -66,7 +62,8 @@ const StyledOverviewTableStatus = styled.button`
     color: ${Color.gray50};
   }
   &.is-disabled {
-    ${disabledResourceStyleMixin}
+    color: ${Color.gray60};
+    pointer-events: none;
   }
 `
 const StatusIcon = styled.span`
@@ -159,15 +156,13 @@ export default function OverviewTableStatus(props: OverviewTableStatusProps) {
       msg = ""
   }
 
-  let nav = useResourceNav()
+  const pb = usePathBuilder()
+  let url = pb.encpath`/r/${resourceName}/overview`
 
   if (!msg) return null
 
   let content = (
-    <StyledOverviewTableStatus
-      className={classes}
-      onClick={() => void nav.openResource(resourceName)}
-    >
+    <StyledOverviewTableStatus to={url} className={classes}>
       <StatusIcon>{icon}</StatusIcon>
       <StatusMsg>{msg}</StatusMsg>
     </StyledOverviewTableStatus>

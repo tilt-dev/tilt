@@ -42,7 +42,6 @@ import {
   RowValues,
 } from "./OverviewTableColumns"
 import { OverviewTableDisplayOptions } from "./OverviewTableDisplayOptions"
-import { StyledTableStarResourceButton } from "./OverviewTableStarResourceButton"
 import {
   AccordionDetailsStyleResetMixin,
   AccordionStyleResetMixin,
@@ -58,11 +57,7 @@ import {
 } from "./ResourceListOptionsContext"
 import { matchesResourceName, ResourceNameFilter } from "./ResourceNameFilter"
 import { useResourceSelection } from "./ResourceSelectionContext"
-import {
-  disabledResourceStyleMixin,
-  resourceIsDisabled,
-  resourceTargetType,
-} from "./ResourceStatus"
+import { resourceIsDisabled, resourceTargetType } from "./ResourceStatus"
 import { TableGroupStatusSummary } from "./ResourceStatusSummary"
 import { ShowMoreButton } from "./ShowMoreButton"
 import { buildStatus, runtimeStatus } from "./status"
@@ -123,8 +118,21 @@ export const NoMatchesFound = styled.p`
 // Table styles
 const OverviewTableRoot = styled.section`
   margin-bottom: ${SizeUnit(1 / 2)};
-  margin-left: ${SizeUnit(1 / 2)};
-  margin-right: ${SizeUnit(1 / 2)};
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 2000px;
+
+  @media screen and (max-width: 2200px) {
+    margin-left: ${SizeUnit(1 / 2)};
+    margin-right: ${SizeUnit(1 / 2)};
+  }
+`
+
+const TableWithoutGroupsRoot = styled.div`
+  box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
+  border: 1px ${Color.gray40} solid;
+  border-radius: 0px 0px 8px 8px;
+  background-color: ${Color.gray20};
 `
 
 const OverviewTableMenu = styled.section`
@@ -134,40 +142,40 @@ const OverviewTableMenu = styled.section`
 `
 
 const ResourceTable = styled.table`
-  margin-top: ${SizeUnit(0.5)};
-  border-collapse: collapse;
-  border: 1px ${Color.gray40} solid;
-  border-radius: 0 ${SizeUnit(1 / 4)};
+  table-layout: fixed;
   width: 100%;
+  border-spacing: 0;
+  border-collapse: collapse;
+
+  td {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
 
   td:first-child {
-    padding-left: ${SizeUnit(1)};
-
-    & ${StyledTableStarResourceButton} {
-      margin-left: -15px; /* Center the star button underneath the header */
-    }
+    padding-left: ${SizeUnit(0.75)};
   }
+
   td:last-child {
     padding-right: ${SizeUnit(1)};
   }
-
-  td + td {
-    padding-left: ${SizeUnit(1 / 4)};
-    padding-right: ${SizeUnit(1 / 4)};
-  }
 `
 const ResourceTableHead = styled.thead`
-  background-color: ${Color.grayDarker};
+  & > tr {
+    background-color: ${Color.gray10};
+  }
 `
+
 export const ResourceTableRow = styled.tr`
-  border-bottom: 1px solid ${Color.gray40};
+  border-top: 1px solid ${Color.gray40};
   font-family: ${Font.monospace};
   font-size: ${FontSize.small};
   font-style: none;
   color: ${Color.gray60};
+  padding-top: 6px;
+  padding-bottom: 6px;
 
   &.isDisabled {
-    ${disabledResourceStyleMixin}
   }
 
   &.isSelected {
@@ -194,8 +202,6 @@ export const ResourceTableData = styled.td`
 export const ResourceTableHeader = styled(ResourceTableData)`
   color: ${Color.gray70};
   font-size: ${FontSize.small};
-  padding-top: ${SizeUnit(0.5)};
-  padding-bottom: ${SizeUnit(0.5)};
   box-sizing: border-box;
   white-space: nowrap;
 
@@ -231,16 +237,25 @@ export const ResourceTableHeaderSortTriangle = styled.div`
 // Table Group styles
 export const OverviewGroup = styled(Accordion)`
   ${AccordionStyleResetMixin}
+  color: ${Color.gray50};
+  border: 1px ${Color.gray40} solid;
+  background-color: ${Color.gray20};
 
   &.MuiAccordion-root,
   &.MuiAccordion-root.Mui-expanded {
     margin-top: ${SizeUnit(1 / 2)};
+  }
+
+  &.Mui-expanded {
+    box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
+    border-radius: 0px 0px 8px 8px;
   }
 `
 
 export const OverviewGroupSummary = styled(AccordionSummary)`
   ${AccordionSummaryStyleResetMixin}
   ${ResourceGroupSummaryMixin}
+  background-color: ${Color.gray10};
 
   .MuiAccordionSummary-content {
     font-size: ${FontSize.default};
@@ -253,10 +268,6 @@ export const OverviewGroupName = styled.span`
 
 export const OverviewGroupDetails = styled(AccordionDetails)`
   ${AccordionDetailsStyleResetMixin}
-
-  ${ResourceTable} {
-    margin-top: 4px;
-  }
 `
 const TABLE_TYPE_TAGS: Tags = { type: AnalyticsType.Grid }
 
@@ -430,11 +441,11 @@ function resourceTypeLabel(r: UIResource): string {
   for (let i = 0; i < specs.length; i++) {
     let spec = specs[i]
     if (spec.type === TargetType.K8s) {
-      return "Kubernetes Deploy"
+      return "K8s"
     } else if (spec.type === TargetType.DockerCompose) {
-      return "Docker Compose Service"
+      return "DCS"
     } else if (spec.type === TargetType.Local) {
-      return "Local Script"
+      return "Local"
     }
   }
   return "Unknown"
@@ -768,7 +779,15 @@ export function TableWithoutGroups({ resources, buttons }: TableWrapperProps) {
   }, [resources, buttons])
   const columns = getTableColumns(features)
 
-  return <Table columns={columns} data={data} />
+  if (resources?.length === 0) {
+    return null
+  }
+
+  return (
+    <TableWithoutGroupsRoot>
+      <Table columns={columns} data={data} />
+    </TableWithoutGroupsRoot>
+  )
 }
 
 function OverviewTableContent(props: OverviewTableProps) {

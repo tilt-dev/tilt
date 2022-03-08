@@ -135,7 +135,7 @@ function StartBuildButton(props: StartBuildButtonProps) {
   return (
     <TiltTooltip title={tooltip} key={tooltip}>
       <BuildButtonCursorWrapper
-        className={clickable ? ".is-clickable" : undefined}
+        className={clickable ? "is-clickable" : undefined}
       >
         <InstrumentedButton
           onClick={onClick}

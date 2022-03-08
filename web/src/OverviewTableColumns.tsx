@@ -23,10 +23,10 @@ import OverviewTableStatus from "./OverviewTableStatus"
 import OverviewTableTriggerModeToggle from "./OverviewTableTriggerModeToggle"
 import { useResourceNav } from "./ResourceNav"
 import { useResourceSelection } from "./ResourceSelectionContext"
-import { disabledResourceStyleMixin } from "./ResourceStatus"
 import { useStarredResources } from "./StarredResourcesContext"
 import {
   Color,
+  Font,
   FontSize,
   mixinResetButtonStyle,
   SizeUnit,
@@ -88,7 +88,6 @@ export const SelectionCheckbox = styled(InstrumentedCheckbox)`
 const TableHeaderStarIcon = styled(StarSvg)`
   fill: ${Color.gray70};
   height: 13px;
-  margin-left: 16px; /* Align the header icon with the column icon */
   width: 13px;
 `
 
@@ -111,7 +110,9 @@ export const Name = styled.button`
   }
 
   &.isDisabled {
-    ${disabledResourceStyleMixin};
+    font-family: ${Font.sansSerif};
+    font-style: italic;
+    font-size: 14px; /* Use non-standard font-size, since sans-serif font looks larger than monospace font */
     color: ${Color.gray60};
   }
 `
@@ -145,6 +146,8 @@ const PodIdInput = styled.input`
   border-radius: 2px;
   padding: ${SizeUnit(0.1)} ${SizeUnit(0.2)};
   width: 100px;
+  text-overflow: ellipsis;
+  overflow: auto;
 
   &::selection {
     background-color: ${Color.gray30};
@@ -154,6 +157,7 @@ const PodIdCopy = styled(InstrumentedButton)`
   ${mixinResetButtonStyle};
   padding-top: ${SizeUnit(0.5)};
   padding: ${SizeUnit(0.25)};
+  flex-shrink: 0;
 
   svg {
     fill: ${Color.gray60};
@@ -290,7 +294,6 @@ export function ResourceSelectionHeader({
       indeterminate={indeterminate}
       onChange={onChange}
       size="small"
-      style={{ width: column.width, marginLeft: "5px" }}
     />
   )
 }
@@ -361,6 +364,11 @@ export function TableSelectionColumn({ row }: CellProps<RowValues>) {
   )
 }
 
+let TableBuildButtonColumnRoot = styled.div`
+  display: flex;
+  align-items: center;
+`
+
 export function TableBuildButtonColumn({ row }: CellProps<RowValues>) {
   // If resource is disabled, don't display build button
   if (rowIsDisabled(row)) {
@@ -373,16 +381,18 @@ export function TableBuildButtonColumn({ row }: CellProps<RowValues>) {
     [row.values.name]
   )
   return (
-    <OverviewTableBuildButton
-      hasPendingChanges={trigger.hasPendingChanges}
-      hasBuilt={trigger.hasBuilt}
-      isBuilding={trigger.isBuilding}
-      triggerMode={row.values.triggerMode}
-      isQueued={trigger.isQueued}
-      analyticsTags={row.values.analyticsTags}
-      onStartBuild={onStartBuild}
-      stopBuildButton={row.original.buttons.stopBuild}
-    />
+    <TableBuildButtonColumnRoot>
+      <OverviewTableBuildButton
+        hasPendingChanges={trigger.hasPendingChanges}
+        hasBuilt={trigger.hasBuilt}
+        isBuilding={trigger.isBuilding}
+        triggerMode={row.values.triggerMode}
+        isQueued={trigger.isQueued}
+        analyticsTags={row.values.analyticsTags}
+        onStartBuild={onStartBuild}
+        stopBuildButton={row.original.buttons.stopBuild}
+      />
+    </TableBuildButtonColumnRoot>
   )
 }
 
@@ -403,6 +413,14 @@ export function TableNameColumn({ row }: CellProps<RowValues>) {
   )
 }
 
+let TableStatusColumnRoot = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  justify-content: space-around;
+  min-height: 4em;
+`
+
 export function TableStatusColumn({ row }: CellProps<RowValues>) {
   const status = row.original.statusLine
   const runtimeStatus = (
@@ -414,11 +432,11 @@ export function TableStatusColumn({ row }: CellProps<RowValues>) {
 
   // If a resource is disabled, only one status needs to be displayed
   if (rowIsDisabled(row)) {
-    return runtimeStatus
+    return <TableStatusColumnRoot>{runtimeStatus}</TableStatusColumnRoot>
   }
 
   return (
-    <>
+    <TableStatusColumnRoot>
       <OverviewTableStatus
         status={status.buildStatus}
         lastBuildDur={status.lastBuildDur}
@@ -427,7 +445,7 @@ export function TableStatusColumn({ row }: CellProps<RowValues>) {
         hold={status.hold}
       />
       {runtimeStatus}
-    </>
+    </TableStatusColumnRoot>
   )
 }
 
@@ -613,7 +631,7 @@ const RESOURCE_SELECTION_COLUMN: Column<RowValues> = {
   Header: (props) => <ResourceSelectionHeader {...props} />,
   id: "selection",
   disableSortBy: true,
-  width: "10px",
+  width: "70px",
   Cell: TableSelectionColumn,
 }
 
@@ -628,43 +646,43 @@ const DEFAULT_COLUMNS: Column<RowValues>[] = [
     Header: () => <TableHeaderStarIcon title="Starred" />,
     id: "starred",
     disableSortBy: true,
-    width: "10px",
+    width: "40px",
     Cell: TableStarColumn,
   },
   {
     Header: "Updated",
-    width: "25px",
     accessor: "lastDeployTime",
+    width: "100px",
     Cell: TableUpdateColumn,
   },
   {
     Header: "Trigger",
     accessor: "trigger",
     disableSortBy: true,
-    width: "20px",
     Cell: TableBuildButtonColumn,
+    width: "80px",
   },
   {
     Header: "Resource Name",
-    width: "280px",
     accessor: "name",
     Cell: TableNameColumn,
+    width: "400px",
   },
   {
     Header: "Type",
     accessor: "resourceTypeLabel",
-    width: "150px",
+    width: "auto",
   },
   {
     Header: "Status",
     accessor: (row) => statusSortKey(row),
-    width: "200px",
     Cell: TableStatusColumn,
+    width: "auto",
   },
   {
     Header: "Pod ID",
     accessor: "podId",
-    width: "50px",
+    width: "auto",
     Cell: TablePodIDColumn,
   },
   {
@@ -672,6 +690,7 @@ const DEFAULT_COLUMNS: Column<RowValues>[] = [
     id: "widgets",
     accessor: (row) => row.buttons.default.length,
     Cell: TableWidgetsColumn,
+    width: "auto",
   },
   {
     Header: "Endpoints",
@@ -679,12 +698,13 @@ const DEFAULT_COLUMNS: Column<RowValues>[] = [
     accessor: (row) => row.endpoints.length,
     sortType: "basic",
     Cell: TableEndpointColumn,
+    width: "auto",
   },
   {
-    Header: "Trigger Mode",
+    Header: "Mode",
     accessor: "triggerMode",
-    width: "70px",
     Cell: TableTriggerModeColumn,
+    width: "auto",
   },
 ]
 
