@@ -62,7 +62,7 @@ function BuildButton(props: BuildButtonProps) {
 // A wrapper to receive pointer events so that we get cursor and tooltip when disabled
 // https://mui.com/components/tooltips/#disabled-elements
 const BuildButtonCursorWrapper = styled.div`
-  display: block;
+  display: inline-block;
   cursor: not-allowed;
   // keep the button in front of the "in-progress" barber pole animation
   z-index: 1;
@@ -135,7 +135,7 @@ function StartBuildButton(props: StartBuildButtonProps) {
   return (
     <TiltTooltip title={tooltip} key={tooltip}>
       <BuildButtonCursorWrapper
-        className={clickable ? ".is-clickable" : undefined}
+        className={clickable ? "is-clickable" : undefined}
       >
         <InstrumentedButton
           onClick={onClick}

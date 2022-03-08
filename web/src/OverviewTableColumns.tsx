@@ -23,10 +23,10 @@ import OverviewTableStatus from "./OverviewTableStatus"
 import OverviewTableTriggerModeToggle from "./OverviewTableTriggerModeToggle"
 import { useResourceNav } from "./ResourceNav"
 import { useResourceSelection } from "./ResourceSelectionContext"
-import { disabledResourceStyleMixin } from "./ResourceStatus"
 import { useStarredResources } from "./StarredResourcesContext"
 import {
   Color,
+  Font,
   FontSize,
   mixinResetButtonStyle,
   SizeUnit,
@@ -110,7 +110,9 @@ export const Name = styled.button`
   }
 
   &.isDisabled {
-    ${disabledResourceStyleMixin};
+    font-family: ${Font.sansSerif};
+    font-style: italic;
+    font-size: 14px; /* Use non-standard font-size, since sans-serif font looks larger than monospace font */
     color: ${Color.gray60};
   }
 `
@@ -144,6 +146,8 @@ const PodIdInput = styled.input`
   border-radius: 2px;
   padding: ${SizeUnit(0.1)} ${SizeUnit(0.2)};
   width: 100px;
+  text-overflow: ellipsis;
+  overflow: auto;
 
   &::selection {
     background-color: ${Color.gray30};
@@ -153,6 +157,7 @@ const PodIdCopy = styled(InstrumentedButton)`
   ${mixinResetButtonStyle};
   padding-top: ${SizeUnit(0.5)};
   padding: ${SizeUnit(0.25)};
+  flex-shrink: 0;
 
   svg {
     fill: ${Color.gray60};
@@ -359,6 +364,11 @@ export function TableSelectionColumn({ row }: CellProps<RowValues>) {
   )
 }
 
+let TableBuildButtonColumnRoot = styled.div`
+  display: flex;
+  align-items: center;
+`
+
 export function TableBuildButtonColumn({ row }: CellProps<RowValues>) {
   // If resource is disabled, don't display build button
   if (rowIsDisabled(row)) {
@@ -371,16 +381,18 @@ export function TableBuildButtonColumn({ row }: CellProps<RowValues>) {
     [row.values.name]
   )
   return (
-    <OverviewTableBuildButton
-      hasPendingChanges={trigger.hasPendingChanges}
-      hasBuilt={trigger.hasBuilt}
-      isBuilding={trigger.isBuilding}
-      triggerMode={row.values.triggerMode}
-      isQueued={trigger.isQueued}
-      analyticsTags={row.values.analyticsTags}
-      onStartBuild={onStartBuild}
-      stopBuildButton={row.original.buttons.stopBuild}
-    />
+    <TableBuildButtonColumnRoot>
+      <OverviewTableBuildButton
+        hasPendingChanges={trigger.hasPendingChanges}
+        hasBuilt={trigger.hasBuilt}
+        isBuilding={trigger.isBuilding}
+        triggerMode={row.values.triggerMode}
+        isQueued={trigger.isQueued}
+        analyticsTags={row.values.analyticsTags}
+        onStartBuild={onStartBuild}
+        stopBuildButton={row.original.buttons.stopBuild}
+      />
+    </TableBuildButtonColumnRoot>
   )
 }
 
@@ -664,7 +676,7 @@ const DEFAULT_COLUMNS: Column<RowValues>[] = [
   {
     Header: "Status",
     accessor: (row) => statusSortKey(row),
-    Cell: TablePodIDColumn,
+    Cell: TableStatusColumn,
     width: "auto",
   },
   {

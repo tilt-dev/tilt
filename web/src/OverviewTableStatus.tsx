@@ -6,14 +6,16 @@ import { ReactComponent as NotAllowedSvg } from "./assets/svg/not-allowed.svg"
 import { ReactComponent as PendingSvg } from "./assets/svg/pending.svg"
 import { ReactComponent as WarningSvg } from "./assets/svg/warning.svg"
 import { Hold } from "./Hold"
-import { disabledResourceStyleMixin } from "./ResourceStatus"
 import { PendingBuildDescription } from "./status"
 import { Color, FontSize, Glow, SizeUnit, spin } from "./style-helpers"
 import { formatBuildDuration } from "./time"
 import Tooltip from "./Tooltip"
 import { ResourceStatus } from "./types"
 
-const StatusMsg = styled.span``
+const StatusMsg = styled.span`
+  text-overflow: ellipsis;
+  overflow: hidden;
+`
 const StyledOverviewTableStatus = styled.div`
   color: inherit;
   display: flex;
@@ -21,6 +23,9 @@ const StyledOverviewTableStatus = styled.div`
   font-size: ${FontSize.small};
   line-height: ${FontSize.small};
   text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  width: 100%;
 
   & + & {
     margin-top: -8px;
@@ -54,7 +59,7 @@ const StyledOverviewTableStatus = styled.div`
     color: ${Color.gray50};
   }
   &.is-disabled {
-    ${disabledResourceStyleMixin}
+    color: ${Color.gray60};
   }
 `
 const StatusIcon = styled.span`

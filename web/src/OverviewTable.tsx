@@ -57,11 +57,7 @@ import {
 } from "./ResourceListOptionsContext"
 import { matchesResourceName, ResourceNameFilter } from "./ResourceNameFilter"
 import { useResourceSelection } from "./ResourceSelectionContext"
-import {
-  disabledResourceStyleMixin,
-  resourceIsDisabled,
-  resourceTargetType,
-} from "./ResourceStatus"
+import { resourceIsDisabled, resourceTargetType } from "./ResourceStatus"
 import { TableGroupStatusSummary } from "./ResourceStatusSummary"
 import { ShowMoreButton } from "./ShowMoreButton"
 import { buildStatus, runtimeStatus } from "./status"
@@ -132,6 +128,13 @@ const OverviewTableRoot = styled.section`
   }
 `
 
+const TableWithoutGroupsRoot = styled.div`
+  box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
+  border: 1px ${Color.gray40} solid;
+  border-radius: 0px 0px 8px 8px;
+  background-color: ${Color.gray20};
+`
+
 const OverviewTableMenu = styled.section`
   display: flex;
   flex-direction: row;
@@ -173,7 +176,6 @@ export const ResourceTableRow = styled.tr`
   padding-bottom: 6px;
 
   &.isDisabled {
-    ${disabledResourceStyleMixin}
   }
 
   &.isSelected {
@@ -777,7 +779,15 @@ export function TableWithoutGroups({ resources, buttons }: TableWrapperProps) {
   }, [resources, buttons])
   const columns = getTableColumns(features)
 
-  return <Table columns={columns} data={data} />
+  if (resources?.length === 0) {
+    return null
+  }
+
+  return (
+    <TableWithoutGroupsRoot>
+      <Table columns={columns} data={data} />
+    </TableWithoutGroupsRoot>
+  )
 }
 
 function OverviewTableContent(props: OverviewTableProps) {
