@@ -1,11 +1,15 @@
 import React from "react"
 import { useHistory } from "react-router"
 import styled from "styled-components"
+import { ReactComponent as DisabledSvg } from "./assets/svg/not-allowed.svg"
 import { ReactComponent as StarSvg } from "./assets/svg/star.svg"
 import { InstrumentedButton } from "./instrumentedComponents"
 import { useLogStore } from "./LogStore"
 import { usePathBuilder } from "./PathBuilder"
-import { ClassNameFromResourceStatus } from "./ResourceStatus"
+import {
+  ClassNameFromResourceStatus,
+  disabledResourceStyleMixin,
+} from "./ResourceStatus"
 import { useStarredResources } from "./StarredResourcesContext"
 import { buildStatus, combinedStatus, runtimeStatus } from "./status"
 import {
@@ -44,6 +48,13 @@ const StarIcon = styled(StarSvg)`
   height: ${SizeUnit(0.5)};
   width: ${SizeUnit(0.5)};
 `
+
+const DisabledIcon = styled(DisabledSvg)`
+  height: ${SizeUnit(0.5)};
+  margin-right: ${SizeUnit(1 / 8)};
+  width: ${SizeUnit(0.5)};
+`
+
 export const StarButton = styled(InstrumentedButton)`
   ${mixinResetButtonStyle};
   ${StarIcon} {
@@ -124,10 +135,20 @@ const StarredResourceRoot = styled.div`
     animation: ${barberpole} 8s linear infinite;
   }
 
-  /* TODO (lizz): add "isDisabled" class styles */
+  &.isDisabled {
+    border-color: ${ColorRGBA(Color.gray60, ColorAlpha.translucent)};
 
-  // implement margins as padding on child buttons, to ensure the buttons consume the
-  // whole bounding box
+    &:not(.isSelected) {
+      color: ${Color.gray60};
+    }
+
+    ${StarredResourceLabel} {
+      ${disabledResourceStyleMixin}
+    }
+  }
+
+  /* implement margins as padding on child buttons, to ensure the buttons consume the
+     whole bounding box */
   ${StarButton} {
     margin-left: ${SizeUnit(0.25)};
     padding-right: ${SizeUnit(0.25)};
@@ -143,6 +164,7 @@ const StarredResourceBarRoot = styled.section`
   padding-bottom: ${SizeUnit(0.25)};
   margin-bottom: ${SizeUnit(0.25)};
   background-color: ${Color.grayDarker};
+  display: flex;
 
   ${StarredResourceRoot} {
     margin-right: ${SizeUnit(0.25)};
@@ -178,6 +200,11 @@ export function StarredResource(props: {
     classes.push("isSelected")
   }
 
+  const starredResourceIcon =
+    props.resource.status === ResourceStatus.Disabled ? (
+      <DisabledIcon role="presentation" />
+    ) : null
+
   return (
     <TiltTooltip title={props.resource.name}>
       <StarredResourceRoot className={classes.join(" ")}>
@@ -187,6 +214,7 @@ export function StarredResource(props: {
           }}
           analyticsName="ui.web.starredResourceBarResource"
         >
+          {starredResourceIcon}
           <StarredResourceLabel>{props.resource.name}</StarredResourceLabel>
         </ResourceButton>
         <StarButton
