@@ -17,11 +17,11 @@ func TestLocalTargetUpdateStatus(t *testing.T) {
 	assert.Equal(t, v1alpha1.UpdateStatusPending, mt.UpdateStatus())
 	assert.Equal(t, v1alpha1.RuntimeStatusPending, mt.RuntimeStatus())
 
-	mt.State.CurrentBuild = model.BuildRecord{StartTime: time.Now()}
+	mt.State.CurrentBuilds["buildcontrol"] = model.BuildRecord{StartTime: time.Now()}
 	assert.Equal(t, v1alpha1.UpdateStatusPending, mt.UpdateStatus())
 	assert.Equal(t, v1alpha1.RuntimeStatusPending, mt.RuntimeStatus())
 
-	mt.State.CurrentBuild = model.BuildRecord{}
+	delete(mt.State.CurrentBuilds, "buildcontrol")
 	mt.State.AddCompletedBuild(model.BuildRecord{StartTime: time.Now(), FinishTime: time.Now()})
 	assert.Equal(t, v1alpha1.UpdateStatusNotApplicable, mt.UpdateStatus())
 

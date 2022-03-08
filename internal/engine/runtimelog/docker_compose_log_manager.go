@@ -8,8 +8,6 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/docker/docker/api/types"
-
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -51,11 +49,11 @@ func (m *DockerComposeLogManager) diff(ctx context.Context, st store.RStore) (se
 		// deleted. This affects tests more than normal builds.
 		// But we should have a better way to associate logs with a particular build.
 		ms := mt.State
-		if ms.CurrentBuild.StartTime.IsZero() && ms.LastBuild().StartTime.IsZero() {
+		if ms.EarliestCurrentBuild().StartTime.IsZero() && ms.LastBuild().StartTime.IsZero() {
 			continue
 		}
 		dcState := ms.DCRuntimeState()
-		if dcState.ContainerState.StartedAt == "" {
+		if dcState.ContainerState.StartedAt.IsZero() {
 			// wait for the container to start before attaching so that we can filter out old logs
 			// for job containers that can be re-used
 			continue
@@ -64,7 +62,7 @@ func (m *DockerComposeLogManager) diff(ctx context.Context, st store.RStore) (se
 		// Docker evidently records the container start time asynchronously, so it can actually be AFTER
 		// the first log timestamps (also reported by Docker), so we pad it by a second to reduce the
 		// number of potentially duplicative logs
-		startWatchTime := containerStartTime(dcState.ContainerState).Add(-time.Second)
+		startWatchTime := dcState.ContainerState.StartedAt.Time.Add(-time.Second)
 		existing, hasExisting := m.watches[manifest.Name]
 		if hasExisting {
 			if !existing.Done() {
@@ -223,17 +221,6 @@ var _ store.Subscriber = &DockerComposeLogManager{}
 
 func SpanIDForDCService(mn model.ManifestName) logstore.SpanID {
 	return logstore.SpanID(fmt.Sprintf("dc:%s", mn))
-}
-
-func containerStartTime(cs types.ContainerState) time.Time {
-	if cs.StartedAt == "" {
-		return time.Time{}
-	}
-	startTime, err := time.Parse(time.RFC3339Nano, cs.StartedAt)
-	if err != nil {
-		return time.Time{}
-	}
-	return startTime
 }
 
 // splitDockerComposeLogLineTimestamp attempts to extract a timestamp from a Docker Compose log line.

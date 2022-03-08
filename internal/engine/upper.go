@@ -302,8 +302,12 @@ func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineStat
 	state, _ := ms.RuntimeState.(dockercompose.State)
 
 	state = state.WithContainerID(container.ID(evt.ID)).
-		WithSpanID(runtimelog.SpanIDForDCService(mn)).
-		WithContainerState(action.ContainerState)
+		WithSpanID(runtimelog.SpanIDForDCService(mn))
+
+	dcState := dockercompose.ToContainerState(&action.ContainerState)
+	if dcState != nil {
+		state = state.WithContainerState(*dcState)
+	}
 
 	if evt.IsStartupEvent() {
 		state = state.WithStartTime(action.Time)

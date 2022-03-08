@@ -69,6 +69,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeServiceList":        schema_pkg_apis_core_v1alpha1_DockerComposeServiceList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeServiceSpec":        schema_pkg_apis_core_v1alpha1_DockerComposeServiceSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeServiceStatus":      schema_pkg_apis_core_v1alpha1_DockerComposeServiceStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerContainerState":            schema_pkg_apis_core_v1alpha1_DockerContainerState(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImage":                     schema_pkg_apis_core_v1alpha1_DockerImage(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageList":                 schema_pkg_apis_core_v1alpha1_DockerImageList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageSpec":                 schema_pkg_apis_core_v1alpha1_DockerImageSpec(ref),
@@ -77,6 +78,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageStateCompleted":       schema_pkg_apis_core_v1alpha1_DockerImageStateCompleted(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageStateWaiting":         schema_pkg_apis_core_v1alpha1_DockerImageStateWaiting(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageStatus":               schema_pkg_apis_core_v1alpha1_DockerImageStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerPortBinding":               schema_pkg_apis_core_v1alpha1_DockerPortBinding(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExecAction":                      schema_pkg_apis_core_v1alpha1_ExecAction(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Extension":                       schema_pkg_apis_core_v1alpha1_Extension(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExtensionList":                   schema_pkg_apis_core_v1alpha1_ExtensionList(ref),
@@ -1835,7 +1837,7 @@ func schema_pkg_apis_core_v1alpha1_DockerComposeServiceStatus(ref common.Referen
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "DockerComposeServiceStatus defines the observed state of DockerComposeService",
+				Description: "DockerComposeServiceStatus defines the observed state of DockerComposeService, continuing to watch the container after it starts.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"disableStatus": {
@@ -1844,11 +1846,95 @@ func schema_pkg_apis_core_v1alpha1_DockerComposeServiceStatus(ref common.Referen
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableStatus"),
 						},
 					},
+					"portBindings": {
+						SchemaProps: spec.SchemaProps{
+							Description: "How docker binds container ports to the host network for this service.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerPortBinding"),
+									},
+								},
+							},
+						},
+					},
+					"containerState": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Current state of the container for this service.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerContainerState"),
+						},
+					},
+					"containerID": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Current container ID.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableStatus"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableStatus", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerContainerState", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerPortBinding"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_DockerContainerState(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "State of a standalone container in Docker.\n\nAn apiserver-compatible representation of this struct: https://pkg.go.dev/github.com/docker/docker/api/types#ContainerState",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Description: "String representation of the container state. Can be one of \"created\", \"running\", \"paused\", \"restarting\", \"removing\", \"exited\", or \"dead\".",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"running": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether the container is running.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"error": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether the container is in an error state.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"exitCode": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The exit code, if the container has exited.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"startedAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "When the container process started.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+					"finishedAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "When the container process finished.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
 	}
 }
 
@@ -2295,6 +2381,40 @@ func schema_pkg_apis_core_v1alpha1_DockerImageStatus(ref common.ReferenceCallbac
 		},
 		Dependencies: []string{
 			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageStageStatus", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageStateBuilding", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageStateCompleted", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageStateWaiting"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_DockerPortBinding(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "How docker binds container ports to the host network",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"containerPort": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The port inside the container.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"hostPort": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The port on the host machine where Docker running.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"hostIP": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The IP on the host machine where Docker is binding the network.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
 	}
 }
 

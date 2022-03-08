@@ -79,7 +79,7 @@ func TestUpdateWithCurrentBuild(t *testing.T) {
 		c := model.ToHostCmd("false")
 		localTarget := model.NewLocalTarget(model.TargetName("foo"), c, c, nil)
 		s.ManifestTargets["foo"].Manifest.DeployTarget = localTarget
-		s.ManifestTargets["foo"].State.CurrentBuild = model.BuildRecord{StartTime: f.clock.Now()}
+		s.ManifestTargets["foo"].State.CurrentBuilds["buildcontrol"] = model.BuildRecord{StartTime: f.clock.Now()}
 	})
 
 	f.step()
@@ -89,7 +89,7 @@ func TestUpdateWithCurrentBuild(t *testing.T) {
 	}, 20*time.Millisecond, 5*time.Millisecond)
 
 	f.st.WithState(func(s *store.EngineState) {
-		s.ManifestTargets["foo"].State.CurrentBuild = model.BuildRecord{}
+		delete(s.ManifestTargets["foo"].State.CurrentBuilds, "buildcontrol")
 	})
 
 	f.step()
@@ -1023,9 +1023,8 @@ func (f *fixture) resourceFromTarget(name string, target model.TargetSpec, lastD
 	st := f.st.LockMutableStateForTesting()
 	defer f.st.UnlockMutableState()
 
-	state := &store.ManifestState{
-		LastSuccessfulDeployTime: lastDeploy,
-	}
+	state := store.NewManifestState(m)
+	state.LastSuccessfulDeployTime = lastDeploy
 	state.AddCompletedBuild(model.BuildRecord{
 		StartTime:  lastDeploy,
 		FinishTime: lastDeploy,

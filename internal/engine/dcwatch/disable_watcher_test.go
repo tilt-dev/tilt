@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/docker/api/types"
 	"github.com/jonboulle/clockwork"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -27,10 +26,10 @@ import (
 // https://app.shortcut.com/windmill/story/13147/docker-compose-down-messages-for-disabled-resources-may-be-confusing
 func TestDockerComposeIgnoresGoingToRemoveMessage(t *testing.T) {
 	f := newDWFixture(t)
-	f.dcClient.RmOutput = `Stopping servantes_fortune_1 ... 
+	f.dcClient.RmOutput = `Stopping servantes_fortune_1 ...
 Stopping servantes_fortune_1 ... done
 servantes_fortune_1 exited with code 137
-Removing servantes_fortune_1 ... 
+Removing servantes_fortune_1 ...
 Removing servantes_fortune_1 ... done
 Going to remove servantes_fortune_1
 `
@@ -233,7 +232,7 @@ func (f *dwFixture) createResource(mn model.ManifestName, disableState v1alpha1.
 	mt := store.NewManifestTarget(m)
 	mt.State.DisableState = disableState
 	mt.State.RuntimeState = dockercompose.State{
-		ContainerState: types.ContainerState{Status: containerStatus},
+		ContainerState: v1alpha1.DockerContainerState{Status: containerStatus},
 		StartTime:      f.clock.Now(),
 	}
 

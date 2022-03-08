@@ -43,6 +43,8 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
 
+const LiveUpdateSource = "liveupdate"
+
 var discoveryGVK = v1alpha1.SchemeGroupVersion.WithKind("KubernetesDiscovery")
 var applyGVK = v1alpha1.SchemeGroupVersion.WithKind("KubernetesApply")
 var fwGVK = v1alpha1.SchemeGroupVersion.WithKind("FileWatch")
@@ -532,6 +534,7 @@ func (r *Reconciler) dispatchStartBuildAction(ctx context.Context, lu *v1alpha1.
 		Reason:             model.BuildReasonFlagChangedFiles,
 		SpanID:             logstore.SpanID(spanID),
 		FullBuildTriggered: false,
+		Source:             LiveUpdateSource,
 	})
 
 	buildcontrols.LogBuildEntry(ctx, buildcontrols.BuildEntry{
@@ -560,7 +563,7 @@ func (r *Reconciler) dispatchCompleteBuildAction(lu *v1alpha1.LiveUpdate, newSta
 	}
 	result := store.NewLiveUpdateBuildResult(imageTargetID, containerIDs)
 	resultSet := store.BuildResultSet{imageTargetID: result}
-	r.store.Dispatch(buildcontrols.NewBuildCompleteAction(manifestName, spanID, resultSet, err))
+	r.store.Dispatch(buildcontrols.NewBuildCompleteAction(manifestName, LiveUpdateSource, spanID, resultSet, err))
 }
 
 // Convert the currently tracked state into a set of inputs

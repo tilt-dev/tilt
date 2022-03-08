@@ -18,8 +18,10 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
+const BuildControlSource = "buildcontrol"
+
 func HandleBuildStarted(ctx context.Context, state *store.EngineState, action BuildStartedAction) {
-	if action.IsBuildController {
+	if action.Source == BuildControlSource {
 		state.BuildControllerStartCount++
 	}
 
@@ -41,7 +43,7 @@ func HandleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 		SpanID:    action.SpanID,
 	}
 	ms.ConfigFilesThatCausedChange = []string{}
-	ms.CurrentBuild = bs
+	ms.CurrentBuilds[action.Source] = bs
 
 	if ms.IsK8s() {
 		krs := ms.K8sRuntimeState()
@@ -76,8 +78,8 @@ func HandleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 		ms.LiveUpdatedContainerIDs = container.NewIDSet()
 	}
 
-	state.CurrentlyBuilding[mn] = true
 	state.RemoveFromTriggerQueue(mn)
+	state.CurrentBuildSet[mn] = true
 }
 
 // When a Manifest build finishes, update the BuildStatus for all applicable
@@ -114,7 +116,7 @@ func handleBuildResults(engineState *store.EngineState,
 		// 2) If the current manifest build was kicked off by a trigger, we don't
 		//    want to queue manifests with the same image.
 		if currentMT.NextBuildReason() == model.BuildReasonNone ||
-			engineState.IsCurrentlyBuilding(currentMT.Manifest.Name) {
+			engineState.IsBuilding(currentMT.Manifest.Name) {
 			continue
 		}
 
@@ -177,7 +179,9 @@ func handleBuildResults(engineState *store.EngineState,
 func HandleBuildCompleted(ctx context.Context, engineState *store.EngineState, cb BuildCompleteAction) {
 	mn := cb.ManifestName
 	defer func() {
-		delete(engineState.CurrentlyBuilding, mn)
+		if !engineState.IsBuilding(mn) {
+			delete(engineState.CurrentBuildSet, mn)
+		}
 	}()
 
 	engineState.CompletedBuildCount++
@@ -197,7 +201,7 @@ func HandleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	}
 
 	ms := mt.State
-	bs := ms.CurrentBuild
+	bs := ms.CurrentBuilds[cb.Source]
 	bs.Error = err
 	bs.FinishTime = cb.FinishTime
 	bs.BuildTypes = cb.Result.BuildTypes()
@@ -207,7 +211,7 @@ func HandleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 
 	ms.AddCompletedBuild(bs)
 
-	ms.CurrentBuild = model.BuildRecord{}
+	delete(ms.CurrentBuilds, cb.Source)
 	ms.NeedsRebuildFromCrash = false
 
 	handleBuildResults(engineState, mt, bs, cb.Result)
@@ -264,15 +268,15 @@ func HandleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 
 		result := cb.Result[mt.Manifest.DockerComposeTarget().ID()]
 		dcResult, _ := result.(store.DockerComposeBuildResult)
-		cid := dcResult.DockerComposeContainerID
+		cid := dcResult.Status.ContainerID
 		if cid != "" {
-			state = state.WithContainerID(cid)
+			state = state.WithContainerID(container.ID(cid))
 		}
 
-		cState := dcResult.ContainerState
+		cState := dcResult.Status.ContainerState
 		if cState != nil {
 			state = state.WithContainerState(*cState)
-			state = state.WithPorts(dcResult.Ports)
+			state = state.WithPorts(dcResult.Status.PortBindings)
 
 			if docker.HasStarted(*cState) {
 				if state.StartTime.IsZero() {

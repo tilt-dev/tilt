@@ -9,6 +9,8 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
+const TiltfileBuildSource = "tiltfile"
+
 func HandleConfigsReloadStarted(
 	ctx context.Context,
 	state *store.EngineState,
@@ -25,7 +27,7 @@ func HandleConfigsReloadStarted(
 		Edits:     event.FilesChanged,
 		SpanID:    event.SpanID,
 	}
-	ms.CurrentBuild = status
+	ms.CurrentBuilds[TiltfileBuildSource] = status
 	state.RemoveFromTriggerQueue(event.Name)
 	state.StartedTiltfileLoadCount++
 }
@@ -69,7 +71,7 @@ func HandleConfigsReloaded(
 	if !ok {
 		return
 	}
-	b := ms.CurrentBuild
+	b := ms.CurrentBuilds[TiltfileBuildSource]
 
 	// Remove pending file changes that were consumed by this build.
 	for _, status := range ms.BuildStatuses {
@@ -107,7 +109,7 @@ func HandleConfigsReloaded(
 
 		ms.AddCompletedBuild(b)
 	}
-	ms.CurrentBuild = model.BuildRecord{}
+	delete(ms.CurrentBuilds, TiltfileBuildSource)
 	if event.Err != nil {
 		// When the Tiltfile had an error, we want to differentiate between two cases:
 		//
