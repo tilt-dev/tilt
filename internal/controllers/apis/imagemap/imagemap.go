@@ -1,10 +1,14 @@
 package imagemap
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 
 	"k8s.io/apimachinery/pkg/types"
+
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -50,4 +54,24 @@ func InjectIntoLocalEnv(cmd *exec.Cmd, imageMapNames []string, imageMaps map[typ
 		cmd.Env = append(cmd.Env, fmt.Sprintf("TILT_IMAGE_%d=%s", i, imageMap.Status.ImageFromLocal))
 	}
 	return nil
+}
+
+// Populate a map with all the given imagemaps, skipping any that don't exist
+func NamesToObjects(ctx context.Context, client ctrlclient.Client, names []string) (map[types.NamespacedName]*v1alpha1.ImageMap, error) {
+	imageMaps := make(map[types.NamespacedName]*v1alpha1.ImageMap)
+	for _, name := range names {
+		var im v1alpha1.ImageMap
+		nn := types.NamespacedName{Name: name}
+		err := client.Get(ctx, nn, &im)
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				// If the map isn't found, keep going
+				continue
+			}
+			return nil, err
+		}
+
+		imageMaps[nn] = &im
+	}
+	return imageMaps, nil
 }

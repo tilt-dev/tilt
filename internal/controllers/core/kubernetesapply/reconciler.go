@@ -140,21 +140,9 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		gcReason = "deleting disabled Kubernetes objects"
 	} else {
 		// Fetch all the images needed to apply this YAML.
-		imageMaps := make(map[types.NamespacedName]*v1alpha1.ImageMap)
-		for _, name := range ka.Spec.ImageMaps {
-			var im v1alpha1.ImageMap
-			nn := types.NamespacedName{Name: name}
-			err := r.ctrlClient.Get(ctx, nn, &im)
-			if err != nil {
-				if apierrors.IsNotFound(err) {
-					// If the map isn't found, keep going and let shouldDeployOnReconcile
-					// handle it.
-					continue
-				}
-				return ctrl.Result{}, err
-			}
-
-			imageMaps[nn] = &im
+		imageMaps, err := imagemap.NamesToObjects(ctx, r.ctrlClient, ka.Spec.ImageMaps)
+		if err != nil {
+			return ctrl.Result{}, err
 		}
 
 		lastRestartEvent, _, _, err := trigger.LastRestartEvent(ctx, r.ctrlClient, ka.Spec.RestartOn)

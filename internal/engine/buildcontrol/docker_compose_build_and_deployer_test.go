@@ -186,16 +186,16 @@ func newDCBDFixture(t *testing.T) *dcbdFixture {
 	dcCli := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	dCli := docker.NewFakeClient()
 	cdc := fake.NewFakeTiltClient()
+	st := store.NewTestingStore()
 
 	// Make the fake ImageExists always return true, which is the behavior we want
 	// when testing the BuildAndDeployers.
 	dCli.ImageAlwaysExists = true
 
-	dcbad, err := ProvideDockerComposeBuildAndDeployer(ctx, dcCli, dCli, cdc, dir)
+	dcbad, err := ProvideDockerComposeBuildAndDeployer(ctx, dcCli, dCli, cdc, st, dir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	st := store.NewTestingStore()
 	return &dcbdFixture{
 		TempDirFixture: f,
 		ctx:            ctx,

@@ -3639,7 +3639,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	wsl := server.NewWebsocketList()
 
 	kar := kubernetesapply.NewReconciler(cdc, kClient, sch, docker.Env{}, k8s.KubeContext("kind-kind"), st, "default", execer)
-	dcr := dockercomposeservice.NewReconciler(cdc, st, sch)
+	dcr := dockercomposeservice.NewReconciler(cdc, fakeDcc, dockerClient, st, sch)
 
 	tfr := ctrltiltfile.NewReconciler(st, tfl, kClient, dockerClient, cdc, sch, engineMode, "", "")
 	tbr := togglebutton.NewReconciler(cdc, sch)

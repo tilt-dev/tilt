@@ -1873,11 +1873,32 @@ func schema_pkg_apis_core_v1alpha1_DockerComposeServiceStatus(ref common.Referen
 							Format:      "",
 						},
 					},
+					"applyError": {
+						SchemaProps: spec.SchemaProps{
+							Description: "An error bringing up the container.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"lastApplyStartTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Timestamp of when we last started bringing up this service in Docker Compose.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+					"lastApplyFinishTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Timestamp of when we last finished bringing up this service in Docker Compose.\n\nWhen populated, must be equal or after the LastApplyStartTime field.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableStatus", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerContainerState", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerPortBinding"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableStatus", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerContainerState", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerPortBinding", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
 	}
 }
 

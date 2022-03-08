@@ -647,6 +647,23 @@ message DockerComposeServiceStatus {
   // Current container ID.
   // +optional
   optional string containerID = 4;
+
+  // An error bringing up the container.
+  //
+  // +optional
+  optional string applyError = 5;
+
+  // Timestamp of when we last started bringing up this service in Docker Compose.
+  //
+  // +optional
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastApplyStartTime = 6;
+
+  // Timestamp of when we last finished bringing up this service in Docker Compose.
+  //
+  // When populated, must be equal or after the LastApplyStartTime field.
+  //
+  // +optional
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastApplyFinishTime = 7;
 }
 
 // State of a standalone container in Docker.

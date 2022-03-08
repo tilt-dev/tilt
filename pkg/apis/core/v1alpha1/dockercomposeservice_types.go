@@ -141,6 +141,23 @@ type DockerComposeServiceStatus struct {
 	// Current container ID.
 	// +optional
 	ContainerID string `json:"containerID,omitempty" protobuf:"bytes,4,opt,name=containerID"`
+
+	// An error bringing up the container.
+	//
+	// +optional
+	ApplyError string `json:"applyError,omitempty" protobuf:"bytes,5,opt,name=applyError"`
+
+	// Timestamp of when we last started bringing up this service in Docker Compose.
+	//
+	// +optional
+	LastApplyStartTime metav1.MicroTime `json:"lastApplyStartTime,omitempty" protobuf:"bytes,6,opt,name=lastApplyStartTime"`
+
+	// Timestamp of when we last finished bringing up this service in Docker Compose.
+	//
+	// When populated, must be equal or after the LastApplyStartTime field.
+	//
+	// +optional
+	LastApplyFinishTime metav1.MicroTime `json:"lastApplyFinishTime,omitempty" protobuf:"bytes,7,opt,name=lastApplyFinishTime"`
 }
 
 // DockerComposeService implements ObjectWithStatusSubResource interface.

@@ -16,6 +16,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/containerupdate"
+	"github.com/tilt-dev/tilt/internal/controllers/core/dockercomposeservice"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesapply"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
@@ -84,9 +85,11 @@ func ProvideDockerComposeBuildAndDeployer(
 	dcCli dockercompose.DockerComposeClient,
 	dCli docker.Client,
 	ctrlclient ctrlclient.Client,
+	st store.RStore,
 	dir *dirs.TiltDevDir) (*DockerComposeBuildAndDeployer, error) {
 	wire.Build(
 		BaseWireSet,
+		dockercomposeservice.NewReconciler,
 		build.ProvideClock,
 	)
 

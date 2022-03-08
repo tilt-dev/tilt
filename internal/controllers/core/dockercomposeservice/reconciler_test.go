@@ -8,7 +8,10 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
+	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
@@ -31,6 +34,32 @@ func TestImageIndexing(t *testing.T) {
 	}, reqs)
 }
 
+func TestForceApply(t *testing.T) {
+	f := newFixture(t)
+	nn := types.NamespacedName{Name: "fe"}
+	obj := v1alpha1.DockerComposeService{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "fe",
+		},
+		Spec: v1alpha1.DockerComposeServiceSpec{
+			Service: "fe",
+			Project: v1alpha1.DockerComposeProject{
+				YAML: "fake-yaml",
+			},
+		},
+	}
+	f.Create(&obj)
+
+	status := f.r.ForceApply(f.Context(), nn, obj.Spec, nil, false)
+	assert.Equal(t, "", status.ApplyError)
+	assert.Equal(t, true, status.ContainerState.Running)
+
+	f.MustReconcile(nn)
+	f.MustGet(nn, &obj)
+	assert.True(t, apicmp.DeepEqual(status, obj.Status))
+
+}
+
 type fixture struct {
 	*fake.ControllerFixture
 	r *Reconciler
@@ -38,7 +67,9 @@ type fixture struct {
 
 func newFixture(t *testing.T) *fixture {
 	cfb := fake.NewControllerFixtureBuilder(t)
-	r := NewReconciler(cfb.Client, cfb.Store, v1alpha1.NewScheme())
+	dcCli := dockercompose.NewFakeDockerComposeClient(t, cfb.Context())
+	dCli := docker.NewFakeClient()
+	r := NewReconciler(cfb.Client, dcCli, dCli, cfb.Store, v1alpha1.NewScheme())
 
 	return &fixture{
 		ControllerFixture: cfb.Build(r),

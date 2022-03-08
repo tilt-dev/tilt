@@ -939,6 +939,8 @@ func (in *DockerComposeServiceStatus) DeepCopyInto(out *DockerComposeServiceStat
 		*out = new(DockerContainerState)
 		(*in).DeepCopyInto(*out)
 	}
+	in.LastApplyStartTime.DeepCopyInto(&out.LastApplyStartTime)
+	in.LastApplyFinishTime.DeepCopyInto(&out.LastApplyFinishTime)
 	return
 }
 
