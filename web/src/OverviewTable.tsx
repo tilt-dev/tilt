@@ -3,7 +3,15 @@ import {
   AccordionDetails,
   AccordionSummary,
 } from "@material-ui/core"
-import React, { ChangeEvent, MouseEvent, useMemo, useState } from "react"
+import React, {
+  ChangeEvent,
+  MouseEvent,
+  MutableRefObject,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import {
   HeaderGroup,
   Row,
@@ -40,6 +48,8 @@ import {
   rowIsDisabled,
   RowValues,
 } from "./OverviewTableColumns"
+import { OverviewTableDisplayOptions } from "./OverviewTableDisplayOptions"
+import { OverviewTableKeyboardShortcuts } from "./OverviewTableKeyboardShortcuts"
 import {
   AccordionDetailsStyleResetMixin,
   AccordionStyleResetMixin,
@@ -63,6 +73,7 @@ import { Color, Font, FontSize, SizeUnit } from "./style-helpers"
 import { isZeroTime, timeDiff } from "./time"
 import {
   ResourceName,
+  ResourceStatus,
   TargetType,
   TriggerMode,
   UIButton,
@@ -82,10 +93,12 @@ type TableWrapperProps = {
 type TableGroupProps = {
   label: string
   setGlobalSortBy: (id: string) => void
+  focused: string
 } & TableOptions<RowValues>
 
 type TableProps = {
   setGlobalSortBy?: (id: string) => void
+  focused: string
 } & TableOptions<RowValues>
 
 type ResourceTableHeadRowProps = {
@@ -157,6 +170,7 @@ const ResourceTableHead = styled.thead`
 
 export const ResourceTableRow = styled.tr`
   border-top: 1px solid ${Color.gray40};
+  border-left: 4px solid transparent;
   font-family: ${Font.monospace};
   font-size: ${FontSize.small};
   font-style: none;
@@ -164,7 +178,10 @@ export const ResourceTableRow = styled.tr`
   padding-top: 6px;
   padding-bottom: 6px;
 
-  &.isDisabled {
+  &.isFocused,
+  &:focus {
+    border-left: 4px solid ${Color.blue};
+    outline: none;
   }
 
   &.isSelected {
@@ -454,6 +471,22 @@ function sortByDisableStatus(resources: UIResource[] = []) {
   return sorted
 }
 
+function onlyEnabledRows(rows: RowValues[]): RowValues[] {
+  return rows.filter(
+    (row) => row.statusLine.runtimeStatus !== ResourceStatus.Disabled
+  )
+}
+function onlyDisabledRows(rows: RowValues[]): RowValues[] {
+  return rows.filter(
+    (row) => row.statusLine.runtimeStatus === ResourceStatus.Disabled
+  )
+}
+function enabledRowsFirst(rows: RowValues[]): RowValues[] {
+  let result = onlyEnabledRows(rows)
+  result.push(...onlyDisabledRows(rows))
+  return result
+}
+
 export function labeledResourcesToTableCells(
   resources: UIResource[] | undefined,
   buttons: UIButton[] | undefined,
@@ -592,6 +625,42 @@ function ShowMoreResourcesRow({
   )
 }
 
+function TableRow(props: { row: Row<RowValues>; focused: string }) {
+  let { row, focused } = props
+  const { isSelected } = useResourceSelection()
+  let isFocused = row.original.name == focused
+  let rowClasses =
+    (rowIsDisabled(row) ? "isDisabled " : "") +
+    (isSelected(row.original.name) ? "isSelected " : "") +
+    (isFocused ? "isFocused " : "")
+  let ref: MutableRefObject<HTMLTableRowElement | null> = useRef(null)
+
+  useEffect(() => {
+    if (isFocused && ref.current) {
+      ref.current.focus()
+    }
+  }, [isFocused, ref])
+
+  return (
+    <ResourceTableRow
+      tabIndex={-1}
+      ref={ref}
+      {...row.getRowProps({
+        className: rowClasses,
+      })}
+    >
+      {row.cells.map((cell) => (
+        <ResourceTableData
+          {...cell.getCellProps()}
+          className={cell.column.isSorted ? "isSorted" : ""}
+        >
+          {cell.render("Cell")}
+        </ResourceTableData>
+      ))}
+    </ResourceTableRow>
+  )
+}
+
 export function Table(props: TableProps) {
   if (props.data.length === 0) {
     return null
@@ -619,7 +688,6 @@ export function Table(props: TableProps) {
   )
 
   const showMoreOnClick = () => setPageSize(pageSize * RESOURCE_LIST_MULTIPLIER)
-  const { isSelected } = useResourceSelection()
 
   // TODO (lizz): Consider adding `aria-sort` markup to table headings
   return (
@@ -636,25 +704,12 @@ export function Table(props: TableProps) {
       <tbody {...getTableBodyProps()}>
         {page.map((row: Row<RowValues>) => {
           prepareRow(row)
-
-          let rowClasses =
-            (rowIsDisabled(row) ? "isDisabled " : "") +
-            (isSelected(row.original.name) ? "isSelected " : "")
           return (
-            <ResourceTableRow
-              {...row.getRowProps({
-                className: rowClasses,
-              })}
-            >
-              {row.cells.map((cell) => (
-                <ResourceTableData
-                  {...cell.getCellProps()}
-                  className={cell.column.isSorted ? "isSorted" : ""}
-                >
-                  {cell.render("Cell")}
-                </ResourceTableData>
-              ))}
-            </ResourceTableRow>
+            <TableRow
+              key={row.original.name}
+              row={row}
+              focused={props.focused}
+            />
           )
         })}
         <ShowMoreResourcesRow
@@ -710,6 +765,16 @@ export function TableGroupedByLabels({
     () => labeledResourcesToTableCells(resources, buttons, logAlertIndex),
     [resources, buttons]
   )
+
+  const totalOrder = []
+  data.labels.forEach((label) =>
+    totalOrder.push(...enabledRowsFirst(data.labelsToResources[label]))
+  )
+  totalOrder.push(...enabledRowsFirst(data.tiltfile))
+  totalOrder.push(...enabledRowsFirst(data.unlabeled))
+  let firstResourceName = totalOrder[0]?.name
+  let [focused, setFocused] = useState(firstResourceName || "")
+
   const columns = getTableColumns(features)
 
   // Global table settings are currently used to sort multiple
@@ -738,6 +803,7 @@ export function TableGroupedByLabels({
           columns={columns}
           useControlledState={useControlledState}
           setGlobalSortBy={setGlobalSortBy}
+          focused={focused}
         />
       ))}
       <TableGroup
@@ -746,6 +812,7 @@ export function TableGroupedByLabels({
         columns={columns}
         useControlledState={useControlledState}
         setGlobalSortBy={setGlobalSortBy}
+        focused={focused}
       />
       <TableGroup
         label={TILTFILE_LABEL}
@@ -753,6 +820,12 @@ export function TableGroupedByLabels({
         columns={columns}
         useControlledState={useControlledState}
         setGlobalSortBy={setGlobalSortBy}
+        focused={focused}
+      />
+      <OverviewTableKeyboardShortcuts
+        focused={focused}
+        setFocused={setFocused}
+        rows={totalOrder}
       />
     </>
   )
@@ -768,13 +841,22 @@ export function TableWithoutGroups({ resources, buttons }: TableWrapperProps) {
   }, [resources, buttons])
   const columns = getTableColumns(features)
 
+  let totalOrder = enabledRowsFirst(data)
+  let firstResourceName = totalOrder[0]?.name
+  let [focused, setFocused] = useState(firstResourceName || "")
+
   if (resources?.length === 0) {
     return null
   }
 
   return (
     <TableWithoutGroupsRoot>
-      <Table columns={columns} data={data} />
+      <Table columns={columns} data={data} focused={focused} />
+      <OverviewTableKeyboardShortcuts
+        focused={focused}
+        setFocused={setFocused}
+        rows={totalOrder}
+      />
     </TableWithoutGroupsRoot>
   )
 }
