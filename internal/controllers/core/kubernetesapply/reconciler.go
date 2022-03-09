@@ -135,9 +135,11 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	r.recordDisableStatus(nn, ka.Spec, *disableStatus)
 
 	// Delete kubernetesapply if it's disabled
+	isDisabling := false
 	gcReason := "garbage collecting Kubernetes objects"
 	if disableStatus.State == v1alpha1.DisableStateDisabled {
 		gcReason = "deleting disabled Kubernetes objects"
+		isDisabling = true
 	} else {
 		// Fetch all the images needed to apply this YAML.
 		imageMaps := make(map[types.NamespacedName]*v1alpha1.ImageMap)
@@ -173,7 +175,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		}
 	}
 
-	toDelete := r.garbageCollect(nn, false)
+	toDelete := r.garbageCollect(nn, isDisabling)
 	r.bestEffortDelete(ctx, nn, toDelete, gcReason)
 
 	newKA, err := r.maybeUpdateStatus(ctx, nn, &ka)

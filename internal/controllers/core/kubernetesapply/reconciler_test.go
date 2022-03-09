@@ -291,6 +291,40 @@ func TestGarbageCollectAllOnDelete_Cmd(t *testing.T) {
 	}
 }
 
+func TestGarbageCollectAllOnDisable(t *testing.T) {
+	f := newFixture(t)
+
+	applyCmd, yamlOut := f.createApplyCmd("custom-apply-cmd", testyaml.SanchoYAML)
+	ka := v1alpha1.KubernetesApply{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "a",
+		},
+		Spec: v1alpha1.KubernetesApplySpec{
+			ApplyCmd:  &applyCmd,
+			DeleteCmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-delete-cmd"}},
+			DisableSource: &v1alpha1.DisableSource{
+				ConfigMap: &v1alpha1.ConfigMapDisableSource{
+					Name: "test-disable",
+					Key:  "isDisabled",
+				},
+			},
+		},
+	}
+	f.Create(&ka)
+
+	f.setDisabled(ka.GetObjectMeta().Name, false)
+	f.MustGet(types.NamespacedName{Name: "a"}, &ka)
+	assert.Equal(f.T(), yamlOut, ka.Status.ResultYAML)
+
+	f.setDisabled(ka.GetObjectMeta().Name, true)
+
+	calls := f.execer.Calls()
+	if assert.Len(t, calls, 2, "Expected 2 calls (1x apply + 1x delete)") {
+		assert.Equal(t, []string{"custom-apply-cmd"}, calls[0].Cmd.Argv)
+		assert.Equal(t, []string{"custom-delete-cmd"}, calls[1].Cmd.Argv)
+	}
+}
+
 func TestGarbageCollectPartial(t *testing.T) {
 	f := newFixture(t)
 	ka := v1alpha1.KubernetesApply{
@@ -603,7 +637,13 @@ func (f *fixture) setDisabled(name string, isDisabled bool) {
 	if isDisabled {
 		require.False(f.T(), kdExists)
 
-		require.Contains(f.T(), f.kClient.DeletedYaml, "name: sancho")
+		if ka.Spec.DeleteCmd == nil {
+			require.Contains(f.T(), f.kClient.DeletedYaml, "name: sancho")
+		} else {
+			// Must run the delete cmd instead of deleting resources with our k8s client.
+			require.Equal(f.T(), f.kClient.DeletedYaml, "")
+		}
+
 		// Reset the deletedYaml so it doesn't interfere with other tests
 		f.kClient.DeletedYaml = ""
 	} else {
