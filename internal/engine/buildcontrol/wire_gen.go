@@ -15,6 +15,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/containerupdate"
+	"github.com/tilt-dev/tilt/internal/controllers/core/dockercomposeservice"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesapply"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
@@ -45,13 +46,15 @@ var (
 	_wireLabelsValue = dockerfile.Labels{}
 )
 
-func ProvideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompose.DockerComposeClient, dCli docker.Client, ctrlclient client.Client, dir *dirs.TiltDevDir) (*DockerComposeBuildAndDeployer, error) {
+func ProvideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompose.DockerComposeClient, dCli docker.Client, ctrlclient client.Client, st store.RStore, dir *dirs.TiltDevDir) (*DockerComposeBuildAndDeployer, error) {
+	scheme := v1alpha1.NewScheme()
+	reconciler := dockercomposeservice.NewReconciler(ctrlclient, dcCli, dCli, st, scheme)
 	labels := _wireLabelsValue
 	dockerBuilder := build.NewDockerBuilder(dCli, labels)
 	clock := build.ProvideClock()
 	customBuilder := build.NewCustomBuilder(dCli, clock)
 	imageBuilder := NewImageBuilder(dockerBuilder, customBuilder)
-	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(dcCli, dCli, imageBuilder, clock, ctrlclient)
+	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(reconciler, dCli, imageBuilder, clock, ctrlclient)
 	return dockerComposeBuildAndDeployer, nil
 }
 

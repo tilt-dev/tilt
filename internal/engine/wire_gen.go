@@ -19,6 +19,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/containerupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
+	"github.com/tilt-dev/tilt/internal/controllers/core/dockercomposeservice"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesapply"
 	"github.com/tilt-dev/tilt/internal/controllers/core/liveupdate"
 	"github.com/tilt-dev/tilt/internal/docker"
@@ -55,8 +56,9 @@ func provideFakeBuildAndDeployer(ctx context.Context, docker2 docker.Client, kCl
 	namespace := provideFakeK8sNamespace()
 	kubernetesapplyReconciler := kubernetesapply.NewReconciler(ctrlClient, kClient, scheme, dockerBuilder, kubeContext, st, namespace, execer)
 	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, customBuilder, kClient, env, kubeContext, analytics2, clock, kp, ctrlClient, kubernetesapplyReconciler)
+	dockercomposeserviceReconciler := dockercomposeservice.NewReconciler(ctrlClient, dcc, docker2, st, scheme)
 	imageBuilder := buildcontrol.NewImageBuilder(dockerBuilder, customBuilder)
-	dockerComposeBuildAndDeployer := buildcontrol.NewDockerComposeBuildAndDeployer(dcc, docker2, imageBuilder, clock, ctrlClient)
+	dockerComposeBuildAndDeployer := buildcontrol.NewDockerComposeBuildAndDeployer(dockercomposeserviceReconciler, docker2, imageBuilder, clock, ctrlClient)
 	localexecEnv := provideFakeEnv()
 	cmdExecer := cmd.ProvideExecer(localexecEnv)
 	proberManager := cmd.ProvideProberManager()

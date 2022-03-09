@@ -6,28 +6,26 @@ import (
 	"time"
 
 	"github.com/docker/distribution/reference"
-	"github.com/docker/docker/api/types"
-	"github.com/docker/go-connections/nat"
+	"k8s.io/apimachinery/pkg/types"
 	ktypes "k8s.io/apimachinery/pkg/types"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmdimage"
+	"github.com/tilt-dev/tilt/internal/controllers/core/dockercomposeservice"
 	"github.com/tilt-dev/tilt/internal/controllers/core/dockerimage"
 
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/docker"
-	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
-	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type DockerComposeBuildAndDeployer struct {
-	dcc        dockercompose.DockerComposeClient
+	dcsr       *dockercomposeservice.Reconciler
 	dc         docker.Client
 	ib         *ImageBuilder
 	clock      build.Clock
@@ -36,11 +34,15 @@ type DockerComposeBuildAndDeployer struct {
 
 var _ BuildAndDeployer = &DockerComposeBuildAndDeployer{}
 
-func NewDockerComposeBuildAndDeployer(dcc dockercompose.DockerComposeClient, dc docker.Client,
-	ib *ImageBuilder, c build.Clock,
-	ctrlClient ctrlclient.Client) *DockerComposeBuildAndDeployer {
+func NewDockerComposeBuildAndDeployer(
+	dcsr *dockercomposeservice.Reconciler,
+	dc docker.Client,
+	ib *ImageBuilder,
+	c build.Clock,
+	ctrlClient ctrlclient.Client,
+) *DockerComposeBuildAndDeployer {
 	return &DockerComposeBuildAndDeployer{
-		dcc:        dcc,
+		dcsr:       dcsr,
 		dc:         dc.ForOrchestrator(model.OrchestratorDC),
 		ib:         ib,
 		clock:      c,
@@ -220,39 +222,16 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		stepName = "Deploying"
 	}
 	ps.StartPipelineStep(ctx, stepName)
-	stdout := logger.Get(ctx).Writer(logger.InfoLvl)
-	stderr := logger.Get(ctx).Writer(logger.InfoLvl)
-	err = bd.dcc.Up(ctx, plan.dockerComposeTarget.Spec, dcManagedBuild, stdout, stderr)
+
+	dcTarget := plan.dockerComposeTarget
+	dcTargetNN := types.NamespacedName{Name: dcTarget.ID().Name.String()}
+	status := bd.dcsr.ForceApply(ctx, dcTargetNN, dcTarget.Spec, imageMapSet, dcManagedBuild)
 	ps.EndPipelineStep(ctx)
-	if err != nil {
-		return newResults, err
-	}
-
-	// NOTE(dmiller): right now we only need this the first time. In the future
-	// it might be worth it to move this somewhere else
-	cid, err := bd.dcc.ContainerID(ctx, plan.dockerComposeTarget.Spec)
-	if err != nil {
-		return newResults, err
-	}
-
-	// grab the initial container state
-	containerJSON, err := bd.dc.ContainerInspect(ctx, string(cid))
-	if err != nil {
-		logger.Get(ctx).Debugf("Error inspecting container %s: %v", cid, err)
-	}
-
-	var containerState *types.ContainerState
-	if containerJSON.ContainerJSONBase != nil && containerJSON.ContainerJSONBase.State != nil {
-		containerState = containerJSON.ContainerJSONBase.State
-	}
-
-	var ports nat.PortMap
-	if containerJSON.NetworkSettings != nil {
-		ports = containerJSON.NetworkSettings.NetworkSettingsBase.Ports
+	if status.ApplyError != "" {
+		return newResults, fmt.Errorf("%s", status.ApplyError)
 	}
 
 	dcTargetID := plan.dockerComposeTarget.ID()
-	status := dockercompose.ToServiceStatus(cid, containerState, ports)
 	newResults[dcTargetID] = store.NewDockerComposeDeployResult(dcTargetID, status)
 	return newResults, nil
 }
