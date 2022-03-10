@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { SnackbarProvider } from "notistack"
-import React from "react"
+import React, { ReactElement } from "react"
 import { MemoryRouter } from "react-router"
 import {
   cleanupMockAnalyticsCalls,
@@ -33,10 +33,7 @@ import {
   ResourceListOptions,
   ResourceListOptionsProvider,
 } from "./ResourceListOptionsContext"
-import {
-  matchesResourceName,
-  ResourceNameFilterTextField,
-} from "./ResourceNameFilter"
+import { matchesResourceName } from "./ResourceNameFilter"
 import { ResourceSelectionProvider } from "./ResourceSelectionContext"
 import { ResourceStatusSummaryRoot } from "./ResourceStatusSummary"
 import {
@@ -208,8 +205,15 @@ describe("resource name filter", () => {
     })
 
     it("displays a `no matches` message if there are no matches", () => {
-      let el = container.querySelector(`${ResourceNameFilterTextField} input`)!
-      userEvent.type(el, "eek no matches!")
+      container = renderContainer(
+        tableViewWithSettings({
+          view,
+          resourceListOptions: {
+            ...DEFAULT_OPTIONS,
+            resourceNameFilter: "eek no matches!",
+          },
+        })
+      )
 
       expect(container.querySelector(NoMatchesFound)).toBeDefined()
     })
@@ -446,7 +450,7 @@ describe("overview table with groups", () => {
   })
 
   describe("expand and collapse", () => {
-    let groups: any
+    let groups: NodeListOf<Element>
 
     // Helpers
     const getResourceGroups = () => container.querySelectorAll(OverviewGroup)
@@ -502,7 +506,7 @@ describe("overview table with groups", () => {
       const group = groups[0]
       expect(group.classList.contains("Mui-expanded")).toBe(true)
 
-      userEvent.click(group.querySelector('[role="button"]'))
+      userEvent.click(group.querySelector('[role="button"]') as Element)
 
       // Manually refresh the test component tree
       groups = getResourceGroups()
@@ -517,7 +521,7 @@ describe("overview table with groups", () => {
       const initialGroup = groups[0]
       expect(initialGroup.classList.contains("Mui-expanded")).toBe(true)
 
-      userEvent.click(initialGroup.querySelector('[role="button"]'))
+      userEvent.click(initialGroup.querySelector('[role="button"]') as Element)
 
       const group = getResourceGroups()[0]
       expect(group.classList.contains("Mui-expanded")).toBe(false)
@@ -579,14 +583,21 @@ describe("overview table with groups", () => {
 
   describe("resource name filter", () => {
     it("does not display tables in groups when a resource filter is applied", () => {
-      expect(container.querySelectorAll(OverviewGroupName).length).toBe(7)
-
-      userEvent.type(
-        container.querySelector(`${ResourceNameFilterTextField} input`)!,
-        "filtering!"
+      const nameFilterContainer = renderContainer(
+        tableViewWithSettings({
+          view,
+          labelsEnabled: true,
+          resourceListOptions: {
+            resourceNameFilter: "filtering!",
+            alertsOnTop: false,
+            showDisabledResources: true,
+          },
+        })
       )
 
-      expect(container.querySelectorAll(OverviewGroupName).length).toBe(0)
+      expect(
+        nameFilterContainer.querySelectorAll(OverviewGroupName).length
+      ).toBe(0)
     })
   })
 })
@@ -927,7 +938,7 @@ describe("bulk disable actions", () => {
   })
 })
 
-function renderContainer(x: any) {
+function renderContainer(x: ReactElement) {
   let { container } = render(x)
   return container
 }

@@ -34,14 +34,12 @@ import {
   UNLABELED_LABEL,
 } from "./labels"
 import { LogAlertIndex, useLogAlertIndex } from "./LogStore"
-import { OverviewTableBulkActions } from "./OverviewTableBulkActions"
 import {
   getTableColumns,
   ResourceTableHeaderTip,
   rowIsDisabled,
   RowValues,
 } from "./OverviewTableColumns"
-import { OverviewTableDisplayOptions } from "./OverviewTableDisplayOptions"
 import {
   AccordionDetailsStyleResetMixin,
   AccordionStyleResetMixin,
@@ -55,13 +53,13 @@ import {
   ResourceListOptions,
   useResourceListOptions,
 } from "./ResourceListOptionsContext"
-import { matchesResourceName, ResourceNameFilter } from "./ResourceNameFilter"
+import { matchesResourceName } from "./ResourceNameFilter"
 import { useResourceSelection } from "./ResourceSelectionContext"
 import { resourceIsDisabled, resourceTargetType } from "./ResourceStatus"
 import { TableGroupStatusSummary } from "./ResourceStatusSummary"
 import { ShowMoreButton } from "./ShowMoreButton"
 import { buildStatus, runtimeStatus } from "./status"
-import { Color, Font, FontSize, SizeUnit, Width } from "./style-helpers"
+import { Color, Font, FontSize, SizeUnit } from "./style-helpers"
 import { isZeroTime, timeDiff } from "./time"
 import {
   ResourceName,
@@ -96,11 +94,6 @@ type ResourceTableHeadRowProps = {
 } & TableHeaderProps
 
 // Resource name filter styles
-const OverviewTableResourceNameFilter = styled(ResourceNameFilter)`
-  margin-right: ${SizeUnit(1 / 2)};
-  min-width: ${Width.sidebarDefault}px;
-`
-
 export const ResourceResultCount = styled.p`
   color: ${Color.gray50};
   font-size: ${FontSize.small};
@@ -117,10 +110,12 @@ export const NoMatchesFound = styled.p`
 
 // Table styles
 const OverviewTableRoot = styled.section`
-  margin-bottom: ${SizeUnit(1 / 2)};
+  padding-bottom: ${SizeUnit(1 / 2)};
   margin-left: auto;
   margin-right: auto;
+  /* Max and min width are based on fixed table layout and column widths */
   max-width: 2000px;
+  min-width: 1400px;
 
   @media screen and (max-width: 2200px) {
     margin-left: ${SizeUnit(1 / 2)};
@@ -133,12 +128,6 @@ const TableWithoutGroupsRoot = styled.div`
   border: 1px ${Color.gray40} solid;
   border-radius: 0px 0px 8px 8px;
   background-color: ${Color.gray20};
-`
-
-const OverviewTableMenu = styled.section`
-  display: flex;
-  flex-direction: row;
-  align-items: center;
 `
 
 const ResourceTable = styled.table`
@@ -845,11 +834,6 @@ function OverviewTableContent(props: OverviewTableProps) {
 export default function OverviewTable(props: OverviewTableProps) {
   return (
     <OverviewTableRoot aria-label="Resources overview">
-      <OverviewTableMenu aria-label="Resource menu">
-        <OverviewTableResourceNameFilter />
-        <OverviewTableBulkActions uiButtons={props.view.uiButtons} />
-        <OverviewTableDisplayOptions />
-      </OverviewTableMenu>
       <OverviewTableContent {...props} />
     </OverviewTableRoot>
   )
