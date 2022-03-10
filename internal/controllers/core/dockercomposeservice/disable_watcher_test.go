@@ -1,4 +1,4 @@
-package dcwatch
+package dockercomposeservice
 
 import (
 	"context"
@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tilt-dev/tilt/internal/dockercompose"
-	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
@@ -33,10 +32,10 @@ Removing servantes_fortune_1 ...
 Removing servantes_fortune_1 ... done
 Going to remove servantes_fortune_1
 `
-	f.createResource("m1", v1alpha1.DisableStateDisabled, "running")
-	f.onChange()
+	f.updateQueue("m1", v1alpha1.DisableStateDisabled)
 	f.clock.BlockUntil(1)
 	f.clock.Advance(20 * disableDebounceDelay)
+	f.startTime = f.clock.Now()
 
 	require.NoError(t, f.log.WaitUntilContains("Stopping servantes", 20*time.Millisecond))
 	expectedOutput := strings.Replace(f.dcClient.RmOutput, "Going to remove servantes_fortune_1\n", "", -1)
@@ -45,14 +44,11 @@ Going to remove servantes_fortune_1
 
 func TestDockerComposeDebounce(t *testing.T) {
 	f := newDWFixture(t)
-	f.createResource("m1", v1alpha1.DisableStateDisabled, "running")
-	f.createResource("m2", v1alpha1.DisableStateEnabled, "running")
-	f.onChange()
+	f.updateQueue("m1", v1alpha1.DisableStateDisabled)
+	f.updateQueue("m2", v1alpha1.DisableStateEnabled)
 	require.Len(t, f.dcClient.RmCalls(), 0)
 
-	f.setDisableState("m2", v1alpha1.DisableStateDisabled)
-
-	f.onChange()
+	f.updateQueue("m2", v1alpha1.DisableStateDisabled)
 
 	f.clock.BlockUntil(2)
 	f.clock.Advance(20 * disableDebounceDelay)
@@ -64,14 +60,11 @@ func TestDockerComposeDebounce(t *testing.T) {
 
 func TestDockerComposeDontRetryOnSameStartTime(t *testing.T) {
 	f := newDWFixture(t)
-	f.createResource("m1", v1alpha1.DisableStateDisabled, "running")
-	f.createResource("m2", v1alpha1.DisableStateEnabled, "running")
-	f.onChange()
+	f.updateQueue("m1", v1alpha1.DisableStateDisabled)
+	f.updateQueue("m2", v1alpha1.DisableStateEnabled)
 	require.Len(t, f.dcClient.RmCalls(), 0)
 
-	f.setDisableState("m2", v1alpha1.DisableStateDisabled)
-
-	f.onChange()
+	f.updateQueue("m2", v1alpha1.DisableStateDisabled)
 
 	f.clock.BlockUntil(2)
 	f.clock.Advance(2 * disableDebounceDelay)
@@ -79,10 +72,7 @@ func TestDockerComposeDontRetryOnSameStartTime(t *testing.T) {
 	call := f.rmCall(1)
 	require.Equal(t, []string{"m1", "m2"}, stoppedServices(call))
 
-	f.onChange()
-
-	f.clock.BlockUntil(1)
-	f.clock.Advance(2 * disableDebounceDelay)
+	f.updateQueue("m2", v1alpha1.DisableStateDisabled)
 
 	require.Neverf(t, func() bool {
 		return len(f.dcClient.RmCalls()) > 1
@@ -91,13 +81,11 @@ func TestDockerComposeDontRetryOnSameStartTime(t *testing.T) {
 
 func TestDockerComposeRetryIfStartTimeChanges(t *testing.T) {
 	f := newDWFixture(t)
-	f.createResource("m1", v1alpha1.DisableStateDisabled, "running")
-	f.createResource("m2", v1alpha1.DisableStateEnabled, "running")
-	f.onChange()
+	f.updateQueue("m1", v1alpha1.DisableStateDisabled)
+	f.updateQueue("m2", v1alpha1.DisableStateEnabled)
 	require.Len(t, f.dcClient.RmCalls(), 0)
 
-	f.setDisableState("m2", v1alpha1.DisableStateDisabled)
-	f.onChange()
+	f.updateQueue("m2", v1alpha1.DisableStateDisabled)
 
 	f.clock.BlockUntil(2)
 	f.clock.Advance(2 * disableDebounceDelay)
@@ -110,13 +98,9 @@ func TestDockerComposeRetryIfStartTimeChanges(t *testing.T) {
 	require.Equal(t, []string{"m1", "m2"}, stoppedServices(call))
 
 	// simulate restarting m2 by bumping its start time
-	f.st.WithManifestState("m2", func(ms *store.ManifestState) {
-		rs := ms.DCRuntimeState()
-		rs.StartTime = f.clock.Now()
-		ms.RuntimeState = rs
-	})
+	f.startTime = f.clock.Now()
+	f.updateQueue("m2", v1alpha1.DisableStateDisabled)
 
-	f.onChange()
 	f.clock.BlockUntil(1)
 	f.clock.Advance(2 * disableDebounceDelay)
 
@@ -126,17 +110,13 @@ func TestDockerComposeRetryIfStartTimeChanges(t *testing.T) {
 
 func TestDockerComposeDontDisableIfReenabledDuringDebounce(t *testing.T) {
 	f := newDWFixture(t)
-	f.createResource("m1", v1alpha1.DisableStateDisabled, "running")
-	f.createResource("m2", v1alpha1.DisableStateDisabled, "running")
-
-	f.onChange()
+	f.updateQueue("m1", v1alpha1.DisableStateDisabled)
+	f.updateQueue("m2", v1alpha1.DisableStateDisabled)
 
 	f.clock.BlockUntil(1)
 
 	// reenable m2 during debounce
-	f.setDisableState("m2", v1alpha1.DisableStateEnabled)
-
-	f.onChange()
+	f.updateQueue("m2", v1alpha1.DisableStateEnabled)
 
 	f.clock.Advance(2 * disableDebounceDelay)
 
@@ -148,9 +128,8 @@ func TestDockerComposeDontDisableIfReenabledDuringDebounce(t *testing.T) {
 func TestDisableError(t *testing.T) {
 	f := newDWFixture(t)
 
-	f.createResource("m1", v1alpha1.DisableStateDisabled, "running")
 	f.dcClient.RmError = errors.New("fake dc error")
-	f.onChange()
+	f.updateQueue("m1", v1alpha1.DisableStateDisabled)
 
 	f.clock.BlockUntil(1)
 	f.clock.Advance(2 * disableDebounceDelay)
@@ -160,15 +139,15 @@ func TestDisableError(t *testing.T) {
 	}, 20*time.Millisecond, time.Millisecond)
 }
 
-// Iterations of this subscriber have spawned goroutines for every onChange call, so try to
+// Iterations of this subscriber have spawned goroutines for every update call, so try to
 // verify it's not doing that.
 func TestDontSpawnRedundantGoroutines(t *testing.T) {
 	f := newDWFixture(t)
-	f.createResource("m1", v1alpha1.DisableStateDisabled, "running")
-	f.createResource("m2", v1alpha1.DisableStateDisabled, "running")
+	f.updateQueue("m1", v1alpha1.DisableStateDisabled)
+	f.updateQueue("m2", v1alpha1.DisableStateDisabled)
 
 	for i := 0; i < 10; i++ {
-		f.onChange()
+		f.updateQueue("m1", v1alpha1.DisableStateDisabled)
 	}
 
 	if !assert.Never(t, func() bool {
@@ -181,7 +160,6 @@ func TestDontSpawnRedundantGoroutines(t *testing.T) {
 		require.Equal(t, 1, f.watcher.goroutinesSpawnedForTesting, "goroutines spawned")
 	}
 
-	f.clock.BlockUntil(1)
 	f.clock.Advance(20 * disableDebounceDelay)
 
 	call := f.rmCall(1)
@@ -191,13 +169,13 @@ func TestDontSpawnRedundantGoroutines(t *testing.T) {
 
 type dwFixture struct {
 	*tempdir.TempDirFixture
-	t        *testing.T
-	ctx      context.Context
-	dcClient *dockercompose.FakeDCClient
-	watcher  *DisableSubscriber
-	clock    clockwork.FakeClock
-	st       *store.TestingStore
-	log      *bufsync.ThreadSafeBuffer
+	t         *testing.T
+	ctx       context.Context
+	dcClient  *dockercompose.FakeDCClient
+	watcher   *DisableSubscriber
+	clock     clockwork.FakeClock
+	log       *bufsync.ThreadSafeBuffer
+	startTime time.Time
 }
 
 func newDWFixture(t *testing.T) *dwFixture {
@@ -208,8 +186,8 @@ func newDWFixture(t *testing.T) *dwFixture {
 	t.Cleanup(cancel)
 	dcClient := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	clock := clockwork.NewFakeClock()
-	watcher := NewDisableSubscriber(dcClient, clock)
-	st := store.NewTestingStore()
+	watcher := NewDisableSubscriber(ctx, dcClient, clock)
+
 	return &dwFixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),
 		t:              t,
@@ -217,35 +195,18 @@ func newDWFixture(t *testing.T) *dwFixture {
 		dcClient:       dcClient,
 		watcher:        watcher,
 		clock:          clock,
-		st:             st,
 		log:            log,
+		startTime:      clock.Now(),
 	}
 }
 
-func (f *dwFixture) onChange() {
-	err := f.watcher.OnChange(f.ctx, f.st, store.ChangeSummary{})
-	require.NoError(f.t, err)
-}
-
-func (f *dwFixture) createResource(mn model.ManifestName, disableState v1alpha1.DisableState, containerStatus string) {
+func (f *dwFixture) updateQueue(mn model.ManifestName, disableState v1alpha1.DisableState) {
 	m := manifestbuilder.New(f, mn).WithDockerCompose().Build()
-	mt := store.NewManifestTarget(m)
-	mt.State.DisableState = disableState
-	mt.State.RuntimeState = dockercompose.State{
-		ContainerState: v1alpha1.DockerContainerState{Status: containerStatus},
-		StartTime:      f.clock.Now(),
-	}
-
-	f.st.WithState(func(state *store.EngineState) {
-		state.UpsertManifestTarget(mt)
-	})
-}
-
-func (f *dwFixture) setDisableState(mn model.ManifestName, ds v1alpha1.DisableState) {
-	f.st.WithState(func(state *store.EngineState) {
-		mt, ok := state.ManifestTargets[mn]
-		require.Truef(f.t, ok, "manifest %s doesn't exist", mn)
-		mt.State.DisableState = ds
+	f.watcher.UpdateQueue(resourceState{
+		Name:         mn.String(),
+		Spec:         m.DockerComposeTarget().Spec,
+		NeedsCleanup: disableState == v1alpha1.DisableStateDisabled,
+		StartTime:    f.startTime,
 	})
 }
 

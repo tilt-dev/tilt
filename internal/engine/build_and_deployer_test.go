@@ -920,6 +920,15 @@ func (f *bdFixture) BuildAndDeploy(specs []model.TargetSpec, stateSet store.Buil
 			}
 			f.upsert(&ka)
 		}
+
+		dcTarget, ok := spec.(model.DockerComposeTarget)
+		if ok {
+			dcs := v1alpha1.DockerComposeService{
+				ObjectMeta: metav1.ObjectMeta{Name: dcTarget.ID().Name.String()},
+				Spec:       dcTarget.Spec,
+			}
+			f.upsert(&dcs)
+		}
 	}
 	return f.bd.BuildAndDeploy(f.ctx, f.st, specs, stateSet)
 }

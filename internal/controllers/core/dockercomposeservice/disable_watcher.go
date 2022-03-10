@@ -1,4 +1,4 @@
-package dcwatch
+package dockercomposeservice
 
 import (
 	"context"
@@ -11,15 +11,14 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/filteredwriter"
-	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
-	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 const disableDebounceDelay = 200 * time.Millisecond
 
 type DisableSubscriber struct {
+	ctx            context.Context
 	dcc            dockercompose.DockerComposeClient
 	clock          clockwork.Clock
 	mu             sync.Mutex
@@ -37,17 +36,16 @@ type DisableSubscriber struct {
 }
 
 type resourceState struct {
+	Name                string
 	Spec                v1alpha1.DockerComposeServiceSpec
 	NeedsCleanup        bool
 	CurrentlyCleaningUp bool
-	// the container's start time
-	StartTime time.Time
-	// the service's order wrt other services, to ensure logging in consistent order
-	Order int
+	StartTime           time.Time
 }
 
-func NewDisableSubscriber(dcc dockercompose.DockerComposeClient, clock clockwork.Clock) *DisableSubscriber {
+func NewDisableSubscriber(ctx context.Context, dcc dockercompose.DockerComposeClient, clock clockwork.Clock) *DisableSubscriber {
 	return &DisableSubscriber{
+		ctx:                   ctx,
 		dcc:                   dcc,
 		clock:                 clock,
 		resourceStates:        make(map[string]resourceState),
@@ -55,80 +53,39 @@ func NewDisableSubscriber(dcc dockercompose.DockerComposeClient, clock clockwork
 	}
 }
 
-func (w *DisableSubscriber) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) error {
-	if summary.IsLogOnly() {
-		return nil
+func (w *DisableSubscriber) UpdateQueue(rs resourceState) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	kickoffCleanup := false
+	name := rs.Name
+	rs.CurrentlyCleaningUp = w.resourceStates[name].CurrentlyCleaningUp
+	if rs.NeedsCleanup && !rs.CurrentlyCleaningUp {
+		rs.CurrentlyCleaningUp = true
+		kickoffCleanup = true
 	}
+	w.resourceStates[name] = rs
 
-	state := st.RLockState()
-
-	project := state.DockerComposeProject()
-	if model.IsEmptyDockerComposeProject(project) {
-		st.RUnlockState()
-		return nil
-	}
-
-	var toCleanup []string
-
-	for i, mn := range state.ManifestDefinitionOrder {
-		name := mn.String()
-		mt := state.ManifestTargets[mn]
-		ms := mt.State
-
-		if !ms.IsDC() {
-			continue
-		}
-
-		runtimeStatus := ms.DCRuntimeState().RuntimeStatus()
-
-		isRunning := runtimeStatus == v1alpha1.RuntimeStatusOK || runtimeStatus == v1alpha1.RuntimeStatusPending
-		isDisabled := ms.DisableState == v1alpha1.DisableStateDisabled
-		needsCleanup := isRunning && isDisabled
-
-		rs := resourceState{
-			Spec:         mt.Manifest.DockerComposeTarget().Spec,
-			NeedsCleanup: needsCleanup,
-			StartTime:    ms.DCRuntimeState().StartTime,
-			Order:        i,
-		}
-		w.mu.Lock()
-		rs.CurrentlyCleaningUp = w.resourceStates[name].CurrentlyCleaningUp
-		if rs.NeedsCleanup && !rs.CurrentlyCleaningUp {
-			rs.CurrentlyCleaningUp = true
-			toCleanup = append(toCleanup, name)
-		}
-		w.resourceStates[name] = rs
-		w.mu.Unlock()
-	}
-
-	st.RUnlockState()
-
-	if len(toCleanup) > 0 {
-		w.goroutinesSpawnedForTesting += 1
-
+	if kickoffCleanup {
 		go func() {
 
 			// docker-compose rm can take 5-10 seconds
 			// we sleep a bit here so that if a bunch of resources are disabled in bulk, we do them all at once rather
 			// than starting the first one we see, and then getting the rest in a second docker-compose rm call
 			select {
-			case <-ctx.Done():
+			case <-w.ctx.Done():
 				return
 			case <-w.clock.After(disableDebounceDelay):
 			}
 
-			w.Reconcile(ctx)
+			w.Reconcile(w.ctx)
 			w.mu.Lock()
-			for _, name := range toCleanup {
-				rs := w.resourceStates[name]
-				rs.CurrentlyCleaningUp = false
-				w.resourceStates[name] = rs
-			}
+			rs := w.resourceStates[name]
+			rs.CurrentlyCleaningUp = false
+			w.resourceStates[name] = rs
 			w.mu.Unlock()
 		}()
 	}
-
-	return nil
 }
 
 func (w *DisableSubscriber) Reconcile(ctx context.Context) {
@@ -144,8 +101,9 @@ func (w *DisableSubscriber) Reconcile(ctx context.Context) {
 		}
 	}
 
+	// Alphabetical order
 	sort.Slice(toDisable, func(i, j int) bool {
-		return w.resourceStates[toDisable[i].Service].Order < w.resourceStates[toDisable[j].Service].Order
+		return toDisable[i].Service < toDisable[j].Service
 	})
 
 	w.mu.Unlock()

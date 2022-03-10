@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/google/wire"
+	"github.com/jonboulle/clockwork"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/wmclient/pkg/dirs"
@@ -86,10 +87,11 @@ func ProvideDockerComposeBuildAndDeployer(
 	dCli docker.Client,
 	ctrlclient ctrlclient.Client,
 	st store.RStore,
+	clock clockwork.Clock,
 	dir *dirs.TiltDevDir) (*DockerComposeBuildAndDeployer, error) {
 	wire.Build(
 		BaseWireSet,
-		dockercomposeservice.NewReconciler,
+		dockercomposeservice.WireSet,
 		build.ProvideClock,
 	)
 
