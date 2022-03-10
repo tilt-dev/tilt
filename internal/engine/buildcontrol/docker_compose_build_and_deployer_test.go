@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ktypes "k8s.io/apimachinery/pkg/types"
@@ -192,7 +193,8 @@ func newDCBDFixture(t *testing.T) *dcbdFixture {
 	// when testing the BuildAndDeployers.
 	dCli.ImageAlwaysExists = true
 
-	dcbad, err := ProvideDockerComposeBuildAndDeployer(ctx, dcCli, dCli, cdc, st, dir)
+	clock := clockwork.NewFakeClock()
+	dcbad, err := ProvideDockerComposeBuildAndDeployer(ctx, dcCli, dCli, cdc, st, clock, dir)
 	if err != nil {
 		t.Fatal(err)
 	}

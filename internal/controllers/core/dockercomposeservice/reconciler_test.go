@@ -3,6 +3,7 @@ package dockercomposeservice
 import (
 	"testing"
 
+	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -69,7 +70,9 @@ func newFixture(t *testing.T) *fixture {
 	cfb := fake.NewControllerFixtureBuilder(t)
 	dcCli := dockercompose.NewFakeDockerComposeClient(t, cfb.Context())
 	dCli := docker.NewFakeClient()
-	r := NewReconciler(cfb.Client, dcCli, dCli, cfb.Store, v1alpha1.NewScheme())
+	clock := clockwork.NewFakeClock()
+	watcher := NewDisableSubscriber(cfb.Context(), dcCli, clock)
+	r := NewReconciler(cfb.Client, dcCli, dCli, cfb.Store, v1alpha1.NewScheme(), watcher)
 
 	return &fixture{
 		ControllerFixture: cfb.Build(r),

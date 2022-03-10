@@ -33,7 +33,6 @@ var controllerSet = wire.NewSet(
 	podlogstream.NewPodSource,
 	kubernetesapply.NewReconciler,
 	cluster.NewReconciler,
-	dockercomposeservice.NewReconciler,
 
 	ProvideControllers,
 )
@@ -105,4 +104,5 @@ var WireSet = wire.NewSet(
 	configmap.WireSet,
 	dockerimage.WireSet,
 	cmdimage.WireSet,
+	dockercomposeservice.WireSet,
 )

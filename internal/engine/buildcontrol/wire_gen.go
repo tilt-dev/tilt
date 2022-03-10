@@ -10,6 +10,7 @@ import (
 	"context"
 
 	"github.com/google/wire"
+	"github.com/jonboulle/clockwork"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
@@ -46,15 +47,16 @@ var (
 	_wireLabelsValue = dockerfile.Labels{}
 )
 
-func ProvideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompose.DockerComposeClient, dCli docker.Client, ctrlclient client.Client, st store.RStore, dir *dirs.TiltDevDir) (*DockerComposeBuildAndDeployer, error) {
+func ProvideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompose.DockerComposeClient, dCli docker.Client, ctrlclient client.Client, st store.RStore, clock clockwork.Clock, dir *dirs.TiltDevDir) (*DockerComposeBuildAndDeployer, error) {
 	scheme := v1alpha1.NewScheme()
-	reconciler := dockercomposeservice.NewReconciler(ctrlclient, dcCli, dCli, st, scheme)
+	disableSubscriber := dockercomposeservice.NewDisableSubscriber(ctx, dcCli, clock)
+	reconciler := dockercomposeservice.NewReconciler(ctrlclient, dcCli, dCli, st, scheme, disableSubscriber)
 	labels := _wireLabelsValue
 	dockerBuilder := build.NewDockerBuilder(dCli, labels)
-	clock := build.ProvideClock()
-	customBuilder := build.NewCustomBuilder(dCli, clock)
+	buildClock := build.ProvideClock()
+	customBuilder := build.NewCustomBuilder(dCli, buildClock)
 	imageBuilder := NewImageBuilder(dockerBuilder, customBuilder)
-	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(reconciler, dCli, imageBuilder, clock, ctrlclient)
+	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(reconciler, dCli, imageBuilder, buildClock, ctrlclient)
 	return dockerComposeBuildAndDeployer, nil
 }
 

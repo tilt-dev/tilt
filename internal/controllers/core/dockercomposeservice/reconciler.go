@@ -32,13 +32,14 @@ import (
 )
 
 type Reconciler struct {
-	dcc        dockercompose.DockerComposeClient
-	dc         docker.Client
-	st         store.RStore
-	ctrlClient ctrlclient.Client
-	indexer    *indexer.Indexer
-	requeuer   *indexer.Requeuer
-	mu         sync.Mutex
+	dcc          dockercompose.DockerComposeClient
+	dc           docker.Client
+	st           store.RStore
+	ctrlClient   ctrlclient.Client
+	indexer      *indexer.Indexer
+	requeuer     *indexer.Requeuer
+	disableQueue *DisableSubscriber
+	mu           sync.Mutex
 
 	// Protected by the mutex.
 	results map[types.NamespacedName]*Result
@@ -62,15 +63,17 @@ func NewReconciler(
 	dc docker.Client,
 	st store.RStore,
 	scheme *runtime.Scheme,
+	disableQueue *DisableSubscriber,
 ) *Reconciler {
 	return &Reconciler{
-		ctrlClient: ctrlClient,
-		dcc:        dcc,
-		dc:         dc.ForOrchestrator(model.OrchestratorDC),
-		indexer:    indexer.NewIndexer(scheme, indexDockerComposeService),
-		st:         st,
-		requeuer:   indexer.NewRequeuer(),
-		results:    make(map[types.NamespacedName]*Result),
+		ctrlClient:   ctrlClient,
+		dcc:          dcc,
+		dc:           dc.ForOrchestrator(model.OrchestratorDC),
+		indexer:      indexer.NewIndexer(scheme, indexDockerComposeService),
+		st:           st,
+		requeuer:     indexer.NewRequeuer(),
+		disableQueue: disableQueue,
+		results:      make(map[types.NamespacedName]*Result),
 	}
 }
 
@@ -87,6 +90,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	}
 
 	if apierrors.IsNotFound(err) || !obj.ObjectMeta.DeletionTimestamp.IsZero() {
+		rs, ok := r.updateForDisableQueue(nn, true /* deleting */)
+		if ok {
+			r.disableQueue.UpdateQueue(rs)
+		}
+		r.clearResult(nn)
+
 		return ctrl.Result{}, nil
 	}
 
@@ -97,9 +106,16 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		return ctrl.Result{}, err
 	}
 
-	r.recordDisableStatus(nn, obj.Spec, *disableStatus)
+	r.recordSpecAndDisableStatus(nn, obj.Spec, *disableStatus)
 
-	// TODO(nick): Cleanup when the dockercompose service is disabled.
+	rs, ok := r.updateForDisableQueue(nn, disableStatus.State == v1alpha1.DisableStateDisabled)
+	if ok {
+		r.disableQueue.UpdateQueue(rs)
+		if disableStatus.State == v1alpha1.DisableStateDisabled {
+			r.recordRmOnDisable(nn)
+		}
+	}
+
 	// TODO(nick): Deploy dockercompose services that aren't managed via buildcontrol
 
 	err = r.maybeUpdateStatus(ctx, nn, &obj)
@@ -108,6 +124,57 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	}
 
 	return ctrl.Result{}, nil
+}
+
+// We need to update the disable queue in two cases:
+// 1) If the resource is enabled (to clear any pending deletes), or
+// 2) If the resource is deleted but still running (to kickoff a delete).
+func (r *Reconciler) updateForDisableQueue(nn types.NamespacedName, isDisabled bool) (resourceState, bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	result, isExisting := r.results[nn]
+	if !isExisting {
+		return resourceState{}, false
+	}
+
+	if !isDisabled {
+		return resourceState{Name: nn.Name, Spec: result.Spec}, true
+	}
+
+	// We only need to do cleanup if there's a container available.
+	if result.Status.ContainerState != nil {
+		return resourceState{
+			Name:         nn.Name,
+			Spec:         result.Spec,
+			NeedsCleanup: true,
+			StartTime:    result.Status.ContainerState.StartedAt.Time,
+		}, true
+	}
+
+	return resourceState{}, false
+}
+
+// Records that a delete was performed.
+func (r *Reconciler) recordRmOnDisable(nn types.NamespacedName) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	result, isExisting := r.results[nn]
+	if !isExisting {
+		return
+	}
+
+	result.Status.ContainerID = ""
+	result.Status.ContainerState = nil
+	result.Status.PortBindings = nil
+}
+
+// Removes all state for an object.
+func (r *Reconciler) clearResult(nn types.NamespacedName) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	delete(r.results, nn)
 }
 
 // Create a result object if necessary. Caller must hold the mutex.
@@ -123,7 +190,7 @@ func (r *Reconciler) ensureResultExists(nn types.NamespacedName) *Result {
 }
 
 // Record disable state of the service.
-func (r *Reconciler) recordDisableStatus(
+func (r *Reconciler) recordSpecAndDisableStatus(
 	nn types.NamespacedName,
 	spec v1alpha1.DockerComposeServiceSpec,
 	disableStatus v1alpha1.DisableStatus) {
@@ -131,6 +198,8 @@ func (r *Reconciler) recordDisableStatus(
 	defer r.mu.Unlock()
 
 	result := r.ensureResultExists(nn)
+	result.Spec = spec
+
 	if apicmp.DeepEqual(result.Status.DisableStatus, &disableStatus) {
 		return
 	}
@@ -177,7 +246,6 @@ func (r *Reconciler) recordApplyError(
 	status.LastApplyFinishTime = apis.NowMicro()
 	status.ApplyError = err.Error()
 	result.Status = *status
-	result.SetSpec(spec, imageMaps)
 	return *status
 }
 
@@ -195,7 +263,6 @@ func (r *Reconciler) recordApplyStatus(
 	disableStatus := result.Status.DisableStatus
 	newStatus.DisableStatus = disableStatus
 	result.Status = newStatus
-	result.SetSpec(spec, imageMaps)
 
 	return newStatus
 }
@@ -287,29 +354,22 @@ func indexDockerComposeService(obj client.Object) []indexer.Key {
 		})
 	}
 
+	if dcs.Spec.DisableSource != nil {
+		cm := dcs.Spec.DisableSource.ConfigMap
+		if cm != nil {
+			cmGVK := v1alpha1.SchemeGroupVersion.WithKind("ConfigMap")
+			result = append(result, indexer.Key{
+				Name: types.NamespacedName{Name: cm.Name},
+				GVK:  cmGVK,
+			})
+		}
+	}
+
 	return result
 }
 
 // Keeps track of the state we currently know about.
 type Result struct {
-	Spec             v1alpha1.DockerComposeServiceSpec
-	ImageMapSpecs    []v1alpha1.ImageMapSpec
-	ImageMapStatuses []v1alpha1.ImageMapStatus
-	Status           v1alpha1.DockerComposeServiceStatus
-}
-
-func (r *Result) SetSpec(spec v1alpha1.DockerComposeServiceSpec, imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) {
-	r.Spec = spec
-	r.ImageMapSpecs = nil
-	r.ImageMapStatuses = nil
-	for _, imageMapName := range r.Spec.ImageMaps {
-		im, ok := imageMaps[types.NamespacedName{Name: imageMapName}]
-		if !ok {
-			// this should never happen, but if it does, just continue quietly.
-			continue
-		}
-
-		r.ImageMapSpecs = append(r.ImageMapSpecs, im.Spec)
-		r.ImageMapStatuses = append(r.ImageMapStatuses, im.Status)
-	}
+	Spec   v1alpha1.DockerComposeServiceSpec
+	Status v1alpha1.DockerComposeServiceStatus
 }

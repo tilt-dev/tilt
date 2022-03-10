@@ -73,7 +73,7 @@ func provideFakeBuildAndDeployer(
 		provideFakeK8sNamespace,
 		liveupdate.NewReconciler,
 		kubernetesapply.NewReconciler,
-		dockercomposeservice.NewReconciler,
+		dockercomposeservice.WireSet,
 		cmd.WireSet,
 		clockwork.NewRealClock,
 		provideFakeEnv,

@@ -104,7 +104,6 @@ var BaseWireSet = wire.NewSet(
 	configs.NewTriggerQueueSubscriber,
 	telemetry.NewController,
 	dcwatch.NewEventWatcher,
-	dcwatch.NewDisableSubscriber,
 	runtimelog.NewDockerComposeLogManager,
 	cloud.WireSet,
 	cloudurl.ProvideAddress,

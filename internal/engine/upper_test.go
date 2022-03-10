@@ -257,6 +257,7 @@ type fakeBuildAndDeployer struct {
 	ctrlClient ctrlclient.Client
 
 	kaReconciler *kubernetesapply.Reconciler
+	dcReconciler *dockercomposeservice.Reconciler
 }
 
 var _ buildcontrol.BuildAndDeployer = &fakeBuildAndDeployer{}
@@ -357,6 +358,11 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 	}
 
 	if !call.dc().Empty() && len(b.nextLiveUpdateContainerIDs) == 0 {
+		err = b.updateDockerComposeServiceStatus(ctx, call.dc(), iTargets)
+		if err != nil {
+			return result, err
+		}
+
 		dcContainerID := container.ID(fmt.Sprintf("dc-%s", path.Base(call.dc().ID().Name.String())))
 		if b.nextDockerComposeContainerID != "" {
 			dcContainerID = b.nextDockerComposeContainerID
@@ -411,6 +417,36 @@ func (b *fakeBuildAndDeployer) updateKubernetesApplyStatus(ctx context.Context, 
 
 	nn := types.NamespacedName{Name: kTarg.ID().Name.String()}
 	status := b.kaReconciler.ForceApply(ctx, nn, kTarg.KubernetesApplySpec, imageMapSet)
+
+	// We want our fake stub to only propagate apiserver problems.
+	_ = status
+
+	return nil
+}
+
+func (b *fakeBuildAndDeployer) updateDockerComposeServiceStatus(ctx context.Context, dcTarg model.DockerComposeTarget, iTargets []model.ImageTarget) error {
+	imageMapSet := make(map[types.NamespacedName]*v1alpha1.ImageMap, len(dcTarg.Spec.ImageMaps))
+	for _, iTarget := range iTargets {
+		if iTarget.IsLiveUpdateOnly {
+			continue
+		}
+
+		var im v1alpha1.ImageMap
+		nn := types.NamespacedName{Name: iTarget.ImageMapName()}
+		err := b.ctrlClient.Get(ctx, nn, &im)
+		if err != nil {
+			return err
+		}
+		im.Status = v1alpha1.ImageMapStatus{
+			Image:            container.FamiliarString(iTarget.Refs.ClusterRef()),
+			ImageFromCluster: container.FamiliarString(iTarget.Refs.ClusterRef()),
+			ImageFromLocal:   container.FamiliarString(iTarget.Refs.LocalRef()),
+		}
+		imageMapSet[nn] = &im
+	}
+
+	nn := types.NamespacedName{Name: dcTarg.ID().Name.String()}
+	status := b.dcReconciler.ForceApply(ctx, nn, dcTarg.Spec, imageMapSet, false)
 
 	// We want our fake stub to only propagate apiserver problems.
 	_ = status
@@ -509,7 +545,7 @@ func (b *fakeBuildAndDeployer) waitUntilBuildCompleted(ctx context.Context, key 
 	}
 }
 
-func newFakeBuildAndDeployer(t *testing.T, kClient *k8s.FakeK8sClient, ctrlClient ctrlclient.Client, kaReconciler *kubernetesapply.Reconciler) *fakeBuildAndDeployer {
+func newFakeBuildAndDeployer(t *testing.T, kClient *k8s.FakeK8sClient, ctrlClient ctrlclient.Client, kaReconciler *kubernetesapply.Reconciler, dcReconciler *dockercomposeservice.Reconciler) *fakeBuildAndDeployer {
 	return &fakeBuildAndDeployer{
 		t:                t,
 		calls:            make(chan buildAndDeployCall, 20),
@@ -518,6 +554,7 @@ func newFakeBuildAndDeployer(t *testing.T, kClient *k8s.FakeK8sClient, ctrlClien
 		kClient:          kClient,
 		ctrlClient:       ctrlClient,
 		kaReconciler:     kaReconciler,
+		dcReconciler:     dcReconciler,
 		targetObjectTree: make(map[model.TargetID]podbuilder.PodObjectTree),
 	}
 }
@@ -2420,10 +2457,9 @@ func TestDockerComposeStopOnDisable(t *testing.T) {
 		return len(f.dcc.RmCalls()) > 0
 	}, stdTimeout, time.Millisecond)
 
-	expectedCall := dockercompose.RmCall{
-		Specs: []v1alpha1.DockerComposeServiceSpec{m.DockerComposeTarget().Spec},
-	}
-	require.Equal(t, expectedCall, f.dcc.RmCalls()[0])
+	require.Len(t, f.dcc.RmCalls(), 1)
+	require.Len(t, f.dcc.RmCalls()[0].Specs, 1)
+	require.Equal(t, m.Name.String(), f.dcc.RmCalls()[0].Specs[0].Service)
 }
 
 func TestDockerComposeStartOnReenable(t *testing.T) {
@@ -3597,7 +3633,6 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	cc := configs.NewConfigsController(cdc)
 	tqs := configs.NewTriggerQueueSubscriber(cdc)
 	dcw := dcwatch.NewEventWatcher(fakeDcc, dockerClient)
-	dcds := dcwatch.NewDisableSubscriber(fakeDcc, clock)
 	dclm := runtimelog.NewDockerComposeLogManager(fakeDcc)
 	serverOptions, err := server.ProvideTiltServerOptionsForTesting(ctx)
 	require.NoError(t, err)
@@ -3639,7 +3674,8 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	wsl := server.NewWebsocketList()
 
 	kar := kubernetesapply.NewReconciler(cdc, kClient, sch, docker.Env{}, k8s.KubeContext("kind-kind"), st, "default", execer)
-	dcr := dockercomposeservice.NewReconciler(cdc, fakeDcc, dockerClient, st, sch)
+	dcds := dockercomposeservice.NewDisableSubscriber(ctx, fakeDcc, clock)
+	dcr := dockercomposeservice.NewReconciler(cdc, fakeDcc, dockerClient, st, sch, dcds)
 
 	tfr := ctrltiltfile.NewReconciler(st, tfl, kClient, dockerClient, cdc, sch, engineMode, "", "")
 	tbr := togglebutton.NewReconciler(cdc, sch)
@@ -3680,7 +3716,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	dp := dockerprune.NewDockerPruner(dockerClient)
 	dp.DisabledForTesting(true)
 
-	b := newFakeBuildAndDeployer(t, kClient, cdc, kar)
+	b := newFakeBuildAndDeployer(t, kClient, cdc, kar, dcr)
 	bc := NewBuildController(b)
 
 	ret := &testFixture{
@@ -3722,7 +3758,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	uss := uisession.NewSubscriber(cdc)
 	urs := uiresource.NewSubscriber(cdc)
 
-	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, sw, bc, cc, tqs, dcw, dcds, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, uss, urs)
+	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, sw, bc, cc, tqs, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, uss, urs)
 	ret.upper, err = NewUpper(ctx, st, subs)
 	require.NoError(t, err)
 
