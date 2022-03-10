@@ -1,9 +1,16 @@
+import { Font } from "./style-helpers"
 import {
   ResourceDisableState,
   ResourceStatus,
   TargetType,
   UIResource,
 } from "./types"
+
+export const disabledResourceStyleMixin = `
+font-family: ${Font.sansSerif};
+font-style: italic;
+font-size: 14px; /* Use non-standard font-size, since sans-serif font looks larger than monospace font */
+`
 
 export function ClassNameFromResourceStatus(rs: ResourceStatus): string {
   switch (rs) {

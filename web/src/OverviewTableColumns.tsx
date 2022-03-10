@@ -23,10 +23,10 @@ import OverviewTableStatus from "./OverviewTableStatus"
 import OverviewTableTriggerModeToggle from "./OverviewTableTriggerModeToggle"
 import { useResourceNav } from "./ResourceNav"
 import { useResourceSelection } from "./ResourceSelectionContext"
+import { disabledResourceStyleMixin } from "./ResourceStatus"
 import { useStarredResources } from "./StarredResourcesContext"
 import {
   Color,
-  Font,
   FontSize,
   mixinResetButtonStyle,
   SizeUnit,
@@ -110,9 +110,7 @@ export const Name = styled.button`
   }
 
   &.isDisabled {
-    font-family: ${Font.sansSerif};
-    font-style: italic;
-    font-size: 14px; /* Use non-standard font-size, since sans-serif font looks larger than monospace font */
+    ${disabledResourceStyleMixin}
     color: ${Color.gray60};
   }
 `
