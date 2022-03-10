@@ -55,6 +55,7 @@ export default function TiltTooltip(props: TooltipProps) {
 const InfoIcon = styled(InfoSvg)`
   cursor: pointer;
   margin: ${SizeUnit(0.25)};
+  flex-shrink: 0;
 
   &.shadow {
     border-radius: 50%;
