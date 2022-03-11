@@ -3,6 +3,7 @@ package kubernetesapply
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -130,8 +131,9 @@ func TestBasicApplyCmd(t *testing.T) {
 	assert.Equal(t, yamlOut, ka.Status.ResultYAML)
 
 	assert.Contains(t, f.Stdout(),
-		"Objects applied to cluster:\n       → sancho:deployment\n",
+		"Running cmd: custom-apply-cmd\n     Objects applied to cluster:\n       → sancho:deployment\n",
 		"Log output did not include applied objects")
+	assert.Equal(t, 1, strings.Count(f.Stdout(), "Running cmd"))
 
 	// verify that a re-reconcile does NOT re-invoke the command
 	f.execer.RegisterCommandError("custom-apply-cmd", errors.New("this should not get invoked"))
