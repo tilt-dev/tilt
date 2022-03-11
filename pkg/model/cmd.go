@@ -112,14 +112,21 @@ func ToBatCmd(cmd string) Cmd {
 		return Cmd{}
 	}
 	// from https://docs.docker.com/engine/reference/builder/#run
-	return Cmd{Argv: []string{"cmd", "/S", "/C", cmd}}
+	//
+	// NOTE(nick): cmd /S /C does not handle multi-line strings correctly.
+	// It will execute the first line, then exit. Should we warn or error about this?
+	//
+	// The TrimSpace ensures we at least execute the first non-empty line.
+	return Cmd{Argv: []string{"cmd", "/S", "/C", strings.TrimSpace(cmd)}}
 }
 
 func ToUnixCmd(cmd string) Cmd {
 	if cmd == "" {
 		return Cmd{}
 	}
-	return Cmd{Argv: []string{"sh", "-c", cmd}}
+
+	// trim spurious spaces and execute them in shell.
+	return Cmd{Argv: []string{"sh", "-c", strings.TrimSpace(cmd)}}
 }
 
 func ToUnixCmdInDir(cmd string, dir string) Cmd {

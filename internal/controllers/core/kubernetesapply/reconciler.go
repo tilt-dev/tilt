@@ -374,6 +374,7 @@ func (r *Reconciler) runCmdDeploy(ctx context.Context, spec v1alpha1.KubernetesA
 		return nil, err
 	}
 
+	logger.Get(ctx).Infof("Running cmd: %s", cmd.String())
 	exitCode, err := r.execer.Run(ctx, cmd, runIO)
 	if err != nil {
 		return nil, fmt.Errorf("apply command failed: %v", err)
