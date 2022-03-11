@@ -573,11 +573,26 @@ export function TableWidgetsColumn({ row }: CellProps<RowValues>) {
 /**
  * Column tooltips
  */
+const modeColumn: Column<RowValues> = {
+  Header: "Mode",
+  id: "mode",
+  accessor: "triggerMode",
+  Cell: TableTriggerModeColumn,
+  width: "auto",
+}
+
+const widgetsColumn: Column<RowValues> = {
+  Header: "Widgets",
+  id: "widgets",
+  accessor: (row: any) => row.buttons.default.length,
+  Cell: TableWidgetsColumn,
+  width: "auto",
+}
 
 const columnNameToInfoTooltip: {
   [key: string]: NonNullable<React.ReactNode>
 } = {
-  "Trigger Mode": (
+  [modeColumn.id as string]: (
     <>
       Trigger mode can be toggled through the UI. To set it persistently, see{" "}
       <a
@@ -590,7 +605,7 @@ const columnNameToInfoTooltip: {
       .
     </>
   ),
-  Widgets: (
+  [widgetsColumn.id as string]: (
     <>
       Buttons can be added to resources to easily perform custom actions. See{" "}
       <a
@@ -605,12 +620,12 @@ const columnNameToInfoTooltip: {
   ),
 }
 
-export function ResourceTableHeaderTip(props: { name?: string }) {
-  if (!props.name) {
+export function ResourceTableHeaderTip(props: { id?: string }) {
+  if (!props.id) {
     return null
   }
 
-  const tooltipContent = columnNameToInfoTooltip[props.name]
+  const tooltipContent = columnNameToInfoTooltip[props.id]
   if (!tooltipContent) {
     return null
   }
@@ -618,7 +633,7 @@ export function ResourceTableHeaderTip(props: { name?: string }) {
   return (
     <TiltInfoTooltip
       title={tooltipContent}
-      dismissId={`table-header-${props.name}`}
+      dismissId={`table-header-${props.id}`}
     />
   )
 }
@@ -684,13 +699,7 @@ const DEFAULT_COLUMNS: Column<RowValues>[] = [
     width: "auto",
     Cell: TablePodIDColumn,
   },
-  {
-    Header: "Widgets",
-    id: "widgets",
-    accessor: (row) => row.buttons.default.length,
-    Cell: TableWidgetsColumn,
-    width: "auto",
-  },
+  widgetsColumn,
   {
     Header: "Endpoints",
     id: "endpoints",
@@ -699,12 +708,7 @@ const DEFAULT_COLUMNS: Column<RowValues>[] = [
     Cell: TableEndpointColumn,
     width: "auto",
   },
-  {
-    Header: "Mode",
-    accessor: "triggerMode",
-    Cell: TableTriggerModeColumn,
-    width: "auto",
-  },
+  modeColumn,
 ]
 
 let ALL_COLUMNS = [RESOURCE_SELECTION_COLUMN, ...DEFAULT_COLUMNS]

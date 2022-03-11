@@ -30,6 +30,10 @@ const StyledOverviewTableStatus = styled(Link)`
   overflow: hidden;
   width: 100%;
 
+  &:hover {
+    text-decoration: underline;
+  }
+
   & + & {
     margin-top: -8px;
   }

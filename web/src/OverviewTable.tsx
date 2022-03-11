@@ -543,7 +543,7 @@ export function ResourceTableHeadRow({
         >
           <ResourceTableHeaderLabel>
             {column.render("Header")}
-            <ResourceTableHeaderTip name={String(column.Header)} />
+            <ResourceTableHeaderTip id={String(column.id)} />
             {column.canSort && (
               <ResourceTableHeaderSortTriangle
                 className={
