@@ -128,6 +128,7 @@ const DetailText = styled.div`
 
 const StyledLinkSvg = styled(LinkSvg)`
   fill: ${Color.gray50};
+  flex-shrink: 0;
   margin-right: ${SizeUnit(0.2)};
 `
 

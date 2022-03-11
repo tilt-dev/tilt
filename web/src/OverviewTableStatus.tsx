@@ -63,7 +63,6 @@ const StyledOverviewTableStatus = styled(Link)`
   }
   &.is-disabled {
     color: ${Color.gray60};
-    pointer-events: none;
   }
 `
 const StatusIcon = styled.span`
