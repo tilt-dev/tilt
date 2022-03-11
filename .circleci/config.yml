@@ -188,6 +188,8 @@ workflows:
           requires:
             - build-linux
       - test-extensions:
+          context:
+            - Tilt Pulumi Context
           requires:
             - build-linux
       - build-windows:
