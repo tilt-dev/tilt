@@ -37,6 +37,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/config"
 	"github.com/tilt-dev/tilt/internal/tiltfile/dockerprune"
 	"github.com/tilt-dev/tilt/internal/tiltfile/encoding"
+	"github.com/tilt-dev/tilt/internal/tiltfile/eval"
 	"github.com/tilt-dev/tilt/internal/tiltfile/git"
 	"github.com/tilt-dev/tilt/internal/tiltfile/include"
 	"github.com/tilt-dev/tilt/internal/tiltfile/io"
@@ -235,6 +236,7 @@ func (s *tiltfileState) loadManifests(tf *v1alpha1.Tiltfile) ([]model.Manifest, 
 		probe.NewPlugin(),
 		tfv1alpha1.NewPlugin(),
 		hasher.NewPlugin(),
+		eval.NewPlugin(),
 	)
 	if err != nil {
 		return nil, result, starkit.UnpackBacktrace(err)

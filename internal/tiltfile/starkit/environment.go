@@ -76,6 +76,10 @@ func newEnvironment(plugins ...Plugin) *Environment {
 	}
 }
 
+func (e *Environment) Predeclared() starlark.StringDict {
+	return e.predeclared
+}
+
 func (e *Environment) AddLoadInterceptor(i LoadInterceptor) {
 	e.loadInterceptors = append(e.loadInterceptors, i)
 }
