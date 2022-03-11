@@ -14,6 +14,7 @@ builds:
   # Compiles against the MacOS FSEvents system libraries.
   - CGO_ENABLED=1
   - CC=/osxcross/target/bin/x86_64h-apple-darwin20.2-clang
+  - CXX=/osxcross/target/bin/x86_64h-apple-darwin20.2-clang++
 - main: ./cmd/tilt/main.go
   id: tilt
   flags:
