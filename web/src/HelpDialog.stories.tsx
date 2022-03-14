@@ -18,18 +18,5 @@ export default {
 }
 
 export const DialogOverview = () => (
-  <HelpDialog
-    open={true}
-    onClose={onRequestClose}
-    anchorEl={document.body}
-    isOverview={true}
-  />
-)
-export const DialogLegacy = () => (
-  <HelpDialog
-    open={true}
-    onClose={onRequestClose}
-    anchorEl={document.body}
-    isOverview={false}
-  />
+  <HelpDialog open={true} onClose={onRequestClose} anchorEl={document.body} />
 )

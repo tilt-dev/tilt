@@ -72,8 +72,12 @@ class Shortcuts extends Component<Props> {
       // Select up and down the list.
       let names = items.map((item) => item.name)
       let index = names.indexOf(focused)
-      let dir = e.key === "j" ? 1 : -1
-      let targetIndex = index + dir
+      let targetIndex = 0
+      if (index != -1) {
+        let dir = e.key === "j" ? 1 : -1
+        targetIndex = index + dir
+      }
+
       if (targetIndex < 0 || targetIndex >= names.length) {
         return
       }

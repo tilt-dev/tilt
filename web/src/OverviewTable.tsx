@@ -48,7 +48,6 @@ import {
   rowIsDisabled,
   RowValues,
 } from "./OverviewTableColumns"
-import { OverviewTableDisplayOptions } from "./OverviewTableDisplayOptions"
 import { OverviewTableKeyboardShortcuts } from "./OverviewTableKeyboardShortcuts"
 import {
   AccordionDetailsStyleResetMixin,
@@ -155,7 +154,7 @@ const ResourceTable = styled.table`
   }
 
   td:first-child {
-    padding-left: ${SizeUnit(0.75)};
+    padding-left: 24px;
   }
 
   td:last-child {
@@ -170,18 +169,22 @@ const ResourceTableHead = styled.thead`
 
 export const ResourceTableRow = styled.tr`
   border-top: 1px solid ${Color.gray40};
-  border-left: 4px solid transparent;
   font-family: ${Font.monospace};
   font-size: ${FontSize.small};
   font-style: none;
   color: ${Color.gray60};
   padding-top: 6px;
   padding-bottom: 6px;
+  padding-left: 4px;
 
   &.isFocused,
   &:focus {
     border-left: 4px solid ${Color.blue};
     outline: none;
+
+    td:first-child {
+      padding-left: 22px;
+    }
   }
 
   &.isSelected {
@@ -770,10 +773,9 @@ export function TableGroupedByLabels({
   data.labels.forEach((label) =>
     totalOrder.push(...enabledRowsFirst(data.labelsToResources[label]))
   )
-  totalOrder.push(...enabledRowsFirst(data.tiltfile))
   totalOrder.push(...enabledRowsFirst(data.unlabeled))
-  let firstResourceName = totalOrder[0]?.name
-  let [focused, setFocused] = useState(firstResourceName || "")
+  totalOrder.push(...enabledRowsFirst(data.tiltfile))
+  let [focused, setFocused] = useState("")
 
   const columns = getTableColumns(features)
 
@@ -842,8 +844,7 @@ export function TableWithoutGroups({ resources, buttons }: TableWrapperProps) {
   const columns = getTableColumns(features)
 
   let totalOrder = enabledRowsFirst(data)
-  let firstResourceName = totalOrder[0]?.name
-  let [focused, setFocused] = useState(firstResourceName || "")
+  let [focused, setFocused] = useState("")
 
   if (resources?.length === 0) {
     return null
