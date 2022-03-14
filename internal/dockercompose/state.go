@@ -18,25 +18,11 @@ import (
 // Helper functions for dealing with ContainerState.
 const ZeroTime = "0001-01-01T00:00:00Z"
 
-func (evt Event) IsStartupEvent() bool {
-	if evt.Type != TypeContainer {
-		return false
-	}
-	return evt.Action == ActionStart || evt.Action == ActionRestart || evt.Action == ActionUpdate
-}
-
 type State struct {
 	ContainerState v1alpha1.DockerContainerState
 	ContainerID    container.ID
 	Ports          []v1alpha1.DockerPortBinding
-
-	// TODO(nick): It might make since to get rid of StartTime
-	// and parse it out of the ContainerState.StartedAt string,
-	// though we would have to decide how to treat containers
-	// started before Tilt start.
-	StartTime time.Time
-
-	LastReadyTime time.Time
+	LastReadyTime  time.Time
 
 	SpanID model.LogSpanID
 }
@@ -76,6 +62,11 @@ func (s State) RuntimeStatusError() error {
 
 func (s State) WithContainerState(state v1alpha1.DockerContainerState) State {
 	s.ContainerState = state
+
+	if s.RuntimeStatus() == v1alpha1.RuntimeStatusOK {
+		s.LastReadyTime = time.Now()
+	}
+
 	return s
 }
 
@@ -90,17 +81,11 @@ func (s State) WithSpanID(spanID model.LogSpanID) State {
 }
 
 func (s State) WithContainerID(cID container.ID) State {
+	if cID == s.ContainerID {
+		return s
+	}
 	s.ContainerID = cID
-	return s
-}
-
-func (s State) WithStartTime(time time.Time) State {
-	s.StartTime = time
-	return s
-}
-
-func (s State) WithLastReadyTime(time time.Time) State {
-	s.LastReadyTime = time
+	s.ContainerState = v1alpha1.DockerContainerState{}
 	return s
 }
 

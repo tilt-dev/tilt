@@ -43,7 +43,9 @@ type Reconciler struct {
 	mu           sync.Mutex
 
 	// Protected by the mutex.
-	results map[types.NamespacedName]*Result
+	results              map[types.NamespacedName]*Result
+	resultsByServiceName map[string]*Result
+	projectWatches       map[string]*ProjectWatch
 }
 
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
@@ -67,14 +69,16 @@ func NewReconciler(
 	disableQueue *DisableSubscriber,
 ) *Reconciler {
 	return &Reconciler{
-		ctrlClient:   ctrlClient,
-		dcc:          dcc,
-		dc:           dc.ForOrchestrator(model.OrchestratorDC),
-		indexer:      indexer.NewIndexer(scheme, indexDockerComposeService),
-		st:           st,
-		requeuer:     indexer.NewRequeuer(),
-		disableQueue: disableQueue,
-		results:      make(map[types.NamespacedName]*Result),
+		ctrlClient:           ctrlClient,
+		dcc:                  dcc,
+		dc:                   dc.ForOrchestrator(model.OrchestratorDC),
+		indexer:              indexer.NewIndexer(scheme, indexDockerComposeService),
+		st:                   st,
+		requeuer:             indexer.NewRequeuer(),
+		disableQueue:         disableQueue,
+		results:              make(map[types.NamespacedName]*Result),
+		resultsByServiceName: make(map[string]*Result),
+		projectWatches:       make(map[string]*ProjectWatch),
 	}
 }
 
@@ -98,6 +102,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		r.clearResult(nn)
 
 		r.st.Dispatch(dockercomposeservices.NewDockerComposeServiceDeleteAction(nn.Name))
+		r.manageOwnedProjectWatches(ctx)
 		return ctrl.Result{}, nil
 	}
 
@@ -126,6 +131,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+	r.manageOwnedProjectWatches(ctx)
 
 	return ctrl.Result{}, nil
 }
@@ -178,7 +184,11 @@ func (r *Reconciler) recordRmOnDisable(nn types.NamespacedName) {
 func (r *Reconciler) clearResult(nn types.NamespacedName) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	delete(r.results, nn)
+	result, ok := r.results[nn]
+	if ok {
+		delete(r.resultsByServiceName, result.Spec.Service)
+		delete(r.results, nn)
+	}
 }
 
 // Create a result object if necessary. Caller must hold the mutex.
@@ -188,7 +198,7 @@ func (r *Reconciler) ensureResultExists(nn types.NamespacedName) *Result {
 		return existing
 	}
 
-	result := &Result{}
+	result := &Result{Name: nn}
 	r.results[nn] = result
 	return result
 }
@@ -202,7 +212,12 @@ func (r *Reconciler) recordSpecAndDisableStatus(
 	defer r.mu.Unlock()
 
 	result := r.ensureResultExists(nn)
-	result.Spec = spec
+	if !apicmp.DeepEqual(result.Spec, spec) {
+		delete(r.resultsByServiceName, result.Spec.Service)
+		result.Spec = spec
+		result.ProjectHash, _ = hashProject(spec.Project)
+		r.resultsByServiceName[result.Spec.Service] = result
+	}
 
 	if apicmp.DeepEqual(result.Status.DisableStatus, &disableStatus) {
 		return
@@ -374,6 +389,15 @@ func indexDockerComposeService(obj client.Object) []indexer.Key {
 
 // Keeps track of the state we currently know about.
 type Result struct {
-	Spec   v1alpha1.DockerComposeServiceSpec
+	Name        types.NamespacedName
+	Spec        v1alpha1.DockerComposeServiceSpec
+	ProjectHash string
+
 	Status v1alpha1.DockerComposeServiceStatus
+}
+
+// Keeps track of the projects we're currently watching.
+type ProjectWatch struct {
+	project v1alpha1.DockerComposeProject
+	cancel  func()
 }

@@ -911,17 +911,3 @@ func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []model.Link) {
 }
 
 const MainTiltfileManifestName = model.MainTiltfileManifestName
-
-// DockerComposeConfigPath returns the path to the docker-compose yaml file of any
-// docker-compose manifests on this EngineState.
-//
-// Current assumption is only one project per run, so we take the
-// path from the first d-c manifest we see.
-func (s EngineState) DockerComposeProject() v1alpha1.DockerComposeProject {
-	for _, mt := range s.ManifestTargets {
-		if mt.Manifest.IsDC() {
-			return mt.Manifest.DockerComposeTarget().Spec.Project
-		}
-	}
-	return v1alpha1.DockerComposeProject{}
-}
