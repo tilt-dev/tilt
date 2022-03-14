@@ -228,10 +228,7 @@ workflows:
   release-verify:
     when: << pipeline.parameters.verify_release >>
     jobs:
-      - release-verify:
-          filters:
-            branches:
-              only: master
+      - release-verify
 
   release:
     unless: << pipeline.parameters.verify_release >>
