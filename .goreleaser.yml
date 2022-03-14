@@ -11,30 +11,61 @@ builds:
   - amd64
   - arm64
   env:
-  # Compiles against the MacOS FSEvents system libraries.
+  # clang is a cross-compiler by default, so the same CC/CXX works
+  # for arm64 (M1) & amd64 (Intel) builds
   - CGO_ENABLED=1
-  - CC=/osxcross/target/bin/x86_64h-apple-darwin20.2-clang
-  - CXX=/osxcross/target/bin/x86_64h-apple-darwin20.2-clang++
+  - CC=o64h-clang
+  - CXX=o64h-clang++
 - main: ./cmd/tilt/main.go
-  id: tilt
+  id: tilt-linux-arm64
+  flags:
+    - -tags=osusergo
+    - -mod=vendor
+  goos:
+    - linux
+  goarch:
+    - arm64
+  env:
+    - CGO_ENABLED=1
+    - CC=aarch64-linux-gnu-gcc
+    - CXX=aarch64-linux-gnu-g++
+- main: ./cmd/tilt/main.go
+  id: tilt-linux-arm
+  flags:
+    - -tags=osusergo
+    - -mod=vendor
+  goos:
+    - linux
+  goarch:
+    - arm
+  env:
+    - CGO_ENABLED=1
+    - CC=arm-linux-gnueabi-gcc
+    - CXX=arm-linux-gnueabi-g++
+- main: ./cmd/tilt/main.go
+  id: tilt-linux-amd64
+  flags:
+    - -tags=osusergo
+    - -mod=vendor
+  goos:
+    - linux
+  goarch:
+    - amd64
+  env:
+    - CGO_ENABLED=1
+- main: ./cmd/tilt/main.go
+  id: tilt-windows-amd64
   flags:
   - -tags=osusergo
   - -mod=vendor
   goos:
-  - linux
   - windows
   goarch:
   - amd64
-  - arm
-  - arm64
-  # https://goreleaser.com/deprecations/#builds-for-windowsarm64
-  ignore:
-  - goos: windows
-    goarch: arm
-  - goos: windows
-    goarch: arm64
   env:
-  - CGO_ENABLED=0
+    - CGO_ENABLED=1
+    - CC=x86_64-w64-mingw32-gcc
+    - CXX=x86_64-w64-mingw32-g++
 archives:
 - name_template: "{{ .ProjectName }}.{{ .Version }}.{{ .Os }}.{{ .Arch }}"
   replacements:

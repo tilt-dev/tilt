@@ -6,13 +6,16 @@ RUN go get -u github.com/google/wire/cmd/wire
 
 RUN go get -u golang.org/x/tools/cmd/goimports
 
-RUN sudo apt-get install default-jdk
-
 USER root
 
-RUN curl -sL https://deb.nodesource.com/setup_16.x | bash -
-
-RUN apt-get install -y nodejs
+RUN curl -sL https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - && \
+    echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list && \
+    curl -sL https://deb.nodesource.com/setup_16.x | bash - && \
+    apt install -y -q --no-install-recommends \
+      default-jdk \
+      nodejs \
+      yarn \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN mv /usr/bin/docker-compose /usr/bin/docker-compose-v1
 ARG DOCKER_COMPOSE_V2_VERSION=v2.2.2
@@ -32,7 +35,7 @@ RUN curl --silent --show-error --location --fail --retry 3 --output /tmp/kustomi
   && tar -xz -C /tmp -f /tmp/kustomize.tar.gz \
   && mv /tmp/kustomize /usr/bin/kustomize
 
-RUN curl --silent --show-error --location --fail --retry 3 --output /tmp/helm.tar.gz  https://get.helm.sh/helm-v3.5.0-linux-amd64.tar.gz \
+RUN curl --silent --show-error --location --fail --retry 3 --output /tmp/helm.tar.gz  https://get.helm.sh/helm-v3.8.1-linux-amd64.tar.gz \
   && tar -xz -C /tmp -f /tmp/helm.tar.gz \
   && mv /tmp/linux-amd64/helm /usr/bin/helm3
 
@@ -45,7 +48,4 @@ RUN /tmp/google-cloud-sdk/install.sh
 
 RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.43.0
 
-RUN curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.22.10
-
 ENV PATH="${PATH}:/tmp/google-cloud-sdk/bin"
-ENV PATH="${PATH}:/home/circleci/.yarn/bin"
