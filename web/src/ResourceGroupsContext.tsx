@@ -12,6 +12,8 @@ type ResourceGroupsContext = {
   groups: GroupsState
   getGroup: (groupLabel: string) => GroupState
   toggleGroupExpanded: (groupLabel: string, page: AnalyticsType) => void
+  expandAll: () => void
+  collapseAll: (groups: string[]) => void
 }
 
 export const DEFAULT_EXPANDED_STATE = true
@@ -28,6 +30,8 @@ const resourceGroupsContext = createContext<ResourceGroupsContext>({
     console.warn("Resource group context is not set.")
     return { ...DEFAULT_GROUP_STATE }
   },
+  expandAll: () => void 0,
+  collapseAll: (groups: string[]) => void 0,
 })
 
 export function useResourceGroups(): ResourceGroupsContext {
@@ -67,10 +71,25 @@ export function ResourceGroupsContextProvider(
     function getGroup(groupLabel: string) {
       return groups[groupLabel] ?? { ...DEFAULT_GROUP_STATE }
     }
+
+    // We can expand all groups by resetting the collapse state to empty."
+    function expandAll() {
+      setGroups({}) // Reset state.
+    }
+
+    // To collapse all groups, we need to know all their names.
+    function collapseAll(groupNames: string[]) {
+      let newState: GroupsState = {}
+      groupNames.forEach((group) => (newState[group] = { expanded: false }))
+      setGroups(newState)
+    }
+
     return {
       groups,
       toggleGroupExpanded,
       getGroup,
+      expandAll,
+      collapseAll,
     }
   }, [groups, setGroups])
 
