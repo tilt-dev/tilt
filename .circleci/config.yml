@@ -10,7 +10,7 @@ jobs:
   build-linux:
     resource_class: medium+
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:2f11a26fc7401a7f0bea1c7d1bf8e5d6aaff846c5d344c1c69d2283430f07ad0
+      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:668ac2e555f10d21c7cb8409c03746ae4e1f92848eca873329eac5244f621709
     # apiserver code generation scripts require being in GOPATH
     working_directory: /go/src/github.com/tilt-dev/tilt
 
@@ -50,7 +50,7 @@ jobs:
 
   publish-assets:
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:2f11a26fc7401a7f0bea1c7d1bf8e5d6aaff846c5d344c1c69d2283430f07ad0
+      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:668ac2e555f10d21c7cb8409c03746ae4e1f92848eca873329eac5244f621709
     steps:
       - checkout
       - run: echo $GCLOUD_SERVICE_KEY > /tmp/gcloud-service-key.json
@@ -65,7 +65,7 @@ jobs:
       size: "large"
     steps:
       - run: choco install make kustomize kubernetes-helm docker-compose mingw
-      - run: choco upgrade -y --allow-downgrade golang --version=1.17.2
+      - run: choco upgrade -y --allow-downgrade golang --version=1.17.8
       - run: go get -u gotest.tools/gotestsum
       - checkout
       - run: iex ./scripts/install-dc2.ps1
@@ -110,7 +110,7 @@ jobs:
     steps:
       - checkout
       - go/install:
-          version: "1.17.2"
+          version: "1.17.8"
       - run: curl -fsSL "https://github.com/gotestyourself/gotestsum/releases/download/v1.7.0/gotestsum_1.7.0_darwin_amd64.tar.gz" | sudo tar -xz -C /usr/local/bin gotestsum
       # We can't run the container tests on macos because nested
       # VMs don't work on circleci.
@@ -146,10 +146,20 @@ jobs:
       - slack/notify-on-failure:
           only_for_branches: master
 
+  release-verify:
+    resource_class: medium+
+    docker:
+      - image: gcr.io/windmill-public-containers/tilt-releaser@sha256:a9ba28831609c2afc4ecd710814b8b465d18443c9ee3b822d5778f031c8f5fce
+    steps:
+      - checkout
+      # `goreleaser build` generates binaries but does not publish
+      - run: goreleaser build --snapshot --rm-dist
+      - run: make build-js
+
   release:
     resource_class: medium+
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-releaser
+      - image: gcr.io/windmill-public-containers/tilt-releaser@sha256:a9ba28831609c2afc4ecd710814b8b465d18443c9ee3b822d5778f031c8f5fce
     steps:
       - setup_remote_docker:
           version: 20.10.6
@@ -166,15 +176,22 @@ jobs:
       - slack/status:
           mentions: "nick"
 
+parameters:
+  verify_release:
+    default: false
+    type: boolean
+
 workflows:
   version: 2
   shellcheck:
+    unless: << pipeline.parameters.verify_release >>
     jobs:
       - shellcheck/check:
           dir: scripts
           exclude: SC2001
 
   build:
+    unless: << pipeline.parameters.verify_release >>
     # The linux job is cheaper than the others, so run that first.
     jobs:
       - build-linux
@@ -208,7 +225,16 @@ workflows:
             branches:
               only: master
 
+  release-verify:
+    when: << pipeline.parameters.verify_release >>
+    jobs:
+      - release-verify:
+          filters:
+            branches:
+              only: master
+
   release:
+    unless: << pipeline.parameters.verify_release >>
     jobs:
       - release:
           context:
