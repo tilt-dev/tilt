@@ -119,16 +119,17 @@ type EngineState struct {
 
 	// API-server-based data models. Stored in EngineState
 	// to assist in migration.
-	Cmds                 map[string]*Cmd                          `json:"-"`
-	Tiltfiles            map[string]*v1alpha1.Tiltfile            `json:"-"`
-	FileWatches          map[string]*v1alpha1.FileWatch           `json:"-"`
-	KubernetesApplys     map[string]*v1alpha1.KubernetesApply     `json:"-"`
-	KubernetesDiscoverys map[string]*v1alpha1.KubernetesDiscovery `json:"-"`
-	UIResources          map[string]*v1alpha1.UIResource          `json:"-"`
-	ConfigMaps           map[string]*v1alpha1.ConfigMap           `json:"-"`
-	LiveUpdates          map[string]*v1alpha1.LiveUpdate          `json:"-"`
-	Clusters             map[string]*v1alpha1.Cluster             `json:"-"`
-	UIButtons            map[string]*v1alpha1.UIButton            `json:"-"`
+	Cmds                  map[string]*Cmd                           `json:"-"`
+	Tiltfiles             map[string]*v1alpha1.Tiltfile             `json:"-"`
+	FileWatches           map[string]*v1alpha1.FileWatch            `json:"-"`
+	KubernetesApplys      map[string]*v1alpha1.KubernetesApply      `json:"-"`
+	KubernetesDiscoverys  map[string]*v1alpha1.KubernetesDiscovery  `json:"-"`
+	UIResources           map[string]*v1alpha1.UIResource           `json:"-"`
+	ConfigMaps            map[string]*v1alpha1.ConfigMap            `json:"-"`
+	LiveUpdates           map[string]*v1alpha1.LiveUpdate           `json:"-"`
+	Clusters              map[string]*v1alpha1.Cluster              `json:"-"`
+	UIButtons             map[string]*v1alpha1.UIButton             `json:"-"`
+	DockerComposeServices map[string]*v1alpha1.DockerComposeService `json:"-"`
 }
 
 type CloudStatus struct {
@@ -540,6 +541,7 @@ func NewState() *EngineState {
 	ret.Tiltfiles = make(map[string]*v1alpha1.Tiltfile)
 	ret.FileWatches = make(map[string]*v1alpha1.FileWatch)
 	ret.KubernetesApplys = make(map[string]*v1alpha1.KubernetesApply)
+	ret.DockerComposeServices = make(map[string]*v1alpha1.DockerComposeService)
 	ret.KubernetesDiscoverys = make(map[string]*v1alpha1.KubernetesDiscovery)
 	ret.KubernetesResources = make(map[string]*k8sconv.KubernetesResource)
 	ret.UIResources = make(map[string]*v1alpha1.UIResource)

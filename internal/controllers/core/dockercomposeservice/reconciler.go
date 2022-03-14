@@ -25,6 +25,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/dockercomposeservices"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -96,8 +97,11 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		}
 		r.clearResult(nn)
 
+		r.st.Dispatch(dockercomposeservices.NewDockerComposeServiceDeleteAction(nn.Name))
 		return ctrl.Result{}, nil
 	}
+
+	r.st.Dispatch(dockercomposeservices.NewDockerComposeServiceUpsertAction(&obj))
 
 	// Get configmap's disable status
 	ctx = store.MustObjectLogHandler(ctx, r.st, &obj)
