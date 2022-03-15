@@ -3753,7 +3753,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	ret.disableEnvAnalyticsOpt()
 
 	tc := telemetry.NewController(clock, tracer.NewSpanCollector(ctx))
-	podm := k8srollout.NewPodMonitor()
+	podm := k8srollout.NewPodMonitor(clock)
 
 	uss := uisession.NewSubscriber(cdc)
 	urs := uiresource.NewSubscriber(cdc)

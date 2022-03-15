@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jonboulle/clockwork"
+
 	"github.com/tilt-dev/tilt/pkg/apis"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -31,7 +33,7 @@ var PodmonitorWriteGoldenMaster = "0"
 func TestMonitorReady(t *testing.T) {
 	f := newPMFixture(t)
 
-	start := time.Now()
+	start := f.clock.Now()
 	p := v1alpha1.Pod{
 		Name:      "pod-id",
 		CreatedAt: apis.NewTime(start),
@@ -64,11 +66,47 @@ func TestMonitorReady(t *testing.T) {
 	assertSnapshot(t, f.out.String())
 }
 
+func TestAttachExisting(t *testing.T) {
+	f := newPMFixture(t)
+
+	start := f.clock.Now()
+	p := v1alpha1.Pod{
+		Name:      "pod-id",
+		CreatedAt: apis.NewTime(start.Add(-10 * time.Second)),
+		Conditions: []v1alpha1.PodCondition{
+			{
+				Type:               string(v1.PodScheduled),
+				Status:             string(v1.ConditionTrue),
+				LastTransitionTime: apis.NewTime(start.Add(-10 * time.Second)),
+			},
+			{
+				Type:               string(v1.PodInitialized),
+				Status:             string(v1.ConditionTrue),
+				LastTransitionTime: apis.NewTime(start.Add(-10 * time.Second)),
+			},
+			{
+				Type:               string(v1.PodReady),
+				Status:             string(v1.ConditionTrue),
+				LastTransitionTime: apis.NewTime(start.Add(-10 * time.Second)),
+			},
+		},
+	}
+
+	state := store.NewState()
+	state.UpsertManifestTarget(manifestutils.NewManifestTargetWithPod(
+		model.Manifest{Name: "server"}, p))
+	f.store.SetState(*state)
+
+	_ = f.pm.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+
+	assertSnapshot(t, f.out.String())
+}
+
 // https://github.com/tilt-dev/tilt/issues/3513
 func TestJobCompleted(t *testing.T) {
 	f := newPMFixture(t)
 
-	start := time.Now()
+	start := f.clock.Now()
 	p := v1alpha1.Pod{
 		Name:      "pod-id",
 		CreatedAt: apis.NewTime(start),
@@ -107,7 +145,7 @@ func TestJobCompleted(t *testing.T) {
 func TestJobCompletedAfterReady(t *testing.T) {
 	f := newPMFixture(t)
 
-	start := time.Now()
+	start := f.clock.Now()
 	p := v1alpha1.Pod{
 		Name:      "pod-id",
 		CreatedAt: apis.NewTime(start),
@@ -158,6 +196,7 @@ type pmFixture struct {
 	cancel func()
 	out    *bufsync.ThreadSafeBuffer
 	store  *testStore
+	clock  clockwork.FakeClock
 }
 
 func newPMFixture(t *testing.T) *pmFixture {
@@ -165,7 +204,8 @@ func newPMFixture(t *testing.T) *pmFixture {
 
 	out := bufsync.NewThreadSafeBuffer()
 	st := NewTestingStore(out)
-	pm := NewPodMonitor()
+	clock := clockwork.NewFakeClock()
+	pm := NewPodMonitor(clock)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	ctx = logger.WithLogger(ctx, logger.NewTestLogger(out))
@@ -177,7 +217,9 @@ func newPMFixture(t *testing.T) *pmFixture {
 		cancel:         cancel,
 		out:            out,
 		store:          st,
+		clock:          clock,
 	}
+	clock.Advance(time.Second)
 
 	t.Cleanup(ret.TearDown)
 
