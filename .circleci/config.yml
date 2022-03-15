@@ -70,7 +70,11 @@ jobs:
       - checkout
       - run: iex ./scripts/install-dc2.ps1
       # Check to make sure Windows binaries compile
-      - run: go install -mod vendor ./cmd/tilt
+      - run:
+          command: go install -mod vendor ./cmd/tilt
+          environment:
+            CGO_ENABLED: '1'
+            CGO_LDFLAGS: -static
       - run: make shorttestsum
       - run: iex ./scripts/install.ps1
       - store_test_results:
