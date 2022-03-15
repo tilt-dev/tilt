@@ -123,7 +123,7 @@ func resourceInfoView(mt *store.ManifestTarget) view.ResourceInfoView {
 	switch state := mt.State.RuntimeState.(type) {
 	case dockercompose.State:
 		return view.NewDCResourceInfo(
-			state.ContainerState.Status, state.ContainerID, state.SpanID, state.StartTime, runStatus)
+			state.ContainerState.Status, state.ContainerID, state.SpanID, state.ContainerState.StartedAt.Time, runStatus)
 	case store.K8sRuntimeState:
 		if mt.Manifest.PodReadinessMode() == model.PodReadinessIgnore {
 			return view.YAMLResourceInfo{

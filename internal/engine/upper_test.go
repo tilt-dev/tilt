@@ -61,7 +61,6 @@ import (
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/engine/configs"
-	"github.com/tilt-dev/tilt/internal/engine/dcwatch"
 	"github.com/tilt-dev/tilt/internal/engine/dockerprune"
 	"github.com/tilt-dev/tilt/internal/engine/k8srollout"
 	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
@@ -2178,78 +2177,6 @@ func TestDockerComposeRedeployFromFileChange(t *testing.T) {
 	assert.Equal(t, []string{f.JoinPath("package.json")}, call.oneImageState().FilesChanged())
 }
 
-// TODO(maia): TestDockerComposeEditConfigFiles once DC manifests load faster (http://bit.ly/2RBX4g5)
-
-func TestDockerComposeEventSetsStatus(t *testing.T) {
-	f := newTestFixture(t)
-	_, m := f.setupDCFixture()
-
-	f.Start([]model.Manifest{m})
-	f.waitForCompletedBuildCount(1)
-
-	// Send event corresponding to status = "In Progress"
-	f.dispatchDCEvent(m, dockercompose.ActionCreate, docker.NewCreatedContainerState())
-
-	f.WaitUntilManifestState("resource status = 'In Progress'", m.ManifestName(), func(ms store.ManifestState) bool {
-		return ms.DCRuntimeState().RuntimeStatus() == v1alpha1.RuntimeStatusPending
-	})
-
-	beforeStart := f.Now()
-
-	// Send event corresponding to status = "OK"
-	f.dispatchDCEvent(m, dockercompose.ActionStart, docker.NewRunningContainerState())
-
-	f.WaitUntilManifestState("resource status = 'OK'", m.ManifestName(), func(ms store.ManifestState) bool {
-		return ms.DCRuntimeState().RuntimeStatus() == v1alpha1.RuntimeStatusOK
-	})
-
-	f.withManifestState(m.ManifestName(), func(ms store.ManifestState) {
-		startTime := ms.DCRuntimeState().StartTime
-		assert.True(t, timecmp.AfterOrEqual(startTime, beforeStart))
-	})
-
-	// An event unrelated to status shouldn't change the status
-	f.dispatchDCEvent(m, dockercompose.ActionExecCreate, docker.NewRunningContainerState())
-
-	time.Sleep(10 * time.Millisecond)
-	f.WaitUntilManifestState("resource status = 'OK'", m.ManifestName(), func(ms store.ManifestState) bool {
-		return ms.DCRuntimeState().RuntimeStatus() == v1alpha1.RuntimeStatusOK
-	})
-}
-
-func TestDockerComposeStartsEventWatcher(t *testing.T) {
-	f := newTestFixture(t)
-	_, m := f.setupDCFixture()
-
-	// Actual behavior is that we init with zero manifests, and add in manifests
-	// after Tiltfile loads. Mimic that here.
-	f.Start([]model.Manifest{})
-	f.ensureClusterNamed("docker")
-
-	f.store.Dispatch(ctrltiltfile.ConfigsReloadedAction{
-		Name:       model.MainTiltfileManifestName,
-		Manifests:  []model.Manifest{m},
-		FinishTime: f.Now(),
-	})
-
-	// since we're not going through the Tiltfile reconciler, we have to manually enable the manifest
-	f.WaitUntilManifest("exists", m.Name, func(target store.ManifestTarget) bool {
-		return target.State != nil
-	})
-	st := f.store.LockMutableStateForTesting()
-	st.ManifestTargets[m.Name].State.DisableState = v1alpha1.DisableStateEnabled
-	f.store.UnlockMutableState()
-
-	f.waitForCompletedBuildCount(1)
-
-	// Is DockerComposeEventWatcher watching for events??
-	f.dispatchDCEvent(m, dockercompose.ActionCreate, docker.NewCreatedContainerState())
-
-	f.WaitUntilManifestState("resource status = 'In Progress'", m.ManifestName(), func(ms store.ManifestState) bool {
-		return ms.DCRuntimeState().RuntimeStatus() == v1alpha1.RuntimeStatusPending
-	})
-}
-
 func TestDockerComposeRecordsBuildLogs(t *testing.T) {
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
@@ -2345,67 +2272,6 @@ fake-service exited with code 0
 		spanLog := es.LogStore.SpanLog(spanID)
 		assert.NotContains(t, spanLog, "Attaching to")
 		assert.Contains(t, spanLog, expected)
-	})
-}
-
-// NOTE(nick): The weird structure of this test is vesigial from when
-// we inferred crash from ContainerState rather than sequences of events.
-func TestDockerComposeDetectsCrashes(t *testing.T) {
-	f := newTestFixture(t)
-	f.useRealTiltfileLoader()
-
-	m1, m2 := f.setupDCFixture()
-
-	f.loadAndStart()
-	f.waitForCompletedBuildCount(2)
-
-	f.withManifestState(m1.ManifestName(), func(st store.ManifestState) {
-		assert.NotEqual(t, v1alpha1.RuntimeStatusError, st.DCRuntimeState().RuntimeStatus())
-	})
-
-	f.withManifestState(m2.ManifestName(), func(st store.ManifestState) {
-		assert.NotEqual(t, v1alpha1.RuntimeStatusError, st.DCRuntimeState().RuntimeStatus())
-	})
-
-	for _, action := range []dockercompose.Action{
-		dockercompose.ActionKill,
-		dockercompose.ActionKill,
-		dockercompose.ActionDie,
-		dockercompose.ActionStop,
-		dockercompose.ActionRename,
-		dockercompose.ActionCreate,
-		dockercompose.ActionStart,
-		dockercompose.ActionDie,
-	} {
-		if action == dockercompose.ActionDie {
-			f.dispatchDCEvent(m1, action, docker.NewExitErrorContainerState())
-		} else {
-			f.dispatchDCEvent(m1, action, docker.NewCreatedContainerState())
-		}
-	}
-
-	f.WaitUntilManifestState("is crashing", m1.ManifestName(), func(st store.ManifestState) bool {
-		return st.DCRuntimeState().RuntimeStatus() == v1alpha1.RuntimeStatusError
-	})
-
-	f.withManifestState(m2.ManifestName(), func(st store.ManifestState) {
-		assert.NotEqual(t, v1alpha1.RuntimeStatusError, st.DCRuntimeState().RuntimeStatus())
-	})
-
-	for _, action := range []dockercompose.Action{
-		dockercompose.ActionKill,
-		dockercompose.ActionKill,
-		dockercompose.ActionDie,
-		dockercompose.ActionStop,
-		dockercompose.ActionRename,
-		dockercompose.ActionCreate,
-		dockercompose.ActionStart,
-	} {
-		f.dispatchDCEvent(m1, action, docker.NewRunningContainerState())
-	}
-
-	f.WaitUntilManifestState("is not crashing", m1.ManifestName(), func(st store.ManifestState) bool {
-		return st.DCRuntimeState().RuntimeStatus() == v1alpha1.RuntimeStatusOK
 	})
 }
 
@@ -3012,26 +2878,6 @@ func TestHasEverBeenReadyLocal(t *testing.T) {
 	})
 }
 
-func TestHasEverBeenReadyDC(t *testing.T) {
-	f := newTestFixture(t)
-
-	m, _ := f.setupDCFixture()
-	f.Start([]model.Manifest{m})
-
-	f.waitForCompletedBuildCount(1)
-	f.withManifestState(m.Name, func(ms store.ManifestState) {
-		require.NotNil(t, ms.RuntimeState)
-		require.False(t, ms.RuntimeState.HasEverBeenReadyOrSucceeded())
-	})
-
-	// second build will succeed, HasEverBeenReadyOrSucceeded should be true
-	f.dispatchDCEvent(m, dockercompose.ActionStart, docker.NewRunningContainerState())
-
-	f.WaitUntilManifestState("flagged ready", m.Name, func(state store.ManifestState) bool {
-		return state.RuntimeState.HasEverBeenReadyOrSucceeded()
-	})
-}
-
 func TestVersionSettingsStoredOnState(t *testing.T) {
 	f := newTestFixture(t)
 
@@ -3632,7 +3478,6 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	tfl := tiltfile.NewFakeTiltfileLoader()
 	cc := configs.NewConfigsController(cdc)
 	tqs := configs.NewTriggerQueueSubscriber(cdc)
-	dcw := dcwatch.NewEventWatcher(fakeDcc, dockerClient)
 	dclm := runtimelog.NewDockerComposeLogManager(fakeDcc)
 	serverOptions, err := server.ProvideTiltServerOptionsForTesting(ctx)
 	require.NoError(t, err)
@@ -3758,7 +3603,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	uss := uisession.NewSubscriber(cdc)
 	urs := uiresource.NewSubscriber(cdc)
 
-	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, sw, bc, cc, tqs, dcw, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, uss, urs)
+	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, sw, bc, cc, tqs, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, uss, urs)
 	ret.upper, err = NewUpper(ctx, st, subs)
 	require.NoError(t, err)
 
@@ -4381,19 +4226,6 @@ func (f *testFixture) ensureClusterNamed(name string) {
 		},
 	})
 	require.NoError(f.T(), err)
-}
-
-func (f *testFixture) dispatchDCEvent(m model.Manifest, action dockercompose.Action, containerState dockertypes.ContainerState) {
-	f.store.Dispatch(dcwatch.EventAction{
-		Event: dockercompose.Event{
-			ID:      "fake-container-id",
-			Type:    dockercompose.TypeContainer,
-			Action:  action,
-			Service: m.ManifestName().String(),
-		},
-		Time:           f.clock.Now(),
-		ContainerState: containerState,
-	})
 }
 
 func assertLineMatches(t *testing.T, lines []string, re *regexp.Regexp) {
