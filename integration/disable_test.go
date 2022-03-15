@@ -43,13 +43,20 @@ func TestDisableDC(t *testing.T) {
 	ctx, cancel := context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
 
+	f.WaitUntil(ctx, "uiresource available", func() (string, error) {
+		out, err := f.tilt.Get(ctx, "uiresource")
+		return string(out), err
+	}, "disabletest")
+
+	f.runOrFail(f.tilt.cmd(ctx, []string{"wait", "--for=condition=Ready", "uiresource/disabletest"}, nil), "wait")
+
 	psArgs := []string{
 		"ps", "-f", "name=disabletest", "--format", "{{.Image}}",
 	}
 
-	f.WaitUntil(ctx, "service up", func() (string, error) {
-		return f.dockerCmdOutput(psArgs)
-	}, "disabletest")
+	out, err := f.dockerCmdOutput(psArgs)
+	require.NoError(t, err)
+	require.Contains(t, out, "disabletest")
 
 	f.WaitUntil(ctx, "disable configmap available", func() (string, error) {
 		out, err := f.tilt.Get(ctx, "configmap")
