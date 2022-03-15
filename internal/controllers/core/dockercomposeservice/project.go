@@ -28,12 +28,14 @@ func (r *Reconciler) manageOwnedProjectWatches(ctx context.Context) {
 		if hash != "" && !running[hash] {
 			ctx, cancel := context.WithCancel(ctx)
 			pw := &ProjectWatch{
-				project: result.Spec.Project,
+				ctx:     ctx,
 				cancel:  cancel,
+				project: result.Spec.Project,
+				hash:    hash,
 			}
 			r.projectWatches[hash] = pw
-			go r.runProjectWatch(ctx, pw.project, hash)
-			running[result.ProjectHash] = true
+			go r.runProjectWatch(pw)
+			running[hash] = true
 		}
 	}
 
@@ -47,15 +49,19 @@ func (r *Reconciler) manageOwnedProjectWatches(ctx context.Context) {
 
 // Stream events from the docker-compose project and
 // fan them out to each service in the project.
-func (r *Reconciler) runProjectWatch(ctx context.Context, project v1alpha1.DockerComposeProject, hash string) {
+func (r *Reconciler) runProjectWatch(pw *ProjectWatch) {
 	defer func() {
 		r.mu.Lock()
-		delete(r.projectWatches, hash)
+		delete(r.projectWatches, pw.hash)
 		r.mu.Unlock()
+		pw.cancel()
 	}()
 
+	ctx := pw.ctx
+	project := pw.project
 	ch, err := r.dcc.StreamEvents(ctx, project)
 	if err != nil {
+		// TODO(nick): Figure out where this error should be published.
 		return
 	}
 
@@ -82,7 +88,7 @@ func (r *Reconciler) runProjectWatch(ctx context.Context, project v1alpha1.Docke
 			}
 
 			if containerJSON.ContainerJSONBase == nil || containerJSON.ContainerJSONBase.State == nil {
-				logger.Get(ctx).Debugf("[dcwatch] inspecting continer: no state found")
+				logger.Get(ctx).Debugf("[dcwatch] inspecting container: no state found")
 				continue
 			}
 

@@ -215,7 +215,7 @@ func (r *Reconciler) recordSpecAndDisableStatus(
 	if !apicmp.DeepEqual(result.Spec, spec) {
 		delete(r.resultsByServiceName, result.Spec.Service)
 		result.Spec = spec
-		result.ProjectHash, _ = hashProject(spec.Project)
+		result.ProjectHash = mustHashProject(spec.Project)
 		r.resultsByServiceName[result.Spec.Service] = result
 	}
 
@@ -398,6 +398,8 @@ type Result struct {
 
 // Keeps track of the projects we're currently watching.
 type ProjectWatch struct {
-	project v1alpha1.DockerComposeProject
+	ctx     context.Context
 	cancel  func()
+	project v1alpha1.DockerComposeProject
+	hash    string
 }

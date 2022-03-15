@@ -3,6 +3,7 @@ package dockercomposeservice
 import (
 	"crypto"
 	"encoding/base64"
+	"fmt"
 	"hash"
 
 	jsoniter "github.com/json-iterator/go"
@@ -23,13 +24,13 @@ func createDefaultJSONIterator() jsoniter.API {
 }
 
 // Compute the hash of a dockercompose project.
-func hashProject(p v1alpha1.DockerComposeProject) (string, error) {
+func mustHashProject(p v1alpha1.DockerComposeProject) string {
 	w := newHashWriter()
 	err := w.append(p)
 	if err != nil {
-		return "", err
+		panic(fmt.Errorf("hashing %v", p))
 	}
-	return w.done(), nil
+	return w.done()
 }
 
 type hashWriter struct {
