@@ -22,7 +22,9 @@ import (
 	"go.starlark.net/starlark"
 
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
+	"github.com/tilt-dev/tilt/internal/feature"
 	"github.com/tilt-dev/tilt/internal/tiltfile/io"
 	"github.com/tilt-dev/tilt/internal/tiltfile/links"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
@@ -397,6 +399,16 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResource
 	var mds []model.ManifestName
 	for _, md := range options.resourceDeps {
 		mds = append(mds, model.ManifestName(md))
+	}
+
+	if s.features.Get(feature.LiveUpdateV2) {
+		for i, iTarget := range iTargets {
+			if liveupdate.IsEmptySpec(iTarget.LiveUpdateSpec) {
+				continue
+			}
+			iTarget.LiveUpdateReconciler = true
+			iTargets[i] = iTarget
+		}
 	}
 
 	m := model.Manifest{

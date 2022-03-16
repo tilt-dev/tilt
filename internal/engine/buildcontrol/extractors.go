@@ -116,7 +116,7 @@ func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.
 		containers, err := liveupdates.RunningContainers(
 			state.KubernetesSelector,
 			state.KubernetesResource,
-			state.DockerResource)
+			state.DockerComposeService)
 
 		if err != nil {
 			return nil, RedirectToNextBuilderInfof("Error retrieving container info: %v", err)
@@ -140,7 +140,7 @@ func extractImageTargetsForLiveUpdates(specs []model.TargetSpec, stateSet store.
 			filesChanged:      filesChanged,
 			containers:        containers,
 			hasFileChangesIDs: hasFileChangesIDs,
-			isDC:              state.DockerResource != nil,
+			isDC:              state.DockerComposeService != nil,
 		})
 	}
 

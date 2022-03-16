@@ -169,9 +169,6 @@ func (b ManifestBuilder) Build() model.Manifest {
 			iTarget.LiveUpdateReconciler = false
 		} else if b.useLiveUpdateBAD {
 			iTarget.LiveUpdateReconciler = false
-		} else if len(b.dcConfigPaths) > 0 {
-			// Docker Compose must use the buildAndDeployer
-			iTarget.LiveUpdateReconciler = false
 		} else {
 			iTarget.LiveUpdateReconciler = true
 		}

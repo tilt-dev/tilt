@@ -4,7 +4,6 @@ import (
 	"sort"
 
 	"github.com/tilt-dev/tilt/internal/store"
-	"github.com/tilt-dev/tilt/internal/store/dcconv"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
@@ -16,7 +15,11 @@ func WithFakeK8sContainers(s store.BuildState, imageName string, containers []Co
 }
 
 func WithFakeDCContainer(s store.BuildState, container Container) store.BuildState {
-	s.DockerResource = &dcconv.DockerResource{ContainerID: string(container.ContainerID)}
+	s.DockerComposeService = &v1alpha1.DockerComposeService{
+		Status: v1alpha1.DockerComposeServiceStatus{
+			ContainerID: string(container.ContainerID),
+		},
+	}
 	return s
 }
 

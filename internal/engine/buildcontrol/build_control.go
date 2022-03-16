@@ -584,7 +584,8 @@ func IsLiveUpdateTargetWaitingOnDeploy(state store.EngineState, mt *store.Manife
 			}
 
 		} else if mt.Manifest.IsDC() {
-			cInfos := liveupdates.RunningContainersForDC(mt.State.DockerResource())
+			dcs := state.DockerComposeServices[mt.Manifest.Name.String()]
+			cInfos := liveupdates.RunningContainersForDC(dcs)
 			if len(cInfos) != 0 {
 				return false
 			}
