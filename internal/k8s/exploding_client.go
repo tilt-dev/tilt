@@ -98,3 +98,7 @@ func (ec *explodingClient) CheckConnected(ctx context.Context) (*version.Info, e
 func (ec *explodingClient) OwnerFetcher() OwnerFetcher {
 	return NewOwnerFetcher(context.Background(), ec)
 }
+
+func (ec *explodingClient) ClusterHealth(_ context.Context, _ bool) (ClusterHealth, error) {
+	return ClusterHealth{}, errors.Wrap(ec.err, "could not set up kubernetes client")
+}

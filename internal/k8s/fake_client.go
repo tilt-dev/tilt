@@ -94,9 +94,11 @@ type FakeK8sClient struct {
 	listCallCount           int
 	listReturnsEmpty        bool
 
-	ExecCalls   []ExecCall
-	ExecOutputs []io.Reader
-	ExecErrors  []error
+	ExecCalls           []ExecCall
+	ExecOutputs         []io.Reader
+	ExecErrors          []error
+	ClusterHealthStatus *ClusterHealth
+	ClusterHealthError  error
 }
 
 var _ Client = &FakeK8sClient{}
@@ -516,6 +518,29 @@ func (c *FakeK8sClient) ContainerLogs(ctx context.Context, pID PodID, cName cont
 	c.LastPodLogPipeWriter = w
 
 	return ReaderCloser{Reader: r}, nil
+}
+
+func (c *FakeK8sClient) ClusterHealth(_ context.Context, _ bool) (ClusterHealth, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.ClusterHealthStatus != nil {
+		return *c.ClusterHealthStatus, nil
+	}
+
+	if c.ClusterHealthError != nil {
+		return ClusterHealth{}, c.ClusterHealthError
+	}
+
+	return ClusterHealth{
+		Live:  true,
+		Ready: true,
+		// these are not meant to be machine-readable, but they're formatted to
+		// look like the actual output in K8s for consistency
+		// https://kubernetes.io/docs/reference/using-api/health-checks/
+		LiveOutput:  "[+]fake-tilt ok\nlivez check passed\n",
+		ReadyOutput: "[+]fake-tilt ok\nreadyz check passed\n",
+	}, nil
 }
 
 func FakePodStatus(image reference.NamedTagged, phase string) v1.PodStatus {
