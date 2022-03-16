@@ -44,6 +44,9 @@ func TestForceApply(t *testing.T) {
 	obj := v1alpha1.DockerComposeService{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "fe",
+			Annotations: map[string]string{
+				v1alpha1.AnnotationManagedBy: "buildcontrol",
+			},
 		},
 		Spec: v1alpha1.DockerComposeServiceSpec{
 			Service: "fe",
@@ -53,14 +56,43 @@ func TestForceApply(t *testing.T) {
 		},
 	}
 	f.Create(&obj)
+	f.MustReconcile(nn)
+	f.MustGet(nn, &obj)
+	assert.True(t, obj.Status.LastApplyStartTime.IsZero())
 
 	status := f.r.ForceApply(f.Context(), nn, obj.Spec, nil, false)
+	assert.False(t, status.LastApplyStartTime.IsZero())
 	assert.Equal(t, "", status.ApplyError)
 	assert.Equal(t, true, status.ContainerState.Running)
 
 	f.MustReconcile(nn)
 	f.MustGet(nn, &obj)
 	assert.True(t, apicmp.DeepEqual(status, obj.Status))
+	f.assertSteadyState(&obj)
+}
+
+func TestAutoApply(t *testing.T) {
+	f := newFixture(t)
+	nn := types.NamespacedName{Name: "fe"}
+	obj := v1alpha1.DockerComposeService{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "fe",
+		},
+		Spec: v1alpha1.DockerComposeServiceSpec{
+			Service: "fe",
+			Project: v1alpha1.DockerComposeProject{
+				YAML: "fake-yaml",
+			},
+		},
+	}
+	f.Create(&obj)
+	f.MustReconcile(nn)
+	f.MustGet(nn, &obj)
+
+	assert.False(t, obj.Status.LastApplyStartTime.IsZero())
+	assert.Equal(t, "", obj.Status.ApplyError)
+	assert.Equal(t, true, obj.Status.ContainerState.Running)
+	f.assertSteadyState(&obj)
 }
 
 func TestContainerEvent(t *testing.T) {
@@ -125,4 +157,12 @@ func newFixture(t *testing.T) *fixture {
 		dc:                dCli,
 		dcc:               dcCli,
 	}
+}
+
+func (f *fixture) assertSteadyState(s *v1alpha1.DockerComposeService) {
+	f.T().Helper()
+	f.MustReconcile(types.NamespacedName{Name: s.Name})
+	var s2 v1alpha1.DockerComposeService
+	f.MustGet(types.NamespacedName{Name: s.Name}, &s2)
+	assert.Equal(f.T(), s.ResourceVersion, s2.ResourceVersion)
 }
