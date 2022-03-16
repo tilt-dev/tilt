@@ -21,6 +21,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/imagemap"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
@@ -43,7 +44,9 @@ type Reconciler struct {
 	mu           sync.Mutex
 
 	// Protected by the mutex.
-	results map[types.NamespacedName]*Result
+	results              map[types.NamespacedName]*Result
+	resultsByServiceName map[string]*Result
+	projectWatches       map[string]*ProjectWatch
 }
 
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
@@ -67,14 +70,16 @@ func NewReconciler(
 	disableQueue *DisableSubscriber,
 ) *Reconciler {
 	return &Reconciler{
-		ctrlClient:   ctrlClient,
-		dcc:          dcc,
-		dc:           dc.ForOrchestrator(model.OrchestratorDC),
-		indexer:      indexer.NewIndexer(scheme, indexDockerComposeService),
-		st:           st,
-		requeuer:     indexer.NewRequeuer(),
-		disableQueue: disableQueue,
-		results:      make(map[types.NamespacedName]*Result),
+		ctrlClient:           ctrlClient,
+		dcc:                  dcc,
+		dc:                   dc.ForOrchestrator(model.OrchestratorDC),
+		indexer:              indexer.NewIndexer(scheme, indexDockerComposeService),
+		st:                   st,
+		requeuer:             indexer.NewRequeuer(),
+		disableQueue:         disableQueue,
+		results:              make(map[types.NamespacedName]*Result),
+		resultsByServiceName: make(map[string]*Result),
+		projectWatches:       make(map[string]*ProjectWatch),
 	}
 }
 
@@ -98,6 +103,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		r.clearResult(nn)
 
 		r.st.Dispatch(dockercomposeservices.NewDockerComposeServiceDeleteAction(nn.Name))
+		r.manageOwnedProjectWatches(ctx)
 		return ctrl.Result{}, nil
 	}
 
@@ -120,14 +126,91 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		}
 	}
 
+	if disableStatus.State != v1alpha1.DisableStateDisabled {
+		// Fetch all the images needed to apply this YAML.
+		imageMaps, err := imagemap.NamesToObjects(ctx, r.ctrlClient, obj.Spec.ImageMaps)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		// Apply to the cluster if necessary.
+		if r.shouldDeployOnReconcile(request.NamespacedName, &obj, imageMaps) {
+			// If we have no image dependencies in tilt, tell docker compose
+			// to handle any necessary image builds.
+			dcManagedBuild := len(imageMaps) == 0
+			_ = r.forceApplyHelper(ctx, nn, obj.Spec, imageMaps, dcManagedBuild)
+		}
+	}
+
 	// TODO(nick): Deploy dockercompose services that aren't managed via buildcontrol
 
 	err = r.maybeUpdateStatus(ctx, nn, &obj)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+	r.manageOwnedProjectWatches(ctx)
 
 	return ctrl.Result{}, nil
+}
+
+// Determine if we should deploy the current YAML.
+//
+// Ensures:
+// 1) We have enough info to deploy, and
+// 2) Either we haven't deployed before,
+//    or one of the inputs has changed since the last deploy.
+func (r *Reconciler) shouldDeployOnReconcile(
+	nn types.NamespacedName,
+	obj *v1alpha1.DockerComposeService,
+	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap,
+) bool {
+	if obj.Annotations[v1alpha1.AnnotationManagedBy] != "" {
+		// Until resource dependencies are expressed in the API,
+		// we can't use reconciliation to deploy KubernetesApply objects
+		// managed by the buildcontrol engine.
+		return false
+	}
+
+	for _, imageMapName := range obj.Spec.ImageMaps {
+		_, ok := imageMaps[types.NamespacedName{Name: imageMapName}]
+		if !ok {
+			// We haven't built the images yet to deploy.
+			return false
+		}
+	}
+
+	r.mu.Lock()
+	result, ok := r.results[nn]
+	r.mu.Unlock()
+
+	if !ok || result.Status.LastApplyStartTime.IsZero() {
+		// We've never successfully deployed before, so deploy now.
+		return true
+	}
+
+	if !apicmp.DeepEqual(obj.Spec, result.Spec) {
+		// The YAML to deploy changed.
+		return true
+	}
+
+	imageMapNames := obj.Spec.ImageMaps
+	if len(imageMapNames) != len(result.ImageMapSpecs) ||
+		len(imageMapNames) != len(result.ImageMapStatuses) {
+		return true
+	}
+
+	for i, name := range obj.Spec.ImageMaps {
+		im := imageMaps[types.NamespacedName{Name: name}]
+		if !apicmp.DeepEqual(im.Spec, result.ImageMapSpecs[i]) {
+
+			return true
+		}
+		if !apicmp.DeepEqual(im.Status, result.ImageMapStatuses[i]) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // We need to update the disable queue in two cases:
@@ -178,7 +261,11 @@ func (r *Reconciler) recordRmOnDisable(nn types.NamespacedName) {
 func (r *Reconciler) clearResult(nn types.NamespacedName) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	delete(r.results, nn)
+	result, ok := r.results[nn]
+	if ok {
+		delete(r.resultsByServiceName, result.Spec.Service)
+		delete(r.results, nn)
+	}
 }
 
 // Create a result object if necessary. Caller must hold the mutex.
@@ -188,7 +275,7 @@ func (r *Reconciler) ensureResultExists(nn types.NamespacedName) *Result {
 		return existing
 	}
 
-	result := &Result{}
+	result := &Result{Name: nn}
 	r.results[nn] = result
 	return result
 }
@@ -202,7 +289,12 @@ func (r *Reconciler) recordSpecAndDisableStatus(
 	defer r.mu.Unlock()
 
 	result := r.ensureResultExists(nn)
-	result.Spec = spec
+	if !apicmp.DeepEqual(result.Spec, spec) {
+		delete(r.resultsByServiceName, result.Spec.Service)
+		result.Spec = spec
+		result.ProjectHash = mustHashProject(spec.Project)
+		r.resultsByServiceName[result.Spec.Service] = result
+	}
 
 	if apicmp.DeepEqual(result.Status.DisableStatus, &disableStatus) {
 		return
@@ -250,6 +342,7 @@ func (r *Reconciler) recordApplyError(
 	status.LastApplyFinishTime = apis.NowMicro()
 	status.ApplyError = err.Error()
 	result.Status = *status
+	result.SetImageMapInputs(spec, imageMaps)
 	return *status
 }
 
@@ -267,6 +360,7 @@ func (r *Reconciler) recordApplyStatus(
 	disableStatus := result.Status.DisableStatus
 	newStatus.DisableStatus = disableStatus
 	result.Status = newStatus
+	result.SetImageMapInputs(spec, imageMaps)
 
 	return newStatus
 }
@@ -374,6 +468,34 @@ func indexDockerComposeService(obj client.Object) []indexer.Key {
 
 // Keeps track of the state we currently know about.
 type Result struct {
-	Spec   v1alpha1.DockerComposeServiceSpec
+	Name             types.NamespacedName
+	Spec             v1alpha1.DockerComposeServiceSpec
+	ImageMapSpecs    []v1alpha1.ImageMapSpec
+	ImageMapStatuses []v1alpha1.ImageMapStatus
+	ProjectHash      string
+
 	Status v1alpha1.DockerComposeServiceStatus
+}
+
+func (r *Result) SetImageMapInputs(spec v1alpha1.DockerComposeServiceSpec, imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) {
+	r.ImageMapSpecs = nil
+	r.ImageMapStatuses = nil
+	for _, imageMapName := range spec.ImageMaps {
+		im, ok := imageMaps[types.NamespacedName{Name: imageMapName}]
+		if !ok {
+			// this should never happen, but if it does, just continue quietly.
+			continue
+		}
+
+		r.ImageMapSpecs = append(r.ImageMapSpecs, im.Spec)
+		r.ImageMapStatuses = append(r.ImageMapStatuses, im.Status)
+	}
+}
+
+// Keeps track of the projects we're currently watching.
+type ProjectWatch struct {
+	ctx     context.Context
+	cancel  func()
+	project v1alpha1.DockerComposeProject
+	hash    string
 }

@@ -10,14 +10,10 @@ import (
 	"github.com/davecgh/go-spew/spew"
 
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
-	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch"
 	ctrltiltfile "github.com/tilt-dev/tilt/internal/controllers/core/tiltfile"
-	"github.com/tilt-dev/tilt/internal/dockercompose"
-	"github.com/tilt-dev/tilt/internal/engine/dcwatch"
 	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
 	"github.com/tilt-dev/tilt/internal/engine/local"
-	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/engine/session"
 	"github.com/tilt-dev/tilt/internal/hud"
 	"github.com/tilt-dev/tilt/internal/hud/prompt"
@@ -147,8 +143,6 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		ctrltiltfile.HandleConfigsReloadStarted(ctx, state, action)
 	case ctrltiltfile.ConfigsReloadedAction:
 		ctrltiltfile.HandleConfigsReloaded(ctx, state, action)
-	case dcwatch.EventAction:
-		handleDockerComposeEvent(ctx, state, action)
 	case server.AppendToTriggerQueueAction:
 		state.AppendToTriggerQueue(action.Name, action.Reason)
 	case hud.DumpEngineStateAction:
@@ -293,34 +287,6 @@ func handleHudExitAction(state *store.EngineState, action hud.ExitAction) {
 
 func handlePanicAction(state *store.EngineState, action store.PanicAction) {
 	state.PanicExited = action.Err
-}
-
-func handleDockerComposeEvent(ctx context.Context, engineState *store.EngineState, action dcwatch.EventAction) {
-	evt := action.Event
-	mn := model.ManifestName(evt.Service)
-	ms, ok := engineState.ManifestState(mn)
-	if !ok {
-		// No corresponding manifest, nothing to do
-		return
-	}
-
-	state, _ := ms.RuntimeState.(dockercompose.State)
-
-	state = state.WithContainerID(container.ID(evt.ID)).
-		WithSpanID(runtimelog.SpanIDForDCService(mn))
-
-	dcState := dockercompose.ToContainerState(&action.ContainerState)
-	if dcState != nil {
-		state = state.WithContainerState(*dcState)
-	}
-
-	if evt.IsStartupEvent() {
-		state = state.WithStartTime(action.Time)
-		// NB: this will differ from StartTime once we support DC health checks
-		state = state.WithLastReadyTime(action.Time)
-	}
-
-	ms.RuntimeState = state
 }
 
 func handleAnalyticsUserOptAction(state *store.EngineState, action store.AnalyticsUserOptAction) {

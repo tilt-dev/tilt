@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/jonboulle/clockwork"
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -25,12 +26,14 @@ type podManifest struct {
 type PodMonitor struct {
 	pods            map[podManifest]podStatus
 	trackingStarted map[podManifest]bool
+	startTime       time.Time
 }
 
-func NewPodMonitor() *PodMonitor {
+func NewPodMonitor(clock clockwork.Clock) *PodMonitor {
 	return &PodMonitor{
 		pods:            make(map[podManifest]podStatus),
 		trackingStarted: make(map[podManifest]bool),
+		startTime:       clock.Now(),
 	}
 }
 
@@ -81,9 +84,15 @@ func (m *PodMonitor) OnChange(ctx context.Context, st store.RStore, _ store.Chan
 
 func (m *PodMonitor) print(ctx context.Context, update podStatus) {
 	key := podManifest{pod: update.podID, manifest: update.manifestName}
+
 	if !m.trackingStarted[key] {
-		logger.Get(ctx).Infof("\nTracking new pod rollout (%s):", update.podID)
 		m.trackingStarted[key] = true
+
+		if m.startTime.After(update.startTime) {
+			logger.Get(ctx).Infof("\nAttaching to existing pod (%s). Only new logs will be streamed.", update.podID)
+			return
+		}
+		logger.Get(ctx).Infof("\nTracking new pod rollout (%s):", update.podID)
 	}
 
 	m.printCondition(ctx, "Scheduled", update.scheduled, update.startTime)

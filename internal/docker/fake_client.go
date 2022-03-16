@@ -118,6 +118,9 @@ type FakeClient struct {
 	// Images returned by ImageInspect.
 	Images map[string]types.ImageInspect
 
+	// Containers returned by ContainerInspect
+	Containers map[string]types.ContainerState
+
 	// If true, ImageInspectWithRaw will always return an ImageInspect,
 	// even if one hasn't been explicitly pre-loaded.
 	ImageAlwaysExists bool
@@ -143,6 +146,7 @@ func NewFakeClient() *FakeClient {
 		ContainerListOutput: make(map[string][]types.Container),
 		RestartsByContainer: make(map[string]int),
 		Images:              make(map[string]types.ImageInspect),
+		Containers:          make(map[string]types.ContainerState),
 	}
 }
 
@@ -173,6 +177,15 @@ func (c *FakeClient) SetExecError(err error) {
 }
 
 func (c *FakeClient) ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error) {
+	container, ok := c.Containers[containerID]
+	if ok {
+		return types.ContainerJSON{
+			ContainerJSONBase: &types.ContainerJSONBase{
+				ID:    containerID,
+				State: &container,
+			},
+		}, nil
+	}
 	state := NewRunningContainerState()
 	return types.ContainerJSON{
 		ContainerJSONBase: &types.ContainerJSONBase{

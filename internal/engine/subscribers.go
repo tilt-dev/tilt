@@ -5,7 +5,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers"
 	"github.com/tilt-dev/tilt/internal/engine/analytics"
 	"github.com/tilt-dev/tilt/internal/engine/configs"
-	"github.com/tilt-dev/tilt/internal/engine/dcwatch"
 	"github.com/tilt-dev/tilt/internal/engine/dockerprune"
 	"github.com/tilt-dev/tilt/internal/engine/k8srollout"
 	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
@@ -53,7 +52,6 @@ func ProvideSubscribers(
 	bc *BuildController,
 	cc *configs.ConfigsController,
 	tqs *configs.TriggerQueueSubscriber,
-	dcw *dcwatch.EventWatcher,
 	dclm *runtimelog.DockerComposeLogManager,
 	ar *analytics.AnalyticsReporter,
 	au *analytics.AnalyticsUpdater,
@@ -76,7 +74,6 @@ func ProvideSubscribers(
 		bc,
 		cc,
 		tqs,
-		dcw,
 		dclm,
 		ar,
 		au,

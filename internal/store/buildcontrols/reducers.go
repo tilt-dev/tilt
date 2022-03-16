@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/tilt-dev/tilt/internal/container"
-	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -277,16 +276,6 @@ func HandleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 		if cState != nil {
 			state = state.WithContainerState(*cState)
 			state = state.WithPorts(dcResult.Status.PortBindings)
-
-			if docker.HasStarted(*cState) {
-				if state.StartTime.IsZero() {
-					state = state.WithStartTime(cb.FinishTime)
-				}
-				if state.LastReadyTime.IsZero() {
-					// NB: this will differ from StartTime once we support DC health checks
-					state = state.WithLastReadyTime(cb.FinishTime)
-				}
-			}
 		}
 
 		ms.RuntimeState = state
