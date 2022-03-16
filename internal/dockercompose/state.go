@@ -15,6 +15,16 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
+// Status strings taken from comments on:
+// https://godoc.org/github.com/docker/docker/api/types#ContainerState
+const ContainerStatusCreated = "created"
+const ContainerStatusRunning = "running"
+const ContainerStatusPaused = "paused"
+const ContainerStatusRestarting = "restarting"
+const ContainerStatusRemoving = "removing"
+const ContainerStatusExited = "exited"
+const ContainerStatusDead = "dead"
+
 // Helper functions for dealing with ContainerState.
 const ZeroTime = "0001-01-01T00:00:00Z"
 
@@ -34,10 +44,8 @@ func (s State) RuntimeStatus() v1alpha1.RuntimeStatus {
 		return v1alpha1.RuntimeStatusError
 	}
 	if s.ContainerState.Running ||
-		// Status strings taken from comments on:
-		// https://godoc.org/github.com/docker/docker/api/types#ContainerState
-		s.ContainerState.Status == "running" ||
-		s.ContainerState.Status == "exited" {
+		s.ContainerState.Status == ContainerStatusRunning ||
+		s.ContainerState.Status == ContainerStatusExited {
 		return v1alpha1.RuntimeStatusOK
 	}
 	if s.ContainerState.Status == "" {
