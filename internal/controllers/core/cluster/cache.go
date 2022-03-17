@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -34,13 +35,28 @@ const (
 )
 
 type connection struct {
-	connType     connectionType
-	spec         v1alpha1.ClusterSpec
+	connType connectionType
+	spec     v1alpha1.ClusterSpec
+
+	// createdAt is when the connection object was created.
+	// If initError is empty, it's effectively the time we connected to the
+	// cluster. Otherwise, it's when we _attempted_ to initialize the client
+	// and is used for retry/backoff.
+	createdAt time.Time
+
+	// initError is populated when the client cannot be instantiated.
+	// For example, if there's no ~/.kube/config, a Kubernetes client
+	// can't be created.
+	initError string
+
 	dockerClient docker.Client
 	k8sClient    k8s.Client
-	error        string
-	createdAt    time.Time
-	arch         string
+
+	// statusError is populated if the client has been successfully initialized
+	// but is failing a health/readiness check.
+	statusError   string
+	arch          string
+	cancelMonitor context.CancelFunc
 }
 
 func (k *ConnectionManager) GetK8sClient(clusterKey types.NamespacedName) (k8s.Client, metav1.MicroTime, error) {
@@ -72,9 +88,11 @@ func (k *ConnectionManager) validConnOrError(key types.NamespacedName, connType 
 		return connection{}, fmt.Errorf("incorrect cluster client type: got %s, expected %s",
 			conn.connType, connType)
 	}
-	if conn.error != "" {
-		return connection{}, errors.New(conn.error)
+	if conn.initError != "" {
+		return connection{}, errors.New(conn.initError)
 	}
+	// N.B. even if there is a statusError, the client is still returned, as it
+	// might still be functional even though it's in a degraded state
 	return conn, nil
 }
 
@@ -91,5 +109,11 @@ func (k *ConnectionManager) load(key types.NamespacedName) (connection, bool) {
 }
 
 func (k *ConnectionManager) delete(key types.NamespacedName) {
-	k.connections.Delete(key)
+	v, ok := k.connections.LoadAndDelete(key)
+	if ok {
+		conn := v.(connection)
+		if conn.cancelMonitor != nil {
+			conn.cancelMonitor()
+		}
+	}
 }

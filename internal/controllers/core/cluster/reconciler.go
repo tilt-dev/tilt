@@ -5,16 +5,19 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jonboulle/clockwork"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
+	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -27,10 +30,17 @@ import (
 
 const ArchUnknown string = "unknown"
 
+const (
+	clientInitBackoff        = 30 * time.Second
+	clientHealthPollInterval = 15 * time.Second
+)
+
 type Reconciler struct {
 	globalCtx   context.Context
 	ctrlClient  ctrlclient.Client
 	store       store.RStore
+	requeuer    *indexer.Requeuer
+	clock       clockwork.Clock
 	connManager *ConnectionManager
 
 	localDockerEnv      docker.LocalEnv
@@ -41,7 +51,8 @@ type Reconciler struct {
 
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	b := ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha1.Cluster{})
+		For(&v1alpha1.Cluster{}).
+		Watches(r.requeuer, handler.Funcs{})
 	return b, nil
 }
 
@@ -49,6 +60,7 @@ func NewReconciler(
 	globalCtx context.Context,
 	ctrlClient ctrlclient.Client,
 	store store.RStore,
+	clock clockwork.Clock,
 	connManager *ConnectionManager,
 	localDockerEnv docker.LocalEnv,
 	dockerClientFactory DockerClientFactory,
@@ -58,6 +70,8 @@ func NewReconciler(
 		globalCtx:           globalCtx,
 		ctrlClient:          ctrlClient,
 		store:               store,
+		clock:               clock,
+		requeuer:            indexer.NewRequeuer(),
 		connManager:         connManager,
 		localDockerEnv:      localDockerEnv,
 		dockerClientFactory: dockerClientFactory,
@@ -87,21 +101,46 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 			r.connManager.delete(nn)
 			conn = connection{}
 			hasConnection = false
+		} else if conn.initError != "" && r.clock.Now().After(conn.createdAt.Add(clientInitBackoff)) {
+			hasConnection = false
 		}
 	}
 
+	var requeueAfter time.Duration
 	if !hasConnection {
 		// Create the initial connection to the cluster.
+		conn = connection{spec: *obj.Spec.DeepCopy(), createdAt: r.clock.Now()}
 		if obj.Spec.Connection != nil && obj.Spec.Connection.Kubernetes != nil {
-			conn = r.createKubernetesConnection(obj.Spec.Connection.Kubernetes)
+			conn.connType = connectionTypeK8s
+			client, err := r.createKubernetesClient(obj.DeepCopy())
+			if err != nil {
+				conn.initError = err.Error()
+			} else {
+				conn.k8sClient = client
+			}
 		} else if obj.Spec.Connection != nil && obj.Spec.Connection.Docker != nil {
-			conn = r.createDockerConnection(obj.Spec.Connection.Docker)
+			client, err := r.createDockerClient(obj.Spec.Connection.Docker)
+			if err != nil {
+				conn.initError = err.Error()
+			} else {
+				conn.dockerClient = client
+			}
 		}
-		conn.createdAt = time.Now()
-		conn.spec = obj.Spec
+
+		if conn.initError != "" {
+			// requeue the cluster Obj so that we can attempt to re-initialize
+			requeueAfter = clientInitBackoff
+		} else {
+			// start monitoring the connection and requeue the Cluster obj
+			// for reconciliation if its runtime status changes
+			monitorCtx, monitorCancel := context.WithCancel(r.globalCtx)
+			conn.cancelMonitor = monitorCancel
+			go r.monitorConn(monitorCtx, nn, conn)
+		}
 	}
 
-	if conn.error == "" && conn.arch == "" {
+	// once cluster connection is established, try to populate arch
+	if conn.initError == "" && conn.arch == "" {
 		if conn.k8sClient != nil {
 			conn.arch = r.readKubernetesArch(ctx, conn.k8sClient)
 		} else if conn.dockerClient != nil {
@@ -117,11 +156,11 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		return ctrl.Result{}, err
 	}
 
-	return ctrl.Result{}, nil
+	return ctrl.Result{RequeueAfter: requeueAfter}, nil
 }
 
 // Creates a docker connection from the spec.
-func (r *Reconciler) createDockerConnection(obj *v1alpha1.DockerClusterConnection) connection {
+func (r *Reconciler) createDockerClient(obj *v1alpha1.DockerClusterConnection) (docker.Client, error) {
 	// If no Host is specified, use the default Env from environment variables.
 	env := docker.Env(r.localDockerEnv)
 	if obj.Host != "" {
@@ -130,21 +169,20 @@ func (r *Reconciler) createDockerConnection(obj *v1alpha1.DockerClusterConnectio
 
 	client, err := r.dockerClientFactory.New(r.globalCtx, env)
 	if err != nil {
-		return connection{connType: connectionTypeDocker, error: err.Error()}
+		return nil, err
 	}
-
-	return connection{connType: connectionTypeDocker, dockerClient: client}
+	return client, nil
 }
 
-// Creates a Kubernetes connection from the spec.
-func (r *Reconciler) createKubernetesConnection(obj *v1alpha1.KubernetesClusterConnection) connection {
-	k8sKubeContextOverride := k8s.KubeContextOverride(obj.Context)
-	k8sNamespaceOverride := k8s.NamespaceOverride(obj.Namespace)
+// Creates a Kubernetes client from the spec.
+func (r *Reconciler) createKubernetesClient(cluster *v1alpha1.Cluster) (k8s.Client, error) {
+	k8sKubeContextOverride := k8s.KubeContextOverride(cluster.Spec.Connection.Kubernetes.Context)
+	k8sNamespaceOverride := k8s.NamespaceOverride(cluster.Spec.Connection.Kubernetes.Namespace)
 	client, err := r.k8sClientFactory.New(r.globalCtx, k8sKubeContextOverride, k8sNamespaceOverride)
 	if err != nil {
-		return connection{connType: connectionTypeK8s, error: err.Error()}
+		return nil, err
 	}
-	return connection{connType: connectionTypeK8s, k8sClient: client}
+	return client, nil
 }
 
 // Reads the arch from a kubernetes cluster, or "unknown" if we can't
@@ -230,13 +268,18 @@ func (r *Reconciler) reportConnectionEvent(ctx context.Context, cluster *v1alpha
 
 func (c *connection) toStatus() v1alpha1.ClusterStatus {
 	var connectedAt *metav1.MicroTime
-	if c.error == "" && !c.createdAt.IsZero() {
+	if c.initError == "" && !c.createdAt.IsZero() {
 		t := apis.NewMicroTime(c.createdAt)
 		connectedAt = &t
 	}
 
+	clusterError := c.initError
+	if clusterError == "" {
+		clusterError = c.statusError
+	}
+
 	return v1alpha1.ClusterStatus{
-		Error:       c.error,
+		Error:       clusterError,
 		Arch:        c.arch,
 		ConnectedAt: connectedAt,
 	}

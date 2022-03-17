@@ -37,7 +37,7 @@ func TestConnectionManager(t *testing.T) {
 			input: &connection{
 				connType:  connectionTypeK8s,
 				k8sClient: fakeK8s,
-				error:     "connection error",
+				initError: "connection error",
 			},
 			expectedK8sErr:    "connection error",
 			expectedDockerErr: "incorrect cluster client type: got kubernetes, expected docker",
@@ -58,7 +58,7 @@ func TestConnectionManager(t *testing.T) {
 			input: &connection{
 				connType:     connectionTypeDocker,
 				dockerClient: fakeDocker,
-				error:        "some docker error",
+				initError:    "some docker error",
 			},
 			expectedK8sErr:    "incorrect cluster client type: got docker, expected kubernetes",
 			expectedDockerErr: "some docker error",

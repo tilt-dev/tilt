@@ -566,7 +566,7 @@ func newFixture(t *testing.T) *fixture {
 	rd := NewContainerRestartDetector()
 	cfb := fake.NewControllerFixtureBuilder(t)
 	pw := NewReconciler(cfb.Client, cfb.Scheme(), clients, rd, st)
-	indexer.StartSourceForTesting(cfb.Context(), pw.requeuer, pw)
+	indexer.StartSourceForTesting(cfb.Context(), pw.requeuer, pw, nil)
 
 	ret := &fixture{
 		ControllerFixture: cfb.Build(pw),

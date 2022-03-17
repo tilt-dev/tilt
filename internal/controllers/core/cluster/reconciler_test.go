@@ -3,9 +3,12 @@ package cluster
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -14,9 +17,11 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
+	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
@@ -34,6 +39,7 @@ func TestKubernetesError(t *testing.T) {
 	nn := apis.Key(cluster)
 
 	// Create a fake client factory that always returns an error
+	origClientFactory := f.r.k8sClientFactory
 	f.r.k8sClientFactory = FakeKubernetesClientOrError(nil, errors.New("connection error"))
 	f.Create(cluster)
 
@@ -42,7 +48,18 @@ func TestKubernetesError(t *testing.T) {
 	assert.Equal(t, "connection error", cluster.Status.Error)
 	assert.Nil(t, cluster.Status.ConnectedAt, "ConnectedAt should be empty")
 
+	// replace the working client factory but ensure that it's not invoked
+	// we should be in a steady state until the retry/backoff window elapses
+	f.r.k8sClientFactory = origClientFactory
 	f.assertSteadyState(cluster)
+
+	f.clock.Advance(time.Minute)
+	f.MustReconcile(nn)
+	f.MustGet(nn, cluster)
+	require.Empty(t, cluster.Status.Error, "No error should be present on cluster")
+	if assert.NotNil(t, cluster.Status.ConnectedAt, "ConnectedAt should be populated") {
+		assert.NotZero(t, cluster.Status.ConnectedAt.Time, "ConnectedAt should not be zero time")
+	}
 }
 
 func TestKubernetesArch(t *testing.T) {
@@ -87,6 +104,32 @@ func TestKubernetesArch(t *testing.T) {
 		N: 1,
 	}
 	assert.ElementsMatch(t, []analytics.CountEvent{connectEvt}, f.ma.Counts)
+}
+
+func TestKubernetesMonitor(t *testing.T) {
+	f := newFixture(t)
+	cluster := &v1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "default"},
+		Spec: v1alpha1.ClusterSpec{
+			Connection: &v1alpha1.ClusterConnection{
+				Kubernetes: &v1alpha1.KubernetesClusterConnection{},
+			},
+		},
+	}
+	nn := apis.Key(cluster)
+
+	f.Create(cluster)
+	f.MustGet(nn, cluster)
+	connectedAt := *cluster.Status.ConnectedAt
+	f.assertSteadyState(cluster)
+
+	f.k8sClient.ClusterHealthError = errors.New("fake cluster health error")
+	f.clock.Advance(time.Minute)
+	<-f.requeues
+
+	f.MustGet(nn, cluster)
+	assert.Equal(t, "fake cluster health error", cluster.Status.Error)
+	timecmp.RequireTimeEqual(t, connectedAt, cluster.Status.ConnectedAt)
 }
 
 func TestDockerError(t *testing.T) {
@@ -134,26 +177,33 @@ type fixture struct {
 	*fake.ControllerFixture
 	r            *Reconciler
 	ma           *analytics.MemoryAnalytics
+	clock        clockwork.FakeClock
 	k8sClient    *k8s.FakeK8sClient
 	dockerClient *docker.FakeClient
+	requeues     <-chan indexer.RequeueForTestResult
 }
 
 func newFixture(t *testing.T) *fixture {
 	cfb := fake.NewControllerFixtureBuilder(t)
 	st := store.NewTestingStore()
+	clock := clockwork.NewFakeClock()
 
 	k8sClient := k8s.NewFakeK8sClient(t)
 	dockerClient := docker.NewFakeClient()
 
-	r := NewReconciler(cfb.Context(), cfb.Client, st, NewConnectionManager(), docker.LocalEnv{},
+	r := NewReconciler(cfb.Context(), cfb.Client, st, clock, NewConnectionManager(), docker.LocalEnv{},
 		FakeDockerClientOrError(dockerClient, nil),
 		FakeKubernetesClientOrError(k8sClient, nil))
+	requeueChan := make(chan indexer.RequeueForTestResult, 1)
+	indexer.StartSourceForTesting(cfb.Context(), r.requeuer, r, requeueChan)
 	return &fixture{
 		ControllerFixture: cfb.Build(r),
 		r:                 r,
 		ma:                cfb.Analytics(),
+		clock:             clock,
 		k8sClient:         k8sClient,
 		dockerClient:      dockerClient,
+		requeues:          requeueChan,
 	}
 }
 
@@ -162,6 +212,7 @@ func (f *fixture) assertSteadyState(o *v1alpha1.Cluster) {
 	f.MustReconcile(types.NamespacedName{Name: o.Name})
 	var o2 v1alpha1.Cluster
 	f.MustGet(types.NamespacedName{Name: o.Name}, &o2)
-	assert.True(f.T(), apicmp.DeepEqual(o, &o2), cmp.Diff(o, &o2),
-		"Cluster object should have been in steady state but changed")
+	assert.True(f.T(), apicmp.DeepEqual(o, &o2),
+		"Cluster object should have been in steady state but changed: %s",
+		cmp.Diff(o, &o2))
 }

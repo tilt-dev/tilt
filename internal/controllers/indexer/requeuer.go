@@ -7,7 +7,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -43,11 +42,18 @@ func (s *Requeuer) Add(nn types.NamespacedName) {
 	}
 }
 
-type reconciler interface {
-	Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error)
+type RequeueForTestResult struct {
+	ObjName types.NamespacedName
+	Error   error
+	Result  reconcile.Result
 }
 
-func StartSourceForTesting(ctx context.Context, s source.Source, reconciler reconciler) {
+func StartSourceForTesting(
+	ctx context.Context,
+	s source.Source,
+	reconciler reconcile.Reconciler,
+	resultChan chan RequeueForTestResult,
+) {
 	q := workqueue.NewRateLimitingQueue(
 		workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, time.Millisecond))
 	_ = s.Start(ctx, handler.Funcs{}, q)
@@ -59,7 +65,17 @@ func StartSourceForTesting(ctx context.Context, s source.Source, reconciler reco
 				return
 			}
 
-			_, _ = reconciler.Reconcile(ctx, next.(reconcile.Request))
+			req := next.(reconcile.Request)
+			res, err := reconciler.Reconcile(ctx, req)
+			if resultChan != nil {
+				result := RequeueForTestResult{
+					ObjName: req.NamespacedName,
+					Error:   err,
+					Result:  res,
+				}
+				resultChan <- result
+			}
+
 			q.Done(next)
 		}
 	}()
