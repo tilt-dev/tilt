@@ -13,7 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/containerupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
@@ -23,7 +22,6 @@ import (
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
-	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func TestIndexing(t *testing.T) {
@@ -126,18 +124,7 @@ func TestConsumeFileEvents(t *testing.T) {
 	if assert.NotNil(t, f.st.lastStartedAction) {
 		assert.Equal(t, []string{txtPath}, f.st.lastStartedAction.FilesChanged)
 	}
-	if assert.NotNil(t, f.st.lastCompletedAction) {
-		keys := []model.TargetID{}
-		for key := range f.st.lastCompletedAction.Result {
-			keys = append(keys, key)
-		}
-		assert.Equal(t, "image:frontend-image", keys[0].String())
-
-		result := f.st.lastCompletedAction.Result[keys[0]]
-		assert.Equal(t,
-			[]container.ID{"main-id"},
-			result.(store.LiveUpdateBuildResult).LiveUpdatedContainerIDs)
-	}
+	assert.NotNil(t, f.st.lastCompletedAction)
 }
 
 func TestConsumeFileEventsUpdateModeManual(t *testing.T) {

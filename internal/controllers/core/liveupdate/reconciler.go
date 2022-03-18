@@ -551,18 +551,7 @@ func (r *Reconciler) dispatchCompleteBuildAction(lu *v1alpha1.LiveUpdate, newSta
 	if newStatus.Failed != nil {
 		err = fmt.Errorf("%s", newStatus.Failed.Message)
 	}
-	imageTargetID := model.TargetID{
-		Type: model.TargetTypeImage,
-		Name: model.TargetName(apis.SanitizeName(lu.Spec.Selector.Kubernetes.Image)),
-	}
-	containerIDs := []container.ID{}
-	for _, status := range newStatus.Containers {
-		if status.Waiting == nil {
-			containerIDs = append(containerIDs, container.ID(status.ContainerID))
-		}
-	}
-	result := store.NewLiveUpdateBuildResult(imageTargetID, containerIDs)
-	resultSet := store.BuildResultSet{imageTargetID: result}
+	resultSet := store.BuildResultSet{}
 	r.store.Dispatch(buildcontrols.NewBuildCompleteAction(manifestName, LiveUpdateSource, spanID, resultSet, err))
 }
 
