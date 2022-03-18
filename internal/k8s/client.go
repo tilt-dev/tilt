@@ -82,6 +82,13 @@ func (n Namespace) String() string {
 	return string(n)
 }
 
+type ClusterHealth struct {
+	Live        bool
+	LiveOutput  string
+	Ready       bool
+	ReadyOutput string
+}
+
 type Client interface {
 	InformerSet
 
@@ -125,6 +132,8 @@ type Client interface {
 	CheckConnected(ctx context.Context) (*version.Info, error)
 
 	OwnerFetcher() OwnerFetcher
+
+	ClusterHealth(ctx context.Context, verbose bool) (ClusterHealth, error)
 }
 
 type RESTMapper interface {
@@ -701,6 +710,49 @@ func (k *K8sClient) GetMetaByReference(ctx context.Context, ref v1.ObjectReferen
 		return nil, apierrors.NewNotFound(v1.Resource(gvr.Resource), name)
 	}
 	return &meta, nil
+}
+
+func (k *K8sClient) ClusterHealth(ctx context.Context, verbose bool) (ClusterHealth, error) {
+	isLive, livezResp, err := k.apiServerHealthCheck(ctx, "/livez", verbose)
+	if err != nil {
+		return ClusterHealth{}, fmt.Errorf("cluster liveness check: %v", err)
+	}
+
+	// TODO(milas): is there any point to running the readiness check if the
+	// 	liveness check failed?
+	isReady, readyzResp, err := k.apiServerHealthCheck(ctx, "/readyz", verbose)
+	if err != nil {
+		return ClusterHealth{}, fmt.Errorf("cluster readiness check: %v", err)
+	}
+
+	return ClusterHealth{
+		Live:        isLive,
+		Ready:       isReady,
+		LiveOutput:  livezResp,
+		ReadyOutput: readyzResp,
+	}, nil
+}
+
+// apiServerHealthCheck issues a direct HTTP request to an apiserver health endpoint.
+//
+// There are not methods for this functionality exposed via client-go, so the
+// RESTClient is used directly.
+//
+// See https://kubernetes.io/docs/reference/using-api/health-checks/
+func (k *K8sClient) apiServerHealthCheck(ctx context.Context, route string, verbose bool) (bool, string, error) {
+	req := k.discovery.RESTClient().Get().AbsPath(route)
+	if verbose {
+		req = req.Param("verbose", "")
+	}
+	body, err := req.DoRaw(ctx)
+	if err != nil {
+		var statusErr apierrors.StatusError
+		if errors.As(err, &statusErr) {
+			return false, statusErr.ErrStatus.Message, nil
+		}
+		return false, "", err
+	}
+	return true, string(body), nil
 }
 
 // Tests whether a string is a valid version for a k8s resource type.
