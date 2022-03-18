@@ -1793,6 +1793,16 @@ message LiveUpdateContainerStatus {
   optional LiveUpdateContainerStateWaiting waiting = 7;
 }
 
+// Specifies how to select containers to live update inside Docker Compose.
+message LiveUpdateDockerComposeSelector {
+  // The name of a DockerComposeService object.
+  //
+  // For simple projects, this is usually the same as the service
+  // name in the docker-compose.yml file. (But it doesn't necessarily
+  // have to be.)
+  optional string service = 1;
+}
+
 // Runs a remote command after files have been synced to the container.
 // Commonly used for small in-container changes (like moving files
 // around, or restart processes).
@@ -1857,6 +1867,9 @@ message LiveUpdateList {
 message LiveUpdateSelector {
   // Finds containers in Kubernetes.
   optional LiveUpdateKubernetesSelector kubernetes = 1;
+
+  // Finds containers in Docker Compose.
+  optional LiveUpdateDockerComposeSelector dockerCompose = 2;
 }
 
 // Specifies how to pull in files.
