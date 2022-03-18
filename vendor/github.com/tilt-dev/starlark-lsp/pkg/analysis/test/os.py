@@ -1,0 +1,4 @@
+environ = {}
+
+def getcwd():
+    pass

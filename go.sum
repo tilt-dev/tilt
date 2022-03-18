@@ -1610,6 +1610,10 @@ github.com/tilt-dev/starlark-lsp v0.0.0-20220307221751-1cced451b921 h1:6IMvbWZFn
 github.com/tilt-dev/starlark-lsp v0.0.0-20220307221751-1cced451b921/go.mod h1:s+P4hqPMBmZKRGEbKIbi5EQGPHjkINVv7KSIhQrsVCM=
 github.com/tilt-dev/starlark-lsp v0.0.0-20220308162559-03432d8c107f h1:cOCvggC276LPYZEDOm3Bg5H/392siE0gVrRFGm0DUKo=
 github.com/tilt-dev/starlark-lsp v0.0.0-20220308162559-03432d8c107f/go.mod h1:s+P4hqPMBmZKRGEbKIbi5EQGPHjkINVv7KSIhQrsVCM=
+github.com/tilt-dev/starlark-lsp v0.0.0-20220310195201-9f15f9e1bc7b h1:JLXW8ePqQDVpi7Pdw42OMefsJqI3XhHUadWY4YqVPKY=
+github.com/tilt-dev/starlark-lsp v0.0.0-20220310195201-9f15f9e1bc7b/go.mod h1:s+P4hqPMBmZKRGEbKIbi5EQGPHjkINVv7KSIhQrsVCM=
+github.com/tilt-dev/starlark-lsp v0.0.0-20220316183018-35dc2cb122f6 h1:U1ayoHr+HMrc8Tb8aakZNSSlG6BJH4MyP0HKKP/XjGw=
+github.com/tilt-dev/starlark-lsp v0.0.0-20220316183018-35dc2cb122f6/go.mod h1:s+P4hqPMBmZKRGEbKIbi5EQGPHjkINVv7KSIhQrsVCM=
 github.com/tilt-dev/tilt-apiserver v0.6.1 h1:1lJYn6gjnOk5XXA1wsu5JARBnbhRJWCweGPme6dowLo=
 github.com/tilt-dev/tilt-apiserver v0.6.1/go.mod h1:sjyJCOj1VZlwJ9x8A1ESID7pRsrWIIgElWzkq9yjKEs=
 github.com/tilt-dev/wmclient v0.0.0-20201109174454-1839d0355fbc h1:wGkAoZhrvnmq93B4W2v+agiPl7xzqUaxXkxmKrwJ6bc=

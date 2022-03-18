@@ -9,6 +9,7 @@ import (
 
 	"github.com/tilt-dev/starlark-lsp/pkg/cli"
 	"github.com/tilt-dev/tilt/internal/engine/analytics"
+	"github.com/tilt-dev/tilt/internal/tiltfile"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -30,7 +31,7 @@ func reportLspInvocation(cmd *cobra.Command) error {
 }
 
 func newLspCmd() *cobra.Command {
-	rootCmd := cli.NewRootCmd()
+	rootCmd := cli.NewRootCmd("tilt lsp", tiltfile.ApiStubs)
 	rootCmd.Use = "lsp"
 	origPersistentPreRunE := rootCmd.PersistentPreRunE
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {

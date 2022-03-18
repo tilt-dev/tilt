@@ -20,10 +20,15 @@ type RootCmd struct {
 	verbose bool
 }
 
-func NewRootCmd() *RootCmd {
+// Creates a new RootCmd
+// params:
+//   commandName: what to call the base command in examples (e.g., "starlark-lsp", "tilt lsp")
+//   builtinFSProvider: provides an fs.FS from which tilt builtin docs should be read
+//                    if nil, a --builtin-paths param will be added for specifying paths
+func NewRootCmd(commandName string, builtinFSProvider BuiltinFSProvider) *RootCmd {
 	cmd := RootCmd{
 		Command: &cobra.Command{
-			Use:   "starlark-lsp",
+			Use:   commandName,
 			Short: "Language server for Starlark",
 		},
 	}
@@ -39,7 +44,7 @@ func NewRootCmd() *RootCmd {
 		}
 	}
 
-	cmd.AddCommand(newStartCmd().Command)
+	cmd.AddCommand(newStartCmd(commandName, builtinFSProvider).Command)
 
 	return &cmd
 }
@@ -53,7 +58,7 @@ func Execute() {
 	defer cancel()
 	setupSignalHandler(cancel)
 
-	err := NewRootCmd().ExecuteContext(ctx)
+	err := NewRootCmd("starlark-lsp", nil).ExecuteContext(ctx)
 	if err != nil {
 		if !isCobraError(err) {
 			logger.Error("fatal error", zap.Error(err))
