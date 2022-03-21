@@ -169,9 +169,10 @@ func (in *LiveUpdate) Validate(ctx context.Context) field.ErrorList {
 		}
 	}
 
-	// TODO(milas): require that exactly one selector type is specified once Docker Compose selector support is added
 	selectorPath := field.NewPath("spec.selector")
-	if kSelector := in.Spec.Selector.Kubernetes; kSelector != nil {
+	kSelector := in.Spec.Selector.Kubernetes
+	dcSelector := in.Spec.Selector.DockerCompose
+	if kSelector != nil {
 		p := selectorPath.Child("kubernetes")
 		if kSelector.DiscoveryName == "" {
 			errors = append(errors, field.Required(p.Child("discoveryName"), "KubernetesDiscovery name is required"))
@@ -181,6 +182,11 @@ func (in *LiveUpdate) Validate(ctx context.Context) field.ErrorList {
 		} else if kSelector.Image != "" && kSelector.ContainerName != "" {
 			errors = append(errors,
 				field.Forbidden(p.Child("containerName"), "cannot specify both image and containerName"))
+		}
+	} else if dcSelector != nil {
+		p := selectorPath.Child("dockerCompose")
+		if dcSelector.Service == "" {
+			errors = append(errors, field.Required(p.Child("service"), "DockerCompose service name is required"))
 		}
 	}
 
@@ -248,6 +254,9 @@ type LiveUpdateSource struct {
 type LiveUpdateSelector struct {
 	// Finds containers in Kubernetes.
 	Kubernetes *LiveUpdateKubernetesSelector `json:"kubernetes,omitempty" protobuf:"bytes,1,opt,name=kubernetes"`
+
+	// Finds containers in Docker Compose.
+	DockerCompose *LiveUpdateDockerComposeSelector `json:"dockerCompose,omitempty" protobuf:"bytes,2,opt,name=dockerCompose"`
 }
 
 // Specifies how to select containers to live update inside K8s.
@@ -279,6 +288,16 @@ type LiveUpdateKubernetesSelector struct {
 	//
 	// +optional
 	ContainerName string `json:"containerName,omitempty" protobuf:"bytes,4,opt,name=containerName"`
+}
+
+// Specifies how to select containers to live update inside Docker Compose.
+type LiveUpdateDockerComposeSelector struct {
+	// The name of a DockerComposeService object.
+	//
+	// For simple projects, this is usually the same as the service
+	// name in the docker-compose.yml file. (But it doesn't necessarily
+	// have to be.)
+	Service string `json:"service" protobuf:"bytes,1,opt,name=service"`
 }
 
 // Determines how a local path maps into a container image.
