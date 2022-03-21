@@ -20,6 +20,7 @@ type monitor struct {
 	// Tracked dependencies.
 	lastKubernetesDiscovery   *v1alpha1.KubernetesDiscovery
 	lastKubernetesApplyStatus *v1alpha1.KubernetesApplyStatus
+	lastDockerComposeService  *v1alpha1.DockerComposeService
 	lastTriggerQueue          *v1alpha1.ConfigMap
 
 	// History of source file changes.

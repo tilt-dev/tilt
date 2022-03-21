@@ -20,8 +20,6 @@ import (
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/docker/distribution/reference"
-
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/containerupdate"
@@ -46,6 +44,7 @@ import (
 const LiveUpdateSource = "liveupdate"
 
 var discoveryGVK = v1alpha1.SchemeGroupVersion.WithKind("KubernetesDiscovery")
+var dcsGVK = v1alpha1.SchemeGroupVersion.WithKind("DockerComposeService")
 var applyGVK = v1alpha1.SchemeGroupVersion.WithKind("KubernetesApply")
 var fwGVK = v1alpha1.SchemeGroupVersion.WithKind("FileWatch")
 var imageMapGVK = v1alpha1.SchemeGroupVersion.WithKind("ImageMap")
@@ -164,12 +163,20 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
+	hasDockerComposeChanges, err := r.reconcileDockerComposeService(ctx, monitor)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return r.handleFailure(ctx, lu, createFailedState(lu, reasonObjectNotFound, err.Error()))
+		}
+		return ctrl.Result{}, err
+	}
+
 	hasTriggerQueueChanges, err := r.reconcileTriggerQueue(ctx, monitor)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	if hasFileChanges || hasKubernetesChanges || hasTriggerQueueChanges {
+	if hasFileChanges || hasKubernetesChanges || hasDockerComposeChanges || hasTriggerQueueChanges {
 		monitor.hasChangesToSync = true
 	}
 
@@ -206,15 +213,20 @@ func (r *Reconciler) shouldLogFailureReason(obj *v1alpha1.LiveUpdateStateFailed)
 
 // Check for some invalid states.
 func (r *Reconciler) ensureSelectorValid(lu *v1alpha1.LiveUpdate) *v1alpha1.LiveUpdateStateFailed {
-	selector := lu.Spec.Selector.Kubernetes
-	if selector == nil {
-		return createFailedState(lu, "Invalid", "No valid selector")
+	selector := lu.Spec.Selector
+	if selector.Kubernetes != nil {
+		if selector.Kubernetes.DiscoveryName == "" {
+			return createFailedState(lu, "Invalid", "Kubernetes selector requires DiscoveryName")
+		}
+		return nil
 	}
-
-	if selector.DiscoveryName == "" {
-		return createFailedState(lu, "Invalid", "Kubernetes selector requires DiscoveryName")
+	if selector.DockerCompose != nil {
+		if selector.DockerCompose.Service == "" {
+			return createFailedState(lu, "Invalid", "DockerCompose selector requires Service")
+		}
+		return nil
 	}
-	return nil
+	return createFailedState(lu, "Invalid", "No valid selector")
 }
 
 // If the failure state has changed, log it and write it to the apiserver.
@@ -420,6 +432,31 @@ func (r *Reconciler) reconcileKubernetesResource(ctx context.Context, monitor *m
 	return changed, nil
 }
 
+// Consume all objects off the DockerComposeSelector.
+// Returns true if we saw any changes to the objects we're watching.
+func (r *Reconciler) reconcileDockerComposeService(ctx context.Context, monitor *monitor) (bool, error) {
+	selector := monitor.spec.Selector.DockerCompose
+	if selector == nil {
+		return false, nil
+	}
+
+	var dcs v1alpha1.DockerComposeService
+	err := r.client.Get(ctx, types.NamespacedName{Name: selector.Service}, &dcs)
+	if err != nil {
+		return false, err
+	}
+
+	changed := false
+	if monitor.lastDockerComposeService == nil ||
+		!apicmp.DeepEqual(monitor.lastDockerComposeService.Status, dcs.Status) {
+		changed = true
+	}
+
+	monitor.lastDockerComposeService = &dcs
+
+	return changed, nil
+}
+
 // Go through all the file changes, and delete files that aren't relevant
 // to the current build.
 //
@@ -429,7 +466,7 @@ func (r *Reconciler) reconcileKubernetesResource(ctx context.Context, monitor *m
 // 2) If there's no ImageMap, we prefer the KubernetesApply.LastApplyStartTime.
 // 3) If there's no KubernetesApply, we prefer the oldest pod
 //    in the filtered pod list.
-func (r *Reconciler) garbageCollectFileChanges(res *k8sconv.KubernetesResource, monitor *monitor) {
+func (r *Reconciler) garbageCollectFileChanges(res luResource, monitor *monitor) {
 	for _, source := range monitor.spec.Sources {
 		fwn := source.FileWatch
 		mSource, ok := monitor.sources[fwn]
@@ -441,14 +478,8 @@ func (r *Reconciler) garbageCollectFileChanges(res *k8sconv.KubernetesResource, 
 		var gcTime time.Time
 		if lastImageStatus != nil && lastImageStatus.BuildStartTime != nil {
 			gcTime = lastImageStatus.BuildStartTime.Time
-		} else if res.ApplyStatus != nil {
-			gcTime = res.ApplyStatus.LastApplyStartTime.Time
 		} else {
-			for _, pod := range res.FilteredPods {
-				if gcTime.IsZero() || (!pod.CreatedAt.IsZero() && pod.CreatedAt.Time.Before(gcTime)) {
-					gcTime = pod.CreatedAt.Time
-				}
-			}
+			gcTime = res.bestStartTime()
 		}
 
 		if !gcTime.IsZero() {
@@ -481,9 +512,9 @@ func (r *Reconciler) garbageCollectFileChanges(res *k8sconv.KubernetesResource, 
 
 // Go through all the container monitors, and delete any that are no longer
 // being selected. We don't care why they're not being selected.
-func (r *Reconciler) garbageCollectMonitorContainers(res *k8sconv.KubernetesResource, monitor *monitor) {
+func (r *Reconciler) garbageCollectMonitorContainers(res luResource, monitor *monitor) {
 	podsByKey := map[monitorContainerKey]bool{}
-	for _, pod := range res.FilteredPods {
+	for _, pod := range res.podNames() {
 		podsByKey[monitorContainerKey{podName: pod.Name, namespace: pod.Namespace}] = true
 	}
 
@@ -491,35 +522,6 @@ func (r *Reconciler) garbageCollectMonitorContainers(res *k8sconv.KubernetesReso
 		podKey := monitorContainerKey{podName: key.podName, namespace: key.namespace}
 		if !podsByKey[podKey] {
 			delete(monitor.containers, key)
-		}
-	}
-}
-
-// Visit all selected containers.
-func (r *Reconciler) visitSelectedContainers(
-	kSelector *v1alpha1.LiveUpdateKubernetesSelector,
-	kResource *k8sconv.KubernetesResource,
-	visit func(pod v1alpha1.Pod, c v1alpha1.Container) bool) {
-	for _, pod := range kResource.FilteredPods {
-		for _, c := range pod.Containers {
-			if c.Name == "" {
-				// ignore any blatantly invalid containers
-				continue
-			}
-
-			// LiveUpdateKubernetesSelector must specify EITHER image OR container name
-			if kSelector.Image != "" {
-				imageRef, err := container.ParseNamed(c.Image)
-				if err != nil || imageRef == nil || kSelector.Image != reference.FamiliarName(imageRef) {
-					continue
-				}
-			} else if kSelector.ContainerName != c.Name {
-				continue
-			}
-			stop := visit(pod, c)
-			if stop {
-				return
-			}
 		}
 	}
 }
@@ -551,23 +553,43 @@ func (r *Reconciler) dispatchCompleteBuildAction(lu *v1alpha1.LiveUpdate, newSta
 	if newStatus.Failed != nil {
 		err = fmt.Errorf("%s", newStatus.Failed.Message)
 	}
+
 	resultSet := store.BuildResultSet{}
 	r.store.Dispatch(buildcontrols.NewBuildCompleteAction(manifestName, LiveUpdateSource, spanID, resultSet, err))
+}
+
+func (r *Reconciler) resource(lu *v1alpha1.LiveUpdate, monitor *monitor) (luResource, error) {
+	k := lu.Spec.Selector.Kubernetes
+	if k != nil {
+		r, err := k8sconv.NewKubernetesResource(monitor.lastKubernetesDiscovery, monitor.lastKubernetesApplyStatus)
+		if err != nil || r == nil {
+			return nil, fmt.Errorf("creating kube resource: %v", err)
+		}
+		return &luK8sResource{
+			selector: k,
+			res:      r,
+		}, nil
+	}
+	dc := lu.Spec.Selector.DockerCompose
+	if dc != nil {
+		if monitor.lastDockerComposeService == nil {
+			return nil, fmt.Errorf("no docker compose status")
+		}
+		return &luDCResource{
+			selector: dc,
+			res:      monitor.lastDockerComposeService,
+		}, nil
+	}
+	return nil, fmt.Errorf("No valid selector")
 }
 
 // Convert the currently tracked state into a set of inputs
 // to the updater, then apply them.
 func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, monitor *monitor) v1alpha1.LiveUpdateStatus {
 	var status v1alpha1.LiveUpdateStatus
-	kSelector := lu.Spec.Selector.Kubernetes
-	if kSelector == nil {
-		status.Failed = createFailedState(lu, "Invalid", "no valid selector")
-		return status
-	}
-
-	kResource, err := k8sconv.NewKubernetesResource(monitor.lastKubernetesDiscovery, monitor.lastKubernetesApplyStatus)
+	resource, err := r.resource(lu, monitor)
 	if err != nil {
-		status.Failed = createFailedState(lu, "KubernetesError", fmt.Sprintf("creating kube resource: %v", err))
+		status.Failed = createFailedState(lu, "Invalid", err.Error())
 		return status
 	}
 
@@ -582,12 +604,12 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 		isWaitingOnTrigger = true
 	}
 
-	r.garbageCollectFileChanges(kResource, monitor)
-	r.garbageCollectMonitorContainers(kResource, monitor)
+	r.garbageCollectFileChanges(resource, monitor)
+	r.garbageCollectMonitorContainers(resource, monitor)
 
 	// Go through all the container monitors, and check if any of them are unrecoverable.
 	// If they are, it's not important to figure out why.
-	r.visitSelectedContainers(kSelector, kResource, func(pod v1alpha1.Pod, c v1alpha1.Container) bool {
+	resource.visitSelectedContainers(func(pod v1alpha1.Pod, c v1alpha1.Container) bool {
 		cKey := monitorContainerKey{
 			containerID: c.ID,
 			podName:     pod.Name,
@@ -611,7 +633,7 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 	// Visit all containers, apply changes, and return their statuses.
 	terminatedContainerPodName := ""
 	hasAnyFilesToSync := false
-	r.visitSelectedContainers(kSelector, kResource, func(pod v1alpha1.Pod, cInfo v1alpha1.Container) bool {
+	resource.visitSelectedContainers(func(pod v1alpha1.Pod, cInfo v1alpha1.Container) bool {
 		c := liveupdates.Container{
 			ContainerID:   container.ID(cInfo.ID),
 			ContainerName: container.Name(cInfo.Name),
@@ -727,7 +749,7 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 
 			// Apply the change to the container.
 			oneUpdateStatus = r.applyInternal(ctx, lu.Spec, Input{
-				IsDC:               false, // update this once we support DockerCompose in the API.
+				IsDC:               lu.Spec.Selector.DockerCompose != nil,
 				ChangedFiles:       plan.SyncPaths,
 				Containers:         []liveupdates.Container{c},
 				LastFileTimeSynced: newHighWaterMark,
@@ -1001,6 +1023,8 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
 		Watches(&source.Kind{Type: &v1alpha1.KubernetesApply{}},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
+		Watches(&source.Kind{Type: &v1alpha1.DockerComposeService{}},
+			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
 		Watches(&source.Kind{Type: &v1alpha1.FileWatch{}},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
 		Watches(&source.Kind{Type: &v1alpha1.ImageMap{}},
@@ -1095,6 +1119,15 @@ func indexLiveUpdate(obj ctrlclient.Object) []indexer.Key {
 				GVK: applyGVK,
 			})
 		}
+	}
+	if lu.Spec.Selector.DockerCompose != nil && lu.Spec.Selector.DockerCompose.Service != "" {
+		result = append(result, indexer.Key{
+			Name: types.NamespacedName{
+				Namespace: lu.Namespace,
+				Name:      lu.Spec.Selector.DockerCompose.Service,
+			},
+			GVK: dcsGVK,
+		})
 	}
 	return result
 }
