@@ -68,6 +68,14 @@ func NewImageBuildResultSingleRef(id model.TargetID, ref reference.NamedTagged) 
 	return NewImageBuildResult(id, ref, ref)
 }
 
+// TODO(nick): In the old live-update system, keeping track of the LiveUpdateBuildResult
+// allowed us to track when a container had crashed or replaced.
+//
+// In the reconciler-based live-update system, the reconciler keeps track of which
+// containers it has live-updated internally and whether it can recover from a crash,
+// then updates its status on whether its healthy. So tracking live updated containers
+// separately becomes unnecessary. We can remove this code once the BuildAndDeploy
+// live-updater is deleted.
 type LiveUpdateBuildResult struct {
 	id model.TargetID
 
