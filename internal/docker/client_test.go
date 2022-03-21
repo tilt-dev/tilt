@@ -9,6 +9,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/k8s"
 )
@@ -91,7 +92,7 @@ func TestSupported(t *testing.T) {
 }
 
 type provideEnvTestCase struct {
-	env             k8s.Env
+	env             clusterid.Product
 	runtime         container.Runtime
 	minikubeV       string
 	osEnv           map[string]string
@@ -100,7 +101,7 @@ type provideEnvTestCase struct {
 	expectedLocal   Env
 }
 
-func TestProvideEnv(t *testing.T) {
+func TestProvideClusterProduct(t *testing.T) {
 	envVars := []string{
 		"DOCKER_TLS_VERIFY",
 		"DOCKER_HOST",
@@ -111,7 +112,7 @@ func TestProvideEnv(t *testing.T) {
 	cases := []provideEnvTestCase{
 		{},
 		{
-			env: k8s.EnvUnknown,
+			env: clusterid.ProductUnknown,
 			osEnv: map[string]string{
 				"DOCKER_TLS_VERIFY":  "1",
 				"DOCKER_HOST":        "tcp://192.168.99.100:2376",
@@ -132,7 +133,7 @@ func TestProvideEnv(t *testing.T) {
 			},
 		},
 		{
-			env:     k8s.EnvMicroK8s,
+			env:     clusterid.ProductMicroK8s,
 			runtime: container.RuntimeDocker,
 			expectedCluster: Env{
 				Host:                microK8sDockerHost,
@@ -141,11 +142,11 @@ func TestProvideEnv(t *testing.T) {
 			expectedLocal: Env{},
 		},
 		{
-			env:     k8s.EnvMicroK8s,
+			env:     clusterid.ProductMicroK8s,
 			runtime: container.RuntimeCrio,
 		},
 		{
-			env:     k8s.EnvMinikube,
+			env:     clusterid.ProductMinikube,
 			runtime: container.RuntimeDocker,
 			mkEnv: map[string]string{
 				"DOCKER_TLS_VERIFY":  "1",
@@ -163,7 +164,7 @@ func TestProvideEnv(t *testing.T) {
 			},
 		},
 		{
-			env:       k8s.EnvMinikube,
+			env:       clusterid.ProductMinikube,
 			runtime:   container.RuntimeDocker,
 			minikubeV: "1.8.2",
 			mkEnv: map[string]string{
@@ -181,7 +182,7 @@ func TestProvideEnv(t *testing.T) {
 			},
 		},
 		{
-			env:     k8s.EnvMinikube,
+			env:     clusterid.ProductMinikube,
 			runtime: container.RuntimeDocker,
 			mkEnv: map[string]string{
 				"DOCKER_TLS_VERIFY":  "1",
@@ -202,7 +203,7 @@ func TestProvideEnv(t *testing.T) {
 		{
 			// Test the case where the user has already run
 			// eval $(minikube docker-env)
-			env:     k8s.EnvMinikube,
+			env:     clusterid.ProductMinikube,
 			runtime: container.RuntimeDocker,
 			mkEnv: map[string]string{
 				"DOCKER_TLS_VERIFY": "1",
@@ -230,7 +231,7 @@ func TestProvideEnv(t *testing.T) {
 			},
 		},
 		{
-			env:     k8s.EnvMinikube,
+			env:     clusterid.ProductMinikube,
 			runtime: container.RuntimeCrio,
 			mkEnv: map[string]string{
 				"DOCKER_TLS_VERIFY":  "1",
@@ -240,7 +241,7 @@ func TestProvideEnv(t *testing.T) {
 			},
 		},
 		{
-			env: k8s.EnvUnknown,
+			env: clusterid.ProductUnknown,
 			osEnv: map[string]string{
 				"DOCKER_TLS_VERIFY":  "1",
 				"DOCKER_HOST":        "localhost:2376",

@@ -14,6 +14,7 @@ import (
 
 	"github.com/tilt-dev/wmclient/pkg/dirs"
 
+	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/containerupdate"
@@ -58,7 +59,7 @@ func ProvideImageBuildAndDeployer(
 	ctx context.Context,
 	docker docker.Client,
 	kClient k8s.Client,
-	env k8s.Env,
+	env clusterid.Product,
 	kubeContext k8s.KubeContext,
 	clusterEnv docker.ClusterEnv,
 	dir *dirs.TiltDevDir,

@@ -10,6 +10,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apiv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
+	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/localregistry-go"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -44,14 +45,14 @@ func (s NaiveRuntimeSource) Runtime(ctx context.Context) container.Runtime {
 }
 
 type registryAsync struct {
-	env           Env
+	env           clusterid.Product
 	core          apiv1.CoreV1Interface
 	runtimeSource RuntimeSource
 	registry      container.Registry
 	once          sync.Once
 }
 
-func newRegistryAsync(env Env, core apiv1.CoreV1Interface, runtimeSource RuntimeSource) *registryAsync {
+func newRegistryAsync(env clusterid.Product, core apiv1.CoreV1Interface, runtimeSource RuntimeSource) *registryAsync {
 	return &registryAsync{
 		env:           env,
 		core:          core,
@@ -174,7 +175,7 @@ func (r *registryAsync) Registry(ctx context.Context) container.Registry {
 		}
 
 		// Auto-infer the microk8s local registry.
-		if r.env == EnvMicroK8s {
+		if r.env == clusterid.ProductMicroK8s {
 			reg := r.inferRegistryFromMicrok8s(ctx)
 			if !reg.Empty() {
 				r.registry = reg
@@ -192,7 +193,7 @@ func (r *registryAsync) Registry(ctx context.Context) container.Registry {
 				logger.Get(ctx).Warnf("You are running without a local image registry.\n"+
 					"Tilt can use the local registry to speed up builds.\n"+
 					"Instructions: %s", help)
-			} else if r.env == EnvKIND6 {
+			} else if r.env == clusterid.ProductKIND {
 				logger.Get(ctx).Warnf("You are running Kind without a local image registry.\n" +
 					"Tilt can use the local registry to speed up builds.\n" +
 					"Instructions: https://github.com/tilt-dev/kind-local")

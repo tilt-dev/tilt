@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/tilt-dev/clusterid"
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/feature"
@@ -111,7 +112,7 @@ func TestAnalyticsReporter_Everything(t *testing.T) {
 		"resource.enabled.count":                              "12",
 		"tiltfile.error":                                      "false",
 		"up.starttime":                                        state.TiltStartTime.Format(time.RFC3339),
-		"env":                                                 string(k8s.EnvDockerDesktop),
+		"env":                                                 k8s.AnalyticsEnv(clusterid.ProductDockerDesktop),
 		"term_mode":                                           "0",
 		"k8s.runtime":                                         "docker",
 		"k8s.registry.host":                                   "1",
@@ -196,7 +197,7 @@ func TestAnalyticsReporter_TiltfileError(t *testing.T) {
 		"builds.completed_count":           "3",
 		"tiltfile.error":                   "true",
 		"up.starttime":                     state.TiltStartTime.Format(time.RFC3339),
-		"env":                              string(k8s.EnvDockerDesktop),
+		"env":                              k8s.AnalyticsEnv(clusterid.ProductDockerDesktop),
 		"term_mode":                        "0",
 		"k8s.runtime":                      "docker",
 		"feature.testflag_enabled.enabled": "true",
@@ -229,7 +230,7 @@ func newAnalyticsReporterTestFixture(t testing.TB) *analyticsReporterTestFixture
 	state.Features = feature.FromDefaults(features).ToEnabled()
 	st.UnlockMutableState()
 
-	ar := ProvideAnalyticsReporter(a, st, kClient, k8s.EnvDockerDesktop, features)
+	ar := ProvideAnalyticsReporter(a, st, kClient, clusterid.ProductDockerDesktop, features)
 	return &analyticsReporterTestFixture{
 		manifestCount: 0,
 		ar:            ar,

@@ -16,6 +16,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/tilt-dev/clusterid"
 	wmcontainer "github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockerfile"
@@ -46,7 +47,7 @@ func (c fakeClock) Now() time.Time { return c.now }
 
 func newDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
-	env := k8s.EnvGKE
+	env := clusterid.ProductGKE
 
 	dEnv := docker.ProvideClusterEnv(ctx, "gke", env, wmcontainer.RuntimeDocker, k8s.FakeMinikube{})
 	dCli := docker.NewDockerClient(ctx, docker.Env(dEnv))

@@ -49,7 +49,7 @@ func KubernetesClientFromEnv(ctx context.Context, contextOverride k8s.KubeContex
 	if err != nil {
 		return nil, err
 	}
-	env := k8s.ProvideEnv(ctx, apiConfig)
+	env := k8s.ProvideClusterProduct(ctx, apiConfig)
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)

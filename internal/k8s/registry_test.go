@@ -8,6 +8,7 @@ import (
 	goruntime "runtime"
 	"testing"
 
+	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/pkg/logger"
 
@@ -42,7 +43,7 @@ func TestRegistryFoundMicrok8s(t *testing.T) {
 	})
 
 	core := cs.CoreV1()
-	registryAsync := newRegistryAsync(EnvMicroK8s, core, NewNaiveRuntimeSource(container.RuntimeContainerd))
+	registryAsync := newRegistryAsync(clusterid.ProductMicroK8s, core, NewNaiveRuntimeSource(container.RuntimeContainerd))
 
 	registry := registryAsync.Registry(newLoggerCtx(os.Stdout))
 	assert.Equal(t, "localhost:32000", registry.Host)
@@ -63,7 +64,7 @@ func TestRegistryFoundInTiltAnnotationsWithClusterHost(t *testing.T) {
 	})
 
 	core := cs.CoreV1()
-	registryAsync := newRegistryAsync(EnvKIND6, core, NewNaiveRuntimeSource(container.RuntimeContainerd))
+	registryAsync := newRegistryAsync(clusterid.ProductKIND, core, NewNaiveRuntimeSource(container.RuntimeContainerd))
 
 	registry := registryAsync.Registry(newLoggerCtx(os.Stdout))
 	assert.Equal(t, "localhost:5000", registry.Host)
@@ -84,7 +85,7 @@ func TestRegistryFoundInKindAnnotations(t *testing.T) {
 	})
 
 	core := cs.CoreV1()
-	registryAsync := newRegistryAsync(EnvKIND6, core, NewNaiveRuntimeSource(container.RuntimeContainerd))
+	registryAsync := newRegistryAsync(clusterid.ProductKIND, core, NewNaiveRuntimeSource(container.RuntimeContainerd))
 
 	registry := registryAsync.Registry(newLoggerCtx(os.Stdout))
 	assert.Equal(t, "localhost:5000", registry.Host)
@@ -107,7 +108,7 @@ data:
 	require.NoError(t, err)
 
 	core := cs.CoreV1()
-	registryAsync := newRegistryAsync(EnvKIND6, core, NewNaiveRuntimeSource(container.RuntimeContainerd))
+	registryAsync := newRegistryAsync(clusterid.ProductKIND, core, NewNaiveRuntimeSource(container.RuntimeContainerd))
 
 	out := bytes.NewBuffer(nil)
 	registry := registryAsync.Registry(newLoggerCtx(out))
@@ -134,7 +135,7 @@ data:
 	require.NoError(t, err)
 
 	core := cs.CoreV1()
-	registryAsync := newRegistryAsync(EnvKIND6, core, NewNaiveRuntimeSource(container.RuntimeContainerd))
+	registryAsync := newRegistryAsync(clusterid.ProductKIND, core, NewNaiveRuntimeSource(container.RuntimeContainerd))
 
 	registry := registryAsync.Registry(newLoggerCtx(os.Stdout))
 	assert.Equal(t, "localhost:5000", registry.Host)
@@ -144,7 +145,7 @@ data:
 func TestKINDWarning(t *testing.T) {
 	cs := &fake.Clientset{}
 	core := cs.CoreV1()
-	registryAsync := newRegistryAsync(EnvKIND6, core, NewNaiveRuntimeSource(container.RuntimeContainerd))
+	registryAsync := newRegistryAsync(clusterid.ProductKIND, core, NewNaiveRuntimeSource(container.RuntimeContainerd))
 
 	out := bytes.NewBuffer(nil)
 	registry := registryAsync.Registry(newLoggerCtx(out))
@@ -155,7 +156,7 @@ func TestKINDWarning(t *testing.T) {
 func TestK3DNoWarning(t *testing.T) {
 	cs := &fake.Clientset{}
 	core := cs.CoreV1()
-	registryAsync := newRegistryAsync(EnvK3D, core, NewNaiveRuntimeSource(container.RuntimeContainerd))
+	registryAsync := newRegistryAsync(clusterid.ProductK3D, core, NewNaiveRuntimeSource(container.RuntimeContainerd))
 
 	out := bytes.NewBuffer(nil)
 	registry := registryAsync.Registry(newLoggerCtx(out))
@@ -177,7 +178,7 @@ func TestRegistryFoundInLabelsWithLocalOnly(t *testing.T) {
 	})
 
 	core := cs.CoreV1()
-	registryAsync := newRegistryAsync(EnvKIND6, core, NewNaiveRuntimeSource(container.RuntimeContainerd))
+	registryAsync := newRegistryAsync(clusterid.ProductKIND, core, NewNaiveRuntimeSource(container.RuntimeContainerd))
 
 	registry := registryAsync.Registry(newLoggerCtx(os.Stdout))
 	assert.Equal(t, "localhost:5000", registry.Host)
@@ -195,7 +196,7 @@ func TestRegistryNotFound(t *testing.T) {
 	cs.AddReactor("*", "*", ktesting.ObjectReaction(tracker))
 
 	core := cs.CoreV1()
-	registryAsync := newRegistryAsync(EnvMicroK8s, core, NewNaiveRuntimeSource(container.RuntimeContainerd))
+	registryAsync := newRegistryAsync(clusterid.ProductMicroK8s, core, NewNaiveRuntimeSource(container.RuntimeContainerd))
 
 	out := bytes.NewBuffer(nil)
 	registry := registryAsync.Registry(newLoggerCtx(out))

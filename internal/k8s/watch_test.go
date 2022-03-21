@@ -29,6 +29,7 @@ import (
 	mfake "k8s.io/client-go/metadata/fake"
 	ktesting "k8s.io/client-go/testing"
 
+	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/testutils"
 )
 
@@ -445,7 +446,7 @@ func newWatchTestFixture(t *testing.T) *watchTestFixture {
 
 	ret.kCli = &K8sClient{
 		InformerSet:     newInformerSet(cs, dcs),
-		env:             EnvUnknown,
+		product:         clusterid.ProductUnknown,
 		drm:             fakeRESTMapper{},
 		dynamic:         dcs,
 		clientset:       cs,
