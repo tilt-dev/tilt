@@ -1,4 +1,19 @@
-FROM golang:1.17
+FROM golang:1.18
+
+# Install dependencies from OS package manager sources
+RUN apt update && apt install -y --no-install-recommends apt-transport-https \
+  && curl -fsS https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add - \
+  && touch /etc/apt/sources.list.d/kubernetes.list \
+  && echo "deb http://apt.kubernetes.io/ kubernetes-xenial main" | tee -a /etc/apt/sources.list.d/kubernetes.list \
+  && apt update \
+  && apt install -y --no-install-recommends \
+    ca-certificates \
+    jq \
+    kubectl \
+    liblz4-tool \
+    rsync \
+    socat \
+  && rm -rf /var/lib/apt/lists/*
 
 # Install docker
 # Adapted from https://github.com/circleci/circleci-images/blob/staging/shared/images/Dockerfile-basic.template
@@ -21,31 +36,22 @@ RUN curl -fL "https://github.com/docker/compose/releases/download/${DOCKER_COMPO
   && chmod a+x /usr/local/bin/docker-compose-v1 \
   && docker-compose-v1 version
 
+# pinned to v2.2.2 until https://github.com/docker/compose/issues/9291 is fixed
 ARG DOCKER_COMPOSE_V2_VERSION=v2.2.2
 RUN curl -fL "https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_V2_VERSION}/docker-compose-$(uname -s | tr '[A-Z]' '[a-z]')-$(uname -m)" -o /usr/local/bin/docker-compose \
   && chmod a+x /usr/local/bin/docker-compose \
   && docker-compose version
 
-# Install kubectl client
-RUN apt update && apt install -y apt-transport-https \
-  && curl -fsS https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add - \
-  && touch /etc/apt/sources.list.d/kubernetes.list \
-  && echo "deb http://apt.kubernetes.io/ kubernetes-xenial main" | tee -a /etc/apt/sources.list.d/kubernetes.list \
-  && apt update && apt install -y kubectl
-
 # install gotestsum
-RUN go get gotest.tools/gotestsum
-
-# install jq
-RUN apt update && apt install -y jq
+RUN go install gotest.tools/gotestsum@latest \
+    && gotestsum --version
 
 # install Kind (Kubernetes in Docker)
 ENV KIND_VERSION=v0.12.0
 RUN curl -fLo ./kind-linux-amd64 https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-linux-amd64 \
   && chmod +x ./kind-linux-amd64 \
-  && mv ./kind-linux-amd64 /go/bin/kind
-
-RUN apt update && apt install -y curl ca-certificates liblz4-tool rsync socat
+  && mv ./kind-linux-amd64 /go/bin/kind \
+  && kind version
 
 # install ctlptl from the ctlptl release image
 COPY --from=tiltdev/ctlptl /usr/local/bin/ctlptl /usr/local/bin/

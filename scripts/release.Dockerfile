@@ -4,7 +4,7 @@
 # 1) Better leverage OS-specific C headers
 # 2) Be able to do releases from a CI job
 
-FROM gcr.io/windmill-public-containers/golang-cross:1.17.8-1
+FROM gcr.io/windmill-public-containers/golang-cross:1.18.0-1
 
 RUN apt-get update && \
     apt-get install -y -q --no-install-recommends \
