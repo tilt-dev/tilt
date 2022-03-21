@@ -21,7 +21,6 @@ import (
 	"strings"
 
 	interp "github.com/compose-spec/compose-go/interpolation"
-	"github.com/compose-spec/compose-go/types"
 	"github.com/pkg/errors"
 )
 
@@ -53,7 +52,6 @@ var interpolateTypeCastMapping = map[interp.Path]interp.Cast{
 	servicePath("oom_score_adj"):                                     toInt64,
 	servicePath("pids_limit"):                                        toInt64,
 	servicePath("ports", interp.PathMatchList, "target"):             toInt,
-	servicePath("ports", interp.PathMatchList, "published"):          toInt,
 	servicePath("privileged"):                                        toBoolean,
 	servicePath("read_only"):                                         toBoolean,
 	servicePath("scale"):                                             toInt,
@@ -94,19 +92,11 @@ func toInt64(value string) (interface{}, error) {
 }
 
 func toUnitBytes(value string) (interface{}, error) {
-	i, err := strconv.ParseInt(value, 10, 64)
-	if err != nil {
-		return nil, err
-	}
-	return types.UnitBytes(i), nil
+	return transformSize(value)
 }
 
 func toDuration(value string) (interface{}, error) {
-	i, err := strconv.ParseInt(value, 10, 64)
-	if err != nil {
-		return nil, err
-	}
-	return types.Duration(i), nil
+	return transformStringToDuration(value)
 }
 
 func toFloat(value string) (interface{}, error) {

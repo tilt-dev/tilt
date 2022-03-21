@@ -80,7 +80,7 @@ networks:
 ports:
     - mode: ingress
       target: 80
-      published: 12312
+      published: "12312"
       protocol: tcp`, f.JoinPath("foo"))
 }
 

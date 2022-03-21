@@ -8,7 +8,12 @@
   "properties": {
     "version": {
       "type": "string",
-      "description": "Version of the Compose specification used. Tools not implementing required version MUST reject the configuration file."
+      "description": "declared for backward compatibility, ignored."
+    },
+
+    "name": {
+      "type": "string",
+      "description": "define the Compose project name, until user defines one explicitly."
     },
 
     "services": {
@@ -318,7 +323,7 @@
                   "mode": {"type": "string"},
                   "host_ip": {"type": "string"},
                   "target": {"type": "integer"},
-                  "published": {"type": "integer"},
+                  "published": {"type": ["string", "integer"]},
                   "protocol": {"type": "string"}
                 },
                 "additionalProperties": false,
@@ -410,7 +415,8 @@
                     "type": "object",
                     "properties": {
                       "propagation": {"type": "string"},
-                      "create_host_path": {"type": "boolean"}
+                      "create_host_path": {"type": "boolean"},
+                      "selinux": {"type": "string", "enum": ["z", "Z"]}
                     },
                     "additionalProperties": false,
                     "patternProperties": {"^x-": {}}
@@ -519,7 +525,8 @@
               "type": "object",
               "properties": {
                 "cpus": {"type": ["number", "string"]},
-                "memory": {"type": "string"}
+                "memory": {"type": "string"},
+                "pids": {"type": "integer"}
               },
               "additionalProperties": false,
               "patternProperties": {"^x-": {}}

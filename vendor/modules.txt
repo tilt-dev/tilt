@@ -77,18 +77,17 @@ github.com/chai2010/gettext-go/gettext/plural
 github.com/chai2010/gettext-go/gettext/po
 # github.com/cloudflare/cfssl v1.4.1
 ## explicit; go 1.13
-# github.com/compose-spec/compose-go v1.0.8
-## explicit; go 1.16
+# github.com/compose-spec/compose-go v1.1.0
+## explicit; go 1.17
 github.com/compose-spec/compose-go/cli
+github.com/compose-spec/compose-go/consts
+github.com/compose-spec/compose-go/dotenv
 github.com/compose-spec/compose-go/errdefs
 github.com/compose-spec/compose-go/interpolation
 github.com/compose-spec/compose-go/loader
 github.com/compose-spec/compose-go/schema
 github.com/compose-spec/compose-go/template
 github.com/compose-spec/compose-go/types
-# github.com/compose-spec/godotenv v1.1.1
-## explicit; go 1.16
-github.com/compose-spec/godotenv
 # github.com/containerd/console v1.0.2
 ## explicit; go 1.13
 github.com/containerd/console
@@ -609,8 +608,6 @@ github.com/schollz/closestmatch
 ## explicit; go 1.14
 github.com/segmentio/encoding/ascii
 github.com/segmentio/encoding/json
-# github.com/shurcooL/sanitized_anchor_name v1.0.0
-## explicit
 # github.com/sirupsen/logrus v1.8.1
 ## explicit; go 1.13
 github.com/sirupsen/logrus

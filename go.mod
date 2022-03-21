@@ -7,7 +7,7 @@ require (
 	github.com/akutz/memconn v0.1.0
 	github.com/alessio/shellescape v1.2.2
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/compose-spec/compose-go v1.0.8
+	github.com/compose-spec/compose-go v1.1.0
 	github.com/davecgh/go-spew v1.1.1
 	github.com/docker/cli v20.10.7+incompatible
 	github.com/docker/distribution v2.8.0+incompatible
@@ -108,7 +108,6 @@ require (
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/chai2010/gettext-go v0.0.0-20170215093142-bf70f2a70fb1 // indirect
 	github.com/cloudflare/cfssl v1.4.1 // indirect
-	github.com/compose-spec/godotenv v1.1.1 // indirect
 	github.com/containerd/console v1.0.2 // indirect
 	github.com/containerd/containerd v1.5.8 // indirect
 	github.com/containerd/continuity v0.1.0 // indirect

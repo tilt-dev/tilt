@@ -92,7 +92,7 @@ func populateFieldFromBuffer(char rune, buffer []rune, volume *types.ServiceVolu
 			volume.Volume = &types.ServiceVolumeVolume{NoCopy: true}
 		default:
 			if isBindOption(option) {
-				volume.Bind = &types.ServiceVolumeBind{Propagation: option}
+				setBindOption(volume, option)
 			}
 			// ignore unknown options
 		}
@@ -109,13 +109,39 @@ var Propagations = []string{
 	types.PropagationSlave,
 }
 
+type setBindOptionFunc func(bind *types.ServiceVolumeBind, option string)
+
+var bindOptions = map[string]setBindOptionFunc{
+	types.PropagationRPrivate: setBindPropagation,
+	types.PropagationPrivate:  setBindPropagation,
+	types.PropagationRShared:  setBindPropagation,
+	types.PropagationShared:   setBindPropagation,
+	types.PropagationRSlave:   setBindPropagation,
+	types.PropagationSlave:    setBindPropagation,
+	types.SELinuxShared:       setBindSELinux,
+	types.SELinuxPrivate:      setBindSELinux,
+}
+
+func setBindPropagation(bind *types.ServiceVolumeBind, option string) {
+	bind.Propagation = option
+}
+
+func setBindSELinux(bind *types.ServiceVolumeBind, option string) {
+	bind.SELinux = option
+}
+
 func isBindOption(option string) bool {
-	for _, propagation := range Propagations {
-		if option == propagation {
-			return true
-		}
+	_, ok := bindOptions[option]
+
+	return ok
+}
+
+func setBindOption(volume *types.ServiceVolumeConfig, option string) {
+	if volume.Bind == nil {
+		volume.Bind = &types.ServiceVolumeBind{}
 	}
-	return false
+
+	bindOptions[option](volume.Bind, option)
 }
 
 func populateType(volume *types.ServiceVolumeConfig) {

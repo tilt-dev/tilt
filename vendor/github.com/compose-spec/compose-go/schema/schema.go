@@ -27,11 +27,6 @@ import (
 	_ "embed"
 )
 
-const (
-	defaultVersion = "1.0"
-	versionField   = "version"
-)
-
 type portsFormatChecker struct{}
 
 func (checker portsFormatChecker) IsFormat(input interface{}) bool {
