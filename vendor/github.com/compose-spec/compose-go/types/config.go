@@ -49,6 +49,7 @@ type ConfigFile struct {
 // Config is a full compose file configuration and model
 type Config struct {
 	Filename   string     `yaml:"-" json:"-"`
+	Name       string     `yaml:",omitempty" json:"name,omitempty"`
 	Services   Services   `json:"services"`
 	Networks   Networks   `yaml:",omitempty" json:"networks,omitempty"`
 	Volumes    Volumes    `yaml:",omitempty" json:"volumes,omitempty"`

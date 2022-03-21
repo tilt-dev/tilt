@@ -375,7 +375,7 @@ func (c *cmdDCClient) loadProjectCLI(ctx context.Context, proj v1alpha1.DockerCo
 // be kept in sync behavior-wise.
 func dcLoaderOption(name string) func(opts *loader.Options) {
 	return func(opts *loader.Options) {
-		opts.Name = name
+		opts.SetProjectName(name, true)
 		opts.ResolvePaths = true
 		opts.SkipNormalization = false
 		opts.SkipInterpolation = false

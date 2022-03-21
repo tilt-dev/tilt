@@ -1,4 +1,4 @@
-// Package godotenv is a go port of the ruby dotenv library (https://github.com/bkeepers/dotenv)
+// Package dotenv is a go port of the ruby dotenv library (https://github.com/bkeepers/dotenv)
 //
 // Examples/readme can be found on the github page at https://github.com/joho/godotenv
 //
@@ -11,7 +11,7 @@
 // 		godotenv.Load()
 //
 // and all the env vars declared in .env will be available through os.Getenv("SOME_ENV_VAR")
-package godotenv
+package dotenv
 
 import (
 	"errors"

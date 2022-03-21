@@ -21,13 +21,13 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
+	"github.com/compose-spec/compose-go/consts"
+	"github.com/compose-spec/compose-go/dotenv"
 	"github.com/compose-spec/compose-go/errdefs"
 	"github.com/compose-spec/compose-go/loader"
 	"github.com/compose-spec/compose-go/types"
-	"github.com/compose-spec/godotenv"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -87,11 +87,11 @@ func WithConfigFileEnv(o *ProjectOptions) error {
 	if len(o.ConfigPaths) > 0 {
 		return nil
 	}
-	sep := o.Environment[ComposePathSeparator]
+	sep := o.Environment[consts.ComposePathSeparator]
 	if sep == "" {
 		sep = string(os.PathListSeparator)
 	}
-	f, ok := o.Environment[ComposeFilePath]
+	f, ok := o.Environment[consts.ComposeFilePath]
 	if ok {
 		paths, err := absolutePaths(strings.Split(f, sep))
 		o.ConfigPaths = paths
@@ -220,7 +220,7 @@ func WithDotEnv(o *ProjectOptions) error {
 	defer file.Close()
 
 	notInEnvSet := make(map[string]interface{})
-	env, err := godotenv.ParseWithLookup(file, func(k string) (string, bool) {
+	env, err := dotenv.ParseWithLookup(file, func(k string) (string, bool) {
 		v, ok := os.LookupEnv(k)
 		if !ok {
 			notInEnvSet[k] = nil
@@ -275,12 +275,6 @@ var DefaultFileNames = []string{"compose.yaml", "compose.yml", "docker-compose.y
 
 // DefaultOverrideFileNames defines the Compose override file names for auto-discovery (in order of preference)
 var DefaultOverrideFileNames = []string{"compose.override.yml", "compose.override.yaml", "docker-compose.override.yml", "docker-compose.override.yaml"}
-
-const (
-	ComposeProjectName   = "COMPOSE_PROJECT_NAME"
-	ComposePathSeparator = "COMPOSE_PATH_SEPARATOR"
-	ComposeFilePath      = "COMPOSE_FILE"
-)
 
 func (o ProjectOptions) GetWorkingDir() (string, error) {
 	if o.WorkingDir != "" {
@@ -338,17 +332,7 @@ func ProjectFromOptions(options *ProjectOptions) (*types.Project, error) {
 		return nil, err
 	}
 
-	var nameLoadOpt = func(opts *loader.Options) {
-		if options.Name != "" {
-			opts.Name = options.Name
-		} else if nameFromEnv, ok := options.Environment[ComposeProjectName]; ok && nameFromEnv != "" {
-			opts.Name = nameFromEnv
-		} else {
-			opts.Name = filepath.Base(absWorkingDir)
-		}
-		opts.Name = normalizeName(opts.Name)
-	}
-	options.loadOptions = append(options.loadOptions, nameLoadOpt)
+	options.loadOptions = append(options.loadOptions, withNamePrecedenceLoad(absWorkingDir, options))
 
 	project, err := loader.Load(types.ConfigDetails{
 		ConfigFiles: configs,
@@ -363,11 +347,16 @@ func ProjectFromOptions(options *ProjectOptions) (*types.Project, error) {
 	return project, nil
 }
 
-func normalizeName(s string) string {
-	r := regexp.MustCompile("[a-z0-9_-]")
-	s = strings.ToLower(s)
-	s = strings.Join(r.FindAllString(s, -1), "")
-	return strings.TrimLeft(s, "_-")
+func withNamePrecedenceLoad(absWorkingDir string, options *ProjectOptions) func(*loader.Options) {
+	return func(opts *loader.Options) {
+		if options.Name != "" {
+			opts.SetProjectName(options.Name, true)
+		} else if nameFromEnv, ok := options.Environment[consts.ComposeProjectName]; ok && nameFromEnv != "" {
+			opts.SetProjectName(nameFromEnv, true)
+		} else {
+			opts.SetProjectName(filepath.Base(absWorkingDir), false)
+		}
+	}
 }
 
 // getConfigPathsFromOptions retrieves the config files for project based on project options

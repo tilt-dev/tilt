@@ -26,6 +26,7 @@ import (
 
 var delimiter = "\\$"
 var substitutionNamed = "[_a-z][_a-z0-9]*"
+
 var substitutionBraced = "[_a-z][_a-z0-9]*(?::?[-?](.*}|[^}]*))?"
 
 var patternString = fmt.Sprintf(
@@ -60,15 +61,17 @@ type SubstituteFunc func(string, Mapping) (string, bool, error)
 // It accepts additional substitute function.
 func SubstituteWith(template string, mapping Mapping, pattern *regexp.Regexp, subsFuncs ...SubstituteFunc) (string, error) {
 	if len(subsFuncs) == 0 {
-		subsFuncs = []SubstituteFunc{
-			softDefault,
-			hardDefault,
-			requiredNonEmpty,
-			required,
-		}
+		subsFuncs = getDefaultSortedSubstitutionFunctions(template)
 	}
 	var err error
 	result := pattern.ReplaceAllStringFunc(template, func(substring string) string {
+		closingBraceIndex := getFirstBraceClosingIndex(substring)
+		rest := ""
+		if closingBraceIndex > -1 {
+			rest = substring[closingBraceIndex+1:]
+			substring = substring[0 : closingBraceIndex+1]
+		}
+
 		matches := pattern.FindStringSubmatch(substring)
 		groups := matchGroups(matches, pattern)
 		if escaped := groups["escaped"]; escaped != "" {
@@ -100,7 +103,11 @@ func SubstituteWith(template string, mapping Mapping, pattern *regexp.Regexp, su
 				if !applied {
 					continue
 				}
-				return value
+				interpolatedNested, err := SubstituteWith(rest, mapping, pattern, subsFuncs...)
+				if err != nil {
+					return ""
+				}
+				return value + interpolatedNested
 			}
 		}
 
@@ -112,6 +119,42 @@ func SubstituteWith(template string, mapping Mapping, pattern *regexp.Regexp, su
 	})
 
 	return result, err
+}
+
+func getDefaultSortedSubstitutionFunctions(template string, fns ...SubstituteFunc) []SubstituteFunc {
+	hyphenIndex := strings.IndexByte(template, '-')
+	questionIndex := strings.IndexByte(template, '?')
+	if hyphenIndex < 0 || hyphenIndex > questionIndex {
+		return []SubstituteFunc{
+			requiredNonEmpty,
+			required,
+			softDefault,
+			hardDefault,
+		}
+	}
+	return []SubstituteFunc{
+		softDefault,
+		hardDefault,
+		requiredNonEmpty,
+		required,
+	}
+}
+
+func getFirstBraceClosingIndex(s string) int {
+	openVariableBraces := 0
+	for i := 0; i < len(s); i++ {
+		if s[i] == '}' {
+			openVariableBraces--
+			if openVariableBraces == 0 {
+				return i
+			}
+		}
+		if strings.HasPrefix(s[i:], "${") {
+			openVariableBraces++
+			i++
+		}
+	}
+	return -1
 }
 
 // Substitute variables in the string with their values

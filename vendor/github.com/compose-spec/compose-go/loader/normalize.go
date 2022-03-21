@@ -79,7 +79,7 @@ func normalize(project *types.Project, resolvePaths bool) error {
 				if resolvePaths {
 					s.Build.Context = localContext
 				}
-			} else {
+				// } else {
 				// might be a remote http/git context. Unfortunately supported "remote" syntax is highly ambiguous
 				// in moby/moby and not defined by compose-spec, so let's assume runtime will check
 			}

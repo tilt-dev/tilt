@@ -1,3 +1,4 @@
+name: Full_Example_project_name
 services:
   foo:
 
@@ -84,6 +85,10 @@ services:
         preferences:
           - spread: node.labels.az
       endpoint_mode: dnsrr
+
+    device_cgroup_rules:
+      - "c 1:3 mr"
+      - "a 7:* rmw"
 
     devices:
       - "/dev/ttyUSB0:/dev/ttyUSB0"

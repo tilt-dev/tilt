@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/compose-spec/compose-go/types"
@@ -306,8 +307,11 @@ func dockerComposeConfigToService(projectName string, svcConfig types.ServiceCon
 
 	var publishedPorts []int
 	for _, portSpec := range svcConfig.Ports {
-		if portSpec.Published != 0 {
-			publishedPorts = append(publishedPorts, int(portSpec.Published))
+		// a published port can be a string range of ports (e.g. "80-90")
+		// this case is unusual and unsupported/ignored by Tilt for now
+		publishedPort, err := strconv.Atoi(portSpec.Published)
+		if err == nil && publishedPort != 0 {
+			publishedPorts = append(publishedPorts, publishedPort)
 		}
 	}
 

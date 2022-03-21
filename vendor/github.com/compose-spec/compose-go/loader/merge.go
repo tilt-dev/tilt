@@ -53,6 +53,7 @@ func merge(configs []*types.Config) (*types.Config, error) {
 	base := configs[0]
 	for _, override := range configs[1:] {
 		var err error
+		base.Name = mergeNames(base.Name, override.Name)
 		base.Services, err = mergeServices(base.Services, override.Services)
 		if err != nil {
 			return base, errors.Wrapf(err, "cannot merge services from %s", override.Filename)
@@ -79,6 +80,13 @@ func merge(configs []*types.Config) (*types.Config, error) {
 		}
 	}
 	return base, nil
+}
+
+func mergeNames(base, override string) string {
+	if override != "" {
+		return override
+	}
+	return base
 }
 
 func mergeServices(base, override []types.ServiceConfig) ([]types.ServiceConfig, error) {
@@ -154,7 +162,7 @@ func toServicePortConfigsMap(s interface{}) (map[interface{}]interface{}, error)
 	m := map[interface{}]interface{}{}
 	type port struct {
 		target    uint32
-		published uint32
+		published string
 		ip        string
 		protocol  string
 	}
@@ -291,7 +299,7 @@ func mergeLoggingConfig(dst, src reflect.Value) error {
 	return nil
 }
 
-//nolint: unparam
+// nolint: unparam
 func mergeUlimitsConfig(dst, src reflect.Value) error {
 	if src.Interface() != reflect.Zero(reflect.TypeOf(src.Interface())).Interface() {
 		dst.Elem().Set(src.Elem())
@@ -299,7 +307,7 @@ func mergeUlimitsConfig(dst, src reflect.Value) error {
 	return nil
 }
 
-//nolint: unparam
+// nolint: unparam
 func mergeServiceNetworkConfig(dst, src reflect.Value) error {
 	if src.Interface() != reflect.Zero(reflect.TypeOf(src.Interface())).Interface() {
 		dst.Elem().FieldByName("Aliases").Set(src.Elem().FieldByName("Aliases"))
