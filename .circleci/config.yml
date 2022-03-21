@@ -66,7 +66,7 @@ jobs:
     steps:
       - run: choco install make kustomize kubernetes-helm docker-compose mingw
       - run: choco upgrade -y --allow-downgrade golang --version=1.18.0
-      - run: go get -u gotest.tools/gotestsum
+      - run: go install gotest.tools/gotestsum@latest
       - checkout
       - run: iex ./scripts/install-dc2.ps1
       # Check to make sure Windows binaries compile
@@ -114,7 +114,7 @@ jobs:
     steps:
       - checkout
       - go/install:
-          version: "1.18.0"
+          version: "1.18"
       - run: curl -fsSL "https://github.com/gotestyourself/gotestsum/releases/download/v1.7.0/gotestsum_1.7.0_darwin_amd64.tar.gz" | sudo tar -xz -C /usr/local/bin gotestsum
       # We can't run the container tests on macos because nested
       # VMs don't work on circleci.
