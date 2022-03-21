@@ -36,6 +36,7 @@ RUN curl -fL "https://github.com/docker/compose/releases/download/${DOCKER_COMPO
   && chmod a+x /usr/local/bin/docker-compose-v1 \
   && docker-compose-v1 version
 
+# pinned to v2.2.2 until https://github.com/docker/compose/issues/9291 is fixed
 ARG DOCKER_COMPOSE_V2_VERSION=v2.2.2
 RUN curl -fL "https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_V2_VERSION}/docker-compose-$(uname -s | tr '[A-Z]' '[a-z]')-$(uname -m)" -o /usr/local/bin/docker-compose \
   && chmod a+x /usr/local/bin/docker-compose \
