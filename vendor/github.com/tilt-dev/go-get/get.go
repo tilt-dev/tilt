@@ -25,6 +25,7 @@ func init() {
 		os.Setenv("GIT_TERMINAL_PROMPT", "0")
 	}
 
+	// ISSUE 1
 	// Disable any ssh connection pooling by Git.
 	// If a Git subprocess forks a child into the background to cache a new connection,
 	// that child keeps stdout/stderr open. After the Git subprocess exits,
@@ -35,11 +36,22 @@ func init() {
 	// This is unfortunate, but it has come up at least twice
 	// (see golang.org/issue/13453 and golang.org/issue/16104)
 	// and confuses users when it does.
+	//
+	// ISSUE 2
+	// Do not attempt to prompt the user.
+	// If a Git subprocess blocks for user interaction for a question (e.g.
+	// accept host key, provide SSH keyfile passphrase), the download can hang
+	// indefinitely, as the prompt.
+	// Arguably, this should be configurable on the Downloader instance, but
+	// it suits our needs to _always_ run in non-interactive mode, so it's
+	// always applied, as this package isn't particularly amenable to making
+	// it conditional.
+	//
 	// If the user has explicitly set GIT_SSH or GIT_SSH_COMMAND,
 	// assume they know what they are doing and don't step on it.
-	// But default to turning off ControlMaster.
+	// But default to turning off ControlMaster and turning on BatchMode.
 	if os.Getenv("GIT_SSH") == "" && os.Getenv("GIT_SSH_COMMAND") == "" {
-		os.Setenv("GIT_SSH_COMMAND", "ssh -o ControlMaster=no")
+		os.Setenv("GIT_SSH_COMMAND", "ssh -o ControlMaster=no -o BatchMode=yes")
 	}
 }
 
