@@ -3,16 +3,16 @@ orbs:
   slack: circleci/slack@3.4.0
   shellcheck: circleci/shellcheck@2.2.2
   win: circleci/windows@2.2.0
-  gcp-cli: circleci/gcp-cli@1.8.3
+  gcp-cli: circleci/gcp-cli@2.4.0
   kubernetes: circleci/kubernetes@0.9.1
-  go: circleci/go@1.7.0
+  go: circleci/go@1.7.1
 jobs:
   build-linux:
     resource_class: medium+
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:668ac2e555f10d21c7cb8409c03746ae4e1f92848eca873329eac5244f621709
+      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:e3d61d517f1249cb6cf5269cd214a4078fc56e27b36a6d5291e0be2b6f11413b
     # apiserver code generation scripts require being in GOPATH
-    working_directory: /go/src/github.com/tilt-dev/tilt
+    working_directory: /home/circleci/go/src/github.com/tilt-dev/tilt
 
     steps:
       - checkout
@@ -50,11 +50,11 @@ jobs:
 
   publish-assets:
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:668ac2e555f10d21c7cb8409c03746ae4e1f92848eca873329eac5244f621709
+      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:e3d61d517f1249cb6cf5269cd214a4078fc56e27b36a6d5291e0be2b6f11413b
     steps:
       - checkout
-      - run: echo $GCLOUD_SERVICE_KEY > /tmp/gcloud-service-key.json
-      - run: gcloud auth activate-service-account --key-file=/tmp/gcloud-service-key.json
+      - gcp-cli/install
+      - gcp-cli/initialize
       - run: ./scripts/upload-assets.py $CIRCLE_SHA1
       - slack/notify-on-failure:
           only_for_branches: master
@@ -65,7 +65,7 @@ jobs:
       size: "large"
     steps:
       - run: choco install make kustomize kubernetes-helm docker-compose mingw
-      - run: choco upgrade -y --allow-downgrade golang --version=1.17.8
+      - run: choco upgrade -y --allow-downgrade golang --version=1.18.0
       - run: go get -u gotest.tools/gotestsum
       - checkout
       - run: iex ./scripts/install-dc2.ps1
@@ -83,7 +83,7 @@ jobs:
   build-integration:
     resource_class: medium+
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:4102b3ffa97dfe23ff2c7835e2a501be7f770afcc53342960929cfadc878a2c9
+      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:85c90cdfe0a6aab10e53023240902a844994b7fd9318445fa4bf0f38764f11e0
     steps:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
@@ -97,7 +97,7 @@ jobs:
 
   test-extensions:
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-extensions-ci@sha256:2d903e95370da8ec430cb80446d1ac3b6e5a04d6b6b00baa2bdfb99b5e528662
+      - image: gcr.io/windmill-public-containers/tilt-extensions-ci@sha256:13da9ee95199c128f18d0a472a73ed4808f673f6cb92d3b01932e9fa083a6a31
     steps:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
@@ -114,7 +114,7 @@ jobs:
     steps:
       - checkout
       - go/install:
-          version: "1.17.8"
+          version: "1.18.0"
       - run: curl -fsSL "https://github.com/gotestyourself/gotestsum/releases/download/v1.7.0/gotestsum_1.7.0_darwin_amd64.tar.gz" | sudo tar -xz -C /usr/local/bin gotestsum
       # We can't run the container tests on macos because nested
       # VMs don't work on circleci.
