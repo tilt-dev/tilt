@@ -280,7 +280,6 @@ export function GlobalNav(props: GlobalNavProps) {
         open={helpDialogOpen}
         anchorEl={helpDialogAnchor}
         onClose={() => toggleHelpDialog(AnalyticsAction.Close)}
-        isOverview={true}
       />
       <UpdateDialog
         open={updateDialogOpen}

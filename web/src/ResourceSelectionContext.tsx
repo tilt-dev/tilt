@@ -10,7 +10,7 @@ import {
  * The ResourceSelection state keeps track of what resources are selected for bulk actions to be performed on them.
  */
 
-type ResourceSelectionContext = {
+export type ResourceSelectionContext = {
   selected: Set<string>
   isSelected: (resourceName: string) => boolean
   select: (...resourceNames: string[]) => void

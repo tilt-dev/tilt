@@ -10,7 +10,6 @@ type props = {
   open: boolean
   onClose: () => void
   anchorEl: Element | null
-  isOverview: boolean
 }
 
 let ShortcutRow = styled.div`
@@ -126,16 +125,9 @@ export default function HelpDialog(props: props) {
         <ShortcutBox>Shift</ShortcutBox> + <ShortcutBox>1</ShortcutBox>,{" "}
         <ShortcutBox>2</ShortcutBox> …
       </Shortcut>
-      {props.isOverview ? null : (
-        <React.Fragment>
-          <Shortcut label="View Logs">
-            <ShortcutBox>1</ShortcutBox>
-          </Shortcut>
-          <Shortcut label="View Alerts">
-            <ShortcutBox>2</ShortcutBox>
-          </Shortcut>
-        </React.Fragment>
-      )}
+      <Shortcut label="Select Resource Row">
+        <ShortcutBox>x</ShortcutBox>
+      </Shortcut>
       <Shortcut label="Clear Logs">{cmdOrCtrlShortcut("Backspace")}</Shortcut>
       <Shortcut label="Make Snapshot">
         <ShortcutBox>s</ShortcutBox>
