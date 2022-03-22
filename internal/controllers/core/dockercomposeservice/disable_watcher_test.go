@@ -37,7 +37,7 @@ Going to remove servantes_fortune_1
 	f.clock.Advance(20 * disableDebounceDelay)
 	f.startTime = f.clock.Now()
 
-	require.NoError(t, f.log.WaitUntilContains("Stopping servantes", 20*time.Millisecond))
+	require.NoError(t, f.log.WaitUntilContains("Stopping servantes", time.Second))
 	expectedOutput := strings.Replace(f.dcClient.RmOutput, "Going to remove servantes_fortune_1\n", "", -1)
 	require.Equal(t, expectedOutput, f.log.String())
 }
@@ -84,10 +84,11 @@ func TestDockerComposeRetryIfStartTimeChanges(t *testing.T) {
 	f.updateQueue("m1", v1alpha1.DisableStateDisabled)
 	f.updateQueue("m2", v1alpha1.DisableStateEnabled)
 	require.Len(t, f.dcClient.RmCalls(), 0)
+	f.clock.BlockUntil(1)
 
 	f.updateQueue("m2", v1alpha1.DisableStateDisabled)
-
 	f.clock.BlockUntil(2)
+
 	f.clock.Advance(2 * disableDebounceDelay)
 
 	require.Eventually(t, func() bool {
@@ -113,7 +114,7 @@ func TestDockerComposeDontDisableIfReenabledDuringDebounce(t *testing.T) {
 	f.updateQueue("m1", v1alpha1.DisableStateDisabled)
 	f.updateQueue("m2", v1alpha1.DisableStateDisabled)
 
-	f.clock.BlockUntil(1)
+	f.clock.BlockUntil(2)
 
 	// reenable m2 during debounce
 	f.updateQueue("m2", v1alpha1.DisableStateEnabled)
