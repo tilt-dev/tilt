@@ -30,6 +30,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/tilt-dev/wmclient/pkg/analytics"
+
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/cloud"
 	"github.com/tilt-dev/tilt/internal/container"
@@ -108,7 +110,6 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
 	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
-	"github.com/tilt-dev/wmclient/pkg/analytics"
 )
 
 var originalWD string
@@ -3533,8 +3534,9 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	lur := liveupdate.NewFakeReconciler(st, cu, cdc)
 	dir := dockerimage.NewReconciler(cdc)
 	cir := cmdimage.NewReconciler(cdc)
-	clr := cluster.NewReconciler(ctx, cdc, st, docker.LocalEnv{}, clusterClients)
-	clr.SetFakeClientsForTesting(kClient, dockerClient)
+	clr := cluster.NewReconciler(ctx, cdc, st, clusterClients, docker.LocalEnv{},
+		cluster.FakeDockerClientOrError(dockerClient, nil),
+		cluster.FakeKubernetesClientOrError(kClient, nil))
 
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
 		fwc,

@@ -1,8 +1,8 @@
 package cluster
 
 import (
+	"errors"
 	"testing"
-	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
@@ -10,14 +10,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/tilt-dev/wmclient/pkg/analytics"
+
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
-	"github.com/tilt-dev/tilt/internal/timecmp"
+	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
-	"github.com/tilt-dev/wmclient/pkg/analytics"
 )
 
 func TestKubernetesError(t *testing.T) {
@@ -30,13 +31,10 @@ func TestKubernetesError(t *testing.T) {
 			},
 		},
 	}
+	nn := apis.Key(cluster)
 
-	// Create a fake client.
-	nn := types.NamespacedName{Name: "default"}
-	f.r.connManager.store(nn, connection{
-		spec:  cluster.Spec,
-		error: "connection error",
-	})
+	// Create a fake client factory that always returns an error
+	f.r.k8sClientFactory = FakeKubernetesClientOrError(nil, errors.New("connection error"))
 	f.Create(cluster)
 
 	assert.Equal(t, "", cluster.Status.Error)
@@ -58,10 +56,9 @@ func TestKubernetesArch(t *testing.T) {
 		},
 	}
 
-	// Create a fake client.
+	// Inject a Node into the fake client so that the arch can be determined.
 	nn := types.NamespacedName{Name: "default"}
-	client := k8s.NewFakeK8sClient(t)
-	client.Inject(k8s.K8sEntity{
+	f.k8sClient.Inject(k8s.K8sEntity{
 		Obj: &v1.Node{
 			TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "Node"},
 			ObjectMeta: metav1.ObjectMeta{
@@ -73,7 +70,6 @@ func TestKubernetesArch(t *testing.T) {
 			},
 		},
 	})
-	f.r.SetFakeClientsForTesting(client, nil)
 
 	f.Create(cluster)
 	f.MustGet(nn, cluster)
@@ -93,6 +89,27 @@ func TestKubernetesArch(t *testing.T) {
 	assert.ElementsMatch(t, []analytics.CountEvent{connectEvt}, f.ma.Counts)
 }
 
+func TestDockerError(t *testing.T) {
+	f := newFixture(t)
+	cluster := &v1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "default"},
+		Spec: v1alpha1.ClusterSpec{
+			Connection: &v1alpha1.ClusterConnection{
+				Docker: &v1alpha1.DockerClusterConnection{},
+			},
+		},
+	}
+	nn := apis.Key(cluster)
+
+	f.r.dockerClientFactory = FakeDockerClientOrError(nil, errors.New("fake docker error"))
+
+	f.Create(cluster)
+	f.MustGet(nn, cluster)
+	assert.Equal(t, "fake docker error", cluster.Status.Error)
+	assert.Nil(t, cluster.Status.ConnectedAt, "ConnectedAt should not be populated")
+	assert.Empty(t, cluster.Status.Arch, "no arch should be present")
+}
+
 func TestDockerArch(t *testing.T) {
 	f := newFixture(t)
 	cluster := &v1alpha1.Cluster{
@@ -104,36 +121,39 @@ func TestDockerArch(t *testing.T) {
 		},
 	}
 
-	// Create a fake client.
 	nn := types.NamespacedName{Name: "default"}
-	client := docker.NewFakeClient()
-	createdAt := time.Now()
-	f.r.connManager.store(nn, connection{
-		spec:         cluster.Spec,
-		dockerClient: client,
-		createdAt:    createdAt,
-	})
 	f.Create(cluster)
 	f.MustGet(nn, cluster)
 	assert.Equal(t, "amd64", cluster.Status.Arch)
-	timecmp.AssertTimeEqual(t, createdAt, cluster.Status.ConnectedAt)
+	if assert.NotNil(t, cluster.Status.ConnectedAt, "ConnectedAt should be populated") {
+		assert.NotZero(t, cluster.Status.ConnectedAt.Time, "ConnectedAt should not be zero")
+	}
 }
 
 type fixture struct {
 	*fake.ControllerFixture
-	r  *Reconciler
-	ma *analytics.MemoryAnalytics
+	r            *Reconciler
+	ma           *analytics.MemoryAnalytics
+	k8sClient    *k8s.FakeK8sClient
+	dockerClient *docker.FakeClient
 }
 
 func newFixture(t *testing.T) *fixture {
 	cfb := fake.NewControllerFixtureBuilder(t)
 	st := store.NewTestingStore()
 
-	r := NewReconciler(cfb.Context(), cfb.Client, st, docker.LocalEnv{}, NewConnectionManager())
+	k8sClient := k8s.NewFakeK8sClient(t)
+	dockerClient := docker.NewFakeClient()
+
+	r := NewReconciler(cfb.Context(), cfb.Client, st, NewConnectionManager(), docker.LocalEnv{},
+		FakeDockerClientOrError(dockerClient, nil),
+		FakeKubernetesClientOrError(k8sClient, nil))
 	return &fixture{
 		ControllerFixture: cfb.Build(r),
 		r:                 r,
 		ma:                cfb.Analytics(),
+		k8sClient:         k8sClient,
+		dockerClient:      dockerClient,
 	}
 }
 
