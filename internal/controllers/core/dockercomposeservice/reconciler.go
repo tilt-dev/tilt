@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	dtypes "github.com/docker/docker/api/types"
+	"github.com/docker/go-connections/nat"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -17,11 +18,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	"github.com/docker/go-connections/nat"
-
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/imagemap"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/trigger"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
@@ -57,6 +57,10 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
 		Watches(&source.Kind{Type: &v1alpha1.ConfigMap{}},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue))
+
+	trigger.SetupControllerRestartOn(b, r.indexer, func(obj ctrlclient.Object) *v1alpha1.RestartOnSpec {
+		return obj.(*v1alpha1.DockerComposeService).Spec.RestartOn
+	})
 
 	return b, nil
 }
@@ -133,8 +137,13 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 			return ctrl.Result{}, err
 		}
 
+		lastRestartEvent, _, _, err := trigger.LastRestartEvent(ctx, r.ctrlClient, obj.Spec.RestartOn)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
 		// Apply to the cluster if necessary.
-		if r.shouldDeployOnReconcile(request.NamespacedName, &obj, imageMaps) {
+		if r.shouldDeployOnReconcile(request.NamespacedName, &obj, imageMaps, &lastRestartEvent) {
 			// If we have no image dependencies in tilt, tell docker compose
 			// to handle any necessary image builds.
 			dcManagedBuild := len(imageMaps) == 0
@@ -163,6 +172,7 @@ func (r *Reconciler) shouldDeployOnReconcile(
 	nn types.NamespacedName,
 	obj *v1alpha1.DockerComposeService,
 	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap,
+	lastRestartEvent *metav1.MicroTime,
 ) bool {
 	if obj.Annotations[v1alpha1.AnnotationManagedBy] != "" {
 		// Until resource dependencies are expressed in the API,
@@ -190,6 +200,10 @@ func (r *Reconciler) shouldDeployOnReconcile(
 
 	if !apicmp.DeepEqual(obj.Spec, result.Spec) {
 		// The YAML to deploy changed.
+		return true
+	}
+
+	if result.Status.LastApplyStartTime.Before(lastRestartEvent) {
 		return true
 	}
 

@@ -6239,6 +6239,8 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 			}
 		case resourceLabelsHelper:
 			assert.Equal(f.t, opt.labels, m.Labels)
+		case envFilesHelper:
+			assert.Equal(f.t, opt.envFiles, m.DockerComposeTarget().EnvFiles)
 		default:
 			f.t.Fatalf("unexpected arg to assertNextManifest: %T %v", opt, opt)
 		}
@@ -6484,6 +6486,14 @@ func resourceLabels(labels ...string) resourceLabelsHelper {
 		ret.labels[l] = l
 	}
 	return ret
+}
+
+type envFilesHelper struct {
+	envFiles []string
+}
+
+func envFiles(fs ...string) envFilesHelper {
+	return envFilesHelper{envFiles: fs}
 }
 
 type imageHelper struct {

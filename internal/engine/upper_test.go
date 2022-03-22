@@ -2355,6 +2355,53 @@ func TestDockerComposeStartOnReenable(t *testing.T) {
 	f.waitForCompletedBuildCount(3)
 }
 
+func TestDockerComposeRestartsOnEnvFileChange(t *testing.T) {
+	f := newTestFixture(t)
+	f.useRealTiltfileLoader()
+	f.dcc.WorkDir = f.Path()
+	f.dcc.ConfigOutput = `
+version: '3'
+services:
+  foo:
+    build: .
+    env_file:
+      - a.env
+      - b.env
+`
+	f.WriteFile("a.env", "A=1")
+	f.WriteFile("b.env", "B=2")
+	f.WriteFile("Dockerfile", `
+FROM alpine
+ENTRYPOINT sleep 10000
+`)
+	f.WriteFile("Tiltfile", "docker_compose('docker-compose.yaml')")
+
+	f.b.nextDockerComposeContainerID = "aaaaaa"
+	containerState := docker.NewRunningContainerState()
+	f.b.nextDockerComposeContainerState = &containerState
+
+	f.loadAndStart()
+
+	require.Eventually(t, func() bool {
+		var dc v1alpha1.DockerComposeService
+		err := f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: "foo"}, &dc)
+		require.NoError(t, err)
+		return !dc.Status.LastApplyFinishTime.IsZero()
+	}, time.Second, time.Millisecond, "DC applied first time")
+
+	ts := metav1.NowMicro()
+	f.WriteFile("b.env", "A=3")
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("b.env"))
+
+	require.Eventually(t, func() bool {
+		var dc v1alpha1.DockerComposeService
+		err := f.ctrlClient.Get(f.ctx, types.NamespacedName{Name: "foo"}, &dc)
+		require.NoError(t, err)
+		applyTime := dc.Status.LastApplyStartTime
+		return ts.Before(&applyTime)
+	}, time.Second, time.Millisecond, "DC applied second time")
+}
+
 func TestEmptyTiltfile(t *testing.T) {
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()

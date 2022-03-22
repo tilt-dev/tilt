@@ -25,6 +25,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/feature"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/tiltfile"
+	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -402,6 +403,11 @@ func toDockerComposeServiceObjects(tlr *tiltfile.TiltfileLoadResult, disableSour
 				},
 			},
 			Spec: dcTarget.Spec,
+		}
+		if len(dcTarget.EnvFiles) > 0 {
+			obj.Spec.RestartOn = &v1alpha1.RestartOnSpec{
+				FileWatches: []string{apis.SanitizeName(string(dcTarget.Name))},
+			}
 		}
 		obj.Spec.DisableSource = disableSources[m.Name]
 		result[name] = obj

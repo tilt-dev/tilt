@@ -70,6 +70,11 @@ type DockerComposeServiceSpec struct {
 	//
 	// +optional
 	DisableSource *DisableSource `json:"disableSource,omitempty" protobuf:"bytes,4,opt,name=disableSource"`
+
+	// Indicates objects that can trigger a restart of this command.
+	//
+	// +optional
+	RestartOn *RestartOnSpec `json:"restartOn,omitempty" protobuf:"bytes,5,opt,name=restartOnSpec"`
 }
 
 var _ resource.Object = &DockerComposeService{}

@@ -1825,12 +1825,18 @@ func schema_pkg_apis_core_v1alpha1_DockerComposeServiceSpec(ref common.Reference
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource"),
 						},
 					},
+					"restartOn": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Indicates objects that can trigger a restart of this command.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec"),
+						},
+					},
 				},
 				Required: []string{"service", "project"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeProject"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeProject", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec"},
 	}
 }
 

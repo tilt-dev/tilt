@@ -905,6 +905,31 @@ func TestDockerComposeVersionWarnings(t *testing.T) {
 	}
 }
 
+// https://docs.docker.com/compose/compose-file/compose-file-v3/#env_file
+// "If you have specified a Compose file with docker-compose -f FILE, paths in env_file are relative to the directory that file is in."
+func TestServiceEnvFilesRelativeToComposeFile(t *testing.T) {
+	f := newFixture(t)
+
+	f.dockerfile("foo/Dockerfile")
+	f.file("foo/docker-compose.yml", `
+version: '3'
+services:
+  foo:
+    build: .
+    command: sleep 100
+    env_file:
+    - a.env
+    - b.env
+`)
+	f.file("Tiltfile", "docker_compose('foo/docker-compose.yml')")
+	f.file("foo/a.env", "A=1")
+	f.file("foo/b.env", "B=1")
+
+	f.load("foo")
+	f.assertNumManifests(1)
+	f.assertNextManifest("foo", envFiles(f.JoinPaths([]string{"foo/a.env", "foo/b.env"})...))
+}
+
 func (f *fixture) assertDcManifest(name model.ManifestName, opts ...interface{}) model.Manifest {
 	f.t.Helper()
 	m := f.assertNextManifest(name)

@@ -272,6 +272,8 @@ type dcService struct {
 	PublishedPorts []int
 
 	Options *dcResourceOptions
+
+	EnvFiles []string
 }
 
 // Options set via dc_resource
@@ -299,7 +301,7 @@ func (svc dcService) ImageRef() reference.Named {
 	return svc.imageRefFromConfig
 }
 
-func dockerComposeConfigToService(projectName string, svcConfig types.ServiceConfig) (dcService, error) {
+func dockerComposeConfigToService(projectName string, projectWorkingDir string, svcConfig types.ServiceConfig) (dcService, error) {
 	var mountedLocalDirs []string
 	for _, v := range svcConfig.Volumes {
 		mountedLocalDirs = append(mountedLocalDirs, v.Source)
@@ -333,6 +335,13 @@ func dockerComposeConfigToService(projectName string, svcConfig types.ServiceCon
 		return dcService{}, fmt.Errorf("Error parsing image name %q: %v", imageName, err)
 	}
 
+	var envFiles []string
+	for _, ef := range svcConfig.EnvFile {
+		// https://docs.docker.com/compose/compose-file/compose-file-v3/#env_file
+		// "If you have specified a Compose file with docker-compose -f FILE, paths in env_file are relative to the directory that file is in."
+		envFiles = append(envFiles, filepath.Join(projectWorkingDir, ef))
+	}
+
 	svc := dcService{
 		Name:               svcConfig.Name,
 		ServiceConfig:      svcConfig,
@@ -340,6 +349,7 @@ func dockerComposeConfigToService(projectName string, svcConfig types.ServiceCon
 		ServiceYAML:        rawConfig,
 		PublishedPorts:     publishedPorts,
 		imageRefFromConfig: imageRef,
+		EnvFiles:           envFiles,
 	}
 
 	return svc, nil
@@ -353,7 +363,7 @@ func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, s
 
 	var services []*dcService
 	err = proj.WithServices(proj.ServiceNames(), func(svcConfig types.ServiceConfig) error {
-		svc, err := dockerComposeConfigToService(proj.Name, svcConfig)
+		svc, err := dockerComposeConfigToService(proj.Name, proj.WorkingDir, svcConfig)
 		if err != nil {
 			return errors.Wrapf(err, "getting service %s", svcConfig.Name)
 		}
@@ -382,6 +392,7 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResource
 		ServiceYAML:      string(service.ServiceYAML),
 		Links:            options.Links,
 		LocalVolumePaths: service.MountedLocalDirs,
+		EnvFiles:         service.EnvFiles,
 	}.WithImageMapDeps(model.FilterLiveUpdateOnly(service.ImageMapDeps, iTargets)).
 		WithPublishedPorts(service.PublishedPorts)
 

@@ -908,6 +908,11 @@ func (in *DockerComposeServiceSpec) DeepCopyInto(out *DockerComposeServiceSpec) 
 		*out = new(DisableSource)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.RestartOn != nil {
+		in, out := &in.RestartOn, &out.RestartOn
+		*out = new(RestartOnSpec)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 

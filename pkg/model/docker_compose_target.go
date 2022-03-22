@@ -22,6 +22,29 @@ type DockerComposeTarget struct {
 	// 	ImageTarget, but there are potential edge cases here (e.g. same image used across multiple services with
 	// 	different volume mounts in each case)
 	LocalVolumePaths []string
+
+	EnvFiles []string
+}
+
+// Part of the WatchableTarget interface.
+func (t DockerComposeTarget) LocalRepos() []LocalGitRepo {
+	return nil
+}
+
+// Part of the WatchableTarget interface.
+func (t DockerComposeTarget) Dockerignores() []Dockerignore {
+	return nil
+}
+
+// Part of the WatchableTarget interface.
+func (t DockerComposeTarget) IgnoredLocalDirectories() []string {
+	return nil
+}
+
+// Part of the WatchableTarget interface.
+func (t DockerComposeTarget) Dependencies() []string {
+	// sorting/de-duping guaranteed by setter
+	return t.EnvFiles
 }
 
 // TODO(nick): This is a temporary hack until we figure out how we want

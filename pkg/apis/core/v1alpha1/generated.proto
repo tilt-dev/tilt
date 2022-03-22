@@ -627,6 +627,11 @@ message DockerComposeServiceSpec {
   //
   // +optional
   optional DisableSource disableSource = 4;
+
+  // Indicates objects that can trigger a restart of this command.
+  //
+  // +optional
+  optional RestartOnSpec restartOnSpec = 5;
 }
 
 // DockerComposeServiceStatus defines the observed state of DockerComposeService,
