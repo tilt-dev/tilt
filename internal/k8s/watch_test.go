@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"k8s.io/client-go/rest"
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
@@ -362,10 +363,15 @@ func TestSupportsPartialMeta(t *testing.T) {
 
 type fakeDiscovery struct {
 	*difake.FakeDiscovery
+	restClient rest.Interface
 }
 
 func (fakeDiscovery) Fresh() bool { return true }
 func (fakeDiscovery) Invalidate() {}
+
+func (f fakeDiscovery) RESTClient() rest.Interface {
+	return f.restClient
+}
 
 type watchTestFixture struct {
 	t    *testing.T
