@@ -109,10 +109,8 @@ func (r *luDCResource) visitSelectedContainers(
 	cID := r.res.Status.ContainerID
 	state := r.res.Status.ContainerState
 	if cID != "" && state != nil {
-		// In DockerCompose, we treat every container as a single-container pod.
-		pod := v1alpha1.Pod{
-			Name: cID,
-		}
+		// In DockerCompose, we leave the pod empty.
+		pod := v1alpha1.Pod{}
 		var waiting *v1alpha1.ContainerStateWaiting
 		var running *v1alpha1.ContainerStateRunning
 		var terminated *v1alpha1.ContainerStateTerminated
@@ -135,8 +133,9 @@ func (r *luDCResource) visitSelectedContainers(
 				FinishedAt: apis.NewTime(state.FinishedAt.Time),
 			}
 		}
+		cName := r.res.Status.ContainerName
 		c := v1alpha1.Container{
-			Name: cID,
+			Name: cName,
 			ID:   cID,
 			State: v1alpha1.ContainerState{
 				Waiting:    waiting,

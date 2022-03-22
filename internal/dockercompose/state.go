@@ -133,9 +133,10 @@ func ToContainerState(state *types.ContainerState) *v1alpha1.DockerContainerStat
 }
 
 // Convert a full into an apiserver-compatible status model.
-func ToServiceStatus(id container.ID, state *types.ContainerState, ports nat.PortMap) v1alpha1.DockerComposeServiceStatus {
+func ToServiceStatus(id container.ID, name string, state *types.ContainerState, ports nat.PortMap) v1alpha1.DockerComposeServiceStatus {
 	status := v1alpha1.DockerComposeServiceStatus{}
 	status.ContainerID = string(id)
+	status.ContainerName = name
 	status.ContainerState = ToContainerState(state)
 
 	for containerPort, bindings := range ports {
