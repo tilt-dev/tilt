@@ -769,12 +769,15 @@ export function TableGroupedByLabels({
     [resources, buttons]
   )
 
-  const totalOrder = []
-  data.labels.forEach((label) =>
-    totalOrder.push(...enabledRowsFirst(data.labelsToResources[label]))
-  )
-  totalOrder.push(...enabledRowsFirst(data.unlabeled))
-  totalOrder.push(...enabledRowsFirst(data.tiltfile))
+  const totalOrder = useMemo(() => {
+    let totalOrder = []
+    data.labels.forEach((label) =>
+      totalOrder.push(...enabledRowsFirst(data.labelsToResources[label]))
+    )
+    totalOrder.push(...enabledRowsFirst(data.unlabeled))
+    totalOrder.push(...enabledRowsFirst(data.tiltfile))
+    return totalOrder
+  }, [data])
   let [focused, setFocused] = useState("")
 
   const columns = getTableColumns(features)
@@ -843,7 +846,7 @@ export function TableWithoutGroups({ resources, buttons }: TableWrapperProps) {
   }, [resources, buttons])
   const columns = getTableColumns(features)
 
-  let totalOrder = enabledRowsFirst(data)
+  let totalOrder = useMemo(() => enabledRowsFirst(data), [data])
   let [focused, setFocused] = useState("")
 
   if (resources?.length === 0) {

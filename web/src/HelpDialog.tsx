@@ -125,7 +125,7 @@ export default function HelpDialog(props: props) {
         <ShortcutBox>Shift</ShortcutBox> + <ShortcutBox>1</ShortcutBox>,{" "}
         <ShortcutBox>2</ShortcutBox> …
       </Shortcut>
-      <Shortcut label="Select Table Row">
+      <Shortcut label="Select Resource Row">
         <ShortcutBox>x</ShortcutBox>
       </Shortcut>
       <Shortcut label="Clear Logs">{cmdOrCtrlShortcut("Backspace")}</Shortcut>

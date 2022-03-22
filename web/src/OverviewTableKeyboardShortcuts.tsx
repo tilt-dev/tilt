@@ -56,7 +56,7 @@ class Shortcuts extends Component<Props> {
           return
         }
         let item = items.find((item) => item.name == focused)
-        if (item) {
+        if (item && item.selectable) {
           let selection = this.props.selection
           if (selection.isSelected(item.name)) {
             this.props.selection.deselect(item.name)
