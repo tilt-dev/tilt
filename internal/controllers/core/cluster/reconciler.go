@@ -72,9 +72,13 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	var obj v1alpha1.Cluster
 	err := r.ctrlClient.Get(ctx, nn, &obj)
 	if err != nil && !apierrors.IsNotFound(err) {
+		return ctrl.Result{}, err
+	}
+
+	if apierrors.IsNotFound(err) || !obj.ObjectMeta.DeletionTimestamp.IsZero() {
 		r.store.Dispatch(clusters.NewClusterDeleteAction(request.Name))
 		r.connManager.delete(nn)
-		return ctrl.Result{}, err
+		return ctrl.Result{}, nil
 	}
 
 	// The apiserver is the source of truth, and will ensure the engine state is up to date.
