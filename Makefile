@@ -103,6 +103,7 @@ check-js:
 build-js:
 	cd web && yarn install --frozen-lockfile
 	cd web && yarn build
+	cp -r web/build/* pkg/assets/build
 
 test-js:
 	cd web && yarn install --frozen-lockfile

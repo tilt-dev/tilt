@@ -51,7 +51,7 @@ func handleRoutingURLs(handler http.Handler, index []byte) http.HandlerFunc {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.Header().Set("Content-Length", strconv.Itoa(len(index)))
 			w.WriteHeader(200)
-			w.Write(index)
+			_, _ = w.Write(index)
 		} else {
 			handler.ServeHTTP(w, req)
 		}
