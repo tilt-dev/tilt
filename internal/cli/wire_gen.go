@@ -17,6 +17,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
 	client2 "github.com/tilt-dev/tilt/internal/cli/client"
@@ -101,7 +102,7 @@ func wireTiltfileResult(ctx context.Context, analytics2 *analytics.TiltAnalytics
 	if err != nil {
 		return cmdTiltfileResultDeps{}, err
 	}
-	env := k8s.ProvideEnv(ctx, apiConfig)
+	env := k8s.ProvideClusterProduct(ctx, apiConfig)
 	plugin := k8scontext.NewPlugin(kubeContext, env)
 	tiltBuild := provideTiltInfo()
 	versionPlugin := version.NewPlugin(tiltBuild)
@@ -155,7 +156,7 @@ func wireDockerPrune(ctx context.Context, analytics2 *analytics.TiltAnalytics, s
 	if err != nil {
 		return dpDeps{}, err
 	}
-	env := k8s.ProvideEnv(ctx, apiConfig)
+	env := k8s.ProvideClusterProduct(ctx, apiConfig)
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
@@ -277,7 +278,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
-	k8sEnv := k8s.ProvideEnv(ctx, apiConfig)
+	k8sEnv := k8s.ProvideClusterProduct(ctx, apiConfig)
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
@@ -490,7 +491,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
-	k8sEnv := k8s.ProvideEnv(ctx, apiConfig)
+	k8sEnv := k8s.ProvideClusterProduct(ctx, apiConfig)
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
@@ -699,7 +700,7 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	if err != nil {
 		return CmdUpdogDeps{}, err
 	}
-	k8sEnv := k8s.ProvideEnv(ctx, apiConfig)
+	k8sEnv := k8s.ProvideClusterProduct(ctx, apiConfig)
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
@@ -818,7 +819,7 @@ func wireKubeConfig(ctx context.Context) (*api.Config, error) {
 	return apiConfig, nil
 }
 
-func wireEnv(ctx context.Context) (k8s.Env, error) {
+func wireEnv(ctx context.Context) (clusterid.Product, error) {
 	k8sKubeContextOverride := ProvideKubeContextOverride()
 	k8sNamespaceOverride := ProvideNamespaceOverride()
 	clientConfig := k8s.ProvideClientConfig(k8sKubeContextOverride, k8sNamespaceOverride)
@@ -826,7 +827,7 @@ func wireEnv(ctx context.Context) (k8s.Env, error) {
 	if err != nil {
 		return "", err
 	}
-	env := k8s.ProvideEnv(ctx, apiConfig)
+	env := k8s.ProvideClusterProduct(ctx, apiConfig)
 	return env, nil
 }
 
@@ -858,7 +859,7 @@ func wireRuntime(ctx context.Context) (container.Runtime, error) {
 	if err != nil {
 		return "", err
 	}
-	env := k8s.ProvideEnv(ctx, apiConfig)
+	env := k8s.ProvideClusterProduct(ctx, apiConfig)
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
@@ -881,7 +882,7 @@ func wireK8sClient(ctx context.Context) (k8s.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	env := k8s.ProvideEnv(ctx, apiConfig)
+	env := k8s.ProvideClusterProduct(ctx, apiConfig)
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
@@ -920,7 +921,7 @@ func wireDockerClusterClient(ctx context.Context) (docker.ClusterClient, error) 
 	if err != nil {
 		return nil, err
 	}
-	env := k8s.ProvideEnv(ctx, apiConfig)
+	env := k8s.ProvideClusterProduct(ctx, apiConfig)
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
@@ -950,7 +951,7 @@ func wireDockerLocalClient(ctx context.Context) (docker.LocalClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	env := k8s.ProvideEnv(ctx, apiConfig)
+	env := k8s.ProvideClusterProduct(ctx, apiConfig)
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
@@ -976,7 +977,7 @@ func wireDockerCompositeClient(ctx context.Context) (docker.CompositeClient, err
 	if err != nil {
 		return nil, err
 	}
-	env := k8s.ProvideEnv(ctx, apiConfig)
+	env := k8s.ProvideClusterProduct(ctx, apiConfig)
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
@@ -1007,7 +1008,7 @@ func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, s
 	if err != nil {
 		return DownDeps{}, err
 	}
-	env := k8s.ProvideEnv(ctx, apiConfig)
+	env := k8s.ProvideClusterProduct(ctx, apiConfig)
 	plugin := k8scontext.NewPlugin(kubeContext, env)
 	tiltBuild := provideTiltInfo()
 	versionPlugin := version.NewPlugin(tiltBuild)
@@ -1069,7 +1070,7 @@ func wireDumpImageDeployRefDeps(ctx context.Context) (DumpImageDeployRefDeps, er
 	if err != nil {
 		return DumpImageDeployRefDeps{}, err
 	}
-	env := k8s.ProvideEnv(ctx, apiConfig)
+	env := k8s.ProvideClusterProduct(ctx, apiConfig)
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
@@ -1122,7 +1123,7 @@ func wireClientGetter(ctx context.Context) (*client2.Getter, error) {
 
 // wire.go:
 
-var K8sWireSet = wire.NewSet(k8s.ProvideEnv, k8s.ProvideClusterName, k8s.ProvideKubeContext, k8s.ProvideKubeConfig, k8s.ProvideClientConfig, k8s.ProvideClientset, k8s.ProvideRESTConfig, k8s.ProvidePortForwardClient, k8s.ProvideConfigNamespace, k8s.ProvideContainerRuntime, k8s.ProvideServerVersion, k8s.ProvideK8sClient, ProvideKubeContextOverride,
+var K8sWireSet = wire.NewSet(k8s.ProvideClusterProduct, k8s.ProvideClusterName, k8s.ProvideKubeContext, k8s.ProvideKubeConfig, k8s.ProvideClientConfig, k8s.ProvideClientset, k8s.ProvideRESTConfig, k8s.ProvidePortForwardClient, k8s.ProvideConfigNamespace, k8s.ProvideContainerRuntime, k8s.ProvideServerVersion, k8s.ProvideK8sClient, ProvideKubeContextOverride,
 	ProvideNamespaceOverride)
 
 var BaseWireSet = wire.NewSet(

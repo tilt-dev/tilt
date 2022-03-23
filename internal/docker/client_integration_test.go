@@ -10,6 +10,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tilt-dev/clusterid"
 	wmcontainer "github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/testutils"
@@ -17,7 +18,7 @@ import (
 
 func TestCli_Run(t *testing.T) {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
-	dEnv := ProvideClusterEnv(ctx, "gke", k8s.EnvGKE, wmcontainer.RuntimeDocker, k8s.FakeMinikube{})
+	dEnv := ProvideClusterEnv(ctx, "gke", clusterid.ProductGKE, wmcontainer.RuntimeDocker, k8s.FakeMinikube{})
 	cli := NewDockerClient(ctx, Env(dEnv))
 	defer func() {
 		// release any idle connections to avoid out of file errors if running test many times

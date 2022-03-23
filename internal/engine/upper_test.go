@@ -30,8 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/tilt-dev/wmclient/pkg/analytics"
-
+	"github.com/tilt-dev/clusterid"
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/cloud"
 	"github.com/tilt-dev/tilt/internal/container"
@@ -110,6 +109,7 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
 	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
+	"github.com/tilt-dev/wmclient/pkg/analytics"
 )
 
 var originalWD string
@@ -3460,7 +3460,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	}
 
 	clock := clockwork.NewRealClock()
-	env := k8s.EnvDockerDesktop
+	env := clusterid.ProductDockerDesktop
 	podSource := podlogstream.NewPodSource(ctx, kClient, v1alpha1.NewScheme(), clock)
 	plsc := podlogstream.NewController(ctx, cdc, sch, st, kClient, podSource, clock)
 	au := engineanalytics.NewAnalyticsUpdater(ta, engineanalytics.CmdTags{}, engineMode)

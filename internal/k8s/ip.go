@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
@@ -12,12 +13,12 @@ type NodeIP string
 
 type nodeIPAsync struct {
 	mkClient MinikubeClient
-	env      Env
+	env      clusterid.Product
 	once     sync.Once
 	nodeIP   NodeIP
 }
 
-func newNodeIPAsync(env Env, mkClient MinikubeClient) *nodeIPAsync {
+func newNodeIPAsync(env clusterid.Product, mkClient MinikubeClient) *nodeIPAsync {
 	return &nodeIPAsync{
 		env:      env,
 		mkClient: mkClient,
@@ -25,7 +26,7 @@ func newNodeIPAsync(env Env, mkClient MinikubeClient) *nodeIPAsync {
 }
 
 func (a *nodeIPAsync) detectNodeIP(ctx context.Context) NodeIP {
-	if a.env != EnvMinikube {
+	if a.env != clusterid.ProductMinikube {
 		return ""
 	}
 	nodeIP, err := a.mkClient.NodeIP(ctx)

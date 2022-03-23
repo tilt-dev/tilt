@@ -8,9 +8,9 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
-	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -111,7 +111,7 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 }
 
 func DefaultBuildOrder(lubad *buildcontrol.LiveUpdateBuildAndDeployer, ibad *buildcontrol.ImageBuildAndDeployer, dcbad *buildcontrol.DockerComposeBuildAndDeployer,
-	ltbad *buildcontrol.LocalTargetBuildAndDeployer, updMode liveupdates.UpdateMode, env k8s.Env, runtime container.Runtime) BuildOrder {
+	ltbad *buildcontrol.LocalTargetBuildAndDeployer, updMode liveupdates.UpdateMode, env clusterid.Product, runtime container.Runtime) BuildOrder {
 	if updMode == liveupdates.UpdateModeImage {
 		return BuildOrder{dcbad, ibad, ltbad}
 	}

@@ -20,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/tilt-dev/clusterid"
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
@@ -4117,16 +4118,15 @@ func TestK8SContextAcceptance(t *testing.T) {
 	for _, test := range []struct {
 		name                    string
 		contextName             k8s.KubeContext
-		env                     k8s.Env
+		env                     clusterid.Product
 		expectError             bool
 		expectedErrorSubstrings []string
 	}{
-		{"minikube", "minikube", k8s.EnvMinikube, false, nil},
-		{"docker-for-desktop", "docker-for-desktop", k8s.EnvDockerDesktop, false, nil},
-		{"kind", "KIND", k8s.EnvKIND6, false, nil},
-		{"kind", "KIND", k8s.EnvKIND5, false, nil},
-		{"gke", "gke", k8s.EnvGKE, true, []string{"'gke'", "If you're sure", "switch k8s contexts", "allow_k8s_contexts"}},
-		{"allowed", "allowed-context", k8s.EnvGKE, false, nil},
+		{"minikube", "minikube", clusterid.ProductMinikube, false, nil},
+		{"docker-for-desktop", "docker-for-desktop", clusterid.ProductDockerDesktop, false, nil},
+		{"kind", "KIND", clusterid.ProductKIND, false, nil},
+		{"gke", "gke", clusterid.ProductGKE, true, []string{"'gke'", "If you're sure", "switch k8s contexts", "allow_k8s_contexts"}},
+		{"allowed", "allowed-context", clusterid.ProductGKE, false, nil},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			f := newFixture(t)
@@ -4163,7 +4163,7 @@ allow_k8s_contexts("allowed-context")
 	f.setupFoo()
 
 	f.k8sContext = "gke"
-	f.k8sEnv = k8s.EnvGKE
+	f.k8sEnv = clusterid.ProductGKE
 
 	f.loadErrString("If you're sure", "switch k8s contexts", "allow_k8s_contexts")
 }
@@ -4172,13 +4172,13 @@ func TestLocalObeysAllowedK8sContexts(t *testing.T) {
 	for _, test := range []struct {
 		name                    string
 		contextName             k8s.KubeContext
-		env                     k8s.Env
+		env                     clusterid.Product
 		expectError             bool
 		expectedErrorSubstrings []string
 	}{
-		{"gke", "gke", k8s.EnvGKE, true, []string{"'gke'", "If you're sure", "switch k8s contexts", "allow_k8s_contexts"}},
-		{"allowed", "allowed-context", k8s.EnvGKE, false, nil},
-		{"docker-compose", "unknown", k8s.EnvNone, false, nil},
+		{"gke", "gke", clusterid.ProductGKE, true, []string{"'gke'", "If you're sure", "switch k8s contexts", "allow_k8s_contexts"}},
+		{"allowed", "allowed-context", clusterid.ProductGKE, false, nil},
+		{"docker-compose", "unknown", k8s.ProductNone, false, nil},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			f := newFixture(t)
@@ -5698,7 +5698,7 @@ type fixture struct {
 	t   *testing.T
 	*tempdir.TempDirFixture
 	k8sContext k8s.KubeContext
-	k8sEnv     k8s.Env
+	k8sEnv     clusterid.Product
 	webHost    model.WebHost
 	ctrlclient ctrlclient.Client
 
@@ -5747,7 +5747,7 @@ func newFixture(t *testing.T) *fixture {
 		an:             ma,
 		ta:             ta,
 		k8sContext:     "fake-context",
-		k8sEnv:         k8s.EnvDockerDesktop,
+		k8sEnv:         clusterid.ProductDockerDesktop,
 		ctrlclient:     ctrlclient,
 		features:       features,
 	}

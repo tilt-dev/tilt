@@ -10,18 +10,15 @@ import (
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/util/exec"
 
-	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
-	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
-	"github.com/tilt-dev/tilt/internal/store/liveupdates"
-
-	"github.com/tilt-dev/tilt/internal/docker"
-
-	"github.com/tilt-dev/tilt/internal/store"
-
-	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
-
+	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/liveupdates"
+	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -178,7 +175,7 @@ func runTestCase(t *testing.T, f *bdFixture, tCase testCase) {
 }
 
 func TestLiveUpdateDockerBuildLocalContainer(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
+	f := newBDFixture(t, clusterid.ProductDockerDesktop, container.RuntimeDocker)
 
 	m := manifestbuilder.New(f, "sancho").
 		WithK8sYAML(SanchoYAML).
@@ -198,7 +195,7 @@ func TestLiveUpdateDockerBuildLocalContainer(t *testing.T) {
 }
 
 func TestLiveUpdateDockerBuildLocalContainerSameImgMultipleContainers(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
+	f := newBDFixture(t, clusterid.ProductDockerDesktop, container.RuntimeDocker)
 
 	m := manifestbuilder.New(f, "sancho").
 		WithK8sYAML(SanchoYAML).
@@ -222,7 +219,7 @@ func TestLiveUpdateDockerBuildLocalContainerSameImgMultipleContainers(t *testing
 }
 
 func TestLiveUpdateDockerBuildExecSameImgMultipleContainers(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeCrio)
+	f := newBDFixture(t, clusterid.ProductGKE, container.RuntimeCrio)
 
 	iTarg := NewSanchoDockerBuildImageTarget(f)
 	lu := assembleLiveUpdate(SanchoSyncSteps(f), nil, false, []string{"i/match/nothing"}, f)
@@ -246,7 +243,7 @@ func TestLiveUpdateDockerBuildExecSameImgMultipleContainers(t *testing.T) {
 }
 
 func TestLiveUpdateDockerBuildLocalContainerDiffImgMultipleContainers(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
+	f := newBDFixture(t, clusterid.ProductDockerDesktop, container.RuntimeDocker)
 
 	sanchoTarg := NewSanchoLiveUpdateImageTarget(f)
 	sidecarTarg := NewSanchoSidecarLiveUpdateImageTarget(f)
@@ -273,7 +270,7 @@ func TestLiveUpdateDockerBuildLocalContainerDiffImgMultipleContainers(t *testing
 }
 
 func TestLiveUpdateDockerBuildExecDiffImgMultipleContainers(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeCrio)
+	f := newBDFixture(t, clusterid.ProductGKE, container.RuntimeCrio)
 
 	sanchoLU := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, false, nil, f)
 	sidecarLU := assembleLiveUpdate(SyncStepsForApp("sidecar", f), RunStepsForApp("sidecar"),
@@ -303,7 +300,7 @@ func TestLiveUpdateDockerBuildExecDiffImgMultipleContainers(t *testing.T) {
 }
 
 func TestLiveUpdateDiffImgMultipleContainersOnlySomeSyncsMatch(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeCrio)
+	f := newBDFixture(t, clusterid.ProductGKE, container.RuntimeCrio)
 
 	sanchoPath := f.JoinPath("sancho")
 	sanchoSyncs := SanchoSyncSteps(f)
@@ -352,7 +349,7 @@ func TestLiveUpdateDiffImgMultipleContainersOnlySomeSyncsMatch(t *testing.T) {
 }
 
 func TestLiveUpdateDiffImgMultipleContainersSameContextOnlyOneLiveUpdate(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeCrio)
+	f := newBDFixture(t, clusterid.ProductGKE, container.RuntimeCrio)
 
 	buildContext := f.Path()
 	sanchoSyncs := SanchoSyncSteps(f)
@@ -390,7 +387,7 @@ func TestLiveUpdateDiffImgMultipleContainersSameContextOnlyOneLiveUpdate(t *test
 }
 
 func TestLiveUpdateDiffImgMultipleContainersFallBackIfFilesDoesntMatchAnySyncs(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeCrio)
+	f := newBDFixture(t, clusterid.ProductGKE, container.RuntimeCrio)
 
 	sanchoSyncs := SanchoSyncSteps(f)
 	sanchoSyncs[0].LocalPath = f.JoinPath("sancho")
@@ -433,7 +430,7 @@ func TestLiveUpdateDiffImgMultipleContainersFallBackIfFilesDoesntMatchAnySyncs(t
 }
 
 func TestLiveUpdateDockerContainerUserRunFailureDoesntFallBack(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
+	f := newBDFixture(t, clusterid.ProductDockerDesktop, container.RuntimeDocker)
 
 	m := manifestbuilder.New(f, "sancho").
 		WithK8sYAML(SanchoYAML).
@@ -463,7 +460,7 @@ func TestLiveUpdateDockerContainerUserRunFailureDoesntFallBack(t *testing.T) {
 }
 
 func TestLiveUpdateExecUserRunFailureDoesntFallBack(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeCrio)
+	f := newBDFixture(t, clusterid.ProductDockerDesktop, container.RuntimeCrio)
 
 	f.k8s.ExecErrors = []error{nil, userFailureErrExec}
 
@@ -493,7 +490,7 @@ func TestLiveUpdateExecUserRunFailureDoesntFallBack(t *testing.T) {
 
 // If any container updates fail with a non-UserRunFailure, fall back to image build.
 func TestLiveUpdateMultipleContainersFallsBackForFailure(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
+	f := newBDFixture(t, clusterid.ProductDockerDesktop, container.RuntimeDocker)
 
 	f.docker.SetExecError(fmt.Errorf("egads"))
 
@@ -522,7 +519,7 @@ func TestLiveUpdateMultipleContainersFallsBackForFailure(t *testing.T) {
 // Even if the first container update succeeds, if any subsequent container updates
 // fail with a non-UserRunFailure, fall back to image build.
 func TestLiveUpdateMultipleContainersFallsBackForFailureAfterSuccess(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
+	f := newBDFixture(t, clusterid.ProductDockerDesktop, container.RuntimeDocker)
 
 	// First call = no error, second call = error
 	f.docker.ExecErrorsToThrow = []error{nil, fmt.Errorf("egads")}
@@ -554,7 +551,7 @@ func TestLiveUpdateMultipleContainersFallsBackForFailureAfterSuccess(t *testing.
 // If one container update fails with UserRunFailure, continue running updates on
 // all containers. If ALL the updates fail with a UserRunFailure, don't fall back.
 func TestLiveUpdateMultipleContainersUpdatesAllForUserRunFailuresAndDoesntFallBack(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
+	f := newBDFixture(t, clusterid.ProductDockerDesktop, container.RuntimeDocker)
 
 	// Same UserRunFailure on all three exec calls
 	f.docker.ExecErrorsToThrow = []error{userFailureErrDocker, userFailureErrDocker, userFailureErrDocker}
@@ -591,7 +588,7 @@ func TestLiveUpdateMultipleContainersUpdatesAllForUserRunFailuresAndDoesntFallBa
 // If only SOME container updates fail with a UserRunFailure (1+ succeeds, or 1+ fails
 // with a non-UserRunFailure), fall back to an image build.
 func TestLiveUpdateMultipleContainersFallsBackForSomeUserRunFailuresSomeSuccess(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
+	f := newBDFixture(t, clusterid.ProductDockerDesktop, container.RuntimeDocker)
 
 	f.docker.ExecErrorsToThrow = []error{userFailureErrDocker, nil, userFailureErrDocker}
 
@@ -621,7 +618,7 @@ func TestLiveUpdateMultipleContainersFallsBackForSomeUserRunFailuresSomeSuccess(
 }
 
 func TestLiveUpdateMultipleContainersFallsBackForSomeUserRunFailuresSomeNonUserFailures(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
+	f := newBDFixture(t, clusterid.ProductDockerDesktop, container.RuntimeDocker)
 
 	f.docker.ExecErrorsToThrow = []error{
 		userFailureErrDocker,
@@ -654,7 +651,7 @@ func TestLiveUpdateMultipleContainersFallsBackForSomeUserRunFailuresSomeNonUserF
 }
 
 func TestLiveUpdateCustomBuildLocalContainer(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
+	f := newBDFixture(t, clusterid.ProductDockerDesktop, container.RuntimeDocker)
 
 	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"i/match/nothing"}, f)
 	tCase := testCase{
@@ -675,7 +672,7 @@ func TestLiveUpdateCustomBuildLocalContainer(t *testing.T) {
 }
 
 func TestLiveUpdateHotReloadLocalContainer(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
+	f := newBDFixture(t, clusterid.ProductDockerDesktop, container.RuntimeDocker)
 
 	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, false, nil, f)
 	tCase := testCase{
@@ -696,7 +693,7 @@ func TestLiveUpdateHotReloadLocalContainer(t *testing.T) {
 }
 
 func TestLiveUpdateRunTriggerLocalContainer(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
+	f := newBDFixture(t, clusterid.ProductDockerDesktop, container.RuntimeDocker)
 
 	runs := []v1alpha1.LiveUpdateExec{
 		{Args: model.ToUnixCmd("echo hello").Argv},
@@ -722,7 +719,7 @@ func TestLiveUpdateRunTriggerLocalContainer(t *testing.T) {
 }
 
 func TestLiveUpdateRunTriggerExec(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	f := newBDFixture(t, clusterid.ProductGKE, container.RuntimeDocker)
 
 	runs := []v1alpha1.LiveUpdateExec{
 		{Args: model.ToUnixCmd("echo hello").Argv},
@@ -749,7 +746,7 @@ func TestLiveUpdateRunTriggerExec(t *testing.T) {
 }
 
 func TestLiveUpdateCustomBuildExec(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	f := newBDFixture(t, clusterid.ProductGKE, container.RuntimeDocker)
 
 	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, false, nil, f)
 	tCase := testCase{
@@ -771,7 +768,7 @@ func TestLiveUpdateCustomBuildExec(t *testing.T) {
 }
 
 func TestLiveUpdateExecDoesNotSupportRestart(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeContainerd)
+	f := newBDFixture(t, clusterid.ProductGKE, container.RuntimeContainerd)
 
 	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"i/match/nothing"}, f)
 	tCase := testCase{
@@ -794,7 +791,7 @@ func TestLiveUpdateExecDoesNotSupportRestart(t *testing.T) {
 }
 
 func TestLiveUpdateDockerBuildExec(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeContainerd)
+	f := newBDFixture(t, clusterid.ProductGKE, container.RuntimeContainerd)
 
 	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, false, nil, f)
 	tCase := testCase{
@@ -813,7 +810,7 @@ func TestLiveUpdateDockerBuildExec(t *testing.T) {
 }
 
 func TestLiveUpdateLocalContainerFallBackOn(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
+	f := newBDFixture(t, clusterid.ProductDockerDesktop, container.RuntimeDocker)
 
 	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, true, []string{"a.txt"}, f)
 	tCase := testCase{
@@ -836,7 +833,7 @@ func TestLiveUpdateLocalContainerFallBackOn(t *testing.T) {
 }
 
 func TestLiveUpdateExecFallBackOn(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	f := newBDFixture(t, clusterid.ProductGKE, container.RuntimeDocker)
 
 	lu := assembleLiveUpdate(SanchoSyncSteps(f), SanchoRunSteps, false, []string{"a.txt"}, f)
 	tCase := testCase{
@@ -859,7 +856,7 @@ func TestLiveUpdateExecFallBackOn(t *testing.T) {
 }
 
 func TestLiveUpdateLocalContainerChangedFileNotMatchingSyncFallsBack(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
+	f := newBDFixture(t, clusterid.ProductDockerDesktop, container.RuntimeDocker)
 
 	steps := []v1alpha1.LiveUpdateSync{{
 		LocalPath:     filepath.Join("specific", "directory"),
@@ -890,7 +887,7 @@ func TestLiveUpdateLocalContainerChangedFileNotMatchingSyncFallsBack(t *testing.
 }
 
 func TestLiveUpdateExecChangedFileNotMatchingSyncFallsBack(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	f := newBDFixture(t, clusterid.ProductGKE, container.RuntimeDocker)
 
 	steps := []v1alpha1.LiveUpdateSync{{
 		LocalPath:     filepath.Join("specific", "directory"),
@@ -921,7 +918,7 @@ func TestLiveUpdateExecChangedFileNotMatchingSyncFallsBack(t *testing.T) {
 }
 
 func TestLiveUpdateManyFilesNotMatching(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvGKE, container.RuntimeDocker)
+	f := newBDFixture(t, clusterid.ProductGKE, container.RuntimeDocker)
 
 	steps := []v1alpha1.LiveUpdateSync{{
 		LocalPath:     filepath.Join("specific", "directory"),
@@ -964,7 +961,7 @@ func TestLiveUpdateManyFilesNotMatching(t *testing.T) {
 }
 
 func TestLiveUpdateSomeFilesMatchSyncSomeDontFallsBack(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
+	f := newBDFixture(t, clusterid.ProductDockerDesktop, container.RuntimeDocker)
 
 	steps := []v1alpha1.LiveUpdateSync{{
 		LocalPath:     filepath.Join("specific", "directory"),
@@ -996,7 +993,7 @@ func TestLiveUpdateSomeFilesMatchSyncSomeDontFallsBack(t *testing.T) {
 }
 
 func TestLiveUpdateInFirstImageOfImageDependency(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
+	f := newBDFixture(t, clusterid.ProductDockerDesktop, container.RuntimeDocker)
 
 	steps := []v1alpha1.LiveUpdateSync{{
 		LocalPath:     "sancho-base",
@@ -1022,7 +1019,7 @@ func TestLiveUpdateInFirstImageOfImageDependency(t *testing.T) {
 }
 
 func TestLiveUpdateInFirstImageOfImageDependencyWithoutSync(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
+	f := newBDFixture(t, clusterid.ProductDockerDesktop, container.RuntimeDocker)
 
 	steps := []v1alpha1.LiveUpdateSync{{
 		LocalPath:     "sancho",
@@ -1047,7 +1044,7 @@ func TestLiveUpdateInFirstImageOfImageDependencyWithoutSync(t *testing.T) {
 }
 
 func TestLiveUpdateInSecondImageOfImageDependency(t *testing.T) {
-	f := newBDFixture(t, k8s.EnvDockerDesktop, container.RuntimeDocker)
+	f := newBDFixture(t, clusterid.ProductDockerDesktop, container.RuntimeDocker)
 
 	steps := []v1alpha1.LiveUpdateSync{{
 		LocalPath:     "sancho",

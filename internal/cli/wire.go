@@ -9,6 +9,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/tilt-dev/clusterid"
 	cliclient "github.com/tilt-dev/tilt/internal/cli/client"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
 
@@ -62,7 +63,7 @@ import (
 )
 
 var K8sWireSet = wire.NewSet(
-	k8s.ProvideEnv,
+	k8s.ProvideClusterProduct,
 	k8s.ProvideClusterName,
 	k8s.ProvideKubeContext,
 	k8s.ProvideKubeConfig,
@@ -238,7 +239,7 @@ func wireKubeConfig(ctx context.Context) (*api.Config, error) {
 	return nil, nil
 }
 
-func wireEnv(ctx context.Context) (k8s.Env, error) {
+func wireEnv(ctx context.Context) (clusterid.Product, error) {
 	wire.Build(K8sWireSet)
 	return "", nil
 }

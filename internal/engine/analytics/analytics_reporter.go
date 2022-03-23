@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/feature"
@@ -21,7 +22,7 @@ type AnalyticsReporter struct {
 	a               *analytics.TiltAnalytics
 	store           store.RStore
 	kClient         k8s.Client
-	env             k8s.Env
+	env             clusterid.Product
 	featureDefaults feature.Defaults
 	started         bool
 }
@@ -66,7 +67,7 @@ func ProvideAnalyticsReporter(
 	a *analytics.TiltAnalytics,
 	st store.RStore,
 	kClient k8s.Client,
-	env k8s.Env,
+	env clusterid.Product,
 	fDefaults feature.Defaults) *AnalyticsReporter {
 	return &AnalyticsReporter{
 		a:               a,
@@ -144,7 +145,7 @@ func (ar *AnalyticsReporter) report(ctx context.Context) {
 
 		// env should really be a global tag, but there's a circular dependency
 		// between the global tags and env initialization, so we add it manually.
-		"env": string(ar.env),
+		"env": k8s.AnalyticsEnv(ar.env),
 
 		"term_mode": strconv.Itoa(int(st.TerminalMode)),
 	}

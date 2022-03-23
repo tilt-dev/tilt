@@ -39,6 +39,7 @@ import (
 	// Client auth plugins! They will auto-init if we import them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
@@ -144,7 +145,7 @@ type RESTMapper interface {
 type K8sClient struct {
 	InformerSet
 
-	env               Env
+	product           clusterid.Product
 	core              apiv1.CoreV1Interface
 	restConfig        *rest.Config
 	portForwardClient PortForwardClient
@@ -166,14 +167,14 @@ var _ Client = &K8sClient{}
 
 func ProvideK8sClient(
 	globalCtx context.Context,
-	env Env,
+	product clusterid.Product,
 	maybeRESTConfig RESTConfigOrError,
 	maybeClientset ClientsetOrError,
 	pfClient PortForwardClient,
 	configNamespace Namespace,
 	mkClient MinikubeClient,
 	clientLoader clientcmd.ClientConfig) Client {
-	if env == EnvNone {
+	if product == ProductNone {
 		// No k8s, so no need to get any further configs
 		return &explodingClient{err: fmt.Errorf("Kubernetes context not set in %s", clientLoader.ConfigAccess().GetLoadingPrecedence())}
 	}
@@ -190,8 +191,8 @@ func ProvideK8sClient(
 
 	core := clientset.CoreV1()
 	runtimeAsync := newRuntimeAsync(core)
-	registryAsync := newRegistryAsync(env, core, runtimeAsync)
-	nodeIPAsync := newNodeIPAsync(env, mkClient)
+	registryAsync := newRegistryAsync(product, core, runtimeAsync)
+	nodeIPAsync := newNodeIPAsync(product, mkClient)
 
 	di, err := dynamic.NewForConfig(restConfig)
 	if err != nil {
@@ -215,7 +216,7 @@ func ProvideK8sClient(
 	c := &K8sClient{
 		InformerSet: newInformerSet(clientset, di),
 
-		env:               env,
+		product:           product,
 		core:              core,
 		restConfig:        restConfig,
 		portForwardClient: pfClient,

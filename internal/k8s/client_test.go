@@ -27,6 +27,7 @@ import (
 	restfake "k8s.io/client-go/rest/fake"
 	ktesting "k8s.io/client-go/testing"
 
+	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/testutils"
 )
@@ -365,14 +366,14 @@ func newClientTestFixture(t *testing.T) *clientTestFixture {
 	core := cs.CoreV1()
 	dc := dynfake.NewSimpleDynamicClient(scheme.Scheme)
 	runtimeAsync := newRuntimeAsync(core)
-	registryAsync := newRegistryAsync(EnvUnknown, core, runtimeAsync)
+	registryAsync := newRegistryAsync(clusterid.ProductUnknown, core, runtimeAsync)
 	resourceClient := &fakeResourceClient{}
 	ret.resourceClient = resourceClient
 
 	ret.restClient = &restfake.RESTClient{}
 
 	ret.client = K8sClient{
-		env:               EnvUnknown,
+		product:           clusterid.ProductUnknown,
 		core:              core,
 		portForwardClient: NewFakePortForwardClient(),
 		discovery:         fakeDiscovery{restClient: ret.restClient},

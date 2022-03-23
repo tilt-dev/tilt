@@ -15,6 +15,7 @@ import (
 
 	"github.com/tilt-dev/wmclient/pkg/dirs"
 
+	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/container"
@@ -56,7 +57,7 @@ func provideFakeBuildAndDeployer(
 	docker docker.Client,
 	kClient k8s.Client,
 	dir *dirs.TiltDevDir,
-	env k8s.Env,
+	env clusterid.Product,
 	updateMode liveupdates.UpdateModeFlag,
 	dcc dockercompose.DockerComposeClient,
 	clock build.Clock,
@@ -90,16 +91,16 @@ func provideFakeK8sNamespace() k8s.Namespace {
 	return "default"
 }
 
-func provideFakeKubeContext(env k8s.Env) k8s.KubeContext {
+func provideFakeKubeContext(env clusterid.Product) k8s.KubeContext {
 	return k8s.KubeContext(string(env))
 }
 
 // A simplified version of the normal calculation we do
 // about whether we can build direct to a cluser
-func provideFakeDockerClusterEnv(c docker.Client, k8sEnv k8s.Env, kubeContext k8s.KubeContext, runtime container.Runtime) docker.ClusterEnv {
+func provideFakeDockerClusterEnv(c docker.Client, k8sEnv clusterid.Product, kubeContext k8s.KubeContext, runtime container.Runtime) docker.ClusterEnv {
 	env := c.Env()
 	isDockerRuntime := runtime == container.RuntimeDocker
-	isLocalDockerCluster := k8sEnv == k8s.EnvMinikube || k8sEnv == k8s.EnvMicroK8s || k8sEnv == k8s.EnvDockerDesktop
+	isLocalDockerCluster := k8sEnv == clusterid.ProductMinikube || k8sEnv == clusterid.ProductMicroK8s || k8sEnv == clusterid.ProductDockerDesktop
 	if isDockerRuntime && isLocalDockerCluster {
 		env.BuildToKubeContexts = append(env.BuildToKubeContexts, string(kubeContext))
 	}

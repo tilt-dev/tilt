@@ -5,6 +5,7 @@ import (
 
 	"go.starlark.net/starlark"
 
+	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 	"github.com/tilt-dev/tilt/internal/tiltfile/value"
@@ -16,10 +17,10 @@ import (
 // Exposes an API for other plugins to get and validate the allowed k8s context.
 type Plugin struct {
 	context k8s.KubeContext
-	env     k8s.Env
+	env     clusterid.Product
 }
 
-func NewPlugin(context k8s.KubeContext, env k8s.Env) Plugin {
+func NewPlugin(context k8s.KubeContext, env clusterid.Product) Plugin {
 	return Plugin{
 		context: context,
 		env:     env,
@@ -81,7 +82,7 @@ var _ starkit.StatefulPlugin = &Plugin{}
 
 type State struct {
 	context k8s.KubeContext
-	env     k8s.Env
+	env     clusterid.Product
 	allowed []k8s.KubeContext
 }
 
@@ -109,7 +110,7 @@ func (s State) IsAllowed(tf *v1alpha1.Tiltfile) bool {
 		return true
 	}
 
-	if s.env == k8s.EnvNone || s.env.IsDevCluster() {
+	if s.env == k8s.ProductNone || s.env.IsDevCluster() {
 		return true
 	}
 
