@@ -199,7 +199,11 @@ func provideLogActions() store.LogActionsFlag {
 
 func provideWebMode(b model.TiltBuild) (model.WebMode, error) {
 	switch webModeFlag {
-	case model.LocalWebMode, model.ProdWebMode, model.PrecompiledWebMode:
+	case model.LocalWebMode,
+		model.ProdWebMode,
+		model.EmbeddedWebMode,
+		model.CloudWebMode,
+		model.PrecompiledWebMode:
 		return webModeFlag, nil
 	case model.DefaultWebMode:
 		// Set prod web mode from an environment variable. Useful for
@@ -246,8 +250,11 @@ func provideWebURL(webHost model.WebHost, webPort model.WebPort) (model.WebURL, 
 
 func provideAssetServer(mode model.WebMode, version model.WebVersion) (assets.Server, error) {
 	s, ok := assets.GetEmbeddedServer()
-	if mode == model.ProdWebMode {
-		if ok {
+	if mode.IsProd() {
+		if mode == model.EmbeddedWebMode && !ok {
+			return nil, fmt.Errorf("requested embedded mode, but assets are not available")
+		}
+		if ok && mode != model.CloudWebMode {
 			return s, nil
 		}
 		return assets.NewProdServer(assets.ProdAssetBucket, version)
