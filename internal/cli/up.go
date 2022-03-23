@@ -245,24 +245,21 @@ func provideWebURL(webHost model.WebHost, webPort model.WebPort) (model.WebURL, 
 }
 
 func provideAssetServer(mode model.WebMode, version model.WebVersion) (assets.Server, error) {
+	s, err := assets.NewEmbeddedServer()
 	if mode == model.ProdWebMode {
-		s, err := assets.NewEmbeddedServer()
 		if err == nil {
 			return s, nil
 		}
 		return assets.NewProdServer(assets.ProdAssetBucket, version)
 	}
-	if mode == model.PrecompiledWebMode || mode == model.LocalWebMode {
-		path, err := web.StaticPath()
-		if err != nil {
-			return nil, err
-		}
-		pkgDir := assets.PackageDir(path)
-		if mode == model.PrecompiledWebMode {
-			return assets.NewPrecompiledServer(pkgDir), nil
-		} else {
-			return assets.NewDevServer(pkgDir, model.WebDevPort(webDevPort))
-		}
+	if mode == model.PrecompiledWebMode && err == nil {
+		return s, nil
 	}
-	return nil, model.UnrecognizedWebModeError(string(mode))
+
+	path, err := web.StaticPath()
+	if err != nil {
+		return nil, err
+	}
+	pkgDir := assets.PackageDir(path)
+	return assets.NewDevServer(pkgDir, model.WebDevPort(webDevPort))
 }
