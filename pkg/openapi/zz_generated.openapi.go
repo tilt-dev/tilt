@@ -1874,6 +1874,13 @@ func schema_pkg_apis_core_v1alpha1_DockerComposeServiceStatus(ref common.Referen
 							Format:      "",
 						},
 					},
+					"containerName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Current container name.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"applyError": {
 						SchemaProps: spec.SchemaProps{
 							Description: "An error bringing up the container.",

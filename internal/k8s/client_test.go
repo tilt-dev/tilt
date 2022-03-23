@@ -3,17 +3,20 @@ package k8s
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"helm.sh/helm/v3/pkg/kube"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
@@ -112,7 +115,7 @@ func TestUpsert413Structured(t *testing.T) {
 	f := newClientTestFixture(t)
 	postgres := MustParseYAMLFromString(t, testyaml.PostgresYAML)
 
-	f.resourceClient.updateErr = &errors.StatusError{
+	f.resourceClient.updateErr = &apierrors.StatusError{
 		ErrStatus: metav1.Status{
 			Message: "too large",
 			Reason:  "TooLarge",
@@ -178,6 +181,82 @@ func TestGetGroup(t *testing.T) {
 			assert.Equal(t, test.expectedGroup, ReferenceGVK(obj).Group)
 		})
 	}
+}
+
+func TestServerHealth(t *testing.T) {
+	// NOTE: the health endpoint contract only specifies that 200 is healthy
+	// 	and any other status code indicates not-healthy; in practice, apiserver
+	// 	seems to always use 500, but we throw a couple different status codes
+	// 	in here in the spirit of the contract
+	// 	see https://github.com/kubernetes/kubernetes/blob/9918aa1e035a00bc7c0f16a05e1b222650b3eabc/staging/src/k8s.io/apiserver/pkg/server/healthz/healthz.go#L258
+	for _, tc := range []struct {
+		name            string
+		liveErr         error
+		liveStatusCode  int
+		readyErr        error
+		readyStatusCode int
+	}{
+		{name: "Healthy", liveStatusCode: http.StatusOK, readyStatusCode: http.StatusOK},
+		{name: "NotLive", liveStatusCode: http.StatusServiceUnavailable, readyStatusCode: http.StatusServiceUnavailable},
+		{name: "NotReady", liveStatusCode: http.StatusOK, readyStatusCode: http.StatusInternalServerError},
+		{name: "ErrorLivez", liveErr: errors.New("fake livez network error")},
+		{name: "ErrorReadyz", liveStatusCode: http.StatusOK, readyErr: errors.New("fake readyz network error")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newClientTestFixture(t)
+			f.restClient.Client = restfake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+				switch req.URL.Path {
+				case "/livez":
+					if tc.liveErr != nil {
+						return nil, tc.liveErr
+					}
+					return &http.Response{
+						StatusCode: tc.liveStatusCode,
+						Body:       io.NopCloser(strings.NewReader("fake livez response")),
+					}, nil
+				case "/readyz":
+					if tc.readyErr != nil {
+						return nil, tc.readyErr
+					}
+					return &http.Response{
+						StatusCode: tc.readyStatusCode,
+						Body:       io.NopCloser(strings.NewReader("fake readyz response")),
+					}, nil
+				}
+				err := fmt.Errorf("unsupported request: %s", req.URL.Path)
+				t.Fatalf(err.Error())
+				return nil, err
+			})
+
+			health, err := f.client.ClusterHealth(f.ctx, true)
+			if tc.liveErr != nil {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.liveErr.Error(),
+					"livez error did not match")
+				return
+			} else if tc.readyErr != nil {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.readyErr.Error(),
+					"readyz error did not match")
+				return
+			} else {
+				require.NoError(t, err)
+			}
+
+			// verbose output is only checked on success - some of the standard
+			// error handling in the K8s helpers massages non-200 requests, so
+			// it's too brittle to check against
+			isLive := tc.liveStatusCode == http.StatusOK
+			if assert.Equal(t, isLive, health.Live, "livez") && isLive {
+				assert.Equal(t, "fake livez response", health.LiveOutput)
+			}
+			isReady := tc.readyStatusCode == http.StatusOK
+			if assert.Equal(t, isReady, health.Ready, "readyz") && isReady {
+				assert.Equal(t, "fake readyz response", health.ReadyOutput)
+			}
+		})
+	}
+
 }
 
 type fakeResourceClient struct {
@@ -254,6 +333,7 @@ type clientTestFixture struct {
 	tracker        ktesting.ObjectTracker
 	watchNotify    chan watch.Interface
 	resourceClient *fakeResourceClient
+	restClient     *restfake.RESTClient
 }
 
 func newClientTestFixture(t *testing.T) *clientTestFixture {
@@ -289,10 +369,13 @@ func newClientTestFixture(t *testing.T) *clientTestFixture {
 	resourceClient := &fakeResourceClient{}
 	ret.resourceClient = resourceClient
 
+	ret.restClient = &restfake.RESTClient{}
+
 	ret.client = K8sClient{
 		env:               EnvUnknown,
 		core:              core,
 		portForwardClient: NewFakePortForwardClient(),
+		discovery:         fakeDiscovery{restClient: ret.restClient},
 		dynamic:           dc,
 		runtimeAsync:      runtimeAsync,
 		registryAsync:     registryAsync,

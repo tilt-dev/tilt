@@ -746,7 +746,7 @@ func (k *K8sClient) apiServerHealthCheck(ctx context.Context, route string, verb
 	}
 	body, err := req.DoRaw(ctx)
 	if err != nil {
-		var statusErr apierrors.StatusError
+		var statusErr *apierrors.StatusError
 		if errors.As(err, &statusErr) {
 			return false, statusErr.ErrStatus.Message, nil
 		}

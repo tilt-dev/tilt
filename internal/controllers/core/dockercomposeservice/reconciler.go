@@ -2,6 +2,7 @@ package dockercomposeservice
 
 import (
 	"context"
+	"strings"
 	"sync"
 
 	dtypes "github.com/docker/docker/api/types"
@@ -253,6 +254,7 @@ func (r *Reconciler) recordRmOnDisable(nn types.NamespacedName) {
 	}
 
 	result.Status.ContainerID = ""
+	result.Status.ContainerName = ""
 	result.Status.ContainerState = nil
 	result.Status.PortBindings = nil
 }
@@ -394,9 +396,14 @@ func (r *Reconciler) forceApplyHelper(
 		logger.Get(ctx).Debugf("Error inspecting container %s: %v", cid, err)
 	}
 
+	name := ""
 	var containerState *dtypes.ContainerState
 	if containerJSON.ContainerJSONBase != nil && containerJSON.ContainerJSONBase.State != nil {
 		containerState = containerJSON.ContainerJSONBase.State
+
+		// NOTE(nick): For some reason, docker container names start with "/"
+		// but are printed to the user without it.
+		name = strings.TrimPrefix(containerJSON.ContainerJSONBase.Name, "/")
 	}
 
 	var ports nat.PortMap
@@ -404,7 +411,7 @@ func (r *Reconciler) forceApplyHelper(
 		ports = containerJSON.NetworkSettings.NetworkSettingsBase.Ports
 	}
 
-	status := dockercompose.ToServiceStatus(cid, containerState, ports)
+	status := dockercompose.ToServiceStatus(cid, name, containerState, ports)
 	status.LastApplyStartTime = startTime
 	status.LastApplyFinishTime = apis.NowMicro()
 	return r.recordApplyStatus(nn, spec, imageMaps, status)

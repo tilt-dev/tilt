@@ -648,6 +648,10 @@ message DockerComposeServiceStatus {
   // +optional
   optional string containerID = 4;
 
+  // Current container name.
+  // +optional
+  optional string containerName = 8;
+
   // An error bringing up the container.
   //
   // +optional

@@ -142,6 +142,10 @@ type DockerComposeServiceStatus struct {
 	// +optional
 	ContainerID string `json:"containerID,omitempty" protobuf:"bytes,4,opt,name=containerID"`
 
+	// Current container name.
+	// +optional
+	ContainerName string `json:"containerName,omitempty" protobuf:"bytes,8,opt,name=containerName"`
+
 	// An error bringing up the container.
 	//
 	// +optional

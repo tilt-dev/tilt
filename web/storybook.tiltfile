@@ -30,10 +30,9 @@ local_resource(
   resource_deps=['install'])
 
 local_resource(
-  'check:tsc',
-  'node_modules/.bin/tsc -p .',
+  'watch:tsc',
+  serve_cmd='yarn tsc -w',
   auto_init=False,
-  trigger_mode=TRIGGER_MODE_MANUAL,
   allow_parallel=True,
   labels=["lint"],
   resource_deps=['install'])

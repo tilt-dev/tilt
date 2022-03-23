@@ -15,6 +15,16 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
+// Status strings taken from comments on:
+// https://godoc.org/github.com/docker/docker/api/types#ContainerState
+const ContainerStatusCreated = "created"
+const ContainerStatusRunning = "running"
+const ContainerStatusPaused = "paused"
+const ContainerStatusRestarting = "restarting"
+const ContainerStatusRemoving = "removing"
+const ContainerStatusExited = "exited"
+const ContainerStatusDead = "dead"
+
 // Helper functions for dealing with ContainerState.
 const ZeroTime = "0001-01-01T00:00:00Z"
 
@@ -34,10 +44,8 @@ func (s State) RuntimeStatus() v1alpha1.RuntimeStatus {
 		return v1alpha1.RuntimeStatusError
 	}
 	if s.ContainerState.Running ||
-		// Status strings taken from comments on:
-		// https://godoc.org/github.com/docker/docker/api/types#ContainerState
-		s.ContainerState.Status == "running" ||
-		s.ContainerState.Status == "exited" {
+		s.ContainerState.Status == ContainerStatusRunning ||
+		s.ContainerState.Status == ContainerStatusExited {
 		return v1alpha1.RuntimeStatusOK
 	}
 	if s.ContainerState.Status == "" {
@@ -125,9 +133,10 @@ func ToContainerState(state *types.ContainerState) *v1alpha1.DockerContainerStat
 }
 
 // Convert a full into an apiserver-compatible status model.
-func ToServiceStatus(id container.ID, state *types.ContainerState, ports nat.PortMap) v1alpha1.DockerComposeServiceStatus {
+func ToServiceStatus(id container.ID, name string, state *types.ContainerState, ports nat.PortMap) v1alpha1.DockerComposeServiceStatus {
 	status := v1alpha1.DockerComposeServiceStatus{}
 	status.ContainerID = string(id)
+	status.ContainerName = name
 	status.ContainerState = ToContainerState(state)
 
 	for containerPort, bindings := range ports {
