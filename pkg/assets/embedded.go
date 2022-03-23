@@ -3,11 +3,9 @@ package assets
 import (
 	"context"
 	"embed"
-	"fmt"
 	"io/fs"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
@@ -19,7 +17,7 @@ type embeddedServer struct {
 	http.Handler
 }
 
-func NewEmbeddedServer() (Server, error) {
+func GetEmbeddedServer() (Server, bool) {
 	var assets fs.FS
 	index, err := build.ReadFile("build/index.html")
 	if err == nil {
@@ -27,12 +25,10 @@ func NewEmbeddedServer() (Server, error) {
 	}
 
 	if err != nil {
-		return embeddedServer{}, fmt.Errorf("embedded assets unavailable: %w", err)
+		return embeddedServer{}, false
 	}
 
-	return embeddedServer{
-		Handler: handleRoutingURLs(http.FileServer(http.FS(assets)), index),
-	}, nil
+	return embeddedServer{Handler: serveAssets(assets, index)}, true
 }
 
 func (s embeddedServer) Serve(ctx context.Context) error {
@@ -44,16 +40,17 @@ func (s embeddedServer) Serve(ctx context.Context) error {
 func (s embeddedServer) TearDown(ctx context.Context) {
 }
 
-func handleRoutingURLs(handler http.Handler, index []byte) http.HandlerFunc {
+func serveAssets(assets fs.FS, index []byte) http.HandlerFunc {
+	handler := http.FileServer(http.FS(assets))
 	return func(w http.ResponseWriter, req *http.Request) {
-		if strings.HasPrefix(req.URL.Path, "/r/") {
-			w.Header().Set("Cache-Control", "no-store, max-age=0")
+		w = cacheAssets(w, req.URL.Path, req.Method)
+		if isAssetPath(req.URL.Path) {
+			handler.ServeHTTP(w, req)
+		} else {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.Header().Set("Content-Length", strconv.Itoa(len(index)))
 			w.WriteHeader(200)
 			_, _ = w.Write(index)
-		} else {
-			handler.ServeHTTP(w, req)
 		}
 	}
 }

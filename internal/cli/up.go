@@ -245,15 +245,18 @@ func provideWebURL(webHost model.WebHost, webPort model.WebPort) (model.WebURL, 
 }
 
 func provideAssetServer(mode model.WebMode, version model.WebVersion) (assets.Server, error) {
-	s, err := assets.NewEmbeddedServer()
+	s, ok := assets.GetEmbeddedServer()
 	if mode == model.ProdWebMode {
-		if err == nil {
+		if ok {
 			return s, nil
 		}
 		return assets.NewProdServer(assets.ProdAssetBucket, version)
 	}
-	if mode == model.PrecompiledWebMode && err == nil {
-		return s, nil
+	if mode == model.PrecompiledWebMode {
+		if ok {
+			return s, nil
+		}
+		return nil, fmt.Errorf("requested precompiled mode, but precompiled assets are not available")
 	}
 
 	path, err := web.StaticPath()
