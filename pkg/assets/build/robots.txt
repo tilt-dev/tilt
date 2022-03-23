@@ -1,0 +1,5 @@
+# This is a placeholder for the embedded build directory, so that Go has
+# something to embed when the build-js assets are not present.
+# But also, no robots please.
+User-agent: *
+Disallow: /

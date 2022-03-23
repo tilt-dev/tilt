@@ -246,6 +246,10 @@ func provideWebURL(webHost model.WebHost, webPort model.WebPort) (model.WebURL, 
 
 func provideAssetServer(mode model.WebMode, version model.WebVersion) (assets.Server, error) {
 	if mode == model.ProdWebMode {
+		s, err := assets.NewEmbeddedServer()
+		if err == nil {
+			return s, nil
+		}
 		return assets.NewProdServer(assets.ProdAssetBucket, version)
 	}
 	if mode == model.PrecompiledWebMode || mode == model.LocalWebMode {
