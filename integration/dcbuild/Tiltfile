@@ -1,4 +1,12 @@
 # -*- mode: Python -*-
 
 docker_compose('docker-compose.yaml')
-docker_build('gcr.io/windmill-test-containers/dcbuild', 'cmd/dcbuild', dockerfile='Dockerfile')
+
+docker_build('gcr.io/windmill-test-containers/dcbuild',
+             '.',
+             dockerfile='Dockerfile',
+             live_update=[
+               sync('.', '/app'),
+               run('/app/compile.sh'),
+               run('/app/restart.sh'),
+             ])
