@@ -248,28 +248,44 @@ func provideWebURL(webHost model.WebHost, webPort model.WebPort) (model.WebURL, 
 	return model.WebURL(*u), nil
 }
 
+func targetMode(mode model.WebMode, embeddedAvailable bool) (model.WebMode, error) {
+	if (mode == model.EmbeddedWebMode || mode == model.PrecompiledWebMode) && !embeddedAvailable {
+		return mode, fmt.Errorf("requested %s mode, but assets are not available", string(mode))
+	}
+	if mode.IsProd() { // cloud by request, embedded when available, otherwise cloud
+		if mode != model.CloudWebMode && embeddedAvailable {
+			mode = model.EmbeddedWebMode
+		} else if mode == model.ProdWebMode {
+			mode = model.CloudWebMode
+		}
+	} else { // precompiled when available and by request, otherwise local
+		if mode != model.PrecompiledWebMode {
+			mode = model.LocalWebMode
+		}
+	}
+	return mode, nil
+}
+
 func provideAssetServer(mode model.WebMode, version model.WebVersion) (assets.Server, error) {
 	s, ok := assets.GetEmbeddedServer()
-	if mode.IsProd() {
-		if mode == model.EmbeddedWebMode && !ok {
-			return nil, fmt.Errorf("requested embedded mode, but assets are not available")
-		}
-		if ok && mode != model.CloudWebMode {
-			return s, nil
-		}
-		return assets.NewProdServer(assets.ProdAssetBucket, version)
-	}
-	if mode == model.PrecompiledWebMode {
-		if ok {
-			return s, nil
-		}
-		return nil, fmt.Errorf("requested precompiled mode, but precompiled assets are not available")
-	}
+	m, err := targetMode(mode, ok)
 
-	path, err := web.StaticPath()
 	if err != nil {
 		return nil, err
 	}
-	pkgDir := assets.PackageDir(path)
-	return assets.NewDevServer(pkgDir, model.WebDevPort(webDevPort))
+
+	switch m {
+	case model.EmbeddedWebMode, model.PrecompiledWebMode:
+		return s, nil
+	case model.CloudWebMode:
+		return assets.NewProdServer(assets.ProdAssetBucket, version)
+	case model.LocalWebMode:
+		path, err := web.StaticPath()
+		if err != nil {
+			return nil, err
+		}
+		pkgDir := assets.PackageDir(path)
+		return assets.NewDevServer(pkgDir, model.WebDevPort(webDevPort))
+	}
+	return nil, model.UnrecognizedWebModeError(string(mode))
 }
