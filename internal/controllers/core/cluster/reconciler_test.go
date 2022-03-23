@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -43,6 +44,27 @@ func TestKubernetesError(t *testing.T) {
 	assert.Nil(t, cluster.Status.ConnectedAt, "ConnectedAt should be empty")
 
 	f.assertSteadyState(cluster)
+}
+
+func TestKubernetesDelete(t *testing.T) {
+	f := newFixture(t)
+	cluster := &v1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "default"},
+		Spec: v1alpha1.ClusterSpec{
+			Connection: &v1alpha1.ClusterConnection{
+				Kubernetes: &v1alpha1.KubernetesClusterConnection{},
+			},
+		},
+	}
+	nn := apis.Key(cluster)
+
+	f.Create(cluster)
+	_, ok := f.r.connManager.load(nn)
+	require.True(t, ok, "Connection was not present in connection manager")
+
+	f.Delete(cluster)
+	_, ok = f.r.connManager.load(nn)
+	require.False(t, ok, "Connection was not removed from connection manager")
 }
 
 func TestKubernetesArch(t *testing.T) {
