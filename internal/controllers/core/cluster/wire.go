@@ -9,4 +9,6 @@ import (
 var WireSet = wire.NewSet(
 	NewConnectionManager,
 	wire.Bind(new(cluster.ClientProvider), new(*ConnectionManager)),
+	wire.InterfaceValue(new(KubernetesClientFactory), KubernetesClientFunc(KubernetesClientFromEnv)),
+	wire.InterfaceValue(new(DockerClientFactory), DockerClientFunc(DockerClientFromEnv)),
 )

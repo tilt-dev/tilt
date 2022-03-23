@@ -28,15 +28,15 @@ import (
 const ArchUnknown string = "unknown"
 
 type Reconciler struct {
-	globalCtx      context.Context
-	ctrlClient     ctrlclient.Client
-	localDockerEnv docker.LocalEnv
-	store          store.RStore
-
-	fakeK8sClient    k8s.Client
-	fakeDockerClient docker.Client
-
+	globalCtx   context.Context
+	ctrlClient  ctrlclient.Client
+	store       store.RStore
 	connManager *ConnectionManager
+
+	localDockerEnv      docker.LocalEnv
+	dockerClientFactory DockerClientFactory
+
+	k8sClientFactory KubernetesClientFactory
 }
 
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
@@ -45,19 +45,24 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	return b, nil
 }
 
-func NewReconciler(globalCtx context.Context, ctrlClient ctrlclient.Client, store store.RStore, localDockerEnv docker.LocalEnv, connManager *ConnectionManager) *Reconciler {
+func NewReconciler(
+	globalCtx context.Context,
+	ctrlClient ctrlclient.Client,
+	store store.RStore,
+	connManager *ConnectionManager,
+	localDockerEnv docker.LocalEnv,
+	dockerClientFactory DockerClientFactory,
+	k8sClientFactory KubernetesClientFactory,
+) *Reconciler {
 	return &Reconciler{
-		globalCtx:      globalCtx,
-		ctrlClient:     ctrlClient,
-		store:          store,
-		localDockerEnv: localDockerEnv,
-		connManager:    connManager,
+		globalCtx:           globalCtx,
+		ctrlClient:          ctrlClient,
+		store:               store,
+		connManager:         connManager,
+		localDockerEnv:      localDockerEnv,
+		dockerClientFactory: dockerClientFactory,
+		k8sClientFactory:    k8sClientFactory,
 	}
-}
-
-func (r *Reconciler) SetFakeClientsForTesting(k8sClient k8s.Client, dockerClient docker.Client) {
-	r.fakeK8sClient = k8sClient
-	r.fakeDockerClient = dockerClient
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
@@ -88,9 +93,9 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	if !hasConnection {
 		// Create the initial connection to the cluster.
 		if obj.Spec.Connection != nil && obj.Spec.Connection.Kubernetes != nil {
-			conn = r.createKubernetesConnection(ctx, obj.Spec.Connection.Kubernetes)
+			conn = r.createKubernetesConnection(obj.Spec.Connection.Kubernetes)
 		} else if obj.Spec.Connection != nil && obj.Spec.Connection.Docker != nil {
-			conn = r.createDockerConnection(ctx, obj.Spec.Connection.Docker)
+			conn = r.createDockerConnection(obj.Spec.Connection.Docker)
 		}
 		conn.createdAt = time.Now()
 		conn.spec = obj.Spec
@@ -116,57 +121,26 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 }
 
 // Creates a docker connection from the spec.
-func (r *Reconciler) createDockerConnection(ctx context.Context, obj *v1alpha1.DockerClusterConnection) connection {
-	if r.fakeDockerClient != nil {
-		return connection{connType: connectionTypeDocker, dockerClient: r.fakeDockerClient}
-	}
-
+func (r *Reconciler) createDockerConnection(obj *v1alpha1.DockerClusterConnection) connection {
 	// If no Host is specified, use the default Env from environment variables.
 	env := docker.Env(r.localDockerEnv)
 	if obj.Host != "" {
 		env = docker.Env{Host: obj.Host}
 	}
 
-	client := docker.NewDockerClient(ctx, env)
-	err := client.CheckConnected()
+	client, err := r.dockerClientFactory.New(r.globalCtx, env)
 	if err != nil {
 		return connection{connType: connectionTypeDocker, error: err.Error()}
 	}
+
 	return connection{connType: connectionTypeDocker, dockerClient: client}
 }
 
 // Creates a Kubernetes connection from the spec.
-//
-// The Kubernetes Client APIs are really defined for automatic dependency injection.
-// (as opposed to the Kubernetes convention of nested factory structs.)
-//
-// If you have to edit the below, it's easier to let wire generate the
-// factory code for you, then adapt it here.
-func (r *Reconciler) createKubernetesConnection(ctx context.Context, obj *v1alpha1.KubernetesClusterConnection) connection {
-	if r.fakeK8sClient != nil {
-		return connection{connType: connectionTypeK8s, k8sClient: r.fakeK8sClient}
-	}
-
+func (r *Reconciler) createKubernetesConnection(obj *v1alpha1.KubernetesClusterConnection) connection {
 	k8sKubeContextOverride := k8s.KubeContextOverride(obj.Context)
 	k8sNamespaceOverride := k8s.NamespaceOverride(obj.Namespace)
-	clientConfig := k8s.ProvideClientConfig(k8sKubeContextOverride, k8sNamespaceOverride)
-	apiConfig, err := k8s.ProvideKubeConfig(clientConfig, k8sKubeContextOverride)
-	if err != nil {
-		return connection{connType: connectionTypeK8s, error: err.Error()}
-	}
-	env := k8s.ProvideEnv(ctx, apiConfig)
-	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
-
-	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
-	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
-	namespace := k8s.ProvideConfigNamespace(clientConfig)
-	kubeContext, err := k8s.ProvideKubeContext(apiConfig)
-	if err != nil {
-		return connection{connType: connectionTypeK8s, error: err.Error()}
-	}
-	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
-	client := k8s.ProvideK8sClient(r.globalCtx, env, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
-	_, err = client.CheckConnected(ctx)
+	client, err := r.k8sClientFactory.New(r.globalCtx, k8sKubeContextOverride, k8sNamespaceOverride)
 	if err != nil {
 		return connection{connType: connectionTypeK8s, error: err.Error()}
 	}
@@ -256,7 +230,7 @@ func (r *Reconciler) reportConnectionEvent(ctx context.Context, cluster *v1alpha
 
 func (c *connection) toStatus() v1alpha1.ClusterStatus {
 	var connectedAt *metav1.MicroTime
-	if !c.createdAt.IsZero() {
+	if c.error == "" && !c.createdAt.IsZero() {
 		t := apis.NewMicroTime(c.createdAt)
 		connectedAt = &t
 	}
