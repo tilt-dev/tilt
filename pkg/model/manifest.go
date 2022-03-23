@@ -284,7 +284,6 @@ func (m *Manifest) InferLiveUpdateSelectors() error {
 			continue
 		}
 
-		// TODO(nick): Also set docker-compose selectors once the model supports it.
 		if m.IsK8s() {
 			kSelector := luSpec.Selector.Kubernetes
 			if kSelector == nil {
@@ -309,6 +308,18 @@ func (m *Manifest) InferLiveUpdateSelectors() error {
 					image = reference.FamiliarName(iTarget.Refs.ClusterRef())
 				}
 				kSelector.Image = image
+			}
+		}
+
+		if m.IsDC() {
+			dcSelector := luSpec.Selector.DockerCompose
+			if dcSelector == nil {
+				dcSelector = &v1alpha1.LiveUpdateDockerComposeSelector{}
+				luSpec.Selector.DockerCompose = dcSelector
+			}
+
+			if dcSelector.Service == "" {
+				dcSelector.Service = m.Name.String()
 			}
 		}
 

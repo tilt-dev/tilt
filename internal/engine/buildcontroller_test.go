@@ -201,7 +201,7 @@ func TestBuildControllerDockerCompose(t *testing.T) {
 	call = f.nextCall()
 	s := call.state[imageTarget.ID()]
 	containers, err := liveupdates.RunningContainers(
-		nil, nil, s.DockerResource)
+		nil, nil, s.DockerComposeService)
 	require.NoError(t, err)
 	assert.Equal(t, "dc-sancho", containers[0].ContainerID.String())
 

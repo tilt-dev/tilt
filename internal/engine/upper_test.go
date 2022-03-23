@@ -252,7 +252,8 @@ type fakeBuildAndDeployer struct {
 	resultsByID store.BuildResultSet
 
 	// kClient registers deployed entities for subsequent retrieval.
-	kClient *k8s.FakeK8sClient
+	kClient  *k8s.FakeK8sClient
+	dcClient *dockercompose.FakeDCClient
 
 	ctrlClient ctrlclient.Client
 
@@ -358,14 +359,15 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 	}
 
 	if !call.dc().Empty() && len(b.nextLiveUpdateContainerIDs) == 0 {
-		err = b.updateDockerComposeServiceStatus(ctx, call.dc(), iTargets)
-		if err != nil {
-			return result, err
-		}
-
 		dcContainerID := container.ID(fmt.Sprintf("dc-%s", path.Base(call.dc().ID().Name.String())))
 		if b.nextDockerComposeContainerID != "" {
 			dcContainerID = b.nextDockerComposeContainerID
+		}
+		b.dcClient.ContainerIdOutput = dcContainerID
+
+		err = b.updateDockerComposeServiceStatus(ctx, call.dc(), iTargets)
+		if err != nil {
+			return result, err
 		}
 
 		dcContainerState := b.nextDockerComposeContainerState
@@ -545,13 +547,14 @@ func (b *fakeBuildAndDeployer) waitUntilBuildCompleted(ctx context.Context, key 
 	}
 }
 
-func newFakeBuildAndDeployer(t *testing.T, kClient *k8s.FakeK8sClient, ctrlClient ctrlclient.Client, kaReconciler *kubernetesapply.Reconciler, dcReconciler *dockercomposeservice.Reconciler) *fakeBuildAndDeployer {
+func newFakeBuildAndDeployer(t *testing.T, kClient *k8s.FakeK8sClient, dcClient *dockercompose.FakeDCClient, ctrlClient ctrlclient.Client, kaReconciler *kubernetesapply.Reconciler, dcReconciler *dockercomposeservice.Reconciler) *fakeBuildAndDeployer {
 	return &fakeBuildAndDeployer{
 		t:                t,
 		calls:            make(chan buildAndDeployCall, 20),
 		buildLogOutput:   make(map[model.TargetID]string),
 		resultsByID:      store.BuildResultSet{},
 		kClient:          kClient,
+		dcClient:         dcClient,
 		ctrlClient:       ctrlClient,
 		kaReconciler:     kaReconciler,
 		dcReconciler:     dcReconciler,
@@ -3563,7 +3566,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	dp := dockerprune.NewDockerPruner(dockerClient)
 	dp.DisabledForTesting(true)
 
-	b := newFakeBuildAndDeployer(t, kClient, cdc, kar, dcr)
+	b := newFakeBuildAndDeployer(t, kClient, fakeDcc, cdc, kar, dcr)
 	bc := NewBuildController(b)
 
 	ret := &testFixture{

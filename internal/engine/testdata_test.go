@@ -56,6 +56,7 @@ func NewSanchoLiveUpdateDCManifest(f Fixture) model.Manifest {
 	return manifestbuilder.New(f, "sancho").
 		WithDockerCompose().
 		WithImageTarget(NewSanchoLiveUpdateImageTarget(f)).
+		WithLiveUpdateBAD().
 		Build()
 }
 

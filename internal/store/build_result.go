@@ -6,7 +6,6 @@ import (
 	"github.com/docker/distribution/reference"
 
 	"github.com/tilt-dev/tilt/internal/container"
-	"github.com/tilt-dev/tilt/internal/store/dcconv"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -274,7 +273,7 @@ type BuildState struct {
 
 	KubernetesResource *k8sconv.KubernetesResource
 
-	DockerResource *dcconv.DockerResource
+	DockerComposeService *v1alpha1.DockerComposeService
 }
 
 func NewBuildState(result BuildResult, files []string, pendingDeps []model.TargetID) BuildState {

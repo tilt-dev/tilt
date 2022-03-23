@@ -9,14 +9,13 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
-	"github.com/tilt-dev/tilt/internal/store/dcconv"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
 func AllRunningContainers(mt *store.ManifestTarget, state *store.EngineState) []Container {
 	if mt.Manifest.IsDC() {
-		return RunningContainersForDC(mt.State.DockerResource())
+		return RunningContainersForDC(state.DockerComposeServices[mt.Manifest.Name.String()])
 	}
 
 	var result []Container
@@ -38,12 +37,12 @@ func AllRunningContainers(mt *store.ManifestTarget, state *store.EngineState) []
 	return result
 }
 
-func RunningContainers(selector *v1alpha1.LiveUpdateKubernetesSelector, k8sResource *k8sconv.KubernetesResource, dResource *dcconv.DockerResource) ([]Container, error) {
+func RunningContainers(selector *v1alpha1.LiveUpdateKubernetesSelector, k8sResource *k8sconv.KubernetesResource, dcs *v1alpha1.DockerComposeService) ([]Container, error) {
 	if selector != nil && k8sResource != nil {
 		return RunningContainersForOnePod(selector, k8sResource)
 	}
-	if dResource != nil {
-		return RunningContainersForDC(dResource), nil
+	if dcs != nil {
+		return RunningContainersForDC(dcs), nil
 	}
 	return nil, nil
 }
@@ -98,12 +97,12 @@ func RunningContainersForOnePod(selector *v1alpha1.LiveUpdateKubernetesSelector,
 	return containers, nil
 }
 
-func RunningContainersForDC(dr *dcconv.DockerResource) []Container {
-	if dr == nil || dr.ContainerID == "" {
+func RunningContainersForDC(dcs *v1alpha1.DockerComposeService) []Container {
+	if dcs == nil || dcs.Status.ContainerID == "" {
 		return nil
 	}
 	return []Container{
-		Container{ContainerID: container.ID(dr.ContainerID)},
+		Container{ContainerID: container.ID(dcs.Status.ContainerID)},
 	}
 }
 

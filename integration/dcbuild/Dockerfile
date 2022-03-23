@@ -1,6 +1,6 @@
-FROM golang:1.17-alpine
-RUN apk add curl
-WORKDIR /go/src/github.com/tilt-dev/integration/dcbuild/cmd/dcbuild
+FROM alpine
+RUN apk add busybox-extras curl
+WORKDIR /app
 ADD . .
-RUN go install github.com/tilt-dev/integration/dcbuild/cmd/dcbuild
-ENTRYPOINT /go/bin/dcbuild
+RUN ./compile.sh
+ENTRYPOINT ./start.sh ./main.sh
