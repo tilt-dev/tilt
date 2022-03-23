@@ -48,7 +48,7 @@ require (
 	github.com/tilt-dev/dockerignore v0.1.1
 	github.com/tilt-dev/fsevents v0.0.0-20200515134857-2efe37af20de
 	github.com/tilt-dev/fsnotify v1.4.8-0.20210701141043-dd524499d3fe
-	github.com/tilt-dev/go-get v0.2.1
+	github.com/tilt-dev/go-get v0.2.2
 	github.com/tilt-dev/localregistry-go v0.0.0-20200615231835-07e386f4ebd7
 	github.com/tilt-dev/probe v0.3.1
 	github.com/tilt-dev/starlark-lsp v0.0.0-20220316183018-35dc2cb122f6
