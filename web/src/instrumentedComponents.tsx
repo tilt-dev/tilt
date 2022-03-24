@@ -9,6 +9,7 @@ import {
 } from "@material-ui/core"
 import React, { useMemo } from "react"
 import { AnalyticsAction, incr, Tags } from "./analytics"
+import { usePathBuilder } from "./PathBuilder"
 
 // Shared components that implement analytics
 // 1. Saves callers from having to implement/test analytics for every interactive
@@ -22,8 +23,9 @@ type InstrumentationProps = {
 
 export function InstrumentedButton(props: ButtonProps & InstrumentationProps) {
   const { analyticsName, analyticsTags, onClick, ...buttonProps } = props
+  const pb = usePathBuilder()
   const instrumentedOnClick: typeof onClick = (e) => {
-    incr(analyticsName, {
+    incr(pb, analyticsName, {
       action: AnalyticsAction.Click,
       ...(analyticsTags ?? {}),
     })
@@ -53,12 +55,13 @@ export function InstrumentedTextField(
 ) {
   const { analyticsName, analyticsTags, onChange, ...textFieldProps } = props
 
+  const pb = usePathBuilder()
   // we have to memoize the debounced function so that incrs reuse the same debounce timer
   const debouncedIncr = useMemo(
     () =>
       // debounce so we don't send analytics for every single keypress
       debounce((name: string, tags?: Tags) => {
-        incr(name, {
+        incr(pb, name, {
           action: AnalyticsAction.Edit,
           ...(tags ?? {}),
         })
@@ -80,8 +83,9 @@ export function InstrumentedCheckbox(
   props: CheckboxProps & InstrumentationProps
 ) {
   const { analyticsName, analyticsTags, onChange, ...checkboxProps } = props
+  const pb = usePathBuilder()
   const instrumentedOnChange: typeof onChange = (e, checked) => {
-    incr(analyticsName, {
+    incr(pb, analyticsName, {
       action: AnalyticsAction.Edit,
       ...(analyticsTags ?? {}),
     })

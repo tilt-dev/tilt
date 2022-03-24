@@ -6,6 +6,7 @@ import React, {
 } from "react"
 import { AnalyticsAction, incr } from "./analytics"
 import { usePersistentState } from "./BrowserStorage"
+import { usePathBuilder } from "./PathBuilder"
 
 export type StarredResourcesContext = {
   starredResources: string[]
@@ -76,8 +77,10 @@ export function StarredResourcesContextProvider(
     props.initialValueForTesting ?? []
   )
 
+  const pb = usePathBuilder()
+
   useEffect(() => {
-    incr("ui.web.star", {
+    incr(pb, "ui.web.star", {
       starCount: starredResources.length.toString(),
       action: AnalyticsAction.Load,
     })
@@ -88,7 +91,7 @@ export function StarredResourcesContextProvider(
   function starResource(name: string) {
     setStarredResources((prevState) => {
       const ret = prevState.includes(name) ? prevState : [...prevState, name]
-      incr("ui.web.star", {
+      incr(pb, "ui.web.star", {
         starCount: ret.length.toString(),
         action: AnalyticsAction.Star,
       })
@@ -99,7 +102,7 @@ export function StarredResourcesContextProvider(
   function unstarResource(name: string) {
     setStarredResources((prevState) => {
       const ret = prevState.filter((n) => n !== name)
-      incr("ui.web.star", {
+      incr(pb, "ui.web.star", {
         starCount: ret.length.toString(),
         action: AnalyticsAction.Unstar,
       })

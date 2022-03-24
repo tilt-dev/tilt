@@ -702,6 +702,7 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
   const logStore = useLogStore()
   const isSnapshot = usePathBuilder().isSnapshot()
   const isDisabled = resourceIsDisabled(resource)
+  const pb = usePathBuilder()
 
   let endpoints = resource?.status?.endpointLinks || []
   let podId = resource?.status?.k8sResourceInfo?.podName || ""
@@ -718,7 +719,7 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
       endpointEls.push(
         <Endpoint
           onClick={() =>
-            void incr("ui.web.endpoint", { action: AnalyticsAction.Click })
+            void incr(pb, "ui.web.endpoint", { action: AnalyticsAction.Click })
           }
           href={ep.url}
           // We use ep.url as the target, so that clicking the link re-uses the tab.

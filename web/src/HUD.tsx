@@ -52,14 +52,15 @@ export default class HUD extends Component<HudProps, HudState> {
   constructor(props: HudProps) {
     super(props)
 
-    incr("ui.web.init", { ua: window.navigator.userAgent })
-
     this.pathBuilder = new PathBuilder(window.location)
+
+    incr(this.pathBuilder, "ui.web.init", { ua: window.navigator.userAgent })
+
     this.controller = new AppController(this.pathBuilder, this)
     this.history = props.history
     this.unlisten = this.history.listen((location, action) => {
       let tags = navigationToTags(location, action)
-      incr("ui.web.navigation", tags)
+      incr(this.pathBuilder, "ui.web.navigation", tags)
     })
 
     this.state = {

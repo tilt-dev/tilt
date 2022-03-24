@@ -1,5 +1,6 @@
 import React, { Component } from "react"
 import { AnalyticsAction, incr } from "./analytics"
+import { pathBuilderContext } from "./PathBuilder"
 import { ResourceNav, useResourceNav } from "./ResourceNav"
 import { isTargetEditable } from "./shortcut"
 import SidebarItem from "./SidebarItem"
@@ -17,6 +18,7 @@ type Props = {
  * Sets up keyboard shortcuts that depend on the state of the sidebar.
  */
 class SidebarKeyboardShortcuts extends Component<Props> {
+  static contextType = pathBuilderContext
   constructor(props: Props) {
     super(props)
     this.onKeydown = this.onKeydown.bind(this)
@@ -66,7 +68,7 @@ class SidebarKeyboardShortcuts extends Component<Props> {
         }
         let item = items.find((item) => item.name == selected)
         this.props.onStartBuild()
-        incr("ui.web.triggerResource", {
+        incr(this.context, "ui.web.triggerResource", {
           action: AnalyticsAction.Shortcut,
           target: item?.targetType || "",
         })

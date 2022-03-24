@@ -8,6 +8,7 @@ import { ReactComponent as SnapshotIcon } from "./assets/svg/snapshot.svg"
 import { ReactComponent as UpdateAvailableIcon } from "./assets/svg/update-available.svg"
 import FloatDialog from "./FloatDialog"
 import HelpDialog from "./HelpDialog"
+import { usePathBuilder } from "./PathBuilder"
 import { isTargetEditable } from "./shortcut"
 import { SnapshotAction } from "./snapshot"
 import {
@@ -175,9 +176,10 @@ export function GlobalNav(props: GlobalNavProps) {
     return null
   }
 
+  let pb = usePathBuilder()
   let toggleAccountMenu = (action: AnalyticsAction) => {
     if (!accountMenuOpen) {
-      incr("ui.web.menu", { type: AnalyticsType.Account, action: action })
+      incr(pb, "ui.web.menu", { type: AnalyticsType.Account, action: action })
     }
     setAccountMenuAnchor(
       accountMenuOpen ? null : (accountButton.current as Element)
@@ -186,7 +188,7 @@ export function GlobalNav(props: GlobalNavProps) {
 
   let toggleHelpDialog = (action: AnalyticsAction) => {
     if (!helpDialogOpen) {
-      incr("ui.web.menu", { type: AnalyticsType.Shortcut, action: action })
+      incr(pb, "ui.web.menu", { type: AnalyticsType.Shortcut, action: action })
     }
     setHelpDialogAnchor(
       helpDialogOpen ? null : (shortcutButton.current as Element)
@@ -195,7 +197,7 @@ export function GlobalNav(props: GlobalNavProps) {
 
   let toggleUpdateDialog = (action: AnalyticsAction) => {
     if (!updateDialogOpen) {
-      incr("ui.web.menu", { type: AnalyticsType.Update, action: action })
+      incr(pb, "ui.web.menu", { type: AnalyticsType.Update, action: action })
     }
     setUpdateDialogAnchor(
       updateDialogOpen ? null : (updateButton.current as Element)

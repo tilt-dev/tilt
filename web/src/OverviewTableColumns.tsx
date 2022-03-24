@@ -21,6 +21,7 @@ import { OverviewTableBuildButton } from "./OverviewTableBuildButton"
 import OverviewTableStarResourceButton from "./OverviewTableStarResourceButton"
 import OverviewTableStatus from "./OverviewTableStatus"
 import OverviewTableTriggerModeToggle from "./OverviewTableTriggerModeToggle"
+import { usePathBuilder } from "./PathBuilder"
 import { useResourceNav } from "./ResourceNav"
 import { useResourceSelection } from "./ResourceSelectionContext"
 import { disabledResourceStyleMixin } from "./ResourceStatus"
@@ -505,11 +506,13 @@ export function TableEndpointColumn({ row }: CellProps<RowValues>) {
     return null
   }
 
+  const pb = usePathBuilder()
+
   let endpoints = row.original.endpoints.map((ep: any) => {
     return (
       <Endpoint
         onClick={() =>
-          void incr("ui.web.endpoint", { action: AnalyticsAction.Click })
+          void incr(pb, "ui.web.endpoint", { action: AnalyticsAction.Click })
         }
         href={ep.url}
         // We use ep.url as the target, so that clicking the link re-uses the tab.

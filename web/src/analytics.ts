@@ -6,6 +6,7 @@ import {
   isRegexp,
   TermState,
 } from "./logfilters"
+import PathBuilder from "./PathBuilder"
 
 export const emptyTags = Object.freeze({})
 
@@ -40,8 +41,12 @@ export enum AnalyticsAction {
 }
 
 // Fire and forget all analytics events
-export const incr = (name: string, tags: Tags = {}): void => {
-  let url = `//${window.location.host}/api/analytics`
+export const incr = (pb: PathBuilder, name: string, tags: Tags = {}): void => {
+  if (pb.isSnapshot()) {
+    return
+  }
+
+  let url = pb.path("/api/analytics")
 
   // Uncomment to debug analytics events
   // console.log("analytics event: \nname:", name, "\npayload:", tags)

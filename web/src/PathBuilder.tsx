@@ -77,7 +77,7 @@ class PathBuilder {
 
 export default PathBuilder
 
-const pathBuilderContext = React.createContext<PathBuilder>(
+export const pathBuilderContext = React.createContext<PathBuilder>(
   new PathBuilder(window.location)
 )
 
