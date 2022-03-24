@@ -49,9 +49,8 @@ if status == 0:
   print("Then try uploading assets again.")
   sys.exit(1)
 
-os.chdir("web")
-subprocess.check_call(["yarn", "install"])
 e = os.environ.copy()
 e["CI"] = "false"
-subprocess.check_call(["yarn", "run", "build"], env=e)
+subprocess.check_call(["make", "build-js"], env=e)
+os.chdir("web")
 subprocess.check_call(["gsutil", "-m", "cp", "-r", "build", "gs://tilt-static-assets/%s" % version])

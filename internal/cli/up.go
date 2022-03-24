@@ -199,7 +199,11 @@ func provideLogActions() store.LogActionsFlag {
 
 func provideWebMode(b model.TiltBuild) (model.WebMode, error) {
 	switch webModeFlag {
-	case model.LocalWebMode, model.ProdWebMode, model.PrecompiledWebMode:
+	case model.LocalWebMode,
+		model.ProdWebMode,
+		model.EmbeddedWebMode,
+		model.CloudWebMode,
+		model.PrecompiledWebMode:
 		return webModeFlag, nil
 	case model.DefaultWebMode:
 		// Set prod web mode from an environment variable. Useful for
@@ -244,21 +248,44 @@ func provideWebURL(webHost model.WebHost, webPort model.WebPort) (model.WebURL, 
 	return model.WebURL(*u), nil
 }
 
-func provideAssetServer(mode model.WebMode, version model.WebVersion) (assets.Server, error) {
-	if mode == model.ProdWebMode {
-		return assets.NewProdServer(assets.ProdAssetBucket, version)
+func targetMode(mode model.WebMode, embeddedAvailable bool) (model.WebMode, error) {
+	if (mode == model.EmbeddedWebMode || mode == model.PrecompiledWebMode) && !embeddedAvailable {
+		return mode, fmt.Errorf("requested %s mode, but assets are not available", string(mode))
 	}
-	if mode == model.PrecompiledWebMode || mode == model.LocalWebMode {
+	if mode.IsProd() { // cloud by request, embedded when available, otherwise cloud
+		if mode != model.CloudWebMode && embeddedAvailable {
+			mode = model.EmbeddedWebMode
+		} else if mode == model.ProdWebMode {
+			mode = model.CloudWebMode
+		}
+	} else { // precompiled when available and by request, otherwise local
+		if mode != model.PrecompiledWebMode {
+			mode = model.LocalWebMode
+		}
+	}
+	return mode, nil
+}
+
+func provideAssetServer(mode model.WebMode, version model.WebVersion) (assets.Server, error) {
+	s, ok := assets.GetEmbeddedServer()
+	m, err := targetMode(mode, ok)
+
+	if err != nil {
+		return nil, err
+	}
+
+	switch m {
+	case model.EmbeddedWebMode, model.PrecompiledWebMode:
+		return s, nil
+	case model.CloudWebMode:
+		return assets.NewProdServer(assets.ProdAssetBucket, version)
+	case model.LocalWebMode:
 		path, err := web.StaticPath()
 		if err != nil {
 			return nil, err
 		}
 		pkgDir := assets.PackageDir(path)
-		if mode == model.PrecompiledWebMode {
-			return assets.NewPrecompiledServer(pkgDir), nil
-		} else {
-			return assets.NewDevServer(pkgDir, model.WebDevPort(webDevPort))
-		}
+		return assets.NewDevServer(pkgDir, model.WebDevPort(webDevPort))
 	}
 	return nil, model.UnrecognizedWebModeError(string(mode))
 }
