@@ -113,6 +113,11 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		}
 	}
 
+	if conn.error == "" && conn.connType == connectionTypeK8s && conn.registry == nil {
+		reg := conn.k8sClient.LocalRegistry(ctx)
+		conn.registry = &reg
+	}
+
 	r.connManager.store(nn, conn)
 
 	status := conn.toStatus()
@@ -239,9 +244,20 @@ func (c *connection) toStatus() v1alpha1.ClusterStatus {
 		connectedAt = &t
 	}
 
+	var reg *v1alpha1.RegistryHosting
+	if c.registry != nil {
+		reg = &v1alpha1.RegistryHosting{
+			Host:                     c.registry.Host,
+			HostFromContainerRuntime: c.registry.HostFromCluster(),
+			// TODO(milas+lizz): expose from the Tilt registry object
+			// Help: c.registry.Help,
+		}
+	}
+
 	return v1alpha1.ClusterStatus{
 		Error:       c.error,
 		Arch:        c.arch,
 		ConnectedAt: connectedAt,
+		Registry:    reg,
 	}
 }
