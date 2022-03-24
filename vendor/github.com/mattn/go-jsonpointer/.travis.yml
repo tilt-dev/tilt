@@ -1,0 +1,20 @@
+language: go
+sudo: false
+
+go:
+  - 1.8
+  - 1.93
+  - tip
+
+env:
+  global:
+    - secure: "qXGZbIMjPajPVfd/js8AeIIcCvglHAuxGC6rsf8+yQvHHNHwnoIBO5StLJqp9Wbx0HfZLb2PzZBE0jPItMA9pYZZv0jCRqb18veS6DEzeVRSZJscR7LB1W8lEW5HbOm2r3tjyJzPh9PsvzmYxSLlo8zN1k7LNIIDrZbjMst6O4Y="
+
+before_install:
+  - go get -v ./...
+
+script:
+  - ./go.test.sh
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
