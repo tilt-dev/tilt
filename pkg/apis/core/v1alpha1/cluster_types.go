@@ -167,6 +167,55 @@ type ClusterStatus struct {
 	//
 	// +optional
 	ConnectedAt *metav1.MicroTime `json:"connectedAt,omitempty" protobuf:"bytes,3,opt,name=connectedAt"`
+
+	// Registry describes a local registry that developer tools can
+	// connect to. A local registry allows clients to load images into the local
+	// cluster by pushing to this registry.
+	//
+	// +optional
+	Registry *RegistryHosting `json:"registry,omitempty" protobuf:"bytes,4,opt,name=registry"`
+}
+
+type RegistryHosting struct {
+	// Host documents the host (hostname and port) of the registry, as seen from
+	// outside the cluster.
+	//
+	// This is the registry host that tools outside the cluster should push images
+	// to.
+	Host string `json:"host,omitempty" yaml:"host,omitempty" protobuf:"bytes,1,opt,name=host"`
+
+	// HostFromClusterNetwork documents the host (hostname and port) of the
+	// registry, as seen from networking inside the container pods.
+	//
+	// This is the registry host that tools running on pods inside the cluster
+	// should push images to. If not set, then tools inside the cluster should
+	// assume the local registry is not available to them.
+	HostFromClusterNetwork string `json:"hostFromClusterNetwork,omitempty" yaml:"hostFromClusterNetwork,omitempty" protobuf:"bytes,2,opt,name=hostFromClusterNetwork"`
+
+	// HostFromContainerRuntime documents the host (hostname and port) of the
+	// registry, as seen from the cluster's container runtime.
+	//
+	// When tools apply Kubernetes objects to the cluster, this host should be
+	// used for image name fields. If not set, users of this field should use the
+	// value of Host instead.
+	//
+	// Note that it doesn't make sense semantically to define this field, but not
+	// define Host or HostFromClusterNetwork. That would imply a way to pull
+	// images without a way to push images.
+	HostFromContainerRuntime string `json:"hostFromContainerRuntime,omitempty" yaml:"hostFromContainerRuntime,omitempty" protobuf:"bytes,3,opt,name=hostFromContainerRuntime"`
+
+	// Help contains a URL pointing to documentation for users on how to set
+	// up and configure a local registry.
+	//
+	// Tools can use this to nudge users to enable the registry. When possible,
+	// the writer should use as permanent a URL as possible to prevent drift
+	// (e.g., a version control SHA).
+	//
+	// When image pushes to a registry host specified in one of the other fields
+	// fail, the tool should display this help URL to the user. The help URL
+	// should contain instructions on how to diagnose broken or misconfigured
+	// registries.
+	Help string `json:"help,omitempty" yaml:"help,omitempty" protobuf:"bytes,4,opt,name=help"`
 }
 
 // Cluster implements ObjectWithStatusSubResource interface.
