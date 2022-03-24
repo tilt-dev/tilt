@@ -8,8 +8,6 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/tilt-dev/clusterid"
-	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
@@ -79,24 +77,14 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 			return br, err
 		}
 
-		_, isLiveUpdate := builder.(*buildcontrol.LiveUpdateBuildAndDeployer)
 		l := logger.Get(ctx).WithFields(logger.Fields{logger.FieldNameBuildEvent: "fallback"})
 
 		if redirectErr, ok := err.(buildcontrol.RedirectToNextBuilder); ok {
 			s := fmt.Sprintf("Falling back to next update method…\nREASON: %v\n", err)
-			if isLiveUpdate && redirectErr.UserFacing() {
-				s = fmt.Sprintf("Will not perform Live Update because:\n\t%v\n"+
-					"Falling back to a full image build + deploy\n", err)
-			}
 			l.Write(redirectErr.Level, []byte(s))
 		} else {
 			lastUnexpectedErr = err
-			if isLiveUpdate {
-				// Indent the error message.
-				errMsg := strings.ReplaceAll(strings.TrimSpace(fmt.Sprintf("%v", err)), "\n", "\n\t")
-				l.Warnf("Live Update failed with unexpected error:\n\t%s\n"+
-					"Falling back to a full image build + deploy", errMsg)
-			} else if i+1 < len(composite.builders) {
+			if i+1 < len(composite.builders) {
 				logger.Get(ctx).Infof("got unexpected error during build/deploy: %v", err)
 			}
 		}
@@ -110,11 +98,11 @@ func (composite *CompositeBuildAndDeployer) BuildAndDeploy(ctx context.Context, 
 	return store.BuildResultSet{}, lastErr
 }
 
-func DefaultBuildOrder(lubad *buildcontrol.LiveUpdateBuildAndDeployer, ibad *buildcontrol.ImageBuildAndDeployer, dcbad *buildcontrol.DockerComposeBuildAndDeployer,
-	ltbad *buildcontrol.LocalTargetBuildAndDeployer, updMode liveupdates.UpdateMode, env clusterid.Product, runtime container.Runtime) BuildOrder {
+func DefaultBuildOrder(ibad *buildcontrol.ImageBuildAndDeployer, dcbad *buildcontrol.DockerComposeBuildAndDeployer,
+	ltbad *buildcontrol.LocalTargetBuildAndDeployer, updMode liveupdates.UpdateMode) BuildOrder {
 	if updMode == liveupdates.UpdateModeImage {
 		return BuildOrder{dcbad, ibad, ltbad}
 	}
 
-	return BuildOrder{lubad, dcbad, ibad, ltbad}
+	return BuildOrder{dcbad, ibad, ltbad}
 }
