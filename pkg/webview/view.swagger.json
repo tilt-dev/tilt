@@ -358,6 +358,63 @@
       },
       "description": "Time is a wrapper around time.Time which supports correct\nmarshaling to YAML and JSON.  Wrappers are provided for many\nof the factory methods that the time package offers.\n\n+protobuf.options.marshal=false\n+protobuf.as=Timestamp\n+protobuf.options.(gogoproto.goproto_stringer)=false"
     },
+    "v1alpha1Cluster": {
+      "type": "object",
+      "properties": {
+        "metadata": {
+          "$ref": "#/definitions/v1ObjectMeta"
+        },
+        "spec": {
+          "$ref": "#/definitions/v1alpha1ClusterSpec"
+        },
+        "status": {
+          "$ref": "#/definitions/v1alpha1ClusterStatus"
+        }
+      },
+      "description": "Cluster defines any runtime for running containers, in the broadest\nsense of the word \"runtime\".\n\n+k8s:openapi-gen=true"
+    },
+    "v1alpha1ClusterConnection": {
+      "type": "object",
+      "properties": {
+        "kubernetes": {
+          "$ref": "#/definitions/v1alpha1KubernetesClusterConnection",
+          "description": "Defines connection to a Kubernetes cluster."
+        },
+        "docker": {
+          "$ref": "#/definitions/v1alpha1DockerClusterConnection",
+          "description": "Defines connection to a Docker daemon."
+        }
+      },
+      "description": "Connection spec for an existing cluster."
+    },
+    "v1alpha1ClusterSpec": {
+      "type": "object",
+      "properties": {
+        "connection": {
+          "$ref": "#/definitions/v1alpha1ClusterConnection",
+          "description": "Connection spec for an existing cluster."
+        }
+      },
+      "description": "ClusterSpec defines how to find the cluster we're running\ncontainers on.\n\nTilt currently supports connecting to an existing Kubernetes\ncluster or an existing Docker Daemon (for Docker Compose)."
+    },
+    "v1alpha1ClusterStatus": {
+      "type": "object",
+      "properties": {
+        "arch": {
+          "type": "string",
+          "description": "The preferred chip architecture of the cluster.\n\nOn Kubernetes, this will correspond to the kubernetes.io/arch annotation on\na node.\n\nOn Docker, this will be the Architecture of the Docker daemon.\n\nNote that many clusters support multiple chipsets. This field doesn't intend\nthat this is the only architecture a cluster supports, only that it's one\nof the architectures."
+        },
+        "error": {
+          "type": "string",
+          "description": "An unrecoverable error connecting to the cluster.\n\n+optional"
+        },
+        "connectedAt": {
+          "type": "string", "format": "date-time",
+          "description": "ConnectedAt indicates the time at which the cluster connection was established.\n\nConsumers can use this to detect when the underlying config has changed\nand refresh their client/connection accordingly.\n\n+optional"
+        }
+      },
+      "title": "ClusterStatus defines the observed state of Cluster"
+    },
     "v1alpha1ConfigMapDisableSource": {
       "type": "object",
       "properties": {
@@ -408,6 +465,28 @@
         }
       },
       "title": "Points at a thing that can control whether something is disabled"
+    },
+    "v1alpha1DockerClusterConnection": {
+      "type": "object",
+      "properties": {
+        "host": {
+          "type": "string",
+          "description": "The docker host to use.\n\nIf not specified, will read the DOCKER_HOST env or use the default docker\nhost."
+        }
+      }
+    },
+    "v1alpha1KubernetesClusterConnection": {
+      "type": "object",
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "The name of the kubeconfig context to use.\n\nIf not specified, will use the default context in the kubeconfig."
+        },
+        "namespace": {
+          "type": "string",
+          "description": "The default namespace to use.\n\nIf not specified, will use the namespace in the kubeconfig."
+        }
+      }
     },
     "v1alpha1UIBoolInputSpec": {
       "type": "object",
@@ -1427,6 +1506,12 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/v1alpha1UIButton"
+          }
+        },
+        "clusters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1alpha1Cluster"
           }
         },
         "is_complete": {
