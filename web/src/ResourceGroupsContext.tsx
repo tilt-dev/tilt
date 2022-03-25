@@ -72,12 +72,21 @@ export function ResourceGroupsContextProvider(
       return groups[groupLabel] ?? { ...DEFAULT_GROUP_STATE }
     }
 
-    // We can expand all groups by resetting the collapse state to empty."
+    // We expand all groups by resetting the collapse state to empty.
+    //
+    // This ensures that even hidden groups are expanded.
+    //
+    // NOTE(nick): expandAll and collapseAll are non-symmetric - they have
+    // very different behavior for groups that are currently hidden, or
+    // for new groups created after the button is clicked. We deliberately
+    // err on the side of expanding.
     function expandAll() {
       setGroups({}) // Reset state.
     }
 
-    // To collapse all groups, we need to know all their names.
+    // We can collapse all groups currently on-screen.
+    //
+    // If new resources with new names come later, we'll leave them expanded.
     function collapseAll(groupNames: string[]) {
       let newState: GroupsState = {}
       groupNames.forEach((group) => (newState[group] = { expanded: false }))
