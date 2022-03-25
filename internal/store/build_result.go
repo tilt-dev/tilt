@@ -196,12 +196,6 @@ type BuildState struct {
 	// This field indicates case 1 || case 2 -- i.e. that we should skip
 	// live_update, and force an image build (even if there are no changed files)
 	FullBuildTriggered bool
-
-	KubernetesSelector *v1alpha1.LiveUpdateKubernetesSelector
-
-	KubernetesResource *k8sconv.KubernetesResource
-
-	DockerComposeService *v1alpha1.DockerComposeService
 }
 
 func NewBuildState(result BuildResult, files []string, pendingDeps []model.TargetID) BuildState {

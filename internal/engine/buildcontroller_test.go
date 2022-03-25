@@ -19,7 +19,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store"
-	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/internal/testutils/configmap"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/podbuilder"
@@ -27,50 +26,6 @@ import (
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
-
-func TestBuildControllerTooManyPodsForDockerBuildNoErrorMessage(t *testing.T) {
-	f := newTestFixture(t)
-
-	manifest := NewSanchoDockerBuildManifest(f)
-	// basePB is used for all pods so that they share the same deployment
-	basePB := f.registerForDeployer(manifest)
-
-	f.Start([]model.Manifest{manifest})
-
-	// initial build
-	call := f.nextCall()
-	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
-	assert.Equal(t, []string{}, call.oneImageState().FilesChanged())
-
-	p1 := basePB.WithPodName("pod1").Build()
-	p2 := basePB.WithPodName("pod2").Build()
-
-	f.podEvent(p1)
-	f.podEvent(p2)
-	// need to wait for both pods to be seen or the next build call might only know about one of them (and so
-	// would have container info)
-	f.WaitUntilManifestState("pods not seen", manifest.Name, func(state store.ManifestState) bool {
-		return state.K8sRuntimeState().PodLen() == 2
-	})
-
-	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
-
-	call = f.nextCall()
-
-	err := f.Stop()
-	assert.NoError(t, err)
-	f.assertAllBuildsConsumed()
-
-	// Should not have sent container info b/c too many pods
-	s := call.oneImageState()
-	containers, _ := liveupdates.RunningContainers(
-		s.KubernetesSelector, s.KubernetesResource, nil)
-	assert.Equal(t, 0, len(containers))
-
-	// Should not have surfaced this log line b/c manifest doesn't have LiveUpdate instructions
-	assert.NotContains(t, f.log.String(), "can only get container info for a single pod",
-		"should print error message when trying to get Running Containers for manifest with more than one pod")
-}
 
 func TestBuildControllerLocalResource(t *testing.T) {
 	f := newTestFixture(t)

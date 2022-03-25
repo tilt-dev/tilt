@@ -56,13 +56,6 @@ var alreadyBuiltSet = store.BuildResultSet{imageTargetID: alreadyBuilt}
 
 type expectedFile = testutils.ExpectedFile
 
-var testPodID k8s.PodID = "pod-id"
-var testContainerInfo = liveupdates.Container{
-	PodID:         testPodID,
-	ContainerID:   k8s.MagicTestContainerID,
-	ContainerName: "container-name",
-}
-
 func TestGKEDeploy(t *testing.T) {
 	f := newBDFixture(t, clusterid.ProductGKE, container.RuntimeDocker)
 
@@ -134,7 +127,7 @@ func TestFallBackToImageDeploy(t *testing.T) {
 
 	manifest := NewSanchoLiveUpdateManifest(f)
 	changed := f.WriteFile("a.txt", "a")
-	bs := resultToStateSet(manifest, alreadyBuiltSet, []string{changed}, testContainerInfo)
+	bs := resultToStateSet(manifest, alreadyBuiltSet, []string{changed})
 
 	targets := buildcontrol.BuildTargets(manifest)
 	_, err := f.BuildAndDeploy(targets, bs)
@@ -279,42 +272,6 @@ func TestDockerBuildErrorNotLogged(t *testing.T) {
 
 	logs := f.logs.String()
 	require.Equal(t, 0, strings.Count(logs, "no one expects the unexpected error"))
-}
-
-func TestOneLiveUpdateOneDockerBuildDoesImageBuild(t *testing.T) {
-	f := newBDFixture(t, clusterid.ProductGKE, container.RuntimeDocker)
-
-	sanchoTarg := NewSanchoLiveUpdateImageTarget(f)          // first target = LiveUpdate
-	sidecarTarg := NewSanchoSidecarDockerBuildImageTarget(f) // second target = DockerBuild
-	sanchoRef := container.MustParseNamedTagged(fmt.Sprintf("%s:tilt-123", testyaml.SanchoImage))
-	sidecarRef := container.MustParseNamedTagged(fmt.Sprintf("%s:tilt-123", testyaml.SanchoSidecarImage))
-	sanchoCInfo := liveupdates.Container{
-		PodID:         testPodID,
-		ContainerName: "sancho",
-		ContainerID:   "sancho-c",
-	}
-
-	manifest := manifestbuilder.New(f, "sancho").
-		WithK8sYAML(testyaml.SanchoSidecarYAML).
-		WithImageTargets(sanchoTarg, sidecarTarg).
-		Build()
-	changed := f.WriteFile("a.txt", "a")
-	sanchoState := liveupdates.WithFakeK8sContainers(
-		store.NewBuildState(store.NewImageBuildResultSingleRef(sanchoTarg.ID(), sanchoRef), []string{changed}, nil),
-		sanchoRef.String(), []liveupdates.Container{sanchoCInfo})
-	sidecarState := store.NewBuildState(store.NewImageBuildResultSingleRef(sidecarTarg.ID(), sidecarRef), []string{changed}, nil)
-
-	bs := store.BuildStateSet{sanchoTarg.ID(): sanchoState, sidecarTarg.ID(): sidecarState}
-
-	_, err := f.BuildAndDeploy(buildcontrol.BuildTargets(manifest), bs)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// expect an image build
-	assert.Equal(t, 2, f.docker.BuildCount)
-	assert.Equal(t, 2, f.docker.PushCount)
-	f.assertK8sUpsertCalled(true)
 }
 
 func TestLocalTargetDeploy(t *testing.T) {
@@ -535,16 +492,10 @@ func (f *bdFixture) BuildAndDeploy(specs []model.TargetSpec, stateSet store.Buil
 	return f.bd.BuildAndDeploy(f.ctx, f.st, specs, stateSet)
 }
 
-func resultToStateSet(m model.Manifest, resultSet store.BuildResultSet, files []string, container liveupdates.Container) store.BuildStateSet {
+func resultToStateSet(m model.Manifest, resultSet store.BuildResultSet, files []string) store.BuildStateSet {
 	stateSet := store.BuildStateSet{}
 	for id, result := range resultSet {
-		state := store.NewBuildState(result, files, nil)
-		if m.IsDC() {
-			state = liveupdates.WithFakeDCContainer(state, container)
-		} else {
-			state = liveupdates.WithFakeK8sContainers(state, string(id.Name), []liveupdates.Container{container})
-		}
-		stateSet[id] = state
+		stateSet[id] = store.NewBuildState(result, files, nil)
 	}
 	return stateSet
 }
