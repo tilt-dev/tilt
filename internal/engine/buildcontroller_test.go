@@ -232,52 +232,6 @@ func TestBuildControllerImageBuildTrigger(t *testing.T) {
 	}
 }
 
-// Make sure we don't try display messages about live update after a full build trigger.
-// https://github.com/tilt-dev/tilt/issues/3915
-func TestFullBuildTriggerClearsLiveUpdate(t *testing.T) {
-	f := newTestFixture(t)
-	mName := model.ManifestName("foobar")
-
-	manifest := f.newManifest(mName.String())
-	basePB := f.registerForDeployer(manifest)
-	opt := func(ia InitAction) InitAction {
-		ia.TerminalMode = store.TerminalModeStream
-		return ia
-	}
-	f.Start([]model.Manifest{manifest}, opt)
-
-	f.nextCallComplete()
-
-	f.podEvent(basePB.Build())
-	f.WaitUntilManifestState("foobar loaded", "foobar", func(ms store.ManifestState) bool {
-		return ms.K8sRuntimeState().PodLen() == 1
-	})
-	f.WaitUntil("foobar k8sresource loaded", func(s store.EngineState) bool {
-		return s.KubernetesResources["foobar"] != nil && len(s.KubernetesResources["foobar"].FilteredPods) == 1
-	})
-	f.withManifestState("foobar", func(ms store.ManifestState) {
-		ms.LiveUpdatedContainerIDs["containerID"] = true
-	})
-
-	f.b.completeBuildsManually = true
-	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: mName})
-	f.WaitUntilManifestState("foobar building", "foobar", func(ms store.ManifestState) bool {
-		return ms.IsBuilding()
-	})
-
-	f.podEvent(basePB.WithDeletionTime(time.Now()).Build())
-	f.WaitUntilManifestState("foobar deleting", "foobar", func(ms store.ManifestState) bool {
-		return ms.K8sRuntimeState().PodLen() == 0
-	})
-	assert.Contains(t, f.log.String(), "Initial Build")
-	f.WaitUntil("Trigger appears", func(st store.EngineState) bool {
-		return strings.Contains(f.log.String(), "Unknown Trigger")
-	})
-	assert.NotContains(t, f.log.String(), "Detected a container change")
-
-	f.completeBuildForManifest(manifest)
-}
-
 func TestBuildQueueOrdering(t *testing.T) {
 	f := newTestFixture(t)
 

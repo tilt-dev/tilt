@@ -80,7 +80,7 @@ func ToBuildTerminated(br model.BuildRecord, logStore *logstore.LogStore) v1alph
 		Warnings:       warnings,
 		StartTime:      metav1.NewMicroTime(br.StartTime),
 		FinishTime:     metav1.NewMicroTime(br.FinishTime),
-		IsCrashRebuild: br.Reason.IsCrashOnly(),
+		IsCrashRebuild: false,
 		SpanID:         string(br.SpanID),
 	}
 }

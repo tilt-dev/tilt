@@ -10,7 +10,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
-	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -62,19 +61,6 @@ func HandleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 		state, _ := ms.RuntimeState.(dockercompose.State)
 		state = state.WithSpanID(runtimelog.SpanIDForDCService(mn))
 		ms.RuntimeState = state
-	}
-
-	// If this is a full build, we know all the containers will get replaced,
-	// so just reset them now.
-	//
-	// NOTE(nick): Currently, this addresses an issue where the full build deletes
-	// the deployment, which then starts killing pods, which we interpret as a
-	// crash. A better way to resolve this problem would be to watch for deletions
-	// directly. But it's still semantically correct to record that we intended to
-	// delete the containers.
-	if action.FullBuildTriggered {
-		// Reset all the container ids
-		ms.LiveUpdatedContainerIDs = container.NewIDSet()
 	}
 
 	state.RemoveFromTriggerQueue(mn)
@@ -211,7 +197,6 @@ func HandleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 	ms.AddCompletedBuild(bs)
 
 	delete(ms.CurrentBuilds, cb.Source)
-	ms.NeedsRebuildFromCrash = false
 
 	handleBuildResults(engineState, mt, bs, cb.Result)
 
@@ -224,25 +209,6 @@ func HandleBuildCompleted(ctx context.Context, engineState *store.EngineState, c
 		if IsFatalError(err) {
 			engineState.FatalError = err
 			return
-		}
-	}
-
-	// Track the container ids that have been live-updated whether the
-	// build succeeds or fails.
-	liveUpdateContainerIDs := cb.Result.LiveUpdatedContainerIDs()
-	if len(liveUpdateContainerIDs) == 0 {
-		// Assume this was an image build, and reset all the container ids
-		ms.LiveUpdatedContainerIDs = container.NewIDSet()
-	} else {
-		for _, cID := range liveUpdateContainerIDs {
-			ms.LiveUpdatedContainerIDs[cID] = true
-		}
-
-		krs := ms.K8sRuntimeState()
-		bestPod := krs.MostRecentPod()
-		if timecmp.AfterOrEqual(bestPod.CreatedAt, bs.StartTime) ||
-			timecmp.Equal(krs.UpdateStartTime[k8s.PodID(bestPod.Name)], bs.StartTime) {
-			liveupdates.CheckForContainerCrash(engineState, mn.String())
 		}
 	}
 

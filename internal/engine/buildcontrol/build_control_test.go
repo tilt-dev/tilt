@@ -28,7 +28,7 @@ import (
 func TestNextTargetToBuildDoesntReturnCurrentlyBuildingTarget(t *testing.T) {
 	f := newTestFixture(t)
 
-	mt := f.manifestNeedingCrashRebuild()
+	mt := f.upsertK8sManifest("k8s1")
 	f.st.UpsertManifestTarget(mt)
 
 	// Verify this target is normally next-to-build
@@ -739,22 +739,6 @@ func (f *testFixture) upsertLocalManifest(name model.ManifestName, opts ...manif
 		b = o(b)
 	}
 	return f.upsertManifest(b.WithLocalResource(fmt.Sprintf("exec-%s", name), nil).Build())
-}
-
-func (f *testFixture) manifestNeedingCrashRebuild() *store.ManifestTarget {
-	m := manifestbuilder.New(f, "needs-crash-rebuild").
-		WithK8sYAML(testyaml.SanchoYAML).
-		Build()
-	mt := store.NewManifestTarget(m)
-	mt.State.BuildHistory = []model.BuildRecord{
-		model.BuildRecord{
-			StartTime:  time.Now().Add(-5 * time.Second),
-			FinishTime: time.Now(),
-		},
-	}
-	mt.State.NeedsRebuildFromCrash = true
-	mt.State.DisableState = v1alpha1.DisableStateEnabled
-	return mt
 }
 
 type manifestOption func(manifestbuilder.ManifestBuilder) manifestbuilder.ManifestBuilder

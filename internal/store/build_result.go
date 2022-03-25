@@ -67,35 +67,6 @@ func NewImageBuildResultSingleRef(id model.TargetID, ref reference.NamedTagged) 
 	return NewImageBuildResult(id, ref, ref)
 }
 
-// TODO(nick): In the old live-update system, keeping track of the LiveUpdateBuildResult
-// allowed us to track when a container had crashed or replaced.
-//
-// In the reconciler-based live-update system, the reconciler keeps track of which
-// containers it has live-updated internally and whether it can recover from a crash,
-// then updates its status on whether its healthy. So tracking live updated containers
-// separately becomes unnecessary. We can remove this code once the BuildAndDeploy
-// live-updater is deleted.
-type LiveUpdateBuildResult struct {
-	id model.TargetID
-
-	// The ID of the container(s) that we live-updated in-place.
-	//
-	// The contents of the container have diverged from the image it's built on,
-	// so we need to keep track of that.
-	LiveUpdatedContainerIDs []container.ID
-}
-
-func (r LiveUpdateBuildResult) TargetID() model.TargetID   { return r.id }
-func (r LiveUpdateBuildResult) BuildType() model.BuildType { return model.BuildTypeLiveUpdate }
-
-// For in-place container updates.
-func NewLiveUpdateBuildResult(id model.TargetID, containerIDs []container.ID) LiveUpdateBuildResult {
-	return LiveUpdateBuildResult{
-		id:                      id,
-		LiveUpdatedContainerIDs: containerIDs,
-	}
-}
-
 type DockerComposeBuildResult struct {
 	id model.TargetID
 
@@ -150,17 +121,6 @@ func ClusterImageRefFromBuildResult(r BuildResult) string {
 
 type BuildResultSet map[model.TargetID]BuildResult
 
-func (set BuildResultSet) LiveUpdatedContainerIDs() []container.ID {
-	result := []container.ID{}
-	for _, r := range set {
-		r, ok := r.(LiveUpdateBuildResult)
-		if ok {
-			result = append(result, r.LiveUpdatedContainerIDs...)
-		}
-	}
-	return result
-}
-
 func (set BuildResultSet) ApplyFilter() *k8sconv.KubernetesApplyFilter {
 	for _, r := range set {
 		r, ok := r.(K8sBuildResult)
@@ -194,38 +154,6 @@ func (set BuildResultSet) BuildTypes() []model.BuildType {
 		result = append(result, key)
 	}
 	return result
-}
-
-// Returns a container ID iff it's the only container ID in the result set.
-// If there are multiple container IDs, we have to give up.
-func (set BuildResultSet) OneAndOnlyLiveUpdatedContainerID() container.ID {
-	var id container.ID
-	for _, br := range set {
-		result, ok := br.(LiveUpdateBuildResult)
-		if !ok {
-			continue
-		}
-
-		if len(result.LiveUpdatedContainerIDs) == 0 {
-			continue
-		}
-
-		if len(result.LiveUpdatedContainerIDs) > 1 {
-			return ""
-		}
-
-		curID := result.LiveUpdatedContainerIDs[0]
-		if curID == "" {
-			continue
-		}
-
-		if id != "" && curID != id {
-			return ""
-		}
-
-		id = curID
-	}
-	return id
 }
 
 // A BuildResultSet that can only hold image build results.

@@ -222,10 +222,6 @@ type fakeBuildAndDeployer struct {
 
 	buildCount int
 
-	// Set this to simulate a container update that returns the container IDs
-	// it updated.
-	nextLiveUpdateContainerIDs []container.ID
-
 	// Inject the container ID of the container started by Docker Compose.
 	// If not set, we will auto-generate an ID.
 	nextDockerComposeContainerID    container.ID
@@ -238,13 +234,6 @@ type fakeBuildAndDeployer struct {
 	// Set this to simulate a build with no results and an error.
 	// Do not set this directly, use fixture.SetNextBuildError
 	nextBuildError error
-
-	// Set this to simulate a live-update compile error
-	//
-	// This is slightly different than a compile error, because the containers are
-	// still running with the synced files. The build system returns a
-	// result with the container ID.
-	nextLiveUpdateCompileError error
 
 	buildLogOutput map[model.TargetID]string
 
@@ -350,14 +339,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 		return result, err
 	}
 
-	containerIDs := b.nextLiveUpdateContainerIDs
-	if len(containerIDs) > 0 {
-		for k := range result {
-			result[k] = store.NewLiveUpdateBuildResult(k, containerIDs)
-		}
-	}
-
-	if !call.dc().Empty() && len(b.nextLiveUpdateContainerIDs) == 0 {
+	if !call.dc().Empty() {
 		dcContainerID := container.ID(fmt.Sprintf("dc-%s", path.Base(call.dc().ID().Name.String())))
 		if b.nextDockerComposeContainerID != "" {
 			dcContainerID = b.nextDockerComposeContainerID
@@ -383,16 +365,13 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 		result[call.k8s().ID()] = nextK8sResult
 	}
 
-	err = b.nextLiveUpdateCompileError
-	b.nextLiveUpdateCompileError = nil
-	b.nextLiveUpdateContainerIDs = nil
 	b.nextDockerComposeContainerID = ""
 
 	for key, val := range result {
 		b.resultsByID[key] = val
 	}
 
-	return result, err
+	return result, nil
 }
 
 func (b *fakeBuildAndDeployer) updateKubernetesApplyStatus(ctx context.Context, kTarg model.K8sTarget, iTargets []model.ImageTarget) error {
@@ -3643,21 +3622,6 @@ func (f *testFixture) SetNextBuildError(err error) {
 	_ = f.store.RLockState()
 	f.b.mu.Lock()
 	f.b.nextBuildError = err
-	f.b.mu.Unlock()
-	f.store.RUnlockState()
-}
-
-func (f *testFixture) SetNextLiveUpdateCompileError(err error, containerIDs []container.ID) {
-	f.WaitUntil("any in-flight builds have hit the buildAndDeployer", func(state store.EngineState) bool {
-		f.b.mu.Lock()
-		defer f.b.mu.Unlock()
-		return f.b.buildCount == state.BuildControllerStartCount
-	})
-
-	_ = f.store.RLockState()
-	f.b.mu.Lock()
-	f.b.nextLiveUpdateCompileError = err
-	f.b.nextLiveUpdateContainerIDs = containerIDs
 	f.b.mu.Unlock()
 	f.store.RUnlockState()
 }

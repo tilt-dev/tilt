@@ -11,7 +11,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/hud/view"
 	"github.com/tilt-dev/tilt/internal/rty"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
-	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 const defaultLogPaneHeight = 8
@@ -202,9 +201,6 @@ func isInError(res view.Resource) bool {
 
 func isCrashing(res view.Resource) bool {
 	return (res.IsK8s() && res.K8sInfo().PodRestarts > 0) ||
-		res.LastBuild().Reason.Has(model.BuildReasonFlagCrash) ||
-		res.CurrentBuild.Reason.Has(model.BuildReasonFlagCrash) ||
-		res.PendingBuildReason.Has(model.BuildReasonFlagCrash) ||
 		res.IsDC() && res.DockerComposeTarget().RuntimeStatus() == v1alpha1.RuntimeStatusError
 }
 

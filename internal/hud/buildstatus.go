@@ -39,12 +39,12 @@ func makeBuildStatus(res view.Resource, triggerMode model.TriggerMode) buildStat
 		}
 	}
 
-	if !res.CurrentBuild.Empty() && !res.CurrentBuild.Reason.IsCrashOnly() {
+	if !res.CurrentBuild.Empty() {
 		status = "In prog."
 		duration = time.Since(res.CurrentBuild.StartTime)
 		edits = res.CurrentBuild.Edits
 		reason = res.CurrentBuild.Reason
-	} else if !res.PendingBuildSince.IsZero() && !res.PendingBuildReason.IsCrashOnly() {
+	} else if !res.PendingBuildSince.IsZero() {
 		status = "Pending"
 		if triggerMode.AutoOnChange() {
 			duration = time.Since(res.PendingBuildSince)

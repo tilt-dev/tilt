@@ -10,8 +10,16 @@ const (
 	BuildReasonFlagChangedFiles BuildReason = 1 << iota
 	BuildReasonFlagConfig
 
-	// See comments on NeedsRebuildFromCrash
-	BuildReasonFlagCrash
+	// NOTE(nick): In live-update-v1, if a container had live-updated changed,
+	// then crashed, we would automatically replace it with a fresh image.
+	// This approach was difficult to reason about and sometimes led to infinite loops.
+	// Users complained that it was too aggressive about doing an image build.
+	//
+	// In live-update-v2, the reconciler keeps track of how to bring crashing
+	// containers up to date. Instead, we only kick off fresh image builds
+	// if there's a new file change / trigger but the container has been
+	// marked unrecoverable. So this build reason is obsolete.
+	BuildReasonFlagCrashDeprecated
 
 	BuildReasonFlagInit
 
@@ -58,20 +66,16 @@ func (r BuildReason) WithoutTriggers() BuildReason {
 	return BuildReason(result)
 }
 
-func (r BuildReason) IsCrashOnly() bool {
-	return r == BuildReasonFlagCrash
-}
-
 var translations = map[BuildReason]string{
-	BuildReasonFlagChangedFiles:   "Changed Files",
-	BuildReasonFlagConfig:         "Config Changed",
-	BuildReasonFlagCrash:          "Pod Crashed, Lost live_update Changes",
-	BuildReasonFlagInit:           "Initial Build",
-	BuildReasonFlagTriggerWeb:     "Web Trigger",
-	BuildReasonFlagTriggerCLI:     "CLI Trigger",
-	BuildReasonFlagTriggerUnknown: "Unknown Trigger",
-	BuildReasonFlagTiltfileArgs:   "Tilt Args",
-	BuildReasonFlagChangedDeps:    "Dependency Updated",
+	BuildReasonFlagChangedFiles:    "Changed Files",
+	BuildReasonFlagConfig:          "Config Changed",
+	BuildReasonFlagCrashDeprecated: "Pod Crashed, Lost live_update Changes",
+	BuildReasonFlagInit:            "Initial Build",
+	BuildReasonFlagTriggerWeb:      "Web Trigger",
+	BuildReasonFlagTriggerCLI:      "CLI Trigger",
+	BuildReasonFlagTriggerUnknown:  "Unknown Trigger",
+	BuildReasonFlagTiltfileArgs:    "Tilt Args",
+	BuildReasonFlagChangedDeps:     "Dependency Updated",
 }
 
 var triggerBuildReasons = []BuildReason{
@@ -84,7 +88,7 @@ var allBuildReasons = []BuildReason{
 	BuildReasonFlagInit,
 	BuildReasonFlagChangedFiles,
 	BuildReasonFlagConfig,
-	BuildReasonFlagCrash,
+	BuildReasonFlagCrashDeprecated,
 	BuildReasonFlagTriggerWeb,
 	BuildReasonFlagTriggerCLI,
 	BuildReasonFlagChangedDeps,
