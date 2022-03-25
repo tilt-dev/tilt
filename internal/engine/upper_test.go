@@ -884,7 +884,6 @@ func TestConfigFileChangeClearsBuildStateToForceImageBuild(t *testing.T) {
 	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", `
-disable_feature('live_update_v2')
 docker_build('gcr.io/windmill-public-containers/servantes/snack', '.', live_update=[sync('.', '/app')])
 k8s_yaml('snack.yaml')
 	`)
@@ -907,24 +906,6 @@ k8s_yaml('snack.yaml')
 	// Since the manifest changed, we cleared the previous build state to force an image build
 	// (i.e. check that we called BuildAndDeploy with no pre-existing state)
 	assert.False(t, call.oneImageState().HasLastResult())
-
-	var manifest model.Manifest
-	f.withState(func(es store.EngineState) {
-		manifest = es.Manifests()[0]
-	})
-	pb := podbuilder.New(t, manifest).WithDeploymentUID(f.lastDeployedUID(manifest.Name))
-	// the manifest thinks it deployed a Deployment whose UID we used - fake the ReplicaSet to go with it
-	f.kClient.Inject(pb.ObjectTreeEntities().ReplicaSet())
-	f.podEvent(pb.Build())
-
-	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("random_file.go"))
-
-	// third call: new manifest should persist
-	call = f.nextCall("persist new manifest")
-	assert.Equal(t, "FROM iron/go:dev", call.firstImgTarg().DockerBuildInfo().DockerfileContents)
-
-	// Unchanged manifest --> we do NOT clear the build state
-	assert.True(t, call.oneImageState().HasLastResult())
 
 	err := f.Stop()
 	assert.NoError(t, err)
@@ -1119,7 +1100,6 @@ func TestConfigChange_TiltfileErrorAndFixWithFileChange(t *testing.T) {
 
 	tiltfileWithCmd := func(cmd string) string {
 		return fmt.Sprintf(`
-disable_feature('live_update_v2')
 docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', dockerfile='Dockerfile',
     live_update=[
         sync('./src', '/src'),
