@@ -22,7 +22,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
 	"github.com/tilt-dev/tilt/internal/controllers/core/dockercomposeservice"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesapply"
-	"github.com/tilt-dev/tilt/internal/controllers/core/liveupdate"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
@@ -72,7 +71,6 @@ func provideFakeBuildAndDeployer(
 		provideFakeKubeContext,
 		provideFakeDockerClusterEnv,
 		provideFakeK8sNamespace,
-		liveupdate.NewReconciler,
 		kubernetesapply.NewReconciler,
 		dockercomposeservice.WireSet,
 		cmd.WireSet,

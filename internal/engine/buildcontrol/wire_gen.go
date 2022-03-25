@@ -65,7 +65,6 @@ func ProvideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompo
 
 var BaseWireSet = wire.NewSet(wire.Value(dockerfile.Labels{}), v1alpha1.NewScheme, k8s.ProvideMinikubeClient, build.NewDockerBuilder, build.NewCustomBuilder, wire.Bind(new(build.DockerKubeConnection), new(*build.DockerBuilder)), NewDockerComposeBuildAndDeployer,
 	NewImageBuildAndDeployer,
-	NewLiveUpdateBuildAndDeployer,
 	NewLocalTargetBuildAndDeployer, containerupdate.NewDockerUpdater, containerupdate.NewExecUpdater, NewImageBuilder, tracer.InitOpenTelemetry, liveupdates.ProvideUpdateMode,
 )
 

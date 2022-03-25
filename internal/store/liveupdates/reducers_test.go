@@ -17,26 +17,6 @@ import (
 
 var SanchoRef = container.MustParseSelector(testyaml.SanchoImage)
 
-func TestNeedsCrashRebuildLiveUpdateV1(t *testing.T) {
-	f := tempdir.NewTempDirFixture(t)
-
-	iTarget := imageTarget()
-	m := manifestbuilder.New(f, model.ManifestName("sancho")).
-		WithK8sYAML(testyaml.SanchoYAML).
-		WithLiveUpdateBAD().
-		WithImageTarget(iTarget).
-		Build()
-	s := store.NewState()
-	s.KubernetesResources["sancho"] = k8sResource()
-
-	s.UpsertManifestTarget(store.NewManifestTarget(m))
-	st, _ := s.ManifestState("sancho")
-	st.LiveUpdatedContainerIDs = map[container.ID]bool{"crash": true}
-
-	CheckForContainerCrash(s, "sancho")
-	assert.True(t, st.NeedsRebuildFromCrash)
-}
-
 func TestNeedsCrashRebuildLiveUpdateV2(t *testing.T) {
 	f := tempdir.NewTempDirFixture(t)
 

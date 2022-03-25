@@ -97,7 +97,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/k8scontext"
 	"github.com/tilt-dev/tilt/internal/tiltfile/tiltextension"
 	"github.com/tilt-dev/tilt/internal/tiltfile/version"
-	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/internal/token"
 	"github.com/tilt-dev/tilt/internal/tracer"
 	"github.com/tilt-dev/tilt/internal/watch"
@@ -658,40 +657,6 @@ func TestUpper_CI(t *testing.T) {
 	require.NoError(t, <-storeErr)
 }
 
-func TestUpper_UpWatchFileChange(t *testing.T) {
-	f := newTestFixture(t)
-	manifest := f.newManifest("foobar")
-	pb := f.registerForDeployer(manifest)
-	f.Start([]model.Manifest{manifest})
-
-	call := f.nextCallComplete()
-	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
-	assert.Equal(t, []string{}, call.oneImageState().FilesChanged())
-
-	f.podEvent(pb.Build())
-
-	fileRelPath := "fdas"
-	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath(fileRelPath))
-
-	call = f.nextCallComplete()
-	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
-	assert.Equal(t, "gcr.io/some-project-162817/sancho:tilt-1", call.oneImageState().LastLocalImageAsString())
-	fileAbsPath := f.JoinPath(fileRelPath)
-	assert.Equal(t, []string{fileAbsPath}, call.oneImageState().FilesChanged())
-
-	f.withManifestState("foobar", func(ms store.ManifestState) {
-		assert.True(t, ms.LastBuild().Reason.Has(model.BuildReasonFlagChangedFiles))
-		assert.True(t, ms.LastBuild().HasBuildType(model.BuildTypeImage))
-		timecmp.AssertTimeEqual(t,
-			ms.LastBuild().StartTime,
-			ms.K8sRuntimeState().UpdateStartTime[pb.PodName()])
-	})
-
-	err := f.Stop()
-	assert.NoError(t, err)
-	f.assertAllBuildsConsumed()
-}
-
 func TestFirstBuildFails_Up(t *testing.T) {
 	f := newTestFixture(t)
 	manifest := f.newManifest("foobar")
@@ -781,102 +746,6 @@ func TestCIIgnoresDisabledResources(t *testing.T) {
 
 	f.startPod(pb.WithPhase(string(v1.PodRunning)).Build(), m1.Name)
 	require.NoError(t, <-storeErr)
-}
-
-func TestRebuildWithChangedFiles(t *testing.T) {
-	f := newTestFixture(t)
-	manifest := f.newManifest("foobar")
-	pb := f.registerForDeployer(manifest)
-	f.Start([]model.Manifest{manifest})
-
-	call := f.nextCallComplete("first build")
-	assert.True(t, call.oneImageState().IsEmpty())
-	f.podEvent(pb.Build())
-
-	// Simulate a change to a.go that makes the build fail.
-	f.SetNextBuildError(errors.New("build failed"))
-	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("a.go"))
-
-	call = f.nextCallComplete("failed build from a.go change")
-	assert.Equal(t, "gcr.io/some-project-162817/sancho:tilt-1", call.oneImageState().LastLocalImageAsString())
-	assert.Equal(t, []string{f.JoinPath("a.go")}, call.oneImageState().FilesChanged())
-
-	// Simulate a change to b.go
-	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("b.go"))
-
-	// The next build should only treat b.go as changed.
-	call = f.nextCallComplete("build on last successful result")
-	assert.Equal(t, []string{f.JoinPath("b.go")}, call.oneImageState().FilesChanged())
-	assert.Equal(t, "gcr.io/some-project-162817/sancho:tilt-1",
-		call.oneImageState().LastLocalImageAsString())
-
-	err := f.Stop()
-	assert.NoError(t, err)
-
-	f.assertAllBuildsConsumed()
-}
-
-func TestThreeBuilds(t *testing.T) {
-	f := newTestFixture(t)
-	manifest := f.newManifest("fe")
-	pb := f.registerForDeployer(manifest)
-	f.Start([]model.Manifest{manifest})
-
-	call := f.nextCallComplete("first build")
-	assert.True(t, call.oneImageState().IsEmpty())
-	f.podEvent(pb.Build())
-
-	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("a.go"))
-
-	call = f.nextCallComplete("second build")
-	assert.Equal(t, []string{f.JoinPath("a.go")}, call.oneImageState().FilesChanged())
-	f.podEvent(pb.Build())
-
-	// Simulate a change to b.go
-	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("b.go"))
-
-	call = f.nextCallComplete("third build")
-	assert.Equal(t, []string{f.JoinPath("b.go")}, call.oneImageState().FilesChanged())
-	f.podEvent(pb.Build())
-
-	f.withManifestState("fe", func(ms store.ManifestState) {
-		assert.Equal(t, 2, len(ms.BuildHistory))
-		assert.Equal(t, []string{f.JoinPath("b.go")}, ms.BuildHistory[0].Edits)
-		assert.Equal(t, []string{f.JoinPath("a.go")}, ms.BuildHistory[1].Edits)
-	})
-
-	err := f.Stop()
-	assert.NoError(t, err)
-}
-
-func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
-	f := newTestFixture(t)
-	manifest := f.newManifest("foobar")
-	pb := f.registerForDeployer(manifest)
-	f.Start([]model.Manifest{manifest})
-
-	call := f.nextCall()
-	assert.True(t, call.oneImageState().IsEmpty())
-	f.podEvent(pb.Build())
-
-	// Simulate a change to .#a.go that's a broken symlink.
-	realPath := filepath.Join(f.Path(), "a.go")
-	tmpPath := filepath.Join(f.Path(), ".#a.go")
-	_ = os.Symlink(realPath, tmpPath)
-
-	f.fsWatcher.Events <- watch.NewFileEvent(tmpPath)
-
-	f.assertNoCall()
-
-	f.TouchFiles([]string{realPath})
-	f.fsWatcher.Events <- watch.NewFileEvent(realPath)
-
-	call = f.nextCall()
-	assert.Equal(t, []string{realPath}, call.oneImageState().FilesChanged())
-
-	err := f.Stop()
-	assert.NoError(t, err)
-	f.assertAllBuildsConsumed()
 }
 
 func TestConfigFileChangeClearsBuildStateToForceImageBuild(t *testing.T) {
@@ -4051,9 +3920,6 @@ func (f *testFixture) newManifest(name string) model.Manifest {
 	iTarget := NewSanchoLiveUpdateImageTarget(f)
 	return manifestbuilder.New(f, model.ManifestName(name)).
 		WithK8sYAML(SanchoYAML).
-		// Right now, most of our tests assume that we're going through
-		// using BuildAndDeployer to do live updates. :\
-		WithLiveUpdateBAD().
 		WithImageTarget(iTarget).
 		Build()
 }
