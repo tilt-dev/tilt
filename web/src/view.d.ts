@@ -32,6 +32,7 @@ declare namespace Proto {
     uiSession?: v1alpha1UISession;
     uiResources?: v1alpha1UIResource[];
     uiButtons?: v1alpha1UIButton[];
+    clusters?: v1alpha1Cluster[];
     /**
      * indicates that this view is a complete representation of the app
      * if false, this view just contains deltas from a previous view.
@@ -674,6 +675,29 @@ declare namespace Proto {
     trueString?: string;
     falseString?: string;
   }
+  export interface v1alpha1KubernetesClusterConnection {
+    /**
+     * The name of the kubeconfig context to use.
+     *
+     * If not specified, will use the default context in the kubeconfig.
+     */
+    context?: string;
+    /**
+     * The default namespace to use.
+     *
+     * If not specified, will use the namespace in the kubeconfig.
+     */
+    namespace?: string;
+  }
+  export interface v1alpha1DockerClusterConnection {
+    /**
+     * The docker host to use.
+     *
+     * If not specified, will read the DOCKER_HOST env or use the default docker
+     * host.
+     */
+    host?: string;
+  }
   export interface v1alpha1DisableSource {
     configMap?: v1alpha1ConfigMapDisableSource;
   }
@@ -698,6 +722,57 @@ declare namespace Proto {
      * The key where the enable/disable state is stored.
      */
     key?: string;
+  }
+  export interface v1alpha1ClusterStatus {
+    /**
+     * The preferred chip architecture of the cluster.
+     *
+     * On Kubernetes, this will correspond to the kubernetes.io/arch annotation on
+     * a node.
+     *
+     * On Docker, this will be the Architecture of the Docker daemon.
+     *
+     * Note that many clusters support multiple chipsets. This field doesn't intend
+     * that this is the only architecture a cluster supports, only that it's one
+     * of the architectures.
+     */
+    arch?: string;
+    /**
+     * An unrecoverable error connecting to the cluster.
+     *
+     * +optional
+     */
+    error?: string;
+    /**
+     * ConnectedAt indicates the time at which the cluster connection was established.
+     *
+     * Consumers can use this to detect when the underlying config has changed
+     * and refresh their client/connection accordingly.
+     *
+     * +optional
+     */
+    connectedAt?: string;
+  }
+  export interface v1alpha1ClusterSpec {
+    /**
+     * Connection spec for an existing cluster.
+     */
+    connection?: v1alpha1ClusterConnection;
+  }
+  export interface v1alpha1ClusterConnection {
+    /**
+     * Defines connection to a Kubernetes cluster.
+     */
+    kubernetes?: v1alpha1KubernetesClusterConnection;
+    /**
+     * Defines connection to a Docker daemon.
+     */
+    docker?: v1alpha1DockerClusterConnection;
+  }
+  export interface v1alpha1Cluster {
+    metadata?: v1ObjectMeta;
+    spec?: v1alpha1ClusterSpec;
+    status?: v1alpha1ClusterStatus;
   }
   export interface runtimeError {
     error?: string;
