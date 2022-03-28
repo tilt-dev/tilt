@@ -341,7 +341,7 @@ func TestBuildHistory(t *testing.T) {
 	br3 := model.BuildRecord{
 		StartTime:  time.Now().Add(-20 * time.Minute),
 		FinishTime: time.Now().Add(-19 * time.Minute),
-		Reason:     model.BuildReasonFlagCrash,
+		Reason:     model.BuildReasonFlagChangedFiles,
 		BuildTypes: []model.BuildType{model.BuildTypeImage, model.BuildTypeK8s},
 	}
 	buildRecords := []model.BuildRecord{br1, br2, br3}
@@ -362,7 +362,7 @@ func TestBuildHistory(t *testing.T) {
 		expected := buildRecords[i]
 		timecmp.AssertTimeEqual(t, expected.StartTime, actual.StartTime)
 		timecmp.AssertTimeEqual(t, expected.FinishTime, actual.FinishTime)
-		require.Equal(t, i == 2, actual.IsCrashRebuild)
+		require.False(t, actual.IsCrashRebuild)
 	}
 }
 

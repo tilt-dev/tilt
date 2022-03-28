@@ -8,7 +8,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
-	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -30,7 +29,6 @@ func HandleKubernetesDiscoveryUpsertAction(state *store.EngineState, action Kube
 		!apicmp.DeepEqual(oldState.Spec, action.KubernetesDiscovery.Spec)
 	if isChanged {
 		RefreshKubernetesResource(state, n)
-		liveupdates.CheckForContainerCrash(state, n)
 	}
 }
 
@@ -41,7 +39,6 @@ func HandleKubernetesDiscoveryDeleteAction(state *store.EngineState, action Kube
 	isChanged := oldState != nil
 	if isChanged {
 		RefreshKubernetesResource(state, action.Name)
-		liveupdates.CheckForContainerCrash(state, action.Name)
 	}
 }
 

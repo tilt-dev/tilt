@@ -233,18 +233,16 @@ func buildStateSet(ctx context.Context, manifest model.Manifest,
 		//
 		// This will probably need to change as the mapping between containers and
 		// manifests becomes many-to-one.
-		if !ms.NeedsRebuildFromCrash {
-			iTarget, ok := spec.(model.ImageTarget)
-			if ok {
-				selector := iTarget.LiveUpdateSpec.Selector
-				if manifest.IsK8s() && selector.Kubernetes != nil {
-					buildState.KubernetesSelector = selector.Kubernetes
-					buildState.KubernetesResource = kresource
-				}
+		iTarget, ok := spec.(model.ImageTarget)
+		if ok {
+			selector := iTarget.LiveUpdateSpec.Selector
+			if manifest.IsK8s() && selector.Kubernetes != nil {
+				buildState.KubernetesSelector = selector.Kubernetes
+				buildState.KubernetesResource = kresource
+			}
 
-				if manifest.IsDC() {
-					buildState.DockerComposeService = dcs
-				}
+			if manifest.IsDC() {
+				buildState.DockerComposeService = dcs
 			}
 		}
 		result[id] = buildState

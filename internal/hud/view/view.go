@@ -186,10 +186,7 @@ func (r Resource) DefaultCollapse() bool {
 
 	autoExpand = autoExpand ||
 		r.LastBuild().Error != nil ||
-		r.LastBuild().WarningCount > 0 ||
-		r.LastBuild().Reason.Has(model.BuildReasonFlagCrash) ||
-		r.CurrentBuild.Reason.Has(model.BuildReasonFlagCrash) ||
-		r.PendingBuildReason.Has(model.BuildReasonFlagCrash)
+		r.LastBuild().WarningCount > 0
 	return !autoExpand
 }
 

@@ -258,29 +258,6 @@ func TestImageIsClean(t *testing.T) {
 	assert.Equal(t, 0, f.docker.PushCount)
 }
 
-func TestImageIsDirtyAfterContainerBuild(t *testing.T) {
-	f := newIBDFixture(t, clusterid.ProductGKE)
-
-	manifest := NewSanchoDockerBuildManifest(f)
-	iTargetID1 := manifest.ImageTargets[0].ID()
-	result1 := store.NewLiveUpdateBuildResult(
-		iTargetID1,
-		[]container.ID{container.ID("12345")})
-
-	stateSet := store.BuildStateSet{
-		iTargetID1: store.NewBuildState(result1, []string{}, nil),
-	}
-	_, err := f.BuildAndDeploy(BuildTargets(manifest), stateSet)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Expect build + push; last result has a container ID, which implies that it was an in-place
-	// update, so the current state of this manifest is NOT reflected in an existing image.
-	assert.Equal(t, 1, f.docker.BuildCount)
-	assert.Equal(t, 1, f.docker.PushCount)
-}
-
 func TestMultiStageDockerBuild(t *testing.T) {
 	f := newIBDFixture(t, clusterid.ProductGKE)
 

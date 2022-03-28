@@ -73,11 +73,3 @@ func MustWithTag(name reference.Named, tag string) reference.NamedTagged {
 	}
 	return nt
 }
-
-func NewIDSet(ids ...ID) map[ID]bool {
-	result := make(map[ID]bool, len(ids))
-	for _, id := range ids {
-		result[id] = true
-	}
-	return result
-}

@@ -88,13 +88,6 @@ func NextTargetToBuild(state store.EngineState) (*store.ManifestTarget, HoldSet)
 		return NextUnbuiltTargetToBuild(unbuilt), holds
 	}
 
-	// Next prioritize builds that crashed and need a rebuilt to have up-to-date code.
-	for _, mt := range targets {
-		if mt.State.NeedsRebuildFromCrash {
-			return mt, holds
-		}
-	}
-
 	// Check to see if any targets are currently being successfully reconciled,
 	// and so full rebuilt should be held back. This takes manual triggers into account.
 	HoldLiveUpdateTargetsHandledByReconciler(state, targets, holds)
@@ -180,7 +173,7 @@ func canReuseImageTargetHeuristic(spec model.TargetSpec, status store.BuildStatu
 	}
 
 	switch result.(type) {
-	case store.ImageBuildResult, store.LiveUpdateBuildResult:
+	case store.ImageBuildResult:
 		return true
 	}
 	return false
@@ -462,11 +455,6 @@ func FindTargetsNeedingAnyBuild(state store.EngineState) []*store.ManifestTarget
 		}
 
 		if !target.State.StartedFirstBuild() && target.Manifest.TriggerMode.AutoInitial() {
-			result = append(result, target)
-			continue
-		}
-
-		if target.State.NeedsRebuildFromCrash {
 			result = append(result, target)
 			continue
 		}

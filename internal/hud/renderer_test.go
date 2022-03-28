@@ -168,28 +168,6 @@ ERROR: ImageBuild: executor failed running [/bin/sh -c go install github.com/til
 	rtf.run("all the data at once 10w", 10, 20, v, plainVs)
 
 	v = newView(view.Resource{
-		Name:           "abe vigoda",
-		LastDeployTime: ts,
-		BuildHistory: []model.BuildRecord{{
-			Edits: []string{"main.go"},
-		}},
-		PendingBuildSince: ts,
-		CurrentBuild: model.BuildRecord{
-			StartTime: ts,
-			Reason:    model.BuildReasonFlagCrash,
-		},
-		ResourceInfo: view.K8sResourceInfo{
-			PodName:         "vigoda-pod",
-			PodCreationTime: ts,
-			PodStatus:       "Running",
-			RunStatus:       v1alpha1.RuntimeStatusOK,
-			PodRestarts:     0,
-		},
-		Endpoints: []string{"1.2.3.4:8080"},
-	})
-	rtf.run("crash rebuild", 70, 20, v, plainVs)
-
-	v = newView(view.Resource{
 		Name:           "vigoda",
 		LastDeployTime: ts,
 		BuildHistory: []model.BuildRecord{{
@@ -367,76 +345,6 @@ func TestPodPending(t *testing.T) {
 	rtf.run("pending pod pending status", 80, 20, v, vs)
 	assert.Equal(t, statusDisplay{color: cPending, spinner: true},
 		combinedStatus(v.Resources[0]))
-}
-
-func TestCrashingPodInlineCrashLog(t *testing.T) {
-	rtf := newRendererTestFixture(t)
-	ts := time.Now().Add(-30 * time.Second)
-
-	v := newView(view.Resource{
-		Name:      "vigoda",
-		Endpoints: []string{"1.2.3.4:8080"},
-		BuildHistory: []model.BuildRecord{{
-			SpanID:     "vigoda:1",
-			StartTime:  ts,
-			FinishTime: ts,
-			Reason:     model.BuildReasonFlagCrash,
-		}},
-		ResourceInfo: view.K8sResourceInfo{
-			PodName:            "vigoda-pod",
-			PodStatus:          "Error",
-			RunStatus:          v1alpha1.RuntimeStatusError,
-			SpanID:             "vigoda:pod",
-			PodUpdateStartTime: ts,
-			PodCreationTime:    ts.Add(-time.Minute),
-		},
-		LastDeployTime: ts,
-	})
-
-	logStore := logstore.NewLogStore()
-	appendSpanLog(logStore, "vigoda", "vigoda:1",
-		"Building (1/2)\nBuilding (2/2)\n")
-	appendSpanLog(logStore, "vigoda", "vigoda:pod",
-		"Something's maybe wrong idk")
-	v.LogReader = logstore.NewReader(&sync.RWMutex{}, logStore)
-
-	vs := fakeViewState(1, view.CollapseAuto)
-	rtf.run("crashing pod displays crash log inline if present", 70, 20, v, vs)
-}
-
-func TestCrashingPodInlinePodLogIfNoCrashLog(t *testing.T) {
-	rtf := newRendererTestFixture(t)
-	ts := time.Now().Add(-30 * time.Second)
-
-	v := newView(view.Resource{
-		Name:      "vigoda",
-		Endpoints: []string{"1.2.3.4:8080"},
-		BuildHistory: []model.BuildRecord{{
-			SpanID:     "vigoda:1",
-			StartTime:  ts,
-			FinishTime: ts,
-			Reason:     model.BuildReasonFlagCrash,
-		}},
-		ResourceInfo: view.K8sResourceInfo{
-			PodName:            "vigoda-pod",
-			PodStatus:          "Error",
-			RunStatus:          v1alpha1.RuntimeStatusError,
-			SpanID:             "vigoda:pod",
-			PodUpdateStartTime: ts,
-			PodCreationTime:    ts.Add(-time.Minute),
-		},
-		LastDeployTime: ts,
-	})
-
-	logStore := logstore.NewLogStore()
-	appendSpanLog(logStore, "vigoda", "vigoda:1",
-		"Building (1/2)\nBuilding (2/2)\n")
-	appendSpanLog(logStore, "vigoda", "vigoda:pod",
-		"Something's maybe wrong idk")
-	v.LogReader = logstore.NewReader(&sync.RWMutex{}, logStore)
-
-	vs := fakeViewState(1, view.CollapseAuto)
-	rtf.run("crashing pod displays pod log inline if no crash log if present", 70, 20, v, vs)
 }
 
 func TestNonCrashingPodNoInlineCrashLog(t *testing.T) {
