@@ -118,6 +118,13 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		conn.registry = &reg
 	}
 
+	if conn.error == "" && conn.connType == connectionTypeK8s {
+		connStatus := conn.k8sClient.ConnectionStatus()
+		conn.connStatus = &v1alpha1.ClusterConnectionStatus{
+			Kubernetes: connStatus,
+		}
+	}
+
 	r.connManager.store(nn, conn)
 
 	status := conn.toStatus()
@@ -259,5 +266,6 @@ func (c *connection) toStatus() v1alpha1.ClusterStatus {
 		Arch:        c.arch,
 		ConnectedAt: connectedAt,
 		Registry:    reg,
+		Connection:  c.connStatus,
 	}
 }

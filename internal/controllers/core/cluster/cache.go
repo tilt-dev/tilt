@@ -43,6 +43,7 @@ type connection struct {
 	createdAt    time.Time
 	arch         string
 	registry     *container.Registry
+	connStatus   *v1alpha1.ClusterConnectionStatus
 }
 
 func (k *ConnectionManager) GetK8sClient(clusterKey types.NamespacedName) (k8s.Client, metav1.MicroTime, error) {

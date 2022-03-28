@@ -13,7 +13,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/version"
 
+	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -101,4 +103,12 @@ func (ec *explodingClient) OwnerFetcher() OwnerFetcher {
 
 func (ec *explodingClient) ClusterHealth(_ context.Context, _ bool) (ClusterHealth, error) {
 	return ClusterHealth{}, errors.Wrap(ec.err, "could not set up kubernetes client")
+}
+
+func (ec *explodingClient) ConnectionStatus() *v1alpha1.KubernetesClusterConnectionStatus {
+	return &v1alpha1.KubernetesClusterConnectionStatus{
+		Context:   "default",
+		Namespace: "default",
+		Product:   string(clusterid.ProductUnknown),
+	}
 }
