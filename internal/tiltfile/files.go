@@ -33,11 +33,14 @@ type execCommandOptions struct {
 	logCommand bool
 	// logCommandPrefix is a custom prefix before the command (default: "Running: ") used if logCommand is true.
 	logCommandPrefix string
+	// stdin, if non-nil, will be written to the command's stdin
+	stdin *string
 }
 
 func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var commandValue, commandBatValue, commandDirValue starlark.Value
 	var commandEnv value.StringStringMap
+	var stdinValue starlark.String
 	quiet := false
 	echoOff := false
 	err := s.unpackArgs(fn.Name(), args, kwargs,
@@ -47,6 +50,7 @@ func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, arg
 		"echo_off", &echoOff,
 		"env", &commandEnv,
 		"dir?", &commandDirValue,
+		"stdin?", &stdinValue,
 	)
 	if err != nil {
 		return nil, err
@@ -57,10 +61,16 @@ func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, arg
 		return nil, err
 	}
 
+	var stdin *string
+	if stdinValue != "" {
+		s := string(stdinValue)
+		stdin = &s
+	}
 	out, err := s.execLocalCmd(thread, cmd, execCommandOptions{
 		logOutput:        !quiet,
 		logCommand:       !echoOff,
 		logCommandPrefix: "local:",
+		stdin:            stdin,
 	})
 	if err != nil {
 		return nil, err
@@ -92,6 +102,10 @@ func (s *tiltfileState) execLocalCmd(t *starlark.Thread, cmd model.Cmd, options 
 	} else {
 		runIO.Stdout = &stdoutBuf
 		runIO.Stderr = &stderrBuf
+	}
+
+	if options.stdin != nil {
+		runIO.Stdin = strings.NewReader(*options.stdin)
 	}
 
 	// TODO(nick): Should this also inject any docker.Env overrides?
