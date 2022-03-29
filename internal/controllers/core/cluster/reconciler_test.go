@@ -111,6 +111,29 @@ func TestKubernetesArch(t *testing.T) {
 	assert.ElementsMatch(t, []analytics.CountEvent{connectEvt}, f.ma.Counts)
 }
 
+func TestKubernetesConnStatus(t *testing.T) {
+	f := newFixture(t)
+	cluster := &v1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "default"},
+		Spec: v1alpha1.ClusterSpec{
+			Connection: &v1alpha1.ClusterConnection{
+				Kubernetes: &v1alpha1.KubernetesClusterConnection{},
+			},
+		},
+	}
+
+	nn := types.NamespacedName{Name: "default"}
+	f.Create(cluster)
+	f.MustGet(nn, cluster)
+	assert.Equal(t, &v1alpha1.ClusterConnectionStatus{
+		Kubernetes: &v1alpha1.KubernetesClusterConnectionStatus{
+			Context:   "default",
+			Namespace: "default",
+			Product:   "unknown",
+		},
+	}, cluster.Status.Connection)
+}
+
 func TestDockerError(t *testing.T) {
 	f := newFixture(t)
 	cluster := &v1alpha1.Cluster{

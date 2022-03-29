@@ -387,6 +387,16 @@
       },
       "description": "Connection spec for an existing cluster."
     },
+    "v1alpha1ClusterConnectionStatus": {
+      "type": "object",
+      "properties": {
+        "kubernetes": {
+          "$ref": "#/definitions/v1alpha1KubernetesClusterConnectionStatus",
+          "description": "Defines connection to a Kubernetes cluster."
+        }
+      },
+      "description": "Connection spec for an existing cluster."
+    },
     "v1alpha1ClusterSpec": {
       "type": "object",
       "properties": {
@@ -411,6 +421,14 @@
         "connectedAt": {
           "type": "string", "format": "date-time",
           "description": "ConnectedAt indicates the time at which the cluster connection was established.\n\nConsumers can use this to detect when the underlying config has changed\nand refresh their client/connection accordingly.\n\n+optional"
+        },
+        "registry": {
+          "$ref": "#/definitions/v1alpha1RegistryHosting",
+          "description": "Registry describes a local registry that developer tools can\nconnect to. A local registry allows clients to load images into the local\ncluster by pushing to this registry.\n\n+optional"
+        },
+        "connection": {
+          "$ref": "#/definitions/v1alpha1ClusterConnectionStatus",
+          "description": "Connection status for an existing cluster.\n\n+optional"
         }
       },
       "title": "ClusterStatus defines the observed state of Cluster"
@@ -485,6 +503,45 @@
         "namespace": {
           "type": "string",
           "description": "The default namespace to use.\n\nIf not specified, will use the namespace in the kubeconfig."
+        }
+      }
+    },
+    "v1alpha1KubernetesClusterConnectionStatus": {
+      "type": "object",
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "The resolved kubeconfig context."
+        },
+        "namespace": {
+          "type": "string",
+          "description": "The resolved default namespace."
+        },
+        "product": {
+          "type": "string",
+          "description": "The product name for this cluster.\n\nFor a complete list of possible product names, see:\nhttps://pkg.go.dev/github.com/tilt-dev/clusterid#Product"
+        }
+      },
+      "title": "Kubernetes-specific fields for connection status"
+    },
+    "v1alpha1RegistryHosting": {
+      "type": "object",
+      "properties": {
+        "host": {
+          "type": "string",
+          "description": "Host documents the host (hostname and port) of the registry, as seen from\noutside the cluster.\n\nThis is the registry host that tools outside the cluster should push images\nto."
+        },
+        "hostFromClusterNetwork": {
+          "type": "string",
+          "description": "HostFromClusterNetwork documents the host (hostname and port) of the\nregistry, as seen from networking inside the container pods.\n\nThis is the registry host that tools running on pods inside the cluster\nshould push images to. If not set, then tools inside the cluster should\nassume the local registry is not available to them."
+        },
+        "hostFromContainerRuntime": {
+          "type": "string",
+          "description": "HostFromContainerRuntime documents the host (hostname and port) of the\nregistry, as seen from the cluster's container runtime.\n\nWhen tools apply Kubernetes objects to the cluster, this host should be\nused for image name fields. If not set, users of this field should use the\nvalue of Host instead.\n\nNote that it doesn't make sense semantically to define this field, but not\ndefine Host or HostFromClusterNetwork. That would imply a way to pull\nimages without a way to push images."
+        },
+        "help": {
+          "type": "string",
+          "description": "Help contains a URL pointing to documentation for users on how to set\nup and configure a local registry.\n\nTools can use this to nudge users to enable the registry. When possible,\nthe writer should use as permanent a URL as possible to prevent drift\n(e.g., a version control SHA).\n\nWhen image pushes to a registry host specified in one of the other fields\nfail, the tool should display this help URL to the user. The help URL\nshould contain instructions on how to diagnose broken or misconfigured\nregistries."
         }
       }
     },

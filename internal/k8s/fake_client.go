@@ -21,7 +21,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/version"
 
+	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
@@ -518,6 +520,14 @@ func (c *FakeK8sClient) ContainerLogs(ctx context.Context, pID PodID, cName cont
 	c.LastPodLogPipeWriter = w
 
 	return ReaderCloser{Reader: r}, nil
+}
+
+func (c *FakeK8sClient) ConnectionConfig() *v1alpha1.KubernetesClusterConnectionStatus {
+	return &v1alpha1.KubernetesClusterConnectionStatus{
+		Context:   "default",
+		Namespace: "default",
+		Product:   string(clusterid.ProductUnknown),
+	}
 }
 
 func (c *FakeK8sClient) ClusterHealth(_ context.Context, _ bool) (ClusterHealth, error) {
