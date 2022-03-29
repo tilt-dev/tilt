@@ -33,7 +33,6 @@ require (
 	github.com/mattn/go-colorable v0.1.12
 	github.com/mattn/go-isatty v0.0.14
 	github.com/mattn/go-tty v0.0.3
-	github.com/mitchellh/go-homedir v1.1.0
 	github.com/moby/buildkit v0.8.3
 	github.com/modern-go/reflect2 v1.0.2
 	github.com/opencontainers/go-digest v1.0.0
@@ -166,6 +165,7 @@ require (
 	github.com/mattn/go-shellwords v1.0.12 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
 	github.com/miekg/pkcs11 v1.0.3 // indirect
+	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.0 // indirect
 	github.com/mitchellh/mapstructure v1.4.3 // indirect
 	github.com/moby/locker v1.0.1 // indirect
