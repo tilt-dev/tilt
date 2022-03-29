@@ -154,52 +154,38 @@ type GlobalNavProps = {
   runningBuild: TiltBuild | undefined
 }
 
+enum NavDialog {
+  Account = "account",
+  Help = "help",
+  Update = "update",
+}
+
+const DIALOG_TO_ANALYTICS_TYPE = {
+  [NavDialog.Account]: AnalyticsType.Account,
+  [NavDialog.Help]: AnalyticsType.Shortcut,
+  [NavDialog.Update]: AnalyticsType.Update,
+}
+
 export function GlobalNav(props: GlobalNavProps) {
-  const shortcutButton = useRef(null as any)
-  const accountButton = useRef(null as any)
-  const updateButton = useRef(null as any)
-  const [helpDialogAnchor, setHelpDialogAnchor] = useState(
-    null as Element | null
-  )
-  const [accountMenuAnchor, setAccountMenuAnchor] = useState(
-    null as Element | null
-  )
-  const [updateDialogAnchor, setUpdateDialogAnchor] = useState(
-    null as Element | null
-  )
-  const helpDialogOpen = !!helpDialogAnchor
-  const accountMenuOpen = !!accountMenuAnchor
-  const updateDialogOpen = !!updateDialogAnchor
-  let isSnapshot = props.isSnapshot
-  if (isSnapshot) {
+  const helpButton = useRef<HTMLButtonElement | null>(null)
+  const accountButton = useRef<HTMLButtonElement | null>(null)
+  const updateButton = useRef<HTMLButtonElement | null>(null)
+
+  const [openDialog, setOpenDialog] = useState<NavDialog | null>(null)
+
+  // Don't display global nav for snapshots
+  if (props.isSnapshot) {
     return null
   }
 
-  let toggleAccountMenu = (action: AnalyticsAction) => {
-    if (!accountMenuOpen) {
-      incr("ui.web.menu", { type: AnalyticsType.Account, action: action })
+  function toggleDialog(name: NavDialog, action = AnalyticsAction.Click) {
+    const dialogIsOpen = openDialog === name
+    if (!dialogIsOpen) {
+      incr("ui.web.menu", { type: DIALOG_TO_ANALYTICS_TYPE[name], action })
     }
-    setAccountMenuAnchor(
-      accountMenuOpen ? null : (accountButton.current as Element)
-    )
-  }
 
-  let toggleHelpDialog = (action: AnalyticsAction) => {
-    if (!helpDialogOpen) {
-      incr("ui.web.menu", { type: AnalyticsType.Shortcut, action: action })
-    }
-    setHelpDialogAnchor(
-      helpDialogOpen ? null : (shortcutButton.current as Element)
-    )
-  }
-
-  let toggleUpdateDialog = (action: AnalyticsAction) => {
-    if (!updateDialogOpen) {
-      incr("ui.web.menu", { type: AnalyticsType.Update, action: action })
-    }
-    setUpdateDialogAnchor(
-      updateDialogOpen ? null : (updateButton.current as Element)
-    )
+    const nextDialogState = dialogIsOpen ? null : name
+    setOpenDialog(nextDialogState)
   }
 
   let accountMenuHeader = <AccountMenuHeader {...props} />
@@ -223,9 +209,9 @@ export function GlobalNav(props: GlobalNavProps) {
       <MenuButtonLabeled label={versionButtonLabel}>
         <MenuButton
           ref={updateButton}
-          onClick={() => toggleUpdateDialog(AnalyticsAction.Click)}
-          data-open={updateDialogOpen}
-          aria-expanded={updateDialogOpen}
+          onClick={() => toggleDialog(NavDialog.Update)}
+          data-open={openDialog === NavDialog.Update}
+          aria-expanded={openDialog === NavDialog.Update}
           aria-label={versionButtonLabel}
           aria-haspopup="true"
           role="menuitem"
@@ -242,10 +228,10 @@ export function GlobalNav(props: GlobalNavProps) {
 
       <MenuButtonLabeled label="Help">
         <MenuButton
-          ref={shortcutButton}
-          onClick={() => toggleHelpDialog(AnalyticsAction.Click)}
-          data-open={helpDialogOpen}
-          aria-expanded={helpDialogOpen}
+          ref={helpButton}
+          onClick={() => toggleDialog(NavDialog.Help)}
+          data-open={openDialog === NavDialog.Help}
+          aria-expanded={openDialog === NavDialog.Help}
           aria-label="Help"
           aria-haspopup="true"
           role="menuitem"
@@ -253,12 +239,13 @@ export function GlobalNav(props: GlobalNavProps) {
           <HelpIcon width="24" height="24" />
         </MenuButton>
       </MenuButtonLabeled>
+
       <MenuButtonLabeled label="Account">
         <MenuButton
           ref={accountButton}
-          onClick={() => toggleAccountMenu(AnalyticsAction.Click)}
-          data-open={accountMenuOpen}
-          aria-expanded={accountMenuOpen}
+          onClick={() => toggleDialog(NavDialog.Account)}
+          data-open={openDialog === NavDialog.Account}
+          aria-expanded={openDialog === NavDialog.Account}
           aria-label="Account"
           aria-haspopup="true"
           role="menuitem"
@@ -270,27 +257,29 @@ export function GlobalNav(props: GlobalNavProps) {
       <FloatDialog
         id="accountMenu"
         title={accountMenuHeader}
-        open={accountMenuOpen}
-        anchorEl={accountMenuAnchor}
-        onClose={() => toggleAccountMenu(AnalyticsAction.Close)}
+        open={openDialog === NavDialog.Account}
+        anchorEl={accountButton?.current}
+        onClose={() => toggleDialog(NavDialog.Account)}
       >
         {accountMenuContent}
       </FloatDialog>
       <HelpDialog
-        open={helpDialogOpen}
-        anchorEl={helpDialogAnchor}
-        onClose={() => toggleHelpDialog(AnalyticsAction.Close)}
+        open={openDialog === NavDialog.Help}
+        anchorEl={helpButton?.current}
+        onClose={() => toggleDialog(NavDialog.Help)}
       />
       <UpdateDialog
-        open={updateDialogOpen}
-        anchorEl={updateDialogAnchor}
-        onClose={() => toggleUpdateDialog(AnalyticsAction.Close)}
+        open={openDialog === NavDialog.Update}
+        anchorEl={updateButton?.current}
+        onClose={() => toggleDialog(NavDialog.Update)}
         showUpdate={props.showUpdate}
         suggestedVersion={props.suggestedVersion}
         isNewInterface={true}
       />
       <GlobalNavShortcuts
-        toggleHelpDialog={() => toggleHelpDialog(AnalyticsAction.Shortcut)}
+        toggleHelpDialog={() =>
+          toggleDialog(NavDialog.Help, AnalyticsAction.Shortcut)
+        }
         snapshot={props.snapshot}
       />
     </GlobalNavRoot>
