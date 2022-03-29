@@ -338,8 +338,8 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	}
 	liveupdateReconciler := liveupdate.NewReconciler(storeStore, dockerUpdater, execUpdater, updateMode, kubeContext, deferredClient, scheme)
 	configmapReconciler := configmap.NewReconciler(deferredClient, storeStore)
-	dockerimageReconciler := dockerimage.NewReconciler(deferredClient)
-	cmdimageReconciler := cmdimage.NewReconciler(deferredClient)
+	dockerimageReconciler := dockerimage.NewReconciler(deferredClient, scheme)
+	cmdimageReconciler := cmdimage.NewReconciler(deferredClient, scheme)
 	dockerClientFactory := _wireDockerClientFuncValue
 	kubernetesClientFactory := _wireKubernetesClientFuncValue
 	clusterReconciler := cluster.NewReconciler(ctx, deferredClient, storeStore, clock, connectionManager, localEnv, dockerClientFactory, kubernetesClientFactory)
@@ -550,8 +550,8 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	}
 	liveupdateReconciler := liveupdate.NewReconciler(storeStore, dockerUpdater, execUpdater, updateMode, kubeContext, deferredClient, scheme)
 	configmapReconciler := configmap.NewReconciler(deferredClient, storeStore)
-	dockerimageReconciler := dockerimage.NewReconciler(deferredClient)
-	cmdimageReconciler := cmdimage.NewReconciler(deferredClient)
+	dockerimageReconciler := dockerimage.NewReconciler(deferredClient, scheme)
+	cmdimageReconciler := cmdimage.NewReconciler(deferredClient, scheme)
 	dockerClientFactory := _wireDockerClientFuncValue
 	kubernetesClientFactory := _wireKubernetesClientFuncValue
 	clusterReconciler := cluster.NewReconciler(ctx, deferredClient, storeStore, clock, connectionManager, localEnv, dockerClientFactory, kubernetesClientFactory)
@@ -758,8 +758,8 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	}
 	liveupdateReconciler := liveupdate.NewReconciler(storeStore, dockerUpdater, execUpdater, updateMode, kubeContext, deferredClient, scheme)
 	configmapReconciler := configmap.NewReconciler(deferredClient, storeStore)
-	dockerimageReconciler := dockerimage.NewReconciler(deferredClient)
-	cmdimageReconciler := cmdimage.NewReconciler(deferredClient)
+	dockerimageReconciler := dockerimage.NewReconciler(deferredClient, scheme)
+	cmdimageReconciler := cmdimage.NewReconciler(deferredClient, scheme)
 	dockerClientFactory := _wireDockerClientFuncValue
 	kubernetesClientFactory := _wireKubernetesClientFuncValue
 	clusterReconciler := cluster.NewReconciler(ctx, deferredClient, storeStore, clock, connectionManager, localEnv, dockerClientFactory, kubernetesClientFactory)
