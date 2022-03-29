@@ -105,10 +105,8 @@ func (ec *explodingClient) ClusterHealth(_ context.Context, _ bool) (ClusterHeal
 	return ClusterHealth{}, errors.Wrap(ec.err, "could not set up kubernetes client")
 }
 
-func (ec *explodingClient) ConnectionStatus() *v1alpha1.KubernetesClusterConnectionStatus {
+func (ec *explodingClient) ConnectionConfig() *v1alpha1.KubernetesClusterConnectionStatus {
 	return &v1alpha1.KubernetesClusterConnectionStatus{
-		Context:   "default",
-		Namespace: "default",
-		Product:   string(clusterid.ProductUnknown),
+		Product: string(clusterid.ProductUnknown),
 	}
 }

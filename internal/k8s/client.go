@@ -137,7 +137,7 @@ type Client interface {
 
 	ClusterHealth(ctx context.Context, verbose bool) (ClusterHealth, error)
 
-	ConnectionStatus() *v1alpha1.KubernetesClusterConnectionStatus
+	ConnectionConfig() *v1alpha1.KubernetesClusterConnectionStatus
 }
 
 type RESTMapper interface {
@@ -361,7 +361,7 @@ func (k *K8sClient) OwnerFetcher() OwnerFetcher {
 	return k.ownerFetcher
 }
 
-func (k *K8sClient) ConnectionStatus() *v1alpha1.KubernetesClusterConnectionStatus {
+func (k *K8sClient) ConnectionConfig() *v1alpha1.KubernetesClusterConnectionStatus {
 	return &v1alpha1.KubernetesClusterConnectionStatus{
 		Context:   string(k.configContext),
 		Namespace: k.configNamespace.String(),

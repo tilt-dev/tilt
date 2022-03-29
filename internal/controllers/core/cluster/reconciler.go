@@ -119,7 +119,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	}
 
 	if conn.error == "" && conn.connType == connectionTypeK8s {
-		connStatus := conn.k8sClient.ConnectionStatus()
+		connStatus := conn.k8sClient.ConnectionConfig()
 		conn.connStatus = &v1alpha1.ClusterConnectionStatus{
 			Kubernetes: connStatus,
 		}

@@ -522,7 +522,7 @@ func (c *FakeK8sClient) ContainerLogs(ctx context.Context, pID PodID, cName cont
 	return ReaderCloser{Reader: r}, nil
 }
 
-func (c *FakeK8sClient) ConnectionStatus() *v1alpha1.KubernetesClusterConnectionStatus {
+func (c *FakeK8sClient) ConnectionConfig() *v1alpha1.KubernetesClusterConnectionStatus {
 	return &v1alpha1.KubernetesClusterConnectionStatus{
 		Context:   "default",
 		Namespace: "default",
