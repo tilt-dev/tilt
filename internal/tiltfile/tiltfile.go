@@ -10,6 +10,7 @@ import (
 
 	"go.starlark.net/starlark"
 
+	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apiset"
@@ -103,7 +104,7 @@ func ProvideTiltfileLoader(
 	webHost model.WebHost,
 	execer localexec.Execer,
 	fDefaults feature.Defaults,
-	env k8s.Env) TiltfileLoader {
+	env clusterid.Product) TiltfileLoader {
 	return tiltfileLoader{
 		analytics:        analytics,
 		k8sContextPlugin: k8sContextPlugin,
@@ -129,7 +130,7 @@ type tiltfileLoader struct {
 	configPlugin     *config.Plugin
 	extensionPlugin  *tiltextension.Plugin
 	fDefaults        feature.Defaults
-	env              k8s.Env
+	env              clusterid.Product
 }
 
 var _ TiltfileLoader = &tiltfileLoader{}
@@ -265,7 +266,7 @@ func (tfl *tiltfileLoader) reportTiltfileLoaded(
 
 	// env should really be a global tag, but there's a circular dependency
 	// between the global tags and env initialization, so we add it manually.
-	tags["env"] = string(tfl.env)
+	tags["env"] = k8s.AnalyticsEnv(tfl.env)
 	tags["tiltfile.changed"] = strconv.FormatBool(prevHashes.TiltfileSHA256 != "" && prevHashes.TiltfileSHA256 != currHashes.TiltfileSHA256)
 	tags["allfiles.changed"] = strconv.FormatBool(prevHashes.AllFilesSHA256 != "" && prevHashes.AllFilesSHA256 != currHashes.AllFilesSHA256)
 
@@ -281,7 +282,7 @@ func (tfl *tiltfileLoader) reportTiltfileLoaded(
 	tfl.analytics.Timer("tiltfile.load", loadDur, nil)
 	for ext := range pluginsLoaded {
 		tags := map[string]string{
-			"env":      string(tfl.env),
+			"env":      k8s.AnalyticsEnv(tfl.env),
 			"ext_name": ext,
 		}
 		tfl.analytics.Incr("tiltfile.loaded.plugin", tags)

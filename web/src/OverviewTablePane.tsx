@@ -34,6 +34,16 @@ const OverviewTableMenu = styled.section`
   display: flex;
   flex-direction: row;
   align-items: center;
+  margin-left: auto;
+  margin-right: auto;
+  /* Max and min width are based on fixed table layout and column widths */
+  max-width: 2000px;
+  min-width: 1400px;
+
+  @media screen and (max-width: 2200px) {
+    margin-left: ${SizeUnit(1 / 2)};
+    margin-right: ${SizeUnit(1 / 2)};
+  }
 `
 
 const OverviewTableResourceNameFilter = styled(ResourceNameFilter)`
@@ -51,7 +61,7 @@ export default function OverviewTablePane(props: OverviewTablePaneProps) {
         <OverviewTableMenu aria-label="Resource menu">
           <OverviewTableResourceNameFilter />
           <OverviewTableBulkActions uiButtons={props.view.uiButtons} />
-          <OverviewTableDisplayOptions />
+          <OverviewTableDisplayOptions resources={props.view.uiResources} />
         </OverviewTableMenu>
       </OverviewTableStickyNav>
       <OverviewTable view={props.view} />

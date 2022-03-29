@@ -15,7 +15,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/buildcontrols"
-	"github.com/tilt-dev/tilt/internal/store/dcconv"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -81,6 +80,7 @@ func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buil
 	buildReason := mt.NextBuildReason()
 	targets := buildcontrol.BuildTargets(manifest)
 	buildStateSet := buildStateSet(ctx, manifest, state.KubernetesResources[manifest.Name.String()],
+		state.DockerComposeServices[manifest.Name.String()],
 		targets, ms, buildReason)
 
 	return buildEntry{
@@ -202,7 +202,9 @@ func SpanIDForBuildLog(buildCount int) logstore.SpanID {
 
 // Extract a set of build states from a manifest for BuildAndDeploy.
 func buildStateSet(ctx context.Context, manifest model.Manifest,
-	kresource *k8sconv.KubernetesResource, specs []model.TargetSpec,
+	kresource *k8sconv.KubernetesResource,
+	dcs *v1alpha1.DockerComposeService,
+	specs []model.TargetSpec,
 	ms *store.ManifestState, reason model.BuildReason) store.BuildStateSet {
 	result := store.BuildStateSet{}
 
@@ -231,18 +233,16 @@ func buildStateSet(ctx context.Context, manifest model.Manifest,
 		//
 		// This will probably need to change as the mapping between containers and
 		// manifests becomes many-to-one.
-		if !ms.NeedsRebuildFromCrash {
-			iTarget, ok := spec.(model.ImageTarget)
-			if ok {
-				selector := iTarget.LiveUpdateSpec.Selector
-				if manifest.IsK8s() && selector.Kubernetes != nil {
-					buildState.KubernetesSelector = selector.Kubernetes
-					buildState.KubernetesResource = kresource
-				}
+		iTarget, ok := spec.(model.ImageTarget)
+		if ok {
+			selector := iTarget.LiveUpdateSpec.Selector
+			if manifest.IsK8s() && selector.Kubernetes != nil {
+				buildState.KubernetesSelector = selector.Kubernetes
+				buildState.KubernetesResource = kresource
+			}
 
-				if manifest.IsDC() {
-					buildState.DockerResource = &dcconv.DockerResource{ContainerID: string(ms.DCRuntimeState().ContainerID)}
-				}
+			if manifest.IsDC() {
+				buildState.DockerComposeService = dcs
 			}
 		}
 		result[id] = buildState

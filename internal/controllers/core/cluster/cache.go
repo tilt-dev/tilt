@@ -10,6 +10,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/cluster"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -56,6 +57,7 @@ type connection struct {
 	// but is failing a health/readiness check.
 	statusError   string
 	arch          string
+	registry      *container.Registry
 	cancelMonitor context.CancelFunc
 }
 

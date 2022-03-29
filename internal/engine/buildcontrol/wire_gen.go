@@ -13,6 +13,7 @@ import (
 	"github.com/jonboulle/clockwork"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/containerupdate"
@@ -32,7 +33,7 @@ import (
 
 // Injectors from wire.go:
 
-func ProvideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, env k8s.Env, kubeContext k8s.KubeContext, clusterEnv docker.ClusterEnv, dir *dirs.TiltDevDir, clock build.Clock, kp KINDLoader, analytics2 *analytics.TiltAnalytics, ctrlclient client.Client, st store.RStore, execer localexec.Execer) (*ImageBuildAndDeployer, error) {
+func ProvideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, env clusterid.Product, kubeContext k8s.KubeContext, clusterEnv docker.ClusterEnv, dir *dirs.TiltDevDir, clock build.Clock, kp KINDLoader, analytics2 *analytics.TiltAnalytics, ctrlclient client.Client, st store.RStore, execer localexec.Execer) (*ImageBuildAndDeployer, error) {
 	labels := _wireLabelsValue
 	dockerBuilder := build.NewDockerBuilder(docker2, labels)
 	customBuilder := build.NewCustomBuilder(docker2, clock)
@@ -64,7 +65,6 @@ func ProvideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompo
 
 var BaseWireSet = wire.NewSet(wire.Value(dockerfile.Labels{}), v1alpha1.NewScheme, k8s.ProvideMinikubeClient, build.NewDockerBuilder, build.NewCustomBuilder, wire.Bind(new(build.DockerKubeConnection), new(*build.DockerBuilder)), NewDockerComposeBuildAndDeployer,
 	NewImageBuildAndDeployer,
-	NewLiveUpdateBuildAndDeployer,
 	NewLocalTargetBuildAndDeployer, containerupdate.NewDockerUpdater, containerupdate.NewExecUpdater, NewImageBuilder, tracer.InitOpenTelemetry, liveupdates.ProvideUpdateMode,
 )
 

@@ -1127,16 +1127,12 @@ func (s *tiltfileState) translateK8s(resources []*k8sResource, updateSettings mo
 			return nil, errors.Wrapf(err, "getting image build info for %s", r.name)
 		}
 
-		// Currently, only Kubernetes ImageTargets support the reconciler,
-		// and only if the user has flagged it on.
-		if s.features.Get(feature.LiveUpdateV2) {
-			for i, iTarget := range iTargets {
-				if liveupdate.IsEmptySpec(iTarget.LiveUpdateSpec) {
-					continue
-				}
-				iTarget.LiveUpdateReconciler = true
-				iTargets[i] = iTarget
+		for i, iTarget := range iTargets {
+			if liveupdate.IsEmptySpec(iTarget.LiveUpdateSpec) {
+				continue
 			}
+			iTarget.LiveUpdateReconciler = true
+			iTargets[i] = iTarget
 		}
 
 		m = m.WithImageTargets(iTargets)

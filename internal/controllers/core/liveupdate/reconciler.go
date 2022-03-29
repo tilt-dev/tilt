@@ -2,6 +2,7 @@ package liveupdate
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -551,7 +552,14 @@ func (r *Reconciler) dispatchCompleteBuildAction(lu *v1alpha1.LiveUpdate, newSta
 	spanID := logstore.SpanID(lu.Annotations[v1alpha1.AnnotationSpanID])
 	var err error
 	if newStatus.Failed != nil {
-		err = fmt.Errorf("%s", newStatus.Failed.Message)
+		err = errors.New(newStatus.Failed.Message)
+	} else {
+		for _, c := range newStatus.Containers {
+			if c.LastExecError != "" {
+				err = errors.New(c.LastExecError)
+				break
+			}
+		}
 	}
 
 	resultSet := store.BuildResultSet{}
@@ -973,9 +981,15 @@ func (r *Reconciler) applyInternal(
 			} else {
 				// Something went wrong with this update and it's NOT the user's fault--
 				// likely a infrastructure error. Bail, and fall back to full build.
+				msg := ""
+				if cStatus.PodName != "" {
+					msg = fmt.Sprintf("Updating pod %s: %v", cStatus.PodName, err)
+				} else {
+					msg = fmt.Sprintf("Updating container %s: %v", cInfo.DisplayName(), err)
+				}
 				result.Failed = &v1alpha1.LiveUpdateStateFailed{
 					Reason:  "UpdateFailed",
-					Message: fmt.Sprintf("Updating pod %s: %v", cStatus.PodName, err),
+					Message: msg,
 				}
 				return result
 			}

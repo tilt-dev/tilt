@@ -5,12 +5,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 )
 
 func TestAllowK8sContext(t *testing.T) {
-	f := NewFixture(t, "gke-blorg", k8s.EnvGKE)
+	f := NewFixture(t, "gke-blorg", clusterid.ProductGKE)
 	f.File("Tiltfile", `
 allow_k8s_contexts('gke-blorg')
 `)
@@ -25,7 +26,7 @@ allow_k8s_contexts('gke-blorg')
 }
 
 func TestForbidK8sContext(t *testing.T) {
-	f := NewFixture(t, "gke-blorg", k8s.EnvGKE)
+	f := NewFixture(t, "gke-blorg", clusterid.ProductGKE)
 	f.File("Tiltfile", `
 `)
 	model, err := f.ExecFile("Tiltfile")
@@ -37,6 +38,6 @@ func TestForbidK8sContext(t *testing.T) {
 	assert.True(t, MustState(model).IsAllowed(f.Tiltfile()))
 }
 
-func NewFixture(tb testing.TB, ctx k8s.KubeContext, env k8s.Env) *starkit.Fixture {
+func NewFixture(tb testing.TB, ctx k8s.KubeContext, env clusterid.Product) *starkit.Fixture {
 	return starkit.NewFixture(tb, NewPlugin(ctx, env))
 }

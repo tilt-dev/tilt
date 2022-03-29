@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/container"
@@ -33,7 +34,7 @@ type KINDLoader interface {
 }
 
 type cmdKINDLoader struct {
-	env         k8s.Env
+	env         clusterid.Product
 	clusterName k8s.ClusterName
 }
 
@@ -41,7 +42,7 @@ func (kl *cmdKINDLoader) LoadToKIND(ctx context.Context, ref reference.NamedTagg
 	// In Kind5, --name specifies the name of the cluster in the kubeconfig.
 	// In Kind6, the -name parameter is prefixed with 'kind-' before being written to/read from the kubeconfig
 	kindName := string(kl.clusterName)
-	if kl.env == k8s.EnvKIND6 {
+	if kl.env == clusterid.ProductKIND {
 		kindName = strings.TrimPrefix(kindName, "kind-")
 	}
 
@@ -53,7 +54,7 @@ func (kl *cmdKINDLoader) LoadToKIND(ctx context.Context, ref reference.NamedTagg
 	return cmd.Run()
 }
 
-func NewKINDLoader(env k8s.Env, clusterName k8s.ClusterName) KINDLoader {
+func NewKINDLoader(env clusterid.Product, clusterName k8s.ClusterName) KINDLoader {
 	return &cmdKINDLoader{
 		env:         env,
 		clusterName: clusterName,
@@ -64,7 +65,7 @@ type ImageBuildAndDeployer struct {
 	db          *build.DockerBuilder
 	ib          *ImageBuilder
 	k8sClient   k8s.Client
-	env         k8s.Env
+	env         clusterid.Product
 	kubeContext k8s.KubeContext
 	analytics   *analytics.TiltAnalytics
 	clock       build.Clock
@@ -77,7 +78,7 @@ func NewImageBuildAndDeployer(
 	db *build.DockerBuilder,
 	customBuilder *build.CustomBuilder,
 	k8sClient k8s.Client,
-	env k8s.Env,
+	env clusterid.Product,
 	kubeContext k8s.KubeContext,
 	analytics *analytics.TiltAnalytics,
 	c build.Clock,
@@ -296,7 +297,7 @@ func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedT
 }
 
 func (ibd *ImageBuildAndDeployer) shouldUseKINDLoad(ctx context.Context, iTarg model.ImageTarget) bool {
-	isKIND := ibd.env == k8s.EnvKIND5 || ibd.env == k8s.EnvKIND6
+	isKIND := ibd.env == clusterid.ProductKIND
 	if !isKIND {
 		return false
 	}

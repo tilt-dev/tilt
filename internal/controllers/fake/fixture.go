@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -205,7 +206,9 @@ func (f *ControllerFixture) Upsert(o object) ctrl.Result {
 	f.t.Helper()
 
 	err := f.Client.Create(f.ctx, o)
-	if apierrors.IsAlreadyExists(err) {
+	if err != nil &&
+		(apierrors.IsAlreadyExists(err) ||
+			strings.Contains(err.Error(), "resourceVersion can not be set for Create requests")) {
 		update := o.DeepCopyObject().(object)
 
 		require.NoError(f.t, f.Client.Get(f.ctx, f.KeyForObject(o), o))

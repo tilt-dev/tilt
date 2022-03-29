@@ -32,14 +32,6 @@ func FakeContainerIDAtIndex(index int) container.ID {
 	return container.ID(fmt.Sprintf("%s%s", fakeContainerID, indexSuffix))
 }
 
-func FakeContainerIDSet(size int) map[container.ID]bool {
-	result := container.NewIDSet()
-	for i := 0; i < size; i++ {
-		result[FakeContainerIDAtIndex(i)] = true
-	}
-	return result
-}
-
 // Builds Pod objects for testing
 //
 // The pod model should be internally well-formed (e.g., the containers

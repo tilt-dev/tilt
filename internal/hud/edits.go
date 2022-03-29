@@ -87,8 +87,6 @@ func (esl *EditStatusLineComponent) Render(w rty.Writer, width, height int) erro
 	if len(bs.edits) == 0 {
 		if bs.reason.Has(model.BuildReasonFlagInit) {
 			sb.Fg(cLightText).Text("FIRST BUILD ")
-		} else if bs.reason.Has(model.BuildReasonFlagCrash) {
-			sb.Fg(cLightText).Text("CRASH BUILD ")
 		}
 	} else {
 		sb.Fg(cLightText).Text("EDITED FILES ")

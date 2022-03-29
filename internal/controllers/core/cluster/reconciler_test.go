@@ -62,6 +62,27 @@ func TestKubernetesError(t *testing.T) {
 	}
 }
 
+func TestKubernetesDelete(t *testing.T) {
+	f := newFixture(t)
+	cluster := &v1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "default"},
+		Spec: v1alpha1.ClusterSpec{
+			Connection: &v1alpha1.ClusterConnection{
+				Kubernetes: &v1alpha1.KubernetesClusterConnection{},
+			},
+		},
+	}
+	nn := apis.Key(cluster)
+
+	f.Create(cluster)
+	_, ok := f.r.connManager.load(nn)
+	require.True(t, ok, "Connection was not present in connection manager")
+
+	f.Delete(cluster)
+	_, ok = f.r.connManager.load(nn)
+	require.False(t, ok, "Connection was not removed from connection manager")
+}
+
 func TestKubernetesArch(t *testing.T) {
 	f := newFixture(t)
 	cluster := &v1alpha1.Cluster{

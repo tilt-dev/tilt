@@ -8,10 +8,8 @@ import (
 	"github.com/tilt-dev/wmclient/pkg/analytics"
 
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
-	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/k8s"
-	"github.com/tilt-dev/tilt/internal/store/dcconv"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/internal/token"
@@ -491,14 +489,6 @@ type ManifestState struct {
 	// The last `BuildHistoryLimit` builds. The most recent build is first in the slice.
 	BuildHistory []model.BuildRecord
 
-	// The container IDs that we've run a LiveUpdate on, if any. Their contents have
-	// diverged from the image they are built on. If these container don't appear on
-	// the pod, we've lost that state and need to rebuild.
-	LiveUpdatedContainerIDs map[container.ID]bool
-
-	// We detected stale code and are currently doing an image build
-	NeedsRebuildFromCrash bool
-
 	// If this manifest was changed, which config files led to the most recent change in manifest definition
 	ConfigFilesThatCausedChange []string
 
@@ -556,11 +546,10 @@ func NewState() *EngineState {
 func NewManifestState(m model.Manifest) *ManifestState {
 	mn := m.Name
 	ms := &ManifestState{
-		Name:                    mn,
-		BuildStatuses:           make(map[model.TargetID]*BuildStatus),
-		LiveUpdatedContainerIDs: container.NewIDSet(),
-		DisableState:            v1alpha1.DisableStatePending,
-		CurrentBuilds:           make(map[string]model.BuildRecord),
+		Name:          mn,
+		BuildStatuses: make(map[model.TargetID]*BuildStatus),
+		DisableState:  v1alpha1.DisableStatePending,
+		CurrentBuilds: make(map[string]model.BuildRecord),
 	}
 
 	if m.IsK8s() {
@@ -598,14 +587,6 @@ func (ms *ManifestState) MutableBuildStatus(id model.TargetID) *BuildStatus {
 func (ms *ManifestState) DCRuntimeState() dockercompose.State {
 	ret, _ := ms.RuntimeState.(dockercompose.State)
 	return ret
-}
-
-func (ms *ManifestState) DockerResource() *dcconv.DockerResource {
-	ret, ok := ms.RuntimeState.(dockercompose.State)
-	if !ok {
-		return nil
-	}
-	return &dcconv.DockerResource{ContainerID: string(ret.ContainerID)}
 }
 
 func (ms *ManifestState) IsDC() bool {
@@ -750,9 +731,6 @@ func (mt *ManifestTarget) NextBuildReason() model.BuildReason {
 	}
 	if !mt.State.StartedFirstBuild() && mt.Manifest.TriggerMode.AutoInitial() {
 		reason = reason.With(model.BuildReasonFlagInit)
-	}
-	if mt.State.NeedsRebuildFromCrash {
-		reason = reason.With(model.BuildReasonFlagCrash)
 	}
 	return reason
 }

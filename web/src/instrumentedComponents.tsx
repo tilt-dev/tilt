@@ -32,6 +32,7 @@ export function InstrumentedButton(props: ButtonProps & InstrumentationProps) {
     }
   }
 
+  // TODO(nick): variant="outline" doesn't seem like the right default.
   return (
     <Button
       variant="outlined"

@@ -3,22 +3,12 @@ package buildcontrol
 import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
-	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
-	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type Fixture = manifestbuilder.Fixture
-
-var testImageRef = container.MustParseNamedTagged("gcr.io/some-project-162817/sancho:deadbeef")
-var imageTargetID = model.TargetID{
-	Type: model.TargetTypeImage,
-	Name: model.TargetName(apis.SanitizeName("gcr.io/some-project-162817/sancho")),
-}
-
-var alreadyBuilt = store.NewImageBuildResultSingleRef(imageTargetID, testImageRef)
 
 const SanchoYAML = testyaml.SanchoYAML
 
@@ -171,7 +161,6 @@ func NewSanchoLiveUpdateMultiStageManifest(fixture Fixture) model.Manifest {
 	return manifestbuilder.New(fixture, "sancho").
 		WithK8sYAML(testyaml.Deployment("sancho", srcImage.Refs.ConfigurationRef.String())).
 		WithImageTargets(baseImage, srcImage).
-		WithLiveUpdateBAD().
 		Build()
 }
 

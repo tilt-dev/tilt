@@ -1576,6 +1576,8 @@ github.com/tilt-dev/apiserver v0.23.0-tilt-20220118 h1:WRYE20MS3RsKiWlkBdRkOiGLo
 github.com/tilt-dev/apiserver v0.23.0-tilt-20220118/go.mod h1:Cec35u/9zAepDPPFyT+UMrgqOCjgJ5qtfVJDxjZYmt4=
 github.com/tilt-dev/browser v0.0.1 h1:e+mFToX6A7pkMlGFrXW5VLvS7qS0HVbcXqmR0uPrWUA=
 github.com/tilt-dev/browser v0.0.1/go.mod h1:2DaMt8P8xEqDFzxaAbraOig5iUmQdd1wtO1Tb6tODHA=
+github.com/tilt-dev/clusterid v0.1.2 h1:ch+qLP6y3n6KvuIyovSa030hJuWJ//G8gXqvouxpRSc=
+github.com/tilt-dev/clusterid v0.1.2/go.mod h1:QeDTv8HzwdCk6P1WzQXA+wpPSYAniAWipqbTLEF9ets=
 github.com/tilt-dev/dockerignore v0.1.1 h1:/MPYqcD8qMCMyh3yiHuQdzbMQi9NL4vVopo6/9D/XvE=
 github.com/tilt-dev/dockerignore v0.1.1/go.mod h1:2ooUDj8B9FNWYvHadA4EKG0JDaeAOjiq5P+mvEzS2eY=
 github.com/tilt-dev/fsevents v0.0.0-20200515134857-2efe37af20de h1:tG+nJMUUxV7MJm/MeU1Mw7rvmwN9GWyHMMg+wtf9HS4=
@@ -2612,8 +2614,9 @@ sigs.k8s.io/structured-merge-diff v0.0.0-20190525122527-15d366b2352e/go.mod h1:w
 sigs.k8s.io/structured-merge-diff/v4 v4.0.2/go.mod h1:bJZC9H9iH24zzfZ/41RGcq60oK1F7G282QMXDPYydCw=
 sigs.k8s.io/structured-merge-diff/v4 v4.1.0/go.mod h1:bJZC9H9iH24zzfZ/41RGcq60oK1F7G282QMXDPYydCw=
 sigs.k8s.io/structured-merge-diff/v4 v4.1.2/go.mod h1:j/nl6xW8vLS49O8YvXW1ocPhZawJtm+Yrr7PPRQ0Vg4=
-sigs.k8s.io/structured-merge-diff/v4 v4.2.0 h1:kDvPBbnPk+qYmkHmSo8vKGp438IASWofnbbUKDE/bv0=
 sigs.k8s.io/structured-merge-diff/v4 v4.2.0/go.mod h1:j/nl6xW8vLS49O8YvXW1ocPhZawJtm+Yrr7PPRQ0Vg4=
+sigs.k8s.io/structured-merge-diff/v4 v4.2.1 h1:bKCqE9GvQ5tiVHn5rfn1r+yao3aLQEaLzkkmAkf+A6Y=
+sigs.k8s.io/structured-merge-diff/v4 v4.2.1/go.mod h1:j/nl6xW8vLS49O8YvXW1ocPhZawJtm+Yrr7PPRQ0Vg4=
 sigs.k8s.io/yaml v1.1.0/go.mod h1:UJmg0vDUVViEyp3mgSv9WPwZCDxu4rQW1olrI1uml+o=
 sigs.k8s.io/yaml v1.2.0/go.mod h1:yfXDCHCao9+ENCvLSE62v9VSji2MKu5jeNfTrofGhJc=
 sigs.k8s.io/yaml v1.3.0 h1:a2VclLzOGrwOHDiV8EfBGhvjHvP46CtW5j6POvhYGGo=

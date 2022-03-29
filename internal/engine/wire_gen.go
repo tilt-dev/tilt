@@ -14,14 +14,13 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/container"
-	"github.com/tilt-dev/tilt/internal/containerupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
 	"github.com/tilt-dev/tilt/internal/controllers/core/dockercomposeservice"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesapply"
-	"github.com/tilt-dev/tilt/internal/controllers/core/liveupdate"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/dockerfile"
@@ -37,25 +36,15 @@ import (
 
 // Injectors from wire.go:
 
-func provideFakeBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, dir *dirs.TiltDevDir, env k8s.Env, updateMode liveupdates.UpdateModeFlag, dcc dockercompose.DockerComposeClient, clock build.Clock, kp buildcontrol.KINDLoader, analytics2 *analytics.TiltAnalytics, ctrlClient client.Client, st store.RStore, execer localexec.Execer) (buildcontrol.BuildAndDeployer, error) {
-	dockerUpdater := containerupdate.NewDockerUpdater(docker2)
-	execUpdater := containerupdate.NewExecUpdater(kClient)
-	kubeContext := provideFakeKubeContext(env)
-	runtime := k8s.ProvideContainerRuntime(ctx, kClient)
-	clusterEnv := provideFakeDockerClusterEnv(docker2, env, kubeContext, runtime)
-	liveupdatesUpdateMode, err := liveupdates.ProvideUpdateMode(updateMode, kubeContext, clusterEnv)
-	if err != nil {
-		return nil, err
-	}
-	scheme := v1alpha1.NewScheme()
-	reconciler := liveupdate.NewReconciler(st, dockerUpdater, execUpdater, liveupdatesUpdateMode, kubeContext, ctrlClient, scheme)
-	liveUpdateBuildAndDeployer := buildcontrol.NewLiveUpdateBuildAndDeployer(reconciler, clock)
+func provideFakeBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, dir *dirs.TiltDevDir, env clusterid.Product, updateMode liveupdates.UpdateModeFlag, dcc dockercompose.DockerComposeClient, clock build.Clock, kp buildcontrol.KINDLoader, analytics2 *analytics.TiltAnalytics, ctrlClient client.Client, st store.RStore, execer localexec.Execer) (buildcontrol.BuildAndDeployer, error) {
 	labels := _wireLabelsValue
 	dockerBuilder := build.NewDockerBuilder(docker2, labels)
 	customBuilder := build.NewCustomBuilder(docker2, clock)
+	kubeContext := provideFakeKubeContext(env)
+	scheme := v1alpha1.NewScheme()
 	namespace := provideFakeK8sNamespace()
-	kubernetesapplyReconciler := kubernetesapply.NewReconciler(ctrlClient, kClient, scheme, dockerBuilder, kubeContext, st, namespace, execer)
-	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, customBuilder, kClient, env, kubeContext, analytics2, clock, kp, ctrlClient, kubernetesapplyReconciler)
+	reconciler := kubernetesapply.NewReconciler(ctrlClient, kClient, scheme, dockerBuilder, kubeContext, st, namespace, execer)
+	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, customBuilder, kClient, env, kubeContext, analytics2, clock, kp, ctrlClient, reconciler)
 	clockworkClock := clockwork.NewRealClock()
 	disableSubscriber := dockercomposeservice.NewDisableSubscriber(ctx, dcc, clockworkClock)
 	dockercomposeserviceReconciler := dockercomposeservice.NewReconciler(ctrlClient, dcc, docker2, st, scheme, disableSubscriber)
@@ -66,7 +55,13 @@ func provideFakeBuildAndDeployer(ctx context.Context, docker2 docker.Client, kCl
 	proberManager := cmd.ProvideProberManager()
 	controller := cmd.NewController(ctx, cmdExecer, proberManager, ctrlClient, st, clockworkClock, scheme)
 	localTargetBuildAndDeployer := buildcontrol.NewLocalTargetBuildAndDeployer(clock, ctrlClient, controller)
-	buildOrder := DefaultBuildOrder(liveUpdateBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, localTargetBuildAndDeployer, liveupdatesUpdateMode, env, runtime)
+	runtime := k8s.ProvideContainerRuntime(ctx, kClient)
+	clusterEnv := provideFakeDockerClusterEnv(docker2, env, kubeContext, runtime)
+	liveupdatesUpdateMode, err := liveupdates.ProvideUpdateMode(updateMode, kubeContext, clusterEnv)
+	if err != nil {
+		return nil, err
+	}
+	buildOrder := DefaultBuildOrder(imageBuildAndDeployer, dockerComposeBuildAndDeployer, localTargetBuildAndDeployer, liveupdatesUpdateMode)
 	spanExporter := _wireSpanExporterValue
 	traceTracer := tracer.InitOpenTelemetry(spanExporter)
 	compositeBuildAndDeployer := NewCompositeBuildAndDeployer(buildOrder, traceTracer)
@@ -98,16 +93,16 @@ func provideFakeK8sNamespace() k8s.Namespace {
 	return "default"
 }
 
-func provideFakeKubeContext(env k8s.Env) k8s.KubeContext {
+func provideFakeKubeContext(env clusterid.Product) k8s.KubeContext {
 	return k8s.KubeContext(string(env))
 }
 
 // A simplified version of the normal calculation we do
 // about whether we can build direct to a cluser
-func provideFakeDockerClusterEnv(c docker.Client, k8sEnv k8s.Env, kubeContext k8s.KubeContext, runtime container.Runtime) docker.ClusterEnv {
+func provideFakeDockerClusterEnv(c docker.Client, k8sEnv clusterid.Product, kubeContext k8s.KubeContext, runtime container.Runtime) docker.ClusterEnv {
 	env := c.Env()
 	isDockerRuntime := runtime == container.RuntimeDocker
-	isLocalDockerCluster := k8sEnv == k8s.EnvMinikube || k8sEnv == k8s.EnvMicroK8s || k8sEnv == k8s.EnvDockerDesktop
+	isLocalDockerCluster := k8sEnv == clusterid.ProductMinikube || k8sEnv == clusterid.ProductMicroK8s || k8sEnv == clusterid.ProductDockerDesktop
 	if isDockerRuntime && isLocalDockerCluster {
 		env.BuildToKubeContexts = append(env.BuildToKubeContexts, string(kubeContext))
 	}

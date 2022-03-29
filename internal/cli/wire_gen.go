@@ -17,6 +17,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
 	client2 "github.com/tilt-dev/tilt/internal/cli/client"
@@ -101,8 +102,8 @@ func wireTiltfileResult(ctx context.Context, analytics2 *analytics.TiltAnalytics
 	if err != nil {
 		return cmdTiltfileResultDeps{}, err
 	}
-	env := k8s.ProvideEnv(ctx, apiConfig)
-	plugin := k8scontext.NewPlugin(kubeContext, env)
+	product := k8s.ProvideClusterProduct(ctx, apiConfig)
+	plugin := k8scontext.NewPlugin(kubeContext, product)
 	tiltBuild := provideTiltInfo()
 	versionPlugin := version.NewPlugin(tiltBuild)
 	configPlugin := config.NewPlugin(subcommand)
@@ -123,17 +124,17 @@ func wireTiltfileResult(ctx context.Context, analytics2 *analytics.TiltAnalytics
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
 	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
-	client := k8s.ProvideK8sClient(ctx, env, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
+	client := k8s.ProvideK8sClient(ctx, product, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
 	runtime := k8s.ProvideContainerRuntime(ctx, client)
-	clusterEnv := docker.ProvideClusterEnv(ctx, kubeContext, env, runtime, minikubeClient)
-	localEnv := docker.ProvideLocalEnv(ctx, kubeContext, env, clusterEnv)
+	clusterEnv := docker.ProvideClusterEnv(ctx, kubeContext, product, runtime, minikubeClient)
+	localEnv := docker.ProvideLocalEnv(ctx, kubeContext, product, clusterEnv)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	webHost := provideWebHost()
 	webPort := provideWebPort()
-	localexecEnv := localexec.DefaultEnv(webPort, webHost)
-	processExecer := localexec.NewProcessExecer(localexecEnv)
+	env := localexec.DefaultEnv(webPort, webHost)
+	processExecer := localexec.NewProcessExecer(env)
 	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, plugin, versionPlugin, configPlugin, tiltextensionPlugin, dockerComposeClient, webHost, processExecer, defaults, env)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, plugin, versionPlugin, configPlugin, tiltextensionPlugin, dockerComposeClient, webHost, processExecer, defaults, product)
 	cliCmdTiltfileResultDeps := newTiltfileResultDeps(tiltfileLoader)
 	return cliCmdTiltfileResultDeps, nil
 }
@@ -155,23 +156,23 @@ func wireDockerPrune(ctx context.Context, analytics2 *analytics.TiltAnalytics, s
 	if err != nil {
 		return dpDeps{}, err
 	}
-	env := k8s.ProvideEnv(ctx, apiConfig)
+	product := k8s.ProvideClusterProduct(ctx, apiConfig)
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
 	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
-	client := k8s.ProvideK8sClient(ctx, env, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
+	client := k8s.ProvideK8sClient(ctx, product, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
 	runtime := k8s.ProvideContainerRuntime(ctx, client)
-	clusterEnv := docker.ProvideClusterEnv(ctx, kubeContext, env, runtime, minikubeClient)
-	localEnv := docker.ProvideLocalEnv(ctx, kubeContext, env, clusterEnv)
+	clusterEnv := docker.ProvideClusterEnv(ctx, kubeContext, product, runtime, minikubeClient)
+	localEnv := docker.ProvideLocalEnv(ctx, kubeContext, product, clusterEnv)
 	localClient := docker.ProvideLocalCli(ctx, localEnv)
 	clusterClient, err := docker.ProvideClusterCli(ctx, localEnv, clusterEnv, localClient)
 	if err != nil {
 		return dpDeps{}, err
 	}
 	compositeClient := docker.ProvideSwitchCli(clusterClient, localClient)
-	plugin := k8scontext.NewPlugin(kubeContext, env)
+	plugin := k8scontext.NewPlugin(kubeContext, product)
 	tiltBuild := provideTiltInfo()
 	versionPlugin := version.NewPlugin(tiltBuild)
 	configPlugin := config.NewPlugin(subcommand)
@@ -190,10 +191,10 @@ func wireDockerPrune(ctx context.Context, analytics2 *analytics.TiltAnalytics, s
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	webHost := provideWebHost()
 	webPort := provideWebPort()
-	localexecEnv := localexec.DefaultEnv(webPort, webHost)
-	processExecer := localexec.NewProcessExecer(localexecEnv)
+	env := localexec.DefaultEnv(webPort, webHost)
+	processExecer := localexec.NewProcessExecer(env)
 	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, plugin, versionPlugin, configPlugin, tiltextensionPlugin, dockerComposeClient, webHost, processExecer, defaults, env)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, plugin, versionPlugin, configPlugin, tiltextensionPlugin, dockerComposeClient, webHost, processExecer, defaults, product)
 	cliDpDeps := newDPDeps(compositeClient, client, tiltfileLoader)
 	return cliDpDeps, nil
 }
@@ -277,7 +278,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
-	k8sEnv := k8s.ProvideEnv(ctx, apiConfig)
+	product := k8s.ProvideClusterProduct(ctx, apiConfig)
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
@@ -287,15 +288,15 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 		return CmdUpDeps{}, err
 	}
 	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
-	client := k8s.ProvideK8sClient(ctx, k8sEnv, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
+	client := k8s.ProvideK8sClient(ctx, product, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
 	podSource := podlogstream.NewPodSource(ctx, client, scheme, clock)
 	podlogstreamController := podlogstream.NewController(ctx, deferredClient, scheme, storeStore, client, podSource, clock)
 	connectionManager := cluster.NewConnectionManager()
 	containerRestartDetector := kubernetesdiscovery.NewContainerRestartDetector()
 	reconciler := kubernetesdiscovery.NewReconciler(deferredClient, scheme, connectionManager, containerRestartDetector, storeStore)
 	runtime := k8s.ProvideContainerRuntime(ctx, client)
-	clusterEnv := docker.ProvideClusterEnv(ctx, kubeContext, k8sEnv, runtime, minikubeClient)
-	localEnv := docker.ProvideLocalEnv(ctx, kubeContext, k8sEnv, clusterEnv)
+	clusterEnv := docker.ProvideClusterEnv(ctx, kubeContext, product, runtime, minikubeClient)
+	localEnv := docker.ProvideLocalEnv(ctx, kubeContext, product, clusterEnv)
 	localClient := docker.ProvideLocalCli(ctx, localEnv)
 	clusterClient, err := docker.ProvideClusterCli(ctx, localEnv, clusterEnv, localClient)
 	if err != nil {
@@ -310,7 +311,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	uiresourceReconciler := uiresource.NewReconciler(deferredClient, websocketList, storeStore)
 	uibuttonReconciler := uibutton.NewReconciler(deferredClient, websocketList, storeStore)
 	portforwardReconciler := portforward.NewReconciler(deferredClient, storeStore, client)
-	plugin := k8scontext.NewPlugin(kubeContext, k8sEnv)
+	plugin := k8scontext.NewPlugin(kubeContext, product)
 	versionPlugin := version.NewPlugin(tiltBuild)
 	configPlugin := config.NewPlugin(subcommand)
 	extensionrepoReconciler, err := extensionrepo.NewReconciler(deferredClient, storeStore, base)
@@ -321,7 +322,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	tiltextensionPlugin := tiltextension.NewPlugin(extensionrepoReconciler, extensionReconciler)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, plugin, versionPlugin, configPlugin, tiltextensionPlugin, dockerComposeClient, webHost, processExecer, defaults, k8sEnv)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, plugin, versionPlugin, configPlugin, tiltextensionPlugin, dockerComposeClient, webHost, processExecer, defaults, product)
 	engineMode := _wireEngineModeValue
 	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, client, compositeClient, deferredClient, scheme, engineMode, k8sKubeContextOverride, k8sNamespaceOverride)
 	togglebuttonReconciler := togglebutton.NewReconciler(deferredClient, scheme)
@@ -354,15 +355,14 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	terminalPrompt := prompt.NewTerminalPrompt(analytics3, openInput, openURL, stdout, webHost, webURL)
 	serviceWatcher := k8swatch.NewServiceWatcher(connectionManager, namespace)
 	buildClock := build.ProvideClock()
-	liveUpdateBuildAndDeployer := buildcontrol.NewLiveUpdateBuildAndDeployer(liveupdateReconciler, buildClock)
 	customBuilder := build.NewCustomBuilder(compositeClient, buildClock)
 	clusterName := k8s.ProvideClusterName(ctx, apiConfig)
-	kindLoader := buildcontrol.NewKINDLoader(k8sEnv, clusterName)
-	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, customBuilder, client, k8sEnv, kubeContext, analytics3, buildClock, kindLoader, deferredClient, kubernetesapplyReconciler)
+	kindLoader := buildcontrol.NewKINDLoader(product, clusterName)
+	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, customBuilder, client, product, kubeContext, analytics3, buildClock, kindLoader, deferredClient, kubernetesapplyReconciler)
 	imageBuilder := buildcontrol.NewImageBuilder(dockerBuilder, customBuilder)
 	dockerComposeBuildAndDeployer := buildcontrol.NewDockerComposeBuildAndDeployer(dockercomposeserviceReconciler, compositeClient, imageBuilder, buildClock, deferredClient)
 	localTargetBuildAndDeployer := buildcontrol.NewLocalTargetBuildAndDeployer(buildClock, deferredClient, cmdController)
-	buildOrder := engine.DefaultBuildOrder(liveUpdateBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, localTargetBuildAndDeployer, updateMode, k8sEnv, runtime)
+	buildOrder := engine.DefaultBuildOrder(imageBuildAndDeployer, dockerComposeBuildAndDeployer, localTargetBuildAndDeployer, updateMode)
 	spanCollector := tracer.NewSpanCollector(ctx)
 	traceTracer := tracer.InitOpenTelemetry(spanCollector)
 	compositeBuildAndDeployer := engine.NewCompositeBuildAndDeployer(buildOrder, traceTracer)
@@ -370,7 +370,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	configsController := configs.NewConfigsController(deferredClient)
 	triggerQueueSubscriber := configs.NewTriggerQueueSubscriber(deferredClient)
 	dockerComposeLogManager := runtimelog.NewDockerComposeLogManager(dockerComposeClient)
-	analyticsReporter := analytics2.ProvideAnalyticsReporter(analytics3, storeStore, client, k8sEnv, defaults)
+	analyticsReporter := analytics2.ProvideAnalyticsReporter(analytics3, storeStore, client, product, defaults)
 	analyticsUpdater := analytics2.NewAnalyticsUpdater(analytics3, cmdTags, engineMode)
 	eventWatchManager := k8swatch.NewEventWatchManager(connectionManager, namespace)
 	cloudStatusManager := cloud.NewStatusManager(httpClient, clock)
@@ -490,7 +490,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
-	k8sEnv := k8s.ProvideEnv(ctx, apiConfig)
+	product := k8s.ProvideClusterProduct(ctx, apiConfig)
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
@@ -500,15 +500,15 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 		return CmdCIDeps{}, err
 	}
 	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
-	client := k8s.ProvideK8sClient(ctx, k8sEnv, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
+	client := k8s.ProvideK8sClient(ctx, product, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
 	podSource := podlogstream.NewPodSource(ctx, client, scheme, clock)
 	podlogstreamController := podlogstream.NewController(ctx, deferredClient, scheme, storeStore, client, podSource, clock)
 	connectionManager := cluster.NewConnectionManager()
 	containerRestartDetector := kubernetesdiscovery.NewContainerRestartDetector()
 	reconciler := kubernetesdiscovery.NewReconciler(deferredClient, scheme, connectionManager, containerRestartDetector, storeStore)
 	runtime := k8s.ProvideContainerRuntime(ctx, client)
-	clusterEnv := docker.ProvideClusterEnv(ctx, kubeContext, k8sEnv, runtime, minikubeClient)
-	localEnv := docker.ProvideLocalEnv(ctx, kubeContext, k8sEnv, clusterEnv)
+	clusterEnv := docker.ProvideClusterEnv(ctx, kubeContext, product, runtime, minikubeClient)
+	localEnv := docker.ProvideLocalEnv(ctx, kubeContext, product, clusterEnv)
 	localClient := docker.ProvideLocalCli(ctx, localEnv)
 	clusterClient, err := docker.ProvideClusterCli(ctx, localEnv, clusterEnv, localClient)
 	if err != nil {
@@ -523,7 +523,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	uiresourceReconciler := uiresource.NewReconciler(deferredClient, websocketList, storeStore)
 	uibuttonReconciler := uibutton.NewReconciler(deferredClient, websocketList, storeStore)
 	portforwardReconciler := portforward.NewReconciler(deferredClient, storeStore, client)
-	plugin := k8scontext.NewPlugin(kubeContext, k8sEnv)
+	plugin := k8scontext.NewPlugin(kubeContext, product)
 	versionPlugin := version.NewPlugin(tiltBuild)
 	configPlugin := config.NewPlugin(subcommand)
 	extensionrepoReconciler, err := extensionrepo.NewReconciler(deferredClient, storeStore, base)
@@ -534,7 +534,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	tiltextensionPlugin := tiltextension.NewPlugin(extensionrepoReconciler, extensionReconciler)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, plugin, versionPlugin, configPlugin, tiltextensionPlugin, dockerComposeClient, webHost, processExecer, defaults, k8sEnv)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, plugin, versionPlugin, configPlugin, tiltextensionPlugin, dockerComposeClient, webHost, processExecer, defaults, product)
 	engineMode := _wireStoreEngineModeValue
 	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, client, compositeClient, deferredClient, scheme, engineMode, k8sKubeContextOverride, k8sNamespaceOverride)
 	togglebuttonReconciler := togglebutton.NewReconciler(deferredClient, scheme)
@@ -567,15 +567,14 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	terminalPrompt := prompt.NewTerminalPrompt(analytics3, openInput, openURL, stdout, webHost, webURL)
 	serviceWatcher := k8swatch.NewServiceWatcher(connectionManager, namespace)
 	buildClock := build.ProvideClock()
-	liveUpdateBuildAndDeployer := buildcontrol.NewLiveUpdateBuildAndDeployer(liveupdateReconciler, buildClock)
 	customBuilder := build.NewCustomBuilder(compositeClient, buildClock)
 	clusterName := k8s.ProvideClusterName(ctx, apiConfig)
-	kindLoader := buildcontrol.NewKINDLoader(k8sEnv, clusterName)
-	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, customBuilder, client, k8sEnv, kubeContext, analytics3, buildClock, kindLoader, deferredClient, kubernetesapplyReconciler)
+	kindLoader := buildcontrol.NewKINDLoader(product, clusterName)
+	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, customBuilder, client, product, kubeContext, analytics3, buildClock, kindLoader, deferredClient, kubernetesapplyReconciler)
 	imageBuilder := buildcontrol.NewImageBuilder(dockerBuilder, customBuilder)
 	dockerComposeBuildAndDeployer := buildcontrol.NewDockerComposeBuildAndDeployer(dockercomposeserviceReconciler, compositeClient, imageBuilder, buildClock, deferredClient)
 	localTargetBuildAndDeployer := buildcontrol.NewLocalTargetBuildAndDeployer(buildClock, deferredClient, cmdController)
-	buildOrder := engine.DefaultBuildOrder(liveUpdateBuildAndDeployer, imageBuildAndDeployer, dockerComposeBuildAndDeployer, localTargetBuildAndDeployer, updateMode, k8sEnv, runtime)
+	buildOrder := engine.DefaultBuildOrder(imageBuildAndDeployer, dockerComposeBuildAndDeployer, localTargetBuildAndDeployer, updateMode)
 	spanCollector := tracer.NewSpanCollector(ctx)
 	traceTracer := tracer.InitOpenTelemetry(spanCollector)
 	compositeBuildAndDeployer := engine.NewCompositeBuildAndDeployer(buildOrder, traceTracer)
@@ -583,7 +582,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	configsController := configs.NewConfigsController(deferredClient)
 	triggerQueueSubscriber := configs.NewTriggerQueueSubscriber(deferredClient)
 	dockerComposeLogManager := runtimelog.NewDockerComposeLogManager(dockerComposeClient)
-	analyticsReporter := analytics2.ProvideAnalyticsReporter(analytics3, storeStore, client, k8sEnv, defaults)
+	analyticsReporter := analytics2.ProvideAnalyticsReporter(analytics3, storeStore, client, product, defaults)
 	cmdTags := _wireCmdTagsValue
 	analyticsUpdater := analytics2.NewAnalyticsUpdater(analytics3, cmdTags, engineMode)
 	eventWatchManager := k8swatch.NewEventWatchManager(connectionManager, namespace)
@@ -699,7 +698,7 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	if err != nil {
 		return CmdUpdogDeps{}, err
 	}
-	k8sEnv := k8s.ProvideEnv(ctx, apiConfig)
+	product := k8s.ProvideClusterProduct(ctx, apiConfig)
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
@@ -709,15 +708,15 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 		return CmdUpdogDeps{}, err
 	}
 	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
-	k8sClient := k8s.ProvideK8sClient(ctx, k8sEnv, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
+	k8sClient := k8s.ProvideK8sClient(ctx, product, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
 	podSource := podlogstream.NewPodSource(ctx, k8sClient, scheme, clock)
 	podlogstreamController := podlogstream.NewController(ctx, deferredClient, scheme, storeStore, k8sClient, podSource, clock)
 	connectionManager := cluster.NewConnectionManager()
 	containerRestartDetector := kubernetesdiscovery.NewContainerRestartDetector()
 	reconciler := kubernetesdiscovery.NewReconciler(deferredClient, scheme, connectionManager, containerRestartDetector, storeStore)
 	runtime := k8s.ProvideContainerRuntime(ctx, k8sClient)
-	clusterEnv := docker.ProvideClusterEnv(ctx, kubeContext, k8sEnv, runtime, minikubeClient)
-	localEnv := docker.ProvideLocalEnv(ctx, kubeContext, k8sEnv, clusterEnv)
+	clusterEnv := docker.ProvideClusterEnv(ctx, kubeContext, product, runtime, minikubeClient)
+	localEnv := docker.ProvideLocalEnv(ctx, kubeContext, product, clusterEnv)
 	localClient := docker.ProvideLocalCli(ctx, localEnv)
 	clusterClient, err := docker.ProvideClusterCli(ctx, localEnv, clusterEnv, localClient)
 	if err != nil {
@@ -732,7 +731,7 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	uiresourceReconciler := uiresource.NewReconciler(deferredClient, websocketList, storeStore)
 	uibuttonReconciler := uibutton.NewReconciler(deferredClient, websocketList, storeStore)
 	portforwardReconciler := portforward.NewReconciler(deferredClient, storeStore, k8sClient)
-	plugin := k8scontext.NewPlugin(kubeContext, k8sEnv)
+	plugin := k8scontext.NewPlugin(kubeContext, product)
 	versionPlugin := version.NewPlugin(tiltBuild)
 	configPlugin := config.NewPlugin(subcommand)
 	extensionrepoReconciler, err := extensionrepo.NewReconciler(deferredClient, storeStore, base)
@@ -743,7 +742,7 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	tiltextensionPlugin := tiltextension.NewPlugin(extensionrepoReconciler, extensionReconciler)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, plugin, versionPlugin, configPlugin, tiltextensionPlugin, dockerComposeClient, webHost, processExecer, defaults, k8sEnv)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, plugin, versionPlugin, configPlugin, tiltextensionPlugin, dockerComposeClient, webHost, processExecer, defaults, product)
 	engineMode := _wireEngineModeValue2
 	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, k8sClient, compositeClient, deferredClient, scheme, engineMode, k8sKubeContextOverride, k8sNamespaceOverride)
 	togglebuttonReconciler := togglebutton.NewReconciler(deferredClient, scheme)
@@ -818,7 +817,7 @@ func wireKubeConfig(ctx context.Context) (*api.Config, error) {
 	return apiConfig, nil
 }
 
-func wireEnv(ctx context.Context) (k8s.Env, error) {
+func wireEnv(ctx context.Context) (clusterid.Product, error) {
 	k8sKubeContextOverride := ProvideKubeContextOverride()
 	k8sNamespaceOverride := ProvideNamespaceOverride()
 	clientConfig := k8s.ProvideClientConfig(k8sKubeContextOverride, k8sNamespaceOverride)
@@ -826,8 +825,8 @@ func wireEnv(ctx context.Context) (k8s.Env, error) {
 	if err != nil {
 		return "", err
 	}
-	env := k8s.ProvideEnv(ctx, apiConfig)
-	return env, nil
+	product := k8s.ProvideClusterProduct(ctx, apiConfig)
+	return product, nil
 }
 
 func wireNamespace(ctx context.Context) (k8s.Namespace, error) {
@@ -858,7 +857,7 @@ func wireRuntime(ctx context.Context) (container.Runtime, error) {
 	if err != nil {
 		return "", err
 	}
-	env := k8s.ProvideEnv(ctx, apiConfig)
+	product := k8s.ProvideClusterProduct(ctx, apiConfig)
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
@@ -868,7 +867,7 @@ func wireRuntime(ctx context.Context) (container.Runtime, error) {
 		return "", err
 	}
 	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
-	k8sClient := k8s.ProvideK8sClient(ctx, env, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
+	k8sClient := k8s.ProvideK8sClient(ctx, product, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
 	runtime := k8s.ProvideContainerRuntime(ctx, k8sClient)
 	return runtime, nil
 }
@@ -881,7 +880,7 @@ func wireK8sClient(ctx context.Context) (k8s.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	env := k8s.ProvideEnv(ctx, apiConfig)
+	product := k8s.ProvideClusterProduct(ctx, apiConfig)
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
@@ -891,7 +890,7 @@ func wireK8sClient(ctx context.Context) (k8s.Client, error) {
 		return nil, err
 	}
 	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
-	k8sClient := k8s.ProvideK8sClient(ctx, env, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
+	k8sClient := k8s.ProvideK8sClient(ctx, product, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
 	return k8sClient, nil
 }
 
@@ -920,16 +919,16 @@ func wireDockerClusterClient(ctx context.Context) (docker.ClusterClient, error) 
 	if err != nil {
 		return nil, err
 	}
-	env := k8s.ProvideEnv(ctx, apiConfig)
+	product := k8s.ProvideClusterProduct(ctx, apiConfig)
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
 	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
-	k8sClient := k8s.ProvideK8sClient(ctx, env, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
+	k8sClient := k8s.ProvideK8sClient(ctx, product, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
 	runtime := k8s.ProvideContainerRuntime(ctx, k8sClient)
-	clusterEnv := docker.ProvideClusterEnv(ctx, kubeContext, env, runtime, minikubeClient)
-	localEnv := docker.ProvideLocalEnv(ctx, kubeContext, env, clusterEnv)
+	clusterEnv := docker.ProvideClusterEnv(ctx, kubeContext, product, runtime, minikubeClient)
+	localEnv := docker.ProvideLocalEnv(ctx, kubeContext, product, clusterEnv)
 	localClient := docker.ProvideLocalCli(ctx, localEnv)
 	clusterClient, err := docker.ProvideClusterCli(ctx, localEnv, clusterEnv, localClient)
 	if err != nil {
@@ -950,16 +949,16 @@ func wireDockerLocalClient(ctx context.Context) (docker.LocalClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	env := k8s.ProvideEnv(ctx, apiConfig)
+	product := k8s.ProvideClusterProduct(ctx, apiConfig)
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
 	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
-	k8sClient := k8s.ProvideK8sClient(ctx, env, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
+	k8sClient := k8s.ProvideK8sClient(ctx, product, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
 	runtime := k8s.ProvideContainerRuntime(ctx, k8sClient)
-	clusterEnv := docker.ProvideClusterEnv(ctx, kubeContext, env, runtime, minikubeClient)
-	localEnv := docker.ProvideLocalEnv(ctx, kubeContext, env, clusterEnv)
+	clusterEnv := docker.ProvideClusterEnv(ctx, kubeContext, product, runtime, minikubeClient)
+	localEnv := docker.ProvideLocalEnv(ctx, kubeContext, product, clusterEnv)
 	localClient := docker.ProvideLocalCli(ctx, localEnv)
 	return localClient, nil
 }
@@ -976,16 +975,16 @@ func wireDockerCompositeClient(ctx context.Context) (docker.CompositeClient, err
 	if err != nil {
 		return nil, err
 	}
-	env := k8s.ProvideEnv(ctx, apiConfig)
+	product := k8s.ProvideClusterProduct(ctx, apiConfig)
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
 	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
-	k8sClient := k8s.ProvideK8sClient(ctx, env, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
+	k8sClient := k8s.ProvideK8sClient(ctx, product, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
 	runtime := k8s.ProvideContainerRuntime(ctx, k8sClient)
-	clusterEnv := docker.ProvideClusterEnv(ctx, kubeContext, env, runtime, minikubeClient)
-	localEnv := docker.ProvideLocalEnv(ctx, kubeContext, env, clusterEnv)
+	clusterEnv := docker.ProvideClusterEnv(ctx, kubeContext, product, runtime, minikubeClient)
+	localEnv := docker.ProvideLocalEnv(ctx, kubeContext, product, clusterEnv)
 	localClient := docker.ProvideLocalCli(ctx, localEnv)
 	clusterClient, err := docker.ProvideClusterCli(ctx, localEnv, clusterEnv, localClient)
 	if err != nil {
@@ -1007,8 +1006,8 @@ func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, s
 	if err != nil {
 		return DownDeps{}, err
 	}
-	env := k8s.ProvideEnv(ctx, apiConfig)
-	plugin := k8scontext.NewPlugin(kubeContext, env)
+	product := k8s.ProvideClusterProduct(ctx, apiConfig)
+	plugin := k8scontext.NewPlugin(kubeContext, product)
 	tiltBuild := provideTiltInfo()
 	versionPlugin := version.NewPlugin(tiltBuild)
 	configPlugin := config.NewPlugin(subcommand)
@@ -1029,17 +1028,17 @@ func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, s
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
 	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
-	k8sClient := k8s.ProvideK8sClient(ctx, env, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
+	k8sClient := k8s.ProvideK8sClient(ctx, product, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
 	runtime := k8s.ProvideContainerRuntime(ctx, k8sClient)
-	clusterEnv := docker.ProvideClusterEnv(ctx, kubeContext, env, runtime, minikubeClient)
-	localEnv := docker.ProvideLocalEnv(ctx, kubeContext, env, clusterEnv)
+	clusterEnv := docker.ProvideClusterEnv(ctx, kubeContext, product, runtime, minikubeClient)
+	localEnv := docker.ProvideLocalEnv(ctx, kubeContext, product, clusterEnv)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	webHost := provideWebHost()
 	webPort := provideWebPort()
-	localexecEnv := localexec.DefaultEnv(webPort, webHost)
-	processExecer := localexec.NewProcessExecer(localexecEnv)
+	env := localexec.DefaultEnv(webPort, webHost)
+	processExecer := localexec.NewProcessExecer(env)
 	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(tiltAnalytics, plugin, versionPlugin, configPlugin, tiltextensionPlugin, dockerComposeClient, webHost, processExecer, defaults, env)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(tiltAnalytics, plugin, versionPlugin, configPlugin, tiltextensionPlugin, dockerComposeClient, webHost, processExecer, defaults, product)
 	downDeps := ProvideDownDeps(tiltfileLoader, dockerComposeClient, k8sClient, processExecer)
 	return downDeps, nil
 }
@@ -1069,16 +1068,16 @@ func wireDumpImageDeployRefDeps(ctx context.Context) (DumpImageDeployRefDeps, er
 	if err != nil {
 		return DumpImageDeployRefDeps{}, err
 	}
-	env := k8s.ProvideEnv(ctx, apiConfig)
+	product := k8s.ProvideClusterProduct(ctx, apiConfig)
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
 	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
-	k8sClient := k8s.ProvideK8sClient(ctx, env, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
+	k8sClient := k8s.ProvideK8sClient(ctx, product, restConfigOrError, clientsetOrError, portForwardClient, namespace, minikubeClient, clientConfig)
 	runtime := k8s.ProvideContainerRuntime(ctx, k8sClient)
-	clusterEnv := docker.ProvideClusterEnv(ctx, kubeContext, env, runtime, minikubeClient)
-	localEnv := docker.ProvideLocalEnv(ctx, kubeContext, env, clusterEnv)
+	clusterEnv := docker.ProvideClusterEnv(ctx, kubeContext, product, runtime, minikubeClient)
+	localEnv := docker.ProvideLocalEnv(ctx, kubeContext, product, clusterEnv)
 	localClient := docker.ProvideLocalCli(ctx, localEnv)
 	clusterClient, err := docker.ProvideClusterCli(ctx, localEnv, clusterEnv, localClient)
 	if err != nil {
@@ -1122,7 +1121,7 @@ func wireClientGetter(ctx context.Context) (*client2.Getter, error) {
 
 // wire.go:
 
-var K8sWireSet = wire.NewSet(k8s.ProvideEnv, k8s.ProvideClusterName, k8s.ProvideKubeContext, k8s.ProvideKubeConfig, k8s.ProvideClientConfig, k8s.ProvideClientset, k8s.ProvideRESTConfig, k8s.ProvidePortForwardClient, k8s.ProvideConfigNamespace, k8s.ProvideContainerRuntime, k8s.ProvideServerVersion, k8s.ProvideK8sClient, ProvideKubeContextOverride,
+var K8sWireSet = wire.NewSet(k8s.ProvideClusterProduct, k8s.ProvideClusterName, k8s.ProvideKubeContext, k8s.ProvideKubeConfig, k8s.ProvideClientConfig, k8s.ProvideClientset, k8s.ProvideRESTConfig, k8s.ProvidePortForwardClient, k8s.ProvideConfigNamespace, k8s.ProvideContainerRuntime, k8s.ProvideServerVersion, k8s.ProvideK8sClient, ProvideKubeContextOverride,
 	ProvideNamespaceOverride)
 
 var BaseWireSet = wire.NewSet(

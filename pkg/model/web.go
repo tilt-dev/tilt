@@ -31,8 +31,14 @@ const (
 	// Local webpack server
 	LocalWebMode WebMode = "local"
 
-	// Prod gcloud bucket
+	// Generic prod build; uses embedded if available otherwise cloud
 	ProdWebMode WebMode = "prod"
+
+	// Production build embedded assets
+	EmbeddedWebMode WebMode = "embedded"
+
+	// Production build assets from cloud bucket
+	CloudWebMode WebMode = "cloud"
 
 	// Precompiled with `make build-js`. This is an experimental mode
 	// we're playing around with to avoid the cost of webpack startup.
@@ -53,6 +59,10 @@ func (m *WebMode) Set(v string) error {
 		*m = LocalWebMode
 	case string(ProdWebMode):
 		*m = ProdWebMode
+	case string(EmbeddedWebMode):
+		*m = EmbeddedWebMode
+	case string(CloudWebMode):
+		*m = CloudWebMode
 	default:
 		return UnrecognizedWebModeError(v)
 	}
@@ -63,9 +73,13 @@ func (m *WebMode) Type() string {
 	return "WebMode"
 }
 
+func (m WebMode) IsProd() bool {
+	return m == ProdWebMode || m == EmbeddedWebMode || m == CloudWebMode
+}
+
 func UnrecognizedWebModeError(v string) error {
 	return fmt.Errorf("Unrecognized web mode: %s. Allowed values: %s", v, []WebMode{
-		DefaultWebMode, LocalWebMode, ProdWebMode, PrecompiledWebMode,
+		DefaultWebMode, LocalWebMode, ProdWebMode, EmbeddedWebMode, CloudWebMode, PrecompiledWebMode,
 	})
 }
 

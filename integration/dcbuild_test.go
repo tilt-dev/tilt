@@ -7,8 +7,12 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
+// Ensures live-update works on tilt-handled image builds in dockercompose
 func TestDockerComposeImageBuild(t *testing.T) {
 	f := newDCFixture(t, "dcbuild")
 
@@ -24,11 +28,20 @@ func TestDockerComposeImageBuild(t *testing.T) {
 		})
 	}, "gcr.io/windmill-test-containers/dcbuild")
 
-	f.CurlUntil(ctx, "dcbuild", "localhost:8000", "🍄 One-Up! 🍄")
+	f.CurlUntil(ctx, "dcbuild", "localhost:8000/index.html", "🍄 One-Up! 🍄")
 
-	f.ReplaceContents("cmd/dcbuild/main.go", "One-Up", "Two-Up")
+	cID1, err := f.dockerContainerID("dcbuild")
+	require.NoError(t, err)
+
+	f.ReplaceContents("compile.sh", "One-Up", "Two-Up")
 
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
-	f.CurlUntil(ctx, "dcbuild", "localhost:8000", "🍄 Two-Up! 🍄")
+	f.CurlUntil(ctx, "dcbuild", "localhost:8000/index.html", "🍄 Two-Up! 🍄")
+
+	cID2, err := f.dockerContainerID("dcbuild")
+	require.NoError(t, err)
+
+	// Make sure the container was updated in-place
+	assert.Equal(t, cID1, cID2)
 }

@@ -88,13 +88,6 @@ func NextTargetToBuild(state store.EngineState) (*store.ManifestTarget, HoldSet)
 		return NextUnbuiltTargetToBuild(unbuilt), holds
 	}
 
-	// Next prioritize builds that crashed and need a rebuilt to have up-to-date code.
-	for _, mt := range targets {
-		if mt.State.NeedsRebuildFromCrash {
-			return mt, holds
-		}
-	}
-
 	// Check to see if any targets are currently being successfully reconciled,
 	// and so full rebuilt should be held back. This takes manual triggers into account.
 	HoldLiveUpdateTargetsHandledByReconciler(state, targets, holds)
@@ -180,7 +173,7 @@ func canReuseImageTargetHeuristic(spec model.TargetSpec, status store.BuildStatu
 	}
 
 	switch result.(type) {
-	case store.ImageBuildResult, store.LiveUpdateBuildResult:
+	case store.ImageBuildResult:
 		return true
 	}
 	return false
@@ -466,11 +459,6 @@ func FindTargetsNeedingAnyBuild(state store.EngineState) []*store.ManifestTarget
 			continue
 		}
 
-		if target.State.NeedsRebuildFromCrash {
-			result = append(result, target)
-			continue
-		}
-
 		if queue[target.Manifest.Name] {
 			result = append(result, target)
 			continue
@@ -584,7 +572,8 @@ func IsLiveUpdateTargetWaitingOnDeploy(state store.EngineState, mt *store.Manife
 			}
 
 		} else if mt.Manifest.IsDC() {
-			cInfos := liveupdates.RunningContainersForDC(mt.State.DockerResource())
+			dcs := state.DockerComposeServices[mt.Manifest.Name.String()]
+			cInfos := liveupdates.RunningContainersForDC(dcs)
 			if len(cInfos) != 0 {
 				return false
 			}

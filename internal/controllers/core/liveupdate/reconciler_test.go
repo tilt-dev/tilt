@@ -2,6 +2,8 @@ package liveupdate
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -13,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/containerupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
@@ -23,6 +26,7 @@ import (
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func TestIndexing(t *testing.T) {
@@ -173,6 +177,11 @@ func TestConsumeFileEventsDockerCompose(t *testing.T) {
 		assert.Equal(t, []string{txtPath}, f.st.lastStartedAction.FilesChanged)
 	}
 	assert.NotNil(t, f.st.lastCompletedAction)
+
+	// Make sure the container was NOT restarted.
+	if assert.Equal(t, 1, len(f.cu.Calls)) {
+		assert.True(t, f.cu.Calls[0].HotReload)
+	}
 }
 
 func TestConsumeFileEventsUpdateModeManual(t *testing.T) {
@@ -650,6 +659,159 @@ func TestKubernetesContainerNameSelector(t *testing.T) {
 	}
 
 	f.assertSteadyState(&lu)
+}
+
+func TestDockerComposeRestartPolicy(t *testing.T) {
+	f := newFixture(t)
+
+	p, _ := os.Getwd()
+	nowMicro := apis.NowMicro()
+	txtPath := filepath.Join(p, "a.txt")
+	txtChangeTime := metav1.MicroTime{Time: nowMicro.Add(time.Second)}
+
+	f.setupDockerComposeFrontend()
+
+	var lu v1alpha1.LiveUpdate
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	lu.Spec.Restart = v1alpha1.LiveUpdateRestartStrategyAlways
+	f.Upsert(&lu)
+
+	// Trigger a file event, and make sure that the status reflects the sync.
+	f.addFileEvent("frontend-fw", txtPath, txtChangeTime)
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	assert.Nil(t, lu.Status.Failed)
+	if assert.Equal(t, 1, len(lu.Status.Containers)) {
+		assert.Equal(t, txtChangeTime, lu.Status.Containers[0].LastFileTimeSynced)
+	}
+
+	// Make sure the container was restarted.
+	if assert.Equal(t, 1, len(f.cu.Calls)) {
+		assert.False(t, f.cu.Calls[0].HotReload)
+	}
+}
+
+func TestDockerComposeExecs(t *testing.T) {
+	f := newFixture(t)
+
+	p, _ := os.Getwd()
+	nowMicro := apis.NowMicro()
+	txtPath := filepath.Join(p, "a.txt")
+	txtChangeTime := metav1.MicroTime{Time: nowMicro.Add(time.Second)}
+
+	f.setupDockerComposeFrontend()
+
+	var lu v1alpha1.LiveUpdate
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+
+	execs := []v1alpha1.LiveUpdateExec{
+		{Args: model.ToUnixCmd("./foo.sh bar").Argv},
+		{Args: model.ToUnixCmd("yarn install").Argv, TriggerPaths: []string{"a.txt"}},
+		{Args: model.ToUnixCmd("pip install").Argv, TriggerPaths: []string{"requirements.txt"}},
+	}
+	lu.Spec.Execs = execs
+	f.Upsert(&lu)
+
+	// Trigger a file event, and make sure that the status reflects the sync.
+	f.addFileEvent("frontend-fw", txtPath, txtChangeTime)
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	assert.Nil(t, lu.Status.Failed)
+	if assert.Equal(t, 1, len(lu.Status.Containers)) {
+		assert.Equal(t, txtChangeTime, lu.Status.Containers[0].LastFileTimeSynced)
+	}
+
+	// Make sure there were no exec errors.
+	if assert.NotNil(t, f.st.lastCompletedAction) {
+		assert.Nil(t, f.st.lastCompletedAction.Error)
+	}
+
+	// Make sure two cmds were executed, and one was skipped.
+	if assert.Equal(t, 1, len(f.cu.Calls)) {
+		assert.Equal(t, []model.Cmd{
+			model.ToUnixCmd("./foo.sh bar"),
+			model.ToUnixCmd("yarn install"),
+		}, f.cu.Calls[0].Cmds)
+	}
+}
+
+func TestDockerComposeExecInfraFailure(t *testing.T) {
+	f := newFixture(t)
+
+	p, _ := os.Getwd()
+	nowMicro := apis.NowMicro()
+	txtPath := filepath.Join(p, "a.txt")
+	txtChangeTime := metav1.MicroTime{Time: nowMicro.Add(time.Second)}
+
+	f.setupDockerComposeFrontend()
+
+	var lu v1alpha1.LiveUpdate
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+
+	execs := []v1alpha1.LiveUpdateExec{
+		{Args: model.ToUnixCmd("echo error && exit 1").Argv},
+	}
+	lu.Spec.Execs = execs
+	f.Upsert(&lu)
+
+	f.cu.SetUpdateErr(fmt.Errorf("cluster connection lost"))
+
+	// Trigger a file event, and make sure that the status reflects the sync.
+	f.addFileEvent("frontend-fw", txtPath, txtChangeTime)
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	if assert.NotNil(t, lu.Status.Failed) {
+		assert.Equal(t, "UpdateFailed", lu.Status.Failed.Reason)
+		assert.Equal(t, "Updating container main-id: cluster connection lost",
+			lu.Status.Failed.Message)
+	}
+
+	// Make sure there were  exec errors.
+	if assert.NotNil(t, f.st.lastCompletedAction) {
+		assert.Equal(t, "Updating container main-id: cluster connection lost",
+			f.st.lastCompletedAction.Error.Error())
+	}
+}
+
+func TestDockerComposeExecRunFailure(t *testing.T) {
+	f := newFixture(t)
+
+	p, _ := os.Getwd()
+	nowMicro := apis.NowMicro()
+	txtPath := filepath.Join(p, "a.txt")
+	txtChangeTime := metav1.MicroTime{Time: nowMicro.Add(time.Second)}
+
+	f.setupDockerComposeFrontend()
+
+	var lu v1alpha1.LiveUpdate
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+
+	execs := []v1alpha1.LiveUpdateExec{
+		{Args: model.ToUnixCmd("echo error && exit 1").Argv},
+	}
+	lu.Spec.Execs = execs
+	f.Upsert(&lu)
+
+	f.cu.SetUpdateErr(build.NewRunStepFailure(errors.New("compilation failed")))
+
+	// Trigger a file event, and make sure that the status reflects the sync.
+	f.addFileEvent("frontend-fw", txtPath, txtChangeTime)
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	assert.Nil(t, lu.Status.Failed)
+	if assert.Equal(t, 1, len(lu.Status.Containers)) {
+		assert.Equal(t, "compilation failed", lu.Status.Containers[0].LastExecError)
+	}
+
+	// Make sure there were  exec errors.
+	if assert.NotNil(t, f.st.lastCompletedAction) {
+		assert.Equal(t, "compilation failed",
+			f.st.lastCompletedAction.Error.Error())
+	}
 }
 
 type TestingStore struct {

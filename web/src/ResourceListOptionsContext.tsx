@@ -1,4 +1,4 @@
-import { createContext, PropsWithChildren, useContext } from "react"
+import { createContext, PropsWithChildren, useContext, useMemo } from "react"
 import { useSessionState } from "./BrowserStorage"
 
 /**
@@ -64,17 +64,19 @@ export function ResourceListOptionsProvider(
       maybeUpgradeSavedOptions
     )
 
-  function setOptions(options: Partial<ResourceListOptions>) {
-    setResourceListOptions((previousOptions) => ({
-      ...previousOptions,
-      ...options,
-    }))
-  }
+  const defaultValue: ResourceListOptionsContext = useMemo(() => {
+    function setOptions(options: Partial<ResourceListOptions>) {
+      setResourceListOptions((previousOptions) => ({
+        ...previousOptions,
+        ...options,
+      }))
+    }
 
-  const defaultValue: ResourceListOptionsContext = {
-    options,
-    setOptions,
-  }
+    return {
+      options,
+      setOptions,
+    }
+  }, [options, setResourceListOptions])
 
   return (
     <ResourceListOptionsContext.Provider value={defaultValue}>

@@ -30,8 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/tilt-dev/wmclient/pkg/analytics"
-
+	"github.com/tilt-dev/clusterid"
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/cloud"
 	"github.com/tilt-dev/tilt/internal/container"
@@ -98,7 +97,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/k8scontext"
 	"github.com/tilt-dev/tilt/internal/tiltfile/tiltextension"
 	"github.com/tilt-dev/tilt/internal/tiltfile/version"
-	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/internal/token"
 	"github.com/tilt-dev/tilt/internal/tracer"
 	"github.com/tilt-dev/tilt/internal/watch"
@@ -110,6 +108,7 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
 	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
+	"github.com/tilt-dev/wmclient/pkg/analytics"
 )
 
 var originalWD string
@@ -223,10 +222,6 @@ type fakeBuildAndDeployer struct {
 
 	buildCount int
 
-	// Set this to simulate a container update that returns the container IDs
-	// it updated.
-	nextLiveUpdateContainerIDs []container.ID
-
 	// Inject the container ID of the container started by Docker Compose.
 	// If not set, we will auto-generate an ID.
 	nextDockerComposeContainerID    container.ID
@@ -240,19 +235,13 @@ type fakeBuildAndDeployer struct {
 	// Do not set this directly, use fixture.SetNextBuildError
 	nextBuildError error
 
-	// Set this to simulate a live-update compile error
-	//
-	// This is slightly different than a compile error, because the containers are
-	// still running with the synced files. The build system returns a
-	// result with the container ID.
-	nextLiveUpdateCompileError error
-
 	buildLogOutput map[model.TargetID]string
 
 	resultsByID store.BuildResultSet
 
 	// kClient registers deployed entities for subsequent retrieval.
-	kClient *k8s.FakeK8sClient
+	kClient  *k8s.FakeK8sClient
+	dcClient *dockercompose.FakeDCClient
 
 	ctrlClient ctrlclient.Client
 
@@ -350,22 +339,16 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 		return result, err
 	}
 
-	containerIDs := b.nextLiveUpdateContainerIDs
-	if len(containerIDs) > 0 {
-		for k := range result {
-			result[k] = store.NewLiveUpdateBuildResult(k, containerIDs)
-		}
-	}
-
-	if !call.dc().Empty() && len(b.nextLiveUpdateContainerIDs) == 0 {
-		err = b.updateDockerComposeServiceStatus(ctx, call.dc(), iTargets)
-		if err != nil {
-			return result, err
-		}
-
+	if !call.dc().Empty() {
 		dcContainerID := container.ID(fmt.Sprintf("dc-%s", path.Base(call.dc().ID().Name.String())))
 		if b.nextDockerComposeContainerID != "" {
 			dcContainerID = b.nextDockerComposeContainerID
+		}
+		b.dcClient.ContainerIdOutput = dcContainerID
+
+		err = b.updateDockerComposeServiceStatus(ctx, call.dc(), iTargets)
+		if err != nil {
+			return result, err
 		}
 
 		dcContainerState := b.nextDockerComposeContainerState
@@ -382,16 +365,13 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 		result[call.k8s().ID()] = nextK8sResult
 	}
 
-	err = b.nextLiveUpdateCompileError
-	b.nextLiveUpdateCompileError = nil
-	b.nextLiveUpdateContainerIDs = nil
 	b.nextDockerComposeContainerID = ""
 
 	for key, val := range result {
 		b.resultsByID[key] = val
 	}
 
-	return result, err
+	return result, nil
 }
 
 func (b *fakeBuildAndDeployer) updateKubernetesApplyStatus(ctx context.Context, kTarg model.K8sTarget, iTargets []model.ImageTarget) error {
@@ -545,13 +525,14 @@ func (b *fakeBuildAndDeployer) waitUntilBuildCompleted(ctx context.Context, key 
 	}
 }
 
-func newFakeBuildAndDeployer(t *testing.T, kClient *k8s.FakeK8sClient, ctrlClient ctrlclient.Client, kaReconciler *kubernetesapply.Reconciler, dcReconciler *dockercomposeservice.Reconciler) *fakeBuildAndDeployer {
+func newFakeBuildAndDeployer(t *testing.T, kClient *k8s.FakeK8sClient, dcClient *dockercompose.FakeDCClient, ctrlClient ctrlclient.Client, kaReconciler *kubernetesapply.Reconciler, dcReconciler *dockercomposeservice.Reconciler) *fakeBuildAndDeployer {
 	return &fakeBuildAndDeployer{
 		t:                t,
 		calls:            make(chan buildAndDeployCall, 20),
 		buildLogOutput:   make(map[model.TargetID]string),
 		resultsByID:      store.BuildResultSet{},
 		kClient:          kClient,
+		dcClient:         dcClient,
 		ctrlClient:       ctrlClient,
 		kaReconciler:     kaReconciler,
 		dcReconciler:     dcReconciler,
@@ -655,40 +636,6 @@ func TestUpper_CI(t *testing.T) {
 	require.NoError(t, <-storeErr)
 }
 
-func TestUpper_UpWatchFileChange(t *testing.T) {
-	f := newTestFixture(t)
-	manifest := f.newManifest("foobar")
-	pb := f.registerForDeployer(manifest)
-	f.Start([]model.Manifest{manifest})
-
-	call := f.nextCallComplete()
-	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
-	assert.Equal(t, []string{}, call.oneImageState().FilesChanged())
-
-	f.podEvent(pb.Build())
-
-	fileRelPath := "fdas"
-	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath(fileRelPath))
-
-	call = f.nextCallComplete()
-	assert.Equal(t, manifest.ImageTargetAt(0), call.firstImgTarg())
-	assert.Equal(t, "gcr.io/some-project-162817/sancho:tilt-1", call.oneImageState().LastLocalImageAsString())
-	fileAbsPath := f.JoinPath(fileRelPath)
-	assert.Equal(t, []string{fileAbsPath}, call.oneImageState().FilesChanged())
-
-	f.withManifestState("foobar", func(ms store.ManifestState) {
-		assert.True(t, ms.LastBuild().Reason.Has(model.BuildReasonFlagChangedFiles))
-		assert.True(t, ms.LastBuild().HasBuildType(model.BuildTypeImage))
-		timecmp.AssertTimeEqual(t,
-			ms.LastBuild().StartTime,
-			ms.K8sRuntimeState().UpdateStartTime[pb.PodName()])
-	})
-
-	err := f.Stop()
-	assert.NoError(t, err)
-	f.assertAllBuildsConsumed()
-}
-
 func TestFirstBuildFails_Up(t *testing.T) {
 	f := newTestFixture(t)
 	manifest := f.newManifest("foobar")
@@ -780,108 +727,11 @@ func TestCIIgnoresDisabledResources(t *testing.T) {
 	require.NoError(t, <-storeErr)
 }
 
-func TestRebuildWithChangedFiles(t *testing.T) {
-	f := newTestFixture(t)
-	manifest := f.newManifest("foobar")
-	pb := f.registerForDeployer(manifest)
-	f.Start([]model.Manifest{manifest})
-
-	call := f.nextCallComplete("first build")
-	assert.True(t, call.oneImageState().IsEmpty())
-	f.podEvent(pb.Build())
-
-	// Simulate a change to a.go that makes the build fail.
-	f.SetNextBuildError(errors.New("build failed"))
-	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("a.go"))
-
-	call = f.nextCallComplete("failed build from a.go change")
-	assert.Equal(t, "gcr.io/some-project-162817/sancho:tilt-1", call.oneImageState().LastLocalImageAsString())
-	assert.Equal(t, []string{f.JoinPath("a.go")}, call.oneImageState().FilesChanged())
-
-	// Simulate a change to b.go
-	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("b.go"))
-
-	// The next build should only treat b.go as changed.
-	call = f.nextCallComplete("build on last successful result")
-	assert.Equal(t, []string{f.JoinPath("b.go")}, call.oneImageState().FilesChanged())
-	assert.Equal(t, "gcr.io/some-project-162817/sancho:tilt-1",
-		call.oneImageState().LastLocalImageAsString())
-
-	err := f.Stop()
-	assert.NoError(t, err)
-
-	f.assertAllBuildsConsumed()
-}
-
-func TestThreeBuilds(t *testing.T) {
-	f := newTestFixture(t)
-	manifest := f.newManifest("fe")
-	pb := f.registerForDeployer(manifest)
-	f.Start([]model.Manifest{manifest})
-
-	call := f.nextCallComplete("first build")
-	assert.True(t, call.oneImageState().IsEmpty())
-	f.podEvent(pb.Build())
-
-	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("a.go"))
-
-	call = f.nextCallComplete("second build")
-	assert.Equal(t, []string{f.JoinPath("a.go")}, call.oneImageState().FilesChanged())
-	f.podEvent(pb.Build())
-
-	// Simulate a change to b.go
-	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("b.go"))
-
-	call = f.nextCallComplete("third build")
-	assert.Equal(t, []string{f.JoinPath("b.go")}, call.oneImageState().FilesChanged())
-	f.podEvent(pb.Build())
-
-	f.withManifestState("fe", func(ms store.ManifestState) {
-		assert.Equal(t, 2, len(ms.BuildHistory))
-		assert.Equal(t, []string{f.JoinPath("b.go")}, ms.BuildHistory[0].Edits)
-		assert.Equal(t, []string{f.JoinPath("a.go")}, ms.BuildHistory[1].Edits)
-	})
-
-	err := f.Stop()
-	assert.NoError(t, err)
-}
-
-func TestRebuildWithSpuriousChangedFiles(t *testing.T) {
-	f := newTestFixture(t)
-	manifest := f.newManifest("foobar")
-	pb := f.registerForDeployer(manifest)
-	f.Start([]model.Manifest{manifest})
-
-	call := f.nextCall()
-	assert.True(t, call.oneImageState().IsEmpty())
-	f.podEvent(pb.Build())
-
-	// Simulate a change to .#a.go that's a broken symlink.
-	realPath := filepath.Join(f.Path(), "a.go")
-	tmpPath := filepath.Join(f.Path(), ".#a.go")
-	_ = os.Symlink(realPath, tmpPath)
-
-	f.fsWatcher.Events <- watch.NewFileEvent(tmpPath)
-
-	f.assertNoCall()
-
-	f.TouchFiles([]string{realPath})
-	f.fsWatcher.Events <- watch.NewFileEvent(realPath)
-
-	call = f.nextCall()
-	assert.Equal(t, []string{realPath}, call.oneImageState().FilesChanged())
-
-	err := f.Stop()
-	assert.NoError(t, err)
-	f.assertAllBuildsConsumed()
-}
-
 func TestConfigFileChangeClearsBuildStateToForceImageBuild(t *testing.T) {
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
 
 	f.WriteFile("Tiltfile", `
-disable_feature('live_update_v2')
 docker_build('gcr.io/windmill-public-containers/servantes/snack', '.', live_update=[sync('.', '/app')])
 k8s_yaml('snack.yaml')
 	`)
@@ -904,24 +754,6 @@ k8s_yaml('snack.yaml')
 	// Since the manifest changed, we cleared the previous build state to force an image build
 	// (i.e. check that we called BuildAndDeploy with no pre-existing state)
 	assert.False(t, call.oneImageState().HasLastResult())
-
-	var manifest model.Manifest
-	f.withState(func(es store.EngineState) {
-		manifest = es.Manifests()[0]
-	})
-	pb := podbuilder.New(t, manifest).WithDeploymentUID(f.lastDeployedUID(manifest.Name))
-	// the manifest thinks it deployed a Deployment whose UID we used - fake the ReplicaSet to go with it
-	f.kClient.Inject(pb.ObjectTreeEntities().ReplicaSet())
-	f.podEvent(pb.Build())
-
-	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("random_file.go"))
-
-	// third call: new manifest should persist
-	call = f.nextCall("persist new manifest")
-	assert.Equal(t, "FROM iron/go:dev", call.firstImgTarg().DockerBuildInfo().DockerfileContents)
-
-	// Unchanged manifest --> we do NOT clear the build state
-	assert.True(t, call.oneImageState().HasLastResult())
 
 	err := f.Stop()
 	assert.NoError(t, err)
@@ -1116,7 +948,6 @@ func TestConfigChange_TiltfileErrorAndFixWithFileChange(t *testing.T) {
 
 	tiltfileWithCmd := func(cmd string) string {
 		return fmt.Sprintf(`
-disable_feature('live_update_v2')
 docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', dockerfile='Dockerfile',
     live_update=[
         sync('./src', '/src'),
@@ -3460,7 +3291,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	}
 
 	clock := clockwork.NewRealClock()
-	env := k8s.EnvDockerDesktop
+	env := clusterid.ProductDockerDesktop
 	podSource := podlogstream.NewPodSource(ctx, kClient, v1alpha1.NewScheme(), clock)
 	plsc := podlogstream.NewController(ctx, cdc, sch, st, kClient, podSource, clock)
 	au := engineanalytics.NewAnalyticsUpdater(ta, engineanalytics.CmdTags{}, engineMode)
@@ -3563,7 +3394,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	dp := dockerprune.NewDockerPruner(dockerClient)
 	dp.DisabledForTesting(true)
 
-	b := newFakeBuildAndDeployer(t, kClient, cdc, kar, dcr)
+	b := newFakeBuildAndDeployer(t, kClient, fakeDcc, cdc, kar, dcr)
 	bc := NewBuildController(b)
 
 	ret := &testFixture{
@@ -3791,21 +3622,6 @@ func (f *testFixture) SetNextBuildError(err error) {
 	_ = f.store.RLockState()
 	f.b.mu.Lock()
 	f.b.nextBuildError = err
-	f.b.mu.Unlock()
-	f.store.RUnlockState()
-}
-
-func (f *testFixture) SetNextLiveUpdateCompileError(err error, containerIDs []container.ID) {
-	f.WaitUntil("any in-flight builds have hit the buildAndDeployer", func(state store.EngineState) bool {
-		f.b.mu.Lock()
-		defer f.b.mu.Unlock()
-		return f.b.buildCount == state.BuildControllerStartCount
-	})
-
-	_ = f.store.RLockState()
-	f.b.mu.Lock()
-	f.b.nextLiveUpdateCompileError = err
-	f.b.nextLiveUpdateContainerIDs = containerIDs
 	f.b.mu.Unlock()
 	f.store.RUnlockState()
 }
@@ -4068,9 +3884,6 @@ func (f *testFixture) newManifest(name string) model.Manifest {
 	iTarget := NewSanchoLiveUpdateImageTarget(f)
 	return manifestbuilder.New(f, model.ManifestName(name)).
 		WithK8sYAML(SanchoYAML).
-		// Right now, most of our tests assume that we're going through
-		// using BuildAndDeployer to do live updates. :\
-		WithLiveUpdateBAD().
 		WithImageTarget(iTarget).
 		Build()
 }

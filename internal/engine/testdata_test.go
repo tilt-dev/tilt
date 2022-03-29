@@ -150,28 +150,6 @@ ENTRYPOINT /go/bin/sancho
 	return []model.ImageTarget{baseImage, srcImage}
 }
 
-func NewSanchoLiveUpdateMultiStageManifest(fixture Fixture) model.Manifest {
-	baseImage := model.MustNewImageTarget(SanchoBaseRef).
-		WithDockerImage(v1alpha1.DockerImageSpec{
-			DockerfileContents: `FROM golang:1.10`,
-			Context:            fixture.Path(),
-		})
-
-	srcImage := NewSanchoLiveUpdateImageTarget(fixture)
-	dbInfo := srcImage.DockerBuildInfo()
-	dbInfo.DockerImageSpec.DockerfileContents = `FROM sancho-base`
-
-	srcImage = srcImage.
-		WithBuildDetails(dbInfo).
-		WithImageMapDeps([]string{baseImage.ImageMapName()})
-
-	return manifestbuilder.New(fixture, "sancho").
-		WithK8sYAML(testyaml.Deployment("sancho", srcImage.Refs.ConfigurationRef.String())).
-		WithImageTargets(baseImage, srcImage).
-		WithLiveUpdateBAD().
-		Build()
-}
-
 func NewManifestsWithCommonAncestor(fixture Fixture) (model.Manifest, model.Manifest) {
 	refCommon := container.MustParseSelector("gcr.io/common")
 	ref1 := container.MustParseSelector("gcr.io/image-1")
