@@ -162,7 +162,7 @@ let SidebarItemText = styled.div`
   color: ${Color.grayLightest};
 `
 
-let SidebarItemNameRoot = styled.div`
+export let SidebarItemNameRoot = styled.div`
   display: flex;
   align-items: center;
   font-family: ${Font.sansSerif};

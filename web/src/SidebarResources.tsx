@@ -60,7 +60,7 @@ type SidebarSectionProps = {
   groupView?: boolean
 } & SidebarProps
 
-let SidebarResourcesRoot = styled.nav`
+export let SidebarResourcesRoot = styled.nav`
   flex: 1 0 auto;
 
   &.isOverview {
@@ -106,7 +106,7 @@ const AllResourceLinkRoot = styled(Link)`
   }
 `
 
-const SidebarListSectionItemsRoot = styled.ul`
+export const SidebarListSectionItemsRoot = styled.ul`
   margin-top: ${SizeUnit(0.25)};
   list-style: none;
 `
@@ -525,7 +525,7 @@ export class SidebarResources extends React.Component<SidebarProps> {
             displayLabelGroupsTip ? GROUP_INFO_TOOLTIP_ID : undefined
           }
         >
-          <OverviewSidebarOptions />
+          <OverviewSidebarOptions items={filteredItems} />
           <AllResourcesLink
             pathBuilder={this.props.pathBuilder}
             selected={this.props.selected}
