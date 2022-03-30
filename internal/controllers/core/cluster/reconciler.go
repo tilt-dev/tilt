@@ -99,7 +99,13 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	r.store.Dispatch(clusters.NewClusterUpsertAction(&obj))
 
 	conn, hasConnection := r.connManager.load(nn)
-	if hasConnection {
+	// If this is not the first time we've tried to connect to the cluster,
+	// only attempt to refresh the connection if the feature is enabled. Not
+	// all parts of Tilt use a dynamically-obtained client currently, which
+	// can result in erratic behavior if the cluster is not in a usable state
+	// at startup but then becomes usable, for example, as some parts of the
+	// system will still have k8s.explodingClient.
+	if hasConnection && obj.Annotations["features.tilt.dev/cluster-refresh"] == "true" {
 		// If the spec changed, delete the connection and recreate it.
 		if !apicmp.DeepEqual(conn.spec, obj.Spec) {
 			r.connManager.delete(nn)

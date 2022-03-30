@@ -557,11 +557,19 @@ func toClusterObjects(nn types.NamespacedName, tlr *tiltfile.TiltfileLoadResult,
 		return result
 	}
 
+	var annotations map[string]string
+	if tlr.FeatureFlags[feature.ClusterRefresh] {
+		annotations = map[string]string{
+			"features.tilt.dev/cluster-refresh": "true",
+		}
+	}
+
 	if tlr.HasOrchestrator(model.OrchestratorK8s) {
 		name := v1alpha1.ClusterNameDefault
 		result[name] = &v1alpha1.Cluster{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: name,
+				Name:        name,
+				Annotations: annotations,
 			},
 			Spec: v1alpha1.ClusterSpec{
 				Connection: &v1alpha1.ClusterConnection{
@@ -575,7 +583,8 @@ func toClusterObjects(nn types.NamespacedName, tlr *tiltfile.TiltfileLoadResult,
 		name := v1alpha1.ClusterNameDocker
 		result[name] = &v1alpha1.Cluster{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: name,
+				Name:        name,
+				Annotations: annotations,
 			},
 			Spec: v1alpha1.ClusterSpec{
 				Connection: &v1alpha1.ClusterConnection{

@@ -53,8 +53,20 @@ func TestKubernetesError(t *testing.T) {
 	f.r.k8sClientFactory = origClientFactory
 	f.assertSteadyState(cluster)
 
+	// advance the clock such that we should retry, but ensure that no retry
+	// is attempted because the cluster refresh feature flag annotation is
+	// not set
 	f.clock.Advance(time.Minute)
-	f.MustReconcile(nn)
+	f.assertSteadyState(cluster)
+
+	// add the cluster refresh feature flag and verify that it gets refreshed
+	// and creates a new client without errors
+	if cluster.Annotations == nil {
+		cluster.Annotations = make(map[string]string)
+	}
+	cluster.Annotations["features.tilt.dev/cluster-refresh"] = "true"
+	f.Update(cluster)
+
 	f.MustGet(nn, cluster)
 	require.Empty(t, cluster.Status.Error, "No error should be present on cluster")
 	if assert.NotNil(t, cluster.Status.ConnectedAt, "ConnectedAt should be populated") {
