@@ -71,14 +71,9 @@ func ProvideImageBuildAndDeployer(
 	wire.Build(
 		BaseWireSet,
 		kubernetesapply.NewReconciler,
-		provideFakeK8sNamespace,
 	)
 
 	return nil, nil
-}
-
-func provideFakeK8sNamespace() k8s.Namespace {
-	return "default"
 }
 
 func ProvideDockerComposeBuildAndDeployer(

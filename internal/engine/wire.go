@@ -70,7 +70,6 @@ func provideFakeBuildAndDeployer(
 		k8s.ProvideContainerRuntime,
 		provideFakeKubeContext,
 		provideFakeDockerClusterEnv,
-		provideFakeK8sNamespace,
 		kubernetesapply.NewReconciler,
 		dockercomposeservice.WireSet,
 		cmd.WireSet,
@@ -83,10 +82,6 @@ func provideFakeBuildAndDeployer(
 
 func provideFakeEnv() *localexec.Env {
 	return localexec.EmptyEnv()
-}
-
-func provideFakeK8sNamespace() k8s.Namespace {
-	return "default"
 }
 
 func provideFakeKubeContext(env clusterid.Product) k8s.KubeContext {

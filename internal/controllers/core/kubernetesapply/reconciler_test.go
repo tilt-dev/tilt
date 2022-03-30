@@ -664,7 +664,6 @@ func newFixture(t *testing.T) *fixture {
 	kClient := k8s.NewFakeK8sClient(t)
 	cfb := fake.NewControllerFixtureBuilder(t)
 	dockerClient := docker.NewFakeClient()
-	kubeContext := k8s.KubeContext("kind-kind")
 
 	// Make the fake ImageExists always return true, which is the behavior we want
 	// when testing the reconciler
@@ -673,7 +672,7 @@ func newFixture(t *testing.T) *fixture {
 	execer := localexec.NewFakeExecer(t)
 
 	db := build.NewDockerBuilder(dockerClient, dockerfile.Labels{})
-	r := NewReconciler(cfb.Client, kClient, v1alpha1.NewScheme(), db, kubeContext, cfb.Store, "default", execer)
+	r := NewReconciler(cfb.Client, kClient, v1alpha1.NewScheme(), db, cfb.Store, execer)
 
 	return &fixture{
 		ControllerFixture: cfb.Build(r),
