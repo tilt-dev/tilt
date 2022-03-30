@@ -1590,8 +1590,22 @@ func schema_pkg_apis_core_v1alpha1_DisableSource(ref common.ReferenceCallback) c
 				Properties: map[string]spec.Schema{
 					"configMap": {
 						SchemaProps: spec.SchemaProps{
-							Description: "This DisableSource is controlled by a ConfigMap",
+							Description: "Disabled by single ConfigMap value.",
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ConfigMapDisableSource"),
+						},
+					},
+					"everyConfigMap": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Disabled by multiple ConfigMap values, which must all be set to disabled to disable the object.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ConfigMapDisableSource"),
+									},
+								},
+							},
 						},
 					},
 				},

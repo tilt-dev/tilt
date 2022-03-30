@@ -4,8 +4,12 @@ import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 // Points at a thing that can control whether something is disabled
 type DisableSource struct {
-	// This DisableSource is controlled by a ConfigMap
+	// Disabled by single ConfigMap value.
 	ConfigMap *ConfigMapDisableSource `json:"configMap,omitempty" protobuf:"bytes,2,opt,name=configMap"`
+
+	// Disabled by multiple ConfigMap values, which must all be set to disabled
+	// to disable the object.
+	EveryConfigMap []ConfigMapDisableSource `json:"everyConfigMap,omitempty" protobuf:"bytes,3,rep,name=everyConfigMap"`
 }
 
 // Specifies a ConfigMap to control a DisableSource
