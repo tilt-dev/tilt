@@ -451,6 +451,19 @@
       },
       "title": "Specifies a ConfigMap to control a DisableSource"
     },
+    "v1alpha1DefaultRegistryOptions": {
+      "type": "object",
+      "properties": {
+        "host": {
+          "type": "string",
+          "description": "Host for the registry to use for pushing/pulling built images if Cluster\ndoes not provide local registry hosting metadata."
+        },
+        "singleName": {
+          "type": "string",
+          "description": "SingleName uses a shared image name for _all_ Tilt-built images and\nrelies on tags to distinguish between logically distinct images.\n\nThis is most commonly used with Amazon Elastic Container Registry (ECR),\nwhich works differently than other image registries.\n\nAn ECR host takes the form https://aws_account_id.dkr.ecr.region.amazonaws.com.\nEach image name in that registry must be pre-created ಠ_ಠ and assigned\nIAM permissions.\nFor example: https://aws_account_id.dkr.ecr.region.amazonaws.com/my-repo\n(They call this a repo).\n\nFor this reason, some users using ECR prefer to push all images to a\nsingle image name (ECR repo).\n\nA recommended pattern here is to create a \"personal\" image repo for each\nuser during development.\n\nSee:\nhttps://docs.aws.amazon.com/AmazonECR/latest/userguide/Repositories.html\nhttps://github.com/tilt-dev/tilt/issues/2419\n\n+optional"
+        }
+      }
+    },
     "v1alpha1DisableResourceStatus": {
       "type": "object",
       "properties": {
@@ -509,11 +522,15 @@
       "properties": {
         "context": {
           "type": "string",
-          "description": "The name of the kubeconfig context to use.\n\nIf not specified, will use the default context in the kubeconfig."
+          "description": "The name of the kubeconfig context to use.\n\nIf not specified, will use the default context in the kubeconfig.\n\n+optional"
         },
         "namespace": {
           "type": "string",
-          "description": "The default namespace to use.\n\nIf not specified, will use the namespace in the kubeconfig."
+          "description": "The default namespace to use.\n\nIf not specified, will use the namespace in the kubeconfig.\n\n+optional"
+        },
+        "defaultRegistryOptions": {
+          "$ref": "#/definitions/v1alpha1DefaultRegistryOptions",
+          "description": "DefaultRegistryOptions determines where images for this Cluster should\nbe pushed/pulled from if the Cluster itself does not provide local\nregistry hosting metadata.\n\nIf not specified, no registry rewriting will occur, and the images will\nbe pushed/pulled to from the registry specified by the corresponding\nimage build directive (e.g. `docker_build` or `custom_build`).\n\n+optional"
         }
       }
     },

@@ -747,14 +747,30 @@ declare namespace Proto {
      * The name of the kubeconfig context to use.
      *
      * If not specified, will use the default context in the kubeconfig.
+     *
+     * +optional
      */
     context?: string;
     /**
      * The default namespace to use.
      *
      * If not specified, will use the namespace in the kubeconfig.
+     *
+     * +optional
      */
     namespace?: string;
+    /**
+     * DefaultRegistryOptions determines where images for this Cluster should
+     * be pushed/pulled from if the Cluster itself does not provide local
+     * registry hosting metadata.
+     *
+     * If not specified, no registry rewriting will occur, and the images will
+     * be pushed/pulled to from the registry specified by the corresponding
+     * image build directive (e.g. `docker_build` or `custom_build`).
+     *
+     * +optional
+     */
+    defaultRegistryOptions?: v1alpha1DefaultRegistryOptions;
   }
   export interface v1alpha1DockerClusterConnection {
     /**
@@ -790,6 +806,39 @@ declare namespace Proto {
      * All unique sources that control the resource's objects' disable status.
      */
     sources?: v1alpha1DisableSource[];
+  }
+  export interface v1alpha1DefaultRegistryOptions {
+    /**
+     * Host for the registry to use for pushing/pulling built images if Cluster
+     * does not provide local registry hosting metadata.
+     */
+    host?: string;
+    /**
+     * SingleName uses a shared image name for _all_ Tilt-built images and
+     * relies on tags to distinguish between logically distinct images.
+     *
+     * This is most commonly used with Amazon Elastic Container Registry (ECR),
+     * which works differently than other image registries.
+     *
+     * An ECR host takes the form https://aws_account_id.dkr.ecr.region.amazonaws.com.
+     * Each image name in that registry must be pre-created ಠ_ಠ and assigned
+     * IAM permissions.
+     * For example: https://aws_account_id.dkr.ecr.region.amazonaws.com/my-repo
+     * (They call this a repo).
+     *
+     * For this reason, some users using ECR prefer to push all images to a
+     * single image name (ECR repo).
+     *
+     * A recommended pattern here is to create a "personal" image repo for each
+     * user during development.
+     *
+     * See:
+     * https://docs.aws.amazon.com/AmazonECR/latest/userguide/Repositories.html
+     * https://github.com/tilt-dev/tilt/issues/2419
+     *
+     * +optional
+     */
+    singleName?: string;
   }
   export interface v1alpha1ConfigMapDisableSource {
     name?: string;

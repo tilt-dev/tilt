@@ -61,6 +61,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerStateRunning":             schema_pkg_apis_core_v1alpha1_ContainerStateRunning(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerStateTerminated":          schema_pkg_apis_core_v1alpha1_ContainerStateTerminated(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ContainerStateWaiting":             schema_pkg_apis_core_v1alpha1_ContainerStateWaiting(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DefaultRegistryOptions":            schema_pkg_apis_core_v1alpha1_DefaultRegistryOptions(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableResourceStatus":             schema_pkg_apis_core_v1alpha1_DisableResourceStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource":                     schema_pkg_apis_core_v1alpha1_DisableSource(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableStatus":                     schema_pkg_apis_core_v1alpha1_DisableStatus(ref),
@@ -1543,6 +1544,34 @@ func schema_pkg_apis_core_v1alpha1_ContainerStateWaiting(ref common.ReferenceCal
 					},
 				},
 				Required: []string{"reason"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_DefaultRegistryOptions(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"host": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Host for the registry to use for pushing/pulling built images if Cluster does not provide local registry hosting metadata.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"singleName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SingleName uses a shared image name for _all_ Tilt-built images and relies on tags to distinguish between logically distinct images.\n\nThis is most commonly used with Amazon Elastic Container Registry (ECR), which works differently than other image registries.\n\nAn ECR host takes the form https://aws_account_id.dkr.ecr.region.amazonaws.com. Each image name in that registry must be pre-created ಠ_ಠ and assigned IAM permissions. For example: https://aws_account_id.dkr.ecr.region.amazonaws.com/my-repo (They call this a repo).\n\nFor this reason, some users using ECR prefer to push all images to a single image name (ECR repo).\n\nA recommended pattern here is to create a \"personal\" image repo for each user during development.\n\nSee: https://docs.aws.amazon.com/AmazonECR/latest/userguide/Repositories.html https://github.com/tilt-dev/tilt/issues/2419",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"host"},
 			},
 		},
 	}
@@ -3981,9 +4010,17 @@ func schema_pkg_apis_core_v1alpha1_KubernetesClusterConnection(ref common.Refere
 							Format:      "",
 						},
 					},
+					"defaultRegistryOptions": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DefaultRegistryOptions determines where images for this Cluster should be pushed/pulled from if the Cluster itself does not provide local registry hosting metadata.\n\nIf not specified, no registry rewriting will occur, and the images will be pushed/pulled to from the registry specified by the corresponding image build directive (e.g. `docker_build` or `custom_build`).",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DefaultRegistryOptions"),
+						},
+					},
 				},
 			},
 		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DefaultRegistryOptions"},
 	}
 }
 
