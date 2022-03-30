@@ -230,8 +230,6 @@ func HoldTargetsWithBuildingComponents(state store.EngineState, mts []*store.Man
 }
 
 func targetsByCluster(mts []*store.ManifestTarget) map[string][]*store.ManifestTarget {
-	// TODO(nick): In the future, K8s objects may reference the cluster
-	// they're deploying to.
 	clusters := make(map[string][]*store.ManifestTarget)
 	for _, mt := range mts {
 		if mt.Manifest.IsK8s() {

@@ -989,17 +989,17 @@ func TestTwoManifestsWithSameTwoImages(t *testing.T) {
 func TestPlatformFromCluster(t *testing.T) {
 	f := newIBDFixture(t, clusterid.ProductGKE)
 
-	f.upsert(&v1alpha1.Cluster{
+	cluster := &v1alpha1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "default"},
 		Status: v1alpha1.ClusterStatus{
 			Arch: "amd64",
 		},
-	})
+	}
 
 	m := NewSanchoDockerBuildManifest(f)
 	iTargetID1 := m.ImageTargets[0].ID()
 	stateSet := store.BuildStateSet{
-		iTargetID1: store.BuildState{FullBuildTriggered: true},
+		iTargetID1: store.BuildState{FullBuildTriggered: true, Cluster: cluster},
 	}
 	_, err := f.BuildAndDeploy(BuildTargets(m), stateSet)
 	require.NoError(t, err)
