@@ -81,7 +81,7 @@ type k8sResourceOptions struct {
 	portForwards      []model.PortForward
 	extraPodSelectors []labels.Set
 	triggerMode       triggerMode
-	autoInit          value.BoolOrNone
+	autoInit          value.Optional[starlark.Bool]
 	tiltfilePosition  syntax.Position
 	resourceDeps      []string
 	objects           []string
@@ -302,7 +302,7 @@ func (s *tiltfileState) k8sResource(thread *starlark.Thread, fn *starlark.Builti
 	var objectsVal starlark.Sequence
 	var podReadinessMode tiltfile_k8s.PodReadinessMode
 	var links links.LinkList
-	var autoInit = value.BoolOrNone{Value: true}
+	var autoInit = value.Optional[starlark.Bool]{Value: true}
 	var labels value.LabelSet
 	var discoveryStrategy tiltfile_k8s.DiscoveryStrategy
 

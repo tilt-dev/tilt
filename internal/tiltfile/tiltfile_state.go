@@ -797,7 +797,7 @@ func (s *tiltfileState) assembleK8s() error {
 				r.triggerMode = opts.triggerMode
 			}
 			if opts.autoInit.IsSet {
-				r.autoInit = opts.autoInit.Value
+				r.autoInit = bool(opts.autoInit.Value)
 			}
 			r.resourceDeps = append(r.resourceDeps, opts.resourceDeps...)
 			r.links = append(r.links, opts.links...)

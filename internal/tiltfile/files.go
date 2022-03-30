@@ -40,7 +40,7 @@ type execCommandOptions struct {
 func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var commandValue, commandBatValue, commandDirValue starlark.Value
 	var commandEnv value.StringStringMap
-	var stdinValue starlark.String
+	var stdin value.Optional[starlark.String]
 	quiet := false
 	echoOff := false
 	err := s.unpackArgs(fn.Name(), args, kwargs,
@@ -50,7 +50,7 @@ func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, arg
 		"echo_off", &echoOff,
 		"env", &commandEnv,
 		"dir?", &commandDirValue,
-		"stdin?", &stdinValue,
+		"stdin?", &stdin,
 	)
 	if err != nil {
 		return nil, err
@@ -61,17 +61,16 @@ func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, arg
 		return nil, err
 	}
 
-	var stdin *string
-	if stdinValue != "" {
-		s := string(stdinValue)
-		stdin = &s
-	}
-	out, err := s.execLocalCmd(thread, cmd, execCommandOptions{
+	execOptions := execCommandOptions{
 		logOutput:        !quiet,
 		logCommand:       !echoOff,
 		logCommandPrefix: "local:",
-		stdin:            stdin,
-	})
+	}
+	if stdin.IsSet {
+		s := string(stdin.Value)
+		execOptions.stdin = &s
+	}
+	out, err := s.execLocalCmd(thread, cmd, execOptions)
 	if err != nil {
 		return nil, err
 	}

@@ -663,7 +663,7 @@ def local(command: Union[str, List[str]],
           echo_off: bool = False,
           env: Dict[str, str] = {},
           dir: str = "",
-          stdin: str = "") -> Blob:
+          stdin: Union[str,None] = None) -> Blob:
   """Runs a command on the *host* machine, waits for it to finish, and returns its stdout as a ``Blob``
 
   Args:
@@ -676,7 +676,7 @@ def local(command: Union[str, List[str]],
     echo_off: If set to True, skips printing command to log.
     env: Environment variables to pass to the executed ``command``. Values specified here will override any variables passed to the Tilt parent process.
     dir: Working directory for ``command``. Defaults to the Tiltfile's location.
-    stdin: If non-empty, will be written to ``command``'s stdin.
+    stdin: If not ``None``, will be written to ``command``'s stdin.
   """
   pass
 
