@@ -3,25 +3,9 @@ package liveupdates
 import (
 	"sort"
 
-	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
-
-func WithFakeK8sContainers(s store.BuildState, imageName string, containers []Container) store.BuildState {
-	s.KubernetesSelector = &v1alpha1.LiveUpdateKubernetesSelector{Image: imageName}
-	s.KubernetesResource = FakeKubernetesResource(imageName, containers)
-	return s
-}
-
-func WithFakeDCContainer(s store.BuildState, container Container) store.BuildState {
-	s.DockerComposeService = &v1alpha1.DockerComposeService{
-		Status: v1alpha1.DockerComposeServiceStatus{
-			ContainerID: string(container.ContainerID),
-		},
-	}
-	return s
-}
 
 func FakeKubernetesResource(image string, containers []Container) *k8sconv.KubernetesResource {
 	r, err := k8sconv.NewKubernetesResource(FakeKubernetesDiscovery(image, containers), nil)

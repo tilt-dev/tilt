@@ -222,30 +222,7 @@ func buildStateSet(ctx context.Context, manifest model.Manifest,
 			depsChanged = append(depsChanged, dep)
 		}
 
-		buildState := store.NewBuildState(status.LastResult, filesChanged, depsChanged)
-
-		// Pass along the container when we can update containers in-place.
-		//
-		// We don't want to pass along the data if the pod is crashing, because
-		// we're not confident that this state is accurate, due to how orchestrators
-		// (like k8s) reschedule containers (i.e., they reset to the original image
-		// rather than persisting the container filesystem.)
-		//
-		// This will probably need to change as the mapping between containers and
-		// manifests becomes many-to-one.
-		iTarget, ok := spec.(model.ImageTarget)
-		if ok {
-			selector := iTarget.LiveUpdateSpec.Selector
-			if manifest.IsK8s() && selector.Kubernetes != nil {
-				buildState.KubernetesSelector = selector.Kubernetes
-				buildState.KubernetesResource = kresource
-			}
-
-			if manifest.IsDC() {
-				buildState.DockerComposeService = dcs
-			}
-		}
-		result[id] = buildState
+		result[id] = store.NewBuildState(status.LastResult, filesChanged, depsChanged)
 	}
 
 	isFullBuildTrigger := reason.HasTrigger() && !buildcontrol.IsLiveUpdateEligibleTrigger(manifest, reason)
