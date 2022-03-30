@@ -32,6 +32,7 @@ require (
 	github.com/looplab/tarjan v0.0.0-20161115091335-9cc6d6cebfb5
 	github.com/mattn/go-colorable v0.1.12
 	github.com/mattn/go-isatty v0.0.14
+	github.com/mattn/go-jsonpointer v0.0.1
 	github.com/mattn/go-tty v0.0.3
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/moby/buildkit v0.8.3

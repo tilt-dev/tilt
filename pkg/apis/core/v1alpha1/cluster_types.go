@@ -174,6 +174,11 @@ type ClusterStatus struct {
 	//
 	// +optional
 	Registry *RegistryHosting `json:"registry,omitempty" protobuf:"bytes,4,opt,name=registry"`
+
+	// Connection status for an existing cluster.
+	//
+	// +optional
+	Connection *ClusterConnectionStatus `json:"connection,omitempty" protobuf:"bytes,5,opt,name=connection"`
 }
 
 type RegistryHosting struct {
@@ -230,4 +235,25 @@ var _ resource.StatusSubResource = &ClusterStatus{}
 
 func (in ClusterStatus) CopyTo(parent resource.ObjectWithStatusSubResource) {
 	parent.(*Cluster).Status = in
+}
+
+// Connection spec for an existing cluster.
+type ClusterConnectionStatus struct {
+	// Defines connection to a Kubernetes cluster.
+	Kubernetes *KubernetesClusterConnectionStatus `json:"kubernetes,omitempty" protobuf:"bytes,1,opt,name=kubernetes"`
+}
+
+// Kubernetes-specific fields for connection status
+type KubernetesClusterConnectionStatus struct {
+	// The resolved kubeconfig context.
+	Context string `json:"context" protobuf:"bytes,2,opt,name=context"`
+
+	// The resolved default namespace.
+	Namespace string `json:"namespace" protobuf:"bytes,3,opt,name=namespace"`
+
+	// The product name for this cluster.
+	//
+	// For a complete list of possible product names, see:
+	// https://pkg.go.dev/github.com/tilt-dev/clusterid#Product
+	Product string `json:"product,omitempty" protobuf:"bytes,1,opt,name=product"`
 }

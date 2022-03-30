@@ -58,6 +58,7 @@ type connection struct {
 	statusError   string
 	arch          string
 	registry      *container.Registry
+	connStatus    *v1alpha1.ClusterConnectionStatus
 	cancelMonitor context.CancelFunc
 }
 

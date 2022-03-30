@@ -41,6 +41,7 @@ import (
 
 	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
@@ -135,6 +136,8 @@ type Client interface {
 	OwnerFetcher() OwnerFetcher
 
 	ClusterHealth(ctx context.Context, verbose bool) (ClusterHealth, error)
+
+	ConnectionConfig() *v1alpha1.KubernetesClusterConnectionStatus
 }
 
 type RESTMapper interface {
@@ -149,6 +152,7 @@ type K8sClient struct {
 	core              apiv1.CoreV1Interface
 	restConfig        *rest.Config
 	portForwardClient PortForwardClient
+	configContext     KubeContext
 	configNamespace   Namespace
 	clientset         kubernetes.Interface
 	discovery         discovery.CachedDiscoveryInterface
@@ -171,6 +175,7 @@ func ProvideK8sClient(
 	maybeRESTConfig RESTConfigOrError,
 	maybeClientset ClientsetOrError,
 	pfClient PortForwardClient,
+	configContext KubeContext,
 	configNamespace Namespace,
 	mkClient MinikubeClient,
 	clientLoader clientcmd.ClientConfig) Client {
@@ -221,6 +226,7 @@ func ProvideK8sClient(
 		restConfig:        restConfig,
 		portForwardClient: pfClient,
 		discovery:         discovery,
+		configContext:     configContext,
 		configNamespace:   configNamespace,
 		clientset:         clientset,
 		runtimeAsync:      runtimeAsync,
@@ -353,6 +359,14 @@ func (k *K8sClient) Upsert(ctx context.Context, entities []K8sEntity, timeout ti
 
 func (k *K8sClient) OwnerFetcher() OwnerFetcher {
 	return k.ownerFetcher
+}
+
+func (k *K8sClient) ConnectionConfig() *v1alpha1.KubernetesClusterConnectionStatus {
+	return &v1alpha1.KubernetesClusterConnectionStatus{
+		Context:   string(k.configContext),
+		Namespace: k.configNamespace.String(),
+		Product:   string(k.product),
+	}
 }
 
 // Update an entity like kubectl apply does.

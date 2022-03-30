@@ -47,6 +47,12 @@ message ClusterConnection {
   optional DockerClusterConnection docker = 2;
 }
 
+// Connection spec for an existing cluster.
+message ClusterConnectionStatus {
+  // Defines connection to a Kubernetes cluster.
+  optional KubernetesClusterConnectionStatus kubernetes = 1;
+}
+
 // ClusterList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 message ClusterList {
@@ -98,6 +104,11 @@ message ClusterStatus {
   //
   // +optional
   optional RegistryHosting registry = 4;
+
+  // Connection status for an existing cluster.
+  //
+  // +optional
+  optional ClusterConnectionStatus connection = 5;
 }
 
 // Cmd represents a process on the host machine.
@@ -1587,6 +1598,21 @@ message KubernetesClusterConnection {
   //
   // If not specified, will use the namespace in the kubeconfig.
   optional string namespace = 2;
+}
+
+// Kubernetes-specific fields for connection status
+message KubernetesClusterConnectionStatus {
+  // The resolved kubeconfig context.
+  optional string context = 2;
+
+  // The resolved default namespace.
+  optional string namespace = 3;
+
+  // The product name for this cluster.
+  //
+  // For a complete list of possible product names, see:
+  // https://pkg.go.dev/github.com/tilt-dev/clusterid#Product
+  optional string product = 1;
 }
 
 // KubernetesDiscovery
