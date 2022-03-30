@@ -75,27 +75,6 @@ func (e *evaluator) prepare(t *starlark.Thread, fn *starlark.Builtin, args starl
 			return "", nil, fmt.Errorf("eval: argument %v is not a string", code)
 		}
 	}
-	env := starlark.StringDict{}
-	depth := t.CallStackDepth()
-	for i := 0; i < depth; i++ {
-		frame := t.DebugFrame(i)
-		callable := frame.Callable()
-		caller, ok := callable.(*starlark.Function)
-		if !ok {
-			continue
-		}
-		for k, v := range caller.Globals() {
-			if !env.Has(k) {
-				env[k] = v
-			}
-		}
-	}
-
-	for k, v := range e.env.Predeclared() {
-		if !env.Has(k) {
-			env[k] = v
-		}
-	}
-
+	env := e.env.ExtractGlobals(t)
 	return src, env, nil
 }

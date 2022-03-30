@@ -76,10 +76,6 @@ func newEnvironment(plugins ...Plugin) *Environment {
 	}
 }
 
-func (e *Environment) Predeclared() starlark.StringDict {
-	return e.predeclared
-}
-
 func (e *Environment) AddLoadInterceptor(i LoadInterceptor) {
 	e.loadInterceptors = append(e.loadInterceptors, i)
 }
@@ -160,6 +156,33 @@ func (e *Environment) SetPrint(print func(thread *starlark.Thread, msg string)) 
 
 func (e *Environment) SetContext(ctx context.Context) {
 	e.ctx = ctx
+}
+
+// Extract all globals from the thread's frames, adding predeclared items from
+// the environment, layered in precedence according to scope.
+func (e *Environment) ExtractGlobals(t *starlark.Thread) starlark.StringDict {
+	env := starlark.StringDict{}
+	depth := t.CallStackDepth()
+	for i := 0; i < depth; i++ {
+		frame := t.DebugFrame(i)
+		callable := frame.Callable()
+		caller, ok := callable.(*starlark.Function)
+		if !ok {
+			continue
+		}
+		for k, v := range caller.Globals() {
+			if !env.Has(k) {
+				env[k] = v
+			}
+		}
+	}
+
+	for k, v := range e.predeclared {
+		if !env.Has(k) {
+			env[k] = v
+		}
+	}
+	return env
 }
 
 // Set a fake file system so that we can write tests that don't
