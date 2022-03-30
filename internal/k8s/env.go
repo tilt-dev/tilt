@@ -38,7 +38,7 @@ func ProvideKubeConfig(clientLoader clientcmd.ClientConfig, contextOverride Kube
 	return &config, nil
 }
 
-func ProvideClusterName(ctx context.Context, config *api.Config) ClusterName {
+func ProvideClusterName(config *api.Config) ClusterName {
 	n := config.CurrentContext
 	c, ok := config.Contexts[n]
 	if !ok {

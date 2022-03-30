@@ -731,6 +731,10 @@ declare namespace Proto {
      */
     namespace?: string;
     /**
+     * The resolved cluster name (as determined by the kubeconfig context).
+     */
+    cluster?: string;
+    /**
      * The product name for this cluster.
      *
      * For a complete list of possible product names, see:

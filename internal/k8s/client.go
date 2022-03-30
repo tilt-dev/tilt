@@ -153,6 +153,7 @@ type K8sClient struct {
 	restConfig        *rest.Config
 	portForwardClient PortForwardClient
 	configContext     KubeContext
+	configCluster     ClusterName
 	configNamespace   Namespace
 	clientset         kubernetes.Interface
 	discovery         discovery.CachedDiscoveryInterface
@@ -176,6 +177,7 @@ func ProvideK8sClient(
 	maybeClientset ClientsetOrError,
 	pfClient PortForwardClient,
 	configContext KubeContext,
+	configCluster ClusterName,
 	configNamespace Namespace,
 	mkClient MinikubeClient,
 	clientLoader clientcmd.ClientConfig) Client {
@@ -227,6 +229,7 @@ func ProvideK8sClient(
 		portForwardClient: pfClient,
 		discovery:         discovery,
 		configContext:     configContext,
+		configCluster:     configCluster,
 		configNamespace:   configNamespace,
 		clientset:         clientset,
 		runtimeAsync:      runtimeAsync,
@@ -366,6 +369,7 @@ func (k *K8sClient) ConnectionConfig() *v1alpha1.KubernetesClusterConnectionStat
 		Context:   string(k.configContext),
 		Namespace: k.configNamespace.String(),
 		Product:   string(k.product),
+		Cluster:   string(k.configCluster),
 	}
 }
 
