@@ -79,9 +79,14 @@ func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buil
 
 	buildReason := mt.NextBuildReason()
 	targets := buildcontrol.BuildTargets(manifest)
-	buildStateSet := buildStateSet(ctx, manifest, state.KubernetesResources[manifest.Name.String()],
+	buildStateSet := buildStateSet(ctx,
+		manifest,
+		state.KubernetesResources[manifest.Name.String()],
 		state.DockerComposeServices[manifest.Name.String()],
-		targets, ms, buildReason)
+		state.Clusters[v1alpha1.ClusterNameDefault],
+		targets,
+		ms,
+		buildReason)
 
 	return buildEntry{
 		name:          manifest.Name,
@@ -204,6 +209,7 @@ func SpanIDForBuildLog(buildCount int) logstore.SpanID {
 func buildStateSet(ctx context.Context, manifest model.Manifest,
 	kresource *k8sconv.KubernetesResource,
 	dcs *v1alpha1.DockerComposeService,
+	cluster *v1alpha1.Cluster,
 	specs []model.TargetSpec,
 	ms *store.ManifestState, reason model.BuildReason) store.BuildStateSet {
 	result := store.BuildStateSet{}
@@ -222,7 +228,9 @@ func buildStateSet(ctx context.Context, manifest model.Manifest,
 			depsChanged = append(depsChanged, dep)
 		}
 
-		result[id] = store.NewBuildState(status.LastResult, filesChanged, depsChanged)
+		state := store.NewBuildState(status.LastResult, filesChanged, depsChanged)
+		state.Cluster = cluster
+		result[id] = state
 	}
 
 	isFullBuildTrigger := reason.HasTrigger() && !buildcontrol.IsLiveUpdateEligibleTrigger(manifest, reason)

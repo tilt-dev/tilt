@@ -154,10 +154,6 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		ps.EndPipelineStep(ctx)
 	}
 
-	var cluster v1alpha1.Cluster
-	// If the cluster fetch fails, that's OK.
-	_ = ibd.ctrlClient.Get(ctx, types.NamespacedName{Name: "default"}, &cluster)
-
 	imageMapSet := make(map[types.NamespacedName]*v1alpha1.ImageMap, len(kTarget.ImageMaps))
 	for _, iTarget := range iTargets {
 		if iTarget.IsLiveUpdateOnly {
@@ -187,8 +183,9 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		startTime := apis.NowMicro()
 		dockerimage.MaybeUpdateStatus(ctx, ibd.ctrlClient, iTarget, dockerimage.ToBuildingStatus(iTarget, startTime))
 		cmdimage.MaybeUpdateStatus(ctx, ibd.ctrlClient, iTarget, cmdimage.ToBuildingStatus(iTarget, startTime))
+		cluster := stateSet[target.ID()].ClusterOrEmpty()
 
-		refs, stages, err := ibd.ib.Build(ctx, iTarget, &cluster, imageMapSet, ps)
+		refs, stages, err := ibd.ib.Build(ctx, iTarget, cluster, imageMapSet, ps)
 		if err != nil {
 			dockerimage.MaybeUpdateStatus(ctx, ibd.ctrlClient, iTarget, dockerimage.ToCompletedFailStatus(iTarget, startTime, stages, err))
 			cmdimage.MaybeUpdateStatus(ctx, ibd.ctrlClient, iTarget, cmdimage.ToCompletedFailStatus(iTarget, startTime, err))

@@ -196,6 +196,9 @@ type BuildState struct {
 	// This field indicates case 1 || case 2 -- i.e. that we should skip
 	// live_update, and force an image build (even if there are no changed files)
 	FullBuildTriggered bool
+
+	// The default cluster.
+	Cluster *v1alpha1.Cluster
 }
 
 func NewBuildState(result BuildResult, files []string, pendingDeps []model.TargetID) BuildState {
@@ -212,6 +215,13 @@ func NewBuildState(result BuildResult, files []string, pendingDeps []model.Targe
 		FilesChangedSet: set,
 		DepsChangedSet:  depsSet,
 	}
+}
+
+func (b BuildState) ClusterOrEmpty() *v1alpha1.Cluster {
+	if b.Cluster == nil {
+		return &v1alpha1.Cluster{}
+	}
+	return b.Cluster
 }
 
 func (b BuildState) WithFullBuildTriggered(isImageBuildTrigger bool) BuildState {
