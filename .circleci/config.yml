@@ -10,7 +10,7 @@ jobs:
   build-linux:
     resource_class: medium+
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:e3d61d517f1249cb6cf5269cd214a4078fc56e27b36a6d5291e0be2b6f11413b
+      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:d5ccd541278ecb8e740e40f34198f4bae08c8cbca79b3e85de0c5f5a1434aa2f
     # apiserver code generation scripts require being in GOPATH
     working_directory: /home/circleci/go/src/github.com/tilt-dev/tilt
 
