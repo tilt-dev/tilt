@@ -762,7 +762,15 @@ declare namespace Proto {
     host?: string;
   }
   export interface v1alpha1DisableSource {
+    /**
+     * Disabled by single ConfigMap value.
+     */
     configMap?: v1alpha1ConfigMapDisableSource;
+    /**
+     * Disabled by multiple ConfigMap values, which must all be set to disabled
+     * to disable the object.
+     */
+    everyConfigMap?: v1alpha1ConfigMapDisableSource[];
   }
   export interface v1alpha1DisableResourceStatus {
     /**

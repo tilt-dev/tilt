@@ -797,6 +797,11 @@ func (in *DisableSource) DeepCopyInto(out *DisableSource) {
 		*out = new(ConfigMapDisableSource)
 		**out = **in
 	}
+	if in.EveryConfigMap != nil {
+		in, out := &in.EveryConfigMap, &out.EveryConfigMap
+		*out = make([]ConfigMapDisableSource, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

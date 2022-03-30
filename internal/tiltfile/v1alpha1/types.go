@@ -595,17 +595,25 @@ type DisableSource struct {
 
 func (p Plugin) disableSource(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var configMap starlark.Value
+	var everyConfigMap starlark.Value
 	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
 		"config_map?", &configMap,
+		"every_config_map?", &everyConfigMap,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	dict := starlark.NewDict(1)
+	dict := starlark.NewDict(2)
 
 	if configMap != nil {
 		err := dict.SetKey(starlark.String("config_map"), configMap)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if everyConfigMap != nil {
+		err := dict.SetKey(starlark.String("every_config_map"), everyConfigMap)
 		if err != nil {
 			return nil, err
 		}
@@ -646,6 +654,15 @@ func (o *DisableSource) Unpack(v starlark.Value) error {
 				return fmt.Errorf("unpacking %s: %v", key, err)
 			}
 			obj.ConfigMap = (*v1alpha1.ConfigMapDisableSource)(&v.Value)
+			continue
+		}
+		if key == "every_config_map" {
+			v := ConfigMapDisableSourceList{t: o.t}
+			err := v.Unpack(val)
+			if err != nil {
+				return fmt.Errorf("unpacking %s: %v", key, err)
+			}
+			obj.EveryConfigMap = v.Value
 			continue
 		}
 		return fmt.Errorf("Unexpected attribute name: %s", key)
