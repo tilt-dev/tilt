@@ -38,9 +38,8 @@ func ProvideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kC
 	dockerBuilder := build.NewDockerBuilder(docker2, labels)
 	customBuilder := build.NewCustomBuilder(docker2, clock)
 	scheme := v1alpha1.NewScheme()
-	namespace := provideFakeK8sNamespace()
-	reconciler := kubernetesapply.NewReconciler(ctrlclient, kClient, scheme, dockerBuilder, kubeContext, st, namespace, execer)
-	imageBuildAndDeployer := NewImageBuildAndDeployer(dockerBuilder, customBuilder, kClient, env, kubeContext, analytics2, clock, kp, ctrlclient, reconciler)
+	reconciler := kubernetesapply.NewReconciler(ctrlclient, kClient, scheme, dockerBuilder, st, execer)
+	imageBuildAndDeployer := NewImageBuildAndDeployer(dockerBuilder, customBuilder, analytics2, clock, kp, ctrlclient, reconciler)
 	return imageBuildAndDeployer, nil
 }
 
@@ -67,7 +66,3 @@ var BaseWireSet = wire.NewSet(wire.Value(dockerfile.Labels{}), v1alpha1.NewSchem
 	NewImageBuildAndDeployer,
 	NewLocalTargetBuildAndDeployer, containerupdate.NewDockerUpdater, containerupdate.NewExecUpdater, NewImageBuilder, tracer.InitOpenTelemetry, liveupdates.ProvideUpdateMode,
 )
-
-func provideFakeK8sNamespace() k8s.Namespace {
-	return "default"
-}

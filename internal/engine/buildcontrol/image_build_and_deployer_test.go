@@ -988,22 +988,40 @@ func TestTwoManifestsWithSameTwoImages(t *testing.T) {
 
 func TestPlatformFromCluster(t *testing.T) {
 	f := newIBDFixture(t, clusterid.ProductGKE)
-
-	cluster := &v1alpha1.Cluster{
-		ObjectMeta: metav1.ObjectMeta{Name: "default"},
-		Status: v1alpha1.ClusterStatus{
-			Arch: "amd64",
-		},
-	}
+	f.cluster.Status.Arch = "amd64"
 
 	m := NewSanchoDockerBuildManifest(f)
 	iTargetID1 := m.ImageTargets[0].ID()
 	stateSet := store.BuildStateSet{
-		iTargetID1: store.BuildState{FullBuildTriggered: true, Cluster: cluster},
+		iTargetID1: store.BuildState{FullBuildTriggered: true},
 	}
 	_, err := f.BuildAndDeploy(BuildTargets(m), stateSet)
 	require.NoError(t, err)
 	assert.Equal(t, "linux/amd64", f.docker.BuildOptions.Platform)
+}
+
+func TestDockerForMacDeploy(t *testing.T) {
+	f := newIBDFixture(t, clusterid.ProductDockerDesktop)
+
+	manifest := NewSanchoDockerBuildManifest(f)
+	targets := BuildTargets(manifest)
+	_, err := f.BuildAndDeploy(targets, store.BuildStateSet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if f.docker.BuildCount != 1 {
+		t.Errorf("Expected 1 docker build, actual: %d", f.docker.BuildCount)
+	}
+
+	if f.docker.PushCount != 0 {
+		t.Errorf("Expected no push to docker, actual: %d", f.docker.PushCount)
+	}
+
+	expectedYaml := "image: gcr.io/some-project-162817/sancho:tilt-11cd0b38bc3ceb95"
+	if !strings.Contains(f.k8s.Yaml, expectedYaml) {
+		t.Errorf("Expected yaml to contain %q. Actual:\n%s", expectedYaml, f.k8s.Yaml)
+	}
 }
 
 func resultKeys(result store.BuildResultSet) []string {
@@ -1025,6 +1043,7 @@ type ibdFixture struct {
 	st         *store.TestingStore
 	kl         *fakeKINDLoader
 	ctrlClient ctrlclient.Client
+	cluster    *v1alpha1.Cluster
 }
 
 func newIBDFixture(t *testing.T, env clusterid.Product) *ibdFixture {
@@ -1045,6 +1064,11 @@ func newIBDFixture(t *testing.T, env clusterid.Product) *ibdFixture {
 	clock := fakeClock{time.Date(2019, 1, 1, 1, 1, 1, 1, time.UTC)}
 	kubeContext := k8s.KubeContext(fmt.Sprintf("%s-me", env))
 	clusterEnv := docker.ClusterEnv(docker.Env{})
+	if env == clusterid.ProductDockerDesktop {
+		clusterEnv.BuildToKubeContexts = []string{string(kubeContext)}
+	}
+	dockerClient.FakeEnv = docker.Env(clusterEnv)
+
 	ctrlClient := fake.NewFakeTiltClient()
 	st := store.NewTestingStore()
 	execer := localexec.NewFakeExecer(t)
@@ -1052,6 +1076,17 @@ func newIBDFixture(t *testing.T, env clusterid.Product) *ibdFixture {
 		clusterEnv, dir, clock, kl, ta, ctrlClient, st, execer)
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	cluster := &v1alpha1.Cluster{
+		Status: v1alpha1.ClusterStatus{
+			Connection: &v1alpha1.ClusterConnectionStatus{
+				Kubernetes: &v1alpha1.KubernetesClusterConnectionStatus{
+					Product: string(env),
+					Context: string(kubeContext),
+				},
+			},
+		},
 	}
 	ret := &ibdFixture{
 		TempDirFixture: f,
@@ -1063,6 +1098,7 @@ func newIBDFixture(t *testing.T, env clusterid.Product) *ibdFixture {
 		st:             st,
 		kl:             kl,
 		ctrlClient:     ctrlClient,
+		cluster:        cluster,
 	}
 
 	return ret
@@ -1085,6 +1121,9 @@ func (f *ibdFixture) upsert(obj ctrlclient.Object) {
 }
 
 func (f *ibdFixture) BuildAndDeploy(specs []model.TargetSpec, stateSet store.BuildStateSet) (store.BuildResultSet, error) {
+	if stateSet == nil {
+		stateSet = store.BuildStateSet{}
+	}
 	iTargets, kTargets := extractImageAndK8sTargets(specs)
 	for _, iTarget := range iTargets {
 		if iTarget.IsLiveUpdateOnly {
@@ -1101,6 +1140,10 @@ func (f *ibdFixture) BuildAndDeploy(specs []model.TargetSpec, stateSet store.Bui
 			im.Status = imageBuildResult.ImageMapStatus
 		}
 		f.upsert(&im)
+
+		s := stateSet[iTarget.ID()]
+		s.Cluster = f.cluster
+		stateSet[iTarget.ID()] = s
 	}
 	for _, kTarget := range kTargets {
 		ka := v1alpha1.KubernetesApply{
@@ -1144,7 +1187,7 @@ type fakeKINDLoader struct {
 	loadCount int
 }
 
-func (kl *fakeKINDLoader) LoadToKIND(ctx context.Context, ref reference.NamedTagged) error {
+func (kl *fakeKINDLoader) LoadToKIND(ctx context.Context, cluster *v1alpha1.Cluster, ref reference.NamedTagged) error {
 	kl.loadCount++
 	return nil
 }

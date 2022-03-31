@@ -162,7 +162,7 @@ func (r *Reconciler) toWatchRefs(ka *v1alpha1.KubernetesApply) ([]v1alpha1.Kuber
 	for _, e := range entities {
 		ns := k8s.Namespace(e.Meta().GetNamespace())
 		if ns == "" {
-			ns = r.cfgNS
+			ns = k8s.Namespace(r.k8sClient.ConnectionConfig().Namespace)
 		}
 		if ns == "" {
 			ns = k8s.DefaultNamespace

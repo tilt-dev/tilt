@@ -30,19 +30,18 @@ import (
 var _ BuildAndDeployer = &ImageBuildAndDeployer{}
 
 type KINDLoader interface {
-	LoadToKIND(ctx context.Context, ref reference.NamedTagged) error
+	LoadToKIND(ctx context.Context, cluster *v1alpha1.Cluster, ref reference.NamedTagged) error
 }
 
 type cmdKINDLoader struct {
-	env         clusterid.Product
-	clusterName k8s.ClusterName
 }
 
-func (kl *cmdKINDLoader) LoadToKIND(ctx context.Context, ref reference.NamedTagged) error {
+func (kl *cmdKINDLoader) LoadToKIND(ctx context.Context, cluster *v1alpha1.Cluster, ref reference.NamedTagged) error {
 	// In Kind5, --name specifies the name of the cluster in the kubeconfig.
 	// In Kind6, the -name parameter is prefixed with 'kind-' before being written to/read from the kubeconfig
-	kindName := string(kl.clusterName)
-	if kl.env == clusterid.ProductKIND {
+	k8sConn := k8sConnStatus(cluster)
+	kindName := k8sConn.Cluster
+	if k8sConn.Product == string(clusterid.ProductKIND) {
 		kindName = strings.TrimPrefix(kindName, "kind-")
 	}
 
@@ -54,32 +53,23 @@ func (kl *cmdKINDLoader) LoadToKIND(ctx context.Context, ref reference.NamedTagg
 	return cmd.Run()
 }
 
-func NewKINDLoader(env clusterid.Product, clusterName k8s.ClusterName) KINDLoader {
-	return &cmdKINDLoader{
-		env:         env,
-		clusterName: clusterName,
-	}
+func NewKINDLoader() KINDLoader {
+	return &cmdKINDLoader{}
 }
 
 type ImageBuildAndDeployer struct {
-	db          *build.DockerBuilder
-	ib          *ImageBuilder
-	k8sClient   k8s.Client
-	env         clusterid.Product
-	kubeContext k8s.KubeContext
-	analytics   *analytics.TiltAnalytics
-	clock       build.Clock
-	kl          KINDLoader
-	ctrlClient  ctrlclient.Client
-	r           *kubernetesapply.Reconciler
+	db         *build.DockerBuilder
+	ib         *ImageBuilder
+	analytics  *analytics.TiltAnalytics
+	clock      build.Clock
+	kl         KINDLoader
+	ctrlClient ctrlclient.Client
+	r          *kubernetesapply.Reconciler
 }
 
 func NewImageBuildAndDeployer(
 	db *build.DockerBuilder,
 	customBuilder *build.CustomBuilder,
-	k8sClient k8s.Client,
-	env clusterid.Product,
-	kubeContext k8s.KubeContext,
 	analytics *analytics.TiltAnalytics,
 	c build.Clock,
 	kl KINDLoader,
@@ -87,16 +77,13 @@ func NewImageBuildAndDeployer(
 	r *kubernetesapply.Reconciler,
 ) *ImageBuildAndDeployer {
 	return &ImageBuildAndDeployer{
-		db:          db,
-		ib:          NewImageBuilder(db, customBuilder),
-		k8sClient:   k8sClient,
-		env:         env,
-		kubeContext: kubeContext,
-		analytics:   analytics,
-		clock:       c,
-		kl:          kl,
-		ctrlClient:  ctrlClient,
-		r:           r,
+		db:         db,
+		ib:         NewImageBuilder(db, customBuilder),
+		analytics:  analytics,
+		clock:      c,
+		kl:         kl,
+		ctrlClient: ctrlClient,
+		r:          r,
 	}
 }
 
@@ -192,7 +179,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 			return store.ImageBuildResult{}, err
 		}
 
-		pushStage := ibd.push(ctx, refs.LocalRef, ps, iTarget, kTarget)
+		pushStage := ibd.push(ctx, refs.LocalRef, ps, iTarget, cluster, kTarget)
 		if pushStage != nil {
 			stages = append(stages, *pushStage)
 		}
@@ -238,7 +225,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 	return newResults, nil
 }
 
-func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedTagged, ps *build.PipelineState, iTarget model.ImageTarget, kTarget model.K8sTarget) *v1alpha1.DockerImageStageStatus {
+func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedTagged, ps *build.PipelineState, iTarget model.ImageTarget, cluster *v1alpha1.Cluster, kTarget model.K8sTarget) *v1alpha1.DockerImageStageStatus {
 	ps.StartPipelineStep(ctx, "Pushing %s", container.FamiliarString(ref))
 	defer ps.EndPipelineStep(ctx)
 
@@ -256,16 +243,16 @@ func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedT
 	} else if !IsImageDeployedToK8s(iTarget, kTarget) {
 		ps.Printf(ctx, "Skipping push: base image does not need deploy")
 		return nil
-	} else if ibd.db.WillBuildToKubeContext(ibd.kubeContext) {
+	} else if ibd.db.WillBuildToKubeContext(k8s.KubeContext(k8sConnStatus(cluster).Context)) {
 		ps.Printf(ctx, "Skipping push: building on cluster's container runtime")
 		return nil
 	}
 
 	startTime := apis.NowMicro()
 	var err error
-	if ibd.shouldUseKINDLoad(ctx, iTarget) {
+	if ibd.shouldUseKINDLoad(ctx, iTarget, cluster) {
 		ps.Printf(ctx, "Loading image to KIND")
-		err := ibd.kl.LoadToKIND(ps.AttachLogger(ctx), ref)
+		err := ibd.kl.LoadToKIND(ps.AttachLogger(ctx), cluster, ref)
 		endTime := apis.NowMicro()
 		stage := &v1alpha1.DockerImageStageStatus{
 			Name:       "kind load",
@@ -293,8 +280,8 @@ func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedT
 	return stage
 }
 
-func (ibd *ImageBuildAndDeployer) shouldUseKINDLoad(ctx context.Context, iTarg model.ImageTarget) bool {
-	isKIND := ibd.env == clusterid.ProductKIND
+func (ibd *ImageBuildAndDeployer) shouldUseKINDLoad(ctx context.Context, iTarg model.ImageTarget, cluster *v1alpha1.Cluster) bool {
+	isKIND := k8sConnStatus(cluster).Product == string(clusterid.ProductKIND)
 	if !isKIND {
 		return false
 	}
@@ -306,8 +293,8 @@ func (ibd *ImageBuildAndDeployer) shouldUseKINDLoad(ctx context.Context, iTarg m
 		return false
 	}
 
-	registry := ibd.k8sClient.LocalRegistry(ctx)
-	if !registry.Empty() {
+	hasRegistry := cluster.Status.Registry != nil && cluster.Status.Registry.Host != ""
+	if hasRegistry {
 		return false
 	}
 
@@ -343,4 +330,13 @@ func (ibd *ImageBuildAndDeployer) deploy(
 func (ibd *ImageBuildAndDeployer) delete(ctx context.Context, k8sTarget model.K8sTarget) error {
 	kTargetNN := types.NamespacedName{Name: k8sTarget.ID().Name.String()}
 	return ibd.r.ForceDelete(ctx, kTargetNN, k8sTarget.KubernetesApplySpec, "force update")
+}
+
+func k8sConnStatus(cluster *v1alpha1.Cluster) *v1alpha1.KubernetesClusterConnectionStatus {
+	if cluster != nil &&
+		cluster.Status.Connection != nil &&
+		cluster.Status.Connection.Kubernetes != nil {
+		return cluster.Status.Connection.Kubernetes
+	}
+	return &v1alpha1.KubernetesClusterConnectionStatus{}
 }

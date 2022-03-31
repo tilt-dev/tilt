@@ -40,11 +40,9 @@ func provideFakeBuildAndDeployer(ctx context.Context, docker2 docker.Client, kCl
 	labels := _wireLabelsValue
 	dockerBuilder := build.NewDockerBuilder(docker2, labels)
 	customBuilder := build.NewCustomBuilder(docker2, clock)
-	kubeContext := provideFakeKubeContext(env)
 	scheme := v1alpha1.NewScheme()
-	namespace := provideFakeK8sNamespace()
-	reconciler := kubernetesapply.NewReconciler(ctrlClient, kClient, scheme, dockerBuilder, kubeContext, st, namespace, execer)
-	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, customBuilder, kClient, env, kubeContext, analytics2, clock, kp, ctrlClient, reconciler)
+	reconciler := kubernetesapply.NewReconciler(ctrlClient, kClient, scheme, dockerBuilder, st, execer)
+	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerBuilder, customBuilder, analytics2, clock, kp, ctrlClient, reconciler)
 	clockworkClock := clockwork.NewRealClock()
 	disableSubscriber := dockercomposeservice.NewDisableSubscriber(ctx, dcc, clockworkClock)
 	dockercomposeserviceReconciler := dockercomposeservice.NewReconciler(ctrlClient, dcc, docker2, st, scheme, disableSubscriber)
@@ -55,6 +53,7 @@ func provideFakeBuildAndDeployer(ctx context.Context, docker2 docker.Client, kCl
 	proberManager := cmd.ProvideProberManager()
 	controller := cmd.NewController(ctx, cmdExecer, proberManager, ctrlClient, st, clockworkClock, scheme)
 	localTargetBuildAndDeployer := buildcontrol.NewLocalTargetBuildAndDeployer(clock, ctrlClient, controller)
+	kubeContext := provideFakeKubeContext(env)
 	runtime := k8s.ProvideContainerRuntime(ctx, kClient)
 	clusterEnv := provideFakeDockerClusterEnv(docker2, env, kubeContext, runtime)
 	liveupdatesUpdateMode, err := liveupdates.ProvideUpdateMode(updateMode, kubeContext, clusterEnv)
@@ -87,10 +86,6 @@ var DeployerWireSet = wire.NewSet(
 
 func provideFakeEnv() *localexec.Env {
 	return localexec.EmptyEnv()
-}
-
-func provideFakeK8sNamespace() k8s.Namespace {
-	return "default"
 }
 
 func provideFakeKubeContext(env clusterid.Product) k8s.KubeContext {
