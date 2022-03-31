@@ -3981,6 +3981,14 @@ func schema_pkg_apis_core_v1alpha1_KubernetesClusterConnectionStatus(ref common.
 							Format:      "",
 						},
 					},
+					"cluster": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The resolved cluster name (as determined by the kubeconfig context).",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"product": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The product name for this cluster.\n\nFor a complete list of possible product names, see: https://pkg.go.dev/github.com/tilt-dev/clusterid#Product",
@@ -3989,7 +3997,7 @@ func schema_pkg_apis_core_v1alpha1_KubernetesClusterConnectionStatus(ref common.
 						},
 					},
 				},
-				Required: []string{"context", "namespace"},
+				Required: []string{"context", "namespace", "cluster"},
 			},
 		},
 	}

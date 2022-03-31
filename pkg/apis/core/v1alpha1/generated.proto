@@ -1612,6 +1612,9 @@ message KubernetesClusterConnectionStatus {
   // The resolved default namespace.
   optional string namespace = 3;
 
+  // The resolved cluster name (as determined by the kubeconfig context).
+  optional string cluster = 4;
+
   // The product name for this cluster.
   //
   // For a complete list of possible product names, see:

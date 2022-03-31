@@ -251,6 +251,9 @@ type KubernetesClusterConnectionStatus struct {
 	// The resolved default namespace.
 	Namespace string `json:"namespace" protobuf:"bytes,3,opt,name=namespace"`
 
+	// The resolved cluster name (as determined by the kubeconfig context).
+	Cluster string `json:"cluster" protobuf:"bytes,4,opt,name=cluster"`
+
 	// The product name for this cluster.
 	//
 	// For a complete list of possible product names, see:

@@ -524,6 +524,10 @@
           "type": "string",
           "description": "The resolved default namespace."
         },
+        "cluster": {
+          "type": "string",
+          "description": "The resolved cluster name (as determined by the kubeconfig context)."
+        },
         "product": {
           "type": "string",
           "description": "The product name for this cluster.\n\nFor a complete list of possible product names, see:\nhttps://pkg.go.dev/github.com/tilt-dev/clusterid#Product"
