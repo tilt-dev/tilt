@@ -15,6 +15,7 @@ import (
 )
 
 const configMapName = "fe-disable"
+const configMap2Name = "be-disable"
 const key = "isDisabled"
 
 func TestMaybeNewDisableStatusNoSource(t *testing.T) {
@@ -34,7 +35,7 @@ func TestMaybeNewDisableStatusNoConfigMapDisableSource(t *testing.T) {
 	require.NotNil(t, newStatus)
 	require.Equal(t, true, newStatus.Disabled)
 	require.Equal(t, v1alpha1.DisableStateError, newStatus.State)
-	require.Contains(t, newStatus.Reason, "specifies no ConfigMap")
+	require.Contains(t, newStatus.Reason, "specifies no valid sources")
 }
 
 func TestMaybeNewDisableStatusNoConfigMap(t *testing.T) {
@@ -73,6 +74,30 @@ func TestMaybeNewDisableStatusFalse(t *testing.T) {
 	f := newDisableFixture(t)
 	f.createConfigMap(pointer.StringPtr("false"))
 	newStatus, err := MaybeNewDisableStatus(f.ctx, f.fc, disableSource(), nil)
+	require.NoError(t, err)
+	require.NotNil(t, newStatus)
+	require.Equal(t, false, newStatus.Disabled)
+	require.Equal(t, v1alpha1.DisableStateEnabled, newStatus.State)
+	require.Contains(t, newStatus.Reason, "is false")
+}
+
+func TestMaybeNewDisableStatusEveryTrue(t *testing.T) {
+	f := newDisableFixture(t)
+	f.createConfigMapNamed(configMapName, pointer.StringPtr("true"))
+	f.createConfigMapNamed(configMap2Name, pointer.StringPtr("true"))
+	newStatus, err := MaybeNewDisableStatus(f.ctx, f.fc, everyDisableSource(), nil)
+	require.NoError(t, err)
+	require.NotNil(t, newStatus)
+	require.Equal(t, true, newStatus.Disabled)
+	require.Equal(t, v1alpha1.DisableStateDisabled, newStatus.State)
+	require.Contains(t, newStatus.Reason, "Every ConfigMap disabled")
+}
+
+func TestMaybeNewDisableStatusEveryMixed(t *testing.T) {
+	f := newDisableFixture(t)
+	f.createConfigMapNamed(configMapName, pointer.StringPtr("true"))
+	f.createConfigMapNamed(configMap2Name, pointer.StringPtr("false"))
+	newStatus, err := MaybeNewDisableStatus(f.ctx, f.fc, everyDisableSource(), nil)
 	require.NoError(t, err)
 	require.NotNil(t, newStatus)
 	require.Equal(t, false, newStatus.Disabled)
@@ -124,13 +149,17 @@ type disableFixture struct {
 }
 
 func (f *disableFixture) createConfigMap(isDisabled *string) {
+	f.createConfigMapNamed(configMapName, isDisabled)
+}
+
+func (f *disableFixture) createConfigMapNamed(name string, isDisabled *string) {
 	m := make(map[string]string)
 	if isDisabled != nil {
 		m[key] = *isDisabled
 	}
 	err := f.fc.Create(f.ctx, &v1alpha1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: configMapName,
+			Name: name,
 		},
 		Data: m,
 	})
@@ -157,6 +186,21 @@ func disableSource() *v1alpha1.DisableSource {
 		ConfigMap: &v1alpha1.ConfigMapDisableSource{
 			Name: configMapName,
 			Key:  key,
+		},
+	}
+}
+
+func everyDisableSource() *v1alpha1.DisableSource {
+	return &v1alpha1.DisableSource{
+		EveryConfigMap: []v1alpha1.ConfigMapDisableSource{
+			{
+				Name: configMapName,
+				Key:  key,
+			},
+			{
+				Name: configMap2Name,
+				Key:  key,
+			},
 		},
 	}
 }

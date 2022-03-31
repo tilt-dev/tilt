@@ -288,6 +288,38 @@ func toDisableSources(tlr *tiltfile.TiltfileLoadResult) disableSourceMap {
 	return result
 }
 
+func appendCMDS(cms []v1alpha1.ConfigMapDisableSource, newCM v1alpha1.ConfigMapDisableSource) []v1alpha1.ConfigMapDisableSource {
+	for _, cm := range cms {
+		if apicmp.DeepEqual(cm, newCM) {
+			return cms
+		}
+	}
+	return append(cms, newCM)
+}
+
+func mergeDisableSource(existing *v1alpha1.DisableSource, toMerge *v1alpha1.DisableSource) *v1alpha1.DisableSource {
+	if toMerge == nil {
+		return existing
+	}
+	if apicmp.DeepEqual(existing, toMerge) {
+		return existing
+	}
+
+	cms := []v1alpha1.ConfigMapDisableSource{}
+
+	if existing.ConfigMap != nil {
+		cms = append(cms, *existing.ConfigMap)
+	}
+	cms = append(cms, existing.EveryConfigMap...)
+	if toMerge.ConfigMap != nil {
+		cms = appendCMDS(cms, *toMerge.ConfigMap)
+	}
+	for _, newCM := range toMerge.EveryConfigMap {
+		cms = appendCMDS(cms, newCM)
+	}
+	return &v1alpha1.DisableSource{EveryConfigMap: cms}
+}
+
 func toDisableConfigMaps(disableSources disableSourceMap, enabledResources []model.ManifestName) apiset.TypedObjectSet {
 	enabledResourceSet := make(map[model.ManifestName]bool)
 	for _, mn := range enabledResources {
@@ -531,8 +563,12 @@ func toImageMapObjects(tlr *tiltfile.TiltfileLoadResult, disableSources disableS
 			}
 
 			name := iTarget.ImageMapName()
-			// Note that an ImageMap might be in more than one Manifest, so we
-			// can't annotate them to a particular manifest.
+			_, ok := result[name]
+			if ok {
+				// Some ImageTargets are shared among multiple manifests.
+				continue
+			}
+
 			im := &v1alpha1.ImageMap{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: name,
