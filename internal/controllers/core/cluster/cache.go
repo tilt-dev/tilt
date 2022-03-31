@@ -57,6 +57,7 @@ type connection struct {
 	// but is failing a health/readiness check.
 	statusError   string
 	arch          string
+	serverVersion string
 	registry      *container.Registry
 	connStatus    *v1alpha1.ClusterConnectionStatus
 	cancelMonitor context.CancelFunc

@@ -179,6 +179,9 @@ type ClusterStatus struct {
 	//
 	// +optional
 	Connection *ClusterConnectionStatus `json:"connection,omitempty" protobuf:"bytes,5,opt,name=connection"`
+
+	// ServerVersion is a cluster-provided, human-readable version string.
+	ServerVersion string `json:"serverVersion,omitempty" protobuf:"bytes,6,opt,name=serverVersion"`
 }
 
 type RegistryHosting struct {

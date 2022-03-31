@@ -129,6 +129,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 				conn.k8sClient = client
 			}
 		} else if obj.Spec.Connection != nil && obj.Spec.Connection.Docker != nil {
+			conn.connType = connectionTypeDocker
 			client, err := r.createDockerClient(obj.Spec.Connection.Docker)
 			if err != nil {
 				conn.initError = err.Error()
@@ -149,26 +150,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		}
 	}
 
-	// once cluster connection is established, try to populate arch
-	if conn.initError == "" && conn.arch == "" {
-		if conn.k8sClient != nil {
-			conn.arch = r.readKubernetesArch(ctx, conn.k8sClient)
-		} else if conn.dockerClient != nil {
-			conn.arch = r.readDockerArch(ctx, conn.dockerClient)
-		}
-	}
-
-	if conn.initError == "" && conn.connType == connectionTypeK8s && conn.registry == nil {
-		reg := conn.k8sClient.LocalRegistry(ctx)
-		conn.registry = &reg
-	}
-
-	if conn.initError == "" && conn.connType == connectionTypeK8s {
-		connStatus := conn.k8sClient.ConnectionConfig()
-		conn.connStatus = &v1alpha1.ClusterConnectionStatus{
-			Kubernetes: connStatus,
-		}
-	}
+	r.populateClusterMetadata(ctx, &conn)
 
 	r.connManager.store(nn, conn)
 
@@ -288,6 +270,55 @@ func (r *Reconciler) reportConnectionEvent(ctx context.Context, cluster *v1alpha
 	analytics.Get(ctx).Incr("api.cluster.connect", tags)
 }
 
+func (r *Reconciler) populateClusterMetadata(ctx context.Context, conn *connection) {
+	if conn.initError != "" {
+		return
+	}
+
+	switch conn.connType {
+	case connectionTypeK8s:
+		r.populateK8sMetadata(ctx, conn)
+	case connectionTypeDocker:
+		r.populateDockerMetadata(ctx, conn)
+	}
+}
+
+func (r *Reconciler) populateK8sMetadata(ctx context.Context, conn *connection) {
+	if conn.arch == "" {
+		conn.arch = r.readKubernetesArch(ctx, conn.k8sClient)
+	}
+
+	if conn.registry == nil {
+		reg := conn.k8sClient.LocalRegistry(ctx)
+		conn.registry = &reg
+	}
+
+	if conn.connStatus == nil {
+		connStatus := conn.k8sClient.ConnectionConfig()
+		conn.connStatus = &v1alpha1.ClusterConnectionStatus{
+			Kubernetes: connStatus,
+		}
+	}
+
+	if conn.serverVersion == "" {
+		versionInfo, err := conn.k8sClient.CheckConnected(ctx)
+		if err == nil {
+			conn.serverVersion = versionInfo.String()
+		}
+	}
+}
+
+func (r *Reconciler) populateDockerMetadata(ctx context.Context, conn *connection) {
+	if conn.arch == "" {
+		conn.arch = r.readDockerArch(ctx, conn.dockerClient)
+	}
+
+	if conn.serverVersion == "" {
+		versionInfo := conn.dockerClient.ServerVersion()
+		conn.serverVersion = versionInfo.Version
+	}
+}
+
 func (c *connection) toStatus() v1alpha1.ClusterStatus {
 	var connectedAt *metav1.MicroTime
 	if c.initError == "" && !c.createdAt.IsZero() {
@@ -311,10 +342,11 @@ func (c *connection) toStatus() v1alpha1.ClusterStatus {
 	}
 
 	return v1alpha1.ClusterStatus{
-		Error:       clusterError,
-		Arch:        c.arch,
-		ConnectedAt: connectedAt,
-		Registry:    reg,
-		Connection:  c.connStatus,
+		Error:         clusterError,
+		Arch:          c.arch,
+		ServerVersion: c.serverVersion,
+		ConnectedAt:   connectedAt,
+		Registry:      reg,
+		Connection:    c.connStatus,
 	}
 }
