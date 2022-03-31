@@ -105,11 +105,6 @@ type ImageMapSpec struct {
 	//
 	// +optional
 	OverrideArgs *ImageMapOverrideArgs `json:"overrideArgs,omitempty" protobuf:"bytes,5,opt,name=overrideArgs"`
-
-	// Specifies how to disable this.
-	//
-	// +optional
-	DisableSource *DisableSource `json:"disableSource,omitempty" protobuf:"bytes,6,opt,name=disableSource"`
 }
 
 // ImageMapCommandOverride defines a command to inject when the image

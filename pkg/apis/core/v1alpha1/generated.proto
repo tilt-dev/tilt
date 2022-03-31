@@ -1342,11 +1342,6 @@ message ImageMapSpec {
   //
   // +optional
   optional ImageMapOverrideArgs overrideArgs = 5;
-
-  // Specifies how to disable this.
-  //
-  // +optional
-  optional DisableSource disableSource = 6;
 }
 
 // ImageMapStatus defines the observed state of ImageMap

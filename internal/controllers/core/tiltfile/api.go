@@ -543,7 +543,6 @@ func toImageMapObjects(tlr *tiltfile.TiltfileLoadResult, disableSources disableS
 				},
 				Spec: iTarget.ImageMapSpec,
 			}
-			im.Spec.DisableSource = disableSources[m.Name]
 			result[name] = im
 		}
 	}

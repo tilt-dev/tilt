@@ -253,7 +253,6 @@ func TestDisableObjects(t *testing.T) {
 			name := apis.SanitizeName(SanchoRef.String())
 			var im v1alpha1.ImageMap
 			require.NoError(t, f.Get(types.NamespacedName{Name: name}, &im))
-			require.Equal(t, feDisable, im.Spec.DisableSource)
 
 			var ka v1alpha1.KubernetesApply
 			require.NoError(t, f.Get(types.NamespacedName{Name: "fe"}, &ka))
