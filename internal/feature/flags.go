@@ -27,6 +27,7 @@ const Labels = "labels"
 const LiveUpdateV2 = "live_update_v2"
 const DisableResources = "disable_resources"
 const BulkDisableResources = "bulk_disable_resources"
+const ClusterRefresh = "cluster_refresh"
 
 // The Value a flag can have. Status should never be changed.
 type Value struct {

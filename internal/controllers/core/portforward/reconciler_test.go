@@ -292,7 +292,7 @@ func newPFRFixture(t *testing.T) *pfrFixture {
 
 	cfb := fake.NewControllerFixtureBuilder(t)
 	r := NewReconciler(cfb.Client, cfb.Store, kCli)
-	indexer.StartSourceForTesting(cfb.Context(), r.requeuer, r)
+	indexer.StartSourceForTesting(cfb.Context(), r.requeuer, r, nil)
 
 	return &pfrFixture{
 		ControllerFixture: cfb.Build(r),

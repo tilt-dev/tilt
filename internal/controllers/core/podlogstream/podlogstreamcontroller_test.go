@@ -500,7 +500,7 @@ func newPLMFixture(t testing.TB) *plmFixture {
 	st := newPLMStore(t, out)
 	podSource := NewPodSource(ctx, kClient, cfb.Client.Scheme(), clock)
 	plsc := NewController(ctx, cfb.Client, cfb.Scheme(), st, kClient, podSource, clock)
-	indexer.StartSourceForTesting(cfb.Context(), plsc.podSource, plsc)
+	indexer.StartSourceForTesting(cfb.Context(), plsc.podSource, plsc, nil)
 
 	return &plmFixture{
 		t:                 t,

@@ -3365,7 +3365,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	lur := liveupdate.NewFakeReconciler(st, cu, cdc)
 	dir := dockerimage.NewReconciler(cdc)
 	cir := cmdimage.NewReconciler(cdc)
-	clr := cluster.NewReconciler(ctx, cdc, st, clusterClients, docker.LocalEnv{},
+	clr := cluster.NewReconciler(ctx, cdc, st, clock, clusterClients, docker.LocalEnv{},
 		cluster.FakeDockerClientOrError(dockerClient, nil),
 		cluster.FakeKubernetesClientOrError(kClient, nil))
 
