@@ -265,3 +265,19 @@ type KubernetesClusterConnectionStatus struct {
 	// https://pkg.go.dev/github.com/tilt-dev/clusterid#Product
 	Product string `json:"product,omitempty" protobuf:"bytes,1,opt,name=product"`
 }
+
+// ClusterImageNeeds describes the ways that a cluster
+// might need to access an image.
+//
+// Defaults to "push".
+type ClusterImageNeeds string
+
+const (
+	// Make sure the image is pushed to the right registry
+	// and accessible in the cluster.
+	ClusterImageNeedsPush ClusterImageNeeds = "push"
+
+	// The image is only needed as a base image for other
+	// images that are needed in the cluster, so doesn't need to be pushed.
+	ClusterImageNeedsBase ClusterImageNeeds = "base-image"
+)
