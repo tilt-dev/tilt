@@ -3566,18 +3566,12 @@ func schema_pkg_apis_core_v1alpha1_ImageMapSpec(ref common.ReferenceCallback) co
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapOverrideArgs"),
 						},
 					},
-					"disableSource": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Specifies how to disable this.",
-							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource"),
-						},
-					},
 				},
 				Required: []string{"selector"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapOverrideArgs", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapOverrideCommand"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapOverrideArgs", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapOverrideCommand"},
 	}
 }
 

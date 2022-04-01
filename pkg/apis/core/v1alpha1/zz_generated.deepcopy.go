@@ -1846,11 +1846,6 @@ func (in *ImageMapSpec) DeepCopyInto(out *ImageMapSpec) {
 		*out = new(ImageMapOverrideArgs)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.DisableSource != nil {
-		in, out := &in.DisableSource, &out.DisableSource
-		*out = new(DisableSource)
-		(*in).DeepCopyInto(*out)
-	}
 	return
 }
 
