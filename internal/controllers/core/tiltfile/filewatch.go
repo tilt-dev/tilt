@@ -59,7 +59,7 @@ func addGlobalIgnoresToSpec(spec *v1alpha1.FileWatchSpec, globalIgnores []model.
 	}
 }
 
-// FileWatchesFromManifests creates FileWatch specs from Tilt manifests in the engine state.
+// Create FileWatch specs from Tilt manifests in the engine state.
 func ToFileWatchObjects(watchInputs WatchInputs, disableSources map[model.ManifestName]*v1alpha1.DisableSource) apiset.TypedObjectSet {
 	result := apiset.TypedObjectSet{}
 	if !watchInputs.EngineMode.WatchesFiles() {
@@ -68,23 +68,27 @@ func ToFileWatchObjects(watchInputs WatchInputs, disableSources map[model.Manife
 
 	// TODO(milas): how can global ignores fit into the API model more cleanly?
 	globalIgnores := globalIgnores(watchInputs)
-	var fileWatches []*v1alpha1.FileWatch
-	processedTargets := make(map[model.TargetID]bool)
 	for _, m := range watchInputs.Manifests {
 		for _, t := range m.TargetSpecs() {
 			targetID := t.ID()
 			// ignore targets that have already been processed or aren't watchable
-			_, seen := processedTargets[targetID]
 			t, ok := t.(WatchableTarget)
-			if seen || !ok || targetID.Empty() {
+			if !ok || targetID.Empty() {
 				continue
 			}
-			processedTargets[targetID] = true
+			name := apis.SanitizeName(targetID.String())
+			existing, ok := result[name]
+			if ok {
+				fw := existing.(*v1alpha1.FileWatch)
+				fw.Spec.DisableSource = mergeDisableSource(fw.Spec.DisableSource, disableSources[m.Name])
+				continue
+			}
+
 			spec := specForTarget(t, globalIgnores)
 			if spec != nil {
 				fw := &v1alpha1.FileWatch{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: apis.SanitizeName(targetID.String()),
+						Name: name,
 						Annotations: map[string]string{
 							v1alpha1.AnnotationManifest: string(m.Name),
 							v1alpha1.AnnotationTargetID: targetID.String(),
@@ -93,7 +97,7 @@ func ToFileWatchObjects(watchInputs WatchInputs, disableSources map[model.Manife
 					Spec: *spec.DeepCopy(),
 				}
 				fw.Spec.DisableSource = disableSources[m.Name]
-				fileWatches = append(fileWatches, fw)
+				result[fw.Name] = fw
 			}
 		}
 	}
@@ -123,12 +127,9 @@ func ToFileWatchObjects(watchInputs WatchInputs, disableSources map[model.Manife
 		}
 
 		addGlobalIgnoresToSpec(&configFw.Spec, globalIgnores)
-		fileWatches = append(fileWatches, configFw)
+		result[configFw.Name] = configFw
 	}
 
-	for _, fw := range fileWatches {
-		result[fw.Name] = fw
-	}
 	return result
 }
 

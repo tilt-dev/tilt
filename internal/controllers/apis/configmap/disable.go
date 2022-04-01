@@ -21,33 +21,51 @@ func DisableStatus(getCM func(name string) (v1alpha1.ConfigMap, error), disableS
 		return v1alpha1.DisableStateEnabled, "object does not specify a DisableSource", nil
 	}
 
-	if disableSource.ConfigMap == nil {
-		return v1alpha1.DisableStateError, "DisableSource specifies no ConfigMap", nil
+	if disableSource.ConfigMap != nil {
+		return cmDisableState(getCM, *disableSource.ConfigMap)
 	}
 
-	cm, err := getCM(disableSource.ConfigMap.Name)
+	if len(disableSource.EveryConfigMap) > 0 {
+		for _, cm := range disableSource.EveryConfigMap {
+			state, reason, err := cmDisableState(getCM, cm)
+			if state != v1alpha1.DisableStateDisabled {
+				return state, reason, err
+			}
+		}
+		return v1alpha1.DisableStateDisabled, "Every ConfigMap disabled", nil
+	}
+
+	return v1alpha1.DisableStateError, "DisableSource specifies no valid sources", nil
+}
+
+func cmDisableState(getCM func(name string) (v1alpha1.ConfigMap, error), source v1alpha1.ConfigMapDisableSource) (v1alpha1.DisableState, string, error) {
+	name := source.Name
+	key := source.Key
+	cm, err := getCM(name)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			return v1alpha1.DisableStatePending, fmt.Sprintf("ConfigMap %q does not exist", disableSource.ConfigMap.Name), nil
+			return v1alpha1.DisableStatePending, fmt.Sprintf("ConfigMap %q does not exist", name), nil
 		}
-		return v1alpha1.DisableStatePending, fmt.Sprintf("error reading ConfigMap %q", disableSource.ConfigMap.Name), err
+		return v1alpha1.DisableStatePending, fmt.Sprintf("error reading ConfigMap %q", name), err
 	}
 
-	cmVal, ok := cm.Data[disableSource.ConfigMap.Key]
+	cmVal, ok := cm.Data[key]
 	if !ok {
-		return v1alpha1.DisableStateError, fmt.Sprintf("ConfigMap %q has no key %q", disableSource.ConfigMap.Name, disableSource.ConfigMap.Key), nil
+		return v1alpha1.DisableStateError, fmt.Sprintf("ConfigMap %q has no key %q", name, key), nil
 	}
+
 	isDisabled, err := strconv.ParseBool(cmVal)
 	if err != nil {
-		return v1alpha1.DisableStateError, fmt.Sprintf("error parsing ConfigMap/key %q/%q value %q as a bool: %v", disableSource.ConfigMap.Name, disableSource.ConfigMap.Key, cmVal, err.Error()), nil
+		return v1alpha1.DisableStateError, fmt.Sprintf("error parsing ConfigMap/key %q/%q value %q as a bool: %v", name, key, cmVal, err.Error()), nil
 	}
 
+	var result v1alpha1.DisableState
 	if isDisabled {
 		result = v1alpha1.DisableStateDisabled
 	} else {
 		result = v1alpha1.DisableStateEnabled
 	}
-	return result, fmt.Sprintf("ConfigMap/key %q/%q is %v", disableSource.ConfigMap.Name, disableSource.ConfigMap.Key, isDisabled), nil
+	return result, fmt.Sprintf("ConfigMap/key %q/%q is %v", name, key, isDisabled), nil
 }
 
 // Returns a new DisableStatus if the disable status has changed, or the prev status if it hasn't.
