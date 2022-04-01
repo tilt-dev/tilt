@@ -67,7 +67,7 @@ s = read_file('foo.txt', 5)
 
 	_, err := f.ExecFile("Tiltfile")
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "default must be starlark.NoneType or starlark.String. got starlark.Int")
+	require.Contains(t, err.Error(), "parameter default: expected starlark.String or None, got starlark.Int")
 }
 
 func TestReadFileMissing(t *testing.T) {

@@ -167,7 +167,7 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 	var resourceDepsVal starlark.Sequence
 	var links links.LinkList
 	var labels value.LabelSet
-	var autoInit = value.BoolOrNone{Value: true}
+	var autoInit = value.Optional[starlark.Bool]{Value: true}
 
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"name", &name,
@@ -280,7 +280,7 @@ type dcResourceOptions struct {
 	imageRefFromUser reference.Named
 	TriggerMode      triggerMode
 	Links            []model.Link
-	AutoInit         value.BoolOrNone
+	AutoInit         value.Optional[starlark.Bool]
 
 	Labels map[string]string
 
@@ -388,7 +388,7 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResource
 
 	autoInit := true
 	if options.AutoInit.IsSet {
-		autoInit = options.AutoInit.Value
+		autoInit = bool(options.AutoInit.Value)
 	}
 	um, err := starlarkTriggerModeToModel(s.triggerModeForResource(options.TriggerMode), autoInit)
 	if err != nil {
