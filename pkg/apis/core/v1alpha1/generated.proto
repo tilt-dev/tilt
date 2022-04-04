@@ -109,6 +109,11 @@ message ClusterStatus {
   //
   // +optional
   optional ClusterConnectionStatus connection = 5;
+
+  // Version is a cluster-provided, human-readable version string.
+  //
+  // +optional
+  optional string version = 6;
 }
 
 // Cmd represents a process on the host machine.

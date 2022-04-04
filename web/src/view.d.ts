@@ -841,6 +841,12 @@ declare namespace Proto {
      * +optional
      */
     connection?: v1alpha1ClusterConnectionStatus;
+    /**
+     * Version is a cluster-provided, human-readable version string.
+     *
+     * +optional
+     */
+    version?: string;
   }
   export interface v1alpha1ClusterSpec {
     /**

@@ -472,6 +472,13 @@ func schema_pkg_apis_core_v1alpha1_ClusterStatus(ref common.ReferenceCallback) c
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ClusterConnectionStatus"),
 						},
 					},
+					"version": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Version is a cluster-provided, human-readable version string.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},
