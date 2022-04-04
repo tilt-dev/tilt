@@ -1580,6 +1580,8 @@ github.com/tilt-dev/browser v0.0.1 h1:e+mFToX6A7pkMlGFrXW5VLvS7qS0HVbcXqmR0uPrWU
 github.com/tilt-dev/browser v0.0.1/go.mod h1:2DaMt8P8xEqDFzxaAbraOig5iUmQdd1wtO1Tb6tODHA=
 github.com/tilt-dev/clusterid v0.1.2 h1:ch+qLP6y3n6KvuIyovSa030hJuWJ//G8gXqvouxpRSc=
 github.com/tilt-dev/clusterid v0.1.2/go.mod h1:QeDTv8HzwdCk6P1WzQXA+wpPSYAniAWipqbTLEF9ets=
+github.com/tilt-dev/clusterid v0.1.3 h1:D4Z7wsXjPO805JLYGUUXQ08nFXxavXr5GwHRWL556aA=
+github.com/tilt-dev/clusterid v0.1.3/go.mod h1:MV6q698Z7LEbu9i7p+JwqGsu2EkiiaQViIrL6gd8XiI=
 github.com/tilt-dev/dockerignore v0.1.1 h1:/MPYqcD8qMCMyh3yiHuQdzbMQi9NL4vVopo6/9D/XvE=
 github.com/tilt-dev/dockerignore v0.1.1/go.mod h1:2ooUDj8B9FNWYvHadA4EKG0JDaeAOjiq5P+mvEzS2eY=
 github.com/tilt-dev/fsevents v0.0.0-20200515134857-2efe37af20de h1:tG+nJMUUxV7MJm/MeU1Mw7rvmwN9GWyHMMg+wtf9HS4=
