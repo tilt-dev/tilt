@@ -260,6 +260,16 @@ func (i ImageTarget) LocalPaths() []string {
 	return nil
 }
 
+func (i ImageTarget) ClusterNeeds() v1alpha1.ClusterImageNeeds {
+	switch bd := i.BuildDetails.(type) {
+	case DockerBuild:
+		return bd.DockerImageSpec.ClusterNeeds
+	case CustomBuild:
+		return bd.CmdImageSpec.ClusterNeeds
+	}
+	return v1alpha1.ClusterImageNeedsBase
+}
+
 func (i ImageTarget) LocalRepos() []LocalGitRepo {
 	return i.repos
 }
@@ -292,7 +302,7 @@ func (i ImageTarget) Dependencies() []string {
 // - The architecture (the image chipset) will depend on the default arch of the cluster.
 //
 // In the meantime, we handle this by inferring them after tiltfile assembly.
-func (i ImageTarget) InferImagePropertiesFromCluster(reg container.Registry) (ImageTarget, error) {
+func (i ImageTarget) InferImagePropertiesFromCluster(reg container.Registry, clusterNeeds v1alpha1.ClusterImageNeeds) (ImageTarget, error) {
 	selector, err := container.SelectorFromImageMap(i.ImageMapSpec)
 	if err != nil {
 		return i, fmt.Errorf("validating image: %v", err)
@@ -306,12 +316,14 @@ func (i ImageTarget) InferImagePropertiesFromCluster(reg container.Registry) (Im
 	db, ok := i.BuildDetails.(DockerBuild)
 	if ok {
 		db.DockerImageSpec.Ref = i.ImageMapSpec.Selector
+		db.DockerImageSpec.ClusterNeeds = clusterNeeds
 		i.BuildDetails = db
 	}
 
 	cb, ok := i.BuildDetails.(CustomBuild)
 	if ok {
 		cb.CmdImageSpec.Ref = i.ImageMapSpec.Selector
+		cb.CmdImageSpec.ClusterNeeds = clusterNeeds
 		i.BuildDetails = cb
 	}
 
