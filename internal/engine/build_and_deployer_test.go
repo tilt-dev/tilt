@@ -407,6 +407,20 @@ func (f *bdFixture) upsert(obj ctrlclient.Object) {
 }
 
 func (f *bdFixture) BuildAndDeploy(specs []model.TargetSpec, stateSet store.BuildStateSet) (store.BuildResultSet, error) {
+	cluster := &v1alpha1.Cluster{}
+	for _, spec := range specs {
+		switch spec.(type) {
+		case model.DockerComposeTarget:
+			cluster.Spec.Connection = &v1alpha1.ClusterConnection{
+				Docker: &v1alpha1.DockerClusterConnection{},
+			}
+		case model.K8sTarget:
+			cluster.Spec.Connection = &v1alpha1.ClusterConnection{
+				Kubernetes: &v1alpha1.KubernetesClusterConnection{},
+			}
+		}
+	}
+
 	for _, spec := range specs {
 		localTarget, ok := spec.(model.LocalTarget)
 		if ok && localTarget.UpdateCmdSpec != nil {
@@ -424,6 +438,9 @@ func (f *bdFixture) BuildAndDeploy(specs []model.TargetSpec, stateSet store.Buil
 				Spec:       iTarget.ImageMapSpec,
 			}
 			state := stateSet[iTarget.ID()]
+			state.Cluster = cluster
+			stateSet[iTarget.ID()] = state
+
 			imageBuildResult, ok := state.LastResult.(store.ImageBuildResult)
 			if ok {
 				im.Status = imageBuildResult.ImageMapStatus

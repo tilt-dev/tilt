@@ -37,9 +37,10 @@ func ProvideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kC
 	labels := _wireLabelsValue
 	dockerBuilder := build.NewDockerBuilder(docker2, labels)
 	customBuilder := build.NewCustomBuilder(docker2, clock)
+	imageBuilder := NewImageBuilder(dockerBuilder, customBuilder, kp)
 	scheme := v1alpha1.NewScheme()
 	reconciler := kubernetesapply.NewReconciler(ctrlclient, kClient, scheme, dockerBuilder, st, execer)
-	imageBuildAndDeployer := NewImageBuildAndDeployer(dockerBuilder, customBuilder, analytics2, clock, kp, ctrlclient, reconciler)
+	imageBuildAndDeployer := NewImageBuildAndDeployer(imageBuilder, analytics2, clock, ctrlclient, reconciler)
 	return imageBuildAndDeployer, nil
 }
 
@@ -55,7 +56,8 @@ func ProvideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompo
 	dockerBuilder := build.NewDockerBuilder(dCli, labels)
 	buildClock := build.ProvideClock()
 	customBuilder := build.NewCustomBuilder(dCli, buildClock)
-	imageBuilder := NewImageBuilder(dockerBuilder, customBuilder)
+	kindLoader := NewKINDLoader()
+	imageBuilder := NewImageBuilder(dockerBuilder, customBuilder, kindLoader)
 	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(reconciler, dCli, imageBuilder, buildClock, ctrlclient)
 	return dockerComposeBuildAndDeployer, nil
 }

@@ -88,6 +88,7 @@ func ProvideDockerComposeBuildAndDeployer(
 		BaseWireSet,
 		dockercomposeservice.WireSet,
 		build.ProvideClock,
+		NewKINDLoader,
 	)
 
 	return nil, nil

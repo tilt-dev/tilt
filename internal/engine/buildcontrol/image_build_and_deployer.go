@@ -3,85 +3,44 @@ package buildcontrol
 import (
 	"context"
 	"fmt"
-	"os/exec"
-	"strings"
 	"time"
 
-	"github.com/docker/distribution/reference"
 	"k8s.io/apimachinery/pkg/types"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
-	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmdimage"
 	"github.com/tilt-dev/tilt/internal/controllers/core/dockerimage"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesapply"
-	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
-	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 var _ BuildAndDeployer = &ImageBuildAndDeployer{}
 
-type KINDLoader interface {
-	LoadToKIND(ctx context.Context, cluster *v1alpha1.Cluster, ref reference.NamedTagged) error
-}
-
-type cmdKINDLoader struct {
-}
-
-func (kl *cmdKINDLoader) LoadToKIND(ctx context.Context, cluster *v1alpha1.Cluster, ref reference.NamedTagged) error {
-	// In Kind5, --name specifies the name of the cluster in the kubeconfig.
-	// In Kind6, the -name parameter is prefixed with 'kind-' before being written to/read from the kubeconfig
-	k8sConn := k8sConnStatus(cluster)
-	kindName := k8sConn.Cluster
-	if k8sConn.Product == string(clusterid.ProductKIND) {
-		kindName = strings.TrimPrefix(kindName, "kind-")
-	}
-
-	cmd := exec.CommandContext(ctx, "kind", "load", "docker-image", ref.String(), "--name", kindName)
-	w := logger.NewMutexWriter(logger.Get(ctx).Writer(logger.InfoLvl))
-	cmd.Stdout = w
-	cmd.Stderr = w
-
-	return cmd.Run()
-}
-
-func NewKINDLoader() KINDLoader {
-	return &cmdKINDLoader{}
-}
-
 type ImageBuildAndDeployer struct {
-	db         *build.DockerBuilder
 	ib         *ImageBuilder
 	analytics  *analytics.TiltAnalytics
 	clock      build.Clock
-	kl         KINDLoader
 	ctrlClient ctrlclient.Client
 	r          *kubernetesapply.Reconciler
 }
 
 func NewImageBuildAndDeployer(
-	db *build.DockerBuilder,
-	customBuilder *build.CustomBuilder,
+	ib *ImageBuilder,
 	analytics *analytics.TiltAnalytics,
 	c build.Clock,
-	kl KINDLoader,
 	ctrlClient ctrlclient.Client,
 	r *kubernetesapply.Reconciler,
 ) *ImageBuildAndDeployer {
 	return &ImageBuildAndDeployer{
-		db:         db,
-		ib:         NewImageBuilder(db, customBuilder),
+		ib:         ib,
 		analytics:  analytics,
 		clock:      c,
-		kl:         kl,
 		ctrlClient: ctrlClient,
 		r:          r,
 	}
@@ -179,18 +138,6 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 			return store.ImageBuildResult{}, err
 		}
 
-		pushStage := ibd.push(ctx, refs.LocalRef, ps, iTarget, cluster, kTarget)
-		if pushStage != nil {
-			stages = append(stages, *pushStage)
-		}
-
-		if pushStage != nil && pushStage.Error != "" {
-			err := fmt.Errorf("%s", pushStage.Error)
-			dockerimage.MaybeUpdateStatus(ctx, ibd.ctrlClient, iTarget, dockerimage.ToCompletedFailStatus(iTarget, startTime, stages, err))
-			cmdimage.MaybeUpdateStatus(ctx, ibd.ctrlClient, iTarget, cmdimage.ToCompletedFailStatus(iTarget, startTime, err))
-			return store.ImageBuildResult{}, err
-		}
-
 		dockerimage.MaybeUpdateStatus(ctx, ibd.ctrlClient, iTarget, dockerimage.ToCompletedSuccessStatus(iTarget, startTime, stages, refs))
 		cmdimage.MaybeUpdateStatus(ctx, ibd.ctrlClient, iTarget, cmdimage.ToCompletedSuccessStatus(iTarget, startTime, refs))
 
@@ -225,82 +172,6 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 	return newResults, nil
 }
 
-func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedTagged, ps *build.PipelineState, iTarget model.ImageTarget, cluster *v1alpha1.Cluster, kTarget model.K8sTarget) *v1alpha1.DockerImageStageStatus {
-	ps.StartPipelineStep(ctx, "Pushing %s", container.FamiliarString(ref))
-	defer ps.EndPipelineStep(ctx)
-
-	cbSkip := false
-	if iTarget.IsCustomBuild() {
-		cbSkip = iTarget.CustomBuildInfo().SkipsPush()
-	}
-
-	// We can also skip the push of the image if it isn't used
-	// in any k8s resources! (e.g., it's consumed by another image).
-
-	if cbSkip {
-		ps.Printf(ctx, "Skipping push: custom_build() configured to handle push itself")
-		return nil
-	} else if iTarget.ClusterNeeds() != v1alpha1.ClusterImageNeedsPush {
-		ps.Printf(ctx, "Skipping push: base image does not need deploy")
-		return nil
-	} else if ibd.db.WillBuildToKubeContext(k8s.KubeContext(k8sConnStatus(cluster).Context)) {
-		ps.Printf(ctx, "Skipping push: building on cluster's container runtime")
-		return nil
-	}
-
-	startTime := apis.NowMicro()
-	var err error
-	if ibd.shouldUseKINDLoad(ctx, iTarget, cluster) {
-		ps.Printf(ctx, "Loading image to KIND")
-		err := ibd.kl.LoadToKIND(ps.AttachLogger(ctx), cluster, ref)
-		endTime := apis.NowMicro()
-		stage := &v1alpha1.DockerImageStageStatus{
-			Name:       "kind load",
-			StartedAt:  &startTime,
-			FinishedAt: &endTime,
-		}
-		if err != nil {
-			stage.Error = fmt.Sprintf("Error loading image to KIND: %v", err)
-		}
-		return stage
-	}
-
-	ps.Printf(ctx, "Pushing with Docker client")
-	err = ibd.db.PushImage(ps.AttachLogger(ctx), ref)
-
-	endTime := apis.NowMicro()
-	stage := &v1alpha1.DockerImageStageStatus{
-		Name:       "docker push",
-		StartedAt:  &startTime,
-		FinishedAt: &endTime,
-	}
-	if err != nil {
-		stage.Error = fmt.Sprintf("docker push: %v", err)
-	}
-	return stage
-}
-
-func (ibd *ImageBuildAndDeployer) shouldUseKINDLoad(ctx context.Context, iTarg model.ImageTarget, cluster *v1alpha1.Cluster) bool {
-	isKIND := k8sConnStatus(cluster).Product == string(clusterid.ProductKIND)
-	if !isKIND {
-		return false
-	}
-
-	// if we're using KIND and the image has a separate ref by which it's referred to
-	// in the cluster, that implies that we have a local registry in place, and should
-	// push to that instead of using KIND load.
-	if iTarg.HasDistinctClusterRef() {
-		return false
-	}
-
-	hasRegistry := cluster.Status.Registry != nil && cluster.Status.Registry.Host != ""
-	if hasRegistry {
-		return false
-	}
-
-	return true
-}
-
 // Returns: the entities deployed and the namespace of the pod with the given image name/tag.
 func (ibd *ImageBuildAndDeployer) deploy(
 	ctx context.Context,
@@ -330,13 +201,4 @@ func (ibd *ImageBuildAndDeployer) deploy(
 func (ibd *ImageBuildAndDeployer) delete(ctx context.Context, k8sTarget model.K8sTarget) error {
 	kTargetNN := types.NamespacedName{Name: k8sTarget.ID().Name.String()}
 	return ibd.r.ForceDelete(ctx, kTargetNN, k8sTarget.KubernetesApplySpec, "force update")
-}
-
-func k8sConnStatus(cluster *v1alpha1.Cluster) *v1alpha1.KubernetesClusterConnectionStatus {
-	if cluster != nil &&
-		cluster.Status.Connection != nil &&
-		cluster.Status.Connection.Kubernetes != nil {
-		return cluster.Status.Connection.Kubernetes
-	}
-	return &v1alpha1.KubernetesClusterConnectionStatus{}
 }

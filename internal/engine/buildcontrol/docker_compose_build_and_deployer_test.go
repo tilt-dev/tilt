@@ -226,6 +226,15 @@ func (f *dcbdFixture) upsert(obj ctrlclient.Object) {
 }
 
 func (f *dcbdFixture) BuildAndDeploy(specs []model.TargetSpec, stateSet store.BuildStateSet) (store.BuildResultSet, error) {
+
+	cluster := &v1alpha1.Cluster{
+		Spec: v1alpha1.ClusterSpec{
+			Connection: &v1alpha1.ClusterConnection{
+				Docker: &v1alpha1.DockerClusterConnection{},
+			},
+		},
+	}
+
 	for _, spec := range specs {
 		iTarget, ok := spec.(model.ImageTarget)
 		if !ok || iTarget.IsLiveUpdateOnly {
@@ -237,6 +246,9 @@ func (f *dcbdFixture) BuildAndDeploy(specs []model.TargetSpec, stateSet store.Bu
 			Spec:       iTarget.ImageMapSpec,
 		}
 		state := stateSet[iTarget.ID()]
+		state.Cluster = cluster
+		stateSet[iTarget.ID()] = state
+
 		imageBuildResult, ok := state.LastResult.(store.ImageBuildResult)
 		if ok {
 			im.Status = imageBuildResult.ImageMapStatus
