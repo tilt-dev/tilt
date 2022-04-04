@@ -251,7 +251,7 @@ type fakeBuildAndDeployer struct {
 
 var _ buildcontrol.BuildAndDeployer = &fakeBuildAndDeployer{}
 
-func (b *fakeBuildAndDeployer) nextImageBuildResult(iTarget model.ImageTarget, deployTarget model.TargetSpec) store.ImageBuildResult {
+func (b *fakeBuildAndDeployer) nextImageBuildResult(iTarget model.ImageTarget) store.ImageBuildResult {
 	tag := fmt.Sprintf("tilt-%d", b.buildCount)
 	localRefTagged := container.MustWithTag(iTarget.Refs.LocalRef(), tag)
 	clusterRefTagged := container.MustWithTag(iTarget.Refs.ClusterRef(), tag)
@@ -321,18 +321,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 
 	err = queue.RunBuilds(func(target model.TargetSpec, depResults []store.ImageBuildResult) (store.ImageBuildResult, error) {
 		iTarget := target.(model.ImageTarget)
-		var deployTarget model.TargetSpec
-		if !call.dc().Empty() {
-			if buildcontrol.IsImageDeployedToDC(iTarget, call.dc()) {
-				deployTarget = call.dc()
-			}
-		} else {
-			if buildcontrol.IsImageDeployedToK8s(iTarget, call.k8s()) {
-				deployTarget = call.k8s()
-			}
-		}
-
-		return b.nextImageBuildResult(iTarget, deployTarget), nil
+		return b.nextImageBuildResult(iTarget), nil
 	})
 	result := queue.NewResults().ToBuildResultSet()
 	if err != nil {

@@ -260,11 +260,27 @@ func (m Manifest) Validate() error {
 
 // Infer image properties for each image.
 func (m *Manifest) InferImagePropertiesFromCluster(reg container.Registry) error {
+	var deployImageIDs []TargetID
+	if m.DeployTarget != nil {
+		deployImageIDs = m.DeployTarget.DependencyIDs()
+	}
+	deployImageIDSet := make(map[TargetID]bool, len(deployImageIDs))
+	for _, depID := range deployImageIDs {
+		deployImageIDSet[depID] = true
+	}
+
 	for i, iTarget := range m.ImageTargets {
-		iTarget, err := iTarget.InferImagePropertiesFromCluster(reg)
+		// An image only needs to be pushed if it's used in-cluster.
+		clusterNeeds := v1alpha1.ClusterImageNeedsBase
+		if deployImageIDSet[iTarget.ID()] {
+			clusterNeeds = v1alpha1.ClusterImageNeedsPush
+		}
+
+		iTarget, err := iTarget.InferImagePropertiesFromCluster(reg, clusterNeeds)
 		if err != nil {
 			return fmt.Errorf("manifest %s: %v", m.Name, err)
 		}
+
 		m.ImageTargets[i] = iTarget
 	}
 	return nil

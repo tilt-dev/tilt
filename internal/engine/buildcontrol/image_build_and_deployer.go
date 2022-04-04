@@ -240,7 +240,7 @@ func (ibd *ImageBuildAndDeployer) push(ctx context.Context, ref reference.NamedT
 	if cbSkip {
 		ps.Printf(ctx, "Skipping push: custom_build() configured to handle push itself")
 		return nil
-	} else if !IsImageDeployedToK8s(iTarget, kTarget) {
+	} else if iTarget.ClusterNeeds() != v1alpha1.ClusterImageNeedsPush {
 		ps.Printf(ctx, "Skipping push: base image does not need deploy")
 		return nil
 	} else if ibd.db.WillBuildToKubeContext(k8s.KubeContext(k8sConnStatus(cluster).Context)) {
