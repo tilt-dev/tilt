@@ -194,6 +194,23 @@ message CmdImageSpec {
   // +optional
   // +tilt:local-path=true
   optional string outputsImageRefTo = 6;
+
+  // The name of the cluster we're building for.
+  //
+  // We'll use the cluster to determine the architecture of the image to build,
+  // and the registry to build it for.
+  //
+  // If no cluster is specified, assumes the default cluster.
+  //
+  // +optional
+  optional string cluster = 8;
+
+  // Whether the cluster needs access to the image.
+  //
+  // If not specified, assumes we have to push up to the cluster.
+  //
+  // +optional
+  optional string clusterNeeds = 9;
 }
 
 // CmdImageStateBuilding expresses that an image build is in-progress.
@@ -843,6 +860,23 @@ message DockerImageSpec {
   //
   // +optional
   repeated string imageMaps = 13;
+
+  // The name of the cluster we're building for.
+  //
+  // We'll use the cluster to determine the architecture of the image to build,
+  // and the registry to build it for.
+  //
+  // If no cluster is specified, assumes the default cluster.
+  //
+  // +optional
+  optional string cluster = 14;
+
+  // Whether the cluster needs access to the image.
+  //
+  // If not specified, assumes we have to push up to the cluster.
+  //
+  // +optional
+  optional string clusterNeeds = 15;
 }
 
 // DockerImageStageStatus gives detailed report of each stage

@@ -96,6 +96,23 @@ type CmdImageSpec struct {
 	// +optional
 	// +tilt:local-path=true
 	OutputsImageRefTo string `json:"outputsImageRefTo,omitempty" protobuf:"bytes,6,opt,name=outputsImageRefTo"`
+
+	// The name of the cluster we're building for.
+	//
+	// We'll use the cluster to determine the architecture of the image to build,
+	// and the registry to build it for.
+	//
+	// If no cluster is specified, assumes the default cluster.
+	//
+	// +optional
+	Cluster string `json:"cluster,omitempty" protobuf:"bytes,8,opt,name=cluster"`
+
+	// Whether the cluster needs access to the image.
+	//
+	// If not specified, assumes we have to push up to the cluster.
+	//
+	// +optional
+	ClusterNeeds ClusterImageNeeds `json:"clusterNeeds,omitempty" protobuf:"bytes,9,opt,name=clusterNeeds,casttype=ClusterImageNeeds"`
 }
 
 var _ resource.Object = &CmdImage{}

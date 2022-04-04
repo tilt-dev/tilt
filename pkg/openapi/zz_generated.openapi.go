@@ -703,6 +703,20 @@ func schema_pkg_apis_core_v1alpha1_CmdImageSpec(ref common.ReferenceCallback) co
 							Format:      "",
 						},
 					},
+					"cluster": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The name of the cluster we're building for.\n\nWe'll use the cluster to determine the architecture of the image to build, and the registry to build it for.\n\nIf no cluster is specified, assumes the default cluster.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"clusterNeeds": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether the cluster needs access to the image.\n\nIf not specified, assumes we have to push up to the cluster.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"ref"},
 			},
@@ -2265,6 +2279,20 @@ func schema_pkg_apis_core_v1alpha1_DockerImageSpec(ref common.ReferenceCallback)
 									},
 								},
 							},
+						},
+					},
+					"cluster": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The name of the cluster we're building for.\n\nWe'll use the cluster to determine the architecture of the image to build, and the registry to build it for.\n\nIf no cluster is specified, assumes the default cluster.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"clusterNeeds": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether the cluster needs access to the image.\n\nIf not specified, assumes we have to push up to the cluster.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 				},
