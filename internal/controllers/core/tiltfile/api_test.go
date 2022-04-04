@@ -164,6 +164,39 @@ func TestCmdImageCreate(t *testing.T) {
 	assert.Contains(t, ci.Spec.Ref, SanchoRef.String())
 }
 
+func TestTwoManifestsShareImage(t *testing.T) {
+	f := newAPIFixture(t)
+	target := model.MustNewImageTarget(SanchoRef).
+		WithBuildDetails(model.CustomBuild{
+			CmdImageSpec: v1alpha1.CmdImageSpec{Args: []string{"echo"}},
+			Deps:         []string{f.Path()},
+		})
+	fe1 := manifestbuilder.New(f, "fe1").
+		WithImageTarget(target).
+		WithK8sYAML(testyaml.SanchoYAML).
+		Build()
+	fe2 := manifestbuilder.New(f, "fe2").
+		WithImageTarget(target).
+		WithK8sYAML(testyaml.SanchoYAML).
+		Build()
+	nn := types.NamespacedName{Name: "tiltfile"}
+	tf := &v1alpha1.Tiltfile{ObjectMeta: metav1.ObjectMeta{Name: "tiltfile"}}
+	err := f.updateOwnedObjects(nn, tf,
+		&tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe1, fe2}})
+	assert.NoError(t, err)
+
+	name := apis.SanitizeName(fe1.ImageTargets[0].ID().String())
+
+	var fw v1alpha1.FileWatch
+	assert.NoError(t, f.Get(types.NamespacedName{Name: name}, &fw))
+	assert.Equal(t, fw.Spec.DisableSource, &v1alpha1.DisableSource{
+		EveryConfigMap: []v1alpha1.ConfigMapDisableSource{
+			{Name: "fe1-disable", Key: "isDisabled"},
+			{Name: "fe2-disable", Key: "isDisabled"},
+		},
+	})
+}
+
 func TestAPITwoTiltfiles(t *testing.T) {
 	f := newAPIFixture(t)
 	feA := manifestbuilder.New(f, "fe-a").WithK8sYAML(testyaml.SanchoYAML).Build()
@@ -253,7 +286,6 @@ func TestDisableObjects(t *testing.T) {
 			name := apis.SanitizeName(SanchoRef.String())
 			var im v1alpha1.ImageMap
 			require.NoError(t, f.Get(types.NamespacedName{Name: name}, &im))
-			require.Equal(t, feDisable, im.Spec.DisableSource)
 
 			var ka v1alpha1.KubernetesApply
 			require.NoError(t, f.Get(types.NamespacedName{Name: "fe"}, &ka))

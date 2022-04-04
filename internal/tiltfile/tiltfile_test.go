@@ -300,6 +300,24 @@ local('')
 	f.loadErrString("empty cmd")
 }
 
+func TestLocalStdin(t *testing.T) {
+	f := newFixture(t)
+
+	f.file("Tiltfile", `
+local('head -4 | tail -2', stdin='''foo
+bar
+baz
+quu
+qux
+''')
+`)
+
+	f.load()
+	require.Contains(t, f.out.String(), `head -4 | tail -2
+ → baz
+ → quu`)
+}
+
 func TestCustomBuildBat(t *testing.T) {
 	f := newFixture(t)
 

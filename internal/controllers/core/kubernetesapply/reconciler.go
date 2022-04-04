@@ -48,15 +48,13 @@ type deleteSpec struct {
 }
 
 type Reconciler struct {
-	st          store.RStore
-	dkc         build.DockerKubeConnection
-	kubeContext k8s.KubeContext
-	k8sClient   k8s.Client
-	cfgNS       k8s.Namespace
-	ctrlClient  ctrlclient.Client
-	indexer     *indexer.Indexer
-	execer      localexec.Execer
-	requeuer    *indexer.Requeuer
+	st         store.RStore
+	dkc        build.DockerKubeConnection
+	k8sClient  k8s.Client
+	ctrlClient ctrlclient.Client
+	indexer    *indexer.Indexer
+	execer     localexec.Execer
+	requeuer   *indexer.Requeuer
 
 	mu sync.Mutex
 
@@ -81,18 +79,16 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	return b, nil
 }
 
-func NewReconciler(ctrlClient ctrlclient.Client, k8sClient k8s.Client, scheme *runtime.Scheme, dkc build.DockerKubeConnection, kubeContext k8s.KubeContext, st store.RStore, cfgNS k8s.Namespace, execer localexec.Execer) *Reconciler {
+func NewReconciler(ctrlClient ctrlclient.Client, k8sClient k8s.Client, scheme *runtime.Scheme, dkc build.DockerKubeConnection, st store.RStore, execer localexec.Execer) *Reconciler {
 	return &Reconciler{
-		ctrlClient:  ctrlClient,
-		k8sClient:   k8sClient,
-		indexer:     indexer.NewIndexer(scheme, indexKubernetesApply),
-		execer:      execer,
-		dkc:         dkc,
-		kubeContext: kubeContext,
-		st:          st,
-		results:     make(map[types.NamespacedName]*Result),
-		cfgNS:       cfgNS,
-		requeuer:    indexer.NewRequeuer(),
+		ctrlClient: ctrlClient,
+		k8sClient:  k8sClient,
+		indexer:    indexer.NewIndexer(scheme, indexKubernetesApply),
+		execer:     execer,
+		dkc:        dkc,
+		st:         st,
+		results:    make(map[types.NamespacedName]*Result),
+		requeuer:   indexer.NewRequeuer(),
 	}
 }
 
@@ -474,7 +470,7 @@ func (r *Reconciler) createEntitiesToDeploy(ctx context.Context,
 		// When working with a local k8s cluster, we set the pull policy to Never,
 		// to ensure that k8s fails hard if the image is missing from docker.
 		policy := v1.PullIfNotPresent
-		if r.dkc.WillBuildToKubeContext(r.kubeContext) {
+		if r.dkc.WillBuildToKubeContext(k8s.KubeContext(r.k8sClient.ConnectionConfig().Context)) {
 			policy = v1.PullNever
 		}
 

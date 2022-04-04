@@ -3350,7 +3350,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 
 	wsl := server.NewWebsocketList()
 
-	kar := kubernetesapply.NewReconciler(cdc, kClient, sch, docker.Env{}, k8s.KubeContext("kind-kind"), st, "default", execer)
+	kar := kubernetesapply.NewReconciler(cdc, kClient, sch, docker.Env{}, st, execer)
 	dcds := dockercomposeservice.NewDisableSubscriber(ctx, fakeDcc, clock)
 	dcr := dockercomposeservice.NewReconciler(cdc, fakeDcc, dockerClient, st, sch, dcds)
 

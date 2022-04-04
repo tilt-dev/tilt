@@ -65,21 +65,10 @@ func (Plugin) OnExec(t *starlark.Thread, tiltfilePath string, contents []byte) e
 
 func readFile(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var path starlark.Value
-	// the type of default is Union[None, Str], so that we can distinguish unspecified from the empty string
-	// which means we can't simply lean on Unpack args for type-checking
-	var defaultReturnValue starlark.Value = starlark.None
+	var defaultReturnValue value.Optional[starlark.String]
 	err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs, "paths", &path, "default?", &defaultReturnValue)
 	if err != nil {
 		return nil, err
-	}
-
-	var defaultReturn starlark.String
-	if defaultReturnValue != starlark.None {
-		var ok bool
-		defaultReturn, ok = defaultReturnValue.(starlark.String)
-		if !ok {
-			return nil, fmt.Errorf("default must be %T or %T. got %T", starlark.None, starlark.String(""), defaultReturnValue)
-		}
 	}
 
 	p, err := value.ValueToAbsPath(thread, path)
@@ -88,8 +77,8 @@ func readFile(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple
 	}
 
 	bs, err := ReadFile(thread, p)
-	if os.IsNotExist(err) && defaultReturnValue != starlark.None {
-		bs = []byte(defaultReturn.GoString())
+	if os.IsNotExist(err) && defaultReturnValue.IsSet {
+		bs = []byte(defaultReturnValue.Value)
 	} else if err != nil {
 		return nil, err
 	}
