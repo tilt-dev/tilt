@@ -342,11 +342,11 @@ func (c *connection) toStatus() v1alpha1.ClusterStatus {
 	}
 
 	return v1alpha1.ClusterStatus{
-		Error:         clusterError,
-		Arch:          c.arch,
-		ServerVersion: c.serverVersion,
-		ConnectedAt:   connectedAt,
-		Registry:      reg,
-		Connection:    c.connStatus,
+		Error:       clusterError,
+		Arch:        c.arch,
+		Version:     c.serverVersion,
+		ConnectedAt: connectedAt,
+		Registry:    reg,
+		Connection:  c.connStatus,
 	}
 }

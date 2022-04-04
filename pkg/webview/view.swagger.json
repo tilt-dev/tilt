@@ -430,9 +430,9 @@
           "$ref": "#/definitions/v1alpha1ClusterConnectionStatus",
           "description": "Connection status for an existing cluster.\n\n+optional"
         },
-        "serverVersion": {
+        "version": {
           "type": "string",
-          "description": "ServerVersion is a cluster-provided, human-readable version string."
+          "description": "Version is a cluster-provided, human-readable version string.\n\n+optional"
         }
       },
       "title": "ClusterStatus defines the observed state of Cluster"
