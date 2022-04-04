@@ -32,8 +32,8 @@ go run -mod=vendor -ldflags "$VERSION_ARGS" ./cmd/tilt/main.go dump cli-docs --d
 go run -mod=vendor -ldflags "$VERSION_ARGS" ./cmd/tilt/main.go dump api-docs --dir="$ROOT/api"
 cd "$ROOT"
 
-# Generate the CLI TOC
 make cli-toc
+make api
 
 sed -i -E "s/asdf install tilt .*/asdf install tilt $VERSION/" docs/install.md
 sed -i -E "s/asdf global tilt .*/asdf global tilt $VERSION/" docs/install.md
