@@ -4,12 +4,15 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/blang/semver"
 	"github.com/docker/cli/opts"
 	"github.com/pkg/errors"
 
 	"github.com/tilt-dev/clusterid"
+
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -83,27 +86,38 @@ func (e Env) AsEnviron() []string {
 type ClusterEnv Env
 type LocalEnv Env
 
-func ProvideLocalEnv(_ context.Context, kubeContext k8s.KubeContext, env clusterid.Product, cEnv ClusterEnv) LocalEnv {
+func ProvideLocalEnv(
+	_ context.Context,
+	kubeContext k8s.KubeContext,
+	product clusterid.Product,
+	clusterEnv ClusterEnv,
+) LocalEnv {
 	result := overlayOSEnvVars(Env{})
 
 	// if the ClusterEnv host is the same, use it to infer some properties
-	if cEnv.Host == result.Host {
-		result.IsOldMinikube = cEnv.IsOldMinikube
-		result.BuildToKubeContexts = cEnv.BuildToKubeContexts
+	if clusterEnv.Host == result.Host {
+		result.IsOldMinikube = clusterEnv.IsOldMinikube
+		result.BuildToKubeContexts = clusterEnv.BuildToKubeContexts
 	}
 
 	// TODO(milas): I'm fairly certain we're adding the `docker-desktop`
 	//  kubecontext twice - the logic above should already have copied it
 	// 	from the cluster env (this is harmless though because
 	// 	Env::WillBuildToKubeContext still works fine)
-	if env == clusterid.ProductDockerDesktop && isDefaultHost(result) {
+	if product == clusterid.ProductDockerDesktop && isDefaultHost(result) {
 		result.BuildToKubeContexts = append(result.BuildToKubeContexts, string(kubeContext))
 	}
 
 	return LocalEnv(result)
 }
 
-func ProvideClusterEnv(ctx context.Context, kubeContext k8s.KubeContext, env clusterid.Product, runtime container.Runtime, minikubeClient k8s.MinikubeClient) ClusterEnv {
+func ProvideClusterEnv(
+	ctx context.Context,
+	kubeContext k8s.KubeContext,
+	product clusterid.Product,
+	runtime container.Runtime,
+	minikubeClient k8s.MinikubeClient,
+) ClusterEnv {
 	// start with an empty env, then populate with cluster-specific values if
 	// available, and then potentially throw that all away if there are OS env
 	// vars overriding those
@@ -123,10 +137,10 @@ func ProvideClusterEnv(ctx context.Context, kubeContext k8s.KubeContext, env clu
 	// 	- values set at OS that match cluster config -> they're the same!
 	//		this happens if you've run `eval (minikube docker-env)` in your
 	// 		shell/profile so that you can use `docker` CLI with it too
-	result := Env{}
+	env := Env{}
 
 	if runtime == container.RuntimeDocker {
-		if env == clusterid.ProductMinikube {
+		if product == clusterid.ProductMinikube {
 			// If we're running Minikube with a docker runtime, talk to Minikube's docker socket.
 			envMap, ok, err := minikubeClient.DockerEnv(ctx)
 			if err != nil {
@@ -136,46 +150,49 @@ func ProvideClusterEnv(ctx context.Context, kubeContext k8s.KubeContext, env clu
 			if ok {
 				host := envMap["DOCKER_HOST"]
 				if host != "" {
-					result.Host = host
+					env.Host = host
 				}
 
 				apiVersion := envMap["DOCKER_API_VERSION"]
 				if apiVersion != "" {
-					result.APIVersion = apiVersion
+					env.APIVersion = apiVersion
 				}
 
 				certPath := envMap["DOCKER_CERT_PATH"]
 				if certPath != "" {
-					result.CertPath = certPath
+					env.CertPath = certPath
 				}
 
 				tlsVerify := envMap["DOCKER_TLS_VERIFY"]
 				if tlsVerify != "" {
-					result.TLSVerify = tlsVerify
+					env.TLSVerify = tlsVerify
 				}
 
-				result.IsOldMinikube = isOldMinikube(ctx, minikubeClient)
-				result.BuildToKubeContexts = append(result.BuildToKubeContexts, string(kubeContext))
+				env.IsOldMinikube = isOldMinikube(ctx, minikubeClient)
+				env.BuildToKubeContexts = append(env.BuildToKubeContexts, string(kubeContext))
 			}
-		} else if env == clusterid.ProductMicroK8s {
+		} else if product == clusterid.ProductMicroK8s {
 			// If we're running Microk8s with a docker runtime, talk to Microk8s's docker socket.
-			result.Host = microK8sDockerHost
-			result.BuildToKubeContexts = append(result.BuildToKubeContexts, string(kubeContext))
+			env.Host = microK8sDockerHost
+			env.BuildToKubeContexts = append(env.BuildToKubeContexts, string(kubeContext))
 		}
 	}
 
 	// overlay OS values, potentially throwing away the cluster-provided config
-	result = overlayOSEnvVars(result)
-	if runtime == container.RuntimeDocker && isDefaultHost(result) {
-		// currently both Docker Desktop + Rancher Desktop support running a
-		// K8s cluster that shares the default Docker socket (as compared to
-		// minikube/microk8s which maintain their own independent Docker socket)
-		if env == clusterid.ProductDockerDesktop || env == clusterid.ProductRancherDesktop {
-			result.BuildToKubeContexts = append(result.BuildToKubeContexts, string(kubeContext))
-		}
+	env = overlayOSEnvVars(env)
+
+	// some local Docker-based solutions expose their socket so we can build
+	// direct to the K8s container runtime (eliminating the need for pushing
+	// images)
+	//
+	// currently, we handle this by inspecting the Docker + K8s configs to see
+	// if they're matched up, but with the exception of microk8s (handled above),
+	// we don't override the environmental Docker config
+	if runtime == container.RuntimeDocker && willBuildToKubeContext(product, kubeContext, env) {
+		env.BuildToKubeContexts = append(env.BuildToKubeContexts, string(kubeContext))
 	}
 
-	return ClusterEnv(result)
+	return ClusterEnv(env)
 }
 
 func isOldMinikube(ctx context.Context, minikubeClient k8s.MinikubeClient) bool {
@@ -238,4 +255,37 @@ func overlayOSEnvVars(result Env) Env {
 	}
 
 	return result
+}
+
+func willBuildToKubeContext(product clusterid.Product, kubeContext k8s.KubeContext, env Env) bool {
+	switch product {
+	case clusterid.ProductDockerDesktop:
+		return isDefaultHost(env)
+	case clusterid.ProductRancherDesktop:
+		// N.B. Rancher Desktop creates a Docker socket at /var/run/docker.sock
+		// (the same as Docker Desktop)
+		return isDefaultHost(env)
+	case clusterid.ProductColima:
+		if _, host, ok := strings.Cut(env.Host, "unix://"); ok {
+			// Socket is stored in a directory named `.colima[-$profile]`
+			// For example:
+			// 	colima default profile -> ~/.colima/docker.sock
+			// 	colima "test" profile -> ~/.colima-test/docker.sock
+			//
+			// NOTE: ~ is used for legibility here; in practice, the paths MUST
+			// be fully qualified!
+			//
+			// We look for the existence of the `/` in the path after the dir
+			// to prevent mismatching Colima profiles: e.g. a KubeContext of
+			// `colima-test` and `DOCKER_HOST=unix://~/.colima/docker.sock`
+			// should NOT be considered as building to the context, as these
+			// are two distinct Colima VMs/profiles. (This would almost always
+			// be indicative of user error, but we respect the Docker + K8s
+			// configs as provided to Tilt as-is. Providing a warning upon
+			// detecting a likely misconfiguration here is probably a good idea
+			// in the future, however!)
+			return strings.Contains(host, string(kubeContext)+string(filepath.Separator))
+		}
+	}
+	return false
 }

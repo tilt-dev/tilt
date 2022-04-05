@@ -645,8 +645,8 @@ github.com/theupdateframework/notary/tuf/data
 github.com/theupdateframework/notary/tuf/signed
 github.com/theupdateframework/notary/tuf/utils
 github.com/theupdateframework/notary/tuf/validation
-# github.com/tilt-dev/clusterid v0.1.2
-## explicit; go 1.17
+# github.com/tilt-dev/clusterid v0.1.3
+## explicit; go 1.18
 github.com/tilt-dev/clusterid
 # github.com/tilt-dev/dockerignore v0.1.1
 ## explicit; go 1.16

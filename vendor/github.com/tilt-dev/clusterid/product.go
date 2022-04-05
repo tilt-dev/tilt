@@ -37,17 +37,19 @@ const (
 	ProductKIND           Product = "kind"
 	ProductK3D            Product = "k3d"
 	ProductRancherDesktop Product = "rancher-desktop"
+	ProductColima         Product = "colima"
 )
 
-func (e Product) IsDevCluster() bool {
-	return e == ProductMinikube ||
-		e == ProductDockerDesktop ||
-		e == ProductMicroK8s ||
-		e == ProductCRC ||
-		e == ProductKIND ||
-		e == ProductK3D ||
-		e == ProductKrucible ||
-		e == ProductRancherDesktop
+func (p Product) IsDevCluster() bool {
+	return p == ProductMinikube ||
+		p == ProductDockerDesktop ||
+		p == ProductMicroK8s ||
+		p == ProductCRC ||
+		p == ProductKIND ||
+		p == ProductK3D ||
+		p == ProductKrucible ||
+		p == ProductRancherDesktop ||
+		p == ProductColima
 }
 
 func ProductFromContext(c *clientcmdapi.Context, cl *clientcmdapi.Cluster) Product {
@@ -76,6 +78,8 @@ func ProductFromContext(c *clientcmdapi.Context, cl *clientcmdapi.Cluster) Produ
 		return ProductK3D
 	} else if strings.HasPrefix(cn, "rancher-desktop") {
 		return ProductRancherDesktop
+	} else if strings.HasPrefix(cn, "colima") {
+		return ProductColima
 	}
 
 	loc := c.LocationOfOrigin
