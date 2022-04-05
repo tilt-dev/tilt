@@ -79,11 +79,15 @@ func (c *BuildController) needsBuild(ctx context.Context, st store.RStore) (buil
 
 	buildReason := mt.NextBuildReason()
 	targets := buildcontrol.BuildTargets(manifest)
+	clusterName := v1alpha1.ClusterNameDefault
+	if manifest.IsDC() {
+		clusterName = v1alpha1.ClusterNameDocker
+	}
 	buildStateSet := buildStateSet(ctx,
 		manifest,
 		state.KubernetesResources[manifest.Name.String()],
 		state.DockerComposeServices[manifest.Name.String()],
-		state.Clusters[v1alpha1.ClusterNameDefault],
+		state.Clusters[clusterName],
 		targets,
 		ms,
 		buildReason)
