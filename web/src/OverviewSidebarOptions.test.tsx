@@ -1,19 +1,22 @@
-import { mount, ReactWrapper } from "enzyme"
-import React from "react"
+import { render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
+import React, { ReactElement } from "react"
 import { MemoryRouter } from "react-router"
+import { AnalyticsAction, AnalyticsType } from "./analytics"
 import {
   cleanupMockAnalyticsCalls,
+  expectIncrs,
   mockAnalyticsCalls,
 } from "./analytics_test_helpers"
 import { accessorsForTesting, tiltfileKeyContext } from "./BrowserStorage"
+import Features, { FeaturesTestProvider, Flag } from "./feature"
 import {
+  TenResourcesWithLabels,
   TestsWithErrors,
   TwoResourcesTwoTests,
 } from "./OverviewResourceSidebar.stories"
-import {
-  CheckboxToggle,
-  OverviewSidebarOptions,
-} from "./OverviewSidebarOptions"
+import { OverviewSidebarOptionsRoot } from "./OverviewSidebarOptions"
+import { ResourceGroupsContextProvider } from "./ResourceGroupsContext"
 import {
   DEFAULT_OPTIONS,
   ResourceListOptions,
@@ -21,9 +24,11 @@ import {
   RESOURCE_LIST_OPTIONS_KEY,
 } from "./ResourceListOptionsContext"
 import { ResourceNameFilterTextField } from "./ResourceNameFilter"
-import SidebarItemView from "./SidebarItemView"
-import SidebarResources, { SidebarListSection } from "./SidebarResources"
-import { StarredResourcesContextProvider } from "./StarredResourcesContext"
+import { SidebarItemNameRoot, SidebarItemRoot } from "./SidebarItemView"
+import {
+  SidebarListSectionItemsRoot,
+  SidebarResourcesRoot,
+} from "./SidebarResources"
 
 const resourceListOptionsAccessor = accessorsForTesting<ResourceListOptions>(
   RESOURCE_LIST_OPTIONS_KEY,
@@ -37,69 +42,90 @@ const resourceListOptionsAccessor = accessorsForTesting<ResourceListOptions>(
  */
 
 function assertSidebarItemsAndOptions(
-  root: ReactWrapper,
+  root: HTMLElement,
   names: string[],
   expectAlertsOnTop: boolean,
   expectedResourceNameFilter?: string
 ) {
-  let sidebar = root.find(SidebarResources)
+  let sidebar = Array.from(root.querySelectorAll(SidebarResourcesRoot))
   expect(sidebar).toHaveLength(1)
 
   // only check items in the "all resources" section, i.e. don't look at starred things
   // or we'll have duplicates
-  let all = sidebar.find(SidebarListSection)
-  let items = all.find(SidebarItemView)
-  const observedNames = items.map((i) => i.props().item.name)
+  let all = sidebar[0].querySelector(SidebarListSectionItemsRoot)!
+  let items = Array.from(all.querySelectorAll(SidebarItemRoot))
+  const observedNames = items.map(
+    (i) => i.querySelector(SidebarItemNameRoot)?.textContent
+  )
   expect(observedNames).toEqual(names)
 
-  let optSetter = sidebar.find(OverviewSidebarOptions)
-  expect(optSetter).toHaveLength(1)
-  expect(optSetter.find(CheckboxToggle).prop("checked")).toEqual(
-    expectAlertsOnTop
+  let optSetter = Array.from(
+    sidebar[0].querySelectorAll(OverviewSidebarOptionsRoot)
   )
+  expect(optSetter).toHaveLength(1)
+
+  let checkbox = optSetter[0].querySelector(
+    "input[type=checkbox]"
+  ) as HTMLInputElement
+  expect(checkbox.checked).toEqual(expectAlertsOnTop)
   if (expectedResourceNameFilter !== undefined) {
-    expect(optSetter.find(ResourceNameFilterTextField).props().value).toEqual(
-      expectedResourceNameFilter
-    )
+    expect(
+      optSetter[0].querySelector(ResourceNameFilterTextField)!.textContent
+    ).toEqual(expectedResourceNameFilter)
   }
 }
 
+beforeEach(() => {
+  mockAnalyticsCalls()
+})
+
+afterEach(() => {
+  cleanupMockAnalyticsCalls()
+  localStorage.clear()
+  resourceListOptionsAccessor.set({
+    ...DEFAULT_OPTIONS,
+  })
+})
+
+function renderContainer(x: ReactElement) {
+  const features = new Features({
+    [Flag.Labels]: true,
+    [Flag.DisableResources]: true,
+  })
+  const { container } = render(
+    <MemoryRouter>
+      <FeaturesTestProvider value={features}>
+        <tiltfileKeyContext.Provider value="test">
+          <ResourceGroupsContextProvider>
+            <ResourceListOptionsProvider>{x}</ResourceListOptionsProvider>
+          </ResourceGroupsContextProvider>
+        </tiltfileKeyContext.Provider>
+      </FeaturesTestProvider>
+    </MemoryRouter>
+  )
+  return container
+}
+
 describe("overview sidebar options", () => {
-  beforeEach(() => {
-    mockAnalyticsCalls()
-  })
-
-  afterEach(() => {
-    cleanupMockAnalyticsCalls()
-    localStorage.clear()
-  })
-
   it("says no matches found", () => {
     resourceListOptionsAccessor.set({
       ...DEFAULT_OPTIONS,
       resourceNameFilter: "asdfawfwef",
     })
-    const root = mount(
-      <MemoryRouter>
-        <tiltfileKeyContext.Provider value="test">
-          <ResourceListOptionsProvider>
-            <StarredResourcesContextProvider>
-              {TwoResourcesTwoTests()}
-            </StarredResourcesContextProvider>
-          </ResourceListOptionsProvider>
-        </tiltfileKeyContext.Provider>
-      </MemoryRouter>
+    const container = renderContainer(<TwoResourcesTwoTests />)
+    const resourceSectionItems = Array.from(
+      container
+        .querySelector(SidebarListSectionItemsRoot)!
+        .querySelectorAll("li")
     )
-
-    const resourceSectionItems = root.find(SidebarListSection).find("li")
-    expect(resourceSectionItems.map((n) => n.text())).toEqual([
+    expect(resourceSectionItems.map((n) => n.textContent)).toEqual([
       "No matching resources",
     ])
   })
 })
 
 it("toggles/untoggles Alerts On Top sorting when button clicked", () => {
-  const root = mount(TestsWithErrors())
+  const { container } = render(TestsWithErrors())
 
   const origOrder = [
     "(Tiltfile)",
@@ -123,13 +149,35 @@ it("toggles/untoggles Alerts On Top sorting when button clicked", () => {
     "test_5",
     "test_7",
   ]
-  assertSidebarItemsAndOptions(root, origOrder, false)
+  assertSidebarItemsAndOptions(container, origOrder, false)
 
-  let aotToggle = root.find(CheckboxToggle)
-  aotToggle.simulate("click")
+  let aotToggle = screen.getByLabelText("Alerts on top")
+  userEvent.click(aotToggle)
 
-  assertSidebarItemsAndOptions(root, alertsOnTopOrder, true)
+  assertSidebarItemsAndOptions(container, alertsOnTopOrder, true)
 
-  aotToggle.simulate("click")
-  assertSidebarItemsAndOptions(root, origOrder, false)
+  userEvent.click(aotToggle)
+  assertSidebarItemsAndOptions(container, origOrder, false)
+})
+
+describe("expand-all button", () => {
+  it("sends analytics onclick", () => {
+    const container = renderContainer(<TenResourcesWithLabels />)
+    userEvent.click(screen.getByTitle("Expand All"))
+    expectIncrs({
+      name: "ui.web.expandAllGroups",
+      tags: { action: AnalyticsAction.Click, type: AnalyticsType.Detail },
+    })
+  })
+})
+
+describe("collapse-all button", () => {
+  it("sends analytics onclick", () => {
+    const container = renderContainer(<TenResourcesWithLabels />)
+    userEvent.click(screen.getByTitle("Collapse All"))
+    expectIncrs({
+      name: "ui.web.collapseAllGroups",
+      tags: { action: AnalyticsAction.Click, type: AnalyticsType.Detail },
+    })
+  })
 })

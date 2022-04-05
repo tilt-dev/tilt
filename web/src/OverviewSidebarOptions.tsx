@@ -1,11 +1,15 @@
 import { FormControlLabel } from "@material-ui/core"
-import React from "react"
+import React, { useCallback, useMemo } from "react"
 import styled from "styled-components"
 import { AnalyticsType } from "./analytics"
 import { Flag, useFeatures } from "./feature"
 import { InstrumentedCheckbox } from "./instrumentedComponents"
+import { TILTFILE_LABEL, UNLABELED_LABEL } from "./labels"
+import { CollapseButton, ExpandButton } from "./resourceListOptionsButtons"
 import { useResourceListOptions } from "./ResourceListOptionsContext"
 import { ResourceNameFilter } from "./ResourceNameFilter"
+import SidebarItem from "./SidebarItem"
+import { sidebarItemIsDisabled } from "./SidebarItemView"
 import {
   Color,
   Font,
@@ -13,8 +17,9 @@ import {
   mixinResetListStyle,
   SizeUnit,
 } from "./style-helpers"
+import { ResourceName } from "./types"
 
-const OverviewSidebarOptionsRoot = styled.div`
+export const OverviewSidebarOptionsRoot = styled.div`
   display: flex;
   justify-content: space-between;
   font-family: ${Font.monospace};
@@ -25,11 +30,11 @@ const OverviewSidebarOptionsRoot = styled.div`
   flex-direction: column;
 `
 
-const OverviewSidebarOptionsButtonsRoot = styled.div`
+const OverviewSidebarOptionsButtonRow = styled.div`
   align-items: center;
   display: flex;
   flex-direction: row;
-  justify-content: flex-start;
+  justify-content: space-between;
   width: 100%;
 `
 
@@ -53,12 +58,74 @@ export const CheckboxToggle = styled(InstrumentedCheckbox)`
   }
 `
 
-export function OverviewSidebarOptions() {
-  const { options, setOptions } = useResourceListOptions()
-  const features = useFeatures()
+// Create a list of all the groups from the list of resources.
+//
+// Sadly, this logic is duplicated several times across table and sidebar,
+// but there's no easy way to consolidate it right now.
+function toGroups(
+  items: SidebarItem[],
+  hideDisabledResources: boolean
+): string[] {
+  let hasUnlabeled = false
+  let hasTiltfile = false
+  let hasLabels: { [key: string]: boolean } = {}
+  items.forEach((item) => {
+    const isDisabled = sidebarItemIsDisabled(item)
+    if (hideDisabledResources && isDisabled) {
+      return
+    }
 
-  const disableResourcesEnabled = features.isEnabled(Flag.DisableResources)
-  const disabledResourcesToggle = disableResourcesEnabled ? (
+    const labels = item.labels
+    const isTiltfile = item.name === ResourceName.tiltfile
+    if (labels.length) {
+      labels.forEach((label) => {
+        hasLabels[label] = true
+      })
+    } else if (isTiltfile) {
+      hasTiltfile = true
+    } else {
+      hasUnlabeled = true
+    }
+  })
+
+  let groups = Object.keys(hasLabels)
+  if (groups.length) {
+    if (hasTiltfile) {
+      groups.push(TILTFILE_LABEL)
+    }
+    if (hasUnlabeled) {
+      groups.push(UNLABELED_LABEL)
+    }
+  }
+  return groups
+}
+
+export function OverviewSidebarOptions(props: { items?: SidebarItem[] }) {
+  const features = useFeatures()
+  const { options, setOptions } = useResourceListOptions()
+  let toggleDisabledResources = useCallback(() => {
+    setOptions({
+      showDisabledResources: !options.showDisabledResources,
+    })
+  }, [options.showDisabledResources])
+
+  const labelsEnabled = features.isEnabled(Flag.Labels)
+  let items = props.items || []
+
+  const hideDisabledResources =
+    !features.isEnabled(Flag.DisableResources) || !options.showDisabledResources
+
+  // TODO(nick): Enable/disable the expand/collapse button based
+  // on whether the groups are shown and the current group state.
+  let groups = useMemo(
+    () => toGroups(items, hideDisabledResources),
+    [items, hideDisabledResources]
+  )
+  const resourceFilterApplied = options.resourceNameFilter.length > 0
+  const displayResourceGroups =
+    labelsEnabled && groups.length && !resourceFilterApplied
+
+  const disabledResourcesToggle = features.isEnabled(Flag.DisableResources) ? (
     <SidebarOptionsLabel
       control={
         <CheckboxToggle
@@ -66,11 +133,7 @@ export function OverviewSidebarOptions() {
           analyticsTags={{ type: AnalyticsType.Detail }}
           size="small"
           checked={options.showDisabledResources}
-          onClick={(_e) =>
-            setOptions({
-              showDisabledResources: !options.showDisabledResources,
-            })
-          }
+          onClick={toggleDisabledResources}
         />
       }
       label="Show disabled resources"
@@ -79,8 +142,8 @@ export function OverviewSidebarOptions() {
 
   return (
     <OverviewSidebarOptionsRoot>
-      <OverviewSidebarOptionsButtonsRoot>
-        {disabledResourcesToggle}
+      <ResourceNameFilter />
+      <OverviewSidebarOptionsButtonRow>
         <SidebarOptionsLabel
           control={
             <CheckboxToggle
@@ -94,8 +157,19 @@ export function OverviewSidebarOptions() {
           }
           label="Alerts on top"
         />
-      </OverviewSidebarOptionsButtonsRoot>
-      <ResourceNameFilter />
+        <div>
+          <ExpandButton
+            disabled={!displayResourceGroups}
+            analyticsType={AnalyticsType.Detail}
+          />
+          <CollapseButton
+            groups={groups}
+            disabled={!displayResourceGroups}
+            analyticsType={AnalyticsType.Detail}
+          />
+        </div>
+      </OverviewSidebarOptionsButtonRow>
+      {disabledResourcesToggle}
     </OverviewSidebarOptionsRoot>
   )
 }
