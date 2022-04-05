@@ -1,4 +1,4 @@
-package buildcontrol
+package build
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/clusterid"
-	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/ignore"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -19,12 +18,12 @@ import (
 )
 
 type ImageBuilder struct {
-	db    *build.DockerBuilder
-	custb *build.CustomBuilder
+	db    *DockerBuilder
+	custb *CustomBuilder
 	kl    KINDLoader
 }
 
-func NewImageBuilder(db *build.DockerBuilder, custb *build.CustomBuilder, kl KINDLoader) *ImageBuilder {
+func NewImageBuilder(db *DockerBuilder, custb *CustomBuilder, kl KINDLoader) *ImageBuilder {
 	return &ImageBuilder{
 		db:    db,
 		custb: custb,
@@ -54,7 +53,7 @@ func (ib *ImageBuilder) Build(ctx context.Context,
 	iTarget model.ImageTarget,
 	cluster *v1alpha1.Cluster,
 	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap,
-	ps *build.PipelineState) (container.TaggedRefs, []v1alpha1.DockerImageStageStatus, error) {
+	ps *PipelineState) (container.TaggedRefs, []v1alpha1.DockerImageStageStatus, error) {
 	refs, stages, err := ib.buildOnly(ctx, iTarget, cluster, imageMaps, ps)
 	if err != nil {
 		return refs, stages, err
@@ -77,7 +76,7 @@ func (ib *ImageBuilder) buildOnly(ctx context.Context,
 	iTarget model.ImageTarget,
 	cluster *v1alpha1.Cluster,
 	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap,
-	ps *build.PipelineState) (container.TaggedRefs, []v1alpha1.DockerImageStageStatus, error) {
+	ps *PipelineState) (container.TaggedRefs, []v1alpha1.DockerImageStageStatus, error) {
 	userFacingRefName := container.FamiliarString(iTarget.Refs.ConfigurationRef)
 
 	switch bd := iTarget.BuildDetails.(type) {
@@ -104,7 +103,7 @@ func (ib *ImageBuilder) buildOnly(ctx context.Context,
 }
 
 // Push the image if the clsuter requires it.
-func (ib *ImageBuilder) push(ctx context.Context, ref reference.NamedTagged, ps *build.PipelineState, iTarget model.ImageTarget, cluster *v1alpha1.Cluster) *v1alpha1.DockerImageStageStatus {
+func (ib *ImageBuilder) push(ctx context.Context, ref reference.NamedTagged, ps *PipelineState, iTarget model.ImageTarget, cluster *v1alpha1.Cluster) *v1alpha1.DockerImageStageStatus {
 	// Skip the push phase entirely if we're on Docker Compose.
 	isDC := cluster != nil &&
 		cluster.Spec.Connection != nil &&

@@ -1,4 +1,4 @@
-package buildcontrol
+package build
 
 import (
 	"context"

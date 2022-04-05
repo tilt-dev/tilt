@@ -34,7 +34,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/engine"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
-	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/engine/configs"
 	"github.com/tilt-dev/tilt/internal/engine/dockerprune"
 	"github.com/tilt-dev/tilt/internal/engine/k8srollout"
@@ -148,7 +147,7 @@ var BaseWireSet = wire.NewSet(
 	xdg.NewTiltDevBase,
 	token.GetOrCreateToken,
 
-	buildcontrol.NewKINDLoader,
+	build.NewKINDLoader,
 
 	wire.Value(feature.MainDefaults),
 )

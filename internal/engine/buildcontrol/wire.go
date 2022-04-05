@@ -18,7 +18,9 @@ import (
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/containerupdate"
+	"github.com/tilt-dev/tilt/internal/controllers/core/cmdimage"
 	"github.com/tilt-dev/tilt/internal/controllers/core/dockercomposeservice"
+	"github.com/tilt-dev/tilt/internal/controllers/core/dockerimage"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesapply"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
@@ -47,7 +49,7 @@ var BaseWireSet = wire.NewSet(
 	NewLocalTargetBuildAndDeployer,
 	containerupdate.NewDockerUpdater,
 	containerupdate.NewExecUpdater,
-	NewImageBuilder,
+	build.NewImageBuilder,
 
 	tracer.InitOpenTelemetry,
 
@@ -63,7 +65,7 @@ func ProvideImageBuildAndDeployer(
 	clusterEnv docker.ClusterEnv,
 	dir *dirs.TiltDevDir,
 	clock build.Clock,
-	kp KINDLoader,
+	kp build.KINDLoader,
 	analytics *analytics.TiltAnalytics,
 	ctrlclient ctrlclient.Client,
 	st store.RStore,
@@ -71,6 +73,8 @@ func ProvideImageBuildAndDeployer(
 	wire.Build(
 		BaseWireSet,
 		kubernetesapply.NewReconciler,
+		dockerimage.NewReconciler,
+		cmdimage.NewReconciler,
 	)
 
 	return nil, nil
@@ -88,7 +92,9 @@ func ProvideDockerComposeBuildAndDeployer(
 		BaseWireSet,
 		dockercomposeservice.WireSet,
 		build.ProvideClock,
-		NewKINDLoader,
+		build.NewKINDLoader,
+		dockerimage.NewReconciler,
+		cmdimage.NewReconciler,
 	)
 
 	return nil, nil
