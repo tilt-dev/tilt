@@ -342,8 +342,8 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	customBuilder := build.NewCustomBuilder(compositeClient, buildClock)
 	kindLoader := build.NewKINDLoader()
 	imageBuilder := build.NewImageBuilder(dockerBuilder, customBuilder, kindLoader)
-	dockerimageReconciler := dockerimage.NewReconciler(deferredClient, compositeClient, imageBuilder)
-	cmdimageReconciler := cmdimage.NewReconciler(deferredClient, compositeClient, imageBuilder)
+	dockerimageReconciler := dockerimage.NewReconciler(deferredClient, scheme, compositeClient, imageBuilder)
+	cmdimageReconciler := cmdimage.NewReconciler(deferredClient, scheme, compositeClient, imageBuilder)
 	dockerClientFactory := _wireDockerClientFuncValue
 	kubernetesClientFactory := _wireKubernetesClientFuncValue
 	clusterReconciler := cluster.NewReconciler(ctx, deferredClient, storeStore, clock, connectionManager, localEnv, dockerClientFactory, kubernetesClientFactory)
@@ -554,8 +554,8 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	customBuilder := build.NewCustomBuilder(compositeClient, buildClock)
 	kindLoader := build.NewKINDLoader()
 	imageBuilder := build.NewImageBuilder(dockerBuilder, customBuilder, kindLoader)
-	dockerimageReconciler := dockerimage.NewReconciler(deferredClient, compositeClient, imageBuilder)
-	cmdimageReconciler := cmdimage.NewReconciler(deferredClient, compositeClient, imageBuilder)
+	dockerimageReconciler := dockerimage.NewReconciler(deferredClient, scheme, compositeClient, imageBuilder)
+	cmdimageReconciler := cmdimage.NewReconciler(deferredClient, scheme, compositeClient, imageBuilder)
 	dockerClientFactory := _wireDockerClientFuncValue
 	kubernetesClientFactory := _wireKubernetesClientFuncValue
 	clusterReconciler := cluster.NewReconciler(ctx, deferredClient, storeStore, clock, connectionManager, localEnv, dockerClientFactory, kubernetesClientFactory)
@@ -762,8 +762,8 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	customBuilder := build.NewCustomBuilder(compositeClient, buildClock)
 	kindLoader := build.NewKINDLoader()
 	imageBuilder := build.NewImageBuilder(dockerBuilder, customBuilder, kindLoader)
-	dockerimageReconciler := dockerimage.NewReconciler(deferredClient, compositeClient, imageBuilder)
-	cmdimageReconciler := cmdimage.NewReconciler(deferredClient, compositeClient, imageBuilder)
+	dockerimageReconciler := dockerimage.NewReconciler(deferredClient, scheme, compositeClient, imageBuilder)
+	cmdimageReconciler := cmdimage.NewReconciler(deferredClient, scheme, compositeClient, imageBuilder)
 	dockerClientFactory := _wireDockerClientFuncValue
 	kubernetesClientFactory := _wireKubernetesClientFuncValue
 	clusterReconciler := cluster.NewReconciler(ctx, deferredClient, storeStore, clock, connectionManager, localEnv, dockerClientFactory, kubernetesClientFactory)

@@ -3357,8 +3357,8 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	customBuilder := build.NewCustomBuilder(dockerClient, clock)
 	kp := build.NewKINDLoader()
 	ib := build.NewImageBuilder(dockerBuilder, customBuilder, kp)
-	dir := dockerimage.NewReconciler(cdc, dockerClient, ib)
-	cir := cmdimage.NewReconciler(cdc, dockerClient, ib)
+	dir := dockerimage.NewReconciler(cdc, sch, dockerClient, ib)
+	cir := cmdimage.NewReconciler(cdc, sch, dockerClient, ib)
 	clr := cluster.NewReconciler(ctx, cdc, st, clock, clusterClients, docker.LocalEnv{},
 		cluster.FakeDockerClientOrError(dockerClient, nil),
 		cluster.FakeKubernetesClientOrError(kClient, nil))

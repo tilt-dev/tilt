@@ -36,13 +36,13 @@ import (
 // Injectors from wire.go:
 
 func ProvideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, env clusterid.Product, kubeContext k8s.KubeContext, clusterEnv docker.ClusterEnv, dir *dirs.TiltDevDir, clock build.Clock, kp build.KINDLoader, analytics2 *analytics.TiltAnalytics, ctrlclient client.Client, st store.RStore, execer localexec.Execer) (*ImageBuildAndDeployer, error) {
+	scheme := v1alpha1.NewScheme()
 	labels := _wireLabelsValue
 	dockerBuilder := build.NewDockerBuilder(docker2, labels)
 	customBuilder := build.NewCustomBuilder(docker2, clock)
 	imageBuilder := build.NewImageBuilder(dockerBuilder, customBuilder, kp)
-	reconciler := dockerimage.NewReconciler(ctrlclient, docker2, imageBuilder)
-	cmdimageReconciler := cmdimage.NewReconciler(ctrlclient, docker2, imageBuilder)
-	scheme := v1alpha1.NewScheme()
+	reconciler := dockerimage.NewReconciler(ctrlclient, scheme, docker2, imageBuilder)
+	cmdimageReconciler := cmdimage.NewReconciler(ctrlclient, scheme, docker2, imageBuilder)
 	kubernetesapplyReconciler := kubernetesapply.NewReconciler(ctrlclient, kClient, scheme, dockerBuilder, st, execer)
 	imageBuildAndDeployer := NewImageBuildAndDeployer(reconciler, cmdimageReconciler, imageBuilder, analytics2, clock, ctrlclient, kubernetesapplyReconciler)
 	return imageBuildAndDeployer, nil
@@ -53,15 +53,15 @@ var (
 )
 
 func ProvideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompose.DockerComposeClient, dCli docker.Client, ctrlclient client.Client, st store.RStore, clock clockwork.Clock, dir *dirs.TiltDevDir) (*DockerComposeBuildAndDeployer, error) {
+	scheme := v1alpha1.NewScheme()
 	labels := _wireLabelsValue
 	dockerBuilder := build.NewDockerBuilder(dCli, labels)
 	buildClock := build.ProvideClock()
 	customBuilder := build.NewCustomBuilder(dCli, buildClock)
 	kindLoader := build.NewKINDLoader()
 	imageBuilder := build.NewImageBuilder(dockerBuilder, customBuilder, kindLoader)
-	reconciler := dockerimage.NewReconciler(ctrlclient, dCli, imageBuilder)
-	cmdimageReconciler := cmdimage.NewReconciler(ctrlclient, dCli, imageBuilder)
-	scheme := v1alpha1.NewScheme()
+	reconciler := dockerimage.NewReconciler(ctrlclient, scheme, dCli, imageBuilder)
+	cmdimageReconciler := cmdimage.NewReconciler(ctrlclient, scheme, dCli, imageBuilder)
 	disableSubscriber := dockercomposeservice.NewDisableSubscriber(ctx, dcCli, clock)
 	dockercomposeserviceReconciler := dockercomposeservice.NewReconciler(ctrlclient, dcCli, dCli, st, scheme, disableSubscriber)
 	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(reconciler, cmdimageReconciler, imageBuilder, dockercomposeserviceReconciler, buildClock, ctrlclient)

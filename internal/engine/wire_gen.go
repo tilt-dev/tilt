@@ -39,13 +39,13 @@ import (
 // Injectors from wire.go:
 
 func provideFakeBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, dir *dirs.TiltDevDir, env clusterid.Product, updateMode liveupdates.UpdateModeFlag, dcc dockercompose.DockerComposeClient, clock build.Clock, kp build.KINDLoader, analytics2 *analytics.TiltAnalytics, ctrlClient client.Client, st store.RStore, execer localexec.Execer) (buildcontrol.BuildAndDeployer, error) {
+	scheme := v1alpha1.NewScheme()
 	labels := _wireLabelsValue
 	dockerBuilder := build.NewDockerBuilder(docker2, labels)
 	customBuilder := build.NewCustomBuilder(docker2, clock)
 	imageBuilder := build.NewImageBuilder(dockerBuilder, customBuilder, kp)
-	reconciler := dockerimage.NewReconciler(ctrlClient, docker2, imageBuilder)
-	cmdimageReconciler := cmdimage.NewReconciler(ctrlClient, docker2, imageBuilder)
-	scheme := v1alpha1.NewScheme()
+	reconciler := dockerimage.NewReconciler(ctrlClient, scheme, docker2, imageBuilder)
+	cmdimageReconciler := cmdimage.NewReconciler(ctrlClient, scheme, docker2, imageBuilder)
 	kubernetesapplyReconciler := kubernetesapply.NewReconciler(ctrlClient, kClient, scheme, dockerBuilder, st, execer)
 	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(reconciler, cmdimageReconciler, imageBuilder, analytics2, clock, ctrlClient, kubernetesapplyReconciler)
 	clockworkClock := clockwork.NewRealClock()
