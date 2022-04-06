@@ -120,6 +120,8 @@ func TestNewRegistryEmptyOK(t *testing.T) {
 
 func TestRegistryFromCluster(t *testing.T) {
 	registryHosting := func(host string) *v1alpha1.RegistryHosting {
+		// the container.Registry constructors do some validation, so these
+		// need to be valid canonical repository values
 		return &v1alpha1.RegistryHosting{
 			Host:                     host,
 			HostFromClusterNetwork:   "localhost:12345/cluster-network",
@@ -190,7 +192,7 @@ func TestRegistryFromCluster(t *testing.T) {
 					Registry: registryHosting(""),
 				},
 			},
-			expectedErr: `illegal registry: provided hostFromCluster "local-container-runtime" without providing Host`,
+			expectedErr: `illegal registry: provided hostFromCluster "localhost:12345/container-runtime" without providing Host`,
 		},
 	}
 
