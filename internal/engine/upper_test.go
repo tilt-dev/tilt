@@ -31,9 +31,8 @@ import (
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/clusterid"
-	"github.com/tilt-dev/wmclient/pkg/analytics"
-
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/cloud"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/containerupdate"
@@ -110,6 +109,7 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
 	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
+	"github.com/tilt-dev/wmclient/pkg/analytics"
 )
 
 var originalWD string
@@ -3353,8 +3353,12 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 
 	cu := &containerupdate.FakeContainerUpdater{}
 	lur := liveupdate.NewFakeReconciler(st, cu, cdc)
-	dir := dockerimage.NewReconciler(cdc, sch)
-	cir := cmdimage.NewReconciler(cdc, sch)
+	dockerBuilder := build.NewDockerBuilder(dockerClient, nil)
+	customBuilder := build.NewCustomBuilder(dockerClient, clock)
+	kp := build.NewKINDLoader()
+	ib := build.NewImageBuilder(dockerBuilder, customBuilder, kp)
+	dir := dockerimage.NewReconciler(cdc, sch, dockerClient, ib)
+	cir := cmdimage.NewReconciler(cdc, sch, dockerClient, ib)
 	clr := cluster.NewReconciler(ctx, cdc, st, clock, clusterClients, docker.LocalEnv{},
 		cluster.FakeDockerClientOrError(dockerClient, nil),
 		cluster.FakeKubernetesClientOrError(kClient, nil))

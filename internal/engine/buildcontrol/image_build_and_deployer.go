@@ -15,7 +15,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesapply"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
-	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -23,7 +22,9 @@ import (
 var _ BuildAndDeployer = &ImageBuildAndDeployer{}
 
 type ImageBuildAndDeployer struct {
-	ib         *ImageBuilder
+	dr         *dockerimage.Reconciler
+	cr         *cmdimage.Reconciler
+	ib         *build.ImageBuilder
 	analytics  *analytics.TiltAnalytics
 	clock      build.Clock
 	ctrlClient ctrlclient.Client
@@ -31,13 +32,17 @@ type ImageBuildAndDeployer struct {
 }
 
 func NewImageBuildAndDeployer(
-	ib *ImageBuilder,
+	dr *dockerimage.Reconciler,
+	cr *cmdimage.Reconciler,
+	ib *build.ImageBuilder,
 	analytics *analytics.TiltAnalytics,
 	c build.Clock,
 	ctrlClient ctrlclient.Client,
 	r *kubernetesapply.Reconciler,
 ) *ImageBuildAndDeployer {
 	return &ImageBuildAndDeployer{
+		dr:         dr,
+		cr:         cr,
 		ib:         ib,
 		analytics:  analytics,
 		clock:      c,
@@ -121,40 +126,8 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 			return store.ImageBuildResult{}, fmt.Errorf("Not an image target: %T", target)
 		}
 
-		// TODO(nick): It might make sense to reset the ImageMapStatus here
-		// to an empty image while the image is building. maybe?
-		// I guess it depends on how image reconciliation works, and
-		// if you want the live container to keep receiving updates
-		// while an image build is going on in parallel.
-		startTime := apis.NowMicro()
-		dockerimage.MaybeUpdateStatus(ctx, ibd.ctrlClient, iTarget, dockerimage.ToBuildingStatus(iTarget, startTime))
-		cmdimage.MaybeUpdateStatus(ctx, ibd.ctrlClient, iTarget, cmdimage.ToBuildingStatus(iTarget, startTime))
 		cluster := stateSet[target.ID()].ClusterOrEmpty()
-
-		refs, stages, err := ibd.ib.Build(ctx, iTarget, cluster, imageMapSet, ps)
-		if err != nil {
-			dockerimage.MaybeUpdateStatus(ctx, ibd.ctrlClient, iTarget, dockerimage.ToCompletedFailStatus(iTarget, startTime, stages, err))
-			cmdimage.MaybeUpdateStatus(ctx, ibd.ctrlClient, iTarget, cmdimage.ToCompletedFailStatus(iTarget, startTime, err))
-			return store.ImageBuildResult{}, err
-		}
-
-		dockerimage.MaybeUpdateStatus(ctx, ibd.ctrlClient, iTarget, dockerimage.ToCompletedSuccessStatus(iTarget, startTime, stages, refs))
-		cmdimage.MaybeUpdateStatus(ctx, ibd.ctrlClient, iTarget, cmdimage.ToCompletedSuccessStatus(iTarget, startTime, refs))
-
-		result := store.NewImageBuildResult(iTarget.ID(), refs.LocalRef, refs.ClusterRef)
-		result.ImageMapStatus.BuildStartTime = &startTime
-		nn := types.NamespacedName{Name: iTarget.ImageMapName()}
-		im, ok := imageMapSet[nn]
-		if !ok {
-			return store.ImageBuildResult{}, fmt.Errorf("apiserver missing ImageMap: %s", iTarget.ID().Name)
-		}
-		im.Status = result.ImageMapStatus
-		err = ibd.ctrlClient.Status().Update(ctx, im)
-		if err != nil {
-			return store.ImageBuildResult{}, fmt.Errorf("updating ImageMap: %v", err)
-		}
-
-		return result, nil
+		return ibd.build(ctx, iTarget, cluster, imageMapSet, ps)
 	})
 
 	newResults := q.NewResults().ToBuildResultSet()
@@ -170,6 +143,21 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 	}
 	newResults[kTarget.ID()] = k8sResult
 	return newResults, nil
+}
+
+func (ibd *ImageBuildAndDeployer) build(
+	ctx context.Context,
+	iTarget model.ImageTarget,
+	cluster *v1alpha1.Cluster,
+	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap,
+	ps *build.PipelineState) (store.ImageBuildResult, error) {
+	switch iTarget.BuildDetails.(type) {
+	case model.DockerBuild:
+		return ibd.dr.ForceApply(ctx, iTarget, cluster, imageMaps, ps)
+	case model.CustomBuild:
+		return ibd.cr.ForceApply(ctx, iTarget, cluster, imageMaps, ps)
+	}
+	return store.ImageBuildResult{}, fmt.Errorf("invalid image spec")
 }
 
 // Returns: the entities deployed and the namespace of the pod with the given image name/tag.

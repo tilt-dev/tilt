@@ -338,8 +338,12 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	}
 	liveupdateReconciler := liveupdate.NewReconciler(storeStore, dockerUpdater, execUpdater, updateMode, kubeContext, deferredClient, scheme)
 	configmapReconciler := configmap.NewReconciler(deferredClient, storeStore)
-	dockerimageReconciler := dockerimage.NewReconciler(deferredClient, scheme)
-	cmdimageReconciler := cmdimage.NewReconciler(deferredClient, scheme)
+	buildClock := build.ProvideClock()
+	customBuilder := build.NewCustomBuilder(compositeClient, buildClock)
+	kindLoader := build.NewKINDLoader()
+	imageBuilder := build.NewImageBuilder(dockerBuilder, customBuilder, kindLoader)
+	dockerimageReconciler := dockerimage.NewReconciler(deferredClient, scheme, compositeClient, imageBuilder)
+	cmdimageReconciler := cmdimage.NewReconciler(deferredClient, scheme, compositeClient, imageBuilder)
 	dockerClientFactory := _wireDockerClientFuncValue
 	kubernetesClientFactory := _wireKubernetesClientFuncValue
 	clusterReconciler := cluster.NewReconciler(ctx, deferredClient, storeStore, clock, connectionManager, localEnv, dockerClientFactory, kubernetesClientFactory)
@@ -357,12 +361,8 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	openInput := _wireOpenInputValue
 	terminalPrompt := prompt.NewTerminalPrompt(analytics3, openInput, openURL, stdout, webHost, webURL)
 	serviceWatcher := k8swatch.NewServiceWatcher(connectionManager, namespace)
-	buildClock := build.ProvideClock()
-	customBuilder := build.NewCustomBuilder(compositeClient, buildClock)
-	kindLoader := buildcontrol.NewKINDLoader()
-	imageBuilder := buildcontrol.NewImageBuilder(dockerBuilder, customBuilder, kindLoader)
-	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(imageBuilder, analytics3, buildClock, deferredClient, kubernetesapplyReconciler)
-	dockerComposeBuildAndDeployer := buildcontrol.NewDockerComposeBuildAndDeployer(dockercomposeserviceReconciler, compositeClient, imageBuilder, buildClock, deferredClient)
+	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerimageReconciler, cmdimageReconciler, imageBuilder, analytics3, buildClock, deferredClient, kubernetesapplyReconciler)
+	dockerComposeBuildAndDeployer := buildcontrol.NewDockerComposeBuildAndDeployer(dockerimageReconciler, cmdimageReconciler, imageBuilder, dockercomposeserviceReconciler, buildClock, deferredClient)
 	localTargetBuildAndDeployer := buildcontrol.NewLocalTargetBuildAndDeployer(buildClock, deferredClient, cmdController)
 	buildOrder := engine.DefaultBuildOrder(imageBuildAndDeployer, dockerComposeBuildAndDeployer, localTargetBuildAndDeployer, updateMode)
 	spanCollector := tracer.NewSpanCollector(ctx)
@@ -550,8 +550,12 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	}
 	liveupdateReconciler := liveupdate.NewReconciler(storeStore, dockerUpdater, execUpdater, updateMode, kubeContext, deferredClient, scheme)
 	configmapReconciler := configmap.NewReconciler(deferredClient, storeStore)
-	dockerimageReconciler := dockerimage.NewReconciler(deferredClient, scheme)
-	cmdimageReconciler := cmdimage.NewReconciler(deferredClient, scheme)
+	buildClock := build.ProvideClock()
+	customBuilder := build.NewCustomBuilder(compositeClient, buildClock)
+	kindLoader := build.NewKINDLoader()
+	imageBuilder := build.NewImageBuilder(dockerBuilder, customBuilder, kindLoader)
+	dockerimageReconciler := dockerimage.NewReconciler(deferredClient, scheme, compositeClient, imageBuilder)
+	cmdimageReconciler := cmdimage.NewReconciler(deferredClient, scheme, compositeClient, imageBuilder)
 	dockerClientFactory := _wireDockerClientFuncValue
 	kubernetesClientFactory := _wireKubernetesClientFuncValue
 	clusterReconciler := cluster.NewReconciler(ctx, deferredClient, storeStore, clock, connectionManager, localEnv, dockerClientFactory, kubernetesClientFactory)
@@ -569,12 +573,8 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	openInput := _wireOpenInputValue
 	terminalPrompt := prompt.NewTerminalPrompt(analytics3, openInput, openURL, stdout, webHost, webURL)
 	serviceWatcher := k8swatch.NewServiceWatcher(connectionManager, namespace)
-	buildClock := build.ProvideClock()
-	customBuilder := build.NewCustomBuilder(compositeClient, buildClock)
-	kindLoader := buildcontrol.NewKINDLoader()
-	imageBuilder := buildcontrol.NewImageBuilder(dockerBuilder, customBuilder, kindLoader)
-	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(imageBuilder, analytics3, buildClock, deferredClient, kubernetesapplyReconciler)
-	dockerComposeBuildAndDeployer := buildcontrol.NewDockerComposeBuildAndDeployer(dockercomposeserviceReconciler, compositeClient, imageBuilder, buildClock, deferredClient)
+	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(dockerimageReconciler, cmdimageReconciler, imageBuilder, analytics3, buildClock, deferredClient, kubernetesapplyReconciler)
+	dockerComposeBuildAndDeployer := buildcontrol.NewDockerComposeBuildAndDeployer(dockerimageReconciler, cmdimageReconciler, imageBuilder, dockercomposeserviceReconciler, buildClock, deferredClient)
 	localTargetBuildAndDeployer := buildcontrol.NewLocalTargetBuildAndDeployer(buildClock, deferredClient, cmdController)
 	buildOrder := engine.DefaultBuildOrder(imageBuildAndDeployer, dockerComposeBuildAndDeployer, localTargetBuildAndDeployer, updateMode)
 	spanCollector := tracer.NewSpanCollector(ctx)
@@ -758,8 +758,12 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	}
 	liveupdateReconciler := liveupdate.NewReconciler(storeStore, dockerUpdater, execUpdater, updateMode, kubeContext, deferredClient, scheme)
 	configmapReconciler := configmap.NewReconciler(deferredClient, storeStore)
-	dockerimageReconciler := dockerimage.NewReconciler(deferredClient, scheme)
-	cmdimageReconciler := cmdimage.NewReconciler(deferredClient, scheme)
+	buildClock := build.ProvideClock()
+	customBuilder := build.NewCustomBuilder(compositeClient, buildClock)
+	kindLoader := build.NewKINDLoader()
+	imageBuilder := build.NewImageBuilder(dockerBuilder, customBuilder, kindLoader)
+	dockerimageReconciler := dockerimage.NewReconciler(deferredClient, scheme, compositeClient, imageBuilder)
+	cmdimageReconciler := cmdimage.NewReconciler(deferredClient, scheme, compositeClient, imageBuilder)
 	dockerClientFactory := _wireDockerClientFuncValue
 	kubernetesClientFactory := _wireKubernetesClientFuncValue
 	clusterReconciler := cluster.NewReconciler(ctx, deferredClient, storeStore, clock, connectionManager, localEnv, dockerClientFactory, kubernetesClientFactory)
@@ -1139,7 +1143,7 @@ var BaseWireSet = wire.NewSet(
 	provideWebMode,
 	provideWebURL,
 	provideWebPort,
-	provideWebHost, server.WireSet, provideAssetServer, tracer.NewSpanCollector, wire.Bind(new(trace.SpanExporter), new(*tracer.SpanCollector)), wire.Bind(new(tracer.SpanSource), new(*tracer.SpanCollector)), dirs.UseTiltDevDir, xdg.NewTiltDevBase, token.GetOrCreateToken, buildcontrol.NewKINDLoader, wire.Value(feature.MainDefaults),
+	provideWebHost, server.WireSet, provideAssetServer, tracer.NewSpanCollector, wire.Bind(new(trace.SpanExporter), new(*tracer.SpanCollector)), wire.Bind(new(tracer.SpanSource), new(*tracer.SpanCollector)), dirs.UseTiltDevDir, xdg.NewTiltDevBase, token.GetOrCreateToken, build.NewKINDLoader, wire.Value(feature.MainDefaults),
 )
 
 var CLIClientWireSet = wire.NewSet(

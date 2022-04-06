@@ -3,12 +3,15 @@ package cmdimage
 import (
 	"testing"
 
+	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
+	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
@@ -41,7 +44,14 @@ type fixture struct {
 func newFixture(t testing.TB) *fixture {
 	cfb := fake.NewControllerFixtureBuilder(t)
 
-	r := NewReconciler(cfb.Client, cfb.Scheme())
+	clock := clockwork.NewFakeClock()
+	dockerCli := docker.NewFakeClient()
+	ib := build.NewImageBuilder(
+		build.NewDockerBuilder(dockerCli, nil),
+		build.NewCustomBuilder(dockerCli, clock),
+		build.NewKINDLoader())
+
+	r := NewReconciler(cfb.Client, cfb.Scheme(), docker.NewFakeClient(), ib)
 	return &fixture{
 		ControllerFixture: cfb.Build(r),
 		r:                 r,
