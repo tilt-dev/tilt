@@ -605,7 +605,7 @@ func toClusterObjects(nn types.NamespacedName, tlr *tiltfile.TiltfileLoadResult,
 		conn := defaultK8sConnection.DeepCopy()
 		if !tlr.DefaultRegistry.Empty() {
 			conn.DefaultRegistryOptions = &v1alpha1.DefaultRegistryOptions{
-				Host: tlr.DefaultRegistry.Host,
+				Host:       tlr.DefaultRegistry.Host,
 				SingleName: tlr.DefaultRegistry.SingleName,
 			}
 		}

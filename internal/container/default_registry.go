@@ -102,7 +102,7 @@ func RegistryFromCluster(cluster v1alpha1.Cluster) (Registry, error) {
 	if cluster.Status.Error != "" {
 		// if the Cluster has not been initialized, we have not had a chance to
 		// read the local cluster info from it yet
-		return Registry{}, fmt.Errorf("cluster is not healthy: %s", cluster.Status.Error)
+		return Registry{}, fmt.Errorf("cluster not ready: %s", cluster.Status.Error)
 	}
 
 	if cluster.Status.Registry != nil {
@@ -112,17 +112,20 @@ func RegistryFromCluster(cluster v1alpha1.Cluster) (Registry, error) {
 		)
 	}
 
-	// no local registry is configured for this cluster, so use the default,
-	// which itself might be empty, meaning the registries as specified in
-	// the docker_build + custom_build directives in the Tiltfile will be
-	// used as is
-	if conn := cluster.Spec.Connection.Kubernetes; conn != nil {
-		reg, err := NewRegistry(conn.DefaultRegistry)
-		if err != nil {
-			return Registry{}, err
+	if cluster.Spec.Connection != nil && cluster.Spec.Connection.Kubernetes != nil {
+		// no local registry is configured for this cluster, so use the default,
+		// which itself might be empty, meaning the registries as specified in
+		// the docker_build + custom_build directives in the Tiltfile will be
+		// used as is
+		defaultRegOpts := cluster.Spec.Connection.Kubernetes.DefaultRegistryOptions
+		if defaultRegOpts != nil {
+			reg, err := NewRegistry(defaultRegOpts.Host)
+			if err != nil {
+				return Registry{}, err
+			}
+			reg.SingleName = defaultRegOpts.SingleName
+			return reg, reg.Validate()
 		}
-		// TODO(milas): add support for SingleName
-		return reg, nil
 	}
 
 	return Registry{}, nil

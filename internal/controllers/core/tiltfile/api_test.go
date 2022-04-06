@@ -266,7 +266,7 @@ func TestCreateClusterDefaultRegistry(t *testing.T) {
 	reg := container.MustNewRegistry("registry.example.com")
 	reg.SingleName = "fake-repo"
 	tlr := &tiltfile.TiltfileLoadResult{
-		Manifests: []model.Manifest{fe},
+		Manifests:       []model.Manifest{fe},
 		DefaultRegistry: reg,
 	}
 	err := f.updateOwnedObjects(nn, tf, tlr)
