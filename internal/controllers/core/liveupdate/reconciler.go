@@ -514,14 +514,17 @@ func (r *Reconciler) garbageCollectFileChanges(res luResource, monitor *monitor)
 // Go through all the container monitors, and delete any that are no longer
 // being selected. We don't care why they're not being selected.
 func (r *Reconciler) garbageCollectMonitorContainers(res luResource, monitor *monitor) {
-	podsByKey := map[monitorContainerKey]bool{}
-	for _, pod := range res.podNames() {
-		podsByKey[monitorContainerKey{podName: pod.Name, namespace: pod.Namespace}] = true
-	}
+	// All containers are guaranteed to have container IDs if they're still active.
+	containerIDs := map[string]bool{}
+	res.visitSelectedContainers(func(pod v1alpha1.Pod, c v1alpha1.Container) bool {
+		if c.ID != "" {
+			containerIDs[c.ID] = true
+		}
+		return false
+	})
 
 	for key := range monitor.containers {
-		podKey := monitorContainerKey{podName: key.podName, namespace: key.namespace}
-		if !podsByKey[podKey] {
+		if !containerIDs[key.containerID] {
 			delete(monitor.containers, key)
 		}
 	}
@@ -966,7 +969,7 @@ func (r *Reconciler) applyInternal(
 			ContainerName:      cInfo.ContainerName.String(),
 			ContainerID:        cInfo.ContainerID.String(),
 			PodName:            cInfo.PodID.String(),
-			Namespace:          cInfo.Namespace.String(),
+			Namespace:          string(cInfo.Namespace),
 			LastFileTimeSynced: lastFileTimeSynced,
 		}
 
