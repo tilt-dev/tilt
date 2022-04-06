@@ -182,6 +182,18 @@ func TestConsumeFileEventsDockerCompose(t *testing.T) {
 	if assert.Equal(t, 1, len(f.cu.Calls)) {
 		assert.True(t, f.cu.Calls[0].HotReload)
 	}
+
+	f.assertSteadyState(&lu)
+
+	// Docker Compose containers can be restarted in-place,
+	// preserving their filesystem.
+	dc := &v1alpha1.DockerComposeService{}
+	f.MustGet(types.NamespacedName{Name: "frontend-service"}, dc)
+	dc = dc.DeepCopy()
+	dc.Status.ContainerState.StartedAt = apis.NowMicro()
+	f.UpdateStatus(dc)
+
+	f.assertSteadyState(&lu)
 }
 
 func TestConsumeFileEventsUpdateModeManual(t *testing.T) {

@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/docker/distribution/reference"
-	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
@@ -21,9 +20,6 @@ import (
 type luResource interface {
 	// The time to start syncing changes from.
 	bestStartTime() time.Time
-
-	// The names of any pods, for tracking state.
-	podNames() []types.NamespacedName
 
 	// An iterator for visiting each container.
 	visitSelectedContainers(visit func(pod v1alpha1.Pod, c v1alpha1.Container) bool)
@@ -46,14 +42,6 @@ func (r *luK8sResource) bestStartTime() time.Time {
 		}
 	}
 	return startTime
-}
-
-func (r *luK8sResource) podNames() []types.NamespacedName {
-	result := []types.NamespacedName{}
-	for _, pod := range r.res.FilteredPods {
-		result = append(result, types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace})
-	}
-	return result
 }
 
 // Visit all selected containers.
@@ -92,15 +80,6 @@ type luDCResource struct {
 
 func (r *luDCResource) bestStartTime() time.Time {
 	return r.res.Status.LastApplyStartTime.Time
-}
-
-// In DockerCompose, we treat every container as a single-container pod.
-func (r *luDCResource) podNames() []types.NamespacedName {
-	result := []types.NamespacedName{}
-	if r.res.Status.ContainerID != "" {
-		result = append(result, types.NamespacedName{Name: r.res.Status.ContainerID})
-	}
-	return result
 }
 
 // Visit all selected containers.
