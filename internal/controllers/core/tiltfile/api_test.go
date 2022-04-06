@@ -253,6 +253,35 @@ func TestCreateUiResourceForTiltfile(t *testing.T) {
 	require.Equal(t, "tiltfile", uir.ObjectMeta.Name)
 }
 
+func TestCreateClusterDefaultRegistry(t *testing.T) {
+	f := newAPIFixture(t)
+	fe := manifestbuilder.New(f, "fe").
+		WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+		WithK8sYAML(testyaml.SanchoYAML).
+		Build()
+	tf := &v1alpha1.Tiltfile{
+		ObjectMeta: metav1.ObjectMeta{Name: model.MainTiltfileManifestName.String()},
+	}
+	nn := apis.Key(tf)
+	reg := container.MustNewRegistry("registry.example.com")
+	reg.SingleName = "fake-repo"
+	tlr := &tiltfile.TiltfileLoadResult{
+		Manifests: []model.Manifest{fe},
+		DefaultRegistry: reg,
+	}
+	err := f.updateOwnedObjects(nn, tf, tlr)
+	assert.NoError(t, err)
+
+	var cluster v1alpha1.Cluster
+	require.NoError(t, f.Get(types.NamespacedName{Name: "default"}, &cluster))
+	require.NotNil(t, cluster.Spec.Connection, ".Spec.Connection was nil")
+	require.NotNil(t, cluster.Spec.Connection.Kubernetes, ".Spec.Connection.Kubernetes was nil")
+	defaultReg := cluster.Spec.Connection.Kubernetes.DefaultRegistryOptions
+	require.NotNil(t, defaultReg, ".Spec.Connection.Kubernetes.DefaultRegistryOptions was nil")
+	require.Equal(t, "registry.example.com", defaultReg.Host, "Default registry host")
+	require.Equal(t, "fake-repo", defaultReg.SingleName, "Default registry single name")
+}
+
 // Ensure that we emit disable-related objects/field appropriately
 func TestDisableObjects(t *testing.T) {
 	for _, disableFeatureOn := range []bool{true, false} {
