@@ -274,12 +274,9 @@ func TestCreateClusterDefaultRegistry(t *testing.T) {
 
 	var cluster v1alpha1.Cluster
 	require.NoError(t, f.Get(types.NamespacedName{Name: "default"}, &cluster))
-	require.NotNil(t, cluster.Spec.Connection, ".Spec.Connection was nil")
-	require.NotNil(t, cluster.Spec.Connection.Kubernetes, ".Spec.Connection.Kubernetes was nil")
-	defaultReg := cluster.Spec.Connection.Kubernetes.DefaultRegistryOptions
-	require.NotNil(t, defaultReg, ".Spec.Connection.Kubernetes.DefaultRegistryOptions was nil")
-	require.Equal(t, "registry.example.com", defaultReg.Host, "Default registry host")
-	require.Equal(t, "fake-repo", defaultReg.SingleName, "Default registry single name")
+	require.NotNil(t, cluster.Spec.DefaultRegistry, ".Spec.DefaultRegistry was nil")
+	require.Equal(t, "registry.example.com", cluster.Spec.DefaultRegistry.Host, "Default registry host")
+	require.Equal(t, "fake-repo", cluster.Spec.DefaultRegistry.SingleName, "Default registry single name")
 }
 
 // Ensure that we emit disable-related objects/field appropriately

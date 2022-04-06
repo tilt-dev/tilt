@@ -105,30 +105,27 @@ func RegistryFromCluster(cluster v1alpha1.Cluster) (Registry, error) {
 		return Registry{}, fmt.Errorf("cluster not ready: %s", cluster.Status.Error)
 	}
 
-	if cluster.Status.Registry != nil {
-		return NewRegistryWithHostFromCluster(
-			cluster.Status.Registry.Host,
-			cluster.Status.Registry.HostFromContainerRuntime,
-		)
+	regHosting := cluster.Status.Registry
+	if regHosting == nil {
+		// no local registry is configured for this cluster, so use the default
+		regHosting = cluster.Spec.DefaultRegistry
 	}
 
-	if cluster.Spec.Connection != nil && cluster.Spec.Connection.Kubernetes != nil {
-		// no local registry is configured for this cluster, so use the default,
-		// which itself might be empty, meaning the registries as specified in
-		// the docker_build + custom_build directives in the Tiltfile will be
-		// used as is
-		defaultRegOpts := cluster.Spec.Connection.Kubernetes.DefaultRegistryOptions
-		if defaultRegOpts != nil {
-			reg, err := NewRegistry(defaultRegOpts.Host)
-			if err != nil {
-				return Registry{}, err
-			}
-			reg.SingleName = defaultRegOpts.SingleName
-			return reg, reg.Validate()
-		}
+	if regHosting == nil {
+		// there was also no default registry, so use registries as specified
+		// in the docker_build + custom_build directives in the Tiltfile
+		return Registry{}, nil
 	}
 
-	return Registry{}, nil
+	reg, err := NewRegistryWithHostFromCluster(
+		regHosting.Host,
+		regHosting.HostFromContainerRuntime,
+	)
+	if err != nil {
+		return Registry{}, err
+	}
+	reg.SingleName = regHosting.SingleName
+	return reg, nil
 }
 
 func (r Registry) Validate() error {

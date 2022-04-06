@@ -119,21 +119,11 @@ func TestNewRegistryEmptyOK(t *testing.T) {
 }
 
 func TestRegistryFromCluster(t *testing.T) {
-	connSpec := func(host, singleName string) *v1alpha1.ClusterConnection {
-		return &v1alpha1.ClusterConnection{
-			Kubernetes: &v1alpha1.KubernetesClusterConnection{
-				DefaultRegistryOptions: &v1alpha1.DefaultRegistryOptions{
-					Host:       host,
-					SingleName: singleName,
-				},
-			},
-		}
-	}
 	registryHosting := func(host string) *v1alpha1.RegistryHosting {
 		return &v1alpha1.RegistryHosting{
 			Host:                     host,
-			HostFromClusterNetwork:   "local-cluster-network",
-			HostFromContainerRuntime: "local-container-runtime",
+			HostFromClusterNetwork:   "localhost:12345/cluster-network",
+			HostFromContainerRuntime: "localhost:12345/container-runtime",
 			Help:                     "fake-help",
 		}
 	}
@@ -158,7 +148,10 @@ func TestRegistryFromCluster(t *testing.T) {
 			name: "DefaultNoLocal",
 			cluster: v1alpha1.Cluster{
 				Spec: v1alpha1.ClusterSpec{
-					Connection: connSpec("registry.example.com", "fake-repo"),
+					DefaultRegistry: &v1alpha1.RegistryHosting{
+						Host:       "registry.example.com",
+						SingleName: "fake-repo",
+					},
 				},
 			},
 			expectedHost:       "registry.example.com",
@@ -168,13 +161,17 @@ func TestRegistryFromCluster(t *testing.T) {
 			name: "DefaultWithLocal",
 			cluster: v1alpha1.Cluster{
 				Spec: v1alpha1.ClusterSpec{
-					Connection: connSpec("registry.example.com", "fake-repo"),
+					DefaultRegistry: &v1alpha1.RegistryHosting{
+						Host:       "registry.example.com",
+						SingleName: "fake-repo",
+					},
 				},
 				Status: v1alpha1.ClusterStatus{
 					Registry: registryHosting("localhost:12345"),
 				},
 			},
-			expectedHost: "localhost:12345",
+			expectedHost:  "localhost:12345",
+			expectedLocal: true,
 		},
 		{
 			name: "LocalNoDefault",
@@ -203,10 +200,11 @@ func TestRegistryFromCluster(t *testing.T) {
 			if tt.expectedErr != "" {
 				require.EqualError(t, err, tt.expectedErr, "Registry error")
 			} else {
+				require.NoError(t, err, "Registry error")
 				require.Equal(t, tt.expectedHost, reg.Host, "Registry host")
 				require.Equal(t, tt.expectedSingleName, reg.SingleName, "Registry single name")
 				if tt.expectedLocal {
-					require.Equal(t, "local-container-runtime", reg.hostFromCluster,
+					require.Equal(t, "localhost:12345/container-runtime", reg.hostFromCluster,
 						"Registry host from container runtime")
 				}
 			}
