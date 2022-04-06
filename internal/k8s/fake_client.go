@@ -824,9 +824,5 @@ func (c *FakePortForwardClient) PortForwardCalls() []PortForwardCall {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	calls := make([]PortForwardCall, len(c.portForwardCalls))
-	for i, call := range c.portForwardCalls {
-		calls[i] = call
-	}
-	return calls
+	return append([]PortForwardCall(nil), c.portForwardCalls...)
 }
