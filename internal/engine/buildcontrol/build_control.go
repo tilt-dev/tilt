@@ -544,7 +544,10 @@ func IsLiveUpdateTargetWaitingOnDeploy(state store.EngineState, mt *store.Manife
 			}
 
 			cInfos, err := liveupdates.RunningContainersForOnePod(
-				iTarget.LiveUpdateSpec.Selector.Kubernetes, kResource)
+				iTarget.LiveUpdateSpec.Selector.Kubernetes,
+				kResource,
+				state.ImageMaps[iTarget.ImageMapName()],
+			)
 			if err != nil {
 				return false
 			}

@@ -314,16 +314,19 @@ func (m *Manifest) InferLiveUpdateSelectors() error {
 				kSelector.DiscoveryName = m.Name.String()
 			}
 
-			// infer an image name from the ImageTarget if a container name selector was not specified
-			// (currently, this is always done except in some k8s_custom_deploy configurations)
+			// infer a selector from the ImageTarget if a container name
+			// selector was not specified (currently, this is always the case
+			// except in some k8s_custom_deploy configurations)
 			if kSelector.ContainerName == "" {
-				var image string
 				if iTarget.IsLiveUpdateOnly {
-					image = reference.FamiliarName(iTarget.Refs.WithoutRegistry().LocalRef())
+					// use the selector (image name) as-is; Tilt isn't building
+					// this image, so no image name rewriting will occur
+					kSelector.Image = iTarget.Selector
 				} else {
-					image = reference.FamiliarName(iTarget.Refs.ClusterRef())
+					// refer to the ImageMap so that the LU reconciler can find
+					// the true image name after any registry rewriting
+					kSelector.ImageMap = iTarget.ImageMapName()
 				}
-				kSelector.Image = image
 			}
 		}
 

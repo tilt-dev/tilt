@@ -3,53 +3,22 @@ package liveupdates
 import (
 	"fmt"
 
-	"github.com/docker/distribution/reference"
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/k8s"
-	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
-func AllRunningContainers(mt *store.ManifestTarget, state *store.EngineState) []Container {
-	if mt.Manifest.IsDC() {
-		return RunningContainersForDC(state.DockerComposeServices[mt.Manifest.Name.String()])
-	}
-
-	var result []Container
-	for _, iTarget := range mt.Manifest.ImageTargets {
-		selector := iTarget.LiveUpdateSpec.Selector
-		if mt.Manifest.IsK8s() && selector.Kubernetes != nil {
-			cInfos, err := RunningContainersForOnePod(
-				selector.Kubernetes,
-				state.KubernetesResources[mt.Manifest.Name.String()])
-			if err != nil {
-				// HACK(maia): just don't collect container info for targets running
-				// more than one pod -- we don't support LiveUpdating them anyway,
-				// so no need to monitor those containers for crashes.
-				continue
-			}
-			result = append(result, cInfos...)
-		}
-	}
-	return result
-}
-
-func RunningContainers(selector *v1alpha1.LiveUpdateKubernetesSelector, k8sResource *k8sconv.KubernetesResource, dcs *v1alpha1.DockerComposeService) ([]Container, error) {
-	if selector != nil && k8sResource != nil {
-		return RunningContainersForOnePod(selector, k8sResource)
-	}
-	if dcs != nil {
-		return RunningContainersForDC(dcs), nil
-	}
-	return nil, nil
-}
-
 // If all containers running the given image are ready, returns info for them.
 // (If this image is running on multiple pods, return an error.)
-func RunningContainersForOnePod(selector *v1alpha1.LiveUpdateKubernetesSelector, resource *k8sconv.KubernetesResource) ([]Container, error) {
+func RunningContainersForOnePod(
+	selector *v1alpha1.LiveUpdateKubernetesSelector,
+	resource *k8sconv.KubernetesResource,
+	imageMap *v1alpha1.ImageMap,
+) ([]Container, error) {
 	if selector == nil || resource == nil {
 		return nil, nil
 	}
@@ -73,9 +42,7 @@ func RunningContainersForOnePod(selector *v1alpha1.LiveUpdateKubernetesSelector,
 	pod := activePods[0]
 	var containers []Container
 	for _, c := range pod.Containers {
-		// Only return containers matching our image
-		imageRef, err := container.ParseNamed(c.Image)
-		if err != nil || imageRef == nil || selector.Image != reference.FamiliarName(imageRef) {
+		if !liveupdate.KubernetesSelectorMatchesContainer(c, selector, imageMap) {
 			continue
 		}
 		if c.ID == "" || c.Name == "" || c.State.Running == nil {
@@ -127,12 +94,4 @@ func (c Container) DisplayName() string {
 	}
 
 	return fmt.Sprintf("%s/%s", c.PodID, c.ContainerName)
-}
-
-func IDsForContainers(infos []Container) []container.ID {
-	ids := make([]container.ID, len(infos))
-	for i, info := range infos {
-		ids[i] = info.ContainerID
-	}
-	return ids
 }

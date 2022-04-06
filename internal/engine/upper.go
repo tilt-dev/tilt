@@ -25,6 +25,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/store/configmaps"
 	"github.com/tilt-dev/tilt/internal/store/dockercomposeservices"
 	"github.com/tilt-dev/tilt/internal/store/filewatches"
+	"github.com/tilt-dev/tilt/internal/store/imagemaps"
 	"github.com/tilt-dev/tilt/internal/store/kubernetesapplys"
 	"github.com/tilt-dev/tilt/internal/store/kubernetesdiscoverys"
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
@@ -211,6 +212,10 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		uibuttons.HandleUIButtonUpsertAction(state, action)
 	case uibuttons.UIButtonDeleteAction:
 		uibuttons.HandleUIButtonDeleteAction(state, action)
+	case imagemaps.ImageMapUpsertAction:
+		imagemaps.HandleImageMapUpsertAction(state, action)
+	case imagemaps.ImageMapDeleteAction:
+		imagemaps.HandleImageMapDeleteAction(state, action)
 	default:
 		state.FatalError = fmt.Errorf("unrecognized action: %T", action)
 	}

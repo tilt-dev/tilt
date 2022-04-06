@@ -267,6 +267,11 @@ func TestLiveUpdateMainImageHold(t *testing.T) {
 		Sources: []v1alpha1.LiveUpdateSource{
 			{FileWatch: "image:sancho"},
 		},
+		Selector: v1alpha1.LiveUpdateSelector{
+			Kubernetes: &v1alpha1.LiveUpdateKubernetesSelector{
+				ContainerName: "c",
+			},
+		},
 	}
 	f.st.LiveUpdates["sancho"] = &v1alpha1.LiveUpdate{Spec: luSpec}
 
@@ -419,6 +424,11 @@ func TestHoldForDeploy(t *testing.T) {
 		BasePath:  f.Path(),
 		StopPaths: []string{filepath.Join("src", "package.json")},
 		Syncs:     []v1alpha1.LiveUpdateSync{{LocalPath: "src", ContainerPath: "/src"}},
+		Selector: v1alpha1.LiveUpdateSelector{
+			Kubernetes: &v1alpha1.LiveUpdateKubernetesSelector{
+				ContainerName: "c",
+			},
+		},
 	}
 	sanchoImage := newDockerImageTarget("sancho").
 		WithLiveUpdateSpec("sancho", luSpec).

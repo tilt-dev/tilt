@@ -108,7 +108,7 @@ func TestLiveUpdate(t *testing.T) {
 		ImageMap:  "sancho-image",
 	}}
 	expectedSpec.Selector.Kubernetes = &v1alpha1.LiveUpdateKubernetesSelector{
-		Image:         "sancho-image",
+		ImageMap:      "sancho-image",
 		DiscoveryName: "sancho",
 		ApplyName:     "sancho",
 	}
