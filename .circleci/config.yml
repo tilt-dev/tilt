@@ -18,7 +18,7 @@ jobs:
       - checkout
       - run: echo 'export PATH=~/go/bin:$PATH' >> $BASH_ENV
       - setup_remote_docker:
-          version: 20.10.6
+          version: 20.10.11
       - run: docker pull registry:2
       - run: sudo mv /usr/bin/helm3 /usr/bin/helm
       - run: make lint
@@ -88,7 +88,7 @@ jobs:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
       - setup_remote_docker:
-          version: 20.10.6
+          version: 20.10.11
       - run: ctlptl create cluster kind --registry=ctlptl-registry && make integration
       - store_test_results:
           path: test-results
@@ -102,7 +102,7 @@ jobs:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
       - setup_remote_docker:
-          version: 20.10.6
+          version: 20.10.11
       - run: ctlptl create cluster kind --registry=ctlptl-registry && make install test-extensions
       - slack/notify-on-failure:
           only_for_branches: master
@@ -134,7 +134,7 @@ jobs:
       - image: cimg/base:2020.01
     steps:
       - setup_remote_docker:
-          version: 20.10.6
+          version: 20.10.11
       - checkout
       - run: curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
       - gcp-cli/install
@@ -166,7 +166,7 @@ jobs:
       - image: gcr.io/windmill-public-containers/tilt-releaser@sha256:a17867de17e04c8a8ea2150f9b48f9fa8588617cebe0bb36dc8521d1546414a3
     steps:
       - setup_remote_docker:
-          version: 20.10.6
+          version: 20.10.11
       - slack/notify:
           mentions: "nick"
           message: "A Tilt release has started!"
