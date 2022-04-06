@@ -25,7 +25,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/apis/uibutton"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/docker"
-	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils/configmap"
@@ -497,8 +496,7 @@ func newFixture(t *testing.T) *fixture {
 	st := NewTestingStore()
 	tfl := tiltfile.NewFakeTiltfileLoader()
 	d := docker.NewFakeClient()
-	kClient := k8s.NewFakeK8sClient(t)
-	r := NewReconciler(st, tfl, kClient, d, cfb.Client, v1alpha1.NewScheme(), store.EngineModeUp, "", "")
+	r := NewReconciler(st, tfl, d, cfb.Client, v1alpha1.NewScheme(), store.EngineModeUp, "", "")
 	q := workqueue.NewRateLimitingQueue(
 		workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, time.Millisecond))
 	_ = r.requeuer.Start(context.Background(), handler.Funcs{}, q)

@@ -198,7 +198,7 @@ func TestRegistryFromCluster(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			reg, err := RegistryFromCluster(tt.cluster)
+			reg, err := RegistryFromCluster(&tt.cluster)
 			if tt.expectedErr != "" {
 				require.EqualError(t, err, tt.expectedErr, "Registry error")
 			} else {

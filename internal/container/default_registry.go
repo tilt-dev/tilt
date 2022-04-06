@@ -98,7 +98,11 @@ func MustNewRegistryWithHostFromCluster(host, fromCluster string) Registry {
 // registry rewriting should occur and Tilt should push and pull images to the
 // registry as specified by the configuration ref (e.g. what's passed in to
 // `docker_build` or `custom_build`).
-func RegistryFromCluster(cluster v1alpha1.Cluster) (Registry, error) {
+func RegistryFromCluster(cluster *v1alpha1.Cluster) (Registry, error) {
+	if cluster == nil {
+		return Registry{}, nil
+	}
+
 	if cluster.Status.Error != "" {
 		// if the Cluster has not been initialized, we have not had a chance to
 		// read the local cluster info from it yet
@@ -111,9 +115,11 @@ func RegistryFromCluster(cluster v1alpha1.Cluster) (Registry, error) {
 		regHosting = cluster.Spec.DefaultRegistry
 	}
 
+	return registryFromRegistryHosting(regHosting)
+}
+
+func registryFromRegistryHosting(regHosting *v1alpha1.RegistryHosting) (Registry, error) {
 	if regHosting == nil {
-		// there was also no default registry, so use registries as specified
-		// in the docker_build + custom_build directives in the Tiltfile
 		return Registry{}, nil
 	}
 

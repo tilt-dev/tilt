@@ -427,7 +427,8 @@ func newAPIFixture(t testing.TB) *apiFixture {
 }
 
 func (f *apiFixture) updateOwnedObjects(nn types.NamespacedName, tf *v1alpha1.Tiltfile, tlr *tiltfile.TiltfileLoadResult) error {
-	return updateOwnedObjects(f.ctx, f.c, nn, tf, tlr, false, store.EngineModeUp, container.Registry{}, &v1alpha1.KubernetesClusterConnection{})
+	return updateOwnedObjects(f.ctx, f.c, nn, tf, tlr, false, store.EngineModeUp,
+		&v1alpha1.KubernetesClusterConnection{})
 }
 
 func (f *apiFixture) Get(nn types.NamespacedName, obj ctrlclient.Object) error {

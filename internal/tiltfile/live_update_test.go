@@ -178,8 +178,6 @@ custom_build('foo', ':', ['foo'], live_update=%s)
 
 	m := f.assertNextManifest("foo", cb(image("foo"), f.expectedLU))
 	assert.True(t, m.ImageTargets[0].IsLiveUpdateOnly)
-	// this ref will never actually be used since the image isn't being built but the registry is applied here
-	assert.Equal(t, "gcr.io/myrepo/foo", m.ImageTargets[0].Refs.LocalRef().String())
 
 	require.NoError(t, m.InferLiveUpdateSelectors(), "Failed to infer Live Update selectors")
 	luSpec := m.ImageTargets[0].LiveUpdateSpec

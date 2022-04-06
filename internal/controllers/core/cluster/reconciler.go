@@ -17,6 +17,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/cluster"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -333,12 +334,7 @@ func (c *connection) toStatus() v1alpha1.ClusterStatus {
 
 	var reg *v1alpha1.RegistryHosting
 	if c.registry != nil {
-		reg = &v1alpha1.RegistryHosting{
-			Host:                     c.registry.Host,
-			HostFromContainerRuntime: c.registry.HostFromCluster(),
-			// TODO(milas+lizz): expose from the Tilt registry object
-			// Help: c.registry.Help,
-		}
+		reg = cluster.RegistryHosting(c.registry)
 	}
 
 	return v1alpha1.ClusterStatus{

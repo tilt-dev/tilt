@@ -16,8 +16,8 @@ import (
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/cluster"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/uibutton"
 	"github.com/tilt-dev/tilt/internal/controllers/apiset"
@@ -48,19 +48,22 @@ type disableSourceMap map[model.ManifestName]*v1alpha1.DisableSource
 //
 // In the future, anything that creates objects based on the Tiltfile (e.g., FileWatch specs,
 // LocalServer specs) should go here.
-func updateOwnedObjects(ctx context.Context, client ctrlclient.Client, nn types.NamespacedName,
-	tf *v1alpha1.Tiltfile, tlr *tiltfile.TiltfileLoadResult,
+func updateOwnedObjects(
+	ctx context.Context,
+	client ctrlclient.Client,
+	nn types.NamespacedName,
+	tf *v1alpha1.Tiltfile,
+	tlr *tiltfile.TiltfileLoadResult,
 	changeEnabledResources bool,
 	mode store.EngineMode,
-	registry container.Registry,
-	defaultK8sConnection *v1alpha1.KubernetesClusterConnection) error {
-
+	defaultK8sConnection *v1alpha1.KubernetesClusterConnection,
+) error {
 	disableSources := toDisableSources(tlr)
 
 	if tlr != nil {
 		for i, m := range tlr.Manifests {
 			// Apply the registry to the image refs.
-			err := m.InferImagePropertiesFromCluster(registry)
+			err := m.InferImageProperties()
 			if err != nil {
 				return err
 			}
@@ -601,16 +604,6 @@ func toClusterObjects(nn types.NamespacedName, tlr *tiltfile.TiltfileLoadResult,
 
 	if tlr.HasOrchestrator(model.OrchestratorK8s) {
 		name := v1alpha1.ClusterNameDefault
-
-		var defaultRegistry *v1alpha1.RegistryHosting
-		if !tlr.DefaultRegistry.Empty() {
-			defaultRegistry = &v1alpha1.RegistryHosting{
-				Host:                     tlr.DefaultRegistry.Host,
-				HostFromContainerRuntime: tlr.DefaultRegistry.HostFromCluster(),
-				SingleName:               tlr.DefaultRegistry.SingleName,
-			}
-		}
-
 		result[name] = &v1alpha1.Cluster{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:        name,
@@ -620,7 +613,7 @@ func toClusterObjects(nn types.NamespacedName, tlr *tiltfile.TiltfileLoadResult,
 				Connection: &v1alpha1.ClusterConnection{
 					Kubernetes: defaultK8sConnection.DeepCopy(),
 				},
-				DefaultRegistry: defaultRegistry,
+				DefaultRegistry: cluster.RegistryHosting(&tlr.DefaultRegistry),
 			},
 		}
 	}
