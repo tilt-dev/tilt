@@ -32,6 +32,7 @@ import (
 
 	"github.com/tilt-dev/clusterid"
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/cloud"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/containerupdate"
@@ -3352,8 +3353,12 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 
 	cu := &containerupdate.FakeContainerUpdater{}
 	lur := liveupdate.NewFakeReconciler(st, cu, cdc)
-	dir := dockerimage.NewReconciler(cdc)
-	cir := cmdimage.NewReconciler(cdc)
+	dockerBuilder := build.NewDockerBuilder(dockerClient, nil)
+	customBuilder := build.NewCustomBuilder(dockerClient, clock)
+	kp := build.NewKINDLoader()
+	ib := build.NewImageBuilder(dockerBuilder, customBuilder, kp)
+	dir := dockerimage.NewReconciler(cdc, dockerClient, ib)
+	cir := cmdimage.NewReconciler(cdc, dockerClient, ib)
 	clr := cluster.NewReconciler(ctx, cdc, st, clock, clusterClients, docker.LocalEnv{},
 		cluster.FakeDockerClientOrError(dockerClient, nil),
 		cluster.FakeKubernetesClientOrError(kClient, nil))

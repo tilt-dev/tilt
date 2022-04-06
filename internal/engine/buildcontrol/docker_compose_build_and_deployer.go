@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/docker/distribution/reference"
 	"k8s.io/apimachinery/pkg/types"
 	ktypes "k8s.io/apimachinery/pkg/types"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -16,18 +15,17 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/core/dockerimage"
 
 	"github.com/tilt-dev/tilt/internal/build"
-	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/store"
-	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type DockerComposeBuildAndDeployer struct {
+	dr         *dockerimage.Reconciler
+	cr         *cmdimage.Reconciler
+	ib         *build.ImageBuilder
 	dcsr       *dockercomposeservice.Reconciler
-	dc         docker.Client
-	ib         *ImageBuilder
 	clock      build.Clock
 	ctrlClient ctrlclient.Client
 }
@@ -35,16 +33,18 @@ type DockerComposeBuildAndDeployer struct {
 var _ BuildAndDeployer = &DockerComposeBuildAndDeployer{}
 
 func NewDockerComposeBuildAndDeployer(
+	dr *dockerimage.Reconciler,
+	cr *cmdimage.Reconciler,
+	ib *build.ImageBuilder,
 	dcsr *dockercomposeservice.Reconciler,
-	dc docker.Client,
-	ib *ImageBuilder,
 	c build.Clock,
 	ctrlClient ctrlclient.Client,
 ) *DockerComposeBuildAndDeployer {
 	return &DockerComposeBuildAndDeployer{
-		dcsr:       dcsr,
-		dc:         dc.ForOrchestrator(model.OrchestratorDC),
+		dr:         dr,
+		cr:         cr,
 		ib:         ib,
+		dcsr:       dcsr,
 		clock:      c,
 		ctrlClient: ctrlClient,
 	}
@@ -166,44 +166,8 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 			return store.ImageBuildResult{}, fmt.Errorf("Not an image target: %T", target)
 		}
 
-		startTime := apis.NowMicro()
-		dockerimage.MaybeUpdateStatus(ctx, bd.ctrlClient, iTarget, dockerimage.ToBuildingStatus(iTarget, startTime))
-		cmdimage.MaybeUpdateStatus(ctx, bd.ctrlClient, iTarget, cmdimage.ToBuildingStatus(iTarget, startTime))
-
-		expectedRef := iTarget.Refs.ConfigurationRef
 		cluster := currentState[target.ID()].ClusterOrEmpty()
-
-		// NOTE(maia): we assume that this func takes one DC target and up to one image target
-		// corresponding to that service. If this func ever supports specs for more than one
-		// service at once, we'll have to match up image build results to DC target by ref.
-		refs, stages, err := bd.ib.Build(ctx, iTarget, cluster, imageMapSet, ps)
-		if err != nil {
-			dockerimage.MaybeUpdateStatus(ctx, bd.ctrlClient, iTarget, dockerimage.ToCompletedFailStatus(iTarget, startTime, stages, err))
-			cmdimage.MaybeUpdateStatus(ctx, bd.ctrlClient, iTarget, cmdimage.ToCompletedFailStatus(iTarget, startTime, err))
-			return store.ImageBuildResult{}, err
-		}
-		dockerimage.MaybeUpdateStatus(ctx, bd.ctrlClient, iTarget, dockerimage.ToCompletedSuccessStatus(iTarget, startTime, stages, refs))
-		cmdimage.MaybeUpdateStatus(ctx, bd.ctrlClient, iTarget, cmdimage.ToCompletedSuccessStatus(iTarget, startTime, refs))
-
-		ref, err := bd.tagWithExpected(ctx, refs.LocalRef, expectedRef)
-		if err != nil {
-			return store.ImageBuildResult{}, err
-		}
-
-		result := store.NewImageBuildResultSingleRef(iTarget.ID(), ref)
-		result.ImageMapStatus.BuildStartTime = &startTime
-		nn := ktypes.NamespacedName{Name: iTarget.ImageMapName()}
-		im, ok := imageMapSet[nn]
-		if !ok {
-			return store.ImageBuildResult{}, fmt.Errorf("apiserver missing ImageMap: %s", iTarget.ID().Name)
-		}
-		im.Status = result.ImageMapStatus
-		err = bd.ctrlClient.Status().Update(ctx, im)
-		if err != nil {
-			return store.ImageBuildResult{}, fmt.Errorf("updating ImageMap: %v", err)
-		}
-
-		return result, nil
+		return bd.build(ctx, iTarget, cluster, imageMapSet, ps)
 	})
 
 	newResults := q.NewResults().ToBuildResultSet()
@@ -233,26 +197,19 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	return newResults, nil
 }
 
-// tagWithExpected tags the given ref as whatever Docker Compose expects, i.e. as
-// the `image` value given in docker-compose.yaml. (If DC yaml specifies an image
-// with a tag, use that name + tag; otherwise, tag as latest.)
-func (bd *DockerComposeBuildAndDeployer) tagWithExpected(ctx context.Context, ref reference.NamedTagged,
-	expected container.RefSelector) (reference.NamedTagged, error) {
-	var tagAs reference.NamedTagged
-	expectedNt, err := container.ParseNamedTagged(expected.String())
-	if err == nil {
-		// expected ref already includes a tag, so just tag the image as that
-		tagAs = expectedNt
-	} else {
-		// expected ref is just a name, so tag it as `latest` b/c that's what Docker Compose wants
-		tagAs, err = reference.WithTag(ref, docker.TagLatest)
-		if err != nil {
-			return nil, err
-		}
+func (bd *DockerComposeBuildAndDeployer) build(
+	ctx context.Context,
+	iTarget model.ImageTarget,
+	cluster *v1alpha1.Cluster,
+	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap,
+	ps *build.PipelineState) (store.ImageBuildResult, error) {
+	switch iTarget.BuildDetails.(type) {
+	case model.DockerBuild:
+		return bd.dr.ForceApply(ctx, iTarget, cluster, imageMaps, ps)
+	case model.CustomBuild:
+		return bd.cr.ForceApply(ctx, iTarget, cluster, imageMaps, ps)
 	}
-
-	err = bd.dc.ImageTag(ctx, ref.String(), tagAs.String())
-	return tagAs, err
+	return store.ImageBuildResult{}, fmt.Errorf("invalid image spec")
 }
 
 type buildPlan struct {

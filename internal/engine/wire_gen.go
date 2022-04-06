@@ -19,7 +19,9 @@ import (
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
+	"github.com/tilt-dev/tilt/internal/controllers/core/cmdimage"
 	"github.com/tilt-dev/tilt/internal/controllers/core/dockercomposeservice"
+	"github.com/tilt-dev/tilt/internal/controllers/core/dockerimage"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesapply"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
@@ -36,18 +38,20 @@ import (
 
 // Injectors from wire.go:
 
-func provideFakeBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, dir *dirs.TiltDevDir, env clusterid.Product, updateMode liveupdates.UpdateModeFlag, dcc dockercompose.DockerComposeClient, clock build.Clock, kp buildcontrol.KINDLoader, analytics2 *analytics.TiltAnalytics, ctrlClient client.Client, st store.RStore, execer localexec.Execer) (buildcontrol.BuildAndDeployer, error) {
+func provideFakeBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, dir *dirs.TiltDevDir, env clusterid.Product, updateMode liveupdates.UpdateModeFlag, dcc dockercompose.DockerComposeClient, clock build.Clock, kp build.KINDLoader, analytics2 *analytics.TiltAnalytics, ctrlClient client.Client, st store.RStore, execer localexec.Execer) (buildcontrol.BuildAndDeployer, error) {
 	labels := _wireLabelsValue
 	dockerBuilder := build.NewDockerBuilder(docker2, labels)
 	customBuilder := build.NewCustomBuilder(docker2, clock)
-	imageBuilder := buildcontrol.NewImageBuilder(dockerBuilder, customBuilder, kp)
+	imageBuilder := build.NewImageBuilder(dockerBuilder, customBuilder, kp)
+	reconciler := dockerimage.NewReconciler(ctrlClient, docker2, imageBuilder)
+	cmdimageReconciler := cmdimage.NewReconciler(ctrlClient, docker2, imageBuilder)
 	scheme := v1alpha1.NewScheme()
-	reconciler := kubernetesapply.NewReconciler(ctrlClient, kClient, scheme, dockerBuilder, st, execer)
-	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(imageBuilder, analytics2, clock, ctrlClient, reconciler)
+	kubernetesapplyReconciler := kubernetesapply.NewReconciler(ctrlClient, kClient, scheme, dockerBuilder, st, execer)
+	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(reconciler, cmdimageReconciler, imageBuilder, analytics2, clock, ctrlClient, kubernetesapplyReconciler)
 	clockworkClock := clockwork.NewRealClock()
 	disableSubscriber := dockercomposeservice.NewDisableSubscriber(ctx, dcc, clockworkClock)
 	dockercomposeserviceReconciler := dockercomposeservice.NewReconciler(ctrlClient, dcc, docker2, st, scheme, disableSubscriber)
-	dockerComposeBuildAndDeployer := buildcontrol.NewDockerComposeBuildAndDeployer(dockercomposeserviceReconciler, docker2, imageBuilder, clock, ctrlClient)
+	dockerComposeBuildAndDeployer := buildcontrol.NewDockerComposeBuildAndDeployer(reconciler, cmdimageReconciler, imageBuilder, dockercomposeserviceReconciler, clock, ctrlClient)
 	localexecEnv := provideFakeEnv()
 	cmdExecer := cmd.ProvideExecer(localexecEnv)
 	proberManager := cmd.ProvideProberManager()
