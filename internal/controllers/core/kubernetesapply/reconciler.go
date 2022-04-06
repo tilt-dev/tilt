@@ -225,7 +225,6 @@ func (r *Reconciler) shouldDeployOnReconcile(
 	for i, name := range ka.Spec.ImageMaps {
 		im := imageMaps[types.NamespacedName{Name: name}]
 		if !apicmp.DeepEqual(im.Spec, result.ImageMapSpecs[i]) {
-
 			return true
 		}
 		if !apicmp.DeepEqual(im.Status, result.ImageMapStatuses[i]) {
@@ -638,9 +637,6 @@ func (r *Reconciler) recordDisableStatus(
 	isDisabled := disableStatus.State == v1alpha1.DisableStateDisabled
 
 	update := result.Status.DeepCopy()
-	if isDisabled {
-		update.Error = "" // Clear the error if the resource is disabled.
-	}
 	update.DisableStatus = &disableStatus
 	result.Status = *update
 
@@ -722,6 +718,12 @@ func (r *Reconciler) garbageCollect(nn types.NamespacedName, isDeleting bool) de
 
 		// the object was deleted (so result is nil) and we have a custom delete cmd, so use that
 		// and skip diffing managed entities entirely
+		//
+		// We assume that the delete cmd deletes all dangling objects.
+		for k := range result.DanglingObjects {
+			delete(result.DanglingObjects, k)
+		}
+		result.clearApplyStatus()
 		return deleteSpec{deleteCmd: result.Spec.DeleteCmd}
 	}
 
@@ -737,6 +739,9 @@ func (r *Reconciler) garbageCollect(nn types.NamespacedName, isDeleting bool) de
 	for k, v := range result.DanglingObjects {
 		delete(result.DanglingObjects, k)
 		toDelete = append(toDelete, v)
+	}
+	if isDeleting {
+		result.clearApplyStatus()
 	}
 	return deleteSpec{entities: toDelete}
 }
@@ -875,6 +880,21 @@ type Result struct {
 	AppliedObjects  objectRefSet
 	DanglingObjects objectRefSet
 	Status          v1alpha1.KubernetesApplyStatus
+}
+
+// Set the status of applied objects to empty,
+// as if this had never been applied.
+func (r *Result) clearApplyStatus() {
+	if r.Status.LastApplyTime.IsZero() && r.Status.Error == "" {
+		return
+	}
+
+	update := r.Status.DeepCopy()
+	update.LastApplyTime = metav1.MicroTime{}
+	update.LastApplyStartTime = metav1.MicroTime{}
+	update.Error = ""
+	update.ResultYAML = ""
+	r.Status = *update
 }
 
 // Set a new collection of applied objects.

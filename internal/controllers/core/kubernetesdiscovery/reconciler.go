@@ -665,7 +665,7 @@ func (w *Reconciler) manageOwnedPodLogStreams(ctx context.Context, nn types.Name
 
 			if err := w.createPodLogStream(ctx, kd, pod); err != nil {
 				errs = append(errs, fmt.Errorf("failed to create PodLogStream for Pod %s:%s for KubernetesDiscovery %s: %v",
-					pod.Namespace, pod.Name, kd.Name, err))
+					pod.Namespace, pod.Name, nn.Name, err))
 			}
 		}
 	}
@@ -674,7 +674,7 @@ func (w *Reconciler) manageOwnedPodLogStreams(ctx context.Context, nn types.Name
 		if !seenPods[podKey] {
 			if err := w.ctrlClient.Delete(ctx, &pls); ctrlclient.IgnoreNotFound(err) != nil {
 				errs = append(errs, fmt.Errorf("failed to delete PodLogStream %s for KubernetesDiscovery %s: %v",
-					pls.Name, kd.Name, err))
+					pls.Name, nn.Name, err))
 			}
 		}
 	}

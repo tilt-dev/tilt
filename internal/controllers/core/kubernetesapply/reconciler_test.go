@@ -325,6 +325,15 @@ func TestGarbageCollectAllOnDisable(t *testing.T) {
 		assert.Equal(t, []string{"custom-apply-cmd"}, calls[0].Cmd.Argv)
 		assert.Equal(t, []string{"custom-delete-cmd"}, calls[1].Cmd.Argv)
 	}
+
+	f.setDisabled(ka.GetObjectMeta().Name, false)
+	calls = f.execer.Calls()
+	if assert.Len(t, calls, 3, "Expected 3 calls (2x apply + 1x delete)") {
+		assert.Equal(t, []string{"custom-apply-cmd"}, calls[2].Cmd.Argv)
+	}
+
+	// Confirm the k8s client never deletes resources directly.
+	assert.Equal(t, "", f.kClient.DeletedYaml)
 }
 
 func TestGarbageCollectPartial(t *testing.T) {
