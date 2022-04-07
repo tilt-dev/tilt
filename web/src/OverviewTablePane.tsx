@@ -9,7 +9,7 @@ import { ResourceNameFilter } from "./ResourceNameFilter"
 import StarredResourceBar, {
   starredResourcePropsFromView,
 } from "./StarredResourceBar"
-import { Color, SizeUnit, Width } from "./style-helpers"
+import { Color, SizeUnit, Width, ZIndex } from "./style-helpers"
 
 type OverviewTablePaneProps = {
   view: Proto.webviewView
@@ -27,7 +27,7 @@ const OverviewTableStickyNav = styled.div`
   background-color: ${Color.gray20};
   position: sticky;
   top: 0;
-  z-index: 1000;
+  z-index: ${ZIndex.TableStickyHeader};
 `
 
 const OverviewTableMenu = styled.section`
