@@ -43,7 +43,7 @@ type ControllerFixture struct {
 	ctx        context.Context
 	cancel     context.CancelFunc
 	controller controller
-	Store      store.RStore
+	Store      *testStore
 	Scheme     *runtime.Scheme
 	Client     ctrlclient.Client
 }
@@ -55,7 +55,7 @@ type ControllerFixtureBuilder struct {
 	out    *bufsync.ThreadSafeBuffer
 	ma     *analytics.MemoryAnalytics
 	Client ctrlclient.Client
-	Store  store.RStore
+	Store  *testStore
 }
 
 func NewControllerFixtureBuilder(t testing.TB) *ControllerFixtureBuilder {
@@ -234,4 +234,8 @@ func (f *ControllerFixture) Delete(o object) (bool, ctrl.Result) {
 		return false, ctrl.Result{}
 	}
 	return true, f.MustReconcile(f.KeyForObject(o))
+}
+
+func (f *ControllerFixture) Actions() []store.Action {
+	return f.Store.Actions()
 }

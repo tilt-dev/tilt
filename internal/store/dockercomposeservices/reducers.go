@@ -16,7 +16,7 @@ func HandleDockerComposeServiceUpsertAction(state *store.EngineState, action Doc
 
 	mn := model.ManifestName(obj.GetAnnotations()[v1alpha1.AnnotationManifest])
 	mt, ok := state.ManifestTargets[mn]
-	if !ok || mt.Manifest.IsDC() {
+	if !ok || !mt.Manifest.IsDC() {
 		return
 	}
 

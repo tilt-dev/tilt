@@ -16,6 +16,10 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
+	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/dockercomposeservices"
+	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
+	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
@@ -101,6 +105,9 @@ func TestContainerEvent(t *testing.T) {
 	obj := v1alpha1.DockerComposeService{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "fe",
+			Annotations: map[string]string{
+				v1alpha1.AnnotationManifest: "fe",
+			},
 		},
 		Spec: v1alpha1.DockerComposeServiceSpec{
 			Service: "fe",
@@ -133,7 +140,24 @@ func TestContainerEvent(t *testing.T) {
 		f.MustGet(nn, &obj)
 		return obj.Status.ContainerState.Status == "exited"
 	}, time.Second, 10*time.Millisecond, "container exited")
+
 	assert.Equal(t, containerID, obj.Status.ContainerID)
+
+	f.MustReconcile(nn)
+	tmpf := tempdir.NewTempDirFixture(t)
+	s := store.NewState()
+	m := manifestbuilder.New(tmpf, "fe").WithDockerCompose().Build()
+	s.UpsertManifestTarget(store.NewManifestTarget(m))
+
+	for _, action := range f.Store.Actions() {
+		switch action := action.(type) {
+		case dockercomposeservices.DockerComposeServiceUpsertAction:
+			dockercomposeservices.HandleDockerComposeServiceUpsertAction(s, action)
+		}
+	}
+
+	assert.Equal(t, "exited",
+		s.ManifestTargets["fe"].State.DCRuntimeState().ContainerState.Status)
 }
 
 type fixture struct {
