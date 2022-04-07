@@ -66,7 +66,8 @@ type Reconciler struct {
 
 	monitors map[string]*monitor
 
-	// TODO(nick): Remove this mutex once ForceApply is gone.
+	// We need to be able to map trigger events to known resources while
+	// Reconcile() is running.
 	mu sync.Mutex
 }
 
@@ -862,40 +863,6 @@ func createFailedState(obj *v1alpha1.LiveUpdate, reason, msg string) *v1alpha1.L
 
 	failed.LastTransitionTime = transitionTime
 	return failed
-}
-
-// Live-update containers by copying files and running exec commands.
-//
-// Update the apiserver when finished.
-//
-// We expose this as a public method as a hack! Currently, in Tilt, BuildController
-// decides when to kick off the live update, and run a full image build+deploy if it
-// fails. Eventually we'll invert that relationship, so that BuildController
-// (and other API reconcilers) watch the live update API.
-func (r *Reconciler) ForceApply(
-	ctx context.Context,
-	nn types.NamespacedName,
-	spec v1alpha1.LiveUpdateSpec,
-	input Input) (v1alpha1.LiveUpdateStatus, error) {
-	var obj v1alpha1.LiveUpdate
-	err := r.client.Get(ctx, nn, &obj)
-	if err != nil {
-		return v1alpha1.LiveUpdateStatus{}, err
-	}
-
-	status := r.applyInternal(ctx, spec, input)
-	adjustFailedStateTimestamps(&obj, &status)
-
-	if !apicmp.DeepEqual(status, obj.Status) {
-		update := obj.DeepCopy()
-		update.Status = status
-		err := r.client.Status().Update(ctx, update)
-		if err != nil {
-			return v1alpha1.LiveUpdateStatus{}, err
-		}
-	}
-
-	return status, nil
 }
 
 // Like apply, but doesn't write the status to the apiserver.
