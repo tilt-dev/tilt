@@ -601,6 +601,16 @@ func toClusterObjects(nn types.NamespacedName, tlr *tiltfile.TiltfileLoadResult,
 
 	if tlr.HasOrchestrator(model.OrchestratorK8s) {
 		name := v1alpha1.ClusterNameDefault
+
+		var defaultRegistry *v1alpha1.RegistryHosting
+		if !tlr.DefaultRegistry.Empty() {
+			defaultRegistry = &v1alpha1.RegistryHosting{
+				Host:                     tlr.DefaultRegistry.Host,
+				HostFromContainerRuntime: tlr.DefaultRegistry.HostFromCluster(),
+				SingleName:               tlr.DefaultRegistry.SingleName,
+			}
+		}
+
 		result[name] = &v1alpha1.Cluster{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:        name,
@@ -608,8 +618,9 @@ func toClusterObjects(nn types.NamespacedName, tlr *tiltfile.TiltfileLoadResult,
 			},
 			Spec: v1alpha1.ClusterSpec{
 				Connection: &v1alpha1.ClusterConnection{
-					Kubernetes: defaultK8sConnection,
+					Kubernetes: defaultK8sConnection.DeepCopy(),
 				},
+				DefaultRegistry: defaultRegistry,
 			},
 		}
 	}

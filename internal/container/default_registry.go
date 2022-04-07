@@ -7,6 +7,8 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
+
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
 var escapeRegex = regexp.MustCompile(`[/:@]`)
@@ -76,6 +78,54 @@ func MustNewRegistryWithHostFromCluster(host, fromCluster string) Registry {
 		panic(err)
 	}
 	return r
+}
+
+// RegistryFromCluster determines the registry that should be used for pushing
+// & pulling Tilt-built images.
+//
+// If the v1alpha1.Cluster object is not in a healthy state, an error is
+// returned.
+//
+// If the v1alpha1.Cluster object is healthy and provides local registry
+// metadata, that will be used.
+//
+// Otherwise, if the v1alpha1.Cluster object is healthy and does not provide
+// local registry metadata but a default registry for the cluster is defined
+// (typically via `default_registry` in the Tiltfile), the default registry
+// will be used.
+//
+// As a fallback, an empty registry will be returned, which indicates that _no_
+// registry rewriting should occur and Tilt should push and pull images to the
+// registry as specified by the configuration ref (e.g. what's passed in to
+// `docker_build` or `custom_build`).
+func RegistryFromCluster(cluster v1alpha1.Cluster) (Registry, error) {
+	if cluster.Status.Error != "" {
+		// if the Cluster has not been initialized, we have not had a chance to
+		// read the local cluster info from it yet
+		return Registry{}, fmt.Errorf("cluster not ready: %s", cluster.Status.Error)
+	}
+
+	regHosting := cluster.Status.Registry
+	if regHosting == nil {
+		// no local registry is configured for this cluster, so use the default
+		regHosting = cluster.Spec.DefaultRegistry
+	}
+
+	if regHosting == nil {
+		// there was also no default registry, so use registries as specified
+		// in the docker_build + custom_build directives in the Tiltfile
+		return Registry{}, nil
+	}
+
+	reg, err := NewRegistryWithHostFromCluster(
+		regHosting.Host,
+		regHosting.HostFromContainerRuntime,
+	)
+	if err != nil {
+		return Registry{}, err
+	}
+	reg.SingleName = regHosting.SingleName
+	return reg, nil
 }
 
 func (r Registry) Validate() error {

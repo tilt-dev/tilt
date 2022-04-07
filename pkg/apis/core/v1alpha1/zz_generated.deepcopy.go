@@ -142,6 +142,11 @@ func (in *ClusterSpec) DeepCopyInto(out *ClusterSpec) {
 		*out = new(ClusterConnection)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.DefaultRegistry != nil {
+		in, out := &in.DefaultRegistry, &out.DefaultRegistry
+		*out = new(RegistryHosting)
+		**out = **in
+	}
 	return
 }
 

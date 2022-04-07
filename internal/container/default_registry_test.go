@@ -6,6 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
 var namedTaggedTestCases = []struct {
@@ -114,6 +116,102 @@ func TestNewRegistryWithHostFromClusterError(t *testing.T) {
 func TestNewRegistryEmptyOK(t *testing.T) {
 	_, err := NewRegistryWithHostFromCluster("", "")
 	require.NoError(t, err)
+}
+
+func TestRegistryFromCluster(t *testing.T) {
+	registryHosting := func(host string) *v1alpha1.RegistryHosting {
+		// the container.Registry constructors do some validation, so these
+		// need to be valid canonical repository values
+		return &v1alpha1.RegistryHosting{
+			Host:                     host,
+			HostFromClusterNetwork:   "localhost:12345/cluster-network",
+			HostFromContainerRuntime: "localhost:12345/container-runtime",
+			Help:                     "fake-help",
+		}
+	}
+
+	tests := []struct {
+		name               string
+		cluster            v1alpha1.Cluster
+		expectedErr        string
+		expectedHost       string
+		expectedSingleName string
+		expectedLocal      bool
+	}{
+		{name: "Empty"},
+		{
+			name: "Error",
+			cluster: v1alpha1.Cluster{
+				Status: v1alpha1.ClusterStatus{Error: "fake cluster error"},
+			},
+			expectedErr: "cluster not ready: fake cluster error",
+		},
+		{
+			name: "DefaultNoLocal",
+			cluster: v1alpha1.Cluster{
+				Spec: v1alpha1.ClusterSpec{
+					DefaultRegistry: &v1alpha1.RegistryHosting{
+						Host:       "registry.example.com",
+						SingleName: "fake-repo",
+					},
+				},
+			},
+			expectedHost:       "registry.example.com",
+			expectedSingleName: "fake-repo",
+		},
+		{
+			name: "DefaultWithLocal",
+			cluster: v1alpha1.Cluster{
+				Spec: v1alpha1.ClusterSpec{
+					DefaultRegistry: &v1alpha1.RegistryHosting{
+						Host:       "registry.example.com",
+						SingleName: "fake-repo",
+					},
+				},
+				Status: v1alpha1.ClusterStatus{
+					Registry: registryHosting("localhost:12345"),
+				},
+			},
+			expectedHost:  "localhost:12345",
+			expectedLocal: true,
+		},
+		{
+			name: "LocalNoDefault",
+			cluster: v1alpha1.Cluster{
+				Status: v1alpha1.ClusterStatus{
+					Registry: registryHosting("localhost:7890"),
+				},
+			},
+			expectedHost:  "localhost:7890",
+			expectedLocal: true,
+		},
+		{
+			name: "LocalInvalid",
+			cluster: v1alpha1.Cluster{
+				Status: v1alpha1.ClusterStatus{
+					Registry: registryHosting(""),
+				},
+			},
+			expectedErr: `illegal registry: provided hostFromCluster "localhost:12345/container-runtime" without providing Host`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reg, err := RegistryFromCluster(tt.cluster)
+			if tt.expectedErr != "" {
+				require.EqualError(t, err, tt.expectedErr, "Registry error")
+			} else {
+				require.NoError(t, err, "Registry error")
+				require.Equal(t, tt.expectedHost, reg.Host, "Registry host")
+				require.Equal(t, tt.expectedSingleName, reg.SingleName, "Registry single name")
+				if tt.expectedLocal {
+					require.Equal(t, "localhost:12345/container-runtime", reg.hostFromCluster,
+						"Registry host from container runtime")
+				}
+			}
+		})
+	}
 }
 
 func assertReplaceRegistryForLocal(t *testing.T, reg Registry, orig string, expected string) {

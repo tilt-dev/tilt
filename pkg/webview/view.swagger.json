@@ -403,6 +403,10 @@
         "connection": {
           "$ref": "#/definitions/v1alpha1ClusterConnection",
           "description": "Connection spec for an existing cluster."
+        },
+        "defaultRegistry": {
+          "$ref": "#/definitions/v1alpha1RegistryHosting",
+          "description": "DefaultRegistry determines where images for this Cluster should\nbe pushed/pulled from if the Cluster itself does not provide local\nregistry hosting metadata.\n\nIf not specified, no registry rewriting will occur, and the images will\nbe pushed/pulled to from the registry specified by the corresponding\nimage build directive (e.g. `docker_build` or `custom_build`).\n\n+optional"
         }
       },
       "description": "ClusterSpec defines how to find the cluster we're running\ncontainers on.\n\nTilt currently supports connecting to an existing Kubernetes\ncluster or an existing Docker Daemon (for Docker Compose)."
@@ -509,11 +513,11 @@
       "properties": {
         "context": {
           "type": "string",
-          "description": "The name of the kubeconfig context to use.\n\nIf not specified, will use the default context in the kubeconfig."
+          "description": "The name of the kubeconfig context to use.\n\nIf not specified, will use the default context in the kubeconfig.\n\n+optional"
         },
         "namespace": {
           "type": "string",
-          "description": "The default namespace to use.\n\nIf not specified, will use the namespace in the kubeconfig."
+          "description": "The default namespace to use.\n\nIf not specified, will use the namespace in the kubeconfig.\n\n+optional"
         }
       }
     },
@@ -557,6 +561,10 @@
         "help": {
           "type": "string",
           "description": "Help contains a URL pointing to documentation for users on how to set\nup and configure a local registry.\n\nTools can use this to nudge users to enable the registry. When possible,\nthe writer should use as permanent a URL as possible to prevent drift\n(e.g., a version control SHA).\n\nWhen image pushes to a registry host specified in one of the other fields\nfail, the tool should display this help URL to the user. The help URL\nshould contain instructions on how to diagnose broken or misconfigured\nregistries."
+        },
+        "singleName": {
+          "type": "string",
+          "description": "SingleName uses a shared image name for _all_ Tilt-built images and\nrelies on tags to distinguish between logically distinct images.\n\nThis is most commonly used with Amazon Elastic Container Registry (ECR),\nwhich works differently than other image registries.\n\nAn ECR host takes the form https://aws_account_id.dkr.ecr.region.amazonaws.com.\nEach image name in that registry must be pre-created ಠ_ಠ and assigned\nIAM permissions.\nFor example: https://aws_account_id.dkr.ecr.region.amazonaws.com/my-repo\n(They call this a repo).\n\nFor this reason, some users using ECR prefer to push all images to a\nsingle image name (ECR repo).\n\nA recommended pattern here is to create a \"personal\" image repo for each\nuser during development.\n\nSee:\nhttps://docs.aws.amazon.com/AmazonECR/latest/userguide/Repositories.html\nhttps://github.com/tilt-dev/tilt/issues/2419\n\n+optional"
         }
       }
     },
