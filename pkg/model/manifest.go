@@ -258,6 +258,16 @@ func (m Manifest) Validate() error {
 	return nil
 }
 
+func (m *Manifest) ClusterName() string {
+	if m.IsDC() {
+		return v1alpha1.ClusterNameDocker
+	}
+	if m.IsK8s() {
+		return v1alpha1.ClusterNameDefault
+	}
+	return ""
+}
+
 // Infer image properties for each image.
 func (m *Manifest) InferImagePropertiesFromCluster(reg container.Registry) error {
 	var deployImageIDs []TargetID
@@ -276,7 +286,7 @@ func (m *Manifest) InferImagePropertiesFromCluster(reg container.Registry) error
 			clusterNeeds = v1alpha1.ClusterImageNeedsPush
 		}
 
-		iTarget, err := iTarget.InferImagePropertiesFromCluster(reg, clusterNeeds)
+		iTarget, err := iTarget.InferImagePropertiesFromCluster(reg, clusterNeeds, m.ClusterName())
 		if err != nil {
 			return fmt.Errorf("manifest %s: %v", m.Name, err)
 		}
