@@ -1,9 +1,17 @@
 import React from "react"
 import { MemoryRouter } from "react-router"
 import { AnalyticsType } from "./analytics"
+import { GlobalNav } from "./GlobalNav"
 import HeaderBar from "./HeaderBar"
-import { nResourceView, tenResourceView, twoResourceView } from "./testdata"
+import { useSnapshotAction } from "./snapshot"
+import {
+  clusterConnection,
+  nResourceView,
+  tenResourceView,
+  twoResourceView,
+} from "./testdata"
 import { UpdateStatus } from "./types"
+import { showUpdate } from "./UpdateDialog"
 
 export default {
   title: "New UI/Shared/HeaderBar",
@@ -45,4 +53,50 @@ export const UpgradeAvailable = () => {
   status!.runningTiltBuild = { version: "0.18.0", dev: false }
   status!.versionSettings = { checkUpdates: true }
   return <HeaderBar view={view} currentPage={AnalyticsType.Detail} />
+}
+
+// TODO (lizz): Use HeaderBar component instead of GlobalNav
+// when design & implementation are finalized
+export const NavWithClusterConnectionHealth = () => {
+  const view = nResourceView(5)
+  const k8sConnection = clusterConnection()
+  const session = view.uiSession?.status
+
+  return (
+    <GlobalNav
+      isSnapshot={false}
+      runningBuild={session?.runningTiltBuild}
+      snapshot={useSnapshotAction()}
+      showUpdate={showUpdate(view)}
+      suggestedVersion={session?.suggestedTiltVersion}
+      tiltCloudSchemeHost=""
+      tiltCloudTeamID=""
+      tiltCloudTeamName=""
+      tiltCloudUsername=""
+      clusterConnections={[k8sConnection]}
+    />
+  )
+}
+
+export const NavWithClusterConnectionError = () => {
+  const view = nResourceView(5)
+  const k8sConnection = clusterConnection(
+    'Get "https://kubernetes.docker.internal:6443/version?timeout=32s": dial tcp 127.0.0.1:6443: connect: connection refused'
+  )
+  const session = view.uiSession?.status
+
+  return (
+    <GlobalNav
+      isSnapshot={false}
+      runningBuild={session?.runningTiltBuild}
+      snapshot={useSnapshotAction()}
+      showUpdate={showUpdate(view)}
+      suggestedVersion={session?.suggestedTiltVersion}
+      tiltCloudSchemeHost=""
+      tiltCloudTeamID=""
+      tiltCloudTeamName=""
+      tiltCloudUsername=""
+      clusterConnections={[k8sConnection]}
+    />
+  )
 }
