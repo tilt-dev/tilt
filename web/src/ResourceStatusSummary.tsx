@@ -299,12 +299,18 @@ function statusCounts(statuses: ResourceStatus[]): StatusCounts {
   }
 }
 
-function ResourceMetadata(props: { counts: StatusCounts }) {
+function ResourceMetadata(props: {
+  counts: StatusCounts
+  tiltConnected?: boolean
+}) {
   let { totalEnabled, healthy, pending, unhealthy } = props.counts
   useEffect(() => {
     let favicon: any = document.head.querySelector("#favicon")
     let faviconHref = ""
-    if (unhealthy > 0) {
+    if (props.tiltConnected === false) {
+      document.title = `… disconnected ┊ Tilt`
+      faviconHref = "/static/ico/favicon-gray.ico"
+    } else if (unhealthy > 0) {
       document.title = `✖︎ ${unhealthy} ┊ Tilt`
       faviconHref = "/static/ico/favicon-red.ico"
     } else if (pending || totalEnabled === 0) {
@@ -317,7 +323,7 @@ function ResourceMetadata(props: { counts: StatusCounts }) {
     if (favicon) {
       favicon.href = faviconHref
     }
-  }, [totalEnabled, healthy, pending, unhealthy])
+  }, [totalEnabled, healthy, pending, unhealthy, props.tiltConnected])
   return <></>
 }
 
@@ -330,6 +336,7 @@ type ResourceStatusSummaryOptions = {
 
 type ResourceStatusSummaryProps = {
   statuses: ResourceStatus[]
+  tiltConnected?: boolean
 } & ResourceStatusSummaryOptions
 
 function ResourceStatusSummary(props: ResourceStatusSummaryProps) {
@@ -341,7 +348,10 @@ function ResourceStatusSummary(props: ResourceStatusSummaryProps) {
   return (
     <ResourceStatusSummaryRoot aria-label={labelText}>
       {updateMetadata && (
-        <ResourceMetadata counts={statusCounts(props.statuses)} />
+        <ResourceMetadata
+          counts={statusCounts(props.statuses)}
+          tiltConnected={props.tiltConnected}
+        />
       )}
       <ResourceGroupStatus
         counts={statusCounts(props.statuses)}
@@ -362,6 +372,7 @@ function ResourceStatusSummary(props: ResourceStatusSummaryProps) {
 
 type StatusSummaryProps<T> = {
   resources: readonly T[]
+  tiltConnected?: boolean
 } & ResourceStatusSummaryOptions
 
 export function SidebarGroupStatusSummary(

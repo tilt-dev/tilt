@@ -13,6 +13,7 @@ import { Color, SizeUnit, Width } from "./style-helpers"
 
 type OverviewTablePaneProps = {
   view: Proto.webviewView
+  tiltConnected: boolean
 }
 
 let OverviewTablePaneStyle = styled.div`
@@ -56,7 +57,11 @@ export default function OverviewTablePane(props: OverviewTablePaneProps) {
   return (
     <OverviewTablePaneStyle>
       <OverviewTableStickyNav>
-        <HeaderBar view={props.view} currentPage={AnalyticsType.Grid} />
+        <HeaderBar
+          view={props.view}
+          currentPage={AnalyticsType.Grid}
+          tiltConnected={props.tiltConnected}
+        />
         <StarredResourceBar {...starredResourcePropsFromView(props.view, "")} />
         <OverviewTableMenu aria-label="Resource menu">
           <OverviewTableResourceNameFilter />

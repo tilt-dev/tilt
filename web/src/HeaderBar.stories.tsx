@@ -19,11 +19,19 @@ export default {
 }
 
 export const TwoResources = () => (
-  <HeaderBar view={twoResourceView()} currentPage={AnalyticsType.Detail} />
+  <HeaderBar
+    view={twoResourceView()}
+    currentPage={AnalyticsType.Detail}
+    tiltConnected={true}
+  />
 )
 
 export const TenResources = () => (
-  <HeaderBar view={tenResourceView()} currentPage={AnalyticsType.Detail} />
+  <HeaderBar
+    view={tenResourceView()}
+    currentPage={AnalyticsType.Detail}
+    tiltConnected={true}
+  />
 )
 
 export const TenResourcesErrorsAndWarnings = () => {
@@ -31,11 +39,21 @@ export const TenResourcesErrorsAndWarnings = () => {
   view.uiResources[0].status.updateStatus = UpdateStatus.Error
   view.uiResources[1].status.buildHistory[0].warnings = ["warning time"]
   view.uiResources[5].status.updateStatus = UpdateStatus.Error
-  return <HeaderBar view={view} currentPage={AnalyticsType.Grid} />
+  return (
+    <HeaderBar
+      view={view}
+      currentPage={AnalyticsType.Grid}
+      tiltConnected={true}
+    />
+  )
 }
 
 export const OneHundredResources = () => (
-  <HeaderBar view={nResourceView(100)} currentPage={AnalyticsType.Grid} />
+  <HeaderBar
+    view={nResourceView(100)}
+    currentPage={AnalyticsType.Grid}
+    tiltConnected={true}
+  />
 )
 
 export const UpgradeAvailable = () => {
@@ -44,5 +62,11 @@ export const UpgradeAvailable = () => {
   status!.suggestedTiltVersion = "0.18.1"
   status!.runningTiltBuild = { version: "0.18.0", dev: false }
   status!.versionSettings = { checkUpdates: true }
-  return <HeaderBar view={view} currentPage={AnalyticsType.Detail} />
+  return (
+    <HeaderBar
+      view={view}
+      currentPage={AnalyticsType.Detail}
+      tiltConnected={true}
+    />
+  )
 }
