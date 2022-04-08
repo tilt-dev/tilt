@@ -32,7 +32,7 @@ import {
   InstrumentedTextField,
 } from "./instrumentedComponents"
 import { usePathBuilder } from "./PathBuilder"
-import { Color, FontSize, SizeUnit } from "./style-helpers"
+import { Color, FontSize, SizeUnit, ZIndex } from "./style-helpers"
 import { apiTimeFormat, tiltApiPut } from "./tiltApi"
 import { UIButton, UIInputSpec, UIInputStatus } from "./types"
 
@@ -100,7 +100,7 @@ export const UIBUTTON_STOP_BUILD_TYPE = "StopBuild"
 
 // Styles
 const ApiButtonFormRoot = styled.div`
-  z-index: 20;
+  z-index: ${ZIndex.ApiButton};
 `
 const ApiButtonFormFooter = styled.div`
   margin-top: ${SizeUnit(0.5)};
