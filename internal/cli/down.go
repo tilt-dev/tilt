@@ -83,12 +83,14 @@ func (c *downCmd) down(ctx context.Context, downDeps DownDeps, args []string) er
 		return err
 	}
 
-	if err := deleteK8sManifests(ctx, tlr.Manifests, tlr.UpdateSettings, downDeps, c.deleteNamespaces); err != nil {
+	sortedManifests := sortManifestsForDeletion(tlr.Manifests)
+
+	if err := deleteK8sEntities(ctx, sortedManifests, tlr.UpdateSettings, downDeps, c.deleteNamespaces); err != nil {
 		return err
 	}
 
 	var dcProject v1alpha1.DockerComposeProject
-	for _, m := range tlr.Manifests {
+	for _, m := range sortedManifests {
 		if m.IsDC() {
 			dcProject = m.DockerComposeTarget().Spec.Project
 			break
@@ -106,25 +108,26 @@ func (c *downCmd) down(ctx context.Context, downDeps DownDeps, args []string) er
 	return nil
 }
 
-func deleteK8sManifests(ctx context.Context, manifests []model.Manifest, updateSettings model.UpdateSettings, downDeps DownDeps, deleteNamespaces bool) error {
+func sortManifestsForDeletion(manifests []model.Manifest) []model.Manifest {
 	nodes := []*dependencyNode{}
+	nodeMap := map[model.ManifestName]*dependencyNode{}
 
 	for i := range manifests {
 		manifest := manifests[len(manifests)-i-1]
 
-		nodes = append(nodes, &dependencyNode{
+		node := &dependencyNode{
 			manifest:   manifest,
 			dependents: []*dependencyNode{},
-		})
+		}
+
+		nodes = append(nodes, node)
+		nodeMap[manifest.Name] = node
 	}
 
 	for _, node := range nodes {
 		for _, resourceDep := range node.manifest.ResourceDependencies {
-			for _, other := range nodes {
-				if other.manifest.Name == resourceDep {
-					other.dependents = append(other.dependents, node)
-					break
-				}
+			if dependency, ok := nodeMap[resourceDep]; ok {
+				dependency.dependents = append(dependency.dependents, node)
 			}
 		}
 	}
@@ -134,7 +137,7 @@ func deleteK8sManifests(ctx context.Context, manifests []model.Manifest, updateS
 		sortedManifests = append(sortedManifests, manifestsForNode(node)...)
 	}
 
-	return deleteK8sEntities(ctx, sortedManifests, updateSettings, downDeps, deleteNamespaces)
+	return sortedManifests
 }
 
 func manifestsForNode(node *dependencyNode) []model.Manifest {

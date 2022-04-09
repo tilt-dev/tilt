@@ -197,6 +197,17 @@ func TestDownDeletesCyclicDependencies(t *testing.T) {
 	require.Equal(t, 2, len(entities))
 }
 
+func TestDownDeletesWithInvalidDependency(t *testing.T) {
+	f := newDownFixture(t)
+
+	manifests := newK8sInvalidDependencyManifests()
+
+	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: manifests}
+	err := f.cmd.down(f.ctx, f.deps, nil)
+	require.NoError(t, err)
+	require.Contains(t, f.kCli.DeletedYaml, "missing-dep")
+}
+
 func TestDownK8sFails(t *testing.T) {
 	f := newDownFixture(t)
 
@@ -342,6 +353,25 @@ data:
 			ResourceDependencies: []model.ManifestName{"dep_1"},
 		}.WithDeployTarget(k8s.MustTarget("dep_2", fmt.Sprintf(yamlTemplate, "dep_2"))),
 	}
+}
+
+func newK8sInvalidDependencyManifests() []model.Manifest {
+	yaml := `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: missing-dep
+data:
+  mySecret: blah
+`
+
+	return []model.Manifest{
+		model.Manifest{
+			Name:                 "missing-dep",
+			ResourceDependencies: []model.ManifestName{"nonexistent"},
+		}.WithDeployTarget(k8s.MustTarget("missing-dep", yaml)),
+	}
+
 }
 
 func newDCManifest() []model.Manifest {
