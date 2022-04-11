@@ -9,6 +9,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -150,7 +151,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		}
 	}
 
-	r.populateClusterMetadata(ctx, &conn)
+	r.populateClusterMetadata(ctx, nn, &conn)
 
 	r.connManager.store(nn, conn)
 
@@ -270,26 +271,43 @@ func (r *Reconciler) reportConnectionEvent(ctx context.Context, cluster *v1alpha
 	analytics.Get(ctx).Incr("api.cluster.connect", tags)
 }
 
-func (r *Reconciler) populateClusterMetadata(ctx context.Context, conn *connection) {
+func (r *Reconciler) populateClusterMetadata(ctx context.Context, clusterNN types.NamespacedName, conn *connection) {
 	if conn.initError != "" {
 		return
 	}
 
 	switch conn.connType {
 	case connectionTypeK8s:
-		r.populateK8sMetadata(ctx, conn)
+		r.populateK8sMetadata(ctx, clusterNN, conn)
 	case connectionTypeDocker:
 		r.populateDockerMetadata(ctx, conn)
 	}
 }
 
-func (r *Reconciler) populateK8sMetadata(ctx context.Context, conn *connection) {
+func (r *Reconciler) populateK8sMetadata(ctx context.Context, clusterNN types.NamespacedName, conn *connection) {
 	if conn.arch == "" {
 		conn.arch = r.readKubernetesArch(ctx, conn.k8sClient)
 	}
 
 	if conn.registry == nil {
 		reg := conn.k8sClient.LocalRegistry(ctx)
+		if !reg.Empty() {
+			// If we've found a local registry in the cluster at run-time, use that
+			// instead of the default_registry (if any) declared in the Tiltfile
+			logger.Get(ctx).Infof("Auto-detected local registry from environment: %s", reg)
+
+			if conn.spec.DefaultRegistry != nil {
+				// The user has specified a default registry in their Tiltfile, but it will be ignored.
+				logger.Get(ctx).Infof("Default registry specified, but will be ignored in favor of auto-detected registry.")
+			}
+		} else if conn.spec.DefaultRegistry != nil {
+			logger.Get(ctx).Debugf("Using default registry from Tiltfile: %s", conn.spec.DefaultRegistry)
+		} else {
+			logger.Get(ctx).Debugf(
+				"No local registry detected and no default registry set for cluster %q",
+				clusterNN.Name)
+		}
+
 		conn.registry = &reg
 	}
 
