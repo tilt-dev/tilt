@@ -1065,8 +1065,9 @@ func (r *Reconciler) enqueueTriggerQueue(obj client.Object) []reconcile.Request 
 }
 
 // indexLiveUpdate returns keys of objects referenced _by_ the LiveUpdate object for reverse lookup including:
+// 	- DockerComposeService
 //  - FileWatch
-//  - ImageMapName
+//  - ImageMap
 // 	- KubernetesDiscovery
 //	- KubernetesApply
 func indexLiveUpdate(obj ctrlclient.Object) []indexer.Key {
@@ -1097,24 +1098,34 @@ func indexLiveUpdate(obj ctrlclient.Object) []indexer.Key {
 		}
 	}
 
-	if lu.Spec.Selector.Kubernetes != nil {
-		if lu.Spec.Selector.Kubernetes.DiscoveryName != "" {
+	if kSel := lu.Spec.Selector.Kubernetes; kSel != nil {
+		if kSel.DiscoveryName != "" {
 			result = append(result, indexer.Key{
 				Name: types.NamespacedName{
 					Namespace: lu.Namespace,
-					Name:      lu.Spec.Selector.Kubernetes.DiscoveryName,
+					Name:      kSel.DiscoveryName,
 				},
 				GVK: discoveryGVK,
 			})
 		}
 
-		if lu.Spec.Selector.Kubernetes.ApplyName != "" {
+		if kSel.ApplyName != "" {
 			result = append(result, indexer.Key{
 				Name: types.NamespacedName{
 					Namespace: lu.Namespace,
-					Name:      lu.Spec.Selector.Kubernetes.ApplyName,
+					Name:      kSel.ApplyName,
 				},
 				GVK: applyGVK,
+			})
+		}
+
+		if kSel.ImageMap != "" {
+			result = append(result, indexer.Key{
+				Name: types.NamespacedName{
+					Namespace: lu.Namespace,
+					Name:      kSel.ImageMap,
+				},
+				GVK: imageMapGVK,
 			})
 		}
 	}

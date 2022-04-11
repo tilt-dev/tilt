@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/tilt-dev/tilt/internal/build"
+	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/containerupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
@@ -32,24 +34,24 @@ import (
 func TestIndexing(t *testing.T) {
 	f := newFixture(t)
 
-	// KubernetesDiscovery + KubernetesApply
+	// KubernetesDiscovery + KubernetesApply + ImageMap
 	f.Create(&v1alpha1.LiveUpdate{
-		ObjectMeta: metav1.ObjectMeta{Name: "kdisco-kapply"},
+		ObjectMeta: metav1.ObjectMeta{Name: "all"},
 		Spec: v1alpha1.LiveUpdateSpec{
 			BasePath: "/tmp",
-			Selector: kubernetesSelector("discovery", "apply", "fake-image"),
+			Selector: kubernetesSelector("discovery", "apply", "imagemap", nil),
 			Syncs: []v1alpha1.LiveUpdateSync{
 				{LocalPath: "in", ContainerPath: "/out/"},
 			},
 		},
 	})
 
-	// KubernetesDiscovery w/o Kubernetes Apply
+	// KubernetesDiscovery ONLY [w/o Kubernetes Apply or ImageMap]
 	f.Create(&v1alpha1.LiveUpdate{
-		ObjectMeta: metav1.ObjectMeta{Name: "no-kapply"},
+		ObjectMeta: metav1.ObjectMeta{Name: "kdisco-only"},
 		Spec: v1alpha1.LiveUpdateSpec{
 			BasePath: "/tmp",
-			Selector: kubernetesSelector("discovery", "", "fake-image"),
+			Selector: kubernetesSelector("discovery", "", "", container.MustParseNamed("foo")),
 			Syncs: []v1alpha1.LiveUpdateSync{
 				{LocalPath: "in", ContainerPath: "/out/"},
 			},
@@ -58,14 +60,19 @@ func TestIndexing(t *testing.T) {
 
 	reqs := f.r.indexer.Enqueue(&v1alpha1.KubernetesDiscovery{ObjectMeta: metav1.ObjectMeta{Name: "discovery"}})
 	require.ElementsMatch(t, []reconcile.Request{
-		{NamespacedName: types.NamespacedName{Name: "kdisco-kapply"}},
-		{NamespacedName: types.NamespacedName{Name: "no-kapply"}},
-	}, reqs)
+		{NamespacedName: types.NamespacedName{Name: "all"}},
+		{NamespacedName: types.NamespacedName{Name: "kdisco-only"}},
+	}, reqs, "KubernetesDiscovery indexing")
 
 	reqs = f.r.indexer.Enqueue(&v1alpha1.KubernetesApply{ObjectMeta: metav1.ObjectMeta{Name: "apply"}})
 	require.ElementsMatch(t, []reconcile.Request{
-		{NamespacedName: types.NamespacedName{Name: "kdisco-kapply"}},
-	}, reqs)
+		{NamespacedName: types.NamespacedName{Name: "all"}},
+	}, reqs, "KubernetesApply indexing")
+
+	reqs = f.r.indexer.Enqueue(&v1alpha1.ImageMap{ObjectMeta: metav1.ObjectMeta{Name: "imagemap"}})
+	require.ElementsMatch(t, []reconcile.Request{
+		{NamespacedName: types.NamespacedName{Name: "all"}},
+	}, reqs, "ImageMap indexing")
 }
 
 func TestMissingApply(t *testing.T) {
@@ -1054,12 +1061,16 @@ func (f *fixture) kdUpdateStatus(name string, status v1alpha1.KubernetesDiscover
 	f.UpdateStatus(update)
 }
 
-func kubernetesSelector(discoveryName string, applyName string, image string) v1alpha1.LiveUpdateSelector {
-	return v1alpha1.LiveUpdateSelector{
+func kubernetesSelector(discoveryName string, applyName string, imageMapName string, image reference.Reference) v1alpha1.LiveUpdateSelector {
+	sel := v1alpha1.LiveUpdateSelector{
 		Kubernetes: &v1alpha1.LiveUpdateKubernetesSelector{
 			DiscoveryName: discoveryName,
 			ApplyName:     applyName,
-			Image:         image,
+			ImageMap:      imageMapName,
 		},
 	}
+	if image != nil {
+		sel.Kubernetes.Image = image.String()
+	}
+	return sel
 }
