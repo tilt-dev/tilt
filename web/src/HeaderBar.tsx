@@ -105,14 +105,14 @@ const ViewLinkSection = styled.div`
 
 type HeaderBarProps = {
   view: Proto.webviewView
-  tiltConnected: boolean
+  isSocketConnected: boolean
   currentPage?: AnalyticsType.Detail | AnalyticsType.Grid
 }
 
 export default function HeaderBar({
   view,
   currentPage,
-  tiltConnected,
+  isSocketConnected,
 }: HeaderBarProps) {
   let isSnapshot = usePathBuilder().isSnapshot()
   let snapshot = useSnapshotAction()
@@ -169,7 +169,7 @@ export default function HeaderBar({
         displayText="Resources"
         labelText="Status summary for all resources"
         resources={resources}
-        tiltConnected={tiltConnected}
+        isSocketConnected={isSocketConnected}
       />
       <CustomNav view={view} />
       <GlobalNav {...globalNavProps} />

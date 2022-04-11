@@ -68,7 +68,7 @@ function OverviewResourcePaneHarness(props: {
   return (
     <MemoryRouter initialEntries={[entry]}>
       <ResourceNavProvider validateResource={validateResource}>
-        <OverviewResourcePane view={view} tiltConnected={true} />
+        <OverviewResourcePane view={view} isSocketConnected={true} />
       </ResourceNavProvider>
     </MemoryRouter>
   )

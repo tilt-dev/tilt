@@ -59,24 +59,27 @@ export default {
 }
 
 export const TwoResources = () => (
-  <OverviewTablePane view={twoResourceView()} tiltConnected={true} />
+  <OverviewTablePane view={twoResourceView()} isSocketConnected={true} />
 )
 
 export const TenResources = () => (
-  <OverviewTablePane view={tenResourceView()} tiltConnected={true} />
+  <OverviewTablePane view={tenResourceView()} isSocketConnected={true} />
 )
 
 export const TenResourcesWithLabels = () => (
-  <OverviewTablePane view={nResourceWithLabelsView(10)} tiltConnected={true} />
+  <OverviewTablePane
+    view={nResourceWithLabelsView(10)}
+    isSocketConnected={true}
+  />
 )
 
 export const OneHundredResources = () => (
-  <OverviewTablePane view={nResourceView(100)} tiltConnected={true} />
+  <OverviewTablePane view={nResourceView(100)} isSocketConnected={true} />
 )
 
 export const OneHundredResourcesOneStar = () => (
   <StarredResourceMemoryProvider initialValueForTesting={["vigoda_2"]}>
-    <OverviewTablePane view={nResourceView(100)} tiltConnected={true} />
+    <OverviewTablePane view={nResourceView(100)} isSocketConnected={true} />
   </StarredResourceMemoryProvider>
 )
 
@@ -95,7 +98,7 @@ export const OneHundredResourcesTenStars = () => {
   ]
   return (
     <StarredResourceMemoryProvider initialValueForTesting={items}>
-      <OverviewTablePane view={nResourceView(100)} tiltConnected={true} />
+      <OverviewTablePane view={nResourceView(100)} isSocketConnected={true} />
     </StarredResourceMemoryProvider>
   )
 }

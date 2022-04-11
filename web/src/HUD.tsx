@@ -27,7 +27,7 @@ import { ResourceSelectionProvider } from "./ResourceSelectionContext"
 import ShareSnapshotModal from "./ShareSnapshotModal"
 import { TiltSnackbarProvider } from "./Snackbar"
 import { SnapshotActionProvider } from "./snapshot"
-import SocketBar, { isSocketConnected } from "./SocketBar"
+import SocketBar, { isTiltSocketConnected } from "./SocketBar"
 import { StarredResourcesContextProvider } from "./StarredResourcesContext"
 import { ShowErrorModal, ShowFatalErrorModal, SocketState } from "./types"
 
@@ -235,7 +235,7 @@ export default class HUD extends Component<HudProps, HudState> {
   }
 
   renderOverviewSwitch() {
-    const tiltConnected = isSocketConnected(this.state.socketState)
+    const isSocketConnected = isTiltSocketConnected(this.state.socketState)
     return (
       <FeaturesProvider
         featureFlags={this.state.view.uiSession?.status?.featureFlags || null}
@@ -252,7 +252,7 @@ export default class HUD extends Component<HudProps, HudState> {
                         render={(props: RouteComponentProps<any>) => (
                           <OverviewResourcePane
                             view={this.state.view}
-                            tiltConnected={tiltConnected}
+                            isSocketConnected={isSocketConnected}
                           />
                         )}
                       />
@@ -260,7 +260,7 @@ export default class HUD extends Component<HudProps, HudState> {
                         render={() => (
                           <OverviewTablePane
                             view={this.state.view}
-                            tiltConnected={tiltConnected}
+                            isSocketConnected={isSocketConnected}
                           />
                         )}
                       />

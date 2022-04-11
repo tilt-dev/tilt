@@ -40,7 +40,7 @@ let Bar = styled.div`
   animation: ${pulse} 3s ease infinite;
 `
 
-export function isSocketConnected(state: SocketState) {
+export function isTiltSocketConnected(state: SocketState) {
   if (
     state === SocketState.Reconnecting ||
     state === SocketState.Closed ||

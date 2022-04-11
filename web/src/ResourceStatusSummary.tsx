@@ -301,13 +301,13 @@ function statusCounts(statuses: ResourceStatus[]): StatusCounts {
 
 function ResourceMetadata(props: {
   counts: StatusCounts
-  tiltConnected?: boolean
+  isSocketConnected?: boolean
 }) {
   let { totalEnabled, healthy, pending, unhealthy } = props.counts
   useEffect(() => {
     let favicon: any = document.head.querySelector("#favicon")
     let faviconHref = ""
-    if (props.tiltConnected === false) {
+    if (props.isSocketConnected === false) {
       document.title = `… disconnected ┊ Tilt`
       faviconHref = "/static/ico/favicon-gray.ico"
     } else if (unhealthy > 0) {
@@ -323,7 +323,7 @@ function ResourceMetadata(props: {
     if (favicon) {
       favicon.href = faviconHref
     }
-  }, [totalEnabled, healthy, pending, unhealthy, props.tiltConnected])
+  }, [totalEnabled, healthy, pending, unhealthy, props.isSocketConnected])
   return <></>
 }
 
@@ -336,7 +336,7 @@ type ResourceStatusSummaryOptions = {
 
 type ResourceStatusSummaryProps = {
   statuses: ResourceStatus[]
-  tiltConnected?: boolean
+  isSocketConnected?: boolean
 } & ResourceStatusSummaryOptions
 
 function ResourceStatusSummary(props: ResourceStatusSummaryProps) {
@@ -350,7 +350,7 @@ function ResourceStatusSummary(props: ResourceStatusSummaryProps) {
       {updateMetadata && (
         <ResourceMetadata
           counts={statusCounts(props.statuses)}
-          tiltConnected={props.tiltConnected}
+          isSocketConnected={props.isSocketConnected}
         />
       )}
       <ResourceGroupStatus
@@ -372,7 +372,7 @@ function ResourceStatusSummary(props: ResourceStatusSummaryProps) {
 
 type StatusSummaryProps<T> = {
   resources: readonly T[]
-  tiltConnected?: boolean
+  isSocketConnected?: boolean
 } & ResourceStatusSummaryOptions
 
 export function SidebarGroupStatusSummary(

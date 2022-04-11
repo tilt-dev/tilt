@@ -22,7 +22,7 @@ export const TwoResources = () => (
   <HeaderBar
     view={twoResourceView()}
     currentPage={AnalyticsType.Detail}
-    tiltConnected={true}
+    isSocketConnected={true}
   />
 )
 
@@ -30,7 +30,7 @@ export const TenResources = () => (
   <HeaderBar
     view={tenResourceView()}
     currentPage={AnalyticsType.Detail}
-    tiltConnected={true}
+    isSocketConnected={true}
   />
 )
 
@@ -43,7 +43,7 @@ export const TenResourcesErrorsAndWarnings = () => {
     <HeaderBar
       view={view}
       currentPage={AnalyticsType.Grid}
-      tiltConnected={true}
+      isSocketConnected={true}
     />
   )
 }
@@ -52,7 +52,7 @@ export const OneHundredResources = () => (
   <HeaderBar
     view={nResourceView(100)}
     currentPage={AnalyticsType.Grid}
-    tiltConnected={true}
+    isSocketConnected={true}
   />
 )
 
@@ -66,7 +66,7 @@ export const UpgradeAvailable = () => {
     <HeaderBar
       view={view}
       currentPage={AnalyticsType.Detail}
-      tiltConnected={true}
+      isSocketConnected={true}
     />
   )
 }
