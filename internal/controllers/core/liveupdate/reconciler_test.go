@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,7 +16,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/tilt-dev/tilt/internal/build"
-	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/containerupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
@@ -39,7 +37,13 @@ func TestIndexing(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "all"},
 		Spec: v1alpha1.LiveUpdateSpec{
 			BasePath: "/tmp",
-			Selector: kubernetesSelector("discovery", "apply", "imagemap", nil),
+			Selector: v1alpha1.LiveUpdateSelector{
+				Kubernetes: &v1alpha1.LiveUpdateKubernetesSelector{
+					DiscoveryName: "discovery",
+					ApplyName:     "apply",
+					ImageMap:      "imagemap",
+				},
+			},
 			Syncs: []v1alpha1.LiveUpdateSync{
 				{LocalPath: "in", ContainerPath: "/out/"},
 			},
@@ -51,7 +55,12 @@ func TestIndexing(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "kdisco-only"},
 		Spec: v1alpha1.LiveUpdateSpec{
 			BasePath: "/tmp",
-			Selector: kubernetesSelector("discovery", "", "", container.MustParseNamed("foo")),
+			Selector: v1alpha1.LiveUpdateSelector{
+				Kubernetes: &v1alpha1.LiveUpdateKubernetesSelector{
+					DiscoveryName: "discovery",
+					ContainerName: "foo",
+				},
+			},
 			Syncs: []v1alpha1.LiveUpdateSync{
 				{LocalPath: "in", ContainerPath: "/out/"},
 			},
@@ -264,7 +273,7 @@ func TestWaitingContainer(t *testing.T) {
 					{
 						Name:  "main",
 						ID:    "main-id",
-						Image: "frontend-image",
+						Image: "local-registry:12345/frontend-image:my-tag",
 						State: v1alpha1.ContainerState{
 							Waiting: &v1alpha1.ContainerStateWaiting{},
 						},
@@ -296,7 +305,7 @@ func TestWaitingContainer(t *testing.T) {
 					{
 						Name:  "main",
 						ID:    "main-id",
-						Image: "frontend-image",
+						Image: "local-registry:12345/frontend-image:my-tag",
 						State: v1alpha1.ContainerState{
 							Running: &v1alpha1.ContainerStateRunning{},
 						},
@@ -338,7 +347,7 @@ func TestWaitingContainerNoID(t *testing.T) {
 				Containers: []v1alpha1.Container{
 					{
 						Name:  "main",
-						Image: "frontend-image",
+						Image: "local-registry:12345/frontend-image:my-tag",
 						State: v1alpha1.ContainerState{
 							Waiting: &v1alpha1.ContainerStateWaiting{Reason: "PodInitializing"},
 						},
@@ -380,7 +389,7 @@ func TestOneTerminatedContainer(t *testing.T) {
 					{
 						Name:  "main",
 						ID:    "main-id",
-						Image: "frontend-image",
+						Image: "local-registry:12345/frontend-image:my-tag",
 						State: v1alpha1.ContainerState{
 							Terminated: &v1alpha1.ContainerStateTerminated{},
 						},
@@ -422,7 +431,7 @@ func TestOneRunningOneTerminatedContainer(t *testing.T) {
 					{
 						Name:  "main",
 						ID:    "main-id",
-						Image: "frontend-image",
+						Image: "local-registry:12345/frontend-image:my-tag",
 						State: v1alpha1.ContainerState{
 							Terminated: &v1alpha1.ContainerStateTerminated{},
 						},
@@ -436,7 +445,7 @@ func TestOneRunningOneTerminatedContainer(t *testing.T) {
 					{
 						Name:  "main",
 						ID:    "main-id",
-						Image: "frontend-image",
+						Image: "local-registry:12345/frontend-image:my-tag",
 						State: v1alpha1.ContainerState{
 							Running: &v1alpha1.ContainerStateRunning{},
 						},
@@ -487,7 +496,7 @@ func TestCrashLoopBackoff(t *testing.T) {
 					{
 						Name:  "main",
 						ID:    "main-id",
-						Image: "frontend-image",
+						Image: "local-registry:12345/frontend-image:my-tag",
 						State: v1alpha1.ContainerState{
 							Waiting: &v1alpha1.ContainerStateWaiting{Reason: "CrashLoopBackOff"},
 						},
@@ -518,7 +527,7 @@ func TestCrashLoopBackoff(t *testing.T) {
 					{
 						Name:  "main",
 						ID:    "main-id",
-						Image: "frontend-image",
+						Image: "local-registry:12345/frontend-image:my-tag",
 						State: v1alpha1.ContainerState{
 							Running: &v1alpha1.ContainerStateRunning{},
 						},
@@ -563,7 +572,7 @@ func TestStopPathConsumedByImageBuild(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "frontend-image-map"},
 		Status: v1alpha1.ImageMapStatus{
 			Image:            "frontend-image:my-tag",
-			ImageFromCluster: "frontend-image:my-tag",
+			ImageFromCluster: "local-registry:12345/frontend-image:my-tag",
 			BuildStartTime:   &metav1.MicroTime{Time: nowMicro.Add(2 * time.Second)},
 		},
 	})
@@ -589,7 +598,15 @@ func TestStopPathConsumedByKubernetesApply(t *testing.T) {
 	stopPath := filepath.Join(p, "stop.txt")
 	stopChangeTime := metav1.MicroTime{Time: nowMicro.Add(time.Second)}
 
-	f.setupFrontend()
+	// we are going to delete the ImageMap, so we cannot use it as a selector
+	// (the default behavior)
+	f.setupFrontendWithSelector(&v1alpha1.LiveUpdateSelector{
+		Kubernetes: &v1alpha1.LiveUpdateKubernetesSelector{
+			DiscoveryName: "frontend-discovery",
+			ApplyName:     "frontend-apply",
+			Image:         "local-registry:12345/frontend-image:some-tag",
+		},
+	})
 	f.Delete(&v1alpha1.ImageMap{
 		ObjectMeta: metav1.ObjectMeta{Name: "frontend-image-map"},
 	})
@@ -638,14 +655,14 @@ func TestKubernetesContainerNameSelector(t *testing.T) {
 	txtPath := filepath.Join(p, "a.txt")
 	txtChangeTime := metav1.MicroTime{Time: nowMicro.Add(time.Second)}
 
-	f.setupFrontend()
-
-	// change from default image selector to a container name selector
-	var lu v1alpha1.LiveUpdate
-	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
-	lu.Spec.Selector.Kubernetes.Image = ""
-	lu.Spec.Selector.Kubernetes.ContainerName = "main"
-	f.Update(&lu)
+	// change from default ImageMap selector to a container name selector
+	f.setupFrontendWithSelector(&v1alpha1.LiveUpdateSelector{
+		Kubernetes: &v1alpha1.LiveUpdateKubernetesSelector{
+			DiscoveryName: "frontend-discovery",
+			ApplyName:     "frontend-apply",
+			ContainerName: "main",
+		},
+	})
 
 	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
 		Pods: []v1alpha1.Pod{
@@ -670,8 +687,61 @@ func TestKubernetesContainerNameSelector(t *testing.T) {
 	f.addFileEvent("frontend-fw", txtPath, txtChangeTime)
 	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
 
+	var lu v1alpha1.LiveUpdate
 	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
 	assert.Equal(t, "main", lu.Spec.Selector.Kubernetes.ContainerName)
+	assert.Nil(t, lu.Status.Failed)
+	if assert.Equal(t, 1, len(lu.Status.Containers)) {
+		assert.Equal(t, txtChangeTime, lu.Status.Containers[0].LastFileTimeSynced)
+	}
+
+	f.assertSteadyState(&lu)
+}
+
+func TestKubernetesImageSelector(t *testing.T) {
+	f := newFixture(t)
+
+	p, _ := os.Getwd()
+	nowMicro := apis.NowMicro()
+	txtPath := filepath.Join(p, "a.txt")
+	txtChangeTime := metav1.MicroTime{Time: nowMicro.Add(time.Second)}
+
+	// change from default ImageMap selector to an image selector
+	f.setupFrontendWithSelector(&v1alpha1.LiveUpdateSelector{
+		Kubernetes: &v1alpha1.LiveUpdateKubernetesSelector{
+			DiscoveryName: "frontend-discovery",
+			ApplyName:     "frontend-apply",
+			Image:         "local-registry:12345/frontend-image:some-tag",
+		},
+	})
+
+	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
+		Pods: []v1alpha1.Pod{
+			{
+				Name:      "pod-1",
+				Namespace: "default",
+				Containers: []v1alpha1.Container{
+					{
+						Name:  "main",
+						ID:    "main-id",
+						Image: "local-registry:12345/frontend-image:my-tag",
+						State: v1alpha1.ContainerState{
+							Running: &v1alpha1.ContainerStateRunning{},
+						},
+					},
+				},
+			},
+		},
+	})
+
+	// Trigger a file event, and make sure that the status reflects the sync.
+	f.addFileEvent("frontend-fw", txtPath, txtChangeTime)
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+
+	var lu v1alpha1.LiveUpdate
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	assert.Equal(t, "local-registry:12345/frontend-image:some-tag",
+		lu.Spec.Selector.Kubernetes.Image)
 	assert.Nil(t, lu.Status.Failed)
 	if assert.Equal(t, 1, len(lu.Status.Containers)) {
 		assert.Equal(t, txtChangeTime, lu.Status.Containers[0].LastFileTimeSynced)
@@ -889,8 +959,12 @@ func (f *fixture) addFileEvent(name string, p string, time metav1.MicroTime) {
 	f.UpdateStatus(update)
 }
 
-// Create a frontend LiveUpdate with all objects attached.
 func (f *fixture) setupFrontend() {
+	f.setupFrontendWithSelector(nil)
+}
+
+// Create a frontend LiveUpdate with all objects attached.
+func (f *fixture) setupFrontendWithSelector(selector *v1alpha1.LiveUpdateSelector) {
 	p, _ := os.Getwd()
 	now := apis.Now()
 	nowMicro := apis.NowMicro()
@@ -913,7 +987,7 @@ func (f *fixture) setupFrontend() {
 		ObjectMeta: metav1.ObjectMeta{Name: "frontend-image-map"},
 		Status: v1alpha1.ImageMapStatus{
 			Image:            "frontend-image:my-tag",
-			ImageFromCluster: "frontend-image:my-tag",
+			ImageFromCluster: "local-registry:12345/frontend-image:my-tag",
 			BuildStartTime:   &nowMicro,
 		},
 	})
@@ -929,7 +1003,7 @@ func (f *fixture) setupFrontend() {
 						{
 							Name:  "main",
 							ID:    "main-id",
-							Image: "frontend-image",
+							Image: "local-registry:12345/frontend-image:my-tag",
 							Ready: true,
 							State: v1alpha1.ContainerState{
 								Running: &v1alpha1.ContainerStateRunning{
@@ -942,6 +1016,19 @@ func (f *fixture) setupFrontend() {
 			},
 		},
 	})
+
+	if selector == nil {
+		// default selector matches the most common Tilt use-case, which has
+		// KDisco + KApply and selects via ImageMap
+		selector = &v1alpha1.LiveUpdateSelector{
+			Kubernetes: &v1alpha1.LiveUpdateKubernetesSelector{
+				ApplyName:     "frontend-apply",
+				DiscoveryName: "frontend-discovery",
+				ImageMap:      "frontend-image-map",
+			},
+		}
+	}
+
 	f.Create(&v1alpha1.LiveUpdate{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "frontend-liveupdate",
@@ -956,13 +1043,7 @@ func (f *fixture) setupFrontend() {
 				FileWatch: "frontend-fw",
 				ImageMap:  "frontend-image-map",
 			}},
-			Selector: v1alpha1.LiveUpdateSelector{
-				Kubernetes: &v1alpha1.LiveUpdateKubernetesSelector{
-					ApplyName:     "frontend-apply",
-					DiscoveryName: "frontend-discovery",
-					Image:         "frontend-image",
-				},
-			},
+			Selector: *selector,
 			Syncs: []v1alpha1.LiveUpdateSync{
 				{LocalPath: ".", ContainerPath: "/app"},
 			},
@@ -1059,18 +1140,4 @@ func (f *fixture) kdUpdateStatus(name string, status v1alpha1.KubernetesDiscover
 	update := kd.DeepCopy()
 	update.Status = status
 	f.UpdateStatus(update)
-}
-
-func kubernetesSelector(discoveryName string, applyName string, imageMapName string, image reference.Reference) v1alpha1.LiveUpdateSelector {
-	sel := v1alpha1.LiveUpdateSelector{
-		Kubernetes: &v1alpha1.LiveUpdateKubernetesSelector{
-			DiscoveryName: discoveryName,
-			ApplyName:     applyName,
-			ImageMap:      imageMapName,
-		},
-	}
-	if image != nil {
-		sel.Kubernetes.Image = image.String()
-	}
-	return sel
 }
