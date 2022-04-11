@@ -74,11 +74,12 @@ export enum Width {
 
 export const overviewItemBorderRadius = "6px"
 
+// When adding new z-index values, check to see
+// if there are conflicting values in constants.scss
 export enum ZIndex {
-  OverviewItemActions = 2000,
-  SidebarMenu = 2000,
-  Sidebar = 1000,
-  HUDHeader = 500,
+  ApiButton = 5,
+  TableStickyHeader = 999,
+  SocketBar = 1000,
 }
 
 export enum AnimDuration {

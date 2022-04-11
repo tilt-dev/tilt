@@ -1,6 +1,6 @@
 import React from "react"
 import styled, { keyframes } from "styled-components"
-import { Color, ColorAlpha, ColorRGBA } from "./style-helpers"
+import { Color, ColorAlpha, ColorRGBA, ZIndex } from "./style-helpers"
 import { SocketState } from "./types"
 
 type SocketBarProps = {
@@ -21,7 +21,7 @@ let pulse = keyframes`
 
 let SocketBarRoot = styled.div`
   position: fixed;
-  z-index: 1000;
+  z-index: ${ZIndex.SocketBar};
   width: 100vw;
   display: flex;
   top: 0;

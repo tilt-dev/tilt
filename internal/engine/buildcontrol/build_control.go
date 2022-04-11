@@ -232,19 +232,16 @@ func HoldTargetsWithBuildingComponents(state store.EngineState, mts []*store.Man
 func targetsByCluster(mts []*store.ManifestTarget) map[string][]*store.ManifestTarget {
 	clusters := make(map[string][]*store.ManifestTarget)
 	for _, mt := range mts {
-		if mt.Manifest.IsK8s() {
-			targets, ok := clusters[v1alpha1.ClusterNameDefault]
-			if !ok {
-				targets = []*store.ManifestTarget{}
-			}
-			clusters[v1alpha1.ClusterNameDefault] = append(targets, mt)
-		} else if mt.Manifest.IsDC() {
-			targets, ok := clusters[v1alpha1.ClusterNameDocker]
-			if !ok {
-				targets = []*store.ManifestTarget{}
-			}
-			clusters[v1alpha1.ClusterNameDocker] = append(targets, mt)
+		clusterName := mt.Manifest.ClusterName()
+		if clusterName == "" {
+			continue
 		}
+
+		targets, ok := clusters[clusterName]
+		if !ok {
+			targets = []*store.ManifestTarget{}
+		}
+		clusters[clusterName] = append(targets, mt)
 	}
 	return clusters
 }
