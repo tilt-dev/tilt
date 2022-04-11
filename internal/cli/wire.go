@@ -118,6 +118,7 @@ var BaseWireSet = wire.NewSet(
 	provideLogActions,
 	store.NewStore,
 	wire.Bind(new(store.RStore), new(*store.Store)),
+	wire.Bind(new(store.Dispatcher), new(*store.Store)),
 
 	dockerprune.NewDockerPruner,
 

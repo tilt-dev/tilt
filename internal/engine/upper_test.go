@@ -48,6 +48,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/core/extensionrepo"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
+	"github.com/tilt-dev/tilt/internal/controllers/core/imagemap"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesapply"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesdiscovery"
 	"github.com/tilt-dev/tilt/internal/controllers/core/liveupdate"
@@ -322,7 +323,22 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 
 	err = queue.RunBuilds(func(target model.TargetSpec, depResults []store.ImageBuildResult) (store.ImageBuildResult, error) {
 		iTarget := target.(model.ImageTarget)
-		return b.nextImageBuildResult(iTarget), nil
+		ibr := b.nextImageBuildResult(iTarget)
+
+		var im v1alpha1.ImageMap
+		if err := b.ctrlClient.Get(ctx, types.NamespacedName{Name: iTarget.ImageMapName()}, &im); err != nil {
+			return store.ImageBuildResult{}, err
+		}
+
+		im.Status = *ibr.ImageMapStatus.DeepCopy()
+		buildStartTime := apis.NowMicro()
+		im.Status.BuildStartTime = &buildStartTime
+
+		if err := b.ctrlClient.Status().Update(ctx, &im); err != nil {
+			return store.ImageBuildResult{}, err
+		}
+
+		return ibr, nil
 	})
 	result := queue.NewResults().ToBuildResultSet()
 	if err != nil {
@@ -3383,6 +3399,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		cir,
 		clr,
 		dcr,
+		imagemap.NewReconciler(cdc, st),
 	))
 
 	dp := dockerprune.NewDockerPruner(dockerClient)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -56,4 +57,28 @@ func RunSteps(spec v1alpha1.LiveUpdateSpec) []model.Run {
 
 func ShouldRestart(spec v1alpha1.LiveUpdateSpec) bool {
 	return spec.Restart == v1alpha1.LiveUpdateRestartStrategyAlways
+}
+
+func KubernetesSelectorMatchesContainer(
+	ctr v1alpha1.Container,
+	selector *v1alpha1.LiveUpdateKubernetesSelector,
+	imageMap *v1alpha1.ImageMap,
+) bool {
+	if selector == nil {
+		return false
+	}
+
+	// LiveUpdateKubernetesSelector must specify EITHER image OR ImageMap OR container name
+	if selector.Image != "" {
+		return container.ImageNamesEqual(selector.Image, ctr.Image)
+	}
+	if selector.ContainerName != "" {
+		return selector.ContainerName == ctr.Name
+	}
+	if selector.ImageMapName != "" {
+		return imageMap != nil && container.ImageNamesEqual(
+			imageMap.Status.ImageFromCluster, ctr.Image)
+	}
+
+	return false
 }

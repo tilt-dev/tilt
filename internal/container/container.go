@@ -73,3 +73,24 @@ func MustWithTag(name reference.Named, tag string) reference.NamedTagged {
 	}
 	return nt
 }
+
+// ImageNamesEqual returns true if the references correspond to the same named
+// image.
+//
+// If either reference is not a valid named image reference, false is returned.
+//
+// For example: `reg.example.com/foo:abc` & `reg.example.com/foo:def` are equal
+// because the named image is `reg.example.com/foo` in both cases.
+func ImageNamesEqual(a, b string) bool {
+	aRef, err := reference.ParseNormalizedNamed(a)
+	if err != nil {
+		return false
+	}
+
+	bRef, err := reference.ParseNormalizedNamed(b)
+	if err != nil {
+		return false
+	}
+
+	return reference.FamiliarName(aRef) == reference.FamiliarName(bRef)
+}

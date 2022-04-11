@@ -22,6 +22,7 @@ type monitor struct {
 	lastKubernetesApplyStatus *v1alpha1.KubernetesApplyStatus
 	lastDockerComposeService  *v1alpha1.DockerComposeService
 	lastTriggerQueue          *v1alpha1.ConfigMap
+	lastImageMap              *v1alpha1.ImageMap
 
 	// History of source file changes.
 	sources map[string]*monitorSource

@@ -398,6 +398,7 @@ func (r *Reconciler) reconcileKubernetesResource(ctx context.Context, monitor *m
 
 	var kd *v1alpha1.KubernetesDiscovery
 	var ka *v1alpha1.KubernetesApply
+	var im *v1alpha1.ImageMap
 	changed := false
 	if selector.ApplyName != "" {
 		ka = &v1alpha1.KubernetesApply{}
@@ -418,6 +419,17 @@ func (r *Reconciler) reconcileKubernetesResource(ctx context.Context, monitor *m
 		return false, err
 	}
 
+	if selector.ImageMapName != "" {
+		im = &v1alpha1.ImageMap{}
+		if err := r.client.Get(ctx, types.NamespacedName{Name: selector.ImageMapName}, im); err != nil {
+			return false, err
+		}
+
+		if monitor.lastImageMap == nil || !apicmp.DeepEqual(monitor.lastImageMap, im) {
+			changed = true
+		}
+	}
+
 	if monitor.lastKubernetesDiscovery == nil ||
 		!apicmp.DeepEqual(monitor.lastKubernetesDiscovery.Status, kd.Status) {
 		changed = true
@@ -430,6 +442,7 @@ func (r *Reconciler) reconcileKubernetesResource(ctx context.Context, monitor *m
 	}
 
 	monitor.lastKubernetesDiscovery = kd
+	monitor.lastImageMap = im
 
 	return changed, nil
 }
@@ -580,6 +593,7 @@ func (r *Reconciler) resource(lu *v1alpha1.LiveUpdate, monitor *monitor) (luReso
 		return &luK8sResource{
 			selector: k,
 			res:      r,
+			im:       monitor.lastImageMap,
 		}, nil
 	}
 	dc := lu.Spec.Selector.DockerCompose
@@ -1051,8 +1065,9 @@ func (r *Reconciler) enqueueTriggerQueue(obj client.Object) []reconcile.Request 
 }
 
 // indexLiveUpdate returns keys of objects referenced _by_ the LiveUpdate object for reverse lookup including:
+// 	- DockerComposeService
 //  - FileWatch
-//  - ImageMapName
+//  - ImageMap
 // 	- KubernetesDiscovery
 //	- KubernetesApply
 func indexLiveUpdate(obj ctrlclient.Object) []indexer.Key {
@@ -1083,24 +1098,34 @@ func indexLiveUpdate(obj ctrlclient.Object) []indexer.Key {
 		}
 	}
 
-	if lu.Spec.Selector.Kubernetes != nil {
-		if lu.Spec.Selector.Kubernetes.DiscoveryName != "" {
+	if kSel := lu.Spec.Selector.Kubernetes; kSel != nil {
+		if kSel.DiscoveryName != "" {
 			result = append(result, indexer.Key{
 				Name: types.NamespacedName{
 					Namespace: lu.Namespace,
-					Name:      lu.Spec.Selector.Kubernetes.DiscoveryName,
+					Name:      kSel.DiscoveryName,
 				},
 				GVK: discoveryGVK,
 			})
 		}
 
-		if lu.Spec.Selector.Kubernetes.ApplyName != "" {
+		if kSel.ApplyName != "" {
 			result = append(result, indexer.Key{
 				Name: types.NamespacedName{
 					Namespace: lu.Namespace,
-					Name:      lu.Spec.Selector.Kubernetes.ApplyName,
+					Name:      kSel.ApplyName,
 				},
 				GVK: applyGVK,
+			})
+		}
+
+		if kSel.ImageMapName != "" {
+			result = append(result, indexer.Key{
+				Name: types.NamespacedName{
+					Namespace: lu.Namespace,
+					Name:      kSel.ImageMapName,
+				},
+				GVK: imageMapGVK,
 			})
 		}
 	}

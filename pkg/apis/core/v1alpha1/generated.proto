@@ -1931,17 +1931,25 @@ message LiveUpdateKubernetesSelector {
   // Determines which containers in a pod to live-update.
   // Matches images by name unless tag is explicitly specified.
   //
-  // Exactly one of Image or ContainerName MUST be specified.
+  // Exactly one of Image, ContainerName, or ImageMapName MUST be specified.
   //
   // +optional
   optional string image = 2;
 
   // ContainerName specifies the name of the container that we're copying files into.
   //
-  // Exactly one of Image or ContainerName MUST be specified.
+  // Exactly one of Image, ContainerName, or ImageMapName MUST be specified.
   //
   // +optional
   optional string containerName = 4;
+
+  // ImageMapName specifies the name of an ImageMapName object to use for determining
+  // the image we're copying files into.
+  //
+  // Exactly one of Image, ContainerName, or ImageMapName MUST be specified.
+  //
+  // +optional
+  optional string imageMapName = 5;
 }
 
 // LiveUpdateList

@@ -13,6 +13,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/core/extension"
 	"github.com/tilt-dev/tilt/internal/controllers/core/extensionrepo"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch"
+	"github.com/tilt-dev/tilt/internal/controllers/core/imagemap"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesapply"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesdiscovery"
 	"github.com/tilt-dev/tilt/internal/controllers/core/liveupdate"
@@ -57,6 +58,7 @@ func ProvideControllers(
 	cir *cmdimage.Reconciler,
 	clr *cluster.Reconciler,
 	dcr *dockercomposeservice.Reconciler,
+	imr *imagemap.Reconciler,
 ) []Controller {
 	return []Controller{
 		fileWatch,
@@ -78,6 +80,7 @@ func ProvideControllers(
 		dir,
 		clr,
 		dcr,
+		imr,
 	}
 }
 
@@ -105,4 +108,5 @@ var WireSet = wire.NewSet(
 	dockerimage.WireSet,
 	cmdimage.WireSet,
 	dockercomposeservice.WireSet,
+	imagemap.WireSet,
 )

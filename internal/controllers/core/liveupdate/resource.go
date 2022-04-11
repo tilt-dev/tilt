@@ -3,9 +3,7 @@ package liveupdate
 import (
 	"time"
 
-	"github.com/docker/distribution/reference"
-
-	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/pkg/apis"
@@ -28,6 +26,7 @@ type luResource interface {
 type luK8sResource struct {
 	selector *v1alpha1.LiveUpdateKubernetesSelector
 	res      *k8sconv.KubernetesResource
+	im       *v1alpha1.ImageMap
 }
 
 func (r *luK8sResource) bestStartTime() time.Time {
@@ -53,14 +52,7 @@ func (r *luK8sResource) visitSelectedContainers(
 				// ignore any blatantly invalid containers
 				continue
 			}
-
-			// LiveUpdateKubernetesSelector must specify EITHER image OR container name
-			if r.selector.Image != "" {
-				imageRef, err := container.ParseNamed(c.Image)
-				if err != nil || imageRef == nil || r.selector.Image != reference.FamiliarName(imageRef) {
-					continue
-				}
-			} else if r.selector.ContainerName != c.Name {
+			if !liveupdate.KubernetesSelectorMatchesContainer(c, r.selector, r.im) {
 				continue
 			}
 			stop := visit(pod, c)

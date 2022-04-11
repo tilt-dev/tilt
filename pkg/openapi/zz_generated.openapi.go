@@ -4650,14 +4650,21 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateKubernetesSelector(ref common.Refer
 					},
 					"image": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Image specifies the name of the image that we're copying files into.\n\nDetermines which containers in a pod to live-update. Matches images by name unless tag is explicitly specified.\n\nExactly one of Image or ContainerName MUST be specified.",
+							Description: "Image specifies the name of the image that we're copying files into.\n\nDetermines which containers in a pod to live-update. Matches images by name unless tag is explicitly specified.\n\nExactly one of Image, ContainerName, or ImageMapName MUST be specified.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
 					"containerName": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ContainerName specifies the name of the container that we're copying files into.\n\nExactly one of Image or ContainerName MUST be specified.",
+							Description: "ContainerName specifies the name of the container that we're copying files into.\n\nExactly one of Image, ContainerName, or ImageMapName MUST be specified.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"imageMapName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ImageMapName specifies the name of an ImageMapName object to use for determining the image we're copying files into.\n\nExactly one of Image, ContainerName, or ImageMapName MUST be specified.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
