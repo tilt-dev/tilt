@@ -335,7 +335,7 @@ func (m *Manifest) InferLiveUpdateSelectors() error {
 				} else {
 					// refer to the ImageMap so that the LU reconciler can find
 					// the true image name after any registry rewriting
-					kSelector.ImageMap = iTarget.ImageMapName()
+					kSelector.ImageMapName = iTarget.ImageMapName()
 				}
 			}
 		}

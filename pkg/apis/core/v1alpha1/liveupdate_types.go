@@ -184,7 +184,7 @@ func (in *LiveUpdate) Validate(ctx context.Context) field.ErrorList {
 		if kSelector.ContainerName != "" {
 			selectorFields = append(selectorFields, p.Child("containerName"))
 		}
-		if kSelector.ImageMap != "" {
+		if kSelector.ImageMapName != "" {
 			selectorFields = append(selectorFields, p.Child("imageMap"))
 		}
 		if len(selectorFields) == 0 {
@@ -289,25 +289,25 @@ type LiveUpdateKubernetesSelector struct {
 	// Determines which containers in a pod to live-update.
 	// Matches images by name unless tag is explicitly specified.
 	//
-	// Exactly one of Image, ContainerName, or ImageMap MUST be specified.
+	// Exactly one of Image, ContainerName, or ImageMapName MUST be specified.
 	//
 	// +optional
 	Image string `json:"image,omitempty" protobuf:"bytes,2,opt,name=image"`
 
 	// ContainerName specifies the name of the container that we're copying files into.
 	//
-	// Exactly one of Image, ContainerName, or ImageMap MUST be specified.
+	// Exactly one of Image, ContainerName, or ImageMapName MUST be specified.
 	//
 	// +optional
 	ContainerName string `json:"containerName,omitempty" protobuf:"bytes,4,opt,name=containerName"`
 
-	// ImageMap specifies the name of an ImageMap object to use for determining
+	// ImageMapName specifies the name of an ImageMapName object to use for determining
 	// the image we're copying files into.
 	//
-	// Exactly one of Image, ContainerName, or ImageMap MUST be specified.
+	// Exactly one of Image, ContainerName, or ImageMapName MUST be specified.
 	//
 	// +optional
-	ImageMap string `json:"imageMap,omitempty" protobuf:"bytes,5,opt,name=imageMap"`
+	ImageMapName string `json:"imageMapName,omitempty" protobuf:"bytes,5,opt,name=imageMapName"`
 }
 
 // Specifies how to select containers to live update inside Docker Compose.

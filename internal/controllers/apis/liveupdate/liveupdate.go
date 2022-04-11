@@ -75,7 +75,7 @@ func KubernetesSelectorMatchesContainer(
 	if selector.ContainerName != "" {
 		return selector.ContainerName == ctr.Name
 	}
-	if selector.ImageMap != "" {
+	if selector.ImageMapName != "" {
 		return imageMap != nil && container.ImageNamesEqual(
 			imageMap.Status.ImageFromCluster, ctr.Image)
 	}

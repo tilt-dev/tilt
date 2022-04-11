@@ -419,9 +419,9 @@ func (r *Reconciler) reconcileKubernetesResource(ctx context.Context, monitor *m
 		return false, err
 	}
 
-	if selector.ImageMap != "" {
+	if selector.ImageMapName != "" {
 		im = &v1alpha1.ImageMap{}
-		if err := r.client.Get(ctx, types.NamespacedName{Name: selector.ImageMap}, im); err != nil {
+		if err := r.client.Get(ctx, types.NamespacedName{Name: selector.ImageMapName}, im); err != nil {
 			return false, err
 		}
 
@@ -1119,11 +1119,11 @@ func indexLiveUpdate(obj ctrlclient.Object) []indexer.Key {
 			})
 		}
 
-		if kSel.ImageMap != "" {
+		if kSel.ImageMapName != "" {
 			result = append(result, indexer.Key{
 				Name: types.NamespacedName{
 					Namespace: lu.Namespace,
-					Name:      kSel.ImageMap,
+					Name:      kSel.ImageMapName,
 				},
 				GVK: imageMapGVK,
 			})

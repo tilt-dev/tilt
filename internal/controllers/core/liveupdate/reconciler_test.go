@@ -41,7 +41,7 @@ func TestIndexing(t *testing.T) {
 				Kubernetes: &v1alpha1.LiveUpdateKubernetesSelector{
 					DiscoveryName: "discovery",
 					ApplyName:     "apply",
-					ImageMap:      "imagemap",
+					ImageMapName:  "imagemap",
 				},
 			},
 			Syncs: []v1alpha1.LiveUpdateSync{
@@ -1024,7 +1024,7 @@ func (f *fixture) setupFrontendWithSelector(selector *v1alpha1.LiveUpdateSelecto
 			Kubernetes: &v1alpha1.LiveUpdateKubernetesSelector{
 				ApplyName:     "frontend-apply",
 				DiscoveryName: "frontend-discovery",
-				ImageMap:      "frontend-image-map",
+				ImageMapName:  "frontend-image-map",
 			},
 		}
 	}

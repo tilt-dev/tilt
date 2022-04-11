@@ -10875,9 +10875,9 @@ func (m *LiveUpdateKubernetesSelector) MarshalToSizedBuffer(dAtA []byte) (int, e
 	_ = i
 	var l int
 	_ = l
-	i -= len(m.ImageMap)
-	copy(dAtA[i:], m.ImageMap)
-	i = encodeVarintGenerated(dAtA, i, uint64(len(m.ImageMap)))
+	i -= len(m.ImageMapName)
+	copy(dAtA[i:], m.ImageMapName)
+	i = encodeVarintGenerated(dAtA, i, uint64(len(m.ImageMapName)))
 	i--
 	dAtA[i] = 0x2a
 	i -= len(m.ContainerName)
@@ -16914,7 +16914,7 @@ func (m *LiveUpdateKubernetesSelector) Size() (n int) {
 	n += 1 + l + sovGenerated(uint64(l))
 	l = len(m.ContainerName)
 	n += 1 + l + sovGenerated(uint64(l))
-	l = len(m.ImageMap)
+	l = len(m.ImageMapName)
 	n += 1 + l + sovGenerated(uint64(l))
 	return n
 }
@@ -19766,7 +19766,7 @@ func (this *LiveUpdateKubernetesSelector) String() string {
 		`Image:` + fmt.Sprintf("%v", this.Image) + `,`,
 		`ApplyName:` + fmt.Sprintf("%v", this.ApplyName) + `,`,
 		`ContainerName:` + fmt.Sprintf("%v", this.ContainerName) + `,`,
-		`ImageMap:` + fmt.Sprintf("%v", this.ImageMap) + `,`,
+		`ImageMap:` + fmt.Sprintf("%v", this.ImageMapName) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -36465,7 +36465,7 @@ func (m *LiveUpdateKubernetesSelector) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.ImageMap = string(dAtA[iNdEx:postIndex])
+			m.ImageMapName = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
