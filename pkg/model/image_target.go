@@ -302,7 +302,7 @@ func (i ImageTarget) Dependencies() []string {
 // - The architecture (the image chipset) will depend on the default arch of the cluster.
 //
 // In the meantime, we handle this by inferring them after tiltfile assembly.
-func (i ImageTarget) InferImagePropertiesFromCluster(reg container.Registry, clusterNeeds v1alpha1.ClusterImageNeeds) (ImageTarget, error) {
+func (i ImageTarget) InferImagePropertiesFromCluster(reg container.Registry, clusterNeeds v1alpha1.ClusterImageNeeds, clusterName string) (ImageTarget, error) {
 	selector, err := container.SelectorFromImageMap(i.ImageMapSpec)
 	if err != nil {
 		return i, fmt.Errorf("validating image: %v", err)
@@ -317,6 +317,7 @@ func (i ImageTarget) InferImagePropertiesFromCluster(reg container.Registry, clu
 	if ok {
 		db.DockerImageSpec.Ref = i.ImageMapSpec.Selector
 		db.DockerImageSpec.ClusterNeeds = clusterNeeds
+		db.DockerImageSpec.Cluster = clusterName
 		i.BuildDetails = db
 	}
 
@@ -324,6 +325,7 @@ func (i ImageTarget) InferImagePropertiesFromCluster(reg container.Registry, clu
 	if ok {
 		cb.CmdImageSpec.Ref = i.ImageMapSpec.Selector
 		cb.CmdImageSpec.ClusterNeeds = clusterNeeds
+		cb.CmdImageSpec.Cluster = clusterName
 		i.BuildDetails = cb
 	}
 
