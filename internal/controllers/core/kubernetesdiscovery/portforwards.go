@@ -99,6 +99,7 @@ func (r *Reconciler) toDesiredPortForward(kd *v1alpha1.KubernetesDiscovery) (*v1
 			PodName:   pod.Name,
 			Namespace: pod.Namespace,
 			Forwards:  pfTemplate.Forwards,
+			Cluster:   kd.Spec.Cluster,
 		},
 	}
 	populateContainerPorts(pf, pod)

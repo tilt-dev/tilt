@@ -2360,6 +2360,13 @@ message PortForwardSpec {
 
   // One or more port forwards to execute on the given pod. Required.
   repeated Forward forwards = 3;
+
+  // Cluster to forward ports from to the local machine.
+  //
+  // If not specified, the default Kubernetes cluster will be used.
+  //
+  // +optional
+  optional string cluster = 4;
 }
 
 // PortForwardStatus defines the observed state of PortForward
