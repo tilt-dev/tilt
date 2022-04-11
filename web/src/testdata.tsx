@@ -8,6 +8,7 @@ import {
   UIBUTTON_TOGGLE_INPUT_NAME,
 } from "./ApiButton"
 import {
+  Cluster,
   ResourceDisableState,
   ResourceName,
   TriggerMode,
@@ -26,6 +27,7 @@ export type TestDataView = {
   uiButtons: Array<UIButton>
   uiSession?: UISession
   logList?: Proto.webviewLogList
+  clusters?: Array<Cluster>
 }
 
 export type TestResourceOptions = {
@@ -455,6 +457,34 @@ function logList(
     fromCheckpoint: checkpointStart,
     toCheckpoint: checkpointStart + lines.length,
   }
+}
+
+export function clusterConnection(error?: string): Cluster {
+  const cluster: Cluster = {
+    metadata: {
+      name: "default",
+    },
+    status: {
+      arch: "amd64",
+      registry: {
+        host: "localhost:3000",
+        hostFromContainerRuntime: "localhost:3000",
+      },
+      connection: {
+        kubernetes: {
+          context: "kind-kind",
+          namespace: "default",
+          product: "kind",
+        },
+      },
+    },
+  }
+
+  if (error) {
+    cluster.status!.error = error
+  }
+
+  return cluster
 }
 
 function oneResourceFailedToBuild(): UIResource[] {

@@ -1,11 +1,14 @@
-import React, { Component, useRef, useState } from "react"
+import React, { Component, useMemo, useRef, useState } from "react"
 import styled from "styled-components"
 import { AccountMenuContent, AccountMenuHeader } from "./AccountMenu"
 import { AnalyticsAction, AnalyticsType, incr } from "./analytics"
 import { ReactComponent as AccountIcon } from "./assets/svg/account.svg"
+import { ReactComponent as ClusterErrorIcon } from "./assets/svg/close.svg"
+import { ReactComponent as ClusterIcon } from "./assets/svg/cluster-icon.svg"
 import { ReactComponent as HelpIcon } from "./assets/svg/help.svg"
 import { ReactComponent as SnapshotIcon } from "./assets/svg/snapshot.svg"
 import { ReactComponent as UpdateAvailableIcon } from "./assets/svg/update-available.svg"
+import { ClusterStatusDialog, getDefaultCluster } from "./ClusterStatusDialog"
 import FloatDialog from "./FloatDialog"
 import HelpDialog from "./HelpDialog"
 import { isTargetEditable } from "./shortcut"
@@ -17,6 +20,7 @@ import {
   mixinResetButtonStyle,
   SizeUnit,
 } from "./style-helpers"
+import { Cluster } from "./types"
 import UpdateDialog from "./UpdateDialog"
 
 type TiltBuild = Proto.corev1alpha1TiltBuild
@@ -52,7 +56,7 @@ export const MenuButtonMixin = `
     fill: ${Color.blue};
     transition: fill ${AnimDuration.default} ease;
   }
-  &:hover .fillStd {
+  &:hover .fillStd :not(.has-error) {
     fill: ${Color.blueLight};
   }
   & .fillBg {
@@ -75,16 +79,37 @@ export const MenuButtonLabeledRoot = styled.div`
     opacity: 1;
   }
 `
-const UpdateAvailableFloatIcon = styled(UpdateAvailableIcon)`
-  display: none;
-  position: absolute;
-  top: 15px;
-  left: 5px;
-  width: 10px;
-  height: 10px;
 
-  &.is-visible {
-    display: block;
+const floatIconMixin = `
+display: none;
+position: absolute;
+top: 15px;
+left: 5px;
+width: 10px;
+height: 10px;
+
+&.is-visible {
+  display: block;
+}
+`
+const UpdateAvailableFloatIcon = styled(UpdateAvailableIcon)`
+  ${floatIconMixin}
+`
+
+const ClusterErrorFloatIcon = styled(ClusterErrorIcon)`
+  ${floatIconMixin}
+
+  .fillStd,
+  &:hover .fillStd {
+    fill: ${Color.red};
+  }
+`
+
+const ClusterStatusIcon = styled(ClusterIcon)`
+  &.has-error {
+    .fillStd {
+      fill: ${Color.red};
+    }
   }
 `
 
@@ -152,16 +177,19 @@ type GlobalNavProps = {
   showUpdate: boolean
   suggestedVersion: string | null | undefined
   runningBuild: TiltBuild | undefined
+  clusterConnections?: Cluster[]
 }
 
 enum NavDialog {
   Account = "account",
+  Cluster = "cluster",
   Help = "help",
   Update = "update",
 }
 
 const DIALOG_TO_ANALYTICS_TYPE = {
   [NavDialog.Account]: AnalyticsType.Account,
+  [NavDialog.Cluster]: AnalyticsType.Cluster,
   [NavDialog.Help]: AnalyticsType.Shortcut,
   [NavDialog.Update]: AnalyticsType.Update,
 }
@@ -170,6 +198,7 @@ export function GlobalNav(props: GlobalNavProps) {
   const helpButton = useRef<HTMLButtonElement | null>(null)
   const accountButton = useRef<HTMLButtonElement | null>(null)
   const updateButton = useRef<HTMLButtonElement | null>(null)
+  const clusterButton = useRef<HTMLButtonElement | null>(null)
 
   const [openDialog, setOpenDialog] = useState<NavDialog | null>(null)
 
@@ -202,10 +231,44 @@ export function GlobalNav(props: GlobalNavProps) {
     </MenuButtonLabeled>
   ) : null
 
+  // Only display the cluster status menu item if default cluster information is available
+  const defaultClusterInfo = useMemo(
+    () => getDefaultCluster(props.clusterConnections),
+    [props.clusterConnections]
+  )
+  const clusterStatusButton = defaultClusterInfo ? (
+    <MenuButtonLabeled label="Cluster">
+      <MenuButton
+        ref={clusterButton}
+        onClick={() => toggleDialog(NavDialog.Cluster)}
+        data-open={openDialog === NavDialog.Cluster}
+        aria-expanded={openDialog === NavDialog.Cluster}
+        aria-label={`Cluster status: ${
+          defaultClusterInfo.status?.error ? "error" : "healthy"
+        }`}
+        aria-haspopup="true"
+        role="menuitem"
+      >
+        <ClusterErrorFloatIcon
+          className={defaultClusterInfo.status?.error && "is-visible has-error"}
+          role="presentation"
+        />
+        <ClusterStatusIcon
+          role="presentation"
+          className={defaultClusterInfo.status?.error && "has-error"}
+          width="24"
+          height="24"
+        />
+      </MenuButton>
+    </MenuButtonLabeled>
+  ) : null
+
   const versionButtonLabel = props.showUpdate ? "Get Update" : "Version"
 
   return (
     <GlobalNavRoot role="menu" aria-label="Tilt session menu">
+      {clusterStatusButton}
+
       <MenuButtonLabeled label={versionButtonLabel}>
         <MenuButton
           ref={updateButton}
@@ -254,6 +317,12 @@ export function GlobalNav(props: GlobalNavProps) {
         </MenuButton>
       </MenuButtonLabeled>
 
+      <ClusterStatusDialog
+        open={openDialog === NavDialog.Cluster}
+        onClose={() => toggleDialog(NavDialog.Cluster)}
+        anchorEl={clusterButton?.current}
+        clusterConnection={defaultClusterInfo}
+      />
       <FloatDialog
         id="accountMenu"
         title={accountMenuHeader}

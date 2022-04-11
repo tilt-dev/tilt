@@ -5,7 +5,7 @@ import styled from "styled-components"
 import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
 import { Color, Font, FontSize } from "./style-helpers"
 
-type props = {
+export type FloatDialogProps = {
   id?: string
   title: string | React.ReactElement
   open: boolean
@@ -21,14 +21,16 @@ let TitleBar = styled.div`
   display: flex;
   flex-direction: row;
   justify-content: space-between;
-  align-items: center;
+  align-items: baseline;
   margin-bottom: 24px;
 `
 
-let Title = styled.div`
+export let Title = styled.h2`
   font-family: ${Font.monospace};
   font-size: ${FontSize.default};
   line-height: 17px;
+  font-weight: unset;
+  margin: 0;
 `
 
 export let HR = styled.hr`
@@ -78,7 +80,7 @@ let useStyles = makeStyles((theme) => ({
 
 // A generic dialog that floats in a part of the screen.
 // Intended to be attached to a menu button.
-export default function FloatDialog(props: props) {
+export default function FloatDialog(props: FloatDialogProps) {
   const popoverClasses = useStyles()
 
   let title = props.title
@@ -104,8 +106,8 @@ export default function FloatDialog(props: props) {
     >
       <TitleBar>
         {titleEl}
-        <CloseButton onClick={props.onClose}>
-          <CloseSvg />
+        <CloseButton aria-label="Close dialog" onClick={props.onClose}>
+          <CloseSvg role="presentation" />
         </CloseButton>
       </TitleBar>
 

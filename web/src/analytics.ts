@@ -19,6 +19,7 @@ export type Tags = {
 // that the analytics event takes place in
 export enum AnalyticsType {
   Account = "account",
+  Cluster = "cluster",
   Detail = "resource-detail",
   Grid = "grid", // aka Table View
   Shortcut = "shortcuts",
