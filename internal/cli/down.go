@@ -25,6 +25,12 @@ type downCmd struct {
 	downDepsProvider func(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (DownDeps, error)
 }
 
+type dependencyNode struct {
+	manifest   model.Manifest
+	dependents []*dependencyNode
+	processed  bool
+}
+
 func newDownCmd() *downCmd {
 	return &downCmd{downDepsProvider: wireDownDeps}
 }
@@ -77,12 +83,14 @@ func (c *downCmd) down(ctx context.Context, downDeps DownDeps, args []string) er
 		return err
 	}
 
-	if err := deleteK8sEntities(ctx, tlr.Manifests, tlr.UpdateSettings, downDeps, c.deleteNamespaces); err != nil {
+	sortedManifests := sortManifestsForDeletion(tlr.Manifests)
+
+	if err := deleteK8sEntities(ctx, sortedManifests, tlr.UpdateSettings, downDeps, c.deleteNamespaces); err != nil {
 		return err
 	}
 
 	var dcProject v1alpha1.DockerComposeProject
-	for _, m := range tlr.Manifests {
+	for _, m := range sortedManifests {
 		if m.IsDC() {
 			dcProject = m.DockerComposeTarget().Spec.Project
 			break
@@ -100,13 +108,59 @@ func (c *downCmd) down(ctx context.Context, downDeps DownDeps, args []string) er
 	return nil
 }
 
+func sortManifestsForDeletion(manifests []model.Manifest) []model.Manifest {
+	nodes := []*dependencyNode{}
+	nodeMap := map[model.ManifestName]*dependencyNode{}
+
+	for i := range manifests {
+		manifest := manifests[len(manifests)-i-1]
+
+		node := &dependencyNode{
+			manifest:   manifest,
+			dependents: []*dependencyNode{},
+		}
+
+		nodes = append(nodes, node)
+		nodeMap[manifest.Name] = node
+	}
+
+	for _, node := range nodes {
+		for _, resourceDep := range node.manifest.ResourceDependencies {
+			if dependency, ok := nodeMap[resourceDep]; ok {
+				dependency.dependents = append(dependency.dependents, node)
+			}
+		}
+	}
+
+	var sortedManifests []model.Manifest
+	for _, node := range nodes {
+		sortedManifests = append(sortedManifests, manifestsForNode(node)...)
+	}
+
+	return sortedManifests
+}
+
+func manifestsForNode(node *dependencyNode) []model.Manifest {
+	if node.processed {
+		return []model.Manifest{}
+	}
+
+	node.processed = true
+
+	var manifests []model.Manifest
+
+	for _, dependent := range node.dependents {
+		manifests = append(manifests, manifestsForNode(dependent)...)
+	}
+
+	return append(manifests, node.manifest)
+}
+
 func deleteK8sEntities(ctx context.Context, manifests []model.Manifest, updateSettings model.UpdateSettings, downDeps DownDeps, deleteNamespaces bool) error {
 	entities, deleteCmds, err := k8sToDelete(manifests...)
 	if err != nil {
 		return errors.Wrap(err, "Parsing manifest YAML")
 	}
-
-	entities = k8s.ReverseSortedEntities(entities)
 
 	entities, _, err = k8s.Filter(entities, func(e k8s.K8sEntity) (b bool, err error) {
 		downPolicy, exists := e.Annotations()["tilt.dev/down-policy"]
@@ -177,7 +231,7 @@ func k8sToDelete(manifests ...model.Manifest) ([]k8s.K8sEntity, []model.Cmd, err
 			if err != nil {
 				return nil, nil, err
 			}
-			allEntities = append(allEntities, entities...)
+			allEntities = append(allEntities, k8s.ReverseSortedEntities(entities)...)
 		}
 	}
 	return allEntities, deleteCmds, nil
