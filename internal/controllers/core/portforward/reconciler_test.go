@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
+	"github.com/tilt-dev/tilt/pkg/apis"
 
 	"github.com/tilt-dev/tilt/pkg/model"
 
@@ -279,6 +281,22 @@ func TestPortForwardPartialSuccess(t *testing.T) {
 	f.requirePortForwardError(pfFooName, k8s.MagicTestExplodingPort, 8082, "fake error starting port forwarding")
 }
 
+func TestIndexing(t *testing.T) {
+	f := newPFRFixture(t)
+
+	pf := f.makeSimplePF(pfFooName, 8000, 8080)
+	f.Create(pf)
+	f.MustGet(apis.Key(pf), pf)
+
+	reqs := f.r.indexer.Enqueue(&v1alpha1.Cluster{ObjectMeta: metav1.ObjectMeta{Name: "default"}})
+	require.ElementsMatch(t, []reconcile.Request{
+		{NamespacedName: types.NamespacedName{Name: pfFooName}},
+	}, reqs)
+
+	reqs = f.r.indexer.Enqueue(&v1alpha1.Cluster{ObjectMeta: metav1.ObjectMeta{Name: "other"}})
+	require.Empty(t, reqs)
+}
+
 type pfrFixture struct {
 	*fake.ControllerFixture
 	t    *testing.T
@@ -291,7 +309,7 @@ func newPFRFixture(t *testing.T) *pfrFixture {
 	kCli := k8s.NewFakeK8sClient(t)
 
 	cfb := fake.NewControllerFixtureBuilder(t)
-	r := NewReconciler(cfb.Client, cfb.Store, kCli)
+	r := NewReconciler(cfb.Client, cfb.Scheme(), cfb.Store, kCli)
 	indexer.StartSourceForTesting(cfb.Context(), r.requeuer, r, nil)
 
 	return &pfrFixture{

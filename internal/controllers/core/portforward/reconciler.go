@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -32,11 +33,14 @@ import (
 	"github.com/tilt-dev/tilt/internal/store"
 )
 
+var clusterGVK = v1alpha1.SchemeGroupVersion.WithKind("Cluster")
+
 type Reconciler struct {
 	store      store.RStore
 	kClient    k8s.Client
 	ctrlClient ctrlclient.Client
 	requeuer   *indexer.Requeuer
+	indexer    *indexer.Indexer
 
 	// map of PortForward object name --> running forward(s)
 	activeForwards map[types.NamespacedName]*portForwardEntry
@@ -45,12 +49,18 @@ type Reconciler struct {
 var _ store.TearDowner = &Reconciler{}
 var _ reconcile.Reconciler = &Reconciler{}
 
-func NewReconciler(ctrlClient ctrlclient.Client, store store.RStore, kClient k8s.Client) *Reconciler {
+func NewReconciler(
+	ctrlClient ctrlclient.Client,
+	scheme *runtime.Scheme,
+	store store.RStore,
+	kClient k8s.Client,
+) *Reconciler {
 	return &Reconciler{
 		store:          store,
 		kClient:        kClient,
 		ctrlClient:     ctrlClient,
 		requeuer:       indexer.NewRequeuer(),
+		indexer:        indexer.NewIndexer(scheme, indexPortForward),
 		activeForwards: make(map[types.NamespacedName]*portForwardEntry),
 	}
 }
@@ -71,7 +81,11 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 func (r *Reconciler) reconcile(ctx context.Context, name types.NamespacedName) error {
 	pf := &PortForward{}
 	err := r.ctrlClient.Get(ctx, name, pf)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return err
+	}
 
+	r.indexer.OnReconcile(name, pf)
 	if apierrors.IsNotFound(err) || pf.ObjectMeta.DeletionTimestamp != nil {
 		// PortForward deleted in API server -- stop and remove it
 		r.stop(name)
@@ -87,7 +101,6 @@ func (r *Reconciler) reconcile(ctx context.Context, name types.NamespacedName) e
 			// No change needed.
 			needsCreate = false
 		} else {
-
 			// An update to a PortForward we're already running -- stop the existing one
 			r.stop(name)
 		}
@@ -281,4 +294,21 @@ func (e *portForwardEntry) statuses() []ForwardStatus {
 		return timecmp.BeforeOrEqual(statuses[i].StartedAt, statuses[j].StartedAt)
 	})
 	return statuses
+}
+
+func indexPortForward(obj ctrlclient.Object) []indexer.Key {
+	var keys []indexer.Key
+	pf := obj.(*v1alpha1.PortForward)
+
+	if pf.Spec.Cluster != "" {
+		keys = append(keys, indexer.Key{
+			Name: types.NamespacedName{
+				Namespace: pf.Namespace,
+				Name:      pf.Spec.Cluster,
+			},
+			GVK: clusterGVK,
+		})
+	}
+
+	return keys
 }
