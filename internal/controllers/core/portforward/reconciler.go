@@ -81,7 +81,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 func (r *Reconciler) reconcile(ctx context.Context, name types.NamespacedName) error {
 	pf := &PortForward{}
 	err := r.ctrlClient.Get(ctx, name, pf)
-	if ctrlclient.IgnoreNotFound(err) != nil {
+	if err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
 
