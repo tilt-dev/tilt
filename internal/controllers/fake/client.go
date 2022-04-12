@@ -102,7 +102,7 @@ func (f fakeStatusWriter) Patch(ctx context.Context, obj ctrlclient.Object, patc
 // to catch this class of bug.
 //
 // The `apiResp` argument is marshaled and then unmarshalled into `dest` arg.
-// (This allows the fake client to mutate *copy* of the user-provided obj, and
+// (This allows the fake client to mutate a *copy* of the user-provided obj, and
 // only mutate the *original* obj here on success.)
 func simulateMarshalRoundtrip(apiResp, dest ctrlclient.Object) error {
 	content, err := json.Marshal(apiResp)
