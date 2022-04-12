@@ -6,6 +6,7 @@ import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
 import { ReactComponent as DisabledSvg } from "./assets/svg/not-allowed.svg"
 import { ReactComponent as PendingSvg } from "./assets/svg/pending.svg"
 import { ReactComponent as WarningSvg } from "./assets/svg/warning.svg"
+import { linkToTiltAsset } from "./constants"
 import { FilterLevel } from "./logfilters"
 import { useLogStore } from "./LogStore"
 import { RowValues } from "./OverviewTableColumns"
@@ -309,7 +310,9 @@ function ResourceMetadata(props: {
     let faviconHref = ""
     if (props.isSocketConnected === false) {
       document.title = `… disconnected ┊ Tilt`
-      faviconHref = "/static/ico/favicon-gray.ico"
+      // Use a publically-hosted favicon since Tilt is disconnected
+      // and it's not guaranteed that the favicon will be cached
+      faviconHref = linkToTiltAsset("ico", "dashboard-favicon-gray.ico")
     } else if (unhealthy > 0) {
       document.title = `✖︎ ${unhealthy} ┊ Tilt`
       faviconHref = "/static/ico/favicon-red.ico"
