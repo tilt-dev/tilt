@@ -71,7 +71,7 @@ func TestDownDeletesNamespacesIfSpecified(t *testing.T) {
 	}
 }
 
-func TestDownDeletesInReverseOrder(t *testing.T) {
+func TestDownDeletesManifestsInReverseOrder(t *testing.T) {
 	f := newDownFixture(t)
 
 	manifests := append([]model.Manifest{}, newK8sNamespaceManifest("foo"))
@@ -82,6 +82,130 @@ func TestDownDeletesInReverseOrder(t *testing.T) {
 	err := f.cmd.down(f.ctx, f.deps, nil)
 	require.NoError(t, err)
 	require.Regexp(t, "(?s)name: sancho.*name: foo", f.kCli.DeletedYaml) // namespace comes after deployment
+}
+
+func TestDownDeletesEntitiesInReverseOrder(t *testing.T) {
+	f := newDownFixture(t)
+
+	manifests := []model.Manifest{newK8sMultiEntityManifest()}
+
+	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: manifests}
+	f.cmd.deleteNamespaces = true
+	err := f.cmd.down(f.ctx, f.deps, nil)
+	require.NoError(t, err)
+
+	entities, err := k8s.ParseYAMLFromString(f.kCli.DeletedYaml)
+	require.NoError(t, err)
+	require.Equal(t, 2, len(entities))
+	require.Equal(t, "Secret", entities[0].GVK().Kind)
+	require.Equal(t, "Namespace", entities[1].GVK().Kind)
+}
+
+func TestDownDeletesInDependentOrder(t *testing.T) {
+	f := newDownFixture(t)
+
+	manifests := newK8sDependentManifests()
+
+	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: manifests}
+	err := f.cmd.down(f.ctx, f.deps, nil)
+	require.NoError(t, err)
+
+	entities, err := k8s.ParseYAMLFromString(f.kCli.DeletedYaml)
+	require.NoError(t, err)
+	require.Equal(t, 6, len(entities))
+
+	var names []string
+
+	for _, entity := range entities {
+		names = append(names, entity.Meta().GetName())
+	}
+
+	// For each name with dependencies, assert that its dependencies are deleted after it
+	for i, name := range names {
+		switch name {
+		case "mixed_dependent":
+			require.Contains(t, names[i:], "no_dependencies")
+			require.Contains(t, names[i:], "direct_dependent_1")
+			require.Contains(t, names[i:], "indirect_dependent_2")
+		case "indirect_dependent_1":
+			require.Contains(t, names[i:], "direct_dependent_2")
+		case "indirect_dependent_2":
+			require.Contains(t, names[i:], "direct_dependent_1")
+		case "direct_dependent_1":
+			require.Contains(t, names[i:], "no_dependencies")
+		case "direct_dependent_2":
+			require.Contains(t, names[i:], "no_dependencies")
+		}
+	}
+}
+
+func TestDownDeletesInDependentOrderReversed(t *testing.T) {
+	f := newDownFixture(t)
+
+	manifests := newK8sDependentManifests()
+
+	// Reverse the list of manifests to ensure delete order is dependent on manifest order
+	for i := 0; i < len(manifests)/2; i++ {
+		manifests[i], manifests[len(manifests)-i-1] = manifests[len(manifests)-i-1], manifests[i]
+	}
+
+	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: manifests}
+	err := f.cmd.down(f.ctx, f.deps, nil)
+	require.NoError(t, err)
+
+	entities, err := k8s.ParseYAMLFromString(f.kCli.DeletedYaml)
+	require.NoError(t, err)
+	require.Equal(t, 6, len(entities))
+
+	var names []string
+
+	for _, entity := range entities {
+		names = append(names, entity.Meta().GetName())
+	}
+
+	// For each name with dependencies, assert that its dependencies are deleted after it
+	for i, name := range names {
+		switch name {
+		case "mixed_dependent":
+			require.Contains(t, names[i:], "no_dependencies")
+			require.Contains(t, names[i:], "direct_dependent_1")
+			require.Contains(t, names[i:], "indirect_dependent_2")
+		case "indirect_dependent_1":
+			require.Contains(t, names[i:], "direct_dependent_2")
+		case "indirect_dependent_2":
+			require.Contains(t, names[i:], "direct_dependent_1")
+		case "direct_dependent_1":
+			require.Contains(t, names[i:], "no_dependencies")
+		case "direct_dependent_2":
+			require.Contains(t, names[i:], "no_dependencies")
+		}
+	}
+}
+
+func TestDownDeletesCyclicDependencies(t *testing.T) {
+	f := newDownFixture(t)
+
+	manifests := newK8sCyclicManifest()
+
+	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: manifests}
+	err := f.cmd.down(f.ctx, f.deps, nil)
+	require.NoError(t, err)
+
+	entities, err := k8s.ParseYAMLFromString(f.kCli.DeletedYaml)
+	require.NoError(t, err)
+
+	require.Equal(t, 2, len(entities))
+}
+
+func TestDownDeletesWithInvalidDependency(t *testing.T) {
+	f := newDownFixture(t)
+
+	manifests := newK8sInvalidDependencyManifests()
+
+	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: manifests}
+	err := f.cmd.down(f.ctx, f.deps, nil)
+	require.NoError(t, err)
+	require.Contains(t, f.kCli.DeletedYaml, "missing-dep")
 }
 
 func TestDownK8sFails(t *testing.T) {
@@ -172,6 +296,84 @@ func newK8sManifest() []model.Manifest {
 	return []model.Manifest{model.Manifest{Name: "fe"}.WithDeployTarget(k8s.MustTarget("fe", testyaml.SanchoYAML))}
 }
 
+func newK8sDependentManifests() []model.Manifest {
+	yamlTemplate := `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: %s
+data:
+  mySecret: blah
+`
+
+	return []model.Manifest{
+		model.Manifest{
+			Name: "no_dependencies",
+		}.WithDeployTarget(k8s.MustTarget("no_dependencies", fmt.Sprintf(yamlTemplate, "no_dependencies"))),
+		model.Manifest{
+			Name:                 "direct_dependent_1",
+			ResourceDependencies: []model.ManifestName{"no_dependencies"},
+		}.WithDeployTarget(k8s.MustTarget("direct_dependent_1", fmt.Sprintf(yamlTemplate, "direct_dependent_1"))),
+		model.Manifest{
+			Name:                 "direct_dependent_2",
+			ResourceDependencies: []model.ManifestName{"no_dependencies"},
+		}.WithDeployTarget(k8s.MustTarget("direct_dependent_2", fmt.Sprintf(yamlTemplate, "direct_dependent_2"))),
+		model.Manifest{
+			Name:                 "indirect_dependent_1",
+			ResourceDependencies: []model.ManifestName{"direct_dependent_2"},
+		}.WithDeployTarget(k8s.MustTarget("indirect_dependent_1", fmt.Sprintf(yamlTemplate, "indirect_dependent_1"))),
+		model.Manifest{
+			Name:                 "indirect_dependent_2",
+			ResourceDependencies: []model.ManifestName{"direct_dependent_1"},
+		}.WithDeployTarget(k8s.MustTarget("indirect_dependent_2", fmt.Sprintf(yamlTemplate, "indirect_dependent_2"))),
+		model.Manifest{
+			Name:                 "mixed_dependent",
+			ResourceDependencies: []model.ManifestName{"no_dependencies", "direct_dependent_1", "indirect_dependent_2"},
+		}.WithDeployTarget(k8s.MustTarget("mixed_dependent", fmt.Sprintf(yamlTemplate, "mixed_dependent"))),
+	}
+}
+
+func newK8sCyclicManifest() []model.Manifest {
+	yamlTemplate := `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: %s
+data:
+  mySecret: blah
+`
+
+	return []model.Manifest{
+		model.Manifest{
+			Name:                 "dep_1",
+			ResourceDependencies: []model.ManifestName{"dep_2"},
+		}.WithDeployTarget(k8s.MustTarget("dep_1", fmt.Sprintf(yamlTemplate, "dep_1"))),
+		model.Manifest{
+			Name:                 "dep_2",
+			ResourceDependencies: []model.ManifestName{"dep_1"},
+		}.WithDeployTarget(k8s.MustTarget("dep_2", fmt.Sprintf(yamlTemplate, "dep_2"))),
+	}
+}
+
+func newK8sInvalidDependencyManifests() []model.Manifest {
+	yaml := `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: missing-dep
+data:
+  mySecret: blah
+`
+
+	return []model.Manifest{
+		model.Manifest{
+			Name:                 "missing-dep",
+			ResourceDependencies: []model.ManifestName{"nonexistent"},
+		}.WithDeployTarget(k8s.MustTarget("missing-dep", yaml)),
+	}
+
+}
+
 func newDCManifest() []model.Manifest {
 	return []model.Manifest{model.Manifest{Name: "fe"}.WithDeployTarget(model.DockerComposeTarget{
 		Name: "fe",
@@ -182,6 +384,25 @@ func newDCManifest() []model.Manifest {
 			},
 		},
 	})}
+}
+
+func newK8sMultiEntityManifest() model.Manifest {
+	yaml := `
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-namespace
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: test-secret
+  namespace: test-namespace
+data:
+  testSecret: blah
+`
+
+	return model.Manifest{Name: "test-secret"}.WithDeployTarget(k8s.MustTarget("test-secret", yaml))
 }
 
 func newK8sNamespaceManifest(name string) model.Manifest {
