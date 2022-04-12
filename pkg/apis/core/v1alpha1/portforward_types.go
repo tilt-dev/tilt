@@ -176,6 +176,8 @@ func (in *PortForward) Validate(_ context.Context) field.ErrorList {
 	return fieldErrors
 }
 
+var _ resourcestrategy.Defaulter = &PortForward{}
+
 func (in *PortForward) Default() {
 	if in.Spec.Cluster == "" {
 		in.Spec.Cluster = ClusterNameDefault
