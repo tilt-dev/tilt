@@ -35,3 +35,18 @@ func LeafNodes(node *sitter.Node) []*sitter.Node {
 	})
 	return nodes
 }
+
+func LoadStatements(input []byte, tree *sitter.Tree) []*sitter.Node {
+	nodes := []*sitter.Node{}
+	Query(tree.RootNode(), []byte(`(call) @call`), func(q *sitter.Query, match *sitter.QueryMatch) bool {
+		for _, c := range match.Captures {
+			id := c.Node.ChildByFieldName("function")
+			name := id.Content(input)
+			if name == "load" {
+				nodes = append(nodes, c.Node)
+			}
+		}
+		return true
+	})
+	return nodes
+}

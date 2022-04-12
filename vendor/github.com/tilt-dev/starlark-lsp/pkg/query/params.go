@@ -8,7 +8,6 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 
 	"github.com/tilt-dev/starlark-lsp/pkg/docstring"
-	"github.com/tilt-dev/starlark-lsp/pkg/document"
 )
 
 type parameter struct {
@@ -38,7 +37,7 @@ func (p parameter) paramInfo(fnDocs docstring.Parsed) protocol.ParameterInformat
 
 	if docContent != "" {
 		pi.Documentation = protocol.MarkupContent{
-			Kind:  protocol.Markdown,
+			Kind:  protocol.PlainText,
 			Value: docContent,
 		}
 	}
@@ -46,7 +45,7 @@ func (p parameter) paramInfo(fnDocs docstring.Parsed) protocol.ParameterInformat
 	return pi
 }
 
-func extractParameters(doc document.Document, fnDocs docstring.Parsed,
+func extractParameters(doc DocumentContent, fnDocs docstring.Parsed,
 	node *sitter.Node) []protocol.ParameterInformation {
 	if node.Type() != NodeTypeParameters {
 		// A query is used here because there's several different node types

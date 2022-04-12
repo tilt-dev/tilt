@@ -10,15 +10,20 @@ import (
 
 func (a *Analyzer) signatureInformation(doc document.Document, node *sitter.Node, fnName string) (protocol.SignatureInformation, bool) {
 	var sig protocol.SignatureInformation
-	for n := node; n != nil; n = n.Parent() {
-		var found bool
+	var found bool
+
+	for n := node; n != nil && !query.IsModuleScope(doc, n); n = n.Parent() {
 		sig, found = query.Function(doc, n, fnName)
 		if found {
 			break
 		}
 	}
 
-	if sig.Label == "" {
+	if !found {
+		sig, found = doc.Functions()[fnName]
+	}
+
+	if !found {
 		sig = a.builtins.Functions[fnName]
 	}
 

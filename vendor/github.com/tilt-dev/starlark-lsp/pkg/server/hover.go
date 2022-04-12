@@ -6,7 +6,7 @@ import (
 	"go.lsp.dev/protocol"
 )
 
-func (s *Server) Completion(ctx context.Context, params *protocol.CompletionParams) (*protocol.CompletionList, error) {
+func (s *Server) Hover(ctx context.Context, params *protocol.HoverParams) (result *protocol.Hover, err error) {
 	doc, err := s.docs.Read(ctx, params.TextDocument.URI)
 	if err != nil {
 		return nil, err
@@ -17,7 +17,5 @@ func (s *Server) Completion(ctx context.Context, params *protocol.CompletionPara
 		With(textDocumentFields(params.TextDocumentPositionParams)...)
 	logger.Debug("completion")
 
-	result := s.analyzer.Completion(doc, params.Position)
-
-	return result, nil
+	return s.analyzer.Hover(ctx, doc, params.Position), nil
 }
