@@ -10,9 +10,9 @@ import {
   mockAnalyticsCalls,
 } from "./analytics_test_helpers"
 import { ApiButton } from "./ApiButton"
-import { makeUIButton } from "./ApiButton.testhelpers"
 import BuildButton, { StartBuildButtonProps } from "./BuildButton"
 import { InstrumentedButton } from "./instrumentedComponents"
+import { oneUIButton } from "./testdata"
 import TiltTooltip from "./Tooltip"
 import { BuildButtonTooltip, startBuild } from "./trigger"
 import { TriggerMode } from "./types"
@@ -45,7 +45,7 @@ function expectIsStopButton(button: any, expected: boolean) {
   expect(button.find(ApiButton).hasClass("stop-button")).toEqual(expected)
 }
 
-const stopBuildButton = makeUIButton({ name: "stopBuild" })
+const stopBuildButton = oneUIButton({ buttonName: "stopBuild" })
 
 function BuildButtonTestWrapper(props: Partial<StartBuildButtonProps>) {
   return (

@@ -20,43 +20,48 @@ import {
   buttonsByComponent,
   ButtonSet,
 } from "./ApiButton"
-import {
-  boolField,
-  hiddenField,
-  makeUIButton,
-  mockUIButtonUpdates,
-  textField,
-} from "./ApiButton.testhelpers"
+import { mockUIButtonUpdates } from "./ApiButton.testhelpers"
 import { accessorsForTesting, tiltfileKeyContext } from "./BrowserStorage"
 import { HudErrorContextProvider } from "./HudErrorContext"
 import { InstrumentedButton } from "./instrumentedComponents"
 import { flushPromises } from "./promise"
-import { disableButton } from "./testdata"
-
-type UIButtonStatus = Proto.v1alpha1UIButtonStatus
-type UIButton = Proto.v1alpha1UIButton
+import {
+  boolFieldForUIButton,
+  disableButton,
+  hiddenFieldForUIButton,
+  oneUIButton,
+  textFieldForUIButton,
+} from "./testdata"
+import { UIButton, UIButtonStatus } from "./types"
 
 const buttonInputsAccessor = accessorsForTesting(
   `apibutton-TestButton`,
   localStorage
 )
 
-function Wrapper(props: PropsWithChildren<{ setError?: () => {} }>) {
+type ApiButtonProviderProps = {
+  setError?: () => void
+}
+
+function ApiButtonProviders({
+  children,
+  setError,
+}: PropsWithChildren<ApiButtonProviderProps>) {
   return (
     <MemoryRouter>
-      <HudErrorContextProvider setError={props.setError ?? (() => {})}>
+      <HudErrorContextProvider setError={setError ?? (() => {})}>
         <tiltfileKeyContext.Provider value="test">
-          <SnackbarProvider>{props.children}</SnackbarProvider>
+          <SnackbarProvider>{children}</SnackbarProvider>
         </tiltfileKeyContext.Provider>
       </HudErrorContextProvider>
     </MemoryRouter>
   )
 }
 
-function mountButton(b: UIButton, wrapperProps?: {}) {
+function mountButton(b: UIButton, providerProps?: {}) {
   return mount(<ApiButton uiButton={b} />, {
-    wrappingComponent: Wrapper,
-    wrappingComponentProps: wrapperProps,
+    wrappingComponent: ApiButtonProviders,
+    wrappingComponentProps: providerProps,
   })
 }
 
@@ -75,7 +80,7 @@ describe("ApiButton", () => {
   })
 
   it("renders a simple button", () => {
-    const b = makeUIButton()
+    const b = oneUIButton({ iconName: "flight_takeoff" })
     const root = mountButton(b)
     const button = root.find(ApiButton).find("button")
     expect(button.length).toEqual(1)
@@ -84,7 +89,7 @@ describe("ApiButton", () => {
   })
 
   it("sends analytics", async () => {
-    const b = makeUIButton()
+    const b = oneUIButton({})
     const root = mountButton(b)
     const button = root.find(ApiButton).find("button")
     await click(button)
@@ -95,24 +100,26 @@ describe("ApiButton", () => {
   })
 
   it("renders an options button when the button has inputs", () => {
-    const inputs = [1, 2, 3].map((i) => textField(`text${i}`))
-    const root = mountButton(makeUIButton({ inputSpecs: inputs }))
+    const inputs = [1, 2, 3].map((i) => textFieldForUIButton(`text${i}`))
+    const root = mountButton(oneUIButton({ inputSpecs: inputs }))
     expect(
       root.find(ApiButton).find(ApiButtonInputsToggleButton).length
     ).toEqual(1)
   })
 
   it("doesn't render an options button when the button has only hidden inputs", () => {
-    const inputs = [1, 2, 3].map((i) => hiddenField(`hidden${i}`, `value${i}`))
-    const root = mountButton(makeUIButton({ inputSpecs: inputs }))
+    const inputs = [1, 2, 3].map((i) =>
+      hiddenFieldForUIButton(`hidden${i}`, `value${i}`)
+    )
+    const root = mountButton(oneUIButton({ inputSpecs: inputs }))
     expect(
       root.find(ApiButton).find(ApiButtonInputsToggleButton).length
     ).toEqual(0)
   })
 
   it("shows the options form when the options button is clicked", async () => {
-    const inputs = [1, 2, 3].map((i) => textField(`text${i}`))
-    const root = mountButton(makeUIButton({ inputSpecs: inputs }))
+    const inputs = [1, 2, 3].map((i) => textFieldForUIButton(`text${i}`))
+    const root = mountButton(oneUIButton({ inputSpecs: inputs }))
 
     const optionsButton = root.find(ApiButtonInputsToggleButton)
     await click(optionsButton)
@@ -129,8 +136,8 @@ describe("ApiButton", () => {
   })
 
   it("allows an empty text string when there's a default value", async () => {
-    const input = textField("text1", "default_text")
-    const root = mountButton(makeUIButton({ inputSpecs: [input] }))
+    const input = textFieldForUIButton("text1", "default_text")
+    const root = mountButton(oneUIButton({ inputSpecs: [input] }))
 
     const optionsButton = root.find(ApiButtonInputsToggleButton)
     await click(optionsButton)
@@ -143,8 +150,8 @@ describe("ApiButton", () => {
   })
 
   it("propagates analytics tags to text inputs", async () => {
-    const input = boolField("bool1")
-    const root = mountButton(makeUIButton({ inputSpecs: [input] }))
+    const input = boolFieldForUIButton("bool1")
+    const root = mountButton(oneUIButton({ inputSpecs: [input] }))
 
     const optionsButton = root.find(ApiButtonInputsToggleButton)
     await click(optionsButton)
@@ -171,11 +178,11 @@ describe("ApiButton", () => {
 
   it("submits the current options when the submit button is clicked", async () => {
     const inputSpecs = [
-      textField("text1"),
-      boolField("bool1"),
-      hiddenField("hidden1", "hidden value 1"),
+      textFieldForUIButton("text1"),
+      boolFieldForUIButton("bool1"),
+      hiddenFieldForUIButton("hidden1", "hidden value 1"),
     ]
-    const root = mountButton(makeUIButton({ inputSpecs: inputSpecs }))
+    const root = mountButton(oneUIButton({ inputSpecs: inputSpecs }))
 
     const optionsButton = root.find(ApiButtonInputsToggleButton)
     await click(optionsButton)
@@ -232,11 +239,11 @@ describe("ApiButton", () => {
 
   it("submits default options when the submit button is clicked", async () => {
     const inputSpecs = [
-      textField("text1", "default_text"),
-      boolField("bool1", true),
-      hiddenField("hidden1", "hidden value 1"),
+      textFieldForUIButton("text1", "default_text"),
+      boolFieldForUIButton("bool1", true),
+      hiddenFieldForUIButton("hidden1", "hidden value 1"),
     ]
-    const root = mountButton(makeUIButton({ inputSpecs: inputSpecs }))
+    const root = mountButton(oneUIButton({ inputSpecs: inputSpecs }))
 
     const submit = root.find(ApiButton).find(Button).at(0)
     await click(submit)
@@ -286,8 +293,11 @@ describe("ApiButton", () => {
       text1: "text value",
       bool1: true,
     })
-    const inputSpecs = [textField("text1"), boolField("bool1")]
-    const root = mountButton(makeUIButton({ inputSpecs: inputSpecs }))
+    const inputSpecs = [
+      textFieldForUIButton("text1"),
+      boolFieldForUIButton("bool1"),
+    ]
+    const root = mountButton(oneUIButton({ inputSpecs: inputSpecs }))
 
     const optionsButton = root.find(ApiButtonInputsToggleButton)
     await click(optionsButton)
@@ -300,8 +310,11 @@ describe("ApiButton", () => {
   })
 
   it("writes options to local storage", async () => {
-    const inputSpecs = [textField("text1"), boolField("bool1")]
-    const root = mountButton(makeUIButton({ inputSpecs: inputSpecs }))
+    const inputSpecs = [
+      textFieldForUIButton("text1"),
+      boolFieldForUIButton("bool1"),
+    ]
+    const root = mountButton(oneUIButton({ inputSpecs: inputSpecs }))
 
     const optionsButton = root.find(ApiButtonInputsToggleButton)
     await click(optionsButton)
@@ -324,7 +337,7 @@ describe("ApiButton", () => {
       error = e
     }
 
-    const root = mountButton(makeUIButton(), { setError })
+    const root = mountButton(oneUIButton({}), { setError })
 
     fetchMock.reset()
     mockAnalyticsCalls()
@@ -341,7 +354,7 @@ describe("ApiButton", () => {
   })
 
   it("when requiresConfirmation is set, a second confirmation click to submit", async () => {
-    const b = makeUIButton({ requiresConfirmation: true })
+    const b = oneUIButton({ requiresConfirmation: true })
     const root = mountButton(b)
 
     let button = root.find(InstrumentedButton)
@@ -365,7 +378,7 @@ describe("ApiButton", () => {
   })
 
   it("when requiresConfirmation is set, allows canceling instead of confirming", async () => {
-    const b = makeUIButton({ requiresConfirmation: true })
+    const b = oneUIButton({ requiresConfirmation: true })
     const root = mountButton(b)
 
     let button = root.find(InstrumentedButton)
@@ -395,9 +408,9 @@ describe("ApiButton", () => {
   // clicks a toggle button once, then navigates to another resource
   // with a toggle button (which will have a different button name)
   it("it resets the `confirming` state when the button's name changes", async () => {
-    const toggleButton = makeUIButton({
+    const toggleButton = oneUIButton({
       requiresConfirmation: true,
-      name: "toggle-button-1",
+      buttonName: "toggle-button-1",
     })
     const root = mountButton(toggleButton)
 
@@ -409,9 +422,9 @@ describe("ApiButton", () => {
     buttonComponent = root.find(ApiButton)
     expect(buttonComponent.find(ApiButtonLabel).text()).toEqual("Confirm")
 
-    const anotherToggleButton = makeUIButton({
+    const anotherToggleButton = oneUIButton({
       requiresConfirmation: true,
-      name: "toggle-button-2",
+      buttonName: "toggle-button-2",
     })
     root.setProps({ uiButton: anotherToggleButton })
     root.update()
@@ -433,13 +446,13 @@ describe("ApiButton", () => {
 
       it("returns a map of resources names to button sets", () => {
         const buttons = [
-          makeUIButton({ componentID: "frontend", name: "Lint" }),
-          makeUIButton({ componentID: "frontend", name: "Compile" }),
+          oneUIButton({ componentID: "frontend", buttonName: "Lint" }),
+          oneUIButton({ componentID: "frontend", buttonName: "Compile" }),
           disableButton("frontend", true),
-          makeUIButton({ componentID: "backend", name: "Random scripts" }),
+          oneUIButton({ componentID: "backend", buttonName: "Random scripts" }),
           disableButton("backend", false),
-          makeUIButton({ componentID: "data-warehouse", name: "Flush" }),
-          makeUIButton({ componentID: "" }),
+          oneUIButton({ componentID: "data-warehouse", buttonName: "Flush" }),
+          oneUIButton({ componentID: "" }),
         ]
 
         const expectedOutput = new Map<string, ButtonSet>([

@@ -1,9 +1,8 @@
-import { Href, UnregisterCallback } from "history"
-import { RouteComponentProps } from "react-router-dom"
 import {
   ApiButtonToggleState,
   ApiButtonType,
   UIBUTTON_ANNOTATION_TYPE,
+  UIBUTTON_GLOBAL_COMPONENT_ID,
   UIBUTTON_TOGGLE_DISABLE_TYPE,
   UIBUTTON_TOGGLE_INPUT_NAME,
 } from "./ApiButton"
@@ -13,14 +12,19 @@ import {
   ResourceName,
   TriggerMode,
   UIButton,
+  UIInputSpec,
+  UIInputStatus,
   UILink,
   UIResource,
   UIResourceStatus,
   UISession,
 } from "./types"
 
-const unnamedEndpointLink: UILink = { url: "1.2.3.4:8080" }
-const namedEndpointLink: UILink = { url: "1.2.3.4:9090", name: "debugger" }
+export const unnamedEndpointLink: UILink = { url: "1.2.3.4:8080" }
+export const namedEndpointLink: UILink = {
+  url: "1.2.3.4:9090",
+  name: "debugger",
+}
 
 export type TestDataView = {
   uiResources: Array<UIResource>
@@ -37,6 +41,18 @@ export type TestResourceOptions = {
   labels?: number
   name?: string
   order?: number
+}
+
+type TestButtonOptions = {
+  annotations?: { [key: string]: string }
+  buttonName?: string
+  buttonText?: string
+  componentID?: string
+  disabled?: boolean
+  iconName?: string
+  inputSpecs?: UIInputSpec[]
+  inputStatuses?: UIInputStatus[]
+  requiresConfirmation?: boolean
 }
 
 let runningTiltBuild = {
@@ -66,52 +82,9 @@ const TEST_DATA_LABELS = [
   "javascript",
 ]
 
-// NOTE(dmiller) 4-02-19 this function is currently unused but I'm going to keep it around.
-// I have a feeling that it will come in handy later.
-function getMockRouterProps<P>(data: P) {
-  var location = {
-    hash: "",
-    key: "",
-    pathname: "",
-    search: "",
-    state: {},
-  }
-
-  var props: RouteComponentProps<P> = {
-    match: {
-      isExact: true,
-      params: data,
-      path: "",
-      url: "",
-    },
-    location: location,
-    history: {
-      length: 2,
-      action: "POP",
-      location: location,
-      push: () => {},
-      replace: () => {},
-      go: (num) => {},
-      goBack: () => {},
-      goForward: () => {},
-      block: (t) => {
-        var temp: UnregisterCallback = () => {}
-        return temp
-      },
-      createHref: (t) => {
-        var temp: Href = ""
-        return temp
-      },
-      listen: (t) => {
-        var temp: UnregisterCallback = () => {}
-        return temp
-      },
-    },
-    staticContext: {},
-  }
-
-  return props
-}
+/**
+ * Resource-related helpers
+ */
 
 function resourceSpecs(name = "vigoda"): UIResourceStatus["specs"] {
   return [
@@ -156,7 +129,7 @@ export function tiltfileResource(): UIResource {
   return resource
 }
 
-function oneResource({
+export function oneResource({
   disabled,
   endpoints,
   isBuilding,
@@ -244,7 +217,7 @@ function oneResource({
   return resource
 }
 
-function oneResourceView(): TestDataView {
+export function oneResourceView(): TestDataView {
   return {
     uiResources: [oneResource({ isBuilding: true })],
     uiSession: { status: { tiltfileKey: "test", runningTiltBuild } },
@@ -252,7 +225,7 @@ function oneResourceView(): TestDataView {
   }
 }
 
-function twoResourceView(): TestDataView {
+export function twoResourceView(): TestDataView {
   const time = Date.now()
   const ts = new Date(time).toISOString()
   const vigoda = oneResource({ isBuilding: true })
@@ -370,15 +343,81 @@ export const nResourceWithLabelsView = (n: number) => {
   return view
 }
 
-function oneButton(i: number, resourceName: string): UIButton {
+/**
+ * Button helpers
+ */
+
+export function textFieldForUIButton(
+  name: string,
+  defaultValue?: string,
+  placeholder?: string
+): UIInputSpec {
   return {
-    metadata: { name: `button${i + 1}` },
+    name: name,
+    label: name,
+    text: {
+      defaultValue: defaultValue,
+      placeholder: placeholder,
+    },
+  }
+}
+
+export function boolFieldForUIButton(
+  name: string,
+  defaultValue?: boolean
+): UIInputSpec {
+  return {
+    name: name,
+    label: name,
+    bool: {
+      defaultValue: defaultValue,
+    },
+  }
+}
+
+export function hiddenFieldForUIButton(
+  name: string,
+  value: string
+): UIInputSpec {
+  return {
+    name: name,
+    hidden: {
+      value: value,
+    },
+  }
+}
+
+export function oneUIButton({
+  buttonName,
+  annotations,
+  buttonText,
+  componentID,
+  iconName,
+  inputSpecs,
+  inputStatuses,
+  requiresConfirmation,
+  disabled,
+}: TestButtonOptions): UIButton {
+  // Button default values
+  const name = buttonName ?? "TestButton"
+  const text = buttonText ?? "Click me"
+  const location = {
+    componentID: componentID ?? UIBUTTON_GLOBAL_COMPONENT_ID,
+    componentType: componentID ? ApiButtonType.Resource : ApiButtonType.Global,
+  }
+
+  return {
+    metadata: { name, annotations },
     spec: {
-      text: `text${i + 1}`,
-      location: {
-        componentID: resourceName,
-        componentType: "resource",
-      },
+      text,
+      iconName,
+      location,
+      inputs: inputSpecs,
+      requiresConfirmation: requiresConfirmation ?? false,
+      disabled: disabled ?? false,
+    },
+    status: {
+      inputs: inputStatuses,
     },
   }
 }
@@ -387,33 +426,26 @@ export function disableButton(
   resourceName: string,
   enabled: boolean
 ): UIButton {
-  return {
-    metadata: {
-      name: `toggle-${resourceName}-disable`,
-      annotations: {
-        [UIBUTTON_ANNOTATION_TYPE]: UIBUTTON_TOGGLE_DISABLE_TYPE,
-      },
+  return oneUIButton({
+    buttonName: `toggle-${resourceName}-disable`,
+    annotations: {
+      [UIBUTTON_ANNOTATION_TYPE]: UIBUTTON_TOGGLE_DISABLE_TYPE,
     },
-    spec: {
-      text: enabled ? "Disable Resource" : "Enable Resource",
-      location: {
-        componentID: resourceName,
-        componentType: ApiButtonType.Resource,
-      },
-      inputs: [
-        {
-          name: UIBUTTON_TOGGLE_INPUT_NAME,
-          hidden: {
-            value: enabled ? ApiButtonToggleState.On : ApiButtonToggleState.Off,
-          },
+    buttonText: enabled ? "Disable Resource" : "Enable Resource",
+    componentID: resourceName,
+    inputSpecs: [
+      {
+        name: UIBUTTON_TOGGLE_INPUT_NAME,
+        hidden: {
+          value: enabled ? ApiButtonToggleState.On : ApiButtonToggleState.Off,
         },
-      ],
-      requiresConfirmation: true,
-    },
-  }
+      },
+    ],
+    requiresConfirmation: true,
+  })
 }
 
-function nButtonView(n: number): TestDataView {
+export function nButtonView(n: number): TestDataView {
   const ts = new Date(Date.now()).toISOString()
 
   return {
@@ -440,24 +472,19 @@ function nButtonView(n: number): TestDataView {
       },
     ],
     uiSession: { status: { tiltfileKey: "test", runningTiltBuild } },
-    uiButtons: Array.from({ length: n }, (_, i) => oneButton(i, "vigoda")),
+    uiButtons: Array.from({ length: n }, (_, i) =>
+      oneUIButton({
+        buttonName: `button${i + 1}`,
+        buttonText: `text${i + 1}`,
+        componentID: "vigoda",
+      })
+    ),
   }
 }
 
-function logList(
-  lines: string[],
-  checkpointStart: number = 0
-): Proto.webviewLogList {
-  let now = new Date().toString()
-  return {
-    spans: {
-      "": {},
-    },
-    segments: lines.map((s) => ({ text: `${s}\n`, time: now })),
-    fromCheckpoint: checkpointStart,
-    toCheckpoint: checkpointStart + lines.length,
-  }
-}
+/**
+ * Other API object helpers
+ */
 
 export function clusterConnection(error?: string): Cluster {
   const cluster: Cluster = {
@@ -487,7 +514,11 @@ export function clusterConnection(error?: string): Cluster {
   return cluster
 }
 
-function oneResourceFailedToBuild(): UIResource[] {
+/**
+ * Helpers for generating resources in very specific states
+ */
+
+export function oneResourceFailedToBuild(): UIResource[] {
   return [
     {
       metadata: {
@@ -536,7 +567,7 @@ function oneResourceFailedToBuild(): UIResource[] {
   ]
 }
 
-function oneResourceBuilding(): UIResource[] {
+export function oneResourceBuilding(): UIResource[] {
   return [
     {
       metadata: {
@@ -654,7 +685,7 @@ function oneResourceBuilding(): UIResource[] {
   ]
 }
 
-function oneResourceCrashedOnStart(): UIResource[] {
+export function oneResourceCrashedOnStart(): UIResource[] {
   return [
     {
       metadata: {
@@ -691,7 +722,25 @@ function oneResourceCrashedOnStart(): UIResource[] {
   ]
 }
 
-const logPaneDOM = `<section class="LogPane"><span data-lineid="0" class="logLine "><code><span class="ansi-green">Starting Tilt (v0.10.18-dev, built 2019-11-13)…</span></code>
+/**
+ * Log helpers and data
+ */
+export function logList(
+  lines: string[],
+  checkpointStart: number = 0
+): Proto.webviewLogList {
+  let now = new Date().toString()
+  return {
+    spans: {
+      "": {},
+    },
+    segments: lines.map((s) => ({ text: `${s}\n`, time: now })),
+    fromCheckpoint: checkpointStart,
+    toCheckpoint: checkpointStart + lines.length,
+  }
+}
+
+export const logPaneDOM = `<section class="LogPane"><span data-lineid="0" class="logLine "><code><span class="ansi-green">Starting Tilt (v0.10.18-dev, built 2019-11-13)…</span></code>
 <br>
 </span><span data-lineid="1" class="logLine "><code><span>Beginning Tiltfile execution</span></code>
 <br>
@@ -4542,19 +4591,3 @@ c<br>
 </span><span data-lineid="1924" class="logLine "><code></code><br></span>
 <p class="logEnd">█</p>
 </section>`
-
-export {
-  oneResourceView,
-  twoResourceView,
-  getMockRouterProps,
-  oneResourceFailedToBuild,
-  oneResourceCrashedOnStart,
-  oneResourceBuilding,
-  oneResource,
-  logList,
-  oneButton,
-  nButtonView,
-  logPaneDOM,
-  unnamedEndpointLink,
-  namedEndpointLink,
-}

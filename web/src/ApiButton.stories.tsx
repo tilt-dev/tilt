@@ -2,14 +2,10 @@ import React from "react"
 import { MemoryRouter } from "react-router"
 import styled from "styled-components"
 import { ApiButton } from "./ApiButton"
-import { makeUIButton, textField } from "./ApiButton.testhelpers"
 import { OverviewButtonMixin } from "./OverviewButton"
 import { TiltSnackbarProvider } from "./Snackbar"
-
-type UIButton = Proto.v1alpha1UIButton
-type UIInputSpec = Proto.v1alpha1UIInputSpec
-type UITextInputSpec = Proto.v1alpha1UITextInputSpec
-type UIInputStatus = Proto.v1alpha1UIInputStatus
+import { oneUIButton, textFieldForUIButton } from "./testdata"
+import { UIInputSpec } from "./types"
 
 export default {
   title: "New UI/Shared/ApiButton",
@@ -31,26 +27,28 @@ const StyledButton = styled(ApiButton)`
 `
 
 export const SimpleButton = () => {
-  const button = makeUIButton()
+  const button = oneUIButton({})
   return <StyledButton uiButton={button} />
 }
 
 export const RequiresConfirmation = () => {
-  const button = makeUIButton({ requiresConfirmation: true })
+  const button = oneUIButton({ requiresConfirmation: true })
   return <StyledButton uiButton={button} />
 }
 
 export const ThreeTextInputs = () => {
-  const inputs: UIInputSpec[] = [1, 2, 3].map((i) => textField(`text${i}`))
-  const button = makeUIButton({ inputSpecs: inputs })
+  const inputs: UIInputSpec[] = [1, 2, 3].map((i) =>
+    textFieldForUIButton(`text${i}`)
+  )
+  const button = oneUIButton({ inputSpecs: inputs })
   return <StyledButton uiButton={button} />
 }
 
 export const TextInputOptions = () => {
-  const button = makeUIButton({
+  const button = oneUIButton({
     inputSpecs: [
-      textField("text1", undefined, "placeholder"),
-      textField("text2", "default value"),
+      textFieldForUIButton("text1", undefined, "placeholder"),
+      textFieldForUIButton("text2", "default value"),
     ],
   })
   return <StyledButton uiButton={button} />
