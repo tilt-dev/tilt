@@ -5652,6 +5652,14 @@ func schema_pkg_apis_core_v1alpha1_PortForwardSpec(ref common.ReferenceCallback)
 							},
 						},
 					},
+					"cluster": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Cluster to forward ports from to the local machine.\n\nIf not specified, the default Kubernetes cluster will be used.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"podName", "forwards"},
 			},

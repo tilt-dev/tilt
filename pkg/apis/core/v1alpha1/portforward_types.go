@@ -64,6 +64,13 @@ type PortForwardSpec struct {
 
 	// One or more port forwards to execute on the given pod. Required.
 	Forwards []Forward `json:"forwards" protobuf:"bytes,3,rep,name=forwards"`
+
+	// Cluster to forward ports from to the local machine.
+	//
+	// If not specified, the default Kubernetes cluster will be used.
+	//
+	// +optional
+	Cluster string `json:"cluster" protobuf:"bytes,4,opt,name=cluster"`
 }
 
 // Forward defines a port forward to execute on a given pod.
@@ -167,6 +174,14 @@ func (in *PortForward) Validate(_ context.Context) field.ErrorList {
 	}
 
 	return fieldErrors
+}
+
+var _ resourcestrategy.Defaulter = &PortForward{}
+
+func (in *PortForward) Default() {
+	if in.Spec.Cluster == "" {
+		in.Spec.Cluster = ClusterNameDefault
+	}
 }
 
 var _ resource.ObjectList = &PortForwardList{}
