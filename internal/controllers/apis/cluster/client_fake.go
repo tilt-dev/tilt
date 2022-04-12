@@ -1,13 +1,19 @@
 package cluster
 
 import (
+	"context"
 	"errors"
 	"sync"
+	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/pkg/apis"
@@ -20,24 +26,20 @@ type clientOrErr struct {
 }
 
 type FakeClientProvider struct {
-	mu      sync.Mutex
-	clients map[types.NamespacedName]clientOrErr
+	t          testing.TB
+	mu         sync.Mutex
+	clients    map[types.NamespacedName]clientOrErr
+	ctrlClient ctrlclient.Client
 }
 
 var _ ClientProvider = &FakeClientProvider{}
 
 // NewFakeClientProvider creates a client provider suitable for tests.
-//
-// If defaultClient is not nil, it will be immediately available for the "default" Cluster connection.
-// It's possible to store additional clients for other Cluster connections as well.
-func NewFakeClientProvider(defaultClient k8s.Client) *FakeClientProvider {
+func NewFakeClientProvider(t testing.TB, ctrlClient ctrlclient.Client) *FakeClientProvider {
 	fcc := &FakeClientProvider{
-		clients: make(map[types.NamespacedName]clientOrErr),
-	}
-
-	if defaultClient != nil {
-		defaultNN := types.NamespacedName{Name: v1alpha1.ClusterNameDefault}
-		fcc.AddK8sClient(defaultNN, defaultClient)
+		t:          t,
+		ctrlClient: ctrlClient,
+		clients:    make(map[types.NamespacedName]clientOrErr),
 	}
 
 	return fcc
@@ -102,4 +104,77 @@ func (f *FakeClientProvider) SetClusterError(key types.NamespacedName, err error
 	defer f.mu.Unlock()
 
 	f.clients[key] = clientOrErr{err: err}
+}
+
+func (f *FakeClientProvider) MustK8sClient(clusterNN types.NamespacedName) *k8s.FakeK8sClient {
+	f.t.Helper()
+	kCli, _, err := f.GetK8sClient(clusterNN)
+	require.NoError(f.t, err,
+		"Maybe you forgot to call FakeClientProvider::EnsureK8sCluster?")
+	require.IsType(f.t, &k8s.FakeK8sClient{}, kCli,
+		"Only *k8s.FakeK8sClient should exist in the provider")
+	return kCli.(*k8s.FakeK8sClient)
+}
+
+func (f *FakeClientProvider) EnsureK8sClusterError(ctx context.Context, clusterNN types.NamespacedName,
+	clusterErr error) {
+	f.t.Helper()
+
+	f.SetClusterError(clusterNN, clusterErr)
+
+	f.upsertClusterStatus(ctx, clusterNN,
+		v1alpha1.ClusterStatus{
+			ConnectedAt: nil,
+			Error:       clusterErr.Error(),
+		})
+}
+
+func (f *FakeClientProvider) EnsureDefaultK8sCluster(ctx context.Context) *k8s.FakeK8sClient {
+	kCli, _ := f.EnsureK8sCluster(ctx, types.NamespacedName{Name: "default"})
+	return kCli
+}
+
+func (f *FakeClientProvider) EnsureK8sCluster(
+	ctx context.Context,
+	clusterNN types.NamespacedName,
+) (*k8s.FakeK8sClient, metav1.MicroTime) {
+	f.t.Helper()
+
+	kCli, rev, err := f.GetK8sClient(clusterNN)
+	if err != nil {
+		fakeCli := k8s.NewFakeK8sClient(f.t)
+		rev = f.SetK8sClient(clusterNN, fakeCli)
+		kCli = fakeCli
+	}
+
+	f.upsertClusterStatus(ctx, clusterNN,
+		v1alpha1.ClusterStatus{
+			Arch:        "amd64",
+			Version:     "1.23.5",
+			ConnectedAt: &rev,
+			Connection: &v1alpha1.ClusterConnectionStatus{
+				Kubernetes: &v1alpha1.KubernetesClusterConnectionStatus{
+					Product: "kind",
+				},
+			},
+		})
+	return kCli.(*k8s.FakeK8sClient), rev
+}
+
+func (f *FakeClientProvider) upsertClusterStatus(ctx context.Context, clusterNN types.NamespacedName,
+	status v1alpha1.ClusterStatus) {
+	f.t.Helper()
+	var cluster v1alpha1.Cluster
+	err := f.ctrlClient.Get(ctx, clusterNN, &cluster)
+	if apierrors.IsNotFound(err) {
+		cluster.ObjectMeta = metav1.ObjectMeta{
+			Namespace: clusterNN.Namespace,
+			Name:      clusterNN.Name,
+		}
+		require.NoError(f.t, f.ctrlClient.Create(ctx, &cluster))
+	}
+	if !apicmp.DeepEqual(cluster.Status, status) {
+		cluster.Status = status
+		require.NoError(f.t, f.ctrlClient.Status().Update(ctx, &cluster))
+	}
 }

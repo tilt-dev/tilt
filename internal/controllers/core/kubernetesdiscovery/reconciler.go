@@ -207,7 +207,7 @@ func (w *Reconciler) getCluster(ctx context.Context, kd *v1alpha1.KubernetesDisc
 	var cluster v1alpha1.Cluster
 	err := w.ctrlClient.Get(ctx, clusterNN, &cluster)
 	if err != nil {
-		return nil, fmt.Errorf("could not fetch cluster %s: %v", kd.Spec.Cluster, err)
+		return nil, err
 	}
 	return &cluster, nil
 }
