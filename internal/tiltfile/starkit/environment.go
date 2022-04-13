@@ -65,6 +65,13 @@ type Environment struct {
 	builtinCalls []BuiltinCall
 }
 
+func NewThread(ctx context.Context, model Model) *starlark.Thread {
+	t := &starlark.Thread{}
+	t.SetLocal(modelKey, model)
+	t.SetLocal(ctxKey, ctx)
+	return t
+}
+
 func newEnvironment(plugins ...Plugin) *Environment {
 	return &Environment{
 		unpackArgs:     starlark.UnpackArgs,
@@ -164,6 +171,15 @@ func (e *Environment) SetFakeFileSystem(files map[string]string) {
 	e.fakeFileSystem = files
 }
 
+func (e *Environment) newThread(model Model) *starlark.Thread {
+	t := NewThread(e.ctx, model)
+	t.Load = e.load
+	t.Print = e.print
+	t.SetLocal(argUnpackerKey, e.unpackArgs)
+	t.SetLocal(startTfKey, e.startTf)
+	return t
+}
+
 func (e *Environment) start(tf *v1alpha1.Tiltfile) (Model, error) {
 	// NOTE(dmiller): we only call Abs here because it's the root of the stack
 	path, err := filepath.Abs(tf.Spec.Path)
@@ -173,15 +189,9 @@ func (e *Environment) start(tf *v1alpha1.Tiltfile) (Model, error) {
 
 	e.startTf = tf
 
-	model := NewModel()
-	for _, ext := range e.plugins {
-		sExt, isStateful := ext.(StatefulPlugin)
-		if isStateful {
-			err := model.createInitState(sExt)
-			if err != nil {
-				return Model{}, err
-			}
-		}
+	model, err := NewModel(e.plugins...)
+	if err != nil {
+		return Model{}, err
 	}
 
 	for _, ext := range e.plugins {
@@ -191,15 +201,7 @@ func (e *Environment) start(tf *v1alpha1.Tiltfile) (Model, error) {
 		}
 	}
 
-	t := &starlark.Thread{
-		Print: e.print,
-		Load:  e.load,
-	}
-	t.SetLocal(argUnpackerKey, e.unpackArgs)
-	t.SetLocal(modelKey, model)
-	t.SetLocal(ctxKey, e.ctx)
-	t.SetLocal(startTfKey, e.startTf)
-
+	t := e.newThread(model)
 	_, err = e.exec(t, path)
 	model.BuiltinCalls = e.builtinCalls
 	if errors.Is(err, ErrStopExecution) {
