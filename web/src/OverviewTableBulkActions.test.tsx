@@ -18,14 +18,14 @@ import {
   OverviewTableBulkActions,
 } from "./OverviewTableBulkActions"
 import { ResourceSelectionProvider } from "./ResourceSelectionContext"
-import { disableButton, oneButton } from "./testdata"
+import { disableButton, oneUIButton } from "./testdata"
 
 const TEST_SELECTIONS = ["frontend", "backend"]
 
 const TEST_UIBUTTONS = [
-  oneButton(0, "database"),
+  oneUIButton({ componentID: "database" }),
   disableButton("frontend", true),
-  oneButton(2, "frontend"),
+  oneUIButton({ componentID: "frontend" }),
   disableButton("backend", false),
 ]
 

@@ -39,8 +39,8 @@ import { ResourceStatusSummaryRoot } from "./ResourceStatusSummary"
 import {
   nResourceView,
   nResourceWithLabelsView,
-  oneButton,
   oneResource,
+  oneUIButton,
   TestDataView,
 } from "./testdata"
 import { RuntimeStatus, UpdateStatus } from "./types"
@@ -100,9 +100,21 @@ it("shows buttons on the appropriate resources", () => {
   let view = nResourceView(3)
   // one resource with one button, one with multiple, and one with none
   view.uiButtons = [
-    oneButton(0, view.uiResources[0].metadata?.name!),
-    oneButton(1, view.uiResources[1].metadata?.name!),
-    oneButton(2, view.uiResources[1].metadata?.name!),
+    oneUIButton({
+      buttonName: "button1",
+      buttonText: "text1",
+      componentID: view.uiResources[0].metadata?.name!,
+    }),
+    oneUIButton({
+      buttonName: "button2",
+      buttonText: "text2",
+      componentID: view.uiResources[1].metadata?.name!,
+    }),
+    oneUIButton({
+      buttonName: "button3",
+      buttonText: "text3",
+      componentID: view.uiResources[1].metadata?.name!,
+    }),
   ]
 
   const { container } = render(tableViewWithSettings({ view }))
@@ -621,7 +633,7 @@ describe("when disable resources feature is enabled and `showDisabledResources` 
     view.uiResources.push(secondDisabledResource)
     // Add a button to the first disabled resource
     view.uiButtons = [
-      oneButton(0, firstDisabledResource.metadata?.name as string),
+      oneUIButton({ componentID: firstDisabledResource.metadata!.name }),
     ]
     container = renderContainer(
       tableViewWithSettings({

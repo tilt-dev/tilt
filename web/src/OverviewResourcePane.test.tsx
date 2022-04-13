@@ -14,9 +14,9 @@ import OverviewResourceSidebar from "./OverviewResourceSidebar"
 import { ResourceNavContextProvider, ResourceNavProvider } from "./ResourceNav"
 import {
   disableButton,
-  oneButton,
   oneResource,
   oneResourceView,
+  oneUIButton,
 } from "./testdata"
 import { appendLinesForManifestAndSpan, Line } from "./testlogs"
 import { LogLevel } from "./types"
@@ -123,7 +123,10 @@ describe("alert filtering", () => {
   it("categorizes buttons", () => {
     const view = {
       uiResources: [oneResource({ isBuilding: true })],
-      uiButtons: [oneButton(0, "vigoda"), disableButton("vigoda", true)],
+      uiButtons: [
+        oneUIButton({ componentID: "vigoda" }),
+        disableButton("vigoda", true),
+      ],
     }
     const root = mount(
       <MemoryRouter initialEntries={["/"]}>
