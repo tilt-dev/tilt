@@ -186,7 +186,7 @@ func (ib *ImageBuilder) shouldUseKINDLoad(refs container.TaggedRefs, cluster *v1
 	// if we're using KIND and the image has a separate ref by which it's referred to
 	// in the cluster, that implies that we have a local registry in place, and should
 	// push to that instead of using KIND load.
-	if refs.LocalRef != refs.ClusterRef {
+	if refs.LocalRef.String() != refs.ClusterRef.String() {
 		return false
 	}
 

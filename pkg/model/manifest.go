@@ -426,10 +426,6 @@ func LocalRefSelectorsForManifests(manifests []Manifest, clusters map[string]*v1
 	var res []container.RefSelector
 	for _, m := range manifests {
 		cluster := clusters[m.ClusterName()]
-		if m.ClusterName() != "" && cluster == nil {
-			continue
-		}
-
 		for _, iTarg := range m.ImageTargets {
 			refs, err := iTarg.Refs(cluster)
 			if err != nil {
