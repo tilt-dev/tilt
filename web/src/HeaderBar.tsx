@@ -6,7 +6,7 @@ import { ReactComponent as DetailViewSvg } from "./assets/svg/detail-view-icon.s
 import { ReactComponent as LogoWordmarkSvg } from "./assets/svg/logo-wordmark.svg"
 import { ReactComponent as TableViewSvg } from "./assets/svg/table-view-icon.svg"
 import { CustomNav } from "./CustomNav"
-import { GlobalNav } from "./GlobalNav"
+import { GlobalNav, GlobalNavProps } from "./GlobalNav"
 import { usePathBuilder } from "./PathBuilder"
 import {
   AllResourceStatusSummary,
@@ -121,7 +121,7 @@ export default function HeaderBar({
   let suggestedVersion = session?.suggestedTiltVersion
   let resources = view?.uiResources || []
 
-  let globalNavProps = {
+  let globalNavProps: GlobalNavProps = {
     isSnapshot,
     snapshot,
     showUpdate: showUpdate(view),
@@ -131,6 +131,7 @@ export default function HeaderBar({
     tiltCloudSchemeHost: session?.tiltCloudSchemeHost ?? "",
     tiltCloudTeamID: session?.tiltCloudTeamID ?? "",
     tiltCloudTeamName: session?.tiltCloudTeamName ?? "",
+    clusterConnections: view.clusters,
   }
 
   const pb = usePathBuilder()
