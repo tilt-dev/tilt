@@ -502,6 +502,9 @@ describe("ApiButton", () => {
       ).toHaveTextContent(uibutton.spec!.text!)
     })
 
+    // This test makes sure that the `confirming` state resets if a user
+    // clicks a toggle button once, then navigates to another resource
+    // with a toggle button (which will have a different button name)
     it("resets the `confirming` state when the button's name changes", () => {
       // Click the button and verify the confirmation state
       userEvent.click(screen.getByLabelText(`Trigger ${uibutton.spec!.text!}`))
