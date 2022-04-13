@@ -3118,7 +3118,7 @@ k8s_yaml('foo.yaml')
 k8s_resource('bar', new_name='baz')
 `)
 
-	f.loadErrString("specified unknown resource \"bar\". known resources: foo")
+	f.loadErrString("specified unknown resource \"bar\". known k8s resources: foo")
 }
 
 func TestK8sResourceNewName(t *testing.T) {

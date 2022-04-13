@@ -807,7 +807,7 @@ func (s *tiltfileState) assembleK8s() error {
 			if opts.newName != "" && opts.newName != r.name {
 				err := s.checkResourceConflict(opts.newName)
 				if err != nil {
-					return fmt.Errorf("k8s_resource at %s specified to rename %q to %q: %v",
+					return fmt.Errorf("%s: k8s_resource specified to rename %q to %q: %v",
 						opts.tiltfilePosition.String(), r.name, opts.newName, err)
 				}
 				delete(s.k8sByName, r.name)
@@ -858,7 +858,7 @@ func (s *tiltfileState) assembleK8s() error {
 			for name := range s.k8sByName {
 				knownResources = append(knownResources, name)
 			}
-			return fmt.Errorf("k8s_resource at %s specified unknown resource %q. known resources: %s",
+			return fmt.Errorf("%s: k8s_resource specified unknown resource %q. known k8s resources: %s",
 				opts.tiltfilePosition.String(), opts.workload, strings.Join(knownResources, ", "))
 		}
 	}
