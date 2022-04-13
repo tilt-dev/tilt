@@ -293,6 +293,7 @@ function ApiButtonWithOptions(props: ApiButtonWithOptionsProps & ButtonProps) {
       >
         {props.submit}
         <ApiButtonInputsToggleButton
+          {...buttonProps}
           size="small"
           onClick={() => {
             setOpen((prevOpen) => !prevOpen)
@@ -300,7 +301,6 @@ function ApiButtonWithOptions(props: ApiButtonWithOptionsProps & ButtonProps) {
           analyticsName="ui.web.uibutton.inputMenu"
           analyticsTags={analyticsTags}
           aria-label={`Open ${text} options`}
-          {...buttonProps}
         >
           <ArrowDropDownIcon />
         </ApiButtonInputsToggleButton>
