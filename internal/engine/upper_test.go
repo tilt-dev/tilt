@@ -253,14 +253,38 @@ type fakeBuildAndDeployer struct {
 
 var _ buildcontrol.BuildAndDeployer = &fakeBuildAndDeployer{}
 
-func (b *fakeBuildAndDeployer) nextImageBuildResult(iTarget model.ImageTarget) store.ImageBuildResult {
+func (b *fakeBuildAndDeployer) nextImageBuildResult(ctx context.Context, iTarget model.ImageTarget) store.ImageBuildResult {
+	b.t.Helper()
+
+	var clusterNN types.NamespacedName
+	if iTarget.IsDockerBuild() {
+		clusterNN = types.NamespacedName{Name: iTarget.DockerBuildInfo().Cluster}
+	} else if iTarget.IsCustomBuild() {
+		clusterNN = types.NamespacedName{Name: iTarget.CustomBuildInfo().Cluster}
+	} else if iTarget.IsDockerComposeBuild() {
+		clusterNN = types.NamespacedName{Name: v1alpha1.ClusterNameDocker}
+	} else {
+		require.Failf(b.t, "Unknown build type", "ImageTarget: %s", iTarget.ID().String())
+	}
+
+	if clusterNN.Name == "" {
+		clusterNN.Name = v1alpha1.ClusterNameDefault
+	}
+
+	var cluster v1alpha1.Cluster
+	require.NoError(b.t, b.ctrlClient.Get(ctx, clusterNN, &cluster))
+	refs, err := iTarget.Refs(&cluster)
+	require.NoError(b.t, err, "Determining refs")
+
 	tag := fmt.Sprintf("tilt-%d", b.buildCount)
-	localRefTagged := container.MustWithTag(iTarget.Refs.LocalRef(), tag)
-	clusterRefTagged := container.MustWithTag(iTarget.Refs.ClusterRef(), tag)
+	localRefTagged := container.MustWithTag(refs.LocalRef(), tag)
+	clusterRefTagged := container.MustWithTag(refs.ClusterRef(), tag)
 	return store.NewImageBuildResult(iTarget.ID(), localRefTagged, clusterRefTagged)
 }
 
 func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, state store.BuildStateSet) (brs store.BuildResultSet, err error) {
+	b.t.Helper()
+
 	b.mu.Lock()
 	b.buildCount++
 	buildKey := stringifyTargetIDs(specs)
@@ -322,8 +346,9 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 	}
 
 	err = queue.RunBuilds(func(target model.TargetSpec, depResults []store.ImageBuildResult) (store.ImageBuildResult, error) {
+		b.t.Helper()
 		iTarget := target.(model.ImageTarget)
-		ibr := b.nextImageBuildResult(iTarget)
+		ibr := b.nextImageBuildResult(ctx, iTarget)
 
 		var im v1alpha1.ImageMap
 		if err := b.ctrlClient.Get(ctx, types.NamespacedName{Name: iTarget.ImageMapName()}, &im); err != nil {
@@ -393,11 +418,6 @@ func (b *fakeBuildAndDeployer) updateKubernetesApplyStatus(ctx context.Context, 
 		if err != nil {
 			return err
 		}
-		im.Status = v1alpha1.ImageMapStatus{
-			Image:            container.FamiliarString(iTarget.Refs.ClusterRef()),
-			ImageFromCluster: container.FamiliarString(iTarget.Refs.ClusterRef()),
-			ImageFromLocal:   container.FamiliarString(iTarget.Refs.LocalRef()),
-		}
 		imageMapSet[nn] = &im
 	}
 
@@ -422,11 +442,6 @@ func (b *fakeBuildAndDeployer) updateDockerComposeServiceStatus(ctx context.Cont
 		err := b.ctrlClient.Get(ctx, nn, &im)
 		if err != nil {
 			return err
-		}
-		im.Status = v1alpha1.ImageMapStatus{
-			Image:            container.FamiliarString(iTarget.Refs.ClusterRef()),
-			ImageFromCluster: container.FamiliarString(iTarget.Refs.ClusterRef()),
-			ImageFromLocal:   container.FamiliarString(iTarget.Refs.LocalRef()),
 		}
 		imageMapSet[nn] = &im
 	}
@@ -2502,6 +2517,7 @@ k8s_yaml('snack.yaml')`)
 	f.WaitUntil("Tiltfile loaded", func(state store.EngineState) bool {
 		return len(state.MainTiltfileState().BuildHistory) == 1
 	})
+	f.waitForCompletedBuildCount(1)
 
 	// we shouldn't log changes for first build
 	f.withState(func(state store.EngineState) {
@@ -2516,6 +2532,7 @@ k8s_yaml('snack.yaml')`)
 	f.WaitUntil("Tiltfile reloaded", func(state store.EngineState) bool {
 		return len(state.MainTiltfileState().BuildHistory) == 2
 	})
+	f.waitForCompletedBuildCount(2)
 
 	f.withState(func(state store.EngineState) {
 		expectedMessage := fmt.Sprintf("1 File Changed: [%s]", f.JoinPath("Tiltfile"))
@@ -3360,7 +3377,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	dcds := dockercomposeservice.NewDisableSubscriber(ctx, fakeDcc, clock)
 	dcr := dockercomposeservice.NewReconciler(cdc, fakeDcc, dockerClient, st, sch, dcds)
 
-	tfr := ctrltiltfile.NewReconciler(st, tfl, kClient, dockerClient, cdc, sch, engineMode, "", "")
+	tfr := ctrltiltfile.NewReconciler(st, tfl, dockerClient, cdc, sch, engineMode, "", "")
 	tbr := togglebutton.NewReconciler(cdc, sch)
 	extr := extension.NewReconciler(cdc, sch, ta)
 	extrr, err := extensionrepo.NewReconciler(cdc, st, base)
@@ -3922,10 +3939,11 @@ func (f *testFixture) newDockerBuildManifestWithBuildPath(name string, path stri
 }
 
 func (f *testFixture) assertAllBuildsConsumed() {
+	f.t.Helper()
 	close(f.b.calls)
 
 	for call := range f.b.calls {
-		f.T().Fatalf("Build not consumed: %+v", call)
+		f.T().Fatalf("Build not consumed: %s", spew.Sdump(call))
 	}
 }
 
@@ -3988,7 +4006,7 @@ func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
 	}
 
 	for _, m := range tlr.Manifests {
-		require.NoError(f.t, m.InferImagePropertiesFromCluster(container.Registry{}))
+		require.NoError(f.t, m.InferImageProperties())
 	}
 
 	return tlr.Manifests[0], tlr.Manifests[1]

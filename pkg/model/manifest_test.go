@@ -58,15 +58,15 @@ var equalitytests = []struct {
 		false,
 	},
 	{
-		"ImageTarget.ConfigurationRef unequal",
-		Manifest{}.WithImageTarget(ImageTarget{Refs: container.RefSet{ConfigurationRef: img1}}),
-		Manifest{}.WithImageTarget(ImageTarget{Refs: container.RefSet{ConfigurationRef: img2}}),
+		"ImageTarget.ImageMapSpec.Selector unequal",
+		Manifest{}.WithImageTarget(ImageTarget{ImageMapSpec: v1alpha1.ImageMapSpec{Selector: img1.RefFamiliarString()}}),
+		Manifest{}.WithImageTarget(ImageTarget{ImageMapSpec: v1alpha1.ImageMapSpec{Selector: img2.RefFamiliarString()}}),
 		true,
 	},
 	{
 		"ImageTarget.ConfigurationRef equal",
-		Manifest{}.WithImageTarget(ImageTarget{Refs: container.RefSet{ConfigurationRef: img1}}),
-		Manifest{}.WithImageTarget(ImageTarget{Refs: container.RefSet{ConfigurationRef: img1}}),
+		Manifest{}.WithImageTarget(ImageTarget{ImageMapSpec: v1alpha1.ImageMapSpec{Selector: img1.RefFamiliarString()}}),
+		Manifest{}.WithImageTarget(ImageTarget{ImageMapSpec: v1alpha1.ImageMapSpec{Selector: img1.RefFamiliarString()}}),
 		false,
 	},
 	{

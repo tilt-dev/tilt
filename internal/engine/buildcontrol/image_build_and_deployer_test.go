@@ -213,7 +213,7 @@ func TestStatefulSetPodManagementPolicy(t *testing.T) {
 	yaml := strings.Replace(
 		testyaml.RedisStatefulSetYAML,
 		`image: "docker.io/bitnami/redis:4.0.12"`,
-		fmt.Sprintf(`image: %q`, iTarget.Refs.LocalRef().String()), 1)
+		fmt.Sprintf(`image: %q`, f.refs(iTarget).LocalRef().String()), 1)
 	kTarget := k8s.MustTarget(model.TargetName(targName), yaml)
 
 	_, err := f.BuildAndDeploy(
@@ -434,10 +434,13 @@ func TestKINDLoad(t *testing.T) {
 
 func TestDockerPushIfKINDAndClusterRef(t *testing.T) {
 	f := newIBDFixture(t, clusterid.ProductKIND)
+	f.cluster.Spec.DefaultRegistry = &v1alpha1.RegistryHosting{
+		Host:                     "localhost:1234",
+		HostFromContainerRuntime: "registry:1234",
+	}
 
 	manifest := NewSanchoDockerBuildManifest(f)
 	iTarg := manifest.ImageTargetAt(0)
-	iTarg.Refs = iTarg.Refs.MustWithRegistry(container.MustNewRegistryWithHostFromCluster("localhost:1234", "registry:1234"))
 	manifest = manifest.WithImageTarget(iTarg)
 
 	_, err := f.BuildAndDeploy(BuildTargets(manifest), store.BuildStateSet{})
@@ -445,14 +448,16 @@ func TestDockerPushIfKINDAndClusterRef(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	refs := f.refs(iTarg)
+
 	assert.Equal(t, 1, f.docker.BuildCount, "Docker build count")
 	assert.Equal(t, 0, f.kl.loadCount, "KIND load count")
 	assert.Equal(t, 1, f.docker.PushCount, "Docker push count")
-	assert.Equal(t, iTarg.Refs.LocalRef().String(), container.MustParseNamed(f.docker.PushImage).Name(), "image pushed to Docker as LocalRef")
+	assert.Equal(t, refs.LocalRef().String(), container.MustParseNamed(f.docker.PushImage).Name(), "image pushed to Docker as LocalRef")
 
 	yaml := f.k8s.Yaml
-	assert.Contains(t, yaml, iTarg.Refs.ClusterRef().String(), "ClusterRef was injected into applied YAML")
-	assert.NotContains(t, yaml, iTarg.Refs.LocalRef().String(), "LocalRef was NOT injected into applied YAML")
+	assert.Contains(t, yaml, refs.ClusterRef().String(), "ClusterRef was injected into applied YAML")
+	assert.NotContains(t, yaml, refs.LocalRef().String(), "LocalRef was NOT injected into applied YAML")
 }
 
 func TestCustomBuildDisablePush(t *testing.T) {
@@ -521,6 +526,10 @@ func TestBuildAndDeployUsesCorrectRef(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			f := newIBDFixture(t, clusterid.ProductGKE)
+			f.cluster.Spec.DefaultRegistry = &v1alpha1.RegistryHosting{Host: "foo.com"}
+			if test.withClusterRef {
+				f.cluster.Spec.DefaultRegistry.HostFromContainerRuntime = "registry:1234"
+			}
 
 			if strings.Contains(test.name, "custom build") {
 				sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
@@ -528,14 +537,6 @@ func TestBuildAndDeployUsesCorrectRef(t *testing.T) {
 			}
 
 			manifest := test.manifest(f)
-			for i := range manifest.ImageTargets {
-				reg := container.MustNewRegistry("foo.com")
-				if test.withClusterRef {
-					reg = container.MustNewRegistryWithHostFromCluster("foo.com", "registry:1234")
-				}
-				manifest.ImageTargets[i].Refs = manifest.ImageTargets[i].Refs.MustWithRegistry(reg)
-			}
-
 			result, err := f.BuildAndDeploy(BuildTargets(manifest), store.BuildStateSet{})
 			if err != nil {
 				t.Fatal(err)
@@ -1161,6 +1162,13 @@ func (f *ibdFixture) resultsToNextState(results store.BuildResultSet) store.Buil
 		stateSet[id] = store.NewBuildState(result, nil, nil)
 	}
 	return stateSet
+}
+
+func (f *ibdFixture) refs(iTarget model.ImageTarget) container.RefSet {
+	f.T().Helper()
+	refs, err := iTarget.Refs(f.cluster)
+	require.NoErrorf(f.T(), err, "Determining refs for %s", iTarget.ID().String())
+	return refs
 }
 
 func newK8sMultiEntityManifest(name string) model.Manifest {
