@@ -52,7 +52,7 @@ describe("alert filtering", () => {
       <MemoryRouter initialEntries={["/"]}>
         <LogStoreProvider value={logStore}>
           <ResourceNavProvider validateResource={() => true}>
-            <OverviewResourcePane view={view} />
+            <OverviewResourcePane view={view} isSocketConnected={true} />
           </ResourceNavProvider>
         </LogStoreProvider>
       </MemoryRouter>
@@ -136,7 +136,7 @@ describe("alert filtering", () => {
                 openResource: () => {},
               }}
             >
-              <OverviewResourcePane view={view} />
+              <OverviewResourcePane view={view} isSocketConnected={true} />
             </ResourceNavContextProvider>
           </SnackbarProvider>
         </LogStoreProvider>

@@ -23,8 +23,9 @@ function podStatusIsError(status: string | undefined) {
 
 export { podStatusIsCrash, podStatusIsError }
 
-// Links to Tilt's documentation
+// Links to Tilt sites
 export const TILT_DOCS_LINK = "https://docs.tilt.dev"
+export const TILT_PUBLIC_ASSETS_LINK = "https://tilt.dev/assets"
 
 export enum TiltDocsPage {
   DebugFaq = "debug_faq.html",
@@ -43,6 +44,13 @@ export function linkToTiltDocs(page?: TiltDocsPage, anchor?: string) {
   }
 
   return `${TILT_DOCS_LINK}/${page}${anchor ?? ""}`
+}
+
+export function linkToTiltAsset(
+  assetType: "svg" | "ico" | "js" | "css" | "img",
+  filename: string
+) {
+  return `${TILT_PUBLIC_ASSETS_LINK}/${assetType}/${filename}`
 }
 
 export const DEFAULT_RESOURCE_LIST_LIMIT = 20
