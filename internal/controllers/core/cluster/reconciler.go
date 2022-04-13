@@ -100,6 +100,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	// The apiserver is the source of truth, and will ensure the engine state is up to date.
 	r.store.Dispatch(clusters.NewClusterUpsertAction(&obj))
 
+	clusterRefreshEnabled := obj.Annotations["features.tilt.dev/cluster-refresh"] == "true"
 	conn, hasConnection := r.connManager.load(nn)
 	// If this is not the first time we've tried to connect to the cluster,
 	// only attempt to refresh the connection if the feature is enabled. Not
@@ -107,7 +108,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	// can result in erratic behavior if the cluster is not in a usable state
 	// at startup but then becomes usable, for example, as some parts of the
 	// system will still have k8s.explodingClient.
-	if hasConnection && obj.Annotations["features.tilt.dev/cluster-refresh"] == "true" {
+	if hasConnection && clusterRefreshEnabled {
 		// If the spec changed, delete the connection and recreate it.
 		if !apicmp.DeepEqual(conn.spec, obj.Spec) {
 			r.connManager.delete(nn)
@@ -126,7 +127,17 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 			conn.connType = connectionTypeK8s
 			client, err := r.createKubernetesClient(obj.DeepCopy())
 			if err != nil {
-				conn.initError = err.Error()
+				var initError string
+				if !clusterRefreshEnabled {
+					initError = fmt.Sprintf(
+						"Tilt encountered an error connecting to your Kubernetes cluster:"+
+							"\n\t%v"+
+							"\nYou will need to restart Tilt after resolving the issue.",
+						err)
+				} else {
+					initError = err.Error()
+				}
+				conn.initError = initError
 			} else {
 				conn.k8sClient = client
 			}
