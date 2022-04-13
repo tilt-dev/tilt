@@ -286,7 +286,7 @@ func (s *tiltfileState) liveUpdateFromSteps(t *starlark.Thread, maybeSteps starl
 			spec.Restart = v1alpha1.LiveUpdateRestartStrategyAlways
 
 		default:
-			return v1alpha1.LiveUpdateSpec{}, fmt.Errorf("internal error - unknown liveUpdateStep '%v' of type '%T', declared at %s", x, x, x.declarationPos())
+			return v1alpha1.LiveUpdateSpec{}, fmt.Errorf("%s: internal error - unknown liveUpdateStep '%v' of type '%T'", x.declarationPos(), x, x)
 		}
 
 		s.consumeLiveUpdateStep(step)
@@ -308,9 +308,9 @@ func (s *tiltfileState) checkForUnconsumedLiveUpdateSteps() error {
 	if len(s.unconsumedLiveUpdateSteps) > 0 {
 		var errorStrings []string
 		for _, step := range s.unconsumedLiveUpdateSteps {
-			errorStrings = append(errorStrings, fmt.Sprintf("value '%s' of type '%s' declared at %s", step.String(), step.Type(), step.declarationPos()))
+			errorStrings = append(errorStrings, fmt.Sprintf("%s: value '%s' of type '%s'", step.declarationPos(), step.String(), step.Type()))
 		}
-		return fmt.Errorf("found %d live_update steps that were created but not used in a live_update: %s",
+		return fmt.Errorf("found %d live_update steps that were created but not used in a live_update:\n%s",
 			len(s.unconsumedLiveUpdateSteps), strings.Join(errorStrings, "\n\t"))
 	}
 

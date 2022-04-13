@@ -875,7 +875,7 @@ func (s *tiltfileState) calculateResourceNames(workloads []k8s.K8sEntity) ([]str
 	if s.workloadToResourceFunction.fn != nil {
 		names, err := s.workloadToResourceFunctionNames(workloads)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error applying workload_to_resource_function %s", s.workloadToResourceFunction.pos.String())
+			return nil, errors.Wrapf(err, "%s: error applying workload_to_resource_function", s.workloadToResourceFunction.pos.String())
 		}
 		return names, nil
 	} else {
