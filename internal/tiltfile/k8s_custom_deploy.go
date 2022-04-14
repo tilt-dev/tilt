@@ -75,10 +75,12 @@ func (s *tiltfileState) k8sCustomDeploy(thread *starlark.Thread, fn *starlark.Bu
 		return nil, fmt.Errorf("error making resource for %s: %v", name, err)
 	}
 
+	deployDeps, luDeps := filterDepsForCustomDeploy(deps.Value, liveUpdate)
+
 	res.customDeploy = &k8sCustomDeploy{
 		applyCmd:  applyCmd,
 		deleteCmd: deleteCmd,
-		deps:      deps.Value,
+		deps:      deployDeps,
 	}
 	for _, imageDep := range imageDeps {
 		res.addImageDep(imageDep, true)
@@ -131,7 +133,7 @@ func (s *tiltfileState) k8sCustomDeploy(thread *starlark.Thread, fn *starlark.Bu
 			// 	mark this as a "LiveUpdateOnly" ImageTarget, so that no builds
 			// 	will be done, only deploy + Live Update
 			customCommand:    model.ToHostCmd(":"),
-			customDeps:       deps.Value,
+			customDeps:       luDeps,
 			liveUpdate:       liveUpdate,
 			disablePush:      true,
 			skipsLocalDocker: true,
@@ -148,4 +150,25 @@ func (s *tiltfileState) k8sCustomDeploy(thread *starlark.Thread, fn *starlark.Bu
 	}
 
 	return starlark.None, nil
+}
+
+func filterDepsForCustomDeploy(deps []string, spec v1alpha1.LiveUpdateSpec) (deployPaths []string, luPaths []string) {
+	luMatcher := pathMatcherFromLiveUpdateSpec(spec)
+	for _, dep := range deps {
+		if match, _ := luMatcher.Matches(dep); match {
+			luPaths = append(luPaths, dep)
+		} else {
+			deployPaths = append(deployPaths, dep)
+		}
+	}
+	return
+}
+
+func pathMatcherFromLiveUpdateSpec(spec v1alpha1.LiveUpdateSpec) model.PathMatcher {
+	paths := make([]string, 0, len(spec.Syncs)+len(spec.StopPaths))
+	for _, sync := range spec.Syncs {
+		paths = append(paths, sync.LocalPath)
+	}
+	paths = append(paths, spec.StopPaths...)
+	return model.NewRelativeFileOrChildMatcher(spec.BasePath, paths...)
 }
