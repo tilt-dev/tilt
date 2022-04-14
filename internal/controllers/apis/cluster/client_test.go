@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/pkg/apis"
@@ -132,7 +133,7 @@ type cmFixture struct {
 }
 
 func newCmFixture(t testing.TB) *cmFixture {
-	cp := NewFakeClientProvider(nil)
+	cp := NewFakeClientProvider(t, fake.NewFakeTiltClient())
 	return &cmFixture{
 		t:  t,
 		cp: cp,

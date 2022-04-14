@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/controllers/apis/cluster"
+	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/internal/testutils"
@@ -202,13 +203,13 @@ type swFixture struct {
 func newSWFixture(t *testing.T) *swFixture {
 	nip := k8s.NodeIP("fakeip")
 
-	kClient := k8s.NewFakeK8sClient(t)
-	kClient.FakeNodeIP = nip
-
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	ctx, cancel := context.WithCancel(ctx)
 
-	clients := cluster.NewFakeClientProvider(kClient)
+	clients := cluster.NewFakeClientProvider(t, fake.NewFakeTiltClient())
+	kClient := clients.EnsureDefaultK8sCluster(ctx)
+	kClient.FakeNodeIP = nip
+
 	sw := NewServiceWatcher(clients, k8s.DefaultNamespace)
 	st := store.NewTestingStore()
 

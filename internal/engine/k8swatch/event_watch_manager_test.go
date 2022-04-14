@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/controllers/apis/cluster"
+	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
@@ -258,15 +259,14 @@ type ewmFixture struct {
 }
 
 func newEWMFixture(t *testing.T) *ewmFixture {
-	kClient := k8s.NewFakeK8sClient(t)
-
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	ctx, cancel := context.WithCancel(ctx)
 
 	clock := clockwork.NewFakeClock()
 	st := store.NewTestingStore()
 
-	cc := cluster.NewFakeClientProvider(kClient)
+	cc := cluster.NewFakeClientProvider(t, fake.NewFakeTiltClient())
+	kClient := cc.EnsureDefaultK8sCluster(ctx)
 
 	ret := &ewmFixture{
 		TempDirFixture: tempdir.NewTempDirFixture(t),

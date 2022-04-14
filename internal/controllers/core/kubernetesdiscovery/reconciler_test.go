@@ -60,7 +60,7 @@ func TestPodDiscoveryExactMatch(t *testing.T) {
 	// we should not have observed any pods yet
 	f.requireObservedPods(key, nil, nil)
 
-	kCli, _ := f.k8sClient(*kd)
+	kCli := f.clients.MustK8sClient(clusterNN(*kd))
 	kCli.UpsertPod(pod)
 
 	f.requireObservedPods(key, ancestorMap{pod.UID: pod.UID}, nil)
@@ -346,7 +346,7 @@ func TestReconcileCreatesPodLogStream(t *testing.T) {
 	}
 
 	// simulate a pod delete and ensure that after it's observed + reconciled, the PLS is also deleted
-	kCli, _ := f.k8sClient(*kd)
+	kCli := f.clients.MustK8sClient(clusterNN(*kd))
 	kCli.EmitPodDelete(pod1)
 	f.requireObservedPods(key, ancestorMap{pod2.UID: pod2.UID}, nil)
 	f.MustReconcile(key)
@@ -417,12 +417,11 @@ func TestKubernetesDiscoveryClusterError(t *testing.T) {
 
 	// cannot use normal fixture create flow because we want to intentionally
 	// set things up in a bad state
-	f.ensureCluster(*kd)
-	f.clients.SetClusterError(clusterNN(*kd), errors.New("oh no"))
+	f.clients.EnsureK8sClusterError(f.ctx, clusterNN(*kd), errors.New("oh no"))
 	require.NoError(t, f.Client.Create(f.Context(), kd), "Could not create KubernetesDiscovery")
-
 	f.MustReconcile(key)
 	f.MustGet(key, kd)
+
 	require.NotNil(t, kd.Status.Waiting, "Waiting should be present")
 	require.Equal(t, "ClusterUnavailable", kd.Status.Waiting.Reason)
 	require.Zero(t, kd.Status.MonitorStartTime, "MonitorStartTime should not be populated")
@@ -462,7 +461,7 @@ func TestClusterChange(t *testing.T) {
 
 	const pod1UID types.UID = "pod1-uid"
 	const pod2UID types.UID = "pod2-uid"
-	kCliClusterA, _ := f.k8sClient(*kd1ClusterA)
+	kCliClusterA := f.clients.MustK8sClient(clusterNN(*kd1ClusterA))
 
 	pod1ClusterA := f.buildPod("pod-ns", "pod1ClusterA", nil, nil)
 	pod1ClusterA.UID = pod1UID
@@ -473,7 +472,7 @@ func TestClusterChange(t *testing.T) {
 	pod2ClusterA.UID = pod2UID
 	kCliClusterA.UpsertPod(pod2ClusterA)
 
-	kCliClusterB, _ := f.k8sClient(*kd3ClusterB)
+	kCliClusterB := f.clients.MustK8sClient(clusterNN(*kd3ClusterB))
 	// N.B. we intentionally use the same UIDs across both clusters!
 	pod1ClusterB := pod1ClusterA.DeepCopy()
 	pod1ClusterB.Name = "pod1ClusterB"
@@ -552,29 +551,28 @@ func TestClusterChange(t *testing.T) {
 type fixture struct {
 	*fake.ControllerFixture
 	t       *testing.T
-	clients *cluster.FakeClientProvider
 	r       *Reconciler
 	ctx     context.Context
 	store   *store.TestingStore
+	clients *cluster.FakeClientProvider
 }
 
 func newFixture(t *testing.T) *fixture {
-	clients := cluster.NewFakeClientProvider(nil)
-
 	st := store.NewTestingStore()
 
 	rd := NewContainerRestartDetector()
 	cfb := fake.NewControllerFixtureBuilder(t)
+	clients := cluster.NewFakeClientProvider(t, cfb.Client)
 	pw := NewReconciler(cfb.Client, cfb.Scheme(), clients, rd, st)
 	indexer.StartSourceForTesting(cfb.Context(), pw.requeuer, pw, nil)
 
 	ret := &fixture{
 		ControllerFixture: cfb.Build(pw),
-		clients:           clients,
 		r:                 pw,
 		ctx:               cfb.Context(),
 		t:                 t,
 		store:             st,
+		clients:           clients,
 	}
 	return ret
 }
@@ -678,7 +676,8 @@ func (f *fixture) buildK8sDeployment(namespace k8s.Namespace, name string) (*app
 // This allow the reconciler to build object owner trees.
 func (f *fixture) injectK8sObjects(kd v1alpha1.KubernetesDiscovery, objs ...runtime.Object) {
 	f.t.Helper()
-	kCli, _ := f.k8sClient(kd)
+	f.clients.EnsureK8sCluster(f.ctx, clusterNN(kd))
+	kCli := f.clients.MustK8sClient(clusterNN(kd))
 
 	var k8sEntities []k8s.K8sEntity
 	for _, obj := range objs {
@@ -732,47 +731,6 @@ func clusterNN(kd v1alpha1.KubernetesDiscovery) types.NamespacedName {
 	return nn
 }
 
-func (f *fixture) k8sClient(kd v1alpha1.KubernetesDiscovery) (*k8s.FakeK8sClient, metav1.MicroTime) {
-	f.t.Helper()
-
-	clusterNN := clusterNN(kd)
-	kCli, rev, err := f.clients.GetK8sClient(clusterNN)
-	if errors.Is(err, cluster.NotFoundError) {
-		fakeCli := k8s.NewFakeK8sClient(f.t)
-		f.clients.AddK8sClient(clusterNN, fakeCli)
-		kCli, rev, err = f.clients.GetK8sClient(clusterNN)
-	}
-	require.NoError(f.t, err, "Couldn't get K8s client for cluster %s", clusterNN)
-	require.IsType(f.t, &k8s.FakeK8sClient{}, kCli)
-	require.NotZero(f.t, rev, "Client revision should not be zero time")
-	return kCli.(*k8s.FakeK8sClient), rev
-}
-
-func (f *fixture) ensureCluster(kd v1alpha1.KubernetesDiscovery) {
-	f.t.Helper()
-
-	// seed the k8s client if it doesn't already exist
-	_, rev := f.k8sClient(kd)
-
-	nn := clusterNN(kd)
-
-	f.ControllerFixture.Upsert(&v1alpha1.Cluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: nn.Namespace,
-			Name:      nn.Name,
-		},
-		Spec: v1alpha1.ClusterSpec{
-			Connection: &v1alpha1.ClusterConnection{
-				Kubernetes: &v1alpha1.KubernetesClusterConnection{},
-			},
-		},
-		Status: v1alpha1.ClusterStatus{
-			Arch:        "amd64",
-			ConnectedAt: rev.DeepCopy(),
-		},
-	})
-}
-
 func (f *fixture) getCluster(nn types.NamespacedName) *v1alpha1.Cluster {
 	var c v1alpha1.Cluster
 	f.MustGet(nn, &c)
@@ -781,7 +739,6 @@ func (f *fixture) getCluster(nn types.NamespacedName) *v1alpha1.Cluster {
 
 func (f *fixture) Create(kd *v1alpha1.KubernetesDiscovery) controllerruntime.Result {
 	f.t.Helper()
-	kd.Default()
-	f.ensureCluster(*kd)
+	f.clients.EnsureK8sCluster(f.ctx, clusterNN(*kd))
 	return f.ControllerFixture.Create(kd)
 }

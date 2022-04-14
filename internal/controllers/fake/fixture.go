@@ -209,11 +209,11 @@ func (f *ControllerFixture) Upsert(o object) ctrl.Result {
 	if err != nil &&
 		(apierrors.IsAlreadyExists(err) ||
 			strings.Contains(err.Error(), "resourceVersion can not be set for Create requests")) {
-		update := o.DeepCopyObject().(object)
+		tmp := o.DeepCopyObject().(object)
 
-		require.NoError(f.t, f.Client.Get(f.ctx, f.KeyForObject(o), o))
-		update.SetResourceVersion(o.GetResourceVersion())
-		return f.Update(update)
+		require.NoError(f.t, f.Client.Get(f.ctx, f.KeyForObject(o), tmp))
+		o.SetResourceVersion(tmp.GetResourceVersion())
+		return f.Update(o)
 	}
 	require.NoError(f.t, err)
 	return f.MustReconcile(f.KeyForObject(o))
