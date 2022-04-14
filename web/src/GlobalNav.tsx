@@ -167,7 +167,7 @@ export function MenuButtonLabeled(
   )
 }
 
-type GlobalNavProps = {
+export type GlobalNavProps = {
   isSnapshot: boolean
   tiltCloudUsername: string
   tiltCloudSchemeHost: string

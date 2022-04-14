@@ -1,9 +1,7 @@
 import React from "react"
 import { MemoryRouter } from "react-router"
 import { AnalyticsType } from "./analytics"
-import { GlobalNav } from "./GlobalNav"
 import HeaderBar from "./HeaderBar"
-import { useSnapshotAction } from "./snapshot"
 import {
   clusterConnection,
   nResourceView,
@@ -11,7 +9,6 @@ import {
   twoResourceView,
 } from "./testdata"
 import { UpdateStatus } from "./types"
-import { showUpdate } from "./UpdateDialog"
 
 export default {
   title: "New UI/Shared/HeaderBar",
@@ -79,48 +76,32 @@ export const UpgradeAvailable = () => {
   )
 }
 
-// TODO (lizz): Use HeaderBar component instead of GlobalNav
-// when design & implementation are finalized
-export const NavWithClusterConnectionHealth = () => {
+export const HealthyClusterConnection = () => {
   const view = nResourceView(5)
   const k8sConnection = clusterConnection()
-  const session = view.uiSession?.status
+  view.clusters = [k8sConnection]
 
   return (
-    <GlobalNav
-      isSnapshot={false}
-      runningBuild={session?.runningTiltBuild}
-      snapshot={useSnapshotAction()}
-      showUpdate={showUpdate(view)}
-      suggestedVersion={session?.suggestedTiltVersion}
-      tiltCloudSchemeHost=""
-      tiltCloudTeamID=""
-      tiltCloudTeamName=""
-      tiltCloudUsername=""
-      clusterConnections={[k8sConnection]}
+    <HeaderBar
+      view={view}
+      currentPage={AnalyticsType.Detail}
+      isSocketConnected={true}
     />
   )
 }
 
-export const NavWithClusterConnectionError = () => {
+export const UnhealthyClusterConnection = () => {
   const view = nResourceView(5)
   const k8sConnection = clusterConnection(
     'Get "https://kubernetes.docker.internal:6443/version?timeout=32s": dial tcp 127.0.0.1:6443: connect: connection refused'
   )
-  const session = view.uiSession?.status
+  view.clusters = [k8sConnection]
 
   return (
-    <GlobalNav
-      isSnapshot={false}
-      runningBuild={session?.runningTiltBuild}
-      snapshot={useSnapshotAction()}
-      showUpdate={showUpdate(view)}
-      suggestedVersion={session?.suggestedTiltVersion}
-      tiltCloudSchemeHost=""
-      tiltCloudTeamID=""
-      tiltCloudTeamName=""
-      tiltCloudUsername=""
-      clusterConnections={[k8sConnection]}
+    <HeaderBar
+      view={view}
+      currentPage={AnalyticsType.Detail}
+      isSocketConnected={true}
     />
   )
 }
