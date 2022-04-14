@@ -40,12 +40,14 @@ func TestKubernetesError(t *testing.T) {
 
 	// Create a fake client factory that always returns an error
 	origClientFactory := f.r.k8sClientFactory
-	f.r.k8sClientFactory = FakeKubernetesClientOrError(nil, errors.New("connection error"))
+	f.r.k8sClientFactory = FakeKubernetesClientOrError(nil, errors.New("fake error"))
 	f.Create(cluster)
 
 	assert.Equal(t, "", cluster.Status.Error)
 	f.MustGet(nn, cluster)
-	assert.Equal(t, "connection error", cluster.Status.Error)
+	assert.Equal(t,
+		"Tilt encountered an error connecting to your Kubernetes cluster:\n\tfake error\nYou will need to restart Tilt after resolving the issue.",
+		cluster.Status.Error)
 	assert.Nil(t, cluster.Status.ConnectedAt, "ConnectedAt should be empty")
 
 	// replace the working client factory but ensure that it's not invoked
