@@ -1,41 +1,42 @@
-import { mount } from "enzyme"
+import { render, RenderOptions, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { MemoryRouter } from "react-router"
 import { tiltfileKeyContext } from "./BrowserStorage"
-import { ClearHelpSearchBarButton, HelpSearchBar } from "./HelpSearchBar"
+import { HelpSearchBar } from "./HelpSearchBar"
 
-const HelpSearchBarTestWrapper = () => (
-  <MemoryRouter>
-    <tiltfileKeyContext.Provider value="test">
-      <HelpSearchBar />
-    </tiltfileKeyContext.Provider>
-  </MemoryRouter>
-)
+function customRender(component: JSX.Element, options?: RenderOptions) {
+  return render(
+    <MemoryRouter>
+      <tiltfileKeyContext.Provider value="test">
+        {component}
+      </tiltfileKeyContext.Provider>
+    </MemoryRouter>,
+    options
+  )
+}
 
 describe("HelpSearchBar", () => {
   it("does NOT display 'clear' button when there is NO input", () => {
-    const root = mount(<HelpSearchBarTestWrapper />)
-    const button = root.find(ClearHelpSearchBarButton)
-    expect(button.length).toBe(0)
+    customRender(<HelpSearchBar />)
+
+    expect(screen.queryByLabelText("Clear search term")).toBeNull()
   })
 
   it("displays 'clear' button when there is input", () => {
-    const searchTerm = "wow"
-    const root = mount(<HelpSearchBarTestWrapper />)
-    const searchField = root.find("input")
-    searchField.simulate("change", { target: { value: searchTerm } })
+    customRender(<HelpSearchBar />)
 
-    const button = root.find(ClearHelpSearchBarButton)
-    expect(button.length).toBe(1)
+    userEvent.type(screen.getByLabelText("Search Tilt Docs"), "wow")
+
+    expect(screen.getByLabelText("Clear search term")).toBeInTheDocument()
   })
 
   it("should change the search value on input change", () => {
     const searchTerm = "so search"
-    const root = mount(<HelpSearchBarTestWrapper />)
-    const searchField = root.find("input")
-    searchField.simulate("change", { target: { value: searchTerm } })
+    customRender(<HelpSearchBar />)
 
-    const searchFieldAfterChange = root.find("input")
-    expect(searchFieldAfterChange.prop("value")).toBe(searchTerm)
+    userEvent.type(screen.getByLabelText("Search Tilt Docs"), searchTerm)
+
+    expect(screen.getByRole("textbox")).toHaveValue(searchTerm)
   })
 
   it("should open search in new tab on submision", () => {
@@ -46,22 +47,21 @@ describe("HelpSearchBar", () => {
     searchResultsPage.searchParams.set("q", searchTerm)
     searchResultsPage.searchParams.set("utm_source", "tiltui")
 
-    const root = mount(<HelpSearchBarTestWrapper />)
-    const searchField = root.find("input")
-    searchField.simulate("change", { target: { value: searchTerm } })
-    searchField.simulate("keyPress", { key: "Enter" })
+    customRender(<HelpSearchBar />)
+
+    userEvent.type(screen.getByLabelText("Search Tilt Docs"), searchTerm)
+    userEvent.keyboard("{Enter}")
 
     expect(windowOpenSpy).toBeCalledWith(searchResultsPage)
   })
 
   it("should clear the search value after submission", () => {
     const searchTerm = "much find"
-    const root = mount(<HelpSearchBarTestWrapper />)
-    const searchField = root.find("input")
-    searchField.simulate("change", { target: { value: searchTerm } })
-    searchField.simulate("keyPress", { key: "Enter" })
+    customRender(<HelpSearchBar />)
 
-    const searchFieldAfterChange = root.find("input")
-    expect(searchFieldAfterChange.prop("value")).toBe("")
+    userEvent.type(screen.getByLabelText("Search Tilt Docs"), searchTerm)
+    userEvent.keyboard("{Enter}")
+
+    expect(screen.getByRole("textbox")).toHaveValue("")
   })
 })

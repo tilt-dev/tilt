@@ -1,43 +1,57 @@
-import { fireEvent } from "@testing-library/dom"
-import { mount } from "enzyme"
+import { render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import React from "react"
 import { act } from "react-dom/test-utils"
 import { MemoryRouter } from "react-router-dom"
-import { TwoResources } from "./HeaderBar.stories"
-import HelpDialog from "./HelpDialog"
+import { AnalyticsType } from "./analytics"
+import HeaderBar from "./HeaderBar"
 import { SnapshotActionTestProvider } from "./snapshot"
+import { nResourceView } from "./testdata"
 
-it("renders shortcuts dialog on ?", () => {
-  const root = mount(
-    <MemoryRouter initialEntries={["/"]}>{TwoResources()}</MemoryRouter>
-  )
+describe("HeaderBar", () => {
+  describe("keyboard shortcuts", () => {
+    const openModal = jest.fn()
 
-  expect(root.find(HelpDialog).props().open).toEqual(false)
-  act(() => void fireEvent.keyDown(document.body, { key: "?" }))
-  root.update()
-  expect(root.find(HelpDialog).props().open).toEqual(true)
-  root.unmount()
-})
+    beforeEach(() => {
+      openModal.mockReset()
 
-it("opens snapshot modal on s", () => {
-  let opened = 0
-  let snapshot = {
-    enabled: true,
-    openModal: () => {
-      opened++
-    },
-  }
-  const root = mount(
-    <MemoryRouter initialEntries={["/"]}>
-      <SnapshotActionTestProvider value={snapshot}>
-        {TwoResources()}
-      </SnapshotActionTestProvider>
-    </MemoryRouter>
-  )
+      const snapshotAction = {
+        enabled: true,
+        openModal,
+      }
 
-  expect(opened).toEqual(0)
-  act(() => void fireEvent.keyDown(document.body, { key: "s" }))
-  root.update()
-  expect(opened).toEqual(1)
-  root.unmount()
+      render(
+        <MemoryRouter initialEntries={["/"]}>
+          <SnapshotActionTestProvider value={snapshotAction}>
+            <HeaderBar
+              view={nResourceView(2)}
+              currentPage={AnalyticsType.Detail}
+              isSocketConnected={true}
+            />
+          </SnapshotActionTestProvider>
+        </MemoryRouter>
+      )
+    })
+
+    it("opens the help dialog on '?' keypress", () => {
+      // Expect that the help dialog is NOT visible at start
+      expect(screen.queryByRole("heading", { name: /Help/i })).toBeNull()
+
+      act(() => {
+        userEvent.keyboard("?")
+      })
+
+      expect(screen.getByRole("heading", { name: /Help/i })).toBeInTheDocument()
+    })
+
+    it("calls `openModal` snapshot callback on 's' keypress", () => {
+      expect(openModal).not.toBeCalled()
+
+      act(() => {
+        userEvent.keyboard("s")
+      })
+
+      expect(openModal).toBeCalledTimes(1)
+    })
+  })
 })

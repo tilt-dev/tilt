@@ -1,4 +1,5 @@
-import { mount } from "enzyme"
+import { render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import React from "react"
 import { AnalyticsAction } from "./analytics"
 import {
@@ -25,73 +26,75 @@ describe("instrumented components", () => {
   })
 
   describe("instrumented button", () => {
-    it("performs the underlying onClick and also reports analytics", () => {
-      let underlyingOnClickCalled = false
-      const onClick = () => {
-        underlyingOnClickCalled = true
-      }
-      const button = mount(
+    it("reports analytics with default tags and correct name", () => {
+      render(
+        <InstrumentedButton analyticsName="ui.web.foo.bar">
+          Hello
+        </InstrumentedButton>
+      )
+
+      userEvent.click(screen.getByRole("button"))
+
+      expectIncrs({
+        name: "ui.web.foo.bar",
+        tags: { action: AnalyticsAction.Click },
+      })
+    })
+
+    it("reports analytics with any additional custom tags", () => {
+      const customTags = { hello: "goodbye" }
+      render(
         <InstrumentedButton
           analyticsName="ui.web.foo.bar"
-          analyticsTags={{ hello: "goodbye" }}
-          onClick={onClick}
+          analyticsTags={customTags}
         >
           Hello
         </InstrumentedButton>
       )
 
-      button.simulate("click")
+      userEvent.click(screen.getByRole("button"))
 
-      expect(underlyingOnClickCalled).toEqual(true)
       expectIncrs({
         name: "ui.web.foo.bar",
-        tags: { action: AnalyticsAction.Click, hello: "goodbye" },
+        tags: { action: AnalyticsAction.Click, ...customTags },
       })
     })
 
-    it("works without an underlying onClick", () => {
-      const button = mount(
-        <InstrumentedButton analyticsName="ui.web.foo.bar">
+    it("invokes the click callback when provided", () => {
+      const onClickSpy = jest.fn()
+      render(
+        <InstrumentedButton
+          analyticsName="ui.web.foo.bar"
+          analyticsTags={{ hello: "goodbye" }}
+          onClick={onClickSpy}
+        >
           Hello
         </InstrumentedButton>
       )
 
-      button.simulate("click")
+      expect(onClickSpy).not.toBeCalled()
 
-      expectIncrs({
-        name: "ui.web.foo.bar",
-        tags: { action: AnalyticsAction.Click },
-      })
-    })
+      userEvent.click(screen.getByRole("button"))
 
-    it("works without tags", () => {
-      const button = mount(
-        <InstrumentedButton analyticsName="ui.web.foo.bar">
-          Hello
-        </InstrumentedButton>
-      )
-
-      button.simulate("click")
-
-      expectIncrs({
-        name: "ui.web.foo.bar",
-        tags: { action: AnalyticsAction.Click },
-      })
+      expect(onClickSpy).toBeCalledTimes(1)
     })
   })
 
   describe("instrumented TextField", () => {
     it("reports analytics, debounced, when edited", () => {
-      const root = mount(
+      render(
         <InstrumentedTextField
           analyticsName={"ui.web.TestTextField"}
           analyticsTags={{ foo: "bar" }}
+          InputProps={{ "aria-label": "Help search" }}
         />
       )
-      const tf = root.find(InstrumentedTextField).find('input[type="text"]')
+
+      const inputField = screen.getByLabelText("Help search")
       // two changes in rapid succession should result in only one analytics event
-      tf.simulate("change", { target: { value: "foo" } })
-      tf.simulate("change", { target: { value: "foobar" } })
+      userEvent.type(inputField, "foo")
+      userEvent.type(inputField, "bar")
+
       expectIncrs(...[])
       jest.advanceTimersByTime(10000)
       expectIncrs({
@@ -107,28 +110,25 @@ describe("instrumented components", () => {
     // for each text field.
     it("debounces analytics for text fields on an instance-by-instance basis", () => {
       const halfDebounce = textFieldEditDebounceMilliseconds / 2
-      const root = mount(
+      render(
         <>
           <InstrumentedTextField
             id="resourceNameFilter"
             analyticsName={"ui.web.resourceNameFilter"}
             analyticsTags={{ testing: "true" }}
+            InputProps={{ "aria-label": "Resource name filter" }}
           />
           <InstrumentedTextField
             id="uibuttonInput"
             analyticsName={"ui.web.uibutton.inputValue"}
             analyticsTags={{ testing: "true" }}
+            InputProps={{ "aria-label": "Button value" }}
           />
         </>
       )
-      const allInputFields = root
-        .find(InstrumentedTextField)
-        .find('input[type="text"]')
-      const inputField1 = allInputFields.at(0)
-      const inputField2 = allInputFields.at(1)
 
       // Trigger an event in the first field
-      inputField1.simulate("change", { target: { value: "first!" } })
+      userEvent.type(screen.getByLabelText("Resource name filter"), "first!")
 
       // Expect that no analytics calls have been made, since the debounce
       // time for the first field has not been met
@@ -136,7 +136,7 @@ describe("instrumented components", () => {
       expectIncrs(...[])
 
       // Trigger an event in the second field
-      inputField2.simulate("change", { target: { value: "second!" } })
+      userEvent.type(screen.getByLabelText("Button value"), "second!")
 
       // Expect that _only_ the first field's analytics event has occurred,
       // since that debounce interval has been met for the first field.
@@ -166,14 +166,15 @@ describe("instrumented components", () => {
 
   describe("instrumented Checkbox", () => {
     it("reports analytics when clicked", () => {
-      const root = mount(
+      render(
         <InstrumentedCheckbox
           analyticsName={"ui.web.TestCheckbox"}
           analyticsTags={{ foo: "bar" }}
+          inputProps={{ "aria-label": "Check me" }}
         />
       )
-      const tf = root.find(InstrumentedCheckbox).find('input[type="checkbox"]')
-      tf.simulate("change", { target: { checked: true } })
+
+      userEvent.click(screen.getByLabelText("Check me"))
       expectIncrs({
         name: "ui.web.TestCheckbox",
         tags: { action: AnalyticsAction.Edit, foo: "bar" },

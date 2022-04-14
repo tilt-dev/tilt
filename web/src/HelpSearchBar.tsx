@@ -67,6 +67,7 @@ export function HelpSearchBar(props: { className?: string }) {
         <SearchSvg fill={Color.grayLightest} />
       </InputAdornment>
     ),
+    "aria-label": "Search Tilt Docs",
   }
 
   function handleKeyPress(e: KeyboardEvent) {
@@ -90,8 +91,9 @@ export function HelpSearchBar(props: { className?: string }) {
         <ClearHelpSearchBarButton
           onClick={onClearClick}
           analyticsName="ui.web.clearHelpSearchBar"
+          aria-label="Clear search term"
         >
-          <CloseSvg fill={Color.grayLightest} />
+          <CloseSvg role="presentation" fill={Color.grayLightest} />
         </ClearHelpSearchBarButton>
       </InputAdornment>
     )
@@ -99,7 +101,6 @@ export function HelpSearchBar(props: { className?: string }) {
 
   return (
     <HelpSearchBarTextField
-      aria-label="Search Tilt Docs"
       className={props.className}
       value={searchValue}
       placeholder="Search Tilt Docs..."

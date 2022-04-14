@@ -1,4 +1,5 @@
-import { mount } from "enzyme"
+import { render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import React from "react"
 import { AnalyticsAction } from "./analytics"
 import {
@@ -48,12 +49,14 @@ describe("ClearLogs", () => {
 
   it("clears all resources", () => {
     const logStore = createPopulatedLogStore()
-    const root = mount(
+    render(
       <LogStoreProvider value={logStore}>
         <ClearLogs resourceName={ResourceName.all} />
       </LogStoreProvider>
     )
-    root.find(ClearLogs).simulate("click")
+
+    userEvent.click(screen.getByRole("button"))
+
     expect(logStore.spans).toEqual({})
     expect(logStore.allLog()).toHaveLength(0)
 
@@ -65,17 +68,20 @@ describe("ClearLogs", () => {
 
   it("clears a specific resource", () => {
     const logStore = createPopulatedLogStore()
-    const root = mount(
+    render(
       <LogStoreProvider value={logStore}>
         <ClearLogs resourceName={"vigoda"} />
       </LogStoreProvider>
     )
-    root.find(ClearLogs).simulate("click")
+
+    userEvent.click(screen.getByRole("button"))
+
     expect(Object.keys(logStore.spans).sort()).toEqual([
       "_",
       "build:m2",
       "pod:m2-def456",
     ])
+
     expect(logLinesToString(logStore.allLog(), false)).toEqual(
       "global 1\nglobal 2\nm2 build line 1\nm2 runtime line 1"
     )
