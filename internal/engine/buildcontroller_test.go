@@ -1019,7 +1019,7 @@ func TestBuildControllerK8sFileDependencies(t *testing.T) {
 			},
 			[]model.Dockerignore{
 				{
-					LocalPath: f.Path(),
+					LocalPath: f.JoinPath("k8s-dep"),
 					Source:    "test",
 					Patterns:  []string{"ignore-me"},
 				},
