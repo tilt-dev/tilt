@@ -19,6 +19,7 @@ type k8sCustomDeploy struct {
 	applyCmd  model.Cmd
 	deleteCmd model.Cmd
 	deps      []string
+	ignores   []model.Dockerignore
 }
 
 func (s *tiltfileState) k8sCustomDeploy(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -75,12 +76,11 @@ func (s *tiltfileState) k8sCustomDeploy(thread *starlark.Thread, fn *starlark.Bu
 		return nil, fmt.Errorf("error making resource for %s: %v", name, err)
 	}
 
-	deployDeps, luDeps := filterDepsForCustomDeploy(deps.Value, liveUpdate)
-
 	res.customDeploy = &k8sCustomDeploy{
 		applyCmd:  applyCmd,
 		deleteCmd: deleteCmd,
-		deps:      deployDeps,
+		deps:      deps.Value,
+		ignores:   customDeployIgnoresForLiveUpdate(liveUpdate),
 	}
 	for _, imageDep := range imageDeps {
 		res.addImageDep(imageDep, true)
@@ -133,7 +133,7 @@ func (s *tiltfileState) k8sCustomDeploy(thread *starlark.Thread, fn *starlark.Bu
 			// 	mark this as a "LiveUpdateOnly" ImageTarget, so that no builds
 			// 	will be done, only deploy + Live Update
 			customCommand:    model.ToHostCmd(":"),
-			customDeps:       luDeps,
+			customDeps:       deps.Value,
 			liveUpdate:       liveUpdate,
 			disablePush:      true,
 			skipsLocalDocker: true,
@@ -152,23 +152,18 @@ func (s *tiltfileState) k8sCustomDeploy(thread *starlark.Thread, fn *starlark.Bu
 	return starlark.None, nil
 }
 
-func filterDepsForCustomDeploy(deps []string, spec v1alpha1.LiveUpdateSpec) (deployPaths []string, luPaths []string) {
-	luMatcher := pathMatcherFromLiveUpdateSpec(spec)
-	for _, dep := range deps {
-		if match, _ := luMatcher.Matches(dep); match {
-			luPaths = append(luPaths, dep)
-		} else {
-			deployPaths = append(deployPaths, dep)
-		}
+func customDeployIgnoresForLiveUpdate(spec v1alpha1.LiveUpdateSpec) []model.Dockerignore {
+	patternCount := len(spec.Syncs) + len(spec.StopPaths)
+	if patternCount == 0 {
+		return nil
 	}
-	return
-}
-
-func pathMatcherFromLiveUpdateSpec(spec v1alpha1.LiveUpdateSpec) model.PathMatcher {
-	paths := make([]string, 0, len(spec.Syncs)+len(spec.StopPaths))
+	di := model.Dockerignore{
+		LocalPath: spec.BasePath,
+		Patterns:  make([]string, 0, patternCount),
+	}
 	for _, sync := range spec.Syncs {
-		paths = append(paths, sync.LocalPath)
+		di.Patterns = append(di.Patterns, sync.LocalPath)
 	}
-	paths = append(paths, spec.StopPaths...)
-	return model.NewRelativeFileOrChildMatcher(spec.BasePath, paths...)
+	di.Patterns = append(di.Patterns, spec.StopPaths...)
+	return []model.Dockerignore{di}
 }

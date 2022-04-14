@@ -1178,8 +1178,10 @@ func (s *tiltfileState) k8sDeployTarget(targetName model.TargetName, r *k8sResou
 	}
 
 	var deps []string
+	var ignores []model.Dockerignore
 	if r.customDeploy != nil {
 		deps = r.customDeploy.deps
+		ignores = r.customDeploy.ignores
 		applySpec.ApplyCmd = toKubernetesApplyCmd(r.customDeploy.applyCmd)
 		applySpec.DeleteCmd = toKubernetesApplyCmd(r.customDeploy.deleteCmd)
 		applySpec.RestartOn = &v1alpha1.RestartOnSpec{
@@ -1207,7 +1209,7 @@ func (s *tiltfileState) k8sDeployTarget(targetName model.TargetName, r *k8sResou
 
 	t = t.WithImageDependencies(model.FilterLiveUpdateOnly(r.imageMapDeps, imageTargets)).
 		WithRefInjectCounts(r.imageRefInjectCounts()).
-		WithPathDependencies(deps, reposForPaths(deps))
+		WithPathDependencies(deps, reposForPaths(deps), ignores)
 
 	return t, nil
 }

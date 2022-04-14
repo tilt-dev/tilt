@@ -1016,6 +1016,13 @@ func TestBuildControllerK8sFileDependencies(t *testing.T) {
 			[]string{f.JoinPath("k8s-dep")},
 			[]model.LocalGitRepo{
 				{LocalPath: f.JoinPath("k8s-dep")},
+			},
+			[]model.Dockerignore{
+				{
+					LocalPath: f.Path(),
+					Source:    "test",
+					Patterns:  []string{"ignore-me"},
+				},
 			})
 	m := model.Manifest{Name: "fe"}.WithDeployTarget(kt)
 
@@ -1025,8 +1032,9 @@ func TestBuildControllerK8sFileDependencies(t *testing.T) {
 	assert.Empty(t, call.k8sState().FilesChanged())
 
 	// path dependency is on ./k8s-dep/** with a local repo of ./k8s-dep/.git/** (ignored)
-	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("k8s-dep", "file"))
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("k8s-dep", "ignore-me"))
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("k8s-dep", ".git", "file"))
+	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("k8s-dep", "file"))
 
 	call = f.nextCall()
 	assert.Equal(t, []string{f.JoinPath("k8s-dep", "file")}, call.k8sState().FilesChanged())
