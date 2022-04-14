@@ -13,6 +13,7 @@ import { Color, SizeUnit, Width, ZIndex } from "./style-helpers"
 
 type OverviewTablePaneProps = {
   view: Proto.webviewView
+  isSocketConnected: boolean
 }
 
 let OverviewTablePaneStyle = styled.div`
@@ -56,7 +57,11 @@ export default function OverviewTablePane(props: OverviewTablePaneProps) {
   return (
     <OverviewTablePaneStyle>
       <OverviewTableStickyNav>
-        <HeaderBar view={props.view} currentPage={AnalyticsType.Grid} />
+        <HeaderBar
+          view={props.view}
+          currentPage={AnalyticsType.Grid}
+          isSocketConnected={props.isSocketConnected}
+        />
         <StarredResourceBar {...starredResourcePropsFromView(props.view, "")} />
         <OverviewTableMenu aria-label="Resource menu">
           <OverviewTableResourceNameFilter />

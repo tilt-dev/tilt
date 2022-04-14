@@ -27,7 +27,7 @@ import OverviewActionBar, {
   FILTER_INPUT_DEBOUNCE,
 } from "./OverviewActionBar"
 import { EmptyBar, FullBar } from "./OverviewActionBar.stories"
-import { disableButton, oneButton, oneResource } from "./testdata"
+import { disableButton, oneResource, oneUIButton } from "./testdata"
 
 let history: MemoryHistory
 beforeEach(() => {
@@ -117,7 +117,7 @@ describe("disabled resource view", () => {
       term: EMPTY_FILTER_TERM,
     }
     const buttonSet: ButtonSet = {
-      default: [oneButton(0, "i-am-not-enabled")],
+      default: [oneUIButton({ componentID: "i-am-not-enabled" })],
       toggleDisable: disableButton("i-am-not-enabled", false),
     }
 
@@ -177,8 +177,7 @@ describe("buttons", () => {
   })
 
   it("disables a button that should be disabled", () => {
-    let uiButtons = [oneButton(1, "vigoda")]
-    uiButtons[0].spec!.disabled = true
+    let uiButtons = [oneUIButton({ componentID: "vigoda", disabled: true })]
     let filterSet = {
       level: FilterLevel.all,
       source: FilterSource.all,

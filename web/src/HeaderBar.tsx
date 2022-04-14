@@ -6,7 +6,7 @@ import { ReactComponent as DetailViewSvg } from "./assets/svg/detail-view-icon.s
 import { ReactComponent as LogoWordmarkSvg } from "./assets/svg/logo-wordmark.svg"
 import { ReactComponent as TableViewSvg } from "./assets/svg/table-view-icon.svg"
 import { CustomNav } from "./CustomNav"
-import { GlobalNav } from "./GlobalNav"
+import { GlobalNav, GlobalNavProps } from "./GlobalNav"
 import { usePathBuilder } from "./PathBuilder"
 import {
   AllResourceStatusSummary,
@@ -105,10 +105,15 @@ const ViewLinkSection = styled.div`
 
 type HeaderBarProps = {
   view: Proto.webviewView
+  isSocketConnected: boolean
   currentPage?: AnalyticsType.Detail | AnalyticsType.Grid
 }
 
-export default function HeaderBar({ view, currentPage }: HeaderBarProps) {
+export default function HeaderBar({
+  view,
+  currentPage,
+  isSocketConnected,
+}: HeaderBarProps) {
   let isSnapshot = usePathBuilder().isSnapshot()
   let snapshot = useSnapshotAction()
   let session = view?.uiSession?.status
@@ -116,7 +121,7 @@ export default function HeaderBar({ view, currentPage }: HeaderBarProps) {
   let suggestedVersion = session?.suggestedTiltVersion
   let resources = view?.uiResources || []
 
-  let globalNavProps = {
+  let globalNavProps: GlobalNavProps = {
     isSnapshot,
     snapshot,
     showUpdate: showUpdate(view),
@@ -126,6 +131,7 @@ export default function HeaderBar({ view, currentPage }: HeaderBarProps) {
     tiltCloudSchemeHost: session?.tiltCloudSchemeHost ?? "",
     tiltCloudTeamID: session?.tiltCloudTeamID ?? "",
     tiltCloudTeamName: session?.tiltCloudTeamName ?? "",
+    clusterConnections: view.clusters,
   }
 
   const pb = usePathBuilder()
@@ -164,6 +170,7 @@ export default function HeaderBar({ view, currentPage }: HeaderBarProps) {
         displayText="Resources"
         labelText="Status summary for all resources"
         resources={resources}
+        isSocketConnected={isSocketConnected}
       />
       <CustomNav view={view} />
       <GlobalNav {...globalNavProps} />

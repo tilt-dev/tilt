@@ -17,15 +17,14 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/clusterid"
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	ctrltiltfile "github.com/tilt-dev/tilt/internal/controllers/apis/tiltfile"
-	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/feature"
@@ -1642,9 +1641,9 @@ docker_build('gcr.io/some-project-162817/sancho-sidecar', '.')
 	m := f.assertNextManifest("sancho")
 	assert.Equal(t, 2, len(m.ImageTargets))
 	assert.Equal(t, "gcr.io/some-project-162817/sancho",
-		m.ImageTargetAt(0).Refs.ConfigurationRef.String())
+		m.ImageTargetAt(0).ImageMapSpec.Selector)
 	assert.Equal(t, "gcr.io/some-project-162817/sancho-sidecar",
-		m.ImageTargetAt(1).Refs.ConfigurationRef.String())
+		m.ImageTargetAt(1).ImageMapSpec.Selector)
 }
 
 func TestSanchoRedisSidecar(t *testing.T) {
@@ -1662,7 +1661,7 @@ docker_build('gcr.io/some-project-162817/sancho', '.')
 	m := f.assertNextManifest("sancho")
 	assert.Equal(t, 1, len(m.ImageTargets))
 	assert.Equal(t, "gcr.io/some-project-162817/sancho",
-		m.ImageTargetAt(0).Refs.ConfigurationRef.String())
+		m.ImageTargetAt(0).ImageMapSpec.Selector)
 }
 
 func TestExtraPodSelectors(t *testing.T) {
@@ -2445,7 +2444,7 @@ docker_build('tilt.dev/frontend', '.')
 	m := f.assertNextManifest("um",
 		podReadiness(model.PodReadinessWait))
 	assert.Equal(t, "tilt.dev/frontend",
-		m.ImageTargets[0].Refs.LocalRef().String())
+		m.ImageTargets[0].ImageMapSpec.Selector)
 }
 
 func TestImageObjectJSONPathNoMatch(t *testing.T) {
@@ -2487,7 +2486,7 @@ docker_build('tilt.dev/frontend', '.')
 	m := f.assertNextManifest("um",
 		podReadiness(model.PodReadinessIgnore))
 	assert.Equal(t, "tilt.dev/frontend",
-		m.ImageTargets[0].Refs.LocalRef().String())
+		m.ImageTargets[0].ImageMapSpec.Selector)
 }
 
 func TestExtraImageLocationOneImage(t *testing.T) {
@@ -2986,7 +2985,9 @@ default_registry('123.dkr.ecr.us-east-1.amazonaws.com', single_name='team-a/dev'
 		db(image("fe").withLocalRef("123.dkr.ecr.us-east-1.amazonaws.com/team-a/dev")),
 		deployment("fe"))
 
-	feTaggedRefs, err := fe.ImageTargets[0].Refs.AddTagSuffix("tilt-build-123")
+	feRefs, err := fe.ImageTargets[0].Refs(f.cluster(fe))
+	assert.NoError(t, err)
+	feTaggedRefs, err := feRefs.AddTagSuffix("tilt-build-123")
 	assert.NoError(t, err)
 	assert.Equal(t, "123.dkr.ecr.us-east-1.amazonaws.com/team-a/dev:fe-tilt-build-123",
 		feTaggedRefs.LocalRef.String())
@@ -2995,7 +2996,9 @@ default_registry('123.dkr.ecr.us-east-1.amazonaws.com', single_name='team-a/dev'
 		db(image("be").withLocalRef("123.dkr.ecr.us-east-1.amazonaws.com/team-a/dev")),
 		deployment("be"))
 
-	beTaggedRefs, err := be.ImageTargets[0].Refs.AddTagSuffix("tilt-build-456")
+	beRefs, err := be.ImageTargets[0].Refs(f.cluster(be))
+	assert.NoError(t, err)
+	beTaggedRefs, err := beRefs.AddTagSuffix("tilt-build-456")
 	assert.NoError(t, err)
 	assert.Equal(t, "123.dkr.ecr.us-east-1.amazonaws.com/team-a/dev:be-tilt-build-456",
 		beTaggedRefs.LocalRef.String())
@@ -3115,7 +3118,7 @@ k8s_yaml('foo.yaml')
 k8s_resource('bar', new_name='baz')
 `)
 
-	f.loadErrString("specified unknown resource \"bar\". known resources: foo")
+	f.loadErrString("specified unknown resource \"bar\". known k8s resources: foo")
 }
 
 func TestK8sResourceNewName(t *testing.T) {
@@ -4020,7 +4023,9 @@ k8s_yaml('foo.yaml')
 `)
 
 	f.load()
-	refs := f.assertNextManifest("foo").ImageTargets[0].Refs
+	m := f.assertNextManifest("foo")
+	refs, err := m.ImageTargets[0].Refs(f.cluster(m))
+	require.NoError(t, err)
 	assert.Equal(t, "gcr.io/foo", refs.ClusterRef().String())
 }
 
@@ -5718,7 +5723,6 @@ type fixture struct {
 	k8sContext k8s.KubeContext
 	k8sEnv     clusterid.Product
 	webHost    model.WebHost
-	ctrlclient ctrlclient.Client
 
 	ta *tiltanalytics.TiltAnalytics
 	an *analytics.MemoryAnalytics
@@ -5749,8 +5753,6 @@ func newFixture(t *testing.T) *fixture {
 	f := tempdir.NewTempDirFixture(t)
 	f.Chdir()
 
-	ctrlclient := fake.NewFakeTiltClient()
-
 	// copy the features to avoid unintentional mutation by tests
 	features := make(feature.Defaults)
 	for k, v := range feature.MainDefaults {
@@ -5766,7 +5768,6 @@ func newFixture(t *testing.T) *fixture {
 		ta:             ta,
 		k8sContext:     "fake-context",
 		k8sEnv:         clusterid.ProductDockerDesktop,
-		ctrlclient:     ctrlclient,
 		features:       features,
 	}
 
@@ -5911,7 +5912,7 @@ func (f *fixture) loadAllowWarnings(args ...string) {
 	f.loadResult = tlr
 
 	for _, m := range f.loadResult.Manifests {
-		err := m.InferImagePropertiesFromCluster(f.loadResult.DefaultRegistry)
+		err := m.InferImageProperties()
 		require.NoError(f.t, err)
 	}
 }
@@ -5957,7 +5958,7 @@ func (f *fixture) loadArgsErrString(args []string, msgs ...string) {
 	}
 
 	for _, m := range f.loadResult.Manifests {
-		err := m.InferImagePropertiesFromCluster(f.loadResult.DefaultRegistry)
+		err := m.InferImageProperties()
 		require.NoError(f.t, err)
 	}
 }
@@ -6028,7 +6029,9 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 		case dbHelper:
 			image := nextImageTarget()
 
-			ref := image.Refs.ConfigurationRef
+			refs, err := image.Refs(f.cluster(m))
+			require.NoError(f.t, err, "Determining image refs")
+			ref := refs.ConfigurationRef
 			if ref.Empty() {
 				f.t.Fatalf("manifest %v has no more image refs; expected %q", m.Name, opt.image.ref)
 			}
@@ -6039,11 +6042,11 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 			}
 
 			expectedLocalRef := container.MustParseNamed(opt.image.localRef)
-			require.Equal(f.t, expectedLocalRef.String(), image.Refs.LocalRef().String(), "manifest %v localRef", m.Name)
+			require.Equal(f.t, expectedLocalRef.String(), refs.LocalRef().String(), "manifest %v localRef", m.Name)
 
 			if opt.image.clusterRef != "" {
 				expectedClusterRef := container.MustParseNamed(opt.image.clusterRef)
-				require.Equal(f.t, expectedClusterRef.String(), image.Refs.ClusterRef().String(), "manifest %v clusterRef", m.Name)
+				require.Equal(f.t, expectedClusterRef.String(), refs.ClusterRef().String(), "manifest %v clusterRef", m.Name)
 			}
 
 			assert.Equal(f.t, opt.image.matchInEnvVars, image.MatchInEnvVars)
@@ -6069,7 +6072,11 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 			}
 		case cbHelper:
 			image := nextImageTarget()
-			ref := image.Refs.ConfigurationRef
+
+			refs, err := image.Refs(f.cluster(m))
+			require.NoError(f.t, err, "Determining image refs")
+
+			ref := refs.ConfigurationRef
 			expectedRef := container.MustParseNamed(opt.image.ref)
 			if !assert.Equal(f.t, expectedRef.String(), ref.String(), "manifest %v image ref", m.Name) {
 				f.t.FailNow()
@@ -6345,6 +6352,51 @@ func (f *fixture) assertLinks(expected, actual []model.Link) {
 		require.Equalf(f.t, exp.URLString(), actual[i].URLString(), "link at index %d", i)
 		require.Equalf(f.t, exp.Name, actual[i].Name, "link at index %d", i)
 	}
+}
+
+func (f *fixture) cluster(m model.Manifest) *v1alpha1.Cluster {
+	f.t.Helper()
+
+	tlr := f.loadResult
+
+	var defaultRegistry *v1alpha1.RegistryHosting
+	if !tlr.DefaultRegistry.Empty() {
+		defaultRegistry = &v1alpha1.RegistryHosting{
+			Host:                     tlr.DefaultRegistry.Host,
+			HostFromContainerRuntime: tlr.DefaultRegistry.HostFromCluster(),
+			SingleName:               tlr.DefaultRegistry.SingleName,
+		}
+	}
+
+	if m.IsK8s() {
+		return &v1alpha1.Cluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: v1alpha1.ClusterNameDefault,
+			},
+			Spec: v1alpha1.ClusterSpec{
+				Connection: &v1alpha1.ClusterConnection{
+					Kubernetes: &v1alpha1.KubernetesClusterConnection{},
+				},
+				DefaultRegistry: defaultRegistry,
+			},
+		}
+	}
+
+	if m.IsDC() {
+		return &v1alpha1.Cluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: v1alpha1.ClusterNameDocker,
+			},
+			Spec: v1alpha1.ClusterSpec{
+				Connection: &v1alpha1.ClusterConnection{
+					Docker: &v1alpha1.DockerClusterConnection{},
+				},
+				DefaultRegistry: defaultRegistry,
+			},
+		}
+	}
+
+	return &v1alpha1.Cluster{}
 }
 
 type secretHelper struct {

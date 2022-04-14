@@ -68,7 +68,7 @@ func TestTiltBuildsImage(t *testing.T) {
 
 	assert.Equal(t, 1, f.dCli.BuildCount, "expect one docker build")
 
-	expectedTag := fmt.Sprintf("%s:%s", iTarget.Refs.LocalRef(), docker.TagLatest)
+	expectedTag := fmt.Sprintf("%s:%s", iTarget.ImageMapSpec.Selector, docker.TagLatest)
 	assert.Equal(t, expectedTag, f.dCli.TagTarget)
 
 	upCalls := f.dcCli.UpCalls()

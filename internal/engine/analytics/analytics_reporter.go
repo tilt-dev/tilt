@@ -128,7 +128,7 @@ func (ar *AnalyticsReporter) report(ctx context.Context) {
 					multiImgLU = true
 				}
 				multiContainerLU = multiContainerLU ||
-					refInjectCounts[it.Refs.ConfigurationRef.String()] > 0
+					refInjectCounts[it.ImageMapSpec.Selector] > 0
 			}
 		}
 		if multiContainerLU {

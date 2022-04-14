@@ -158,6 +158,7 @@ export type UIResourceStatus = Proto.v1alpha1UIResourceStatus
 export type UIBuild = Proto.v1alpha1UIBuildTerminated
 export type UILink = Proto.v1alpha1UIResourceLink
 export type UIButton = Proto.v1alpha1UIButton
+export type UIButtonStatus = Proto.v1alpha1UIButtonStatus
 export type UIInputSpec = Proto.v1alpha1UIInputSpec
 export type UIInputStatus = Proto.v1alpha1UIInputStatus
 export type Cluster = Proto.v1alpha1Cluster

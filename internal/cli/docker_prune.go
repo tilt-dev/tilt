@@ -2,20 +2,23 @@ package cli
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/cluster"
 	ctrltiltfile "github.com/tilt-dev/tilt/internal/controllers/apis/tiltfile"
-	apitiltfile "github.com/tilt-dev/tilt/internal/controllers/core/tiltfile"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/engine/dockerprune"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/tiltfile"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -89,15 +92,40 @@ func (c *dockerPruneCmd) run(ctx context.Context, args []string) error {
 	return nil
 }
 
+// resolveImageSelectors finds image references from a tiltfile.TiltfileLoadResult object.
+//
+// The Kubernetes client is used to resolve the correct image names if a local registry is in use.
+//
+// This method is brittle and duplicates some logic from the actual reconcilers.
+// In the future, we hope to have a mode where we can launch the full apiserver
+// with all resources in a "disabled" state and rely on the API, but that's not
+// possible currently.
 func resolveImageSelectors(ctx context.Context, kCli k8s.Client, tlr *tiltfile.TiltfileLoadResult) ([]container.RefSelector, error) {
-	registry := apitiltfile.DecideRegistry(ctx, kCli, tlr)
 	for _, m := range tlr.Manifests {
-		if err := m.InferImagePropertiesFromCluster(registry); err != nil {
+		if err := m.InferImageProperties(); err != nil {
 			return nil, err
 		}
 	}
 
-	imgSelectors := model.LocalRefSelectorsForManifests(tlr.Manifests)
+	var reg *v1alpha1.RegistryHosting
+	if tlr.HasOrchestrator(model.OrchestratorK8s) {
+		// k8s.Client::LocalRegistry will return an empty registry on any error,
+		// so ensure the client is actually functional first
+		if _, err := kCli.CheckConnected(ctx); err != nil {
+			return nil, fmt.Errorf("determining local registry: %v", err)
+		}
+		localReg := kCli.LocalRegistry(ctx)
+		reg = cluster.RegistryHosting(&localReg)
+	}
+
+	clusters := map[string]*v1alpha1.Cluster{
+		v1alpha1.ClusterNameDefault: {
+			ObjectMeta: metav1.ObjectMeta{Name: v1alpha1.ClusterNameDefault},
+			Spec:       v1alpha1.ClusterSpec{DefaultRegistry: reg},
+		},
+	}
+
+	imgSelectors := model.LocalRefSelectorsForManifests(tlr.Manifests, clusters)
 	if len(imgSelectors) != 0 && logger.Get(ctx).Level().ShouldDisplay(logger.DebugLvl) {
 		var sb strings.Builder
 		for _, is := range imgSelectors {

@@ -19,6 +19,7 @@ import { ResourceName } from "./types"
 type UIResource = Proto.v1alpha1UIResource
 type OverviewResourcePaneProps = {
   view: Proto.webviewView
+  isSocketConnected: boolean
 }
 
 let OverviewResourcePaneRoot = styled.div`
@@ -93,7 +94,11 @@ export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
 
   return (
     <OverviewResourcePaneRoot>
-      <HeaderBar view={props.view} currentPage={AnalyticsType.Detail} />
+      <HeaderBar
+        view={props.view}
+        currentPage={AnalyticsType.Detail}
+        isSocketConnected={props.isSocketConnected}
+      />
       <StarredResourceBar
         {...starredResourcePropsFromView(props.view, selectedTab)}
       />

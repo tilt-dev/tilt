@@ -40,6 +40,18 @@ let Bar = styled.div`
   animation: ${pulse} 3s ease infinite;
 `
 
+export function isTiltSocketConnected(state: SocketState) {
+  if (
+    state === SocketState.Reconnecting ||
+    state === SocketState.Closed ||
+    state === SocketState.Loading
+  ) {
+    return false
+  }
+
+  return true
+}
+
 export default function SocketBar(props: SocketBarProps) {
   let state = props.state
   let message = ""

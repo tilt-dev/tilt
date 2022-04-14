@@ -357,3 +357,8 @@ func wireClientGetter(ctx context.Context) (*cliclient.Getter, error) {
 	wire.Build(CLIClientWireSet)
 	return nil, nil
 }
+
+func wireLsp(ctx context.Context, l logger.Logger, subcommand model.TiltSubcommand) (cmdLspDeps, error) {
+	wire.Build(UpWireSet, newLspDeps, newAnalytics)
+	return cmdLspDeps{}, nil
+}

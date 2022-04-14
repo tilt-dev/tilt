@@ -10,7 +10,6 @@ import (
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
-	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
@@ -293,7 +292,7 @@ func TestLiveUpdateMainImageHold(t *testing.T) {
 
 	resource := &k8sconv.KubernetesResource{
 		FilteredPods: []v1alpha1.Pod{
-			*readyPod("pod-1", sanchoImage.Refs.ClusterRef()),
+			*readyPod("pod-1", sanchoImage.ImageMapSpec.Selector),
 		},
 	}
 	f.st.KubernetesResources["sancho"] = resource
@@ -356,7 +355,7 @@ func TestLiveUpdateBaseImageHold(t *testing.T) {
 
 	resource := &k8sconv.KubernetesResource{
 		FilteredPods: []v1alpha1.Pod{
-			*readyPod("pod-1", sanchoImage.Refs.ClusterRef()),
+			*readyPod("pod-1", sanchoImage.Selector),
 		},
 	}
 	f.st.KubernetesResources["sancho"] = resource
@@ -465,19 +464,19 @@ func TestHoldForDeploy(t *testing.T) {
 	}
 	f.st.KubernetesResources["sancho"] = resource
 
-	resource.FilteredPods = append(resource.FilteredPods, *readyPod("pod-1", sanchoImage.Refs.ClusterRef()))
+	resource.FilteredPods = append(resource.FilteredPods, *readyPod("pod-1", sanchoImage.Selector))
 	f.assertNextTargetToBuild("sancho")
 
-	resource.FilteredPods[0] = *crashingPod("pod-1", sanchoImage.Refs.ClusterRef())
+	resource.FilteredPods[0] = *crashingPod("pod-1", sanchoImage.Selector)
 	f.assertNextTargetToBuild("sancho")
 
-	resource.FilteredPods[0] = *crashedInThePastPod("pod-1", sanchoImage.Refs.ClusterRef())
+	resource.FilteredPods[0] = *crashedInThePastPod("pod-1", sanchoImage.Selector)
 	f.assertNextTargetToBuild("sancho")
 
-	resource.FilteredPods[0] = *sidecarCrashedPod("pod-1", sanchoImage.Refs.ClusterRef())
+	resource.FilteredPods[0] = *sidecarCrashedPod("pod-1", sanchoImage.Selector)
 	f.assertNextTargetToBuild("sancho")
 
-	resource.FilteredPods[0] = *completedPod("pod-1", sanchoImage.Refs.ClusterRef())
+	resource.FilteredPods[0] = *completedPod("pod-1", sanchoImage.Selector)
 	f.assertNextTargetToBuild("sancho")
 }
 
@@ -511,7 +510,7 @@ func TestHoldForManualLiveUpdate(t *testing.T) {
 		FinishTime: time.Now(),
 	})
 	resource := &k8sconv.KubernetesResource{
-		FilteredPods: []v1alpha1.Pod{*completedPod("pod-1", sanchoImage.Refs.ClusterRef())},
+		FilteredPods: []v1alpha1.Pod{*completedPod("pod-1", sanchoImage.Selector)},
 	}
 	f.st.KubernetesResources["sancho"] = resource
 	f.st.LiveUpdates["sancho"] = &v1alpha1.LiveUpdate{Spec: luSpec}
@@ -550,7 +549,7 @@ func TestHoldIfAnyDisableStatusPending(t *testing.T) {
 	f.assertNoTargetNextToBuild()
 }
 
-func readyPod(podID k8s.PodID, ref reference.Named) *v1alpha1.Pod {
+func readyPod(podID k8s.PodID, ref string) *v1alpha1.Pod {
 	return &v1alpha1.Pod{
 		Name:   podID.String(),
 		Phase:  string(v1.PodRunning),
@@ -560,7 +559,7 @@ func readyPod(podID k8s.PodID, ref reference.Named) *v1alpha1.Pod {
 				ID:    string(podID + "-container"),
 				Name:  "c",
 				Ready: true,
-				Image: ref.String(),
+				Image: ref,
 				State: v1alpha1.ContainerState{
 					Running: &v1alpha1.ContainerStateRunning{StartedAt: metav1.Now()},
 				},
@@ -569,7 +568,7 @@ func readyPod(podID k8s.PodID, ref reference.Named) *v1alpha1.Pod {
 	}
 }
 
-func crashingPod(podID k8s.PodID, ref reference.Named) *v1alpha1.Pod {
+func crashingPod(podID k8s.PodID, ref string) *v1alpha1.Pod {
 	return &v1alpha1.Pod{
 		Name:   podID.String(),
 		Phase:  string(v1.PodRunning),
@@ -579,7 +578,7 @@ func crashingPod(podID k8s.PodID, ref reference.Named) *v1alpha1.Pod {
 				ID:       string(podID + "-container"),
 				Name:     "c",
 				Ready:    false,
-				Image:    ref.String(),
+				Image:    ref,
 				Restarts: 1,
 				State: v1alpha1.ContainerState{
 					Terminated: &v1alpha1.ContainerStateTerminated{
@@ -593,7 +592,7 @@ func crashingPod(podID k8s.PodID, ref reference.Named) *v1alpha1.Pod {
 	}
 }
 
-func crashedInThePastPod(podID k8s.PodID, ref reference.Named) *v1alpha1.Pod {
+func crashedInThePastPod(podID k8s.PodID, ref string) *v1alpha1.Pod {
 	return &v1alpha1.Pod{
 		Name:   podID.String(),
 		Phase:  string(v1.PodRunning),
@@ -603,7 +602,7 @@ func crashedInThePastPod(podID k8s.PodID, ref reference.Named) *v1alpha1.Pod {
 				ID:       string(podID + "-container"),
 				Name:     "c",
 				Ready:    true,
-				Image:    ref.String(),
+				Image:    ref,
 				Restarts: 1,
 				State: v1alpha1.ContainerState{
 					Running: &v1alpha1.ContainerStateRunning{StartedAt: metav1.Now()},
@@ -613,7 +612,7 @@ func crashedInThePastPod(podID k8s.PodID, ref reference.Named) *v1alpha1.Pod {
 	}
 }
 
-func sidecarCrashedPod(podID k8s.PodID, ref reference.Named) *v1alpha1.Pod {
+func sidecarCrashedPod(podID k8s.PodID, ref string) *v1alpha1.Pod {
 	return &v1alpha1.Pod{
 		Name:   podID.String(),
 		Phase:  string(v1.PodRunning),
@@ -623,7 +622,7 @@ func sidecarCrashedPod(podID k8s.PodID, ref reference.Named) *v1alpha1.Pod {
 				ID:       string(podID + "-container"),
 				Name:     "c",
 				Ready:    true,
-				Image:    ref.String(),
+				Image:    ref,
 				Restarts: 0,
 				State: v1alpha1.ContainerState{
 					Running: &v1alpha1.ContainerStateRunning{StartedAt: metav1.Now()},
@@ -647,7 +646,7 @@ func sidecarCrashedPod(podID k8s.PodID, ref reference.Named) *v1alpha1.Pod {
 	}
 }
 
-func completedPod(podID k8s.PodID, ref reference.Named) *v1alpha1.Pod {
+func completedPod(podID k8s.PodID, ref string) *v1alpha1.Pod {
 	return &v1alpha1.Pod{
 		Name:   podID.String(),
 		Phase:  string(v1.PodSucceeded),
@@ -657,7 +656,7 @@ func completedPod(podID k8s.PodID, ref reference.Named) *v1alpha1.Pod {
 				ID:       string(podID + "-container"),
 				Name:     "c",
 				Ready:    false,
-				Image:    ref.String(),
+				Image:    ref,
 				Restarts: 0,
 				State: v1alpha1.ContainerState{
 					Terminated: &v1alpha1.ContainerStateTerminated{

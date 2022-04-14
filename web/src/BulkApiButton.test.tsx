@@ -19,9 +19,9 @@ import {
 } from "./BulkApiButton"
 import { BulkAction } from "./OverviewTableBulkActions"
 import { flushPromises } from "./promise"
-import { disableButton, oneButton } from "./testdata"
+import { disableButton, oneUIButton } from "./testdata"
 
-const NON_TOGGLE_BUTTON = oneButton(0, "database")
+const NON_TOGGLE_BUTTON = oneUIButton({ componentID: "database" })
 const DISABLE_BUTTON_DB = disableButton("database", true)
 const DISABLE_BUTTON_FRONTEND = disableButton("frontend", true)
 const ENABLE_BUTTON_BACKEND = disableButton("backend", false)

@@ -9,6 +9,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/cluster"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -98,6 +100,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	// The apiserver is the source of truth, and will ensure the engine state is up to date.
 	r.store.Dispatch(clusters.NewClusterUpsertAction(&obj))
 
+	clusterRefreshEnabled := obj.Annotations["features.tilt.dev/cluster-refresh"] == "true"
 	conn, hasConnection := r.connManager.load(nn)
 	// If this is not the first time we've tried to connect to the cluster,
 	// only attempt to refresh the connection if the feature is enabled. Not
@@ -105,7 +108,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	// can result in erratic behavior if the cluster is not in a usable state
 	// at startup but then becomes usable, for example, as some parts of the
 	// system will still have k8s.explodingClient.
-	if hasConnection && obj.Annotations["features.tilt.dev/cluster-refresh"] == "true" {
+	if hasConnection && clusterRefreshEnabled {
 		// If the spec changed, delete the connection and recreate it.
 		if !apicmp.DeepEqual(conn.spec, obj.Spec) {
 			r.connManager.delete(nn)
@@ -124,7 +127,17 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 			conn.connType = connectionTypeK8s
 			client, err := r.createKubernetesClient(obj.DeepCopy())
 			if err != nil {
-				conn.initError = err.Error()
+				var initError string
+				if !clusterRefreshEnabled {
+					initError = fmt.Sprintf(
+						"Tilt encountered an error connecting to your Kubernetes cluster:"+
+							"\n\t%v"+
+							"\nYou will need to restart Tilt after resolving the issue.",
+						err)
+				} else {
+					initError = err.Error()
+				}
+				conn.initError = initError
 			} else {
 				conn.k8sClient = client
 			}
@@ -150,7 +163,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		}
 	}
 
-	r.populateClusterMetadata(ctx, &conn)
+	r.populateClusterMetadata(ctx, nn, &conn)
 
 	r.connManager.store(nn, conn)
 
@@ -270,26 +283,43 @@ func (r *Reconciler) reportConnectionEvent(ctx context.Context, cluster *v1alpha
 	analytics.Get(ctx).Incr("api.cluster.connect", tags)
 }
 
-func (r *Reconciler) populateClusterMetadata(ctx context.Context, conn *connection) {
+func (r *Reconciler) populateClusterMetadata(ctx context.Context, clusterNN types.NamespacedName, conn *connection) {
 	if conn.initError != "" {
 		return
 	}
 
 	switch conn.connType {
 	case connectionTypeK8s:
-		r.populateK8sMetadata(ctx, conn)
+		r.populateK8sMetadata(ctx, clusterNN, conn)
 	case connectionTypeDocker:
 		r.populateDockerMetadata(ctx, conn)
 	}
 }
 
-func (r *Reconciler) populateK8sMetadata(ctx context.Context, conn *connection) {
+func (r *Reconciler) populateK8sMetadata(ctx context.Context, clusterNN types.NamespacedName, conn *connection) {
 	if conn.arch == "" {
 		conn.arch = r.readKubernetesArch(ctx, conn.k8sClient)
 	}
 
 	if conn.registry == nil {
 		reg := conn.k8sClient.LocalRegistry(ctx)
+		if !reg.Empty() {
+			// If we've found a local registry in the cluster at run-time, use that
+			// instead of the default_registry (if any) declared in the Tiltfile
+			logger.Get(ctx).Infof("Auto-detected local registry from environment: %s", reg)
+
+			if conn.spec.DefaultRegistry != nil {
+				// The user has specified a default registry in their Tiltfile, but it will be ignored.
+				logger.Get(ctx).Infof("Default registry specified, but will be ignored in favor of auto-detected registry.")
+			}
+		} else if conn.spec.DefaultRegistry != nil {
+			logger.Get(ctx).Debugf("Using default registry from Tiltfile: %s", conn.spec.DefaultRegistry)
+		} else {
+			logger.Get(ctx).Debugf(
+				"No local registry detected and no default registry set for cluster %q",
+				clusterNN.Name)
+		}
+
 		conn.registry = &reg
 	}
 
@@ -333,12 +363,7 @@ func (c *connection) toStatus() v1alpha1.ClusterStatus {
 
 	var reg *v1alpha1.RegistryHosting
 	if c.registry != nil {
-		reg = &v1alpha1.RegistryHosting{
-			Host:                     c.registry.Host,
-			HostFromContainerRuntime: c.registry.HostFromCluster(),
-			// TODO(milas+lizz): expose from the Tilt registry object
-			// Help: c.registry.Help,
-		}
+		reg = cluster.RegistryHosting(c.registry)
 	}
 
 	return v1alpha1.ClusterStatus{

@@ -27,12 +27,15 @@ func UpdateImageMap(
 	cluster *v1alpha1.Cluster,
 	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap,
 	startTime *metav1.MicroTime,
-	refs container.TaggedRefs) (store.ImageBuildResult, error) {
-
-	result := store.NewImageBuildResult(iTarget.ID(), refs.LocalRef, refs.ClusterRef)
+	taggedRefs container.TaggedRefs,
+) (store.ImageBuildResult, error) {
+	result := store.NewImageBuildResult(iTarget.ID(), taggedRefs.LocalRef, taggedRefs.ClusterRef)
 	if isDockerCompose(cluster) {
-		expectedRef := iTarget.Refs.ConfigurationRef
-		ref, err := tagWithExpected(ctx, docker, refs.LocalRef, expectedRef)
+		imgRefs, err := iTarget.Refs(cluster)
+		if err != nil {
+			return store.ImageBuildResult{}, fmt.Errorf("determining refs: %v", err)
+		}
+		ref, err := tagWithExpected(ctx, docker, taggedRefs.LocalRef, imgRefs.ConfigurationRef)
 		if err != nil {
 			return store.ImageBuildResult{}, err
 		}

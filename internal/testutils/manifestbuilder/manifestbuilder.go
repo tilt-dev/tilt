@@ -8,7 +8,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/cmdimage"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/dockerimage"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
@@ -156,6 +155,18 @@ func (b ManifestBuilder) Build() model.Manifest {
 			iTarget.CmdImageName = cmdimage.GetName(b.name, iTarget.ID())
 		}
 
+		if len(b.dcConfigPaths) != 0 {
+			if iTarget.IsDockerBuild() {
+				dbi := iTarget.DockerBuildInfo()
+				dbi.DockerImageSpec.Cluster = v1alpha1.ClusterNameDocker
+				iTarget.BuildDetails = dbi
+			} else if iTarget.IsCustomBuild() {
+				cbi := iTarget.CustomBuildInfo()
+				cbi.CmdImageSpec.Cluster = v1alpha1.ClusterNameDocker
+				iTarget.BuildDetails = cbi
+			}
+		}
+
 		if liveupdate.IsEmptySpec(iTarget.LiveUpdateSpec) {
 			iTarget.LiveUpdateReconciler = false
 		} else {
@@ -221,7 +232,7 @@ func (b ManifestBuilder) Build() model.Manifest {
 	}
 	m = m.WithTriggerMode(b.triggerMode)
 
-	err := m.InferImagePropertiesFromCluster(container.Registry{})
+	err := m.InferImageProperties()
 	require.NoError(b.f.T(), err)
 
 	err = m.InferLiveUpdateSelectors()

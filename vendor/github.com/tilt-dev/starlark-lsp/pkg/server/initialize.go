@@ -7,12 +7,13 @@ import (
 )
 
 func (s *Server) Initialize(ctx context.Context,
-	_ *protocol.InitializeParams) (result *protocol.InitializeResult, err error) {
+	params *protocol.InitializeParams) (result *protocol.InitializeResult, err error) {
 	_ = s.notifier.LogMessage(ctx, &protocol.LogMessageParams{
 		Message: "Starlark LSP server initialized",
 		Type:    protocol.MessageTypeLog,
 	})
 
+	s.docs.Initialize(params)
 	return &protocol.InitializeResult{
 		Capabilities: protocol.ServerCapabilities{
 			TextDocumentSync: protocol.TextDocumentSyncOptions{
@@ -30,6 +31,7 @@ func (s *Server) Initialize(ctx context.Context,
 			CompletionProvider: &protocol.CompletionOptions{
 				TriggerCharacters: []string{"."},
 			},
+			HoverProvider: true,
 		},
 	}, nil
 }

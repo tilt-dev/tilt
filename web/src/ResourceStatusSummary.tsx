@@ -6,6 +6,7 @@ import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
 import { ReactComponent as DisabledSvg } from "./assets/svg/not-allowed.svg"
 import { ReactComponent as PendingSvg } from "./assets/svg/pending.svg"
 import { ReactComponent as WarningSvg } from "./assets/svg/warning.svg"
+import { linkToTiltAsset } from "./constants"
 import { FilterLevel } from "./logfilters"
 import { useLogStore } from "./LogStore"
 import { RowValues } from "./OverviewTableColumns"
@@ -299,12 +300,20 @@ function statusCounts(statuses: ResourceStatus[]): StatusCounts {
   }
 }
 
-function ResourceMetadata(props: { counts: StatusCounts }) {
+function ResourceMetadata(props: {
+  counts: StatusCounts
+  isSocketConnected?: boolean
+}) {
   let { totalEnabled, healthy, pending, unhealthy } = props.counts
   useEffect(() => {
     let favicon: any = document.head.querySelector("#favicon")
     let faviconHref = ""
-    if (unhealthy > 0) {
+    if (props.isSocketConnected === false) {
+      document.title = `… disconnected ┊ Tilt`
+      // Use a publically-hosted favicon since Tilt is disconnected
+      // and it's not guaranteed that the favicon will be cached
+      faviconHref = linkToTiltAsset("ico", "dashboard-favicon-gray.ico")
+    } else if (unhealthy > 0) {
       document.title = `✖︎ ${unhealthy} ┊ Tilt`
       faviconHref = "/static/ico/favicon-red.ico"
     } else if (pending || totalEnabled === 0) {
@@ -317,7 +326,7 @@ function ResourceMetadata(props: { counts: StatusCounts }) {
     if (favicon) {
       favicon.href = faviconHref
     }
-  }, [totalEnabled, healthy, pending, unhealthy])
+  }, [totalEnabled, healthy, pending, unhealthy, props.isSocketConnected])
   return <></>
 }
 
@@ -330,6 +339,7 @@ type ResourceStatusSummaryOptions = {
 
 type ResourceStatusSummaryProps = {
   statuses: ResourceStatus[]
+  isSocketConnected?: boolean
 } & ResourceStatusSummaryOptions
 
 function ResourceStatusSummary(props: ResourceStatusSummaryProps) {
@@ -341,7 +351,10 @@ function ResourceStatusSummary(props: ResourceStatusSummaryProps) {
   return (
     <ResourceStatusSummaryRoot aria-label={labelText}>
       {updateMetadata && (
-        <ResourceMetadata counts={statusCounts(props.statuses)} />
+        <ResourceMetadata
+          counts={statusCounts(props.statuses)}
+          isSocketConnected={props.isSocketConnected}
+        />
       )}
       <ResourceGroupStatus
         counts={statusCounts(props.statuses)}
@@ -362,6 +375,7 @@ function ResourceStatusSummary(props: ResourceStatusSummaryProps) {
 
 type StatusSummaryProps<T> = {
   resources: readonly T[]
+  isSocketConnected?: boolean
 } & ResourceStatusSummaryOptions
 
 export function SidebarGroupStatusSummary(

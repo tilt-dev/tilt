@@ -27,7 +27,7 @@ import { ResourceSelectionProvider } from "./ResourceSelectionContext"
 import ShareSnapshotModal from "./ShareSnapshotModal"
 import { TiltSnackbarProvider } from "./Snackbar"
 import { SnapshotActionProvider } from "./snapshot"
-import SocketBar from "./SocketBar"
+import SocketBar, { isTiltSocketConnected } from "./SocketBar"
 import { StarredResourcesContextProvider } from "./StarredResourcesContext"
 import { ShowErrorModal, ShowFatalErrorModal, SocketState } from "./types"
 
@@ -198,10 +198,6 @@ export default class HUD extends Component<HudProps, HudState> {
     }
 
     let tiltfileKey = session?.tiltfileKey
-    let runningBuild = session?.runningTiltBuild
-    let suggestedVersion = session?.suggestedTiltVersion
-    const versionSettings = session?.versionSettings
-    const checkUpdates = versionSettings?.checkUpdates ?? true
     let shareSnapshotModal = this.renderShareSnapshotModal(view)
     let fatalErrorModal = this.renderFatalErrorModal(view)
     let errorModal = this.renderErrorModal()
@@ -239,6 +235,7 @@ export default class HUD extends Component<HudProps, HudState> {
   }
 
   renderOverviewSwitch() {
+    const isSocketConnected = isTiltSocketConnected(this.state.socketState)
     return (
       <FeaturesProvider
         featureFlags={this.state.view.uiSession?.status?.featureFlags || null}
@@ -253,12 +250,18 @@ export default class HUD extends Component<HudProps, HudState> {
                       <Route
                         path={this.path("/r/:name/overview")}
                         render={(props: RouteComponentProps<any>) => (
-                          <OverviewResourcePane view={this.state.view} />
+                          <OverviewResourcePane
+                            view={this.state.view}
+                            isSocketConnected={isSocketConnected}
+                          />
                         )}
                       />
                       <Route
                         render={() => (
-                          <OverviewTablePane view={this.state.view} />
+                          <OverviewTablePane
+                            view={this.state.view}
+                            isSocketConnected={isSocketConnected}
+                          />
                         )}
                       />
                     </Switch>

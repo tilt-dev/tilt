@@ -6,7 +6,7 @@ import { FilterLevel, FilterSource, useFilterSet } from "./logfilters"
 import OverviewActionBar from "./OverviewActionBar"
 import { TiltSnackbarProvider } from "./Snackbar"
 import { StarredResourceMemoryProvider } from "./StarredResourcesContext"
-import { disableButton, oneButton, oneResource } from "./testdata"
+import { disableButton, oneResource, oneUIButton } from "./testdata"
 
 export default {
   title: "New UI/Log View/OverviewActionBar",
@@ -61,7 +61,7 @@ export const FullBar = () => {
   let filterSet = useFilterSet()
   let res = oneResource({ isBuilding: true, name: "my-deadbeef", endpoints: 2 })
   let buttons: ButtonSet = {
-    default: [oneButton(1, "vigoda")],
+    default: [oneUIButton({ buttonName: "button2", componentID: "vigoda" })],
     toggleDisable: disableButton("vigoda", true),
   }
   return (

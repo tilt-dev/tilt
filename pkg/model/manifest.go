@@ -269,7 +269,7 @@ func (m *Manifest) ClusterName() string {
 }
 
 // Infer image properties for each image.
-func (m *Manifest) InferImagePropertiesFromCluster(reg container.Registry) error {
+func (m *Manifest) InferImageProperties() error {
 	var deployImageIDs []TargetID
 	if m.DeployTarget != nil {
 		deployImageIDs = m.DeployTarget.DependencyIDs()
@@ -286,7 +286,7 @@ func (m *Manifest) InferImagePropertiesFromCluster(reg container.Registry) error
 			clusterNeeds = v1alpha1.ClusterImageNeedsPush
 		}
 
-		iTarget, err := iTarget.InferImagePropertiesFromCluster(reg, clusterNeeds, m.ClusterName())
+		iTarget, err := iTarget.inferImageProperties(clusterNeeds, m.ClusterName())
 		if err != nil {
 			return fmt.Errorf("manifest %s: %v", m.Name, err)
 		}
@@ -422,11 +422,19 @@ func (m Manifest) ManifestName() ManifestName {
 	return m.Name
 }
 
-func LocalRefSelectorsForManifests(manifests []Manifest) []container.RefSelector {
+func LocalRefSelectorsForManifests(manifests []Manifest, clusters map[string]*v1alpha1.Cluster) []container.RefSelector {
 	var res []container.RefSelector
 	for _, m := range manifests {
+		cluster := clusters[m.ClusterName()]
 		for _, iTarg := range m.ImageTargets {
-			sel := container.NameSelector(iTarg.Refs.LocalRef()).WithNameMatch()
+			refs, err := iTarg.Refs(cluster)
+			if err != nil {
+				// silently ignore any invalid image references because this
+				// logic is only used for Docker pruning, and we can't prune
+				// something invalid anyway
+				continue
+			}
+			sel := container.NameSelector(refs.LocalRef())
 			res = append(res, sel)
 		}
 	}

@@ -10,6 +10,8 @@ import (
 	"go.lsp.dev/protocol"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+
+	"github.com/tilt-dev/starlark-lsp/pkg/document"
 )
 
 var logLevel = zap.NewAtomicLevelAt(zapcore.WarnLevel)
@@ -25,7 +27,8 @@ type RootCmd struct {
 //   commandName: what to call the base command in examples (e.g., "starlark-lsp", "tilt lsp")
 //   builtinFSProvider: provides an fs.FS from which tilt builtin docs should be read
 //                    if nil, a --builtin-paths param will be added for specifying paths
-func NewRootCmd(commandName string, builtinFSProvider BuiltinFSProvider) *RootCmd {
+//   managerOpts: a variable number of ManagerOpt arguments to configure the document manager.
+func NewRootCmd(commandName string, builtinFSProvider BuiltinFSProvider, managerOpts ...document.ManagerOpt) *RootCmd {
 	cmd := RootCmd{
 		Command: &cobra.Command{
 			Use:   commandName,
@@ -44,7 +47,7 @@ func NewRootCmd(commandName string, builtinFSProvider BuiltinFSProvider) *RootCm
 		}
 	}
 
-	cmd.AddCommand(newStartCmd(commandName, builtinFSProvider).Command)
+	cmd.AddCommand(newStartCmd(commandName, builtinFSProvider, managerOpts...).Command)
 
 	return &cmd
 }

@@ -41,7 +41,7 @@ func (ib *ImageBuilder) CanReuseRef(ctx context.Context, iTarget model.ImageTarg
 		return true, nil
 	}
 	return false, fmt.Errorf("image %q has no valid buildDetails (neither "+
-		"DockerBuild nor CustomBuild)", iTarget.Refs.ConfigurationRef)
+		"DockerBuild nor CustomBuild)", iTarget.ImageMapSpec.Selector)
 }
 
 // Build the image, and push it if necessary.
@@ -59,7 +59,7 @@ func (ib *ImageBuilder) Build(ctx context.Context,
 		return refs, stages, err
 	}
 
-	pushStage := ib.push(ctx, refs.LocalRef, ps, iTarget, cluster)
+	pushStage := ib.push(ctx, refs, ps, iTarget, cluster)
 	if pushStage != nil {
 		stages = append(stages, *pushStage)
 	}
@@ -76,15 +76,21 @@ func (ib *ImageBuilder) buildOnly(ctx context.Context,
 	iTarget model.ImageTarget,
 	cluster *v1alpha1.Cluster,
 	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap,
-	ps *PipelineState) (container.TaggedRefs, []v1alpha1.DockerImageStageStatus, error) {
-	userFacingRefName := container.FamiliarString(iTarget.Refs.ConfigurationRef)
+	ps *PipelineState,
+) (container.TaggedRefs, []v1alpha1.DockerImageStageStatus, error) {
+	refs, err := iTarget.Refs(cluster)
+	if err != nil {
+		return container.TaggedRefs{}, nil, err
+	}
+
+	userFacingRefName := container.FamiliarString(refs.ConfigurationRef)
 
 	switch bd := iTarget.BuildDetails.(type) {
 	case model.DockerBuild:
 		ps.StartPipelineStep(ctx, "Building Dockerfile: [%s]", userFacingRefName)
 		defer ps.EndPipelineStep(ctx)
 
-		return ib.db.BuildImage(ctx, ps, iTarget.Refs, bd.DockerImageSpec,
+		return ib.db.BuildImage(ctx, ps, refs, bd.DockerImageSpec,
 			cluster,
 			imageMaps,
 			ignore.CreateBuildContextFilter(iTarget))
@@ -92,18 +98,18 @@ func (ib *ImageBuilder) buildOnly(ctx context.Context,
 	case model.CustomBuild:
 		ps.StartPipelineStep(ctx, "Building Custom Build: [%s]", userFacingRefName)
 		defer ps.EndPipelineStep(ctx)
-		refs, err := ib.custb.Build(ctx, iTarget.Refs, bd.CmdImageSpec, imageMaps)
+		refs, err := ib.custb.Build(ctx, refs, bd.CmdImageSpec, imageMaps)
 		return refs, nil, err
 	}
 
 	// Theoretically this should never trip b/c we `validate` the manifest beforehand...?
 	// If we get here, something is very wrong.
 	return container.TaggedRefs{}, nil, fmt.Errorf("image %q has no valid buildDetails (neither "+
-		"DockerBuild nor CustomBuild)", iTarget.Refs.ConfigurationRef)
+		"DockerBuild nor CustomBuild)", refs.ConfigurationRef)
 }
 
-// Push the image if the clsuter requires it.
-func (ib *ImageBuilder) push(ctx context.Context, ref reference.NamedTagged, ps *PipelineState, iTarget model.ImageTarget, cluster *v1alpha1.Cluster) *v1alpha1.DockerImageStageStatus {
+// Push the image if the cluster requires it.
+func (ib *ImageBuilder) push(ctx context.Context, refs container.TaggedRefs, ps *PipelineState, iTarget model.ImageTarget, cluster *v1alpha1.Cluster) *v1alpha1.DockerImageStageStatus {
 	// Skip the push phase entirely if we're on Docker Compose.
 	isDC := cluster != nil &&
 		cluster.Spec.Connection != nil &&
@@ -114,7 +120,7 @@ func (ib *ImageBuilder) push(ctx context.Context, ref reference.NamedTagged, ps 
 
 	// On Kubernetes, we count each push() as a stage, and need to print why
 	// we're skipping if we don't need to push.
-	ps.StartPipelineStep(ctx, "Pushing %s", container.FamiliarString(ref))
+	ps.StartPipelineStep(ctx, "Pushing %s", container.FamiliarString(refs.LocalRef))
 	defer ps.EndPipelineStep(ctx)
 
 	cbSkip := false
@@ -141,9 +147,9 @@ func (ib *ImageBuilder) push(ctx context.Context, ref reference.NamedTagged, ps 
 
 	startTime := apis.NowMicro()
 	var err error
-	if ib.shouldUseKINDLoad(ctx, iTarget, cluster) {
+	if ib.shouldUseKINDLoad(refs, cluster) {
 		ps.Printf(ctx, "Loading image to KIND")
-		err := ib.kl.LoadToKIND(ps.AttachLogger(ctx), cluster, ref)
+		err := ib.kl.LoadToKIND(ps.AttachLogger(ctx), cluster, refs.LocalRef)
 		endTime := apis.NowMicro()
 		stage := &v1alpha1.DockerImageStageStatus{
 			Name:       "kind load",
@@ -157,7 +163,7 @@ func (ib *ImageBuilder) push(ctx context.Context, ref reference.NamedTagged, ps 
 	}
 
 	ps.Printf(ctx, "Pushing with Docker client")
-	err = ib.db.PushImage(ps.AttachLogger(ctx), ref)
+	err = ib.db.PushImage(ps.AttachLogger(ctx), refs.LocalRef)
 
 	endTime := apis.NowMicro()
 	stage := &v1alpha1.DockerImageStageStatus{
@@ -171,7 +177,7 @@ func (ib *ImageBuilder) push(ctx context.Context, ref reference.NamedTagged, ps 
 	return stage
 }
 
-func (ib *ImageBuilder) shouldUseKINDLoad(ctx context.Context, iTarg model.ImageTarget, cluster *v1alpha1.Cluster) bool {
+func (ib *ImageBuilder) shouldUseKINDLoad(refs container.TaggedRefs, cluster *v1alpha1.Cluster) bool {
 	isKIND := k8sConnStatus(cluster).Product == string(clusterid.ProductKIND)
 	if !isKIND {
 		return false
@@ -180,7 +186,7 @@ func (ib *ImageBuilder) shouldUseKINDLoad(ctx context.Context, iTarg model.Image
 	// if we're using KIND and the image has a separate ref by which it's referred to
 	// in the cluster, that implies that we have a local registry in place, and should
 	// push to that instead of using KIND load.
-	if iTarg.HasDistinctClusterRef() {
+	if refs.LocalRef.String() != refs.ClusterRef.String() {
 		return false
 	}
 

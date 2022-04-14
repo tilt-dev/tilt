@@ -6,6 +6,8 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
+
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
 // RefSet describes the references for a given image:
@@ -41,6 +43,24 @@ func MustSimpleRefSet(ref RefSelector) RefSet {
 		panic(err)
 	}
 	return r
+}
+
+func RefSetFromImageMap(spec v1alpha1.ImageMapSpec, cluster *v1alpha1.Cluster) (RefSet, error) {
+	selector, err := SelectorFromImageMap(spec)
+	if err != nil {
+		return RefSet{}, fmt.Errorf("validating image: %v", err)
+	}
+
+	reg, err := RegistryFromCluster(cluster)
+	if err != nil {
+		return RefSet{}, fmt.Errorf("determining registry: %v", err)
+	}
+
+	refs, err := NewRefSet(selector, reg)
+	if err != nil {
+		return RefSet{}, fmt.Errorf("applying image %s to registry %s: %v", spec.Selector, reg, err)
+	}
+	return refs, nil
 }
 
 func (rs RefSet) WithoutRegistry() RefSet {

@@ -109,7 +109,7 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore, summary s
 		// N.B. Only determine the ref selectors if we're actually going to prune - OnChange is called for every batch
 		// 	of store events and this is a comparatively expensive operation (lots of regex), but 99% of the time this
 		// 	is called, no pruning is going to happen, so avoid burning CPU cycles unnecessarily
-		imgSelectors := model.LocalRefSelectorsForManifests(state.Manifests())
+		imgSelectors := model.LocalRefSelectorsForManifests(state.Manifests(), state.Clusters)
 		st.RUnlockState()
 		dp.PruneAndRecordState(ctx, settings.MaxAge, settings.KeepRecent, imgSelectors, curBuildCount)
 		return nil

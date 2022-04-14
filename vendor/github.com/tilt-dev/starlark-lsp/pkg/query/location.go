@@ -3,8 +3,6 @@ package query
 import (
 	sitter "github.com/smacker/go-tree-sitter"
 	"go.lsp.dev/protocol"
-
-	"github.com/tilt-dev/starlark-lsp/pkg/document"
 )
 
 // PositionToPoint converts an LSP protocol file location to a Tree-sitter file location.
@@ -15,11 +13,18 @@ func PositionToPoint(pos protocol.Position) sitter.Point {
 	}
 }
 
-// PointToPosition converts a Tree-sitter file location to an LSP protocol file location.
-func PointToPosition(point sitter.Point) protocol.Position {
+// pointToPosition converts a Tree-sitter file location to an LSP protocol file location.
+func pointToPosition(point sitter.Point) protocol.Position {
 	return protocol.Position{
 		Line:      point.Row,
 		Character: point.Column,
+	}
+}
+
+func NodeRange(node *sitter.Node) protocol.Range {
+	return protocol.Range{
+		Start: pointToPosition(node.StartPoint()),
+		End:   pointToPosition(node.EndPoint()),
 	}
 }
 
@@ -72,11 +77,11 @@ func NodeBefore(a, b *sitter.Node) bool {
 }
 
 // NamedNodeAtPosition returns the most granular named descendant at a position.
-func NamedNodeAtPosition(doc document.Document, pos protocol.Position) (*sitter.Node, bool) {
+func NamedNodeAtPosition(doc DocumentContent, pos protocol.Position) (*sitter.Node, bool) {
 	return NamedNodeAtPoint(doc, PositionToPoint(pos))
 }
 
-func NamedNodeAtPoint(doc document.Document, pt sitter.Point) (*sitter.Node, bool) {
+func NamedNodeAtPoint(doc DocumentContent, pt sitter.Point) (*sitter.Node, bool) {
 	if doc.Tree() == nil {
 		return nil, false
 	}
@@ -87,12 +92,12 @@ func NamedNodeAtPoint(doc document.Document, pt sitter.Point) (*sitter.Node, boo
 	return nil, false
 }
 
-func ChildNodeAtPoint(doc document.Document, pt sitter.Point, node *sitter.Node) (*sitter.Node, bool) {
+func ChildNodeAtPoint(pt sitter.Point, node *sitter.Node) (*sitter.Node, bool) {
 	count := int(node.NamedChildCount())
 	for i := 0; i < count; i++ {
 		child := node.NamedChild(i)
 		if PointBeforeOrEqual(child.StartPoint(), pt) && PointBeforeOrEqual(pt, child.EndPoint()) {
-			return ChildNodeAtPoint(doc, pt, child)
+			return ChildNodeAtPoint(pt, child)
 		}
 	}
 	return node, true
@@ -100,14 +105,14 @@ func ChildNodeAtPoint(doc document.Document, pt sitter.Point, node *sitter.Node)
 
 // NodeAtPosition returns the node (named or unnamed) with the smallest
 // start/end range that covers the given position.
-func NodeAtPosition(doc document.Document, pos protocol.Position) (*sitter.Node, bool) {
+func NodeAtPosition(doc DocumentContent, pos protocol.Position) (*sitter.Node, bool) {
 	return NodeAtPoint(doc, PositionToPoint(pos))
 }
 
-func NodeAtPoint(doc document.Document, pt sitter.Point) (*sitter.Node, bool) {
+func NodeAtPoint(doc DocumentContent, pt sitter.Point) (*sitter.Node, bool) {
 	namedNode, ok := NamedNodeAtPoint(doc, pt)
 	if !ok {
 		return nil, false
 	}
-	return ChildNodeAtPoint(doc, pt, namedNode)
+	return ChildNodeAtPoint(pt, namedNode)
 }

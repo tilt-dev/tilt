@@ -24,7 +24,6 @@ type ImageTarget struct {
 	DockerImageName string
 	CmdImageName    string
 
-	Refs         container.RefSet
 	BuildDetails BuildDetails
 
 	// In a live-update-only image, we don't inject the image into the Kubernetes
@@ -66,7 +65,6 @@ func (i ImageTarget) ImageMapName() string {
 }
 
 func (i ImageTarget) MustWithRef(ref container.RefSelector) ImageTarget {
-	i.Refs = container.MustSimpleRefSet(ref)
 	i.ImageMapSpec.Selector = ref.RefFamiliarString()
 	i.ImageMapSpec.MatchExact = ref.MatchExact()
 	return i
@@ -166,13 +164,6 @@ func (i ImageTarget) Validate() error {
 	}
 
 	return nil
-}
-
-// HasDistinctClusterRef indicates whether the image target has a ClusterRef
-// distinct from LocalRef, i.e. if the image is addressed different from
-// inside and outside the cluster.
-func (i ImageTarget) HasDistinctClusterRef() bool {
-	return i.Refs.LocalRef().String() != i.Refs.ClusterRef().String()
 }
 
 type BuildDetails interface {
@@ -296,37 +287,10 @@ func (i ImageTarget) Dependencies() []string {
 	return sliceutils.DedupedAndSorted(i.LocalPaths())
 }
 
-// Once images are in the API server, they'll depend on the cluster:
-//
-// - The RefSet (where the image is built) will depend on the cluster registry.
-// - The architecture (the image chipset) will depend on the default arch of the cluster.
-//
-// In the meantime, we handle this by inferring them after tiltfile assembly.
-func (i ImageTarget) InferImagePropertiesFromCluster(reg container.Registry, clusterNeeds v1alpha1.ClusterImageNeeds, clusterName string) (ImageTarget, error) {
-	selector, err := container.SelectorFromImageMap(i.ImageMapSpec)
+func (i ImageTarget) Refs(cluster *v1alpha1.Cluster) (container.RefSet, error) {
+	refs, err := container.RefSetFromImageMap(i.ImageMapSpec, cluster)
 	if err != nil {
-		return i, fmt.Errorf("validating image: %v", err)
-	}
-
-	refs, err := container.NewRefSet(selector, reg)
-	if err != nil {
-		return i, fmt.Errorf("applying image %s to registry %s: %v", i.ImageMapSpec.Selector, reg, err)
-	}
-
-	db, ok := i.BuildDetails.(DockerBuild)
-	if ok {
-		db.DockerImageSpec.Ref = i.ImageMapSpec.Selector
-		db.DockerImageSpec.ClusterNeeds = clusterNeeds
-		db.DockerImageSpec.Cluster = clusterName
-		i.BuildDetails = db
-	}
-
-	cb, ok := i.BuildDetails.(CustomBuild)
-	if ok {
-		cb.CmdImageSpec.Ref = i.ImageMapSpec.Selector
-		cb.CmdImageSpec.ClusterNeeds = clusterNeeds
-		cb.CmdImageSpec.Cluster = clusterName
-		i.BuildDetails = cb
+		return container.RefSet{}, err
 	}
 
 	// I (Nick) am deeply unhappy with the parameters of CustomBuild.  They're not
@@ -359,7 +323,29 @@ func (i ImageTarget) InferImagePropertiesFromCluster(reg container.Registry, clu
 		refs = refs.WithoutRegistry()
 	}
 
-	i.Refs = refs
+	return refs, nil
+}
+
+// inferImageProperties sets properties on the underlying image spec.
+//
+// This should eventually go away but helps bridge some of the Tiltfile/engine
+// semantics with the apiserver models for now.
+func (i ImageTarget) inferImageProperties(clusterNeeds v1alpha1.ClusterImageNeeds, clusterName string) (ImageTarget, error) {
+	db, ok := i.BuildDetails.(DockerBuild)
+	if ok {
+		db.DockerImageSpec.Ref = i.ImageMapSpec.Selector
+		db.DockerImageSpec.ClusterNeeds = clusterNeeds
+		db.DockerImageSpec.Cluster = clusterName
+		i.BuildDetails = db
+	}
+
+	cb, ok := i.BuildDetails.(CustomBuild)
+	if ok {
+		cb.CmdImageSpec.Ref = i.ImageMapSpec.Selector
+		cb.CmdImageSpec.ClusterNeeds = clusterNeeds
+		cb.CmdImageSpec.Cluster = clusterName
+		i.BuildDetails = cb
+	}
 
 	return i, nil
 }

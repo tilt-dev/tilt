@@ -159,7 +159,7 @@ func NewSanchoLiveUpdateMultiStageManifest(fixture Fixture) model.Manifest {
 		WithImageMapDeps([]string{baseImage.ImageMapName()})
 
 	return manifestbuilder.New(fixture, "sancho").
-		WithK8sYAML(testyaml.Deployment("sancho", srcImage.Refs.ConfigurationRef.String())).
+		WithK8sYAML(testyaml.Deployment("sancho", srcImage.ImageMapSpec.Selector)).
 		WithImageTargets(baseImage, srcImage).
 		Build()
 }

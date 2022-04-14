@@ -19,7 +19,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/trigger"
@@ -42,7 +41,6 @@ type Reconciler struct {
 	mu                   sync.Mutex
 	st                   store.RStore
 	tfl                  tiltfile.TiltfileLoader
-	k8sClient            k8s.Client
 	dockerClient         docker.Client
 	ctrlClient           ctrlclient.Client
 	k8sContextOverride   k8s.KubeContextOverride
@@ -80,15 +78,19 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	return b, nil
 }
 
-func NewReconciler(st store.RStore, tfl tiltfile.TiltfileLoader, k8sClient k8s.Client, dockerClient docker.Client,
-	ctrlClient ctrlclient.Client, scheme *runtime.Scheme,
+func NewReconciler(
+	st store.RStore,
+	tfl tiltfile.TiltfileLoader,
+	dockerClient docker.Client,
+	ctrlClient ctrlclient.Client,
+	scheme *runtime.Scheme,
 	engineMode store.EngineMode,
 	k8sContextOverride k8s.KubeContextOverride,
-	k8sNamespaceOverride k8s.NamespaceOverride) *Reconciler {
+	k8sNamespaceOverride k8s.NamespaceOverride,
+) *Reconciler {
 	return &Reconciler{
 		st:                   st,
 		tfl:                  tfl,
-		k8sClient:            k8sClient,
 		dockerClient:         dockerClient,
 		ctrlClient:           ctrlClient,
 		indexer:              indexer.NewIndexer(scheme, indexTiltfile),
@@ -117,7 +119,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		r.deleteExistingRun(nn)
 
 		// Delete owned objects
-		err := updateOwnedObjects(ctx, r.ctrlClient, nn, nil, nil, false, r.engineMode, container.Registry{}, r.defaultK8sConnection())
+		err := updateOwnedObjects(ctx, r.ctrlClient, nn, nil, nil, false, r.engineMode, r.defaultK8sConnection())
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -132,7 +134,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	run := r.runs[nn]
 	if run == nil {
 		// Initialize the UISession and filewatch if this has never been initialized before.
-		err := updateOwnedObjects(ctx, r.ctrlClient, nn, &tf, nil, false, r.engineMode, container.Registry{}, r.defaultK8sConnection())
+		err := updateOwnedObjects(ctx, r.ctrlClient, nn, &tf, nil, false, r.engineMode, r.defaultK8sConnection())
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -355,7 +357,8 @@ func (r *Reconciler) handleLoaded(
 	tlr *tiltfile.TiltfileLoadResult) error {
 	// TODO(nick): Rewrite to handle multiple tiltfiles.
 	changeEnabledResources := entry.ArgsChanged && tlr != nil && tlr.Error == nil
-	err := updateOwnedObjects(ctx, r.ctrlClient, nn, tf, tlr, changeEnabledResources, r.engineMode, DecideRegistry(ctx, r.k8sClient, tlr), r.defaultK8sConnection())
+	err := updateOwnedObjects(ctx, r.ctrlClient, nn, tf, tlr, changeEnabledResources, r.engineMode,
+		r.defaultK8sConnection())
 	if err != nil {
 		// If updating the API server fails, just return the error, so that the
 		// reconciler will retry.
@@ -439,33 +442,6 @@ func (r *Reconciler) enqueueTriggerQueue(obj client.Object) []reconcile.Request 
 		}
 	}
 	return requests
-}
-
-// DecideRegistry returns the image registry we should use; if detected, a pre-configured
-// local registry; otherwise, the registry specified by the user via default_registry.
-// Otherwise, we'll return the zero value of `s.defaultReg`, which is an empty registry.
-// It has side-effects (a log line) and so should only be called once.
-func DecideRegistry(ctx context.Context, kCli k8s.Client, tlr *tiltfile.TiltfileLoadResult) container.Registry {
-	if !tlr.HasOrchestrator(model.OrchestratorK8s) {
-		return tlr.DefaultRegistry
-	}
-
-	registry := kCli.LocalRegistry(ctx)
-
-	if !registry.Empty() {
-		// If we've found a local registry in the cluster at run-time, use that
-		// instead of the default_registry (if any) declared in the Tiltfile
-		logger.Get(ctx).Infof("Auto-detected local registry from environment: %s", registry)
-
-		if !tlr.DefaultRegistry.Empty() {
-			// The user has specified a default registry in their Tiltfile, but it will be ignored.
-			logger.Get(ctx).Infof("Default registry specified, but will be ignored in favor of auto-detected registry.")
-		}
-
-		return registry
-	}
-
-	return tlr.DefaultRegistry
 }
 
 // The kubernetes connection defined by the CLI.
