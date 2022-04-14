@@ -16,10 +16,20 @@ type Model struct {
 	BuiltinCalls []BuiltinCall
 }
 
-func NewModel() Model {
-	return Model{
+func NewModel(plugins ...Plugin) (Model, error) {
+	m := Model{
 		state: make(map[reflect.Type]interface{}),
 	}
+	for _, ext := range plugins {
+		sExt, isStateful := ext.(StatefulPlugin)
+		if isStateful {
+			err := m.createInitState(sExt)
+			if err != nil {
+				return Model{}, err
+			}
+		}
+	}
+	return m, nil
 }
 
 func (m Model) createInitState(ext StatefulPlugin) error {

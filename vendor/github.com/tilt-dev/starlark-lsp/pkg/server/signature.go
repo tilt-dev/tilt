@@ -12,7 +12,7 @@ func (s *Server) SignatureHelp(ctx context.Context,
 	logger := protocol.LoggerFromContext(ctx).
 		With(textDocumentFields(params.TextDocumentPositionParams)...)
 
-	doc, err := s.docs.Read(params.TextDocument.URI)
+	doc, err := s.docs.Read(ctx, params.TextDocument.URI)
 	if err != nil {
 		return nil, err
 	}

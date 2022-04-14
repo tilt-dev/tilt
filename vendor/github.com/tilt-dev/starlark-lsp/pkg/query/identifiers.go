@@ -2,11 +2,9 @@ package query
 
 import (
 	sitter "github.com/smacker/go-tree-sitter"
-
-	"github.com/tilt-dev/starlark-lsp/pkg/document"
 )
 
-func ExtractIdentifiers(doc document.Document, nodes []*sitter.Node, limit *sitter.Point) []string {
+func ExtractIdentifiers(doc DocumentContent, nodes []*sitter.Node, limit *sitter.Point) []string {
 	identifiers := []string{}
 
 	for i, node := range nodes {

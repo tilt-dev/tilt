@@ -86,31 +86,15 @@ func (a *Analyzer) Completion(doc document.Document, pos protocol.Position) *pro
 }
 
 func (a *Analyzer) completeExpression(doc document.Document, nodes []*sitter.Node, pt sitter.Point) []protocol.DocumentSymbol {
-	symbols := []protocol.DocumentSymbol{}
-	content := ""
-
+	var nodeAtPoint *sitter.Node
 	if len(nodes) > 0 {
-		nodeAtPoint := nodes[len(nodes)-1]
-		symbols = append(symbols, query.SymbolsInScope(doc, nodeAtPoint)...)
-		content = doc.ContentRange(sitter.Range{
-			StartByte: nodes[0].StartByte(),
-			EndByte:   nodes[len(nodes)-1].EndByte(),
-		})
-
-		if fnName, args := keywordArgContext(doc, nodeAtPoint, pt); fnName != "" {
-			if fn, ok := a.signatureInformation(doc, nodeAtPoint, fnName); ok {
-				symbols = append(symbols, a.keywordArgSymbols(fn, args)...)
-			}
-		}
-	} else {
-		content = doc.Content(doc.Tree().RootNode())
+		nodeAtPoint = nodes[len(nodes)-1]
 	}
-
-	symbols = append(symbols, a.builtins.Symbols...)
+	symbols := a.availableSymbols(doc, nodeAtPoint, pt)
 	identifiers := query.ExtractIdentifiers(doc, nodes, &pt)
 
 	a.logger.Debug("completion attempt",
-		zap.String("code", content),
+		zap.String("code", document.NodesToContent(doc, nodes)),
 		zap.Strings("nodes", func() []string {
 			types := make([]string, len(nodes))
 			for i, n := range nodes {
@@ -142,6 +126,39 @@ func (a *Analyzer) completeExpression(doc document.Document, nodes []*sitter.Nod
 	return symbols
 }
 
+// Returns a list of available symbols for completion as follows:
+// - If in a function argument list, include keyword args for that function
+// - Add symbols in scope for the node at point, excluding symbols at the module
+//   level (document symbols), because the document already has those computed
+// - Add document symbols
+// - Add builtins
+func (a *Analyzer) availableSymbols(doc document.Document, nodeAtPoint *sitter.Node, pt sitter.Point) []protocol.DocumentSymbol {
+	symbols := []protocol.DocumentSymbol{}
+	if nodeAtPoint != nil {
+		if fnName, args := keywordArgContext(doc, nodeAtPoint, pt); fnName != "" {
+			if fn, ok := a.signatureInformation(doc, nodeAtPoint, fnName); ok {
+				symbols = append(symbols, a.keywordArgSymbols(fn, args)...)
+			}
+		}
+		symbols = append(symbols, query.SymbolsInScope(doc, nodeAtPoint)...)
+	}
+	docAndBuiltin := append(doc.Symbols(), a.builtins.Symbols...)
+	for _, sym := range docAndBuiltin {
+		found := false
+		for _, s := range symbols {
+			if sym.Name == s.Name {
+				found = true
+				break
+			}
+		}
+		if !found {
+			symbols = append(symbols, sym)
+		}
+	}
+
+	return symbols
+}
+
 func (a *Analyzer) nodesAtPointForCompletion(doc document.Document, pt sitter.Point) ([]*sitter.Node, bool) {
 	node, ok := query.NodeAtPoint(doc, pt)
 	if !ok {
@@ -161,7 +178,7 @@ func (a *Analyzer) nodesForCompletion(doc document.Document, node *sitter.Node, 
 			// No completion inside a string or comment
 			return nodes, false
 		}
-	case query.NodeTypeModule:
+	case query.NodeTypeModule, query.NodeTypeBlock:
 		// Sometimes the top-level module is the most granular node due to
 		// location of the point being between children, in this case, advance
 		// to the first child node that appears after the point

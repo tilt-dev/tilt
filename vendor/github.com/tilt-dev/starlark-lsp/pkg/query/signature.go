@@ -9,11 +9,10 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 
 	"github.com/tilt-dev/starlark-lsp/pkg/docstring"
-	"github.com/tilt-dev/starlark-lsp/pkg/document"
 )
 
 // Functions finds all function definitions that are direct children of the provided sitter.Node.
-func Functions(doc document.Document, node *sitter.Node) map[string]protocol.SignatureInformation {
+func Functions(doc DocumentContent, node *sitter.Node) map[string]protocol.SignatureInformation {
 	signatures := make(map[string]protocol.SignatureInformation)
 
 	// N.B. we don't use a query here for a couple reasons:
@@ -36,7 +35,7 @@ func Functions(doc document.Document, node *sitter.Node) map[string]protocol.Sig
 }
 
 // Function finds a function definition for the given function name that is a direct child of the provided sitter.Node.
-func Function(doc document.Document, node *sitter.Node, fnName string) (protocol.SignatureInformation, bool) {
+func Function(doc DocumentContent, node *sitter.Node, fnName string) (protocol.SignatureInformation, bool) {
 	for n := node.NamedChild(0); n != nil; n = n.NextNamedSibling() {
 		if n.Type() != NodeTypeFunctionDef {
 			continue
@@ -50,7 +49,7 @@ func Function(doc document.Document, node *sitter.Node, fnName string) (protocol
 	return protocol.SignatureInformation{}, false
 }
 
-func extractSignatureInformation(doc document.Document, n *sitter.Node) (string, protocol.SignatureInformation) {
+func extractSignatureInformation(doc DocumentContent, n *sitter.Node) (string, protocol.SignatureInformation) {
 	if n.Type() != NodeTypeFunctionDef {
 		panic(fmt.Errorf("invalid node type: %s", n.Type()))
 	}
@@ -73,7 +72,7 @@ func extractSignatureInformation(doc document.Document, n *sitter.Node) (string,
 
 	if fnDocs.Description != "" {
 		sig.Documentation = protocol.MarkupContent{
-			Kind:  protocol.Markdown,
+			Kind:  protocol.PlainText,
 			Value: fnDocs.Description,
 		}
 	}
@@ -102,22 +101,14 @@ func signatureLabel(params []protocol.ParameterInformation, returnType string) s
 	return sb.String()
 }
 
-func extractDocstring(doc document.Document, n *sitter.Node) docstring.Parsed {
+func extractDocstring(doc DocumentContent, n *sitter.Node) docstring.Parsed {
 	if n.Type() != NodeTypeBlock {
 		panic(fmt.Errorf("invalid node type: %s", n.Type()))
 	}
 
 	if exprNode := n.NamedChild(0); exprNode != nil && exprNode.Type() == NodeTypeExpressionStatement {
 		if docStringNode := exprNode.NamedChild(0); docStringNode != nil && docStringNode.Type() == NodeTypeString {
-			// TODO(milas): need to do nested quote un-escaping (generally
-			// 	docstrings use triple-quoted strings so this isn't a huge
-			// 	issue at least)
-			rawDocString := doc.Content(docStringNode)
-			// this is the raw source, so it will be wrapped with with """ / ''' / " / '
-			// (technically this could trim off too much but not worth the
-			// headache to deal with valid leading/trailing quotes)
-			rawDocString = strings.Trim(rawDocString, `"'`)
-			return docstring.Parse(rawDocString)
+			return docstring.Parse(Unquote(doc.Input(), docStringNode))
 		}
 	}
 

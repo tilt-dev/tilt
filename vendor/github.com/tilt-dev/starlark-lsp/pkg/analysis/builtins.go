@@ -4,14 +4,16 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	"github.com/pkg/errors"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	"go.lsp.dev/protocol"
+	"go.lsp.dev/uri"
 
 	"github.com/tilt-dev/starlark-lsp/pkg/document"
 	"github.com/tilt-dev/starlark-lsp/pkg/query"
@@ -114,9 +116,9 @@ func LoadBuiltinsFromSource(ctx context.Context, contents []byte, path string) (
 	}
 
 	functions := make(map[string]protocol.SignatureInformation)
-	doc := document.NewDocument(contents, tree)
-	docFunctions := query.Functions(doc, tree.RootNode())
-	symbols := query.DocumentSymbols(doc)
+	doc := document.NewDocument(uri.File(path), contents, tree)
+	docFunctions := doc.Functions()
+	symbols := doc.Symbols()
 	doc.Close()
 
 	for fn, sig := range docFunctions {

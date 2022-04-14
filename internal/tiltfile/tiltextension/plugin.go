@@ -71,12 +71,13 @@ func (e *Plugin) recordExtensionLoaded(ctx context.Context, t *starlark.Thread, 
 }
 
 func (e *Plugin) LocalPath(t *starlark.Thread, arg string) (localPath string, err error) {
+	if !strings.HasPrefix(arg, extensionPrefix) {
+		return "", nil
+	}
+
 	ctx, err := starkit.ContextFromThread(t)
 	if err != nil {
 		return "", err
-	}
-	if !strings.HasPrefix(arg, extensionPrefix) {
-		return "", nil
 	}
 
 	moduleName := strings.TrimPrefix(arg, extensionPrefix)

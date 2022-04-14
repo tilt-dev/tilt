@@ -1137,6 +1137,28 @@ func wireClientGetter(ctx context.Context) (*client2.Getter, error) {
 	return getter, nil
 }
 
+func wireLsp(ctx context.Context, l logger.Logger, subcommand model.TiltSubcommand) (cmdLspDeps, error) {
+	deferredClient := controllers.ProvideDeferredClient()
+	reducer := _wireReducerValue
+	storeLogActionsFlag := provideLogActions()
+	storeStore := store.NewStore(reducer, storeLogActionsFlag)
+	base := xdg.NewTiltDevBase()
+	reconciler, err := extensionrepo.NewReconciler(deferredClient, storeStore, base)
+	if err != nil {
+		return cmdLspDeps{}, err
+	}
+	scheme := v1alpha1.NewScheme()
+	tiltBuild := provideTiltInfo()
+	gitRemote := git.ProvideGitRemote()
+	tiltAnalytics, err := newAnalytics(l, subcommand, tiltBuild, gitRemote)
+	if err != nil {
+		return cmdLspDeps{}, err
+	}
+	extensionReconciler := extension.NewReconciler(deferredClient, scheme, tiltAnalytics)
+	cliCmdLspDeps := newLspDeps(reconciler, extensionReconciler, tiltAnalytics)
+	return cliCmdLspDeps, nil
+}
+
 // wire.go:
 
 var K8sWireSet = wire.NewSet(k8s.ProvideClusterProduct, k8s.ProvideClusterName, k8s.ProvideKubeContext, k8s.ProvideKubeConfig, k8s.ProvideClientConfig, k8s.ProvideClientset, k8s.ProvideRESTConfig, k8s.ProvidePortForwardClient, k8s.ProvideConfigNamespace, k8s.ProvideContainerRuntime, k8s.ProvideServerVersion, k8s.ProvideK8sClient, ProvideKubeContextOverride,
