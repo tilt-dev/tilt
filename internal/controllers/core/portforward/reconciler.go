@@ -12,6 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
+	"github.com/tilt-dev/tilt/internal/controllers/apis/cluster"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/pkg/apis"
@@ -37,8 +38,8 @@ var clusterGVK = v1alpha1.SchemeGroupVersion.WithKind("Cluster")
 
 type Reconciler struct {
 	store      store.RStore
-	kClient    k8s.Client
 	ctrlClient ctrlclient.Client
+	clients    *cluster.ClientManager
 	requeuer   *indexer.Requeuer
 	indexer    *indexer.Indexer
 
@@ -53,12 +54,12 @@ func NewReconciler(
 	ctrlClient ctrlclient.Client,
 	scheme *runtime.Scheme,
 	store store.RStore,
-	kClient k8s.Client,
+	clients cluster.ClientProvider,
 ) *Reconciler {
 	return &Reconciler{
 		store:          store,
-		kClient:        kClient,
 		ctrlClient:     ctrlClient,
+		clients:        cluster.NewClientManager(clients),
 		requeuer:       indexer.NewRequeuer(),
 		indexer:        indexer.NewIndexer(scheme, indexPortForward),
 		activeForwards: make(map[types.NamespacedName]*portForwardEntry),
@@ -92,9 +93,16 @@ func (r *Reconciler) reconcile(ctx context.Context, name types.NamespacedName) e
 		return nil
 	}
 
+	var clusterObj v1alpha1.Cluster
+	if err := r.ctrlClient.Get(ctx, clusterNN(pf), &clusterObj); err != nil {
+		return err
+	}
+	clusterUpToDate := !r.clients.Refresh(pf, &clusterObj)
+
 	needsCreate := true
 	if active, ok := r.activeForwards[name]; ok {
-		if equality.Semantic.DeepEqual(active.spec, pf.Spec) &&
+		if clusterUpToDate &&
+			equality.Semantic.DeepEqual(active.spec, pf.Spec) &&
 			equality.Semantic.DeepEqual(active.meta.Annotations[v1alpha1.AnnotationManifest],
 				pf.ObjectMeta.Annotations[v1alpha1.AnnotationManifest]) {
 
@@ -107,8 +115,15 @@ func (r *Reconciler) reconcile(ctx context.Context, name types.NamespacedName) e
 	}
 
 	if needsCreate {
+		kCli, err := r.clients.GetK8sClient(pf, &clusterObj)
+		if err != nil {
+			// TODO(milas): a top-level error field on PortForwardStatus is
+			// 	likely warranted to report issues like this
+			return err
+		}
+
 		// Create a new PortForward OR recreate a modified PortForward (stopped above)
-		entry := newEntry(ctx, pf)
+		entry := newEntry(ctx, pf, kCli)
 		r.activeForwards[name] = entry
 
 		// Treat port-forwarding errors as part of the pod log
@@ -172,7 +187,7 @@ func (r *Reconciler) onePortForward(ctx context.Context, entry *portForwardEntry
 			forward.LocalPort, forward.ContainerPort, err)
 	}
 
-	pf, err := r.kClient.CreatePortForwarder(
+	pf, err := entry.client.CreatePortForwarder(
 		ctx,
 		k8s.Namespace(entry.spec.Namespace),
 		k8s.PodID(entry.spec.PodName),
@@ -256,9 +271,10 @@ type portForwardEntry struct {
 
 	mu     sync.Mutex
 	status map[Forward]ForwardStatus
+	client k8s.Client
 }
 
-func newEntry(ctx context.Context, pf *PortForward) *portForwardEntry {
+func newEntry(ctx context.Context, pf *PortForward, cli k8s.Client) *portForwardEntry {
 	ctx, cancel := context.WithCancel(ctx)
 	return &portForwardEntry{
 		name:   types.NamespacedName{Name: pf.Name, Namespace: pf.Namespace},
@@ -267,6 +283,7 @@ func newEntry(ctx context.Context, pf *PortForward) *portForwardEntry {
 		ctx:    ctx,
 		cancel: cancel,
 		status: make(map[Forward]ForwardStatus),
+		client: cli,
 	}
 }
 
@@ -302,13 +319,17 @@ func indexPortForward(obj ctrlclient.Object) []indexer.Key {
 
 	if pf.Spec.Cluster != "" {
 		keys = append(keys, indexer.Key{
-			Name: types.NamespacedName{
-				Namespace: pf.Namespace,
-				Name:      pf.Spec.Cluster,
-			},
-			GVK: clusterGVK,
+			Name: clusterNN(pf),
+			GVK:  clusterGVK,
 		})
 	}
 
 	return keys
+}
+
+func clusterNN(pf *v1alpha1.PortForward) types.NamespacedName {
+	return types.NamespacedName{
+		Namespace: pf.ObjectMeta.Namespace,
+		Name:      pf.Spec.Cluster,
+	}
 }

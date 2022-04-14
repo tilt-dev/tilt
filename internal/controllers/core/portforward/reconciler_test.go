@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apis/cluster"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/pkg/apis"
@@ -43,11 +44,12 @@ func TestCreatePortForward(t *testing.T) {
 
 	pf := f.makeSimplePF(pfFooName, 8000, 8080)
 	f.Create(pf)
+	kCli := f.clients.MustK8sClient(clusterNN(pf))
 
 	f.requirePortForwardStarted(pfFooName, 8000, 8080)
 	require.Equal(t, 1, len(f.r.activeForwards))
-	assert.Equal(t, "pod-pf_foo", f.kCli.LastForwardPortPodID().String())
-	assert.Equal(t, 8080, f.kCli.LastForwardPortRemotePort())
+	assert.Equal(t, "pod-pf_foo", kCli.LastForwardPortPodID().String())
+	assert.Equal(t, 8080, kCli.LastForwardPortRemotePort())
 }
 
 func TestDeletePortForward(t *testing.T) {
@@ -57,12 +59,13 @@ func TestDeletePortForward(t *testing.T) {
 
 	pf := f.makeSimplePF(pfFooName, 8000, 8080)
 	f.Create(pf)
+	kCli := f.clients.MustK8sClient(clusterNN(pf))
 	f.requirePortForwardStarted(pfFooName, 8000, 8080)
 
 	require.Equal(t, 1, len(f.r.activeForwards))
-	assert.Equal(t, "pod-pf_foo", f.kCli.LastForwardPortPodID().String())
-	assert.Equal(t, 8080, f.kCli.LastForwardPortRemotePort())
-	origForwardCtx := f.kCli.LastForwardContext()
+	assert.Equal(t, "pod-pf_foo", kCli.LastForwardPortPodID().String())
+	assert.Equal(t, 8080, kCli.LastForwardPortRemotePort())
+	origForwardCtx := kCli.LastForwardContext()
 
 	f.Delete(pf)
 	f.requirePortForwardDeleted(pfFooName)
@@ -78,20 +81,21 @@ func TestModifyPortForward(t *testing.T) {
 
 	pf := f.makeSimplePF(pfFooName, 8000, 8080)
 	f.Create(pf)
+	kCli := f.clients.MustK8sClient(clusterNN(pf))
 	f.requirePortForwardStarted(pfFooName, 8000, 8080)
 
 	require.Equal(t, 1, len(f.r.activeForwards))
-	assert.Equal(t, "pod-pf_foo", f.kCli.LastForwardPortPodID().String())
-	assert.Equal(t, 8080, f.kCli.LastForwardPortRemotePort())
-	origForwardCtx := f.kCli.LastForwardContext()
+	assert.Equal(t, "pod-pf_foo", kCli.LastForwardPortPodID().String())
+	assert.Equal(t, 8080, kCli.LastForwardPortRemotePort())
+	origForwardCtx := kCli.LastForwardContext()
 
 	pf = f.makeSimplePF(pfFooName, 8001, 9090)
 	f.GetAndUpdate(pf)
 	f.requirePortForwardStarted(pfFooName, 8001, 9090)
 
 	require.Equal(t, 1, len(f.r.activeForwards))
-	assert.Equal(t, "pod-pf_foo", f.kCli.LastForwardPortPodID().String())
-	assert.Equal(t, 9090, f.kCli.LastForwardPortRemotePort())
+	assert.Equal(t, "pod-pf_foo", kCli.LastForwardPortPodID().String())
+	assert.Equal(t, 9090, kCli.LastForwardPortRemotePort())
 
 	f.assertContextCancelled(t, origForwardCtx)
 }
@@ -107,12 +111,13 @@ func TestModifyPortForwardManifestName(t *testing.T) {
 
 	pf := f.makePF(pfFooName, "manifestA", "pod-pf_foo", "", fwds)
 	f.Create(pf)
+	kCli := f.clients.MustK8sClient(clusterNN(pf))
 	f.requirePortForwardStarted(pfFooName, 8000, 8080)
 
 	require.Equal(t, 1, len(f.r.activeForwards))
-	assert.Equal(t, "pod-pf_foo", f.kCli.LastForwardPortPodID().String())
-	assert.Equal(t, 8080, f.kCli.LastForwardPortRemotePort())
-	origForwardCtx := f.kCli.LastForwardContext()
+	assert.Equal(t, "pod-pf_foo", kCli.LastForwardPortPodID().String())
+	assert.Equal(t, 8080, kCli.LastForwardPortRemotePort())
+	origForwardCtx := kCli.LastForwardContext()
 
 	pf = f.makePF(pfFooName, "manifestB", "pod-pf_foo", "", fwds)
 	f.GetAndUpdate(pf)
@@ -122,8 +127,8 @@ func TestModifyPortForwardManifestName(t *testing.T) {
 	f.requirePortForwardStarted(pfFooName, 8000, 8080)
 
 	require.Equal(t, 1, len(f.r.activeForwards))
-	assert.Equal(t, "pod-pf_foo", f.kCli.LastForwardPortPodID().String())
-	assert.Equal(t, 8080, f.kCli.LastForwardPortRemotePort())
+	assert.Equal(t, "pod-pf_foo", kCli.LastForwardPortPodID().String())
+	assert.Equal(t, 8080, kCli.LastForwardPortRemotePort())
 
 	f.assertContextCancelled(t, origForwardCtx)
 }
@@ -140,15 +145,16 @@ func TestMultipleForwardsForOnePod(t *testing.T) {
 
 	pf := f.makeSimplePFMultipleForwards(pfFooName, forwards)
 	f.Create(pf)
+	kCli := f.clients.MustK8sClient(clusterNN(pf))
 	f.requirePortForwardStarted(pfFooName, 8000, 8080)
 	f.requirePortForwardStarted(pfFooName, 8001, 8081)
 
 	require.Equal(t, 1, len(f.r.activeForwards))
-	require.Equal(t, 2, f.kCli.CreatePortForwardCallCount())
+	require.Equal(t, 2, kCli.CreatePortForwardCallCount())
 
 	var seen8080, seen8081 bool
 	var contexts []context.Context
-	for _, call := range f.kCli.PortForwardCalls() {
+	for _, call := range kCli.PortForwardCalls() {
 		assert.Equal(t, "pod-pf_foo", call.PodID.String())
 		switch call.RemotePort {
 		case 8080:
@@ -186,17 +192,18 @@ func TestMultipleForwardsMultiplePods(t *testing.T) {
 	pfBar := f.makePF(pfBarName, "bar", "pod-pf_bar", "ns-bar", fwdsBar)
 	f.Create(pfFoo)
 	f.Create(pfBar)
+	kCli := f.clients.MustK8sClient(clusterNN(pfFoo))
 	f.requirePortForwardStarted(pfFooName, 8000, 8080)
 	f.requirePortForwardStarted(pfBarName, 8001, 8081)
 
 	require.Equal(t, 2, len(f.r.activeForwards))
-	require.Equal(t, 2, f.kCli.CreatePortForwardCallCount())
+	require.Equal(t, 2, kCli.CreatePortForwardCallCount())
 
 	// PortForwards are executed async so we can't guarantee the order;
 	// just make sure each expected call appears exactly once
 	var seenFoo, seenBar bool
 	var ctxFoo, ctxBar context.Context
-	for _, call := range f.kCli.PortForwardCalls() {
+	for _, call := range kCli.PortForwardCalls() {
 		if call.PodID.String() == "pod-pf_foo" {
 			seenFoo = true
 			ctxFoo = call.Context
@@ -246,8 +253,9 @@ func TestPortForwardRuntimeFailure(t *testing.T) {
 	// wait for port forward to be successful
 	f.requirePortForwardStarted(pfFooName, 8000, 8080)
 
+	kCli := f.clients.MustK8sClient(clusterNN(pf))
 	const errMsg = "fake runtime port forwarding error"
-	f.kCli.LastForwarder().TriggerFailure(errors.New(errMsg))
+	kCli.LastForwarder().TriggerFailure(errors.New(errMsg))
 
 	f.requirePortForwardError(pfFooName, 8000, 8080, errMsg)
 }
@@ -269,8 +277,9 @@ func TestPortForwardPartialSuccess(t *testing.T) {
 	f.requirePortForwardStarted(pfFooName, 8001, 8081)
 	f.requirePortForwardError(pfFooName, k8s.MagicTestExplodingPort, 8082, "fake error starting port forwarding")
 
+	kCli := f.clients.MustK8sClient(clusterNN(pf))
 	const errMsg = "fake runtime port forwarding error"
-	for _, pfCall := range f.kCli.PortForwardCalls() {
+	for _, pfCall := range kCli.PortForwardCalls() {
 		if pfCall.RemotePort == 8080 {
 			pfCall.Forwarder.TriggerFailure(errors.New(errMsg))
 		}
@@ -297,27 +306,60 @@ func TestIndexing(t *testing.T) {
 	require.Empty(t, reqs)
 }
 
+func TestClusterChange(t *testing.T) {
+	f := newPFRFixture(t)
+
+	require.Equal(t, 0, len(f.r.activeForwards))
+
+	pf := f.makeSimplePF(pfFooName, 8000, 8080)
+	f.Create(pf)
+	clusterKey := clusterNN(pf)
+
+	// port forward should be started and have made a call to fake client
+	f.requirePortForwardStarted(pfFooName, 8000, 8080)
+	require.Equal(t, 1, len(f.r.activeForwards))
+	assert.Equal(t, "pod-pf_foo",
+		f.clients.MustK8sClient(clusterKey).LastForwardPortPodID().String())
+
+	// put the cluster into an error state and verify that active forward(s)
+	// are stopped
+	f.clients.EnsureK8sClusterError(f.Context(), clusterKey, errors.New("oh no"))
+	_, err := f.Reconcile(apis.Key(pf))
+	require.EqualError(t, err, "oh no")
+	require.Empty(t, len(f.r.activeForwards),
+		"Port forward should have been stopped")
+
+	// create a new healthy client and verify that it gets used
+	kCli, _ := f.clients.EnsureK8sCluster(f.Context(), clusterKey)
+	require.Zero(t, kCli.CreatePortForwardCallCount(),
+		"No port forwards should exist")
+	f.MustReconcile(apis.Key(pf))
+	f.requirePortForwardStarted(pfFooName, 8000, 8080)
+	require.Equal(t, 1, len(f.r.activeForwards))
+	assert.Equal(t, "pod-pf_foo", kCli.LastForwardPortPodID().String())
+	assert.Equal(t, 8080, kCli.LastForwardPortRemotePort())
+}
+
 type pfrFixture struct {
 	*fake.ControllerFixture
-	t    *testing.T
-	kCli *k8s.FakeK8sClient
-	st   store.RStore
-	r    *Reconciler
+	t       *testing.T
+	st      store.RStore
+	r       *Reconciler
+	clients *cluster.FakeClientProvider
 }
 
 func newPFRFixture(t *testing.T) *pfrFixture {
-	kCli := k8s.NewFakeK8sClient(t)
-
 	cfb := fake.NewControllerFixtureBuilder(t)
-	r := NewReconciler(cfb.Client, cfb.Scheme(), cfb.Store, kCli)
+	clients := cluster.NewFakeClientProvider(t, cfb.Client)
+	r := NewReconciler(cfb.Client, cfb.Scheme(), cfb.Store, clients)
 	indexer.StartSourceForTesting(cfb.Context(), r.requeuer, r, nil)
 
 	return &pfrFixture{
 		ControllerFixture: cfb.Build(r),
 		t:                 t,
 		st:                cfb.Store,
-		kCli:              kCli,
 		r:                 r,
+		clients:           clients,
 	}
 }
 
@@ -395,6 +437,12 @@ func (f *pfrFixture) GetAndUpdate(pf *PortForward) ctrl.Result {
 	return f.MustReconcile(f.KeyForObject(pf))
 }
 
+func (f *pfrFixture) Create(pf *v1alpha1.PortForward) ctrl.Result {
+	f.t.Helper()
+	f.ensureCluster(pf)
+	return f.ControllerFixture.Create(pf)
+}
+
 func (f *pfrFixture) assertContextCancelled(t *testing.T, ctx context.Context) {
 	if assert.Error(t, ctx.Err(), "expect cancelled context to have a non-nil error") {
 		assert.Equal(t, context.Canceled, ctx.Err(), "expect context to be cancelled")
@@ -440,4 +488,11 @@ func (f *pfrFixture) makeForward(localPort, containerPort int32, host string) Fo
 		ContainerPort: containerPort,
 		Host:          host,
 	}
+}
+
+func (f *pfrFixture) ensureCluster(pf *v1alpha1.PortForward) {
+	f.t.Helper()
+	pf = pf.DeepCopy()
+	pf.Default()
+	f.clients.EnsureK8sCluster(f.Context(), clusterNN(pf))
 }
