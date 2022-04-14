@@ -935,7 +935,7 @@ func TestDisablingCancelsBuild(t *testing.T) {
 	f.waitForCompletedBuildCount(1)
 
 	f.withManifestState("local", func(ms store.ManifestState) {
-		require.Equal(t, "build canceled", ms.LastBuild().Error.Error())
+		require.EqualError(t, ms.LastBuild().Error, "build canceled")
 	})
 
 	err = f.Stop()
@@ -962,7 +962,7 @@ local_resource('local', 'sleep 10000')
 	f.waitForCompletedBuildCount(1)
 
 	f.withManifestState("local", func(ms store.ManifestState) {
-		require.Equal(t, "build canceled", ms.LastBuild().Error.Error())
+		require.EqualError(t, ms.LastBuild().Error, "build canceled")
 	})
 
 	err = f.Stop()
