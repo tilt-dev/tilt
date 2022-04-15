@@ -21,6 +21,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/apis/cluster"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/clusters"
@@ -49,6 +50,7 @@ type Reconciler struct {
 	dockerClientFactory DockerClientFactory
 
 	k8sClientFactory KubernetesClientFactory
+	wsList           *server.WebsocketList
 }
 
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
@@ -67,6 +69,7 @@ func NewReconciler(
 	localDockerEnv docker.LocalEnv,
 	dockerClientFactory DockerClientFactory,
 	k8sClientFactory KubernetesClientFactory,
+	wsList *server.WebsocketList,
 ) *Reconciler {
 	return &Reconciler{
 		globalCtx:           globalCtx,
@@ -78,6 +81,7 @@ func NewReconciler(
 		localDockerEnv:      localDockerEnv,
 		dockerClientFactory: dockerClientFactory,
 		k8sClientFactory:    k8sClientFactory,
+		wsList:              wsList,
 	}
 }
 
@@ -94,6 +98,9 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	if apierrors.IsNotFound(err) || !obj.ObjectMeta.DeletionTimestamp.IsZero() {
 		r.store.Dispatch(clusters.NewClusterDeleteAction(request.Name))
 		r.connManager.delete(nn)
+		r.wsList.ForEach(func(ws *server.WebsocketSubscriber) {
+			ws.SendClusterUpdate(ctx, nn, nil)
+		})
 		return ctrl.Result{}, nil
 	}
 
@@ -173,6 +180,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		return ctrl.Result{}, err
 	}
 
+	r.wsList.ForEach(func(ws *server.WebsocketSubscriber) {
+		ws.SendClusterUpdate(ctx, nn, &obj)
+	})
+
 	return ctrl.Result{RequeueAfter: requeueAfter}, nil
 }
 
@@ -243,18 +254,18 @@ func (r *Reconciler) maybeUpdateStatus(ctx context.Context, obj *v1alpha1.Cluste
 		return nil
 	}
 
-	updated := obj.DeepCopy()
-	updated.Status = newStatus
-	err := r.ctrlClient.Status().Update(ctx, updated)
+	oldStatus := obj.Status
+	obj.Status = newStatus
+	err := r.ctrlClient.Status().Update(ctx, obj)
 	if err != nil {
 		return fmt.Errorf("updating cluster %s status: %v", obj.Name, err)
 	}
 
-	if newStatus.Error != "" && obj.Status.Error != newStatus.Error {
+	if newStatus.Error != "" && oldStatus.Error != newStatus.Error {
 		logger.Get(ctx).Errorf("Cluster status error: %v", newStatus.Error)
 	}
 
-	r.reportConnectionEvent(ctx, updated)
+	r.reportConnectionEvent(ctx, obj)
 
 	return nil
 }

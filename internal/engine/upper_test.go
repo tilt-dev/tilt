@@ -3394,7 +3394,8 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	cir := cmdimage.NewReconciler(cdc, sch, dockerClient, ib)
 	clr := cluster.NewReconciler(ctx, cdc, st, clock, clusterClients, docker.LocalEnv{},
 		cluster.FakeDockerClientOrError(dockerClient, nil),
-		cluster.FakeKubernetesClientOrError(kClient, nil))
+		cluster.FakeKubernetesClientOrError(kClient, nil),
+		wsl)
 
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
 		fwc,
