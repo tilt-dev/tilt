@@ -2,10 +2,12 @@ package dockerimage
 
 import (
 	"context"
+	"sync"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
@@ -15,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/tilt-dev/tilt/internal/build"
+	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -27,33 +30,54 @@ var clusterGVK = v1alpha1.SchemeGroupVersion.WithKind("Cluster")
 
 // Manages the DockerImage API object.
 type Reconciler struct {
-	client  ctrlclient.Client
-	indexer *indexer.Indexer
-	docker  docker.Client
-	ib      *build.ImageBuilder
+	client   ctrlclient.Client
+	indexer  *indexer.Indexer
+	docker   docker.Client
+	ib       *build.ImageBuilder
+	requeuer *indexer.Requeuer
+
+	mu      sync.Mutex
+	results map[types.NamespacedName]*result
 }
 
 var _ reconcile.Reconciler = &Reconciler{}
 
 func NewReconciler(client ctrlclient.Client, scheme *runtime.Scheme, docker docker.Client, ib *build.ImageBuilder) *Reconciler {
 	return &Reconciler{
-		client:  client,
-		indexer: indexer.NewIndexer(scheme, indexDockerImage),
-		docker:  docker,
-		ib:      ib,
+		client:   client,
+		indexer:  indexer.NewIndexer(scheme, indexDockerImage),
+		docker:   docker,
+		ib:       ib,
+		results:  make(map[types.NamespacedName]*result),
+		requeuer: indexer.NewRequeuer(),
 	}
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	nn := req.NamespacedName
 	obj := &v1alpha1.DockerImage{}
-	err := r.client.Get(ctx, req.NamespacedName, obj)
+	err := r.client.Get(ctx, nn, obj)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return ctrl.Result{}, err
 	}
-	r.indexer.OnReconcile(req.NamespacedName, obj)
+	r.indexer.OnReconcile(nn, obj)
 
 	if apierrors.IsNotFound(err) || obj.ObjectMeta.DeletionTimestamp != nil {
+		delete(r.results, nn)
 		return ctrl.Result{}, nil
+	}
+
+	err = r.maybeUpdateImageStatus(ctx, nn, obj)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	err = r.maybeUpdateImageMapStatus(ctx, nn)
+	if err != nil {
+		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{}, nil
@@ -75,24 +99,106 @@ func (r *Reconciler) ForceApply(
 	// if you want the live container to keep receiving updates
 	// while an image build is going on in parallel.
 	startTime := apis.NowMicro()
-	MaybeUpdateStatus(ctx, r.client, iTarget, ToBuildingStatus(iTarget, startTime))
+	nn := types.NamespacedName{Name: iTarget.DockerImageName}
+	r.setImageStatus(nn, ToBuildingStatus(iTarget, startTime))
+
+	// Requeue the reconciler twice: once when the build has started and once
+	// after it has finished.
+	r.requeuer.Add(nn)
+	defer r.requeuer.Add(nn)
 
 	refs, stages, err := r.ib.Build(ctx, iTarget, cluster, imageMaps, ps)
 	if err != nil {
-		MaybeUpdateStatus(ctx, r.client, iTarget, ToCompletedFailStatus(iTarget, startTime, stages, err))
+		r.setImageStatus(nn, ToCompletedFailStatus(iTarget, startTime, stages, err))
 		return store.ImageBuildResult{}, err
 	}
 
-	MaybeUpdateStatus(ctx, r.client, iTarget, ToCompletedSuccessStatus(iTarget, startTime, stages, refs))
+	r.setImageStatus(nn, ToCompletedSuccessStatus(iTarget, startTime, stages, refs))
 
-	return UpdateImageMap(
-		ctx, r.client, r.docker,
+	buildResult, err := UpdateImageMap(
+		ctx, r.docker,
 		iTarget, cluster, imageMaps, &startTime, refs)
+	if err != nil {
+		return store.ImageBuildResult{}, err
+	}
+	r.setImageMapStatus(nn, iTarget, buildResult.ImageMapStatus)
+	return buildResult, nil
+}
+
+func (r *Reconciler) ensureResult(nn types.NamespacedName) *result {
+	res, ok := r.results[nn]
+	if !ok {
+		res = &result{}
+		r.results[nn] = res
+	}
+	return res
+}
+
+func (r *Reconciler) setImageStatus(nn types.NamespacedName, status v1alpha1.DockerImageStatus) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	result := r.ensureResult(nn)
+	result.image = status
+}
+
+func (r *Reconciler) setImageMapStatus(nn types.NamespacedName, iTarget model.ImageTarget, status v1alpha1.ImageMapStatus) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	result := r.ensureResult(nn)
+	result.imageMapName = iTarget.ImageMapName()
+	result.imageMap = status
+}
+
+// Update the DockerImage status if necessary.
+func (r *Reconciler) maybeUpdateImageStatus(ctx context.Context, nn types.NamespacedName, obj *v1alpha1.DockerImage) error {
+	newStatus := v1alpha1.DockerImageStatus{}
+	existing, ok := r.results[nn]
+	if ok {
+		newStatus = existing.image
+	}
+
+	if apicmp.DeepEqual(obj.Status, newStatus) {
+		return nil
+	}
+
+	update := obj.DeepCopy()
+	update.Status = *(newStatus.DeepCopy())
+
+	return r.client.Status().Update(ctx, update)
+}
+
+// Update the ImageMap status if necessary.
+func (r *Reconciler) maybeUpdateImageMapStatus(ctx context.Context, nn types.NamespacedName) error {
+
+	existing, ok := r.results[nn]
+	if !ok || existing.imageMapName == "" {
+		return nil
+	}
+
+	var obj v1alpha1.ImageMap
+	imNN := types.NamespacedName{Name: existing.imageMapName}
+	err := r.client.Get(ctx, imNN, &obj)
+	if err != nil {
+		return client.IgnoreNotFound(err)
+	}
+
+	newStatus := existing.imageMap
+	if apicmp.DeepEqual(obj.Status, newStatus) {
+		return nil
+	}
+
+	update := obj.DeepCopy()
+	update.Status = *(newStatus.DeepCopy())
+
+	return r.client.Status().Update(ctx, update)
 }
 
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	b := ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.DockerImage{}).
+		Watches(r.requeuer, handler.Funcs{}).
 		Watches(&source.Kind{Type: &v1alpha1.Cluster{}},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue))
 
@@ -114,4 +220,10 @@ func indexDockerImage(obj ctrlclient.Object) []indexer.Key {
 	}
 
 	return keys
+}
+
+type result struct {
+	image        v1alpha1.DockerImageStatus
+	imageMapName string
+	imageMap     v1alpha1.ImageMapStatus
 }

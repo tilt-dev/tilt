@@ -18,6 +18,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ktypes "k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/clusterid"
@@ -1145,6 +1146,15 @@ func (f *ibdFixture) BuildAndDeploy(specs []model.TargetSpec, stateSet store.Bui
 		s := stateSet[iTarget.ID()]
 		s.Cluster = f.cluster
 		stateSet[iTarget.ID()] = s
+
+		// The reconcilers usually invoke their own async requeuers,
+		// so do the reconciliation manually to make these tests synchronous.
+		if iTarget.CmdImageName != "" {
+			defer f.ibd.cr.Reconcile(f.ctx, ctrl.Request{NamespacedName: ktypes.NamespacedName{Name: iTarget.CmdImageName}})
+		}
+		if iTarget.DockerImageName != "" {
+			defer f.ibd.dr.Reconcile(f.ctx, ctrl.Request{NamespacedName: ktypes.NamespacedName{Name: iTarget.DockerImageName}})
+		}
 	}
 	for _, kTarget := range kTargets {
 		ka := v1alpha1.KubernetesApply{

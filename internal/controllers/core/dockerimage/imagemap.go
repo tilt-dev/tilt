@@ -7,7 +7,6 @@ import (
 	"github.com/docker/distribution/reference"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/docker"
@@ -21,7 +20,6 @@ import (
 // This is mainly for easing the transition to reconcilers.
 func UpdateImageMap(
 	ctx context.Context,
-	client ctrlclient.Client,
 	docker docker.Client,
 	iTarget model.ImageTarget,
 	cluster *v1alpha1.Cluster,
@@ -50,12 +48,7 @@ func UpdateImageMap(
 		return store.ImageBuildResult{}, fmt.Errorf("apiserver missing ImageMap: %s", iTarget.ID().Name)
 	}
 	im.Status = result.ImageMapStatus
-	err := client.Status().Update(ctx, im)
-	if err != nil {
-		return store.ImageBuildResult{}, fmt.Errorf("updating ImageMap: %v", err)
-	}
-
-	return result, err
+	return result, nil
 }
 
 // tagWithExpected tags the given ref as whatever Docker Compose expects, i.e. as

@@ -77,7 +77,7 @@ func ProvideControllers(
 		lur,
 		cmr,
 		dir,
-		dir,
+		cir,
 		clr,
 		dcr,
 		imr,
