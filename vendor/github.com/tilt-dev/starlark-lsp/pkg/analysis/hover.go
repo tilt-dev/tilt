@@ -3,8 +3,6 @@ package analysis
 import (
 	"context"
 
-	sitter "github.com/smacker/go-tree-sitter"
-
 	"go.lsp.dev/protocol"
 
 	"github.com/tilt-dev/starlark-lsp/pkg/document"
@@ -13,46 +11,35 @@ import (
 
 func (a *Analyzer) Hover(ctx context.Context, doc document.Document, pos protocol.Position) *protocol.Hover {
 	pt := query.PositionToPoint(pos)
-	node, ok := query.NodeAtPoint(doc, pt)
+	nodes, ok := a.nodesAtPointForCompletion(doc, pt)
 	if !ok {
 		return nil
 	}
 
-	var sig protocol.SignatureInformation
-	var hoverNode *sitter.Node
-	for cur := node; cur != nil; cur = cur.Parent() {
-		if cur.Type() != "call" {
-			continue
-		}
-		// TODO - show hover for vars
-		var found bool
-		fnName := doc.Content(cur.ChildByFieldName("function"))
-		sig, found = a.signatureInformation(doc, node, fnName)
-		if found {
-			hoverNode = cur
-			break
+	symbols := a.completeExpression(doc, nodes, pt)
+	var symbol protocol.DocumentSymbol
+	limit := nodes[len(nodes)-1].EndPoint()
+	identifiers := query.ExtractIdentifiers(doc, nodes, &limit)
+	if len(identifiers) == 0 {
+		return nil
+	}
+	for _, s := range symbols {
+		if s.Name == identifiers[len(identifiers)-1] {
+			symbol = s
 		}
 	}
 
-	d := sig.Documentation
-
-	if d == nil {
+	if symbol.Name == "" {
 		return nil
 	}
 
-	r := query.NodeRange(hoverNode)
+	r := query.NodesRange(nodes)
 	result := &protocol.Hover{
 		Range: &r,
-	}
-
-	if mc, ok := d.(protocol.MarkupContent); ok {
-		result.Contents = mc
-	} else {
-		result.Contents = protocol.MarkupContent{
+		Contents: protocol.MarkupContent{
 			Kind:  protocol.PlainText,
-			Value: d.(string),
-		}
+			Value: symbol.Detail,
+		},
 	}
-
 	return result
 }

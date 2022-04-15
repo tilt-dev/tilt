@@ -28,6 +28,22 @@ func NodeRange(node *sitter.Node) protocol.Range {
 	}
 }
 
+func NodesRange(nodes []*sitter.Node) protocol.Range {
+	var start, end sitter.Point
+	for i, n := range nodes {
+		if i == 0 || PointBefore(start, n.StartPoint()) {
+			start = n.StartPoint()
+		}
+		if i == 0 || PointAfter(end, n.EndPoint()) {
+			end = n.EndPoint()
+		}
+	}
+	return protocol.Range{
+		Start: pointToPosition(start),
+		End:   pointToPosition(end),
+	}
+}
+
 func PointCmp(a, b sitter.Point) int {
 	if a.Row < b.Row {
 		return -1

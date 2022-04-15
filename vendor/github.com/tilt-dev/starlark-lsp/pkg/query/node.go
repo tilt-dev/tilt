@@ -2,6 +2,7 @@ package query
 
 const (
 	NodeTypeModule              = "module"
+	NodeTypeCall                = "call"
 	NodeTypeArgList             = "argument_list"
 	NodeTypeFunctionDef         = "function_definition"
 	NodeTypeParameters          = "parameters"

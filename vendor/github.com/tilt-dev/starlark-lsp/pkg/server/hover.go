@@ -15,7 +15,7 @@ func (s *Server) Hover(ctx context.Context, params *protocol.HoverParams) (resul
 
 	logger := protocol.LoggerFromContext(ctx).
 		With(textDocumentFields(params.TextDocumentPositionParams)...)
-	logger.Debug("completion")
+	logger.Debug("hover")
 
 	return s.analyzer.Hover(ctx, doc, params.Position), nil
 }

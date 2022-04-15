@@ -33,7 +33,7 @@ type Document interface {
 	ContentRange(r sitter.Range) string
 
 	Tree() *sitter.Tree
-	Functions() map[string]protocol.SignatureInformation
+	Functions() map[string]query.Signature
 	Symbols() []protocol.DocumentSymbol
 	Diagnostics() []protocol.Diagnostic
 	Loads() []LoadStatement
@@ -81,7 +81,7 @@ type document struct {
 	// tree represents the parsed version of the document.
 	tree *sitter.Tree
 
-	functions   map[string]protocol.SignatureInformation
+	functions   map[string]query.Signature
 	symbols     []protocol.DocumentSymbol
 	diagnostics []protocol.Diagnostic
 	loads       []LoadStatement
@@ -105,7 +105,7 @@ func (d *document) Tree() *sitter.Tree {
 	return d.tree
 }
 
-func (d *document) Functions() map[string]protocol.SignatureInformation {
+func (d *document) Functions() map[string]query.Signature {
 	return d.functions
 }
 
@@ -134,13 +134,13 @@ func (d *document) Copy() Document {
 		uri:         d.uri,
 		input:       d.input,
 		tree:        d.tree.Copy(),
-		functions:   make(map[string]protocol.SignatureInformation),
+		functions:   make(map[string]query.Signature),
 		symbols:     append([]protocol.DocumentSymbol{}, d.symbols...),
 		loads:       append([]LoadStatement{}, d.loads...),
 		diagnostics: append([]protocol.Diagnostic{}, d.diagnostics...),
 	}
-	for fn := range d.functions {
-		doc.functions[fn] = d.functions[fn]
+	for fn, sig := range d.functions {
+		doc.functions[fn] = sig
 	}
 	return doc
 }

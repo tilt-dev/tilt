@@ -52,13 +52,14 @@ require (
 	github.com/tilt-dev/go-get v0.2.2
 	github.com/tilt-dev/localregistry-go v0.0.0-20200615231835-07e386f4ebd7
 	github.com/tilt-dev/probe v0.3.1
-	github.com/tilt-dev/starlark-lsp v0.0.0-20220412172747-8a5d230545db
+	github.com/tilt-dev/starlark-lsp v0.0.0-20220415191241-c73ee55518d2
 	github.com/tilt-dev/tilt-apiserver v0.6.1
 	github.com/tilt-dev/wmclient v0.0.0-20201109174454-1839d0355fbc
 	github.com/tonistiigi/fsutil v0.0.0-20210609172227-d72af97c0eaf
 	github.com/tonistiigi/units v0.0.0-20180711220420-6950e57a87ea
 	github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa
 	go.lsp.dev/protocol v0.11.2
+	go.lsp.dev/uri v0.3.0
 	go.opentelemetry.io/otel v0.20.0
 	go.opentelemetry.io/otel/sdk v0.20.0
 	go.opentelemetry.io/otel/trace v0.20.0
@@ -203,7 +204,6 @@ require (
 	go.etcd.io/etcd/client/v3 v3.5.0 // indirect
 	go.lsp.dev/jsonrpc2 v0.9.0 // indirect
 	go.lsp.dev/pkg v0.0.0-20210323044036-f7deec69b52e // indirect
-	go.lsp.dev/uri v0.3.0 // indirect
 	go.opentelemetry.io/contrib v0.21.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.21.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.21.0 // indirect
