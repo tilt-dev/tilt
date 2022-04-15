@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/wmclient/pkg/analytics"
 
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
@@ -251,7 +252,8 @@ func newFixture(t *testing.T) *fixture {
 
 	r := NewReconciler(cfb.Context(), cfb.Client, st, clock, NewConnectionManager(), docker.LocalEnv{},
 		FakeDockerClientOrError(dockerClient, nil),
-		FakeKubernetesClientOrError(k8sClient, nil))
+		FakeKubernetesClientOrError(k8sClient, nil),
+		server.NewWebsocketList())
 	requeueChan := make(chan indexer.RequeueForTestResult, 1)
 	indexer.StartSourceForTesting(cfb.Context(), r.requeuer, r, requeueChan)
 	return &fixture{

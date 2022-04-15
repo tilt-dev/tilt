@@ -69,6 +69,7 @@ type WebsocketSubscriber struct {
 	dirtyUIResources map[string]*v1alpha1.UIResource
 	dirtyUIButtons   map[string]*v1alpha1.UIButton
 	dirtyUISession   *v1alpha1.UISession
+	dirtyClusters    map[string]*v1alpha1.Cluster
 
 	tiltStartTime    *timestamp.Timestamp
 	clientCheckpoint logstore.Checkpoint
@@ -91,6 +92,7 @@ func NewWebsocketSubscriber(ctx context.Context, ctrlClient ctrlclient.Client, s
 		q:                workqueue.New(),
 		dirtyUIButtons:   make(map[string]*v1alpha1.UIButton),
 		dirtyUIResources: make(map[string]*v1alpha1.UIResource),
+		dirtyClusters:    make(map[string]*v1alpha1.Cluster),
 	}
 }
 
@@ -235,6 +237,29 @@ func (ws *WebsocketSubscriber) SendUIButtonUpdate(ctx context.Context, nn types.
 	ws.q.Add(true)
 }
 
+func (ws *WebsocketSubscriber) SendClusterUpdate(
+	_ context.Context,
+	nn types.NamespacedName,
+	cluster *v1alpha1.Cluster,
+) {
+	if cluster == nil {
+		// If the cluster doesn't exist, send a fake one down the
+		// stream that the UI will interpret as deletion.
+		now := metav1.Now()
+		cluster = &v1alpha1.Cluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              nn.Name,
+				DeletionTimestamp: &now,
+			},
+		}
+	}
+
+	ws.mu.Lock()
+	ws.dirtyClusters[nn.Name] = cluster
+	ws.mu.Unlock()
+	ws.q.Add(true)
+}
+
 // Sends all the objects that have changed since the last send.
 func (ws *WebsocketSubscriber) toViewUpdate() *proto_webview.View {
 	view, err := webview.LogUpdate(ws.st, ws.clientCheckpoint)
@@ -273,6 +298,15 @@ func (ws *WebsocketSubscriber) toViewUpdate() *proto_webview.View {
 	}
 	sort.Slice(view.UiButtons, func(i, j int) bool {
 		return view.UiButtons[i].Name < view.UiButtons[j].Name
+	})
+
+	for k, obj := range ws.dirtyClusters {
+		view.Clusters = append(view.Clusters, obj)
+		delete(ws.dirtyClusters, k)
+		hasChanges = true
+	}
+	sort.Slice(view.Clusters, func(i, j int) bool {
+		return view.Clusters[i].Name < view.Clusters[j].Name
 	})
 
 	if !hasChanges {

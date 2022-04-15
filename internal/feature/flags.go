@@ -79,6 +79,10 @@ var MainDefaults = Defaults{
 		Enabled: false,
 		Status:  Obsolete,
 	},
+	ClusterRefresh: Value{
+		Enabled: false,
+		Status:  Active,
+	},
 }
 
 // FeatureSet is a mutable set of Features.

@@ -160,11 +160,17 @@ func TestMergeUpdates(t *testing.T) {
 	f.ws.SendUIButtonUpdate(f.ctx, types.NamespacedName{Name: "ba"},
 		&v1alpha1.UIButton{ObjectMeta: metav1.ObjectMeta{Name: "ba"}})
 	f.ws.SendUIButtonUpdate(f.ctx, types.NamespacedName{Name: "bb"}, nil)
+	f.ws.SendClusterUpdate(f.ctx, types.NamespacedName{Name: "ca"},
+		&v1alpha1.Cluster{ObjectMeta: metav1.ObjectMeta{Name: "ca"}})
+	f.ws.SendClusterUpdate(f.ctx, types.NamespacedName{Name: "ca"},
+		&v1alpha1.Cluster{ObjectMeta: metav1.ObjectMeta{Name: "ca"}})
+	f.ws.SendClusterUpdate(f.ctx, types.NamespacedName{Name: "cb"}, nil)
 
 	view := f.ws.toViewUpdate()
 	assert.Equal(t, "sb", view.UiSession.ObjectMeta.Name)
 	assert.Equal(t, 2, len(view.UiResources))
 	assert.Equal(t, 2, len(view.UiButtons))
+	assert.Len(t, view.Clusters, 2, "Cluster updates")
 
 	view2 := f.ws.toViewUpdate()
 	assert.Nil(t, view2)
@@ -174,6 +180,10 @@ func TestMergeUpdates(t *testing.T) {
 	assert.Nil(t, view3.UiSession)
 	assert.Equal(t, 0, len(view3.UiResources))
 	assert.Equal(t, 1, len(view3.UiButtons))
+
+	f.ws.SendClusterUpdate(f.ctx, types.NamespacedName{Name: "cb"}, nil)
+	view4 := f.ws.toViewUpdate()
+	assert.Len(t, view4.Clusters, 1, "Cluster updates")
 }
 
 type wsFixture struct {

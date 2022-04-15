@@ -454,6 +454,13 @@ export function mergeAppUpdate<K extends keyof HudState>(
     })
   }
 
+  const clusterUpdates = state.view?.clusters
+  if (clusterUpdates) {
+    result.view = Object.assign({}, result.view, {
+      clusters: mergeObjectUpdates(clusterUpdates, result.view?.clusters),
+    })
+  }
+
   // If no references have changed, don't re-render.
   //
   // LogStore handles its own update events, so a change
