@@ -22,7 +22,7 @@
     "react-table": "^7.7.0",
     "react-timeago": "^4.4.0",
     "regex-escape": "^3.4.10",
-    "styled-components": "^5.3.3"
+    "styled-components": "^5.3.5"
   },
   "scripts": {
     "start": "react-scripts start",
