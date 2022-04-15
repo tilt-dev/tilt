@@ -62,7 +62,7 @@ func TestK8sCustomDeploy(t *testing.T) {
 	defer cancel()
 	f.CurlUntil(ctx, "http://localhost:54871", "Greetings from Live Update!")
 
-	f.Touch(filepath.Join("web", "fallback.txt"))
+	f.Touch("fallback.txt")
 	ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
 	defer cancel()
 	f.CurlUntil(ctx, "http://localhost:54871", "Welcome to nginx!")

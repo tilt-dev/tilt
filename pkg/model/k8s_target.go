@@ -55,6 +55,7 @@ type K8sTarget struct {
 	// re-evaluated.
 	pathDependencies []string
 	localRepos       []LocalGitRepo
+	ignores          []Dockerignore
 }
 
 func NewK8sTargetForTesting(yaml string) K8sTarget {
@@ -108,7 +109,7 @@ func (k8s K8sTarget) LocalRepos() []LocalGitRepo {
 
 // Dockerignores is part of the WatchableTarget interface.
 func (k8s K8sTarget) Dockerignores() []Dockerignore {
-	return nil
+	return k8s.ignores
 }
 
 // IgnoredLocalDirectories is part of the WatchableTarget interface.
@@ -131,9 +132,10 @@ func (k8s K8sTarget) WithImageDependencies(imageMapDeps []string) K8sTarget {
 }
 
 // WithPathDependencies registers paths that this K8sTarget depends on.
-func (k8s K8sTarget) WithPathDependencies(paths []string, localRepos []LocalGitRepo) K8sTarget {
+func (k8s K8sTarget) WithPathDependencies(paths []string, localRepos []LocalGitRepo, ignores []Dockerignore) K8sTarget {
 	k8s.pathDependencies = sliceutils.DedupedAndSorted(paths)
 	k8s.localRepos = localRepos
+	k8s.ignores = ignores
 	return k8s
 }
 

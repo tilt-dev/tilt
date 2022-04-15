@@ -19,6 +19,7 @@ type k8sCustomDeploy struct {
 	applyCmd  model.Cmd
 	deleteCmd model.Cmd
 	deps      []string
+	ignores   []model.Dockerignore
 }
 
 func (s *tiltfileState) k8sCustomDeploy(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -79,6 +80,7 @@ func (s *tiltfileState) k8sCustomDeploy(thread *starlark.Thread, fn *starlark.Bu
 		applyCmd:  applyCmd,
 		deleteCmd: deleteCmd,
 		deps:      deps.Value,
+		ignores:   customDeployIgnoresForLiveUpdate(liveUpdate),
 	}
 	for _, imageDep := range imageDeps {
 		res.addImageDep(imageDep, true)
@@ -148,4 +150,20 @@ func (s *tiltfileState) k8sCustomDeploy(thread *starlark.Thread, fn *starlark.Bu
 	}
 
 	return starlark.None, nil
+}
+
+func customDeployIgnoresForLiveUpdate(spec v1alpha1.LiveUpdateSpec) []model.Dockerignore {
+	patternCount := len(spec.Syncs) + len(spec.StopPaths)
+	if patternCount == 0 {
+		return nil
+	}
+	di := model.Dockerignore{
+		LocalPath: spec.BasePath,
+		Patterns:  make([]string, 0, patternCount),
+	}
+	for _, sync := range spec.Syncs {
+		di.Patterns = append(di.Patterns, sync.LocalPath)
+	}
+	di.Patterns = append(di.Patterns, spec.StopPaths...)
+	return []model.Dockerignore{di}
 }
