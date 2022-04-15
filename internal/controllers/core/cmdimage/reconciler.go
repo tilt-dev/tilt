@@ -99,6 +99,9 @@ func (r *Reconciler) ForceApply(
 	startTime := apis.NowMicro()
 	nn := types.NamespacedName{Name: iTarget.CmdImageName}
 	r.setImageStatus(nn, ToBuildingStatus(iTarget, startTime))
+
+	// Requeue the reconciler twice: once when the build has started and once
+	// after it has finished.
 	r.requeuer.Add(nn)
 	defer r.requeuer.Add(nn)
 
