@@ -60,8 +60,9 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-var unmatchedImageNoConfigsWarning = "No Kubernetes or Docker Compose configs found.\n" +
-	"Skipping all image builds until we have a place to deploy them"
+var unmatchedImageNoConfigsWarning = "We could not find any deployment instructions, e.g. `k8s_yaml` or `docker_compose`.\n" +
+	"Skipping all image builds until we know how to deploy them."
+
 var unmatchedImageAllUnresourcedWarning = "No Kubernetes configs with images found.\n" +
 	"If you are using CRDs, add k8s_kind() to tell Tilt how to find images.\n" +
 	"https://docs.tilt.dev/api.html#api.k8s_kind"
