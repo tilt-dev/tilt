@@ -83,7 +83,7 @@ jobs:
   build-integration:
     resource_class: medium+
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:7811af195fea29a4a6c46ff54320d1178416a85282914ffd564a12bf974b38b8
+      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:a6586bb234b7d8fec4a2532395092a75ad569d7a90011f9a3afe1373d74e80fa
     steps:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
