@@ -18,7 +18,7 @@ RUN apt update && apt install -y --no-install-recommends apt-transport-https \
 # Install docker
 # Adapted from https://github.com/circleci/circleci-images/blob/staging/shared/images/Dockerfile-basic.template
 # Check https://download.docker.com/linux/static/stable/x86_64/ for latest versions
-ENV DOCKER_VERSION=20.10.6
+ENV DOCKER_VERSION=20.10.9
 RUN set -exu \
   && DOCKER_URL="https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_VERSION}.tgz" \
   && echo Docker URL: $DOCKER_URL \
@@ -30,14 +30,14 @@ RUN set -exu \
   && which docker \
   && (docker version || true)
 
-# Install docker-compose
-ARG DOCKER_COMPOSE_V1_VERSION=1.29.1
+# docker-compose v1
+ARG DOCKER_COMPOSE_V1_VERSION=1.29.2
 RUN curl -fL "https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_V1_VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose-v1 \
   && chmod a+x /usr/local/bin/docker-compose-v1 \
   && docker-compose-v1 version
 
-# pinned to v2.2.2 until https://github.com/docker/compose/issues/9291 is fixed
-ARG DOCKER_COMPOSE_V2_VERSION=v2.2.2
+# docker-compose v2
+ARG DOCKER_COMPOSE_V2_VERSION=v2.4.1
 RUN curl -fL "https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_V2_VERSION}/docker-compose-$(uname -s | tr '[A-Z]' '[a-z]')-$(uname -m)" -o /usr/local/bin/docker-compose \
   && chmod a+x /usr/local/bin/docker-compose \
   && docker-compose version
