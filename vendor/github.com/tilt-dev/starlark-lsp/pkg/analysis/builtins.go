@@ -20,8 +20,8 @@ import (
 )
 
 type Builtins struct {
-	Functions map[string]protocol.SignatureInformation `json:"functions"`
-	Symbols   []protocol.DocumentSymbol                `json:"symbols"`
+	Functions map[string]query.Signature
+	Symbols   []protocol.DocumentSymbol
 }
 
 //go:embed builtins.py
@@ -29,7 +29,7 @@ var StarlarkBuiltins []byte
 
 func NewBuiltins() *Builtins {
 	return &Builtins{
-		Functions: make(map[string]protocol.SignatureInformation),
+		Functions: make(map[string]query.Signature),
 		Symbols:   []protocol.DocumentSymbol{},
 	}
 }
@@ -40,8 +40,8 @@ func (b *Builtins) IsEmpty() bool {
 
 func (b *Builtins) Update(other *Builtins) {
 	if len(other.Functions) > 0 {
-		for name, sig := range other.Functions {
-			b.Functions[name] = sig
+		for name, fn := range other.Functions {
+			b.Functions[name] = fn
 		}
 	}
 	if len(other.Symbols) > 0 {
@@ -70,7 +70,7 @@ func (b *Builtins) SymbolNames() []string {
 func WithBuiltinPaths(paths []string) AnalyzerOption {
 	return func(analyzer *Analyzer) error {
 		for _, path := range paths {
-			builtins, err := LoadBuiltins(analyzer.context, os.DirFS(path))
+			builtins, err := LoadBuiltins(analyzer.context, path)
 			if err != nil {
 				return err
 			}
@@ -80,9 +80,9 @@ func WithBuiltinPaths(paths []string) AnalyzerOption {
 	}
 }
 
-func WithBuiltins(builtins fs.FS) AnalyzerOption {
+func WithBuiltins(f fs.FS) AnalyzerOption {
 	return func(analyzer *Analyzer) error {
-		builtins, err := LoadBuiltins(analyzer.context, builtins)
+		builtins, err := LoadBuiltinsFromFS(analyzer.context, f)
 		if err != nil {
 			return err
 		}
@@ -112,21 +112,13 @@ func WithStarlarkBuiltins() AnalyzerOption {
 func LoadBuiltinsFromSource(ctx context.Context, contents []byte, path string) (*Builtins, error) {
 	tree, err := query.Parse(ctx, contents)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse %q: %v", path, err)
+		return nil, errors.Wrapf(err, "failed to parse %q", path)
 	}
 
-	functions := make(map[string]protocol.SignatureInformation)
 	doc := document.NewDocument(uri.File(path), contents, tree)
-	docFunctions := doc.Functions()
+	functions := doc.Functions()
 	symbols := doc.Symbols()
 	doc.Close()
-
-	for fn, sig := range docFunctions {
-		if _, ok := functions[fn]; ok {
-			return nil, fmt.Errorf("duplicate function %q found in %q", fn, path)
-		}
-		functions[fn] = sig
-	}
 
 	return &Builtins{
 		Functions: functions,
@@ -148,7 +140,7 @@ func LoadBuiltinsFromFile(ctx context.Context, path string, f fs.FS) (*Builtins,
 	return LoadBuiltinsFromSource(ctx, contents, path)
 }
 
-func loadBuiltinModuleWalker(ctx context.Context, f fs.FS) (map[string]*Builtins, fs.WalkDirFunc) {
+func loadBuiltinsWalker(ctx context.Context, f fs.FS) (map[string]*Builtins, fs.WalkDirFunc) {
 	builtins := make(map[string]*Builtins)
 	return builtins, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
@@ -188,12 +180,10 @@ func loadBuiltinModuleWalker(ctx context.Context, f fs.FS) (map[string]*Builtins
 	}
 }
 
-func LoadBuiltinModuleFS(ctx context.Context, f fs.FS, root string) (*Builtins, error) {
-	if root == "" {
-		root = "."
-	}
+func LoadBuiltinsFromFS(ctx context.Context, f fs.FS) (*Builtins, error) {
+	root := "."
 
-	builtinsMap, walker := loadBuiltinModuleWalker(ctx, f)
+	builtinsMap, walker := loadBuiltinsWalker(ctx, f)
 	err := fs.WalkDir(f, root, walker)
 
 	if err != nil {
@@ -271,38 +261,21 @@ func copyBuiltinsToParent(mod, parentMod *Builtins, modName string) {
 	}
 }
 
-func LoadBuiltinModule(ctx context.Context, path string, fsys fs.FS) (*Builtins, error) {
-	return LoadBuiltinModuleFS(ctx, fsys, "")
-}
-
-func LoadBuiltins(ctx context.Context, fsys fs.FS) (*Builtins, error) {
-	builtins := NewBuiltins()
-
-	err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		fileInfo, err := fs.Stat(fsys, path)
-		if err != nil {
-			return errors.Wrapf(err, "statting %s", path)
-		}
-		var result *Builtins
-		if fileInfo.IsDir() {
-			result, err = LoadBuiltinModule(ctx, path, fsys)
-		} else {
-			result, err = LoadBuiltinsFromFile(ctx, path, fsys)
-		}
-		if err != nil {
-			return errors.Wrapf(err, "loading builtins from %s", path)
-		}
-		builtins.Update(result)
-
-		return nil
-	})
-
+func LoadBuiltins(ctx context.Context, path string) (*Builtins, error) {
+	fileInfo, err := os.Stat(path)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "statting %s", path)
 	}
 
-	return builtins, nil
+	var result *Builtins
+	if fileInfo.IsDir() {
+		result, err = LoadBuiltinsFromFS(ctx, os.DirFS(path))
+	} else {
+		result, err = LoadBuiltinsFromFile(ctx, path, nil)
+	}
+	if err != nil {
+		return nil, errors.Wrapf(err, "loading builtins from %s", path)
+	}
+
+	return result, nil
 }

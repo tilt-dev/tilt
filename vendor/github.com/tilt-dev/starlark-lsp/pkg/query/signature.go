@@ -12,8 +12,8 @@ import (
 )
 
 // Functions finds all function definitions that are direct children of the provided sitter.Node.
-func Functions(doc DocumentContent, node *sitter.Node) map[string]protocol.SignatureInformation {
-	signatures := make(map[string]protocol.SignatureInformation)
+func Functions(doc DocumentContent, node *sitter.Node) map[string]Signature {
+	signatures := make(map[string]Signature)
 
 	// N.B. we don't use a query here for a couple reasons:
 	// 	(1) Tree-sitter doesn't support bounding the depth, and we only want
@@ -27,29 +27,84 @@ func Functions(doc DocumentContent, node *sitter.Node) map[string]protocol.Signa
 		if n.Type() != NodeTypeFunctionDef {
 			continue
 		}
-		fnName, sig := extractSignatureInformation(doc, n)
-		signatures[fnName] = sig
+		sig := ExtractSignature(doc, n)
+		signatures[sig.Name] = sig
 	}
 
 	return signatures
 }
 
 // Function finds a function definition for the given function name that is a direct child of the provided sitter.Node.
-func Function(doc DocumentContent, node *sitter.Node, fnName string) (protocol.SignatureInformation, bool) {
+func Function(doc DocumentContent, node *sitter.Node, fnName string) (Signature, bool) {
 	for n := node.NamedChild(0); n != nil; n = n.NextNamedSibling() {
 		if n.Type() != NodeTypeFunctionDef {
 			continue
 		}
 		curFuncName := doc.Content(n.ChildByFieldName(FieldName))
 		if curFuncName == fnName {
-			_, sig := extractSignatureInformation(doc, n)
-			return sig, true
+			return ExtractSignature(doc, n), true
 		}
 	}
-	return protocol.SignatureInformation{}, false
+	return Signature{}, false
 }
 
-func extractSignatureInformation(doc DocumentContent, n *sitter.Node) (string, protocol.SignatureInformation) {
+type Signature struct {
+	Name       string
+	Params     []Parameter
+	ReturnType string
+	Docs       docstring.Parsed
+	Node       *sitter.Node
+}
+
+func (s Signature) SignatureInfo() protocol.SignatureInformation {
+	params := make([]protocol.ParameterInformation, len(s.Params))
+	for i, param := range s.Params {
+		params[i] = param.ParameterInfo(s.Docs)
+	}
+	sigInfo := protocol.SignatureInformation{
+		Label:      s.Label(),
+		Parameters: params,
+	}
+	if s.Docs.Description != "" {
+		sigInfo.Documentation = protocol.MarkupContent{
+			Kind:  protocol.PlainText,
+			Value: s.Docs.Description,
+		}
+	}
+
+	return sigInfo
+}
+
+// Label produces a human-readable Label for a function signature.
+//
+// It's modeled to behave similarly to VSCode Python signature labels.
+func (s Signature) Label() string {
+	var sb strings.Builder
+	sb.WriteRune('(')
+	for i := range s.Params {
+		sb.WriteString(s.Params[i].Content)
+		if i != len(s.Params)-1 {
+			sb.WriteString(", ")
+		}
+	}
+	sb.WriteString(")")
+	if s.ReturnType != "" {
+		sb.WriteString(" -> ")
+		sb.WriteString(s.ReturnType)
+	}
+	return sb.String()
+}
+
+func (s Signature) Symbol() protocol.DocumentSymbol {
+	return protocol.DocumentSymbol{
+		Name:   s.Name,
+		Kind:   protocol.SymbolKindFunction,
+		Detail: s.Label(),
+		Range:  NodeRange(s.Node),
+	}
+}
+
+func ExtractSignature(doc DocumentContent, n *sitter.Node) Signature {
 	if n.Type() != NodeTypeFunctionDef {
 		panic(fmt.Errorf("invalid node type: %s", n.Type()))
 	}
@@ -65,40 +120,13 @@ func extractSignatureInformation(doc DocumentContent, n *sitter.Node) (string, p
 		returnType = doc.Content(rtNode)
 	}
 
-	sig := protocol.SignatureInformation{
-		Label:      signatureLabel(params, returnType),
-		Parameters: params,
+	return Signature{
+		Name:       fnName,
+		Params:     params,
+		ReturnType: returnType,
+		Docs:       fnDocs,
+		Node:       n,
 	}
-
-	if fnDocs.Description != "" {
-		sig.Documentation = protocol.MarkupContent{
-			Kind:  protocol.PlainText,
-			Value: fnDocs.Description,
-		}
-	}
-
-	return fnName, sig
-}
-
-// signatureLabel produces a human-readable label for a function signature.
-//
-// It's modeled to behave similarly to VSCode Python signature labels.
-func signatureLabel(params []protocol.ParameterInformation, returnType string) string {
-	if returnType == "" {
-		returnType = "None"
-	}
-
-	var sb strings.Builder
-	sb.WriteRune('(')
-	for i := range params {
-		sb.WriteString(params[i].Label)
-		if i != len(params)-1 {
-			sb.WriteString(", ")
-		}
-	}
-	sb.WriteString(") -> ")
-	sb.WriteString(returnType)
-	return sb.String()
 }
 
 func extractDocstring(doc DocumentContent, n *sitter.Node) docstring.Parsed {

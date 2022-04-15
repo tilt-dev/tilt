@@ -2,7 +2,6 @@ package analysis
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 
 	"go.lsp.dev/protocol"
@@ -71,9 +70,10 @@ func (a *Analyzer) Completion(doc document.Document, pos protocol.Position) *pro
 		} else {
 			sortText = fmt.Sprintf("1%s", sym.Name)
 		}
+		firstDetailLine := strings.SplitN(sym.Detail, "\n", 2)[0]
 		completionList.Items[i] = protocol.CompletionItem{
 			Label:    sym.Name,
-			Detail:   sym.Detail,
+			Detail:   firstDetailLine,
 			Kind:     ToCompletionItemKind(sym.Kind),
 			SortText: sortText,
 		}
@@ -259,26 +259,17 @@ func (a *Analyzer) leafNodesForCompletion(doc document.Document, node *sitter.No
 	return nodes, true
 }
 
-// TODO: retain parsed function and parameter data so it doesn't need to be
-// parsed out of ParameterInformation.Label
-var paramName = regexp.MustCompile(`^(\w+)`)
-
-func (a *Analyzer) keywordArgSymbols(fn protocol.SignatureInformation, args callArguments) []protocol.DocumentSymbol {
+func (a *Analyzer) keywordArgSymbols(fn query.Signature, args callArguments) []protocol.DocumentSymbol {
 	symbols := []protocol.DocumentSymbol{}
-	for i, param := range fn.Parameters {
+	for i, param := range fn.Params {
 		if i < int(args.positional) {
 			continue
 		}
-		label := param.Label
-		match := paramName.FindSubmatch([]byte(label))
-		if match == nil {
-			continue
-		}
-		kwarg := string(match[1])
+		kwarg := param.Name
 		if used := args.keywords[kwarg]; !used {
 			symbols = append(symbols, protocol.DocumentSymbol{
 				Name:   kwarg + "=",
-				Detail: param.Label,
+				Detail: param.Content,
 				Kind:   protocol.SymbolKindVariable,
 			})
 		}

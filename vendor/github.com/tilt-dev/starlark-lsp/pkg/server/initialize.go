@@ -25,7 +25,7 @@ func (s *Server) Initialize(ctx context.Context,
 			},
 			SignatureHelpProvider: &protocol.SignatureHelpOptions{
 				TriggerCharacters:   []string{"("},
-				RetriggerCharacters: []string{","},
+				RetriggerCharacters: []string{",", "="},
 			},
 			DocumentSymbolProvider: true,
 			CompletionProvider: &protocol.CompletionOptions{

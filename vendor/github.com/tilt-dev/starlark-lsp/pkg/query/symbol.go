@@ -44,11 +44,9 @@ func SiblingSymbols(doc DocumentContent, node, before *sitter.Node) []protocol.D
 		}
 
 		if n.Type() == NodeTypeFunctionDef {
-			name, sigInfo := extractSignatureInformation(doc, n)
-			symbol.Name = name
-			symbol.Kind = protocol.SymbolKindFunction
-			symbol.Detail = sigInfo.Label
-			symbol.Range = NodeRange(n)
+			sig := ExtractSignature(doc, n)
+			symbol = sig.Symbol()
+			symbol.Detail = sig.Docs.Description
 		}
 
 		if symbol.Name != "" {
@@ -73,18 +71,32 @@ func IsModuleScope(doc DocumentContent, node *sitter.Node) bool {
 // excluding symbols from the top-level module (document symbols).
 func SymbolsInScope(doc DocumentContent, node *sitter.Node) []protocol.DocumentSymbol {
 	var symbols []protocol.DocumentSymbol
+
+	appendParameters := func(fnNode *sitter.Node) {
+		sig := ExtractSignature(doc, fnNode)
+		for _, p := range sig.Params {
+			symbols = append(symbols, p.Symbol())
+		}
+	}
+
 	// While we are in the current scope, only include symbols defined before
 	// the provided node.
 	before := node
-	for n := node; n.Parent() != nil && !IsModuleScope(doc, n); n = n.Parent() {
+	n := node
+	for ; n.Parent() != nil && !IsModuleScope(doc, n); n = n.Parent() {
 		// A function definition creates an enclosing scope, where all symbols
 		// in the parent scope are visible. After that point, don't specify a
 		// before node.
 		if n.Type() == NodeTypeFunctionDef {
 			before = nil
+			appendParameters(n)
 		}
 
 		symbols = append(symbols, SiblingSymbols(doc, n.Parent().NamedChild(0), before)...)
+	}
+	// Append parameters of parent function that's in module scope
+	if n.Type() == NodeTypeFunctionDef {
+		appendParameters(n)
 	}
 	return symbols
 }
