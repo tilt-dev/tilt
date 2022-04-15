@@ -18,6 +18,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ktypes "k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/clusterid"
@@ -869,6 +870,8 @@ func TestDockerBuildStatus(t *testing.T) {
 	_, err = f.BuildAndDeploy(BuildTargets(manifest), store.BuildStateSet{})
 	require.NoError(t, err)
 
+	f.ibd.dr.Reconcile(f.ctx, ctrl.Request{NamespacedName: nn})
+
 	var di v1alpha1.DockerImage
 	err = f.ctrlClient.Get(f.ctx, nn, &di)
 	require.NoError(t, err)
@@ -901,6 +904,8 @@ func TestCustomBuildStatus(t *testing.T) {
 
 	_, err = f.BuildAndDeploy(BuildTargets(manifest), store.BuildStateSet{})
 	require.NoError(t, err)
+
+	f.ibd.cr.Reconcile(f.ctx, ctrl.Request{NamespacedName: nn})
 
 	var ci v1alpha1.CmdImage
 	err = f.ctrlClient.Get(f.ctx, nn, &ci)
