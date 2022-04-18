@@ -4,6 +4,7 @@ import { Tags } from "./analytics"
 export function mockAnalyticsCalls() {
   fetchMock.mock("//localhost/api/analytics", JSON.stringify({}))
 }
+
 export function cleanupMockAnalyticsCalls() {
   fetchMock.reset()
 }

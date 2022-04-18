@@ -2,7 +2,7 @@ import React, { Component } from "react"
 import "./AnalyticsNudge.scss"
 import { linkToTiltDocs, TiltDocsPage } from "./constants"
 
-const nudgeTimeoutMs = 15000
+export const NUDGE_TIMEOUT_MS = 15000
 const nudgeElem = (): JSX.Element => {
   return (
     <p>
@@ -19,36 +19,38 @@ const nudgeElem = (): JSX.Element => {
     </p>
   )
 }
-const reqInProgMsg = "Okay, making it so..."
 const successOptInElem = (): JSX.Element => {
   return (
-    <p>
+    <p data-testid="optin-success">
       Thanks for helping us improve Tilt for you and everyone! (You can change
-      your mind by running <pre>tilt analytics opt out</pre> in your terminal.)
+      your mind by running <code>tilt analytics opt out</code> in your
+      terminal.)
     </p>
   )
 }
 const successOptOutElem = (): JSX.Element => {
   return (
-    <p>
+    <p data-testid="optout-success">
       Okay, opting you out of telemetry. If you change your mind, you can run{" "}
-      <pre>tilt analytics opt in</pre> in your terminal.
+      <code>tilt analytics opt in</code> in your terminal.
     </p>
   )
 }
 const errorElem = (respBody: string): JSX.Element => {
   return (
-    <p>
-      Oh no, something went wrong! Request failed with: <pre>{respBody}</pre> (
-      <a
-        href="https://tilt.dev/contact"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        contact us
-      </a>
-      )
-    </p>
+    <div role="alert">
+      <p>Oh no, something went wrong! Request failed with:</p>
+      <pre>{respBody}</pre>
+      <p>
+        <a
+          href="https://tilt.dev/contact"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          contact us
+        </a>
+      </p>
+    </div>
   )
 }
 
@@ -109,7 +111,7 @@ class AnalyticsNudge extends Component<
         // if we successfully recorded the choice, dismiss the nudge after a few seconds
         setTimeout(() => {
           this.setState({ dismissed: true })
-        }, nudgeTimeoutMs)
+        }, NUDGE_TIMEOUT_MS)
       }
     })
   }
@@ -172,7 +174,7 @@ class AnalyticsNudge extends Component<
 
     if (this.state.requestMade) {
       // Request in progress
-      return <p>{reqInProgMsg}</p>
+      return <p data-testid="opt-loading">Okay, making it so...</p>
     }
     return (
       <>
@@ -195,12 +197,18 @@ class AnalyticsNudge extends Component<
     )
   }
   render() {
-    let classes = ["AnalyticsNudge"]
-    if (this.shouldShow()) {
-      classes.push("is-visible")
+    if (!this.shouldShow()) {
+      return null
     }
 
-    return <section className={classes.join(" ")}>{this.messageElem()}</section>
+    return (
+      <aside
+        aria-label="Tilt analytics options"
+        className="AnalyticsNudge is-visible"
+      >
+        {this.messageElem()}
+      </aside>
+    )
   }
 }
 

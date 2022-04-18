@@ -20,9 +20,13 @@
   top: -100%;
   transition: top $animation-timing ease;
 
-  pre {
-    display: inline;
+  pre,
+  code {
     font-weight: bold;
+  }
+
+  code {
+    display: inline;
   }
 
   &.is-visible {
