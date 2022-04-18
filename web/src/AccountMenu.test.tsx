@@ -1,11 +1,7 @@
-import { mount } from "enzyme"
+import { render, screen } from "@testing-library/react"
 import React from "react"
 import ReactModal from "react-modal"
-import {
-  AccountMenuContent,
-  MenuContentButtonSignUp,
-  MenuContentButtonTiltCloud,
-} from "./AccountMenu"
+import { AccountMenuContent } from "./AccountMenu"
 
 beforeEach(() => {
   // Note: `body` is used as the app element _only_ in a test env
@@ -15,7 +11,7 @@ beforeEach(() => {
 })
 
 it("renders Sign Up button when user is not signed in", () => {
-  const root = mount(
+  render(
     <AccountMenuContent
       tiltCloudUsername=""
       tiltCloudSchemeHost="http://cloud.tilt.dev"
@@ -25,11 +21,13 @@ it("renders Sign Up button when user is not signed in", () => {
     />
   )
 
-  expect(root.find(MenuContentButtonSignUp)).toHaveLength(1)
+  expect(
+    screen.getByRole("button", { name: "Link Tilt to Tilt Cloud" })
+  ).toBeInTheDocument()
 })
 
 it("renders TiltCloud button when user is signed in", () => {
-  const root = mount(
+  render(
     <AccountMenuContent
       tiltCloudUsername="amaia"
       tiltCloudSchemeHost="http://cloud.tilt.dev"
@@ -38,6 +36,7 @@ it("renders TiltCloud button when user is signed in", () => {
       isSnapshot={false}
     />
   )
-
-  expect(root.find(MenuContentButtonTiltCloud)).toHaveLength(1)
+  expect(
+    screen.getByRole("link", { name: "View Tilt Cloud" })
+  ).toBeInTheDocument()
 })

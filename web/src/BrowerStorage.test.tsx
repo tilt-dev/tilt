@@ -1,4 +1,4 @@
-import { mount } from "enzyme"
+import { render, screen } from "@testing-library/react"
 import React from "react"
 import {
   makeKey,
@@ -23,7 +23,7 @@ describe("localStorageContext", () => {
       return null
     }
 
-    mount(
+    render(
       <tiltfileKeyContext.Provider value={"test"}>
         <ValueSetter />
       </tiltfileKeyContext.Provider>
@@ -41,18 +41,20 @@ describe("localStorageContext", () => {
     )
 
     function ValueGetter() {
-      const [value, setValue] = usePersistentState<string>(
+      const [value, _setValue] = usePersistentState<string>(
         "test-key",
         "initial"
       )
-      return <p>{value}</p>
+      return <p aria-label="saved value">{value}</p>
     }
-    let root = mount(
+    render(
       <tiltfileKeyContext.Provider value="test">
         <ValueGetter />
       </tiltfileKeyContext.Provider>
     )
 
-    expect(root.find("p").text()).toEqual("test-read-value")
+    expect(screen.getByLabelText("saved value")).toHaveTextContent(
+      "test-read-value"
+    )
   })
 })

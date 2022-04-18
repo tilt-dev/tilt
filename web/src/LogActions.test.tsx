@@ -1,4 +1,5 @@
-import { mount } from "enzyme"
+import { render, screen, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import React from "react"
 import { AnalyticsAction } from "./analytics"
 import {
@@ -7,8 +8,6 @@ import {
   mockAnalyticsCalls,
 } from "./analytics_test_helpers"
 import {
-  FontSizeDecreaseButton,
-  FontSizeIncreaseButton,
   LogFontSizeScaleCSSProperty,
   LogFontSizeScaleLocalStorageKey,
   LogFontSizeScaleMinimumPercentage,
@@ -16,19 +15,16 @@ import {
 } from "./LogActions"
 
 describe("LogsFontSize", () => {
-  const cleanup = () => {
-    localStorage.clear()
-    document.documentElement.style.removeProperty("--log-font-scale")
-    cleanupMockAnalyticsCalls()
-  }
-
   beforeEach(() => {
-    cleanup()
     // CSS won't be loaded in test context, so just explicitly set it
     document.documentElement.style.setProperty("--log-font-scale", "100%")
     mockAnalyticsCalls()
   })
-  afterEach(cleanup)
+  afterEach(() => {
+    localStorage.clear()
+    document.documentElement.style.removeProperty("--log-font-scale")
+    cleanupMockAnalyticsCalls()
+  })
 
   const getCSSValue = () =>
     getComputedStyle(document.documentElement).getPropertyValue(
@@ -43,14 +39,17 @@ describe("LogsFontSize", () => {
 
   it("restores persisted font scale on load", () => {
     setLocalStorageValue("360%")
-    mount(<LogsFontSize />)
+    render(<LogsFontSize />)
     expect(getCSSValue()).toEqual("360%")
   })
 
-  it("decreases font scale", () => {
-    const root = mount(<LogsFontSize />)
-    root.find(FontSizeDecreaseButton).simulate("click")
-    expect(getCSSValue()).toEqual("95%")
+  it("decreases font scale", async () => {
+    render(<LogsFontSize />)
+    userEvent.click(screen.getByLabelText("Decrease log font size"))
+
+    await waitFor(() => {
+      expect(getCSSValue()).toEqual("95%")
+    })
     expect(getLocalStorageValue()).toEqual(`95%`) // JSON serialized
     expectIncrs({
       name: "ui.web.zoomLogs",
@@ -58,18 +57,24 @@ describe("LogsFontSize", () => {
     })
   })
 
-  it("has a minimum font scale", () => {
+  it("has a minimum font scale", async () => {
     setLocalStorageValue(`${LogFontSizeScaleMinimumPercentage}%`)
-    const root = mount(<LogsFontSize />)
-    root.find(FontSizeDecreaseButton).simulate("click")
-    expect(getCSSValue()).toEqual("10%")
+    render(<LogsFontSize />)
+    userEvent.click(screen.getByLabelText("Decrease log font size"))
+
+    await waitFor(() => {
+      expect(getCSSValue()).toEqual("10%")
+    })
     expect(getLocalStorageValue()).toEqual(`10%`)
   })
 
-  it("increases font scale", () => {
-    const root = mount(<LogsFontSize />)
-    root.find(FontSizeIncreaseButton).simulate("click")
-    expect(getCSSValue()).toEqual("105%")
+  it("increases font scale", async () => {
+    render(<LogsFontSize />)
+    userEvent.click(screen.getByLabelText("Increase log font size"))
+
+    await waitFor(() => {
+      expect(getCSSValue()).toEqual("105%")
+    })
     expect(getLocalStorageValue()).toEqual(`105%`)
     expectIncrs({
       name: "ui.web.zoomLogs",

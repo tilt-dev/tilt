@@ -88,7 +88,7 @@ export const LogsFontSize: React.FC = () => {
   return (
     <FontSizeControls>
       <FontSizeDecreaseButton
-        aria-label={"Decrease log font size"}
+        aria-label="Decrease log font size"
         onClick={() => adjustLogFontScale(-zoomStep)}
         analyticsName="ui.web.zoomLogs"
         analyticsTags={{ dir: "out" }}
@@ -97,7 +97,7 @@ export const LogsFontSize: React.FC = () => {
       </FontSizeDecreaseButton>
       <FontSizeControlsDivider aria-hidden={true}>|</FontSizeControlsDivider>
       <FontSizeIncreaseButton
-        aria-label={"Increase log font size"}
+        aria-label="Increase log font size"
         onClick={() => adjustLogFontScale(zoomStep)}
         analyticsName="ui.web.zoomLogs"
         analyticsTags={{ dir: "in" }}
