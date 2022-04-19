@@ -72,6 +72,14 @@ type DockerImageSpec struct {
 	// +tilt:local-path=true
 	Context string `json:"context,omitempty" protobuf:"bytes,2,opt,name=context"`
 
+	// Ignores are filters on the Docker build context.
+	//
+	// The DockerImage controller will NOT read ignores from .dockerignore files.
+	// Instead, all filters must be expressed in this field, which covers
+	// .dockerignore files, ignore= lists in the tiltfile, only= lists in the
+	// tiltfile, and more.
+	ContextIgnores []IgnoreDef `json:"contextIgnores,omitempty" protobuf:"bytes,16,rep,name=contextIgnores"`
+
 	// Args specifies the build arguments to the Dockerfile.
 	//
 	// Equivalent to `--build-arg` in the docker CLI.
