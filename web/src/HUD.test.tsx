@@ -1,12 +1,15 @@
-import { mount } from "enzyme"
 import { createMemoryHistory } from "history"
 import React from "react"
 import ReactDOM from "react-dom"
+import {
+  findRenderedComponentWithType,
+  renderIntoDocument,
+} from "react-dom/test-utils"
 import ReactModal from "react-modal"
 import { MemoryRouter } from "react-router"
 import HUD, { mergeAppUpdate } from "./HUD"
 import LogStore from "./LogStore"
-import SocketBar from "./SocketBar"
+import { SocketBarRoot } from "./SocketBar"
 import {
   logList,
   nButtonView,
@@ -40,44 +43,35 @@ const emptyHUD = () => {
     </MemoryRouter>
   )
 }
-const HUDAtPath = (path: string) => {
-  return (
-    <MemoryRouter initialEntries={[path]}>
-      <HUD history={fakeHistory} interfaceVersion={interfaceVersion} />
-    </MemoryRouter>
-  )
-}
 
 beforeEach(() => {
   Date.now = jest.fn(() => 1482363367071)
 })
 
-it("renders without crashing", () => {
-  const div = document.createElement("div")
-  ReactDOM.render(emptyHUD(), div)
-  ReactDOM.unmountComponentAtNode(div)
-})
-
 it("renders reconnecting bar", async () => {
-  const root = mount(emptyHUD())
-  const hud = root.find(HUD)
-  expect(hud.text()).toEqual(expect.stringContaining("Loading"))
+  let root = emptyHUD()
+  let rootTree = renderIntoDocument(root) as any
+  let container = ReactDOM.findDOMNode(rootTree)! as HTMLElement
+  expect(container.textContent).toEqual(expect.stringContaining("Loading"))
+
+  const hud = findRenderedComponentWithType(rootTree, HUD)
 
   hud.setState({
     view: oneResourceView(),
     socketState: SocketState.Reconnecting,
   })
+  container = ReactDOM.findDOMNode(rootTree)! as HTMLElement
 
-  let socketBar = root.find(SocketBar)
+  let socketBar = Array.from(container.querySelectorAll(SocketBarRoot))
   expect(socketBar).toHaveLength(1)
-  expect(socketBar.at(0).text()).toEqual(
+  expect(socketBar[0].textContent).toEqual(
     expect.stringContaining("reconnecting")
   )
 })
 
 it("loads logs incrementally", async () => {
-  const root = mount(emptyHUD())
-  const hud = root.find(HUD).instance() as HUD
+  const root = renderIntoDocument(emptyHUD()) as any
+  const hud = findRenderedComponentWithType(root, HUD)
 
   let now = new Date().toString()
   let resourceView = oneResourceView()
@@ -108,7 +102,6 @@ it("loads logs incrementally", async () => {
   }
   hud.onAppChange({ view: resourceView2 })
 
-  root.update()
   let snapshot = hud.snapshotFromState(hud.state)
   expect(snapshot.view?.logList).toEqual({
     spans: {
@@ -124,8 +117,8 @@ it("loads logs incrementally", async () => {
 })
 
 it("renders logs to snapshot", async () => {
-  const root = mount(emptyHUD())
-  const hud = root.find(HUD).instance() as HUD
+  const root = renderIntoDocument(emptyHUD()) as any
+  const hud = findRenderedComponentWithType(root, HUD)
 
   let now = new Date().toString()
   let resourceView = oneResourceView()
@@ -142,7 +135,6 @@ it("renders logs to snapshot", async () => {
   }
   hud.onAppChange({ view: resourceView })
 
-  root.update()
   let snapshot = hud.snapshotFromState(hud.state)
   expect(snapshot.view?.logList).toEqual({
     spans: {

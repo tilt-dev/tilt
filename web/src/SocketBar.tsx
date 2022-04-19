@@ -19,7 +19,7 @@ let pulse = keyframes`
   }
 `
 
-let SocketBarRoot = styled.div`
+export let SocketBarRoot = styled.div`
   position: fixed;
   z-index: ${ZIndex.SocketBar};
   width: 100vw;
