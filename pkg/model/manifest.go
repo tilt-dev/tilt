@@ -452,12 +452,6 @@ type Sync struct {
 	ContainerPath string
 }
 
-type LocalGitRepo struct {
-	LocalPath string
-}
-
-func (LocalGitRepo) IsRepo() {}
-
 // Self-contained spec for running in a container.
 //
 // Unlike v1alpha1.LiveUpdateExec, all fields of this object must be absolute

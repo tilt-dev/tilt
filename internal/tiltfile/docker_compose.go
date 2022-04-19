@@ -380,9 +380,8 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResource
 			Service: service.Name,
 			Project: dcSet.Project,
 		},
-		ServiceYAML:      string(service.ServiceYAML),
-		Links:            options.Links,
-		LocalVolumePaths: service.MountedLocalDirs,
+		ServiceYAML: string(service.ServiceYAML),
+		Links:       options.Links,
 	}.WithImageMapDeps(model.FilterLiveUpdateOnly(service.ImageMapDeps, iTargets)).
 		WithPublishedPorts(service.PublishedPorts)
 

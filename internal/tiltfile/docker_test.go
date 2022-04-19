@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tilt-dev/tilt/internal/testutils"
-	"github.com/tilt-dev/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
 func TestDockerignoreInSyncDir(t *testing.T) {
@@ -34,14 +34,16 @@ docker_build('gcr.io/fe', '.', live_update=[
 	f.load()
 	m := f.assertNextManifest("fe")
 	assert.Equal(t,
-		[]model.Dockerignore{
-			model.Dockerignore{
-				LocalPath: f.Path(),
-				Source:    f.JoinPath(".dockerignore"),
-				Patterns:  []string{"build"},
+		[]v1alpha1.IgnoreDef{
+			{
+				BasePath: f.JoinPath("Tiltfile"),
+			},
+			{
+				BasePath: f.Path(),
+				Patterns: []string{"build"},
 			},
 		},
-		m.ImageTargetAt(0).Dockerignores())
+		m.ImageTargetAt(0).GetFileWatchIgnores())
 }
 
 func TestNonDefaultDockerignoreInSyncDir(t *testing.T) {
@@ -66,14 +68,16 @@ docker_build('gcr.io/fe', '.', dockerfile="Dockerfile.custom", live_update=[
 	f.load()
 	m := f.assertNextManifest("fe")
 	assert.Equal(t,
-		[]model.Dockerignore{
-			model.Dockerignore{
-				LocalPath: f.Path(),
-				Source:    f.JoinPath("Dockerfile.custom.dockerignore"),
-				Patterns:  []string{"build"},
+		[]v1alpha1.IgnoreDef{
+			{
+				BasePath: f.JoinPath("Tiltfile"),
+			},
+			{
+				BasePath: f.Path(),
+				Patterns: []string{"build"},
 			},
 		},
-		m.ImageTargetAt(0).Dockerignores())
+		m.ImageTargetAt(0).GetFileWatchIgnores())
 }
 
 func TestCustomPlatform(t *testing.T) {
@@ -142,12 +146,10 @@ custom_build('gcr.io/fe', 'docker build -t $EXPECTED_REF .', ['src'])
 	m := f.assertNextManifest("fe")
 	it := m.ImageTargets[0]
 
-	var localPathStrings []string
-	for _, r := range it.LocalRepos() {
-		localPathStrings = append(localPathStrings, r.LocalPath)
-	}
-
-	assert.Contains(t, localPathStrings, f.JoinPath("src"))
+	assert.Equal(t, []v1alpha1.IgnoreDef{
+		{BasePath: f.JoinPath("Tiltfile")},
+		{BasePath: f.JoinPath("src", ".git")},
+	}, it.GetFileWatchIgnores())
 }
 
 func TestCustomBuildDepsZeroArgs(t *testing.T) {

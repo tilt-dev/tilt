@@ -7,7 +7,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tilt-dev/tilt/internal/controllers/apiset"
-	"github.com/tilt-dev/tilt/internal/ignore"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -25,13 +24,14 @@ type WatchInputs struct {
 }
 
 type WatchableTarget interface {
-	ignore.IgnorableTarget
+	GetFileWatchIgnores() []v1alpha1.IgnoreDef
 	Dependencies() []string
 	ID() model.TargetID
 }
 
 var _ WatchableTarget = model.ImageTarget{}
 var _ WatchableTarget = model.LocalTarget{}
+var _ WatchableTarget = model.K8sTarget{}
 
 func specForTarget(t WatchableTarget, globalIgnores []model.Dockerignore) *v1alpha1.FileWatchSpec {
 	watchedPaths := append([]string(nil), t.Dependencies()...)
@@ -41,7 +41,7 @@ func specForTarget(t WatchableTarget, globalIgnores []model.Dockerignore) *v1alp
 
 	spec := &v1alpha1.FileWatchSpec{
 		WatchedPaths: watchedPaths,
-		Ignores:      ignore.TargetToFileWatchIgnores(t),
+		Ignores:      t.GetFileWatchIgnores(),
 	}
 
 	// process global ignores last

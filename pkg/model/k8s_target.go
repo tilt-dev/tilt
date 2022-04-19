@@ -54,8 +54,8 @@ type K8sTarget struct {
 	// files registered as "config files", which cause the Tiltfile to be
 	// re-evaluated.
 	pathDependencies []string
-	localRepos       []LocalGitRepo
-	ignores          []Dockerignore
+
+	FileWatchIgnores []v1alpha1.IgnoreDef
 }
 
 func NewK8sTargetForTesting(yaml string) K8sTarget {
@@ -63,6 +63,10 @@ func NewK8sTargetForTesting(yaml string) K8sTarget {
 		YAML: yaml,
 	}
 	return K8sTarget{KubernetesApplySpec: apply}
+}
+
+func (k8s K8sTarget) GetFileWatchIgnores() []v1alpha1.IgnoreDef {
+	return k8s.FileWatchIgnores
 }
 
 func (k8s K8sTarget) Empty() bool { return reflect.DeepEqual(k8s, K8sTarget{}) }
@@ -102,21 +106,6 @@ func (k8s K8sTarget) ID() TargetID {
 	}
 }
 
-// LocalRepos is part of the WatchableTarget interface.
-func (k8s K8sTarget) LocalRepos() []LocalGitRepo {
-	return k8s.localRepos
-}
-
-// Dockerignores is part of the WatchableTarget interface.
-func (k8s K8sTarget) Dockerignores() []Dockerignore {
-	return k8s.ignores
-}
-
-// IgnoredLocalDirectories is part of the WatchableTarget interface.
-func (k8s K8sTarget) IgnoredLocalDirectories() []string {
-	return nil
-}
-
 // Dependencies are files required by this target.
 //
 // Part of the WatchableTarget interface.
@@ -132,15 +121,18 @@ func (k8s K8sTarget) WithImageDependencies(imageMapDeps []string) K8sTarget {
 }
 
 // WithPathDependencies registers paths that this K8sTarget depends on.
-func (k8s K8sTarget) WithPathDependencies(paths []string, localRepos []LocalGitRepo, ignores []Dockerignore) K8sTarget {
+func (k8s K8sTarget) WithPathDependencies(paths []string) K8sTarget {
 	k8s.pathDependencies = sliceutils.DedupedAndSorted(paths)
-	k8s.localRepos = localRepos
-	k8s.ignores = ignores
 	return k8s
 }
 
 func (k8s K8sTarget) WithRefInjectCounts(ric map[string]int) K8sTarget {
 	k8s.refInjectCounts = ric
+	return k8s
+}
+
+func (k8s K8sTarget) WithIgnores(ignores []v1alpha1.IgnoreDef) K8sTarget {
+	k8s.FileWatchIgnores = ignores
 	return k8s
 }
 

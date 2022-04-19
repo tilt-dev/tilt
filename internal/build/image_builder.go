@@ -90,10 +90,11 @@ func (ib *ImageBuilder) buildOnly(ctx context.Context,
 		ps.StartPipelineStep(ctx, "Building Dockerfile: [%s]", userFacingRefName)
 		defer ps.EndPipelineStep(ctx)
 
+		filter := ignore.CreateBuildContextFilter(bd.DockerImageSpec.ContextIgnores)
 		return ib.db.BuildImage(ctx, ps, refs, bd.DockerImageSpec,
 			cluster,
 			imageMaps,
-			ignore.CreateBuildContextFilter(iTarget))
+			filter)
 
 	case model.CustomBuild:
 		ps.StartPipelineStep(ctx, "Building Custom Build: [%s]", userFacingRefName)

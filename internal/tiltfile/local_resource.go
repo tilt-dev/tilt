@@ -28,7 +28,6 @@ type localResource struct {
 	deps          []string
 	triggerMode   triggerMode
 	autoInit      bool
-	repos         []model.LocalGitRepo
 	resourceDeps  []string
 	ignores       []string
 	allowParallel bool
@@ -83,8 +82,6 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		return nil, err
 	}
 
-	repos := reposForPaths(deps.Value)
-
 	resourceDeps, err := value.SequenceToStringSlice(resourceDepsVal)
 	if err != nil {
 		return nil, errors.Wrapf(err, "%s: resource_deps", fn.Name())
@@ -122,7 +119,6 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		deps:           deps.Value,
 		triggerMode:    triggerMode,
 		autoInit:       autoInit,
-		repos:          repos,
 		resourceDeps:   resourceDeps,
 		ignores:        ignores,
 		allowParallel:  allowParallel,

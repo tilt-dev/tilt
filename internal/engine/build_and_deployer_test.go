@@ -123,11 +123,10 @@ func TestIgnoredFiles(t *testing.T) {
 	manifest := NewSanchoDockerBuildManifest(f)
 
 	tiltfile := filepath.Join(f.Path(), "Tiltfile")
-	manifest = manifest.WithImageTarget(manifest.ImageTargetAt(0).WithRepos([]model.LocalGitRepo{
-		model.LocalGitRepo{
-			LocalPath: f.Path(),
-		},
-	}).WithTiltFilename(tiltfile))
+	manifest = manifest.WithImageTarget(manifest.ImageTargetAt(0).WithIgnores([]v1alpha1.IgnoreDef{
+		{BasePath: filepath.Join(f.Path(), ".git")},
+		{BasePath: tiltfile},
+	}))
 
 	f.WriteFile("Tiltfile", "# hello world")
 	f.WriteFile("a.txt", "a")

@@ -9,8 +9,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/tilt-dev/tilt/internal/ignore"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
-	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func BenchmarkArchivePaths(b *testing.B) {
@@ -31,10 +31,11 @@ func BenchmarkArchivePaths(b *testing.B) {
 
 	run := func() {
 		writer := &bytes.Buffer{}
-		filter := model.NewRelativeFileOrChildMatcher(f.Path(), "dirA")
+		filter, err := ignore.NewDirectoryMatcher(f.JoinPath(f.Path(), "dirA"))
+		assert.NoError(b, err)
 
 		builder := NewArchiveBuilder(writer, filter)
-		err := builder.ArchivePathsIfExist(context.Background(), []PathMapping{
+		err = builder.ArchivePathsIfExist(context.Background(), []PathMapping{
 			{
 				LocalPath:     f.Path(),
 				ContainerPath: "/",

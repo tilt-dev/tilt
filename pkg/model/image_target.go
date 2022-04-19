@@ -35,12 +35,7 @@ type ImageTarget struct {
 	// firm up how images work in the apiserver.
 	IsLiveUpdateOnly bool
 
-	// TODO(nick): It might eventually make sense to represent
-	// Tiltfile as a separate nodes in the build graph, rather
-	// than duplicating it in each ImageTarget.
-	tiltFilename  string
-	dockerignores []Dockerignore
-	repos         []LocalGitRepo
+	FileWatchIgnores []v1alpha1.IgnoreDef
 }
 
 var _ TargetSpec = ImageTarget{}
@@ -62,6 +57,20 @@ func ImageID(ref container.RefSelector) TargetID {
 
 func (i ImageTarget) ImageMapName() string {
 	return i.ID().Name.String()
+}
+
+func (i ImageTarget) GetFileWatchIgnores() []v1alpha1.IgnoreDef {
+	return i.FileWatchIgnores
+}
+
+func (i ImageTarget) WithIgnores(ignores []v1alpha1.IgnoreDef) ImageTarget {
+	i.FileWatchIgnores = ignores
+	switch bd := i.BuildDetails.(type) {
+	case DockerBuild:
+		bd.DockerImageSpec.ContextIgnores = ignores
+		i.BuildDetails = bd
+	}
+	return i
 }
 
 func (i ImageTarget) MustWithRef(ref container.RefSelector) ImageTarget {
@@ -218,25 +227,11 @@ func (i ImageTarget) WithBuildDetails(details BuildDetails) ImageTarget {
 	return i
 }
 
-func (i ImageTarget) WithRepos(repos []LocalGitRepo) ImageTarget {
-	i.repos = append(append([]LocalGitRepo{}, i.repos...), repos...)
-	return i
-}
-
-func (i ImageTarget) WithDockerignores(dockerignores []Dockerignore) ImageTarget {
-	i.dockerignores = append(append([]Dockerignore{}, i.dockerignores...), dockerignores...)
-	return i
-}
-
 func (i ImageTarget) WithOverrideCommand(cmd Cmd) ImageTarget {
 	i.ImageMapSpec.OverrideCommand = &v1alpha1.ImageMapOverrideCommand{
 		Command: cmd.Argv,
 	}
 	return i
-}
-
-func (i ImageTarget) Dockerignores() []Dockerignore {
-	return append([]Dockerignore{}, i.dockerignores...)
 }
 
 func (i ImageTarget) LocalPaths() []string {
@@ -259,26 +254,6 @@ func (i ImageTarget) ClusterNeeds() v1alpha1.ClusterImageNeeds {
 		return bd.CmdImageSpec.ClusterNeeds
 	}
 	return v1alpha1.ClusterImageNeedsBase
-}
-
-func (i ImageTarget) LocalRepos() []LocalGitRepo {
-	return i.repos
-}
-
-func (i ImageTarget) IgnoredLocalDirectories() []string {
-	if bd, ok := i.BuildDetails.(DockerComposeBuild); ok {
-		return bd.LocalVolumePaths
-	}
-	return nil
-}
-
-func (i ImageTarget) TiltFilename() string {
-	return i.tiltFilename
-}
-
-func (i ImageTarget) WithTiltFilename(f string) ImageTarget {
-	i.tiltFilename = f
-	return i
 }
 
 // TODO(nick): This method should be deleted. We should just de-dupe and sort LocalPaths once
@@ -392,9 +367,6 @@ type DockerComposeBuild struct {
 
 	// Context is the build context absolute path.
 	Context string
-
-	// LocalVolumePaths are ignored for triggering builds but are still included in the build context.
-	LocalVolumePaths []string
 }
 
 func (d DockerComposeBuild) buildDetails() {

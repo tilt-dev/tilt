@@ -17,11 +17,6 @@ type DockerComposeTarget struct {
 	publishedPorts []int
 
 	Links []Link
-
-	// TODO(milas): currently, this is unused; in theory it should be added as an ignored path for the corresponding
-	// 	ImageTarget, but there are potential edge cases here (e.g. same image used across multiple services with
-	// 	different volume mounts in each case)
-	LocalVolumePaths []string
 }
 
 // TODO(nick): This is a temporary hack until we figure out how we want

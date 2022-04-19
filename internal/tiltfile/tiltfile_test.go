@@ -1359,11 +1359,8 @@ k8s_yaml('foo.yaml')
 
 	f.load("foo")
 	f.assertNextManifest("foo",
-		buildFilters("src/sub/b.txt"),
 		fileChangeFilters("src/sub/b.txt"),
-		buildMatches("src/sub/a.txt"),
 		fileChangeMatches("src/sub/a.txt"),
-		buildMatches("src/sub/c.txt"),
 		fileChangeMatches("src/sub/c.txt"),
 	)
 }
@@ -1385,11 +1382,8 @@ k8s_yaml('foo.yaml')
 
 	f.load("foo")
 	f.assertNextManifest("foo",
-		buildFilters("src/sub/b.txt"),
 		fileChangeFilters("src/sub/b.txt"),
-		buildMatches("src/sub/a.txt"),
 		fileChangeMatches("src/sub/a.txt"),
-		buildFilters("src/sub/c.txt"),
 		fileChangeFilters("src/sub/c.txt"),
 	)
 }
@@ -3802,9 +3796,7 @@ k8s_yaml('foo.yaml')
 `) // custom build doesnt support globs for dependencies
 	f.load()
 	f.assertNextManifest("foo",
-		buildFilters("foo/a.txt"),
 		fileChangeFilters("foo/a.txt"),
-		buildMatches("foo/txt.a"),
 		fileChangeMatches("foo/txt.a"),
 	)
 }
@@ -3821,12 +3813,8 @@ k8s_yaml('foo.yaml')
 `)
 	f.load()
 	f.assertNextManifest("foo",
-		buildFilters("foo/a.txt"),
-		buildFilters("foo/a.md"),
 		fileChangeFilters("foo/a.txt"),
 		fileChangeFilters("foo/a.md"),
-		buildMatches("foo/txt.a"),
-		buildMatches("foo/md.a"),
 		fileChangeMatches("foo/txt.a"),
 		fileChangeMatches("foo/md.a"),
 	)
@@ -4240,7 +4228,9 @@ local_resource("test", "echo hi", deps=["foo/bar", "foo/a.txt"])
 	m := f.assertNextManifest("test", localTarget(updateCmd(f.Path(), "echo hi", nil), deps(path1, path2)), fileChangeMatches("foo/a.txt"))
 
 	lt := m.LocalTarget()
-	f.assertRepos([]string{f.Path()}, lt.LocalRepos())
+	assert.Equal(t, []v1alpha1.IgnoreDef{
+		{BasePath: f.JoinPath(".git")},
+	}, lt.GetFileWatchIgnores())
 
 	f.assertConfigFiles("Tiltfile", ".tiltignore")
 }
@@ -4336,17 +4326,17 @@ local_resource("toplvl-local", "echo hello world", deps=["foo/baz", "foo/a.txt"]
 			deps("nested/foo/bar", "nested/more_nested/repo")))
 
 	ltNested := mNested.LocalTarget()
-	f.assertRepos([]string{
-		f.JoinPath("nested"),
-		f.JoinPath("nested/more_nested/repo"),
-	}, ltNested.LocalRepos())
+	assert.Equal(t, []v1alpha1.IgnoreDef{
+		{BasePath: f.JoinPath("nested/more_nested/repo", ".git")},
+		{BasePath: f.JoinPath("nested", ".git")},
+	}, ltNested.GetFileWatchIgnores())
 
 	mTop := f.assertNextManifest("toplvl-local", localTarget(updateCmd(f.Path(), "echo hello world", nil), deps("foo/baz", "foo/a.txt")))
 	ltTop := mTop.LocalTarget()
-	f.assertRepos([]string{
-		f.JoinPath("foo/baz"),
-		f.Path(),
-	}, ltTop.LocalRepos())
+	assert.Equal(t, []v1alpha1.IgnoreDef{
+		{BasePath: f.JoinPath("foo/baz", ".git")},
+		{BasePath: f.JoinPath(".git")},
+	}, ltTop.GetFileWatchIgnores())
 }
 
 func TestLocalResourceIgnore(t *testing.T) {
@@ -4365,8 +4355,7 @@ local_resource("test", "echo hi", deps=["foo"], ignore=["**/*.a", "foo/bar.d"])
 	m := f.assertNextManifest("test")
 
 	// TODO(dmiller): I can't figure out how to translate these in to (file\build)(Matches\Filters) assert functions
-	filter, err := ignore.CreateFileChangeFilter(m.LocalTarget())
-	require.NoError(t, err)
+	filter := ignore.CreateFileChangeFilter(m.LocalTarget().GetFileWatchIgnores())
 
 	for _, tc := range []struct {
 		path        string
@@ -4496,14 +4485,6 @@ custom_build(
 		deps(f.JoinPath("proj/foo")),
 		cmd("build.sh", f.JoinPath("proj")),
 	))
-}
-
-func (f *fixture) assertRepos(expectedLocalPaths []string, repos []model.LocalGitRepo) {
-	var actualLocalPaths []string
-	for _, r := range repos {
-		actualLocalPaths = append(actualLocalPaths, r.LocalPath)
-	}
-	assert.ElementsMatch(f.t, expectedLocalPaths, actualLocalPaths)
 }
 
 func TestSecretString(t *testing.T) {
@@ -6190,14 +6171,14 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 			var filterName string
 			var filter model.PathMatcher
 			if opt.fileChange {
-				var err error
-				filter, err = ignore.CreateFileChangeFilter(m.ImageTargetAt(0))
-				if err != nil {
-					f.t.Fatalf("Error creating file change filter: %v", err)
-				}
+				filter = ignore.CreateFileChangeFilter(m.ImageTargetAt(0).GetFileWatchIgnores())
 				filterName = "FileChangeFilter"
 			} else {
-				filter = ignore.CreateBuildContextFilter(m.ImageTargetAt(0))
+				db, ok := m.ImageTargetAt(0).BuildDetails.(model.DockerBuild)
+				if !ok {
+					f.t.Fatalf("BuildContextFilter only applies to docker_build")
+				}
+				filter = ignore.CreateBuildContextFilter(db.DockerImageSpec.ContextIgnores)
 				filterName = "BuildContextFilter"
 			}
 

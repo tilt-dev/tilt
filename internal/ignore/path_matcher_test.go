@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
-	"github.com/tilt-dev/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
 type FakeTarget struct {
@@ -16,27 +16,16 @@ type FakeTarget struct {
 	dockerignorePatterns []string
 }
 
-func (t FakeTarget) LocalRepos() []model.LocalGitRepo {
-	return []model.LocalGitRepo{
-		model.LocalGitRepo{LocalPath: t.path},
+func (t FakeTarget) GetIgnores() []v1alpha1.IgnoreDef {
+	result := []v1alpha1.IgnoreDef{
+		{BasePath: filepath.Join(t.path, "Tiltfile")},
+		{BasePath: filepath.Join(t.path, ".git")},
 	}
-}
 
-func (t FakeTarget) Dockerignores() []model.Dockerignore {
-	return []model.Dockerignore{
-		model.Dockerignore{
-			LocalPath: t.path,
-			Patterns:  t.dockerignorePatterns,
-		},
+	if len(t.dockerignorePatterns) != 0 {
+		result = append(result, v1alpha1.IgnoreDef{BasePath: t.path, Patterns: t.dockerignorePatterns})
 	}
-}
-
-func (t FakeTarget) TiltFilename() string {
-	return filepath.Join(t.path, "Tiltfile")
-}
-
-func (t FakeTarget) IgnoredLocalDirectories() []string {
-	return nil
+	return result
 }
 
 type ignoreTestCase struct {
@@ -125,7 +114,7 @@ func TestIgnores(t *testing.T) {
 			target := c.target
 			change := filepath.Join(f.Path(), c.change)
 
-			ctxFilter := CreateBuildContextFilter(target)
+			ctxFilter := CreateBuildContextFilter(target.GetIgnores())
 			actual, err := ctxFilter.Matches(change)
 			if err != nil {
 				t.Fatal(err)
@@ -133,11 +122,7 @@ func TestIgnores(t *testing.T) {
 
 			assert.Equal(t, c.ignoreInBuildContext, actual)
 
-			changeFilter, err := CreateFileChangeFilter(target)
-			if err != nil {
-				t.Fatal(err)
-			}
-
+			changeFilter := CreateFileChangeFilter(target.GetIgnores())
 			actual, err = changeFilter.Matches(change)
 			if err != nil {
 				t.Fatal(err)
