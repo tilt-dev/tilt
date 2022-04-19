@@ -50,8 +50,8 @@ beforeEach(() => {
 
 it("renders reconnecting bar", async () => {
   let root = emptyHUD()
-  let rootTree = renderIntoDocument(root)
-  let container = ReactDOM.findDOMNode(rootTree)
+  let rootTree = renderIntoDocument(root) as any
+  let container = ReactDOM.findDOMNode(rootTree)! as HTMLElement
   expect(container.textContent).toEqual(expect.stringContaining("Loading"))
 
   const hud = findRenderedComponentWithType(rootTree, HUD)
@@ -60,7 +60,7 @@ it("renders reconnecting bar", async () => {
     view: oneResourceView(),
     socketState: SocketState.Reconnecting,
   })
-  container = ReactDOM.findDOMNode(rootTree)
+  container = ReactDOM.findDOMNode(rootTree)! as HTMLElement
 
   let socketBar = Array.from(container.querySelectorAll(SocketBarRoot))
   expect(socketBar).toHaveLength(1)
@@ -70,8 +70,7 @@ it("renders reconnecting bar", async () => {
 })
 
 it("loads logs incrementally", async () => {
-  const root = renderIntoDocument(emptyHUD())
-  const container = ReactDOM.findDOMNode(root)
+  const root = renderIntoDocument(emptyHUD()) as any
   const hud = findRenderedComponentWithType(root, HUD)
 
   let now = new Date().toString()
@@ -118,8 +117,7 @@ it("loads logs incrementally", async () => {
 })
 
 it("renders logs to snapshot", async () => {
-  const root = renderIntoDocument(emptyHUD())
-  const container = ReactDOM.findDOMNode(root)
+  const root = renderIntoDocument(emptyHUD()) as any
   const hud = findRenderedComponentWithType(root, HUD)
 
   let now = new Date().toString()
