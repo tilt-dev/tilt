@@ -66,8 +66,7 @@ export function ResourceNavProvider(
     (name: string) => {
       name = name || ResourceName.all
       let url = pb.encpath`/r/${name}/overview`
-
-      history.push(url)
+      history.push(url + history.location.search)
     },
     [history]
   )
