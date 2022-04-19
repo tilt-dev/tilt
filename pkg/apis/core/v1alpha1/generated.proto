@@ -795,6 +795,14 @@ message DockerImageSpec {
   // +tilt:local-path=true
   optional string context = 2;
 
+  // Ignores are filters on the Docker build context.
+  //
+  // The DockerImage controller will NOT read ignores from .dockerignore files.
+  // Instead, all filters must be expressed in this field, which covers
+  // .dockerignore files, ignore= lists in the tiltfile, only= lists in the
+  // tiltfile, and more.
+  repeated IgnoreDef contextIgnores = 16;
+
   // Args specifies the build arguments to the Dockerfile.
   //
   // Equivalent to `--build-arg` in the docker CLI.

@@ -2169,6 +2169,20 @@ func schema_pkg_apis_core_v1alpha1_DockerImageSpec(ref common.ReferenceCallback)
 							Format:      "",
 						},
 					},
+					"contextIgnores": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Ignores are filters on the Docker build context.\n\nThe DockerImage controller will NOT read ignores from .dockerignore files. Instead, all filters must be expressed in this field, which covers .dockerignore files, ignore= lists in the tiltfile, only= lists in the tiltfile, and more.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.IgnoreDef"),
+									},
+								},
+							},
+						},
+					},
 					"args": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Args specifies the build arguments to the Dockerfile.\n\nEquivalent to `--build-arg` in the docker CLI.\n\nEach item should take the form \"KEY\" or \"KEY=VALUE\".",
@@ -2305,6 +2319,8 @@ func schema_pkg_apis_core_v1alpha1_DockerImageSpec(ref common.ReferenceCallback)
 				Required: []string{"ref"},
 			},
 		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.IgnoreDef"},
 	}
 }
 
