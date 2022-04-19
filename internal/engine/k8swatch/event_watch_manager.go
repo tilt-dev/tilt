@@ -16,7 +16,6 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
-	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -219,7 +218,8 @@ func (m *EventWatchManager) triageEventUpdate(clusterNN types.NamespacedName, ev
 func (m *EventWatchManager) dispatchEventChange(ctx context.Context, of k8s.OwnerFetcher, clusterNN types.NamespacedName, event *v1.Event, st store.RStore) {
 	objTree, err := of.OwnerTreeOfRef(ctx, event.InvolvedObject)
 	if err != nil {
-		logger.Get(ctx).Infof("Error handling event update (%q): %v", event.Name, err)
+		// In locked-down clusters, the user may not have access to certain types of resources
+		// so it's normal for there to be errors. Ignore them.
 		return
 	}
 

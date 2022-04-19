@@ -581,6 +581,8 @@ func (w *Reconciler) triagePodTree(nsKey nsKey, pod *v1.Pod, objTree k8s.ObjectR
 func (w *Reconciler) handlePodChange(ctx context.Context, nsKey nsKey, ownerFetcher k8s.OwnerFetcher, pod *v1.Pod) {
 	objTree, err := ownerFetcher.OwnerTreeOf(ctx, k8s.NewK8sEntity(pod))
 	if err != nil {
+		// In locked-down clusters, the user may not have access to certain types of resources
+		// so it's normal for there to be errors. Ignore them.
 		return
 	}
 
