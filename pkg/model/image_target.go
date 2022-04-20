@@ -63,6 +63,12 @@ func (i ImageTarget) GetFileWatchIgnores() []v1alpha1.IgnoreDef {
 	return i.FileWatchIgnores
 }
 
+func (i ImageTarget) WithFileWatchIgnores(ignores []v1alpha1.IgnoreDef) ImageTarget {
+	i.FileWatchIgnores = ignores
+	return i
+}
+
+// Modified both FileWatchIgnores and ContextIgnores. Useful in tests where they're the same.
 func (i ImageTarget) WithIgnores(ignores []v1alpha1.IgnoreDef) ImageTarget {
 	i.FileWatchIgnores = ignores
 	switch bd := i.BuildDetails.(type) {

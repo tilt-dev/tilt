@@ -1212,9 +1212,8 @@ func (s *tiltfileState) k8sDeployTarget(targetName model.TargetName, r *k8sResou
 
 	t = t.WithImageDependencies(model.FilterLiveUpdateOnly(r.imageMapDeps, imageTargets)).
 		WithRefInjectCounts(r.imageRefInjectCounts()).
-		WithPathDependencies(deps)
-
-	t.FileWatchIgnores = ignores
+		WithPathDependencies(deps).
+		WithIgnores(ignores)
 
 	return t, nil
 }
@@ -1435,7 +1434,6 @@ func (s *tiltfileState) imgTargetsForDepsHelper(mn model.ManifestName, imageMapD
 		fileWatchIgnores = append(
 			append(fileWatchIgnores, repoIgnores...),
 			model.DockerignoresToIgnores(dockerignores)...)
-		iTarget.FileWatchIgnores = fileWatchIgnores
 
 		switch image.Type() {
 		case DockerBuild:
@@ -1484,7 +1482,7 @@ func (s *tiltfileState) imgTargetsForDepsHelper(mn model.ManifestName, imageMapD
 			}
 
 			for _, p := range image.dockerComposeLocalVolumePaths {
-				iTarget.FileWatchIgnores = append(iTarget.FileWatchIgnores, v1alpha1.IgnoreDef{BasePath: p})
+				fileWatchIgnores = append(fileWatchIgnores, v1alpha1.IgnoreDef{BasePath: p})
 			}
 
 			iTarget = iTarget.WithBuildDetails(bd)
@@ -1492,7 +1490,8 @@ func (s *tiltfileState) imgTargetsForDepsHelper(mn model.ManifestName, imageMapD
 			return nil, fmt.Errorf("no build info for image %s", image.configurationRef.RefFamiliarString())
 		}
 
-		iTarget = iTarget.WithImageMapDeps(image.imageMapDeps)
+		iTarget = iTarget.WithImageMapDeps(image.imageMapDeps).
+			WithFileWatchIgnores(fileWatchIgnores)
 
 		depTargets, err := s.imgTargetsForDepsHelper(mn, image.imageMapDeps, claimStatus)
 		if err != nil {
