@@ -3062,6 +3062,7 @@ func TestOverrideTriggerModeEvent(t *testing.T) {
 
 	manifest := f.newManifest("foo")
 	f.Start([]model.Manifest{manifest})
+	_ = f.nextCall()
 
 	f.WaitUntilManifest("manifest has triggerMode = auto (default)", "foo", func(mt store.ManifestTarget) bool {
 		return mt.Manifest.TriggerMode == model.TriggerModeAuto
@@ -3078,17 +3079,15 @@ func TestOverrideTriggerModeEvent(t *testing.T) {
 
 	err := f.Stop()
 	require.NoError(t, err)
+	f.assertAllBuildsConsumed()
 }
 
 func TestOverrideTriggerModeBadManifestLogsError(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("TODO(nick): Investigate")
-	}
-
 	f := newTestFixture(t)
 
 	manifest := f.newManifest("foo")
 	f.Start([]model.Manifest{manifest})
+	_ = f.nextCall()
 
 	f.WaitUntilManifest("manifest has triggerMode = auto (default)", "foo", func(mt store.ManifestTarget) bool {
 		return mt.Manifest.TriggerMode == model.TriggerModeAuto
@@ -3104,6 +3103,7 @@ func TestOverrideTriggerModeBadManifestLogsError(t *testing.T) {
 
 	err = f.Stop()
 	require.NoError(t, err)
+	f.assertAllBuildsConsumed()
 }
 
 func TestOverrideTriggerModeBadTriggerModeLogsError(t *testing.T) {
@@ -3111,6 +3111,7 @@ func TestOverrideTriggerModeBadTriggerModeLogsError(t *testing.T) {
 
 	manifest := f.newManifest("foo")
 	f.Start([]model.Manifest{manifest})
+	_ = f.nextCall()
 
 	f.WaitUntilManifest("manifest has triggerMode = auto (default)", "foo", func(mt store.ManifestTarget) bool {
 		return mt.Manifest.TriggerMode == model.TriggerModeAuto
@@ -3126,6 +3127,7 @@ func TestOverrideTriggerModeBadTriggerModeLogsError(t *testing.T) {
 
 	err = f.Stop()
 	require.NoError(t, err)
+	f.assertAllBuildsConsumed()
 }
 
 func TestDisableButtonIsCreated(t *testing.T) {
