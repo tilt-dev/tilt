@@ -71,9 +71,8 @@ export const FullBar = () => {
 
 export const EmptyBar = () => {
   let filterSet = useFilterSet()
-  let res = oneResource({ isBuilding: true })
+  let res = oneResource({ isBuilding: true, endpoints: 0 })
   res.status = res.status || {}
-  res.status.endpointLinks = []
   res.status.k8sResourceInfo = {}
   return <OverviewActionBar resource={res} filterSet={filterSet} />
 }

@@ -1,26 +1,28 @@
-import { mount, ReactWrapper } from "enzyme"
+import { render, screen } from "@testing-library/react"
 import React from "react"
 import { MemoryRouter } from "react-router"
-import {
-  ResourceGroupStatus,
-  ResourceGroupStatusItem,
-  ResourceGroupStatusSummaryItemCount,
-  StatusCounts,
-} from "./ResourceStatusSummary"
-import Tooltip from "./Tooltip"
+import { ResourceGroupStatus, StatusCounts } from "./ResourceStatusSummary"
 
-function expectStatusCounts(
-  root: ReactWrapper,
-  expected: { label: string; counts: number[] }[]
-) {
-  const itemRoot = root.find(ResourceGroupStatusItem)
-  const actual = itemRoot.map((i) => {
-    return {
-      label: i.find(Tooltip).props().title,
-      counts: i
-        .find(ResourceGroupStatusSummaryItemCount)
-        .map((e) => parseInt(e.text())),
+function expectStatusCounts(expected: { label: string; counts: number[] }[]) {
+  const actual = expected.map(({ label, counts }) => {
+    const actualCounts: { label: string; counts: number[] } = {
+      label,
+      counts: [],
     }
+
+    const actualCount =
+      screen.queryByLabelText(`${label} count`)?.textContent ?? "0"
+    actualCounts.counts.push(parseInt(actualCount))
+
+    // Indicates an "out of count" for this label is expected
+    if (counts[1]) {
+      const actualCountOf =
+        screen.queryByLabelText("Out of total resource count")?.textContent ??
+        "0"
+      actualCounts.counts.push(parseInt(actualCountOf))
+    }
+
+    return actualCounts
   })
 
   expect(actual).toEqual(expected)
@@ -36,7 +38,7 @@ const testCounts: StatusCounts = {
 }
 
 it("shows the counts it's given", () => {
-  const root = mount(
+  render(
     <MemoryRouter>
       <ResourceGroupStatus
         counts={testCounts}
@@ -52,7 +54,7 @@ it("shows the counts it's given", () => {
 
   // "healthy" gets the denominator (totalEnabled)
   // 0 counts are not rendered, except for "healthy"
-  expectStatusCounts(root, [
+  expectStatusCounts([
     { label: "unhealthy", counts: [4] },
     { label: "warning", counts: [2] },
     { label: "healthy", counts: [0, 11] },
@@ -61,7 +63,7 @@ it("shows the counts it's given", () => {
 })
 
 it("links to warning and unhealthy resources when `linkToLogFilters` is true", () => {
-  const root = mount(
+  render(
     <MemoryRouter>
       <ResourceGroupStatus
         counts={testCounts}
@@ -75,21 +77,16 @@ it("links to warning and unhealthy resources when `linkToLogFilters` is true", (
     </MemoryRouter>
   )
 
-  const warningLinkCount = root
-    .find(ResourceGroupStatusItem)
-    .filterWhere((item) => item.props().label === "warning")
-    .find("a").length
-  const errorLinkCount = root
-    .find(ResourceGroupStatusItem)
-    .filterWhere((item) => item.props().label === "unhealthy")
-    .find("a").length
-
-  expect(warningLinkCount).toBe(1)
-  expect(errorLinkCount).toBe(1)
+  expect(
+    screen.getByRole("link", { name: "unhealthy count" })
+  ).toBeInTheDocument()
+  expect(
+    screen.getByRole("link", { name: "warning count" })
+  ).toBeInTheDocument()
 })
 
 it("does NOT link to warning and unhealthy resources when `linkToLogFilters` is false", () => {
-  const root = mount(
+  render(
     <MemoryRouter>
       <ResourceGroupStatus
         counts={testCounts}
@@ -103,7 +100,5 @@ it("does NOT link to warning and unhealthy resources when `linkToLogFilters` is 
     </MemoryRouter>
   )
 
-  const linkCount = root.find(ResourceGroupStatusItem).find("a").length
-
-  expect(linkCount).toBe(0)
+  expect(screen.queryByRole("link")).toBeNull()
 })

@@ -49,17 +49,17 @@ export function newFakeRaf() {
   let callbackCount = 0
   return {
     callbacks: callbacks,
-    invoke: (id: number) => {
+    invoke: jest.fn((id: number) => {
       callbacks[id].call()
       delete callbacks[id]
-    },
-    requestAnimationFrame: (callback: () => void) => {
+    }),
+    requestAnimationFrame: jest.fn((callback: () => void) => {
       let id = ++callbackCount
       callbacks[id] = callback
       return id
-    },
-    cancelAnimationFrame: (id: number) => {
+    }),
+    cancelAnimationFrame: jest.fn((id: number) => {
       delete callbacks[id]
-    },
+    }),
   }
 }

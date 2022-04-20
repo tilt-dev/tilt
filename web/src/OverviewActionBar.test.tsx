@@ -1,5 +1,5 @@
-import MenuItem from "@material-ui/core/MenuItem"
-import { mount, ReactWrapper } from "enzyme"
+import { render, RenderOptions, screen, within } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { createMemoryHistory, MemoryHistory } from "history"
 import { SnackbarProvider } from "notistack"
 import React from "react"
@@ -10,345 +10,313 @@ import {
   expectIncrs,
   mockAnalyticsCalls,
 } from "./analytics_test_helpers"
-import { ApiButton, ButtonSet } from "./ApiButton"
-import { InstrumentedButton } from "./instrumentedComponents"
-import LogActions from "./LogActions"
+import { ButtonSet } from "./ApiButton"
 import { EMPTY_FILTER_TERM, FilterLevel, FilterSource } from "./logfilters"
 import OverviewActionBar, {
-  ActionBarBottomRow,
-  ActionBarTopRow,
-  ButtonLeftPill,
-  CopyButton,
   createLogSearch,
-  Endpoint,
-  FilterRadioButton,
-  FilterTermField,
-  FILTER_FIELD_ID,
   FILTER_INPUT_DEBOUNCE,
 } from "./OverviewActionBar"
 import { EmptyBar, FullBar } from "./OverviewActionBar.stories"
 import { disableButton, oneResource, oneUIButton } from "./testdata"
 
-let history: MemoryHistory
-beforeEach(() => {
-  mockAnalyticsCalls()
-  history = createMemoryHistory()
-  history.push({ pathname: "/" })
-})
-
-afterEach(() => {
-  cleanupMockAnalyticsCalls()
-  jest.useRealTimers()
-})
-
-function mountBar(e: JSX.Element) {
-  return mount(
-    <Router history={history}>
-      <SnackbarProvider>{e}</SnackbarProvider>
-    </Router>
-  )
+const DEFAULT_FILTER_SET = {
+  level: FilterLevel.all,
+  source: FilterSource.all,
+  term: EMPTY_FILTER_TERM,
 }
 
-it("shows endpoints", () => {
-  let root = mountBar(<FullBar />)
-  let topBar = root.find(ActionBarTopRow)
-  expect(topBar).toHaveLength(1)
-
-  let endpoints = topBar.find(Endpoint)
-  expect(endpoints).toHaveLength(2)
-})
-
-it("shows pod ID", () => {
-  const root = mountBar(<FullBar />)
-  const podId = root.find(ActionBarTopRow).find(CopyButton)
-
-  expect(podId).toHaveLength(1)
-  expect(podId.text()).toContain("my-deadbeef-pod Pod ID") // Hardcoded from test data
-})
-
-it("skips the top bar when empty", () => {
-  let root = mountBar(<EmptyBar />)
-  let topBar = root.find(ActionBarTopRow)
-  expect(topBar).toHaveLength(0)
-})
-
-it("navigates to warning filter", () => {
-  let root = mountBar(<FullBar />)
-  let warnFilter = root
-    .find(FilterRadioButton)
-    .filter({ level: FilterLevel.warn })
-  expect(warnFilter).toHaveLength(1)
-  let leftButton = warnFilter.find(ButtonLeftPill)
-  expect(leftButton).toHaveLength(1)
-  leftButton.simulate("click")
-  expect(history.location.search).toEqual("?level=warn&source=")
-
-  expectIncrs({
-    name: "ui.web.filterLevel",
-    tags: { action: AnalyticsAction.Click, level: "warn", source: "" },
+function customRender(
+  component: JSX.Element,
+  wrapperProps: { history: MemoryHistory },
+  options?: RenderOptions
+) {
+  return render(component, {
+    wrapper: ({ children }) => (
+      <Router history={wrapperProps.history}>
+        <SnackbarProvider>{children}</SnackbarProvider>
+      </Router>
+    ),
+    ...options,
   })
-})
+}
 
-it("navigates to build warning filter", () => {
-  let root = mountBar(<FullBar />)
-  let warnFilter = root
-    .find(FilterRadioButton)
-    .filter({ level: FilterLevel.warn })
-  expect(warnFilter).toHaveLength(1)
-  let sourceItems = warnFilter.find(MenuItem)
-  expect(sourceItems).toHaveLength(3)
-  let buildItem = sourceItems.filter({ "data-filter": FilterSource.build })
-  expect(buildItem).toHaveLength(1)
-  buildItem.simulate("click")
-  expect(history.location.search).toEqual("?level=warn&source=build")
-})
-
-describe("disabled resource view", () => {
-  let root: ReactWrapper<any, any>
-
+describe("OverviewActionBar", () => {
+  let history: MemoryHistory
   beforeEach(() => {
-    const resource = oneResource({
-      name: "i-am-not-enabled",
-      disabled: true,
-    })
-    const filterSet = {
-      level: FilterLevel.all,
-      source: FilterSource.all,
-      term: EMPTY_FILTER_TERM,
-    }
-    const buttonSet: ButtonSet = {
-      default: [oneUIButton({ componentID: "i-am-not-enabled" })],
-      toggleDisable: disableButton("i-am-not-enabled", false),
-    }
-
-    root = mountBar(
-      <OverviewActionBar
-        resource={resource}
-        filterSet={filterSet}
-        buttons={buttonSet}
-      />
-    )
+    cleanupMockAnalyticsCalls()
+    mockAnalyticsCalls()
+    history = createMemoryHistory({ initialEntries: ["/"] })
   })
 
-  it("should display the disable toggle button", () => {
-    const bottomRowButtons = root.find(ActionBarBottomRow).find(ApiButton)
-    expect(bottomRowButtons.length).toBeGreaterThanOrEqual(1)
+  afterEach(() => {
+    cleanupMockAnalyticsCalls()
+    jest.useRealTimers()
+  })
+
+  it("renders the top row with endpoints", () => {
+    customRender(<FullBar />, { history })
+
     expect(
-      bottomRowButtons.at(bottomRowButtons.length - 1).prop("uiButton").metadata
-        ?.name
-    ).toEqual("toggle-i-am-not-enabled-disable")
+      screen.getByLabelText(/links and custom buttons/i)
+    ).toBeInTheDocument()
+    expect(screen.getAllByRole("link")).toHaveLength(2)
   })
 
-  it("should NOT display any `default` custom buttons", () => {
-    const topRowButtons = root.find(ActionBarTopRow).find(ApiButton)
-    expect(topRowButtons.length).toBe(0)
-  })
+  it("renders the top row with pod ID", () => {
+    customRender(<FullBar />, { history })
 
-  it("should NOT display the filter menu", () => {
-    const bottomRow = root.find(ActionBarBottomRow)
-    const filterButtons = bottomRow.find(FilterRadioButton)
-    const filterTermField = bottomRow.find(FilterTermField)
-    const logActionsMenu = bottomRow.find(LogActions)
-
-    expect(filterButtons).toHaveLength(0)
-    expect(filterTermField).toHaveLength(0)
-    expect(logActionsMenu).toHaveLength(0)
-  })
-
-  it("should NOT display endpoint information", () => {
-    const endpoints = root.find(ActionBarTopRow).find(Endpoint)
-    expect(endpoints).toHaveLength(0)
-  })
-
-  it("should NOT display podId information", () => {
-    const podInfo = root.find(ActionBarTopRow).find(CopyButton)
-    expect(podInfo).toHaveLength(0)
-  })
-})
-
-describe("buttons", () => {
-  it("shows endpoint buttons", () => {
-    let root = mountBar(<FullBar />)
-    let topBar = root.find(ActionBarTopRow)
-    expect(topBar).toHaveLength(1)
-
-    let endpoints = topBar.find(Endpoint)
-    expect(endpoints).toHaveLength(2)
-  })
-
-  it("disables a button that should be disabled", () => {
-    let uiButtons = [oneUIButton({ componentID: "vigoda", disabled: true })]
-    let filterSet = {
-      level: FilterLevel.all,
-      source: FilterSource.all,
-      term: EMPTY_FILTER_TERM,
-    }
-    let root = mountBar(
-      <OverviewActionBar
-        filterSet={filterSet}
-        buttons={{ default: uiButtons }}
-      />
-    )
-    let topBar = root.find(ActionBarTopRow)
-    let buttons = topBar.find(InstrumentedButton)
-    expect(buttons).toHaveLength(1)
-    expect(buttons.at(0).prop("disabled")).toBe(true)
-  })
-
-  it("renders disable-resource buttons separately from other buttons", () => {
-    const root = mountBar(<FullBar />)
-
-    const topRowButtons = root.find(ActionBarTopRow).find(ApiButton)
-    expect(topRowButtons).toHaveLength(1)
-    expect(topRowButtons.at(0).prop("uiButton").metadata?.name).toEqual(
-      "button2"
-    )
-
-    const bottomRowButtons = root.find(ActionBarBottomRow).find(ApiButton)
-    expect(bottomRowButtons.length).toBeGreaterThanOrEqual(1)
     expect(
-      bottomRowButtons.at(bottomRowButtons.length - 1).prop("uiButton").metadata
-        ?.name
-    ).toEqual("toggle-vigoda-disable")
+      screen.getByLabelText(/links and custom buttons/i)
+    ).toBeInTheDocument()
+    expect(screen.getAllByRole("button", { name: /Pod ID/i })).toHaveLength(1)
   })
-})
 
-describe("term filter input", () => {
-  const FILTER_INPUT = `input#${FILTER_FIELD_ID}`
-  let root: ReactWrapper<any, Readonly<{}>, React.Component<{}, {}, any>>
+  it("does NOT render the top row when there are no endpoints, pods, or buttons", () => {
+    customRender(<EmptyBar />, { history })
 
-  it("renders with no initial value if there is no existing term filter", () => {
-    history.push({
-      pathname: "/",
-      search: createLogSearch("", {}).toString(),
+    expect(screen.queryByLabelText(/links and custom buttons/i)).toBeNull()
+  })
+
+  describe("log filters", () => {
+    beforeEach(() => customRender(<FullBar />, { history }))
+
+    it("navigates to warning filter when warning log filter button is clicked", () => {
+      userEvent.click(screen.getByRole("button", { name: /warnings/i }))
+
+      expect(history.location.search).toEqual("?level=warn&source=")
+
+      expectIncrs({
+        name: "ui.web.filterLevel",
+        tags: { action: AnalyticsAction.Click, level: "warn", source: "" },
+      })
     })
 
-    root = mountBar(<FullBar />)
+    it("navigates to build warning filter when both building and warning log filter buttons are clicked", () => {
+      userEvent.click(
+        screen.getByRole("button", { name: "Select warn log sources" })
+      )
+      userEvent.click(screen.getByRole("menuitem", { name: /build/i }))
 
-    const inputField = root.find(FILTER_INPUT)
-    expect(inputField.props().value).toBe("")
+      expect(history.location.search).toEqual("?level=warn&source=build")
+
+      expectIncrs({
+        name: "ui.web.filterSourceMenu",
+        tags: { action: AnalyticsAction.Click },
+      })
+    })
   })
 
-  it("renders with an initial value if there is an existing term filter", () => {
-    history.push({
-      pathname: "/",
-      search: createLogSearch("", { term: "bleep bloop" }).toString(),
+  describe("disabled resource view", () => {
+    beforeEach(() => {
+      const resource = oneResource({ name: "not-enabled", disabled: true })
+      const buttonSet: ButtonSet = {
+        default: [
+          oneUIButton({ componentID: "not-enabled", buttonText: "Click me" }),
+        ],
+        toggleDisable: disableButton("not-enabled", false),
+      }
+      customRender(
+        <OverviewActionBar
+          resource={resource}
+          filterSet={DEFAULT_FILTER_SET}
+          buttons={buttonSet}
+        />,
+        { history }
+      )
     })
 
-    root = mountBar(<FullBar />)
+    it("should display the disable toggle button", () => {
+      expect(
+        screen.getByRole("button", { name: /trigger enable resource/i })
+      ).toBeInTheDocument()
+    })
 
-    const inputField = root.find(FILTER_INPUT)
-    expect(inputField.props().value).toBe("bleep bloop")
+    it("should NOT display any `default` custom buttons", () => {
+      expect(screen.queryByRole("button", { name: /click me/i })).toBeNull()
+    })
+
+    it("should NOT display the filter menu", () => {
+      expect(screen.queryByRole("button", { name: /warnings/i })).toBeNull()
+      expect(screen.queryByRole("button", { name: /errors/i })).toBeNull()
+      expect(screen.queryByRole("button", { name: /all levels/i })).toBeNull()
+      expect(screen.queryByRole("textbox")).toBeNull()
+    })
+
+    it("should NOT display endpoint information", () => {
+      expect(screen.queryAllByRole("link")).toHaveLength(0)
+    })
+
+    it("should NOT display podId information", () => {
+      expect(screen.queryAllByRole("button", { name: /Pod ID/i })).toHaveLength(
+        0
+      )
+    })
   })
 
-  it("changes the global term filter state when its value changes", () => {
-    jest.useFakeTimers()
+  describe("custom buttons", () => {
+    const customButtons = [
+      oneUIButton({ componentID: "vigoda", disabled: true }),
+    ]
+    const toggleDisable = disableButton("vigoda", true)
+    beforeEach(() => {
+      customRender(
+        <OverviewActionBar
+          filterSet={DEFAULT_FILTER_SET}
+          buttons={{ default: customButtons, toggleDisable }}
+        />,
+        { history }
+      )
+    })
+    it("disables a button that should be disabled", () => {
+      const disabledButton = screen.getByLabelText(
+        `Trigger ${customButtons[0].spec?.text}`
+      )
+      expect(disabledButton).toBeDisabled()
+    })
 
-    root = mountBar(<FullBar />)
+    it("renders disable-resource buttons separately from other buttons", () => {
+      const topRow = screen.getByLabelText(/links and custom buttons/i)
+      const buttonsInTopRow = within(topRow).getAllByRole("button")
+      const toggleDisableButton = screen.getByLabelText(
+        "Trigger Disable Resource"
+      )
 
-    const inputField = root.find(FILTER_INPUT)
-    inputField.simulate("change", { target: { value: "docker" } })
-
-    jest.advanceTimersByTime(FILTER_INPUT_DEBOUNCE)
-
-    expect(history.location.search.toString()).toEqual("?term=docker")
+      expect(buttonsInTopRow).toHaveLength(1)
+      expect(toggleDisableButton).toBeInTheDocument()
+      expect(
+        within(topRow).queryByLabelText("Trigger Disable Resource")
+      ).toBeNull()
+    })
   })
 
-  it("uses debouncing to update the global term filter state", () => {
-    jest.useFakeTimers()
+  describe("term filter input", () => {
+    it("renders with no initial value if there is no existing term filter", () => {
+      customRender(<FullBar />, { history })
 
-    root = mountBar(<FullBar />)
+      expect(
+        screen.getByRole("textbox", { name: /filter resource logs/i })
+      ).toHaveValue("")
+    })
 
-    const inputField = root.find(FILTER_INPUT)
-    inputField.simulate("change", { target: { value: "doc" } })
+    it("renders with an initial value if there is an existing term filter", () => {
+      history.push({
+        pathname: "/",
+        search: createLogSearch("", { term: "bleep bloop" }).toString(),
+      })
 
-    jest.advanceTimersByTime(FILTER_INPUT_DEBOUNCE / 2)
+      customRender(<FullBar />, { history })
 
-    // The debouncing time hasn't passed yet, so we don't expect to see any changes
-    expect(history.location.search.toString()).toEqual("")
+      expect(
+        screen.getByRole("textbox", { name: /filter resource logs/i })
+      ).toHaveValue("bleep bloop")
+    })
 
-    inputField.simulate("change", { target: { value: "docker" } })
+    it("changes the global term filter state when its value changes", () => {
+      jest.useFakeTimers()
 
-    // The debouncing time hasn't passed yet, so we don't expect to see any changes
-    expect(history.location.search.toString()).toEqual("")
+      customRender(<FullBar />, { history })
 
-    jest.advanceTimersByTime(FILTER_INPUT_DEBOUNCE)
+      userEvent.type(screen.getByRole("textbox"), "docker")
 
-    // Since the debouncing time has passed, we expect to see the final
-    // change reflected
-    expect(history.location.search.toString()).toEqual("?term=docker")
+      jest.advanceTimersByTime(FILTER_INPUT_DEBOUNCE)
+
+      expect(history.location.search.toString()).toEqual("?term=docker")
+    })
+
+    it("uses debouncing to update the global term filter state", () => {
+      jest.useFakeTimers()
+
+      customRender(<FullBar />, { history })
+
+      userEvent.type(screen.getByRole("textbox"), "doc")
+
+      jest.advanceTimersByTime(FILTER_INPUT_DEBOUNCE / 2)
+
+      // The debouncing time hasn't passed yet, so we don't expect to see any changes
+      expect(history.location.search.toString()).toEqual("")
+
+      userEvent.type(screen.getByRole("textbox"), "ker")
+
+      // The debouncing time hasn't passed yet, so we don't expect to see any changes
+      expect(history.location.search.toString()).toEqual("")
+
+      jest.advanceTimersByTime(FILTER_INPUT_DEBOUNCE)
+
+      // Since the debouncing time has passed, we expect to see the final
+      // change reflected
+      expect(history.location.search.toString()).toEqual("?term=docker")
+    })
+
+    it("retains any current level and source filters when its value changes", () => {
+      jest.useFakeTimers()
+
+      history.push({ pathname: "/", search: "level=warn&source=build" })
+
+      customRender(<FullBar />, { history })
+
+      userEvent.type(screen.getByRole("textbox"), "help")
+
+      jest.advanceTimersByTime(FILTER_INPUT_DEBOUNCE)
+
+      expect(history.location.search.toString()).toEqual(
+        "?level=warn&source=build&term=help"
+      )
+    })
   })
 
-  it("retains any current level and source filters when its value changes", () => {
-    jest.useFakeTimers()
+  describe("createLogSearch", () => {
+    let currentSearch: URLSearchParams
+    beforeEach(() => (currentSearch = new URLSearchParams()))
 
-    history.push({ pathname: "/", search: "level=warn&source=build" })
+    it("sets the params that are passed in", () => {
+      expect(
+        createLogSearch(currentSearch.toString(), {
+          level: FilterLevel.all,
+          term: "find me",
+          source: FilterSource.build,
+        }).toString()
+      ).toBe("level=&source=build&term=find+me")
 
-    root = mountBar(<FullBar />)
+      expect(
+        createLogSearch(currentSearch.toString(), {
+          level: FilterLevel.warn,
+        }).toString()
+      ).toBe("level=warn")
 
-    const inputField = root.find(FILTER_INPUT)
-    inputField.simulate("change", { target: { value: "help" } })
+      expect(
+        createLogSearch(currentSearch.toString(), {
+          term: "",
+          source: FilterSource.runtime,
+        }).toString()
+      ).toBe("source=runtime&term=")
+    })
 
-    jest.advanceTimersByTime(FILTER_INPUT_DEBOUNCE)
+    it("overrides params if a new value is defined", () => {
+      currentSearch.set("level", FilterLevel.warn)
+      expect(
+        createLogSearch(currentSearch.toString(), {
+          level: FilterLevel.error,
+        }).toString()
+      ).toBe("level=error")
+      currentSearch.delete("level")
 
-    expect(history.location.search.toString()).toEqual(
-      "?level=warn&source=build&term=help"
-    )
-  })
-})
+      currentSearch.set("level", "a meaningless value")
+      currentSearch.set("term", "")
+      expect(
+        createLogSearch(currentSearch.toString(), {
+          level: FilterLevel.all,
+          term: "service",
+        }).toString()
+      ).toBe("level=&term=service")
+    })
 
-describe("createLogSearch", () => {
-  let currentSearch: URLSearchParams
-  beforeEach(() => (currentSearch = new URLSearchParams()))
-
-  it("sets the params that are passed in", () => {
-    expect(
-      createLogSearch(currentSearch.toString(), {
-        level: FilterLevel.all,
-        term: "find me",
-        source: FilterSource.build,
-      }).toString()
-    ).toBe("level=&source=build&term=find+me")
-
-    expect(
-      createLogSearch(currentSearch.toString(), {
-        level: FilterLevel.warn,
-      }).toString()
-    ).toBe("level=warn")
-
-    expect(
-      createLogSearch(currentSearch.toString(), {
-        term: "",
-        source: FilterSource.runtime,
-      }).toString()
-    ).toBe("source=runtime&term=")
-  })
-
-  it("overrides params if a new value is defined", () => {
-    currentSearch.set("level", FilterLevel.warn)
-    expect(
-      createLogSearch(currentSearch.toString(), {
-        level: FilterLevel.error,
-      }).toString()
-    ).toBe("level=error")
-    currentSearch.delete("level")
-
-    currentSearch.set("level", "a meaningless value")
-    currentSearch.set("term", "")
-    expect(
-      createLogSearch(currentSearch.toString(), {
-        level: FilterLevel.all,
-        term: "service",
-      }).toString()
-    ).toBe("level=&term=service")
-  })
-
-  it("preserves existing params if no new value is defined", () => {
-    currentSearch.set("source", FilterSource.build)
-    expect(
-      createLogSearch(currentSearch.toString(), {
-        term: "test",
-      }).toString()
-    ).toBe("source=build&term=test")
+    it("preserves existing params if no new value is defined", () => {
+      currentSearch.set("source", FilterSource.build)
+      expect(
+        createLogSearch(currentSearch.toString(), {
+          term: "test",
+        }).toString()
+      ).toBe("source=build&term=test")
+    })
   })
 })

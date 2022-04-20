@@ -1,81 +1,111 @@
-import { render } from "@testing-library/react"
-import { mount, ReactWrapper } from "enzyme"
+import { render, RenderOptions, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { createMemoryHistory, MemoryHistory } from "history"
-import React from "react"
+import React, { ChangeEvent, useState } from "react"
 import { act } from "react-dom/test-utils"
 import { Router } from "react-router"
-import {
-  ResourceNav,
-  ResourceNavContextConsumer,
-  ResourceNavProvider,
-  useResourceNav,
-} from "./ResourceNav"
+import { ResourceNavProvider, useResourceNav } from "./ResourceNav"
 import { ResourceName } from "./types"
 
-// A fixture to help test the context provider
-class Fixture {
-  nav?: ResourceNav
-  root?: ReactWrapper
-  history: MemoryHistory = createMemoryHistory()
-  validateResource: (res: string) => boolean = () => true
+const INVALID_RESOURCE = "res3"
 
-  mount() {
-    this.root = mount(
-      <Router history={this.history}>
-        <ResourceNavProvider validateResource={this.validateResource}>
-          <ResourceNavContextConsumer>
-            {(capturedNav) => void (this.nav = capturedNav)}
-          </ResourceNavContextConsumer>
+function TestResourceNavConsumer() {
+  const { selectedResource, invalidResource, openResource } = useResourceNav()
+  const [resourceToSelect, setResourceToSelect] = useState("")
+
+  return (
+    <>
+      <p aria-label="selectedResource">{selectedResource}</p>
+      <p aria-label="invalidResource">{invalidResource}</p>
+      <input
+        aria-label="Resource to select"
+        type="text"
+        value={resourceToSelect}
+        onChange={(e: ChangeEvent<HTMLInputElement>) =>
+          setResourceToSelect(e.target.value)
+        }
+      />
+      <button onClick={() => openResource(resourceToSelect)}>
+        openResource
+      </button>
+    </>
+  )
+}
+
+// history
+function customRender(
+  wrapperOptions: {
+    history: MemoryHistory
+    validateOverride?: (name: string) => boolean
+  },
+  options?: RenderOptions
+) {
+  const validateResource =
+    wrapperOptions.validateOverride ??
+    function (name: string) {
+      return name !== INVALID_RESOURCE
+    }
+  return render(<TestResourceNavConsumer />, {
+    wrapper: ({ children }) => (
+      <Router history={wrapperOptions.history}>
+        <ResourceNavProvider validateResource={validateResource}>
+          {children}
         </ResourceNavProvider>
       </Router>
-    )
-  }
-
-  openResource(name: string) {
-    act(() => this.nav?.openResource(name))
-  }
+    ),
+    ...options,
+  })
 }
 
-function newFixture(): Fixture {
-  let f = new Fixture()
-  f.mount()
-  return f
-}
-
-describe("resourceNav", () => {
+describe("ResourceNavContext", () => {
   it("navigates to resource on click", () => {
-    let f = newFixture()
-    expect(f.nav?.selectedResource).toEqual("")
+    const history = createMemoryHistory()
+    customRender({ history })
 
-    f.openResource("res1")
+    expect(screen.getByLabelText("selectedResource")).toHaveTextContent("")
 
-    expect(f.nav?.selectedResource).toEqual("res1")
-    expect(f.history.location.pathname).toEqual("/r/res1/overview")
+    userEvent.type(screen.getByRole("textbox"), "res1")
+    userEvent.click(screen.getByRole("button", { name: "openResource" }))
+
+    expect(screen.getByLabelText("selectedResource")).toHaveTextContent("res1")
+    expect(history.location.pathname).toEqual("/r/res1/overview")
   })
 
   it("filters resources that don't validate", () => {
-    let f = new Fixture()
-    f.validateResource = (res) => res == "res1"
-    f.history.location.pathname = "/r/res3/overview"
-    f.mount()
-    expect(f.nav?.selectedResource).toEqual("")
-    expect(f.nav?.invalidResource).toEqual("res3")
+    const history = createMemoryHistory()
+    // Set location to invalid resource
+    history.location.pathname = `/r/${INVALID_RESOURCE}/overview`
+    customRender({ history })
+
+    expect(screen.getByLabelText("selectedResource")).toHaveTextContent("")
+    expect(screen.getByLabelText("invalidResource")).toHaveTextContent(
+      INVALID_RESOURCE
+    )
   })
 
   it("always validates the 'all' resource", () => {
-    let f = new Fixture()
-    f.validateResource = (res) => false
-    f.history.location.pathname = `/r/${ResourceName.all}/overview`
-    f.mount()
-    expect(f.nav?.selectedResource).toEqual(ResourceName.all)
-    expect(f.nav?.invalidResource).toEqual("")
+    const history = createMemoryHistory()
+    // Set location to 'all' resource
+    history.location.pathname = `/r/${ResourceName.all}/overview`
+    customRender({ history, validateOverride: (_name: string) => false })
+
+    expect(screen.getByLabelText("selectedResource")).toHaveTextContent(
+      ResourceName.all
+    )
+    expect(screen.getByLabelText("invalidResource")).toHaveTextContent("")
   })
 
   it("encodes resource names", () => {
-    let f = newFixture()
-    f.openResource("foo/bar")
-    expect(f.nav?.selectedResource).toEqual("foo/bar")
-    expect(f.history.location.pathname).toEqual("/r/foo%2Fbar/overview")
+    const history = createMemoryHistory()
+    customRender({ history })
+
+    userEvent.type(screen.getByRole("textbox"), "foo/bar")
+    userEvent.click(screen.getByRole("button", { name: "openResource" }))
+
+    expect(screen.getByLabelText("selectedResource")).toHaveTextContent(
+      "foo/bar"
+    )
+    expect(history.location.pathname).toEqual("/r/foo%2Fbar/overview")
   })
 
   // Make sure that useResourceNav() doesn't break memoization.
