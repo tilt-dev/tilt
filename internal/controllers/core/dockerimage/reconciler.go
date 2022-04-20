@@ -21,6 +21,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/dockerimages"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -31,6 +32,7 @@ var clusterGVK = v1alpha1.SchemeGroupVersion.WithKind("Cluster")
 // Manages the DockerImage API object.
 type Reconciler struct {
 	client   ctrlclient.Client
+	st       store.RStore
 	indexer  *indexer.Indexer
 	docker   docker.Client
 	ib       *build.ImageBuilder
@@ -42,9 +44,10 @@ type Reconciler struct {
 
 var _ reconcile.Reconciler = &Reconciler{}
 
-func NewReconciler(client ctrlclient.Client, scheme *runtime.Scheme, docker docker.Client, ib *build.ImageBuilder) *Reconciler {
+func NewReconciler(client ctrlclient.Client, st store.RStore, scheme *runtime.Scheme, docker docker.Client, ib *build.ImageBuilder) *Reconciler {
 	return &Reconciler{
 		client:   client,
+		st:       st,
 		indexer:  indexer.NewIndexer(scheme, indexDockerImage),
 		docker:   docker,
 		ib:       ib,
@@ -67,8 +70,11 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	if apierrors.IsNotFound(err) || obj.ObjectMeta.DeletionTimestamp != nil {
 		delete(r.results, nn)
+		r.st.Dispatch(dockerimages.NewDockerImageDeleteAction(nn.Name))
 		return ctrl.Result{}, nil
 	}
+
+	r.st.Dispatch(dockerimages.NewDockerImageUpsertAction(obj))
 
 	err = r.maybeUpdateImageStatus(ctx, nn, obj)
 	if err != nil {

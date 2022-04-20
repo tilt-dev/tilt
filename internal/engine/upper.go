@@ -22,8 +22,10 @@ import (
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/buildcontrols"
 	"github.com/tilt-dev/tilt/internal/store/clusters"
+	"github.com/tilt-dev/tilt/internal/store/cmdimages"
 	"github.com/tilt-dev/tilt/internal/store/configmaps"
 	"github.com/tilt-dev/tilt/internal/store/dockercomposeservices"
+	"github.com/tilt-dev/tilt/internal/store/dockerimages"
 	"github.com/tilt-dev/tilt/internal/store/filewatches"
 	"github.com/tilt-dev/tilt/internal/store/imagemaps"
 	"github.com/tilt-dev/tilt/internal/store/kubernetesapplys"
@@ -184,6 +186,14 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		dockercomposeservices.HandleDockerComposeServiceUpsertAction(state, action)
 	case dockercomposeservices.DockerComposeServiceDeleteAction:
 		dockercomposeservices.HandleDockerComposeServiceDeleteAction(state, action)
+	case dockerimages.DockerImageUpsertAction:
+		dockerimages.HandleDockerImageUpsertAction(state, action)
+	case dockerimages.DockerImageDeleteAction:
+		dockerimages.HandleDockerImageDeleteAction(state, action)
+	case cmdimages.CmdImageUpsertAction:
+		cmdimages.HandleCmdImageUpsertAction(state, action)
+	case cmdimages.CmdImageDeleteAction:
+		cmdimages.HandleCmdImageDeleteAction(state, action)
 	case kubernetesapplys.KubernetesApplyUpsertAction:
 		kubernetesapplys.HandleKubernetesApplyUpsertAction(state, action)
 	case kubernetesapplys.KubernetesApplyDeleteAction:
