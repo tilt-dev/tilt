@@ -51,7 +51,7 @@ func newFixture(t testing.TB) *fixture {
 		build.NewCustomBuilder(dockerCli, clock),
 		build.NewKINDLoader())
 
-	r := NewReconciler(cfb.Client, cfb.Scheme(), docker.NewFakeClient(), ib)
+	r := NewReconciler(cfb.Client, cfb.Store, cfb.Scheme(), docker.NewFakeClient(), ib)
 	return &fixture{
 		ControllerFixture: cfb.Build(r),
 		r:                 r,

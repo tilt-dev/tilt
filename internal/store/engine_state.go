@@ -129,6 +129,8 @@ type EngineState struct {
 	UIButtons             map[string]*v1alpha1.UIButton             `json:"-"`
 	DockerComposeServices map[string]*v1alpha1.DockerComposeService `json:"-"`
 	ImageMaps             map[string]*v1alpha1.ImageMap             `json:"-"`
+	DockerImages          map[string]*v1alpha1.DockerImage          `json:"-"`
+	CmdImages             map[string]*v1alpha1.CmdImage             `json:"-"`
 }
 
 type CloudStatus struct {
@@ -541,6 +543,8 @@ func NewState() *EngineState {
 	ret.Clusters = make(map[string]*v1alpha1.Cluster)
 	ret.UIButtons = make(map[string]*v1alpha1.UIButton)
 	ret.ImageMaps = make(map[string]*v1alpha1.ImageMap)
+	ret.DockerImages = make(map[string]*v1alpha1.DockerImage)
+	ret.CmdImages = make(map[string]*v1alpha1.CmdImage)
 
 	return ret
 }
