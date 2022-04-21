@@ -44,7 +44,7 @@ func (c *demoCmd) register() *cobra.Command {
 Tilt will create a temporary, local Kubernetes development cluster running in Docker.
 The cluster will be removed when Tilt is exited with Ctrl-C.
 
-A sample project (%s) will be cloned locally to a temporary directory using Git and launched. 
+A sample project (%s) will be cloned locally to a temporary directory using Git and launched.
 `, sampleProjPackage),
 	}
 
@@ -119,7 +119,7 @@ func (c *demoCmd) run(ctx context.Context, args []string) error {
 		if err != nil {
 			return fmt.Errorf("tilt demo requires Docker to be installed and running: %v", err)
 		}
-		if !isLocalDockerHost(client.Env().Host) {
+		if !isLocalDockerHost(client.Env().DaemonHost()) {
 			// properly supporting remote Docker connections is very tricky - either:
 			//
 			// the remote host will need more ports accessible (for K8s API + registry API) and we have to ensure
@@ -130,7 +130,7 @@ func (c *demoCmd) run(ctx context.Context, args []string) error {
 			//
 			// for now, it's not supported as it's a pretty advanced setup to begin with, so we're not really targeting
 			// it with the `tilt demo` functionality
-			return fmt.Errorf("tilt demo requires a local Docker daemon to create a temporary Kubernetes cluster (current Docker host: %s)", client.Env().Host)
+			return fmt.Errorf("tilt demo requires a local Docker daemon to create a temporary Kubernetes cluster (current Docker host: %s)", client.Env().DaemonHost())
 		}
 
 		//

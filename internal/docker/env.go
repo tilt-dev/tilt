@@ -3,13 +3,19 @@ package docker
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/blang/semver"
+	"github.com/docker/cli/cli/command"
+	"github.com/docker/cli/cli/flags"
 	"github.com/docker/cli/opts"
+	"github.com/docker/docker/client"
 	"github.com/pkg/errors"
+	"github.com/spf13/pflag"
 
 	"github.com/tilt-dev/clusterid"
 
@@ -26,12 +32,21 @@ import (
 // about nudging people to upgrade.
 var minMinikubeVersionBuildkit = semver.MustParse("1.8.0")
 
+type DaemonClient interface {
+	DaemonHost() string
+}
+
 // See notes on CreateClientOpts. These environment variables are standard docker env configs.
 type Env struct {
-	Host       string
-	APIVersion string
-	TLSVerify  string
-	CertPath   string
+	// The Docker API client.
+	//
+	// The Docker API builders are very complex, with lots of different interfaces
+	// and concrete types, even though, underneath, they're all the same *client.Client.
+	// We use DaemonClient here because that's what we need to compare envs.
+	Client DaemonClient
+
+	// Environment variables to inject into any subshell that uses this client.
+	Environ []string
 
 	// Minikube's docker client has a bug where it can't use buildkit. See:
 	// https://github.com/kubernetes/minikube/issues/4143
@@ -66,20 +81,53 @@ func (e Env) WillBuildToKubeContext(kctx k8s.KubeContext) bool {
 
 // Serializes this back to environment variables for os.Environ
 func (e Env) AsEnviron() []string {
-	vars := []string{}
-	if e.Host != "" {
-		vars = append(vars, fmt.Sprintf("DOCKER_HOST=%s", e.Host))
+	return append([]string{}, e.Environ...)
+}
+
+func (e Env) DaemonHost() string {
+	if e.Client == nil {
+		return ""
 	}
-	if e.APIVersion != "" {
-		vars = append(vars, fmt.Sprintf("DOCKER_API_VERSION=%s", e.APIVersion))
+	return e.Client.DaemonHost()
+}
+
+type ClientCreator interface {
+	FromCLI(ctx context.Context) (DaemonClient, error)
+	FromEnvMap(envMap map[string]string) (DaemonClient, error)
+}
+
+type RealClientCreator struct{}
+
+func (RealClientCreator) FromEnvMap(envMap map[string]string) (DaemonClient, error) {
+	opts, err := CreateClientOpts(envMap)
+	if err != nil {
+		return nil, fmt.Errorf("configuring docker client: %v", err)
 	}
-	if e.CertPath != "" {
-		vars = append(vars, fmt.Sprintf("DOCKER_CERT_PATH=%s", e.CertPath))
+	return client.NewClientWithOpts(opts...)
+}
+
+func (RealClientCreator) FromCLI(ctx context.Context) (DaemonClient, error) {
+	dockerCli, err := command.NewDockerCli(
+		command.WithOutputStream(io.Discard),
+		command.WithErrorStream(io.Discard))
+	if err != nil {
+		return nil, fmt.Errorf("creating docker client: %v", err)
 	}
-	if e.TLSVerify != "" {
-		vars = append(vars, fmt.Sprintf("DOCKER_TLS_VERIFY=%s", e.TLSVerify))
+
+	newClientOpts := flags.NewClientOptions()
+	flagset := pflag.NewFlagSet("docker", pflag.ContinueOnError)
+	newClientOpts.Common.InstallFlags(flagset)
+	newClientOpts.Common.SetDefaultOptions(flagset)
+
+	err = dockerCli.Initialize(newClientOpts)
+	if err != nil {
+		return nil, fmt.Errorf("initializing docker client: %v", err)
 	}
-	return vars
+	client, ok := dockerCli.Client().(*client.Client)
+	if !ok {
+		return nil, fmt.Errorf("unexpected docker client: %T", dockerCli.Client())
+	}
+	return client, nil
 }
 
 // Tell wire to create two docker envs: one for the local CLI and one for the in-cluster CLI.
@@ -87,17 +135,24 @@ type ClusterEnv Env
 type LocalEnv Env
 
 func ProvideLocalEnv(
-	_ context.Context,
+	ctx context.Context,
+	creator ClientCreator,
 	kubeContext k8s.KubeContext,
 	product clusterid.Product,
 	clusterEnv ClusterEnv,
 ) LocalEnv {
-	result := overlayOSEnvVars(Env{})
+	result := Env{}
+	client, err := creator.FromCLI(ctx)
+	result.Client = client
+	if err != nil {
+		result.Error = err
+	}
 
 	// if the ClusterEnv host is the same, use it to infer some properties
-	if clusterEnv.Host == result.Host {
+	if Env(clusterEnv).DaemonHost() == result.DaemonHost() {
 		result.IsOldMinikube = clusterEnv.IsOldMinikube
 		result.BuildToKubeContexts = clusterEnv.BuildToKubeContexts
+		result.Environ = clusterEnv.Environ
 	}
 
 	// TODO(milas): I'm fairly certain we're adding the `docker-desktop`
@@ -113,6 +168,7 @@ func ProvideLocalEnv(
 
 func ProvideClusterEnv(
 	ctx context.Context,
+	creator ClientCreator,
 	kubeContext k8s.KubeContext,
 	product clusterid.Product,
 	runtime container.Runtime,
@@ -139,6 +195,15 @@ func ProvideClusterEnv(
 	// 		shell/profile so that you can use `docker` CLI with it too
 	env := Env{}
 
+	hostOverride := os.Getenv("DOCKER_HOST")
+	if hostOverride != "" {
+		var err error
+		hostOverride, err = opts.ParseHost(true, hostOverride)
+		if err != nil {
+			return ClusterEnv(Env{Error: errors.Wrap(err, "connecting to docker")})
+		}
+	}
+
 	if runtime == container.RuntimeDocker {
 		if product == clusterid.ProductMinikube {
 			// If we're running Minikube with a docker runtime, talk to Minikube's docker socket.
@@ -148,38 +213,46 @@ func ProvideClusterEnv(
 			}
 
 			if ok {
-				host := envMap["DOCKER_HOST"]
-				if host != "" {
-					env.Host = host
+				d, err := creator.FromEnvMap(envMap)
+				if err != nil {
+					return ClusterEnv{Error: fmt.Errorf("connecting to minikube: %v", err)}
 				}
 
-				apiVersion := envMap["DOCKER_API_VERSION"]
-				if apiVersion != "" {
-					env.APIVersion = apiVersion
+				// Handle the case where people manually set DOCKER_HOST to minikube.
+				if hostOverride == "" || hostOverride == d.DaemonHost() {
+					env.IsOldMinikube = isOldMinikube(ctx, minikubeClient)
+					env.BuildToKubeContexts = append(env.BuildToKubeContexts, string(kubeContext))
+					env.Client = d
+					for k, v := range envMap {
+						env.Environ = append(env.Environ, fmt.Sprintf("%s=%s", k, v))
+					}
+					sort.Strings(env.Environ)
 				}
 
-				certPath := envMap["DOCKER_CERT_PATH"]
-				if certPath != "" {
-					env.CertPath = certPath
-				}
-
-				tlsVerify := envMap["DOCKER_TLS_VERIFY"]
-				if tlsVerify != "" {
-					env.TLSVerify = tlsVerify
-				}
-
-				env.IsOldMinikube = isOldMinikube(ctx, minikubeClient)
-				env.BuildToKubeContexts = append(env.BuildToKubeContexts, string(kubeContext))
 			}
 		} else if product == clusterid.ProductMicroK8s {
 			// If we're running Microk8s with a docker runtime, talk to Microk8s's docker socket.
-			env.Host = microK8sDockerHost
-			env.BuildToKubeContexts = append(env.BuildToKubeContexts, string(kubeContext))
+			d, err := creator.FromEnvMap(map[string]string{"DOCKER_HOST": microK8sDockerHost})
+			if err != nil {
+				return ClusterEnv{Error: fmt.Errorf("connecting to microk8s: %v", err)}
+			}
+
+			// Handle the case where people manually set DOCKER_HOST to microk8s.
+			if hostOverride == "" || hostOverride == d.DaemonHost() {
+				env.Client = d
+				env.Environ = append(env.Environ, fmt.Sprintf("DOCKER_HOST=%s", microK8sDockerHost))
+				env.BuildToKubeContexts = append(env.BuildToKubeContexts, string(kubeContext))
+			}
 		}
 	}
 
-	// overlay OS values, potentially throwing away the cluster-provided config
-	env = overlayOSEnvVars(env)
+	if env.Client == nil {
+		client, err := creator.FromCLI(ctx)
+		env.Client = client
+		if err != nil {
+			env.Error = err
+		}
+	}
 
 	// some local Docker-based solutions expose their socket so we can build
 	// direct to the K8s container runtime (eliminating the need for pushing
@@ -212,7 +285,8 @@ func isOldMinikube(ctx context.Context, minikubeClient k8s.MinikubeClient) bool 
 }
 
 func isDefaultHost(e Env) bool {
-	if e.Host == "" {
+	host := e.DaemonHost()
+	if host == "" {
 		return true
 	}
 
@@ -221,40 +295,7 @@ func isDefaultHost(e Env) bool {
 		return false
 	}
 
-	return e.Host == defaultHost
-}
-
-func overlayOSEnvVars(result Env) Env {
-	host := os.Getenv("DOCKER_HOST")
-	if host != "" {
-		host, err := opts.ParseHost(true, host)
-		if err != nil {
-			return Env{Error: errors.Wrap(err, "ProvideDockerEnv")}
-		}
-
-		// If the docker host is set from the env and different from the cluster host,
-		// ignore all the variables from minikube/microk8s
-		if host != result.Host {
-			result = Env{Host: host}
-		}
-	}
-
-	apiVersion := os.Getenv("DOCKER_API_VERSION")
-	if apiVersion != "" {
-		result.APIVersion = apiVersion
-	}
-
-	certPath := os.Getenv("DOCKER_CERT_PATH")
-	if certPath != "" {
-		result.CertPath = certPath
-	}
-
-	tlsVerify := os.Getenv("DOCKER_TLS_VERIFY")
-	if tlsVerify != "" {
-		result.TLSVerify = tlsVerify
-	}
-
-	return result
+	return host == defaultHost
 }
 
 func willBuildToKubeContext(product clusterid.Product, kubeContext k8s.KubeContext, env Env) bool {
@@ -266,7 +307,7 @@ func willBuildToKubeContext(product clusterid.Product, kubeContext k8s.KubeConte
 		// (the same as Docker Desktop)
 		return isDefaultHost(env)
 	case clusterid.ProductColima:
-		if _, host, ok := strings.Cut(env.Host, "unix://"); ok {
+		if _, host, ok := strings.Cut(env.DaemonHost(), "unix://"); ok {
 			// Socket is stored in a directory named `.colima[-$profile]`
 			// For example:
 			// 	colima default profile -> ~/.colima/docker.sock

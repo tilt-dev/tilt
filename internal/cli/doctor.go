@@ -64,7 +64,7 @@ func (c *doctorCmd) run(ctx context.Context, args []string) error {
 		printField("Host", nil, clusterDockerErr)
 	} else {
 		dockerEnv := clusterDocker.Env()
-		host := dockerEnv.Host
+		host := dockerEnv.DaemonHost()
 		if host == "" {
 			host = "[default]"
 		}
@@ -86,7 +86,7 @@ func (c *doctorCmd) run(ctx context.Context, args []string) error {
 			printField("Host", nil, localDockerErr)
 		} else {
 			dockerEnv := localDocker.Env()
-			host := dockerEnv.Host
+			host := dockerEnv.DaemonHost()
 			if host == "" {
 				host = "[default]"
 			}
