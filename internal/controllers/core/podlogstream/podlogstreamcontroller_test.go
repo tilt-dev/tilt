@@ -11,6 +11,7 @@ import (
 	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/pkg/apis"
 
@@ -113,16 +114,23 @@ func TestLogsFailed(t *testing.T) {
 	f.AssertOutputContains("Error streaming pod-id logs")
 	assert.Contains(t, f.out.String(), "my-error")
 
-	// Check to make sure the status has an error.
-	f.MustGet(f.KeyForObject(pls), pls)
-	assert.Equal(t, pls.Status, PodLogStreamStatus{
-		ContainerStatuses: []ContainerLogStreamStatus{
-			{
-				Name:  "cname",
-				Error: "my-error",
-			},
+	require.Eventually(t,
+		func() bool {
+			// Check to make sure the status has an error.
+			f.MustGet(f.KeyForObject(pls), pls)
+			return apicmp.DeepEqual(pls.Status,
+				PodLogStreamStatus{
+					ContainerStatuses: []ContainerLogStreamStatus{
+						{
+							Name:  "cname",
+							Error: "my-error",
+						},
+					},
+				})
 		},
-	})
+		time.Second, 10*time.Millisecond,
+		"Expected error not present on PodLogStreamStatus: %v", pls,
+	)
 
 	result := f.MustReconcile(f.KeyForObject(pls))
 	assert.Equal(t, 2*time.Second, result.RequeueAfter)
