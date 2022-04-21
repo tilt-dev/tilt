@@ -1,4 +1,10 @@
-import React, { useCallback, useContext, useMemo } from "react"
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react"
 import { matchPath, useHistory, useLocation } from "react-router-dom"
 import { usePathBuilder } from "./PathBuilder"
 import { ResourceName } from "./types"
@@ -48,6 +54,9 @@ export function ResourceNavProvider(
   let location = useLocation()
   let pb = usePathBuilder()
   let selectedResource = ""
+  let [filterByResource, setFilterByResource] = useState(
+    {} as { [key: string]: string }
+  )
   let invalidResource = ""
 
   let matchResource = matchPath(location.pathname, {
@@ -62,13 +71,34 @@ export function ResourceNavProvider(
     invalidResource = candidateResource
   }
 
+  let search = location.search
+
+  useEffect(() => {
+    let existing = filterByResource[selectedResource] || ""
+    if (existing != search) {
+      let obj = {} as { [key: string]: string }
+      Object.assign(obj, filterByResource)
+      obj[selectedResource] = search
+      setFilterByResource(obj)
+    }
+  }, [selectedResource, search])
+
   let openResource = useCallback(
     (name: string) => {
       name = name || ResourceName.all
       let url = pb.encpath`/r/${name}/overview`
-      history.push(url + history.location.search)
+
+      // We deliberately make search terms stick to a resource.
+      //
+      // So if you add a log filter to resource A, navigate to B,
+      // then come back to A, we preserve the filter on A.
+      //
+      // We're not sure if this is the right behavior, and do not
+      // store it in any sort of persistent store.
+      let storedFilter = filterByResource[name] || ""
+      history.push(url + storedFilter)
     },
-    [history]
+    [history, filterByResource]
   )
 
   let resourceNav = useMemo(() => {
