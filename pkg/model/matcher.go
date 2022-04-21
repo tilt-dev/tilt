@@ -3,8 +3,6 @@ package model
 import (
 	"path/filepath"
 
-	"github.com/pkg/errors"
-
 	"github.com/tilt-dev/tilt/internal/ospath"
 )
 
@@ -24,32 +22,6 @@ func (m emptyMatcher) Matches(f string) (bool, error) {
 func (emptyMatcher) MatchesEntireDir(p string) (bool, error) { return false, nil }
 
 var EmptyMatcher PathMatcher = emptyMatcher{}
-
-// A matcher that matches exactly against a set of files.
-type fileMatcher struct {
-	paths map[string]bool
-}
-
-func (m fileMatcher) Matches(f string) (bool, error) {
-	return m.paths[f], nil
-}
-func (fileMatcher) MatchesEntireDir(f string) (bool, error) { return false, nil }
-
-// NewSimpleFileMatcher returns a matcher for the given paths; any relative paths
-// are converted to absolute (relative to cwd).
-func NewSimpleFileMatcher(paths ...string) (fileMatcher, error) {
-	pathMap := make(map[string]bool, len(paths))
-	for _, path := range paths {
-		// Get the absolute path of the path, because PathMatchers expect to always
-		// work with absolute paths.
-		path, err := filepath.Abs(path)
-		if err != nil {
-			return fileMatcher{}, errors.Wrap(err, "NewSimplePathMatcher")
-		}
-		pathMap[path] = true
-	}
-	return fileMatcher{paths: pathMap}, nil
-}
 
 // This matcher will match a path if it is:
 // A. an exact match for one of matcher.paths, or

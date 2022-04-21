@@ -70,18 +70,6 @@ var equalitytests = []struct {
 		false,
 	},
 	{
-		"ImageTarget.DockerIgnores unequal",
-		Manifest{}.WithImageTarget(ImageTarget{dockerignores: []Dockerignore{{LocalPath: "a", Patterns: []string{"b"}}}}),
-		Manifest{}.WithImageTarget(ImageTarget{dockerignores: []Dockerignore{{LocalPath: "b", Patterns: []string{"a"}}}}),
-		true,
-	},
-	{
-		"ImageTarget.DockerIgnores equal",
-		Manifest{}.WithImageTarget(ImageTarget{dockerignores: []Dockerignore{{LocalPath: "a", Patterns: []string{"b"}}}}),
-		Manifest{}.WithImageTarget(ImageTarget{dockerignores: []Dockerignore{{LocalPath: "a", Patterns: []string{"b"}}}}),
-		false,
-	},
-	{
 		"k8s.YAML equal",
 		Manifest{}.WithDeployTarget(NewK8sTargetForTesting("hello world")),
 		Manifest{}.WithDeployTarget(NewK8sTargetForTesting("hello world")),

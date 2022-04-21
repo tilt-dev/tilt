@@ -1012,18 +1012,14 @@ func TestBuildControllerK8sFileDependencies(t *testing.T) {
 	f := newTestFixture(t)
 
 	kt := k8s.MustTarget("fe", testyaml.SanchoYAML).
-		WithPathDependencies(
-			[]string{f.JoinPath("k8s-dep")},
-			[]model.LocalGitRepo{
-				{LocalPath: f.JoinPath("k8s-dep")},
+		WithPathDependencies([]string{f.JoinPath("k8s-dep")}).
+		WithIgnores([]v1alpha1.IgnoreDef{
+			{BasePath: f.JoinPath("k8s-dep", ".git")},
+			{
+				BasePath: f.JoinPath("k8s-dep"),
+				Patterns: []string{"ignore-me"},
 			},
-			[]model.Dockerignore{
-				{
-					LocalPath: f.JoinPath("k8s-dep"),
-					Source:    "test",
-					Patterns:  []string{"ignore-me"},
-				},
-			})
+		})
 	m := model.Manifest{Name: "fe"}.WithDeployTarget(kt)
 
 	f.Start([]model.Manifest{m})

@@ -1626,10 +1626,10 @@ func TestUpper_WatchDockerIgnoredFiles(t *testing.T) {
 	f := newTestFixture(t)
 	manifest := f.newManifest("foobar")
 	manifest = manifest.WithImageTarget(manifest.ImageTargetAt(0).
-		WithDockerignores([]model.Dockerignore{
+		WithIgnores([]v1alpha1.IgnoreDef{
 			{
-				LocalPath: f.Path(),
-				Patterns:  []string{"dignore.txt"},
+				BasePath: f.Path(),
+				Patterns: []string{"dignore.txt"},
 			},
 		}))
 

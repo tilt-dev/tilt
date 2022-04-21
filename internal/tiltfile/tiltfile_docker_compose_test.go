@@ -461,9 +461,7 @@ RUN echo hi`
 	f.load("foo")
 
 	f.assertNextManifest("foo",
-		buildMatches(filepath.Join("foo", "tmp2")),
 		fileChangeMatches(filepath.Join("foo", "tmp2")),
-		buildFilters(filepath.Join("foo", "tmp")),
 		fileChangeFilters(filepath.Join("foo", "tmp")),
 	)
 }
@@ -484,8 +482,6 @@ RUN echo hi`
 	f.load("foo")
 
 	f.assertNextManifest("foo",
-		// ensure that DC syncs are *not* ignored for builds, because all files are still relevant to builds
-		buildMatches(filepath.Join("foo", "Dockerfile")),
 		// ensure that DC syncs *are* ignored for file watching, i.e., won't trigger builds
 		fileChangeFilters(filepath.Join("foo", "blah")),
 	)

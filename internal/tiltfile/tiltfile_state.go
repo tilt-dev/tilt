@@ -1179,10 +1179,10 @@ func (s *tiltfileState) k8sDeployTarget(targetName model.TargetName, r *k8sResou
 	}
 
 	var deps []string
-	var ignores []model.Dockerignore
+	var ignores []v1alpha1.IgnoreDef
 	if r.customDeploy != nil {
 		deps = r.customDeploy.deps
-		ignores = r.customDeploy.ignores
+		ignores = append(ignores, model.DockerignoresToIgnores(r.customDeploy.ignores)...)
 		applySpec.ApplyCmd = toKubernetesApplyCmd(r.customDeploy.applyCmd)
 		applySpec.DeleteCmd = toKubernetesApplyCmd(r.customDeploy.deleteCmd)
 		applySpec.RestartOn = &v1alpha1.RestartOnSpec{
@@ -1203,6 +1203,8 @@ func (s *tiltfileState) k8sDeployTarget(targetName model.TargetName, r *k8sResou
 		}
 	}
 
+	ignores = append(ignores, repoIgnoresForPaths(deps)...)
+
 	t, err := k8s.NewTarget(targetName, applySpec, s.inferPodReadinessMode(r), r.links)
 	if err != nil {
 		return model.K8sTarget{}, err
@@ -1210,7 +1212,8 @@ func (s *tiltfileState) k8sDeployTarget(targetName model.TargetName, r *k8sResou
 
 	t = t.WithImageDependencies(model.FilterLiveUpdateOnly(r.imageMapDeps, imageTargets)).
 		WithRefInjectCounts(r.imageRefInjectCounts()).
-		WithPathDependencies(deps, reposForPaths(deps), ignores)
+		WithPathDependencies(deps).
+		WithIgnores(ignores)
 
 	return t, nil
 }
@@ -1418,6 +1421,20 @@ func (s *tiltfileState) imgTargetsForDepsHelper(mn model.ManifestName, imageMapD
 			iTarget.LiveUpdateName = liveupdate.GetName(mn, iTarget.ID())
 		}
 
+		dockerignores, err := s.dockerignoresForImage(image)
+		if err != nil {
+			return nil, fmt.Errorf("Reading dockerignore for %s: %v", image.configurationRef.RefFamiliarString(), err)
+		}
+
+		repoIgnores := s.repoIgnoresForImage(image)
+		fileWatchIgnores := []v1alpha1.IgnoreDef{}
+		if image.tiltfilePath != "" {
+			fileWatchIgnores = append(fileWatchIgnores, v1alpha1.IgnoreDef{BasePath: image.tiltfilePath})
+		}
+		fileWatchIgnores = append(
+			append(fileWatchIgnores, repoIgnores...),
+			model.DockerignoresToIgnores(dockerignores)...)
+
 		switch image.Type() {
 		case DockerBuild:
 			iTarget.DockerImageName = dockerimage.GetName(mn, iTarget.ID())
@@ -1434,6 +1451,7 @@ func (s *tiltfileState) imgTargetsForDepsHelper(mn model.ManifestName, imageMapD
 				Pull:               image.pullParent,
 				Platform:           image.platform,
 				ExtraTags:          image.extraTags,
+				ContextIgnores:     fileWatchIgnores,
 			}
 			iTarget = iTarget.WithBuildDetails(model.DockerBuild{DockerImageSpec: spec})
 		case CustomBuild:
@@ -1459,25 +1477,21 @@ func (s *tiltfileState) imgTargetsForDepsHelper(mn model.ManifestName, imageMapD
 			iTarget = iTarget.WithBuildDetails(r)
 		case DockerComposeBuild:
 			bd := model.DockerComposeBuild{
-				Service:          image.dockerComposeService,
-				Context:          image.dbBuildPath,
-				LocalVolumePaths: image.dockerComposeLocalVolumePaths,
+				Service: image.dockerComposeService,
+				Context: image.dbBuildPath,
 			}
+
+			for _, p := range image.dockerComposeLocalVolumePaths {
+				fileWatchIgnores = append(fileWatchIgnores, v1alpha1.IgnoreDef{BasePath: p})
+			}
+
 			iTarget = iTarget.WithBuildDetails(bd)
 		case UnknownBuild:
 			return nil, fmt.Errorf("no build info for image %s", image.configurationRef.RefFamiliarString())
 		}
 
-		dIgnores, err := s.dockerignoresForImage(image)
-		if err != nil {
-			return nil, fmt.Errorf("Reading dockerignore for %s: %v", image.configurationRef.RefFamiliarString(), err)
-		}
-
-		iTarget = iTarget.
-			WithRepos(s.reposForImage(image)).
-			WithDockerignores(dIgnores). // used even for custom build
-			WithTiltFilename(image.tiltfilePath).
-			WithImageMapDeps(image.imageMapDeps)
+		iTarget = iTarget.WithImageMapDeps(image.imageMapDeps).
+			WithFileWatchIgnores(fileWatchIgnores)
 
 		depTargets, err := s.imgTargetsForDepsHelper(mn, image.imageMapDeps, claimStatus)
 		if err != nil {
@@ -1579,21 +1593,20 @@ func (s *tiltfileState) translateLocal() ([]model.Manifest, error) {
 		paths := append([]string{}, r.deps...)
 		paths = append(paths, r.threadDir)
 
-		var ignores []model.Dockerignore
+		ignores := repoIgnoresForPaths(paths)
 		if len(r.ignores) != 0 {
-			ignores = append(ignores, model.Dockerignore{
-				Patterns:  r.ignores,
-				Source:    fmt.Sprintf("local_resource(%q)", r.name),
-				LocalPath: r.threadDir,
+			ignores = append(ignores, v1alpha1.IgnoreDef{
+				BasePath: r.threadDir,
+				Patterns: r.ignores,
 			})
 		}
 
 		lt := model.NewLocalTarget(model.TargetName(r.name), r.updateCmd, r.serveCmd, r.deps).
-			WithRepos(reposForPaths(paths)).
-			WithIgnores(ignores).
 			WithAllowParallel(r.allowParallel || r.updateCmd.Empty()).
 			WithLinks(r.links).
 			WithReadinessProbe(r.readinessProbe)
+		lt.FileWatchIgnores = ignores
+
 		var mds []model.ManifestName
 		for _, md := range r.resourceDeps {
 			mds = append(mds, model.ManifestName(md))

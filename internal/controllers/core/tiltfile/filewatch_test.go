@@ -2,7 +2,6 @@ package tiltfile
 
 import (
 	"context"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -39,23 +38,6 @@ func TestFileWatch_basic(t *testing.T) {
 	f.RequireFileWatchSpecEqual(target.ID(), v1alpha1.FileWatchSpec{WatchedPaths: []string{"."}})
 }
 
-func TestFileWatch_localRepo(t *testing.T) {
-	f := newFWFixture(t)
-
-	target := model.LocalTarget{
-		Name: "foo",
-		Deps: []string{"."},
-	}.WithRepos([]model.LocalGitRepo{{LocalPath: "."}})
-	f.SetManifestLocalTarget(target)
-
-	f.RequireFileWatchSpecEqual(target.ID(), v1alpha1.FileWatchSpec{
-		WatchedPaths: []string{"."},
-		Ignores: []v1alpha1.IgnoreDef{
-			{BasePath: filepath.Join(".", ".git")},
-		},
-	})
-}
-
 func TestFileWatch_disabledOnCIMode(t *testing.T) {
 	f := newFWFixture(t)
 
@@ -71,23 +53,6 @@ func TestFileWatch_disabledOnCIMode(t *testing.T) {
 
 	actualSet := ToFileWatchObjects(f.inputs, make(disableSourceMap))
 	assert.Empty(t, actualSet)
-}
-
-func TestFileWatch_Dockerignore(t *testing.T) {
-	f := newFWFixture(t)
-
-	target := model.LocalTarget{
-		Name: "foo",
-		Deps: []string{"."},
-	}.WithIgnores([]model.Dockerignore{{LocalPath: ".", Patterns: []string{"bar"}}})
-	f.SetManifestLocalTarget(target)
-
-	f.RequireFileWatchSpecEqual(target.ID(), v1alpha1.FileWatchSpec{
-		WatchedPaths: []string{"."},
-		Ignores: []v1alpha1.IgnoreDef{
-			{BasePath: ".", Patterns: []string{"bar"}},
-		},
-	})
 }
 
 func TestFileWatch_IgnoreOutputsImageRefs(t *testing.T) {

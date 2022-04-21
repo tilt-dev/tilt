@@ -15,9 +15,8 @@ type LocalTarget struct {
 	ServeCmd Cmd      // e.g. `python main.py`
 	Links    []Link   // zero+ links assoc'd with this resource (to be displayed in UIs)
 	Deps     []string // a list of ABSOLUTE file paths that are dependencies of this target
-	ignores  []Dockerignore
 
-	repos []LocalGitRepo
+	FileWatchIgnores []v1alpha1.IgnoreDef
 
 	// Indicates that we should allow this to run in parallel with other
 	// resources  (by default, this is presumed unsafe and is not allowed).
@@ -49,6 +48,15 @@ func NewLocalTarget(name TargetName, updateCmd Cmd, serveCmd Cmd, deps []string)
 	}
 }
 
+func (lt LocalTarget) WithIgnores(ignores []v1alpha1.IgnoreDef) LocalTarget {
+	lt.FileWatchIgnores = ignores
+	return lt
+}
+
+func (lt LocalTarget) GetFileWatchIgnores() []v1alpha1.IgnoreDef {
+	return lt.FileWatchIgnores
+}
+
 func (lt LocalTarget) UpdateCmdName() string {
 	if lt.UpdateCmdSpec == nil {
 		return ""
@@ -62,16 +70,6 @@ func (lt LocalTarget) Empty() bool {
 
 func (lt LocalTarget) WithAllowParallel(val bool) LocalTarget {
 	lt.AllowParallel = val
-	return lt
-}
-
-func (lt LocalTarget) WithRepos(repos []LocalGitRepo) LocalTarget {
-	lt.repos = append(append([]LocalGitRepo{}, lt.repos...), repos...)
-	return lt
-}
-
-func (lt LocalTarget) WithIgnores(ignores []Dockerignore) LocalTarget {
-	lt.ignores = ignores
 	return lt
 }
 
@@ -109,16 +107,4 @@ func (lt LocalTarget) Validate() error {
 // Implements: engine.WatchableManifest
 func (lt LocalTarget) Dependencies() []string {
 	return sliceutils.DedupedAndSorted(lt.Deps)
-}
-
-func (lt LocalTarget) LocalRepos() []LocalGitRepo {
-	return lt.repos
-}
-
-func (lt LocalTarget) Dockerignores() []Dockerignore {
-	return lt.ignores
-}
-
-func (lt LocalTarget) IgnoredLocalDirectories() []string {
-	return nil
 }

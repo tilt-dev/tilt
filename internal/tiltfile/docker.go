@@ -455,8 +455,8 @@ func isGitRepoBase(path string) bool {
 	return ospath.IsDir(filepath.Join(path, ".git"))
 }
 
-func reposForPaths(paths []string) []model.LocalGitRepo {
-	var result []model.LocalGitRepo
+func repoIgnoresForPaths(paths []string) []v1alpha1.IgnoreDef {
+	var result []v1alpha1.IgnoreDef
 	repoSet := map[string]bool{}
 
 	for _, path := range paths {
@@ -466,15 +466,15 @@ func reposForPaths(paths []string) []model.LocalGitRepo {
 		}
 
 		repoSet[path] = true
-		result = append(result, model.LocalGitRepo{
-			LocalPath: path,
+		result = append(result, v1alpha1.IgnoreDef{
+			BasePath: filepath.Join(path, ".git"),
 		})
 	}
 
 	return result
 }
 
-func (s *tiltfileState) reposForImage(image *dockerImage) []model.LocalGitRepo {
+func (s *tiltfileState) repoIgnoresForImage(image *dockerImage) []v1alpha1.IgnoreDef {
 	var paths []string
 	paths = append(paths,
 		image.dbDockerfilePath,
@@ -482,7 +482,7 @@ func (s *tiltfileState) reposForImage(image *dockerImage) []model.LocalGitRepo {
 		image.workDir)
 	paths = append(paths, image.customDeps...)
 
-	return reposForPaths(paths)
+	return repoIgnoresForPaths(paths)
 }
 
 func (s *tiltfileState) defaultRegistry(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {

@@ -192,20 +192,15 @@ func (c *Controller) addOrReplace(ctx context.Context, name types.NamespacedName
 		status.Error = existing.status.Error
 	}
 
-	var notify watch.Notify
-	ignoreMatcher, err := ignore.IgnoresToMatcher(fw.Spec.Ignores)
+	ignoreMatcher := ignore.CreateFileChangeFilter(fw.Spec.Ignores)
+	notify, err := c.fsWatcherMaker(
+		append([]string{}, fw.Spec.WatchedPaths...),
+		ignoreMatcher,
+		logger.Get(ctx))
 	if err != nil {
-		status.Error = err.Error()
-	} else {
-		notify, err = c.fsWatcherMaker(
-			append([]string{}, fw.Spec.WatchedPaths...),
-			ignoreMatcher,
-			logger.Get(ctx))
-		if err != nil {
-			status.Error = fmt.Sprintf("failed to initialize filesystem watch: %v", err)
-		} else if err := notify.Start(); err != nil {
-			status.Error = fmt.Sprintf("failed to initialize filesystem watch: %v", err)
-		}
+		status.Error = fmt.Sprintf("failed to initialize filesystem watch: %v", err)
+	} else if err := notify.Start(); err != nil {
+		status.Error = fmt.Sprintf("failed to initialize filesystem watch: %v", err)
 	}
 
 	if hasExisting {
