@@ -611,6 +611,44 @@ message DockerClusterConnection {
   optional string host = 1;
 }
 
+// DockerComposeLogStream
+// +k8s:openapi-gen=true
+message DockerComposeLogStream {
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+
+  optional DockerComposeLogStreamSpec spec = 2;
+
+  optional DockerComposeLogStreamStatus status = 3;
+}
+
+// DockerComposeLogStreamList
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+message DockerComposeLogStreamList {
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+
+  repeated DockerComposeLogStream items = 2;
+}
+
+// DockerComposeLogStreamSpec defines the desired state of DockerComposeLogStream
+message DockerComposeLogStreamSpec {
+  // The name of the service to stream from.
+  optional string service = 1;
+
+  // A specification of the project the service belongs to.
+  //
+  // Each service spec keeps its own copy of the project spec.
+  optional DockerComposeProject project = 2;
+}
+
+// DockerComposeLogStreamStatus defines the observed state of DockerComposeLogStream
+message DockerComposeLogStreamStatus {
+  // When we last started the log streamer.
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startedAt = 1;
+
+  // Contains an error message when the log streamer is in an error state.
+  optional string error = 2;
+}
+
 message DockerComposeProject {
   // Configuration files to load.
   //
