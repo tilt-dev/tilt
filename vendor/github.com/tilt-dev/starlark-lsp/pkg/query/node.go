@@ -14,6 +14,8 @@ const (
 	NodeTypeAssignment          = "assignment"
 	NodeTypeAttribute           = "attribute"
 	NodeTypeString              = "string"
+	NodeTypeDictionary          = "dictionary"
+	NodeTypeList                = "list"
 	NodeTypeComment             = "comment"
 	NodeTypeBlock               = "block"
 	NodeTypeERROR               = "ERROR"

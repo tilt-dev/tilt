@@ -13,20 +13,20 @@ import (
 	"github.com/tilt-dev/starlark-lsp/pkg/query"
 )
 
-func SymbolMatching(symbols []protocol.DocumentSymbol, name string) protocol.DocumentSymbol {
+func SymbolMatching(symbols []query.Symbol, name string) query.Symbol {
 	for _, sym := range symbols {
 		if sym.Name == name {
 			return sym
 		}
 	}
-	return protocol.DocumentSymbol{}
+	return query.Symbol{}
 }
 
-func SymbolsStartingWith(symbols []protocol.DocumentSymbol, prefix string) []protocol.DocumentSymbol {
+func SymbolsStartingWith(symbols []query.Symbol, prefix string) []query.Symbol {
 	if prefix == "" {
 		return symbols
 	}
-	result := []protocol.DocumentSymbol{}
+	result := []query.Symbol{}
 	for _, sym := range symbols {
 		if strings.HasPrefix(sym.Name, prefix) {
 			result = append(result, sym)
@@ -51,7 +51,7 @@ func ToCompletionItemKind(k protocol.SymbolKind) protocol.CompletionItemKind {
 func (a *Analyzer) Completion(doc document.Document, pos protocol.Position) *protocol.CompletionList {
 	pt := query.PositionToPoint(pos)
 	nodes, ok := a.nodesAtPointForCompletion(doc, pt)
-	symbols := []protocol.DocumentSymbol{}
+	symbols := []query.Symbol{}
 
 	if ok {
 		symbols = a.completeExpression(doc, nodes, pt)
@@ -85,7 +85,7 @@ func (a *Analyzer) Completion(doc document.Document, pos protocol.Position) *pro
 	return completionList
 }
 
-func (a *Analyzer) completeExpression(doc document.Document, nodes []*sitter.Node, pt sitter.Point) []protocol.DocumentSymbol {
+func (a *Analyzer) completeExpression(doc document.Document, nodes []*sitter.Node, pt sitter.Point) []query.Symbol {
 	var nodeAtPoint *sitter.Node
 	if len(nodes) > 0 {
 		nodeAtPoint = nodes[len(nodes)-1]
@@ -123,6 +123,14 @@ func (a *Analyzer) completeExpression(doc document.Document, nodes []*sitter.Nod
 		}
 	}
 
+	if len(symbols) == 0 {
+		lastId := identifiers[len(identifiers)-1]
+		expr := a.findAttrObjectExpression(nodes, sitter.Point{Row: pt.Row, Column: pt.Column - uint32(len(lastId))})
+		if expr != nil {
+			symbols = append(symbols, SymbolsStartingWith(a.availableMembers(doc, expr), lastId)...)
+		}
+	}
+
 	return symbols
 }
 
@@ -132,11 +140,11 @@ func (a *Analyzer) completeExpression(doc document.Document, nodes []*sitter.Nod
 //   level (document symbols), because the document already has those computed
 // - Add document symbols
 // - Add builtins
-func (a *Analyzer) availableSymbols(doc document.Document, nodeAtPoint *sitter.Node, pt sitter.Point) []protocol.DocumentSymbol {
-	symbols := []protocol.DocumentSymbol{}
+func (a *Analyzer) availableSymbols(doc document.Document, nodeAtPoint *sitter.Node, pt sitter.Point) []query.Symbol {
+	symbols := []query.Symbol{}
 	if nodeAtPoint != nil {
-		if fnName, args := keywordArgContext(doc, nodeAtPoint, pt); fnName != "" {
-			if fn, ok := a.signatureInformation(doc, nodeAtPoint, fnName); ok {
+		if args := keywordArgContext(doc, nodeAtPoint, pt); args.fnName != "" {
+			if fn, ok := a.signatureInformation(doc, nodeAtPoint, args); ok {
 				symbols = append(symbols, a.keywordArgSymbols(fn, args)...)
 			}
 		}
@@ -259,15 +267,15 @@ func (a *Analyzer) leafNodesForCompletion(doc document.Document, node *sitter.No
 	return nodes, true
 }
 
-func (a *Analyzer) keywordArgSymbols(fn query.Signature, args callArguments) []protocol.DocumentSymbol {
-	symbols := []protocol.DocumentSymbol{}
+func (a *Analyzer) keywordArgSymbols(fn query.Signature, args callWithArguments) []query.Symbol {
+	symbols := []query.Symbol{}
 	for i, param := range fn.Params {
 		if i < int(args.positional) {
 			continue
 		}
 		kwarg := param.Name
 		if used := args.keywords[kwarg]; !used {
-			symbols = append(symbols, protocol.DocumentSymbol{
+			symbols = append(symbols, query.Symbol{
 				Name:   kwarg + "=",
 				Detail: param.Content,
 				Kind:   protocol.SymbolKindVariable,
@@ -277,12 +285,137 @@ func (a *Analyzer) keywordArgSymbols(fn query.Signature, args callArguments) []p
 	return symbols
 }
 
-func keywordArgContext(doc document.Document, node *sitter.Node, pt sitter.Point) (fnName string, args callArguments) {
+// Find the object part of an attribute expression that has a dot '.' immediately before the given point.
+func (a *Analyzer) findAttrObjectExpression(nodes []*sitter.Node, pt sitter.Point) *sitter.Node {
+	if pt.Column == 0 {
+		return nil
+	}
+
+	var dot *sitter.Node
+	searchRange := sitter.Range{StartPoint: sitter.Point{Row: pt.Row, Column: pt.Column - 1}, EndPoint: pt}
+	var parentNode *sitter.Node
+	for i := len(nodes) - 1; i >= 0; i-- {
+		parentNode = nodes[i]
+		dot = query.FindChildNode(parentNode, func(n *sitter.Node) int {
+			if query.PointBeforeOrEqual(n.EndPoint(), searchRange.StartPoint) {
+				return -1
+			}
+			if n.StartPoint() == searchRange.StartPoint &&
+				n.EndPoint() == searchRange.EndPoint &&
+				n.Type() == "." {
+				return 0
+			}
+			if query.PointBeforeOrEqual(n.StartPoint(), searchRange.StartPoint) &&
+				query.PointAfterOrEqual(n.EndPoint(), searchRange.EndPoint) {
+				return 0
+			}
+			return 1
+		})
+		if dot != nil {
+			break
+		}
+	}
+	if dot != nil {
+		expr := parentNode.PrevSibling()
+		for n := dot; n != parentNode; n = n.Parent() {
+			if n.PrevSibling() != nil {
+				expr = n.PrevSibling()
+				break
+			}
+		}
+
+		if expr != nil {
+			a.logger.Debug("dot completion",
+				zap.String("dot", dot.String()),
+				zap.String("expr", expr.String()))
+			return expr
+		}
+	}
+	return nil
+}
+
+// Perform some rudimentary type analysis to determine the Starlark type of the node
+func (a *Analyzer) analyzeType(doc document.Document, node *sitter.Node) string {
+	if node == nil {
+		return ""
+	}
+	switch node.Type() {
+	case query.NodeTypeString:
+		return "String"
+	case query.NodeTypeDictionary:
+		return "Dict"
+	case query.NodeTypeList:
+		return "List"
+	case query.NodeTypeIdentifier:
+		sym, found := a.FindDefinition(doc, node, doc.Content(node))
+		if found {
+			switch sym.Kind {
+			case protocol.SymbolKindString:
+				return "String"
+			case protocol.SymbolKindObject:
+				return "Dict"
+			case protocol.SymbolKindArray:
+				return "List"
+			}
+		}
+	case query.NodeTypeCall:
+		fnName := doc.Content(node.ChildByFieldName("function"))
+		args := node.ChildByFieldName("arguments")
+		sig, found := a.signatureInformation(doc, node, callWithArguments{fnName: fnName, argsNode: args})
+		if found && sig.ReturnType != "" {
+			switch strings.ToLower(sig.ReturnType) {
+			case "str", "string":
+				return "String"
+			case "list":
+				return "List"
+			case "dict":
+				return "Dict"
+			default:
+				return sig.ReturnType
+			}
+		}
+	}
+	return ""
+}
+
+func (a *Analyzer) availableMembers(doc document.Document, node *sitter.Node) []query.Symbol {
+	if t := a.analyzeType(doc, node); t != "" {
+		if class, found := a.builtins.Types[t]; found {
+			return class.Members
+		}
+		switch t {
+		case "None", "bool", "int", "float":
+			return []query.Symbol{}
+		}
+	}
+	return a.builtins.Members
+}
+
+func (a *Analyzer) FindDefinition(doc document.Document, node *sitter.Node, name string) (query.Symbol, bool) {
+	for _, sym := range query.SymbolsInScope(doc, node) {
+		if sym.Name == name {
+			return sym, true
+		}
+	}
+	for _, sym := range doc.Symbols() {
+		if sym.Name == name {
+			return sym, true
+		}
+	}
+	for _, sym := range a.builtins.Symbols {
+		if sym.Name == name {
+			return sym, true
+		}
+	}
+	return query.Symbol{}, false
+}
+
+func keywordArgContext(doc document.Document, node *sitter.Node, pt sitter.Point) callWithArguments {
 	if node.Type() == "=" ||
 		query.HasAncestor(node, func(anc *sitter.Node) bool {
 			return anc.Type() == query.NodeTypeKeywordArgument
 		}) {
-		return "", callArguments{}
+		return callWithArguments{}
 	}
 	return possibleCallInfo(doc, node, pt)
 }

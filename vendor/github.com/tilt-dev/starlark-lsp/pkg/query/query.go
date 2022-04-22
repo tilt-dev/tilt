@@ -19,8 +19,8 @@ type MatchFunc func(q *sitter.Query, match *sitter.QueryMatch) bool
 
 // Query executes a Tree-sitter S-expression query against a subtree and invokes
 // matchFn on each result.
-func Query(node *sitter.Node, pattern []byte, matchFn MatchFunc) {
-	q := MustQuery(pattern, LanguagePython)
+func Query(node *sitter.Node, pattern string, matchFn MatchFunc) {
+	q := MustQuery([]byte(pattern), LanguagePython)
 	qc := sitter.NewQueryCursor()
 	defer qc.Close()
 

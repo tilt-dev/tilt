@@ -34,9 +34,10 @@ type Document interface {
 
 	Tree() *sitter.Tree
 	Functions() map[string]query.Signature
-	Symbols() []protocol.DocumentSymbol
+	Symbols() []query.Symbol
 	Diagnostics() []protocol.Diagnostic
 	Loads() []LoadStatement
+	URI() uri.URI
 
 	Copy() Document
 
@@ -82,7 +83,7 @@ type document struct {
 	tree *sitter.Tree
 
 	functions   map[string]query.Signature
-	symbols     []protocol.DocumentSymbol
+	symbols     []query.Symbol
 	diagnostics []protocol.Diagnostic
 	loads       []LoadStatement
 }
@@ -109,7 +110,7 @@ func (d *document) Functions() map[string]query.Signature {
 	return d.functions
 }
 
-func (d *document) Symbols() []protocol.DocumentSymbol {
+func (d *document) Symbols() []query.Symbol {
 	return d.symbols
 }
 
@@ -119,6 +120,10 @@ func (d *document) Diagnostics() []protocol.Diagnostic {
 
 func (d *document) Loads() []LoadStatement {
 	return d.loads
+}
+
+func (d *document) URI() uri.URI {
+	return d.uri
 }
 
 func (d *document) Close() {
@@ -135,7 +140,7 @@ func (d *document) Copy() Document {
 		input:       d.input,
 		tree:        d.tree.Copy(),
 		functions:   make(map[string]query.Signature),
-		symbols:     append([]protocol.DocumentSymbol{}, d.symbols...),
+		symbols:     append([]query.Symbol{}, d.symbols...),
 		loads:       append([]LoadStatement{}, d.loads...),
 		diagnostics: append([]protocol.Diagnostic{}, d.diagnostics...),
 	}
@@ -188,14 +193,13 @@ func (d *document) followLoads(ctx context.Context, m *Manager, parseState Docum
 
 func (d *document) processLoad(dep Document, load LoadStatement) {
 	fns := dep.Functions()
-	symMap := make(map[string]protocol.DocumentSymbol)
+	symMap := make(map[string]query.Symbol)
 	for _, s := range dep.Symbols() {
 		symMap[s.Name] = s
 	}
 	for _, ls := range load.Symbols {
 		if sym, found := symMap[ls.Name]; found {
 			sym.Name = ls.Alias
-			sym.Range = ls.Range
 			d.symbols = append(d.symbols, sym)
 			if f, ok := fns[ls.Name]; ok {
 				d.functions[ls.Alias] = f

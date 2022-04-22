@@ -3,6 +3,8 @@ package query
 import (
 	"fmt"
 
+	"go.lsp.dev/uri"
+
 	"go.lsp.dev/protocol"
 
 	sitter "github.com/smacker/go-tree-sitter"
@@ -10,12 +12,29 @@ import (
 	"github.com/tilt-dev/starlark-lsp/pkg/docstring"
 )
 
+// FunctionParameters extracts parameters from a function definition and
+// supports a mixture of positional parameters, default value parameters,
+// typed parameters*, and typed default value parameters*.
+//
+// * These are not valid Starlark, but we support them to enable using Python
+//   type-stub files for improved editor experience.
+const FunctionParameters = `
+(parameters ([
+    (identifier) @name
+    (_ .
+        (identifier) @name
+        type: (type)? @type
+        value: (expression)? @value)
+]) @param)
+`
+
 type Parameter struct {
 	Name         string
 	TypeHint     string
 	DefaultValue string
 	Content      string
-	Node         *sitter.Node
+	DocURI       uri.URI
+	Location     protocol.Location
 }
 
 func (p Parameter) ParameterInfo(fnDocs docstring.Parsed) protocol.ParameterInformation {
@@ -46,12 +65,12 @@ func (p Parameter) ParameterInfo(fnDocs docstring.Parsed) protocol.ParameterInfo
 	return pi
 }
 
-func (p Parameter) Symbol() protocol.DocumentSymbol {
-	return protocol.DocumentSymbol{
-		Name:   p.Name,
-		Kind:   protocol.SymbolKindVariable,
-		Detail: p.Content,
-		Range:  NodeRange(p.Node),
+func (p Parameter) Symbol() Symbol {
+	return Symbol{
+		Name:     p.Name,
+		Kind:     protocol.SymbolKindVariable,
+		Detail:   p.Content,
+		Location: p.Location,
 	}
 }
 
@@ -74,7 +93,9 @@ func extractParameters(doc DocumentContent, fnDocs docstring.Parsed,
 
 	var params []Parameter
 	Query(node, FunctionParameters, func(q *sitter.Query, match *sitter.QueryMatch) bool {
-		var param Parameter
+		param := Parameter{
+			DocURI: doc.URI(),
+		}
 
 		for _, c := range match.Captures {
 			content := doc.Content(c.Node)
@@ -87,7 +108,7 @@ func extractParameters(doc DocumentContent, fnDocs docstring.Parsed,
 				param.DefaultValue = content
 			case "param":
 				param.Content = content
-				param.Node = c.Node
+				param.Location = NodeLocation(c.Node, param.DocURI)
 			}
 		}
 

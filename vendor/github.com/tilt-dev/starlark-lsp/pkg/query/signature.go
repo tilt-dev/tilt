@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"go.lsp.dev/uri"
+
 	"go.lsp.dev/protocol"
 
 	sitter "github.com/smacker/go-tree-sitter"
@@ -53,7 +55,8 @@ type Signature struct {
 	Params     []Parameter
 	ReturnType string
 	Docs       docstring.Parsed
-	Node       *sitter.Node
+	docURI     uri.URI
+	Range      protocol.Range
 }
 
 func (s Signature) SignatureInfo() protocol.SignatureInformation {
@@ -95,12 +98,15 @@ func (s Signature) Label() string {
 	return sb.String()
 }
 
-func (s Signature) Symbol() protocol.DocumentSymbol {
-	return protocol.DocumentSymbol{
+func (s Signature) Symbol() Symbol {
+	return Symbol{
 		Name:   s.Name,
 		Kind:   protocol.SymbolKindFunction,
-		Detail: s.Label(),
-		Range:  NodeRange(s.Node),
+		Detail: s.Docs.Description,
+		Location: protocol.Location{
+			URI:   s.docURI,
+			Range: s.Range,
+		},
 	}
 }
 
@@ -125,7 +131,8 @@ func ExtractSignature(doc DocumentContent, n *sitter.Node) Signature {
 		Params:     params,
 		ReturnType: returnType,
 		Docs:       fnDocs,
-		Node:       n,
+		Range:      NodeRange(n),
+		docURI:     doc.URI(),
 	}
 }
 

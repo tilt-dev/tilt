@@ -3,6 +3,7 @@ package query
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	sitter "github.com/smacker/go-tree-sitter"
 	"go.lsp.dev/protocol"
@@ -99,6 +100,29 @@ func nodeTypeToSymbolKind(n *sitter.Node) protocol.SymbolKind {
 		return protocol.SymbolKindString
 	case "function_definition":
 		return protocol.SymbolKindFunction
+	}
+	return 0
+}
+
+func pythonTypeToSymbolKind(doc DocumentContent, n *sitter.Node) protocol.SymbolKind {
+	// if the type has a subscript like 'List[str]', use 'List' as the type
+	if n.ChildCount() > 0 && n.Child(0).Type() == "subscript" {
+		n = n.Child(0).ChildByFieldName("value")
+	}
+	t := strings.ToLower(doc.Content(n))
+	switch t {
+	case "str", "string", "bytes":
+		return protocol.SymbolKindString
+	case "list", "tuple":
+		return protocol.SymbolKindArray
+	case "callable":
+		return protocol.SymbolKindFunction
+	case "dict", "any":
+		return protocol.SymbolKindObject
+	case "int", "float":
+		return protocol.SymbolKindNumber
+	case "bool":
+		return protocol.SymbolKindBoolean
 	}
 	return 0
 }
