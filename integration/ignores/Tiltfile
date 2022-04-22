@@ -1,0 +1,15 @@
+# -*- mode: Python -*-
+
+include('../Tiltfile')
+
+k8s_yaml('deployment.yaml')
+docker_build('ignores-image',
+             '.',
+             ignore=['ignored_by_tiltfile.txt'],
+             live_update=[
+               sync('.', '/app'),
+               run('/app/compile.sh'),
+               run('/app/restart.sh'),
+             ])
+
+k8s_resource("ignores", port_forwards=["31234:8000"])
