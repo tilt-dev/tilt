@@ -92,29 +92,19 @@ describe("AnalyticsNudge", () => {
     })
   })
 
-  // TODO: Fix this test, if possible! There's a timing issue with the
-  // setTimeout that dismisses the nudge after the set delay. This test
-  // passes, but React complains about `setState` calls after the
-  // component has been unmounted.
-  xit(
-    "dismisses the success message after a set delay",
-    async () => {
-      mockAnalyticsOptInOnce(true)
-      render(<AnalyticsNudge needsNudge={true} />)
+  it("dismisses the success message after a set delay", async () => {
+    jest.useFakeTimers()
+    mockAnalyticsOptInOnce(true)
+    render(<AnalyticsNudge needsNudge={true} />)
 
-      userEvent.click(screen.getByRole("button", { name: /I'm in/i }))
+    userEvent.click(screen.getByRole("button", { name: /I'm in/i }))
 
-      await waitFor(() => {
-        expect(screen.getByTestId("optin-success")).toBeInTheDocument()
-      })
+    await waitFor(() => {
+      expect(screen.getByTestId("optin-success")).toBeInTheDocument()
+    })
 
-      await waitFor(
-        () => {
-          expect(screen.queryByLabelText("Tilt analytics options")).toBeNull()
-        },
-        { timeout: NUDGE_TIMEOUT_MS }
-      )
-    },
-    NUDGE_TIMEOUT_MS * 2
-  )
+    jest.advanceTimersByTime(NUDGE_TIMEOUT_MS)
+
+    expect(screen.queryByLabelText("Tilt analytics options")).toBeNull()
+  })
 })

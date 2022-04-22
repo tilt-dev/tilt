@@ -64,6 +64,7 @@ type AnalyticsNudgeState = {
   responseCode: number
   responseBody: string
   dismissed: boolean
+  dismissTimeout: NodeJS.Timeout | null
 }
 
 class AnalyticsNudge extends Component<
@@ -79,6 +80,13 @@ class AnalyticsNudge extends Component<
       responseCode: 0,
       responseBody: "",
       dismissed: false,
+      dismissTimeout: null,
+    }
+  }
+
+  componentWillUnmount() {
+    if (this.state.dismissTimeout !== null) {
+      clearTimeout(this.state.dismissTimeout)
     }
   }
 
@@ -109,9 +117,11 @@ class AnalyticsNudge extends Component<
 
       if (response.status === 200) {
         // if we successfully recorded the choice, dismiss the nudge after a few seconds
-        setTimeout(() => {
-          this.setState({ dismissed: true })
+        const dismissTimeout = setTimeout(() => {
+          this.setState({ dismissed: true, dismissTimeout: null })
         }, NUDGE_TIMEOUT_MS)
+
+        this.setState({ dismissTimeout })
       }
     })
   }
