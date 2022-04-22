@@ -52,7 +52,7 @@ require (
 	github.com/tilt-dev/go-get v0.2.2
 	github.com/tilt-dev/localregistry-go v0.0.0-20200615231835-07e386f4ebd7
 	github.com/tilt-dev/probe v0.3.1
-	github.com/tilt-dev/starlark-lsp v0.0.0-20220415191241-c73ee55518d2
+	github.com/tilt-dev/starlark-lsp v0.0.0-20220422161504-c53192ba4695
 	github.com/tilt-dev/tilt-apiserver v0.6.1
 	github.com/tilt-dev/wmclient v0.0.0-20201109174454-1839d0355fbc
 	github.com/tonistiigi/fsutil v0.0.0-20210609172227-d72af97c0eaf

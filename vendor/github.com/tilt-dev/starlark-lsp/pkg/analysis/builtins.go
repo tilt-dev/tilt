@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 
@@ -21,21 +22,46 @@ import (
 
 type Builtins struct {
 	Functions map[string]query.Signature
-	Symbols   []protocol.DocumentSymbol
+	Symbols   []query.Symbol
+	Types     map[string]query.Type
+	Methods   map[string]query.Signature
+	Members   []query.Symbol
 }
 
 //go:embed builtins.py
 var StarlarkBuiltins []byte
 
+func mapKeys(m interface{}) []string {
+	val := reflect.ValueOf(m)
+	keys := val.MapKeys()
+	names := make([]string, len(keys))
+	for i, k := range keys {
+		names[i] = k.String()
+	}
+	return names
+}
+
+func symbolNames(ss []query.Symbol) []string {
+	names := make([]string, len(ss))
+	for i, sym := range ss {
+		names[i] = sym.Name
+	}
+	return names
+}
+
 func NewBuiltins() *Builtins {
 	return &Builtins{
 		Functions: make(map[string]query.Signature),
-		Symbols:   []protocol.DocumentSymbol{},
+		Symbols:   []query.Symbol{},
+		Types:     make(map[string]query.Type),
+		Methods:   make(map[string]query.Signature),
+		Members:   []query.Symbol{},
 	}
 }
 
 func (b *Builtins) IsEmpty() bool {
-	return len(b.Functions) == 0 && len(b.Symbols) == 0
+	return len(b.Functions) == 0 && len(b.Symbols) == 0 &&
+		len(b.Methods) == 0 && len(b.Members) == 0
 }
 
 func (b *Builtins) Update(other *Builtins) {
@@ -47,24 +73,19 @@ func (b *Builtins) Update(other *Builtins) {
 	if len(other.Symbols) > 0 {
 		b.Symbols = append(b.Symbols, other.Symbols...)
 	}
-}
-
-func (b *Builtins) FunctionNames() []string {
-	names := make([]string, len(b.Functions))
-	i := 0
-	for name := range b.Functions {
-		names[i] = name
-		i++
+	if len(other.Types) > 0 {
+		for name, t := range other.Types {
+			b.Types[name] = t
+		}
 	}
-	return names
-}
-
-func (b *Builtins) SymbolNames() []string {
-	names := make([]string, len(b.Symbols))
-	for i, sym := range b.Symbols {
-		names[i] = sym.Name
+	if len(other.Methods) > 0 {
+		for name, fn := range other.Methods {
+			b.Methods[name] = fn
+		}
 	}
-	return names
+	if len(other.Members) > 0 {
+		b.Members = append(b.Members, other.Members...)
+	}
 }
 
 func WithBuiltinPaths(paths []string) AnalyzerOption {
@@ -98,7 +119,7 @@ func WithStarlarkBuiltins() AnalyzerOption {
 			return errors.Wrapf(err, "loading builtins from builtins.py")
 		}
 		analyzer.builtins.Update(&Builtins{
-			Symbols: []protocol.DocumentSymbol{
+			Symbols: []query.Symbol{
 				{Name: "False", Kind: protocol.SymbolKindBoolean},
 				{Name: "None", Kind: protocol.SymbolKindNull},
 				{Name: "True", Kind: protocol.SymbolKindBoolean},
@@ -118,11 +139,33 @@ func LoadBuiltinsFromSource(ctx context.Context, contents []byte, path string) (
 	doc := document.NewDocument(uri.File(path), contents, tree)
 	functions := doc.Functions()
 	symbols := doc.Symbols()
+
+	types := query.Types(doc, tree.RootNode())
+	typeMap := make(map[string]query.Type)
+	methodMap := make(map[string]query.Signature)
+	members := []query.Symbol{}
+	for _, t := range types {
+		typeMap[t.Name] = t
+		for _, method := range t.Methods {
+			methodMap[method.Name] = method
+		}
+		members = append(members, t.Members...)
+	}
+
 	doc.Close()
+
+	// NewDocument returns these symbols with a location of __init__.py, which isn't helpful to anyone
+	for i, s := range symbols {
+		s.Location = protocol.Location{}
+		symbols[i] = s
+	}
 
 	return &Builtins{
 		Functions: functions,
 		Symbols:   symbols,
+		Types:     typeMap,
+		Methods:   methodMap,
+		Members:   members,
 	}, nil
 }
 
@@ -226,7 +269,7 @@ func copyBuiltinsToParent(mod, parentMod *Builtins, modName string) {
 		parentMod.Functions[modName+"."+name] = fn
 	}
 
-	children := []protocol.DocumentSymbol{}
+	children := []query.Symbol{}
 	for _, sym := range mod.Symbols {
 		var kind protocol.SymbolKind
 		switch sym.Kind {
@@ -252,13 +295,18 @@ func copyBuiltinsToParent(mod, parentMod *Builtins, modName string) {
 		if existingIndex >= 0 {
 			parentMod.Symbols[existingIndex].Children = append(parentMod.Symbols[existingIndex].Children, children...)
 		} else {
-			parentMod.Symbols = append(parentMod.Symbols, protocol.DocumentSymbol{
+			parentMod.Symbols = append(parentMod.Symbols, query.Symbol{
 				Name:     modName,
 				Kind:     protocol.SymbolKindVariable,
 				Children: children,
 			})
 		}
 	}
+	parentMod.Update(&Builtins{
+		Types:   mod.Types,
+		Methods: mod.Methods,
+		Members: mod.Members,
+	})
 }
 
 func LoadBuiltins(ctx context.Context, path string) (*Builtins, error) {

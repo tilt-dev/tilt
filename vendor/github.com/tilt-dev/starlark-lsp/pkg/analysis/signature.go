@@ -1,6 +1,8 @@
 package analysis
 
 import (
+	"strings"
+
 	sitter "github.com/smacker/go-tree-sitter"
 	"go.lsp.dev/protocol"
 
@@ -8,9 +10,10 @@ import (
 	"github.com/tilt-dev/starlark-lsp/pkg/query"
 )
 
-func (a *Analyzer) signatureInformation(doc document.Document, node *sitter.Node, fnName string) (query.Signature, bool) {
+func (a *Analyzer) signatureInformation(doc document.Document, node *sitter.Node, args callWithArguments) (query.Signature, bool) {
 	var sig query.Signature
 	var found bool
+	fnName := args.fnName
 
 	for n := node; n != nil && !query.IsModuleScope(doc, n); n = n.Parent() {
 		sig, found = query.Function(doc, n, fnName)
@@ -24,10 +27,37 @@ func (a *Analyzer) signatureInformation(doc document.Document, node *sitter.Node
 	}
 
 	if !found {
-		sig = a.builtins.Functions[fnName]
+		sig, found = a.builtins.Functions[fnName]
+	}
+
+	if !found && strings.Contains(fnName, ".") {
+		ind := strings.LastIndex(fnName, ".")
+		fnName = fnName[ind+1:]
+		sig = a.builtins.Methods[fnName]
+		if sig.Name != "" {
+			meth, ok := a.checkForTypedMethod(doc, node, fnName, args)
+			if ok {
+				sig = meth
+			}
+		}
 	}
 
 	return sig, sig.Name != ""
+}
+
+func (a *Analyzer) checkForTypedMethod(doc document.Document, node *sitter.Node, methodName string, args callWithArguments) (query.Signature, bool) {
+	afterDot := args.argsNode.StartPoint()
+	afterDot.Column -= uint32(len(methodName))
+	if query.PointAfterOrEqual(node.StartPoint(), afterDot) {
+		node = node.Parent()
+	}
+	expr := a.findAttrObjectExpression([]*sitter.Node{node}, afterDot)
+	if t := a.analyzeType(doc, expr); t != "" {
+		if ty, ok := a.builtins.Types[t]; ok {
+			return ty.FindMethod(methodName)
+		}
+	}
+	return query.Signature{}, false
 }
 
 func (a *Analyzer) SignatureHelp(doc document.Document, pos protocol.Position) *protocol.SignatureHelp {
@@ -37,13 +67,13 @@ func (a *Analyzer) SignatureHelp(doc document.Document, pos protocol.Position) *
 		return nil
 	}
 
-	fnName, args := possibleCallInfo(doc, node, pt)
-	if fnName == "" {
+	args := possibleCallInfo(doc, node, pt)
+	if args.fnName == "" {
 		// avoid computing function defs
 		return nil
 	}
 
-	sig, ok := a.signatureInformation(doc, node, fnName)
+	sig, ok := a.signatureInformation(doc, node, args)
 	if !ok {
 		return nil
 	}
@@ -72,10 +102,12 @@ func (a *Analyzer) SignatureHelp(doc document.Document, pos protocol.Position) *
 	}
 }
 
-type callArguments struct {
+type callWithArguments struct {
+	fnName            string
 	positional, total uint32
 	keywords          map[string]bool
 	currentKeyword    string
+	argsNode          *sitter.Node
 }
 
 // possibleCallInfo attempts to find the name of the function for a
@@ -85,12 +117,14 @@ type callArguments struct {
 // 	(1) Current node is inside of a `call`
 // 	(2) Current node is inside of an ERROR block where first child is an
 // 		`identifier`
-func possibleCallInfo(doc document.Document, node *sitter.Node, pt sitter.Point) (fnName string, args callArguments) {
+func possibleCallInfo(doc document.Document, node *sitter.Node, pt sitter.Point) (args callWithArguments) {
 	for n := node; n != nil; n = n.Parent() {
 		if n.Type() == query.NodeTypeCall {
-			fnName = doc.Content(n.ChildByFieldName("function"))
-			args = possibleActiveParam(doc, n.ChildByFieldName("arguments").Child(0), pt)
-			return fnName, args
+			argsList := n.ChildByFieldName("arguments")
+			args = possibleActiveParam(doc, argsList.Child(0), pt)
+			args.fnName = doc.Content(n.ChildByFieldName("function"))
+			args.argsNode = argsList
+			return args
 		} else if n.Type() == query.NodeTypeArgList {
 			continue
 		} else if n.HasError() {
@@ -98,21 +132,25 @@ func possibleCallInfo(doc document.Document, node *sitter.Node, pt sitter.Point)
 			// happen if the closing `)` is not (yet) present or if there's
 			// something invalid going on within the args, e.g. `foo(x#)`
 			possibleCall := n.NamedChild(0)
-			if possibleCall != nil && possibleCall.Type() == query.NodeTypeIdentifier {
+			if possibleCall != nil {
 				possibleParen := possibleCall.NextSibling()
 				if possibleParen != nil && possibleParen.Type() == "(" {
-					fnName = doc.Content(possibleCall)
-					args = possibleActiveParam(doc, possibleParen.NextSibling(), pt)
-					return fnName, args
+					switch possibleCall.Type() {
+					case query.NodeTypeIdentifier, query.NodeTypeAttribute:
+						args = possibleActiveParam(doc, possibleParen.NextSibling(), pt)
+						args.argsNode = possibleParen
+						args.fnName = doc.Content(possibleCall)
+						return args
+					}
 				}
 			}
 		}
 	}
-	return "", callArguments{}
+	return args
 }
 
-func possibleActiveParam(doc document.Document, node *sitter.Node, pt sitter.Point) callArguments {
-	args := callArguments{keywords: make(map[string]bool)}
+func possibleActiveParam(doc document.Document, node *sitter.Node, pt sitter.Point) callWithArguments {
+	args := callWithArguments{keywords: make(map[string]bool)}
 	for n := node; n != nil; n = n.NextSibling() {
 		inRange := query.PointBeforeOrEqual(n.StartPoint(), pt) &&
 			query.PointBeforeOrEqual(n.EndPoint(), pt)

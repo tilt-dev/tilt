@@ -31,7 +31,8 @@ func (s *Server) Initialize(ctx context.Context,
 			CompletionProvider: &protocol.CompletionOptions{
 				TriggerCharacters: []string{"."},
 			},
-			HoverProvider: true,
+			HoverProvider:      true,
+			DefinitionProvider: true,
 		},
 	}, nil
 }

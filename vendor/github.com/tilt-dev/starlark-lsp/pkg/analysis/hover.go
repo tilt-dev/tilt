@@ -16,18 +16,7 @@ func (a *Analyzer) Hover(ctx context.Context, doc document.Document, pos protoco
 		return nil
 	}
 
-	symbols := a.completeExpression(doc, nodes, pt)
-	var symbol protocol.DocumentSymbol
-	limit := nodes[len(nodes)-1].EndPoint()
-	identifiers := query.ExtractIdentifiers(doc, nodes, &limit)
-	if len(identifiers) == 0 {
-		return nil
-	}
-	for _, s := range symbols {
-		if s.Name == identifiers[len(identifiers)-1] {
-			symbol = s
-		}
-	}
+	symbol := a.SymbolAtPosition(doc, pos)
 
 	if symbol.Name == "" {
 		return nil
