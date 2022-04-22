@@ -108,6 +108,29 @@ describe("ResourceNavContext", () => {
     expect(history.location.pathname).toEqual("/r/foo%2Fbar/overview")
   })
 
+  it("preserves filters by resource", () => {
+    const history = createMemoryHistory()
+    customRender({ history })
+
+    let nav = (res: string) => {
+      userEvent.clear(screen.getByRole("textbox"))
+      userEvent.type(screen.getByRole("textbox"), res)
+      userEvent.click(screen.getByRole("button", { name: "openResource" }))
+    }
+
+    let url = () => {
+      return history.location.pathname + history.location.search
+    }
+
+    nav("foo")
+    expect(url()).toEqual("/r/foo/overview")
+    history.push("/r/foo/overview?term=hi")
+    nav("bar")
+    expect(url()).toEqual("/r/bar/overview")
+    nav("foo")
+    expect(url()).toEqual("/r/foo/overview?term=hi")
+  })
+
   // Make sure that useResourceNav() doesn't break memoization.
   it("memoizes renders", () => {
     let renderCount = 0
