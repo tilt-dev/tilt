@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ignores
+  namespace: tilt-integration
+  labels:
+    app: ignores
+spec:
+  selector:
+    matchLabels:
+      app: ignores
+  template:
+    metadata:
+      labels:
+        app: ignores
+    spec:
+      containers:
+      - name: ignores
+        image: ignores-image
+        ports:
+        - containerPort: 8000
