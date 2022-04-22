@@ -65,6 +65,10 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource":                     schema_pkg_apis_core_v1alpha1_DisableSource(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableStatus":                     schema_pkg_apis_core_v1alpha1_DisableStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerClusterConnection":           schema_pkg_apis_core_v1alpha1_DockerClusterConnection(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeLogStream":            schema_pkg_apis_core_v1alpha1_DockerComposeLogStream(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeLogStreamList":        schema_pkg_apis_core_v1alpha1_DockerComposeLogStreamList(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeLogStreamSpec":        schema_pkg_apis_core_v1alpha1_DockerComposeLogStreamSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeLogStreamStatus":      schema_pkg_apis_core_v1alpha1_DockerComposeLogStreamStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeProject":              schema_pkg_apis_core_v1alpha1_DockerComposeProject(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeService":              schema_pkg_apis_core_v1alpha1_DockerComposeService(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeServiceList":          schema_pkg_apis_core_v1alpha1_DockerComposeServiceList(ref),
@@ -1705,6 +1709,162 @@ func schema_pkg_apis_core_v1alpha1_DockerClusterConnection(ref common.ReferenceC
 				},
 			},
 		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_DockerComposeLogStream(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "DockerComposeLogStream",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeLogStreamSpec"),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeLogStreamStatus"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeLogStreamSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeLogStreamStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_DockerComposeLogStreamList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "DockerComposeLogStreamList",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeLogStream"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeLogStream", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_DockerComposeLogStreamSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "DockerComposeLogStreamSpec defines the desired state of DockerComposeLogStream",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"service": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The name of the service to stream from.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"project": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A specification of the project the service belongs to.\n\nEach service spec keeps its own copy of the project spec.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeProject"),
+						},
+					},
+				},
+				Required: []string{"service", "project"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeProject"},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_DockerComposeLogStreamStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "DockerComposeLogStreamStatus defines the observed state of DockerComposeLogStream",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"startedAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "When we last started the log streamer.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
+					"error": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Contains an error message when the log streamer is in an error state.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
 	}
 }
 
