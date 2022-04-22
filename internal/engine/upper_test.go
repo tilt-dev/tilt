@@ -3807,7 +3807,7 @@ func (f *testFixture) assertNoCall(msgAndArgs ...interface{}) {
 		select {
 		case call := <-f.b.calls:
 			f.T().Fatalf("%s\ncall:\n%s", msg, spew.Sdump(call))
-		case <-time.After(stdTimeout):
+		case <-time.After(200 * time.Millisecond):
 			return
 		}
 	}
