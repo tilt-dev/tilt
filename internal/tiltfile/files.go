@@ -40,7 +40,7 @@ type execCommandOptions struct {
 func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var commandValue, commandBatValue, commandDirValue starlark.Value
 	var commandEnv value.StringStringMap
-	var stdin value.Optional[starlark.String]
+	var stdin value.Stringable
 	quiet := false
 	echoOff := false
 	err := s.unpackArgs(fn.Name(), args, kwargs,
@@ -67,7 +67,7 @@ func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, arg
 		logCommandPrefix: "local:",
 	}
 	if stdin.IsSet {
-		s := string(stdin.Value)
+		s := stdin.Value
 		execOptions.stdin = &s
 	}
 	out, err := s.execLocalCmd(thread, cmd, execOptions)
