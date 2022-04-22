@@ -337,15 +337,27 @@ export function createLogSearch(
   const newSearch = new URLSearchParams(currentSearch)
 
   if (level !== undefined) {
-    newSearch.set("level", level)
+    if (level) {
+      newSearch.set("level", level)
+    } else {
+      newSearch.delete("level")
+    }
   }
 
   if (source !== undefined) {
-    newSearch.set("source", source)
+    if (source) {
+      newSearch.set("source", source)
+    } else {
+      newSearch.delete("source")
+    }
   }
 
   if (term !== undefined) {
-    newSearch.set("term", term)
+    if (term) {
+      newSearch.set("term", term)
+    } else {
+      newSearch.delete("term")
+    }
   }
 
   return newSearch

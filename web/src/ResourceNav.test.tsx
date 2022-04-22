@@ -112,7 +112,8 @@ describe("ResourceNavContext", () => {
     const history = createMemoryHistory()
     customRender({ history })
 
-    let nav = (res) => {
+    let nav = (res: string) => {
+      userEvent.clear(screen.getByRole("textbox"))
       userEvent.type(screen.getByRole("textbox"), res)
       userEvent.click(screen.getByRole("button", { name: "openResource" }))
     }
@@ -121,11 +122,9 @@ describe("ResourceNavContext", () => {
       return history.location.pathname + history.location.search
     }
 
-    
-    let f = newFixture()
     nav("foo")
     expect(url()).toEqual("/r/foo/overview")
-    f.history.push("/r/foo/overview?term=hi")
+    history.push("/r/foo/overview?term=hi")
     nav("bar")
     expect(url()).toEqual("/r/bar/overview")
     nav("foo")

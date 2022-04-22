@@ -83,7 +83,7 @@ describe("OverviewActionBar", () => {
     it("navigates to warning filter when warning log filter button is clicked", () => {
       userEvent.click(screen.getByRole("button", { name: /warnings/i }))
 
-      expect(history.location.search).toEqual("?level=warn&source=")
+      expect(history.location.search).toEqual("?level=warn")
 
       expectIncrs({
         name: "ui.web.filterLevel",
@@ -275,7 +275,7 @@ describe("OverviewActionBar", () => {
           term: "find me",
           source: FilterSource.build,
         }).toString()
-      ).toBe("level=&source=build&term=find+me")
+      ).toBe("source=build&term=find+me")
 
       expect(
         createLogSearch(currentSearch.toString(), {
@@ -288,7 +288,7 @@ describe("OverviewActionBar", () => {
           term: "",
           source: FilterSource.runtime,
         }).toString()
-      ).toBe("source=runtime&term=")
+      ).toBe("source=runtime")
     })
 
     it("overrides params if a new value is defined", () => {
@@ -307,7 +307,7 @@ describe("OverviewActionBar", () => {
           level: FilterLevel.all,
           term: "service",
         }).toString()
-      ).toBe("level=&term=service")
+      ).toBe("term=service")
     })
 
     it("preserves existing params if no new value is defined", () => {
