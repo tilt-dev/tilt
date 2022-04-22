@@ -370,6 +370,7 @@ export function FilterRadioButton(props: FilterRadioButtonProps) {
     <ExpandMoreIcon
       style={{ width: "16px", height: "16px" }}
       key="right-text"
+      role="presentation"
     />
   )
   let rightStyle = { paddingLeft: "4px", paddingRight: "4px" } as any
@@ -426,6 +427,7 @@ export function FilterRadioButton(props: FilterRadioButtonProps) {
         className={rightClassName}
         onClick={onMenuOpen}
         analyticsName="ui.web.filterSourceMenu"
+        aria-label={`Select ${level} log sources`}
       >
         {rightText}
       </ButtonRightPill>
@@ -750,7 +752,12 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
   }
 
   const topRow = topRowEls.length ? (
-    <ActionBarTopRow key="top">{topRowEls}</ActionBarTopRow>
+    <ActionBarTopRow
+      aria-label={`${resourceName} links and custom buttons`}
+      key="top"
+    >
+      {topRowEls}
+    </ActionBarTopRow>
   ) : null
 
   // By default, add the disable toggle button regardless of a resource's disabled status

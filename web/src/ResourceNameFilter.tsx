@@ -96,8 +96,9 @@ export function ResourceNameFilter(props: { className?: string }) {
         <ClearResourceNameFilterButton
           onClick={onClearClick}
           analyticsName="ui.web.clearResourceNameFilter"
+          aria-label="Clear name filter"
         >
-          <CloseSvg fill={Color.grayLightest} />
+          <CloseSvg role="presentation" fill={Color.grayLightest} />
         </ClearResourceNameFilterButton>
       </InputAdornment>
     )

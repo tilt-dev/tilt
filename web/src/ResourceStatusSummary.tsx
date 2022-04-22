@@ -12,7 +12,6 @@ import { useLogStore } from "./LogStore"
 import { RowValues } from "./OverviewTableColumns"
 import { usePathBuilder } from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
-import SrOnly from "./SrOnly"
 import { buildStatus, combinedStatus, runtimeStatus } from "./status"
 import {
   Color,
@@ -109,13 +108,13 @@ type ResourceGroupStatusItemProps = {
 export function ResourceGroupStatusItem(props: ResourceGroupStatusItemProps) {
   const count = (
     <>
-      <ResourceGroupStatusSummaryItemCount>
+      <ResourceGroupStatusSummaryItemCount aria-label={`${props.label} count`}>
         {props.count}
       </ResourceGroupStatusSummaryItemCount>
       {props.countOutOf && (
         <>
           /
-          <ResourceGroupStatusSummaryItemCount>
+          <ResourceGroupStatusSummaryItemCount aria-label="Out of total resource count">
             {props.countOutOf}
           </ResourceGroupStatusSummaryItemCount>
         </>
@@ -123,15 +122,10 @@ export function ResourceGroupStatusItem(props: ResourceGroupStatusItemProps) {
     </>
   )
 
-  const descriptiveCount = (
-    <>
-      {count} <SrOnly>&nbsp; {props.label}</SrOnly>
-    </>
-  )
   const summaryContent = props.href ? (
-    <Link to={props.href}>{descriptiveCount}</Link>
+    <Link to={props.href}>{count}</Link>
   ) : (
-    descriptiveCount
+    <>{count}</>
   )
 
   return (

@@ -1,5 +1,5 @@
-import { fireEvent } from "@testing-library/dom"
-import { mount } from "enzyme"
+import { render, RenderResult } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import React from "react"
 import { AnalyticsAction } from "./analytics"
 import {
@@ -12,93 +12,87 @@ import LogStore from "./LogStore"
 import OverviewActionBarKeyboardShortcuts from "./OverviewActionBarKeyboardShortcuts"
 import { appendLinesForManifestAndSpan } from "./testlogs"
 
-beforeEach(() => {
-  mockAnalyticsCalls()
-})
-afterEach(() => {
-  cleanupMockAnalyticsCalls()
-})
+const TEST_URL_A = { url: "https://tilt.dev:4000" }
+const TEST_URL_B = { url: "https://tilt.dev:4001" }
+const TEST_RESOURCE_NAME = "fake-resource"
 
-function numKeyCode(num: number): number {
-  return num + 48
-}
+describe("Detail View keyboard shortcuts", () => {
+  let rerender: RenderResult["rerender"]
+  let openEndpointMock: jest.Mock
+  let logStore: LogStore
 
-type Link = Proto.v1alpha1UIResourceLink
-
-let logStore: LogStore | null
-let component: any
-let endpointUrl = ""
-const shortcuts = (endpoints: Link[]) => {
-  logStore = new LogStore()
-  endpointUrl = ""
-  component = mount(
-    <OverviewActionBarKeyboardShortcuts
-      logStore={logStore}
-      resourceName={"fake-resource"}
-      endpoints={endpoints}
-      openEndpointUrl={(url) => (endpointUrl = url)}
-    />
-  )
-}
-
-afterEach(() => {
-  if (component) {
-    component.unmount()
-    component = null
-  }
-  if (logStore) {
-    logStore = null
-  }
-})
-
-describe("endpoints", () => {
-  it("zero endpoint urls", () => {
-    shortcuts([])
-    fireEvent.keyDown(document.body, { keyCode: numKeyCode(1), shiftKey: true })
-    expect(endpointUrl).toEqual("")
+  beforeEach(() => {
+    mockAnalyticsCalls()
+    logStore = new LogStore()
+    openEndpointMock = jest.fn()
+    rerender = render(
+      <OverviewActionBarKeyboardShortcuts
+        logStore={logStore}
+        resourceName={TEST_RESOURCE_NAME}
+        openEndpointUrl={openEndpointMock}
+        endpoints={[TEST_URL_A, TEST_URL_B]}
+      />
+    ).rerender
   })
-  it("two endpoint urls trigger first", () => {
-    shortcuts([
-      { url: "https://tilt.dev:4000" },
-      { url: "https://tilt.dev:4001" },
-    ])
-    fireEvent.keyDown(document.body, { keyCode: numKeyCode(1), shiftKey: true })
-    expect(endpointUrl).toEqual("https://tilt.dev:4000")
-  })
-  it("two endpoint urls trigger second", () => {
-    shortcuts([
-      { url: "https://tilt.dev:4000" },
-      { url: "https://tilt.dev:4001" },
-    ])
-    fireEvent.keyDown(document.body, { keyCode: numKeyCode(2), shiftKey: true })
-    expect(endpointUrl).toEqual("https://tilt.dev:4001")
-  })
-})
 
-describe("clears logs", () => {
-  it("meta key", () => {
-    shortcuts([])
-    appendLinesForManifestAndSpan(logStore!, "fake-resource", "span:1", [
-      "line 1\n",
-    ])
-    fireEvent.keyDown(document.body, { key: "Backspace", metaKey: true })
-    expect(logLinesToString(logStore!.allLog(), false)).toEqual("")
-    expectIncrs({
-      name: "ui.web.clearLogs",
-      tags: { action: AnalyticsAction.Shortcut, all: "false" },
+  afterEach(() => {
+    cleanupMockAnalyticsCalls()
+  })
+
+  describe("open endpoints", () => {
+    it("does NOT open any endpoints if there aren't any", () => {
+      rerender(
+        <OverviewActionBarKeyboardShortcuts
+          logStore={logStore}
+          resourceName={TEST_RESOURCE_NAME}
+          openEndpointUrl={openEndpointMock}
+        />
+      )
+
+      userEvent.keyboard("{Shift>}1")
+
+      expect(openEndpointMock).not.toHaveBeenCalled()
+    })
+
+    it("opens the first endpoint when SHIFT + 1 are pressed", () => {
+      userEvent.keyboard("{Shift>}1")
+
+      expect(openEndpointMock).toHaveBeenCalledWith(TEST_URL_A.url)
+    })
+
+    it("opens the corresponding endpoint when SHIFT + a number are pressed", () => {
+      userEvent.keyboard("{Shift>}2")
+
+      expect(openEndpointMock).toHaveBeenCalledWith(TEST_URL_B.url)
     })
   })
 
-  it("ctrl key", () => {
-    shortcuts([])
-    appendLinesForManifestAndSpan(logStore!, "fake-resource", "span:1", [
-      "line 1\n",
-    ])
-    fireEvent.keyDown(document.body, { key: "Backspace", ctrlKey: true })
-    expect(logLinesToString(logStore!.allLog(), false)).toEqual("")
-    expectIncrs({
-      name: "ui.web.clearLogs",
-      tags: { action: AnalyticsAction.Shortcut, all: "false" },
+  describe("clear logs", () => {
+    // Add a log to the store
+    beforeEach(() =>
+      appendLinesForManifestAndSpan(logStore, TEST_RESOURCE_NAME, "span:1", [
+        "line 1\n",
+      ])
+    )
+
+    it("clears logs when the META + BACKSPACE keys are pressed", () => {
+      userEvent.keyboard("{Meta>}{Backspace}")
+
+      expect(logLinesToString(logStore.allLog(), false)).toEqual("")
+      expectIncrs({
+        name: "ui.web.clearLogs",
+        tags: { action: AnalyticsAction.Shortcut, all: "false" },
+      })
+    })
+
+    it("clears logs when the CTRL + BACKSPACE keys are pressed", () => {
+      userEvent.keyboard("{Control>}{Backspace}")
+
+      expect(logLinesToString(logStore.allLog(), false)).toEqual("")
+      expectIncrs({
+        name: "ui.web.clearLogs",
+        tags: { action: AnalyticsAction.Shortcut, all: "false" },
+      })
     })
   })
 })

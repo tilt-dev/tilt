@@ -142,8 +142,6 @@ type LineHashListEntry = {
   el?: Element
 }
 
-let CursorEntry = {} as LineHashListEntry
-
 class LineHashList {
   private last: LineHashListEntry | null = null
   private byStoredLineIndex: { [key: number]: LineHashListEntry } = {}
@@ -491,8 +489,6 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
       ? logStore.manifestLogPatchSet(mn, startCheckpoint)
       : logStore.allLogPatchSet(startCheckpoint)
 
-    let { source, level } = this.props.filterSet
-
     let lines: LogLine[] = []
     let shouldDisplayPrologues = this.props.filterSet.level !== FilterLevel.all
 
@@ -733,7 +729,7 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
 
   render() {
     return (
-      <LogPaneRoot ref={this.rootRef}>
+      <LogPaneRoot ref={this.rootRef} aria-label="Log pane">
         <LogEnd key="logEnd" className="logEnd" ref={this.cursorRef}>
           &#9608;
         </LogEnd>

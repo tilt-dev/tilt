@@ -1,38 +1,51 @@
-import { mount } from "enzyme"
+import { render, RenderOptions, screen } from "@testing-library/react"
 import { SnackbarProvider } from "notistack"
 import React from "react"
 import { MemoryRouter } from "react-router-dom"
-import { FilterLevel } from "./logfilters"
 import LogStore, { LogStoreProvider } from "./LogStore"
-import OverviewActionBar, {
-  ButtonLeftPill,
-  FilterRadioButton,
-} from "./OverviewActionBar"
 import OverviewResourcePane from "./OverviewResourcePane"
-import { NotFound } from "./OverviewResourcePane.stories"
-import OverviewResourceSidebar from "./OverviewResourceSidebar"
-import { ResourceNavContextProvider, ResourceNavProvider } from "./ResourceNav"
-import {
-  disableButton,
-  oneResource,
-  oneResourceView,
-  oneUIButton,
-} from "./testdata"
+import { ResourceNavProvider } from "./ResourceNav"
+import { nResourceView, oneResourceView, TestDataView } from "./testdata"
 import { appendLinesForManifestAndSpan, Line } from "./testlogs"
-import { LogLevel } from "./types"
+import { LogLevel, UIResource } from "./types"
 
-type UIResource = Proto.v1alpha1UIResource
+function customRender(
+  options: {
+    logStore?: LogStore
+    selectedResource?: string
+    view: TestDataView
+  },
+  renderOptions?: RenderOptions
+) {
+  const { logStore, view, selectedResource } = options
+  const routerEntry = selectedResource
+    ? `/r/${selectedResource}/overview`
+    : "/overview"
+  const validateResource = (name: string) =>
+    view.uiResources?.some((res) => res.metadata?.name == name)
 
-it("renders correctly when no resource found", () => {
-  let root = mount(
-    <MemoryRouter initialEntries={["/"]}>{NotFound()}</MemoryRouter>
-  )
-  let el = root.getDOMNode()
-  expect(el.innerHTML).toEqual(
-    expect.stringContaining("No resource 'does-not-exist'")
-  )
+  return render(<OverviewResourcePane view={view} isSocketConnected={true} />, {
+    wrapper: ({ children }) => (
+      <MemoryRouter initialEntries={[routerEntry]}>
+        <LogStoreProvider value={logStore ?? new LogStore()}>
+          <SnackbarProvider>
+            <ResourceNavProvider validateResource={validateResource}>
+              {children}
+            </ResourceNavProvider>
+          </SnackbarProvider>
+        </LogStoreProvider>
+      </MemoryRouter>
+    ),
+    ...renderOptions,
+  })
+}
 
-  expect(root.find(OverviewResourceSidebar)).toHaveLength(1)
+describe("OverviewResourcePane", () => {
+  it("renders 'not found' message when trying to view a resource that doesn't exist", () => {
+    customRender({ selectedResource: "does-not-exist", view: nResourceView(2) })
+
+    expect(screen.getByText("No resource 'does-not-exist'")).toBeInTheDocument()
+  })
 })
 
 describe("alert filtering", () => {
@@ -48,26 +61,15 @@ describe("alert filtering", () => {
 
     prepare(logStore, r)
 
-    let root = mount(
-      <MemoryRouter initialEntries={["/"]}>
-        <LogStoreProvider value={logStore}>
-          <ResourceNavProvider validateResource={() => true}>
-            <OverviewResourcePane view={view} isSocketConnected={true} />
-          </ResourceNavProvider>
-        </LogStoreProvider>
-      </MemoryRouter>
-    )
-    let errorFilter = root
-      .find(FilterRadioButton)
-      .filter({ level: FilterLevel.error })
-      .find(ButtonLeftPill)
-    let warnFilter = root
-      .find(FilterRadioButton)
-      .filter({ level: FilterLevel.warn })
-      .find(ButtonLeftPill)
+    customRender({ view, logStore, selectedResource: r.metadata?.name })
 
-    expect(errorFilter.text()).toEqual(`Errors (${expectedErrs})`)
-    expect(warnFilter.text()).toEqual(`Warnings (${expectedWarns})`)
+    const errorFilterButton = screen.getByRole("button", { name: /errors/i })
+    const warningFilterButton = screen.getByRole("button", {
+      name: /warnings/i,
+    })
+
+    expect(errorFilterButton).toHaveTextContent(`Errors (${expectedErrs})`)
+    expect(warningFilterButton).toHaveTextContent(`Warnings (${expectedWarns})`)
   }
 
   it("creates no alerts if no build failures", () => {
@@ -118,37 +120,5 @@ describe("alert filtering", () => {
         } as Line,
       ])
     })
-  })
-
-  it("categorizes buttons", () => {
-    const view = {
-      uiResources: [oneResource({ isBuilding: true })],
-      uiButtons: [
-        oneUIButton({ componentID: "vigoda" }),
-        disableButton("vigoda", true),
-      ],
-    }
-    const root = mount(
-      <MemoryRouter initialEntries={["/"]}>
-        <LogStoreProvider value={new LogStore()}>
-          <SnackbarProvider>
-            <ResourceNavContextProvider
-              value={{
-                selectedResource: "vigoda",
-                invalidResource: "",
-                openResource: () => {},
-              }}
-            >
-              <OverviewResourcePane view={view} isSocketConnected={true} />
-            </ResourceNavContextProvider>
-          </SnackbarProvider>
-        </LogStoreProvider>
-      </MemoryRouter>
-    )
-
-    const b = root.find(OverviewActionBar)
-    const buttons = root.find(OverviewActionBar).prop("buttons")
-    expect(buttons?.default).toEqual([view.uiButtons[0]])
-    expect(buttons?.toggleDisable).toEqual(view.uiButtons[1])
   })
 })

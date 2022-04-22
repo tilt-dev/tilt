@@ -1,4 +1,5 @@
-import { mount } from "enzyme"
+import { render, RenderOptions, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import React from "react"
 import { MemoryRouter } from "react-router"
 import { AnalyticsAction } from "./analytics"
@@ -14,16 +15,24 @@ import {
   ResourceListOptionsProvider,
   RESOURCE_LIST_OPTIONS_KEY,
 } from "./ResourceListOptionsContext"
-import {
-  ClearResourceNameFilterButton,
-  ResourceNameFilter,
-  ResourceNameFilterTextField,
-} from "./ResourceNameFilter"
+import { ResourceNameFilter } from "./ResourceNameFilter"
 
 const resourceListOptionsAccessor = accessorsForTesting<ResourceListOptions>(
   RESOURCE_LIST_OPTIONS_KEY,
   sessionStorage
 )
+
+function customRender(component: JSX.Element, options?: RenderOptions) {
+  return render(component, {
+    wrapper: ({ children }) => (
+      <MemoryRouter>
+        <tiltfileKeyContext.Provider value="test">
+          <ResourceListOptionsProvider>{children}</ResourceListOptionsProvider>
+        </tiltfileKeyContext.Provider>
+      </MemoryRouter>
+    ),
+  })
+}
 
 const ResourceNameFilterTestWrapper = () => (
   <MemoryRouter>
@@ -53,15 +62,15 @@ describe("ResourceNameFilter", () => {
       ...DEFAULT_OPTIONS,
       resourceNameFilter: "wow",
     })
-    const root = mount(<ResourceNameFilterTestWrapper />)
-    const button = root.find(ClearResourceNameFilterButton)
-    expect(button.length).toBe(1)
+    customRender(<ResourceNameFilter />)
+
+    expect(screen.getByLabelText("Clear name filter")).toBeInTheDocument()
   })
 
   it("does NOT display 'clear' button when there is NO input", () => {
-    const root = mount(<ResourceNameFilterTestWrapper />)
-    const button = root.find(ClearResourceNameFilterButton)
-    expect(button.length).toBe(0)
+    customRender(<ResourceNameFilter />)
+
+    expect(screen.queryByLabelText("Clear name filter")).toBeNull()
   })
 
   it("reports analytics when input is cleared", () => {
@@ -69,10 +78,9 @@ describe("ResourceNameFilter", () => {
       ...DEFAULT_OPTIONS,
       resourceNameFilter: "wow again",
     })
-    const root = mount(<ResourceNameFilterTestWrapper />)
-    const button = root.find(ClearResourceNameFilterButton)
+    customRender(<ResourceNameFilter />)
 
-    button.simulate("click")
+    userEvent.click(screen.getByLabelText("Clear name filter"))
 
     expectIncrs({
       name: "ui.web.clearResourceNameFilter",
@@ -86,17 +94,15 @@ describe("ResourceNameFilter", () => {
         ...DEFAULT_OPTIONS,
         resourceNameFilter: "cool resource",
       })
-      const root = mount(<ResourceNameFilterTestWrapper />)
-      const textField = root.find(ResourceNameFilterTextField)
+      customRender(<ResourceNameFilter />)
 
-      expect(textField.prop("value")).toBe("cool resource")
+      expect(screen.getByRole("textbox")).toHaveValue("cool resource")
     })
 
     it("saves input to ResourceListOptionsContext", () => {
-      const root = mount(<ResourceNameFilterTestWrapper />)
-      const textField = root.find("input")
+      customRender(<ResourceNameFilter />)
 
-      textField.simulate("change", { target: { value: "very cool resource" } })
+      userEvent.type(screen.getByRole("textbox"), "very cool resource")
 
       expect(resourceListOptionsAccessor.get()?.resourceNameFilter).toBe(
         "very cool resource"

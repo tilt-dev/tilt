@@ -1,3 +1,4 @@
+import { render, RenderOptions, screen } from "@testing-library/react"
 import { mount } from "enzyme"
 import { MemoryRouter } from "react-router"
 import {
@@ -22,151 +23,132 @@ import {
 import { newFakeRaf, RafProvider, SyncRafProvider } from "./raf"
 import { appendLines } from "./testlogs"
 
-let logPaneMount = (pane: any) => {
-  return mount(
-    <MemoryRouter initialEntries={["/"]}>
-      <SyncRafProvider>{pane}</SyncRafProvider>
-    </MemoryRouter>
-  )
+function customRender(component: JSX.Element, options?: RenderOptions) {
+  return render(component, {
+    wrapper: ({ children }) => (
+      <MemoryRouter initialEntries={["/"]}>
+        <SyncRafProvider>{children}</SyncRafProvider>
+      </MemoryRouter>
+    ),
+    ...options,
+  })
 }
 
-it("renders 3 lines in resource view", () => {
-  let root = logPaneMount(<ThreeLines />)
-  let el = root.getDOMNode()
-  expect(el.querySelectorAll(".LogLine")).toHaveLength(3)
+describe("OverviewLogPane", () => {
+  it("renders all log lines associated with a specific resource", () => {
+    const { container } = customRender(<ThreeLines />)
+    expect(container.querySelectorAll(".LogLine")).toHaveLength(3)
+  })
+
+  it("renders all log lines in the all log view", () => {
+    const { container } = customRender(<ThreeLinesAllLog />)
+    expect(container.querySelectorAll(".LogLine")).toHaveLength(3)
+  })
+
+  it("escapes html and linkifies", () => {
+    customRender(<StyledLines />)
+    expect(screen.getAllByRole("link")).toHaveLength(2)
+    expect(screen.queryByRole("button")).toBeNull()
+  })
+
+  it("displays all logs when there are no filters", () => {
+    const { container } = customRender(<BuildLogAndRunLog />)
+    expect(container.querySelectorAll(".LogLine")).toHaveLength(40)
+  })
+
+  describe("filters by source", () => {
+    it("displays only runtime logs when runtime source is specified", () => {
+      const { container } = customRender(
+        <BuildLogAndRunLog
+          level=""
+          source={FilterSource.runtime}
+          term={EMPTY_FILTER_TERM}
+        />
+      )
+      expect(container.querySelectorAll(".LogLine")).toHaveLength(20)
+      expect(screen.getAllByText(/Vigoda pod line/)).toHaveLength(18)
+      expect(screen.queryByText(/Vigoda build line/)).toBeNull()
+    })
+
+    it("displays only build logs when build source is specified", () => {
+      const { container } = customRender(
+        <BuildLogAndRunLog
+          level=""
+          source={FilterSource.build}
+          term={EMPTY_FILTER_TERM}
+        />
+      )
+      expect(container.querySelectorAll(".LogLine")).toHaveLength(20)
+      expect(screen.getAllByText(/Vigoda build line/)).toHaveLength(18)
+      expect(screen.queryByText(/Vigoda pod line/)).toBeNull()
+    })
+  })
+
+  describe("filters by level", () => {
+    it("displays only warning logs when warning log level is specified", () => {
+      const { container } = customRender(
+        <BuildLogAndRunLog
+          level={FilterLevel.warn}
+          source=""
+          term={EMPTY_FILTER_TERM}
+        />
+      )
+      expect(container.querySelectorAll(".LogLine")).toHaveLength(
+        2 * (1 + PROLOGUE_LENGTH)
+      )
+      const alerts = container.querySelectorAll(".is-endOfAlert")
+      const lastAlert = alerts[alerts.length - 1]
+      expect(lastAlert).toHaveTextContent("Vigoda pod warning line")
+      expect(screen.queryByText(/Vigoda pod error line/)).toBeNull()
+    })
+
+    it("displays only error logs when error log level is specified", () => {
+      const { container } = customRender(
+        <BuildLogAndRunLog
+          level={FilterLevel.error}
+          source=""
+          term={EMPTY_FILTER_TERM}
+        />
+      )
+
+      expect(container.querySelectorAll(".LogLine")).toHaveLength(
+        2 * (1 + PROLOGUE_LENGTH)
+      )
+      const alerts = container.querySelectorAll(".is-endOfAlert")
+      const lastAlert = alerts[alerts.length - 1]
+      expect(lastAlert).toHaveTextContent("Vigoda pod error line")
+    })
+  })
+
+  describe("filters by term", () => {
+    it("displays log lines that match the specified filter term", () => {
+      const termWithResults = createFilterTermState("line 5")
+      const { container } = customRender(
+        <BuildLogAndRunLog source="" level="" term={termWithResults} />
+      )
+
+      expect(container.querySelectorAll(".LogLine")).toHaveLength(2)
+      expect(screen.getAllByText(/line 5/)).toHaveLength(2)
+      expect(screen.queryByText(/line 15/)).toBeNull()
+    })
+
+    it("displays zero log lines when no logs match the specified filter term", () => {
+      const termWithResults = createFilterTermState("spaghetti")
+      const { container } = customRender(
+        <BuildLogAndRunLog source="" level="" term={termWithResults} />
+      )
+
+      expect(container.querySelectorAll(".LogLine")).toHaveLength(0)
+    })
+  })
 })
 
-it("renders 3 lines in all log view", () => {
-  let root = logPaneMount(<ThreeLinesAllLog />)
-  let el = root.getDOMNode()
-  expect(el.querySelectorAll(".LogLine")).toHaveLength(3)
-})
-
-it("escapes html and linkifies", () => {
-  let root = logPaneMount(<StyledLines />)
-  let el = root.getDOMNode()
-  expect(el.querySelectorAll(".LogLine a")).toHaveLength(2)
-  expect(el.querySelectorAll(".LogLine button")).toHaveLength(0)
-})
-
-it("filters by source", () => {
-  let root = logPaneMount(<BuildLogAndRunLog />)
-  let el = root.getDOMNode()
-  expect(el.querySelectorAll(".LogLine")).toHaveLength(40)
-
-  let root2 = logPaneMount(
-    <BuildLogAndRunLog
-      level=""
-      source={FilterSource.runtime}
-      term={EMPTY_FILTER_TERM}
-    />
-  )
-  let el2 = root2.getDOMNode()
-  expect(el2.querySelectorAll(".LogLine")).toHaveLength(20)
-  expect(el2.innerHTML).toEqual(expect.stringContaining("Vigoda pod line"))
-  expect(el2.innerHTML).toEqual(
-    expect.not.stringContaining("Vigoda build line")
-  )
-
-  let root3 = logPaneMount(
-    <BuildLogAndRunLog
-      level=""
-      source={FilterSource.build}
-      term={EMPTY_FILTER_TERM}
-    />
-  )
-  let el3 = root3.getDOMNode()
-  expect(el3.querySelectorAll(".LogLine")).toHaveLength(20)
-  expect(el3.innerHTML).toEqual(expect.not.stringContaining("Vigoda pod line"))
-  expect(el3.innerHTML).toEqual(expect.stringContaining("Vigoda build line"))
-})
-
-it("filters by level", () => {
-  let root = logPaneMount(
-    <BuildLogAndRunLog source="" level="" term={EMPTY_FILTER_TERM} />
-  )
-  let el = root.getDOMNode()
-  expect(el.querySelectorAll(".LogLine")).toHaveLength(40)
-
-  let root2 = logPaneMount(
-    <BuildLogAndRunLog
-      level={FilterLevel.warn}
-      source=""
-      term={EMPTY_FILTER_TERM}
-    />
-  )
-  let el2 = root2.getDOMNode()
-  expect(el2.querySelectorAll(".LogLine")).toHaveLength(
-    2 * (1 + PROLOGUE_LENGTH)
-  )
-
-  let alertEnds = el2.querySelectorAll(".is-endOfAlert")
-  let alertEnd = alertEnds[alertEnds.length - 1]
-  expect(alertEnd.innerHTML).toEqual(
-    expect.stringContaining("Vigoda pod warning line")
-  )
-  expect(alertEnd.innerHTML).toEqual(
-    expect.not.stringContaining("Vigoda pod line")
-  )
-  expect(alertEnd.innerHTML).toEqual(
-    expect.not.stringContaining("Vigoda pod error line")
-  )
-
-  let root3 = logPaneMount(
-    <BuildLogAndRunLog
-      level={FilterLevel.error}
-      source=""
-      term={EMPTY_FILTER_TERM}
-    />
-  )
-  let el3 = root3.getDOMNode()
-  expect(el3.querySelectorAll(".LogLine")).toHaveLength(
-    2 * (1 + PROLOGUE_LENGTH)
-  )
-
-  alertEnds = el3.querySelectorAll(".is-endOfAlert")
-  alertEnd = alertEnds[alertEnds.length - 1]
-  expect(alertEnd.innerHTML).toEqual(
-    expect.not.stringContaining("Vigoda pod warning line")
-  )
-  expect(alertEnd.innerHTML).toEqual(
-    expect.not.stringContaining("Vigoda pod line")
-  )
-  expect(alertEnd.innerHTML).toEqual(
-    expect.stringContaining("Vigoda pod error line")
-  )
-})
-
-it("filters by term", () => {
-  const noFilterRoot = logPaneMount(
-    <BuildLogAndRunLog source="" level="" term={EMPTY_FILTER_TERM} />
-  )
-  const noTermEl = noFilterRoot.getDOMNode()
-  expect(noTermEl.querySelectorAll(".LogLine")).toHaveLength(40)
-
-  const termWithResults = createFilterTermState("line 5")
-  const filterWithResults = logPaneMount(
-    <BuildLogAndRunLog source="" level="" term={termWithResults} />
-  )
-  const elWithResults = filterWithResults.getDOMNode()
-
-  expect(elWithResults.querySelectorAll(".LogLine")).toHaveLength(2)
-  expect(elWithResults.innerHTML).toEqual(expect.stringContaining("line 5"))
-  expect(elWithResults.innerHTML).toEqual(
-    expect.not.stringContaining("line 15")
-  )
-
-  const termWithNoResults = createFilterTermState("spaghetti")
-  const filterWithNoResults = logPaneMount(
-    <BuildLogAndRunLog source="" level="" term={termWithNoResults} />
-  )
-  const elWithNoResults = filterWithNoResults.getDOMNode()
-
-  expect(elWithNoResults.querySelectorAll(".LogLine")).toHaveLength(0)
-  expect(elWithNoResults.innerHTML).toEqual(
-    expect.not.stringContaining("Vigoda")
-  )
-})
+/**
+ * The following tests rely on testing React component state directly,
+ * which is not possible to do with React Testing Library. They'll need to
+ * either use React's test utilities (which involve some funky type manipulation)
+ * or perhaps modify/wrap the component to render its state to the DOM instead.
+ */
 
 it("engages autoscrolls on scroll down", () => {
   let fakeRaf = newFakeRaf()
