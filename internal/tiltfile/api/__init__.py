@@ -663,7 +663,7 @@ def local(command: Union[str, List[str]],
           echo_off: bool = False,
           env: Dict[str, str] = {},
           dir: str = "",
-          stdin: Union[str,None] = None) -> Blob:
+          stdin: Union[str, Blob, None] = None) -> Blob:
   """Runs a command on the *host* machine, waits for it to finish, and returns its stdout as a ``Blob``
 
   Args:

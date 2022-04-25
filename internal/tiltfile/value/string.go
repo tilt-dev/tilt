@@ -8,6 +8,7 @@ import (
 
 type Stringable struct {
 	Value string
+	IsSet bool
 }
 
 func (s *Stringable) Unpack(v starlark.Value) error {
@@ -16,6 +17,7 @@ func (s *Stringable) Unpack(v starlark.Value) error {
 		return fmt.Errorf("Value should be convertible to string, but is type %s", v.Type())
 	}
 	s.Value = str
+	s.IsSet = true
 	return nil
 }
 

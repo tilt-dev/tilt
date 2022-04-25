@@ -317,6 +317,21 @@ qux
  → quu`)
 }
 
+func TestLocalStdinChain(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip()
+	}
+
+	f := newFixture(t)
+
+	f.file("Tiltfile", `
+local('cat', stdin=local('echo hi'))
+`)
+
+	f.load()
+	require.Contains(t, f.out.String(), "local: echo hi\n → hi\nlocal: cat\n → hi")
+}
+
 func TestCustomBuildBat(t *testing.T) {
 	f := newFixture(t)
 
