@@ -5,7 +5,7 @@
   "dependencies": {
     "@material-ui/core": "^4.11.2",
     "@material-ui/icons": "^4.11.2",
-    "@material-ui/styles": "^4.11.3",
+    "@material-ui/styles": "^4.11.5",
     "history": "^4.9.0",
     "js-cookie": "^2.2.1",
     "moment": "^2.29.2",
