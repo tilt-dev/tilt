@@ -711,7 +711,7 @@ def kustomize(pathToDir: str, kustomize_bin: str = None) -> Blob:
     kustomize_bin: Custom path to the ``kustomize`` binary executable. Defaults to searching $PATH for kustomize."""
   pass
 
-def helm(pathToChartDir: str, name: str = "", namespace: str = "", values: Union[str, List[str]]=[], set: Union[str, List[str]]=[]) -> Blob:
+def helm(pathToChartDir: str, name: str = "", namespace: str = "", values: Union[str, List[str]]=[], set: Union[str, List[str]]=[], kube_version: str = "") -> Blob:
   """Run `helm template <https://docs.helm.sh/helm/#helm-template>`_ on a given directory that contains a chart and return the fully rendered YAML as a Blob
   Chart directory is watched (See ``watch_file``).
 
@@ -723,6 +723,7 @@ def helm(pathToChartDir: str, name: str = "", namespace: str = "", values: Union
     namespace: The namespace to deploy the chart to. Equivalent to the helm `--namespace` flag
     values: Specify one or more values files (in addition to the `values.yaml` file in the chart). Equivalent to the Helm ``--values`` or ``-f`` flags (`see docs <https://helm.sh/docs/chart_template_guide/#values-files>`_).
     set: Specify one or more values. Equivalent to the Helm ``--set`` flag.
+    kube_version: Specify for which kubernetes version template will be generated. Equivalent to the Helm ``--kube-version`` flag.
 """
   pass
 
