@@ -290,10 +290,9 @@ export default class HUD extends Component<HudProps, HudState> {
   }
 
   renderShareSnapshotModal(view: Proto.webviewView | null) {
+
     let handleClose = () =>
       this.setState({ showSnapshotModal: false, snapshotLink: "" })
-    let handleSendSnapshot = () =>
-      this.sendSnapshot(this.snapshotFromState(this.state))
     let session = view?.uiSession?.status
     let tiltCloudUsername = session?.tiltCloudUsername || null
     let tiltCloudSchemeHost = session?.tiltCloudSchemeHost || ""
@@ -305,8 +304,12 @@ export default class HUD extends Component<HudProps, HudState> {
         ) + 1
       : null
     return (
+      <FeaturesProvider
+        featureFlags={this.state.view.uiSession?.status?.featureFlags || null}
+      >
       <ShareSnapshotModal
-        handleSendSnapshot={handleSendSnapshot}
+        handleSendSnapshot={this.sendSnapshot}
+        getSnapshot={() => this.snapshotFromState(this.state)}
         handleClose={handleClose}
         snapshotUrl={this.state.snapshotLink}
         tiltCloudUsername={tiltCloudUsername}
@@ -315,6 +318,7 @@ export default class HUD extends Component<HudProps, HudState> {
         isOpen={this.state.showSnapshotModal}
         highlightedLines={highlightedLines}
       />
+      </FeaturesProvider>
     )
   }
 

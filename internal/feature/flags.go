@@ -28,6 +28,7 @@ const LiveUpdateV2 = "live_update_v2"
 const DisableResources = "disable_resources"
 const BulkDisableResources = "bulk_disable_resources"
 const ClusterRefresh = "cluster_refresh"
+const OfflineSnapshotCreation = "offline_snapshot_creation"
 
 // The Value a flag can have. Status should never be changed.
 type Value struct {
@@ -80,6 +81,10 @@ var MainDefaults = Defaults{
 		Status:  Obsolete,
 	},
 	ClusterRefresh: Value{
+		Enabled: false,
+		Status:  Active,
+	},
+	OfflineSnapshotCreation: Value{
 		Enabled: false,
 		Status:  Active,
 	},

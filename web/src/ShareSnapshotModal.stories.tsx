@@ -11,6 +11,7 @@ let signedOut = () => {
   return (
     <ShareSnapshotModal
       handleSendSnapshot={handleSendSnapshot}
+      getSnapshot={() => {return {}}}
       handleClose={handleClose}
       snapshotUrl={""}
       tiltCloudUsername={""}
@@ -26,6 +27,7 @@ let signedIn = () => {
   return (
     <ShareSnapshotModal
       handleSendSnapshot={handleSendSnapshot}
+      getSnapshot={() => {return {}}}
       handleClose={handleClose}
       snapshotUrl={""}
       tiltCloudUsername={"peridot"}
@@ -41,6 +43,7 @@ let withUrl = () => {
   return (
     <ShareSnapshotModal
       handleSendSnapshot={handleSendSnapshot}
+      getSnapshot={() => {return {}}}
       handleClose={handleClose}
       snapshotUrl={"https://cloud.tilt.dev/snapshot/garnet"}
       tiltCloudUsername={"peridot"}
@@ -56,6 +59,7 @@ let withUrlOverflow = () => {
   return (
     <ShareSnapshotModal
       handleSendSnapshot={handleSendSnapshot}
+      getSnapshot={() => {return {}}}
       handleClose={handleClose}
       snapshotUrl={
         "https://cloud.tilt.dev/snapshot/rose-quartz-long-overflow-string"
@@ -73,6 +77,7 @@ let withTeam = () => {
   return (
     <ShareSnapshotModal
       handleSendSnapshot={handleSendSnapshot}
+      getSnapshot={() => {return {}}}
       handleClose={handleClose}
       snapshotUrl={""}
       tiltCloudUsername={"peridot"}

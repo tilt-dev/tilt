@@ -4,9 +4,12 @@ import Modal from "react-modal"
 import intro from "./assets/png/share-snapshot-intro.png"
 import { ReactComponent as ArrowSvg } from "./assets/svg/arrow.svg"
 import "./ShareSnapshotModal.scss"
+import {Flag, useFeatures} from "./feature"
+import { saveAs } from "file-saver"
 
 type props = {
-  handleSendSnapshot: () => void
+  handleSendSnapshot: (s: Proto.webviewSnapshot) => void
+  getSnapshot: () => Proto.webviewSnapshot
   handleClose: () => void
   snapshotUrl: string
   tiltCloudUsername: string | null
@@ -16,7 +19,17 @@ type props = {
   highlightedLines: number | null
 }
 
-export default class ShareSnapshotModal extends PureComponent<props> {
+export default function ShareSnapshotModal(props: props) {
+  debugger
+  const features = useFeatures()
+  if (!features.isEnabled(Flag.OfflineSnapshotCreation)) {
+    return <UploadSnapshotModal {...props}/>
+  } else {
+    return <DownloadSnapshotModal handleClose={props.handleClose} isOpen={props.isOpen} getSnapshot={props.getSnapshot}/>
+  }
+}
+
+class UploadSnapshotModal extends PureComponent<props> {
   render() {
     return (
       <Modal
@@ -95,7 +108,7 @@ export default class ShareSnapshotModal extends PureComponent<props> {
           action={this.props.tiltCloudSchemeHost + "/start_register_token"}
           target="_blank"
           method="POST"
-          onSubmit={ShareSnapshotModal.notifyTiltOfRegistration}
+          onSubmit={UploadSnapshotModal.notifyTiltOfRegistration}
         >
           <input name="token" type="hidden" value={cookies.get("Tilt-Token")} />
           <input
@@ -145,7 +158,7 @@ export default class ShareSnapshotModal extends PureComponent<props> {
     return (
       <button
         className="ShareSnapshotModal-button ShareSnapshotModal-button--inline"
-        onClick={this.props.handleSendSnapshot}
+        onClick={() => this.props.handleSendSnapshot(this.props.getSnapshot())}
       >
         Get Link
       </button>
@@ -214,4 +227,41 @@ export default class ShareSnapshotModal extends PureComponent<props> {
       },
     })
   }
+}
+
+type DownloadSnapshotModalProps = {
+  handleClose: () => void
+  getSnapshot: () => Proto.webviewSnapshot
+  isOpen: boolean
+}
+
+function downloadSnapshot(snapshot: Proto.webviewSnapshot) {
+  const data = new Blob([JSON.stringify(snapshot)], {type: 'application/json'})
+  saveAs(data, "snapshot.json")
+}
+
+export function DownloadSnapshotModal(props: DownloadSnapshotModalProps) {
+  return <Modal
+    onRequestClose={props.handleClose}
+    isOpen={props.isOpen}
+    className="ShareSnapshotModal"
+  >
+    <h2 className="ShareSnapshotModal-title">Share a Snapshot</h2>
+    <section className="ShareSnapshotModal-pane u-flexColumn">
+      <p className="ShareSnapshotModal-description">
+        Save a snapshot of your Tilt state - a shareable view of the current
+        state of your Tilt session.
+      </p>
+      <section className="ShareSnapshotModal-shareLinkWrap">
+      <div className="ShareSnapshotModal-shareLink">
+      <button
+        className="ShareSnapshotModal-button ShareSnapshotModal-button--inline"
+        onClick={() => downloadSnapshot(props.getSnapshot())}
+      >
+        Save Snapshot
+      </button>
+      </div>
+      </section>
+    </section>
+  </Modal>
 }
