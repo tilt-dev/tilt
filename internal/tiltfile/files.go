@@ -195,12 +195,16 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 	var namespace string
 	var valueFiles value.StringOrStringList
 	var set value.StringOrStringList
+	var kubeVersion string
+
 	err := s.unpackArgs(fn.Name(), args, kwargs,
 		"paths", &path,
 		"name?", &name,
 		"namespace?", &namespace,
 		"values?", &valueFiles,
-		"set?", &set)
+		"set?", &set,
+		"kube_version?", &kubeVersion,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -262,6 +266,11 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 	if namespace != "" {
 		cmd = append(cmd, "--namespace", namespace)
 	}
+
+	if kubeVersion != "" {
+		cmd = append(cmd, "--kube-version", kubeVersion)
+	}
+
 	for _, valueFile := range valueFiles.Values {
 		cmd = append(cmd, "--values", valueFile)
 		err := tiltfile_io.RecordReadPath(thread, tiltfile_io.WatchFileOnly, starkit.AbsPath(thread, valueFile))
