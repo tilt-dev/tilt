@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/tilt-dev/go-get"
+
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/cli/demo"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -23,14 +24,20 @@ const demoResourcesPrefix = "tilt-demo-"
 const sampleProjPackage = "github.com/tilt-dev/tilt-avatars"
 
 type demoCmd struct {
+	// legacy disables the web UI (this is only used for integration tests)
 	legacy bool
-
+	// teardown will clean up any leftover `tilt demo` clusters and exit
 	teardown bool
-
-	tmpdir            string
+	// tmpdir for cloned `tilt-avatars` resources
+	tmpdir string
+	// skipCreateCluster uses default kubeconfig context instead of creating
+	// an ephemeral cluster
 	skipCreateCluster bool
-	projPackage       string
-	tiltfilePath      string
+	// projPackage is the `go get` style URL for the demo project
+	projPackage string
+	// tiltfilePath is a path to a Tiltfile to launch instead of cloning and
+	// running the `tilt-avatars` project
+	tiltfilePath string
 }
 
 func (c *demoCmd) name() model.TiltSubcommand { return "demo" }
@@ -51,11 +58,8 @@ A sample project (%s) will be cloned locally to a temporary directory using Git 
 	cmd.Flags().BoolVarP(&c.teardown, "teardown", "", false,
 		"Removes any leftover tilt-demo Kubernetes clusters and exits")
 
-	// --hud flag only exists for integration tests to disable web console
-	cmd.Flags().BoolVar(&c.legacy, "hud", true, "If true, tilt will open in legacy HUD mode. (deprecated: please use --legacy)") // TODO: remove --hud completely by v0.27.0
-	cmd.Flags().Lookup("hud").Hidden = true
-
-	cmd.Flags().BoolVar(&c.legacy, "legacy", true, "If true, tilt will open in legacy HUD mode.")
+	// --legacy flag only exists for integration tests to disable web console
+	cmd.Flags().BoolVar(&c.legacy, "legacy", false, "If true, tilt will open in legacy HUD mode.")
 	cmd.Flags().Lookup("legacy").Hidden = true
 
 	// --tmpdir exists so that integration tests can inspect the output / use the Tiltfile
@@ -75,13 +79,6 @@ A sample project (%s) will be cloned locally to a temporary directory using Git 
 
 	addStartServerFlags(cmd)
 	addDevServerFlags(cmd)
-
-	cmd.PreRun = func(cmd *cobra.Command, args []string) {
-		if cmd.Flag("hud").Changed {
-			fmt.Fprint(os.Stderr, "--hud is deprecated.  Please switch to --legacy.") // TODO: remove --hud completely by v0.27.0
-			time.Sleep(3 * time.Second)
-		}
-	}
 
 	return cmd
 }
