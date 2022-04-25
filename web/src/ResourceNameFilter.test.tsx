@@ -34,16 +34,6 @@ function customRender(component: JSX.Element, options?: RenderOptions) {
   })
 }
 
-const ResourceNameFilterTestWrapper = () => (
-  <MemoryRouter>
-    <tiltfileKeyContext.Provider value="test">
-      <ResourceListOptionsProvider>
-        <ResourceNameFilter />
-      </ResourceListOptionsProvider>
-    </tiltfileKeyContext.Provider>
-  </MemoryRouter>
-)
-
 describe("ResourceNameFilter", () => {
   beforeEach(() => {
     mockAnalyticsCalls()

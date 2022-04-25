@@ -1,41 +1,39 @@
-import { mount } from "enzyme"
+import { render, RenderOptions, screen } from "@testing-library/react"
 import React from "react"
 import Features, { FeaturesTestProvider, Flag } from "./feature"
 import { LogAlertIndex } from "./LogStore"
 import PathBuilder from "./PathBuilder"
 import SidebarItem from "./SidebarItem"
-import SidebarItemView, {
-  DisabledSidebarItemView,
-  EnabledSidebarItemView,
-} from "./SidebarItemView"
+import SidebarItemView from "./SidebarItemView"
 import { oneResource, TestResourceOptions } from "./testdata"
 import { ResourceView } from "./types"
 
 const PATH_BUILDER = PathBuilder.forTesting("localhost", "/")
 const LOG_ALERT_INDEX: LogAlertIndex = { alertsForSpanId: () => [] }
 
-// Note: this test wrapper can be refactored to take
-// more parameters as more tests are added to this suite
-const SidebarItemViewTestWrapper = ({
-  item,
-  disableResourcesEnabled,
-}: {
-  item: SidebarItem
-  disableResourcesEnabled?: boolean
-}) => {
+function customRender(
+  sidebarItem: SidebarItem,
+  wrapperOptions?: { disableResourcesEnabled?: boolean },
+  options?: RenderOptions
+) {
   const features = new Features({
-    [Flag.DisableResources]: disableResourcesEnabled ?? true,
+    [Flag.DisableResources]: wrapperOptions?.disableResourcesEnabled ?? true,
   })
-  return (
-    <FeaturesTestProvider value={features}>
-      <SidebarItemView
-        item={item}
-        selected={false}
-        resourceView={ResourceView.Log}
-        pathBuilder={PATH_BUILDER}
-        groupView={false}
-      />
-    </FeaturesTestProvider>
+
+  return render(
+    <SidebarItemView
+      item={sidebarItem}
+      selected={false}
+      resourceView={ResourceView.Log}
+      pathBuilder={PATH_BUILDER}
+      groupView={false}
+    />,
+    {
+      wrapper: ({ children }) => (
+        <FeaturesTestProvider value={features}>{children}</FeaturesTestProvider>
+      ),
+      ...options,
+    }
   )
 }
 
@@ -47,48 +45,40 @@ describe("SidebarItemView", () => {
   describe("when `disable_resources` flag is NOT enabled", () => {
     it("does NOT display a disabled resource", () => {
       const item = oneSidebarItem({ disabled: true })
-      const wrapper = mount(
-        <SidebarItemViewTestWrapper
-          item={item}
-          disableResourcesEnabled={false}
-        />
-      )
-      expect(wrapper.find(DisabledSidebarItemView).length).toBe(0)
+      customRender(item, { disableResourcesEnabled: false })
+
+      expect(screen.queryByText(item.name)).toBeNull()
+      expect(screen.queryByRole("button")).toBeNull()
     })
 
     it("does render an enabled resource with enabled view", () => {
       const item = oneSidebarItem({ disabled: false })
-      const wrapper = mount(
-        <SidebarItemViewTestWrapper
-          item={item}
-          disableResourcesEnabled={false}
-        />
-      )
-      expect(wrapper.find(EnabledSidebarItemView).length).toBe(1)
+      customRender(item, { disableResourcesEnabled: false })
+
+      expect(screen.getByText(item.name)).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: /star/i })).toBeInTheDocument()
+      expect(screen.getByLabelText("Trigger update")).toBeInTheDocument()
     })
   })
 
   describe("when `disable_resources` flag is enabled", () => {
     it("does display a disabled resource with disabled view", () => {
       const item = oneSidebarItem({ disabled: true })
-      const wrapper = mount(
-        <SidebarItemViewTestWrapper
-          item={item}
-          disableResourcesEnabled={true}
-        />
-      )
-      expect(wrapper.find(DisabledSidebarItemView).length).toBe(1)
+      customRender(item, { disableResourcesEnabled: true })
+
+      expect(screen.getByText(item.name)).toBeInTheDocument()
+      expect(screen.getByRole("link", { name: item.name })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: /star/i })).toBeInTheDocument()
+      expect(screen.queryByLabelText("Trigger update")).toBeNull()
     })
 
     it("does render an enabled resource with enabled view", () => {
       const item = oneSidebarItem({ disabled: false })
-      const wrapper = mount(
-        <SidebarItemViewTestWrapper
-          item={item}
-          disableResourcesEnabled={true}
-        />
-      )
-      expect(wrapper.find(EnabledSidebarItemView).length).toBe(1)
+      customRender(item, { disableResourcesEnabled: true })
+
+      expect(screen.getByText(item.name)).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: /star/i })).toBeInTheDocument()
+      expect(screen.getByLabelText("Trigger update")).toBeInTheDocument()
     })
   })
 })

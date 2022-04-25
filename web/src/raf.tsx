@@ -42,9 +42,16 @@ export function SyncRafProvider(props: React.PropsWithChildren<{}>) {
 
 export let RafProvider = rafContext.Provider
 
+export type TestRafContext = {
+  callbacks: { [key: string]: () => void }
+  invoke: jest.Mock<void, [id: number]>
+  requestAnimationFrame: jest.Mock<number, [callback: () => void]>
+  cancelAnimationFrame: jest.Mock<void, [id: number]>
+}
+
 // Returns a scheduler that pauses callbacks
 // until they're invoked manually by ID.
-export function newFakeRaf() {
+export function newFakeRaf(): TestRafContext {
   let callbacks: any = {}
   let callbackCount = 0
   return {

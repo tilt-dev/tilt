@@ -1,5 +1,6 @@
 import { render, RenderOptions, screen } from "@testing-library/react"
-import { mount } from "enzyme"
+import { Component } from "react"
+import { findRenderedComponentWithType } from "react-dom/test-utils"
 import { MemoryRouter } from "react-router"
 import {
   createFilterTermState,
@@ -20,7 +21,8 @@ import {
   ThreeLines,
   ThreeLinesAllLog,
 } from "./OverviewLogPane.stories"
-import { newFakeRaf, RafProvider, SyncRafProvider } from "./raf"
+import { newFakeRaf, RafProvider, SyncRafProvider, TestRafContext } from "./raf"
+import { renderTestComponent } from "./test-helpers"
 import { appendLines } from "./testlogs"
 
 function customRender(component: JSX.Element, options?: RenderOptions) {
@@ -141,132 +143,133 @@ describe("OverviewLogPane", () => {
       expect(container.querySelectorAll(".LogLine")).toHaveLength(0)
     })
   })
-})
 
-/**
- * The following tests rely on testing React component state directly,
- * which is not possible to do with React Testing Library. They'll need to
- * either use React's test utilities (which involve some funky type manipulation)
- * or perhaps modify/wrap the component to render its state to the DOM instead.
- */
+  /**
+   * The following tests rely on testing React component state directly,
+   * which is not possible to do with React Testing Library.
+   */
 
-it("engages autoscrolls on scroll down", () => {
-  let fakeRaf = newFakeRaf()
-  let root = mount(
-    <MemoryRouter initialEntries={["/"]}>
-      <RafProvider value={fakeRaf}>
-        <ManyLines count={100} />
-      </RafProvider>
-    </MemoryRouter>
-  )
-  let component = root
-    .find(OverviewLogComponent)
-    .instance() as OverviewLogComponent
+  describe("log rendering", () => {
+    function getLogElements(container: HTMLElement) {
+      return container.querySelectorAll(".LogLine")
+    }
 
-  component.autoscroll = false
-  component.scrollTop = 0
-  component.rootRef.current.scrollTop = 1000
-  component.onScroll()
-  expect(component.scrollTop).toEqual(1000)
+    const initLineCount = 2 * renderWindow
 
-  // The scroll has been scheduled, but not engaged yet.
-  expect(component.autoscrollRafId).toBeGreaterThan(0)
-  expect(component.autoscroll).toEqual(false)
+    let fakeRaf: TestRafContext
+    let rootTree: Component<OverviewLogComponent>
+    let container: HTMLDivElement
+    let component: OverviewLogComponent
 
-  fakeRaf.invoke(component.autoscrollRafId as number)
-  expect(component.autoscroll).toEqual(true)
-})
+    beforeEach(() => {
+      fakeRaf = newFakeRaf()
+      const componentWrapper = (
+        <MemoryRouter initialEntries={["/"]}>
+          <RafProvider value={fakeRaf}>
+            <ManyLines count={initLineCount} />
+          </RafProvider>
+        </MemoryRouter>
+      )
 
-it("renders bottom logs first", () => {
-  let fakeRaf = newFakeRaf()
-  let lineCount = 2 * renderWindow
-  let root = mount(
-    <MemoryRouter initialEntries={["/"]}>
-      <RafProvider value={fakeRaf}>
-        <ManyLines count={lineCount} />
-      </RafProvider>
-    </MemoryRouter>
-  )
+      const testHelpers =
+        renderTestComponent<OverviewLogComponent>(componentWrapper)
+      rootTree = testHelpers.rootTree
+      container = testHelpers.container
+      component = findRenderedComponentWithType(rootTree, OverviewLogComponent)
+    })
 
-  // Make sure no logs have been rendered yet.
-  let rootEl = root.getDOMNode()
-  let lineEls = () => rootEl.querySelectorAll(".LogLine")
-  let component = root
-    .find(OverviewLogComponent)
-    .instance() as OverviewLogComponent
-  expect(component.renderBufferRafId).toBeGreaterThan(0)
-  expect(component.backwardBuffer.length).toEqual(lineCount)
-  expect(lineEls().length).toEqual(0)
+    it("engages autoscrolls on scroll down", () => {
+      component.autoscroll = false
+      component.scrollTop = 0
+      component.rootRef.current.scrollTop = 1000
+      component.onScroll()
+      expect(component.scrollTop).toEqual(1000)
 
-  // Invoke the RAF callback, and make sure that only a window's
-  // worth of logs have been rendered.
-  fakeRaf.invoke(component.renderBufferRafId as number)
-  expect(component.backwardBuffer.length).toEqual(lineCount - renderWindow)
-  expect(lineEls().length).toEqual(renderWindow)
-  expect(lineEls()[0].innerHTML).toEqual(
-    expect.stringContaining(">line 250\n<")
-  )
+      // The scroll has been scheduled, but not engaged yet.
+      expect(component.autoscrollRafId).toBeGreaterThan(0)
+      expect(component.autoscroll).toEqual(false)
 
-  // Invoke the RAF callback again, and make sure the remaining logs
-  // were rendered.
-  fakeRaf.invoke(component.renderBufferRafId as number)
-  expect(component.backwardBuffer.length).toEqual(0)
-  expect(lineEls().length).toEqual(lineCount)
-  expect(lineEls()[0].innerHTML).toEqual(expect.stringContaining(">line 0\n<"))
+      fakeRaf.invoke(component.autoscrollRafId as number)
+      expect(component.autoscroll).toEqual(true)
+    })
 
-  // rendering is complete.
-  expect(component.renderBufferRafId).toEqual(0)
-})
+    it("renders bottom logs first", () => {
+      // Make sure no logs have been rendered yet.
+      let getLogElements = () => container.querySelectorAll(".LogLine")
 
-it("renders new logs first", () => {
-  let fakeRaf = newFakeRaf()
-  let initLineCount = 2 * renderWindow
-  let root = mount(
-    <MemoryRouter initialEntries={["/"]}>
-      <RafProvider value={fakeRaf}>
-        <ManyLines count={initLineCount} />
-      </RafProvider>
-    </MemoryRouter>
-  )
+      expect(component.renderBufferRafId).toBeGreaterThan(0)
+      expect(component.backwardBuffer.length).toEqual(initLineCount)
+      expect(getLogElements().length).toEqual(0)
 
-  let rootEl = root.getDOMNode()
-  let lineEls = () => rootEl.querySelectorAll(".LogLine")
-  let component = root
-    .find(OverviewLogComponent)
-    .instance() as OverviewLogComponent
-  expect(component.renderBufferRafId).toBeGreaterThan(0)
-  expect(component.backwardBuffer.length).toEqual(initLineCount)
-  expect(lineEls().length).toEqual(0)
+      // Invoke the RAF callback, and make sure that only a window's
+      // worth of logs have been rendered.
+      fakeRaf.invoke(component.renderBufferRafId as number)
+      expect(component.backwardBuffer.length).toEqual(
+        initLineCount - renderWindow
+      )
+      expect(getLogElements().length).toEqual(renderWindow)
+      expect(getLogElements()[0].innerHTML).toEqual(
+        expect.stringContaining(">line 250\n<")
+      )
 
-  // append new lines on top of the lines we already have.
-  let newLineCount = 1.5 * renderWindow
-  let lines = []
-  for (let i = 0; i < newLineCount; i++) {
-    lines.push(`incremental line ${i}\n`)
-  }
-  appendLines(component.props.logStore, "fe", ...lines)
-  component.onLogUpdate({ action: LogUpdateAction.append })
-  expect(component.forwardBuffer.length).toEqual(newLineCount)
-  expect(component.backwardBuffer.length).toEqual(initLineCount)
+      // Invoke the RAF callback again, and make sure the remaining logs
+      // were rendered.
+      fakeRaf.invoke(component.renderBufferRafId as number)
+      expect(component.backwardBuffer.length).toEqual(0)
+      expect(getLogElements().length).toEqual(initLineCount)
+      expect(getLogElements()[0].innerHTML).toEqual(
+        expect.stringContaining(">line 0\n<")
+      )
 
-  // Invoke the RAF callback, and make sure that new logs were rendered
-  // and old logs were rendered.
-  fakeRaf.invoke(component.renderBufferRafId as number)
-  expect(component.forwardBuffer.length).toEqual(newLineCount - renderWindow)
-  expect(component.backwardBuffer.length).toEqual(initLineCount - renderWindow)
-  expect(lineEls().length).toEqual(renderWindow * 2)
-  expect(lineEls()[0].innerHTML).toEqual(
-    expect.stringContaining(">line 250\n<")
-  )
-  expect(lineEls()[lineEls().length - 1].innerHTML).toEqual(
-    expect.stringContaining(">incremental line 249\n<")
-  )
+      // rendering is complete.
+      expect(component.renderBufferRafId).toEqual(0)
+    })
 
-  // Invoke the RAF callback again, and make sure that new logs were rendered further up
-  // and old logs were rendered further down.
-  fakeRaf.invoke(component.renderBufferRafId as number)
-  expect(lineEls()[0].innerHTML).toEqual(expect.stringContaining(">line 0\n<"))
-  expect(lineEls()[lineEls().length - 1].innerHTML).toEqual(
-    expect.stringContaining(">incremental line 374\n<")
-  )
+    it("renders new logs first", () => {
+      expect(component.renderBufferRafId).toBeGreaterThan(0)
+      expect(component.backwardBuffer.length).toEqual(initLineCount)
+      expect(getLogElements(container).length).toEqual(0)
+
+      // append new lines on top of the lines we already have.
+      let newLineCount = 1.5 * renderWindow
+      let lines = []
+      for (let i = 0; i < newLineCount; i++) {
+        lines.push(`incremental line ${i}\n`)
+      }
+      appendLines(component.props.logStore, "fe", ...lines)
+      component.onLogUpdate({ action: LogUpdateAction.append })
+      expect(component.forwardBuffer.length).toEqual(newLineCount)
+      expect(component.backwardBuffer.length).toEqual(initLineCount)
+
+      // Invoke the RAF callback, and make sure that new logs were rendered
+      // and old logs were rendered.
+      fakeRaf.invoke(component.renderBufferRafId as number)
+      expect(component.forwardBuffer.length).toEqual(
+        newLineCount - renderWindow
+      )
+      expect(component.backwardBuffer.length).toEqual(
+        initLineCount - renderWindow
+      )
+
+      const logElements = getLogElements(container)
+      expect(logElements.length).toEqual(initLineCount)
+      expect(logElements[0].innerHTML).toEqual(
+        expect.stringContaining(">line 250\n<")
+      )
+      expect(logElements[logElements.length - 1].innerHTML).toEqual(
+        expect.stringContaining(">incremental line 249\n<")
+      )
+
+      // Invoke the RAF callback again, and make sure that new logs were rendered further up
+      // and old logs were rendered further down.
+      fakeRaf.invoke(component.renderBufferRafId as number)
+      const logElementsAfterInvoke = getLogElements(container)
+      expect(logElementsAfterInvoke[0].innerHTML).toEqual(
+        expect.stringContaining(">line 0\n<")
+      )
+      expect(
+        logElementsAfterInvoke[logElementsAfterInvoke.length - 1].innerHTML
+      ).toEqual(expect.stringContaining(">incremental line 374\n<"))
+    })
+  })
 })
