@@ -1,67 +1,110 @@
-import { shallow } from "enzyme"
+import { render, screen, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
+import fetchMock, { MockResponseObject } from "fetch-mock"
 import React from "react"
-import AnalyticsNudge from "./AnalyticsNudge"
+import AnalyticsNudge, { NUDGE_TIMEOUT_MS } from "./AnalyticsNudge"
+import {
+  cleanupMockAnalyticsCalls,
+  mockAnalyticsCalls,
+} from "./analytics_test_helpers"
 
-it("shows nudge if needsNudge", () => {
-  const component = shallow(<AnalyticsNudge needsNudge={true} />)
+function mockAnalyticsOptInOnce(optIn = true, error = false) {
+  const response: MockResponseObject = error ? { status: 500 } : {}
+  const opt = optIn ? "opt-in" : "opt-out"
+  fetchMock.postOnce("//localhost/api/analytics_opt", response, {
+    body: { opt },
+  })
+}
 
-  expect(component).toMatchSnapshot()
-})
+describe("AnalyticsNudge", () => {
+  beforeEach(() => mockAnalyticsCalls())
 
-it("hides nudge if !needsNudge and no request made", () => {
-  const component = shallow(<AnalyticsNudge needsNudge={false} />)
+  afterEach(() => cleanupMockAnalyticsCalls())
 
-  expect(component).toMatchSnapshot()
-})
+  it("shows nudge if `needNudge` is true and no request has been made", () => {
+    render(<AnalyticsNudge needsNudge={true} />)
 
-it("hides nudge if dismissed, even if needsNudge = true", () => {
-  const component = shallow(<AnalyticsNudge needsNudge={true} />)
-
-  component.setState({ dismissed: true })
-
-  expect(component).toMatchSnapshot()
-})
-
-it("shows request-in-progress message", () => {
-  const component = shallow(<AnalyticsNudge needsNudge={false} />)
-
-  component.setState({ requestMade: true })
-
-  expect(component).toMatchSnapshot()
-})
-
-it("shows success message: opt out", () => {
-  const component = shallow(<AnalyticsNudge needsNudge={false} />)
-
-  component.setState({ optIn: false, requestMade: true, responseCode: 200 })
-
-  expect(component).toMatchSnapshot()
-})
-
-it("shows success message: opt in", () => {
-  const component = shallow(<AnalyticsNudge needsNudge={false} />)
-
-  component.setState({ optIn: true, requestMade: true, responseCode: 200 })
-
-  expect(component).toMatchSnapshot()
-})
-
-it("shows failure message with response body", () => {
-  const component = shallow(<AnalyticsNudge needsNudge={false} />)
-
-  component.setState({
-    requestMade: true,
-    responseCode: 418,
-    responseBody: "something is not right! something is quite wrong!",
+    expect(screen.getByLabelText("Tilt analytics options")).toBeInTheDocument()
   })
 
-  expect(component).toMatchSnapshot()
-})
+  it("does NOT show nudge if `needsNudge` is false and no request has been made", () => {
+    render(<AnalyticsNudge needsNudge={false} />)
 
-it("hidden if dismissed", () => {
-  const component = shallow(<AnalyticsNudge needsNudge={false} />)
+    expect(screen.queryByLabelText("Tilt analytics options")).toBeNull()
+  })
 
-  component.setState({ requestMade: true, responseCode: 200, dismissed: true })
+  it("does NOT show nudge after it has been dismissed", async () => {
+    mockAnalyticsOptInOnce(false)
 
-  expect(component).toMatchSnapshot()
+    render(<AnalyticsNudge needsNudge={true} />)
+
+    expect(screen.getByLabelText("Tilt analytics options")).toBeInTheDocument()
+
+    userEvent.click(screen.getByRole("button", { name: /nope/i }))
+
+    await waitFor(() => {
+      userEvent.click(screen.getByRole("button", { name: /dismiss/i }))
+    })
+
+    expect(screen.queryByLabelText("Tilt analytics options")).toBeNull()
+  })
+
+  it("shows request-in-progress message when a request is in progress", () => {
+    mockAnalyticsOptInOnce(false)
+
+    render(<AnalyticsNudge needsNudge={true} />)
+
+    userEvent.click(screen.getByRole("button", { name: /nope/i }))
+
+    expect(screen.getByTestId("opt-loading"))
+  })
+
+  it("shows success message for opt out", async () => {
+    mockAnalyticsOptInOnce(false)
+    render(<AnalyticsNudge needsNudge={true} />)
+
+    userEvent.click(screen.getByRole("button", { name: /nope/i }))
+
+    await waitFor(() => {
+      expect(screen.getByTestId("optout-success")).toBeInTheDocument()
+    })
+  })
+
+  it("shows success message for opt in", async () => {
+    mockAnalyticsOptInOnce(true)
+    render(<AnalyticsNudge needsNudge={true} />)
+
+    userEvent.click(screen.getByRole("button", { name: /I'm in/i }))
+
+    await waitFor(() => {
+      expect(screen.getByTestId("optin-success")).toBeInTheDocument()
+    })
+  })
+
+  it("shows a failure message when request fails", async () => {
+    mockAnalyticsOptInOnce(true, true)
+    render(<AnalyticsNudge needsNudge={true} />)
+
+    userEvent.click(screen.getByRole("button", { name: /I'm in/i }))
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toBeInTheDocument()
+    })
+  })
+
+  it("dismisses the success message after a set delay", async () => {
+    jest.useFakeTimers()
+    mockAnalyticsOptInOnce(true)
+    render(<AnalyticsNudge needsNudge={true} />)
+
+    userEvent.click(screen.getByRole("button", { name: /I'm in/i }))
+
+    await waitFor(() => {
+      expect(screen.getByTestId("optin-success")).toBeInTheDocument()
+    })
+
+    jest.advanceTimersByTime(NUDGE_TIMEOUT_MS)
+
+    expect(screen.queryByLabelText("Tilt analytics options")).toBeNull()
+  })
 })
