@@ -710,9 +710,11 @@ func (r *Reconciler) garbageCollect(nn types.NamespacedName, isDeleting bool) de
 		return deleteSpec{}
 	}
 
-	if isDeleting && result.Spec.DeleteCmd != nil {
-		if !result.CmdApplied {
-			// Make sure we only run the DeleteCmd once per apply.
+	if result.Spec.DeleteCmd != nil {
+		if !isDeleting || !result.CmdApplied {
+			// If there's a custom apply + delete command, GC only happens if
+			// the KubernetesApply object is being deleted (or disabled) and
+			// the apply command was actually executed (by Tilt).
 			return deleteSpec{}
 		}
 
