@@ -55,8 +55,6 @@
     "@testing-library/jest-dom": "^5.16.1",
     "@testing-library/react": "^12.1.2",
     "@testing-library/user-event": "^13.5.0",
-    "@types/enzyme": "^3.10.10",
-    "@types/enzyme-adapter-react-16": "^1.0.5",
     "@types/history": "^4.7.2",
     "@types/jest": "^27.0.2",
     "@types/js-cookie": "^2.2.2",
@@ -73,9 +71,6 @@
     "@typescript-eslint/eslint-plugin": "^5.3.1",
     "@typescript-eslint/parser": "^5.3.1",
     "babel-loader": "8.1.0",
-    "enzyme": "^3.10.8",
-    "enzyme-adapter-react-16": "^1.15.5",
-    "enzyme-to-json": "^3.6.1",
     "eslint": "^7.11.0",
     "eslint-plugin-jest": "^25.2.4",
     "eslint-plugin-react": "^7.27.0",
@@ -91,10 +86,5 @@
   },
   "engines": {
     "node": ">=14.0.0 <15.0.0, >=16.0.0 <17.0.0"
-  },
-  "jest": {
-    "snapshotSerializers": [
-      "enzyme-to-json/serializer"
-    ]
   }
 }
