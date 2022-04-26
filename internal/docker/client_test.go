@@ -101,6 +101,27 @@ type provideEnvTestCase struct {
 	expectedLocal   Env
 }
 
+type hostClient struct {
+	Host string
+}
+
+func (c hostClient) DaemonHost() string { return c.Host }
+
+type fakeClientCreator struct {
+}
+
+func (c fakeClientCreator) FromCLI(ctx context.Context) (DaemonClient, error) {
+	host := os.Getenv("DOCKER_HOST")
+	if host == "" {
+		host = "cli"
+	}
+	return hostClient{Host: host}, nil
+}
+func (c fakeClientCreator) FromEnvMap(envMap map[string]string) (DaemonClient, error) {
+	host := envMap["DOCKER_HOST"]
+	return hostClient{Host: host}, nil
+}
+
 func TestProvideClusterProduct(t *testing.T) {
 	envVars := []string{
 		"DOCKER_TLS_VERIFY",
@@ -110,40 +131,47 @@ func TestProvideClusterProduct(t *testing.T) {
 	}
 
 	cases := []provideEnvTestCase{
-		{},
+		{
+			expectedCluster: Env{
+				Client: hostClient{Host: "cli"},
+			},
+			expectedLocal: Env{
+				Client: hostClient{Host: "cli"},
+			},
+		},
 		{
 			env: clusterid.ProductUnknown,
 			osEnv: map[string]string{
-				"DOCKER_TLS_VERIFY":  "1",
-				"DOCKER_HOST":        "tcp://192.168.99.100:2376",
-				"DOCKER_CERT_PATH":   "/home/nick/.minikube/certs",
-				"DOCKER_API_VERSION": "1.35",
+				"DOCKER_HOST": "tcp://192.168.99.100:2376",
 			},
 			expectedCluster: Env{
-				TLSVerify:  "1",
-				Host:       "tcp://192.168.99.100:2376",
-				CertPath:   "/home/nick/.minikube/certs",
-				APIVersion: "1.35",
+				Client: hostClient{Host: "tcp://192.168.99.100:2376"},
 			},
 			expectedLocal: Env{
-				TLSVerify:  "1",
-				Host:       "tcp://192.168.99.100:2376",
-				CertPath:   "/home/nick/.minikube/certs",
-				APIVersion: "1.35",
+				Client: hostClient{Host: "tcp://192.168.99.100:2376"},
 			},
 		},
 		{
 			env:     clusterid.ProductMicroK8s,
 			runtime: container.RuntimeDocker,
 			expectedCluster: Env{
-				Host:                microK8sDockerHost,
+				Client:              hostClient{Host: "unix:///var/snap/microk8s/current/docker.sock"},
+				Environ:             []string{"DOCKER_HOST=unix:///var/snap/microk8s/current/docker.sock"},
 				BuildToKubeContexts: []string{"microk8s-me"},
 			},
-			expectedLocal: Env{},
+			expectedLocal: Env{
+				Client: hostClient{Host: "cli"},
+			},
 		},
 		{
 			env:     clusterid.ProductMicroK8s,
 			runtime: container.RuntimeCrio,
+			expectedCluster: Env{
+				Client: hostClient{Host: "cli"},
+			},
+			expectedLocal: Env{
+				Client: hostClient{Host: "cli"},
+			},
 		},
 		{
 			env:     clusterid.ProductMinikube,
@@ -155,12 +183,18 @@ func TestProvideClusterProduct(t *testing.T) {
 				"DOCKER_API_VERSION": "1.35",
 			},
 			expectedCluster: Env{
-				TLSVerify:           "1",
-				Host:                "tcp://192.168.99.100:2376",
-				CertPath:            "/home/nick/.minikube/certs",
-				APIVersion:          "1.35",
+				Client: hostClient{Host: "tcp://192.168.99.100:2376"},
+				Environ: []string{
+					"DOCKER_API_VERSION=1.35",
+					"DOCKER_CERT_PATH=/home/nick/.minikube/certs",
+					"DOCKER_HOST=tcp://192.168.99.100:2376",
+					"DOCKER_TLS_VERIFY=1",
+				},
 				IsOldMinikube:       true,
 				BuildToKubeContexts: []string{"minikube-me"},
+			},
+			expectedLocal: Env{
+				Client: hostClient{Host: "cli"},
 			},
 		},
 		{
@@ -174,11 +208,17 @@ func TestProvideClusterProduct(t *testing.T) {
 				"DOCKER_API_VERSION": "1.35",
 			},
 			expectedCluster: Env{
-				TLSVerify:           "1",
-				Host:                "tcp://192.168.99.100:2376",
-				CertPath:            "/home/nick/.minikube/certs",
-				APIVersion:          "1.35",
+				Client: hostClient{Host: "tcp://192.168.99.100:2376"},
+				Environ: []string{
+					"DOCKER_API_VERSION=1.35",
+					"DOCKER_CERT_PATH=/home/nick/.minikube/certs",
+					"DOCKER_HOST=tcp://192.168.99.100:2376",
+					"DOCKER_TLS_VERIFY=1",
+				},
 				BuildToKubeContexts: []string{"minikube-me"},
+			},
+			expectedLocal: Env{
+				Client: hostClient{Host: "cli"},
 			},
 		},
 		{
@@ -194,10 +234,10 @@ func TestProvideClusterProduct(t *testing.T) {
 				"DOCKER_HOST": "tcp://registry.local:80",
 			},
 			expectedCluster: Env{
-				Host: "tcp://registry.local:80",
+				Client: hostClient{Host: "tcp://registry.local:80"},
 			},
 			expectedLocal: Env{
-				Host: "tcp://registry.local:80",
+				Client: hostClient{Host: "tcp://registry.local:80"},
 			},
 		},
 		{
@@ -216,16 +256,14 @@ func TestProvideClusterProduct(t *testing.T) {
 				"DOCKER_CERT_PATH":  "/home/nick/.minikube/certs",
 			},
 			expectedCluster: Env{
-				TLSVerify:           "1",
-				Host:                "tcp://192.168.99.100:2376",
-				CertPath:            "/home/nick/.minikube/certs",
+				Client:              hostClient{Host: "tcp://192.168.99.100:2376"},
+				Environ:             []string{"DOCKER_CERT_PATH=/home/nick/.minikube/certs", "DOCKER_HOST=tcp://192.168.99.100:2376", "DOCKER_TLS_VERIFY=1"},
 				IsOldMinikube:       true,
 				BuildToKubeContexts: []string{"minikube-me"},
 			},
 			expectedLocal: Env{
-				TLSVerify:           "1",
-				Host:                "tcp://192.168.99.100:2376",
-				CertPath:            "/home/nick/.minikube/certs",
+				Client:              hostClient{Host: "tcp://192.168.99.100:2376"},
+				Environ:             []string{"DOCKER_CERT_PATH=/home/nick/.minikube/certs", "DOCKER_HOST=tcp://192.168.99.100:2376", "DOCKER_TLS_VERIFY=1"},
 				IsOldMinikube:       true,
 				BuildToKubeContexts: []string{"minikube-me"},
 			},
@@ -239,6 +277,12 @@ func TestProvideClusterProduct(t *testing.T) {
 				"DOCKER_CERT_PATH":   "/home/nick/.minikube/certs",
 				"DOCKER_API_VERSION": "1.35",
 			},
+			expectedCluster: Env{
+				Client: hostClient{Host: "cli"},
+			},
+			expectedLocal: Env{
+				Client: hostClient{Host: "cli"},
+			},
 		},
 		{
 			env: clusterid.ProductUnknown,
@@ -249,16 +293,10 @@ func TestProvideClusterProduct(t *testing.T) {
 				"DOCKER_API_VERSION": "1.35",
 			},
 			expectedCluster: Env{
-				TLSVerify:  "1",
-				Host:       "tcp://localhost:2376",
-				CertPath:   "/home/nick/.minikube/certs",
-				APIVersion: "1.35",
+				Client: hostClient{Host: "localhost:2376"},
 			},
 			expectedLocal: Env{
-				TLSVerify:  "1",
-				Host:       "tcp://localhost:2376",
-				CertPath:   "/home/nick/.minikube/certs",
-				APIVersion: "1.35",
+				Client: hostClient{Host: "localhost:2376"},
 			},
 		},
 	}
@@ -284,10 +322,10 @@ func TestProvideClusterProduct(t *testing.T) {
 
 			mkClient := k8s.FakeMinikube{DockerEnvMap: c.mkEnv, FakeVersion: minikubeV}
 			kubeContext := k8s.KubeContext(fmt.Sprintf("%s-me", c.env))
-			cluster := ProvideClusterEnv(context.Background(), kubeContext, c.env, c.runtime, mkClient)
+			cluster := ProvideClusterEnv(context.Background(), fakeClientCreator{}, kubeContext, c.env, c.runtime, mkClient)
 			assert.Equal(t, c.expectedCluster, Env(cluster))
 
-			local := ProvideLocalEnv(context.Background(), kubeContext, c.env, cluster)
+			local := ProvideLocalEnv(context.Background(), fakeClientCreator{}, kubeContext, c.env, cluster)
 			assert.Equal(t, c.expectedLocal, Env(local))
 		})
 	}

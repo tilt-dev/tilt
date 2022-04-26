@@ -138,5 +138,5 @@ func (c *switchCli) ClientFor(cluster v1alpha1.Cluster) Client {
 	return c.DefaultLocalClient()
 }
 func (c *switchCli) HasMultipleClients() bool {
-	return c.localCli.Env().Host != c.clusterCli.Env().Host
+	return c.localCli.Env().DaemonHost() != c.clusterCli.Env().DaemonHost()
 }

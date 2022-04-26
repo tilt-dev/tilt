@@ -16,7 +16,6 @@ import (
 	"github.com/blang/semver"
 	"github.com/docker/cli/cli/command"
 	"github.com/docker/cli/cli/config"
-	"github.com/docker/cli/cli/connhelper"
 	cliflags "github.com/docker/cli/cli/flags"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
@@ -151,15 +150,7 @@ func NewDockerClient(ctx context.Context, env Env) Client {
 		return newExplodingClient(env.Error)
 	}
 
-	opts, err := CreateClientOpts(ctx, env)
-	if err != nil {
-		return newExplodingClient(err)
-	}
-	d, err := client.NewClientWithOpts(opts...)
-	if err != nil {
-		return newExplodingClient(err)
-	}
-
+	d := env.Client.(*client.Client)
 	serverVersion, err := d.ServerVersion(ctx)
 	if err != nil {
 		return newExplodingClient(err)
@@ -258,15 +249,17 @@ func SupportsBuildkit(v types.Version, env Env) bool {
 // DOCKER_API_VERSION to set the version of the API to reach, leave empty for latest.
 // DOCKER_CERT_PATH to load the TLS certificates from.
 // DOCKER_TLS_VERIFY to enable or disable TLS verification, off by default.
-func CreateClientOpts(_ context.Context, env Env) ([]client.Opt, error) {
+func CreateClientOpts(envMap map[string]string) ([]client.Opt, error) {
 	result := make([]client.Opt, 0)
 
-	if env.CertPath != "" {
+	certPath := envMap["DOCKER_CERT_PATH"]
+	tlsVerify := envMap["DOCKER_TLS_VERIFY"]
+	if certPath != "" {
 		options := tlsconfig.Options{
-			CAFile:             filepath.Join(env.CertPath, "ca.pem"),
-			CertFile:           filepath.Join(env.CertPath, "cert.pem"),
-			KeyFile:            filepath.Join(env.CertPath, "key.pem"),
-			InsecureSkipVerify: env.TLSVerify == "",
+			CAFile:             filepath.Join(certPath, "ca.pem"),
+			CertFile:           filepath.Join(certPath, "cert.pem"),
+			KeyFile:            filepath.Join(certPath, "key.pem"),
+			InsecureSkipVerify: tlsVerify == "",
 		}
 		tlsc, err := tlsconfig.Client(options)
 		if err != nil {
@@ -279,38 +272,14 @@ func CreateClientOpts(_ context.Context, env Env) ([]client.Opt, error) {
 		}))
 	}
 
-	if env.Host != "" {
-		// Docker 18.09+ supports DOCKER_HOST=ssh://remote-docker-host connection strings,
-		// but the Moby client doesn't natively know how to handle them
-		// adapted from https://github.com/docker/cli/blob/a32cd16160f1b41c1c4ae7bee4dac929d1484e59/cli/context/docker/load.go#L93-L134
-		//
-		// WARNING: due to the complexity of this setup, there is currently NO integration test that covers
-		// 	using an SSH remote executor (CI DOES use a remote executor, but not via SSH)
-		connHelper, err := connhelper.GetConnectionHelper(env.Host)
-		if err != nil {
-			return nil, err
-		}
-		if connHelper != nil {
-			httpClient := &http.Client{
-				Transport: &http.Transport{
-					DialContext: connHelper.Dialer,
-				},
-			}
-			result = append(result,
-				client.WithHTTPClient(httpClient),
-				client.WithHost(connHelper.Host),
-				client.WithDialContext(connHelper.Dialer),
-			)
-		} else {
-			// N.B. GetConnectionHelper() returns nil if there's no special helper needed (i.e.
-			// 	for everything non-SSH), at which point we can just pass the host value through
-			// 	as-is to Moby code to let it handle it for http/https/tcp
-			result = append(result, client.WithHost(env.Host))
-		}
+	host := envMap["DOCKER_HOST"]
+	if host != "" {
+		result = append(result, client.WithHost(host))
 	}
 
-	if env.APIVersion != "" {
-		result = append(result, client.WithVersion(env.APIVersion))
+	apiVersion := envMap["DOCKER_API_VERSION"]
+	if apiVersion != "" {
+		result = append(result, client.WithVersion(apiVersion))
 	} else {
 		// WithAPIVersionNegotiation makes the Docker client negotiate down to a lower
 		// version if Docker's current API version is newer than the server version.

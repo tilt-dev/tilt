@@ -18,7 +18,7 @@ import (
 
 func TestCli_Run(t *testing.T) {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
-	dEnv := ProvideClusterEnv(ctx, "gke", clusterid.ProductGKE, wmcontainer.RuntimeDocker, k8s.FakeMinikube{})
+	dEnv := ProvideClusterEnv(ctx, RealClientCreator{}, "gke", clusterid.ProductGKE, wmcontainer.RuntimeDocker, k8s.FakeMinikube{})
 	cli := NewDockerClient(ctx, Env(dEnv))
 	defer func() {
 		// release any idle connections to avoid out of file errors if running test many times
