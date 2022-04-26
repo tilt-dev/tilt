@@ -31,7 +31,7 @@ import SocketBar, { isTiltSocketConnected } from "./SocketBar"
 import { StarredResourcesContextProvider } from "./StarredResourcesContext"
 import { ShowErrorModal, ShowFatalErrorModal, SocketState } from "./types"
 
-type HudProps = {
+export type HudProps = {
   history: History
   interfaceVersion: InterfaceVersion
 }

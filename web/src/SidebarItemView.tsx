@@ -313,6 +313,7 @@ export function DisabledSidebarItemView(props: SidebarItemViewProps) {
       <DisabledSidebarItemBox
         className={`${isSelectedClass}`}
         onClick={(_e) => openResource(item.name)}
+        role="link"
       >
         {item.name}
       </DisabledSidebarItemBox>

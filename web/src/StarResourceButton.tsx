@@ -69,10 +69,10 @@ export default function StarResourceButton(
 
   if (isStarred) {
     icon = <ActiveStarIcon />
-    title = "Unstar"
+    title = `Unstar ${resourceName}`
   } else {
     icon = <InactiveStarIcon />
-    title = "Star"
+    title = `Star ${resourceName}`
   }
 
   function onClick(e: any) {

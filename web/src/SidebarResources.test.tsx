@@ -1,6 +1,12 @@
-import { render, screen } from "@testing-library/react"
+import {
+  render,
+  RenderOptions,
+  RenderResult,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { mount, ReactWrapper } from "enzyme"
 import React from "react"
 import { MemoryRouter } from "react-router"
 import { AnalyticsAction } from "./analytics"
@@ -21,21 +27,9 @@ import {
   RESOURCE_LIST_OPTIONS_KEY,
 } from "./ResourceListOptionsContext"
 import SidebarItem from "./SidebarItem"
-import SidebarItemView, { DisabledSidebarItemView } from "./SidebarItemView"
-import SidebarResources, {
-  SidebarDisabledSectionList,
-  SidebarDisabledSectionTitle,
-  SidebarGroupName,
-  SidebarProps,
-} from "./SidebarResources"
+import SidebarResources from "./SidebarResources"
 import { StarredResourcesContextProvider } from "./StarredResourcesContext"
-import StarResourceButton from "./StarResourceButton"
-import {
-  nResourceView,
-  nResourceWithLabelsView,
-  oneResource,
-  twoResourceView,
-} from "./testdata"
+import { nResourceView, nResourceWithLabelsView, oneResource } from "./testdata"
 import { ResourceStatus, ResourceView } from "./types"
 
 let pathBuilder = PathBuilder.forTesting("localhost", "/")
@@ -49,51 +43,64 @@ const starredItemsAccessor = accessorsForTesting<string[]>(
   localStorage
 )
 
-const SidebarResourcesTestWrapper = ({
-  items,
-  selected,
-  flags,
-  resourceListOptions,
-}: {
-  items: SidebarItem[]
-  selected?: string
-  flags?: { [key in Flag]?: boolean }
-  resourceListOptions?: ResourceListOptions
-}) => {
-  const features = new Features(
-    flags ?? { [Flag.DisableResources]: true, [Flag.Labels]: true }
-  )
-  const listOptions = resourceListOptions ?? DEFAULT_OPTIONS
-  return (
-    <MemoryRouter>
-      <tiltfileKeyContext.Provider value="test">
-        <FeaturesTestProvider value={features}>
-          <StarredResourcesContextProvider>
-            <ResourceGroupsContextProvider>
-              <ResourceListOptionsProvider>
-                <SidebarResources
-                  items={items}
-                  selected={selected ?? ""}
-                  resourceView={ResourceView.Log}
-                  pathBuilder={pathBuilder}
-                  resourceListOptions={listOptions}
-                />
-              </ResourceListOptionsProvider>
-            </ResourceGroupsContextProvider>
-          </StarredResourcesContextProvider>
-        </FeaturesTestProvider>
-      </tiltfileKeyContext.Provider>
-    </MemoryRouter>
-  )
+function createSidebarItems(n: number, withLabels = false) {
+  const logStore = new LogStore()
+  const resourceView = withLabels ? nResourceWithLabelsView : nResourceView
+  const resources = resourceView(n).uiResources
+  return resources.map((r) => new SidebarItem(r, logStore))
 }
 
-function clickStar(
-  root: ReactWrapper<any, React.Component["state"], React.Component>,
-  name: string
+function createSidebarItemsWithAlerts() {
+  const logStore = new LogStore()
+  return [
+    oneResource({ isBuilding: true }),
+    oneResource({ name: "a" }),
+    oneResource({ name: "b" }),
+    oneResource({ name: "c", disabled: true }),
+  ].map((res) => new SidebarItem(res, logStore))
+}
+
+function customRender(
+  componentOptions: {
+    items: SidebarItem[]
+    selected?: string
+    resourceListOptions?: ResourceListOptions
+  },
+  wrapperOptions?: { disableResourcesEnabled: boolean },
+  renderOptions?: RenderOptions
 ) {
-  let starButtons = root.find(StarResourceButton).find({ resourceName: name })
-  expect(starButtons.length).toBeGreaterThan(0)
-  starButtons.at(0).simulate("click")
+  const features = new Features({
+    [Flag.DisableResources]: wrapperOptions?.disableResourcesEnabled ?? true,
+    [Flag.Labels]: true,
+  })
+  const listOptions = componentOptions.resourceListOptions ?? DEFAULT_OPTIONS
+  return render(
+    <SidebarResources
+      items={componentOptions.items}
+      selected={componentOptions.selected ?? ""}
+      resourceView={ResourceView.Log}
+      pathBuilder={pathBuilder}
+      resourceListOptions={listOptions}
+    />,
+    {
+      wrapper: ({ children }) => (
+        <MemoryRouter>
+          <tiltfileKeyContext.Provider value="test">
+            <FeaturesTestProvider value={features}>
+              <StarredResourcesContextProvider>
+                <ResourceGroupsContextProvider>
+                  <ResourceListOptionsProvider>
+                    {children}
+                  </ResourceListOptionsProvider>
+                </ResourceGroupsContextProvider>
+              </StarredResourcesContextProvider>
+            </FeaturesTestProvider>
+          </tiltfileKeyContext.Provider>
+        </MemoryRouter>
+      ),
+      ...renderOptions,
+    }
+  )
 }
 
 describe("SidebarResources", () => {
@@ -109,308 +116,251 @@ describe("SidebarResources", () => {
     localStorage.clear()
   })
 
-  it("adds items to the starred list when items are starred", () => {
-    let ls = new LogStore()
-    let items = twoResourceView().uiResources.map((r) => new SidebarItem(r, ls))
-    const root = mount(
-      <MemoryRouter>
-        <tiltfileKeyContext.Provider value="test">
-          <StarredResourcesContextProvider>
-            <ResourceListOptionsProvider>
-              <SidebarResources
-                items={items}
-                selected={""}
-                resourceView={ResourceView.Log}
-                pathBuilder={pathBuilder}
-                resourceListOptions={DEFAULT_OPTIONS}
-              />
-            </ResourceListOptionsProvider>
-          </StarredResourcesContextProvider>
-        </tiltfileKeyContext.Provider>
-      </MemoryRouter>
-    )
+  describe("starring resources", () => {
+    const items = createSidebarItems(2)
 
-    clickStar(root, "snack")
+    it("adds items to the starred list when items are starred", async () => {
+      const itemToStar = items[1].name
+      customRender({ items: items })
 
-    expectIncrs(
-      {
-        name: "ui.web.star",
-        tags: { starCount: "0", action: AnalyticsAction.Load },
-      },
-      {
-        name: "ui.web.sidebarStarButton",
-        tags: {
-          action: AnalyticsAction.Click,
-          newStarState: "true",
-          target: "k8s",
-        },
-      },
-      {
-        name: "ui.web.star",
-        tags: { starCount: "1", action: AnalyticsAction.Star },
-      }
-    )
-
-    expect(starredItemsAccessor.get()).toEqual(["snack"])
-  })
-
-  it("removes items from the starred list when items are unstarred", () => {
-    let ls = new LogStore()
-    let items = twoResourceView().uiResources.map((r) => new SidebarItem(r, ls))
-    starredItemsAccessor.set(items.map((i) => i.name))
-
-    const root = mount(
-      <MemoryRouter>
-        <tiltfileKeyContext.Provider value="test">
-          <StarredResourcesContextProvider>
-            <ResourceListOptionsProvider>
-              <SidebarResources
-                items={items}
-                selected={""}
-                resourceView={ResourceView.Log}
-                pathBuilder={pathBuilder}
-                resourceListOptions={DEFAULT_OPTIONS}
-              />
-            </ResourceListOptionsProvider>
-          </StarredResourcesContextProvider>
-        </tiltfileKeyContext.Provider>
-      </MemoryRouter>
-    )
-
-    clickStar(root, "snack")
-
-    expectIncrs(
-      {
-        name: "ui.web.star",
-        tags: { starCount: "2", action: AnalyticsAction.Load },
-      },
-      {
-        name: "ui.web.sidebarStarButton",
-        tags: {
-          action: AnalyticsAction.Click,
-          newStarState: "false",
-          target: "k8s",
-        },
-      },
-      {
-        name: "ui.web.star",
-        tags: { starCount: "1", action: AnalyticsAction.Unstar },
-      }
-    )
-
-    expect(starredItemsAccessor.get()).toEqual(["vigoda"])
-  })
-
-  const loadCases: [string, ResourceListOptions, string[]][] = [
-    [
-      "alertsOnTop",
-      { ...DEFAULT_OPTIONS, alertsOnTop: true },
-      ["vigoda", "a", "b"],
-    ],
-    [
-      "resourceNameFilter",
-      { ...DEFAULT_OPTIONS, resourceNameFilter: "vig" },
-      ["vigoda"],
-    ],
-    [
-      "showDisabledResources",
-      { ...DEFAULT_OPTIONS, showDisabledResources: true },
-      ["vigoda", "a", "b", "c"],
-    ],
-  ]
-  test.each(loadCases)(
-    "loads %p from browser storage",
-    (_name, options, expectedItems) => {
-      resourceListOptionsAccessor.set(options)
-
-      let ls = new LogStore()
-      const items = [
-        oneResource({ isBuilding: true }),
-        oneResource({ name: "a" }),
-        oneResource({ name: "b" }),
-        oneResource({ name: "c", disabled: true }),
-      ].map((res) => new SidebarItem(res, ls))
-
-      render(
-        <SidebarResourcesTestWrapper
-          items={items}
-          resourceListOptions={options}
-        />
+      userEvent.click(
+        screen.getByRole("button", { name: `Star ${itemToStar}` })
       )
 
-      // Find the sidebar items for the expected list
-      expectedItems.forEach((item) => {
-        expect(screen.getByText(item, { exact: true })).toBeTruthy()
+      await waitFor(() => {
+        expect(starredItemsAccessor.get()).toEqual([itemToStar])
       })
 
-      // Check that each option reflects the storage value
-      const aotToggle = screen.queryByLabelText("Alerts on top")
-      expect(aotToggle).toBeTruthy()
-      expect((aotToggle as HTMLInputElement).checked).toBe(options.alertsOnTop)
-
-      const resourceNameFilter = screen.queryByPlaceholderText(
-        "Filter resources by name"
+      expectIncrs(
+        {
+          name: "ui.web.star",
+          tags: { starCount: "0", action: AnalyticsAction.Load },
+        },
+        {
+          name: "ui.web.sidebarStarButton",
+          tags: {
+            action: AnalyticsAction.Click,
+            newStarState: "true",
+            target: "k8s",
+          },
+        },
+        {
+          name: "ui.web.star",
+          tags: { starCount: "1", action: AnalyticsAction.Star },
+        }
       )
-      expect(resourceNameFilter).toBeTruthy()
-      expect((resourceNameFilter as HTMLInputElement).value).toBe(
-        options.resourceNameFilter
+    })
+
+    it("removes items from the starred list when items are unstarred", async () => {
+      starredItemsAccessor.set(items.map((i) => i.name))
+      customRender({ items })
+
+      userEvent.click(
+        screen.getByRole("button", { name: `Unstar ${items[1].name}` })
       )
 
-      const disabledToggle = screen.queryByLabelText("Show disabled resources")
-      expect(disabledToggle).toBeTruthy()
-      expect((disabledToggle as HTMLInputElement).checked).toBe(
-        options.showDisabledResources
+      await waitFor(() => {
+        expect(starredItemsAccessor.get()).toEqual([items[0].name])
+      })
+
+      expectIncrs(
+        {
+          name: "ui.web.star",
+          tags: { starCount: "2", action: AnalyticsAction.Load },
+        },
+        {
+          name: "ui.web.sidebarStarButton",
+          tags: {
+            action: AnalyticsAction.Click,
+            newStarState: "false",
+            target: "k8s",
+          },
+        },
+        {
+          name: "ui.web.star",
+          tags: { starCount: "1", action: AnalyticsAction.Unstar },
+        }
       )
-    }
-  )
+    })
+  })
 
-  const saveCases: [string, ResourceListOptions][] = [
-    ["alertsOnTop", { ...DEFAULT_OPTIONS, alertsOnTop: true }],
-    ["resourceNameFilter", { ...DEFAULT_OPTIONS, resourceNameFilter: "foo" }],
-    [
-      "showDisabledResources",
-      { ...DEFAULT_OPTIONS, showDisabledResources: true },
-    ],
-  ]
-  test.each(saveCases)(
-    "saves option %s to browser storage",
-    (_name, expectedOptions) => {
-      let ls = new LogStore()
-      const items = [
-        oneResource({ isBuilding: true }),
-        oneResource({ name: "a" }),
-        oneResource({ name: "b" }),
-        oneResource({ name: "c", disabled: true }),
-      ].map((res) => new SidebarItem(res, ls))
+  describe("resource list options", () => {
+    const items = createSidebarItemsWithAlerts()
 
-      render(<SidebarResourcesTestWrapper items={items} />)
+    const loadCases: [string, ResourceListOptions, string[]][] = [
+      [
+        "alertsOnTop",
+        { ...DEFAULT_OPTIONS, alertsOnTop: true },
+        ["vigoda", "a", "b"],
+      ],
+      [
+        "resourceNameFilter",
+        { ...DEFAULT_OPTIONS, resourceNameFilter: "vig" },
+        ["vigoda"],
+      ],
+      [
+        "showDisabledResources",
+        { ...DEFAULT_OPTIONS, showDisabledResources: true },
+        ["vigoda", "a", "b", "c"],
+      ],
+    ]
+    test.each(loadCases)(
+      "loads %p from browser storage",
+      (_name, resourceListOptions, expectedItems) => {
+        resourceListOptionsAccessor.set(resourceListOptions)
 
-      const aotToggle = screen.queryByLabelText("Alerts on top")
-      expect(aotToggle).toBeTruthy()
-      if (
-        (aotToggle as HTMLInputElement).checked !== expectedOptions.alertsOnTop
-      ) {
-        userEvent.click(aotToggle as HTMLInputElement)
-      }
+        customRender({ items, resourceListOptions })
 
-      const resourceNameFilter = screen.queryByPlaceholderText(
-        "Filter resources by name"
-      )
-      expect(resourceNameFilter).toBeTruthy()
-      if (expectedOptions.resourceNameFilter) {
-        userEvent.type(
-          resourceNameFilter as HTMLInputElement,
-          expectedOptions.resourceNameFilter
+        // Find the sidebar items for the expected list
+        expectedItems.forEach((item) => {
+          expect(screen.getByText(item, { exact: true })).toBeInTheDocument()
+        })
+
+        // Check that each option reflects the storage value
+        const aotToggle = screen.getByLabelText("Alerts on top")
+        expect((aotToggle as HTMLInputElement).checked).toBe(
+          resourceListOptions.alertsOnTop
+        )
+
+        const resourceNameFilter = screen.getByPlaceholderText(
+          "Filter resources by name"
+        )
+        expect(resourceNameFilter).toHaveValue(
+          resourceListOptions.resourceNameFilter
+        )
+
+        const disabledToggle = screen.getByLabelText("Show disabled resources")
+        expect(disabledToggle).toBeTruthy()
+        expect((disabledToggle as HTMLInputElement).checked).toBe(
+          resourceListOptions.showDisabledResources
         )
       }
+    )
 
-      const disabledToggle = screen.queryByLabelText("Show disabled resources")
-      expect(disabledToggle).toBeTruthy()
-      if (
-        (disabledToggle as HTMLInputElement).checked !==
-        expectedOptions.showDisabledResources
-      ) {
-        userEvent.click(disabledToggle as HTMLInputElement)
+    const saveCases: [string, ResourceListOptions][] = [
+      ["alertsOnTop", { ...DEFAULT_OPTIONS, alertsOnTop: true }],
+      ["resourceNameFilter", { ...DEFAULT_OPTIONS, resourceNameFilter: "foo" }],
+      [
+        "showDisabledResources",
+        { ...DEFAULT_OPTIONS, showDisabledResources: true },
+      ],
+    ]
+    test.each(saveCases)(
+      "saves option %s to browser storage",
+      (_name, expectedOptions) => {
+        customRender({ items })
+
+        const aotToggle = screen.getByLabelText("Alerts on top")
+        if (
+          (aotToggle as HTMLInputElement).checked !==
+          expectedOptions.alertsOnTop
+        ) {
+          userEvent.click(aotToggle)
+        }
+
+        const resourceNameFilter = screen.getByPlaceholderText(
+          "Filter resources by name"
+        )
+        if (expectedOptions.resourceNameFilter) {
+          userEvent.type(resourceNameFilter, expectedOptions.resourceNameFilter)
+        }
+
+        const disabledToggle = screen.getByLabelText("Show disabled resources")
+        if (
+          (disabledToggle as HTMLInputElement).checked !==
+          expectedOptions.showDisabledResources
+        ) {
+          userEvent.click(disabledToggle)
+        }
+
+        const observedOptions = resourceListOptionsAccessor.get()
+        expect(observedOptions).toEqual(expectedOptions)
       }
-
-      const observedOptions = resourceListOptionsAccessor.get()
-      expect(observedOptions).toEqual(expectedOptions)
-    }
-  )
+    )
+  })
 
   describe("disabled resources", () => {
-    let wrapper: ReactWrapper<SidebarProps, typeof SidebarResources>
-
-    function createSidebarItems(n: number, withLabels = false) {
-      const logStore = new LogStore()
-      const resourceView = withLabels ? nResourceWithLabelsView : nResourceView
-      return resourceView(n).uiResources.map(
-        (r) => new SidebarItem(r, logStore)
-      )
-    }
-
     describe("when feature flag is enabled and `showDisabledResources` option is true", () => {
+      let rerender: RenderResult["rerender"]
+
       beforeEach(() => {
         // Create a list of sidebar items with disable resources interspersed
         const items = createSidebarItems(5)
         items[1].runtimeStatus = ResourceStatus.Disabled
         items[3].runtimeStatus = ResourceStatus.Disabled
 
-        wrapper = mount(
-          <SidebarResourcesTestWrapper
-            items={items}
-            flags={{ [Flag.DisableResources]: true }}
-            resourceListOptions={{
-              ...DEFAULT_OPTIONS,
-              showDisabledResources: true,
-            }}
-          />
-        )
-      })
-
-      it("displays disabled resources in their own list", () => {
-        const disabledItemsList = wrapper.find(SidebarDisabledSectionList)
-        const disabledItemsNames = disabledItemsList
-          .find(SidebarItemView)
-          .map((item) => item.prop("item").name)
-        expect(disabledItemsNames).toEqual(["_1", "_3"])
+        rerender = customRender({
+          items,
+          resourceListOptions: {
+            ...DEFAULT_OPTIONS,
+            showDisabledResources: true,
+          },
+        }).rerender
       })
 
       it("displays disabled resources list title", () => {
-        const disabledItemsList = wrapper.find(SidebarDisabledSectionList)
-        expect(disabledItemsList.find(SidebarDisabledSectionTitle).length).toBe(
-          1
-        )
+        expect(
+          screen.getByText("Disabled", { exact: true })
+        ).toBeInTheDocument()
+      })
+
+      it("displays disabled resources in their own list", () => {
+        // Get the disabled resources list and query within it
+        const disabledResourceList = screen.getByLabelText("Disabled resources")
+
+        expect(within(disabledResourceList).getByText("_1")).toBeInTheDocument()
+        expect(within(disabledResourceList).getByText("_3")).toBeInTheDocument()
       })
 
       describe("when there is a resource name filter", () => {
         beforeEach(() => {
           // Create a list of sidebar items with disable resources interspersed
-          const items = createSidebarItems(11)
-          items[1].runtimeStatus = ResourceStatus.Disabled
-          items[3].runtimeStatus = ResourceStatus.Disabled
-          items[8].runtimeStatus = ResourceStatus.Disabled
+          const itemsWithFilter = createSidebarItems(11)
+          itemsWithFilter[1].runtimeStatus = ResourceStatus.Disabled
+          itemsWithFilter[3].runtimeStatus = ResourceStatus.Disabled
+          itemsWithFilter[8].runtimeStatus = ResourceStatus.Disabled
 
-          wrapper = mount(
-            <SidebarResourcesTestWrapper
-              items={items}
-              flags={{ [Flag.DisableResources]: true }}
-              resourceListOptions={{
-                resourceNameFilter: "1",
-                alertsOnTop: true,
-                showDisabledResources: true,
-              }}
+          const options = {
+            resourceNameFilter: "1",
+            alertsOnTop: true,
+            showDisabledResources: true,
+          }
+
+          rerender(
+            <SidebarResources
+              items={itemsWithFilter}
+              selected=""
+              resourceView={ResourceView.Log}
+              pathBuilder={pathBuilder}
+              resourceListOptions={options}
             />
           )
         })
 
         it("displays disabled resources that match the filter", () => {
           // Expect that all matching resources (enabled + disabled) are displayed
-          const resourceNameMatches = wrapper
-            .find(SidebarItemView)
-            .map((item) => item.prop("item").name)
-          expect(resourceNameMatches).toEqual(["_10", "_1"])
+          expect(screen.getByText("_1", { exact: true })).toBeInTheDocument()
+          expect(screen.getByText("_10", { exact: true })).toBeInTheDocument()
 
           // Expect that all disabled resources appear in their own section
-          const disabledItemsList = wrapper.find(SidebarDisabledSectionList)
-          const disabledItemsNames = disabledItemsList
-            .find(SidebarItemView)
-            .map((item) => item.prop("item").name)
-          expect(disabledItemsNames).toEqual(["_1"])
+          const disabledItemsList = screen.getByLabelText("Disabled resources")
+          expect(within(disabledItemsList).getByText("_1")).toBeInTheDocument()
         })
       })
 
       describe("when there are groups and multiple groups have disabled resources", () => {
         it("displays disabled resources within each group", () => {
-          const items = createSidebarItems(10, true)
+          const itemsWithLabels = createSidebarItems(10, true)
           // Add disabled items in different label groups based on hardcoded data
-          items[2].runtimeStatus = ResourceStatus.Disabled
-          items[5].runtimeStatus = ResourceStatus.Disabled
+          itemsWithLabels[2].runtimeStatus = ResourceStatus.Disabled
+          itemsWithLabels[5].runtimeStatus = ResourceStatus.Disabled
 
-          wrapper = mount(
-            <SidebarResourcesTestWrapper
-              items={items}
-              flags={{ [Flag.DisableResources]: true, [Flag.Labels]: true }}
+          rerender(
+            <SidebarResources
+              items={itemsWithLabels}
+              selected=""
+              resourceView={ResourceView.Log}
+              pathBuilder={pathBuilder}
               resourceListOptions={{
                 ...DEFAULT_OPTIONS,
                 showDisabledResources: true,
@@ -418,8 +368,7 @@ describe("SidebarResources", () => {
             />
           )
 
-          expect(wrapper.find(SidebarDisabledSectionList).length).toBe(2)
-          expect(wrapper.find(SidebarDisabledSectionTitle).length).toBe(2)
+          expect(screen.getAllByLabelText("Disabled resources")).toHaveLength(2)
         })
       })
     })
@@ -427,76 +376,39 @@ describe("SidebarResources", () => {
     describe("when feature flag is NOT enabled", () => {
       beforeEach(() => {
         // Create a list of sidebar items with disable resources interspersed
-        const items = createSidebarItems(3)
-        items[1].runtimeStatus = ResourceStatus.Disabled
+        const items = createSidebarItems(5, true)
+        // Disable the resource that's in the label group with only one resource
+        items[3].runtimeStatus = ResourceStatus.Disabled
 
-        wrapper = mount(
-          <SidebarResourcesTestWrapper
-            items={items}
-            flags={{ [Flag.DisableResources]: false }}
-          />
-        )
+        customRender({ items }, { disableResourcesEnabled: false })
       })
 
       it("does NOT display disabled resources at all", () => {
-        expect(wrapper.find(DisabledSidebarItemView).length).toEqual(0)
-        expect(wrapper.find(SidebarItemView).length).toEqual(2)
+        expect(screen.queryByLabelText("Disabled resources")).toBeNull()
       })
 
       it("does NOT display disabled resources list title", () => {
-        expect(wrapper.find(SidebarDisabledSectionTitle).length).toBe(0)
+        expect(screen.queryByText("Disabled")).toBeNull()
       })
 
       describe("when there are groups and an entire group is disabled", () => {
         it("does NOT display the group section", () => {
-          const items = createSidebarItems(5, true)
-          // Disable the resource that's in the label group with only one resource
-          items[3].runtimeStatus = ResourceStatus.Disabled
-
-          wrapper = mount(
-            <SidebarResourcesTestWrapper
-              items={items}
-              flags={{ [Flag.DisableResources]: false, [Flag.Labels]: true }}
-            />
-          )
-
-          // Test data hardcodes six label groups (+ one for unlabelled items),
-          // so expect that only five total label groups show up when one group
-          // has only disabled resources
-          const labelGroupNames = wrapper
-            .find(SidebarGroupName)
-            .map((label) => label.text())
-          expect(labelGroupNames.length).toBe(5)
-          expect(labelGroupNames).not.toContain("very_long_long_long_label")
+          // The test data has one group with only disabled resources,
+          // so expect that it doesn't show up
+          expect(screen.queryByText("very_long_long_long_label")).toBeNull()
         })
       })
     })
 
     describe("when feature flag is enabled and `showDisabledResources` is false", () => {
-      beforeEach(() => {
-        // Create a list of sidebar items with disable resources interspersed
-        const items = createSidebarItems(3)
-        items[1].runtimeStatus = ResourceStatus.Disabled
-
-        wrapper = mount(
-          <SidebarResourcesTestWrapper
-            items={items}
-            flags={{ [Flag.DisableResources]: true }}
-            resourceListOptions={{
-              ...DEFAULT_OPTIONS,
-              showDisabledResources: false,
-            }}
-          />
-        )
-      })
-
       it("does NOT display disabled resources at all", () => {
-        expect(wrapper.find(DisabledSidebarItemView).length).toEqual(0)
-        expect(wrapper.find(SidebarItemView).length).toEqual(2)
+        expect(screen.queryByLabelText("Disabled resources")).toBeNull()
+        expect(screen.queryByText("_1", { exact: true })).toBeNull()
+        expect(screen.queryByText("_3", { exact: true })).toBeNull()
       })
 
       it("does NOT display disabled resources list title", () => {
-        expect(wrapper.find(SidebarDisabledSectionTitle).length).toBe(0)
+        expect(screen.queryByText("Disabled", { exact: true })).toBeNull()
       })
 
       describe("when there are groups and an entire group is disabled", () => {
@@ -505,25 +417,11 @@ describe("SidebarResources", () => {
           // Disable the resource that's in the label group with only one resource
           items[3].runtimeStatus = ResourceStatus.Disabled
 
-          wrapper = mount(
-            <SidebarResourcesTestWrapper
-              items={items}
-              flags={{ [Flag.DisableResources]: false, [Flag.Labels]: true }}
-              resourceListOptions={{
-                ...DEFAULT_OPTIONS,
-                showDisabledResources: false,
-              }}
-            />
-          )
+          customRender({ items }, { disableResourcesEnabled: false })
 
-          // Test data hardcodes six label groups (+ one for unlabelled items),
-          // so expect that only five total label groups show up when one group
-          // has only disabled resources
-          const labelGroupNames = wrapper
-            .find(SidebarGroupName)
-            .map((label) => label.text())
-          expect(labelGroupNames.length).toBe(5)
-          expect(labelGroupNames).not.toContain("very_long_long_long_label")
+          // The test data has one group with only disabled resources,
+          // so expect that it doesn't show up
+          expect(screen.queryByText("very_long_long_long_label")).toBeNull()
         })
       })
     })

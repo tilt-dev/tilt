@@ -146,9 +146,17 @@ function StartBuildButton(props: StartBuildButtonProps) {
           analyticsTags={props.analyticsTags}
         >
           {isEmphasized ? (
-            <StartBuildButtonManualSvg role="presentation" className="icon" />
+            <StartBuildButtonManualSvg
+              role="presentation"
+              className="icon"
+              data-testid="build-manual-icon"
+            />
           ) : (
-            <StartBuildButtonSvg role="presentation" className="icon" />
+            <StartBuildButtonSvg
+              role="presentation"
+              className="icon"
+              data-testid="build-auto-icon"
+            />
           )}
         </InstrumentedButton>
       </BuildButtonCursorWrapper>

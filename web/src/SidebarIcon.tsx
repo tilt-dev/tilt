@@ -21,13 +21,6 @@ type SidebarIconProps = {
   tooltipText: string
 }
 
-// For testing
-export enum IconType {
-  StatusDefault = "default",
-  StatusPending = "pending",
-  StatusBuilding = "building",
-}
-
 let SidebarIconRoot = styled.div`
   display: flex;
   flex-shrink: 0;
@@ -84,14 +77,21 @@ export default class SidebarIcon extends PureComponent<SidebarIconProps> {
   render() {
     let icon = <span>&nbsp;</span>
     if (this.props.status === ResourceStatus.Warning) {
-      icon = <WarningSvg fill={Color.white} width="10px" height="10px" />
+      icon = (
+        <WarningSvg
+          fill={Color.white}
+          width="10px"
+          height="10px"
+          role="presentation"
+        />
+      )
     } else if (this.props.status === ResourceStatus.Unhealthy) {
-      icon = <ErrorSvg fill={Color.white} />
+      icon = <ErrorSvg fill={Color.white} role="presentation" />
     } else if (this.props.status === ResourceStatus.None) {
-      icon = <CheckmarkSmallSvg />
+      icon = <CheckmarkSmallSvg role="presentation" />
     }
 
-    if (!this.props.tooltipText) {
+    if (!this.props.tooltipText.length) {
       return (
         <SidebarIconRoot
           className={`${ClassNameFromResourceStatus(this.props.status)}`}

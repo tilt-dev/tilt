@@ -1,15 +1,12 @@
 import { createMemoryHistory } from "history"
 import React from "react"
-import ReactDOM from "react-dom"
-import {
-  findRenderedComponentWithType,
-  renderIntoDocument,
-} from "react-dom/test-utils"
+import { findRenderedComponentWithType } from "react-dom/test-utils"
 import ReactModal from "react-modal"
 import { MemoryRouter } from "react-router"
 import HUD, { mergeAppUpdate } from "./HUD"
 import LogStore from "./LogStore"
 import { SocketBarRoot } from "./SocketBar"
+import { renderTestComponent } from "./test-helpers"
 import {
   logList,
   nButtonView,
@@ -23,16 +20,6 @@ import { SocketState } from "./types"
 // since the app root element isn't available; in prod, it should
 // be set as the app root so that accessibility features are set correctly
 ReactModal.setAppElement(document.body)
-
-declare global {
-  namespace NodeJS {
-    interface Global {
-      document: Document
-      window: Window
-      navigator: Navigator
-    }
-  }
-}
 
 const fakeHistory = createMemoryHistory()
 const interfaceVersion = { isNewDefault: () => false, toggleDefault: () => {} }
@@ -49,9 +36,7 @@ beforeEach(() => {
 })
 
 it("renders reconnecting bar", async () => {
-  let root = emptyHUD()
-  let rootTree = renderIntoDocument(root) as any
-  let container = ReactDOM.findDOMNode(rootTree)! as HTMLElement
+  const { rootTree, container } = renderTestComponent<HUD>(emptyHUD())
   expect(container.textContent).toEqual(expect.stringContaining("Loading"))
 
   const hud = findRenderedComponentWithType(rootTree, HUD)
@@ -60,7 +45,6 @@ it("renders reconnecting bar", async () => {
     view: oneResourceView(),
     socketState: SocketState.Reconnecting,
   })
-  container = ReactDOM.findDOMNode(rootTree)! as HTMLElement
 
   let socketBar = Array.from(container.querySelectorAll(SocketBarRoot))
   expect(socketBar).toHaveLength(1)
@@ -70,8 +54,8 @@ it("renders reconnecting bar", async () => {
 })
 
 it("loads logs incrementally", async () => {
-  const root = renderIntoDocument(emptyHUD()) as any
-  const hud = findRenderedComponentWithType(root, HUD)
+  const { rootTree } = renderTestComponent<HUD>(emptyHUD())
+  const hud = findRenderedComponentWithType(rootTree, HUD)
 
   let now = new Date().toString()
   let resourceView = oneResourceView()
@@ -117,8 +101,8 @@ it("loads logs incrementally", async () => {
 })
 
 it("renders logs to snapshot", async () => {
-  const root = renderIntoDocument(emptyHUD()) as any
-  const hud = findRenderedComponentWithType(root, HUD)
+  const { rootTree } = renderTestComponent<HUD>(emptyHUD())
+  const hud = findRenderedComponentWithType(rootTree, HUD)
 
   let now = new Date().toString()
   let resourceView = oneResourceView()

@@ -220,6 +220,7 @@ export function StarredResource(props: {
         <StarButton
           onClick={onClick}
           analyticsName="ui.web.starredResourceBarUnstar"
+          aria-label={`Unstar ${props.resource.name}`}
         >
           <StarIcon />
         </StarButton>

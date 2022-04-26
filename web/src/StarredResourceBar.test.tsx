@@ -1,68 +1,34 @@
-import { mount, ReactWrapper } from "enzyme"
+import { render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import React from "react"
 import { MemoryRouter } from "react-router"
-import PathBuilder from "./PathBuilder"
-import StarredResourceBar, {
-  StarButton,
-  StarredResource,
-  StarredResourceLabel,
-} from "./StarredResourceBar"
+import StarredResourceBar from "./StarredResourceBar"
 import { ResourceStatus } from "./types"
 
-const pathBuilder = PathBuilder.forTesting("localhost", "/")
+const TEST_RESOURCES = [
+  { name: "foo", status: ResourceStatus.Healthy },
+  { name: "bar", status: ResourceStatus.Unhealthy },
+]
 
-function getStarredItemNames(
-  root: ReactWrapper<any, React.Component["state"], React.Component>
-): Array<string> {
-  let starredItems = root.find(StarredResourceLabel)
-  return starredItems.map((i) => i.text())
-}
+describe("StarredResourceBar", () => {
+  let unstarSpy: jest.Mock
 
-function clickStar(
-  root: ReactWrapper<any, React.Component["state"], React.Component>,
-  name: string
-) {
-  const r = root
-    .find(StarredResource)
-    .find({ resource: { name: name } })
-    .find(StarButton)
-  expect(r.length).toEqual(1)
-  r.at(0).simulate("click")
-}
+  beforeEach(() => {
+    unstarSpy = jest.fn()
+    render(
+      <StarredResourceBar resources={TEST_RESOURCES} unstar={unstarSpy} />,
+      { wrapper: MemoryRouter }
+    )
+  })
 
-it("renders the starred items", () => {
-  const resources = [
-    { name: "foo", status: ResourceStatus.Healthy },
-    { name: "bar", status: ResourceStatus.Unhealthy },
-  ]
+  it("renders the starred items", () => {
+    expect(screen.getByRole("button", { name: "foo" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "bar" })).toBeInTheDocument()
+  })
 
-  const root = mount(
-    <MemoryRouter>
-      <StarredResourceBar resources={resources} unstar={() => {}} />
-    </MemoryRouter>
-  )
+  it("calls unstar", () => {
+    userEvent.click(screen.getByLabelText("Unstar foo"))
 
-  expect(getStarredItemNames(root)).toEqual(["foo", "bar"])
-})
-
-it("calls unstar", () => {
-  const resources = [
-    { name: "foo", status: ResourceStatus.Healthy },
-    { name: "bar", status: ResourceStatus.Unhealthy },
-  ]
-
-  let unstars: string[] = []
-  let onClick = (resourceName: string) => {
-    unstars.push(resourceName)
-  }
-
-  const root = mount(
-    <MemoryRouter>
-      <StarredResourceBar resources={resources} unstar={onClick} />
-    </MemoryRouter>
-  )
-
-  clickStar(root, "foo")
-
-  expect(unstars).toEqual(["foo"])
+    expect(unstarSpy).toHaveBeenCalledWith("foo")
+  })
 })

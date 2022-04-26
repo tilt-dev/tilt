@@ -224,6 +224,7 @@ export function SidebarListSection(props: SidebarSectionProps): JSX.Element {
 
   const displayDisabledResources =
     features.isEnabled(Flag.DisableResources) && disabledItems.length > 0
+
   return (
     <>
       {sectionName}
@@ -231,7 +232,7 @@ export function SidebarListSection(props: SidebarSectionProps): JSX.Element {
         <SidebarListSectionItems {...props} items={enabledItems} />
 
         {displayDisabledResources && (
-          <SidebarDisabledSectionList>
+          <SidebarDisabledSectionList aria-label="Disabled resources">
             <SidebarDisabledSectionTitle>Disabled</SidebarDisabledSectionTitle>
             <ul>
               <SidebarListSectionItems {...props} items={disabledItems} />

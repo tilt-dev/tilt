@@ -1,97 +1,103 @@
-import { fireEvent } from "@testing-library/dom"
-import { mount } from "enzyme"
+import { render, RenderResult } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import React from "react"
 import { MemoryRouter } from "react-router"
 import LogStore from "./LogStore"
 import { ResourceNavContextProvider } from "./ResourceNav"
 import SidebarItem from "./SidebarItem"
 import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
-import { twoResourceView } from "./testdata"
+import { nResourceView } from "./testdata"
 import { ResourceView } from "./types"
 
-var opened: any
-let component: any
-let buildStarted: any = false
-const shortcuts = (items: SidebarItem[], selected: string) => {
-  let resourceNav = {
-    selectedResource: "",
-    invalidResource: "",
-    openResource: (name: string) => {
-      opened = name
-    },
-  }
-  opened = null
-
-  component = mount(
-    <MemoryRouter initialEntries={["/init"]}>
-      <ResourceNavContextProvider value={resourceNav}>
-        <SidebarKeyboardShortcuts
-          items={items}
-          selected={selected}
-          resourceView={ResourceView.Log}
-          onStartBuild={() => {
-            buildStarted = true
-          }}
-        />
-      </ResourceNavContextProvider>
-    </MemoryRouter>
+describe("SidebarKeyboardShortcuts", () => {
+  const logStore = new LogStore()
+  const items = nResourceView(2).uiResources.map(
+    (r) => new SidebarItem(r, logStore)
   )
-}
+  let rerender: RenderResult["rerender"]
+  let openResourceSpy: jest.Mock
+  let onStartBuildSpy: jest.Mock
 
-afterEach(() => {
-  if (component) {
-    component.unmount()
-    component = null
-  }
-})
+  beforeEach(() => {
+    openResourceSpy = jest.fn()
+    onStartBuildSpy = jest.fn()
 
-it("navigates forwards", () => {
-  let ls = new LogStore()
-  let items = twoResourceView().uiResources.map(
-    (res) => new SidebarItem(res, ls)
-  )
-  shortcuts(items, "")
-  fireEvent.keyDown(document.body, { key: "j" })
-  expect(opened).toEqual("vigoda")
-})
+    const resourceNavValue = {
+      selectedResource: "",
+      invalidResource: "",
+      openResource: openResourceSpy,
+    }
 
-it("navigates forwards no wrap", () => {
-  let ls = new LogStore()
-  let items = twoResourceView().uiResources.map(
-    (res) => new SidebarItem(res, ls)
-  )
-  shortcuts(items, "snack")
-  fireEvent.keyDown(document.body, { key: "j" })
-  expect(opened).toEqual(null)
-})
+    rerender = render(
+      <SidebarKeyboardShortcuts
+        items={items}
+        selected=""
+        resourceView={ResourceView.Log}
+        onStartBuild={onStartBuildSpy}
+      />,
+      {
+        wrapper: ({ children }) => (
+          <MemoryRouter initialEntries={["/init"]}>
+            <ResourceNavContextProvider value={resourceNavValue}>
+              {children}
+            </ResourceNavContextProvider>
+          </MemoryRouter>
+        ),
+      }
+    ).rerender
+  })
 
-it("navigates backwards", () => {
-  let ls = new LogStore()
-  let items = twoResourceView().uiResources.map(
-    (res) => new SidebarItem(res, ls)
-  )
-  shortcuts(items, "snack")
-  fireEvent.keyDown(document.body, { key: "k" })
-  expect(opened).toEqual("vigoda")
-})
+  it("navigates forwards on 'j'", () => {
+    expect(openResourceSpy).not.toHaveBeenCalled()
 
-it("navigates backwards no wrap", () => {
-  let ls = new LogStore()
-  let items = twoResourceView().uiResources.map(
-    (res) => new SidebarItem(res, ls)
-  )
-  let sks = shortcuts(items, "")
-  fireEvent.keyDown(document.body, { key: "k" })
-  expect(opened).toEqual(null)
-})
+    userEvent.keyboard("j")
 
-it("triggers update", () => {
-  let ls = new LogStore()
-  let items = twoResourceView().uiResources.map(
-    (res) => new SidebarItem(res, ls)
-  )
-  let sks = shortcuts(items, "")
-  expect(buildStarted).toEqual(false)
-  fireEvent.keyDown(document.body, { key: "r" })
-  expect(buildStarted).toEqual(true)
+    expect(openResourceSpy).toHaveBeenCalledWith(items[0].name)
+  })
+
+  it("navigates forwards on 'j' without wrapping", () => {
+    // Select the last resource item
+    rerender(
+      <SidebarKeyboardShortcuts
+        items={items}
+        selected={items[1].name}
+        resourceView={ResourceView.Log}
+        onStartBuild={onStartBuildSpy}
+      />
+    )
+
+    userEvent.keyboard("j")
+
+    expect(openResourceSpy).not.toHaveBeenCalled()
+  })
+
+  it("navigates backward on 'k'", () => {
+    // Select the last resource item
+    rerender(
+      <SidebarKeyboardShortcuts
+        items={items}
+        selected={items[1].name}
+        resourceView={ResourceView.Log}
+        onStartBuild={onStartBuildSpy}
+      />
+    )
+
+    userEvent.keyboard("k")
+
+    expect(openResourceSpy).toHaveBeenCalledWith(items[0].name)
+  })
+
+  it("navigates backward on 'k' without wrapping", () => {
+    userEvent.keyboard("k")
+
+    expect(openResourceSpy).not.toHaveBeenCalled()
+  })
+
+  it("triggers update on 'r'", () => {
+    expect(onStartBuildSpy).not.toHaveBeenCalled()
+
+    userEvent.keyboard("r")
+
+    expect(onStartBuildSpy).toHaveBeenCalled()
+  })
 })
