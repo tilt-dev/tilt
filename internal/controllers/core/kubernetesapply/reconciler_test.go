@@ -412,20 +412,24 @@ func TestGarbageCollect_DeleteCmdNotInvokedOnChange(t *testing.T) {
 	f.MustGet(types.NamespacedName{Name: "a"}, &ka)
 	assert.Equal(f.T(), yamlOut, ka.Status.ResultYAML)
 
-	yamlToDelete := yamlOut
 	applyCmd, yamlOut = f.createApplyCmd("custom-apply-2", testyaml.JobYAML)
 	ka.Spec.ApplyCmd = &applyCmd
 	f.Update(&ka)
 
 	f.MustGet(types.NamespacedName{Name: "a"}, &ka)
 	assert.Equal(f.T(), yamlOut, ka.Status.ResultYAML)
-	assert.Equal(t, yamlToDelete, f.kClient.DeletedYaml)
 
 	calls := f.execer.Calls()
-	if assert.Len(t, calls, 2, "Expected 2x apply calls") {
+	if assert.Len(t, calls, 2, "Expected 2x calls (both to apply)") {
 		for i := range calls {
 			assert.Equal(t, []string{fmt.Sprintf("custom-apply-%d", i+1)}, calls[i].Cmd.Argv)
 		}
+	}
+
+	if assert.NoError(t, f.kClient.DeleteError,
+		"Delete should not have been invoked (so no error should have occurred)") {
+		assert.Empty(t, f.kClient.DeletedYaml,
+			"Delete should not have been invoked (so no YAML should have been deleted)")
 	}
 }
 
