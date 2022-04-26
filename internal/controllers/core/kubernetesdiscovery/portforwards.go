@@ -3,6 +3,7 @@ package kubernetesdiscovery
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -15,6 +16,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 // Reconcile all the port forwards owned by this KD. The KD may be nil if it's being deleted.
@@ -49,6 +51,8 @@ func (r *Reconciler) manageOwnedPortForwards(ctx context.Context, nn types.Names
 			err := r.ctrlClient.Update(ctx, updatedPF)
 			if err != nil && !apierrors.IsNotFound(err) {
 				errs = append(errs, fmt.Errorf("updating portforward %s: %v", existingPF.Name, err))
+			} else {
+				warnDeprecatedImplicitForwards(ctx, kd, pf)
 			}
 			continue
 		}
@@ -65,6 +69,8 @@ func (r *Reconciler) manageOwnedPortForwards(ctx context.Context, nn types.Names
 		err := r.ctrlClient.Create(ctx, pf)
 		if err != nil && !apierrors.IsAlreadyExists(err) {
 			errs = append(errs, fmt.Errorf("creating portforward %s: %v", pf.Name, err))
+		} else {
+			warnDeprecatedImplicitForwards(ctx, kd, pf)
 		}
 	}
 
@@ -98,11 +104,10 @@ func (r *Reconciler) toDesiredPortForward(kd *v1alpha1.KubernetesDiscovery) (*v1
 		Spec: v1alpha1.PortForwardSpec{
 			PodName:   pod.Name,
 			Namespace: pod.Namespace,
-			Forwards:  pfTemplate.Forwards,
+			Forwards:  populateContainerPorts(pfTemplate, pod),
 			Cluster:   kd.Spec.Cluster,
 		},
 	}
-	populateContainerPorts(pf, pod)
 	err := controllerutil.SetControllerReference(kd, pf, r.ctrlClient.Scheme())
 	if err != nil {
 		return nil, err
@@ -116,9 +121,12 @@ func (r *Reconciler) toDesiredPortForward(kd *v1alpha1.KubernetesDiscovery) (*v1
 //
 // TODO(nick): This is old legacy behavior, and I'm not totally sure it even
 // makes sense. I wonder if we should just insist that ContainerPort is populated.
-func populateContainerPorts(pf *v1alpha1.PortForward, pod *v1alpha1.Pod) {
+func populateContainerPorts(pft *v1alpha1.PortForwardTemplateSpec, pod *v1alpha1.Pod) []v1alpha1.Forward {
+	result := make([]v1alpha1.Forward, len(pft.Forwards))
+
 	cPorts := store.AllPodContainerPorts(*pod)
-	for i, forward := range pf.Spec.Forwards {
+	for i := range pft.Forwards {
+		forward := pft.Forwards[i].DeepCopy()
 		if forward.ContainerPort == 0 && len(cPorts) > 0 {
 			forward.ContainerPort = cPorts[0]
 			for _, cPort := range cPorts {
@@ -131,8 +139,9 @@ func populateContainerPorts(pf *v1alpha1.PortForward, pod *v1alpha1.Pod) {
 		if forward.ContainerPort == 0 {
 			forward.ContainerPort = forward.LocalPort
 		}
-		pf.Spec.Forwards[i] = forward
+		result[i] = *forward
 	}
+	return result
 }
 
 // We can only portforward to one pod at a time.
@@ -179,4 +188,33 @@ func isBetterPortForwardPod(podA, podB *v1alpha1.Pod) bool {
 
 	// Use the name as a tie-breaker.
 	return podA.Name > podB.Name
+}
+
+func warnDeprecatedImplicitForwards(ctx context.Context, kd *v1alpha1.KubernetesDiscovery, pf *v1alpha1.PortForward) {
+	if kd == nil || pf == nil {
+		return
+	}
+
+	var implicit []string
+	for _, pft := range kd.Spec.PortForwardTemplateSpec.Forwards {
+		if pft.ContainerPort != 0 {
+			continue
+		}
+
+		for _, f := range pf.Spec.Forwards {
+			if pft.LocalPort == f.LocalPort && f.LocalPort != f.ContainerPort {
+				implicit = append(implicit,
+					fmt.Sprintf("  – %d ⇢ %d:%d", f.LocalPort, f.LocalPort, f.ContainerPort))
+			}
+		}
+	}
+
+	if len(implicit) != 0 {
+		logger.Get(ctx).Warnf(
+			"One or more port forwards did not specify a container port, and no exposed container port matched the local port.\n"+
+				"This will break in a future version of Tilt.\n"+
+				"To preserve the current behavior, update the `port_forwards` parameter to explicitly specify the container port:\n%s",
+			strings.Join(implicit, "\n"),
+		)
+	}
 }
