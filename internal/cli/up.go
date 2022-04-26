@@ -76,7 +76,6 @@ local resources--i.e. those using serve_cmd--are terminated when you exit Tilt.
 
 	cmd.Flags().StringVar(&updateModeFlag, "update-mode", string(liveupdates.UpdateModeAuto),
 		fmt.Sprintf("Control the strategy Tilt uses for updating instances. Possible values: %v", liveupdates.AllUpdateModes))
-	cmd.Flags().BoolVar(&c.legacy, "hud", false, "If true, tilt will open in legacy terminal mode. (deprecated: please use --legacy)") // TODO: remove --hud completely by v0.27.0
 	cmd.Flags().BoolVar(&c.legacy, "legacy", false, "If true, tilt will open in legacy terminal mode.")
 	cmd.Flags().BoolVar(&c.stream, "stream", false, "If true, tilt will stream logs in the terminal.")
 	cmd.Flags().BoolVar(&logActionsFlag, "logactions", false, "log all actions and state changes")
@@ -87,13 +86,6 @@ local resources--i.e. those using serve_cmd--are terminated when you exit Tilt.
 	addNamespaceFlag(cmd)
 	cmd.Flags().Lookup("logactions").Hidden = true
 	cmd.Flags().StringVar(&c.outputSnapshotOnExit, "output-snapshot-on-exit", "", "If specified, Tilt will dump a snapshot of its state to the specified path when it exits")
-
-	cmd.PreRun = func(cmd *cobra.Command, args []string) {
-		if cmd.Flag("hud").Changed {
-			fmt.Fprint(os.Stderr, "--hud is deprecated.  Please switch to --legacy.") // TODO: remove --hud completely by v0.27.0
-			time.Sleep(3 * time.Second)
-		}
-	}
 
 	return cmd
 }
