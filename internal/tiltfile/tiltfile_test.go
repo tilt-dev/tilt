@@ -1453,6 +1453,25 @@ docker_build("gcr.io/foo", "foo", cache='/paths/to/cache')
 	}
 }
 
+func TestK8sYAMLInvalid(t *testing.T) {
+	f := newFixture(t)
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+k8s_yaml(blob('''apiVersion: v1
+kind: Secret
+metadata:
+  name: mysecret
+type: Opaque
+data:
+  stuff: "!"'''))
+docker_build("gcr.io/foo", "foo", cache='/paths/to/cache')
+`)
+
+	f.loadErrString(
+		`Error reading yaml from Tiltfile blob() call: decoding Secret "mysecret": illegal base64 data at input byte 0`)
+}
+
 func TestFilterYamlByLabel(t *testing.T) {
 	f := newFixture(t)
 	f.file("k8s.yaml", yaml.ConcatYAML(

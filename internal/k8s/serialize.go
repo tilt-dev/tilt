@@ -3,6 +3,7 @@ package k8s
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"io"
 
 	v1 "k8s.io/api/core/v1"
@@ -43,23 +44,47 @@ func decodeToRuntimeObj(ext runtime.RawExtension) (runtime.Object, error) {
 		return nil, nil
 	}
 
-	obj, _, err :=
+	obj, _, decodeErr :=
 		scheme.Codecs.UniversalDeserializer().Decode(ext.Raw, nil, nil)
-	if err == nil {
+	if decodeErr == nil {
 		return obj, nil
 	}
 
-	if !runtime.IsNotRegisteredError(err) {
+	// decode as unstructured - if the _original_ decode error was due to it
+	// being a non-standard type, the unstructured object will be returned;
+	// otherwise, it'll be used to provide additional context to the error if
+	// possible
+	var unst unstructured.Unstructured
+	_, gvk, err :=
+		unstructured.UnstructuredJSONScheme.Decode(ext.Raw, nil, &unst)
+	if err != nil {
+		if decodeErr != nil {
+			// prefer the original error in case it has more specific details
+			err = decodeErr
+		}
+		if gvk != nil && gvk.Kind != "" {
+			// add the kind if possible (decode will return it even on error
+			// if it was able to parse it out first)
+			err = fmt.Errorf("decoding %s object: %w", gvk.Kind, err)
+		}
 		return nil, err
+	}
+	obj = &unst
+
+	if runtime.IsNotRegisteredError(decodeErr) {
+		// not a built-in/known K8s type, but a valid apiserver object, so
+		// return the unstructured object
+		return obj, nil
 	}
 
-	// If this is a NotRegisteredError, fallback to unstructured code
-	obj, _, err =
-		unstructured.UnstructuredJSONScheme.Decode(ext.Raw, nil, nil)
-	if err != nil {
-		return nil, err
+	kind := unst.GetKind()
+	if kind == "" {
+		kind = "Kubernetes object"
 	}
-	return obj, nil
+	// add the kind and object name to the error
+	// example -> decoding Secret "foo": illegal base64 data at input byte 0
+	err = fmt.Errorf("decoding %s %q: %w", kind, unst.GetName(), decodeErr)
+	return nil, err
 }
 
 func decodeRawExtension(ext runtime.RawExtension) ([]K8sEntity, error) {
