@@ -381,7 +381,13 @@ func TestReconcileManagesPortForward(t *testing.T) {
 	pod.Status.ContainerStatuses = []v1.ContainerStatus{{Name: "container"}}
 
 	kd := &v1alpha1.KubernetesDiscovery{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "some-ns", Name: "ks"},
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "some-ns",
+			Name:      "ks",
+			Annotations: map[string]string{
+				v1alpha1.AnnotationManifest: "my-resource",
+			},
+		},
 		Spec: v1alpha1.KubernetesDiscoverySpec{
 			Watches: []v1alpha1.KubernetesWatchRef{
 				{
@@ -417,8 +423,10 @@ func TestReconcileManagesPortForward(t *testing.T) {
 		assert.Equal(t, int32(7890), fwd.ContainerPort)
 	}
 
-	f.AssertStdOutContains("This will break in a future version of Tilt.\n" +
-		"To preserve the current behavior, update the `port_forwards` parameter to explicitly specify the container port")
+	f.AssertStdOutContains(
+		`k8s_resource(name='my-resource', port_forward='1234') currently maps localhost:1234 to port 7890 in your container.
+A future version of Tilt will change this default and will map localhost:1234 to port 1234 in your container.
+To keep your project working, change your Tiltfile to k8s_resource(name='my-resource', port_forward='1234:7890')`)
 
 	// simulate a pod delete and ensure that after it's observed + reconciled, the PF is also deleted
 	kCli := f.clients.MustK8sClient(clusterNN(*kd))

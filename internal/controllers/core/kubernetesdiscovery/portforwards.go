@@ -3,7 +3,6 @@ package kubernetesdiscovery
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -195,8 +194,11 @@ func warnDeprecatedImplicitForwards(ctx context.Context, kd *v1alpha1.Kubernetes
 	if kd == nil || pf == nil {
 		return
 	}
+	resourceName := kd.Annotations[v1alpha1.AnnotationManifest]
+	if resourceName == "" {
+		return
+	}
 
-	var implicit []string
 	for _, pft := range kd.Spec.PortForwardTemplateSpec.Forwards {
 		if pft.ContainerPort != 0 {
 			continue
@@ -204,18 +206,21 @@ func warnDeprecatedImplicitForwards(ctx context.Context, kd *v1alpha1.Kubernetes
 
 		for _, f := range pf.Spec.Forwards {
 			if pft.LocalPort == f.LocalPort && f.LocalPort != f.ContainerPort {
-				implicit = append(implicit,
-					fmt.Sprintf("  – %d ⇢ %d:%d", f.LocalPort, f.LocalPort, f.ContainerPort))
+				logger.Get(ctx).Warnf(
+					"k8s_resource(name='%s', port_forward='%d') currently maps localhost:%d to port %d in your container.\n"+
+						"A future version of Tilt will change this default and will map localhost:%d to port %d in your container.\n"+
+						"To keep your project working, change your Tiltfile to k8s_resource(name='%s', port_forward='%d:%d')",
+					resourceName,    // name=%s
+					f.LocalPort,     // port_forward=%d
+					f.LocalPort,     // localhost:%d
+					f.ContainerPort, // to port %d (deprecated)
+					f.LocalPort,     // localhost:%d
+					f.LocalPort,     // to port %d (new)
+					resourceName,    // name=%s
+					f.LocalPort,     // port_forward='%d:x'
+					f.ContainerPort, // port_forward='x:%d'
+				)
 			}
 		}
-	}
-
-	if len(implicit) != 0 {
-		logger.Get(ctx).Warnf(
-			"One or more port forwards did not specify a container port, and no exposed container port matched the local port.\n"+
-				"This will break in a future version of Tilt.\n"+
-				"To preserve the current behavior, update the `port_forwards` parameter to explicitly specify the container port:\n%s",
-			strings.Join(implicit, "\n"),
-		)
 	}
 }
