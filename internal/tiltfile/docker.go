@@ -91,7 +91,7 @@ func (d *dockerImage) ImageMapName() string {
 type dockerImageBuildType int
 
 const (
-	UnknownBuild = iota
+	UnknownBuild dockerImageBuildType = iota
 	DockerBuild
 	CustomBuild
 	DockerComposeBuild
