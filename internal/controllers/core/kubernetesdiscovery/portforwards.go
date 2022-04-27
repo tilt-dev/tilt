@@ -95,7 +95,8 @@ func (r *Reconciler) toDesiredPortForward(kd *v1alpha1.KubernetesDiscovery) (*v1
 
 	pf := &v1alpha1.PortForward{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: fmt.Sprintf("%s-%s", kd.Name, pod.Name),
+			Name:      fmt.Sprintf("%s-%s", kd.Name, pod.Name),
+			Namespace: kd.Namespace,
 			Annotations: map[string]string{
 				v1alpha1.AnnotationManifest: kd.Annotations[v1alpha1.AnnotationManifest],
 				v1alpha1.AnnotationSpanID:   kd.Annotations[v1alpha1.AnnotationSpanID],

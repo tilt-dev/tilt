@@ -25,7 +25,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/k8s"
-	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -275,7 +274,7 @@ func TestPodDiscoveryDuplicates(t *testing.T) {
 	}, nil)
 }
 
-func TestReconcileCreatesPodLogStream(t *testing.T) {
+func TestReconcileManagesPodLogStream(t *testing.T) {
 	f := newFixture(t)
 
 	ns := k8s.Namespace("ns")
@@ -364,6 +363,70 @@ func TestReconcileCreatesPodLogStream(t *testing.T) {
 	f.List(&podLogStreams)
 	require.Equal(t, 1, len(podLogStreams.Items), "Incorrect number of PodLogStream objects")
 	assert.Equal(t, "pod2", podLogStreams.Items[0].Spec.Pod)
+}
+
+func TestReconcileManagesPortForward(t *testing.T) {
+	f := newFixture(t)
+
+	ns := k8s.Namespace("ns")
+	pod := f.buildPod(ns, "pod", nil, nil)
+	pod.Spec.Containers = []v1.Container{
+		{
+			Name: "container",
+			Ports: []v1.ContainerPort{
+				{ContainerPort: 7890, Protocol: v1.ProtocolTCP},
+			},
+		},
+	}
+	pod.Status.ContainerStatuses = []v1.ContainerStatus{{Name: "container"}}
+
+	kd := &v1alpha1.KubernetesDiscovery{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "some-ns", Name: "ks"},
+		Spec: v1alpha1.KubernetesDiscoverySpec{
+			Watches: []v1alpha1.KubernetesWatchRef{
+				{
+					UID:       string(pod.UID),
+					Namespace: pod.Namespace,
+					Name:      pod.Name,
+				},
+			},
+			PortForwardTemplateSpec: &v1alpha1.PortForwardTemplateSpec{
+				Forwards: []v1alpha1.Forward{{LocalPort: 1234}},
+			},
+		},
+	}
+	key := apis.Key(kd)
+
+	f.injectK8sObjects(*kd, pod)
+
+	f.Create(kd)
+	// make sure the pods have been seen so that it knows what to create resources for
+	f.requireObservedPods(key, ancestorMap{pod.UID: pod.UID}, nil)
+
+	// in reality, once the pods are observed, a status update is triggered, which would
+	// result in a reconcile; but the test is not running under the manager, so an update
+	// doesn't implicitly trigger a reconcile and we have to manually do it
+	f.MustReconcile(key)
+
+	var portForwards v1alpha1.PortForwardList
+	f.List(&portForwards)
+	require.Len(t, portForwards.Items, 1)
+	if assert.Len(t, portForwards.Items[0].Spec.Forwards, 1) {
+		fwd := portForwards.Items[0].Spec.Forwards[0]
+		assert.Equal(t, int32(1234), fwd.LocalPort)
+		assert.Equal(t, int32(7890), fwd.ContainerPort)
+	}
+
+	f.AssertStdOutContains("This will break in a future version of Tilt.\n" +
+		"To preserve the current behavior, update the `port_forwards` parameter to explicitly specify the container port")
+
+	// simulate a pod delete and ensure that after it's observed + reconciled, the PF is also deleted
+	kCli := f.clients.MustK8sClient(clusterNN(*kd))
+	kCli.EmitPodDelete(pod)
+	f.requireObservedPods(key, nil, nil)
+	f.MustReconcile(key)
+	f.List(&portForwards)
+	require.Empty(t, portForwards.Items)
 }
 
 func TestKubernetesDiscoveryIndexing(t *testing.T) {
@@ -553,17 +616,14 @@ type fixture struct {
 	t       *testing.T
 	r       *Reconciler
 	ctx     context.Context
-	store   *store.TestingStore
 	clients *cluster.FakeClientProvider
 }
 
 func newFixture(t *testing.T) *fixture {
-	st := store.NewTestingStore()
-
 	rd := NewContainerRestartDetector()
 	cfb := fake.NewControllerFixtureBuilder(t)
 	clients := cluster.NewFakeClientProvider(t, cfb.Client)
-	pw := NewReconciler(cfb.Client, cfb.Scheme(), clients, rd, st)
+	pw := NewReconciler(cfb.Client, cfb.Scheme(), clients, rd, cfb.Store)
 	indexer.StartSourceForTesting(cfb.Context(), pw.requeuer, pw, nil)
 
 	ret := &fixture{
@@ -571,7 +631,6 @@ func newFixture(t *testing.T) *fixture {
 		r:                 pw,
 		ctx:               cfb.Context(),
 		t:                 t,
-		store:             st,
 		clients:           clients,
 	}
 	return ret

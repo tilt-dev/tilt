@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -238,4 +239,10 @@ func (f *ControllerFixture) Delete(o object) (bool, ctrl.Result) {
 
 func (f *ControllerFixture) Actions() []store.Action {
 	return f.Store.Actions()
+}
+
+func (f *ControllerFixture) AssertStdOutContains(v string) bool {
+	f.t.Helper()
+	return assert.True(f.t, strings.Contains(f.Stdout(), v),
+		"Stdout did not include output: %q", v)
 }
