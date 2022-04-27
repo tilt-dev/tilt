@@ -15,6 +15,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 // Reconcile all the port forwards owned by this KD. The KD may be nil if it's being deleted.
@@ -49,6 +50,8 @@ func (r *Reconciler) manageOwnedPortForwards(ctx context.Context, nn types.Names
 			err := r.ctrlClient.Update(ctx, updatedPF)
 			if err != nil && !apierrors.IsNotFound(err) {
 				errs = append(errs, fmt.Errorf("updating portforward %s: %v", existingPF.Name, err))
+			} else {
+				warnDeprecatedImplicitForwards(ctx, kd, pf)
 			}
 			continue
 		}
@@ -65,6 +68,8 @@ func (r *Reconciler) manageOwnedPortForwards(ctx context.Context, nn types.Names
 		err := r.ctrlClient.Create(ctx, pf)
 		if err != nil && !apierrors.IsAlreadyExists(err) {
 			errs = append(errs, fmt.Errorf("creating portforward %s: %v", pf.Name, err))
+		} else {
+			warnDeprecatedImplicitForwards(ctx, kd, pf)
 		}
 	}
 
@@ -89,7 +94,8 @@ func (r *Reconciler) toDesiredPortForward(kd *v1alpha1.KubernetesDiscovery) (*v1
 
 	pf := &v1alpha1.PortForward{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: fmt.Sprintf("%s-%s", kd.Name, pod.Name),
+			Name:      fmt.Sprintf("%s-%s", kd.Name, pod.Name),
+			Namespace: kd.Namespace,
 			Annotations: map[string]string{
 				v1alpha1.AnnotationManifest: kd.Annotations[v1alpha1.AnnotationManifest],
 				v1alpha1.AnnotationSpanID:   kd.Annotations[v1alpha1.AnnotationSpanID],
@@ -98,11 +104,10 @@ func (r *Reconciler) toDesiredPortForward(kd *v1alpha1.KubernetesDiscovery) (*v1
 		Spec: v1alpha1.PortForwardSpec{
 			PodName:   pod.Name,
 			Namespace: pod.Namespace,
-			Forwards:  pfTemplate.Forwards,
+			Forwards:  populateContainerPorts(pfTemplate, pod),
 			Cluster:   kd.Spec.Cluster,
 		},
 	}
-	populateContainerPorts(pf, pod)
 	err := controllerutil.SetControllerReference(kd, pf, r.ctrlClient.Scheme())
 	if err != nil {
 		return nil, err
@@ -116,9 +121,12 @@ func (r *Reconciler) toDesiredPortForward(kd *v1alpha1.KubernetesDiscovery) (*v1
 //
 // TODO(nick): This is old legacy behavior, and I'm not totally sure it even
 // makes sense. I wonder if we should just insist that ContainerPort is populated.
-func populateContainerPorts(pf *v1alpha1.PortForward, pod *v1alpha1.Pod) {
+func populateContainerPorts(pft *v1alpha1.PortForwardTemplateSpec, pod *v1alpha1.Pod) []v1alpha1.Forward {
+	result := make([]v1alpha1.Forward, len(pft.Forwards))
+
 	cPorts := store.AllPodContainerPorts(*pod)
-	for i, forward := range pf.Spec.Forwards {
+	for i := range pft.Forwards {
+		forward := pft.Forwards[i].DeepCopy()
 		if forward.ContainerPort == 0 && len(cPorts) > 0 {
 			forward.ContainerPort = cPorts[0]
 			for _, cPort := range cPorts {
@@ -131,8 +139,9 @@ func populateContainerPorts(pf *v1alpha1.PortForward, pod *v1alpha1.Pod) {
 		if forward.ContainerPort == 0 {
 			forward.ContainerPort = forward.LocalPort
 		}
-		pf.Spec.Forwards[i] = forward
+		result[i] = *forward
 	}
+	return result
 }
 
 // We can only portforward to one pod at a time.
@@ -179,4 +188,39 @@ func isBetterPortForwardPod(podA, podB *v1alpha1.Pod) bool {
 
 	// Use the name as a tie-breaker.
 	return podA.Name > podB.Name
+}
+
+func warnDeprecatedImplicitForwards(ctx context.Context, kd *v1alpha1.KubernetesDiscovery, pf *v1alpha1.PortForward) {
+	if kd == nil || pf == nil {
+		return
+	}
+	resourceName := kd.Annotations[v1alpha1.AnnotationManifest]
+	if resourceName == "" {
+		return
+	}
+
+	for _, pft := range kd.Spec.PortForwardTemplateSpec.Forwards {
+		if pft.ContainerPort != 0 {
+			continue
+		}
+
+		for _, f := range pf.Spec.Forwards {
+			if pft.LocalPort == f.LocalPort && f.LocalPort != f.ContainerPort {
+				logger.Get(ctx).Warnf(
+					"k8s_resource(name='%s', port_forward='%d') currently maps localhost:%d to port %d in your container.\n"+
+						"A future version of Tilt will change this default and will map localhost:%d to port %d in your container.\n"+
+						"To keep your project working, change your Tiltfile to k8s_resource(name='%s', port_forward='%d:%d')",
+					resourceName,    // name=%s
+					f.LocalPort,     // port_forward=%d
+					f.LocalPort,     // localhost:%d
+					f.ContainerPort, // to port %d (deprecated)
+					f.LocalPort,     // localhost:%d
+					f.LocalPort,     // to port %d (new)
+					resourceName,    // name=%s
+					f.LocalPort,     // port_forward='%d:x'
+					f.ContainerPort, // port_forward='x:%d'
+				)
+			}
+		}
+	}
 }
