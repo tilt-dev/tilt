@@ -250,6 +250,39 @@ func TestEnvVars(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestEnvVars_ConfigRefWithLocalRegistry(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("no sh on windows")
+	}
+
+	// generally, config refs (value in Tiltfile) are $prod_registry/$image:$tag
+	// and Tilt rewrites it to $local_registry/$sanitized_prod_registry_$image
+	// however, some users explicitly use the $local_registry in their Tiltfile
+	// refs, so instead of producing a redudant and confusing ref like
+	// $local_registry/$sanitized_local_registry_$image, it just gets passed
+	// through
+	expectedVars := map[string]string{
+		"EXPECTED_REF":      "localhost:1234/foo/bar:tilt-build-1551202573",
+		"EXPECTED_REGISTRY": "localhost:1234",
+		"EXPECTED_IMAGE":    "foo/bar",
+		"EXPECTED_TAG":      "tilt-build-1551202573",
+		"REGISTRY_HOST":     "localhost:1234",
+	}
+	var script []string
+	for k, v := range expectedVars {
+		script = append(script, fmt.Sprintf(
+			`if [ "${%s}" != "%s" ]; then >&2 printf "%s:\n\texpected: %s\n\tactual:   ${%s}\n"; exit 1; fi`,
+			k, v, k, v, k))
+	}
+
+	f := newFakeCustomBuildFixture(t)
+	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
+	f.dCli.Images["localhost:1234/foo/bar:tilt-build-1551202573"] = types.ImageInspect{ID: string(sha)}
+	cb := f.customBuild(strings.Join(script, "\n"))
+	_, err := f.cb.Build(f.ctx, refSetWithRegistryFromString("localhost:1234/foo/bar", TwoURLRegistry), cb.CmdImageSpec, nil)
+	require.NoError(t, err)
+}
+
 type fakeCustomBuildFixture struct {
 	*tempdir.TempDirFixture
 
