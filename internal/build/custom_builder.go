@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/docker/distribution/reference"
 	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
 	ktypes "k8s.io/apimachinery/pkg/types"
@@ -37,9 +38,9 @@ func (b *CustomBuilder) Build(ctx context.Context, refs container.RefSet,
 	imageMaps map[ktypes.NamespacedName]*v1alpha1.ImageMap) (container.TaggedRefs, error) {
 	expectedTag := spec.OutputTag
 	outputsImageRefTo := spec.OutputsImageRefTo
+	registryHost := refs.Registry().Host
 
 	var expectedBuildRefs container.TaggedRefs
-	var registryHost string
 	var err error
 
 	// There are 3 modes for determining the output tag.
@@ -49,10 +50,6 @@ func (b *CustomBuilder) Build(ctx context.Context, refs container.RefSet,
 
 		// Remove the output file, ignoring any errors.
 		_ = os.Remove(outputsImageRefTo)
-
-		// Inform the user script about the registry host
-		registryHost = refs.Registry().Host
-
 	} else if expectedTag != "" {
 		// If the tag is coming from the user script, we expect that the user script
 		// also doesn't know about the local registry. So we have to strip off
@@ -83,10 +80,18 @@ func (b *CustomBuilder) Build(ctx context.Context, refs container.RefSet,
 	if expectedBuildResult != nil {
 		extraEnvVars = append(extraEnvVars,
 			fmt.Sprintf("EXPECTED_REF=%s", container.FamiliarString(expectedBuildResult)))
+		extraEnvVars = append(extraEnvVars,
+			fmt.Sprintf("EXPECTED_IMAGE=%s", reference.Path(expectedBuildResult)))
+		extraEnvVars = append(extraEnvVars,
+			fmt.Sprintf("EXPECTED_TAG=%s", expectedBuildResult.Tag()))
 	}
 	if registryHost != "" {
+		// kept for backwards compatibility
 		extraEnvVars = append(extraEnvVars,
 			fmt.Sprintf("REGISTRY_HOST=%s", registryHost))
+		// for consistency with other EXPECTED_* vars
+		extraEnvVars = append(extraEnvVars,
+			fmt.Sprintf("EXPECTED_REGISTRY=%s", registryHost))
 	}
 
 	extraEnvVars = append(extraEnvVars, b.dCli.Env().AsEnviron()...)
