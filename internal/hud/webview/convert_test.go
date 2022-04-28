@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/uuid"
 
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -524,6 +524,52 @@ func TestDisableResourceStatus(t *testing.T) {
 			require.Equal(t, tc.expected, uiResources[1].Status.DisableStatus)
 		})
 	}
+}
+
+func TestTiltfileNameCollision(t *testing.T) {
+	m := model.Manifest{Name: "collision"}.WithDeployTarget(model.LocalTarget{})
+	state := newState([]model.Manifest{m})
+	state.Tiltfiles["collision"] = &v1alpha1.Tiltfile{}
+	state.TiltfileDefinitionOrder = append(state.TiltfileDefinitionOrder, "collision")
+	state.TiltfileStates["collision"] = &store.ManifestState{
+		Name:          model.MainTiltfileManifestName,
+		BuildStatuses: make(map[model.TargetID]*store.BuildStatus),
+		DisableState:  v1alpha1.DisableStateEnabled,
+		CurrentBuilds: make(map[string]model.BuildRecord),
+	}
+
+	_, err := ToUIResourceList(*state, nil)
+	require.EqualError(t, err, `Tiltfile "collision" has the same name as a local resource`)
+}
+
+func TestExtensionNameCollision(t *testing.T) {
+	m := model.Manifest{Name: "collision"}.WithDeployTarget(model.K8sTarget{})
+	state := newState([]model.Manifest{m})
+
+	extensionGVK := v1alpha1.SchemeGroupVersion.WithKind("Extension")
+	controller := true
+	state.Tiltfiles["collision"] = &v1alpha1.Tiltfile{
+		ObjectMeta: metav1.ObjectMeta{
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion: extensionGVK.GroupVersion().String(),
+					Kind:       extensionGVK.Kind,
+					UID:        uuid.NewUUID(),
+					Controller: &controller,
+				},
+			},
+		},
+	}
+	state.TiltfileDefinitionOrder = append(state.TiltfileDefinitionOrder, "collision")
+	state.TiltfileStates["collision"] = &store.ManifestState{
+		Name:          model.MainTiltfileManifestName,
+		BuildStatuses: make(map[model.TargetID]*store.BuildStatus),
+		DisableState:  v1alpha1.DisableStateEnabled,
+		CurrentBuilds: make(map[string]model.BuildRecord),
+	}
+
+	_, err := ToUIResourceList(*state, nil)
+	require.EqualError(t, err, `Extension "collision" has the same name as a Kubernetes resource`)
 }
 
 func findResource(n model.ManifestName, view *proto_webview.View) (v1alpha1.UIResourceStatus, bool) {
