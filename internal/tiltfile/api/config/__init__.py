@@ -68,12 +68,11 @@ def define_bool(name: str, args: bool=False, usage: str="") -> None:
     dict returned by :meth:`parse`.
 
     For instance, at runtime, to set a flag of this type named `foo` to value `True`, run ``tilt up -- --foo``.
-    To set a value to ``False``, you can run ``tilt up -- --foo=False``, or use a default value, e.g.:
-    ```python
-    config.define_bool('foo')
-    cfg = config.parse()
-    do_stuff = cfg.get('foo', False)
-    ```
+    To set a value to ``False``, you can run ``tilt up -- --foo=False``, or use a default value, e.g.::
+
+      config.define_bool('foo')
+      cfg = config.parse()
+      do_stuff = cfg.get('foo', False)
 
     See the `Tiltfile config documentation <tiltfile_config.html>`_ for examples
     and more information.
