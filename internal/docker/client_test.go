@@ -113,7 +113,7 @@ type fakeClientCreator struct {
 func (c fakeClientCreator) FromCLI(ctx context.Context) (DaemonClient, error) {
 	host := os.Getenv("DOCKER_HOST")
 	if host == "" {
-		host = "cli"
+		host = "unix:///var/run/docker.sock"
 	}
 	return hostClient{Host: host}, nil
 }
@@ -133,10 +133,10 @@ func TestProvideClusterProduct(t *testing.T) {
 	cases := []provideEnvTestCase{
 		{
 			expectedCluster: Env{
-				Client: hostClient{Host: "cli"},
+				Client: hostClient{Host: "unix:///var/run/docker.sock"},
 			},
 			expectedLocal: Env{
-				Client: hostClient{Host: "cli"},
+				Client: hostClient{Host: "unix:///var/run/docker.sock"},
 			},
 		},
 		{
@@ -160,17 +160,17 @@ func TestProvideClusterProduct(t *testing.T) {
 				BuildToKubeContexts: []string{"microk8s-me"},
 			},
 			expectedLocal: Env{
-				Client: hostClient{Host: "cli"},
+				Client: hostClient{Host: "unix:///var/run/docker.sock"},
 			},
 		},
 		{
 			env:     clusterid.ProductMicroK8s,
 			runtime: container.RuntimeCrio,
 			expectedCluster: Env{
-				Client: hostClient{Host: "cli"},
+				Client: hostClient{Host: "unix:///var/run/docker.sock"},
 			},
 			expectedLocal: Env{
-				Client: hostClient{Host: "cli"},
+				Client: hostClient{Host: "unix:///var/run/docker.sock"},
 			},
 		},
 		{
@@ -194,7 +194,7 @@ func TestProvideClusterProduct(t *testing.T) {
 				BuildToKubeContexts: []string{"minikube-me"},
 			},
 			expectedLocal: Env{
-				Client: hostClient{Host: "cli"},
+				Client: hostClient{Host: "unix:///var/run/docker.sock"},
 			},
 		},
 		{
@@ -218,7 +218,7 @@ func TestProvideClusterProduct(t *testing.T) {
 				BuildToKubeContexts: []string{"minikube-me"},
 			},
 			expectedLocal: Env{
-				Client: hostClient{Host: "cli"},
+				Client: hostClient{Host: "unix:///var/run/docker.sock"},
 			},
 		},
 		{
@@ -278,10 +278,10 @@ func TestProvideClusterProduct(t *testing.T) {
 				"DOCKER_API_VERSION": "1.35",
 			},
 			expectedCluster: Env{
-				Client: hostClient{Host: "cli"},
+				Client: hostClient{Host: "unix:///var/run/docker.sock"},
 			},
 			expectedLocal: Env{
-				Client: hostClient{Host: "cli"},
+				Client: hostClient{Host: "unix:///var/run/docker.sock"},
 			},
 		},
 		{
@@ -297,6 +297,40 @@ func TestProvideClusterProduct(t *testing.T) {
 			},
 			expectedLocal: Env{
 				Client: hostClient{Host: "localhost:2376"},
+			},
+		},
+		{
+			env:     clusterid.ProductDockerDesktop,
+			runtime: container.RuntimeDocker,
+			expectedCluster: Env{
+				Client:              hostClient{Host: "unix:///var/run/docker.sock"},
+				BuildToKubeContexts: []string{"docker-desktop-me"},
+			},
+			expectedLocal: Env{
+				Client:              hostClient{Host: "unix:///var/run/docker.sock"},
+				BuildToKubeContexts: []string{"docker-desktop-me", "docker-desktop-me"},
+			},
+		},
+		{
+			env:     clusterid.ProductRancherDesktop,
+			runtime: container.RuntimeDocker,
+			expectedCluster: Env{
+				Client:              hostClient{Host: "unix:///var/run/docker.sock"},
+				BuildToKubeContexts: []string{"rancher-desktop-me"},
+			},
+			expectedLocal: Env{
+				Client:              hostClient{Host: "unix:///var/run/docker.sock"},
+				BuildToKubeContexts: []string{"rancher-desktop-me"},
+			},
+		},
+		{
+			env:     clusterid.ProductRancherDesktop,
+			runtime: container.RuntimeContainerd,
+			expectedCluster: Env{
+				Client: hostClient{Host: "unix:///var/run/docker.sock"},
+			},
+			expectedLocal: Env{
+				Client: hostClient{Host: "unix:///var/run/docker.sock"},
 			},
 		},
 	}

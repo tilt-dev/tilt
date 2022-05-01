@@ -286,16 +286,32 @@ func isOldMinikube(ctx context.Context, minikubeClient k8s.MinikubeClient) bool 
 
 func isDefaultHost(e Env) bool {
 	host := e.DaemonHost()
-	if host == "" {
+	isStandardHost :=
+		// Check all the "standard" docker localhosts.
+		host == "" ||
+
+			// https://github.com/docker/cli/blob/a32cd16160f1b41c1c4ae7bee4dac929d1484e59/opts/hosts.go#L22
+			host == "tcp://localhost:2375" ||
+			host == "tcp://localhost:2376" ||
+			host == "tcp://127.0.0.1:2375" ||
+			host == "tcp://127.0.0.1:2376" ||
+
+			// https://github.com/moby/moby/blob/master/client/client_windows.go#L4
+			host == "npipe:////./pipe/docker_engine" ||
+
+			// https://github.com/moby/moby/blob/master/client/client_unix.go#L6
+			host == "unix:///var/run/docker.sock"
+	if isStandardHost {
 		return true
 	}
 
-	defaultHost, err := opts.ParseHost(true, "")
+	defaultParseHost, err := opts.ParseHost(true, "")
 	if err != nil {
 		return false
 	}
 
-	return host == defaultHost
+	return host == defaultParseHost
+
 }
 
 func willBuildToKubeContext(product clusterid.Product, kubeContext k8s.KubeContext, env Env) bool {
