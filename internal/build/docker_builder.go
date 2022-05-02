@@ -582,12 +582,21 @@ func toSyncedDirs(context string, dockerfileSyncDir string, filter model.PathMat
 		s.Gid = 0
 		return true
 	}
+	skipDir := func(path string, s *fsutiltypes.Stat) bool {
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(context, path)
+		}
+
+		entireDir, _ := filter.MatchesEntireDir(path)
+		return entireDir
+	}
 
 	return []filesync.SyncedDir{
 		{
-			Name: "context",
-			Dir:  context,
-			Map:  fileMap,
+			Name:            "context",
+			Dir:             context,
+			Map:             fileMap,
+			SkipUnmappedDir: skipDir,
 		},
 		{
 			Name: "dockerfile",

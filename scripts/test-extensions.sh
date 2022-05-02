@@ -8,4 +8,4 @@ DIR=$(mktemp -d)
 git clone https://github.com/tilt-dev/tilt-extensions "$DIR"
 cd "$DIR"
 export TILT_WEB_MODE="prod"
-./test.sh
+timeout 1000s ./test.sh

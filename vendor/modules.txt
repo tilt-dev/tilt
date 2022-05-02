@@ -466,7 +466,7 @@ github.com/mitchellh/go-wordwrap
 # github.com/mitchellh/mapstructure v1.4.3
 ## explicit; go 1.14
 github.com/mitchellh/mapstructure
-# github.com/moby/buildkit v0.8.3 => github.com/moby/buildkit v0.8.3
+# github.com/moby/buildkit v0.8.3 => github.com/tilt-dev/buildkit v0.8.3-tilt-20220505
 ## explicit; go 1.13
 github.com/moby/buildkit/api/services/control
 github.com/moby/buildkit/api/types
@@ -700,10 +700,9 @@ github.com/tilt-dev/wmclient/pkg/analytics
 github.com/tilt-dev/wmclient/pkg/dirs
 github.com/tilt-dev/wmclient/pkg/env
 github.com/tilt-dev/wmclient/pkg/os/temp
-# github.com/tonistiigi/fsutil v0.0.0-20210609172227-d72af97c0eaf
+# github.com/tonistiigi/fsutil v0.0.0-20210609172227-d72af97c0eaf => github.com/tilt-dev/fsutil v0.0.0-tilt-20220505
 ## explicit; go 1.13
 github.com/tonistiigi/fsutil
-github.com/tonistiigi/fsutil/prefix
 github.com/tonistiigi/fsutil/types
 # github.com/tonistiigi/units v0.0.0-20180711220420-6950e57a87ea
 ## explicit
@@ -1912,8 +1911,9 @@ sigs.k8s.io/structured-merge-diff/v4/value
 ## explicit; go 1.12
 sigs.k8s.io/yaml
 # github.com/jaguilar/vt100 => github.com/tonistiigi/vt100 v0.0.0-20190402012908-ad4c4a574305
-# github.com/moby/buildkit => github.com/moby/buildkit v0.8.3
+# github.com/moby/buildkit => github.com/tilt-dev/buildkit v0.8.3-tilt-20220505
 # github.com/pkg/browser => github.com/tilt-dev/browser v0.0.1
+# github.com/tonistiigi/fsutil => github.com/tilt-dev/fsutil v0.0.0-tilt-20220505
 # go.opentelemetry.io/contrib => go.opentelemetry.io/contrib v0.20.0
 # go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc => go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.20.0
 # go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp => go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.20.0

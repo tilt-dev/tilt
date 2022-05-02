@@ -241,11 +241,14 @@ require (
 replace (
 	// from https://github.com/moby/buildkit/blob/v0.8.3/go.mod
 	github.com/jaguilar/vt100 => github.com/tonistiigi/vt100 v0.0.0-20190402012908-ad4c4a574305
-
-	github.com/moby/buildkit => github.com/moby/buildkit v0.8.3
+	github.com/moby/buildkit => github.com/tilt-dev/buildkit v0.8.3-tilt-20220505
 
 	// can remove if/when https://github.com/pkg/browser/pull/30 is merged
 	github.com/pkg/browser => github.com/tilt-dev/browser v0.0.1
+
+	// https://github.com/tilt-dev/tilt/issues/5745
+	// https://github.com/moby/buildkit/issues/2837
+	github.com/tonistiigi/fsutil => github.com/tilt-dev/fsutil v0.0.0-tilt-20220505
 
 	// From https://github.com/kubernetes/kubernetes/blob/v1.22.4/go.mod
 	go.opentelemetry.io/contrib => go.opentelemetry.io/contrib v0.20.0

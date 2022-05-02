@@ -33,10 +33,11 @@ type fsSyncProvider struct {
 }
 
 type SyncedDir struct {
-	Name     string
-	Dir      string
-	Excludes []string
-	Map      func(string, *fstypes.Stat) bool
+	Name            string
+	Dir             string
+	Excludes        []string
+	Map             func(string, *fstypes.Stat) bool
+	SkipUnmappedDir func(string, *fstypes.Stat) bool
 }
 
 // NewFSSyncProvider creates a new provider for sending files from client
@@ -110,6 +111,7 @@ func (sp *fsSyncProvider) handle(method string, stream grpc.ServerStream) (retEr
 		IncludePatterns: includes,
 		FollowPaths:     followPaths,
 		Map:             dir.Map,
+		SkipUnmappedDir: dir.SkipUnmappedDir,
 	}), progress)
 	if doneCh != nil {
 		if err != nil {
