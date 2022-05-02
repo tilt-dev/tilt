@@ -103,9 +103,9 @@ func (d *dockerImage) Type() dockerImageBuildType {
 
 func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var dockerRef, targetStage string
-	var contextVal,
-		dockerfilePathVal,
-		dockerfileContentsVal,
+	contextVal := value.NewLocalPathUnpacker(thread)
+	dockerfilePathVal := value.NewLocalPathUnpacker(thread)
+	var dockerfileContentsVal,
 		cacheVal,
 		liveUpdateVal,
 		ignoreVal,
@@ -120,7 +120,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		"ref", &dockerRef,
 		"context", &contextVal,
 		"build_args?", &buildArgs,
-		"dockerfile?", &dockerfilePathVal,
+		"dockerfile??", &dockerfilePathVal,
 		"dockerfile_contents?", &dockerfileContentsVal,
 		"cache?", &cacheVal,
 		"live_update?", &liveUpdateVal,
@@ -146,17 +146,10 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		return nil, fmt.Errorf("Argument 1 (ref): can't parse %q: %v", dockerRef, err)
 	}
 
-	if contextVal == nil {
-		return nil, fmt.Errorf("Argument 2 (context): empty but is required")
-	}
-	context, err := value.ValueToAbsPath(thread, contextVal)
-	if err != nil {
-		return nil, err
-	}
-
+	context := contextVal.Value
 	dockerfilePath := filepath.Join(context, "Dockerfile")
 	var dockerfileContents string
-	if dockerfileContentsVal != nil && dockerfilePathVal != nil {
+	if dockerfileContentsVal != nil && dockerfilePathVal.IsSet {
 		return nil, fmt.Errorf("Cannot specify both dockerfile and dockerfile_contents keyword arguments")
 	}
 	if dockerfileContentsVal != nil {
@@ -168,12 +161,8 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		default:
 			return nil, fmt.Errorf("Argument (dockerfile_contents): must be string or blob.")
 		}
-	} else if dockerfilePathVal != nil {
-		dockerfilePath, err = value.ValueToAbsPath(thread, dockerfilePathVal)
-		if err != nil {
-			return nil, err
-		}
-
+	} else if dockerfilePathVal.IsSet {
+		dockerfilePath = dockerfilePathVal.Value
 		bs, err := io.ReadFile(thread, dockerfilePath)
 		if err != nil {
 			return nil, errors.Wrap(err, "error reading dockerfile")

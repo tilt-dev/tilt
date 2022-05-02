@@ -64,18 +64,14 @@ func (Plugin) OnExec(t *starlark.Thread, tiltfilePath string, contents []byte) e
 }
 
 func readFile(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var path starlark.Value
+	path := value.NewLocalPathUnpacker(thread)
 	var defaultReturnValue value.Optional[starlark.String]
 	err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs, "paths", &path, "default?", &defaultReturnValue)
 	if err != nil {
 		return nil, err
 	}
 
-	p, err := value.ValueToAbsPath(thread, path)
-	if err != nil {
-		return nil, fmt.Errorf("invalid type for paths: %v", err)
-	}
-
+	p := path.Value
 	bs, err := ReadFile(thread, p)
 	if os.IsNotExist(err) && defaultReturnValue.IsSet {
 		bs = []byte(defaultReturnValue.Value)
@@ -87,17 +83,13 @@ func readFile(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple
 }
 
 func watchFile(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var path starlark.Value
+	path := value.NewLocalPathUnpacker(thread)
 	err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs, "paths", &path)
 	if err != nil {
 		return nil, err
 	}
 
-	p, err := value.ValueToAbsPath(thread, path)
-	if err != nil {
-		return nil, fmt.Errorf("invalid type for paths: %v", err)
-	}
-
+	p := path.Value
 	err = RecordReadPath(thread, WatchRecursive, p)
 	if err != nil {
 		return nil, err
@@ -107,17 +99,14 @@ func watchFile(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tupl
 }
 
 func listdir(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var dir starlark.String
+	dir := value.NewLocalPathUnpacker(thread)
 	var recursive bool
 	err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs, "dir", &dir, "recursive?", &recursive)
 	if err != nil {
 		return nil, err
 	}
 
-	localPath, err := value.ValueToAbsPath(thread, dir)
-	if err != nil {
-		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
-	}
+	localPath := dir.Value
 
 	// We currently don't watch the directory only, because Tilt doesn't have any
 	// way to watch a directory without watching it recursively.

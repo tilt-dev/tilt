@@ -154,6 +154,17 @@ k8s_yaml('foo.yaml')
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "other/Dockerfile", "foo/.dockerignore")
 }
 
+func TestDockerfileNone(t *testing.T) {
+	f := newFixture(t)
+	f.setupFoo()
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo', dockerfile=None)
+k8s_yaml('foo.yaml')
+`)
+	f.load()
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo.yaml", "foo/Dockerfile", "foo/.dockerignore")
+}
+
 func TestExplicitDockerfileAsLocalPath(t *testing.T) {
 	f := newFixture(t)
 	f.setupFoo()
