@@ -16,17 +16,13 @@ import (
 
 // reads json from a file
 func readJSON(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var path starlark.String
+	path := value.NewLocalPathUnpacker(thread)
 	var defaultValue starlark.Value
 	if err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs, "paths", &path, "default?", &defaultValue); err != nil {
 		return nil, err
 	}
 
-	localPath, err := value.ValueToAbsPath(thread, path)
-	if err != nil {
-		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
-	}
-
+	localPath := path.Value
 	contents, err := tiltfile_io.ReadFile(thread, localPath)
 	if err != nil {
 		// Return the default value if the file doesn't exist AND a default value was given
@@ -36,7 +32,7 @@ func readJSON(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple
 		return nil, err
 	}
 
-	return jsonStringToStarlark(string(contents), path.GoString())
+	return jsonStringToStarlark(string(contents), localPath)
 }
 
 // reads json from a string

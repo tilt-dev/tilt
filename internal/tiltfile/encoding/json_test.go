@@ -81,7 +81,8 @@ func TestMalformedJSON(t *testing.T) {
 	f.File("Tiltfile", `result = read_json("options.json")`)
 	result, err := f.ExecFile("Tiltfile")
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "error parsing JSON from options.json: unexpected end of JSON input")
+	require.Contains(t, err.Error(), "error parsing JSON from")
+	require.Contains(t, err.Error(), "options.json: unexpected end of JSON input")
 
 	rs, err := io.GetState(result)
 	require.NoError(t, err)

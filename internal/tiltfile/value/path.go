@@ -9,6 +9,7 @@ import (
 type LocalPath struct {
 	t     *starlark.Thread
 	Value string
+	IsSet bool
 }
 
 func NewLocalPathUnpacker(t *starlark.Thread) LocalPath {
@@ -24,6 +25,7 @@ func (p *LocalPath) Unpack(v starlark.Value) error {
 	}
 
 	p.Value = str
+	p.IsSet = true
 	return nil
 }
 

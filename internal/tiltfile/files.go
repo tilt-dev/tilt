@@ -190,7 +190,7 @@ func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin,
 }
 
 func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var path starlark.Value
+	path := value.NewLocalPathUnpacker(thread)
 	var name string
 	var namespace string
 	var valueFiles value.StringOrStringList
@@ -209,11 +209,7 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		return nil, err
 	}
 
-	localPath, err := value.ValueToAbsPath(thread, path)
-	if err != nil {
-		return nil, fmt.Errorf("Argument 0 (paths): %v", err)
-	}
-
+	localPath := path.Value
 	info, err := os.Stat(localPath)
 	if err != nil {
 		if os.IsNotExist(err) {
