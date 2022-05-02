@@ -63,7 +63,7 @@ export type RowValues = {
   statusLine: OverviewTableResourceStatus
   podId: string
   endpoints: UILink[]
-  triggerMode: TriggerMode
+  mode: TriggerMode
   buttons: ButtonSet
   analyticsTags: Tags
   selectable: boolean
@@ -385,7 +385,7 @@ export function TableBuildButtonColumn({ row }: CellProps<RowValues>) {
         hasPendingChanges={trigger.hasPendingChanges}
         hasBuilt={trigger.hasBuilt}
         isBuilding={trigger.isBuilding}
-        triggerMode={row.values.triggerMode}
+        triggerMode={row.values.mode}
         isQueued={trigger.isQueued}
         analyticsTags={row.values.analyticsTags}
         onStartBuild={onStartBuild}
@@ -534,7 +534,7 @@ export function TableTriggerModeColumn({ row }: CellProps<RowValues>) {
   return (
     <OverviewTableTriggerModeToggle
       resourceName={row.values.name}
-      triggerMode={row.values.triggerMode}
+      triggerMode={row.values.mode}
     />
   )
 }
@@ -576,7 +576,7 @@ export function TableWidgetsColumn({ row }: CellProps<RowValues>) {
 const modeColumn: Column<RowValues> = {
   Header: "Mode",
   id: "mode",
-  accessor: "triggerMode",
+  accessor: "mode",
   Cell: TableTriggerModeColumn,
   width: "auto",
 }

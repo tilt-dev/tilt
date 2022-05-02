@@ -23,6 +23,7 @@ import OverviewTable, {
   TableGroupedByLabels,
 } from "./OverviewTable"
 import { Name, RowValues, SelectionCheckbox } from "./OverviewTableColumns"
+import { ToggleTriggerModeTooltip } from "./OverviewTableTriggerModeToggle"
 import {
   DEFAULT_GROUP_STATE,
   GroupsState,
@@ -43,7 +44,7 @@ import {
   oneUIButton,
   TestDataView,
 } from "./testdata"
-import { RuntimeStatus, UpdateStatus } from "./types"
+import { RuntimeStatus, TriggerMode, UpdateStatus } from "./types"
 
 // Helpers
 const tableViewWithSettings = ({
@@ -948,6 +949,28 @@ describe("bulk disable actions", () => {
       expect(firstColumnHeaderText.includes("star.svg")).toBe(true)
     })
   })
+})
+
+// https://github.com/tilt-dev/tilt/issues/5754
+it("renders the trigger mode column correctly", () => {
+  const view = nResourceView(2)
+  view.uiResources = [
+    oneResource({ name: "r1", triggerMode: TriggerMode.TriggerModeAuto }),
+    oneResource({ name: "r2", triggerMode: TriggerMode.TriggerModeManual }),
+  ]
+  const container = renderContainer(tableViewWithSettings({ view: view }))
+
+  const isToggleContent = (content: string) =>
+    content == ToggleTriggerModeTooltip.isAuto ||
+    content == ToggleTriggerModeTooltip.isManual
+
+  let modes = Array.from(screen.getAllByTitle(isToggleContent)).map(
+    (n) => n.title
+  )
+  expect(modes).toEqual([
+    ToggleTriggerModeTooltip.isAuto,
+    ToggleTriggerModeTooltip.isManual,
+  ])
 })
 
 function renderContainer(x: ReactElement) {
