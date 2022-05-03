@@ -42,6 +42,9 @@ docker_build('gcr.io/fe', '.', live_update=[
 				BasePath: f.Path(),
 				Patterns: []string{"build"},
 			},
+			{
+				BasePath: f.JoinPath("Dockerfile"),
+			},
 		},
 		m.ImageTargetAt(0).GetFileWatchIgnores())
 }
@@ -75,6 +78,9 @@ docker_build('gcr.io/fe', '.', dockerfile="Dockerfile.custom", live_update=[
 			{
 				BasePath: f.Path(),
 				Patterns: []string{"build"},
+			},
+			{
+				BasePath: f.JoinPath("Dockerfile.custom"),
 			},
 		},
 		m.ImageTargetAt(0).GetFileWatchIgnores())

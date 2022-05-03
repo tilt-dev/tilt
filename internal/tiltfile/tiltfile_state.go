@@ -1421,19 +1421,10 @@ func (s *tiltfileState) imgTargetsForDepsHelper(mn model.ManifestName, imageMapD
 			iTarget.LiveUpdateName = liveupdate.GetName(mn, iTarget.ID())
 		}
 
-		dockerignores, err := s.dockerignoresForImage(image)
+		contextIgnores, fileWatchIgnores, err := s.ignoresForImage(image)
 		if err != nil {
-			return nil, fmt.Errorf("Reading dockerignore for %s: %v", image.configurationRef.RefFamiliarString(), err)
+			return nil, err
 		}
-
-		repoIgnores := s.repoIgnoresForImage(image)
-		fileWatchIgnores := []v1alpha1.IgnoreDef{}
-		if image.tiltfilePath != "" {
-			fileWatchIgnores = append(fileWatchIgnores, v1alpha1.IgnoreDef{BasePath: image.tiltfilePath})
-		}
-		fileWatchIgnores = append(
-			append(fileWatchIgnores, repoIgnores...),
-			model.DockerignoresToIgnores(dockerignores)...)
 
 		switch image.Type() {
 		case DockerBuild:
@@ -1451,7 +1442,7 @@ func (s *tiltfileState) imgTargetsForDepsHelper(mn model.ManifestName, imageMapD
 				Pull:               image.pullParent,
 				Platform:           image.platform,
 				ExtraTags:          image.extraTags,
-				ContextIgnores:     fileWatchIgnores,
+				ContextIgnores:     contextIgnores,
 			}
 			iTarget = iTarget.WithBuildDetails(model.DockerBuild{DockerImageSpec: spec})
 		case CustomBuild:
@@ -1480,11 +1471,6 @@ func (s *tiltfileState) imgTargetsForDepsHelper(mn model.ManifestName, imageMapD
 				Service: image.dockerComposeService,
 				Context: image.dbBuildPath,
 			}
-
-			for _, p := range image.dockerComposeLocalVolumePaths {
-				fileWatchIgnores = append(fileWatchIgnores, v1alpha1.IgnoreDef{BasePath: p})
-			}
-
 			iTarget = iTarget.WithBuildDetails(bd)
 		case UnknownBuild:
 			return nil, fmt.Errorf("no build info for image %s", image.configurationRef.RefFamiliarString())
@@ -1690,6 +1676,51 @@ func toKubernetesApplyCmd(cmd model.Cmd) *v1alpha1.KubernetesApplyCmd {
 		Dir:  cmd.Dir,
 		Env:  cmd.Env,
 	}
+}
+
+func (s *tiltfileState) ignoresForImage(image *dockerImage) (contextIgnores []v1alpha1.IgnoreDef, fileWatchIgnores []v1alpha1.IgnoreDef, err error) {
+	dockerignores, err := s.dockerignoresForImage(image)
+	if err != nil {
+		return nil, nil, fmt.Errorf("reading dockerignore for %s: %v", image.configurationRef.RefFamiliarString(), err)
+	}
+	if image.tiltfilePath != "" {
+		contextIgnores = append(contextIgnores, v1alpha1.IgnoreDef{BasePath: image.tiltfilePath})
+	}
+	contextIgnores = append(contextIgnores, s.repoIgnoresForImage(image)...)
+	contextIgnores = append(contextIgnores, model.DockerignoresToIgnores(dockerignores)...)
+
+	for i := range contextIgnores {
+		fileWatchIgnores = append(fileWatchIgnores, *contextIgnores[i].DeepCopy())
+	}
+	if image.dbDockerfilePath != "" {
+		// while this might seem unusual, we actually do NOT want the
+		// ImageTarget to watch the Dockerfile itself because the image
+		// builder does not actually use the Dockerfile on-disk! instead,
+		// the Tiltfile watches the Dockerfile and always reads it in as
+		// part of execution, storing the full contents in the ImageTarget
+		// so that we can rewrite it in memory to inject image references
+		// and more
+		// as a result, if BOTH the Tiltfile and the ImageTarget watch the
+		// Dockerfile, it'll result in a race condition, as the ImageTarget
+		// build might see the change first and re-execute _before_ the
+		// Tiltfile, meaning it's running with a stale version of the
+		// Dockerfile
+		fileWatchIgnores = append(fileWatchIgnores, v1alpha1.IgnoreDef{BasePath: image.dbDockerfilePath})
+	}
+
+	if image.Type() == DockerComposeBuild {
+		// Docker Compose local volumes are mounted into the running container,
+		// so we don't want to watch these paths, as that'd trigger rebuilds
+		// instead of the desired Live Update-ish behavior
+		// note that they ARE eligible for usage within the Docker context, as
+		// it's a common pattern to include some files (e.g. config) in the
+		// image but then mount a local volume on top of it for local dev
+		for _, p := range image.dockerComposeLocalVolumePaths {
+			fileWatchIgnores = append(fileWatchIgnores, v1alpha1.IgnoreDef{BasePath: p})
+		}
+	}
+
+	return
 }
 
 var _ starkit.Plugin = &tiltfileState{}
