@@ -41,6 +41,7 @@ export type TestResourceOptions = {
   labels?: number
   name?: string
   order?: number
+  triggerMode?: TriggerMode
 }
 
 type TestButtonOptions = {
@@ -136,6 +137,7 @@ export function oneResource({
   labels,
   name,
   order,
+  triggerMode,
 }: TestResourceOptions): UIResource {
   const ts = new Date(Date.now()).toISOString()
   const tsPast = new Date(Date.now() - 12300).toISOString()
@@ -208,7 +210,7 @@ export function oneResource({
       endpointLinks,
       runtimeStatus: "ok",
       queued,
-      triggerMode: TriggerMode.TriggerModeAuto,
+      triggerMode: triggerMode ?? TriggerMode.TriggerModeAuto,
       specs: resourceSpecs(resourceName),
       disableStatus,
       order: resourceOrder,
