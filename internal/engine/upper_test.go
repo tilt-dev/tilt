@@ -42,6 +42,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmdimage"
 	"github.com/tilt-dev/tilt/internal/controllers/core/configmap"
+	"github.com/tilt-dev/tilt/internal/controllers/core/dockercomposelogstream"
 	"github.com/tilt-dev/tilt/internal/controllers/core/dockercomposeservice"
 	"github.com/tilt-dev/tilt/internal/controllers/core/dockerimage"
 	"github.com/tilt-dev/tilt/internal/controllers/core/extension"
@@ -3398,6 +3399,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		cluster.FakeDockerClientOrError(dockerClient, nil),
 		cluster.FakeKubernetesClientOrError(kClient, nil),
 		wsl)
+	dclsr := dockercomposelogstream.NewReconciler(cdc, st)
 
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
 		fwc,
@@ -3420,6 +3422,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		clr,
 		dcr,
 		imagemap.NewReconciler(cdc, st),
+		dclsr,
 	))
 
 	dp := dockerprune.NewDockerPruner(dockerClient)
