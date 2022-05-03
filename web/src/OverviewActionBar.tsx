@@ -47,11 +47,7 @@ import {
   SizeUnit,
 } from "./style-helpers"
 import { TiltInfoTooltip } from "./Tooltip"
-import { ResourceName } from "./types"
-
-type UIResource = Proto.v1alpha1UIResource
-type Link = Proto.v1alpha1UIResourceLink
-type UIButton = Proto.v1alpha1UIButton
+import { ResourceName, UIButton, UILink, UIResource } from "./types"
 
 type OverviewActionBarProps = {
   // The current resource. May be null if there is no resource.
@@ -655,7 +651,7 @@ export let ActionBarBottomRow = styled.div`
 `
 
 type ActionBarProps = {
-  endpoints: Link[]
+  endpoints: UILink[]
   podId: string
 }
 

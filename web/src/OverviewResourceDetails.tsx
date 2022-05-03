@@ -6,10 +6,7 @@ import { useFilterSet } from "./logfilters"
 import OverviewActionBar from "./OverviewActionBar"
 import OverviewLogPane from "./OverviewLogPane"
 import { Color } from "./style-helpers"
-import { ResourceName } from "./types"
-
-type UIResource = Proto.v1alpha1UIResource
-type UIButton = Proto.v1alpha1UIButton
+import { ResourceName, UIResource } from "./types"
 
 type OverviewResourceDetailsProps = {
   resource?: UIResource

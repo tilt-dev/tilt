@@ -5,11 +5,6 @@ import { OverviewTableBulkActions } from "./OverviewTableBulkActions"
 import { ResourceSelectionProvider } from "./ResourceSelectionContext"
 import { disableButton } from "./testdata"
 
-type UIButton = Proto.v1alpha1UIButton
-type UIInputSpec = Proto.v1alpha1UIInputSpec
-type UITextInputSpec = Proto.v1alpha1UITextInputSpec
-type UIInputStatus = Proto.v1alpha1UIInputStatus
-
 export default {
   title: "New UI/Overview/OverviewTableBulkActions",
   decorators: [
