@@ -8401,7 +8401,7 @@ func schema_pkg_apis_core_v1alpha1_UISessionStatus(ref common.ReferenceCallback)
 					},
 					"suggestedTiltVersion": {
 						SchemaProps: spec.SchemaProps{
-							Description: "SuggestedTiltVersion tells the UI the recommended version for this user. If the version is different than what's running, the UI may display a prompt to upgrade.",
+							Description: "SuggestedTiltVersion tells the UI the recommended version for this user. If the version is different than what's running, the UI may display a prompt to upgrade.\n\nDeprecated: Tilt no longer uses suggested versions from cloud.tilt.dev.",
 							Type:        []string{"string"},
 							Format:      "",
 						},

@@ -135,7 +135,6 @@ type TiltCloudStatusReceivedAction struct {
 	Username                 string
 	TeamName                 string
 	IsPostRegistrationLookup bool
-	SuggestedTiltVersion     string
 }
 
 func (TiltCloudStatusReceivedAction) Action() {}
