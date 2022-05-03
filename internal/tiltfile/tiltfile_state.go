@@ -1684,8 +1684,6 @@ func (s *tiltfileState) ignoresForImage(image *dockerImage) (contextIgnores []v1
 		return nil, nil, fmt.Errorf("reading dockerignore for %s: %v", image.configurationRef.RefFamiliarString(), err)
 	}
 	if image.tiltfilePath != "" {
-		// TODO(milas): technically, this should be a FW ignore, not a context
-		// 	ignore, but historically it has been this way
 		contextIgnores = append(contextIgnores, v1alpha1.IgnoreDef{BasePath: image.tiltfilePath})
 	}
 	contextIgnores = append(contextIgnores, s.repoIgnoresForImage(image)...)
