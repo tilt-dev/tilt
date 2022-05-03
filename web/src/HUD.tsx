@@ -133,26 +133,35 @@ export default class HUD extends Component<HudProps, HudState> {
 
     let body = JSON.stringify(snapshot)
 
-    // TODO(dmiller): we need to figure out a way to get human readable error messages from the server
     fetch(url, {
       method: "post",
       body: body,
     })
       .then((res) => {
-        res
-          .json()
-          .then((value: Proto.webviewUploadSnapshotResponse) => {
-            this.setState({
-              snapshotLink: value.url ? value.url : "",
+        if (res.ok) {
+          return res
+            .json()
+            .then((value: Proto.webviewUploadSnapshotResponse) => {
+              this.setState({
+                snapshotLink: value.url ? value.url : "",
+              })
             })
-          })
-          .catch((err) => {
-            console.error(err)
+            .catch((err) => {
+              console.error(err)
+              this.setState({
+                showSnapshotModal: false,
+                error: "Error decoding JSON response",
+              })
+            })
+        } else {
+          return res.text().then((text) => {
+            console.error(`Snapshot error: ${text}`)
             this.setState({
               showSnapshotModal: false,
-              error: "Error decoding JSON response",
+              error: `Snapshot error: ${text}`,
             })
           })
+        }
       })
       .catch((err) => {
         console.error(err)
