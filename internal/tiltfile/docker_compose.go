@@ -145,6 +145,15 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 			return nil, err
 		}
 		svc.Options = s.dcResOptions[svc.Name]
+		for _, f := range svc.ServiceConfig.EnvFile {
+			if !filepath.IsAbs(f) {
+				f = filepath.Join(project.ProjectPath, f)
+			}
+			err = io.RecordReadPath(thread, io.WatchFileOnly, f)
+			if err != nil {
+				return nil, err
+			}
+		}
 		s.dcByName[svc.Name] = svc
 	}
 
