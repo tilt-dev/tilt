@@ -49,7 +49,7 @@ func getConnectionHelper(daemonURL string, sshFlags []string) (*ConnectionHelper
 			Dialer: func(ctx context.Context, network, addr string) (net.Conn, error) {
 				return commandconn.New(ctx, "ssh", append(sshFlags, sp.Args("docker", "system", "dial-stdio")...)...)
 			},
-			Host: "http://docker",
+			Host: "http://docker.example.com",
 		}, nil
 	}
 	// Future version may support plugins via ~/.docker/config.json. e.g. "dind"
@@ -63,6 +63,6 @@ func GetCommandConnectionHelper(cmd string, flags ...string) (*ConnectionHelper,
 		Dialer: func(ctx context.Context, network, addr string) (net.Conn, error) {
 			return commandconn.New(ctx, cmd, flags...)
 		},
-		Host: "http://docker",
+		Host: "http://docker.example.com",
 	}, nil
 }

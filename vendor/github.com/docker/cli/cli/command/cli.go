@@ -255,7 +255,7 @@ func (cli *DockerCli) Initialize(opts *cliflags.ClientOptions, ops ...Initialize
 		if tlsconfig.IsErrEncryptedKey(err) {
 			passRetriever := passphrase.PromptRetrieverWithInOut(cli.In(), cli.Out(), nil)
 			newClient := func(password string) (client.APIClient, error) {
-				cli.dockerEndpoint.TLSPassword = password
+				cli.dockerEndpoint.TLSPassword = password //nolint: staticcheck // SA1019: cli.dockerEndpoint.TLSPassword is deprecated
 				return newAPIClientFromEndpoint(cli.dockerEndpoint, cli.configFile)
 			}
 			cli.client, err = getClientWithPassword(passRetriever, newClient)

@@ -28,6 +28,7 @@ import (
 	"github.com/compose-spec/compose-go/errdefs"
 	"github.com/compose-spec/compose-go/loader"
 	"github.com/compose-spec/compose-go/types"
+	"github.com/compose-spec/compose-go/utils"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -332,7 +333,9 @@ func ProjectFromOptions(options *ProjectOptions) (*types.Project, error) {
 		return nil, err
 	}
 
-	options.loadOptions = append(options.loadOptions, withNamePrecedenceLoad(absWorkingDir, options))
+	options.loadOptions = append(options.loadOptions,
+		withNamePrecedenceLoad(absWorkingDir, options),
+		withConvertWindowsPaths(options))
 
 	project, err := loader.Load(types.ConfigDetails{
 		ConfigFiles: configs,
@@ -356,6 +359,12 @@ func withNamePrecedenceLoad(absWorkingDir string, options *ProjectOptions) func(
 		} else {
 			opts.SetProjectName(filepath.Base(absWorkingDir), false)
 		}
+	}
+}
+
+func withConvertWindowsPaths(options *ProjectOptions) func(*loader.Options) {
+	return func(o *loader.Options) {
+		o.ConvertWindowsPaths = utils.StringToBool(options.Environment["COMPOSE_CONVERT_WINDOWS_PATHS"])
 	}
 }
 

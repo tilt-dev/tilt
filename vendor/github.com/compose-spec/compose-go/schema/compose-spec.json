@@ -91,13 +91,18 @@
                 "context": {"type": "string"},
                 "dockerfile": {"type": "string"},
                 "args": {"$ref": "#/definitions/list_or_dict"},
+                "ssh": {"$ref": "#/definitions/list_or_dict"},
                 "labels": {"$ref": "#/definitions/list_or_dict"},
                 "cache_from": {"type": "array", "items": {"type": "string"}},
+                "cache_to": {"type": "array", "items": {"type": "string"}},
+                "no_cache": {"type": "boolean"},
                 "network": {"type": "string"},
+                "pull": {"type": "boolean"},
                 "target": {"type": "string"},
                 "shm_size": {"type": ["integer", "string"]},
                 "extra_hosts": {"$ref": "#/definitions/list_or_dict"},
-                "isolation": {"type": "string"}
+                "isolation": {"type": "string"},
+                "secrets": {"$ref": "#/definitions/service_config_or_secret"}
               },
               "additionalProperties": false,
               "patternProperties": {"^x-": {}}
@@ -140,26 +145,7 @@
             {"type": "array", "items": {"type": "string"}}
           ]
         },
-        "configs": {
-          "type": "array",
-          "items": {
-            "oneOf": [
-              {"type": "string"},
-              {
-                "type": "object",
-                "properties": {
-                  "source": {"type": "string"},
-                  "target": {"type": "string"},
-                  "uid": {"type": "string"},
-                  "gid": {"type": "string"},
-                  "mode": {"type": "number"}
-                },
-                "additionalProperties": false,
-                "patternProperties": {"^x-": {}}
-              }
-            ]
-          }
-        },
+        "configs": {"$ref": "#/definitions/service_config_or_secret"},
         "container_name": {"type": "string"},
         "cpu_count": {"type": "integer", "minimum": 0},
         "cpu_percent": {"type": "integer", "minimum": 0, "maximum": 100},
@@ -348,26 +334,7 @@
         },
         "security_opt": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
         "shm_size": {"type": ["number", "string"]},
-        "secrets": {
-          "type": "array",
-          "items": {
-            "oneOf": [
-              {"type": "string"},
-              {
-                "type": "object",
-                "properties": {
-                  "source": {"type": "string"},
-                  "target": {"type": "string"},
-                  "uid": {"type": "string"},
-                  "gid": {"type": "string"},
-                  "mode": {"type": "number"}
-                },
-                "additionalProperties": false,
-                "patternProperties": {"^x-": {}}
-              }
-            ]
-          }
-        },
+        "secrets": {"$ref": "#/definitions/service_config_or_secret"},
         "sysctls": {"$ref": "#/definitions/list_or_dict"},
         "stdin_open": {"type": "boolean"},
         "stop_grace_period": {"type": "string", "format": "duration"},
@@ -803,6 +770,27 @@
         "weight": {"type": "integer"}
       },
       "additionalProperties": false
+    },
+
+    "service_config_or_secret": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {"type": "string"},
+          {
+            "type": "object",
+            "properties": {
+              "source": {"type": "string"},
+              "target": {"type": "string"},
+              "uid": {"type": "string"},
+              "gid": {"type": "string"},
+              "mode": {"type": "number"}
+            },
+            "additionalProperties": false,
+            "patternProperties": {"^x-": {}}
+          }
+        ]
+      }
     },
 
     "constraints": {
