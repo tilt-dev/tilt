@@ -2,6 +2,7 @@ package webview
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strings"
 
@@ -205,6 +206,27 @@ func ToUIResourceList(state store.EngineState, disableSources map[string][]v1alp
 		ms, ok := state.TiltfileStates[name]
 		if !ok {
 			continue
+		}
+
+		if m, ok := state.Manifest(name); ok {
+			// TODO(milas): this is a hacky check to prevent creating Tiltfile
+			// 	resources with the same name as k8s/dc/local resources, which
+			// 	are held independently in the engine state; due to the way that
+			// 	extension/Tiltfile loading happens in multiple phases split
+			// 	between apiserver reconciler & engine reducer, there's currently
+			// 	not a practical way to enforce uniqueness upfront, so we return
+			// 	an error here, which will be fatal - the UX here is not great,
+			// 	but this is hopefully enough of an edge case that users don't
+			// 	hit it super frequently, and it prevents difficult to debug,
+			// 	erratic behavior in the Tilt UI
+			tfType := "Tiltfile"
+			if isExtensionTiltfile(state.Tiltfiles[name.String()]) {
+				tfType = "Extension"
+			}
+
+			return nil, fmt.Errorf(
+				"%s %q has the same name as a %s resource",
+				tfType, name, manifestType(m))
 		}
 
 		r := TiltfileResource(name, ms, state.LogStore)
@@ -486,4 +508,30 @@ func holdToWaiting(hold store.Hold) *v1alpha1.UIResourceStateWaiting {
 		)
 	}
 	return waiting
+}
+
+func manifestType(m model.Manifest) string {
+	if m.IsK8s() {
+		return "Kubernetes"
+	}
+	if m.IsDC() {
+		return "Docker Compose"
+	}
+	if m.IsLocal() {
+		return "local"
+	}
+	return "unknown"
+}
+
+func isExtensionTiltfile(tf *v1alpha1.Tiltfile) bool {
+	if tf == nil {
+		return false
+	}
+	ownerRefs := tf.GetOwnerReferences()
+	for i := range ownerRefs {
+		if ownerRefs[i].Kind == "Extension" {
+			return true
+		}
+	}
+	return false
 }
