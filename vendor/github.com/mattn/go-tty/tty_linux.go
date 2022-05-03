@@ -1,8 +1,13 @@
+//go:build linux
 // +build linux
 
 package tty
 
+import (
+	"golang.org/x/sys/unix"
+)
+
 const (
-	ioctlReadTermios  = 0x5401 // syscall.TCGETS
-	ioctlWriteTermios = 0x5402 // syscall.TCSETS
+	ioctlReadTermios  = unix.TCGETS
+	ioctlWriteTermios = unix.TCSETS
 )

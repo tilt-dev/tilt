@@ -1,12 +1,13 @@
+//go:build darwin || dragonfly || freebsd || netbsd || openbsd
 // +build darwin dragonfly freebsd netbsd openbsd
 
 package tty
 
 import (
-	"syscall"
+	"golang.org/x/sys/unix"
 )
 
 const (
-	ioctlReadTermios  = syscall.TIOCGETA
-	ioctlWriteTermios = syscall.TIOCSETA
+	ioctlReadTermios  = unix.TIOCGETA
+	ioctlWriteTermios = unix.TIOCSETA
 )

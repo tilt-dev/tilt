@@ -1,3 +1,4 @@
+//go:build aix || dragonfly || freebsd || (js && wasm) || nacl || linux || netbsd || openbsd || solaris
 // +build aix dragonfly freebsd js,wasm nacl linux netbsd openbsd solaris
 
 package xdg
@@ -6,19 +7,34 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+
+	"github.com/adrg/xdg/internal/pathutil"
 )
 
+func homeDir() string {
+	if home := os.Getenv("HOME"); home != "" {
+		return home
+	}
+
+	return "/"
+}
+
+func initDirs(home string) {
+	initBaseDirs(home)
+	initUserDirs(home)
+}
+
 func initBaseDirs(home string) {
-	// Initialize base directories.
+	// Initialize standard directories.
 	baseDirs.dataHome = xdgPath(envDataHome, filepath.Join(home, ".local", "share"))
 	baseDirs.data = xdgPaths(envDataDirs, "/usr/local/share", "/usr/share")
 	baseDirs.configHome = xdgPath(envConfigHome, filepath.Join(home, ".config"))
 	baseDirs.config = xdgPaths(envConfigDirs, "/etc/xdg")
+	baseDirs.stateHome = xdgPath(envStateHome, filepath.Join(home, ".local", "state"))
 	baseDirs.cacheHome = xdgPath(envCacheHome, filepath.Join(home, ".cache"))
 	baseDirs.runtime = xdgPath(envRuntimeDir, filepath.Join("/run/user", strconv.Itoa(os.Getuid())))
 
 	// Initialize non-standard directories.
-	baseDirs.stateHome = xdgPath(envStateHome, filepath.Join(home, ".local", "state"))
 	appDirs := []string{
 		filepath.Join(baseDirs.dataHome, "applications"),
 		filepath.Join(home, ".local/share/applications"),
@@ -39,8 +55,8 @@ func initBaseDirs(home string) {
 		fontDirs = append(fontDirs, filepath.Join(dir, "fonts"))
 	}
 
-	baseDirs.applications = uniquePaths(appDirs)
-	baseDirs.fonts = uniquePaths(fontDirs)
+	baseDirs.applications = pathutil.Unique(appDirs, Home)
+	baseDirs.fonts = pathutil.Unique(fontDirs, Home)
 }
 
 func initUserDirs(home string) {
