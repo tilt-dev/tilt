@@ -58,16 +58,15 @@ func decodeToRuntimeObj(ext runtime.RawExtension) (runtime.Object, error) {
 	_, gvk, err :=
 		unstructured.UnstructuredJSONScheme.Decode(ext.Raw, nil, &unst)
 	if err != nil {
-		if decodeErr != nil {
-			// prefer the original error in case it has more specific details
-			err = decodeErr
-		}
 		if gvk != nil && gvk.Kind != "" {
 			// add the kind if possible (decode will return it even on error
-			// if it was able to parse it out first)
-			err = fmt.Errorf("decoding %s object: %w", gvk.Kind, err)
+			// if it was able to parse it out first); we don't have the name
+			// available since both structured + unstructured decodes failed
+			decodeErr = fmt.Errorf("decoding %s object: %w", gvk.Kind, decodeErr)
 		}
-		return nil, err
+		// ignore the unstructured error and instead use the original decode
+		// error, as it's more likely to be descriptive
+		return nil, decodeErr
 	}
 	obj = &unst
 
