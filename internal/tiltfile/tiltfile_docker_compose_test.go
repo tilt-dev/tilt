@@ -147,6 +147,30 @@ func TestDockerComposeEnvFile(t *testing.T) {
 	f.assertConfigFiles(expectedConfFiles...)
 }
 
+func TestDockerComposeServiceEnvFile(t *testing.T) {
+	f := newFixture(t)
+
+	f.file("docker-compose.yml", `services:
+  bar:
+    image: bar-image
+    env_file:
+      - bar.env
+`)
+	f.file("bar.env", "BAR_PORT=4000\n")
+	f.file("Tiltfile", "docker_compose('docker-compose.yml')")
+
+	f.load()
+	f.assertDcManifest("bar")
+
+	expectedConfFiles := []string{
+		"Tiltfile",
+		".tiltignore",
+		"docker-compose.yml",
+		"bar.env",
+	}
+	f.assertConfigFiles(expectedConfFiles...)
+}
+
 func TestDockerComposeConflict(t *testing.T) {
 	f := newFixture(t)
 
