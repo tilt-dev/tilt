@@ -46,7 +46,9 @@ func TestRegistryFoundMicrok8s(t *testing.T) {
 	registryAsync := newRegistryAsync(clusterid.ProductMicroK8s, core, NewNaiveRuntimeSource(container.RuntimeContainerd))
 
 	registry := registryAsync.Registry(newLoggerCtx(os.Stdout))
-	assert.Equal(t, "localhost:32000", registry.Host)
+	if assert.NotNil(t, registry, "Registry was nil") {
+		assert.Equal(t, "localhost:32000", registry.Host)
+	}
 }
 
 func TestRegistryFoundInTiltAnnotationsWithClusterHost(t *testing.T) {
@@ -200,7 +202,7 @@ func TestRegistryNotFound(t *testing.T) {
 
 	out := bytes.NewBuffer(nil)
 	registry := registryAsync.Registry(newLoggerCtx(out))
-	assert.Equal(t, "", registry.Host)
+	assert.Nil(t, registry)
 	assert.Contains(t, out.String(), "microk8s.enable registry")
 }
 
