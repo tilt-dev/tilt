@@ -1,7 +1,10 @@
-[![GoDoc](https://godoc.org/github.com/alessio/shellescape?status.svg)](https://godoc.org/github.com/alessio/shellescape) 
-[![Travis-CI Status](https://api.travis-ci.org/alessio/shellescape.png?branch=master)](http://travis-ci.org/#!/alessio/shellescape)
+![Build](https://github.com/alessio/shellescape/workflows/Build/badge.svg)
+[![GoDoc](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/alessio/shellescape?tab=overview)
+[![sourcegraph](https://sourcegraph.com/github.com/alessio/shellescape/-/badge.svg)](https://sourcegraph.com/github.com/alessio/shellescape)
+[![codecov](https://codecov.io/gh/alessio/shellescape/branch/master/graph/badge.svg)](https://codecov.io/gh/alessio/shellescape)
 [![Coverage](https://gocover.io/_badge/github.com/alessio/shellescape)](https://gocover.io/github.com/alessio/shellescape)
-[![Coverage Status](https://coveralls.io/repos/github/alessio/shellescape/badge.svg?branch=master)](https://coveralls.io/github/alessio/shellescape?branch=master)
+[![Go Report Card](https://goreportcard.com/badge/github.com/alessio/shellescape)](https://goreportcard.com/report/github.com/alessio/shellescape)
+
 # shellescape
 Escape arbitrary strings for safe use as command line arguments.
 ## Contents of the package
@@ -11,8 +14,8 @@ shell-escaped copy of a string. This functionality could be helpful
 in those cases where it is known that the output of a Go program will
 be appended to/used in the context of shell programs' command line arguments.
 
-This work was inspired by the Python original package [shellescape] 
-(https://pypi.python.org/pypi/shellescape).
+This work was inspired by the Python original package
+[shellescape](https://pypi.python.org/pypi/shellescape).
 
 ## Usage
 
@@ -33,7 +36,7 @@ func main() {
 _[See in Go Playground](https://play.golang.org/p/Wj2WoUfH_d)_
 
 Especially when creating pipeline of commands which might end up being
-executed by a shell interpreter, tt is particularly unsafe to not
+executed by a shell interpreter, it is particularly unsafe to not
 escape arguments.
 
 `shellescape.Quote()` comes in handy and to safely escape strings:

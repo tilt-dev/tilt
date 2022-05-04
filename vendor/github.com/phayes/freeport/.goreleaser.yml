@@ -13,6 +13,7 @@ builds:
     goarch:
       - amd64
       - "386"
+      - arm64
     goarm:
       - "6"
     main: ./cmd/freeport

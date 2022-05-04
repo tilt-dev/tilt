@@ -1,5 +1,5 @@
-// +build !windows
-// +build !plan9
+//go:build !windows && !plan9
+// +build !windows,!plan9
 
 package tty
 
@@ -7,8 +7,6 @@ import (
 	"bufio"
 	"os"
 	"os/signal"
-	"syscall"
-	"unsafe"
 
 	"golang.org/x/sys/unix"
 )
@@ -17,7 +15,7 @@ type TTY struct {
 	in      *os.File
 	bin     *bufio.Reader
 	out     *os.File
-	termios syscall.Termios
+	termios unix.Termios
 	ss      chan os.Signal
 }
 
@@ -31,19 +29,23 @@ func open(path string) (*TTY, error) {
 	tty.in = in
 	tty.bin = bufio.NewReader(in)
 
-	out, err := os.OpenFile(path, syscall.O_WRONLY, 0)
+	out, err := os.OpenFile(path, unix.O_WRONLY, 0)
 	if err != nil {
 		return nil, err
 	}
 	tty.out = out
 
-	if _, _, err := syscall.Syscall(syscall.SYS_IOCTL, uintptr(tty.in.Fd()), ioctlReadTermios, uintptr(unsafe.Pointer(&tty.termios))); err != 0 {
+	termios, err := unix.IoctlGetTermios(int(tty.in.Fd()), ioctlReadTermios)
+	if err != nil {
 		return nil, err
 	}
-	newios := tty.termios
-	newios.Iflag &^= syscall.ISTRIP | syscall.INLCR | syscall.ICRNL | syscall.IGNCR | syscall.IXOFF
-	newios.Lflag &^= syscall.ECHO | syscall.ICANON /*| syscall.ISIG*/
-	if _, _, err := syscall.Syscall(syscall.SYS_IOCTL, uintptr(tty.in.Fd()), ioctlWriteTermios, uintptr(unsafe.Pointer(&newios))); err != 0 {
+	tty.termios = *termios
+
+	termios.Iflag &^= unix.ISTRIP | unix.INLCR | unix.ICRNL | unix.IGNCR | unix.IXOFF
+	termios.Lflag &^= unix.ECHO | unix.ICANON /*| unix.ISIG*/
+	termios.Cc[unix.VMIN] = 1
+	termios.Cc[unix.VTIME] = 0
+	if err := unix.IoctlSetTermios(int(tty.in.Fd()), ioctlWriteTermios, termios); err != nil {
 		return nil, err
 	}
 
@@ -64,8 +66,7 @@ func (tty *TTY) readRune() (rune, error) {
 func (tty *TTY) close() error {
 	signal.Stop(tty.ss)
 	close(tty.ss)
-	_, _, err := syscall.Syscall(syscall.SYS_IOCTL, uintptr(tty.in.Fd()), ioctlWriteTermios, uintptr(unsafe.Pointer(&tty.termios)))
-	return err
+	return unix.IoctlSetTermios(int(tty.in.Fd()), ioctlWriteTermios, &tty.termios)
 }
 
 func (tty *TTY) size() (int, int, error) {
@@ -74,11 +75,11 @@ func (tty *TTY) size() (int, int, error) {
 }
 
 func (tty *TTY) sizePixel() (int, int, int, int, error) {
-	var dim [4]uint16
-	if _, _, err := syscall.Syscall(syscall.SYS_IOCTL, uintptr(tty.out.Fd()), uintptr(syscall.TIOCGWINSZ), uintptr(unsafe.Pointer(&dim))); err != 0 {
+	ws, err := unix.IoctlGetWinsize(int(tty.out.Fd()), unix.TIOCGWINSZ)
+	if err != nil {
 		return -1, -1, -1, -1, err
 	}
-	return int(dim[1]), int(dim[0]), int(dim[2]), int(dim[3]), nil
+	return int(ws.Row), int(ws.Col), int(ws.Xpixel), int(ws.Ypixel), nil
 }
 
 func (tty *TTY) input() *os.File {
@@ -116,13 +117,13 @@ func (tty *TTY) raw() (func() error, error) {
 }
 
 func (tty *TTY) sigwinch() <-chan WINSIZE {
-	signal.Notify(tty.ss, syscall.SIGWINCH)
+	signal.Notify(tty.ss, unix.SIGWINCH)
 
 	ws := make(chan WINSIZE)
 	go func() {
 		defer close(ws)
 		for sig := range tty.ss {
-			if sig != syscall.SIGWINCH {
+			if sig != unix.SIGWINCH {
 				continue
 			}
 

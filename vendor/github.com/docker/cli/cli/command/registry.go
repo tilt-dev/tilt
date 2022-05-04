@@ -63,17 +63,14 @@ func RegistryAuthenticationPrivilegedFunc(cli Cli, index *registrytypes.IndexInf
 		indexServer := registry.GetAuthConfigKey(index)
 		isDefaultRegistry := indexServer == ElectAuthServer(context.Background(), cli)
 		authConfig, err := GetDefaultAuthConfig(cli, true, indexServer, isDefaultRegistry)
-		if authConfig == nil {
-			authConfig = &types.AuthConfig{}
-		}
 		if err != nil {
 			fmt.Fprintf(cli.Err(), "Unable to retrieve stored credentials for %s, error: %s.\n", indexServer, err)
 		}
-		err = ConfigureAuth(cli, "", "", authConfig, isDefaultRegistry)
+		err = ConfigureAuth(cli, "", "", &authConfig, isDefaultRegistry)
 		if err != nil {
 			return "", err
 		}
-		return EncodeAuthToBase64(*authConfig)
+		return EncodeAuthToBase64(authConfig)
 	}
 }
 
@@ -92,7 +89,7 @@ func ResolveAuthConfig(ctx context.Context, cli Cli, index *registrytypes.IndexI
 
 // GetDefaultAuthConfig gets the default auth config given a serverAddress
 // If credentials for given serverAddress exists in the credential store, the configuration will be populated with values in it
-func GetDefaultAuthConfig(cli Cli, checkCredStore bool, serverAddress string, isDefaultRegistry bool) (*types.AuthConfig, error) {
+func GetDefaultAuthConfig(cli Cli, checkCredStore bool, serverAddress string, isDefaultRegistry bool) (types.AuthConfig, error) {
 	if !isDefaultRegistry {
 		serverAddress = registry.ConvertToHostname(serverAddress)
 	}
@@ -101,13 +98,15 @@ func GetDefaultAuthConfig(cli Cli, checkCredStore bool, serverAddress string, is
 	if checkCredStore {
 		authconfig, err = cli.ConfigFile().GetAuthConfig(serverAddress)
 		if err != nil {
-			return nil, err
+			return types.AuthConfig{
+				ServerAddress: serverAddress,
+			}, err
 		}
 	}
 	authconfig.ServerAddress = serverAddress
 	authconfig.IdentityToken = ""
 	res := types.AuthConfig(authconfig)
-	return &res, nil
+	return res, nil
 }
 
 // ConfigureAuth handles prompting of user's username and password if needed

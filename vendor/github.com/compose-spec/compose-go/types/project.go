@@ -246,6 +246,11 @@ func (p *Project) WithoutUnnecessaryResources() {
 		for _, v := range s.Secrets {
 			requiredSecrets[v.Source] = struct{}{}
 		}
+		if s.Build != nil {
+			for _, v := range s.Build.Secrets {
+				requiredSecrets[v.Source] = struct{}{}
+			}
+		}
 		for _, v := range s.Configs {
 			requiredConfigs[v.Source] = struct{}{}
 		}

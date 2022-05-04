@@ -32,7 +32,7 @@ import (
 
 var (
 	// scpSyntax was modified from https://golang.org/src/cmd/go/vcs.go.
-	scpSyntax = regexp.MustCompile(`^([a-zA-Z0-9_]+@)?([a-zA-Z0-9._-]+):(.*)$`)
+	scpSyntax = regexp.MustCompile(`^([a-zA-Z0-9_]+@)?([a-zA-Z0-9._-]+):([a-zA-Z0-9./._-]+)(?:\?||$)(.*)$`)
 
 	// Transports is a set of known Git URL schemes.
 	Transports = NewTransportSet(
@@ -84,9 +84,6 @@ func ParseTransport(rawurl string) (*url.URL, error) {
 	if err == nil && !Transports.Valid(u.Scheme) {
 		err = fmt.Errorf("scheme %q is not a valid transport", u.Scheme)
 	}
-	if u != nil && u.User == nil {
-		u.User = url.User("")
-	}
 	return u, err
 }
 
@@ -98,11 +95,21 @@ func ParseScp(rawurl string) (*url.URL, error) {
 		return nil, fmt.Errorf("no scp URL found in %q", rawurl)
 	}
 	m := match[0]
+	user := strings.TrimRight(m[1], "@")
+	var userinfo *url.Userinfo
+	if user != "" {
+		userinfo = url.User(user)
+	}
+	rawquery := ""
+	if len(m) > 3 {
+		rawquery = m[4]
+	}
 	return &url.URL{
-		Scheme: "ssh",
-		User:   url.User(strings.TrimRight(m[1], "@")),
-		Host:   m[2],
-		Path:   m[3],
+		Scheme:   "ssh",
+		User:     userinfo,
+		Host:     m[2],
+		Path:     m[3],
+		RawQuery: rawquery,
 	}, nil
 }
 
@@ -111,7 +118,6 @@ func ParseScp(rawurl string) (*url.URL, error) {
 func ParseLocal(rawurl string) (*url.URL, error) {
 	return &url.URL{
 		Scheme: "file",
-		User:   url.User(""),
 		Host:   "",
 		Path:   rawurl,
 	}, nil

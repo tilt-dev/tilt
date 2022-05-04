@@ -132,7 +132,7 @@ type http2Client struct {
 	kpDormant bool
 
 	// Fields below are for channelz metric collection.
-	channelzID int64 // channelz unique identification number
+	channelzID *channelz.Identifier
 	czData     *channelzData
 
 	onGoAway func(GoAwayReason)
@@ -201,6 +201,12 @@ func newHTTP2Client(connectCtx, ctx context.Context, addr resolver.Address, opts
 		}
 	}()
 
+	// gRPC, resolver, balancer etc. can specify arbitrary data in the
+	// Attributes field of resolver.Address, which is shoved into connectCtx
+	// and passed to the dialer and credential handshaker. This makes it possible for
+	// address specific arbitrary data to reach custom dialers and credential handshakers.
+	connectCtx = icredentials.NewClientHandshakeInfoContext(connectCtx, credentials.ClientHandshakeInfo{Attributes: addr.Attributes})
+
 	conn, err := dial(connectCtx, opts.Dialer, addr, opts.UseProxy, opts.UserAgent)
 	if err != nil {
 		if opts.FailOnNonTempDialError {
@@ -245,11 +251,6 @@ func newHTTP2Client(connectCtx, ctx context.Context, addr resolver.Address, opts
 		}
 	}
 	if transportCreds != nil {
-		// gRPC, resolver, balancer etc. can specify arbitrary data in the
-		// Attributes field of resolver.Address, which is shoved into connectCtx
-		// and passed to the credential handshaker. This makes it possible for
-		// address specific arbitrary data to reach the credential handshaker.
-		connectCtx = icredentials.NewClientHandshakeInfoContext(connectCtx, credentials.ClientHandshakeInfo{Attributes: addr.Attributes})
 		rawConn := conn
 		// Pull the deadline from the connectCtx, which will be used for
 		// timeouts in the authentication protocol handshake. Can ignore the
@@ -350,8 +351,9 @@ func newHTTP2Client(connectCtx, ctx context.Context, addr resolver.Address, opts
 		}
 		t.statsHandler.HandleConn(t.ctx, connBegin)
 	}
-	if channelz.IsOn() {
-		t.channelzID = channelz.RegisterNormalSocket(t, opts.ChannelzParentID, fmt.Sprintf("%s -> %s", t.localAddr, t.remoteAddr))
+	t.channelzID, err = channelz.RegisterNormalSocket(t, opts.ChannelzParentID, fmt.Sprintf("%s -> %s", t.localAddr, t.remoteAddr))
+	if err != nil {
+		return nil, err
 	}
 	if t.keepaliveEnabled {
 		t.kpDormancyCond = sync.NewCond(&t.mu)
@@ -587,7 +589,7 @@ func (t *http2Client) getTrAuthData(ctx context.Context, audience string) (map[s
 				return nil, err
 			}
 
-			return nil, status.Errorf(codes.Unauthenticated, "transport: %v", err)
+			return nil, status.Errorf(codes.Unauthenticated, "transport: per-RPC creds failed due to error: %v", err)
 		}
 		for k, v := range data {
 			// Capital header names are illegal in HTTP/2.
@@ -897,9 +899,7 @@ func (t *http2Client) Close(err error) {
 	t.controlBuf.finish()
 	t.cancel()
 	t.conn.Close()
-	if channelz.IsOn() {
-		channelz.RemoveEntry(t.channelzID)
-	}
+	channelz.RemoveEntry(t.channelzID)
 	// Append info about previous goaways if there were any, since this may be important
 	// for understanding the root cause for this connection to be closed.
 	_, goAwayDebugMessage := t.GetGoAwayReason()
@@ -1556,7 +1556,7 @@ func minTime(a, b time.Duration) time.Duration {
 	return b
 }
 
-// keepalive running in a separate goroutune makes sure the connection is alive by sending pings.
+// keepalive running in a separate goroutine makes sure the connection is alive by sending pings.
 func (t *http2Client) keepalive() {
 	p := &ping{data: [8]byte{}}
 	// True iff a ping has been sent, and no data has been received since then.

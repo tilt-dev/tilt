@@ -291,15 +291,20 @@ func (s set) toSlice() []string {
 
 // BuildConfig is a type for build
 type BuildConfig struct {
-	Context    string            `yaml:",omitempty" json:"context,omitempty"`
-	Dockerfile string            `yaml:",omitempty" json:"dockerfile,omitempty"`
-	Args       MappingWithEquals `yaml:",omitempty" json:"args,omitempty"`
-	Labels     Labels            `yaml:",omitempty" json:"labels,omitempty"`
-	CacheFrom  StringList        `mapstructure:"cache_from" yaml:"cache_from,omitempty" json:"cache_from,omitempty"`
-	ExtraHosts HostsList         `mapstructure:"extra_hosts" yaml:"extra_hosts,omitempty" json:"extra_hosts,omitempty"`
-	Isolation  string            `yaml:",omitempty" json:"isolation,omitempty"`
-	Network    string            `yaml:",omitempty" json:"network,omitempty"`
-	Target     string            `yaml:",omitempty" json:"target,omitempty"`
+	Context    string                `yaml:",omitempty" json:"context,omitempty"`
+	Dockerfile string                `yaml:",omitempty" json:"dockerfile,omitempty"`
+	Args       MappingWithEquals     `yaml:",omitempty" json:"args,omitempty"`
+	SSH        SSHConfig             `yaml:"ssh,omitempty" json:"ssh,omitempty"`
+	Labels     Labels                `yaml:",omitempty" json:"labels,omitempty"`
+	CacheFrom  StringList            `mapstructure:"cache_from" yaml:"cache_from,omitempty" json:"cache_from,omitempty"`
+	CacheTo    StringList            `mapstructure:"cache_to" yaml:"cache_to,omitempty" json:"cache_to,omitempty"`
+	NoCache    bool                  `mapstructure:"no_cache" yaml:"no_cache,omitempty" json:"no_cache,omitempty"`
+	Pull       bool                  `mapstructure:"pull" yaml:"pull,omitempty" json:"pull,omitempty"`
+	ExtraHosts HostsList             `mapstructure:"extra_hosts" yaml:"extra_hosts,omitempty" json:"extra_hosts,omitempty"`
+	Isolation  string                `yaml:",omitempty" json:"isolation,omitempty"`
+	Network    string                `yaml:",omitempty" json:"network,omitempty"`
+	Target     string                `yaml:",omitempty" json:"target,omitempty"`
+	Secrets    []ServiceSecretConfig `yaml:",omitempty" json:"secrets,omitempty"`
 
 	Extensions map[string]interface{} `yaml:",inline" json:"-"`
 }
@@ -423,6 +428,39 @@ func (l Labels) Add(key, value string) Labels {
 	}
 	l[key] = value
 	return l
+}
+
+type SSHKey struct {
+	ID   string
+	Path string
+}
+
+// SSHConfig is a mapping type for SSH build config
+type SSHConfig []SSHKey
+
+func (s SSHConfig) Get(id string) (string, error) {
+	for _, sshKey := range s {
+		if sshKey.ID == id {
+			return sshKey.Path, nil
+		}
+	}
+	return "", fmt.Errorf("ID %s not found in SSH keys", id)
+}
+
+// MarshalYAML makes SSHKey implement yaml.Marshaller
+func (s SSHKey) MarshalYAML() (interface{}, error) {
+	if s.Path == "" {
+		return s.ID, nil
+	}
+	return fmt.Sprintf("%s: %s", s.ID, s.Path), nil
+}
+
+// MarshalJSON makes SSHKey implement json.Marshaller
+func (s SSHKey) MarshalJSON() ([]byte, error) {
+	if s.Path == "" {
+		return []byte(fmt.Sprintf(`"%s"`, s.ID)), nil
+	}
+	return []byte(fmt.Sprintf(`"%s": %s`, s.ID, s.Path)), nil
 }
 
 // MappingWithColon is a mapping type that can be converted from a list of
@@ -639,6 +677,25 @@ type ServiceVolumeConfig struct {
 	Tmpfs       *ServiceVolumeTmpfs  `yaml:",omitempty" json:"tmpfs,omitempty"`
 
 	Extensions map[string]interface{} `yaml:",inline" json:"-"`
+}
+
+// String render ServiceVolumeConfig as a volume string, one can parse back using loader.ParseVolume
+func (s ServiceVolumeConfig) String() string {
+	access := "rw"
+	if s.ReadOnly {
+		access = "ro"
+	}
+	options := []string{access}
+	if s.Bind != nil && s.Bind.SELinux != "" {
+		options = append(options, s.Bind.SELinux)
+	}
+	if s.Bind != nil && s.Bind.Propagation != "" {
+		options = append(options, s.Bind.Propagation)
+	}
+	if s.Volume != nil && s.Volume.NoCopy {
+		options = append(options, "nocopy")
+	}
+	return fmt.Sprintf("%s:%s:%s", s.Source, s.Target, strings.Join(options, ","))
 }
 
 const (

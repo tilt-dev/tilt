@@ -7,12 +7,21 @@ services:
       dockerfile: Dockerfile
       args:
         foo: bar
+      ssh:
+        - default
       target: foo
       network: foo
       cache_from:
         - foo
         - bar
       labels: [FOO=BAR]
+      secrets:
+        - secret1
+        - source: secret2
+          target: my_secret
+          uid: '103'
+          gid: '103'
+          mode: 0440
 
 
     cap_add:
