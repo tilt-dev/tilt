@@ -5980,6 +5980,7 @@ func schema_pkg_apis_core_v1alpha1_RegistryHosting(ref common.ReferenceCallback)
 					"host": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Host documents the host (hostname and port) of the registry, as seen from outside the cluster.\n\nThis is the registry host that tools outside the cluster should push images to.",
+							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -6013,6 +6014,7 @@ func schema_pkg_apis_core_v1alpha1_RegistryHosting(ref common.ReferenceCallback)
 						},
 					},
 				},
+				Required: []string{"host"},
 			},
 		},
 	}
