@@ -351,7 +351,7 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 	if err != nil {
 		msg := fmt.Sprintf("Error creating snapshot: %v", err)
 		log.Println(msg)
-		http.Error(w, msg, http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
