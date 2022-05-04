@@ -110,7 +110,7 @@ type tiltfileState struct {
 	localByName        map[string]*localResource
 
 	// ensure that any images are pushed to/pulled from this registry, rewriting names if needed
-	defaultReg container.Registry
+	defaultReg *v1alpha1.RegistryHosting
 
 	k8sKinds map[k8s.ObjectSelector]*tiltfile_k8s.KindInfo
 
@@ -685,7 +685,7 @@ func (s *tiltfileState) assembleImages() error {
 }
 
 func (s *tiltfileState) assembleDC() error {
-	if len(s.dc.services) > 0 && !s.defaultReg.Empty() {
+	if len(s.dc.services) > 0 && !container.IsEmptyRegistry(s.defaultReg) {
 		return errors.New("default_registry is not supported with docker compose")
 	}
 

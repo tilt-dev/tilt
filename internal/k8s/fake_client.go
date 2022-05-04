@@ -80,7 +80,7 @@ type FakeK8sClient struct {
 	UpsertTimeout    time.Duration
 
 	Runtime    container.Runtime
-	Registry   container.Registry
+	Registry   *v1alpha1.RegistryHosting
 	FakeNodeIP NodeIP
 
 	// entities are injected objects keyed by UID.
@@ -609,11 +609,14 @@ func (c *FakeK8sClient) ContainerRuntime(ctx context.Context) container.Runtime 
 	return container.RuntimeDocker
 }
 
-func (c *FakeK8sClient) LocalRegistry(ctx context.Context) container.Registry {
+func (c *FakeK8sClient) LocalRegistry(_ context.Context) *v1alpha1.RegistryHosting {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	return c.Registry
+	if c.Registry == nil {
+		return nil
+	}
+	return c.Registry.DeepCopy()
 }
 
 func (c *FakeK8sClient) NodeIP(ctx context.Context) NodeIP {

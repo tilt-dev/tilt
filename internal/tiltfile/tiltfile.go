@@ -12,7 +12,6 @@ import (
 
 	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/analytics"
-	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apiset"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/feature"
@@ -57,7 +56,7 @@ type TiltfileLoadResult struct {
 	VersionSettings     model.VersionSettings
 	UpdateSettings      model.UpdateSettings
 	WatchSettings       model.WatchSettings
-	DefaultRegistry     container.Registry
+	DefaultRegistry     *corev1alpha1.RegistryHosting
 	ObjectSet           apiset.ObjectSet
 	Hashes              hasher.Hashes
 

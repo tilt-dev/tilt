@@ -8,6 +8,7 @@ import (
 
 	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/feature"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -152,11 +153,13 @@ func (ar *AnalyticsReporter) report(ctx context.Context) {
 
 	if k8sCount > 1 {
 		registry := ar.kClient.LocalRegistry(ctx)
-		if registry.Host != "" {
-			stats["k8s.registry.host"] = "1"
-		}
-		if registry.HostFromCluster() != registry.Host {
-			stats["k8s.registry.hostFromCluster"] = "1"
+		if !container.IsEmptyRegistry(registry) {
+			if registry.Host != "" {
+				stats["k8s.registry.host"] = "1"
+			}
+			if registry.HostFromContainerRuntime != registry.Host {
+				stats["k8s.registry.hostFromCluster"] = "1"
+			}
 		}
 
 		stats["k8s.runtime"] = string(ar.kClient.ContainerRuntime(ctx))

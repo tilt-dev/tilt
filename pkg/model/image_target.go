@@ -149,7 +149,7 @@ func (i ImageTarget) Validate() error {
 		return fmt.Errorf("[Validate]: %v", err)
 	}
 
-	refs, err := container.NewRefSet(selector, container.Registry{})
+	refs, err := container.NewRefSet(selector, nil)
 	if err != nil {
 		return fmt.Errorf("[Validate]: %v", err)
 	}

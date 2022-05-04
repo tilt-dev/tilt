@@ -94,7 +94,10 @@ func TestAnalyticsReporter_Everything(t *testing.T) {
 	state.CompletedBuildCount = 3
 
 	tf.st.UnlockMutableState()
-	tf.kClient.Registry, _ = container.NewRegistryWithHostFromCluster("localhost:5000", "registry:5000")
+	tf.kClient.Registry = &v1alpha1.RegistryHosting{
+		Host:                     "localhost:5000",
+		HostFromContainerRuntime: "registry:5000",
+	}
 
 	tf.run()
 

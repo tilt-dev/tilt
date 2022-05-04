@@ -68,7 +68,7 @@ func TestRegistryFoundInTiltAnnotationsWithClusterHost(t *testing.T) {
 
 	registry := registryAsync.Registry(newLoggerCtx(os.Stdout))
 	assert.Equal(t, "localhost:5000", registry.Host)
-	assert.Equal(t, "registry:5000", registry.HostFromCluster())
+	assert.Equal(t, "registry:5000", registry.HostFromContainerRuntime)
 }
 
 func TestRegistryFoundInKindAnnotations(t *testing.T) {
@@ -112,7 +112,7 @@ data:
 
 	out := bytes.NewBuffer(nil)
 	registry := registryAsync.Registry(newLoggerCtx(out))
-	assert.True(t, registry.Empty())
+	assert.Nil(t, registry)
 	assert.Contains(t, out.String(), "https://fake-domain.tilt.dev/local-registry-help")
 }
 
@@ -139,7 +139,7 @@ data:
 
 	registry := registryAsync.Registry(newLoggerCtx(os.Stdout))
 	assert.Equal(t, "localhost:5000", registry.Host)
-	assert.Equal(t, "registry:5000", registry.HostFromCluster())
+	assert.Equal(t, "registry:5000", registry.HostFromContainerRuntime)
 }
 
 func TestKINDWarning(t *testing.T) {
@@ -149,7 +149,7 @@ func TestKINDWarning(t *testing.T) {
 
 	out := bytes.NewBuffer(nil)
 	registry := registryAsync.Registry(newLoggerCtx(out))
-	assert.True(t, registry.Empty())
+	assert.Nil(t, registry)
 	assert.Contains(t, out.String(), "https://github.com/tilt-dev/kind-local")
 }
 
@@ -160,7 +160,7 @@ func TestK3DNoWarning(t *testing.T) {
 
 	out := bytes.NewBuffer(nil)
 	registry := registryAsync.Registry(newLoggerCtx(out))
-	assert.True(t, registry.Empty())
+	assert.Nil(t, registry)
 	assert.Equal(t, out.String(), "")
 }
 
@@ -182,7 +182,7 @@ func TestRegistryFoundInLabelsWithLocalOnly(t *testing.T) {
 
 	registry := registryAsync.Registry(newLoggerCtx(os.Stdout))
 	assert.Equal(t, "localhost:5000", registry.Host)
-	assert.Equal(t, "localhost:5000", registry.HostFromCluster())
+	assert.Empty(t, registry.HostFromContainerRuntime)
 }
 
 func TestRegistryNotFound(t *testing.T) {

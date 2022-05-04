@@ -13,7 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/feature"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
@@ -263,8 +262,10 @@ func TestCreateClusterDefaultRegistry(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: model.MainTiltfileManifestName.String()},
 	}
 	nn := apis.Key(tf)
-	reg := container.MustNewRegistry("registry.example.com")
-	reg.SingleName = "fake-repo"
+	reg := &v1alpha1.RegistryHosting{
+		Host:       "registry.example.com",
+		SingleName: "fake-repo",
+	}
 	tlr := &tiltfile.TiltfileLoadResult{
 		Manifests:       []model.Manifest{fe},
 		DefaultRegistry: reg,

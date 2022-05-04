@@ -594,13 +594,13 @@ var k8sTargetAllowUnexported = cmp.AllowUnexported(K8sTarget{})
 var localTargetAllowUnexported = cmp.AllowUnexported(LocalTarget{})
 var selectorAllowUnexported = cmp.AllowUnexported(container.RefSelector{})
 var refSetAllowUnexported = cmp.AllowUnexported(container.RefSet{})
-var registryAllowUnexported = cmp.AllowUnexported(container.Registry{})
 var portForwardPathAllowUnexported = cmp.AllowUnexported(PortForward{})
 var ignoreCustomBuildDepsField = cmpopts.IgnoreFields(CustomBuild{}, "Deps")
 var ignoreLocalTargetDepsField = cmpopts.IgnoreFields(LocalTarget{}, "Deps")
 var ignoreDockerBuildCacheFrom = cmpopts.IgnoreFields(DockerBuild{}, "CacheFrom")
 var ignoreLabels = cmpopts.IgnoreFields(Manifest{}, "Labels")
 var ignoreDockerComposeProject = cmpopts.IgnoreFields(v1alpha1.DockerComposeServiceSpec{}, "Project")
+var ignoreRegistryFields = cmpopts.IgnoreFields(v1alpha1.RegistryHosting{}, "HostFromClusterNetwork", "Help")
 
 // ignoreLinks ignores user-defined links for the purpose of build invalidation
 //
@@ -633,7 +633,6 @@ func equalForBuildInvalidation(x, y interface{}) bool {
 		localTargetAllowUnexported,
 		selectorAllowUnexported,
 		refSetAllowUnexported,
-		registryAllowUnexported,
 		portForwardPathAllowUnexported,
 		dockerRefEqual,
 
@@ -655,5 +654,9 @@ func equalForBuildInvalidation(x, y interface{}) bool {
 		// all individual services. We track the service-specific YAML with
 		// a seprate ServiceYAML field.
 		ignoreDockerComposeProject,
+
+		// the RegistryHosting spec includes informational fields (Help) as
+		// well as some unused by Tilt (HostFromClusterNetwork)
+		ignoreRegistryFields,
 	)
 }
