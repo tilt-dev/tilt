@@ -61,10 +61,9 @@ type HttpClient interface {
 }
 
 type whoAmIResponse struct {
-	Found                bool
-	Username             string
-	TeamName             string
-	SuggestedTiltVersion string
+	Found    bool
+	Username string
+	TeamName string
 }
 
 func (c *CloudStatusManager) error() {
@@ -160,7 +159,6 @@ func (c *CloudStatusManager) CheckStatus(ctx context.Context, st store.RStore, c
 		Username:                 r.Username,
 		TeamName:                 r.TeamName,
 		IsPostRegistrationLookup: blocking,
-		SuggestedTiltVersion:     r.SuggestedTiltVersion,
 	})
 }
 

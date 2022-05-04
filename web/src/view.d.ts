@@ -389,6 +389,15 @@ declare namespace Proto {
     featureFlags?: v1alpha1UIFeatureFlag[];
     needsAnalyticsNudge?: boolean;
     runningTiltBuild?: corev1alpha1TiltBuild;
+    /**
+     * SuggestedTiltVersion tells the UI the recommended version for this
+     * user. If the version is different than what's running, the UI
+     * may display a prompt to upgrade.
+     *
+     * Deprecated: Tilt no longer uses suggested versions from cloud.tilt.dev.
+     *
+     * +optional
+     */
     suggestedTiltVersion?: string;
     versionSettings?: corev1alpha1VersionSettings;
     tiltCloudUsername?: string;
