@@ -3,14 +3,12 @@ import { AnalyticsAction, incr } from "./analytics"
 import { clearLogs } from "./ClearLogs"
 import LogStore from "./LogStore"
 import { isTargetEditable } from "./shortcut"
-import { ResourceName } from "./types"
-
-type Link = Proto.v1alpha1UIResourceLink
+import { ResourceName, UILink } from "./types"
 
 type Props = {
   logStore: LogStore
   resourceName: string
-  endpoints?: Link[]
+  endpoints?: UILink[]
   openEndpointUrl: (url: string) => void
 }
 

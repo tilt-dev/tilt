@@ -29,7 +29,12 @@ import { TiltSnackbarProvider } from "./Snackbar"
 import { SnapshotActionProvider } from "./snapshot"
 import SocketBar, { isTiltSocketConnected } from "./SocketBar"
 import { StarredResourcesContextProvider } from "./StarredResourcesContext"
-import { ShowErrorModal, ShowFatalErrorModal, SocketState } from "./types"
+import {
+  ShowErrorModal,
+  ShowFatalErrorModal,
+  SocketState,
+  UIResourceStatus,
+} from "./types"
 
 export type HudProps = {
   history: History
@@ -352,8 +357,8 @@ export function HUDFromContext(props: React.PropsWithChildren<{}>) {
 function compareObjectsOrder<
   T extends { status?: any; metadata?: Proto.v1ObjectMeta }
 >(a: T, b: T): number {
-  let aStatus = a.status as Proto.v1alpha1UIResourceStatus | null
-  let bStatus = b.status as Proto.v1alpha1UIResourceStatus | null
+  let aStatus = a.status as UIResourceStatus | null
+  let bStatus = b.status as UIResourceStatus | null
   let aOrder = aStatus?.order || 0
   let bOrder = bStatus?.order || 0
   if (aOrder != bOrder) {

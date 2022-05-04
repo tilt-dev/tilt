@@ -14,9 +14,8 @@ import StarredResourceBar, {
   starredResourcePropsFromView,
 } from "./StarredResourceBar"
 import { Color, Width } from "./style-helpers"
-import { ResourceName } from "./types"
+import { ResourceName, UIResource } from "./types"
 
-type UIResource = Proto.v1alpha1UIResource
 type OverviewResourcePaneProps = {
   view: Proto.webviewView
   isSocketConnected: boolean

@@ -1,9 +1,6 @@
 import { FilterLevel, FilterSource } from "./logfilters"
 import { LogAlert, LogAlertIndex } from "./LogStore"
-import { LogLevel } from "./types"
-
-type UIResource = Proto.v1alpha1UIResource
-type K8sResourceInfo = Proto.v1alpha1UIResourceKubernetes
+import { LogLevel, UIResource } from "./types"
 
 export type Alert = {
   source: FilterSource

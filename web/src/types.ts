@@ -151,7 +151,6 @@ export enum ResourceName {
   all = "(all)",
 }
 
-// TODO (lizz): Centralize other redundant type definitions
 export type UISession = Proto.v1alpha1UISession
 export type UIResource = Proto.v1alpha1UIResource
 export type UIResourceStatus = Proto.v1alpha1UIResourceStatus

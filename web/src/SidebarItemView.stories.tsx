@@ -14,7 +14,6 @@ import {
   TriggerMode,
 } from "./types"
 
-type UIResource = Proto.v1alpha1UIResource
 let pathBuilder = PathBuilder.forTesting("localhost", "/")
 
 function ItemWrapper(props: { children: React.ReactNode }) {
