@@ -6385,15 +6385,6 @@ func (f *fixture) cluster(m model.Manifest) *v1alpha1.Cluster {
 
 	tlr := f.loadResult
 
-	var defaultRegistry *v1alpha1.RegistryHosting
-	if !tlr.DefaultRegistry.Empty() {
-		defaultRegistry = &v1alpha1.RegistryHosting{
-			Host:                     tlr.DefaultRegistry.Host,
-			HostFromContainerRuntime: tlr.DefaultRegistry.HostFromCluster(),
-			SingleName:               tlr.DefaultRegistry.SingleName,
-		}
-	}
-
 	if m.IsK8s() {
 		return &v1alpha1.Cluster{
 			ObjectMeta: metav1.ObjectMeta{
@@ -6403,7 +6394,7 @@ func (f *fixture) cluster(m model.Manifest) *v1alpha1.Cluster {
 				Connection: &v1alpha1.ClusterConnection{
 					Kubernetes: &v1alpha1.KubernetesClusterConnection{},
 				},
-				DefaultRegistry: defaultRegistry,
+				DefaultRegistry: tlr.DefaultRegistry,
 			},
 		}
 	}
@@ -6417,7 +6408,7 @@ func (f *fixture) cluster(m model.Manifest) *v1alpha1.Cluster {
 				Connection: &v1alpha1.ClusterConnection{
 					Docker: &v1alpha1.DockerClusterConnection{},
 				},
-				DefaultRegistry: defaultRegistry,
+				DefaultRegistry: tlr.DefaultRegistry,
 			},
 		}
 	}

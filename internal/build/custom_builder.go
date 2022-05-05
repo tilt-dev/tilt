@@ -38,7 +38,10 @@ func (b *CustomBuilder) Build(ctx context.Context, refs container.RefSet,
 	imageMaps map[ktypes.NamespacedName]*v1alpha1.ImageMap) (container.TaggedRefs, error) {
 	expectedTag := spec.OutputTag
 	outputsImageRefTo := spec.OutputsImageRefTo
-	registryHost := refs.Registry().Host
+	var registryHost string
+	if reg := refs.Registry(); reg != nil {
+		registryHost = reg.Host
+	}
 
 	var expectedBuildRefs container.TaggedRefs
 	var err error

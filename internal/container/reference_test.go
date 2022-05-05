@@ -5,6 +5,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
 var (
@@ -12,8 +14,8 @@ var (
 )
 
 func TestNewRefSetWithInvalidRegistryErrors(t *testing.T) {
-	reg := Registry{Host: "invalid"}
-	assertNewRefSetError(t, sel, reg, "validating registry host")
+	reg := &v1alpha1.RegistryHosting{Host: "invalid"}
+	assertNewRefSetError(t, sel, reg, "repository name must be canonical")
 }
 
 func TestNewRefSetErrorsWithBadLocalRef(t *testing.T) {
@@ -23,7 +25,7 @@ func TestNewRefSetErrorsWithBadLocalRef(t *testing.T) {
 		longname += "o"
 	}
 	selector := MustParseSelector(longname)
-	reg := Registry{Host: "gcr.io/somewhat/long/hostname"}
+	reg := &v1alpha1.RegistryHosting{Host: "gcr.io/somewhat/long/hostname"}
 	assertNewRefSetError(t, selector, reg, "after applying default registry")
 }
 
@@ -34,12 +36,12 @@ func TestNewRefSetErrorsWithBadClusterRef(t *testing.T) {
 		longname += "o"
 	}
 	selector := MustParseSelector(longname)
-	reg := Registry{Host: "gcr.io", hostFromCluster: "gcr.io/somewhat/long/hostname"}
+	reg := &v1alpha1.RegistryHosting{Host: "gcr.io", HostFromContainerRuntime: "gcr.io/somewhat/long/hostname"}
 	assertNewRefSetError(t, selector, reg, "after applying default registry")
 }
 
 func TestNewRefSetEmptyRegistryOK(t *testing.T) {
-	_, err := NewRefSet(sel, Registry{})
+	_, err := NewRefSet(sel, nil)
 	assert.NoError(t, err)
 }
 
@@ -58,7 +60,13 @@ var cases = []struct {
 func TestDeriveRefs(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			reg := MustNewRegistryWithHostFromCluster(tc.host, tc.clusterHost)
+			var reg *v1alpha1.RegistryHosting
+			if tc.host != "" {
+				reg = &v1alpha1.RegistryHosting{
+					Host:                     tc.host,
+					HostFromContainerRuntime: tc.clusterHost,
+				}
+			}
 			refs, err := NewRefSet(MustParseSelector("gcr.io/foo"), reg)
 			require.NoError(t, err)
 
@@ -72,7 +80,10 @@ func TestDeriveRefs(t *testing.T) {
 }
 
 func TestWithoutRegistry(t *testing.T) {
-	reg := MustNewRegistryWithHostFromCluster("localhost:5000", "registry:5000")
+	reg := &v1alpha1.RegistryHosting{
+		Host:                     "localhost:5000",
+		HostFromContainerRuntime: "localhost:5000",
+	}
 	refs, err := NewRefSet(MustParseSelector("foo"), reg)
 	require.NoError(t, err)
 
@@ -80,7 +91,8 @@ func TestWithoutRegistry(t *testing.T) {
 	assert.Equal(t, "foo", FamiliarString(refs.WithoutRegistry().LocalRef()))
 }
 
-func assertNewRefSetError(t *testing.T, selector RefSelector, reg Registry, expectedErr string) {
+func assertNewRefSetError(t *testing.T, selector RefSelector, reg *v1alpha1.RegistryHosting, expectedErr string) {
+	t.Helper()
 	_, err := NewRefSet(selector, reg)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), expectedErr)

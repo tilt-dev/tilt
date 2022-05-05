@@ -18,8 +18,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
-	"github.com/tilt-dev/tilt/internal/controllers/apis/cluster"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/hud/server"
@@ -319,7 +319,7 @@ func (r *Reconciler) populateK8sMetadata(ctx context.Context, clusterNN types.Na
 
 	if conn.registry == nil {
 		reg := conn.k8sClient.LocalRegistry(ctx)
-		if !reg.Empty() {
+		if !container.IsEmptyRegistry(reg) {
 			// If we've found a local registry in the cluster at run-time, use that
 			// instead of the default_registry (if any) declared in the Tiltfile
 			logger.Get(ctx).Infof("Auto-detected local registry from environment: %s", reg)
@@ -336,7 +336,7 @@ func (r *Reconciler) populateK8sMetadata(ctx context.Context, clusterNN types.Na
 				clusterNN.Name)
 		}
 
-		conn.registry = &reg
+		conn.registry = reg
 	}
 
 	if conn.connStatus == nil {
@@ -377,17 +377,12 @@ func (c *connection) toStatus() v1alpha1.ClusterStatus {
 		clusterError = c.statusError
 	}
 
-	var reg *v1alpha1.RegistryHosting
-	if c.registry != nil {
-		reg = cluster.RegistryHosting(c.registry)
-	}
-
 	return v1alpha1.ClusterStatus{
 		Error:       clusterError,
 		Arch:        c.arch,
 		Version:     c.serverVersion,
 		ConnectedAt: connectedAt,
-		Registry:    reg,
+		Registry:    c.registry,
 		Connection:  c.connStatus,
 	}
 }

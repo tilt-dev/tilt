@@ -2474,6 +2474,8 @@ message RegistryHosting {
   // This is the registry host that tools running on pods inside the cluster
   // should push images to. If not set, then tools inside the cluster should
   // assume the local registry is not available to them.
+  //
+  // +optional
   optional string hostFromClusterNetwork = 2;
 
   // HostFromContainerRuntime documents the host (hostname and port) of the
@@ -2486,6 +2488,8 @@ message RegistryHosting {
   // Note that it doesn't make sense semantically to define this field, but not
   // define Host or HostFromClusterNetwork. That would imply a way to pull
   // images without a way to push images.
+  //
+  // +optional
   optional string hostFromContainerRuntime = 3;
 
   // Help contains a URL pointing to documentation for users on how to set
@@ -2499,6 +2503,8 @@ message RegistryHosting {
   // fail, the tool should display this help URL to the user. The help URL
   // should contain instructions on how to diagnose broken or misconfigured
   // registries.
+  //
+  // +optional
   optional string help = 4;
 
   // SingleName uses a shared image name for _all_ Tilt-built images and

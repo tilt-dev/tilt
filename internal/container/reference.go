@@ -1,6 +1,7 @@
 package container
 
 import (
+	"context"
 	"fmt"
 	"path"
 
@@ -24,10 +25,10 @@ type RefSet struct {
 	ConfigurationRef RefSelector
 
 	// (Optional) registry to prepend to ConfigurationRef to yield ref to use in update and deploy
-	registry Registry
+	registry *v1alpha1.RegistryHosting
 }
 
-func NewRefSet(confRef RefSelector, reg Registry) (RefSet, error) {
+func NewRefSet(confRef RefSelector, reg *v1alpha1.RegistryHosting) (RefSet, error) {
 	r := RefSet{
 		ConfigurationRef: confRef,
 		registry:         reg,
@@ -67,11 +68,14 @@ func (rs RefSet) WithoutRegistry() RefSet {
 	return MustSimpleRefSet(rs.ConfigurationRef)
 }
 
-func (rs RefSet) Registry() Registry {
-	return rs.registry
+func (rs RefSet) Registry() *v1alpha1.RegistryHosting {
+	if rs.registry == nil {
+		return nil
+	}
+	return rs.registry.DeepCopy()
 }
 
-func (rs RefSet) MustWithRegistry(reg Registry) RefSet {
+func (rs RefSet) MustWithRegistry(reg *v1alpha1.RegistryHosting) RefSet {
 	rs.registry = reg
 	err := rs.Validate()
 	if err != nil {
@@ -81,18 +85,18 @@ func (rs RefSet) MustWithRegistry(reg Registry) RefSet {
 }
 
 func (rs RefSet) Validate() error {
-	if !rs.registry.Empty() {
-		err := rs.registry.Validate()
+	if rs.registry != nil {
+		err := rs.registry.Validate(context.TODO())
 		if err != nil {
-			return errors.Wrapf(err, "validating new RefSet with configuration ref %q", rs.ConfigurationRef)
+			return errors.Wrapf(err.ToAggregate(), "validating new RefSet with configuration ref %q", rs.ConfigurationRef)
 		}
 	}
-	_, err := rs.registry.ReplaceRegistryForLocalRef(rs.ConfigurationRef)
+	_, err := ReplaceRegistryForLocalRef(rs.ConfigurationRef, rs.registry)
 	if err != nil {
 		return errors.Wrapf(err, "validating new RefSet with configuration ref %q", rs.ConfigurationRef)
 	}
 
-	_, err = rs.registry.ReplaceRegistryForClusterRef(rs.ConfigurationRef)
+	_, err = ReplaceRegistryForContainerRuntimeRef(rs.ConfigurationRef, rs.registry)
 	if err != nil {
 		return errors.Wrapf(err, "validating new RefSet with configuration ref %q", rs.ConfigurationRef)
 	}
@@ -103,10 +107,10 @@ func (rs RefSet) Validate() error {
 // LocalRef returns the ref by which this image is referenced from outside the cluster
 // (e.g. by `docker build`, `docker push`, etc.)
 func (rs RefSet) LocalRef() reference.Named {
-	if rs.registry.Empty() {
+	if IsEmptyRegistry(rs.registry) {
 		return rs.ConfigurationRef.AsNamedOnly()
 	}
-	ref, err := rs.registry.ReplaceRegistryForLocalRef(rs.ConfigurationRef)
+	ref, err := ReplaceRegistryForLocalRef(rs.ConfigurationRef, rs.registry)
 	if err != nil {
 		// Validation should have caught this before now :-/
 		panic(fmt.Sprintf("ERROR deriving LocalRef: %v", err))
@@ -115,16 +119,33 @@ func (rs RefSet) LocalRef() reference.Named {
 	return ref
 }
 
-// ClusterRef returns the ref by which this image is referenced in the cluster.
-// In most cases the image's ref from the cluster is the same as its ref locally;
-// currently, we only allow these refs to diverge if the user provides a default registry
-// with different urls for Host and hostFromCluster.
-// If registry.hostFromCluster is not set, we return localRef.
+// ClusterRef returns the ref by which this image will be pulled by
+// the container runtime in the cluster.
+//
+// For example, the registry host (that the user/Tilt *push* to) might be
+// something like `localhost:1234/foo`, referring to an exposed port from the
+// registry Docker container. However, when the container runtime (itself
+// generally running within a Docker container), won't see it on localhost,
+// and will instead use a reference like `registry:5000/foo`.
+//
+// If HostFromContainerRuntime is not set on the registry for the RefSet, the
+// Host will be used instead. This is common in cases where both the user and
+// the container runtime refer to the registry in the same way.
+//
+// Note that this is specific to the container runtime, which might have its
+// own config for the host. The local registry specification allows an
+// additional "ClusterFromClusterNetwork" value, which describes a generic way
+// for access from within the cluster network (e.g. via cluster provided DNS).
+// Within Tilt, this value is NOT used for business logic, so sometimes "cluster
+// ref" is used to refer to the container runtime ref. The API types, however,
+// include both values and are labeled accurately.
+//
+// TODO(milas): Rename to ContainerRuntimeRef()
 func (rs RefSet) ClusterRef() reference.Named {
-	if rs.registry.Empty() {
+	if IsEmptyRegistry(rs.registry) {
 		return rs.LocalRef()
 	}
-	ref, err := rs.registry.ReplaceRegistryForClusterRef(rs.ConfigurationRef)
+	ref, err := ReplaceRegistryForContainerRuntimeRef(rs.ConfigurationRef, rs.registry)
 	if err != nil {
 		// Validation should have caught this before now :-/
 		panic(fmt.Sprintf("ERROR deriving ClusterRef: %v", err))
@@ -140,7 +161,7 @@ func (rs RefSet) ClusterRef() reference.Named {
 // tag it with [escaped-original-name]-[suffix].
 func (rs RefSet) AddTagSuffix(suffix string) (TaggedRefs, error) {
 	tag := suffix
-	if rs.registry.SingleName != "" {
+	if rs.registry != nil && rs.registry.SingleName != "" {
 		tag = fmt.Sprintf("%s-%s", escapeName(path.Base(rs.ConfigurationRef.RefFamiliarName())), tag)
 	}
 
@@ -161,8 +182,14 @@ func (rs RefSet) AddTagSuffix(suffix string) (TaggedRefs, error) {
 	}, nil
 }
 
-// Refs yielded by an image build
+// TaggedRefs yielded by an image build
 type TaggedRefs struct {
-	LocalRef   reference.NamedTagged // Image name + tag as referenced from outside cluster
-	ClusterRef reference.NamedTagged // Image name + tag as referenced from within cluster
+	// LocalRef is the image name + tag as referenced from outside cluster
+	// (e.g. by the user or Tilt when pushing images).
+	LocalRef reference.NamedTagged
+	// ClusterRef is the image name + tag as referenced from the
+	// container runtime on the cluster.
+	//
+	// TODO(milas): Rename to ContainerRuntimeRef
+	ClusterRef reference.NamedTagged
 }

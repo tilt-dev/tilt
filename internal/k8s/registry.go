@@ -13,6 +13,7 @@ import (
 	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/localregistry-go"
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
@@ -48,7 +49,7 @@ type registryAsync struct {
 	env           clusterid.Product
 	core          apiv1.CoreV1Interface
 	runtimeSource RuntimeSource
-	registry      container.Registry
+	registry      *v1alpha1.RegistryHosting
 	once          sync.Once
 }
 
@@ -60,12 +61,12 @@ func newRegistryAsync(env clusterid.Product, core apiv1.CoreV1Interface, runtime
 	}
 }
 
-func (r *registryAsync) inferRegistryFromMicrok8s(ctx context.Context) container.Registry {
+func (r *registryAsync) inferRegistryFromMicrok8s(ctx context.Context) *v1alpha1.RegistryHosting {
 	// If Microk8s is using the docker runtime, we can just use the microk8s docker daemon
 	// instead of the registry.
 	runtime := r.runtimeSource.Runtime(ctx)
 	if runtime == container.RuntimeDocker {
-		return container.Registry{}
+		return nil
 	}
 
 	// Microk8s might have a registry enabled.
@@ -79,12 +80,12 @@ func (r *registryAsync) inferRegistryFromMicrok8s(ctx context.Context) container
 		} else {
 			logger.Get(ctx).Debugf("Error fetching services: %v", err)
 		}
-		return container.Registry{}
+		return nil
 	}
 
 	portSpecs := svc.Spec.Ports
 	if len(portSpecs) == 0 {
-		return container.Registry{}
+		return nil
 	}
 
 	// Check to make sure localhost resolves to an IPv4 address. If it doesn't,
@@ -95,81 +96,81 @@ func (r *registryAsync) inferRegistryFromMicrok8s(ctx context.Context) container
 		logger.Get(ctx).Warnf("Your /etc/hosts is resolving localhost to ::1 (IPv6).\n" +
 			"This breaks the microk8s image registry.\n" +
 			"Please fix your /etc/hosts to default to IPv4. This will make image pushes much faster.")
-		return container.Registry{}
+		return nil
 	}
 
 	portSpec := portSpecs[0]
 	host := fmt.Sprintf("localhost:%d", portSpec.NodePort)
-	reg, err := container.NewRegistry(host)
-	if err != nil {
-		logger.Get(ctx).Warnf("Error validating private registry host %q: %v", host, err)
-		return container.Registry{}
+	reg := v1alpha1.RegistryHosting{Host: host}
+	if err := reg.Validate(ctx); err != nil {
+		logger.Get(ctx).Warnf("Error validating private registry host %q: %v", host, err.ToAggregate())
+		return nil
 	}
 
-	return reg
+	return &reg
 }
 
 // If this node has the Tilt registry annotations on it, then we can
 // infer it was set up with a Tilt script and thus has a local registry.
-func (r *registryAsync) inferRegistryFromNodeAnnotations(ctx context.Context) container.Registry {
+func (r *registryAsync) inferRegistryFromNodeAnnotations(ctx context.Context) *v1alpha1.RegistryHosting {
 	nodeList, err := r.core.Nodes().List(ctx, metav1.ListOptions{Limit: 1})
 	if err != nil || len(nodeList.Items) == 0 {
-		return container.Registry{}
+		return nil
 	}
 
 	node := nodeList.Items[0]
 	annotations := node.Annotations
 
-	fromLocal := annotations[tiltAnnotationRegistry]
-	fromCluster := annotations[tiltAnnotationRegistryFromCluster]
-
-	if fromLocal != "" {
-		reg, err := container.NewRegistryWithHostFromCluster(fromLocal, fromCluster)
-		if err != nil {
-			logger.Get(ctx).Warnf("Local registry read from node failed to parse (%s, %s): %v", fromLocal, fromCluster, err)
-			return container.Registry{}
+	var reg *v1alpha1.RegistryHosting
+	if tiltReg := annotations[tiltAnnotationRegistry]; tiltReg != "" {
+		reg = &v1alpha1.RegistryHosting{
+			Host:                     annotations[tiltAnnotationRegistry],
+			HostFromContainerRuntime: annotations[tiltAnnotationRegistryFromCluster],
 		}
-		return reg
+	} else if kindReg := annotations[kindAnnotationRegistry]; kindReg != "" {
+		reg = &v1alpha1.RegistryHosting{Host: kindReg}
 	}
 
-	kindLocal := annotations[kindAnnotationRegistry]
-	if kindLocal != "" {
-		reg, err := container.NewRegistryWithHostFromCluster(kindLocal, "")
-		if err != nil {
-			logger.Get(ctx).Warnf("Local registry read from node failed to parse (%s): %v", kindLocal, err)
-			return container.Registry{}
+	if reg != nil {
+		if err := reg.Validate(ctx); err != nil {
+			logger.Get(ctx).Warnf("Local registry read from node failed: %v", err.ToAggregate())
+			return nil
 		}
-		return reg
 	}
 
-	return container.Registry{}
+	return reg
 }
 
 // Implements the local registry discovery standard.
-func (r *registryAsync) inferRegistryFromConfigMap(ctx context.Context) (registry container.Registry, help string) {
+func (r *registryAsync) inferRegistryFromConfigMap(ctx context.Context) (registry *v1alpha1.RegistryHosting, help string) {
 	hosting, err := localregistry.Discover(ctx, r.core)
 	if err != nil {
 		logger.Get(ctx).Debugf("Local registry discovery error: %v", err)
-		return container.Registry{}, ""
+		return nil, ""
 	}
 
 	if hosting.Host == "" {
-		return container.Registry{}, hosting.Help
+		return nil, hosting.Help
 	}
 
-	registry, err = container.NewRegistryWithHostFromCluster(
-		hosting.Host, hosting.HostFromContainerRuntime)
-	if err != nil {
-		logger.Get(ctx).Debugf("Local registry discovery error: %v", err)
-		return container.Registry{}, hosting.Help
+	registry = &v1alpha1.RegistryHosting{
+		Host:                     hosting.Host,
+		HostFromClusterNetwork:   hosting.HostFromClusterNetwork,
+		HostFromContainerRuntime: hosting.HostFromContainerRuntime,
+		Help:                     hosting.Help,
+	}
+
+	if err := registry.Validate(ctx); err != nil {
+		logger.Get(ctx).Debugf("Local registry discovery error: %v", err.ToAggregate())
+		return nil, hosting.Help
 	}
 	return registry, hosting.Help
 }
 
-func (r *registryAsync) Registry(ctx context.Context) container.Registry {
+func (r *registryAsync) Registry(ctx context.Context) *v1alpha1.RegistryHosting {
 	r.once.Do(func() {
 		reg, help := r.inferRegistryFromConfigMap(ctx)
-		if !reg.Empty() {
+		if !container.IsEmptyRegistry(reg) {
 			r.registry = reg
 			return
 		}
@@ -177,18 +178,18 @@ func (r *registryAsync) Registry(ctx context.Context) container.Registry {
 		// Auto-infer the microk8s local registry.
 		if r.env == clusterid.ProductMicroK8s {
 			reg := r.inferRegistryFromMicrok8s(ctx)
-			if !reg.Empty() {
+			if !container.IsEmptyRegistry(reg) {
 				r.registry = reg
 				return
 			}
 		}
 
 		reg = r.inferRegistryFromNodeAnnotations(ctx)
-		if !reg.Empty() {
+		if !container.IsEmptyRegistry(reg) {
 			r.registry = reg
 		}
 
-		if r.registry.Empty() {
+		if container.IsEmptyRegistry(r.registry) {
 			if help != "" {
 				logger.Get(ctx).Warnf("You are running without a local image registry.\n"+
 					"Tilt can use the local registry to speed up builds.\n"+
@@ -203,6 +204,6 @@ func (r *registryAsync) Registry(ctx context.Context) container.Registry {
 	return r.registry
 }
 
-func (c K8sClient) LocalRegistry(ctx context.Context) container.Registry {
+func (c K8sClient) LocalRegistry(ctx context.Context) *v1alpha1.RegistryHosting {
 	return c.registryAsync.Registry(ctx)
 }

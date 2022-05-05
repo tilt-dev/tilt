@@ -552,15 +552,15 @@
         },
         "hostFromClusterNetwork": {
           "type": "string",
-          "description": "HostFromClusterNetwork documents the host (hostname and port) of the\nregistry, as seen from networking inside the container pods.\n\nThis is the registry host that tools running on pods inside the cluster\nshould push images to. If not set, then tools inside the cluster should\nassume the local registry is not available to them."
+          "description": "HostFromClusterNetwork documents the host (hostname and port) of the\nregistry, as seen from networking inside the container pods.\n\nThis is the registry host that tools running on pods inside the cluster\nshould push images to. If not set, then tools inside the cluster should\nassume the local registry is not available to them.\n\n+optional"
         },
         "hostFromContainerRuntime": {
           "type": "string",
-          "description": "HostFromContainerRuntime documents the host (hostname and port) of the\nregistry, as seen from the cluster's container runtime.\n\nWhen tools apply Kubernetes objects to the cluster, this host should be\nused for image name fields. If not set, users of this field should use the\nvalue of Host instead.\n\nNote that it doesn't make sense semantically to define this field, but not\ndefine Host or HostFromClusterNetwork. That would imply a way to pull\nimages without a way to push images."
+          "description": "HostFromContainerRuntime documents the host (hostname and port) of the\nregistry, as seen from the cluster's container runtime.\n\nWhen tools apply Kubernetes objects to the cluster, this host should be\nused for image name fields. If not set, users of this field should use the\nvalue of Host instead.\n\nNote that it doesn't make sense semantically to define this field, but not\ndefine Host or HostFromClusterNetwork. That would imply a way to pull\nimages without a way to push images.\n\n+optional"
         },
         "help": {
           "type": "string",
-          "description": "Help contains a URL pointing to documentation for users on how to set\nup and configure a local registry.\n\nTools can use this to nudge users to enable the registry. When possible,\nthe writer should use as permanent a URL as possible to prevent drift\n(e.g., a version control SHA).\n\nWhen image pushes to a registry host specified in one of the other fields\nfail, the tool should display this help URL to the user. The help URL\nshould contain instructions on how to diagnose broken or misconfigured\nregistries."
+          "description": "Help contains a URL pointing to documentation for users on how to set\nup and configure a local registry.\n\nTools can use this to nudge users to enable the registry. When possible,\nthe writer should use as permanent a URL as possible to prevent drift\n(e.g., a version control SHA).\n\nWhen image pushes to a registry host specified in one of the other fields\nfail, the tool should display this help URL to the user. The help URL\nshould contain instructions on how to diagnose broken or misconfigured\nregistries.\n\n+optional"
         },
         "singleName": {
           "type": "string",

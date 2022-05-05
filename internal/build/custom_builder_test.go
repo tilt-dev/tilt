@@ -27,7 +27,10 @@ import (
 var defaultCluster = &v1alpha1.Cluster{
 	ObjectMeta: metav1.ObjectMeta{Name: "default"},
 }
-var TwoURLRegistry = container.MustNewRegistryWithHostFromCluster("localhost:1234", "registry:1234")
+var TwoURLRegistry = &v1alpha1.RegistryHosting{
+	Host:                     "localhost:1234",
+	HostFromContainerRuntime: "registry:1234",
+}
 
 func TestCustomBuildSuccess(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
@@ -324,7 +327,7 @@ func refSetFromString(s string) container.RefSet {
 	return container.MustSimpleRefSet(sel)
 }
 
-func refSetWithRegistryFromString(ref string, reg container.Registry) container.RefSet {
+func refSetWithRegistryFromString(ref string, reg *v1alpha1.RegistryHosting) container.RefSet {
 	r, err := container.NewRefSet(container.MustParseSelector(ref), reg)
 	if err != nil {
 		panic(err)

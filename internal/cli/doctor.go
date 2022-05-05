@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -176,7 +177,7 @@ func clusterLocalRegistryDisplay(ctx context.Context) (string, error) {
 	// blackhole any warnings
 	newCtx := logger.WithLogger(ctx, logger.NewDeferredLogger(ctx))
 	registry := kClient.LocalRegistry(newCtx)
-	if registry.Empty() {
+	if container.IsEmptyRegistry(registry) {
 		return "none", nil
 	}
 	return fmt.Sprintf("%+v", registry), nil

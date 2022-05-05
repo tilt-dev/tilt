@@ -691,6 +691,8 @@ declare namespace Proto {
      * This is the registry host that tools running on pods inside the cluster
      * should push images to. If not set, then tools inside the cluster should
      * assume the local registry is not available to them.
+     *
+     * +optional
      */
     hostFromClusterNetwork?: string;
     /**
@@ -704,6 +706,8 @@ declare namespace Proto {
      * Note that it doesn't make sense semantically to define this field, but not
      * define Host or HostFromClusterNetwork. That would imply a way to pull
      * images without a way to push images.
+     *
+     * +optional
      */
     hostFromContainerRuntime?: string;
     /**
@@ -718,6 +722,8 @@ declare namespace Proto {
      * fail, the tool should display this help URL to the user. The help URL
      * should contain instructions on how to diagnose broken or misconfigured
      * registries.
+     *
+     * +optional
      */
     help?: string;
     /**

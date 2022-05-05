@@ -123,7 +123,7 @@ type Client interface {
 	ContainerRuntime(ctx context.Context) container.Runtime
 
 	// Some clusters support a local image registry that we can push to.
-	LocalRegistry(ctx context.Context) container.Registry
+	LocalRegistry(ctx context.Context) *v1alpha1.RegistryHosting
 
 	// Some clusters support a node IP where all servers are reachable.
 	NodeIP(ctx context.Context) NodeIP

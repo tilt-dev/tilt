@@ -12,7 +12,6 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/container"
-	"github.com/tilt-dev/tilt/internal/controllers/apis/cluster"
 	ctrltiltfile "github.com/tilt-dev/tilt/internal/controllers/apis/tiltfile"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/engine/dockerprune"
@@ -114,8 +113,7 @@ func resolveImageSelectors(ctx context.Context, kCli k8s.Client, tlr *tiltfile.T
 		if _, err := kCli.CheckConnected(ctx); err != nil {
 			return nil, fmt.Errorf("determining local registry: %v", err)
 		}
-		localReg := kCli.LocalRegistry(ctx)
-		reg = cluster.RegistryHosting(&localReg)
+		reg = kCli.LocalRegistry(ctx)
 	}
 
 	clusters := map[string]*v1alpha1.Cluster{

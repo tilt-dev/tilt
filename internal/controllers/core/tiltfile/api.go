@@ -17,7 +17,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
-	"github.com/tilt-dev/tilt/internal/controllers/apis/cluster"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/uibutton"
 	"github.com/tilt-dev/tilt/internal/controllers/apiset"
@@ -613,7 +612,7 @@ func toClusterObjects(nn types.NamespacedName, tlr *tiltfile.TiltfileLoadResult,
 				Connection: &v1alpha1.ClusterConnection{
 					Kubernetes: defaultK8sConnection.DeepCopy(),
 				},
-				DefaultRegistry: cluster.RegistryHosting(&tlr.DefaultRegistry),
+				DefaultRegistry: tlr.DefaultRegistry,
 			},
 		}
 	}

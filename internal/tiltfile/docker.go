@@ -474,8 +474,8 @@ func (s *tiltfileState) repoIgnoresForImage(image *dockerImage) []v1alpha1.Ignor
 	return repoIgnoresForPaths(paths)
 }
 
-func (s *tiltfileState) defaultRegistry(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	if !s.defaultReg.Empty() {
+func (s *tiltfileState) defaultRegistry(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	if !container.IsEmptyRegistry(s.defaultReg) {
 		return starlark.None, errors.New("default registry already defined")
 	}
 
@@ -487,9 +487,19 @@ func (s *tiltfileState) defaultRegistry(thread *starlark.Thread, fn *starlark.Bu
 		return nil, err
 	}
 
-	reg, err := container.NewRegistryWithHostFromCluster(host, hostFromCluster)
+	reg := &v1alpha1.RegistryHosting{
+		Host:                     host,
+		HostFromContainerRuntime: hostFromCluster,
+		SingleName:               singleName,
+	}
+
+	ctx, err := starkit.ContextFromThread(t)
 	if err != nil {
-		return starlark.None, errors.Wrapf(err, "validating defaultRegistry")
+		return starlark.None, err
+	}
+
+	if err := reg.Validate(ctx); err != nil {
+		return starlark.None, errors.Wrapf(err.ToAggregate(), "validating defaultRegistry")
 	}
 
 	reg.SingleName = singleName

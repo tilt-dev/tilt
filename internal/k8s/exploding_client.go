@@ -81,8 +81,8 @@ func (ec *explodingClient) ContainerRuntime(ctx context.Context) container.Runti
 	return container.RuntimeUnknown
 }
 
-func (ec *explodingClient) LocalRegistry(ctx context.Context) container.Registry {
-	return container.Registry{}
+func (ec *explodingClient) LocalRegistry(_ context.Context) *v1alpha1.RegistryHosting {
+	return nil
 }
 
 func (ec *explodingClient) NodeIP(ctx context.Context) NodeIP {
