@@ -3,11 +3,13 @@ package kubernetesapply
 import (
 	"context"
 	"fmt"
+	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -19,7 +21,7 @@ import (
 // After we reconcile a KubernetesApply, update the KubernetesDiscovery objects it owns.
 //
 // If the Apply has been deleted, any corresponding Disco objects should be deleted.
-func (r *Reconciler) manageOwnedKubernetesDiscovery(ctx context.Context, nn types.NamespacedName, ka *v1alpha1.KubernetesApply) error {
+func (r *Reconciler) manageOwnedKubernetesDiscovery(ctx context.Context, nn types.NamespacedName, ka *v1alpha1.KubernetesApply) (reconcile.Result, error) {
 	if ka != nil && (ka.Status.Error != "" || ka.Status.ResultYAML == "") {
 		isDisabled := ka.Status.DisableStatus != nil &&
 			ka.Status.DisableStatus.State == v1alpha1.DisableStateDisabled
@@ -27,7 +29,7 @@ func (r *Reconciler) manageOwnedKubernetesDiscovery(ctx context.Context, nn type
 			// If the KubernetesApply is in an error state or hasn't deployed anything,
 			// don't reconcile the discovery object. This prevents the reconcilers from
 			// tearing down all the discovery infra on a transient deploy error.
-			return nil
+			return reconcile.Result{}, nil
 		}
 	}
 
@@ -35,44 +37,51 @@ func (r *Reconciler) manageOwnedKubernetesDiscovery(ctx context.Context, nn type
 	err := r.ctrlClient.Get(ctx, nn, &existingKD)
 	isNotFound := apierrors.IsNotFound(err)
 	if err != nil && !isNotFound {
-		return fmt.Errorf("failed to fetch managed KubernetesDiscovery objects for KubernetesApply %s: %v",
-			nn.Name, err)
+		return reconcile.Result{},
+			fmt.Errorf("failed to fetch managed KubernetesDiscovery objects for KubernetesApply %s: %v",
+				nn.Name, err)
 	}
 
 	kd, err := r.toDesiredKubernetesDiscovery(ka)
 	if err != nil {
-		return fmt.Errorf("generating kubernetesdiscovery: %v", err)
+		return reconcile.Result{}, fmt.Errorf("generating kubernetesdiscovery: %v", err)
 	}
 
 	if isNotFound {
 		if kd == nil {
-			return nil // Nothing to do.
+			return reconcile.Result{}, nil // Nothing to do.
 		}
 
 		err := r.ctrlClient.Create(ctx, kd)
 		if err != nil {
-			return fmt.Errorf("creating kubernetesdiscovery: %v", err)
+			if apierrors.IsAlreadyExists(err) {
+				return reconcile.Result{RequeueAfter: time.Second}, nil
+			}
+			return reconcile.Result{}, fmt.Errorf("creating kubernetesdiscovery: %v", err)
 		}
-		return nil
+		return reconcile.Result{}, nil
 	}
 
 	if kd == nil {
 		err := r.ctrlClient.Delete(ctx, &existingKD)
 		if err != nil && !apierrors.IsNotFound(err) {
-			return fmt.Errorf("deleting kubernetesdiscovery: %v", err)
+			return reconcile.Result{}, fmt.Errorf("deleting kubernetesdiscovery: %v", err)
 		}
-		return nil
+		return reconcile.Result{}, nil
 	}
 
 	if !apicmp.DeepEqual(existingKD.Spec, kd.Spec) {
 		existingKD.Spec = kd.Spec
 		err = r.ctrlClient.Update(ctx, &existingKD)
 		if err != nil {
-			return fmt.Errorf("updating kubernetesdiscovery: %v", err)
+			if apierrors.IsConflict(err) {
+				return reconcile.Result{RequeueAfter: time.Second}, nil
+			}
+			return reconcile.Result{}, fmt.Errorf("updating kubernetesdiscovery: %v", err)
 		}
 	}
 
-	return nil
+	return reconcile.Result{}, nil
 }
 
 // Construct the desired KubernetesDiscovery
