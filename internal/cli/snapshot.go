@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/mattn/go-tty"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
@@ -17,6 +18,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/analytics"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
 	"github.com/tilt-dev/tilt/internal/snapshots"
+	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
 )
 
 func newSnapshotCmd() *cobra.Command {
@@ -25,6 +27,7 @@ func newSnapshotCmd() *cobra.Command {
 	}
 
 	result.AddCommand(newViewCommand())
+	result.AddCommand(newCreateSnapshotCommand())
 
 	return result
 }
@@ -159,4 +162,53 @@ func (c *serveCmd) serveSnapshot(snapshotPath string) error {
 	}
 
 	return nil
+}
+
+func newCreateSnapshotCommand() *cobra.Command {
+	result := &cobra.Command{
+		Use:   "create [file to save]",
+		Short: "Creates a snapshot file from a currently running Tilt instance",
+		Long:  "Creates a snapshot file that can be viewed with `tilt snapshot view`",
+		Example: `
+tilt snapshot create snapshot.json
+# or if no file is specified, it goes to stdout
+tilt snapshot create > snapshot.json
+
+# to view the snapshot
+tilt snapshot view snapshot.json
+`,
+		Args: cobra.MaximumNArgs(1),
+		Run:  createSnapshot,
+	}
+
+	addConnectServerFlags(result)
+
+	return result
+}
+
+func createSnapshot(cmd *cobra.Command, args []string) {
+	body := apiGet("view")
+
+	snapshot := proto_webview.Snapshot{
+		View: &proto_webview.View{},
+	}
+
+	jsEncoder := &runtime.JSONPb{}
+	err := jsEncoder.NewDecoder(body).Decode(&snapshot.View)
+	if err != nil {
+		cmdFail(fmt.Errorf("error reading snapshot from tilt: %v", err))
+	}
+
+	out := os.Stdout
+	if len(args) > 0 {
+		out, err = os.Create(args[0])
+		if err != nil {
+			cmdFail(fmt.Errorf("error creating %s: %v", args[0], err))
+		}
+	}
+
+	err = jsEncoder.NewEncoder(out).Encode(&snapshot)
+	if err != nil {
+		cmdFail(fmt.Errorf("error serializing snapshot: %v", err))
+	}
 }
