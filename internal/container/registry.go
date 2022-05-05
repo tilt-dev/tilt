@@ -101,7 +101,7 @@ func replaceRegistry(defaultReg string, rs RefSelector, singleName string) (refe
 // registry (as seen from the user).
 func ReplaceRegistryForLocalRef(rs RefSelector, reg *v1alpha1.RegistryHosting) (reference.Named, error) {
 	var host, singleName string
-	if reg != nil {
+	if !IsEmptyRegistry(reg) {
 		host = reg.Host
 		singleName = reg.SingleName
 	}
@@ -112,7 +112,7 @@ func ReplaceRegistryForLocalRef(rs RefSelector, reg *v1alpha1.RegistryHosting) (
 // registry (as seen from the container runtime).
 func ReplaceRegistryForContainerRuntimeRef(rs RefSelector, reg *v1alpha1.RegistryHosting) (reference.Named, error) {
 	var host, singleName string
-	if reg != nil {
+	if !IsEmptyRegistry(reg) {
 		host = reg.HostFromContainerRuntime
 		if host == "" {
 			host = reg.Host
