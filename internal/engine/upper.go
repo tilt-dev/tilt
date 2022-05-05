@@ -332,6 +332,8 @@ func handleTiltCloudStatusReceivedAction(state *store.EngineState, action store.
 		state.CloudStatus.Username = action.Username
 		state.CloudStatus.TeamName = action.TeamName
 	}
+
+	state.SuggestedTiltVersion = action.SuggestedTiltVersion
 }
 
 func handleUserStartedTiltCloudRegistrationAction(state *store.EngineState) {

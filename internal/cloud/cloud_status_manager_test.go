@@ -43,8 +43,9 @@ func TestWhoAmI(t *testing.T) {
 			f := newCloudStatusManagerTestFixture(t)
 
 			resp := whoAmIResponse{
-				Found:    true,
-				Username: "myusername",
+				Found:                true,
+				Username:             "myusername",
+				SuggestedTiltVersion: "10.0.0",
 			}
 
 			if tc.teamID != "" {
@@ -79,6 +80,7 @@ func TestWhoAmI(t *testing.T) {
 				Found:                    true,
 				Username:                 "myusername",
 				IsPostRegistrationLookup: false,
+				SuggestedTiltVersion:     "10.0.0",
 			}
 
 			if tc.teamID != "" {
@@ -103,7 +105,7 @@ func TestStatusRefresh(t *testing.T) {
 	req := f.waitForRequest(fmt.Sprintf("https://%s/api/whoami", testCloudAddress))
 	require.Equal(t, "test token", req.Header.Get(TiltTokenHeaderName))
 
-	expected := store.TiltCloudStatusReceivedAction{Username: "user1", Found: true, IsPostRegistrationLookup: false}
+	expected := store.TiltCloudStatusReceivedAction{Username: "user1", Found: true, IsPostRegistrationLookup: false, SuggestedTiltVersion: "10.0.0"}
 	a := store.WaitForAction(t, reflect.TypeOf(store.TiltCloudStatusReceivedAction{}), f.st.Actions)
 	require.Equal(t, expected, a)
 

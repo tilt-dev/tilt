@@ -1105,7 +1105,7 @@
         },
         "suggestedTiltVersion": {
           "type": "string",
-          "description": "SuggestedTiltVersion tells the UI the recommended version for this\nuser. If the version is different than what's running, the UI\nmay display a prompt to upgrade.\n\nDeprecated: Tilt no longer uses suggested versions from cloud.tilt.dev.\n\n+optional"
+          "title": "SuggestedTiltVersion tells the UI the recommended version for this\nuser. If the version is different than what's running, the UI\nmay display a prompt to upgrade.\n+optional"
         },
         "versionSettings": {
           "$ref": "#/definitions/corev1alpha1VersionSettings",

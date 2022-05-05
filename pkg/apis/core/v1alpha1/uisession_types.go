@@ -125,9 +125,6 @@ type UISessionStatus struct {
 	// SuggestedTiltVersion tells the UI the recommended version for this
 	// user. If the version is different than what's running, the UI
 	// may display a prompt to upgrade.
-	//
-	// Deprecated: Tilt no longer uses suggested versions from cloud.tilt.dev.
-	//
 	// +optional
 	SuggestedTiltVersion string `json:"suggestedTiltVersion,omitempty" protobuf:"bytes,4,opt,name=suggestedTiltVersion"`
 
