@@ -86,6 +86,44 @@ func TestDiscoveryStrategySelectorsOnly(t *testing.T) {
 	assert.Equal(t, map[string]string{"app": "tilt-site"}, kd.Spec.ExtraSelectors[0].MatchLabels)
 }
 
+// https://github.com/tilt-dev/tilt/issues/5773
+func TestApplyCmdDiscoveryStrategySelectorsOnly(t *testing.T) {
+	f := newFixture(t)
+	f.execer.RegisterCommand("myapply", 0, testyaml.SanchoYAML, "")
+	ka := v1alpha1.KubernetesApply{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "a",
+		},
+		Spec: v1alpha1.KubernetesApplySpec{
+			DiscoveryStrategy: v1alpha1.KubernetesDiscoveryStrategySelectorsOnly,
+			KubernetesDiscoveryTemplateSpec: &v1alpha1.KubernetesDiscoveryTemplateSpec{
+				ExtraSelectors: []metav1.LabelSelector{
+					metav1.LabelSelector{
+						MatchLabels: map[string]string{"app": "tilt-site"},
+					},
+				},
+			},
+			ApplyCmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"myapply"}},
+		},
+		Status: v1alpha1.KubernetesApplyStatus{
+			ResultYAML: testyaml.SanchoYAML,
+		},
+	}
+	f.Create(&ka)
+
+	f.MustReconcile(types.NamespacedName{Name: "a"})
+	f.MustGet(types.NamespacedName{Name: "a"}, &ka)
+
+	var kd v1alpha1.KubernetesDiscovery
+	f.MustGet(types.NamespacedName{Name: "a"}, &kd)
+	assert.Equal(f.T(), 1, len(kd.Spec.Watches))
+
+	// Make sure we don't contain UID watches
+	assert.Equal(t, "", kd.Spec.Watches[0].UID)
+	assert.Equal(t, "default", kd.Spec.Watches[0].Namespace)
+	assert.Equal(t, map[string]string{"app": "tilt-site"}, kd.Spec.ExtraSelectors[0].MatchLabels)
+}
+
 func TestCreateAndDeleteDisco(t *testing.T) {
 	f := newFixture(t)
 	ka := v1alpha1.KubernetesApply{

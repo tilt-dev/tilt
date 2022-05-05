@@ -158,7 +158,7 @@ func (r *Reconciler) toWatchRefs(ka *v1alpha1.KubernetesApply) ([]v1alpha1.Kuber
 		}
 	}
 
-	entities, err := k8s.ParseYAMLFromString(ka.Spec.YAML)
+	entities, err := k8s.ParseYAMLFromString(ka.Status.ResultYAML)
 	if err != nil {
 		return nil, err
 	}
