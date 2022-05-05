@@ -104,7 +104,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	}
 
 	if apierrors.IsNotFound(err) || !ka.ObjectMeta.DeletionTimestamp.IsZero() {
-		err = r.manageOwnedKubernetesDiscovery(ctx, nn, nil)
+		result, err := r.manageOwnedKubernetesDiscovery(ctx, nn, nil)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -115,7 +115,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		r.clearRecord(nn)
 
 		r.st.Dispatch(kubernetesapplys.NewKubernetesApplyDeleteAction(request.NamespacedName.Name))
-		return ctrl.Result{}, nil
+		return result, nil
 	}
 
 	// The apiserver is the source of truth, and will ensure the engine state is up to date.
@@ -167,12 +167,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		return ctrl.Result{}, err
 	}
 
-	err = r.manageOwnedKubernetesDiscovery(ctx, nn, newKA)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	return ctrl.Result{}, nil
+	return r.manageOwnedKubernetesDiscovery(ctx, nn, newKA)
 }
 
 // Determine if we should deploy the current YAML.
