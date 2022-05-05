@@ -4694,10 +4694,14 @@ func TestDependsOnMissingResource(t *testing.T) {
 	f := newFixture(t)
 
 	f.file("Tiltfile", `
-local_resource('bar', 'echo bar', resource_deps=['foo'])
+local_resource('baz', 'echo baz')
+local_resource('bar', 'echo bar', resource_deps=['foo', 'baz'])
 `)
 
 	f.loadAssertWarnings("resource bar specified a dependency on unknown resource foo - dependency ignored")
+	f.assertNumManifests(2)
+	f.assertNextManifest("baz", resourceDeps())
+	f.assertNextManifest("bar", resourceDeps("baz"))
 }
 
 func TestDependsOnSelf(t *testing.T) {
