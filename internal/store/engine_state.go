@@ -79,7 +79,8 @@ type EngineState struct {
 	// which we listen to for reload.
 	TiltfileConfigPaths map[model.ManifestName][]string
 
-	VersionSettings model.VersionSettings
+	SuggestedTiltVersion string
+	VersionSettings      model.VersionSettings
 
 	// Analytics Info
 	AnalyticsEnvOpt        analytics.Opt

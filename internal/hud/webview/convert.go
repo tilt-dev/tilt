@@ -166,6 +166,7 @@ func ToUISession(s store.EngineState) *v1alpha1.UISession {
 		Dev:       s.TiltBuildInfo.Dev,
 		Date:      s.TiltBuildInfo.Date,
 	}
+	status.SuggestedTiltVersion = s.SuggestedTiltVersion
 	status.FeatureFlags = []v1alpha1.UIFeatureFlag{}
 	for k, v := range s.Features {
 		status.FeatureFlags = append(status.FeatureFlags, v1alpha1.UIFeatureFlag{
