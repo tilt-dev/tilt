@@ -171,6 +171,18 @@ func TestDockerComposeServiceEnvFile(t *testing.T) {
 	f.assertConfigFiles(expectedConfFiles...)
 }
 
+func TestDockerComposeProjectName(t *testing.T) {
+	f := newFixture(t)
+
+	f.dockerfile(filepath.Join("foo", "Dockerfile"))
+	f.file("docker-compose.yml", simpleConfig)
+	f.file("Tiltfile", `docker_compose('docker-compose.yml', project_name='hello')`)
+
+	f.load()
+	m := f.assertDcManifest("foo")
+	require.Equal(t, "hello", m.DockerComposeTarget().Spec.Project.Name)
+}
+
 func TestDockerComposeConflict(t *testing.T) {
 	f := newFixture(t)
 
