@@ -323,7 +323,7 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 		manifests = append(manifests, yamlManifest)
 	}
 
-	err = s.validateResourceDependencies(manifests)
+	err = s.sanitizeDependencies(manifests)
 	if err != nil {
 		return nil, starkit.Model{}, err
 	}
@@ -1626,10 +1626,9 @@ func (s *tiltfileState) tempDir() (*fwatch.TempDir, error) {
 	return s.scratchDir, nil
 }
 
-func (s *tiltfileState) validateResourceDependencies(ms []model.Manifest) error {
-	// make sure that:
-	// 1. all deps exist
-	// 2. we have a DAG
+func (s *tiltfileState) sanitizeDependencies(ms []model.Manifest) error {
+	// warn + delete resource deps that don't exist
+	// error if resource deps are not a DAG
 
 	knownResources := make(map[model.ManifestName]bool)
 	for _, m := range ms {
@@ -1638,7 +1637,8 @@ func (s *tiltfileState) validateResourceDependencies(ms []model.Manifest) error 
 
 	// construct the graph and make sure all edges are valid
 	edges := make(map[interface{}][]interface{})
-	for _, m := range ms {
+	for i, m := range ms {
+		var sanitizedDeps []model.ManifestName
 		for _, b := range m.ResourceDependencies {
 			if m.Name == b {
 				return fmt.Errorf("resource %s specified a dependency on itself", m.Name)
@@ -1648,7 +1648,11 @@ func (s *tiltfileState) validateResourceDependencies(ms []model.Manifest) error 
 				continue
 			}
 			edges[m.Name] = append(edges[m.Name], b)
+			sanitizedDeps = append(sanitizedDeps, b)
 		}
+
+		m.ResourceDependencies = sanitizedDeps
+		ms[i] = m
 	}
 
 	// check for cycles
