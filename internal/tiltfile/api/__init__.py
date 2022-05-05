@@ -243,7 +243,7 @@ def docker_build(ref: str,
   """
   pass
 
-def docker_compose(configPaths: Union[str, Blob, List[Union[str, Blob]]], env_file: str = None) -> None:
+def docker_compose(configPaths: Union[str, Blob, List[Union[str, Blob]]], env_file: str = None, project_name: str = "") -> None:
   """Run containers with Docker Compose.
 
   Tilt will read your Docker Compose YAML and separate out the services.
@@ -278,6 +278,7 @@ def docker_compose(configPaths: Union[str, Blob, List[Union[str, Blob]]], env_fi
   Args:
     configPaths: Path(s) and/or Blob(s) to Docker Compose yaml files or content.
     env_file: Path to env file to use; defaults to ``.env`` in current directory.
+    project_name: The Docker Compose project name. If unspecified, the main Tiltfile's directory name is used.
   """
 
 
