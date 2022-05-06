@@ -45,9 +45,14 @@ func (dc dcResourceSet) Empty() bool { return reflect.DeepEqual(dc, dcResourceSe
 
 func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var configPaths starlark.Value
+	var projectName string
 	envFile := value.NewLocalPathUnpacker(thread)
 
-	err := s.unpackArgs(fn.Name(), args, kwargs, "configPaths", &configPaths, "env_file?", &envFile)
+	err := s.unpackArgs(fn.Name(), args, kwargs,
+		"configPaths", &configPaths,
+		"env_file?", &envFile,
+		"project_name?", &projectName,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -67,10 +72,14 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 			"(%s, %s)", dc.tiltfilePath, currentTiltfilePath)
 	}
 
+	if projectName == "" {
+		projectName = model.NormalizeName(filepath.Base(filepath.Dir(currentTiltfilePath)))
+	}
+
 	project := v1alpha1.DockerComposeProject{
 		ConfigPaths: dc.configPaths,
 		ProjectPath: dc.Project.ProjectPath,
-		Name:        model.NormalizeName(filepath.Base(filepath.Dir(currentTiltfilePath))),
+		Name:        projectName,
 		EnvFile:     envFile.Value,
 	}
 
