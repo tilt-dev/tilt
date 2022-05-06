@@ -99,6 +99,34 @@ func TestAutoApply(t *testing.T) {
 	f.assertSteadyState(&obj)
 }
 
+func TestLogObject(t *testing.T) {
+	f := newFixture(t)
+	nn := types.NamespacedName{Name: "fe"}
+	obj := v1alpha1.DockerComposeService{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "fe",
+		},
+		Spec: v1alpha1.DockerComposeServiceSpec{
+			Service: "fe",
+			Project: v1alpha1.DockerComposeProject{
+				YAML: "fake-yaml",
+			},
+		},
+	}
+	f.Create(&obj)
+	f.MustReconcile(nn)
+	f.MustGet(nn, &obj)
+
+	var log v1alpha1.DockerComposeLogStream
+	f.MustGet(nn, &log)
+	assert.False(t, obj.Status.LastApplyStartTime.IsZero())
+	assert.Equal(t, "fe", log.Spec.Service)
+	assert.Equal(t, "fake-yaml", log.Spec.Project.YAML)
+
+	_, _ = f.Delete(&obj)
+	assert.False(t, f.Get(nn, &log))
+}
+
 func TestContainerEvent(t *testing.T) {
 	f := newFixture(t)
 	nn := types.NamespacedName{Name: "fe"}
@@ -170,6 +198,7 @@ type fixture struct {
 func newFixture(t *testing.T) *fixture {
 	cfb := fake.NewControllerFixtureBuilder(t)
 	dcCli := dockercompose.NewFakeDockerComposeClient(t, cfb.Context())
+	dcCli.ContainerIdOutput = "fake-cid"
 	dCli := docker.NewFakeClient()
 	clock := clockwork.NewFakeClock()
 	watcher := NewDisableSubscriber(cfb.Context(), dcCli, clock)

@@ -105,7 +105,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 		r.st.Dispatch(dockercomposeservices.NewDockerComposeServiceDeleteAction(nn.Name))
 		r.manageOwnedProjectWatches(ctx)
-		return ctrl.Result{}, nil
+		return r.manageOwnedLogStream(ctx, nn, nil)
 	}
 
 	r.st.Dispatch(dockercomposeservices.NewDockerComposeServiceUpsertAction(&obj))
@@ -150,8 +150,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		return ctrl.Result{}, err
 	}
 	r.manageOwnedProjectWatches(ctx)
-
-	return ctrl.Result{}, nil
+	return r.manageOwnedLogStream(ctx, nn, &obj)
 }
 
 // Determine if we should deploy the current YAML.
