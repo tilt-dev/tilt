@@ -84,6 +84,8 @@ export default class HUD extends Component<HudProps, HudState> {
     this.handleOpenModal = this.handleOpenModal.bind(this)
     this.handleShowCopySuccess = this.handleShowCopySuccess.bind(this)
     this.setError = this.setError.bind(this)
+    this.sendSnapshot = this.sendSnapshot.bind(this)
+    this.snapshotFromState = this.snapshotFromState.bind(this)
   }
 
   componentDidMount() {
