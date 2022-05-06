@@ -1,7 +1,6 @@
 package cluster
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -52,14 +51,10 @@ type connection struct {
 	dockerClient docker.Client
 	k8sClient    k8s.Client
 
-	// statusError is populated if the client has been successfully initialized
-	// but is failing a health/readiness check.
-	statusError   string
 	arch          string
 	serverVersion string
 	registry      *v1alpha1.RegistryHosting
 	connStatus    *v1alpha1.ClusterConnectionStatus
-	cancelMonitor context.CancelFunc
 }
 
 func (k *ConnectionManager) GetK8sClient(clusterKey types.NamespacedName) (k8s.Client, metav1.MicroTime, error) {
@@ -112,11 +107,5 @@ func (k *ConnectionManager) load(key types.NamespacedName) (connection, bool) {
 }
 
 func (k *ConnectionManager) delete(key types.NamespacedName) {
-	v, ok := k.connections.LoadAndDelete(key)
-	if ok {
-		conn := v.(connection)
-		if conn.cancelMonitor != nil {
-			conn.cancelMonitor()
-		}
-	}
+	k.connections.LoadAndDelete(key)
 }

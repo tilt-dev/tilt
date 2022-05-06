@@ -52,6 +52,8 @@ type Reconciler struct {
 
 	k8sClientFactory KubernetesClientFactory
 	wsList           *server.WebsocketList
+
+	clusterHealth *clusterHealthMonitor
 }
 
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
@@ -72,17 +74,20 @@ func NewReconciler(
 	k8sClientFactory KubernetesClientFactory,
 	wsList *server.WebsocketList,
 ) *Reconciler {
+	requeuer := indexer.NewRequeuer()
+
 	return &Reconciler{
 		globalCtx:           globalCtx,
 		ctrlClient:          ctrlClient,
 		store:               store,
 		clock:               clock,
-		requeuer:            indexer.NewRequeuer(),
+		requeuer:            requeuer,
 		connManager:         connManager,
 		localDockerEnv:      localDockerEnv,
 		dockerClientFactory: dockerClientFactory,
 		k8sClientFactory:    k8sClientFactory,
 		wsList:              wsList,
+		clusterHealth:       newClusterHealthMonitor(globalCtx, clock, requeuer),
 	}
 }
 
@@ -98,7 +103,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 	if apierrors.IsNotFound(err) || !obj.ObjectMeta.DeletionTimestamp.IsZero() {
 		r.store.Dispatch(clusters.NewClusterDeleteAction(request.Name))
-		r.connManager.delete(nn)
+		r.cleanup(nn)
 		r.wsList.ForEach(func(ws *server.WebsocketSubscriber) {
 			ws.SendClusterUpdate(ctx, nn, nil)
 		})
@@ -119,7 +124,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	if hasConnection && clusterRefreshEnabled {
 		// If the spec changed, delete the connection and recreate it.
 		if !apicmp.DeepEqual(conn.spec, obj.Spec) {
-			r.connManager.delete(nn)
+			r.cleanup(nn)
 			conn = connection{}
 			hasConnection = false
 		} else if conn.initError != "" && r.clock.Now().After(conn.createdAt.Add(clientInitBackoff)) {
@@ -165,9 +170,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		} else {
 			// start monitoring the connection and requeue the Cluster obj
 			// for reconciliation if its runtime status changes
-			monitorCtx, monitorCancel := context.WithCancel(r.globalCtx)
-			conn.cancelMonitor = monitorCancel
-			go r.monitorConn(monitorCtx, nn, conn)
+			r.clusterHealth.Start(nn, conn)
 		}
 	}
 
@@ -175,7 +178,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 	r.connManager.store(nn, conn)
 
-	status := conn.toStatus()
+	status := conn.toStatus(r.clusterHealth.GetStatus(nn))
 	err = r.maybeUpdateStatus(ctx, &obj, status)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -365,7 +368,12 @@ func (r *Reconciler) populateDockerMetadata(ctx context.Context, conn *connectio
 	}
 }
 
-func (c *connection) toStatus() v1alpha1.ClusterStatus {
+func (r *Reconciler) cleanup(clusterNN types.NamespacedName) {
+	r.clusterHealth.Stop(clusterNN)
+	r.connManager.delete(clusterNN)
+}
+
+func (c *connection) toStatus(statusErr string) v1alpha1.ClusterStatus {
 	var connectedAt *metav1.MicroTime
 	if c.initError == "" && !c.createdAt.IsZero() {
 		t := apis.NewMicroTime(c.createdAt)
@@ -374,7 +382,7 @@ func (c *connection) toStatus() v1alpha1.ClusterStatus {
 
 	clusterError := c.initError
 	if clusterError == "" {
-		clusterError = c.statusError
+		clusterError = statusErr
 	}
 
 	return v1alpha1.ClusterStatus{
