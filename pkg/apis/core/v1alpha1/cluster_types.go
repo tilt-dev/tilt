@@ -241,6 +241,13 @@ type KubernetesClusterConnectionStatus struct {
 	// For a complete list of possible product names, see:
 	// https://pkg.go.dev/github.com/tilt-dev/clusterid#Product
 	Product string `json:"product,omitempty" protobuf:"bytes,1,opt,name=product"`
+
+	// The resolved config path.
+	//
+	// Tilt will freeze the config and write it to a temporary directory.
+	// Subprocesses that depend on this cluster can find this file
+	// by reading the KUBECONFIG env var.
+	ConfigPath string `json:"configPath,omitempty" protobuf:"bytes,5,opt,name=configPath"`
 }
 
 // ClusterImageNeeds describes the ways that a cluster

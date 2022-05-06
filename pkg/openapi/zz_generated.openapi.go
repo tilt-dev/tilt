@@ -4207,6 +4207,13 @@ func schema_pkg_apis_core_v1alpha1_KubernetesClusterConnectionStatus(ref common.
 							Format:      "",
 						},
 					},
+					"configPath": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The resolved config path.\n\nTilt will freeze the config and write it to a temporary directory. Subprocesses that depend on this cluster can find this file by reading the KUBECONFIG env var.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"context", "namespace", "cluster"},
 			},

@@ -773,6 +773,14 @@ declare namespace Proto {
      * https://pkg.go.dev/github.com/tilt-dev/clusterid#Product
      */
     product?: string;
+    /**
+     * The resolved config path.
+     *
+     * Tilt will freeze the config and write it to a temporary directory.
+     * Subprocesses that depend on this cluster can find this file
+     * by reading the KUBECONFIG env var.
+     */
+    configPath?: string;
   }
   export interface v1alpha1KubernetesClusterConnection {
     /**

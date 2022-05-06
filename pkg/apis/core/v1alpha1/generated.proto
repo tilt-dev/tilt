@@ -1715,6 +1715,13 @@ message KubernetesClusterConnectionStatus {
   // For a complete list of possible product names, see:
   // https://pkg.go.dev/github.com/tilt-dev/clusterid#Product
   optional string product = 1;
+
+  // The resolved config path.
+  //
+  // Tilt will freeze the config and write it to a temporary directory.
+  // Subprocesses that depend on this cluster can find this file
+  // by reading the KUBECONFIG env var.
+  optional string configPath = 5;
 }
 
 // KubernetesDiscovery

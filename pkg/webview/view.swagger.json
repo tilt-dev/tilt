@@ -539,6 +539,10 @@
         "product": {
           "type": "string",
           "description": "The product name for this cluster.\n\nFor a complete list of possible product names, see:\nhttps://pkg.go.dev/github.com/tilt-dev/clusterid#Product"
+        },
+        "configPath": {
+          "type": "string",
+          "description": "The resolved config path.\n\nTilt will freeze the config and write it to a temporary directory.\nSubprocesses that depend on this cluster can find this file\nby reading the KUBECONFIG env var."
         }
       },
       "title": "Kubernetes-specific fields for connection status"
