@@ -264,7 +264,9 @@ func (f *processExecFixture) waitForStatus(expectedStatus status) {
 }
 
 func (f *processExecFixture) assertLogContains(s string) {
-	require.Contains(f.t, f.testWriter.String(), s)
+	require.Eventuallyf(f.t, func() bool {
+		return strings.Contains(f.testWriter.String(), s)
+	}, time.Second, 5*time.Millisecond, "log contains %q", s)
 }
 
 func (f *processExecFixture) waitForError() {
