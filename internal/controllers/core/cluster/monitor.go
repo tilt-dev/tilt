@@ -91,6 +91,12 @@ func (c *clusterHealthMonitor) run(ctx context.Context, clusterNN types.Namespac
 	defer ticker.Stop()
 	for {
 		err := doKubernetesHealthCheck(ctx, conn.k8sClient)
+		if ctx.Err() != nil {
+			// if the context as canceled while the health check was running,
+			// it'll be the cause of the error, which isn't actually a health
+			// check failure
+			return
+		}
 		if err != nil {
 			c.UpdateStatus(clusterNN, err.Error())
 		} else {
