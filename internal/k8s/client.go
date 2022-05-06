@@ -759,7 +759,14 @@ func (k *K8sClient) ClusterHealth(ctx context.Context, verbose bool) (ClusterHea
 //
 // See https://kubernetes.io/docs/reference/using-api/health-checks/
 func (k *K8sClient) apiServerHealthCheck(ctx context.Context, route string, verbose bool) (bool, string, error) {
-	req := k.discovery.RESTClient().Get().AbsPath(route)
+	req := k.discovery.RESTClient().
+		Get().
+		AbsPath(route).
+		// timeout will both be passed as a param to server as well as used to
+		// create a child context with a deadline
+		Timeout(10 * time.Second).
+		MaxRetries(1)
+
 	if verbose {
 		req = req.Param("verbose", "")
 	}
