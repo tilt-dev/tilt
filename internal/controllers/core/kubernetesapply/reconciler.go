@@ -464,7 +464,7 @@ func (r *Reconciler) createEntitiesToDeploy(ctx context.Context,
 		// When working with a local k8s cluster, we set the pull policy to Never,
 		// to ensure that k8s fails hard if the image is missing from docker.
 		policy := v1.PullIfNotPresent
-		if r.dkc.WillBuildToKubeContext(k8s.KubeContext(r.k8sClient.ConnectionConfig().Context)) {
+		if r.dkc.WillBuildToKubeContext(k8s.KubeContext(r.k8sClient.APIConfig().CurrentContext)) {
 			policy = v1.PullNever
 		}
 

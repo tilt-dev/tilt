@@ -33,6 +33,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/clientcmd/api"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/kubectl/pkg/cmd/wait"
 
@@ -137,7 +138,7 @@ type Client interface {
 
 	ClusterHealth(ctx context.Context, verbose bool) (ClusterHealth, error)
 
-	ConnectionConfig() *v1alpha1.KubernetesClusterConnectionStatus
+	APIConfig() *api.Config
 }
 
 type RESTMapper interface {
@@ -163,6 +164,7 @@ type K8sClient struct {
 	registryAsync     *registryAsync
 	nodeIPAsync       *nodeIPAsync
 	drm               RESTMapper
+	apiConfig         *api.Config
 	clientLoader      clientcmd.ClientConfig
 	resourceClient    ResourceClient
 	ownerFetcher      OwnerFetcher
@@ -180,7 +182,13 @@ func ProvideK8sClient(
 	configCluster ClusterName,
 	configNamespace Namespace,
 	mkClient MinikubeClient,
+	apiConfigOrError APIConfigOrError,
 	clientLoader clientcmd.ClientConfig) Client {
+	apiConfig, err := apiConfigOrError.Config, apiConfigOrError.Error
+	if err != nil {
+		return &explodingClient{err: err}
+	}
+
 	if product == ProductNone {
 		// No k8s, so no need to get any further configs
 		return &explodingClient{err: fmt.Errorf("Kubernetes context not set in %s", clientLoader.ConfigAccess().GetLoadingPrecedence())}
@@ -238,6 +246,7 @@ func ProvideK8sClient(
 		dynamic:           di,
 		drm:               drm,
 		metadata:          meta,
+		apiConfig:         apiConfig,
 		clientLoader:      clientLoader,
 	}
 	c.resourceClient = newResourceClient(c)
@@ -364,13 +373,8 @@ func (k *K8sClient) OwnerFetcher() OwnerFetcher {
 	return k.ownerFetcher
 }
 
-func (k *K8sClient) ConnectionConfig() *v1alpha1.KubernetesClusterConnectionStatus {
-	return &v1alpha1.KubernetesClusterConnectionStatus{
-		Context:   string(k.configContext),
-		Namespace: k.configNamespace.String(),
-		Product:   string(k.product),
-		Cluster:   string(k.configCluster),
-	}
+func (k *K8sClient) APIConfig() *api.Config {
+	return k.apiConfig
 }
 
 // Update an entity like kubectl apply does.

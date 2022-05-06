@@ -20,8 +20,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/version"
+	"k8s.io/client-go/tools/clientcmd/api"
 
-	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -101,6 +101,7 @@ type FakeK8sClient struct {
 	ExecErrors          []error
 	ClusterHealthStatus *ClusterHealth
 	ClusterHealthError  error
+	FakeAPIConfig       *api.Config
 }
 
 var _ Client = &FakeK8sClient{}
@@ -352,6 +353,18 @@ func NewFakeK8sClient(t testing.TB) *FakeK8sClient {
 		events:                   make(map[types.NamespacedName]*v1.Event),
 		entities:                 make(map[types.UID]K8sEntity),
 		currentVersions:          make(map[string]types.UID),
+		FakeAPIConfig: &api.Config{
+			CurrentContext: "default",
+			Contexts: map[string]*api.Context{
+				"default": &api.Context{
+					Cluster:   "default",
+					Namespace: "default",
+				},
+			},
+			Clusters: map[string]*api.Cluster{
+				"default": &api.Cluster{},
+			},
+		},
 	}
 	ctx, cancel := context.WithCancel(logger.WithLogger(context.Background(), logger.NewTestLogger(os.Stdout)))
 	t.Cleanup(cancel)
@@ -522,12 +535,8 @@ func (c *FakeK8sClient) ContainerLogs(ctx context.Context, pID PodID, cName cont
 	return ReaderCloser{Reader: r}, nil
 }
 
-func (c *FakeK8sClient) ConnectionConfig() *v1alpha1.KubernetesClusterConnectionStatus {
-	return &v1alpha1.KubernetesClusterConnectionStatus{
-		Context:   "default",
-		Namespace: "default",
-		Product:   string(clusterid.ProductUnknown),
-	}
+func (c *FakeK8sClient) APIConfig() *api.Config {
+	return c.FakeAPIConfig
 }
 
 func (c *FakeK8sClient) ClusterHealth(_ context.Context, _ bool) (ClusterHealth, error) {

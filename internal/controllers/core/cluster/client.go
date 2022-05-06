@@ -45,24 +45,21 @@ func DockerClientFromEnv(ctx context.Context, env docker.Env) (docker.Client, er
 // factory code for you, then adapt it here.
 func KubernetesClientFromEnv(ctx context.Context, contextOverride k8s.KubeContextOverride, namespaceOverride k8s.NamespaceOverride) (k8s.Client, error) {
 	clientConfig := k8s.ProvideClientConfig(contextOverride, namespaceOverride)
-	apiConfig, err := k8s.ProvideKubeConfig(clientConfig, contextOverride)
-	if err != nil {
-		return nil, err
+	apiConfigOrError := k8s.ProvideAPIConfig(clientConfig, contextOverride, namespaceOverride)
+	if apiConfigOrError.Error != nil {
+		return nil, apiConfigOrError.Error
 	}
-	env := k8s.ProvideClusterProduct(ctx, apiConfig)
+	env := k8s.ProvideClusterProduct(apiConfigOrError)
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
 	namespace := k8s.ProvideConfigNamespace(clientConfig)
-	kubeContext, err := k8s.ProvideKubeContext(apiConfig)
-	if err != nil {
-		return nil, err
-	}
+	kubeContext := k8s.ProvideKubeContext(apiConfigOrError)
 	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
-	clusterName := k8s.ProvideClusterName(apiConfig)
-	client := k8s.ProvideK8sClient(ctx, env, restConfigOrError, clientsetOrError, portForwardClient, kubeContext, clusterName, namespace, minikubeClient, clientConfig)
-	_, err = client.CheckConnected(ctx)
+	clusterName := k8s.ProvideClusterName(apiConfigOrError)
+	client := k8s.ProvideK8sClient(ctx, env, restConfigOrError, clientsetOrError, portForwardClient, kubeContext, clusterName, namespace, minikubeClient, apiConfigOrError, clientConfig)
+	_, err := client.CheckConnected(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -12,8 +12,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/version"
+	"k8s.io/client-go/tools/clientcmd/api"
 
-	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -105,8 +105,6 @@ func (ec *explodingClient) ClusterHealth(_ context.Context, _ bool) (ClusterHeal
 	return ClusterHealth{}, errors.Wrap(ec.err, "could not set up kubernetes client")
 }
 
-func (ec *explodingClient) ConnectionConfig() *v1alpha1.KubernetesClusterConnectionStatus {
-	return &v1alpha1.KubernetesClusterConnectionStatus{
-		Product: string(clusterid.ProductUnknown),
-	}
+func (ec *explodingClient) APIConfig() *api.Config {
+	return &api.Config{}
 }

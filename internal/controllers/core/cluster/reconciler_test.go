@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"errors"
+	"io/ioutil"
 	"testing"
 	"time"
 
@@ -14,6 +15,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/hud/server"
+	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/internal/xdg"
 	"github.com/tilt-dev/wmclient/pkg/analytics"
 
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
@@ -21,7 +24,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/k8s"
-	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -156,13 +158,39 @@ func TestKubernetesConnStatus(t *testing.T) {
 	nn := types.NamespacedName{Name: "default"}
 	f.Create(cluster)
 	f.MustGet(nn, cluster)
-	assert.Equal(t, &v1alpha1.ClusterConnectionStatus{
+
+	configPath := cluster.Status.Connection.Kubernetes.ConfigPath
+	require.NotEqual(t, configPath, "")
+
+	expected := &v1alpha1.ClusterConnectionStatus{
 		Kubernetes: &v1alpha1.KubernetesClusterConnectionStatus{
-			Context:   "default",
-			Namespace: "default",
-			Product:   "unknown",
+			Context:    "default",
+			Namespace:  "default",
+			Cluster:    "default",
+			Product:    "unknown",
+			ConfigPath: configPath,
 		},
-	}, cluster.Status.Connection)
+	}
+	assert.Equal(t, expected, cluster.Status.Connection)
+
+	contents, err := ioutil.ReadFile(configPath)
+	require.NoError(t, err)
+	assert.Equal(t, `apiVersion: v1
+clusters:
+- cluster:
+    server: ""
+  name: default
+contexts:
+- context:
+    cluster: default
+    namespace: default
+    user: ""
+  name: default
+current-context: default
+kind: Config
+preferences: {}
+users: null
+`, string(contents))
 }
 
 func TestKubernetesMonitor(t *testing.T) {
@@ -244,16 +272,23 @@ type fixture struct {
 
 func newFixture(t *testing.T) *fixture {
 	cfb := fake.NewControllerFixtureBuilder(t)
-	st := store.NewTestingStore()
 	clock := clockwork.NewFakeClock()
+	tmpf := tempdir.NewTempDirFixture(t)
 
 	k8sClient := k8s.NewFakeK8sClient(t)
 	dockerClient := docker.NewFakeClient()
+	base := xdg.FakeBase{Dir: tmpf.Path()}
 
-	r := NewReconciler(cfb.Context(), cfb.Client, st, clock, NewConnectionManager(), docker.LocalEnv{},
+	r := NewReconciler(cfb.Context(),
+		cfb.Client,
+		cfb.Store,
+		clock,
+		NewConnectionManager(),
+		docker.LocalEnv{},
 		FakeDockerClientOrError(dockerClient, nil),
 		FakeKubernetesClientOrError(k8sClient, nil),
-		server.NewWebsocketList())
+		server.NewWebsocketList(),
+		base)
 	requeueChan := make(chan indexer.RequeueForTestResult, 1)
 	indexer.StartSourceForTesting(cfb.Context(), r.requeuer, r, requeueChan)
 	return &fixture{
