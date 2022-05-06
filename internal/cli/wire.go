@@ -17,7 +17,6 @@ import (
 	"github.com/jonboulle/clockwork"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"k8s.io/apimachinery/pkg/version"
-	"k8s.io/client-go/tools/clientcmd/api"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/wmclient/pkg/dirs"
@@ -65,7 +64,7 @@ var K8sWireSet = wire.NewSet(
 	k8s.ProvideClusterProduct,
 	k8s.ProvideClusterName,
 	k8s.ProvideKubeContext,
-	k8s.ProvideKubeConfig,
+	k8s.ProvideAPIConfig,
 	k8s.ProvideClientConfig,
 	k8s.ProvideClientset,
 	k8s.ProvideRESTConfig,
@@ -232,11 +231,6 @@ type CmdUpdogDeps struct {
 func wireKubeContext(ctx context.Context) (k8s.KubeContext, error) {
 	wire.Build(K8sWireSet)
 	return "", nil
-}
-
-func wireKubeConfig(ctx context.Context) (*api.Config, error) {
-	wire.Build(K8sWireSet)
-	return nil, nil
 }
 
 func wireEnv(ctx context.Context) (clusterid.Product, error) {

@@ -3398,7 +3398,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	clr := cluster.NewReconciler(ctx, cdc, st, clock, clusterClients, docker.LocalEnv{},
 		cluster.FakeDockerClientOrError(dockerClient, nil),
 		cluster.FakeKubernetesClientOrError(kClient, nil),
-		wsl)
+		wsl, base, "tilt-default")
 	dclsr := dockercomposelogstream.NewReconciler(cdc, st)
 
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(

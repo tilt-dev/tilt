@@ -1,8 +1,6 @@
 package k8s
 
 import (
-	"context"
-
 	"github.com/pkg/errors"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
@@ -12,14 +10,23 @@ import (
 
 type ClusterName string
 
-func ProvideKubeContext(config *api.Config) (KubeContext, error) {
-	return KubeContext(config.CurrentContext), nil
+func ProvideKubeContext(configOrError APIConfigOrError) KubeContext {
+	config := configOrError.Config
+	if config == nil {
+		return ""
+	}
+	return KubeContext(config.CurrentContext)
 }
 
-func ProvideKubeConfig(clientLoader clientcmd.ClientConfig, contextOverride KubeContextOverride) (*api.Config, error) {
+type APIConfigOrError struct {
+	Config *api.Config
+	Error  error
+}
+
+func ProvideAPIConfig(clientLoader clientcmd.ClientConfig, contextOverride KubeContextOverride, namespaceOverride NamespaceOverride) APIConfigOrError {
 	config, err := clientLoader.RawConfig()
 	if err != nil {
-		return nil, errors.Wrap(err, "Loading Kubernetes current-context")
+		return APIConfigOrError{Error: errors.Wrap(err, "Loading Kubernetes config")}
 	}
 
 	// NOTE(nick): The RawConfig() accessor doesn't handle overrides.
@@ -27,18 +34,28 @@ func ProvideKubeConfig(clientLoader clientcmd.ClientConfig, contextOverride Kube
 	// apply the overrides ourselves.
 	if contextOverride != "" {
 		config.CurrentContext = string(contextOverride)
+	}
 
-		// If the user explicitly passed an override, validate it.
-		err := clientcmd.ConfirmUsable(config, string(contextOverride))
-		if err != nil {
-			return nil, errors.Wrap(err, "Overriding Kubernetes context")
+	if namespaceOverride != "" {
+		context, ok := config.Contexts[config.CurrentContext]
+		if ok {
+			context.Namespace = string(namespaceOverride)
 		}
 	}
 
-	return &config, nil
+	err = clientcmd.ConfirmUsable(config, config.CurrentContext)
+	if err != nil {
+		return APIConfigOrError{Error: errors.Wrap(err, "Loading Kubernetes config")}
+	}
+
+	return APIConfigOrError{Config: &config}
 }
 
-func ProvideClusterName(config *api.Config) ClusterName {
+func ProvideClusterName(configOrError APIConfigOrError) ClusterName {
+	config := configOrError.Config
+	if config == nil {
+		return ""
+	}
 	n := config.CurrentContext
 	c, ok := config.Contexts[n]
 	if !ok {
@@ -49,7 +66,15 @@ func ProvideClusterName(config *api.Config) ClusterName {
 
 const ProductNone = clusterid.Product("")
 
-func ProvideClusterProduct(ctx context.Context, config *api.Config) clusterid.Product {
+func ProvideClusterProduct(configOrError APIConfigOrError) clusterid.Product {
+	config := configOrError.Config
+	if config == nil {
+		return ProductNone
+	}
+	return ClusterProductFromAPIConfig(config)
+}
+
+func ClusterProductFromAPIConfig(config *api.Config) clusterid.Product {
 	n := config.CurrentContext
 
 	c, ok := config.Contexts[n]

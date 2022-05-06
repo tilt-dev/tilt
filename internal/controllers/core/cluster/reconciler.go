@@ -3,6 +3,8 @@ package cluster
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/docker/docker/client"
@@ -11,6 +13,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/cli-runtime/pkg/printers"
+	"k8s.io/client-go/tools/clientcmd/api"
+	"k8s.io/client-go/tools/clientcmd/api/latest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -26,6 +31,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/clusters"
+	"github.com/tilt-dev/tilt/internal/xdg"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -40,12 +46,14 @@ const (
 )
 
 type Reconciler struct {
-	globalCtx   context.Context
-	ctrlClient  ctrlclient.Client
-	store       store.RStore
-	requeuer    *indexer.Requeuer
-	clock       clockwork.Clock
-	connManager *ConnectionManager
+	globalCtx     context.Context
+	ctrlClient    ctrlclient.Client
+	store         store.RStore
+	requeuer      *indexer.Requeuer
+	clock         clockwork.Clock
+	connManager   *ConnectionManager
+	base          xdg.Base
+	apiServerName model.APIServerName
 
 	localDockerEnv      docker.LocalEnv
 	dockerClientFactory DockerClientFactory
@@ -73,6 +81,8 @@ func NewReconciler(
 	dockerClientFactory DockerClientFactory,
 	k8sClientFactory KubernetesClientFactory,
 	wsList *server.WebsocketList,
+	base xdg.Base,
+	apiServerName model.APIServerName,
 ) *Reconciler {
 	requeuer := indexer.NewRequeuer()
 
@@ -88,6 +98,8 @@ func NewReconciler(
 		k8sClientFactory:    k8sClientFactory,
 		wsList:              wsList,
 		clusterHealth:       newClusterHealthMonitor(globalCtx, clock, requeuer),
+		base:                base,
+		apiServerName:       apiServerName,
 	}
 }
 
@@ -343,9 +355,20 @@ func (r *Reconciler) populateK8sMetadata(ctx context.Context, clusterNN types.Na
 	}
 
 	if conn.connStatus == nil {
-		connStatus := conn.k8sClient.ConnectionConfig()
+		apiConfig := conn.k8sClient.APIConfig()
+		k8sStatus := &v1alpha1.KubernetesClusterConnectionStatus{
+			Context: apiConfig.CurrentContext,
+			Product: string(k8s.ClusterProductFromAPIConfig(apiConfig)),
+		}
+		context, ok := apiConfig.Contexts[apiConfig.CurrentContext]
+		if ok {
+			k8sStatus.Namespace = context.Namespace
+			k8sStatus.Cluster = context.Cluster
+		}
+		k8sStatus.ConfigPath = r.writeFrozenKubeConfig(ctx, clusterNN, apiConfig)
+
 		conn.connStatus = &v1alpha1.ClusterConnectionStatus{
-			Kubernetes: connStatus,
+			Kubernetes: k8sStatus,
 		}
 	}
 
@@ -355,6 +378,51 @@ func (r *Reconciler) populateK8sMetadata(ctx context.Context, clusterNN types.Na
 			conn.serverVersion = versionInfo.String()
 		}
 	}
+}
+
+func (r *Reconciler) writeFrozenKubeConfig(ctx context.Context, nn types.NamespacedName, config *api.Config) string {
+	config = config.DeepCopy()
+	err := api.MinifyConfig(config)
+	if err != nil {
+		logger.Get(ctx).Warnf("Minifying Kubernetes config: %v", err)
+		return ""
+	}
+
+	err = api.FlattenConfig(config)
+	if err != nil {
+		logger.Get(ctx).Warnf("Flattening Kubernetes config: %v", err)
+		return ""
+	}
+
+	obj, err := latest.Scheme.ConvertToVersion(config, latest.ExternalVersion)
+	if err != nil {
+		logger.Get(ctx).Warnf("Converting Kubernetes config: %v", err)
+		return ""
+	}
+
+	printer := printers.YAMLPrinter{}
+	path, err := r.base.RuntimeFile(
+		filepath.Join(string(r.apiServerName), "cluster", fmt.Sprintf("%s.yml", nn.Name)))
+	if err != nil {
+		logger.Get(ctx).Warnf("Writing Kubernetes config: %v", err)
+		return ""
+	}
+
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
+	if err != nil {
+		logger.Get(ctx).Warnf("Writing Kubernetes config: %v", err)
+		return ""
+	}
+	defer func() {
+		_ = f.Close()
+	}()
+
+	err = printer.PrintObj(obj, f)
+	if err != nil {
+		logger.Get(ctx).Warnf("Writing Kubernetes config: %v", err)
+		return ""
+	}
+	return path
 }
 
 func (r *Reconciler) populateDockerMetadata(ctx context.Context, conn *connection) {
