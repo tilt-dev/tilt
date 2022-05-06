@@ -153,9 +153,6 @@ export function ClusterStatusDialog(props: ClusterStatusDialogProps) {
       <UnhealthyIcon role="presentation" data-testid="unhealthy-icon" />
     )
 
-  // TODO (lizz): When Docker connection info is populated in the Cluster
-  // API object, display the details here, and determine which item to
-  // display first based on the presence of k8s
   const clusterTitle = (
     <ClusterHeading>
       {clusterStatusIcon}

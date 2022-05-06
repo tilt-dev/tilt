@@ -43,7 +43,7 @@ export type HudProps = {
 
 // Snapshot logs are capped to 1MB (max upload size is 4MB; this ensures between the rest of state and JSON overhead
 // that the snapshot should still fit)
-const maxSnapshotLogSize = 1000 * 1000
+const MAX_SNAPSHOT_LOG_SIZE = 1000 * 1000
 
 // The Main HUD view, as specified in
 // https://docs.google.com/document/d/1VNIGfpC4fMfkscboW0bjYYFJl07um_1tsFrbN-Fu3FI/edit#heading=h.l8mmnclsuxl1
@@ -74,6 +74,7 @@ export default class HUD extends Component<HudProps, HudState> {
       showFatalErrorModal: ShowFatalErrorModal.Default,
       showCopySuccess: false,
       snapshotHighlight: undefined,
+      snapshotDialogAnchor: null,
       socketState: SocketState.Closed,
       showErrorModal: ShowErrorModal.Default,
       error: undefined,
@@ -120,7 +121,7 @@ export default class HUD extends Component<HudProps, HudState> {
       Object.assign(view, state.view)
     }
     if (state.logStore) {
-      view.logList = state.logStore.toLogList(maxSnapshotLogSize)
+      view.logList = state.logStore.toLogList(MAX_SNAPSHOT_LOG_SIZE)
     }
     return {
       view: view,
@@ -192,8 +193,11 @@ export default class HUD extends Component<HudProps, HudState> {
     )
   }
 
-  private handleOpenModal() {
-    this.setState({ showSnapshotModal: true })
+  private handleOpenModal(dialogAnchor?: HTMLElement | null) {
+    this.setState({
+      showSnapshotModal: true,
+      snapshotDialogAnchor: dialogAnchor ?? null,
+    })
   }
 
   render() {
@@ -290,7 +294,6 @@ export default class HUD extends Component<HudProps, HudState> {
   }
 
   renderShareSnapshotModal(view: Proto.webviewView | null) {
-
     let handleClose = () =>
       this.setState({ showSnapshotModal: false, snapshotLink: "" })
     let session = view?.uiSession?.status
@@ -307,17 +310,18 @@ export default class HUD extends Component<HudProps, HudState> {
       <FeaturesProvider
         featureFlags={this.state.view.uiSession?.status?.featureFlags || null}
       >
-      <ShareSnapshotModal
-        handleSendSnapshot={this.sendSnapshot}
-        getSnapshot={() => this.snapshotFromState(this.state)}
-        handleClose={handleClose}
-        snapshotUrl={this.state.snapshotLink}
-        tiltCloudUsername={tiltCloudUsername}
-        tiltCloudSchemeHost={tiltCloudSchemeHost}
-        tiltCloudTeamID={tiltCloudTeamID}
-        isOpen={this.state.showSnapshotModal}
-        highlightedLines={highlightedLines}
-      />
+        <ShareSnapshotModal
+          handleSendSnapshot={this.sendSnapshot}
+          getSnapshot={() => this.snapshotFromState(this.state)}
+          handleClose={handleClose}
+          snapshotUrl={this.state.snapshotLink}
+          tiltCloudUsername={tiltCloudUsername}
+          tiltCloudSchemeHost={tiltCloudSchemeHost}
+          tiltCloudTeamID={tiltCloudTeamID}
+          isOpen={this.state.showSnapshotModal}
+          dialogAnchor={this.state.snapshotDialogAnchor}
+          highlightedLines={highlightedLines}
+        />
       </FeaturesProvider>
     )
   }

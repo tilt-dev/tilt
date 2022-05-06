@@ -3,7 +3,6 @@ import Switch from "@material-ui/core/Switch"
 import React from "react"
 import { linkToTiltDocs, TiltDocsPage } from "./constants"
 import FloatDialog from "./FloatDialog"
-import { usePathBuilder } from "./PathBuilder"
 import { Color } from "./style-helpers"
 
 type props = {
@@ -59,10 +58,9 @@ const GreenSwitch = withStyles({
 })(Switch)
 
 export default function UpdateDialog(props: props) {
-  let pathBuilder = usePathBuilder()
   let { showUpdate, suggestedVersion } = props
   let updateEl: any | null = null
-  if (props.showUpdate) {
+  if (showUpdate) {
     updateEl = (
       <div key="update">
         <span role="img" aria-label="Decorative sparkling stars">

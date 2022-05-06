@@ -1,13 +1,19 @@
+import { CameraAlt } from "@material-ui/icons"
+import { saveAs } from "file-saver"
 import cookies from "js-cookie"
 import React, { PureComponent } from "react"
 import Modal from "react-modal"
+import styled from "styled-components"
 import intro from "./assets/png/share-snapshot-intro.png"
 import { ReactComponent as ArrowSvg } from "./assets/svg/arrow.svg"
+import { linkToTiltDocs, TiltDocsPage } from "./constants"
+import { Flag, useFeatures } from "./feature"
+import FloatDialog from "./FloatDialog"
+import { InstrumentedButton } from "./instrumentedComponents"
 import "./ShareSnapshotModal.scss"
-import {Flag, useFeatures} from "./feature"
-import { saveAs } from "file-saver"
+import { Color, Font, FontSize, SizeUnit } from "./style-helpers"
 
-type props = {
+type ShareSnapshotModalProps = {
   handleSendSnapshot: (s: Proto.webviewSnapshot) => void
   getSnapshot: () => Proto.webviewSnapshot
   handleClose: () => void
@@ -17,19 +23,28 @@ type props = {
   tiltCloudTeamID: string | null
   isOpen: boolean
   highlightedLines: number | null
+  dialogAnchor: HTMLElement | null
 }
 
-export default function ShareSnapshotModal(props: props) {
-  debugger
+// TODO (lizz): When offline snapshots are the default method for snapshots
+// generation, cloud snapshot code can be refactored
+export default function ShareSnapshotModal(props: ShareSnapshotModalProps) {
   const features = useFeatures()
   if (!features.isEnabled(Flag.OfflineSnapshotCreation)) {
-    return <UploadSnapshotModal {...props}/>
+    return <UploadSnapshotModal {...props} />
   } else {
-    return <DownloadSnapshotModal handleClose={props.handleClose} isOpen={props.isOpen} getSnapshot={props.getSnapshot}/>
+    return (
+      <DownloadSnapshotModal
+        dialogAnchor={props.dialogAnchor}
+        handleClose={props.handleClose}
+        isOpen={props.isOpen}
+        getSnapshot={props.getSnapshot}
+      />
+    )
   }
 }
 
-class UploadSnapshotModal extends PureComponent<props> {
+class UploadSnapshotModal extends PureComponent<ShareSnapshotModalProps> {
   render() {
     return (
       <Modal
@@ -233,35 +248,76 @@ type DownloadSnapshotModalProps = {
   handleClose: () => void
   getSnapshot: () => Proto.webviewSnapshot
   isOpen: boolean
+  dialogAnchor: HTMLElement | null
 }
 
+const SaveSnapshotButton = styled(InstrumentedButton)`
+  background-color: ${Color.gray70};
+  border: 1px solid ${Color.gray10};
+  color: ${Color.gray10};
+  display: flex;
+  font-family: ${Font.monospace};
+  font-size: ${FontSize.default};
+  margin: ${SizeUnit(0.75)} 0;
+  text-transform: unset;
+
+  &:focus,
+  &:active {
+    background-color: rgba(0, 0, 0, 0.04);
+  }
+`
+
+const CodeSnippet = styled.code`
+  background-color: ${Color.offWhite};
+  padding: 0 5px;
+  white-space: nowrap;
+`
+
 function downloadSnapshot(snapshot: Proto.webviewSnapshot) {
-  const data = new Blob([JSON.stringify(snapshot)], {type: 'application/json'})
+  const data = new Blob([JSON.stringify(snapshot)], {
+    type: "application/json",
+  })
   saveAs(data, "snapshot.json")
 }
 
 export function DownloadSnapshotModal(props: DownloadSnapshotModalProps) {
-  return <Modal
-    onRequestClose={props.handleClose}
-    isOpen={props.isOpen}
-    className="ShareSnapshotModal"
-  >
-    <h2 className="ShareSnapshotModal-title">Share a Snapshot</h2>
-    <section className="ShareSnapshotModal-pane u-flexColumn">
-      <p className="ShareSnapshotModal-description">
-        Save a snapshot of your Tilt state - a shareable view of the current
-        state of your Tilt session.
+  const { handleClose, getSnapshot, isOpen, dialogAnchor } = props
+  return (
+    <FloatDialog
+      id="download-snapshot"
+      title="Create a Snapshot"
+      open={isOpen}
+      onClose={handleClose}
+      anchorEl={dialogAnchor}
+    >
+      <p>
+        Snapshots let you save and share a browsable view of your Tilt session.
+        You can download a snapshot here or with:{" "}
+        <CodeSnippet>tilt snapshot create</CodeSnippet>.
       </p>
-      <section className="ShareSnapshotModal-shareLinkWrap">
-      <div className="ShareSnapshotModal-shareLink">
-      <button
-        className="ShareSnapshotModal-button ShareSnapshotModal-button--inline"
-        onClick={() => downloadSnapshot(props.getSnapshot())}
+
+      <SaveSnapshotButton
+        analyticsName="ui.web.downloadSnapshot"
+        onClick={() => downloadSnapshot(getSnapshot())}
+        startIcon={<CameraAlt />}
       >
         Save Snapshot
-      </button>
-      </div>
-      </section>
-    </section>
-  </Modal>
+      </SaveSnapshotButton>
+      <p>
+        View your saved snapshot with:{" "}
+        <CodeSnippet>tilt view snapshot {"<filename>"}</CodeSnippet>.
+      </p>
+      <p>
+        See the{" "}
+        <a
+          href={linkToTiltDocs(TiltDocsPage.Snapshots)}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          snapshot docs
+        </a>{" "}
+        for more info.
+      </p>
+    </FloatDialog>
+  )
 }

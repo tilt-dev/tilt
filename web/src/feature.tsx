@@ -17,7 +17,7 @@ export enum Flag {
   Labels = "labels",
   DisableResources = "disable_resources",
   BulkDisableResources = "bulk_disable_resources",
-  OfflineSnapshotCreation = "offline_snapshot_creation"
+  OfflineSnapshotCreation = "offline_snapshot_creation",
 }
 
 export default class Features {

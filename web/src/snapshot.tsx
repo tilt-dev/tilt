@@ -6,12 +6,12 @@ import { usePathBuilder } from "./PathBuilder"
 
 export type SnapshotAction = {
   enabled: boolean
-  openModal: () => void
+  openModal: (dialogAnchor?: HTMLElement | null) => void
 }
 
 const snapshotActionContext = React.createContext<SnapshotAction>({
   enabled: true,
-  openModal: () => {},
+  openModal: (dialogAnchor?: HTMLElement | null) => {},
 })
 
 export function useSnapshotAction(): SnapshotAction {
@@ -19,7 +19,9 @@ export function useSnapshotAction(): SnapshotAction {
 }
 
 export function SnapshotActionProvider(
-  props: PropsWithChildren<{ openModal: () => void }>
+  props: PropsWithChildren<{
+    openModal: (dialogAnchor?: HTMLElement | null) => void
+  }>
 ) {
   let openModal = props.openModal
   let features = useFeatures()

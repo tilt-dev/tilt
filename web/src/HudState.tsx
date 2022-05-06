@@ -15,7 +15,9 @@ type HudState = {
   error: string | undefined
   showErrorModal: ShowErrorModal
   snapshotHighlight: SnapshotHighlight | undefined
+  snapshotDialogAnchor: HTMLElement | null
   socketState: SocketState
   logStore?: LogStore
 }
+
 export default HudState

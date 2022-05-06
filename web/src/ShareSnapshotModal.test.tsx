@@ -3,9 +3,17 @@ import ReactDOM from "react-dom"
 import ReactModal from "react-modal"
 import renderer from "react-test-renderer"
 import ShareSnapshotModal from "./ShareSnapshotModal"
+import { nResourceView } from "./testdata"
 
 const fakeSendsnapshot = () => {}
 const fakeHandleCloseModal = () => {}
+const fakeGetSnapshot = jest.fn(() => {
+  const fakeSnapshot: Proto.webviewSnapshot = {
+    view: nResourceView(1),
+  }
+
+  return fakeSnapshot
+})
 let originalCreatePortal = ReactDOM.createPortal
 
 describe("ShareSnapshotModal", () => {
@@ -34,6 +42,8 @@ describe("ShareSnapshotModal", () => {
           tiltCloudSchemeHost={"https://cloud.tilt.dev"}
           tiltCloudTeamID={null}
           highlightedLines={null}
+          dialogAnchor={null}
+          getSnapshot={fakeGetSnapshot}
         />
       )
       .toJSON()
@@ -53,6 +63,8 @@ describe("ShareSnapshotModal", () => {
           tiltCloudSchemeHost={"https://cloud.tilt.dev"}
           tiltCloudTeamID={null}
           highlightedLines={null}
+          dialogAnchor={null}
+          getSnapshot={fakeGetSnapshot}
         />
       )
       .toJSON()
@@ -72,6 +84,8 @@ describe("ShareSnapshotModal", () => {
           tiltCloudSchemeHost={"https://cloud.tilt.dev"}
           tiltCloudTeamID={null}
           highlightedLines={null}
+          dialogAnchor={null}
+          getSnapshot={fakeGetSnapshot}
         />
       )
       .toJSON()
@@ -91,6 +105,8 @@ describe("ShareSnapshotModal", () => {
           tiltCloudSchemeHost={"https://cloud.tilt.dev"}
           tiltCloudTeamID={null}
           highlightedLines={null}
+          dialogAnchor={null}
+          getSnapshot={fakeGetSnapshot}
         />
       )
       .toJSON()
@@ -110,6 +126,8 @@ describe("ShareSnapshotModal", () => {
           tiltCloudSchemeHost={"https://cloud.tilt.dev"}
           tiltCloudTeamID={"abcdefg"}
           highlightedLines={null}
+          dialogAnchor={null}
+          getSnapshot={fakeGetSnapshot}
         />
       )
       .toJSON()
