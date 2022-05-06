@@ -26,13 +26,13 @@ func MustComputeInputHash(t testing.TB, spec v1alpha1.KubernetesApplySpec, image
 func TestComputeHashSancho(t *testing.T) {
 	spec := v1alpha1.KubernetesApplySpec{YAML: testyaml.SanchoYAML}
 	hash := MustComputeInputHash(t, spec, nil)
-	assert.Equal(t, hash, "NgLB5gs3oLNMTnK1W71r1pfqO44=")
+	assert.Equal(t, hash, "elgAsMuqc3wosKnB-vrr3mmMDPc=")
 }
 
 func TestComputeHashSanchoSidecar(t *testing.T) {
 	spec := v1alpha1.KubernetesApplySpec{YAML: testyaml.SanchoSidecarYAML}
 	hash := MustComputeInputHash(t, spec, nil)
-	assert.Equal(t, hash, "1Cb6qJKoOTOJ4HFER755XZUJyk8=")
+	assert.Equal(t, hash, "SE9Jjlp-yakBXqPs2IjnrhCous8=")
 }
 
 func TestComputeHashSanchoImageMap(t *testing.T) {
@@ -45,7 +45,7 @@ func TestComputeHashSanchoImageMap(t *testing.T) {
 	}
 
 	hash := MustComputeInputHash(t, spec, imageMaps)
-	assert.Equal(t, hash, "ap_IM4fXlSII4EfidE1ciYSLePg=")
+	assert.Equal(t, hash, "xwdU6LXhS59jR4lfTApIkP26RJ0=")
 }
 
 func TestComputeHashSanchoIgnoresIrrelevantImageMap(t *testing.T) {
@@ -70,5 +70,5 @@ func TestComputeHashSanchoImageMapChange(t *testing.T) {
 	}
 
 	hash := MustComputeInputHash(t, spec, imageMaps)
-	assert.Equal(t, hash, "6CHjHc7hicdn0U6UkGqo0qL3uO8=")
+	assert.Equal(t, hash, "VzBtR4akztTBxoGNlWc56QtD9b0=")
 }

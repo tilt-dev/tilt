@@ -174,11 +174,25 @@ type KubernetesApplySpec struct {
 	//
 	// +optional
 	DeleteCmd *KubernetesApplyCmd `json:"deleteCmd,omitempty" protobuf:"bytes,12,opt,name=deleteCmd"`
+
+	// Cluster name to determine the Kubernetes cluster.
+	//
+	// If not provided, "default" will be used.
+	//
+	// +optional
+	Cluster string `json:"cluster" protobuf:"bytes,13,opt,name=cluster"`
 }
 
 var _ resource.Object = &KubernetesApply{}
+var _ resourcestrategy.Defaulter = &KubernetesApply{}
 var _ resourcestrategy.Validater = &KubernetesApply{}
 var _ resourcerest.ShortNamesProvider = &KubernetesApply{}
+
+func (in *KubernetesApply) Default() {
+	if in.Spec.Cluster == "" {
+		in.Spec.Cluster = ClusterNameDefault
+	}
+}
 
 func (in *KubernetesApply) GetSpec() interface{} {
 	return in.Spec
