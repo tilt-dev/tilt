@@ -46,13 +46,14 @@ const (
 )
 
 type Reconciler struct {
-	globalCtx   context.Context
-	ctrlClient  ctrlclient.Client
-	store       store.RStore
-	requeuer    *indexer.Requeuer
-	clock       clockwork.Clock
-	connManager *ConnectionManager
-	base        xdg.Base
+	globalCtx     context.Context
+	ctrlClient    ctrlclient.Client
+	store         store.RStore
+	requeuer      *indexer.Requeuer
+	clock         clockwork.Clock
+	connManager   *ConnectionManager
+	base          xdg.Base
+	apiServerName model.APIServerName
 
 	localDockerEnv      docker.LocalEnv
 	dockerClientFactory DockerClientFactory
@@ -81,6 +82,7 @@ func NewReconciler(
 	k8sClientFactory KubernetesClientFactory,
 	wsList *server.WebsocketList,
 	base xdg.Base,
+	apiServerName model.APIServerName,
 ) *Reconciler {
 	requeuer := indexer.NewRequeuer()
 
@@ -97,6 +99,7 @@ func NewReconciler(
 		wsList:              wsList,
 		clusterHealth:       newClusterHealthMonitor(globalCtx, clock, requeuer),
 		base:                base,
+		apiServerName:       apiServerName,
 	}
 }
 
@@ -398,7 +401,8 @@ func (r *Reconciler) writeFrozenKubeConfig(ctx context.Context, nn types.Namespa
 	}
 
 	printer := printers.YAMLPrinter{}
-	path, err := r.base.ConfigFile(filepath.Join("cluster", nn.Name))
+	path, err := r.base.RuntimeFile(
+		filepath.Join(string(r.apiServerName), "cluster", fmt.Sprintf("%s.yml", nn.Name)))
 	if err != nil {
 		logger.Get(ctx).Warnf("Writing Kubernetes config: %v", err)
 		return ""

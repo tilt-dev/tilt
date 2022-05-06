@@ -333,7 +333,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	cmdimageReconciler := cmdimage.NewReconciler(deferredClient, storeStore, scheme, compositeClient, imageBuilder)
 	dockerClientFactory := _wireDockerClientFuncValue
 	kubernetesClientFactory := _wireKubernetesClientFuncValue
-	clusterReconciler := cluster.NewReconciler(ctx, deferredClient, storeStore, clock, connectionManager, localEnv, dockerClientFactory, kubernetesClientFactory, websocketList, base)
+	clusterReconciler := cluster.NewReconciler(ctx, deferredClient, storeStore, clock, connectionManager, localEnv, dockerClientFactory, kubernetesClientFactory, websocketList, base, apiServerName)
 	disableSubscriber := dockercomposeservice.NewDisableSubscriber(ctx, dockerComposeClient, clock)
 	dockercomposeserviceReconciler := dockercomposeservice.NewReconciler(deferredClient, dockerComposeClient, compositeClient, storeStore, scheme, disableSubscriber)
 	imagemapReconciler := imagemap.NewReconciler(deferredClient, storeStore)
@@ -542,7 +542,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	cmdimageReconciler := cmdimage.NewReconciler(deferredClient, storeStore, scheme, compositeClient, imageBuilder)
 	dockerClientFactory := _wireDockerClientFuncValue
 	kubernetesClientFactory := _wireKubernetesClientFuncValue
-	clusterReconciler := cluster.NewReconciler(ctx, deferredClient, storeStore, clock, connectionManager, localEnv, dockerClientFactory, kubernetesClientFactory, websocketList, base)
+	clusterReconciler := cluster.NewReconciler(ctx, deferredClient, storeStore, clock, connectionManager, localEnv, dockerClientFactory, kubernetesClientFactory, websocketList, base, apiServerName)
 	disableSubscriber := dockercomposeservice.NewDisableSubscriber(ctx, dockerComposeClient, clock)
 	dockercomposeserviceReconciler := dockercomposeservice.NewReconciler(deferredClient, dockerComposeClient, compositeClient, storeStore, scheme, disableSubscriber)
 	imagemapReconciler := imagemap.NewReconciler(deferredClient, storeStore)
@@ -747,7 +747,7 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	cmdimageReconciler := cmdimage.NewReconciler(deferredClient, storeStore, scheme, compositeClient, imageBuilder)
 	dockerClientFactory := _wireDockerClientFuncValue
 	kubernetesClientFactory := _wireKubernetesClientFuncValue
-	clusterReconciler := cluster.NewReconciler(ctx, deferredClient, storeStore, clock, connectionManager, localEnv, dockerClientFactory, kubernetesClientFactory, websocketList, base)
+	clusterReconciler := cluster.NewReconciler(ctx, deferredClient, storeStore, clock, connectionManager, localEnv, dockerClientFactory, kubernetesClientFactory, websocketList, base, apiServerName)
 	disableSubscriber := dockercomposeservice.NewDisableSubscriber(ctx, dockerComposeClient, clock)
 	dockercomposeserviceReconciler := dockercomposeservice.NewReconciler(deferredClient, dockerComposeClient, compositeClient, storeStore, scheme, disableSubscriber)
 	imagemapReconciler := imagemap.NewReconciler(deferredClient, storeStore)

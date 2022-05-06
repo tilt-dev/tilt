@@ -288,7 +288,8 @@ func newFixture(t *testing.T) *fixture {
 		FakeDockerClientOrError(dockerClient, nil),
 		FakeKubernetesClientOrError(k8sClient, nil),
 		server.NewWebsocketList(),
-		base)
+		base,
+		"tilt-default")
 	requeueChan := make(chan indexer.RequeueForTestResult, 1)
 	indexer.StartSourceForTesting(cfb.Context(), r.requeuer, r, requeueChan)
 	return &fixture{

@@ -26,7 +26,7 @@ type APIConfigOrError struct {
 func ProvideAPIConfig(clientLoader clientcmd.ClientConfig, contextOverride KubeContextOverride, namespaceOverride NamespaceOverride) APIConfigOrError {
 	config, err := clientLoader.RawConfig()
 	if err != nil {
-		return APIConfigOrError{Error: errors.Wrap(err, "Loading Kubernetes current-context")}
+		return APIConfigOrError{Error: errors.Wrap(err, "Loading Kubernetes config")}
 	}
 
 	// NOTE(nick): The RawConfig() accessor doesn't handle overrides.
@@ -45,7 +45,7 @@ func ProvideAPIConfig(clientLoader clientcmd.ClientConfig, contextOverride KubeC
 
 	err = clientcmd.ConfirmUsable(config, config.CurrentContext)
 	if err != nil {
-		return APIConfigOrError{Error: errors.Wrap(err, "Overriding Kubernetes context")}
+		return APIConfigOrError{Error: errors.Wrap(err, "Loading Kubernetes config")}
 	}
 
 	return APIConfigOrError{Config: &config}
