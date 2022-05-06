@@ -47,9 +47,16 @@ func (c *clusterHealthMonitor) GetStatus(clusterNN types.NamespacedName) string 
 	return c.monitors[clusterNN].error
 }
 
-func (c *clusterHealthMonitor) UpdateStatus(clusterNN types.NamespacedName, error string) {
+func (c *clusterHealthMonitor) UpdateStatus(ctx context.Context, clusterNN types.NamespacedName, error string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
+	if ctx.Err() != nil {
+		// if the context as canceled while the health check was running,
+		// it might be the cause of the error, which isn't actually a health
+		// check failure; it's also possible we'd be doing a stale update
+		return
+	}
 
 	if m, ok := c.monitors[clusterNN]; ok {
 		if m.error == error {
@@ -91,16 +98,10 @@ func (c *clusterHealthMonitor) run(ctx context.Context, clusterNN types.Namespac
 	defer ticker.Stop()
 	for {
 		err := doKubernetesHealthCheck(ctx, conn.k8sClient)
-		if ctx.Err() != nil {
-			// if the context as canceled while the health check was running,
-			// it'll be the cause of the error, which isn't actually a health
-			// check failure
-			return
-		}
 		if err != nil {
-			c.UpdateStatus(clusterNN, err.Error())
+			c.UpdateStatus(ctx, clusterNN, err.Error())
 		} else {
-			c.UpdateStatus(clusterNN, "")
+			c.UpdateStatus(ctx, clusterNN, "")
 		}
 
 		select {
