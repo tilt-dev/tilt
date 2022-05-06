@@ -167,7 +167,15 @@ func (r *Reconciler) toWatchRefs(ka *v1alpha1.KubernetesApply) ([]v1alpha1.Kuber
 		}
 	}
 
-	entities, err := k8s.ParseYAMLFromString(ka.Spec.YAML)
+	yaml := ka.Spec.YAML
+	if yaml == "" {
+		// for KAs with ApplyCmds, there is no YAML in the Spec, so get it from the Status instead.
+		// We still prefer Spec YAML when available:
+		//   1. Using the spec YAML allows us to start connecting to pods before the image build starts.
+		//   2. If a deployment error clears the Status YAML, we'd lose all the watchers.
+		yaml = ka.Status.ResultYAML
+	}
+	entities, err := k8s.ParseYAMLFromString(yaml)
 	if err != nil {
 		return nil, err
 	}
