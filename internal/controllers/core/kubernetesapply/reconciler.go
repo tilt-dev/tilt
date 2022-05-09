@@ -70,6 +70,8 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 		Watches(&source.Kind{Type: &v1alpha1.ImageMap{}},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
 		Watches(&source.Kind{Type: &v1alpha1.ConfigMap{}},
+			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
+		Watches(&source.Kind{Type: &v1alpha1.Cluster{}},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue))
 
 	trigger.SetupControllerRestartOn(b, r.indexer, func(obj ctrlclient.Object) *v1alpha1.RestartOnSpec {
@@ -137,7 +139,15 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		gcReason = "deleting disabled Kubernetes objects"
 		isDisabling = true
 	} else {
-		// Fetch all the images needed to apply this YAML.
+		// Fetch all the objects needed to apply this YAML.
+		var cluster v1alpha1.Cluster
+		if ka.Spec.Cluster != "" {
+			err := r.ctrlClient.Get(ctx, types.NamespacedName{Name: ka.Spec.Cluster}, &cluster)
+			if client.IgnoreNotFound(err) != nil {
+				return ctrl.Result{}, err
+			}
+		}
+
 		imageMaps, err := imagemap.NamesToObjects(ctx, r.ctrlClient, ka.Spec.ImageMaps)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -153,8 +163,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		// TODO(nick): Like with other reconcilers, there should always
 		// be a reason why we're not deploying, and we should update the
 		// Status field of KubernetesApply with that reason.
-		if r.shouldDeployOnReconcile(request.NamespacedName, &ka, imageMaps, lastRestartEvent) {
-			_ = r.forceApplyHelper(ctx, nn, ka.Spec, imageMaps)
+		if r.shouldDeployOnReconcile(request.NamespacedName, &ka, &cluster, imageMaps, lastRestartEvent) {
+			_ = r.forceApplyHelper(ctx, nn, ka.Spec, &cluster, imageMaps)
 			gcReason = "garbage collecting removed Kubernetes objects"
 		}
 	}
@@ -179,6 +189,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 func (r *Reconciler) shouldDeployOnReconcile(
 	nn types.NamespacedName,
 	ka *v1alpha1.KubernetesApply,
+	cluster *v1alpha1.Cluster,
 	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap,
 	lastRestartEvent metav1.MicroTime,
 ) bool {
@@ -187,6 +198,15 @@ func (r *Reconciler) shouldDeployOnReconcile(
 		// we can't use reconciliation to deploy KubernetesApply objects
 		// managed by the buildcontrol engine.
 		return false
+	}
+
+	if ka.Spec.Cluster != "" {
+		isClusterOK := cluster != nil && cluster.Name != "" &&
+			cluster.Status.Error == "" && cluster.Status.Connection != nil
+		if !isClusterOK {
+			// Wait for the cluster to start.
+			return false
+		}
 	}
 
 	for _, imageMapName := range ka.Spec.ImageMaps {
@@ -247,8 +267,9 @@ func (r *Reconciler) ForceApply(
 	ctx context.Context,
 	nn types.NamespacedName,
 	spec v1alpha1.KubernetesApplySpec,
+	cluster *v1alpha1.Cluster,
 	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) v1alpha1.KubernetesApplyStatus {
-	status := r.forceApplyHelper(ctx, nn, spec, imageMaps)
+	status := r.forceApplyHelper(ctx, nn, spec, cluster, imageMaps)
 	r.requeuer.Add(nn)
 	return status
 }
@@ -259,6 +280,7 @@ func (r *Reconciler) forceApplyHelper(
 	ctx context.Context,
 	nn types.NamespacedName,
 	spec v1alpha1.KubernetesApplySpec,
+	cluster *v1alpha1.Cluster,
 	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap,
 ) v1alpha1.KubernetesApplyStatus {
 
@@ -286,7 +308,7 @@ func (r *Reconciler) forceApplyHelper(
 			return recordErrorStatus(err)
 		}
 	} else {
-		deployed, err = r.runCmdDeploy(deployCtx, spec, imageMaps)
+		deployed, err = r.runCmdDeploy(deployCtx, spec, cluster, imageMaps)
 		if err != nil {
 			return recordErrorStatus(err)
 		}
@@ -344,7 +366,22 @@ func (r *Reconciler) runYAMLDeploy(ctx context.Context, spec v1alpha1.Kubernetes
 	return deployed, nil
 }
 
-func (r *Reconciler) runCmdDeploy(ctx context.Context, spec v1alpha1.KubernetesApplySpec, imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) ([]k8s.K8sEntity, error) {
+func (r *Reconciler) maybeInjectKubeconfig(cmd *model.Cmd, cluster *v1alpha1.Cluster) {
+	if cluster == nil ||
+		cluster.Status.Connection == nil ||
+		cluster.Status.Connection.Kubernetes == nil {
+		return
+	}
+	kubeconfig := cluster.Status.Connection.Kubernetes.ConfigPath
+	if kubeconfig == "" {
+		return
+	}
+	cmd.Env = append(cmd.Env, fmt.Sprintf("KUBECONFIG=%s", kubeconfig))
+}
+
+func (r *Reconciler) runCmdDeploy(ctx context.Context, spec v1alpha1.KubernetesApplySpec,
+	cluster *v1alpha1.Cluster,
+	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) ([]k8s.K8sEntity, error) {
 	timeout := spec.Timeout.Duration
 	if timeout == 0 {
 		timeout = v1alpha1.KubernetesApplyTimeoutDefault
@@ -363,6 +400,7 @@ func (r *Reconciler) runCmdDeploy(ctx context.Context, spec v1alpha1.KubernetesA
 	if err != nil {
 		return nil, err
 	}
+	r.maybeInjectKubeconfig(&cmd, cluster)
 
 	logger.Get(ctx).Infof("Running cmd: %s", cmd.String())
 	exitCode, err := r.execer.Run(ctx, cmd, runIO)
@@ -842,6 +880,7 @@ func (r *Reconciler) bestEffortDelete(ctx context.Context, nn types.NamespacedNa
 }
 
 var imGVK = v1alpha1.SchemeGroupVersion.WithKind("ImageMap")
+var clusterGVK = v1alpha1.SchemeGroupVersion.WithKind("Cluster")
 
 // indexKubernetesApply returns keys for all the objects we need to watch based on the spec.
 func indexKubernetesApply(obj client.Object) []indexer.Key {
@@ -851,6 +890,12 @@ func indexKubernetesApply(obj client.Object) []indexer.Key {
 		result = append(result, indexer.Key{
 			Name: types.NamespacedName{Name: name},
 			GVK:  imGVK,
+		})
+	}
+	if ka.Spec.Cluster != "" {
+		result = append(result, indexer.Key{
+			Name: types.NamespacedName{Name: ka.Spec.Cluster},
+			GVK:  clusterGVK,
 		})
 	}
 
@@ -870,6 +915,7 @@ func indexKubernetesApply(obj client.Object) []indexer.Key {
 // Keeps track of the state we currently know about.
 type Result struct {
 	Spec             v1alpha1.KubernetesApplySpec
+	ClusterStatus    v1alpha1.ClusterStatus
 	ImageMapSpecs    []v1alpha1.ImageMapSpec
 	ImageMapStatuses []v1alpha1.ImageMapStatus
 
