@@ -38,7 +38,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/k8srollout"
 	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
 	"github.com/tilt-dev/tilt/internal/engine/local"
-	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/engine/session"
 	"github.com/tilt-dev/tilt/internal/engine/telemetry"
 	"github.com/tilt-dev/tilt/internal/engine/uiresource"
@@ -101,7 +100,6 @@ var BaseWireSet = wire.NewSet(
 	configs.NewConfigsController,
 	configs.NewTriggerQueueSubscriber,
 	telemetry.NewController,
-	runtimelog.NewDockerComposeLogManager,
 	cloud.WireSet,
 	cloudurl.ProvideAddress,
 	k8srollout.NewPodMonitor,

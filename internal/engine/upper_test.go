@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"path"
@@ -69,7 +68,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/k8srollout"
 	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
 	"github.com/tilt-dev/tilt/internal/engine/local"
-	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/engine/session"
 	"github.com/tilt-dev/tilt/internal/engine/telemetry"
 	"github.com/tilt-dev/tilt/internal/engine/uiresource"
@@ -2015,83 +2013,6 @@ func TestDockerComposeRecordsBuildLogs(t *testing.T) {
 	})
 }
 
-func TestDockerComposeRecordsRunLogs(t *testing.T) {
-	f := newTestFixture(t)
-	f.useRealTiltfileLoader()
-
-	m, _ := f.setupDCFixture()
-	expected := "hello world"
-	output := make(chan string, 1)
-	output <- expected
-	defer close(output)
-	f.setDCRunLogOutput(m.DockerComposeTarget(), output)
-
-	containerState := docker.NewRunningContainerState()
-	f.b.nextDockerComposeContainerState = &containerState
-
-	f.loadAndStart()
-	f.waitForCompletedBuildCount(2)
-
-	f.WaitUntil("wait until manifest state has a log", func(state store.EngineState) bool {
-		ms, _ := state.ManifestState(m.ManifestName())
-		spanID := ms.DCRuntimeState().SpanID
-		return spanID != "" && state.LogStore.SpanLog(spanID) != ""
-	})
-
-	// recorded on manifest state
-	f.withState(func(es store.EngineState) {
-		ms, _ := es.ManifestState(m.ManifestName())
-		spanID := ms.DCRuntimeState().SpanID
-		assert.Contains(t, es.LogStore.SpanLog(spanID), expected)
-		assert.Equal(t, 1, strings.Count(es.LogStore.ManifestLog(m.ManifestName()), expected))
-	})
-}
-
-func TestDockerComposeFiltersRunLogs(t *testing.T) {
-	f := newTestFixture(t)
-	f.useRealTiltfileLoader()
-
-	// since this is a negative test case, we need to ensure our mock behaves properly first
-	fakeServiceLog := make(chan string)
-	close(fakeServiceLog)
-	f.dcc.RunLogOutput["fake-service"] = fakeServiceLog
-	r := f.dcc.StreamLogs(f.ctx, v1alpha1.DockerComposeServiceSpec{Service: "fake-service"})
-	sampleDCLogOutput, err := io.ReadAll(r)
-	require.NoError(t, err, "Failed to read fake Docker Compose log stream")
-	assert.Equal(t, string(sampleDCLogOutput),
-		`Attaching to fake-service
-fake-service exited with code 0
-`)
-
-	m, _ := f.setupDCFixture()
-	expected := "some app log"
-	output := make(chan string, 1)
-	output <- expected
-	defer close(output)
-	f.setDCRunLogOutput(m.DockerComposeTarget(), output)
-
-	containerState := docker.NewRunningContainerState()
-	f.b.nextDockerComposeContainerState = &containerState
-
-	f.loadAndStart()
-	f.waitForCompletedBuildCount(2)
-
-	f.WaitUntil("wait until manifest state has a log", func(state store.EngineState) bool {
-		ms, _ := state.ManifestState(m.ManifestName())
-		spanID := ms.DCRuntimeState().SpanID
-		return spanID != "" && state.LogStore.SpanLog(spanID) != ""
-	})
-
-	// recorded on manifest state
-	f.withState(func(es store.EngineState) {
-		ms, _ := es.ManifestState(m.ManifestName())
-		spanID := ms.DCRuntimeState().SpanID
-		spanLog := es.LogStore.SpanLog(spanID)
-		assert.NotContains(t, spanLog, "Attaching to")
-		assert.Contains(t, spanLog, expected)
-	})
-}
-
 func TestDockerComposeBuildCompletedSetsStatusToUpIfSuccessful(t *testing.T) {
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
@@ -3300,7 +3221,6 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	tfl := tiltfile.NewFakeTiltfileLoader()
 	cc := configs.NewConfigsController(cdc)
 	tqs := configs.NewTriggerQueueSubscriber(cdc)
-	dclm := runtimelog.NewDockerComposeLogManager(fakeDcc)
 	serverOptions, err := server.ProvideTiltServerOptionsForTesting(ctx)
 	require.NoError(t, err)
 	webListener, err := server.ProvideWebListener("localhost", 0)
@@ -3364,7 +3284,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		cluster.FakeDockerClientOrError(dockerClient, nil),
 		cluster.FakeKubernetesClientOrError(kClient, nil),
 		wsl, base, "tilt-default")
-	dclsr := dockercomposelogstream.NewReconciler(cdc, st)
+	dclsr := dockercomposelogstream.NewReconciler(cdc, st, fakeDcc, dockerClient)
 
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
 		fwc,
@@ -3436,7 +3356,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	uss := uisession.NewSubscriber(cdc)
 	urs := uiresource.NewSubscriber(cdc)
 
-	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, sw, bc, cc, tqs, dclm, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, uss, urs)
+	subs := ProvideSubscribers(hudsc, tscm, cb, h, ts, tp, sw, bc, cc, tqs, ar, au, ewm, tcum, dp, tc, lsc, podm, sessionController, uss, urs)
 	ret.upper, err = NewUpper(ctx, st, subs)
 	require.NoError(t, err)
 
@@ -3986,10 +3906,6 @@ func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
 
 func (f *testFixture) setBuildLogOutput(id model.TargetID, output string) {
 	f.b.buildLogOutput[id] = output
-}
-
-func (f *testFixture) setDCRunLogOutput(dc model.DockerComposeTarget, output <-chan string) {
-	f.dcc.RunLogOutput[dc.Spec.Service] = output
 }
 
 func (f *testFixture) hudResource(name model.ManifestName) view.Resource {

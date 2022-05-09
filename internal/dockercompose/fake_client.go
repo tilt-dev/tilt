@@ -104,11 +104,15 @@ func (c *FakeDCClient) Rm(ctx context.Context, specs []v1alpha1.DockerComposeSer
 	return nil
 }
 
-func (c *FakeDCClient) StreamLogs(ctx context.Context, spec v1alpha1.DockerComposeServiceSpec) io.ReadCloser {
+func (c *FakeDCClient) StreamLogs(ctx context.Context, spec v1alpha1.DockerComposeLogStreamSpec) io.ReadCloser {
 	output := c.RunLogOutput[spec.Service]
 	reader, writer := io.Pipe()
 	go func() {
 		c.t.Helper()
+
+		if ctx.Err() != nil {
+			return
+		}
 
 		// docker-compose always logs an "Attaching to foo, bar" at the start of a log session
 		_, err := writer.Write([]byte(fmt.Sprintf("Attaching to %s\n", spec.Service)))

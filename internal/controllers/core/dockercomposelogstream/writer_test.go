@@ -1,4 +1,4 @@
-package runtimelog
+package dockercomposelogstream
 
 import (
 	"testing"
@@ -11,14 +11,14 @@ import (
 	"github.com/tilt-dev/tilt/internal/timecmp"
 )
 
-func TestDockerComposeLogActionWriter_SimpleWriter(t *testing.T) {
+func TestLogActionWriter_SimpleWriter(t *testing.T) {
 	st := store.NewTestingStore()
 	log := `Attaching to express-redis-docker_app_1, cache
 2021-09-08T19:58:01.483005100Z # oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
 2021-09-08T19:58:01.483027300Z # Redis version=5.0.7, bits=64, commit=00000000, modified=0, pid=1, just started
 `
 
-	writer := &DockerComposeLogActionWriter{
+	writer := &LogActionWriter{
 		store: st,
 	}
 	_, err := writer.Write([]byte(log))
@@ -33,7 +33,7 @@ func TestDockerComposeLogActionWriter_SimpleWriter(t *testing.T) {
 	assert.Equal(t, expected, string(actions[0].(store.LogAction).Message()))
 }
 
-func TestDockerComposeLogActionWriter_BrokenLine(t *testing.T) {
+func TestLogActionWriter_BrokenLine(t *testing.T) {
 	st := store.NewTestingStore()
 	log1 := `Attaching to express-redis-docker_app_1, cache
 2021-09-08T19:58:01.483005100Z # oO0OoO0`
@@ -41,7 +41,7 @@ func TestDockerComposeLogActionWriter_BrokenLine(t *testing.T) {
 2021-09-08T19:58:01.483027300Z # Redis version=5.0.7, bits=64, commit=00000000, modified=0, pid=1, just started
 `
 
-	writer := &DockerComposeLogActionWriter{
+	writer := &LogActionWriter{
 		store: st,
 	}
 	_, err := writer.Write([]byte(log1))
@@ -61,14 +61,14 @@ func TestDockerComposeLogActionWriter_BrokenLine(t *testing.T) {
 	assert.Equal(t, expected2, string(actions[1].(store.LogAction).Message()))
 }
 
-func TestDockerComposeLogActionWriter_SinceFilter(t *testing.T) {
+func TestLogActionWriter_SinceFilter(t *testing.T) {
 	st := store.NewTestingStore()
 	log := `Attaching to express-redis-docker_app_1, cache
 2021-09-08T19:58:01.483005100Z # oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
 2021-09-16T19:58:01.483027300Z # Redis version=5.0.7, bits=64, commit=00000000, modified=0, pid=1, just started
 `
 
-	writer := &DockerComposeLogActionWriter{
+	writer := &LogActionWriter{
 		store: st,
 		// since is exclusive, so the first line should not appear
 		since: time.Date(2021, 9, 8, 19, 58, 1, 483005100, time.UTC),
@@ -86,7 +86,7 @@ func TestDockerComposeLogActionWriter_SinceFilter(t *testing.T) {
 		writer.LastLogTime())
 }
 
-func TestDockerComposeLogActionWriter_v2DateFormat(t *testing.T) {
+func TestLogActionWriter_v2DateFormat(t *testing.T) {
 	st := store.NewTestingStore()
 	// N.B. there is a single space at the beginning of each _app_ log line before the timestamp w/ Compose v2
 	log := `Attaching to express-redis-docker_app_1
@@ -95,7 +95,7 @@ func TestDockerComposeLogActionWriter_v2DateFormat(t *testing.T) {
 express-redis-docker_app_1 exited with code 0
 `
 
-	writer := &DockerComposeLogActionWriter{
+	writer := &LogActionWriter{
 		store: st,
 	}
 	_, err := writer.Write([]byte(log))
