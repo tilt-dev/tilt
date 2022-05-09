@@ -29,6 +29,7 @@ func NewTargetForEntities(name model.TargetName, entities []K8sEntity, locators 
 	}
 
 	applySpec := v1alpha1.KubernetesApplySpec{
+		Cluster:           v1alpha1.ClusterNameDefault,
 		DiscoveryStrategy: v1alpha1.KubernetesDiscoveryStrategyDefault,
 		YAML:              yaml,
 	}

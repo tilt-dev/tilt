@@ -1635,6 +1635,13 @@ message KubernetesApplySpec {
   //
   // +optional
   optional KubernetesApplyCmd deleteCmd = 12;
+
+  // Cluster name to determine the Kubernetes cluster.
+  //
+  // If not provided, "default" will be used.
+  //
+  // +optional
+  optional string cluster = 13;
 }
 
 // KubernetesApplyStatus defines the observed state of KubernetesApply

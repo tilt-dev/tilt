@@ -4079,6 +4079,14 @@ func schema_pkg_apis_core_v1alpha1_KubernetesApplySpec(ref common.ReferenceCallb
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApplyCmd"),
 						},
 					},
+					"cluster": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Cluster name to determine the Kubernetes cluster.\n\nIf not provided, \"default\" will be used.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},

@@ -1165,6 +1165,7 @@ func (s *tiltfileState) k8sDeployTarget(targetName model.TargetName, r *k8sResou
 
 	sinceTime := apis.NewTime(pkgInitTime)
 	applySpec := v1alpha1.KubernetesApplySpec{
+		Cluster:                         v1alpha1.ClusterNameDefault,
 		Timeout:                         metav1.Duration{Duration: updateSettings.K8sUpsertTimeout()},
 		PortForwardTemplateSpec:         k8s.PortForwardTemplateSpec(s.defaultedPortForwards(r.portForwards)),
 		DiscoveryStrategy:               r.discoveryStrategy,
