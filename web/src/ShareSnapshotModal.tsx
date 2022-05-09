@@ -34,7 +34,7 @@ export default function ShareSnapshotModal(props: ShareSnapshotModalProps) {
     return <UploadSnapshotModal {...props} />
   } else {
     return (
-      <DownloadSnapshotModal
+      <DownloadSnapshotDialog
         dialogAnchor={props.dialogAnchor}
         handleClose={props.handleClose}
         isOpen={props.isOpen}
@@ -280,7 +280,7 @@ function downloadSnapshot(snapshot: Proto.webviewSnapshot) {
   saveAs(data, "snapshot.json")
 }
 
-export function DownloadSnapshotModal(props: DownloadSnapshotModalProps) {
+export function DownloadSnapshotDialog(props: DownloadSnapshotModalProps) {
   const { handleClose, getSnapshot, isOpen, dialogAnchor } = props
   return (
     <FloatDialog
