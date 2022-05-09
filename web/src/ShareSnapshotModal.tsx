@@ -1,6 +1,7 @@
 import { CameraAlt } from "@material-ui/icons"
 import { saveAs } from "file-saver"
 import cookies from "js-cookie"
+import moment from "moment"
 import React, { PureComponent } from "react"
 import Modal from "react-modal"
 import styled from "styled-components"
@@ -27,14 +28,14 @@ type ShareSnapshotModalProps = {
 }
 
 // TODO (lizz): When offline snapshots are the default method for snapshots
-// generation, cloud snapshot code can be refactored
+// generation, cloud snapshot code can be refactored and this component renamed
 export default function ShareSnapshotModal(props: ShareSnapshotModalProps) {
   const features = useFeatures()
   if (!features.isEnabled(Flag.OfflineSnapshotCreation)) {
-    return <UploadSnapshotModal {...props} />
+    return <CloudSnapshotModal {...props} />
   } else {
     return (
-      <DownloadSnapshotDialog
+      <LocalSnapshotDialog
         dialogAnchor={props.dialogAnchor}
         handleClose={props.handleClose}
         isOpen={props.isOpen}
@@ -44,7 +45,7 @@ export default function ShareSnapshotModal(props: ShareSnapshotModalProps) {
   }
 }
 
-class UploadSnapshotModal extends PureComponent<ShareSnapshotModalProps> {
+class CloudSnapshotModal extends PureComponent<ShareSnapshotModalProps> {
   render() {
     return (
       <Modal
@@ -123,7 +124,7 @@ class UploadSnapshotModal extends PureComponent<ShareSnapshotModalProps> {
           action={this.props.tiltCloudSchemeHost + "/start_register_token"}
           target="_blank"
           method="POST"
-          onSubmit={UploadSnapshotModal.notifyTiltOfRegistration}
+          onSubmit={CloudSnapshotModal.notifyTiltOfRegistration}
         >
           <input name="token" type="hidden" value={cookies.get("Tilt-Token")} />
           <input
@@ -274,13 +275,15 @@ const CodeSnippet = styled.code`
 `
 
 function downloadSnapshot(snapshot: Proto.webviewSnapshot) {
+  const timestamp = moment().format("YYYY-MM-DD_HHmmss")
   const data = new Blob([JSON.stringify(snapshot)], {
     type: "application/json",
   })
-  saveAs(data, "snapshot.json")
+
+  saveAs(data, `tilt-snapshot_${timestamp}.json`)
 }
 
-export function DownloadSnapshotDialog(props: DownloadSnapshotModalProps) {
+export function LocalSnapshotDialog(props: DownloadSnapshotModalProps) {
   const { handleClose, getSnapshot, isOpen, dialogAnchor } = props
   return (
     <FloatDialog

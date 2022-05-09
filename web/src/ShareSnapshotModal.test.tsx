@@ -29,7 +29,7 @@ describe("ShareSnapshotModal", () => {
     ReactDOM.createPortal = originalCreatePortal
   })
 
-  describe("UploadSnapshotModal", () => {
+  describe("CloudSnapshotModal", () => {
     it("renders with modal open w/o known username", () => {
       const tree = renderer
         .create(
@@ -136,9 +136,10 @@ describe("ShareSnapshotModal", () => {
     })
   })
 
-  describe("DownloadSnapshotDialog", () => {
+  describe("LocalSnapshotDialog", () => {
     let getSnapshotSpy: jest.Mock
     beforeEach(() => {
+      Date.now = jest.fn(() => 1652119615751)
       getSnapshotSpy = jest.fn(() => FAKE_SNAPSHOT)
       jest.mock("file-saver")
 
@@ -187,7 +188,7 @@ describe("ShareSnapshotModal", () => {
       const filename = spyCalls[0][1] as string
 
       expect(await blob.text()).toEqual(JSON.stringify(FAKE_SNAPSHOT))
-      expect(filename).toEqual("snapshot.json")
+      expect(filename).toEqual("tilt-snapshot_2022-05-09_140655.json")
     })
   })
 })
