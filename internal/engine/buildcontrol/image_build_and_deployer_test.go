@@ -114,7 +114,7 @@ func TestDeleteShouldHappenInReverseOrder(t *testing.T) {
 
 	m := newK8sMultiEntityManifest("sancho")
 
-	err := f.ibd.delete(f.ctx, m.K8sTarget())
+	err := f.ibd.delete(f.ctx, m.K8sTarget(), nil)
 	require.NoError(t, err)
 
 	assert.Regexp(t, "(?s)name: sancho-deployment.*name: sancho-pvc", f.k8s.DeletedYaml) // pvc comes after deployment

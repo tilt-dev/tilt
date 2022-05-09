@@ -212,10 +212,22 @@ func TestApplyCmdWithKubeconfig(t *testing.T) {
 
 	if assert.Len(t, f.execer.Calls(), 1) {
 		call := f.execer.Calls()[0]
+		assert.Equal(t, []string{"custom-apply-cmd"}, call.Cmd.Argv)
 		assert.Equal(t, []string{
 			"KUBECONFIG=/path/to/my/kubeconfig",
 		}, call.Cmd.Env)
 	}
+
+	f.Delete(&ka)
+
+	if assert.Len(t, f.execer.Calls(), 2) {
+		call := f.execer.Calls()[1]
+		assert.Equal(t, []string{"custom-delete-cmd"}, call.Cmd.Argv)
+		assert.Equal(t, []string{
+			"KUBECONFIG=/path/to/my/kubeconfig",
+		}, call.Cmd.Env)
+	}
+
 }
 
 func TestBasicApplyCmd_ExecError(t *testing.T) {
@@ -591,7 +603,7 @@ func TestForceDelete(t *testing.T) {
 	}
 	f.Create(&ka)
 
-	err := f.r.ForceDelete(f.Context(), nn, ka.Spec, "testing")
+	err := f.r.ForceDelete(f.Context(), nn, ka.Spec, nil, "testing")
 	assert.Nil(f.T(), err)
 	assert.Contains(f.T(), f.kClient.DeletedYaml, "sancho")
 }
@@ -615,7 +627,7 @@ func TestForceDeleteWithCmd(t *testing.T) {
 	}
 	f.Create(&ka)
 
-	err := f.r.ForceDelete(f.Context(), nn, ka.Spec, "testing")
+	err := f.r.ForceDelete(f.Context(), nn, ka.Spec, nil, "testing")
 	assert.Nil(f.T(), err)
 
 	calls := f.execer.Calls()
