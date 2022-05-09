@@ -58,6 +58,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 	}
 
 	kTarget := kTargets[0]
+	kCluster := stateSet[kTarget.ID()].ClusterOrEmpty()
 
 	startTime := time.Now()
 	defer func() {
@@ -90,7 +91,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 
 	if hasDeleteStep {
 		ps.StartPipelineStep(ctx, "Force update")
-		err = ibd.delete(ps.AttachLogger(ctx), kTarget)
+		err = ibd.delete(ps.AttachLogger(ctx), kTarget, kCluster)
 		if err != nil {
 			return store.BuildResultSet{}, WrapDontFallBackError(err)
 		}
@@ -137,8 +138,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 
 	// (If we pass an empty list of refs here (as we will do if only deploying
 	// yaml), we just don't inject any image refs into the yaml, nbd.
-	cluster := stateSet[kTarget.ID()].ClusterOrEmpty()
-	k8sResult, err := ibd.deploy(ctx, st, ps, kTarget.ID(), kTarget.KubernetesApplySpec, cluster, imageMapSet)
+	k8sResult, err := ibd.deploy(ctx, st, ps, kTarget.ID(), kTarget.KubernetesApplySpec, kCluster, imageMapSet)
 	if err != nil {
 		return newResults, WrapDontFallBackError(err)
 	}
@@ -188,7 +188,7 @@ func (ibd *ImageBuildAndDeployer) deploy(
 
 // Delete all the resources in the Kubernetes target, to ensure that they restart when
 // we re-apply them.
-func (ibd *ImageBuildAndDeployer) delete(ctx context.Context, k8sTarget model.K8sTarget) error {
+func (ibd *ImageBuildAndDeployer) delete(ctx context.Context, k8sTarget model.K8sTarget, cluster *v1alpha1.Cluster) error {
 	kTargetNN := types.NamespacedName{Name: k8sTarget.ID().Name.String()}
-	return ibd.r.ForceDelete(ctx, kTargetNN, k8sTarget.KubernetesApplySpec, "force update")
+	return ibd.r.ForceDelete(ctx, kTargetNN, k8sTarget.KubernetesApplySpec, cluster, "force update")
 }

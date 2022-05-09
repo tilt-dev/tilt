@@ -42,6 +42,7 @@ import (
 type deleteSpec struct {
 	entities  []k8s.K8sEntity
 	deleteCmd *v1alpha1.KubernetesApplyCmd
+	cluster   *v1alpha1.Cluster
 
 	// waits for the entities to fully delete
 	wait bool
@@ -292,7 +293,7 @@ func (r *Reconciler) forceApplyHelper(
 	recordErrorStatus := func(err error) v1alpha1.KubernetesApplyStatus {
 		status.LastApplyTime = apis.NowMicro()
 		status.Error = err.Error()
-		return r.recordApplyResult(nn, spec, imageMaps, status)
+		return r.recordApplyResult(nn, spec, cluster, imageMaps, status)
 	}
 
 	inputHash, err := ComputeInputHash(spec, imageMaps)
@@ -327,7 +328,7 @@ func (r *Reconciler) forceApplyHelper(
 
 	status.ResultYAML = resultYAML
 	status.Objects = deployed
-	return r.recordApplyResult(nn, spec, imageMaps, status)
+	return r.recordApplyResult(nn, spec, cluster, imageMaps, status)
 }
 
 func (r *Reconciler) printAppliedReport(ctx context.Context, msg string, deployed []k8s.K8sEntity) {
@@ -613,6 +614,7 @@ func (r *Reconciler) ensureResultExists(nn types.NamespacedName) *Result {
 func (r *Reconciler) recordApplyResult(
 	nn types.NamespacedName,
 	spec v1alpha1.KubernetesApplySpec,
+	cluster *v1alpha1.Cluster,
 	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap,
 	applyResult applyResult) v1alpha1.KubernetesApplyStatus {
 
@@ -630,6 +632,7 @@ func (r *Reconciler) recordApplyResult(
 	updatedStatus.LastApplyTime = applyResult.LastApplyTime
 	updatedStatus.AppliedInputHash = applyResult.AppliedInputHash
 
+	result.Cluster = cluster
 	result.Spec = spec
 	result.Status = *updatedStatus
 	if spec.ApplyCmd != nil {
@@ -759,7 +762,10 @@ func (r *Reconciler) garbageCollect(nn types.NamespacedName, isDeleting bool) de
 			delete(result.DanglingObjects, k)
 		}
 		result.clearApplyStatus()
-		return deleteSpec{deleteCmd: result.Spec.DeleteCmd}
+		return deleteSpec{
+			deleteCmd: result.Spec.DeleteCmd,
+			cluster:   result.Cluster,
+		}
 	}
 
 	// Reconcile the dangling objects against applied objects, ensuring that we're
@@ -778,7 +784,10 @@ func (r *Reconciler) garbageCollect(nn types.NamespacedName, isDeleting bool) de
 	if isDeleting {
 		result.clearApplyStatus()
 	}
-	return deleteSpec{entities: toDelete}
+	return deleteSpec{
+		entities: toDelete,
+		cluster:  result.Cluster,
+	}
 }
 
 // A helper that deletes all Kubernetes objects, even if they haven't been applied yet.
@@ -792,9 +801,11 @@ func (r *Reconciler) garbageCollect(nn types.NamespacedName, isDeleting bool) de
 // this, but that's lower priority than a bigger level-based refactor
 // and getting this to be pure API objects.
 func (r *Reconciler) ForceDelete(ctx context.Context, nn types.NamespacedName,
-	spec v1alpha1.KubernetesApplySpec, reason string) error {
+	spec v1alpha1.KubernetesApplySpec,
+	cluster *v1alpha1.Cluster,
+	reason string) error {
 
-	toDelete := deleteSpec{wait: true}
+	toDelete := deleteSpec{wait: true, cluster: cluster}
 	if spec.YAML != "" {
 		entities, err := k8s.ParseYAMLFromString(spec.YAML)
 		if err != nil {
@@ -872,6 +883,7 @@ func (r *Reconciler) bestEffortDelete(ctx context.Context, nn types.NamespacedNa
 
 	if toDelete.deleteCmd != nil {
 		deleteCmd := toModelCmd(*toDelete.deleteCmd)
+		r.maybeInjectKubeconfig(&deleteCmd, toDelete.cluster)
 		if err := localexec.OneShotToLogger(ctx, r.execer, deleteCmd); err != nil {
 			l.Errorf("Error %s: %v", reason, err)
 		}
@@ -915,7 +927,7 @@ func indexKubernetesApply(obj client.Object) []indexer.Key {
 // Keeps track of the state we currently know about.
 type Result struct {
 	Spec             v1alpha1.KubernetesApplySpec
-	ClusterStatus    v1alpha1.ClusterStatus
+	Cluster          *v1alpha1.Cluster
 	ImageMapSpecs    []v1alpha1.ImageMapSpec
 	ImageMapStatuses []v1alpha1.ImageMapStatus
 
