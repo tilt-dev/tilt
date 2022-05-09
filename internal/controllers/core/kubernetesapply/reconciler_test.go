@@ -181,6 +181,43 @@ func TestApplyCmdWithImages(t *testing.T) {
 	}
 }
 
+func TestApplyCmdWithKubeconfig(t *testing.T) {
+	f := newFixture(t)
+
+	f.Create(&v1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "default-cluster",
+		},
+		Status: v1alpha1.ClusterStatus{
+			Connection: &v1alpha1.ClusterConnectionStatus{
+				Kubernetes: &v1alpha1.KubernetesClusterConnectionStatus{
+					ConfigPath: "/path/to/my/kubeconfig",
+				},
+			},
+		},
+	})
+
+	applyCmd, _ := f.createApplyCmd("custom-apply-cmd", testyaml.SanchoYAML)
+	ka := v1alpha1.KubernetesApply{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "a",
+		},
+		Spec: v1alpha1.KubernetesApplySpec{
+			Cluster:   "default-cluster",
+			ApplyCmd:  &applyCmd,
+			DeleteCmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-delete-cmd"}},
+		},
+	}
+	f.Create(&ka)
+
+	if assert.Len(t, f.execer.Calls(), 1) {
+		call := f.execer.Calls()[0]
+		assert.Equal(t, []string{
+			"KUBECONFIG=/path/to/my/kubeconfig",
+		}, call.Cmd.Env)
+	}
+}
+
 func TestBasicApplyCmd_ExecError(t *testing.T) {
 	f := newFixture(t)
 
@@ -522,7 +559,7 @@ func TestIgnoreManagedObjects(t *testing.T) {
 	assert.Empty(f.T(), ka.Status.ResultYAML)
 	assert.Zero(f.T(), ka.Status.LastApplyTime)
 
-	result := f.r.ForceApply(f.Context(), nn, ka.Spec, nil)
+	result := f.r.ForceApply(f.Context(), nn, ka.Spec, nil, nil)
 	assert.Contains(f.T(), result.ResultYAML, "sancho")
 	assert.True(f.T(), !result.LastApplyTime.IsZero())
 	assert.True(f.T(), !result.LastApplyStartTime.IsZero())
@@ -687,12 +724,26 @@ func newFixture(t *testing.T) *fixture {
 	db := build.NewDockerBuilder(dockerClient, dockerfile.Labels{})
 	r := NewReconciler(cfb.Client, kClient, v1alpha1.NewScheme(), db, cfb.Store, execer)
 
-	return &fixture{
+	f := &fixture{
 		ControllerFixture: cfb.Build(r),
 		r:                 r,
 		kClient:           kClient,
 		execer:            execer,
 	}
+	f.Create(&v1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "default",
+		},
+		Status: v1alpha1.ClusterStatus{
+			Connection: &v1alpha1.ClusterConnectionStatus{
+				Kubernetes: &v1alpha1.KubernetesClusterConnectionStatus{
+					Context: "default",
+				},
+			},
+		},
+	})
+
+	return f
 }
 
 // createApplyCmd creates a KubernetesApplyCmd that use the passed YAML to generate simulated stdout via the FakeExecer.

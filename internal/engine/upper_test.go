@@ -422,8 +422,16 @@ func (b *fakeBuildAndDeployer) updateKubernetesApplyStatus(ctx context.Context, 
 		imageMapSet[nn] = &im
 	}
 
+	clusterName := kTarg.KubernetesApplySpec.Cluster
+	if clusterName == "" {
+		clusterName = v1alpha1.ClusterNameDefault
+	}
+
+	var cluster v1alpha1.Cluster
+	require.NoError(b.t, b.ctrlClient.Get(ctx, types.NamespacedName{Name: clusterName}, &cluster))
+
 	nn := types.NamespacedName{Name: kTarg.ID().Name.String()}
-	status := b.kaReconciler.ForceApply(ctx, nn, kTarg.KubernetesApplySpec, imageMapSet)
+	status := b.kaReconciler.ForceApply(ctx, nn, kTarg.KubernetesApplySpec, &cluster, imageMapSet)
 
 	// We want our fake stub to only propagate apiserver problems.
 	_ = status

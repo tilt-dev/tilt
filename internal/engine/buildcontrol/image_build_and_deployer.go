@@ -137,7 +137,8 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 
 	// (If we pass an empty list of refs here (as we will do if only deploying
 	// yaml), we just don't inject any image refs into the yaml, nbd.
-	k8sResult, err := ibd.deploy(ctx, st, ps, kTarget.ID(), kTarget.KubernetesApplySpec, imageMapSet)
+	cluster := stateSet[kTarget.ID()].ClusterOrEmpty()
+	k8sResult, err := ibd.deploy(ctx, st, ps, kTarget.ID(), kTarget.KubernetesApplySpec, cluster, imageMapSet)
 	if err != nil {
 		return newResults, WrapDontFallBackError(err)
 	}
@@ -167,12 +168,13 @@ func (ibd *ImageBuildAndDeployer) deploy(
 	ps *build.PipelineState,
 	kTargetID model.TargetID,
 	spec v1alpha1.KubernetesApplySpec,
+	cluster *v1alpha1.Cluster,
 	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) (store.K8sBuildResult, error) {
 	ps.StartPipelineStep(ctx, "Deploying")
 	defer ps.EndPipelineStep(ctx)
 
 	kTargetNN := types.NamespacedName{Name: kTargetID.Name.String()}
-	status := ibd.r.ForceApply(ctx, kTargetNN, spec, imageMaps)
+	status := ibd.r.ForceApply(ctx, kTargetNN, spec, cluster, imageMaps)
 	if status.Error != "" {
 		return store.K8sBuildResult{}, fmt.Errorf("%s", status.Error)
 	}
