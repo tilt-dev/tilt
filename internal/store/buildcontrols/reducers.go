@@ -7,9 +7,9 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
-	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/dockercomposeservices"
 	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -59,7 +59,7 @@ func HandleBuildStarted(ctx context.Context, state *store.EngineState, action Bu
 	} else if manifest.IsDC() {
 		// Attach the SpanID and initialize the runtime state if we haven't yet.
 		state, _ := ms.RuntimeState.(dockercompose.State)
-		state = state.WithSpanID(runtimelog.SpanIDForDCService(mn))
+		state = state.WithSpanID(dockercomposeservices.SpanIDForDCService(mn))
 		ms.RuntimeState = state
 	}
 
