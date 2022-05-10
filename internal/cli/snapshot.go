@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"os"
 	"time"
 
@@ -123,8 +124,14 @@ func (c *serveCmd) serveSnapshot(snapshotPath string) error {
 	a.Incr("cmd.snapshot.view", cmdTags.AsMap())
 	defer a.Flush(time.Second)
 
-	url := fmt.Sprintf("http://localhost:%d/snapshot/local", webPortFlag)
+	l, err := net.Listen("tcp", "")
+	if err != nil {
+		return fmt.Errorf("could not get a free port: %w", err)
+	}
+	port := l.Addr().(*net.TCPAddr).Port
+	url := fmt.Sprintf("http://localhost:%d/snapshot/local", port)
 
+	l.Close()
 	fmt.Printf("Serving snapshot at %s\n", url)
 
 	wg, ctx := errgroup.WithContext(ctx)
@@ -133,7 +140,7 @@ func (c *serveCmd) serveSnapshot(snapshotPath string) error {
 		if err != nil {
 			return err
 		}
-		return snapshots.Serve(ctx, snapshot, webPortFlag)
+		return snapshots.Serve(ctx, snapshot, port)
 	})
 
 	// give the server a little bit of time to spin up
@@ -156,7 +163,7 @@ func (c *serveCmd) serveSnapshot(snapshotPath string) error {
 		return keyPressed
 	})
 
-	err := wg.Wait()
+	err = wg.Wait()
 	if err != nil && err != keyPressed {
 		return err
 	}
