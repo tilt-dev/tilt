@@ -294,31 +294,56 @@ function statusCounts(statuses: ResourceStatus[]): StatusCounts {
   }
 }
 
+export function getDocumentTitle(
+  counts: StatusCounts,
+  isSnapshot: boolean,
+  isSocketConnected: boolean
+) {
+  const { totalEnabled, healthy, pending, unhealthy } = counts
+  let faviconHref = "/static/ico/favicon-green.ico"
+  let title = `✔︎ ${healthy}/${totalEnabled} ┊ Tilt`
+  if (!isSocketConnected && !isSnapshot) {
+    title = "Disconnected ┊ Tilt"
+    // Use a publically-hosted favicon since Tilt is disconnected
+    // and it's not guaranteed that the favicon will be cached
+    faviconHref = linkToTiltAsset("ico", "dashboard-favicon-gray.ico")
+  } else if (unhealthy > 0) {
+    title = `✖︎ ${unhealthy} ┊ Tilt`
+    faviconHref = "/static/ico/favicon-red.ico"
+  } else if (pending || totalEnabled === 0) {
+    title = `… ${healthy}/${totalEnabled} ┊ Tilt`
+    faviconHref = "/static/ico/favicon-gray.ico"
+  }
+
+  if (isSnapshot) {
+    title = `Snapshot: ${title}`
+  }
+
+  return { title, faviconHref }
+}
+
 function ResourceMetadata(props: {
   counts: StatusCounts
   isSocketConnected?: boolean
 }) {
   let { totalEnabled, healthy, pending, unhealthy } = props.counts
+  const pb = usePathBuilder()
+  const isSnapshot = pb.isSnapshot()
+
   useEffect(() => {
-    let favicon: any = document.head.querySelector("#favicon")
-    let faviconHref = ""
-    if (props.isSocketConnected === false) {
-      document.title = `… disconnected ┊ Tilt`
-      // Use a publically-hosted favicon since Tilt is disconnected
-      // and it's not guaranteed that the favicon will be cached
-      faviconHref = linkToTiltAsset("ico", "dashboard-favicon-gray.ico")
-    } else if (unhealthy > 0) {
-      document.title = `✖︎ ${unhealthy} ┊ Tilt`
-      faviconHref = "/static/ico/favicon-red.ico"
-    } else if (pending || totalEnabled === 0) {
-      document.title = `… ${healthy}/${totalEnabled} ┊ Tilt`
-      faviconHref = "/static/ico/favicon-gray.ico"
-    } else {
-      document.title = `✔︎ ${healthy}/${totalEnabled} ┊ Tilt`
-      faviconHref = "/static/ico/favicon-green.ico"
-    }
-    if (favicon) {
-      favicon.href = faviconHref
+    // Determine the document title and favicon based
+    // on Tilt's connection, resource statuses, and whether
+    // or not Tilt is displaying a snapshot
+    const existingFavicon =
+      document.head.querySelector<HTMLLinkElement>("#favicon")
+    const { title, faviconHref } = getDocumentTitle(
+      props.counts,
+      isSnapshot,
+      props.isSocketConnected ?? true
+    )
+    document.title = title
+    if (existingFavicon) {
+      existingFavicon.href = faviconHref
     }
   }, [totalEnabled, healthy, pending, unhealthy, props.isSocketConnected])
   return <></>
