@@ -1,13 +1,19 @@
 package dockercomposeservices
 
 import (
+	"fmt"
+
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
-	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
+	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
+
+func SpanIDForDCService(mn model.ManifestName) logstore.SpanID {
+	return logstore.SpanID(fmt.Sprintf("dc:%s", mn))
+}
 
 func HandleDockerComposeServiceUpsertAction(state *store.EngineState, action DockerComposeServiceUpsertAction) {
 	obj := action.DockerComposeService
@@ -25,7 +31,7 @@ func HandleDockerComposeServiceUpsertAction(state *store.EngineState, action Doc
 		dcs = dockercompose.State{}
 	}
 
-	dcs = dcs.WithSpanID(runtimelog.SpanIDForDCService(mn))
+	dcs = dcs.WithSpanID(SpanIDForDCService(mn))
 
 	cid := obj.Status.ContainerID
 	if cid != "" {

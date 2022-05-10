@@ -1,4 +1,4 @@
-package dockercomposeservice
+package dockercomposeservices
 
 import (
 	"crypto"
@@ -24,7 +24,7 @@ func createDefaultJSONIterator() jsoniter.API {
 }
 
 // Compute the hash of a dockercompose project.
-func mustHashProject(p v1alpha1.DockerComposeProject) string {
+func MustHashProject(p v1alpha1.DockerComposeProject) string {
 	w := newHashWriter()
 	err := w.append(p)
 	if err != nil {

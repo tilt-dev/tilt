@@ -293,7 +293,7 @@ func (r *Reconciler) recordSpecAndDisableStatus(
 	if !apicmp.DeepEqual(result.Spec, spec) {
 		delete(r.resultsByServiceName, result.Spec.Service)
 		result.Spec = spec
-		result.ProjectHash = mustHashProject(spec.Project)
+		result.ProjectHash = dockercomposeservices.MustHashProject(spec.Project)
 		r.resultsByServiceName[result.Spec.Service] = result
 	}
 

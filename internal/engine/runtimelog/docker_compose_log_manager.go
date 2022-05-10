@@ -3,16 +3,15 @@ package runtimelog
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"time"
 	"unicode"
 
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/dockercomposeservices"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
-	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
 
 // Collects logs from running docker-compose services.
@@ -204,7 +203,8 @@ func (w *DockerComposeLogActionWriter) Write(p []byte) (n int, err error) {
 
 	newText := bytes.Join(linesToWrite, newlineAsBytes)
 
-	w.store.Dispatch(store.NewLogAction(w.manifestName, SpanIDForDCService(w.manifestName), logger.InfoLvl, nil, newText))
+	w.store.Dispatch(store.NewLogAction(w.manifestName,
+		dockercomposeservices.SpanIDForDCService(w.manifestName), logger.InfoLvl, nil, newText))
 	return len(p), nil
 }
 
@@ -218,10 +218,6 @@ func (w *DockerComposeLogActionWriter) LastLogTime() time.Time {
 }
 
 var _ store.Subscriber = &DockerComposeLogManager{}
-
-func SpanIDForDCService(mn model.ManifestName) logstore.SpanID {
-	return logstore.SpanID(fmt.Sprintf("dc:%s", mn))
-}
 
 // splitDockerComposeLogLineTimestamp attempts to extract a timestamp from a Docker Compose log line.
 //
