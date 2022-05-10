@@ -31,6 +31,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/httpstream"
+	netutils "k8s.io/utils/net"
 
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
@@ -132,9 +133,9 @@ func parseAddresses(addressesToParse []string) ([]listenAddress, error) {
 				ip := listenAddress{address: "::1", protocol: "tcp6", failureMode: "all"}
 				parsed[ip.address] = ip
 			}
-		} else if net.ParseIP(address).To4() != nil {
+		} else if netutils.ParseIPSloppy(address).To4() != nil {
 			parsed[address] = listenAddress{address: address, protocol: "tcp4", failureMode: "any"}
-		} else if net.ParseIP(address) != nil {
+		} else if netutils.ParseIPSloppy(address) != nil {
 			parsed[address] = listenAddress{address: address, protocol: "tcp6", failureMode: "any"}
 		} else {
 			return nil, fmt.Errorf("%s is not a valid IP", address)
@@ -299,15 +300,20 @@ func (pf *PortForwarder) getListener(protocol string, hostname string, port *For
 // the background.
 func (pf *PortForwarder) waitForConnection(listener net.Listener, port ForwardedPort) {
 	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			// TODO consider using something like https://github.com/hydrogen18/stoppableListener?
-			if !strings.Contains(strings.ToLower(err.Error()), "use of closed network connection") {
-				logger.Get(pf.ctx).Debugf("error accepting connection on port %d: %v", port.Local, err)
-			}
+		select {
+		case <-pf.streamConn.CloseChan():
 			return
+		default:
+			conn, err := listener.Accept()
+			if err != nil {
+				// TODO consider using something like https://github.com/hydrogen18/stoppableListener?
+				if !strings.Contains(strings.ToLower(err.Error()), "use of closed network connection") {
+					logger.Get(pf.ctx).Debugf("error accepting connection on port %d: %v", port.Local, err)
+				}
+				return
+			}
+			go pf.handleConnection(conn, port)
 		}
-		go pf.handleConnection(conn, port)
 	}
 }
 
@@ -400,6 +406,7 @@ func (pf *PortForwarder) handleConnection(conn net.Conn, port ForwardedPort) {
 	err = <-errorChan
 	if err != nil {
 		logger.Get(pf.ctx).Debugf("%v", err)
+		pf.streamConn.Close()
 	}
 }
 
