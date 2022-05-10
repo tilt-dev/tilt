@@ -196,3 +196,6 @@ update-codegen-starlark:
 
 update-codegen-ts:
 	toast proto-ts
+
+release-build:
+	toast -f build.toast.yml

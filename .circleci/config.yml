@@ -150,20 +150,11 @@ jobs:
       - slack/notify-on-failure:
           only_for_branches: master
 
-  release-verify:
-    resource_class: medium+
-    docker:
-      - image: gcr.io/windmill-public-containers/tilt-releaser@sha256:a17867de17e04c8a8ea2150f9b48f9fa8588617cebe0bb36dc8521d1546414a3
-    steps:
-      - checkout
-      # `goreleaser build` generates binaries but does not publish
-      - run: goreleaser build --snapshot --rm-dist
-      - run: make build-js
-
   release:
     resource_class: medium+
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-releaser@sha256:a17867de17e04c8a8ea2150f9b48f9fa8588617cebe0bb36dc8521d1546414a3
+      # keep image in sync with scripts/build.toast.yml
+      - image: gcr.io/windmill-public-containers/tilt-releaser@sha256:bfad52954a4d26c75cdb5094474cc6c005b347baebcfc460af895cc87d5e1279
     steps:
       - setup_remote_docker:
           version: 20.10.11
@@ -180,22 +171,15 @@ jobs:
       - slack/status:
           mentions: "nick"
 
-parameters:
-  verify_release:
-    default: false
-    type: boolean
-
 workflows:
   version: 2
   shellcheck:
-    unless: << pipeline.parameters.verify_release >>
     jobs:
       - shellcheck/check:
           dir: scripts
           exclude: SC2001
 
   build:
-    unless: << pipeline.parameters.verify_release >>
     # The linux job is cheaper than the others, so run that first.
     jobs:
       - build-linux
@@ -229,13 +213,7 @@ workflows:
             branches:
               only: master
 
-  release-verify:
-    when: << pipeline.parameters.verify_release >>
-    jobs:
-      - release-verify
-
   release:
-    unless: << pipeline.parameters.verify_release >>
     jobs:
       - release:
           context:

@@ -1,0 +1,33 @@
+# keep image in sync with .circleci/config.yml
+image: gcr.io/windmill-public-containers/tilt-releaser@sha256:bfad52954a4d26c75cdb5094474cc6c005b347baebcfc460af895cc87d5e1279
+# location: /go/src/github.com/tilt-dev/tilt
+command_prefix: set -euo pipefail
+tasks:
+  build-js:
+    command: make build-js
+    input_paths:
+      - pkg/assets/build
+      - web/
+      - Makefile
+    excluded_input_paths:
+      - web/build
+      - web/node_modules
+
+  build:
+    dependencies:
+      - build-js
+    command: goreleaser build --snapshot --rm-dist
+    input_paths:
+      - .git/
+      - cmd/
+      - internal/
+      - pkg/
+      - vendor/
+      - .goreleaser.yml
+      - go.mod
+      - go.sum
+      - Makefile
+    excluded_input_paths:
+      - pkg/assets/build
+    output_paths:
+      - dist/

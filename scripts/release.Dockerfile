@@ -51,6 +51,3 @@ RUN git clone https://github.com/Homebrew/brew /home/linuxbrew/.linuxbrew
 ENV PATH=/home/linuxbrew/.linuxbrew/bin:$PATH
 
 RUN mkdir -p ~/.windmill
-
-ENTRYPOINT ["goreleaser"]
-CMD ["-h"]
