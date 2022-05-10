@@ -180,6 +180,8 @@ export type GlobalNavProps = {
   clusterConnections?: Cluster[]
 }
 
+// The snapshot menu item is handled separately in HUD
+// since it requires access to HUD state.
 enum NavDialog {
   Account = "account",
   Cluster = "cluster",
@@ -199,6 +201,7 @@ export function GlobalNav(props: GlobalNavProps) {
   const accountButton = useRef<HTMLButtonElement | null>(null)
   const updateButton = useRef<HTMLButtonElement | null>(null)
   const clusterButton = useRef<HTMLButtonElement | null>(null)
+  const snapshotButton = useRef<HTMLButtonElement | null>(null)
 
   const [openDialog, setOpenDialog] = useState<NavDialog | null>(null)
 
@@ -219,12 +222,14 @@ export function GlobalNav(props: GlobalNavProps) {
 
   let accountMenuHeader = <AccountMenuHeader {...props} />
   let accountMenuContent = <AccountMenuContent {...props} />
-  let snapshotButton = props.snapshot.enabled ? (
+  let snapshotMenuItem = props.snapshot.enabled ? (
     <MenuButtonLabeled label="Snapshot">
       <MenuButton
-        onClick={props.snapshot.openModal}
+        ref={snapshotButton}
+        onClick={() => props.snapshot.openModal(snapshotButton.current)}
         role="menuitem"
         aria-label="Snapshot"
+        aria-haspopup="true"
       >
         <SnapshotIcon width="24" height="24" />
       </MenuButton>
@@ -287,7 +292,7 @@ export function GlobalNav(props: GlobalNavProps) {
         </MenuButton>
       </MenuButtonLabeled>
 
-      {snapshotButton}
+      {snapshotMenuItem}
 
       <MenuButtonLabeled label="Help">
         <MenuButton

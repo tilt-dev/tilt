@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`ShareSnapshotModal renders team link 1`] = `
+exports[`ShareSnapshotModal CloudSnapshotModal renders team link 1`] = `
 <div
   className="ReactModal__Overlay"
   onClick={[Function]}
@@ -123,9 +123,9 @@ exports[`ShareSnapshotModal renders team link 1`] = `
 </div>
 `;
 
-exports[`ShareSnapshotModal renders with modal closed 1`] = `null`;
+exports[`ShareSnapshotModal CloudSnapshotModal renders with modal closed 1`] = `null`;
 
-exports[`ShareSnapshotModal renders with modal open w/ known username 1`] = `
+exports[`ShareSnapshotModal CloudSnapshotModal renders with modal open w/ known username 1`] = `
 <div
   className="ReactModal__Overlay"
   onClick={[Function]}
@@ -230,7 +230,7 @@ exports[`ShareSnapshotModal renders with modal open w/ known username 1`] = `
 </div>
 `;
 
-exports[`ShareSnapshotModal renders with modal open w/o known username 1`] = `
+exports[`ShareSnapshotModal CloudSnapshotModal renders with modal open w/o known username 1`] = `
 <div
   className="ReactModal__Overlay"
   onClick={[Function]}
@@ -342,7 +342,7 @@ exports[`ShareSnapshotModal renders with modal open w/o known username 1`] = `
 </div>
 `;
 
-exports[`ShareSnapshotModal renders without snapshotUrl 1`] = `
+exports[`ShareSnapshotModal CloudSnapshotModal renders without snapshotUrl 1`] = `
 <div
   className="ReactModal__Overlay"
   onClick={[Function]}

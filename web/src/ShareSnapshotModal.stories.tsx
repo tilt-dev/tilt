@@ -11,6 +11,9 @@ let signedOut = () => {
   return (
     <ShareSnapshotModal
       handleSendSnapshot={handleSendSnapshot}
+      getSnapshot={() => {
+        return {}
+      }}
       handleClose={handleClose}
       snapshotUrl={""}
       tiltCloudUsername={""}
@@ -18,6 +21,7 @@ let signedOut = () => {
       tiltCloudTeamID={""}
       isOpen={true}
       highlightedLines={null}
+      dialogAnchor={null}
     />
   )
 }
@@ -26,6 +30,9 @@ let signedIn = () => {
   return (
     <ShareSnapshotModal
       handleSendSnapshot={handleSendSnapshot}
+      getSnapshot={() => {
+        return {}
+      }}
       handleClose={handleClose}
       snapshotUrl={""}
       tiltCloudUsername={"peridot"}
@@ -33,6 +40,7 @@ let signedIn = () => {
       tiltCloudTeamID={""}
       isOpen={true}
       highlightedLines={null}
+      dialogAnchor={null}
     />
   )
 }
@@ -41,6 +49,9 @@ let withUrl = () => {
   return (
     <ShareSnapshotModal
       handleSendSnapshot={handleSendSnapshot}
+      getSnapshot={() => {
+        return {}
+      }}
       handleClose={handleClose}
       snapshotUrl={"https://cloud.tilt.dev/snapshot/garnet"}
       tiltCloudUsername={"peridot"}
@@ -48,6 +59,7 @@ let withUrl = () => {
       tiltCloudTeamID={""}
       isOpen={true}
       highlightedLines={null}
+      dialogAnchor={null}
     />
   )
 }
@@ -56,6 +68,9 @@ let withUrlOverflow = () => {
   return (
     <ShareSnapshotModal
       handleSendSnapshot={handleSendSnapshot}
+      getSnapshot={() => {
+        return {}
+      }}
       handleClose={handleClose}
       snapshotUrl={
         "https://cloud.tilt.dev/snapshot/rose-quartz-long-overflow-string"
@@ -65,6 +80,7 @@ let withUrlOverflow = () => {
       tiltCloudTeamID={""}
       isOpen={true}
       highlightedLines={null}
+      dialogAnchor={null}
     />
   )
 }
@@ -73,6 +89,9 @@ let withTeam = () => {
   return (
     <ShareSnapshotModal
       handleSendSnapshot={handleSendSnapshot}
+      getSnapshot={() => {
+        return {}
+      }}
       handleClose={handleClose}
       snapshotUrl={""}
       tiltCloudUsername={"peridot"}
@@ -80,6 +99,7 @@ let withTeam = () => {
       tiltCloudTeamID={"3e8e3af3-52e7-4f86-9006-9b1cce9ec85d"}
       isOpen={true}
       highlightedLines={null}
+      dialogAnchor={null}
     />
   )
 }
