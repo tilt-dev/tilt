@@ -205,7 +205,7 @@ describe("document metadata based on resource statuses", () => {
         isSnapshot: false,
         isSocketConnected: true,
       },
-      "… 0/0 ┊ Tilt",
+      "✔︎ 0/0 ┊ Tilt",
       "gray",
     ],
   ])(

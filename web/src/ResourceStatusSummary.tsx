@@ -310,8 +310,11 @@ export function getDocumentTitle(
   } else if (unhealthy > 0) {
     title = `✖︎ ${unhealthy} ┊ Tilt`
     faviconHref = "/static/ico/favicon-red.ico"
-  } else if (pending || totalEnabled === 0) {
+  } else if (pending) {
     title = `… ${healthy}/${totalEnabled} ┊ Tilt`
+    faviconHref = "/static/ico/favicon-gray.ico"
+  } else if (totalEnabled === 0) {
+    title = `✔︎ 0/0 ┊ Tilt`
     faviconHref = "/static/ico/favicon-gray.ico"
   }
 
