@@ -4,6 +4,8 @@ import styled from "styled-components"
 import { ReactComponent as TiltCloudLogoSvg } from "./assets/svg/logo-Tilt-Cloud.svg"
 import ButtonInput from "./ButtonInput"
 import ButtonLink from "./ButtonLink"
+import { Flag, useFeatures } from "./feature"
+import FloatDialog from "./FloatDialog"
 import { AnimDuration, Color, Font, FontSize, SizeUnit } from "./style-helpers"
 
 let AccountMenuContentRoot = styled.div`
@@ -66,7 +68,6 @@ function notifyTiltOfRegistration() {
 }
 
 type AccountMenuProps = {
-  isSnapshot: boolean
   tiltCloudUsername: string | null
   tiltCloudSchemeHost: string
   tiltCloudTeamID: string | null
@@ -164,5 +165,35 @@ export function AccountMenuHeader(props: AccountMenuProps) {
       <AccountMenuLogo />
       {optionalLearnMore}
     </AccountMenuHeaderRoot>
+  )
+}
+
+type AccountMenuDialogProps = {
+  open: boolean
+  anchorEl: HTMLElement | null
+  onClose: () => void
+} & AccountMenuProps
+
+export function AccountMenuDialog(props: AccountMenuDialogProps) {
+  const { open, anchorEl, onClose, ...accountMenuProps } = props
+  const features = useFeatures()
+
+  const hideAccountDialog = features.isEnabled(Flag.OfflineSnapshotCreation)
+  if (hideAccountDialog) {
+    return null
+  }
+
+  const accountMenuHeader = <AccountMenuHeader {...accountMenuProps} />
+  const accountMenuContent = <AccountMenuContent {...accountMenuProps} />
+  return (
+    <FloatDialog
+      id="accountMenu"
+      title={accountMenuHeader}
+      open={open}
+      anchorEl={anchorEl}
+      onClose={onClose}
+    >
+      {accountMenuContent}
+    </FloatDialog>
   )
 }
