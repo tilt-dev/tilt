@@ -312,6 +312,20 @@ CircleCI will automatically start building your release, and notify the
 at https://github.com/tilt-dev/tilt/releases, with a Changelog prepopulated automatically.
 (Give it a few moments. It appears as a tag first, before turning into a full release.)
 
+### Verifying
+You can build from source locally using the same toolchain as CI by running:
+
+```shell
+make release-build
+```
+> You will need `toast` installed (see optional prerequisites)
+
+This will take quite some time, but will create a `dist/` directory in the repo
+root on your host machine.
+Within the `dist/` directory, there will be directories for each of the OS and
+architecture combinations, e.g. `dist/tilt-linux-amd64_linux_amd64/` for 64-bit
+x86 Linux.
+
 ### Version numbers
 For pre-v1.0:
 * If adding backwards-compatible functionality increment the patch version (0.x.Y).
