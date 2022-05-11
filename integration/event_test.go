@@ -56,7 +56,8 @@ func TestEvent(t *testing.T) {
 	f.WaitUntil(ctx, "unschedulable pod event", func() (string, error) {
 		logs := strings.Split(f.logs.String(), "\n")
 		for _, log := range logs {
-			if strings.Contains(log, "[event") && strings.Contains(log, "the pod didn't tolerate") {
+			if strings.Contains(log, "[event") &&
+				(strings.Contains(log, "the pod didn't tolerate") || strings.Contains(log, "had untolerated taint")) {
 				return "unschedulable event", nil
 			}
 		}

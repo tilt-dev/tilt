@@ -186,7 +186,7 @@ func (f *k8sFixture) ClearNamespace() {
 }
 
 func (f *k8sFixture) setupNewKubeConfig() {
-	cmd := exec.CommandContext(f.ctx, "kubectl", "config", "view", "--minify")
+	cmd := exec.CommandContext(f.ctx, "kubectl", "config", "view", "--minify", "--raw")
 	current, err := cmd.Output()
 	if err != nil {
 		f.t.Fatalf("Error reading KUBECONFIG: %v", err)
@@ -241,14 +241,14 @@ func (f *k8sFixture) runCommandGetOutput(cmdStr string) string {
 }
 
 func (f *k8sFixture) getSecrets() {
-	cmdStr := `kubectl get secrets -n tilt-integration -o json | jq -r '.items[] | select(.metadata.name | startswith("tilt-integration-user-token-")) | .data.token'`
+	cmdStr := `kubectl get secrets tilt-integration-user -n tilt-integration -o json | jq -r '.data.token'`
 	tokenBase64 := f.runCommandGetOutput(cmdStr)
 	tokenBytes, err := base64.StdEncoding.DecodeString(tokenBase64)
 	if err != nil {
 		f.t.Fatalf("Unable to decode token: %v", err)
 	}
 
-	cmdStr = `kubectl get secrets -n tilt-integration -o json | jq -r '.items[] | select(.metadata.name | startswith("tilt-integration-user-token-")) | .data["ca.crt"]'`
+	cmdStr = `kubectl get secrets tilt-integration-user -n tilt-integration -o json | jq -r '.data["ca.crt"]'`
 	cert := f.runCommandGetOutput(cmdStr)
 
 	f.token = string(tokenBytes)
@@ -269,8 +269,6 @@ func (f *k8sFixture) SetRestrictedCredentials() {
 	// The new kubeconfig will have the same context and cluster name, so
 	// grab those first before we create it.
 	currentContext := f.runCommandGetOutput("kubectl config current-context")
-	cmdStr := fmt.Sprintf(`kubectl config view --raw -o json | jq -r '.contexts[] | select(.name == "%s") | .context.cluster'`, currentContext)
-	currentCluster := f.runCommandGetOutput(cmdStr)
 
 	f.setupNewKubeConfig()
 
@@ -278,10 +276,7 @@ func (f *k8sFixture) SetRestrictedCredentials() {
 	// with restricted credentials.
 	f.runCommandSilently("kubectl", "config", "set-credentials", "tilt-integration-user", fmt.Sprintf("--token=%s", f.token))
 	f.runCommandSilently("kubectl", "config", "set", "users.tilt-integration-user.client-key-data", f.cert)
-
 	f.runCommandSilently("kubectl", "config", "set-context", currentContext, "--user=tilt-integration-user", "--namespace=tilt-integration")
-	f.runCommandSilently("kubectl", "config", "set", fmt.Sprintf("clusters.%s.certificate-authority-data", currentCluster), f.cert)
-	f.runCommandSilently("kubectl", "config", "unset", fmt.Sprintf("clusters.%s.certificate-authority", currentCluster))
 }
 
 func (f *k8sFixture) TearDown() {
