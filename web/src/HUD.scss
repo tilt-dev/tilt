@@ -7,12 +7,6 @@
   min-height: 100vh;
 }
 
-/* Adjust the HUD view for the site-wide snapshot banner */
-.HUD.is-snapshot {
-  padding-top: 32px;
-  min-height: calc(100vh - 32px);
-}
-
 .HUD.is-snapshot * {
   animation: none !important;
 }

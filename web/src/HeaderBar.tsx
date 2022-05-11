@@ -13,6 +13,7 @@ import {
   ResourceStatusSummaryRoot,
 } from "./ResourceStatusSummary"
 import { useSnapshotAction } from "./snapshot"
+import { SnapshotBar } from "./SnapshotBar"
 import { AnimDuration, Color, Font, FontSize, SizeUnit } from "./style-helpers"
 import { showUpdate } from "./UpdateDialog"
 
@@ -143,37 +144,43 @@ export default function HeaderBar({
 
   // TODO (lizz): Consider refactoring nav to use more semantic pattern of ul + li
   return (
-    <HeaderBarRoot aria-label="Dashboard menu">
-      <Link to="/overview" aria-label="Tilt home">
-        <Logo width="57px" />
-      </Link>
-      <ViewLinkSection>
-        <ViewLink
-          to="/overview"
-          aria-label="Table view"
-          aria-current={currentPage === AnalyticsType.Grid}
-        >
-          <TableViewIcon className={tableViewLinkClass} role="presentation" />
-          <ViewLinkText>Table</ViewLinkText>
-        </ViewLink>
-        <HeaderDivider role="presentation" />
-        <ViewLink
-          to={pb.encpath`/r/(all)/overview`}
-          aria-label="Detail view"
-          aria-current={currentPage === AnalyticsType.Detail}
-        >
-          <DetailViewIcon className={detailViewLinkClass} role="presentation" />
-          <ViewLinkText>Detail</ViewLinkText>
-        </ViewLink>
-      </ViewLinkSection>
-      <AllResourceStatusSummary
-        displayText="Resources"
-        labelText="Status summary for all resources"
-        resources={resources}
-        isSocketConnected={isSocketConnected}
-      />
-      <CustomNav view={view} />
-      <GlobalNav {...globalNavProps} />
-    </HeaderBarRoot>
+    <>
+      <SnapshotBar className={`is-${currentPage}`} />
+      <HeaderBarRoot aria-label="Dashboard menu">
+        <Link to="/overview" aria-label="Tilt home">
+          <Logo width="57px" />
+        </Link>
+        <ViewLinkSection>
+          <ViewLink
+            to="/overview"
+            aria-label="Table view"
+            aria-current={currentPage === AnalyticsType.Grid}
+          >
+            <TableViewIcon className={tableViewLinkClass} role="presentation" />
+            <ViewLinkText>Table</ViewLinkText>
+          </ViewLink>
+          <HeaderDivider role="presentation" />
+          <ViewLink
+            to={pb.encpath`/r/(all)/overview`}
+            aria-label="Detail view"
+            aria-current={currentPage === AnalyticsType.Detail}
+          >
+            <DetailViewIcon
+              className={detailViewLinkClass}
+              role="presentation"
+            />
+            <ViewLinkText>Detail</ViewLinkText>
+          </ViewLink>
+        </ViewLinkSection>
+        <AllResourceStatusSummary
+          displayText="Resources"
+          labelText="Status summary for all resources"
+          resources={resources}
+          isSocketConnected={isSocketConnected}
+        />
+        <CustomNav view={view} />
+        <GlobalNav {...globalNavProps} />
+      </HeaderBarRoot>
+    </>
   )
 }

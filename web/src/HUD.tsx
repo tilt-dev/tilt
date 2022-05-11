@@ -26,8 +26,7 @@ import { ResourceNavProvider } from "./ResourceNav"
 import { ResourceSelectionProvider } from "./ResourceSelectionContext"
 import ShareSnapshotModal from "./ShareSnapshotModal"
 import { TiltSnackbarProvider } from "./Snackbar"
-import { SnapshotActionProvider } from "./snapshot"
-import { SnapshotBar } from "./SnapshotBar"
+import { SnapshotActionProvider, SnapshotProviderProps } from "./snapshot"
 import SocketBar, { isTiltSocketConnected } from "./SocketBar"
 import { StarredResourcesContextProvider } from "./StarredResourcesContext"
 import {
@@ -88,6 +87,7 @@ export default class HUD extends Component<HudProps, HudState> {
     this.setError = this.setError.bind(this)
     this.sendSnapshot = this.sendSnapshot.bind(this)
     this.snapshotFromState = this.snapshotFromState.bind(this)
+    this.getSnapshotProviderProps = this.getSnapshotProviderProps.bind(this)
   }
 
   componentDidMount() {
@@ -205,6 +205,21 @@ export default class HUD extends Component<HudProps, HudState> {
     })
   }
 
+  private getSnapshotProviderProps(): SnapshotProviderProps {
+    const providerProps: SnapshotProviderProps = {
+      openModal: this.handleOpenModal,
+    }
+
+    if (this.pathBuilder.isSnapshot()) {
+      providerProps.currentSnapshotTime = {
+        tiltUpTime: this.state.view.tiltStartTime,
+        createdAt: this.state.snapshotStartTime,
+      }
+    }
+
+    return providerProps
+  }
+
   render() {
     let view = this.state.view
     let session = this.state.view.uiSession?.status
@@ -231,8 +246,6 @@ export default class HUD extends Component<HudProps, HudState> {
       hudClasses.push("is-snapshot")
     }
 
-    // If the css is really driving me crazy, i could move the snapshot bar to the global header component and move the snapshot state to its context
-
     let validateResource = (name: string) =>
       resources.some((res) => res.metadata?.name === name)
     return (
@@ -248,11 +261,6 @@ export default class HUD extends Component<HudProps, HudState> {
                     {fatalErrorModal}
                     {errorModal}
                     {shareSnapshotModal}
-                    <SnapshotBar
-                      isSnapshot={isSnapshot}
-                      snapshotTime={this.state.snapshotStartTime}
-                      tiltUpTime={view?.tiltStartTime}
-                    />
                     {this.renderOverviewSwitch()}
                   </div>
                 </ResourceNavProvider>
@@ -271,7 +279,7 @@ export default class HUD extends Component<HudProps, HudState> {
         featureFlags={this.state.view.uiSession?.status?.featureFlags || null}
       >
         <PathBuilderProvider value={this.pathBuilder}>
-          <SnapshotActionProvider openModal={this.handleOpenModal}>
+          <SnapshotActionProvider {...this.getSnapshotProviderProps()}>
             <LogStoreProvider value={this.state.logStore || new LogStore()}>
               <ResourceGroupsContextProvider>
                 <ResourceListOptionsProvider>
@@ -279,7 +287,7 @@ export default class HUD extends Component<HudProps, HudState> {
                     <Switch>
                       <Route
                         path={this.path("/r/:name/overview")}
-                        render={(props: RouteComponentProps<any>) => (
+                        render={(_props: RouteComponentProps<any>) => (
                           <OverviewResourcePane
                             view={this.state.view}
                             isSocketConnected={isSocketConnected}

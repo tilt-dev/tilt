@@ -1,12 +1,9 @@
 import React from "react"
 import styled from "styled-components"
-import { Color, FontSize, SizeUnit, ZIndex } from "./style-helpers"
-
-type SnapshotBarProps = {
-  isSnapshot: boolean
-  snapshotTime: string | undefined
-  tiltUpTime: string | undefined
-}
+import { AnalyticsType } from "./analytics"
+import { usePathBuilder } from "./PathBuilder"
+import { useSnapshotAction } from "./snapshot"
+import { Color, FontSize, SizeUnit } from "./style-helpers"
 
 const SnapshotBanner = styled.div`
   background-color: ${Color.offWhite};
@@ -15,10 +12,14 @@ const SnapshotBanner = styled.div`
   font-size: ${FontSize.small};
   height: ${SizeUnit(1)};
   padding: 3px 10px;
-  position: absolute;
-  top: 0;
   width: 100%;
-  z-index: ${ZIndex.SnapshotBar};
+
+  /* There's a small layout shift in the header
+  bar on Detail View because of the scrollbar,
+  so offset it on Table View */
+  &.is-${AnalyticsType.Grid} {
+    margin-bottom: -2px;
+  }
 `
 
 const SnapshotTitle = styled.span`
@@ -26,20 +27,24 @@ const SnapshotTitle = styled.span`
   text-decoration: underline;
 `
 
-export function SnapshotBar(props: SnapshotBarProps) {
-  if (!props.isSnapshot) {
+export function SnapshotBar(props: { className?: string }) {
+  const pb = usePathBuilder()
+  const { currentSnapshotTime } = useSnapshotAction()
+
+  const isSnapshot = pb.isSnapshot()
+  if (!isSnapshot) {
     return null
   }
 
   let timestampDescription = ""
-  if (props.snapshotTime) {
-    timestampDescription = `(created at ${props.snapshotTime})` // TODO: Formatting here
-  } else if (props.tiltUpTime) {
-    timestampDescription = `(session started at ${props.tiltUpTime})`
+  if (currentSnapshotTime?.createdAt) {
+    timestampDescription = `(created at ${currentSnapshotTime?.createdAt})`
+  } else if (currentSnapshotTime?.tiltUpTime) {
+    timestampDescription = `(session started at ${currentSnapshotTime?.tiltUpTime})`
   }
 
   return (
-    <SnapshotBanner role="status">
+    <SnapshotBanner role="status" className={props.className}>
       <SnapshotTitle>Snapshot</SnapshotTitle> {timestampDescription}
     </SnapshotBanner>
   )

@@ -78,8 +78,7 @@ export const overviewItemBorderRadius = "6px"
 // if there are conflicting values in constants.scss
 export enum ZIndex {
   ApiButton = 5,
-  TableStickyHeader = 990,
-  SnapshotBar = 991,
+  TableStickyHeader = 999,
   SocketBar = 1000,
 }
 

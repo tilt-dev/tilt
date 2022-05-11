@@ -7,7 +7,16 @@ import { usePathBuilder } from "./PathBuilder"
 export type SnapshotAction = {
   enabled: boolean
   openModal: (dialogAnchor?: HTMLElement | null) => void
+  currentSnapshotTime?: {
+    tiltUpTime?: string
+    createdAt?: string
+  }
 }
+
+export type SnapshotProviderProps = Pick<
+  SnapshotAction,
+  "openModal" | "currentSnapshotTime"
+>
 
 const snapshotActionContext = React.createContext<SnapshotAction>({
   enabled: true,
@@ -19,9 +28,7 @@ export function useSnapshotAction(): SnapshotAction {
 }
 
 export function SnapshotActionProvider(
-  props: PropsWithChildren<{
-    openModal: (dialogAnchor?: HTMLElement | null) => void
-  }>
+  props: PropsWithChildren<SnapshotProviderProps>
 ) {
   let openModal = props.openModal
   let features = useFeatures()
@@ -33,6 +40,7 @@ export function SnapshotActionProvider(
     return {
       enabled: showSnapshot,
       openModal: openModal,
+      currentSnapshotTime: props.currentSnapshotTime,
     }
   }, [showSnapshot, openModal])
 
