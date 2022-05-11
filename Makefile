@@ -75,7 +75,7 @@ endif
 
 integration:
 ifneq ($(CIRCLECI),true)
-		go test -mod vendor -v -count 1 -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 1000s ./integration
+		go test -mod vendor -v -count 1 -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 30m ./integration
 else
 		mkdir -p test-results
 		gotestsum --format dots --junitfile test-results/unit-tests.xml -- ./integration -mod vendor -count 1 -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 1000s
@@ -84,7 +84,7 @@ endif
 # Run the integration tests on kind
 integration-kind:
 	KIND_CLUSTER_NAME=integration ./integration/kind-with-registry.sh
-	KUBECONFIG="$(kind get kubeconfig-path --name="integration")" go test -mod vendor -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 1000s ./integration -count 1
+	KUBECONFIG="$(kind get kubeconfig-path --name="integration")" go test -mod vendor -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 30m ./integration -count 1
 	kind delete cluster --name=integration
 
 # Run the extension integration tests against the current kubecontext
@@ -131,14 +131,17 @@ else
 endif
 
 wire:
+	# run wire in a container, which will then invoke `make wire-dev`
 	toast wire
 
 wire-dev:
-	wire ./internal/engine && wire ./internal/engine/buildcontrol && wire ./internal/cli
+	# run wire directly, both used by Toast job and useful for faster iteration
+	# if you have wire installed (but don't forget to run `make wire` before
+	# committing to generate the authoritative versions!)
+	wire ./internal/engine ./internal/engine/buildcontrol ./internal/cli
 
 wire-check:
-	wire check ./internal/engine
-	wire check ./internal/cli
+	wire check ./internal/engine ./internal/engine/buildcontrol ./internal/cli
 
 release-container:
 	scripts/build-tilt-releaser.sh
