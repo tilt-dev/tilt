@@ -275,7 +275,7 @@ const CodeSnippet = styled.code`
 `
 
 function downloadSnapshot(snapshot: Proto.webviewSnapshot) {
-  const timestamp = moment().format("YYYY-MM-DD_HHmmss")
+  const timestamp = snapshot.createdAt ?? moment().format("YYYY-MM-DD_HHmmss")
   const data = new Blob([JSON.stringify(snapshot)], {
     type: "application/json",
   })

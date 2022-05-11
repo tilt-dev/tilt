@@ -9,13 +9,14 @@ import {
 type HudState = {
   view: Proto.webviewView
   snapshotLink: string
+  snapshotHighlight: SnapshotHighlight | undefined
+  snapshotDialogAnchor: HTMLElement | null
+  snapshotStartTime: string | undefined
   showSnapshotModal: boolean
   showCopySuccess: boolean
   showFatalErrorModal: ShowFatalErrorModal
   error: string | undefined
   showErrorModal: ShowErrorModal
-  snapshotHighlight: SnapshotHighlight | undefined
-  snapshotDialogAnchor: HTMLElement | null
   socketState: SocketState
   logStore?: LogStore
 }

@@ -92,11 +92,7 @@ export enum ShowErrorModal {
   Show,
 }
 
-export type Snapshot = {
-  view: Proto.webviewView
-  path?: string
-  snapshotHighlight?: SnapshotHighlight | null
-}
+export type Snapshot = Proto.webviewSnapshot
 
 export enum LogLevel {
   INFO = "INFO",

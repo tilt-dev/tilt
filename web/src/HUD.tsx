@@ -27,6 +27,7 @@ import { ResourceSelectionProvider } from "./ResourceSelectionContext"
 import ShareSnapshotModal from "./ShareSnapshotModal"
 import { TiltSnackbarProvider } from "./Snackbar"
 import { SnapshotActionProvider } from "./snapshot"
+import { SnapshotBar } from "./SnapshotBar"
 import SocketBar, { isTiltSocketConnected } from "./SocketBar"
 import { StarredResourcesContextProvider } from "./StarredResourcesContext"
 import {
@@ -70,11 +71,12 @@ export default class HUD extends Component<HudProps, HudState> {
     this.state = {
       view: {},
       snapshotLink: "",
+      snapshotHighlight: undefined,
+      snapshotDialogAnchor: null,
+      snapshotStartTime: undefined,
       showSnapshotModal: false,
       showFatalErrorModal: ShowFatalErrorModal.Default,
       showCopySuccess: false,
-      snapshotHighlight: undefined,
-      snapshotDialogAnchor: null,
       socketState: SocketState.Closed,
       showErrorModal: ShowErrorModal.Default,
       error: undefined,
@@ -223,10 +225,13 @@ export default class HUD extends Component<HudProps, HudState> {
     let fatalErrorModal = this.renderFatalErrorModal(view)
     let errorModal = this.renderErrorModal()
 
-    let hudClasses = ["HUD"]
-    if (this.pathBuilder.isSnapshot()) {
+    const isSnapshot = this.pathBuilder.isSnapshot()
+    const hudClasses = ["HUD"]
+    if (isSnapshot) {
       hudClasses.push("is-snapshot")
     }
+
+    // If the css is really driving me crazy, i could move the snapshot bar to the global header component and move the snapshot state to its context
 
     let validateResource = (name: string) =>
       resources.some((res) => res.metadata?.name === name)
@@ -243,7 +248,11 @@ export default class HUD extends Component<HudProps, HudState> {
                     {fatalErrorModal}
                     {errorModal}
                     {shareSnapshotModal}
-
+                    <SnapshotBar
+                      isSnapshot={isSnapshot}
+                      snapshotTime={this.state.snapshotStartTime}
+                      tiltUpTime={view?.tiltStartTime}
+                    />
                     {this.renderOverviewSwitch()}
                   </div>
                 </ResourceNavProvider>
