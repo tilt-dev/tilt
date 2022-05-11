@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -51,8 +50,7 @@ func TestWriteSnapshotTo(t *testing.T) {
 		}
 	}
 
-	startTime, err := ptypes.TimestampProto(now)
-	require.NoError(t, err)
+	startTime := timestamppb.New(now)
 	snapshot.View.TiltStartTime = startTime
 
 	err = WriteSnapshotTo(ctx, snapshot, buf)

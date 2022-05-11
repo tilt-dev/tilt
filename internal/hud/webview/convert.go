@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -89,10 +89,7 @@ func CompleteView(ctx context.Context, client ctrlclient.Client, st store.RStore
 
 	// We grandfather in TiltStartTime from the old protocol,
 	// because it tells the UI to reload.
-	start, err := ptypes.TimestampProto(s.TiltStartTime)
-	if err != nil {
-		return nil, err
-	}
+	start := timestamppb.New(s.TiltStartTime)
 	ret.TiltStartTime = start
 	ret.IsComplete = true
 
@@ -116,10 +113,7 @@ func LogUpdate(st store.RStore, checkpoint logstore.Checkpoint) (*proto_webview.
 
 	// We grandfather in TiltStartTime from the old protocol,
 	// because it tells the UI to reload.
-	start, err := ptypes.TimestampProto(s.TiltStartTime)
-	if err != nil {
-		return nil, err
-	}
+	start := timestamppb.New(s.TiltStartTime)
 	ret.TiltStartTime = start
 
 	return ret, nil

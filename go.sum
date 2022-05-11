@@ -1546,8 +1546,8 @@ github.com/tetafro/godot v0.3.7/go.mod h1:/7NLHhv08H1+8DNj0MElpAACw1ajsCuf3TKNQx
 github.com/tetafro/godot v0.4.2/go.mod h1:/7NLHhv08H1+8DNj0MElpAACw1ajsCuf3TKNQxA5S+0=
 github.com/theupdateframework/notary v0.6.1 h1:7wshjstgS9x9F5LuB1L5mBI2xNMObWqjz+cjWoom6l0=
 github.com/theupdateframework/notary v0.6.1/go.mod h1:MOfgIfmox8s7/7fduvB2xyPPMJCrjRLRizA8OFwpnKY=
-github.com/tilt-dev/apimachinery v0.23.6-tilt-20220503 h1:Sz9yMKYXuCtngycEc+CAl0In28ng34SsPRbtS1MnDkQ=
-github.com/tilt-dev/apimachinery v0.23.6-tilt-20220503/go.mod h1:BEuFMMBaIbcOqVIJqNZJXGFTP4W6AycEpb5+m/97hrM=
+github.com/tilt-dev/apimachinery v0.23.6-tilt-20220511 h1:jnJqSPTJlKqiVlA4zy/fLgXlS1lTr88XCkeTIYC+9PU=
+github.com/tilt-dev/apimachinery v0.23.6-tilt-20220511/go.mod h1:BEuFMMBaIbcOqVIJqNZJXGFTP4W6AycEpb5+m/97hrM=
 github.com/tilt-dev/browser v0.0.1 h1:e+mFToX6A7pkMlGFrXW5VLvS7qS0HVbcXqmR0uPrWUA=
 github.com/tilt-dev/browser v0.0.1/go.mod h1:2DaMt8P8xEqDFzxaAbraOig5iUmQdd1wtO1Tb6tODHA=
 github.com/tilt-dev/buildkit v0.8.3-tilt-20220505 h1:a8aO6YvW5JQ7MW4ZI7qhFmSE+T7rUxNA2AbP53Qm+ZA=

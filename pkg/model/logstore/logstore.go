@@ -6,8 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
-	"github.com/pkg/errors"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -528,10 +527,7 @@ func (s *LogStore) ToLogList(fromCheckpoint Checkpoint) (*webview.LogList, error
 	segments := make([]*webview.LogSegment, 0, len(s.segments)-startIndex)
 	for i := startIndex; i < len(s.segments); i++ {
 		segment := s.segments[i]
-		time, err := ptypes.TimestampProto(segment.Time)
-		if err != nil {
-			return nil, errors.Wrap(err, "ToLogList")
-		}
+		time := timestamppb.New(segment.Time)
 		segments = append(segments, &webview.LogSegment{
 			SpanId: string(segment.SpanID),
 			Level:  webview.LogLevel(segment.Level.ToProtoID()),
