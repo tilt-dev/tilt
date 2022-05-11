@@ -82,7 +82,7 @@ func TestMalformedJSON(t *testing.T) {
 	result, err := f.ExecFile("Tiltfile")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "error parsing JSON from")
-	require.Contains(t, err.Error(), "options.json: unexpected end of JSON input")
+	require.Contains(t, err.Error(), "options.json: unexpected EOF")
 
 	rs, err := io.GetState(result)
 	require.NoError(t, err)
@@ -187,4 +187,24 @@ encode_json(blob('hello'))
 	_, err := f.ExecFile("Tiltfile")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "unsupported type io.Blob")
+}
+
+func TestDecodeJSONIntFloat(t *testing.T) {
+	f := newFixture(t)
+	f.File("Tiltfile", `
+json = '{"int":42,"float":3.14,"intfloat":3.0}'
+x = decode_json(json)
+if repr(x["int"]) != "42":
+  fail('repr(int) value was not "42": ' + repr(x["int"]))
+if repr(x["float"]) != "3.14":
+  fail('repr(float) value was not a "3.14": ' + repr(x["float"]))
+if repr(x["intfloat"]) != "3.0":
+  fail('repr(intfloat) value was not a "3.0": ' + repr(x["intfloat"]))
+`)
+
+	_, err := f.ExecFile("Tiltfile")
+	if err != nil {
+		fmt.Println(f.PrintOutput())
+	}
+	require.NoError(t, err)
 }
