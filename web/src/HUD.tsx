@@ -129,6 +129,7 @@ export default class HUD extends Component<HudProps, HudState> {
       view: view,
       path: this.props.history.location.pathname,
       snapshotHighlight: state.snapshotHighlight,
+      createdAt: new Date().toISOString(),
     }
   }
 
