@@ -31,7 +31,6 @@ export const SignedOut = () => (
     tiltCloudSchemeHost="http://cloud.tilt.dev"
     tiltCloudTeamID=""
     tiltCloudTeamName=""
-    isSnapshot={false}
   />
 )
 
@@ -41,6 +40,5 @@ export const SignedIn = () => (
     tiltCloudSchemeHost="http://cloud.tilt.dev"
     tiltCloudTeamID="cactus inc"
     tiltCloudTeamName=""
-    isSnapshot={false}
   />
 )

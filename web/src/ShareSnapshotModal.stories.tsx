@@ -1,6 +1,8 @@
 import React from "react"
 import ReactModal from "react-modal"
+import Features, { FeaturesTestProvider, Flag } from "./feature"
 import ShareSnapshotModal from "./ShareSnapshotModal"
+import { nResourceView } from "./testdata"
 
 ReactModal.setAppElement("#root")
 
@@ -11,9 +13,7 @@ let signedOut = () => {
   return (
     <ShareSnapshotModal
       handleSendSnapshot={handleSendSnapshot}
-      getSnapshot={() => {
-        return {}
-      }}
+      getSnapshot={() => ({})}
       handleClose={handleClose}
       snapshotUrl={""}
       tiltCloudUsername={""}
@@ -49,9 +49,7 @@ let withUrl = () => {
   return (
     <ShareSnapshotModal
       handleSendSnapshot={handleSendSnapshot}
-      getSnapshot={() => {
-        return {}
-      }}
+      getSnapshot={() => ({})}
       handleClose={handleClose}
       snapshotUrl={"https://cloud.tilt.dev/snapshot/garnet"}
       tiltCloudUsername={"peridot"}
@@ -68,9 +66,7 @@ let withUrlOverflow = () => {
   return (
     <ShareSnapshotModal
       handleSendSnapshot={handleSendSnapshot}
-      getSnapshot={() => {
-        return {}
-      }}
+      getSnapshot={() => ({})}
       handleClose={handleClose}
       snapshotUrl={
         "https://cloud.tilt.dev/snapshot/rose-quartz-long-overflow-string"
@@ -89,9 +85,7 @@ let withTeam = () => {
   return (
     <ShareSnapshotModal
       handleSendSnapshot={handleSendSnapshot}
-      getSnapshot={() => {
-        return {}
-      }}
+      getSnapshot={() => ({})}
       handleClose={handleClose}
       snapshotUrl={""}
       tiltCloudUsername={"peridot"}
@@ -104,16 +98,39 @@ let withTeam = () => {
   )
 }
 
+const offlineSnapshot = () => {
+  const features = new Features({ [Flag.OfflineSnapshotCreation]: true })
+  const anchorEl: HTMLElement | null = document.body.querySelector("#root")
+  return (
+    <FeaturesTestProvider value={features}>
+      <ShareSnapshotModal
+        handleSendSnapshot={handleSendSnapshot}
+        getSnapshot={() => ({ view: nResourceView(1) })}
+        handleClose={handleClose}
+        snapshotUrl=""
+        tiltCloudUsername=""
+        tiltCloudSchemeHost=""
+        tiltCloudTeamID=""
+        isOpen={true}
+        highlightedLines={null}
+        dialogAnchor={anchorEl}
+      />
+    </FeaturesTestProvider>
+  )
+}
+
 export default {
   title: "New UI/Shared/ShareSnapshotModal",
 }
 
-export const SignedOut = signedOut
+export const CloudSignedOut = signedOut
 
-export const SignedIn = signedIn
+export const CloudSignedIn = signedIn
 
-export const WithUrl = withUrl
+export const CloudWithUrl = withUrl
 
-export const WithUrlOverflow = withUrlOverflow
+export const CloudWithUrlOverflow = withUrlOverflow
 
-export const WithTeam = withTeam
+export const CloudWithTeam = withTeam
+
+export const OfflineSnapshot = offlineSnapshot

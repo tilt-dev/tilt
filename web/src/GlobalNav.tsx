@@ -1,6 +1,6 @@
 import React, { Component, useMemo, useRef, useState } from "react"
 import styled from "styled-components"
-import { AccountMenuContent, AccountMenuHeader } from "./AccountMenu"
+import { AccountMenuDialog } from "./AccountMenu"
 import { AnalyticsAction, AnalyticsType, incr } from "./analytics"
 import { ReactComponent as AccountIcon } from "./assets/svg/account.svg"
 import { ReactComponent as ClusterErrorIcon } from "./assets/svg/close.svg"
@@ -9,7 +9,7 @@ import { ReactComponent as HelpIcon } from "./assets/svg/help.svg"
 import { ReactComponent as SnapshotIcon } from "./assets/svg/snapshot.svg"
 import { ReactComponent as UpdateAvailableIcon } from "./assets/svg/update-available.svg"
 import { ClusterStatusDialog, getDefaultCluster } from "./ClusterStatusDialog"
-import FloatDialog from "./FloatDialog"
+import { Flag, useFeatures } from "./feature"
 import HelpDialog from "./HelpDialog"
 import { isTargetEditable } from "./shortcut"
 import { SnapshotAction } from "./snapshot"
@@ -205,6 +205,8 @@ export function GlobalNav(props: GlobalNavProps) {
 
   const [openDialog, setOpenDialog] = useState<NavDialog | null>(null)
 
+  const features = useFeatures()
+
   // Don't display global nav for snapshots
   if (props.isSnapshot) {
     return null
@@ -220,8 +222,6 @@ export function GlobalNav(props: GlobalNavProps) {
     setOpenDialog(nextDialogState)
   }
 
-  let accountMenuHeader = <AccountMenuHeader {...props} />
-  let accountMenuContent = <AccountMenuContent {...props} />
   let snapshotMenuItem = props.snapshot.enabled ? (
     <MenuButtonLabeled label="Snapshot">
       <MenuButton
@@ -268,6 +268,25 @@ export function GlobalNav(props: GlobalNavProps) {
     </MenuButtonLabeled>
   ) : null
 
+  // Don't render the account button if offline snapshots are enabled
+  // because an account isn't needed to generate them
+  const displayAccountInfo = !features.isEnabled(Flag.OfflineSnapshotCreation)
+  const accountMenuButton = displayAccountInfo ? (
+    <MenuButtonLabeled label="Account">
+      <MenuButton
+        ref={accountButton}
+        onClick={() => toggleDialog(NavDialog.Account)}
+        data-open={openDialog === NavDialog.Account}
+        aria-expanded={openDialog === NavDialog.Account}
+        aria-label="Account"
+        aria-haspopup="true"
+        role="menuitem"
+      >
+        <AccountIcon width="24" height="24" />
+      </MenuButton>
+    </MenuButtonLabeled>
+  ) : null
+
   const versionButtonLabel = props.showUpdate ? "Get Update" : "Version"
 
   return (
@@ -308,19 +327,7 @@ export function GlobalNav(props: GlobalNavProps) {
         </MenuButton>
       </MenuButtonLabeled>
 
-      <MenuButtonLabeled label="Account">
-        <MenuButton
-          ref={accountButton}
-          onClick={() => toggleDialog(NavDialog.Account)}
-          data-open={openDialog === NavDialog.Account}
-          aria-expanded={openDialog === NavDialog.Account}
-          aria-label="Account"
-          aria-haspopup="true"
-          role="menuitem"
-        >
-          <AccountIcon width="24" height="24" />
-        </MenuButton>
-      </MenuButtonLabeled>
+      {accountMenuButton}
 
       <ClusterStatusDialog
         open={openDialog === NavDialog.Cluster}
@@ -328,15 +335,15 @@ export function GlobalNav(props: GlobalNavProps) {
         anchorEl={clusterButton?.current}
         clusterConnection={defaultClusterInfo}
       />
-      <FloatDialog
-        id="accountMenu"
-        title={accountMenuHeader}
+      <AccountMenuDialog
         open={openDialog === NavDialog.Account}
         anchorEl={accountButton?.current}
         onClose={() => toggleDialog(NavDialog.Account)}
-      >
-        {accountMenuContent}
-      </FloatDialog>
+        tiltCloudUsername={props.tiltCloudUsername}
+        tiltCloudSchemeHost={props.tiltCloudSchemeHost}
+        tiltCloudTeamID={props.tiltCloudTeamID}
+        tiltCloudTeamName={props.tiltCloudTeamName}
+      />
       <HelpDialog
         open={openDialog === NavDialog.Help}
         anchorEl={helpButton?.current}
