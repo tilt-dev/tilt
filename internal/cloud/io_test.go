@@ -8,6 +8,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tilt-dev/tilt/internal/hud/webview"
@@ -30,17 +31,18 @@ func TestWriteSnapshotTo(t *testing.T) {
 			Spec:       v1alpha1.TiltfileSpec{Path: "Tiltfile"},
 		},
 	})
+	now := time.Unix(1551202573, 0)
 	snapshot := &proto_webview.Snapshot{
 		View: &proto_webview.View{
 			UiSession: webview.ToUISession(*state),
 		},
+		CreatedAt: timestamppb.New(now),
 	}
 
 	resources, err := webview.ToUIResourceList(*state, make(map[string][]v1alpha1.DisableSource))
 	require.NoError(t, err)
 	snapshot.View.UiResources = resources
 
-	now := time.Unix(1551202573, 0)
 	for _, r := range resources {
 		for i, cond := range r.Status.Conditions {
 			// Clear the transition timestamps so that the test is hermetic.
@@ -94,7 +96,8 @@ func TestWriteSnapshotTo(t *testing.T) {
         }
       }
     ]
-  }
+  },
+  "createdAt": "2019-02-26T17:36:13Z"
 }
 `, buf.String())
 }

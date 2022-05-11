@@ -240,6 +240,7 @@ message Snapshot {
   string path = 3;
   SnapshotHighlight snapshot_highlight = 4;
   string snapshot_link = 5;
+  google.protobuf.Timestamp created_at = 6;
 }
 
 message UploadSnapshotResponse {

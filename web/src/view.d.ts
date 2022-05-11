@@ -67,6 +67,7 @@ declare namespace Proto {
     path?: string;
     snapshotHighlight?: webviewSnapshotHighlight;
     snapshotLink?: string;
+    createdAt?: string;
   }
   export interface webviewResource {
     name?: string;

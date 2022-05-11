@@ -15,6 +15,7 @@ import (
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
@@ -197,7 +198,8 @@ func createSnapshot(cmd *cobra.Command, args []string) {
 	body := apiGet("view")
 
 	snapshot := proto_webview.Snapshot{
-		View: &proto_webview.View{},
+		View:      &proto_webview.View{},
+		CreatedAt: timestamppb.Now(),
 	}
 
 	jsEncoder := &runtime.JSONPb{}

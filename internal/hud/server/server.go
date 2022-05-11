@@ -10,6 +10,8 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
 	"github.com/golang/protobuf/jsonpb"
@@ -162,11 +164,14 @@ func (s *HeadsUpServer) SnapshotJSON(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	snapshot := &proto_webview.Snapshot{
+		View:      view,
+		CreatedAt: timestamppb.Now(),
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	var m jsonpb.Marshaler
-	err = m.Marshal(w, &proto_webview.Snapshot{
-		View: view,
-	})
+	err = m.Marshal(w, snapshot)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error rendering view payload: %v", err), http.StatusInternalServerError)
 	}
@@ -345,6 +350,10 @@ func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Reque
 		log.Println(msg)
 		http.Error(w, msg, http.StatusInternalServerError)
 		return
+	}
+
+	if snapshot != nil && snapshot.GetCreatedAt().AsTime().IsZero() {
+		snapshot.CreatedAt = timestamppb.Now()
 	}
 
 	id, err := s.uploader.Upload(token, teamID, snapshot)

@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 
+	"google.golang.org/protobuf/types/known/timestamppb"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
@@ -43,7 +44,12 @@ func (s *Snapshotter) WriteSnapshot(ctx context.Context, path string) {
 		_ = f.Close()
 	}()
 
-	err = WriteSnapshotTo(ctx, &proto_webview.Snapshot{View: view}, f)
+	snapshot := &proto_webview.Snapshot{
+		View:      view,
+		CreatedAt: timestamppb.Now(),
+	}
+
+	err = WriteSnapshotTo(ctx, snapshot, f)
 	if err != nil {
 		logger.Get(ctx).Errorf("Writing snapshot to file: %v", err)
 		return

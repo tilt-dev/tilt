@@ -1436,6 +1436,10 @@
         },
         "snapshot_link": {
           "type": "string"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
         }
       }
     },
