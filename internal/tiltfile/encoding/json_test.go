@@ -208,3 +208,13 @@ if repr(x["intfloat"]) != "3.0":
 	}
 	require.NoError(t, err)
 }
+
+func TestDecodeInvalidJSONMultipleValues(t *testing.T) {
+	f := newFixture(t)
+	f.File("stream.json", `{"a":1,"b":2}
+{"a":2,"b":3}`)
+	f.File("Tiltfile", `read_json("stream.json")`)
+	_, err := f.ExecFile("Tiltfile")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "multiple JSON values")
+}

@@ -3,6 +3,7 @@ package encoding
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"strings"
 
@@ -51,6 +52,9 @@ func jsonStringToStarlark(s string, source string) (starlark.Value, error) {
 	dec.UseNumber()
 	if err := dec.Decode(&decodedJSON); err != nil {
 		return nil, wrapError(err, "error parsing JSON", source)
+	}
+	if dec.More() {
+		return nil, wrapError(fmt.Errorf("found multiple JSON values"), "error parsing JSON", source)
 	}
 
 	v, err := ConvertStructuredDataToStarlark(decodedJSON)
