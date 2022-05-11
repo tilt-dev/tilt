@@ -105,6 +105,7 @@ func newFakeListener() fakeListener {
 	}
 }
 
+//nolint:gosimple // Copy of upstream code @ https://github.com/kubernetes/client-go/blob/77f63643f951f19681397a995fe0916d2d5cb992/tools/portforward/portforward_test.go#L105-L110
 func (l *fakeListener) Accept() (net.Conn, error) {
 	select {
 	case <-l.closeChan:
