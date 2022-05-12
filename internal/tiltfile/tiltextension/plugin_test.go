@@ -163,6 +163,34 @@ printFoo()
 	f.assertLoadRecorded(res, "my-extension")
 }
 
+func TestLoadedExtensionTwiceDifferentFiles(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// We don't want to have to bother with file:// escaping on windows.
+		// The repo reconciler already tests this.
+		t.Skip()
+	}
+
+	f := newExtensionFixture(t)
+
+	f.tmp.WriteFile(filepath.Join("my-custom-repo", "my-custom-path", "Tiltfile"), libText)
+
+	subfileContent := fmt.Sprintf(`
+v1alpha1.extension_repo(name='my-extension-repo', url='file://%s/my-custom-repo')
+v1alpha1.extension(name='my-extension', repo_name='my-extension-repo', repo_path='my-custom-path')
+load('ext://my-extension', 'printFoo')
+printFoo()
+`, f.tmp.Path())
+
+	f.skf.File("Tiltfile.a", subfileContent)
+	f.skf.File("Tiltfile.b", subfileContent)
+	f.tiltfile(`
+include('Tiltfile.a')
+include('Tiltfile.b')
+`)
+	res := f.assertExecOutput("foo\nfoo")
+	f.assertLoadRecorded(res, "my-extension")
+}
+
 type extensionFixture struct {
 	t     *testing.T
 	skf   *starkit.Fixture
