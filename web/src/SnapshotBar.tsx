@@ -1,7 +1,9 @@
+import moment from "moment"
 import React from "react"
 import styled from "styled-components"
 import { AnalyticsType } from "./analytics"
 import { usePathBuilder } from "./PathBuilder"
+import { formatSnapshotTimestamp } from "./ShareSnapshotModal"
 import { useSnapshotAction } from "./snapshot"
 import { Color, FontSize, SizeUnit } from "./style-helpers"
 
@@ -38,9 +40,15 @@ export function SnapshotBar(props: { className?: string }) {
 
   let timestampDescription = ""
   if (currentSnapshotTime?.createdAt) {
-    timestampDescription = `(created at ${currentSnapshotTime?.createdAt})`
+    const createdAt = formatSnapshotTimestamp(
+      moment(currentSnapshotTime?.createdAt)
+    )
+    timestampDescription = `(created at ${createdAt})`
   } else if (currentSnapshotTime?.tiltUpTime) {
-    timestampDescription = `(session started at ${currentSnapshotTime?.tiltUpTime})`
+    const tiltUpTime = formatSnapshotTimestamp(
+      moment(currentSnapshotTime?.tiltUpTime)
+    )
+    timestampDescription = `(session started at ${tiltUpTime})`
   }
 
   return (

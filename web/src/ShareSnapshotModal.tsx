@@ -274,13 +274,17 @@ const CodeSnippet = styled.code`
   white-space: nowrap;
 `
 
+export function formatSnapshotTimestamp(date: moment.Moment) {
+  return date.format("YYYY-MM-DD_HHmmss")
+}
+
 function downloadSnapshot(snapshot: Proto.webviewSnapshot) {
-  const timestamp = snapshot.createdAt ?? moment().format("YYYY-MM-DD_HHmmss")
+  const timestamp = snapshot.createdAt ? moment(snapshot.createdAt) : moment()
   const data = new Blob([JSON.stringify(snapshot)], {
     type: "application/json",
   })
 
-  saveAs(data, `tilt-snapshot_${timestamp}.json`)
+  saveAs(data, `tilt-snapshot_${formatSnapshotTimestamp(timestamp)}.json`)
 }
 
 export function LocalSnapshotDialog(props: DownloadSnapshotModalProps) {
