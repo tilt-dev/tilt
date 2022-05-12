@@ -1,6 +1,7 @@
 package encoding
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
@@ -103,29 +104,26 @@ func decodeYAML(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tup
 
 func yamlStreamToStarlark(s string, source string) (*starlark.List, error) {
 	var ret []starlark.Value
-	d := k8syaml.NewYAMLToJSONDecoder(strings.NewReader(s))
+	r := k8syaml.NewYAMLReader(bufio.NewReader(strings.NewReader(s)))
+
 	for {
-		var decodedYAML interface{}
-		err := d.Decode(&decodedYAML)
+		bytes, err := r.Read()
 		if err == io.EOF {
 			break
 		}
-
 		if err != nil {
-			errmsg := "error parsing YAML"
-			if source != "" {
-				errmsg += fmt.Sprintf(" from %s", source)
-			}
-			return nil, errors.Wrap(err, errmsg)
+			return nil, wrapError(err, "error reading YAML stream", source)
+		}
+
+		var decodedYAML interface{}
+		err = k8syaml.Unmarshal(bytes, &decodedYAML)
+		if err != nil {
+			return nil, wrapError(err, "error parsing YAML", source)
 		}
 
 		v, err := ConvertStructuredDataToStarlark(decodedYAML)
 		if err != nil {
-			errmsg := "error converting YAML to Starlark"
-			if source != "" {
-				errmsg += fmt.Sprintf(" from %s", source)
-			}
-			return nil, errors.Wrap(err, errmsg)
+			return nil, wrapError(err, "error converting YAML to Starlark", source)
 		}
 		if v == starlark.None {
 			continue // ignore empty entries
@@ -186,4 +184,11 @@ func starlarkToYAMLString(obj starlark.Value) (string, error) {
 	}
 
 	return string(b), nil
+}
+
+func wrapError(err error, errmsg string, source string) error {
+	if source != "" {
+		errmsg += fmt.Sprintf(" from %s", source)
+	}
+	return errors.Wrap(err, errmsg)
 }

@@ -386,3 +386,24 @@ encode_yaml(blob('hello'))
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "unsupported type io.Blob")
 }
+
+func TestDecodeYAMLIntFloat(t *testing.T) {
+	f := newFixture(t)
+	f.File("Tiltfile", `
+yaml = '''---
+int: 42
+float: 3.14
+'''
+x = decode_yaml(yaml)
+if repr(x["int"]) != "42":
+  fail('repr(int) value was not "42": ' + repr(x["int"]))
+if repr(x["float"]) != "3.14":
+  fail('repr(float) value was not a "3.14": ' + repr(x["float"]))
+`)
+
+	_, err := f.ExecFile("Tiltfile")
+	if err != nil {
+		fmt.Println(f.PrintOutput())
+	}
+	require.NoError(t, err)
+}

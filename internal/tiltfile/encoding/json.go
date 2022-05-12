@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
@@ -47,21 +48,18 @@ func decodeJSON(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tup
 
 func jsonStringToStarlark(s string, source string) (starlark.Value, error) {
 	var decodedJSON interface{}
-	if err := json.Unmarshal([]byte(s), &decodedJSON); err != nil {
-		errmsg := "error parsing JSON"
-		if source != "" {
-			errmsg += fmt.Sprintf(" from %s", source)
-		}
-		return nil, errors.Wrap(err, errmsg)
+	dec := json.NewDecoder(strings.NewReader(s))
+	dec.UseNumber()
+	if err := dec.Decode(&decodedJSON); err != nil {
+		return nil, wrapError(err, "error parsing JSON", source)
+	}
+	if dec.More() {
+		return nil, wrapError(fmt.Errorf("found multiple JSON values"), "error parsing JSON", source)
 	}
 
 	v, err := ConvertStructuredDataToStarlark(decodedJSON)
 	if err != nil {
-		errmsg := "error converting JSON to Starlark"
-		if source != "" {
-			errmsg += fmt.Sprintf(" from %s", source)
-		}
-		return nil, errors.Wrap(err, errmsg)
+		return nil, wrapError(err, "error converting JSON to Starlark", source)
 	}
 	return v, nil
 }

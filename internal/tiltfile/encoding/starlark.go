@@ -1,7 +1,9 @@
 package encoding
 
 import (
+	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
@@ -13,6 +15,22 @@ func ConvertStructuredDataToStarlark(j interface{}) (starlark.Value, error) {
 		return starlark.Bool(j), nil
 	case string:
 		return starlark.String(j), nil
+	case json.Number:
+		if strings.Contains(j.String(), ".") {
+			f, err := j.Float64()
+			if err != nil {
+				return nil, err
+			}
+			return starlark.Float(f), nil
+		} else {
+			i, err := j.Int64()
+			if err != nil {
+				return nil, err
+			}
+			return starlark.MakeInt64(i), nil
+		}
+	case int64:
+		return starlark.MakeInt64(j), nil
 	case float64:
 		return starlark.Float(j), nil
 	case []interface{}:
