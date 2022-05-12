@@ -14,7 +14,6 @@ import (
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
-	"github.com/tilt-dev/tilt/internal/feature"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils/configmap"
@@ -282,79 +281,66 @@ func TestCreateClusterDefaultRegistry(t *testing.T) {
 
 // Ensure that we emit disable-related objects/field appropriately
 func TestDisableObjects(t *testing.T) {
-	for _, disableFeatureOn := range []bool{true, false} {
-		t.Run(fmt.Sprintf("disable buttons enabled: %v", disableFeatureOn), func(t *testing.T) {
-			f := newAPIFixture(t)
-			fe := manifestbuilder.New(f, "fe").
-				WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
-				WithK8sYAML(testyaml.SanchoYAML).
-				Build()
-			lr := manifestbuilder.New(f, "be").WithLocalResource("ls", []string{"be"}).Build()
-			nn := types.NamespacedName{Name: "tiltfile"}
-			tf := &v1alpha1.Tiltfile{ObjectMeta: metav1.ObjectMeta{Name: "tiltfile"}}
-			err := f.updateOwnedObjects(nn, tf,
-				&tiltfile.TiltfileLoadResult{
-					Manifests:    []model.Manifest{fe, lr},
-					FeatureFlags: map[string]bool{feature.DisableResources: disableFeatureOn},
-				})
-			assert.NoError(t, err)
-
-			feDisable := &v1alpha1.DisableSource{
-				ConfigMap: &v1alpha1.ConfigMapDisableSource{
-					Name: "fe-disable",
-					Key:  "isDisabled",
-				},
-			}
-
-			var cm v1alpha1.ConfigMap
-			require.NoError(t, f.Get(types.NamespacedName{Name: feDisable.ConfigMap.Name}, &cm))
-			require.Equal(t, "true", cm.Data[feDisable.ConfigMap.Key])
-
-			name := apis.SanitizeName(SanchoRef.String())
-			var im v1alpha1.ImageMap
-			require.NoError(t, f.Get(types.NamespacedName{Name: name}, &im))
-
-			var ka v1alpha1.KubernetesApply
-			require.NoError(t, f.Get(types.NamespacedName{Name: "fe"}, &ka))
-			require.Equal(t, feDisable, ka.Spec.DisableSource)
-
-			beDisable := &v1alpha1.DisableSource{
-				ConfigMap: &v1alpha1.ConfigMapDisableSource{
-					Name: "be-disable",
-					Key:  "isDisabled",
-				},
-			}
-
-			var fw v1alpha1.FileWatch
-			require.NoError(t, f.Get(types.NamespacedName{Name: "local:be"}, &fw))
-			require.Equal(t, beDisable, fw.Spec.DisableSource)
-
-			var cmd v1alpha1.Cmd
-			require.NoError(t, f.Get(types.NamespacedName{Name: "be:update"}, &cmd))
-			require.Equal(t, beDisable, cmd.Spec.DisableSource)
-
-			var uir v1alpha1.UIResource
-			require.NoError(t, f.Get(types.NamespacedName{Name: "be"}, &uir))
-			require.Equal(t, []v1alpha1.DisableSource{*beDisable}, uir.Status.DisableStatus.Sources)
-
-			var tb v1alpha1.ToggleButton
-			err = f.Get(types.NamespacedName{Name: "fe-disable"}, &tb)
-			if disableFeatureOn {
-				require.NoError(t, err)
-				require.Equal(t, feDisable.ConfigMap.Name, tb.Spec.StateSource.ConfigMap.Name)
-			} else {
-				require.True(t, apierrors.IsNotFound(err))
-			}
-
-			err = f.Get(types.NamespacedName{Name: "be-disable"}, &tb)
-			if disableFeatureOn {
-				require.NoError(t, err)
-				require.Equal(t, beDisable.ConfigMap.Name, tb.Spec.StateSource.ConfigMap.Name)
-			} else {
-				require.True(t, apierrors.IsNotFound(err))
-			}
+	f := newAPIFixture(t)
+	fe := manifestbuilder.New(f, "fe").
+		WithImageTarget(NewSanchoDockerBuildImageTarget(f)).
+		WithK8sYAML(testyaml.SanchoYAML).
+		Build()
+	lr := manifestbuilder.New(f, "be").WithLocalResource("ls", []string{"be"}).Build()
+	nn := types.NamespacedName{Name: "tiltfile"}
+	tf := &v1alpha1.Tiltfile{ObjectMeta: metav1.ObjectMeta{Name: "tiltfile"}}
+	err := f.updateOwnedObjects(nn, tf,
+		&tiltfile.TiltfileLoadResult{
+			Manifests: []model.Manifest{fe, lr},
 		})
+	assert.NoError(t, err)
+
+	feDisable := &v1alpha1.DisableSource{
+		ConfigMap: &v1alpha1.ConfigMapDisableSource{
+			Name: "fe-disable",
+			Key:  "isDisabled",
+		},
 	}
+
+	var cm v1alpha1.ConfigMap
+	require.NoError(t, f.Get(types.NamespacedName{Name: feDisable.ConfigMap.Name}, &cm))
+	require.Equal(t, "true", cm.Data[feDisable.ConfigMap.Key])
+
+	name := apis.SanitizeName(SanchoRef.String())
+	var im v1alpha1.ImageMap
+	require.NoError(t, f.Get(types.NamespacedName{Name: name}, &im))
+
+	var ka v1alpha1.KubernetesApply
+	require.NoError(t, f.Get(types.NamespacedName{Name: "fe"}, &ka))
+	require.Equal(t, feDisable, ka.Spec.DisableSource)
+
+	beDisable := &v1alpha1.DisableSource{
+		ConfigMap: &v1alpha1.ConfigMapDisableSource{
+			Name: "be-disable",
+			Key:  "isDisabled",
+		},
+	}
+
+	var fw v1alpha1.FileWatch
+	require.NoError(t, f.Get(types.NamespacedName{Name: "local:be"}, &fw))
+	require.Equal(t, beDisable, fw.Spec.DisableSource)
+
+	var cmd v1alpha1.Cmd
+	require.NoError(t, f.Get(types.NamespacedName{Name: "be:update"}, &cmd))
+	require.Equal(t, beDisable, cmd.Spec.DisableSource)
+
+	var uir v1alpha1.UIResource
+	require.NoError(t, f.Get(types.NamespacedName{Name: "be"}, &uir))
+	require.Equal(t, []v1alpha1.DisableSource{*beDisable}, uir.Status.DisableStatus.Sources)
+
+	var tb v1alpha1.ToggleButton
+	err = f.Get(types.NamespacedName{Name: "fe-disable"}, &tb)
+	require.NoError(t, err)
+	require.Equal(t, feDisable.ConfigMap.Name, tb.Spec.StateSource.ConfigMap.Name)
+
+	err = f.Get(types.NamespacedName{Name: "be-disable"}, &tb)
+	require.NoError(t, err)
+	require.Equal(t, beDisable.ConfigMap.Name, tb.Spec.StateSource.ConfigMap.Name)
 }
 
 // If a DisableSource ConfigMap already exists, don't replace its data
@@ -388,7 +374,7 @@ func TestReconciledTypesCompleteness(t *testing.T) {
 	nn := types.NamespacedName{Name: "tiltfile"}
 	tf := &v1alpha1.Tiltfile{ObjectMeta: metav1.ObjectMeta{Name: "tiltfile"}}
 	fe := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
-	tlr := &tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}, FeatureFlags: map[string]bool{feature.DisableResources: true}}
+	tlr := &tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{fe}}
 	ds := toDisableSources(tlr)
 	objs := toAPIObjects(nn, tf, tlr, store.EngineModeCI, &v1alpha1.KubernetesClusterConnection{}, ds)
 

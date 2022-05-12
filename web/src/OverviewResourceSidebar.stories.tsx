@@ -23,7 +23,6 @@ export default {
     (Story: any, context: any) => {
       const features = new Features({
         [Flag.Labels]: context?.args?.labelsEnabled ?? true,
-        [Flag.DisableResources]: context?.args?.disableResourcesEnabled ?? true,
       })
       return (
         <MemoryRouter initialEntries={["/"]}>

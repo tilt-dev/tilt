@@ -50,19 +50,16 @@ import { RuntimeStatus, TriggerMode, UpdateStatus } from "./types"
 const tableViewWithSettings = ({
   view,
   labelsEnabled,
-  disableResourcesEnabled,
   resourceListOptions,
   resourceSelections,
 }: {
   view: TestDataView
   labelsEnabled?: boolean
-  disableResourcesEnabled?: boolean
   resourceListOptions?: ResourceListOptions
   resourceSelections?: string[]
 }) => {
   const features = new Features({
     [Flag.Labels]: labelsEnabled ?? true,
-    [Flag.DisableResources]: disableResourcesEnabled ?? true,
   })
   return (
     <MemoryRouter initialEntries={["/"]}>
@@ -144,7 +141,6 @@ it("sorts by status", () => {
   const { container } = render(
     tableViewWithSettings({
       view,
-      disableResourcesEnabled: true,
       resourceListOptions: { ...DEFAULT_OPTIONS, showDisabledResources: true },
     })
   )
@@ -639,7 +635,6 @@ describe("when disable resources feature is enabled and `showDisabledResources` 
     container = renderContainer(
       tableViewWithSettings({
         view,
-        disableResourcesEnabled: true,
         resourceListOptions: {
           ...DEFAULT_OPTIONS,
           showDisabledResources: true,
@@ -711,28 +706,7 @@ describe("when disable resources feature is enabled and `showDisabledResources` 
   })
 })
 
-describe("when disable resources feature is NOT enabled", () => {
-  it("does NOT display disabled resources", () => {
-    const view = nResourceView(8)
-    // Add a disabled resource to view
-    const disabledResource = oneResource({
-      name: "disabled_resource",
-      disabled: true,
-    })
-    view.uiResources.push(disabledResource)
-
-    const { container } = render(
-      tableViewWithSettings({ view, disableResourcesEnabled: false })
-    )
-
-    const visibleResources = Array.from(container.querySelectorAll(Name))
-    const resourceNames = visibleResources.map((r) => r.textContent)
-    expect(resourceNames.length).toBe(8)
-    expect(resourceNames).not.toContain("disabled_resource")
-  })
-})
-
-describe("when disable resources feature is enabled, but `showDisabledResources` option is false", () => {
+describe("`showDisabledResources` option is false", () => {
   it("does NOT display disabled resources", () => {
     const view = nResourceView(8)
     // Add a disabled resource to view
@@ -745,7 +719,6 @@ describe("when disable resources feature is enabled, but `showDisabledResources`
     const { container } = render(
       tableViewWithSettings({
         view,
-        disableResourcesEnabled: true,
         resourceListOptions: {
           ...DEFAULT_OPTIONS,
           showDisabledResources: false,
@@ -773,9 +746,7 @@ describe("bulk disable actions", () => {
 
     beforeEach(() => {
       view = nResourceView(4)
-      container = renderContainer(
-        tableViewWithSettings({ view, disableResourcesEnabled: true })
-      )
+      container = renderContainer(tableViewWithSettings({ view }))
     })
 
     it("renders labels on enabled checkbox", () => {
@@ -930,23 +901,6 @@ describe("bulk disable actions", () => {
           .map((checkbox: any) => checkbox.getAttribute("aria-checked"))
         expect(rowCheckboxesState).toStrictEqual(["false", "false", "false"])
       })
-    })
-  })
-
-  describe("when disable resources feature is NOT enabled", () => {
-    it("does NOT render the `Select` column", () => {
-      const { container } = render(
-        tableViewWithSettings({
-          view: nResourceView(5),
-          disableResourcesEnabled: false,
-        })
-      )
-      const firstColumnHeaderText =
-        container.querySelectorAll(ResourceTableRow)[0].innerHTML
-
-      expect(allEnabledCheckboxes(container).length).toBe(0)
-      // Expect to see the Starred column first when the selection column isn't present
-      expect(firstColumnHeaderText.includes("star.svg")).toBe(true)
     })
   })
 })

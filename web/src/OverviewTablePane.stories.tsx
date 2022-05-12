@@ -19,7 +19,6 @@ export default {
     (Story: any, context: any) => {
       const features = new Features({
         [Flag.Labels]: context?.args?.labelsEnabled ?? true,
-        [Flag.DisableResources]: context?.args?.disableResourcesEnabled ?? true,
       })
       return (
         <MemoryRouter initialEntries={["/"]}>
@@ -43,13 +42,6 @@ export default {
   argTypes: {
     labelsEnabled: {
       name: "Group resources by label enabled",
-      control: {
-        type: "boolean",
-      },
-      defaultValue: true,
-    },
-    disableResourcesEnabled: {
-      name: "See disabled resources and bulk actions",
       control: {
         type: "boolean",
       },

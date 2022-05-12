@@ -11,7 +11,7 @@ import {
 } from "./analytics_test_helpers"
 import { buttonsByComponent } from "./ApiButton"
 import { mockUIButtonUpdates } from "./ApiButton.testhelpers"
-import Features, { FeaturesTestProvider, Flag } from "./feature"
+import Features, { FeaturesTestProvider } from "./feature"
 import {
   BulkAction,
   buttonsByAction,
@@ -30,11 +30,10 @@ const TEST_UIBUTTONS = [
 ]
 
 const OverviewTableBulkActionsTestWrapper = (props: {
-  flagEnabled: boolean
   resourceSelections: string[]
 }) => {
-  const { flagEnabled, resourceSelections } = props
-  const features = new Features({ [Flag.DisableResources]: flagEnabled })
+  const { resourceSelections } = props
+  const features = new Features(null)
   return (
     <FeaturesTestProvider value={features}>
       <ResourceSelectionProvider initialValuesForTesting={resourceSelections}>
@@ -54,90 +53,67 @@ describe("OverviewTableBulkActions", () => {
     cleanupMockAnalyticsCalls()
   })
 
-  describe("when disable resources are NOT enabled", () => {
+  describe("when there are NO resources selected", () => {
     it("does NOT display", () => {
-      render(
-        <OverviewTableBulkActionsTestWrapper
-          flagEnabled={false}
-          resourceSelections={TEST_SELECTIONS}
-        />
-      )
+      render(<OverviewTableBulkActionsTestWrapper resourceSelections={[]} />)
 
       expect(screen.queryByLabelText("Bulk resource actions")).toBeNull()
     })
   })
 
-  describe("when disable resources are enabled", () => {
-    describe("when there are NO resources selected", () => {
-      it("does NOT display", () => {
-        render(
-          <OverviewTableBulkActionsTestWrapper
-            flagEnabled={true}
-            resourceSelections={[]}
-          />
-        )
-
-        expect(screen.queryByLabelText("Bulk resource actions")).toBeNull()
-      })
+  describe("when there are resources selected", () => {
+    beforeEach(() => {
+      render(
+        <OverviewTableBulkActionsTestWrapper
+          resourceSelections={TEST_SELECTIONS}
+        />
+      )
     })
 
-    describe("when there are resources selected", () => {
-      beforeEach(() => {
-        render(
-          <OverviewTableBulkActionsTestWrapper
-            flagEnabled={true}
-            resourceSelections={TEST_SELECTIONS}
-          />
-        )
-      })
+    it("does display", () => {
+      expect(screen.queryByLabelText("Bulk resource actions")).not.toBeNull()
+    })
 
-      it("does display", () => {
-        expect(screen.queryByLabelText("Bulk resource actions")).not.toBeNull()
-      })
+    it("displays the selected resource count", () => {
+      expect(
+        screen.queryByText(`${TEST_SELECTIONS.length} selected`)
+      ).not.toBeNull()
+    })
 
-      it("displays the selected resource count", () => {
-        expect(
-          screen.queryByText(`${TEST_SELECTIONS.length} selected`)
-        ).not.toBeNull()
-      })
+    it("renders an 'Enable' button that does NOT require confirmation", async () => {
+      const enableButton = screen.queryByLabelText("Trigger Enable")
+      expect(enableButton).toBeTruthy()
 
-      it("renders an 'Enable' button that does NOT require confirmation", async () => {
-        const enableButton = screen.queryByLabelText("Trigger Enable")
-        expect(enableButton).toBeTruthy()
+      // Clicking the button should NOT bring up a confirmation step
+      userEvent.click(enableButton as HTMLElement)
 
-        // Clicking the button should NOT bring up a confirmation step
-        userEvent.click(enableButton as HTMLElement)
+      // Clicking an action button will remove the selected resources
+      // and the bulk action bar will no longer appear
+      await waitForElementToBeRemoved(screen.queryByLabelText("Trigger Enable"))
+    })
 
-        // Clicking an action button will remove the selected resources
-        // and the bulk action bar will no longer appear
-        await waitForElementToBeRemoved(
-          screen.queryByLabelText("Trigger Enable")
-        )
-      })
+    it("renders a 'Disable' button that does require confirmation", () => {
+      const disableButton = screen.queryByLabelText("Trigger Disable")
+      expect(disableButton).toBeTruthy()
 
-      it("renders a 'Disable' button that does require confirmation", () => {
-        const disableButton = screen.queryByLabelText("Trigger Disable")
-        expect(disableButton).toBeTruthy()
+      // Clicking the button should bring up a confirmation step
+      userEvent.click(disableButton as HTMLElement)
 
-        // Clicking the button should bring up a confirmation step
-        userEvent.click(disableButton as HTMLElement)
+      expect(screen.queryByLabelText("Confirm Disable")).toBeTruthy()
+      expect(screen.queryByLabelText("Cancel Disable")).toBeTruthy()
+    })
 
-        expect(screen.queryByLabelText("Confirm Disable")).toBeTruthy()
-        expect(screen.queryByLabelText("Cancel Disable")).toBeTruthy()
-      })
+    it("clears the selected resources after a button has been clicked", async () => {
+      const enableButton = screen.queryByLabelText("Trigger Enable")
+      expect(enableButton).toBeTruthy()
 
-      it("clears the selected resources after a button has been clicked", async () => {
-        const enableButton = screen.queryByLabelText("Trigger Enable")
-        expect(enableButton).toBeTruthy()
+      // Click the enable button, since there's not the extra confirmation step
+      userEvent.click(enableButton as HTMLElement)
 
-        // Click the enable button, since there's not the extra confirmation step
-        userEvent.click(enableButton as HTMLElement)
-
-        // Expect that the component doesn't appear any more since there are no selections
-        await waitForElementToBeRemoved(
-          screen.queryByLabelText("Bulk resource actions")
-        )
-      })
+      // Expect that the component doesn't appear any more since there are no selections
+      await waitForElementToBeRemoved(
+        screen.queryByLabelText("Bulk resource actions")
+      )
     })
   })
 

@@ -74,7 +74,7 @@ var MainDefaults = Defaults{
 	},
 	DisableResources: Value{
 		Enabled: true,
-		Status:  Active,
+		Status:  Obsolete,
 	},
 	BulkDisableResources: Value{
 		Enabled: false,

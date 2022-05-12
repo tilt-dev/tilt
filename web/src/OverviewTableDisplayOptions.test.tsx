@@ -27,7 +27,6 @@ const DisplayOptions = ({
 }) => {
   const features = new Features({
     [Flag.Labels]: true,
-    [Flag.DisableResources]: true,
   })
   return (
     <MemoryRouter initialEntries={["/"]}>

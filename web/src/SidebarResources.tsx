@@ -222,8 +222,7 @@ export function SidebarListSection(props: SidebarSectionProps): JSX.Element {
   const enabledItems = onlyEnabledItems(props.items)
   const disabledItems = onlyDisabledItems(props.items)
 
-  const displayDisabledResources =
-    features.isEnabled(Flag.DisableResources) && disabledItems.length > 0
+  const displayDisabledResources = disabledItems.length > 0
 
   return (
     <>
@@ -297,18 +296,6 @@ function SidebarListSectionItems(props: SidebarSectionProps) {
 
 function SidebarGroupListSection(props: { label: string } & SidebarProps) {
   if (props.items.length === 0) {
-    return null
-  }
-
-  // If all resources in this group are disabled, but the disable resources
-  // flag isn't enabled, don't display any group information
-  const features = useFeatures()
-  const showDisabledResources = features.isEnabled(Flag.DisableResources)
-  const allResourcesDisabled = props.items.every((item) =>
-    sidebarItemIsDisabled(item)
-  )
-
-  if (!showDisabledResources && allResourcesDisabled) {
     return null
   }
 

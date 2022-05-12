@@ -11,7 +11,6 @@ export default {
     (Story: any) => {
       const features = new Features({
         [Flag.Labels]: true,
-        [Flag.DisableResources]: true,
       })
       return (
         <MemoryRouter initialEntries={["/"]}>

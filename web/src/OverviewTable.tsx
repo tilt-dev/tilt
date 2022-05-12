@@ -43,7 +43,7 @@ import {
 } from "./labels"
 import { LogAlertIndex, useLogAlertIndex } from "./LogStore"
 import {
-  getTableColumns,
+  COLUMNS,
   ResourceTableHeaderTip,
   rowIsDisabled,
   RowValues,
@@ -360,8 +360,7 @@ function applyOptionsToResources(
     return []
   }
 
-  const hideDisabledResources =
-    !features.isEnabled(Flag.DisableResources) || !options.showDisabledResources
+  const hideDisabledResources = !options.showDisabledResources
   const resourceNameFilter = options.resourceNameFilter.length > 0
 
   // If there are no options to apply to the resources, return the un-filtered, sorted list
@@ -780,8 +779,6 @@ export function TableGroupedByLabels({
   }, [data])
   let [focused, setFocused] = useState("")
 
-  const columns = getTableColumns(features)
-
   // Global table settings are currently used to sort multiple
   // tables by the same column
   // See: https://react-table.tanstack.com/docs/faq#how-can-i-manually-control-the-table-state
@@ -805,7 +802,7 @@ export function TableGroupedByLabels({
           key={label}
           label={label}
           data={data.labelsToResources[label]}
-          columns={columns}
+          columns={COLUMNS}
           useControlledState={useControlledState}
           setGlobalSortBy={setGlobalSortBy}
           focused={focused}
@@ -814,7 +811,7 @@ export function TableGroupedByLabels({
       <TableGroup
         label={UNLABELED_LABEL}
         data={data.unlabeled}
-        columns={columns}
+        columns={COLUMNS}
         useControlledState={useControlledState}
         setGlobalSortBy={setGlobalSortBy}
         focused={focused}
@@ -822,7 +819,7 @@ export function TableGroupedByLabels({
       <TableGroup
         label={TILTFILE_LABEL}
         data={data.tiltfile}
-        columns={columns}
+        columns={COLUMNS}
         useControlledState={useControlledState}
         setGlobalSortBy={setGlobalSortBy}
         focused={focused}
@@ -844,7 +841,6 @@ export function TableWithoutGroups({ resources, buttons }: TableWrapperProps) {
       resources?.map((r) => uiResourceToCell(r, buttons, logAlertIndex)) || []
     )
   }, [resources, buttons])
-  const columns = getTableColumns(features)
 
   let totalOrder = useMemo(() => enabledRowsFirst(data), [data])
   let [focused, setFocused] = useState("")
@@ -855,7 +851,7 @@ export function TableWithoutGroups({ resources, buttons }: TableWrapperProps) {
 
   return (
     <TableWithoutGroupsRoot>
-      <Table columns={columns} data={data} focused={focused} />
+      <Table columns={COLUMNS} data={data} focused={focused} />
       <OverviewTableKeyboardShortcuts
         focused={focused}
         setFocused={setFocused}

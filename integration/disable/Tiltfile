@@ -1,6 +1,5 @@
 # -*- mode: Python -*-
 
-enable_feature('disable_resources')
 include('../Tiltfile')
 
 # If you get push errors, you can change the default_registry.

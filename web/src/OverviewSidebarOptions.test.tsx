@@ -90,7 +90,6 @@ afterEach(() => {
 function renderContainer(x: ReactElement) {
   const features = new Features({
     [Flag.Labels]: true,
-    [Flag.DisableResources]: true,
   })
   const { container } = render(
     <MemoryRouter>

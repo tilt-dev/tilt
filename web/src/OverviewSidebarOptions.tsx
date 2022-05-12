@@ -112,8 +112,7 @@ export function OverviewSidebarOptions(props: { items?: SidebarItem[] }) {
   const labelsEnabled = features.isEnabled(Flag.Labels)
   let items = props.items || []
 
-  const hideDisabledResources =
-    !features.isEnabled(Flag.DisableResources) || !options.showDisabledResources
+  const hideDisabledResources = !options.showDisabledResources
 
   // TODO(nick): Enable/disable the expand/collapse button based
   // on whether the groups are shown and the current group state.
@@ -125,7 +124,7 @@ export function OverviewSidebarOptions(props: { items?: SidebarItem[] }) {
   const displayResourceGroups =
     labelsEnabled && groups.length && !resourceFilterApplied
 
-  const disabledResourcesToggle = features.isEnabled(Flag.DisableResources) ? (
+  const disabledResourcesToggle = (
     <SidebarOptionsLabel
       control={
         <CheckboxToggle
@@ -138,7 +137,7 @@ export function OverviewSidebarOptions(props: { items?: SidebarItem[] }) {
       }
       label="Show disabled resources"
     />
-  ) : null
+  )
 
   return (
     <OverviewSidebarOptionsRoot>
