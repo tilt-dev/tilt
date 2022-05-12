@@ -1,6 +1,6 @@
 import React from "react"
 import { MemoryRouter } from "react-router"
-import Features, { FeaturesTestProvider, Flag } from "./feature"
+import Features, { FeaturesTestProvider } from "./feature"
 import OverviewTablePane from "./OverviewTablePane"
 import PathBuilder, { PathBuilderProvider } from "./PathBuilder"
 import { ResourceGroupsContextProvider } from "./ResourceGroupsContext"
@@ -22,7 +22,7 @@ export default {
   decorators: [
     (Story: any) => {
       const { view, createdAt } = FAKE_SNAPSHOT
-      const features = new Features({ [Flag.DisableResources]: true })
+      const features = new Features(null)
       return (
         <MemoryRouter initialEntries={["/snapshot/local"]}>
           <PathBuilderProvider value={snapshotPb}>

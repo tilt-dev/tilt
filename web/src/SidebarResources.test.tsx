@@ -66,11 +66,9 @@ function customRender(
     selected?: string
     resourceListOptions?: ResourceListOptions
   },
-  wrapperOptions?: { disableResourcesEnabled: boolean },
   renderOptions?: RenderOptions
 ) {
   const features = new Features({
-    [Flag.DisableResources]: wrapperOptions?.disableResourcesEnabled ?? true,
     [Flag.Labels]: true,
   })
   const listOptions = componentOptions.resourceListOptions ?? DEFAULT_OPTIONS
@@ -373,34 +371,7 @@ describe("SidebarResources", () => {
       })
     })
 
-    describe("when feature flag is NOT enabled", () => {
-      beforeEach(() => {
-        // Create a list of sidebar items with disable resources interspersed
-        const items = createSidebarItems(5, true)
-        // Disable the resource that's in the label group with only one resource
-        items[3].runtimeStatus = ResourceStatus.Disabled
-
-        customRender({ items }, { disableResourcesEnabled: false })
-      })
-
-      it("does NOT display disabled resources at all", () => {
-        expect(screen.queryByLabelText("Disabled resources")).toBeNull()
-      })
-
-      it("does NOT display disabled resources list title", () => {
-        expect(screen.queryByText("Disabled")).toBeNull()
-      })
-
-      describe("when there are groups and an entire group is disabled", () => {
-        it("does NOT display the group section", () => {
-          // The test data has one group with only disabled resources,
-          // so expect that it doesn't show up
-          expect(screen.queryByText("very_long_long_long_label")).toBeNull()
-        })
-      })
-    })
-
-    describe("when feature flag is enabled and `showDisabledResources` is false", () => {
+    describe("`showDisabledResources` is false", () => {
       it("does NOT display disabled resources at all", () => {
         expect(screen.queryByLabelText("Disabled resources")).toBeNull()
         expect(screen.queryByText("_1", { exact: true })).toBeNull()
@@ -417,7 +388,7 @@ describe("SidebarResources", () => {
           // Disable the resource that's in the label group with only one resource
           items[3].runtimeStatus = ResourceStatus.Disabled
 
-          customRender({ items }, { disableResourcesEnabled: false })
+          customRender({ items })
 
           // The test data has one group with only disabled resources,
           // so expect that it doesn't show up

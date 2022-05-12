@@ -9,7 +9,6 @@ import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
 import { ReactComponent as StarSvg } from "./assets/svg/star.svg"
 import { linkToTiltDocs, TiltDocsPage } from "./constants"
-import Features, { Flag } from "./feature"
 import { Hold } from "./Hold"
 import {
   InstrumentedButton,
@@ -638,24 +637,20 @@ export function ResourceTableHeaderTip(props: { id?: string }) {
   )
 }
 
-/**
- * Column definitions
- */
-const RESOURCE_SELECTION_COLUMN: Column<RowValues> = {
-  Header: (props) => <ResourceSelectionHeader {...props} />,
-  id: "selection",
-  disableSortBy: true,
-  width: "70px",
-  Cell: TableSelectionColumn,
-}
-
 // https://react-table.tanstack.com/docs/api/useTable#column-options
 // The docs on this are not very clear!
 // `accessor` should return a primitive, and that primitive is used for sorting and filtering
 // the Cell function can get whatever it needs to render via row.original
 // best evidence I've (Matt) found: https://github.com/tannerlinsley/react-table/discussions/2429#discussioncomment-25582
 //   (from the author)
-const DEFAULT_COLUMNS: Column<RowValues>[] = [
+export const COLUMNS: Column<RowValues>[] = [
+  {
+    Header: (props) => <ResourceSelectionHeader {...props} />,
+    id: "selection",
+    disableSortBy: true,
+    width: "70px",
+    Cell: TableSelectionColumn,
+  },
   {
     Header: () => <TableHeaderStarIcon title="Starred" />,
     id: "starred",
@@ -710,18 +705,3 @@ const DEFAULT_COLUMNS: Column<RowValues>[] = [
   },
   modeColumn,
 ]
-
-let ALL_COLUMNS = [RESOURCE_SELECTION_COLUMN, ...DEFAULT_COLUMNS]
-
-export function getTableColumns(features?: Features) {
-  if (!features) {
-    return DEFAULT_COLUMNS
-  }
-
-  // If disable resources is enabled, render the selection column
-  if (features.isEnabled(Flag.DisableResources)) {
-    return ALL_COLUMNS
-  }
-
-  return DEFAULT_COLUMNS
-}

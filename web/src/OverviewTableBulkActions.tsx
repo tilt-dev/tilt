@@ -6,7 +6,7 @@ import {
   ButtonSet,
 } from "./ApiButton"
 import { BulkApiButton } from "./BulkApiButton"
-import { Flag, useFeatures } from "./feature"
+import { useFeatures } from "./feature"
 import { useResourceSelection } from "./ResourceSelectionContext"
 import SrOnly from "./SrOnly"
 import { Color, FontSize, SizeUnit } from "./style-helpers"
@@ -86,8 +86,8 @@ export function OverviewTableBulkActions({
     [selected, uiButtons]
   )
 
-  // Don't render if feature flag is off or if there are no selections
-  if (!features.isEnabled(Flag.DisableResources) || selected.size === 0) {
+  // Don't render if there are no selections
+  if (selected.size === 0) {
     return null
   }
 

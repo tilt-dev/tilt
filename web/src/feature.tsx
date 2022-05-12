@@ -9,19 +9,14 @@ type featureFlags = { [featureFlag in Flag]?: boolean }
 
 // Flag names are defined in internal/feature/flags.go
 export enum Flag {
-  MultipleContainersPerPod = "multiple_containers_per_pod",
   Events = "events",
   Snapshots = "snapshots",
-  UpdateHistory = "update_history",
-  Facets = "facets",
   Labels = "labels",
-  DisableResources = "disable_resources",
-  BulkDisableResources = "bulk_disable_resources",
   OfflineSnapshotCreation = "offline_snapshot_creation",
 }
 
 export default class Features {
-  private flags: featureFlags
+  private readonly flags: featureFlags
 
   constructor(flags: object | null | undefined) {
     if (flags) {

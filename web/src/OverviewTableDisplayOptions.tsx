@@ -82,8 +82,7 @@ export function OverviewTableDisplayOptions(props: {
   const labelsEnabled = features.isEnabled(Flag.Labels)
   let resources = props.resources || []
 
-  const hideDisabledResources =
-    !features.isEnabled(Flag.DisableResources) || !options.showDisabledResources
+  const hideDisabledResources = !options.showDisabledResources
 
   // TODO(nick): Enable/disable the expand/collapse button based
   // on whether the groups are shown and the current group state.
@@ -97,20 +96,18 @@ export function OverviewTableDisplayOptions(props: {
 
   return (
     <DisplayOptions>
-      {features.isEnabled(Flag.DisableResources) ? (
-        <FormControlLabel
-          control={
-            <DisplayOptionCheckbox
-              analyticsName="ui.web.disabledResourcesToggle"
-              analyticsTags={analyticsTags}
-              size="small"
-              checked={options.showDisabledResources}
-              onClick={toggleDisabledResources}
-            />
-          }
-          label="Show disabled resources"
-        />
-      ) : null}
+      <FormControlLabel
+        control={
+          <DisplayOptionCheckbox
+            analyticsName="ui.web.disabledResourcesToggle"
+            analyticsTags={analyticsTags}
+            size="small"
+            checked={options.showDisabledResources}
+            onClick={toggleDisabledResources}
+          />
+        }
+        label="Show disabled resources"
+      />
       <ExpandButton
         disabled={!displayResourceGroups}
         analyticsType={AnalyticsType.Grid}

@@ -241,7 +241,7 @@ func toAPIObjects(
 		result.AddSetForType(&v1alpha1.DockerComposeService{}, toDockerComposeServiceObjects(tlr, disableSources))
 		result.AddSetForType(&v1alpha1.ConfigMap{}, toDisableConfigMaps(disableSources, tlr.EnabledManifests))
 		result.AddSetForType(&v1alpha1.Cmd{}, toCmdObjects(tlr, disableSources))
-		result.AddSetForType(&v1alpha1.ToggleButton{}, toToggleButtons(tlr, disableSources))
+		result.AddSetForType(&v1alpha1.ToggleButton{}, toToggleButtons(disableSources))
 		result.AddSetForType(&v1alpha1.Cluster{}, toClusterObjects(nn, tlr, defaultK8sConnection))
 		result.AddSetForType(&v1alpha1.UIButton{}, toCancelButtons(tlr))
 	}
@@ -341,41 +341,39 @@ func toDisableConfigMaps(disableSources disableSourceMap, enabledResources []mod
 	return result
 }
 
-func toToggleButtons(tlr *tiltfile.TiltfileLoadResult, disableSources disableSourceMap) apiset.TypedObjectSet {
+func toToggleButtons(disableSources disableSourceMap) apiset.TypedObjectSet {
 	result := apiset.TypedObjectSet{}
-	if tlr != nil && tlr.FeatureFlags[feature.DisableResources] {
-		for name, ds := range disableSources {
-			tb := &v1alpha1.ToggleButton{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: fmt.Sprintf("%s-disable", name),
-					Annotations: map[string]string{
-						v1alpha1.AnnotationButtonType: v1alpha1.ButtonTypeDisableToggle,
+	for name, ds := range disableSources {
+		tb := &v1alpha1.ToggleButton{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: fmt.Sprintf("%s-disable", name),
+				Annotations: map[string]string{
+					v1alpha1.AnnotationButtonType: v1alpha1.ButtonTypeDisableToggle,
+				},
+			},
+			Spec: v1alpha1.ToggleButtonSpec{
+				Location: v1alpha1.UIComponentLocation{
+					ComponentID:   string(name),
+					ComponentType: v1alpha1.ComponentTypeResource,
+				},
+				On: v1alpha1.ToggleButtonStateSpec{
+					Text: "Enable Resource",
+				},
+				Off: v1alpha1.ToggleButtonStateSpec{
+					Text:                 "Disable Resource",
+					RequiresConfirmation: true,
+				},
+				StateSource: v1alpha1.StateSource{
+					ConfigMap: &v1alpha1.ConfigMapStateSource{
+						Name:     ds.ConfigMap.Name,
+						Key:      ds.ConfigMap.Key,
+						OnValue:  "true",
+						OffValue: "false",
 					},
 				},
-				Spec: v1alpha1.ToggleButtonSpec{
-					Location: v1alpha1.UIComponentLocation{
-						ComponentID:   string(name),
-						ComponentType: v1alpha1.ComponentTypeResource,
-					},
-					On: v1alpha1.ToggleButtonStateSpec{
-						Text: "Enable Resource",
-					},
-					Off: v1alpha1.ToggleButtonStateSpec{
-						Text:                 "Disable Resource",
-						RequiresConfirmation: true,
-					},
-					StateSource: v1alpha1.StateSource{
-						ConfigMap: &v1alpha1.ConfigMapStateSource{
-							Name:     ds.ConfigMap.Name,
-							Key:      ds.ConfigMap.Key,
-							OnValue:  "true",
-							OffValue: "false",
-						},
-					},
-				},
-			}
-			result[tb.Name] = tb
+			},
 		}
+		result[tb.Name] = tb
 	}
 	return result
 }

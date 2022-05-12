@@ -1,7 +1,6 @@
 import React, { MutableRefObject, useEffect, useRef } from "react"
 import TimeAgo from "react-timeago"
 import styled from "styled-components"
-import { Flag, useFeatures } from "./feature"
 import { Hold } from "./Hold"
 import PathBuilder from "./PathBuilder"
 import { useResourceNav } from "./ResourceNav"
@@ -401,12 +400,8 @@ export function EnabledSidebarItemView(props: SidebarItemViewProps) {
 }
 
 export default function SidebarItemView(props: SidebarItemViewProps) {
-  const features = useFeatures()
-  const showDisabledResources = features.isEnabled(Flag.DisableResources)
   const itemIsDisabled = sidebarItemIsDisabled(props.item)
-  if (itemIsDisabled && !showDisabledResources) {
-    return null
-  } else if (itemIsDisabled && showDisabledResources) {
+  if (itemIsDisabled) {
     return <DisabledSidebarItemView {...props}></DisabledSidebarItemView>
   } else {
     return <EnabledSidebarItemView {...props}></EnabledSidebarItemView>
