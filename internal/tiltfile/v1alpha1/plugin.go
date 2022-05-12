@@ -10,6 +10,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/controllers/apiset"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
 // Defines starlark functions that register API objects
@@ -47,8 +48,13 @@ func (p Plugin) register(t *starlark.Thread, obj apiset.Object) (starlark.Value,
 		typedSet := set.GetOrCreateTypedSet(obj)
 		name := obj.GetName()
 		existing, exists := typedSet[name]
-		if exists && !apicmp.DeepEqual(obj, existing) {
-			return set, fmt.Errorf("%s %q already registered", obj.GetGroupVersionResource().Resource, name)
+		if exists {
+			// tiltextension adds this for extensions, but new objects will not
+			// have this annotation yet, so delete for comparison
+			delete(existing.GetAnnotations(), v1alpha1.AnnotationManagedBy)
+			if !apicmp.DeepEqual(obj, existing) {
+				return set, fmt.Errorf("%s %q already registered", obj.GetGroupVersionResource().Resource, name)
+			}
 		}
 
 		typedSet[name] = obj
