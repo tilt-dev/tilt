@@ -1,0 +1,59 @@
+import moment from "moment"
+import React from "react"
+import styled from "styled-components"
+import { AnalyticsType } from "./analytics"
+import { usePathBuilder } from "./PathBuilder"
+import { formatSnapshotTimestamp } from "./ShareSnapshotModal"
+import { useSnapshotAction } from "./snapshot"
+import { Color, FontSize, SizeUnit } from "./style-helpers"
+
+const SnapshotBanner = styled.div`
+  background-color: ${Color.offWhite};
+  box-sizing: border-box;
+  color: ${Color.black};
+  font-size: ${FontSize.small};
+  height: ${SizeUnit(1)};
+  padding: 3px 10px;
+  width: 100%;
+
+  /* There's a small layout shift in the header
+  bar on Detail View because of the scrollbar,
+  so offset it on Table View */
+  &.is-${AnalyticsType.Grid} {
+    margin-bottom: -2px;
+  }
+`
+
+const SnapshotTitle = styled.span`
+  font-weight: bold;
+  text-decoration: underline;
+`
+
+export function SnapshotBar(props: { className?: string }) {
+  const pb = usePathBuilder()
+  const { currentSnapshotTime } = useSnapshotAction()
+
+  const isSnapshot = pb.isSnapshot()
+  if (!isSnapshot) {
+    return null
+  }
+
+  let timestampDescription = ""
+  if (currentSnapshotTime?.createdAt) {
+    const createdAt = formatSnapshotTimestamp(
+      moment(currentSnapshotTime?.createdAt)
+    )
+    timestampDescription = `(created at ${createdAt})`
+  } else if (currentSnapshotTime?.tiltUpTime) {
+    const tiltUpTime = formatSnapshotTimestamp(
+      moment(currentSnapshotTime?.tiltUpTime)
+    )
+    timestampDescription = `(session started at ${tiltUpTime})`
+  }
+
+  return (
+    <SnapshotBanner role="status" className={props.className}>
+      <SnapshotTitle>Snapshot</SnapshotTitle> {timestampDescription}
+    </SnapshotBanner>
+  )
+}

@@ -43,7 +43,6 @@ class AppController {
       .then((res) => res.text())
       .then((text) => {
         this.socket = new WebSocket(`${this.url}?csrf=${text}`)
-        let socket = this.socket
 
         this.socket.addEventListener("close", this.onSocketClose.bind(this))
         this.socket.addEventListener("message", (event) => {
@@ -126,7 +125,9 @@ class AppController {
 
         this.component.onAppChange({
           view: data.view,
+          snapshotStartTime: data.createdAt,
         })
+
         if (data.path) {
           this.component.setHistoryLocation(this.pb.path(data.path))
         }

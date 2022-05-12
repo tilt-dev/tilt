@@ -26,7 +26,7 @@ import { ResourceNavProvider } from "./ResourceNav"
 import { ResourceSelectionProvider } from "./ResourceSelectionContext"
 import ShareSnapshotModal from "./ShareSnapshotModal"
 import { TiltSnackbarProvider } from "./Snackbar"
-import { SnapshotActionProvider } from "./snapshot"
+import { SnapshotActionProvider, SnapshotProviderProps } from "./snapshot"
 import SocketBar, { isTiltSocketConnected } from "./SocketBar"
 import { StarredResourcesContextProvider } from "./StarredResourcesContext"
 import {
@@ -70,11 +70,12 @@ export default class HUD extends Component<HudProps, HudState> {
     this.state = {
       view: {},
       snapshotLink: "",
+      snapshotHighlight: undefined,
+      snapshotDialogAnchor: null,
+      snapshotStartTime: undefined,
       showSnapshotModal: false,
       showFatalErrorModal: ShowFatalErrorModal.Default,
       showCopySuccess: false,
-      snapshotHighlight: undefined,
-      snapshotDialogAnchor: null,
       socketState: SocketState.Closed,
       showErrorModal: ShowErrorModal.Default,
       error: undefined,
@@ -86,6 +87,7 @@ export default class HUD extends Component<HudProps, HudState> {
     this.setError = this.setError.bind(this)
     this.sendSnapshot = this.sendSnapshot.bind(this)
     this.snapshotFromState = this.snapshotFromState.bind(this)
+    this.getSnapshotProviderProps = this.getSnapshotProviderProps.bind(this)
   }
 
   componentDidMount() {
@@ -203,6 +205,21 @@ export default class HUD extends Component<HudProps, HudState> {
     })
   }
 
+  private getSnapshotProviderProps(): SnapshotProviderProps {
+    const providerProps: SnapshotProviderProps = {
+      openModal: this.handleOpenModal,
+    }
+
+    if (this.pathBuilder.isSnapshot()) {
+      providerProps.currentSnapshotTime = {
+        tiltUpTime: this.state.view.tiltStartTime,
+        createdAt: this.state.snapshotStartTime,
+      }
+    }
+
+    return providerProps
+  }
+
   render() {
     let view = this.state.view
     let session = this.state.view.uiSession?.status
@@ -223,8 +240,9 @@ export default class HUD extends Component<HudProps, HudState> {
     let fatalErrorModal = this.renderFatalErrorModal(view)
     let errorModal = this.renderErrorModal()
 
-    let hudClasses = ["HUD"]
-    if (this.pathBuilder.isSnapshot()) {
+    const isSnapshot = this.pathBuilder.isSnapshot()
+    const hudClasses = ["HUD"]
+    if (isSnapshot) {
       hudClasses.push("is-snapshot")
     }
 
@@ -243,7 +261,6 @@ export default class HUD extends Component<HudProps, HudState> {
                     {fatalErrorModal}
                     {errorModal}
                     {shareSnapshotModal}
-
                     {this.renderOverviewSwitch()}
                   </div>
                 </ResourceNavProvider>
@@ -262,7 +279,7 @@ export default class HUD extends Component<HudProps, HudState> {
         featureFlags={this.state.view.uiSession?.status?.featureFlags || null}
       >
         <PathBuilderProvider value={this.pathBuilder}>
-          <SnapshotActionProvider openModal={this.handleOpenModal}>
+          <SnapshotActionProvider {...this.getSnapshotProviderProps()}>
             <LogStoreProvider value={this.state.logStore || new LogStore()}>
               <ResourceGroupsContextProvider>
                 <ResourceListOptionsProvider>
@@ -270,7 +287,7 @@ export default class HUD extends Component<HudProps, HudState> {
                     <Switch>
                       <Route
                         path={this.path("/r/:name/overview")}
-                        render={(props: RouteComponentProps<any>) => (
+                        render={(_props: RouteComponentProps<any>) => (
                           <OverviewResourcePane
                             view={this.state.view}
                             isSocketConnected={isSocketConnected}
