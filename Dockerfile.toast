@@ -13,7 +13,8 @@ RUN apk add --no-cache \
 # Newer versions of protoc-gen-go are stricter with the `go_package` argument, which is invalid in the K8s protobufs
 # so we're currently locked to an older version as there's no way to suppress the error
 # see https://github.com/golang/protobuf/issues/1316
-RUN go install 'github.com/golang/protobuf/protoc-gen-go@v1.4.3'
+RUN go install 'google.golang.org/protobuf/cmd/protoc-gen-go@v1.28.0'
+RUN go install 'google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2.0'
 RUN go install 'github.com/google/wire/cmd/wire@v0.5.0'
 RUN go install 'golang.org/x/tools/cmd/goimports@latest'
 ARG GRPC_GATEWAY_VERSION="v1.16.0"

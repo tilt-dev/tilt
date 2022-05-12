@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
@@ -116,7 +117,7 @@ func (f *websocketReaderFixture) start() {
 
 func (f *websocketReaderFixture) sendView(v *proto_webview.View) {
 	buf := &bytes.Buffer{}
-	err := f.wsr.marshaller.Marshal(buf, v)
+	err := (&jsonpb.Marshaler{}).Marshal(buf, v)
 	assert.NoError(f.t, err)
 
 	f.conn.newMessageToRead(buf)

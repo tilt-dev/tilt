@@ -26,7 +26,6 @@ import (
 
 type WebsocketReader struct {
 	conn         WebsocketConn
-	marshaller   jsonpb.Marshaler
 	unmarshaller jsonpb.Unmarshaler
 	persistent   bool // whether to keep listening on websocket, or close after first message
 	handler      ViewHandler
@@ -40,7 +39,6 @@ func newWebsocketReaderForLogs(conn WebsocketConn, persistent bool, resources []
 func newWebsocketReader(conn WebsocketConn, persistent bool, handler ViewHandler) *WebsocketReader {
 	return &WebsocketReader{
 		conn:         conn,
-		marshaller:   jsonpb.Marshaler{},
 		unmarshaller: jsonpb.Unmarshaler{},
 		persistent:   persistent,
 		handler:      handler,
@@ -137,8 +135,7 @@ func (wsr *WebsocketReader) Listen(ctx context.Context) error {
 			if messageType == websocket.TextMessage {
 				err = wsr.handleTextMessage(ctx, reader)
 				if err != nil {
-					// will I want this to be an Info sometimes??
-					logger.Get(ctx).Verbosef("Error handling websocket message: %v", err)
+					logger.Get(ctx).Errorf("Error streaming logs: %v", err)
 				}
 				if !wsr.persistent {
 					return
@@ -166,12 +163,12 @@ func (wsr *WebsocketReader) handleTextMessage(_ context.Context, reader io.Reade
 	v := &proto_webview.View{}
 	err := wsr.unmarshaller.Unmarshal(reader, v)
 	if err != nil {
-		return errors.Wrap(err, "Unmarshalling websocket message")
+		return errors.Wrap(err, "parsing")
 	}
 
 	err = wsr.handler.Handle(v)
 	if err != nil {
-		return errors.Wrap(err, "Handling Tilt state from websocket")
+		return errors.Wrap(err, "handling")
 	}
 
 	return nil

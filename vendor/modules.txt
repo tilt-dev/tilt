@@ -1147,7 +1147,7 @@ k8s.io/api/storage/v1beta1
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1
-# k8s.io/apimachinery v0.23.6 => github.com/tilt-dev/apimachinery v0.23.6-tilt-20220503
+# k8s.io/apimachinery v0.23.6 => github.com/tilt-dev/apimachinery v0.23.6-tilt-20220511
 ## explicit; go 1.16
 k8s.io/apimachinery/pkg/api/equality
 k8s.io/apimachinery/pkg/api/errors
@@ -1926,4 +1926,4 @@ sigs.k8s.io/yaml
 # go.opentelemetry.io/otel/sdk/metric => go.opentelemetry.io/otel/sdk/metric v0.20.0
 # go.opentelemetry.io/otel/trace => go.opentelemetry.io/otel/trace v0.20.0
 # go.opentelemetry.io/proto/otlp => go.opentelemetry.io/proto/otlp v0.7.0
-# k8s.io/apimachinery => github.com/tilt-dev/apimachinery v0.23.6-tilt-20220503
+# k8s.io/apimachinery => github.com/tilt-dev/apimachinery v0.23.6-tilt-20220511

@@ -9,13 +9,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 
 	"github.com/tilt-dev/tilt/internal/hud/server/gorilla"
 	"github.com/tilt-dev/tilt/internal/hud/webview"
@@ -71,7 +71,7 @@ type WebsocketSubscriber struct {
 	dirtyUISession   *v1alpha1.UISession
 	dirtyClusters    map[string]*v1alpha1.Cluster
 
-	tiltStartTime    *timestamp.Timestamp
+	tiltStartTime    *timestamppb.Timestamp
 	clientCheckpoint logstore.Checkpoint
 }
 
