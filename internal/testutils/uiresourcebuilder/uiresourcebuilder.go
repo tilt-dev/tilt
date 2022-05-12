@@ -10,11 +10,13 @@ type UIResourceBuilder struct {
 	name          string
 	disabledCount int
 	disableSource *v1alpha1.DisableSource
+	labels        map[string]string
 }
 
 func New(name string) *UIResourceBuilder {
 	return &UIResourceBuilder{
-		name: name,
+		name:   name,
+		labels: make(map[string]string),
 	}
 }
 
@@ -28,10 +30,16 @@ func (u *UIResourceBuilder) WithDisableSource(s v1alpha1.DisableSource) *UIResou
 	return u
 }
 
+func (u *UIResourceBuilder) WithLabel(l string) *UIResourceBuilder {
+	u.labels[l] = l
+	return u
+}
+
 func (u *UIResourceBuilder) Build() *v1alpha1.UIResource {
 	result := &v1alpha1.UIResource{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: u.name,
+			Name:   u.name,
+			Labels: u.labels,
 		},
 		Status: v1alpha1.UIResourceStatus{
 			DisableStatus: v1alpha1.DisableResourceStatus{
