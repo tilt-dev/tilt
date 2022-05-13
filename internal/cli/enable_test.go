@@ -59,6 +59,12 @@ func TestEnable(t *testing.T) {
 			"no such resource \"foo\"",
 		},
 		{
+			"labels",
+			[]string{"--labels", "a,b"},
+			[]string{"enabled_a", "enabled_b", "enabled_c", "disabled_a", "disabled_b", "(Tiltfile)"},
+			"",
+		},
+		{
 			"Tiltfile",
 			[]string{"(Tiltfile)"},
 			nil,
@@ -115,7 +121,7 @@ func (f enableFixture) createResources() {
 				},
 			}
 
-			uir := uiresourcebuilder.New(name).WithDisableSource(source).Build()
+			uir := uiresourcebuilder.New(name).WithDisableSource(source).WithLabel(n).Build()
 			err := f.client.Create(f.ctx, uir)
 			require.NoError(f.T(), err)
 

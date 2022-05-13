@@ -14,7 +14,8 @@ import (
 )
 
 type disableCmd struct {
-	all bool
+	all    bool
+	labels []string
 }
 
 func newDisableCmd() *disableCmd {
@@ -37,6 +38,7 @@ tilt disable frontend backend
 tilt disable --all`,
 	}
 
+	cmd.Flags().StringSliceVarP(&c.labels, "labels", "l", c.labels, "Disable all resources with the specified labels")
 	cmd.Flags().BoolVar(&c.all, "all", false, "Disable all resources")
 
 	addConnectServerFlags(cmd)
@@ -54,7 +56,7 @@ func (c *disableCmd) run(ctx context.Context, args []string) error {
 		if len(args) > 0 {
 			return errors.New("cannot use --all with resource names")
 		}
-	} else if len(args) == 0 {
+	} else if len(args) == 0 && len(c.labels) == 0 {
 		return errors.New("must specify at least one resource")
 	}
 
@@ -69,7 +71,7 @@ func (c *disableCmd) run(ctx context.Context, args []string) error {
 		names[name] = true
 	}
 
-	err = changeEnabledResources(ctx, ctrlclient, args, enableOptions{enable: false, all: c.all, only: false})
+	err = changeEnabledResources(ctx, ctrlclient, args, enableOptions{enable: false, all: c.all, only: false, labels: c.labels})
 	if err != nil {
 		return err
 	}

@@ -19,8 +19,9 @@ import (
 )
 
 type enableCmd struct {
-	all  bool
-	only bool
+	all    bool
+	only   bool
+	labels []string
 }
 
 func newEnableCmd() *enableCmd {
@@ -48,6 +49,7 @@ tilt enable --all
 	}
 
 	addConnectServerFlags(cmd)
+	cmd.Flags().StringSliceVarP(&c.labels, "labels", "l", c.labels, "Enable all resources with the specified labels")
 	cmd.Flags().BoolVar(&c.only, "only", false, "Enable the specified resources, disable all others")
 	cmd.Flags().BoolVar(&c.all, "all", false, "Enable all resources")
 
@@ -66,7 +68,7 @@ func (c *enableCmd) run(ctx context.Context, args []string) error {
 		} else if len(args) > 0 {
 			return errors.New("cannot use --all with resource names")
 		}
-	} else if len(args) == 0 {
+	} else if len(args) == 0 && len(c.labels) == 0 {
 		return errors.New("must specify at least one resource")
 	}
 
@@ -82,7 +84,7 @@ func (c *enableCmd) run(ctx context.Context, args []string) error {
 		names[name] = true
 	}
 
-	err = changeEnabledResources(ctx, ctrlclient, args, enableOptions{enable: true, all: c.all, only: c.only})
+	err = changeEnabledResources(ctx, ctrlclient, args, enableOptions{enable: true, all: c.all, only: c.only, labels: c.labels})
 	if err != nil {
 		return err
 	}
@@ -94,6 +96,7 @@ type enableOptions struct {
 	enable bool
 	all    bool
 	only   bool
+	labels []string
 }
 
 // Changes which resources are enabled in Tilt.
@@ -137,6 +140,17 @@ func changeEnabledResources(
 		var enable bool
 		if selectedResourcesByName[uir.Name] {
 			enable = opts.enable
+		} else if len(opts.labels) > 0 {
+			var hasLabel bool
+			for _, label := range opts.labels {
+				if _, hasLabel = uir.Labels[label]; hasLabel {
+					enable = opts.enable
+					break
+				}
+			}
+			if !hasLabel {
+				continue
+			}
 		} else if opts.all {
 			enable = opts.enable
 		} else if opts.only {
