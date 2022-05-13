@@ -4,6 +4,7 @@ import {
   ButtonProps,
   FormControlLabel,
   Icon,
+  InputLabel,
   SvgIcon,
 } from "@material-ui/core"
 import ArrowDropDownIcon from "@material-ui/icons/ArrowDropDown"
@@ -32,7 +33,14 @@ import {
   InstrumentedTextField,
 } from "./instrumentedComponents"
 import { usePathBuilder } from "./PathBuilder"
-import { Color, FontSize, SizeUnit, ZIndex } from "./style-helpers"
+import {
+  AnimDuration,
+  Color,
+  Font,
+  FontSize,
+  SizeUnit,
+  ZIndex,
+} from "./style-helpers"
 import { apiTimeFormat, tiltApiPut } from "./tiltApi"
 import { UIButton, UIInputSpec, UIInputStatus } from "./types"
 
@@ -103,7 +111,6 @@ const ApiButtonFormRoot = styled.div`
   z-index: ${ZIndex.ApiButton};
 `
 const ApiButtonFormFooter = styled.div`
-  margin-top: ${SizeUnit(0.5)};
   text-align: right;
   color: ${Color.gray40};
   font-size: ${FontSize.smallester};
@@ -168,6 +175,55 @@ const ApiButtonElementRoot = styled(InstrumentedButton)`
   ${confirmingButtonGroupBorderMixin}
 `
 
+const inputLabelMixin = `
+font-family: ${Font.monospace};
+font-size: ${FontSize.small};
+color: ${Color.gray10};
+`
+
+const ApiButtonInputLabel = styled(InputLabel)`
+  ${inputLabelMixin}
+  margin-top: ${SizeUnit(1 / 2)};
+  margin-bottom: ${SizeUnit(1 / 4)};
+`
+
+const ApiButtonInputTextField = styled(InstrumentedTextField)`
+  margin-bottom: ${SizeUnit(1 / 2)};
+
+  .MuiOutlinedInput-root {
+    background-color: ${Color.offWhite};
+  }
+
+  .MuiOutlinedInput-input {
+    ${inputLabelMixin}
+    border: 1px solid ${Color.gray70};
+    border-radius: ${SizeUnit(0.125)};
+    transition: border-color ${AnimDuration.default} ease;
+    padding: ${SizeUnit(0.2)} ${SizeUnit(0.4)};
+
+    &:hover {
+      border-color: ${Color.gray40};
+    }
+
+    &:focus,
+    &:active {
+      border: 1px solid ${Color.gray20};
+    }
+  }
+`
+
+const ApiButtonInputFormControlLabel = styled(FormControlLabel)`
+  ${inputLabelMixin}
+  margin-left: unset;
+`
+
+const ApiButtonInputCheckbox = styled(InstrumentedCheckbox)`
+  &.MuiCheckbox-root,
+  &.Mui-checked {
+    color: ${Color.gray40};
+  }
+`
+
 export const ApiButtonInputsToggleButton = styled(InstrumentedButton)`
   &&&& {
     margin-left: unset; /* Override any margins passed down through "className" props */
@@ -191,23 +247,28 @@ const svgElement = (src: string): React.ReactElement => {
 function ApiButtonInput(props: ApiButtonInputProps) {
   if (props.spec.text) {
     return (
-      <InstrumentedTextField
-        label={props.spec.label ?? props.spec.name}
-        id={props.spec.name}
-        placeholder={props.spec.text?.placeholder}
-        value={props.value ?? props.spec.text?.defaultValue ?? ""}
-        onChange={(e) => props.setValue(props.spec.name!, e.target.value)}
-        analyticsName="ui.web.uibutton.inputValue"
-        analyticsTags={{ inputType: "text", ...props.analyticsTags }}
-        fullWidth
-      />
+      <>
+        <ApiButtonInputLabel htmlFor={props.spec.name}>
+          {props.spec.label ?? props.spec.name}
+        </ApiButtonInputLabel>
+        <ApiButtonInputTextField
+          id={props.spec.name}
+          placeholder={props.spec.text?.placeholder}
+          value={props.value ?? props.spec.text?.defaultValue ?? ""}
+          onChange={(e) => props.setValue(props.spec.name!, e.target.value)}
+          analyticsName="ui.web.uibutton.inputValue"
+          analyticsTags={{ inputType: "text", ...props.analyticsTags }}
+          variant="outlined"
+          fullWidth
+        />
+      </>
     )
   } else if (props.spec.bool) {
     const isChecked = props.value ?? props.spec.bool.defaultValue ?? false
     return (
-      <FormControlLabel
+      <ApiButtonInputFormControlLabel
         control={
-          <InstrumentedCheckbox
+          <ApiButtonInputCheckbox
             id={props.spec.name}
             checked={isChecked}
             analyticsName="ui.web.uibutton.inputValue"
