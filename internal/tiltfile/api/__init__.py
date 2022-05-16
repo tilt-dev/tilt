@@ -216,7 +216,7 @@ def docker_build(ref: str,
 
   Note also that the `entrypoint` parameter is not supported for Docker Compose resources.
 
-  When using Docker Compose, Tilt expects the image build to be either managed by your Docker Compose file (via the `image <https://docs.docker.com/compose/compose-file/compose-file-v3/#build>`_ key) OR by Tilt's :meth:`docker_build`, but not both. (Follow this `GitHub issue <https://github.com/tilt-dev/tilt/issues/5196>`_ to be notified of changes to this expectation.)
+  When using Docker Compose, Tilt expects the image build to be either managed by your Docker Compose file (via the `build <https://docs.docker.com/compose/compose-file/compose-file-v3/#build>`_ key) OR by Tilt's :meth:`docker_build`, but not both. (Follow this `GitHub issue <https://github.com/tilt-dev/tilt/issues/5196>`_ to be notified of changes to this expectation.)
 
   Finally, Tilt will put the image in a place where the target runtime can access it. Tilt will make a best effort to detect what kind of runtime you're using (Docker Compose, Kind, GKE, etc), and pick the best strategy for getting the image into it fast. See https://docs.tilt.dev/choosing_clusters.html for more info.
 
