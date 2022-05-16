@@ -47,7 +47,7 @@ import {
   SizeUnit,
 } from "./style-helpers"
 import { TiltInfoTooltip } from "./Tooltip"
-import { ResourceName, UIButton, UILink, UIResource } from "./types"
+import { ResourceName, UIButton, UIResource } from "./types"
 
 type OverviewActionBarProps = {
   // The current resource. May be null if there is no resource.
@@ -650,16 +650,16 @@ export let ActionBarBottomRow = styled.div`
   padding-bottom: ${SizeUnit(0.35)};
 `
 
-type ActionBarProps = {
-  endpoints: UILink[]
-  podId: string
-}
-
 let EndpointSet = styled.div`
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   font-family: ${Font.monospace};
   font-size: ${FontSize.small};
+
+  & + ${WidgetRoot} {
+    margin-left: ${SizeUnit(1 / 4)};
+  }
 `
 
 export let Endpoint = styled.a`
