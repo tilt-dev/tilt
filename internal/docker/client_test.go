@@ -312,6 +312,22 @@ func TestProvideClusterProduct(t *testing.T) {
 			},
 		},
 		{
+			env:     clusterid.ProductDockerDesktop,
+			runtime: container.RuntimeDocker,
+			// Set DOCKER_HOST here to mimic docker client discovering socket from desktop-linux context
+			osEnv: map[string]string{
+				"DOCKER_HOST": "unix:///home/tilt/.docker/desktop/docker.sock",
+			},
+			expectedCluster: Env{
+				Client:              hostClient{Host: "unix:///home/tilt/.docker/desktop/docker.sock"},
+				BuildToKubeContexts: []string{"docker-desktop-me"},
+			},
+			expectedLocal: Env{
+				Client:              hostClient{Host: "unix:///home/tilt/.docker/desktop/docker.sock"},
+				BuildToKubeContexts: []string{"docker-desktop-me", "docker-desktop-me"},
+			},
+		},
+		{
 			env:     clusterid.ProductRancherDesktop,
 			runtime: container.RuntimeDocker,
 			expectedCluster: Env{
