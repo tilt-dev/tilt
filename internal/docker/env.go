@@ -300,7 +300,11 @@ func isDefaultHost(e Env) bool {
 			host == "npipe:////./pipe/docker_engine" ||
 
 			// https://github.com/moby/moby/blob/master/client/client_unix.go#L6
-			host == "unix:///var/run/docker.sock"
+			host == "unix:///var/run/docker.sock" ||
+
+			// Docker Desktop for Linux - socket is in ~/.docker/desktop/docker.sock
+			(strings.HasPrefix(host, "unix://") && strings.HasSuffix(host, "/.docker/desktop/docker.sock"))
+
 	if isStandardHost {
 		return true
 	}
