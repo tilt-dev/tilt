@@ -53,19 +53,19 @@ type DockerComposeClient interface {
 }
 
 type cmdDCClient struct {
-	env         docker.Env
-	mu          *sync.Mutex
-	composePath string
-	version     string
+	env        docker.Env
+	mu         *sync.Mutex
+	composeCmd []string
+	version    string
 }
 
 // TODO(dmiller): we might want to make this take a path to the docker-compose config so we don't
 // have to keep passing it in.
 func NewDockerComposeClient(env docker.LocalEnv) DockerComposeClient {
 	return &cmdDCClient{
-		env:         docker.Env(env),
-		mu:          &sync.Mutex{},
-		composePath: dcExecutablePath(),
+		env:        docker.Env(env),
+		mu:         &sync.Mutex{},
+		composeCmd: dcExecutableCmd(),
 	}
 }
 
@@ -382,9 +382,9 @@ func dcLoaderOption(name string) func(opts *loader.Options) {
 	}
 }
 
-func dcExecutablePath() string {
+func dcExecutableCmd() []string {
 	if cmd := os.Getenv("TILT_DOCKER_COMPOSE_CMD"); cmd != "" {
-		return cmd
+		return []string{cmd}
 	}
 
 	composeName := "docker-compose"
@@ -393,13 +393,18 @@ func dcExecutablePath() string {
 	}
 	composePath, err := exec.LookPath(composeName)
 	if err != nil {
-		composePath = "docker-compose"
+		return []string{"docker", "compose"}
 	}
-	return composePath
+	return []string{composePath}
 }
 
 func (c *cmdDCClient) dcCommand(ctx context.Context, args []string) *exec.Cmd {
-	cmd := exec.CommandContext(ctx, c.composePath, args...)
+	composeCmd := c.composeCmd[0]
+	composeArgs := c.composeCmd[1:]
+	if len(composeArgs) > 0 {
+		args = append(composeArgs, args...)
+	}
+	cmd := exec.CommandContext(ctx, composeCmd, args...)
 	cmd.Env = append(os.Environ(), c.env.AsEnviron()...)
 	return cmd
 }
