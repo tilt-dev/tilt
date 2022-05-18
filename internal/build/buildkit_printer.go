@@ -236,9 +236,16 @@ func (b *buildkitPrinter) parseAndPrint(vertexes []*vertex, logs []*vertexLog, s
 				// downloading a new layer.
 				shouldPrintProgress = true
 			} else if status.total > 0 {
-				// print progress when at least 1% has changed and at least 2 seconds have passed.
+				// print progress when at least 1% of total has changed and at least 2 seconds have passed.
 				diff := float64(status.current) - float64(vl.lastPrintedStatus.current)
 				largeEnoughChange := diff/float64(status.total) >= 0.01
+				largeEnoughTime := status.timestamp.Sub(vl.lastPrintedStatus.timestamp) > 2*time.Second
+				shouldPrintProgress = largeEnoughChange && largeEnoughTime
+			} else if status.current > 0 {
+				// print progress when at least 5% of current has changed and at least 2 seconds have passed.
+				// We need to handle this case separately when we don't have a total estimate.
+				diff := float64(status.current) - float64(vl.lastPrintedStatus.current)
+				largeEnoughChange := diff/float64(status.current) >= 0.05
 				largeEnoughTime := status.timestamp.Sub(vl.lastPrintedStatus.timestamp) > 2*time.Second
 				shouldPrintProgress = largeEnoughChange && largeEnoughTime
 			}
