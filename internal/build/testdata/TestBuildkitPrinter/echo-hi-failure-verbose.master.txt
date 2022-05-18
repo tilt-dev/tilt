@@ -1,4 +1,4 @@
-[1/2] FROM docker.io/library/busybox@sha256:5acba83a746c7608ed544dc1533b87c737a0b0fb730301639a0179f9344b1678
+[1/2] FROM docker.io/library/busybox
 [2/2] RUN echo hi && exit 1
   → hi
 

@@ -1,13 +1,14 @@
-[builder 1/3] FROM docker.io/library/busybox@sha256:5acba83a746c7608ed544dc1533b87c737a0b0fb730301639a0179f9344b1678
-[builder 2/3] WORKDIR /src [cached]
-[builder 3/3] RUN echo hi > hi.txt
+[builder 1/3] FROM docker.io/library/busybox
 [stage-1 2/4] WORKDIR /dest
-[stage-1 2/4] WORKDIR /dest [done: 32ms]
-[builder 3/3] RUN echo hi > hi.txt [done: 282ms]
+[builder 2/3] WORKDIR /src
+[stage-1 2/4] WORKDIR /dest [done: 16ms]
+[builder 2/3] WORKDIR /src [done: 19ms]
+[builder 3/3] RUN echo hi > hi.txt
+[builder 3/3] RUN echo hi > hi.txt [done: 278ms]
 [stage-1 3/4] COPY --from=builder /src/hi.txt /dest/hi.txt
-[stage-1 3/4] COPY --from=builder /src/hi.txt /dest/hi.txt [done: 16ms]
+[stage-1 3/4] COPY --from=builder /src/hi.txt /dest/hi.txt [done: 18ms]
 [stage-1 4/4] RUN cat hi.txt
   → hi
-[stage-1 4/4] RUN cat hi.txt [done: 363ms]
+[stage-1 4/4] RUN cat hi.txt [done: 420ms]
 exporting to image
-exporting to image [done: 18ms]
+exporting to image [done: 20ms]

@@ -1,50 +1,51 @@
-[1/4] FROM docker.io/library/rust:slim@sha256:28a1e6d6cd2f27cd64f3d79822f432e88a71e2f5cc137dd24fa52ba4e9409b21
+[1/4] FROM docker.io/library/rust:slim@sha256:a3581c192ee8345f58ea1ce6cf49a49f9de3982fbfa4e4013fdec74c41b11a36
 [background] read source files
-[background] read source files 6.64kB [done: 39ms]
-[1/4] FROM docker.io/library/rust:slim@sha256:28a1e6d6cd2f27cd64f3d79822f432e88a71e2f5cc137dd24fa52ba4e9409b21 6.57kB / 233.66MB
-[1/4] FROM docker.io/library/rust:slim@sha256:28a1e6d6cd2f27cd64f3d79822f432e88a71e2f5cc137dd24fa52ba4e9409b21 26.22MB / 233.66MB
-[1/4] FROM docker.io/library/rust:slim@sha256:28a1e6d6cd2f27cd64f3d79822f432e88a71e2f5cc137dd24fa52ba4e9409b21 53.48MB / 233.66MB
-[1/4] FROM docker.io/library/rust:slim@sha256:28a1e6d6cd2f27cd64f3d79822f432e88a71e2f5cc137dd24fa52ba4e9409b21 77.50MB / 233.66MB
-[1/4] FROM docker.io/library/rust:slim@sha256:28a1e6d6cd2f27cd64f3d79822f432e88a71e2f5cc137dd24fa52ba4e9409b21 106.86MB / 233.66MB
-[1/4] FROM docker.io/library/rust:slim@sha256:28a1e6d6cd2f27cd64f3d79822f432e88a71e2f5cc137dd24fa52ba4e9409b21 139.37MB / 233.66MB
-[1/4] FROM docker.io/library/rust:slim@sha256:28a1e6d6cd2f27cd64f3d79822f432e88a71e2f5cc137dd24fa52ba4e9409b21 165.58MB / 233.66MB
-[1/4] FROM docker.io/library/rust:slim@sha256:28a1e6d6cd2f27cd64f3d79822f432e88a71e2f5cc137dd24fa52ba4e9409b21 193.89MB / 233.66MB
-[1/4] FROM docker.io/library/rust:slim@sha256:28a1e6d6cd2f27cd64f3d79822f432e88a71e2f5cc137dd24fa52ba4e9409b21 221.16MB / 233.66MB
-[1/4] FROM docker.io/library/rust:slim@sha256:28a1e6d6cd2f27cd64f3d79822f432e88a71e2f5cc137dd24fa52ba4e9409b21 233.66MB / 233.66MB
-[1/4] FROM docker.io/library/rust:slim@sha256:28a1e6d6cd2f27cd64f3d79822f432e88a71e2f5cc137dd24fa52ba4e9409b21 233.66MB / 233.66MB [done: 19.996s]
+[background] read source files 30B
+[background] read source files 6.64kB [done: 43ms]
+[1/4] FROM docker.io/library/rust:slim@sha256:a3581c192ee8345f58ea1ce6cf49a49f9de3982fbfa4e4013fdec74c41b11a36 6.57kB / 239.58MB
+[1/4] FROM docker.io/library/rust:slim@sha256:a3581c192ee8345f58ea1ce6cf49a49f9de3982fbfa4e4013fdec74c41b11a36 24.12MB / 239.58MB
+[1/4] FROM docker.io/library/rust:slim@sha256:a3581c192ee8345f58ea1ce6cf49a49f9de3982fbfa4e4013fdec74c41b11a36 55.58MB / 239.58MB
+[1/4] FROM docker.io/library/rust:slim@sha256:a3581c192ee8345f58ea1ce6cf49a49f9de3982fbfa4e4013fdec74c41b11a36 88.09MB / 239.58MB
+[1/4] FROM docker.io/library/rust:slim@sha256:a3581c192ee8345f58ea1ce6cf49a49f9de3982fbfa4e4013fdec74c41b11a36 117.45MB / 239.58MB
+[1/4] FROM docker.io/library/rust:slim@sha256:a3581c192ee8345f58ea1ce6cf49a49f9de3982fbfa4e4013fdec74c41b11a36 143.66MB / 239.58MB
+[1/4] FROM docker.io/library/rust:slim@sha256:a3581c192ee8345f58ea1ce6cf49a49f9de3982fbfa4e4013fdec74c41b11a36 170.85MB / 239.58MB
+[1/4] FROM docker.io/library/rust:slim@sha256:a3581c192ee8345f58ea1ce6cf49a49f9de3982fbfa4e4013fdec74c41b11a36 194.96MB / 239.58MB
+[1/4] FROM docker.io/library/rust:slim@sha256:a3581c192ee8345f58ea1ce6cf49a49f9de3982fbfa4e4013fdec74c41b11a36 220.13MB / 239.58MB
+[1/4] FROM docker.io/library/rust:slim@sha256:a3581c192ee8345f58ea1ce6cf49a49f9de3982fbfa4e4013fdec74c41b11a36 239.58MB / 239.58MB
+[1/4] FROM docker.io/library/rust:slim@sha256:a3581c192ee8345f58ea1ce6cf49a49f9de3982fbfa4e4013fdec74c41b11a36 239.58MB / 239.58MB [done: 20.904s]
 [2/4] WORKDIR /usr/src/app
-[2/4] WORKDIR /usr/src/app [done: 337ms]
+[2/4] WORKDIR /usr/src/app [done: 176ms]
 [3/4] COPY . .
-[3/4] COPY . . [done: 18ms]
+[3/4] COPY . . [done: 19ms]
 [4/4] RUN cargo build
   →     Updating crates.io index
   →  Downloading crates ...
   →   Downloaded kernel32-sys v0.2.2
-  →   Downloaded regex-syntax v0.3.9
-  →   Downloaded winapi-build v0.1.1
-  →   Downloaded time v0.1.42
-  →   Downloaded memchr v0.1.11
   →   Downloaded thread-id v2.0.0
+  →   Downloaded time v0.1.42
+  →   Downloaded winapi-build v0.1.1
+  →   Downloaded libc v0.2.59
+  →   Downloaded regex-syntax v0.3.9
   →   Downloaded regex v0.1.80
   →   Downloaded thread_local v0.2.7
-  →   Downloaded aho-corasick v0.5.3
-  →   Downloaded libc v0.2.59
+  →   Downloaded memchr v0.1.11
   →   Downloaded winapi v0.2.8
   →   Downloaded utf8-ranges v0.1.3
+  →   Downloaded aho-corasick v0.5.3
   →    Compiling libc v0.2.59
   →    Compiling winapi-build v0.1.1
   →    Compiling winapi v0.2.8
-  →    Compiling utf8-ranges v0.1.3
   →    Compiling regex-syntax v0.3.9
+  →    Compiling utf8-ranges v0.1.3
   →    Compiling kernel32-sys v0.2.2
-  →    Compiling thread-id v2.0.0
   →    Compiling memchr v0.1.11
+  →    Compiling thread-id v2.0.0
   →    Compiling time v0.1.42
   →    Compiling thread_local v0.2.7
   →    Compiling aho-corasick v0.5.3
   →    Compiling regex v0.1.80
   →    Compiling hello_world v0.1.0 (/usr/src/app)
-  →     Finished dev [unoptimized + debuginfo] target(s) in 32.11s
-[4/4] RUN cargo build [done: 32.568s]
+  →     Finished dev [unoptimized + debuginfo] target(s) in 47.96s
+[4/4] RUN cargo build [done: 48.336s]
 exporting to image
-exporting to image [done: 475ms]
+exporting to image [done: 735ms]

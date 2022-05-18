@@ -1,5 +1,4 @@
-[1/2] FROM docker.io/library/busybox@sha256:5acba83a746c7608ed544dc1533b87c737a0b0fb730301639a0179f9344b1678 [cached]
+[1/2] FROM docker.io/library/busybox
 [2/2] RUN sleep 5
-[2/2] RUN sleep 5 [done: 5.367s]
+[2/2] RUN sleep 5 [done: 5.263s]
 exporting to image
-exporting to image [done: 10ms]
