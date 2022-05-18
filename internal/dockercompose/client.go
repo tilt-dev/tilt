@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
-	"runtime"
 	"strings"
 	"sync"
 
@@ -387,11 +386,7 @@ func dcExecutableCmd() []string {
 		return []string{cmd}
 	}
 
-	composeName := "docker-compose"
-	if runtime.GOOS == "windows" {
-		composeName += ".exe"
-	}
-	composePath, err := exec.LookPath(composeName)
+	composePath, err := exec.LookPath("docker-compose")
 	if err != nil {
 		return []string{"docker", "compose"}
 	}
