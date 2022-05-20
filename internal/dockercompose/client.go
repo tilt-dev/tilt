@@ -52,8 +52,10 @@ type DockerComposeClient interface {
 }
 
 type cmdDCClient struct {
-	env        docker.Env
-	mu         *sync.Mutex
+	env     docker.Env
+	mu      *sync.Mutex
+	initCmd *sync.Once
+
 	composeCmd []string
 	version    string
 	build      string
@@ -63,15 +65,10 @@ type cmdDCClient struct {
 // TODO(dmiller): we might want to make this take a path to the docker-compose config so we don't
 // have to keep passing it in.
 func NewDockerComposeClient(lenv docker.LocalEnv) DockerComposeClient {
-	env := docker.Env(lenv)
-	cmd, version, build, err := dcExecutableVersion(env.AsEnviron())
 	return &cmdDCClient{
-		env:        env,
-		mu:         &sync.Mutex{},
-		composeCmd: cmd,
-		version:    version,
-		build:      build,
-		err:        err,
+		env:     docker.Env(lenv),
+		mu:      &sync.Mutex{},
+		initCmd: &sync.Once{},
 	}
 }
 
@@ -319,6 +316,7 @@ func (c *cmdDCClient) ContainerID(ctx context.Context, spec v1alpha1.DockerCompo
 // NOTE: The version subcommand was added in Docker Compose v1.4.0 (released 2015-08-04), so this won't work for
 // 		 truly ancient versions, but handles both v1 and v2.
 func (c *cmdDCClient) Version(ctx context.Context) (string, string, error) {
+	c.initDcCommand()
 	return c.version, c.build, c.err
 }
 
@@ -409,7 +407,18 @@ func dcExecutableVersion(environ []string) ([]string, string, string, error) {
 	return cmd, ver, build, err
 }
 
+func (c *cmdDCClient) initDcCommand() {
+	c.initCmd.Do(func() {
+		cmd, version, build, err := dcExecutableVersion(c.env.AsEnviron())
+		c.composeCmd = cmd
+		c.version = version
+		c.build = build
+		c.err = err
+	})
+}
+
 func (c *cmdDCClient) dcCommand(ctx context.Context, args []string) *exec.Cmd {
+	c.initDcCommand()
 	composeCmd := c.composeCmd[0]
 	composeArgs := c.composeCmd[1:]
 	if len(composeArgs) > 0 {
