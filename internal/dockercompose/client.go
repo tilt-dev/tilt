@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
-	"runtime"
 	"strings"
 	"sync"
 
@@ -53,19 +52,23 @@ type DockerComposeClient interface {
 }
 
 type cmdDCClient struct {
-	env         docker.Env
-	mu          *sync.Mutex
-	composePath string
-	version     string
+	env     docker.Env
+	mu      *sync.Mutex
+	initCmd *sync.Once
+
+	composeCmd []string
+	version    string
+	build      string
+	err        error
 }
 
 // TODO(dmiller): we might want to make this take a path to the docker-compose config so we don't
 // have to keep passing it in.
-func NewDockerComposeClient(env docker.LocalEnv) DockerComposeClient {
+func NewDockerComposeClient(lenv docker.LocalEnv) DockerComposeClient {
 	return &cmdDCClient{
-		env:         docker.Env(env),
-		mu:          &sync.Mutex{},
-		composePath: dcExecutablePath(),
+		env:     docker.Env(lenv),
+		mu:      &sync.Mutex{},
+		initCmd: &sync.Once{},
 	}
 }
 
@@ -308,21 +311,13 @@ func (c *cmdDCClient) ContainerID(ctx context.Context, spec v1alpha1.DockerCompo
 	return container.ID(id), nil
 }
 
-// Version runs `docker-compose version` and parses the output, returning the canonical version and build (if present).
+// Version returns the parsed output of `docker compose version`, the canonical version and build (if present).
 //
 // NOTE: The version subcommand was added in Docker Compose v1.4.0 (released 2015-08-04), so this won't work for
 // 		 truly ancient versions, but handles both v1 and v2.
 func (c *cmdDCClient) Version(ctx context.Context) (string, string, error) {
-	cmd := c.dcCommand(ctx, []string{"version"})
-	stdout, err := cmd.Output()
-	if err != nil {
-		return "", "", FormatError(cmd, stdout, err)
-	}
-	ver, build, err := parseComposeVersionOutput(stdout)
-	if err == nil {
-		c.version = ver
-	}
-	return ver, build, err
+	c.initDcCommand()
+	return c.version, c.build, c.err
 }
 
 func composeProjectOptions(modelProj v1alpha1.DockerComposeProject) (*compose.ProjectOptions, error) {
@@ -382,24 +377,54 @@ func dcLoaderOption(name string) func(opts *loader.Options) {
 	}
 }
 
-func dcExecutablePath() string {
-	if cmd := os.Getenv("TILT_DOCKER_COMPOSE_CMD"); cmd != "" {
-		return cmd
+func dcExecutableVersion(environ []string) ([]string, string, string, error) {
+	execVersion := func(names []string) (string, string, error) {
+		args := append(names, "version")
+		cmd := exec.Command(args[0], args[1:]...)
+		cmd.Env = append(os.Environ(), environ...)
+		stdout, err := cmd.Output()
+		if err != nil {
+			return "", "", FormatError(cmd, stdout, err)
+		}
+		ver, build, err := parseComposeVersionOutput(stdout)
+		return ver, build, err
 	}
 
-	composeName := "docker-compose"
-	if runtime.GOOS == "windows" {
-		composeName += ".exe"
+	var cmd []string
+	if cmdstr := os.Getenv("TILT_DOCKER_COMPOSE_CMD"); cmdstr != "" {
+		cmd = []string{cmdstr}
+		ver, build, err := execVersion(cmd)
+		return cmd, ver, build, err
 	}
-	composePath, err := exec.LookPath(composeName)
+
+	cmd = []string{"docker", "compose"}
+	ver, build, err := execVersion(cmd)
 	if err != nil {
-		composePath = "docker-compose"
+		cmd = []string{"docker-compose"}
+		ver, build, err = execVersion(cmd)
 	}
-	return composePath
+
+	return cmd, ver, build, err
+}
+
+func (c *cmdDCClient) initDcCommand() {
+	c.initCmd.Do(func() {
+		cmd, version, build, err := dcExecutableVersion(c.env.AsEnviron())
+		c.composeCmd = cmd
+		c.version = version
+		c.build = build
+		c.err = err
+	})
 }
 
 func (c *cmdDCClient) dcCommand(ctx context.Context, args []string) *exec.Cmd {
-	cmd := exec.CommandContext(ctx, c.composePath, args...)
+	c.initDcCommand()
+	composeCmd := c.composeCmd[0]
+	composeArgs := c.composeCmd[1:]
+	if len(composeArgs) > 0 {
+		args = append(composeArgs, args...)
+	}
+	cmd := exec.CommandContext(ctx, composeCmd, args...)
 	cmd.Env = append(os.Environ(), c.env.AsEnviron()...)
 	return cmd
 }
