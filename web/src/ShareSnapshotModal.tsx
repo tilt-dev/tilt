@@ -312,7 +312,7 @@ export function LocalSnapshotDialog(props: DownloadSnapshotModalProps) {
       </SaveSnapshotButton>
       <p>
         View your saved snapshot with:{" "}
-        <CodeSnippet>tilt view snapshot {"<filename>"}</CodeSnippet>.
+        <CodeSnippet>tilt snapshot view {"<filename>"}</CodeSnippet>.
       </p>
       <p>
         See the{" "}
