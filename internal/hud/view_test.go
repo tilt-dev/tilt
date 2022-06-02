@@ -231,9 +231,7 @@ func yamlToApplyFilter(t testing.TB, yaml string) *k8sconv.KubernetesApplyFilter
 	}
 	yaml, err = k8s.SerializeSpecYAML(entities)
 	require.NoError(t, err, "Failed to re-serialize YAML")
-	applyFilter, err := k8sconv.NewKubernetesApplyFilter(&v1alpha1.KubernetesApplyStatus{
-		ResultYAML: yaml,
-	})
+	applyFilter, err := k8sconv.NewKubernetesApplyFilter(yaml)
 	require.NoError(t, err, "Failed to create KubernetesApplyFilter")
 	require.NotNil(t, applyFilter, "ApplyFilter was nil")
 	return applyFilter

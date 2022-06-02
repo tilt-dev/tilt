@@ -179,7 +179,7 @@ func (ibd *ImageBuildAndDeployer) deploy(
 		return store.K8sBuildResult{}, fmt.Errorf("%s", status.Error)
 	}
 
-	filter, err := k8sconv.NewKubernetesApplyFilter(&status)
+	filter, err := k8sconv.NewKubernetesApplyFilter(status.ResultYAML)
 	if err != nil {
 		return store.K8sBuildResult{}, err
 	}

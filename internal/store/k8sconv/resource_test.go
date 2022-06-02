@@ -83,9 +83,7 @@ func TestNewKubernetesApplyFilter_Sorted(t *testing.T) {
 	require.Less(t, strings.Index(resultYAML, "Job"), strings.Index(resultYAML, "PersistentVolumeClaim"),
 		"Order in re-serialized YAML was not preserved")
 
-	applyFilter, err := NewKubernetesApplyFilter(&v1alpha1.KubernetesApplyStatus{
-		ResultYAML: resultYAML,
-	})
+	applyFilter, err := NewKubernetesApplyFilter(resultYAML)
 	require.NoError(t, err, "Failed to create KubernetesApplyFilter")
 	require.NotNil(t, applyFilter, "KubernetesApplyFilter was nil")
 

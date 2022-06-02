@@ -42,6 +42,23 @@ func HandleKubernetesDiscoveryDeleteAction(state *store.EngineState, action Kube
 	}
 }
 
+func filterForResource(state *store.EngineState, name string) (*k8sconv.KubernetesApplyFilter, error) {
+	a := state.KubernetesApplys[name]
+	if a == nil {
+		return nil, nil
+	}
+
+	// if the yaml matches the existing resource, use its filter to save re-parsing
+	// (https://github.com/tilt-dev/tilt/issues/5837)
+	if prevResource, ok := state.KubernetesResources[name]; ok {
+		if a.Status.ResultYAML == prevResource.ApplyStatus.ResultYAML {
+			return prevResource.ApplyFilter, nil
+		}
+	}
+
+	return k8sconv.NewKubernetesApplyFilter(a.Status.ResultYAML)
+}
+
 func RefreshKubernetesResource(state *store.EngineState, name string) {
 	var aStatus *v1alpha1.KubernetesApplyStatus
 	a := state.KubernetesApplys[name]
@@ -50,10 +67,11 @@ func RefreshKubernetesResource(state *store.EngineState, name string) {
 	}
 
 	d := state.KubernetesDiscoverys[name]
-	r, err := k8sconv.NewKubernetesResource(d, aStatus)
+	filter, err := filterForResource(state, name)
 	if err != nil {
 		return
 	}
+	r := k8sconv.NewKubernetesResourceWithFilter(d, aStatus, filter)
 	state.KubernetesResources[name] = r
 
 	if a != nil {
