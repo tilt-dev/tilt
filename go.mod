@@ -48,7 +48,7 @@ require (
 	github.com/tilt-dev/clusterid v0.1.3
 	github.com/tilt-dev/dockerignore v0.1.1
 	github.com/tilt-dev/fsevents v0.0.0-20200515134857-2efe37af20de
-	github.com/tilt-dev/fsnotify v1.4.8-0.20210701141043-dd524499d3fe
+	github.com/tilt-dev/fsnotify v1.4.8-0.20220602155310-fff9c274a375
 	github.com/tilt-dev/go-get v0.2.2
 	github.com/tilt-dev/localregistry-go v0.0.0-20201021185044-ffc4c827f097
 	github.com/tilt-dev/probe v0.3.1
@@ -218,7 +218,7 @@ require (
 	golang.org/x/crypto v0.0.0-20211117183948-ae814b36b871 // indirect
 	golang.org/x/net v0.0.0-20220107192237-5cfca573fb4d // indirect
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect
-	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e // indirect
+	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
 	golang.org/x/tools v0.1.6-0.20210820212750-d4cc65f0b2ff // indirect
