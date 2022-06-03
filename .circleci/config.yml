@@ -18,7 +18,7 @@ jobs:
       - checkout
       - run: echo 'export PATH=~/go/bin:$PATH' >> $BASH_ENV
       - setup_remote_docker:
-          version: 20.10.14
+          version: 20.10.11
       - run: docker pull registry:2
       - run: sudo mv /usr/bin/helm3 /usr/bin/helm
       - run: make lint
@@ -88,7 +88,7 @@ jobs:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
       - setup_remote_docker:
-          version: 20.10.14
+          version: 20.10.11
       - run: ctlptl create cluster kind --registry=ctlptl-registry && make integration
       - store_test_results:
           path: test-results
@@ -102,7 +102,7 @@ jobs:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
       - setup_remote_docker:
-          version: 20.10.14
+          version: 20.10.11
       - run: ctlptl create cluster kind --registry=ctlptl-registry && make install test-extensions
       - slack/notify-on-failure:
           only_for_branches: master
