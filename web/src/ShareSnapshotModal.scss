@@ -11,8 +11,8 @@
   text-transform: uppercase;
   background-color: $color-gray-50;
   color: $color-white;
-  padding-top: $spacing-unit / 2;
-  padding-bottom: $spacing-unit / 2;
+  padding-top: calc($spacing-unit / 2);
+  padding-bottom: calc($spacing-unit / 2);
   padding-left: $spacing-unit;
   padding-right: $spacing-unit;
 }
@@ -43,7 +43,7 @@
   position: relative; // Anchor the list bullets
 }
 .ShareSnapshotModal-detailsList > li {
-  margin-bottom: $spacing-unit / 3;
+  margin-bottom: calc($spacing-unit / 3);
 }
 .ShareSnapshotModal-detailsList > li::before {
   content: "";
@@ -59,9 +59,9 @@
   display: inline-block;
   text-decoration: none;
   background-color: $color-off-white;
-  margin-top: $spacing-unit / 4;
-  padding-left: $spacing-unit / 2;
-  padding-right: $spacing-unit / 2;
+  margin-top: calc($spacing-unit / 4);
+  padding-left: calc($spacing-unit / 2);
+  padding-right: calc($spacing-unit / 2);
   line-height: 1.75;
 }
 .ShareSnapshotModal-docsLink:hover {
@@ -72,8 +72,8 @@
   justify-content: flex-end;
   align-items: center;
   border-top: 1px dotted $color-gray-lightest;
-  padding-left: $spacing-unit / 2;
-  padding-right: $spacing-unit / 2;
+  padding-left: calc($spacing-unit / 2);
+  padding-right: calc($spacing-unit / 2);
   // This visually centers the button, whose shadow throws things off a bit:
   padding-top: $spacing-unit * 0.6;
   padding-bottom: $spacing-unit * 0.8;
@@ -95,10 +95,10 @@
 .ShareSnapshotModal-shareLink-urlBox {
   background-color: $color-white;
   border: 1px solid $color-gray-lightest;
-  padding-top: $spacing-unit / 6;
-  padding-bottom: $spacing-unit / 6;
-  padding-left: $spacing-unit / 3;
-  padding-right: $spacing-unit / 3;
+  padding-top: calc($spacing-unit / 6);
+  padding-bottom: calc($spacing-unit / 6);
+  padding-left: calc($spacing-unit / 3);
+  padding-right: calc($spacing-unit / 3);
   box-sizing: border-box;
   display: inline-block;
   flex-grow: 1;
@@ -134,7 +134,7 @@
 }
 .ShareSnapshotModal-tiltCloudLink span {
   border-bottom: 2px solid $color-gray-30;
-  margin-right: $spacing-unit / 4;
+  margin-right: calc($spacing-unit / 4);
 }
 .ShareSnapshotModal-tiltCloudLink svg {
   fill: $color-gray-50;
@@ -153,10 +153,10 @@
   text-transform: uppercase;
   color: $color-white;
   border: 0;
-  padding-top: $spacing-unit / 3;
-  padding-bottom: $spacing-unit / 3;
-  padding-left: $spacing-unit / 2;
-  padding-right: $spacing-unit / 2;
+  padding-top: calc($spacing-unit / 3);
+  padding-bottom: calc($spacing-unit / 3);
+  padding-left: calc($spacing-unit / 2);
+  padding-right: calc($spacing-unit / 2);
   text-decoration: none;
   transition: color 300ms;
   display: flex;

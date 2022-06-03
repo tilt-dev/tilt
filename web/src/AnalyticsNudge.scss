@@ -6,7 +6,7 @@
   background-color: $color-purple;
   opacity: 0.98;
   color: $color-gray-10;
-  padding: $spacing-unit / 2;
+  padding: calc($spacing-unit / 2);
   box-sizing: border-box;
   position: fixed;
   z-index: $z-analyticsNudge;
@@ -40,8 +40,8 @@
   color: $color-gray-lightest;
   @include button-text;
   border: 1px solid $color-gray-50;
-  padding: $spacing-unit/3;
-  margin-left: $spacing-unit/2;
+  padding: calc($spacing-unit / 3);
+  margin-left: calc($spacing-unit / 2);
   min-width: $spacing-unit * 3;
 }
 
@@ -54,5 +54,5 @@
 }
 
 .AnalyticsNudge-button + .AnalyticsNudge-button {
-  margin-left: $spacing-unit/2;
+  margin-left: calc($spacing-unit / 2);
 }
