@@ -10,7 +10,7 @@ jobs:
   build-linux:
     resource_class: medium+
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:fe50fe62079403c1dfd2e0257c32701cf224e70cf05217d04bfb1d8e8155fc67
+      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:0ded7ab32c6af85004a97e39d14ab02f0744af59949ede84ad139ed5f7112e4d
     # apiserver code generation scripts require being in GOPATH
     working_directory: /home/circleci/go/src/github.com/tilt-dev/tilt
 
@@ -50,7 +50,7 @@ jobs:
 
   publish-assets:
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:fe50fe62079403c1dfd2e0257c32701cf224e70cf05217d04bfb1d8e8155fc67
+      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:0ded7ab32c6af85004a97e39d14ab02f0744af59949ede84ad139ed5f7112e4d
     steps:
       - checkout
       - gcp-cli/install
