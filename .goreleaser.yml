@@ -124,10 +124,48 @@ brews:
     system "#{bin}/tilt version"
     system "#{bin}/tilt verify-install"
 dockers:
-- image_templates:
-    - "tiltdev/tilt"
-    - "tiltdev/tilt:{{ .Tag }}"
+- goos: linux
+  goarch: amd64
+  image_templates:
+    - "tiltdev/tilt:{{ .Tag }}-amd64"
   dockerfile: scripts/tilt.Dockerfile
+  use: buildx
+  build_flag_templates:
+  - "--platform=linux/amd64"
+  - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+  - "--label=org.opencontainers.image.description={{ .ProjectName }}"
+  - "--label=org.opencontainers.image.url=https://github.com/tilt-dev/{{ .ProjectName }}"
+  - "--label=org.opencontainers.image.source=https://github.com/tilt-dev/{{ .ProjectName }}"
+  - "--label=org.opencontainers.image.version={{ .Version }}"
+  - "--label=org.opencontainers.image.created={{ .Timestamp }}"
+  - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+  - "--label=org.opencontainers.image.licenses=Apache-2.0"
+- goos: linux
+  goarch: arm64
+  goarm: ''
+  image_templates:
+    - "tiltdev/tilt:{{ .Tag }}-arm64"
+  dockerfile: scripts/tilt.Dockerfile
+  use: buildx
+  build_flag_templates:
+  - "--platform=linux/arm64"
+  - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+  - "--label=org.opencontainers.image.description={{ .ProjectName }}"
+  - "--label=org.opencontainers.image.url=https://github.com/tilt-dev/{{ .ProjectName }}"
+  - "--label=org.opencontainers.image.source=https://github.com/tilt-dev/{{ .ProjectName }}"
+  - "--label=org.opencontainers.image.version={{ .Version }}"
+  - "--label=org.opencontainers.image.created={{ .Timestamp }}"
+  - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+  - "--label=org.opencontainers.image.licenses=Apache-2.0"
+docker_manifests:
+- name_template: tiltdev/{{ .ProjectName }}:{{ .Version }}
+  image_templates:
+  - tiltdev/{{ .ProjectName }}:{{ .Version }}-amd64
+  - tiltdev/{{ .ProjectName }}:{{ .Version }}-arm64
+- name_template: tiltdev/{{ .ProjectName }}:latest
+  image_templates:
+  - tiltdev/{{ .ProjectName }}:{{ .Version }}-amd64
+  - tiltdev/{{ .ProjectName }}:{{ .Version }}-arm64
 scoop:
   url_template: "https://github.com/tilt-dev/tilt/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
   bucket:
