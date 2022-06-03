@@ -158,14 +158,14 @@ dockers:
   - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
   - "--label=org.opencontainers.image.licenses=Apache-2.0"
 docker_manifests:
-- name_template: tiltdev/{{ .ProjectName }}:{{ .Version }}
+- name_template: tiltdev/{{ .ProjectName }}:{{ .Tag }}
   image_templates:
-  - tiltdev/{{ .ProjectName }}:{{ .Version }}-amd64
-  - tiltdev/{{ .ProjectName }}:{{ .Version }}-arm64
+  - tiltdev/{{ .ProjectName }}:{{ .Tag }}-amd64
+  - tiltdev/{{ .ProjectName }}:{{ .Tag }}-arm64
 - name_template: tiltdev/{{ .ProjectName }}:latest
   image_templates:
-  - tiltdev/{{ .ProjectName }}:{{ .Version }}-amd64
-  - tiltdev/{{ .ProjectName }}:{{ .Version }}-arm64
+  - tiltdev/{{ .ProjectName }}:{{ .Tag }}-amd64
+  - tiltdev/{{ .ProjectName }}:{{ .Tag }}-arm64
 scoop:
   url_template: "https://github.com/tilt-dev/tilt/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
   bucket:
