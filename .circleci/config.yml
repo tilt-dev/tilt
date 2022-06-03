@@ -129,27 +129,6 @@ jobs:
       - slack/notify-on-failure:
           only_for_branches: master
 
-  deploy-storybook:
-    docker:
-      - image: cimg/base:2020.01
-    steps:
-      - setup_remote_docker:
-          version: 20.10.11
-      - checkout
-      - run: curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
-      - gcp-cli/install
-      - gcp-cli/initialize
-      - kubernetes/install-kubectl
-      - run:
-          name: Setup Kubernetes
-          command: gcloud container clusters get-credentials windmill
-      - run:
-          name: Setup Docker Credentials
-          command: gcloud auth configure-docker
-      - run: ./configs/storybook/deploy.sh
-      - slack/notify-on-failure:
-          only_for_branches: master
-
   release:
     resource_class: medium+
     docker:
@@ -202,13 +181,6 @@ workflows:
             - build-linux
       - publish-assets:
           context: Tilt Deploy Context
-          filters:
-            branches:
-              only: master
-      - deploy-storybook:
-          context: Tilt Deploy Context
-          requires:
-            - build-js
           filters:
             branches:
               only: master

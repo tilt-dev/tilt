@@ -1,5 +1,0 @@
-docker_build('tilt-storybook', '../../', dockerfile='./Dockerfile', live_update=[
-  sync('../../web/src', '/app/src'),
-])
-k8s_yaml(helm('./', name='storybook', set=['ingress.enabled=false']))
-k8s_resource('storybook', port_forwards='9009')
