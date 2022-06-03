@@ -18,7 +18,7 @@ RUN apt-get update && \
 # Install docker
 # Adapted from https://github.com/circleci/circleci-images/blob/staging/shared/images/Dockerfile-basic.template
 # Check https://download.docker.com/linux/static/stable/x86_64/ for latest versions
-ENV DOCKER_VERSION=20.10.9
+ENV DOCKER_VERSION=20.10.14
 RUN set -exu \
   && DOCKER_URL="https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_VERSION}.tgz" \
   && echo Docker URL: $DOCKER_URL \
