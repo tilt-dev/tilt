@@ -25,4 +25,4 @@ git config --global user.email "it@tilt.dev"
 git config --global user.name "Tilt Dev"
 
 # send the brew team a PR to upgrade homebrew-core
-brew bump-formula-pr --no-browse --version="$VERSION" tilt
+brew bump-formula-pr --no-browse --force --version="$VERSION" tilt
