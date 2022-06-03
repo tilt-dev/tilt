@@ -18,7 +18,7 @@ jobs:
       - checkout
       - run: echo 'export PATH=~/go/bin:$PATH' >> $BASH_ENV
       - setup_remote_docker:
-          version: 20.10.11
+          version: 20.10.14
       - run: docker pull registry:2
       - run: sudo mv /usr/bin/helm3 /usr/bin/helm
       - run: make lint
@@ -88,7 +88,7 @@ jobs:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
       - setup_remote_docker:
-          version: 20.10.11
+          version: 20.10.14
       - run: ctlptl create cluster kind --registry=ctlptl-registry && make integration
       - store_test_results:
           path: test-results
@@ -102,7 +102,7 @@ jobs:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
       - setup_remote_docker:
-          version: 20.10.11
+          version: 20.10.14
       - run: ctlptl create cluster kind --registry=ctlptl-registry && make install test-extensions
       - slack/notify-on-failure:
           only_for_branches: master
@@ -134,9 +134,13 @@ jobs:
     docker:
       # keep image in sync with scripts/build.toast.yml
       - image: gcr.io/windmill-public-containers/tilt-releaser@sha256:bfad52954a4d26c75cdb5094474cc6c005b347baebcfc460af895cc87d5e1279
+    environment:
+      DOCKER_CLI_EXPERIMENTAL: enabled
     steps:
       - setup_remote_docker:
-          version: 20.10.11
+          version: 20.10.14
+      # https://discuss.circleci.com/t/arm-version-of-remote-docker/41624
+      - run: ssh remote-docker "sudo apt-get update; sudo apt-get install -y qemu-user-static binfmt-support"
       - slack/notify:
           mentions: "nick"
           message: "A Tilt release has started!"
