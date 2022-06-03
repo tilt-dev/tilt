@@ -43,13 +43,22 @@ type KubernetesResource struct {
 
 func NewKubernetesResource(discovery *v1alpha1.KubernetesDiscovery, status *v1alpha1.KubernetesApplyStatus) (*KubernetesResource, error) {
 	var filter *KubernetesApplyFilter
-	var err error
 	if status != nil {
-		filter, err = NewKubernetesApplyFilter(status)
+		var err error
+		filter, err = NewKubernetesApplyFilter(status.ResultYAML)
 		if err != nil {
 			return nil, err
 		}
 	}
+
+	return NewKubernetesResourceWithFilter(discovery, status, filter), nil
+}
+
+// NewKubernetesResourceWithFilter is just NewKubernetesResource but with a specified KubernetesApplyFilter
+func NewKubernetesResourceWithFilter(
+	discovery *v1alpha1.KubernetesDiscovery,
+	status *v1alpha1.KubernetesApplyStatus,
+	filter *KubernetesApplyFilter) *KubernetesResource {
 
 	var filteredPods []v1alpha1.Pod
 	if discovery != nil {
@@ -61,7 +70,7 @@ func NewKubernetesResource(discovery *v1alpha1.KubernetesDiscovery, status *v1al
 		ApplyStatus:  status,
 		ApplyFilter:  filter,
 		FilteredPods: filteredPods,
-	}, nil
+	}
 }
 
 // Filter to determine whether a pod or resource belongs to the current
@@ -77,8 +86,8 @@ type KubernetesApplyFilter struct {
 	PodTemplateSpecHashes []k8s.PodTemplateSpecHash
 }
 
-func NewKubernetesApplyFilter(status *v1alpha1.KubernetesApplyStatus) (*KubernetesApplyFilter, error) {
-	deployed, err := k8s.ParseYAMLFromString(status.ResultYAML)
+func NewKubernetesApplyFilter(yaml string) (*KubernetesApplyFilter, error) {
+	deployed, err := k8s.ParseYAMLFromString(yaml)
 	if err != nil {
 		return nil, err
 	}

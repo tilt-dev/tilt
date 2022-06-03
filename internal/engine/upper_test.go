@@ -519,7 +519,7 @@ func (b *fakeBuildAndDeployer) nextK8sDeployResult(kTarg model.K8sTarget) store.
 
 	b.kClient.UpsertResult = deployed
 
-	filter, err := k8sconv.NewKubernetesApplyFilter(&v1alpha1.KubernetesApplyStatus{ResultYAML: resultYAML})
+	filter, err := k8sconv.NewKubernetesApplyFilter(resultYAML)
 	require.NoError(b.t, err)
 	return store.NewK8sDeployResult(kTarg.ID(), filter)
 }
