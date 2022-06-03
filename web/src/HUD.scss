@@ -23,7 +23,7 @@
 }
 
 .Pane-empty-message h2 {
-  margin-top: $spacing-unit / 2;
+  margin-top: calc($spacing-unit / 2);
   font-family: $font-sans-serif;
   font-size: $font-size;
   color: $color-gray-lightest;
@@ -33,4 +33,3 @@
   text-align: left;
   color: $color-gray-lightest;
 }
-

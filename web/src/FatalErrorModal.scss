@@ -20,8 +20,8 @@
   text-transform: uppercase;
   background-color: $color-red;
   color: $color-white;
-  padding-top: $spacing-unit / 4;
-  padding-bottom: $spacing-unit / 4;
+  padding-top: calc($spacing-unit / 4);
+  padding-bottom: calc($spacing-unit / 4);
   padding-left: $spacing-unit;
   padding-right: $spacing-unit;
 }
