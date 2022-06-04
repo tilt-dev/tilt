@@ -133,7 +133,7 @@ jobs:
     resource_class: medium+
     docker:
       # keep image in sync with scripts/build.toast.yml
-      - image: gcr.io/windmill-public-containers/tilt-releaser@sha256:bfad52954a4d26c75cdb5094474cc6c005b347baebcfc460af895cc87d5e1279
+      - image: gcr.io/windmill-public-containers/tilt-releaser@sha256:c0772f4d131b1370b4d05071e0589ede17da48d6c339215095b2afc7a7ea6951
     environment:
       DOCKER_CLI_EXPERIMENTAL: enabled
     steps:
