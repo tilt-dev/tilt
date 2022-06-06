@@ -34,10 +34,14 @@ mkdir -p ~/.windmill
 echo "$TILT_CLOUD_TOKEN" > ~/.windmill/token
 
 git fetch --tags
-./scripts/upload-assets.py latest
-goreleaser --rm-dist
 
 VERSION=$(git describe --abbrev=0 --tags)
+
+# Upload assets must come before goreleaser so that embedded assets are built.
+./scripts/upload-assets.py --clean "$VERSION"
+./scripts/upload-assets.py "$VERSION"
+
+goreleaser --rm-dist
 
 ./scripts/release-update-tilt-repo.sh "$VERSION"
 ./scripts/release-update-tilt-docs-repo.sh "$VERSION"
