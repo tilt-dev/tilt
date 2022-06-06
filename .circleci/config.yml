@@ -129,6 +129,23 @@ jobs:
       - slack/notify-on-failure:
           only_for_branches: master
 
+  release-dry-run:
+    docker:
+      # keep image in sync with scripts/build.toast.yml
+      - image: gcr.io/windmill-public-containers/tilt-releaser@sha256:c0772f4d131b1370b4d05071e0589ede17da48d6c339215095b2afc7a7ea6951
+    environment:
+      DOCKER_CLI_EXPERIMENTAL: enabled
+    steps:
+      - setup_remote_docker:
+          version: 20.10.14
+      # https://discuss.circleci.com/t/arm-version-of-remote-docker/41624
+      - run: ssh remote-docker "sudo apt-get update; sudo apt-get install -y qemu-user-static binfmt-support"
+      - checkout
+      - run: make build-js
+      - run: goreleaser --debug --rm-dist --skip-publish --snapshot
+      - slack/notify-on-failure:
+          only_for_branches: main
+
   release:
     resource_class: medium+
     docker:
@@ -185,6 +202,13 @@ workflows:
             - build-linux
       - publish-assets:
           context: Tilt Deploy Context
+          filters:
+            branches:
+              only: master
+      - release-dry-run:
+          context: Tilt Slack Context
+          requires:
+            - build-linux
           filters:
             branches:
               only: master
