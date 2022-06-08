@@ -130,14 +130,11 @@ func (s K8sRuntimeState) RuntimeStatus() v1alpha1.RuntimeStatus {
 		return v1alpha1.RuntimeStatusOK
 	}
 
-	if len(s.FilteredPods) == 0 {
-		// if there's no Pods available but the apply indicated that the Job
-		// had already completed, we likely re-attached to an existing env,
-		// and the Pod for the Job has been GC'd, but the resource is actually
-		// in the desired state, so short-circuit here
-		if meta.IsStatusConditionTrue(s.Conditions, v1alpha1.ApplyConditionJobComplete) {
-			return v1alpha1.RuntimeStatusOK
-		}
+	// if the apply indicated that the Job had already completed, we can skip
+	// inspecting the Pods, which avoids issues in the event that the Job's
+	// Pod was GC'd
+	if meta.IsStatusConditionTrue(s.Conditions, v1alpha1.ApplyConditionJobComplete) {
+		return v1alpha1.RuntimeStatusOK
 	}
 
 	pod := s.MostRecentPod()

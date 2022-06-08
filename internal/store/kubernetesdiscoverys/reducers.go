@@ -91,21 +91,7 @@ func RefreshKubernetesResource(state *store.EngineState, name string) {
 			krs.FilteredPods = r.FilteredPods
 			krs.Conditions = r.ApplyStatus.Conditions
 
-			isReadyOrSucceeded := false
-			if len(r.FilteredPods) != 0 {
-				for _, pod := range r.FilteredPods {
-					if krs.PodReadinessMode == model.PodReadinessSucceeded {
-						// for jobs, we don't care about whether it's ready, only whether it's succeeded
-						isReadyOrSucceeded = pod.Phase == string(v1.PodSucceeded)
-					} else {
-						isReadyOrSucceeded = len(pod.Containers) != 0 && store.AllPodContainersReady(pod)
-					}
-				}
-			} else {
-				isReadyOrSucceeded = meta.IsStatusConditionTrue(r.ApplyStatus.Conditions, v1alpha1.ApplyConditionJobComplete)
-			}
-
-			if isReadyOrSucceeded {
+			if isReadyOrSucceeded(r, krs.PodReadinessMode) {
 				// NOTE(nick): It doesn't seem right to update this timestamp everytime
 				// we get a new event, but it's what the old code did.
 				krs.LastReadyOrSucceededTime = time.Now()
@@ -114,4 +100,35 @@ func RefreshKubernetesResource(state *store.EngineState, name string) {
 			ms.RuntimeState = krs
 		}
 	}
+}
+
+func isReadyOrSucceeded(r *k8sconv.KubernetesResource, podReadinessMode model.PodReadinessMode) bool {
+	// 1. Apply operation indicated that it was for a Job that already completed,
+	// 	  so we can consider it successful without inspecting Pods, which avoids
+	//    issues in the case that the Job's Pod was GC'd.
+	if meta.IsStatusConditionTrue(r.ApplyStatus.Conditions, v1alpha1.ApplyConditionJobComplete) {
+		return true
+	}
+
+	// 2. We are still waiting on Pods to appear, so indicate we are not ready
+	//    until that happens.
+	if len(r.FilteredPods) == 0 {
+		return false
+	}
+
+	// 3. Ensure that _all_ Pods are in a valid (ready or succeeded) state as
+	//    defined by the PodReadinessMode.
+	for _, pod := range r.FilteredPods {
+		var podReady bool
+		if podReadinessMode == model.PodReadinessSucceeded {
+			// for jobs, we don't care about whether it's ready, only whether it's succeeded
+			podReady = pod.Phase == string(v1.PodSucceeded)
+		} else {
+			podReady = len(pod.Containers) != 0 && store.AllPodContainersReady(pod)
+		}
+		if !podReady {
+			return false
+		}
+	}
+	return true
 }

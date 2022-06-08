@@ -597,27 +597,31 @@ type applyResult struct {
 	Objects            []k8s.K8sEntity
 }
 
+// conditionsFromApply extracts any conditions based on the result.
+//
+// Currently, this is only used as part of special handling for Jobs, which
+// might have already completed successfully in the past.
 func conditionsFromApply(result applyResult) []metav1.Condition {
 	if result.Error != "" || len(result.Objects) == 0 {
 		return nil
 	}
 
 	for _, e := range result.Objects {
-		if e.HasKind("Job") && e.ImmutableOnceCreated() {
-			job := e.Obj.(*batchv1.Job)
-			for _, cond := range job.Status.Conditions {
-				if cond.Type == batchv1.JobComplete && cond.Status == v1.ConditionTrue {
-					return []metav1.Condition{
-						{
-							Type:   v1alpha1.ApplyConditionJobComplete,
-							Status: metav1.ConditionTrue,
-						},
-					}
+		job, ok := e.Obj.(*batchv1.Job)
+		if !ok {
+			continue
+		}
+		for _, cond := range job.Status.Conditions {
+			if cond.Type == batchv1.JobComplete && cond.Status == v1.ConditionTrue {
+				return []metav1.Condition{
+					{
+						Type:   v1alpha1.ApplyConditionJobComplete,
+						Status: metav1.ConditionTrue,
+					},
 				}
 			}
 		}
 	}
-
 	return nil
 }
 
