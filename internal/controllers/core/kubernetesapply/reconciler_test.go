@@ -342,6 +342,7 @@ func TestBasicApplyYAML_JobComplete(t *testing.T) {
 
 	// Make sure that re-reconciling doesn't clear the conditions
 	f.MustReconcile(types.NamespacedName{Name: "a"})
+	f.MustGet(types.NamespacedName{Name: "a"}, &ka)
 	assert.Equal(f.T(), ka.Status.Conditions, expected,
 		"KubernetesApply status should reflect Job completion")
 }
