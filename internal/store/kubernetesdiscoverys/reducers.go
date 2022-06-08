@@ -4,6 +4,7 @@ import (
 	"time"
 
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -88,21 +89,28 @@ func RefreshKubernetesResource(state *store.EngineState, name string) {
 			}
 
 			krs.FilteredPods = r.FilteredPods
+			krs.Conditions = r.ApplyStatus.Conditions
 
 			isReadyOrSucceeded := false
-			for _, pod := range r.FilteredPods {
-				if krs.PodReadinessMode == model.PodReadinessSucceeded {
-					// for jobs, we don't care about whether it's ready, only whether it's succeeded
-					isReadyOrSucceeded = pod.Phase == string(v1.PodSucceeded)
-				} else {
-					isReadyOrSucceeded = len(pod.Containers) != 0 && store.AllPodContainersReady(pod)
+			if len(r.FilteredPods) != 0 {
+				for _, pod := range r.FilteredPods {
+					if krs.PodReadinessMode == model.PodReadinessSucceeded {
+						// for jobs, we don't care about whether it's ready, only whether it's succeeded
+						isReadyOrSucceeded = pod.Phase == string(v1.PodSucceeded)
+					} else {
+						isReadyOrSucceeded = len(pod.Containers) != 0 && store.AllPodContainersReady(pod)
+					}
 				}
-				if isReadyOrSucceeded {
-					// NOTE(nick): It doesn't seem right to update this timestamp everytime
-					// we get a new event, but it's what the old code did.
-					krs.LastReadyOrSucceededTime = time.Now()
-				}
+			} else {
+				isReadyOrSucceeded = meta.IsStatusConditionTrue(r.ApplyStatus.Conditions, v1alpha1.ApplyConditionJobComplete)
 			}
+
+			if isReadyOrSucceeded {
+				// NOTE(nick): It doesn't seem right to update this timestamp everytime
+				// we get a new event, but it's what the old code did.
+				krs.LastReadyOrSucceededTime = time.Now()
+			}
+
 			ms.RuntimeState = krs
 		}
 	}

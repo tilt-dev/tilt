@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tilt-dev/tilt/internal/hud/view"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -170,6 +171,28 @@ func TestRuntimeStateJob(t *testing.T) {
 			assert.Equal(t, tc.expectedRuntimeStatus, runtimeState.RuntimeStatus())
 		})
 	}
+}
+
+func TestRuntimeStateJobCompleteMissingPods(t *testing.T) {
+	f := tempdir.NewTempDirFixture(t)
+
+	m := manifestbuilder.New(f, "foo").
+		WithK8sYAML(testyaml.JobYAML).
+		WithK8sPodReadiness(model.PodReadinessSucceeded).
+		Build()
+	state := newState([]model.Manifest{m})
+	runtimeState := state.ManifestTargets[m.Name].State.K8sRuntimeState()
+	runtimeState.HasEverDeployedSuccessfully = true
+	assert.Equal(t, v1alpha1.RuntimeStatusPending, runtimeState.RuntimeStatus())
+
+	// N.B. there are no pods but a condition attached
+	runtimeState.Conditions = []metav1.Condition{
+		{
+			Type:   v1alpha1.ApplyConditionJobComplete,
+			Status: metav1.ConditionTrue,
+		},
+	}
+	assert.Equal(t, v1alpha1.RuntimeStatusOK, runtimeState.RuntimeStatus())
 }
 
 func TestStateToTerminalViewUnresourcedYAMLManifest(t *testing.T) {
