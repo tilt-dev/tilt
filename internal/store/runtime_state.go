@@ -5,6 +5,8 @@ import (
 	"net/url"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
@@ -79,6 +81,10 @@ type K8sRuntimeState struct {
 	// This must match the FilteredPods field of k8sconv.KubernetesResource
 	FilteredPods []v1alpha1.Pod
 
+	// Conditions from the apply operation; must match the Conditions field
+	// from k8sconv.KubernetesResource::ApplyStatus.
+	Conditions []metav1.Condition
+
 	LastReadyOrSucceededTime    time.Time
 	HasEverDeployedSuccessfully bool
 
@@ -124,8 +130,14 @@ func (s K8sRuntimeState) RuntimeStatus() v1alpha1.RuntimeStatus {
 		return v1alpha1.RuntimeStatusOK
 	}
 
-	pod := s.MostRecentPod()
+	// if the apply indicated that the Job had already completed, we can skip
+	// inspecting the Pods, which avoids issues in the event that the Job's
+	// Pod was GC'd
+	if meta.IsStatusConditionTrue(s.Conditions, v1alpha1.ApplyConditionJobComplete) {
+		return v1alpha1.RuntimeStatusOK
+	}
 
+	pod := s.MostRecentPod()
 	switch v1.PodPhase(pod.Phase) {
 	case v1.PodRunning:
 		if AllPodContainersReady(pod) && s.PodReadinessMode != model.PodReadinessSucceeded {

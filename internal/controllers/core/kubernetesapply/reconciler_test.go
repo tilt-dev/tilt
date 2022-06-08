@@ -8,11 +8,13 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	batchv1 "k8s.io/api/batch/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/uuid"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/tilt-dev/tilt/internal/build"
@@ -293,6 +295,56 @@ func TestBasicApplyCmd_MalformedYAML(t *testing.T) {
 	if assert.Contains(t, ka.Status.Error, "apply command returned malformed YAML") {
 		assert.Contains(t, ka.Status.Error, "stdout:\nthis is not yaml\n")
 	}
+}
+
+func TestBasicApplyYAML_JobComplete(t *testing.T) {
+	f := newFixture(t)
+
+	jobYAML := testyaml.JobYAML
+	entities, err := k8s.ParseYAMLFromString(jobYAML)
+	require.NoError(t, err, "Invalid JobYAML")
+	require.Len(t, entities, 1, "Expected exactly 1 Job entity")
+	require.IsType(t, entities[0].Obj, &batchv1.Job{}, "Expected exactly 1 Job entity")
+	job := entities[0].Obj.(*batchv1.Job)
+	job.SetUID(uuid.NewUUID())
+	job.Status = batchv1.JobStatus{
+		Conditions: []batchv1.JobCondition{
+			{
+				Type:   batchv1.JobComplete,
+				Status: v1.ConditionTrue,
+			},
+		},
+	}
+	f.kClient.UpsertResult = entities
+
+	ka := v1alpha1.KubernetesApply{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "a",
+		},
+		Spec: v1alpha1.KubernetesApplySpec{
+			YAML: testyaml.JobYAML,
+		},
+	}
+	f.Create(&ka)
+
+	f.MustReconcile(types.NamespacedName{Name: "a"})
+	f.MustGet(types.NamespacedName{Name: "a"}, &ka)
+
+	expected := []metav1.Condition{
+		{
+			Type:   "JobComplete",
+			Status: metav1.ConditionTrue,
+		},
+	}
+
+	assert.Equal(f.T(), ka.Status.Conditions, expected,
+		"KubernetesApply status should reflect Job completion")
+
+	// Make sure that re-reconciling doesn't clear the conditions
+	f.MustReconcile(types.NamespacedName{Name: "a"})
+	f.MustGet(types.NamespacedName{Name: "a"}, &ka)
+	assert.Equal(f.T(), ka.Status.Conditions, expected,
+		"KubernetesApply status should reflect Job completion")
 }
 
 func TestGarbageCollectAllOnDelete_YAML(t *testing.T) {
@@ -767,7 +819,7 @@ func (f *fixture) createApplyCmd(name string, yaml string) (v1alpha1.KubernetesA
 	entities, err := k8s.ParseYAMLFromString(yaml)
 	require.NoErrorf(f.T(), err, "Could not parse YAML: %s", yaml)
 	for i := range entities {
-		entities[i].SetUID(uuid.New().String())
+		entities[i].SetUID(string(uuid.NewUUID()))
 	}
 	yamlOut, err := k8s.SerializeSpecYAML(entities)
 	require.NoErrorf(f.T(), err, "Failed to re-serialize YAML for entities: %s", spew.Sdump(entities))

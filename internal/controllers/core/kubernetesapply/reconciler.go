@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
+	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -596,6 +597,34 @@ type applyResult struct {
 	Objects            []k8s.K8sEntity
 }
 
+// conditionsFromApply extracts any conditions based on the result.
+//
+// Currently, this is only used as part of special handling for Jobs, which
+// might have already completed successfully in the past.
+func conditionsFromApply(result applyResult) []metav1.Condition {
+	if result.Error != "" || len(result.Objects) == 0 {
+		return nil
+	}
+
+	for _, e := range result.Objects {
+		job, ok := e.Obj.(*batchv1.Job)
+		if !ok {
+			continue
+		}
+		for _, cond := range job.Status.Conditions {
+			if cond.Type == batchv1.JobComplete && cond.Status == v1.ConditionTrue {
+				return []metav1.Condition{
+					{
+						Type:   v1alpha1.ApplyConditionJobComplete,
+						Status: metav1.ConditionTrue,
+					},
+				}
+			}
+		}
+	}
+	return nil
+}
+
 // Create a result object if necessary. Caller must hold the mutex.
 func (r *Reconciler) ensureResultExists(nn types.NamespacedName) *Result {
 	existing, hasExisting := r.results[nn]
@@ -631,6 +660,7 @@ func (r *Reconciler) recordApplyResult(
 	updatedStatus.LastApplyStartTime = applyResult.LastApplyStartTime
 	updatedStatus.LastApplyTime = applyResult.LastApplyTime
 	updatedStatus.AppliedInputHash = applyResult.AppliedInputHash
+	updatedStatus.Conditions = conditionsFromApply(applyResult)
 
 	result.Cluster = cluster
 	result.Spec = spec
