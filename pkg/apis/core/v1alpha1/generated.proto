@@ -1688,6 +1688,11 @@ message KubernetesApplyStatus {
   // Details about whether/why this is disabled.
   // +optional
   optional DisableStatus disableStatus = 5;
+
+  // Conditions based on the result of the apply.
+  //
+  // +optional
+  repeated k8s.io.apimachinery.pkg.apis.meta.v1.Condition conditions = 7;
 }
 
 message KubernetesClusterConnection {

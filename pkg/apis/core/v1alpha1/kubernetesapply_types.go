@@ -315,9 +315,26 @@ type KubernetesApplyStatus struct {
 	// +optional
 	DisableStatus *DisableStatus `json:"disableStatus,omitempty" protobuf:"bytes,5,opt,name=disableStatus"`
 
+	// Conditions based on the result of the apply.
+	//
+	// +optional
+	Conditions []metav1.Condition `json:"conditions,omitempty" protobuf:"bytes,7,rep,name=conditions"`
+
 	// TODO(nick): We should also add some sort of status field to this
 	// status (like waiting, active, done).
 }
+
+const (
+	// ApplyConditionJobComplete means the apply was for a batch/v1.Job that has already
+	// run to successful completion.
+	//
+	// Tilt primarily monitors Pods for resource runtime status, but no Pod
+	// will be created for the Job in this scenario since it already ran in the
+	// past, and it's possible that the Pod has been GC'd (e.g. due to cluster
+	// settings or due to a Node being recycled). This condition allows Tilt to
+	// bypass Pod monitoring for this resource.
+	ApplyConditionJobComplete string = "JobComplete"
+)
 
 // KubernetesApply implements ObjectWithStatusSubResource interface.
 var _ resource.ObjectWithStatusSubResource = &KubernetesApply{}

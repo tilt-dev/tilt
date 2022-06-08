@@ -2147,6 +2147,13 @@ func (in *KubernetesApplyStatus) DeepCopyInto(out *KubernetesApplyStatus) {
 		*out = new(DisableStatus)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.Conditions != nil {
+		in, out := &in.Conditions, &out.Conditions
+		*out = make([]v1.Condition, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	return
 }
 
