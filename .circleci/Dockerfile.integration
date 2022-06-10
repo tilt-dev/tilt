@@ -54,4 +54,4 @@ RUN curl -fLo ./kind-linux-amd64 https://github.com/kubernetes-sigs/kind/release
   && kind version
 
 # install ctlptl from the ctlptl release image
-COPY --from=tiltdev/ctlptl /usr/local/bin/ctlptl /usr/local/bin/
+COPY --from=docker/tilt-ctlptl /usr/local/bin/ctlptl /usr/local/bin/

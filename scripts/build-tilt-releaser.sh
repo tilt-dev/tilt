@@ -8,5 +8,5 @@ set -ex
 DIR=$(dirname "$0")
 cd "$DIR/.."
 
-docker build -t gcr.io/windmill-public-containers/tilt-releaser -f scripts/release.Dockerfile scripts
-docker push gcr.io/windmill-public-containers/tilt-releaser
+docker build -t docker/tilt-releaser -f scripts/release.Dockerfile scripts
+docker push docker/tilt-releaser
