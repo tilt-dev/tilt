@@ -33,7 +33,7 @@ build:
 
 test-go:
 ifneq ($(CIRCLECI),true)
-		go test -mod vendor -p $(GO_PARALLEL_JOBS) -timeout 100s ./...
+		gotestsum -- -mod vendor -p $(GO_PARALLEL_JOBS) -timeout 100s ./...
 else
 		mkdir -p test-results
 		gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./... -mod vendor -p $(GO_PARALLEL_JOBS) -timeout 100s
@@ -58,7 +58,7 @@ go_pkgs = $(call uniq,$(dir $(go_files)))
 ifneq ($(go_pkgs),)
 testchanges:
 	@echo Testing $(go_pkgs)
-	go test -v -mod vendor -p $(GO_PARALLEL_JOBS) -timeout 60s $(go_pkgs)
+	gotestsum -- -v -mod vendor -p $(GO_PARALLEL_JOBS) -timeout 100s $(go_pkgs)
 else
 testchanges:
 	@echo No go package changes detected by Tilt

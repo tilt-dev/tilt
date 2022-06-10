@@ -1558,10 +1558,6 @@ github.com/tilt-dev/dockerignore v0.1.1 h1:/MPYqcD8qMCMyh3yiHuQdzbMQi9NL4vVopo6/
 github.com/tilt-dev/dockerignore v0.1.1/go.mod h1:2ooUDj8B9FNWYvHadA4EKG0JDaeAOjiq5P+mvEzS2eY=
 github.com/tilt-dev/fsevents v0.0.0-20200515134857-2efe37af20de h1:tG+nJMUUxV7MJm/MeU1Mw7rvmwN9GWyHMMg+wtf9HS4=
 github.com/tilt-dev/fsevents v0.0.0-20200515134857-2efe37af20de/go.mod h1:1jUbPVh7Ani2CSublmvP7+zqTgR06A8Y0MKU9Xr2L5s=
-github.com/tilt-dev/fsnotify v1.4.8-0.20210701141043-dd524499d3fe h1:dULiU6eWdUfLAO0URJz+k1zEN5B3rPS5Iupr4Srd/yk=
-github.com/tilt-dev/fsnotify v1.4.8-0.20210701141043-dd524499d3fe/go.mod h1:9wJjkpCk7ADlLOAl+yIXbHwnMoV9i0+uLr9CG3D5434=
-github.com/tilt-dev/fsnotify v1.4.8-0.20220602152253-ea0655d95d30 h1:Jy1gOjcPhepFoKtZsw23xI/yQEaEIeeftYDaehFTGQI=
-github.com/tilt-dev/fsnotify v1.4.8-0.20220602152253-ea0655d95d30/go.mod h1:xRroudyp5iVtxKqZCrA6n2TLFRBf8bmnjr1UD4x+z7g=
 github.com/tilt-dev/fsnotify v1.4.8-0.20220602155310-fff9c274a375 h1:QB54BJwA6x8QU9nHY3xJSZR2kX9bgpZekRKGkLTmEXA=
 github.com/tilt-dev/fsnotify v1.4.8-0.20220602155310-fff9c274a375/go.mod h1:xRroudyp5iVtxKqZCrA6n2TLFRBf8bmnjr1UD4x+z7g=
 github.com/tilt-dev/fsutil v0.0.0-tilt-20220505 h1:N3tk/EUOxnHXJS5g6YiRseO348IpxZXg1kELykYlKWY=
@@ -2073,7 +2069,6 @@ golang.org/x/sys v0.0.0-20211025201205-69cdffdb9359/go.mod h1:oPkhp1MJrh7nUepCBc
 golang.org/x/sys v0.0.0-20211116061358-0a5406a5449c/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20211124211545-fe61309f8881/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20211205182925-97ca703d548d/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
-golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e h1:fLOSk5Q00efkSvAm+4xcoXD+RRmLmmulPn5I3Y9F2EM=
 golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20220412211240-33da011f77ad h1:ntjMns5wyP/fN65tdBD4g8J5w8n015+iIIs9rtjXkY0=
 golang.org/x/sys v0.0.0-20220412211240-33da011f77ad/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
