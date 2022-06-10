@@ -39,7 +39,8 @@ func (b *CustomBuilder) Build(ctx context.Context, refs container.RefSet,
 	expectedTag := spec.OutputTag
 	outputsImageRefTo := spec.OutputsImageRefTo
 	var registryHost string
-	if reg := refs.Registry(); reg != nil {
+	reg := refs.Registry()
+	if reg != nil {
 		registryHost = reg.Host
 	}
 
@@ -124,7 +125,7 @@ func (b *CustomBuilder) Build(ctx context.Context, refs container.RefSet,
 	}
 
 	if outputsImageRefTo != "" {
-		expectedBuildRefs, err = b.readImageRef(ctx, outputsImageRefTo)
+		expectedBuildRefs, err = b.readImageRef(ctx, outputsImageRefTo, reg)
 		if err != nil {
 			return container.TaggedRefs{}, err
 		}
@@ -171,7 +172,7 @@ func (b *CustomBuilder) Build(ctx context.Context, refs container.RefSet,
 	return taggedWithDigest, nil
 }
 
-func (b *CustomBuilder) readImageRef(ctx context.Context, outputsImageRefTo string) (container.TaggedRefs, error) {
+func (b *CustomBuilder) readImageRef(ctx context.Context, outputsImageRefTo string, reg *v1alpha1.RegistryHosting) (container.TaggedRefs, error) {
 	contents, err := ioutil.ReadFile(outputsImageRefTo)
 	if err != nil {
 		return container.TaggedRefs{}, fmt.Errorf("Could not find image ref in output. Your custom_build script should have written to %s: %v", outputsImageRefTo, err)
@@ -184,9 +185,20 @@ func (b *CustomBuilder) readImageRef(ctx context.Context, outputsImageRefTo stri
 			outputsImageRefTo, err)
 	}
 
-	// TODO(nick): Add support for separate local and cluster refs.
+	clusterRef := ref
+	if reg != nil && reg.HostFromContainerRuntime != "" {
+		replacedName, err := container.ParseNamed(strings.Replace(ref.Name(), reg.Host, reg.HostFromContainerRuntime, 1))
+		if err != nil {
+			return container.TaggedRefs{}, fmt.Errorf("Error converting image ref for cluster: %w", err)
+		}
+		clusterRef, err = reference.WithTag(replacedName, ref.Tag())
+		if err != nil {
+			return container.TaggedRefs{}, fmt.Errorf("Error converting image ref for cluster: %w", err)
+		}
+	}
+
 	return container.TaggedRefs{
 		LocalRef:   ref,
-		ClusterRef: ref,
+		ClusterRef: clusterRef,
 	}, nil
 }
