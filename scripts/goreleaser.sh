@@ -14,7 +14,7 @@ DIR=$(dirname "$0")
 cd "$DIR/.."
 
 docker login
-docker pull gcr.io/windmill-public-containers/tilt-releaser
+docker pull docker/tilt-releaser
 mkdir -p ~/.cache/tilt/release/go-build
 
 docker run --rm --privileged \
@@ -24,5 +24,5 @@ docker run --rm --privileged \
        -v ~/.cache/tilt/release/go-build:/root/.cache/go-build \
        -v "$PWD:/src/tilt:delegated" \
        -v /var/run/docker.sock:/var/run/docker.sock \
-       gcr.io/windmill-public-containers/tilt-releaser \
+       docker/tilt-releaser \
        --rm-dist

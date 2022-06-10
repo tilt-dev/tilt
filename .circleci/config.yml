@@ -10,7 +10,7 @@ jobs:
   build-linux:
     resource_class: medium+
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:0ded7ab32c6af85004a97e39d14ab02f0744af59949ede84ad139ed5f7112e4d
+      - image: docker/tilt-ci@sha256:89016e491fa0dc8a23ea3c023b184fec8e966def190ab29d5631260fe43959c8
     # apiserver code generation scripts require being in GOPATH
     working_directory: /home/circleci/go/src/github.com/tilt-dev/tilt
 
@@ -50,7 +50,7 @@ jobs:
 
   publish-assets:
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-ci@sha256:0ded7ab32c6af85004a97e39d14ab02f0744af59949ede84ad139ed5f7112e4d
+      - image: docker/tilt-ci@sha256:89016e491fa0dc8a23ea3c023b184fec8e966def190ab29d5631260fe43959c8
     steps:
       - checkout
       - gcp-cli/install
@@ -83,7 +83,7 @@ jobs:
   build-integration:
     resource_class: medium+
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-integration-ci@sha256:571c499cb9b8a94dcaf0d847ee367f9cad7dbb17cf035f255c829e9bfd1d2758
+      - image: docker/tilt-integration-ci@sha256:03089fe7d21de858bbbe5e45759b8b4f2e39bc5426051e947d4295fd17e047fc
     steps:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
@@ -132,7 +132,7 @@ jobs:
   release-dry-run:
     docker:
       # keep image in sync with scripts/build.toast.yml
-      - image: gcr.io/windmill-public-containers/tilt-releaser@sha256:80a0b6ec5276ae81b119b0fc3fa149b02b52e314eda33b0229bd60eb89649893
+      - image: docker/tilt-releaser@sha256:80a0b6ec5276ae81b119b0fc3fa149b02b52e314eda33b0229bd60eb89649893
     environment:
       DOCKER_CLI_EXPERIMENTAL: enabled
     steps:
@@ -150,7 +150,7 @@ jobs:
     resource_class: medium+
     docker:
       # keep image in sync with scripts/build.toast.yml
-      - image: gcr.io/windmill-public-containers/tilt-releaser@sha256:80a0b6ec5276ae81b119b0fc3fa149b02b52e314eda33b0229bd60eb89649893
+      - image: docker/tilt-releaser@sha256:80a0b6ec5276ae81b119b0fc3fa149b02b52e314eda33b0229bd60eb89649893
     environment:
       DOCKER_CLI_EXPERIMENTAL: enabled
     steps:
