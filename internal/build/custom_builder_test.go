@@ -200,6 +200,22 @@ func TestCustomBuildOutputsToImageRefSkipsLocalDocker(t *testing.T) {
 	assert.Equal(f.t, container.MustParseNamed(myTag), refs.ClusterRef)
 }
 
+func TestCustomBuildOutputsToImageRef_DifferentClusterHost(t *testing.T) {
+	f := newFakeCustomBuildFixture(t)
+
+	myTag := "localhost:5000/foo/bar:dev"
+	myClusterTag := "registry:5000/foo/bar:dev"
+	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
+	f.dCli.Images[myTag] = types.ImageInspect{ID: string(sha)}
+	cb := f.customBuild(fmt.Sprintf("echo %s > ref.txt", myTag))
+	cb.CmdImageSpec.OutputsImageRefTo = f.JoinPath("ref.txt")
+	reg := &v1alpha1.RegistryHosting{Host: "localhost:5000", HostFromContainerRuntime: "registry:5000"}
+	refs, err := f.cb.Build(f.ctx, refSetWithRegistryFromString("localhost:5000/foo/bar", reg), cb.CmdImageSpec, nil)
+	require.NoError(t, err)
+	assert.Equal(f.t, container.MustParseNamed(myTag), refs.LocalRef)
+	assert.Equal(f.t, container.MustParseNamed(myClusterTag), refs.ClusterRef)
+}
+
 func TestCustomBuildImageDep(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("no sh on windows")
