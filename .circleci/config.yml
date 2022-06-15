@@ -97,7 +97,7 @@ jobs:
 
   test-extensions:
     docker:
-      - image: gcr.io/windmill-public-containers/tilt-extensions-ci@sha256:13da9ee95199c128f18d0a472a73ed4808f673f6cb92d3b01932e9fa083a6a31
+      - image: docker/tilt-extensions-ci@sha256:ebf32ec06a7c8a19e521344aa5f88837b9f03c08d74dacb77b3955c68a6d8b29
     steps:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
