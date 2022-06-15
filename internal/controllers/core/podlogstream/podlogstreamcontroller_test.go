@@ -550,10 +550,7 @@ func (f *plmFixture) ConsumeLogActionsUntil(expected string) {
 
 func (f *plmFixture) AssertOutputContains(s string) {
 	f.t.Helper()
-	err := f.out.WaitUntilContains(s, time.Second)
-	if err != nil {
-		f.t.Fatal(err)
-	}
+	f.out.AssertEventuallyContains(f.t, s, time.Second)
 }
 
 func (f *plmFixture) AssertOutputDoesNotContain(s string) {

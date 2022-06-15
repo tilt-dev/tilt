@@ -16,12 +16,10 @@ func TestTiltArgs(t *testing.T) {
 
 	f.TiltUp("foo")
 
-	err := f.logs.WaitUntilContains("foo run", 5*time.Second)
-	require.NoError(t, err)
-
+	f.logs.AssertEventuallyContains(t, "foo run", 5*time.Second)
 	f.logs.Reset()
 
-	err = f.tilt.Args(f.ctx, []string{"bar"}, f.LogWriter())
+	err := f.tilt.Args(f.ctx, []string{"bar"}, f.LogWriter())
 	if err != nil {
 		// Currently, Tilt starts printing logs before the webserver has bound to a port.
 		// If this happens, just sleep for a second and try again.
@@ -33,8 +31,7 @@ func TestTiltArgs(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	err = f.logs.WaitUntilContains("bar run", time.Second)
-	require.NoError(t, err)
+	f.logs.AssertEventuallyContains(t, "bar run", time.Second)
 
 	require.NotContains(t, f.logs.String(), "foo run")
 }
