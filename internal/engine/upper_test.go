@@ -3107,10 +3107,9 @@ func TestOverrideTriggerModeBadManifestLogsError(t *testing.T) {
 		TriggerMode:   model.TriggerModeManualWithAutoInit,
 	})
 
-	err := f.log.WaitUntilContains("no such manifest", stdTimeout)
-	require.NoError(t, err)
+	f.log.AssertEventuallyContains(t, "no such manifest", stdTimeout)
 
-	err = f.Stop()
+	err := f.Stop()
 	require.NoError(t, err)
 	f.assertAllBuildsConsumed()
 }
@@ -3131,10 +3130,9 @@ func TestOverrideTriggerModeBadTriggerModeLogsError(t *testing.T) {
 		TriggerMode:   12345,
 	})
 
-	err := f.log.WaitUntilContains("invalid trigger mode", stdTimeout)
-	require.NoError(t, err)
+	f.log.AssertEventuallyContains(t, "invalid trigger mode", stdTimeout)
 
-	err = f.Stop()
+	err := f.Stop()
 	require.NoError(t, err)
 	f.assertAllBuildsConsumed()
 }

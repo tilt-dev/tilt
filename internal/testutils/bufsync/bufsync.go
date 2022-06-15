@@ -2,11 +2,13 @@ package bufsync
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"strings"
 	"sync"
+	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type ThreadSafeBuffer struct {
@@ -32,17 +34,12 @@ func (b *ThreadSafeBuffer) String() string {
 	return b.buf.String()
 }
 
-func (b *ThreadSafeBuffer) WaitUntilContains(expected string, timeout time.Duration) error {
-	start := time.Now()
-	for time.Since(start) < timeout {
-		result := b.String()
-		if strings.Contains(result, expected) {
-			return nil
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-
-	return fmt.Errorf("Timeout. Expected %q. Actual: %s", expected, b.String())
+func (b *ThreadSafeBuffer) AssertEventuallyContains(tb testing.TB, expected string, timeout time.Duration) {
+	tb.Helper()
+	assert.Eventuallyf(tb, func() bool {
+		return strings.Contains(b.String(), expected)
+	}, timeout, 10*time.Millisecond,
+		"Expected: %q. Actual: %q", expected, LazyString(b.String))
 }
 
 func (b *ThreadSafeBuffer) Reset() {
@@ -53,3 +50,9 @@ func (b *ThreadSafeBuffer) Reset() {
 }
 
 var _ io.Writer = &ThreadSafeBuffer{}
+
+type LazyString func() string
+
+func (s LazyString) String() string {
+	return s()
+}

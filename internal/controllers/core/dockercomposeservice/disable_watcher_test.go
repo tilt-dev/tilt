@@ -37,7 +37,7 @@ Going to remove servantes_fortune_1
 	f.clock.Advance(20 * disableDebounceDelay)
 	f.startTime = f.clock.Now()
 
-	require.NoError(t, f.log.WaitUntilContains("Stopping servantes", time.Second))
+	f.log.AssertEventuallyContains(t, "Stopping servantes", time.Second)
 	expectedOutput := strings.Replace(f.dcClient.RmOutput, "Going to remove servantes_fortune_1\n", "", -1)
 	require.Equal(t, expectedOutput, f.log.String())
 }

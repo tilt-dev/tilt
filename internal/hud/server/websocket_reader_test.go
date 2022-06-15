@@ -147,8 +147,7 @@ func (f *websocketReaderFixture) assertHandlerCallCount(n int) {
 }
 
 func (f *websocketReaderFixture) assertLogs(msg string) {
-	err := f.out.WaitUntilContains(msg, time.Millisecond*50)
-	assert.NoError(f.t, err)
+	f.out.AssertEventuallyContains(f.t, msg, time.Second)
 }
 
 func (f *websocketReaderFixture) tearDown() {
