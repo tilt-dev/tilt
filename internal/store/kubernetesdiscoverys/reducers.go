@@ -52,7 +52,7 @@ func filterForResource(state *store.EngineState, name string) (*k8sconv.Kubernet
 	// if the yaml matches the existing resource, use its filter to save re-parsing
 	// (https://github.com/tilt-dev/tilt/issues/5837)
 	if prevResource, ok := state.KubernetesResources[name]; ok {
-		if a.Status.ResultYAML == prevResource.ApplyStatus.ResultYAML {
+		if prevResource.ApplyStatus != nil && a.Status.ResultYAML == prevResource.ApplyStatus.ResultYAML {
 			return prevResource.ApplyFilter, nil
 		}
 	}
