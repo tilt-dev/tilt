@@ -36,7 +36,7 @@ import (
 var podLogHealthCheck = 15 * time.Second
 var podLogReconnectGap = 2 * time.Second
 
-const maxDebounceDuration = 5 * time.Minute
+const maxDebounceDuration = time.Minute
 
 var clusterGVK = v1alpha1.SchemeGroupVersion.WithKind("Cluster")
 
@@ -56,6 +56,7 @@ type Controller struct {
 	watches         map[podLogKey]*podLogWatch
 	hasClosedStream map[podLogKey]bool
 	statuses        map[types.NamespacedName]*PodLogStreamStatus
+	debounces       map[types.NamespacedName]time.Duration
 }
 
 var _ reconcile.Reconciler = &Controller{}
@@ -72,6 +73,7 @@ func NewController(ctx context.Context, client ctrlclient.Client, scheme *runtim
 		watches:         make(map[podLogKey]*podLogWatch),
 		hasClosedStream: make(map[podLogKey]bool),
 		statuses:        make(map[types.NamespacedName]*PodLogStreamStatus),
+		debounces:       make(map[types.NamespacedName]time.Duration),
 		clock:           clock,
 	}
 }
@@ -157,15 +159,15 @@ func (c *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reco
 	ctx = store.MustObjectLogHandler(ctx, c.st, stream)
 	err = c.podSource.handleReconcileRequest(ctx, streamName, stream)
 	if err != nil {
-		c.setErrorStatus(streamName, err)
+		result = c.setErrorStatus(streamName, err)
 	} else {
 		podNN := types.NamespacedName{Name: stream.Spec.Pod, Namespace: stream.Spec.Namespace}
 		pod, err := c.kClient.PodFromInformerCache(ctx, podNN)
 		if err != nil && apierrors.IsNotFound(err) {
 			c.deleteStreams(streamName)
-			c.setErrorStatus(streamName, fmt.Errorf("pod not found: %s", podNN))
+			result = c.setErrorStatus(streamName, fmt.Errorf("pod not found: %s", podNN))
 		} else if err != nil {
-			c.setErrorStatus(streamName, fmt.Errorf("reading pod: %v", err))
+			result = c.setErrorStatus(streamName, fmt.Errorf("reading pod: %v", err))
 		} else if pod != nil {
 			result = c.addOrUpdateContainerWatches(ctx, streamName, stream, podNN, pod)
 		}
@@ -449,6 +451,7 @@ func (c *Controller) ensureStatusActive(streamName types.NamespacedName, contain
 	}
 	status.ContainerStatuses = statuses
 	status.Error = ""
+	delete(c.debounces, streamName)
 }
 
 // Modify the status of a container log stream.
@@ -469,7 +472,7 @@ func (c *Controller) mutateContainerStatus(streamName types.NamespacedName, cont
 }
 
 // Set the pod log stream to an error status
-func (c *Controller) setErrorStatus(streamName types.NamespacedName, err error) {
+func (c *Controller) setErrorStatus(streamName types.NamespacedName, err error) reconcile.Result {
 	status, ok := c.statuses[streamName]
 	if !ok {
 		status = &PodLogStreamStatus{}
@@ -477,9 +480,21 @@ func (c *Controller) setErrorStatus(streamName types.NamespacedName, err error) 
 	}
 	if err == nil {
 		status.Error = ""
+		delete(c.debounces, streamName)
 	} else {
 		status.Error = err.Error()
+
+		prevDebounce := c.debounces[streamName]
+		newDebounce := prevDebounce * 2
+
+		if newDebounce == 0 {
+			newDebounce = time.Second
+		} else if newDebounce > maxDebounceDuration {
+			newDebounce = maxDebounceDuration
+		}
+		c.debounces[streamName] = newDebounce
 	}
+	return reconcile.Result{RequeueAfter: c.debounces[streamName]}
 }
 
 // Update the server with the current container status.
