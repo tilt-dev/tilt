@@ -457,6 +457,34 @@ func TestDeletionTimestamp(t *testing.T) {
 	assert.Len(t, f.plsc.hasClosedStream, 1)
 }
 
+func TestMissingPod(t *testing.T) {
+	f := newPLMFixture(t)
+
+	f.kClient.SetLogsForPodContainer(podID, cName, "hello world!")
+
+	start := f.clock.Now()
+
+	pb := newPodBuilder(podID).addRunningContainer(cName, cID)
+	pls := plsFromPod("server", pb, start)
+	nn := types.NamespacedName{Name: pls.Name}
+	result := f.Create(pls)
+	assert.Equal(t, time.Second, result.RequeueAfter)
+
+	result = f.MustReconcile(nn)
+	assert.Equal(t, 2*time.Second, result.RequeueAfter)
+
+	f.Get(nn, pls)
+	assert.Equal(t, "pod not found: default/pod-id", pls.Status.Error)
+
+	f.kClient.UpsertPod(pb.toPod())
+
+	result = f.MustReconcile(nn)
+	assert.Equal(t, time.Duration(0), result.RequeueAfter)
+
+	f.AssertOutputContains("hello world!")
+	f.AssertLogStartTime(start)
+}
+
 type plmStore struct {
 	t testing.TB
 	*store.TestingStore
