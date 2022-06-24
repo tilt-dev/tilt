@@ -8,7 +8,6 @@ import {
 
 type HudState = {
   view: Proto.webviewView
-  snapshotLink: string
   snapshotHighlight: SnapshotHighlight | undefined
   snapshotDialogAnchor: HTMLElement | null
   snapshotStartTime: string | undefined

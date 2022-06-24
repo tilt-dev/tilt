@@ -86,7 +86,7 @@ var MainDefaults = Defaults{
 	},
 	OfflineSnapshotCreation: Value{
 		Enabled: true,
-		Status:  Active,
+		Status:  Obsolete,
 	},
 }
 

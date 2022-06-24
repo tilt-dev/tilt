@@ -69,7 +69,6 @@ export default class HUD extends Component<HudProps, HudState> {
 
     this.state = {
       view: {},
-      snapshotLink: "",
       snapshotHighlight: undefined,
       snapshotDialogAnchor: null,
       snapshotStartTime: undefined,
@@ -85,7 +84,6 @@ export default class HUD extends Component<HudProps, HudState> {
     this.handleOpenModal = this.handleOpenModal.bind(this)
     this.handleShowCopySuccess = this.handleShowCopySuccess.bind(this)
     this.setError = this.setError.bind(this)
-    this.sendSnapshot = this.sendSnapshot.bind(this)
     this.snapshotFromState = this.snapshotFromState.bind(this)
     this.getSnapshotProviderProps = this.getSnapshotProviderProps.bind(this)
   }
@@ -133,54 +131,6 @@ export default class HUD extends Component<HudProps, HudState> {
       snapshotHighlight: state.snapshotHighlight,
       createdAt: new Date().toISOString(),
     }
-  }
-
-  sendSnapshot(snapshot: Proto.webviewSnapshot) {
-    let url = `//${window.location.host}/api/snapshot/new`
-
-    if (!snapshot.view) {
-      return
-    }
-
-    let body = JSON.stringify(snapshot)
-
-    fetch(url, {
-      method: "post",
-      body: body,
-    })
-      .then((res) => {
-        if (res.ok) {
-          return res
-            .json()
-            .then((value: Proto.webviewUploadSnapshotResponse) => {
-              this.setState({
-                snapshotLink: value.url ? value.url : "",
-              })
-            })
-            .catch((err) => {
-              console.error(err)
-              this.setState({
-                showSnapshotModal: false,
-                error: "Error decoding JSON response",
-              })
-            })
-        } else {
-          return res.text().then((text) => {
-            console.error(`Snapshot error: ${text}`)
-            this.setState({
-              showSnapshotModal: false,
-              error: `Snapshot error: ${text}`,
-            })
-          })
-        }
-      })
-      .catch((err) => {
-        console.error(err)
-        this.setState({
-          showSnapshotModal: false,
-          error: "Error posting snapshot",
-        })
-      })
   }
 
   handleShowCopySuccess() {
@@ -314,35 +264,14 @@ export default class HUD extends Component<HudProps, HudState> {
   }
 
   renderShareSnapshotModal(view: Proto.webviewView | null) {
-    let handleClose = () =>
-      this.setState({ showSnapshotModal: false, snapshotLink: "" })
-    let session = view?.uiSession?.status
-    let tiltCloudUsername = session?.tiltCloudUsername || null
-    let tiltCloudSchemeHost = session?.tiltCloudSchemeHost || ""
-    let tiltCloudTeamID = session?.tiltCloudTeamID || null
-    let highlightedLines = this.state.snapshotHighlight
-      ? Math.abs(
-          parseInt(this.state.snapshotHighlight.endingLogID, 10) -
-            parseInt(this.state.snapshotHighlight.beginningLogID, 10)
-        ) + 1
-      : null
+    let handleClose = () => this.setState({ showSnapshotModal: false })
     return (
-      <FeaturesProvider
-        featureFlags={this.state.view.uiSession?.status?.featureFlags || null}
-      >
-        <ShareSnapshotModal
-          handleSendSnapshot={this.sendSnapshot}
-          getSnapshot={() => this.snapshotFromState(this.state)}
-          handleClose={handleClose}
-          snapshotUrl={this.state.snapshotLink}
-          tiltCloudUsername={tiltCloudUsername}
-          tiltCloudSchemeHost={tiltCloudSchemeHost}
-          tiltCloudTeamID={tiltCloudTeamID}
-          isOpen={this.state.showSnapshotModal}
-          dialogAnchor={this.state.snapshotDialogAnchor}
-          highlightedLines={highlightedLines}
-        />
-      </FeaturesProvider>
+      <ShareSnapshotModal
+        getSnapshot={() => this.snapshotFromState(this.state)}
+        handleClose={handleClose}
+        isOpen={this.state.showSnapshotModal}
+        dialogAnchor={this.state.snapshotDialogAnchor}
+      />
     )
   }
 
