@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Notifies Tilt Cloud of a new Tilt Release
+# Updates cloud.tilt.dev with the new release.
 
 set -eu
 
@@ -20,21 +20,16 @@ fi
 # strip the leading v, e.g., turn "v0.10.0" into "0.10.0"
 VERSION="${1#v}"
 
-URL="https://cloud.tilt.dev/api/tiltrelease/new"
+DIR=$(dirname "$0")
+cd "$DIR/.."
 
-TOKEN_FILE="$HOME/.windmill/token"
+ROOT=$(mktemp -d)
+git clone https://tilt-releaser:"$GITHUB_TOKEN"@github.com/tilt-dev/cloud.tilt.dev "$ROOT"
+echo "{\"Found\":false,\"Username\":\"\",\"TeamName\":\"\",\"TeamRole\":\"\",\"SuggestedTiltVersion\":\"$VERSION\",\"UserID\":0}" > "$ROOT/web/api/whoami"
 
-if [[ ! -f $TOKEN_FILE ]]; then
-  die "error: $TOKEN_FILE not found. Run tilt to create one and register it to your Tilt Cloud account."
-fi
+git config --global user.email "it@tilt.dev"
+git config --global user.name "Tilt Dev"
+git commit -a -m "Notify all tilt users of new version: $VERSION"
+git push origin main
 
-TOKEN="$(cat "$TOKEN_FILE")"
-
-JSON='{"version": "'"$VERSION"'", "timestamp": "'"$(date --iso-8601=seconds)"'"}'
-
-HTTP_STATUS="$(curl --output /dev/stderr --write-out "%{http_code}" -sSL "$URL" -H "X-Tilt-Token: $TOKEN" -X POST -H "Content-Type: application/json" -d "$JSON")"
-if [[ HTTP_STATUS -eq 401 ]]; then
-  die "error: user unauthorized to record a Tilt release.
-
-Ensure your Tilt token is registered to a Tilt Cloud account, and that Tilt Cloud account is a member of the 'Tilt Employees' Tilt Cloud team (have a Tilter with DB access manually add you)."
-fi
+rm -fR "$ROOT"
