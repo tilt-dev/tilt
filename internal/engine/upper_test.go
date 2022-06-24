@@ -110,7 +110,6 @@ import (
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
-	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
 	"github.com/tilt-dev/wmclient/pkg/analytics"
 )
 
@@ -4096,19 +4095,6 @@ func assertLineMatches(t *testing.T, lines []string, re *regexp.Regexp) {
 func assertContainsOnce(t *testing.T, s string, val string) {
 	assert.Contains(t, s, val)
 	assert.Equal(t, 1, strings.Count(s, val), "Expected string to appear only once")
-}
-
-type fakeSnapshotUploader struct {
-}
-
-var _ cloud.SnapshotUploader = &fakeSnapshotUploader{}
-
-func (f *fakeSnapshotUploader) Upload(token token.Token, teamID string, snapshot *proto_webview.Snapshot) (cloud.SnapshotID, error) {
-	panic("not implemented")
-}
-
-func (f *fakeSnapshotUploader) IDToSnapshotURL(id cloud.SnapshotID) string {
-	panic("not implemented")
 }
 
 // stringifyTargetIDs attempts to make a unique string to identify any set of targets

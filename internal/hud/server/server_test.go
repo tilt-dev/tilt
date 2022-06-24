@@ -8,13 +8,11 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
 
-	grpcRuntime "github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,8 +20,6 @@ import (
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
-	"github.com/tilt-dev/tilt/internal/cloud"
-	"github.com/tilt-dev/tilt/internal/cloud/cloudurl"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/hud/view"
@@ -33,7 +29,6 @@ import (
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/assets"
 	"github.com/tilt-dev/tilt/pkg/model"
-	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
 	"github.com/tilt-dev/wmclient/pkg/analytics"
 )
 
@@ -291,40 +286,6 @@ func TestHandleOverrideTriggerModeDispatchesEvent(t *testing.T) {
 	assert.Equal(t, expected, action)
 }
 
-func TestHandleNewSnapshot(t *testing.T) {
-	f := newTestFixture(t)
-
-	sp := filepath.Join("..", "webview", "testdata", "snapshot.json")
-	snap, err := ioutil.ReadFile(sp)
-	if err != nil {
-		t.Fatal(err)
-	}
-	req, err := http.NewRequest(http.MethodPost, "/api/snapshot/new", bytes.NewBuffer(snap))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(f.serv.HandleNewSnapshot)
-
-	handler.ServeHTTP(rr, req)
-
-	require.Equal(t, http.StatusOK, rr.Code,
-		"handler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
-	require.Contains(t, rr.Body.String(), "https://nonexistent.example.com/snapshot/aaaaa")
-
-	lastReq := f.snapshotHTTP.lastReq
-	if assert.NotNil(t, lastReq) {
-		var snapshot proto_webview.Snapshot
-		jspb := &grpcRuntime.JSONPb{}
-		decoder := jspb.NewDecoder(lastReq.Body)
-		err := decoder.Decode(&snapshot)
-		require.NoError(t, err)
-		assert.Equal(t, "0.10.13", snapshot.View.RunningTiltBuild.Version)
-		assert.Equal(t, "43", snapshot.SnapshotHighlight.BeginningLogID)
-	}
-}
-
 func TestSetTiltfileArgs(t *testing.T) {
 	f := newTestFixture(t)
 
@@ -373,8 +334,6 @@ func newTestFixture(t *testing.T) *serverFixture {
 	opter := tiltanalytics.NewFakeOpter(analytics.OptIn)
 	a, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(opter)
 	snapshotHTTP := &fakeHTTPClient{}
-	addr := cloudurl.Address("nonexistent.example.com")
-	uploader := cloud.NewSnapshotUploader(snapshotHTTP, addr)
 	wsl := server.NewWebsocketList()
 	ctrlClient := fake.NewFakeTiltClient()
 	_ = ctrlClient.Create(context.Background(), &v1alpha1.Tiltfile{
@@ -383,7 +342,7 @@ func newTestFixture(t *testing.T) *serverFixture {
 
 	ctx := context.Background()
 
-	serv, err := server.ProvideHeadsUpServer(ctx, st, assets.NewFakeServer(), ta, uploader, wsl, ctrlClient)
+	serv, err := server.ProvideHeadsUpServer(ctx, st, assets.NewFakeServer(), ta, wsl, ctrlClient)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,11 +1,9 @@
 package server
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -23,7 +21,6 @@ import (
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
-	"github.com/tilt-dev/tilt/internal/cloud"
 	"github.com/tilt-dev/tilt/internal/hud/webview"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/tiltfiles"
@@ -65,7 +62,6 @@ type HeadsUpServer struct {
 	store      *store.Store
 	router     *mux.Router
 	a          *tiltanalytics.TiltAnalytics
-	uploader   cloud.SnapshotUploader
 	wsList     *WebsocketList
 	ctrlClient ctrlclient.Client
 }
@@ -75,7 +71,6 @@ func ProvideHeadsUpServer(
 	store *store.Store,
 	assetServer assets.Server,
 	analytics *tiltanalytics.TiltAnalytics,
-	uploader cloud.SnapshotUploader,
 	wsList *WebsocketList,
 	ctrlClient ctrlclient.Client) (*HeadsUpServer, error) {
 	r := mux.NewRouter().UseEncodedPath()
@@ -84,7 +79,6 @@ func ProvideHeadsUpServer(
 		store:      store,
 		router:     r,
 		a:          analytics,
-		uploader:   uploader,
 		wsList:     wsList,
 		ctrlClient: ctrlClient,
 	}
@@ -95,7 +89,6 @@ func ProvideHeadsUpServer(
 	r.HandleFunc("/api/analytics_opt", s.HandleAnalyticsOpt)
 	r.HandleFunc("/api/trigger", s.HandleTrigger)
 	r.HandleFunc("/api/override/trigger_mode", s.HandleOverrideTriggerMode)
-	r.HandleFunc("/api/snapshot/new", s.HandleNewSnapshot).Methods("POST")
 	// this endpoint is only used for testing snapshots in development
 	r.HandleFunc("/api/snapshot/{snapshot_id}", s.SnapshotJSON)
 	r.HandleFunc("/api/websocket_token", s.WebsocketToken)
@@ -315,78 +308,6 @@ func (s *HeadsUpServer) HandleOverrideTriggerMode(w http.ResponseWriter, req *ht
 		ManifestNames: model.ManifestNames(payload.ManifestNames),
 		TriggerMode:   model.TriggerMode(payload.TriggerMode),
 	})
-}
-
-/* -- SNAPSHOT: SENDING SNAPSHOT TO SERVER -- */
-type snapshotURLJson struct {
-	Url string `json:"url"`
-}
-
-func (s *HeadsUpServer) HandleNewSnapshot(w http.ResponseWriter, req *http.Request) {
-	st := s.store.RLockState()
-	token := st.Token
-	teamID := st.TeamID
-	s.store.RUnlockState()
-
-	b, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		msg := fmt.Sprintf("error reading body: %v", err)
-		log.Println(msg)
-		http.Error(w, msg, http.StatusInternalServerError)
-		return
-	}
-
-	jspb := &runtime.JSONPb{}
-	decoder := jspb.NewDecoder(bytes.NewBuffer(b))
-	var snapshot *proto_webview.Snapshot
-
-	// TODO(nick): Add more strict decoding once we have better safeguards for making
-	// sure the Go and JS types are in-sync.
-	// decoder.DisallowUnknownFields()
-
-	err = decoder.Decode(&snapshot)
-	if err != nil {
-		msg := fmt.Sprintf("Error decoding snapshot: %v\n", err)
-		log.Println(msg)
-		http.Error(w, msg, http.StatusInternalServerError)
-		return
-	}
-
-	if snapshot != nil && snapshot.GetCreatedAt().AsTime().IsZero() {
-		snapshot.CreatedAt = timestamppb.Now()
-	}
-
-	id, err := s.uploader.Upload(token, teamID, snapshot)
-	if err != nil {
-		msg := fmt.Sprintf("Error creating snapshot: %v", err)
-		log.Println(msg)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	responsePayload := snapshotURLJson{
-		Url: s.uploader.IDToSnapshotURL(id),
-	}
-
-	// encode URL to JSON format
-	urlJS, err := json.Marshal(responsePayload)
-	if err != nil {
-		msg := fmt.Sprintf("Error to marshal url JSON response %v", err)
-		log.Println(msg)
-		http.Error(w, msg, http.StatusInternalServerError)
-		return
-	}
-
-	// write URL to header
-	w.WriteHeader(http.StatusOK)
-	_, err = w.Write(urlJS)
-	if err != nil {
-		msg := fmt.Sprintf("Error writing URL response: %v", err)
-		log.Println(msg)
-		http.Error(w, msg, http.StatusInternalServerError)
-		return
-	}
-
 }
 
 func (s *HeadsUpServer) WebsocketToken(w http.ResponseWriter, req *http.Request) {

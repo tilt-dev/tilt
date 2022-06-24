@@ -237,12 +237,9 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
-	httpClient := cloud.ProvideHttpClient()
-	address := cloudurl.ProvideAddress()
-	snapshotUploader := cloud.NewSnapshotUploader(httpClient, address)
 	websocketList := server.NewWebsocketList()
 	deferredClient := controllers.ProvideDeferredClient()
-	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics3, snapshotUploader, websocketList, deferredClient)
+	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics3, websocketList, deferredClient)
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
@@ -364,6 +361,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	analyticsReporter := analytics2.ProvideAnalyticsReporter(analytics3, storeStore, client, product, defaults)
 	analyticsUpdater := analytics2.NewAnalyticsUpdater(analytics3, cmdTags, engineMode)
 	eventWatchManager := k8swatch.NewEventWatchManager(connectionManager, namespace)
+	httpClient := cloud.ProvideHttpClient()
 	cloudStatusManager := cloud.NewStatusManager(httpClient, clock)
 	dockerPruner := dockerprune.NewDockerPruner(compositeClient)
 	telemetryController := telemetry.NewController(buildClock, spanCollector)
@@ -381,6 +379,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
+	address := cloudurl.ProvideAddress()
 	snapshotter := cloud.NewSnapshotter(storeStore, deferredClient)
 	cmdUpDeps := CmdUpDeps{
 		Upper:        upper,
@@ -446,12 +445,9 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
-	httpClient := cloud.ProvideHttpClient()
-	address := cloudurl.ProvideAddress()
-	snapshotUploader := cloud.NewSnapshotUploader(httpClient, address)
 	websocketList := server.NewWebsocketList()
 	deferredClient := controllers.ProvideDeferredClient()
-	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics3, snapshotUploader, websocketList, deferredClient)
+	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics3, websocketList, deferredClient)
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
@@ -574,6 +570,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	cmdTags := _wireCmdTagsValue
 	analyticsUpdater := analytics2.NewAnalyticsUpdater(analytics3, cmdTags, engineMode)
 	eventWatchManager := k8swatch.NewEventWatchManager(connectionManager, namespace)
+	httpClient := cloud.ProvideHttpClient()
 	cloudStatusManager := cloud.NewStatusManager(httpClient, clock)
 	dockerPruner := dockerprune.NewDockerPruner(compositeClient)
 	telemetryController := telemetry.NewController(buildClock, spanCollector)
@@ -591,6 +588,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
+	address := cloudurl.ProvideAddress()
 	snapshotter := cloud.NewSnapshotter(storeStore, deferredClient)
 	cmdCIDeps := CmdCIDeps{
 		Upper:        upper,
@@ -651,12 +649,9 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	if err != nil {
 		return CmdUpdogDeps{}, err
 	}
-	httpClient := cloud.ProvideHttpClient()
-	address := cloudurl.ProvideAddress()
-	snapshotUploader := cloud.NewSnapshotUploader(httpClient, address)
 	websocketList := server.NewWebsocketList()
 	deferredClient := controllers.ProvideDeferredClient()
-	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics3, snapshotUploader, websocketList, deferredClient)
+	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics3, websocketList, deferredClient)
 	if err != nil {
 		return CmdUpdogDeps{}, err
 	}
@@ -767,6 +762,7 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	if err != nil {
 		return CmdUpdogDeps{}, err
 	}
+	address := cloudurl.ProvideAddress()
 	cmdUpdogDeps := CmdUpdogDeps{
 		Upper:        upper,
 		TiltBuild:    tiltBuild,
