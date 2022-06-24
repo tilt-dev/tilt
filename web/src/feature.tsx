@@ -12,7 +12,6 @@ export enum Flag {
   Events = "events",
   Snapshots = "snapshots",
   Labels = "labels",
-  OfflineSnapshotCreation = "offline_snapshot_creation",
 }
 
 export default class Features {

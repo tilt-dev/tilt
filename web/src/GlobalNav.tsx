@@ -1,15 +1,13 @@
 import React, { Component, useMemo, useRef, useState } from "react"
 import styled from "styled-components"
-import { AccountMenuDialog } from "./AccountMenu"
 import { AnalyticsAction, AnalyticsType, incr } from "./analytics"
-import { ReactComponent as AccountIcon } from "./assets/svg/account.svg"
 import { ReactComponent as ClusterErrorIcon } from "./assets/svg/close.svg"
 import { ReactComponent as ClusterIcon } from "./assets/svg/cluster-icon.svg"
 import { ReactComponent as HelpIcon } from "./assets/svg/help.svg"
 import { ReactComponent as SnapshotIcon } from "./assets/svg/snapshot.svg"
 import { ReactComponent as UpdateAvailableIcon } from "./assets/svg/update-available.svg"
 import { ClusterStatusDialog, getDefaultCluster } from "./ClusterStatusDialog"
-import { Flag, useFeatures } from "./feature"
+import { useFeatures } from "./feature"
 import HelpDialog from "./HelpDialog"
 import { isTargetEditable } from "./shortcut"
 import { SnapshotAction } from "./snapshot"
@@ -268,25 +266,6 @@ export function GlobalNav(props: GlobalNavProps) {
     </MenuButtonLabeled>
   ) : null
 
-  // Don't render the account button if offline snapshots are enabled
-  // because an account isn't needed to generate them
-  const displayAccountInfo = !features.isEnabled(Flag.OfflineSnapshotCreation)
-  const accountMenuButton = displayAccountInfo ? (
-    <MenuButtonLabeled label="Account">
-      <MenuButton
-        ref={accountButton}
-        onClick={() => toggleDialog(NavDialog.Account)}
-        data-open={openDialog === NavDialog.Account}
-        aria-expanded={openDialog === NavDialog.Account}
-        aria-label="Account"
-        aria-haspopup="true"
-        role="menuitem"
-      >
-        <AccountIcon width="24" height="24" />
-      </MenuButton>
-    </MenuButtonLabeled>
-  ) : null
-
   const versionButtonLabel = props.showUpdate ? "Get Update" : "Version"
 
   return (
@@ -327,22 +306,11 @@ export function GlobalNav(props: GlobalNavProps) {
         </MenuButton>
       </MenuButtonLabeled>
 
-      {accountMenuButton}
-
       <ClusterStatusDialog
         open={openDialog === NavDialog.Cluster}
         onClose={() => toggleDialog(NavDialog.Cluster)}
         anchorEl={clusterButton?.current}
         clusterConnection={defaultClusterInfo}
-      />
-      <AccountMenuDialog
-        open={openDialog === NavDialog.Account}
-        anchorEl={accountButton?.current}
-        onClose={() => toggleDialog(NavDialog.Account)}
-        tiltCloudUsername={props.tiltCloudUsername}
-        tiltCloudSchemeHost={props.tiltCloudSchemeHost}
-        tiltCloudTeamID={props.tiltCloudTeamID}
-        tiltCloudTeamName={props.tiltCloudTeamName}
       />
       <HelpDialog
         open={openDialog === NavDialog.Help}
