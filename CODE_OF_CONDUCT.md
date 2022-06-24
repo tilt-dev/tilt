@@ -7,7 +7,7 @@
 * If you encounter an issue, please email [**conduct@tilt.dev**](mailto:conduct@tilt.dev)
 
 ## Goals of This Document
-Windmill Engineering is committed to providing a friendly, safe, and welcoming environment for all of our users, contributors, followers, and Fans, regardless of: gender identity or expression; sexual orientation; disability; neurodivergence; physical appearance; body size; ethnicity; nationality; race; age; religion; level of technical experience; education; socio-economic status; or similar personal characteristics.
+The Tilt project is committed to providing a friendly, safe, and welcoming environment for all of our users, contributors, followers, and Fans, regardless of: gender identity or expression; sexual orientation; disability; neurodivergence; physical appearance; body size; ethnicity; nationality; race; age; religion; level of technical experience; education; socio-economic status; or similar personal characteristics.
 
 The first goal of the Code of Conduct is to specify a baseline standard of behavior so that people with different social values and communication styles can talk effectively, productively, and respectfully.
 
