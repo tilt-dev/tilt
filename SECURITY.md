@@ -1,13 +1,11 @@
 # Responsible Disclosure Policy
 
-Data security is a top priority for Windmill Engineering (the company behind
-Tilt).  We believe that working with skilled security researchers can identify
-weaknesses in any technology.
+Data security is a top priority for the Tilt project.  We believe that working
+with skilled security researchers can identify weaknesses in any technology.
 
 If you believe you've found a security vulnerability in Tilt or in any cloud
-service that Tilt sends data to (including but not limited to
-https://cloud.tilt.dev), please notify us. We will work with you to resolve the
-issue promptly.
+service that Tilt sends data to, please notify us. We will work with you to
+resolve the issue promptly.
 
 ## Disclosure Policy
 
@@ -32,12 +30,12 @@ While researching, we'd like you to refrain from:
 
 - Spamming
 
-- Social engineering or phishing of Windmill Engineering employees or
+- Social engineering or phishing of Docker employees or
   contractors
 
-- Any attacks against Windmill Engineering's physical property
+- Any attacks against physical property
 
-Thank you for helping to keep Windmill Engineering and our users safe!
+Thank you for helping to keep Tilt and our users safe!
 
 ## Changes
 
@@ -46,16 +44,6 @@ version of the guidelines will be available at https://github.com/tilt-dev/tilt/
 
 ## Contact
 
-Windmill Engineering is always open to feedback, questions, and suggestions. If
+The Tilt project is always open to feedback, questions, and suggestions. If
 you would like to talk to us, please feel free to email us at hi@tilt.dev.
 
-## Disciplinary Action
-
-Employees who violate this policy may face disciplinary consequences in
-proportion to their violation. Windmill Engineering management will determine how
-serious an employee's offense is and take the appropriate action.
-
-## Responsibility
-
-It is the CTO of Windmill Engineering's responsibility to see this policy is
-enforced.
