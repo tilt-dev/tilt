@@ -167,10 +167,6 @@ export function MenuButtonLabeled(
 
 export type GlobalNavProps = {
   isSnapshot: boolean
-  tiltCloudUsername: string
-  tiltCloudSchemeHost: string
-  tiltCloudTeamID: string
-  tiltCloudTeamName: string
   snapshot: SnapshotAction
   showUpdate: boolean
   suggestedVersion: string | null | undefined

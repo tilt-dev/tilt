@@ -66,7 +66,6 @@ func TestWriteSnapshotTo(t *testing.T) {
         "versionSettings": {
           "checkUpdates": true
         },
-        "tiltCloudSchemeHost": "https:",
         "tiltfileKey": "Tiltfile"
       }
     },

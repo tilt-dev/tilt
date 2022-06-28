@@ -8446,28 +8446,28 @@ func schema_pkg_apis_core_v1alpha1_UISessionStatus(ref common.ReferenceCallback)
 					},
 					"tiltCloudUsername": {
 						SchemaProps: spec.SchemaProps{
-							Description: "TiltCloudUsername reports the username if the user is signed into TiltCloud.",
+							Description: "TiltCloudUsername reports the username if the user is signed into TiltCloud.\n\ndeprecated: no longer populated",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
 					"tiltCloudTeamName": {
 						SchemaProps: spec.SchemaProps{
-							Description: "TiltCloudUsername reports the human-readable team name if the user is signed into TiltCloud and the Tiltfile declares a team.",
+							Description: "TiltCloudUsername reports the human-readable team name if the user is signed into TiltCloud and the Tiltfile declares a team.\n\ndeprecated: no longer populated",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
 					"tiltCloudSchemeHost": {
 						SchemaProps: spec.SchemaProps{
-							Description: "TiltCloudSchemeHost reports the base URL of the Tilt Cloud instance associated with this Tilt process. Usually https://cloud.tilt.dev",
+							Description: "TiltCloudSchemeHost reports the base URL of the Tilt Cloud instance associated with this Tilt process. Usually https://cloud.tilt.dev\n\ndeprecated: no longer populated",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
 					"tiltCloudTeamID": {
 						SchemaProps: spec.SchemaProps{
-							Description: "TiltCloudTeamID reports the unique team id if the user is signed into TiltCloud and the Tiltfile declares a team.",
+							Description: "TiltCloudTeamID reports the unique team id if the user is signed into TiltCloud and the Tiltfile declares a team.\n\ndeprecated: no longer populated",
 							Type:        []string{"string"},
 							Format:      "",
 						},

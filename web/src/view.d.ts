@@ -392,9 +392,38 @@ declare namespace Proto {
     runningTiltBuild?: corev1alpha1TiltBuild;
     suggestedTiltVersion?: string;
     versionSettings?: corev1alpha1VersionSettings;
+    /**
+     * TiltCloudUsername reports the username if the user is signed into
+     * TiltCloud.
+     *
+     * deprecated: no longer populated
+     *
+     * +optional
+     */
     tiltCloudUsername?: string;
+    /**
+     * TiltCloudUsername reports the human-readable team name if the user is
+     * signed into TiltCloud and the Tiltfile declares a team.
+     *
+     * deprecated: no longer populated
+     *
+     * +optional
+     */
     tiltCloudTeamName?: string;
+    /**
+     * deprecated: no longer populated
+     *
+     * +optional
+     */
     tiltCloudSchemeHost?: string;
+    /**
+     * TiltCloudTeamID reports the unique team id if the user is signed into
+     * TiltCloud and the Tiltfile declares a team.
+     *
+     * deprecated: no longer populated
+     *
+     * +optional
+     */
     tiltCloudTeamID?: string;
     fatalError?: string;
     tiltStartTime?: string;

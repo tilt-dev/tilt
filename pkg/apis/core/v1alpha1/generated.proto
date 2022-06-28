@@ -3471,21 +3471,33 @@ message UISessionStatus {
 
   // TiltCloudUsername reports the username if the user is signed into
   // TiltCloud.
+  //
+  // deprecated: no longer populated
+  //
   // +optional
   optional string tiltCloudUsername = 5;
 
   // TiltCloudUsername reports the human-readable team name if the user is
   // signed into TiltCloud and the Tiltfile declares a team.
+  //
+  // deprecated: no longer populated
+  //
   // +optional
   optional string tiltCloudTeamName = 6;
 
   // TiltCloudSchemeHost reports the base URL of the Tilt Cloud instance
   // associated with this Tilt process. Usually https://cloud.tilt.dev
+  //
+  // deprecated: no longer populated
+  //
   // +optional
   optional string tiltCloudSchemeHost = 7;
 
   // TiltCloudTeamID reports the unique team id if the user is signed into
   // TiltCloud and the Tiltfile declares a team.
+  //
+  // deprecated: no longer populated
+  //
   // +optional
   optional string tiltCloudTeamID = 8;
 

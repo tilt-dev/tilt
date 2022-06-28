@@ -156,8 +156,6 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handleAnalyticsNudgeSurfacedAction(ctx, state)
 	case store.TiltCloudStatusReceivedAction:
 		handleTiltCloudStatusReceivedAction(state, action)
-	case store.UserStartedTiltCloudRegistrationAction:
-		handleUserStartedTiltCloudRegistrationAction(state)
 	case store.PanicAction:
 		handlePanicAction(state, action)
 	case store.LogAction:
@@ -321,23 +319,7 @@ func handleAnalyticsNudgeSurfacedAction(ctx context.Context, state *store.Engine
 }
 
 func handleTiltCloudStatusReceivedAction(state *store.EngineState, action store.TiltCloudStatusReceivedAction) {
-	if action.IsPostRegistrationLookup {
-		state.CloudStatus.WaitingForStatusPostRegistration = false
-	}
-	if !action.Found {
-		state.CloudStatus.TokenKnownUnregistered = true
-		state.CloudStatus.Username = ""
-	} else {
-		state.CloudStatus.TokenKnownUnregistered = false
-		state.CloudStatus.Username = action.Username
-		state.CloudStatus.TeamName = action.TeamName
-	}
-
 	state.SuggestedTiltVersion = action.SuggestedTiltVersion
-}
-
-func handleUserStartedTiltCloudRegistrationAction(state *store.EngineState) {
-	state.CloudStatus.WaitingForStatusPostRegistration = true
 }
 
 func handleOverrideTriggerModeAction(ctx context.Context, state *store.EngineState,

@@ -1117,19 +1117,20 @@
         },
         "tiltCloudUsername": {
           "type": "string",
-          "title": "TiltCloudUsername reports the username if the user is signed into\nTiltCloud.\n+optional"
+          "description": "TiltCloudUsername reports the username if the user is signed into\nTiltCloud.\n\ndeprecated: no longer populated\n\n+optional"
         },
         "tiltCloudTeamName": {
           "type": "string",
-          "title": "TiltCloudUsername reports the human-readable team name if the user is\nsigned into TiltCloud and the Tiltfile declares a team.\n+optional"
+          "description": "TiltCloudUsername reports the human-readable team name if the user is\nsigned into TiltCloud and the Tiltfile declares a team.\n\ndeprecated: no longer populated\n\n+optional"
         },
         "tiltCloudSchemeHost": {
           "type": "string",
-          "title": "TiltCloudSchemeHost reports the base URL of the Tilt Cloud instance\nassociated with this Tilt process. Usually https://cloud.tilt.dev\n+optional"
+          "description": "deprecated: no longer populated\n\n+optional",
+          "title": "TiltCloudSchemeHost reports the base URL of the Tilt Cloud instance\nassociated with this Tilt process. Usually https://cloud.tilt.dev"
         },
         "tiltCloudTeamID": {
           "type": "string",
-          "title": "TiltCloudTeamID reports the unique team id if the user is signed into\nTiltCloud and the Tiltfile declares a team.\n+optional"
+          "description": "TiltCloudTeamID reports the unique team id if the user is signed into\nTiltCloud and the Tiltfile declares a team.\n\ndeprecated: no longer populated\n\n+optional"
         },
         "fatalError": {
           "type": "string",

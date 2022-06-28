@@ -135,21 +135,33 @@ type UISessionStatus struct {
 
 	// TiltCloudUsername reports the username if the user is signed into
 	// TiltCloud.
+	//
+	// deprecated: no longer populated
+	//
 	// +optional
 	TiltCloudUsername string `json:"tiltCloudUsername,omitempty" protobuf:"bytes,5,opt,name=tiltCloudUsername"`
 
 	// TiltCloudUsername reports the human-readable team name if the user is
 	// signed into TiltCloud and the Tiltfile declares a team.
+	//
+	// deprecated: no longer populated
+	//
 	// +optional
 	TiltCloudTeamName string `json:"tiltCloudTeamName,omitempty" protobuf:"bytes,6,opt,name=tiltCloudTeamName"`
 
 	// TiltCloudSchemeHost reports the base URL of the Tilt Cloud instance
 	// associated with this Tilt process. Usually https://cloud.tilt.dev
+	//
+	// deprecated: no longer populated
+	//
 	// +optional
 	TiltCloudSchemeHost string `json:"tiltCloudSchemeHost,omitempty" protobuf:"bytes,7,opt,name=tiltCloudSchemeHost"`
 
 	// TiltCloudTeamID reports the unique team id if the user is signed into
 	// TiltCloud and the Tiltfile declares a team.
+	//
+	// deprecated: no longer populated
+	//
 	// +optional
 	TiltCloudTeamID string `json:"tiltCloudTeamID,omitempty" protobuf:"bytes,8,opt,name=tiltCloudTeamID"`
 
