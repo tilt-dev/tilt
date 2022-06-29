@@ -93,7 +93,6 @@ func ProvideHeadsUpServer(
 	r.HandleFunc("/api/snapshot/{snapshot_id}", s.SnapshotJSON)
 	r.HandleFunc("/api/websocket_token", s.WebsocketToken)
 	r.HandleFunc("/ws/view", s.ViewWebsocket)
-	r.HandleFunc("/api/user_started_tilt_cloud_registration", s.userStartedTiltCloudRegistration)
 	r.HandleFunc("/api/set_tiltfile_args", s.HandleSetTiltfileArgs).Methods("POST")
 
 	r.PathPrefix("/").Handler(s.cookieWrapper(assetServer))
@@ -313,10 +312,6 @@ func (s *HeadsUpServer) HandleOverrideTriggerMode(w http.ResponseWriter, req *ht
 func (s *HeadsUpServer) WebsocketToken(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	_, _ = w.Write([]byte(websocketCSRFToken.String()))
-}
-
-func (s *HeadsUpServer) userStartedTiltCloudRegistration(w http.ResponseWriter, req *http.Request) {
-	s.store.Dispatch(store.UserStartedTiltCloudRegistrationAction{})
 }
 
 func checkManifestsExist(st store.RStore, mNames []string) error {

@@ -38,10 +38,6 @@ export default function OverviewResourceBar(props: OverviewResourceBarProps) {
     showUpdate: showUpdate(view),
     suggestedVersion,
     runningBuild,
-    tiltCloudUsername: session?.tiltCloudUsername ?? "",
-    tiltCloudSchemeHost: session?.tiltCloudSchemeHost ?? "",
-    tiltCloudTeamID: session?.tiltCloudTeamID ?? "",
-    tiltCloudTeamName: session?.tiltCloudTeamName ?? "",
   }
 
   return (

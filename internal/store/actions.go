@@ -131,18 +131,10 @@ type AnalyticsNudgeSurfacedAction struct{}
 func (AnalyticsNudgeSurfacedAction) Action() {}
 
 type TiltCloudStatusReceivedAction struct {
-	Found                    bool
-	Username                 string
-	TeamName                 string
-	IsPostRegistrationLookup bool
-	SuggestedTiltVersion     string
+	SuggestedTiltVersion string
 }
 
 func (TiltCloudStatusReceivedAction) Action() {}
-
-type UserStartedTiltCloudRegistrationAction struct{}
-
-func (UserStartedTiltCloudRegistrationAction) Action() {}
 
 type PanicAction struct {
 	Err error

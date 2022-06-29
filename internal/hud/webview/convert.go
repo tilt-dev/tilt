@@ -14,7 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/tilt-dev/tilt/internal/cloud/cloudurl"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/uiresource"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -171,10 +170,6 @@ func ToUISession(s store.EngineState) *v1alpha1.UISession {
 	sort.Slice(status.FeatureFlags, func(i, j int) bool {
 		return status.FeatureFlags[i].Name < status.FeatureFlags[j].Name
 	})
-	status.TiltCloudUsername = s.CloudStatus.Username
-	status.TiltCloudTeamName = s.CloudStatus.TeamName
-	status.TiltCloudSchemeHost = cloudurl.URL(s.CloudAddress).String()
-	status.TiltCloudTeamID = s.TeamID
 	if s.FatalError != nil {
 		status.FatalError = s.FatalError.Error()
 	}

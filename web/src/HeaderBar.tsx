@@ -128,10 +128,6 @@ export default function HeaderBar({
     showUpdate: showUpdate(view),
     suggestedVersion,
     runningBuild,
-    tiltCloudUsername: session?.tiltCloudUsername ?? "",
-    tiltCloudSchemeHost: session?.tiltCloudSchemeHost ?? "",
-    tiltCloudTeamID: session?.tiltCloudTeamID ?? "",
-    tiltCloudTeamName: session?.tiltCloudTeamName ?? "",
     clusterConnections: view.clusters,
   }
 

@@ -96,8 +96,6 @@ type EngineState struct {
 	Token        token.Token
 	TeamID       string
 
-	CloudStatus CloudStatus
-
 	DockerPruneSettings model.DockerPruneSettings
 
 	TelemetrySettings model.TelemetrySettings
@@ -131,13 +129,6 @@ type EngineState struct {
 	ImageMaps             map[string]*v1alpha1.ImageMap             `json:"-"`
 	DockerImages          map[string]*v1alpha1.DockerImage          `json:"-"`
 	CmdImages             map[string]*v1alpha1.CmdImage             `json:"-"`
-}
-
-type CloudStatus struct {
-	Username                         string
-	TeamName                         string
-	TokenKnownUnregistered           bool // to distinguish whether an empty Username means "we haven't checked" or "we checked and the token isn't registered"
-	WaitingForStatusPostRegistration bool
 }
 
 func (e *EngineState) MainTiltfilePath() string {

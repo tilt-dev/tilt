@@ -129,22 +129,6 @@
   margin-left: $spacing-unit * 3;
   margin-right: $spacing-unit * 3;
 }
-.ShareSnapshotModal-tiltCloudLink {
-  text-decoration: none;
-}
-.ShareSnapshotModal-tiltCloudLink span {
-  border-bottom: 2px solid $color-gray-30;
-  margin-right: calc($spacing-unit / 4);
-}
-.ShareSnapshotModal-tiltCloudLink svg {
-  fill: $color-gray-50;
-}
-.ShareSnapshotModal-tiltCloudLink:hover span {
-  border-bottom-color: $color-blue;
-}
-.ShareSnapshotModal-tiltCloudLink:hover svg {
-  fill: $color-gray-10;
-}
 
 // Button Styles
 .ShareSnapshotModal-button {
