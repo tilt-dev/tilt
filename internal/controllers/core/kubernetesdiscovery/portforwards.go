@@ -207,9 +207,9 @@ func warnDeprecatedImplicitForwards(ctx context.Context, kd *v1alpha1.Kubernetes
 		for _, f := range pf.Spec.Forwards {
 			if pft.LocalPort == f.LocalPort && f.LocalPort != f.ContainerPort {
 				logger.Get(ctx).Warnf(
-					"k8s_resource(name='%s', port_forward='%d') currently maps localhost:%d to port %d in your container.\n"+
+					"k8s_resource(name='%s', port_forwards='%d') currently maps localhost:%d to port %d in your container.\n"+
 						"A future version of Tilt will change this default and will map localhost:%d to port %d in your container.\n"+
-						"To keep your project working, change your Tiltfile to k8s_resource(name='%s', port_forward='%d:%d')",
+						"To keep your project working, change your Tiltfile to k8s_resource(name='%s', port_forwards='%d:%d')",
 					resourceName,    // name=%s
 					f.LocalPort,     // port_forward=%d
 					f.LocalPort,     // localhost:%d

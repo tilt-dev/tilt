@@ -424,9 +424,9 @@ func TestReconcileManagesPortForward(t *testing.T) {
 	}
 
 	f.AssertStdOutContains(
-		`k8s_resource(name='my-resource', port_forward='1234') currently maps localhost:1234 to port 7890 in your container.
+		`k8s_resource(name='my-resource', port_forwards='1234') currently maps localhost:1234 to port 7890 in your container.
 A future version of Tilt will change this default and will map localhost:1234 to port 1234 in your container.
-To keep your project working, change your Tiltfile to k8s_resource(name='my-resource', port_forward='1234:7890')`)
+To keep your project working, change your Tiltfile to k8s_resource(name='my-resource', port_forwards='1234:7890')`)
 
 	// simulate a pod delete and ensure that after it's observed + reconciled, the PF is also deleted
 	kCli := f.clients.MustK8sClient(clusterNN(*kd))
