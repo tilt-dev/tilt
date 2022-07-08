@@ -380,3 +380,28 @@ func TestCreateSubError(t *testing.T) {
 	f.MustGet(key, &fw)
 	assert.Contains(t, fw.Status.Error, "filewatch init: Unusual watcher error")
 }
+
+func TestStartSubError(t *testing.T) {
+	f := newFixture(t)
+	maker := f.controller.fsWatcherMaker
+	var ffw *fsevent.FakeWatcher
+	f.controller.fsWatcherMaker = fsevent.WatcherMaker(func(paths []string, ignore watch.PathMatcher, l logger.Logger) (watch.Notify, error) {
+		w, err := maker(paths, ignore, l)
+		ffw = w.(*fsevent.FakeWatcher)
+		ffw.StartErr = fmt.Errorf("Unusual start error")
+		return w, err
+	})
+	key, _ := f.CreateSimpleFileWatch()
+
+	var fw filewatches.FileWatch
+	f.MustGet(key, &fw)
+	assert.Contains(t, fw.Status.Error, "filewatch init: Unusual start error")
+	assert.False(t, ffw.Running)
+
+	fw.Spec.WatchedPaths = []string{f.tmpdir.JoinPath("d")}
+	f.Update(&fw)
+
+	f.MustGet(key, &fw)
+	assert.Contains(t, fw.Status.Error, "filewatch init: Unusual start error")
+	assert.False(t, ffw.Running)
+}
