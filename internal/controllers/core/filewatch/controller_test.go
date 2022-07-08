@@ -26,6 +26,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/watch"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	filewatches "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 // Test constants
@@ -364,4 +365,18 @@ func TestController_Disable_Ignores_File_Changes(t *testing.T) {
 	var fwAfterDisable filewatches.FileWatch
 	f.MustGet(key, &fwAfterDisable)
 	require.Equal(t, 0, len(fwAfterDisable.Status.FileEvents))
+}
+
+func TestCreateSubError(t *testing.T) {
+	f := newFixture(t)
+	f.controller.fsWatcherMaker = fsevent.WatcherMaker(func(paths []string, ignore watch.PathMatcher, _ logger.Logger) (watch.Notify, error) {
+		var nilWatcher *fsevent.FakeWatcher = nil
+		return nilWatcher, fmt.Errorf("Unusual watcher error")
+	})
+	key, _ := f.CreateSimpleFileWatch()
+
+	// Expect that no file events were triggered
+	var fw filewatches.FileWatch
+	f.MustGet(key, &fw)
+	assert.Contains(t, fw.Status.Error, "filewatch init: Unusual watcher error")
 }
