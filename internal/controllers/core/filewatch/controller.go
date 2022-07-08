@@ -193,14 +193,17 @@ func (c *Controller) addOrReplace(ctx context.Context, name types.NamespacedName
 	}
 
 	ignoreMatcher := ignore.CreateFileChangeFilter(fw.Spec.Ignores)
+	startFileChangeLoop := false
 	notify, err := c.fsWatcherMaker(
 		append([]string{}, fw.Spec.WatchedPaths...),
 		ignoreMatcher,
 		logger.Get(ctx))
 	if err != nil {
-		status.Error = fmt.Sprintf("failed to initialize filesystem watch: %v", err)
+		status.Error = fmt.Sprintf("filewatch init: %v", err)
 	} else if err := notify.Start(); err != nil {
-		status.Error = fmt.Sprintf("failed to initialize filesystem watch: %v", err)
+		status.Error = fmt.Sprintf("filewatch init: %v", err)
+	} else {
+		startFileChangeLoop = true
 	}
 
 	if hasExisting {
@@ -208,7 +211,7 @@ func (c *Controller) addOrReplace(ctx context.Context, name types.NamespacedName
 		existing.cleanupWatch(ctx)
 	}
 
-	if notify != nil {
+	if startFileChangeLoop {
 		w.notify = notify
 		status.MonitorStartTime = apis.NowMicro()
 		ctx, cancel := context.WithCancel(ctx)
