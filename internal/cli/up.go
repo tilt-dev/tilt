@@ -66,7 +66,7 @@ By default:
 2) Running with no Tiltfile args starts all services defined in the Tiltfile
 
 This default behavior does not apply if the Tiltfile uses config.parse or config.set_enabled_resources.
-In that case, see https://tilt.dev/user_config.html and/or comments in your Tiltfile
+In that case, see https://docs.tilt.dev/tiltfile_config.html and/or comments in your Tiltfile
 
 When you exit Tilt (using Ctrl+C), Kubernetes resources and Docker Compose resources continue running;
 you can use tilt down (https://docs.tilt.dev/cli/tilt_down.html) to delete these resources. Any long-running
