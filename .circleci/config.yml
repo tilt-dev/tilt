@@ -159,7 +159,6 @@ jobs:
       # https://discuss.circleci.com/t/arm-version-of-remote-docker/41624
       - run: ssh remote-docker "sudo apt-get update; sudo apt-get install -y qemu-user-static binfmt-support"
       - slack/notify:
-          mentions: "nick"
           message: "A Tilt release has started!"
       - checkout
       - gcp-cli/install
@@ -168,8 +167,7 @@ jobs:
           name: Setup Docker Credentials
           command: gcloud auth configure-docker
       - run: ./scripts/release-ci.sh
-      - slack/status:
-          mentions: "nick"
+      - slack/status
 
 workflows:
   version: 2
