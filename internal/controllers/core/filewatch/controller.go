@@ -202,6 +202,10 @@ func (c *Controller) addOrReplace(ctx context.Context, name types.NamespacedName
 		status.Error = fmt.Sprintf("filewatch init: %v", err)
 	} else if err := notify.Start(); err != nil {
 		status.Error = fmt.Sprintf("filewatch init: %v", err)
+
+		// Close the notify immediately, but don't add it to the watcher object. The
+		// watcher object is still needed to handle backoff.
+		_ = notify.Close()
 	} else {
 		startFileChangeLoop = true
 	}
@@ -211,12 +215,12 @@ func (c *Controller) addOrReplace(ctx context.Context, name types.NamespacedName
 		existing.cleanupWatch(ctx)
 	}
 
+	ctx, cancel := context.WithCancel(ctx)
+	w.cancel = cancel
+
 	if startFileChangeLoop {
 		w.notify = notify
 		status.MonitorStartTime = apis.NowMicro()
-		ctx, cancel := context.WithCancel(ctx)
-		w.cancel = cancel
-
 		go c.dispatchFileChangesLoop(ctx, w)
 	}
 

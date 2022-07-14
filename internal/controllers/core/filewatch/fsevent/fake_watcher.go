@@ -59,9 +59,7 @@ func (w *FakeMultiWatcher) loop() {
 		for _, sub := range w.getSubs() {
 			close(sub)
 		}
-	}()
 
-	defer func() {
 		for _, sub := range w.getSubErrors() {
 			close(sub)
 		}
@@ -75,7 +73,7 @@ func (w *FakeMultiWatcher) loop() {
 			}
 			w.mu.Lock()
 			for _, watcher := range w.watchers {
-				if watcher.matches(e.Path()) {
+				if watcher.Running && watcher.matches(e.Path()) {
 					watcher.inboundCh <- e
 				}
 			}
@@ -95,11 +93,15 @@ type FakeWatcher struct {
 	inboundCh  chan watch.FileEvent
 	outboundCh chan watch.FileEvent
 	errorCh    chan error
+	closeCh    chan bool
 
 	eventCount uint64
 
 	paths  []string
 	ignore watch.PathMatcher
+
+	Running  bool
+	StartErr error
 }
 
 func NewFakeWatcher(inboundCh chan watch.FileEvent, errorCh chan error, paths []string, ignore watch.PathMatcher) *FakeWatcher {
@@ -113,6 +115,7 @@ func NewFakeWatcher(inboundCh chan watch.FileEvent, errorCh chan error, paths []
 		errorCh:    errorCh,
 		paths:      paths,
 		ignore:     ignore,
+		closeCh:    make(chan bool),
 	}
 }
 
@@ -131,11 +134,17 @@ func (w *FakeWatcher) matches(path string) bool {
 }
 
 func (w *FakeWatcher) Start() error {
+	w.Running = true
 	go w.loop()
+	if w.StartErr != nil {
+		return w.StartErr
+	}
 	return nil
 }
 
 func (w *FakeWatcher) Close() error {
+	close(w.closeCh)
+	<-w.outboundCh
 	return nil
 }
 
@@ -156,15 +165,23 @@ func (w *FakeWatcher) QueuedCount() int {
 }
 
 func (w *FakeWatcher) loop() {
+	defer func() {
+		w.Running = false
+		close(w.outboundCh)
+	}()
+
 	var q []watch.FileEvent
 	for {
 		if len(q) == 0 {
-			e, ok := <-w.inboundCh
-			if !ok {
-				close(w.outboundCh)
+			select {
+			case e, ok := <-w.inboundCh:
+				if !ok {
+					return
+				}
+				q = append(q, e)
+			case <-w.closeCh:
 				return
 			}
-			q = append(q, e)
 		} else {
 			e := q[0]
 			w.outboundCh <- e

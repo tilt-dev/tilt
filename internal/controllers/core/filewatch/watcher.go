@@ -57,8 +57,11 @@ func (w *watcher) cleanupWatch(ctx context.Context) {
 	if w.done {
 		return
 	}
-	if err := w.notify.Close(); err != nil {
-		logger.Get(ctx).Debugf("Failed to close notifier for %q: %v", w.name.String(), err)
+
+	if w.notify != nil {
+		if err := w.notify.Close(); err != nil {
+			logger.Get(ctx).Debugf("Failed to close notifier for %q: %v", w.name.String(), err)
+		}
 	}
 
 	w.restartBackoff *= 2
