@@ -25,6 +25,7 @@ cd "$DIR/.."
 
 ROOT=$(mktemp -d)
 git clone https://tilt-releaser:"$GITHUB_TOKEN"@github.com/tilt-dev/cloud.tilt.dev "$ROOT"
+cd "$ROOT"
 echo "{\"Found\":false,\"Username\":\"\",\"TeamName\":\"\",\"TeamRole\":\"\",\"SuggestedTiltVersion\":\"$VERSION\",\"UserID\":0}" > "$ROOT/web/api/whoami"
 
 git config --global user.email "it@tilt.dev"
