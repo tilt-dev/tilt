@@ -107,6 +107,12 @@ func TestIgnores(t *testing.T) {
 			ignoreInBuildContext: false,
 			ignoreInFileChange:   true,
 		},
+		{
+			target:               target,
+			change:               "dir/#my-machine#",
+			ignoreInBuildContext: false,
+			ignoreInFileChange:   true,
+		},
 	}
 
 	for i, c := range cases {
