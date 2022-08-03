@@ -800,6 +800,38 @@ func TestHiddenInput(t *testing.T) {
 	require.Equal(t, expectedEnv, actualEnv)
 }
 
+func TestChoiceInput(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		input         v1alpha1.UIChoiceInputSpec
+		value         string
+		expectedValue string
+	}{
+		{"empty value", v1alpha1.UIChoiceInputSpec{Choices: []string{"choice1", "choice2"}}, "", "choice1"},
+		{"invalid value", v1alpha1.UIChoiceInputSpec{Choices: []string{"choice1", "choice2"}}, "not in Choices", "choice1"},
+		{"selected choice1", v1alpha1.UIChoiceInputSpec{Choices: []string{"choice1", "choice2"}}, "choice1", "choice1"},
+		{"selected choice2", v1alpha1.UIChoiceInputSpec{Choices: []string{"choice1", "choice2"}}, "choice2", "choice2"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newFixture(t)
+
+			setupStartOnTest(t, f)
+			f.updateButton("b-1", func(button *v1alpha1.UIButton) {
+				spec := v1alpha1.UIInputSpec{Name: "dry_run", Choice: &tc.input}
+				button.Spec.Inputs = append(button.Spec.Inputs, spec)
+				status := v1alpha1.UIInputStatus{Name: "dry_run", Choice: &v1alpha1.UIChoiceInputStatus{Value: tc.value}}
+				button.Status.Inputs = append(button.Status.Inputs, status)
+			})
+			f.triggerButton("b-1", f.clock.Now())
+			f.reconcileCmd("testcmd")
+
+			actualEnv := f.fe.processes["myserver"].env
+			expectedEnv := []string{fmt.Sprintf("dry_run=%s", tc.expectedValue)}
+			require.Equal(t, expectedEnv, actualEnv)
+		})
+	}
+}
+
 func TestCmdOnlyUsesButtonThatStartedIt(t *testing.T) {
 	f := newFixture(t)
 

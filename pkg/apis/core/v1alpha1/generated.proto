@@ -3075,6 +3075,18 @@ message UIButtonStatus {
   repeated UIInputStatus inputs = 2;
 }
 
+// Describes a choice dropdown input field attached to a button
+message UIChoiceInputSpec {
+  // The list of valid values for this field
+  //
+  // +optional
+  repeated string choices = 2;
+}
+
+message UIChoiceInputStatus {
+  optional string value = 1;
+}
+
 // UIComponentLocation specifies where to put a UI component.
 message UIComponentLocation {
   // ComponentID is the identifier of the parent component to associate this component with.
@@ -3141,6 +3153,9 @@ message UIInputSpec {
   // An input that has a constant value and does not display to the user
   // +optional
   optional UIHiddenInputSpec hidden = 5;
+
+  // A Choice input that takes a list of strings
+  optional UIChoiceInputSpec choice = 6;
 }
 
 // The status corresponding to a UIInputSpec
@@ -3160,6 +3175,10 @@ message UIInputStatus {
   // The status of the input, if it's a hidden
   // +optional
   optional UIHiddenInputStatus hidden = 4;
+
+  // The status of the input, if it's a choice
+  // +optional
+  optional UIChoiceInputStatus choice = 5;
 }
 
 // UIResource represents per-resource status data for rendering the web UI.

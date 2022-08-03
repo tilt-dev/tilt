@@ -294,6 +294,14 @@ func (i input) stringValue() string {
 		}
 	} else if i.status.Hidden != nil {
 		return i.status.Hidden.Value
+	} else if i.status.Choice != nil {
+		for _, v := range i.spec.Choice.Choices {
+			if v == i.status.Choice.Value {
+				return v
+			}
+		}
+		// if value is invalid, we default to the first choice
+		return i.spec.Choice.Choices[0]
 	}
 	return ""
 }

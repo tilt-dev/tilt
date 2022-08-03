@@ -715,6 +715,28 @@
       },
       "title": "UIButtonStatus defines the observed state of UIButton"
     },
+    "v1alpha1UIChoiceInputSpec": {
+      "type": "object",
+      "properties": {
+        "choices": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "+optional",
+          "title": "The list of valid values for this field"
+        }
+      },
+      "title": "Describes a choice dropdown input field attached to a button"
+    },
+    "v1alpha1UIChoiceInputStatus": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string"
+        }
+      }
+    },
     "v1alpha1UIComponentLocation": {
       "type": "object",
       "properties": {
@@ -782,6 +804,10 @@
         "hidden": {
           "$ref": "#/definitions/v1alpha1UIHiddenInputSpec",
           "title": "An input that has a constant value and does not display to the user\n+optional"
+        },
+        "choice": {
+          "$ref": "#/definitions/v1alpha1UIChoiceInputSpec",
+          "title": "A Choice input that takes a list of strings"
         }
       },
       "description": "Defines an Input to render in the UI.\nIf UIButton is analogous to an HTML \u003cform\u003e,\nUIInput is analogous to an HTML \u003cinput\u003e."
@@ -804,6 +830,10 @@
         "hidden": {
           "$ref": "#/definitions/v1alpha1UIHiddenInputStatus",
           "title": "The status of the input, if it's a hidden\n+optional"
+        },
+        "choice": {
+          "$ref": "#/definitions/v1alpha1UIChoiceInputStatus",
+          "title": "The status of the input, if it's a choice\n+optional"
         }
       },
       "title": "The status corresponding to a UIInputSpec"

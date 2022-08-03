@@ -142,6 +142,10 @@ func (p Plugin) registerSymbols(env *starkit.Environment) error {
 	if err != nil {
 		return err
 	}
+	err = env.AddBuiltin("v1alpha1.ui_choice_input_spec", p.uIChoiceInputSpec)
+	if err != nil {
+		return err
+	}
 	err = env.AddBuiltin("v1alpha1.ui_component_location", p.uIComponentLocation)
 	if err != nil {
 		return err
@@ -3510,6 +3514,111 @@ func (o *UIBoolInputSpecList) Unpack(v starlark.Value) error {
 	return nil
 }
 
+type UIChoiceInputSpec struct {
+	*starlark.Dict
+	Value      v1alpha1.UIChoiceInputSpec
+	isUnpacked bool
+	t          *starlark.Thread // instantiation thread for computing abspath
+}
+
+func (p Plugin) uIChoiceInputSpec(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var choices starlark.Value
+	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
+		"choices?", &choices,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	dict := starlark.NewDict(1)
+
+	if choices != nil {
+		err := dict.SetKey(starlark.String("choices"), choices)
+		if err != nil {
+			return nil, err
+		}
+	}
+	var obj *UIChoiceInputSpec = &UIChoiceInputSpec{t: t}
+	err = obj.Unpack(dict)
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
+}
+
+func (o *UIChoiceInputSpec) Unpack(v starlark.Value) error {
+	obj := v1alpha1.UIChoiceInputSpec{}
+
+	starlarkObj, ok := v.(*UIChoiceInputSpec)
+	if ok {
+		*o = *starlarkObj
+		return nil
+	}
+
+	mapObj, ok := v.(*starlark.Dict)
+	if !ok {
+		return fmt.Errorf("expected dict, actual: %v", v.Type())
+	}
+
+	for _, item := range mapObj.Items() {
+		keyV, val := item[0], item[1]
+		key, ok := starlark.AsString(keyV)
+		if !ok {
+			return fmt.Errorf("key must be string. Got: %s", keyV.Type())
+		}
+
+		if key == "choices" {
+			var v value.StringList
+			err := v.Unpack(val)
+			if err != nil {
+				return fmt.Errorf("unpacking %s: %v", key, err)
+			}
+			obj.Choices = v
+			continue
+		}
+		return fmt.Errorf("Unexpected attribute name: %s", key)
+	}
+
+	mapObj.Freeze()
+	o.Dict = mapObj
+	o.Value = obj
+	o.isUnpacked = true
+
+	return nil
+}
+
+type UIChoiceInputSpecList struct {
+	*starlark.List
+	Value []v1alpha1.UIChoiceInputSpec
+	t     *starlark.Thread
+}
+
+func (o *UIChoiceInputSpecList) Unpack(v starlark.Value) error {
+	items := []v1alpha1.UIChoiceInputSpec{}
+
+	listObj, ok := v.(*starlark.List)
+	if !ok {
+		return fmt.Errorf("expected list, actual: %v", v.Type())
+	}
+
+	for i := 0; i < listObj.Len(); i++ {
+		v := listObj.Index(i)
+
+		item := UIChoiceInputSpec{t: o.t}
+		err := item.Unpack(v)
+		if err != nil {
+			return fmt.Errorf("at index %d: %v", i, err)
+		}
+		items = append(items, v1alpha1.UIChoiceInputSpec(item.Value))
+	}
+
+	listObj.Freeze()
+	o.List = listObj
+	o.Value = items
+
+	return nil
+}
+
 type UIComponentLocation struct {
 	*starlark.Dict
 	Value      v1alpha1.UIComponentLocation
@@ -3747,18 +3856,20 @@ func (p Plugin) uIInputSpec(t *starlark.Thread, fn *starlark.Builtin, args starl
 	var text starlark.Value
 	var bool starlark.Value
 	var hidden starlark.Value
+	var choice starlark.Value
 	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
 		"name?", &name,
 		"label?", &label,
 		"text?", &text,
 		"bool?", &bool,
 		"hidden?", &hidden,
+		"choice?", &choice,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	dict := starlark.NewDict(5)
+	dict := starlark.NewDict(6)
 
 	if name != nil {
 		err := dict.SetKey(starlark.String("name"), name)
@@ -3786,6 +3897,12 @@ func (p Plugin) uIInputSpec(t *starlark.Thread, fn *starlark.Builtin, args starl
 	}
 	if hidden != nil {
 		err := dict.SetKey(starlark.String("hidden"), hidden)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if choice != nil {
+		err := dict.SetKey(starlark.String("choice"), choice)
 		if err != nil {
 			return nil, err
 		}
@@ -3860,6 +3977,15 @@ func (o *UIInputSpec) Unpack(v starlark.Value) error {
 				return fmt.Errorf("unpacking %s: %v", key, err)
 			}
 			obj.Hidden = (*v1alpha1.UIHiddenInputSpec)(&v.Value)
+			continue
+		}
+		if key == "choice" {
+			v := UIChoiceInputSpec{t: o.t}
+			err := v.Unpack(val)
+			if err != nil {
+				return fmt.Errorf("unpacking %s: %v", key, err)
+			}
+			obj.Choice = (*v1alpha1.UIChoiceInputSpec)(&v.Value)
 			continue
 		}
 		return fmt.Errorf("Unexpected attribute name: %s", key)
