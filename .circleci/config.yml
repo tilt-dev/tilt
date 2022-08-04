@@ -109,7 +109,7 @@ jobs:
 
   build-macos:
     macos:
-      xcode: "12.4.0"
+      xcode: "13.4.1"
 
     steps:
       - checkout
