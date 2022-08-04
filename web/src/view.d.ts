@@ -594,6 +594,7 @@ declare namespace Proto {
     text?: v1alpha1UITextInputStatus;
     bool?: v1alpha1UIBoolInputStatus;
     hidden?: v1alpha1UIHiddenInputStatus;
+    choice?: v1alpha1UIChoiceInputStatus;
   }
   export interface v1alpha1UIInputSpec {
     /**
@@ -604,6 +605,7 @@ declare namespace Proto {
     text?: v1alpha1UITextInputSpec;
     bool?: v1alpha1UIBoolInputSpec;
     hidden?: v1alpha1UIHiddenInputSpec;
+    choice?: v1alpha1UIChoiceInputSpec;
   }
   export interface v1alpha1UIHiddenInputStatus {
     value?: string;
@@ -626,6 +628,15 @@ declare namespace Proto {
      * ComponentType is the type of the parent component.
      */
     componentType?: string;
+  }
+  export interface v1alpha1UIChoiceInputStatus {
+    value?: string;
+  }
+  export interface v1alpha1UIChoiceInputSpec {
+    /**
+     * +optional
+     */
+    choices?: string[];
   }
   export interface v1alpha1UIButtonStatus {
     /**

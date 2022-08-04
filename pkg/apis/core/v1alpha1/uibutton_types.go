@@ -253,6 +253,18 @@ type UIHiddenInputStatus struct {
 	Value string `json:"value" protobuf:"bytes,1,opt,name=value"`
 }
 
+// Describes a choice dropdown input field attached to a button
+type UIChoiceInputSpec struct {
+	// The list of valid values for this field
+	//
+	// +optional
+	Choices []string `json:"choices" protobuf:"bytes,2,opt,name=choices"`
+}
+
+type UIChoiceInputStatus struct {
+	Value string `json:"value" protobuf:"varint,1,opt,name=value"`
+}
+
 // Defines an Input to render in the UI.
 // If UIButton is analogous to an HTML <form>,
 // UIInput is analogous to an HTML <input>.
@@ -277,6 +289,9 @@ type UIInputSpec struct {
 	// An input that has a constant value and does not display to the user
 	// +optional
 	Hidden *UIHiddenInputSpec `json:"hidden,omitempty" protobuf:"bytes,5,opt,name=hidden"`
+
+	// A Choice input that takes a list of strings
+	Choice *UIChoiceInputSpec `json:"choice,omitempty" protobuf:"bytes,6,opt,name=choice"`
 }
 
 func (in *UIInputSpec) Validate(_ context.Context, path *field.Path) field.ErrorList {
@@ -291,6 +306,12 @@ func (in *UIInputSpec) Validate(_ context.Context, path *field.Path) field.Error
 	}
 	if in.Hidden != nil {
 		numInputTypes += 1
+	}
+	if in.Choice != nil {
+		numInputTypes += 1
+		if in.Choice.Choices == nil || len(in.Choice.Choices) == 0 {
+			fieldErrors = append(fieldErrors, field.Invalid(path, in, "must specify choices if input type is choice"))
+		}
 	}
 
 	if numInputTypes != 1 {
@@ -319,6 +340,10 @@ type UIInputStatus struct {
 	// The status of the input, if it's a hidden
 	// +optional
 	Hidden *UIHiddenInputStatus `json:"hidden,omitempty" protobuf:"bytes,4,opt,name=hidden"`
+
+	// The status of the input, if it's a choice
+	// +optional
+	Choice *UIChoiceInputStatus `json:"choice,omitempty" protobuf:"bytes,5,opt,name=choice"`
 }
 
 // UIButtonStatus defines the observed state of UIButton

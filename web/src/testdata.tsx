@@ -389,6 +389,19 @@ export function hiddenFieldForUIButton(
   }
 }
 
+export function choiceFieldForUIButton(
+  name: string,
+  choices?: string[]
+): UIInputSpec {
+  return {
+    name: name,
+    label: name,
+    choice: {
+      choices: choices,
+    },
+  }
+}
+
 export function oneUIButton({
   buttonName,
   annotations,

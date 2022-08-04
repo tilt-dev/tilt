@@ -28,6 +28,7 @@ import { accessorsForTesting, tiltfileKeyContext } from "./BrowserStorage"
 import { HudErrorContextProvider } from "./HudErrorContext"
 import {
   boolFieldForUIButton,
+  choiceFieldForUIButton,
   disableButton,
   hiddenFieldForUIButton,
   oneUIButton,
@@ -151,6 +152,11 @@ describe("ApiButton", () => {
         boolFieldForUIButton("bool_field", false),
         textFieldForUIButton("text_field_with_default", "default text"),
         hiddenFieldForUIButton("hidden_field", "hidden value 1"),
+        choiceFieldForUIButton("choice_field", [
+          "choice1",
+          "choice2",
+          "choice3",
+        ]),
       ]
       uibutton = oneUIButton({ inputSpecs })
       customRender(<ApiButton uiButton={uibutton} />).rerender
@@ -245,6 +251,9 @@ describe("ApiButton", () => {
       userEvent.type(screen.getByLabelText("text_field"), "new_value")
       userEvent.click(screen.getByLabelText("bool_field"))
       userEvent.type(screen.getByLabelText("text_field_with_default"), "!!!!")
+      userEvent.click(screen.getByLabelText("choice_field"))
+      userEvent.click(screen.getByText("choice1"))
+      userEvent.click(screen.getByText("choice3"))
 
       // Click the submit button
       userEvent.click(screen.getByLabelText(`Trigger ${uibutton.spec!.text!}`))
@@ -295,6 +304,12 @@ describe("ApiButton", () => {
             name: inputSpecs[3].name,
             hidden: {
               value: inputSpecs[3].hidden!.value,
+            },
+          },
+          {
+            name: inputSpecs[4].name,
+            choice: {
+              value: "choice3",
             },
           },
         ],
@@ -351,6 +366,12 @@ describe("ApiButton", () => {
             name: inputSpecs[3].name,
             hidden: {
               value: inputSpecs[3].hidden!.value,
+            },
+          },
+          {
+            name: inputSpecs[4].name,
+            choice: {
+              value: "choice1",
             },
           },
         ],

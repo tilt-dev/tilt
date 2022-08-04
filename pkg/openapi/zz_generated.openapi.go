@@ -192,6 +192,8 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIButtonList":                      schema_pkg_apis_core_v1alpha1_UIButtonList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIButtonSpec":                      schema_pkg_apis_core_v1alpha1_UIButtonSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIButtonStatus":                    schema_pkg_apis_core_v1alpha1_UIButtonStatus(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIChoiceInputSpec":                 schema_pkg_apis_core_v1alpha1_UIChoiceInputSpec(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIChoiceInputStatus":               schema_pkg_apis_core_v1alpha1_UIChoiceInputStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIComponentLocation":               schema_pkg_apis_core_v1alpha1_UIComponentLocation(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIComponentLocationResource":       schema_pkg_apis_core_v1alpha1_UIComponentLocationResource(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIFeatureFlag":                     schema_pkg_apis_core_v1alpha1_UIFeatureFlag(ref),
@@ -7505,6 +7507,54 @@ func schema_pkg_apis_core_v1alpha1_UIButtonStatus(ref common.ReferenceCallback) 
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_UIChoiceInputSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Describes a choice dropdown input field attached to a button",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"choices": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The list of valid values for this field",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_core_v1alpha1_UIChoiceInputStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"value": {
+						SchemaProps: spec.SchemaProps{
+							Default: "",
+							Type:    []string{"string"},
+							Format:  "",
+						},
+					},
+				},
+				Required: []string{"value"},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_UIComponentLocation(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -7664,12 +7714,18 @@ func schema_pkg_apis_core_v1alpha1_UIInputSpec(ref common.ReferenceCallback) com
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIHiddenInputSpec"),
 						},
 					},
+					"choice": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A Choice input that takes a list of strings",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIChoiceInputSpec"),
+						},
+					},
 				},
 				Required: []string{"name"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBoolInputSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIHiddenInputSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UITextInputSpec"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBoolInputSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIChoiceInputSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIHiddenInputSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UITextInputSpec"},
 	}
 }
 
@@ -7706,12 +7762,18 @@ func schema_pkg_apis_core_v1alpha1_UIInputStatus(ref common.ReferenceCallback) c
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIHiddenInputStatus"),
 						},
 					},
+					"choice": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The status of the input, if it's a choice",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIChoiceInputStatus"),
+						},
+					},
 				},
 				Required: []string{"name"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBoolInputStatus", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIHiddenInputStatus", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UITextInputStatus"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBoolInputStatus", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIChoiceInputStatus", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIHiddenInputStatus", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UITextInputStatus"},
 	}
 }
 

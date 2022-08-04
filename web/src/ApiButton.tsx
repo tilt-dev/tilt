@@ -5,6 +5,8 @@ import {
   FormControlLabel,
   Icon,
   InputLabel,
+  MenuItem,
+  Select,
   SvgIcon,
 } from "@material-ui/core"
 import ArrowDropDownIcon from "@material-ui/icons/ArrowDropDown"
@@ -281,6 +283,35 @@ function ApiButtonInput(props: ApiButtonInputProps) {
     )
   } else if (props.spec.hidden) {
     return null
+  } else if (props.spec.choice) {
+    // @ts-ignore
+    const currentChoice = props.value ?? props.spec.choice.choices?.at(0)
+    const menuItems = []
+    // @ts-ignore
+    for (let choice of props.spec.choice?.choices) {
+      menuItems.push(<MenuItem value={choice}>{choice}</MenuItem>)
+    }
+    return (
+      <>
+        <ApiButtonInputFormControlLabel
+          control={
+            <Select
+              id={props.spec.name}
+              value={currentChoice}
+              label={props.spec.label ?? props.spec.name}
+            >
+              {menuItems}
+            </Select>
+          }
+          label={props.spec.label ?? props.spec.name}
+          onChange={(e) => {
+            // @ts-ignore
+            props.setValue(props.spec.name!, e.target.value as string)
+          }}
+          aria-label={props.spec.label ?? props.spec.name}
+        />
+      </>
+    )
   } else {
     return (
       <div>{`Error: button input ${props.spec.name} had unsupported type`}</div>
@@ -439,6 +470,8 @@ function buttonStatusWithInputs(
       }
     } else if (spec.hidden) {
       status.hidden = { value: spec.hidden.value }
+    } else if (spec.choice) {
+      status.choice = { value: defined ? value : spec.choice?.choices?.at(0) }
     }
     result.status!.inputs!.push(status)
   })
