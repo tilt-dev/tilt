@@ -57,6 +57,7 @@ dist
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+web/.yarn
 
 # http caches from running kubectl in integration tests
 integration/.kube
