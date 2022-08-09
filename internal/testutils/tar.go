@@ -74,7 +74,6 @@ func AssertFilesInTar(t testing.TB, tr *tar.Reader, expectedFiles []ExpectedFile
 
 		if dupes[header.Name] {
 			t.Fatalf("File in tarball twice. This is invalid and will break when extracted: %v (%s)", header.Name, msg)
-			break
 		}
 
 		dupes[header.Name] = true
