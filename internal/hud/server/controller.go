@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"regexp"
@@ -167,7 +167,7 @@ func (s *HeadsUpServerController) setUpHelper(ctx context.Context, st store.RSto
 		Handler: webRouter,
 
 		// blackhole any server errors
-		ErrorLog: log.New(ioutil.Discard, "", 0),
+		ErrorLog: log.New(io.Discard, "", 0),
 	}
 	runServer(ctx, s.webServer, s.webListener)
 
@@ -178,7 +178,7 @@ func (s *HeadsUpServerController) setUpHelper(ctx context.Context, st store.RSto
 		TLSConfig:      apiTLSConfig,
 
 		// blackhole any server errors
-		ErrorLog: log.New(ioutil.Discard, "", 0),
+		ErrorLog: log.New(io.Discard, "", 0),
 	}
 	runServer(ctx, s.apiServer, serving.Listener)
 	server.GenericAPIServer.RunPostStartHooks(stopCh)

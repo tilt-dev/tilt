@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -90,12 +89,12 @@ func TestBuildkitPrinter(t *testing.T) {
 					t.Fatal(err)
 				}
 
-				err = ioutil.WriteFile(gmPath, d1, 0644)
+				err = os.WriteFile(gmPath, d1, 0644)
 				if err != nil {
 					t.Fatal(err)
 				}
 			}
-			expected, err := ioutil.ReadFile(gmPath)
+			expected, err := os.ReadFile(gmPath)
 			if err != nil {
 				t.Fatal(err)
 			}

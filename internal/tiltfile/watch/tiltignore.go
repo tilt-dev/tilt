@@ -3,7 +3,6 @@ package watch
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -20,7 +19,7 @@ func TiltignorePath(tiltfilePath string) string {
 }
 
 func ReadTiltignore(tiltignorePath string) (model.Dockerignore, error) {
-	tiltignoreContents, err := ioutil.ReadFile(tiltignorePath)
+	tiltignoreContents, err := os.ReadFile(tiltignorePath)
 
 	// missing tiltignore is fine, but a filesystem error is not
 	if err != nil {

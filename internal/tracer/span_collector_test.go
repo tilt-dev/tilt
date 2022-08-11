@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"strings"
 	"testing"
 
@@ -170,7 +169,7 @@ func (f *fixture) getSpanText() (string, func()) {
 		f.t.Fatalf("unexpected error %v", err)
 	}
 
-	bs, err := ioutil.ReadAll(r)
+	bs, err := io.ReadAll(r)
 	if err != nil {
 		f.t.Fatalf("unexpected error %v", err)
 	}

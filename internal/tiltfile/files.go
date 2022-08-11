@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -333,7 +332,7 @@ func getHelmCRDs(path string) ([]string, error) {
 		if !isYAML {
 			return nil
 		}
-		contents, err := ioutil.ReadFile(path)
+		contents, err := os.ReadFile(path)
 		if err != nil {
 			if os.IsNotExist(err) {
 				return nil

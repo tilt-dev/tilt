@@ -2,7 +2,6 @@ package k8s
 
 import (
 	"io"
-	"io/ioutil"
 	"strings"
 
 	"helm.sh/helm/v3/pkg/kube"
@@ -35,8 +34,8 @@ func (c *resourceClient) Apply(target kube.ResourceList) (*kube.Result, error) {
 	f := c.factory
 	iostreams := genericclioptions.IOStreams{
 		In:     strings.NewReader(""),
-		Out:    ioutil.Discard,
-		ErrOut: ioutil.Discard,
+		Out:    io.Discard,
+		ErrOut: io.Discard,
 	}
 	flags := apply.NewApplyFlags(f, iostreams)
 

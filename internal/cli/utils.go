@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
@@ -49,7 +48,7 @@ func cmdFail(err error) {
 
 func failWithNonOKResponse(url string, res *http.Response) {
 	body := "<no response body>"
-	b, err := ioutil.ReadAll(res.Body)
+	b, err := io.ReadAll(res.Body)
 	if err != nil {
 		cmdFail(fmt.Errorf("Error reading response body from %s: %v", url, err))
 	}

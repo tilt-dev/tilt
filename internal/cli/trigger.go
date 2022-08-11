@@ -3,7 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -62,7 +62,7 @@ func (t triggerCmd) run(ctx context.Context, args []string) error {
 
 	r, status := apiPostJson("trigger", payload)
 
-	b, err := ioutil.ReadAll(r)
+	b, err := io.ReadAll(r)
 	if err != nil {
 		return errors.Wrap(err, "error reading response from tilt api")
 	}

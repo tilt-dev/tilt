@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -90,7 +90,7 @@ func (s prodServer) fetchFromAssetBucket(w http.ResponseWriter, req *http.Reques
 
 	copyHeader(w.Header(), outres.Header)
 
-	resBody, err := ioutil.ReadAll(outres.Body)
+	resBody, err := io.ReadAll(outres.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

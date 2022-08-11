@@ -23,7 +23,7 @@ package kustomize
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -41,7 +41,7 @@ func loadKustFile(dir string) ([]byte, string, error) {
 	match := 0
 	for _, kf := range konfig.RecognizedKustomizationFileNames() {
 		p := filepath.Join(dir, kf)
-		c, err := ioutil.ReadFile(p)
+		c, err := os.ReadFile(p)
 		if err == nil {
 			path = p
 			match += 1

@@ -2,7 +2,7 @@ package logstore
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"runtime"
 	"strings"
 	"testing"
@@ -563,12 +563,12 @@ func assertSnapshot(t *testing.T, output string) {
 	d1 := []byte(output)
 	gmPath := fmt.Sprintf("testdata/%s_master", t.Name())
 	if LogstoreWriteGoldenMaster == "1" {
-		err := ioutil.WriteFile(gmPath, d1, 0644)
+		err := os.WriteFile(gmPath, d1, 0644)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
-	expected, err := ioutil.ReadFile(gmPath)
+	expected, err := os.ReadFile(gmPath)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,7 +1,7 @@
 package httptest
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"sync"
@@ -23,7 +23,7 @@ func (fc *FakeClient) Do(req *http.Request) (*http.Response, error) {
 	fc.requests = append(fc.requests, *req)
 	r := http.Response{
 		StatusCode: fc.responseCode,
-		Body:       ioutil.NopCloser(strings.NewReader(fc.responseBody)),
+		Body:       io.NopCloser(strings.NewReader(fc.responseBody)),
 	}
 
 	return &r, fc.Err

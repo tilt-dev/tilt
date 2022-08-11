@@ -3,7 +3,7 @@ package snapshot
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"golang.org/x/xerrors"
@@ -160,7 +160,7 @@ func TestGetEmptyVersionFromMalformedSnapshot(t *testing.T) {
 }
 
 func TestShouldNotParseAsProtobuf(t *testing.T) {
-	b, err := ioutil.ReadFile("testdata/snapshot.json")
+	b, err := os.ReadFile("testdata/snapshot.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -176,7 +176,7 @@ func TestShouldNotParseAsProtobuf(t *testing.T) {
 }
 
 func TestShouldParseAsProtobuf(t *testing.T) {
-	b, err := ioutil.ReadFile("testdata/snapshot_new.json")
+	b, err := os.ReadFile("testdata/snapshot_new.json")
 	if err != nil {
 		t.Fatal(err)
 	}

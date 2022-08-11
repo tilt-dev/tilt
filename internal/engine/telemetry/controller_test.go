@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"runtime"
 	"strings"
@@ -221,7 +220,7 @@ func (tcf *tcFixture) assertTelemetryScriptRanAtIs(t time.Time) {
 }
 
 func (tcf *tcFixture) assertCmdOutput(expected string) {
-	bs, err := ioutil.ReadFile(tcf.temp.JoinPath("scriptstdout"))
+	bs, err := os.ReadFile(tcf.temp.JoinPath("scriptstdout"))
 	if err != nil {
 		tcf.t.Fatal(err)
 	}
