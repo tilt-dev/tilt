@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 
 	"github.com/tilt-dev/tilt/pkg/assets"
@@ -12,7 +13,7 @@ import (
 	pkgsnapshot "github.com/tilt-dev/tilt/pkg/snapshot"
 )
 
-func Serve(ctx context.Context, rawSnapshot []byte, port int) error {
+func Serve(ctx context.Context, l net.Listener, rawSnapshot []byte) error {
 	buf := bytes.NewReader(rawSnapshot)
 	var snapshot map[string]interface{}
 
@@ -36,7 +37,7 @@ func Serve(ctx context.Context, rawSnapshot []byte, port int) error {
 		_ = ss.server.Shutdown(context.Background())
 	}()
 
-	err = ss.serve(port)
+	err = ss.serve(l)
 	if err != nil && err != http.ErrServerClosed {
 		return err
 	}
@@ -62,14 +63,14 @@ func newSnapshotServer(snapshot []byte, version string) (*snapshotServer, error)
 	return result, nil
 }
 
-func (ss *snapshotServer) serve(port int) error {
+func (ss *snapshotServer) serve(l net.Listener) error {
 	m := http.NewServeMux()
 
 	m.HandleFunc("/api/snapshot/local", ss.snapshotJSONHandler(ss.snapshot))
 	m.HandleFunc("/", ss.assetServer.ServeHTTP)
 
-	ss.server = http.Server{Addr: fmt.Sprintf("0:%d", port), Handler: m}
-	return ss.server.ListenAndServe()
+	ss.server = http.Server{Handler: m}
+	return ss.server.Serve(l)
 }
 
 func (ss *snapshotServer) snapshotJSONHandler(snapshot []byte) http.HandlerFunc {
