@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
@@ -58,8 +59,7 @@ curl http://myci.com/path/to/snapshot | tilt snapshot view -
 	}
 
 	result.Flags().BoolVar(&c.noOpen, "no-open", false, "Do not automatically open the snapshot in the browser")
-
-	addStartServerFlags(result)
+	addStartSnapshotViewServerFlags(result)
 
 	return result
 }
@@ -125,14 +125,18 @@ func (c *serveCmd) serveSnapshot(snapshotPath string) error {
 	a.Incr("cmd.snapshot.view", cmdTags.AsMap())
 	defer a.Flush(time.Second)
 
-	l, err := net.Listen("tcp", "")
+	host := provideWebHost()
+	l, err := net.Listen("tcp", fmt.Sprintf("%s:%d", host, snapshotViewPortFlag))
 	if err != nil {
 		return fmt.Errorf("could not get a free port: %w", err)
 	}
-	port := l.Addr().(*net.TCPAddr).Port
-	url := fmt.Sprintf("http://localhost:%d/snapshot/local", port)
+	defer l.Close()
 
-	l.Close()
+	port := l.Addr().(*net.TCPAddr).Port
+	url := fmt.Sprintf("http://%s:%d/snapshot/local",
+		strings.Replace(string(host), "0.0.0.0", "127.0.0.1", 1),
+		port)
+
 	fmt.Printf("Serving snapshot at %s\n", url)
 
 	wg, ctx := errgroup.WithContext(ctx)
@@ -141,7 +145,7 @@ func (c *serveCmd) serveSnapshot(snapshotPath string) error {
 		if err != nil {
 			return err
 		}
-		return snapshots.Serve(ctx, snapshot, port)
+		return snapshots.Serve(ctx, l, snapshot)
 	})
 
 	// give the server a little bit of time to spin up
