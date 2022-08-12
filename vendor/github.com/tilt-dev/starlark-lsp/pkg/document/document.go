@@ -185,21 +185,27 @@ func (d *document) followLoads(ctx context.Context, m *Manager, parseState Docum
 			continue
 		}
 		if !load.processed {
-			d.processLoad(dep, load)
+			d.processLoad(dep, load, m)
 			d.loads[i].processed = true
 		}
 	}
 }
 
-func (d *document) processLoad(dep Document, load LoadStatement) {
+func (d *document) processLoad(dep Document, load LoadStatement, m *Manager) {
 	fns := dep.Functions()
 	symMap := make(map[string]query.Symbol)
+	u, err := m.Resolve(dep.URI())
 	for _, s := range dep.Symbols() {
 		symMap[s.Name] = s
 	}
 	for _, ls := range load.Symbols {
 		if sym, found := symMap[ls.Name]; found {
 			sym.Name = ls.Alias
+			if err == nil {
+				loc := sym.Location
+				loc.URI = u
+				sym.Location = loc
+			}
 			d.symbols = append(d.symbols, sym)
 			if f, ok := fns[ls.Name]; ok {
 				d.functions[ls.Alias] = f

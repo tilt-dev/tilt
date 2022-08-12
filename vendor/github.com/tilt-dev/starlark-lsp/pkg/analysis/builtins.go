@@ -7,7 +7,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"reflect"
 	"sort"
 	"strings"
 
@@ -30,16 +29,6 @@ type Builtins struct {
 
 //go:embed builtins.py
 var StarlarkBuiltins []byte
-
-func mapKeys(m interface{}) []string {
-	val := reflect.ValueOf(m)
-	keys := val.MapKeys()
-	names := make([]string, len(keys))
-	for i, k := range keys {
-		names[i] = k.String()
-	}
-	return names
-}
 
 func symbolNames(ss []query.Symbol) []string {
 	names := make([]string, len(ss))

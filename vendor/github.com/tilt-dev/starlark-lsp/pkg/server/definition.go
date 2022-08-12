@@ -19,12 +19,8 @@ func (s Server) Definition(ctx context.Context, params *protocol.DefinitionParam
 		With(textDocumentFields(params.TextDocumentPositionParams)...)
 	logger.Debug("definition")
 
-	positions, err := s.analyzer.Definition(ctx, doc, params.Position)
-	if err != nil {
-		logger.With(zap.Namespace("definition")).Error(fmt.Sprintf("error looking up definition: %v", err))
-	} else {
-		logger.With(zap.Namespace("definition")).Debug(fmt.Sprintf("found definition locations: %v", positions))
-	}
+	positions := s.analyzer.Definition(ctx, doc, params.Position)
+	logger.With(zap.Namespace("definition")).Debug(fmt.Sprintf("found definition locations: %v", positions))
 
-	return positions, err
+	return positions, nil
 }

@@ -3,6 +3,7 @@ package document
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sync"
@@ -15,22 +16,25 @@ import (
 
 type ManagerOpt func(manager *Manager)
 type ReadDocumentFunc func(uri.URI) ([]byte, error)
+type ResolveURIFunc func(uri.URI) (string, error)
 type DocumentMap map[uri.URI]Document
 
 // Manager provides simplified file read/write operations for the LSP server.
 type Manager struct {
-	mu          sync.Mutex
-	root        uri.URI
-	docs        DocumentMap
-	newDocFunc  NewDocumentFunc
-	readDocFunc ReadDocumentFunc
+	mu             sync.Mutex
+	root           uri.URI
+	docs           DocumentMap
+	newDocFunc     NewDocumentFunc
+	readDocFunc    ReadDocumentFunc
+	resolveUriFunc ResolveURIFunc
 }
 
 func NewDocumentManager(opts ...ManagerOpt) *Manager {
 	m := Manager{
-		docs:        make(DocumentMap),
-		newDocFunc:  NewDocument,
-		readDocFunc: ReadDocument,
+		docs:           make(DocumentMap),
+		newDocFunc:     NewDocument,
+		readDocFunc:    ReadDocument,
+		resolveUriFunc: ResolveURI,
 	}
 
 	for _, opt := range opts {
@@ -52,6 +56,12 @@ func WithReadDocumentFunc(readDocFunc ReadDocumentFunc) ManagerOpt {
 	}
 }
 
+func WithResolveURIFunc(fn ResolveURIFunc) ManagerOpt {
+	return func(manager *Manager) {
+		manager.resolveUriFunc = fn
+	}
+}
+
 // Read the document from the given URI and return its contents. This default
 // implementation of a ReadDocumentFunc only handles file: URIs and returns an
 // error otherwise.
@@ -61,6 +71,19 @@ func ReadDocument(u uri.URI) (contents []byte, err error) {
 		return nil, err
 	}
 	return os.ReadFile(fn)
+}
+
+// ResolveURI is the default resolver function used by the manager. It only
+// supports file: URIs.
+func ResolveURI(u uri.URI) (string, error) {
+	parsed, err := url.Parse(string(u))
+	if err != nil {
+		return "", err
+	}
+	if parsed.Scheme != "file" {
+		return "", fmt.Errorf("only file: URLs supported: %s", u)
+	}
+	return u.Filename(), nil
 }
 
 func filename(u uri.URI) (fn string, err error) {
@@ -153,6 +176,15 @@ func (m *Manager) Remove(u uri.URI) {
 	m.removeAndCleanup(u)
 }
 
+// Resolve the given URI to a file:// URI, or return error if the URI can't be resolved to a file.
+func (m *Manager) Resolve(u uri.URI) (uri.URI, error) {
+	f, err := m.resolveUriFunc(u)
+	if err != nil {
+		return "", err
+	}
+	return canonicalFileURI(uri.File(f), m.root), nil
+}
+
 func (m *Manager) Keys() []uri.URI {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -176,10 +208,8 @@ func (m *Manager) readAndParse(ctx context.Context, u uri.URI, parseState Docume
 }
 
 func (m *Manager) parse(ctx context.Context, uri uri.URI, input []byte, parseState DocumentMap) (doc Document, err error) {
-	cleanup := false
 	if parseState == nil {
 		parseState = make(DocumentMap)
-		cleanup = true
 	}
 
 	if _, parsed := parseState[uri]; parsed {
@@ -200,12 +230,8 @@ func (m *Manager) parse(ctx context.Context, uri uri.URI, input []byte, parseSta
 	if docx, ok := doc.(*document); ok {
 		docx.followLoads(ctx, m, parseState)
 	}
-
-	if cleanup {
-		for u, d := range parseState {
-			m.docs[u] = d
-		}
-	}
+	delete(parseState, uri)
+	m.docs[uri] = doc
 	return doc, err
 }
 

@@ -1568,8 +1568,8 @@ github.com/tilt-dev/localregistry-go v0.0.0-20201021185044-ffc4c827f097 h1:CiCHb
 github.com/tilt-dev/localregistry-go v0.0.0-20201021185044-ffc4c827f097/go.mod h1:SX7bKYACP+RsddxA+NBkfVzr5DOr5ranTirgT7xlxjA=
 github.com/tilt-dev/probe v0.3.1 h1:PQhXSBkgcGBUU/eKt4vgAUKsAWWjBr2F53xNAc0E7zs=
 github.com/tilt-dev/probe v0.3.1/go.mod h1:F53NFbqblwu5oyIk2t+BPkswiboxuF8e5D3wbPnY4JA=
-github.com/tilt-dev/starlark-lsp v0.0.0-20220422161504-c53192ba4695 h1:SlEEwdUbOJGQQZ+wxNDc+5z9KrEISxVmfKT0diQVQwY=
-github.com/tilt-dev/starlark-lsp v0.0.0-20220422161504-c53192ba4695/go.mod h1:NxBSH9G8lSfoPERkaqqjCdZQEJOwAKFcnGTh2NzJMrc=
+github.com/tilt-dev/starlark-lsp v0.0.0-20220812175527-c0c1958f8166 h1:q8XpS99WmxxaAE9A088mcigxllgyJ1skLJ86bIORbEQ=
+github.com/tilt-dev/starlark-lsp v0.0.0-20220812175527-c0c1958f8166/go.mod h1:bnkWmNDRqs9DgHgrImOSt6dFAcVcN14pqhR3iZsWWaE=
 github.com/tilt-dev/tilt-apiserver v0.6.1 h1:1lJYn6gjnOk5XXA1wsu5JARBnbhRJWCweGPme6dowLo=
 github.com/tilt-dev/tilt-apiserver v0.6.1/go.mod h1:sjyJCOj1VZlwJ9x8A1ESID7pRsrWIIgElWzkq9yjKEs=
 github.com/tilt-dev/wmclient v0.0.0-20201109174454-1839d0355fbc h1:wGkAoZhrvnmq93B4W2v+agiPl7xzqUaxXkxmKrwJ6bc=
@@ -1806,6 +1806,7 @@ golang.org/x/exp v0.0.0-20191227195350-da58074b4299/go.mod h1:2RIsYlXP63K8oxa1u0
 golang.org/x/exp v0.0.0-20200119233911-0405dc783f0a/go.mod h1:2RIsYlXP63K8oxa1u096TMicItID8zy7Y6sNkU49FU4=
 golang.org/x/exp v0.0.0-20200207192155-f17229e696bd/go.mod h1:J/WKrq2StrnmMY6+EHIKF9dgMWnmCNThgcyBT1FY9mM=
 golang.org/x/exp v0.0.0-20200224162631-6cc2880d07d6/go.mod h1:3jZMyOhIsHpP37uCMkUooju7aAi5cS1Q23tOzKc+0MU=
+golang.org/x/exp v0.0.0-20220414153411-bcd21879b8fd h1:zVFyTKZN/Q7mNRWSs1GOYnHM9NiFSJ54YVRsD0rNWT4=
 golang.org/x/image v0.0.0-20190227222117-0694c2d4d067/go.mod h1:kZ7UVZpmo3dzQBMxlp+ypCbDeSB+sBbTgSJuh5dn5js=
 golang.org/x/image v0.0.0-20190802002840-cff245a6509b/go.mod h1:FeLwcggjj3mMvU+oOTbSwawSJRM1uh48EjtB4UJZlP0=
 golang.org/x/lint v0.0.0-20180702182130-06c8688daad7/go.mod h1:UVdnD1Gm6xHRNCYTkRU2/jEulfH38KcIWyp/GAMgvoE=
