@@ -2,7 +2,6 @@ package tiltfile
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -126,7 +125,7 @@ func unableToFindHelmErrorMessage() error {
 func localSubchartDependenciesFromPath(chartPath string) ([]string, error) {
 	var deps []string
 	requirementsPath := filepath.Join(chartPath, "requirements.yaml")
-	dat, err := ioutil.ReadFile(requirementsPath)
+	dat, err := os.ReadFile(requirementsPath)
 	if os.IsNotExist(err) {
 		return deps, nil
 	} else if err != nil {

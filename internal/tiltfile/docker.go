@@ -3,7 +3,6 @@ package tiltfile
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -551,7 +550,7 @@ func (s *tiltfileState) dockerignoresFromPathsAndContextFilters(source string, p
 
 		s.postExecReadFiles = sliceutils.AppendWithoutDupes(s.postExecReadFiles, diFile)
 
-		contents, err := ioutil.ReadFile(diFile)
+		contents, err := os.ReadFile(diFile)
 		if err != nil {
 			if os.IsNotExist(err) {
 				continue

@@ -3,7 +3,6 @@ package build
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
@@ -173,7 +172,7 @@ func (b *CustomBuilder) Build(ctx context.Context, refs container.RefSet,
 }
 
 func (b *CustomBuilder) readImageRef(ctx context.Context, outputsImageRefTo string, reg *v1alpha1.RegistryHosting) (container.TaggedRefs, error) {
-	contents, err := ioutil.ReadFile(outputsImageRefTo)
+	contents, err := os.ReadFile(outputsImageRefTo)
 	if err != nil {
 		return container.TaggedRefs{}, fmt.Errorf("Could not find image ref in output. Your custom_build script should have written to %s: %v", outputsImageRefTo, err)
 	}

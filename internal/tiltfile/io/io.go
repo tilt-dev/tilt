@@ -3,7 +3,6 @@ package io
 import (
 	"fmt"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -161,7 +160,7 @@ func ReadFile(thread *starlark.Thread, p string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ioutil.ReadFile(p)
+	return os.ReadFile(p)
 }
 
 func RecordReadPath(t *starlark.Thread, wt WatchType, files ...string) error {

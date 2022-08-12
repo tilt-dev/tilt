@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strings"
 	"testing"
@@ -315,7 +314,7 @@ func (c *fakeResourceClient) Build(r io.Reader, validate bool) (kube.ResourceLis
 			// Create a fake HTTP client that returns 404 for every request.
 			Client: &restfake.RESTClient{
 				NegotiatedSerializer: scheme.Codecs,
-				Resp:                 &http.Response{StatusCode: http.StatusNotFound, Body: ioutil.NopCloser(&bytes.Buffer{})},
+				Resp:                 &http.Response{StatusCode: http.StatusNotFound, Body: io.NopCloser(&bytes.Buffer{})},
 			},
 			Mapping:   &meta.RESTMapping{Scope: meta.RESTScopeNamespace},
 			Object:    e.Obj,

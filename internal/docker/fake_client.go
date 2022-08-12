@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"sort"
 	"time"
 
@@ -270,7 +269,7 @@ func (c *FakeClient) ImageBuild(ctx context.Context, buildContext io.Reader, opt
 	c.BuildCount++
 	c.BuildOptions = options
 
-	data, err := ioutil.ReadAll(buildContext)
+	data, err := io.ReadAll(buildContext)
 	if err != nil {
 		return types.ImageBuildResponse{}, errors.Wrap(err, "ImageBuild")
 	}

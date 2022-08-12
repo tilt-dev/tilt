@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"os"
 	"strings"
@@ -115,7 +114,7 @@ func readSnapshot(snapshotArg string) ([]byte, error) {
 		defer func() { _ = f.Close() }()
 	}
 
-	return ioutil.ReadAll(r)
+	return io.ReadAll(r)
 }
 
 func (c *serveCmd) serveSnapshot(snapshotPath string) error {

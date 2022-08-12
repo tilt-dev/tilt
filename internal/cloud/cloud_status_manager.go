@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"sync"
 	"time"
@@ -96,7 +96,7 @@ func (c *CloudStatusManager) CheckStatus(ctx context.Context, st store.RStore, c
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			logger.Get(ctx).Debugf("tilt cloud status request failed with status %d. error reading response body: %v", resp.StatusCode, err)
 			c.error()
@@ -107,7 +107,7 @@ func (c *CloudStatusManager) CheckStatus(ctx context.Context, st store.RStore, c
 		return
 	}
 
-	responseBody, err := ioutil.ReadAll(resp.Body)
+	responseBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		logger.Get(ctx).Debugf("error reading response body: %v", err)
 		c.error()

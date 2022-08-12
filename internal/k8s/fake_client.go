@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 	"sync"
@@ -642,7 +641,7 @@ func (c *FakeK8sClient) Exec(ctx context.Context, podID PodID, cName container.N
 	var stdinBytes []byte
 	var err error
 	if stdin != nil {
-		stdinBytes, err = ioutil.ReadAll(stdin)
+		stdinBytes, err = io.ReadAll(stdin)
 		if err != nil {
 			return errors.Wrap(err, "reading Exec stdin")
 		}

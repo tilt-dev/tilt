@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -118,7 +117,7 @@ func (f *Fixture) File(name, contents string) {
 		err := os.MkdirAll(dir, os.FileMode(0755))
 		assert.NoError(f.tb, err)
 
-		err = ioutil.WriteFile(fullPath, []byte(contents), os.FileMode(0644))
+		err = os.WriteFile(fullPath, []byte(contents), os.FileMode(0644))
 		assert.NoError(f.tb, err)
 		return
 	}
@@ -134,7 +133,7 @@ func (f *Fixture) Symlink(old, new string) {
 }
 
 func (f *Fixture) UseRealFS() {
-	path, err := ioutil.TempDir("", tempdir.SanitizeFileName(f.tb.Name()))
+	path, err := os.MkdirTemp("", tempdir.SanitizeFileName(f.tb.Name()))
 	require.NoError(f.tb, err)
 	f.path = path
 	f.useRealFS = true

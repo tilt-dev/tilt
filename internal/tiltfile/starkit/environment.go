@@ -3,7 +3,7 @@ package starkit
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -277,7 +277,7 @@ func (e *Environment) doLoad(t *starlark.Thread, localPath string) (starlark.Str
 		bytes = []byte(contents)
 	} else {
 		var err error
-		bytes, err = ioutil.ReadFile(localPath)
+		bytes, err = os.ReadFile(localPath)
 		if err != nil {
 			return starlark.StringDict{}, fmt.Errorf("error reading file %s: %w", localPath, err)
 		}

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -348,7 +347,7 @@ func (c *Cli) startBuildkitSession(ctx context.Context, key string, syncedDirs [
 // Protocol (2) is more efficient, but also more complex to manage. We manage it lazily.
 func (c *Cli) initAuthConfigs(ctx context.Context) {
 	c.authConfigsOnce.Do(func() {
-		configFile := config.LoadDefaultConfigFile(ioutil.Discard)
+		configFile := config.LoadDefaultConfigFile(io.Discard)
 
 		// If we fail to get credentials for some reason, that's OK.
 		// even the docker CLI ignores this:

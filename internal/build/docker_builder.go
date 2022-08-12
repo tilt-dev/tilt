@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -608,19 +607,19 @@ func toSyncedDirs(context string, dockerfileSyncDir string, filter model.PathMat
 // Writes Dockerfile and Dockerfile.dockerignore to a temporary directory.
 func writeTempDockerfileSyncdir(contents string) (string, error) {
 	// err is a named return value, due to the defer call below.
-	dockerfileDir, err := ioutil.TempDir("", "tilt-tempdockerfile-")
+	dockerfileDir, err := os.MkdirTemp("", "tilt-tempdockerfile-")
 	if err != nil {
 		return "", fmt.Errorf("creating temp dockerfile directory: %v", err)
 	}
 
-	err = ioutil.WriteFile(filepath.Join(dockerfileDir, "Dockerfile"), []byte(contents), 0777)
+	err = os.WriteFile(filepath.Join(dockerfileDir, "Dockerfile"), []byte(contents), 0777)
 	if err != nil {
 		_ = os.RemoveAll(dockerfileDir)
 		return "", fmt.Errorf("creating temp dockerfile: %v", err)
 	}
 
 	dockerignoreContents := `# Tilt's fake dockerignore file`
-	err = ioutil.WriteFile(filepath.Join(dockerfileDir, "Dockerfile.dockerignore"), []byte(dockerignoreContents), 0777)
+	err = os.WriteFile(filepath.Join(dockerfileDir, "Dockerfile.dockerignore"), []byte(dockerignoreContents), 0777)
 	if err != nil {
 		_ = os.RemoveAll(dockerfileDir)
 		return "", fmt.Errorf("creating temp dockerignore file: %v", err)

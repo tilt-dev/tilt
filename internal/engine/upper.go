@@ -3,7 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -262,7 +262,7 @@ func handleK8sEvent(ctx context.Context, state *store.EngineState, action store.
 }
 
 func handleDumpEngineStateAction(ctx context.Context, engineState *store.EngineState) {
-	f, err := ioutil.TempFile("", "tilt-engine-state-*.txt")
+	f, err := os.CreateTemp("", "tilt-engine-state-*.txt")
 	if err != nil {
 		logger.Get(ctx).Infof("error creating temp file to write engine state: %v", err)
 		return

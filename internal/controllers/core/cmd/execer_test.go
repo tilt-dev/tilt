@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"os/exec"
 	"runtime"
 	"strings"
@@ -149,7 +149,7 @@ func TestExecEmpty(t *testing.T) {
 func TestExecCmd(t *testing.T) {
 	testCases := execTestCases()
 
-	l := logger.NewLogger(logger.NoneLvl, ioutil.Discard)
+	l := logger.NewLogger(logger.NoneLvl, io.Discard)
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {

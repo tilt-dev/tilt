@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"path"
@@ -3989,14 +3988,14 @@ func (f *testFixture) WriteConfigFiles(args ...string) {
 
 func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
 	dcp := filepath.Join(originalWD, "testdata", "fixture_docker-config.yml")
-	dcpc, err := ioutil.ReadFile(dcp)
+	dcpc, err := os.ReadFile(dcp)
 	if err != nil {
 		f.T().Fatal(err)
 	}
 	f.WriteFile("docker-compose.yml", string(dcpc))
 
 	dfp := filepath.Join(originalWD, "testdata", "server.dockerfile")
-	dfc, err := ioutil.ReadFile(dfp)
+	dfc, err := os.ReadFile(dfp)
 	if err != nil {
 		f.T().Fatal(err)
 	}

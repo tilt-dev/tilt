@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -398,7 +397,7 @@ func (f *fakeHTTPClient) Do(req *http.Request) (*http.Response, error) {
 
 	return &http.Response{
 		StatusCode: http.StatusOK,
-		Body:       ioutil.NopCloser(bytes.NewReader([]byte(`{"ID":"aaaaa"}`))),
+		Body:       io.NopCloser(bytes.NewReader([]byte(`{"ID":"aaaaa"}`))),
 	}, nil
 }
 

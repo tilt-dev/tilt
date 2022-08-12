@@ -1,7 +1,6 @@
 package tempdir
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -94,7 +93,7 @@ func (f *TempDirFixture) WriteFile(path string, contents string) string {
 	if err != nil {
 		f.t.Fatal(err)
 	}
-	err = ioutil.WriteFile(fullPath, []byte(contents), os.FileMode(0777))
+	err = os.WriteFile(fullPath, []byte(contents), os.FileMode(0777))
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -103,7 +102,7 @@ func (f *TempDirFixture) WriteFile(path string, contents string) string {
 
 // Returns the full path to the file written.
 func (f *TempDirFixture) CopyFile(originalPath, newPath string) {
-	contents, err := ioutil.ReadFile(originalPath)
+	contents, err := os.ReadFile(originalPath)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -113,7 +112,7 @@ func (f *TempDirFixture) CopyFile(originalPath, newPath string) {
 // Read the file.
 func (f *TempDirFixture) ReadFile(path string) string {
 	fullPath := f.JoinPath(path)
-	contents, err := ioutil.ReadFile(fullPath)
+	contents, err := os.ReadFile(fullPath)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -155,11 +154,11 @@ func (f *TempDirFixture) Rm(pathInRepo string) {
 }
 
 func (f *TempDirFixture) NewFile(prefix string) (*os.File, error) {
-	return ioutil.TempFile(f.dir.Path(), prefix)
+	return os.CreateTemp(f.dir.Path(), prefix)
 }
 
 func (f *TempDirFixture) TempDir(prefix string) string {
-	name, err := ioutil.TempDir(f.dir.Path(), prefix)
+	name, err := os.MkdirTemp(f.dir.Path(), prefix)
 	if err != nil {
 		f.t.Fatal(err)
 	}

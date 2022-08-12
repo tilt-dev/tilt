@@ -2,7 +2,7 @@ package cluster
 
 import (
 	"errors"
-	"io/ioutil"
+	"os"
 	"testing"
 	"time"
 
@@ -173,7 +173,7 @@ func TestKubernetesConnStatus(t *testing.T) {
 	}
 	assert.Equal(t, expected, cluster.Status.Connection)
 
-	contents, err := ioutil.ReadFile(configPath)
+	contents, err := os.ReadFile(configPath)
 	require.NoError(t, err)
 	assert.Equal(t, `apiVersion: v1
 clusters:

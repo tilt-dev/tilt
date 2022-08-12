@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -147,7 +147,7 @@ func TestAPIServerProxy(t *testing.T) {
 	require.NoError(t, err, "Request failed")
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err, "Failed to read response body")
 	// don't care about the full body of the response, but it should at least have
 	// "kind": "UIButtonList" so look for that as a magic word
