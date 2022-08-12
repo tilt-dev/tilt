@@ -43,7 +43,7 @@ func newLspDeps(
 
 func newLspCmd() *cobra.Command {
 	extFinder := lsp.NewExtensionFinder()
-	rootCmd := cli.NewRootCmd("tilt lsp", tiltfile.ApiStubs, extFinder.ReadDocumentFuncOption())
+	rootCmd := cli.NewRootCmd("tilt lsp", tiltfile.ApiStubs, extFinder.ManagerOptions()...)
 	rootCmd.Use = "lsp"
 	origPersistentPreRunE := rootCmd.PersistentPreRunE
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
