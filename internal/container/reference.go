@@ -15,9 +15,9 @@ import (
 //  1. ConfigurationRef: ref as specified in the Tiltfile
 //  2. LocalRef(): ref as used outside of the cluster (for Docker etc.)
 //  3. ClusterRef(): ref as used inside the cluster (in k8s YAML etc.). Often equivalent to
-//      LocalRef, but in some cases they diverge: e.g. when using a local registry with KIND,
-//      the image localhost:1234/my-image (localRef) is referenced in the YAML as
-//      http://registry/my-image (clusterRef).
+//     LocalRef, but in some cases they diverge: e.g. when using a local registry with KIND,
+//     the image localhost:1234/my-image (localRef) is referenced in the YAML as
+//     http://registry/my-image (clusterRef).
 type RefSet struct {
 	// Ref as specified in Tiltfile; used to match a DockerBuild with
 	// corresponding k8s YAML. May contain tags, etc. (Also used as

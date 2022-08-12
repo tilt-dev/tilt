@@ -329,9 +329,9 @@ func (w *Reconciler) cleanupAbandonedNamespaces() {
 // mu must be held by caller.
 //
 // It is idempotent:
-// 	* If no watch for the namespace exists, it is created and the given key is the sole watcher
-// 	* If a watch for the namespace exists but the given key is not in the watcher list, it is added
-// 	* If a watch for the namespace exists and the given key is already in the watcher list, it no-ops
+//   - If no watch for the namespace exists, it is created and the given key is the sole watcher
+//   - If a watch for the namespace exists but the given key is not in the watcher list, it is added
+//   - If a watch for the namespace exists and the given key is already in the watcher list, it no-ops
 //
 // This ensures it can be safely called by reconcile on each invocation for any namespace that the watcher cares about.
 // Additionally, for efficiency, duplicative watches on the same namespace will not be created; see watchedNamespaces

@@ -19,16 +19,16 @@ import (
 //
 // NOTE(nick): I think this might be the wrong API. Currently we model DockerCompose as two objects:
 //
-// 1) A service object with a Spec that tells us how to create the service and
-//    a Status that contains the container state
-// 2) A log object with a Spec that tells us how to watch logs.
+//  1. A service object with a Spec that tells us how to create the service and
+//     a Status that contains the container state
+//  2. A log object with a Spec that tells us how to watch logs.
 //
 // I think the better way to model this would be to more clearly separate "spinning up a service"
 // from "watching a service", so we'd actually have:
 //
-// 1) A service object with a Spec that tells us how to create the service and
-//    a Status that tells us whether the creation succeeded.
-// 2) A monitor object with a status that contains both the container state and the log state.
+//  1. A service object with a Spec that tells us how to create the service and
+//     a Status that tells us whether the creation succeeded.
+//  2. A monitor object with a status that contains both the container state and the log state.
 //
 // But moving to this system will be easier once everything is in the API server.
 func (r *Reconciler) manageOwnedLogStream(ctx context.Context, nn types.NamespacedName, obj *v1alpha1.DockerComposeService) (reconcile.Result, error) {

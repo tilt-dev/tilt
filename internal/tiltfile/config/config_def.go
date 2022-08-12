@@ -174,7 +174,8 @@ func (cd ConfigDef) readFromFile(tiltConfigPath string) (ret configMap, err erro
 
 // makes a new builtin with the given configValue constructor
 // newConfigValue: a constructor for the `configValue` that we're making a function for
-//              (it's the same logic for all types, except for the `configValue` that gets saved)
+//
+//	(it's the same logic for all types, except for the `configValue` that gets saved)
 func configSettingDefinitionBuiltin(newConfigValue func() configValue) starkit.Function {
 	return func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var name string

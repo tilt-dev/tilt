@@ -4,11 +4,11 @@ type TriggerMode int
 
 // Currently TriggerMode models two orthogonal attributes in one enum:
 //
-// 1. Whether a file change should update the resource immediately (auto vs
-//    manual mode)
+//  1. Whether a file change should update the resource immediately (auto vs
+//     manual mode)
 //
-// 2. Whether a resource should start when the env starts (auto_init=true vs
-//    auto_init=false mode, sometimes called AutoInit vs ManualInit mode)
+//  2. Whether a resource should start when the env starts (auto_init=true vs
+//     auto_init=false mode, sometimes called AutoInit vs ManualInit mode)
 //
 // In the APIServer, we don't model these as attributes of a resource.  Rather,
 // the resource specifies where these attribute comes from, with the ability to

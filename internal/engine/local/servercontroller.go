@@ -30,11 +30,11 @@ const AnnotationDepStatus = "tilt.dev/dep-status"
 //
 // A CmdServer offers two constraints on top of a Cmd:
 //
-// - We ensure that the old Cmd is terminated before we replace it
-//   with a new one, because they likely use the same port.
+//   - We ensure that the old Cmd is terminated before we replace it
+//     with a new one, because they likely use the same port.
 //
-// - We report the Cmd status Terminated as an Error state,
-//   and report it in a standard way.
+//   - We report the Cmd status Terminated as an Error state,
+//     and report it in a standard way.
 type ServerController struct {
 	recentlyCreatedCmd map[string]string
 	createdTriggerTime map[string]time.Time

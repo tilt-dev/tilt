@@ -53,10 +53,10 @@ func NewDockerComposeBuildAndDeployer(
 // Extract the targets we can apply -- DCBaD supports ImageTargets and DockerComposeTargets.
 //
 // A given Docker Compose service can be built one of two ways:
-// 	* Tilt-managed: Tiltfile includes a `docker_build` or `custom_build` directive for the service's image, so Tilt
-// 		will handle the image lifecycle including building/tagging and Live Update (if configured)
-// 	* Docker Compose-managed: Building is delegated to Docker Compose via the `--build` flag to the `up` call;
-// 		Tilt is responsible for watching file changes but does not handle the builds.
+//   - Tilt-managed: Tiltfile includes a `docker_build` or `custom_build` directive for the service's image, so Tilt
+//     will handle the image lifecycle including building/tagging and Live Update (if configured)
+//   - Docker Compose-managed: Building is delegated to Docker Compose via the `--build` flag to the `up` call;
+//     Tilt is responsible for watching file changes but does not handle the builds.
 //
 // It's also possible for a service to reference an image but NOT have any corresponding build (e.g. public/registry
 // hosted images are common for infra deps like nginx). These will not have any ImageTarget.

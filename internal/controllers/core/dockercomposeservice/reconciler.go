@@ -156,9 +156,9 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 // Determine if we should deploy the current YAML.
 //
 // Ensures:
-// 1) We have enough info to deploy, and
-// 2) Either we haven't deployed before,
-//    or one of the inputs has changed since the last deploy.
+//  1. We have enough info to deploy, and
+//  2. Either we haven't deployed before,
+//     or one of the inputs has changed since the last deploy.
 func (r *Reconciler) shouldDeployOnReconcile(
 	nn types.NamespacedName,
 	obj *v1alpha1.DockerComposeService,

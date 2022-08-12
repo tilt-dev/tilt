@@ -65,11 +65,11 @@ func NewTerminalPrompt(a *analytics.TiltAnalytics, openInput OpenInput,
 //
 // This sits at the intersection of two incompatible interfaces:
 //
-// 1) The LogStore is an asynchronous, streaming log interface that makes sure
-//    all logs are shown everywhere (across stdout, hud, web, snapshots, etc).
+//  1. The LogStore is an asynchronous, streaming log interface that makes sure
+//     all logs are shown everywhere (across stdout, hud, web, snapshots, etc).
 //
-// 2) The TerminalPrompt is a synchronous interface that shows a deliberately
-//    short "greeting" message, then blocks on user input.
+//  2. The TerminalPrompt is a synchronous interface that shows a deliberately
+//     short "greeting" message, then blocks on user input.
 //
 // Rather than make these two interfaces interoperate well, we just have
 // the internal/cli code copy over the logs during the init sequence.

@@ -54,11 +54,12 @@ type clientRevision struct {
 // handling client changes.
 //
 // On reconcile, the controller should:
-// 	(1) Fetch the Cluster object referenced by the type its reconciling.
-// 	(2) Call ClientManager::Refresh to determine if the client for the cluster
-// 		has changed. If true, all state associated with the old cluster should
-// 		be cleared.
-// 	(3) As needed, call ClientManager::GetK8sClient to get a client instance.
+//
+//	(1) Fetch the Cluster object referenced by the type its reconciling.
+//	(2) Call ClientManager::Refresh to determine if the client for the cluster
+//		has changed. If true, all state associated with the old cluster should
+//		be cleared.
+//	(3) As needed, call ClientManager::GetK8sClient to get a client instance.
 type ClientManager struct {
 	mu       sync.Mutex
 	provider ClientProvider
