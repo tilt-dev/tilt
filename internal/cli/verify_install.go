@@ -23,7 +23,7 @@ func (c *verifyInstallCmd) register() *cobra.Command {
 	return cmd
 }
 
-//send info including "machine" tag to the wmstats db
+// send info including "machine" tag to the wmstats db
 func (c *verifyInstallCmd) run(ctx context.Context, args []string) error {
 	a := analytics.Get(ctx)
 	a.Incr("cmd.verifyInstall", nil)

@@ -31,8 +31,9 @@ func InjectImagePullPolicy(entity K8sEntity, policy v1.PullPolicy) (K8sEntity, e
 // replace a image name with its digest.
 //
 // policy: The pull policy to set on the replaced image.
-//   When working with a local k8s cluster, we want to set this to Never,
-//   to ensure that k8s fails hard if the image is missing from docker.
+//
+//	When working with a local k8s cluster, we want to set this to Never,
+//	to ensure that k8s fails hard if the image is missing from docker.
 //
 // Returns: the new entity, whether the image was replaced, and an error.
 func InjectImageDigest(entity K8sEntity, selector container.RefSelector, injectRef reference.Named, locators []ImageLocator, matchInEnvVars bool, policy v1.PullPolicy) (K8sEntity, bool, error) {

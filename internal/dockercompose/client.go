@@ -314,7 +314,8 @@ func (c *cmdDCClient) ContainerID(ctx context.Context, spec v1alpha1.DockerCompo
 // Version returns the parsed output of `docker compose version`, the canonical version and build (if present).
 //
 // NOTE: The version subcommand was added in Docker Compose v1.4.0 (released 2015-08-04), so this won't work for
-// 		 truly ancient versions, but handles both v1 and v2.
+//
+//	truly ancient versions, but handles both v1 and v2.
 func (c *cmdDCClient) Version(ctx context.Context) (string, string, error) {
 	c.initDcCommand()
 	return c.version, c.build, c.err

@@ -33,6 +33,21 @@ func TestReadDocument(t *testing.T) {
 	assert.Equal(t, contents, string(bytes))
 }
 
+func TestResolveURI(t *testing.T) {
+	f := newFixture(t)
+	f.MkdirAll("tilt-extensions/hello")
+	contents := `hello = "Hi"`
+	tiltfile := f.WriteFile("tilt-extensions/hello/Tiltfile", contents)
+
+	path, err := f.finder.resolveURI(uri.URI("ext://hello"))
+	require.NoError(t, err)
+	assert.Equal(t, tiltfile, path)
+
+	path, err = f.finder.resolveURI(uri.File(tiltfile))
+	require.NoError(t, err)
+	assert.Equal(t, tiltfile, path)
+}
+
 type fixture struct {
 	tempdir.TempDirFixture
 	finder *extensionFinder

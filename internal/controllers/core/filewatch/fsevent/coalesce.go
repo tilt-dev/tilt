@@ -12,7 +12,8 @@ import (
 // 200ms is not the result of any kind of research or experimentation
 // it might end up being a significant part of deployment delay, if we get the total latency <2s
 // it might also be long enough that it misses some changes if the user has some operation involving a large file
-//   (e.g., a binary dependency in git), but that's hopefully less of a problem since we'd get it in the next build
+//
+//	(e.g., a binary dependency in git), but that's hopefully less of a problem since we'd get it in the next build
 const BufferMinRestDuration = 200 * time.Millisecond
 
 // BufferMaxDuration prevents excessive delays when bundling together file changes by emitting an event to the

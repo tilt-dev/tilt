@@ -91,9 +91,10 @@ func registerWatches(builder *builder.Builder, idxer *indexer.Indexer, typesToWa
 // Other errors reaching the API server will be returned to the caller.
 //
 // TODO(nick): If the user typos a button name, there's currently no feedback
-// 	that this is happening. This is probably the correct product behavior (in particular:
-// 	resources should still run if one of their triggers has been deleted).
-// 	We might eventually need trigger statuses to express errors in lookup.
+//
+//	that this is happening. This is probably the correct product behavior (in particular:
+//	resources should still run if one of their triggers has been deleted).
+//	We might eventually need trigger statuses to express errors in lookup.
 func fetchButtons(ctx context.Context, client client.Reader, buttonNames []string) (map[string]*v1alpha1.UIButton, error) {
 	buttons := make(map[string]*v1alpha1.UIButton, len(buttonNames))
 	for _, n := range buttonNames {
@@ -122,9 +123,10 @@ func fetchButtons(ctx context.Context, client client.Reader, buttonNames []strin
 // Other errors reaching the API server will be returned to the caller.
 //
 // TODO(nick): If the user typos a filewatch name, there's currently no feedback
-// 	that this is happening. This is probably the correct product behavior (in particular:
-// 	resources should still run if one of their triggers has been deleted).
-// 	We might eventually need trigger statuses to express errors in lookup.
+//
+//	that this is happening. This is probably the correct product behavior (in particular:
+//	resources should still run if one of their triggers has been deleted).
+//	We might eventually need trigger statuses to express errors in lookup.
 func fetchFileWatches(ctx context.Context, client client.Reader, fwNames []string) ([]*v1alpha1.FileWatch, error) {
 	result := []*v1alpha1.FileWatch{}
 	for _, n := range fwNames {

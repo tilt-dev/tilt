@@ -15,7 +15,7 @@ import (
 )
 
 type ExtensionFinder interface {
-	ReadDocumentFuncOption() document.ManagerOpt
+	ManagerOptions() []document.ManagerOpt
 	Initialize(context context.Context, repo *extensionrepo.Reconciler, ext *extension.Reconciler)
 }
 
@@ -44,8 +44,11 @@ func (f *extensionFinder) initializePlugins(extPlugin *tiltextension.Plugin) {
 	f.interceptor = extPlugin
 }
 
-func (f *extensionFinder) ReadDocumentFuncOption() document.ManagerOpt {
-	return document.WithReadDocumentFunc(f.readDocument)
+func (f *extensionFinder) ManagerOptions() []document.ManagerOpt {
+	return []document.ManagerOpt{
+		document.WithReadDocumentFunc(f.readDocument),
+		document.WithResolveURIFunc(f.resolveURI),
+	}
 }
 
 func (f *extensionFinder) readDocument(u uri.URI) ([]byte, error) {
@@ -69,4 +72,15 @@ func (f *extensionFinder) extensionPath(module string) (string, error) {
 	}
 	thread := starkit.NewThread(f.ctx, model)
 	return f.interceptor.LocalPath(thread, module)
+}
+
+func (f *extensionFinder) resolveURI(u uri.URI) (string, error) {
+	path, err := f.extensionPath(string(u))
+	if err != nil {
+		return "", err
+	}
+	if path != "" {
+		return path, nil
+	}
+	return document.ResolveURI(u)
 }

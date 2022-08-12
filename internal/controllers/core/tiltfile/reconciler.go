@@ -199,12 +199,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 }
 
 // Modeled after BuildController.needsBuild and NextBuildReason(). Check to see that:
-// 1) There's currently no Tiltfile build running,
-// 2) There are pending file changes, and
-// 3) Those files have changed since the last Tiltfile build
-//    (so that we don't keep re-running a failed build)
-// 4) OR the command-line args have changed since the last Tiltfile build
-// 5) OR user has manually triggered a Tiltfile build
+//  1. There's currently no Tiltfile build running,
+//  2. There are pending file changes, and
+//  3. Those files have changed since the last Tiltfile build
+//     (so that we don't keep re-running a failed build)
+//  4. OR the command-line args have changed since the last Tiltfile build
+//  5. OR user has manually triggered a Tiltfile build
 func (r *Reconciler) needsBuild(
 	_ context.Context,
 	nn types.NamespacedName,

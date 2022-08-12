@@ -122,7 +122,8 @@ func extractURL(httpGet *v1alpha1.HTTPGetAction) (*url.URL, error) {
 // extractPort converts a K8s multi-type value to a valid port number or returns an error.
 // adapted from https://github.com/kubernetes/kubernetes/blob/v1.20.2/pkg/kubelet/prober/prober.go#L203-L223
 // (note: this implementation is substantially simplified from K8s - it does not handle "named" ports as that
-// 		  does not apply)
+//
+//	does not apply)
 func extractPort(port int32) (int, error) {
 	if port <= 0 || port > 65535 {
 		return 0, fmt.Errorf("port number out of range: %d", port)

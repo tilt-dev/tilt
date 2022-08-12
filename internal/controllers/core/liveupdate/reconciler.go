@@ -477,10 +477,10 @@ func (r *Reconciler) reconcileDockerComposeService(ctx context.Context, monitor 
 //
 // Determining the current build is a bit tricky, but our
 // order of preference is:
-// 1) If we have an ImageMap.BuildStartedAt, this is the gold standard.
-// 2) If there's no ImageMap, we prefer the KubernetesApply.LastApplyStartTime.
-// 3) If there's no KubernetesApply, we prefer the oldest pod
-//    in the filtered pod list.
+//  1. If we have an ImageMap.BuildStartedAt, this is the gold standard.
+//  2. If there's no ImageMap, we prefer the KubernetesApply.LastApplyStartTime.
+//  3. If there's no KubernetesApply, we prefer the oldest pod
+//     in the filtered pod list.
 func (r *Reconciler) garbageCollectFileChanges(res luResource, monitor *monitor) {
 	for _, source := range monitor.spec.Sources {
 		fwn := source.FileWatch
@@ -1065,11 +1065,11 @@ func (r *Reconciler) enqueueTriggerQueue(obj client.Object) []reconcile.Request 
 }
 
 // indexLiveUpdate returns keys of objects referenced _by_ the LiveUpdate object for reverse lookup including:
-// 	- DockerComposeService
-//  - FileWatch
-//  - ImageMap
-// 	- KubernetesDiscovery
-//	- KubernetesApply
+//   - DockerComposeService
+//   - FileWatch
+//   - ImageMap
+//   - KubernetesDiscovery
+//   - KubernetesApply
 func indexLiveUpdate(obj ctrlclient.Object) []indexer.Key {
 	lu := obj.(*v1alpha1.LiveUpdate)
 	var result []indexer.Key

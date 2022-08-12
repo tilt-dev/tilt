@@ -45,11 +45,11 @@ func HandleConfigsReloadStarted(
 // that Tiltfile.)
 //
 // In the medium-term, we resolve this in the EngineState in three different ways:
-// 1) If a data structure supports merging (like the Manifest map), do a merge.
-// 2) If merging fails (like if two Tiltfiles define the same Manifest), log an Error
-//    and try to do something resonable.
-// 3) If a data structure does not support merging (like UpdateSettings), only
-//    accept that data structure from the "main" tiltfile.
+//  1. If a data structure supports merging (like the Manifest map), do a merge.
+//  2. If merging fails (like if two Tiltfiles define the same Manifest), log an Error
+//     and try to do something resonable.
+//  3. If a data structure does not support merging (like UpdateSettings), only
+//     accept that data structure from the "main" tiltfile.
 func HandleConfigsReloaded(
 	ctx context.Context,
 	state *store.EngineState,

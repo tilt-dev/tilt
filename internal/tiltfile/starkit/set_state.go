@@ -14,9 +14,9 @@ import (
 // For example, an plugin that accumulated strings might use
 // SetState() like this:
 //
-// err := starkit.SetState(t, func(strings []string) {
-//   return append([]string{newString}, strings...)
-// })
+//	err := starkit.SetState(t, func(strings []string) {
+//	  return append([]string{newString}, strings...)
+//	})
 //
 // This would be so much easier with generics :grimace:
 //

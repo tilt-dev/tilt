@@ -87,12 +87,12 @@ func AfterOrEqual(a, b commonTime) bool {
 
 // normalize returns versions of a and b truncated to the lowest available granularity.
 //
-// 	* If either is metav1.Time, a and b are truncated to time.Second.
-// 	* If either is metav1.MicroTime, a and b are truncated to time.Microsecond.
-// 	* If both a and b are time.Time, a and b have their monotonic clock reading stripped but are otherwise untouched.
-//  * If either is nil, nil value(s) are converted to the zero time and the non-nil value (if present) has the
-//  	monotonic clock reading stripped.
-// 	* Otherwise, this function will panic.
+//   - If either is metav1.Time, a and b are truncated to time.Second.
+//   - If either is metav1.MicroTime, a and b are truncated to time.Microsecond.
+//   - If both a and b are time.Time, a and b have their monotonic clock reading stripped but are otherwise untouched.
+//   - If either is nil, nil value(s) are converted to the zero time and the non-nil value (if present) has the
+//     monotonic clock reading stripped.
+//   - Otherwise, this function will panic.
 func normalize(a, b commonTime) (time.Time, time.Time) {
 	var anySeconds bool
 	var anyMicroseconds bool

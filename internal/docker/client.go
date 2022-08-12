@@ -336,11 +336,11 @@ func (c *Cli) startBuildkitSession(ctx context.Context, key string, syncedDirs [
 // is responsible for managing them.
 //
 // Docker uses two different protocols:
-// 1) In the legacy build engine, you have to get all the creds ahead of time
-//    and pass them in the ImageBuild call.
-// 2) In BuildKit, you have to create a persistent session. The client
-//    side of the session manages a miniature server that just responds
-//    to credential requests as the server asks for them.
+//  1. In the legacy build engine, you have to get all the creds ahead of time
+//     and pass them in the ImageBuild call.
+//  2. In BuildKit, you have to create a persistent session. The client
+//     side of the session manages a miniature server that just responds
+//     to credential requests as the server asks for them.
 //
 // Protocol (1) is very slow. If you're using the gcloud credential store,
 // fetching all the creds ahead of time can take ~3 seconds.

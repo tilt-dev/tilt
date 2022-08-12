@@ -617,12 +617,12 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 //
 // There are 4 mistakes people commonly make if they
 // have unmatched images:
-// 1) They didn't include any Kubernetes or Docker Compose configs at all.
-// 2) They included Kubernetes configs, but they're custom resources
-//    and Tilt can't infer the image.
-// 3) They typo'd the image name, and need help finding the right name.
-// 4) The tooling they're using to generating the k8s resources
-//    isn't generating what they expect.
+//  1. They didn't include any Kubernetes or Docker Compose configs at all.
+//  2. They included Kubernetes configs, but they're custom resources
+//     and Tilt can't infer the image.
+//  3. They typo'd the image name, and need help finding the right name.
+//  4. The tooling they're using to generating the k8s resources
+//     isn't generating what they expect.
 //
 // This function intends to help with cases (1)-(3).
 // Long-term, we want to have better tooling to help with (4),
@@ -877,7 +877,8 @@ func (s *tiltfileState) assembleK8s() error {
 // However because we
 // a) couldn't think of a concrete case where you would need to specify group
 // b) being able to do so would make things more complicated, like in the case where you want to specify the group of
-//    a cluster scoped object but are unable to specify the namespace (e.g. foo:clusterrole::rbac.authorization.k8s.io)
+//
+//	a cluster scoped object but are unable to specify the namespace (e.g. foo:clusterrole::rbac.authorization.k8s.io)
 //
 // we decided to leave it off for now. When we encounter a concrete use case for specifying group it shouldn't be too
 // hard to add it here and in the docs.

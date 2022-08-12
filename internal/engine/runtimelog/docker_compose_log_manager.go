@@ -224,12 +224,13 @@ var _ store.Subscriber = &DockerComposeLogManager{}
 // Tilt invokes `docker-compose logs` with `--timestamps`, which will output timestamps in the RFC3339Nano format
 // at the beginning of each log line with a single space as a divider afterwards. For example, if the container
 // logs "Hello World\n", the output would be:
-// 		2021-09-08T18:24:24.704836400Z Hello World
+//
+//	2021-09-08T18:24:24.704836400Z Hello World
 //
 // Unfortunately, there are caveats:
-// 	* docker-compose v2 prepends whitespace _before_ the timestamp as well
-//  * Messages originating from docker-compose itself (e.g. container lifecycle messages) do NOT get a timestamp, e.g.
-// 		myproject_my-container_1 exited with code 0
+//   - docker-compose v2 prepends whitespace _before_ the timestamp as well
+//   - Messages originating from docker-compose itself (e.g. container lifecycle messages) do NOT get a timestamp, e.g.
+//     myproject_my-container_1 exited with code 0
 //
 // As a result, this function tries to be very conservative in extracting the timestamp.
 func splitDockerComposeLogLineTimestamp(line []byte) (bool, time.Time, []byte) {

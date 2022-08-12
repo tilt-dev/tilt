@@ -28,9 +28,10 @@ import (
 // `/proxy/apis` --> `/apis`.
 //
 // NOTE: The kubectl ProxyHandler code has some odd behavior in this regard in that it only strips
-// 	the prefix if it does not start with `/api`. As a result, something like a prefix of `/apiserver`
-// 	will cause problems because `/apiserver/apis/foo` will be passed as-is, which is why `/proxy` was
-// 	chosen here.
+//
+//	the prefix if it does not start with `/api`. As a result, something like a prefix of `/apiserver`
+//	will cause problems because `/apiserver/apis/foo` will be passed as-is, which is why `/proxy` was
+//	chosen here.
 const apiServerProxyPrefix = "/proxy"
 
 type HeadsUpServerController struct {
