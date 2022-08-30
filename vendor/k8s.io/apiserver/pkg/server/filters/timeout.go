@@ -142,7 +142,7 @@ func (t *timeoutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}()
 		}()
 
-		postTimeoutFn()
+		defer postTimeoutFn()
 		tw.timeout(err)
 	}
 }
