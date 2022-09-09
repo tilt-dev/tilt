@@ -5751,6 +5751,7 @@ type fixture struct {
 	t   *testing.T
 	*tempdir.TempDirFixture
 	k8sContext k8s.KubeContext
+	k8sNamespace k8s.Namespace
 	k8sEnv     clusterid.Product
 	webHost    model.WebHost
 
@@ -5765,7 +5766,7 @@ type fixture struct {
 func (f *fixture) newTiltfileLoader() TiltfileLoader {
 	dcc := dockercompose.NewDockerComposeClient(docker.LocalEnv{})
 
-	k8sContextPlugin := k8scontext.NewPlugin(f.k8sContext, f.k8sEnv)
+	k8sContextPlugin := k8scontext.NewPlugin(f.k8sContext, f.k8sNamespace, f.k8sEnv)
 	versionPlugin := version.NewPlugin(model.TiltBuild{Version: "0.5.0"})
 	configPlugin := config.NewPlugin("up")
 	localEnv := localexec.DefaultEnv(12345, f.webHost)

@@ -17,12 +17,14 @@ import (
 // Exposes an API for other plugins to get and validate the allowed k8s context.
 type Plugin struct {
 	context k8s.KubeContext
+	namespace k8s.Namespace
 	env     clusterid.Product
 }
 
-func NewPlugin(context k8s.KubeContext, env clusterid.Product) Plugin {
+func NewPlugin(context k8s.KubeContext, namespace k8s.Namespace, env clusterid.Product) Plugin {
 	return Plugin{
 		context: context,
+		namespace: namespace,
 		env:     env,
 	}
 }
@@ -41,11 +43,20 @@ func (e Plugin) OnStart(env *starkit.Environment) error {
 	if err != nil {
 		return err
 	}
+
+	err = env.AddBuiltin("k8s_namespace", e.k8sNamespace)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
 func (e Plugin) k8sContext(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	return starlark.String(e.context), nil
+}
+
+func (e Plugin) k8sNamespace(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return starlark.String(e.namespace), nil
 }
 
 func (e Plugin) allowK8sContexts(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
