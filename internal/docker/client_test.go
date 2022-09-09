@@ -349,6 +349,22 @@ func TestProvideClusterProduct(t *testing.T) {
 				Client: hostClient{Host: "unix:///var/run/docker.sock"},
 			},
 		},
+		{
+			env:     clusterid.ProductRancherDesktop,
+			runtime: container.RuntimeDocker,
+			// Set DOCKER_HOST here to mimic rancher-desktop docker context in non-admin mode
+			osEnv: map[string]string{
+				"DOCKER_HOST": "unix:///Users/tilt/.rd/docker.sock",
+			},
+			expectedCluster: Env{
+				Client:              hostClient{Host: "unix:///Users/tilt/.rd/docker.sock"},
+				BuildToKubeContexts: []string{"rancher-desktop-me"},
+			},
+			expectedLocal: Env{
+				Client:              hostClient{Host: "unix:///Users/tilt/.rd/docker.sock"},
+				BuildToKubeContexts: []string{"rancher-desktop-me"},
+			},
+		},
 	}
 
 	for i, c := range cases {
