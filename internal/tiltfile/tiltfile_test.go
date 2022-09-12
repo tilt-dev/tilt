@@ -3600,6 +3600,8 @@ func TestK8sContext(t *testing.T) {
 	f.file("Tiltfile", `
 if k8s_context() != 'fake-context':
   fail('bad context')
+if k8s_namespace() != 'fake-namespace':
+  fail('bad namespace')
 k8s_yaml('foo.yaml')
 docker_build('gcr.io/foo', 'foo')
 `)
@@ -5798,6 +5800,7 @@ func newFixture(t *testing.T) *fixture {
 		an:             ma,
 		ta:             ta,
 		k8sContext:     "fake-context",
+		k8sNamespace:   "fake-namespace",
 		k8sEnv:         clusterid.ProductDockerDesktop,
 		features:       features,
 	}
