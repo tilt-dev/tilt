@@ -3327,7 +3327,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	au := engineanalytics.NewAnalyticsUpdater(ta, engineanalytics.CmdTags{}, engineMode)
 	ar := engineanalytics.ProvideAnalyticsReporter(ta, st, kClient, env, feature.MainDefaults)
 	fakeDcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
-	k8sContextPlugin := k8scontext.NewPlugin("fake-context", env)
+	k8sContextPlugin := k8scontext.NewPlugin("fake-context", "default", env)
 	versionPlugin := version.NewPlugin(model.TiltBuild{Version: "0.5.0"})
 	configPlugin := config.NewPlugin("up")
 	execer := localexec.NewFakeExecer(t)

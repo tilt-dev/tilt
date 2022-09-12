@@ -3600,6 +3600,8 @@ func TestK8sContext(t *testing.T) {
 	f.file("Tiltfile", `
 if k8s_context() != 'fake-context':
   fail('bad context')
+if k8s_namespace() != 'fake-namespace':
+  fail('bad namespace')
 k8s_yaml('foo.yaml')
 docker_build('gcr.io/foo', 'foo')
 `)
@@ -5750,9 +5752,10 @@ type fixture struct {
 	out *bytes.Buffer
 	t   *testing.T
 	*tempdir.TempDirFixture
-	k8sContext k8s.KubeContext
-	k8sEnv     clusterid.Product
-	webHost    model.WebHost
+	k8sContext   k8s.KubeContext
+	k8sNamespace k8s.Namespace
+	k8sEnv       clusterid.Product
+	webHost      model.WebHost
 
 	ta *tiltanalytics.TiltAnalytics
 	an *analytics.MemoryAnalytics
@@ -5765,7 +5768,7 @@ type fixture struct {
 func (f *fixture) newTiltfileLoader() TiltfileLoader {
 	dcc := dockercompose.NewDockerComposeClient(docker.LocalEnv{})
 
-	k8sContextPlugin := k8scontext.NewPlugin(f.k8sContext, f.k8sEnv)
+	k8sContextPlugin := k8scontext.NewPlugin(f.k8sContext, f.k8sNamespace, f.k8sEnv)
 	versionPlugin := version.NewPlugin(model.TiltBuild{Version: "0.5.0"})
 	configPlugin := config.NewPlugin("up")
 	localEnv := localexec.DefaultEnv(12345, f.webHost)
@@ -5797,6 +5800,7 @@ func newFixture(t *testing.T) *fixture {
 		an:             ma,
 		ta:             ta,
 		k8sContext:     "fake-context",
+		k8sNamespace:   "fake-namespace",
 		k8sEnv:         clusterid.ProductDockerDesktop,
 		features:       features,
 	}
