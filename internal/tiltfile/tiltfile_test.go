@@ -5752,10 +5752,10 @@ type fixture struct {
 	out *bytes.Buffer
 	t   *testing.T
 	*tempdir.TempDirFixture
-	k8sContext k8s.KubeContext
+	k8sContext   k8s.KubeContext
 	k8sNamespace k8s.Namespace
-	k8sEnv     clusterid.Product
-	webHost    model.WebHost
+	k8sEnv       clusterid.Product
+	webHost      model.WebHost
 
 	ta *tiltanalytics.TiltAnalytics
 	an *analytics.MemoryAnalytics

@@ -16,16 +16,16 @@ import (
 // Implements functions for dealing with the Kubernetes context.
 // Exposes an API for other plugins to get and validate the allowed k8s context.
 type Plugin struct {
-	context k8s.KubeContext
+	context   k8s.KubeContext
 	namespace k8s.Namespace
-	env     clusterid.Product
+	env       clusterid.Product
 }
 
 func NewPlugin(context k8s.KubeContext, namespace k8s.Namespace, env clusterid.Product) Plugin {
 	return Plugin{
-		context: context,
+		context:   context,
 		namespace: namespace,
-		env:     env,
+		env:       env,
 	}
 }
 
