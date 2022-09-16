@@ -1022,6 +1022,16 @@ def k8s_context() -> str:
   """
   pass
 
+def k8s_namespace() -> str:
+  """Returns the name of the Kubernetes namespace Tilt is connecting to.
+
+  Example ::
+
+    if k8s_namespace() == 'default':
+      fail("failing early to avoid deploying to 'default' namespace")
+  """
+  pass
+
 def allow_k8s_contexts(contexts: Union[str, List[str]]) -> None:
   """Specifies that Tilt is allowed to run against the specified k8s context names.
 
