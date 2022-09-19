@@ -10,7 +10,7 @@ jobs:
   build-linux:
     resource_class: medium+
     docker:
-      - image: docker/tilt-ci@sha256:89016e491fa0dc8a23ea3c023b184fec8e966def190ab29d5631260fe43959c8
+      - image: docker/tilt-ci@sha256:1e8e15f7db68c6988525e092ee1d9f786fa9dcddcdcab824b78b74b7e07c39d3
     # apiserver code generation scripts require being in GOPATH
     working_directory: /home/circleci/go/src/github.com/tilt-dev/tilt
 
@@ -50,7 +50,7 @@ jobs:
 
   publish-assets:
     docker:
-      - image: docker/tilt-ci@sha256:89016e491fa0dc8a23ea3c023b184fec8e966def190ab29d5631260fe43959c8
+      - image: docker/tilt-ci@sha256:1e8e15f7db68c6988525e092ee1d9f786fa9dcddcdcab824b78b74b7e07c39d3
     steps:
       - checkout
       - gcp-cli/install
@@ -83,7 +83,7 @@ jobs:
   build-integration:
     resource_class: medium+
     docker:
-      - image: docker/tilt-integration-ci@sha256:03089fe7d21de858bbbe5e45759b8b4f2e39bc5426051e947d4295fd17e047fc
+      - image: docker/tilt-integration-ci@sha256:4c16c3e08c4c3a38c8fb1a24c1e32f09dbc48d7070f3489f00767cb6043c6672
     steps:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
