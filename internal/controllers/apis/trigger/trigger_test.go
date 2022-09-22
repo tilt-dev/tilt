@@ -313,7 +313,7 @@ type explodingReader struct {
 	err error
 }
 
-func (e explodingReader) Get(_ context.Context, _ ctrlclient.ObjectKey, _ ctrlclient.Object) error {
+func (e explodingReader) Get(_ context.Context, _ ctrlclient.ObjectKey, _ ctrlclient.Object, _ ...ctrlclient.GetOption) error {
 	return e.err
 }
 
@@ -325,7 +325,7 @@ type fakeReader struct {
 	objs apiset.ObjectSet
 }
 
-func (f *fakeReader) Get(ctx context.Context, key ctrlclient.ObjectKey, out ctrlclient.Object) error {
+func (f *fakeReader) Get(ctx context.Context, key ctrlclient.ObjectKey, out ctrlclient.Object, _ ...ctrlclient.GetOption) error {
 	if f.objs == nil {
 		return errors.New("fakeReader.objs uninitialized")
 	}

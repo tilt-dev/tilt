@@ -93,6 +93,10 @@ func (f *filepathREST) NewList() runtime.Object {
 	return f.newListFunc()
 }
 
+func (f *filepathREST) Destroy() {
+	// Destroy() is intended for cleaning up client connections. Do nothing.
+}
+
 func (f *filepathREST) NamespaceScoped() bool {
 	return f.strategy.NamespaceScoped()
 }
@@ -146,6 +150,13 @@ func (f *filepathREST) Create(
 	createValidation rest.ValidateObjectFunc,
 	options *metav1.CreateOptions,
 ) (runtime.Object, error) {
+
+	accessor, err := meta.Accessor(obj)
+	if err != nil {
+		return nil, err
+	}
+	rest.FillObjectMetaSystemFields(accessor)
+
 	if err := rest.BeforeCreate(f.strategy, ctx, obj); err != nil {
 		return nil, err
 	}
@@ -167,10 +178,6 @@ func (f *filepathREST) Create(
 		}
 	}
 
-	accessor, err := meta.Accessor(obj)
-	if err != nil {
-		return nil, err
-	}
 	filename := f.objectFileName(ctx, accessor.GetName())
 
 	if f.fs.Exists(filename) {

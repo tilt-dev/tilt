@@ -196,13 +196,15 @@ func (lim *Limiter) Reserve() *Reservation {
 // The Limiter takes this Reservation into account when allowing future events.
 // The returned Reservation’s OK() method returns false if n exceeds the Limiter's burst size.
 // Usage example:
-//   r := lim.ReserveN(time.Now(), 1)
-//   if !r.OK() {
-//     // Not allowed to act! Did you remember to set lim.burst to be > 0 ?
-//     return
-//   }
-//   time.Sleep(r.Delay())
-//   Act()
+//
+//	r := lim.ReserveN(time.Now(), 1)
+//	if !r.OK() {
+//	  // Not allowed to act! Did you remember to set lim.burst to be > 0 ?
+//	  return
+//	}
+//	time.Sleep(r.Delay())
+//	Act()
+//
 // Use this method if you wish to wait and slow down in accordance with the rate limit without dropping events.
 // If you need to respect a deadline or cancel the delay, use Wait instead.
 // To drop or skip events exceeding rate limit, use Allow instead.
@@ -221,6 +223,18 @@ func (lim *Limiter) Wait(ctx context.Context) (err error) {
 // canceled, or the expected wait time exceeds the Context's Deadline.
 // The burst limit is ignored if the rate limit is Inf.
 func (lim *Limiter) WaitN(ctx context.Context, n int) (err error) {
+	// The test code calls lim.wait with a fake timer generator.
+	// This is the real timer generator.
+	newTimer := func(d time.Duration) (<-chan time.Time, func() bool, func()) {
+		timer := time.NewTimer(d)
+		return timer.C, timer.Stop, func() {}
+	}
+
+	return lim.wait(ctx, n, time.Now(), newTimer)
+}
+
+// wait is the internal implementation of WaitN.
+func (lim *Limiter) wait(ctx context.Context, n int, now time.Time, newTimer func(d time.Duration) (<-chan time.Time, func() bool, func())) error {
 	lim.mu.Lock()
 	burst := lim.burst
 	limit := lim.limit
@@ -236,7 +250,6 @@ func (lim *Limiter) WaitN(ctx context.Context, n int) (err error) {
 	default:
 	}
 	// Determine wait limit
-	now := time.Now()
 	waitLimit := InfDuration
 	if deadline, ok := ctx.Deadline(); ok {
 		waitLimit = deadline.Sub(now)
@@ -251,10 +264,11 @@ func (lim *Limiter) WaitN(ctx context.Context, n int) (err error) {
 	if delay == 0 {
 		return nil
 	}
-	t := time.NewTimer(delay)
-	defer t.Stop()
+	ch, stop, advance := newTimer(delay)
+	defer stop()
+	advance() // only has an effect when testing
 	select {
-	case <-t.C:
+	case <-ch:
 		// We can proceed.
 		return nil
 	case <-ctx.Done():
@@ -306,13 +320,25 @@ func (lim *Limiter) SetBurstAt(now time.Time, newBurst int) {
 // reserveN returns Reservation, not *Reservation, to avoid allocation in AllowN and WaitN.
 func (lim *Limiter) reserveN(now time.Time, n int, maxFutureReserve time.Duration) Reservation {
 	lim.mu.Lock()
+	defer lim.mu.Unlock()
 
 	if lim.limit == Inf {
-		lim.mu.Unlock()
 		return Reservation{
 			ok:        true,
 			lim:       lim,
 			tokens:    n,
+			timeToAct: now,
+		}
+	} else if lim.limit == 0 {
+		var ok bool
+		if lim.burst >= n {
+			ok = true
+			lim.burst -= n
+		}
+		return Reservation{
+			ok:        ok,
+			lim:       lim,
+			tokens:    lim.burst,
 			timeToAct: now,
 		}
 	}
@@ -351,7 +377,6 @@ func (lim *Limiter) reserveN(now time.Time, n int, maxFutureReserve time.Duratio
 		lim.last = last
 	}
 
-	lim.mu.Unlock()
 	return r
 }
 
@@ -377,6 +402,9 @@ func (lim *Limiter) advance(now time.Time) (newNow time.Time, newLast time.Time,
 // durationFromTokens is a unit conversion function from the number of tokens to the duration
 // of time it takes to accumulate them at a rate of limit tokens per second.
 func (limit Limit) durationFromTokens(tokens float64) time.Duration {
+	if limit <= 0 {
+		return InfDuration
+	}
 	seconds := tokens / float64(limit)
 	return time.Duration(float64(time.Second) * seconds)
 }
@@ -384,5 +412,8 @@ func (limit Limit) durationFromTokens(tokens float64) time.Duration {
 // tokensFromDuration is a unit conversion function from a time duration to the number of tokens
 // which could be accumulated during that duration at a rate of limit tokens per second.
 func (limit Limit) tokensFromDuration(d time.Duration) float64 {
+	if limit <= 0 {
+		return 0
+	}
 	return d.Seconds() * float64(limit)
 }

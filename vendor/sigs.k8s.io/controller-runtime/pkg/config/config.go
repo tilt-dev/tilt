@@ -18,7 +18,7 @@ package config
 
 import (
 	"fmt"
-	ioutil "io/ioutil"
+	"os"
 	"sync"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -50,8 +50,8 @@ type DeferredFileLoader struct {
 // this will also configure the defaults for the loader if nothing is
 //
 // Defaults:
-//   Path: "./config.yaml"
-//   Kind: GenericControllerManagerConfiguration
+// * Path: "./config.yaml"
+// * Kind: GenericControllerManagerConfiguration
 func File() *DeferredFileLoader {
 	scheme := runtime.NewScheme()
 	utilruntime.Must(v1alpha1.AddToScheme(scheme))
@@ -96,7 +96,7 @@ func (d *DeferredFileLoader) loadFile() {
 		return
 	}
 
-	content, err := ioutil.ReadFile(d.path)
+	content, err := os.ReadFile(d.path)
 	if err != nil {
 		d.err = fmt.Errorf("could not read file at %s", d.path)
 		return

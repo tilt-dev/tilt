@@ -39,7 +39,7 @@ func (d *DeferredClient) client() ctrlclient.Client {
 	return cli
 }
 
-func (d *DeferredClient) Get(ctx context.Context, key ctrlclient.ObjectKey, obj ctrlclient.Object) error {
+func (d *DeferredClient) Get(ctx context.Context, key ctrlclient.ObjectKey, obj ctrlclient.Object, _ ...ctrlclient.GetOption) error {
 	cli := d.client()
 	if cli == nil {
 		return ErrClientNotInitialized

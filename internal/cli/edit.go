@@ -53,7 +53,6 @@ func (c *editCmd) name() model.TiltSubcommand { return "edit" }
 
 func (c *editCmd) register() *cobra.Command {
 	o := editor.NewEditOptions(editor.NormalEditMode, c.streams)
-	o.ValidateOptions = cmdutil.ValidateOptions{EnableValidation: true}
 
 	cmd := &cobra.Command{
 		Use:                   "edit (RESOURCE/NAME | -f FILENAME)",
@@ -67,7 +66,7 @@ func (c *editCmd) register() *cobra.Command {
 
 	usage := "to use to edit the resource"
 	cmdutil.AddFilenameOptionFlags(cmd, &o.FilenameOptions, usage)
-	cmdutil.AddValidateOptionFlags(cmd, &o.ValidateOptions)
+	cmdutil.AddValidateFlags(cmd)
 	cmd.Flags().BoolVarP(&o.OutputPatch, "output-patch", "", o.OutputPatch, "Output the patch if the resource is edited.")
 	cmd.Flags().BoolVar(&o.WindowsLineEndings, "windows-line-endings", o.WindowsLineEndings,
 		"Defaults to the line ending native to your platform.")

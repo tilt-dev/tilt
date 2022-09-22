@@ -82,7 +82,7 @@ func NewTiltServerOptions(
 
 // NewCommandStartTiltServer provides a CLI handler for 'start master' command
 // with a default TiltServerOptions.
-func NewCommandStartTiltServer(defaults *TiltServerOptions, stopCh <-chan struct{}) *cobra.Command {
+func NewCommandStartTiltServer(defaults *TiltServerOptions, ctx context.Context) *cobra.Command {
 	o := *defaults
 	cmd := &cobra.Command{
 		Short: "Launch a tilt API server",
@@ -94,7 +94,7 @@ func NewCommandStartTiltServer(defaults *TiltServerOptions, stopCh <-chan struct
 			if err := o.Validate(args); err != nil {
 				return err
 			}
-			stoppedCh, err := o.RunTiltServer(stopCh)
+			stoppedCh, err := o.RunTiltServer(c.Context())
 			if err != nil {
 				return err
 			}
@@ -104,6 +104,7 @@ func NewCommandStartTiltServer(defaults *TiltServerOptions, stopCh <-chan struct
 			return nil
 		},
 	}
+	cmd.SetContext(ctx)
 
 	flags := cmd.Flags()
 	o.ServingOptions.AddFlags(flags)
@@ -226,17 +227,17 @@ func (o TiltServerOptions) GetRESTOptions(resource schema.GroupResource) (generi
 }
 
 // Complete the config and run the Tilt server
-func (o TiltServerOptions) RunTiltServer(stopCh <-chan struct{}) (<-chan struct{}, error) {
+func (o TiltServerOptions) RunTiltServer(ctx context.Context) (<-chan struct{}, error) {
 	config, err := o.Config()
 	if err != nil {
 		return nil, err
 	}
 
-	return o.RunTiltServerFromConfig(config.Complete(), stopCh)
+	return o.RunTiltServerFromConfig(config.Complete(), ctx)
 }
 
 // RunTiltServer starts a new TiltServer given TiltServerOptions
-func (o TiltServerOptions) RunTiltServerFromConfig(config apiserver.CompletedConfig, stopCh <-chan struct{}) (<-chan struct{}, error) {
+func (o TiltServerOptions) RunTiltServerFromConfig(config apiserver.CompletedConfig, ctx context.Context) (<-chan struct{}, error) {
 	server, err := config.New()
 	if err != nil {
 		return nil, err
@@ -252,11 +253,12 @@ func (o TiltServerOptions) RunTiltServerFromConfig(config apiserver.CompletedCon
 	prepared := server.GenericAPIServer.PrepareRun()
 	serving := config.ExtraConfig.ServingInfo
 
-	tlsConfig, err := TLSConfig(serving)
+	tlsConfig, err := TLSConfig(ctx, serving)
 	if err != nil {
 		return nil, err
 	}
 
+	stopCh := ctx.Done()
 	stoppedCh, _, err := genericapiserver.RunServer(&http.Server{
 		Addr:           serving.Listener.Addr().String(),
 		Handler:        prepared.Handler,
