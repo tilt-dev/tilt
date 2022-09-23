@@ -21,6 +21,7 @@ limitations under the License.
 package start
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 
@@ -44,7 +45,7 @@ func (f WarnFunc) Warnf(tpl string, args ...interface{}) {
 // Loads all the certs once at startup, then never reloads them again.
 // This is different than a typical Kubernetes config, which periodically
 // checks for cert updates.
-func TLSConfig(s *server.SecureServingInfo) (*tls.Config, error) {
+func TLSConfig(ctx context.Context, s *server.SecureServingInfo) (*tls.Config, error) {
 	tlsConfig := &tls.Config{
 		// Can't use SSLv3 because of POODLE and BEAST
 		// Can't use TLSv1.0 because of POODLE and BEAST using CBC cipher
@@ -98,14 +99,14 @@ func TLSConfig(s *server.SecureServingInfo) (*tls.Config, error) {
 		if controller, ok := s.ClientCA.(dynamiccertificates.ControllerRunner); ok {
 			// runonce to try to prime data.  If this fails, it's ok because we fail closed.
 			// Files are required to be populated already, so this is for convenience.
-			if err := controller.RunOnce(); err != nil {
+			if err := controller.RunOnce(ctx); err != nil {
 				return nil, fmt.Errorf("Initial population of client CA failed: %v", err)
 			}
 		}
 		if controller, ok := s.Cert.(dynamiccertificates.ControllerRunner); ok {
 			// runonce to try to prime data.  If this fails, it's ok because we fail closed.
 			// Files are required to be populated already, so this is for convenience.
-			if err := controller.RunOnce(); err != nil {
+			if err := controller.RunOnce(ctx); err != nil {
 				return nil, fmt.Errorf("Initial population of default serving certificate failed: %v", err)
 			}
 		}
@@ -117,7 +118,7 @@ func TLSConfig(s *server.SecureServingInfo) (*tls.Config, error) {
 			if controller, ok := sniCert.(dynamiccertificates.ControllerRunner); ok {
 				// runonce to try to prime data.  If this fails, it's ok because we fail closed.
 				// Files are required to be populated already, so this is for convenience.
-				if err := controller.RunOnce(); err != nil {
+				if err := controller.RunOnce(ctx); err != nil {
 					return nil, fmt.Errorf("Initial population of SNI serving certificate failed: %v", err)
 				}
 			}

@@ -161,7 +161,7 @@ func (a *Server) ToServerCommand() (*Command, error) {
 
 	o := start.NewTiltServerOptions(a.stdout, a.stderr, a.apiScheme,
 		a.codecs, codec, a.recommendedConfigFns, a.apis, a.serving, a.connProvider)
-	cmd := start.NewCommandStartTiltServer(o, genericapiserver.SetupSignalHandler())
+	cmd := start.NewCommandStartTiltServer(o, genericapiserver.SetupSignalContext())
 	cmd.Flags().AddGoFlagSet(flag.CommandLine)
 	return cmd, nil
 }

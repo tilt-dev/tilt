@@ -145,7 +145,7 @@ func (s *HeadsUpServerController) setUpHelper(ctx context.Context, st store.RSto
 
 	var apiTLSConfig *tls.Config
 	if serving.Cert != nil {
-		apiTLSConfig, err = start.TLSConfig(serving)
+		apiTLSConfig, err = start.TLSConfig(ctx, serving)
 		if err != nil {
 			return fmt.Errorf("Starting apiserver: %v", err)
 		}

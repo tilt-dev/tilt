@@ -90,7 +90,7 @@ func (c *applyCmd) run(ctx context.Context, args []string) error {
 	}
 
 	cmdutil.CheckErr(err)
-	cmdutil.CheckErr(o.Validate(cmd, args))
+	cmdutil.CheckErr(o.Validate())
 	cmdutil.CheckErr(o.Run())
 	return nil
 }

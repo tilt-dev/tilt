@@ -23,10 +23,11 @@ import (
 	"sync"
 	"time"
 
+	epmetrics "k8s.io/apiserver/pkg/endpoints/metrics"
+	apirequest "k8s.io/apiserver/pkg/endpoints/request"
 	compbasemetrics "k8s.io/component-base/metrics"
 	"k8s.io/component-base/metrics/legacyregistry"
 	basemetricstestutil "k8s.io/component-base/metrics/testutil"
-	"k8s.io/utils/clock"
 )
 
 const (
@@ -35,11 +36,13 @@ const (
 )
 
 const (
-	requestKind   = "request_kind"
-	priorityLevel = "priority_level"
-	flowSchema    = "flow_schema"
-	phase         = "phase"
-	mark          = "mark"
+	requestKind         = "request_kind"
+	priorityLevel       = "priority_level"
+	flowSchema          = "flow_schema"
+	phase               = "phase"
+	LabelNamePhase      = "phase"
+	LabelValueWaiting   = "waiting"
+	LabelValueExecuting = "executing"
 )
 
 var (
@@ -89,7 +92,7 @@ var (
 			Namespace:      namespace,
 			Subsystem:      subsystem,
 			Name:           "rejected_requests_total",
-			Help:           "Number of requests rejected by API Priority and Fairness system",
+			Help:           "Number of requests rejected by API Priority and Fairness subsystem",
 			StabilityLevel: compbasemetrics.ALPHA,
 		},
 		[]string{priorityLevel, flowSchema, "reason"},
@@ -99,72 +102,52 @@ var (
 			Namespace:      namespace,
 			Subsystem:      subsystem,
 			Name:           "dispatched_requests_total",
-			Help:           "Number of requests released by API Priority and Fairness system for service",
+			Help:           "Number of requests executed by API Priority and Fairness subsystem",
 			StabilityLevel: compbasemetrics.ALPHA,
 		},
 		[]string{priorityLevel, flowSchema},
 	)
-	// PriorityLevelExecutionSeatsObserverGenerator creates observers of seats occupied throughout execution for priority levels
-	PriorityLevelExecutionSeatsObserverGenerator = NewSampleAndWaterMarkHistogramsGenerator(clock.RealClock{}, time.Millisecond,
-		&compbasemetrics.HistogramOpts{
-			Namespace:      namespace,
-			Subsystem:      subsystem,
-			Name:           "priority_level_seat_count_samples",
-			Help:           "Periodic observations of the number of requests",
-			Buckets:        []float64{0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1},
+	// PriorityLevelExecutionSeatsGaugeVec creates observers of seats occupied throughout execution for priority levels
+	PriorityLevelExecutionSeatsGaugeVec = NewTimingRatioHistogramVec(
+		&compbasemetrics.TimingHistogramOpts{
+			Namespace: namespace,
+			Subsystem: subsystem,
+			Name:      "priority_level_seat_utilization",
+			Help:      "Observations, at the end of every nanosecond, of utilization of seats for any stage of execution (but only initial stage for WATCHes)",
+			// Buckets for both 0.99 and 1.0 mean PromQL's histogram_quantile will reveal saturation
+			Buckets:        []float64{0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 1},
 			ConstLabels:    map[string]string{phase: "executing"},
 			StabilityLevel: compbasemetrics.ALPHA,
 		},
-		&compbasemetrics.HistogramOpts{
-			Namespace:      namespace,
-			Subsystem:      subsystem,
-			Name:           "priority_level_seat_count_watermarks",
-			Help:           "Watermarks of the number of requests",
-			Buckets:        []float64{0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1},
-			ConstLabels:    map[string]string{phase: "executing"},
-			StabilityLevel: compbasemetrics.ALPHA,
-		},
-		[]string{priorityLevel},
+		priorityLevel,
 	)
-	// PriorityLevelConcurrencyObserverPairGenerator creates pairs that observe concurrency for priority levels
-	PriorityLevelConcurrencyObserverPairGenerator = NewSampleAndWaterMarkHistogramsPairGenerator(clock.RealClock{}, time.Millisecond,
-		&compbasemetrics.HistogramOpts{
-			Namespace:      namespace,
-			Subsystem:      subsystem,
-			Name:           "priority_level_request_count_samples",
-			Help:           "Periodic observations of the number of requests",
-			Buckets:        []float64{0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1},
+	// PriorityLevelConcurrencyGaugeVec creates gauges of concurrency broken down by phase, priority level
+	PriorityLevelConcurrencyGaugeVec = NewTimingRatioHistogramVec(
+		&compbasemetrics.TimingHistogramOpts{
+			Namespace: namespace,
+			Subsystem: subsystem,
+			Name:      "priority_level_request_utilization",
+			Help:      "Observations, at the end of every nanosecond, of number of requests (as a fraction of the relevant limit) waiting or in any stage of execution (but only initial stage for WATCHes)",
+			// For executing: the denominator will be seats, so this metric will skew low.
+			// For waiting: total queue capacity is generally quite generous, so this metric will skew low.
+			Buckets:        []float64{0, 0.001, 0.003, 0.01, 0.03, 0.1, 0.25, 0.5, 0.75, 1},
 			StabilityLevel: compbasemetrics.ALPHA,
 		},
-		&compbasemetrics.HistogramOpts{
-			Namespace:      namespace,
-			Subsystem:      subsystem,
-			Name:           "priority_level_request_count_watermarks",
-			Help:           "Watermarks of the number of requests",
-			Buckets:        []float64{0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1},
-			StabilityLevel: compbasemetrics.ALPHA,
-		},
-		[]string{priorityLevel},
+		LabelNamePhase, priorityLevel,
 	)
-	// ReadWriteConcurrencyObserverPairGenerator creates pairs that observe concurrency broken down by mutating vs readonly
-	ReadWriteConcurrencyObserverPairGenerator = NewSampleAndWaterMarkHistogramsPairGenerator(clock.RealClock{}, time.Millisecond,
-		&compbasemetrics.HistogramOpts{
-			Namespace:      namespace,
-			Subsystem:      subsystem,
-			Name:           "read_vs_write_request_count_samples",
-			Help:           "Periodic observations of the number of requests",
-			Buckets:        []float64{0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1},
+	// readWriteConcurrencyGaugeVec creates ratioed gauges of requests/limit broken down by phase and mutating vs readonly
+	readWriteConcurrencyGaugeVec = NewTimingRatioHistogramVec(
+		&compbasemetrics.TimingHistogramOpts{
+			Namespace: namespace,
+			Subsystem: subsystem,
+			Name:      "read_vs_write_current_requests",
+			Help:      "Observations, at the end of every nanosecond, of the number of requests (as a fraction of the relevant limit) waiting or in regular stage of execution",
+			// This metric will skew low for the same reason as the priority level metrics
+			// and also because APF has a combined limit for mutating and readonly.
+			Buckets:        []float64{0, 0.001, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 1},
 			StabilityLevel: compbasemetrics.ALPHA,
 		},
-		&compbasemetrics.HistogramOpts{
-			Namespace:      namespace,
-			Subsystem:      subsystem,
-			Name:           "read_vs_write_request_count_watermarks",
-			Help:           "Watermarks of the number of requests",
-			Buckets:        []float64{0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1},
-			StabilityLevel: compbasemetrics.ALPHA,
-		},
-		[]string{requestKind},
+		LabelNamePhase, requestKind,
 	)
 	apiserverCurrentR = compbasemetrics.NewGaugeVec(
 		&compbasemetrics.GaugeOpts{
@@ -221,7 +204,7 @@ var (
 			Namespace:      namespace,
 			Subsystem:      subsystem,
 			Name:           "current_inqueue_requests",
-			Help:           "Number of requests currently pending in queues of the API Priority and Fairness system",
+			Help:           "Number of requests currently pending in queues of the API Priority and Fairness subsystem",
 			StabilityLevel: compbasemetrics.ALPHA,
 		},
 		[]string{priorityLevel, flowSchema},
@@ -231,7 +214,7 @@ var (
 			Namespace:      namespace,
 			Subsystem:      subsystem,
 			Name:           "request_queue_length_after_enqueue",
-			Help:           "Length of queue in the API Priority and Fairness system, as seen by each request after it is enqueued",
+			Help:           "Length of queue in the API Priority and Fairness subsystem, as seen by each request after it is enqueued",
 			Buckets:        queueLengthBuckets,
 			StabilityLevel: compbasemetrics.ALPHA,
 		},
@@ -242,7 +225,7 @@ var (
 			Namespace:      namespace,
 			Subsystem:      subsystem,
 			Name:           "request_concurrency_limit",
-			Help:           "Shared concurrency limit in the API Priority and Fairness system",
+			Help:           "Shared concurrency limit in the API Priority and Fairness subsystem",
 			StabilityLevel: compbasemetrics.ALPHA,
 		},
 		[]string{priorityLevel},
@@ -252,7 +235,7 @@ var (
 			Namespace:      namespace,
 			Subsystem:      subsystem,
 			Name:           "current_executing_requests",
-			Help:           "Number of requests in regular execution phase in the API Priority and Fairness system",
+			Help:           "Number of requests in initial (for a WATCH) or any (for a non-WATCH) execution stage in the API Priority and Fairness subsystem",
 			StabilityLevel: compbasemetrics.ALPHA,
 		},
 		[]string{priorityLevel, flowSchema},
@@ -262,7 +245,7 @@ var (
 			Namespace:      namespace,
 			Subsystem:      subsystem,
 			Name:           "request_concurrency_in_use",
-			Help:           "Concurrency (number of seats) occupided by the currently executing (all phases count) requests in the API Priority and Fairness system",
+			Help:           "Concurrency (number of seats) occupied by the currently executing (initial stage for a WATCH, any stage otherwise) requests in the API Priority and Fairness subsystem",
 			StabilityLevel: compbasemetrics.ALPHA,
 		},
 		[]string{priorityLevel, flowSchema},
@@ -283,11 +266,11 @@ var (
 			Namespace:      namespace,
 			Subsystem:      subsystem,
 			Name:           "request_execution_seconds",
-			Help:           "Duration of regular phase of request execution in the API Priority and Fairness system",
+			Help:           "Duration of initial stage (for a WATCH) or any (for a non-WATCH) stage of request execution in the API Priority and Fairness subsystem",
 			Buckets:        requestDurationSecondsBuckets,
 			StabilityLevel: compbasemetrics.ALPHA,
 		},
-		[]string{priorityLevel, flowSchema},
+		[]string{priorityLevel, flowSchema, "type"},
 	)
 	watchCountSamples = compbasemetrics.NewHistogramVec(
 		&compbasemetrics.HistogramOpts{
@@ -310,6 +293,29 @@ var (
 		},
 		[]string{priorityLevel, "success"},
 	)
+	apiserverWorkEstimatedSeats = compbasemetrics.NewHistogramVec(
+		&compbasemetrics.HistogramOpts{
+			Namespace: namespace,
+			Subsystem: subsystem,
+			Name:      "work_estimated_seats",
+			Help:      "Number of estimated seats (maximum of initial and final seats) associated with requests in API Priority and Fairness",
+			// the upper bound comes from the maximum number of seats a request
+			// can occupy which is currently set at 10.
+			Buckets:        []float64{1, 2, 4, 10},
+			StabilityLevel: compbasemetrics.ALPHA,
+		},
+		[]string{priorityLevel, flowSchema},
+	)
+	apiserverDispatchWithNoAccommodation = compbasemetrics.NewCounterVec(
+		&compbasemetrics.CounterOpts{
+			Namespace:      namespace,
+			Subsystem:      subsystem,
+			Name:           "request_dispatch_no_accommodation_total",
+			Help:           "Number of times a dispatch attempt resulted in a non accommodation due to lack of available seats",
+			StabilityLevel: compbasemetrics.ALPHA,
+		},
+		[]string{priorityLevel, flowSchema},
+	)
 
 	metrics = Registerables{
 		apiserverRejectedRequestsTotal,
@@ -328,11 +334,43 @@ var (
 		apiserverRequestExecutionSeconds,
 		watchCountSamples,
 		apiserverEpochAdvances,
+		apiserverWorkEstimatedSeats,
+		apiserverDispatchWithNoAccommodation,
 	}.
-		Append(PriorityLevelExecutionSeatsObserverGenerator.metrics()...).
-		Append(PriorityLevelConcurrencyObserverPairGenerator.metrics()...).
-		Append(ReadWriteConcurrencyObserverPairGenerator.metrics()...)
+		Append(PriorityLevelExecutionSeatsGaugeVec.metrics()...).
+		Append(PriorityLevelConcurrencyGaugeVec.metrics()...).
+		Append(readWriteConcurrencyGaugeVec.metrics()...)
 )
+
+type indexOnce struct {
+	labelValues []string
+	once        sync.Once
+	gauge       RatioedGauge
+}
+
+func (io *indexOnce) getGauge() RatioedGauge {
+	io.once.Do(func() {
+		io.gauge = readWriteConcurrencyGaugeVec.NewForLabelValuesSafe(0, 1, io.labelValues)
+	})
+	return io.gauge
+}
+
+var waitingReadonly = indexOnce{labelValues: []string{LabelValueWaiting, epmetrics.ReadOnlyKind}}
+var executingReadonly = indexOnce{labelValues: []string{LabelValueExecuting, epmetrics.ReadOnlyKind}}
+var waitingMutating = indexOnce{labelValues: []string{LabelValueWaiting, epmetrics.MutatingKind}}
+var executingMutating = indexOnce{labelValues: []string{LabelValueExecuting, epmetrics.MutatingKind}}
+
+// GetWaitingReadonlyConcurrency returns the gauge of number of readonly requests waiting / limit on those.
+var GetWaitingReadonlyConcurrency = waitingReadonly.getGauge
+
+// GetExecutingReadonlyConcurrency returns the gauge of number of executing readonly requests / limit on those.
+var GetExecutingReadonlyConcurrency = executingReadonly.getGauge
+
+// GetWaitingMutatingConcurrency returns the gauge of number of mutating requests waiting / limit on those.
+var GetWaitingMutatingConcurrency = waitingMutating.getGauge
+
+// GetExecutingMutatingConcurrency returns the gauge of number of executing mutating requests / limit on those.
+var GetExecutingMutatingConcurrency = executingMutating.getGauge
 
 // AddRequestsInQueues adds the given delta to the gauge of the # of requests in the queues of the specified flowSchema and priorityLevel
 func AddRequestsInQueues(ctx context.Context, priorityLevel, flowSchema string, delta int) {
@@ -392,7 +430,11 @@ func ObserveWaitingDuration(ctx context.Context, priorityLevel, flowSchema, exec
 
 // ObserveExecutionDuration observes the execution duration for flow control
 func ObserveExecutionDuration(ctx context.Context, priorityLevel, flowSchema string, executionTime time.Duration) {
-	apiserverRequestExecutionSeconds.WithContext(ctx).WithLabelValues(priorityLevel, flowSchema).Observe(executionTime.Seconds())
+	reqType := "regular"
+	if requestInfo, ok := apirequest.RequestInfoFrom(ctx); ok && requestInfo.Verb == "watch" {
+		reqType = requestInfo.Verb
+	}
+	apiserverRequestExecutionSeconds.WithContext(ctx).WithLabelValues(priorityLevel, flowSchema, reqType).Observe(executionTime.Seconds())
 }
 
 // ObserveWatchCount notes a sampling of a watch count
@@ -403,4 +445,15 @@ func ObserveWatchCount(ctx context.Context, priorityLevel, flowSchema string, co
 // AddEpochAdvance notes an advance of the progress meter baseline for a given priority level
 func AddEpochAdvance(ctx context.Context, priorityLevel string, success bool) {
 	apiserverEpochAdvances.WithContext(ctx).WithLabelValues(priorityLevel, strconv.FormatBool(success)).Inc()
+}
+
+// ObserveWorkEstimatedSeats notes a sampling of estimated seats associated with a request
+func ObserveWorkEstimatedSeats(priorityLevel, flowSchema string, seats int) {
+	apiserverWorkEstimatedSeats.WithLabelValues(priorityLevel, flowSchema).Observe(float64(seats))
+}
+
+// AddDispatchWithNoAccommodation keeps track of number of times dispatch attempt results
+// in a non accommodation due to lack of available seats.
+func AddDispatchWithNoAccommodation(priorityLevel, flowSchema string) {
+	apiserverDispatchWithNoAccommodation.WithLabelValues(priorityLevel, flowSchema).Inc()
 }

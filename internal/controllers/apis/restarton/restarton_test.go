@@ -131,7 +131,7 @@ type explodingReader struct {
 	err error
 }
 
-func (e explodingReader) Get(_ context.Context, _ ctrlclient.ObjectKey, _ ctrlclient.Object) error {
+func (e explodingReader) Get(_ context.Context, _ ctrlclient.ObjectKey, _ ctrlclient.Object, _ ...ctrlclient.GetOption) error {
 	return e.err
 }
 

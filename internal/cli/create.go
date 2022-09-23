@@ -107,8 +107,7 @@ func (c *createCmd) run(ctx context.Context, args []string) error {
 		_, _ = c.streams.ErrOut.Write([]byte("Error: must specify one of -f and -k\n\n"))
 		return nil
 	}
-	cmdutil.CheckErr(o.Complete(f, cmd))
-	cmdutil.CheckErr(o.ValidateArgs(cmd, args))
+	cmdutil.CheckErr(o.Complete(f, cmd, args))
 	cmdutil.CheckErr(o.RunCreate(f, cmd))
 	return nil
 }

@@ -95,8 +95,7 @@ func (uc *unstructuredClient) Update(ctx context.Context, obj Object, opts ...Up
 
 // Delete implements client.Client.
 func (uc *unstructuredClient) Delete(ctx context.Context, obj Object, opts ...DeleteOption) error {
-	_, ok := obj.(*unstructured.Unstructured)
-	if !ok {
+	if _, ok := obj.(*unstructured.Unstructured); !ok {
 		return fmt.Errorf("unstructured client did not understand object: %T", obj)
 	}
 
@@ -118,8 +117,7 @@ func (uc *unstructuredClient) Delete(ctx context.Context, obj Object, opts ...De
 
 // DeleteAllOf implements client.Client.
 func (uc *unstructuredClient) DeleteAllOf(ctx context.Context, obj Object, opts ...DeleteAllOfOption) error {
-	_, ok := obj.(*unstructured.Unstructured)
-	if !ok {
+	if _, ok := obj.(*unstructured.Unstructured); !ok {
 		return fmt.Errorf("unstructured client did not understand object: %T", obj)
 	}
 
@@ -141,8 +139,7 @@ func (uc *unstructuredClient) DeleteAllOf(ctx context.Context, obj Object, opts 
 
 // Patch implements client.Client.
 func (uc *unstructuredClient) Patch(ctx context.Context, obj Object, patch Patch, opts ...PatchOption) error {
-	_, ok := obj.(*unstructured.Unstructured)
-	if !ok {
+	if _, ok := obj.(*unstructured.Unstructured); !ok {
 		return fmt.Errorf("unstructured client did not understand object: %T", obj)
 	}
 
@@ -168,13 +165,16 @@ func (uc *unstructuredClient) Patch(ctx context.Context, obj Object, patch Patch
 }
 
 // Get implements client.Client.
-func (uc *unstructuredClient) Get(ctx context.Context, key ObjectKey, obj Object) error {
+func (uc *unstructuredClient) Get(ctx context.Context, key ObjectKey, obj Object, opts ...GetOption) error {
 	u, ok := obj.(*unstructured.Unstructured)
 	if !ok {
 		return fmt.Errorf("unstructured client did not understand object: %T", obj)
 	}
 
 	gvk := u.GroupVersionKind()
+
+	getOpts := GetOptions{}
+	getOpts.ApplyOptions(opts)
 
 	r, err := uc.cache.getResource(obj)
 	if err != nil {
@@ -184,6 +184,7 @@ func (uc *unstructuredClient) Get(ctx context.Context, key ObjectKey, obj Object
 	result := r.Get().
 		NamespaceIfScoped(key.Namespace, r.isNamespaced()).
 		Resource(r.resource()).
+		VersionedParams(getOpts.AsGetOptions(), uc.paramCodec).
 		Name(key.Name).
 		Do(ctx).
 		Into(obj)
@@ -201,9 +202,7 @@ func (uc *unstructuredClient) List(ctx context.Context, obj ObjectList, opts ...
 	}
 
 	gvk := u.GroupVersionKind()
-	if strings.HasSuffix(gvk.Kind, "List") {
-		gvk.Kind = gvk.Kind[:len(gvk.Kind)-4]
-	}
+	gvk.Kind = strings.TrimSuffix(gvk.Kind, "List")
 
 	listOpts := ListOptions{}
 	listOpts.ApplyOptions(opts)
@@ -222,8 +221,7 @@ func (uc *unstructuredClient) List(ctx context.Context, obj ObjectList, opts ...
 }
 
 func (uc *unstructuredClient) UpdateStatus(ctx context.Context, obj Object, opts ...UpdateOption) error {
-	_, ok := obj.(*unstructured.Unstructured)
-	if !ok {
+	if _, ok := obj.(*unstructured.Unstructured); !ok {
 		return fmt.Errorf("unstructured client did not understand object: %T", obj)
 	}
 

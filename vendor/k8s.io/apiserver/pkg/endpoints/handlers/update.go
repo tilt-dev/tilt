@@ -77,6 +77,7 @@ func UpdateResource(r rest.Updater, scope *RequestScope, admit admission.Interfa
 		}
 
 		body, err := limitedReadBody(req, scope.MaxRequestBodyBytes)
+		trace.Step("limitedReadBody done", utiltrace.Field{"len", len(body)}, utiltrace.Field{"err", err})
 		if err != nil {
 			scope.err(err, w, req)
 			return
@@ -135,9 +136,17 @@ func UpdateResource(r rest.Updater, scope *RequestScope, admit admission.Interfa
 		}
 		trace.Step("Conversion done")
 
-		ae := audit.AuditEventFrom(ctx)
 		audit.LogRequestObject(req.Context(), obj, objGV, scope.Resource, scope.Subresource, scope.Serializer)
-		admit = admission.WithAudit(admit, ae)
+		admit = admission.WithAudit(admit)
+
+		// if this object supports namespace info
+		if objectMeta, err := meta.Accessor(obj); err == nil {
+			// ensure namespace on the object is correct, or error if a conflicting namespace was set in the object
+			if err := rest.EnsureObjectNamespaceMatchesRequestNamespace(rest.ExpectedNamespaceForResource(namespace, scope.Resource), objectMeta); err != nil {
+				scope.err(err, w, req)
+				return
+			}
+		}
 
 		if err := checkName(obj, name, namespace, scope.Namer); err != nil {
 			scope.err(err, w, req)
@@ -180,6 +189,15 @@ func UpdateResource(r rest.Updater, scope *RequestScope, admit admission.Interfa
 				dedupOwnerReferencesAndAddWarning(newObj, req.Context(), true)
 				return newObj, nil
 			})
+		}
+
+		// Ignore changes that only affect managed fields
+		// timestamps. FieldManager can't know about changes
+		// like normalized fields, defaulted fields and other
+		// mutations.
+		// Only makes sense when SSA field manager is being used
+		if scope.FieldManager != nil {
+			transformers = append(transformers, fieldmanager.IgnoreManagedFieldsTimestampsTransformer)
 		}
 
 		createAuthorizerAttributes := authorizer.AttributesRecord{
@@ -230,17 +248,19 @@ func UpdateResource(r rest.Updater, scope *RequestScope, admit admission.Interfa
 			}
 			return result, err
 		})
+		trace.Step("Write to database call finished", utiltrace.Field{"len", len(body)}, utiltrace.Field{"err", err})
 		if err != nil {
 			scope.err(err, w, req)
 			return
 		}
-		trace.Step("Object stored in database")
 
 		status := http.StatusOK
 		if wasCreated {
 			status = http.StatusCreated
 		}
 
+		trace.Step("About to write a response")
+		defer trace.Step("Writing http response done")
 		transformResponseObject(ctx, scope, trace, req, w, status, outputMediaType, result)
 	}
 }

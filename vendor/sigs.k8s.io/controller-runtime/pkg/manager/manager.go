@@ -98,9 +98,9 @@ type Manager interface {
 
 // Options are the arguments for creating a new Manager.
 type Options struct {
-	// Scheme is the scheme used to resolve runtime.Objects to GroupVersionKinds / Resources
+	// Scheme is the scheme used to resolve runtime.Objects to GroupVersionKinds / Resources.
 	// Defaults to the kubernetes/client-go scheme.Scheme, but it's almost always better
-	// idea to pass your own scheme in.  See the documentation in pkg/scheme for more information.
+	// to pass your own scheme in. See the documentation in pkg/scheme for more information.
 	Scheme *runtime.Scheme
 
 	// MapperProvider provides the rest mapper used to map go types to Kubernetes APIs
@@ -142,18 +142,36 @@ type Options struct {
 	LeaderElection bool
 
 	// LeaderElectionResourceLock determines which resource lock to use for leader election,
-	// defaults to "configmapsleases". Change this value only if you know what you are doing.
-	// Otherwise, users of your controller might end up with multiple running instances that
+	// defaults to "leases". Change this value only if you know what you are doing.
+	//
+	// If you are using `configmaps`/`endpoints` resource lock and want to migrate to "leases",
+	// you might do so by migrating to the respective multilock first ("configmapsleases" or "endpointsleases"),
+	// which will acquire a leader lock on both resources.
+	// After all your users have migrated to the multilock, you can go ahead and migrate to "leases".
+	// Please also keep in mind, that users might skip versions of your controller.
+	//
+	// Note: before controller-runtime version v0.7, it was set to "configmaps".
+	// And from v0.7 to v0.11, the default was "configmapsleases", which was
+	// used to migrate from configmaps to leases.
+	// Since the default was "configmapsleases" for over a year, spanning five minor releases,
+	// any actively maintained operators are very likely to have a released version that uses
+	// "configmapsleases". Therefore defaulting to "leases" should be safe since v0.12.
+	//
+	// So, what do you have to do when you are updating your controller-runtime dependency
+	// from a lower version to v0.12 or newer?
+	// - If your operator matches at least one of these conditions:
+	//   - the LeaderElectionResourceLock in your operator has already been explicitly set to "leases"
+	//   - the old controller-runtime version is between v0.7.0 and v0.11.x and the
+	//     LeaderElectionResourceLock wasn't set or was set to "leases"/"configmapsleases"/"endpointsleases"
+	//   feel free to update controller-runtime to v0.12 or newer.
+	// - Otherwise, you may have to take these steps:
+	//   1. update controller-runtime to v0.12 or newer in your go.mod
+	//   2. set LeaderElectionResourceLock to "configmapsleases" (or "endpointsleases")
+	//   3. package your operator and upgrade it in all your clusters
+	//   4. only if you have finished 3, you can remove the LeaderElectionResourceLock to use the default "leases"
+	// Otherwise, your operator might end up with multiple running instances that
 	// each acquired leadership through different resource locks during upgrades and thus
 	// act on the same resources concurrently.
-	// If you want to migrate to the "leases" resource lock, you might do so by migrating to the
-	// respective multilock first ("configmapsleases" or "endpointsleases"), which will acquire a
-	// leader lock on both resources. After all your users have migrated to the multilock, you can
-	// go ahead and migrate to "leases". Please also keep in mind, that users might skip versions
-	// of your controller.
-	//
-	// Note: before controller-runtime version v0.7, the resource lock was set to "configmaps".
-	// Please keep this in mind, when planning a proper migration path for your controller.
 	LeaderElectionResourceLock string
 
 	// LeaderElectionNamespace determines the namespace in which the leader
@@ -186,11 +204,11 @@ type Options struct {
 	// between tries of actions. Default is 2 seconds.
 	RetryPeriod *time.Duration
 
-	// Namespace if specified restricts the manager's cache to watch objects in
-	// the desired namespace Defaults to all namespaces
+	// Namespace, if specified, restricts the manager's cache to watch objects in
+	// the desired namespace. Defaults to all namespaces.
 	//
 	// Note: If a namespace is specified, controllers can still Watch for a
-	// cluster-scoped resource (e.g Node).  For namespaced resources the cache
+	// cluster-scoped resource (e.g Node). For namespaced resources, the cache
 	// will only hold objects from the desired namespace.
 	Namespace string
 
@@ -228,7 +246,7 @@ type Options struct {
 	// if this is set, the Manager will use this server instead.
 	WebhookServer *webhook.Server
 
-	// Functions to all for a user to customize the values that will be injected.
+	// Functions to allow for a user to customize values that will be injected.
 
 	// NewCache is the function that will create the cache to be used
 	// by the manager. If not set this will use the default new cache function.
@@ -238,6 +256,11 @@ type Options struct {
 	// If not set this will create the default DelegatingClient that will
 	// use the cache for reads and the client for writes.
 	NewClient cluster.NewClientFunc
+
+	// BaseContext is the function that provides Context values to Runnables
+	// managed by the Manager. If a BaseContext function isn't provided, Runnables
+	// will receive a new Background Context instead.
+	BaseContext BaseContextFunc
 
 	// ClientDisableCacheFor tells the client that, if any cache is used, to bypass it
 	// for the given objects.
@@ -277,6 +300,10 @@ type Options struct {
 	newMetricsListener     func(addr string) (net.Listener, error)
 	newHealthProbeListener func(addr string) (net.Listener, error)
 }
+
+// BaseContextFunc is a function used to provide a base Context to Runnables
+// managed by a Manager.
+type BaseContextFunc func() context.Context
 
 // Runnable allows a component to be started.
 // It's very important that Start blocks until
@@ -335,11 +362,21 @@ func New(config *rest.Config, options Options) (Manager, error) {
 	}
 
 	// Create the resource lock to enable leader election)
-	leaderConfig := options.LeaderElectionConfig
-	if leaderConfig == nil {
+	var leaderConfig *rest.Config
+	var leaderRecorderProvider *intrec.Provider
+
+	if options.LeaderElectionConfig == nil {
 		leaderConfig = rest.CopyConfig(config)
+		leaderRecorderProvider = recorderProvider
+	} else {
+		leaderConfig = rest.CopyConfig(options.LeaderElectionConfig)
+		leaderRecorderProvider, err = options.newRecorderProvider(leaderConfig, cluster.GetScheme(), options.Logger.WithName("events"), options.makeBroadcaster)
+		if err != nil {
+			return nil, err
+		}
 	}
-	resourceLock, err := options.newResourceLock(leaderConfig, recorderProvider, leaderelection.Options{
+
+	resourceLock, err := options.newResourceLock(leaderConfig, leaderRecorderProvider, leaderelection.Options{
 		LeaderElection:             options.LeaderElection,
 		LeaderElectionResourceLock: options.LeaderElectionResourceLock,
 		LeaderElectionID:           options.LeaderElectionID,
@@ -367,7 +404,7 @@ func New(config *rest.Config, options Options) (Manager, error) {
 	}
 
 	errChan := make(chan error)
-	runnables := newRunnables(errChan)
+	runnables := newRunnables(options.BaseContext, errChan)
 
 	return &controllerManager{
 		stopProcedureEngaged:          pointer.Int64(0),
@@ -475,6 +512,11 @@ func (o Options) AndFromOrDie(loader config.ControllerManagerConfiguration) Opti
 }
 
 func (o Options) setLeaderElectionConfig(obj v1alpha1.ControllerManagerConfigurationSpec) Options {
+	if obj.LeaderElection == nil {
+		// The source does not have any configuration; noop
+		return o
+	}
+
 	if !o.LeaderElection && obj.LeaderElection.LeaderElect != nil {
 		o.LeaderElection = *obj.LeaderElection.LeaderElect
 	}
@@ -514,9 +556,15 @@ func defaultHealthProbeListener(addr string) (net.Listener, error) {
 
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
-		return nil, fmt.Errorf("error listening on %s: %v", addr, err)
+		return nil, fmt.Errorf("error listening on %s: %w", addr, err)
 	}
 	return ln, nil
+}
+
+// defaultBaseContext is used as the BaseContext value in Options if one
+// has not already been set.
+func defaultBaseContext() context.Context {
+	return context.Background()
 }
 
 // setOptionsDefaults set default values for Options fields.
@@ -580,6 +628,10 @@ func setOptionsDefaults(options Options) Options {
 
 	if options.Logger.GetSink() == nil {
 		options.Logger = log.Log
+	}
+
+	if options.BaseContext == nil {
+		options.BaseContext = defaultBaseContext
 	}
 
 	return options

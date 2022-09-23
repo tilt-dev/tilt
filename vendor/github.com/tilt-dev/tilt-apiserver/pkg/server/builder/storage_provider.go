@@ -45,6 +45,10 @@ type statusStorage struct {
 	registryrest.Getter
 }
 
+func (s *statusStorage) Destroy() {
+	// Destroy() is intended for cleaning up client connections. Do nothing.
+}
+
 type statusProvider struct {
 	Provider rest.ResourceHandlerProvider
 }
