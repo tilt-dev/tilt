@@ -23,18 +23,32 @@ import (
 func TestDownK8sYAML(t *testing.T) {
 	f := newDownFixture(t)
 
-	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: newK8sManifest()}
+	f.tfl.Result = newTiltfileLoadResult(newK8sManifest())
 	err := f.cmd.down(f.ctx, f.deps, nil)
 	assert.NoError(t, err)
 	assert.Contains(t, f.kCli.DeletedYaml, "sancho")
 }
 
+func TestDownIgnoresDisabled(t *testing.T) {
+	f := newDownFixture(t)
+
+	tlr := newTiltfileLoadResult(
+		newK8sConfigMapManifest("foo"),
+		newK8sConfigMapManifest("bar"),
+		newK8sConfigMapManifest("baz"))
+	tlr.EnabledManifests = []model.ManifestName{"bar"}
+	f.tfl.Result = tlr
+	err := f.cmd.down(f.ctx, f.deps, nil)
+	require.NoError(t, err)
+	require.NotContains(t, f.kCli.DeletedYaml, "foo")
+	require.Contains(t, f.kCli.DeletedYaml, "bar")
+	require.NotContains(t, f.kCli.DeletedYaml, "baz")
+}
+
 func TestDownPreservesEntitiesWithKeepLabel(t *testing.T) {
 	f := newDownFixture(t)
 
-	manifests := append([]model.Manifest{}, newK8sPVCManifest("foo", "keep"), newK8sPVCManifest("bar", "delete"))
-
-	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: manifests}
+	f.tfl.Result = newTiltfileLoadResult(newK8sPVCManifest("foo", "keep"), newK8sPVCManifest("bar", "delete"))
 	err := f.cmd.down(f.ctx, f.deps, nil)
 	require.NoError(t, err)
 	require.Contains(t, f.kCli.DeletedYaml, "bar")
@@ -44,10 +58,7 @@ func TestDownPreservesEntitiesWithKeepLabel(t *testing.T) {
 func TestDownPreservesNamespacesByDefault(t *testing.T) {
 	f := newDownFixture(t)
 
-	manifests := append([]model.Manifest{}, newK8sManifest()...)
-	manifests = append(manifests, newK8sNamespaceManifest("foo"), newK8sNamespaceManifest("bar"))
-
-	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: manifests}
+	f.tfl.Result = newTiltfileLoadResult(newK8sManifest(), newK8sNamespaceManifest("foo"), newK8sNamespaceManifest("bar"))
 	err := f.cmd.down(f.ctx, f.deps, nil)
 	require.NoError(t, err)
 	require.Contains(t, f.kCli.DeletedYaml, "sancho")
@@ -59,10 +70,8 @@ func TestDownPreservesNamespacesByDefault(t *testing.T) {
 func TestDownDeletesNamespacesIfSpecified(t *testing.T) {
 	f := newDownFixture(t)
 
-	manifests := append([]model.Manifest{}, newK8sManifest()...)
-	manifests = append(manifests, newK8sNamespaceManifest("foo"), newK8sNamespaceManifest("bar"))
-
-	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: manifests}
+	f.tfl.Result = newTiltfileLoadResult(
+		newK8sManifest(), newK8sNamespaceManifest("foo"), newK8sNamespaceManifest("bar"))
 	f.cmd.deleteNamespaces = true
 	err := f.cmd.down(f.ctx, f.deps, nil)
 	require.NoError(t, err)
@@ -74,10 +83,7 @@ func TestDownDeletesNamespacesIfSpecified(t *testing.T) {
 func TestDownDeletesManifestsInReverseOrder(t *testing.T) {
 	f := newDownFixture(t)
 
-	manifests := append([]model.Manifest{}, newK8sNamespaceManifest("foo"))
-	manifests = append(manifests, newK8sManifest()...)
-
-	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: manifests}
+	f.tfl.Result = newTiltfileLoadResult(newK8sNamespaceManifest("foo"), newK8sManifest())
 	f.cmd.deleteNamespaces = true
 	err := f.cmd.down(f.ctx, f.deps, nil)
 	require.NoError(t, err)
@@ -87,9 +93,7 @@ func TestDownDeletesManifestsInReverseOrder(t *testing.T) {
 func TestDownDeletesEntitiesInReverseOrder(t *testing.T) {
 	f := newDownFixture(t)
 
-	manifests := []model.Manifest{newK8sMultiEntityManifest()}
-
-	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: manifests}
+	f.tfl.Result = newTiltfileLoadResult(newK8sMultiEntityManifest())
 	f.cmd.deleteNamespaces = true
 	err := f.cmd.down(f.ctx, f.deps, nil)
 	require.NoError(t, err)
@@ -104,9 +108,7 @@ func TestDownDeletesEntitiesInReverseOrder(t *testing.T) {
 func TestDownDeletesInDependentOrder(t *testing.T) {
 	f := newDownFixture(t)
 
-	manifests := newK8sDependentManifests()
-
-	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: manifests}
+	f.tfl.Result = newTiltfileLoadResult(newK8sDependentManifests()...)
 	err := f.cmd.down(f.ctx, f.deps, nil)
 	require.NoError(t, err)
 
@@ -149,7 +151,7 @@ func TestDownDeletesInDependentOrderReversed(t *testing.T) {
 		manifests[i], manifests[len(manifests)-i-1] = manifests[len(manifests)-i-1], manifests[i]
 	}
 
-	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: manifests}
+	f.tfl.Result = newTiltfileLoadResult(manifests...)
 	err := f.cmd.down(f.ctx, f.deps, nil)
 	require.NoError(t, err)
 
@@ -187,7 +189,7 @@ func TestDownDeletesCyclicDependencies(t *testing.T) {
 
 	manifests := newK8sCyclicManifest()
 
-	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: manifests}
+	f.tfl.Result = newTiltfileLoadResult(manifests...)
 	err := f.cmd.down(f.ctx, f.deps, nil)
 	require.NoError(t, err)
 
@@ -202,7 +204,7 @@ func TestDownDeletesWithInvalidDependency(t *testing.T) {
 
 	manifests := newK8sInvalidDependencyManifests()
 
-	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: manifests}
+	f.tfl.Result = newTiltfileLoadResult(manifests...)
 	err := f.cmd.down(f.ctx, f.deps, nil)
 	require.NoError(t, err)
 	require.Contains(t, f.kCli.DeletedYaml, "missing-dep")
@@ -211,7 +213,7 @@ func TestDownDeletesWithInvalidDependency(t *testing.T) {
 func TestDownK8sFails(t *testing.T) {
 	f := newDownFixture(t)
 
-	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: newK8sManifest()}
+	f.tfl.Result = newTiltfileLoadResult(newK8sManifest())
 	f.kCli.DeleteError = fmt.Errorf("GARBLEGARBLE")
 	err := f.cmd.down(f.ctx, f.deps, nil)
 	if assert.Error(t, err) {
@@ -231,7 +233,7 @@ func TestDownK8sDeleteCmd(t *testing.T) {
 	require.NoError(t, err, "Failed to make KubernetesTarget")
 	m := model.Manifest{Name: "fe"}.WithDeployTarget(kt)
 
-	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{m}}
+	f.tfl.Result = newTiltfileLoadResult(m)
 	err = f.cmd.down(f.ctx, f.deps, nil)
 	require.NoError(t, err)
 
@@ -255,7 +257,7 @@ func TestDownK8sDeleteCmd_Error(t *testing.T) {
 	require.NoError(t, err, "Failed to make KubernetesTarget")
 	m := model.Manifest{Name: "fe"}.WithDeployTarget(kt)
 
-	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: []model.Manifest{m}}
+	f.tfl.Result = newTiltfileLoadResult(m)
 	err = f.cmd.down(f.ctx, f.deps, nil)
 	assert.EqualError(t, err, "Deleting k8s entities for cmd: custom-delete-cmd: exit status 321")
 
@@ -268,7 +270,7 @@ func TestDownK8sDeleteCmd_Error(t *testing.T) {
 func TestDownDCFails(t *testing.T) {
 	f := newDownFixture(t)
 
-	f.tfl.Result = tiltfile.TiltfileLoadResult{Manifests: newDCManifest()}
+	f.tfl.Result = newTiltfileLoadResult(newDCManifest())
 	f.dcc.DownError = fmt.Errorf("GARBLEGARBLE")
 	err := f.cmd.down(f.ctx, f.deps, nil)
 	if assert.Error(t, err) {
@@ -292,8 +294,8 @@ func TestDownArgs(t *testing.T) {
 	require.Equal(t, []string{"foo", "bar"}, f.tfl.PassedArgs())
 }
 
-func newK8sManifest() []model.Manifest {
-	return []model.Manifest{model.Manifest{Name: "fe"}.WithDeployTarget(k8s.MustTarget("fe", testyaml.SanchoYAML))}
+func newK8sManifest() model.Manifest {
+	return model.Manifest{Name: "fe"}.WithDeployTarget(k8s.MustTarget("fe", testyaml.SanchoYAML))
 }
 
 func newK8sDependentManifests() []model.Manifest {
@@ -374,8 +376,8 @@ data:
 
 }
 
-func newDCManifest() []model.Manifest {
-	return []model.Manifest{model.Manifest{Name: "fe"}.WithDeployTarget(model.DockerComposeTarget{
+func newDCManifest() model.Manifest {
+	return model.Manifest{Name: "fe"}.WithDeployTarget(model.DockerComposeTarget{
 		Name: "fe",
 		Spec: v1alpha1.DockerComposeServiceSpec{
 			Service: "fe",
@@ -383,7 +385,7 @@ func newDCManifest() []model.Manifest {
 				ConfigPaths: []string{"dc.yaml"},
 			},
 		},
-	})}
+	})
 }
 
 func newK8sMultiEntityManifest() model.Manifest {
@@ -413,6 +415,17 @@ metadata:
   name: %s
 spec: {}
 status: {}`, name)
+	return model.Manifest{Name: model.ManifestName(name)}.WithDeployTarget(model.NewK8sTargetForTesting(yaml))
+}
+
+func newK8sConfigMapManifest(name string) model.Manifest {
+	yaml := fmt.Sprintf(`
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: %s
+data:
+  hello: world`, name)
 	return model.Manifest{Name: model.ManifestName(name)}.WithDeployTarget(model.NewK8sTargetForTesting(yaml))
 }
 
@@ -471,4 +484,12 @@ func newDownFixture(t *testing.T) downFixture {
 
 func (f *downFixture) TearDown() {
 	f.cancel()
+}
+
+func newTiltfileLoadResult(manifests ...model.Manifest) tiltfile.TiltfileLoadResult {
+	tlr := tiltfile.TiltfileLoadResult{Manifests: manifests}
+	for _, m := range manifests {
+		tlr.EnabledManifests = append(tlr.EnabledManifests, m.Name)
+	}
+	return tlr
 }

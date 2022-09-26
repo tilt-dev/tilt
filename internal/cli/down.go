@@ -83,7 +83,7 @@ func (c *downCmd) down(ctx context.Context, downDeps DownDeps, args []string) er
 		return err
 	}
 
-	sortedManifests := sortManifestsForDeletion(tlr.Manifests)
+	sortedManifests := sortManifestsForDeletion(tlr.Manifests, tlr.EnabledManifests)
 
 	if err := deleteK8sEntities(ctx, sortedManifests, tlr.UpdateSettings, downDeps, c.deleteNamespaces); err != nil {
 		return err
@@ -108,7 +108,12 @@ func (c *downCmd) down(ctx context.Context, downDeps DownDeps, args []string) er
 	return nil
 }
 
-func sortManifestsForDeletion(manifests []model.Manifest) []model.Manifest {
+func sortManifestsForDeletion(manifests []model.Manifest, enabledManifests []model.ManifestName) []model.Manifest {
+	enabledNames := make(map[model.ManifestName]bool, len(enabledManifests))
+	for _, n := range enabledManifests {
+		enabledNames[n] = true
+	}
+
 	nodes := []*dependencyNode{}
 	nodeMap := map[model.ManifestName]*dependencyNode{}
 
@@ -132,9 +137,15 @@ func sortManifestsForDeletion(manifests []model.Manifest) []model.Manifest {
 		}
 	}
 
+	// The tiltfile loader returns all manifests,
+	// with the ones that weren't selected disabled.
 	var sortedManifests []model.Manifest
 	for _, node := range nodes {
-		sortedManifests = append(sortedManifests, manifestsForNode(node)...)
+		for _, m := range manifestsForNode(node) {
+			if enabledNames[m.Name] {
+				sortedManifests = append(sortedManifests, m)
+			}
+		}
 	}
 
 	return sortedManifests
