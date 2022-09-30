@@ -18,6 +18,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/containerupdate"
+	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmdimage"
 	"github.com/tilt-dev/tilt/internal/controllers/core/dockercomposeservice"
 	"github.com/tilt-dev/tilt/internal/controllers/core/dockerimage"
@@ -65,16 +66,23 @@ func ProvideImageBuildAndDeployer(
 	clusterEnv docker.ClusterEnv,
 	dir *dirs.TiltDevDir,
 	clock build.Clock,
+	clock2 clockwork.Clock,
 	kp build.KINDLoader,
 	analytics *analytics.TiltAnalytics,
 	ctrlclient ctrlclient.Client,
-	st store.RStore,
-	execer localexec.Execer) (*ImageBuildAndDeployer, error) {
+	st store.RStore) (*ImageBuildAndDeployer, error) {
 	wire.Build(
 		BaseWireSet,
 		kubernetesapply.NewReconciler,
 		dockerimage.NewReconciler,
 		cmdimage.NewReconciler,
+		cmd.NewController,
+		localexec.EmptyEnv,
+		localexec.NewProcessExecer,
+		cmd.ProvideExecer,
+		wire.Bind(new(localexec.Execer), new(*localexec.ProcessExecer)),
+		cmd.NewFakeProberManager,
+		wire.Bind(new(cmd.ProberManager), new(*cmd.FakeProberManager)),
 	)
 
 	return nil, nil
@@ -95,6 +103,11 @@ func ProvideDockerComposeBuildAndDeployer(
 		build.NewKINDLoader,
 		dockerimage.NewReconciler,
 		cmdimage.NewReconciler,
+		cmd.NewController,
+		localexec.EmptyEnv,
+		cmd.ProvideExecer,
+		cmd.NewFakeProberManager,
+		wire.Bind(new(cmd.ProberManager), new(*cmd.FakeProberManager)),
 	)
 
 	return nil, nil

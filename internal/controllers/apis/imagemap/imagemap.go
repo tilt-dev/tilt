@@ -3,7 +3,6 @@ package imagemap
 import (
 	"context"
 	"fmt"
-	"os/exec"
 
 	"k8s.io/apimachinery/pkg/types"
 
@@ -43,17 +42,18 @@ func InjectIntoDeployEnv(cmd *model.Cmd, imageMapNames []string, imageMaps map[t
 // TILT_IMAGE_MAP_i - The name of the image map #i with the current status of the image.
 //
 // where an env may depend on arbitrarily many image maps.
-func InjectIntoLocalEnv(cmd *exec.Cmd, imageMapNames []string, imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) error {
+func InjectIntoLocalEnv(cmd *v1alpha1.Cmd, imageMapNames []string, imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) (*v1alpha1.Cmd, error) {
+	cmd = cmd.DeepCopy()
 	for i, imageMapName := range imageMapNames {
 		imageMap, ok := imageMaps[types.NamespacedName{Name: imageMapName}]
 		if !ok {
-			return fmt.Errorf("internal error: missing imagemap %s", imageMapName)
+			return nil, fmt.Errorf("internal error: missing imagemap %s", imageMapName)
 		}
 
-		cmd.Env = append(cmd.Env, fmt.Sprintf("TILT_IMAGE_MAP_%d=%s", i, imageMapName))
-		cmd.Env = append(cmd.Env, fmt.Sprintf("TILT_IMAGE_%d=%s", i, imageMap.Status.ImageFromLocal))
+		cmd.Spec.Env = append(cmd.Spec.Env, fmt.Sprintf("TILT_IMAGE_MAP_%d=%s", i, imageMapName))
+		cmd.Spec.Env = append(cmd.Spec.Env, fmt.Sprintf("TILT_IMAGE_%d=%s", i, imageMap.Status.ImageFromLocal))
 	}
-	return nil
+	return cmd, nil
 }
 
 // Populate a map with all the given imagemaps, skipping any that don't exist

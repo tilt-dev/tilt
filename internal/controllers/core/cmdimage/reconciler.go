@@ -93,6 +93,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 func (r *Reconciler) ForceApply(
 	ctx context.Context,
 	iTarget model.ImageTarget,
+	customBuildCmd *v1alpha1.Cmd,
 	cluster *v1alpha1.Cluster,
 	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap,
 	ps *build.PipelineState) (store.ImageBuildResult, error) {
@@ -111,7 +112,7 @@ func (r *Reconciler) ForceApply(
 	r.requeuer.Add(nn)
 	defer r.requeuer.Add(nn)
 
-	refs, _, err := r.ib.Build(ctx, iTarget, cluster, imageMaps, ps)
+	refs, _, err := r.ib.Build(ctx, iTarget, customBuildCmd, cluster, imageMaps, ps)
 	if err != nil {
 		r.setImageStatus(nn, ToCompletedFailStatus(iTarget, startTime, err))
 		return store.ImageBuildResult{}, err

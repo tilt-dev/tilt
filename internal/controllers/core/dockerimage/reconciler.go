@@ -113,7 +113,7 @@ func (r *Reconciler) ForceApply(
 	r.requeuer.Add(nn)
 	defer r.requeuer.Add(nn)
 
-	refs, stages, err := r.ib.Build(ctx, iTarget, cluster, imageMaps, ps)
+	refs, stages, err := r.ib.Build(ctx, iTarget, nil, cluster, imageMaps, ps)
 	if err != nil {
 		r.setImageStatus(nn, ToCompletedFailStatus(iTarget, startTime, stages, err))
 		return store.ImageBuildResult{}, err

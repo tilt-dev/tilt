@@ -51,10 +51,11 @@ func (ib *ImageBuilder) CanReuseRef(ctx context.Context, iTarget model.ImageTarg
 // The error is simply the "main" build failure reason.
 func (ib *ImageBuilder) Build(ctx context.Context,
 	iTarget model.ImageTarget,
+	customBuildCmd *v1alpha1.Cmd,
 	cluster *v1alpha1.Cluster,
 	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap,
 	ps *PipelineState) (container.TaggedRefs, []v1alpha1.DockerImageStageStatus, error) {
-	refs, stages, err := ib.buildOnly(ctx, iTarget, cluster, imageMaps, ps)
+	refs, stages, err := ib.buildOnly(ctx, iTarget, customBuildCmd, cluster, imageMaps, ps)
 	if err != nil {
 		return refs, stages, err
 	}
@@ -74,6 +75,7 @@ func (ib *ImageBuilder) Build(ctx context.Context,
 // Build the image, but don't do any push.
 func (ib *ImageBuilder) buildOnly(ctx context.Context,
 	iTarget model.ImageTarget,
+	customBuildCmd *v1alpha1.Cmd,
 	cluster *v1alpha1.Cluster,
 	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap,
 	ps *PipelineState,
@@ -99,7 +101,7 @@ func (ib *ImageBuilder) buildOnly(ctx context.Context,
 	case model.CustomBuild:
 		ps.StartPipelineStep(ctx, "Building Custom Build: [%s]", userFacingRefName)
 		defer ps.EndPipelineStep(ctx)
-		refs, err := ib.custb.Build(ctx, refs, bd.CmdImageSpec, imageMaps)
+		refs, err := ib.custb.Build(ctx, refs, bd.CmdImageSpec, customBuildCmd, imageMaps)
 		return refs, nil, err
 	}
 

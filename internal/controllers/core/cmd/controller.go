@@ -172,10 +172,11 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		proc.lastRestartOnEventTime = metav1.MicroTime{}
 	}
 
-	if cmd.Annotations[v1alpha1.AnnotationManagedBy] == "local_resource" {
+	if cmd.Annotations[v1alpha1.AnnotationManagedBy] == "local_resource" ||
+		cmd.Annotations[v1alpha1.AnnotationManagedBy] == "cmd_image" {
 		// Until resource dependencies are expressed in the API,
 		// we can't use reconciliation to deploy Cmd objects
-		// that are part of local_resource.
+		// that are part of local_resource or custom_build.
 		err := c.maybeUpdateObjectStatus(ctx, cmd)
 		if err != nil {
 			return ctrl.Result{}, err

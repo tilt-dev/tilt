@@ -8,12 +8,8 @@ package engine
 
 import (
 	"context"
-
 	"github.com/google/wire"
 	"github.com/jonboulle/clockwork"
-	"go.opentelemetry.io/otel/sdk/trace"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
@@ -34,6 +30,8 @@ import (
 	"github.com/tilt-dev/tilt/internal/tracer"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/wmclient/pkg/dirs"
+	"go.opentelemetry.io/otel/sdk/trace"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Injectors from wire.go:
@@ -42,20 +40,20 @@ func provideFakeBuildAndDeployer(ctx context.Context, docker2 docker.Client, kCl
 	scheme := v1alpha1.NewScheme()
 	labels := _wireLabelsValue
 	dockerBuilder := build.NewDockerBuilder(docker2, labels)
-	customBuilder := build.NewCustomBuilder(docker2, clock)
+	localexecEnv := provideFakeEnv()
+	cmdExecer := cmd.ProvideExecer(localexecEnv)
+	proberManager := cmd.ProvideProberManager()
+	clockworkClock := clockwork.NewRealClock()
+	controller := cmd.NewController(ctx, cmdExecer, proberManager, ctrlClient, st, clockworkClock, scheme)
+	customBuilder := build.NewCustomBuilder(docker2, clock, controller)
 	imageBuilder := build.NewImageBuilder(dockerBuilder, customBuilder, kp)
 	reconciler := dockerimage.NewReconciler(ctrlClient, st, scheme, docker2, imageBuilder)
 	cmdimageReconciler := cmdimage.NewReconciler(ctrlClient, st, scheme, docker2, imageBuilder)
 	kubernetesapplyReconciler := kubernetesapply.NewReconciler(ctrlClient, kClient, scheme, dockerBuilder, st, execer)
 	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(reconciler, cmdimageReconciler, imageBuilder, analytics2, clock, ctrlClient, kubernetesapplyReconciler)
-	clockworkClock := clockwork.NewRealClock()
 	disableSubscriber := dockercomposeservice.NewDisableSubscriber(ctx, dcc, clockworkClock)
 	dockercomposeserviceReconciler := dockercomposeservice.NewReconciler(ctrlClient, dcc, docker2, st, scheme, disableSubscriber)
 	dockerComposeBuildAndDeployer := buildcontrol.NewDockerComposeBuildAndDeployer(reconciler, cmdimageReconciler, imageBuilder, dockercomposeserviceReconciler, clock, ctrlClient)
-	localexecEnv := provideFakeEnv()
-	cmdExecer := cmd.ProvideExecer(localexecEnv)
-	proberManager := cmd.ProvideProberManager()
-	controller := cmd.NewController(ctx, cmdExecer, proberManager, ctrlClient, st, clockworkClock, scheme)
 	localTargetBuildAndDeployer := buildcontrol.NewLocalTargetBuildAndDeployer(clock, ctrlClient, controller)
 	kubeContext := provideFakeKubeContext(env)
 	runtime := k8s.ProvideContainerRuntime(ctx, kClient)

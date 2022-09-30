@@ -22,7 +22,9 @@ type ImageTarget struct {
 
 	// An apiserver-driven data model for using docker to build images.
 	DockerImageName string
-	CmdImageName    string
+
+	// Name for both the CmdImage and the Cmd it manages.
+	CmdImageName string
 
 	BuildDetails BuildDetails
 
