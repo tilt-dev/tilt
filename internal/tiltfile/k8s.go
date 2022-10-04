@@ -639,8 +639,12 @@ func (s *tiltfileState) checkResourceConflict(name string) error {
 	if s.localByName[name] != nil {
 		return fmt.Errorf("local_resource named %q already exists", name)
 	}
-	if s.dcByName[name] != nil {
-		return fmt.Errorf("dc_resource named %q already exists", name)
+	for _, dc := range s.dc {
+		for n := range dc.services {
+			if name == n {
+				return fmt.Errorf("dc_resource named %q already exists", name)
+			}
+		}
 	}
 	return nil
 }

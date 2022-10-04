@@ -89,19 +89,25 @@ func (c *downCmd) down(ctx context.Context, downDeps DownDeps, args []string) er
 		return err
 	}
 
-	var dcProject v1alpha1.DockerComposeProject
+	dcProjects := make(map[string]v1alpha1.DockerComposeProject)
 	for _, m := range sortedManifests {
-		if m.IsDC() {
-			dcProject = m.DockerComposeTarget().Spec.Project
-			break
+		if !m.IsDC() {
+			continue
+		}
+		proj := m.DockerComposeTarget().Spec.Project
+
+		if _, exists := dcProjects[proj.Name]; !exists {
+			dcProjects[proj.Name] = proj
 		}
 	}
 
-	if !model.IsEmptyDockerComposeProject(dcProject) {
-		dcc := downDeps.dcClient
-		err = dcc.Down(ctx, dcProject, logger.Get(ctx).Writer(logger.InfoLvl), logger.Get(ctx).Writer(logger.InfoLvl))
-		if err != nil {
-			return errors.Wrap(err, "Running `docker-compose down`")
+	for _, dcProject := range dcProjects {
+		if !model.IsEmptyDockerComposeProject(dcProject) {
+			dcc := downDeps.dcClient
+			err = dcc.Down(ctx, dcProject, logger.Get(ctx).Writer(logger.InfoLvl), logger.Get(ctx).Writer(logger.InfoLvl))
+			if err != nil {
+				return errors.Wrap(err, "Running `docker-compose down`")
+			}
 		}
 	}
 

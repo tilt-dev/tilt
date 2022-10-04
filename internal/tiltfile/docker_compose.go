@@ -37,11 +37,25 @@ type dcResourceSet struct {
 	Project v1alpha1.DockerComposeProject
 
 	configPaths  []string
-	services     []*dcService
 	tiltfilePath string
+	services     map[string]*dcService
+	serviceNames []string
+	resOptions   map[string]*dcResourceOptions
 }
 
+type dcResourceMap map[string]*dcResourceSet
+
 func (dc dcResourceSet) Empty() bool { return reflect.DeepEqual(dc, dcResourceSet{}) }
+
+func (dc dcResourceSet) ServiceCount() int { return len(dc.services) }
+
+func (dcm dcResourceMap) ServiceCount() int {
+	svcCount := 0
+	for _, dc := range dcm {
+		svcCount += dc.ServiceCount()
+	}
+	return svcCount
+}
 
 func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var configPaths starlark.Value
@@ -63,24 +77,9 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 		return nil, fmt.Errorf("Nothing to compose")
 	}
 
-	dc := s.dc
-
-	currentTiltfilePath := starkit.CurrentExecPath(thread)
-	if dc.tiltfilePath != "" && dc.tiltfilePath != currentTiltfilePath {
-		return starlark.None, fmt.Errorf("Cannot load docker-compose files from two different Tiltfiles.\n"+
-			"docker-compose must have a single working directory:\n"+
-			"(%s, %s)", dc.tiltfilePath, currentTiltfilePath)
-	}
-
-	if projectName == "" {
-		projectName = model.NormalizeName(filepath.Base(filepath.Dir(currentTiltfilePath)))
-	}
-
 	project := v1alpha1.DockerComposeProject{
-		ConfigPaths: dc.configPaths,
-		ProjectPath: dc.Project.ProjectPath,
-		Name:        projectName,
-		EnvFile:     envFile.Value,
+		Name:    projectName,
+		EnvFile: envFile.Value,
 	}
 
 	if project.EnvFile != "" {
@@ -121,9 +120,12 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 				return starlark.None, fmt.Errorf("expected blob | path (string). Actual type: %T", val)
 			}
 
-			// Set project path to dir of first compose file, like DC CLI does
+			// Set project path/name to dir of first compose file, like DC CLI does
 			if project.ProjectPath == "" {
 				project.ProjectPath = filepath.Dir(path)
+			}
+			if project.Name == "" {
+				project.Name = model.NormalizeName(filepath.Base(filepath.Dir(path)))
 			}
 
 			project.ConfigPaths = append(project.ConfigPaths, path)
@@ -134,9 +136,45 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 		}
 	}
 
+	currentTiltfilePath := starkit.CurrentExecPath(thread)
+
+	if project.Name == "" {
+		project.Name = model.NormalizeName(filepath.Base(filepath.Dir(currentTiltfilePath)))
+	}
+
 	// Set to tiltfile directory for YAML blob tempfiles
 	if project.ProjectPath == "" {
 		project.ProjectPath = filepath.Dir(currentTiltfilePath)
+	}
+
+	dc := s.dc[project.Name]
+	if dc == nil {
+		dc = &dcResourceSet{
+			Project:      project,
+			services:     make(map[string]*dcService),
+			resOptions:   make(map[string]*dcResourceOptions),
+			configPaths:  project.ConfigPaths,
+			tiltfilePath: currentTiltfilePath,
+		}
+		s.dc[project.Name] = dc
+	} else {
+		for _, path := range project.ConfigPaths {
+			exists := false
+			for _, extPath := range dc.configPaths {
+				if path == extPath {
+					exists = true
+					break
+				}
+			}
+			if !exists {
+				dc.configPaths = append(dc.configPaths, path)
+			}
+		}
+		dc.Project.ConfigPaths = dc.configPaths
+		if project.EnvFile != "" {
+			dc.Project.EnvFile = project.EnvFile
+		}
+		project = dc.Project
 	}
 
 	services, err := parseDCConfig(s.ctx, s.dcCli, project)
@@ -144,16 +182,16 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 		return nil, err
 	}
 
+	dc.services = make(map[string]*dcService)
+	dc.serviceNames = []string{}
 	for _, svc := range services {
-		previousSvc := s.dcByName[svc.Name]
-		if previousSvc != nil {
-			delete(s.dcByName, svc.Name)
-		}
 		err := s.checkResourceConflict(svc.Name)
 		if err != nil {
 			return nil, err
 		}
-		svc.Options = s.dcResOptions[svc.Name]
+
+		dc.serviceNames = append(dc.serviceNames, svc.Name)
+		svc.Options = dc.resOptions[svc.Name]
 		for _, f := range svc.ServiceConfig.EnvFile {
 			if !filepath.IsAbs(f) {
 				f = filepath.Join(project.ProjectPath, f)
@@ -163,14 +201,7 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 				return nil, err
 			}
 		}
-		s.dcByName[svc.Name] = svc
-	}
-
-	s.dc = dcResourceSet{
-		Project:      project,
-		configPaths:  project.ConfigPaths,
-		services:     services,
-		tiltfilePath: currentTiltfilePath,
+		dc.services[svc.Name] = svc
 	}
 
 	return starlark.None, nil
@@ -180,6 +211,8 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 // to be defined in a `docker_compose.yml`
 func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var name string
+	var projectName string
+	var newName string
 	var imageVal starlark.Value
 	var triggerMode triggerMode
 	var resourceDepsVal starlark.Sequence
@@ -197,6 +230,8 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 		"links?", &links,
 		"labels?", &labels,
 		"auto_init?", &autoInit,
+		"project_name?", &projectName,
+		"new_name?", &newName,
 	); err != nil {
 		return nil, err
 	}
@@ -215,12 +250,19 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 		return nil, fmt.Errorf("image arg must be a string; got %T", imageVal)
 	}
 
-	svc, err := s.getDCService(name)
+	projectName, svc, err := s.getDCService(name, projectName)
 	if err != nil {
 		return nil, err
 	}
 
-	options := s.dcResOptions[name]
+	if newName != "" {
+		name, err = s.renameDCService(projectName, name, newName, svc)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	options := s.dc[projectName].resOptions[name]
 	if options == nil {
 		options = newDcResourceOptions()
 	}
@@ -253,26 +295,72 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 		options.AutoInit = autoInit
 	}
 
-	s.dcResOptions[name] = options
+	s.dc[projectName].resOptions[name] = options
 	svc.Options = options
 	return starlark.None, nil
 }
 
-func (s *tiltfileState) getDCService(name string) (*dcService, error) {
-	allNames := make([]string, len(s.dc.services))
-	for i, svc := range s.dc.services {
-		if svc.Name == name {
-			return svc, nil
+func (s *tiltfileState) getDCService(svcName, projName string) (string, *dcService, error) {
+	allNames := []string{}
+	foundProjName := ""
+	var foundSvc *dcService
+
+	for _, dc := range s.dc {
+		if projName != "" && dc.Project.Name != projName {
+			continue
 		}
-		allNames[i] = svc.Name
+
+		for key, svc := range dc.services {
+			if key == svcName {
+				if foundSvc != nil {
+					return "", nil, fmt.Errorf("found multiple resources named %q, "+
+						"please specify which one with project_name= argument", svcName)
+				}
+				foundProjName = dc.Project.Name
+				foundSvc = svc
+			}
+			allNames = append(allNames, key)
+		}
 	}
-	return nil, fmt.Errorf("no Docker Compose service found with name '%s'. "+
-		"Found these instead:\n\t%s", name, strings.Join(allNames, "; "))
+
+	if foundSvc == nil {
+		return "", nil, fmt.Errorf("no Docker Compose service found with name %q. "+
+			"Found these instead:\n\t%s", svcName, strings.Join(allNames, "; "))
+	}
+
+	return foundProjName, foundSvc, nil
+}
+
+func (s *tiltfileState) renameDCService(projectName, name, newName string, svc *dcService) (string, error) {
+	err := s.checkResourceConflict(newName)
+	if err != nil {
+		return "", err
+	}
+
+	s.dc[projectName].services[newName] = svc
+	delete(s.dc[projectName].services, name)
+	if opts, exists := s.dc[projectName].resOptions[name]; exists {
+		s.dc[projectName].resOptions[newName] = opts
+		delete(s.dc[projectName].resOptions, name)
+	}
+	index := -1
+	for i, n := range s.dc[projectName].serviceNames {
+		if n == name {
+			index = i
+			break
+		}
+	}
+	s.dc[projectName].serviceNames[index] = newName
+	svc.Name = newName
+	return newName, nil
 }
 
 // A docker-compose service, according to Tilt.
 type dcService struct {
 	Name string
+
+	// Contains the name of the service as referenced in the compose file where it was loaded.
+	ServiceName string
 
 	// these are the host machine paths that DC will sync from the local volume into the container
 	// https://docs.docker.com/compose/compose-file/#volumes
@@ -354,6 +442,7 @@ func dockerComposeConfigToService(projectName string, svcConfig types.ServiceCon
 
 	svc := dcService{
 		Name:               svcConfig.Name,
+		ServiceName:        svcConfig.Name,
 		ServiceConfig:      svcConfig,
 		MountedLocalDirs:   mountedLocalDirs,
 		ServiceYAML:        rawConfig,
@@ -386,7 +475,7 @@ func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, s
 	return services, nil
 }
 
-func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResourceSet, iTargets []model.ImageTarget) (model.Manifest, error) {
+func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet *dcResourceSet, iTargets []model.ImageTarget) (model.Manifest, error) {
 	options := service.Options
 	if options == nil {
 		options = newDcResourceOptions()
@@ -395,7 +484,7 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet dcResource
 	dcInfo := model.DockerComposeTarget{
 		Name: model.TargetName(service.Name),
 		Spec: v1alpha1.DockerComposeServiceSpec{
-			Service: service.Name,
+			Service: service.ServiceName,
 			Project: dcSet.Project,
 		},
 		ServiceYAML: string(service.ServiceYAML),
