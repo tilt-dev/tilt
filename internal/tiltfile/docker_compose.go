@@ -25,6 +25,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
+	"github.com/tilt-dev/tilt/internal/sliceutils"
 	"github.com/tilt-dev/tilt/internal/tiltfile/io"
 	"github.com/tilt-dev/tilt/internal/tiltfile/links"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
@@ -159,18 +160,7 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 		}
 		s.dc[project.Name] = dc
 	} else {
-		for _, path := range project.ConfigPaths {
-			exists := false
-			for _, extPath := range dc.configPaths {
-				if path == extPath {
-					exists = true
-					break
-				}
-			}
-			if !exists {
-				dc.configPaths = append(dc.configPaths, path)
-			}
-		}
+		dc.configPaths = sliceutils.AppendWithoutDupes(dc.configPaths, project.ConfigPaths...)
 		dc.Project.ConfigPaths = dc.configPaths
 		if project.EnvFile != "" {
 			dc.Project.EnvFile = project.EnvFile
