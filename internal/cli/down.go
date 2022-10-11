@@ -102,12 +102,10 @@ func (c *downCmd) down(ctx context.Context, downDeps DownDeps, args []string) er
 	}
 
 	for _, dcProject := range dcProjects {
-		if !model.IsEmptyDockerComposeProject(dcProject) {
-			dcc := downDeps.dcClient
-			err = dcc.Down(ctx, dcProject, logger.Get(ctx).Writer(logger.InfoLvl), logger.Get(ctx).Writer(logger.InfoLvl))
-			if err != nil {
-				return errors.Wrap(err, "Running `docker-compose down`")
-			}
+		dcc := downDeps.dcClient
+		err = dcc.Down(ctx, dcProject, logger.Get(ctx).Writer(logger.InfoLvl), logger.Get(ctx).Writer(logger.InfoLvl))
+		if err != nil {
+			return errors.Wrap(err, "Running `docker-compose down`")
 		}
 	}
 

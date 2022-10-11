@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/compose-spec/compose-go/loader"
 	"github.com/compose-spec/compose-go/types"
 
 	// DANGER: some compose-go types are not friendly to being marshaled with gopkg.in/yaml.v3
@@ -125,7 +126,7 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 				project.ProjectPath = filepath.Dir(path)
 			}
 			if project.Name == "" {
-				project.Name = model.NormalizeName(filepath.Base(filepath.Dir(path)))
+				project.Name = loader.NormalizeProjectName(filepath.Base(filepath.Dir(path)))
 			}
 
 			project.ConfigPaths = append(project.ConfigPaths, path)
@@ -139,7 +140,7 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 	currentTiltfilePath := starkit.CurrentExecPath(thread)
 
 	if project.Name == "" {
-		project.Name = model.NormalizeName(filepath.Base(filepath.Dir(currentTiltfilePath)))
+		project.Name = loader.NormalizeProjectName(filepath.Base(filepath.Dir(currentTiltfilePath)))
 	}
 
 	// Set to tiltfile directory for YAML blob tempfiles
