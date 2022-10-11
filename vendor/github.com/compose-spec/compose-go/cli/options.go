@@ -18,7 +18,7 @@ package cli
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -63,6 +63,9 @@ func NewProjectOptions(configs []string, opts ...ProjectOptionsFn) (*ProjectOpti
 // WithName defines ProjectOptions' name
 func WithName(name string) ProjectOptionsFn {
 	return func(o *ProjectOptions) error {
+		if name != loader.NormalizeProjectName(name) {
+			return fmt.Errorf("%q is not a valid project name", name)
+		}
 		o.Name = name
 		return nil
 	}
@@ -142,7 +145,7 @@ func WithDefaultConfigPath(o *ProjectOptions) error {
 // WithEnv defines a key=value set of variables used for compose file interpolation
 func WithEnv(env []string) ProjectOptionsFn {
 	return func(o *ProjectOptions) error {
-		for k, v := range getAsEqualsMap(env) {
+		for k, v := range utils.GetAsEqualsMap(env) {
 			o.Environment[k] = v
 		}
 		return nil
@@ -166,7 +169,10 @@ func WithLoadOptions(loadOptions ...func(*loader.Options)) ProjectOptionsFn {
 
 // WithOsEnv imports environment variables from OS
 func WithOsEnv(o *ProjectOptions) error {
-	for k, v := range getAsEqualsMap(os.Environ()) {
+	for k, v := range utils.GetAsEqualsMap(os.Environ()) {
+		if _, set := o.Environment[k]; set {
+			continue
+		}
 		o.Environment[k] = v
 	}
 	return nil
@@ -182,63 +188,75 @@ func WithEnvFile(file string) ProjectOptionsFn {
 
 // WithDotEnv imports environment variables from .env file
 func WithDotEnv(o *ProjectOptions) error {
-	dotEnvFile := o.EnvFile
-	if dotEnvFile == "" {
-		wd, err := o.GetWorkingDir()
-		if err != nil {
-			return err
+	wd, err := o.GetWorkingDir()
+	if err != nil {
+		return err
+	}
+	envMap, err := GetEnvFromFile(o.Environment, wd, o.EnvFile)
+	if err != nil {
+		return err
+	}
+	for k, v := range envMap {
+		o.Environment[k] = v
+		if osVal, ok := os.LookupEnv(k); ok {
+			o.Environment[k] = osVal
 		}
-		dotEnvFile = filepath.Join(wd, ".env")
+	}
+	return nil
+}
+
+func GetEnvFromFile(currentEnv map[string]string, workingDir string, filename string) (map[string]string, error) {
+	envMap := make(map[string]string)
+
+	dotEnvFile := filename
+	if dotEnvFile == "" {
+		dotEnvFile = filepath.Join(workingDir, ".env")
 	}
 	abs, err := filepath.Abs(dotEnvFile)
 	if err != nil {
-		return err
+		return envMap, err
 	}
 	dotEnvFile = abs
 
 	s, err := os.Stat(dotEnvFile)
 	if os.IsNotExist(err) {
-		if o.EnvFile != "" {
-			return errors.Errorf("Couldn't find env file: %s", o.EnvFile)
+		if filename != "" {
+			return nil, errors.Errorf("Couldn't find env file: %s", filename)
 		}
-		return nil
+		return envMap, nil
 	}
 	if err != nil {
-		return err
+		return envMap, err
 	}
 
 	if s.IsDir() {
-		if o.EnvFile == "" {
-			return nil
+		if filename == "" {
+			return envMap, nil
 		}
-		return errors.Errorf("%s is a directory", dotEnvFile)
+		return envMap, errors.Errorf("%s is a directory", dotEnvFile)
 	}
 
 	file, err := os.Open(dotEnvFile)
 	if err != nil {
-		return err
+		return envMap, err
 	}
 	defer file.Close()
 
-	notInEnvSet := make(map[string]interface{})
 	env, err := dotenv.ParseWithLookup(file, func(k string) (string, bool) {
-		v, ok := os.LookupEnv(k)
+		v, ok := currentEnv[k]
 		if !ok {
-			notInEnvSet[k] = nil
-			return "", true
+			return "", false
 		}
 		return v, true
 	})
 	if err != nil {
-		return err
+		return envMap, err
 	}
 	for k, v := range env {
-		if _, ok := notInEnvSet[k]; ok {
-			continue
-		}
-		o.Environment[k] = v
+		envMap[k] = v
 	}
-	return nil
+
+	return envMap, nil
 }
 
 // WithInterpolation set ProjectOptions to enable/skip interpolation
@@ -304,7 +322,7 @@ func ProjectFromOptions(options *ProjectOptions) (*types.Project, error) {
 	for _, f := range configPaths {
 		var b []byte
 		if f == "-" {
-			b, err = ioutil.ReadAll(os.Stdin)
+			b, err = io.ReadAll(os.Stdin)
 			if err != nil {
 				return nil, err
 			}
@@ -313,7 +331,7 @@ func ProjectFromOptions(options *ProjectOptions) (*types.Project, error) {
 			if err != nil {
 				return nil, err
 			}
-			b, err = ioutil.ReadFile(f)
+			b, err = os.ReadFile(f)
 			if err != nil {
 				return nil, err
 			}
@@ -365,6 +383,7 @@ func withNamePrecedenceLoad(absWorkingDir string, options *ProjectOptions) func(
 func withConvertWindowsPaths(options *ProjectOptions) func(*loader.Options) {
 	return func(o *loader.Options) {
 		o.ConvertWindowsPaths = utils.StringToBool(options.Environment["COMPOSE_CONVERT_WINDOWS_PATHS"])
+		o.ResolvePaths = true
 	}
 }
 
@@ -405,23 +424,4 @@ func absolutePaths(p []string) ([]string, error) {
 		paths = append(paths, f)
 	}
 	return paths, nil
-}
-
-// getAsEqualsMap split key=value formatted strings into a key : value map
-func getAsEqualsMap(em []string) map[string]string {
-	m := make(map[string]string)
-	for _, v := range em {
-		kv := strings.SplitN(v, "=", 2)
-		m[kv[0]] = kv[1]
-	}
-	return m
-}
-
-// getAsEqualsMap format a key : value map into key=value strings
-func getAsStringList(em map[string]string) []string {
-	m := make([]string, 0, len(em))
-	for k, v := range em {
-		m = append(m, fmt.Sprintf("%s=%s", k, v))
-	}
-	return m
 }

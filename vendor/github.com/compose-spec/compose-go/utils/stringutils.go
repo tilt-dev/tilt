@@ -17,6 +17,7 @@
 package utils
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -35,4 +36,23 @@ func StringContains(array []string, needle string) bool {
 func StringToBool(s string) bool {
 	b, _ := strconv.ParseBool(strings.ToLower(strings.TrimSpace(s)))
 	return b
+}
+
+// GetAsEqualsMap split key=value formatted strings into a key : value map
+func GetAsEqualsMap(em []string) map[string]string {
+	m := make(map[string]string)
+	for _, v := range em {
+		kv := strings.SplitN(v, "=", 2)
+		m[kv[0]] = kv[1]
+	}
+	return m
+}
+
+// GetAsEqualsMap format a key : value map into key=value strings
+func GetAsStringList(em map[string]string) []string {
+	m := make([]string, 0, len(em))
+	for k, v := range em {
+		m = append(m, fmt.Sprintf("%s=%s", k, v))
+	}
+	return m
 }

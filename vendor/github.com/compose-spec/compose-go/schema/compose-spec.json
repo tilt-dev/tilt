@@ -102,7 +102,9 @@
                 "shm_size": {"type": ["integer", "string"]},
                 "extra_hosts": {"$ref": "#/definitions/list_or_dict"},
                 "isolation": {"type": "string"},
-                "secrets": {"$ref": "#/definitions/service_config_or_secret"}
+                "secrets": {"$ref": "#/definitions/service_config_or_secret"},
+                "tags": {"type": "array", "items": {"type": "string"}},
+                "platforms": {"type": "array", "items": {"type": "string"}}
               },
               "additionalProperties": false,
               "patternProperties": {"^x-": {}}
@@ -684,6 +686,7 @@
       "type": "object",
       "properties": {
         "name": {"type": "string"},
+        "environment": {"type": "string"},
         "file": {"type": "string"},
         "external": {
           "type": ["boolean", "object"],
