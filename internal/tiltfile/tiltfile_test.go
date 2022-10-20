@@ -554,6 +554,26 @@ k8s_resource("the-deployment", "foo")
 	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "configMap.yaml", "deployment.yaml", "kustomization.yaml", "service.yaml")
 }
 
+func TestKustomizeFlags(t *testing.T) {
+	f := newFixture(t)
+
+	f.setupFoo()
+	f.file("kustomization.yaml", kustomizeFileText)
+	f.file("configMap.yaml", kustomizeConfigMapText)
+	f.file("deployment.yaml", kustomizeDeploymentText)
+	f.file("service.yaml", kustomizeServiceText)
+	f.file("Tiltfile", `
+
+docker_build("gcr.io/foo", "foo")
+k8s_yaml(kustomize(".", flags=['--enable-helm']))
+k8s_resource("the-deployment", "foo")
+`)
+	f.load()
+	f.assertNextManifest("foo", deployment("the-deployment"), numEntities(2))
+	f.assertConfigFiles("Tiltfile", ".tiltignore", "foo/Dockerfile", "foo/.dockerignore", "configMap.yaml", "deployment.yaml", "kustomization.yaml", "service.yaml")
+	assert.Contains(t, f.out.String(), "kustomize build --enable-helm")
+}
+
 func TestKustomizeBin(t *testing.T) {
 	f := newFixture(t)
 	f.file("kustomization.yaml", kustomizeFileText)

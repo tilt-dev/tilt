@@ -702,14 +702,16 @@ def watch_file(file_path: str) -> None:
     file_path: Path to the file locally (absolute, or relative to the location of the Tiltfile)."""
 
 
-def kustomize(pathToDir: str, kustomize_bin: str = None) -> Blob:
+def kustomize(pathToDir: str, kustomize_bin: str = None, flags: List[str] = []) -> Blob:
   """Run `kustomize <https://github.com/kubernetes-sigs/kustomize>`_ on a given directory and return the resulting YAML as a Blob
   Directory is watched (see ``watch_file``). Checks for and uses separately installed kustomize first, if it exists. Otherwise,
   uses kubectl's kustomize. See `blog post <https://blog.tilt.dev/2020/02/04/are-you-my-kustomize.html>`_.
 
   Args:
     pathToDir: Path to the directory locally (absolute, or relative to the location of the Tiltfile).
-    kustomize_bin: Custom path to the ``kustomize`` binary executable. Defaults to searching $PATH for kustomize."""
+    kustomize_bin: Custom path to the ``kustomize`` binary executable. Defaults to searching $PATH for kustomize.
+    flags: Additional flags to pass to ``kustomize build``
+  """
   pass
 
 def helm(pathToChartDir: str, name: str = "", namespace: str = "", values: Union[str, List[str]]=[], set: Union[str, List[str]]=[], kube_version: str = "") -> Blob:
