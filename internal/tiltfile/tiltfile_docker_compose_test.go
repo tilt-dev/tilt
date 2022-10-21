@@ -3,6 +3,7 @@ package tiltfile
 import (
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -442,28 +443,27 @@ k8s_yaml('bar.yaml')`
 	assert.Equal(t, 2, len(f.loadResult.Manifests))
 }
 
-func TestDockerComposeAndK8sNameConflict(t *testing.T) {
-	f := newFixture(t)
+func TestResourceConflictCombinations(t *testing.T) {
+	tt := [][2]string{
+		{`docker_compose('docker-compose.yml')
+k8s_yaml('foo.yaml')`, `dc_resource named "foo" already exists`},
+		{`k8s_yaml('foo.yaml')
+docker_compose('docker-compose.yml')`, `dc_resource named "foo" already exists`},
+		{`docker_compose('docker-compose.yml')
+local_resource('foo', 'echo hello')`, `dc_resource named "foo" already exists`},
+		{`local_resource('foo', 'echo hello')
+docker_compose('docker-compose.yml')`, `local_resource named "foo" already exists`},
+	}
 
-	f.setupFooAndBar()
-	f.file("docker-compose.yml", simpleConfig)
-	tf := `docker_compose('docker-compose.yml')
-k8s_yaml('foo.yaml')`
-	f.file("Tiltfile", tf)
-
-	f.loadErrString(`dc_resource named "foo" already exists`)
-}
-
-func TestDockerComposeAndLocalNameConflict(t *testing.T) {
-	f := newFixture(t)
-
-	f.setupFooAndBar()
-	f.file("docker-compose.yml", simpleConfig)
-	tf := `docker_compose('docker-compose.yml')
-local_resource('foo', 'echo hello')`
-	f.file("Tiltfile", tf)
-
-	f.loadErrString(`dc_resource named "foo" already exists`)
+	for i, tc := range tt {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			f := newFixture(t)
+			f.setupFooAndBar()
+			f.file("docker-compose.yml", simpleConfig)
+			f.file("Tiltfile", tc[0])
+			f.loadErrString(tc[1])
+		})
+	}
 }
 
 func TestDockerComposeResourceCreationFromAbsPath(t *testing.T) {

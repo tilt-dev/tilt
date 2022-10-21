@@ -709,9 +709,6 @@ func (s *tiltfileState) assembleDC() error {
 					return err
 				}
 			}
-			// TODO(maia): throw warning if
-			//  a. there is an img ref from config, and img ref from user doesn't match
-			//  b. there is no img ref from config, and img ref from user is not of form .*_<svc_name>
 		}
 	}
 	return nil
