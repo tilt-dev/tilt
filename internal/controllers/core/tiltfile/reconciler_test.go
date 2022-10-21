@@ -430,7 +430,7 @@ func TestCancelClickedBeforeLoad(t *testing.T) {
 	}
 
 	cancelButton := uibutton.StopBuildButton(tf.Name)
-	cancelButton.Status.LastClickedAt = metav1.NowMicro()
+	cancelButton.Status.LastClickedAt = metav1.NewMicroTime(time.Now().Add(-time.Second))
 	err := f.Client.Create(f.Context(), cancelButton)
 	require.NoError(t, err)
 
