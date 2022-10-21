@@ -2,7 +2,7 @@ version: 2.1
 orbs:
   slack: circleci/slack@3.4.0
   shellcheck: circleci/shellcheck@2.2.2
-  win: circleci/windows@2.2.0
+  win: circleci/windows@5.0.0
   gcp-cli: circleci/gcp-cli@2.4.0
   kubernetes: circleci/kubernetes@0.9.1
   go: circleci/go@1.7.1
@@ -64,18 +64,24 @@ jobs:
       name: win/default
       size: "large"
     steps:
-      - run: choco install make kustomize kubernetes-helm docker-compose mingw
-      - run: choco upgrade -y --allow-downgrade golang --version=1.18.0
+      - run: choco install -y make kustomize kubernetes-helm docker-compose mingw
+      - run: choco upgrade -y --allow-downgrade golang --version=1.19.2
       - run: go install gotest.tools/gotestsum@latest
       - checkout
       - run: iex ./scripts/install-dc2.ps1
       # Check to make sure Windows binaries compile
       - run:
           command: go install -mod vendor ./cmd/tilt
+          shell: bash.exe
           environment:
             CGO_ENABLED: '1'
             CGO_LDFLAGS: -static
-      - run: make shorttestsum
+      - run:
+          command: PATH="$HOME/go/bin:$PATH" make shorttestsum
+          shell: bash.exe
+          environment:
+            CGO_ENABLED: '1'
+            CGO_LDFLAGS: -static
       - run: iex ./scripts/install.ps1
       - store_test_results:
           path: test-results
