@@ -3213,6 +3213,9 @@ func TestDisabledResourceRemovedFromTriggerQueue(t *testing.T) {
 }
 
 func TestLocalResourceNoServeCmdDeps(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("TODO(nick): fix this")
+	}
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
 
