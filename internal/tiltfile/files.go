@@ -138,7 +138,8 @@ func (s *tiltfileState) execLocalCmd(t *starlark.Thread, cmd model.Cmd, options 
 
 func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	path, kustomizeBin := value.NewLocalPathUnpacker(thread), value.NewLocalPathUnpacker(thread)
-	err := s.unpackArgs(fn.Name(), args, kwargs, "paths", &path, "kustomize_bin?", &kustomizeBin)
+	flags := value.StringList{}
+	err := s.unpackArgs(fn.Name(), args, kwargs, "paths", &path, "kustomize_bin?", &kustomizeBin, "flags?", &flags)
 	if err != nil {
 		return nil, err
 	}
@@ -166,10 +167,10 @@ func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin,
 		return nil, err
 	}
 
-	cmd := model.Cmd{Argv: append(kustomizeArgs, relKustomizePath), Dir: starkit.AbsWorkingDir(thread)}
+	cmd := model.Cmd{Argv: append(append(kustomizeArgs, flags...), relKustomizePath), Dir: starkit.AbsWorkingDir(thread)}
 	yaml, err := s.execLocalCmd(thread, cmd, execCommandOptions{
 		logOutput:  false,
-		logCommand: false,
+		logCommand: true,
 	})
 	if err != nil {
 		return nil, err
