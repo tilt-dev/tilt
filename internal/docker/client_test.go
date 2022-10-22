@@ -328,6 +328,21 @@ func TestProvideClusterProduct(t *testing.T) {
 			},
 		},
 		{
+			env:     clusterid.ProductDockerDesktop,
+			runtime: container.RuntimeDocker,
+			osEnv: map[string]string{
+				"DOCKER_HOST": "unix:///home/tilt/.docker/run/docker.sock",
+			},
+			expectedCluster: Env{
+				Client:              hostClient{Host: "unix:///home/tilt/.docker/run/docker.sock"},
+				BuildToKubeContexts: []string{"docker-desktop-me"},
+			},
+			expectedLocal: Env{
+				Client:              hostClient{Host: "unix:///home/tilt/.docker/run/docker.sock"},
+				BuildToKubeContexts: []string{"docker-desktop-me", "docker-desktop-me"},
+			},
+		},
+		{
 			env:     clusterid.ProductRancherDesktop,
 			runtime: container.RuntimeDocker,
 			expectedCluster: Env{

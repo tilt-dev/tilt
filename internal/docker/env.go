@@ -305,6 +305,9 @@ func isDefaultHost(e Env) bool {
 			// Docker Desktop for Linux - socket is in ~/.docker/desktop/docker.sock
 			(strings.HasPrefix(host, "unix://") && strings.HasSuffix(host, "/.docker/desktop/docker.sock")) ||
 
+			// Docker Desktop for Mac 4.13+ - socket is in ~/.docker/run/docker.sock
+			(strings.HasPrefix(host, "unix://") && strings.HasSuffix(host, "/.docker/run/docker.sock")) ||
+
 			// Rancher Desktop without admin access on Linux/Mac is in ~/.rd/docker.sock
 			(strings.HasPrefix(host, "unix://") && strings.HasSuffix(host, "/.rd/docker.sock"))
 
