@@ -7,13 +7,13 @@ require (
 	github.com/akutz/memconn v0.1.0
 	github.com/alessio/shellescape v1.4.1
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/compose-spec/compose-go v1.2.4
+	github.com/compose-spec/compose-go v1.6.0
 	github.com/davecgh/go-spew v1.1.1
 	github.com/docker/cli v20.10.17+incompatible
 	github.com/docker/distribution v2.8.1+incompatible
 	github.com/docker/docker v20.10.17+incompatible
 	github.com/docker/go-connections v0.4.0
-	github.com/docker/go-units v0.4.0
+	github.com/docker/go-units v0.5.0
 	github.com/fatih/color v1.13.0
 	github.com/gdamore/tcell v1.1.3
 	github.com/ghodss/yaml v1.0.0
@@ -121,7 +121,7 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/d4l3k/messagediff v1.2.1 // indirect
 	github.com/denisbrodbeck/machineid v1.0.0 // indirect
-	github.com/distribution/distribution/v3 v3.0.0-20220526142353-ffbd94cbe269 // indirect
+	github.com/distribution/distribution/v3 v3.0.0-20220725133111-4bf3547399eb // indirect
 	github.com/docker/docker-credential-helpers v0.6.4 // indirect
 	github.com/docker/go v1.5.1-1 // indirect
 	github.com/docker/go-metrics v0.0.1 // indirect
@@ -169,7 +169,7 @@ require (
 	github.com/miekg/pkcs11 v1.1.1 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.0 // indirect
-	github.com/mitchellh/mapstructure v1.4.3 // indirect
+	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/moby/locker v1.0.1 // indirect
 	github.com/moby/spdystream v0.2.0 // indirect
 	github.com/moby/sys/mount v0.2.0 // indirect
@@ -191,7 +191,7 @@ require (
 	github.com/russross/blackfriday v1.5.2 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/segmentio/encoding v0.2.7 // indirect
-	github.com/sirupsen/logrus v1.8.1 // indirect
+	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/smacker/go-tree-sitter v0.0.0-20220209044044-0d3022e933c3 // indirect
 	github.com/theupdateframework/notary v0.6.1 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect

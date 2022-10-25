@@ -38,6 +38,12 @@ func checkConsistency(project *types.Project) error {
 			}
 		}
 
+		for dependedService := range s.DependsOn {
+			if _, err := project.GetService(dependedService); err != nil {
+				return errors.Wrap(errdefs.ErrInvalid, fmt.Sprintf("service %q depends on undefined service %s", s.Name, dependedService))
+			}
+		}
+
 		if strings.HasPrefix(s.NetworkMode, types.ServicePrefix) {
 			serviceName := s.NetworkMode[len(types.ServicePrefix):]
 			if _, err := project.GetServices(serviceName); err != nil {
@@ -46,12 +52,9 @@ func checkConsistency(project *types.Project) error {
 		}
 
 		for _, volume := range s.Volumes {
-			switch volume.Type {
-			case types.VolumeTypeVolume:
-				if volume.Source != "" { // non anonymous volumes
-					if _, ok := project.Volumes[volume.Source]; !ok {
-						return errors.Wrap(errdefs.ErrInvalid, fmt.Sprintf("service %q refers to undefined volume %s", s.Name, volume.Source))
-					}
+			if volume.Type == types.VolumeTypeVolume && volume.Source != "" { // non anonymous volumes
+				if _, ok := project.Volumes[volume.Source]; !ok {
+					return errors.Wrap(errdefs.ErrInvalid, fmt.Sprintf("service %q refers to undefined volume %s", s.Name, volume.Source))
 				}
 			}
 		}
@@ -68,5 +71,15 @@ func checkConsistency(project *types.Project) error {
 			}
 		}
 	}
+
+	for name, secret := range project.Secrets {
+		if secret.External.External {
+			continue
+		}
+		if secret.File == "" && secret.Environment == "" {
+			return errors.Wrap(errdefs.ErrInvalid, fmt.Sprintf("secret %q must declare either `file` or `environment`", name))
+		}
+	}
+
 	return nil
 }

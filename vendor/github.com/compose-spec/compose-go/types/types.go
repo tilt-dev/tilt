@@ -88,90 +88,102 @@ type ServiceConfig struct {
 	Name     string   `yaml:"-" json:"-"`
 	Profiles []string `mapstructure:"profiles" yaml:"profiles,omitempty" json:"profiles,omitempty"`
 
-	Build             *BuildConfig                     `yaml:",omitempty" json:"build,omitempty"`
-	BlkioConfig       *BlkioConfig                     `mapstructure:"blkio_config" yaml:",omitempty" json:"blkio_config,omitempty"`
-	CapAdd            []string                         `mapstructure:"cap_add" yaml:"cap_add,omitempty" json:"cap_add,omitempty"`
-	CapDrop           []string                         `mapstructure:"cap_drop" yaml:"cap_drop,omitempty" json:"cap_drop,omitempty"`
-	CgroupParent      string                           `mapstructure:"cgroup_parent" yaml:"cgroup_parent,omitempty" json:"cgroup_parent,omitempty"`
-	CPUCount          int64                            `mapstructure:"cpu_count" yaml:"cpu_count,omitempty" json:"cpu_count,omitempty"`
-	CPUPercent        float32                          `mapstructure:"cpu_percent" yaml:"cpu_percent,omitempty" json:"cpu_percent,omitempty"`
-	CPUPeriod         int64                            `mapstructure:"cpu_period" yaml:"cpu_period,omitempty" json:"cpu_period,omitempty"`
-	CPUQuota          int64                            `mapstructure:"cpu_quota" yaml:"cpu_quota,omitempty" json:"cpu_quota,omitempty"`
-	CPURTPeriod       int64                            `mapstructure:"cpu_rt_period" yaml:"cpu_rt_period,omitempty" json:"cpu_rt_period,omitempty"`
-	CPURTRuntime      int64                            `mapstructure:"cpu_rt_runtime" yaml:"cpu_rt_runtime,omitempty" json:"cpu_rt_runtime,omitempty"`
-	CPUS              float32                          `mapstructure:"cpus" yaml:"cpus,omitempty" json:"cpus,omitempty"`
-	CPUSet            string                           `mapstructure:"cpuset" yaml:"cpuset,omitempty" json:"cpuset,omitempty"`
-	CPUShares         int64                            `mapstructure:"cpu_shares" yaml:"cpu_shares,omitempty" json:"cpu_shares,omitempty"`
-	Command           ShellCommand                     `yaml:",omitempty" json:"command,omitempty"`
-	Configs           []ServiceConfigObjConfig         `yaml:",omitempty" json:"configs,omitempty"`
-	ContainerName     string                           `mapstructure:"container_name" yaml:"container_name,omitempty" json:"container_name,omitempty"`
-	CredentialSpec    *CredentialSpecConfig            `mapstructure:"credential_spec" yaml:"credential_spec,omitempty" json:"credential_spec,omitempty"`
-	DependsOn         DependsOnConfig                  `mapstructure:"depends_on" yaml:"depends_on,omitempty" json:"depends_on,omitempty"`
-	Deploy            *DeployConfig                    `yaml:",omitempty" json:"deploy,omitempty"`
-	DeviceCgroupRules []string                         `mapstructure:"device_cgroup_rules" yaml:"device_cgroup_rules,omitempty" json:"device_cgroup_rules,omitempty"`
-	Devices           []string                         `yaml:",omitempty" json:"devices,omitempty"`
-	DNS               StringList                       `yaml:",omitempty" json:"dns,omitempty"`
-	DNSOpts           []string                         `mapstructure:"dns_opt" yaml:"dns_opt,omitempty" json:"dns_opt,omitempty"`
-	DNSSearch         StringList                       `mapstructure:"dns_search" yaml:"dns_search,omitempty" json:"dns_search,omitempty"`
-	Dockerfile        string                           `yaml:"dockerfile,omitempty" json:"dockerfile,omitempty"`
-	DomainName        string                           `mapstructure:"domainname" yaml:"domainname,omitempty" json:"domainname,omitempty"`
-	Entrypoint        ShellCommand                     `yaml:",omitempty" json:"entrypoint,omitempty"`
-	Environment       MappingWithEquals                `yaml:",omitempty" json:"environment,omitempty"`
-	EnvFile           StringList                       `mapstructure:"env_file" yaml:"env_file,omitempty" json:"env_file,omitempty"`
-	Expose            StringOrNumberList               `yaml:",omitempty" json:"expose,omitempty"`
-	Extends           ExtendsConfig                    `yaml:"extends,omitempty" json:"extends,omitempty"`
-	ExternalLinks     []string                         `mapstructure:"external_links" yaml:"external_links,omitempty" json:"external_links,omitempty"`
-	ExtraHosts        HostsList                        `mapstructure:"extra_hosts" yaml:"extra_hosts,omitempty" json:"extra_hosts,omitempty"`
-	GroupAdd          []string                         `mapstructure:"group_add" yaml:"group_add,omitempty" json:"group_add,omitempty"`
-	Hostname          string                           `yaml:",omitempty" json:"hostname,omitempty"`
-	HealthCheck       *HealthCheckConfig               `yaml:",omitempty" json:"healthcheck,omitempty"`
-	Image             string                           `yaml:",omitempty" json:"image,omitempty"`
-	Init              *bool                            `yaml:",omitempty" json:"init,omitempty"`
-	Ipc               string                           `yaml:",omitempty" json:"ipc,omitempty"`
-	Isolation         string                           `mapstructure:"isolation" yaml:"isolation,omitempty" json:"isolation,omitempty"`
-	Labels            Labels                           `yaml:",omitempty" json:"labels,omitempty"`
-	CustomLabels      Labels                           `yaml:"-" json:"-"`
-	Links             []string                         `yaml:",omitempty" json:"links,omitempty"`
-	Logging           *LoggingConfig                   `yaml:",omitempty" json:"logging,omitempty"`
-	LogDriver         string                           `mapstructure:"log_driver" yaml:"log_driver,omitempty" json:"log_driver,omitempty"`
-	LogOpt            map[string]string                `mapstructure:"log_opt" yaml:"log_opt,omitempty" json:"log_opt,omitempty"`
-	MemLimit          UnitBytes                        `mapstructure:"mem_limit" yaml:"mem_limit,omitempty" json:"mem_limit,omitempty"`
-	MemReservation    UnitBytes                        `mapstructure:"mem_reservation" yaml:"mem_reservation,omitempty" json:"mem_reservation,omitempty"`
-	MemSwapLimit      UnitBytes                        `mapstructure:"memswap_limit" yaml:"memswap_limit,omitempty" json:"memswap_limit,omitempty"`
-	MemSwappiness     UnitBytes                        `mapstructure:"mem_swappiness" yaml:"mem_swappiness,omitempty" json:"mem_swappiness,omitempty"`
-	MacAddress        string                           `mapstructure:"mac_address" yaml:"mac_address,omitempty" json:"mac_address,omitempty"`
-	Net               string                           `yaml:"net,omitempty" json:"net,omitempty"`
-	NetworkMode       string                           `mapstructure:"network_mode" yaml:"network_mode,omitempty" json:"network_mode,omitempty"`
-	Networks          map[string]*ServiceNetworkConfig `yaml:",omitempty" json:"networks,omitempty"`
-	OomKillDisable    bool                             `mapstructure:"oom_kill_disable" yaml:"oom_kill_disable,omitempty" json:"oom_kill_disable,omitempty"`
-	OomScoreAdj       int64                            `mapstructure:"oom_score_adj" yaml:"oom_score_adj,omitempty" json:"oom_score_adj,omitempty"`
-	Pid               string                           `yaml:",omitempty" json:"pid,omitempty"`
-	PidsLimit         int64                            `mapstructure:"pids_limit" yaml:"pids_limit,omitempty" json:"pids_limit,omitempty"`
-	Platform          string                           `yaml:",omitempty" json:"platform,omitempty"`
-	Ports             []ServicePortConfig              `yaml:",omitempty" json:"ports,omitempty"`
-	Privileged        bool                             `yaml:",omitempty" json:"privileged,omitempty"`
-	PullPolicy        string                           `mapstructure:"pull_policy" yaml:"pull_policy,omitempty" json:"pull_policy,omitempty"`
-	ReadOnly          bool                             `mapstructure:"read_only" yaml:"read_only,omitempty" json:"read_only,omitempty"`
-	Restart           string                           `yaml:",omitempty" json:"restart,omitempty"`
-	Runtime           string                           `yaml:",omitempty" json:"runtime,omitempty"`
-	Scale             int                              `yaml:"-" json:"-"`
-	Secrets           []ServiceSecretConfig            `yaml:",omitempty" json:"secrets,omitempty"`
-	SecurityOpt       []string                         `mapstructure:"security_opt" yaml:"security_opt,omitempty" json:"security_opt,omitempty"`
-	ShmSize           UnitBytes                        `mapstructure:"shm_size" yaml:"shm_size,omitempty" json:"shm_size,omitempty"`
-	StdinOpen         bool                             `mapstructure:"stdin_open" yaml:"stdin_open,omitempty" json:"stdin_open,omitempty"`
-	StopGracePeriod   *Duration                        `mapstructure:"stop_grace_period" yaml:"stop_grace_period,omitempty" json:"stop_grace_period,omitempty"`
-	StopSignal        string                           `mapstructure:"stop_signal" yaml:"stop_signal,omitempty" json:"stop_signal,omitempty"`
-	Sysctls           Mapping                          `yaml:",omitempty" json:"sysctls,omitempty"`
-	Tmpfs             StringList                       `yaml:",omitempty" json:"tmpfs,omitempty"`
-	Tty               bool                             `mapstructure:"tty" yaml:"tty,omitempty" json:"tty,omitempty"`
-	Ulimits           map[string]*UlimitsConfig        `yaml:",omitempty" json:"ulimits,omitempty"`
-	User              string                           `yaml:",omitempty" json:"user,omitempty"`
-	UserNSMode        string                           `mapstructure:"userns_mode" yaml:"userns_mode,omitempty" json:"userns_mode,omitempty"`
-	Uts               string                           `yaml:"uts,omitempty" json:"uts,omitempty"`
-	VolumeDriver      string                           `mapstructure:"volume_driver" yaml:"volume_driver,omitempty" json:"volume_driver,omitempty"`
-	Volumes           []ServiceVolumeConfig            `yaml:",omitempty" json:"volumes,omitempty"`
-	VolumesFrom       []string                         `mapstructure:"volumes_from" yaml:"volumes_from,omitempty" json:"volumes_from,omitempty"`
-	WorkingDir        string                           `mapstructure:"working_dir" yaml:"working_dir,omitempty" json:"working_dir,omitempty"`
+	Build        *BuildConfig `yaml:",omitempty" json:"build,omitempty"`
+	BlkioConfig  *BlkioConfig `mapstructure:"blkio_config" yaml:",omitempty" json:"blkio_config,omitempty"`
+	CapAdd       []string     `mapstructure:"cap_add" yaml:"cap_add,omitempty" json:"cap_add,omitempty"`
+	CapDrop      []string     `mapstructure:"cap_drop" yaml:"cap_drop,omitempty" json:"cap_drop,omitempty"`
+	CgroupParent string       `mapstructure:"cgroup_parent" yaml:"cgroup_parent,omitempty" json:"cgroup_parent,omitempty"`
+	CPUCount     int64        `mapstructure:"cpu_count" yaml:"cpu_count,omitempty" json:"cpu_count,omitempty"`
+	CPUPercent   float32      `mapstructure:"cpu_percent" yaml:"cpu_percent,omitempty" json:"cpu_percent,omitempty"`
+	CPUPeriod    int64        `mapstructure:"cpu_period" yaml:"cpu_period,omitempty" json:"cpu_period,omitempty"`
+	CPUQuota     int64        `mapstructure:"cpu_quota" yaml:"cpu_quota,omitempty" json:"cpu_quota,omitempty"`
+	CPURTPeriod  int64        `mapstructure:"cpu_rt_period" yaml:"cpu_rt_period,omitempty" json:"cpu_rt_period,omitempty"`
+	CPURTRuntime int64        `mapstructure:"cpu_rt_runtime" yaml:"cpu_rt_runtime,omitempty" json:"cpu_rt_runtime,omitempty"`
+	CPUS         float32      `mapstructure:"cpus" yaml:"cpus,omitempty" json:"cpus,omitempty"`
+	CPUSet       string       `mapstructure:"cpuset" yaml:"cpuset,omitempty" json:"cpuset,omitempty"`
+	CPUShares    int64        `mapstructure:"cpu_shares" yaml:"cpu_shares,omitempty" json:"cpu_shares,omitempty"`
+
+	// Command for the service containers.
+	// If set, overrides COMMAND from the image.
+	//
+	// Set to `[]` or `''` to clear the command from the image.
+	Command ShellCommand `yaml:",omitempty" json:"command"` // NOTE: we can NOT omitempty for JSON! see ShellCommand type for details.
+
+	Configs           []ServiceConfigObjConfig `yaml:",omitempty" json:"configs,omitempty"`
+	ContainerName     string                   `mapstructure:"container_name" yaml:"container_name,omitempty" json:"container_name,omitempty"`
+	CredentialSpec    *CredentialSpecConfig    `mapstructure:"credential_spec" yaml:"credential_spec,omitempty" json:"credential_spec,omitempty"`
+	DependsOn         DependsOnConfig          `mapstructure:"depends_on" yaml:"depends_on,omitempty" json:"depends_on,omitempty"`
+	Deploy            *DeployConfig            `yaml:",omitempty" json:"deploy,omitempty"`
+	DeviceCgroupRules []string                 `mapstructure:"device_cgroup_rules" yaml:"device_cgroup_rules,omitempty" json:"device_cgroup_rules,omitempty"`
+	Devices           []string                 `yaml:",omitempty" json:"devices,omitempty"`
+	DNS               StringList               `yaml:",omitempty" json:"dns,omitempty"`
+	DNSOpts           []string                 `mapstructure:"dns_opt" yaml:"dns_opt,omitempty" json:"dns_opt,omitempty"`
+	DNSSearch         StringList               `mapstructure:"dns_search" yaml:"dns_search,omitempty" json:"dns_search,omitempty"`
+	Dockerfile        string                   `yaml:"dockerfile,omitempty" json:"dockerfile,omitempty"`
+	DomainName        string                   `mapstructure:"domainname" yaml:"domainname,omitempty" json:"domainname,omitempty"`
+
+	// Entrypoint for the service containers.
+	// If set, overrides ENTRYPOINT from the image.
+	//
+	// Set to `[]` or `''` to clear the entrypoint from the image.
+	Entrypoint ShellCommand `yaml:"entrypoint,omitempty" json:"entrypoint"` // NOTE: we can NOT omitempty for JSON! see ShellCommand type for details.
+
+	Environment     MappingWithEquals                `yaml:",omitempty" json:"environment,omitempty"`
+	EnvFile         StringList                       `mapstructure:"env_file" yaml:"env_file,omitempty" json:"env_file,omitempty"`
+	Expose          StringOrNumberList               `yaml:",omitempty" json:"expose,omitempty"`
+	Extends         ExtendsConfig                    `yaml:"extends,omitempty" json:"extends,omitempty"`
+	ExternalLinks   []string                         `mapstructure:"external_links" yaml:"external_links,omitempty" json:"external_links,omitempty"`
+	ExtraHosts      HostsList                        `mapstructure:"extra_hosts" yaml:"extra_hosts,omitempty" json:"extra_hosts,omitempty"`
+	GroupAdd        []string                         `mapstructure:"group_add" yaml:"group_add,omitempty" json:"group_add,omitempty"`
+	Hostname        string                           `yaml:",omitempty" json:"hostname,omitempty"`
+	HealthCheck     *HealthCheckConfig               `yaml:",omitempty" json:"healthcheck,omitempty"`
+	Image           string                           `yaml:",omitempty" json:"image,omitempty"`
+	Init            *bool                            `yaml:",omitempty" json:"init,omitempty"`
+	Ipc             string                           `yaml:",omitempty" json:"ipc,omitempty"`
+	Isolation       string                           `mapstructure:"isolation" yaml:"isolation,omitempty" json:"isolation,omitempty"`
+	Labels          Labels                           `yaml:",omitempty" json:"labels,omitempty"`
+	CustomLabels    Labels                           `yaml:"-" json:"-"`
+	Links           []string                         `yaml:",omitempty" json:"links,omitempty"`
+	Logging         *LoggingConfig                   `yaml:",omitempty" json:"logging,omitempty"`
+	LogDriver       string                           `mapstructure:"log_driver" yaml:"log_driver,omitempty" json:"log_driver,omitempty"`
+	LogOpt          map[string]string                `mapstructure:"log_opt" yaml:"log_opt,omitempty" json:"log_opt,omitempty"`
+	MemLimit        UnitBytes                        `mapstructure:"mem_limit" yaml:"mem_limit,omitempty" json:"mem_limit,omitempty"`
+	MemReservation  UnitBytes                        `mapstructure:"mem_reservation" yaml:"mem_reservation,omitempty" json:"mem_reservation,omitempty"`
+	MemSwapLimit    UnitBytes                        `mapstructure:"memswap_limit" yaml:"memswap_limit,omitempty" json:"memswap_limit,omitempty"`
+	MemSwappiness   UnitBytes                        `mapstructure:"mem_swappiness" yaml:"mem_swappiness,omitempty" json:"mem_swappiness,omitempty"`
+	MacAddress      string                           `mapstructure:"mac_address" yaml:"mac_address,omitempty" json:"mac_address,omitempty"`
+	Net             string                           `yaml:"net,omitempty" json:"net,omitempty"`
+	NetworkMode     string                           `mapstructure:"network_mode" yaml:"network_mode,omitempty" json:"network_mode,omitempty"`
+	Networks        map[string]*ServiceNetworkConfig `yaml:",omitempty" json:"networks,omitempty"`
+	OomKillDisable  bool                             `mapstructure:"oom_kill_disable" yaml:"oom_kill_disable,omitempty" json:"oom_kill_disable,omitempty"`
+	OomScoreAdj     int64                            `mapstructure:"oom_score_adj" yaml:"oom_score_adj,omitempty" json:"oom_score_adj,omitempty"`
+	Pid             string                           `yaml:",omitempty" json:"pid,omitempty"`
+	PidsLimit       int64                            `mapstructure:"pids_limit" yaml:"pids_limit,omitempty" json:"pids_limit,omitempty"`
+	Platform        string                           `yaml:",omitempty" json:"platform,omitempty"`
+	Ports           []ServicePortConfig              `yaml:",omitempty" json:"ports,omitempty"`
+	Privileged      bool                             `yaml:",omitempty" json:"privileged,omitempty"`
+	PullPolicy      string                           `mapstructure:"pull_policy" yaml:"pull_policy,omitempty" json:"pull_policy,omitempty"`
+	ReadOnly        bool                             `mapstructure:"read_only" yaml:"read_only,omitempty" json:"read_only,omitempty"`
+	Restart         string                           `yaml:",omitempty" json:"restart,omitempty"`
+	Runtime         string                           `yaml:",omitempty" json:"runtime,omitempty"`
+	Scale           int                              `yaml:"-" json:"-"`
+	Secrets         []ServiceSecretConfig            `yaml:",omitempty" json:"secrets,omitempty"`
+	SecurityOpt     []string                         `mapstructure:"security_opt" yaml:"security_opt,omitempty" json:"security_opt,omitempty"`
+	ShmSize         UnitBytes                        `mapstructure:"shm_size" yaml:"shm_size,omitempty" json:"shm_size,omitempty"`
+	StdinOpen       bool                             `mapstructure:"stdin_open" yaml:"stdin_open,omitempty" json:"stdin_open,omitempty"`
+	StopGracePeriod *Duration                        `mapstructure:"stop_grace_period" yaml:"stop_grace_period,omitempty" json:"stop_grace_period,omitempty"`
+	StopSignal      string                           `mapstructure:"stop_signal" yaml:"stop_signal,omitempty" json:"stop_signal,omitempty"`
+	Sysctls         Mapping                          `yaml:",omitempty" json:"sysctls,omitempty"`
+	Tmpfs           StringList                       `yaml:",omitempty" json:"tmpfs,omitempty"`
+	Tty             bool                             `mapstructure:"tty" yaml:"tty,omitempty" json:"tty,omitempty"`
+	Ulimits         map[string]*UlimitsConfig        `yaml:",omitempty" json:"ulimits,omitempty"`
+	User            string                           `yaml:",omitempty" json:"user,omitempty"`
+	UserNSMode      string                           `mapstructure:"userns_mode" yaml:"userns_mode,omitempty" json:"userns_mode,omitempty"`
+	Uts             string                           `yaml:"uts,omitempty" json:"uts,omitempty"`
+	VolumeDriver    string                           `mapstructure:"volume_driver" yaml:"volume_driver,omitempty" json:"volume_driver,omitempty"`
+	Volumes         []ServiceVolumeConfig            `yaml:",omitempty" json:"volumes,omitempty"`
+	VolumesFrom     []string                         `mapstructure:"volumes_from" yaml:"volumes_from,omitempty" json:"volumes_from,omitempty"`
+	WorkingDir      string                           `mapstructure:"working_dir" yaml:"working_dir,omitempty" json:"working_dir,omitempty"`
 
 	Extensions map[string]interface{} `yaml:",inline" json:"-"`
 }
@@ -204,26 +216,26 @@ func (s *ServiceConfig) NetworksByPriority() []string {
 }
 
 const (
-	//PullPolicyAlways always pull images
+	// PullPolicyAlways always pull images
 	PullPolicyAlways = "always"
-	//PullPolicyNever never pull images
+	// PullPolicyNever never pull images
 	PullPolicyNever = "never"
-	//PullPolicyIfNotPresent pull missing images
+	// PullPolicyIfNotPresent pull missing images
 	PullPolicyIfNotPresent = "if_not_present"
-	//PullPolicyMissing pull missing images
+	// PullPolicyMissing pull missing images
 	PullPolicyMissing = "missing"
-	//PullPolicyBuild force building images
+	// PullPolicyBuild force building images
 	PullPolicyBuild = "build"
 )
 
 const (
-	//RestartPolicyAlways always restart the container if it stops
+	// RestartPolicyAlways always restart the container if it stops
 	RestartPolicyAlways = "always"
-	//RestartPolicyOnFailure restart the container if it exits due to an error
+	// RestartPolicyOnFailure restart the container if it exits due to an error
 	RestartPolicyOnFailure = "on-failure"
-	//RestartPolicyNo do not automatically restart the container
+	// RestartPolicyNo do not automatically restart the container
 	RestartPolicyNo = "no"
-	//RestartPolicyUnlessStopped always restart the container unless the container is stopped (manually or otherwise)
+	// RestartPolicyUnlessStopped always restart the container unless the container is stopped (manually or otherwise)
 	RestartPolicyUnlessStopped = "unless-stopped"
 )
 
@@ -275,8 +287,8 @@ func (s ServiceConfig) GetDependencies() []string {
 
 type set map[string]struct{}
 
-func (s set) append(strings ...string) {
-	for _, str := range strings {
+func (s set) append(strs ...string) {
+	for _, str := range strs {
 		s[str] = struct{}{}
 	}
 }
@@ -305,6 +317,8 @@ type BuildConfig struct {
 	Network    string                `yaml:",omitempty" json:"network,omitempty"`
 	Target     string                `yaml:",omitempty" json:"target,omitempty"`
 	Secrets    []ServiceSecretConfig `yaml:",omitempty" json:"secrets,omitempty"`
+	Tags       StringList            `mapstructure:"tags" yaml:"tags,omitempty" json:"tags,omitempty"`
+	Platforms  StringList            `mapstructure:"platforms" yaml:"platforms,omitempty" json:"platforms,omitempty"`
 
 	Extensions map[string]interface{} `yaml:",inline" json:"-"`
 }
@@ -337,8 +351,54 @@ type ThrottleDevice struct {
 	Extensions map[string]interface{} `yaml:",inline" json:"-"`
 }
 
-// ShellCommand is a string or list of string args
+// ShellCommand is a string or list of string args.
+//
+// When marshaled to YAML, nil command fields will be omitted if `omitempty`
+// is specified as a struct tag. Explicitly empty commands (i.e. `[]` or `''`)
+// will serialize to an empty array (`[]`).
+//
+// When marshaled to JSON, the `omitempty` struct must NOT be specified.
+// If the command field is nil, it will be serialized as `null`.
+// Explicitly empty commands (i.e. `[]` or `''`) will serialize to an empty
+// array (`[]`).
+//
+// The distinction between nil and explicitly empty is important to distinguish
+// between an unset value and a provided, but empty, value, which should be
+// preserved so that it can override any base value (e.g. container entrypoint).
+//
+// The different semantics between YAML and JSON are due to limitations with
+// JSON marshaling + `omitempty` in the Go stdlib, while gopkg.in/yaml.v2 gives
+// us more flexibility via the yaml.IsZeroer interface.
+//
+// In the future, it might make sense to make fields of this type be
+// `*ShellCommand` to avoid this situation, but that would constitute a
+// breaking change.
 type ShellCommand []string
+
+// IsZero returns true if the slice is nil.
+//
+// Empty (but non-nil) slices are NOT considered zero values.
+func (s ShellCommand) IsZero() bool {
+	// we do NOT want len(s) == 0, ONLY explicitly nil
+	return s == nil
+}
+
+// MarshalYAML returns nil (which will be serialized as `null`) for nil slices
+// and delegates to the standard marshaller behavior otherwise.
+//
+// NOTE: Typically the nil case here is not hit because IsZero has already
+// short-circuited marshalling, but this ensures that the type serializes
+// accurately if the `omitempty` struct tag is omitted/forgotten.
+//
+// A similar MarshalJSON() implementation is not needed because the Go stdlib
+// already serializes nil slices to `null`, whereas gopkg.in/yaml.v2 by default
+// serializes nil slices to `[]`.
+func (s ShellCommand) MarshalYAML() (interface{}, error) {
+	if s == nil {
+		return nil, nil
+	}
+	return []string(s), nil
+}
 
 // StringList is a type for fields that can be a string or list of strings
 type StringList []string
@@ -458,9 +518,9 @@ func (s SSHKey) MarshalYAML() (interface{}, error) {
 // MarshalJSON makes SSHKey implement json.Marshaller
 func (s SSHKey) MarshalJSON() ([]byte, error) {
 	if s.Path == "" {
-		return []byte(fmt.Sprintf(`"%s"`, s.ID)), nil
+		return []byte(fmt.Sprintf(`%q`, s.ID)), nil
 	}
-	return []byte(fmt.Sprintf(`"%s": %s`, s.ID, s.Path)), nil
+	return []byte(fmt.Sprintf(`%q: %s`, s.ID, s.Path)), nil
 }
 
 // MappingWithColon is a mapping type that can be converted from a list of
@@ -468,7 +528,16 @@ func (s SSHKey) MarshalJSON() ([]byte, error) {
 type MappingWithColon map[string]string
 
 // HostsList is a list of colon-separated host-ip mappings
-type HostsList []string
+type HostsList map[string]string
+
+// AsList return host-ip mappings as a list of colon-separated strings
+func (h HostsList) AsList() []string {
+	l := make([]string, 0, len(h))
+	for k, v := range h {
+		l = append(l, fmt.Sprintf("%s:%s", k, v))
+	}
+	return l
+}
 
 // LoggingConfig the logging configuration for a service
 type LoggingConfig struct {
@@ -607,10 +676,11 @@ type PlacementPreferences struct {
 
 // ServiceNetworkConfig is the network configuration for a service
 type ServiceNetworkConfig struct {
-	Priority    int      `yaml:",omitempty" json:"priotirt,omitempty"`
-	Aliases     []string `yaml:",omitempty" json:"aliases,omitempty"`
-	Ipv4Address string   `mapstructure:"ipv4_address" yaml:"ipv4_address,omitempty" json:"ipv4_address,omitempty"`
-	Ipv6Address string   `mapstructure:"ipv6_address" yaml:"ipv6_address,omitempty" json:"ipv6_address,omitempty"`
+	Priority     int      `yaml:",omitempty" json:"priority,omitempty"`
+	Aliases      []string `yaml:",omitempty" json:"aliases,omitempty"`
+	Ipv4Address  string   `mapstructure:"ipv4_address" yaml:"ipv4_address,omitempty" json:"ipv4_address,omitempty"`
+	Ipv6Address  string   `mapstructure:"ipv6_address" yaml:"ipv6_address,omitempty" json:"ipv6_address,omitempty"`
+	LinkLocalIPs []string `mapstructure:"link_local_ips" yaml:"link_local_ips,omitempty" json:"link_local_ips,omitempty"`
 
 	Extensions map[string]interface{} `yaml:",inline" json:"-"`
 }
@@ -881,6 +951,7 @@ type CredentialSpecConfig struct {
 type FileObjectConfig struct {
 	Name           string                 `yaml:",omitempty" json:"name,omitempty"`
 	File           string                 `yaml:",omitempty" json:"file,omitempty"`
+	Environment    string                 `yaml:",omitempty" json:"environment,omitempty"`
 	External       External               `yaml:",omitempty" json:"external,omitempty"`
 	Labels         Labels                 `yaml:",omitempty" json:"labels,omitempty"`
 	Driver         string                 `yaml:",omitempty" json:"driver,omitempty"`

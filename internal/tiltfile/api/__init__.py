@@ -278,7 +278,9 @@ def docker_compose(configPaths: Union[str, Blob, List[Union[str, Blob]]], env_fi
   Args:
     configPaths: Path(s) and/or Blob(s) to Docker Compose yaml files or content.
     env_file: Path to env file to use; defaults to ``.env`` in current directory.
-    project_name: The Docker Compose project name. If unspecified, the main Tiltfile's directory name is used.
+    project_name: The Docker Compose project name. If unspecified, uses either the
+      name of the directory containing the first compose file, or, in the case of
+      inline YAML, the current Tiltfile's directory name.
   """
 
 
@@ -428,7 +430,9 @@ def dc_resource(name: str,
                 resource_deps: List[str] = [],
                 links: Union[str, Link, List[Union[str, Link]]] = [],
                 labels: Union[str, List[str]] = [],
-                auto_init: bool = True) -> None:
+                auto_init: bool = True,
+                project_name: str = "",
+                new_name: str = "") -> None:
   """Configures the Docker Compose resource of the given name. Note: Tilt does an amount of resource configuration
   for you(for more info, see `Tiltfile Concepts: Resources <tiltfile_concepts.html#resources>`_); you only need
   to invoke this function if you want to configure your resource beyond what Tilt does automatically.
@@ -444,6 +448,9 @@ def dc_resource(name: str,
     labels: used to group resources in the Web UI, (e.g. you want all frontend services displayed together, while test and backend services are displayed seperately). A label must start and end with an alphanumeric character, can include ``_``, ``-``, and ``.``, and must be 63 characters or less. For an example, see `Resource Grouping <tiltfile_concepts.html#resource-groups>`_.
     auto_init: whether this resource runs on ``tilt up``. Defaults to ``True``. For more info, see the
       `Manual Update Control docs <manual_update_control.html>`_.
+    project_name: The Docker Compose project name to match the corresponding project loaded by
+      ``docker_compose``, if necessary for disambiguation.
+    new_name: If non-empty, will be used as the new name for this resource.
   """
 
   pass

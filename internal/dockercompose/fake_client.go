@@ -18,7 +18,6 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
-	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type FakeDCClient struct {
@@ -188,7 +187,7 @@ func (c *FakeDCClient) Project(_ context.Context, m v1alpha1.DockerComposeProjec
 	workDir := opts.WorkingDir
 	projectName := opts.Name
 	if projectName == "" {
-		projectName = model.NormalizeName(workDir)
+		projectName = loader.NormalizeProjectName(workDir)
 	}
 	if projectName == "" {
 		projectName = "fakedc"

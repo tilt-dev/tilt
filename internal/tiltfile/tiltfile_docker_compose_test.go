@@ -3,6 +3,7 @@ package tiltfile
 import (
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -372,7 +373,28 @@ networks:
 	f.assertConfigFiles(expectedConfFiles...)
 }
 
-func TestMultipleDockerComposeDifferentDirsNotSupported(t *testing.T) {
+func TestMultipleDockerComposeDifferentDirs(t *testing.T) {
+	f := newFixture(t)
+
+	f.dockerfile(filepath.Join("foo", "Dockerfile"))
+	f.file("docker-compose1.yml", simpleConfig)
+
+	f.dockerfile(filepath.Join("subdir", "foo", "Dockerfile"))
+	f.file(filepath.Join("subdir", "Tiltfile"), `docker_compose('docker-compose2.yml')`)
+	f.file(filepath.Join("subdir", "docker-compose2.yml"), simpleConfig)
+
+	tf := `
+include('./subdir/Tiltfile')
+dc_resource('foo', project_name='subdir', new_name='foo2')
+docker_compose('docker-compose1.yml')`
+	f.file("Tiltfile", tf)
+
+	f.load()
+
+	assert.Equal(t, 2, len(f.loadResult.Manifests))
+}
+
+func TestMultipleDockerComposeNameConflict(t *testing.T) {
 	f := newFixture(t)
 
 	f.dockerfile(filepath.Join("foo", "Dockerfile"))
@@ -387,7 +409,7 @@ include('./subdir/Tiltfile')
 docker_compose('docker-compose1.yml')`
 	f.file("Tiltfile", tf)
 
-	f.loadErrString("Cannot load docker-compose files from two different Tiltfiles")
+	f.loadErrString(`dc_resource named "foo" already exists`)
 }
 
 func TestMultipleDockerComposeSameDir(t *testing.T) {
@@ -419,6 +441,29 @@ k8s_yaml('bar.yaml')`
 	f.load()
 
 	assert.Equal(t, 2, len(f.loadResult.Manifests))
+}
+
+func TestResourceConflictCombinations(t *testing.T) {
+	tt := [][2]string{
+		{`docker_compose('docker-compose.yml')
+k8s_yaml('foo.yaml')`, `dc_resource named "foo" already exists`},
+		{`k8s_yaml('foo.yaml')
+docker_compose('docker-compose.yml')`, `dc_resource named "foo" already exists`},
+		{`docker_compose('docker-compose.yml')
+local_resource('foo', 'echo hello')`, `dc_resource named "foo" already exists`},
+		{`local_resource('foo', 'echo hello')
+docker_compose('docker-compose.yml')`, `local_resource named "foo" already exists`},
+	}
+
+	for i, tc := range tt {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			f := newFixture(t)
+			f.setupFooAndBar()
+			f.file("docker-compose.yml", simpleConfig)
+			f.file("Tiltfile", tc[0])
+			f.loadErrString(tc[1])
+		})
+	}
 }
 
 func TestDockerComposeResourceCreationFromAbsPath(t *testing.T) {

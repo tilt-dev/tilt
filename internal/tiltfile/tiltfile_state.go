@@ -70,7 +70,7 @@ var unmatchedImageAllUnresourcedWarning = "No Kubernetes configs with images fou
 var pkgInitTime = time.Now()
 
 type resourceSet struct {
-	dc  dcResourceSet // currently only support one d-c.yml
+	dc  []*dcResourceSet
 	k8s []*k8sResource
 }
 
@@ -101,9 +101,7 @@ type tiltfileState struct {
 	k8sByName      map[string]*k8sResource
 	k8sUnresourced []k8s.K8sEntity
 
-	dc           dcResourceSet // currently only support one d-c.yml
-	dcByName     map[string]*dcService
-	dcResOptions map[string]*dcResourceOptions
+	dc dcResourceMap
 
 	k8sResourceOptions []k8sResourceOptions
 	localResources     []*localResource
@@ -177,8 +175,7 @@ func newTiltfileState(
 		buildIndex:                newBuildIndex(),
 		k8sObjectIndex:            tiltfile_k8s.NewState(),
 		k8sByName:                 make(map[string]*k8sResource),
-		dcByName:                  make(map[string]*dcService),
-		dcResOptions:              make(map[string]*dcResourceOptions),
+		dc:                        make(map[string]*dcResourceSet),
 		localByName:               make(map[string]*localResource),
 		usedImages:                make(map[string]bool),
 		logger:                    logger.Get(ctx),
@@ -279,16 +276,18 @@ to your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, kubeContext
 		}
 	}
 
-	if !resources.dc.Empty() {
+	if len(resources.dc) > 0 {
 		if err := s.validateDockerComposeVersion(); err != nil {
 			return nil, result, err
 		}
 
-		ms, err := s.translateDC(resources.dc)
-		if err != nil {
-			return nil, result, err
+		for _, dc := range resources.dc {
+			ms, err := s.translateDC(dc)
+			if err != nil {
+				return nil, result, err
+			}
+			manifests = append(manifests, ms...)
 		}
-		manifests = append(manifests, ms...)
 	}
 
 	err = s.validateLiveUpdatesForManifests(manifests)
@@ -607,8 +606,13 @@ func (s *tiltfileState) assemble() (resourceSet, []k8s.K8sEntity, error) {
 		return resourceSet{}, nil, err
 	}
 
+	dcRes := []*dcResourceSet{}
+	for _, resSet := range s.dc {
+		dcRes = append(dcRes, resSet)
+	}
+
 	return resourceSet{
-		dc:  s.dc,
+		dc:  dcRes,
 		k8s: s.k8s,
 	}, s.k8sUnresourced, nil
 }
@@ -635,7 +639,9 @@ func (s *tiltfileState) assertAllImagesMatched(us model.UpdateSettings) error {
 		return nil
 	}
 
-	if len(s.dc.services) == 0 && len(s.k8s) == 0 && len(s.k8sUnresourced) == 0 {
+	dcSvcCount := s.dc.ServiceCount()
+
+	if dcSvcCount == 0 && len(s.k8s) == 0 && len(s.k8sUnresourced) == 0 {
 		return fmt.Errorf(unmatchedImageNoConfigsWarning)
 	}
 
@@ -644,7 +650,7 @@ func (s *tiltfileState) assertAllImagesMatched(us model.UpdateSettings) error {
 	}
 
 	configType := "Kubernetes"
-	if len(s.dc.services) > 0 {
+	if dcSvcCount > 0 {
 		configType = "Docker Compose"
 	}
 	return s.buildIndex.unmatchedImageWarning(unmatchedImages[0], configType)
@@ -685,25 +691,25 @@ func (s *tiltfileState) assembleImages() error {
 }
 
 func (s *tiltfileState) assembleDC() error {
-	if len(s.dc.services) > 0 && !container.IsEmptyRegistry(s.defaultReg) {
+	if s.dc.ServiceCount() > 0 && !container.IsEmptyRegistry(s.defaultReg) {
 		return errors.New("default_registry is not supported with docker compose")
 	}
 
-	for _, svc := range s.dc.services {
-		builder := s.buildIndex.findBuilderForConsumedImage(svc.ImageRef())
-		if builder != nil {
-			// there's a Tilt-managed builder (e.g. docker_build or custom_build) for this image reference, so use that
-			svc.ImageMapDeps = append(svc.ImageMapDeps, builder.ImageMapName())
-		} else {
-			// create a DockerComposeBuild image target and consume it if this service has a build section in YAML
-			err := s.maybeAddDockerComposeImageBuilder(svc)
-			if err != nil {
-				return err
+	for _, resSet := range s.dc {
+		for _, svcName := range resSet.serviceNames {
+			svc := resSet.services[svcName]
+			builder := s.buildIndex.findBuilderForConsumedImage(svc.ImageRef())
+			if builder != nil {
+				// there's a Tilt-managed builder (e.g. docker_build or custom_build) for this image reference, so use that
+				svc.ImageMapDeps = append(svc.ImageMapDeps, builder.ImageMapName())
+			} else {
+				// create a DockerComposeBuild image target and consume it if this service has a build section in YAML
+				err := s.maybeAddDockerComposeImageBuilder(svc)
+				if err != nil {
+					return err
+				}
 			}
 		}
-		// TODO(maia): throw warning if
-		//  a. there is an img ref from config, and img ref from user doesn't match
-		//  b. there is no img ref from config, and img ref from user is not of form .*_<svc_name>
 	}
 	return nil
 }
@@ -719,7 +725,7 @@ func (s *tiltfileState) maybeAddDockerComposeImageBuilder(svc *dcService) error 
 	buildContext := build.Context
 	if !filepath.IsAbs(buildContext) {
 		// the Compose loader should always ensure that context paths are absolute upfront
-		return fmt.Errorf("Docker Compose service %q has a relative build path: %q", svc.Name, buildContext)
+		return fmt.Errorf("Docker Compose service %q has a relative build path: %q", svc.ServiceName, buildContext)
 	}
 
 	dfPath := build.Dockerfile
@@ -737,7 +743,7 @@ func (s *tiltfileState) maybeAddDockerComposeImageBuilder(svc *dcService) error 
 		&dockerImage{
 			buildType:                     DockerComposeBuild,
 			configurationRef:              container.NewRefSelector(imageRef),
-			dockerComposeService:          svc.Name,
+			dockerComposeService:          svc.ServiceName,
 			dockerComposeLocalVolumePaths: svc.MountedLocalDirs,
 			dbBuildPath:                   buildContext,
 			dbDockerfilePath:              dfPath,
@@ -1494,11 +1500,11 @@ func (s *tiltfileState) imgTargetsForDepsHelper(mn model.ManifestName, imageMapD
 	return iTargets, nil
 }
 
-func (s *tiltfileState) translateDC(dc dcResourceSet) ([]model.Manifest, error) {
+func (s *tiltfileState) translateDC(dc *dcResourceSet) ([]model.Manifest, error) {
 	var result []model.Manifest
 
-	for _, svc := range dc.services {
-
+	for _, name := range dc.serviceNames {
+		svc := dc.services[name]
 		iTargets, err := s.imgTargetsForDeps(model.ManifestName(svc.Name), svc.ImageMapDeps)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting image build info for %s", svc.Name)

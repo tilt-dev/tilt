@@ -77,8 +77,8 @@ github.com/chai2010/gettext-go/plural
 github.com/chai2010/gettext-go/po
 # github.com/cloudflare/cfssl v1.4.1
 ## explicit; go 1.13
-# github.com/compose-spec/compose-go v1.2.4
-## explicit; go 1.17
+# github.com/compose-spec/compose-go v1.6.0
+## explicit; go 1.18
 github.com/compose-spec/compose-go/cli
 github.com/compose-spec/compose-go/consts
 github.com/compose-spec/compose-go/dotenv
@@ -144,7 +144,7 @@ github.com/davecgh/go-spew/spew
 # github.com/denisbrodbeck/machineid v1.0.0
 ## explicit
 github.com/denisbrodbeck/machineid
-# github.com/distribution/distribution/v3 v3.0.0-20220526142353-ffbd94cbe269
+# github.com/distribution/distribution/v3 v3.0.0-20220725133111-4bf3547399eb
 ## explicit; go 1.18
 github.com/distribution/distribution/v3/digestset
 github.com/distribution/distribution/v3/reference
@@ -235,7 +235,7 @@ github.com/docker/go-connections/tlsconfig
 # github.com/docker/go-metrics v0.0.1
 ## explicit; go 1.11
 github.com/docker/go-metrics
-# github.com/docker/go-units v0.4.0
+# github.com/docker/go-units v0.5.0
 ## explicit
 github.com/docker/go-units
 # github.com/docker/libtrust v0.0.0-20160708172513-aabc10ec26b7
@@ -463,7 +463,7 @@ github.com/mitchellh/go-homedir
 # github.com/mitchellh/go-wordwrap v1.0.0
 ## explicit
 github.com/mitchellh/go-wordwrap
-# github.com/mitchellh/mapstructure v1.4.3
+# github.com/mitchellh/mapstructure v1.5.0
 ## explicit; go 1.14
 github.com/mitchellh/mapstructure
 # github.com/moby/buildkit v0.8.3 => github.com/tilt-dev/buildkit v0.8.3-tilt-20220505
@@ -613,7 +613,7 @@ github.com/schollz/closestmatch
 ## explicit; go 1.14
 github.com/segmentio/encoding/ascii
 github.com/segmentio/encoding/json
-# github.com/sirupsen/logrus v1.8.1
+# github.com/sirupsen/logrus v1.9.0
 ## explicit; go 1.13
 github.com/sirupsen/logrus
 # github.com/smacker/go-tree-sitter v0.0.0-20220209044044-0d3022e933c3
