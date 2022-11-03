@@ -30,6 +30,22 @@ builds:
     - CC=aarch64-linux-gnu-gcc
     - CXX=aarch64-linux-gnu-g++
 - main: ./cmd/tilt/main.go
+  id: tilt-linux-musl-arm64
+  flags:
+    - -tags=osusergo
+    - -mod=vendor
+  ldflags:
+    - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}} -X main.builtBy=goreleaser
+    - -linkmode external -extldflags "-static"
+  goos:
+    - linux
+  goarch:
+    - arm64
+  env:
+    - CGO_ENABLED=1
+    - CC=aarch64-linux-musl-gcc
+    - CXX=aarch64-linux-musl-g++
+- main: ./cmd/tilt/main.go
   id: tilt-linux-arm
   flags:
     - -tags=osusergo
@@ -54,6 +70,22 @@ builds:
   env:
     - CGO_ENABLED=1
 - main: ./cmd/tilt/main.go
+  id: tilt-linux-musl-amd64
+  flags:
+    - -tags=osusergo
+    - -mod=vendor
+  ldflags:
+    - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}} -X main.builtBy=goreleaser
+    - -linkmode external -extldflags "-static"
+  goos:
+    - linux
+  goarch:
+    - amd64
+  env:
+    - CGO_ENABLED=1
+    - CC=x86_64-linux-musl-gcc
+    - CXX=x86_64-linux-musl-g++
+- main: ./cmd/tilt/main.go
   id: tilt-windows-amd64
   flags:
   - -tags=osusergo
@@ -69,6 +101,13 @@ builds:
     - CXX=x86_64-w64-mingw32-g++
 archives:
 - name_template: "{{ .ProjectName }}.{{ .Version }}.{{ .Os }}.{{ .Arch }}"
+  id: default
+  builds:
+    - tilt-darwin
+    - tilt-linux-amd64
+    - tilt-linux-arm64
+    - tilt-linux-arm
+    - tilt-windows-amd64
   replacements:
     windows: windows
     darwin: mac
@@ -80,6 +119,14 @@ archives:
   format_overrides:
     - goos: windows
       format: zip
+- name_template: "{{ .ProjectName }}.{{ .Version }}.{{ .Os }}-alpine.{{ .Arch }}"
+  id: alpine
+  builds:
+    - tilt-linux-musl-amd64
+    - tilt-linux-musl-arm64
+  replacements:
+    amd64: x86_64
+    arm64: arm64
 checksum:
   name_template: 'checksums.txt'
 snapshot:
@@ -126,6 +173,8 @@ brews:
 dockers:
 - goos: linux
   goarch: amd64
+  ids:
+    - tilt-linux-amd64
   image_templates:
     - "tiltdev/tilt:{{ .Tag }}-amd64"
     - "docker/tilt:{{ .Tag }}-amd64"
@@ -144,6 +193,8 @@ dockers:
 - goos: linux
   goarch: arm64
   goarm: ''
+  ids:
+    - tilt-linux-arm64
   image_templates:
     - "tiltdev/tilt:{{ .Tag }}-arm64"
     - "docker/tilt:{{ .Tag }}-arm64"

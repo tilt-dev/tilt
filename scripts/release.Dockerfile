@@ -4,7 +4,7 @@
 # 1) Better leverage OS-specific C headers
 # 2) Be able to do releases from a CI job
 
-FROM docker/tilt-golang-cross:1.19
+FROM docker/tilt-golang-cross@sha256:8649f9afb66a96d411fe14ef5fdfa1834022d25b1aceb20c0b03cc61a2ba0b43
 
 RUN apt-get update && \
     apt-get install -y -q --no-install-recommends \
