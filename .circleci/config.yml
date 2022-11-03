@@ -138,7 +138,7 @@ jobs:
   release-dry-run:
     docker:
       # keep image in sync with scripts/build.toast.yml
-      - image: docker/tilt-releaser@sha256:3c972e2a877508310fcda10dc412feb0cc36595a9fceb46f500ad797325287f8
+      - image: docker/tilt-releaser@sha256:4a8bf73af329da09a6f0ff9ce1aba5fd0da0e300c2dc750044367ea1101ca0ff
     environment:
       DOCKER_CLI_EXPERIMENTAL: enabled
     steps:
@@ -156,7 +156,7 @@ jobs:
     resource_class: medium+
     docker:
       # keep image in sync with scripts/build.toast.yml
-      - image: docker/tilt-releaser@sha256:3c972e2a877508310fcda10dc412feb0cc36595a9fceb46f500ad797325287f8
+      - image: docker/tilt-releaser@sha256:4a8bf73af329da09a6f0ff9ce1aba5fd0da0e300c2dc750044367ea1101ca0ff
     environment:
       DOCKER_CLI_EXPERIMENTAL: enabled
     steps:
