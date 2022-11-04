@@ -17,8 +17,7 @@ jobs:
     steps:
       - checkout
       - run: echo 'export PATH=~/go/bin:$PATH' >> $BASH_ENV
-      - setup_remote_docker:
-          version: 20.10.11
+      - setup_remote_docker
       - run: docker pull registry:2
       - run: sudo mv /usr/bin/helm3 /usr/bin/helm
       - run: make lint
@@ -93,8 +92,7 @@ jobs:
     steps:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
-      - setup_remote_docker:
-          version: 20.10.11
+      - setup_remote_docker
       - run: ctlptl create cluster kind --registry=ctlptl-registry && make integration
       - store_test_results:
           path: test-results
@@ -102,13 +100,13 @@ jobs:
           only_for_branches: master
 
   test-extensions:
+    resource_class: large
     docker:
-      - image: docker/tilt-extensions-ci@sha256:ebf32ec06a7c8a19e521344aa5f88837b9f03c08d74dacb77b3955c68a6d8b29
+      - image: docker/tilt-extensions-ci@sha256:495f76d83408f16361cd3fc0ad1fb7f93595d65f78b76261a2162e910855bce3
     steps:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
-      - setup_remote_docker:
-          version: 20.10.11
+      - setup_remote_docker
       - run: ctlptl create cluster kind --registry=ctlptl-registry && make install test-extensions
       - slack/notify-on-failure:
           only_for_branches: master
@@ -136,14 +134,14 @@ jobs:
           only_for_branches: master
 
   release-dry-run:
+    resource_class: medium+
     docker:
       # keep image in sync with scripts/build.toast.yml
       - image: docker/tilt-releaser@sha256:4a8bf73af329da09a6f0ff9ce1aba5fd0da0e300c2dc750044367ea1101ca0ff
     environment:
       DOCKER_CLI_EXPERIMENTAL: enabled
     steps:
-      - setup_remote_docker:
-          version: 20.10.14
+      - setup_remote_docker
       # https://discuss.circleci.com/t/arm-version-of-remote-docker/41624
       - run: ssh remote-docker "sudo apt-get update; sudo apt-get install -y qemu-user-static binfmt-support"
       - checkout
@@ -160,8 +158,7 @@ jobs:
     environment:
       DOCKER_CLI_EXPERIMENTAL: enabled
     steps:
-      - setup_remote_docker:
-          version: 20.10.14
+      - setup_remote_docker
       # https://discuss.circleci.com/t/arm-version-of-remote-docker/41624
       - run: ssh remote-docker "sudo apt-get update; sudo apt-get install -y qemu-user-static binfmt-support"
       - slack/notify:
