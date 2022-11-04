@@ -100,6 +100,7 @@ jobs:
           only_for_branches: master
 
   test-extensions:
+    resource_class: large
     docker:
       - image: docker/tilt-extensions-ci@sha256:495f76d83408f16361cd3fc0ad1fb7f93595d65f78b76261a2162e910855bce3
     steps:
