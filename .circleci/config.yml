@@ -133,6 +133,7 @@ jobs:
           only_for_branches: master
 
   release-dry-run:
+    resource_class: medium+
     docker:
       # keep image in sync with scripts/build.toast.yml
       - image: docker/tilt-releaser@sha256:4a8bf73af329da09a6f0ff9ce1aba5fd0da0e300c2dc750044367ea1101ca0ff
