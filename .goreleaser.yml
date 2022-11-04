@@ -150,6 +150,8 @@ brews:
   commit_author:
     name: Tilt Dev
     email: hi@tilt.dev
+  ids:
+    - default
   url_template: "https://github.com/tilt-dev/tilt/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
   homepage: "https://tilt.dev/"
   description: "A dev environment as code for microservice apps"
