@@ -148,6 +148,10 @@ type ExtensionRepoStatus struct {
 	// On git, this is the commit hash.
 	// On file repos, this is empty.
 	CheckoutRef string `json:"checkoutRef,omitempty" protobuf:"bytes,4,opt,name=checkoutRef"`
+
+	// If StaleReason is non-empty, that indicates the repo failed to fetch, but
+	// we were successfully able to use an on-disk copy.
+	StaleReason string `json:"staleReason,omitempty" protobuf:"bytes,5,opt,name=staleReason"`
 }
 
 // ExtensionRepo implements ObjectWithStatusSubResource interface.

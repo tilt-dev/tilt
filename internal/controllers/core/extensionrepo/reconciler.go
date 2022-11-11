@@ -230,7 +230,8 @@ func (r *Reconciler) reconcileDownloaderRepo(ctx context.Context, state *repoSta
 	state.lastFetch = time.Now()
 
 	needsDownload := true
-	if exists && state.spec.Ref != "" && state.spec.Ref != "HEAD" {
+	pinnedToVersion := state.spec.Ref != "" && state.spec.Ref != "HEAD"
+	if exists && pinnedToVersion {
 		// If an explicit ref is specified, we assume there's no reason to pull a new version.
 		//
 		// TODO(nick): Should we try to support cases where the ref can change server-side?
@@ -252,16 +253,20 @@ func (r *Reconciler) reconcileDownloaderRepo(ctx context.Context, state *repoSta
 		}
 	}
 
+	staleReason := ""
 	if needsDownload {
 		_, err = r.dlr.Download(importPath)
 		if err != nil {
-			// Delete any partial state.
-			_ = os.RemoveAll(destPath)
+			if !exists {
+				// Delete any partial state.
+				_ = os.RemoveAll(destPath)
 
-			backoff := state.nextBackoff()
-			backoffMsg := fmt.Sprintf("download error: waiting %s before retrying. Original error: %v", backoff, err)
-			state.status = v1alpha1.ExtensionRepoStatus{Error: backoffMsg}
-			return ctrl.Result{RequeueAfter: backoff}
+				backoff := state.nextBackoff()
+				backoffMsg := fmt.Sprintf("download error: waiting %s before retrying. Original error: %v", backoff, err)
+				state.status = v1alpha1.ExtensionRepoStatus{Error: backoffMsg}
+				return ctrl.Result{RequeueAfter: backoff}
+			}
+			staleReason = err.Error()
 		}
 
 		info, err = os.Stat(destPath)
@@ -294,6 +299,7 @@ func (r *Reconciler) reconcileDownloaderRepo(ctx context.Context, state *repoSta
 		LastFetchedAt: timeFetched,
 		Path:          destPath,
 		CheckoutRef:   ref,
+		StaleReason:   staleReason,
 	}
 	return ctrl.Result{}
 }
@@ -304,6 +310,8 @@ func (r *Reconciler) maybeUpdateStatus(ctx context.Context, repo *v1alpha1.Exten
 		return nil
 	}
 
+	oldStaleReason := repo.Status.StaleReason
+	newStaleReason := state.status.StaleReason
 	oldError := repo.Status.Error
 	newError := state.status.Error
 	update := repo.DeepCopy()
@@ -314,9 +322,14 @@ func (r *Reconciler) maybeUpdateStatus(ctx context.Context, repo *v1alpha1.Exten
 		return err
 	}
 
+	if newStaleReason != "" && newStaleReason != oldStaleReason {
+		logger.Get(ctx).Infof("extensionrepo %s: may be stale: %s", repo.Name, newStaleReason)
+	}
+
 	if newError != "" && oldError != newError {
 		logger.Get(ctx).Errorf("extensionrepo %s: %s", repo.Name, newError)
 	}
+
 	return err
 }
 
