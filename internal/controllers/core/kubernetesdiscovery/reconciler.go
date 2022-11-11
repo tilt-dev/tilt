@@ -92,6 +92,16 @@ type Reconciler struct {
 	// knownPods is an index of all the known pods and associated Tilt-derived metadata, by UID.
 	knownPods             map[uidKey]*v1.Pod
 	knownPodOwnerCreation map[uidKey]metav1.Time
+
+	// deletedPods is an index of pods that have been deleted from the cluster,
+	// but are preserved for their termination status.
+	//
+	// Newer versions of Kubernetes have added 'ttl' fields that delete pods
+	// after they terminate. We want tilt to hang onto these pods, even
+	// if they're deleted from the cluster.
+	//
+	// If a Pod is in gcPods it MUST exist in known pods.
+	deletedPods map[uidKey]bool
 }
 
 func (w *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
@@ -120,6 +130,7 @@ func NewReconciler(ctrlClient ctrlclient.Client, scheme *runtime.Scheme, clients
 		knownDescendentPodUIDs: make(map[uidKey]k8s.UIDSet),
 		knownPods:              make(map[uidKey]*v1.Pod),
 		knownPodOwnerCreation:  make(map[uidKey]metav1.Time),
+		deletedPods:            make(map[uidKey]bool),
 	}
 }
 
@@ -476,6 +487,8 @@ func (w *Reconciler) buildStatus(ctx context.Context, watcher watcher) v1alpha1.
 		}
 	}
 
+	pods = w.maybeLetGoOfDeletedPods(pods, watcher.cluster)
+
 	startTime := apis.NewMicroTime(watcher.startTime)
 	return v1alpha1.KubernetesDiscoveryStatus{
 		MonitorStartTime: startTime,
@@ -484,6 +497,40 @@ func (w *Reconciler) buildStatus(ctx context.Context, watcher watcher) v1alpha1.
 			StartTime: startTime,
 		},
 	}
+}
+
+// If a pod was deleted from the cluster, check to make sure if we
+// should delete it from our local store.
+func (w *Reconciler) maybeLetGoOfDeletedPods(pods []v1alpha1.Pod, clusterKey clusterKey) []v1alpha1.Pod {
+	allDeleted := true
+	someDeleted := false
+	for _, pod := range pods {
+		key := uidKey{cluster: clusterKey, uid: types.UID(pod.UID)}
+		isDeleted := w.deletedPods[key]
+		if isDeleted {
+			someDeleted = true
+		} else {
+			allDeleted = false
+		}
+	}
+
+	if allDeleted || !someDeleted {
+		return pods
+	}
+
+	result := make([]v1alpha1.Pod, 0, len(pods))
+	for _, pod := range pods {
+		key := uidKey{cluster: clusterKey, uid: types.UID(pod.UID)}
+		isDeleted := w.deletedPods[key]
+		if isDeleted {
+			delete(w.knownPods, key)
+			delete(w.knownPodOwnerCreation, key)
+			delete(w.deletedPods, key)
+		} else {
+			result = append(result, pod)
+		}
+	}
+	return result
 }
 
 func (w *Reconciler) upsertPod(cluster clusterKey, pod *v1.Pod) {
@@ -596,16 +643,16 @@ func (w *Reconciler) handlePodChange(ctx context.Context, nsKey nsKey, ownerFetc
 	}
 }
 
-func (w *Reconciler) handlePodDelete(ctx context.Context, namespace k8s.Namespace, name string) {
+func (w *Reconciler) handlePodDelete(namespace k8s.Namespace, name string) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
 	var matchedPodKey uidKey
+	var matchedPod *v1.Pod
 	for podKey, pod := range w.knownPods {
 		if pod.Namespace == namespace.String() && pod.Name == name {
-			delete(w.knownPods, podKey)
-			delete(w.knownPodOwnerCreation, podKey)
 			matchedPodKey = podKey
+			matchedPod = pod
 			break
 		}
 	}
@@ -613,6 +660,18 @@ func (w *Reconciler) handlePodDelete(ctx context.Context, namespace k8s.Namespac
 	if matchedPodKey.uid == "" {
 		// this pod wasn't known/tracked
 		return
+	}
+
+	// If the pod is in a completed state when it was deleted, we may still needs
+	// its status.  Hold onto it until we have more pods.
+	phase := matchedPod.Status.Phase
+	isCompleted := phase == v1.PodSucceeded || phase == v1.PodFailed
+	if isCompleted {
+		w.deletedPods[matchedPodKey] = true
+	} else {
+		delete(w.knownPods, matchedPodKey)
+		delete(w.knownPodOwnerCreation, matchedPodKey)
+		delete(w.deletedPods, matchedPodKey)
 	}
 
 	// because we don't know if any watchers matched on this Pod by label previously,
@@ -751,7 +810,7 @@ func (w *Reconciler) dispatchPodChangesLoop(ctx context.Context, nsKey nsKey, ow
 
 			namespace, name, ok := obj.AsDeletedKey()
 			if ok {
-				go w.handlePodDelete(ctx, namespace, name)
+				go w.handlePodDelete(namespace, name)
 				continue
 			}
 		case <-ctx.Done():

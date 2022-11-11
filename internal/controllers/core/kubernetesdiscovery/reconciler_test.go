@@ -619,6 +619,95 @@ func TestClusterChange(t *testing.T) {
 		podNameMap{pod1UID: "pod1ClusterB", pod2UID: "pod2ClusterB"})
 }
 
+func TestHangOntoDeletedPodsWhenNoSibling(t *testing.T) {
+	f := newFixture(t)
+
+	ns := k8s.Namespace("ns")
+	dep, rs := f.buildK8sDeployment(ns, "dep")
+
+	key := types.NamespacedName{Namespace: "some-ns", Name: "kd"}
+	kd := &v1alpha1.KubernetesDiscovery{
+		ObjectMeta: metav1.ObjectMeta{Namespace: key.Namespace, Name: key.Name},
+		Spec: v1alpha1.KubernetesDiscoverySpec{
+			Watches: []v1alpha1.KubernetesWatchRef{
+				{
+					UID:       string(rs.UID),
+					Namespace: ns.String(),
+					Name:      rs.Name,
+				},
+			},
+		},
+	}
+
+	f.injectK8sObjects(*kd, dep, rs)
+
+	f.Create(kd)
+	f.requireMonitorStarted(key)
+	// we should not have observed any pods yet
+	f.requireObservedPods(key, nil, nil)
+
+	podA := f.buildPod(ns, "pod-a", nil, rs)
+	podA.Status.Phase = v1.PodSucceeded
+	f.injectK8sObjects(*kd, podA)
+
+	f.requireObservedPods(key, ancestorMap{podA.UID: rs.UID}, nil)
+
+	kCli := f.clients.MustK8sClient(clusterNN(*kd))
+	kCli.EmitPodDelete(podA)
+
+	f.requireObservedPods(key, ancestorMap{podA.UID: rs.UID}, nil)
+
+	podB := f.buildPod(ns, "pod-b", nil, rs)
+	podB.Status.Phase = v1.PodRunning
+	f.injectK8sObjects(*kd, podB)
+	f.requireObservedPods(key, ancestorMap{podB.UID: rs.UID}, nil)
+}
+
+func TestNoHangOntoDeletedPodsWhenSiblingExists(t *testing.T) {
+	f := newFixture(t)
+
+	ns := k8s.Namespace("ns")
+	dep, rs := f.buildK8sDeployment(ns, "dep")
+
+	key := types.NamespacedName{Namespace: "some-ns", Name: "kd"}
+	kd := &v1alpha1.KubernetesDiscovery{
+		ObjectMeta: metav1.ObjectMeta{Namespace: key.Namespace, Name: key.Name},
+		Spec: v1alpha1.KubernetesDiscoverySpec{
+			Watches: []v1alpha1.KubernetesWatchRef{
+				{
+					UID:       string(rs.UID),
+					Namespace: ns.String(),
+					Name:      rs.Name,
+				},
+			},
+		},
+	}
+
+	f.injectK8sObjects(*kd, dep, rs)
+
+	f.Create(kd)
+	f.requireMonitorStarted(key)
+	// we should not have observed any pods yet
+	f.requireObservedPods(key, nil, nil)
+
+	podA := f.buildPod(ns, "pod-a", nil, rs)
+	podA.Status.Phase = v1.PodSucceeded
+	f.injectK8sObjects(*kd, podA)
+
+	f.requireObservedPods(key, ancestorMap{podA.UID: rs.UID}, nil)
+
+	podB := f.buildPod(ns, "pod-b", nil, rs)
+	podB.Status.Phase = v1.PodRunning
+	f.injectK8sObjects(*kd, podB)
+
+	f.requireObservedPods(key, ancestorMap{podA.UID: rs.UID, podB.UID: rs.UID}, nil)
+
+	kCli := f.clients.MustK8sClient(clusterNN(*kd))
+	kCli.EmitPodDelete(podA)
+
+	f.requireObservedPods(key, ancestorMap{podB.UID: rs.UID}, nil)
+}
+
 type fixture struct {
 	*fake.ControllerFixture
 	t       *testing.T

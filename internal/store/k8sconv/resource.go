@@ -169,11 +169,6 @@ func FilterPods(filter *KubernetesApplyFilter, pods []v1alpha1.Pod) []v1alpha1.P
 	}
 
 	for _, pod := range pods {
-		// Ignore pods that are currently being deleted.
-		if pod.Deleting {
-			continue
-		}
-
 		// Ignore pods from an old replicaset.
 		newestOwner := newestOwnerByAncestorUID[pod.AncestorUID]
 		if hasValidOwner(pod) && newestOwner != nil && pod.Owner.Name != newestOwner.Name {
