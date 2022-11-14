@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
 
 	"github.com/docker/distribution/reference"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/imagemap"
+	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -23,17 +23,20 @@ import (
 type CustomBuilder struct {
 	dCli  docker.Client
 	clock Clock
+	cmds  *cmd.Controller
 }
 
-func NewCustomBuilder(dCli docker.Client, clock Clock) *CustomBuilder {
+func NewCustomBuilder(dCli docker.Client, clock Clock, cmds *cmd.Controller) *CustomBuilder {
 	return &CustomBuilder{
 		dCli:  dCli,
 		clock: clock,
+		cmds:  cmds,
 	}
 }
 
 func (b *CustomBuilder) Build(ctx context.Context, refs container.RefSet,
 	spec v1alpha1.CmdImageSpec,
+	cmd *v1alpha1.Cmd,
 	imageMaps map[ktypes.NamespacedName]*v1alpha1.ImageMap) (container.TaggedRefs, error) {
 	expectedTag := spec.OutputTag
 	outputsImageRefTo := spec.OutputsImageRefTo
@@ -71,11 +74,7 @@ func (b *CustomBuilder) Build(ctx context.Context, refs container.RefSet,
 
 	expectedBuildResult := expectedBuildRefs.LocalRef
 
-	// TODO(nick): Use the Cmd API.
-	// TODO(nick): Inject the image maps into the command environment.
-	cmd := exec.CommandContext(ctx, spec.Args[0], spec.Args[1:]...)
-	cmd.Dir = spec.Dir
-	cmd.Env = logger.DefaultEnv(ctx)
+	cmd = cmd.DeepCopy()
 
 	l := logger.Get(ctx)
 
@@ -107,20 +106,21 @@ func (b *CustomBuilder) Build(ctx context.Context, refs container.RefSet,
 			l.Infof("  %s", v)
 		}
 	}
-	cmd.Env = append(os.Environ(), extraEnvVars...)
-	err = imagemap.InjectIntoLocalEnv(cmd, spec.ImageMaps, imageMaps)
+	cmd.Spec.Env = append(cmd.Spec.Env, extraEnvVars...)
+	cmd, err = imagemap.InjectIntoLocalEnv(cmd, spec.ImageMaps, imageMaps)
 	if err != nil {
 		return container.TaggedRefs{}, errors.Wrap(err, "custom_build")
 	}
 
-	w := l.Writer(logger.InfoLvl)
-	cmd.Stdout = w
-	cmd.Stderr = w
-
-	l.Infof("Running custom build cmd %q", model.Cmd{Argv: spec.Args}.String())
-	err = cmd.Run()
+	status, err := b.cmds.ForceRun(ctx, cmd)
 	if err != nil {
-		return container.TaggedRefs{}, errors.Wrap(err, "Custom build command failed")
+		return container.TaggedRefs{}, fmt.Errorf("Custom build %q failed: %v",
+			model.ArgListToString(cmd.Spec.Args), err)
+	} else if status.Terminated == nil {
+		return container.TaggedRefs{}, fmt.Errorf("Custom build didn't terminate")
+	} else if status.Terminated.ExitCode != 0 {
+		return container.TaggedRefs{}, fmt.Errorf("Custom build %q failed: %v",
+			model.ArgListToString(cmd.Spec.Args), status.Terminated.Reason)
 	}
 
 	if outputsImageRefTo != "" {

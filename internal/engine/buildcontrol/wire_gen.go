@@ -8,15 +8,13 @@ package buildcontrol
 
 import (
 	"context"
-
 	"github.com/google/wire"
 	"github.com/jonboulle/clockwork"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/containerupdate"
+	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmdimage"
 	"github.com/tilt-dev/tilt/internal/controllers/core/dockercomposeservice"
 	"github.com/tilt-dev/tilt/internal/controllers/core/dockerimage"
@@ -31,19 +29,25 @@ import (
 	"github.com/tilt-dev/tilt/internal/tracer"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/wmclient/pkg/dirs"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Injectors from wire.go:
 
-func ProvideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, env clusterid.Product, kubeContext k8s.KubeContext, clusterEnv docker.ClusterEnv, dir *dirs.TiltDevDir, clock build.Clock, kp build.KINDLoader, analytics2 *analytics.TiltAnalytics, ctrlclient client.Client, st store.RStore, execer localexec.Execer) (*ImageBuildAndDeployer, error) {
+func ProvideImageBuildAndDeployer(ctx context.Context, docker2 docker.Client, kClient k8s.Client, env clusterid.Product, kubeContext k8s.KubeContext, clusterEnv docker.ClusterEnv, dir *dirs.TiltDevDir, clock build.Clock, clock2 clockwork.Clock, kp build.KINDLoader, analytics2 *analytics.TiltAnalytics, ctrlclient client.Client, st store.RStore) (*ImageBuildAndDeployer, error) {
 	scheme := v1alpha1.NewScheme()
 	labels := _wireLabelsValue
 	dockerBuilder := build.NewDockerBuilder(docker2, labels)
-	customBuilder := build.NewCustomBuilder(docker2, clock)
+	localexecEnv := localexec.EmptyEnv()
+	execer := cmd.ProvideExecer(localexecEnv)
+	fakeProberManager := cmd.NewFakeProberManager()
+	controller := cmd.NewController(ctx, execer, fakeProberManager, ctrlclient, st, clock2, scheme)
+	customBuilder := build.NewCustomBuilder(docker2, clock, controller)
 	imageBuilder := build.NewImageBuilder(dockerBuilder, customBuilder, kp)
 	reconciler := dockerimage.NewReconciler(ctrlclient, st, scheme, docker2, imageBuilder)
 	cmdimageReconciler := cmdimage.NewReconciler(ctrlclient, st, scheme, docker2, imageBuilder)
-	kubernetesapplyReconciler := kubernetesapply.NewReconciler(ctrlclient, kClient, scheme, dockerBuilder, st, execer)
+	processExecer := localexec.NewProcessExecer(localexecEnv)
+	kubernetesapplyReconciler := kubernetesapply.NewReconciler(ctrlclient, kClient, scheme, dockerBuilder, st, processExecer)
 	imageBuildAndDeployer := NewImageBuildAndDeployer(reconciler, cmdimageReconciler, imageBuilder, analytics2, clock, ctrlclient, kubernetesapplyReconciler)
 	return imageBuildAndDeployer, nil
 }
@@ -57,7 +61,11 @@ func ProvideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompo
 	labels := _wireLabelsValue
 	dockerBuilder := build.NewDockerBuilder(dCli, labels)
 	buildClock := build.ProvideClock()
-	customBuilder := build.NewCustomBuilder(dCli, buildClock)
+	env := localexec.EmptyEnv()
+	execer := cmd.ProvideExecer(env)
+	fakeProberManager := cmd.NewFakeProberManager()
+	controller := cmd.NewController(ctx, execer, fakeProberManager, ctrlclient, st, clock, scheme)
+	customBuilder := build.NewCustomBuilder(dCli, buildClock, controller)
 	kindLoader := build.NewKINDLoader()
 	imageBuilder := build.NewImageBuilder(dockerBuilder, customBuilder, kindLoader)
 	reconciler := dockerimage.NewReconciler(ctrlclient, st, scheme, dCli, imageBuilder)

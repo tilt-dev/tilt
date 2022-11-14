@@ -8,14 +8,8 @@ package cli
 
 import (
 	"context"
-	"time"
-
 	"github.com/google/wire"
 	"github.com/jonboulle/clockwork"
-	"go.opentelemetry.io/otel/sdk/trace"
-	version2 "k8s.io/apimachinery/pkg/version"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
@@ -85,7 +79,13 @@ import (
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/wmclient/pkg/dirs"
+	"go.opentelemetry.io/otel/sdk/trace"
+	version2 "k8s.io/apimachinery/pkg/version"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"time"
+)
 
+import (
 	_ "embed"
 )
 
@@ -323,7 +323,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	liveupdateReconciler := liveupdate.NewReconciler(storeStore, dockerUpdater, execUpdater, updateMode, kubeContext, deferredClient, scheme)
 	configmapReconciler := configmap.NewReconciler(deferredClient, storeStore)
 	buildClock := build.ProvideClock()
-	customBuilder := build.NewCustomBuilder(compositeClient, buildClock)
+	customBuilder := build.NewCustomBuilder(compositeClient, buildClock, cmdController)
 	kindLoader := build.NewKINDLoader()
 	imageBuilder := build.NewImageBuilder(dockerBuilder, customBuilder, kindLoader)
 	dockerimageReconciler := dockerimage.NewReconciler(deferredClient, storeStore, scheme, compositeClient, imageBuilder)
@@ -531,7 +531,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	liveupdateReconciler := liveupdate.NewReconciler(storeStore, dockerUpdater, execUpdater, updateMode, kubeContext, deferredClient, scheme)
 	configmapReconciler := configmap.NewReconciler(deferredClient, storeStore)
 	buildClock := build.ProvideClock()
-	customBuilder := build.NewCustomBuilder(compositeClient, buildClock)
+	customBuilder := build.NewCustomBuilder(compositeClient, buildClock, cmdController)
 	kindLoader := build.NewKINDLoader()
 	imageBuilder := build.NewImageBuilder(dockerBuilder, customBuilder, kindLoader)
 	dockerimageReconciler := dockerimage.NewReconciler(deferredClient, storeStore, scheme, compositeClient, imageBuilder)
@@ -735,7 +735,7 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	liveupdateReconciler := liveupdate.NewReconciler(storeStore, dockerUpdater, execUpdater, updateMode, kubeContext, deferredClient, scheme)
 	configmapReconciler := configmap.NewReconciler(deferredClient, storeStore)
 	buildClock := build.ProvideClock()
-	customBuilder := build.NewCustomBuilder(compositeClient, buildClock)
+	customBuilder := build.NewCustomBuilder(compositeClient, buildClock, cmdController)
 	kindLoader := build.NewKINDLoader()
 	imageBuilder := build.NewImageBuilder(dockerBuilder, customBuilder, kindLoader)
 	dockerimageReconciler := dockerimage.NewReconciler(deferredClient, storeStore, scheme, compositeClient, imageBuilder)

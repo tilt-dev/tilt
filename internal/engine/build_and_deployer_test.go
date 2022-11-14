@@ -461,6 +461,23 @@ func (f *bdFixture) BuildAndDeploy(specs []model.TargetSpec, stateSet store.Buil
 				}
 				f.upsert(&di)
 			}
+			if iTarget.IsCustomBuild() {
+				cmdImageSpec := iTarget.CustomBuildInfo().CmdImageSpec
+				ci := v1alpha1.CmdImage{
+					ObjectMeta: metav1.ObjectMeta{Name: iTarget.CmdImageName},
+					Spec:       cmdImageSpec,
+				}
+				f.upsert(&ci)
+
+				c := v1alpha1.Cmd{
+					ObjectMeta: metav1.ObjectMeta{Name: iTarget.CmdImageName},
+					Spec: v1alpha1.CmdSpec{
+						Args: cmdImageSpec.Args,
+						Dir:  cmdImageSpec.Dir,
+					},
+				}
+				f.upsert(&c)
+			}
 		}
 
 		kTarget, ok := spec.(model.K8sTarget)

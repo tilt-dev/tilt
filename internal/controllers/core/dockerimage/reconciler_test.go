@@ -10,8 +10,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/tilt-dev/tilt/internal/build"
+	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/docker"
+	"github.com/tilt-dev/tilt/internal/localexec"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
@@ -43,12 +45,16 @@ type fixture struct {
 
 func newFixture(t testing.TB) *fixture {
 	cfb := fake.NewControllerFixtureBuilder(t)
-
 	clock := clockwork.NewFakeClock()
+
+	fe := cmd.NewProcessExecer(localexec.EmptyEnv())
+	fpm := cmd.NewFakeProberManager()
+	cmds := cmd.NewController(cfb.Context(), fe, fpm, cfb.Client, cfb.Store, clock, v1alpha1.NewScheme())
+
 	dockerCli := docker.NewFakeClient()
 	ib := build.NewImageBuilder(
 		build.NewDockerBuilder(dockerCli, nil),
-		build.NewCustomBuilder(dockerCli, clock),
+		build.NewCustomBuilder(dockerCli, clock, cmds),
 		build.NewKINDLoader())
 
 	r := NewReconciler(cfb.Client, cfb.Store, cfb.Scheme(), dockerCli, ib)

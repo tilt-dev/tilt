@@ -637,6 +637,7 @@ func toClusterObjects(nn types.NamespacedName, tlr *tiltfile.TiltfileLoadResult,
 func toCmdObjects(tlr *tiltfile.TiltfileLoadResult, disableSources disableSourceMap) apiset.TypedObjectSet {
 	result := apiset.TypedObjectSet{}
 
+	// Every local_resource's Update Cmd gets its own object.
 	for _, m := range tlr.Manifests {
 		if !m.IsLocal() {
 			continue
@@ -661,6 +662,44 @@ func toCmdObjects(tlr *tiltfile.TiltfileLoadResult, disableSources disableSource
 		}
 		cmd.Spec.DisableSource = disableSources[m.Name]
 		result[name] = cmd
+	}
+
+	// Every custom_build Cmd gets its own Cmd object.
+	// It would be better for the CmdImage reconciler to create these
+	// and make them owned by the CmdImage.
+	for _, m := range tlr.Manifests {
+		for _, iTarget := range m.ImageTargets {
+			name := iTarget.CmdImageName
+			if name == "" {
+				continue
+			}
+
+			// Currently, if a CmdImage is in more than one manifest,
+			// we will create one per manifest.
+			//
+			// In the medium-term, we should try to annotate them in a way
+			// that allows manifests to share images.
+			cmdimageSpec := iTarget.CustomBuildInfo().CmdImageSpec
+			cmd := &v1alpha1.Cmd{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: iTarget.CmdImageName,
+					Annotations: map[string]string{
+						v1alpha1.AnnotationManifest:  m.Name.String(),
+						v1alpha1.AnnotationSpanID:    fmt.Sprintf("cmdimage:%s", name),
+						v1alpha1.AnnotationManagedBy: "cmd_image",
+					},
+				},
+				Spec: v1alpha1.CmdSpec{
+					Args: cmdimageSpec.Args,
+					Dir:  cmdimageSpec.Dir,
+				},
+			}
+
+			// TODO(nick): Add DisableSource to image builds.
+			// cmd.Spec.DisableSource = disableSources[m.Name]
+
+			result[name] = cmd
+		}
 	}
 	return result
 }

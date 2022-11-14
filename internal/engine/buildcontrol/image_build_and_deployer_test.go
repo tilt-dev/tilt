@@ -11,6 +11,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
+	"github.com/jonboulle/clockwork"
 	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,7 +28,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
-	"github.com/tilt-dev/tilt/internal/localexec"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/internal/testutils"
@@ -909,6 +909,46 @@ func TestCustomBuildStatus(t *testing.T) {
 	require.NotNil(t, ci.Status.Completed)
 }
 
+func TestCustomBuildCancel(t *testing.T) {
+	f := newIBDFixture(t, clusterid.ProductGKE)
+
+	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
+	f.docker.Images["gcr.io/some-project-162817/sancho:tilt-build"] = types.ImageInspect{ID: string(sha)}
+
+	cb := model.CustomBuild{
+		CmdImageSpec: v1alpha1.CmdImageSpec{Args: model.ToHostCmd("sleep 100").Argv, OutputTag: "tilt-build"},
+		Deps:         []string{f.JoinPath("app")},
+	}
+	iTarget := model.MustNewImageTarget(SanchoRef).WithBuildDetails(cb)
+	manifest := manifestbuilder.New(f, "sancho").
+		WithK8sYAML(testyaml.SanchoYAML).
+		WithImageTargets(iTarget).
+		Build()
+
+	iTarget = manifest.ImageTargets[0]
+	nn := ktypes.NamespacedName{Name: iTarget.CmdImageName}
+	err := f.ctrlClient.Create(f.ctx, &v1alpha1.CmdImage{
+		ObjectMeta: metav1.ObjectMeta{Name: nn.Name},
+		Spec:       iTarget.CustomBuildInfo().CmdImageSpec,
+	})
+	require.NoError(t, err)
+
+	originalCtx := f.ctx
+	ctx, cancel := context.WithCancel(f.ctx)
+	f.ctx = ctx
+	go func() {
+		cancel()
+	}()
+	_, err = f.BuildAndDeploy(BuildTargets(manifest), store.BuildStateSet{})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), `Custom build "sleep 100" failed`)
+
+	var ci v1alpha1.CmdImage
+	err = f.ctrlClient.Get(originalCtx, nn, &ci)
+	require.NoError(t, err)
+	require.NotNil(t, ci.Status.Completed)
+}
+
 func TestTwoManifestsWithCommonImage(t *testing.T) {
 	f := newIBDFixture(t, clusterid.ProductGKE)
 
@@ -1073,9 +1113,9 @@ func newIBDFixture(t *testing.T, env clusterid.Product) *ibdFixture {
 
 	ctrlClient := fake.NewFakeTiltClient()
 	st := store.NewTestingStore()
-	execer := localexec.NewFakeExecer(t)
+	cclock := clockwork.NewFakeClock()
 	ibd, err := ProvideImageBuildAndDeployer(ctx, dockerClient, kClient, env, kubeContext,
-		clusterEnv, dir, clock, kl, ta, ctrlClient, st, execer)
+		clusterEnv, dir, clock, cclock, kl, ta, ctrlClient, st)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1150,10 +1190,20 @@ func (f *ibdFixture) BuildAndDeploy(specs []model.TargetSpec, stateSet store.Bui
 		// The reconcilers usually invoke their own async requeuers,
 		// so do the reconciliation manually to make these tests synchronous.
 		if iTarget.CmdImageName != "" {
-			defer f.ibd.cr.Reconcile(f.ctx, ctrl.Request{NamespacedName: ktypes.NamespacedName{Name: iTarget.CmdImageName}})
+			cmdImageSpec := iTarget.CustomBuildInfo().CmdImageSpec
+			c := v1alpha1.Cmd{
+				ObjectMeta: metav1.ObjectMeta{Name: iTarget.CmdImageName},
+				Spec: v1alpha1.CmdSpec{
+					Args: cmdImageSpec.Args,
+					Dir:  cmdImageSpec.Dir,
+				},
+			}
+			f.upsert(&c)
+
+			defer f.ibd.cr.Reconcile(context.Background(), ctrl.Request{NamespacedName: ktypes.NamespacedName{Name: iTarget.CmdImageName}})
 		}
 		if iTarget.DockerImageName != "" {
-			defer f.ibd.dr.Reconcile(f.ctx, ctrl.Request{NamespacedName: ktypes.NamespacedName{Name: iTarget.DockerImageName}})
+			defer f.ibd.dr.Reconcile(context.Background(), ctrl.Request{NamespacedName: ktypes.NamespacedName{Name: iTarget.DockerImageName}})
 		}
 	}
 	for _, kTarget := range kTargets {

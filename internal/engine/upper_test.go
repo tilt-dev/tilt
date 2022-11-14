@@ -3397,7 +3397,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	cu := &containerupdate.FakeContainerUpdater{}
 	lur := liveupdate.NewFakeReconciler(st, cu, cdc)
 	dockerBuilder := build.NewDockerBuilder(dockerClient, nil)
-	customBuilder := build.NewCustomBuilder(dockerClient, clock)
+	customBuilder := build.NewCustomBuilder(dockerClient, clock, cmds)
 	kp := build.NewKINDLoader()
 	ib := build.NewImageBuilder(dockerBuilder, customBuilder, kp)
 	dir := dockerimage.NewReconciler(cdc, st, sch, dockerClient, ib)

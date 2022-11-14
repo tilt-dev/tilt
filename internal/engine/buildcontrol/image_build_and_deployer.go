@@ -127,8 +127,18 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 			return store.ImageBuildResult{}, fmt.Errorf("Not an image target: %T", target)
 		}
 
+		var cmd *v1alpha1.Cmd = nil
+		if iTarget.CmdImageName != "" {
+			nn := types.NamespacedName{Name: iTarget.CmdImageName}
+			cmd = &v1alpha1.Cmd{}
+			err := ibd.ctrlClient.Get(ctx, nn, cmd)
+			if err != nil {
+				return store.ImageBuildResult{}, err
+			}
+		}
+
 		cluster := stateSet[target.ID()].ClusterOrEmpty()
-		return ibd.build(ctx, iTarget, cluster, imageMapSet, ps)
+		return ibd.build(ctx, iTarget, cmd, cluster, imageMapSet, ps)
 	})
 
 	newResults := q.NewResults().ToBuildResultSet()
@@ -149,6 +159,7 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 func (ibd *ImageBuildAndDeployer) build(
 	ctx context.Context,
 	iTarget model.ImageTarget,
+	customBuildCmd *v1alpha1.Cmd,
 	cluster *v1alpha1.Cluster,
 	imageMaps map[types.NamespacedName]*v1alpha1.ImageMap,
 	ps *build.PipelineState) (store.ImageBuildResult, error) {
@@ -156,7 +167,7 @@ func (ibd *ImageBuildAndDeployer) build(
 	case model.DockerBuild:
 		return ibd.dr.ForceApply(ctx, iTarget, cluster, imageMaps, ps)
 	case model.CustomBuild:
-		return ibd.cr.ForceApply(ctx, iTarget, cluster, imageMaps, ps)
+		return ibd.cr.ForceApply(ctx, iTarget, customBuildCmd, cluster, imageMaps, ps)
 	}
 	return store.ImageBuildResult{}, fmt.Errorf("invalid image spec")
 }
