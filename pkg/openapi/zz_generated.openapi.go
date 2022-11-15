@@ -3000,6 +3000,13 @@ func schema_pkg_apis_core_v1alpha1_ExtensionRepoStatus(ref common.ReferenceCallb
 							Format:      "",
 						},
 					},
+					"staleReason": {
+						SchemaProps: spec.SchemaProps{
+							Description: "If StaleReason is non-empty, that indicates the repo failed to fetch, but we were successfully able to use an on-disk copy.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},

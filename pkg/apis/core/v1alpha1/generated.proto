@@ -1122,6 +1122,10 @@ message ExtensionRepoStatus {
   // On git, this is the commit hash.
   // On file repos, this is empty.
   optional string checkoutRef = 4;
+
+  // If StaleReason is non-empty, that indicates the repo failed to fetch, but
+  // we were successfully able to use an on-disk copy.
+  optional string staleReason = 5;
 }
 
 // ExtensionSpec defines the desired state of Extension

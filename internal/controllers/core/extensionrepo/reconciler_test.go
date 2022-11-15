@@ -178,6 +178,27 @@ func TestRepoAlwaysSyncHead(t *testing.T) {
 	f.assertSteadyState(&repo)
 }
 
+func TestStale(t *testing.T) {
+	f := newFixture(t)
+
+	f.dlr.Download("github.com/tilt-dev/stale-repo")
+	f.dlr.downloadError = fmt.Errorf("fake error")
+
+	key := types.NamespacedName{Name: "default"}
+	repo := v1alpha1.ExtensionRepo{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: key.Name,
+		},
+		Spec: v1alpha1.ExtensionRepoSpec{
+			URL: "https://github.com/tilt-dev/stale-repo",
+		},
+	}
+	f.Create(&repo)
+	f.MustGet(key, &repo)
+	require.Contains(t, repo.Status.Error, "")
+	require.Contains(t, repo.Status.StaleReason, "fake error")
+}
+
 type fixture struct {
 	*fake.ControllerFixture
 	r    *Reconciler
