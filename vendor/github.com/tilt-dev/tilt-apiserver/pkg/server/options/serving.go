@@ -24,11 +24,15 @@ package options
 
 import (
 	"context"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"net"
+	"os"
 	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/spf13/pflag"
 
@@ -296,7 +300,7 @@ func (s *SecureServingOptions) MaybeDefaultWithSelfSignedCerts(publicAddress str
 		}
 		keyCert.CertFile = path.Join(s.ServerCert.CertDirectory, s.ServerCert.PairName+".crt")
 		keyCert.KeyFile = path.Join(s.ServerCert.CertDirectory, s.ServerCert.PairName+".key")
-		if canRead, err := certutil.CanReadCertAndKey(keyCert.CertFile, keyCert.KeyFile); err != nil {
+		if canRead, err := checkCertAndKeyReadableAndValid(keyCert.CertFile, keyCert.KeyFile); err != nil {
 			return err
 		} else {
 			canReadCertAndKey = canRead
@@ -349,4 +353,39 @@ func CreateListener(network, addr string, config net.ListenConfig) (net.Listener
 	}
 
 	return ln, tcpAddr.Port, nil
+}
+
+func checkCertAndKeyReadableAndValid(certFile, keyFile string) (bool, error) {
+	canRead, err := certutil.CanReadCertAndKey(certFile, keyFile)
+	if err != nil || !canRead {
+		return false, err
+	}
+
+	bytes, err := os.ReadFile(certFile)
+	if err != nil {
+		return false, nil
+	}
+
+	block, _ := pem.Decode(bytes)
+	if block == nil {
+		return false, nil
+	}
+
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		// Ignore parse errors and pretend we can't read the cert.
+		return false, nil
+	}
+
+	// Check if the cert isn't valid yet.
+	if time.Now().Before(cert.NotBefore) {
+		return false, nil
+	}
+
+	// Check if the cert will expire in less than a month.
+	if time.Now().Add(24 * 30 * time.Hour).After(cert.NotAfter) {
+		return false, nil
+	}
+
+	return true, nil
 }

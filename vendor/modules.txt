@@ -681,7 +681,7 @@ github.com/tilt-dev/starlark-lsp/pkg/document
 github.com/tilt-dev/starlark-lsp/pkg/middleware
 github.com/tilt-dev/starlark-lsp/pkg/query
 github.com/tilt-dev/starlark-lsp/pkg/server
-# github.com/tilt-dev/tilt-apiserver v0.7.0
+# github.com/tilt-dev/tilt-apiserver v0.7.1
 ## explicit; go 1.19
 github.com/tilt-dev/tilt-apiserver/pkg/server/apiserver
 github.com/tilt-dev/tilt-apiserver/pkg/server/builder
