@@ -26,6 +26,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
+	"github.com/tilt-dev/tilt/internal/filteredwriter"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/dockercomposeservices"
 	"github.com/tilt-dev/tilt/pkg/apis"
@@ -304,6 +305,28 @@ func (r *Reconciler) recordSpecAndDisableStatus(
 	update := result.Status.DeepCopy()
 	update.DisableStatus = &disableStatus
 	result.Status = *update
+}
+
+// A helper that deletes the Docker Compose service, even if they haven't been applied yet.
+//
+// Primarily intended so that the build controller can do force restarts.
+func (r *Reconciler) ForceDelete(
+	ctx context.Context,
+	nn types.NamespacedName,
+	spec v1alpha1.DockerComposeServiceSpec,
+	reason string) error {
+	out := logger.Get(ctx).Writer(logger.InfoLvl)
+	out = filteredwriter.New(out, func(s string) bool {
+		// https://app.shortcut.com/windmill/story/13147/docker-compose-down-messages-for-disabled-resources-may-be-confusing
+		return strings.HasPrefix(s, "Going to remove")
+	})
+	err := r.dcc.Rm(ctx, []v1alpha1.DockerComposeServiceSpec{spec}, out, out)
+	if err != nil {
+		logger.Get(ctx).Errorf("Error %s: %v", reason, err)
+	}
+	r.clearResult(nn)
+	r.requeuer.Add(nn)
+	return nil
 }
 
 // Apply the DockerCompose service spec, unconditionally,
