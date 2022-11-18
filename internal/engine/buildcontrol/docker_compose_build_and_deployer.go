@@ -116,6 +116,8 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 		})
 	}()
 
+	dcTarget := plan.dockerComposeTarget
+	dcTargetNN := types.NamespacedName{Name: dcTarget.ID().Name.String()}
 	ctx = docker.WithOrchestrator(ctx, model.OrchestratorDC)
 
 	iTargets := plan.tiltManagedImageTargets
@@ -128,6 +130,11 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	// a Tilt-built image OR might build+launch a Docker Compose-managed image)
 	numStages := q.CountBuilds() + 1
 
+	hasDeleteStep := currentState.FullBuildTriggered()
+	if hasDeleteStep {
+		numStages++
+	}
+
 	reused := q.ReusedResults()
 	hasReusedStep := len(reused) > 0
 	if hasReusedStep {
@@ -136,6 +143,15 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 
 	ps := build.NewPipelineState(ctx, numStages, bd.clock)
 	defer func() { ps.End(ctx, err) }()
+
+	if hasDeleteStep {
+		ps.StartPipelineStep(ctx, "Force update")
+		err = bd.dcsr.ForceDelete(ps.AttachLogger(ctx), dcTargetNN, dcTarget.Spec, "force update")
+		if err != nil {
+			return store.BuildResultSet{}, WrapDontFallBackError(err)
+		}
+		ps.EndPipelineStep(ctx)
+	}
 
 	if hasReusedStep {
 		ps.StartPipelineStep(ctx, "Loading cached images")
@@ -194,8 +210,6 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	}
 	ps.StartPipelineStep(ctx, stepName)
 
-	dcTarget := plan.dockerComposeTarget
-	dcTargetNN := types.NamespacedName{Name: dcTarget.ID().Name.String()}
 	status := bd.dcsr.ForceApply(ctx, dcTargetNN, dcTarget.Spec, imageMapSet, dcManagedBuild)
 	ps.EndPipelineStep(ctx)
 	if status.ApplyError != "" {

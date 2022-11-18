@@ -188,6 +188,30 @@ func TestContainerEvent(t *testing.T) {
 		s.ManifestTargets["fe"].State.DCRuntimeState().ContainerState.Status)
 }
 
+func TestForceDelete(t *testing.T) {
+	f := newFixture(t)
+	nn := types.NamespacedName{Name: "fe"}
+	obj := v1alpha1.DockerComposeService{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "fe",
+			Annotations: map[string]string{
+				v1alpha1.AnnotationManifest: "fe",
+			},
+		},
+		Spec: v1alpha1.DockerComposeServiceSpec{
+			Service: "fe",
+			Project: v1alpha1.DockerComposeProject{
+				YAML: "fake-yaml",
+			},
+		},
+	}
+	f.Create(&obj)
+
+	err := f.r.ForceDelete(f.Context(), nn, obj.Spec, "testing")
+	assert.Nil(f.T(), err)
+	assert.Equal(f.T(), f.dcc.RmCalls()[0].Specs[0].Service, "fe")
+}
+
 type fixture struct {
 	*fake.ControllerFixture
 	r   *Reconciler

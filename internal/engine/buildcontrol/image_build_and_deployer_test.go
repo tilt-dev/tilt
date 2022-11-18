@@ -61,7 +61,7 @@ func TestDeployTwinImages(t *testing.T) {
 		"Expected image to update twice in YAML: %s", f.k8s.Yaml)
 }
 
-func TestForceUpdate(t *testing.T) {
+func TestForceUpdateK8s(t *testing.T) {
 	f := newIBDFixture(t, clusterid.ProductGKE)
 
 	m := NewSanchoDockerBuildManifest(f)

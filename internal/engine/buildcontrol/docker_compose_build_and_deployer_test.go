@@ -8,6 +8,7 @@ import (
 
 	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ktypes "k8s.io/apimachinery/pkg/types"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -166,6 +167,22 @@ ENTRYPOINT /go/bin/sancho
 `,
 	}
 	testutils.AssertFileInTar(t, tar.NewReader(f.dCli.BuildContext), expected)
+}
+
+func TestForceUpdateDC(t *testing.T) {
+	f := newDCBDFixture(t)
+
+	m := manifestbuilder.New(f, "fe").WithDockerCompose().Build()
+	iTargetID1 := m.ImageTargets[0].ID()
+	stateSet := store.BuildStateSet{
+		iTargetID1: store.BuildState{FullBuildTriggered: true},
+	}
+
+	_, err := f.BuildAndDeploy(BuildTargets(m), stateSet)
+	require.NoError(t, err)
+
+	// A force rebuild should delete the old resources.
+	assert.Equal(t, 1, len(f.dcCli.RmCalls()))
 }
 
 type dcbdFixture struct {

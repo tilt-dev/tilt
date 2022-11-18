@@ -824,12 +824,6 @@ func (r *Reconciler) garbageCollect(nn types.NamespacedName, isDeleting bool) de
 //
 // Namespaces are not deleted by default. Similar to `tilt down`, deleting namespaces
 // is likely to be more destructive than most users want from this operation.
-//
-// TODO(nick): Delete operations aren't currently reflected in the KubernetesApplyStatus
-// in any meaningful way. ForceDelete() deletes our internal bookkeeping, but
-// doesn't otherwise change the KubernetesApplyStatus. We should probably change
-// this, but that's lower priority than a bigger level-based refactor
-// and getting this to be pure API objects.
 func (r *Reconciler) ForceDelete(ctx context.Context, nn types.NamespacedName,
 	spec v1alpha1.KubernetesApplySpec,
 	cluster *v1alpha1.Cluster,
