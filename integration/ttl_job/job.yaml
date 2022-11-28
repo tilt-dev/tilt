@@ -1,0 +1,15 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ttl-job
+  labels:
+    app: ttl-job
+spec:
+  ttlSecondsAfterFinished: 1
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: ttl-job
+        image: busybox
+        command: ["echo", "job-success"]

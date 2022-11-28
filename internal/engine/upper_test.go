@@ -1450,50 +1450,6 @@ func TestPodEventUpdateByTimestamp(t *testing.T) {
 	f.assertAllBuildsConsumed()
 }
 
-func TestPodDeleted(t *testing.T) {
-	f := newTestFixture(t)
-	mn := model.ManifestName("foobar")
-	manifest := f.newManifest(mn.String())
-	pb := f.registerForDeployer(manifest)
-	f.Start([]model.Manifest{manifest})
-
-	call := f.nextCallComplete()
-	assert.True(t, call.oneImageState().IsEmpty())
-
-	creationTime := f.Now()
-	pb = pb.WithCreationTime(creationTime)
-	f.podEvent(pb.Build())
-
-	f.WaitUntilManifestState("pod never seen", mn, func(state store.ManifestState) bool {
-		return state.K8sRuntimeState().ContainsID(pb.PodName())
-	})
-
-	// set the DeletionTime on the pod and emit an event, ensuring that it gets removed
-	f.podEvent(pb.WithDeletionTime(creationTime.Add(time.Minute)).Build())
-	f.WaitUntilManifestState("podset is empty", mn, func(state store.ManifestState) bool {
-		return state.K8sRuntimeState().PodLen() == 0
-	})
-
-	// recreate the pod
-	f.podEvent(pb.Build())
-	f.WaitUntilManifestState("pod never seen", mn, func(state store.ManifestState) bool {
-		return state.K8sRuntimeState().ContainsID(pb.PodName())
-	})
-
-	// emit a true deletion event, ensuring that it gets removed
-	f.kClient.EmitPodDelete(pb.Build())
-	f.WaitUntilManifestState("podset is empty", mn, func(state store.ManifestState) bool {
-		return state.K8sRuntimeState().PodLen() == 0
-	})
-
-	err := f.Stop()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	f.assertAllBuildsConsumed()
-}
-
 func TestPodForgottenOnDisable(t *testing.T) {
 	f := newTestFixture(t)
 	manifest := f.newManifest("foobar")
