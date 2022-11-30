@@ -17,6 +17,7 @@ import (
 	"k8s.io/kubectl/pkg/proxy"
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/start"
+	"github.com/tilt-dev/tilt/internal/filelock"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/assets"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -202,7 +203,12 @@ func (s *HeadsUpServerController) addToAPIServerConfig() error {
 		return nil
 	}
 
-	newConfig, err := s.configAccess.GetStartingConfig()
+	var newConfig *clientcmdapi.Config
+	err := filelock.WithRLock(s.configAccess, func() error {
+		var e error
+		newConfig, e = s.configAccess.GetStartingConfig()
+		return e
+	})
 	if err != nil {
 		return err
 	}
@@ -227,7 +233,7 @@ func (s *HeadsUpServerController) addToAPIServerConfig() error {
 		CertificateAuthorityData: clientConfig.TLSClientConfig.CAData,
 	}
 
-	return clientcmd.ModifyConfig(s.configAccess, *newConfig, true)
+	return s.modifyConfig(*newConfig)
 }
 
 // Remove this API server's configs into the user settings directory.
@@ -238,7 +244,12 @@ func (s *HeadsUpServerController) removeFromAPIServerConfig() error {
 		return nil
 	}
 
-	newConfig, err := s.configAccess.GetStartingConfig()
+	var newConfig *clientcmdapi.Config
+	err := filelock.WithRLock(s.configAccess, func() error {
+		var e error
+		newConfig, e = s.configAccess.GetStartingConfig()
+		return e
+	})
 	if err != nil {
 		return err
 	}
@@ -252,7 +263,13 @@ func (s *HeadsUpServerController) removeFromAPIServerConfig() error {
 	delete(newConfig.AuthInfos, name)
 	delete(newConfig.Clusters, name)
 
-	return clientcmd.ModifyConfig(s.configAccess, *newConfig, true)
+	return s.modifyConfig(*newConfig)
+}
+
+func (s *HeadsUpServerController) modifyConfig(config clientcmdapi.Config) error {
+	return filelock.WithLock(s.configAccess, func() error {
+		return clientcmd.ModifyConfig(s.configAccess, config, true)
+	})
 }
 
 func newAPIServerProxyHandler(config *rest.Config) (http.Handler, error) {
