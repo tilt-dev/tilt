@@ -168,6 +168,12 @@ func getListenableAddresses(host string) ([]string, error) {
 	for _, addr := range addresses {
 		var l net.Listener
 		if ipv6 := strings.Contains(addr, ":"); ipv6 {
+			// skip ipv6 addresses that include a zone index
+			// see: https://github.com/tilt-dev/tilt/issues/5981
+			if hasZoneIndex := strings.Contains(addr, "%"); hasZoneIndex {
+				continue
+			}
+
 			l, err = net.Listen("tcp6", fmt.Sprintf("[%s]:0", addr))
 		} else {
 			l, err = net.Listen("tcp4", fmt.Sprintf("%s:0", addr))
