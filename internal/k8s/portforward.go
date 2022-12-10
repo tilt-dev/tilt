@@ -9,9 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/apimachinery/pkg/util/httpstream"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // registers gcp auth provider
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/transport/spdy"
 
 	"github.com/tilt-dev/tilt/internal/k8s/portforward"
@@ -86,9 +85,10 @@ func (k *K8sClient) CreatePortForwarder(ctx context.Context, namespace Namespace
 	return k.portForwardClient.CreatePortForwarder(ctx, namespace, podID, localPort, remotePort, host)
 }
 
+type newPodDialerFn func(namespace Namespace, podID PodID) (httpstream.Dialer, error)
+
 type portForwardClient struct {
-	config *rest.Config
-	core   v1.CoreV1Interface
+	newPodDialer newPodDialerFn
 }
 
 func ProvidePortForwardClient(
@@ -100,32 +100,46 @@ func ProvidePortForwardClient(
 	if maybeClientset.Error != nil {
 		return explodingPortForwardClient{error: maybeClientset.Error}
 	}
+
+	config := maybeRESTConfig.Config
+	core := maybeClientset.Clientset.CoreV1()
+	newPodDialer := newPodDialerFn(func(namespace Namespace, podID PodID) (httpstream.Dialer, error) {
+		transport, upgrader, err := spdy.RoundTripperFor(config)
+		if err != nil {
+			return nil, errors.Wrap(err, "error getting roundtripper")
+		}
+
+		req := core.RESTClient().Post().
+			Resource("pods").
+			Namespace(namespace.String()).
+			Name(podID.String()).
+			SubResource("portforward")
+
+		dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, "POST", req.URL())
+		return dialer, nil
+	})
+
 	return portForwardClient{
-		maybeRESTConfig.Config,
-		maybeClientset.Clientset.CoreV1(),
+		newPodDialer: newPodDialer,
 	}
 }
 
 func (c portForwardClient) CreatePortForwarder(ctx context.Context, namespace Namespace, podID PodID, localPort int, remotePort int, host string) (PortForwarder, error) {
-	transport, upgrader, err := spdy.RoundTripperFor(c.config)
+	dialer, err := c.newPodDialer(namespace, podID)
 	if err != nil {
-		return nil, errors.Wrap(err, "error getting roundtripper")
+		return nil, err
 	}
-
-	req := c.core.RESTClient().Post().
-		Resource("pods").
-		Namespace(namespace.String()).
-		Name(podID.String()).
-		SubResource("portforward")
-
-	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, "POST", req.URL())
-
 	readyChan := make(chan struct{}, 1)
 
 	ports := []string{fmt.Sprintf("%d:%d", localPort, remotePort)}
 
 	var pf *portforward.PortForwarder
-	if host == "" {
+
+	// The tiltfile evaluator always defaults the empty string.
+	//
+	// If it's defaulting to localhost, use the default kubernetse logic
+	// for binding the portforward.
+	if host == "" || host == "localhost" {
 		pf, err = portforward.New(
 			ctx,
 			dialer,
