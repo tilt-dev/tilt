@@ -86,7 +86,9 @@ type Forward struct {
 	// The port on the Kubernetes pod to connect to. Required.
 	ContainerPort int32 `json:"containerPort" protobuf:"varint,3,opt,name=containerPort"`
 
-	// Optional host to bind to on the current machine (localhost by default)
+	// Optional host to bind to on the current machine.
+	//
+	// If not explicitly specified, uses the bind host of the tilt web UI (usually localhost).
 	//
 	// +optional
 	Host string `json:"host" protobuf:"bytes,5,opt,name=host"`

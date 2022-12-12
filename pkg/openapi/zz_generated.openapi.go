@@ -3351,7 +3351,7 @@ func schema_pkg_apis_core_v1alpha1_Forward(ref common.ReferenceCallback) common.
 					},
 					"host": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Optional host to bind to on the current machine (localhost by default)",
+							Description: "Optional host to bind to on the current machine.\n\nIf not explicitly specified, uses the bind host of the tilt web UI (usually localhost).",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",

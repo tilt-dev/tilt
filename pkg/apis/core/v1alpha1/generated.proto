@@ -1246,7 +1246,9 @@ message Forward {
   // The port on the Kubernetes pod to connect to. Required.
   optional int32 containerPort = 3;
 
-  // Optional host to bind to on the current machine (localhost by default)
+  // Optional host to bind to on the current machine.
+  //
+  // If not explicitly specified, uses the bind host of the tilt web UI (usually localhost).
   //
   // +optional
   optional string host = 5;
