@@ -1271,6 +1271,14 @@ def update_settings(
       Accepts a list of image names, or '*' to suppress warnings for all images.
 """
 
+def ci_settings(
+    k8s_grace_period: str='') -> None:
+  """Configures 'tilt ci' mode.
+
+  Args:
+    k8s_grace_period: Grace period given for Kubernetes resources to recover after they start failing.
+  """
+
 def watch_settings(ignore: Union[str, List[str]]) -> None:
   """Configures global watches.
 

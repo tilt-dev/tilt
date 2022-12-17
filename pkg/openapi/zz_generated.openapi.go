@@ -158,6 +158,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RegistryHosting":                   schema_pkg_apis_core_v1alpha1_RegistryHosting(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec":                     schema_pkg_apis_core_v1alpha1_RestartOnSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Session":                           schema_pkg_apis_core_v1alpha1_Session(ref),
+		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.SessionCISpec":                     schema_pkg_apis_core_v1alpha1_SessionCISpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.SessionList":                       schema_pkg_apis_core_v1alpha1_SessionList(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.SessionSpec":                       schema_pkg_apis_core_v1alpha1_SessionSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.SessionStatus":                     schema_pkg_apis_core_v1alpha1_SessionStatus(ref),
@@ -6148,6 +6149,26 @@ func schema_pkg_apis_core_v1alpha1_Session(ref common.ReferenceCallback) common.
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_SessionCISpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"k8sGracePeriod": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Grace period given for Kubernetes resources to recover after they start failing.\n\nIf omitted, and in exitCondition=ci, the session will exit as soon as we see a pod failure.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_SessionList(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -6220,10 +6241,18 @@ func schema_pkg_apis_core_v1alpha1_SessionSpec(ref common.ReferenceCallback) com
 							Format:      "",
 						},
 					},
+					"ci": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Additional settings when in exitCondition=CI.",
+							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.SessionCISpec"),
+						},
+					},
 				},
 				Required: []string{"tiltfilePath", "exitCondition"},
 			},
 		},
+		Dependencies: []string{
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.SessionCISpec"},
 	}
 }
 

@@ -56,8 +56,21 @@ type SessionList struct {
 type SessionSpec struct {
 	// TiltfilePath is the path to the Tiltfile for the run. It cannot be empty.
 	TiltfilePath string `json:"tiltfilePath" protobuf:"bytes,1,opt,name=tiltfilePath"`
+
 	// ExitCondition defines the criteria for Tilt to exit.
 	ExitCondition ExitCondition `json:"exitCondition" protobuf:"bytes,2,opt,name=exitCondition,casttype=ExitCondition"`
+
+	// Additional settings when in exitCondition=CI.
+	CI *SessionCISpec `json:"ci,omitempty" protobuf:"bytes,3,opt,name=ci"`
+}
+
+type SessionCISpec struct {
+	// Grace period given for Kubernetes resources to recover after
+	// they start failing.
+	//
+	// If omitted, and in exitCondition=ci, the session will exit as soon
+	// as we see a pod failure.
+	K8sGracePeriod *metav1.Duration `json:"k8sGracePeriod,omitempty" protobuf:"bytes,1,opt,name=k8sGracePeriod"`
 }
 
 type ExitCondition string
