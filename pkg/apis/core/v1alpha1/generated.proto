@@ -2579,6 +2579,15 @@ message Session {
   optional SessionStatus status = 3;
 }
 
+message SessionCISpec {
+  // Grace period given for Kubernetes resources to recover after
+  // they start failing.
+  //
+  // If omitted, and in exitCondition=ci, the session will exit as soon
+  // as we see a pod failure.
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.Duration k8sGracePeriod = 1;
+}
+
 // SessionList is a list of Session objects.
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 message SessionList {
@@ -2594,6 +2603,9 @@ message SessionSpec {
 
   // ExitCondition defines the criteria for Tilt to exit.
   optional string exitCondition = 2;
+
+  // Additional settings when in exitCondition=CI.
+  optional SessionCISpec ci = 3;
 }
 
 // SessionStatus defines the observed state of Session

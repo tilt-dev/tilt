@@ -20,6 +20,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/ospath"
 	"github.com/tilt-dev/tilt/internal/sliceutils"
 	tiltfileanalytics "github.com/tilt-dev/tilt/internal/tiltfile/analytics"
+	"github.com/tilt-dev/tilt/internal/tiltfile/cisettings"
 	"github.com/tilt-dev/tilt/internal/tiltfile/config"
 	"github.com/tilt-dev/tilt/internal/tiltfile/dockerprune"
 	"github.com/tilt-dev/tilt/internal/tiltfile/hasher"
@@ -59,6 +60,7 @@ type TiltfileLoadResult struct {
 	DefaultRegistry     *corev1alpha1.RegistryHosting
 	ObjectSet           apiset.ObjectSet
 	Hashes              hasher.Hashes
+	CISettings          *corev1alpha1.SessionCISpec
 
 	// For diagnostic purposes only
 	BuiltinCalls []starkit.BuiltinCall `json:"-"`
@@ -216,6 +218,9 @@ func (tfl tiltfileLoader) Load(ctx context.Context, tf *corev1alpha1.Tiltfile, p
 
 	us, _ := updatesettings.GetState(result)
 	tlr.UpdateSettings = us
+
+	ci, _ := cisettings.GetState(result)
+	tlr.CISettings = ci
 
 	configSettings, _ := config.GetState(result)
 	if tlr.Error == nil {
