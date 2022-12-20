@@ -42,6 +42,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/core/liveupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/core/podlogstream"
 	"github.com/tilt-dev/tilt/internal/controllers/core/portforward"
+	"github.com/tilt-dev/tilt/internal/controllers/core/session"
 	tiltfile2 "github.com/tilt-dev/tilt/internal/controllers/core/tiltfile"
 	"github.com/tilt-dev/tilt/internal/controllers/core/togglebutton"
 	"github.com/tilt-dev/tilt/internal/controllers/core/uibutton"
@@ -59,7 +60,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
 	"github.com/tilt-dev/tilt/internal/engine/local"
 	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
-	"github.com/tilt-dev/tilt/internal/engine/session"
+	session2 "github.com/tilt-dev/tilt/internal/engine/session"
 	"github.com/tilt-dev/tilt/internal/engine/telemetry"
 	uiresource2 "github.com/tilt-dev/tilt/internal/engine/uiresource"
 	uisession2 "github.com/tilt-dev/tilt/internal/engine/uisession"
@@ -335,7 +336,8 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	dockercomposeserviceReconciler := dockercomposeservice.NewReconciler(deferredClient, dockerComposeClient, compositeClient, storeStore, scheme, disableSubscriber)
 	imagemapReconciler := imagemap.NewReconciler(deferredClient, storeStore)
 	dockercomposelogstreamReconciler := dockercomposelogstream.NewReconciler(deferredClient, storeStore)
-	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler, togglebuttonReconciler, extensionReconciler, extensionrepoReconciler, liveupdateReconciler, configmapReconciler, dockerimageReconciler, cmdimageReconciler, clusterReconciler, dockercomposeserviceReconciler, imagemapReconciler, dockercomposelogstreamReconciler)
+	sessionReconciler := session.NewReconciler(deferredClient, storeStore)
+	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler, togglebuttonReconciler, extensionReconciler, extensionrepoReconciler, liveupdateReconciler, configmapReconciler, dockerimageReconciler, cmdimageReconciler, clusterReconciler, dockercomposeserviceReconciler, imagemapReconciler, dockercomposelogstreamReconciler, sessionReconciler)
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	v2 := provideClock()
 	renderer := hud.NewRenderer(v2)
@@ -367,7 +369,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	telemetryController := telemetry.NewController(buildClock, spanCollector)
 	serverController := local.NewServerController(deferredClient)
 	podMonitor := k8srollout.NewPodMonitor(clock)
-	sessionController := session.NewController(deferredClient, engineMode)
+	sessionController := session2.NewController(deferredClient, engineMode)
 	subscriber := uisession2.NewSubscriber(deferredClient)
 	uiresourceSubscriber := uiresource2.NewSubscriber(deferredClient)
 	v3 := engine.ProvideSubscribers(headsUpServerController, tiltServerControllerManager, controllerBuilder, headsUpDisplay, terminalStream, terminalPrompt, serviceWatcher, buildController, configsController, triggerQueueSubscriber, dockerComposeLogManager, analyticsReporter, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, serverController, podMonitor, sessionController, subscriber, uiresourceSubscriber)
@@ -543,7 +545,8 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	dockercomposeserviceReconciler := dockercomposeservice.NewReconciler(deferredClient, dockerComposeClient, compositeClient, storeStore, scheme, disableSubscriber)
 	imagemapReconciler := imagemap.NewReconciler(deferredClient, storeStore)
 	dockercomposelogstreamReconciler := dockercomposelogstream.NewReconciler(deferredClient, storeStore)
-	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler, togglebuttonReconciler, extensionReconciler, extensionrepoReconciler, liveupdateReconciler, configmapReconciler, dockerimageReconciler, cmdimageReconciler, clusterReconciler, dockercomposeserviceReconciler, imagemapReconciler, dockercomposelogstreamReconciler)
+	sessionReconciler := session.NewReconciler(deferredClient, storeStore)
+	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler, togglebuttonReconciler, extensionReconciler, extensionrepoReconciler, liveupdateReconciler, configmapReconciler, dockerimageReconciler, cmdimageReconciler, clusterReconciler, dockercomposeserviceReconciler, imagemapReconciler, dockercomposelogstreamReconciler, sessionReconciler)
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	v2 := provideClock()
 	renderer := hud.NewRenderer(v2)
@@ -576,7 +579,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	telemetryController := telemetry.NewController(buildClock, spanCollector)
 	serverController := local.NewServerController(deferredClient)
 	podMonitor := k8srollout.NewPodMonitor(clock)
-	sessionController := session.NewController(deferredClient, engineMode)
+	sessionController := session2.NewController(deferredClient, engineMode)
 	subscriber := uisession2.NewSubscriber(deferredClient)
 	uiresourceSubscriber := uiresource2.NewSubscriber(deferredClient)
 	v3 := engine.ProvideSubscribers(headsUpServerController, tiltServerControllerManager, controllerBuilder, headsUpDisplay, terminalStream, terminalPrompt, serviceWatcher, buildController, configsController, triggerQueueSubscriber, dockerComposeLogManager, analyticsReporter, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, serverController, podMonitor, sessionController, subscriber, uiresourceSubscriber)
@@ -747,7 +750,8 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	dockercomposeserviceReconciler := dockercomposeservice.NewReconciler(deferredClient, dockerComposeClient, compositeClient, storeStore, scheme, disableSubscriber)
 	imagemapReconciler := imagemap.NewReconciler(deferredClient, storeStore)
 	dockercomposelogstreamReconciler := dockercomposelogstream.NewReconciler(deferredClient, storeStore)
-	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler, togglebuttonReconciler, extensionReconciler, extensionrepoReconciler, liveupdateReconciler, configmapReconciler, dockerimageReconciler, cmdimageReconciler, clusterReconciler, dockercomposeserviceReconciler, imagemapReconciler, dockercomposelogstreamReconciler)
+	sessionReconciler := session.NewReconciler(deferredClient, storeStore)
+	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler, togglebuttonReconciler, extensionReconciler, extensionrepoReconciler, liveupdateReconciler, configmapReconciler, dockerimageReconciler, cmdimageReconciler, clusterReconciler, dockercomposeserviceReconciler, imagemapReconciler, dockercomposelogstreamReconciler, sessionReconciler)
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	stdout := hud.ProvideStdout()
 	incrementalPrinter := hud.NewIncrementalPrinter(stdout)
@@ -1080,7 +1084,7 @@ var K8sWireSet = wire.NewSet(k8s.ProvideClusterProduct, k8s.ProvideClusterName, 
 	ProvideNamespaceOverride)
 
 var BaseWireSet = wire.NewSet(
-	K8sWireSet, tiltfile.WireSet, git.ProvideGitRemote, localexec.DefaultEnv, localexec.NewProcessExecer, wire.Bind(new(localexec.Execer), new(*localexec.ProcessExecer)), docker.SwitchWireSet, dockercompose.NewDockerComposeClient, clockwork.NewRealClock, engine.DeployerWireSet, engine.NewBuildController, local.NewServerController, kubernetesdiscovery.NewContainerRestartDetector, k8swatch.NewServiceWatcher, k8swatch.NewEventWatchManager, uisession2.NewSubscriber, uiresource2.NewSubscriber, configs.NewConfigsController, configs.NewTriggerQueueSubscriber, telemetry.NewController, runtimelog.NewDockerComposeLogManager, cloud.WireSet, cloudurl.ProvideAddress, k8srollout.NewPodMonitor, telemetry.NewStartTracker, session.NewController, build.ProvideClock, provideClock, hud.WireSet, prompt.WireSet, wire.Value(openurl.OpenURL(openurl.BrowserOpen)), provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(*store.Store)), wire.Bind(new(store.Dispatcher), new(*store.Store)), dockerprune.NewDockerPruner, provideTiltInfo, engine.NewUpper, analytics2.NewAnalyticsUpdater, analytics2.ProvideAnalyticsReporter, provideUpdateModeFlag, fsevent.ProvideWatcherMaker, fsevent.ProvideTimerMaker, controllers.WireSet, provideWebVersion,
+	K8sWireSet, tiltfile.WireSet, git.ProvideGitRemote, localexec.DefaultEnv, localexec.NewProcessExecer, wire.Bind(new(localexec.Execer), new(*localexec.ProcessExecer)), docker.SwitchWireSet, dockercompose.NewDockerComposeClient, clockwork.NewRealClock, engine.DeployerWireSet, engine.NewBuildController, local.NewServerController, kubernetesdiscovery.NewContainerRestartDetector, k8swatch.NewServiceWatcher, k8swatch.NewEventWatchManager, uisession2.NewSubscriber, uiresource2.NewSubscriber, configs.NewConfigsController, configs.NewTriggerQueueSubscriber, telemetry.NewController, runtimelog.NewDockerComposeLogManager, cloud.WireSet, cloudurl.ProvideAddress, k8srollout.NewPodMonitor, telemetry.NewStartTracker, session2.NewController, build.ProvideClock, provideClock, hud.WireSet, prompt.WireSet, wire.Value(openurl.OpenURL(openurl.BrowserOpen)), provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(*store.Store)), wire.Bind(new(store.Dispatcher), new(*store.Store)), dockerprune.NewDockerPruner, provideTiltInfo, engine.NewUpper, analytics2.NewAnalyticsUpdater, analytics2.ProvideAnalyticsReporter, provideUpdateModeFlag, fsevent.ProvideWatcherMaker, fsevent.ProvideTimerMaker, controllers.WireSet, provideWebVersion,
 	provideWebMode,
 	provideWebURL,
 	provideWebPort,

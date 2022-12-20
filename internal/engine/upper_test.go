@@ -54,6 +54,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/core/liveupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/core/podlogstream"
 	apiportforward "github.com/tilt-dev/tilt/internal/controllers/core/portforward"
+	ctrlsession "github.com/tilt-dev/tilt/internal/controllers/core/session"
 	ctrltiltfile "github.com/tilt-dev/tilt/internal/controllers/core/tiltfile"
 	"github.com/tilt-dev/tilt/internal/controllers/core/togglebutton"
 	ctrluibutton "github.com/tilt-dev/tilt/internal/controllers/core/uibutton"
@@ -3363,6 +3364,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		cluster.FakeKubernetesClientOrError(kClient, nil),
 		wsl, base, "tilt-default")
 	dclsr := dockercomposelogstream.NewReconciler(cdc, st)
+	sr := ctrlsession.NewReconciler(cdc, st)
 
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
 		fwc,
@@ -3386,6 +3388,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		dcr,
 		imagemap.NewReconciler(cdc, st),
 		dclsr,
+		sr,
 	))
 
 	dp := dockerprune.NewDockerPruner(dockerClient)
