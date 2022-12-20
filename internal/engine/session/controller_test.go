@@ -20,6 +20,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/sessions"
 	"github.com/tilt-dev/tilt/internal/store/tiltfiles"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
@@ -626,10 +627,10 @@ func (s *testStore) Dispatch(action store.Action) {
 
 	s.TestingStore.Dispatch(action)
 
-	a, ok := action.(SessionUpdateStatusAction)
+	a, ok := action.(sessions.SessionUpdateStatusAction)
 	if ok {
 		state := s.LockMutableStateForTesting()
-		HandleSessionUpdateStatusAction(state, a)
+		sessions.HandleSessionUpdateStatusAction(state, a)
 		s.UnlockMutableState()
 	}
 }

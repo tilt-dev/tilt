@@ -14,7 +14,6 @@ import (
 	ctrltiltfile "github.com/tilt-dev/tilt/internal/controllers/core/tiltfile"
 	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
 	"github.com/tilt-dev/tilt/internal/engine/local"
-	"github.com/tilt-dev/tilt/internal/engine/session"
 	"github.com/tilt-dev/tilt/internal/hud"
 	"github.com/tilt-dev/tilt/internal/hud/prompt"
 	"github.com/tilt-dev/tilt/internal/hud/server"
@@ -31,6 +30,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/store/kubernetesapplys"
 	"github.com/tilt-dev/tilt/internal/store/kubernetesdiscoverys"
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
+	"github.com/tilt-dev/tilt/internal/store/sessions"
 	"github.com/tilt-dev/tilt/internal/store/tiltfiles"
 	"github.com/tilt-dev/tilt/internal/store/uibuttons"
 	"github.com/tilt-dev/tilt/internal/store/uiresources"
@@ -160,8 +160,8 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handlePanicAction(state, action)
 	case store.LogAction:
 		handleLogAction(state, action)
-	case session.SessionUpdateStatusAction:
-		session.HandleSessionUpdateStatusAction(state, action)
+	case sessions.SessionUpdateStatusAction:
+		sessions.HandleSessionUpdateStatusAction(state, action)
 	case prompt.SwitchTerminalModeAction:
 		handleSwitchTerminalModeAction(state, action)
 	case server.OverrideTriggerModeAction:
