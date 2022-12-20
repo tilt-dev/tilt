@@ -4,7 +4,9 @@ import (
 	"fmt"
 
 	"k8s.io/client-go/tools/clientcmd"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
+	"github.com/tilt-dev/tilt/internal/filelock"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -13,7 +15,12 @@ type TiltClientConfig clientcmd.ClientConfig
 // Uses the kubernetes config-loading library to create a client config
 // for the given server name.
 func ProvideClientConfig(apiServerName model.APIServerName, configAccess clientcmd.ConfigAccess) (TiltClientConfig, error) {
-	config, err := configAccess.GetStartingConfig()
+	var config *clientcmdapi.Config
+	err := filelock.WithRLock(configAccess, func() error {
+		var e error
+		config, e = configAccess.GetStartingConfig()
+		return e
+	})
 	if err != nil {
 		return nil, err
 	}
