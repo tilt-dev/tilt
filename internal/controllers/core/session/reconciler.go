@@ -68,8 +68,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	return ctrl.Result{}, nil
 }
 
-// updateStatus builds the latest status for the given KubernetesDiscovery spec
-// key and persists it. Should only be called in the main reconciler thread.
+// maybeUpdateObjectStatus builds the latest status for the Session and persists it.
+// Should only be called in the main reconciler thread.
 //
 // If the status has not changed since the last status update performed (by the
 // Reconciler), it will be skipped.
