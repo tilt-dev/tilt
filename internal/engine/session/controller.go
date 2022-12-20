@@ -13,8 +13,9 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/sessions"
 	"github.com/tilt-dev/tilt/pkg/apis"
-	session "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -36,7 +37,7 @@ type Controller struct {
 	// The last session object returned by the server.
 	// Note that the server may annotate and transform this
 	// on top of what we sent.
-	session *session.Session
+	session *v1alpha1.Session
 }
 
 var _ store.Subscriber = &Controller{}
@@ -86,7 +87,7 @@ func (c *Controller) initialize(ctx context.Context, st store.RStore) (bool, err
 	return true, nil
 }
 
-func (c *Controller) makeSession(st store.RStore) *session.Session {
+func (c *Controller) makeSession(st store.RStore) *v1alpha1.Session {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
@@ -96,14 +97,14 @@ func (c *Controller) makeSession(st store.RStore) *session.Session {
 		return nil
 	}
 
-	s := &session.Session{
+	s := &v1alpha1.Session{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "Tiltfile",
 		},
-		Spec: session.SessionSpec{
+		Spec: v1alpha1.SessionSpec{
 			TiltfilePath: tf.Spec.Path,
 		},
-		Status: session.SessionStatus{
+		Status: v1alpha1.SessionStatus{
 			PID:       c.pid,
 			StartTime: apis.NewMicroTime(c.startTime),
 		},
@@ -113,19 +114,19 @@ func (c *Controller) makeSession(st store.RStore) *session.Session {
 	// the object on creation if it doesn't conform, so there's no additional validation/error-handling here
 	switch c.engineMode {
 	case store.EngineModeUp:
-		s.Spec.ExitCondition = session.ExitConditionManual
+		s.Spec.ExitCondition = v1alpha1.ExitConditionManual
 	case store.EngineModeCI:
-		s.Spec.ExitCondition = session.ExitConditionCI
+		s.Spec.ExitCondition = v1alpha1.ExitConditionCI
 	}
 
 	return s
 }
 
-func (c *Controller) makeLatestStatus(st store.RStore) *session.SessionStatus {
+func (c *Controller) makeLatestStatus(st store.RStore) *v1alpha1.SessionStatus {
 	state := st.RLockState()
 	defer st.RUnlockState()
 
-	status := &session.SessionStatus{
+	status := &v1alpha1.SessionStatus{
 		PID:       c.pid,
 		StartTime: apis.NewMicroTime(c.startTime),
 	}
@@ -154,7 +155,7 @@ func (c *Controller) makeLatestStatus(st store.RStore) *session.SessionStatus {
 	return status
 }
 
-func (c *Controller) handleLatestStatus(ctx context.Context, st store.RStore, newStatus *session.SessionStatus) error {
+func (c *Controller) handleLatestStatus(ctx context.Context, st store.RStore, newStatus *v1alpha1.SessionStatus) error {
 	if apicmp.DeepEqual(c.session.Status, *newStatus) {
 		return nil
 	}
@@ -167,15 +168,15 @@ func (c *Controller) handleLatestStatus(ctx context.Context, st store.RStore, ne
 	}
 
 	c.session = updated
-	st.Dispatch(NewSessionUpdateStatusAction(updated))
+	st.Dispatch(sessions.NewSessionUpdateStatusAction(updated))
 
 	return nil
 }
 
-func processExitCondition(exitCondition session.ExitCondition, status *session.SessionStatus) {
-	if exitCondition == session.ExitConditionManual {
+func processExitCondition(exitCondition v1alpha1.ExitCondition, status *v1alpha1.SessionStatus) {
+	if exitCondition == v1alpha1.ExitConditionManual {
 		return
-	} else if exitCondition != session.ExitConditionCI {
+	} else if exitCondition != v1alpha1.ExitConditionCI {
 		status.Done = true
 		status.Error = fmt.Sprintf("unsupported exit condition: %s", exitCondition)
 	}
@@ -193,7 +194,7 @@ func processExitCondition(exitCondition session.ExitCondition, status *session.S
 		}
 		if res.State.Waiting != nil {
 			allResourcesOK = false
-		} else if res.State.Active != nil && (!res.State.Active.Ready || res.Type == session.TargetTypeJob) {
+		} else if res.State.Active != nil && (!res.State.Active.Ready || res.Type == v1alpha1.TargetTypeJob) {
 			// jobs must run to completion
 			allResourcesOK = false
 		}
