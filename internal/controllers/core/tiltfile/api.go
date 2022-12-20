@@ -23,6 +23,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/feature"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/sessions"
 	"github.com/tilt-dev/tilt/internal/tiltfile"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -193,6 +194,7 @@ var typesToReconcile = append([]apiset.Object{
 	&v1alpha1.ToggleButton{},
 	&v1alpha1.Cluster{},
 	&v1alpha1.DockerComposeService{},
+	&v1alpha1.Session{},
 }, typesWithTiltfileBuiltins...)
 
 // Fetch all the existing API objects that were generated from the Tiltfile.
@@ -246,6 +248,7 @@ func toAPIObjects(
 		result.AddSetForType(&v1alpha1.UIButton{}, toCancelButtons(tlr))
 	}
 
+	result.AddSetForType(&v1alpha1.Session{}, toSessionObjects(nn, tf, mode))
 	result.AddSetForType(&v1alpha1.UIResource{}, toUIResourceObjects(tf, tlr, disableSources))
 
 	watchInputs := WatchInputs{
@@ -582,6 +585,16 @@ func toImageMapObjects(tlr *tiltfile.TiltfileLoadResult, disableSources disableS
 			result[name] = im
 		}
 	}
+	return result
+}
+
+// Creates an object representing the tilt session and exit conditions.
+func toSessionObjects(nn types.NamespacedName, tf *v1alpha1.Tiltfile, mode store.EngineMode) apiset.TypedObjectSet {
+	result := apiset.TypedObjectSet{}
+	if nn.Name != model.MainTiltfileManifestName.String() {
+		return result
+	}
+	result[sessions.DefaultSessionName] = sessions.FromTiltfile(tf, mode)
 	return result
 }
 

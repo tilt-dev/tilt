@@ -3,38 +3,34 @@ package sessions
 import (
 	"errors"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/store"
-	session "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
-type SessionUpdateStatusAction struct {
-	ObjectMeta *metav1.ObjectMeta
-	Status     *session.SessionStatus
+type SessionUpsertAction struct {
+	Object *v1alpha1.Session
 }
 
-var _ store.Summarizer = SessionUpdateStatusAction{}
+func (SessionUpsertAction) Action() {}
 
-func (a SessionUpdateStatusAction) Summarize(summary *store.ChangeSummary) {
-	summary.Sessions.Add(types.NamespacedName{Namespace: a.ObjectMeta.Namespace, Name: a.ObjectMeta.Name})
+var _ store.Summarizer = SessionUpsertAction{}
+
+func (a SessionUpsertAction) Summarize(summary *store.ChangeSummary) {
+	summary.Sessions.Add(types.NamespacedName{Namespace: a.Object.ObjectMeta.Namespace, Name: a.Object.ObjectMeta.Name})
 }
 
-func NewSessionUpdateStatusAction(session *session.Session) SessionUpdateStatusAction {
-	return SessionUpdateStatusAction{
-		ObjectMeta: session.ObjectMeta.DeepCopy(),
-		Status:     session.Status.DeepCopy(),
-	}
+func NewSessionUpsertAction(session *v1alpha1.Session) SessionUpsertAction {
+	return SessionUpsertAction{Object: session}
 }
 
-func (SessionUpdateStatusAction) Action() {}
-
-func HandleSessionUpdateStatusAction(state *store.EngineState, action SessionUpdateStatusAction) {
-	if action.Status.Done {
+func HandleSessionUpsertAction(state *store.EngineState, action SessionUpsertAction) {
+	status := action.Object.Status
+	if status.Done {
 		state.ExitSignal = true
-		if action.Status.Error != "" {
-			state.ExitError = errors.New(action.Status.Error)
+		if status.Error != "" {
+			state.ExitError = errors.New(status.Error)
 		}
 	}
 }

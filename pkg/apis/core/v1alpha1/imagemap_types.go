@@ -129,7 +129,7 @@ type ImageMapOverrideArgs struct {
 
 var _ resource.Object = &ImageMap{}
 var _ resourcestrategy.Validater = &ImageMap{}
-var _ resourcerest.ShortNamesProvider = &PortForward{}
+var _ resourcerest.ShortNamesProvider = &ImageMap{}
 
 func (in *ImageMap) GetSpec() interface{} {
 	return in.Spec
