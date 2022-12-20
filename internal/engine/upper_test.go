@@ -3319,7 +3319,8 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	fwc := filewatch.NewController(cdc, st, watcher.NewSub, timerMaker.Maker(), v1alpha1.NewScheme(), clock)
 	cmds := cmd.NewController(ctx, fe, fpm, cdc, st, clock, v1alpha1.NewScheme())
 	lsc := local.NewServerController(cdc)
-	sessionController := session.NewController(cdc, engineMode)
+	sr := ctrlsession.NewReconciler(cdc, st)
+	sessionController := session.NewController(sr)
 	ts := hud.NewTerminalStream(hud.NewIncrementalPrinter(log), st)
 	tp := prompt.NewTerminalPrompt(ta, prompt.TTYOpen, openurl.BrowserOpen,
 		log, "localhost", model.WebURL{})
@@ -3364,7 +3365,6 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		cluster.FakeKubernetesClientOrError(kClient, nil),
 		wsl, base, "tilt-default")
 	dclsr := dockercomposelogstream.NewReconciler(cdc, st)
-	sr := ctrlsession.NewReconciler(cdc, st)
 
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
 		fwc,

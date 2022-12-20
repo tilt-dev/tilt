@@ -160,8 +160,8 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handlePanicAction(state, action)
 	case store.LogAction:
 		handleLogAction(state, action)
-	case sessions.SessionUpdateStatusAction:
-		sessions.HandleSessionUpdateStatusAction(state, action)
+	case sessions.SessionUpsertAction:
+		sessions.HandleSessionUpsertAction(state, action)
 	case prompt.SwitchTerminalModeAction:
 		handleSwitchTerminalModeAction(state, action)
 	case server.OverrideTriggerModeAction:

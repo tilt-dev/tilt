@@ -96,6 +96,10 @@ func (in *Session) GetObjectMeta() *metav1.ObjectMeta {
 	return &in.ObjectMeta
 }
 
+func (in *Session) GetSpec() interface{} {
+	return in.Spec
+}
+
 func (in *Session) NamespaceScoped() bool {
 	return false
 }

@@ -1,11 +1,8 @@
 package session
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"os"
-	"sync"
 	"testing"
 	"time"
 
@@ -14,7 +11,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -25,15 +21,16 @@ import (
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
-	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
+
+var sessionKey = types.NamespacedName{Name: sessions.DefaultSessionName}
 
 func TestExitControlCI_TiltfileFailure(t *testing.T) {
 	f := newFixture(t, store.EngineModeCI)
 
 	// Tiltfile state is stored independent of resource state within engine
-	f.store.WithState(func(state *store.EngineState) {
+	f.Store.WithState(func(state *store.EngineState) {
 		ms := &store.ManifestState{}
 		ms.AddCompletedBuild(model.BuildRecord{
 			Error: errors.New("fake Tiltfile error"),
@@ -41,19 +38,24 @@ func TestExitControlCI_TiltfileFailure(t *testing.T) {
 		state.TiltfileStates[model.MainTiltfileManifestName] = ms
 	})
 
-	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	f.store.requireExitSignalWithError("fake Tiltfile error")
+	f.MustReconcile(sessionKey)
+	f.requireDoneWithError("fake Tiltfile error")
 }
 
 func TestExitControlIdempotent(t *testing.T) {
 	f := newFixture(t, store.EngineModeCI)
 
-	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	assert.NotNil(t, f.store.LastAction())
+	f.MustReconcile(sessionKey)
 
-	f.store.ClearLastAction()
-	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	assert.Nil(t, f.store.LastAction())
+	var s1 v1alpha1.Session
+	f.MustGet(sessionKey, &s1)
+
+	f.MustReconcile(sessionKey)
+
+	var s2 v1alpha1.Session
+	f.MustGet(sessionKey, &s2)
+
+	assert.Equal(t, s1.ObjectMeta, s2.ObjectMeta)
 }
 
 func TestExitControlCI_FirstBuildFailure(t *testing.T) {
@@ -64,10 +66,10 @@ func TestExitControlCI_FirstBuildFailure(t *testing.T) {
 	m2 := manifestbuilder.New(f, "fe2").WithK8sYAML(testyaml.SanchoYAML).Build()
 	f.upsertManifest(m2)
 
-	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	f.store.requireNoExitSignal()
+	f.MustReconcile(sessionKey)
+	f.requireNotDone()
 
-	f.store.WithState(func(state *store.EngineState) {
+	f.Store.WithState(func(state *store.EngineState) {
 		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
 			StartTime:  time.Now(),
 			FinishTime: time.Now(),
@@ -75,8 +77,8 @@ func TestExitControlCI_FirstBuildFailure(t *testing.T) {
 		})
 	})
 
-	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	f.store.requireExitSignalWithError("does not compile")
+	f.MustReconcile(sessionKey)
+	f.requireDoneWithError("does not compile")
 }
 
 func TestExitControlCI_FirstRuntimeFailure(t *testing.T) {
@@ -86,7 +88,7 @@ func TestExitControlCI_FirstRuntimeFailure(t *testing.T) {
 	f.upsertManifest(m)
 	m2 := manifestbuilder.New(f, "fe2").WithK8sYAML(testyaml.SanchoYAML).Build()
 	f.upsertManifest(m2)
-	f.store.WithState(func(state *store.EngineState) {
+	f.Store.WithState(func(state *store.EngineState) {
 		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
 			StartTime:  time.Now(),
 			FinishTime: time.Now(),
@@ -97,10 +99,10 @@ func TestExitControlCI_FirstRuntimeFailure(t *testing.T) {
 		})
 	})
 
-	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	f.store.requireNoExitSignal()
+	f.MustReconcile(sessionKey)
+	f.requireNotDone()
 
-	f.store.WithState(func(state *store.EngineState) {
+	f.Store.WithState(func(state *store.EngineState) {
 		mt := state.ManifestTargets["fe"]
 		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, v1alpha1.Pod{
 			Name:   "pod-a",
@@ -121,8 +123,8 @@ func TestExitControlCI_FirstRuntimeFailure(t *testing.T) {
 		})
 	})
 
-	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	f.store.requireExitSignalWithError("Pod pod-a in error state due to container c1: ErrImagePull")
+	f.MustReconcile(sessionKey)
+	f.requireDoneWithError("Pod pod-a in error state due to container c1: ErrImagePull")
 }
 
 func TestExitControlCI_PodRunningContainerError(t *testing.T) {
@@ -130,17 +132,17 @@ func TestExitControlCI_PodRunningContainerError(t *testing.T) {
 
 	m := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
 	f.upsertManifest(m)
-	f.store.WithState(func(state *store.EngineState) {
+	f.Store.WithState(func(state *store.EngineState) {
 		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
 			StartTime:  time.Now(),
 			FinishTime: time.Now(),
 		})
 	})
 
-	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	f.store.requireNoExitSignal()
+	f.MustReconcile(sessionKey)
+	f.requireNotDone()
 
-	f.store.WithState(func(state *store.EngineState) {
+	f.Store.WithState(func(state *store.EngineState) {
 		mt := state.ManifestTargets["fe"]
 		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, v1alpha1.Pod{
 			Name:  "pod-a",
@@ -170,12 +172,12 @@ func TestExitControlCI_PodRunningContainerError(t *testing.T) {
 		})
 	})
 
-	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.MustReconcile(sessionKey)
 	// even though one of the containers is in an error state, CI shouldn't exit - expectation is that the target for
 	// the pod is in Waiting state
-	f.store.requireNoExitSignal()
+	f.requireNotDone()
 
-	f.store.WithState(func(state *store.EngineState) {
+	f.Store.WithState(func(state *store.EngineState) {
 		mt := state.ManifestTargets["fe"]
 		pod := mt.State.K8sRuntimeState().GetPods()[0]
 		c1 := pod.Containers[0]
@@ -187,8 +189,8 @@ func TestExitControlCI_PodRunningContainerError(t *testing.T) {
 		pod.Containers[0] = c1
 	})
 
-	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	f.store.requireExitSignalWithNoError()
+	f.MustReconcile(sessionKey)
+	f.requireDoneWithNoError()
 }
 
 func TestExitControlCI_Success(t *testing.T) {
@@ -206,7 +208,7 @@ func TestExitControlCI_Success(t *testing.T) {
 		Build()
 	f.upsertManifest(m2)
 
-	f.store.WithState(func(state *store.EngineState) {
+	f.Store.WithState(func(state *store.EngineState) {
 		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
 			StartTime:  time.Now(),
 			FinishTime: time.Now(),
@@ -219,17 +221,17 @@ func TestExitControlCI_Success(t *testing.T) {
 		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeStateWithPods(m, pod("pod-a", true))
 	})
 
-	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	f.store.requireNoExitSignal()
+	f.MustReconcile(sessionKey)
+	f.requireNotDone()
 
 	// pod-a: ready / pod-b: ready
-	f.store.WithState(func(state *store.EngineState) {
+	f.Store.WithState(func(state *store.EngineState) {
 		mt := state.ManifestTargets["fe2"]
 		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, pod("pod-b", true))
 	})
 
-	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	f.store.requireExitSignalWithNoError()
+	f.MustReconcile(sessionKey)
+	f.requireDoneWithNoError()
 }
 
 func TestExitControlCI_PodReadinessMode_Wait(t *testing.T) {
@@ -240,7 +242,7 @@ func TestExitControlCI_PodReadinessMode_Wait(t *testing.T) {
 		WithK8sPodReadiness(model.PodReadinessWait).
 		Build()
 	f.upsertManifest(m)
-	f.store.WithState(func(state *store.EngineState) {
+	f.Store.WithState(func(state *store.EngineState) {
 		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
 			StartTime:  time.Now(),
 			FinishTime: time.Now(),
@@ -250,18 +252,18 @@ func TestExitControlCI_PodReadinessMode_Wait(t *testing.T) {
 			pod("pod-a", false))
 	})
 
-	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	f.store.requireNoExitSignal()
+	f.MustReconcile(sessionKey)
+	f.requireNotDone()
 
-	f.store.WithState(func(state *store.EngineState) {
+	f.Store.WithState(func(state *store.EngineState) {
 		mt := state.ManifestTargets["fe"]
 		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
 			pod("pod-a", true),
 		)
 	})
 
-	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	f.store.requireExitSignalWithNoError()
+	f.MustReconcile(sessionKey)
+	f.requireDoneWithNoError()
 }
 
 // TestExitControlCI_PodReadinessMode_Ignore_Pods covers the case where you don't care about a Pod's readiness state
@@ -273,7 +275,7 @@ func TestExitControlCI_PodReadinessMode_Ignore_Pods(t *testing.T) {
 		WithK8sPodReadiness(model.PodReadinessIgnore).
 		Build()
 	f.upsertManifest(m)
-	f.store.WithState(func(state *store.EngineState) {
+	f.Store.WithState(func(state *store.EngineState) {
 		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
 			StartTime:  time.Now(),
 			FinishTime: time.Now(),
@@ -283,17 +285,17 @@ func TestExitControlCI_PodReadinessMode_Ignore_Pods(t *testing.T) {
 		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState(m)
 	})
 
-	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	f.store.requireNoExitSignal()
+	f.MustReconcile(sessionKey)
+	f.requireNotDone()
 
-	f.store.WithState(func(state *store.EngineState) {
+	f.Store.WithState(func(state *store.EngineState) {
 		mt := state.ManifestTargets["fe"]
 		// pod deployed, but explicitly not ready - we should not care and exit anyway
 		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, pod("pod-a", false))
 	})
 
-	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	f.store.requireExitSignalWithNoError()
+	f.MustReconcile(sessionKey)
+	f.requireDoneWithNoError()
 }
 
 // TestExitControlCI_PodReadinessMode_Ignore_NoPods covers the case where there are K8s resources that have no
@@ -306,7 +308,7 @@ func TestExitControlCI_PodReadinessMode_Ignore_NoPods(t *testing.T) {
 		WithK8sPodReadiness(model.PodReadinessIgnore).
 		Build()
 	f.upsertManifest(m)
-	f.store.WithState(func(state *store.EngineState) {
+	f.Store.WithState(func(state *store.EngineState) {
 		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
 			StartTime:  time.Now(),
 			FinishTime: time.Now(),
@@ -315,10 +317,10 @@ func TestExitControlCI_PodReadinessMode_Ignore_NoPods(t *testing.T) {
 		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState(m)
 	})
 
-	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	f.store.requireNoExitSignal()
+	f.MustReconcile(sessionKey)
+	f.requireNotDone()
 
-	f.store.WithState(func(state *store.EngineState) {
+	f.Store.WithState(func(state *store.EngineState) {
 		mt := state.ManifestTargets["fe"]
 		krs := store.NewK8sRuntimeState(mt.Manifest)
 		// entities were created, but there's no pods in sight!
@@ -326,8 +328,8 @@ func TestExitControlCI_PodReadinessMode_Ignore_NoPods(t *testing.T) {
 		mt.State.RuntimeState = krs
 	})
 
-	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	f.store.requireExitSignalWithNoError()
+	f.MustReconcile(sessionKey)
+	f.requireDoneWithNoError()
 }
 
 func TestExitControlCI_JobSuccess(t *testing.T) {
@@ -338,7 +340,7 @@ func TestExitControlCI_JobSuccess(t *testing.T) {
 		WithK8sPodReadiness(model.PodReadinessSucceeded).
 		Build()
 	f.upsertManifest(m)
-	f.store.WithState(func(state *store.EngineState) {
+	f.Store.WithState(func(state *store.EngineState) {
 		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
 			StartTime:  time.Now(),
 			FinishTime: time.Now(),
@@ -347,17 +349,17 @@ func TestExitControlCI_JobSuccess(t *testing.T) {
 		state.ManifestTargets["fe"].State.RuntimeState = krs
 	})
 
-	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	f.store.requireNoExitSignal()
+	f.MustReconcile(sessionKey)
+	f.requireNotDone()
 
-	f.store.WithState(func(state *store.EngineState) {
+	f.Store.WithState(func(state *store.EngineState) {
 		mt := state.ManifestTargets["fe"]
 		krs := store.NewK8sRuntimeStateWithPods(mt.Manifest, successPod("pod-a"))
 		mt.State.RuntimeState = krs
 	})
 
-	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	f.store.requireExitSignalWithNoError()
+	f.MustReconcile(sessionKey)
+	f.requireDoneWithNoError()
 }
 
 func TestExitControlCI_TriggerMode_Local(t *testing.T) {
@@ -396,12 +398,12 @@ func TestExitControlCI_TriggerMode_Local(t *testing.T) {
 			if tc.triggerMode.AutoInitial() {
 				// because this resource SHOULD start automatically, no exit signal should be received before
 				// a build has completed
-				_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-				f.store.requireNoExitSignal()
+				f.MustReconcile(sessionKey)
+				f.requireNotDone()
 
 				// N.B. a build is triggered regardless of if there is an update_cmd! it's a fake build produced
 				// 	by the engine in this case, which is why this test doesn't have cases for empty update_cmd
-				f.store.WithState(func(state *store.EngineState) {
+				f.Store.WithState(func(state *store.EngineState) {
 					mt := state.ManifestTargets["fe"]
 					mt.State.AddCompletedBuild(model.BuildRecord{
 						StartTime:  time.Now(),
@@ -412,12 +414,12 @@ func TestExitControlCI_TriggerMode_Local(t *testing.T) {
 				if tc.serveCmd {
 					// the serve_cmd hasn't started yet, so no exit signal should be received still even though
 					// a build occurred
-					_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-					f.store.requireNoExitSignal()
+					f.MustReconcile(sessionKey)
+					f.requireNotDone()
 
 					// only mimic a runtime state if there is a serve_cmd since this won't be populated
 					// otherwise
-					f.store.WithState(func(state *store.EngineState) {
+					f.Store.WithState(func(state *store.EngineState) {
 						mt := state.ManifestTargets["fe"]
 						mt.State.RuntimeState = store.LocalRuntimeState{
 							CmdName:                  "echo hi",
@@ -433,8 +435,8 @@ func TestExitControlCI_TriggerMode_Local(t *testing.T) {
 
 			// for auto_init=True, it's now ready, so can exit
 			// for auto_init=False, it should NOT block on it, so can exit
-			_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-			f.store.requireExitSignalWithNoError()
+			f.MustReconcile(sessionKey)
+			f.requireDoneWithNoError()
 		})
 	}
 }
@@ -452,10 +454,10 @@ func TestExitControlCI_TriggerMode_K8s(t *testing.T) {
 
 			if triggerMode.AutoInitial() {
 				// because this resource SHOULD start automatically, no exit signal should be received until it's ready
-				_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-				f.store.requireNoExitSignal()
+				f.MustReconcile(sessionKey)
+				f.requireNotDone()
 
-				f.store.WithState(func(state *store.EngineState) {
+				f.Store.WithState(func(state *store.EngineState) {
 					mt := state.ManifestTargets["fe"]
 					mt.State.AddCompletedBuild(model.BuildRecord{
 						StartTime:  time.Now(),
@@ -467,8 +469,8 @@ func TestExitControlCI_TriggerMode_K8s(t *testing.T) {
 
 			// for auto_init=True, it's now ready, so can exit
 			// for auto_init=False, it should NOT block on it, so can exit
-			_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-			f.store.requireExitSignalWithNoError()
+			f.MustReconcile(sessionKey)
+			f.requireDoneWithNoError()
 		})
 	}
 }
@@ -476,7 +478,7 @@ func TestExitControlCI_TriggerMode_K8s(t *testing.T) {
 func TestExitControlCI_Disabled(t *testing.T) {
 	f := newFixture(t, store.EngineModeCI)
 
-	f.store.WithState(func(state *store.EngineState) {
+	f.Store.WithState(func(state *store.EngineState) {
 		m1 := manifestbuilder.New(f, "m1").WithLocalServeCmd("m1").Build()
 		mt1 := store.NewManifestTarget(m1)
 		mt1.State.DisableState = v1alpha1.DisableStateDisabled
@@ -493,14 +495,14 @@ func TestExitControlCI_Disabled(t *testing.T) {
 	})
 
 	// the manifest is disabled, so we should be ready to exit
-	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
-	f.store.requireExitSignalWithNoError()
+	f.MustReconcile(sessionKey)
+	f.requireDoneWithNoError()
 }
 
 func TestStatusDisabled(t *testing.T) {
 	f := newFixture(t, store.EngineModeCI)
 
-	f.store.WithState(func(state *store.EngineState) {
+	f.Store.WithState(func(state *store.EngineState) {
 		m1 := manifestbuilder.New(f, "local_update").WithLocalResource("a", nil).Build()
 		m2 := manifestbuilder.New(f, "local_serve").WithLocalServeCmd("a").Build()
 		m3 := manifestbuilder.New(f, "k8s").WithK8sYAML(testyaml.JobYAML).Build()
@@ -512,7 +514,7 @@ func TestStatusDisabled(t *testing.T) {
 		}
 	})
 
-	_ = f.c.OnChange(f.ctx, f.store, store.LegacyChangeSummary())
+	f.MustReconcile(sessionKey)
 	status := f.sessionStatus()
 	targetbyName := make(map[string]v1alpha1.Target)
 	for _, target := range status.Targets {
@@ -537,24 +539,23 @@ func TestStatusDisabled(t *testing.T) {
 }
 
 type fixture struct {
-	*tempdir.TempDirFixture
-	ctx   context.Context
-	store *testStore
-	c     *Controller
-	cli   ctrlclient.Client
+	*fake.ControllerFixture
+	tf *tempdir.TempDirFixture
+	r  *Reconciler
 }
 
-func newFixture(t *testing.T, engineMode store.EngineMode) *fixture {
-	f := tempdir.NewTempDirFixture(t)
-
-	st := NewTestingStore(t)
+func newFixture(t testing.TB, engineMode store.EngineMode) *fixture {
+	cfb := fake.NewControllerFixtureBuilder(t)
+	tdf := tempdir.NewTempDirFixture(t)
+	st := cfb.Store
+	mn := model.MainTiltfileManifestName
+	tf := &v1alpha1.Tiltfile{
+		ObjectMeta: metav1.ObjectMeta{Name: mn.String()},
+		Spec:       v1alpha1.TiltfileSpec{Path: tdf.JoinPath("Tiltfile")},
+	}
 	st.WithState(func(state *store.EngineState) {
-		mn := model.MainTiltfileManifestName
 		tiltfiles.HandleTiltfileUpsertAction(state, tiltfiles.TiltfileUpsertAction{
-			Tiltfile: &v1alpha1.Tiltfile{
-				ObjectMeta: metav1.ObjectMeta{Name: mn.String()},
-				Spec:       v1alpha1.TiltfileSpec{Path: f.JoinPath("Tiltfile")},
-			},
+			Tiltfile: tf,
 		})
 		state.TiltfileStates[mn].AddCompletedBuild(model.BuildRecord{
 			StartTime:  time.Now(),
@@ -563,23 +564,18 @@ func newFixture(t *testing.T, engineMode store.EngineMode) *fixture {
 		})
 	})
 
-	cli := fake.NewFakeTiltClient()
-	c := NewController(cli, engineMode)
-	ctx := context.Background()
-	l := logger.NewLogger(logger.VerboseLvl, os.Stdout)
-	ctx = logger.WithLogger(ctx, l)
-
+	r := NewReconciler(cfb.Client, st)
+	cf := cfb.Build(r)
+	cf.Create(sessions.FromTiltfile(tf, engineMode))
 	return &fixture{
-		TempDirFixture: f,
-		ctx:            ctx,
-		store:          st,
-		c:              c,
-		cli:            cli,
+		ControllerFixture: cf,
+		tf:                tdf,
+		r:                 r,
 	}
 }
 
 func (f *fixture) upsertManifest(m model.Manifest) {
-	f.store.WithState(func(state *store.EngineState) {
+	f.Store.WithState(func(state *store.EngineState) {
 		mt := store.NewManifestTarget(m)
 		mt.State.DisableState = v1alpha1.DisableStateEnabled
 		state.UpsertManifestTarget(mt)
@@ -587,75 +583,39 @@ func (f *fixture) upsertManifest(m model.Manifest) {
 }
 
 func (f *fixture) sessionStatus() v1alpha1.SessionStatus {
+	f.T().Helper()
 	var session v1alpha1.Session
-	err := f.cli.Get(f.ctx, types.NamespacedName{Name: "Tiltfile"}, &session)
-	require.NoError(f.T(), err)
+	f.MustGet(types.NamespacedName{Name: "Tiltfile"}, &session)
 	return session.Status
 }
 
-type testStore struct {
-	*store.TestingStore
-	t testing.TB
-
-	mu         sync.Mutex
-	lastAction store.Action
+func (f *fixture) requireNotDone() {
+	f.T().Helper()
+	require.False(f.T(), f.sessionStatus().Done)
 }
 
-func NewTestingStore(t testing.TB) *testStore {
-	return &testStore{
-		TestingStore: store.NewTestingStore(),
-		t:            t,
-	}
+func (f *fixture) requireDoneWithError(errString string) {
+	f.T().Helper()
+	status := f.sessionStatus()
+	assert.True(f.T(), status.Done)
+	require.Equal(f.T(), status.Error, errString)
 }
 
-func (s *testStore) LastAction() store.Action {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.lastAction
+func (f *fixture) requireDoneWithNoError() {
+	f.T().Helper()
+	status := f.sessionStatus()
+	assert.True(f.T(), status.Done)
+	require.Equal(f.T(), status.Error, "")
 }
 
-func (s *testStore) ClearLastAction() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.lastAction = nil
+func (f *fixture) JoinPath(path ...string) string {
+	return f.tf.JoinPath(path...)
 }
-
-func (s *testStore) Dispatch(action store.Action) {
-	s.mu.Lock()
-	s.lastAction = action
-	s.mu.Unlock()
-
-	s.TestingStore.Dispatch(action)
-
-	a, ok := action.(sessions.SessionUpdateStatusAction)
-	if ok {
-		state := s.LockMutableStateForTesting()
-		sessions.HandleSessionUpdateStatusAction(state, a)
-		s.UnlockMutableState()
-	}
+func (f *fixture) MkdirAll(path string) {
+	f.tf.MkdirAll(path)
 }
-
-func (s *testStore) requireNoExitSignal() {
-	s.t.Helper()
-	state := s.RLockState()
-	defer s.RUnlockState()
-	require.Falsef(s.t, state.ExitSignal, "ExitSignal was not false, ExitError=%v", state.ExitError)
-}
-
-func (s *testStore) requireExitSignalWithError(errString string) {
-	s.t.Helper()
-	state := s.RLockState()
-	defer s.RUnlockState()
-	require.EqualError(s.t, state.ExitError, errString)
-	assert.True(s.t, state.ExitSignal, "ExitSignal was not true")
-}
-
-func (s *testStore) requireExitSignalWithNoError() {
-	s.t.Helper()
-	state := s.RLockState()
-	defer s.RUnlockState()
-	require.True(s.t, state.ExitSignal, "ExitSignal was not true")
-	require.NoError(s.t, state.ExitError)
+func (f *fixture) Path() string {
+	return f.tf.Path()
 }
 
 func pod(podID k8s.PodID, ready bool) v1alpha1.Pod {
