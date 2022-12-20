@@ -20,6 +20,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/core/liveupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/core/podlogstream"
 	"github.com/tilt-dev/tilt/internal/controllers/core/portforward"
+	"github.com/tilt-dev/tilt/internal/controllers/core/session"
 	"github.com/tilt-dev/tilt/internal/controllers/core/tiltfile"
 	"github.com/tilt-dev/tilt/internal/controllers/core/togglebutton"
 	"github.com/tilt-dev/tilt/internal/controllers/core/uibutton"
@@ -61,6 +62,7 @@ func ProvideControllers(
 	dcr *dockercomposeservice.Reconciler,
 	imr *imagemap.Reconciler,
 	dclsr *dockercomposelogstream.Reconciler,
+	sr *session.Reconciler,
 ) []Controller {
 	return []Controller{
 		fileWatch,
@@ -84,6 +86,7 @@ func ProvideControllers(
 		dcr,
 		imr,
 		dclsr,
+		sr,
 	}
 }
 
@@ -113,4 +116,5 @@ var WireSet = wire.NewSet(
 	dockercomposeservice.WireSet,
 	imagemap.WireSet,
 	dockercomposelogstream.WireSet,
+	session.WireSet,
 )
