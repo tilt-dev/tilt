@@ -7,6 +7,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/tiltfile"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
@@ -16,7 +17,7 @@ const DefaultSessionName = "Tiltfile"
 var processStartTime = time.Now()
 var processPID = int64(os.Getpid())
 
-func FromTiltfile(tf *v1alpha1.Tiltfile, mode store.EngineMode) *v1alpha1.Session {
+func FromTiltfile(tf *v1alpha1.Tiltfile, tlr *tiltfile.TiltfileLoadResult, mode store.EngineMode) *v1alpha1.Session {
 	s := &v1alpha1.Session{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: DefaultSessionName,
@@ -28,6 +29,11 @@ func FromTiltfile(tf *v1alpha1.Tiltfile, mode store.EngineMode) *v1alpha1.Sessio
 			PID:       processPID,
 			StartTime: apis.NewMicroTime(processStartTime),
 		},
+	}
+
+	// TLR may be nil if the tiltfile hasn't finished loading yet.
+	if tlr != nil {
+		s.Spec.CI = tlr.CISettings
 	}
 
 	// currently, manual + CI are the only supported modes; the apiserver will validate this field and reject

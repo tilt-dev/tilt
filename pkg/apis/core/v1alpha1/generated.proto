@@ -2744,6 +2744,10 @@ message TargetStateTerminated {
   //
   // +optional
   optional string error = 3;
+
+  // Errors may be tolerated if the target is still within a grace period set on
+  // the session.
+  optional string graceStatus = 4;
 }
 
 // TargetStateWaiting is a target that has been enqueued for execution but has not yet started.

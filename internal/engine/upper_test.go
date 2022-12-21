@@ -3319,7 +3319,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	fwc := filewatch.NewController(cdc, st, watcher.NewSub, timerMaker.Maker(), v1alpha1.NewScheme(), clock)
 	cmds := cmd.NewController(ctx, fe, fpm, cdc, st, clock, v1alpha1.NewScheme())
 	lsc := local.NewServerController(cdc)
-	sr := ctrlsession.NewReconciler(cdc, st)
+	sr := ctrlsession.NewReconciler(cdc, st, clock)
 	sessionController := session.NewController(sr)
 	ts := hud.NewTerminalStream(hud.NewIncrementalPrinter(log), st)
 	tp := prompt.NewTerminalPrompt(ta, prompt.TTYOpen, openurl.BrowserOpen,

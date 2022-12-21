@@ -13,6 +13,8 @@ import (
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/jonboulle/clockwork"
+
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -30,14 +32,16 @@ type Reconciler struct {
 	client   ctrlclient.Client
 	st       store.RStore
 	requeuer *indexer.Requeuer
+	clock    clockwork.Clock
 }
 
 var _ reconcile.Reconciler = &Reconciler{}
 
-func NewReconciler(client ctrlclient.Client, st store.RStore) *Reconciler {
+func NewReconciler(client ctrlclient.Client, st store.RStore, clock clockwork.Clock) *Reconciler {
 	return &Reconciler{
 		client:   client,
 		st:       st,
+		clock:    clock,
 		requeuer: indexer.NewRequeuer(),
 	}
 }
@@ -60,12 +64,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	r.st.Dispatch(sessions.NewSessionUpsertAction(session))
-
-	err = r.maybeUpdateObjectStatus(ctx, session)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-	return ctrl.Result{}, nil
+	return r.maybeUpdateObjectStatus(ctx, session)
 }
 
 // maybeUpdateObjectStatus builds the latest status for the Session and persists it.
@@ -75,21 +74,22 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 // Reconciler), it will be skipped.
 //
 // Returns the latest object on success.
-func (r *Reconciler) maybeUpdateObjectStatus(ctx context.Context, session *v1alpha1.Session) error {
-	status := r.makeLatestStatus(session)
+func (r *Reconciler) maybeUpdateObjectStatus(ctx context.Context, session *v1alpha1.Session) (ctrl.Result, error) {
+	result := ctrl.Result{}
+	status := r.makeLatestStatus(session, &result)
 	if apicmp.DeepEqual(session.Status, status) {
 		// the status hasn't changed - avoid a spurious update
-		return nil
+		return result, nil
 	}
 
 	update := session.DeepCopy()
 	update.Status = status
 	err := r.client.Status().Update(ctx, update)
 	if err != nil {
-		return err
+		return ctrl.Result{}, err
 	}
 	r.st.Dispatch(sessions.NewSessionUpsertAction(update))
-	return nil
+	return result, nil
 }
 
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {

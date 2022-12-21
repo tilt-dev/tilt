@@ -6595,6 +6595,13 @@ func schema_pkg_apis_core_v1alpha1_TargetStateTerminated(ref common.ReferenceCal
 							Format:      "",
 						},
 					},
+					"graceStatus": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Errors may be tolerated if the target is still within a grace period set on the session.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"startTime", "finishTime"},
 			},

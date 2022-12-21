@@ -248,7 +248,7 @@ func toAPIObjects(
 		result.AddSetForType(&v1alpha1.UIButton{}, toCancelButtons(tlr))
 	}
 
-	result.AddSetForType(&v1alpha1.Session{}, toSessionObjects(nn, tf, mode))
+	result.AddSetForType(&v1alpha1.Session{}, toSessionObjects(nn, tf, tlr, mode))
 	result.AddSetForType(&v1alpha1.UIResource{}, toUIResourceObjects(tf, tlr, disableSources))
 
 	watchInputs := WatchInputs{
@@ -589,12 +589,12 @@ func toImageMapObjects(tlr *tiltfile.TiltfileLoadResult, disableSources disableS
 }
 
 // Creates an object representing the tilt session and exit conditions.
-func toSessionObjects(nn types.NamespacedName, tf *v1alpha1.Tiltfile, mode store.EngineMode) apiset.TypedObjectSet {
+func toSessionObjects(nn types.NamespacedName, tf *v1alpha1.Tiltfile, tlr *tiltfile.TiltfileLoadResult, mode store.EngineMode) apiset.TypedObjectSet {
 	result := apiset.TypedObjectSet{}
 	if nn.Name != model.MainTiltfileManifestName.String() {
 		return result
 	}
-	result[sessions.DefaultSessionName] = sessions.FromTiltfile(tf, mode)
+	result[sessions.DefaultSessionName] = sessions.FromTiltfile(tf, tlr, mode)
 	return result
 }
 

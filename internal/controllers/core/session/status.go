@@ -4,12 +4,15 @@ import (
 	"fmt"
 	"sort"
 
+	ctrl "sigs.k8s.io/controller-runtime"
+
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
+	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-func (r *Reconciler) makeLatestStatus(session *v1alpha1.Session) v1alpha1.SessionStatus {
+func (r *Reconciler) makeLatestStatus(session *v1alpha1.Session, result *ctrl.Result) v1alpha1.SessionStatus {
 	state := r.st.RLockState()
 	defer r.st.RUnlockState()
 
@@ -31,18 +34,19 @@ func (r *Reconciler) makeLatestStatus(session *v1alpha1.Session) v1alpha1.Sessio
 	_, holds := buildcontrol.NextTargetToBuild(state)
 
 	for _, mt := range state.ManifestTargets {
-		status.Targets = append(status.Targets, targetsForResource(mt, holds)...)
+		status.Targets = append(status.Targets, r.targetsForResource(mt, holds, session.Spec.CI, result)...)
 	}
 	// ensure consistent ordering to avoid unnecessary updates
 	sort.SliceStable(status.Targets, func(i, j int) bool {
 		return status.Targets[i].Name < status.Targets[j].Name
 	})
 
-	processExitCondition(session.Spec.ExitCondition, &status)
+	r.processExitCondition(session.Spec, &state, &status)
 	return status
 }
 
-func processExitCondition(exitCondition v1alpha1.ExitCondition, status *v1alpha1.SessionStatus) {
+func (r *Reconciler) processExitCondition(spec v1alpha1.SessionSpec, state *store.EngineState, status *v1alpha1.SessionStatus) {
+	exitCondition := spec.ExitCondition
 	if exitCondition == v1alpha1.ExitConditionManual {
 		return
 	} else if exitCondition != v1alpha1.ExitConditionCI {
@@ -56,9 +60,21 @@ func processExitCondition(exitCondition v1alpha1.ExitCondition, status *v1alpha1
 			// if all states are nil, the target has not been requested to run, e.g. auto_init=False
 			continue
 		}
-		if res.State.Terminated != nil && res.State.Terminated.Error != "" {
+
+		isTerminated := res.State.Terminated != nil && res.State.Terminated.Error != ""
+		if isTerminated {
+			if res.State.Terminated.GraceStatus == v1alpha1.TargetGraceTolerated {
+				allResourcesOK = false
+				continue
+			}
+
+			err := res.State.Terminated.Error
+			if res.State.Terminated.GraceStatus == v1alpha1.TargetGraceExceeded {
+				err = fmt.Sprintf("exceeded grace period: %v", err)
+			}
+
 			status.Done = true
-			status.Error = res.State.Terminated.Error
+			status.Error = err
 			return
 		}
 		if res.State.Waiting != nil {

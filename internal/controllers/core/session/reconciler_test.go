@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
@@ -20,6 +21,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/store/tiltfiles"
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -125,6 +127,55 @@ func TestExitControlCI_FirstRuntimeFailure(t *testing.T) {
 
 	f.MustReconcile(sessionKey)
 	f.requireDoneWithError("Pod pod-a in error state due to container c1: ErrImagePull")
+}
+
+func TestExitControlCI_GracePeriod(t *testing.T) {
+	f := newFixture(t, store.EngineModeCI)
+
+	var session v1alpha1.Session
+	f.MustGet(types.NamespacedName{Name: "Tiltfile"}, &session)
+	session.Spec.CI = &v1alpha1.SessionCISpec{K8sGracePeriod: &metav1.Duration{Duration: time.Minute}}
+	f.Update(&session)
+
+	m := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
+	f.upsertManifest(m)
+	f.Store.WithState(func(state *store.EngineState) {
+		mt := state.ManifestTargets["fe"]
+		mt.State.AddCompletedBuild(model.BuildRecord{
+			StartTime:  f.clock.Now(),
+			FinishTime: f.clock.Now(),
+		})
+		mt.State.LastSuccessfulDeployTime = f.clock.Now()
+		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, v1alpha1.Pod{
+			Name:   "pod-a",
+			Status: "ErrImagePull",
+			Containers: []v1alpha1.Container{
+				{
+					Name: "c1",
+					State: v1alpha1.ContainerState{
+						Terminated: &v1alpha1.ContainerStateTerminated{
+							StartedAt:  apis.NewTime(f.clock.Now()),
+							FinishedAt: apis.NewTime(f.clock.Now()),
+							Reason:     "Error",
+							ExitCode:   127,
+						},
+					},
+				},
+			},
+		})
+	})
+
+	f.MustReconcile(sessionKey)
+	f.requireNotDone()
+
+	f.clock.Advance(50 * time.Second)
+
+	f.MustReconcile(sessionKey)
+	f.requireNotDone()
+
+	f.clock.Advance(20 * time.Second)
+	f.MustReconcile(sessionKey)
+	f.requireDoneWithError("exceeded grace period: Pod pod-a in error state due to container c1: ErrImagePull")
 }
 
 func TestExitControlCI_PodRunningContainerError(t *testing.T) {
@@ -540,8 +591,9 @@ func TestStatusDisabled(t *testing.T) {
 
 type fixture struct {
 	*fake.ControllerFixture
-	tf *tempdir.TempDirFixture
-	r  *Reconciler
+	tf    *tempdir.TempDirFixture
+	r     *Reconciler
+	clock clockwork.FakeClock
 }
 
 func newFixture(t testing.TB, engineMode store.EngineMode) *fixture {
@@ -564,13 +616,15 @@ func newFixture(t testing.TB, engineMode store.EngineMode) *fixture {
 		})
 	})
 
-	r := NewReconciler(cfb.Client, st)
+	clock := clockwork.NewFakeClock()
+	r := NewReconciler(cfb.Client, st, clock)
 	cf := cfb.Build(r)
-	cf.Create(sessions.FromTiltfile(tf, engineMode))
+	cf.Create(sessions.FromTiltfile(tf, nil, engineMode))
 	return &fixture{
 		ControllerFixture: cf,
 		tf:                tdf,
 		r:                 r,
+		clock:             clock,
 	}
 }
 
