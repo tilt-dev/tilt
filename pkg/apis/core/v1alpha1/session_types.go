@@ -249,6 +249,21 @@ type TargetStateActive struct {
 	Ready bool `json:"ready" protobuf:"varint,2,opt,name=ready"`
 }
 
+type TargetGraceStatus string
+
+const (
+	// No grace period applies to the target.
+	TargetGraceNotApplicable TargetGraceStatus = ""
+
+	// The target is in the error state, but has not
+	// yet exceeded the grace period.
+	TargetGraceTolerated TargetGraceStatus = "Tolerated"
+
+	// The target was in an error state longer than
+	// the grace perod.
+	TargetGraceExceeded TargetGraceStatus = "Exceeded"
+)
+
 // TargetStateTerminated is a target that finished running, either because it completed successfully or
 // encountered an error.
 type TargetStateTerminated struct {
@@ -263,6 +278,10 @@ type TargetStateTerminated struct {
 	//
 	// +optional
 	Error string `json:"error,omitempty" protobuf:"bytes,3,opt,name=error"`
+
+	// Errors may be tolerated if the target is still within a grace period set on
+	// the session.
+	GraceStatus TargetGraceStatus `json:"graceStatus,omitempty" protobuf:"bytes,4,opt,name=graceStatus,casttype=TargetGraceStatus"`
 }
 
 // TargetStateDisabled is a target that has been disabled.

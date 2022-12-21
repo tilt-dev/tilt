@@ -3,8 +3,10 @@ package session
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	v1 "k8s.io/api/core/v1"
+	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
@@ -16,21 +18,21 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-func targetsForResource(mt *store.ManifestTarget, holds buildcontrol.HoldSet) []session.Target {
+func (r *Reconciler) targetsForResource(mt *store.ManifestTarget, holds buildcontrol.HoldSet, ci *v1alpha1.SessionCISpec, result *ctrl.Result) []session.Target {
 	var targets []session.Target
 
 	if bt := buildTarget(mt, holds); bt != nil {
 		targets = append(targets, *bt)
 	}
 
-	if rt := runtimeTarget(mt, holds); rt != nil {
+	if rt := r.runtimeTarget(mt, holds, ci, result); rt != nil {
 		targets = append(targets, *rt)
 	}
 
 	return targets
 }
 
-func k8sRuntimeTarget(mt *store.ManifestTarget) *session.Target {
+func (r *Reconciler) k8sRuntimeTarget(mt *store.ManifestTarget, ci *v1alpha1.SessionCISpec, result *ctrl.Result) *session.Target {
 	krs := mt.State.K8sRuntimeState()
 	if mt.Manifest.PodReadinessMode() == model.PodReadinessIgnore && krs.HasEverDeployedSuccessfully && krs.PodLen() == 0 {
 		// HACK: engine assumes anything with an image will create a pod; PodReadinessIgnore is used in these
@@ -56,7 +58,35 @@ func k8sRuntimeTarget(mt *store.ManifestTarget) *session.Target {
 	status := mt.RuntimeStatus()
 	pod := krs.MostRecentPod()
 	phase := v1.PodPhase(pod.Phase)
-	createdAt := apis.NewMicroTime(pod.CreatedAt.Time)
+
+	// A Target's StartTime / FinishTime is meant to be a total representation
+	// of when the YAML started deploying until when it became ready. We
+	// also want it to persist across pod restarts, so we can use it
+	// to check if the pod is within the grace period.
+	//
+	// Ideally, we'd use KubernetesApply's LastApplyStartTime, but this
+	// is LastSuccessfulDeployTime is good enough.
+	createdAt := apis.NewMicroTime(mt.State.LastSuccessfulDeployTime)
+	k8sGracePeriod := time.Duration(0)
+	if ci != nil && ci.K8sGracePeriod != nil {
+		k8sGracePeriod = ci.K8sGracePeriod.Duration
+	}
+
+	graceStatus := v1alpha1.TargetGraceNotApplicable
+	if k8sGracePeriod > 0 && !createdAt.Time.IsZero() {
+		graceSoFar := r.clock.Since(createdAt.Time)
+		if k8sGracePeriod <= graceSoFar {
+			graceStatus = v1alpha1.TargetGraceExceeded
+		} else {
+			graceStatus = v1alpha1.TargetGraceTolerated
+
+			// Use the ctrl.Result to schedule a reconcile.
+			requeueAfter := k8sGracePeriod - graceSoFar
+			if result.RequeueAfter == 0 || result.RequeueAfter < requeueAfter {
+				result.RequeueAfter = requeueAfter
+			}
+		}
+	}
 
 	if status == v1alpha1.RuntimeStatusOK {
 		if v1.PodSucceeded == phase {
@@ -80,8 +110,9 @@ func k8sRuntimeTarget(mt *store.ManifestTarget) *session.Target {
 				podErr = fmt.Sprintf("Pod %q failed", pod.Name)
 			}
 			target.State.Terminated = &session.TargetStateTerminated{
-				StartTime: createdAt,
-				Error:     podErr,
+				StartTime:   createdAt,
+				Error:       podErr,
+				GraceStatus: graceStatus,
 			}
 			return target
 		}
@@ -92,14 +123,16 @@ func k8sRuntimeTarget(mt *store.ManifestTarget) *session.Target {
 					StartTime: apis.NewMicroTime(pod.CreatedAt.Time),
 					Error: fmt.Sprintf("Pod %s in error state due to container %s: %s",
 						pod.Name, ctr.Name, pod.Status),
+					GraceStatus: graceStatus,
 				}
 				return target
 			}
 		}
 
 		target.State.Terminated = &session.TargetStateTerminated{
-			StartTime: createdAt,
-			Error:     "unknown error",
+			StartTime:   createdAt,
+			Error:       "unknown error",
+			GraceStatus: graceStatus,
 		}
 		return target
 	}
@@ -129,7 +162,7 @@ func k8sRuntimeTarget(mt *store.ManifestTarget) *session.Target {
 	return target
 }
 
-func localServeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *session.Target {
+func (r *Reconciler) localServeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *session.Target {
 	if mt.Manifest.LocalTarget().ServeCmd.Empty() {
 		// there is no serve_cmd, so don't return a runtime target at all
 		// (there will still be a build target from the update cmd)
@@ -178,7 +211,7 @@ func localServeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *ses
 //
 // This is both used for target types that don't require specialized logic (Docker Compose) as well as a fallback for
 // any new types that don't have deeper support here.
-func genericRuntimeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *session.Target {
+func (r *Reconciler) genericRuntimeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *session.Target {
 	target := &session.Target{
 		Name:      fmt.Sprintf("%s:runtime", mt.Manifest.Name.String()),
 		Resources: []string{mt.Manifest.Name.String()},
@@ -214,13 +247,13 @@ func genericRuntimeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) 
 	return target
 }
 
-func runtimeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *session.Target {
+func (r *Reconciler) runtimeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet, ci *v1alpha1.SessionCISpec, result *ctrl.Result) *session.Target {
 	if mt.Manifest.IsK8s() {
-		return k8sRuntimeTarget(mt)
+		return r.k8sRuntimeTarget(mt, ci, result)
 	} else if mt.Manifest.IsLocal() {
-		return localServeTarget(mt, holds)
+		return r.localServeTarget(mt, holds)
 	} else {
-		return genericRuntimeTarget(mt, holds)
+		return r.genericRuntimeTarget(mt, holds)
 	}
 }
 
