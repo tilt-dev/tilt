@@ -54,13 +54,14 @@ func RegistryFromCluster(cluster *v1alpha1.Cluster) (*v1alpha1.RegistryHosting, 
 		return nil, fmt.Errorf("cluster not ready: %s", cluster.Status.Error)
 	}
 
-	if cluster.Status.Registry != nil {
-		return cluster.Status.Registry.DeepCopy(), nil
+	if cluster.Spec.DefaultRegistry != nil {
+		// user specified registry
+		return cluster.Spec.DefaultRegistry.DeepCopy(), nil
 	}
 
-	if cluster.Spec.DefaultRegistry != nil {
-		// no local registry is configured for this cluster, so use the default
-		return cluster.Spec.DefaultRegistry.DeepCopy(), nil
+	if cluster.Status.Registry != nil {
+		// discovered registry
+		return cluster.Status.Registry.DeepCopy(), nil
 	}
 
 	return nil, nil

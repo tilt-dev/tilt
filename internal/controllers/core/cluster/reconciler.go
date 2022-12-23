@@ -334,7 +334,9 @@ func (r *Reconciler) populateK8sMetadata(ctx context.Context, clusterNN types.Na
 
 	if conn.registry == nil {
 		reg := conn.k8sClient.LocalRegistry(ctx)
-		if !container.IsEmptyRegistry(reg) {
+		if conn.spec.DefaultRegistry != nil {
+			logger.Get(ctx).Debugf("Using default registry from Tiltfile: %s", conn.spec.DefaultRegistry)
+		} else if !container.IsEmptyRegistry(reg) {
 			// If we've found a local registry in the cluster at run-time, use that
 			// instead of the default_registry (if any) declared in the Tiltfile
 			logger.Get(ctx).Infof("Auto-detected local registry from environment: %s", reg)
@@ -343,8 +345,6 @@ func (r *Reconciler) populateK8sMetadata(ctx context.Context, clusterNN types.Na
 				// The user has specified a default registry in their Tiltfile, but it will be ignored.
 				logger.Get(ctx).Infof("Default registry specified, but will be ignored in favor of auto-detected registry.")
 			}
-		} else if conn.spec.DefaultRegistry != nil {
-			logger.Get(ctx).Debugf("Using default registry from Tiltfile: %s", conn.spec.DefaultRegistry)
 		} else {
 			logger.Get(ctx).Debugf(
 				"No local registry detected and no default registry set for cluster %q",
