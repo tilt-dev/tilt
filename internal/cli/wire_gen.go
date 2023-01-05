@@ -74,6 +74,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/internal/tiltfile"
+	"github.com/tilt-dev/tilt/internal/tiltfile/cisettings"
 	"github.com/tilt-dev/tilt/internal/tiltfile/config"
 	"github.com/tilt-dev/tilt/internal/tiltfile/k8scontext"
 	"github.com/tilt-dev/tilt/internal/tiltfile/tiltextension"
@@ -115,6 +116,8 @@ func wireTiltfileResult(ctx context.Context, analytics2 *analytics.TiltAnalytics
 	scheme := v1alpha1.NewScheme()
 	extensionReconciler := extension.NewReconciler(deferredClient, scheme, analytics2)
 	tiltextensionPlugin := tiltextension.NewPlugin(reconciler, extensionReconciler)
+	ciTimeoutFlag := provideCITimeoutFlag()
+	cisettingsPlugin := cisettings.NewPlugin(ciTimeoutFlag)
 	realClientCreator := _wireRealClientCreatorValue
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
@@ -131,7 +134,7 @@ func wireTiltfileResult(ctx context.Context, analytics2 *analytics.TiltAnalytics
 	env := localexec.DefaultEnv(webPort, webHost)
 	processExecer := localexec.NewProcessExecer(env)
 	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, plugin, versionPlugin, configPlugin, tiltextensionPlugin, dockerComposeClient, webHost, processExecer, defaults, product)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, plugin, versionPlugin, configPlugin, tiltextensionPlugin, cisettingsPlugin, dockerComposeClient, webHost, processExecer, defaults, product)
 	cliCmdTiltfileResultDeps := newTiltfileResultDeps(tiltfileLoader)
 	return cliCmdTiltfileResultDeps, nil
 }
@@ -182,13 +185,15 @@ func wireDockerPrune(ctx context.Context, analytics2 *analytics.TiltAnalytics, s
 	scheme := v1alpha1.NewScheme()
 	extensionReconciler := extension.NewReconciler(deferredClient, scheme, analytics2)
 	tiltextensionPlugin := tiltextension.NewPlugin(reconciler, extensionReconciler)
+	ciTimeoutFlag := provideCITimeoutFlag()
+	cisettingsPlugin := cisettings.NewPlugin(ciTimeoutFlag)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	webHost := provideWebHost()
 	webPort := provideWebPort()
 	env := localexec.DefaultEnv(webPort, webHost)
 	processExecer := localexec.NewProcessExecer(env)
 	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, plugin, versionPlugin, configPlugin, tiltextensionPlugin, dockerComposeClient, webHost, processExecer, defaults, product)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, plugin, versionPlugin, configPlugin, tiltextensionPlugin, cisettingsPlugin, dockerComposeClient, webHost, processExecer, defaults, product)
 	cliDpDeps := newDPDeps(compositeClient, client, tiltfileLoader)
 	return cliDpDeps, nil
 }
@@ -307,11 +312,13 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	}
 	extensionReconciler := extension.NewReconciler(deferredClient, scheme, analytics3)
 	tiltextensionPlugin := tiltextension.NewPlugin(extensionrepoReconciler, extensionReconciler)
+	ciTimeoutFlag := provideCITimeoutFlag()
+	cisettingsPlugin := cisettings.NewPlugin(ciTimeoutFlag)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, plugin, versionPlugin, configPlugin, tiltextensionPlugin, dockerComposeClient, webHost, processExecer, defaults, product)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, plugin, versionPlugin, configPlugin, tiltextensionPlugin, cisettingsPlugin, dockerComposeClient, webHost, processExecer, defaults, product)
 	engineMode := _wireEngineModeValue
-	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, compositeClient, deferredClient, scheme, engineMode, k8sKubeContextOverride, k8sNamespaceOverride)
+	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, compositeClient, deferredClient, scheme, engineMode, k8sKubeContextOverride, k8sNamespaceOverride, ciTimeoutFlag)
 	togglebuttonReconciler := togglebutton.NewReconciler(deferredClient, scheme)
 	dockerUpdater := containerupdate.NewDockerUpdater(compositeClient)
 	execUpdater := containerupdate.NewExecUpdater(client)
@@ -515,11 +522,13 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	}
 	extensionReconciler := extension.NewReconciler(deferredClient, scheme, analytics3)
 	tiltextensionPlugin := tiltextension.NewPlugin(extensionrepoReconciler, extensionReconciler)
+	ciTimeoutFlag := provideCITimeoutFlag()
+	cisettingsPlugin := cisettings.NewPlugin(ciTimeoutFlag)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, plugin, versionPlugin, configPlugin, tiltextensionPlugin, dockerComposeClient, webHost, processExecer, defaults, product)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, plugin, versionPlugin, configPlugin, tiltextensionPlugin, cisettingsPlugin, dockerComposeClient, webHost, processExecer, defaults, product)
 	engineMode := _wireStoreEngineModeValue
-	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, compositeClient, deferredClient, scheme, engineMode, k8sKubeContextOverride, k8sNamespaceOverride)
+	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, compositeClient, deferredClient, scheme, engineMode, k8sKubeContextOverride, k8sNamespaceOverride, ciTimeoutFlag)
 	togglebuttonReconciler := togglebutton.NewReconciler(deferredClient, scheme)
 	dockerUpdater := containerupdate.NewDockerUpdater(compositeClient)
 	execUpdater := containerupdate.NewExecUpdater(client)
@@ -719,11 +728,13 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	}
 	extensionReconciler := extension.NewReconciler(deferredClient, scheme, analytics3)
 	tiltextensionPlugin := tiltextension.NewPlugin(extensionrepoReconciler, extensionReconciler)
+	ciTimeoutFlag := provideCITimeoutFlag()
+	cisettingsPlugin := cisettings.NewPlugin(ciTimeoutFlag)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, plugin, versionPlugin, configPlugin, tiltextensionPlugin, dockerComposeClient, webHost, processExecer, defaults, product)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, plugin, versionPlugin, configPlugin, tiltextensionPlugin, cisettingsPlugin, dockerComposeClient, webHost, processExecer, defaults, product)
 	engineMode := _wireEngineModeValue2
-	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, compositeClient, deferredClient, scheme, engineMode, k8sKubeContextOverride, k8sNamespaceOverride)
+	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, compositeClient, deferredClient, scheme, engineMode, k8sKubeContextOverride, k8sNamespaceOverride, ciTimeoutFlag)
 	togglebuttonReconciler := togglebutton.NewReconciler(deferredClient, scheme)
 	dockerUpdater := containerupdate.NewDockerUpdater(compositeClient)
 	execUpdater := containerupdate.NewExecUpdater(k8sClient)
@@ -960,6 +971,8 @@ func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, s
 	scheme := v1alpha1.NewScheme()
 	extensionReconciler := extension.NewReconciler(deferredClient, scheme, tiltAnalytics)
 	tiltextensionPlugin := tiltextension.NewPlugin(reconciler, extensionReconciler)
+	ciTimeoutFlag := provideCITimeoutFlag()
+	cisettingsPlugin := cisettings.NewPlugin(ciTimeoutFlag)
 	realClientCreator := _wireRealClientCreatorValue
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
@@ -976,7 +989,7 @@ func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, s
 	env := localexec.DefaultEnv(webPort, webHost)
 	processExecer := localexec.NewProcessExecer(env)
 	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(tiltAnalytics, plugin, versionPlugin, configPlugin, tiltextensionPlugin, dockerComposeClient, webHost, processExecer, defaults, product)
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(tiltAnalytics, plugin, versionPlugin, configPlugin, tiltextensionPlugin, cisettingsPlugin, dockerComposeClient, webHost, processExecer, defaults, product)
 	downDeps := ProvideDownDeps(tiltfileLoader, dockerComposeClient, k8sClient, processExecer)
 	return downDeps, nil
 }
@@ -1081,7 +1094,8 @@ var K8sWireSet = wire.NewSet(k8s.ProvideClusterProduct, k8s.ProvideClusterName, 
 	ProvideNamespaceOverride)
 
 var BaseWireSet = wire.NewSet(
-	K8sWireSet, tiltfile.WireSet, git.ProvideGitRemote, localexec.DefaultEnv, localexec.NewProcessExecer, wire.Bind(new(localexec.Execer), new(*localexec.ProcessExecer)), docker.SwitchWireSet, dockercompose.NewDockerComposeClient, clockwork.NewRealClock, engine.DeployerWireSet, engine.NewBuildController, local.NewServerController, kubernetesdiscovery.NewContainerRestartDetector, k8swatch.NewServiceWatcher, k8swatch.NewEventWatchManager, uisession2.NewSubscriber, uiresource2.NewSubscriber, configs.NewConfigsController, configs.NewTriggerQueueSubscriber, telemetry.NewController, cloud.WireSet, cloudurl.ProvideAddress, k8srollout.NewPodMonitor, telemetry.NewStartTracker, session2.NewController, build.ProvideClock, provideClock, hud.WireSet, prompt.WireSet, wire.Value(openurl.OpenURL(openurl.BrowserOpen)), provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(*store.Store)), wire.Bind(new(store.Dispatcher), new(*store.Store)), dockerprune.NewDockerPruner, provideTiltInfo, engine.NewUpper, analytics2.NewAnalyticsUpdater, analytics2.ProvideAnalyticsReporter, provideUpdateModeFlag, fsevent.ProvideWatcherMaker, fsevent.ProvideTimerMaker, controllers.WireSet, provideWebVersion,
+	K8sWireSet, tiltfile.WireSet, git.ProvideGitRemote, localexec.DefaultEnv, localexec.NewProcessExecer, wire.Bind(new(localexec.Execer), new(*localexec.ProcessExecer)), docker.SwitchWireSet, dockercompose.NewDockerComposeClient, clockwork.NewRealClock, engine.DeployerWireSet, engine.NewBuildController, local.NewServerController, kubernetesdiscovery.NewContainerRestartDetector, k8swatch.NewServiceWatcher, k8swatch.NewEventWatchManager, uisession2.NewSubscriber, uiresource2.NewSubscriber, configs.NewConfigsController, configs.NewTriggerQueueSubscriber, telemetry.NewController, cloud.WireSet, cloudurl.ProvideAddress, k8srollout.NewPodMonitor, telemetry.NewStartTracker, session2.NewController, build.ProvideClock, provideClock, hud.WireSet, prompt.WireSet, wire.Value(openurl.OpenURL(openurl.BrowserOpen)), provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(*store.Store)), wire.Bind(new(store.Dispatcher), new(*store.Store)), dockerprune.NewDockerPruner, provideTiltInfo, engine.NewUpper, analytics2.NewAnalyticsUpdater, analytics2.ProvideAnalyticsReporter, provideUpdateModeFlag, fsevent.ProvideWatcherMaker, fsevent.ProvideTimerMaker, controllers.WireSet, provideCITimeoutFlag,
+	provideWebVersion,
 	provideWebMode,
 	provideWebURL,
 	provideWebPort,
@@ -1160,4 +1174,8 @@ func provideClock() func() time.Time {
 type DumpImageDeployRefDeps struct {
 	DockerBuilder *build.DockerBuilder
 	DockerClient  docker.Client
+}
+
+func provideCITimeoutFlag() model.CITimeoutFlag {
+	return model.CITimeoutFlag(ciTimeout)
 }

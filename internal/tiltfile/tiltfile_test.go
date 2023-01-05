@@ -36,6 +36,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/sliceutils"
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/internal/tiltfile/cisettings"
 	"github.com/tilt-dev/tilt/internal/tiltfile/config"
 	"github.com/tilt-dev/tilt/internal/tiltfile/hasher"
 	tiltfile_k8s "github.com/tilt-dev/tilt/internal/tiltfile/k8s"
@@ -5796,8 +5797,9 @@ func (f *fixture) newTiltfileLoader() TiltfileLoader {
 	extr := tiltextension.NewFakeExtReconciler(f.Path())
 	extrr := tiltextension.NewFakeExtRepoReconciler(f.Path())
 	extPlugin := tiltextension.NewFakePlugin(extrr, extr)
+	ciSettingsPlugin := cisettings.NewPlugin(0)
 	return ProvideTiltfileLoader(f.ta, k8sContextPlugin, versionPlugin, configPlugin,
-		extPlugin, dcc, f.webHost, execer, f.features, f.k8sEnv)
+		extPlugin, ciSettingsPlugin, dcc, f.webHost, execer, f.features, f.k8sEnv)
 }
 
 func newFixture(t *testing.T) *fixture {

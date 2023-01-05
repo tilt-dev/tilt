@@ -55,6 +55,7 @@ func updateOwnedObjects(
 	tf *v1alpha1.Tiltfile,
 	tlr *tiltfile.TiltfileLoadResult,
 	changeEnabledResources bool,
+	ciTimeoutFlag model.CITimeoutFlag,
 	mode store.EngineMode,
 	defaultK8sConnection *v1alpha1.KubernetesClusterConnection,
 ) error {
@@ -78,7 +79,7 @@ func updateOwnedObjects(
 		}
 	}
 
-	apiObjects := toAPIObjects(nn, tf, tlr, mode, defaultK8sConnection, disableSources)
+	apiObjects := toAPIObjects(nn, tf, tlr, ciTimeoutFlag, mode, defaultK8sConnection, disableSources)
 
 	// Propagate labels and owner references from the parent tiltfile.
 	for _, objMap := range apiObjects {
@@ -223,6 +224,7 @@ func toAPIObjects(
 	nn types.NamespacedName,
 	tf *v1alpha1.Tiltfile,
 	tlr *tiltfile.TiltfileLoadResult,
+	ciTimeoutFlag model.CITimeoutFlag,
 	mode store.EngineMode,
 	defaultK8sConnection *v1alpha1.KubernetesClusterConnection,
 	disableSources disableSourceMap,
@@ -248,7 +250,7 @@ func toAPIObjects(
 		result.AddSetForType(&v1alpha1.UIButton{}, toCancelButtons(tlr))
 	}
 
-	result.AddSetForType(&v1alpha1.Session{}, toSessionObjects(nn, tf, tlr, mode))
+	result.AddSetForType(&v1alpha1.Session{}, toSessionObjects(nn, tf, tlr, ciTimeoutFlag, mode))
 	result.AddSetForType(&v1alpha1.UIResource{}, toUIResourceObjects(tf, tlr, disableSources))
 
 	watchInputs := WatchInputs{
@@ -589,12 +591,12 @@ func toImageMapObjects(tlr *tiltfile.TiltfileLoadResult, disableSources disableS
 }
 
 // Creates an object representing the tilt session and exit conditions.
-func toSessionObjects(nn types.NamespacedName, tf *v1alpha1.Tiltfile, tlr *tiltfile.TiltfileLoadResult, mode store.EngineMode) apiset.TypedObjectSet {
+func toSessionObjects(nn types.NamespacedName, tf *v1alpha1.Tiltfile, tlr *tiltfile.TiltfileLoadResult, ciTimeoutFlag model.CITimeoutFlag, mode store.EngineMode) apiset.TypedObjectSet {
 	result := apiset.TypedObjectSet{}
 	if nn.Name != model.MainTiltfileManifestName.String() {
 		return result
 	}
-	result[sessions.DefaultSessionName] = sessions.FromTiltfile(tf, tlr, mode)
+	result[sessions.DefaultSessionName] = sessions.FromTiltfile(tf, tlr, ciTimeoutFlag, mode)
 	return result
 }
 

@@ -496,7 +496,7 @@ func newFixture(t *testing.T) *fixture {
 	st := NewTestingStore()
 	tfl := tiltfile.NewFakeTiltfileLoader()
 	d := docker.NewFakeClient()
-	r := NewReconciler(st, tfl, d, cfb.Client, v1alpha1.NewScheme(), store.EngineModeUp, "", "")
+	r := NewReconciler(st, tfl, d, cfb.Client, v1alpha1.NewScheme(), store.EngineModeUp, "", "", 0)
 	q := workqueue.NewRateLimitingQueue(
 		workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, time.Millisecond))
 	_ = r.requeuer.Start(context.Background(), handler.Funcs{}, q)

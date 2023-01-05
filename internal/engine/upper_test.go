@@ -94,6 +94,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/testutils/servicebuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/internal/tiltfile"
+	"github.com/tilt-dev/tilt/internal/tiltfile/cisettings"
 	"github.com/tilt-dev/tilt/internal/tiltfile/config"
 	"github.com/tilt-dev/tilt/internal/tiltfile/k8scontext"
 	"github.com/tilt-dev/tilt/internal/tiltfile/tiltextension"
@@ -3216,7 +3217,9 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	extPlugin := tiltextension.NewFakePlugin(
 		tiltextension.NewFakeExtRepoReconciler(f.Path()),
 		tiltextension.NewFakeExtReconciler(f.Path()))
-	realTFL := tiltfile.ProvideTiltfileLoader(ta, k8sContextPlugin, versionPlugin, configPlugin, extPlugin,
+	ciSettingsPlugin := cisettings.NewPlugin(0)
+	realTFL := tiltfile.ProvideTiltfileLoader(ta,
+		k8sContextPlugin, versionPlugin, configPlugin, extPlugin, ciSettingsPlugin,
 		fakeDcc, "localhost", execer, feature.MainDefaults, env)
 	tfl := tiltfile.NewFakeTiltfileLoader()
 	cc := configs.NewConfigsController(cdc)
@@ -3265,7 +3268,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	dcds := dockercomposeservice.NewDisableSubscriber(ctx, fakeDcc, clock)
 	dcr := dockercomposeservice.NewReconciler(cdc, fakeDcc, dockerClient, st, sch, dcds)
 
-	tfr := ctrltiltfile.NewReconciler(st, tfl, dockerClient, cdc, sch, engineMode, "", "")
+	tfr := ctrltiltfile.NewReconciler(st, tfl, dockerClient, cdc, sch, engineMode, "", "", 0)
 	tbr := togglebutton.NewReconciler(cdc, sch)
 	extr := extension.NewReconciler(cdc, sch, ta)
 	extrr, err := extensionrepo.NewReconciler(cdc, st, base)

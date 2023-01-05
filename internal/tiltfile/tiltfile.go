@@ -101,6 +101,7 @@ func ProvideTiltfileLoader(
 	versionPlugin version.Plugin,
 	configPlugin *config.Plugin,
 	extensionPlugin *tiltextension.Plugin,
+	ciSettingsPlugin cisettings.Plugin,
 	dcCli dockercompose.DockerComposeClient,
 	webHost model.WebHost,
 	execer localexec.Execer,
@@ -112,6 +113,7 @@ func ProvideTiltfileLoader(
 		versionPlugin:    versionPlugin,
 		configPlugin:     configPlugin,
 		extensionPlugin:  extensionPlugin,
+		ciSettingsPlugin: ciSettingsPlugin,
 		dcCli:            dcCli,
 		webHost:          webHost,
 		execer:           execer,
@@ -130,6 +132,7 @@ type tiltfileLoader struct {
 	versionPlugin    version.Plugin
 	configPlugin     *config.Plugin
 	extensionPlugin  *tiltextension.Plugin
+	ciSettingsPlugin cisettings.Plugin
 	fDefaults        feature.Defaults
 	env              clusterid.Product
 }
@@ -171,7 +174,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, tf *corev1alpha1.Tiltfile, p
 	tlr.Tiltignore = tiltignore
 
 	s := newTiltfileState(ctx, tfl.dcCli, tfl.webHost, tfl.execer, tfl.k8sContextPlugin, tfl.versionPlugin,
-		tfl.configPlugin, tfl.extensionPlugin, feature.FromDefaults(tfl.fDefaults))
+		tfl.configPlugin, tfl.extensionPlugin, tfl.ciSettingsPlugin, feature.FromDefaults(tfl.fDefaults))
 
 	manifests, result, err := s.loadManifests(tf)
 

@@ -178,6 +178,30 @@ func TestExitControlCI_GracePeriod(t *testing.T) {
 	f.requireDoneWithError("exceeded grace period: Pod pod-a in error state due to container c1: ErrImagePull")
 }
 
+func TestExitControlCI_Timeout(t *testing.T) {
+	f := newFixture(t, store.EngineModeCI)
+
+	var session v1alpha1.Session
+	f.MustGet(types.NamespacedName{Name: "Tiltfile"}, &session)
+	session.Spec.CI = &v1alpha1.SessionCISpec{Timeout: &metav1.Duration{Duration: time.Minute}}
+	f.Update(&session)
+
+	m := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
+	f.upsertManifest(m)
+
+	f.MustReconcile(sessionKey)
+	f.requireNotDone()
+
+	f.clock.Advance(50 * time.Second)
+
+	f.MustReconcile(sessionKey)
+	f.requireNotDone()
+
+	f.clock.Advance(20 * time.Second)
+	f.MustReconcile(sessionKey)
+	f.requireDoneWithError("Timeout after 1m0s")
+}
+
 func TestExitControlCI_PodRunningContainerError(t *testing.T) {
 	f := newFixture(t, store.EngineModeCI)
 
@@ -619,7 +643,11 @@ func newFixture(t testing.TB, engineMode store.EngineMode) *fixture {
 	clock := clockwork.NewFakeClock()
 	r := NewReconciler(cfb.Client, st, clock)
 	cf := cfb.Build(r)
-	cf.Create(sessions.FromTiltfile(tf, nil, engineMode))
+
+	session := sessions.FromTiltfile(tf, nil, model.CITimeoutFlag(model.CITimeoutDefault), engineMode)
+	session.Status.StartTime = apis.NewMicroTime(clock.Now())
+	cf.Create(session)
+
 	return &fixture{
 		ControllerFixture: cf,
 		tf:                tdf,

@@ -42,6 +42,17 @@ func (r *Reconciler) makeLatestStatus(session *v1alpha1.Session, result *ctrl.Re
 	})
 
 	r.processExitCondition(session.Spec, &state, &status)
+
+	// If there's a global timeout, schedule a requeue.
+	ci := session.Spec.CI
+	if ci != nil && ci.Timeout != nil && ci.Timeout.Duration > 0 {
+		timeout := ci.Timeout.Duration
+		requeueAfter := timeout - r.clock.Since(session.Status.StartTime.Time)
+		if result.RequeueAfter == 0 || result.RequeueAfter < requeueAfter {
+			result.RequeueAfter = requeueAfter
+		}
+	}
+
 	return status
 }
 
@@ -89,6 +100,14 @@ func (r *Reconciler) processExitCondition(spec v1alpha1.SessionSpec, state *stor
 	// exit before the targets have actually been initialized
 	if allResourcesOK && len(status.Targets) > 1 {
 		status.Done = true
+	}
+
+	// Enforce a global timeout.
+	ci := spec.CI
+	if status.Error == "" && ci != nil && ci.Timeout != nil && ci.Timeout.Duration > 0 &&
+		r.clock.Since(status.StartTime.Time) > ci.Timeout.Duration {
+		status.Done = true
+		status.Error = fmt.Sprintf("Timeout after %s", ci.Timeout.Duration)
 	}
 }
 
