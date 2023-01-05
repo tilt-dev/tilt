@@ -44,7 +44,7 @@ type DockerComposeClient interface {
 	Up(ctx context.Context, spec v1alpha1.DockerComposeServiceSpec, shouldBuild bool, stdout, stderr io.Writer) error
 	Down(ctx context.Context, spec v1alpha1.DockerComposeProject, stdout, stderr io.Writer) error
 	Rm(ctx context.Context, specs []v1alpha1.DockerComposeServiceSpec, stdout, stderr io.Writer) error
-	StreamLogs(ctx context.Context, spec v1alpha1.DockerComposeServiceSpec) io.ReadCloser
+	StreamLogs(ctx context.Context, spec v1alpha1.DockerComposeLogStreamSpec) io.ReadCloser
 	StreamEvents(ctx context.Context, spec v1alpha1.DockerComposeProject) (<-chan string, error)
 	Project(ctx context.Context, spec v1alpha1.DockerComposeProject) (*types.Project, error)
 	ContainerID(ctx context.Context, spec v1alpha1.DockerComposeServiceSpec) (container.ID, error)
@@ -210,7 +210,7 @@ func (c *cmdDCClient) Rm(ctx context.Context, specs []v1alpha1.DockerComposeServ
 	return nil
 }
 
-func (c *cmdDCClient) StreamLogs(ctx context.Context, spec v1alpha1.DockerComposeServiceSpec) io.ReadCloser {
+func (c *cmdDCClient) StreamLogs(ctx context.Context, spec v1alpha1.DockerComposeLogStreamSpec) io.ReadCloser {
 	args := c.projectArgs(spec.Project)
 
 	r, w := io.Pipe()

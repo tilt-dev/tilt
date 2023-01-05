@@ -9,7 +9,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/k8srollout"
 	"github.com/tilt-dev/tilt/internal/engine/k8swatch"
 	"github.com/tilt-dev/tilt/internal/engine/local"
-	"github.com/tilt-dev/tilt/internal/engine/runtimelog"
 	"github.com/tilt-dev/tilt/internal/engine/session"
 	"github.com/tilt-dev/tilt/internal/engine/telemetry"
 	"github.com/tilt-dev/tilt/internal/engine/uiresource"
@@ -52,7 +51,6 @@ func ProvideSubscribers(
 	bc *BuildController,
 	cc *configs.ConfigsController,
 	tqs *configs.TriggerQueueSubscriber,
-	dclm *runtimelog.DockerComposeLogManager,
 	ar *analytics.AnalyticsReporter,
 	au *analytics.AnalyticsUpdater,
 	ewm *k8swatch.EventWatchManager,
@@ -74,7 +72,6 @@ func ProvideSubscribers(
 		bc,
 		cc,
 		tqs,
-		dclm,
 		ar,
 		au,
 		ewm,
