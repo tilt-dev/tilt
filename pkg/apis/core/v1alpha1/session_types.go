@@ -71,6 +71,9 @@ type SessionCISpec struct {
 	// If omitted, and in exitCondition=ci, the session will exit as soon
 	// as we see a pod failure.
 	K8sGracePeriod *metav1.Duration `json:"k8sGracePeriod,omitempty" protobuf:"bytes,1,opt,name=k8sGracePeriod"`
+
+	// Timeout for the whole CI pipeline. Defaults to 30m.
+	Timeout *metav1.Duration `json:"timeout,omitempty" protobuf:"bytes,2,opt,name=timeout"`
 }
 
 type ExitCondition string
