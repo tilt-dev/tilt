@@ -274,9 +274,10 @@ func (r *Reconciler) maybeUpdateStatus(ctx context.Context, obj *v1alpha1.Cluste
 		return nil
 	}
 
-	oldStatus := obj.Status
-	obj.Status = newStatus
-	err := r.ctrlClient.Status().Update(ctx, obj)
+	update := obj.DeepCopy()
+	oldStatus := update.Status
+	update.Status = newStatus
+	err := r.ctrlClient.Status().Update(ctx, update)
 	if err != nil {
 		return fmt.Errorf("updating cluster %s status: %v", obj.Name, err)
 	}
@@ -285,7 +286,7 @@ func (r *Reconciler) maybeUpdateStatus(ctx context.Context, obj *v1alpha1.Cluste
 		logger.Get(ctx).Errorf("Cluster status error: %v", newStatus.Error)
 	}
 
-	r.reportConnectionEvent(ctx, obj)
+	r.reportConnectionEvent(ctx, update)
 
 	return nil
 }
