@@ -87,6 +87,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 
 	origError := tb.Status.Error
 	// clear the error - if its conditions still apply, it will get re-set
+	tb = tb.DeepCopy()
 	tb.Status.Error = ""
 
 	err = r.processClick(ctx, tb)
