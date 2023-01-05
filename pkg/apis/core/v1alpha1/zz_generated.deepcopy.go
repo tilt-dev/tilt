@@ -3202,6 +3202,11 @@ func (in *SessionCISpec) DeepCopyInto(out *SessionCISpec) {
 		*out = new(v1.Duration)
 		**out = **in
 	}
+	if in.Timeout != nil {
+		in, out := &in.Timeout, &out.Timeout
+		*out = new(v1.Duration)
+		**out = **in
+	}
 	return
 }
 

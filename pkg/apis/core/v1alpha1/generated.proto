@@ -2586,6 +2586,9 @@ message SessionCISpec {
   // If omitted, and in exitCondition=ci, the session will exit as soon
   // as we see a pod failure.
   optional k8s.io.apimachinery.pkg.apis.meta.v1.Duration k8sGracePeriod = 1;
+
+  // Timeout for the whole CI pipeline. Defaults to 30m.
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.Duration timeout = 2;
 }
 
 // SessionList is a list of Session objects.
