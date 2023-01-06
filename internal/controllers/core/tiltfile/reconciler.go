@@ -49,6 +49,7 @@ type Reconciler struct {
 	requeuer             *indexer.Requeuer
 	engineMode           store.EngineMode
 	loadCount            int // used to differentiate spans
+	ciTimeoutFlag        model.CITimeoutFlag
 
 	runs map[types.NamespacedName]*runStatus
 
@@ -87,6 +88,7 @@ func NewReconciler(
 	engineMode store.EngineMode,
 	k8sContextOverride k8s.KubeContextOverride,
 	k8sNamespaceOverride k8s.NamespaceOverride,
+	ciTimeoutFlag model.CITimeoutFlag,
 ) *Reconciler {
 	return &Reconciler{
 		st:                   st,
@@ -99,6 +101,7 @@ func NewReconciler(
 		engineMode:           engineMode,
 		k8sContextOverride:   k8sContextOverride,
 		k8sNamespaceOverride: k8sNamespaceOverride,
+		ciTimeoutFlag:        ciTimeoutFlag,
 	}
 }
 
@@ -119,7 +122,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		r.deleteExistingRun(nn)
 
 		// Delete owned objects
-		err := updateOwnedObjects(ctx, r.ctrlClient, nn, nil, nil, false, r.engineMode, r.defaultK8sConnection())
+		err := updateOwnedObjects(ctx, r.ctrlClient, nn, nil, nil, false, r.ciTimeoutFlag, r.engineMode, r.defaultK8sConnection())
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -134,7 +137,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	run := r.runs[nn]
 	if run == nil {
 		// Initialize the UISession and filewatch if this has never been initialized before.
-		err := updateOwnedObjects(ctx, r.ctrlClient, nn, &tf, nil, false, r.engineMode, r.defaultK8sConnection())
+		err := updateOwnedObjects(ctx, r.ctrlClient, nn, &tf, nil, false, r.ciTimeoutFlag, r.engineMode, r.defaultK8sConnection())
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -357,7 +360,7 @@ func (r *Reconciler) handleLoaded(
 	tlr *tiltfile.TiltfileLoadResult) error {
 	// TODO(nick): Rewrite to handle multiple tiltfiles.
 	changeEnabledResources := entry.ArgsChanged && tlr != nil && tlr.Error == nil
-	err := updateOwnedObjects(ctx, r.ctrlClient, nn, tf, tlr, changeEnabledResources, r.engineMode,
+	err := updateOwnedObjects(ctx, r.ctrlClient, nn, tf, tlr, changeEnabledResources, r.ciTimeoutFlag, r.engineMode,
 		r.defaultK8sConnection())
 	if err != nil {
 		// If updating the API server fails, just return the error, so that the

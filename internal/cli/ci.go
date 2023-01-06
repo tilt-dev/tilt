@@ -53,6 +53,8 @@ See blog post for additional information: https://blog.tilt.dev/2020/04/16/how-t
 	cmd.Flags().Lookup("logactions").Hidden = true
 	cmd.Flags().StringVar(&c.outputSnapshotOnExit, "output-snapshot-on-exit", "",
 		"If specified, Tilt will dump a snapshot of its state to the specified path when it exits")
+	cmd.Flags().DurationVar(&ciTimeout, "timeout", model.CITimeoutDefault,
+		"Timeout to wait for CI to pass. Set to 0 for no timeout.")
 
 	return cmd
 }
@@ -101,3 +103,5 @@ func (c *ciCmd) run(ctx context.Context, args []string) error {
 	}
 	return err
 }
+
+var ciTimeout time.Duration

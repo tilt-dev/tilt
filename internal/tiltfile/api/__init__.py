@@ -1272,11 +1272,13 @@ def update_settings(
 """
 
 def ci_settings(
-    k8s_grace_period: str='') -> None:
+    k8s_grace_period: str='',
+    timeout: str='') -> None:
   """Configures 'tilt ci' mode.
 
   Args:
-    k8s_grace_period: Grace period given for Kubernetes resources to recover after they start failing.
+    k8s_grace_period: Grace period given for Kubernetes resources to recover after they start failing. A duration string.
+    timeout: Timeout for the whole CI pipeline. A duration string. Defaults to '30m'.
   """
 
 def watch_settings(ignore: Union[str, List[str]]) -> None:

@@ -19,6 +19,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/apiset"
 	"github.com/tilt-dev/tilt/internal/localexec"
+	"github.com/tilt-dev/tilt/internal/tiltfile/cisettings"
 	"github.com/tilt-dev/tilt/internal/tiltfile/hasher"
 	"github.com/tilt-dev/tilt/internal/tiltfile/links"
 	"github.com/tilt-dev/tilt/internal/tiltfile/print"
@@ -34,7 +35,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/ospath"
 	"github.com/tilt-dev/tilt/internal/sliceutils"
 	"github.com/tilt-dev/tilt/internal/tiltfile/analytics"
-	"github.com/tilt-dev/tilt/internal/tiltfile/cisettings"
 	"github.com/tilt-dev/tilt/internal/tiltfile/config"
 	"github.com/tilt-dev/tilt/internal/tiltfile/dockerprune"
 	"github.com/tilt-dev/tilt/internal/tiltfile/encoding"
@@ -85,6 +85,7 @@ type tiltfileState struct {
 	versionPlugin    version.Plugin
 	configPlugin     *config.Plugin
 	extensionPlugin  *tiltextension.Plugin
+	ciSettingsPlugin cisettings.Plugin
 	features         feature.FeatureSet
 
 	// added to during execution
@@ -163,6 +164,7 @@ func newTiltfileState(
 	versionPlugin version.Plugin,
 	configPlugin *config.Plugin,
 	extensionPlugin *tiltextension.Plugin,
+	ciSettingsPlugin cisettings.Plugin,
 	features feature.FeatureSet) *tiltfileState {
 	return &tiltfileState{
 		ctx:                       ctx,
@@ -173,6 +175,7 @@ func newTiltfileState(
 		versionPlugin:             versionPlugin,
 		configPlugin:              configPlugin,
 		extensionPlugin:           extensionPlugin,
+		ciSettingsPlugin:          ciSettingsPlugin,
 		buildIndex:                newBuildIndex(),
 		k8sObjectIndex:            tiltfile_k8s.NewState(),
 		k8sByName:                 make(map[string]*k8sResource),
@@ -223,7 +226,7 @@ func (s *tiltfileState) loadManifests(tf *v1alpha1.Tiltfile) ([]model.Manifest, 
 		telemetry.NewPlugin(),
 		metrics.NewPlugin(),
 		updatesettings.NewPlugin(),
-		cisettings.NewPlugin(),
+		s.ciSettingsPlugin,
 		secretsettings.NewPlugin(),
 		encoding.NewPlugin(),
 		shlex.NewPlugin(),

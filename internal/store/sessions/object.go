@@ -10,6 +10,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 const DefaultSessionName = "Tiltfile"
@@ -17,7 +18,7 @@ const DefaultSessionName = "Tiltfile"
 var processStartTime = time.Now()
 var processPID = int64(os.Getpid())
 
-func FromTiltfile(tf *v1alpha1.Tiltfile, tlr *tiltfile.TiltfileLoadResult, mode store.EngineMode) *v1alpha1.Session {
+func FromTiltfile(tf *v1alpha1.Tiltfile, tlr *tiltfile.TiltfileLoadResult, ciTimeoutFlag model.CITimeoutFlag, mode store.EngineMode) *v1alpha1.Session {
 	s := &v1alpha1.Session{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: DefaultSessionName,
@@ -29,6 +30,10 @@ func FromTiltfile(tf *v1alpha1.Tiltfile, tlr *tiltfile.TiltfileLoadResult, mode 
 			PID:       processPID,
 			StartTime: apis.NewMicroTime(processStartTime),
 		},
+	}
+
+	if mode == store.EngineModeCI {
+		s.Spec.CI = &v1alpha1.SessionCISpec{Timeout: &metav1.Duration{Duration: time.Duration(ciTimeoutFlag)}}
 	}
 
 	// TLR may be nil if the tiltfile hasn't finished loading yet.

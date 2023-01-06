@@ -129,6 +129,7 @@ var BaseWireSet = wire.NewSet(
 
 	controllers.WireSet,
 
+	provideCITimeoutFlag,
 	provideWebVersion,
 	provideWebMode,
 	provideWebURL,
@@ -353,4 +354,8 @@ func wireClientGetter(ctx context.Context) (*cliclient.Getter, error) {
 func wireLsp(ctx context.Context, l logger.Logger, subcommand model.TiltSubcommand) (cmdLspDeps, error) {
 	wire.Build(UpWireSet, newLspDeps, newAnalytics)
 	return cmdLspDeps{}, nil
+}
+
+func provideCITimeoutFlag() model.CITimeoutFlag {
+	return model.CITimeoutFlag(ciTimeout)
 }

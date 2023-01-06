@@ -10,17 +10,24 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 	"github.com/tilt-dev/tilt/internal/tiltfile/value"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // Implements functions for dealing with ci settings.
-type Plugin struct{}
+type Plugin struct {
+	ciTimeoutFlag model.CITimeoutFlag
+}
 
-func NewPlugin() Plugin {
-	return Plugin{}
+func NewPlugin(ciTimeoutFlag model.CITimeoutFlag) Plugin {
+	return Plugin{
+		ciTimeoutFlag: ciTimeoutFlag,
+	}
 }
 
 func (e Plugin) NewState() interface{} {
-	return &v1alpha1.SessionCISpec{}
+	return &v1alpha1.SessionCISpec{
+		Timeout: &metav1.Duration{Duration: time.Duration(e.ciTimeoutFlag)},
+	}
 }
 
 func (e Plugin) OnStart(env *starkit.Environment) error {
@@ -29,8 +36,10 @@ func (e Plugin) OnStart(env *starkit.Environment) error {
 
 func (e *Plugin) ciSettings(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var k8sGracePeriod value.Duration = -1
+	var timeout value.Duration = -1
 	if err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs,
-		"k8s_grace_period?", &k8sGracePeriod); err != nil {
+		"k8s_grace_period?", &k8sGracePeriod,
+		"timeout?", &timeout); err != nil {
 		return nil, err
 	}
 
@@ -38,6 +47,10 @@ func (e *Plugin) ciSettings(thread *starlark.Thread, fn *starlark.Builtin, args 
 		if k8sGracePeriod != -1 {
 			settings = settings.DeepCopy()
 			settings.K8sGracePeriod = &metav1.Duration{Duration: time.Duration(k8sGracePeriod)}
+		}
+		if timeout != -1 {
+			settings = settings.DeepCopy()
+			settings.Timeout = &metav1.Duration{Duration: time.Duration(timeout)}
 		}
 		return settings
 	})
