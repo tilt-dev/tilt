@@ -57,9 +57,6 @@ type ChangeSummary struct {
 	// Cmds with their specs changed.
 	CmdSpecs ChangeSet
 
-	// Sessions that have changed.
-	Sessions ChangeSet
-
 	UISessions  ChangeSet
 	UIResources ChangeSet
 	UIButtons   ChangeSet
@@ -79,7 +76,6 @@ func (s *ChangeSummary) Add(other ChangeSummary) {
 	s.Legacy = s.Legacy || other.Legacy
 	s.Log = s.Log || other.Log
 	s.CmdSpecs.AddAll(other.CmdSpecs)
-	s.Sessions.AddAll(other.Sessions)
 	s.UISessions.AddAll(other.UISessions)
 	s.UIResources.AddAll(other.UIResources)
 	s.Clusters.AddAll(other.Clusters)
