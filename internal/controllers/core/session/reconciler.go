@@ -63,7 +63,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, nil
 	}
 
-	r.st.Dispatch(sessions.NewSessionUpsertAction(session))
 	return r.maybeUpdateObjectStatus(ctx, session)
 }
 
@@ -88,7 +87,7 @@ func (r *Reconciler) maybeUpdateObjectStatus(ctx context.Context, session *v1alp
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	r.st.Dispatch(sessions.NewSessionUpsertAction(update))
+	r.st.Dispatch(sessions.NewSessionStatusUpdateAction(update))
 	return result, nil
 }
 
