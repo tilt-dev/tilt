@@ -913,7 +913,21 @@ dc_resource('foo', trigger_mode=TRIGGER_MODE_AUTO)
 	f.load()
 }
 
-func TestDCDependsOn(t *testing.T) {
+func TestDCDependsOnInferredFromComposeFile(t *testing.T) {
+	f := newFixture(t)
+
+	f.dockerfile(filepath.Join("foo", "Dockerfile"))
+	f.file("docker-compose.yml", twoServiceConfig)
+	f.file("Tiltfile", `
+docker_compose('docker-compose.yml')
+`)
+
+	f.load()
+	f.assertNextManifest("foo", resourceDeps())
+	f.assertNextManifest("bar", resourceDeps("foo"))
+}
+
+func TestDCDependsOnResourceDepSpecified(t *testing.T) {
 	f := newFixture(t)
 
 	f.dockerfile(filepath.Join("foo", "Dockerfile"))

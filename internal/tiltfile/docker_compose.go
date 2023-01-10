@@ -168,7 +168,7 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 		project = dc.Project
 	}
 
-	services, err := parseDCConfig(s.ctx, s.dcCli, project)
+	services, err := parseDCConfig(s.ctx, s.dcCli, dc)
 	if err != nil {
 		return nil, err
 	}
@@ -182,7 +182,6 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 		}
 
 		dc.serviceNames = append(dc.serviceNames, svc.Name)
-		svc.Options = dc.resOptions[svc.Name]
 		for _, f := range svc.ServiceConfig.EnvFile {
 			if !filepath.IsAbs(f) {
 				f = filepath.Join(project.ProjectPath, f)
@@ -280,7 +279,9 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 	if err != nil {
 		return nil, errors.Wrapf(err, "%s: resource_deps", fn.Name())
 	}
-	options.resourceDeps = append(options.resourceDeps, rds...)
+	for _, dep := range rds {
+		options.resourceDeps = sliceutils.AppendWithoutDupes(options.resourceDeps, dep)
+	}
 
 	if autoInit.IsSet {
 		options.AutoInit = autoInit
@@ -397,7 +398,7 @@ func (svc dcService) ImageRef() reference.Named {
 	return svc.imageRefFromConfig
 }
 
-func dockerComposeConfigToService(projectName string, svcConfig types.ServiceConfig) (dcService, error) {
+func dockerComposeConfigToService(dcrs *dcResourceSet, projectName string, svcConfig types.ServiceConfig) (dcService, error) {
 	var mountedLocalDirs []string
 	for _, v := range svcConfig.Volumes {
 		mountedLocalDirs = append(mountedLocalDirs, v.Source)
@@ -431,6 +432,16 @@ func dockerComposeConfigToService(projectName string, svcConfig types.ServiceCon
 		return dcService{}, fmt.Errorf("Error parsing image name %q: %v", imageName, err)
 	}
 
+	options, exists := dcrs.resOptions[svcConfig.Name]
+	if !exists {
+		options = newDcResourceOptions()
+		dcrs.resOptions[svcConfig.Name] = options
+	}
+
+	for _, dep := range svcConfig.GetDependencies() {
+		options.resourceDeps = sliceutils.AppendWithoutDupes(options.resourceDeps, dep)
+	}
+
 	svc := dcService{
 		Name:               svcConfig.Name,
 		ServiceName:        svcConfig.Name,
@@ -438,21 +449,22 @@ func dockerComposeConfigToService(projectName string, svcConfig types.ServiceCon
 		MountedLocalDirs:   mountedLocalDirs,
 		ServiceYAML:        rawConfig,
 		PublishedPorts:     publishedPorts,
+		Options:            options,
 		imageRefFromConfig: imageRef,
 	}
 
 	return svc, nil
 }
 
-func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, spec v1alpha1.DockerComposeProject) ([]*dcService, error) {
-	proj, err := dcc.Project(ctx, spec)
+func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, dcrs *dcResourceSet) ([]*dcService, error) {
+	proj, err := dcc.Project(ctx, dcrs.Project)
 	if err != nil {
 		return nil, err
 	}
 
 	var services []*dcService
 	err = proj.WithServices(proj.ServiceNames(), func(svcConfig types.ServiceConfig) error {
-		svc, err := dockerComposeConfigToService(proj.Name, svcConfig)
+		svc, err := dockerComposeConfigToService(dcrs, proj.Name, svcConfig)
 		if err != nil {
 			return errors.Wrapf(err, "getting service %s", svcConfig.Name)
 		}
