@@ -1979,9 +1979,9 @@ func TestDockerComposeUp(t *testing.T) {
 
 func TestDockerComposeRedeployFromFileChange(t *testing.T) {
 	f := newTestFixture(t)
-	_, m := f.setupDCFixture()
+	r, m := f.setupDCFixture()
 
-	f.Start([]model.Manifest{m})
+	f.Start([]model.Manifest{r, m})
 
 	// Initial build
 	call := f.nextCall()

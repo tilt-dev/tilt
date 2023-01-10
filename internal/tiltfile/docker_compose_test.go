@@ -157,7 +157,13 @@ func (f dcFixture) parse(configOutput string) []*dcService {
 
 	f.dcCli.ConfigOutput = configOutput
 
-	services, err := parseDCConfig(f.ctx, f.dcCli, v1alpha1.DockerComposeProject{ConfigPaths: []string{"doesn't-matter.yml"}})
+	dc := &dcResourceSet{
+		Project:    v1alpha1.DockerComposeProject{ConfigPaths: []string{"doesn't-matter.yml"}},
+		services:   make(map[string]*dcService),
+		resOptions: make(map[string]*dcResourceOptions),
+	}
+
+	services, err := parseDCConfig(f.ctx, f.dcCli, dc)
 	if err != nil {
 		f.t.Fatalf("dcFixture.Parse: %v", err)
 	}
