@@ -137,33 +137,7 @@ func TestExitControlCI_GracePeriod(t *testing.T) {
 	session.Spec.CI = &v1alpha1.SessionCISpec{K8sGracePeriod: &metav1.Duration{Duration: time.Minute}}
 	f.Update(&session)
 
-	m := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
-	f.upsertManifest(m)
-	f.Store.WithState(func(state *store.EngineState) {
-		mt := state.ManifestTargets["fe"]
-		mt.State.AddCompletedBuild(model.BuildRecord{
-			StartTime:  f.clock.Now(),
-			FinishTime: f.clock.Now(),
-		})
-		mt.State.LastSuccessfulDeployTime = f.clock.Now()
-		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, v1alpha1.Pod{
-			Name:   "pod-a",
-			Status: "ErrImagePull",
-			Containers: []v1alpha1.Container{
-				{
-					Name: "c1",
-					State: v1alpha1.ContainerState{
-						Terminated: &v1alpha1.ContainerStateTerminated{
-							StartedAt:  apis.NewTime(f.clock.Now()),
-							FinishedAt: apis.NewTime(f.clock.Now()),
-							Reason:     "Error",
-							ExitCode:   127,
-						},
-					},
-				},
-			},
-		})
-	})
+	f.upsertFailingPod("fe")
 
 	f.MustReconcile(sessionKey)
 	f.requireNotDone()
@@ -613,6 +587,54 @@ func TestStatusDisabled(t *testing.T) {
 	}
 }
 
+func TestRequeueLongGracePeriod(t *testing.T) {
+	f := newFixture(t, store.EngineModeCI)
+
+	var session v1alpha1.Session
+	f.MustGet(types.NamespacedName{Name: "Tiltfile"}, &session)
+	session.Spec.CI = &v1alpha1.SessionCISpec{
+		Timeout:        &metav1.Duration{Duration: time.Minute},
+		K8sGracePeriod: &metav1.Duration{Duration: 10 * time.Minute},
+	}
+	f.Update(&session)
+
+	f.upsertFailingPod("fe")
+
+	result, err := f.Reconcile(sessionKey)
+	require.NoError(t, err)
+	assert.Equal(t, time.Minute, result.RequeueAfter)
+
+	f.clock.Advance(50 * time.Second)
+
+	result, err = f.Reconcile(sessionKey)
+	require.NoError(t, err)
+	assert.Equal(t, 10*time.Second, result.RequeueAfter)
+}
+
+func TestRequeueLongTimeout(t *testing.T) {
+	f := newFixture(t, store.EngineModeCI)
+
+	var session v1alpha1.Session
+	f.MustGet(types.NamespacedName{Name: "Tiltfile"}, &session)
+	session.Spec.CI = &v1alpha1.SessionCISpec{
+		Timeout:        &metav1.Duration{Duration: 10 * time.Minute},
+		K8sGracePeriod: &metav1.Duration{Duration: time.Minute},
+	}
+	f.Update(&session)
+
+	f.upsertFailingPod("fe")
+
+	result, err := f.Reconcile(sessionKey)
+	require.NoError(t, err)
+	assert.Equal(t, time.Minute, result.RequeueAfter)
+
+	f.clock.Advance(50 * time.Second)
+
+	result, err = f.Reconcile(sessionKey)
+	require.NoError(t, err)
+	assert.Equal(t, 10*time.Second, result.RequeueAfter)
+}
+
 type fixture struct {
 	*fake.ControllerFixture
 	tf    *tempdir.TempDirFixture
@@ -698,6 +720,36 @@ func (f *fixture) MkdirAll(path string) {
 }
 func (f *fixture) Path() string {
 	return f.tf.Path()
+}
+
+func (f *fixture) upsertFailingPod(mn model.ManifestName) {
+	m := manifestbuilder.New(f, mn).WithK8sYAML(testyaml.SanchoYAML).Build()
+	f.upsertManifest(m)
+	f.Store.WithState(func(state *store.EngineState) {
+		mt := state.ManifestTargets[mn]
+		mt.State.AddCompletedBuild(model.BuildRecord{
+			StartTime:  f.clock.Now(),
+			FinishTime: f.clock.Now(),
+		})
+		mt.State.LastSuccessfulDeployTime = f.clock.Now()
+		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, v1alpha1.Pod{
+			Name:   "pod-a",
+			Status: "ErrImagePull",
+			Containers: []v1alpha1.Container{
+				{
+					Name: "c1",
+					State: v1alpha1.ContainerState{
+						Terminated: &v1alpha1.ContainerStateTerminated{
+							StartedAt:  apis.NewTime(f.clock.Now()),
+							FinishedAt: apis.NewTime(f.clock.Now()),
+							Reason:     "Error",
+							ExitCode:   127,
+						},
+					},
+				},
+			},
+		})
+	})
 }
 
 func pod(podID k8s.PodID, ready bool) v1alpha1.Pod {
