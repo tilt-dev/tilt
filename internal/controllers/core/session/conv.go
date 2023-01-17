@@ -82,7 +82,7 @@ func (r *Reconciler) k8sRuntimeTarget(mt *store.ManifestTarget, ci *v1alpha1.Ses
 
 			// Use the ctrl.Result to schedule a reconcile.
 			requeueAfter := k8sGracePeriod - graceSoFar
-			if result.RequeueAfter == 0 || result.RequeueAfter < requeueAfter {
+			if result.RequeueAfter == 0 || result.RequeueAfter > requeueAfter {
 				result.RequeueAfter = requeueAfter
 			}
 		}

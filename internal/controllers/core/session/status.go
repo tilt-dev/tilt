@@ -48,7 +48,7 @@ func (r *Reconciler) makeLatestStatus(session *v1alpha1.Session, result *ctrl.Re
 	if ci != nil && ci.Timeout != nil && ci.Timeout.Duration > 0 {
 		timeout := ci.Timeout.Duration
 		requeueAfter := timeout - r.clock.Since(session.Status.StartTime.Time)
-		if result.RequeueAfter == 0 || result.RequeueAfter < requeueAfter {
+		if result.RequeueAfter == 0 || result.RequeueAfter > requeueAfter {
 			result.RequeueAfter = requeueAfter
 		}
 	}
