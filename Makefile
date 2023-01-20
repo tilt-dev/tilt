@@ -106,10 +106,10 @@ benchmark:
 
 golangci-lint:
 ifneq ($(CIRCLECI),true)
-	GOFLAGS="-mod=vendor" golangci-lint run $(LINT_FLAGS) -v --timeout 180s
+	GOFLAGS="-mod=vendor" golangci-lint run $(LINT_FLAGS) -v --timeout 300s
 else
 	mkdir -p test-results
-	GOFLAGS="-mod=vendor" golangci-lint run -v --timeout 180s --out-format junit-xml > test-results/lint.xml
+	GOFLAGS="-mod=vendor" golangci-lint run -v --timeout 300s --out-format junit-xml > test-results/lint.xml
 endif
 
 wire:
@@ -129,11 +129,11 @@ release-container:
 	scripts/build-tilt-releaser.sh
 
 ci-container:
-	docker build --pull --platform linux/amd64 -t docker/tilt-ci -f .circleci/Dockerfile .circleci
+	docker buildx build --load --pull --platform linux/amd64 -t docker/tilt-ci -f .circleci/Dockerfile .circleci
 	docker push docker/tilt-ci
 
 ci-integration-container:
-	docker build --pull --platform linux/amd64 -t docker/tilt-integration-ci -f .circleci/Dockerfile.integration .circleci
+	docker buildx build --load --pull --platform linux/amd64 -t docker/tilt-integration-ci -f .circleci/Dockerfile.integration .circleci
 	docker push docker/tilt-integration-ci
 
 clean:

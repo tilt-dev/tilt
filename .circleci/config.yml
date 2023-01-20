@@ -10,7 +10,7 @@ jobs:
   build-linux:
     resource_class: medium+
     docker:
-      - image: docker/tilt-ci@sha256:1e8e15f7db68c6988525e092ee1d9f786fa9dcddcdcab824b78b74b7e07c39d3
+      - image: docker/tilt-ci@sha256:d1568dd0b6066d57f3b60893c903684439a24577b53c8865b47bd91d4fe88dcc
     # apiserver code generation scripts require being in GOPATH
     working_directory: /home/circleci/go/src/github.com/tilt-dev/tilt
 
@@ -20,6 +20,7 @@ jobs:
       - setup_remote_docker
       - run: docker pull registry:2
       - run: sudo mv /usr/bin/helm3 /usr/bin/helm
+      - run: make install
       - run: make lint
       - run: make test_install_version_check
       - run: make wire-check
@@ -49,7 +50,7 @@ jobs:
 
   publish-assets:
     docker:
-      - image: docker/tilt-ci@sha256:1e8e15f7db68c6988525e092ee1d9f786fa9dcddcdcab824b78b74b7e07c39d3
+      - image: docker/tilt-ci@sha256:d1568dd0b6066d57f3b60893c903684439a24577b53c8865b47bd91d4fe88dcc
     steps:
       - checkout
       - gcp-cli/install
