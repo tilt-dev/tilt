@@ -37,15 +37,20 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-// Label that we attach to all of the images we build.
 const (
-	BuiltByLabel = "builtby"
-	BuiltByValue = "tilt"
+	// Indicates that an image was built by tilt's docker client.
+	BuiltLabel = "dev.tilt.built"
+
+	// Indicates that an image is eligible for garbage collection
+	// by Tilt's pruner.
+	GCEnabledLabel = "dev.tilt.gc"
 )
 
 var (
-	BuiltByTiltLabel    = map[string]string{BuiltByLabel: BuiltByValue}
-	BuiltByTiltLabelStr = fmt.Sprintf("%s=%s", BuiltByLabel, BuiltByValue)
+	BuiltLabelSet = map[string]string{
+		BuiltLabel:     "true",
+		GCEnabledLabel: "true",
+	}
 )
 
 const clientSessionRemote = "client-session"
@@ -540,7 +545,7 @@ func (c *Cli) ImageBuild(ctx context.Context, buildContext io.Reader, options Bu
 		opts.RemoteContext = clientSessionRemote
 	}
 
-	opts.Labels = BuiltByTiltLabel // label all images as built by us
+	opts.Labels = BuiltLabelSet // label all images as built by us
 
 	response, err := c.Client.ImageBuild(ctx, buildContext, opts)
 	if err != nil {
@@ -660,7 +665,7 @@ func (c *Cli) Run(ctx context.Context, opts RunConfig) (RunResult, error) {
 		AttachStdout: opts.Stdout != nil,
 		AttachStderr: opts.Stderr != nil,
 		Cmd:          opts.Cmd,
-		Labels:       BuiltByTiltLabel,
+		Labels:       BuiltLabelSet,
 	}
 
 	hc := &mobycontainer.HostConfig{

@@ -74,8 +74,8 @@ func (k *K3dClient) CreateCluster(ctx context.Context, clusterName string) error
 		// k3d has a special label syntax which accepts a node filter so you can tag server/agent/LB differently
 		// since we're launching a cluster with no load balancer, there's only a single node named `server[0]`,
 		// but k3d will emit a confusing warning if we don't specify it explicitly, so this will be
-		// `builtby=tilt@server[0]`
-		"--label", fmt.Sprintf("%s@%s", docker.BuiltByTiltLabelStr, "server[0]"),
+		// `dev.tilt.built=true@server[0]`
+		"--label", fmt.Sprintf("%s=true@%s", docker.BuiltLabel, "server[0]"),
 	}
 	stdout := logger.Get(ctx).Writer(logger.DebugLvl)
 	stderr := logger.Get(ctx).Writer(logger.WarnLvl)

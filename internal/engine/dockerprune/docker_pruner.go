@@ -24,6 +24,8 @@ import (
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
+var gcEnabledSelector = fmt.Sprintf("%s=true", docker.GCEnabledLabel)
+
 type DockerPruner struct {
 	dCli docker.Client
 
@@ -142,7 +144,7 @@ func (dp *DockerPruner) prune(ctx context.Context, maxAge time.Duration, keepRec
 	}
 
 	f := filters.NewArgs(
-		filters.Arg("label", docker.BuiltByTiltLabelStr),
+		filters.Arg("label", gcEnabledSelector),
 		filters.Arg("until", maxAge.String()),
 	)
 
@@ -262,7 +264,7 @@ func (dp *DockerPruner) filterOutMostRecentInspects(ctx context.Context, inspect
 func (dp *DockerPruner) deleteOldImages(ctx context.Context, maxAge time.Duration, keepRecent int, selectors []container.RefSelector) (types.ImagesPruneReport, error) {
 	opts := types.ImageListOptions{
 		Filters: filters.NewArgs(
-			filters.Arg("label", docker.BuiltByTiltLabelStr),
+			filters.Arg("label", gcEnabledSelector),
 		),
 	}
 	imgs, err := dp.dCli.ImageList(ctx, opts)
