@@ -1,17 +1,15 @@
 # options for analysis running
 run:
-  # by default isn't set. If set we pass it to "go list -mod={option}". From "go help modules":
-  # If invoked with -mod=readonly, the go command is disallowed from the implicit
-  # automatic updating of go.mod described above. Instead, it fails when any changes
-  # to go.mod are needed. This setting is most useful to check that go.mod does
-  # not need updates, such as in a continuous integration and testing system.
-  # If invoked with -mod=vendor, the go command assumes that the vendor
-  # directory holds the correct copies of dependencies and ignores
-  # the dependency descriptions in go.mod.
+  timeout: 10m
+  go: "1.19"
+  skip-files:
+    - "zz_generated.*\\.go$"
+    - "vendored_openapi\\.go$"
+  allow-parallel-runners: true
   modules-download-mode: vendor
   build-tags:
     - integration
-
+  
 # output configuration options
 output:
   # colored-line-number|line-number|json|tab|checkstyle|code-climate, default is "colored-line-number"
@@ -51,10 +49,10 @@ linters-settings:
     ignore-words:
       - servantes
       - cancelled # British spelling used in Kubernetes code
+      
 linters:
   disable-all: true
   enable:
-    - deadcode
     - errcheck
     - exportloopref
     - goimports
@@ -63,11 +61,10 @@ linters:
     - ineffassign
     - megacheck
     - staticcheck
-    - structcheck
     - misspell
     - unconvert
     - unused
-    - varcheck
+    
 issues:
   exclude-rules:
     - linters:
