@@ -3,7 +3,7 @@ orbs:
   slack: circleci/slack@3.4.0
   shellcheck: circleci/shellcheck@2.2.2
   win: circleci/windows@5.0.0
-  gcp-cli: circleci/gcp-cli@2.4.0
+  gcp-cli: circleci/gcp-cli@3.0.1
   kubernetes: circleci/kubernetes@0.9.1
   go: circleci/go@1.7.1
 jobs:
@@ -53,8 +53,8 @@ jobs:
       - image: docker/tilt-ci@sha256:d1568dd0b6066d57f3b60893c903684439a24577b53c8865b47bd91d4fe88dcc
     steps:
       - checkout
-      - gcp-cli/install
-      - gcp-cli/initialize
+      - gcp-cli/setup:
+          version: 414.0.0
       - run: ./scripts/upload-assets.py $CIRCLE_SHA1
       - slack/notify-on-failure:
           only_for_branches: master
@@ -165,8 +165,8 @@ jobs:
       - slack/notify:
           message: "A Tilt release has started!"
       - checkout
-      - gcp-cli/install
-      - gcp-cli/initialize
+      - gcp-cli/setup:
+          version: 414.0.0
       - run:
           name: Setup Docker Credentials
           command: gcloud auth configure-docker
@@ -204,9 +204,6 @@ workflows:
             - build-linux
       - publish-assets:
           context: Tilt Deploy Context
-          filters:
-            branches:
-              only: master
       - release-dry-run:
           context: Tilt Slack Context
           requires:
