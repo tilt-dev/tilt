@@ -49,10 +49,12 @@
     "not op_mini all"
   ],
   "devDependencies": {
-    "@storybook/addon-essentials": "^6.3.12",
-    "@storybook/addons": "^6.3.12",
-    "@storybook/preset-create-react-app": "^3.1.7",
-    "@storybook/react": "^6.3.12",
+    "@storybook/addon-essentials": "^6.5.16",
+    "@storybook/addons": "^6.5.16",
+    "@storybook/builder-webpack5": "^6.5.16",
+    "@storybook/manager-webpack5": "^6.5.16",
+    "@storybook/preset-create-react-app": "^4.1.2",
+    "@storybook/react": "^6.5.16",
     "@testing-library/dom": "^8.11.1",
     "@testing-library/jest-dom": "^5.16.1",
     "@testing-library/react": "^12.1.2",
@@ -82,12 +84,13 @@
     "jsdom": "^18.1.0",
     "prettier": "2.4.1",
     "prettier-plugin-organize-imports": "^2.3.4",
-    "react-scripts": "^4.0.3",
+    "react-scripts": "^5.0.1",
     "react-test-renderer": "^16.9.0",
     "sass": "^1.52.2",
-    "typescript": "^4.4.4"
+    "typescript": "^4.4.4",
+    "webpack": "5"
   },
   "engines": {
-    "node": ">=16.0.0 <17.0.0"
+    "node": "^16 || ^18"
   }
 }

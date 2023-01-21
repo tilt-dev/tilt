@@ -8,5 +8,5 @@ set -ex
 DIR=$(dirname "$0")
 cd "$DIR/.."
 
-docker build -t docker/tilt-releaser -f scripts/release.Dockerfile scripts
+docker buildx build --load -t docker/tilt-releaser -f scripts/release.Dockerfile scripts
 docker push docker/tilt-releaser

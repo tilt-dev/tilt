@@ -17,7 +17,7 @@ describe("StarredResourceBar", () => {
     unstarSpy = jest.fn()
     render(
       <StarredResourceBar resources={TEST_RESOURCES} unstar={unstarSpy} />,
-      { wrapper: MemoryRouter }
+      { wrapper: MemoryRouter } as any
     )
   })
 

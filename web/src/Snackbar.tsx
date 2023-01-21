@@ -29,7 +29,9 @@ export function TiltSnackbarProvider(
       maxSnack={3}
       anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       autoHideDuration={6000}
-      content={(key, message) => <SnackMessage id={key} message={message} />}
+      content={(key: any, message: any) => (
+        <SnackMessage id={key} message={message} />
+      )}
     >
       {props.children}
     </SnackbarProvider>

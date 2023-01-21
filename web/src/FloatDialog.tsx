@@ -65,7 +65,7 @@ let Content = styled.div`
   line-height: 28px;
 `
 
-let useStyles = makeStyles((theme) => ({
+let useStyles = makeStyles((theme: any) => ({
   paper: {
     display: "flex",
     flexDirection: "column",

@@ -50,7 +50,9 @@ describe("SidebarItemView", () => {
     customRender(item)
 
     expect(screen.getByText(item.name)).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: /star/i })).toBeInTheDocument()
+    expect(
+      screen.getAllByRole("button", { name: /star/i })[0]
+    ).toBeInTheDocument()
     expect(screen.getByLabelText("Trigger update")).toBeInTheDocument()
   })
 })
