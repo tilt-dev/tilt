@@ -204,6 +204,9 @@ workflows:
             - build-linux
       - publish-assets:
           context: Tilt Deploy Context
+          filters:
+            branches:
+              only: master
       - release-dry-run:
           context: Tilt Slack Context
           requires:
