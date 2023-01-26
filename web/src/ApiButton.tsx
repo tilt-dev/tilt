@@ -289,7 +289,11 @@ function ApiButtonInput(props: ApiButtonInputProps) {
     const menuItems = []
     // @ts-ignore
     for (let choice of props.spec.choice?.choices) {
-      menuItems.push(<MenuItem value={choice}>{choice}</MenuItem>)
+      menuItems.push(
+        <MenuItem key={choice} value={choice}>
+          {choice}
+        </MenuItem>
+      )
     }
     return (
       <>

@@ -16,7 +16,7 @@ import {
 
 const INFO_TOOLTIP_LEAVE_DELAY = 500
 
-let useStyles = makeStyles((theme) => ({
+let useStyles = makeStyles((theme: any) => ({
   arrow: {
     color: Color.grayLightest,
     "&::before": {

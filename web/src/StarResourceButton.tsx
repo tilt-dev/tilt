@@ -92,6 +92,7 @@ export default function StarResourceButton(
   return (
     <StarResourceButtonRoot
       title={title}
+      aria-label={title}
       onClick={onClick}
       className={className}
       analyticsName={props.analyticsName}

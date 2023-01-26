@@ -79,7 +79,7 @@ type FilterSourceMenuProps = {
   alerts?: Alert[]
 }
 
-let useMenuStyles = makeStyles((theme) => ({
+let useMenuStyles = makeStyles((theme: any) => ({
   root: {
     fontFamily: Font.sansSerif,
     fontSize: FontSize.smallest,
