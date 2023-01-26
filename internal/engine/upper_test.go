@@ -1982,14 +1982,12 @@ func TestDockerComposeRedeployFromFileChange(t *testing.T) {
 	r, m := f.setupDCFixture()
 
 	f.Start([]model.Manifest{r, m})
-
-	// Initial build
-	call := f.nextCall()
-	assert.True(t, call.dcState().IsEmpty())
+	_ = f.nextCall()
+	_ = f.nextCall()
 
 	// Change a file -- should trigger build
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("package.json"))
-	call = f.nextCall()
+	call := f.nextCall()
 	assert.Equal(t, []string{f.JoinPath("package.json")}, call.oneImageState().FilesChanged())
 }
 
