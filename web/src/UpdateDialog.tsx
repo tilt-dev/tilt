@@ -84,11 +84,6 @@ export default function UpdateDialog(props: props) {
     updateEl = (
       <div key="no-update">
         <div>Already on the recommended version!</div>
-        <div>
-          If you're impatient for more,
-          <br />
-          subscribe to <a href="https://tilt.dev/subscribe">Tilt News</a>.
-        </div>
       </div>
     )
   }
