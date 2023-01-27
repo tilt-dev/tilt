@@ -45,11 +45,11 @@ func TestPruneFilters(t *testing.T) {
 	require.NoError(t, err)
 
 	expectedFilters := filters.NewArgs(
-		filters.Arg("label", docker.BuiltByTiltLabelStr),
+		filters.Arg("label", gcEnabledSelector),
 		filters.Arg("until", maxAge.String()),
 	)
 	expectedImageFilters := filters.NewArgs(
-		filters.Arg("label", docker.BuiltByTiltLabelStr),
+		filters.Arg("label", gcEnabledSelector),
 	)
 
 	assert.Equal(t, expectedFilters, f.dCli.BuildCachePruneOpts.Filters, "build cache prune filters")
@@ -135,7 +135,7 @@ func TestDeleteOldImages(t *testing.T) {
 	expectedDeleted := []string{id}
 	assert.Equal(t, expectedDeleted, f.dCli.RemovedImageIDs)
 
-	expectedFilters := filters.NewArgs(filters.Arg("label", docker.BuiltByTiltLabelStr))
+	expectedFilters := filters.NewArgs(filters.Arg("label", gcEnabledSelector))
 	if assert.Len(t, f.dCli.ImageListOpts, 1, "expected exactly one call to ImageList") {
 		assert.Equal(t, expectedFilters, f.dCli.ImageListOpts[0].Filters,
 			"expected ImageList to called with label=builtby:tilt filter")

@@ -7,6 +7,7 @@ package build
 import (
 	"bytes"
 	"context"
+	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -48,7 +49,7 @@ ADD dir/c.txt .
 		t.Fatal(err)
 	}
 
-	f.assertImageHasLabels(refs.LocalRef, docker.BuiltByTiltLabel)
+	f.assertImageHasLabels(refs.LocalRef, docker.BuiltLabelSet)
 
 	pcs := []expectedFile{
 		expectedFile{Path: "/src/a.txt", Contents: "a"},
@@ -113,7 +114,7 @@ ADD a.txt .`)
 		t.Fatal(err)
 	}
 
-	f.assertImageHasLabels(refs.LocalRef, docker.BuiltByTiltLabel)
+	f.assertImageHasLabels(refs.LocalRef, docker.BuiltLabelSet)
 
 	pcs := []expectedFile{
 		expectedFile{Path: "/src/a.txt", Contents: "a"},
@@ -141,6 +142,6 @@ RUN echo 'failed to create LLB definition: failed commit on ref "unknown-sha256:
 		model.EmptyMatcher)
 	assert.Error(t, err)
 	assert.Contains(t, out.String(), "Detected Buildkit corruption. Rebuilding without Buildkit")
-	assert.Contains(t, out.String(), "[1/2] FROM docker.io/library/alpine") // buildkit-style output
-	assert.Contains(t, out.String(), "Step 1/3 : FROM alpine")              // Legacy output
+	assert.Contains(t, out.String(), "[1/2] FROM docker.io/library/alpine")                     // buildkit-style output
+	assert.True(t, regexp.MustCompile("Step 1/[0-9]+ : FROM alpine").MatchString(out.String())) // Legacy output
 }
