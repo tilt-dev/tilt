@@ -181,8 +181,8 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 			case r == 't': // [T]rigger resource update
 				_, selected := h.selectedResource()
 				h.recordInteraction("trigger_resource")
-				payload := []byte(fmt.Sprintf(`{"manifest_names":[%q], "build_reason": %d}`, selected.Name, model.BuildReasonFlagTriggerCLI))
-				resp, err := http.Post(fmt.Sprintf("http://%s/api/%s", h.webURL.Host, "trigger"), "application/json", bytes.NewBuffer(payload))
+				payload := []byte(fmt.Sprintf(`{"manifest_names":[%q], "build_reason": %d}`, selected.Name, model.BuildReasonFlagTriggerHUD))
+				resp, err := http.Post(fmt.Sprintf("http://%s/api/trigger", h.webURL.Host), "application/json", bytes.NewBuffer(payload))
 				if err != nil {
 					h.currentViewState.AlertMessage = fmt.Sprintf("error triggering resource %s: %v", selected.Name, err)
 				}
