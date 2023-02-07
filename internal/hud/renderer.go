@@ -132,6 +132,8 @@ func renderPaneHeader(isMax bool) rty.Component {
 	l := rty.NewLine()
 	l.Add(rty.NewFillerString(' '))
 	l.Add(rty.TextString(fmt.Sprintf(" %s ", s)))
+	l.Add(rty.TextString("| "))
+	l.Add(rty.TextString("t: trigger update"))
 	return l
 }
 
