@@ -25,6 +25,7 @@ const (
 
 	BuildReasonFlagTriggerWeb
 	BuildReasonFlagTriggerCLI
+	BuildReasonFlagTriggerHUD
 	BuildReasonFlagTriggerUnknown
 
 	// An external process called `tilt args`
@@ -73,6 +74,7 @@ var translations = map[BuildReason]string{
 	BuildReasonFlagInit:            "Initial Build",
 	BuildReasonFlagTriggerWeb:      "Web Trigger",
 	BuildReasonFlagTriggerCLI:      "CLI Trigger",
+	BuildReasonFlagTriggerHUD:      "HUD Trigger",
 	BuildReasonFlagTriggerUnknown:  "Unknown Trigger",
 	BuildReasonFlagTiltfileArgs:    "Tilt Args",
 	BuildReasonFlagChangedDeps:     "Dependency Updated",
@@ -81,6 +83,7 @@ var translations = map[BuildReason]string{
 var triggerBuildReasons = []BuildReason{
 	BuildReasonFlagTriggerWeb,
 	BuildReasonFlagTriggerCLI,
+	BuildReasonFlagTriggerHUD,
 	BuildReasonFlagTriggerUnknown,
 }
 
@@ -91,6 +94,7 @@ var allBuildReasons = []BuildReason{
 	BuildReasonFlagCrashDeprecated,
 	BuildReasonFlagTriggerWeb,
 	BuildReasonFlagTriggerCLI,
+	BuildReasonFlagTriggerHUD,
 	BuildReasonFlagChangedDeps,
 	BuildReasonFlagTriggerUnknown,
 	BuildReasonFlagTiltfileArgs,

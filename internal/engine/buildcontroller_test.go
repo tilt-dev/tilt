@@ -15,7 +15,6 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/uibutton"
-	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -72,7 +71,7 @@ func TestBuildControllerManualTriggerBuildReasonInit(t *testing.T) {
 
 			// make sure there's a first build
 			if !manifest.TriggerMode.AutoInitial() {
-				f.store.Dispatch(server.AppendToTriggerQueueAction{Name: mName})
+				f.store.Dispatch(store.AppendToTriggerQueueAction{Name: mName})
 			}
 
 			f.nextCallComplete()
@@ -169,7 +168,7 @@ func TestBuildControllerImageBuildTrigger(t *testing.T) {
 				f.assertNoCall("even tho there are pending changes, manual manifest shouldn't build w/o explicit trigger")
 			}
 
-			f.store.Dispatch(server.AppendToTriggerQueueAction{Name: mName})
+			f.store.Dispatch(store.AppendToTriggerQueueAction{Name: mName})
 			call := f.nextCallComplete()
 			state := call.oneImageState()
 			assert.Equal(t, expectedFiles, state.FilesChanged())
@@ -222,11 +221,11 @@ func TestBuildQueueOrdering(t *testing.T) {
 	})
 	f.assertNoCall("even tho there are pending changes, manual manifest shouldn't build w/o explicit trigger")
 
-	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: "manifest1"})
-	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: "manifest2"})
+	f.store.Dispatch(store.AppendToTriggerQueueAction{Name: "manifest1"})
+	f.store.Dispatch(store.AppendToTriggerQueueAction{Name: "manifest2"})
 	time.Sleep(10 * time.Millisecond)
-	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: "manifest3"})
-	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: "manifest4"})
+	f.store.Dispatch(store.AppendToTriggerQueueAction{Name: "manifest3"})
+	f.store.Dispatch(store.AppendToTriggerQueueAction{Name: "manifest4"})
 
 	for i := range manifests {
 		expName := fmt.Sprintf("manifest%d", i+1)
@@ -278,13 +277,13 @@ func TestBuildQueueAndAutobuildOrdering(t *testing.T) {
 	})
 	f.assertNoCall("even tho there are pending changes, manual manifest shouldn't build w/o explicit trigger")
 
-	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: "manifest1"})
-	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: "manifest2"})
+	f.store.Dispatch(store.AppendToTriggerQueueAction{Name: "manifest1"})
+	f.store.Dispatch(store.AppendToTriggerQueueAction{Name: "manifest2"})
 	// make our one auto-trigger manifest build - should be evaluated LAST, after
 	// all the manual manifests waiting in the queue
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("dirAuto/main.go"))
-	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: "manifest3"})
-	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: "manifest4"})
+	f.store.Dispatch(store.AppendToTriggerQueueAction{Name: "manifest3"})
+	f.store.Dispatch(store.AppendToTriggerQueueAction{Name: "manifest4"})
 
 	for i := range manifests {
 		call := f.nextCall()
@@ -904,7 +903,7 @@ func TestManifestsWithCommonAncestorAndTrigger(t *testing.T) {
 	call = f.nextCall("m2 build1")
 	assert.Equal(t, m2.K8sTarget(), call.k8s())
 
-	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: m1.Name})
+	f.store.Dispatch(store.AppendToTriggerQueueAction{Name: m1.Name})
 	f.waitForCompletedBuildCount(3)
 
 	// Make sure that only one build was triggered.

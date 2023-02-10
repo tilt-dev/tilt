@@ -174,6 +174,10 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 				escape()
 			case r == 'R': // hidden key for recovering from printf junk during demos
 				h.r.screen.Sync()
+			case r == 't': // [T]rigger resource update
+				_, selected := h.selectedResource()
+				h.recordInteraction("trigger_resource")
+				dispatch(store.AppendToTriggerQueueAction{Name: selected.Name, Reason: model.BuildReasonFlagTriggerHUD})
 			case r == 'x':
 				h.recordInteraction("cycle_view_log_state")
 				h.currentViewState.CycleViewLogState()

@@ -146,8 +146,6 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		ctrltiltfile.HandleConfigsReloadStarted(ctx, state, action)
 	case ctrltiltfile.ConfigsReloadedAction:
 		ctrltiltfile.HandleConfigsReloaded(ctx, state, action)
-	case server.AppendToTriggerQueueAction:
-		state.AppendToTriggerQueue(action.Name, action.Reason)
 	case hud.DumpEngineStateAction:
 		handleDumpEngineStateAction(ctx, state)
 	case store.AnalyticsUserOptAction:
@@ -160,6 +158,8 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		handlePanicAction(state, action)
 	case store.LogAction:
 		handleLogAction(state, action)
+	case store.AppendToTriggerQueueAction:
+		state.AppendToTriggerQueue(action.Name, action.Reason)
 	case sessions.SessionStatusUpdateAction:
 		sessions.HandleSessionStatusUpdateAction(state, action)
 	case prompt.SwitchTerminalModeAction:

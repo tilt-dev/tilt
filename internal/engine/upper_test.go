@@ -2921,7 +2921,7 @@ func TestHandleTiltfileTriggerQueue(t *testing.T) {
 		assert.Equal(t, model.BuildReasonNone, st.MainTiltfileState().TriggerReason,
 			"initial state should not have Tiltfile trigger reason")
 	})
-	action := server.AppendToTriggerQueueAction{Name: model.MainTiltfileManifestName, Reason: 123}
+	action := store.AppendToTriggerQueueAction{Name: model.MainTiltfileManifestName, Reason: 123}
 	f.store.Dispatch(action)
 
 	f.WaitUntil("Tiltfile trigger processed", func(st store.EngineState) bool {
@@ -3076,7 +3076,7 @@ func TestDisabledResourceRemovedFromTriggerQueue(t *testing.T) {
 
 	f.bc.DisableForTesting()
 
-	f.store.Dispatch(server.AppendToTriggerQueueAction{Name: m.Name, Reason: model.BuildReasonFlagTriggerCLI})
+	f.store.Dispatch(store.AppendToTriggerQueueAction{Name: m.Name, Reason: model.BuildReasonFlagTriggerCLI})
 
 	f.WaitUntil("in trigger queue", func(state store.EngineState) bool {
 		return state.ManifestInTriggerQueue(m.Name)

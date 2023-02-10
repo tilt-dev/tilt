@@ -272,7 +272,7 @@ func (s *HeadsUpServer) HandleTrigger(w http.ResponseWriter, req *http.Request) 
 	} else if ms != nil && ms.DisableState == v1alpha1.DisableStateDisabled {
 		_, _ = fmt.Fprintf(w, "resource %q is currently disabled", mn)
 	} else {
-		s.store.Dispatch(AppendToTriggerQueueAction{Name: mn, Reason: payload.BuildReason})
+		s.store.Dispatch(store.AppendToTriggerQueueAction{Name: mn, Reason: payload.BuildReason})
 	}
 }
 
