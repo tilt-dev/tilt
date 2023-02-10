@@ -27,6 +27,7 @@ type Execer interface {
 }
 
 type fakeExecProcess struct {
+	closeCh   chan bool
 	exitCh    chan int
 	workdir   string
 	env       []string
@@ -47,17 +48,23 @@ func NewFakeExecer() *FakeExecer {
 
 func (e *FakeExecer) Start(ctx context.Context, cmd model.Cmd, w io.Writer) chan statusAndMetadata {
 	e.mu.Lock()
-	_, ok := e.processes[cmd.String()]
+	oldProcess, ok := e.processes[cmd.String()]
 	e.mu.Unlock()
 	if ok {
-		logger.Get(ctx).Infof("internal error: fake execer only supports one instance of each unique command at a time. tried to start a second instance of %q", cmd.Argv)
-		return nil
+		select {
+		case <-oldProcess.closeCh:
+		case <-time.After(5 * time.Second):
+			logger.Get(ctx).Infof("internal error: fake execer only supports one instance of each unique command at a time. tried to start a second instance of %q", cmd.Argv)
+			return nil
+		}
 	}
 
 	exitCh := make(chan int)
+	closeCh := make(chan bool)
 
 	e.mu.Lock()
 	e.processes[cmd.String()] = &fakeExecProcess{
+		closeCh:   closeCh,
 		exitCh:    exitCh,
 		workdir:   cmd.Dir,
 		startTime: time.Now(),
@@ -70,6 +77,7 @@ func (e *FakeExecer) Start(ctx context.Context, cmd model.Cmd, w io.Writer) chan
 		fakeRun(ctx, cmd, w, statusCh, exitCh)
 
 		e.mu.Lock()
+		close(closeCh)
 		delete(e.processes, cmd.String())
 		e.mu.Unlock()
 	}()
