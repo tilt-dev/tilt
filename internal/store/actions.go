@@ -141,3 +141,10 @@ type PanicAction struct {
 }
 
 func (PanicAction) Action() {}
+
+type AppendToTriggerQueueAction struct {
+	Name   model.ManifestName
+	Reason model.BuildReason
+}
+
+func (AppendToTriggerQueueAction) Action() {}

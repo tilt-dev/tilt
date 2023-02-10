@@ -1,15 +1,11 @@
 package hud
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"runtime"
 	"runtime/pprof"
-	"strings"
 	"sync"
 	"time"
 
@@ -181,19 +177,7 @@ func (h *Hud) handleScreenEvent(ctx context.Context, dispatch func(action store.
 			case r == 't': // [T]rigger resource update
 				_, selected := h.selectedResource()
 				h.recordInteraction("trigger_resource")
-				payload := []byte(fmt.Sprintf(`{"manifest_names":[%q], "build_reason": %d}`, selected.Name, model.BuildReasonFlagTriggerHUD))
-				resp, err := http.Post(fmt.Sprintf("http://%s/api/trigger", h.webURL.Host), "application/json", bytes.NewBuffer(payload))
-				if err != nil {
-					h.currentViewState.AlertMessage = fmt.Sprintf("error triggering resource %s: %v", selected.Name, err)
-				}
-				b, err := io.ReadAll(resp.Body)
-				if err != nil {
-					h.currentViewState.AlertMessage = fmt.Sprintf("error reading response: %v", err)
-				}
-				body := strings.TrimSpace(string(b))
-				if resp.StatusCode != http.StatusOK {
-					h.currentViewState.AlertMessage = fmt.Sprintf("(%d): %s", resp.StatusCode, body)
-				}
+				dispatch(store.AppendToTriggerQueueAction{Name: selected.Name, Reason: model.BuildReasonFlagTriggerHUD})
 			case r == 'x':
 				h.recordInteraction("cycle_view_log_state")
 				h.currentViewState.CycleViewLogState()

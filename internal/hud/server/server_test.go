@@ -167,13 +167,13 @@ func TestHandleTriggerTiltfileOK(t *testing.T) {
 	assert.Equal(t, "", resp)
 	assert.Equal(t, http.StatusOK, status)
 
-	a := store.WaitForAction(t, reflect.TypeOf(server.AppendToTriggerQueueAction{}), f.getActions)
-	action, ok := a.(server.AppendToTriggerQueueAction)
+	a := store.WaitForAction(t, reflect.TypeOf(store.AppendToTriggerQueueAction{}), f.getActions)
+	action, ok := a.(store.AppendToTriggerQueueAction)
 	if !ok {
 		t.Fatalf("Action was not of type 'AppendToTriggreQueueAction': %+v", action)
 	}
 
-	expected := server.AppendToTriggerQueueAction{
+	expected := store.AppendToTriggerQueueAction{
 		Name:   model.MainTiltfileManifestName,
 		Reason: model.BuildReasonFlagTriggerWeb,
 	}
@@ -212,8 +212,8 @@ func TestHandleTriggerNonTiltfileManifest(t *testing.T) {
 	assert.Equal(t, "", resp)
 	assert.Equal(t, http.StatusOK, status)
 
-	a := store.WaitForAction(t, reflect.TypeOf(server.AppendToTriggerQueueAction{}), f.getActions)
-	action, ok := a.(server.AppendToTriggerQueueAction)
+	a := store.WaitForAction(t, reflect.TypeOf(store.AppendToTriggerQueueAction{}), f.getActions)
+	action, ok := a.(store.AppendToTriggerQueueAction)
 	if !ok {
 		t.Fatalf("Action was not of type 'AppendToTriggerQueueAction': %+v", action)
 	}
