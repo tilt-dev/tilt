@@ -100,7 +100,7 @@ require (
 	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
 	github.com/Microsoft/go-winio v0.5.2 // indirect
-	github.com/Microsoft/hcsshim v0.9.5 // indirect
+	github.com/Microsoft/hcsshim v0.9.6 // indirect
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/agl/ed25519 v0.0.0-20170116200512-5312a6153412 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -112,7 +112,7 @@ require (
 	github.com/chai2010/gettext-go v1.0.2 // indirect
 	github.com/cloudflare/cfssl v1.4.1 // indirect
 	github.com/containerd/console v1.0.3 // indirect
-	github.com/containerd/containerd v1.6.12 // indirect
+	github.com/containerd/containerd v1.6.18 // indirect
 	github.com/containerd/continuity v0.3.0 // indirect
 	github.com/containerd/ttrpc v1.1.0 // indirect
 	github.com/containerd/typeurl v1.0.2 // indirect
