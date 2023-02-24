@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
@@ -102,7 +103,7 @@ type tcFixture struct {
 	st         *store.TestingStore
 	cmd        string
 	lastRun    time.Time
-	spans      []*trace.SpanSnapshot
+	spans      []trace.ReadOnlySpan
 	sc         *tracer.SpanCollector
 	controller *Controller
 }
@@ -121,7 +122,7 @@ func newTCFixture(t *testing.T) *tcFixture {
 		clock: fakeClock{now: time.Unix(1551202573, 0)},
 		st:    st,
 		sc:    tracer.NewSpanCollector(ctx),
-		spans: []*trace.SpanSnapshot{&trace.SpanSnapshot{}},
+		spans: []trace.ReadOnlySpan{tracetest.SpanStub{}.Snapshot()},
 	}
 }
 

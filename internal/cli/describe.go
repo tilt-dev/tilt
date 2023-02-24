@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/kubectl/pkg/cmd/describe"
@@ -89,8 +90,12 @@ func (c *describeCmd) run(ctx context.Context, args []string) error {
 	}
 
 	f := cmdutil.NewFactory(getter)
-	cmd := c.cmd
-	cmdutil.CheckErr(o.Complete(f, cmd, args))
+	o.NewBuilder = f.NewBuilder
+	o.BuilderArgs = args
+	o.Describer = func(mapping *meta.RESTMapping) (pkgdescribe.ResourceDescriber, error) {
+		return pkgdescribe.DescriberFn(f, mapping)
+	}
+	cmdutil.CheckErr(o.Validate())
 	cmdutil.CheckErr(o.Run())
 	return nil
 }

@@ -18,7 +18,6 @@ import (
 	"time"
 
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	"go.opentelemetry.io/otel/trace"
 )
 
 // SpanKind represents the role of a Span inside a Trace. Often, this defines how a Span
@@ -54,37 +53,6 @@ type ExperimentalTelemetrySpan struct {
 //
 // spanNamePrefix can be used to provide a prefix for the outgoing span name to mimic old opentelemetry-go behavior
 // which would prepend the tracer name to each span. (See https://github.com/open-telemetry/opentelemetry-go/pull/430).
-func NewSpanFromSpanSnapshot(s *sdktrace.SpanSnapshot, spanNamePrefix string) ExperimentalTelemetrySpan {
-	name := s.Name
-	if spanNamePrefix != "" && name != "" {
-		name = spanNamePrefix + name
-	}
-
-	return ExperimentalTelemetrySpan{
-		SpanContext:              NewSpanContextFromOtel(s.SpanContext),
-		ParentSpanID:             SpanID(s.Parent.SpanID()),
-		SpanKind:                 SpanKind(s.SpanKind),
-		Name:                     name,
-		StartTime:                s.StartTime,
-		EndTime:                  s.EndTime,
-		Attributes:               NewKeyValuesFromOtel(s.Attributes),
-		MessageEvents:            NewEventsFromOtel(s.MessageEvents),
-		Links:                    NewLinksFromOtel(s.Links),
-		Status:                   Code(s.StatusCode),
-		HasRemoteParent:          s.Parent.IsRemote(),
-		DroppedAttributeCount:    s.DroppedAttributeCount,
-		DroppedMessageEventCount: s.DroppedMessageEventCount,
-		DroppedLinkCount:         s.DroppedLinkCount,
-		ChildSpanCount:           s.ChildSpanCount,
-	}
-}
-
-// NewSpanFromOtel converts an OpenTelemetry span to a type suitable for JSON marshaling for usage with `experimental_telemetry_cmd`.
-//
-// This format corresponds to the JSON marshaling from opentelemetry-go v0.2.0. See the package docs for more details.
-//
-// spanNamePrefix can be used to provide a prefix for the outgoing span name to mimic old opentelemetry-go behavior
-// which would prepend the tracer name to each span. (See https://github.com/open-telemetry/opentelemetry-go/pull/430).
 func NewSpanFromOtel(sd sdktrace.ReadOnlySpan, spanNamePrefix string) ExperimentalTelemetrySpan {
 	name := sd.Name()
 	if spanNamePrefix != "" && name != "" {
@@ -101,12 +69,12 @@ func NewSpanFromOtel(sd sdktrace.ReadOnlySpan, spanNamePrefix string) Experiment
 		Attributes:               NewKeyValuesFromOtel(sd.Attributes()),
 		MessageEvents:            NewEventsFromOtel(sd.Events()),
 		Links:                    NewLinksFromOtel(sd.Links()),
-		Status:                   Code(sd.StatusCode()),
+		Status:                   Code(sd.Status().Code),
 		HasRemoteParent:          sd.Parent().IsRemote(),
-		DroppedAttributeCount:    sd.Snapshot().DroppedAttributeCount,
-		DroppedMessageEventCount: sd.Snapshot().DroppedMessageEventCount,
-		DroppedLinkCount:         sd.Snapshot().DroppedLinkCount,
-		ChildSpanCount:           sd.Snapshot().ChildSpanCount,
+		DroppedAttributeCount:    sd.DroppedAttributes(),
+		DroppedMessageEventCount: sd.DroppedEvents(),
+		DroppedLinkCount:         sd.DroppedLinks(),
+		ChildSpanCount:           sd.ChildSpanCount(),
 	}
 }
 
@@ -125,7 +93,7 @@ type Event struct {
 	Time time.Time
 }
 
-func NewEventsFromOtel(e []trace.Event) []Event {
+func NewEventsFromOtel(e []sdktrace.Event) []Event {
 	if e == nil {
 		return nil
 	}
@@ -157,7 +125,7 @@ type Link struct {
 	Attributes []KeyValue
 }
 
-func NewLinksFromOtel(l []trace.Link) []Link {
+func NewLinksFromOtel(l []sdktrace.Link) []Link {
 	if l == nil {
 		return nil
 	}

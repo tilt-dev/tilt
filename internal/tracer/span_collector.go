@@ -21,11 +21,11 @@ type SpanCollector struct {
 	// members for communicating with the loop() goroutine
 
 	// for OpenTelemetry SpanCollector
-	spanDataCh chan *trace.SpanSnapshot
+	spanDataCh chan trace.ReadOnlySpan
 
 	// for SpanSource
-	readReqCh chan chan []*trace.SpanSnapshot
-	requeueCh chan []*trace.SpanSnapshot
+	readReqCh chan chan []trace.ReadOnlySpan
+	requeueCh chan []trace.ReadOnlySpan
 }
 
 // SpanSource is the interface for consumers (generally telemetry.Controller)
@@ -42,9 +42,9 @@ type SpanSource interface {
 
 func NewSpanCollector(ctx context.Context) *SpanCollector {
 	r := &SpanCollector{
-		spanDataCh: make(chan *trace.SpanSnapshot),
-		readReqCh:  make(chan chan []*trace.SpanSnapshot),
-		requeueCh:  make(chan []*trace.SpanSnapshot),
+		spanDataCh: make(chan trace.ReadOnlySpan),
+		readReqCh:  make(chan chan []trace.ReadOnlySpan),
+		requeueCh:  make(chan []trace.ReadOnlySpan),
 	}
 	go r.loop(ctx)
 	return r
@@ -52,7 +52,7 @@ func NewSpanCollector(ctx context.Context) *SpanCollector {
 
 func (c *SpanCollector) loop(ctx context.Context) {
 	// spans that have come in and are waiting to be read by a consumer
-	var queue []*trace.SpanSnapshot
+	var queue []trace.ReadOnlySpan
 
 	for {
 		if c.spanDataCh == nil && c.readReqCh == nil {
@@ -84,7 +84,7 @@ func (c *SpanCollector) loop(ctx context.Context) {
 
 // OpenTelemetry exporter methods
 
-func (c *SpanCollector) ExportSpans(ctx context.Context, spans []*trace.SpanSnapshot) error {
+func (c *SpanCollector) ExportSpans(ctx context.Context, spans []trace.ReadOnlySpan) error {
 	for _, s := range spans {
 		select {
 		case c.spanDataCh <- s:
@@ -102,7 +102,7 @@ func (c *SpanCollector) Shutdown(ctx context.Context) error {
 
 // SpanSource
 func (c *SpanCollector) GetOutgoingSpans() (io.Reader, func(), error) {
-	readCh := make(chan []*trace.SpanSnapshot)
+	readCh := make(chan []trace.ReadOnlySpan)
 	c.readReqCh <- readCh
 	spans := <-readCh
 
@@ -113,7 +113,7 @@ func (c *SpanCollector) GetOutgoingSpans() (io.Reader, func(), error) {
 	var b strings.Builder
 	w := json.NewEncoder(&b)
 	for i := range spans {
-		span := exptel.NewSpanFromSpanSnapshot(spans[i], tracerName+"/")
+		span := exptel.NewSpanFromOtel(spans[i], tracerName+"/")
 		if err := w.Encode(span); err != nil {
 			return nil, nil, fmt.Errorf("Error marshaling %v: %v", span, err)
 		}
@@ -133,7 +133,7 @@ func (c *SpanCollector) Close() error {
 
 const maxQueueSize = 1024 // round number that can hold a fair bit of data
 
-func appendAndTrim(lst1 []*trace.SpanSnapshot, lst2 ...*trace.SpanSnapshot) []*trace.SpanSnapshot {
+func appendAndTrim(lst1 []trace.ReadOnlySpan, lst2 ...trace.ReadOnlySpan) []trace.ReadOnlySpan {
 	r := append(lst1, lst2...)
 	if len(r) <= maxQueueSize {
 		return r

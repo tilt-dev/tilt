@@ -32,6 +32,7 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apiserver/pkg/authentication/request/anonymous"
 	"k8s.io/apiserver/pkg/authorization/authorizerfactory"
+	"k8s.io/apiserver/pkg/authorization/union"
 	"k8s.io/apiserver/pkg/registry/generic"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/apiserver/pkg/server/dynamiccertificates"
@@ -169,7 +170,10 @@ func (o *TiltServerOptions) Config() (*apiserver.Config, error) {
 	}
 	serverConfig.ExternalAddress = serving.Listener.Addr().String()
 	serverConfig.Authorization = genericapiserver.AuthorizationInfo{
-		Authorizer: authorizerfactory.NewAlwaysDenyAuthorizer(),
+		Authorizer: union.New(
+			authorizerfactory.NewPrivilegedGroups("system:masters"),
+			authorizerfactory.NewAlwaysDenyAuthorizer(),
+		),
 	}
 	serverConfig.Authentication = genericapiserver.AuthenticationInfo{
 		Authenticator: anonymous.NewAuthenticator(),
