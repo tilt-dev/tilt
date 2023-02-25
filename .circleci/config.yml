@@ -119,7 +119,7 @@ jobs:
     steps:
       - checkout
       - go/install:
-          version: "1.18"
+          version: "1.19"
       - run: curl -fsSL "https://github.com/gotestyourself/gotestsum/releases/download/v1.7.0/gotestsum_1.7.0_darwin_amd64.tar.gz" | sudo tar -xz -C /usr/local/bin gotestsum
       # We can't run the container tests on macos because nested
       # VMs don't work on circleci.
