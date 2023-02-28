@@ -39,6 +39,14 @@ func (d *DeferredClient) client() ctrlclient.Client {
 	return cli
 }
 
+func (d *DeferredClient) SubResource(subResource string) ctrlclient.SubResourceClient {
+	cli := d.client()
+	if cli == nil {
+		return nil
+	}
+	return cli.SubResource(subResource)
+}
+
 func (d *DeferredClient) Get(ctx context.Context, key ctrlclient.ObjectKey, obj ctrlclient.Object, _ ...ctrlclient.GetOption) error {
 	cli := d.client()
 	if cli == nil {

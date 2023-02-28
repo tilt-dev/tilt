@@ -208,7 +208,7 @@ func (s *informerSet) WatchEvents(ctx context.Context, ns Namespace) (<-chan *v1
 	}
 
 	ch := make(chan *v1.Event)
-	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, err = informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			mObj, ok := obj.(*v1.Event)
 			if ok {
@@ -230,6 +230,9 @@ func (s *informerSet) WatchEvents(ctx context.Context, ns Namespace) (<-chan *v1
 			}
 		},
 	})
+	if err != nil {
+		return nil, errors.Wrap(err, "WatchEvents")
+	}
 
 	return ch, nil
 }
@@ -265,7 +268,7 @@ func (s *informerSet) WatchPods(ctx context.Context, ns Namespace) (<-chan Objec
 	}
 
 	ch := make(chan ObjectUpdate)
-	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, err = informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			mObj, ok := obj.(*v1.Pod)
 			if ok {
@@ -295,6 +298,9 @@ func (s *informerSet) WatchPods(ctx context.Context, ns Namespace) (<-chan Objec
 			ch <- ObjectUpdate{obj: newPod}
 		},
 	})
+	if err != nil {
+		return nil, errors.Wrap(err, "WatchPods")
+	}
 
 	return ch, nil
 }
@@ -307,7 +313,7 @@ func (s *informerSet) WatchServices(ctx context.Context, ns Namespace) (<-chan *
 	}
 
 	ch := make(chan *v1.Service)
-	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, err = informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			mObj, ok := obj.(*v1.Service)
 			if ok {
@@ -321,6 +327,9 @@ func (s *informerSet) WatchServices(ctx context.Context, ns Namespace) (<-chan *
 			}
 		},
 	})
+	if err != nil {
+		return nil, errors.Wrap(err, "WatchServices")
+	}
 
 	return ch, nil
 }
@@ -367,7 +376,7 @@ func (kCli *K8sClient) watchMeta14Minus(ctx context.Context, gvr schema.GroupVer
 	}
 	informer := resFactory.Informer()
 	ch := make(chan metav1.Object)
-	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, err = informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			mObj, ok := obj.(runtime.Object)
 			if !ok {
@@ -387,6 +396,9 @@ func (kCli *K8sClient) watchMeta14Minus(ctx context.Context, gvr schema.GroupVer
 			ch <- entity.Meta()
 		},
 	})
+	if err != nil {
+		return nil, errors.Wrap(err, "WatchMeta")
+	}
 
 	go runInformer(ctx, fmt.Sprintf("%s-metadata", gvr.Resource), informer)
 
@@ -398,7 +410,7 @@ func (kCli *K8sClient) watchMeta15Plus(ctx context.Context, gvr schema.GroupVers
 	informer := factory.ForResource(gvr).Informer()
 
 	ch := make(chan metav1.Object)
-	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, err := informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			mObj, ok := obj.(*metav1.PartialObjectMetadata)
 			if ok {
@@ -412,6 +424,9 @@ func (kCli *K8sClient) watchMeta15Plus(ctx context.Context, gvr schema.GroupVers
 			}
 		},
 	})
+	if err != nil {
+		return nil, errors.Wrap(err, "WatchMeta")
+	}
 
 	go runInformer(ctx, fmt.Sprintf("%s-metadata", gvr.Resource), informer)
 

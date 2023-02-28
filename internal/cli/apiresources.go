@@ -86,8 +86,8 @@ func (c *apiresourcesCmd) run(ctx context.Context, args []string) error {
 
 	f := cmdutil.NewFactory(getter)
 	cmd := c.cmd
-	cmdutil.CheckErr(o.Complete(cmd, args))
+	cmdutil.CheckErr(o.Complete(f, cmd, args))
 	cmdutil.CheckErr(o.Validate())
-	cmdutil.CheckErr(o.RunAPIResources(cmd, f))
+	cmdutil.CheckErr(o.RunAPIResources())
 	return nil
 }

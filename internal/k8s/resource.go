@@ -78,7 +78,6 @@ func (c *resourceClient) Apply(target kube.ResourceList) (*kube.Result, error) {
 		All:            flags.All,
 		Overwrite:      flags.Overwrite,
 		OpenAPIPatch:   flags.OpenAPIPatch,
-		PruneWhitelist: flags.PruneWhitelist,
 
 		Recorder:         recorder,
 		Namespace:        namespace,
