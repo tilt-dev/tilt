@@ -33,4 +33,7 @@ func TestExplain(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Contains(t, out.String(), `Cmd represents a process on the host machine.`)
+
+	err = explain.run(f.ctx, []string{})
+	require.ErrorContains(t, err, "expecting resource argument: tilt explain RESOURCE")
 }
