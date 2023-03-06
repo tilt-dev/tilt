@@ -23,7 +23,6 @@ package cli
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -96,10 +95,6 @@ func (c *explainCmd) run(ctx context.Context, args []string) error {
 	a.Incr("cmd.explain", cmdTags.AsMap())
 	defer a.Flush(time.Second)
 
-	if len(args) == 0 {
-		return fmt.Errorf("expecting resource argument: tilt explain RESOURCE")
-	}
-
 	o := c.options
 	getter, err := wireClientGetter(ctx)
 	if err != nil {
@@ -109,6 +104,7 @@ func (c *explainCmd) run(ctx context.Context, args []string) error {
 	f := cmdutil.NewFactory(getter)
 	cmd := c.cmd
 	cmdutil.CheckErr(o.Complete(f, cmd, args))
+	cmdutil.CheckErr(o.Validate())
 	cmdutil.CheckErr(o.Run())
 	return nil
 }
