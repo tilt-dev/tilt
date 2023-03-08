@@ -81,7 +81,7 @@ let SidebarListSectionName = styled.div`
   font-size: ${FontSize.small};
 `
 
-const AllResourceLinkRoot = styled(Link)`
+const BuiltinResourceLinkRoot = styled(Link)`
   background-color: ${Color.gray40};
   border: 1px solid ${Color.gray50};
   border-radius: ${SizeUnit(1 / 8)};
@@ -189,13 +189,29 @@ function AllResourcesLink(props: {
 }) {
   const isSelectedClass = props.selected === "" ? "isSelected" : ""
   return (
-    <AllResourceLinkRoot
+    <BuiltinResourceLinkRoot
       className={isSelectedClass}
       aria-label="View all resource logs"
       to={props.pathBuilder.encpath`/r/(all)/overview`}
     >
       All Resources
-    </AllResourceLinkRoot>
+    </BuiltinResourceLinkRoot>
+  )
+}
+
+function StarredResourcesLink(props: {
+  pathBuilder: PathBuilder
+  selected: string
+}) {
+  const isSelectedClass = props.selected === "" ? "isSelected" : ""
+  return (
+    <BuiltinResourceLinkRoot
+      className={isSelectedClass}
+      aria-label="View starred resource logs"
+      to={props.pathBuilder.encpath`/r/(starred)/overview`}
+    >
+      Starred Resources
+    </BuiltinResourceLinkRoot>
   )
 }
 
@@ -515,6 +531,10 @@ export class SidebarResources extends React.Component<SidebarProps> {
         >
           <OverviewSidebarOptions items={filteredItems} />
           <AllResourcesLink
+            pathBuilder={this.props.pathBuilder}
+            selected={this.props.selected}
+          />
+          <StarredResourcesLink
             pathBuilder={this.props.pathBuilder}
             selected={this.props.selected}
           />

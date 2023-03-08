@@ -572,4 +572,49 @@ describe("LogStore", () => {
       "fe          ┊ build 1\nbe          ┊ build 7\nglobal line 1"
     )
   })
+
+  it("handles starred resource logs", () => {
+    let logs = new LogStore()
+    logs.append({
+      spans: {
+        "": {},
+        "build:1": { manifestName: "res1" },
+        "build:2": { manifestName: "res2" },
+        "build:3": { manifestName: "res3" },
+      },
+      segments: [
+        newManifestSegment("build:1", "build 1\n"),
+        newManifestSegment("build:2", "build 2\n"),
+        newManifestSegment("build:3", "build 3\n"),
+      ],
+      fromCheckpoint: 0,
+      toCheckpoint: 3,
+    })
+
+    let patch = logs.starredLogPatchSet(["res1", "res2"], 0)
+    expect(logLinesToString(patch.lines, false)).toEqual(
+      "build 1\nbuild 2"
+    )
+
+    logs.append({
+      spans: {
+        "": {},
+        "build:1": { manifestName: "res1" },
+        "build:2": { manifestName: "res2" },
+        "build:3": { manifestName: "res3" },
+      },
+      segments: [
+        newManifestSegment("build:1", "build 4\n"),
+        newManifestSegment("build:2", "build 5\n"),
+        newManifestSegment("build:3", "build 6\n"),
+      ],
+      fromCheckpoint: 3,
+      toCheckpoint: 6,
+    })
+
+    let patch3 = logs.starredLogPatchSet(["res1", "res2"], patch.checkpoint)
+    expect(logLinesToString(patch3.lines, false)).toEqual(
+      "build 4\nbuild 5"
+    )
+  })
 })

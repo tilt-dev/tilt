@@ -82,6 +82,12 @@ export const TenResources = () => (
   <OverviewResourcePaneHarness name="vigoda_1" view={tenResourceView()} />
 )
 
+export const TwoStarredResources = () => (
+  <StarredResourceMemoryProvider initialValueForTesting={["_1", "_2"]}>
+    <OverviewResourcePaneHarness name="vigoda_1" view={tenResourceView()} />
+  </StarredResourceMemoryProvider>
+)
+
 export const TenResourcesLongNames = () => {
   let view = tenResourceView()
   view.uiResources.forEach((r, n) => {

@@ -145,6 +145,7 @@ export type LogTraceNav = {
 export enum ResourceName {
   tiltfile = "(Tiltfile)",
   all = "(all)",
+  starred = "(starred)",
 }
 
 export type UISession = Proto.v1alpha1UISession

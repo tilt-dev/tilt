@@ -230,8 +230,26 @@ export function StarredResource(props: {
 }
 
 export default function StarredResourceBar(props: StarredResourceBarProps) {
+  const pb = usePathBuilder()
+  const history = useHistory()
   return (
     <StarredResourceBarRoot aria-label="Starred resources">
+      {props.resources.length ? (
+        <TiltTooltip title={"View starred resource logs"}>
+          <StarredResourceRoot className={""}>
+            <StarButton
+              name="starredLogs"
+              onClick={() => {
+                history.push(pb.encpath`/r/(starred)/overview`)
+              }}
+              analyticsName="ui.web.starredResourcesAggregatedLogs"
+            >
+              <StarIcon style={{ marginRight: 10 }} />
+              Logs
+            </StarButton>
+          </StarredResourceRoot>
+        </TiltTooltip>
+      ) : null}
       {props.resources.map((r) => (
         <StarredResource
           resource={r}
