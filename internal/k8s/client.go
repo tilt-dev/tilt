@@ -756,12 +756,12 @@ func (k *K8sClient) ClusterHealth(ctx context.Context, verbose bool) (ClusterHea
 	}
 
 	return ClusterHealth{
-		Live:        isLive,
-		Healthy:     isHealthy,
-		Ready:       isReady,
-		LiveOutput:  livezResp,
+		Live:          isLive,
+		Healthy:       isHealthy,
+		Ready:         isReady,
+		LiveOutput:    livezResp,
 		HealthyOutput: healthzResp,
-		ReadyOutput: readyzResp,
+		ReadyOutput:   readyzResp,
 	}, nil
 }
 
