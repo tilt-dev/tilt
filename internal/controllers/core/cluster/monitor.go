@@ -128,5 +128,9 @@ func doKubernetesHealthCheck(ctx context.Context, client k8s.Client) error {
 		return errors.New("cluster not ready")
 	}
 
+	if !health.Healthy {
+		return errors.New("cluster not healthy")
+	}
+
 	return nil
 }

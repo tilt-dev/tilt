@@ -86,10 +86,12 @@ func (n Namespace) String() string {
 }
 
 type ClusterHealth struct {
-	Live        bool
-	LiveOutput  string
-	Ready       bool
-	ReadyOutput string
+	Live          bool
+	LiveOutput    string
+	Ready         bool
+	ReadyOutput   string
+	Healthy       bool
+	HealthyOutput string
 }
 
 type Client interface {
@@ -748,10 +750,17 @@ func (k *K8sClient) ClusterHealth(ctx context.Context, verbose bool) (ClusterHea
 		return ClusterHealth{}, fmt.Errorf("cluster readiness check: %v", err)
 	}
 
+	isHealthy, healthzResp, err := k.apiServerHealthCheck(ctx, "/healthz", verbose)
+	if err != nil {
+		return ClusterHealth{}, fmt.Errorf("cluster healthz check: %v", err)
+	}
+
 	return ClusterHealth{
 		Live:        isLive,
+		Healthy:     isHealthy,
 		Ready:       isReady,
 		LiveOutput:  livezResp,
+		HealthyOutput: healthzResp,
 		ReadyOutput: readyzResp,
 	}, nil
 }
