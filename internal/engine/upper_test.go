@@ -374,7 +374,7 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 		if b.nextDockerComposeContainerID != "" {
 			dcContainerID = b.nextDockerComposeContainerID
 		}
-		b.dcClient.ContainerIdOutput = dcContainerID
+		b.dcClient.ContainerIDDefault = dcContainerID
 
 		err = b.updateDockerComposeServiceStatus(ctx, call.dc(), iTargets)
 		if err != nil {

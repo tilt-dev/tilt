@@ -222,7 +222,7 @@ type fixture struct {
 func newFixture(t *testing.T) *fixture {
 	cfb := fake.NewControllerFixtureBuilder(t)
 	dcCli := dockercompose.NewFakeDockerComposeClient(t, cfb.Context())
-	dcCli.ContainerIdOutput = "fake-cid"
+	dcCli.ContainerIDDefault = "fake-cid"
 	dCli := docker.NewFakeClient()
 	clock := clockwork.NewFakeClock()
 	watcher := NewDisableSubscriber(cfb.Context(), dcCli, clock)

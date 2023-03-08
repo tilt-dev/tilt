@@ -76,6 +76,9 @@ func (c *switchCli) BuilderVersion() types.BuilderVersion {
 func (c *switchCli) ServerVersion() types.Version {
 	return c.client(context.Background()).ServerVersion()
 }
+func (c *switchCli) ContainerLogs(ctx context.Context, containerID string, options types.ContainerLogsOptions) (io.ReadCloser, error) {
+	return c.client(ctx).ContainerLogs(ctx, containerID, options)
+}
 func (c *switchCli) ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error) {
 	return c.client(ctx).ContainerInspect(ctx, containerID)
 }
