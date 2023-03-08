@@ -592,9 +592,7 @@ describe("LogStore", () => {
     })
 
     let patch = logs.starredLogPatchSet(["res1", "res2"], 0)
-    expect(logLinesToString(patch.lines, false)).toEqual(
-      "build 1\nbuild 2"
-    )
+    expect(logLinesToString(patch.lines, false)).toEqual("build 1\nbuild 2")
 
     logs.append({
       spans: {
@@ -613,8 +611,6 @@ describe("LogStore", () => {
     })
 
     let patch3 = logs.starredLogPatchSet(["res1", "res2"], patch.checkpoint)
-    expect(logLinesToString(patch3.lines, false)).toEqual(
-      "build 4\nbuild 5"
-    )
+    expect(logLinesToString(patch3.lines, false)).toEqual("build 4\nbuild 5")
   })
 })
