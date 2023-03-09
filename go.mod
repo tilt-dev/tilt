@@ -9,9 +9,9 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/compose-spec/compose-go v1.6.0
 	github.com/davecgh/go-spew v1.1.1
-	github.com/docker/cli v20.10.17+incompatible
+	github.com/docker/cli v20.10.21+incompatible
 	github.com/docker/distribution v2.8.1+incompatible
-	github.com/docker/docker v20.10.17+incompatible
+	github.com/docker/docker v20.10.21+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-units v0.5.0
 	github.com/fatih/color v1.13.0
@@ -42,9 +42,9 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rivo/tview v0.0.0-20180926100353-bc39bf8d245d
 	github.com/schollz/closestmatch v2.1.0+incompatible
-	github.com/spf13/cobra v1.6.0
+	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.1
 	github.com/tilt-dev/clusterid v0.1.3
 	github.com/tilt-dev/dockerignore v0.1.1
 	github.com/tilt-dev/fsevents v0.0.0-20200515134857-2efe37af20de
@@ -65,7 +65,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.10.0
 	go.starlark.net v0.0.0-20220328144851-d1966c6b9fcd
 	golang.org/x/mod v0.6.0
-	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
+	golang.org/x/sync v0.1.0
 	golang.org/x/term v0.5.0
 	golang.org/x/xerrors v0.0.0-20220411194840-2f41105eb62f
 	google.golang.org/genproto v0.0.0-20220802133213-ce4fa296bf78
@@ -73,7 +73,7 @@ require (
 	google.golang.org/protobuf v1.28.1
 	gopkg.in/d4l3k/messagediff.v1 v1.2.1
 	gopkg.in/yaml.v2 v2.4.0
-	helm.sh/helm/v3 v3.10.3
+	helm.sh/helm/v3 v3.11.1
 	k8s.io/api v0.26.1
 	k8s.io/apimachinery v0.26.1
 	k8s.io/apiserver v0.26.1
@@ -116,8 +116,8 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/d4l3k/messagediff v1.2.1 // indirect
 	github.com/denisbrodbeck/machineid v1.0.0 // indirect
-	github.com/distribution/distribution/v3 v3.0.0-20220725133111-4bf3547399eb // indirect
-	github.com/docker/docker-credential-helpers v0.6.4 // indirect
+	github.com/distribution/distribution/v3 v3.0.0-20221208165359-362910506bc2 // indirect
+	github.com/docker/docker-credential-helpers v0.7.0 // indirect
 	github.com/docker/go v1.5.1-1 // indirect
 	github.com/docker/go-metrics v0.0.1 // indirect
 	github.com/docker/libtrust v0.0.0-20160708172513-aabc10ec26b7 // indirect
@@ -171,13 +171,13 @@ require (
 	github.com/moby/spdystream v0.2.0 // indirect
 	github.com/moby/sys/mount v0.2.0 // indirect
 	github.com/moby/sys/mountinfo v0.5.0 // indirect
-	github.com/moby/term v0.0.0-20220808134915-39b0c02b01ae // indirect
+	github.com/moby/term v0.0.0-20221205130635-1aeaba878587 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/monochromegane/go-gitignore v0.0.0-20200626010858-205db1a8cc00 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
-	github.com/opencontainers/image-spec v1.0.3-0.20211202183452-c5a74bcca799 // indirect
+	github.com/opencontainers/image-spec v1.1.0-rc2 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
@@ -210,7 +210,7 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	go.uber.org/zap v1.24.0 // indirect
-	golang.org/x/crypto v0.1.0 // indirect
+	golang.org/x/crypto v0.5.0 // indirect
 	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20220722155238-128564f6959c // indirect
 	golang.org/x/sys v0.5.0 // indirect
@@ -234,7 +234,6 @@ require (
 )
 
 replace (
-
 	cloud.google.com/go => cloud.google.com/go v0.100.2
 	// from https://github.com/moby/buildkit/blob/v0.8.3/go.mod
 	github.com/jaguilar/vt100 => github.com/tonistiigi/vt100 v0.0.0-20190402012908-ad4c4a574305
