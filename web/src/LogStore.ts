@@ -513,6 +513,17 @@ class LogStore implements LogAlertIndex {
     return this.logHelper(spans, checkpoint)
   }
 
+  starredLogPatchSet(stars: string[], checkpoint: number): LogPatchSet {
+    let result: { [key: string]: LogSpan } = {}
+    for (let spanId in this.spans) {
+      let span = this.spans[spanId]
+      if (stars.includes(span.manifestName)) {
+        result[spanId] = span
+      }
+    }
+    return this.logHelper(result, checkpoint)
+  }
+
   // Return all the logs for the given options.
   //
   // spansToLog: Filtering by an arbitrary set of spans.

@@ -18,9 +18,10 @@ import LogStore, {
 } from "./LogStore"
 import PathBuilder, { usePathBuilder } from "./PathBuilder"
 import { RafContext, useRaf } from "./raf"
+import { useStarredResources } from "./StarredResourcesContext"
 import { Color, FontSize, SizeUnit } from "./style-helpers"
 import Anser from "./third-party/anser/index.js"
-import { LogLevel, LogLine } from "./types"
+import { LogLevel, LogLine, ResourceName } from "./types"
 
 // The number of lines to display before an error.
 export const PROLOGUE_LENGTH = 5
@@ -33,6 +34,7 @@ type OverviewLogComponentProps = {
   filterSet: FilterSet
   history: History
   scrollToStoredLineIndex: number | null
+  starredResources: string[]
 }
 
 let LogPaneRoot = styled.section`
@@ -486,7 +488,12 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
     let startCheckpoint = this.logCheckpoint
 
     let patch = mn
-      ? logStore.manifestLogPatchSet(mn, startCheckpoint)
+      ? mn === ResourceName.starred
+        ? logStore.starredLogPatchSet(
+            this.props.starredResources,
+            startCheckpoint
+          )
+        : logStore.manifestLogPatchSet(mn, startCheckpoint)
       : logStore.allLogPatchSet(startCheckpoint)
 
     let lines: LogLine[] = []
@@ -657,7 +664,7 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
 
     let shouldDisplayPrologues = this.props.filterSet.level !== FilterLevel.all
     let mn = this.props.manifestName
-    let showManifestName = !mn
+    let showManifestName = !mn || mn === ResourceName.starred
     let prevManifestName = entry.prev?.line.manifestName || ""
 
     let extraClasses = []
@@ -749,6 +756,7 @@ export default function OverviewLogPane(props: OverviewLogPaneProps) {
   let pathBuilder = usePathBuilder()
   let logStore = useLogStore()
   let raf = useRaf()
+  let starredContext = useStarredResources()
   return (
     <OverviewLogComponent
       manifestName={props.manifestName}
@@ -758,6 +766,7 @@ export default function OverviewLogPane(props: OverviewLogPaneProps) {
       filterSet={props.filterSet}
       history={history}
       scrollToStoredLineIndex={location?.state?.storedLineIndex}
+      starredResources={starredContext.starredResources}
     />
   )
 }

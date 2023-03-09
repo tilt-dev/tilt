@@ -8,6 +8,7 @@ import {
 } from "./logfilters"
 import LogStore, { LogStoreProvider } from "./LogStore"
 import OverviewLogPane from "./OverviewLogPane"
+import { StarredResourceMemoryProvider } from "./StarredResourcesContext"
 import { appendLines } from "./testlogs"
 import { LogLevel } from "./types"
 
@@ -54,6 +55,22 @@ export const ThreeLinesAllLog = () => {
     <LogStoreProvider value={logStore}>
       <OverviewLogPane manifestName="" filterSet={defaultFilter} />
     </LogStoreProvider>
+  )
+}
+
+export const StarredResourcesLog = () => {
+  let logStore = new LogStore()
+  appendLines(logStore, "starA", "A line 1\n", "A line 2\n", "A line 3\n")
+  appendLines(logStore, "starB", "B line 1\n", "B line 2\n", "B line 3\n")
+  appendLines(logStore, "starC", "C line 1\n", "C line 2\n", "C line 3\n")
+  return (
+    <StarredResourceMemoryProvider
+      initialValueForTesting={["starA", "starB", "starC"]}
+    >
+      <LogStoreProvider value={logStore}>
+        <OverviewLogPane manifestName="(starred)" filterSet={defaultFilter} />
+      </LogStoreProvider>
+    </StarredResourceMemoryProvider>
   )
 }
 

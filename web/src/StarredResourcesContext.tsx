@@ -37,7 +37,7 @@ export function StarredResourceMemoryProvider(
       return prevState.includes(name) ? prevState : [...prevState, name]
     })
   }
-  1
+
   function unstarResource(name: string) {
     setStarredResources((prevState) => {
       return prevState.filter((s) => s !== name)

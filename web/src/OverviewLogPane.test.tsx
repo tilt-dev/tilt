@@ -20,6 +20,7 @@ import {
   StyledLines,
   ThreeLines,
   ThreeLinesAllLog,
+  StarredResourcesLog,
 } from "./OverviewLogPane.stories"
 import { newFakeRaf, RafProvider, SyncRafProvider, TestRafContext } from "./raf"
 import { renderTestComponent } from "./test-helpers"
@@ -45,6 +46,11 @@ describe("OverviewLogPane", () => {
   it("renders all log lines in the all log view", () => {
     const { container } = customRender(<ThreeLinesAllLog />)
     expect(container.querySelectorAll(".LogLine")).toHaveLength(3)
+  })
+
+  it("renders log lines of starred resources", () => {
+    const { container } = customRender(<StarredResourcesLog />)
+    expect(container.querySelectorAll(".LogLine")).toHaveLength(9)
   })
 
   it("escapes html and linkifies", () => {

@@ -37,7 +37,8 @@ export default function OverviewResourceDetails(
   let { name, resource, alerts, buttons } = props
   let manifestName = resource?.metadata?.name || ""
   let all = name === "" || name === ResourceName.all
-  let notFound = !all && !manifestName
+  let starred = name === "" || name === ResourceName.starred
+  let notFound = !all && !starred && !manifestName
   let filterSet = useFilterSet()
 
   return (
@@ -51,7 +52,10 @@ export default function OverviewResourceDetails(
       {notFound ? (
         <NotFound>No resource '{name}'</NotFound>
       ) : (
-        <OverviewLogPane manifestName={manifestName} filterSet={filterSet} />
+        <OverviewLogPane
+          manifestName={starred ? name : manifestName}
+          filterSet={filterSet}
+        />
       )}
     </OverviewResourceDetailsRoot>
   )
