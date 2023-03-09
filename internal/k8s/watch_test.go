@@ -519,11 +519,15 @@ func (tf *watchTestFixture) runPods(input []runtime.Object, expected []runtime.O
 	tf.assertPods(expected, ch)
 }
 
-func (tf *watchTestFixture) assertPods(expectedOutput []runtime.Object, ch <-chan ObjectUpdate) {
-	var observedPods []runtime.Object
-
+func take[T interface{}](ch <-chan T, expected int) []T {
+	result := []T{}
 	done := false
 	for !done {
+		wait := time.Second
+		if len(result) >= expected {
+			// No need to wait as long if we already have N objects.
+			wait = 200 * time.Millisecond
+		}
 		select {
 		case obj, ok := <-ch:
 			if !ok {
@@ -531,13 +535,22 @@ func (tf *watchTestFixture) assertPods(expectedOutput []runtime.Object, ch <-cha
 				continue
 			}
 
-			pod, ok := obj.AsPod()
-			if ok {
-				observedPods = append(observedPods, pod)
-			}
-		case <-time.After(200 * time.Millisecond):
+			result = append(result, obj)
+		case <-time.After(wait):
 			// if we haven't seen any events for 200ms, assume we're done
 			done = true
+		}
+	}
+	return result
+}
+
+func (tf *watchTestFixture) assertPods(expectedOutput []runtime.Object, ch <-chan ObjectUpdate) {
+	var observedPods []runtime.Object
+	updates := take(ch, len(expectedOutput))
+	for _, update := range updates {
+		pod, ok := update.AsPod()
+		if ok {
+			observedPods = append(observedPods, pod)
 		}
 	}
 
@@ -552,23 +565,7 @@ func (tf *watchTestFixture) runServices(input []runtime.Object, expected []runti
 }
 
 func (tf *watchTestFixture) assertServices(expectedOutput []runtime.Object, ch <-chan *v1.Service) {
-	var observedServices []runtime.Object
-
-	done := false
-	for !done {
-		select {
-		case pod, ok := <-ch:
-			if !ok {
-				done = true
-			} else {
-				observedServices = append(observedServices, pod)
-			}
-		case <-time.After(200 * time.Millisecond):
-			// if we haven't seen any events for 10ms, assume we're done
-			done = true
-		}
-	}
-
+	observedServices := take(ch, len(expectedOutput))
 	// Our k8s simulation library does not guarantee event order.
 	assert.ElementsMatch(tf.t, expectedOutput, observedServices)
 }
@@ -580,47 +577,13 @@ func (tf *watchTestFixture) runEvents(input []runtime.Object, expectedOutput []r
 }
 
 func (tf *watchTestFixture) assertEvents(expectedOutput []runtime.Object, ch <-chan *v1.Event) {
-	var observedEvents []runtime.Object
-
-	done := false
-	for !done {
-		select {
-		case event, ok := <-ch:
-			if !ok {
-				done = true
-			} else {
-				observedEvents = append(observedEvents, event)
-			}
-		case <-time.After(200 * time.Millisecond):
-			// if we haven't seen any events for 10ms, assume we're done
-			// ideally we'd always be exiting from ch closing, but it's not currently clear how to do that via informer
-			done = true
-		}
-	}
-
+	observedEvents := take(ch, len(expectedOutput))
 	// Our k8s simulation library does not guarantee event order.
 	assert.ElementsMatch(tf.t, expectedOutput, observedEvents)
 }
 
 func (tf *watchTestFixture) assertMeta(expected []metav1.Object, ch <-chan metav1.Object) {
-	var observed []metav1.Object
-
-	done := false
-	for !done {
-		select {
-		case m, ok := <-ch:
-			if !ok {
-				done = true
-			} else {
-				observed = append(observed, m)
-			}
-		case <-time.After(200 * time.Millisecond):
-			// if we haven't seen any events for 10ms, assume we're done
-			// ideally we'd always be exiting from ch closing, but it's not currently clear how to do that via informer
-			done = true
-		}
-	}
-
+	observed := take(ch, len(expected))
 	// Our k8s simulation library does not guarantee event order.
 	assert.ElementsMatch(tf.t, expected, observed)
 }
