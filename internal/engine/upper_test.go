@@ -3447,6 +3447,7 @@ func (f *testFixture) Init(action InitAction) {
 			fmt.Println("writing to upperInitResult would block!")
 			panic(err)
 		}
+		close(f.upperInitResult)
 	}()
 
 	f.WaitUntil("tiltfile build finishes", func(st store.EngineState) bool {
@@ -3777,6 +3778,11 @@ func (f *testFixture) TearDown() {
 	close(f.fsWatcher.Events)
 	close(f.fsWatcher.Errors)
 	f.cancel()
+
+	// If the test started an Init() in a goroutine, drain it.
+	if f.upperInitResult != nil {
+		<-f.upperInitResult
+	}
 }
 
 func (f *testFixture) registerForDeployer(manifest model.Manifest) podbuilder.PodBuilder {
