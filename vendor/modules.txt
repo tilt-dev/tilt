@@ -659,7 +659,7 @@ github.com/tilt-dev/fsevents
 # github.com/tilt-dev/fsnotify v1.4.8-0.20220602155310-fff9c274a375
 ## explicit; go 1.16
 github.com/tilt-dev/fsnotify
-# github.com/tilt-dev/go-get v0.2.2
+# github.com/tilt-dev/go-get v0.2.3
 ## explicit; go 1.14
 github.com/tilt-dev/go-get
 github.com/tilt-dev/go-get/internal/auth
