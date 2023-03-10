@@ -1293,8 +1293,8 @@ github.com/tilt-dev/fsnotify v1.4.8-0.20220602155310-fff9c274a375 h1:QB54BJwA6x8
 github.com/tilt-dev/fsnotify v1.4.8-0.20220602155310-fff9c274a375/go.mod h1:xRroudyp5iVtxKqZCrA6n2TLFRBf8bmnjr1UD4x+z7g=
 github.com/tilt-dev/fsutil v0.0.0-tilt-20220505 h1:N3tk/EUOxnHXJS5g6YiRseO348IpxZXg1kELykYlKWY=
 github.com/tilt-dev/fsutil v0.0.0-tilt-20220505/go.mod h1:a7cilN64dG941IOXfhJhlH0qB92hxJ9A1ewrdUmJ6xo=
-github.com/tilt-dev/go-get v0.2.2 h1:FXHQDCXsicgCez2X/TljVzQS7NbJ7EbpIwLzBHIfTIU=
-github.com/tilt-dev/go-get v0.2.2/go.mod h1:sqJ1OH6ggqbd2+J5TFsDGP/CXeRAXBxR52m5FtL0+xo=
+github.com/tilt-dev/go-get v0.2.3 h1:en+uZDENUWg31fxdoXb5O/5MC+b6SK7DplCm5cUSs4o=
+github.com/tilt-dev/go-get v0.2.3/go.mod h1:sqJ1OH6ggqbd2+J5TFsDGP/CXeRAXBxR52m5FtL0+xo=
 github.com/tilt-dev/localregistry-go v0.0.0-20201021185044-ffc4c827f097 h1:CiCHb20O+poFO331eFOiXRscunvAhKBfDmDoY2mf45A=
 github.com/tilt-dev/localregistry-go v0.0.0-20201021185044-ffc4c827f097/go.mod h1:SX7bKYACP+RsddxA+NBkfVzr5DOr5ranTirgT7xlxjA=
 github.com/tilt-dev/probe v0.3.1 h1:PQhXSBkgcGBUU/eKt4vgAUKsAWWjBr2F53xNAc0E7zs=
