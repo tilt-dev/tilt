@@ -81,15 +81,30 @@ func (fn *Function) CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (Va
 
 	var iterstack []Iterator // stack of active iterators
 
+	// Use defer so that application panics can pass through
+	// interpreter without leaving thread in a bad state.
+	defer func() {
+		// ITERPOP the rest of the iterator stack.
+		for _, iter := range iterstack {
+			iter.Done()
+		}
+
+		fr.locals = nil
+	}()
+
 	sp := 0
 	var pc uint32
 	var result Value
 	code := f.Code
 loop:
 	for {
-		thread.steps++
-		if thread.steps >= thread.maxSteps {
-			thread.Cancel("too many steps")
+		thread.Steps++
+		if thread.Steps >= thread.maxSteps {
+			if thread.OnMaxSteps != nil {
+				thread.OnMaxSteps(thread)
+			} else {
+				thread.Cancel("too many steps")
+			}
 		}
 		if reason := atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&thread.cancelReason))); reason != nil {
 			err = fmt.Errorf("Starlark computation cancelled: %s", *(*string)(reason))
@@ -212,6 +227,34 @@ loop:
 			}
 			if z == nil {
 				z, err = Binary(syntax.PLUS, x, y)
+				if err != nil {
+					break loop
+				}
+			}
+
+			stack[sp] = z
+			sp++
+
+		case compile.INPLACE_PIPE:
+			y := stack[sp-1]
+			x := stack[sp-2]
+			sp -= 2
+
+			// It's possible that y is not Dict but
+			// nonetheless defines x|y, in which case we
+			// should fall back to the general case.
+			var z Value
+			if xdict, ok := x.(*Dict); ok {
+				if ydict, ok := y.(*Dict); ok {
+					if err = xdict.ht.checkMutable("apply |= to"); err != nil {
+						break loop
+					}
+					xdict.ht.addAll(&ydict.ht) // can't fail
+					z = xdict
+				}
+			}
+			if z == nil {
+				z, err = Binary(syntax.PIPE, x, y)
 				if err != nil {
 					break loop
 				}
@@ -614,14 +657,7 @@ loop:
 			break loop
 		}
 	}
-
-	// ITERPOP the rest of the iterator stack.
-	for _, iter := range iterstack {
-		iter.Done()
-	}
-
-	fr.locals = nil
-
+	// (deferred cleanup runs here)
 	return result, err
 }
 

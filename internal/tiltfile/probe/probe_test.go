@@ -40,7 +40,7 @@ print("tcp_socket:", p.tcp_socket)
 789
 987
 654
-exec: "ExecAction"(command = [])
+exec: ExecAction(command = [])
 http_get: None
 tcp_socket: None
 `)
