@@ -55,9 +55,8 @@ echo BACKGROUND $!
 	require.NoError(t, err)
 
 	// Old unix trick - signal to check if the process is still alive.
-	time.Sleep(10 * time.Millisecond)
-	err = grandkid.Signal(syscall.SIGCONT)
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "process already finished")
-	}
+	assert.Eventually(t, func() bool {
+		err := grandkid.Signal(syscall.SIGCONT)
+		return err != nil && strings.Contains(err.Error(), "process already finished")
+	}, time.Second, time.Millisecond)
 }
