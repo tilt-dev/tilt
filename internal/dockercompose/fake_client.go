@@ -5,14 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"strings"
 	"sync"
 	"testing"
-	"time"
-	"unicode"
 
 	"github.com/compose-spec/compose-go/loader"
-	"github.com/stretchr/testify/require"
 
 	"github.com/compose-spec/compose-go/types"
 
@@ -26,11 +22,11 @@ type FakeDCClient struct {
 
 	mu sync.Mutex
 
-	RunLogOutput      map[string]<-chan string
-	ContainerIdOutput container.ID
-	eventJson         chan string
-	ConfigOutput      string
-	VersionOutput     string
+	ContainerIDDefault   container.ID
+	ContainerIDByService map[string]container.ID
+	eventJson            chan string
+	ConfigOutput         string
+	VersionOutput        string
 
 	upCalls   []UpCall
 	downCalls []DownCall
@@ -60,10 +56,10 @@ type RmCall struct {
 
 func NewFakeDockerComposeClient(t *testing.T, ctx context.Context) *FakeDCClient {
 	return &FakeDCClient{
-		t:            t,
-		ctx:          ctx,
-		eventJson:    make(chan string, 100),
-		RunLogOutput: make(map[string]<-chan string),
+		t:                    t,
+		ctx:                  ctx,
+		eventJson:            make(chan string, 100),
+		ContainerIDByService: make(map[string]container.ID),
 	}
 }
 
@@ -102,47 +98,6 @@ func (c *FakeDCClient) Rm(ctx context.Context, specs []v1alpha1.DockerComposeSer
 
 	_, _ = fmt.Fprint(stdout, c.RmOutput)
 	return nil
-}
-
-func (c *FakeDCClient) StreamLogs(ctx context.Context, spec v1alpha1.DockerComposeLogStreamSpec) io.ReadCloser {
-	output := c.RunLogOutput[spec.Service]
-	reader, writer := io.Pipe()
-	go func() {
-		c.t.Helper()
-
-		if ctx.Err() != nil {
-			return
-		}
-
-		// docker-compose always logs an "Attaching to foo, bar" at the start of a log session
-		_, err := writer.Write([]byte(fmt.Sprintf("Attaching to %s\n", spec.Service)))
-		require.NoError(c.t, err, "Failed to write to fake Docker Compose logs")
-
-		done := false
-		for !done {
-			select {
-			case <-ctx.Done():
-				done = true
-			case s, ok := <-output:
-				if !ok {
-					done = true
-				} else {
-					logLine := fmt.Sprintf("%s %s\n",
-						time.Now().Format(time.RFC3339Nano),
-						strings.TrimRightFunc(s, unicode.IsSpace))
-					_, err = writer.Write([]byte(logLine))
-					require.NoError(c.t, err, "Failed to write to fake Docker Compose logs")
-				}
-			}
-		}
-
-		// we call docker-compose logs with --follow, so it only terminates (normally) when the container exits
-		// and it writes a message with the container exit code
-		_, err = writer.Write([]byte(fmt.Sprintf("%s exited with code 0\n", spec.Service)))
-		require.NoError(c.t, err, "Failed to write to fake Docker Compose logs")
-		require.NoError(c.t, writer.Close(), "Failed to close fake Docker Compose logs writer")
-	}()
-	return reader
 }
 
 func (c *FakeDCClient) StreamEvents(ctx context.Context, p v1alpha1.DockerComposeProject) (<-chan string, error) {
@@ -210,7 +165,11 @@ func (c *FakeDCClient) Project(_ context.Context, m v1alpha1.DockerComposeProjec
 }
 
 func (c *FakeDCClient) ContainerID(ctx context.Context, spec v1alpha1.DockerComposeServiceSpec) (container.ID, error) {
-	return c.ContainerIdOutput, nil
+	id, ok := c.ContainerIDByService[spec.Service]
+	if ok {
+		return id, nil
+	}
+	return c.ContainerIDDefault, nil
 }
 
 func (c *FakeDCClient) Version(_ context.Context) (string, string, error) {

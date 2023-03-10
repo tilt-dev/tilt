@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/docker/docker/client"
+
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -90,12 +92,14 @@ func (r *Reconciler) runProjectWatch(pw *ProjectWatch) {
 			key := serviceKey{service: evt.Service, projectHash: pw.hash}
 			state, err := r.getContainerState(ctx, evt.ID)
 			if err != nil {
-				logger.Get(ctx).Debugf("[dcwatch]: %v", err)
+				if !client.IsErrNotFound(err) {
+					logger.Get(ctx).Debugf("[dcwatch]: %v", err)
+				}
 				continue
 			}
 
 			r.mu.Lock()
-			if r.recordContainerState(key, state) {
+			if r.recordContainerState(key, evt.ID, state) {
 				r.requeueForServiceKey(key)
 			}
 			r.mu.Unlock()
@@ -123,13 +127,15 @@ func (r *Reconciler) getContainerState(ctx context.Context, id string) (*v1alpha
 
 // Record the container event and re-reconcile. Caller must hold the lock.
 // Returns true on change.
-func (r *Reconciler) recordContainerState(key serviceKey, state *v1alpha1.DockerContainerState) bool {
-	existing := r.containers[key]
-	if apicmp.DeepEqual(state, existing) {
+func (r *Reconciler) recordContainerState(key serviceKey, id string, state *v1alpha1.DockerContainerState) bool {
+	existingState := r.containerStates[key]
+	existingID := r.containerIDs[key]
+	if apicmp.DeepEqual(state, existingState) && existingID == id {
 		return false
 	}
 
-	r.containers[key] = state
+	r.containerStates[key] = state
+	r.containerIDs[key] = id
 	return true
 }
 

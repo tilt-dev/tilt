@@ -179,6 +179,7 @@ func (s *Store) Loop(ctx context.Context) error {
 
 				if s.logActions {
 					newState := s.cheapCopyState()
+					action := action
 					go func() {
 						diff, equal := messagediff.PrettyDiff(oldState, newState)
 						if !equal {

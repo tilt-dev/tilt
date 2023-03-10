@@ -41,6 +41,9 @@ func (c explodingClient) BuilderVersion() types.BuilderVersion {
 func (c explodingClient) ServerVersion() types.Version {
 	return types.Version{}
 }
+func (c explodingClient) ContainerLogs(ctx context.Context, containerID string, options types.ContainerLogsOptions) (io.ReadCloser, error) {
+	return nil, c.err
+}
 func (c explodingClient) ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error) {
 	return types.ContainerJSON{}, c.err
 }

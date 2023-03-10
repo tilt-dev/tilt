@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strings"
 	"time"
+	"unicode"
 
 	"github.com/docker/go-units"
 	"github.com/opencontainers/go-digest"
@@ -118,7 +120,8 @@ type FakeClient struct {
 	Images map[string]types.ImageInspect
 
 	// Containers returned by ContainerInspect
-	Containers map[string]types.ContainerState
+	Containers        map[string]types.ContainerState
+	ContainerLogChans map[string]<-chan string
 
 	// If true, ImageInspectWithRaw will always return an ImageInspect,
 	// even if one hasn't been explicitly pre-loaded.
@@ -146,6 +149,7 @@ func NewFakeClient() *FakeClient {
 		RestartsByContainer: make(map[string]int),
 		Images:              make(map[string]types.ImageInspect),
 		Containers:          make(map[string]types.ContainerState),
+		ContainerLogChans:   make(map[string]<-chan string),
 	}
 }
 
@@ -173,6 +177,33 @@ func (c *FakeClient) ServerVersion() types.Version {
 
 func (c *FakeClient) SetExecError(err error) {
 	c.ExecErrorsToThrow = []error{err}
+}
+
+func (c *FakeClient) ContainerLogs(ctx context.Context, containerID string, options types.ContainerLogsOptions) (io.ReadCloser, error) {
+	output := c.ContainerLogChans[containerID]
+	reader, writer := io.Pipe()
+	go func() {
+		if ctx.Err() != nil {
+			return
+		}
+
+		done := false
+		for !done {
+			select {
+			case <-ctx.Done():
+				done = true
+			case s, ok := <-output:
+				if !ok {
+					done = true
+				} else {
+					logLine := fmt.Sprintf("%s\n",
+						strings.TrimRightFunc(s, unicode.IsSpace))
+					_, _ = writer.Write([]byte(logLine))
+				}
+			}
+		}
+	}()
+	return reader, nil
 }
 
 func (c *FakeClient) ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error) {

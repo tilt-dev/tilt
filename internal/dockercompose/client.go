@@ -44,7 +44,6 @@ type DockerComposeClient interface {
 	Up(ctx context.Context, spec v1alpha1.DockerComposeServiceSpec, shouldBuild bool, stdout, stderr io.Writer) error
 	Down(ctx context.Context, spec v1alpha1.DockerComposeProject, stdout, stderr io.Writer) error
 	Rm(ctx context.Context, specs []v1alpha1.DockerComposeServiceSpec, stdout, stderr io.Writer) error
-	StreamLogs(ctx context.Context, spec v1alpha1.DockerComposeLogStreamSpec) io.ReadCloser
 	StreamEvents(ctx context.Context, spec v1alpha1.DockerComposeProject) (<-chan string, error)
 	Project(ctx context.Context, spec v1alpha1.DockerComposeProject) (*types.Project, error)
 	ContainerID(ctx context.Context, spec v1alpha1.DockerComposeServiceSpec) (container.ID, error)
@@ -210,36 +209,6 @@ func (c *cmdDCClient) Rm(ctx context.Context, specs []v1alpha1.DockerComposeServ
 	return nil
 }
 
-func (c *cmdDCClient) StreamLogs(ctx context.Context, spec v1alpha1.DockerComposeLogStreamSpec) io.ReadCloser {
-	args := c.projectArgs(spec.Project)
-
-	r, w := io.Pipe()
-
-	// NOTE: we can't practically remove "--no-color" due to the way that Docker Compose formats colorful lines; it
-	// 		 will wrap the entire line (including the \n) with the color codes, so you end up with something like:
-	//			\u001b[36mmyproject_my-container_1 exited with code 0\n\u001b[0m
-	// 		 where the ANSI reset (\u001b[0m) is _AFTER_ the \n, which doesn't play nice with our log segment logic
-	// 		 under some conditions - adding a final \n after stdout is closed would probably be sufficient given the
-	// 		 current pattern of how Compose colorizes stuff, but it's really not worth the headache to find out
-	args = append(args, "logs", "--no-color", "--no-log-prefix", "--timestamps", "--follow", spec.Service)
-	cmd := c.dcCommand(ctx, args)
-	cmd.Stdin = strings.NewReader(spec.Project.YAML)
-	cmd.Stdout = w
-
-	errBuf := bytes.Buffer{}
-	cmd.Stderr = &errBuf
-
-	go func() {
-		if cmdErr := cmd.Run(); cmdErr != nil {
-			_ = w.CloseWithError(fmt.Errorf("cmd `docker-compose %s` exited with error: \"%v\" (stderr: %s)",
-				strings.Join(args, " "), cmdErr, errBuf.String()))
-		} else {
-			_ = w.Close()
-		}
-	}()
-	return r
-}
-
 func (c *cmdDCClient) StreamEvents(ctx context.Context, p v1alpha1.DockerComposeProject) (<-chan string, error) {
 	ch := make(chan string)
 
@@ -303,7 +272,7 @@ func (c *cmdDCClient) Project(ctx context.Context, spec v1alpha1.DockerComposePr
 }
 
 func (c *cmdDCClient) ContainerID(ctx context.Context, spec v1alpha1.DockerComposeServiceSpec) (container.ID, error) {
-	id, err := c.dcOutput(ctx, spec.Project, "ps", "-q", spec.Service)
+	id, err := c.dcOutput(ctx, spec.Project, "ps", "-a", "-q", spec.Service)
 	if err != nil {
 		return container.ID(""), err
 	}

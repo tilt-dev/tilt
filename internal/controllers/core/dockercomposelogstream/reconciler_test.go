@@ -25,7 +25,9 @@ func TestBasicLogsFromEvents(t *testing.T) {
 	output := make(chan string, 1)
 	defer close(output)
 
-	f.dcc.RunLogOutput["fe"] = output
+	containerID := "my-container-id"
+	f.dc.ContainerLogChans[containerID] = output
+	f.dcc.ContainerIDDefault = container.ID(containerID)
 
 	obj := v1alpha1.DockerComposeLogStream{
 		ObjectMeta: metav1.ObjectMeta{
@@ -45,7 +47,6 @@ func TestBasicLogsFromEvents(t *testing.T) {
 		Running:   true,
 		StartedAt: "2021-09-08T19:58:01.483005100Z",
 	}
-	containerID := "my-container-id"
 	f.dc.Containers[containerID] = container
 
 	event := dockercompose.Event{Type: dockercompose.TypeContainer, ID: containerID, Service: "fe"}
@@ -67,15 +68,15 @@ func TestBasicLogsFromExisting(t *testing.T) {
 	output := make(chan string, 1)
 	defer close(output)
 
-	f.dcc.RunLogOutput["fe"] = output
+	containerID := "my-container-id"
+	f.dc.ContainerLogChans[containerID] = output
 	c := dtypes.ContainerState{
 		Status:    "running",
 		Running:   true,
 		StartedAt: "2021-09-08T19:58:01.483005100Z",
 	}
-	containerID := "my-container-id"
 	f.dc.Containers[containerID] = c
-	f.dcc.ContainerIdOutput = container.ID(containerID)
+	f.dcc.ContainerIDDefault = container.ID(containerID)
 
 	obj := v1alpha1.DockerComposeLogStream{
 		ObjectMeta: metav1.ObjectMeta{
@@ -101,13 +102,18 @@ func TestBasicLogsFromExisting(t *testing.T) {
 func TestTwoServices(t *testing.T) {
 	f := newFixture(t)
 
+	feContainerID := "fe-id"
+	beContainerID := "be-id"
+
 	feOutput := make(chan string, 1)
 	defer close(feOutput)
-	f.dcc.RunLogOutput["fe"] = feOutput
+	f.dc.ContainerLogChans[feContainerID] = feOutput
+	f.dcc.ContainerIDByService["fe"] = container.ID(feContainerID)
 
 	beOutput := make(chan string, 1)
 	defer close(beOutput)
-	f.dcc.RunLogOutput["be"] = beOutput
+	f.dc.ContainerLogChans[beContainerID] = beOutput
+	f.dcc.ContainerIDByService["be"] = container.ID(beContainerID)
 
 	project := v1alpha1.DockerComposeProject{
 		YAML: "fake-yaml",
@@ -134,8 +140,6 @@ func TestTwoServices(t *testing.T) {
 		},
 	}
 
-	feContainerID := "fe-id"
-	beContainerID := "be-id"
 	container := dtypes.ContainerState{
 		Status:    "running",
 		Running:   true,
@@ -167,7 +171,6 @@ type fixture struct {
 func newFixture(t *testing.T) *fixture {
 	cfb := fake.NewControllerFixtureBuilder(t)
 	dcCli := dockercompose.NewFakeDockerComposeClient(t, cfb.Context())
-	dcCli.ContainerIdOutput = "fake-cid"
 	dCli := docker.NewFakeClient()
 	r := NewReconciler(cfb.Client, cfb.Store, dcCli, dCli)
 	indexer.StartSourceForTesting(cfb.Context(), r.requeuer, r, nil)

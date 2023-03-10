@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	dtypes "github.com/docker/docker/api/types"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -36,9 +37,10 @@ type Reconciler struct {
 	mu sync.Mutex
 
 	// Protected by the mutex.
-	results        map[types.NamespacedName]*Result
-	containers     map[serviceKey]*v1alpha1.DockerContainerState
-	projectWatches map[string]*ProjectWatch
+	results         map[types.NamespacedName]*Result
+	containerStates map[serviceKey]*v1alpha1.DockerContainerState
+	containerIDs    map[serviceKey]string
+	projectWatches  map[string]*ProjectWatch
 }
 
 var _ reconcile.Reconciler = &Reconciler{}
@@ -46,14 +48,15 @@ var _ reconcile.Reconciler = &Reconciler{}
 func NewReconciler(client ctrlclient.Client, store store.RStore,
 	dcc dockercompose.DockerComposeClient, dc docker.Client) *Reconciler {
 	return &Reconciler{
-		client:         client,
-		store:          store,
-		dcc:            dcc,
-		dc:             dc.ForOrchestrator(model.OrchestratorDC),
-		projectWatches: make(map[string]*ProjectWatch),
-		results:        make(map[types.NamespacedName]*Result),
-		containers:     make(map[serviceKey]*v1alpha1.DockerContainerState),
-		requeuer:       indexer.NewRequeuer(),
+		client:          client,
+		store:           store,
+		dcc:             dcc,
+		dc:              dc.ForOrchestrator(model.OrchestratorDC),
+		projectWatches:  make(map[string]*ProjectWatch),
+		results:         make(map[types.NamespacedName]*Result),
+		containerStates: make(map[serviceKey]*v1alpha1.DockerContainerState),
+		containerIDs:    make(map[serviceKey]string),
+		requeuer:        indexer.NewRequeuer(),
 	}
 }
 
@@ -75,8 +78,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	ctx = store.MustObjectLogHandler(ctx, r.store, obj)
-	r.manageOwnedProjectWatches()
 	r.manageLogWatch(ctx, nn, obj)
+
+	// The project event streamer depends on the project we read in manageLogWatch().
+	r.manageOwnedProjectWatches()
 
 	return ctrl.Result{}, nil
 }
@@ -103,7 +108,7 @@ func (r *Reconciler) reconcileContainerState(ctx context.Context, obj *v1alpha1.
 	if err != nil {
 		return
 	}
-	r.recordContainerState(serviceKey, state)
+	r.recordContainerState(serviceKey, string(id), state)
 }
 
 // Starts the log watcher if necessary.
@@ -132,10 +137,9 @@ func (r *Reconciler) manageLogWatch(ctx context.Context, nn types.NamespacedName
 	serviceKey := result.serviceKey()
 	r.reconcileContainerState(ctx, obj, serviceKey)
 
-	containerState := r.containers[serviceKey]
-	if containerState == nil || containerState.StartedAt.IsZero() {
-		// wait for the container to start before attaching so that we can filter out old logs
-		// for job containers that can be re-used
+	containerState := r.containerStates[serviceKey]
+	containerID := r.containerIDs[serviceKey]
+	if containerState == nil || containerID == "" {
 		return
 	}
 
@@ -149,7 +153,7 @@ func (r *Reconciler) manageLogWatch(ctx context.Context, nn types.NamespacedName
 			return
 		}
 
-		if !result.watch.startWatchTime.Before(startWatchTime) {
+		if result.watch.containerID == containerID && !result.watch.startWatchTime.Before(startWatchTime) {
 			// watcher finished but the container hasn't started up again
 			// (N.B. we cannot compare on the container ID because containers can restart and be re-used
 			// 	after being stopped for jobs that run to completion but are re-triggered)
@@ -170,6 +174,7 @@ func (r *Reconciler) manageLogWatch(ctx context.Context, nn types.NamespacedName
 		nn:             nn,
 		spec:           obj.Spec,
 		startWatchTime: startWatchTime,
+		containerID:    containerID,
 	}
 	result.watch = w
 	go r.consumeLogs(w)
@@ -188,15 +193,24 @@ func (r *Reconciler) consumeLogs(watch *watch) {
 	startTime := watch.startWatchTime
 
 	for {
-		readCloser := r.dcc.StreamLogs(ctx, watch.spec)
+		readCloser, err := r.dc.ContainerLogs(ctx, watch.containerID, dtypes.ContainerLogsOptions{
+			ShowStdout: true,
+			ShowStderr: true,
+			Follow:     true,
+			Since:      startTime.Format(time.RFC3339Nano),
+		})
+		if err != nil || ctx.Err() != nil {
+			// container may not exist anymore, bail and let the reconciler retry.
+			return
+		}
+
 		actionWriter := &LogActionWriter{
 			store:        r.store,
 			manifestName: watch.manifestName,
-			since:        startTime,
 		}
 
 		reader := runtimelog.NewHardCancelReader(ctx, readCloser)
-		_, err := io.Copy(actionWriter, reader)
+		_, err = io.Copy(actionWriter, reader)
 		_ = readCloser.Close()
 		if err == nil || ctx.Err() != nil {
 			// stop tailing because either:
@@ -209,7 +223,7 @@ func (r *Reconciler) consumeLogs(watch *watch) {
 		// something went wrong with docker-compose, log it and re-attach, starting from the last
 		// successfully logged timestamp
 		logger.Get(watch.ctx).Debugf("Error streaming %s logs: %v", watch.nn.Name, err)
-		startTime = actionWriter.LastLogTime()
+		startTime = time.Now()
 	}
 }
 
@@ -228,6 +242,7 @@ type watch struct {
 	nn             types.NamespacedName
 	spec           v1alpha1.DockerComposeLogStreamSpec
 	startWatchTime time.Time
+	containerID    string
 }
 
 func (w *watch) Done() bool {

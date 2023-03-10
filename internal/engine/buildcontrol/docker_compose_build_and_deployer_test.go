@@ -31,7 +31,7 @@ func TestDockerComposeTargetBuilt(t *testing.T) {
 	f := newDCBDFixture(t)
 
 	expectedContainerID := "fake-container-id"
-	f.dcCli.ContainerIdOutput = container.ID(expectedContainerID)
+	f.dcCli.ContainerIDDefault = container.ID(expectedContainerID)
 
 	manifest := manifestbuilder.New(f, "fe").WithDockerCompose().Build()
 	dcTarg := manifest.DockerComposeTarget()
