@@ -233,3 +233,17 @@ print(x)
 
 	assert.Equal(t, "set([1, 2])\n", f.out.String())
 }
+
+func TestSupportDictUnion(t *testing.T) {
+	f := NewFixture(t, PwdPlugin{})
+	f.File("Tiltfile", `
+x = {'a': 1} | {'b': 2}
+print(x)
+`)
+
+	_, err := f.ExecFile("Tiltfile")
+	require.NoError(t, err)
+
+	assert.Equal(t, `{"a": 1, "b": 2}
+`, f.out.String())
+}
