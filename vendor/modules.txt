@@ -246,6 +246,9 @@ github.com/felixge/httpsnoop
 # github.com/francoispqt/gojay v1.2.13
 ## explicit; go 1.12
 github.com/francoispqt/gojay
+# github.com/fsnotify/fsevents v0.1.1
+## explicit
+github.com/fsnotify/fsevents
 # github.com/fsnotify/fsnotify v1.6.0
 ## explicit; go 1.16
 github.com/fsnotify/fsnotify
@@ -657,9 +660,6 @@ github.com/tilt-dev/clusterid
 # github.com/tilt-dev/dockerignore v0.1.1
 ## explicit; go 1.16
 github.com/tilt-dev/dockerignore
-# github.com/tilt-dev/fsevents v0.0.0-20200515134857-2efe37af20de
-## explicit
-github.com/tilt-dev/fsevents
 # github.com/tilt-dev/fsnotify v1.4.8-0.20220602155310-fff9c274a375
 ## explicit; go 1.16
 github.com/tilt-dev/fsnotify

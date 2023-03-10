@@ -8,7 +8,7 @@ import (
 
 	"github.com/tilt-dev/tilt/pkg/logger"
 
-	"github.com/tilt-dev/fsevents"
+	"github.com/fsnotify/fsevents"
 )
 
 // A file watcher optimized for Darwin.
