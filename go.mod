@@ -15,6 +15,7 @@ require (
 	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-units v0.5.0
 	github.com/fatih/color v1.13.0
+	github.com/fsnotify/fsevents v0.1.1
 	github.com/gdamore/tcell v1.1.3
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v1.2.3
@@ -47,7 +48,6 @@ require (
 	github.com/stretchr/testify v1.8.1
 	github.com/tilt-dev/clusterid v0.1.3
 	github.com/tilt-dev/dockerignore v0.1.1
-	github.com/tilt-dev/fsevents v0.0.0-20200515134857-2efe37af20de
 	github.com/tilt-dev/fsnotify v1.4.8-0.20220602155310-fff9c274a375
 	github.com/tilt-dev/go-get v0.2.3
 	github.com/tilt-dev/localregistry-go v0.0.0-20201021185044-ffc4c827f097
