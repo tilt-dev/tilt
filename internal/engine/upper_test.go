@@ -252,9 +252,7 @@ type fakeBuildAndDeployer struct {
 
 var _ buildcontrol.BuildAndDeployer = &fakeBuildAndDeployer{}
 
-func (b *fakeBuildAndDeployer) nextImageBuildResult(ctx context.Context, iTarget model.ImageTarget) store.ImageBuildResult {
-	b.t.Helper()
-
+func (b *fakeBuildAndDeployer) nextImageBuildResult(ctx context.Context, iTarget model.ImageTarget) (store.ImageBuildResult, error) {
 	var clusterNN types.NamespacedName
 	if iTarget.IsDockerBuild() {
 		clusterNN = types.NamespacedName{Name: iTarget.DockerBuildInfo().Cluster}
@@ -263,7 +261,7 @@ func (b *fakeBuildAndDeployer) nextImageBuildResult(ctx context.Context, iTarget
 	} else if iTarget.IsDockerComposeBuild() {
 		clusterNN = types.NamespacedName{Name: v1alpha1.ClusterNameDocker}
 	} else {
-		require.Failf(b.t, "Unknown build type", "ImageTarget: %s", iTarget.ID().String())
+		return store.ImageBuildResult{}, fmt.Errorf("Unknown build type. ImageTarget: %s", iTarget.ID().String())
 	}
 
 	if clusterNN.Name == "" {
@@ -271,14 +269,19 @@ func (b *fakeBuildAndDeployer) nextImageBuildResult(ctx context.Context, iTarget
 	}
 
 	var cluster v1alpha1.Cluster
-	require.NoError(b.t, b.ctrlClient.Get(ctx, clusterNN, &cluster))
+	err := b.ctrlClient.Get(ctx, clusterNN, &cluster)
+	if err != nil {
+		return store.ImageBuildResult{}, err
+	}
 	refs, err := iTarget.Refs(&cluster)
-	require.NoError(b.t, err, "Determining refs")
+	if err != nil {
+		return store.ImageBuildResult{}, fmt.Errorf("determining refs: %v", err)
+	}
 
 	tag := fmt.Sprintf("tilt-%d", b.buildCount)
 	localRefTagged := container.MustWithTag(refs.LocalRef(), tag)
 	clusterRefTagged := container.MustWithTag(refs.ClusterRef(), tag)
-	return store.NewImageBuildResult(iTarget.ID(), localRefTagged, clusterRefTagged)
+	return store.NewImageBuildResult(iTarget.ID(), localRefTagged, clusterRefTagged), nil
 }
 
 func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RStore, specs []model.TargetSpec, state store.BuildStateSet) (brs store.BuildResultSet, err error) {
@@ -347,7 +350,10 @@ func (b *fakeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.RSto
 	err = queue.RunBuilds(func(target model.TargetSpec, depResults []store.ImageBuildResult) (store.ImageBuildResult, error) {
 		b.t.Helper()
 		iTarget := target.(model.ImageTarget)
-		ibr := b.nextImageBuildResult(ctx, iTarget)
+		ibr, err := b.nextImageBuildResult(ctx, iTarget)
+		if err != nil {
+			return store.ImageBuildResult{}, err
+		}
 
 		var im v1alpha1.ImageMap
 		if err := b.ctrlClient.Get(ctx, types.NamespacedName{Name: iTarget.ImageMapName()}, &im); err != nil {
