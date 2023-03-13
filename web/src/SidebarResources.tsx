@@ -41,7 +41,8 @@ import SidebarItemView, {
 import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
 import { AnimDuration, Color, Font, FontSize, SizeUnit } from "./style-helpers"
 import { startBuild } from "./trigger"
-import { ResourceStatus, ResourceView } from "./types"
+import { ResourceName, ResourceStatus, ResourceView } from "./types"
+import { useStarredResources } from "./StarredResourcesContext"
 
 export type SidebarProps = {
   items: SidebarItem[]
@@ -203,7 +204,12 @@ function StarredResourcesLink(props: {
   pathBuilder: PathBuilder
   selected: string
 }) {
-  const isSelectedClass = props.selected === "" ? "isSelected" : ""
+  const starContext = useStarredResources()
+  if (!starContext.starredResources.length) {
+    return null
+  }
+  const isSelectedClass =
+    props.selected === ResourceName.starred ? "isSelected" : ""
   return (
     <BuiltinResourceLinkRoot
       className={isSelectedClass}

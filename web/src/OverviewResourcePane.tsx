@@ -52,12 +52,15 @@ export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
   let name = nav.invalidResource || nav.selectedResource || ""
   let r: UIResource | undefined
   let all = name === "" || name === ResourceName.all
+  let starred = name === ResourceName.starred
   if (!all) {
     r = resources.find((r) => r.metadata?.name === name)
   }
   let selectedTab = ""
   if (all) {
     selectedTab = ResourceName.all
+  } else if (starred) {
+    selectedTab = ResourceName.starred
   } else if (r?.metadata?.name) {
     selectedTab = r.metadata.name
   }

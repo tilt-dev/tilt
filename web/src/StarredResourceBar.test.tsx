@@ -27,7 +27,9 @@ describe("StarredResourceBar", () => {
   })
 
   it("renders starred logs link", () => {
-    expect(screen.getByText("Logs")).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: "All Starred" })
+    ).toBeInTheDocument()
   })
 
   it("calls unstar", () => {
