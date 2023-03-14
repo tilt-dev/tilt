@@ -10,6 +10,7 @@ import OverviewResourceDetails from "./OverviewResourceDetails"
 import OverviewResourceSidebar from "./OverviewResourceSidebar"
 import "./Resizer.scss"
 import { useResourceNav } from "./ResourceNav"
+import { useSidebarContext } from "./SidebarContext"
 import StarredResourceBar, {
   starredResourcePropsFromView,
 } from "./StarredResourceBar"
@@ -64,6 +65,8 @@ export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
 
   const [truncateCount, setTruncateCount] = useState<number>(0)
 
+  const sidebarContext = useSidebarContext()
+
   // add a listener to rebuild alerts whenever a truncation event occurs
   // truncateCount is a dummy state variable to trigger a re-render to
   // simplify logic vs reconciliation between logStore + props
@@ -91,6 +94,8 @@ export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
     name
   )
 
+  const paneSize = sidebarContext.isOpen ? Width.sidebarDefault : 50
+
   return (
     <OverviewResourcePaneRoot>
       <HeaderBar
@@ -104,8 +109,9 @@ export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
       <Main>
         <SplitPane
           split="vertical"
-          minSize={Width.sidebarDefault}
-          defaultSize={Width.sidebarDefault}
+          size={paneSize}
+          minSize={paneSize}
+          defaultSize={paneSize}
         >
           <OverviewResourceSidebar {...props} name={name} />
           <OverviewResourceDetails

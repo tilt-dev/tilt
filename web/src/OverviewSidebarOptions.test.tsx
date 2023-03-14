@@ -24,6 +24,7 @@ import {
   RESOURCE_LIST_OPTIONS_KEY,
 } from "./ResourceListOptionsContext"
 import { ResourceNameFilterTextField } from "./ResourceNameFilter"
+import { SidebarContextProvider } from "./SidebarContext"
 import { SidebarItemNameRoot, SidebarItemRoot } from "./SidebarItemView"
 import {
   SidebarListSectionItemsRoot,

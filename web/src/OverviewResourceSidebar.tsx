@@ -8,6 +8,10 @@ import SidebarItem from "./SidebarItem"
 import SidebarResources from "./SidebarResources"
 import { Width } from "./style-helpers"
 import { ResourceName, ResourceView } from "./types"
+import MenuOutlinedIcon from "@material-ui/icons/MenuOutlined"
+import MenuOpenOutlinedIcon from "@material-ui/icons/MenuOpenOutlined"
+import IconButton from "@material-ui/core/IconButton"
+import { useSidebarContext } from "./SidebarContext"
 
 type OverviewResourceSidebarProps = {
   name: string
@@ -21,6 +25,11 @@ let OverviewResourceSidebarRoot = styled.div`
   flex-grow: 1;
   height: 100%;
   min-width: ${Width.sidebarDefault}px;
+`
+
+let SidebarToggleRoot = styled.div`
+  display: flex;
+  justify-content: flex-start;
 `
 
 export default function OverviewResourceSidebar(
@@ -42,16 +51,32 @@ export default function OverviewResourceSidebar(
     selected = ""
   }
   const { options } = useResourceListOptions()
+  const sidebarContext = useSidebarContext()
+  const isOpen = sidebarContext.isOpen
 
   return (
     <OverviewResourceSidebarRoot>
-      <SidebarResources
-        items={items}
-        selected={selected}
-        resourceView={ResourceView.OverviewDetail}
-        pathBuilder={pathBuilder}
-        resourceListOptions={options}
-      />
+      <SidebarToggleRoot>
+        <IconButton
+          style={{
+            paddingTop: 0,
+            paddingBottom: 0,
+          }}
+          aria-label="Open or close the sidebar"
+          onClick={() => sidebarContext.toggleIsOpen()}
+        >
+          {isOpen ? <MenuOutlinedIcon /> : <MenuOpenOutlinedIcon />}
+        </IconButton>
+      </SidebarToggleRoot>
+      {isOpen && (
+        <SidebarResources
+          items={items}
+          selected={selected}
+          resourceView={ResourceView.OverviewDetail}
+          pathBuilder={pathBuilder}
+          resourceListOptions={options}
+        />
+      )}
     </OverviewResourceSidebarRoot>
   )
 }

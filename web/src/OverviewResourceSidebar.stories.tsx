@@ -6,6 +6,7 @@ import LogStore, { LogStoreProvider } from "./LogStore"
 import OverviewResourceSidebar from "./OverviewResourceSidebar"
 import { ResourceGroupsContextProvider } from "./ResourceGroupsContext"
 import { ResourceListOptionsProvider } from "./ResourceListOptionsContext"
+import { SidebarContextProvider } from "./SidebarContext"
 import { Width } from "./style-helpers"
 import {
   nResourceView,
@@ -61,23 +62,35 @@ export default {
   },
 }
 
+function OverviewResourceSidebarHarness(props: {
+  name: string
+  view: Proto.webviewView
+}) {
+  let { name, view } = props
+  return (
+    <SidebarContextProvider>
+      <OverviewResourceSidebar name={name} view={view} />
+    </SidebarContextProvider>
+  )
+}
+
 export const TwoResources = () => (
-  <OverviewResourceSidebar name={"vigoda"} view={twoResourceView()} />
+  <OverviewResourceSidebarHarness name={"vigoda"} view={twoResourceView()} />
 )
 
 export const TenResources = () => (
-  <OverviewResourceSidebar name={"vigoda_1"} view={tenResourceView()} />
+  <OverviewResourceSidebarHarness name={"vigoda_1"} view={tenResourceView()} />
 )
 
 export const TenResourcesWithLabels = () => (
-  <OverviewResourceSidebar
+  <OverviewResourceSidebarHarness
     name={"vigoda_1"}
     view={nResourceWithLabelsView(10)}
   />
 )
 
 export const OneHundredResources = () => (
-  <OverviewResourceSidebar name={"vigoda_1"} view={nResourceView(100)} />
+  <OverviewResourceSidebarHarness name={"vigoda_1"} view={nResourceView(100)} />
 )
 
 export function TwoResourcesTwoTests() {
@@ -89,7 +102,7 @@ export function TwoResourcesTwoTests() {
     oneResource({ name: "boop" }),
   ]
   let view = { uiResources: all, tiltfileKey: "test" }
-  return <OverviewResourceSidebar name={""} view={view} />
+  return <OverviewResourceSidebarHarness name={""} view={view} />
 }
 
 export function TestsWithErrors() {
@@ -127,7 +140,7 @@ export function TestsWithErrors() {
     <MemoryRouter>
       <LogStoreProvider value={logStore}>
         <ResourceListOptionsProvider>
-          <OverviewResourceSidebar name={""} view={view} />
+          <OverviewResourceSidebarHarness name={""} view={view} />
         </ResourceListOptionsProvider>
       </LogStoreProvider>
     </MemoryRouter>

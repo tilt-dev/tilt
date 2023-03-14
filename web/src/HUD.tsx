@@ -25,6 +25,7 @@ import { ResourceListOptionsProvider } from "./ResourceListOptionsContext"
 import { ResourceNavProvider } from "./ResourceNav"
 import { ResourceSelectionProvider } from "./ResourceSelectionContext"
 import ShareSnapshotModal from "./ShareSnapshotModal"
+import { SidebarContextProvider } from "./SidebarContext"
 import { TiltSnackbarProvider } from "./Snackbar"
 import { SnapshotActionProvider, SnapshotProviderProps } from "./snapshot"
 import SocketBar, { isTiltSocketConnected } from "./SocketBar"
@@ -238,10 +239,12 @@ export default class HUD extends Component<HudProps, HudState> {
                       <Route
                         path={this.path("/r/:name/overview")}
                         render={(_props: RouteComponentProps<any>) => (
-                          <OverviewResourcePane
-                            view={this.state.view}
-                            isSocketConnected={isSocketConnected}
-                          />
+                          <SidebarContextProvider>
+                            <OverviewResourcePane
+                              view={this.state.view}
+                              isSocketConnected={isSocketConnected}
+                            />
+                          </SidebarContextProvider>
                         )}
                       />
                       <Route
