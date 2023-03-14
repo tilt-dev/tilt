@@ -7,7 +7,7 @@ export type SidebarContext = {
 }
 
 const sidebarContext = React.createContext<SidebarContext>({
-  isOpen: false,
+  isOpen: true,
   toggleIsOpen: () => {},
 })
 
