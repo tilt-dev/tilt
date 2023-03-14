@@ -25,7 +25,7 @@ import {
   SizeUnit,
 } from "./style-helpers"
 import TiltTooltip from "./Tooltip"
-import { ResourceStatus } from "./types"
+import { ResourceName, ResourceStatus } from "./types"
 
 export const StarredResourceLabel = styled.div`
   max-width: ${SizeUnit(4.5)};
@@ -156,6 +156,9 @@ const StarredResourceRoot = styled.div`
   ${ResourceButton} {
     padding-left: ${SizeUnit(0.25)};
   }
+  &.isStarredAggregate ${ResourceButton} {
+    padding-right: ${SizeUnit(0.25)};
+  }
 `
 const StarredResourceBarRoot = styled.section`
   padding-left: ${SizeUnit(0.5)};
@@ -229,26 +232,41 @@ export function StarredResource(props: {
   )
 }
 
-export default function StarredResourceBar(props: StarredResourceBarProps) {
+function StarredResourceAggregate(props: { isSelected: boolean }) {
   const pb = usePathBuilder()
+  const href = pb.encpath`/r/${ResourceName.starred}/overview`
   const history = useHistory()
+  let classes = [
+    ClassNameFromResourceStatus(ResourceStatus.Healthy),
+    "isStarredAggregate",
+  ]
+  if (props.isSelected) {
+    classes.push("isSelected")
+  }
+
+  return (
+    <TiltTooltip title={"View starred resource logs"}>
+      <StarredResourceRoot className={classes.join(" ")}>
+        <ResourceButton
+          onClick={() => {
+            history.push(href)
+          }}
+          analyticsName="ui.web.starredResourcesAggregatedLogs"
+        >
+          <StarredResourceLabel>All Starred</StarredResourceLabel>
+        </ResourceButton>
+      </StarredResourceRoot>
+    </TiltTooltip>
+  )
+}
+
+export default function StarredResourceBar(props: StarredResourceBarProps) {
   return (
     <StarredResourceBarRoot aria-label="Starred resources">
       {props.resources.length ? (
-        <TiltTooltip title={"View starred resource logs"}>
-          <StarredResourceRoot className={""}>
-            <StarButton
-              name="starredLogs"
-              onClick={() => {
-                history.push(pb.encpath`/r/(starred)/overview`)
-              }}
-              analyticsName="ui.web.starredResourcesAggregatedLogs"
-            >
-              <StarIcon style={{ marginRight: 10 }} />
-              Logs
-            </StarButton>
-          </StarredResourceRoot>
-        </TiltTooltip>
+        <StarredResourceAggregate
+          isSelected={ResourceName.starred === props.selectedResource}
+        />
       ) : null}
       {props.resources.map((r) => (
         <StarredResource
