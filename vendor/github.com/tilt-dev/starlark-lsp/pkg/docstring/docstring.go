@@ -388,7 +388,9 @@ func parseBlockTitle(l string) (title string, ok bool) {
 }
 
 // fieldRe matches "field: ...".
-var fieldRe = regexp.MustCompile(`^(\S*)\s*:\s*(.*)$`)
+//
+// fieldRe matches arguments in docstrings, allowing spaces around the name and type
+var fieldRe = regexp.MustCompile(`^(\S.*?)\s*:\s*(.*)$`)
 
 // parseFieldLine recognized strings like "field<space>*:<space>*...".
 //

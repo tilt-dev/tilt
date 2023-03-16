@@ -26,7 +26,7 @@ func (a *Analyzer) Hover(ctx context.Context, doc document.Document, pos protoco
 	result := &protocol.Hover{
 		Range: &r,
 		Contents: protocol.MarkupContent{
-			Kind:  protocol.PlainText,
+			Kind:  protocol.Markdown,
 			Value: symbol.Detail,
 		},
 	}
