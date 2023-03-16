@@ -680,7 +680,7 @@ github.com/tilt-dev/localregistry-go
 github.com/tilt-dev/probe/internal/procutil
 github.com/tilt-dev/probe/pkg/probe
 github.com/tilt-dev/probe/pkg/prober
-# github.com/tilt-dev/starlark-lsp v0.0.0-20220812175527-c0c1958f8166
+# github.com/tilt-dev/starlark-lsp v0.0.0-20230210155543-84c13fe0ff94
 ## explicit; go 1.19
 github.com/tilt-dev/starlark-lsp/pkg/analysis
 github.com/tilt-dev/starlark-lsp/pkg/cli

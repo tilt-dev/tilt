@@ -1299,8 +1299,8 @@ github.com/tilt-dev/localregistry-go v0.0.0-20201021185044-ffc4c827f097 h1:CiCHb
 github.com/tilt-dev/localregistry-go v0.0.0-20201021185044-ffc4c827f097/go.mod h1:SX7bKYACP+RsddxA+NBkfVzr5DOr5ranTirgT7xlxjA=
 github.com/tilt-dev/probe v0.3.1 h1:PQhXSBkgcGBUU/eKt4vgAUKsAWWjBr2F53xNAc0E7zs=
 github.com/tilt-dev/probe v0.3.1/go.mod h1:F53NFbqblwu5oyIk2t+BPkswiboxuF8e5D3wbPnY4JA=
-github.com/tilt-dev/starlark-lsp v0.0.0-20220812175527-c0c1958f8166 h1:q8XpS99WmxxaAE9A088mcigxllgyJ1skLJ86bIORbEQ=
-github.com/tilt-dev/starlark-lsp v0.0.0-20220812175527-c0c1958f8166/go.mod h1:bnkWmNDRqs9DgHgrImOSt6dFAcVcN14pqhR3iZsWWaE=
+github.com/tilt-dev/starlark-lsp v0.0.0-20230210155543-84c13fe0ff94 h1:IV0e4/w6PswnHdVmAZ6Ipo8ZdgaPn1nWTNR7Sd2LETo=
+github.com/tilt-dev/starlark-lsp v0.0.0-20230210155543-84c13fe0ff94/go.mod h1:bnkWmNDRqs9DgHgrImOSt6dFAcVcN14pqhR3iZsWWaE=
 github.com/tilt-dev/tilt-apiserver v0.8.0 h1:Ue652PTiA3GBPEYLJ2nJhdxCzqTEOtSbYic5ZubhpZc=
 github.com/tilt-dev/tilt-apiserver v0.8.0/go.mod h1:BR3Zqt5V+4hXTkCYGRST2jZjFNrBxOa4X0sGUsR6Obw=
 github.com/tilt-dev/wmclient v0.0.0-20201109174454-1839d0355fbc h1:wGkAoZhrvnmq93B4W2v+agiPl7xzqUaxXkxmKrwJ6bc=

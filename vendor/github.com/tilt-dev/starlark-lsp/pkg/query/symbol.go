@@ -21,7 +21,6 @@ func SiblingSymbols(doc DocumentContent, node, before *sitter.Node) []Symbol {
 		case NodeTypeFunctionDef:
 			sig := ExtractSignature(doc, n)
 			symbol = sig.Symbol()
-			symbol.Detail = sig.Docs.Description
 		}
 
 		if symbol.Name != "" {
