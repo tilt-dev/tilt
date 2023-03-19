@@ -7,7 +7,7 @@ import OverviewResourcePane from "./OverviewResourcePane"
 import { ResourceGroupsContextProvider } from "./ResourceGroupsContext"
 import { ResourceListOptionsProvider } from "./ResourceListOptionsContext"
 import { ResourceNavProvider } from "./ResourceNav"
-import { SidebarContextProvider } from "./SidebarContext"
+import { SidebarMemoryProvider } from "./SidebarContext"
 import { TiltSnackbarProvider } from "./Snackbar"
 import { StarredResourceMemoryProvider } from "./StarredResourcesContext"
 import {
@@ -60,6 +60,7 @@ export default {
 function OverviewResourcePaneHarness(props: {
   name: string
   view: Proto.webviewView
+  sidebarClosed?: boolean
 }) {
   let { name, view } = props
   let entry = name ? `/r/${props.name}/overview` : `/overview`
@@ -69,9 +70,9 @@ function OverviewResourcePaneHarness(props: {
   return (
     <MemoryRouter initialEntries={[entry]}>
       <ResourceNavProvider validateResource={validateResource}>
-        <SidebarContextProvider>
+        <SidebarMemoryProvider sidebarClosedForTesting={props.sidebarClosed}>
           <OverviewResourcePane view={view} isSocketConnected={true} />
-        </SidebarContextProvider>
+        </SidebarMemoryProvider>
       </ResourceNavProvider>
     </MemoryRouter>
   )
@@ -83,6 +84,14 @@ export const TwoResources = () => (
 
 export const TenResources = () => (
   <OverviewResourcePaneHarness name="vigoda_1" view={tenResourceView()} />
+)
+
+export const TenResourcesSidebarCollapsed = () => (
+  <OverviewResourcePaneHarness
+    name="vigoda_1"
+    view={tenResourceView()}
+    sidebarClosed={true}
+  />
 )
 
 export const TwoStarredResources = () => (

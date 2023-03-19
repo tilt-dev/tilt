@@ -36,7 +36,9 @@ import { useLogStore } from "./LogStore"
 import OverviewActionBarKeyboardShortcuts from "./OverviewActionBarKeyboardShortcuts"
 import { OverviewButtonMixin } from "./OverviewButton"
 import { usePathBuilder } from "./PathBuilder"
+import { useResourceNav } from "./ResourceNav"
 import { resourceIsDisabled } from "./ResourceStatus"
+import { useSidebarContext } from "./SidebarContext"
 import SrOnly from "./SrOnly"
 import {
   AnimDuration,
@@ -630,12 +632,20 @@ let ActionBarRoot = styled.div`
   background-color: ${Color.gray10};
 `
 
-export let ActionBarTopRow = styled.div`
+const actionBarRowMixin = `
   display: flex;
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid ${Color.gray40};
   padding: ${SizeUnit(0.25)} ${SizeUnit(0.5)};
+`
+
+export let ResourceNameTitleRow = styled.div`
+  ${actionBarRowMixin}
+`
+
+export let ActionBarTopRow = styled.div`
+  ${actionBarRowMixin}
 `
 
 export let ActionBarBottomRow = styled.div`
@@ -817,6 +827,10 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
     )
   }
 
+  const { isSidebarOpen } = useSidebarContext()
+  let nav = useResourceNav()
+  let name = nav.invalidResource || nav.selectedResource || ""
+
   return (
     <ActionBarRoot>
       <OverviewActionBarKeyboardShortcuts
@@ -825,6 +839,9 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
         endpoints={endpoints}
         openEndpointUrl={openEndpointUrl}
       />
+      {!isSidebarOpen && (
+        <ResourceNameTitleRow>Resource: {name}</ResourceNameTitleRow>
+      )}
       {topRow}
       <ActionBarBottomRow>{bottomRow}</ActionBarBottomRow>
     </ActionBarRoot>

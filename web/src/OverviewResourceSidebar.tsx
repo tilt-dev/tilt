@@ -12,6 +12,8 @@ import MenuOutlinedIcon from "@material-ui/icons/MenuOutlined"
 import MenuOpenOutlinedIcon from "@material-ui/icons/MenuOpenOutlined"
 import IconButton from "@material-ui/core/IconButton"
 import { useSidebarContext } from "./SidebarContext"
+import { AnimDuration, Color, Font, FontSize, SizeUnit } from "./style-helpers"
+import { Tooltip } from "@material-ui/core"
 
 type OverviewResourceSidebarProps = {
   name: string
@@ -30,6 +32,21 @@ let OverviewResourceSidebarRoot = styled.div`
 let SidebarToggleRoot = styled.div`
   display: flex;
   justify-content: flex-start;
+`
+
+const menuIconMixin = `
+  display: flex;
+  transition: fill ${AnimDuration.default} ease;
+  height: 100%;
+  fill: ${Color.gray70};
+`
+
+const MenuOpenIcon = styled(MenuOutlinedIcon)`
+  ${menuIconMixin}
+`
+
+const MenuClosedIcon = styled(MenuOpenOutlinedIcon)`
+  ${menuIconMixin}
 `
 
 export default function OverviewResourceSidebar(
@@ -51,24 +68,31 @@ export default function OverviewResourceSidebar(
     selected = ""
   }
   const { options } = useResourceListOptions()
-  const sidebarContext = useSidebarContext()
-  const isOpen = sidebarContext.isOpen
+  const { isSidebarOpen, setSidebarOpen, setSidebarClosed } =
+    useSidebarContext()
 
   return (
     <OverviewResourceSidebarRoot>
       <SidebarToggleRoot>
-        <IconButton
-          style={{
-            paddingTop: 0,
-            paddingBottom: 0,
-          }}
-          aria-label="Open or close the sidebar"
-          onClick={() => sidebarContext.toggleIsOpen()}
+        <Tooltip
+          title={isSidebarOpen ? "Collapse" : "Expand"}
+          placement={isSidebarOpen ? "right" : "bottom"}
         >
-          {isOpen ? <MenuOutlinedIcon /> : <MenuOpenOutlinedIcon />}
-        </IconButton>
+          <IconButton
+            style={{
+              paddingTop: 0,
+              paddingBottom: 0,
+            }}
+            aria-label="Open or close the sidebar"
+            onClick={() =>
+              isSidebarOpen ? setSidebarClosed() : setSidebarOpen()
+            }
+          >
+            {isSidebarOpen ? <MenuOpenIcon /> : <MenuClosedIcon />}
+          </IconButton>
+        </Tooltip>
       </SidebarToggleRoot>
-      {isOpen && (
+      {isSidebarOpen && (
         <SidebarResources
           items={items}
           selected={selected}

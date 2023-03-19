@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useEffect, useState } from "react"
 import { MemoryRouter } from "react-router"
 import SplitPane from "react-split-pane"
 import Features, { FeaturesTestProvider, Flag } from "./feature"
@@ -6,7 +6,7 @@ import LogStore, { LogStoreProvider } from "./LogStore"
 import OverviewResourceSidebar from "./OverviewResourceSidebar"
 import { ResourceGroupsContextProvider } from "./ResourceGroupsContext"
 import { ResourceListOptionsProvider } from "./ResourceListOptionsContext"
-import { SidebarContextProvider } from "./SidebarContext"
+import { SidebarMemoryProvider, useSidebarContext } from "./SidebarContext"
 import { Width } from "./style-helpers"
 import {
   nResourceView,
@@ -29,15 +29,11 @@ export default {
         <MemoryRouter initialEntries={["/"]}>
           <FeaturesTestProvider value={features}>
             <ResourceGroupsContextProvider>
-              <div style={{ margin: "-1rem", height: "80vh" }}>
-                <SplitPane
-                  split="vertical"
-                  minSize={Width.sidebarDefault}
-                  defaultSize={Width.sidebarDefault}
-                >
+              <SidebarMemoryProvider>
+                <div style={{ margin: "-1rem", height: "80vh" }}>
                   <Story />
-                </SplitPane>
-              </div>
+                </div>
+              </SidebarMemoryProvider>
             </ResourceGroupsContextProvider>
           </FeaturesTestProvider>
         </MemoryRouter>
@@ -67,10 +63,39 @@ function OverviewResourceSidebarHarness(props: {
   view: Proto.webviewView
 }) {
   let { name, view } = props
+  const { isSidebarOpen, setSidebarOpen, setSidebarClosed } =
+    useSidebarContext()
+
+  const [paneSize, setPaneSize] = useState<number>(
+    isSidebarOpen ? Width.sidebarDefault : Width.sidebarMinimum
+  )
+
+  useEffect(() => {
+    setPaneSize(
+      isSidebarOpen ? Width.sidebarDefault : Width.sidebarMinimum + 0.01
+    )
+  }, [isSidebarOpen])
+
+  const handleSplitPaneResize = (newSize: number) => {
+    if (newSize < Width.sidebarBreakpoint && isSidebarOpen) {
+      setSidebarClosed()
+    } else if (newSize >= Width.sidebarBreakpoint && !isSidebarOpen) {
+      setSidebarOpen()
+    }
+  }
   return (
-    <SidebarContextProvider>
+    <SplitPane
+      split="vertical"
+      size={paneSize}
+      minSize={Width.sidebarMinimum}
+      onChange={handleSplitPaneResize}
+      onDragFinished={() =>
+        setPaneSize(isSidebarOpen ? Width.sidebarDefault : Width.sidebarMinimum)
+      }
+    >
       <OverviewResourceSidebar name={name} view={view} />
-    </SidebarContextProvider>
+      <div></div>
+    </SplitPane>
   )
 }
 

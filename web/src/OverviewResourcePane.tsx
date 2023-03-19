@@ -66,9 +66,23 @@ export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
     selectedTab = r.metadata.name
   }
 
-  const [truncateCount, setTruncateCount] = useState<number>(0)
+  const { isSidebarOpen, setSidebarOpen, setSidebarClosed } =
+    useSidebarContext()
 
-  const sidebarContext = useSidebarContext()
+  const [paneSize, setPaneSize] = useState<number>(
+    isSidebarOpen ? Width.sidebarDefault : Width.sidebarMinimum
+  )
+
+  // listen for changes from sidebar context in case it was toggled instead
+  // being dragged past a breakpoint.
+  useEffect(() => {
+    setPaneSize(
+      isSidebarOpen ? Width.sidebarDefault : Width.sidebarMinimum + 0.01
+      // adds 0.01 so there's still a state diff when the user releases after dragging
+    )
+  }, [isSidebarOpen])
+
+  const [truncateCount, setTruncateCount] = useState<number>(0)
 
   // add a listener to rebuild alerts whenever a truncation event occurs
   // truncateCount is a dummy state variable to trigger a re-render to
@@ -97,7 +111,13 @@ export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
     name
   )
 
-  const paneSize = sidebarContext.isOpen ? Width.sidebarDefault : 50
+  const handleSplitPaneResize = (newSize: number) => {
+    if (newSize < Width.sidebarBreakpoint && isSidebarOpen) {
+      setSidebarClosed()
+    } else if (newSize >= Width.sidebarBreakpoint && !isSidebarOpen) {
+      setSidebarOpen()
+    }
+  }
 
   return (
     <OverviewResourcePaneRoot>
@@ -113,8 +133,13 @@ export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
         <SplitPane
           split="vertical"
           size={paneSize}
-          minSize={paneSize}
-          defaultSize={paneSize}
+          minSize={Width.sidebarMinimum}
+          onChange={handleSplitPaneResize}
+          onDragFinished={() =>
+            setPaneSize(
+              isSidebarOpen ? Width.sidebarDefault : Width.sidebarMinimum
+            )
+          }
         >
           <OverviewResourceSidebar {...props} name={name} />
           <OverviewResourceDetails
