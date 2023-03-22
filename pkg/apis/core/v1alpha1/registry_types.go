@@ -78,7 +78,7 @@ type RegistryHosting struct {
 	// https://github.com/tilt-dev/tilt/issues/2419
 	//
 	// +optional
-	SingleName string `json:"singleName,omitempty" protobuf:"bytes,5,opt,name=singleName"`
+	SingleName string `json:"singleName,omitempty" yaml:"singleName,omitempty" protobuf:"bytes,5,opt,name=singleName"`
 }
 
 func (in *RegistryHosting) Validate(ctx context.Context) field.ErrorList {
