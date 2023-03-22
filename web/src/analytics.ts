@@ -38,6 +38,7 @@ export enum AnalyticsAction {
   Shortcut = "shortcut",
   Star = "star",
   Unstar = "unstar",
+  SidebarToggle = "sidebarToggle",
 }
 
 // Fire and forget all analytics events

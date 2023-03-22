@@ -1,10 +1,16 @@
-import { render, RenderOptions, screen } from "@testing-library/react"
+import {
+  fireEvent,
+  render,
+  RenderOptions,
+  screen,
+} from "@testing-library/react"
 import { SnackbarProvider } from "notistack"
 import React from "react"
 import { MemoryRouter } from "react-router-dom"
 import LogStore, { LogStoreProvider } from "./LogStore"
 import OverviewResourcePane from "./OverviewResourcePane"
 import { ResourceNavProvider } from "./ResourceNav"
+import { SidebarMemoryProvider } from "./SidebarContext"
 import { nResourceView, oneResourceView, TestDataView } from "./testdata"
 import { appendLinesForManifestAndSpan, Line } from "./testlogs"
 import { LogLevel, UIResource } from "./types"
@@ -14,6 +20,7 @@ function customRender(
     logStore?: LogStore
     selectedResource?: string
     view: TestDataView
+    sidebarClosed?: boolean
   },
   renderOptions?: RenderOptions
 ) {
@@ -30,7 +37,11 @@ function customRender(
         <LogStoreProvider value={logStore ?? new LogStore()}>
           <SnackbarProvider>
             <ResourceNavProvider validateResource={validateResource}>
-              {children}
+              <SidebarMemoryProvider
+                sidebarClosedForTesting={options.sidebarClosed}
+              >
+                {children}
+              </SidebarMemoryProvider>
             </ResourceNavProvider>
           </SnackbarProvider>
         </LogStoreProvider>
@@ -45,6 +56,31 @@ describe("OverviewResourcePane", () => {
     customRender({ selectedResource: "does-not-exist", view: nResourceView(2) })
 
     expect(screen.getByText("No resource 'does-not-exist'")).toBeInTheDocument()
+  })
+
+  it("renders 'Resource: <name>' title row for selected resource when sidebar is closed", () => {
+    customRender({
+      selectedResource: "_0",
+      view: nResourceView(2),
+      sidebarClosed: true,
+    })
+
+    expect(screen.getByText("Resource: _0")).toBeInTheDocument()
+  })
+
+  it("icon button toggles sidebar open/closed, non-selected resources should not be visible when closed", () => {
+    customRender({ selectedResource: "_0", view: nResourceView(2) })
+
+    expect(screen.getByText("_1")).toBeInTheDocument()
+    const menuButton = screen.getByLabelText("Open or close the sidebar")
+    expect(menuButton).toBeInTheDocument()
+
+    const clickEvent = new MouseEvent("click", { bubbles: true })
+    fireEvent(menuButton, clickEvent)
+    expect(screen.queryAllByText("_1")).toHaveLength(0)
+
+    fireEvent(menuButton, clickEvent)
+    expect(screen.getByText("_1")).toBeInTheDocument()
   })
 })
 

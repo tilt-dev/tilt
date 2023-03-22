@@ -10,6 +10,7 @@ import OverviewResourceDetails from "./OverviewResourceDetails"
 import OverviewResourceSidebar from "./OverviewResourceSidebar"
 import "./Resizer.scss"
 import { useResourceNav } from "./ResourceNav"
+import { useSidebarContext } from "./SidebarContext"
 import StarredResourceBar, {
   starredResourcePropsFromView,
 } from "./StarredResourceBar"
@@ -65,6 +66,22 @@ export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
     selectedTab = r.metadata.name
   }
 
+  const { isSidebarOpen, setSidebarOpen, setSidebarClosed } =
+    useSidebarContext()
+
+  const [paneSize, setPaneSize] = useState<number>(
+    isSidebarOpen ? Width.sidebarDefault : Width.sidebarMinimum
+  )
+
+  // listen for changes from sidebar context in case it was toggled instead
+  // being dragged past a breakpoint.
+  useEffect(() => {
+    setPaneSize(
+      isSidebarOpen ? Width.sidebarDefault : Width.sidebarMinimum + 0.01
+      // adds 0.01 so there's still a state diff when the user releases after dragging
+    )
+  }, [isSidebarOpen])
+
   const [truncateCount, setTruncateCount] = useState<number>(0)
 
   // add a listener to rebuild alerts whenever a truncation event occurs
@@ -94,6 +111,14 @@ export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
     name
   )
 
+  const handleSplitPaneResize = (newSize: number) => {
+    if (newSize < Width.sidebarBreakpoint && isSidebarOpen) {
+      setSidebarClosed()
+    } else if (newSize >= Width.sidebarBreakpoint && !isSidebarOpen) {
+      setSidebarOpen()
+    }
+  }
+
   return (
     <OverviewResourcePaneRoot>
       <HeaderBar
@@ -107,8 +132,14 @@ export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
       <Main>
         <SplitPane
           split="vertical"
-          minSize={Width.sidebarDefault}
-          defaultSize={Width.sidebarDefault}
+          size={paneSize}
+          minSize={Width.sidebarMinimum}
+          onChange={handleSplitPaneResize}
+          onDragFinished={() =>
+            setPaneSize(
+              isSidebarOpen ? Width.sidebarDefault : Width.sidebarMinimum
+            )
+          }
         >
           <OverviewResourceSidebar {...props} name={name} />
           <OverviewResourceDetails
