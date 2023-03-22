@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strings"
 	"sync"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -158,6 +159,12 @@ func (r *registryAsync) inferRegistryFromConfigMap(ctx context.Context) (registr
 		HostFromClusterNetwork:   hosting.HostFromClusterNetwork,
 		HostFromContainerRuntime: hosting.HostFromContainerRuntime,
 		Help:                     hosting.Help,
+	}
+
+	if r.env == clusterid.ProductUnknown && strings.Contains(registry.Host, "/") {
+		names := strings.SplitN(registry.Host, "/", 2)
+		registry.Host = names[0]
+		registry.SingleName = names[1]
 	}
 
 	if err := registry.Validate(ctx); err != nil {

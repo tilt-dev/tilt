@@ -144,6 +144,30 @@ data:
 	assert.Equal(t, "registry:5000", registry.HostFromContainerRuntime)
 }
 
+func TestLocalRegistryDiscoveryHostPath(t *testing.T) {
+	cs := &fake.Clientset{}
+	tracker := ktesting.NewObjectTracker(scheme.Scheme, scheme.Codecs.UniversalDecoder())
+	cs.AddReactor("*", "*", ktesting.ObjectReaction(tracker))
+	err := addConfigMap(tracker, `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: local-registry-hosting
+  namespace: kube-public
+data:
+  localRegistryHosting.v1: |
+    host: 000000000000.dkr.ecr.us-east-1.amazonaws.com/single-name
+`)
+	require.NoError(t, err)
+
+	core := cs.CoreV1()
+	registryAsync := newRegistryAsync(clusterid.ProductUnknown, core, NewNaiveRuntimeSource(container.RuntimeContainerd))
+
+	registry := registryAsync.Registry(newLoggerCtx(os.Stdout))
+	assert.Equal(t, "000000000000.dkr.ecr.us-east-1.amazonaws.com", registry.Host)
+	assert.Equal(t, "single-name", registry.SingleName)
+}
+
 func TestKINDWarning(t *testing.T) {
 	cs := &fake.Clientset{}
 	core := cs.CoreV1()
