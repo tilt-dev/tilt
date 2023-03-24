@@ -18,6 +18,7 @@ import {
   SizeUnit,
 } from "./style-helpers"
 import { ResourceName } from "./types"
+import { OverviewSidebarToggle } from "./OverviewSidebarToggle"
 
 export const OverviewSidebarOptionsRoot = styled.div`
   display: flex;
@@ -141,7 +142,10 @@ export function OverviewSidebarOptions(props: { items?: SidebarItem[] }) {
 
   return (
     <OverviewSidebarOptionsRoot>
-      <ResourceNameFilter />
+      <OverviewSidebarOptionsButtonRow>
+        <ResourceNameFilter />
+        <OverviewSidebarToggle />
+      </OverviewSidebarOptionsButtonRow>
       <OverviewSidebarOptionsButtonRow>
         <SidebarOptionsLabel
           control={

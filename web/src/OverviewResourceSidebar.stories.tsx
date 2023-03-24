@@ -6,7 +6,7 @@ import LogStore, { LogStoreProvider } from "./LogStore"
 import OverviewResourceSidebar from "./OverviewResourceSidebar"
 import { ResourceGroupsContextProvider } from "./ResourceGroupsContext"
 import { ResourceListOptionsProvider } from "./ResourceListOptionsContext"
-import { SidebarMemoryProvider, useSidebarContext } from "./SidebarContext"
+import { SidebarContextProvider, useSidebarContext } from "./SidebarContext"
 import { Width } from "./style-helpers"
 import {
   nResourceView,
@@ -29,11 +29,11 @@ export default {
         <MemoryRouter initialEntries={["/"]}>
           <FeaturesTestProvider value={features}>
             <ResourceGroupsContextProvider>
-              <SidebarMemoryProvider>
+              <SidebarContextProvider>
                 <div style={{ margin: "-1rem", height: "80vh" }}>
                   <Story />
                 </div>
-              </SidebarMemoryProvider>
+              </SidebarContextProvider>
             </ResourceGroupsContextProvider>
           </FeaturesTestProvider>
         </MemoryRouter>

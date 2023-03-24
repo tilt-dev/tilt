@@ -8,12 +8,15 @@ import SidebarItem from "./SidebarItem"
 import SidebarResources from "./SidebarResources"
 import { Width } from "./style-helpers"
 import { ResourceName, ResourceView } from "./types"
-import MenuOutlinedIcon from "@material-ui/icons/MenuOutlined"
-import MenuOpenOutlinedIcon from "@material-ui/icons/MenuOpenOutlined"
-import IconButton from "@material-ui/core/IconButton"
+import ChevronRightIcon from "@material-ui/icons/ChevronRight"
+import ChevronLeftIcon from "@material-ui/icons/ChevronLeft"
+import { InstrumentedButton } from "./instrumentedComponents"
 import { useSidebarContext } from "./SidebarContext"
 import { AnimDuration, Color, Font, FontSize, SizeUnit } from "./style-helpers"
 import { Tooltip } from "@material-ui/core"
+import { mixinResetButtonStyle } from "./style-helpers"
+import { AnalyticsAction } from "./analytics"
+import { OverviewSidebarToggle } from "./OverviewSidebarToggle"
 
 type OverviewResourceSidebarProps = {
   name: string
@@ -26,27 +29,11 @@ let OverviewResourceSidebarRoot = styled.div`
   flex-shrink: 1;
   flex-grow: 1;
   height: 100%;
-  min-width: ${Width.sidebarDefault}px;
-`
+  min-width: ${Width.sidebarMinimum}px;
 
-let SidebarToggleRoot = styled.div`
-  display: flex;
-  justify-content: flex-start;
-`
-
-const menuIconMixin = `
-  display: flex;
-  transition: fill ${AnimDuration.default} ease;
-  height: 100%;
-  fill: ${Color.gray70};
-`
-
-const MenuOpenIcon = styled(MenuOutlinedIcon)`
-  ${menuIconMixin}
-`
-
-const MenuClosedIcon = styled(MenuOpenOutlinedIcon)`
-  ${menuIconMixin}
+  &.is-open {
+    min-width: ${Width.sidebarDefault}px;
+  }
 `
 
 export default function OverviewResourceSidebar(
@@ -68,39 +55,24 @@ export default function OverviewResourceSidebar(
     selected = ""
   }
   const { options } = useResourceListOptions()
-  const { isSidebarOpen, setSidebarOpen, setSidebarClosed } =
-    useSidebarContext()
+  const { isSidebarOpen } = useSidebarContext()
 
   return (
-    <OverviewResourceSidebarRoot>
-      <SidebarToggleRoot>
-        <Tooltip
-          title={isSidebarOpen ? "Collapse" : "Expand"}
-          placement={isSidebarOpen ? "right" : "bottom"}
-        >
-          <IconButton
-            style={{
-              paddingTop: 0,
-              paddingBottom: 0,
-            }}
-            aria-label="Open or close the sidebar"
-            onClick={() =>
-              isSidebarOpen ? setSidebarClosed() : setSidebarOpen()
-            }
-          >
-            {isSidebarOpen ? <MenuOpenIcon /> : <MenuClosedIcon />}
-          </IconButton>
-        </Tooltip>
-      </SidebarToggleRoot>
-      {isSidebarOpen && (
-        <SidebarResources
-          items={items}
-          selected={selected}
-          resourceView={ResourceView.OverviewDetail}
-          pathBuilder={pathBuilder}
-          resourceListOptions={options}
-        />
-      )}
+    <OverviewResourceSidebarRoot className={isSidebarOpen ? "is-open" : ""}>
+      {
+        /* If the sidebar is toggled, only show the toggle button */
+        isSidebarOpen ? (
+          <SidebarResources
+            items={items}
+            selected={selected}
+            resourceView={ResourceView.OverviewDetail}
+            pathBuilder={pathBuilder}
+            resourceListOptions={options}
+          />
+        ) : (
+          <OverviewSidebarToggle />
+        )
+      }
     </OverviewResourceSidebarRoot>
   )
 }
