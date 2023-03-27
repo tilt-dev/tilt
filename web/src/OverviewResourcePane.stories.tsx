@@ -7,7 +7,7 @@ import OverviewResourcePane from "./OverviewResourcePane"
 import { ResourceGroupsContextProvider } from "./ResourceGroupsContext"
 import { ResourceListOptionsProvider } from "./ResourceListOptionsContext"
 import { ResourceNavProvider } from "./ResourceNav"
-import { SidebarMemoryProvider } from "./SidebarContext"
+import { SidebarContextProvider } from "./SidebarContext"
 import { TiltSnackbarProvider } from "./Snackbar"
 import { StarredResourceMemoryProvider } from "./StarredResourcesContext"
 import {
@@ -70,9 +70,9 @@ function OverviewResourcePaneHarness(props: {
   return (
     <MemoryRouter initialEntries={[entry]}>
       <ResourceNavProvider validateResource={validateResource}>
-        <SidebarMemoryProvider sidebarClosedForTesting={props.sidebarClosed}>
+        <SidebarContextProvider sidebarClosedForTesting={props.sidebarClosed}>
           <OverviewResourcePane view={view} isSocketConnected={true} />
-        </SidebarMemoryProvider>
+        </SidebarContextProvider>
       </ResourceNavProvider>
     </MemoryRouter>
   )

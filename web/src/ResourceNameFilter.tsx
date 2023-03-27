@@ -54,6 +54,7 @@ export const ResourceNameFilterTextField = styled(InstrumentedTextField)`
 
   margin-top: ${SizeUnit(0.4)};
   margin-bottom: ${SizeUnit(0.4)};
+  flex-grow: 1;
 
   & .MuiInputBase-input {
     font-family: ${Font.monospace};

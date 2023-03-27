@@ -638,6 +638,7 @@ const actionBarRowMixin = `
   justify-content: space-between;
   border-bottom: 1px solid ${Color.gray40};
   padding: ${SizeUnit(0.25)} ${SizeUnit(0.5)};
+  color: ${Color.gray70};
 `
 
 export let ResourceNameTitleRow = styled.div`

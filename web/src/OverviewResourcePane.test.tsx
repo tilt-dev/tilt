@@ -10,7 +10,7 @@ import { MemoryRouter } from "react-router-dom"
 import LogStore, { LogStoreProvider } from "./LogStore"
 import OverviewResourcePane from "./OverviewResourcePane"
 import { ResourceNavProvider } from "./ResourceNav"
-import { SidebarMemoryProvider } from "./SidebarContext"
+import { SidebarContextProvider } from "./SidebarContext"
 import { nResourceView, oneResourceView, TestDataView } from "./testdata"
 import { appendLinesForManifestAndSpan, Line } from "./testlogs"
 import { LogLevel, UIResource } from "./types"
@@ -37,11 +37,11 @@ function customRender(
         <LogStoreProvider value={logStore ?? new LogStore()}>
           <SnackbarProvider>
             <ResourceNavProvider validateResource={validateResource}>
-              <SidebarMemoryProvider
+              <SidebarContextProvider
                 sidebarClosedForTesting={options.sidebarClosed}
               >
                 {children}
-              </SidebarMemoryProvider>
+              </SidebarContextProvider>
             </ResourceNavProvider>
           </SnackbarProvider>
         </LogStoreProvider>
@@ -72,14 +72,12 @@ describe("OverviewResourcePane", () => {
     customRender({ selectedResource: "_0", view: nResourceView(2) })
 
     expect(screen.getByText("_1")).toBeInTheDocument()
-    const menuButton = screen.getByLabelText("Open or close the sidebar")
-    expect(menuButton).toBeInTheDocument()
 
     const clickEvent = new MouseEvent("click", { bubbles: true })
-    fireEvent(menuButton, clickEvent)
+    fireEvent(screen.getByLabelText("Collapse sidebar"), clickEvent)
     expect(screen.queryAllByText("_1")).toHaveLength(0)
 
-    fireEvent(menuButton, clickEvent)
+    fireEvent(screen.getByLabelText("Expand sidebar"), clickEvent)
     expect(screen.getByText("_1")).toBeInTheDocument()
   })
 })
