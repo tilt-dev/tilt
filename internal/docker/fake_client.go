@@ -16,6 +16,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
+	apicontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 
 	"github.com/tilt-dev/tilt/internal/container"
@@ -210,6 +211,7 @@ func (c *FakeClient) ContainerInspect(ctx context.Context, containerID string) (
 	container, ok := c.Containers[containerID]
 	if ok {
 		return types.ContainerJSON{
+			Config: &apicontainer.Config{Tty: true},
 			ContainerJSONBase: &types.ContainerJSONBase{
 				ID:    containerID,
 				State: &container,
@@ -218,6 +220,7 @@ func (c *FakeClient) ContainerInspect(ctx context.Context, containerID string) (
 	}
 	state := NewRunningContainerState()
 	return types.ContainerJSON{
+		Config: &apicontainer.Config{Tty: true},
 		ContainerJSONBase: &types.ContainerJSONBase{
 			ID:    containerID,
 			State: &state,
