@@ -7,6 +7,7 @@ import (
 	"time"
 
 	dtypes "github.com/docker/docker/api/types"
+	"github.com/docker/docker/pkg/stdcopy"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -27,6 +28,12 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
+type containerInfo struct {
+	id    string
+	state *v1alpha1.DockerContainerState
+	tty   bool
+}
+
 type Reconciler struct {
 	client   ctrlclient.Client
 	store    store.RStore
@@ -37,10 +44,9 @@ type Reconciler struct {
 	mu sync.Mutex
 
 	// Protected by the mutex.
-	results         map[types.NamespacedName]*Result
-	containerStates map[serviceKey]*v1alpha1.DockerContainerState
-	containerIDs    map[serviceKey]string
-	projectWatches  map[string]*ProjectWatch
+	results        map[types.NamespacedName]*Result
+	containers     map[serviceKey]*containerInfo
+	projectWatches map[string]*ProjectWatch
 }
 
 var _ reconcile.Reconciler = &Reconciler{}
@@ -48,15 +54,14 @@ var _ reconcile.Reconciler = &Reconciler{}
 func NewReconciler(client ctrlclient.Client, store store.RStore,
 	dcc dockercompose.DockerComposeClient, dc docker.Client) *Reconciler {
 	return &Reconciler{
-		client:          client,
-		store:           store,
-		dcc:             dcc,
-		dc:              dc.ForOrchestrator(model.OrchestratorDC),
-		projectWatches:  make(map[string]*ProjectWatch),
-		results:         make(map[types.NamespacedName]*Result),
-		containerStates: make(map[serviceKey]*v1alpha1.DockerContainerState),
-		containerIDs:    make(map[serviceKey]string),
-		requeuer:        indexer.NewRequeuer(),
+		client:         client,
+		store:          store,
+		dcc:            dcc,
+		dc:             dc.ForOrchestrator(model.OrchestratorDC),
+		projectWatches: make(map[string]*ProjectWatch),
+		results:        make(map[types.NamespacedName]*Result),
+		containers:     make(map[serviceKey]*containerInfo),
+		requeuer:       indexer.NewRequeuer(),
 	}
 }
 
@@ -104,11 +109,11 @@ func (r *Reconciler) reconcileContainerState(ctx context.Context, obj *v1alpha1.
 		return
 	}
 
-	state, err := r.getContainerState(ctx, string(id))
+	state, err := r.getContainerInfo(ctx, string(id))
 	if err != nil {
 		return
 	}
-	r.recordContainerState(serviceKey, string(id), state)
+	r.recordContainerInfo(serviceKey, state)
 }
 
 // Starts the log watcher if necessary.
@@ -137,11 +142,12 @@ func (r *Reconciler) manageLogWatch(ctx context.Context, nn types.NamespacedName
 	serviceKey := result.serviceKey()
 	r.reconcileContainerState(ctx, obj, serviceKey)
 
-	containerState := r.containerStates[serviceKey]
-	containerID := r.containerIDs[serviceKey]
-	if containerState == nil || containerID == "" {
+	container := r.containers[serviceKey]
+	if container == nil {
 		return
 	}
+	containerState := container.state
+	containerID := container.id
 
 	// Docker evidently records the container start time asynchronously, so it can actually be AFTER
 	// the first log timestamps (also reported by Docker), so we pad it by a second to reduce the
@@ -175,6 +181,7 @@ func (r *Reconciler) manageLogWatch(ctx context.Context, nn types.NamespacedName
 		spec:           obj.Spec,
 		startWatchTime: startWatchTime,
 		containerID:    containerID,
+		tty:            container.tty,
 	}
 	result.watch = w
 	go r.consumeLogs(w)
@@ -210,7 +217,12 @@ func (r *Reconciler) consumeLogs(watch *watch) {
 		}
 
 		reader := runtimelog.NewHardCancelReader(ctx, readCloser)
-		_, err = io.Copy(actionWriter, reader)
+
+		if watch.tty {
+			_, err = io.Copy(actionWriter, reader)
+		} else {
+			_, err = stdcopy.StdCopy(actionWriter, actionWriter, reader)
+		}
 		_ = readCloser.Close()
 		if err == nil || ctx.Err() != nil {
 			// stop tailing because either:
@@ -243,6 +255,7 @@ type watch struct {
 	spec           v1alpha1.DockerComposeLogStreamSpec
 	startWatchTime time.Time
 	containerID    string
+	tty            bool
 }
 
 func (w *watch) Done() bool {

@@ -90,7 +90,7 @@ func (r *Reconciler) runProjectWatch(pw *ProjectWatch) {
 			}
 
 			key := serviceKey{service: evt.Service, projectHash: pw.hash}
-			state, err := r.getContainerState(ctx, evt.ID)
+			c, err := r.getContainerInfo(ctx, evt.ID)
 			if err != nil {
 				if !client.IsErrNotFound(err) {
 					logger.Get(ctx).Debugf("[dcwatch]: %v", err)
@@ -99,7 +99,7 @@ func (r *Reconciler) runProjectWatch(pw *ProjectWatch) {
 			}
 
 			r.mu.Lock()
-			if r.recordContainerState(key, evt.ID, state) {
+			if r.recordContainerInfo(key, c) {
 				r.requeueForServiceKey(key)
 			}
 			r.mu.Unlock()
@@ -111,31 +111,35 @@ func (r *Reconciler) runProjectWatch(pw *ProjectWatch) {
 }
 
 // Fetch the state of the given container and convert it into our internal model.
-func (r *Reconciler) getContainerState(ctx context.Context, id string) (*v1alpha1.DockerContainerState, error) {
+func (r *Reconciler) getContainerInfo(ctx context.Context, id string) (*containerInfo, error) {
 	containerJSON, err := r.dc.ContainerInspect(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	if containerJSON.ContainerJSONBase == nil || containerJSON.ContainerJSONBase.State == nil {
+	if containerJSON.Config == nil ||
+		containerJSON.ContainerJSONBase == nil ||
+		containerJSON.ContainerJSONBase.State == nil {
 		return nil, fmt.Errorf("no state found")
 	}
 
 	cState := containerJSON.ContainerJSONBase.State
-	return dockercompose.ToContainerState(cState), nil
+	return &containerInfo{
+		id:    id,
+		state: dockercompose.ToContainerState(cState),
+		tty:   containerJSON.Config.Tty,
+	}, nil
 }
 
 // Record the container event and re-reconcile. Caller must hold the lock.
 // Returns true on change.
-func (r *Reconciler) recordContainerState(key serviceKey, id string, state *v1alpha1.DockerContainerState) bool {
-	existingState := r.containerStates[key]
-	existingID := r.containerIDs[key]
-	if apicmp.DeepEqual(state, existingState) && existingID == id {
+func (r *Reconciler) recordContainerInfo(key serviceKey, c *containerInfo) bool {
+	existing := r.containers[key]
+	if apicmp.DeepEqual(c, existing) {
 		return false
 	}
 
-	r.containerStates[key] = state
-	r.containerIDs[key] = id
+	r.containers[key] = c
 	return true
 }
 
