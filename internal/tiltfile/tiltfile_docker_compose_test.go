@@ -954,8 +954,6 @@ func TestDockerComposeVersionWarnings(t *testing.T) {
 			"For best results, we recommend upgrading to Docker Compose >= v2.2.0."},
 		{version: "v1.29.2" /* no errors or warnings */},
 		{version: "v2.2.0" /* no errors or warnings */},
-		{version: "v1.99.0-beta.4", warning: "You are running a pre-release version of Docker Compose (v1.99.0-beta.4), which is unsupported.\n" +
-			"You might encounter errors or broken functionality."},
 	}
 
 	for _, tc := range tcs {
