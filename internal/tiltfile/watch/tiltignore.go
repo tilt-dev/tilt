@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/docker/docker/builder/dockerignore"
+	"github.com/moby/buildkit/frontend/dockerfile/dockerignore"
 
 	"github.com/tilt-dev/tilt/pkg/model"
 )

@@ -10,8 +10,8 @@ import (
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
-	"github.com/docker/docker/builder/dockerignore"
 	"github.com/google/go-cmp/cmp"
+	"github.com/moby/buildkit/frontend/dockerfile/dockerignore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/api/equality"

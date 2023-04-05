@@ -34,7 +34,7 @@ require (
 	github.com/mattn/go-isatty v0.0.14
 	github.com/mattn/go-jsonpointer v0.0.1
 	github.com/mattn/go-tty v0.0.4
-	github.com/moby/buildkit v0.8.3
+	github.com/moby/buildkit v0.10.6
 	github.com/modern-go/reflect2 v1.0.2
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
@@ -55,7 +55,7 @@ require (
 	github.com/tilt-dev/starlark-lsp v0.0.0-20230210155543-84c13fe0ff94
 	github.com/tilt-dev/tilt-apiserver v0.8.0
 	github.com/tilt-dev/wmclient v0.0.0-20201109174454-1839d0355fbc
-	github.com/tonistiigi/fsutil v0.0.0-20210609172227-d72af97c0eaf
+	github.com/tonistiigi/fsutil v0.0.0-20230214225802-a3696a2f1f27
 	github.com/tonistiigi/units v0.0.0-20180711220420-6950e57a87ea
 	github.com/whilp/git-urls v1.0.0
 	go.lsp.dev/protocol v0.11.2
@@ -93,8 +93,8 @@ require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
 	github.com/Microsoft/go-winio v0.5.2 // indirect
-	github.com/Microsoft/hcsshim v0.9.6 // indirect
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
+	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/agl/ed25519 v0.0.0-20170116200512-5312a6153412 // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr v1.4.10 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -108,7 +108,7 @@ require (
 	github.com/cloudflare/cfssl v1.4.1 // indirect
 	github.com/containerd/console v1.0.3 // indirect
 	github.com/containerd/containerd v1.6.18 // indirect
-	github.com/containerd/continuity v0.3.0 // indirect
+	github.com/containerd/continuity v0.3.1-0.20230206214859-2a963a2f56e8 // indirect
 	github.com/containerd/ttrpc v1.1.0 // indirect
 	github.com/containerd/typeurl v1.0.2 // indirect
 	github.com/coreos/go-semver v0.3.0 // indirect
@@ -136,8 +136,9 @@ require (
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.20.0 // indirect
 	github.com/go-openapi/swag v0.21.1 // indirect
+	github.com/go-sql-driver/mysql v1.4.1 // indirect
 	github.com/gofrs/flock v0.8.1 // indirect
-	github.com/gogo/googleapis v1.4.0 // indirect
+	github.com/gogo/googleapis v1.4.1 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/google/btree v1.0.1 // indirect
 	github.com/google/cel-go v0.12.6 // indirect
@@ -148,15 +149,13 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.7.0 // indirect
-	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645 // indirect
 	github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
 	github.com/inconshreveable/mousetrap v1.0.1 // indirect
-	github.com/jaguilar/vt100 v0.0.0-20150826170717-2703a27b14ea // indirect
 	github.com/jinzhu/gorm v1.9.12 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
-	github.com/klauspost/compress v1.13.6 // indirect
+	github.com/klauspost/compress v1.15.1 // indirect
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/lucasb-eyer/go-colorful v1.0.2 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
@@ -168,9 +167,9 @@ require (
 	github.com/mitchellh/go-wordwrap v1.0.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/moby/locker v1.0.1 // indirect
+	github.com/moby/patternmatcher v0.5.0 // indirect
 	github.com/moby/spdystream v0.2.0 // indirect
-	github.com/moby/sys/mount v0.2.0 // indirect
-	github.com/moby/sys/mountinfo v0.5.0 // indirect
+	github.com/moby/sys/signal v0.6.0 // indirect
 	github.com/moby/term v0.0.0-20221205130635-1aeaba878587 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/monochromegane/go-gitignore v0.0.0-20200626010858-205db1a8cc00 // indirect
@@ -178,7 +177,6 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
 	github.com/opencontainers/image-spec v1.1.0-rc2 // indirect
-	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_golang v1.14.0 // indirect
@@ -191,6 +189,7 @@ require (
 	github.com/smacker/go-tree-sitter v0.0.0-20220209044044-0d3022e933c3 // indirect
 	github.com/stoewer/go-strcase v1.2.0 // indirect
 	github.com/theupdateframework/notary v0.6.1 // indirect
+	github.com/tonistiigi/vt100 v0.0.0-20210615222946-8066bb97264f // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
@@ -235,16 +234,14 @@ require (
 
 replace (
 	cloud.google.com/go => cloud.google.com/go v0.100.2
-	// from https://github.com/moby/buildkit/blob/v0.8.3/go.mod
-	github.com/jaguilar/vt100 => github.com/tonistiigi/vt100 v0.0.0-20190402012908-ad4c4a574305
-	github.com/moby/buildkit => github.com/tilt-dev/buildkit v0.8.3-tilt-20220505
+
+	// from buildkit go.mod
+	github.com/docker/cli => github.com/docker/cli v20.10.3-0.20220603174727-3e9117b7e241+incompatible
+	github.com/docker/docker => github.com/docker/docker v20.10.3-0.20220414164044-61404de7df1a+incompatible
+	github.com/moby/buildkit => github.com/tilt-dev/buildkit v0.10.6-tilt-2023-04-05
 
 	// can remove if/when https://github.com/pkg/browser/pull/30 is merged
 	github.com/pkg/browser => github.com/tilt-dev/browser v0.0.1
-
-	// https://github.com/tilt-dev/tilt/issues/5745
-	// https://github.com/moby/buildkit/issues/2837
-	github.com/tonistiigi/fsutil => github.com/tilt-dev/fsutil v0.0.0-tilt-20220505
 
 	k8s.io/apimachinery => github.com/tilt-dev/apimachinery v0.26.1-tilt-20230224
 )

@@ -70,7 +70,7 @@ func (a AST) traverseImageRefs(visitor func(node *parser.Node, ref reference.Nam
 	shlex := shell.NewLex(a.result.EscapeToken)
 
 	return a.Traverse(func(node *parser.Node) error {
-		switch node.Value {
+		switch strings.ToLower(node.Value) {
 		case command.Arg:
 			inst, err := instructions.ParseInstruction(node)
 			if err != nil {
@@ -206,7 +206,7 @@ func (a AST) printNode(node *parser.Node, writer io.Writer) error {
 	var v string
 
 	// format per directive
-	switch node.Value {
+	switch strings.ToLower(node.Value) {
 	// all the commands that use parseMaybeJSON
 	// https://github.com/moby/buildkit/blob/2ec7d53b00f24624cda0adfbdceed982623a93b3/frontend/dockerfile/parser/parser.go#L152
 	case command.Cmd, command.Entrypoint, command.Run, command.Shell:

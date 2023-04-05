@@ -167,7 +167,7 @@ func (f *dockerBuildFixture) assertFilesInContainer(
 		if expectedFile.Missing {
 			if err == nil {
 				f.t.Errorf("Expected path %q to not exist", expectedFile.Path)
-			} else if !strings.Contains(err.Error(), "No such container:path") {
+			} else if !strings.Contains(err.Error(), "No such container:path") && !strings.Contains(err.Error(), "Could not find the file") {
 				f.t.Errorf("Expected path %q to not exist, but got a different error: %v", expectedFile.Path, err)
 			}
 

@@ -19,6 +19,7 @@ import (
 	"github.com/moby/buildkit/session/filesync"
 	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
+	"github.com/tonistiigi/fsutil"
 	fsutiltypes "github.com/tonistiigi/fsutil/types"
 	ktypes "k8s.io/apimachinery/pkg/types"
 
@@ -560,7 +561,7 @@ const DockerfileName = "Dockerfile"
 // The fake Dockerfile.dockerignore tells buildkit not do to its server-side
 // filtering dance.
 func toSyncedDirs(context string, dockerfileSyncDir string, filter model.PathMatcher) []filesync.SyncedDir {
-	fileMap := func(path string, s *fsutiltypes.Stat) bool {
+	fileMap := func(path string, s *fsutiltypes.Stat) fsutil.MapResult {
 		if !filepath.IsAbs(path) {
 			path = filepath.Join(context, path)
 		}
@@ -568,34 +569,24 @@ func toSyncedDirs(context string, dockerfileSyncDir string, filter model.PathMat
 		matches, _ := filter.Matches(path)
 		if matches {
 			isDir := s != nil && s.IsDir()
-			if !isDir {
-				return false
+			if isDir {
+				entireDir, _ := filter.MatchesEntireDir(path)
+				if entireDir {
+					return fsutil.MapResultSkipDir
+				}
 			}
-
-			entireDir, _ := filter.MatchesEntireDir(path)
-			if entireDir {
-				return false
-			}
+			return fsutil.MapResultExclude
 		}
 		s.Uid = 0
 		s.Gid = 0
-		return true
-	}
-	skipDir := func(path string, s *fsutiltypes.Stat) bool {
-		if !filepath.IsAbs(path) {
-			path = filepath.Join(context, path)
-		}
-
-		entireDir, _ := filter.MatchesEntireDir(path)
-		return entireDir
+		return fsutil.MapResultKeep
 	}
 
 	return []filesync.SyncedDir{
 		{
-			Name:            "context",
-			Dir:             context,
-			Map:             fileMap,
-			SkipUnmappedDir: skipDir,
+			Name: "context",
+			Dir:  context,
+			Map:  fileMap,
 		},
 		{
 			Name: "dockerfile",

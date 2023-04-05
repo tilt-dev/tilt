@@ -17,6 +17,7 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
+//nolint:govet
 type TerminalInput interface {
 	ReadRune() (rune, error)
 	Close() error

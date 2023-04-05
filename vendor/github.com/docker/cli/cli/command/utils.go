@@ -19,7 +19,7 @@ import (
 // CopyToFile writes the content of the reader to the specified file
 func CopyToFile(outfile string, r io.Reader) error {
 	// We use sequential file access here to avoid depleting the standby list
-	// on Windows. On Linux, this is a call directly to ioutil.TempFile
+	// on Windows. On Linux, this is a call directly to os.CreateTemp
 	tmpFile, err := system.TempFileSequential(filepath.Dir(outfile), ".docker_temp_")
 	if err != nil {
 		return err

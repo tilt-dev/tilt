@@ -3,6 +3,7 @@ package opts
 import (
 	"encoding/csv"
 	"fmt"
+	"net"
 	"regexp"
 	"strconv"
 	"strings"
@@ -148,8 +149,8 @@ func ConvertPortToPortConfig(
 	ports := []swarm.PortConfig{}
 
 	for _, binding := range portBindings[port] {
-		if binding.HostIP != "" && binding.HostIP != "0.0.0.0" {
-			logrus.Warnf("ignoring IP-address (%s:%s:%s) service will listen on '0.0.0.0'", binding.HostIP, binding.HostPort, port)
+		if p := net.ParseIP(binding.HostIP); p != nil && !p.IsUnspecified() {
+			logrus.Warnf("ignoring IP-address (%s:%s) service will listen on '0.0.0.0'", net.JoinHostPort(binding.HostIP, binding.HostPort), port)
 		}
 
 		startHostPort, endHostPort, err := nat.ParsePortRange(binding.HostPort)

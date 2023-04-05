@@ -9,9 +9,8 @@ import (
 
 // DockerContext is a typed representation of what we put in Context metadata
 type DockerContext struct {
-	Description       string
-	StackOrchestrator Orchestrator
-	AdditionalFields  map[string]interface{}
+	Description      string
+	AdditionalFields map[string]interface{}
 }
 
 // MarshalJSON implements custom JSON marshalling
@@ -19,9 +18,6 @@ func (dc DockerContext) MarshalJSON() ([]byte, error) {
 	s := map[string]interface{}{}
 	if dc.Description != "" {
 		s["Description"] = dc.Description
-	}
-	if dc.StackOrchestrator != "" {
-		s["StackOrchestrator"] = dc.StackOrchestrator
 	}
 	if dc.AdditionalFields != nil {
 		for k, v := range dc.AdditionalFields {
@@ -41,8 +37,6 @@ func (dc *DockerContext) UnmarshalJSON(payload []byte) error {
 		switch k {
 		case "Description":
 			dc.Description = v.(string)
-		case "StackOrchestrator":
-			dc.StackOrchestrator = Orchestrator(v.(string))
 		default:
 			if dc.AdditionalFields == nil {
 				dc.AdditionalFields = make(map[string]interface{})

@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/docker/docker/builder/dockerignore"
+	"github.com/moby/buildkit/frontend/dockerfile/dockerignore"
 
 	tiltDockerignore "github.com/tilt-dev/dockerignore"
 	"github.com/tilt-dev/tilt/internal/ospath"

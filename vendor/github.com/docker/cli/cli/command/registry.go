@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	configtypes "github.com/docker/cli/cli/config/types"
-	"github.com/docker/cli/cli/debug"
 	"github.com/docker/cli/cli/streams"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
@@ -22,28 +21,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-// ElectAuthServer returns the default registry to use (by asking the daemon)
-func ElectAuthServer(ctx context.Context, cli Cli) string {
-	// The daemon `/info` endpoint informs us of the default registry being
-	// used. This is essential in cross-platforms environment, where for
-	// example a Linux client might be interacting with a Windows daemon, hence
-	// the default registry URL might be Windows specific.
-	info, err := cli.Client().Info(ctx)
-	if err != nil {
-		// Daemon is not responding so use system default.
-		if debug.IsEnabled() {
-			// Only report the warning if we're in debug mode to prevent nagging during engine initialization workflows
-			fmt.Fprintf(cli.Err(), "Warning: failed to get default registry endpoint from daemon (%v). Using system default: %s\n", err, registry.IndexServer)
-		}
-		return registry.IndexServer
-	}
-	if info.IndexServerAddress == "" {
-		if debug.IsEnabled() {
-			fmt.Fprintf(cli.Err(), "Warning: Empty registry endpoint from daemon. Using system default: %s\n", registry.IndexServer)
-		}
-		return registry.IndexServer
-	}
-	return info.IndexServerAddress
+// ElectAuthServer returns the default registry to use
+// Deprecated: use registry.IndexServer instead
+func ElectAuthServer(_ context.Context, _ Cli) string {
+	return registry.IndexServer
 }
 
 // EncodeAuthToBase64 serializes the auth configuration as JSON base64 payload
@@ -61,7 +42,7 @@ func RegistryAuthenticationPrivilegedFunc(cli Cli, index *registrytypes.IndexInf
 	return func() (string, error) {
 		fmt.Fprintf(cli.Out(), "\nPlease login prior to %s:\n", cmdName)
 		indexServer := registry.GetAuthConfigKey(index)
-		isDefaultRegistry := indexServer == ElectAuthServer(context.Background(), cli)
+		isDefaultRegistry := indexServer == registry.IndexServer
 		authConfig, err := GetDefaultAuthConfig(cli, true, indexServer, isDefaultRegistry)
 		if err != nil {
 			fmt.Fprintf(cli.Err(), "Unable to retrieve stored credentials for %s, error: %s.\n", indexServer, err)
@@ -77,10 +58,10 @@ func RegistryAuthenticationPrivilegedFunc(cli Cli, index *registrytypes.IndexInf
 // ResolveAuthConfig is like registry.ResolveAuthConfig, but if using the
 // default index, it uses the default index name for the daemon's platform,
 // not the client's platform.
-func ResolveAuthConfig(ctx context.Context, cli Cli, index *registrytypes.IndexInfo) types.AuthConfig {
+func ResolveAuthConfig(_ context.Context, cli Cli, index *registrytypes.IndexInfo) types.AuthConfig {
 	configKey := index.Name
 	if index.Official {
-		configKey = ElectAuthServer(ctx, cli)
+		configKey = registry.IndexServer
 	}
 
 	a, _ := cli.ConfigFile().GetAuthConfig(configKey)

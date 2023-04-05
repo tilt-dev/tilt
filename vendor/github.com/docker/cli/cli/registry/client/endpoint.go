@@ -90,12 +90,9 @@ func getHTTPTransport(authConfig authtypes.AuthConfig, endpoint registry.APIEndp
 
 	modifiers := registry.Headers(userAgent, http.Header{})
 	authTransport := transport.NewTransport(base, modifiers...)
-	challengeManager, confirmedV2, err := registry.PingV2Registry(endpoint.URL, authTransport)
+	challengeManager, err := registry.PingV2Registry(endpoint.URL, authTransport)
 	if err != nil {
 		return nil, errors.Wrap(err, "error pinging v2 registry")
-	}
-	if !confirmedV2 {
-		return nil, fmt.Errorf("unsupported registry version")
 	}
 	if authConfig.RegistryToken != "" {
 		passThruTokenHandler := &existingTokenHandler{token: authConfig.RegistryToken}
