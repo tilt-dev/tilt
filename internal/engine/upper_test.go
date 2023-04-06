@@ -2869,8 +2869,8 @@ func TestTiltignoreRespectedOnError(t *testing.T) {
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
 
-	f.WriteFile("Tiltfile", `local("echo hi > a.txt")
-read_file('a.txt')
+	f.WriteFile("a.txt", "hello")
+	f.WriteFile("Tiltfile", `read_file('a.txt')
 fail('x')`)
 	f.WriteFile(".tiltignore", "a.txt")
 

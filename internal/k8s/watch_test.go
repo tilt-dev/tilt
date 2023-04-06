@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
 	"k8s.io/client-go/rest"
 
 	"github.com/stretchr/testify/assert"
@@ -79,7 +80,10 @@ func TestPodFromInformerCacheBeforeWatch(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "abcd", pod1Cache.Name)
 
-	ch := tf.watchPods()
+	// This uses a pooled informer, so don't use the helper function
+	// (which waits for the informer to finish setup).
+	ch, err := tf.kCli.WatchPods(tf.ctx, Namespace(nn.Namespace))
+	require.NoError(tf.t, err)
 	tf.assertPods(pods, ch)
 }
 
@@ -378,6 +382,7 @@ type watchTestFixture struct {
 	t    *testing.T
 	kCli *K8sClient
 
+	numWatches        atomic.Int32
 	tracker           ktesting.ObjectTracker
 	watchRestrictions ktesting.WatchRestrictions
 	metadata          *mfake.FakeMetadataClient
@@ -420,6 +425,7 @@ func newWatchTestFixture(t *testing.T) *watchTestFixture {
 			return false, nil, err
 		}
 
+		ret.numWatches.Add(1)
 		return true, watch, nil
 	}
 
@@ -465,42 +471,48 @@ func (tf *watchTestFixture) TearDown() {
 }
 
 func (tf *watchTestFixture) watchPods() <-chan ObjectUpdate {
-	ch, err := tf.kCli.WatchPods(tf.ctx, tf.kCli.configNamespace)
-	if err != nil {
-		tf.t.Fatalf("watchPods: %v", err)
-	}
-	return ch
+	return tf.watchPodsNS(tf.kCli.configNamespace)
+}
+
+// the fake watcher has race conditions, so wait until the shared informer
+// sets up all its watchers
+func (tf *watchTestFixture) waitForInformerSetup(originalWatches int32) {
+	require.Eventually(tf.t, func() bool {
+		return tf.numWatches.Load() == originalWatches+2
+	}, time.Second, time.Millisecond)
 }
 
 func (tf *watchTestFixture) watchPodsNS(ns Namespace) <-chan ObjectUpdate {
+	originalWatches := tf.numWatches.Load()
 	ch, err := tf.kCli.WatchPods(tf.ctx, ns)
-	if err != nil {
-		tf.t.Fatalf("watchPods: %v", err)
-	}
+	require.NoError(tf.t, err)
+	tf.waitForInformerSetup(originalWatches)
 	return ch
 }
 
 func (tf *watchTestFixture) watchServices() <-chan *v1.Service {
+	originalWatches := tf.numWatches.Load()
 	ch, err := tf.kCli.WatchServices(tf.ctx, tf.kCli.configNamespace)
-	if err != nil {
-		tf.t.Fatalf("watchServices: %v", err)
-	}
+	require.NoError(tf.t, err)
+	tf.waitForInformerSetup(originalWatches)
 	return ch
 }
 
 func (tf *watchTestFixture) watchEvents() <-chan *v1.Event {
+	originalWatches := tf.numWatches.Load()
 	ch, err := tf.kCli.WatchEvents(tf.ctx, tf.kCli.configNamespace)
-	if err != nil {
-		tf.t.Fatalf("watchEvents: %v", err)
-	}
+	require.NoError(tf.t, err)
+	tf.waitForInformerSetup(originalWatches)
 	return ch
 }
 
 func (tf *watchTestFixture) watchMeta(gvr schema.GroupVersionKind) <-chan metav1.Object {
+	originalWatches := tf.numWatches.Load()
 	ch, err := tf.kCli.WatchMeta(tf.ctx, gvr, tf.kCli.configNamespace)
-	if err != nil {
-		tf.t.Fatalf("watchMeta: %v", err)
-	}
+	require.NoError(tf.t, err)
+	require.Eventually(tf.t, func() bool {
+		return tf.numWatches.Load() == originalWatches+1
+	}, time.Second, time.Millisecond)
 	return ch
 }
 
