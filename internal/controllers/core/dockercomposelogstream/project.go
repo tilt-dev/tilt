@@ -111,7 +111,7 @@ func (r *Reconciler) runProjectWatch(pw *ProjectWatch) {
 }
 
 // Fetch the state of the given container and convert it into our internal model.
-func (r *Reconciler) getContainerInfo(ctx context.Context, id string) (*containerInfo, error) {
+func (r *Reconciler) getContainerInfo(ctx context.Context, id string) (*ContainerInfo, error) {
 	containerJSON, err := r.dc.ContainerInspect(ctx, id)
 	if err != nil {
 		return nil, err
@@ -124,16 +124,16 @@ func (r *Reconciler) getContainerInfo(ctx context.Context, id string) (*containe
 	}
 
 	cState := containerJSON.ContainerJSONBase.State
-	return &containerInfo{
-		id:    id,
-		state: dockercompose.ToContainerState(cState),
-		tty:   containerJSON.Config.Tty,
+	return &ContainerInfo{
+		ID:    id,
+		State: dockercompose.ToContainerState(cState),
+		TTY:   containerJSON.Config.Tty,
 	}, nil
 }
 
 // Record the container event and re-reconcile. Caller must hold the lock.
 // Returns true on change.
-func (r *Reconciler) recordContainerInfo(key serviceKey, c *containerInfo) bool {
+func (r *Reconciler) recordContainerInfo(key serviceKey, c *ContainerInfo) bool {
 	existing := r.containers[key]
 	if apicmp.DeepEqual(c, existing) {
 		return false
