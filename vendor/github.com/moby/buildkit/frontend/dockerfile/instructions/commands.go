@@ -71,9 +71,16 @@ func newWithNameAndCode(req parseRequest) withNameAndCode {
 // SingleWordExpander is a provider for variable expansion where 1 word => 1 output
 type SingleWordExpander func(word string) (string, error)
 
-// SupportsSingleWordExpansion interface marks a command as supporting variable expansion
+// SupportsSingleWordExpansion interface marks a command as supporting variable
+// expansion
 type SupportsSingleWordExpansion interface {
 	Expand(expander SingleWordExpander) error
+}
+
+// SupportsSingleWordExpansionRaw interface marks a command as supporting
+// variable expansion, while ensuring that quotes are preserved
+type SupportsSingleWordExpansionRaw interface {
+	ExpandRaw(expander SingleWordExpander) error
 }
 
 // PlatformSpecific adds platform checks to a command
@@ -165,19 +172,48 @@ func (c *LabelCommand) Expand(expander SingleWordExpander) error {
 	return expandKvpsInPlace(c.Labels, expander)
 }
 
-// SourcesAndDest represent a list of source files and a destination
-type SourcesAndDest []string
-
-// Sources list the source paths
-func (s SourcesAndDest) Sources() []string {
-	res := make([]string, len(s)-1)
-	copy(res, s[:len(s)-1])
-	return res
+// SourceContent represents an anonymous file object
+type SourceContent struct {
+	Path   string
+	Data   string
+	Expand bool
 }
 
-// Dest path of the operation
-func (s SourcesAndDest) Dest() string {
-	return s[len(s)-1]
+// SourcesAndDest represent a collection of sources and a destination
+type SourcesAndDest struct {
+	DestPath       string
+	SourcePaths    []string
+	SourceContents []SourceContent
+}
+
+func (s *SourcesAndDest) Expand(expander SingleWordExpander) error {
+	err := expandSliceInPlace(s.SourcePaths, expander)
+	if err != nil {
+		return err
+	}
+
+	expandedDestPath, err := expander(s.DestPath)
+	if err != nil {
+		return err
+	}
+	s.DestPath = expandedDestPath
+
+	return nil
+}
+
+func (s *SourcesAndDest) ExpandRaw(expander SingleWordExpander) error {
+	for i, content := range s.SourceContents {
+		if !content.Expand {
+			continue
+		}
+
+		expandedData, err := expander(content.Data)
+		if err != nil {
+			return err
+		}
+		s.SourceContents[i].Data = expandedData
+	}
+	return nil
 }
 
 // AddCommand : ADD foo /path
@@ -190,6 +226,7 @@ type AddCommand struct {
 	SourcesAndDest
 	Chown string
 	Chmod string
+	Link  bool
 }
 
 // Expand variables
@@ -199,7 +236,8 @@ func (c *AddCommand) Expand(expander SingleWordExpander) error {
 		return err
 	}
 	c.Chown = expandedChown
-	return expandSliceInPlace(c.SourcesAndDest, expander)
+
+	return c.SourcesAndDest.Expand(expander)
 }
 
 // CopyCommand : COPY foo /path
@@ -212,6 +250,7 @@ type CopyCommand struct {
 	From  string
 	Chown string
 	Chmod string
+	Link  bool
 }
 
 // Expand variables
@@ -221,7 +260,8 @@ func (c *CopyCommand) Expand(expander SingleWordExpander) error {
 		return err
 	}
 	c.Chown = expandedChown
-	return expandSliceInPlace(c.SourcesAndDest, expander)
+
+	return c.SourcesAndDest.Expand(expander)
 }
 
 // OnbuildCommand : ONBUILD <some other command>
@@ -249,9 +289,17 @@ func (c *WorkdirCommand) Expand(expander SingleWordExpander) error {
 	return nil
 }
 
+// ShellInlineFile represents an inline file created for a shell command
+type ShellInlineFile struct {
+	Name  string
+	Data  string
+	Chomp bool
+}
+
 // ShellDependantCmdLine represents a cmdline optionally prepended with the shell
 type ShellDependantCmdLine struct {
 	CmdLine      strslice.StrSlice
+	Files        []ShellInlineFile
 	PrependShell bool
 }
 
@@ -270,6 +318,13 @@ type RunCommand struct {
 	withExternalData
 	ShellDependantCmdLine
 	FlagsUsed []string
+}
+
+func (c *RunCommand) Expand(expander SingleWordExpander) error {
+	if err := setMountState(c, expander); err != nil {
+		return err
+	}
+	return nil
 }
 
 // CmdCommand : CMD foo

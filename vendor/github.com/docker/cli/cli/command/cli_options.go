@@ -94,3 +94,11 @@ func WithContextEndpointType(endpointName string, endpointType store.TypeGetter)
 		return nil
 	}
 }
+
+// WithDefaultContextStoreConfig configures the cli to use the default context store configuration.
+func WithDefaultContextStoreConfig() DockerCliOption {
+	return func(cli *DockerCli) error {
+		cli.contextStoreConfig = DefaultContextStoreConfig()
+		return nil
+	}
+}

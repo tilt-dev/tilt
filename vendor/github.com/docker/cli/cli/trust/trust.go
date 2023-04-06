@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"time"
 
-	cliconfig "github.com/docker/cli/cli/config"
+	"github.com/docker/cli/cli/config"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/distribution/registry/client/auth"
 	"github.com/docker/distribution/registry/client/auth/challenge"
@@ -21,7 +21,7 @@ import (
 	registrytypes "github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/registry"
 	"github.com/docker/go-connections/tlsconfig"
-	digest "github.com/opencontainers/go-digest"
+	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/theupdateframework/notary"
@@ -47,7 +47,7 @@ var (
 
 // GetTrustDirectory returns the base trust directory name
 func GetTrustDirectory() string {
-	return filepath.Join(cliconfig.Dir(), "trust")
+	return filepath.Join(config.Dir(), "trust")
 }
 
 // certificateDirectory returns the directory containing
@@ -59,7 +59,7 @@ func certificateDirectory(server string) (string, error) {
 		return "", err
 	}
 
-	return filepath.Join(cliconfig.Dir(), "tls", u.Host), nil
+	return filepath.Join(config.Dir(), "tls", u.Host), nil
 }
 
 // Server returns the base URL for the trust server.

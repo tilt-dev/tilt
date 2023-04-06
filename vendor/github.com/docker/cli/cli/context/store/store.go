@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"path"
 	"path/filepath"
@@ -17,7 +16,7 @@ import (
 	"strings"
 
 	"github.com/docker/docker/errdefs"
-	digest "github.com/opencontainers/go-digest"
+	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
 )
 
@@ -117,6 +116,19 @@ type store struct {
 
 func (s *store) List() ([]Metadata, error) {
 	return s.meta.list()
+}
+
+// Names return Metadata names for a Lister
+func Names(s Lister) ([]string, error) {
+	list, err := s.List()
+	if err != nil {
+		return nil, err
+	}
+	var names []string
+	for _, item := range list {
+		names = append(names, item.Name)
+	}
+	return names, nil
 }
 
 func (s *store) CreateOrUpdate(meta Metadata) error {
@@ -349,7 +361,7 @@ func importTar(name string, s Writer, reader io.Reader) error {
 			return errors.Wrap(err, hdr.Name)
 		}
 		if hdr.Name == metaFile {
-			data, err := ioutil.ReadAll(tr)
+			data, err := io.ReadAll(tr)
 			if err != nil {
 				return err
 			}
@@ -362,7 +374,7 @@ func importTar(name string, s Writer, reader io.Reader) error {
 			}
 			importedMetaFile = true
 		} else if strings.HasPrefix(hdr.Name, "tls/") {
-			data, err := ioutil.ReadAll(tr)
+			data, err := io.ReadAll(tr)
 			if err != nil {
 				return err
 			}
@@ -378,7 +390,7 @@ func importTar(name string, s Writer, reader io.Reader) error {
 }
 
 func importZip(name string, s Writer, reader io.Reader) error {
-	body, err := ioutil.ReadAll(&LimitedReader{R: reader, N: maxAllowedFileSizeToImport})
+	body, err := io.ReadAll(&LimitedReader{R: reader, N: maxAllowedFileSizeToImport})
 	if err != nil {
 		return err
 	}
@@ -406,7 +418,7 @@ func importZip(name string, s Writer, reader io.Reader) error {
 				return err
 			}
 
-			data, err := ioutil.ReadAll(&LimitedReader{R: f, N: maxAllowedFileSizeToImport})
+			data, err := io.ReadAll(&LimitedReader{R: f, N: maxAllowedFileSizeToImport})
 			defer f.Close()
 			if err != nil {
 				return err
@@ -424,7 +436,7 @@ func importZip(name string, s Writer, reader io.Reader) error {
 			if err != nil {
 				return err
 			}
-			data, err := ioutil.ReadAll(f)
+			data, err := io.ReadAll(f)
 			defer f.Close()
 			if err != nil {
 				return err

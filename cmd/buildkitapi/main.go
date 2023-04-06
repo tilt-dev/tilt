@@ -17,6 +17,7 @@ import (
 	"github.com/moby/buildkit/session"
 	"github.com/moby/buildkit/session/filesync"
 	"github.com/pkg/errors"
+	"github.com/tonistiigi/fsutil"
 	fsutiltypes "github.com/tonistiigi/fsutil/types"
 )
 
@@ -49,10 +50,10 @@ func run() error {
 		return err
 	}
 
-	fileMap := func(path string, s *fsutiltypes.Stat) bool {
+	fileMap := func(path string, s *fsutiltypes.Stat) fsutil.MapResult {
 		s.Uid = 0
 		s.Gid = 0
-		return true
+		return fsutil.MapResultKeep
 	}
 
 	dir, _ := os.Getwd()

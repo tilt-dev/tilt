@@ -11,6 +11,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/moby/buildkit/solver/pb"
 	"github.com/moby/buildkit/util/apicaps"
+	"github.com/moby/buildkit/util/gitutil"
 	"github.com/moby/buildkit/util/sshutil"
 	digest "github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
@@ -35,7 +36,7 @@ func NewSource(id string, attrs map[string]string, c Constraints) *SourceOp {
 	return s
 }
 
-func (s *SourceOp) Validate(ctx context.Context) error {
+func (s *SourceOp) Validate(ctx context.Context, c *Constraints) error {
 	if s.err != nil {
 		return s.err
 	}
@@ -49,7 +50,7 @@ func (s *SourceOp) Marshal(ctx context.Context, constraints *Constraints) (diges
 	if s.Cached(constraints) {
 		return s.Load()
 	}
-	if err := s.Validate(ctx); err != nil {
+	if err := s.Validate(ctx, constraints); err != nil {
 		return "", nil, nil, nil, err
 	}
 
@@ -120,9 +121,13 @@ func Image(ref string, opts ...ImageOption) State {
 		src.err = err
 	} else if info.metaResolver != nil {
 		if _, ok := r.(reference.Digested); ok || !info.resolveDigest {
-			return NewState(src.Output()).Async(func(ctx context.Context, st State) (State, error) {
+			return NewState(src.Output()).Async(func(ctx context.Context, st State, c *Constraints) (State, error) {
+				p := info.Constraints.Platform
+				if p == nil {
+					p = c.Platform
+				}
 				_, dt, err := info.metaResolver.ResolveImageConfig(ctx, ref, ResolveImageConfigOpt{
-					Platform:    info.Constraints.Platform,
+					Platform:    p,
 					ResolveMode: info.resolveMode.String(),
 				})
 				if err != nil {
@@ -131,9 +136,13 @@ func Image(ref string, opts ...ImageOption) State {
 				return st.WithImageConfig(dt)
 			})
 		}
-		return Scratch().Async(func(ctx context.Context, _ State) (State, error) {
+		return Scratch().Async(func(ctx context.Context, _ State, c *Constraints) (State, error) {
+			p := info.Constraints.Platform
+			if p == nil {
+				p = c.Platform
+			}
 			dgst, dt, err := info.metaResolver.ResolveImageConfig(context.TODO(), ref, ResolveImageConfigOpt{
-				Platform:    info.Constraints.Platform,
+				Platform:    p,
 				ResolveMode: info.resolveMode.String(),
 			})
 			if err != nil {
@@ -198,52 +207,14 @@ type ImageInfo struct {
 	RecordType    string
 }
 
-const (
-	gitProtocolHTTP = iota + 1
-	gitProtocolHTTPS
-	gitProtocolSSH
-	gitProtocolGit
-	gitProtocolUnknown
-)
-
-func getGitProtocol(remote string) (string, int) {
-	prefixes := map[string]int{
-		"http://":  gitProtocolHTTP,
-		"https://": gitProtocolHTTPS,
-		"git://":   gitProtocolGit,
-		"ssh://":   gitProtocolSSH,
-	}
-	protocolType := gitProtocolUnknown
-	for prefix, potentialType := range prefixes {
-		if strings.HasPrefix(remote, prefix) {
-			remote = strings.TrimPrefix(remote, prefix)
-			protocolType = potentialType
-		}
-	}
-
-	if protocolType == gitProtocolUnknown && sshutil.IsSSHTransport(remote) {
-		protocolType = gitProtocolSSH
-	}
-
-	// remove name from ssh
-	if protocolType == gitProtocolSSH {
-		parts := strings.SplitN(remote, "@", 2)
-		if len(parts) == 2 {
-			remote = parts[1]
-		}
-	}
-
-	return remote, protocolType
-}
-
 func Git(remote, ref string, opts ...GitOption) State {
 	url := strings.Split(remote, "#")[0]
 
 	var protocolType int
-	remote, protocolType = getGitProtocol(remote)
+	remote, protocolType = gitutil.ParseProtocol(remote)
 
 	var sshHost string
-	if protocolType == gitProtocolSSH {
+	if protocolType == gitutil.SSHProtocol {
 		parts := strings.SplitN(remote, ":", 2)
 		if len(parts) == 2 {
 			sshHost = parts[0]
@@ -251,7 +222,7 @@ func Git(remote, ref string, opts ...GitOption) State {
 			remote = parts[0] + "/" + parts[1]
 		}
 	}
-	if protocolType == gitProtocolUnknown {
+	if protocolType == gitutil.UnknownProtocol {
 		url = "https://" + url
 	}
 
@@ -289,7 +260,7 @@ func Git(remote, ref string, opts ...GitOption) State {
 			addCap(&gi.Constraints, pb.CapSourceGitHTTPAuth)
 		}
 	}
-	if protocolType == gitProtocolSSH {
+	if protocolType == gitutil.SSHProtocol {
 		if gi.KnownSSHHosts != "" {
 			attrs[pb.AttrKnownSSHHosts] = gi.KnownSSHHosts
 		} else if sshHost != "" {
@@ -398,6 +369,12 @@ func Local(name string, opts ...LocalOption) State {
 		attrs[pb.AttrSharedKeyHint] = gi.SharedKeyHint
 		addCap(&gi.Constraints, pb.CapSourceLocalSharedKeyHint)
 	}
+	if gi.Differ.Type != "" {
+		attrs[pb.AttrLocalDiffer] = string(gi.Differ.Type)
+		if gi.Differ.Required {
+			addCap(&gi.Constraints, pb.CapSourceLocalDiffer)
+		}
+	}
 
 	addCap(&gi.Constraints, pb.CapSourceLocal)
 
@@ -460,6 +437,32 @@ func SharedKeyHint(h string) LocalOption {
 	})
 }
 
+func Differ(t DiffType, required bool) LocalOption {
+	return localOptionFunc(func(li *LocalInfo) {
+		li.Differ = DifferInfo{
+			Type:     t,
+			Required: required,
+		}
+	})
+}
+
+type DiffType string
+
+const (
+	// DiffNone will do no file comparisons, all files in the Local source will
+	// be retransmitted.
+	DiffNone DiffType = pb.AttrLocalDifferNone
+	// DiffMetadata will compare file metadata (size, modified time, mode, owner,
+	// group, device and link name) to determine if the files in the Local source need
+	// to be retransmitted.  This is the default behavior.
+	DiffMetadata DiffType = pb.AttrLocalDifferMetadata
+)
+
+type DifferInfo struct {
+	Type     DiffType
+	Required bool
+}
+
 type LocalInfo struct {
 	constraintsWrapper
 	SessionID       string
@@ -467,6 +470,7 @@ type LocalInfo struct {
 	ExcludePatterns string
 	FollowPaths     string
 	SharedKeyHint   string
+	Differ          DifferInfo
 }
 
 func HTTP(url string, opts ...HTTPOption) State {

@@ -37,7 +37,7 @@ func (ts *tokenSeeds) getSeed(host string) ([]byte, error) {
 
 	l := flock.New(filepath.Join(ts.dir, ".token_seed.lock"))
 	if err := l.Lock(); err != nil {
-		if !errors.Is(err, syscall.EROFS) && errors.Is(err, syscall.EPERM) {
+		if !errors.Is(err, syscall.EROFS) && !errors.Is(err, os.ErrPermission) {
 			return nil, err
 		}
 	} else {
@@ -49,13 +49,12 @@ func (ts *tokenSeeds) getSeed(host string) ([]byte, error) {
 	// we include client side randomness to avoid chosen plaintext attack from the daemon side
 	dt, err := ioutil.ReadFile(fp)
 	if err != nil {
-		if !errors.Is(err, os.ErrNotExist) && !errors.Is(err, syscall.ENOTDIR) {
+		if !errors.Is(err, os.ErrNotExist) && !errors.Is(err, syscall.ENOTDIR) && !errors.Is(err, os.ErrPermission) {
 			return nil, err
 		}
 	} else {
-		if err := json.Unmarshal(dt, &ts.m); err != nil {
-			return nil, errors.Wrapf(err, "failed to parse %s", fp)
-		}
+		// ignore error in case of crash during previous marshal
+		_ = json.Unmarshal(dt, &ts.m)
 	}
 	v, ok := ts.m[host]
 	if !ok {
@@ -70,7 +69,7 @@ func (ts *tokenSeeds) getSeed(host string) ([]byte, error) {
 	}
 
 	if err := ioutil.WriteFile(fp, dt, 0600); err != nil {
-		if !errors.Is(err, syscall.EROFS) && !errors.Is(err, syscall.EPERM) {
+		if !errors.Is(err, syscall.EROFS) && !errors.Is(err, os.ErrPermission) {
 			return nil, err
 		}
 	}

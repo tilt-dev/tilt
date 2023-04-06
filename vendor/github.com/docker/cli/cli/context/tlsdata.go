@@ -1,7 +1,7 @@
 package context
 
 import (
-	"io/ioutil"
+	"os"
 
 	"github.com/docker/cli/cli/context/store"
 	"github.com/pkg/errors"
@@ -77,17 +77,17 @@ func TLSDataFromFiles(caPath, certPath, keyPath string) (*TLSData, error) {
 		err           error
 	)
 	if caPath != "" {
-		if ca, err = ioutil.ReadFile(caPath); err != nil {
+		if ca, err = os.ReadFile(caPath); err != nil {
 			return nil, err
 		}
 	}
 	if certPath != "" {
-		if cert, err = ioutil.ReadFile(certPath); err != nil {
+		if cert, err = os.ReadFile(certPath); err != nil {
 			return nil, err
 		}
 	}
 	if keyPath != "" {
-		if key, err = ioutil.ReadFile(keyPath); err != nil {
+		if key, err = os.ReadFile(keyPath); err != nil {
 			return nil, err
 		}
 	}
