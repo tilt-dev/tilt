@@ -38,6 +38,7 @@ const (
 	ProductK3D            Product = "k3d"
 	ProductRancherDesktop Product = "rancher-desktop"
 	ProductColima         Product = "colima"
+	ProductEKS            Product = "eks"
 )
 
 func (p Product) IsDevCluster() bool {
@@ -62,6 +63,13 @@ func ProductFromContext(c *clientcmdapi.Context, cl *clientcmdapi.Cluster) Produ
 		// GKE cluster strings look like:
 		// gke_blorg-dev_us-central1-b_blorg
 		return ProductGKE
+	} else if strings.HasPrefix(cn, "arn:aws:eks:") || strings.HasSuffix(cn, ".eksctl.io") {
+		// `aws eks update-kubeconfig` generates cluster strings that look like:
+		// arn:aws:eks:us-east-1:[account-id]:cluster/[cluster-name]
+		//
+		// eksctl generates cluster strings that look like:
+		// [cluster-name].us-east-1.eksctl.io
+		return ProductEKS
 	} else if cn == "kind" {
 		return ProductKIND
 	} else if strings.HasPrefix(cn, "kind-") {
