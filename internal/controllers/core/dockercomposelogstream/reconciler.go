@@ -28,10 +28,10 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-type containerInfo struct {
-	id    string
-	state *v1alpha1.DockerContainerState
-	tty   bool
+type ContainerInfo struct {
+	ID    string
+	State *v1alpha1.DockerContainerState
+	TTY   bool
 }
 
 type Reconciler struct {
@@ -45,7 +45,7 @@ type Reconciler struct {
 
 	// Protected by the mutex.
 	results        map[types.NamespacedName]*Result
-	containers     map[serviceKey]*containerInfo
+	containers     map[serviceKey]*ContainerInfo
 	projectWatches map[string]*ProjectWatch
 }
 
@@ -60,7 +60,7 @@ func NewReconciler(client ctrlclient.Client, store store.RStore,
 		dc:             dc.ForOrchestrator(model.OrchestratorDC),
 		projectWatches: make(map[string]*ProjectWatch),
 		results:        make(map[types.NamespacedName]*Result),
-		containers:     make(map[serviceKey]*containerInfo),
+		containers:     make(map[serviceKey]*ContainerInfo),
 		requeuer:       indexer.NewRequeuer(),
 	}
 }
@@ -146,8 +146,8 @@ func (r *Reconciler) manageLogWatch(ctx context.Context, nn types.NamespacedName
 	if container == nil {
 		return
 	}
-	containerState := container.state
-	containerID := container.id
+	containerState := container.State
+	containerID := container.ID
 
 	// Docker evidently records the container start time asynchronously, so it can actually be AFTER
 	// the first log timestamps (also reported by Docker), so we pad it by a second to reduce the
@@ -181,7 +181,7 @@ func (r *Reconciler) manageLogWatch(ctx context.Context, nn types.NamespacedName
 		spec:           obj.Spec,
 		startWatchTime: startWatchTime,
 		containerID:    containerID,
-		tty:            container.tty,
+		tty:            container.TTY,
 	}
 	result.watch = w
 	go r.consumeLogs(w)
