@@ -22,7 +22,6 @@ type darwinNotify struct {
 	pathsWereWatching map[string]interface{}
 	ignore            PathMatcher
 	logger            logger.Logger
-	sawAnyHistoryDone bool
 }
 
 func (d *darwinNotify) loop() {
@@ -37,17 +36,6 @@ func (d *darwinNotify) loop() {
 
 			for _, e := range events {
 				e.Path = filepath.Join("/", e.Path)
-
-				if e.Flags&fsevents.HistoryDone == fsevents.HistoryDone {
-					d.sawAnyHistoryDone = true
-					continue
-				}
-
-				// We wait until we've seen the HistoryDone event for this watcher before processing any events
-				// so that we skip all of the "spurious" events that precede it.
-				if !d.sawAnyHistoryDone {
-					continue
-				}
 
 				_, isPathWereWatching := d.pathsWereWatching[e.Path]
 				if e.Flags&fsevents.ItemIsDir == fsevents.ItemIsDir && e.Flags&fsevents.ItemCreated == fsevents.ItemCreated && isPathWereWatching {
