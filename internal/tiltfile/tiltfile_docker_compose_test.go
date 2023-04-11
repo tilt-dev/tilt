@@ -93,6 +93,22 @@ func TestDockerComposeNothingError(t *testing.T) {
 	f.loadErrString("Nothing to compose")
 }
 
+func TestBuildURL(t *testing.T) {
+	f := newFixture(t)
+
+	f.file("Tiltfile", "docker_compose('docker-compose.yml')")
+
+	f.file("docker-compose.yml", `services:
+  app:
+    command: sh -c 'node server.js'
+    build: https://github.com/tilt-dev/tilt-docker-compose-example.git
+    ports:
+    - published: 3000
+      target: 30
+`)
+	f.load()
+}
+
 func TestDockerComposeBadTypeError(t *testing.T) {
 	f := newFixture(t)
 
