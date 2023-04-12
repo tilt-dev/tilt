@@ -197,6 +197,8 @@ github.com/flowstack/go-jsonschema v0.1.1/go.mod h1:yL7fNggx1o8rm9RlgXv7hTBWxdBM
 github.com/form3tech-oss/jwt-go v3.2.3+incompatible h1:7ZaBxOI7TMoYBfyA3cQHErNNyAWIKUMIwqxEtgHOs5c=
 github.com/francoispqt/gojay v1.2.13 h1:d2m3sFjloqoIUQU3TsHBgj6qg/BVGlTBeHDUmyJnXKk=
 github.com/francoispqt/gojay v1.2.13/go.mod h1:ehT5mTG4ua4581f1++1WLG0vPdaA9HaiDsoyrBGkyDY=
+github.com/fsnotify/fsevents v0.1.1 h1:/125uxJvvoSDDBPen6yUZbil8J9ydKZnnl3TWWmvnkw=
+github.com/fsnotify/fsevents v0.1.1/go.mod h1:+d+hS27T6k5J8CRaPLKFgwKYcpS7GwW3Ule9+SC2ZRc=
 github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
 github.com/fsnotify/fsnotify v1.4.9/go.mod h1:znqG4EE+3YCdAaPaxE2ZRY/06pZUdp0tY4IgpuI1SZQ=
 github.com/fsnotify/fsnotify v1.6.0 h1:n+5WquG0fcWoWp6xPWfHdbskMCQaFnG6PfBrh1Ky4HY=
@@ -655,8 +657,6 @@ github.com/tilt-dev/clusterid v0.1.4 h1:uQ/oDrFf+5ZPe/qcC4loq78Ri9PvgfTzvtsSxaFd
 github.com/tilt-dev/clusterid v0.1.4/go.mod h1:MV6q698Z7LEbu9i7p+JwqGsu2EkiiaQViIrL6gd8XiI=
 github.com/tilt-dev/dockerignore v0.1.1 h1:/MPYqcD8qMCMyh3yiHuQdzbMQi9NL4vVopo6/9D/XvE=
 github.com/tilt-dev/dockerignore v0.1.1/go.mod h1:2ooUDj8B9FNWYvHadA4EKG0JDaeAOjiq5P+mvEzS2eY=
-github.com/tilt-dev/fsevents v0.0.0-20200515134857-2efe37af20de h1:tG+nJMUUxV7MJm/MeU1Mw7rvmwN9GWyHMMg+wtf9HS4=
-github.com/tilt-dev/fsevents v0.0.0-20200515134857-2efe37af20de/go.mod h1:1jUbPVh7Ani2CSublmvP7+zqTgR06A8Y0MKU9Xr2L5s=
 github.com/tilt-dev/fsnotify v1.4.8-0.20220602155310-fff9c274a375 h1:QB54BJwA6x8QU9nHY3xJSZR2kX9bgpZekRKGkLTmEXA=
 github.com/tilt-dev/fsnotify v1.4.8-0.20220602155310-fff9c274a375/go.mod h1:xRroudyp5iVtxKqZCrA6n2TLFRBf8bmnjr1UD4x+z7g=
 github.com/tilt-dev/go-get v0.2.3 h1:en+uZDENUWg31fxdoXb5O/5MC+b6SK7DplCm5cUSs4o=

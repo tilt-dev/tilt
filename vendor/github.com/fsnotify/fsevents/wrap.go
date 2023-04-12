@@ -135,6 +135,11 @@ func cfStringToGoString(cfs C.CFStringRef) string {
 	return *(*string)(unsafe.Pointer(strHeader))
 }
 
+// copyCFString makes an immutable copy of a string with CFStringCreateCopy.
+func copyCFString(cfs C.CFStringRef) C.CFStringRef {
+	return C.CFStringCreateCopy(C.kCFAllocatorDefault, cfs)
+}
+
 // CFRunLoopRef wraps C.CFRunLoopRef
 type CFRunLoopRef C.CFRunLoopRef
 
@@ -164,6 +169,13 @@ func createPaths(paths []string) (C.CFArrayRef, error) {
 		err = fmt.Errorf("%q", errs)
 	}
 	return cPaths, err
+}
+
+// makeCFString makes an immutable string with CFStringCreateWithCString.
+func makeCFString(str string) C.CFStringRef {
+	s := C.CString(str)
+	defer C.free(unsafe.Pointer(s))
+	return C.CFStringCreateWithCString(C.kCFAllocatorDefault, s, C.kCFStringEncodingUTF8)
 }
 
 // CFArrayLen retrieves the length of CFArray type
@@ -202,7 +214,7 @@ func setupStream(paths []string, flags CreateFlags, callbackInfo uintptr, eventI
 func (es *EventStream) start(paths []string, callbackInfo uintptr) {
 
 	since := eventIDSinceNow
-	if es.EventID != 0 {
+	if es.Resume {
 		since = es.EventID
 	}
 
