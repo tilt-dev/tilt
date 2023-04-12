@@ -728,19 +728,20 @@ func (s *tiltfileState) maybeAddDockerComposeImageBuilder(svc *dcService) error 
 	}
 
 	buildContext := build.Context
-	if !filepath.IsAbs(buildContext) {
-		// the Compose loader should always ensure that context paths are absolute upfront
-		return fmt.Errorf("Docker Compose service %q has a relative build path: %q", svc.ServiceName, buildContext)
-	}
-
 	dfPath := build.Dockerfile
 	if dfPath == "" {
 		// Per Compose spec, the default is "Dockerfile" (in the context dir)
 		dfPath = "Dockerfile"
 	}
 
-	if !filepath.IsAbs(dfPath) {
-		dfPath = filepath.Join(buildContext, dfPath)
+	// Only populate dbBuildPath if it's an absolute path, not if it's a git url.
+	dbBuildPath := ""
+	if filepath.IsAbs(buildContext) {
+		dbBuildPath = buildContext
+	}
+
+	if !filepath.IsAbs(dfPath) && dbBuildPath != "" {
+		dfPath = filepath.Join(dbBuildPath, dfPath)
 	}
 
 	imageRef := svc.ImageRef()
@@ -750,7 +751,7 @@ func (s *tiltfileState) maybeAddDockerComposeImageBuilder(svc *dcService) error 
 			configurationRef:              container.NewRefSelector(imageRef),
 			dockerComposeService:          svc.ServiceName,
 			dockerComposeLocalVolumePaths: svc.MountedLocalDirs,
-			dbBuildPath:                   buildContext,
+			dbBuildPath:                   dbBuildPath,
 			dbDockerfilePath:              dfPath,
 		})
 	if err != nil {

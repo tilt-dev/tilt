@@ -53,12 +53,14 @@ type dockerImage struct {
 
 	dbDockerfilePath string
 	dbDockerfile     dockerfile.Dockerfile
-	dbBuildPath      string
-	dbBuildArgs      []string
-	customCommand    model.Cmd
-	customDeps       []string
-	customTag        string
-	customImgDeps    []reference.Named
+
+	// dbBuildPath may be empty if the user is building from a URL
+	dbBuildPath   string
+	dbBuildArgs   []string
+	customCommand model.Cmd
+	customDeps    []string
+	customTag     string
+	customImgDeps []reference.Named
 
 	// Whether this has been matched up yet to a deploy resource.
 	matched bool
@@ -464,10 +466,11 @@ func repoIgnoresForPaths(paths []string) []v1alpha1.IgnoreDef {
 
 func (s *tiltfileState) repoIgnoresForImage(image *dockerImage) []v1alpha1.IgnoreDef {
 	var paths []string
-	paths = append(paths,
-		image.dbDockerfilePath,
-		image.dbBuildPath,
-		image.workDir)
+	paths = append(paths, image.dbDockerfilePath)
+	if image.dbBuildPath != "" {
+		paths = append(paths, image.dbBuildPath)
+	}
+	paths = append(paths, image.workDir)
 	paths = append(paths, image.customDeps...)
 
 	return repoIgnoresForPaths(paths)
@@ -593,13 +596,17 @@ func (s *tiltfileState) dockerignoresForImage(image *dockerImage) ([]model.Docke
 	ref := image.configurationRef.RefFamiliarString()
 	switch image.Type() {
 	case DockerBuild:
-		paths = append(paths, image.dbBuildPath)
+		if image.dbBuildPath != "" {
+			paths = append(paths, image.dbBuildPath)
+		}
 		source = fmt.Sprintf("docker_build(%q)", ref)
 	case CustomBuild:
 		paths = append(paths, image.customDeps...)
 		source = fmt.Sprintf("custom_build(%q)", ref)
 	case DockerComposeBuild:
-		paths = append(paths, image.dbBuildPath)
+		if image.dbBuildPath != "" {
+			paths = append(paths, image.dbBuildPath)
+		}
 		source = fmt.Sprintf("docker_compose(%q)", ref)
 	}
 	return s.dockerignoresFromPathsAndContextFilters(
