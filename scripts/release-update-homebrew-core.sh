@@ -13,6 +13,12 @@ if [[ "${GITHUB_TOKEN-}" == "" ]]; then
     exit 1
 fi
 
+# NOTE(nicks): homebrew started giving the error:
+# Error: No available formula with the name "tilt".
+# This env variable seems to be how people on the internet are fixing it.
+# https://github.com/orgs/Homebrew/discussions/4401
+export HOMEBREW_NO_INSTALL_FROM_API=1
+
 export HOMEBREW_GITHUB_API_TOKEN="$GITHUB_TOKEN"
 VERSION=${1//v/}
 VERSION_PATTERN="^[0-9]+\\.[0-9]+\\.[0-9]+$"
