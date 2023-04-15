@@ -14,7 +14,7 @@ import {
   InstrumentedButton,
   InstrumentedCheckbox,
 } from "./instrumentedComponents"
-import { displayURL } from "./links"
+import { displayURL, resolveURL } from "./links"
 import { OverviewButtonMixin } from "./OverviewButton"
 import { OverviewTableBuildButton } from "./OverviewTableBuildButton"
 import OverviewTableStarResourceButton from "./OverviewTableStarResourceButton"
@@ -505,19 +505,20 @@ export function TableEndpointColumn({ row }: CellProps<RowValues>) {
   }
 
   let endpoints = row.original.endpoints.map((ep: any) => {
+    let url = resolveURL(ep.url || "")
     return (
       <Endpoint
         onClick={() =>
           void incr("ui.web.endpoint", { action: AnalyticsAction.Click })
         }
-        href={ep.url}
+        href={url}
         // We use ep.url as the target, so that clicking the link re-uses the tab.
-        target={ep.url}
-        key={ep.url}
+        target={url}
+        key={url}
       >
         <StyledLinkSvg />
-        <DetailText title={ep.name || displayURL(ep)}>
-          {ep.name || displayURL(ep)}
+        <DetailText title={ep.name || displayURL(url)}>
+          {ep.name || displayURL(url)}
         </DetailText>
       </Endpoint>
     )

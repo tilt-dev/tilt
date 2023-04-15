@@ -21,7 +21,7 @@ import {
   InstrumentedButton,
   InstrumentedTextField,
 } from "./instrumentedComponents"
-import { displayURL } from "./links"
+import { displayURL, resolveURL } from "./links"
 import LogActions from "./LogActions"
 import {
   EMPTY_TERM,
@@ -693,7 +693,7 @@ function openEndpointUrl(url: string) {
   // We deliberately don't use rel=noopener. These are trusted tabs, and we want
   // to have a persistent link to them (so that clicking on the same link opens
   // the same tab).
-  window.open(url, url)
+  window.open(resolveURL(url), url)
 }
 
 export function OverviewWidgets(props: { buttons?: UIButton[] }) {
@@ -736,17 +736,18 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
       if (i !== 0) {
         endpointEls.push(<span key={`spacer-${i}`}>,&nbsp;</span>)
       }
+      let url = resolveURL(ep.url || "")
       endpointEls.push(
         <Endpoint
           onClick={() =>
             void incr("ui.web.endpoint", { action: AnalyticsAction.Click })
           }
-          href={ep.url}
+          href={url}
           // We use ep.url as the target, so that clicking the link re-uses the tab.
-          target={ep.url}
-          key={ep.url}
+          target={url}
+          key={url}
         >
-          <TruncateText>{ep.name || displayURL(ep)}</TruncateText>
+          <TruncateText>{ep.name || displayURL(url)}</TruncateText>
         </Endpoint>
       )
     })
