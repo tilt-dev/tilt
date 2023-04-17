@@ -48,4 +48,8 @@ func TestIgnores(t *testing.T) {
 	res, err = http.Get("http://localhost:31234/ignored_by_tiltfile.txt")
 	assert.NoError(t, err)
 	assert.Equal(t, res.StatusCode, http.StatusNotFound)
+
+	_, body, err = f.Curl("http://localhost:31234/topdir/subdir/src.txt")
+	assert.NoError(t, err)
+	assert.Contains(t, body, "hello")
 }
