@@ -566,16 +566,17 @@ func toSyncedDirs(context string, dockerfileSyncDir string, filter model.PathMat
 			path = filepath.Join(context, path)
 		}
 
-		matches, _ := filter.Matches(path)
-		if matches {
-			isDir := s != nil && s.IsDir()
-			if isDir {
-				entireDir, _ := filter.MatchesEntireDir(path)
-				if entireDir {
-					return fsutil.MapResultSkipDir
-				}
+		isDir := s != nil && s.IsDir()
+		if isDir {
+			entireDir, _ := filter.MatchesEntireDir(path)
+			if entireDir {
+				return fsutil.MapResultSkipDir
 			}
-			return fsutil.MapResultExclude
+		} else {
+			matches, _ := filter.Matches(path)
+			if matches {
+				return fsutil.MapResultExclude
+			}
 		}
 		s.Uid = 0
 		s.Gid = 0

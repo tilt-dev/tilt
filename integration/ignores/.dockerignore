@@ -1,1 +1,3 @@
 ignored_by_dockerignore.txt
+topdir
+!topdir/subdir
