@@ -1188,6 +1188,8 @@ func (s *tiltfileState) k8sDeployTarget(targetName model.TargetName, r *k8sResou
 			IgnoreContainers: []string{
 				string(container.IstioInitContainerName),
 				string(container.IstioSidecarContainerName),
+				string(container.LinkerdSidecarContainerName),
+				string(container.LinkerdInitContainerName),
 			},
 		},
 	}
