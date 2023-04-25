@@ -427,7 +427,7 @@ func (c *FakeK8sClient) Upsert(_ context.Context, entities []K8sEntity, timeout 
 	return result, nil
 }
 
-func (c *FakeK8sClient) Delete(_ context.Context, entities []K8sEntity, wait bool) error {
+func (c *FakeK8sClient) Delete(_ context.Context, entities []K8sEntity, wait time.Duration) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 

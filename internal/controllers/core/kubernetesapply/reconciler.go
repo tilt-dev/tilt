@@ -44,9 +44,6 @@ type deleteSpec struct {
 	entities  []k8s.K8sEntity
 	deleteCmd *v1alpha1.KubernetesApplyCmd
 	cluster   *v1alpha1.Cluster
-
-	// waits for the entities to fully delete
-	wait bool
 }
 
 type Reconciler struct {
@@ -829,7 +826,7 @@ func (r *Reconciler) ForceDelete(ctx context.Context, nn types.NamespacedName,
 	cluster *v1alpha1.Cluster,
 	reason string) error {
 
-	toDelete := deleteSpec{wait: true, cluster: cluster}
+	toDelete := deleteSpec{cluster: cluster}
 	if spec.YAML != "" {
 		entities, err := k8s.ParseYAMLFromString(spec.YAML)
 		if err != nil {
@@ -889,17 +886,10 @@ func (r *Reconciler) bestEffortDelete(ctx context.Context, nn types.NamespacedNa
 	}
 
 	l := logger.Get(ctx)
-	l.Infof("Begin %s:", reason)
+	l.Infof("Beginning %s", reason)
 
 	if len(toDelete.entities) != 0 {
-		// Use a min component count of 2 for computing names,
-		// so that the resource type appears
-		displayNames := k8s.UniqueNames(toDelete.entities, 2)
-		for _, displayName := range displayNames {
-			l.Infof("→ %s", displayName)
-		}
-
-		err := r.k8sClient.Delete(ctx, toDelete.entities, toDelete.wait)
+		err := r.k8sClient.Delete(ctx, toDelete.entities, 0)
 		if err != nil {
 			l.Errorf("Error %s: %v", reason, err)
 		}

@@ -20,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/duration"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -108,7 +109,7 @@ type Client interface {
 	//
 	// Currently ignores any "not found" errors, because that seems like the correct
 	// behavior for our use cases.
-	Delete(ctx context.Context, entities []K8sEntity, wait bool) error
+	Delete(ctx context.Context, entities []K8sEntity, wait time.Duration) error
 
 	GetMetaByReference(ctx context.Context, ref v1.ObjectReference) (metav1.Object, error)
 	ListMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) ([]metav1.Object, error)
@@ -392,7 +393,46 @@ func (k *K8sClient) applyEntity(ctx context.Context, entity K8sEntity) ([]K8sEnt
 		return nil, err
 	}
 
-	return k.helmResultToEntities(result)
+	// Under rare circumstances, an apply() may result in a 3-way merge
+	// where the object has the new spec, but is simulataneously being removed.
+	//
+	// In that case, wait for the deletion to finish, then retry the apply.
+	//
+	// Discussion:
+	// https://github.com/tilt-dev/tilt/issues/6048
+	isDeleting := false
+	for _, info := range result.Updated {
+		accessor, err := meta.Accessor(info.Object)
+		if err != nil {
+			continue // handle the error later during object conversion
+		}
+
+		if accessor.GetDeletionTimestamp() != nil {
+			isDeleting = true
+		}
+	}
+
+	if isDeleting {
+		dur := 60 * time.Second
+		logger.Get(ctx).Infof("Resource %s is currently being deleted. Waiting %s for deletion before retrying...",
+			entity.Name(), duration.ShortHumanDuration(dur))
+		err := k.waitForDelete(resources, dur)
+		if err != nil {
+			return nil, errors.Wrap(err, "kubernetes apply retry")
+		}
+
+		resources, err := k.prepareUpdateList(ctx, entity)
+		if err != nil {
+			return nil, errors.Wrap(err, "kubernetes apply retry")
+		}
+
+		result, err = k.resourceClient.Apply(resources)
+		if err != nil {
+			return nil, errors.Wrap(err, "kubernetes apply retry")
+		}
+	}
+
+	return k.kubeResultToEntities(result)
 }
 
 // Update an entity like kubectl create/replace does.
@@ -415,7 +455,7 @@ func (k *K8sClient) createOrReplaceEntity(ctx context.Context, entity K8sEntity)
 		return nil, err
 	}
 
-	return k.helmResultToEntities(result)
+	return k.kubeResultToEntities(result)
 }
 
 // Delete and create an entity.
@@ -436,7 +476,7 @@ func (k *K8sClient) deleteAndCreateEntity(ctx context.Context, entity K8sEntity)
 		return nil, err
 	}
 
-	return k.helmResultToEntities(result)
+	return k.kubeResultToEntities(result)
 }
 
 // Make sure the type exists and create a ResourceList to help update it.
@@ -469,7 +509,7 @@ func (k *K8sClient) buildResourceList(ctx context.Context, e K8sEntity) (kube.Re
 	return resources, nil
 }
 
-func (k *K8sClient) helmResultToEntities(result *kube.Result) ([]K8sEntity, error) {
+func (k *K8sClient) kubeResultToEntities(result *kube.Result) ([]K8sEntity, error) {
 	entities := []K8sEntity{}
 	for _, info := range result.Created {
 		entities = append(entities, NewK8sEntity(info.Object))
@@ -510,7 +550,10 @@ func (k *K8sClient) deleteAndCreate(list kube.ResourceList) (*kube.Result, error
 	}
 
 	// ensure the delete has finished before attempting to recreate
-	k.waitForDelete(list)
+	err := k.waitForDelete(list, 30*time.Second)
+	if err != nil {
+		return nil, errors.Wrap(err, "kubernetes create")
+	}
 
 	result, err := k.resourceClient.Create(list)
 	if err != nil {
@@ -608,7 +651,7 @@ func maybeTooLargeError(err error) (string, bool) {
 //
 // Currently ignores any "not found" errors, because that seems like the correct
 // behavior for our use cases.
-func (k *K8sClient) Delete(ctx context.Context, entities []K8sEntity, wait bool) error {
+func (k *K8sClient) Delete(ctx context.Context, entities []K8sEntity, wait time.Duration) error {
 	l := logger.Get(ctx)
 	l.Infof("Deleting kubernetes objects:")
 	for _, e := range entities {
@@ -633,8 +676,11 @@ func (k *K8sClient) Delete(ctx context.Context, entities []K8sEntity, wait bool)
 		return errors.Wrap(err, "kubernetes delete")
 	}
 
-	if wait {
-		k.waitForDelete(resources)
+	if wait > 0 {
+		err := k.waitForDelete(resources, wait)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -662,23 +708,33 @@ func (k *K8sClient) forceDiscovery(ctx context.Context, gvk schema.GroupVersionK
 	return rm, nil
 }
 
-func (k *K8sClient) waitForDelete(list kube.ResourceList) {
+// Returns true if the list successfully deleted. False if we timed out.
+func (k *K8sClient) waitForDelete(list kube.ResourceList, duration time.Duration) error {
+	results := make([]bool, len(list))
 	var wg sync.WaitGroup
-	for _, r := range list {
+	for i, r := range list {
 		wg.Add(1)
-		go func(resourceInfo *resource.Info) {
+		go func(i int, resourceInfo *resource.Info) {
 			waitOpt := &wait.WaitOptions{
 				DynamicClient: k.dynamic,
 				IOStreams:     genericclioptions.NewTestIOStreamsDiscard(),
-				Timeout:       30 * time.Second,
+				Timeout:       duration,
 				ForCondition:  "delete",
 			}
 
-			_, _, _ = wait.IsDeleted(resourceInfo, waitOpt)
+			_, ok, _ := wait.IsDeleted(resourceInfo, waitOpt)
+			results[i] = ok
 			wg.Done()
-		}(r)
+		}(i, r)
 	}
 	wg.Wait()
+
+	for i, r := range results {
+		if !r {
+			return fmt.Errorf("timeout waiting for delete: %s", list[i].Name)
+		}
+	}
+	return nil
 }
 
 func (k *K8sClient) ListMeta(ctx context.Context, gvk schema.GroupVersionKind, ns Namespace) ([]metav1.Object, error) {
