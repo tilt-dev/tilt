@@ -58,7 +58,7 @@ func TestDelete(t *testing.T) {
 	f := newClientTestFixture(t)
 	postgres, err := ParseYAMLFromString(testyaml.PostgresYAML)
 	assert.Nil(t, err)
-	err = f.client.Delete(f.ctx, postgres, true)
+	err = f.client.Delete(f.ctx, postgres, time.Minute)
 	assert.Nil(t, err)
 	assert.Equal(t, 5, len(f.resourceClient.deletes))
 }
@@ -74,7 +74,7 @@ func TestDeleteMissingKind(t *testing.T) {
 
 	postgres, err := ParseYAMLFromString(testyaml.PostgresYAML)
 	assert.Nil(t, err)
-	err = f.client.Delete(f.ctx, postgres, true)
+	err = f.client.Delete(f.ctx, postgres, time.Minute)
 	assert.Nil(t, err)
 	assert.Equal(t, 4, len(f.resourceClient.deletes))
 
