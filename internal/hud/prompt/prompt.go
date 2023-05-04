@@ -157,6 +157,8 @@ func (p *TerminalPrompt) OnChange(ctx context.Context, st store.RStore, _ store.
 				st.Dispatch(store.ErrorAction{Error: err})
 				return
 			}
+			
+			if r == '\000' { continue } //ensure windows support for tty rune reading
 
 			msg := runeMessage{
 				rune:   r,
