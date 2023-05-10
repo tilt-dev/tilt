@@ -19,6 +19,23 @@ RUN echo bye
 `)
 }
 
+func TestPrintHeredoc(t *testing.T) {
+	assertPrintSame(t, `
+FROM golang:10
+
+COPY <<FILE1 <<FILE2 /dest
+content 1
+FILE1
+content 2
+content 2 line 2
+FILE2
+
+RUN <<EOF
+echo hello
+EOF
+`)
+}
+
 func TestPrintASTRemovesComments(t *testing.T) {
 	assertPrint(t, `
 # comment
