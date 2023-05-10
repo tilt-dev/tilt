@@ -187,22 +187,20 @@ func (a AST) Print() (Dockerfile, error) {
 			currentLine++
 		}
 
-		err := a.printNode(node, buf)
+		lineCount, err := a.printNode(node, buf)
 		if err != nil {
 			return "", err
 		}
 
-		currentLine = node.StartLine + 1
-		if node.Next != nil && node.Next.StartLine != 0 {
-			currentLine = node.Next.StartLine + 1
-		}
+		currentLine = node.StartLine + lineCount
 	}
 	return Dockerfile(buf.String()), nil
 }
 
 // Loosely adapted from
 // https://github.com/jessfraz/dockfmt/blob/master/format.go
-func (a AST) printNode(node *parser.Node, writer io.Writer) error {
+// Returns the number of lines printed.
+func (a AST) printNode(node *parser.Node, writer io.Writer) (int, error) {
 	var v string
 
 	// format per directive
@@ -219,9 +217,9 @@ func (a AST) printNode(node *parser.Node, writer io.Writer) error {
 
 	_, err := fmt.Fprintln(writer, v)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	return nil
+	return strings.Count(v, "\n") + 1, nil
 }
 
 func getCmd(n *parser.Node) []string {
@@ -253,6 +251,17 @@ func getCmdArgs(n *parser.Node) []string {
 	return cmd
 }
 
+func appendHeredocs(node *parser.Node, cmdLine string) string {
+	if len(node.Heredocs) == 0 {
+		return cmdLine
+	}
+	lines := []string{cmdLine}
+	for _, h := range node.Heredocs {
+		lines = append(lines, fmt.Sprintf("\n%s%s", h.Content, h.Name))
+	}
+	return strings.Join(lines, "")
+}
+
 func fmtCmd(node *parser.Node) string {
 	if node.Attributes["json"] {
 		cmd := []string{strings.ToUpper(node.Value)}
@@ -264,16 +273,16 @@ func fmtCmd(node *parser.Node) string {
 		for _, c := range getCmdArgs(node) {
 			encoded = append(encoded, fmt.Sprintf("%q", c))
 		}
-		return fmt.Sprintf("%s [%s]", strings.Join(cmd, " "), strings.Join(encoded, ", "))
+		return appendHeredocs(node, fmt.Sprintf("%s [%s]", strings.Join(cmd, " "), strings.Join(encoded, ", ")))
 	}
 
 	cmd := getCmd(node)
-	return strings.Join(cmd, " ")
+	return appendHeredocs(node, strings.Join(cmd, " "))
 }
 
 func fmtDefault(node *parser.Node) string {
 	cmd := getCmd(node)
-	return strings.Join(cmd, " ")
+	return appendHeredocs(node, strings.Join(cmd, " "))
 }
 
 func fmtLabel(node *parser.Node) string {
