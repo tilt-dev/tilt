@@ -58,6 +58,9 @@ func NewReconciler(client ctrlclient.Client, st store.RStore, scheme *runtime.Sc
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	nn := req.NamespacedName
 	obj := &v1alpha1.CmdImage{}
 	err := r.client.Get(ctx, nn, obj)
