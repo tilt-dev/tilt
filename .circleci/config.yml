@@ -89,7 +89,7 @@ jobs:
   build-integration:
     resource_class: medium+
     docker:
-      - image: docker/tilt-integration-ci@sha256:0c9180c7ad07a6d1ce318f64dad2df83ad2d5ace03450f05543dbd3c07a02979
+      - image: docker/tilt-integration-ci@sha256:51ee8a14da68c9dc5812d7a6fbfc893970666b0fd0fe12d848d95d4e9a0f816e
     steps:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV

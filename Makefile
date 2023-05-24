@@ -129,12 +129,10 @@ release-container:
 	scripts/build-tilt-releaser.sh
 
 ci-container:
-	docker buildx build --load --pull --platform linux/amd64 -t docker/tilt-ci -f .circleci/Dockerfile .circleci
-	docker push docker/tilt-ci
+	docker buildx build --push --pull --platform linux/amd64 -t docker/tilt-ci -f .circleci/Dockerfile .circleci
 
 ci-integration-container:
-	docker buildx build --load --pull --platform linux/amd64 -t docker/tilt-integration-ci -f .circleci/Dockerfile.integration .circleci
-	docker push docker/tilt-integration-ci
+	docker buildx build --push --pull --platform linux/amd64 -t docker/tilt-integration-ci -f .circleci/Dockerfile.integration .circleci
 
 clean:
 	go clean -cache -testcache -r -i ./...
