@@ -112,6 +112,7 @@ func RewriteContentURLs(req *http.Request, content []byte) []byte {
 	prefix := getPublicPathPrefix(req)
 	content = bytes.ReplaceAll(content, []byte("/static/"), []byte(fmt.Sprintf("%s/static/", prefix)))
 	content = bytes.ReplaceAll(content, []byte("/favicon.ico"), []byte(fmt.Sprintf("%s/favicon.ico", prefix)))
+	content = bytes.ReplaceAll(content, []byte("/manifest.json"), []byte(fmt.Sprintf("%s/manifest.json", prefix)))
 	return content
 }
 
