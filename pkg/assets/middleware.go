@@ -28,7 +28,7 @@ func StripPrefix(prefix string, h http.Handler) http.Handler {
 }
 
 func isAssetPath(path string) bool {
-	return strings.HasPrefix(path, "/static/") || path == "/favicon.ico"
+	return strings.HasPrefix(path, "/static/") || path == "/favicon.ico" || path == "/manifest.json"
 }
 
 // Middleware that injects version information into the request.
