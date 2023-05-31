@@ -22,12 +22,14 @@ import (
 )
 
 var useCache bool
+var useLegacyAPI bool
 
 // A small utility for running Buildkit on the dockerfile
 // in the current directory printing out all the buildkit api
 // response protobufs.
 func main() {
 	flag.BoolVar(&useCache, "cache", false, "Enable docker caching")
+	flag.BoolVar(&useLegacyAPI, "legacy", false, "Print legacy build events")
 	flag.Parse()
 
 	err := run()
@@ -112,8 +114,18 @@ func readDockerOutput(ctx context.Context, reader io.Reader) error {
 			return errors.Wrap(err, "decoding docker output")
 		}
 
-		if messageIsFromBuildkit(message) {
+		if message.Aux == nil {
+			continue
+		}
+
+		isFromBuildkit := messageIsFromBuildkit(message)
+		if isFromBuildkit && !useLegacyAPI {
 			err := writeBuildkitStatus(message.Aux)
+			if err != nil {
+				return err
+			}
+		} else if !isFromBuildkit && useLegacyAPI {
+			err := json.NewEncoder(os.Stdout).Encode(message.Aux)
 			if err != nil {
 				return err
 			}
