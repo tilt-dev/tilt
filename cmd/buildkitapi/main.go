@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"path/filepath"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
@@ -23,6 +24,7 @@ import (
 
 var useCache bool
 var useLegacyAPI bool
+var contextDir string
 
 // A small utility for running Buildkit on the dockerfile
 // in the current directory printing out all the buildkit api
@@ -30,6 +32,7 @@ var useLegacyAPI bool
 func main() {
 	flag.BoolVar(&useCache, "cache", false, "Enable docker caching")
 	flag.BoolVar(&useLegacyAPI, "legacy", false, "Print legacy build events")
+	flag.StringVar(&contextDir, "context", "", "Context directory")
 	flag.Parse()
 
 	err := run()
@@ -59,10 +62,16 @@ func run() error {
 	}
 
 	dir, _ := os.Getwd()
+	if contextDir == "" {
+		contextDir = dir
+	}
+	if !filepath.IsAbs(contextDir) {
+		contextDir = filepath.Join(dir, contextDir)
+	}
 	session.Allow(filesync.NewFSSyncProvider([]filesync.SyncedDir{
 		{
 			Name: "context",
-			Dir:  dir,
+			Dir:  contextDir,
 			Map:  fileMap,
 		},
 		{
@@ -114,10 +123,6 @@ func readDockerOutput(ctx context.Context, reader io.Reader) error {
 			return errors.Wrap(err, "decoding docker output")
 		}
 
-		if message.Aux == nil {
-			continue
-		}
-
 		isFromBuildkit := messageIsFromBuildkit(message)
 		if isFromBuildkit && !useLegacyAPI {
 			err := writeBuildkitStatus(message.Aux)
@@ -125,7 +130,7 @@ func readDockerOutput(ctx context.Context, reader io.Reader) error {
 				return err
 			}
 		} else if !isFromBuildkit && useLegacyAPI {
-			err := json.NewEncoder(os.Stdout).Encode(message.Aux)
+			err := json.NewEncoder(os.Stdout).Encode(message)
 			if err != nil {
 				return err
 			}
