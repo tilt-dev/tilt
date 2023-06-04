@@ -498,13 +498,6 @@ func (r *Reconciler) createEntitiesToDeploy(ctx context.Context,
 			e = k8s.InjectParallelPodManagementPolicy(e)
 		}
 
-		// When working with a local k8s cluster, we set the pull policy to Never,
-		// to ensure that k8s fails hard if the image is missing from docker.
-		policy := v1.PullIfNotPresent
-		if r.dkc.WillBuildToKubeContext(k8s.KubeContext(r.k8sClient.APIConfig().CurrentContext)) {
-			policy = v1.PullNever
-		}
-
 		for _, imageMapName := range imageMapNames {
 			imageMap := imageMaps[types.NamespacedName{Name: imageMapName}]
 			imageMapSpec := imageMap.Spec
@@ -524,7 +517,7 @@ func (r *Reconciler) createEntitiesToDeploy(ctx context.Context,
 			}
 
 			var replaced bool
-			e, replaced, err = k8s.InjectImageDigest(e, selector, ref, locators, matchInEnvVars, policy)
+			e, replaced, err = k8s.InjectImageDigest(e, selector, ref, locators, matchInEnvVars, v1.PullIfNotPresent)
 			if err != nil {
 				return nil, err
 			}
