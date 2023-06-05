@@ -83,7 +83,7 @@ func (dp *DockerPruner) OnChange(ctx context.Context, st store.RStore, summary s
 	// 	* Engine is currently building something
 	// 	* There are NO `docker_build`s in the Tiltfile
 	// 	* Something is queued for building
-	if !settings.Enabled || len(state.CurrentBuildSet) > 0 || !state.HasDockerBuild() || buildcontrol.NextManifestNameToBuild(state) != "" {
+	if !settings.Enabled || len(state.CurrentBuildSet) > 0 || !state.HasBuild() || buildcontrol.NextManifestNameToBuild(state) != "" {
 		st.RUnlockState()
 		return nil
 	}

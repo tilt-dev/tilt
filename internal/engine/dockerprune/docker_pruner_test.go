@@ -309,7 +309,7 @@ func TestDockerPrunerFirstRunButNoCompletedBuilds(t *testing.T) {
 	f.assertNoPrune()
 }
 
-func TestDockerPrunerNoDockerManifests(t *testing.T) {
+func TestDockerPrunerNoBuildManifests(t *testing.T) {
 	f := newFixture(t)
 	f.withK8sOnlyManifest()
 	f.withBuildCount(11)
@@ -318,6 +318,20 @@ func TestDockerPrunerNoDockerManifests(t *testing.T) {
 	_ = f.dp.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 
 	f.assertNoPrune()
+}
+
+func TestDockerPrunerOnlyCustomBuildManifests(t *testing.T) {
+	f := newFixture(t)
+	f.withBuildCount(11)
+	f.withDockerPruneSettings(true, 0, 5, 0)
+
+	iTarget := model.MustNewImageTarget(refSel).WithBuildDetails(model.CustomBuild{})
+	m := model.Manifest{Name: "custom-build-manifest"}.WithImageTarget(iTarget)
+	f.withManifestTarget(store.NewManifestTarget(m), true)
+
+	_ = f.dp.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
+
+	f.assertPrune()
 }
 
 func TestDockerPrunerDisabled(t *testing.T) {

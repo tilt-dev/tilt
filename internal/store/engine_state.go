@@ -379,10 +379,10 @@ func (e *EngineState) MainConfigPaths() []string {
 	return e.TiltfileConfigPaths[model.MainTiltfileManifestName]
 }
 
-func (e *EngineState) HasDockerBuild() bool {
+func (e *EngineState) HasBuild() bool {
 	for _, m := range e.Manifests() {
 		for _, targ := range m.ImageTargets {
-			if targ.IsDockerBuild() {
+			if targ.IsDockerBuild() || targ.IsCustomBuild() {
 				return true
 			}
 		}
