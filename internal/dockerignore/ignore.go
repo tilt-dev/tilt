@@ -36,14 +36,56 @@ func (i dockerPathMatcher) MatchesEntireDir(f string) (bool, error) {
 			if !pattern.Exclusion() {
 				continue
 			}
-			if ospath.IsChild(f, pattern.String()) {
+
+			// An exclusion pattern handles the case where the user
+			// does something like:
+			//
+			// *
+			// !path/to/include
+			// !pkg/**/*.go
+			//
+			// where they ignore all files and select the files
+			// they want to exclude.
+			//
+			// Because MatchesEntireDir is an optimization, we err
+			// on the side of crawling too much.
+			patternString := pattern.String()
+
+			// Handle the case where the pattern matches a subfile of the
+			// current directory.
+			if ospath.IsChild(f, patternString) {
 				// Found an exclusion match -- we don't match this whole dir
+				return false, nil
+			}
+
+			// Handle the case where the pattern has a glob that matches
+			// arbitrary files, and the glob could match a subfile of
+			// the current directory.
+			prefix := definitePatternPrefix(patternString)
+			if prefix != patternString && ospath.IsChild(prefix, f) {
 				return false, nil
 			}
 		}
 		return true, nil
 	}
 	return true, nil
+}
+
+// Truncate the pattern to just the prefxi that's a concrete directory.
+func definitePatternPrefix(p string) string {
+	if !strings.Contains(p, "*") {
+		return p
+	}
+	parts := strings.Split(p, string(filepath.Separator))
+	for i, part := range parts {
+		if strings.Contains(part, "*") {
+			if i == 0 {
+				return "."
+			}
+			return strings.Join(parts[0:i], string(filepath.Separator))
+		}
+	}
+	return p
 }
 
 func NewDockerIgnoreTester(repoRoot string) (*dockerPathMatcher, error) {
