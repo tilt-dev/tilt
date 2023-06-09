@@ -206,6 +206,27 @@ func (d *DockerBuilder) BuildImage(ctx context.Context, ps *PipelineState, refs 
 func (d *DockerBuilder) buildToDigest(ctx context.Context, spec v1alpha1.DockerImageSpec, filter model.PathMatcher, allowBuildkit bool) (digest.Digest, []v1alpha1.DockerImageStageStatus, error) {
 	var contextReader io.Reader
 
+	buildContext := spec.Context
+
+	// Treat context: "-" as an empty context.
+	if buildContext == "-" {
+		emptyContextDir, err := os.MkdirTemp("", "tilt-dockercontext-")
+		if err != nil {
+			return "", nil, fmt.Errorf("creating context directory: %v", err)
+		}
+
+		defer func() {
+			_ = os.RemoveAll(emptyContextDir)
+		}()
+
+		buildContext = emptyContextDir
+	}
+
+	_, err := os.Stat(buildContext)
+	if err != nil {
+		return "", nil, fmt.Errorf("reading build context: %v", err)
+	}
+
 	// Buildkit allows us to use a fs sync server instead of uploading up-front.
 	useFSSync := allowBuildkit && d.dCli.BuilderVersion() == types.BuilderBuildKit
 	if !useFSSync {
@@ -217,7 +238,7 @@ func (d *DockerBuilder) buildToDigest(ctx context.Context, spec v1alpha1.DockerI
 		go func(ctx context.Context) {
 			paths := []PathMapping{
 				{
-					LocalPath:     spec.Context,
+					LocalPath:     buildContext,
 					ContainerPath: "/",
 				},
 			}
@@ -242,7 +263,7 @@ func (d *DockerBuilder) buildToDigest(ctx context.Context, spec v1alpha1.DockerI
 		if err != nil {
 			return "", nil, err
 		}
-		options.SyncedDirs = toSyncedDirs(spec.Context, dockerfileDir, filter)
+		options.SyncedDirs = toSyncedDirs(buildContext, dockerfileDir, filter)
 		options.Dockerfile = DockerfileName
 
 		defer func() {
