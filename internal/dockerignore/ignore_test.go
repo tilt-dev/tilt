@@ -99,6 +99,19 @@ func TestOrthogonalException(t *testing.T) {
 	tf.AssertResultEntireDir(tf.JoinPath("b"), false)
 }
 
+func TestOnlyGoFiles(t *testing.T) {
+	tf := newTestFixture(t, "*", "!pkg/**/*.go", "!go.mod", "!go.sum")
+	tf.AssertResult(tf.JoinPath("pkg", "hello.txt"), true)
+	tf.AssertResult(tf.JoinPath("pkg", "internal", "hello.txt"), true)
+	tf.AssertResult(tf.JoinPath("pkg", "internal", "module", "hello.txt"), true)
+	tf.AssertResult(tf.JoinPath("pkg", "hello.go"), false)
+	tf.AssertResult(tf.JoinPath("pkg", "internal", "hello.go"), false)
+	tf.AssertResult(tf.JoinPath("pkg", "internal", "module", "hello.go"), false)
+	tf.AssertResultEntireDir(tf.JoinPath("pkg"), false)
+	tf.AssertResultEntireDir(tf.JoinPath("pkg", "internal"), false)
+	tf.AssertResultEntireDir(tf.JoinPath("pkg", "internal", "module"), false)
+}
+
 func TestNoDockerignoreFile(t *testing.T) {
 	tf := newTestFixture(t)
 	tf.AssertResult(tf.JoinPath("hi"), false)

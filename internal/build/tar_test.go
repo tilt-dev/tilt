@@ -257,6 +257,31 @@ func TestArchiveException(t *testing.T) {
 	f.assertFileInTar(actual, expectedFile{Path: "target/foo.txt", Contents: "bar"})
 }
 
+func TestArchiveAllGoFiles(t *testing.T) {
+	f := newFixture(t)
+
+	filter, err := dockerignore.NewDockerPatternMatcher(f.Path(),
+		[]string{"*", "!pkg/**/*.go"})
+	require.NoError(t, err)
+
+	buf := new(bytes.Buffer)
+	ab := NewArchiveBuilder(buf, filter)
+	defer ab.Close()
+
+	f.WriteFile("pkg/internal/somemodule/foo.go", "bar")
+
+	paths := []PathMapping{{LocalPath: f.Path(), ContainerPath: "/"}}
+
+	err = ab.ArchivePathsIfExist(f.ctx, paths)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+
+	actual := tar.NewReader(buf)
+	f.assertFileInTar(actual,
+		expectedFile{Path: "pkg/internal/somemodule/foo.go", Contents: "bar"})
+}
+
 // Write a file continuously, and make sure we don't get tar errors.
 func TestRapidWrite(t *testing.T) {
 	f := newFixture(t)
