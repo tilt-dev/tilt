@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"context"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/jonboulle/clockwork"
@@ -88,7 +89,7 @@ func TestTiltBuildsImageWithTag(t *testing.T) {
 
 	refWithTag := "gcr.io/foo:bar"
 	iTarget := model.MustNewImageTarget(container.MustParseSelector(refWithTag)).
-		WithBuildDetails(model.DockerBuild{})
+		WithBuildDetails(model.DockerBuild{DockerImageSpec: v1alpha1.DockerImageSpec{Context: "-"}})
 	manifest := manifestbuilder.New(f, "fe").
 		WithDockerCompose().
 		WithImageTarget(iTarget).
@@ -199,6 +200,10 @@ func newDCBDFixture(t *testing.T) *dcbdFixture {
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 
 	f := tempdir.NewTempDirFixture(t)
+
+	// empty dirs for build contexts
+	_ = os.Mkdir(f.JoinPath("sancho"), 0777)
+	_ = os.Mkdir(f.JoinPath("sancho-base"), 0777)
 
 	dir := dirs.NewTiltDevDirAt(f.Path())
 	dcCli := dockercompose.NewFakeDockerComposeClient(t, ctx)

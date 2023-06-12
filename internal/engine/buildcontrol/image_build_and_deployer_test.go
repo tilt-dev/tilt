@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"context"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 	"testing"
@@ -1090,6 +1091,11 @@ type ibdFixture struct {
 
 func newIBDFixture(t *testing.T, env clusterid.Product) *ibdFixture {
 	f := tempdir.NewTempDirFixture(t)
+
+	// empty dirs for build contexts
+	_ = os.Mkdir(f.JoinPath("sancho"), 0777)
+	_ = os.Mkdir(f.JoinPath("sancho-base"), 0777)
+
 	dir := dirs.NewTiltDevDirAt(f.Path())
 
 	dockerClient := docker.NewFakeClient()

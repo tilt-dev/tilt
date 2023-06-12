@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/docker"
@@ -144,4 +145,43 @@ RUN echo 'failed to create LLB definition: failed commit on ref "unknown-sha256:
 	assert.Contains(t, out.String(), "Detected Buildkit corruption. Rebuilding without Buildkit")
 	assert.Contains(t, out.String(), "[1/2] FROM docker.io/library/alpine")                     // buildkit-style output
 	assert.True(t, regexp.MustCompile("Step 1/[0-9]+ : FROM alpine").MatchString(out.String())) // Legacy output
+}
+
+func TestDockerBuildEmptyContext(t *testing.T) {
+	f := newDockerBuildFixture(t)
+
+	df := dockerfile.Dockerfile(`
+FROM alpine
+`)
+
+	spec := v1alpha1.DockerImageSpec{
+		DockerfileContents: df.String(),
+		Context:            "-",
+	}
+	refs, _, err := f.b.BuildImage(f.ctx, f.ps, f.getNameFromTest(), spec,
+		defaultCluster,
+		nil,
+		model.EmptyMatcher)
+	require.NoError(t, err)
+	f.assertImageHasLabels(refs.LocalRef, docker.BuiltLabelSet)
+}
+
+func TestDockerBuildMissingContext(t *testing.T) {
+	f := newDockerBuildFixture(t)
+
+	df := dockerfile.Dockerfile(`
+FROM alpine
+`)
+
+	spec := v1alpha1.DockerImageSpec{
+		DockerfileContents: df.String(),
+		Context:            "unknown-dir",
+	}
+	_, _, err := f.b.BuildImage(f.ctx, f.ps, f.getNameFromTest(), spec,
+		defaultCluster,
+		nil,
+		model.EmptyMatcher)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "reading build context: stat unknown-dir: no such file or directory")
+	}
 }
