@@ -128,13 +128,7 @@ func (c *cmdDCClient) Up(ctx context.Context, spec v1alpha1.DockerComposeService
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	runArgs := append([]string{}, genArgs...)
-	runArgs = append(runArgs, "up", "--no-deps")
-	// Omit --no-build for now to get v2 working.
-	// https://github.com/docker/compose/issues/8785
-	if semver.Major(c.version) != "v2" {
-		runArgs = append(runArgs, "--no-build")
-	}
-	runArgs = append(runArgs, "-d", spec.Service)
+	runArgs = append(runArgs, "up", "--no-deps", "--remove-orphans", "--no-build", "-d", spec.Service)
 	cmd := c.dcCommand(ctx, runArgs)
 	cmd.Stdin = strings.NewReader(spec.Project.YAML)
 	cmd.Stdout = stdout
@@ -154,7 +148,7 @@ func (c *cmdDCClient) Down(ctx context.Context, p v1alpha1.DockerComposeProject,
 		args = append(args, "--verbose")
 	}
 
-	args = append(args, "down")
+	args = append(args, "down", "--remove-orphans")
 	cmd := c.dcCommand(ctx, args)
 	cmd.Stdin = strings.NewReader(p.YAML)
 	cmd.Stdout = stdout
