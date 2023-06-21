@@ -47,7 +47,7 @@ RUN go install gotest.tools/gotestsum@latest \
     && gotestsum --version
 
 # install Kind (Kubernetes in Docker)
-ENV KIND_VERSION=v0.19.0
+ENV KIND_VERSION=v0.20.0
 RUN curl -fLo ./kind-linux-amd64 https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-linux-amd64 \
   && chmod +x ./kind-linux-amd64 \
   && mv ./kind-linux-amd64 /go/bin/kind \
