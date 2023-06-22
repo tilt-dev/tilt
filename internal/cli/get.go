@@ -87,6 +87,6 @@ func (c *getCmd) run(ctx context.Context, args []string) error {
 	cmd := c.cmd
 	cmdutil.CheckErr(o.Complete(f, cmd, args))
 	cmdutil.CheckErr(o.Validate())
-	cmdutil.CheckErr(o.Run(f, cmd, args))
+	cmdutil.CheckErr(o.Run(f, args))
 	return nil
 }

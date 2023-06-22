@@ -217,7 +217,7 @@ declare namespace Proto {
      *
      * Must be a DNS_LABEL.
      * Cannot be updated.
-     * More info: http://kubernetes.io/docs/user-guide/namespaces
+     * More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces
      * +optional
      */
     namespace?: string;
@@ -229,7 +229,7 @@ declare namespace Proto {
      *
      * Populated by the system.
      * Read-only.
-     * More info: http://kubernetes.io/docs/user-guide/identifiers#uids
+     * More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#uids
      * +optional
      */
     uid?: string;

@@ -16,7 +16,6 @@ import (
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/docker/go-connections/nat"
 
@@ -54,10 +53,10 @@ type Reconciler struct {
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	b := ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.DockerComposeService{}).
-		Watches(r.requeuer, handler.Funcs{}).
-		Watches(&source.Kind{Type: &v1alpha1.ImageMap{}},
+		WatchesRawSource(r.requeuer, handler.Funcs{}).
+		Watches(&v1alpha1.ImageMap{},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
-		Watches(&source.Kind{Type: &v1alpha1.ConfigMap{}},
+		Watches(&v1alpha1.ConfigMap{},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue))
 
 	return b, nil

@@ -163,9 +163,14 @@ func (in *KubernetesDiscovery) Default() {
 }
 
 var _ resource.Object = &KubernetesDiscovery{}
+var _ resourcerest.SingularNameProvider = &KubernetesDiscovery{}
 var _ resourcestrategy.Defaulter = &KubernetesDiscovery{}
 var _ resourcestrategy.Validater = &KubernetesDiscovery{}
 var _ resourcerest.ShortNamesProvider = &KubernetesDiscovery{}
+
+func (in *KubernetesDiscovery) GetSingularName() string {
+	return "kubernetesdiscovery"
+}
 
 func (in *KubernetesDiscovery) GetObjectMeta() *metav1.ObjectMeta {
 	return &in.ObjectMeta

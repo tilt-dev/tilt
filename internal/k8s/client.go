@@ -416,7 +416,7 @@ func (k *K8sClient) applyEntity(ctx context.Context, entity K8sEntity) ([]K8sEnt
 		dur := 60 * time.Second
 		logger.Get(ctx).Infof("Resource %s is currently being deleted. Waiting %s for deletion before retrying...",
 			entity.Name(), duration.ShortHumanDuration(dur))
-		err := k.waitForDelete(resources, dur)
+		err := k.waitForDelete(ctx, resources, dur)
 		if err != nil {
 			return nil, errors.Wrap(err, "kubernetes apply retry")
 		}
@@ -471,7 +471,7 @@ func (k *K8sClient) deleteAndCreateEntity(ctx context.Context, entity K8sEntity)
 		return nil, errors.Wrap(err, "kubernetes delete and re-create")
 	}
 
-	result, err := k.deleteAndCreate(resources)
+	result, err := k.deleteAndCreate(ctx, resources)
 	if err != nil {
 		return nil, err
 	}
@@ -532,7 +532,7 @@ func (k *K8sClient) kubeResultToEntities(result *kube.Result) ([]K8sEntity, erro
 	return parsed, nil
 }
 
-func (k *K8sClient) deleteAndCreate(list kube.ResourceList) (*kube.Result, error) {
+func (k *K8sClient) deleteAndCreate(ctx context.Context, list kube.ResourceList) (*kube.Result, error) {
 	// Delete is destructive, so clone first.
 	toDelete := kube.ResourceList{}
 	for _, r := range list {
@@ -550,7 +550,7 @@ func (k *K8sClient) deleteAndCreate(list kube.ResourceList) (*kube.Result, error
 	}
 
 	// ensure the delete has finished before attempting to recreate
-	err := k.waitForDelete(list, 30*time.Second)
+	err := k.waitForDelete(ctx, list, 30*time.Second)
 	if err != nil {
 		return nil, errors.Wrap(err, "kubernetes create")
 	}
@@ -677,7 +677,7 @@ func (k *K8sClient) Delete(ctx context.Context, entities []K8sEntity, wait time.
 	}
 
 	if wait > 0 {
-		err := k.waitForDelete(resources, wait)
+		err := k.waitForDelete(ctx, resources, wait)
 		if err != nil {
 			return err
 		}
@@ -709,7 +709,7 @@ func (k *K8sClient) forceDiscovery(ctx context.Context, gvk schema.GroupVersionK
 }
 
 // Returns true if the list successfully deleted. False if we timed out.
-func (k *K8sClient) waitForDelete(list kube.ResourceList, duration time.Duration) error {
+func (k *K8sClient) waitForDelete(ctx context.Context, list kube.ResourceList, duration time.Duration) error {
 	results := make([]bool, len(list))
 	var wg sync.WaitGroup
 	for i, r := range list {
@@ -722,7 +722,7 @@ func (k *K8sClient) waitForDelete(list kube.ResourceList, duration time.Duration
 				ForCondition:  "delete",
 			}
 
-			_, ok, _ := wait.IsDeleted(resourceInfo, waitOpt)
+			_, ok, _ := wait.IsDeleted(ctx, resourceInfo, waitOpt)
 			results[i] = ok
 			wg.Done()
 		}(i, r)

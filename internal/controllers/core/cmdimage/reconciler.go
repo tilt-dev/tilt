@@ -9,7 +9,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -206,8 +205,8 @@ func (r *Reconciler) maybeUpdateImageMapStatus(ctx context.Context, nn types.Nam
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	b := ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.CmdImage{}).
-		Watches(r.requeuer, handler.Funcs{}).
-		Watches(&source.Kind{Type: &v1alpha1.Cluster{}},
+		WatchesRawSource(r.requeuer, handler.Funcs{}).
+		Watches(&v1alpha1.Cluster{},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue))
 
 	return b, nil

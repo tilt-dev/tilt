@@ -43,6 +43,7 @@ type Strategy interface {
 	rest.RESTDeleteStrategy
 	rest.TableConvertor
 	rest.ShortNamesProvider
+	rest.SingularNameProvider
 }
 
 var _ Strategy = DefaultStrategy{}
@@ -87,6 +88,17 @@ func (d DefaultStrategy) ShortNames() []string {
 		return n.ShortNames()
 	}
 	return nil
+}
+
+// SingularNameProvider
+func (d DefaultStrategy) GetSingularName() string {
+	if d.Object == nil {
+		return ""
+	}
+	if n, ok := d.Object.(rest.SingularNameProvider); ok {
+		return n.GetSingularName()
+	}
+	return ""
 }
 
 // PrepareForCreate calls the PrepareForCreate function on obj if supported, otherwise does nothing.

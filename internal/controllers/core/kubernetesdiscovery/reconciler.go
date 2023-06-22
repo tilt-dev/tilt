@@ -20,7 +20,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/cluster"
@@ -109,9 +108,9 @@ func (w *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 		For(&v1alpha1.KubernetesDiscovery{}).
 		Owns(&v1alpha1.PodLogStream{}).
 		Owns(&v1alpha1.PortForward{}).
-		Watches(&source.Kind{Type: &v1alpha1.Cluster{}},
+		Watches(&v1alpha1.Cluster{},
 			handler.EnqueueRequestsFromMapFunc(w.indexer.Enqueue)).
-		Watches(w.requeuer, handler.Funcs{})
+		WatchesRawSource(w.requeuer, handler.Funcs{})
 	return b, nil
 }
 

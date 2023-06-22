@@ -9,7 +9,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/sliceutils"
@@ -232,7 +231,7 @@ func registerWatches(builder *builder.Builder, indexer *indexer.Indexer) {
 		// this is arguably overly defensive, but a copy of the type object stub is made
 		// to avoid sharing references of it across different reconcilers
 		obj := t.DeepCopyObject().(client.Object)
-		builder.Watches(&source.Kind{Type: obj},
+		builder.Watches(obj,
 			handler.EnqueueRequestsFromMapFunc(indexer.Enqueue))
 	}
 }

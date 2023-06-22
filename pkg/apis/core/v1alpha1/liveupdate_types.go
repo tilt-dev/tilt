@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcerest"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcestrategy"
 )
 
@@ -112,7 +113,12 @@ type LiveUpdateSpec struct {
 }
 
 var _ resource.Object = &LiveUpdate{}
+var _ resourcerest.SingularNameProvider = &LiveUpdate{}
 var _ resourcestrategy.Validater = &LiveUpdate{}
+
+func (in *LiveUpdate) GetSingularName() string {
+	return "liveupdate"
+}
 
 func (in *LiveUpdate) GetSpec() interface{} {
 	return in.Spec

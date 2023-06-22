@@ -26,7 +26,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/tilt-dev/fsnotify"
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
@@ -162,9 +161,9 @@ func (c *Controller) maybeUpdateObjectStatus(ctx context.Context, fw *v1alpha1.F
 func (c *Controller) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	b := ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.FileWatch{}).
-		Watches(&source.Kind{Type: &v1alpha1.ConfigMap{}},
+		Watches(&v1alpha1.ConfigMap{},
 			handler.EnqueueRequestsFromMapFunc((c.indexer.Enqueue))).
-		Watches(c.requeuer, handler.Funcs{})
+		WatchesRawSource(c.requeuer, handler.Funcs{})
 
 	return b, nil
 }

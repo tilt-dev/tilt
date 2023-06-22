@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -95,7 +96,7 @@ func (b ControllerFixtureBuilder) Build(c controller) *ControllerFixture {
 	// currently, this relies on the fact that no controllers actually use the
 	// controllerruntime.Manager argument for anything besides passing it along - if that changes,
 	// we'll need to provide a mock of it that implements the requisite functionality
-	_, err := c.CreateBuilder(nil)
+	_, err := c.CreateBuilder(&FakeManager{})
 	require.NoError(b.t, err, "Error in controller CreateBuilder()")
 
 	return &ControllerFixture{
@@ -214,7 +215,21 @@ func (f *ControllerFixture) Upsert(o object) ctrl.Result {
 
 		require.NoError(f.t, f.Client.Get(f.ctx, f.KeyForObject(o), tmp))
 		o.SetResourceVersion(tmp.GetResourceVersion())
-		return f.Update(o)
+
+		var status resource.StatusSubResource
+		withStatus, hasStatus := o.(resource.ObjectWithStatusSubResource)
+		if hasStatus {
+			status = withStatus.DeepCopyObject().(resource.ObjectWithStatusSubResource).GetStatus()
+		}
+
+		result := f.Update(o)
+
+		if hasStatus {
+			status.CopyTo(withStatus)
+			return f.UpdateStatus(o)
+		}
+
+		return result
 	}
 	require.NoError(f.t, err)
 	return f.MustReconcile(f.KeyForObject(o))
@@ -245,4 +260,12 @@ func (f *ControllerFixture) AssertStdOutContains(v string) bool {
 	f.t.Helper()
 	return assert.True(f.t, strings.Contains(f.Stdout(), v),
 		"Stdout did not include output: %q", v)
+}
+
+type FakeManager struct {
+	ctrl.Manager
+}
+
+func (m *FakeManager) GetCache() cache.Cache {
+	return nil
 }

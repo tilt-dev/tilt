@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io"
+	"math"
 	rdebug "runtime/debug"
 	"sync"
 
@@ -528,8 +529,8 @@ func (e *Encoder) EncodeAll(src, dst []byte) []byte {
 		// If a non-single block is needed the encoder will reset again.
 		e.encoders <- enc
 	}()
-	// Use single segments when above minimum window and below 1MB.
-	single := len(src) < 1<<20 && len(src) > MinWindowSize
+	// Use single segments when above minimum window and below window size.
+	single := len(src) <= e.o.windowSize && len(src) > MinWindowSize
 	if e.o.single != nil {
 		single = *e.o.single
 	}
@@ -551,7 +552,7 @@ func (e *Encoder) EncodeAll(src, dst []byte) []byte {
 	}
 
 	// If we can do everything in one block, prefer that.
-	if len(src) <= maxCompressedBlockSize {
+	if len(src) <= e.o.blockSize {
 		enc.Reset(e.o.dict, true)
 		// Slightly faster with no history and everything in one block.
 		if e.o.crc {
@@ -638,4 +639,38 @@ func (e *Encoder) EncodeAll(src, dst []byte) []byte {
 		}
 	}
 	return dst
+}
+
+// MaxEncodedSize returns the expected maximum
+// size of an encoded block or stream.
+func (e *Encoder) MaxEncodedSize(size int) int {
+	frameHeader := 4 + 2 // magic + frame header & window descriptor
+	if e.o.dict != nil {
+		frameHeader += 4
+	}
+	// Frame content size:
+	if size < 256 {
+		frameHeader++
+	} else if size < 65536+256 {
+		frameHeader += 2
+	} else if size < math.MaxInt32 {
+		frameHeader += 4
+	} else {
+		frameHeader += 8
+	}
+	// Final crc
+	if e.o.crc {
+		frameHeader += 4
+	}
+
+	// Max overhead is 3 bytes/block.
+	// There cannot be 0 blocks.
+	blocks := (size + e.o.blockSize) / e.o.blockSize
+
+	// Combine, add padding.
+	maxSz := frameHeader + 3*blocks + size
+	if e.o.pad > 1 {
+		maxSz += calcSkippableFrame(int64(maxSz), int64(e.o.pad))
+	}
+	return maxSz
 }

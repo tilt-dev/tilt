@@ -105,8 +105,13 @@ type Forward struct {
 }
 
 var _ resource.Object = &PortForward{}
+var _ resourcerest.SingularNameProvider = &PortForward{}
 var _ resourcestrategy.Validater = &PortForward{}
 var _ resourcerest.ShortNamesProvider = &PortForward{}
+
+func (in *PortForward) GetSingularName() string {
+	return "portforward"
+}
 
 func (in *PortForward) GetObjectMeta() *metav1.ObjectMeta {
 	return &in.ObjectMeta

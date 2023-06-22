@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcerest"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcestrategy"
 )
 
@@ -116,7 +117,12 @@ type CmdImageSpec struct {
 }
 
 var _ resource.Object = &CmdImage{}
+var _ resourcerest.SingularNameProvider = &CmdImage{}
 var _ resourcestrategy.Validater = &CmdImage{}
+
+func (in *CmdImage) GetSingularName() string {
+	return "cmdimage"
+}
 
 func (in *CmdImage) GetSpec() interface{} {
 	return in.Spec

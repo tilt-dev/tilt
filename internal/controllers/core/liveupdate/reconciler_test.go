@@ -67,18 +67,19 @@ func TestIndexing(t *testing.T) {
 		},
 	})
 
-	reqs := f.r.indexer.Enqueue(&v1alpha1.KubernetesDiscovery{ObjectMeta: metav1.ObjectMeta{Name: "discovery"}})
+	ctx := context.Background()
+	reqs := f.r.indexer.Enqueue(ctx, &v1alpha1.KubernetesDiscovery{ObjectMeta: metav1.ObjectMeta{Name: "discovery"}})
 	require.ElementsMatch(t, []reconcile.Request{
 		{NamespacedName: types.NamespacedName{Name: "all"}},
 		{NamespacedName: types.NamespacedName{Name: "kdisco-only"}},
 	}, reqs, "KubernetesDiscovery indexing")
 
-	reqs = f.r.indexer.Enqueue(&v1alpha1.KubernetesApply{ObjectMeta: metav1.ObjectMeta{Name: "apply"}})
+	reqs = f.r.indexer.Enqueue(ctx, &v1alpha1.KubernetesApply{ObjectMeta: metav1.ObjectMeta{Name: "apply"}})
 	require.ElementsMatch(t, []reconcile.Request{
 		{NamespacedName: types.NamespacedName{Name: "all"}},
 	}, reqs, "KubernetesApply indexing")
 
-	reqs = f.r.indexer.Enqueue(&v1alpha1.ImageMap{ObjectMeta: metav1.ObjectMeta{Name: "imagemap"}})
+	reqs = f.r.indexer.Enqueue(ctx, &v1alpha1.ImageMap{ObjectMeta: metav1.ObjectMeta{Name: "imagemap"}})
 	require.ElementsMatch(t, []reconcile.Request{
 		{NamespacedName: types.NamespacedName{Name: "all"}},
 	}, reqs, "ImageMap indexing")

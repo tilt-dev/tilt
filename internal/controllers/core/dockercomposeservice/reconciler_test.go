@@ -1,6 +1,7 @@
 package dockercomposeservice
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -36,7 +37,8 @@ func TestImageIndexing(t *testing.T) {
 	f.Create(&obj)
 
 	// Verify we can index one image map.
-	reqs := f.r.indexer.Enqueue(&v1alpha1.ImageMap{ObjectMeta: metav1.ObjectMeta{Name: "image-a"}})
+	reqs := f.r.indexer.Enqueue(context.Background(),
+		&v1alpha1.ImageMap{ObjectMeta: metav1.ObjectMeta{Name: "image-a"}})
 	assert.ElementsMatch(t, []reconcile.Request{
 		{NamespacedName: types.NamespacedName{Name: "a"}},
 	}, reqs)

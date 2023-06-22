@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"helm.sh/helm/v3/pkg/kube"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/printers"
@@ -37,7 +38,7 @@ func (c *resourceClient) Apply(target kube.ResourceList) (*kube.Result, error) {
 		Out:    io.Discard,
 		ErrOut: io.Discard,
 	}
-	flags := apply.NewApplyFlags(f, iostreams)
+	flags := apply.NewApplyFlags(iostreams)
 
 	dynamicClient, err := f.DynamicClient()
 	if err != nil {
@@ -89,8 +90,8 @@ func (c *resourceClient) Apply(target kube.ResourceList) (*kube.Result, error) {
 
 		IOStreams: flags.IOStreams,
 
-		VisitedUids:       sets.NewString(),
-		VisitedNamespaces: sets.NewString(),
+		VisitedUids:       sets.New[types.UID](),
+		VisitedNamespaces: sets.New[string](),
 	}
 
 	o.SetObjects(target)

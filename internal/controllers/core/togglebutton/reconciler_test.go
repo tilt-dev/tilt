@@ -226,7 +226,7 @@ func TestReconciler_ConfigMapUnexpectedValue(t *testing.T) {
 	cm := f.configMap()
 	tb := f.toggleButton()
 	cm.Data[tb.Spec.StateSource.ConfigMap.Key] = "asdf"
-	err := f.Client.Status().Update(f.ctx, &cm)
+	err := f.Client.Update(f.ctx, &cm)
 	require.NoError(t, err)
 
 	f.MustReconcile(tbName)

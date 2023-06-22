@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcerest"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcestrategy"
 )
 
@@ -84,7 +85,12 @@ type TiltfileSpec struct {
 }
 
 var _ resource.Object = &Tiltfile{}
+var _ resourcerest.SingularNameProvider = &Tiltfile{}
 var _ resourcestrategy.Validater = &Tiltfile{}
+
+func (in *Tiltfile) GetSingularName() string {
+	return "tiltfile"
+}
 
 func (in *Tiltfile) GetObjectMeta() *metav1.ObjectMeta {
 	return &in.ObjectMeta

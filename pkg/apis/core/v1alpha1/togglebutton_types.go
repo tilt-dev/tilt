@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcerest"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcestrategy"
 )
 
@@ -131,7 +132,12 @@ type ConfigMapStateSource struct {
 }
 
 var _ resource.Object = &ToggleButton{}
+var _ resourcerest.SingularNameProvider = &ToggleButton{}
 var _ resourcestrategy.Validater = &ToggleButton{}
+
+func (in *ToggleButton) GetSingularName() string {
+	return "togglebutton"
+}
 
 func (in *ToggleButton) GetObjectMeta() *metav1.ObjectMeta {
 	return &in.ObjectMeta

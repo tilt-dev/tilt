@@ -413,7 +413,8 @@ func TestReconcilerIndexing(t *testing.T) {
 	pls.Spec.Cluster = "my-cluster"
 	f.Create(pls)
 
-	reqs := f.plsc.indexer.Enqueue(&v1alpha1.Cluster{
+	ctx := context.Background()
+	reqs := f.plsc.indexer.Enqueue(ctx, &v1alpha1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "some-ns", Name: "my-cluster"},
 	})
 	assert.ElementsMatch(t, []reconcile.Request{

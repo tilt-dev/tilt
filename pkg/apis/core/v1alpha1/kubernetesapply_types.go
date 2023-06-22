@@ -184,9 +184,14 @@ type KubernetesApplySpec struct {
 }
 
 var _ resource.Object = &KubernetesApply{}
+var _ resourcerest.SingularNameProvider = &KubernetesApply{}
 var _ resourcestrategy.Defaulter = &KubernetesApply{}
 var _ resourcestrategy.Validater = &KubernetesApply{}
 var _ resourcerest.ShortNamesProvider = &KubernetesApply{}
+
+func (in *KubernetesApply) GetSingularName() string {
+	return "kubernetesapply"
+}
 
 func (in *KubernetesApply) Default() {
 	if in.Spec.Cluster == "" {

@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcerest"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcestrategy"
 )
 
@@ -70,7 +71,12 @@ type ExtensionRepoSpec struct {
 }
 
 var _ resource.Object = &ExtensionRepo{}
+var _ resourcerest.SingularNameProvider = &ExtensionRepo{}
 var _ resourcestrategy.Validater = &ExtensionRepo{}
+
+func (in *ExtensionRepo) GetSingularName() string {
+	return "extensionrepo"
+}
 
 func (in *ExtensionRepo) GetSpec() interface{} {
 	return in.Spec

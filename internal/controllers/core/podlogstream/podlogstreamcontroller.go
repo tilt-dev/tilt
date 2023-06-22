@@ -527,7 +527,7 @@ func (c *Controller) maybeUpdateObjectStatus(ctx context.Context, nn types.Names
 func (c *Controller) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	b := ctrl.NewControllerManagedBy(mgr).
 		For(&PodLogStream{}).
-		Watches(c.podSource, handler.Funcs{})
+		WatchesRawSource(c.podSource, handler.Funcs{})
 
 	return b, nil
 }

@@ -59,8 +59,13 @@ type ConfigMapList struct {
 }
 
 var _ resource.Object = &ConfigMap{}
+var _ resourcerest.SingularNameProvider = &ConfigMap{}
 var _ resourcestrategy.Validater = &ConfigMap{}
 var _ resourcerest.ShortNamesProvider = &ConfigMap{}
+
+func (in *ConfigMap) GetSingularName() string {
+	return "configmap"
+}
 
 func (in *ConfigMap) GetObjectMeta() *metav1.ObjectMeta {
 	return &in.ObjectMeta

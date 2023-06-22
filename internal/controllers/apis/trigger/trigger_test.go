@@ -48,18 +48,20 @@ func TestSetupControllerRestartOn(t *testing.T) {
 	f.Create(cmd)
 	c.indexer.OnReconcile(types.NamespacedName{Name: cmd.Name}, cmd)
 
-	reqs := c.indexer.Enqueue(&v1alpha1.UIButton{ObjectMeta: metav1.ObjectMeta{Name: "btn1"}})
+	ctx := context.Background()
+	reqs := c.indexer.Enqueue(ctx, &v1alpha1.UIButton{ObjectMeta: metav1.ObjectMeta{Name: "btn1"}})
 	require.Equal(t, []reconcile.Request{{NamespacedName: types.NamespacedName{Name: "cmd1"}}}, reqs)
 
-	reqs = c.indexer.Enqueue(&v1alpha1.FileWatch{ObjectMeta: metav1.ObjectMeta{Name: "fw1"}})
+	reqs = c.indexer.Enqueue(ctx, &v1alpha1.FileWatch{ObjectMeta: metav1.ObjectMeta{Name: "fw1"}})
 	require.Equal(t, []reconcile.Request{{NamespacedName: types.NamespacedName{Name: "cmd1"}}}, reqs)
 
 	// fw named btn1, which doesn't exist
-	reqs = c.indexer.Enqueue(&v1alpha1.FileWatch{ObjectMeta: metav1.ObjectMeta{Name: "btn1"}})
+	reqs = c.indexer.Enqueue(ctx, &v1alpha1.FileWatch{ObjectMeta: metav1.ObjectMeta{Name: "btn1"}})
 	require.Len(t, reqs, 0)
 }
 
 func TestSetupControllerStartOn(t *testing.T) {
+	ctx := context.Background()
 	cfb := fake.NewControllerFixtureBuilder(t)
 
 	spec := &v1alpha1.StartOnSpec{
@@ -81,15 +83,15 @@ func TestSetupControllerStartOn(t *testing.T) {
 	f.Create(cmd)
 	c.indexer.OnReconcile(types.NamespacedName{Name: cmd.Name}, cmd)
 
-	reqs := c.indexer.Enqueue(&v1alpha1.UIButton{ObjectMeta: metav1.ObjectMeta{Name: "btn1"}})
+	reqs := c.indexer.Enqueue(ctx, &v1alpha1.UIButton{ObjectMeta: metav1.ObjectMeta{Name: "btn1"}})
 	require.Equal(t, []reconcile.Request{{NamespacedName: types.NamespacedName{Name: "cmd1"}}}, reqs)
 
 	// wrong name
-	reqs = c.indexer.Enqueue(&v1alpha1.UIButton{ObjectMeta: metav1.ObjectMeta{Name: "btn2"}})
+	reqs = c.indexer.Enqueue(ctx, &v1alpha1.UIButton{ObjectMeta: metav1.ObjectMeta{Name: "btn2"}})
 	require.Len(t, reqs, 0)
 
 	// wrong type
-	reqs = c.indexer.Enqueue(&v1alpha1.FileWatch{ObjectMeta: metav1.ObjectMeta{Name: "btn1"}})
+	reqs = c.indexer.Enqueue(ctx, &v1alpha1.FileWatch{ObjectMeta: metav1.ObjectMeta{Name: "btn1"}})
 	require.Len(t, reqs, 0)
 }
 
@@ -115,15 +117,16 @@ func TestSetupControllerStopOn(t *testing.T) {
 	f.Create(cmd)
 	c.indexer.OnReconcile(types.NamespacedName{Name: cmd.Name}, cmd)
 
-	reqs := c.indexer.Enqueue(&v1alpha1.UIButton{ObjectMeta: metav1.ObjectMeta{Name: "btn1"}})
+	ctx := context.Background()
+	reqs := c.indexer.Enqueue(ctx, &v1alpha1.UIButton{ObjectMeta: metav1.ObjectMeta{Name: "btn1"}})
 	require.Equal(t, []reconcile.Request{{NamespacedName: types.NamespacedName{Name: "cmd1"}}}, reqs)
 
 	// wrong name
-	reqs = c.indexer.Enqueue(&v1alpha1.UIButton{ObjectMeta: metav1.ObjectMeta{Name: "btn2"}})
+	reqs = c.indexer.Enqueue(ctx, &v1alpha1.UIButton{ObjectMeta: metav1.ObjectMeta{Name: "btn2"}})
 	require.Len(t, reqs, 0)
 
 	// wrong type
-	reqs = c.indexer.Enqueue(&v1alpha1.FileWatch{ObjectMeta: metav1.ObjectMeta{Name: "btn1"}})
+	reqs = c.indexer.Enqueue(ctx, &v1alpha1.FileWatch{ObjectMeta: metav1.ObjectMeta{Name: "btn1"}})
 	require.Len(t, reqs, 0)
 }
 

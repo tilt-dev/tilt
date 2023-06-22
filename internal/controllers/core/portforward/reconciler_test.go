@@ -297,12 +297,13 @@ func TestIndexing(t *testing.T) {
 	f.Create(pf)
 	f.MustGet(apis.Key(pf), pf)
 
-	reqs := f.r.indexer.Enqueue(&v1alpha1.Cluster{ObjectMeta: metav1.ObjectMeta{Name: "default"}})
+	ctx := context.Background()
+	reqs := f.r.indexer.Enqueue(ctx, &v1alpha1.Cluster{ObjectMeta: metav1.ObjectMeta{Name: "default"}})
 	require.ElementsMatch(t, []reconcile.Request{
 		{NamespacedName: types.NamespacedName{Name: pfFooName}},
 	}, reqs)
 
-	reqs = f.r.indexer.Enqueue(&v1alpha1.Cluster{ObjectMeta: metav1.ObjectMeta{Name: "other"}})
+	reqs = f.r.indexer.Enqueue(ctx, &v1alpha1.Cluster{ObjectMeta: metav1.ObjectMeta{Name: "other"}})
 	require.Empty(t, reqs)
 }
 

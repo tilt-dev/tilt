@@ -18,7 +18,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/tilt-dev/probe/pkg/probe"
 	"github.com/tilt-dev/probe/pkg/prober"
@@ -56,9 +55,9 @@ var _ store.TearDowner = &Controller{}
 func (r *Controller) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	b := ctrl.NewControllerManagedBy(mgr).
 		For(&Cmd{}).
-		Watches(&source.Kind{Type: &ConfigMap{}},
+		Watches(&ConfigMap{},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
-		Watches(r.requeuer, handler.Funcs{})
+		WatchesRawSource(r.requeuer, handler.Funcs{})
 
 	trigger.SetupControllerStartOn(b, r.indexer, func(obj ctrlclient.Object) *v1alpha1.StartOnSpec {
 		return obj.(*v1alpha1.Cmd).Spec.StartOn

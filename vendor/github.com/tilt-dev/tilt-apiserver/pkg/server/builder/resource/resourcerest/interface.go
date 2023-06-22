@@ -74,6 +74,8 @@ type Responder = rest.Responder
 // names for a resource. The list is used by kubectl to have short names representation of resources.
 type ShortNamesProvider = rest.ShortNamesProvider
 
+type SingularNameProvider = rest.SingularNameProvider
+
 // TableConvertor if implemented will return tabular data from the GET endpoint when requested.
 //
 // Required by pretty printing `kubectl get`.

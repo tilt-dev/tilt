@@ -17,7 +17,6 @@ import (
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
@@ -65,9 +64,9 @@ type Reconciler struct {
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	b := ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.Tiltfile{}).
-		Watches(&source.Kind{Type: &v1alpha1.ConfigMap{}},
+		Watches(&v1alpha1.ConfigMap{},
 			handler.EnqueueRequestsFromMapFunc(r.enqueueTriggerQueue)).
-		Watches(r.requeuer, handler.Funcs{})
+		WatchesRawSource(r.requeuer, handler.Funcs{})
 
 	trigger.SetupControllerRestartOn(b, r.indexer, func(obj ctrlclient.Object) *v1alpha1.RestartOnSpec {
 		return obj.(*v1alpha1.Tiltfile).Spec.RestartOn
@@ -420,7 +419,7 @@ func indexTiltfile(obj client.Object) []indexer.Key {
 }
 
 // Find any objects we need to reconcile based on the trigger queue.
-func (r *Reconciler) enqueueTriggerQueue(obj client.Object) []reconcile.Request {
+func (r *Reconciler) enqueueTriggerQueue(ctx context.Context, obj client.Object) []reconcile.Request {
 	cm, ok := obj.(*v1alpha1.ConfigMap)
 	if !ok {
 		return nil

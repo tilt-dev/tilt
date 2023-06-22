@@ -67,7 +67,7 @@ type Reconciler struct {
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	b := ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.Cluster{}).
-		Watches(r.requeuer, handler.Funcs{})
+		WatchesRawSource(r.requeuer, handler.Funcs{})
 	return b, nil
 }
 

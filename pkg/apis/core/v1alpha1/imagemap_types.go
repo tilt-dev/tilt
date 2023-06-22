@@ -128,8 +128,13 @@ type ImageMapOverrideArgs struct {
 }
 
 var _ resource.Object = &ImageMap{}
+var _ resourcerest.SingularNameProvider = &ImageMap{}
 var _ resourcestrategy.Validater = &ImageMap{}
 var _ resourcerest.ShortNamesProvider = &ImageMap{}
+
+func (in *ImageMap) GetSingularName() string {
+	return "imagemap"
+}
 
 func (in *ImageMap) GetSpec() interface{} {
 	return in.Spec

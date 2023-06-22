@@ -23,4 +23,5 @@ type Strategy interface {
 	rest.RESTCreateStrategy
 	rest.RESTDeleteStrategy
 	rest.ShortNamesProvider
+	rest.SingularNameProvider
 }

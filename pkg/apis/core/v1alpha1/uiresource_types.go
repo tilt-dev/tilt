@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcerest"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcestrategy"
 )
 
@@ -62,7 +63,12 @@ type UIResourceSpec struct {
 }
 
 var _ resource.Object = &UIResource{}
+var _ resourcerest.SingularNameProvider = &UIResource{}
 var _ resourcestrategy.Validater = &UIResource{}
+
+func (in *UIResource) GetSingularName() string {
+	return "uiresource"
+}
 
 func (in *UIResource) GetObjectMeta() *metav1.ObjectMeta {
 	return &in.ObjectMeta
