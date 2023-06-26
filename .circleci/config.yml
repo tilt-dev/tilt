@@ -10,7 +10,7 @@ jobs:
   build-linux:
     resource_class: medium+
     docker:
-      - image: docker/tilt-ci@sha256:d1568dd0b6066d57f3b60893c903684439a24577b53c8865b47bd91d4fe88dcc
+      - image: docker/tilt-ci@sha256:45e24840891e22aed72548002d4dd7223c117a4819c10c20660fedb33e7cca40
     # apiserver code generation scripts require being in GOPATH
     working_directory: /home/circleci/go/src/github.com/tilt-dev/tilt
 
@@ -50,7 +50,7 @@ jobs:
 
   publish-assets:
     docker:
-      - image: docker/tilt-ci@sha256:d1568dd0b6066d57f3b60893c903684439a24577b53c8865b47bd91d4fe88dcc
+      - image: docker/tilt-ci@sha256:45e24840891e22aed72548002d4dd7223c117a4819c10c20660fedb33e7cca40
     steps:
       - checkout
       - gcp-cli/setup:
@@ -65,7 +65,7 @@ jobs:
       size: "large"
     steps:
       - run: choco install -y make kustomize kubernetes-helm docker-compose mingw
-      - run: choco upgrade -y --allow-downgrade golang --version=1.19.2
+      - run: choco upgrade -y --allow-downgrade golang --version=1.20.5
       - run: go install gotest.tools/gotestsum@latest
       - checkout
       - run: iex ./scripts/install-dc2.ps1
@@ -89,7 +89,7 @@ jobs:
   build-integration:
     resource_class: medium+
     docker:
-      - image: docker/tilt-integration-ci@sha256:1afd05da01995e4416fe79da59f80ca73eed58508aa7bf7d89a6c7223c2e4028
+      - image: docker/tilt-integration-ci@sha256:a9388106d686e9e2503d42e8e9848eb8cbe0f057f14ea644dd9101e00730fe16
     steps:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
@@ -103,7 +103,7 @@ jobs:
   test-extensions:
     resource_class: large
     docker:
-      - image: docker/tilt-extensions-ci@sha256:495f76d83408f16361cd3fc0ad1fb7f93595d65f78b76261a2162e910855bce3
+      - image: docker/tilt-extensions-ci@sha256:b1972b2d61e2eef1a1f0c7da18814f876d07eccbc54f5403779946bfcb95d6aa
     steps:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
@@ -119,7 +119,7 @@ jobs:
     steps:
       - checkout
       - go/install:
-          version: "1.19"
+          version: "1.20"
       - run: curl -fsSL "https://github.com/gotestyourself/gotestsum/releases/download/v1.7.0/gotestsum_1.7.0_darwin_amd64.tar.gz" | sudo tar -xz -C /usr/local/bin gotestsum
       # We can't run the container tests on macos because nested
       # VMs don't work on circleci.

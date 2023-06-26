@@ -1,4 +1,4 @@
-FROM cimg/go:1.19-node
+FROM cimg/go:1.20-node
 
 # --- DEPENDENCIES ---
 USER root
@@ -33,4 +33,4 @@ RUN go install github.com/google/wire/cmd/wire@latest \
     && go install golang.org/x/tools/cmd/goimports@latest \
     && go clean -cache -modcache
 
-RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.50.1
+RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.53.3
