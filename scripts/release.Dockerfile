@@ -4,15 +4,35 @@
 # 1) Better leverage OS-specific C headers
 # 2) Be able to do releases from a CI job
 
-FROM docker/tilt-golang-cross@sha256:8649f9afb66a96d411fe14ef5fdfa1834022d25b1aceb20c0b03cc61a2ba0b43
+# osxcross contains the MacOSX cross toolchain for xx
+FROM crazymax/osxcross:11.3-debian AS osxcross
+
+FROM golang:1.20-bullseye as musl-cross
+WORKDIR /musl
+# https://more.musl.cc/GCC-MAJOR-VERSION/HOST-ARCH-linux-musl/CROSS-ARCH-linux-musl-cross.tgz
+RUN curl -sf https://more.musl.cc/11/x86_64-linux-musl/aarch64-linux-musl-cross.tgz | tar zxf -
+RUN curl -sf https://more.musl.cc/11/x86_64-linux-musl/x86_64-linux-musl-cross.tgz | tar zxf -
+
+FROM golang:1.20-bullseye
 
 RUN apt-get update && \
     apt-get install -y -q --no-install-recommends \
-        apt-transport-https \
-        ca-certificates \
-        curl \
-        gnupg-agent \
-        software-properties-common \
+    apt-transport-https \
+    ca-certificates \
+    curl \
+    gnupg-agent \
+    software-properties-common \
+    clang \
+    lld \
+    libc6-dev \
+    libltdl-dev \
+    g++-aarch64-linux-gnu \
+    gcc-aarch64-linux-gnu \
+    g++-arm-linux-gnueabi \
+    gcc-arm-linux-gnueabi \
+    g++-mingw-w64 \
+    gcc-mingw-w64 \
+    parallel \
     && rm -rf /var/lib/apt/lists/*
 
 # Install docker
@@ -53,6 +73,10 @@ RUN curl -sL https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - && \
     && rm -rf /var/lib/apt/lists/*
 
 RUN git clone https://github.com/Homebrew/brew /home/linuxbrew/.linuxbrew
-ENV PATH=/home/linuxbrew/.linuxbrew/bin:$PATH
+COPY --from=osxcross /osxcross /osxcross
+COPY --from=musl-cross /musl /musl
+
+ENV PATH=/home/linuxbrew/.linuxbrew/bin:/osxcross/bin:/musl/aarch64-linux-musl-cross/bin:/musl/x86_64-linux-musl-cross/bin:$PATH
+ENV LD_LIBRARY_PATH=/osxcross/lib:$LD_LIBRARY_PATH
 
 RUN mkdir -p ~/.windmill
