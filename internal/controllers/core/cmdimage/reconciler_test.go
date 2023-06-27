@@ -1,6 +1,7 @@
 package cmdimage
 
 import (
+	"context"
 	"testing"
 
 	"github.com/jonboulle/clockwork"
@@ -29,12 +30,13 @@ func TestIndexCluster(t *testing.T) {
 		},
 	})
 
-	reqs := f.r.indexer.Enqueue(&v1alpha1.Cluster{ObjectMeta: metav1.ObjectMeta{Name: "cluster"}})
+	ctx := context.Background()
+	reqs := f.r.indexer.Enqueue(ctx, &v1alpha1.Cluster{ObjectMeta: metav1.ObjectMeta{Name: "cluster"}})
 	require.ElementsMatch(t, []reconcile.Request{
 		{NamespacedName: types.NamespacedName{Name: "my-image"}},
 	}, reqs, "Index result for known cluster")
 
-	reqs = f.r.indexer.Enqueue(&v1alpha1.Cluster{ObjectMeta: metav1.ObjectMeta{Name: "other"}})
+	reqs = f.r.indexer.Enqueue(ctx, &v1alpha1.Cluster{ObjectMeta: metav1.ObjectMeta{Name: "other"}})
 	require.Empty(t, reqs, "Index result for unknown cluster")
 }
 

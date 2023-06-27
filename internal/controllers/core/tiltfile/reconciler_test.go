@@ -394,10 +394,8 @@ func TestCancel(t *testing.T) {
 
 	f.waitForRunning(tf.Name)
 
-	_, err = controllerutil.CreateOrUpdate(f.Context(), f.Client, cancelButton, func() error {
-		cancelButton.Status.LastClickedAt = metav1.NowMicro()
-		return nil
-	})
+	cancelButton.Status.LastClickedAt = metav1.NowMicro()
+	f.UpdateStatus(cancelButton)
 	require.NoError(t, err)
 
 	f.MustReconcile(types.NamespacedName{Name: tf.Name})

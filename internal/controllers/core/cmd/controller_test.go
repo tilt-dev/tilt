@@ -253,7 +253,7 @@ func TestRestartOnFileWatch(t *testing.T) {
 		[]reconcile.Request{
 			reconcile.Request{NamespacedName: types.NamespacedName{Name: "cmd-serve-1"}},
 		},
-		f.c.indexer.Enqueue(fw))
+		f.c.indexer.Enqueue(context.Background(), fw))
 }
 
 func TestRestartOnUIButton(t *testing.T) {
@@ -297,7 +297,7 @@ func TestRestartOnUIButton(t *testing.T) {
 		[]reconcile.Request{
 			reconcile.Request{NamespacedName: types.NamespacedName{Name: "cmd-serve-1"}},
 		},
-		f.c.indexer.Enqueue(b))
+		f.c.indexer.Enqueue(context.Background(), b))
 }
 
 func setupStartOnTest(t *testing.T, f *fixture) {
@@ -996,7 +996,13 @@ func (f *fixture) updateButton(name string, update func(button *v1alpha1.UIButto
 	require.NoError(f.T(), err)
 
 	update(button)
+
+	copy := button.DeepCopy()
 	err = f.Client.Update(f.Context(), button)
+	require.NoError(f.T(), err)
+
+	button.Status = copy.Status
+	err = f.Client.Status().Update(f.Context(), button)
 	require.NoError(f.T(), err)
 }
 

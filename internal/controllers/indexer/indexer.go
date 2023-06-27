@@ -1,6 +1,7 @@
 package indexer
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -75,7 +76,7 @@ func (m *Indexer) OnReconcile(name types.NamespacedName, obj client.Object) {
 
 // Given an update of a watched object, return the names of objects watching it
 // that we need to reconcile.
-func (m *Indexer) Enqueue(obj client.Object) []reconcile.Request {
+func (m *Indexer) Enqueue(ctx context.Context, obj client.Object) []reconcile.Request {
 	gvk, err := apiutil.GVKForObject(obj, m.scheme)
 	if err != nil {
 		panic(fmt.Sprintf("Unrecognized object: %v", err))

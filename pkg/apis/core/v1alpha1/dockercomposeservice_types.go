@@ -73,8 +73,13 @@ type DockerComposeServiceSpec struct {
 }
 
 var _ resource.Object = &DockerComposeService{}
+var _ resourcerest.SingularNameProvider = &DockerComposeService{}
 var _ resourcestrategy.Validater = &DockerComposeService{}
 var _ resourcerest.ShortNamesProvider = &DockerComposeService{}
+
+func (in *DockerComposeService) GetSingularName() string {
+	return "dockercomposeservice"
+}
 
 func (in *DockerComposeService) GetSpec() interface{} {
 	return in.Spec

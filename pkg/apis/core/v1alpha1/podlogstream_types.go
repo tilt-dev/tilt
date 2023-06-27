@@ -105,8 +105,13 @@ type PodLogStreamSpec struct {
 }
 
 var _ resource.Object = &PodLogStream{}
+var _ resourcerest.SingularNameProvider = &PodLogStream{}
 var _ resourcestrategy.Validater = &PodLogStream{}
 var _ resourcerest.ShortNamesProvider = &PodLogStream{}
+
+func (in *PodLogStream) GetSingularName() string {
+	return "podlogstream"
+}
 
 func (in *PodLogStream) GetObjectMeta() *metav1.ObjectMeta {
 	return &in.ObjectMeta

@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcerest"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcestrategy"
 )
 
@@ -93,7 +94,12 @@ const (
 var exitConditions = []ExitCondition{ExitConditionManual, ExitConditionCI}
 
 var _ resource.Object = &Session{}
+var _ resourcerest.SingularNameProvider = &Session{}
 var _ resourcestrategy.Validater = &Session{}
+
+func (in *Session) GetSingularName() string {
+	return "session"
+}
 
 func (in *Session) GetObjectMeta() *metav1.ObjectMeta {
 	return &in.ObjectMeta

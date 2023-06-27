@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcerest"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcestrategy"
 )
 
@@ -126,7 +127,12 @@ const ButtonTypeDisableToggle = "DisableToggle"
 const ButtonTypeStopBuild = "StopBuild"
 
 var _ resource.Object = &UIButton{}
+var _ resourcerest.SingularNameProvider = &UIButton{}
 var _ resourcestrategy.Validater = &UIButton{}
+
+func (in *UIButton) GetSingularName() string {
+	return "uibutton"
+}
 
 func (in *UIButton) GetSpec() interface{} {
 	return in.Spec

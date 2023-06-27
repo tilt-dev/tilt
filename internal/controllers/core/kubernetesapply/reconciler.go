@@ -20,7 +20,6 @@ import (
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/container"
@@ -65,12 +64,12 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	b := ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.KubernetesApply{}).
 		Owns(&v1alpha1.KubernetesDiscovery{}).
-		Watches(r.requeuer, handler.Funcs{}).
-		Watches(&source.Kind{Type: &v1alpha1.ImageMap{}},
+		WatchesRawSource(r.requeuer, handler.Funcs{}).
+		Watches(&v1alpha1.ImageMap{},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
-		Watches(&source.Kind{Type: &v1alpha1.ConfigMap{}},
+		Watches(&v1alpha1.ConfigMap{},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
-		Watches(&source.Kind{Type: &v1alpha1.Cluster{}},
+		Watches(&v1alpha1.Cluster{},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue))
 
 	trigger.SetupControllerRestartOn(b, r.indexer, func(obj ctrlclient.Object) *v1alpha1.RestartOnSpec {

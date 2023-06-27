@@ -11,7 +11,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/sliceutils"
@@ -80,7 +79,7 @@ func indexerKeys(gvk schema.GroupVersionKind, namespace string, names []string) 
 
 func registerWatches(builder *builder.Builder, idxer *indexer.Indexer, typesToWatch []client.Object) {
 	for _, t := range typesToWatch {
-		builder.Watches(&source.Kind{Type: t}, handler.EnqueueRequestsFromMapFunc(idxer.Enqueue))
+		builder.Watches(t, handler.EnqueueRequestsFromMapFunc(idxer.Enqueue))
 	}
 }
 

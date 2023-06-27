@@ -18,7 +18,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -39,7 +38,7 @@ type Reconciler struct {
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	b := ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.ToggleButton{}).
-		Watches(&source.Kind{Type: &v1alpha1.ConfigMap{}},
+		Watches(&v1alpha1.ConfigMap{},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
 		Owns(&v1alpha1.UIButton{})
 

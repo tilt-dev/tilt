@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcerest"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcestrategy"
 )
 
@@ -64,7 +65,12 @@ type UISessionSpec struct {
 }
 
 var _ resource.Object = &UISession{}
+var _ resourcerest.SingularNameProvider = &UISession{}
 var _ resourcestrategy.Validater = &UISession{}
+
+func (in *UISession) GetSingularName() string {
+	return "uisession"
+}
 
 func (in *UISession) GetObjectMeta() *metav1.ObjectMeta {
 	return &in.ObjectMeta

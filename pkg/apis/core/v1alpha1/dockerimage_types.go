@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcerest"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcestrategy"
 )
 
@@ -176,7 +177,12 @@ type DockerImageSpec struct {
 }
 
 var _ resource.Object = &DockerImage{}
+var _ resourcerest.SingularNameProvider = &DockerImage{}
 var _ resourcestrategy.Validater = &DockerImage{}
+
+func (in *DockerImage) GetSingularName() string {
+	return "dockerimage"
+}
 
 func (in *DockerImage) GetSpec() interface{} {
 	return in.Spec

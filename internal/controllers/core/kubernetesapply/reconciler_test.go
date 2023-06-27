@@ -1,6 +1,7 @@
 package kubernetesapply
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -47,7 +48,8 @@ func TestImageIndexing(t *testing.T) {
 	f.Create(&ka)
 
 	// Verify we can index one image map.
-	reqs := f.r.indexer.Enqueue(&v1alpha1.ImageMap{ObjectMeta: metav1.ObjectMeta{Name: "image-a"}})
+	ctx := context.Background()
+	reqs := f.r.indexer.Enqueue(ctx, &v1alpha1.ImageMap{ObjectMeta: metav1.ObjectMeta{Name: "image-a"}})
 	assert.ElementsMatch(t, []reconcile.Request{
 		{NamespacedName: types.NamespacedName{Name: "a"}},
 	}, reqs)
@@ -63,7 +65,7 @@ func TestImageIndexing(t *testing.T) {
 	f.Create(&kb)
 
 	// Verify we can index one image map to two applies.
-	reqs = f.r.indexer.Enqueue(&v1alpha1.ImageMap{ObjectMeta: metav1.ObjectMeta{Name: "image-c"}})
+	reqs = f.r.indexer.Enqueue(ctx, &v1alpha1.ImageMap{ObjectMeta: metav1.ObjectMeta{Name: "image-c"}})
 	assert.ElementsMatch(t, []reconcile.Request{
 		{NamespacedName: types.NamespacedName{Name: "a"}},
 		{NamespacedName: types.NamespacedName{Name: "b"}},
@@ -77,7 +79,7 @@ func TestImageIndexing(t *testing.T) {
 	f.Update(&ka)
 
 	// Verify we can remove an image map.
-	reqs = f.r.indexer.Enqueue(&v1alpha1.ImageMap{ObjectMeta: metav1.ObjectMeta{Name: "image-c"}})
+	reqs = f.r.indexer.Enqueue(ctx, &v1alpha1.ImageMap{ObjectMeta: metav1.ObjectMeta{Name: "image-c"}})
 	assert.ElementsMatch(t, []reconcile.Request{
 		{NamespacedName: types.NamespacedName{Name: "b"}},
 	}, reqs)

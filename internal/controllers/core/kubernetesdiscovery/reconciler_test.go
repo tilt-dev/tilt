@@ -460,7 +460,8 @@ func TestKubernetesDiscoveryIndexing(t *testing.T) {
 	// fixture will automatically create a cluster object
 	f.Create(kd)
 
-	reqs := f.r.indexer.Enqueue(&v1alpha1.Cluster{ObjectMeta: metav1.ObjectMeta{Namespace: "some-ns", Name: "my-cluster"}})
+	reqs := f.r.indexer.Enqueue(context.Background(),
+		&v1alpha1.Cluster{ObjectMeta: metav1.ObjectMeta{Namespace: "some-ns", Name: "my-cluster"}})
 	assert.ElementsMatch(t, []reconcile.Request{
 		{NamespacedName: types.NamespacedName{Namespace: "some-ns", Name: "kd"}},
 	}, reqs)
@@ -598,7 +599,7 @@ func TestClusterChange(t *testing.T) {
 	// write the updated cluster obj to apiserver
 	clusterA := f.getCluster(clusterNN(*kd1ClusterA))
 	clusterA.Status.ConnectedAt = connectedAtA2.DeepCopy()
-	require.NoError(f.t, f.Client.Update(f.ctx, clusterA))
+	require.NoError(f.t, f.Client.Status().Update(f.ctx, clusterA))
 
 	// kd1 still only matches by UID but should see the Pod from the new cluster now
 	f.MustReconcile(apis.Key(kd1ClusterA))

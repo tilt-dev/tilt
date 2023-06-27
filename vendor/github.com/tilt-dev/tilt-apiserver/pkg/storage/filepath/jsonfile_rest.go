@@ -35,6 +35,7 @@ var _ rest.StandardStorage = &filepathREST{}
 var _ rest.Scoper = &filepathREST{}
 var _ rest.Storage = &filepathREST{}
 var _ rest.ShortNamesProvider = &filepathREST{}
+var _ rest.SingularNameProvider = &filepathREST{}
 
 // NewFilepathREST instantiates a new REST storage.
 func NewFilepathREST(
@@ -103,6 +104,10 @@ func (f *filepathREST) NamespaceScoped() bool {
 
 func (f *filepathREST) ShortNames() []string {
 	return f.strategy.ShortNames()
+}
+
+func (f *filepathREST) GetSingularName() string {
+	return f.strategy.GetSingularName()
 }
 
 func (f *filepathREST) Get(

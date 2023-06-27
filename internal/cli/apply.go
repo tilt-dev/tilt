@@ -52,7 +52,7 @@ func newApplyCmd(streams genericclioptions.IOStreams) *applyCmd {
 func (c *applyCmd) name() model.TiltSubcommand { return "apply" }
 
 func (c *applyCmd) register() *cobra.Command {
-	flags := apply.NewApplyFlags(nil, c.streams)
+	flags := apply.NewApplyFlags(c.streams)
 
 	cmd := &cobra.Command{
 		Use:                   "apply (-f FILENAME | -k DIRECTORY)",
@@ -81,10 +81,9 @@ func (c *applyCmd) run(ctx context.Context, args []string) error {
 	}
 
 	f := cmdutil.NewFactory(getter)
-	c.flags.Factory = f
 
 	cmd := c.cmd
-	o, err := c.flags.ToOptions(cmd, "tilt", args)
+	o, err := c.flags.ToOptions(f, cmd, "tilt", args)
 	if err != nil {
 		return err
 	}

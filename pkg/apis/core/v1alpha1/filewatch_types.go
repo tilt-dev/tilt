@@ -84,8 +84,13 @@ type IgnoreDef struct {
 }
 
 var _ resource.Object = &FileWatch{}
+var _ resourcerest.SingularNameProvider = &FileWatch{}
 var _ resourcestrategy.Validater = &FileWatch{}
 var _ resourcerest.ShortNamesProvider = &FileWatch{}
+
+func (in *FileWatch) GetSingularName() string {
+	return "filewatch"
+}
 
 func (in *FileWatch) GetObjectMeta() *metav1.ObjectMeta {
 	return &in.ObjectMeta

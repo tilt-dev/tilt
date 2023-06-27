@@ -14,7 +14,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -1017,24 +1016,24 @@ func (r *Reconciler) containerUpdater(input Input) containerupdate.ContainerUpda
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	b := ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.LiveUpdate{}).
-		Watches(&source.Kind{Type: &v1alpha1.KubernetesDiscovery{}},
+		Watches(&v1alpha1.KubernetesDiscovery{},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
-		Watches(&source.Kind{Type: &v1alpha1.KubernetesApply{}},
+		Watches(&v1alpha1.KubernetesApply{},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
-		Watches(&source.Kind{Type: &v1alpha1.DockerComposeService{}},
+		Watches(&v1alpha1.DockerComposeService{},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
-		Watches(&source.Kind{Type: &v1alpha1.FileWatch{}},
+		Watches(&v1alpha1.FileWatch{},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
-		Watches(&source.Kind{Type: &v1alpha1.ImageMap{}},
+		Watches(&v1alpha1.ImageMap{},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
-		Watches(&source.Kind{Type: &v1alpha1.ConfigMap{}},
+		Watches(&v1alpha1.ConfigMap{},
 			handler.EnqueueRequestsFromMapFunc(r.enqueueTriggerQueue))
 
 	return b, nil
 }
 
 // Find any objects we need to reconcile based on the trigger queue.
-func (r *Reconciler) enqueueTriggerQueue(obj client.Object) []reconcile.Request {
+func (r *Reconciler) enqueueTriggerQueue(ctx context.Context, obj client.Object) []reconcile.Request {
 	cm, ok := obj.(*v1alpha1.ConfigMap)
 	if !ok {
 		return nil

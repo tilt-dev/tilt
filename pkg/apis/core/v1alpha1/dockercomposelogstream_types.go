@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcerest"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcestrategy"
 )
 
@@ -63,7 +64,12 @@ type DockerComposeLogStreamSpec struct {
 }
 
 var _ resource.Object = &DockerComposeLogStream{}
+var _ resourcerest.SingularNameProvider = &DockerComposeLogStream{}
 var _ resourcestrategy.Validater = &DockerComposeLogStream{}
+
+func (in *DockerComposeLogStream) GetSingularName() string {
+	return "dockercomposelogstream"
+}
 
 func (in *DockerComposeLogStream) ShortNames() []string {
 	return []string{"dclog", "dcls"}

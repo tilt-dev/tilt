@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcerest"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcestrategy"
 )
 
@@ -111,7 +112,12 @@ type DockerClusterConnection struct {
 }
 
 var _ resource.Object = &Cluster{}
+var _ resourcerest.SingularNameProvider = &Cluster{}
 var _ resourcestrategy.Validater = &Cluster{}
+
+func (in *Cluster) GetSingularName() string {
+	return "cluster"
+}
 
 func (in *Cluster) GetSpec() interface{} {
 	return in.Spec

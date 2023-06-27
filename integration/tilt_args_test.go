@@ -31,7 +31,7 @@ func TestTiltArgs(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	f.logs.AssertEventuallyContains(t, "bar run", time.Second)
+	f.logs.AssertEventuallyContains(t, "bar run", 5*time.Second)
 
 	require.NotContains(t, f.logs.String(), "foo run")
 }

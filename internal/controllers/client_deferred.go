@@ -8,6 +8,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -37,6 +38,22 @@ func (d *DeferredClient) client() ctrlclient.Client {
 		panic(fmt.Errorf("deferred client initialized with bad type: %T", v))
 	}
 	return cli
+}
+
+func (d *DeferredClient) GroupVersionKindFor(obj runtime.Object) (schema.GroupVersionKind, error) {
+	cli := d.client()
+	if cli == nil {
+		return schema.GroupVersionKind{}, ErrClientNotInitialized
+	}
+	return cli.GroupVersionKindFor(obj)
+}
+
+func (d *DeferredClient) IsObjectNamespaced(obj runtime.Object) (bool, error) {
+	cli := d.client()
+	if cli == nil {
+		return false, ErrClientNotInitialized
+	}
+	return cli.IsObjectNamespaced(obj)
 }
 
 func (d *DeferredClient) SubResource(subResource string) ctrlclient.SubResourceClient {
