@@ -28,8 +28,6 @@ git clone https://tilt-releaser:"$GITHUB_TOKEN"@github.com/tilt-dev/cloud.tilt.d
 cd "$ROOT"
 echo "{\"Found\":false,\"Username\":\"\",\"TeamName\":\"\",\"TeamRole\":\"\",\"SuggestedTiltVersion\":\"$VERSION\",\"UserID\":0}" > "$ROOT/web/api/whoami"
 
-git config --global user.email "it@tilt.dev"
-git config --global user.name "Tilt Dev"
 git commit -a -m "Notify all tilt users of new version: $VERSION"
 git push origin main
 

@@ -26,6 +26,7 @@ RUN apt-get update && \
     lld \
     libc6-dev \
     libltdl-dev \
+    zlib1g-dev \
     g++-aarch64-linux-gnu \
     gcc-aarch64-linux-gnu \
     g++-arm-linux-gnueabi \
