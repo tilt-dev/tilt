@@ -28,7 +28,7 @@ type ObjectSpec struct {
 	StackTrace string
 }
 
-// Keeps track of all the Kuberentes objects registered during Tiltfile Execution.
+// Keeps track of all the Kubernetes objects registered during Tiltfile Execution.
 type State struct {
 	ObjectSpecRefs  []v1.ObjectReference
 	ObjectSpecIndex map[v1.ObjectReference]ObjectSpec

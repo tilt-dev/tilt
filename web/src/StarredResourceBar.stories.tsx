@@ -61,7 +61,7 @@ MixedNames.args = {
     { name: "benchmark-muxer", status: ResourceStatus.Healthy },
     { name: "benchmark-all", status: ResourceStatus.Healthy },
     { name: "recompile-storage", status: ResourceStatus.Unhealthy },
-    { name: "benchamrk-rectangle-test", status: ResourceStatus.Healthy },
+    { name: "benchmark-rectangle-test", status: ResourceStatus.Healthy },
     { name: "benchmark-storage", status: ResourceStatus.Healthy },
     { name: "(Tiltfile)", status: ResourceStatus.Pending },
     { name: "recompile-rectangle-test", status: ResourceStatus.Unhealthy },

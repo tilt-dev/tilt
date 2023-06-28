@@ -11,5 +11,5 @@ executable: str = ""
 
 Based on how Tilt was originally invoked. There is no guarantee that
 the path is still pointing to a valid Tilt binary. If the path has
-a symlink, the behavior is operating system depdendent.
+a symlink, the behavior is operating system dependent.
 """

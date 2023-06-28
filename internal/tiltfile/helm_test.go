@@ -162,7 +162,7 @@ yml = helm('helm')
 k8s_yaml(yml)
 `)
 
-	f.loadErrString("error unmarshaling JSON")
+	f.loadErrString("error unmarshalling JSON")
 	f.assertConfigFiles(
 		"Tiltfile",
 		".tiltignore",

@@ -111,7 +111,7 @@ func TestHasName(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(entities) != 2 {
-		t.Fatalf("expected 2 entites, got %d: %v", len(entities), entities)
+		t.Fatalf("expected 2 entities, got %d: %v", len(entities), entities)
 	}
 
 	doggos := entities[0]
@@ -127,7 +127,7 @@ func TestHasNamespace(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(entities) != 2 {
-		t.Fatalf("expected 2 entites, got %d: %v", len(entities), entities)
+		t.Fatalf("expected 2 entities, got %d: %v", len(entities), entities)
 	}
 
 	doggos := entities[0]
@@ -143,7 +143,7 @@ func TestHasKind(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(entities) != 2 {
-		t.Fatalf("expected 2 entites, got %d: %v", len(entities), entities)
+		t.Fatalf("expected 2 entities, got %d: %v", len(entities), entities)
 	}
 
 	depl := entities[0]

@@ -251,7 +251,7 @@ func handleServiceEvent(ctx context.Context, state *store.EngineState, action k8
 }
 
 func handleK8sEvent(ctx context.Context, state *store.EngineState, action store.K8sEventAction) {
-	// TODO(nick): I think we whould so something more intelligent here, where we
+	// TODO(nick): I think we would so something more intelligent here, where we
 	// have special treatment for different types of events, e.g.:
 	//
 	// - Attach Image Pulling/Pulled events to the pod state, and display how much

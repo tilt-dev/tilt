@@ -506,7 +506,7 @@ describe("LogStore", () => {
     expect(logLinesToString(logs.manifestLog("be"), false)).toEqual("")
   })
 
-  it("weights on recenty and length", () => {
+  it("weights on recently and length", () => {
     let logs = new LogStore()
     expect(
       logs.heaviestManifestName({

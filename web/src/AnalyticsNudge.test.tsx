@@ -77,7 +77,7 @@ describe("AnalyticsNudge", () => {
     userEvent.click(screen.getByRole("button", { name: /I'm in/i }))
 
     await waitFor(() => {
-      expect(screen.getByTestId("optin-success")).toBeInTheDocument()
+      expect(screen.getByTestId("option-success")).toBeInTheDocument()
     })
   })
 
@@ -100,7 +100,7 @@ describe("AnalyticsNudge", () => {
     userEvent.click(screen.getByRole("button", { name: /I'm in/i }))
 
     await waitFor(() => {
-      expect(screen.getByTestId("optin-success")).toBeInTheDocument()
+      expect(screen.getByTestId("option-success")).toBeInTheDocument()
     })
 
     jest.advanceTimersByTime(NUDGE_TIMEOUT_MS)

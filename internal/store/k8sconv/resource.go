@@ -74,7 +74,7 @@ func NewKubernetesResourceWithFilter(
 }
 
 // Filter to determine whether a pod or resource belongs to the current
-// KubernetesApply. Used to filter out pods from previous applys
+// KubernetesApply. Used to filter out pods from previous applies
 // when looking at a KubernetesDiscovery object.
 //
 // Considered immutable once created.

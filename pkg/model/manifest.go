@@ -652,7 +652,7 @@ func equalForBuildInvalidation(x, y interface{}) bool {
 
 		// We don't want a change to the DockerCompose Project to invalidate
 		// all individual services. We track the service-specific YAML with
-		// a seprate ServiceYAML field.
+		// a separate ServiceYAML field.
 		ignoreDockerComposeProject,
 
 		// the RegistryHosting spec includes informational fields (Help) as

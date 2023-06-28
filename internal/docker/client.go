@@ -91,7 +91,7 @@ type Client interface {
 	ForOrchestrator(orc model.Orchestrator) Client
 
 	ContainerLogs(ctx context.Context, container string, options types.ContainerLogsOptions) (io.ReadCloser, error)
-	ContainerInspect(ctx context.Context, contianerID string) (types.ContainerJSON, error)
+	ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error)
 	ContainerList(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error)
 	ContainerRestartNoWait(ctx context.Context, containerID string) error
 

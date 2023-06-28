@@ -304,7 +304,7 @@ export function getDocumentTitle(
   let title = `✔︎ ${healthy}/${totalEnabled} ┊ Tilt`
   if (!isSocketConnected && !isSnapshot) {
     title = "Disconnected ┊ Tilt"
-    // Use a publically-hosted favicon since Tilt is disconnected
+    // Use a publicly-hosted favicon since Tilt is disconnected
     // and it's not guaranteed that the favicon will be cached
     faviconHref = linkToTiltAsset("ico", "dashboard-favicon-gray.ico")
   } else if (unhealthy > 0) {

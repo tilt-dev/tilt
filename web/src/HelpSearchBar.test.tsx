@@ -39,7 +39,7 @@ describe("HelpSearchBar", () => {
     expect(screen.getByRole("textbox")).toHaveValue(searchTerm)
   })
 
-  it("should open search in new tab on submision", () => {
+  it("should open search in new tab on submission", () => {
     const windowOpenSpy = jest.fn()
     window.open = windowOpenSpy
     const searchTerm = "such term"

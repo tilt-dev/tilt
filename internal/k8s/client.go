@@ -394,7 +394,7 @@ func (k *K8sClient) applyEntity(ctx context.Context, entity K8sEntity) ([]K8sEnt
 	}
 
 	// Under rare circumstances, an apply() may result in a 3-way merge
-	// where the object has the new spec, but is simulataneously being removed.
+	// where the object has the new spec, but is simultaneously being removed.
 	//
 	// In that case, wait for the deletion to finish, then retry the apply.
 	//

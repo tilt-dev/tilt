@@ -662,7 +662,7 @@ func completedPod(podID k8s.PodID, ref string) *v1alpha1.Pod {
 					Terminated: &v1alpha1.ContainerStateTerminated{
 						StartedAt:  metav1.Now(),
 						FinishedAt: metav1.Now(),
-						Reason:     "Succcess!",
+						Reason:     "Success!",
 						ExitCode:   0,
 					}},
 			},

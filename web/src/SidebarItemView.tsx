@@ -71,7 +71,7 @@ export let SidebarItemBox = styled.div`
   border: 1px solid ${Color.gray40};
   color: ${Color.white};
   font-family: ${Font.monospace};
-  position: relative; /* Anchor the .isBuilding::after psuedo-element */
+  position: relative; /* Anchor the .isBuilding::after pseudo-element */
 
   &:hover {
     background-color: ${ColorRGBA(Color.gray30, ColorAlpha.translucent)};
