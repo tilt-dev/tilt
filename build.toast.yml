@@ -22,7 +22,7 @@ tasks:
       GR_ARGS: ""
     dependencies:
       - build-js
-    command: goreleaser --debug build --snapshot --rm-dist $GR_ARGS
+    command: goreleaser --debug build --snapshot --clean $GR_ARGS
     input_paths:
       - .git/
       - cmd/

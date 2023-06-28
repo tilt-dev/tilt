@@ -147,7 +147,7 @@ jobs:
       - run: ssh remote-docker "sudo apt-get update; sudo apt-get install -y qemu-user-static binfmt-support"
       - checkout
       - run: make build-js
-      - run: goreleaser --debug --rm-dist --skip-publish --snapshot
+      - run: goreleaser --debug --clean --skip-publish --snapshot
       - slack/notify-on-failure:
           only_for_branches: main
 
