@@ -772,7 +772,7 @@ type View struct {
 	TiltCloudTeamID           string           `protobuf:"bytes,10,opt,name=tilt_cloud_teamID,json=tiltCloudTeamID,proto3" json:"tilt_cloud_teamID,omitempty"`
 	FatalError                string           `protobuf:"bytes,11,opt,name=fatal_error,json=fatalError,proto3" json:"fatal_error,omitempty"`
 	LogList                   *LogList         `protobuf:"bytes,13,opt,name=log_list,json=logList,proto3" json:"log_list,omitempty"`
-	// Allows us to synchronize on a running Tilt intance,
+	// Allows us to synchronize on a running Tilt instance,
 	// so we can tell when Tilt restarted.
 	TiltStartTime *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=tilt_start_time,json=tiltStartTime,proto3" json:"tilt_start_time,omitempty"`
 	// an identifier for the tiltfile that is running, so that the web ui can store data per tiltfile
@@ -1278,7 +1278,7 @@ type AckWebsocketRequest struct {
 
 	// The to_checkpoint on the received LogList
 	ToCheckpoint int32 `protobuf:"varint,1,opt,name=to_checkpoint,json=toCheckpoint,proto3" json:"to_checkpoint,omitempty"`
-	// Allows us to synchronize on a running Tilt intance,
+	// Allows us to synchronize on a running Tilt instance,
 	// so we can tell when we're talking to the same Tilt.
 	TiltStartTime *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=tilt_start_time,json=tiltStartTime,proto3" json:"tilt_start_time,omitempty"`
 }

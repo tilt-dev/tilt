@@ -1207,7 +1207,7 @@
         "tilt_start_time": {
           "type": "string",
           "format": "date-time",
-          "description": "Allows us to synchronize on a running Tilt intance,\nso we can tell when we're talking to the same Tilt."
+          "description": "Allows us to synchronize on a running Tilt instance,\nso we can tell when we're talking to the same Tilt."
         }
       },
       "description": "NOTE(nick): This is obsolete.\n\nOur websocket service has two kinds of messages:\n1) On initialization, we send down the complete view state\n2) On every change, we send down the resources that have\n   changed since the last send()."
@@ -1601,7 +1601,7 @@
         "tilt_start_time": {
           "type": "string",
           "format": "date-time",
-          "description": "Allows us to synchronize on a running Tilt intance,\nso we can tell when Tilt restarted."
+          "description": "Allows us to synchronize on a running Tilt instance,\nso we can tell when Tilt restarted."
         },
         "tiltfile_key": {
           "type": "string",

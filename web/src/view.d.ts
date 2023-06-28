@@ -21,7 +21,7 @@ declare namespace Proto {
     fatalError?: string;
     logList?: webviewLogList;
     /**
-     * Allows us to synchronize on a running Tilt intance,
+     * Allows us to synchronize on a running Tilt instance,
      * so we can tell when Tilt restarted.
      */
     tiltStartTime?: string;
@@ -160,7 +160,7 @@ declare namespace Proto {
   export interface webviewAckWebsocketRequest {
     toCheckpoint?: number;
     /**
-     * Allows us to synchronize on a running Tilt intance,
+     * Allows us to synchronize on a running Tilt instance,
      * so we can tell when we're talking to the same Tilt.
      */
     tiltStartTime?: string;

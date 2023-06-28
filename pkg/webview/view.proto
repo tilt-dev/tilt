@@ -197,7 +197,7 @@ message View {
 
   LogList log_list = 13;
 
-  // Allows us to synchronize on a running Tilt intance,
+  // Allows us to synchronize on a running Tilt instance,
   // so we can tell when Tilt restarted.
   google.protobuf.Timestamp tilt_start_time = 14;
 
@@ -257,7 +257,7 @@ message AckWebsocketRequest {
   // The to_checkpoint on the received LogList
   int32 to_checkpoint = 1;
 
-  // Allows us to synchronize on a running Tilt intance,
+  // Allows us to synchronize on a running Tilt instance,
   // so we can tell when we're talking to the same Tilt.
   google.protobuf.Timestamp tilt_start_time = 2;
 }
