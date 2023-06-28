@@ -138,7 +138,7 @@ jobs:
     resource_class: medium+
     docker:
       # keep image in sync with build.toast.yml
-      - image: docker/tilt-releaser@sha256:b67f173f205525facc979128cd4b37d4a3bf1c0e17173c7e0ceb455eda9a2481
+      - image: docker/tilt-releaser@sha256:c6b9b55ab680da1a9b7b0fba33bc4f16c462084e4cae3dc5a07ffd91772e692c
     environment:
       DOCKER_CLI_EXPERIMENTAL: enabled
     steps:
@@ -155,7 +155,7 @@ jobs:
     resource_class: medium+
     docker:
       # keep image in sync with build.toast.yml
-      - image: docker/tilt-releaser@sha256:b67f173f205525facc979128cd4b37d4a3bf1c0e17173c7e0ceb455eda9a2481
+      - image: docker/tilt-releaser@sha256:c6b9b55ab680da1a9b7b0fba33bc4f16c462084e4cae3dc5a07ffd91772e692c
     environment:
       DOCKER_CLI_EXPERIMENTAL: enabled
     steps:

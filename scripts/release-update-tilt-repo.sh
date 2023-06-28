@@ -32,8 +32,6 @@ sed -i -E "s/version = \".*\"/version = \"$VERSION\"/" scripts/install.ps1
 sed -i -E "s/VERSION=\".*\"/VERSION=\"$VERSION\"/" scripts/install.sh
 sed -i -E "s/devVersion = \".*\"/devVersion = \"$VERSION\"/" internal/cli/build.go
 git add .
-git config --global user.email "it@tilt.dev"
-git config --global user.name "Tilt Dev"
 git commit -a -m "Update version numbers: $VERSION"
 git push origin master
 
