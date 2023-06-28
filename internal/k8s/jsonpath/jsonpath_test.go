@@ -149,7 +149,7 @@ func TestStructInput(t *testing.T) {
 			{"green", 20.01, false},
 		},
 		Labels: map[string]int{
-			"engineer":  10,
+			"engineer": 10,
 			"web/html": 15,
 			"k8s-app":  20,
 		},
