@@ -41,7 +41,7 @@ VERSION=$(git describe --abbrev=0 --tags)
 ./scripts/upload-assets.py --clean "$VERSION"
 ./scripts/upload-assets.py "$VERSION"
 
-goreleaser --rm-dist
+goreleaser --clean
 
 ./scripts/release-update-tilt-repo.sh "$VERSION"
 ./scripts/release-update-tilt-docs-repo.sh "$VERSION"
