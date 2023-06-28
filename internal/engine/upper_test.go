@@ -432,7 +432,10 @@ func (b *fakeBuildAndDeployer) updateKubernetesApplyStatus(ctx context.Context, 
 	}
 
 	var cluster v1alpha1.Cluster
-	require.NoError(b.t, b.ctrlClient.Get(ctx, types.NamespacedName{Name: clusterName}, &cluster))
+	err := b.ctrlClient.Get(ctx, types.NamespacedName{Name: clusterName}, &cluster)
+	if err != nil {
+		return err
+	}
 
 	nn := types.NamespacedName{Name: kTarg.ID().Name.String()}
 	status := b.kaReconciler.ForceApply(ctx, nn, kTarg.KubernetesApplySpec, &cluster, imageMapSet)
