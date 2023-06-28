@@ -538,7 +538,7 @@ func (b *fakeBuildAndDeployer) getOrCreateBuildCompletionChannel(key string) bui
 	var ok bool
 	ch, ok = val.(buildCompletionChannel)
 	if !ok {
-		panic(fmt.Sprintf("exected map value of type: buildCompletionChannel, got %T", val))
+		panic(fmt.Sprintf("expected map value of type: buildCompletionChannel, got %T", val))
 	}
 
 	return ch
