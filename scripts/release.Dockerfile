@@ -55,7 +55,7 @@ RUN set -exu && \
     docker --version && \
     rm -rf /var/lib/apt/lists/*
 
-ENV GORELEASER_VERSION=v1.6.3
+ENV GORELEASER_VERSION=v1.18.2
 RUN set -exu \
   && URL="https://github.com/goreleaser/goreleaser/releases/download/${GORELEASER_VERSION}/goreleaser_Linux_x86_64.tar.gz" \
   && echo goreleaser URL: $URL \
