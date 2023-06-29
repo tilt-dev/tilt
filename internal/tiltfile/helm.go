@@ -9,7 +9,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/ghodss/yaml"
+	"sigs.k8s.io/yaml"
 )
 
 // The helm template command outputs predictable yaml with a "Source:" comment,

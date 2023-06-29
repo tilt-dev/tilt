@@ -17,7 +17,6 @@ require (
 	github.com/fatih/color v1.13.0
 	github.com/fsnotify/fsevents v0.1.1
 	github.com/gdamore/tcell v1.1.3
-	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v1.2.4
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.3
@@ -243,7 +242,7 @@ replace (
 	github.com/docker/cli => github.com/docker/cli v20.10.3-0.20220603174727-3e9117b7e241+incompatible
 	github.com/docker/docker => github.com/docker/docker v20.10.3-0.20220414164044-61404de7df1a+incompatible
 	github.com/moby/buildkit => github.com/tilt-dev/buildkit v0.10.6-tilt-2023-04-05
-	
+
 	// Fixes a bug where the apiserver treats
 	// "/apis/tilt.dev/v1alpha1" and "/apis/tilt.dev/v1alpha1/"
 	// as different urls
