@@ -117,15 +117,15 @@ func TestCleanUpBuildKitErrors(t *testing.T) {
 		// actual error currently emitted by buildkit when a `RUN` fails
 		{
 			//nolint
-			buildKitError:     "failed to solve with frontend dockerfile.v0: failed to build LLB: executor failed running [/bin/sh -c go install github.com/tilt-dev/servantes/vigoda]: runc did not terminate successfully",
+			buildKitError:     "failed to solve with frontend dockerfile.v0: failed to build LLB: executor failed running [/bin/sh -c go install github.com/tilt-dev/servantes/vigoda]: runc did not terminate sucessfully",
 			expectedTiltError: "executor failed running [/bin/sh -c go install github.com/tilt-dev/servantes/vigoda]",
 		},
 		//nolint
-		// artificial error - in case docker for some reason doesn't have "executor failed running", don't trim "runc did not terminate successfully"
+		// artificial error - in case docker for some reason doesn't have "executor failed running", don't trim "runc did not terminate sucessfully"
 		{
 			//nolint
-			buildKitError:     "failed to solve with frontend dockerfile.v0: failed to build LLB: [/bin/sh -c go install github.com/tilt-dev/servantes/vigoda]: runc did not terminate successfully",
-			expectedTiltError: "[/bin/sh -c go install github.com/tilt-dev/servantes/vigoda]: runc did not terminate successfully",
+			buildKitError:     "failed to solve with frontend dockerfile.v0: failed to build LLB: [/bin/sh -c go install github.com/tilt-dev/servantes/vigoda]: runc did not terminate sucessfully",
+			expectedTiltError: "[/bin/sh -c go install github.com/tilt-dev/servantes/vigoda]: runc did not terminate sucessfully",
 		},
 		// actual error currently emitted by buildkit when an `ADD` file is missing
 		{
@@ -158,7 +158,7 @@ func TestCleanUpBuildKitErrors(t *testing.T) {
 			// Error message when using
 			// # syntax=docker/dockerfile:experimental
 			//nolint
-			buildKitError:     "failed to solve with frontend dockerfile.v0: failed to solve with frontend gateway.v0: rpc error: code = Unknown desc = failed to build LLB: executor failed running [/bin/sh -c pip install python-dateutil]: runc did not terminate successfully",
+			buildKitError:     "failed to solve with frontend dockerfile.v0: failed to solve with frontend gateway.v0: rpc error: code = Unknown desc = failed to build LLB: executor failed running [/bin/sh -c pip install python-dateutil]: runc did not terminate sucessfully",
 			expectedTiltError: "executor failed running [/bin/sh -c pip install python-dateutil]",
 		},
 	} {
