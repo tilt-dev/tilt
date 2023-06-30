@@ -11,7 +11,7 @@ type Input struct {
 	// Derived from DockerResource
 	IsDC bool
 
-	// Derived from KubernetesResource + KubenetesSelector + DockerResource
+	// Derived from KubernetesResource + KubernetesSelector + DockerResource
 	Containers []liveupdates.Container
 
 	// Derived from FileWatch + Sync rules

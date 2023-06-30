@@ -230,7 +230,7 @@ def docker_build(ref: str,
     match_in_env_vars: specifies that k8s objects can reference this image in their environment variables, and Tilt will handle those variables the same as it usually handles a k8s container spec's ``image`` s.
     ignore: set of file patterns that will be ignored, in addition to ``.git`` directory that's `ignored by default <file_changes.html#where-ignores-come-from>`_. Ignored files will not trigger builds and will not be included in images. Follows the `dockerignore syntax <https://docs.docker.com/engine/reference/builder/#dockerignore-file>`_. Patterns will be evaluated relative to the ``context`` parameter.
     only: set of file paths that should be considered for the build. All other changes will not trigger a build and will not be included in images. Inverse of ignore parameter. Only accepts real paths, not file globs. Patterns will be evaluated relative to the ``context`` parameter.
-    entrypoint: command to run when this container starts. Takes precedence over the container's ``CMD`` or ``ENTRYPOINT``, and over a `container command specified in k8s YAML <https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/>`_. If specified as a string, will be evaluated in a shell context (e.g. ``entrypoint="foo.sh bar"`` will be executed in the container as ``/bin/sh -c 'foo.sh bar'``); if specifed as a list, will be passed to the operating system as program name and args.
+    entrypoint: command to run when this container starts. Takes precedence over the container's ``CMD`` or ``ENTRYPOINT``, and over a `container command specified in k8s YAML <https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/>`_. If specified as a string, will be evaluated in a shell context (e.g. ``entrypoint="foo.sh bar"`` will be executed in the container as ``/bin/sh -c 'foo.sh bar'``); if specified as a list, will be passed to the operating system as program name and args.
     target: Specify a build stage in the Dockerfile. Equivalent to the ``docker build --target`` flag.
     ssh: Include SSH secrets in your build. Use ssh='default' to clone private repositories inside a Dockerfile. Uses the syntax in the `docker build --ssh flag <https://docs.docker.com/develop/develop-images/build_enhancements/#using-ssh-to-access-private-data-in-builds>`_.
     network: Set the networking mode for RUN instructions. Equivalent to the ``docker build --network`` flag.
@@ -445,7 +445,7 @@ def dc_resource(name: str,
       See the `Resource Dependencies docs <resource_dependencies.html>`_.
     links: one or more links to be associated with this resource in the UI. For more info, see
       `Accessing Resource Endpoints <accessing_resource_endpoints.html#arbitrary-links>`_.
-    labels: used to group resources in the Web UI, (e.g. you want all frontend services displayed together, while test and backend services are displayed seperately). A label must start and end with an alphanumeric character, can include ``_``, ``-``, and ``.``, and must be 63 characters or less. For an example, see `Resource Grouping <tiltfile_concepts.html#resource-groups>`_.
+    labels: used to group resources in the Web UI, (e.g. you want all frontend services displayed together, while test and backend services are displayed separately). A label must start and end with an alphanumeric character, can include ``_``, ``-``, and ``.``, and must be 63 characters or less. For an example, see `Resource Grouping <tiltfile_concepts.html#resource-groups>`_.
     auto_init: whether this resource runs on ``tilt up``. Defaults to ``True``. For more info, see the
       `Manual Update Control docs <manual_update_control.html>`_.
     project_name: The Docker Compose project name to match the corresponding project loaded by
@@ -561,7 +561,7 @@ def k8s_resource(workload: str = "", new_name: str = "",
       thinks a resource has pods.
     links: one or more links to be associated with this resource in the UI. For more info, see
       `Accessing Resource Endpoints <accessing_resource_endpoints.html#arbitrary-links>`_.
-    labels: used to group resources in the Web UI, (e.g. you want all frontend services displayed together, while test and backend services are displayed seperately). A label must start and end with an alphanumeric character, can include ``_``, ``-``, and ``.``, and must be 63 characters or less. For an example, see `Resource Grouping <tiltfile_concepts.html#resource-groups>`_.
+    labels: used to group resources in the Web UI, (e.g. you want all frontend services displayed together, while test and backend services are displayed separately). A label must start and end with an alphanumeric character, can include ``_``, ``-``, and ``.``, and must be 63 characters or less. For an example, see `Resource Grouping <tiltfile_concepts.html#resource-groups>`_.
     discovery_strategy: Possible values: '', 'default', 'selectors-only'. When '' or 'default', Tilt both uses `extra_pod_selectors` and traces k8s owner references to identify this resource's pods. When 'selectors-only', Tilt uses only `extra_pod_selectors`.
   """
   pass
@@ -701,7 +701,7 @@ def read_file(file_path: str, default: str = None) -> Blob:
   pass
 
 def watch_file(file_path: str) -> None:
-  """Watches a file. If the file is changed a re-exectution of the Tiltfile is triggered.
+  """Watches a file. If the file is changed a re-execution of the Tiltfile is triggered.
 
   If the path is a directory, its contents will be recursively watched.
 
@@ -966,7 +966,7 @@ def custom_build(
     live_update: set of steps for updating a running container (see `Live Update documentation <live_update_reference.html>`_).
     match_in_env_vars: specifies that k8s objects can reference this image in their environment variables, and Tilt will handle those variables the same as it usually handles a k8s container spec's ``image`` s.
     ignore: set of file patterns that will be ignored. Ignored files will not trigger builds and will not be included in images. Follows the `dockerignore syntax <https://docs.docker.com/engine/reference/builder/#dockerignore-file>`_. Patterns/filepaths will be evaluated relative to each ``dep`` (e.g. if you specify ``deps=['dep1', 'dep2']`` and ``ignores=['foobar']``, Tilt will ignore both ``deps1/foobar`` and ``dep2/foobar``).
-    entrypoint: command to run when this container starts. Takes precedence over the container's ``CMD`` or ``ENTRYPOINT``, and over a `container command specified in k8s YAML <https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/>`_. If specified as a string, will be evaluated in a shell context (e.g. ``entrypoint="foo.sh bar"`` will be executed in the container as ``/bin/sh -c 'foo.sh bar'``); if specifed as a list, will be passed to the operating system as program name and args. Kubernetes-only.
+    entrypoint: command to run when this container starts. Takes precedence over the container's ``CMD`` or ``ENTRYPOINT``, and over a `container command specified in k8s YAML <https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/>`_. If specified as a string, will be evaluated in a shell context (e.g. ``entrypoint="foo.sh bar"`` will be executed in the container as ``/bin/sh -c 'foo.sh bar'``); if specified as a list, will be passed to the operating system as program name and args. Kubernetes-only.
     command_bat_val: Deprecated, use command_bat.
     outputs_image_ref_to: Specifies a file path. When set, the custom build command must write a content-based
       tagged image ref to this file. Tilt will read that file after the cmd runs to get the image ref,
@@ -1162,7 +1162,7 @@ def local_resource(name: str,
     readiness_probe: Optional readiness probe to use for determining ``serve_cmd`` health state. Fore more info, see the :meth:`probe` function.
     dir: Working directory for ``cmd``. Defaults to the Tiltfile directory.
     serve_dir: Working directory for ``serve_cmd``. Defaults to the Tiltfile directory.
-    labels: used to group resources in the Web UI, (e.g. you want all frontend services displayed together, while test and backend services are displayed seperately). A label must start and end with an alphanumeric character, can include ``_``, ``-``, and ``.``, and must be 63 characters or less. For an example, see `Resource Grouping <tiltfile_concepts.html#resource-groups>`_.
+    labels: used to group resources in the Web UI, (e.g. you want all frontend services displayed together, while test and backend services are displayed separately). A label must start and end with an alphanumeric character, can include ``_``, ``-``, and ``.``, and must be 63 characters or less. For an example, see `Resource Grouping <tiltfile_concepts.html#resource-groups>`_.
   """
   pass
 
@@ -1383,7 +1383,7 @@ def http_get_action(port: int, host: str='localhost', scheme: str='http', path: 
     host: Hostname to use for HTTP request.
     port: Port to use for HTTP request.
     scheme: URI scheme to use for HTTP request, valid values are `http` and `https`.
-    path: URI path for HTTP reqeust.
+    path: URI path for HTTP request.
   """
   pass
 

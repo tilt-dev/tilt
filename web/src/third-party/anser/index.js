@@ -176,7 +176,7 @@ class Anser {
      * @name escapeForHtml
      * @function
      * @param {String} txt The input text.
-     * @returns {String} The escpaed HTML output.
+     * @returns {String} The escaped HTML output.
      */
     escapeForHtml (txt) {
         return txt.replace(/[&<>\"]/gm, str =>
@@ -306,7 +306,7 @@ class Anser {
      *  - `fg_truecolor` (String|null): The foreground true color (if 16m color is enabled).
      *  - `bg_truecolor` (String|null): The background true color (if 16m color is enabled).
      *  - `clearLine` (Boolean): `true` if a carriageReturn \r was fount at end of line.
-     *  - `was_processed` (Bolean): `true` if the colors were processed, `false` otherwise.
+     *  - `was_processed` (Boolean): `true` if the colors were processed, `false` otherwise.
      *  - `isEmpty` (Function): A function returning `true` if the content is empty, or `false` otherwise.
      *
      */

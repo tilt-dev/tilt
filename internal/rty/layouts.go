@@ -680,7 +680,7 @@ func (ml *MinLengthLayout) Size(width int, height int) (int, int, error) {
 	}
 	sizedWidth, sizedHeight = ldToWh(sizedLen, sizedDep, ml.inner.dir)
 
-	// It should be impossible to make the container bigger than the size alloted,
+	// It should be impossible to make the container bigger than the size allotted,
 	// even with minLength.
 	if sizedWidth > width {
 		sizedWidth = width

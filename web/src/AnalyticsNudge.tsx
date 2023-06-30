@@ -21,7 +21,7 @@ const nudgeElem = (): JSX.Element => {
 }
 const successOptInElem = (): JSX.Element => {
   return (
-    <p data-testid="optin-success">
+    <p data-testid="option-success">
       Thanks for helping us improve Tilt for you and everyone! (You can change
       your mind by running <code>tilt analytics opt out</code> in your
       terminal.)

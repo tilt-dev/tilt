@@ -273,12 +273,12 @@ type UIResourceTargetSpec struct {
 	// +optional
 	Type UIResourceTargetType `json:"type,omitempty" protobuf:"bytes,2,opt,name=type,casttype=UIResourceTargetType"`
 
-	// Whether the target has a live update assocated with it.
+	// Whether the target has a live update associated with it.
 	// +optional
 	HasLiveUpdate bool `json:"hasLiveUpdate,omitempty" protobuf:"varint,3,opt,name=hasLiveUpdate"`
 }
 
-// UIBuildRunning respresents an in-progress build/update in the user interface.
+// UIBuildRunning represents an in-progress build/update in the user interface.
 type UIBuildRunning struct {
 	// The time when the build started.
 	// +optional
@@ -289,7 +289,7 @@ type UIBuildRunning struct {
 	SpanID string `json:"spanID,omitempty" protobuf:"bytes,2,opt,name=spanID"`
 }
 
-// UIBuildRunning respresents a finished build/update in the user interface.
+// UIBuildRunning represents a finished build/update in the user interface.
 type UIBuildTerminated struct {
 	// A non-empty string if the build failed with an error.
 	// +optional

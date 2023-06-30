@@ -93,7 +93,7 @@ func provideFakeKubeContext(env clusterid.Product) k8s.KubeContext {
 }
 
 // A simplified version of the normal calculation we do
-// about whether we can build direct to a cluser
+// about whether we can build direct to a cluster
 func provideFakeDockerClusterEnv(c docker.Client, k8sEnv clusterid.Product, kubeContext k8s.KubeContext, runtime container.Runtime) docker.ClusterEnv {
 	env := c.Env()
 	isDockerRuntime := runtime == container.RuntimeDocker

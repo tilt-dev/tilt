@@ -606,7 +606,7 @@
           "title": "The log span where the build logs are stored in the logstore.\n+optional"
         }
       },
-      "description": "UIBuildRunning respresents an in-progress build/update in the user interface."
+      "description": "UIBuildRunning represents an in-progress build/update in the user interface."
     },
     "v1alpha1UIBuildTerminated": {
       "type": "object",
@@ -639,7 +639,7 @@
           "title": "A crash rebuild happens when Tilt live-updated a container, then\nthe pod crashed, wiping out the live-updates. Tilt does a full\nbuild+deploy to reset the pod state to what's on disk.\n+optional"
         }
       },
-      "description": "UIBuildRunning respresents a finished build/update in the user interface."
+      "description": "UIBuildRunning represents a finished build/update in the user interface."
     },
     "v1alpha1UIButton": {
       "type": "object",
@@ -1091,7 +1091,7 @@
         },
         "hasLiveUpdate": {
           "type": "boolean",
-          "title": "Whether the target has a live update assocated with it.\n+optional"
+          "title": "Whether the target has a live update associated with it.\n+optional"
         }
       },
       "description": "UIResourceTargetSpec represents the spec of a build or deploy that a resource summarizes."
@@ -1207,7 +1207,7 @@
         "tilt_start_time": {
           "type": "string",
           "format": "date-time",
-          "description": "Allows us to synchronize on a running Tilt intance,\nso we can tell when we're talking to the same Tilt."
+          "description": "Allows us to synchronize on a running Tilt instance,\nso we can tell when we're talking to the same Tilt."
         }
       },
       "description": "NOTE(nick): This is obsolete.\n\nOur websocket service has two kinds of messages:\n1) On initialization, we send down the complete view state\n2) On every change, we send down the resources that have\n   changed since the last send()."
@@ -1601,7 +1601,7 @@
         "tilt_start_time": {
           "type": "string",
           "format": "date-time",
-          "description": "Allows us to synchronize on a running Tilt intance,\nso we can tell when Tilt restarted."
+          "description": "Allows us to synchronize on a running Tilt instance,\nso we can tell when Tilt restarted."
         },
         "tiltfile_key": {
           "type": "string",

@@ -76,7 +76,7 @@ const StarredResourceRoot = styled.div`
   background-color: ${Color.gray30};
   padding-top: ${SizeUnit(0.125)};
   padding-bottom: ${SizeUnit(0.125)};
-  position: relative; // Anchor the .isBuilding::after psuedo-element
+  position: relative; // Anchor the .isBuilding::after pseudo-element
 
   &:hover {
     background-color: ${ColorRGBA(Color.gray30, ColorAlpha.translucent)};

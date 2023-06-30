@@ -149,7 +149,7 @@ func TestStructInput(t *testing.T) {
 			{"green", 20.01, false},
 		},
 		Labels: map[string]int{
-			"engieer":  10,
+			"engineer": 10,
 			"web/html": 15,
 			"k8s-app":  20,
 		},
@@ -276,7 +276,7 @@ func TestKubernetes(t *testing.T) {
 	nodesTests := []jsonpathTest{
 		{"range item", `{range .items[*]}{.metadata.name}, {end}{.kind}`, nodesData, "127.0.0.1, 127.0.0.2, List", false},
 		{"range item with quote", `{range .items[*]}{.metadata.name}{"\t"}{end}`, nodesData, "127.0.0.1\t127.0.0.2\t", false},
-		{"range addresss", `{.items[*].status.addresses[*].address}`, nodesData,
+		{"range address", `{.items[*].status.addresses[*].address}`, nodesData,
 			"127.0.0.1 127.0.0.2 127.0.0.3", false},
 		{"double range", `{range .items[*]}{range .status.addresses[*]}{.address}, {end}{end}`, nodesData,
 			"127.0.0.1, 127.0.0.2, 127.0.0.3, ", false},

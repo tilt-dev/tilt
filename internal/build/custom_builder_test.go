@@ -282,7 +282,7 @@ func TestEnvVars_ConfigRefWithLocalRegistry(t *testing.T) {
 	// generally, config refs (value in Tiltfile) are $prod_registry/$image:$tag
 	// and Tilt rewrites it to $local_registry/$sanitized_prod_registry_$image
 	// however, some users explicitly use the $local_registry in their Tiltfile
-	// refs, so instead of producing a redudant and confusing ref like
+	// refs, so instead of producing a redundant and confusing ref like
 	// $local_registry/$sanitized_local_registry_$image, it just gets passed
 	// through
 	expectedVars := map[string]string{

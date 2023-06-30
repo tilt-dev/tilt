@@ -7261,7 +7261,7 @@ func schema_pkg_apis_core_v1alpha1_UIBuildRunning(ref common.ReferenceCallback) 
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "UIBuildRunning respresents an in-progress build/update in the user interface.",
+				Description: "UIBuildRunning represents an in-progress build/update in the user interface.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"startTime": {
@@ -7290,7 +7290,7 @@ func schema_pkg_apis_core_v1alpha1_UIBuildTerminated(ref common.ReferenceCallbac
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "UIBuildRunning respresents a finished build/update in the user interface.",
+				Description: "UIBuildRunning represents a finished build/update in the user interface.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"error": {
@@ -8388,7 +8388,7 @@ func schema_pkg_apis_core_v1alpha1_UIResourceTargetSpec(ref common.ReferenceCall
 					},
 					"hasLiveUpdate": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Whether the target has a live update assocated with it.",
+							Description: "Whether the target has a live update associated with it.",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},

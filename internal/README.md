@@ -87,7 +87,7 @@ Most subscribers are subpackages of `engine`. Here's a partial listing of import
 - [engine/fswatch](engine/fswatch) - Sets up file system watches, and dispatches
   actions when files have changed
 
-- [engine/k8swatch](engine/k8swatch) - Watches Kuberentes resources, and
+- [engine/k8swatch](engine/k8swatch) - Watches Kubernetes resources, and
   dispatches actions when objects (like pods and events) are created, updated,
   or deleted.
   

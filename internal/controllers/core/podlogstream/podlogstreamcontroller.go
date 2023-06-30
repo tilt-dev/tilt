@@ -388,7 +388,7 @@ func (c *Controller) consumeLogs(watch *podLogWatch, st store.RStore) {
 					// In the common case (where we just haven't gotten any logs in the
 					// last 15 seconds), this will ensure we don't duplicate logs.
 					//
-					// In the uncommon case (where the Kuberentes log buffer exceeded 10MB
+					// In the uncommon case (where the Kubernetes log buffer exceeded 10MB
 					// and got rotated), this will create a 2 second gap in the log, but
 					// we think this is acceptable to avoid the duplicate case.
 					startReadTime = lastRead.Add(podLogReconnectGap)

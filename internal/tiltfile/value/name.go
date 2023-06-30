@@ -7,7 +7,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/validation/path"
 )
 
-// Names in Tilt should be valid Kuberentes API names.
+// Names in Tilt should be valid Kubernetes API names.
 //
 // We use the loosest validation rules: valid path segment names.
 //
