@@ -17,8 +17,7 @@ import { ResourceStatus } from "./types"
 
 type SidebarIconProps = {
   status: ResourceStatus
-  alertCount: number
-  tooltipText: string
+  tooltipText?: string
 }
 
 let SidebarIconRoot = styled.div`
@@ -91,17 +90,8 @@ export default class SidebarIcon extends PureComponent<SidebarIconProps> {
       icon = <CheckmarkSmallSvg role="presentation" />
     }
 
-    if (!this.props.tooltipText.length) {
-      return (
-        <SidebarIconRoot
-          className={`${ClassNameFromResourceStatus(this.props.status)}`}
-        >
-          {icon}
-        </SidebarIconRoot>
-      )
-    }
     return (
-      <Tooltip title={this.props.tooltipText}>
+      <Tooltip title={this.props.tooltipText || ""}>
         <SidebarIconRoot
           className={`${ClassNameFromResourceStatus(this.props.status)}`}
         >

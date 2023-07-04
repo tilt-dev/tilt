@@ -14,7 +14,7 @@ import { formatBuildDuration } from "./time"
 import Tooltip from "./Tooltip"
 import { ResourceStatus } from "./types"
 
-const StatusMsg = styled.span`
+const StatusMsg = styled.div`
   text-overflow: ellipsis;
   overflow: hidden;
 `

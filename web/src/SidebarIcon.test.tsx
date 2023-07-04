@@ -16,9 +16,7 @@ describe("SidebarIcon", () => {
   test.each(cases)(
     "renders with the correct classes - %s",
     (className, status) => {
-      render(
-        <SidebarIcon status={status} alertCount={0} tooltipText={"help"} />
-      )
+      render(<SidebarIcon status={status} tooltipText={"help"} />)
 
       const iconWrapper = screen.getByTitle("help")
       expect(iconWrapper).toHaveClass(className)
@@ -29,7 +27,6 @@ describe("SidebarIcon", () => {
     render(
       <SidebarIcon
         status={ResourceStatus.Unhealthy}
-        alertCount={0}
         tooltipText="What a tip!"
       />
     )
