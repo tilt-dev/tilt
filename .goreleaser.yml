@@ -100,33 +100,31 @@ builds:
     - CC=x86_64-w64-mingw32-gcc
     - CXX=x86_64-w64-mingw32-g++
 archives:
-- name_template: "{{ .ProjectName }}.{{ .Version }}.{{ .Os }}.{{ .Arch }}"
-  id: default
+- id: default
+  name_template: >-
+      {{ .ProjectName }}.{{ .Version }}.
+      {{- if eq .Os "darwin"}}mac
+      {{- else }}{{ .Os }}{{ end }}.
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
   builds:
     - tilt-darwin
     - tilt-linux-amd64
     - tilt-linux-arm64
     - tilt-linux-arm
     - tilt-windows-amd64
-  replacements:
-    windows: windows
-    darwin: mac
-    linux: linux
-    386: i386
-    amd64: x86_64
-    arm: arm
-    arm64: arm64
   format_overrides:
     - goos: windows
       format: zip
-- name_template: "{{ .ProjectName }}.{{ .Version }}.{{ .Os }}-alpine.{{ .Arch }}"
-  id: alpine
+- id: alpine
+  name_template: >-
+      {{ .ProjectName }}.{{ .Version }}.{{ .Os }}-alpine.
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else }}{{ .Arch }}{{ end }}
   builds:
     - tilt-linux-musl-amd64
     - tilt-linux-musl-arm64
-  replacements:
-    amd64: x86_64
-    arm64: arm64
 checksum:
   name_template: 'checksums.txt'
 snapshot:
@@ -229,8 +227,8 @@ docker_manifests:
   image_templates:
   - docker/{{ .ProjectName }}:{{ .Tag }}-amd64
   - docker/{{ .ProjectName }}:{{ .Tag }}-arm64
-scoop:
-  url_template: "https://github.com/tilt-dev/tilt/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+scoops:
+- url_template: "https://github.com/tilt-dev/tilt/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
   bucket:
     owner: tilt-dev
     name: scoop-bucket
