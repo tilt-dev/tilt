@@ -38,9 +38,9 @@ func (d *darwinNotify) loop() {
 				e.Path = filepath.Join("/", e.Path)
 
 				_, isPathWereWatching := d.pathsWereWatching[e.Path]
-				if e.Flags&fsevents.ItemIsDir == fsevents.ItemIsDir && e.Flags&fsevents.ItemCreated == fsevents.ItemCreated && isPathWereWatching {
-					// This is the first create for the path that we're watching. We always get exactly one of these
-					// even after we get the HistoryDone event. Skip it.
+				if e.Flags&fsevents.ItemIsDir == fsevents.ItemIsDir && isPathWereWatching {
+					// For consistency with Linux and Windows, don't fire any events
+					// for directories that we're watching -- only their contents.
 					continue
 				}
 
