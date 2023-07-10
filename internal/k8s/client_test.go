@@ -18,6 +18,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/cli-runtime/pkg/resource"
 	dynfake "k8s.io/client-go/dynamic/fake"
@@ -158,6 +159,33 @@ func TestUpsertToTerminatingNamespaceForbidden(t *testing.T) {
 	}
 	assert.Equal(t, 0, len(f.resourceClient.updates))
 	assert.Equal(t, 0, len(f.resourceClient.creates))
+}
+
+func TestNodePortServiceURL(t *testing.T) {
+	// Taken from a Docker Desktop NodePort service.
+	s := &v1.Service{
+		Spec: v1.ServiceSpec{
+			Type: v1.ServiceTypeNodePort,
+			Ports: []v1.ServicePort{
+				{
+					NodePort:   31074,
+					Port:       9000,
+					TargetPort: intstr.FromInt(80),
+				},
+			},
+		},
+		Status: v1.ServiceStatus{
+			LoadBalancer: v1.LoadBalancerStatus{
+				Ingress: []v1.LoadBalancerIngress{
+					{Hostname: "localhost"},
+				},
+			},
+		},
+	}
+
+	url, err := ServiceURL(s, NodeIP("127.0.0.1"))
+	assert.NoError(t, err)
+	assert.Equal(t, "http://localhost:31074/", url.String())
 }
 
 func TestGetGroup(t *testing.T) {
