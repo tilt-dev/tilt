@@ -273,13 +273,18 @@ func ServiceURL(service *v1.Service, ip NodeIP) (*url.URL, error) {
 	// GKE and OpenStack typically use IP-based load balancers.
 	// AWS typically uses DNS-based load balancers.
 	for _, ingress := range lbStatus.Ingress {
+		ingressPort := port
+		if service.Spec.Type == v1.ServiceTypeNodePort {
+			ingressPort = nodePort
+		}
+
 		urlString := ""
 		if ingress.IP != "" {
-			urlString = fmt.Sprintf("http://%s:%d/", ingress.IP, port)
+			urlString = fmt.Sprintf("http://%s:%d/", ingress.IP, ingressPort)
 		}
 
 		if ingress.Hostname != "" {
-			urlString = fmt.Sprintf("http://%s:%d/", ingress.Hostname, port)
+			urlString = fmt.Sprintf("http://%s:%d/", ingress.Hostname, ingressPort)
 		}
 
 		if urlString == "" {
