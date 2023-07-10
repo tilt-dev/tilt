@@ -27,6 +27,7 @@ import { formatBuildDuration, isZeroTime } from "./time"
 import { timeAgoFormatter } from "./timeFormatters"
 import { startBuild } from "./trigger"
 import { ResourceStatus, ResourceView } from "./types"
+import Tooltip from "./Tooltip"
 
 export const SidebarItemRoot = styled.li`
   & + & {
@@ -367,7 +368,6 @@ export function EnabledSidebarItemView(props: SidebarItemViewProps) {
             <SidebarIcon
               tooltipText={runtimeTooltipText(item.runtimeStatus)}
               status={item.runtimeStatus}
-              alertCount={item.runtimeAlertCount}
             />
             <SidebarItemName name={item.name} />
             <SidebarItemTimeAgo>
@@ -385,14 +385,12 @@ export function EnabledSidebarItemView(props: SidebarItemViewProps) {
               stopBuildButton={item.stopBuildButton}
             />
           </SidebarItemRuntimeBox>
-          <SidebarItemBuildBox>
-            <SidebarIcon
-              tooltipText={buildTooltipText(item.buildStatus, item.hold)}
-              status={item.buildStatus}
-              alertCount={item.buildAlertCount}
-            />
-            <SidebarItemText>{buildStatusText(item)}</SidebarItemText>
-          </SidebarItemBuildBox>
+          <Tooltip title={buildTooltipText(item.buildStatus, item.hold)}>
+            <SidebarItemBuildBox>
+              <SidebarIcon status={item.buildStatus} />
+              <SidebarItemText>{buildStatusText(item)}</SidebarItemText>
+            </SidebarItemBuildBox>
+          </Tooltip>
         </SidebarItemInnerBox>
       </SidebarItemBox>
     </SidebarItemRoot>
