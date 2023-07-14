@@ -8,8 +8,8 @@ import {
   FilterLevel,
   FilterSource,
 } from "./logfilters"
-import { LogUpdateAction } from "./LogStore"
-import {
+import LogStore, { LogUpdateAction, LogStoreProvider } from "./LogStore"
+import OverviewLogPane, {
   OverviewLogComponent,
   PROLOGUE_LENGTH,
   renderWindow,
@@ -55,8 +55,27 @@ describe("OverviewLogPane", () => {
 
   it("escapes html and linkifies", () => {
     customRender(<StyledLines />)
-    expect(screen.getAllByRole("link")).toHaveLength(2)
+    expect(screen.getAllByRole("link")).toHaveLength(3)
     expect(screen.queryByRole("button")).toBeNull()
+  })
+
+  it("properly escapes ansi chars", () => {
+    let defaultFilter = {
+      source: FilterSource.all,
+      level: FilterLevel.all,
+      term: EMPTY_FILTER_TERM,
+    }
+    let logStore = new LogStore()
+    appendLines(logStore, "fe", "[32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/[39m\n")
+    const { container } = customRender(
+      <LogStoreProvider value={logStore}>
+        <OverviewLogPane manifestName="fe" filterSet={defaultFilter} />
+      </LogStoreProvider>
+    )
+    expect(container.querySelectorAll(".LogLine")).toHaveLength(1)
+    expect(container.querySelector(".LogLine")).toHaveTextContent(
+      "➜ Local: http://localhost:5173/"
+    )
   })
 
   it("displays all logs when there are no filters", () => {
