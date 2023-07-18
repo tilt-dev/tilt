@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"testing"
 
@@ -89,7 +90,10 @@ func newTriggerFixture(t *testing.T) *triggerFixture {
 		Addr:    fmt.Sprintf(":%d", defaultWebPort),
 		Handler: mux,
 	}
-	go func() { _ = srv.ListenAndServe() }()
+	l, err := net.Listen("tcp", srv.Addr)
+	require.NoError(t, err)
+
+	go func() { _ = srv.Serve(l) }()
 	t.Cleanup(func() {
 		_ = srv.Shutdown(ctx)
 	})
