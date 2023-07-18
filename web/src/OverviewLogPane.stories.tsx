@@ -132,6 +132,7 @@ export const StyledLines = () => {
     "Link: https://tilt.dev/\n",
     'Escaped Link: <a href="https://tilt.dev/" >Tilt</a>\n',
     'Escaped Button: <button onClick="alert(\\"you are p0wned\\")" >Tilt</button>\n',
+    "[32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/[39m\n",
   ]
   appendLines(logStore, "fe", ...lines)
   return (

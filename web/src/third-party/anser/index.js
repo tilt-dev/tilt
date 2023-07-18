@@ -197,7 +197,7 @@ class Anser {
      * @returns {String} The HTML output containing link elements.
      */
     linkify (txt) {
-        return txt.replace(/(https?:\/\/[^\s]+)/gm, str => `<a href="${str}">${str}</a>`);
+        return txt.replace(/(https?:\/\/[^\s<>"]+)/gm, str => `<a href="${str}">${str}</a>`);
     }
 
     /**
