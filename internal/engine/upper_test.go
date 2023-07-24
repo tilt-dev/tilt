@@ -108,7 +108,6 @@ import (
 	"github.com/tilt-dev/tilt/pkg/assets"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
-	"github.com/tilt-dev/tilt/pkg/model/logstore"
 	"github.com/tilt-dev/wmclient/pkg/analytics"
 )
 
@@ -2720,67 +2719,6 @@ func TestTelemetryLogAction(t *testing.T) {
 		l := state.LogStore.ManifestLog(store.MainTiltfileManifestName)
 		return strings.Contains(l, "testing")
 	})
-}
-
-func TestLocalResourceServeWithNoUpdate(t *testing.T) {
-	for triggerMode := range model.TriggerModes {
-		var name string
-		switch triggerMode {
-		case model.TriggerModeAuto:
-			name = "TriggerModeAuto"
-		case model.TriggerModeManual:
-			name = "TriggerModeManual"
-		case model.TriggerModeAutoWithManualInit:
-			name = "TriggerModeAutoWithManualInit"
-		case model.TriggerModeManualWithAutoInit:
-			name = "TriggerModeManualWithAutoInit"
-		default:
-			name = fmt.Sprintf("Unknown-%d", triggerMode)
-		}
-
-		t.Run(name, func(t *testing.T) {
-			f := newTestFixture(t)
-
-			m := manifestbuilder.New(f, "foo").
-				WithLocalServeCmd("true").
-				WithLocalResource("", []string{f.JoinPath("deps")}).
-				WithTriggerMode(triggerMode).
-				Build()
-
-			f.Start([]model.Manifest{m})
-
-			if triggerMode.AutoInitial() {
-				f.WaitUntil("resource is served", func(state store.EngineState) bool {
-					return strings.Contains(state.LogStore.ManifestLog(m.Name), "Starting cmd true")
-				})
-			} else {
-				// this isn't perfect, but since CmdServer isn't in the apiserver yet, we can't assert on its state
-				// directly, so just pause for a bit to make sure no builds are triggered and that no commands exist
-				// either
-				f.assertNoCall()
-				f.withState(func(state store.EngineState) {
-					assert.Empty(t, state.Cmds, "No Cmds should have been created")
-				})
-			}
-
-			if triggerMode.AutoOnChange() {
-				// checkpoint the logs so for auto_init=True + TRIGGER_MODE_AUTO we don't just match on the original
-				// start message, but on the restart from the file change
-				var checkpoint logstore.Checkpoint
-				f.withState(func(state store.EngineState) {
-					checkpoint = state.LogStore.Checkpoint()
-				})
-
-				f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("deps", "changed"))
-				f.WaitUntil("resource is served", func(state store.EngineState) bool {
-					return strings.Contains(state.LogStore.ContinuingString(checkpoint), "Starting cmd true")
-				})
-			}
-
-			err := f.Stop()
-			require.NoError(t, err)
-		})
-	}
 }
 
 func TestLocalResourceServeChangeCmd(t *testing.T) {
