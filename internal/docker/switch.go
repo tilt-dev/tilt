@@ -8,6 +8,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -100,8 +101,8 @@ func (c *switchCli) ImagePull(ctx context.Context, ref reference.Named) (referen
 func (c *switchCli) ImagePush(ctx context.Context, ref reference.NamedTagged) (io.ReadCloser, error) {
 	return c.client(ctx).ImagePush(ctx, ref)
 }
-func (c *switchCli) ImageBuild(ctx context.Context, buildContext io.Reader, options BuildOptions) (types.ImageBuildResponse, error) {
-	return c.client(ctx).ImageBuild(ctx, buildContext, options)
+func (c *switchCli) ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io.Reader, options BuildOptions) (types.ImageBuildResponse, error) {
+	return c.client(ctx).ImageBuild(ctx, g, buildContext, options)
 }
 func (c *switchCli) ImageTag(ctx context.Context, source, target string) error {
 	return c.client(ctx).ImageTag(ctx, source, target)

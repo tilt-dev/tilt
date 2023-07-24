@@ -21,6 +21,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tonistiigi/fsutil"
 	fsutiltypes "github.com/tonistiigi/fsutil/types"
+	"golang.org/x/sync/errgroup"
 	ktypes "k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/container"
@@ -204,6 +205,10 @@ func (d *DockerBuilder) BuildImage(ctx context.Context, ps *PipelineState, refs 
 // A helper function that builds the paths to the given docker image,
 // then returns the output digest.
 func (d *DockerBuilder) buildToDigest(ctx context.Context, spec v1alpha1.DockerImageSpec, filter model.PathMatcher, allowBuildkit bool) (digest.Digest, []v1alpha1.DockerImageStageStatus, error) {
+	ctx, cancelBuildSession := context.WithCancel(ctx)
+	defer cancelBuildSession()
+
+	g, ctx := errgroup.WithContext(ctx)
 	var contextReader io.Reader
 
 	buildContext := spec.Context
@@ -235,7 +240,7 @@ func (d *DockerBuilder) buildToDigest(ctx context.Context, spec v1alpha1.DockerI
 		w.Init()
 
 		// TODO(nick): Express tarring as a build stage.
-		go func(ctx context.Context) {
+		g.Go(func() error {
 			paths := []PathMapping{
 				{
 					LocalPath:     buildContext,
@@ -249,7 +254,8 @@ func (d *DockerBuilder) buildToDigest(ctx context.Context, spec v1alpha1.DockerI
 				_ = pipeWriter.Close()
 			}
 			w.Close() // Print the final progress message
-		}(ctx)
+			return nil
+		})
 
 		contextReader = pipeReader
 		defer func() {
@@ -273,23 +279,34 @@ func (d *DockerBuilder) buildToDigest(ctx context.Context, spec v1alpha1.DockerI
 	if !allowBuildkit {
 		options.ForceLegacyBuilder = true
 	}
-	imageBuildResponse, err := d.dCli.ImageBuild(
-		ctx,
-		contextReader,
-		options,
-	)
-	if err != nil {
-		return "", nil, err
-	}
 
-	defer func() {
-		err := imageBuildResponse.Body.Close()
+	var digest digest.Digest
+	var status []v1alpha1.DockerImageStageStatus
+	g.Go(func() error {
+		defer cancelBuildSession()
+		imageBuildResponse, err := d.dCli.ImageBuild(
+			ctx,
+			g,
+			contextReader,
+			options,
+		)
 		if err != nil {
-			logger.Get(ctx).Infof("unable to close imageBuildResponse: %s", err)
+			return err
 		}
-	}()
 
-	return d.getDigestFromBuildOutput(ctx, imageBuildResponse.Body)
+		defer func() {
+			err := imageBuildResponse.Body.Close()
+			if err != nil {
+				logger.Get(ctx).Infof("unable to close imageBuildResponse: %s", err)
+			}
+		}()
+
+		digest, status, err = d.getDigestFromBuildOutput(ctx, imageBuildResponse.Body)
+		return err
+	})
+
+	err = g.Wait()
+	return digest, status, err
 }
 
 func (d *DockerBuilder) getDigestFromBuildOutput(ctx context.Context, reader io.Reader) (digest.Digest, []v1alpha1.DockerImageStageStatus, error) {

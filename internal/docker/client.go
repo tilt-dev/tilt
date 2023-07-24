@@ -29,6 +29,7 @@ import (
 	"github.com/moby/buildkit/session/auth/authprovider"
 	"github.com/moby/buildkit/session/filesync"
 	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/docker/buildkit"
@@ -103,7 +104,7 @@ type Client interface {
 
 	ImagePull(ctx context.Context, ref reference.Named) (reference.Canonical, error)
 	ImagePush(ctx context.Context, image reference.NamedTagged) (io.ReadCloser, error)
-	ImageBuild(ctx context.Context, buildContext io.Reader, options BuildOptions) (types.ImageBuildResponse, error)
+	ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io.Reader, options BuildOptions) (types.ImageBuildResponse, error)
 	ImageTag(ctx context.Context, source, target string) error
 	ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error)
 	ImageList(ctx context.Context, options types.ImageListOptions) ([]types.ImageSummary, error)
@@ -294,7 +295,7 @@ func CreateClientOpts(envMap map[string]string) ([]client.Opt, error) {
 	return result, nil
 }
 
-func (c *Cli) startBuildkitSession(ctx context.Context, key string, syncedDirs []filesync.SyncedDir, sshSpecs []string, secretSpecs []string) (*session.Session, error) {
+func (c *Cli) startBuildkitSession(ctx context.Context, g *errgroup.Group, key string, syncedDirs []filesync.SyncedDir, sshSpecs []string, secretSpecs []string) (*session.Session, error) {
 	session, err := session.NewSession(ctx, "tilt", key)
 	if err != nil {
 		return nil, err
@@ -323,7 +324,7 @@ func (c *Cli) startBuildkitSession(ctx context.Context, key string, syncedDirs [
 		session.Allow(sshp)
 	}
 
-	go func() {
+	g.Go(func() error {
 		defer func() {
 			_ = session.Close()
 		}()
@@ -332,8 +333,8 @@ func (c *Cli) startBuildkitSession(ctx context.Context, key string, syncedDirs [
 		dialSession := func(ctx context.Context, proto string, meta map[string][]string) (net.Conn, error) {
 			return c.Client.DialHijack(ctx, "/session", proto, meta)
 		}
-		_ = session.Run(ctx, dialSession)
-	}()
+		return session.Run(ctx, dialSession)
+	})
 	return session, nil
 }
 
@@ -495,7 +496,7 @@ func (c *Cli) ImagePush(ctx context.Context, ref reference.NamedTagged) (io.Read
 	return c.Client.ImagePush(ctx, ref.String(), options)
 }
 
-func (c *Cli) ImageBuild(ctx context.Context, buildContext io.Reader, options BuildOptions) (types.ImageBuildResponse, error) {
+func (c *Cli) ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io.Reader, options BuildOptions) (types.ImageBuildResponse, error) {
 	// Always use a one-time session when using buildkit, since credential
 	// passing is fast and we want to get the latest creds.
 	// https://github.com/tilt-dev/tilt/issues/4043
@@ -511,7 +512,7 @@ func (c *Cli) ImageBuild(ctx context.Context, buildContext io.Reader, options Bu
 	isUsingBuildkit := builderVersion == types.BuilderBuildKit
 	if isUsingBuildkit {
 		var err error
-		oneTimeSession, err = c.startBuildkitSession(ctx, identity.NewID(), options.SyncedDirs, options.SSHSpecs, options.SecretSpecs)
+		oneTimeSession, err = c.startBuildkitSession(ctx, g, identity.NewID(), options.SyncedDirs, options.SSHSpecs, options.SecretSpecs)
 		if err != nil {
 			return types.ImageBuildResponse{}, errors.Wrapf(err, "ImageBuild")
 		}
