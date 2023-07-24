@@ -13,6 +13,7 @@ import (
 	"github.com/docker/go-units"
 	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
@@ -299,7 +300,7 @@ func (c *FakeClient) ImagePush(ctx context.Context, ref reference.NamedTagged) (
 	return NewFakeDockerResponse(c.PushOutput), nil
 }
 
-func (c *FakeClient) ImageBuild(ctx context.Context, buildContext io.Reader, options BuildOptions) (types.ImageBuildResponse, error) {
+func (c *FakeClient) ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io.Reader, options BuildOptions) (types.ImageBuildResponse, error) {
 	c.BuildCount++
 	c.BuildOptions = options
 

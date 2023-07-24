@@ -7,6 +7,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -65,7 +66,7 @@ func (c explodingClient) ImagePull(_ context.Context, _ reference.Named) (refere
 func (c explodingClient) ImagePush(ctx context.Context, ref reference.NamedTagged) (io.ReadCloser, error) {
 	return nil, c.err
 }
-func (c explodingClient) ImageBuild(ctx context.Context, buildContext io.Reader, options BuildOptions) (types.ImageBuildResponse, error) {
+func (c explodingClient) ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io.Reader, options BuildOptions) (types.ImageBuildResponse, error) {
 	return types.ImageBuildResponse{}, c.err
 }
 func (c explodingClient) ImageTag(ctx context.Context, source, target string) error {
