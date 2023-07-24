@@ -2,13 +2,14 @@ package store
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
 	"sort"
 
+	"github.com/docker/docker/errdefs"
 	"github.com/fvbommel/sortorder"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -27,14 +28,14 @@ func (s *metadataStore) contextDir(id contextdir) string {
 
 func (s *metadataStore) createOrUpdate(meta Metadata) error {
 	contextDir := s.contextDir(contextdirOf(meta.Name))
-	if err := os.MkdirAll(contextDir, 0755); err != nil {
+	if err := os.MkdirAll(contextDir, 0o755); err != nil {
 		return err
 	}
 	bytes, err := json.Marshal(&meta)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(contextDir, metaFile), bytes, 0644)
+	return os.WriteFile(filepath.Join(contextDir, metaFile), bytes, 0o644)
 }
 
 func parseTypedOrMap(payload []byte, getter TypeGetter) (interface{}, error) {
@@ -55,11 +56,21 @@ func parseTypedOrMap(payload []byte, getter TypeGetter) (interface{}, error) {
 	return reflect.ValueOf(typed).Elem().Interface(), nil
 }
 
-func (s *metadataStore) get(id contextdir) (Metadata, error) {
-	contextDir := s.contextDir(id)
-	bytes, err := os.ReadFile(filepath.Join(contextDir, metaFile))
+func (s *metadataStore) get(name string) (Metadata, error) {
+	m, err := s.getByID(contextdirOf(name))
 	if err != nil {
-		return Metadata{}, convertContextDoesNotExist(err)
+		return m, errors.Wrapf(err, "context %q", name)
+	}
+	return m, nil
+}
+
+func (s *metadataStore) getByID(id contextdir) (Metadata, error) {
+	bytes, err := os.ReadFile(filepath.Join(s.contextDir(id), metaFile))
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return Metadata{}, errdefs.NotFound(errors.Wrap(err, "context not found"))
+		}
+		return Metadata{}, err
 	}
 	var untyped untypedContextMetadata
 	r := Metadata{
@@ -80,24 +91,29 @@ func (s *metadataStore) get(id contextdir) (Metadata, error) {
 	return r, err
 }
 
-func (s *metadataStore) remove(id contextdir) error {
-	contextDir := s.contextDir(id)
-	return os.RemoveAll(contextDir)
+func (s *metadataStore) remove(name string) error {
+	if err := os.RemoveAll(s.contextDir(contextdirOf(name))); err != nil {
+		return errors.Wrapf(err, "failed to remove metadata")
+	}
+	return nil
 }
 
 func (s *metadataStore) list() ([]Metadata, error) {
 	ctxDirs, err := listRecursivelyMetadataDirs(s.root)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, os.ErrNotExist) {
 			return nil, nil
 		}
 		return nil, err
 	}
 	var res []Metadata
 	for _, dir := range ctxDirs {
-		c, err := s.get(contextdir(dir))
+		c, err := s.getByID(contextdir(dir))
 		if err != nil {
-			return nil, err
+			if errors.Is(err, os.ErrNotExist) {
+				continue
+			}
+			return nil, errors.Wrap(err, "failed to read metadata")
 		}
 		res = append(res, c)
 	}
@@ -131,18 +147,11 @@ func listRecursivelyMetadataDirs(root string) ([]string, error) {
 				return nil, err
 			}
 			for _, s := range subs {
-				result = append(result, fmt.Sprintf("%s/%s", fi.Name(), s))
+				result = append(result, filepath.Join(fi.Name(), s))
 			}
 		}
 	}
 	return result, nil
-}
-
-func convertContextDoesNotExist(err error) error {
-	if os.IsNotExist(err) {
-		return &contextDoesNotExistError{}
-	}
-	return err
 }
 
 type untypedContextMetadata struct {

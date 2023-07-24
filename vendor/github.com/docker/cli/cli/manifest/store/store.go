@@ -136,12 +136,12 @@ func (s *fsStore) Save(listRef reference.Reference, manifest reference.Reference
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filename, bytes, 0644)
+	return os.WriteFile(filename, bytes, 0o644)
 }
 
 func (s *fsStore) createManifestListDirectory(transaction string) error {
 	path := filepath.Join(s.root, makeFilesafeName(transaction))
-	return os.MkdirAll(path, 0755)
+	return os.MkdirAll(path, 0o755)
 }
 
 func manifestToFilename(root, manifestList, manifest string) string {

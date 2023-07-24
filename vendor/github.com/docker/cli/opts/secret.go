@@ -27,7 +27,7 @@ func (o *SecretOpt) Set(value string) error {
 		File: &swarmtypes.SecretReferenceFileTarget{
 			UID:  "0",
 			GID:  "0",
-			Mode: 0444,
+			Mode: 0o444,
 		},
 	}
 

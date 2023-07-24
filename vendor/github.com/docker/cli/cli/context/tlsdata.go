@@ -45,14 +45,14 @@ func (data *TLSData) ToStoreTLSData() *store.EndpointTLSData {
 func LoadTLSData(s store.Reader, contextName, endpointName string) (*TLSData, error) {
 	tlsFiles, err := s.ListTLSFiles(contextName)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to retrieve context tls files for context %q", contextName)
+		return nil, errors.Wrapf(err, "failed to retrieve TLS files for context %q", contextName)
 	}
 	if epTLSFiles, ok := tlsFiles[endpointName]; ok {
 		var tlsData TLSData
 		for _, f := range epTLSFiles {
 			data, err := s.GetTLSData(contextName, endpointName, f)
 			if err != nil {
-				return nil, errors.Wrapf(err, "failed to retrieve context tls data for file %q of context %q", f, contextName)
+				return nil, errors.Wrapf(err, "failed to retrieve TLS data (%s) for context %q", f, contextName)
 			}
 			switch f {
 			case caKey:
@@ -62,7 +62,7 @@ func LoadTLSData(s store.Reader, contextName, endpointName string) (*TLSData, er
 			case keyKey:
 				tlsData.Key = data
 			default:
-				logrus.Warnf("unknown file %s in context %s tls bundle", f, contextName)
+				logrus.Warnf("unknown file in context %s TLS bundle: %s", contextName, f)
 			}
 		}
 		return &tlsData, nil

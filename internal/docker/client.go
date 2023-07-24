@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"sync"
-	"time"
 
 	"github.com/blang/semver"
 	"github.com/docker/cli/cli/command"
@@ -295,17 +294,19 @@ func CreateClientOpts(envMap map[string]string) ([]client.Opt, error) {
 	return result, nil
 }
 
-func (c *Cli) startBuildkitSession(ctx context.Context, g *errgroup.Group, key string, syncedDirs []filesync.SyncedDir, sshSpecs []string, secretSpecs []string) (*session.Session, error) {
+func (c *Cli) startBuildkitSession(ctx context.Context, g *errgroup.Group, key string, dirSource filesync.DirSource, sshSpecs []string, secretSpecs []string) (*session.Session, error) {
 	session, err := session.NewSession(ctx, "tilt", key)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(syncedDirs) > 0 {
-		session.Allow(filesync.NewFSSyncProvider(syncedDirs))
+	if dirSource != nil {
+		session.Allow(filesync.NewFSSyncProvider(dirSource))
 	}
 
-	provider := authprovider.NewDockerAuthProvider(logger.Get(ctx).Writer(logger.InfoLvl))
+	dockerConfig := config.LoadDefaultConfigFile(
+		logger.Get(ctx).Writer(logger.InfoLvl))
+	provider := authprovider.NewDockerAuthProvider(dockerConfig)
 	session.Allow(provider)
 
 	if len(secretSpecs) > 0 {
@@ -503,7 +504,7 @@ func (c *Cli) ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io
 	var oneTimeSession *session.Session
 	sessionID := ""
 
-	mustUseBuildkit := len(options.SSHSpecs) > 0 || len(options.SecretSpecs) > 0 || len(options.SyncedDirs) > 0
+	mustUseBuildkit := len(options.SSHSpecs) > 0 || len(options.SecretSpecs) > 0 || options.DirSource != nil
 	builderVersion := c.builderVersion
 	if options.ForceLegacyBuilder {
 		builderVersion = types.BuilderV1
@@ -512,7 +513,7 @@ func (c *Cli) ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io
 	isUsingBuildkit := builderVersion == types.BuilderBuildKit
 	if isUsingBuildkit {
 		var err error
-		oneTimeSession, err = c.startBuildkitSession(ctx, g, identity.NewID(), options.SyncedDirs, options.SSHSpecs, options.SecretSpecs)
+		oneTimeSession, err = c.startBuildkitSession(ctx, g, identity.NewID(), options.DirSource, options.SSHSpecs, options.SecretSpecs)
 		if err != nil {
 			return types.ImageBuildResponse{}, errors.Wrapf(err, "ImageBuild")
 		}
@@ -543,7 +544,7 @@ func (c *Cli) ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io
 	opts.PullParent = options.PullParent
 	opts.Platform = options.Platform
 
-	if len(options.SyncedDirs) > 0 {
+	if options.DirSource != nil {
 		opts.RemoteContext = clientSessionRemote
 	}
 
@@ -566,9 +567,11 @@ func (c *Cli) ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io
 func (c *Cli) ContainerRestartNoWait(ctx context.Context, containerID string) error {
 
 	// Don't wait on the container to fully start.
-	dur := time.Duration(0)
+	dur := 0
 
-	return c.ContainerRestart(ctx, containerID, &dur)
+	return c.ContainerRestart(ctx, containerID, mobycontainer.StopOptions{
+		Timeout: &dur,
+	})
 }
 
 func (c *Cli) ExecInContainer(ctx context.Context, cID container.ID, cmd model.Cmd, in io.Reader, out io.Writer) error {

@@ -74,7 +74,7 @@ func GetDefaultAuthConfig(cli Cli, checkCredStore bool, serverAddress string, is
 	if !isDefaultRegistry {
 		serverAddress = registry.ConvertToHostname(serverAddress)
 	}
-	var authconfig = configtypes.AuthConfig{}
+	authconfig := configtypes.AuthConfig{}
 	var err error
 	if checkCredStore {
 		authconfig, err = cli.ConfigFile().GetAuthConfig(serverAddress)

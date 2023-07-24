@@ -269,7 +269,7 @@ func (d *DockerBuilder) buildToDigest(ctx context.Context, spec v1alpha1.DockerI
 		if err != nil {
 			return "", nil, err
 		}
-		options.SyncedDirs = toSyncedDirs(buildContext, dockerfileDir, filter)
+		options.DirSource = toDirSource(buildContext, dockerfileDir, filter)
 		options.Dockerfile = DockerfileName
 
 		defer func() {
@@ -598,7 +598,7 @@ const DockerfileName = "Dockerfile"
 //
 // The fake Dockerfile.dockerignore tells buildkit not do to its server-side
 // filtering dance.
-func toSyncedDirs(context string, dockerfileSyncDir string, filter model.PathMatcher) []filesync.SyncedDir {
+func toDirSource(context string, dockerfileSyncDir string, filter model.PathMatcher) filesync.DirSource {
 	fileMap := func(path string, s *fsutiltypes.Stat) fsutil.MapResult {
 		if !filepath.IsAbs(path) {
 			path = filepath.Join(context, path)
@@ -621,15 +621,13 @@ func toSyncedDirs(context string, dockerfileSyncDir string, filter model.PathMat
 		return fsutil.MapResultKeep
 	}
 
-	return []filesync.SyncedDir{
-		{
-			Name: "context",
-			Dir:  context,
-			Map:  fileMap,
+	return filesync.StaticDirSource{
+		"context": filesync.SyncedDir{
+			Dir: context,
+			Map: fileMap,
 		},
-		{
-			Name: "dockerfile",
-			Dir:  dockerfileSyncDir,
+		"dockerfile": filesync.SyncedDir{
+			Dir: dockerfileSyncDir,
 		},
 	}
 }

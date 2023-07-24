@@ -2,12 +2,14 @@ package command
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/docker/cli/cli/config"
@@ -29,11 +31,12 @@ import (
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/tlsconfig"
-	"github.com/moby/term"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	notaryclient "github.com/theupdateframework/notary/client"
 )
+
+const defaultInitTimeout = 2 * time.Second
 
 // Streams is an interface which exposes the standard input and output streams
 type Streams interface {
@@ -54,6 +57,7 @@ type Cli interface {
 	ServerInfo() ServerInfo
 	NotaryClient(imgRefAndAuth trust.ImageRefAndAuth, actions []string) (notaryclient.Repository, error)
 	DefaultVersion() string
+	CurrentVersion() string
 	ManifestStore() manifeststore.Store
 	RegistryClient(bool) registryclient.RegistryClient
 	ContentTrustEnabled() bool
@@ -67,6 +71,7 @@ type Cli interface {
 // Instances of the client can be returned from NewDockerCli.
 type DockerCli struct {
 	configFile         *configfile.ConfigFile
+	options            *cliflags.ClientOptions
 	in                 *streams.In
 	out                *streams.Out
 	err                io.Writer
@@ -75,8 +80,11 @@ type DockerCli struct {
 	contentTrust       bool
 	contextStore       store.Store
 	currentContext     string
+	init               sync.Once
+	initErr            error
 	dockerEndpoint     docker.Endpoint
 	contextStoreConfig store.Config
+	initTimeout        time.Duration
 }
 
 // DefaultVersion returns api.defaultVersion.
@@ -84,8 +92,22 @@ func (cli *DockerCli) DefaultVersion() string {
 	return api.DefaultVersion
 }
 
+// CurrentVersion returns the API version currently negotiated, or the default
+// version otherwise.
+func (cli *DockerCli) CurrentVersion() string {
+	_ = cli.initialize()
+	if cli.client == nil {
+		return api.DefaultVersion
+	}
+	return cli.client.ClientVersion()
+}
+
 // Client returns the APIClient
 func (cli *DockerCli) Client() client.APIClient {
+	if err := cli.initialize(); err != nil {
+		_, _ = fmt.Fprintf(cli.Err(), "Failed to initialize: %s\n", err)
+		os.Exit(1)
+	}
 	return cli.client
 }
 
@@ -120,20 +142,17 @@ func ShowHelp(err io.Writer) func(*cobra.Command, []string) error {
 
 // ConfigFile returns the ConfigFile
 func (cli *DockerCli) ConfigFile() *configfile.ConfigFile {
+	// TODO(thaJeztah): when would this happen? Is this only in tests (where cli.Initialize() is not called first?)
 	if cli.configFile == nil {
-		cli.loadConfigFile()
+		cli.configFile = config.LoadDefaultConfigFile(cli.err)
 	}
 	return cli.configFile
-}
-
-func (cli *DockerCli) loadConfigFile() {
-	cli.configFile = config.LoadDefaultConfigFile(cli.err)
 }
 
 // ServerInfo returns the server version details for the host this client is
 // connected to
 func (cli *DockerCli) ServerInfo() ServerInfo {
-	// TODO(thaJeztah) make ServerInfo() lazily load the info (ping only when needed)
+	_ = cli.initialize()
 	return cli.serverInfo
 }
 
@@ -193,65 +212,50 @@ func WithInitializeClient(makeClient func(dockerCli *DockerCli) (client.APIClien
 // Initialize the dockerCli runs initialization that must happen after command
 // line flags are parsed.
 func (cli *DockerCli) Initialize(opts *cliflags.ClientOptions, ops ...InitializeOpt) error {
-	var err error
-
 	for _, o := range ops {
 		if err := o(cli); err != nil {
 			return err
 		}
 	}
-	cliflags.SetLogLevel(opts.Common.LogLevel)
+	cliflags.SetLogLevel(opts.LogLevel)
 
 	if opts.ConfigDir != "" {
 		config.SetDir(opts.ConfigDir)
 	}
 
-	if opts.Common.Debug {
+	if opts.Debug {
 		debug.Enable()
 	}
+	if opts.Context != "" && len(opts.Hosts) > 0 {
+		return errors.New("conflicting options: either specify --host or --context, not both")
+	}
 
-	cli.loadConfigFile()
-
-	baseContextStore := store.New(config.ContextStoreDir(), cli.contextStoreConfig)
+	cli.options = opts
+	cli.configFile = config.LoadDefaultConfigFile(cli.err)
+	cli.currentContext = resolveContextName(cli.options, cli.configFile)
 	cli.contextStore = &ContextStoreWithDefault{
-		Store: baseContextStore,
+		Store: store.New(config.ContextStoreDir(), cli.contextStoreConfig),
 		Resolver: func() (*DefaultContext, error) {
-			return ResolveDefaultContext(opts.Common, cli.ConfigFile(), cli.contextStoreConfig, cli.Err())
+			return ResolveDefaultContext(cli.options, cli.contextStoreConfig)
 		},
 	}
-	cli.currentContext, err = resolveContextName(opts.Common, cli.configFile, cli.contextStore)
-	if err != nil {
-		return err
-	}
-	cli.dockerEndpoint, err = resolveDockerEndpoint(cli.contextStore, cli.currentContext)
-	if err != nil {
-		return errors.Wrap(err, "unable to resolve docker endpoint")
-	}
-
-	if cli.client == nil {
-		cli.client, err = newAPIClientFromEndpoint(cli.dockerEndpoint, cli.configFile)
-		if err != nil {
-			return err
-		}
-	}
-	cli.initializeFromClient()
 	return nil
 }
 
 // NewAPIClientFromFlags creates a new APIClient from command line flags
-func NewAPIClientFromFlags(opts *cliflags.CommonOptions, configFile *configfile.ConfigFile) (client.APIClient, error) {
+func NewAPIClientFromFlags(opts *cliflags.ClientOptions, configFile *configfile.ConfigFile) (client.APIClient, error) {
+	if opts.Context != "" && len(opts.Hosts) > 0 {
+		return nil, errors.New("conflicting options: either specify --host or --context, not both")
+	}
+
 	storeConfig := DefaultContextStoreConfig()
 	contextStore := &ContextStoreWithDefault{
 		Store: store.New(config.ContextStoreDir(), storeConfig),
 		Resolver: func() (*DefaultContext, error) {
-			return ResolveDefaultContext(opts, configFile, storeConfig, io.Discard)
+			return ResolveDefaultContext(opts, storeConfig)
 		},
 	}
-	contextName, err := resolveContextName(opts, configFile, contextStore)
-	if err != nil {
-		return nil, err
-	}
-	endpoint, err := resolveDockerEndpoint(contextStore, contextName)
+	endpoint, err := resolveDockerEndpoint(contextStore, resolveContextName(opts, configFile))
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to resolve docker endpoint")
 	}
@@ -273,6 +277,9 @@ func newAPIClientFromEndpoint(ep docker.Endpoint, configFile *configfile.ConfigF
 }
 
 func resolveDockerEndpoint(s store.Reader, contextName string) (docker.Endpoint, error) {
+	if s == nil {
+		return docker.Endpoint{}, fmt.Errorf("no context store initialized")
+	}
 	ctxMeta, err := s.GetMetadata(contextName)
 	if err != nil {
 		return docker.Endpoint{}, err
@@ -285,7 +292,7 @@ func resolveDockerEndpoint(s store.Reader, contextName string) (docker.Endpoint,
 }
 
 // Resolve the Docker endpoint for the default context (based on config, env vars and CLI flags)
-func resolveDefaultDockerEndpoint(opts *cliflags.CommonOptions) (docker.Endpoint, error) {
+func resolveDefaultDockerEndpoint(opts *cliflags.ClientOptions) (docker.Endpoint, error) {
 	host, err := getServerHost(opts.Hosts, opts.TLSOptions)
 	if err != nil {
 		return docker.Endpoint{}, err
@@ -313,13 +320,20 @@ func resolveDefaultDockerEndpoint(opts *cliflags.CommonOptions) (docker.Endpoint
 	}, nil
 }
 
+func (cli *DockerCli) getInitTimeout() time.Duration {
+	if cli.initTimeout != 0 {
+		return cli.initTimeout
+	}
+	return defaultInitTimeout
+}
+
 func (cli *DockerCli) initializeFromClient() {
 	ctx := context.Background()
-	if strings.HasPrefix(cli.DockerEndpoint().Host, "tcp://") {
+	if !strings.HasPrefix(cli.dockerEndpoint.Host, "ssh://") {
 		// @FIXME context.WithTimeout doesn't work with connhelper / ssh connections
 		// time="2020-04-10T10:16:26Z" level=warning msg="commandConn.CloseWrite: commandconn: failed to wait: signal: killed"
 		var cancel func()
-		ctx, cancel = context.WithTimeout(ctx, 2*time.Second)
+		ctx, cancel = context.WithTimeout(ctx, cli.getInitTimeout())
 		defer cancel()
 	}
 
@@ -353,14 +367,96 @@ func (cli *DockerCli) ContextStore() store.Store {
 	return cli.contextStore
 }
 
-// CurrentContext returns the current context name
+// CurrentContext returns the current context name, based on flags,
+// environment variables and the cli configuration file, in the following
+// order of preference:
+//
+//  1. The "--context" command-line option.
+//  2. The "DOCKER_CONTEXT" environment variable.
+//  3. The current context as configured through the in "currentContext"
+//     field in the CLI configuration file ("~/.docker/config.json").
+//  4. If no context is configured, use the "default" context.
+//
+// # Fallbacks for backward-compatibility
+//
+// To preserve backward-compatibility with the "pre-contexts" behavior,
+// the "default" context is used if:
+//
+//   - The "--host" option is set
+//   - The "DOCKER_HOST" ([DefaultContextName]) environment variable is set
+//     to a non-empty value.
+//
+// In these cases, the default context is used, which uses the host as
+// specified in "DOCKER_HOST", and TLS config from flags/env vars.
+//
+// Setting both the "--context" and "--host" flags is ambiguous and results
+// in an error when the cli is started.
+//
+// CurrentContext does not validate if the given context exists or if it's
+// valid; errors may occur when trying to use it.
 func (cli *DockerCli) CurrentContext() string {
 	return cli.currentContext
 }
 
+// CurrentContext returns the current context name, based on flags,
+// environment variables and the cli configuration file. It does not
+// validate if the given context exists or if it's valid; errors may
+// occur when trying to use it.
+//
+// Refer to [DockerCli.CurrentContext] above for further details.
+func resolveContextName(opts *cliflags.ClientOptions, config *configfile.ConfigFile) string {
+	if opts != nil && opts.Context != "" {
+		return opts.Context
+	}
+	if opts != nil && len(opts.Hosts) > 0 {
+		return DefaultContextName
+	}
+	if os.Getenv(client.EnvOverrideHost) != "" {
+		return DefaultContextName
+	}
+	if ctxName := os.Getenv("DOCKER_CONTEXT"); ctxName != "" {
+		return ctxName
+	}
+	if config != nil && config.CurrentContext != "" {
+		// We don't validate if this context exists: errors may occur when trying to use it.
+		return config.CurrentContext
+	}
+	return DefaultContextName
+}
+
 // DockerEndpoint returns the current docker endpoint
 func (cli *DockerCli) DockerEndpoint() docker.Endpoint {
+	if err := cli.initialize(); err != nil {
+		// Note that we're not terminating here, as this function may be used
+		// in cases where we're able to continue.
+		_, _ = fmt.Fprintf(cli.Err(), "%v\n", cli.initErr)
+	}
 	return cli.dockerEndpoint
+}
+
+func (cli *DockerCli) getDockerEndPoint() (ep docker.Endpoint, err error) {
+	cn := cli.CurrentContext()
+	if cn == DefaultContextName {
+		return resolveDefaultDockerEndpoint(cli.options)
+	}
+	return resolveDockerEndpoint(cli.contextStore, cn)
+}
+
+func (cli *DockerCli) initialize() error {
+	cli.init.Do(func() {
+		cli.dockerEndpoint, cli.initErr = cli.getDockerEndPoint()
+		if cli.initErr != nil {
+			cli.initErr = errors.Wrap(cli.initErr, "unable to resolve docker endpoint")
+			return
+		}
+		if cli.client == nil {
+			if cli.client, cli.initErr = newAPIClientFromEndpoint(cli.dockerEndpoint, cli.configFile); cli.initErr != nil {
+				return
+			}
+		}
+		cli.initializeFromClient()
+	})
+	return cli.initErr
 }
 
 // Apply all the operation on the cli
@@ -397,24 +493,13 @@ func NewDockerCli(ops ...DockerCliOption) (*DockerCli, error) {
 	defaultOps := []DockerCliOption{
 		WithContentTrustFromEnv(),
 		WithDefaultContextStoreConfig(),
+		WithStandardStreams(),
 	}
 	ops = append(defaultOps, ops...)
 
 	cli := &DockerCli{}
 	if err := cli.Apply(ops...); err != nil {
 		return nil, err
-	}
-	if cli.out == nil || cli.in == nil || cli.err == nil {
-		stdin, stdout, stderr := term.StdStreams()
-		if cli.in == nil {
-			cli.in = streams.NewIn(stdin)
-		}
-		if cli.out == nil {
-			cli.out = streams.NewOut(stdout)
-		}
-		if cli.err == nil {
-			cli.err = stderr
-		}
 	}
 	return cli, nil
 }
@@ -436,40 +521,6 @@ func getServerHost(hosts []string, tlsOptions *tlsconfig.Options) (string, error
 // UserAgent returns the user agent string used for making API requests
 func UserAgent() string {
 	return "Docker-Client/" + version.Version + " (" + runtime.GOOS + ")"
-}
-
-// resolveContextName resolves the current context name with the following rules:
-// - setting both --context and --host flags is ambiguous
-// - if --context is set, use this value
-// - if --host flag or DOCKER_HOST (client.EnvOverrideHost) is set, fallbacks to use the same logic as before context-store was added
-// for backward compatibility with existing scripts
-// - if DOCKER_CONTEXT is set, use this value
-// - if Config file has a globally set "CurrentContext", use this value
-// - fallbacks to default HOST, uses TLS config from flags/env vars
-func resolveContextName(opts *cliflags.CommonOptions, config *configfile.ConfigFile, contextstore store.Reader) (string, error) {
-	if opts.Context != "" && len(opts.Hosts) > 0 {
-		return "", errors.New("Conflicting options: either specify --host or --context, not both")
-	}
-	if opts.Context != "" {
-		return opts.Context, nil
-	}
-	if len(opts.Hosts) > 0 {
-		return DefaultContextName, nil
-	}
-	if _, present := os.LookupEnv(client.EnvOverrideHost); present {
-		return DefaultContextName, nil
-	}
-	if ctxName, ok := os.LookupEnv("DOCKER_CONTEXT"); ok {
-		return ctxName, nil
-	}
-	if config != nil && config.CurrentContext != "" {
-		_, err := contextstore.GetMetadata(config.CurrentContext)
-		if store.IsErrContextDoesNotExist(err) {
-			return "", errors.Errorf("Current context %q is not found on the file system, please check your config file at %s", config.CurrentContext, config.Filename)
-		}
-		return config.CurrentContext, err
-	}
-	return DefaultContextName, nil
 }
 
 var defaultStoreEndpoints = []store.NamedTypeGetter{
