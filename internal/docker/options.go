@@ -20,5 +20,5 @@ type BuildOptions struct {
 	Platform           string
 	ExtraTags          []string
 	ForceLegacyBuilder bool
-	SyncedDirs         []filesync.SyncedDir
+	DirSource          filesync.DirSource
 }

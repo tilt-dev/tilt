@@ -58,5 +58,8 @@ func GetDockerContext(storeMetadata store.Metadata) (DockerContext, error) {
 	if !ok {
 		return DockerContext{}, errors.New("context metadata is not a valid DockerContext")
 	}
+	if storeMetadata.Name == DefaultContextName {
+		res.Description = "Current DOCKER_HOST based configuration"
+	}
 	return res, nil
 }

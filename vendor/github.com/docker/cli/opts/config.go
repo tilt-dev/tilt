@@ -27,7 +27,7 @@ func (o *ConfigOpt) Set(value string) error {
 		File: &swarmtypes.ConfigReferenceFileTarget{
 			UID:  "0",
 			GID:  "0",
-			Mode: 0444,
+			Mode: 0o444,
 		},
 	}
 

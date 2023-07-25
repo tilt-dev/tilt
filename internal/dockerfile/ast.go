@@ -4,13 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"sort"
 	"strings"
 
 	"github.com/docker/cli/opts"
 	"github.com/docker/distribution/reference"
 	"github.com/moby/buildkit/frontend/dockerfile/command"
-	"github.com/moby/buildkit/frontend/dockerfile/dockerfile2llb"
 	"github.com/moby/buildkit/frontend/dockerfile/instructions"
 	"github.com/moby/buildkit/frontend/dockerfile/parser"
 	"github.com/moby/buildkit/frontend/dockerfile/shell"
@@ -20,7 +18,7 @@ import (
 )
 
 type AST struct {
-	directives map[string]dockerfile2llb.Directive
+	directives []*parser.Directive
 	result     *parser.Result
 }
 
@@ -30,8 +28,14 @@ func ParseAST(df Dockerfile) (AST, error) {
 		return AST{}, errors.Wrap(err, "dockerfile.ParseAST")
 	}
 
+	dParser := &parser.DirectiveParser{}
+	directives, err := dParser.ParseAll([]byte(df))
+	if err != nil {
+		return AST{}, errors.Wrap(err, "dockerfile.ParseAST")
+	}
+
 	return AST{
-		directives: dockerfile2llb.ParseDirectives(newReader(df)),
+		directives: directives,
 		result:     result,
 	}, nil
 }
@@ -167,10 +171,7 @@ func (a AST) Print() (Dockerfile, error) {
 	currentLine := 1
 
 	directiveFmt := "# %s = %s\n"
-	for _, k := range sortedKeys(a.directives) {
-		// order of directives in a docker makes no semantic difference; we
-		// rehydrate directives in sorted order so output is deterministic
-		v := a.directives[k]
+	for _, v := range a.directives {
 		_, err := fmt.Fprintf(buf, directiveFmt, v.Name, v.Value)
 		if err != nil {
 			return "", err
@@ -300,15 +301,6 @@ func fmtLabel(node *parser.Node) string {
 
 func newReader(df Dockerfile) io.Reader {
 	return bytes.NewBufferString(string(df))
-}
-
-func sortedKeys(m map[string]dockerfile2llb.Directive) []string {
-	var keys []string
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return keys
 }
 
 // Loosely adapted from the buildkit code for turning args into a map.

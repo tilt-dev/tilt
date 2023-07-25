@@ -86,7 +86,7 @@ func parseDockerDaemonHost(addr string) (string, error) {
 	case "ssh":
 		return addr, nil
 	default:
-		return "", fmt.Errorf("Invalid bind address format: %s", addr)
+		return "", fmt.Errorf("invalid bind address format: %s", addr)
 	}
 }
 
@@ -97,7 +97,7 @@ func parseDockerDaemonHost(addr string) (string, error) {
 func parseSimpleProtoAddr(proto, addr, defaultAddr string) (string, error) {
 	addr = strings.TrimPrefix(addr, proto+"://")
 	if strings.Contains(addr, "://") {
-		return "", fmt.Errorf("Invalid proto, expected %s: %s", proto, addr)
+		return "", fmt.Errorf("invalid proto, expected %s: %s", proto, addr)
 	}
 	if addr == "" {
 		addr = defaultAddr
@@ -116,7 +116,7 @@ func ParseTCPAddr(tryAddr string, defaultAddr string) (string, error) {
 	}
 	addr := strings.TrimPrefix(tryAddr, "tcp://")
 	if strings.Contains(addr, "://") || addr == "" {
-		return "", fmt.Errorf("Invalid proto, expected tcp: %s", tryAddr)
+		return "", fmt.Errorf("invalid proto, expected tcp: %s", tryAddr)
 	}
 
 	defaultAddr = strings.TrimPrefix(defaultAddr, "tcp://")
@@ -141,7 +141,7 @@ func ParseTCPAddr(tryAddr string, defaultAddr string) (string, error) {
 		host, port, err = net.SplitHostPort(net.JoinHostPort(u.Host, defaultPort))
 	}
 	if err != nil {
-		return "", fmt.Errorf("Invalid bind address format: %s", tryAddr)
+		return "", fmt.Errorf("invalid bind address format: %s", tryAddr)
 	}
 
 	if host == "" {
@@ -152,7 +152,7 @@ func ParseTCPAddr(tryAddr string, defaultAddr string) (string, error) {
 	}
 	p, err := strconv.Atoi(port)
 	if err != nil && p == 0 {
-		return "", fmt.Errorf("Invalid bind address format: %s", tryAddr)
+		return "", fmt.Errorf("invalid bind address format: %s", tryAddr)
 	}
 
 	return fmt.Sprintf("tcp://%s%s", net.JoinHostPort(host, port), u.Path), nil

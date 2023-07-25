@@ -11,7 +11,7 @@ import (
 
 	"github.com/docker/cli/cli/streams"
 	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/pkg/system"
+	"github.com/moby/sys/sequential"
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 )
@@ -20,7 +20,7 @@ import (
 func CopyToFile(outfile string, r io.Reader) error {
 	// We use sequential file access here to avoid depleting the standby list
 	// on Windows. On Linux, this is a call directly to os.CreateTemp
-	tmpFile, err := system.TempFileSequential(filepath.Dir(outfile), ".docker_temp_")
+	tmpFile, err := sequential.CreateTemp(filepath.Dir(outfile), ".docker_temp_")
 	if err != nil {
 		return err
 	}

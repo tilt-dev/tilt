@@ -68,15 +68,13 @@ func run() error {
 	if !filepath.IsAbs(contextDir) {
 		contextDir = filepath.Join(dir, contextDir)
 	}
-	session.Allow(filesync.NewFSSyncProvider([]filesync.SyncedDir{
-		{
-			Name: "context",
-			Dir:  contextDir,
-			Map:  fileMap,
+	session.Allow(filesync.NewFSSyncProvider(filesync.StaticDirSource{
+		"context": filesync.SyncedDir{
+			Dir: contextDir,
+			Map: fileMap,
 		},
-		{
-			Name: "dockerfile",
-			Dir:  dir,
+		"dockerfile": filesync.SyncedDir{
+			Dir: dir,
 		},
 	}))
 

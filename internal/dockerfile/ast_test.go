@@ -107,20 +107,17 @@ RUN echo bye
 }
 
 func TestMultipleDirectivesOrderDeterministic(t *testing.T) {
-	orig := `# z = zzz
-# y = yyy
-# x = xxx
-# b = bbb
-# a = aaa
+	orig := `# syntax = dockerfile:1
+# escape = \
+# unknown = foo
 
 FROM golang:10
 `
-	// directives should be sorted alphabetically by key-
-	expected := `# a = aaa
-# b = bbb
-# x = xxx
-# y = yyy
-# z = zzz
+	// known directives should be preserved
+	// unknown directives should be dropped
+	expected := `# syntax = dockerfile:1
+# escape = \
+
 
 FROM golang:10
 `

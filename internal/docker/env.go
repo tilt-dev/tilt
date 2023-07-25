@@ -3,7 +3,6 @@ package docker
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -11,11 +10,10 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/docker/cli/cli/command"
-	"github.com/docker/cli/cli/flags"
+	cliflags "github.com/docker/cli/cli/flags"
 	"github.com/docker/cli/opts"
 	"github.com/docker/docker/client"
 	"github.com/pkg/errors"
-	"github.com/spf13/pflag"
 
 	"github.com/tilt-dev/clusterid"
 
@@ -107,19 +105,16 @@ func (RealClientCreator) FromEnvMap(envMap map[string]string) (DaemonClient, err
 }
 
 func (RealClientCreator) FromCLI(ctx context.Context) (DaemonClient, error) {
+	out := logger.Get(ctx).Writer(logger.InfoLvl)
 	dockerCli, err := command.NewDockerCli(
-		command.WithOutputStream(io.Discard),
-		command.WithErrorStream(io.Discard))
+		command.WithOutputStream(out),
+		command.WithErrorStream(out))
 	if err != nil {
 		return nil, fmt.Errorf("creating docker client: %v", err)
 	}
 
-	newClientOpts := flags.NewClientOptions()
-	flagset := pflag.NewFlagSet("docker", pflag.ContinueOnError)
-	newClientOpts.Common.InstallFlags(flagset)
-	newClientOpts.Common.SetDefaultOptions(flagset)
-
-	err = dockerCli.Initialize(newClientOpts)
+	opts := cliflags.NewClientOptions()
+	err = dockerCli.Initialize(opts)
 	if err != nil {
 		return nil, fmt.Errorf("initializing docker client: %v", err)
 	}

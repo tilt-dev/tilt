@@ -24,7 +24,8 @@ func parseCount(s string) (int, error) {
 }
 
 // Set a new mount value
-// nolint: gocyclo
+//
+//nolint:gocyclo
 func (o *GpuOpts) Set(value string) error {
 	csvReader := csv.NewReader(strings.NewReader(value))
 	fields, err := csvReader.Read()

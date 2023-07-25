@@ -102,7 +102,7 @@ func GetNotaryRepository(in io.Reader, out io.Writer, userAgent string, repoInfo
 		return nil, err
 	}
 
-	var cfg = tlsconfig.ClientDefault()
+	cfg := tlsconfig.ClientDefault()
 	cfg.InsecureSkipVerify = !repoInfo.Index.Secure
 
 	// Get certificate base directory
@@ -136,7 +136,7 @@ func GetNotaryRepository(in io.Reader, out io.Writer, userAgent string, repoInfo
 		Timeout:   5 * time.Second,
 	}
 	endpointStr := server + "/v2/"
-	req, err := http.NewRequest("GET", endpointStr, nil)
+	req, err := http.NewRequest(http.MethodGet, endpointStr, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -287,7 +287,6 @@ func GetSignableRoles(repo client.Repository, target *client.Target) ([]data.Rol
 	}
 
 	return signableRoles, nil
-
 }
 
 // ImageRefAndAuth contains all reference information and the auth config for an image request
@@ -384,5 +383,4 @@ func (imgRefAuth *ImageRefAndAuth) Digest() digest.Digest {
 // Name returns the image name used to initialize the ImageRefAndAuth
 func (imgRefAuth *ImageRefAndAuth) Name() string {
 	return imgRefAuth.original
-
 }
