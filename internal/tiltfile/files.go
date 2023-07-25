@@ -196,6 +196,7 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 	var valueFiles value.StringOrStringList
 	var set value.StringOrStringList
 	var kubeVersion string
+	var skip_crds bool
 
 	err := s.unpackArgs(fn.Name(), args, kwargs,
 		"paths", &path,
@@ -204,6 +205,7 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		"values?", &valueFiles,
 		"set?", &set,
 		"kube_version?", &kubeVersion,
+		"skip_crds?", &skip_crds,
 	)
 	if err != nil {
 		return nil, err
@@ -251,9 +253,7 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		name = "chart"
 	}
 
-	if version == helmV3_1andAbove {
-		cmd = []string{"helm", "template", name, localPath, "--include-crds"}
-	} else if version == helmV3_0 {
+	if version == helmV3_0 || version == helmV3_1andAbove {
 		cmd = []string{"helm", "template", name, localPath}
 	} else {
 		cmd = []string{"helm", "template", localPath, "--name", name}
@@ -265,6 +265,10 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 
 	if kubeVersion != "" {
 		cmd = append(cmd, "--kube-version", kubeVersion)
+	}
+
+	if !skip_crds && version == helmV3_1andAbove {
+		cmd = append(cmd, "--include-crds")
 	}
 
 	for _, valueFile := range valueFiles.Values {
