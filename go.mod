@@ -9,9 +9,9 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/compose-spec/compose-go v1.6.0
 	github.com/davecgh/go-spew v1.1.1
-	github.com/docker/cli v23.0.0-rc.1+incompatible
+	github.com/docker/cli v24.0.5+incompatible
 	github.com/docker/distribution v2.8.2+incompatible
-	github.com/docker/docker v23.0.0-rc.1+incompatible
+	github.com/docker/docker v24.0.5+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-units v0.5.0
 	github.com/fatih/color v1.13.0

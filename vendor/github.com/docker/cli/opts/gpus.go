@@ -38,14 +38,13 @@ func (o *GpuOpts) Set(value string) error {
 	seen := map[string]struct{}{}
 	// Set writable as the default
 	for _, field := range fields {
-		parts := strings.SplitN(field, "=", 2)
-		key := parts[0]
+		key, val, withValue := strings.Cut(field, "=")
 		if _, ok := seen[key]; ok {
 			return fmt.Errorf("gpu request key '%s' can be specified only once", key)
 		}
 		seen[key] = struct{}{}
 
-		if len(parts) == 1 {
+		if !withValue {
 			seen["count"] = struct{}{}
 			req.Count, err = parseCount(key)
 			if err != nil {
@@ -54,21 +53,20 @@ func (o *GpuOpts) Set(value string) error {
 			continue
 		}
 
-		value := parts[1]
 		switch key {
 		case "driver":
-			req.Driver = value
+			req.Driver = val
 		case "count":
-			req.Count, err = parseCount(value)
+			req.Count, err = parseCount(val)
 			if err != nil {
 				return err
 			}
 		case "device":
-			req.DeviceIDs = strings.Split(value, ",")
+			req.DeviceIDs = strings.Split(val, ",")
 		case "capabilities":
-			req.Capabilities = [][]string{append(strings.Split(value, ","), "gpu")}
+			req.Capabilities = [][]string{append(strings.Split(val, ","), "gpu")}
 		case "options":
-			r := csv.NewReader(strings.NewReader(value))
+			r := csv.NewReader(strings.NewReader(val))
 			optFields, err := r.Read()
 			if err != nil {
 				return errors.Wrap(err, "failed to read gpu options")

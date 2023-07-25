@@ -21,15 +21,15 @@ const (
 // This function only handles rudimentary formatting; no validation is performed,
 // as the list of available capabilities can be updated over time, thus should be
 // handled by the daemon.
-func NormalizeCapability(cap string) string {
-	cap = strings.ToUpper(strings.TrimSpace(cap))
-	if cap == AllCapabilities || cap == ResetCapabilities {
-		return cap
+func NormalizeCapability(capability string) string {
+	capability = strings.ToUpper(strings.TrimSpace(capability))
+	if capability == AllCapabilities || capability == ResetCapabilities {
+		return capability
 	}
-	if !strings.HasPrefix(cap, "CAP_") {
-		cap = "CAP_" + cap
+	if !strings.HasPrefix(capability, "CAP_") {
+		capability = "CAP_" + capability
 	}
-	return cap
+	return capability
 }
 
 // CapabilitiesMap normalizes the given capabilities and converts them to a map.

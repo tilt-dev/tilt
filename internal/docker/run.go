@@ -42,7 +42,7 @@ type RunResult struct {
 	ContainerID string
 
 	logsErrCh    <-chan error
-	statusRespCh <-chan mobycontainer.ContainerWaitOKBody
+	statusRespCh <-chan mobycontainer.WaitResponse
 	statusErrCh  <-chan error
 	tearDown     func(containerID string) error
 }

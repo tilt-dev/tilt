@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -48,9 +47,7 @@ type Streams interface {
 // Cli represents the docker command line client.
 type Cli interface {
 	Client() client.APIClient
-	Out() *streams.Out
-	Err() io.Writer
-	In() *streams.In
+	Streams
 	SetIn(in *streams.In)
 	Apply(ops ...DockerCliOption) error
 	ConfigFile() *configfile.ConfigFile
@@ -164,8 +161,8 @@ func (cli *DockerCli) ContentTrustEnabled() bool {
 
 // BuildKitEnabled returns buildkit is enabled or not.
 func (cli *DockerCli) BuildKitEnabled() (bool, error) {
-	// use DOCKER_BUILDKIT env var value if set
-	if v, ok := os.LookupEnv("DOCKER_BUILDKIT"); ok {
+	// use DOCKER_BUILDKIT env var value if set and not empty
+	if v := os.Getenv("DOCKER_BUILDKIT"); v != "" {
 		enabled, err := strconv.ParseBool(v)
 		if err != nil {
 			return false, errors.Wrap(err, "DOCKER_BUILDKIT environment variable expects boolean value")
@@ -191,7 +188,7 @@ func (cli *DockerCli) ManifestStore() manifeststore.Store {
 // RegistryClient returns a client for communicating with a Docker distribution
 // registry
 func (cli *DockerCli) RegistryClient(allowInsecure bool) registryclient.RegistryClient {
-	resolver := func(ctx context.Context, index *registry.IndexInfo) types.AuthConfig {
+	resolver := func(ctx context.Context, index *registry.IndexInfo) registry.AuthConfig {
 		return ResolveAuthConfig(ctx, cli, index)
 	}
 	return registryclient.NewRegistryClient(resolver, UserAgent(), allowInsecure)
@@ -329,13 +326,8 @@ func (cli *DockerCli) getInitTimeout() time.Duration {
 
 func (cli *DockerCli) initializeFromClient() {
 	ctx := context.Background()
-	if !strings.HasPrefix(cli.dockerEndpoint.Host, "ssh://") {
-		// @FIXME context.WithTimeout doesn't work with connhelper / ssh connections
-		// time="2020-04-10T10:16:26Z" level=warning msg="commandConn.CloseWrite: commandconn: failed to wait: signal: killed"
-		var cancel func()
-		ctx, cancel = context.WithTimeout(ctx, cli.getInitTimeout())
-		defer cancel()
-	}
+	ctx, cancel := context.WithTimeout(ctx, cli.getInitTimeout())
+	defer cancel()
 
 	ping, err := cli.client.Ping(ctx)
 	if err != nil {
@@ -383,7 +375,7 @@ func (cli *DockerCli) ContextStore() store.Store {
 // the "default" context is used if:
 //
 //   - The "--host" option is set
-//   - The "DOCKER_HOST" ([DefaultContextName]) environment variable is set
+//   - The "DOCKER_HOST" ([client.EnvOverrideHost]) environment variable is set
 //     to a non-empty value.
 //
 // In these cases, the default context is used, which uses the host as
