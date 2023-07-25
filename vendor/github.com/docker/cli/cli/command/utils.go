@@ -96,26 +96,26 @@ func PruneFilters(dockerCli Cli, pruneFilters filters.Args) filters.Args {
 		return pruneFilters
 	}
 	for _, f := range dockerCli.ConfigFile().PruneFilters {
-		parts := strings.SplitN(f, "=", 2)
-		if len(parts) != 2 {
+		k, v, ok := strings.Cut(f, "=")
+		if !ok {
 			continue
 		}
-		if parts[0] == "label" {
+		if k == "label" {
 			// CLI label filter supersede config.json.
 			// If CLI label filter conflict with config.json,
 			// skip adding label! filter in config.json.
-			if pruneFilters.Contains("label!") && pruneFilters.ExactMatch("label!", parts[1]) {
+			if pruneFilters.Contains("label!") && pruneFilters.ExactMatch("label!", v) {
 				continue
 			}
-		} else if parts[0] == "label!" {
+		} else if k == "label!" {
 			// CLI label! filter supersede config.json.
 			// If CLI label! filter conflict with config.json,
 			// skip adding label filter in config.json.
-			if pruneFilters.Contains("label") && pruneFilters.ExactMatch("label", parts[1]) {
+			if pruneFilters.Contains("label") && pruneFilters.ExactMatch("label", v) {
 				continue
 			}
 		}
-		pruneFilters.Add(parts[0], parts[1])
+		pruneFilters.Add(k, v)
 	}
 
 	return pruneFilters

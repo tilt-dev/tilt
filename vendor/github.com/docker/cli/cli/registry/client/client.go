@@ -10,7 +10,6 @@ import (
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/reference"
 	distributionclient "github.com/docker/distribution/registry/client"
-	"github.com/docker/docker/api/types"
 	registrytypes "github.com/docker/docker/api/types/registry"
 	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
@@ -36,7 +35,7 @@ func NewRegistryClient(resolver AuthConfigResolver, userAgent string, insecure b
 }
 
 // AuthConfigResolver returns Auth Configuration for an index
-type AuthConfigResolver func(ctx context.Context, index *registrytypes.IndexInfo) types.AuthConfig
+type AuthConfigResolver func(ctx context.Context, index *registrytypes.IndexInfo) registrytypes.AuthConfig
 
 // PutManifestOptions is the data sent to push a manifest
 type PutManifestOptions struct {

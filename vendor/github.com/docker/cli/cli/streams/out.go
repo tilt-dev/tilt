@@ -8,8 +8,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// Out is an output stream used by the DockerCli to write normal program
-// output.
+// Out is an output stream to write normal program output. It implements
+// an [io.Writer], with additional utilities for detecting whether a terminal
+// is connected, getting the TTY size, and putting the terminal in raw mode.
 type Out struct {
 	commonStream
 	out io.Writer
@@ -19,23 +20,29 @@ func (o *Out) Write(p []byte) (int, error) {
 	return o.out.Write(p)
 }
 
-// SetRawTerminal sets raw mode on the input terminal
+// SetRawTerminal puts the output of the terminal connected to the stream
+// into raw mode.
+//
+// On UNIX, this does nothing. On Windows, it disables LF -> CRLF/ translation.
+// It is a no-op if Out is not a TTY, or if the "NORAW" environment variable is
+// set to a non-empty value.
 func (o *Out) SetRawTerminal() (err error) {
-	if os.Getenv("NORAW") != "" || !o.commonStream.isTerminal {
+	if !o.isTerminal || os.Getenv("NORAW") != "" {
 		return nil
 	}
-	o.commonStream.state, err = term.SetRawTerminalOutput(o.commonStream.fd)
+	o.state, err = term.SetRawTerminalOutput(o.fd)
 	return err
 }
 
-// GetTtySize returns the height and width in characters of the tty
-func (o *Out) GetTtySize() (uint, uint) {
+// GetTtySize returns the height and width in characters of the TTY, or
+// zero for both if no TTY is connected.
+func (o *Out) GetTtySize() (height uint, width uint) {
 	if !o.isTerminal {
 		return 0, 0
 	}
 	ws, err := term.GetWinsize(o.fd)
 	if err != nil {
-		logrus.Debugf("Error getting size: %s", err)
+		logrus.WithError(err).Debug("Error getting TTY size")
 		if ws == nil {
 			return 0, 0
 		}
@@ -43,8 +50,9 @@ func (o *Out) GetTtySize() (uint, uint) {
 	return uint(ws.Height), uint(ws.Width)
 }
 
-// NewOut returns a new Out object from a Writer
+// NewOut returns a new [Out] from an [io.Writer].
 func NewOut(out io.Writer) *Out {
-	fd, isTerminal := term.GetFdInfo(out)
-	return &Out{commonStream: commonStream{fd: fd, isTerminal: isTerminal}, out: out}
+	o := &Out{out: out}
+	o.fd, o.isTerminal = term.GetFdInfo(out)
+	return o
 }

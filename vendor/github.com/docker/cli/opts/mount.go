@@ -56,21 +56,21 @@ func (m *MountOpt) Set(value string) error {
 	}
 
 	setValueOnMap := func(target map[string]string, value string) {
-		parts := strings.SplitN(value, "=", 2)
-		if len(parts) == 1 {
-			target[value] = ""
-		} else {
-			target[parts[0]] = parts[1]
+		k, v, _ := strings.Cut(value, "=")
+		if k != "" {
+			target[k] = v
 		}
 	}
 
 	mount.Type = mounttypes.TypeVolume // default to volume mounts
 	// Set writable as the default
 	for _, field := range fields {
-		parts := strings.SplitN(field, "=", 2)
-		key := strings.ToLower(parts[0])
+		key, val, ok := strings.Cut(field, "=")
 
-		if len(parts) == 1 {
+		// TODO(thaJeztah): these options should not be case-insensitive.
+		key = strings.ToLower(key)
+
+		if !ok {
 			switch key {
 			case "readonly", "ro":
 				mount.ReadOnly = true
@@ -81,64 +81,61 @@ func (m *MountOpt) Set(value string) error {
 			case "bind-nonrecursive":
 				bindOptions().NonRecursive = true
 				continue
+			default:
+				return fmt.Errorf("invalid field '%s' must be a key=value pair", field)
 			}
 		}
 
-		if len(parts) != 2 {
-			return fmt.Errorf("invalid field '%s' must be a key=value pair", field)
-		}
-
-		value := parts[1]
 		switch key {
 		case "type":
-			mount.Type = mounttypes.Type(strings.ToLower(value))
+			mount.Type = mounttypes.Type(strings.ToLower(val))
 		case "source", "src":
-			mount.Source = value
-			if strings.HasPrefix(value, "."+string(filepath.Separator)) || value == "." {
-				if abs, err := filepath.Abs(value); err == nil {
+			mount.Source = val
+			if strings.HasPrefix(val, "."+string(filepath.Separator)) || val == "." {
+				if abs, err := filepath.Abs(val); err == nil {
 					mount.Source = abs
 				}
 			}
 		case "target", "dst", "destination":
-			mount.Target = value
+			mount.Target = val
 		case "readonly", "ro":
-			mount.ReadOnly, err = strconv.ParseBool(value)
+			mount.ReadOnly, err = strconv.ParseBool(val)
 			if err != nil {
-				return fmt.Errorf("invalid value for %s: %s", key, value)
+				return fmt.Errorf("invalid value for %s: %s", key, val)
 			}
 		case "consistency":
-			mount.Consistency = mounttypes.Consistency(strings.ToLower(value))
+			mount.Consistency = mounttypes.Consistency(strings.ToLower(val))
 		case "bind-propagation":
-			bindOptions().Propagation = mounttypes.Propagation(strings.ToLower(value))
+			bindOptions().Propagation = mounttypes.Propagation(strings.ToLower(val))
 		case "bind-nonrecursive":
-			bindOptions().NonRecursive, err = strconv.ParseBool(value)
+			bindOptions().NonRecursive, err = strconv.ParseBool(val)
 			if err != nil {
-				return fmt.Errorf("invalid value for %s: %s", key, value)
+				return fmt.Errorf("invalid value for %s: %s", key, val)
 			}
 		case "volume-nocopy":
-			volumeOptions().NoCopy, err = strconv.ParseBool(value)
+			volumeOptions().NoCopy, err = strconv.ParseBool(val)
 			if err != nil {
-				return fmt.Errorf("invalid value for volume-nocopy: %s", value)
+				return fmt.Errorf("invalid value for volume-nocopy: %s", val)
 			}
 		case "volume-label":
-			setValueOnMap(volumeOptions().Labels, value)
+			setValueOnMap(volumeOptions().Labels, val)
 		case "volume-driver":
-			volumeOptions().DriverConfig.Name = value
+			volumeOptions().DriverConfig.Name = val
 		case "volume-opt":
 			if volumeOptions().DriverConfig.Options == nil {
 				volumeOptions().DriverConfig.Options = make(map[string]string)
 			}
-			setValueOnMap(volumeOptions().DriverConfig.Options, value)
+			setValueOnMap(volumeOptions().DriverConfig.Options, val)
 		case "tmpfs-size":
-			sizeBytes, err := units.RAMInBytes(value)
+			sizeBytes, err := units.RAMInBytes(val)
 			if err != nil {
-				return fmt.Errorf("invalid value for %s: %s", key, value)
+				return fmt.Errorf("invalid value for %s: %s", key, val)
 			}
 			tmpfsOptions().SizeBytes = sizeBytes
 		case "tmpfs-mode":
-			ui64, err := strconv.ParseUint(value, 8, 32)
+			ui64, err := strconv.ParseUint(val, 8, 32)
 			if err != nil {
-				return fmt.Errorf("invalid value for %s: %s", key, value)
+				return fmt.Errorf("invalid value for %s: %s", key, val)
 			}
 			tmpfsOptions().Mode = os.FileMode(ui64)
 		default:

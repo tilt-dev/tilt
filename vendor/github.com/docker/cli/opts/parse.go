@@ -41,12 +41,8 @@ func readKVStrings(files []string, override []string, emptyFn func(string) (stri
 func ConvertKVStringsToMap(values []string) map[string]string {
 	result := make(map[string]string, len(values))
 	for _, value := range values {
-		kv := strings.SplitN(value, "=", 2)
-		if len(kv) == 1 {
-			result[kv[0]] = ""
-		} else {
-			result[kv[0]] = kv[1]
-		}
+		k, v, _ := strings.Cut(value, "=")
+		result[k] = v
 	}
 
 	return result
@@ -62,11 +58,11 @@ func ConvertKVStringsToMap(values []string) map[string]string {
 func ConvertKVStringsToMapWithNil(values []string) map[string]*string {
 	result := make(map[string]*string, len(values))
 	for _, value := range values {
-		kv := strings.SplitN(value, "=", 2)
-		if len(kv) == 1 {
-			result[kv[0]] = nil
+		k, v, ok := strings.Cut(value, "=")
+		if !ok {
+			result[k] = nil
 		} else {
-			result[kv[0]] = &kv[1]
+			result[k] = &v
 		}
 	}
 
@@ -81,21 +77,15 @@ func ParseRestartPolicy(policy string) (container.RestartPolicy, error) {
 		return p, nil
 	}
 
-	parts := strings.Split(policy, ":")
-
-	if len(parts) > 2 {
-		return p, fmt.Errorf("invalid restart policy format")
-	}
-	if len(parts) == 2 {
-		count, err := strconv.Atoi(parts[1])
+	k, v, _ := strings.Cut(policy, ":")
+	if v != "" {
+		count, err := strconv.Atoi(v)
 		if err != nil {
-			return p, fmt.Errorf("maximum retry count must be an integer")
+			return p, fmt.Errorf("invalid restart policy format: maximum retry count must be an integer")
 		}
-
 		p.MaximumRetryCount = count
 	}
 
-	p.Name = parts[0]
-
+	p.Name = k
 	return p, nil
 }

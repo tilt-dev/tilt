@@ -42,36 +42,33 @@ func (p *PortOpt) Set(value string) error {
 
 		pConfig := swarm.PortConfig{}
 		for _, field := range fields {
-			parts := strings.SplitN(field, "=", 2)
-			if len(parts) != 2 {
+			// TODO(thaJeztah): these options should not be case-insensitive.
+			key, val, ok := strings.Cut(strings.ToLower(field), "=")
+			if !ok || key == "" {
 				return fmt.Errorf("invalid field %s", field)
 			}
-
-			key := strings.ToLower(parts[0])
-			value := strings.ToLower(parts[1])
-
 			switch key {
 			case portOptProtocol:
-				if value != string(swarm.PortConfigProtocolTCP) && value != string(swarm.PortConfigProtocolUDP) && value != string(swarm.PortConfigProtocolSCTP) {
-					return fmt.Errorf("invalid protocol value %s", value)
+				if val != string(swarm.PortConfigProtocolTCP) && val != string(swarm.PortConfigProtocolUDP) && val != string(swarm.PortConfigProtocolSCTP) {
+					return fmt.Errorf("invalid protocol value %s", val)
 				}
 
-				pConfig.Protocol = swarm.PortConfigProtocol(value)
+				pConfig.Protocol = swarm.PortConfigProtocol(val)
 			case portOptMode:
-				if value != string(swarm.PortConfigPublishModeIngress) && value != string(swarm.PortConfigPublishModeHost) {
-					return fmt.Errorf("invalid publish mode value %s", value)
+				if val != string(swarm.PortConfigPublishModeIngress) && val != string(swarm.PortConfigPublishModeHost) {
+					return fmt.Errorf("invalid publish mode value %s", val)
 				}
 
-				pConfig.PublishMode = swarm.PortConfigPublishMode(value)
+				pConfig.PublishMode = swarm.PortConfigPublishMode(val)
 			case portOptTargetPort:
-				tPort, err := strconv.ParseUint(value, 10, 16)
+				tPort, err := strconv.ParseUint(val, 10, 16)
 				if err != nil {
 					return err
 				}
 
 				pConfig.TargetPort = uint32(tPort)
 			case portOptPublishedPort:
-				pPort, err := strconv.ParseUint(value, 10, 16)
+				pPort, err := strconv.ParseUint(val, 10, 16)
 				if err != nil {
 					return err
 				}

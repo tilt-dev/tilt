@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/docker/docker/errdefs"
+	"github.com/docker/docker/pkg/ioutils"
 	"github.com/pkg/errors"
 )
 
@@ -31,7 +32,7 @@ func (s *tlsStore) createOrUpdate(name, endpointName, filename string, data []by
 	if err := os.MkdirAll(endpointDir, 0o700); err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(endpointDir, filename), data, 0o600)
+	return ioutils.AtomicWriteFile(filepath.Join(endpointDir, filename), data, 0o600)
 }
 
 func (s *tlsStore) getData(name, endpointName, filename string) ([]byte, error) {

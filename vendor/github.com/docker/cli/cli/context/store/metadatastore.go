@@ -2,12 +2,14 @@ package store
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
 	"sort"
 
 	"github.com/docker/docker/errdefs"
+	"github.com/docker/docker/pkg/ioutils"
 	"github.com/fvbommel/sortorder"
 	"github.com/pkg/errors"
 )
@@ -35,7 +37,7 @@ func (s *metadataStore) createOrUpdate(meta Metadata) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(contextDir, metaFile), bytes, 0o644)
+	return ioutils.AtomicWriteFile(filepath.Join(contextDir, metaFile), bytes, 0o644)
 }
 
 func parseTypedOrMap(payload []byte, getter TypeGetter) (interface{}, error) {
@@ -65,7 +67,8 @@ func (s *metadataStore) get(name string) (Metadata, error) {
 }
 
 func (s *metadataStore) getByID(id contextdir) (Metadata, error) {
-	bytes, err := os.ReadFile(filepath.Join(s.contextDir(id), metaFile))
+	fileName := filepath.Join(s.contextDir(id), metaFile)
+	bytes, err := os.ReadFile(fileName)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return Metadata{}, errdefs.NotFound(errors.Wrap(err, "context not found"))
@@ -77,15 +80,15 @@ func (s *metadataStore) getByID(id contextdir) (Metadata, error) {
 		Endpoints: make(map[string]interface{}),
 	}
 	if err := json.Unmarshal(bytes, &untyped); err != nil {
-		return Metadata{}, err
+		return Metadata{}, fmt.Errorf("parsing %s: %v", fileName, err)
 	}
 	r.Name = untyped.Name
 	if r.Metadata, err = parseTypedOrMap(untyped.Metadata, s.config.contextType); err != nil {
-		return Metadata{}, err
+		return Metadata{}, fmt.Errorf("parsing %s: %v", fileName, err)
 	}
 	for k, v := range untyped.Endpoints {
 		if r.Endpoints[k], err = parseTypedOrMap(v, s.config.endpointTypes[k]); err != nil {
-			return Metadata{}, err
+			return Metadata{}, fmt.Errorf("parsing %s: %v", fileName, err)
 		}
 	}
 	return r, err

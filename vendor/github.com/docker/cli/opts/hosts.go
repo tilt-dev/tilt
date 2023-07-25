@@ -33,6 +33,8 @@ const (
 )
 
 // ValidateHost validates that the specified string is a valid host and returns it.
+//
+// TODO(thaJeztah): ValidateHost appears to be unused; deprecate it.
 func ValidateHost(val string) (string, error) {
 	host := strings.TrimSpace(val)
 	// The empty string means default and is not handled by parseDockerDaemonHost
@@ -69,18 +71,19 @@ func ParseHost(defaultToTLS bool, val string) (string, error) {
 // parseDockerDaemonHost parses the specified address and returns an address that will be used as the host.
 // Depending of the address specified, this may return one of the global Default* strings defined in hosts.go.
 func parseDockerDaemonHost(addr string) (string, error) {
-	addrParts := strings.SplitN(addr, "://", 2)
-	if len(addrParts) == 1 && addrParts[0] != "" {
-		addrParts = []string{"tcp", addrParts[0]}
+	proto, host, hasProto := strings.Cut(addr, "://")
+	if !hasProto && proto != "" {
+		host = proto
+		proto = "tcp"
 	}
 
-	switch addrParts[0] {
+	switch proto {
 	case "tcp":
-		return ParseTCPAddr(addrParts[1], defaultTCPHost)
+		return ParseTCPAddr(host, defaultTCPHost)
 	case "unix":
-		return parseSimpleProtoAddr("unix", addrParts[1], defaultUnixSocket)
+		return parseSimpleProtoAddr(proto, host, defaultUnixSocket)
 	case "npipe":
-		return parseSimpleProtoAddr("npipe", addrParts[1], defaultNamedPipe)
+		return parseSimpleProtoAddr(proto, host, defaultNamedPipe)
 	case "fd":
 		return addr, nil
 	case "ssh":
@@ -160,16 +163,18 @@ func ParseTCPAddr(tryAddr string, defaultAddr string) (string, error) {
 
 // ValidateExtraHost validates that the specified string is a valid extrahost and returns it.
 // ExtraHost is in the form of name:ip where the ip has to be a valid ip (IPv4 or IPv6).
+//
+// TODO(thaJeztah): remove client-side validation, and delegate to the API server.
 func ValidateExtraHost(val string) (string, error) {
 	// allow for IPv6 addresses in extra hosts by only splitting on first ":"
-	arr := strings.SplitN(val, ":", 2)
-	if len(arr) != 2 || len(arr[0]) == 0 {
+	k, v, ok := strings.Cut(val, ":")
+	if !ok || k == "" {
 		return "", fmt.Errorf("bad format for add-host: %q", val)
 	}
 	// Skip IPaddr validation for "host-gateway" string
-	if arr[1] != hostGatewayName {
-		if _, err := ValidateIPAddress(arr[1]); err != nil {
-			return "", fmt.Errorf("invalid IP address in add-host: %q", arr[1])
+	if v != hostGatewayName {
+		if _, err := ValidateIPAddress(v); err != nil {
+			return "", fmt.Errorf("invalid IP address in add-host: %q", v)
 		}
 	}
 	return val, nil

@@ -48,34 +48,33 @@ func (n *NetworkOpt) Set(value string) error {
 
 		netOpt.Aliases = []string{}
 		for _, field := range fields {
-			parts := strings.SplitN(field, "=", 2)
-
-			if len(parts) < 2 {
+			// TODO(thaJeztah): these options should not be case-insensitive.
+			key, val, ok := strings.Cut(strings.ToLower(field), "=")
+			if !ok || key == "" {
 				return fmt.Errorf("invalid field %s", field)
 			}
 
-			key := strings.TrimSpace(strings.ToLower(parts[0]))
-			value := strings.TrimSpace(strings.ToLower(parts[1]))
+			key = strings.TrimSpace(key)
+			val = strings.TrimSpace(val)
 
 			switch key {
 			case networkOptName:
-				netOpt.Target = value
+				netOpt.Target = val
 			case networkOptAlias:
-				netOpt.Aliases = append(netOpt.Aliases, value)
+				netOpt.Aliases = append(netOpt.Aliases, val)
 			case networkOptIPv4Address:
-				netOpt.IPv4Address = value
+				netOpt.IPv4Address = val
 			case networkOptIPv6Address:
-				netOpt.IPv6Address = value
+				netOpt.IPv6Address = val
 			case driverOpt:
-				key, value, err = parseDriverOpt(value)
-				if err == nil {
-					if netOpt.DriverOpts == nil {
-						netOpt.DriverOpts = make(map[string]string)
-					}
-					netOpt.DriverOpts[key] = value
-				} else {
+				key, val, err = parseDriverOpt(val)
+				if err != nil {
 					return err
 				}
+				if netOpt.DriverOpts == nil {
+					netOpt.DriverOpts = make(map[string]string)
+				}
+				netOpt.DriverOpts[key] = val
 			default:
 				return fmt.Errorf("invalid field key %s", key)
 			}
@@ -116,11 +115,13 @@ func (n *NetworkOpt) NetworkMode() string {
 }
 
 func parseDriverOpt(driverOpt string) (string, string, error) {
-	parts := strings.SplitN(driverOpt, "=", 2)
-	if len(parts) != 2 {
+	// TODO(thaJeztah): these options should not be case-insensitive.
+	// TODO(thaJeztah): should value be converted to lowercase as well, or only the key?
+	key, value, ok := strings.Cut(strings.ToLower(driverOpt), "=")
+	if !ok || key == "" {
 		return "", "", fmt.Errorf("invalid key value pair format in driver options")
 	}
-	key := strings.TrimSpace(strings.ToLower(parts[0]))
-	value := strings.TrimSpace(strings.ToLower(parts[1]))
+	key = strings.TrimSpace(key)
+	value = strings.TrimSpace(value)
 	return key, value, nil
 }

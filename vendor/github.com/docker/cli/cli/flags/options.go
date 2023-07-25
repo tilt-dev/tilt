@@ -67,7 +67,7 @@ func (o *ClientOptions) InstallFlags(flags *pflag.FlagSet) {
 	}
 
 	flags.BoolVarP(&o.Debug, "debug", "D", false, "Enable debug mode")
-	flags.StringVarP(&o.LogLevel, "log-level", "l", "info", `Set the logging level ("debug"|"info"|"warn"|"error"|"fatal")`)
+	flags.StringVarP(&o.LogLevel, "log-level", "l", "info", `Set the logging level ("debug", "info", "warn", "error", "fatal")`)
 	flags.BoolVar(&o.TLS, "tls", dockerTLS, "Use TLS; implied by --tlsverify")
 	flags.BoolVar(&o.TLSVerify, FlagTLSVerify, dockerTLSVerify, "Use TLS and verify the remote")
 
@@ -83,7 +83,7 @@ func (o *ClientOptions) InstallFlags(flags *pflag.FlagSet) {
 
 	// opts.ValidateHost is not used here, so as to allow connection helpers
 	hostOpt := opts.NewNamedListOptsRef("hosts", &o.Hosts, nil)
-	flags.VarP(hostOpt, "host", "H", "Daemon socket(s) to connect to")
+	flags.VarP(hostOpt, "host", "H", "Daemon socket to connect to")
 	flags.StringVarP(&o.Context, "context", "c", "",
 		`Name of the context to use to connect to the daemon (overrides `+client.EnvOverrideHost+` env var and default context set with "docker context use")`)
 }
