@@ -721,7 +721,7 @@ def kustomize(pathToDir: str, kustomize_bin: str = None, flags: List[str] = []) 
   """
   pass
 
-def helm(pathToChartDir: str, name: str = "", namespace: str = "", values: Union[str, List[str]]=[], set: Union[str, List[str]]=[], kube_version: str = "") -> Blob:
+def helm(pathToChartDir: str, name: str = "", namespace: str = "", values: Union[str, List[str]]=[], set: Union[str, List[str]]=[], kube_version: str = "", skip_crds: bool = False) -> Blob:
   """Run `helm template <https://docs.helm.sh/helm/#helm-template>`_ on a given directory that contains a chart and return the fully rendered YAML as a Blob
   Chart directory is watched (See ``watch_file``).
 
@@ -734,6 +734,7 @@ def helm(pathToChartDir: str, name: str = "", namespace: str = "", values: Union
     values: Specify one or more values files (in addition to the `values.yaml` file in the chart). Equivalent to the Helm ``--values`` or ``-f`` flags (`see docs <https://helm.sh/docs/chart_template_guide/#values-files>`_).
     set: Specify one or more values. Equivalent to the Helm ``--set`` flag.
     kube_version: Specify for which kubernetes version template will be generated. Equivalent to the Helm ``--kube-version`` flag.
+    skip_crds: If set, no CRDs will be installed. By default, CRDs are installed.
 """
   pass
 
