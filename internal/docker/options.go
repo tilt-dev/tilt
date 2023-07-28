@@ -21,4 +21,5 @@ type BuildOptions struct {
 	ExtraTags          []string
 	ForceLegacyBuilder bool
 	DirSource          filesync.DirSource
+	ExtraHosts         []string
 }

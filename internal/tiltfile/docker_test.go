@@ -204,3 +204,53 @@ custom_build('gcr.io/fe', 'export MY_REF="gcr.io/fe:dev" && docker build -t $MY_
 
 	f.loadErrString("Cannot specify both tag= and outputs_image_ref_to=")
 }
+
+func TestExtraHosts(t *testing.T) {
+	type tc struct {
+		name     string
+		argValue []string
+		expected []string
+	}
+	tcs := []tc{
+		{name: "No Extra Hosts"},
+		{
+			name:     "One Extra Host Only",
+			argValue: []string{"testing.example.com:10.0.0.1"},
+			expected: []string{"testing.example.com:10.0.0.1"},
+		},
+		{
+			name:     "Two Extra Hosts",
+			argValue: []string{"testing.example.com:10.0.0.1", "app.testing.example.com:10.0.0.3"},
+			expected: []string{"testing.example.com:10.0.0.1", "app.testing.example.com:10.0.0.3"},
+		},
+	}
+
+	for _, tt := range tcs {
+		t.Run(
+			tt.name, func(t *testing.T) {
+				f := newFixture(t)
+
+				f.yaml("fe.yaml", deployment("fe", image("gcr.io/fe")))
+				f.file("Dockerfile", `FROM alpine`)
+
+				tf := "k8s_yaml('fe.yaml')\ndocker_build('gcr.io/fe', '.'"
+				if len(tt.argValue) == 1 {
+					tf += fmt.Sprintf(", extra_hosts='%s'", tt.argValue[0])
+				} else if len(tt.argValue) > 1 {
+					tf += ", extra_hosts='"
+					for _, argValue := range tt.argValue {
+						tf += argValue
+					}
+					tf += "'"
+				}
+				tf += ")"
+
+				f.file("Tiltfile", tf)
+
+				f.load()
+				m := f.assertNextManifest("fe")
+				require.Equal(t, tt.expected, m.ImageTargetAt(0).DockerBuildInfo().ExtraHosts)
+			},
+		)
+	}
+}

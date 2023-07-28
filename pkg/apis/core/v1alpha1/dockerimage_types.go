@@ -174,6 +174,13 @@ type DockerImageSpec struct {
 	//
 	// +optional
 	ClusterNeeds ClusterImageNeeds `json:"clusterNeeds,omitempty" protobuf:"bytes,15,opt,name=clusterNeeds,casttype=ClusterImageNeeds"`
+
+	// Other hosts to be added into a container’s /etc/hosts file
+	//
+	// https://docs.docker.com/engine/reference/commandline/build/#add-host
+	//
+	// Equivalent to `--add-host` in the Docker CLI.
+	ExtraHosts []string `json:"extraHosts,omitempty" protobuf:"bytes,16,opt,name=extraHosts"`
 }
 
 var _ resource.Object = &DockerImage{}

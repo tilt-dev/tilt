@@ -24,6 +24,7 @@ func Options(archive io.Reader, spec v1alpha1.DockerImageSpec) docker.BuildOptio
 		CacheFrom:   spec.CacheFrom,
 		PullParent:  spec.Pull,
 		Platform:    spec.Platform,
+		ExtraHosts:  spec.ExtraHosts,
 	}
 }
 

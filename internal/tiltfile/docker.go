@@ -79,6 +79,8 @@ type dockerImage struct {
 
 	dockerComposeService          string
 	dockerComposeLocalVolumePaths []string
+
+	extraHosts []string
 }
 
 func (d *dockerImage) ID() model.TargetID {
@@ -114,7 +116,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		entrypoint starlark.Value
 	var buildArgs value.StringStringMap
 	var network, platform value.Stringable
-	var ssh, secret, extraTags, cacheFrom value.StringOrStringList
+	var ssh, secret, extraTags, cacheFrom, extraHosts value.StringOrStringList
 	var matchInEnvVars, pullParent bool
 	var overrideArgsVal starlark.Sequence
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
@@ -138,6 +140,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		"cache_from?", &cacheFrom,
 		"pull?", &pullParent,
 		"platform?", &platform,
+		"extra_hosts?", &extraHosts,
 	); err != nil {
 		return nil, err
 	}
@@ -256,6 +259,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		pullParent:       pullParent,
 		platform:         platform.Value,
 		tiltfilePath:     starkit.CurrentExecPath(thread),
+		extraHosts:       extraHosts.Values,
 	}
 	err = s.buildIndex.addImage(r)
 	if err != nil {
