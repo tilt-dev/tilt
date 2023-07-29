@@ -180,7 +180,7 @@ type DockerImageSpec struct {
 	// https://docs.docker.com/engine/reference/commandline/build/#add-host
 	//
 	// Equivalent to `--add-host` in the Docker CLI.
-	ExtraHosts []string `json:"extraHosts,omitempty" protobuf:"bytes,16,opt,name=extraHosts"`
+	ExtraHosts []string `json:"extraHosts,omitempty" protobuf:"bytes,17,opt,name=extraHosts"`
 }
 
 var _ resource.Object = &DockerImage{}

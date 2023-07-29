@@ -934,6 +934,13 @@ message DockerImageSpec {
   //
   // +optional
   optional string clusterNeeds = 15;
+
+  // Other hosts to be added into a container’s /etc/hosts file
+  //
+  // https://docs.docker.com/engine/reference/commandline/build/#add-host
+  //
+  // Equivalent to `--add-host` in the Docker CLI.
+  repeated string extraHosts = 17;
 }
 
 // DockerImageStageStatus gives detailed report of each stage
@@ -2983,7 +2990,7 @@ message UIBoolInputStatus {
   optional bool value = 1;
 }
 
-// UIBuildRunning respresents an in-progress build/update in the user interface.
+// UIBuildRunning represents an in-progress build/update in the user interface.
 message UIBuildRunning {
   // The time when the build started.
   // +optional
@@ -2994,7 +3001,7 @@ message UIBuildRunning {
   optional string spanID = 2;
 }
 
-// UIBuildRunning respresents a finished build/update in the user interface.
+// UIBuildRunning represents a finished build/update in the user interface.
 message UIBuildTerminated {
   // A non-empty string if the build failed with an error.
   // +optional
@@ -3450,7 +3457,7 @@ message UIResourceTargetSpec {
   // +optional
   optional string type = 2;
 
-  // Whether the target has a live update assocated with it.
+  // Whether the target has a live update associated with it.
   // +optional
   optional bool hasLiveUpdate = 3;
 }

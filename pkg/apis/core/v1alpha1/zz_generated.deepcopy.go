@@ -1209,6 +1209,11 @@ func (in *DockerImageSpec) DeepCopyInto(out *DockerImageSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.ExtraHosts != nil {
+		in, out := &in.ExtraHosts, &out.ExtraHosts
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 
