@@ -3,6 +3,7 @@ package tiltfile
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -212,13 +213,18 @@ func TestExtraHosts(t *testing.T) {
 		expected []string
 	}
 	tcs := []tc{
-		{name: "No Extra Hosts"},
 		{
+			//docker_build('gcr.io/fe', '.')
+			name: "No Extra Hosts",
+		},
+		{
+			// docker_build('gcr.io/fe', '.', extra_hosts='testing.example.com:10.0.0.1')
 			name:     "One Extra Host Only",
 			argValue: []string{"testing.example.com:10.0.0.1"},
 			expected: []string{"testing.example.com:10.0.0.1"},
 		},
 		{
+			// docker_build('gcr.io/fe', '.', extra_hosts=["testing.example.com:10.0.0.1","app.testing.example.com:10.0.0.3"])
 			name:     "Two Extra Hosts",
 			argValue: []string{"testing.example.com:10.0.0.1", "app.testing.example.com:10.0.0.3"},
 			expected: []string{"testing.example.com:10.0.0.1", "app.testing.example.com:10.0.0.3"},
@@ -237,13 +243,10 @@ func TestExtraHosts(t *testing.T) {
 				if len(tt.argValue) == 1 {
 					tf += fmt.Sprintf(", extra_hosts='%s'", tt.argValue[0])
 				} else if len(tt.argValue) > 1 {
-					tf += ", extra_hosts='"
-					for _, argValue := range tt.argValue {
-						tf += argValue
-					}
-					tf += "'"
+					tf += `, extra_hosts=["` + strings.Join(tt.argValue, `","`) + `"]`
 				}
 				tf += ")"
+				fmt.Println(tf)
 
 				f.file("Tiltfile", tf)
 
