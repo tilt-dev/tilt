@@ -543,6 +543,7 @@ func (c *Cli) ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io
 	opts.CacheFrom = options.CacheFrom
 	opts.PullParent = options.PullParent
 	opts.Platform = options.Platform
+	opts.ExtraHosts = append([]string{}, options.ExtraHosts...)
 
 	if options.DirSource != nil {
 		opts.RemoteContext = clientSessionRemote

@@ -2478,6 +2478,21 @@ func schema_pkg_apis_core_v1alpha1_DockerImageSpec(ref common.ReferenceCallback)
 							Format:      "",
 						},
 					},
+					"extraHosts": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Other hosts to be added into a container’s /etc/hosts file\n\nhttps://docs.docker.com/engine/reference/commandline/build/#add-host\n\nEquivalent to `--add-host` in the Docker CLI.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
 				},
 				Required: []string{"ref"},
 			},
