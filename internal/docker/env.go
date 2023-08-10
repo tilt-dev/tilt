@@ -14,6 +14,7 @@ import (
 	"github.com/docker/cli/opts"
 	"github.com/docker/docker/client"
 	"github.com/pkg/errors"
+	"github.com/spf13/pflag"
 
 	"github.com/tilt-dev/clusterid"
 
@@ -105,24 +106,44 @@ func (RealClientCreator) FromEnvMap(envMap map[string]string) (DaemonClient, err
 }
 
 func (RealClientCreator) FromCLI(ctx context.Context) (DaemonClient, error) {
+	cli, err := newDockerCli(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	client, ok := cli.Client().(*client.Client)
+	if !ok {
+		return nil, fmt.Errorf("unexpected docker client: %T", cli.Client())
+	}
+	return client, nil
+}
+
+// Creating a DockerCli is really the only way to get a DOCKER_CONTEXT-aware
+// docker client.
+func newDockerCli(ctx context.Context) (*command.DockerCli, error) {
 	out := logger.Get(ctx).Writer(logger.InfoLvl)
 	dockerCli, err := command.NewDockerCli(
-		command.WithOutputStream(out),
-		command.WithErrorStream(out))
+		command.WithCombinedStreams(out))
 	if err != nil {
 		return nil, fmt.Errorf("creating docker client: %v", err)
 	}
 
 	opts := cliflags.NewClientOptions()
+	flagSet := pflag.NewFlagSet("docker", pflag.ContinueOnError)
+	opts.InstallFlags(flagSet)
+	opts.SetDefaultOptions(flagSet)
 	err = dockerCli.Initialize(opts)
 	if err != nil {
 		return nil, fmt.Errorf("initializing docker client: %v", err)
 	}
-	client, ok := dockerCli.Client().(*client.Client)
-	if !ok {
-		return nil, fmt.Errorf("unexpected docker client: %T", dockerCli.Client())
+
+	// A hack to see if initialization failed.
+	// https://github.com/docker/cli/issues/4489
+	endpoint := dockerCli.DockerEndpoint()
+	if endpoint.Host == "" {
+		return nil, fmt.Errorf("initializing docker client: no valid endpoint")
 	}
-	return client, nil
+	return dockerCli, nil
 }
 
 // Tell wire to create two docker envs: one for the local CLI and one for the in-cluster CLI.

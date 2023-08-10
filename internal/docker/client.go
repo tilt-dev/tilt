@@ -14,7 +14,6 @@ import (
 	"github.com/blang/semver"
 	"github.com/docker/cli/cli/command"
 	"github.com/docker/cli/cli/config"
-	cliflags "github.com/docker/cli/cli/flags"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	mobycontainer "github.com/docker/docker/api/types/container"
@@ -389,18 +388,9 @@ func (c *Cli) ServerVersion() types.Version {
 type encodedAuth string
 
 func (c *Cli) authInfo(ctx context.Context, repoInfo *registry.RepositoryInfo, cmdName string) (encodedAuth, types.RequestPrivilegeFunc, error) {
-	infoWriter := logger.Get(ctx).Writer(logger.InfoLvl)
-	cli, err := command.NewDockerCli(
-		command.WithCombinedStreams(infoWriter),
-		command.WithContentTrust(true),
-	)
+	cli, err := newDockerCli(ctx)
 	if err != nil {
-		return "", nil, errors.Wrap(err, "authInfo#NewDockerCli")
-	}
-
-	err = cli.Initialize(cliflags.NewClientOptions())
-	if err != nil {
-		return "", nil, errors.Wrap(err, "authInfo#InitializeCLI")
+		return "", nil, errors.Wrap(err, "authInfo")
 	}
 	authConfig := command.ResolveAuthConfig(ctx, cli, repoInfo.Index)
 	requestPrivilege := command.RegistryAuthenticationPrivilegedFunc(cli, repoInfo.Index, cmdName)
