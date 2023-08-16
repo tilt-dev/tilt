@@ -486,6 +486,27 @@ func TestMissingPod(t *testing.T) {
 	f.AssertLogStartTime(start)
 }
 
+func TestFailedToCreateLogWatcher(t *testing.T) {
+	f := newPLMFixture(t)
+
+	f.kClient.SetLogsForPodContainer(podID, cName,
+		"listening on 8080\nfailed to create fsnotify watcher: too many open files")
+
+	start := f.clock.Now()
+
+	pb := newPodBuilder(podID).addRunningContainer(cName, cID)
+	f.kClient.UpsertPod(pb.toPod())
+
+	pls := plsFromPod("server", pb, start)
+	f.Create(pls)
+
+	f.triggerPodEvent(podID)
+	f.AssertOutputContains(`listening on 8080
+failed to create fsnotify watcher: too many open files
+Error streaming pod-id logs: failed to create fsnotify watcher: too many open files. Consider adjusting inotify limits: https://kind.sigs.k8s.io/docs/user/known-issues/#pod-errors-due-to-too-many-open-files
+`)
+}
+
 type plmStore struct {
 	t testing.TB
 	*store.TestingStore

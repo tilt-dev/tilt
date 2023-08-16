@@ -2,6 +2,7 @@ package podlogstream
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -406,12 +407,23 @@ func (c *Controller) consumeLogs(watch *podLogWatch, st store.RStore) {
 		c.mu.Unlock()
 		c.podSource.requeueStream(watch.streamName)
 
-		_, err = io.Copy(logger.Get(ctx).Writer(logger.InfoLvl), reader)
+		writer := &errorCapturingWriter{underlying: logger.Get(ctx).Writer(logger.InfoLvl)}
+		_, err = io.Copy(writer, reader)
 		_ = readCloser.Close()
 		close(done)
 
 		wasCanceledUpstream := ctx.Err() != nil
 		cancel()
+
+		newlineTerminated := writer.newlineTerminated
+		errorTerminated := writer.errorTerminated
+		if !newlineTerminated {
+			_, _ = writer.Write(newline)
+		}
+
+		if err == nil && errorTerminated != "" {
+			err = errors.New(errorTerminated)
+		}
 
 		if !retry && err != nil && !wasCanceledUpstream {
 			exitError = err
