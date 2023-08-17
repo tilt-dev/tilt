@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 
@@ -277,7 +276,7 @@ func ProvideClusterEnv(
 	// currently, we handle this by inspecting the Docker + K8s configs to see
 	// if they're matched up, but with the exception of microk8s (handled above),
 	// we don't override the environmental Docker config
-	if runtime == container.RuntimeDocker && willBuildToKubeContext(product, kubeContext, env) {
+	if runtime == container.RuntimeDocker && willBuildToKubeContext(ctx, product, kubeContext, env) {
 		env.BuildToKubeContexts = append(env.BuildToKubeContexts, string(kubeContext))
 	}
 
@@ -340,7 +339,7 @@ func isDefaultHost(e Env) bool {
 
 }
 
-func willBuildToKubeContext(product clusterid.Product, kubeContext k8s.KubeContext, env Env) bool {
+func willBuildToKubeContext(ctx context.Context, product clusterid.Product, kubeContext k8s.KubeContext, env Env) bool {
 	switch product {
 	case clusterid.ProductDockerDesktop:
 		return isDefaultHost(env)
@@ -349,26 +348,58 @@ func willBuildToKubeContext(product clusterid.Product, kubeContext k8s.KubeConte
 		// (the same as Docker Desktop)
 		return isDefaultHost(env)
 	case clusterid.ProductColima:
-		if _, host, ok := strings.Cut(env.DaemonHost(), "unix://"); ok {
-			// Socket is stored in a directory named `.colima[-$profile]`
-			// For example:
-			// 	colima default profile -> ~/.colima/docker.sock
-			// 	colima "test" profile -> ~/.colima-test/docker.sock
-			//
-			// NOTE: ~ is used for legibility here; in practice, the paths MUST
-			// be fully qualified!
-			//
-			// We look for the existence of the `/` in the path after the dir
-			// to prevent mismatching Colima profiles: e.g. a KubeContext of
-			// `colima-test` and `DOCKER_HOST=unix://~/.colima/docker.sock`
-			// should NOT be considered as building to the context, as these
-			// are two distinct Colima VMs/profiles. (This would almost always
-			// be indicative of user error, but we respect the Docker + K8s
-			// configs as provided to Tilt as-is. Providing a warning upon
-			// detecting a likely misconfiguration here is probably a good idea
-			// in the future, however!)
-			return strings.Contains(host, string(kubeContext)+string(filepath.Separator))
+		// Socket is stored in a directory named `.colima[-$profile]`
+		// For example:
+		//    colima default profile < 0.4 -> ~/.colima/docker.sock -> kubecontext colima
+		//    colima "test" profile < 0.4 -> ~/.colima-test/docker.sock -> kubecontext colima-test
+		//    colima default profile >= 0.4 -> ~/.colima/default/docker.sock -> kubecontext colima
+		//    colima "test" profile >= 0.4 -> ~/.colima/test/docker.sock -> kubecontext colima-test
+		//
+		// NOTE: ~ is used for legibility here; in practice, the paths MUST
+		// be fully qualified!
+		//
+		// We look for the existence of the `/` in the path after the dir
+		// to prevent mismatching Colima profiles: e.g. a KubeContext of
+		// `colima-test` and `DOCKER_HOST=unix://~/.colima/docker.sock`
+		// should NOT be considered as building to the context, as these
+		// are two distinct Colima VMs/profiles. (This would almost always
+		// be indicative of user error, but we respect the Docker + K8s
+		// configs as provided to Tilt as-is. Providing a warning upon
+		// detecting a likely misconfiguration here is probably a good idea
+		// in the future, however!)
+		dockerColimaProfile := ""
+		parts := strings.Split(env.DaemonHost(), "/.colima")
+		if len(parts) >= 2 {
+			lastPart := parts[len(parts)-1]
+			if strings.HasPrefix(lastPart, "-") {
+				dockerColimaProfile = strings.Split(strings.TrimPrefix(lastPart, "-"), "/")[0]
+			} else {
+				moreParts := strings.Split(lastPart, "/")
+				if len(moreParts) < 3 {
+					dockerColimaProfile = "default"
+				} else {
+					dockerColimaProfile = moreParts[1]
+				}
+			}
 		}
+
+		if dockerColimaProfile == "" {
+			logger.Get(ctx).Warnf("connected to Kubernetes running on Colima, but building on a non-Colima Docker socket")
+			return false
+		}
+
+		kubeColimaProfile := ""
+		if string(kubeContext) == "colima" {
+			kubeColimaProfile = "default"
+		} else {
+			kubeColimaProfile = strings.TrimPrefix(string(kubeContext), "colima-")
+		}
+		if dockerColimaProfile != kubeColimaProfile {
+			logger.Get(ctx).Warnf("connected to Kubernetes on Colima profile %s, but building on Docker on Colima profile %s",
+				kubeColimaProfile, dockerColimaProfile)
+			return false
+		}
+		return true
 	}
 	return false
 }
