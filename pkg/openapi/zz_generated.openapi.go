@@ -680,6 +680,21 @@ func schema_pkg_apis_core_v1alpha1_CmdImageSpec(ref common.ReferenceCallback) co
 							Format:      "",
 						},
 					},
+					"env": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Additional environment variables for the build process.\n\nExpressed as a C-style array of strings of the form [\"KEY1=VALUE1\", \"KEY2=VALUE2\", ...].\n\nEnvironment variables are layered on top of the environment variables that Tilt runs with.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
 					"imageMaps": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Names of image maps that this build depends on.\n\nThe controller will watch all the image maps, and rebuild the image if any of the maps resolve to a new image.",
