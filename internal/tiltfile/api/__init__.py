@@ -934,7 +934,8 @@ def custom_build(
     command_bat_val: str = "",
     outputs_image_ref_to: str = "",
     command_bat: Union[str, List[str]] = "",
-    image_deps: List[str] = []):
+    image_deps: List[str] = [],
+    env: Dict[str, str] = {}):
   """Provide a custom command that will build an image.
 
   Example ::
@@ -982,7 +983,7 @@ def custom_build(
       `TILT_IMAGE_i` - The reference to the image #i (0-based) from the point of view of the local host.
 
       `TILT_IMAGE_MAP_i` - The name of the image map #i (0-based) with the current status of the image.
-
+    env: Environment variables to pass to the executed ``command``. Values specified here will override any variables passed to the Tilt parent process.
   """
   pass
 
