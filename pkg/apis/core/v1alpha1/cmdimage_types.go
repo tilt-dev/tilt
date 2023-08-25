@@ -69,6 +69,16 @@ type CmdImageSpec struct {
 	// +tilt:local-path=true
 	Dir string `json:"dir,omitempty" protobuf:"bytes,2,opt,name=dir"`
 
+	// Additional environment variables for the build process.
+	//
+	// Expressed as a C-style array of strings of the form ["KEY1=VALUE1", "KEY2=VALUE2", ...].
+	//
+	// Environment variables are layered on top of the environment variables
+	// that Tilt runs with.
+	//
+	// +optional
+	Env []string `json:"env,omitempty" protobuf:"bytes,10,rep,name=env"`
+
 	// Names of image maps that this build depends on.
 	//
 	// The controller will watch all the image maps, and rebuild the image

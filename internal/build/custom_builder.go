@@ -106,6 +106,7 @@ func (b *CustomBuilder) Build(ctx context.Context, refs container.RefSet,
 			l.Infof("  %s", v)
 		}
 	}
+	cmd.Spec.Env = append(cmd.Spec.Env, spec.Env...)
 	cmd.Spec.Env = append(cmd.Spec.Env, extraEnvVars...)
 	cmd, err = imagemap.InjectIntoLocalEnv(cmd, spec.ImageMaps, imageMaps)
 	if err != nil {

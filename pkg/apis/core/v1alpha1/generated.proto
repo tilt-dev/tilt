@@ -177,6 +177,16 @@ message CmdImageSpec {
   // +tilt:local-path=true
   optional string dir = 2;
 
+  // Additional environment variables for the build process.
+  //
+  // Expressed as a C-style array of strings of the form ["KEY1=VALUE1", "KEY2=VALUE2", ...].
+  //
+  // Environment variables are layered on top of the environment variables
+  // that Tilt runs with.
+  //
+  // +optional
+  repeated string env = 10;
+
   // Names of image maps that this build depends on.
   //
   // The controller will watch all the image maps, and rebuild the image

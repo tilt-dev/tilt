@@ -287,6 +287,11 @@ func (in *CmdImageSpec) DeepCopyInto(out *CmdImageSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.Env != nil {
+		in, out := &in.Env, &out.Env
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.ImageMaps != nil {
 		in, out := &in.ImageMaps, &out.ImageMaps
 		*out = make([]string, len(*in))

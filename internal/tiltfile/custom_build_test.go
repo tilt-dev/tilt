@@ -51,3 +51,24 @@ k8s_yaml('fe.yaml')
 
 	f.loadErrString(`image "fe": image dep "base" not found`)
 }
+
+func TestCustomBuildImageWithEnv(t *testing.T) {
+	f := newFixture(t)
+
+	f.file("Tiltfile", `
+custom_build('custom', 'build.sh', ['.'], env={'SETTING': 'value'})
+
+k8s_yaml('fe.yaml')
+`)
+	f.file("Dockerfile", `FROM alpine`)
+	f.yaml("fe.yaml", deployment("fe", image("custom")))
+
+	f.load()
+
+	m := f.assertNextManifest("fe")
+	if assert.Equal(t, 1, len(m.ImageTargets)) {
+		cb := m.ImageTargets[0].CustomBuildInfo()
+		expected := []string{"SETTING=value"}
+		assert.Equal(t, expected, cb.CmdImageSpec.Env)
+	}
+}

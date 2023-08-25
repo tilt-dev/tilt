@@ -247,7 +247,7 @@ func TestCustomBuildImageDep(t *testing.T) {
 	assert.Equal(f.t, "base:tilt-12345", strings.TrimSpace(f.ReadFile("image-0.txt")))
 }
 
-func TestEnvVars(t *testing.T) {
+func TestCustomBuildEnvVars(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("no sh on windows")
 	}
@@ -258,6 +258,7 @@ func TestEnvVars(t *testing.T) {
 		"EXPECTED_IMAGE":    "foo_bar",
 		"EXPECTED_TAG":      "tilt-build-1551202573",
 		"REGISTRY_HOST":     "localhost:1234",
+		"EXTRA":             "value",
 	}
 	var script []string
 	for k, v := range expectedVars {
@@ -270,11 +271,12 @@ func TestEnvVars(t *testing.T) {
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
 	f.dCli.Images["localhost:1234/foo_bar:tilt-build-1551202573"] = types.ImageInspect{ID: string(sha)}
 	cb := f.customBuild(strings.Join(script, "\n"))
+	cb.Env = []string{"EXTRA=value"}
 	_, err := f.Build(refSetWithRegistryFromString("foo/bar", TwoURLRegistry), cb, nil)
 	require.NoError(t, err)
 }
 
-func TestEnvVars_ConfigRefWithLocalRegistry(t *testing.T) {
+func TestCustomBuildEnvVars_ConfigRefWithLocalRegistry(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("no sh on windows")
 	}

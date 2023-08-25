@@ -298,6 +298,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 	var overrideArgsVal starlark.Sequence
 	var skipsLocalDocker bool
 	var imageDeps value.ImageList
+	var env value.StringStringMap
 	outputsImageRefTo := value.NewLocalPathUnpacker(thread)
 
 	err := s.unpackArgs(fn.Name(), args, kwargs,
@@ -320,6 +321,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		"command_bat", &commandBat,
 
 		"image_deps", &imageDeps,
+		"env?", &env,
 	)
 	if err != nil {
 		return nil, err
@@ -358,7 +360,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		commandBat = commandBatVal
 	}
 
-	command, err := value.ValueGroupToCmdHelper(thread, commandVal, commandBat, nil, nil)
+	command, err := value.ValueGroupToCmdHelper(thread, commandVal, commandBat, nil, env)
 	if err != nil {
 		return nil, fmt.Errorf("Argument 2 (command): %v", err)
 	} else if command.Empty() {
