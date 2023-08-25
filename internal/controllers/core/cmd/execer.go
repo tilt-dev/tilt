@@ -225,7 +225,7 @@ func (e *processExecer) processRun(ctx context.Context, cmd model.Cmd, w io.Writ
 			status = Error
 			exitCode = ee.ExitCode()
 			reason = err.Error()
-			logger.Get(ctx).Errorf("%s exited with exit code %d", cmd.String(), ee.ExitCode())
+			logger.Get(ctx).Debugf("%s exited with exit code %d", cmd.String(), ee.ExitCode())
 		} else {
 			status = Error
 			exitCode = 1
