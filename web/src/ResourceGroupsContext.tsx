@@ -12,11 +12,11 @@ type ResourceGroupsContext = {
   groups: GroupsState
   getGroup: (groupLabel: string) => GroupState
   toggleGroupExpanded: (groupLabel: string, page: AnalyticsType) => void
-  expandAll: () => void
+  expandAll: (groups: string[]) => void
   collapseAll: (groups: string[]) => void
 }
 
-export const DEFAULT_EXPANDED_STATE = true
+export const DEFAULT_EXPANDED_STATE = false
 export const DEFAULT_GROUP_STATE: GroupState = {
   expanded: DEFAULT_EXPANDED_STATE,
 }
@@ -30,7 +30,7 @@ const resourceGroupsContext = createContext<ResourceGroupsContext>({
     console.warn("Resource group context is not set.")
     return { ...DEFAULT_GROUP_STATE }
   },
-  expandAll: () => void 0,
+  expandAll: (groups: string[]) => void 0,
   collapseAll: (groups: string[]) => void 0,
 })
 
@@ -72,25 +72,28 @@ export function ResourceGroupsContextProvider(
       return groups[groupLabel] ?? { ...DEFAULT_GROUP_STATE }
     }
 
-    // We expand all groups by resetting the collapse state to empty.
+    function setAllExpanded(groupNames: string[], newValue: boolean) {
+      if (newValue == DEFAULT_EXPANDED_STATE) {
+        setGroups({}) // Reset state.
+      } else {
+        let newState: GroupsState = {}
+        groupNames.forEach(
+          (group) => (newState[group] = { expanded: newValue })
+        )
+        setGroups(newState)
+      }
+    }
+
+    // We expand all groups currently on-screen.
     //
-    // This ensures that even hidden groups are expanded.
-    //
-    // NOTE(nick): expandAll and collapseAll are non-symmetric - they have
-    // very different behavior for groups that are currently hidden, or
-    // for new groups created after the button is clicked. We deliberately
-    // err on the side of expanding.
-    function expandAll() {
-      setGroups({}) // Reset state.
+    // If new resources with new names come later, we'll collapse them.
+    function expandAll(groupNames: string[]) {
+      setAllExpanded(groupNames, true)
     }
 
     // We can collapse all groups currently on-screen.
-    //
-    // If new resources with new names come later, we'll leave them expanded.
     function collapseAll(groupNames: string[]) {
-      let newState: GroupsState = {}
-      groupNames.forEach((group) => (newState[group] = { expanded: false }))
-      setGroups(newState)
+      setAllExpanded(groupNames, false)
     }
 
     return {

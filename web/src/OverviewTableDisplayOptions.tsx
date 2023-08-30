@@ -109,6 +109,7 @@ export function OverviewTableDisplayOptions(props: {
         label="Show disabled resources"
       />
       <ExpandButton
+        groups={groups}
         disabled={!displayResourceGroups}
         analyticsType={AnalyticsType.Grid}
       />

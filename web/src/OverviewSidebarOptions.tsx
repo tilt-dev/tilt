@@ -162,6 +162,7 @@ export function OverviewSidebarOptions(props: { items?: SidebarItem[] }) {
         />
         <div>
           <ExpandButton
+            groups={groups}
             disabled={!displayResourceGroups}
             analyticsType={AnalyticsType.Detail}
           />
