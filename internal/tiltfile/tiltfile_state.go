@@ -1464,7 +1464,7 @@ func (s *tiltfileState) imgTargetsForDepsHelper(mn model.ManifestName, imageMapD
 
 			spec := v1alpha1.CmdImageSpec{
 				Args:              image.customCommand.Argv,
-				Dir:               image.workDir,
+				Dir:               image.customCommand.Dir,
 				Env:               image.customCommand.Env,
 				OutputTag:         image.customTag,
 				OutputsImageRefTo: image.outputsImageRefTo,

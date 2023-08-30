@@ -70,5 +70,26 @@ k8s_yaml('fe.yaml')
 		cb := m.ImageTargets[0].CustomBuildInfo()
 		expected := []string{"SETTING=value"}
 		assert.Equal(t, expected, cb.CmdImageSpec.Env)
+		assert.Equal(t, f.Path(), cb.CmdImageSpec.Dir)
+	}
+}
+
+func TestCustomBuildImageWithDir(t *testing.T) {
+	f := newFixture(t)
+
+	f.file("Tiltfile", `
+custom_build('custom', 'build.sh', ['.'], dir='./subdir')
+
+k8s_yaml('fe.yaml')
+`)
+	f.file("Dockerfile", `FROM alpine`)
+	f.yaml("fe.yaml", deployment("fe", image("custom")))
+
+	f.load()
+
+	m := f.assertNextManifest("fe")
+	if assert.Equal(t, 1, len(m.ImageTargets)) {
+		cb := m.ImageTargets[0].CustomBuildInfo()
+		assert.Equal(t, f.JoinPath("subdir"), cb.CmdImageSpec.Dir)
 	}
 }

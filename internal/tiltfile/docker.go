@@ -31,7 +31,6 @@ var cacheObsoleteWarning = "docker_build(cache=...) is obsolete, and currently a
 
 type dockerImage struct {
 	buildType        dockerImageBuildType
-	workDir          string
 	configurationRef container.RefSelector
 	matchInEnvVars   bool
 	sshSpecs         []string
@@ -238,7 +237,6 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 
 	r := &dockerImage{
 		buildType:        DockerBuild,
-		workDir:          starkit.CurrentExecPath(thread),
 		dbDockerfilePath: dockerfilePath,
 		dbDockerfile:     dockerfile.Dockerfile(dockerfileContents),
 		dbBuildPath:      context,
@@ -299,6 +297,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 	var skipsLocalDocker bool
 	var imageDeps value.ImageList
 	var env value.StringStringMap
+	var dir starlark.Value
 	outputsImageRefTo := value.NewLocalPathUnpacker(thread)
 
 	err := s.unpackArgs(fn.Name(), args, kwargs,
@@ -322,6 +321,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 
 		"image_deps", &imageDeps,
 		"env?", &env,
+		"dir?", &dir,
 	)
 	if err != nil {
 		return nil, err
@@ -360,7 +360,7 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 		commandBat = commandBatVal
 	}
 
-	command, err := value.ValueGroupToCmdHelper(thread, commandVal, commandBat, nil, env)
+	command, err := value.ValueGroupToCmdHelper(thread, commandVal, commandBat, dir, env)
 	if err != nil {
 		return nil, fmt.Errorf("Argument 2 (command): %v", err)
 	} else if command.Empty() {
@@ -373,7 +373,6 @@ func (s *tiltfileState) customBuild(thread *starlark.Thread, fn *starlark.Builti
 
 	img := &dockerImage{
 		buildType:         CustomBuild,
-		workDir:           starkit.AbsWorkingDir(thread),
 		configurationRef:  container.NewRefSelector(ref),
 		customCommand:     command,
 		customDeps:        deps.Value,
@@ -476,7 +475,6 @@ func (s *tiltfileState) repoIgnoresForImage(image *dockerImage) []v1alpha1.Ignor
 	if image.dbBuildPath != "" {
 		paths = append(paths, image.dbBuildPath)
 	}
-	paths = append(paths, image.workDir)
 	paths = append(paths, image.customDeps...)
 
 	return repoIgnoresForPaths(paths)
