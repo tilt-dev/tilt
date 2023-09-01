@@ -938,7 +938,7 @@ def custom_build(
     command_bat: Union[str, List[str]] = "",
     image_deps: List[str] = [],
     env: Dict[str, str] = {},
-    dir: string = ""):
+    dir: str = ""):
   """Provide a custom command that will build an image.
 
   Example ::
