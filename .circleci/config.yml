@@ -48,6 +48,24 @@ jobs:
       - slack/notify-on-failure:
           only_for_branches: master
 
+  check-docs:
+    docker:
+      - image: docker/tilt-ci@sha256:45e24840891e22aed72548002d4dd7223c117a4819c10c20660fedb33e7cca40
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run: mkdir -p ../tilt.build && git clone git@github.com:tilt-dev/tilt.build ../tilt.build
+      - run: make install
+      - run: |
+          set -ex
+          cd ../tilt.build
+          tilt dump cli-docs --dir="./docs/cli"
+          tilt dump api-docs --dir="./api"
+          make cli-toc
+          make api
+      - slack/notify-on-failure:
+          only_for_branches: master
+
   publish-assets:
     docker:
       - image: docker/tilt-ci@sha256:45e24840891e22aed72548002d4dd7223c117a4819c10c20660fedb33e7cca40
@@ -199,6 +217,9 @@ workflows:
           requires:
             - build-linux
       - build-windows:
+          requires:
+            - build-linux
+      - check-docs:
           requires:
             - build-linux
       - publish-assets:
