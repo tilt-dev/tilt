@@ -81,7 +81,7 @@ func (c *CloudStatusManager) CheckStatus(ctx context.Context, st store.RStore, c
 	u.Path = "/api/whoami"
 
 	body := &bytes.Buffer{}
-	req, err := http.NewRequest("POST", u.String(), body)
+	req, err := http.NewRequest("GET", u.String(), body)
 	if err != nil {
 		logger.Get(ctx).Debugf("error making whoami request: %v", err)
 		c.error()
