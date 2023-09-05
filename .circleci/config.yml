@@ -106,12 +106,12 @@ jobs:
   build-integration:
     resource_class: medium+
     docker:
-      - image: docker/tilt-integration-ci@sha256:a9388106d686e9e2503d42e8e9848eb8cbe0f057f14ea644dd9101e00730fe16
+      - image: docker/tilt-integration-ci@sha256:4ef0f0de684068fcef8bc74abbc08629a832a30425fc00592689b298a1412710
     steps:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
       - setup_remote_docker
-      - run: ctlptl create cluster kind --registry=ctlptl-registry && make integration
+      - run: ctlptl create cluster kind --registry=ctlptl-registry && make build-js integration
       - store_test_results:
           path: test-results
       - slack/notify-on-failure:
@@ -125,7 +125,7 @@ jobs:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
       - setup_remote_docker
-      - run: ctlptl create cluster kind --registry=ctlptl-registry && make install test-extensions
+      - run: ctlptl create cluster kind --registry=ctlptl-registry && make build-js install test-extensions
       - slack/notify-on-failure:
           only_for_branches: master
 

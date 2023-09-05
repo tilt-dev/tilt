@@ -31,13 +31,14 @@ const (
 	// Local webpack server
 	LocalWebMode WebMode = "local"
 
-	// Generic prod build; uses embedded if available otherwise cloud
+	// Generic prod build; uses embedded. report error if embedded not available.
 	ProdWebMode WebMode = "prod"
 
 	// Production build embedded assets
 	EmbeddedWebMode WebMode = "embedded"
 
 	// Production build assets from cloud bucket
+	// TODO(nicks): Delete this mode. It should be obsoleted by embedded.
 	CloudWebMode WebMode = "cloud"
 
 	// Precompiled with `make build-js`. This is an experimental mode

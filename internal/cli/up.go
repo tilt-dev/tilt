@@ -242,13 +242,18 @@ func provideWebURL(webHost model.WebHost, webPort model.WebPort) (model.WebURL, 
 
 func targetMode(mode model.WebMode, embeddedAvailable bool) (model.WebMode, error) {
 	if (mode == model.EmbeddedWebMode || mode == model.PrecompiledWebMode) && !embeddedAvailable {
-		return mode, fmt.Errorf("requested %s mode, but assets are not available", string(mode))
+		return mode, fmt.Errorf(
+			("requested %s mode, but JS/CSS files are not available.\n" +
+				"Please report this: https://github.com/tilt-dev/tilt/issues"), string(mode))
 	}
-	if mode.IsProd() { // cloud by request, embedded when available, otherwise cloud
-		if mode != model.CloudWebMode && embeddedAvailable {
-			mode = model.EmbeddedWebMode
+	if mode.IsProd() {
+		// defaults to embedded, reporting an error if embedded not available.
+		if !embeddedAvailable {
+			return mode, fmt.Errorf(
+				("running in prod mode, but JS/CSS files are not available.\n" +
+					"Please report this: https://github.com/tilt-dev/tilt/issues"))
 		} else if mode == model.ProdWebMode {
-			mode = model.CloudWebMode
+			mode = model.EmbeddedWebMode
 		}
 	} else { // precompiled when available and by request, otherwise local
 		if mode != model.PrecompiledWebMode {

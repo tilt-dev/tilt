@@ -1,4 +1,6 @@
-FROM golang:1.20
+FROM cimg/go:1.20-node
+
+USER root
 
 # Install dependencies from OS package manager sources
 RUN apt update && apt install -y --no-install-recommends apt-transport-https \
@@ -42,16 +44,19 @@ RUN curl -fL "https://github.com/docker/compose/releases/download/${DOCKER_COMPO
   && chmod a+x /usr/local/bin/docker-compose \
   && docker-compose version
 
-# install gotestsum
-RUN go install gotest.tools/gotestsum@latest \
-    && gotestsum --version
-
 # install Kind (Kubernetes in Docker)
 ENV KIND_VERSION=v0.20.0
 RUN curl -fLo ./kind-linux-amd64 https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-linux-amd64 \
   && chmod +x ./kind-linux-amd64 \
-  && mv ./kind-linux-amd64 /go/bin/kind \
+  && mv ./kind-linux-amd64 /usr/local/bin/kind \
   && kind version
+
+# --- GO UTILITIES / LINTERS ---
+USER circleci
+
+# install gotestsum
+RUN go install gotest.tools/gotestsum@latest \
+    && gotestsum --version
 
 # install ctlptl from the ctlptl release image
 COPY --from=docker/tilt-ctlptl /usr/local/bin/ctlptl /usr/local/bin/
