@@ -1,7 +1,7 @@
 package dockerfile
 
 import (
-	"github.com/docker/distribution/reference"
+	"github.com/distribution/reference"
 
 	"github.com/tilt-dev/tilt/internal/container"
 )

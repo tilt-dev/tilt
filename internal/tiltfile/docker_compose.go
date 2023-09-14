@@ -18,7 +18,7 @@ import (
 	// see https://github.com/tilt-dev/tilt/issues/4797
 	composeyaml "gopkg.in/yaml.v2"
 
-	"github.com/docker/distribution/reference"
+	"github.com/distribution/reference"
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 

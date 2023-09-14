@@ -7,7 +7,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/docker/distribution/reference"
+	"github.com/distribution/reference"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tilt-dev/clusterid"

@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/docker/distribution/reference"
+	"github.com/distribution/reference"
 	"github.com/moby/buildkit/frontend/dockerfile/dockerignore"
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"

@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/docker/distribution/reference"
+	"github.com/distribution/reference"
 	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
 	ktypes "k8s.io/apimachinery/pkg/types"

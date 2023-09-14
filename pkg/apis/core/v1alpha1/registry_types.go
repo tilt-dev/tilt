@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/docker/distribution/reference"
+	"github.com/distribution/reference"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/docker/distribution/reference"
+	"github.com/distribution/reference"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/clusterid"

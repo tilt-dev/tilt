@@ -12,9 +12,9 @@ import (
 	"sync"
 
 	"github.com/blang/semver"
+	"github.com/distribution/reference"
 	"github.com/docker/cli/cli/command"
 	"github.com/docker/cli/cli/config"
-	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	mobycontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"

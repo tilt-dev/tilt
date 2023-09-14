@@ -5,7 +5,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/docker/distribution/reference"
+	"github.com/distribution/reference"
 
 	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"

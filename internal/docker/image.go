@@ -1,7 +1,7 @@
 package docker
 
 import (
-	"github.com/docker/distribution/reference"
+	"github.com/distribution/reference"
 )
 
 const TagLatest = "latest"

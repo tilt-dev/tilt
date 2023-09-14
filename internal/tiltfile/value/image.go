@@ -3,7 +3,7 @@ package value
 import (
 	"fmt"
 
-	"github.com/docker/distribution/reference"
+	"github.com/distribution/reference"
 	"go.starlark.net/starlark"
 )
 

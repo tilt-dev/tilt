@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/docker/distribution/reference"
+	"github.com/distribution/reference"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/google/uuid"
 	"github.com/jonboulle/clockwork"

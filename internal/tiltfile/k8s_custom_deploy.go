@@ -3,7 +3,7 @@ package tiltfile
 import (
 	"fmt"
 
-	"github.com/docker/distribution/reference"
+	"github.com/distribution/reference"
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 
