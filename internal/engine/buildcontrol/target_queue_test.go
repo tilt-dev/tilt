@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/docker/distribution/reference"
+	"github.com/distribution/reference"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/tilt-dev/tilt/internal/testutils"

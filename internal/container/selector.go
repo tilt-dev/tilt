@@ -3,7 +3,7 @@ package container
 import (
 	"fmt"
 
-	"github.com/docker/distribution/reference"
+	"github.com/distribution/reference"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )

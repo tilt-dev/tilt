@@ -129,6 +129,9 @@ github.com/denisbrodbeck/machineid
 # github.com/distribution/distribution/v3 v3.0.0-20221208165359-362910506bc2
 ## explicit; go 1.18
 github.com/distribution/distribution/v3/reference
+# github.com/distribution/reference v0.5.0
+## explicit; go 1.20
+github.com/distribution/reference
 # github.com/docker/cli v24.0.5+incompatible
 ## explicit
 github.com/docker/cli/cli/command

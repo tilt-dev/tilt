@@ -6,8 +6,8 @@ import (
 	"io"
 	"strings"
 
+	"github.com/distribution/reference"
 	"github.com/docker/cli/opts"
-	"github.com/docker/distribution/reference"
 	"github.com/moby/buildkit/frontend/dockerfile/command"
 	"github.com/moby/buildkit/frontend/dockerfile/instructions"
 	"github.com/moby/buildkit/frontend/dockerfile/parser"

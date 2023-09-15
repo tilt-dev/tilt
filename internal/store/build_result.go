@@ -3,7 +3,7 @@ package store
 import (
 	"sort"
 
-	"github.com/docker/distribution/reference"
+	"github.com/distribution/reference"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"

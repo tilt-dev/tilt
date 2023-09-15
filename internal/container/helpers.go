@@ -1,6 +1,6 @@
 package container
 
-import "github.com/docker/distribution/reference"
+import "github.com/distribution/reference"
 
 func FamiliarString(ref reference.Reference) string {
 	s, ok := ref.(RefSelector)
