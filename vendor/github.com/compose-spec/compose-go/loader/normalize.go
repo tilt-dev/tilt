@@ -18,8 +18,7 @@ package loader
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
+	"strings"
 
 	"github.com/compose-spec/compose-go/errdefs"
 	"github.com/compose-spec/compose-go/types"
@@ -27,20 +26,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// normalize compose project by moving deprecated attributes to their canonical position and injecting implicit defaults
-func normalize(project *types.Project, resolvePaths bool) error {
-	absWorkingDir, err := filepath.Abs(project.WorkingDir)
-	if err != nil {
-		return err
-	}
-	project.WorkingDir = absWorkingDir
-
-	absComposeFiles, err := absComposeFiles(project.ComposeFiles)
-	if err != nil {
-		return err
-	}
-	project.ComposeFiles = absComposeFiles
-
+// Normalize compose project by moving deprecated attributes to their canonical position and injecting implicit defaults
+func Normalize(project *types.Project) error {
 	if project.Networks == nil {
 		project.Networks = make(map[string]types.NetworkConfig)
 	}
@@ -50,8 +37,7 @@ func normalize(project *types.Project, resolvePaths bool) error {
 		project.Networks["default"] = types.NetworkConfig{}
 	}
 
-	err = relocateExternalName(project)
-	if err != nil {
+	if err := relocateExternalName(project); err != nil {
 		return err
 	}
 
@@ -71,21 +57,49 @@ func normalize(project *types.Project, resolvePaths bool) error {
 		}
 
 		if s.Build != nil {
-			if s.Build.Dockerfile == "" {
-				s.Build.Dockerfile = "Dockerfile"
+			if s.Build.Context == "" {
+				s.Build.Context = "."
 			}
-			localContext := absPath(project.WorkingDir, s.Build.Context)
-			if _, err := os.Stat(localContext); err == nil {
-				if resolvePaths {
-					s.Build.Context = localContext
-				}
-				// } else {
-				// might be a remote http/git context. Unfortunately supported "remote" syntax is highly ambiguous
-				// in moby/moby and not defined by compose-spec, so let's assume runtime will check
+			if s.Build.Dockerfile == "" && s.Build.DockerfileInline == "" {
+				s.Build.Dockerfile = "Dockerfile"
 			}
 			s.Build.Args = s.Build.Args.Resolve(fn)
 		}
 		s.Environment = s.Environment.Resolve(fn)
+
+		for _, link := range s.Links {
+			parts := strings.Split(link, ":")
+			if len(parts) == 2 {
+				link = parts[0]
+			}
+			s.DependsOn = setIfMissing(s.DependsOn, link, types.ServiceDependency{
+				Condition: types.ServiceConditionStarted,
+				Restart:   true,
+				Required:  true,
+			})
+		}
+
+		for _, namespace := range []string{s.NetworkMode, s.Ipc, s.Pid, s.Uts, s.Cgroup} {
+			if strings.HasPrefix(namespace, types.ServicePrefix) {
+				name := namespace[len(types.ServicePrefix):]
+				s.DependsOn = setIfMissing(s.DependsOn, name, types.ServiceDependency{
+					Condition: types.ServiceConditionStarted,
+					Restart:   true,
+					Required:  true,
+				})
+			}
+		}
+
+		for _, vol := range s.VolumesFrom {
+			if !strings.HasPrefix(vol, types.ContainerPrefix) {
+				spec := strings.Split(vol, ":")
+				s.DependsOn = setIfMissing(s.DependsOn, spec[0], types.ServiceDependency{
+					Condition: types.ServiceConditionStarted,
+					Restart:   false,
+					Required:  true,
+				})
+			}
+		}
 
 		err := relocateLogDriver(&s)
 		if err != nil {
@@ -107,6 +121,8 @@ func normalize(project *types.Project, resolvePaths bool) error {
 			return err
 		}
 
+		inferImplicitDependencies(&s)
+
 		project.Services[i] = s
 	}
 
@@ -115,9 +131,76 @@ func normalize(project *types.Project, resolvePaths bool) error {
 	return nil
 }
 
+// IsServiceDependency check the relation set by ref refers to a service
+func IsServiceDependency(ref string) (string, bool) {
+	if strings.HasPrefix(
+		ref,
+		types.ServicePrefix,
+	) {
+		return ref[len(types.ServicePrefix):], true
+	}
+	return "", false
+}
+
+func inferImplicitDependencies(service *types.ServiceConfig) {
+	var dependencies []string
+
+	maybeReferences := []string{
+		service.NetworkMode,
+		service.Ipc,
+		service.Pid,
+		service.Uts,
+		service.Cgroup,
+	}
+	for _, ref := range maybeReferences {
+		if dep, ok := IsServiceDependency(ref); ok {
+			dependencies = append(dependencies, dep)
+		}
+	}
+
+	for _, vol := range service.VolumesFrom {
+		spec := strings.Split(vol, ":")
+		if len(spec) == 0 {
+			continue
+		}
+		if spec[0] == "container" {
+			continue
+		}
+		dependencies = append(dependencies, spec[0])
+	}
+
+	for _, link := range service.Links {
+		dependencies = append(dependencies, strings.Split(link, ":")[0])
+	}
+
+	if len(dependencies) > 0 && service.DependsOn == nil {
+		service.DependsOn = make(types.DependsOnConfig)
+	}
+
+	for _, d := range dependencies {
+		if _, ok := service.DependsOn[d]; !ok {
+			service.DependsOn[d] = types.ServiceDependency{
+				Condition: types.ServiceConditionStarted,
+				Required:  true,
+			}
+		}
+	}
+}
+
+// setIfMissing adds a ServiceDependency for service if not already defined
+func setIfMissing(d types.DependsOnConfig, service string, dep types.ServiceDependency) types.DependsOnConfig {
+	if d == nil {
+		d = types.DependsOnConfig{}
+	}
+	if _, ok := d[service]; !ok {
+		d[service] = dep
+	}
+	return d
+}
+
 func relocateScale(s *types.ServiceConfig) error {
 	scale := uint64(s.Scale)
-	if scale != 1 {
+	if scale > 1 {
 		logrus.Warn("`scale` is deprecated. Use the `deploy.replicas` element")
 		if s.Deploy == nil {
 			s.Deploy = &types.DeployConfig{}
@@ -128,18 +211,6 @@ func relocateScale(s *types.ServiceConfig) error {
 		s.Deploy.Replicas = &scale
 	}
 	return nil
-}
-
-func absComposeFiles(composeFiles []string) ([]string, error) {
-	absComposeFiles := make([]string, len(composeFiles))
-	for i, composeFile := range composeFiles {
-		absComposefile, err := filepath.Abs(composeFile)
-		if err != nil {
-			return nil, err
-		}
-		absComposeFiles[i] = absComposefile
-	}
-	return absComposeFiles, nil
 }
 
 // Resources with no explicit name are actually named by their key in map

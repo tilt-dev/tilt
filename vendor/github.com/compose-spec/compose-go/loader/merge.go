@@ -38,11 +38,19 @@ var serviceSpecials = &specials{
 		reflect.TypeOf([]types.ServiceSecretConfig{}):    mergeSlice(toServiceSecretConfigsMap, toServiceSecretConfigsSlice),
 		reflect.TypeOf([]types.ServiceConfigObjConfig{}): mergeSlice(toServiceConfigObjConfigsMap, toSServiceConfigObjConfigsSlice),
 		reflect.TypeOf(&types.UlimitsConfig{}):           mergeUlimitsConfig,
-		reflect.TypeOf(&types.ServiceNetworkConfig{}):    mergeServiceNetworkConfig,
 	},
 }
 
 func (s *specials) Transformer(t reflect.Type) func(dst, src reflect.Value) error {
+	// TODO this is a workaround waiting for imdario/mergo#131
+	if t.Kind() == reflect.Pointer && t.Elem().Kind() == reflect.Bool {
+		return func(dst, src reflect.Value) error {
+			if dst.CanSet() && !src.IsNil() {
+				dst.Set(src)
+			}
+			return nil
+		}
+	}
 	if fn, ok := s.m[t]; ok {
 		return fn
 	}
@@ -113,11 +121,17 @@ func mergeServices(base, override []types.ServiceConfig) ([]types.ServiceConfig,
 }
 
 func _merge(baseService *types.ServiceConfig, overrideService *types.ServiceConfig) (*types.ServiceConfig, error) {
-	if err := mergo.Merge(baseService, overrideService, mergo.WithAppendSlice, mergo.WithOverride, mergo.WithTransformers(serviceSpecials)); err != nil {
+	if err := mergo.Merge(baseService, overrideService,
+		mergo.WithAppendSlice,
+		mergo.WithOverride,
+		mergo.WithTransformers(serviceSpecials)); err != nil {
 		return nil, err
 	}
 	if overrideService.Command != nil {
 		baseService.Command = overrideService.Command
+	}
+	if overrideService.HealthCheck != nil && overrideService.HealthCheck.Test != nil {
+		baseService.HealthCheck.Test = overrideService.HealthCheck.Test
 	}
 	if overrideService.Entrypoint != nil {
 		baseService.Entrypoint = overrideService.Entrypoint
@@ -127,7 +141,23 @@ func _merge(baseService *types.ServiceConfig, overrideService *types.ServiceConf
 	} else {
 		baseService.Environment = overrideService.Environment
 	}
+	baseService.Expose = unique(baseService.Expose)
 	return baseService, nil
+}
+
+func unique(slice []string) []string {
+	if slice == nil {
+		return nil
+	}
+	uniqMap := make(map[string]struct{})
+	var uniqSlice []string
+	for _, v := range slice {
+		if _, ok := uniqMap[v]; !ok {
+			uniqSlice = append(uniqSlice, v)
+			uniqMap[v] = struct{}{}
+		}
+	}
+	return uniqSlice
 }
 
 func toServiceSecretConfigsMap(s interface{}) (map[interface{}]interface{}, error) {
@@ -299,24 +329,10 @@ func mergeLoggingConfig(dst, src reflect.Value) error {
 	return nil
 }
 
-//nolint: unparam
+// nolint: unparam
 func mergeUlimitsConfig(dst, src reflect.Value) error {
 	if src.Interface() != reflect.Zero(reflect.TypeOf(src.Interface())).Interface() {
 		dst.Elem().Set(src.Elem())
-	}
-	return nil
-}
-
-//nolint: unparam
-func mergeServiceNetworkConfig(dst, src reflect.Value) error {
-	if src.Interface() != reflect.Zero(reflect.TypeOf(src.Interface())).Interface() {
-		dst.Elem().FieldByName("Aliases").Set(src.Elem().FieldByName("Aliases"))
-		if ipv4 := src.Elem().FieldByName("Ipv4Address").Interface().(string); ipv4 != "" {
-			dst.Elem().FieldByName("Ipv4Address").SetString(ipv4)
-		}
-		if ipv6 := src.Elem().FieldByName("Ipv6Address").Interface().(string); ipv6 != "" {
-			dst.Elem().FieldByName("Ipv6Address").SetString(ipv6)
-		}
 	}
 	return nil
 }
