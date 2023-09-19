@@ -284,20 +284,23 @@ func (c *cmdDCClient) Version(ctx context.Context) (string, string, error) {
 	return c.version, c.build, c.err
 }
 
-func composeProjectOptions(modelProj v1alpha1.DockerComposeProject) (*compose.ProjectOptions, error) {
+func composeProjectOptions(modelProj v1alpha1.DockerComposeProject, env []string) (*compose.ProjectOptions, error) {
 	// NOTE: take care to keep behavior in sync with loadProjectCLI()
 	allProjectOptions := append(dcProjectOptions,
 		compose.WithWorkingDirectory(modelProj.ProjectPath),
-		compose.WithName(modelProj.Name))
+		compose.WithName(modelProj.Name),
+		compose.WithResolvedPaths(true),
+		compose.WithEnv(env),
+	)
 	if modelProj.EnvFile != "" {
-		allProjectOptions = append(allProjectOptions, compose.WithEnvFile(modelProj.EnvFile))
+		allProjectOptions = append(allProjectOptions, compose.WithEnvFiles(modelProj.EnvFile))
 	}
 	allProjectOptions = append(allProjectOptions, compose.WithDotEnv)
 	return compose.NewProjectOptions(modelProj.ConfigPaths, allProjectOptions...)
 }
 
 func (c *cmdDCClient) loadProjectNative(modelProj v1alpha1.DockerComposeProject) (*types.Project, error) {
-	opts, err := composeProjectOptions(modelProj)
+	opts, err := composeProjectOptions(modelProj, c.mergedEnv())
 	if err != nil {
 		return nil, err
 	}
@@ -317,7 +320,7 @@ func (c *cmdDCClient) loadProjectCLI(ctx context.Context, proj v1alpha1.DockerCo
 	// docker-compose is very inconsistent about whether it fully resolves paths or not via CLI, both between
 	// v1 and v2 as well as even different releases within v2, so set the workdir and force the loader to resolve
 	// any relative paths
-	return loader.Load(types.ConfigDetails{
+	return loader.LoadWithContext(ctx, types.ConfigDetails{
 		WorkingDir: proj.ProjectPath,
 		ConfigFiles: []types.ConfigFile{
 			{
@@ -381,6 +384,10 @@ func (c *cmdDCClient) initDcCommand() {
 	})
 }
 
+func (c *cmdDCClient) mergedEnv() []string {
+	return append(os.Environ(), c.env.AsEnviron()...)
+}
+
 func (c *cmdDCClient) dcCommand(ctx context.Context, args []string) *exec.Cmd {
 	c.initDcCommand()
 	composeCmd := c.composeCmd[0]
@@ -389,7 +396,7 @@ func (c *cmdDCClient) dcCommand(ctx context.Context, args []string) *exec.Cmd {
 		args = append(composeArgs, args...)
 	}
 	cmd := exec.CommandContext(ctx, composeCmd, args...)
-	cmd.Env = append(os.Environ(), c.env.AsEnviron()...)
+	cmd.Env = c.mergedEnv()
 	return cmd
 }
 

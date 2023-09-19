@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft/2019-09/schema#",
+  "$schema": "https://json-schema.org/draft/2019-09/schema#",
   "id": "compose_spec.json",
   "type": "object",
   "title": "Compose Specification",
@@ -13,7 +13,17 @@
 
     "name": {
       "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]*$",
       "description": "define the Compose project name, until user defines one explicitly."
+    },
+
+    "include": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "$ref": "#/definitions/include"
+      },
+      "description": "compose sub-projects to be included."
     },
 
     "services": {
@@ -82,6 +92,8 @@
 
       "properties": {
         "deploy": {"$ref": "#/definitions/deployment"},
+        "annotations": {"$ref": "#/definitions/list_or_dict"},
+        "attach": {"type": "boolean"},
         "build": {
           "oneOf": [
             {"type": "string"},
@@ -90,18 +102,21 @@
               "properties": {
                 "context": {"type": "string"},
                 "dockerfile": {"type": "string"},
+                "dockerfile_inline": {"type": "string"},
                 "args": {"$ref": "#/definitions/list_or_dict"},
                 "ssh": {"$ref": "#/definitions/list_or_dict"},
                 "labels": {"$ref": "#/definitions/list_or_dict"},
                 "cache_from": {"type": "array", "items": {"type": "string"}},
                 "cache_to": {"type": "array", "items": {"type": "string"}},
                 "no_cache": {"type": "boolean"},
+                "additional_contexts": {"$ref": "#/definitions/list_or_dict"},
                 "network": {"type": "string"},
                 "pull": {"type": "boolean"},
                 "target": {"type": "string"},
                 "shm_size": {"type": ["integer", "string"]},
                 "extra_hosts": {"$ref": "#/definitions/list_or_dict"},
                 "isolation": {"type": "string"},
+                "privileged": {"type": "boolean"},
                 "secrets": {"$ref": "#/definitions/service_config_or_secret"},
                 "tags": {"type": "array", "items": {"type": "string"}},
                 "platforms": {"type": "array", "items": {"type": "string"}}
@@ -140,13 +155,9 @@
         },
         "cap_add": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
         "cap_drop": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+        "cgroup": {"type": "string", "enum": ["host", "private"]},
         "cgroup_parent": {"type": "string"},
-        "command": {
-          "oneOf": [
-            {"type": "string"},
-            {"type": "array", "items": {"type": "string"}}
-          ]
-        },
+        "command": {"$ref": "#/definitions/command"},
         "configs": {"$ref": "#/definitions/service_config_or_secret"},
         "container_name": {"type": "string"},
         "cpu_count": {"type": "integer", "minimum": 0},
@@ -179,6 +190,11 @@
                   "type": "object",
                   "additionalProperties": false,
                   "properties": {
+                    "restart": {"type": "boolean"},
+                    "required": {
+                      "type":  "boolean",
+                      "default": true
+                    },
                     "condition": {
                       "type": "string",
                       "enum": ["service_started", "service_healthy", "service_completed_successfully"]
@@ -196,12 +212,7 @@
         "dns_opt": {"type": "array","items": {"type": "string"}, "uniqueItems": true},
         "dns_search": {"$ref": "#/definitions/string_or_list"},
         "domainname": {"type": "string"},
-        "entrypoint": {
-          "oneOf": [
-            {"type": "string"},
-            {"type": "array", "items": {"type": "string"}}
-          ]
-        },
+        "entrypoint": {"$ref": "#/definitions/command"},
         "env_file": {"$ref": "#/definitions/string_or_list"},
         "environment": {"$ref": "#/definitions/list_or_dict"},
 
@@ -365,6 +376,7 @@
           }
         },
         "user": {"type": "string"},
+        "uts": {"type": "string"},
         "userns_mode": {"type": "string"},
         "volumes": {
           "type": "array",
@@ -406,7 +418,8 @@
                           {"type": "integer", "minimum": 0},
                           {"type": "string"}
                         ]
-                      }
+                      },
+                      "mode": {"type": "number"}
                     },
                     "additionalProperties": false,
                     "patternProperties": {"^x-": {}}
@@ -444,7 +457,8 @@
           ]
         },
         "timeout": {"type": "string", "format": "duration"},
-        "start_period": {"type": "string", "format": "duration"}
+        "start_period": {"type": "string", "format": "duration"},
+        "start_interval": {"type": "string", "format": "duration"}
       },
       "additionalProperties": false,
       "patternProperties": {"^x-": {}}
@@ -589,6 +603,22 @@
       }
     },
 
+    "include": {
+      "id": "#/definitions/include",
+      "oneOf": [
+        {"type": "string"},
+        {
+          "type": "object",
+          "properties": {
+            "path": {"$ref": "#/definitions/string_or_list"},
+            "env_file": {"$ref": "#/definitions/string_or_list"},
+            "project_directory": {"type": "string"}
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+
     "network": {
       "id": "#/definitions/network",
       "type": ["object", "null"],
@@ -728,6 +758,14 @@
       },
       "additionalProperties": false,
       "patternProperties": {"^x-": {}}
+    },
+
+    "command": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "string"},
+        {"type": "array","items": {"type": "string"}}
+      ]
     },
 
     "string_or_list": {

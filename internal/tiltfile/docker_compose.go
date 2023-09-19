@@ -12,15 +12,10 @@ import (
 
 	"github.com/compose-spec/compose-go/loader"
 	"github.com/compose-spec/compose-go/types"
-
-	// DANGER: some compose-go types are not friendly to being marshaled with gopkg.in/yaml.v3
-	// and will trigger a stack overflow panic
-	// see https://github.com/tilt-dev/tilt/issues/4797
-	composeyaml "gopkg.in/yaml.v2"
-
 	"github.com/distribution/reference"
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
+	composeyaml "gopkg.in/yaml.v3"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"

@@ -15,13 +15,9 @@ package dotenv
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"regexp"
-	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/compose-spec/compose-go/template"
@@ -72,21 +68,6 @@ func Load(filenames ...string) error {
 	return load(false, filenames...)
 }
 
-// Overload will read your env file(s) and load them into ENV for this process.
-//
-// Call this function as close as possible to the start of your program (ideally in main).
-//
-// If you call Overload without any args it will default to loading .env in the current path.
-//
-// You can otherwise tell it which files to load (there can be more than one) like:
-//
-//	godotenv.Overload("fileone", "filetwo")
-//
-// It's important to note this WILL OVERRIDE an env variable that already exists - consider the .env file to forcefilly set all vars.
-func Overload(filenames ...string) error {
-	return load(true, filenames...)
-}
-
 func load(overload bool, filenames ...string) error {
 	filenames = filenamesOrDefault(filenames)
 	for _, filename := range filenames {
@@ -128,80 +109,16 @@ func Read(filenames ...string) (map[string]string, error) {
 	return ReadWithLookup(nil, filenames...)
 }
 
-// Unmarshal reads an env file from a string, returning a map of keys and values.
-func Unmarshal(str string) (map[string]string, error) {
-	return UnmarshalBytes([]byte(str))
-}
-
-// UnmarshalBytes parses env file from byte slice of chars, returning a map of keys and values.
-func UnmarshalBytes(src []byte) (map[string]string, error) {
-	return UnmarshalBytesWithLookup(src, nil)
-}
-
 // UnmarshalBytesWithLookup parses env file from byte slice of chars, returning a map of keys and values.
 func UnmarshalBytesWithLookup(src []byte, lookupFn LookupFn) (map[string]string, error) {
+	return UnmarshalWithLookup(string(src), lookupFn)
+}
+
+// UnmarshalWithLookup parses env file from string, returning a map of keys and values.
+func UnmarshalWithLookup(src string, lookupFn LookupFn) (map[string]string, error) {
 	out := make(map[string]string)
-	err := parseBytes(src, out, lookupFn)
+	err := newParser().parse(src, out, lookupFn)
 	return out, err
-}
-
-// Exec loads env vars from the specified filenames (empty map falls back to default)
-// then executes the cmd specified.
-//
-// Simply hooks up os.Stdin/err/out to the command and calls Run()
-//
-// If you want more fine grained control over your command it's recommended
-// that you use `Load()` or `Read()` and the `os/exec` package yourself.
-//
-// Deprecated: Use the `os/exec` package directly.
-func Exec(filenames []string, cmd string, cmdArgs []string) error {
-	if err := Load(filenames...); err != nil {
-		return err
-	}
-
-	command := exec.Command(cmd, cmdArgs...)
-	command.Stdin = os.Stdin
-	command.Stdout = os.Stdout
-	command.Stderr = os.Stderr
-	return command.Run()
-}
-
-// Write serializes the given environment and writes it to a file
-//
-// Deprecated: The serialization functions are untested and unmaintained.
-func Write(envMap map[string]string, filename string) error {
-	//goland:noinspection GoDeprecation
-	content, err := Marshal(envMap)
-	if err != nil {
-		return err
-	}
-	file, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	_, err = file.WriteString(content + "\n")
-	if err != nil {
-		return err
-	}
-	return file.Sync()
-}
-
-// Marshal outputs the given environment as a dotenv-formatted environment file.
-// Each line is in the format: KEY="VALUE" where VALUE is backslash-escaped.
-//
-// Deprecated: The serialization functions are untested and unmaintained.
-func Marshal(envMap map[string]string) (string, error) {
-	lines := make([]string, 0, len(envMap))
-	for k, v := range envMap {
-		if d, err := strconv.Atoi(v); err == nil {
-			lines = append(lines, fmt.Sprintf(`%s=%d`, k, d))
-		} else {
-			lines = append(lines, fmt.Sprintf(`%s="%s"`, k, doubleQuoteEscape(v))) // nolint // Cannot use %q here
-		}
-	}
-	sort.Strings(lines)
-	return strings.Join(lines, "\n"), nil
 }
 
 func filenamesOrDefault(filenames []string) []string {
@@ -245,29 +162,14 @@ func readFile(filename string, lookupFn LookupFn) (map[string]string, error) {
 
 func expandVariables(value string, envMap map[string]string, lookupFn LookupFn) (string, error) {
 	retVal, err := template.Substitute(value, func(k string) (string, bool) {
-		if v, ok := envMap[k]; ok {
-			return v, ok
+		if v, ok := lookupFn(k); ok {
+			return v, true
 		}
-		return lookupFn(k)
+		v, ok := envMap[k]
+		return v, ok
 	})
 	if err != nil {
 		return value, err
 	}
 	return retVal, nil
-}
-
-// Deprecated: only used by unsupported/untested code for Marshal/Write.
-func doubleQuoteEscape(line string) string {
-	const doubleQuoteSpecialChars = "\\\n\r\"!$`"
-	for _, c := range doubleQuoteSpecialChars {
-		toReplace := "\\" + string(c)
-		if c == '\n' {
-			toReplace = `\n`
-		}
-		if c == '\r' {
-			toReplace = `\r`
-		}
-		line = strings.ReplaceAll(line, string(c), toReplace)
-	}
-	return line
 }

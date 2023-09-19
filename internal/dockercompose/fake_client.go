@@ -138,7 +138,7 @@ func (c *FakeDCClient) Project(_ context.Context, m v1alpha1.DockerComposeProjec
 	// this is a dummy ProjectOptions that lets us use compose's logic to apply options
 	// for consistency, but we have to then pull the data out ourselves since we're calling
 	// loader.Load ourselves
-	opts, err := composeProjectOptions(m)
+	opts, err := composeProjectOptions(m, nil)
 	if err != nil {
 		return nil, err
 	}

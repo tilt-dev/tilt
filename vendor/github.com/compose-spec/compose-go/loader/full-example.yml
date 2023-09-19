@@ -1,7 +1,15 @@
-name: Full_Example_project_name
+name: full_example_project_name
 services:
-  foo:
 
+  bar:
+    build:
+      dockerfile_inline: |
+        FROM alpine
+        RUN echo "hello" > /world.txt
+
+  foo:
+    annotations:
+      - com.example.foo=bar
     build:
       context: ./dir
       dockerfile: Dockerfile
@@ -15,6 +23,8 @@ services:
         - foo
         - bar
       labels: [FOO=BAR]
+      additional_contexts:
+        foo: ./bar
       secrets:
         - secret1
         - source: secret2
@@ -160,8 +170,8 @@ services:
     #   somehost: "162.242.195.82"
     #   otherhost: "50.31.209.229"
     extra_hosts:
-      - "somehost:162.242.195.82"
       - "otherhost:50.31.209.229"
+      - "somehost:162.242.195.82"
 
     hostname: foo
 
@@ -171,6 +181,7 @@ services:
       timeout: 1s
       retries: 5
       start_period: 15s
+      start_interval: 5s
 
     # Any valid image reference - repo, tag, id, sha
     image: redis
@@ -181,6 +192,8 @@ services:
     # image: busybox@sha256:38a203e1986cf79639cfb9b2e1d6e773de84002feea2d4eb006b52004ee8502d
 
     ipc: host
+
+    uts: host
 
     # Mapping or list
     # Mapping values can be strings, numbers or null
@@ -428,6 +441,8 @@ secrets:
     environment: BAR
     x-bar: baz
     x-foo: bar
+  secret5:
+    file: /abs/secret_data
 x-bar: baz
 x-foo: bar
 x-nested:
