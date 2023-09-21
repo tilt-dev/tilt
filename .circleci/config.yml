@@ -130,6 +130,7 @@ jobs:
           only_for_branches: master
 
   build-macos:
+    resource_class: macos.m1.medium.gen1
     macos:
       xcode: "13.4.1"
 
@@ -137,7 +138,7 @@ jobs:
       - checkout
       - go/install:
           version: "1.20"
-      - run: curl -fsSL "https://github.com/gotestyourself/gotestsum/releases/download/v1.7.0/gotestsum_1.7.0_darwin_amd64.tar.gz" | sudo tar -xz -C /usr/local/bin gotestsum
+      - run: curl -fsSL "https://github.com/gotestyourself/gotestsum/releases/download/v1.11.0/gotestsum_1.11.0_darwin_arm64.tar.gz" | sudo tar -xz -C /usr/local/bin gotestsum
       # We can't run the container tests on macos because nested
       # VMs don't work on circleci.
       - run: mkdir -p test-results
