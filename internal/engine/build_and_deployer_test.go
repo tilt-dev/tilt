@@ -18,7 +18,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	ktypes "k8s.io/apimachinery/pkg/types"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
@@ -386,23 +385,12 @@ func (f *bdFixture) assertK8sUpsertCalled(called bool) {
 		"checking that k8s.Upsert was called")
 }
 
-func (f *bdFixture) upsert(obj ctrlclient.Object) {
-	require.True(f.T(), obj.GetName() != "",
-		"object has empty name")
+func (f *bdFixture) upsertSpec(obj ctrlclient.Object) {
+	fake.UpsertSpec(f.ctx, f.T(), f.ctrlClient, obj)
+}
 
-	err := f.ctrlClient.Create(f.ctx, obj)
-	if err == nil {
-		return
-	}
-
-	copy := obj.DeepCopyObject().(ctrlclient.Object)
-	err = f.ctrlClient.Get(f.ctx, ktypes.NamespacedName{Name: obj.GetName()}, copy)
-	assert.NoError(f.T(), err)
-
-	obj.SetResourceVersion(copy.GetResourceVersion())
-
-	err = f.ctrlClient.Update(f.ctx, obj)
-	assert.NoError(f.T(), err)
+func (f *bdFixture) updateStatus(obj ctrlclient.Object) {
+	fake.UpdateStatus(f.ctx, f.T(), f.ctrlClient, obj)
 }
 
 func (f *bdFixture) BuildAndDeploy(specs []model.TargetSpec, stateSet store.BuildStateSet) (store.BuildResultSet, error) {
@@ -427,7 +415,7 @@ func (f *bdFixture) BuildAndDeploy(specs []model.TargetSpec, stateSet store.Buil
 				ObjectMeta: metav1.ObjectMeta{Name: localTarget.UpdateCmdName()},
 				Spec:       *(localTarget.UpdateCmdSpec),
 			}
-			f.upsert(&cmd)
+			f.upsertSpec(&cmd)
 		}
 
 		iTarget, ok := spec.(model.ImageTarget)
@@ -436,6 +424,7 @@ func (f *bdFixture) BuildAndDeploy(specs []model.TargetSpec, stateSet store.Buil
 				ObjectMeta: metav1.ObjectMeta{Name: iTarget.ID().Name.String()},
 				Spec:       iTarget.ImageMapSpec,
 			}
+			f.upsertSpec(&im)
 			state := stateSet[iTarget.ID()]
 			state.Cluster = cluster
 			stateSet[iTarget.ID()] = state
@@ -444,14 +433,14 @@ func (f *bdFixture) BuildAndDeploy(specs []model.TargetSpec, stateSet store.Buil
 			if ok {
 				im.Status = imageBuildResult.ImageMapStatus
 			}
-			f.upsert(&im)
+			f.updateStatus(&im)
 
 			if !liveupdate.IsEmptySpec(iTarget.LiveUpdateSpec) {
 				lu := v1alpha1.LiveUpdate{
 					ObjectMeta: metav1.ObjectMeta{Name: iTarget.LiveUpdateName},
 					Spec:       iTarget.LiveUpdateSpec,
 				}
-				f.upsert(&lu)
+				f.upsertSpec(&lu)
 			}
 
 			if iTarget.IsDockerBuild() {
@@ -459,7 +448,7 @@ func (f *bdFixture) BuildAndDeploy(specs []model.TargetSpec, stateSet store.Buil
 					ObjectMeta: metav1.ObjectMeta{Name: iTarget.DockerImageName},
 					Spec:       iTarget.DockerBuildInfo().DockerImageSpec,
 				}
-				f.upsert(&di)
+				f.upsertSpec(&di)
 			}
 			if iTarget.IsCustomBuild() {
 				cmdImageSpec := iTarget.CustomBuildInfo().CmdImageSpec
@@ -467,7 +456,7 @@ func (f *bdFixture) BuildAndDeploy(specs []model.TargetSpec, stateSet store.Buil
 					ObjectMeta: metav1.ObjectMeta{Name: iTarget.CmdImageName},
 					Spec:       cmdImageSpec,
 				}
-				f.upsert(&ci)
+				f.upsertSpec(&ci)
 
 				c := v1alpha1.Cmd{
 					ObjectMeta: metav1.ObjectMeta{Name: iTarget.CmdImageName},
@@ -476,7 +465,7 @@ func (f *bdFixture) BuildAndDeploy(specs []model.TargetSpec, stateSet store.Buil
 						Dir:  cmdImageSpec.Dir,
 					},
 				}
-				f.upsert(&c)
+				f.upsertSpec(&c)
 			}
 		}
 
@@ -486,7 +475,7 @@ func (f *bdFixture) BuildAndDeploy(specs []model.TargetSpec, stateSet store.Buil
 				ObjectMeta: metav1.ObjectMeta{Name: kTarget.ID().Name.String()},
 				Spec:       kTarget.KubernetesApplySpec,
 			}
-			f.upsert(&ka)
+			f.upsertSpec(&ka)
 		}
 
 		dcTarget, ok := spec.(model.DockerComposeTarget)
@@ -495,7 +484,7 @@ func (f *bdFixture) BuildAndDeploy(specs []model.TargetSpec, stateSet store.Buil
 				ObjectMeta: metav1.ObjectMeta{Name: dcTarget.ID().Name.String()},
 				Spec:       dcTarget.Spec,
 			}
-			f.upsert(&dcs)
+			f.upsertSpec(&dcs)
 		}
 	}
 	return f.bd.BuildAndDeploy(f.ctx, f.st, specs, stateSet)

@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	ktypes "k8s.io/apimachinery/pkg/types"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/wmclient/pkg/dirs"
@@ -231,20 +230,12 @@ func newDCBDFixture(t *testing.T) *dcbdFixture {
 	}
 }
 
-func (f *dcbdFixture) upsert(obj ctrlclient.Object) {
-	err := f.ctrlClient.Create(f.ctx, obj)
-	if err == nil {
-		return
-	}
+func (f *dcbdFixture) upsertSpec(obj ctrlclient.Object) {
+	fake.UpsertSpec(f.ctx, f.T(), f.ctrlClient, obj)
+}
 
-	copy := obj.DeepCopyObject().(ctrlclient.Object)
-	err = f.ctrlClient.Get(f.ctx, ktypes.NamespacedName{Name: obj.GetName()}, copy)
-	assert.NoError(f.T(), err)
-
-	obj.SetResourceVersion(copy.GetResourceVersion())
-
-	err = f.ctrlClient.Update(f.ctx, obj)
-	assert.NoError(f.T(), err)
+func (f *dcbdFixture) updateStatus(obj ctrlclient.Object) {
+	fake.UpdateStatus(f.ctx, f.T(), f.ctrlClient, obj)
 }
 
 func (f *dcbdFixture) BuildAndDeploy(specs []model.TargetSpec, stateSet store.BuildStateSet) (store.BuildResultSet, error) {
@@ -267,6 +258,8 @@ func (f *dcbdFixture) BuildAndDeploy(specs []model.TargetSpec, stateSet store.Bu
 			ObjectMeta: metav1.ObjectMeta{Name: iTarget.ID().Name.String()},
 			Spec:       iTarget.ImageMapSpec,
 		}
+		f.upsertSpec(&im)
+
 		state := stateSet[iTarget.ID()]
 		state.Cluster = cluster
 		stateSet[iTarget.ID()] = state
@@ -275,7 +268,7 @@ func (f *dcbdFixture) BuildAndDeploy(specs []model.TargetSpec, stateSet store.Bu
 		if ok {
 			im.Status = imageBuildResult.ImageMapStatus
 		}
-		f.upsert(&im)
+		f.updateStatus(&im)
 	}
 	return f.dcbad.BuildAndDeploy(f.ctx, f.st, specs, stateSet)
 }
