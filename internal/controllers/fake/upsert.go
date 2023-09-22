@@ -25,7 +25,7 @@ func UpsertSpec(ctx context.Context, t testing.TB, ctrlClient ctrlclient.Client,
 		if apierrors.IsAlreadyExists(err) {
 			return
 		}
-		assert.NoError(t, err)
+		assert.Fail(t, "create failed", "%+v %+v", obj, err)
 		return
 	}
 
