@@ -1152,20 +1152,12 @@ func newIBDFixture(t *testing.T, env clusterid.Product) *ibdFixture {
 	return ret
 }
 
-func (f *ibdFixture) upsert(obj ctrlclient.Object) {
-	err := f.ctrlClient.Create(f.ctx, obj)
-	if err == nil {
-		return
-	}
+func (f *ibdFixture) upsertSpec(obj ctrlclient.Object) {
+	fake.UpsertSpec(f.ctx, f.T(), f.ctrlClient, obj)
+}
 
-	copy := obj.DeepCopyObject().(ctrlclient.Object)
-	err = f.ctrlClient.Get(f.ctx, ktypes.NamespacedName{Name: obj.GetName()}, copy)
-	assert.NoError(f.T(), err)
-
-	obj.SetResourceVersion(copy.GetResourceVersion())
-
-	err = f.ctrlClient.Update(f.ctx, obj)
-	assert.NoError(f.T(), err)
+func (f *ibdFixture) updateStatus(obj ctrlclient.Object) {
+	fake.UpdateStatus(f.ctx, f.T(), f.ctrlClient, obj)
 }
 
 func (f *ibdFixture) BuildAndDeploy(specs []model.TargetSpec, stateSet store.BuildStateSet) (store.BuildResultSet, error) {
@@ -1182,12 +1174,14 @@ func (f *ibdFixture) BuildAndDeploy(specs []model.TargetSpec, stateSet store.Bui
 			ObjectMeta: metav1.ObjectMeta{Name: iTarget.ID().Name.String()},
 			Spec:       iTarget.ImageMapSpec,
 		}
+		f.upsertSpec(&im)
+
 		state := stateSet[iTarget.ID()]
 		imageBuildResult, ok := state.LastResult.(store.ImageBuildResult)
 		if ok {
 			im.Status = imageBuildResult.ImageMapStatus
 		}
-		f.upsert(&im)
+		f.updateStatus(&im)
 
 		s := stateSet[iTarget.ID()]
 		s.Cluster = f.cluster
@@ -1204,7 +1198,7 @@ func (f *ibdFixture) BuildAndDeploy(specs []model.TargetSpec, stateSet store.Bui
 					Dir:  cmdImageSpec.Dir,
 				},
 			}
-			f.upsert(&c)
+			f.upsertSpec(&c)
 
 			defer f.ibd.cr.Reconcile(context.Background(), ctrl.Request{NamespacedName: ktypes.NamespacedName{Name: iTarget.CmdImageName}})
 		}
@@ -1217,7 +1211,7 @@ func (f *ibdFixture) BuildAndDeploy(specs []model.TargetSpec, stateSet store.Bui
 			ObjectMeta: metav1.ObjectMeta{Name: kTarget.ID().Name.String()},
 			Spec:       kTarget.KubernetesApplySpec,
 		}
-		f.upsert(&ka)
+		f.upsertSpec(&ka)
 	}
 	return f.ibd.BuildAndDeploy(f.ctx, f.st, specs, stateSet)
 }
