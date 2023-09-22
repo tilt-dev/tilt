@@ -132,7 +132,7 @@ jobs:
   build-macos:
     resource_class: macos.m1.medium.gen1
     macos:
-      xcode: "13.4.1"
+      xcode: "15.0.0"
 
     steps:
       - checkout
