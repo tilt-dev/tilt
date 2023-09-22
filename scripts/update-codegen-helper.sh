@@ -38,23 +38,44 @@ if [[ "$(pwd)" != "${GOPATH}"* ]]; then
     exit 1
 fi
 
-OUTPUT_FILE=$(mktemp)
-bash "${CODEGEN_PKG}/generate-internal-groups.sh" "deepcopy,defaulter,openapi" \
-  github.com/tilt-dev/tilt/pkg github.com/tilt-dev/tilt/pkg/apis github.com/tilt-dev/tilt/pkg/apis \
-  "core:v1alpha1" \
-  --output-base "$(dirname "${BASH_SOURCE[0]}")/../../../.." \
-  --go-header-file "${SCRIPT_ROOT}/hack/boilerplate.go.txt" | \
-  grep -v "API rule violation.*k8s.io" | \
-  grep -v list_type_missing > "$OUTPUT_FILE"
+git config --global --add safe.directory /go/src/github.com/tilt-dev/tilt
 
-VIOLATIONS=$(grep "API rule violation" "$OUTPUT_FILE" || echo -n "ok")
+sed -i "s/types.go/*_types.go/g" "${CODEGEN_PKG}/kube_codegen.sh"
+source "${CODEGEN_PKG}/kube_codegen.sh"
+sed -i "s/[*]_types.go/types.go/g" "${CODEGEN_PKG}/kube_codegen.sh"
+
+echo "Generating code..."
+rm -fR pkg/apis/**/zz_generated*
+kube::codegen::gen_helpers \
+  --input-pkg-root github.com/tilt-dev/tilt/pkg/apis \
+  --output-base "$(dirname "${BASH_SOURCE[0]}")/../../../.." \
+  --boilerplate "${SCRIPT_ROOT}"/hack/boilerplate.go.txt
+
+rm -fR pkg/openapi
+VIOLATIONS_ORIG_FILE=$(mktemp)
+VIOLATIONS_FILE=$(mktemp)
+kube::codegen::gen_openapi \
+  --input-pkg-root github.com/tilt-dev/tilt/pkg/apis \
+  --output-pkg-root github.com/tilt-dev/tilt/pkg \
+  --output-base "$(dirname "${BASH_SOURCE[0]}")/../../../.." \
+  --report-filename "${VIOLATIONS_ORIG_FILE}" \
+  --update-report \
+  --boilerplate "${SCRIPT_ROOT}"/hack/boilerplate.go.txt
+
+# add a sentinel line at the end of the file.
+# this ensures grep -v doesn't remove all the warnings.
+echo "
+end" >> "$VIOLATIONS_ORIG_FILE"
+
+echo "Checking violations..."
+cat "$VIOLATIONS_ORIG_FILE" | \
+  grep -v "API rule violation.*k8s.io" | \
+  grep -v list_type_missing > "$VIOLATIONS_FILE"
+
+VIOLATIONS=$(grep "API rule violation" "$VIOLATIONS_FILE" || echo -n "ok")
 if [[ "$VIOLATIONS" != "ok" ]]; then
     echo "ERROR: found API rule violations in tilt code"
     echo "$VIOLATIONS"
     exit 1
 fi
-
-cat "$OUTPUT_FILE"
-
-
 

@@ -48,6 +48,7 @@ const AnnotationSpanID = "tilt.dev/log-span-id"
 const OwnerKindTiltfile = "Tiltfile"
 
 // SchemeGroupVersion is group version used to register these objects
+var localSchemeBuilder = runtime.NewSchemeBuilder(AddToScheme)
 var SchemeGroupVersion = schema.GroupVersion{Group: GroupName, Version: Version}
 
 func AllResourceObjects() []resource.Object {
