@@ -34,6 +34,10 @@ func (o *TiltServerOptions) ApplyRecommendedConfigFns(in *pkgserver.RecommendedC
 
 func SetOpenAPIDefinitionFn(scheme *runtime.Scheme, name, version string, defs openapicommon.GetOpenAPIDefinitions) RecommendedConfigFn {
 	return RecommendedConfigFn(func(config *pkgserver.RecommendedConfig) *pkgserver.RecommendedConfig {
+		config.OpenAPIV3Config = pkgserver.DefaultOpenAPIV3Config(defs, openapi.NewDefinitionNamer(scheme))
+		config.OpenAPIV3Config.Info.Title = name
+		config.OpenAPIV3Config.Info.Version = version
+
 		config.OpenAPIConfig = pkgserver.DefaultOpenAPIConfig(defs, openapi.NewDefinitionNamer(scheme))
 		config.OpenAPIConfig.Info.Title = name
 		config.OpenAPIConfig.Info.Version = version

@@ -8,7 +8,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	"github.com/go-logr/logr"
 	"github.com/go-logr/logr/funcr"
@@ -69,19 +71,25 @@ func (m *TiltServerControllerManager) SetUp(ctx context.Context, _ store.RStore)
 
 	mgr, err := ctrl.NewManager(m.config, ctrl.Options{
 		Scheme: m.scheme,
-		// controller manager lazily listens on a port if a webhook is registered; this functionality
-		// is currently NOT used; to prevent it from listening on a default port (9443) and potentially
-		// causing conflicts running multiple instances of tilt, this is set to an invalid value
-		Port: -1,
-		// disable metrics + health probe by setting them to "0"
-		MetricsBindAddress:     "0",
+
+		// Disable metrics server.
+		Metrics: metricsserver.Options{
+			BindAddress: "0",
+		},
+
+		// Disable health probe.
 		HealthProbeBindAddress: "0",
 		// leader election is unnecessary as a single manager instance is run in-process with
 		// the apiserver
 		LeaderElection:   false,
 		LeaderElectionID: "tilt-apiserver-ctrl",
 
-		ClientDisableCacheFor:   m.uncachedObjects,
+		Client: client.Options{
+			Cache: &client.CacheOptions{
+				DisableFor: m.uncachedObjects,
+			},
+		},
+
 		Logger:                  logr,
 		GracefulShutdownTimeout: &timeout,
 	})
