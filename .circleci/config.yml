@@ -130,8 +130,9 @@ jobs:
           only_for_branches: master
 
   build-macos:
+    resource_class: "macos.x86.medium.gen2"
     macos:
-      xcode: "13.4.1"
+      xcode: "15.0.0"
 
     steps:
       - checkout
