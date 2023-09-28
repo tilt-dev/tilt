@@ -33,7 +33,7 @@ jobs:
 
   build-js:
     docker:
-      - image: cimg/node:18.13
+      - image: cimg/node:20.7.0
     steps:
       - checkout
       - run: make check-js
@@ -155,7 +155,7 @@ jobs:
     resource_class: medium+
     docker:
       # keep image in sync with build.toast.yml
-      - image: docker/tilt-releaser@sha256:c6b9b55ab680da1a9b7b0fba33bc4f16c462084e4cae3dc5a07ffd91772e692c
+      - image: docker/tilt-releaser@sha256:ff4a71c0d18717cc9c646778cc426a0a4f916885c5fe7eb001f0eaee0d3483a0
     environment:
       DOCKER_CLI_EXPERIMENTAL: enabled
     steps:
@@ -172,7 +172,7 @@ jobs:
     resource_class: medium+
     docker:
       # keep image in sync with build.toast.yml
-      - image: docker/tilt-releaser@sha256:c6b9b55ab680da1a9b7b0fba33bc4f16c462084e4cae3dc5a07ffd91772e692c
+      - image: docker/tilt-releaser@sha256:ff4a71c0d18717cc9c646778cc426a0a4f916885c5fe7eb001f0eaee0d3483a0
     environment:
       DOCKER_CLI_EXPERIMENTAL: enabled
     steps:
