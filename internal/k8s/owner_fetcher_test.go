@@ -79,6 +79,21 @@ func TestOwnerFetcherParallelism(t *testing.T) {
 	assert.Equal(t, 1, kCli.getByReferenceCallCount)
 }
 
+func TestCircular(t *testing.T) {
+	kCli := NewFakeK8sClient(t)
+	kCli.listReturnsEmpty = true
+	ov := NewOwnerFetcher(context.Background(), kCli)
+
+	pod1, pod2, pod3 := fakeCircularReference()
+	kCli.Inject(NewK8sEntity(pod2), NewK8sEntity(pod3))
+
+	tree, err := ov.OwnerTreeOf(context.Background(), NewK8sEntity(pod1))
+	assert.NoError(t, err)
+	assert.Equal(t, `Pod:pod-a
+  Pod:pod-b
+    Pod:pod-c`, tree.String())
+}
+
 func fakeOneParentChain() (*v1.Pod, *appsv1.ReplicaSet) {
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -144,4 +159,54 @@ func fakeTwoParentChain() (*v1.Pod, *appsv1.ReplicaSet, *appsv1.Deployment) {
 		},
 	}
 	return pod, rs, dep
+}
+
+func fakeCircularReference() (*v1.Pod, *v1.Pod, *v1.Pod) {
+	pod1 := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pod-a",
+			UID:       "pod-a-uid",
+			Namespace: "default",
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion: "v1",
+					Kind:       "Pod",
+					Name:       "pod-b",
+					UID:        "pod-b-uid",
+				},
+			},
+		},
+	}
+	pod2 := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pod-b",
+			UID:       "pod-b-uid",
+			Namespace: "default",
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion: "v1",
+					Kind:       "Pod",
+					Name:       "pod-c",
+					UID:        "pod-c-uid",
+				},
+			},
+		},
+	}
+	pod3 := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pod-c",
+			UID:       "pod-c-uid",
+			Namespace: "default",
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion: "v1",
+					Kind:       "Pod",
+					Name:       "pod-a",
+					UID:        "pod-a-uid",
+				},
+			},
+		},
+	}
+
+	return pod1, pod2, pod3
 }
