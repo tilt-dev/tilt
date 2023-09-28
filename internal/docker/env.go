@@ -400,6 +400,14 @@ func willBuildToKubeContext(ctx context.Context, product clusterid.Product, kube
 			return false
 		}
 		return true
+	case clusterid.ProductOrbstack:
+		// Orbstack docker socket is $HOME/.orbstack/run/docker.sock
+		host := env.DaemonHost()
+		if strings.HasPrefix(host, "unix://") && strings.HasSuffix(host, "/.orbstack/run/docker.sock") {
+			return true
+		}
+		logger.Get(ctx).Warnf("connected to Kubernetes running on Orbstack, but building on a non-Orbstack Docker socket")
+		return false
 	}
 	return false
 }
