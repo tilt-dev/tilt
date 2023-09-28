@@ -775,8 +775,8 @@ github.com/tilt-dev/apimachinery v0.28.1-tilt-20230921 h1:0iIWhKA2p9rSjHF1hqG1t4
 github.com/tilt-dev/apimachinery v0.28.1-tilt-20230921/go.mod h1:X0xh/chESs2hP9koe+SdIAcXWcQ+RM5hy0ZynB+yEvw=
 github.com/tilt-dev/browser v0.0.1 h1:e+mFToX6A7pkMlGFrXW5VLvS7qS0HVbcXqmR0uPrWUA=
 github.com/tilt-dev/browser v0.0.1/go.mod h1:2DaMt8P8xEqDFzxaAbraOig5iUmQdd1wtO1Tb6tODHA=
-github.com/tilt-dev/clusterid v0.1.4 h1:uQ/oDrFf+5ZPe/qcC4loq78Ri9PvgfTzvtsSxaFdhSI=
-github.com/tilt-dev/clusterid v0.1.4/go.mod h1:MV6q698Z7LEbu9i7p+JwqGsu2EkiiaQViIrL6gd8XiI=
+github.com/tilt-dev/clusterid v0.1.5 h1:zdyWj7DWg35PGUj3Z7Gvq0N6+tQiVt+BpBnmpnCUueg=
+github.com/tilt-dev/clusterid v0.1.5/go.mod h1:MV6q698Z7LEbu9i7p+JwqGsu2EkiiaQViIrL6gd8XiI=
 github.com/tilt-dev/dockerignore v0.1.1 h1:/MPYqcD8qMCMyh3yiHuQdzbMQi9NL4vVopo6/9D/XvE=
 github.com/tilt-dev/dockerignore v0.1.1/go.mod h1:2ooUDj8B9FNWYvHadA4EKG0JDaeAOjiq5P+mvEzS2eY=
 github.com/tilt-dev/fsnotify v1.4.8-0.20220602155310-fff9c274a375 h1:QB54BJwA6x8QU9nHY3xJSZR2kX9bgpZekRKGkLTmEXA=
