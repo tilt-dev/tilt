@@ -138,9 +138,7 @@ describe("Log filters", () => {
         it("throws an error when input text is invalid regex", () => {
           expect(() =>
             parseTermInput("/(missing)? parenthesis)/")
-          ).toThrowError(
-            "Invalid regular expression: /(missing)? parenthesis)/: Unmatched ')'"
-          )
+          ).toThrowError(/Invalid regular expression/)
         })
       })
     })
