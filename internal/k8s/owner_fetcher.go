@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 
+	"golang.org/x/exp/slices"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -147,6 +148,10 @@ func (v OwnerFetcher) getOrCreatePromise(id types.UID) (*objectTreePromise, bool
 }
 
 func (v OwnerFetcher) OwnerTreeOfRef(ctx context.Context, ref v1.ObjectReference) (result ObjectRefTree, err error) {
+	return v.ownerTreeOfRefHelper(ctx, ref, nil)
+}
+
+func (v OwnerFetcher) ownerTreeOfRefHelper(ctx context.Context, ref v1.ObjectReference, path []types.UID) (result ObjectRefTree, err error) {
 	uid := ref.UID
 	if uid == "" {
 		return ObjectRefTree{}, fmt.Errorf("Can only get owners of deployed entities")
@@ -172,7 +177,7 @@ func (v OwnerFetcher) OwnerTreeOfRef(ctx context.Context, ref v1.ObjectReference
 		}
 		return ObjectRefTree{}, err
 	}
-	return v.ownerTreeOfHelper(ctx, ref, meta)
+	return v.ownerTreeOfHelper(ctx, ref, meta, path)
 }
 
 func (v OwnerFetcher) getMetaByReference(ctx context.Context, ref v1.ObjectReference) (metav1.Object, error) {
@@ -211,15 +216,20 @@ func (v OwnerFetcher) OwnerTreeOf(ctx context.Context, entity K8sEntity) (result
 	}()
 
 	ref := entity.ToObjectReference()
-	return v.ownerTreeOfHelper(ctx, ref, meta)
+	return v.ownerTreeOfHelper(ctx, ref, meta, nil)
 }
 
-func (v OwnerFetcher) ownerTreeOfHelper(ctx context.Context, ref v1.ObjectReference, meta metav1.Object) (ObjectRefTree, error) {
+func (v OwnerFetcher) ownerTreeOfHelper(ctx context.Context, ref v1.ObjectReference, meta metav1.Object, path []types.UID) (ObjectRefTree, error) {
 	tree := ObjectRefTree{Ref: ref, CreationTimestamp: meta.GetCreationTimestamp()}
 	owners := meta.GetOwnerReferences()
 	for _, owner := range owners {
+		// TODO: Owner references can also exist at cluster scope, for which this incorrectly propagates the parent ref's Namespace.
 		ownerRef := OwnerRefToObjectRef(owner, meta.GetNamespace())
-		ownerTree, err := v.OwnerTreeOfRef(ctx, ownerRef)
+		if slices.Contains(path, owner.UID) {
+			// break circular dependencies
+			continue
+		}
+		ownerTree, err := v.ownerTreeOfRefHelper(ctx, ownerRef, append(path, ref.UID))
 		if err != nil {
 			return ObjectRefTree{}, err
 		}
