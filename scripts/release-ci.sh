@@ -39,10 +39,6 @@ git config --global user.name "Tilt Dev"
 
 VERSION=$(git describe --abbrev=0 --tags)
 
-# Upload assets must come before goreleaser so that embedded assets are built.
-./scripts/upload-assets.py --clean "$VERSION"
-./scripts/upload-assets.py "$VERSION"
-
 goreleaser --clean
 
 ./scripts/release-update-tilt-repo.sh "$VERSION"

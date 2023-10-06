@@ -9,8 +9,6 @@ import (
 	"net/http"
 
 	"github.com/tilt-dev/tilt/pkg/assets"
-	"github.com/tilt-dev/tilt/pkg/model"
-	pkgsnapshot "github.com/tilt-dev/tilt/pkg/snapshot"
 )
 
 func Serve(ctx context.Context, l net.Listener, rawSnapshot []byte) error {
@@ -22,12 +20,7 @@ func Serve(ctx context.Context, l net.Listener, rawSnapshot []byte) error {
 		return err
 	}
 
-	version, err := pkgsnapshot.GetVersionFromSnapshot(snapshot)
-	if err != nil {
-		return err
-	}
-
-	ss, err := newSnapshotServer(rawSnapshot, version)
+	ss, err := newSnapshotServer(rawSnapshot)
 	if err != nil {
 		return err
 	}
@@ -50,12 +43,14 @@ type snapshotServer struct {
 	server      http.Server
 }
 
-func newSnapshotServer(snapshot []byte, version string) (*snapshotServer, error) {
+func newSnapshotServer(snapshot []byte) (*snapshotServer, error) {
 	result := &snapshotServer{}
 
-	s, err := assets.NewProdServer(assets.ProdAssetBucket, model.WebVersion(version))
-	if err != nil {
-		return result, err
+	s, ok := assets.GetEmbeddedServer()
+	if !ok {
+		return nil, fmt.Errorf(
+			("requested embedded mode, but JS/CSS files are not available.\n" +
+				"Please report this: https://github.com/tilt-dev/tilt/issues"))
 	}
 	result.assetServer = s
 	result.snapshot = snapshot
