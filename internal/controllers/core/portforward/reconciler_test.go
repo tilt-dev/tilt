@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/jonboulle/clockwork"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/stretchr/testify/require"
@@ -347,12 +348,14 @@ type pfrFixture struct {
 	st      store.RStore
 	r       *Reconciler
 	clients *cluster.FakeClientProvider
+	clock   clockwork.FakeClock
 }
 
 func newPFRFixture(t *testing.T) *pfrFixture {
 	cfb := fake.NewControllerFixtureBuilder(t)
 	clients := cluster.NewFakeClientProvider(t, cfb.Client)
-	r := NewReconciler(cfb.Client, cfb.Scheme(), cfb.Store, clients)
+	clock := clockwork.NewFakeClock()
+	r := NewReconciler(cfb.Client, cfb.Scheme(), cfb.Store, clients, clock)
 	indexer.StartSourceForTesting(cfb.Context(), r.requeuer, r, nil)
 
 	return &pfrFixture{
@@ -361,6 +364,7 @@ func newPFRFixture(t *testing.T) *pfrFixture {
 		st:                cfb.Store,
 		r:                 r,
 		clients:           clients,
+		clock:             clock,
 	}
 }
 
@@ -368,6 +372,10 @@ func (f *pfrFixture) requireState(name string, cond func(pf *PortForward) bool, 
 	f.t.Helper()
 	key := types.NamespacedName{Name: name}
 	require.Eventuallyf(f.t, func() bool {
+		// clear any backoffs.
+		f.clock.Advance(time.Second)
+		f.MustReconcile(key)
+
 		var pf PortForward
 		if !f.Get(key, &pf) {
 			return cond(nil)

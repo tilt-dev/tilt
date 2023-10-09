@@ -11,6 +11,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 
+	"github.com/jonboulle/clockwork"
+
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/cluster"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
@@ -42,6 +44,7 @@ type Reconciler struct {
 	clients    *cluster.ClientManager
 	requeuer   *indexer.Requeuer
 	indexer    *indexer.Indexer
+	clock      clockwork.Clock
 
 	// map of PortForward object name --> running forward(s)
 	activeForwards map[types.NamespacedName]*portForwardEntry
@@ -55,6 +58,7 @@ func NewReconciler(
 	scheme *runtime.Scheme,
 	store store.RStore,
 	clients cluster.ClientProvider,
+	clock clockwork.Clock,
 ) *Reconciler {
 	return &Reconciler{
 		store:          store,
@@ -62,6 +66,7 @@ func NewReconciler(
 		clients:        cluster.NewClientManager(clients),
 		requeuer:       indexer.NewRequeuer(),
 		indexer:        indexer.NewIndexer(scheme, indexPortForward),
+		clock:          clock,
 		activeForwards: make(map[types.NamespacedName]*portForwardEntry),
 	}
 }
@@ -148,7 +153,7 @@ func (r *Reconciler) portForwardLoop(ctx context.Context, entry *portForwardEntr
 	currentBackoff := originalBackoff
 
 	for {
-		start := time.Now()
+		start := r.clock.Now()
 		r.onePortForward(ctx, entry, forward)
 		if ctx.Err() != nil {
 			// If the context was canceled, there's nothing more to do;
@@ -160,8 +165,8 @@ func (r *Reconciler) portForwardLoop(ctx context.Context, entry *portForwardEntr
 
 		// If this failed in less than a second, then we should advance the backoff.
 		// Otherwise, reset the backoff.
-		if time.Since(start) < time.Second {
-			time.Sleep(currentBackoff.Step())
+		if r.clock.Since(start) < time.Second {
+			r.clock.Sleep(currentBackoff.Step())
 		} else {
 			currentBackoff = originalBackoff
 		}

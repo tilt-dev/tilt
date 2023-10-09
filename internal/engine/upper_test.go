@@ -3205,7 +3205,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		cdc,
 		uncached)
 	require.NoError(t, err, "Failed to create Tilt API server controller manager")
-	pfr := apiportforward.NewReconciler(cdc, sch, st, clusterClients)
+	pfr := apiportforward.NewReconciler(cdc, sch, st, clusterClients, clock)
 
 	wsl := server.NewWebsocketList()
 

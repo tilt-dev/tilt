@@ -741,12 +741,12 @@ func (x *VersionSettings) GetCheckUpdates() bool {
 
 // Our websocket service has two kinds of View messages:
 //
-// 1) On initialization, we send down the complete view state
-//    (TiltStartTime, UISession, UIResources, and LogList)
+//  1. On initialization, we send down the complete view state
+//     (TiltStartTime, UISession, UIResources, and LogList)
 //
-// 2) On every change, we send down the resources that have
-//    changed since the last send().
-//    (new logs and any updated UISession/UIResource objects).
+//  2. On every change, we send down the resources that have
+//     changed since the last send().
+//     (new logs and any updated UISession/UIResource objects).
 //
 // All other fields are obsolete, but are needed for deserializing
 // old snapshots.
@@ -1268,9 +1268,9 @@ func (x *UploadSnapshotResponse) GetUrl() string {
 // NOTE(nick): This is obsolete.
 //
 // Our websocket service has two kinds of messages:
-// 1) On initialization, we send down the complete view state
-// 2) On every change, we send down the resources that have
-//    changed since the last send().
+//  1. On initialization, we send down the complete view state
+//  2. On every change, we send down the resources that have
+//     changed since the last send().
 type AckWebsocketRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
