@@ -37,10 +37,6 @@ const (
 	// Production build embedded assets
 	EmbeddedWebMode WebMode = "embedded"
 
-	// Production build assets from cloud bucket
-	// TODO(nicks): Delete this mode. It should be obsoleted by embedded.
-	CloudWebMode WebMode = "cloud"
-
 	// Precompiled with `make build-js`. This is an experimental mode
 	// we're playing around with to avoid the cost of webpack startup.
 	PrecompiledWebMode WebMode = "precompiled"
@@ -62,8 +58,6 @@ func (m *WebMode) Set(v string) error {
 		*m = ProdWebMode
 	case string(EmbeddedWebMode):
 		*m = EmbeddedWebMode
-	case string(CloudWebMode):
-		*m = CloudWebMode
 	default:
 		return UnrecognizedWebModeError(v)
 	}
@@ -75,12 +69,12 @@ func (m *WebMode) Type() string {
 }
 
 func (m WebMode) IsProd() bool {
-	return m == ProdWebMode || m == EmbeddedWebMode || m == CloudWebMode
+	return m == ProdWebMode || m == EmbeddedWebMode
 }
 
 func UnrecognizedWebModeError(v string) error {
 	return fmt.Errorf("Unrecognized web mode: %s. Allowed values: %s", v, []WebMode{
-		DefaultWebMode, LocalWebMode, ProdWebMode, EmbeddedWebMode, CloudWebMode, PrecompiledWebMode,
+		DefaultWebMode, LocalWebMode, ProdWebMode, EmbeddedWebMode, PrecompiledWebMode,
 	})
 }
 

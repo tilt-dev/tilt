@@ -194,7 +194,6 @@ func provideWebMode(b model.TiltBuild) (model.WebMode, error) {
 	case model.LocalWebMode,
 		model.ProdWebMode,
 		model.EmbeddedWebMode,
-		model.CloudWebMode,
 		model.PrecompiledWebMode:
 		return webModeFlag, nil
 	case model.DefaultWebMode:
@@ -274,8 +273,6 @@ func provideAssetServer(mode model.WebMode, version model.WebVersion) (assets.Se
 	switch m {
 	case model.EmbeddedWebMode, model.PrecompiledWebMode:
 		return s, nil
-	case model.CloudWebMode:
-		return assets.NewProdServer(assets.ProdAssetBucket, version)
 	case model.LocalWebMode:
 		path, err := web.StaticPath()
 		if err != nil {
