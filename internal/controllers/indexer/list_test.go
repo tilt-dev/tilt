@@ -1,4 +1,4 @@
-package indexer
+package indexer_test
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
+	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
@@ -57,10 +58,10 @@ func TestListOwnedBy(t *testing.T) {
 	assert.NoError(t, c.Create(ctx, pls2a))
 
 	var plsList1 v1alpha1.PodLogStreamList
-	assert.NoError(t, ListOwnedBy(ctx, c, &plsList1, types.NamespacedName{Name: kd1.Name}, kd1.TypeMeta))
+	assert.NoError(t, indexer.ListOwnedBy(ctx, c, &plsList1, types.NamespacedName{Name: kd1.Name}, kd1.TypeMeta))
 	assert.ElementsMatch(t, []v1alpha1.PodLogStream{*pls1a, *pls1b}, plsList1.Items)
 
 	var plsList2 v1alpha1.PodLogStreamList
-	assert.NoError(t, ListOwnedBy(ctx, c, &plsList2, types.NamespacedName{Name: kd2.Name}, kd2.TypeMeta))
+	assert.NoError(t, indexer.ListOwnedBy(ctx, c, &plsList2, types.NamespacedName{Name: kd2.Name}, kd2.TypeMeta))
 	assert.ElementsMatch(t, []v1alpha1.PodLogStream{*pls2a}, plsList2.Items)
 }

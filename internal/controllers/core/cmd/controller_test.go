@@ -20,7 +20,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
-	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/engine/local"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils/configmap"
@@ -946,10 +945,9 @@ func newFixture(t *testing.T) *fixture {
 	sc := local.NewServerController(f.Client)
 	clock := clockwork.NewFakeClock()
 	c := NewController(f.Context(), fe, fpm, f.Client, st, clock, v1alpha1.NewScheme())
-	indexer.StartSourceForTesting(f.Context(), c.requeuer, c, nil)
 
 	return &fixture{
-		ControllerFixture: f.Build(c),
+		ControllerFixture: f.WithRequeuer(c.requeuer).Build(c),
 		st:                st,
 		fe:                fe,
 		fpm:               fpm,
