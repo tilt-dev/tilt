@@ -23,7 +23,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/cluster"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
-	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/timecmp"
 	"github.com/tilt-dev/tilt/pkg/apis"
@@ -722,10 +721,9 @@ func newFixture(t *testing.T) *fixture {
 	cfb := fake.NewControllerFixtureBuilder(t)
 	clients := cluster.NewFakeClientProvider(t, cfb.Client)
 	pw := NewReconciler(cfb.Client, cfb.Scheme(), clients, rd, cfb.Store)
-	indexer.StartSourceForTesting(cfb.Context(), pw.requeuer, pw, nil)
 
 	ret := &fixture{
-		ControllerFixture: cfb.Build(pw),
+		ControllerFixture: cfb.WithRequeuer(pw.requeuer).Build(pw),
 		r:                 pw,
 		ctx:               cfb.Context(),
 		t:                 t,

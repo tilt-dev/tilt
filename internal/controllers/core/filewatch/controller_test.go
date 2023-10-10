@@ -19,7 +19,6 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
-	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils/configmap"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
@@ -75,10 +74,8 @@ func newFixture(t *testing.T) *fixture {
 	clock := clockwork.NewFakeClock()
 	controller := NewController(cfb.Client, testingStore, fakeMultiWatcher.NewSub, timerMaker.Maker(), filewatches.NewScheme(), clock)
 
-	indexer.StartSourceForTesting(cfb.Context(), controller.requeuer, controller, nil)
-
 	return &fixture{
-		ControllerFixture: cfb.Build(controller),
+		ControllerFixture: cfb.WithRequeuer(controller.requeuer).Build(controller),
 		t:                 t,
 		tmpdir:            tmpdir,
 		controller:        controller,

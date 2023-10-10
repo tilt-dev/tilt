@@ -11,7 +11,6 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
-	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -173,10 +172,9 @@ func newFixture(t *testing.T) *fixture {
 	dcCli := dockercompose.NewFakeDockerComposeClient(t, cfb.Context())
 	dCli := docker.NewFakeClient()
 	r := NewReconciler(cfb.Client, cfb.Store, dcCli, dCli)
-	indexer.StartSourceForTesting(cfb.Context(), r.requeuer, r, nil)
 
 	return &fixture{
-		ControllerFixture: cfb.Build(r),
+		ControllerFixture: cfb.WithRequeuer(r.requeuer).Build(r),
 		r:                 r,
 		dc:                dCli,
 		dcc:               dcCli,

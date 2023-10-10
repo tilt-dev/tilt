@@ -291,9 +291,8 @@ func newFixture(t *testing.T) *fixture {
 		base,
 		"tilt-default")
 	requeueChan := make(chan indexer.RequeueForTestResult, 1)
-	indexer.StartSourceForTesting(cfb.Context(), r.requeuer, r, requeueChan)
 	return &fixture{
-		ControllerFixture: cfb.Build(r),
+		ControllerFixture: cfb.WithRequeuer(r.requeuer).WithRequeuerResultChan(requeueChan).Build(r),
 		r:                 r,
 		ma:                cfb.Analytics(),
 		clock:             clock,

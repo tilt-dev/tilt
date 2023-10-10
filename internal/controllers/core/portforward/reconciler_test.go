@@ -18,7 +18,6 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/controllers/apis/cluster"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
-	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/pkg/apis"
 
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -353,10 +352,9 @@ func newPFRFixture(t *testing.T) *pfrFixture {
 	cfb := fake.NewControllerFixtureBuilder(t)
 	clients := cluster.NewFakeClientProvider(t, cfb.Client)
 	r := NewReconciler(cfb.Client, cfb.Scheme(), cfb.Store, clients)
-	indexer.StartSourceForTesting(cfb.Context(), r.requeuer, r, nil)
 
 	return &pfrFixture{
-		ControllerFixture: cfb.Build(r),
+		ControllerFixture: cfb.WithRequeuer(r.requeuer).Build(r),
 		t:                 t,
 		st:                cfb.Store,
 		r:                 r,

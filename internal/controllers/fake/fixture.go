@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -17,8 +18,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
+	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
@@ -44,20 +47,22 @@ type ControllerFixture struct {
 	out        *bufsync.ThreadSafeBuffer
 	ctx        context.Context
 	cancel     context.CancelFunc
-	controller controller
+	controller reconcile.Reconciler
 	Store      *testStore
 	Scheme     *runtime.Scheme
 	Client     ctrlclient.Client
 }
 
 type ControllerFixtureBuilder struct {
-	t      testing.TB
-	ctx    context.Context
-	cancel context.CancelFunc
-	out    *bufsync.ThreadSafeBuffer
-	ma     *analytics.MemoryAnalytics
-	Client ctrlclient.Client
-	Store  *testStore
+	t                  testing.TB
+	ctx                context.Context
+	cancel             context.CancelFunc
+	out                *bufsync.ThreadSafeBuffer
+	ma                 *analytics.MemoryAnalytics
+	Client             ctrlclient.Client
+	Store              *testStore
+	requeuer           source.Source
+	requeuerResultChan chan indexer.RequeueForTestResult
 }
 
 func NewControllerFixtureBuilder(t testing.TB) *ControllerFixtureBuilder {
@@ -80,15 +85,25 @@ func NewControllerFixtureBuilder(t testing.TB) *ControllerFixtureBuilder {
 	}
 }
 
-func (b ControllerFixtureBuilder) Scheme() *runtime.Scheme {
+func (b *ControllerFixtureBuilder) WithRequeuer(r source.Source) *ControllerFixtureBuilder {
+	b.requeuer = r
+	return b
+}
+
+func (b *ControllerFixtureBuilder) WithRequeuerResultChan(ch chan indexer.RequeueForTestResult) *ControllerFixtureBuilder {
+	b.requeuerResultChan = ch
+	return b
+}
+
+func (b *ControllerFixtureBuilder) Scheme() *runtime.Scheme {
 	return b.Client.Scheme()
 }
 
-func (b ControllerFixtureBuilder) Analytics() *analytics.MemoryAnalytics {
+func (b *ControllerFixtureBuilder) Analytics() *analytics.MemoryAnalytics {
 	return b.ma
 }
 
-func (b ControllerFixtureBuilder) Build(c controller) *ControllerFixture {
+func (b *ControllerFixtureBuilder) Build(c controller) *ControllerFixture {
 	b.t.Helper()
 
 	// apiserver controller initialization is awkward and some parts are done via the builder,
@@ -99,6 +114,16 @@ func (b ControllerFixtureBuilder) Build(c controller) *ControllerFixture {
 	_, err := c.CreateBuilder(&FakeManager{})
 	require.NoError(b.t, err, "Error in controller CreateBuilder()")
 
+	// In a normal controller, there's a central reconciliation loop
+	// that ensures we never have two reconcile() calls running simultaneously.
+	//
+	// In our test code, we want to people to invoke Reconcile() directly and in
+	// the background.  So instead, we wrap the Reconcile() call in mutex.
+	lc := NewLockedController(c)
+	if b.requeuer != nil {
+		indexer.StartSourceForTesting(b.Context(), b.requeuer, lc, b.requeuerResultChan)
+	}
+
 	return &ControllerFixture{
 		t:          b.t,
 		out:        b.out,
@@ -107,23 +132,23 @@ func (b ControllerFixtureBuilder) Build(c controller) *ControllerFixture {
 		Scheme:     b.Client.Scheme(),
 		Client:     b.Client,
 		Store:      b.Store,
-		controller: c,
+		controller: lc,
 	}
 }
 
-func (b ControllerFixtureBuilder) OutWriter() io.Writer {
+func (b *ControllerFixtureBuilder) OutWriter() io.Writer {
 	return b.out
 }
 
-func (b ControllerFixtureBuilder) Context() context.Context {
+func (b *ControllerFixtureBuilder) Context() context.Context {
 	return b.ctx
 }
 
-func (b ControllerFixture) Stdout() string {
+func (b *ControllerFixture) Stdout() string {
 	return b.out.String()
 }
 
-func (f ControllerFixture) T() testing.TB {
+func (f *ControllerFixture) T() testing.TB {
 	return f.t
 }
 
@@ -132,7 +157,7 @@ func (f ControllerFixture) T() testing.TB {
 // Normally, it's not necessary to call this - the fixture will automatically cancel the context as part of test
 // cleanup to avoid leaking resources. However, if you want to explicitly test how a controller reacts to context
 // cancellation, this method can be used.
-func (f ControllerFixture) Cancel() {
+func (f *ControllerFixture) Cancel() {
 	f.cancel()
 }
 
@@ -269,3 +294,24 @@ type FakeManager struct {
 func (m *FakeManager) GetCache() cache.Cache {
 	return nil
 }
+
+type LockedController struct {
+	mu         sync.Mutex
+	controller controller
+}
+
+func NewLockedController(c controller) *LockedController {
+	return &LockedController{controller: c}
+}
+
+func (c *LockedController) Reconcile(ctx context.Context, req reconcile.Request) (ctrl.Result, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.controller.Reconcile(ctx, req)
+}
+
+func (c *LockedController) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
+	return c.controller.CreateBuilder(mgr)
+}
+
+var _ controller = &LockedController{}
