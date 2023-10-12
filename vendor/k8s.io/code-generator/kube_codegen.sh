@@ -382,7 +382,7 @@ function kube::codegen::gen_openapi() {
 #
 # Args:
 #   --input-pkg-root <string>
-#     The root package under which to search for *_*_*_*_types.go files which request
+#     The root package under which to search for types.go files which request
 #     clients to be generated.  This must be Go package syntax, e.g.
 #     "k8s.io/foo/bar".
 #
