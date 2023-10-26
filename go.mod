@@ -70,7 +70,7 @@ require (
 	golang.org/x/term v0.13.0
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2
 	google.golang.org/genproto/googleapis/api v0.0.0-20230525234035-dd9d682886f9
-	google.golang.org/grpc v1.54.0
+	google.golang.org/grpc v1.56.3
 	google.golang.org/protobuf v1.30.0
 	gopkg.in/d4l3k/messagediff.v1 v1.2.1
 	gopkg.in/yaml.v2 v2.4.0
