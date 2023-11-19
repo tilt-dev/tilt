@@ -291,6 +291,7 @@ func composeProjectOptions(modelProj v1alpha1.DockerComposeProject, env []string
 		compose.WithName(modelProj.Name),
 		compose.WithResolvedPaths(true),
 		compose.WithEnv(env),
+		compose.WithProfiles(modelProj.Profiles),
 	)
 	if modelProj.EnvFile != "" {
 		allProjectOptions = append(allProjectOptions, compose.WithEnvFiles(modelProj.EnvFile))
@@ -328,7 +329,7 @@ func (c *cmdDCClient) loadProjectCLI(ctx context.Context, proj v1alpha1.DockerCo
 			},
 		},
 		// no environment specified because the CLI call will already have resolved all variables
-	}, dcLoaderOption(proj.Name))
+	}, dcLoaderOption(proj.Name), loader.WithProfiles(proj.Profiles))
 }
 
 // dcLoaderOption is used when loading Docker Compose projects via the CLI and fallback and for tests.

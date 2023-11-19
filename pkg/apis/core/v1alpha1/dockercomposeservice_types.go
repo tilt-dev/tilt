@@ -216,6 +216,12 @@ type DockerComposeProject struct {
 
 	// Path to an env file to use. Passed to docker-compose as `--env-file FILE`.
 	EnvFile string `json:"envFile,omitempty" protobuf:"bytes,5,opt,name=envFile"`
+
+	// Optional docker-compose profiles to use.
+	//
+	// Services with defined profiles will only be included if their profile matches
+	// one in this list.
+	Profiles []string `json:"profiles,omitempty" protobuf:"bytes,6,rep,name=profiles"`
 }
 
 // State of a standalone container in Docker.

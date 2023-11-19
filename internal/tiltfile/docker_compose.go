@@ -57,12 +57,14 @@ func (dcm dcResourceMap) ServiceCount() int {
 func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var configPaths starlark.Value
 	var projectName string
+	var profiles value.StringOrStringList
 	envFile := value.NewLocalPathUnpacker(thread)
 
 	err := s.unpackArgs(fn.Name(), args, kwargs,
 		"configPaths", &configPaths,
 		"env_file?", &envFile,
 		"project_name?", &projectName,
+		"profiles?", &profiles,
 	)
 	if err != nil {
 		return nil, err
@@ -75,8 +77,9 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 	}
 
 	project := v1alpha1.DockerComposeProject{
-		Name:    projectName,
-		EnvFile: envFile.Value,
+		Name:     projectName,
+		EnvFile:  envFile.Value,
+		Profiles: profiles.Values,
 	}
 
 	if project.EnvFile != "" {

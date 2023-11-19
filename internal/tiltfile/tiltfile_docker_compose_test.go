@@ -67,6 +67,23 @@ services:
       - foo
 `
 
+const twoServiceConfigWithProfiles = `version: '3'
+services:
+  foo:
+    build: ./foo
+    command: sleep 100
+    ports:
+      - "12312:80"
+  bar:
+    image: bar-image
+    expose:
+      - "3000"
+    depends_on:
+      - foo
+    profiles:
+      - barprofile
+`
+
 // YAML for Foo config looks a little different from the above after being read into
 // a struct and YAML'd back out...
 func (f *fixture) simpleConfigAfterParse() string {
@@ -657,6 +674,50 @@ dc_resource('foo', 'fooimage')
 	configPath := f.TempDirFixture.JoinPath("docker-compose.yml")
 	assert.Equal(t, m.DockerComposeTarget().Spec.Project.ConfigPaths,
 		[]string{configPath})
+}
+
+func TestDockerComposeWithProfiles(t *testing.T) {
+	t.Run("include resource without profile", func(t *testing.T) {
+		f := newFixture(t)
+
+		f.setupFoo()
+		f.file("docker-compose.yml", twoServiceConfigWithProfiles)
+		f.file("Tiltfile", `docker_compose('docker-compose.yml')
+dc_resource('foo')
+`)
+		f.load()
+
+		_ = f.assertNextManifest("foo")
+		f.assertNoMoreManifests()
+	})
+
+	t.Run("include specified profile", func(t *testing.T) {
+		f := newFixture(t)
+
+		f.setupFoo()
+		f.file("docker-compose.yml", twoServiceConfigWithProfiles)
+		f.file("Tiltfile", `docker_compose('docker-compose.yml', profiles=["barprofile"])
+dc_resource('foo')
+dc_resource('bar')
+`)
+		f.load()
+
+		_ = f.assertNextManifest("foo")
+		_ = f.assertNextManifest("bar")
+		f.assertNoMoreManifests()
+	})
+
+	t.Run("must include profile to have resource", func(t *testing.T) {
+		f := newFixture(t)
+
+		f.setupFoo()
+		f.file("docker-compose.yml", twoServiceConfigWithProfiles)
+		f.file("Tiltfile", `docker_compose('docker-compose.yml')
+dc_resource('bar')
+`)
+		f.loadErrString("Error in dc_resource: no Docker Compose service found with name \"bar\".")
+		f.assertNoMoreManifests()
+	})
 }
 
 func TestMultipleDockerComposeWithDockerBuild(t *testing.T) {
