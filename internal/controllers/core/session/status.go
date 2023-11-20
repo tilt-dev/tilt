@@ -3,6 +3,7 @@ package session
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	ctrl "sigs.k8s.io/controller-runtime"
 
@@ -65,7 +66,14 @@ func (r *Reconciler) processExitCondition(spec v1alpha1.SessionSpec, state *stor
 		status.Error = fmt.Sprintf("unsupported exit condition: %s", exitCondition)
 	}
 
-	allResourcesOK := true
+	var waiting []string
+	var notReady []string
+	var retrying []string
+
+	allResourcesOK := func() bool {
+		return len(waiting)+len(notReady)+len(retrying) == 0
+	}
+
 	for _, res := range status.Targets {
 		if res.State.Waiting == nil && res.State.Active == nil && res.State.Terminated == nil {
 			// if all states are nil, the target has not been requested to run, e.g. auto_init=False
@@ -75,7 +83,7 @@ func (r *Reconciler) processExitCondition(spec v1alpha1.SessionSpec, state *stor
 		isTerminated := res.State.Terminated != nil && res.State.Terminated.Error != ""
 		if isTerminated {
 			if res.State.Terminated.GraceStatus == v1alpha1.TargetGraceTolerated {
-				allResourcesOK = false
+				retrying = append(retrying, res.Name)
 				continue
 			}
 
@@ -89,17 +97,38 @@ func (r *Reconciler) processExitCondition(spec v1alpha1.SessionSpec, state *stor
 			return
 		}
 		if res.State.Waiting != nil {
-			allResourcesOK = false
+			waiting = append(waiting, fmt.Sprintf("%v %v", res.Name, res.State.Waiting.WaitReason))
 		} else if res.State.Active != nil && (!res.State.Active.Ready || res.Type == v1alpha1.TargetTypeJob) {
 			// jobs must run to completion
-			allResourcesOK = false
+			notReady = append(notReady, res.Name)
 		}
 	}
 
 	// Tiltfile is _always_ a target, so ensure that there's at least one other real target, or it's possible to
 	// exit before the targets have actually been initialized
-	if allResourcesOK && len(status.Targets) > 1 {
+	if allResourcesOK() && len(status.Targets) > 1 {
 		status.Done = true
+	}
+
+	summary := func() string {
+		buf := new(strings.Builder)
+		for _, category := range []struct {
+			name  string
+			items []string
+		}{
+			{name: "waiting", items: waiting},
+			{name: "not ready", items: notReady},
+			{name: "retrying", items: retrying},
+		} {
+			if num := len(category.items); num > 0 {
+				if buf.Len() > 0 {
+					buf.WriteString(", ")
+				}
+				fmt.Fprintf(buf, "%d resources %v (%v)",
+					num, category.name, strings.Join(category.items, ","))
+			}
+		}
+		return buf.String()
 	}
 
 	// Enforce a global timeout.
@@ -107,7 +136,7 @@ func (r *Reconciler) processExitCondition(spec v1alpha1.SessionSpec, state *stor
 	if status.Error == "" && ci != nil && ci.Timeout != nil && ci.Timeout.Duration > 0 &&
 		r.clock.Since(status.StartTime.Time) > ci.Timeout.Duration {
 		status.Done = true
-		status.Error = fmt.Sprintf("Timeout after %s", ci.Timeout.Duration)
+		status.Error = fmt.Sprintf("Timeout after %s: %v", ci.Timeout.Duration, summary())
 	}
 }
 
