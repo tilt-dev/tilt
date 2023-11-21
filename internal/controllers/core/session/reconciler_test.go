@@ -173,7 +173,7 @@ func TestExitControlCI_Timeout(t *testing.T) {
 
 	f.clock.Advance(20 * time.Second)
 	f.MustReconcile(sessionKey)
-	f.requireDoneWithError("Timeout after 1m0s")
+	f.requireDoneWithError("Timeout after 1m0s: 2 resources waiting (fe:runtime waiting-for-pod,fe:update waiting-for-cluster)")
 }
 
 func TestExitControlCI_PodRunningContainerError(t *testing.T) {
