@@ -961,6 +961,11 @@ func (in *DockerComposeProject) DeepCopyInto(out *DockerComposeProject) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.Profiles != nil {
+		in, out := &in.Profiles, &out.Profiles
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 
