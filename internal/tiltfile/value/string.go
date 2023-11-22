@@ -72,6 +72,7 @@ func (s *StringList) Unpack(v starlark.Value) error {
 
 type StringOrStringList struct {
 	Values []string
+	IsSet  bool
 }
 
 var _ starlark.Unpacker = &StringOrStringList{}
@@ -87,6 +88,7 @@ func (s *StringOrStringList) Unpack(v starlark.Value) error {
 	vs, ok := AsString(v)
 	if ok {
 		s.Values = []string{vs}
+		s.IsSet = true
 		return nil
 	}
 
@@ -112,5 +114,6 @@ func (s *StringOrStringList) Unpack(v starlark.Value) error {
 		s.Values = append(s.Values, sv)
 	}
 
+	s.IsSet = true
 	return nil
 }
