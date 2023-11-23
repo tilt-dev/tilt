@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/compose-spec/compose-go/consts"
 	"github.com/compose-spec/compose-go/loader"
 	"github.com/compose-spec/compose-go/types"
 	"github.com/distribution/reference"
@@ -26,6 +27,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 	"github.com/tilt-dev/tilt/internal/tiltfile/value"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -145,6 +147,12 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 	// Set to tiltfile directory for YAML blob tempfiles
 	if project.ProjectPath == "" {
 		project.ProjectPath = filepath.Dir(currentTiltfilePath)
+	}
+
+	if !profiles.IsSet && os.Getenv(consts.ComposeProfiles) != "" {
+		logger.Get(s.ctx).Infof("Compose project %q loading profiles from environment: %s",
+			project.Name, os.Getenv(consts.ComposeProfiles))
+		project.Profiles = strings.Split(os.Getenv(consts.ComposeProfiles), ",")
 	}
 
 	dc := s.dc[project.Name]

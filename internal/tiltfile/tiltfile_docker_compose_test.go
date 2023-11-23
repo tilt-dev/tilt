@@ -707,6 +707,23 @@ dc_resource('bar')
 		f.assertNoMoreManifests()
 	})
 
+	t.Run("include specified profile from env var", func(t *testing.T) {
+		f := newFixture(t)
+		t.Setenv("COMPOSE_PROFILES", "barprofile")
+
+		f.setupFoo()
+		f.file("docker-compose.yml", twoServiceConfigWithProfiles)
+		f.file("Tiltfile", `docker_compose('docker-compose.yml')
+dc_resource('foo')
+dc_resource('bar')
+`)
+		f.load()
+
+		_ = f.assertNextManifest("foo")
+		_ = f.assertNextManifest("bar")
+		f.assertNoMoreManifests()
+	})
+
 	t.Run("must include profile to have resource", func(t *testing.T) {
 		f := newFixture(t)
 
