@@ -7,7 +7,7 @@ require (
 	github.com/akutz/memconn v0.1.0
 	github.com/alessio/shellescape v1.4.1
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/compose-spec/compose-go v1.18.4
+	github.com/compose-spec/compose-go v1.20.2
 	github.com/davecgh/go-spew v1.1.1
 	github.com/distribution/reference v0.5.0
 	github.com/docker/cli v24.0.5+incompatible

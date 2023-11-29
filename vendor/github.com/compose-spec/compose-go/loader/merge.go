@@ -320,8 +320,8 @@ func mergeLoggingConfig(dst, src reflect.Value) error {
 		if getLoggingDriver(dst.Elem()) == "" {
 			dst.Elem().FieldByName("Driver").SetString(getLoggingDriver(src.Elem()))
 		}
-		dstOptions := dst.Elem().FieldByName("Options").Interface().(map[string]string)
-		srcOptions := src.Elem().FieldByName("Options").Interface().(map[string]string)
+		dstOptions := dst.Elem().FieldByName("Options").Interface().(types.Options)
+		srcOptions := src.Elem().FieldByName("Options").Interface().(types.Options)
 		return mergo.Merge(&dstOptions, srcOptions, mergo.WithOverride)
 	}
 	// Different driver, override with src

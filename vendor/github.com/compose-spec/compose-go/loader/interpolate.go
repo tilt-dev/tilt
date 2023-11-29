@@ -46,10 +46,6 @@ var interpolateTypeCastMapping = map[tree.Path]interp.Cast{
 	servicePath("deploy", "placement", "max_replicas_per_node"):    toInt,
 	servicePath("healthcheck", "retries"):                          toInt,
 	servicePath("healthcheck", "disable"):                          toBoolean,
-	servicePath("mem_limit"):                                       toUnitBytes,
-	servicePath("mem_reservation"):                                 toUnitBytes,
-	servicePath("memswap_limit"):                                   toUnitBytes,
-	servicePath("mem_swappiness"):                                  toUnitBytes,
 	servicePath("oom_kill_disable"):                                toBoolean,
 	servicePath("oom_score_adj"):                                   toInt64,
 	servicePath("pids_limit"):                                      toInt64,
@@ -58,16 +54,13 @@ var interpolateTypeCastMapping = map[tree.Path]interp.Cast{
 	servicePath("read_only"):                                       toBoolean,
 	servicePath("scale"):                                           toInt,
 	servicePath("secrets", tree.PathMatchList, "mode"):             toInt,
-	servicePath("shm_size"):                                        toUnitBytes,
 	servicePath("stdin_open"):                                      toBoolean,
-	servicePath("stop_grace_period"):                               toDuration,
 	servicePath("tty"):                                             toBoolean,
 	servicePath("ulimits", tree.PathMatchAll):                      toInt,
 	servicePath("ulimits", tree.PathMatchAll, "hard"):              toInt,
 	servicePath("ulimits", tree.PathMatchAll, "soft"):              toInt,
 	servicePath("volumes", tree.PathMatchList, "read_only"):        toBoolean,
 	servicePath("volumes", tree.PathMatchList, "volume", "nocopy"): toBoolean,
-	servicePath("volumes", tree.PathMatchList, "tmpfs", "size"):    toUnitBytes,
 	iPath("networks", tree.PathMatchAll, "external"):               toBoolean,
 	iPath("networks", tree.PathMatchAll, "internal"):               toBoolean,
 	iPath("networks", tree.PathMatchAll, "attachable"):             toBoolean,
@@ -91,14 +84,6 @@ func toInt(value string) (interface{}, error) {
 
 func toInt64(value string) (interface{}, error) {
 	return strconv.ParseInt(value, 10, 64)
-}
-
-func toUnitBytes(value string) (interface{}, error) {
-	return transformSize(value)
-}
-
-func toDuration(value string) (interface{}, error) {
-	return transformStringToDuration(value)
 }
 
 func toFloat(value string) (interface{}, error) {

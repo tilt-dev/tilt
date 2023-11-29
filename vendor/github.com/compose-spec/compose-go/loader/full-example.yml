@@ -235,6 +235,7 @@ services:
       other-network:
         ipv4_address: 172.16.238.10
         ipv6_address: 2001:3984:3989::10
+        mac_address: 02:42:72:98:65:08
       other-other-network:
 
     pid: "host"
