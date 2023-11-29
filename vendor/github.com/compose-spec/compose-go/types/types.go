@@ -21,46 +21,9 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/docker/go-connections/nat"
 )
-
-// Duration is a thin wrapper around time.Duration with improved JSON marshalling
-type Duration time.Duration
-
-func (d Duration) String() string {
-	return time.Duration(d).String()
-}
-
-// ConvertDurationPtr converts a type defined Duration pointer to a time.Duration pointer with the same value.
-func ConvertDurationPtr(d *Duration) *time.Duration {
-	if d == nil {
-		return nil
-	}
-	res := time.Duration(*d)
-	return &res
-}
-
-// MarshalJSON makes Duration implement json.Marshaler
-func (d Duration) MarshalJSON() ([]byte, error) {
-	return json.Marshal(d.String())
-}
-
-// MarshalYAML makes Duration implement yaml.Marshaler
-func (d Duration) MarshalYAML() (interface{}, error) {
-	return d.String(), nil
-}
-
-func (d *Duration) UnmarshalJSON(b []byte) error {
-	s := strings.Trim(string(b), "\"")
-	timeDuration, err := time.ParseDuration(s)
-	if err != nil {
-		return err
-	}
-	*d = Duration(timeDuration)
-	return nil
-}
 
 // Services is a list of ServiceConfig
 type Services []ServiceConfig
@@ -88,23 +51,24 @@ type ServiceConfig struct {
 	Name     string   `yaml:"-" json:"-"`
 	Profiles []string `yaml:"profiles,omitempty" json:"profiles,omitempty"`
 
-	Annotations  Mapping      `yaml:"annotations,omitempty" json:"annotations,omitempty"`
-	Attach       *bool        `yaml:"attach,omitempty" json:"attach,omitempty"`
-	Build        *BuildConfig `yaml:"build,omitempty" json:"build,omitempty"`
-	BlkioConfig  *BlkioConfig `yaml:"blkio_config,omitempty" json:"blkio_config,omitempty"`
-	CapAdd       []string     `yaml:"cap_add,omitempty" json:"cap_add,omitempty"`
-	CapDrop      []string     `yaml:"cap_drop,omitempty" json:"cap_drop,omitempty"`
-	CgroupParent string       `yaml:"cgroup_parent,omitempty" json:"cgroup_parent,omitempty"`
-	Cgroup       string       `yaml:"cgroup,omitempty" json:"cgroup,omitempty"`
-	CPUCount     int64        `yaml:"cpu_count,omitempty" json:"cpu_count,omitempty"`
-	CPUPercent   float32      `yaml:"cpu_percent,omitempty" json:"cpu_percent,omitempty"`
-	CPUPeriod    int64        `yaml:"cpu_period,omitempty" json:"cpu_period,omitempty"`
-	CPUQuota     int64        `yaml:"cpu_quota,omitempty" json:"cpu_quota,omitempty"`
-	CPURTPeriod  int64        `yaml:"cpu_rt_period,omitempty" json:"cpu_rt_period,omitempty"`
-	CPURTRuntime int64        `yaml:"cpu_rt_runtime,omitempty" json:"cpu_rt_runtime,omitempty"`
-	CPUS         float32      `yaml:"cpus,omitempty" json:"cpus,omitempty"`
-	CPUSet       string       `yaml:"cpuset,omitempty" json:"cpuset,omitempty"`
-	CPUShares    int64        `yaml:"cpu_shares,omitempty" json:"cpu_shares,omitempty"`
+	Annotations  Mapping        `yaml:"annotations,omitempty" json:"annotations,omitempty"`
+	Attach       *bool          `yaml:"attach,omitempty" json:"attach,omitempty"`
+	Build        *BuildConfig   `yaml:"build,omitempty" json:"build,omitempty"`
+	Develop      *DevelopConfig `yaml:"develop,omitempty" json:"develop,omitempty"`
+	BlkioConfig  *BlkioConfig   `yaml:"blkio_config,omitempty" json:"blkio_config,omitempty"`
+	CapAdd       []string       `yaml:"cap_add,omitempty" json:"cap_add,omitempty"`
+	CapDrop      []string       `yaml:"cap_drop,omitempty" json:"cap_drop,omitempty"`
+	CgroupParent string         `yaml:"cgroup_parent,omitempty" json:"cgroup_parent,omitempty"`
+	Cgroup       string         `yaml:"cgroup,omitempty" json:"cgroup,omitempty"`
+	CPUCount     int64          `yaml:"cpu_count,omitempty" json:"cpu_count,omitempty"`
+	CPUPercent   float32        `yaml:"cpu_percent,omitempty" json:"cpu_percent,omitempty"`
+	CPUPeriod    int64          `yaml:"cpu_period,omitempty" json:"cpu_period,omitempty"`
+	CPUQuota     int64          `yaml:"cpu_quota,omitempty" json:"cpu_quota,omitempty"`
+	CPURTPeriod  int64          `yaml:"cpu_rt_period,omitempty" json:"cpu_rt_period,omitempty"`
+	CPURTRuntime int64          `yaml:"cpu_rt_runtime,omitempty" json:"cpu_rt_runtime,omitempty"`
+	CPUS         float32        `yaml:"cpus,omitempty" json:"cpus,omitempty"`
+	CPUSet       string         `yaml:"cpuset,omitempty" json:"cpuset,omitempty"`
+	CPUShares    int64          `yaml:"cpu_shares,omitempty" json:"cpu_shares,omitempty"`
 
 	// Command for the service containers.
 	// If set, overrides COMMAND from the image.
@@ -312,25 +276,26 @@ func (s set) toSlice() []string {
 
 // BuildConfig is a type for build
 type BuildConfig struct {
-	Context            string                `yaml:"context,omitempty" json:"context,omitempty"`
-	Dockerfile         string                `yaml:"dockerfile,omitempty" json:"dockerfile,omitempty"`
-	DockerfileInline   string                `yaml:"dockerfile_inline,omitempty" json:"dockerfile_inline,omitempty"`
-	Args               MappingWithEquals     `yaml:"args,omitempty" json:"args,omitempty"`
-	SSH                SSHConfig             `yaml:"ssh,omitempty" json:"ssh,omitempty"`
-	Labels             Labels                `yaml:"labels,omitempty" json:"labels,omitempty"`
-	CacheFrom          StringList            `yaml:"cache_from,omitempty" json:"cache_from,omitempty"`
-	CacheTo            StringList            `yaml:"cache_to,omitempty" json:"cache_to,omitempty"`
-	NoCache            bool                  `yaml:"no_cache,omitempty" json:"no_cache,omitempty"`
-	AdditionalContexts Mapping               `yaml:"additional_contexts,omitempty" json:"additional_contexts,omitempty"`
-	Pull               bool                  `yaml:"pull,omitempty" json:"pull,omitempty"`
-	ExtraHosts         HostsList             `yaml:"extra_hosts,omitempty" json:"extra_hosts,omitempty"`
-	Isolation          string                `yaml:"isolation,omitempty" json:"isolation,omitempty"`
-	Network            string                `yaml:"network,omitempty" json:"network,omitempty"`
-	Target             string                `yaml:"target,omitempty" json:"target,omitempty"`
-	Secrets            []ServiceSecretConfig `yaml:"secrets,omitempty" json:"secrets,omitempty"`
-	Tags               StringList            `yaml:"tags,omitempty" json:"tags,omitempty"`
-	Platforms          StringList            `yaml:"platforms,omitempty" json:"platforms,omitempty"`
-	Privileged         bool                  `yaml:"privileged,omitempty" json:"privileged,omitempty"`
+	Context            string                    `yaml:"context,omitempty" json:"context,omitempty"`
+	Dockerfile         string                    `yaml:"dockerfile,omitempty" json:"dockerfile,omitempty"`
+	DockerfileInline   string                    `yaml:"dockerfile_inline,omitempty" json:"dockerfile_inline,omitempty"`
+	Args               MappingWithEquals         `yaml:"args,omitempty" json:"args,omitempty"`
+	SSH                SSHConfig                 `yaml:"ssh,omitempty" json:"ssh,omitempty"`
+	Labels             Labels                    `yaml:"labels,omitempty" json:"labels,omitempty"`
+	CacheFrom          StringList                `yaml:"cache_from,omitempty" json:"cache_from,omitempty"`
+	CacheTo            StringList                `yaml:"cache_to,omitempty" json:"cache_to,omitempty"`
+	NoCache            bool                      `yaml:"no_cache,omitempty" json:"no_cache,omitempty"`
+	AdditionalContexts Mapping                   `yaml:"additional_contexts,omitempty" json:"additional_contexts,omitempty"`
+	Pull               bool                      `yaml:"pull,omitempty" json:"pull,omitempty"`
+	ExtraHosts         HostsList                 `yaml:"extra_hosts,omitempty" json:"extra_hosts,omitempty"`
+	Isolation          string                    `yaml:"isolation,omitempty" json:"isolation,omitempty"`
+	Network            string                    `yaml:"network,omitempty" json:"network,omitempty"`
+	Target             string                    `yaml:"target,omitempty" json:"target,omitempty"`
+	Secrets            []ServiceSecretConfig     `yaml:"secrets,omitempty" json:"secrets,omitempty"`
+	Tags               StringList                `yaml:"tags,omitempty" json:"tags,omitempty"`
+	Ulimits            map[string]*UlimitsConfig `yaml:"ulimits,omitempty" json:"ulimits,omitempty"`
+	Platforms          StringList                `yaml:"platforms,omitempty" json:"platforms,omitempty"`
+	Privileged         bool                      `yaml:"privileged,omitempty" json:"privileged,omitempty"`
 
 	Extensions Extensions `yaml:"#extensions,inline" json:"-"`
 }
@@ -362,62 +327,6 @@ type ThrottleDevice struct {
 
 	Extensions Extensions `yaml:"#extensions,inline" json:"-"`
 }
-
-// ShellCommand is a string or list of string args.
-//
-// When marshaled to YAML, nil command fields will be omitted if `omitempty`
-// is specified as a struct tag. Explicitly empty commands (i.e. `[]` or
-// empty string will serialize to an empty array (`[]`).
-//
-// When marshaled to JSON, the `omitempty` struct must NOT be specified.
-// If the command field is nil, it will be serialized as `null`.
-// Explicitly empty commands (i.e. `[]` or empty string) will serialize to
-// an empty array (`[]`).
-//
-// The distinction between nil and explicitly empty is important to distinguish
-// between an unset value and a provided, but empty, value, which should be
-// preserved so that it can override any base value (e.g. container entrypoint).
-//
-// The different semantics between YAML and JSON are due to limitations with
-// JSON marshaling + `omitempty` in the Go stdlib, while gopkg.in/yaml.v3 gives
-// us more flexibility via the yaml.IsZeroer interface.
-//
-// In the future, it might make sense to make fields of this type be
-// `*ShellCommand` to avoid this situation, but that would constitute a
-// breaking change.
-type ShellCommand []string
-
-// IsZero returns true if the slice is nil.
-//
-// Empty (but non-nil) slices are NOT considered zero values.
-func (s ShellCommand) IsZero() bool {
-	// we do NOT want len(s) == 0, ONLY explicitly nil
-	return s == nil
-}
-
-// MarshalYAML returns nil (which will be serialized as `null`) for nil slices
-// and delegates to the standard marshaller behavior otherwise.
-//
-// NOTE: Typically the nil case here is not hit because IsZero has already
-// short-circuited marshalling, but this ensures that the type serializes
-// accurately if the `omitempty` struct tag is omitted/forgotten.
-//
-// A similar MarshalJSON() implementation is not needed because the Go stdlib
-// already serializes nil slices to `null`, whereas gopkg.in/yaml.v3 by default
-// serializes nil slices to `[]`.
-func (s ShellCommand) MarshalYAML() (interface{}, error) {
-	if s == nil {
-		return nil, nil
-	}
-	return []string(s), nil
-}
-
-// StringList is a type for fields that can be a string or list of strings
-type StringList []string
-
-// StringOrNumberList is a type for fields that can be a list of strings or
-// numbers
-type StringOrNumberList []string
 
 // MappingWithEquals is a mapping type that can be converted from a list of
 // key[=value] strings.
@@ -534,17 +443,6 @@ func (m Mapping) Merge(o Mapping) Mapping {
 	return m
 }
 
-// Labels is a mapping type for labels
-type Labels map[string]string
-
-func (l Labels) Add(key, value string) Labels {
-	if l == nil {
-		l = Labels{}
-	}
-	l[key] = value
-	return l
-}
-
 type SSHKey struct {
 	ID   string
 	Path string
@@ -608,8 +506,8 @@ func (h HostsList) MarshalJSON() ([]byte, error) {
 
 // LoggingConfig the logging configuration for a service
 type LoggingConfig struct {
-	Driver  string            `yaml:"driver,omitempty" json:"driver,omitempty"`
-	Options map[string]string `yaml:"options,omitempty" json:"options,omitempty"`
+	Driver  string  `yaml:"driver,omitempty" json:"driver,omitempty"`
+	Options Options `yaml:"options,omitempty" json:"options,omitempty"`
 
 	Extensions Extensions `yaml:"#extensions,inline" json:"-"`
 }
@@ -628,22 +526,6 @@ type DeployConfig struct {
 
 	Extensions Extensions `yaml:"#extensions,inline" json:"-"`
 }
-
-// HealthCheckConfig the healthcheck configuration for a service
-type HealthCheckConfig struct {
-	Test          HealthCheckTest `yaml:"test,omitempty" json:"test,omitempty"`
-	Timeout       *Duration       `yaml:"timeout,omitempty" json:"timeout,omitempty"`
-	Interval      *Duration       `yaml:"interval,omitempty" json:"interval,omitempty"`
-	Retries       *uint64         `yaml:"retries,omitempty" json:"retries,omitempty"`
-	StartPeriod   *Duration       `yaml:"start_period,omitempty" json:"start_period,omitempty"`
-	StartInterval *Duration       `yaml:"start_interval,omitempty" json:"start_interval,omitempty"`
-	Disable       bool            `yaml:"disable,omitempty" json:"disable,omitempty"`
-
-	Extensions Extensions `yaml:"#extensions,inline" json:"-"`
-}
-
-// HealthCheckTest is the command run to test the health of a service
-type HealthCheckTest []string
 
 // UpdateConfig the service update configuration
 type UpdateConfig struct {
@@ -677,13 +559,6 @@ type Resource struct {
 	Extensions Extensions `yaml:"#extensions,inline" json:"-"`
 }
 
-type DeviceRequest struct {
-	Capabilities []string `yaml:"capabilities,omitempty" json:"capabilities,omitempty"`
-	Driver       string   `yaml:"driver,omitempty" json:"driver,omitempty"`
-	Count        int64    `yaml:"count,omitempty" json:"count,omitempty"`
-	IDs          []string `yaml:"device_ids,omitempty" json:"device_ids,omitempty"`
-}
-
 // GenericResource represents a "user defined" resource which can
 // only be an integer (e.g: SSD=3) for a service
 type GenericResource struct {
@@ -701,19 +576,6 @@ type DiscreteGenericResource struct {
 	Value int64  `json:"value"`
 
 	Extensions Extensions `yaml:"#extensions,inline" json:"-"`
-}
-
-// UnitBytes is the bytes type
-type UnitBytes int64
-
-// MarshalYAML makes UnitBytes implement yaml.Marshaller
-func (u UnitBytes) MarshalYAML() (interface{}, error) {
-	return fmt.Sprintf("%d", u), nil
-}
-
-// MarshalJSON makes UnitBytes implement json.Marshaler
-func (u UnitBytes) MarshalJSON() ([]byte, error) {
-	return []byte(fmt.Sprintf(`"%d"`, u)), nil
 }
 
 // RestartPolicy the service restart policy
@@ -749,6 +611,7 @@ type ServiceNetworkConfig struct {
 	Ipv4Address  string   `yaml:"ipv4_address,omitempty" json:"ipv4_address,omitempty"`
 	Ipv6Address  string   `yaml:"ipv6_address,omitempty" json:"ipv6_address,omitempty"`
 	LinkLocalIPs []string `yaml:"link_local_ips,omitempty" json:"link_local_ips,omitempty"`
+	MacAddress   string   `yaml:"mac_address,omitempty" json:"mac_address,omitempty"`
 
 	Extensions Extensions `yaml:"#extensions,inline" json:"-"`
 }
@@ -954,16 +817,16 @@ func (u *UlimitsConfig) MarshalJSON() ([]byte, error) {
 
 // NetworkConfig for a network
 type NetworkConfig struct {
-	Name       string            `yaml:"name,omitempty" json:"name,omitempty"`
-	Driver     string            `yaml:"driver,omitempty" json:"driver,omitempty"`
-	DriverOpts map[string]string `yaml:"driver_opts,omitempty" json:"driver_opts,omitempty"`
-	Ipam       IPAMConfig        `yaml:"ipam,omitempty" json:"ipam,omitempty"`
-	External   External          `yaml:"external,omitempty" json:"external,omitempty"`
-	Internal   bool              `yaml:"internal,omitempty" json:"internal,omitempty"`
-	Attachable bool              `yaml:"attachable,omitempty" json:"attachable,omitempty"`
-	Labels     Labels            `yaml:"labels,omitempty" json:"labels,omitempty"`
-	EnableIPv6 bool              `yaml:"enable_ipv6,omitempty" json:"enable_ipv6,omitempty"`
-	Extensions Extensions        `yaml:"#extensions,inline" json:"-"`
+	Name       string     `yaml:"name,omitempty" json:"name,omitempty"`
+	Driver     string     `yaml:"driver,omitempty" json:"driver,omitempty"`
+	DriverOpts Options    `yaml:"driver_opts,omitempty" json:"driver_opts,omitempty"`
+	Ipam       IPAMConfig `yaml:"ipam,omitempty" json:"ipam,omitempty"`
+	External   External   `yaml:"external,omitempty" json:"external,omitempty"`
+	Internal   bool       `yaml:"internal,omitempty" json:"internal,omitempty"`
+	Attachable bool       `yaml:"attachable,omitempty" json:"attachable,omitempty"`
+	Labels     Labels     `yaml:"labels,omitempty" json:"labels,omitempty"`
+	EnableIPv6 bool       `yaml:"enable_ipv6,omitempty" json:"enable_ipv6,omitempty"`
+	Extensions Extensions `yaml:"#extensions,inline" json:"-"`
 }
 
 // IPAMConfig for a network
@@ -978,18 +841,18 @@ type IPAMPool struct {
 	Subnet             string                 `yaml:"subnet,omitempty" json:"subnet,omitempty"`
 	Gateway            string                 `yaml:"gateway,omitempty" json:"gateway,omitempty"`
 	IPRange            string                 `yaml:"ip_range,omitempty" json:"ip_range,omitempty"`
-	AuxiliaryAddresses map[string]string      `yaml:"aux_addresses,omitempty" json:"aux_addresses,omitempty"`
+	AuxiliaryAddresses Mapping                `yaml:"aux_addresses,omitempty" json:"aux_addresses,omitempty"`
 	Extensions         map[string]interface{} `yaml:",inline" json:"-"`
 }
 
 // VolumeConfig for a volume
 type VolumeConfig struct {
-	Name       string            `yaml:"name,omitempty" json:"name,omitempty"`
-	Driver     string            `yaml:"driver,omitempty" json:"driver,omitempty"`
-	DriverOpts map[string]string `yaml:"driver_opts,omitempty" json:"driver_opts,omitempty"`
-	External   External          `yaml:"external,omitempty" json:"external,omitempty"`
-	Labels     Labels            `yaml:"labels,omitempty" json:"labels,omitempty"`
-	Extensions Extensions        `yaml:"#extensions,inline" json:"-"`
+	Name       string     `yaml:"name,omitempty" json:"name,omitempty"`
+	Driver     string     `yaml:"driver,omitempty" json:"driver,omitempty"`
+	DriverOpts Options    `yaml:"driver_opts,omitempty" json:"driver_opts,omitempty"`
+	External   External   `yaml:"external,omitempty" json:"external,omitempty"`
+	Labels     Labels     `yaml:"labels,omitempty" json:"labels,omitempty"`
+	Extensions Extensions `yaml:"#extensions,inline" json:"-"`
 }
 
 // External identifies a Volume or Network as a reference to a resource that is
@@ -1030,6 +893,7 @@ type FileObjectConfig struct {
 	Name           string            `yaml:"name,omitempty" json:"name,omitempty"`
 	File           string            `yaml:"file,omitempty" json:"file,omitempty"`
 	Environment    string            `yaml:"environment,omitempty" json:"environment,omitempty"`
+	Content        string            `yaml:"content,omitempty" json:"content,omitempty"`
 	External       External          `yaml:"external,omitempty" json:"external,omitempty"`
 	Labels         Labels            `yaml:"labels,omitempty" json:"labels,omitempty"`
 	Driver         string            `yaml:"driver,omitempty" json:"driver,omitempty"`

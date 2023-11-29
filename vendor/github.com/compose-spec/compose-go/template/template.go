@@ -28,12 +28,20 @@ import (
 
 var delimiter = "\\$"
 var substitutionNamed = "[_a-z][_a-z0-9]*"
-
 var substitutionBraced = "[_a-z][_a-z0-9]*(?::?[-+?](.*))?"
 
+var groupEscaped = "escaped"
+var groupNamed = "named"
+var groupBraced = "braced"
+var groupInvalid = "invalid"
+
 var patternString = fmt.Sprintf(
-	"%s(?i:(?P<escaped>%s)|(?P<named>%s)|{(?:(?P<braced>%s)}|(?P<invalid>)))",
-	delimiter, delimiter, substitutionNamed, substitutionBraced,
+	"%s(?i:(?P<%s>%s)|(?P<%s>%s)|{(?:(?P<%s>%s)}|(?P<%s>)))",
+	delimiter,
+	groupEscaped, delimiter,
+	groupNamed, substitutionNamed,
+	groupBraced, substitutionBraced,
+	groupInvalid,
 )
 
 var defaultPattern = regexp.MustCompile(patternString)
@@ -164,14 +172,14 @@ func DefaultReplacementAppliedFunc(substring string, mapping Mapping, cfg *Confi
 
 	matches := pattern.FindStringSubmatch(substring)
 	groups := matchGroups(matches, pattern)
-	if escaped := groups["escaped"]; escaped != "" {
+	if escaped := groups[groupEscaped]; escaped != "" {
 		return escaped, true, nil
 	}
 
 	braced := false
-	substitution := groups["named"]
+	substitution := groups[groupNamed]
 	if substitution == "" {
-		substitution = groups["braced"]
+		substitution = groups[groupBraced]
 		braced = true
 	}
 
@@ -322,12 +330,12 @@ func extractVariable(value interface{}, pattern *regexp.Regexp) ([]Variable, boo
 	values := []Variable{}
 	for _, match := range matches {
 		groups := matchGroups(match, pattern)
-		if escaped := groups["escaped"]; escaped != "" {
+		if escaped := groups[groupEscaped]; escaped != "" {
 			continue
 		}
-		val := groups["named"]
+		val := groups[groupNamed]
 		if val == "" {
-			val = groups["braced"]
+			val = groups[groupBraced]
 		}
 		name := val
 		var defaultValue string

@@ -65,7 +65,7 @@ github.com/chai2010/gettext-go/plural
 github.com/chai2010/gettext-go/po
 # github.com/cloudflare/cfssl v1.4.1
 ## explicit; go 1.13
-# github.com/compose-spec/compose-go v1.18.4
+# github.com/compose-spec/compose-go v1.20.2
 ## explicit; go 1.19
 github.com/compose-spec/compose-go/cli
 github.com/compose-spec/compose-go/consts

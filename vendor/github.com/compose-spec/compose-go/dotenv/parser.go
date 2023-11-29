@@ -98,7 +98,11 @@ func (p *parser) locateKeyName(src string) (string, string, bool, error) {
 	var key string
 	var inherited bool
 	// trim "export" and space at beginning
-	src = strings.TrimLeftFunc(exportRegex.ReplaceAllString(src, ""), isSpace)
+	if exportRegex.MatchString(src) {
+		// we use a `strings.trim` to preserve the pointer to the same underlying memory.
+		// a regexp replace would copy the string.
+		src = strings.TrimLeftFunc(strings.TrimPrefix(src, "export"), isSpace)
+	}
 
 	// locate key name end and validate it in single loop
 	offset := 0
