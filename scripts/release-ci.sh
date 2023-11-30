@@ -39,6 +39,7 @@ git config --global user.name "Tilt Dev"
 
 VERSION=$(git describe --abbrev=0 --tags)
 
+CI=false make build-js
 goreleaser --clean
 
 ./scripts/release-update-tilt-repo.sh "$VERSION"
