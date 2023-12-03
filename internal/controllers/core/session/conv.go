@@ -6,6 +6,7 @@ import (
 	"time"
 
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
@@ -89,7 +90,7 @@ func (r *Reconciler) k8sRuntimeTarget(mt *store.ManifestTarget, ci *v1alpha1.Ses
 	}
 
 	if status == v1alpha1.RuntimeStatusOK {
-		if v1.PodSucceeded == phase {
+		if v1.PodSucceeded == phase || hasConditionBatchJobComplete(krs.Conditions) {
 			target.State.Terminated = &session.TargetStateTerminated{
 				StartTime: createdAt,
 			}
@@ -160,6 +161,18 @@ func (r *Reconciler) k8sRuntimeTarget(mt *store.ManifestTarget, ci *v1alpha1.Ses
 	}
 
 	return target
+}
+
+// hasConditionBatchJobComplete checks for the synthesized condition from
+// kubernetesapply/reconciler.go:conditionsFromApply, and returns true if
+// the condition exists.
+func hasConditionBatchJobComplete(conditions []metav1.Condition) bool {
+	for _, cond := range conditions {
+		if cond.Type == v1alpha1.ApplyConditionJobComplete && cond.Status == metav1.ConditionTrue {
+			return true
+		}
+	}
+	return false
 }
 
 func (r *Reconciler) localServeTarget(mt *store.ManifestTarget, holds buildcontrol.HoldSet) *session.Target {
