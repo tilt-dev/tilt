@@ -26,7 +26,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/cloud"
 	"github.com/tilt-dev/tilt/internal/cloud/cloudurl"
-	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesdiscovery"
 	"github.com/tilt-dev/tilt/internal/docker"
@@ -69,7 +68,6 @@ var K8sWireSet = wire.NewSet(
 	k8s.ProvideRESTConfig,
 	k8s.ProvidePortForwardClient,
 	k8s.ProvideConfigNamespace,
-	k8s.ProvideContainerRuntime,
 	k8s.ProvideServerVersion,
 	k8s.ProvideK8sClient,
 	ProvideKubeContextOverride,
@@ -244,14 +242,6 @@ func wireNamespace(ctx context.Context) (k8s.Namespace, error) {
 
 func wireClusterName(ctx context.Context) (k8s.ClusterName, error) {
 	wire.Build(K8sWireSet)
-	return "", nil
-}
-
-func wireRuntime(ctx context.Context) (container.Runtime, error) {
-	wire.Build(
-		K8sWireSet,
-		k8s.ProvideMinikubeClient,
-	)
 	return "", nil
 }
 

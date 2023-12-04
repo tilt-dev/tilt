@@ -58,8 +58,7 @@ func provideFakeBuildAndDeployer(ctx context.Context, docker2 docker.Client, kCl
 	dockerComposeBuildAndDeployer := buildcontrol.NewDockerComposeBuildAndDeployer(reconciler, cmdimageReconciler, imageBuilder, dockercomposeserviceReconciler, clock, ctrlClient)
 	localTargetBuildAndDeployer := buildcontrol.NewLocalTargetBuildAndDeployer(clock, ctrlClient, controller)
 	kubeContext := provideFakeKubeContext(env)
-	runtime := k8s.ProvideContainerRuntime(ctx, kClient)
-	clusterEnv := provideFakeDockerClusterEnv(docker2, env, kubeContext, runtime)
+	clusterEnv := provideFakeDockerClusterEnv(ctx, docker2, env, kubeContext, kClient)
 	liveupdatesUpdateMode, err := liveupdates.ProvideUpdateMode(updateMode, kubeContext, clusterEnv)
 	if err != nil {
 		return nil, err
@@ -98,12 +97,14 @@ func provideFakeKubeContext(env clusterid.Product) k8s.KubeContext {
 
 // A simplified version of the normal calculation we do
 // about whether we can build direct to a cluster
-func provideFakeDockerClusterEnv(c docker.Client, k8sEnv clusterid.Product, kubeContext k8s.KubeContext, runtime container.Runtime) docker.ClusterEnv {
+func provideFakeDockerClusterEnv(ctx context.Context, c docker.Client, k8sEnv clusterid.Product, kubeContext k8s.KubeContext, kClient k8s.Client) docker.ClusterEnv {
 	env := c.Env()
-	isDockerRuntime := runtime == container.RuntimeDocker
 	isLocalDockerCluster := k8sEnv == clusterid.ProductMinikube || k8sEnv == clusterid.ProductMicroK8s || k8sEnv == clusterid.ProductDockerDesktop
-	if isDockerRuntime && isLocalDockerCluster {
-		env.BuildToKubeContexts = append(env.BuildToKubeContexts, string(kubeContext))
+	if isLocalDockerCluster {
+		isDockerRuntime := kClient.ContainerRuntime(ctx) == container.RuntimeDocker
+		if isDockerRuntime {
+			env.BuildToKubeContexts = append(env.BuildToKubeContexts, string(kubeContext))
+		}
 	}
 
 	fake, ok := c.(*docker.FakeClient)

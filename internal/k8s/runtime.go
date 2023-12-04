@@ -60,7 +60,3 @@ func (r *runtimeAsync) Runtime(ctx context.Context) container.Runtime {
 func (c K8sClient) ContainerRuntime(ctx context.Context) container.Runtime {
 	return c.runtimeAsync.Runtime(ctx)
 }
-
-func ProvideContainerRuntime(ctx context.Context, kCli Client) container.Runtime {
-	return kCli.ContainerRuntime(ctx)
-}

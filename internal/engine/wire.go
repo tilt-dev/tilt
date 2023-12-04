@@ -69,7 +69,6 @@ func provideFakeBuildAndDeployer(
 	execer localexec.Execer) (buildcontrol.BuildAndDeployer, error) {
 	wire.Build(
 		DeployerWireSetTest,
-		k8s.ProvideContainerRuntime,
 		provideFakeKubeContext,
 		provideFakeDockerClusterEnv,
 		kubernetesapply.NewReconciler,
@@ -94,12 +93,14 @@ func provideFakeKubeContext(env clusterid.Product) k8s.KubeContext {
 
 // A simplified version of the normal calculation we do
 // about whether we can build direct to a cluster
-func provideFakeDockerClusterEnv(c docker.Client, k8sEnv clusterid.Product, kubeContext k8s.KubeContext, runtime container.Runtime) docker.ClusterEnv {
+func provideFakeDockerClusterEnv(ctx context.Context, c docker.Client, k8sEnv clusterid.Product, kubeContext k8s.KubeContext, kClient k8s.Client) docker.ClusterEnv {
 	env := c.Env()
-	isDockerRuntime := runtime == container.RuntimeDocker
 	isLocalDockerCluster := k8sEnv == clusterid.ProductMinikube || k8sEnv == clusterid.ProductMicroK8s || k8sEnv == clusterid.ProductDockerDesktop
-	if isDockerRuntime && isLocalDockerCluster {
-		env.BuildToKubeContexts = append(env.BuildToKubeContexts, string(kubeContext))
+	if isLocalDockerCluster {
+		isDockerRuntime := kClient.ContainerRuntime(ctx) == container.RuntimeDocker
+		if isDockerRuntime {
+			env.BuildToKubeContexts = append(env.BuildToKubeContexts, string(kubeContext))
+		}
 	}
 
 	fake, ok := c.(*docker.FakeClient)
