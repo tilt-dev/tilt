@@ -186,7 +186,7 @@ func ProvideClusterEnv(
 	creator ClientCreator,
 	kubeContext k8s.KubeContext,
 	product clusterid.Product,
-	runtime container.Runtime,
+	kClient k8s.Client,
 	minikubeClient k8s.MinikubeClient,
 ) ClusterEnv {
 	// start with an empty env, then populate with cluster-specific values if
@@ -219,45 +219,45 @@ func ProvideClusterEnv(
 		}
 	}
 
-	if runtime == container.RuntimeDocker {
-		if product == clusterid.ProductMinikube {
-			// If we're running Minikube with a docker runtime, talk to Minikube's docker socket.
-			envMap, ok, err := minikubeClient.DockerEnv(ctx)
+	if product == clusterid.ProductMinikube && kClient.ContainerRuntime(ctx) == container.RuntimeDocker {
+		// If we're running Minikube with a docker runtime, talk to Minikube's docker socket.
+		envMap, ok, err := minikubeClient.DockerEnv(ctx)
+		if err != nil {
+			return ClusterEnv{Error: err}
+		}
+
+		if ok {
+			d, err := creator.FromEnvMap(envMap)
 			if err != nil {
-				return ClusterEnv{Error: err}
+				return ClusterEnv{Error: fmt.Errorf("connecting to minikube: %v", err)}
 			}
 
-			if ok {
-				d, err := creator.FromEnvMap(envMap)
-				if err != nil {
-					return ClusterEnv{Error: fmt.Errorf("connecting to minikube: %v", err)}
-				}
-
-				// Handle the case where people manually set DOCKER_HOST to minikube.
-				if hostOverride == "" || hostOverride == d.DaemonHost() {
-					env.IsOldMinikube = isOldMinikube(ctx, minikubeClient)
-					env.BuildToKubeContexts = append(env.BuildToKubeContexts, string(kubeContext))
-					env.Client = d
-					for k, v := range envMap {
-						env.Environ = append(env.Environ, fmt.Sprintf("%s=%s", k, v))
-					}
-					sort.Strings(env.Environ)
-				}
-
-			}
-		} else if product == clusterid.ProductMicroK8s {
-			// If we're running Microk8s with a docker runtime, talk to Microk8s's docker socket.
-			d, err := creator.FromEnvMap(map[string]string{"DOCKER_HOST": microK8sDockerHost})
-			if err != nil {
-				return ClusterEnv{Error: fmt.Errorf("connecting to microk8s: %v", err)}
-			}
-
-			// Handle the case where people manually set DOCKER_HOST to microk8s.
+			// Handle the case where people manually set DOCKER_HOST to minikube.
 			if hostOverride == "" || hostOverride == d.DaemonHost() {
-				env.Client = d
-				env.Environ = append(env.Environ, fmt.Sprintf("DOCKER_HOST=%s", microK8sDockerHost))
+				env.IsOldMinikube = isOldMinikube(ctx, minikubeClient)
 				env.BuildToKubeContexts = append(env.BuildToKubeContexts, string(kubeContext))
+				env.Client = d
+				for k, v := range envMap {
+					env.Environ = append(env.Environ, fmt.Sprintf("%s=%s", k, v))
+				}
+				sort.Strings(env.Environ)
 			}
+
+		}
+	}
+
+	if product == clusterid.ProductMicroK8s && kClient.ContainerRuntime(ctx) == container.RuntimeDocker {
+		// If we're running Microk8s with a docker runtime, talk to Microk8s's docker socket.
+		d, err := creator.FromEnvMap(map[string]string{"DOCKER_HOST": microK8sDockerHost})
+		if err != nil {
+			return ClusterEnv{Error: fmt.Errorf("connecting to microk8s: %v", err)}
+		}
+
+		// Handle the case where people manually set DOCKER_HOST to microk8s.
+		if hostOverride == "" || hostOverride == d.DaemonHost() {
+			env.Client = d
+			env.Environ = append(env.Environ, fmt.Sprintf("DOCKER_HOST=%s", microK8sDockerHost))
+			env.BuildToKubeContexts = append(env.BuildToKubeContexts, string(kubeContext))
 		}
 	}
 
@@ -276,7 +276,8 @@ func ProvideClusterEnv(
 	// currently, we handle this by inspecting the Docker + K8s configs to see
 	// if they're matched up, but with the exception of microk8s (handled above),
 	// we don't override the environmental Docker config
-	if runtime == container.RuntimeDocker && willBuildToKubeContext(ctx, product, kubeContext, env) {
+	if willBuildToKubeContext(ctx, product, kubeContext, env) &&
+		kClient.ContainerRuntime(ctx) == container.RuntimeDocker {
 		env.BuildToKubeContexts = append(env.BuildToKubeContexts, string(kubeContext))
 	}
 

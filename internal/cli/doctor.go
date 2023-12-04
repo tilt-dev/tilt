@@ -137,7 +137,7 @@ func (c *doctorCmd) run(ctx context.Context, args []string) error {
 	ns, err := wireNamespace(ctx)
 	printField("Namespace", ns, err)
 
-	runtime, err := wireRuntime(ctx)
+	runtime, err := containerRuntime(ctx)
 	printField("Container Runtime", runtime, err)
 
 	kVersion, err := wireK8sVersion(ctx)
@@ -166,6 +166,14 @@ func (c *doctorCmd) run(ctx context.Context, args []string) error {
 	fmt.Printf("- Repo: %s\n", a.GitRepoHash())
 
 	return nil
+}
+
+func containerRuntime(ctx context.Context) (container.Runtime, error) {
+	kClient, err := wireK8sClient(ctx)
+	if err != nil {
+		return "", err
+	}
+	return kClient.ContainerRuntime(ctx), nil
 }
 
 func clusterLocalRegistryDisplay(ctx context.Context) (string, error) {

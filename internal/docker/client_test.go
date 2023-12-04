@@ -403,7 +403,9 @@ func TestProvideClusterProduct(t *testing.T) {
 
 			mkClient := k8s.FakeMinikube{DockerEnvMap: c.mkEnv, FakeVersion: minikubeV}
 			kubeContext := k8s.KubeContext(fmt.Sprintf("%s-me", c.env))
-			cluster := ProvideClusterEnv(context.Background(), fakeClientCreator{}, kubeContext, c.env, c.runtime, mkClient)
+			kCli := k8s.NewFakeK8sClient(t)
+			kCli.Runtime = c.runtime
+			cluster := ProvideClusterEnv(context.Background(), fakeClientCreator{}, kubeContext, c.env, kCli, mkClient)
 			assert.Equal(t, c.expectedCluster, Env(cluster))
 
 			local := ProvideLocalEnv(context.Background(), fakeClientCreator{}, kubeContext, c.env, cluster)
