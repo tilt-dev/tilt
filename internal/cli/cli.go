@@ -8,9 +8,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
 	"go.lsp.dev/protocol"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/tilt-dev/starlark-lsp/pkg/cli"
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
@@ -111,6 +113,7 @@ func createContext() (ctx context.Context, cleanup func()) {
 }
 
 func preCommand(ctx context.Context, cmdName model.TiltSubcommand) context.Context {
+
 	l := logger.NewLogger(logLevel(verbose, debug), os.Stdout)
 	ctx = logger.WithLogger(ctx, l)
 
@@ -121,6 +124,9 @@ func preCommand(ctx context.Context, cmdName model.TiltSubcommand) context.Conte
 	}
 
 	ctx = tiltanalytics.WithAnalytics(ctx, a)
+
+	// Users don't care about controller-runtime logs.
+	ctrllog.SetLogger(logr.New(ctrllog.NullLogSink{}))
 
 	initKlog(l.Writer(logger.InfoLvl))
 
