@@ -98,7 +98,7 @@ func (r *Reconciler) processExitCondition(spec v1alpha1.SessionSpec, state *stor
 		}
 		if res.State.Waiting != nil {
 			waiting = append(waiting, fmt.Sprintf("%v %v", res.Name, res.State.Waiting.WaitReason))
-		} else if res.State.Active != nil && (!res.State.Active.Ready || res.Type == v1alpha1.TargetTypeJob) {
+		} else if res.State.Active != nil && !res.State.Active.Ready {
 			// jobs must run to completion
 			notReady = append(notReady, res.Name)
 		}

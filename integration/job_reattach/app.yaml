@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: job-reattach-app
+  namespace: tilt-integration
+  labels:
+    app: job-reattach-app
+spec:
+  selector:
+    matchLabels:
+      app: job-reattach-app
+  template:
+    metadata:
+      labels:
+        app: job-reattach-app
+    spec:
+      containers:
+        - name: app
+          image: app

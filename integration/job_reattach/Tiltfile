@@ -1,0 +1,13 @@
+# -*- mode: Python -*-
+
+include('../Tiltfile')
+docker_build('db', '.', dockerfile='db.dockerfile')
+k8s_yaml('db.yaml')
+
+docker_build('db-init', '.', dockerfile='db-init.dockerfile')
+k8s_yaml('db-init.yaml')
+k8s_resource('job-reattach-db-init', resource_deps=['job-reattach-db'])
+
+docker_build('app', '.', dockerfile='app.dockerfile')
+k8s_yaml('app.yaml')
+k8s_resource('job-reattach-app', resource_deps=['job-reattach-db-init'])
