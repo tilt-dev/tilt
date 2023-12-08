@@ -494,8 +494,8 @@ func (r *Reconciler) createEntitiesToDeploy(ctx context.Context,
 			e = k8s.InjectParallelPodManagementPolicy(e)
 		}
 
-		// When working with a local k8s cluster, we set the pull policy to Never,
-		// to ensure that k8s fails hard if the image is missing from docker.
+		// Set the pull policy to IfNotPresent, to ensure that
+		// we get a locally built image instead of the remote one.
 		policy := v1.PullIfNotPresent
 		for _, imageMapName := range imageMapNames {
 			imageMap := imageMaps[types.NamespacedName{Name: imageMapName}]
