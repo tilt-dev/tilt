@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: job-fail-app
+  namespace: tilt-integration
+  labels:
+    app: job-fail-app
+spec:
+  selector:
+    matchLabels:
+      app: job-fail-app
+  template:
+    metadata:
+      labels:
+        app: job-fail-app
+    spec:
+      containers:
+        - name: app
+          image: app

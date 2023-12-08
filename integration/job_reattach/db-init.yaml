@@ -1,0 +1,17 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: job-reattach-db-init
+  namespace: tilt-integration
+  labels:
+    app: job-reattach-db-init
+spec:
+  template:
+    metadata:
+      labels:
+        app: job-reattach-db-init
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: db-init
+        image: db-init

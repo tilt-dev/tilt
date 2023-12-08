@@ -411,6 +411,42 @@ func TestExitControlCI_JobSuccess(t *testing.T) {
 	f.requireDoneWithNoError()
 }
 
+func TestExitControlCI_JobSuccessWithNoPods(t *testing.T) {
+	f := newFixture(t, store.EngineModeCI)
+
+	m := manifestbuilder.New(f, "fe").
+		WithK8sYAML(testyaml.JobYAML).
+		WithK8sPodReadiness(model.PodReadinessSucceeded).
+		Build()
+	f.upsertManifest(m)
+	f.Store.WithState(func(state *store.EngineState) {
+		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
+			StartTime:  time.Now(),
+			FinishTime: time.Now(),
+		})
+	})
+
+	f.MustReconcile(sessionKey)
+	f.requireNotDone()
+
+	f.Store.WithState(func(state *store.EngineState) {
+		mt := state.ManifestTargets["fe"]
+		krs := store.NewK8sRuntimeState(mt.Manifest)
+		krs.HasEverDeployedSuccessfully = true
+		// There are no pods but the job completed successfully.
+		krs.Conditions = []metav1.Condition{
+			{
+				Type:   v1alpha1.ApplyConditionJobComplete,
+				Status: metav1.ConditionTrue,
+			},
+		}
+		mt.State.RuntimeState = krs
+	})
+
+	f.MustReconcile(sessionKey)
+	f.requireDoneWithNoError()
+}
+
 func TestExitControlCI_TriggerMode_Local(t *testing.T) {
 	type tc struct {
 		triggerMode model.TriggerMode
