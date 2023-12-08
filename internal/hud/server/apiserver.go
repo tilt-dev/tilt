@@ -55,6 +55,10 @@ type APIServerConfig = apiserver.Config
 
 type DynamicInterface = dynamic.Interface
 
+func ProvideDefaultConnProvider() apiserver.ConnProvider {
+	return nil
+}
+
 func ProvideMemConn() apiserver.ConnProvider {
 	return apiserver.NetworkConnProvider(&memconn.Provider{}, "memu")
 }
@@ -126,7 +130,7 @@ func ProvideAPIServerPort() (APIServerPort, error) {
 func ProvideTiltServerOptions(
 	ctx context.Context,
 	tiltBuild model.TiltBuild,
-	memconn apiserver.ConnProvider,
+	connProvider apiserver.ConnProvider,
 	token BearerToken,
 	certKey options.GeneratableKeyCert,
 	apiPort APIServerPort) (*APIServerConfig, error) {
@@ -141,11 +145,11 @@ func ProvideTiltServerOptions(
 	}
 	builder = builder.WithOpenAPIDefinitions("tilt", tiltBuild.Version, openapi.GetOpenAPIDefinitions)
 
-	if apiPort == 0 {
-		// If no API port is provided, that means we're in test mode and should use
-		// in-memory connections.
-		builder = builder.WithConnProvider(memconn)
-	} else {
+	if connProvider != nil {
+		builder = builder.WithConnProvider(connProvider)
+	}
+
+	if apiPort != 0 {
 		builder = builder.WithBindPort(int(apiPort))
 	}
 

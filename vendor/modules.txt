@@ -557,9 +557,6 @@ github.com/opencontainers/image-spec/specs-go/v1
 # github.com/peterbourgon/diskv v2.0.1+incompatible
 ## explicit
 github.com/peterbourgon/diskv
-# github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
-## explicit
-github.com/phayes/freeport
 # github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 => github.com/tilt-dev/browser v0.0.1
 ## explicit; go 1.14
 github.com/pkg/browser
