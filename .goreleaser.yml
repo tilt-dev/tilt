@@ -243,9 +243,6 @@ release:
   header: |
     [Install Tilt](https://docs.tilt.dev/install.html) ⬇️ | [Upgrade Tilt](https://docs.tilt.dev/upgrade.html) ⬆️ | [Tilt Extensions](https://github.com/tilt-dev/tilt-extensions/) 🧰
 
-    ## Notable Changes
-
-    TBD
 
 # Uncomment these lines if you want to experiment with other
 # parts of the release process without releasing new binaries.
