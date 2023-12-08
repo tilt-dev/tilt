@@ -134,6 +134,7 @@ var BaseWireSet = wire.NewSet(
 	provideWebPort,
 	provideWebHost,
 	server.WireSet,
+	server.ProvideDefaultConnProvider,
 	provideAssetServer,
 
 	tracer.NewSpanCollector,

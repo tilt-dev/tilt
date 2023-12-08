@@ -212,7 +212,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 		return CmdUpDeps{}, err
 	}
 	tiltBuild := provideTiltInfo()
-	connProvider := server.ProvideMemConn()
+	connProvider := server.ProvideDefaultConnProvider()
 	bearerToken, err := server.NewBearerToken()
 	if err != nil {
 		return CmdUpDeps{}, err
@@ -421,7 +421,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 		return CmdCIDeps{}, err
 	}
 	tiltBuild := provideTiltInfo()
-	connProvider := server.ProvideMemConn()
+	connProvider := server.ProvideDefaultConnProvider()
 	bearerToken, err := server.NewBearerToken()
 	if err != nil {
 		return CmdCIDeps{}, err
@@ -626,7 +626,7 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 		return CmdUpdogDeps{}, err
 	}
 	tiltBuild := provideTiltInfo()
-	connProvider := server.ProvideMemConn()
+	connProvider := server.ProvideDefaultConnProvider()
 	bearerToken, err := server.NewBearerToken()
 	if err != nil {
 		return CmdUpdogDeps{}, err
@@ -1070,7 +1070,7 @@ var BaseWireSet = wire.NewSet(
 	provideWebMode,
 	provideWebURL,
 	provideWebPort,
-	provideWebHost, server.WireSet, provideAssetServer, tracer.NewSpanCollector, wire.Bind(new(trace.SpanExporter), new(*tracer.SpanCollector)), wire.Bind(new(tracer.SpanSource), new(*tracer.SpanCollector)), dirs.UseTiltDevDir, xdg.NewTiltDevBase, token.GetOrCreateToken, build.NewKINDLoader, wire.Value(feature.MainDefaults),
+	provideWebHost, server.WireSet, server.ProvideDefaultConnProvider, provideAssetServer, tracer.NewSpanCollector, wire.Bind(new(trace.SpanExporter), new(*tracer.SpanCollector)), wire.Bind(new(tracer.SpanSource), new(*tracer.SpanCollector)), dirs.UseTiltDevDir, xdg.NewTiltDevBase, token.GetOrCreateToken, build.NewKINDLoader, wire.Value(feature.MainDefaults),
 )
 
 var CLIClientWireSet = wire.NewSet(

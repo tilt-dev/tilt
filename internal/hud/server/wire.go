@@ -13,7 +13,6 @@ var WireSet = wire.NewSet(
 	ProvideConfigAccess,
 	model.ProvideAPIServerName,
 	ProvideKeyCert,
-	ProvideMemConn,
 	ProvideTiltServerOptions,
 	ProvideTiltDynamic,
 	ProvideHeadsUpServer,

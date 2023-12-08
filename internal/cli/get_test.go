@@ -2,14 +2,16 @@ package cli
 
 import (
 	"context"
+	"net"
 	"path/filepath"
+	"strconv"
 	"testing"
 
-	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/kubectl/pkg/cmd/util"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/testdata"
@@ -46,6 +48,26 @@ func TestGet(t *testing.T) {
 my-sleep`)
 }
 
+type staticConnProvider struct {
+	l net.Listener
+}
+
+func newStaticConnProvider(t testing.TB) *staticConnProvider {
+	l, err := net.Listen("tcp", "localhost:0")
+	require.NoError(t, err)
+	return &staticConnProvider{l: l}
+}
+
+func (p *staticConnProvider) Dial(network, address string) (net.Conn, error) {
+	return net.Dial(network, p.l.Addr().String())
+}
+func (p *staticConnProvider) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
+	return (&net.Dialer{}).DialContext(ctx, network, p.l.Addr().String())
+}
+func (p *staticConnProvider) Listen(network, address string) (net.Listener, error) {
+	return p.l, nil
+}
+
 type serverFixture struct {
 	*tempdir.TempDirFixture
 	ctx       context.Context
@@ -59,22 +81,27 @@ type serverFixture struct {
 
 func newServerFixture(t *testing.T) *serverFixture {
 	f := tempdir.NewTempDirFixture(t)
+	util.BehaviorOnFatal(func(err string, code int) {
+		t.Fatal(err)
+	})
 
 	dir := dirs.NewTiltDevDirAt(f.Path())
 
 	ctx, a, _ := testutils.CtxAndAnalyticsForTest()
 	ctx, cancel := context.WithCancel(ctx)
-	memconn := server.ProvideMemConn()
-	webPort, err := freeport.GetFreePort()
+	apiConnProvider := newStaticConnProvider(t)
+	_, apiPortString, _ := net.SplitHostPort(apiConnProvider.l.Addr().String())
+	apiPort, err := strconv.Atoi(apiPortString)
 	require.NoError(t, err)
-	apiPort, err := freeport.GetFreePort()
-	require.NoError(t, err)
-
-	cfg, err := server.ProvideTiltServerOptions(ctx, model.TiltBuild{}, memconn, "corgi-charge", testdata.CertKey(),
-		server.APIServerPort(apiPort))
+	cfg, err := server.ProvideTiltServerOptions(ctx, model.TiltBuild{}, apiConnProvider,
+		"corgi-charge", testdata.CertKey(), server.APIServerPort(apiPort))
 	require.NoError(t, err)
 
-	webListener, err := server.ProvideWebListener("localhost", model.WebPort(webPort))
+	webListener, err := server.ProvideWebListener("localhost", model.WebPort(0))
+	require.NoError(t, err)
+
+	_, webPortString, _ := net.SplitHostPort(webListener.Addr().String())
+	webPort, err := strconv.Atoi(webPortString)
 	require.NoError(t, err)
 
 	cfgAccess := server.ProvideConfigAccess(dir)
@@ -84,7 +111,6 @@ func newServerFixture(t *testing.T) *serverFixture {
 	require.NoError(t, hudsc.SetUp(ctx, st))
 
 	scheme := v1alpha1.NewScheme()
-
 	client, err := ctrlclient.New(cfg.GenericConfig.LoopbackClientConfig, ctrlclient.Options{Scheme: scheme})
 	require.NoError(t, err)
 
@@ -111,4 +137,5 @@ func (f *serverFixture) TearDown() {
 	f.hudsc.TearDown(f.ctx)
 	f.cancel()
 	defaultWebPort = f.origPort
+	util.DefaultBehaviorOnFatal()
 }
