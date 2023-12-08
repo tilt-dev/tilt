@@ -6,7 +6,6 @@ package integration
 import (
 	"context"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
@@ -57,40 +56,9 @@ func (af *analyticsFixture) TearDown() {
 	}
 }
 
-type envVarValue struct {
-	name  string
-	isSet bool
-	val   string
-}
-
-func saveEnvVar(name string) envVarValue {
-	val, isSet := os.LookupEnv(name)
-	return envVarValue{
-		name:  name,
-		isSet: isSet,
-		val:   val,
-	}
-}
-
-func restoreEnvVar(v envVarValue) error {
-	if !v.isSet {
-		return os.Unsetenv(v.name)
-	} else {
-		return os.Setenv(v.name, v.val)
-	}
-}
-
 func (af *analyticsFixture) SetOpt(opt analytics.Opt) {
-	oldVal := saveEnvVar(WindmillDirEnvVarName)
-	err := os.Setenv(WindmillDirEnvVarName, af.tempDir.Path())
-	if err != nil {
-		af.t.Fatal(err)
-	}
-	err = analytics.SetOpt(opt)
-	if err != nil {
-		af.t.Fatal(err)
-	}
-	err = restoreEnvVar(oldVal)
+	af.t.Setenv(WindmillDirEnvVarName, af.tempDir.Path())
+	err := analytics.SetOpt(opt)
 	if err != nil {
 		af.t.Fatal(err)
 	}

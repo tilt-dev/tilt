@@ -59,8 +59,7 @@ func TestProvideBuilderVersion(t *testing.T) {
 
 	for i, c := range cases {
 		t.Run(fmt.Sprintf("Case%d", i), func(t *testing.T) {
-			os.Setenv("DOCKER_BUILDKIT", c.bkEnv)
-			defer os.Setenv("DOCKER_BUILDKIT", "")
+			t.Setenv("DOCKER_BUILDKIT", c.bkEnv)
 
 			v, err := getDockerBuilderVersion(
 				types.Version{APIVersion: c.v}, Env{})
@@ -384,17 +383,9 @@ func TestProvideClusterProduct(t *testing.T) {
 
 	for i, c := range cases {
 		t.Run(fmt.Sprintf("Case%d", i), func(t *testing.T) {
-			origEnv := map[string]string{}
 			for _, k := range envVars {
-				origEnv[k] = os.Getenv(k)
-				os.Setenv(k, c.osEnv[k])
+				t.Setenv(k, c.osEnv[k])
 			}
-
-			defer func() {
-				for k := range c.osEnv {
-					os.Setenv(k, origEnv[k])
-				}
-			}()
 
 			minikubeV := c.minikubeV
 			if minikubeV == "" {

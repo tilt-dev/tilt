@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -89,7 +88,7 @@ func newServerFixture(t *testing.T) *serverFixture {
 	client, err := ctrlclient.New(cfg.GenericConfig.LoopbackClientConfig, ctrlclient.Options{Scheme: scheme})
 	require.NoError(t, err)
 
-	_ = os.Setenv("TILT_CONFIG", filepath.Join(f.Path(), "config"))
+	t.Setenv("TILT_CONFIG", filepath.Join(f.Path(), "config"))
 
 	origPort := defaultWebPort
 	defaultWebPort = webPort
@@ -111,6 +110,5 @@ func newServerFixture(t *testing.T) *serverFixture {
 func (f *serverFixture) TearDown() {
 	f.hudsc.TearDown(f.ctx)
 	f.cancel()
-	os.Unsetenv("TILT_CONFIG")
 	defaultWebPort = f.origPort
 }
