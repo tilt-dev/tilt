@@ -8,14 +8,8 @@ package cli
 
 import (
 	"context"
-	"time"
-
 	"github.com/google/wire"
 	"github.com/jonboulle/clockwork"
-	"go.opentelemetry.io/otel/sdk/trace"
-	version2 "k8s.io/apimachinery/pkg/version"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
@@ -85,7 +79,13 @@ import (
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/wmclient/pkg/dirs"
+	"go.opentelemetry.io/otel/sdk/trace"
+	version2 "k8s.io/apimachinery/pkg/version"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"time"
+)
 
+import (
 	_ "embed"
 )
 
@@ -282,19 +282,8 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	connectionManager := cluster.NewConnectionManager()
 	containerRestartDetector := kubernetesdiscovery.NewContainerRestartDetector()
 	reconciler := kubernetesdiscovery.NewReconciler(deferredClient, scheme, connectionManager, containerRestartDetector, storeStore)
-	realClientCreator := _wireRealClientCreatorValue
-	clusterEnv := docker.ProvideClusterEnv(ctx, realClientCreator, kubeContext, product, client, minikubeClient)
-	localEnv := docker.ProvideLocalEnv(ctx, realClientCreator, kubeContext, product, clusterEnv)
-	localClient := docker.ProvideLocalCli(ctx, localEnv)
-	clusterClient, err := docker.ProvideClusterCli(ctx, localEnv, clusterEnv, localClient)
-	if err != nil {
-		return CmdUpDeps{}, err
-	}
-	compositeClient := docker.ProvideSwitchCli(clusterClient, localClient)
-	labels := _wireLabelsValue
-	dockerBuilder := build.NewDockerBuilder(compositeClient, labels)
 	processExecer := localexec.NewProcessExecer(env)
-	kubernetesapplyReconciler := kubernetesapply.NewReconciler(deferredClient, client, scheme, dockerBuilder, storeStore, processExecer)
+	kubernetesapplyReconciler := kubernetesapply.NewReconciler(deferredClient, client, scheme, storeStore, processExecer)
 	uisessionReconciler := uisession.NewReconciler(deferredClient, websocketList)
 	uiresourceReconciler := uiresource.NewReconciler(deferredClient, websocketList, storeStore)
 	uibuttonReconciler := uibutton.NewReconciler(deferredClient, websocketList, storeStore)
@@ -310,9 +299,18 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	tiltextensionPlugin := tiltextension.NewPlugin(extensionrepoReconciler, extensionReconciler)
 	ciTimeoutFlag := provideCITimeoutFlag()
 	cisettingsPlugin := cisettings.NewPlugin(ciTimeoutFlag)
+	realClientCreator := _wireRealClientCreatorValue
+	clusterEnv := docker.ProvideClusterEnv(ctx, realClientCreator, kubeContext, product, client, minikubeClient)
+	localEnv := docker.ProvideLocalEnv(ctx, realClientCreator, kubeContext, product, clusterEnv)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	defaults := _wireDefaultsValue
 	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, plugin, versionPlugin, configPlugin, tiltextensionPlugin, cisettingsPlugin, dockerComposeClient, webHost, processExecer, defaults, product)
+	localClient := docker.ProvideLocalCli(ctx, localEnv)
+	clusterClient, err := docker.ProvideClusterCli(ctx, localEnv, clusterEnv, localClient)
+	if err != nil {
+		return CmdUpDeps{}, err
+	}
+	compositeClient := docker.ProvideSwitchCli(clusterClient, localClient)
 	engineMode := _wireEngineModeValue
 	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, compositeClient, deferredClient, scheme, engineMode, k8sKubeContextOverride, k8sNamespaceOverride, ciTimeoutFlag)
 	togglebuttonReconciler := togglebutton.NewReconciler(deferredClient, scheme)
@@ -325,6 +323,8 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	}
 	liveupdateReconciler := liveupdate.NewReconciler(storeStore, dockerUpdater, execUpdater, updateMode, kubeContext, deferredClient, scheme)
 	configmapReconciler := configmap.NewReconciler(deferredClient, storeStore)
+	labels := _wireLabelsValue
+	dockerBuilder := build.NewDockerBuilder(compositeClient, labels)
 	buildClock := build.ProvideClock()
 	customBuilder := build.NewCustomBuilder(compositeClient, buildClock, cmdController)
 	kindLoader := build.NewKINDLoader()
@@ -396,8 +396,8 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 }
 
 var (
-	_wireLabelsValue               = dockerfile.Labels{}
 	_wireEngineModeValue           = store.EngineModeUp
+	_wireLabelsValue               = dockerfile.Labels{}
 	_wireDockerClientFuncValue     = cluster.DockerClientFunc(cluster.DockerClientFromEnv)
 	_wireKubernetesClientFuncValue = cluster.KubernetesClientFunc(cluster.KubernetesClientFromEnv)
 	_wireOpenURLValue              = openurl.OpenURL(openurl.BrowserOpen)
@@ -491,19 +491,8 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	connectionManager := cluster.NewConnectionManager()
 	containerRestartDetector := kubernetesdiscovery.NewContainerRestartDetector()
 	reconciler := kubernetesdiscovery.NewReconciler(deferredClient, scheme, connectionManager, containerRestartDetector, storeStore)
-	realClientCreator := _wireRealClientCreatorValue
-	clusterEnv := docker.ProvideClusterEnv(ctx, realClientCreator, kubeContext, product, client, minikubeClient)
-	localEnv := docker.ProvideLocalEnv(ctx, realClientCreator, kubeContext, product, clusterEnv)
-	localClient := docker.ProvideLocalCli(ctx, localEnv)
-	clusterClient, err := docker.ProvideClusterCli(ctx, localEnv, clusterEnv, localClient)
-	if err != nil {
-		return CmdCIDeps{}, err
-	}
-	compositeClient := docker.ProvideSwitchCli(clusterClient, localClient)
-	labels := _wireLabelsValue
-	dockerBuilder := build.NewDockerBuilder(compositeClient, labels)
 	processExecer := localexec.NewProcessExecer(env)
-	kubernetesapplyReconciler := kubernetesapply.NewReconciler(deferredClient, client, scheme, dockerBuilder, storeStore, processExecer)
+	kubernetesapplyReconciler := kubernetesapply.NewReconciler(deferredClient, client, scheme, storeStore, processExecer)
 	uisessionReconciler := uisession.NewReconciler(deferredClient, websocketList)
 	uiresourceReconciler := uiresource.NewReconciler(deferredClient, websocketList, storeStore)
 	uibuttonReconciler := uibutton.NewReconciler(deferredClient, websocketList, storeStore)
@@ -519,9 +508,18 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	tiltextensionPlugin := tiltextension.NewPlugin(extensionrepoReconciler, extensionReconciler)
 	ciTimeoutFlag := provideCITimeoutFlag()
 	cisettingsPlugin := cisettings.NewPlugin(ciTimeoutFlag)
+	realClientCreator := _wireRealClientCreatorValue
+	clusterEnv := docker.ProvideClusterEnv(ctx, realClientCreator, kubeContext, product, client, minikubeClient)
+	localEnv := docker.ProvideLocalEnv(ctx, realClientCreator, kubeContext, product, clusterEnv)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	defaults := _wireDefaultsValue
 	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, plugin, versionPlugin, configPlugin, tiltextensionPlugin, cisettingsPlugin, dockerComposeClient, webHost, processExecer, defaults, product)
+	localClient := docker.ProvideLocalCli(ctx, localEnv)
+	clusterClient, err := docker.ProvideClusterCli(ctx, localEnv, clusterEnv, localClient)
+	if err != nil {
+		return CmdCIDeps{}, err
+	}
+	compositeClient := docker.ProvideSwitchCli(clusterClient, localClient)
 	engineMode := _wireStoreEngineModeValue
 	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, compositeClient, deferredClient, scheme, engineMode, k8sKubeContextOverride, k8sNamespaceOverride, ciTimeoutFlag)
 	togglebuttonReconciler := togglebutton.NewReconciler(deferredClient, scheme)
@@ -534,6 +532,8 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	}
 	liveupdateReconciler := liveupdate.NewReconciler(storeStore, dockerUpdater, execUpdater, updateMode, kubeContext, deferredClient, scheme)
 	configmapReconciler := configmap.NewReconciler(deferredClient, storeStore)
+	labels := _wireLabelsValue
+	dockerBuilder := build.NewDockerBuilder(compositeClient, labels)
 	buildClock := build.ProvideClock()
 	customBuilder := build.NewCustomBuilder(compositeClient, buildClock, cmdController)
 	kindLoader := build.NewKINDLoader()
@@ -696,19 +696,8 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	connectionManager := cluster.NewConnectionManager()
 	containerRestartDetector := kubernetesdiscovery.NewContainerRestartDetector()
 	reconciler := kubernetesdiscovery.NewReconciler(deferredClient, scheme, connectionManager, containerRestartDetector, storeStore)
-	realClientCreator := _wireRealClientCreatorValue
-	clusterEnv := docker.ProvideClusterEnv(ctx, realClientCreator, kubeContext, product, k8sClient, minikubeClient)
-	localEnv := docker.ProvideLocalEnv(ctx, realClientCreator, kubeContext, product, clusterEnv)
-	localClient := docker.ProvideLocalCli(ctx, localEnv)
-	clusterClient, err := docker.ProvideClusterCli(ctx, localEnv, clusterEnv, localClient)
-	if err != nil {
-		return CmdUpdogDeps{}, err
-	}
-	compositeClient := docker.ProvideSwitchCli(clusterClient, localClient)
-	labels := _wireLabelsValue
-	dockerBuilder := build.NewDockerBuilder(compositeClient, labels)
 	processExecer := localexec.NewProcessExecer(env)
-	kubernetesapplyReconciler := kubernetesapply.NewReconciler(deferredClient, k8sClient, scheme, dockerBuilder, storeStore, processExecer)
+	kubernetesapplyReconciler := kubernetesapply.NewReconciler(deferredClient, k8sClient, scheme, storeStore, processExecer)
 	uisessionReconciler := uisession.NewReconciler(deferredClient, websocketList)
 	uiresourceReconciler := uiresource.NewReconciler(deferredClient, websocketList, storeStore)
 	uibuttonReconciler := uibutton.NewReconciler(deferredClient, websocketList, storeStore)
@@ -724,9 +713,18 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	tiltextensionPlugin := tiltextension.NewPlugin(extensionrepoReconciler, extensionReconciler)
 	ciTimeoutFlag := provideCITimeoutFlag()
 	cisettingsPlugin := cisettings.NewPlugin(ciTimeoutFlag)
+	realClientCreator := _wireRealClientCreatorValue
+	clusterEnv := docker.ProvideClusterEnv(ctx, realClientCreator, kubeContext, product, k8sClient, minikubeClient)
+	localEnv := docker.ProvideLocalEnv(ctx, realClientCreator, kubeContext, product, clusterEnv)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	defaults := _wireDefaultsValue
 	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, plugin, versionPlugin, configPlugin, tiltextensionPlugin, cisettingsPlugin, dockerComposeClient, webHost, processExecer, defaults, product)
+	localClient := docker.ProvideLocalCli(ctx, localEnv)
+	clusterClient, err := docker.ProvideClusterCli(ctx, localEnv, clusterEnv, localClient)
+	if err != nil {
+		return CmdUpdogDeps{}, err
+	}
+	compositeClient := docker.ProvideSwitchCli(clusterClient, localClient)
 	engineMode := _wireEngineModeValue2
 	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, compositeClient, deferredClient, scheme, engineMode, k8sKubeContextOverride, k8sNamespaceOverride, ciTimeoutFlag)
 	togglebuttonReconciler := togglebutton.NewReconciler(deferredClient, scheme)
@@ -739,6 +737,8 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	}
 	liveupdateReconciler := liveupdate.NewReconciler(storeStore, dockerUpdater, execUpdater, updateMode, kubeContext, deferredClient, scheme)
 	configmapReconciler := configmap.NewReconciler(deferredClient, storeStore)
+	labels := _wireLabelsValue
+	dockerBuilder := build.NewDockerBuilder(compositeClient, labels)
 	buildClock := build.ProvideClock()
 	customBuilder := build.NewCustomBuilder(compositeClient, buildClock, cmdController)
 	kindLoader := build.NewKINDLoader()

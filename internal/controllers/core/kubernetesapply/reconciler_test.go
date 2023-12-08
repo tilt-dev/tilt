@@ -18,10 +18,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/docker"
-	"github.com/tilt-dev/tilt/internal/dockerfile"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/localexec"
@@ -787,8 +785,7 @@ func newFixture(t *testing.T) *fixture {
 
 	execer := localexec.NewFakeExecer(t)
 
-	db := build.NewDockerBuilder(dockerClient, dockerfile.Labels{})
-	r := NewReconciler(cfb.Client, kClient, v1alpha1.NewScheme(), db, cfb.Store, execer)
+	r := NewReconciler(cfb.Client, kClient, v1alpha1.NewScheme(), cfb.Store, execer)
 
 	f := &fixture{
 		ControllerFixture: cfb.Build(r),
