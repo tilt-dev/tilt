@@ -8,12 +8,8 @@ package engine
 
 import (
 	"context"
-
 	"github.com/google/wire"
 	"github.com/jonboulle/clockwork"
-	"go.opentelemetry.io/otel/sdk/trace"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
@@ -34,6 +30,8 @@ import (
 	"github.com/tilt-dev/tilt/internal/tracer"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/wmclient/pkg/dirs"
+	"go.opentelemetry.io/otel/sdk/trace"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Injectors from wire.go:
@@ -51,7 +49,7 @@ func provideFakeBuildAndDeployer(ctx context.Context, docker2 docker.Client, kCl
 	imageBuilder := build.NewImageBuilder(dockerBuilder, customBuilder, kp)
 	reconciler := dockerimage.NewReconciler(ctrlClient, st, scheme, docker2, imageBuilder)
 	cmdimageReconciler := cmdimage.NewReconciler(ctrlClient, st, scheme, docker2, imageBuilder)
-	kubernetesapplyReconciler := kubernetesapply.NewReconciler(ctrlClient, kClient, scheme, dockerBuilder, st, execer)
+	kubernetesapplyReconciler := kubernetesapply.NewReconciler(ctrlClient, kClient, scheme, st, execer)
 	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(reconciler, cmdimageReconciler, imageBuilder, analytics2, clock, ctrlClient, kubernetesapplyReconciler)
 	disableSubscriber := dockercomposeservice.NewDisableSubscriber(ctx, dcc, clockworkClock)
 	dockercomposeserviceReconciler := dockercomposeservice.NewReconciler(ctrlClient, dcc, docker2, st, scheme, disableSubscriber)

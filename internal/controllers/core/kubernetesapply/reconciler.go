@@ -21,7 +21,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/tilt-dev/tilt/internal/build"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
@@ -47,7 +46,6 @@ type deleteSpec struct {
 
 type Reconciler struct {
 	st         store.RStore
-	dkc        build.DockerKubeConnection
 	k8sClient  k8s.Client
 	ctrlClient ctrlclient.Client
 	indexer    *indexer.Indexer
@@ -79,13 +77,12 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	return b, nil
 }
 
-func NewReconciler(ctrlClient ctrlclient.Client, k8sClient k8s.Client, scheme *runtime.Scheme, dkc build.DockerKubeConnection, st store.RStore, execer localexec.Execer) *Reconciler {
+func NewReconciler(ctrlClient ctrlclient.Client, k8sClient k8s.Client, scheme *runtime.Scheme, st store.RStore, execer localexec.Execer) *Reconciler {
 	return &Reconciler{
 		ctrlClient: ctrlClient,
 		k8sClient:  k8sClient,
 		indexer:    indexer.NewIndexer(scheme, indexKubernetesApply),
 		execer:     execer,
-		dkc:        dkc,
 		st:         st,
 		results:    make(map[types.NamespacedName]*Result),
 		requeuer:   indexer.NewRequeuer(),
@@ -500,10 +497,6 @@ func (r *Reconciler) createEntitiesToDeploy(ctx context.Context,
 		// When working with a local k8s cluster, we set the pull policy to Never,
 		// to ensure that k8s fails hard if the image is missing from docker.
 		policy := v1.PullIfNotPresent
-		if r.dkc.WillBuildToKubeContext(k8s.KubeContext(r.k8sClient.APIConfig().CurrentContext)) {
-			policy = v1.PullNever
-		}
-
 		for _, imageMapName := range imageMapNames {
 			imageMap := imageMaps[types.NamespacedName{Name: imageMapName}]
 			imageMapSpec := imageMap.Spec
