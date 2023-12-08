@@ -52,7 +52,6 @@ func TestArgsNewValue(t *testing.T) {
 	require.Equal(t, []analytics.CountEvent{
 		{Name: "cmd.args", Tags: map[string]string{"set": "true"}, N: 1},
 	}, f.analytics.Counts)
-
 }
 
 func TestArgsClearAndNewValue(t *testing.T) {
@@ -135,24 +134,18 @@ func TestArgsEdit(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newServerFixture(t)
 
-			origEditor := os.Getenv("EDITOR")
 			contents := tc.contents
 			if runtime.GOOS == "windows" {
 				contents = strings.ReplaceAll(contents, "\n", "\r\n")
 			}
-			err := os.Setenv("EDITOR", editorForString(contents))
-			require.NoError(t, err)
-			defer func() {
-				err := os.Setenv("EDITOR", origEditor)
-				require.NoError(t, err)
-			}()
+			t.Setenv("EDITOR", editorForString(contents))
 
 			originalArgs := []string{"foo", "bar"}
 			createTiltfile(f, originalArgs)
 
 			cmd := newArgsCmd(genericclioptions.NewTestIOStreamsDiscard())
 			c := cmd.register()
-			err = c.Flags().Parse(nil)
+			err := c.Flags().Parse(nil)
 			require.NoError(t, err)
 			err = cmd.run(f.ctx, c.Flags().Args())
 			if tc.expectedError != "" {

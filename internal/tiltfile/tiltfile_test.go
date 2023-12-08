@@ -467,25 +467,6 @@ func TestLocalArgvCmd(t *testing.T) {
 func TestLocalTiltEnvPropagation(t *testing.T) {
 	f := newFixture(t)
 
-	resetEnv := func() {
-		tiltVars := []string{"TILT_HOST", "TILT_PORT"}
-		for _, key := range tiltVars {
-			if originalValue, ok := os.LookupEnv(key); ok {
-				// unset for test then restore after
-				require.NoError(t, os.Unsetenv(key))
-				t.Cleanup(func() {
-					require.NoError(t, os.Setenv(key, originalValue))
-				})
-			} else {
-				// already unset, make sure still unset after test completes
-				t.Cleanup(func() {
-					require.NoError(t, os.Unsetenv(key))
-				})
-			}
-		}
-	}
-	resetEnv()
-
 	doTest := func(t testing.TB, expectedHost string, expectedPort int) {
 		t.Helper()
 
@@ -500,7 +481,8 @@ local(command='echo Tilt port is $TILT_PORT', command_bat='echo Tilt port is %TI
 	}
 
 	t.Run("Implicit", func(t *testing.T) {
-		resetEnv()
+		os.Unsetenv("TILT_HOST")
+		os.Unsetenv("TILT_PORT")
 		// $TILT_HOST + $TILT_PORT are not explicitly defined anywhere in the test fixture but should be
 		// auto-populated (hardcoded to 1.2.3.4/12345 for tests - no real apiserver is actually loaded)
 		f.webHost = "1.2.3.4"
@@ -508,9 +490,8 @@ local(command='echo Tilt port is $TILT_PORT', command_bat='echo Tilt port is %TI
 	})
 
 	t.Run("Explicit", func(t *testing.T) {
-		resetEnv()
-		require.NoError(t, os.Setenv("TILT_HOST", "7.8.9.0"))
-		require.NoError(t, os.Setenv("TILT_PORT", "7890"))
+		t.Setenv("TILT_HOST", "7.8.9.0")
+		t.Setenv("TILT_PORT", "7890")
 
 		// if values were explicitly passed (e.g. `local('...', env={"TILT_PORT": 7890})`, they should be respected
 		doTest(t, "7.8.9.0", 7890)

@@ -23,17 +23,20 @@ import (
 // behavior.
 
 func TestWindowsBufferSize(t *testing.T) {
-	orig := os.Getenv(WindowsBufferSizeEnvVar)
-	defer os.Setenv(WindowsBufferSizeEnvVar, orig)
+	t.Run("empty", func(t *testing.T) {
+		t.Setenv(WindowsBufferSizeEnvVar, "")
+		require.Equal(t, defaultBufferSize, DesiredWindowsBufferSize())
+	})
 
-	os.Setenv(WindowsBufferSizeEnvVar, "")
-	assert.Equal(t, defaultBufferSize, DesiredWindowsBufferSize())
+	t.Run("non-integer", func(t *testing.T) {
+		t.Setenv(WindowsBufferSizeEnvVar, "a")
+		require.Equal(t, defaultBufferSize, DesiredWindowsBufferSize())
+	})
 
-	os.Setenv(WindowsBufferSizeEnvVar, "a")
-	assert.Equal(t, defaultBufferSize, DesiredWindowsBufferSize())
-
-	os.Setenv(WindowsBufferSizeEnvVar, "10")
-	assert.Equal(t, 10, DesiredWindowsBufferSize())
+	t.Run("integer", func(t *testing.T) {
+		t.Setenv(WindowsBufferSizeEnvVar, "10")
+		require.Equal(t, 10, DesiredWindowsBufferSize())
+	})
 }
 
 func TestNoEvents(t *testing.T) {

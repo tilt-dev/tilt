@@ -17,8 +17,7 @@ import (
 
 func TestEnviron(t *testing.T) {
 	f := NewFixture(t)
-	os.Setenv("FAKE_ENV_VARIABLE", "fakeValue")
-	defer os.Unsetenv("FAKE_ENV_VARIABLE")
+	t.Setenv("FAKE_ENV_VARIABLE", "fakeValue")
 
 	f.File("Tiltfile", `
 print(os.environ['FAKE_ENV_VARIABLE'])
@@ -32,8 +31,7 @@ print(os.environ.get('FAKE_ENV_VARIABLE'))
 
 func TestGetenv(t *testing.T) {
 	f := NewFixture(t)
-	os.Setenv("FAKE_ENV_VARIABLE", "fakeValue")
-	defer os.Unsetenv("FAKE_ENV_VARIABLE")
+	t.Setenv("FAKE_ENV_VARIABLE", "fakeValue")
 
 	f.File("Tiltfile", `
 print(os.getenv('FAKE_ENV_VARIABLE'))
@@ -48,8 +46,7 @@ print(os.getenv('FAKE_ENV_VARIABLE_UNSET', 'bar'))
 
 func TestPutenv(t *testing.T) {
 	f := NewFixture(t)
-	os.Setenv("FAKE_ENV_VARIABLE", "fakeValue")
-	defer os.Unsetenv("FAKE_ENV_VARIABLE")
+	t.Setenv("FAKE_ENV_VARIABLE", "fakeValue")
 
 	f.File("Tiltfile", `
 os.putenv('FAKE_ENV_VARIABLE', 'fakeValue2')
@@ -64,8 +61,7 @@ print(os.getenv('FAKE_ENV_VARIABLE'))
 
 func TestPutenvByDict(t *testing.T) {
 	f := NewFixture(t)
-	os.Setenv("FAKE_ENV_VARIABLE", "fakeValue")
-	defer os.Unsetenv("FAKE_ENV_VARIABLE")
+	t.Setenv("FAKE_ENV_VARIABLE", "fakeValue")
 
 	f.File("Tiltfile", `
 os.environ['FAKE_ENV_VARIABLE'] = 'fakeValueByDict'
@@ -80,8 +76,7 @@ print(os.getenv('FAKE_ENV_VARIABLE'))
 
 func TestUnsetenv(t *testing.T) {
 	f := NewFixture(t)
-	os.Setenv("FAKE_ENV_VARIABLE", "fakeValue")
-	defer os.Unsetenv("FAKE_ENV_VARIABLE")
+	t.Setenv("FAKE_ENV_VARIABLE", "fakeValue")
 
 	f.File("Tiltfile", `
 os.unsetenv('FAKE_ENV_VARIABLE')
@@ -98,8 +93,7 @@ print(os.getenv('FAKE_ENV_VARIABLE', 'unused'))
 
 func TestUnsetenvAsDict(t *testing.T) {
 	f := NewFixture(t)
-	os.Setenv("FAKE_ENV_VARIABLE", "fakeValue")
-	defer os.Unsetenv("FAKE_ENV_VARIABLE")
+	t.Setenv("FAKE_ENV_VARIABLE", "fakeValue")
 
 	f.File("Tiltfile", `
 os.environ.pop('FAKE_ENV_VARIABLE')

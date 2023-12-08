@@ -35,10 +35,7 @@ func TestEdit(t *testing.T) {
 	cmd := newEditCmd(streams)
 	cmd.register()
 
-	oldEditor := os.Getenv("EDITOR")
-	defer os.Setenv("EDITOR", oldEditor)
-
-	os.Setenv("EDITOR", "true")
+	t.Setenv("EDITOR", "true")
 	err = cmd.run(f.ctx, []string{"cmd", "my-sleep"})
 	require.NoError(t, err)
 
