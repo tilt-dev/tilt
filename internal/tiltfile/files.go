@@ -120,8 +120,9 @@ func (s *tiltfileState) execLocalCmd(t *starlark.Thread, cmd model.Cmd, options 
 		if !options.logOutput {
 			// if we already logged the output, don't include it in the error message to prevent it from
 			// getting output 2x
-			errMessage.WriteString(fmt.Sprintf("\nstdout: %q\nstderr: %q",
-				stdoutBuf.String(), stderrBuf.String()))
+
+			stdout, stderr := stdoutBuf.String(), stderrBuf.String()
+			fmt.Fprintf(&errMessage, "\nstdout:\n%v\nstderr:\n%v\n", stdout, stderr)
 		}
 
 		return "", errors.New(errMessage.String())
