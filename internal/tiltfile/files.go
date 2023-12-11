@@ -122,11 +122,7 @@ func (s *tiltfileState) execLocalCmd(t *starlark.Thread, cmd model.Cmd, options 
 			// getting output 2x
 
 			stdout, stderr := stdoutBuf.String(), stderrBuf.String()
-			if strings.Contains(stdout, "\n") || strings.Contains(stderr, "\n") {
-				fmt.Fprintf(&errMessage, "\nstdout:\n%v\nstderr:\n%v\n", stdout, stderr)
-			} else {
-				fmt.Fprintf(&errMessage, "\nstdout: %q\nstderr: %q\n", stdout, stderr)
-			}
+			fmt.Fprintf(&errMessage, "\nstdout:\n%v\nstderr:\n%v\n", stdout, stderr)
 		}
 
 		return "", errors.New(errMessage.String())
