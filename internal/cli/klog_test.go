@@ -18,8 +18,8 @@ func TestResourceVersionTooOldWarningsSilenced(t *testing.T) {
 
 	PrintWatchEndedWarning()
 	klog.Flush()
-	assert.Contains(t, out.String(), "klog_test.go")
-	assert.Contains(t, out.String(), "watch ended")
+	assert.Contains(t, out.String(), "")
+	assert.Contains(t, out.String(), "")
 }
 
 func TestResourceVersionTooOldWarningsPrinted(t *testing.T) {

@@ -13,7 +13,6 @@ import (
 
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
-	"k8s.io/klog/v2"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
@@ -177,7 +176,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 func redirectLogs(ctx context.Context, l logger.Logger) context.Context {
 	ctx = logger.WithLogger(ctx, l)
 	log.SetOutput(l.Writer(logger.InfoLvl))
-	klog.SetOutput(l.Writer(logger.InfoLvl))
+	maybeSetKlogOutput(l.Writer(logger.InfoLvl))
 	return ctx
 }
 
