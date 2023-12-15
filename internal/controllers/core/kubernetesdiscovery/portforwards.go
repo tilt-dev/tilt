@@ -87,7 +87,7 @@ func (r *Reconciler) toDesiredPortForward(kd *v1alpha1.KubernetesDiscovery) (*v1
 		return nil, nil
 	}
 
-	pod := pickBestPortForwardPod(kd)
+	pod := PickBestPortForwardPod(kd)
 	if pod == nil {
 		return nil, nil
 	}
@@ -147,7 +147,7 @@ func populateContainerPorts(pft *v1alpha1.PortForwardTemplateSpec, pod *v1alpha1
 // We can only portforward to one pod at a time.
 // So pick the "best" pod to portforward to.
 // May be nil if there is no eligible pod.
-func pickBestPortForwardPod(kd *v1alpha1.KubernetesDiscovery) *v1alpha1.Pod {
+func PickBestPortForwardPod(kd *v1alpha1.KubernetesDiscovery) *v1alpha1.Pod {
 	var bestPod *v1alpha1.Pod
 	for _, pod := range kd.Status.Pods {
 		pod := pod
