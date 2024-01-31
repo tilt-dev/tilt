@@ -34,7 +34,7 @@ require (
 	github.com/mattn/go-isatty v0.0.17
 	github.com/mattn/go-jsonpointer v0.0.1
 	github.com/mattn/go-tty v0.0.4
-	github.com/moby/buildkit v0.11.6
+	github.com/moby/buildkit v0.12.5
 	github.com/modern-go/reflect2 v1.0.2
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
@@ -53,7 +53,7 @@ require (
 	github.com/tilt-dev/starlark-lsp v0.0.0-20230210155543-84c13fe0ff94
 	github.com/tilt-dev/tilt-apiserver v0.10.0
 	github.com/tilt-dev/wmclient v0.0.0-20201109174454-1839d0355fbc
-	github.com/tonistiigi/fsutil v0.0.0-20230214225802-a3696a2f1f27
+	github.com/tonistiigi/fsutil v0.0.0-20230629203738-36ef4d8c0dbb
 	github.com/tonistiigi/units v0.0.0-20180711220420-6950e57a87ea
 	github.com/whilp/git-urls v1.0.0
 	go.lsp.dev/protocol v0.11.2
@@ -93,7 +93,7 @@ require (
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
-	github.com/Microsoft/go-winio v0.6.0 // indirect
+	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/agl/ed25519 v0.0.0-20170116200512-5312a6153412 // indirect
@@ -109,10 +109,9 @@ require (
 	github.com/chai2010/gettext-go v1.0.2 // indirect
 	github.com/cloudflare/cfssl v1.4.1 // indirect
 	github.com/containerd/console v1.0.3 // indirect
-	github.com/containerd/containerd v1.7.0 // indirect
-	github.com/containerd/continuity v0.3.1-0.20230206214859-2a963a2f56e8 // indirect
-	github.com/containerd/typeurl v1.0.2 // indirect
-	github.com/containerd/typeurl/v2 v2.1.0 // indirect
+	github.com/containerd/containerd v1.7.2 // indirect
+	github.com/containerd/continuity v0.4.1 // indirect
+	github.com/containerd/typeurl/v2 v2.1.1 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
@@ -151,7 +150,7 @@ require (
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.7.0 // indirect
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.11.3 // indirect
 	github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
@@ -180,7 +179,7 @@ require (
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
-	github.com/opencontainers/image-spec v1.1.0-rc2.0.20221005185240-3a7f492d3f1b // indirect
+	github.com/opencontainers/image-spec v1.1.0-rc3 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_golang v1.16.0 // indirect
@@ -193,7 +192,7 @@ require (
 	github.com/smacker/go-tree-sitter v0.0.0-20220209044044-0d3022e933c3 // indirect
 	github.com/stoewer/go-strcase v1.2.0 // indirect
 	github.com/theupdateframework/notary v0.6.1 // indirect
-	github.com/tonistiigi/vt100 v0.0.0-20210615222946-8066bb97264f // indirect
+	github.com/tonistiigi/vt100 v0.0.0-20230623042737-f9a4f7ef6531 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
@@ -204,7 +203,7 @@ require (
 	go.lsp.dev/jsonrpc2 v0.9.0 // indirect
 	go.lsp.dev/pkg v0.0.0-20210323044036-f7deec69b52e // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.40.0 // indirect
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.35.1 // indirect
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.40.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.14.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.14.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.14.0 // indirect
