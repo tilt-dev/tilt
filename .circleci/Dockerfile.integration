@@ -1,4 +1,4 @@
-FROM cimg/go:1.20-node
+FROM cimg/go:1.21-node
 
 USER root
 
@@ -20,7 +20,7 @@ RUN apt update && apt install -y --no-install-recommends apt-transport-https \
 # Install docker
 # Adapted from https://github.com/circleci/circleci-images/blob/staging/shared/images/Dockerfile-basic.template
 # Check https://download.docker.com/linux/static/stable/x86_64/ for latest versions
-ENV DOCKER_VERSION=20.10.18
+ENV DOCKER_VERSION=25.0.3
 RUN set -exu \
   && DOCKER_URL="https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_VERSION}.tgz" \
   && echo Docker URL: $DOCKER_URL \
@@ -39,13 +39,13 @@ RUN curl -fL "https://github.com/docker/compose/releases/download/${DOCKER_COMPO
   && docker-compose-v1 version
 
 # docker-compose v2
-ARG DOCKER_COMPOSE_V2_VERSION=v2.18.1
+ARG DOCKER_COMPOSE_V2_VERSION=v2.24.5
 RUN curl -fL "https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_V2_VERSION}/docker-compose-$(uname -s | tr '[A-Z]' '[a-z]')-$(uname -m)" -o /usr/local/bin/docker-compose \
   && chmod a+x /usr/local/bin/docker-compose \
   && docker-compose version
 
 # install Kind (Kubernetes in Docker)
-ENV KIND_VERSION=v0.20.0
+ENV KIND_VERSION=v0.21.0
 RUN curl -fLo ./kind-linux-amd64 https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-linux-amd64 \
   && chmod +x ./kind-linux-amd64 \
   && mv ./kind-linux-amd64 /usr/local/bin/kind \
