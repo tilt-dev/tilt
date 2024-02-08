@@ -10,7 +10,7 @@ jobs:
   build-linux:
     resource_class: medium+
     docker:
-      - image: docker/tilt-ci@sha256:45e24840891e22aed72548002d4dd7223c117a4819c10c20660fedb33e7cca40
+      - image: docker/tilt-ci@sha256:dc3b3adf081a326a0b5a036e2490acecb1643412f0bdbe0e6ed5ce13521b7f93
     # apiserver code generation scripts require being in GOPATH
     working_directory: /home/circleci/go/src/github.com/tilt-dev/tilt
 
@@ -50,7 +50,7 @@ jobs:
 
   check-docs:
     docker:
-      - image: docker/tilt-ci@sha256:45e24840891e22aed72548002d4dd7223c117a4819c10c20660fedb33e7cca40
+      - image: docker/tilt-ci@sha256:dc3b3adf081a326a0b5a036e2490acecb1643412f0bdbe0e6ed5ce13521b7f93
     steps:
       - checkout
       - setup_remote_docker
@@ -73,7 +73,7 @@ jobs:
     steps:
       - run: |
           choco install -y make kustomize kubernetes-helm docker-compose
-          choco upgrade -y --allow-downgrade golang --version=1.20.5
+          choco upgrade -y --allow-downgrade golang --version=1.21.6
 
           # mingw 13 seems to have broken gcc installs
           # https://community.chocolatey.org/packages/mingw#comment-6290804217
@@ -100,7 +100,7 @@ jobs:
   build-integration:
     resource_class: medium+
     docker:
-      - image: docker/tilt-integration-ci@sha256:4ef0f0de684068fcef8bc74abbc08629a832a30425fc00592689b298a1412710
+      - image: docker/tilt-integration-ci@sha256:b90db4d6acee12436e2e407737d3fc177a81d3e2dd3934e4054e1f19b0a2cc1c
     steps:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
@@ -131,7 +131,7 @@ jobs:
     steps:
       - checkout
       - go/install:
-          version: "1.20"
+          version: "1.21.7"
       - run: curl -fsSL "https://github.com/gotestyourself/gotestsum/releases/download/v1.7.0/gotestsum_1.7.0_darwin_amd64.tar.gz" | sudo tar -xz -C /usr/local/bin gotestsum
       # We can't run the container tests on macos because nested
       # VMs don't work on circleci.
@@ -150,7 +150,7 @@ jobs:
     resource_class: medium+
     docker:
       # keep image in sync with build.toast.yml
-      - image: docker/tilt-releaser@sha256:ff4a71c0d18717cc9c646778cc426a0a4f916885c5fe7eb001f0eaee0d3483a0
+      - image: docker/tilt-releaser@sha256:811bdf40b46a54b290fe887be675604e2fb643faa626a7b5ca55057b9a747f69
     environment:
       DOCKER_CLI_EXPERIMENTAL: enabled
     steps:
@@ -167,7 +167,7 @@ jobs:
     resource_class: medium+
     docker:
       # keep image in sync with build.toast.yml
-      - image: docker/tilt-releaser@sha256:ff4a71c0d18717cc9c646778cc426a0a4f916885c5fe7eb001f0eaee0d3483a0
+      - image: docker/tilt-releaser@sha256:811bdf40b46a54b290fe887be675604e2fb643faa626a7b5ca55057b9a747f69
     environment:
       DOCKER_CLI_EXPERIMENTAL: enabled
     steps:
