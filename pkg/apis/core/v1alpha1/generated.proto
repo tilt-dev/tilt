@@ -692,6 +692,12 @@ message DockerComposeProject {
 
   // Path to an env file to use. Passed to docker-compose as `--env-file FILE`.
   optional string envFile = 5;
+
+  // Optional docker-compose profiles to use.
+  //
+  // Services with defined profiles will only be included if their profile matches
+  // one in this list.
+  repeated string profiles = 6;
 }
 
 // DockerComposeService represents a container orchestrated by Docker Compose.

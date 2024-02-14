@@ -23,10 +23,6 @@ if [ "${BASH_VERSINFO:-0}" -lt 5 ]; then
   exit 2
 fi
 
-if [[ -n "${CODEGEN_USER-}" ]]; then
-    useradd "$CODEGEN_USER"
-fi
-
 GOPATH=$(go env GOPATH)
 export GOPATH
 
@@ -79,3 +75,27 @@ if [[ "$VIOLATIONS" != "ok" ]]; then
     exit 1
 fi
 
+FIXUPS=(
+./pkg/openapi
+./pkg/openapi/zz_generated.openapi.go
+./pkg/apis/core/v1alpha1/zz_generated.conversion.go
+./pkg/apis/core/v1alpha1/generated.proto
+./pkg/apis/core/v1alpha1/zz_generated.defaults.go
+./pkg/apis/core/v1alpha1/generated.pb.go
+./pkg/apis/core/v1alpha1/zz_generated.deepcopy.go
+./pkg/apis/core/zz_generated.deepcopy.go
+)
+
+if [[ "$CODEGEN_UID" != "$(id -u)" ]]; then
+    groupadd --gid "$CODEGEN_GID" codegen-user
+    useradd --uid "$CODEGEN_UID" -g codegen-user codegen-user
+
+    for f in "${FIXUPS[@]}"; do
+        if [ -d "$f" ]; then
+            chmod 775 "$f"
+        else
+            chmod 664 "$f"
+        fi
+        chown codegen-user:codegen-user "$f"
+    done
+fi
