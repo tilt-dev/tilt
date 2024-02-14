@@ -10,7 +10,7 @@ import (
 
 // Registers a request handler for the resource that stores it on the file system.
 func (a *Server) WithResourceFileStorage(obj resource.Object, path string) *Server {
-	fs := filepath.RealFS{}
+	fs := filepath.NewRealFS()
 	ws := filepath.NewWatchSet()
 	strategy := rest.DefaultStrategy{
 		Object:      obj,

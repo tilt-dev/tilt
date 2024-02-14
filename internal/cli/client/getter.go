@@ -94,7 +94,13 @@ func (f *Getter) ToRESTMapper() (meta.RESTMapper, error) {
 	}
 
 	mapper := restmapper.NewDeferredDiscoveryRESTMapper(discoveryClient)
-	expander := restmapper.NewShortcutExpander(mapper, discoveryClient)
+
+	warningHandler := func(warning string) {
+		// no-op for now. historically we've found that these warnings
+		// are targeted at people writing kubernetes controllers, and won't
+		// make sense to tilt users.
+	}
+	expander := restmapper.NewShortcutExpander(mapper, discoveryClient, warningHandler)
 	return expander, nil
 }
 

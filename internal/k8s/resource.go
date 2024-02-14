@@ -56,7 +56,6 @@ func (c *resourceClient) Apply(target kube.ResourceList) (*kube.Result, error) {
 	toPrinter := func(s string) (printers.ResourcePrinter, error) {
 		return genericclioptions.NewPrintFlags("created").ToPrinter()
 	}
-	openAPISchema, _ := f.OpenAPISchema()
 	builder := f.NewBuilder()
 	mapper, err := f.ToRESTMapper()
 	if err != nil {
@@ -86,7 +85,6 @@ func (c *resourceClient) Apply(target kube.ResourceList) (*kube.Result, error) {
 		Builder:          builder,
 		Mapper:           mapper,
 		DynamicClient:    dynamicClient,
-		OpenAPISchema:    openAPISchema,
 
 		IOStreams: flags.IOStreams,
 

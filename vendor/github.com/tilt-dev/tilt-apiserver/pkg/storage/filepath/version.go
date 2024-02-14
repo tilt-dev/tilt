@@ -12,7 +12,7 @@ func getResourceVersion(obj runtime.Object) (uint64, error) {
 	if obj == nil {
 		return 0, nil
 	}
-	objMeta, err := meta.Accessor(obj)
+	objMeta, err := meta.CommonAccessor(obj)
 	if err != nil {
 		return 0, err
 	}
@@ -24,7 +24,7 @@ func setResourceVersion(obj runtime.Object, v uint64) error {
 		return fmt.Errorf("resourceVersion must be positive: %d", v)
 	}
 
-	objMeta, err := meta.Accessor(obj)
+	objMeta, err := meta.CommonAccessor(obj)
 	if err != nil {
 		return err
 	}
@@ -33,7 +33,7 @@ func setResourceVersion(obj runtime.Object, v uint64) error {
 }
 
 func clearResourceVersion(obj runtime.Object) error {
-	objMeta, err := meta.Accessor(obj)
+	objMeta, err := meta.CommonAccessor(obj)
 	if err != nil {
 		return err
 	}

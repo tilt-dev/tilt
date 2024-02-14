@@ -23,35 +23,54 @@ type FS interface {
 	EnsureDir(dirname string) error
 	Write(encoder runtime.Encoder, filepath string, obj runtime.Object, storageVersion uint64) error
 	Read(decoder runtime.Decoder, path string, newFunc func() runtime.Object) (runtime.Object, error)
-	VisitDir(dirname string, newFunc func() runtime.Object, codec runtime.Decoder, visitFunc func(string, runtime.Object) error) error
+	VisitDir(dirname string, newFunc func() runtime.Object, codec runtime.Decoder, visitFunc func(string, runtime.Object) error) (uint64, error)
 }
 
 type RealFS struct {
+	mu  sync.Mutex
+	rev uint64
 }
 
-var _ FS = RealFS{}
+func NewRealFS() *RealFS {
+	return &RealFS{rev: 1}
+}
 
-func (fs RealFS) Remove(filepath string) error {
+var _ FS = &RealFS{}
+
+func (fs *RealFS) Remove(filepath string) error {
+	fs.mu.Lock()
+	defer fs.mu.Unlock()
+	_ = fs.incrementRev()
 	return os.Remove(filepath)
 }
 
-func (fs RealFS) Exists(filepath string) bool {
+func (fs *RealFS) Exists(filepath string) bool {
+	fs.mu.Lock()
+	defer fs.mu.Unlock()
 	_, err := os.Stat(filepath)
 	return err == nil
 }
 
-func (fs RealFS) EnsureDir(dirname string) error {
-	if !fs.Exists(dirname) {
+func (fs *RealFS) EnsureDir(dirname string) error {
+	fs.mu.Lock()
+	defer fs.mu.Unlock()
+	_, err := os.Stat(dirname)
+	if err != nil {
 		return os.MkdirAll(dirname, 0700)
 	}
 	return nil
 }
 
-func (fs RealFS) Write(encoder runtime.Encoder, filepath string, obj runtime.Object, storageVersion uint64) error {
-	// TODO(milas): use storageVersion to ensure we don't perform stale writes
+func (fs *RealFS) Write(encoder runtime.Encoder, filepath string, obj runtime.Object, storageVersion uint64) error {
+	fs.mu.Lock()
+	defer fs.mu.Unlock()
+	rev := fs.incrementRev()
+
+	// TODO(milas): Currently we don't have optimistic concurrency at all.
+	// Each write has last-one-wins semantics.
 	// 	(currently, this isn't a critical priority as our use cases that rely
 	// 	on RealFS do not have simultaneous writers)
-	if err := setResourceVersion(obj, storageVersion+1); err != nil {
+	if err := setResourceVersion(obj, rev); err != nil {
 		return err
 	}
 
@@ -62,11 +81,17 @@ func (fs RealFS) Write(encoder runtime.Encoder, filepath string, obj runtime.Obj
 	return ioutil.WriteFile(filepath, buf.Bytes(), 0600)
 }
 
-func (fs RealFS) Read(decoder runtime.Decoder, path string, newFunc func() runtime.Object) (runtime.Object, error) {
+func (fs *RealFS) Read(decoder runtime.Decoder, path string, newFunc func() runtime.Object) (runtime.Object, error) {
+	fs.mu.Lock()
 	content, err := ioutil.ReadFile(filepath.Clean(path))
+	fs.mu.Unlock()
 	if err != nil {
 		return nil, err
 	}
+	return fs.decode(decoder, newFunc, content)
+}
+
+func (fs *RealFS) decode(decoder runtime.Decoder, newFunc func() runtime.Object, content []byte) (runtime.Object, error) {
 	newObj := newFunc()
 	decodedObj, _, err := decoder.Decode(content, nil, newObj)
 	if err != nil {
@@ -75,8 +100,10 @@ func (fs RealFS) Read(decoder runtime.Decoder, path string, newFunc func() runti
 	return decodedObj, nil
 }
 
-func (fs RealFS) VisitDir(dirname string, newFunc func() runtime.Object, codec runtime.Decoder, visitFunc func(string, runtime.Object) error) error {
-	return filepath.Walk(dirname, func(path string, info os.FileInfo, err error) error {
+func (fs *RealFS) VisitDir(dirname string, newFunc func() runtime.Object, codec runtime.Decoder, visitFunc func(string, runtime.Object) error) (uint64, error) {
+	fs.mu.Lock()
+	defer fs.mu.Unlock()
+	err := filepath.Walk(dirname, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -86,12 +113,28 @@ func (fs RealFS) VisitDir(dirname string, newFunc func() runtime.Object, codec r
 		if !strings.HasSuffix(info.Name(), ".json") {
 			return nil
 		}
-		newObj, err := fs.Read(codec, path, newFunc)
+		content, err := ioutil.ReadFile(filepath.Clean(path))
+		if err != nil {
+			return err
+		}
+		newObj, err := fs.decode(codec, newFunc, content)
 		if err != nil {
 			return err
 		}
 		return visitFunc(path, newObj)
 	})
+	if err != nil {
+		return 0, err
+	}
+	return fs.rev, nil
+}
+
+// incrementRev increases the revision counter and returns the new value.
+//
+// mu must be held.
+func (fs *RealFS) incrementRev() uint64 {
+	fs.rev++
+	return fs.rev
 }
 
 // An in-memory structure that pretends to be a filesystem,
@@ -105,6 +148,7 @@ type MemoryFS struct {
 func NewMemoryFS() *MemoryFS {
 	return &MemoryFS{
 		dir: make(map[string]interface{}),
+		rev: 1,
 	}
 }
 
@@ -289,12 +333,14 @@ func (fs *MemoryFS) decodeBuffer(decoder runtime.Decoder, rawObj versionedData, 
 }
 
 // Walk the directory, reading all objects in it.
-func (fs *MemoryFS) VisitDir(dirname string, newFunc func() runtime.Object, codec runtime.Decoder, visitFunc func(string, runtime.Object) error) error {
+// Return the ResourceVersion of when we did the read.
+func (fs *MemoryFS) VisitDir(dirname string, newFunc func() runtime.Object, codec runtime.Decoder, visitFunc func(string, runtime.Object) error) (uint64, error) {
 	fs.mu.Lock()
 	keyPaths, buffers, err := fs.readDir(dirname)
+	version := fs.rev
 	fs.mu.Unlock()
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	// Do decoding and visitation outside the lock.
@@ -302,14 +348,14 @@ func (fs *MemoryFS) VisitDir(dirname string, newFunc func() runtime.Object, code
 		buf := buffers[i]
 		obj, err := fs.decodeBuffer(codec, buf, newFunc)
 		if err != nil {
-			return err
+			return 0, err
 		}
 		err = visitFunc(keyPath, obj)
 		if err != nil {
-			return err
+			return 0, err
 		}
 	}
-	return nil
+	return version, nil
 }
 
 // Internal helper for reading the directory. Must hold the mutex.
