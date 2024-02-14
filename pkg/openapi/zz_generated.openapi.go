@@ -769,7 +769,6 @@ func schema_pkg_apis_core_v1alpha1_CmdImageStateBuilding(ref common.ReferenceCal
 					"startedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Time when the build started.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
@@ -805,14 +804,12 @@ func schema_pkg_apis_core_v1alpha1_CmdImageStateCompleted(ref common.ReferenceCa
 					"startedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Time when we started building an image.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
 					"finishedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Time when we finished building an image",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
@@ -1027,7 +1024,6 @@ func schema_pkg_apis_core_v1alpha1_CmdStateRunning(ref common.ReferenceCallback)
 					"startedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Time at which the command was last started.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
@@ -1066,14 +1062,12 @@ func schema_pkg_apis_core_v1alpha1_CmdStateTerminated(ref common.ReferenceCallba
 					"startedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Time at which previous execution of the command started",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
 					"finishedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Time at which the command last terminated",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
@@ -1496,7 +1490,6 @@ func schema_pkg_apis_core_v1alpha1_ContainerStateRunning(ref common.ReferenceCal
 					"startedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "StartedAt is the time the container began running.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
 						},
 					},
@@ -1519,14 +1512,12 @@ func schema_pkg_apis_core_v1alpha1_ContainerStateTerminated(ref common.Reference
 					"startedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "StartedAt is the time the container began running.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
 						},
 					},
 					"finishedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "FinishedAt is the time the container stopped running.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
 						},
 					},
@@ -1682,7 +1673,6 @@ func schema_pkg_apis_core_v1alpha1_DisableStatus(ref common.ReferenceCallback) c
 					"lastUpdateTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The last time this status was updated.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
 						},
 					},
@@ -1867,7 +1857,6 @@ func schema_pkg_apis_core_v1alpha1_DockerComposeLogStreamStatus(ref common.Refer
 					"startedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "When we last started the log streamer.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
@@ -2161,14 +2150,12 @@ func schema_pkg_apis_core_v1alpha1_DockerComposeServiceStatus(ref common.Referen
 					"lastApplyStartTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Timestamp of when we last started bringing up this service in Docker Compose.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
 					"lastApplyFinishTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Timestamp of when we last finished bringing up this service in Docker Compose.\n\nWhen populated, must be equal or after the LastApplyStartTime field.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
@@ -2218,14 +2205,12 @@ func schema_pkg_apis_core_v1alpha1_DockerContainerState(ref common.ReferenceCall
 					"startedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "When the container process started.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
 					"finishedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "When the container process finished.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
@@ -2599,7 +2584,6 @@ func schema_pkg_apis_core_v1alpha1_DockerImageStateBuilding(ref common.Reference
 					"startedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Time when the build started.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
@@ -2635,14 +2619,12 @@ func schema_pkg_apis_core_v1alpha1_DockerImageStateCompleted(ref common.Referenc
 					"startedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Time when we started building an image.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
 					"finishedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Time when we finished building an image",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
@@ -3028,7 +3010,6 @@ func schema_pkg_apis_core_v1alpha1_ExtensionRepoStatus(ref common.ReferenceCallb
 					"lastFetchedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The last time the repo was fetched and checked for validity.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
 						},
 					},
@@ -3142,7 +3123,6 @@ func schema_pkg_apis_core_v1alpha1_FileEvent(ref common.ReferenceCallback) commo
 					"time": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Time is an approximate timestamp for a batch of file changes.\n\nThis will NOT exactly match any inode attributes (e.g. ctime, mtime) at the filesystem level and is purely informational or for use as an opaque watermark.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
@@ -3327,14 +3307,12 @@ func schema_pkg_apis_core_v1alpha1_FileWatchStatus(ref common.ReferenceCallback)
 					"monitorStartTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "MonitorStartTime is the timestamp of when filesystem monitor was started. It is zero if the monitor has not been started yet.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
 					"lastEventTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "LastEventTime is the timestamp of the most recent file event. It is zero if no events have been seen yet.\n\nIf the specifics of which files changed are not important, this field can be used as a watermark without needing to inspect FileEvents.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
@@ -3464,7 +3442,6 @@ func schema_pkg_apis_core_v1alpha1_ForwardStatus(ref common.ReferenceCallback) c
 					"startedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "StartedAt is the time at which the forward was initiated.\n\nIf the forwarder is not running yet, this will be zero/empty.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
@@ -4174,14 +4151,12 @@ func schema_pkg_apis_core_v1alpha1_KubernetesApplyStatus(ref common.ReferenceCal
 					"lastApplyTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Timestamp of we last finished applying this YAML to the cluster.\n\nWhen populated, must be equal or after the LastApplyStartTime field.\n\nis more consistent with how we name this in other API objects.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
 					"lastApplyStartTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Timestamp of when we last started applying this YAML to the cluster.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
@@ -4467,7 +4442,6 @@ func schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryStateRunning(ref common.Re
 					"startTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "StartTime is when Kubernetes resource discovery began.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
@@ -4511,7 +4485,6 @@ func schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryStatus(ref common.Referenc
 					"monitorStartTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "MonitorStartTime is the timestamp of when Kubernetes resource discovery was started.\n\nIt is zero if discovery has not been started yet.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
@@ -4794,7 +4767,6 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateContainerStatus(ref common.Referenc
 					"lastFileTimeSynced": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The timestamp of the most recent file update successfully synced to the container.\n\nMust match the timestamp in a FileEvent, not the time the sync was performed.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
@@ -5158,7 +5130,6 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateStateFailed(ref common.ReferenceCal
 					"lastTransitionTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "When the live-updater transitioned into a Failed state.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
@@ -5310,7 +5281,6 @@ func schema_pkg_apis_core_v1alpha1_Pod(ref common.ReferenceCallback) common.Open
 					"createdAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "CreatedAt is when the Pod was created.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
 						},
 					},
@@ -5450,7 +5420,6 @@ func schema_pkg_apis_core_v1alpha1_PodCondition(ref common.ReferenceCallback) co
 					"lastTransitionTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "LastTransitionTime is the last time the status changed.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
 						},
 					},
@@ -5767,7 +5736,6 @@ func schema_pkg_apis_core_v1alpha1_PodOwner(ref common.ReferenceCallback) common
 					"creationTimestamp": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The creation timestamp of the owner.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
 						},
 					},
@@ -6325,7 +6293,6 @@ func schema_pkg_apis_core_v1alpha1_SessionStatus(ref common.ReferenceCallback) c
 					"startTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "StartTime is when the Tilt engine was first started.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
@@ -6377,7 +6344,6 @@ func schema_pkg_apis_core_v1alpha1_StartOnSpec(ref common.ReferenceCallback) com
 					"startAfter": {
 						SchemaProps: spec.SchemaProps{
 							Description: "StartAfter indicates that events before this time should be ignored.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
 						},
 					},
@@ -6586,7 +6552,6 @@ func schema_pkg_apis_core_v1alpha1_TargetStateActive(ref common.ReferenceCallbac
 					"startTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "StartTime is when execution began.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
@@ -6628,14 +6593,12 @@ func schema_pkg_apis_core_v1alpha1_TargetStateTerminated(ref common.ReferenceCal
 					"startTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "StartTime is when the target began executing.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
 					"finishTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "FinishTime is when the target stopped executing.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
@@ -6913,7 +6876,6 @@ func schema_pkg_apis_core_v1alpha1_TiltfileStateRunning(ref common.ReferenceCall
 					"startedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Time at which previous execution of the command started.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
@@ -6957,14 +6919,12 @@ func schema_pkg_apis_core_v1alpha1_TiltfileStateTerminated(ref common.ReferenceC
 					"startedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Time at which previous execution of the command started.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
 					"finishedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Time at which the command last terminated.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
@@ -7312,7 +7272,6 @@ func schema_pkg_apis_core_v1alpha1_UIBuildRunning(ref common.ReferenceCallback) 
 					"startTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The time when the build started.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
@@ -7363,14 +7322,12 @@ func schema_pkg_apis_core_v1alpha1_UIBuildTerminated(ref common.ReferenceCallbac
 					"startTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The time when the build started.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
 					"finishTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The time when the build finished.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
@@ -7575,7 +7532,6 @@ func schema_pkg_apis_core_v1alpha1_UIButtonStatus(ref common.ReferenceCallback) 
 					"lastClickedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "LastClickedAt is the timestamp of the last time the button was clicked.\n\nIf the button has never clicked before, this will be the zero-value/null.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
@@ -7943,7 +7899,6 @@ func schema_pkg_apis_core_v1alpha1_UIResourceCondition(ref common.ReferenceCallb
 					"lastTransitionTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Last time the condition transitioned from one status to another.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
@@ -7987,14 +7942,12 @@ func schema_pkg_apis_core_v1alpha1_UIResourceKubernetes(ref common.ReferenceCall
 					"podCreationTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The creation time of the active pod.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
 						},
 					},
 					"podUpdateStartTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The last update time of the active pod",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
 						},
 					},
@@ -8262,7 +8215,6 @@ func schema_pkg_apis_core_v1alpha1_UIResourceStatus(ref common.ReferenceCallback
 					"lastDeployTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The last time this resource was deployed.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
@@ -8296,7 +8248,6 @@ func schema_pkg_apis_core_v1alpha1_UIResourceStatus(ref common.ReferenceCallback
 					"pendingBuildSince": {
 						SchemaProps: spec.SchemaProps{
 							Description: "When the build was put in the pending queue.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
 						},
 					},
@@ -8638,7 +8589,6 @@ func schema_pkg_apis_core_v1alpha1_UISessionStatus(ref common.ReferenceCallback)
 					"tiltStartTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The time that this instance of tilt started. Clients can use this to determine if the API server has restarted and all the objects need to be refreshed.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
 						},
 					},
@@ -9157,7 +9107,6 @@ func schema_pkg_apis_meta_v1_Condition(ref common.ReferenceCallback) common.Open
 					"lastTransitionTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "lastTransitionTime is the last time the condition transitioned from one status to another. This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
 						},
 					},
@@ -9713,8 +9662,7 @@ func schema_pkg_apis_meta_v1_List(ref common.ReferenceCallback) common.OpenAPIDe
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/apimachinery/pkg/runtime.RawExtension"),
+										Ref: ref("k8s.io/apimachinery/pkg/runtime.RawExtension"),
 									},
 								},
 							},
@@ -10000,7 +9948,6 @@ func schema_pkg_apis_meta_v1_ObjectMeta(ref common.ReferenceCallback) common.Ope
 					"creationTimestamp": {
 						SchemaProps: spec.SchemaProps{
 							Description: "CreationTimestamp is a timestamp representing the server time when this object was created. It is not guaranteed to be set in happens-before order across separate operations. Clients may not set this value. It is represented in RFC3339 form and is in UTC.\n\nPopulated by the system. Read-only. Null for lists. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
 						},
 					},
@@ -10782,7 +10729,6 @@ func schema_pkg_apis_meta_v1_TableRow(ref common.ReferenceCallback) common.OpenA
 					"object": {
 						SchemaProps: spec.SchemaProps{
 							Description: "This field contains the requested additional information about each object based on the includeObject policy when requesting the Table. If \"None\", this field is empty, if \"Object\" this will be the default serialization of the object for the current API version, and if \"Metadata\" (the default) will contain the object metadata. Check the returned kind and apiVersion of the object before parsing. The media type of the object will always match the enclosing list - if this as a JSON table, these will be JSON encoded objects.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/runtime.RawExtension"),
 						},
 					},
@@ -10981,7 +10927,6 @@ func schema_pkg_apis_meta_v1_WatchEvent(ref common.ReferenceCallback) common.Ope
 					"object": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Object is:\n * If Type is Added or Modified: the new state of the object.\n * If Type is Deleted: the state of the object immediately before deletion.\n * If Type is Error: *Status is recommended; other types may make sense\n   depending on context.",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/runtime.RawExtension"),
 						},
 					},

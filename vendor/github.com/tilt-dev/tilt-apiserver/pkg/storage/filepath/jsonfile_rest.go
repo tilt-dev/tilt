@@ -134,7 +134,7 @@ func (f *filepathREST) List(
 	}
 
 	dirname := f.objectDirName(ctx)
-	if err := f.fs.VisitDir(dirname, f.newFunc, f.codec, func(path string, obj runtime.Object) error {
+	rev, err := f.fs.VisitDir(dirname, f.newFunc, f.codec, func(path string, obj runtime.Object) error {
 		ok, err := p.Matches(obj)
 		if err != nil {
 			return err
@@ -143,8 +143,15 @@ func (f *filepathREST) List(
 			appendItem(v, obj)
 		}
 		return nil
-	}); err != nil {
+	})
+
+	if err != nil {
 		return nil, fmt.Errorf("failed walking filepath %v: %v", dirname, err)
+	}
+
+	err = setResourceVersion(newListObj, rev)
+	if err != nil {
+		return nil, err
 	}
 	return newListObj, nil
 }
@@ -415,7 +422,7 @@ func (f *filepathREST) DeleteCollection(
 		return nil, err
 	}
 	dirname := f.objectDirName(ctx)
-	if err := f.fs.VisitDir(dirname, f.newFunc, f.codec, func(path string, obj runtime.Object) error {
+	rev, err := f.fs.VisitDir(dirname, f.newFunc, f.codec, func(path string, obj runtime.Object) error {
 		ok, err := p.Matches(obj)
 		if err != nil {
 			return err
@@ -425,8 +432,14 @@ func (f *filepathREST) DeleteCollection(
 			appendItem(v, obj)
 		}
 		return nil
-	}); err != nil {
+	})
+	if err != nil {
 		return nil, fmt.Errorf("failed walking filepath %v: %v", dirname, err)
+	}
+
+	err = setResourceVersion(newListObj, rev)
+	if err != nil {
+		return nil, err
 	}
 	return newListObj, nil
 }
