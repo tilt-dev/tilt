@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	configtypes "github.com/docker/cli/cli/config/types"
+	"github.com/docker/cli/cli/hints"
 	"github.com/docker/cli/cli/streams"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
@@ -18,6 +19,10 @@ import (
 	"github.com/moby/term"
 	"github.com/pkg/errors"
 )
+
+const patSuggest = "You can log in with your password or a Personal Access " +
+	"Token (PAT). Using a limited-scope PAT grants better security and is required " +
+	"for organizations using SSO. Learn more at https://docs.docker.com/go/access-tokens/"
 
 // EncodeAuthToBase64 serializes the auth configuration as JSON base64 payload.
 //
@@ -113,7 +118,11 @@ func ConfigureAuth(cli Cli, flUser, flPassword string, authconfig *registrytypes
 	if flUser = strings.TrimSpace(flUser); flUser == "" {
 		if isDefaultRegistry {
 			// if this is a default registry (docker hub), then display the following message.
-			fmt.Fprintln(cli.Out(), "Login with your Docker ID to push and pull images from Docker Hub. If you don't have a Docker ID, head over to https://hub.docker.com to create one.")
+			fmt.Fprintln(cli.Out(), "Log in with your Docker ID or email address to push and pull images from Docker Hub. If you don't have a Docker ID, head over to https://hub.docker.com/ to create one.")
+			if hints.Enabled() {
+				fmt.Fprintln(cli.Out(), patSuggest)
+				fmt.Fprintln(cli.Out())
+			}
 		}
 		promptWithDefault(cli.Out(), "Username", authconfig.Username)
 		var err error

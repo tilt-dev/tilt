@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	manifesttypes "github.com/docker/cli/cli/manifest/types"
+	"github.com/docker/cli/cli/trust"
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/reference"
 	distributionclient "github.com/docker/distribution/registry/client"
@@ -77,6 +78,7 @@ func (c *client) MountBlob(ctx context.Context, sourceRef reference.Canonical, t
 	if err != nil {
 		return err
 	}
+	repoEndpoint.actions = trust.ActionsPushAndPull
 	repo, err := c.getRepositoryForReference(ctx, targetRef, repoEndpoint)
 	if err != nil {
 		return err
@@ -102,6 +104,7 @@ func (c *client) PutManifest(ctx context.Context, ref reference.Named, manifest 
 		return digest.Digest(""), err
 	}
 
+	repoEndpoint.actions = trust.ActionsPushAndPull
 	repo, err := c.getRepositoryForReference(ctx, ref, repoEndpoint)
 	if err != nil {
 		return digest.Digest(""), err
@@ -151,7 +154,9 @@ func (c *client) getHTTPTransportForRepoEndpoint(ctx context.Context, repoEndpoi
 		c.authConfigResolver(ctx, repoEndpoint.info.Index),
 		repoEndpoint.endpoint,
 		repoEndpoint.Name(),
-		c.userAgent)
+		c.userAgent,
+		repoEndpoint.actions,
+	)
 	return httpTransport, errors.Wrap(err, "failed to configure transport")
 }
 

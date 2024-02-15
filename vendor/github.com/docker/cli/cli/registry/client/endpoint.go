@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/docker/cli/cli/trust"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/distribution/registry/client/auth"
 	"github.com/docker/distribution/registry/client/transport"
@@ -17,6 +18,7 @@ import (
 type repositoryEndpoint struct {
 	info     *registry.RepositoryInfo
 	endpoint registry.APIEndpoint
+	actions  []string
 }
 
 // Name returns the repository name
@@ -74,7 +76,7 @@ func getDefaultEndpointFromRepoInfo(repoInfo *registry.RepositoryInfo) (registry
 }
 
 // getHTTPTransport builds a transport for use in communicating with a registry
-func getHTTPTransport(authConfig registrytypes.AuthConfig, endpoint registry.APIEndpoint, repoName string, userAgent string) (http.RoundTripper, error) {
+func getHTTPTransport(authConfig registrytypes.AuthConfig, endpoint registry.APIEndpoint, repoName, userAgent string, actions []string) (http.RoundTripper, error) {
 	// get the http transport, this will be used in a client to upload manifest
 	base := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
@@ -98,8 +100,11 @@ func getHTTPTransport(authConfig registrytypes.AuthConfig, endpoint registry.API
 		passThruTokenHandler := &existingTokenHandler{token: authConfig.RegistryToken}
 		modifiers = append(modifiers, auth.NewAuthorizer(challengeManager, passThruTokenHandler))
 	} else {
+		if len(actions) == 0 {
+			actions = trust.ActionsPullOnly
+		}
 		creds := registry.NewStaticCredentialStore(&authConfig)
-		tokenHandler := auth.NewTokenHandler(authTransport, creds, repoName, "push", "pull")
+		tokenHandler := auth.NewTokenHandler(authTransport, creds, repoName, actions...)
 		basicHandler := auth.NewBasicHandler(creds)
 		modifiers = append(modifiers, auth.NewAuthorizer(challengeManager, tokenHandler, basicHandler))
 	}
