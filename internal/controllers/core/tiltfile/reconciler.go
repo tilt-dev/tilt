@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	dockertypes "github.com/docker/docker/api/types"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -330,10 +331,14 @@ func (r *Reconciler) run(ctx context.Context, nn types.NamespacedName, tf *v1alp
 
 	if requiresDocker(tlr) {
 		dockerErr := r.dockerClient.CheckConnected()
+		var serverVersion dockertypes.Version
+		if dockerErr == nil {
+			serverVersion, dockerErr = r.dockerClient.ServerVersion(ctx)
+		}
 		if tlr.Error == nil && dockerErr != nil {
 			tlr.Error = errors.Wrap(dockerErr, "Failed to connect to Docker")
 		}
-		r.reportDockerConnectionEvent(ctx, dockerErr == nil, r.dockerClient.ServerVersion())
+		r.reportDockerConnectionEvent(ctx, dockerErr == nil, serverVersion)
 	}
 
 	if ctx.Err() == context.Canceled {

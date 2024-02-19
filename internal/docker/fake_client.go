@@ -167,14 +167,14 @@ func (c *FakeClient) CheckConnected() error {
 func (c *FakeClient) Env() Env {
 	return c.FakeEnv
 }
-func (c *FakeClient) BuilderVersion() types.BuilderVersion {
-	return types.BuilderV1
+func (c *FakeClient) BuilderVersion(ctx context.Context) (types.BuilderVersion, error) {
+	return types.BuilderV1, nil
 }
-func (c *FakeClient) ServerVersion() types.Version {
+func (c *FakeClient) ServerVersion(ctx context.Context) (types.Version, error) {
 	return types.Version{
 		Arch:    "amd64",
 		Version: "20.10.11",
-	}
+	}, nil
 }
 
 func (c *FakeClient) SetExecError(err error) {

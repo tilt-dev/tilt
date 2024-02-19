@@ -232,8 +232,13 @@ func (d *DockerBuilder) buildToDigest(ctx context.Context, spec v1alpha1.DockerI
 		return "", nil, fmt.Errorf("reading build context: %v", err)
 	}
 
+	builderVersion, err := d.dCli.BuilderVersion(ctx)
+	if err != nil {
+		return "", nil, err
+	}
+
 	// Buildkit allows us to use a fs sync server instead of uploading up-front.
-	useFSSync := allowBuildkit && d.dCli.BuilderVersion() == types.BuilderBuildKit
+	useFSSync := allowBuildkit && builderVersion == types.BuilderBuildKit
 	if !useFSSync {
 		pipeReader, pipeWriter := io.Pipe()
 		w := NewProgressWriter(ctx, pipeWriter)

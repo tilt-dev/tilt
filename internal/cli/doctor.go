@@ -71,12 +71,12 @@ func (c *doctorCmd) run(ctx context.Context, args []string) error {
 		}
 		printField("Host", host, nil)
 
-		version := clusterDocker.ServerVersion()
-		printField("Server Version", version.Version, nil)
-		printField("API Version", version.APIVersion, nil)
+		version, err := clusterDocker.ServerVersion(ctx)
+		printField("Server Version", version.Version, err)
+		printField("API Version", version.APIVersion, err)
 
-		builderVersion := clusterDocker.BuilderVersion()
-		printField("Builder", builderVersion, nil)
+		builderVersion, err := clusterDocker.BuilderVersion(ctx)
+		printField("Builder", builderVersion, err)
 	}
 
 	if multipleClients {
@@ -93,12 +93,12 @@ func (c *doctorCmd) run(ctx context.Context, args []string) error {
 			}
 			printField("Host", host, nil)
 
-			version := localDocker.ServerVersion()
-			printField("Server Version", version.Version, nil)
-			printField("Version", version.APIVersion, nil)
+			version, err := localDocker.ServerVersion(ctx)
+			printField("Server Version", version.Version, err)
+			printField("Version", version.APIVersion, err)
 
-			builderVersion := localDocker.BuilderVersion()
-			printField("Builder", builderVersion, nil)
+			builderVersion, err := localDocker.BuilderVersion(ctx)
+			printField("Builder", builderVersion, err)
 		}
 	}
 
