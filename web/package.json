@@ -91,6 +91,7 @@
     "webpack": "5"
   },
   "engines": {
-    "node": "^16 || ^18 || ^20"
-  }
+    "node": ">=18"
+  },
+  "packageManager": "yarn@4.1.0"
 }

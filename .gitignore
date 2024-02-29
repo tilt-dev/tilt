@@ -37,6 +37,8 @@ dist
 # web dependencies
 /web/node_modules
 /web/.pnp
+/web/.yarn/*.gz
+/web/.yarn/cache
 .pnp.js
 
 # web testing

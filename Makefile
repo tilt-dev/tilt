@@ -77,18 +77,18 @@ dev-js:
 	cd web && yarn install && yarn run start
 
 check-js:
-	cd web && yarn install --frozen-lockfile
+	cd web && yarn install --immutable
 	# make sure there are no compilation errors or lint warnings
 	cd web && CI=true yarn build
 	cd web && yarn run check
 
 build-js:
-	cd web && yarn install --frozen-lockfile
+	cd web && yarn install --immutable
 	cd web && yarn build
 	cp -r web/build/* pkg/assets/build
 
 test-js:
-	cd web && yarn install --frozen-lockfile
+	cd web && yarn install --immutable
 ifneq ($(CIRCLECI),true)
 	cd web && CI=true yarn test
 else
