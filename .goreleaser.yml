@@ -125,6 +125,14 @@ archives:
   builds:
     - tilt-linux-musl-amd64
     - tilt-linux-musl-arm64
+- id: web-assets
+  name_template: >-
+      {{ .ProjectName }}.{{ .Version }}.web-assets
+  meta: true
+  files:
+    - LICENSE
+    - web/build/**/*
+  
 checksum:
   name_template: 'checksums.txt'
 snapshot:
