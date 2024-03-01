@@ -142,7 +142,7 @@ changelog:
     - '^ci:'
     
 brews:
-- tap:
+- repository:
     owner: tilt-dev
     name: homebrew-tap
   commit_author:
@@ -229,7 +229,7 @@ docker_manifests:
   - docker/{{ .ProjectName }}:{{ .Tag }}-arm64
 scoops:
 - url_template: "https://github.com/tilt-dev/tilt/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
-  bucket:
+  repository:
     owner: tilt-dev
     name: scoop-bucket
   commit_author:
