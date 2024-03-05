@@ -94,6 +94,10 @@ func (c *cmdDCClient) projectArgs(p v1alpha1.DockerComposeProject) []string {
 		result = append(result, "-f", cp)
 	}
 
+	for _, p := range p.Profiles {
+		result = append(result, "--profile", p)
+	}
+
 	return result
 }
 
