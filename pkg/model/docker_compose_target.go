@@ -16,8 +16,12 @@ type DockerComposeTarget struct {
 
 	publishedPorts []int
 
-	InferLinks bool
-	Links      []Link
+	inferLinks struct {
+		IsSet bool
+		Value bool
+	}
+
+	Links []Link
 }
 
 // TODO(nick): This is a temporary hack until we figure out how we want
@@ -48,6 +52,20 @@ func (t DockerComposeTarget) DependencyIDs() []TargetID {
 
 func (t DockerComposeTarget) PublishedPorts() []int {
 	return append([]int{}, t.publishedPorts...)
+}
+
+func (t DockerComposeTarget) InferLinks() bool {
+	if t.inferLinks.IsSet {
+		return t.inferLinks.Value
+	} else {
+		return true
+	}
+}
+
+func (t DockerComposeTarget) WithInferLinks(inferLinks bool) DockerComposeTarget {
+	t.inferLinks.IsSet = true
+	t.inferLinks.Value = inferLinks
+	return t
 }
 
 func (t DockerComposeTarget) WithLinks(links []Link) DockerComposeTarget {

@@ -860,7 +860,7 @@ func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []model.Link) {
 	if mt.Manifest.IsDC() {
 		hostPorts := make(map[int32]bool)
 		publishedPorts := mt.Manifest.DockerComposeTarget().PublishedPorts()
-		inferLinks := mt.Manifest.DockerComposeTarget().InferLinks
+		inferLinks := mt.Manifest.DockerComposeTarget().InferLinks()
 		for _, p := range publishedPorts {
 			if p == 0 || hostPorts[int32(p)] {
 				continue
