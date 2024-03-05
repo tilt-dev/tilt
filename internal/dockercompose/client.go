@@ -129,6 +129,11 @@ func (c *cmdDCClient) Up(ctx context.Context, spec v1alpha1.DockerComposeService
 	defer c.mu.Unlock()
 	runArgs := append([]string{}, genArgs...)
 	runArgs = append(runArgs, "up", "--no-deps", "--remove-orphans", "--no-build", "-d", spec.Service)
+
+	if spec.Project.WaitForHealthy {
+		runArgs = append(runArgs, "--wait")
+	}
+
 	cmd := c.dcCommand(ctx, runArgs)
 	cmd.Stdin = strings.NewReader(spec.Project.YAML)
 	cmd.Stdout = stdout
