@@ -344,20 +344,26 @@ func (s *tiltfileState) renameDCService(projectName, name, newName string, svc *
 		return "", err
 	}
 
-	s.dc[projectName].services[newName] = svc
-	delete(s.dc[projectName].services, name)
-	if opts, exists := s.dc[projectName].resOptions[name]; exists {
-		s.dc[projectName].resOptions[newName] = opts
-		delete(s.dc[projectName].resOptions, name)
+	project := s.dc[projectName]
+	services := project.services
+
+	services[newName] = svc
+	delete(services, name)
+	if opts, exists := project.resOptions[name]; exists {
+		project.resOptions[newName] = opts
+		delete(project.resOptions, name)
 	}
 	index := -1
-	for i, n := range s.dc[projectName].serviceNames {
-		if n == name {
+	for i, n := range project.serviceNames {
+		if n == name && index == -1 {
 			index = i
-			break
+		} else if sd, ok := services[n].ServiceConfig.DependsOn[name]; ok {
+			services[n].ServiceConfig.DependsOn[newName] = sd
+			services[n].Options.resourceDeps = []string{newName}
+			delete(services[n].ServiceConfig.DependsOn, name)
 		}
 	}
-	s.dc[projectName].serviceNames[index] = newName
+	project.serviceNames[index] = newName
 	svc.Name = newName
 	return newName, nil
 }
