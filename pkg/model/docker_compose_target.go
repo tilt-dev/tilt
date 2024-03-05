@@ -16,6 +16,7 @@ type DockerComposeTarget struct {
 
 	publishedPorts []int
 
+	InferLinks bool
 	Links []Link
 }
 

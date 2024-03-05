@@ -435,7 +435,8 @@ def dc_resource(name: str,
                 labels: Union[str, List[str]] = [],
                 auto_init: bool = True,
                 project_name: str = "",
-                new_name: str = "") -> None:
+                new_name: str = "",
+                infer_links: bool = True) -> None:
   """Configures the Docker Compose resource of the given name. Note: Tilt does an amount of resource configuration
   for you(for more info, see `Tiltfile Concepts: Resources <tiltfile_concepts.html#resources>`_); you only need
   to invoke this function if you want to configure your resource beyond what Tilt does automatically.
@@ -454,6 +455,7 @@ def dc_resource(name: str,
     project_name: The Docker Compose project name to match the corresponding project loaded by
       ``docker_compose``, if necessary for disambiguation.
     new_name: If non-empty, will be used as the new name for this resource.
+    infer_links: whether to include the default localhost links. Defaults to ``True``. If ``False``, only links explicitly provided via the links argument will be displayed.
   """
 
   pass
