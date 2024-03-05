@@ -17,7 +17,7 @@ type DockerComposeTarget struct {
 	publishedPorts []int
 
 	InferLinks bool
-	Links []Link
+	Links      []Link
 }
 
 // TODO(nick): This is a temporary hack until we figure out how we want
