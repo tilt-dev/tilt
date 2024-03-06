@@ -39,19 +39,18 @@ RUN apt-get update && \
     && rm -rf /var/lib/apt/lists/*
 
 # Install docker
-# Adapted from https://github.com/circleci/circleci-images/blob/staging/shared/images/Dockerfile-basic.template
-# Check https://download.docker.com/linux/static/stable/x86_64/ for latest versions
-ENV DOCKER_VERSION=25.0.3
 RUN set -exu \
-  && DOCKER_URL="https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_VERSION}.tgz" \
-  && echo Docker URL: $DOCKER_URL \
-  && curl --silent --show-error --location --fail --retry 3 --output /tmp/docker.tgz "${DOCKER_URL}" \
-  && ls -lha /tmp/docker.tgz \
-  && tar -xz -C /tmp -f /tmp/docker.tgz \
-  && mv /tmp/docker/* /usr/bin \
-  && rm -rf /tmp/docker /tmp/docker.tgz \
-  && which docker \
-  && (docker version || true)
+  # Add Docker's official GPG key:
+  && install -m 0755 -d /etc/apt/keyrings \
+  && curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc \
+  && chmod a+r /etc/apt/keyrings/docker.asc \
+  # Add the repository to Apt sources: 
+  && echo \
+    "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian \
+    $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+  tee /etc/apt/sources.list.d/docker.list > /dev/null \
+    && apt update \
+  && apt install -y docker-ce-cli=5:25.0.3-1~debian.11~bullseye docker-buildx-plugin
 
 ENV GORELEASER_VERSION=v1.24.0
 RUN set -exu \
