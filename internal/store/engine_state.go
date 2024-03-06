@@ -860,12 +860,15 @@ func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []model.Link) {
 	if mt.Manifest.IsDC() {
 		hostPorts := make(map[int32]bool)
 		publishedPorts := mt.Manifest.DockerComposeTarget().PublishedPorts()
+		inferLinks := mt.Manifest.DockerComposeTarget().InferLinks()
 		for _, p := range publishedPorts {
 			if p == 0 || hostPorts[int32(p)] {
 				continue
 			}
 			hostPorts[int32(p)] = true
-			endpoints = append(endpoints, model.MustNewLink(fmt.Sprintf("http://localhost:%d/", p), ""))
+			if inferLinks {
+				endpoints = append(endpoints, model.MustNewLink(fmt.Sprintf("http://localhost:%d/", p), ""))
+			}
 		}
 
 		for _, binding := range mt.State.DCRuntimeState().Ports {
@@ -876,7 +879,9 @@ func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []model.Link) {
 				continue
 			}
 			hostPorts[p] = true
-			endpoints = append(endpoints, model.MustNewLink(fmt.Sprintf("http://localhost:%d/", p), ""))
+			if inferLinks {
+				endpoints = append(endpoints, model.MustNewLink(fmt.Sprintf("http://localhost:%d/", p), ""))
+			}
 		}
 
 		endpoints = append(endpoints, mt.Manifest.DockerComposeTarget().Links...)

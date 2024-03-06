@@ -212,6 +212,7 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 	var imageVal starlark.Value
 	var triggerMode triggerMode
 	var resourceDepsVal starlark.Sequence
+	var inferLinks = value.Optional[starlark.Bool]{Value: true}
 	var links links.LinkList
 	var labels value.LabelSet
 	var autoInit = value.Optional[starlark.Bool]{Value: true}
@@ -223,6 +224,7 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 		"image?", &imageVal,
 		"trigger_mode?", &triggerMode,
 		"resource_deps?", &resourceDepsVal,
+		"infer_links?", &inferLinks,
 		"links?", &links,
 		"labels?", &labels,
 		"auto_init?", &autoInit,
@@ -265,6 +267,10 @@ func (s *tiltfileState) dcResource(thread *starlark.Thread, fn *starlark.Builtin
 
 	if triggerMode != TriggerModeUnset {
 		options.TriggerMode = triggerMode
+	}
+
+	if inferLinks.IsSet {
+		options.InferLinks = inferLinks
 	}
 
 	options.Links = append(options.Links, links.Links...)
@@ -383,6 +389,7 @@ type dcService struct {
 type dcResourceOptions struct {
 	imageRefFromUser reference.Named
 	TriggerMode      triggerMode
+	InferLinks       value.Optional[starlark.Bool]
 	Links            []model.Link
 	AutoInit         value.Optional[starlark.Bool]
 
@@ -500,6 +507,10 @@ func (s *tiltfileState) dcServiceToManifest(service *dcService, dcSet *dcResourc
 		Links:       options.Links,
 	}.WithImageMapDeps(model.FilterLiveUpdateOnly(service.ImageMapDeps, iTargets)).
 		WithPublishedPorts(service.PublishedPorts)
+
+	if options.InferLinks.IsSet {
+		dcInfo = dcInfo.WithInferLinks(bool(options.InferLinks.Value))
+	}
 
 	autoInit := true
 	if options.AutoInit.IsSet {
