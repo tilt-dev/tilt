@@ -60,7 +60,7 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 	var configPaths starlark.Value
 	var projectName string
 	var profiles value.StringOrStringList
-	var waitForHealthy = value.Optional[starlark.Bool]{Value: false}
+	var wait = value.Optional[starlark.Bool]{Value: false}
 	envFile := value.NewLocalPathUnpacker(thread)
 
 	err := s.unpackArgs(fn.Name(), args, kwargs,
@@ -68,7 +68,7 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 		"env_file?", &envFile,
 		"project_name?", &projectName,
 		"profiles?", &profiles,
-		"wait_for_healthy?", &waitForHealthy,
+		"wait?", &wait,
 	)
 	if err != nil {
 		return nil, err
@@ -81,10 +81,10 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 	}
 
 	project := v1alpha1.DockerComposeProject{
-		Name:           projectName,
-		EnvFile:        envFile.Value,
-		Profiles:       profiles.Values,
-		WaitForHealthy: bool(waitForHealthy.Value),
+		Name:     projectName,
+		EnvFile:  envFile.Value,
+		Profiles: profiles.Values,
+		Wait:     bool(wait.Value),
 	}
 
 	if project.EnvFile != "" {

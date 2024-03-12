@@ -700,7 +700,7 @@ message DockerComposeProject {
   repeated string profiles = 6;
 
   // Optionally, pass --wait to docker compose up
-  optional bool waitForHealthy = 7;
+  optional bool wait = 7;
 }
 
 // DockerComposeService represents a container orchestrated by Docker Compose.

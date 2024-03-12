@@ -245,7 +245,7 @@ def docker_build(ref: str,
   """
   pass
 
-def docker_compose(configPaths: Union[str, Blob, List[Union[str, Blob]]], env_file: str = None, project_name: str = "", profiles: Union[str, List[str]] = [], wait_for_healthy = False) -> None:
+def docker_compose(configPaths: Union[str, Blob, List[Union[str, Blob]]], env_file: str = None, project_name: str = "", profiles: Union[str, List[str]] = [], wait = False) -> None:
   """Run containers with Docker Compose.
 
   Tilt will read your Docker Compose YAML and separate out the services.
@@ -284,7 +284,7 @@ def docker_compose(configPaths: Union[str, Blob, List[Union[str, Blob]]], env_fi
       name of the directory containing the first compose file, or, in the case of
       inline YAML, the current Tiltfile's directory name.
     profiles: List of Docker Compose profiles to use.
-    wait_for_healthy: If ``True``, append --wait to docker compose up command. Defaults to ``False``.
+    wait: If ``True``, append --wait to docker compose up command. Defaults to ``False``.
   """
 
 

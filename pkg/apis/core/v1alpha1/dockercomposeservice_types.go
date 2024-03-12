@@ -224,7 +224,7 @@ type DockerComposeProject struct {
 	Profiles []string `json:"profiles,omitempty" protobuf:"bytes,6,rep,name=profiles"`
 
 	// Optionally, pass --wait to docker compose up
-	WaitForHealthy bool `json:"waitForHealthy,omitempty" protobuf:"varint,7,opt,name=waitForHealthy"`
+	Wait bool `json:"wait,omitempty" protobuf:"varint,7,opt,name=wait"`
 }
 
 // State of a standalone container in Docker.

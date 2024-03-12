@@ -130,7 +130,7 @@ func (c *cmdDCClient) Up(ctx context.Context, spec v1alpha1.DockerComposeService
 	runArgs := append([]string{}, genArgs...)
 	runArgs = append(runArgs, "up", "--no-deps", "--remove-orphans", "--no-build", "-d", spec.Service)
 
-	if spec.Project.WaitForHealthy {
+	if spec.Project.Wait {
 		runArgs = append(runArgs, "--wait")
 	}
 
