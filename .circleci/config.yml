@@ -114,7 +114,7 @@ jobs:
   test-extensions:
     resource_class: large
     docker:
-      - image: docker/tilt-extensions-ci@sha256:d015e9e5cc5a3dce9fa258b1d6b8cb593c9a42c0efef2239419ceed29f874d0f
+      - image: docker/tilt-extensions-ci@sha256:140746f2ee1b55fc03f3d6f63d31eb766de0b1478a74cc4d1c55204f2807ef36
     steps:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
