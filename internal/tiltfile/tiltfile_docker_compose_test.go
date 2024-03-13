@@ -84,6 +84,26 @@ services:
       - barprofile
 `
 
+const threeServiceConfig = `version: '3'
+services:
+  db:
+    image: db-image
+  foo:
+    image: foo-image
+    command: sleep 100
+    ports:
+      - "12312:80"
+    depends_on:
+      - db
+  bar:
+    image: bar-image
+    expose:
+      - "3000"
+    depends_on:
+      - db
+      - foo
+`
+
 // YAML for Foo config looks a little different from the above after being read into
 // a struct and YAML'd back out...
 func (f *fixture) simpleConfigAfterParse() string {
@@ -443,6 +463,72 @@ docker_compose('docker-compose1.yml')`
 	f.file("Tiltfile", tf)
 
 	f.loadErrString(`dc_resource named "foo" already exists`)
+}
+
+func TestDockerComposeNewNameWithDependencies(t *testing.T) {
+	for _, testCase := range []struct {
+		name    string
+		renames map[string]string
+	}{
+		{
+			"default",
+			make(map[string]string),
+		},
+		{
+			"rename db",
+			map[string]string{"db": "db2"},
+		},
+		{
+			"rename foo",
+			map[string]string{"foo": "foo2"},
+		},
+		{
+			"rename bar",
+			map[string]string{"bar": "bar2"},
+		},
+		{
+			"rename foo + bar",
+			map[string]string{
+				"foo": "foo2",
+				"bar": "bar2",
+			},
+		},
+		{
+			"rename db + foo + bar",
+			map[string]string{
+				"db":  "db2",
+				"foo": "foo2",
+				"bar": "bar2",
+			},
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			f := newFixture(t)
+
+			f.file("docker-compose.yml", threeServiceConfig)
+
+			tf := "docker_compose('docker-compose.yml')\n"
+
+			allNames := map[string]string{
+				"db":  "db",
+				"foo": "foo",
+				"bar": "bar",
+			}
+
+			for oldName, newName := range testCase.renames {
+				tf += fmt.Sprintf("dc_resource('%s', new_name='%s')\n", oldName, newName)
+				allNames[oldName] = newName
+			}
+
+			f.file("Tiltfile", tf)
+
+			f.load()
+
+			f.assertNextManifest(model.ManifestName(allNames["db"]), resourceDeps())
+			f.assertNextManifest(model.ManifestName(allNames["foo"]), resourceDeps(allNames["db"]))
+			f.assertNextManifest(model.ManifestName(allNames["bar"]), resourceDeps(allNames["db"], allNames["foo"]))
+		})
+	}
 }
 
 func TestMultipleDockerComposeSameDir(t *testing.T) {

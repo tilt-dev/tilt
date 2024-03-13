@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 
+	"golang.org/x/exp/slices"
+
 	"github.com/compose-spec/compose-go/consts"
 	"github.com/compose-spec/compose-go/loader"
 	"github.com/compose-spec/compose-go/types"
@@ -359,7 +361,9 @@ func (s *tiltfileState) renameDCService(projectName, name, newName string, svc *
 			index = i
 		} else if sd, ok := services[n].ServiceConfig.DependsOn[name]; ok {
 			services[n].ServiceConfig.DependsOn[newName] = sd
-			services[n].Options.resourceDeps = []string{newName}
+			if rdIndex := slices.Index(services[n].Options.resourceDeps, name); rdIndex != -1 {
+				services[n].Options.resourceDeps[rdIndex] = newName
+			}
 			delete(services[n].ServiceConfig.DependsOn, name)
 		}
 	}
