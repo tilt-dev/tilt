@@ -454,9 +454,8 @@ func dockerComposeConfigToService(dcrs *dcResourceSet, projectName string, svcCo
 		dcrs.resOptions[svcConfig.Name] = options
 	}
 
-	for _, dep := range svcConfig.GetDependencies() {
-		options.resourceDeps = sliceutils.AppendWithoutDupes(options.resourceDeps, dep)
-	}
+	options.resourceDeps = sliceutils.DedupedAndSorted(
+		append(options.resourceDeps, svcConfig.GetDependencies()...))
 
 	svc := dcService{
 		Name:               svcConfig.Name,

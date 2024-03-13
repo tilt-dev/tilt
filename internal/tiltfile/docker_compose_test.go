@@ -39,8 +39,20 @@ services:
 
 	services := f.parse(output)
 	if assert.Len(t, services, 6) {
-		for i, name := range []string{"f", "e", "d", "c", "b", "a"} {
+		serviceOrder := []string{"f", "e", "d", "c", "b", "a"}
+		for i, name := range serviceOrder {
 			assert.Equal(t, name, services[i].Name)
+		}
+		depOrder := [][]string{
+			[]string{},
+			[]string{"f"},
+			[]string{"e", "f"},
+			[]string{"d", "e", "f"},
+			[]string{"c"},
+			[]string{"b"},
+		}
+		for i, deps := range depOrder {
+			assert.Equal(t, deps, services[i].Options.resourceDeps)
 		}
 	}
 }
