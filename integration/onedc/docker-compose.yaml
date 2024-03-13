@@ -4,7 +4,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: tilt_onedc_web
+    container_name: onedc-web
     ports:
     # Use the host:port:container-port syntax to verify
     # https://github.com/tilt-dev/tilt/issues/5030

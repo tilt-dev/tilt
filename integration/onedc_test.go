@@ -5,6 +5,7 @@ package integration
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 )
@@ -20,17 +21,21 @@ func TestOneDockerCompose(t *testing.T) {
 		defer cancel()
 
 		f.WaitUntil(ctx, "onedc up", func() (string, error) {
-			return f.dockerCmdOutput([]string{
+			name, err := f.dockerCmdOutput([]string{
 				"ps", "-f", "name=onedc", "--format", "{{.Image}}",
 			})
-		}, "onedc")
+			// docker-compose-v1 uses underscores in the image name
+			// docker compose v2 uses hyphens
+			name = strings.Replace(name, "_", "-", -1)
+			return name, err
+		}, "onedc-web")
 
-		f.CurlUntil(ctx, "onedc", "localhost:8000", "🍄 One-Up! 🍄")
+		f.CurlUntil(ctx, "onedc-web", "localhost:8000", "🍄 One-Up! 🍄")
 
 		f.ReplaceContents("main.go", "One-Up", "Two-Up")
 
 		ctx, cancel = context.WithTimeout(f.ctx, time.Minute)
 		defer cancel()
-		f.CurlUntil(ctx, "onedc", "localhost:8000", "🍄 Two-Up! 🍄")
+		f.CurlUntil(ctx, "onedc-web", "localhost:8000", "🍄 Two-Up! 🍄")
 	})
 }
