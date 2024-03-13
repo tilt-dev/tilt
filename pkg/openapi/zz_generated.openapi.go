@@ -1939,6 +1939,13 @@ func schema_pkg_apis_core_v1alpha1_DockerComposeProject(ref common.ReferenceCall
 							},
 						},
 					},
+					"wait": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optionally, pass --wait to docker compose up",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},

@@ -222,6 +222,9 @@ type DockerComposeProject struct {
 	// Services with defined profiles will only be included if their profile matches
 	// one in this list.
 	Profiles []string `json:"profiles,omitempty" protobuf:"bytes,6,rep,name=profiles"`
+
+	// Optionally, pass --wait to docker compose up
+	Wait bool `json:"wait,omitempty" protobuf:"varint,7,opt,name=wait"`
 }
 
 // State of a standalone container in Docker.
