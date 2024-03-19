@@ -1,6 +1,5 @@
-FROM golang:1.17-alpine
-RUN apk add curl
-WORKDIR /go/src/github.com/tilt-dev/integration/onedc
+FROM alpine
+RUN apk add busybox-extras curl
+WORKDIR /app
 ADD . .
-RUN go install github.com/tilt-dev/integration/onedc
-ENTRYPOINT /go/bin/onedc
+ENTRYPOINT httpd -f -p 8000
