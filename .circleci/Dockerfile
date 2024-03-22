@@ -7,7 +7,7 @@ RUN curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-c
     && chmod +x /usr/local/bin/docker-compose-v1
 
 # NOTE: cimg/go already includes Docker Compose v2, but it's not always up-to-date
-ARG COMPOSE_V2_VERSION="2.24.5"
+ARG COMPOSE_V2_VERSION="2.25.0"
 RUN mkdir -p "${HOME}/.docker/cli-plugins" \
     && curl -sSL "https://github.com/docker/compose/releases/download/v${COMPOSE_V2_VERSION}/docker-compose-linux-$(uname -m)" -o "${HOME}/.docker/cli-plugins/docker-compose" \
     && chmod +x "${HOME}/.docker/cli-plugins/docker-compose" \

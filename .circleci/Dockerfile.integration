@@ -3,19 +3,18 @@ FROM cimg/go:1.21-node
 USER root
 
 # Install dependencies from OS package manager sources
-RUN apt update && apt install -y --no-install-recommends apt-transport-https \
-  && curl -fsS https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add - \
-  && touch /etc/apt/sources.list.d/kubernetes.list \
-  && echo "deb http://apt.kubernetes.io/ kubernetes-xenial main" | tee -a /etc/apt/sources.list.d/kubernetes.list \
-  && apt update \
-  && apt install -y --no-install-recommends \
+RUN apt update && apt install -y --no-install-recommends \
     ca-certificates \
     jq \
-    kubectl \
     liblz4-tool \
     rsync \
     socat \
-  && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*
+
+# Install kubectl
+RUN curl -sSL -o /usr/local/bin/kubectl "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
+    && chmod +x /usr/local/bin/kubectl \
+    && kubectl version --client
 
 # Install docker
 # Adapted from https://github.com/circleci/circleci-images/blob/staging/shared/images/Dockerfile-basic.template
@@ -39,7 +38,7 @@ RUN curl -fL "https://github.com/docker/compose/releases/download/${DOCKER_COMPO
   && docker-compose-v1 version
 
 # docker-compose v2
-ARG DOCKER_COMPOSE_V2_VERSION=v2.24.5
+ARG DOCKER_COMPOSE_V2_VERSION=v2.25.0
 RUN curl -fL "https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_V2_VERSION}/docker-compose-$(uname -s | tr '[A-Z]' '[a-z]')-$(uname -m)" -o /usr/local/bin/docker-compose \
   && chmod a+x /usr/local/bin/docker-compose \
   && docker-compose version
