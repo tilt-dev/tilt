@@ -71,11 +71,11 @@ func (c *switchCli) CheckConnected() error {
 func (c *switchCli) Env() Env {
 	return c.client(context.Background()).Env()
 }
-func (c *switchCli) BuilderVersion() types.BuilderVersion {
-	return c.client(context.Background()).BuilderVersion()
+func (c *switchCli) BuilderVersion(ctx context.Context) (types.BuilderVersion, error) {
+	return c.client(ctx).BuilderVersion(ctx)
 }
-func (c *switchCli) ServerVersion() types.Version {
-	return c.client(context.Background()).ServerVersion()
+func (c *switchCli) ServerVersion(ctx context.Context) (types.Version, error) {
+	return c.client(ctx).ServerVersion(ctx)
 }
 func (c *switchCli) ContainerLogs(ctx context.Context, containerID string, options types.ContainerLogsOptions) (io.ReadCloser, error) {
 	return c.client(ctx).ContainerLogs(ctx, containerID, options)

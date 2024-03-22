@@ -36,11 +36,11 @@ func (c explodingClient) CheckConnected() error {
 func (c explodingClient) Env() Env {
 	return Env{}
 }
-func (c explodingClient) BuilderVersion() types.BuilderVersion {
-	return types.BuilderVersion("")
+func (c explodingClient) BuilderVersion(ctx context.Context) (types.BuilderVersion, error) {
+	return types.BuilderV1, c.err
 }
-func (c explodingClient) ServerVersion() types.Version {
-	return types.Version{}
+func (c explodingClient) ServerVersion(ctx context.Context) (types.Version, error) {
+	return types.Version{}, c.err
 }
 func (c explodingClient) ContainerLogs(ctx context.Context, containerID string, options types.ContainerLogsOptions) (io.ReadCloser, error) {
 	return nil, c.err

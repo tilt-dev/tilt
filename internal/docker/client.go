@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/blang/semver"
 	"github.com/distribution/reference"
@@ -64,6 +65,8 @@ var minDockerVersion = semver.MustParse("1.23.0")
 var minDockerVersionStableBuildkit = semver.MustParse("1.39.0")
 var minDockerVersionExperimentalBuildkit = semver.MustParse("1.38.0")
 
+var versionTimeout = 5 * time.Second
+
 // microk8s exposes its own docker socket
 // https://github.com/ubuntu/microk8s/blob/master/docs/dockerd.md
 const microK8sDockerHost = "unix:///var/snap/microk8s/current/docker.sock"
@@ -78,9 +81,9 @@ type Client interface {
 
 	// If you'd like to call this Docker instance in a separate process, this
 	// is the default builder version you want (buildkit or legacy)
-	BuilderVersion() types.BuilderVersion
+	BuilderVersion(ctx context.Context) (types.BuilderVersion, error)
 
-	ServerVersion() types.Version
+	ServerVersion(ctx context.Context) (types.Version, error)
 
 	// Set the orchestrator we're talking to. This is only relevant to switchClient,
 	// which can talk to either the Local or in-cluster docker daemon.
@@ -141,12 +144,14 @@ var _ Client = &Cli{}
 
 type Cli struct {
 	*client.Client
+
+	authConfigsOnce func() map[string]types.AuthConfig
+	env             Env
+
+	versionsOnce   sync.Once
 	builderVersion types.BuilderVersion
 	serverVersion  types.Version
-
-	authConfigs     map[string]types.AuthConfig
-	authConfigsOnce sync.Once
-	env             Env
+	versionError   error
 }
 
 func NewDockerClient(ctx context.Context, env Env) Client {
@@ -155,34 +160,12 @@ func NewDockerClient(ctx context.Context, env Env) Client {
 	}
 
 	d := env.Client.(*client.Client)
-	serverVersion, err := d.ServerVersion(ctx)
-	if err != nil {
-		return newExplodingClient(err)
-	}
 
-	if !SupportedVersion(serverVersion) {
-		return newExplodingClient(
-			fmt.Errorf("Tilt requires a Docker server newer than %s. Current Docker server: %s",
-				minDockerVersion, serverVersion.APIVersion))
+	return &Cli{
+		Client:          d,
+		env:             env,
+		authConfigsOnce: sync.OnceValue(authConfigs),
 	}
-
-	builderVersion, err := getDockerBuilderVersion(serverVersion, env)
-	if err != nil {
-		return newExplodingClient(err)
-	}
-
-	cli := &Cli{
-		Client:         d,
-		env:            env,
-		builderVersion: builderVersion,
-		serverVersion:  serverVersion,
-	}
-
-	if builderVersion == types.BuilderV1 {
-		go cli.initAuthConfigs(ctx)
-	}
-
-	return cli
 }
 
 func SupportedVersion(v types.Version) bool {
@@ -293,6 +276,34 @@ func CreateClientOpts(envMap map[string]string) ([]client.Opt, error) {
 	return result, nil
 }
 
+func (c *Cli) initVersion(ctx context.Context) {
+	c.versionsOnce.Do(func() {
+		ctx, cancel := context.WithTimeout(ctx, versionTimeout)
+		defer cancel()
+
+		serverVersion, err := c.Client.ServerVersion(ctx)
+		if err != nil {
+			c.versionError = err
+			return
+		}
+
+		if !SupportedVersion(serverVersion) {
+			c.versionError = fmt.Errorf("Tilt requires a Docker server newer than %s. Current Docker server: %s",
+				minDockerVersion, serverVersion.APIVersion)
+			return
+		}
+
+		builderVersion, err := getDockerBuilderVersion(serverVersion, c.env)
+		if err != nil {
+			c.versionError = err
+			return
+		}
+
+		c.builderVersion = builderVersion
+		c.serverVersion = serverVersion
+	})
+}
+
 func (c *Cli) startBuildkitSession(ctx context.Context, g *errgroup.Group, key string, dirSource filesync.DirSource, sshSpecs []string, secretSpecs []string) (*session.Session, error) {
 	session, err := session.NewSession(ctx, "tilt", key)
 	if err != nil {
@@ -352,20 +363,18 @@ func (c *Cli) startBuildkitSession(ctx context.Context, g *errgroup.Group, key s
 // Protocol (1) is very slow. If you're using the gcloud credential store,
 // fetching all the creds ahead of time can take ~3 seconds.
 // Protocol (2) is more efficient, but also more complex to manage. We manage it lazily.
-func (c *Cli) initAuthConfigs(ctx context.Context) {
-	c.authConfigsOnce.Do(func() {
-		configFile := config.LoadDefaultConfigFile(io.Discard)
+func authConfigs() map[string]types.AuthConfig {
+	configFile := config.LoadDefaultConfigFile(io.Discard)
 
-		// If we fail to get credentials for some reason, that's OK.
-		// even the docker CLI ignores this:
-		// https://github.com/docker/cli/blob/23446275646041f9b598d64c51be24d5d0e49376/cli/command/image/build.go#L386
-		credentials, _ := configFile.GetAllCredentials()
-		authConfigs := make(map[string]types.AuthConfig, len(credentials))
-		for k, auth := range credentials {
-			authConfigs[k] = types.AuthConfig(auth)
-		}
-		c.authConfigs = authConfigs
-	})
+	// If we fail to get credentials for some reason, that's OK.
+	// even the docker CLI ignores this:
+	// https://github.com/docker/cli/blob/23446275646041f9b598d64c51be24d5d0e49376/cli/command/image/build.go#L386
+	credentials, _ := configFile.GetAllCredentials()
+	authConfigs := make(map[string]types.AuthConfig, len(credentials))
+	for k, auth := range credentials {
+		authConfigs[k] = types.AuthConfig(auth)
+	}
+	return authConfigs
 }
 
 func (c *Cli) CheckConnected() error                  { return nil }
@@ -377,12 +386,14 @@ func (c *Cli) Env() Env {
 	return c.env
 }
 
-func (c *Cli) BuilderVersion() types.BuilderVersion {
-	return c.builderVersion
+func (c *Cli) BuilderVersion(ctx context.Context) (types.BuilderVersion, error) {
+	c.initVersion(ctx)
+	return c.builderVersion, c.versionError
 }
 
-func (c *Cli) ServerVersion() types.Version {
-	return c.serverVersion
+func (c *Cli) ServerVersion(ctx context.Context) (types.Version, error) {
+	c.initVersion(ctx)
+	return c.serverVersion, c.versionError
 }
 
 type encodedAuth string
@@ -495,7 +506,10 @@ func (c *Cli) ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io
 	sessionID := ""
 
 	mustUseBuildkit := len(options.SSHSpecs) > 0 || len(options.SecretSpecs) > 0 || options.DirSource != nil
-	builderVersion := c.builderVersion
+	builderVersion, err := c.BuilderVersion(ctx)
+	if err != nil {
+		return types.ImageBuildResponse{}, err
+	}
 	if options.ForceLegacyBuilder {
 		builderVersion = types.BuilderV1
 	}
@@ -519,8 +533,7 @@ func (c *Cli) ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io
 	if isUsingBuildkit {
 		opts.SessionID = sessionID
 	} else {
-		c.initAuthConfigs(ctx)
-		opts.AuthConfigs = c.authConfigs
+		opts.AuthConfigs = c.authConfigsOnce()
 	}
 
 	opts.Remove = options.Remove

@@ -46,7 +46,10 @@ func (c *dockerCmd) run(ctx context.Context, args []string) error {
 	}
 
 	dockerEnv := client.Env()
-	builder := client.BuilderVersion()
+	builder, err := client.BuilderVersion(ctx)
+	if err != nil {
+		return errors.Wrap(err, "Failed to get Docker builder")
+	}
 
 	buildkitEnv := "DOCKER_BUILDKIT=0"
 	if builder == types.BuilderBuildKit {

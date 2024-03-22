@@ -262,7 +262,11 @@ func (r *Reconciler) readKubernetesArch(ctx context.Context, client k8s.Client) 
 // Reads the arch from a Docker cluster, or "unknown" if we can't
 // figure out the architecture.
 func (r *Reconciler) readDockerArch(ctx context.Context, client docker.Client) string {
-	arch := client.ServerVersion().Arch
+	serverVersion, err := client.ServerVersion(ctx)
+	if err != nil {
+		return ArchUnknown
+	}
+	arch := serverVersion.Arch
 	if arch == "" {
 		return ArchUnknown
 	}
@@ -432,8 +436,10 @@ func (r *Reconciler) populateDockerMetadata(ctx context.Context, conn *connectio
 	}
 
 	if conn.serverVersion == "" {
-		versionInfo := conn.dockerClient.ServerVersion()
-		conn.serverVersion = versionInfo.Version
+		versionInfo, err := conn.dockerClient.ServerVersion(ctx)
+		if err == nil {
+			conn.serverVersion = versionInfo.Version
+		}
 	}
 }
 
