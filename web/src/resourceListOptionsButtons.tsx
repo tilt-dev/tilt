@@ -46,20 +46,24 @@ const CollapseButtonRoot = styled(InstrumentedButton)`
 const analyticsTags = { type: AnalyticsType.Detail }
 
 export function ExpandButton(props: {
+  groups: string[]
   disabled: boolean
   analyticsType: AnalyticsType
 }) {
   let { expandAll } = useResourceGroups()
-  let { analyticsType } = props
+  let { analyticsType, groups } = props
   let analyticsTags = useMemo(() => {
     return { type: analyticsType }
   }, [analyticsType])
+  let onClick = useCallback(() => {
+    expandAll(groups)
+  }, [groups, expandAll])
 
   return (
     <ExpandButtonRoot
       title={"Expand All"}
       variant={"text"}
-      onClick={expandAll}
+      onClick={onClick}
       analyticsName={"ui.web.expandAllGroups"}
       analyticsTags={analyticsTags}
       disabled={props.disabled}

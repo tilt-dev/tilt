@@ -512,6 +512,13 @@ describe("overview table with groups", () => {
     })
 
     it("is collapsed when an expanded resource group summary is clicked on", () => {
+      // Because groups are collapsed by default, click on it once to get it
+      // into an expanded state for testing
+      const initialGroup = groups[0]
+      expect(initialGroup.classList.contains("Mui-expanded")).toBe(false)
+
+      userEvent.click(initialGroup.querySelector('[role="button"]') as Element)
+
       const group = groups[0]
       expect(group.classList.contains("Mui-expanded")).toBe(true)
 
@@ -525,13 +532,6 @@ describe("overview table with groups", () => {
     })
 
     it("is expanded when a collapsed resource group summary is clicked on", () => {
-      // Because groups are expanded by default, click on it once to get it
-      // into a collapsed state for testing
-      const initialGroup = groups[0]
-      expect(initialGroup.classList.contains("Mui-expanded")).toBe(true)
-
-      userEvent.click(initialGroup.querySelector('[role="button"]') as Element)
-
       const group = getResourceGroups()[0]
       expect(group.classList.contains("Mui-expanded")).toBe(false)
 

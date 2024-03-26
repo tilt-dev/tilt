@@ -98,7 +98,7 @@ describe("ResourceGroupsContext", () => {
       expect(labelState()).toBe(JSON.stringify({ expanded: false }))
     })
 
-    it("sets expanded to `false` if a group isn't saved yet and is toggled", () => {
+    it("sets expanded to `true` if a group isn't saved yet and is toggled", () => {
       wrapper = renderContainer(
         <ResourceGroupsContextProvider>
           <TestConsumer labelName="a-non-existent-group" />
@@ -106,7 +106,7 @@ describe("ResourceGroupsContext", () => {
       )
       clickButton()
 
-      expect(labelState()).toBe(JSON.stringify({ expanded: false }))
+      expect(labelState()).toBe(JSON.stringify({ expanded: true }))
     })
 
     it("makes an analytics call with the right payload", () => {
