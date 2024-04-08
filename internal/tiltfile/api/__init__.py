@@ -148,7 +148,7 @@ def sync(local_path: str, remote_path: str) -> LiveUpdateStep:
   """
   pass
 
-def run(cmd: Union[str, List[str]], trigger: Union[List[str], str] = []) -> LiveUpdateStep:
+def run(cmd: Union[str, List[str]], trigger: Union[List[str], str] = [], echo_off: bool = False) -> LiveUpdateStep:
   """Specify that the given `cmd` should be executed when updating an image's container
 
   May not precede any `sync` steps in a `live_update`.
@@ -160,6 +160,8 @@ def run(cmd: Union[str, List[str]], trigger: Union[List[str], str] = []) -> Live
       as program name and args.
 
     trigger: If the ``trigger`` argument is specified, the build step is only run when there are changes to the given file(s). Paths relative to Tiltfile. (Note that in addition to matching the trigger, file changes must also match at least one of this Live Update's syncs in order to trigger this run. File changes that do not match any syncs will be ignored.)
+
+    bool: If ``echo_off`` is set to ``True``, the command's output will not be echoed to the Tilt UI.
   """
   pass
 

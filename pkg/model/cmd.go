@@ -7,9 +7,10 @@ import (
 )
 
 type Cmd struct {
-	Argv []string
-	Dir  string
-	Env  []string
+	Argv    []string
+	Dir     string
+	Env     []string
+	EchoOff bool
 }
 
 func (c Cmd) IsShellStandardForm() bool {

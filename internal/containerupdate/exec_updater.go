@@ -59,7 +59,9 @@ func (cu *ExecUpdater) UpdateContainer(ctx context.Context, cInfo liveupdates.Co
 
 	// run commands
 	for i, c := range cmds {
-		l.Infof("[CMD %d/%d] %s", i+1, len(cmds), strings.Join(c.Argv, " "))
+		if !c.EchoOff {
+			l.Infof("[CMD %d/%d] %s", i+1, len(cmds), strings.Join(c.Argv, " "))
+		}
 		err := cu.kCli.Exec(ctx, cInfo.PodID, cInfo.ContainerName, cInfo.Namespace,
 			c.Argv, nil, w, w)
 		if err != nil {

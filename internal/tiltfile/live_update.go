@@ -83,6 +83,7 @@ func (l liveUpdateSyncStep) declarationPos() string { return l.position.String()
 type liveUpdateRunStep struct {
 	command  model.Cmd
 	triggers []string
+	echoOff  bool
 	position syntax.Position
 }
 
@@ -164,9 +165,11 @@ func (s *tiltfileState) liveUpdateSync(thread *starlark.Thread, fn *starlark.Bui
 func (s *tiltfileState) liveUpdateRun(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var commandVal starlark.Value
 	var triggers starlark.Value
+	echoOff := false
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"cmd", &commandVal,
-		"trigger?", &triggers); err != nil {
+		"trigger?", &triggers,
+		"echo_off", &echoOff); err != nil {
 		return nil, err
 	}
 
@@ -189,6 +192,7 @@ func (s *tiltfileState) liveUpdateRun(thread *starlark.Thread, fn *starlark.Buil
 	ret := liveUpdateRunStep{
 		command:  command,
 		triggers: triggerStrings,
+		echoOff:  echoOff,
 		position: thread.CallFrame(1).Pos,
 	}
 	s.recordLiveUpdateStep(ret)
@@ -277,6 +281,7 @@ func (s *tiltfileState) liveUpdateFromSteps(t *starlark.Thread, maybeSteps starl
 			spec.Execs = append(spec.Execs, v1alpha1.LiveUpdateExec{
 				Args:         x.command.Argv,
 				TriggerPaths: x.triggers,
+				EchoOff:      x.echoOff,
 			})
 
 		case liveUpdateRestartContainerStep:

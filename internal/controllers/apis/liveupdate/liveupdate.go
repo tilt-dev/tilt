@@ -47,7 +47,8 @@ func RunSteps(spec v1alpha1.LiveUpdateSpec) []model.Run {
 	for _, exec := range spec.Execs {
 		runs = append(runs, model.Run{
 			Cmd: model.Cmd{
-				Argv: exec.Args,
+				Argv:    exec.Args,
+				EchoOff: exec.EchoOff,
 			},
 			Triggers: model.NewPathSet(exec.TriggerPaths, spec.BasePath),
 		})
