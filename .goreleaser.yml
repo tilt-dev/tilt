@@ -131,13 +131,13 @@ archives:
   meta: true
   files:
     - LICENSE
-    - web/build/**/*
-  
+    - pkg/assets/build/**/*
+
 checksum:
   name_template: 'checksums.txt'
 snapshot:
   name_template: "{{ .Tag }}-next"
-  
+
 changelog:
   sort: asc
   use: github
@@ -148,7 +148,7 @@ changelog:
     - '^cleanup:'
     - '^circleci:'
     - '^ci:'
-    
+
 brews:
 - repository:
     owner: tilt-dev
@@ -163,7 +163,7 @@ brews:
   description: "A dev environment as code for microservice apps"
   install: |
     bin.install "tilt"
-    
+
     # Install bash completion
     output = Utils.safe_popen_read("#{bin}/tilt", "completion", "bash")
     (bash_completion/"tilt").write output
