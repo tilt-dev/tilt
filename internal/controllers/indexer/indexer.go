@@ -88,7 +88,7 @@ func (m *Indexer) Enqueue(ctx context.Context, obj client.Object) []reconcile.Re
 	return m.EnqueueKey(key)
 }
 
-// Enqueue() when we don't have the full object, only the name and kind.
+// EnqueueKey() when we don't have the full object, only the name and kind.
 func (m *Indexer) EnqueueKey(key Key) []reconcile.Request {
 	m.mu.Lock()
 	defer m.mu.Unlock()
