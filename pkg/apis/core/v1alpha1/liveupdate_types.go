@@ -352,6 +352,7 @@ type LiveUpdateExec struct {
 	//
 	// +optional
 	TriggerPaths []string `json:"triggerPaths" protobuf:"bytes,2,rep,name=triggerPaths"`
+	EchoOff      bool     `json:"echoOff" protobuf:"bytes,3,opt,name=echoOff"`
 }
 
 // Specifies whether Tilt should try to natively restart the container in-place

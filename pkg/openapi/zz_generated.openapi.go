@@ -4858,8 +4858,15 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateExec(ref common.ReferenceCallback) 
 							},
 						},
 					},
+					"echoOff": {
+						SchemaProps: spec.SchemaProps{
+							Default: false,
+							Type:    []string{"boolean"},
+							Format:  "",
+						},
+					},
 				},
-				Required: []string{"args"},
+				Required: []string{"args", "echoOff"},
 			},
 		},
 	}

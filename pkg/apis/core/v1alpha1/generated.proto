@@ -2008,6 +2008,8 @@ message LiveUpdateExec {
   //
   // +optional
   repeated string triggerPaths = 2;
+
+  optional bool echoOff = 3;
 }
 
 // Specifies how to select containers to live update inside K8s.

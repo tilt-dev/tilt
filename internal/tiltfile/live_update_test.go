@@ -110,7 +110,7 @@ func TestLiveUpdateNonStringInRunTriggers(t *testing.T) {
 k8s_yaml('foo.yaml')
 docker_build('gcr.io/foo', 'foo',
   live_update=[
-    run('bar', [4]),
+    run('bar', trigger=[4]),
   ]
 )`)
 	f.loadErrString("run", "triggers", "'bar'", "contained value '4' of type 'int'. it may only contain strings")
@@ -275,6 +275,46 @@ k8s_yaml('foo.yaml')
 	}
 }
 
+func TestLiveUpdateRunEchoOff(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		tiltfileText  string
+		expectedValue bool
+	}{
+		{"echoOff True", `echo_off=True`, true},
+		{"echoOff False", `echo_off=False`, false},
+		{"echoOff default", ``, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newFixture(t)
+
+			f.gitInit("")
+			f.yaml("foo.yaml", deployment("foo", image("gcr.io/image-a")))
+			f.file("imageA.dockerfile", `FROM golang:1.10`)
+			f.file("Tiltfile", fmt.Sprintf(`
+docker_build('gcr.io/image-a', 'a', dockerfile='imageA.dockerfile',
+             live_update=[
+               run("echo hi", %s)
+             ])
+k8s_yaml('foo.yaml')
+`, tc.tiltfileText))
+			f.load()
+
+			lu := v1alpha1.LiveUpdateSpec{
+				BasePath: f.Path(),
+				Execs: []v1alpha1.LiveUpdateExec{
+					{
+						Args:    []string{"sh", "-c", "echo hi"},
+						EchoOff: tc.expectedValue,
+					},
+				},
+			}
+			f.assertNextManifest("foo",
+				db(image("gcr.io/image-a"), lu))
+		})
+	}
+}
+
 func TestLiveUpdateFallBackTriggersOutsideOfDockerBuildContext(t *testing.T) {
 	f := newFixture(t)
 
@@ -420,7 +460,7 @@ func (f *liveUpdateFixture) init() {
 	luSteps := `[
     fall_back_on(['foo/i', 'foo/j']),
 	sync('foo/b', '/c'),
-	run('f', ['g', 'h']),
+	run('f', trigger=['g', 'h']),
 ]`
 	codeToInsert := fmt.Sprintf(f.tiltfileCode, luSteps)
 
@@ -450,6 +490,7 @@ func newLiveUpdateFixture(t *testing.T) *liveUpdateFixture {
 			v1alpha1.LiveUpdateExec{
 				Args:         []string{"sh", "-c", "f"},
 				TriggerPaths: []string{"g", "h"},
+				EchoOff:      false,
 			},
 		},
 	}

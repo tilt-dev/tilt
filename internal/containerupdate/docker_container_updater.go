@@ -57,7 +57,9 @@ func (cu *DockerUpdater) UpdateContainer(ctx context.Context, cInfo liveupdates.
 
 	// Exec run's on container
 	for i, cmd := range cmds {
-		l.Infof("[CMD %d/%d] %s", i+1, len(cmds), strings.Join(cmd.Argv, " "))
+		if !cmd.EchoOff {
+			l.Infof("[CMD %d/%d] %s", i+1, len(cmds), strings.Join(cmd.Argv, " "))
+		}
 		err = cu.dCli.ExecInContainer(ctx, cInfo.ContainerID, cmd, nil, l.Writer(logger.InfoLvl))
 		if err != nil {
 			return fmt.Errorf(
