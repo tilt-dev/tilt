@@ -261,7 +261,7 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 	}
 
 	if namespace != "" {
-		cmd = append(cmd, "--namespace", namespace)
+		cmd = append(cmd, "--namespace", namespace, "--create-namespace")
 	}
 
 	if kubeVersion != "" {
