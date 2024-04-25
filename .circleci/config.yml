@@ -10,7 +10,7 @@ jobs:
   build-linux:
     resource_class: medium+
     docker:
-      - image: docker/tilt-ci@sha256:f75cdf45493ed211e052b49ab019616d9cae8ec7dc232aed1cfba583299e4da7
+      - image: docker/tilt-ci@sha256:f02bd52d3b8b50ee231526d4bc88e065130bd4a9dc483aa266a68197c5494124
     # apiserver code generation scripts require being in GOPATH
     working_directory: /home/circleci/go/src/github.com/tilt-dev/tilt
 
@@ -50,7 +50,7 @@ jobs:
 
   check-docs:
     docker:
-      - image: docker/tilt-ci@sha256:f75cdf45493ed211e052b49ab019616d9cae8ec7dc232aed1cfba583299e4da7
+      - image: docker/tilt-ci@sha256:f02bd52d3b8b50ee231526d4bc88e065130bd4a9dc483aa266a68197c5494124
     steps:
       - checkout
       - setup_remote_docker
@@ -73,7 +73,7 @@ jobs:
     steps:
       - run: |
           choco install -y make kustomize kubernetes-helm docker-compose
-          choco upgrade -y --allow-downgrade golang --version=1.21.6
+          choco upgrade -y --allow-downgrade golang --version=1.22.2
 
           # mingw 13 seems to have broken gcc installs
           # https://community.chocolatey.org/packages/mingw#comment-6290804217
@@ -100,7 +100,7 @@ jobs:
   build-integration:
     resource_class: medium+
     docker:
-      - image: docker/tilt-integration-ci@sha256:ecb852844519c18dac9256105c4b388301ba11e4845062a7b054e2fa6ae9992b
+      - image: docker/tilt-integration-ci@sha256:17d2fc2c7de751bbc6aa750a362e556c6b4277c168457460a67d6d31455eec4d
     steps:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
@@ -114,7 +114,7 @@ jobs:
   test-extensions:
     resource_class: large
     docker:
-      - image: docker/tilt-extensions-ci@sha256:140746f2ee1b55fc03f3d6f63d31eb766de0b1478a74cc4d1c55204f2807ef36
+      - image: docker/tilt-extensions-ci@sha256:996c1dc73f2740fe7d3057264b75d8f2614b0b1b929e11aa580c7e3f8c7ded8e
     steps:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
@@ -131,7 +131,7 @@ jobs:
     steps:
       - checkout
       - go/install:
-          version: "1.21.7"
+          version: "1.22.2"
       - run: curl -fsSL "https://github.com/gotestyourself/gotestsum/releases/download/v1.7.0/gotestsum_1.7.0_darwin_amd64.tar.gz" | sudo tar -xz -C /usr/local/bin gotestsum
       # We can't run the container tests on macos because nested
       # VMs don't work on circleci.
@@ -150,7 +150,7 @@ jobs:
     resource_class: medium+
     docker:
       # keep image in sync with build.toast.yml
-      - image: docker/tilt-releaser@sha256:5d77cc33c108c5767ad1aa0e08f9d69f2cf73005bea5c5d05ee6c7898e788af1
+      - image: docker/tilt-releaser@sha256:e626c30b4b6d42056182f530563eaf80df72441bc37f49e7a707395428aab725
     environment:
       DOCKER_CLI_EXPERIMENTAL: enabled
     steps:
@@ -167,7 +167,7 @@ jobs:
     resource_class: medium+
     docker:
       # keep image in sync with build.toast.yml
-      - image: docker/tilt-releaser@sha256:5d77cc33c108c5767ad1aa0e08f9d69f2cf73005bea5c5d05ee6c7898e788af1
+      - image: docker/tilt-releaser@sha256:e626c30b4b6d42056182f530563eaf80df72441bc37f49e7a707395428aab725
     environment:
       DOCKER_CLI_EXPERIMENTAL: enabled
     steps:

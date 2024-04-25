@@ -1,4 +1,4 @@
-FROM cimg/go:1.21-node
+FROM cimg/go:1.22-node
 
 # --- DEPENDENCIES ---
 USER root
