@@ -163,7 +163,7 @@ func (c *Controller) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 		For(&v1alpha1.FileWatch{}).
 		Watches(&v1alpha1.ConfigMap{},
 			handler.EnqueueRequestsFromMapFunc((c.indexer.Enqueue))).
-		WatchesRawSource(c.requeuer, handler.Funcs{})
+		WatchesRawSource(c.requeuer)
 
 	return b, nil
 }

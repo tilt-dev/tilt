@@ -19,6 +19,7 @@ import (
 //                      |                --- resource2
 //                      |
 //                      --- /namespace2/ --- resource3
+//
 //   - For cluster-scoped resources, there will be no mid-layer folders for namespaces:
 //
 //       -- (root-path) --- resource1
@@ -26,11 +27,13 @@ import (
 //                      --- resource2
 //                      |
 //                      --- resource3
+//
 // Args:
 //
 // fs: An abstraction over the filesystem, so that the JSON can be stored in memory or on-disk.
 // watchSet: Storage for watchers to be notified of this resource type. Each type should have its own
-//    WatchSet, but subresources (like the status subresource) should share a WatchSet with their parent.
+//
+//	WatchSet, but subresources (like the status subresource) should share a WatchSet with their parent.
 func NewJSONFilepathStorageProvider(obj resource.Object, rootPath string, fs FS, watchSet *WatchSet, strategy Strategy) builderrest.ResourceHandlerProvider {
 	return func(scheme *runtime.Scheme, getter generic.RESTOptionsGetter) (rest.Storage, error) {
 		gr := obj.GetGroupVersionResource().GroupResource()

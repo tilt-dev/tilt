@@ -203,7 +203,7 @@ func (r *Reconciler) maybeUpdateImageMapStatus(ctx context.Context, nn types.Nam
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	b := ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.DockerImage{}).
-		WatchesRawSource(r.requeuer, handler.Funcs{}).
+		WatchesRawSource(r.requeuer).
 		Watches(&v1alpha1.Cluster{},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue))
 

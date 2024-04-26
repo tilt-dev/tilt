@@ -7,8 +7,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
@@ -25,7 +23,7 @@ func NewRequeuer() *Requeuer {
 	return &Requeuer{}
 }
 
-func (s *Requeuer) Start(ctx context.Context, handler handler.EventHandler, q workqueue.RateLimitingInterface, ps ...predicate.Predicate) error {
+func (s *Requeuer) Start(ctx context.Context, q workqueue.RateLimitingInterface) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.q = q
@@ -56,7 +54,7 @@ func StartSourceForTesting(
 ) {
 	q := workqueue.NewRateLimitingQueue(
 		workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, time.Millisecond))
-	_ = s.Start(ctx, handler.Funcs{}, q)
+	_ = s.Start(ctx, q)
 
 	go func() {
 		for ctx.Err() == nil {

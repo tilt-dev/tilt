@@ -110,7 +110,7 @@ func (w *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 		Owns(&v1alpha1.PortForward{}).
 		Watches(&v1alpha1.Cluster{},
 			handler.EnqueueRequestsFromMapFunc(w.indexer.Enqueue)).
-		WatchesRawSource(w.requeuer, handler.Funcs{})
+		WatchesRawSource(w.requeuer)
 	return b, nil
 }
 

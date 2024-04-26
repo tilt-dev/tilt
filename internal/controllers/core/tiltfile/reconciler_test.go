@@ -17,7 +17,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/tilt-dev/tilt/internal/container"
@@ -497,7 +496,7 @@ func newFixture(t *testing.T) *fixture {
 	r := NewReconciler(st, tfl, d, cfb.Client, v1alpha1.NewScheme(), store.EngineModeUp, "", "", 0)
 	q := workqueue.NewRateLimitingQueue(
 		workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, time.Millisecond))
-	_ = r.requeuer.Start(context.Background(), handler.Funcs{}, q)
+	_ = r.requeuer.Start(context.Background(), q)
 
 	return &fixture{
 		ControllerFixture: cfb.Build(r),

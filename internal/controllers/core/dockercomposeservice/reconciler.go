@@ -53,7 +53,7 @@ type Reconciler struct {
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	b := ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.DockerComposeService{}).
-		WatchesRawSource(r.requeuer, handler.Funcs{}).
+		WatchesRawSource(r.requeuer).
 		Watches(&v1alpha1.ImageMap{},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
 		Watches(&v1alpha1.ConfigMap{},

@@ -22,7 +22,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/tilt-dev/tilt/internal/container"
@@ -539,7 +538,7 @@ func (c *Controller) maybeUpdateObjectStatus(ctx context.Context, nn types.Names
 func (c *Controller) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	b := ctrl.NewControllerManagedBy(mgr).
 		For(&PodLogStream{}).
-		WatchesRawSource(c.podSource, handler.Funcs{})
+		WatchesRawSource(c.podSource)
 
 	return b, nil
 }

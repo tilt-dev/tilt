@@ -67,7 +67,7 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 		For(&v1alpha1.Tiltfile{}).
 		Watches(&v1alpha1.ConfigMap{},
 			handler.EnqueueRequestsFromMapFunc(r.enqueueTriggerQueue)).
-		WatchesRawSource(r.requeuer, handler.Funcs{})
+		WatchesRawSource(r.requeuer)
 
 	trigger.SetupControllerRestartOn(b, r.indexer, func(obj ctrlclient.Object) *v1alpha1.RestartOnSpec {
 		return obj.(*v1alpha1.Tiltfile).Spec.RestartOn

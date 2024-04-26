@@ -33,9 +33,13 @@ type StorageProvider func(s *runtime.Scheme, g genericregistry.RESTOptionsGetter
 func buildAPIGroupInfos(scheme *runtime.Scheme,
 	codecs serializer.CodecFactory,
 	apiMap map[schema.GroupVersionResource]StorageProvider,
-	g genericregistry.RESTOptionsGetter) ([]*pkgserver.APIGroupInfo, error) {
+	g genericregistry.RESTOptionsGetter,
+	parameterCodec runtime.ParameterCodec) ([]*pkgserver.APIGroupInfo, error) {
 	resourcesByGroupVersion := make(map[schema.GroupVersion]sets.String)
 	groups := sets.NewString()
+	if parameterCodec == nil {
+		parameterCodec = metav1.ParameterCodec
+	}
 	for gvr := range apiMap {
 		groups.Insert(gvr.Group)
 		if resourcesByGroupVersion[gvr.GroupVersion()] == nil {
@@ -65,7 +69,7 @@ func buildAPIGroupInfos(scheme *runtime.Scheme,
 				}
 			}
 		}
-		apiGroupInfo := pkgserver.NewDefaultAPIGroupInfo(group, scheme, metav1.ParameterCodec, codecs)
+		apiGroupInfo := pkgserver.NewDefaultAPIGroupInfo(group, scheme, parameterCodec, codecs)
 		apiGroupInfo.VersionedResourcesStorageMap = apis
 		apiGroups = append(apiGroups, &apiGroupInfo)
 	}
