@@ -57,7 +57,7 @@ func (r *Controller) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 		For(&Cmd{}).
 		Watches(&ConfigMap{},
 			handler.EnqueueRequestsFromMapFunc(r.indexer.Enqueue)).
-		WatchesRawSource(r.requeuer, handler.Funcs{})
+		WatchesRawSource(r.requeuer)
 
 	trigger.SetupControllerStartOn(b, r.indexer, func(obj ctrlclient.Object) *v1alpha1.StartOnSpec {
 		return obj.(*v1alpha1.Cmd).Spec.StartOn

@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"sigs.k8s.io/controller-runtime/pkg/builder"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -94,7 +93,7 @@ func (r *Reconciler) maybeUpdateObjectStatus(ctx context.Context, session *v1alp
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	b := ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.Session{}).
-		WatchesRawSource(r.requeuer, handler.Funcs{})
+		WatchesRawSource(r.requeuer)
 
 	return b, nil
 }

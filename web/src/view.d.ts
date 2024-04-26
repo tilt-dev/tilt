@@ -297,6 +297,7 @@ declare namespace Proto {
      * workflow used when modifying the object.
      *
      * +optional
+     * +listType=atomic
      */
     managedFields?: v1ManagedFieldsEntry[];
   }

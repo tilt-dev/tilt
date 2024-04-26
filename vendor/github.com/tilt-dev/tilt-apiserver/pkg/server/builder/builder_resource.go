@@ -1,6 +1,7 @@
 package builder
 
 import (
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/apiserver"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/rest"
 	"github.com/tilt-dev/tilt-apiserver/pkg/storage/filepath"
@@ -16,15 +17,9 @@ func (a *Server) WithResourceFileStorage(obj resource.Object, path string) *Serv
 		Object:      obj,
 		ObjectTyper: a.apiScheme,
 	}
-	a.WithResourceAndHandler(obj, filepath.NewJSONFilepathStorageProvider(obj, path, fs, ws, strategy))
-
-	// automatically create status subresource if the object implements the status interface
-	if _, ok := obj.(resource.ObjectWithStatusSubResource); ok {
-		provider := filepath.NewJSONFilepathStorageProvider(
-			obj, path, fs, ws, rest.StatusSubResourceStrategy{Strategy: strategy})
-		a.WithSubResourceAndHandler(obj, "status",
-			(&statusProvider{Provider: provider}).Get)
-	}
+	sp := filepath.NewJSONFilepathStorageProvider(obj, path, fs, ws, strategy)
+	a.WithResourceAndHandler(obj, sp)
+	a.withSubresources(obj, path, fs, ws, strategy, sp)
 	return a
 }
 
@@ -38,15 +33,9 @@ func (a *Server) WithResourceMemoryStorage(obj resource.Object, path string) *Se
 		Object:      obj,
 		ObjectTyper: a.apiScheme,
 	}
-	a.WithResourceAndHandler(obj, filepath.NewJSONFilepathStorageProvider(obj, path, a.memoryFS, ws, strategy))
-
-	// automatically create status subresource if the object implements the status interface
-	if _, ok := obj.(resource.ObjectWithStatusSubResource); ok {
-		provider := filepath.NewJSONFilepathStorageProvider(
-			obj, path, a.memoryFS, ws, rest.StatusSubResourceStrategy{Strategy: strategy})
-		a.WithSubResourceAndHandler(obj, "status",
-			(&statusProvider{Provider: provider}).Get)
-	}
+	sp := filepath.NewJSONFilepathStorageProvider(obj, path, a.memoryFS, ws, strategy)
+	a.WithResourceAndHandler(obj, sp)
+	a.withSubresources(obj, path, a.memoryFS, ws, strategy, sp)
 	return a
 }
 
@@ -65,6 +54,17 @@ func (a *Server) WithResourceAndHandler(obj resource.Object, sp rest.ResourceHan
 		return nil
 	})
 	return a.forGroupVersionResource(gvr, sp)
+}
+
+// WithResource registers a resource that is not backed by any storage.
+func (a *Server) WithResource(obj resource.Object) *Server {
+	a.apiSchemeBuilder.Register(resource.AddToScheme(obj))
+	a.openapiSchemeBuilder.Register(func(s *runtime.Scheme) error {
+		s.AddKnownTypes(obj.GetGroupVersionResource().GroupVersion(), obj)
+		return nil
+	})
+	a.withGroupVersions(obj.GetGroupVersionResource().GroupVersion())
+	return a
 }
 
 // forGroupVersionResource manually registers storage for a specific resource or subresource version.
@@ -110,5 +110,22 @@ func (a *Server) withGroupVersions(versions ...schema.GroupVersion) *Server {
 		a.groupVersions[gv] = true
 		a.orderedGroupVersions = append(a.orderedGroupVersions, gv)
 	}
+	return a
+}
+
+func (a *Server) withSubresources(obj resource.Object, path string, fs filepath.FS, ws *filepath.WatchSet, strategy rest.DefaultStrategy, parentSP apiserver.StorageProvider) *Server {
+	if _, ok := obj.(resource.ObjectWithStatusSubResource); ok {
+		provider := filepath.NewJSONFilepathStorageProvider(
+			obj, path, fs, ws, rest.StatusSubResourceStrategy{Strategy: strategy})
+		a.WithSubResourceAndHandler(obj, "status",
+			(&statusProvider{Provider: provider}).Get)
+	}
+
+	if owas, ok := obj.(resource.ObjectWithGenericSubResource); ok {
+		for _, subResource := range owas.GenericSubResources() {
+			a.WithSubResourceAndHandler(obj, subResource.Name(), subResource.GetStorageProvider(obj, subResource.Name(), parentSP))
+		}
+	}
+
 	return a
 }

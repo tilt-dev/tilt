@@ -19,7 +19,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
@@ -67,7 +66,7 @@ type Reconciler struct {
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 	b := ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.Cluster{}).
-		WatchesRawSource(r.requeuer, handler.Funcs{})
+		WatchesRawSource(r.requeuer)
 	return b, nil
 }
 

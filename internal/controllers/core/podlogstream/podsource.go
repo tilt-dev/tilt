@@ -11,8 +11,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
@@ -32,7 +30,6 @@ type PodSource struct {
 	ctx     context.Context
 	indexer *indexer.Indexer
 	kClient k8s.Client
-	handler handler.EventHandler
 	q       workqueue.RateLimitingInterface
 	clock   clockwork.Clock
 
@@ -62,11 +59,10 @@ func NewPodSource(ctx context.Context, kClient k8s.Client, scheme *runtime.Schem
 	}
 }
 
-func (s *PodSource) Start(ctx context.Context, handler handler.EventHandler, q workqueue.RateLimitingInterface, ps ...predicate.Predicate) error {
+func (s *PodSource) Start(ctx context.Context, q workqueue.RateLimitingInterface) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.q = q
-	s.handler = handler
 	return nil
 }
 

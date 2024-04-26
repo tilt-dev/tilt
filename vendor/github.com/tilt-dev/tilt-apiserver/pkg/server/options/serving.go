@@ -107,6 +107,9 @@ type GeneratableKeyCert struct {
 	// GeneratedCert holds an in-memory generated certificate if CertFile/KeyFile aren't explicitly set, and CertDirectory/PairName are not set.
 	GeneratedCert dynamiccertificates.CertKeyContentProvider
 
+	// Indicates whether GeneratedCert already has a pre-generated value (in which case it should not be regenerated).
+	PregeneratedCert bool
+
 	// FixtureDirectory is a directory that contains test fixture used to avoid regeneration of certs during tests.
 	// The format is:
 	// <host>_<ip>-<ip>_<alternateDNS>-<alternateDNS>.crt
@@ -286,6 +289,9 @@ func (s *SecureServingOptions) ApplyTo(config **server.SecureServingInfo) error 
 
 func (s *SecureServingOptions) MaybeDefaultWithSelfSignedCerts(publicAddress string, alternateDNS []string, alternateIPs []net.IP) error {
 	if s == nil || (s.BindPort == 0 && s.Listener == nil) {
+		return nil
+	}
+	if s.ServerCert.PregeneratedCert {
 		return nil
 	}
 	keyCert := &s.ServerCert.CertKey

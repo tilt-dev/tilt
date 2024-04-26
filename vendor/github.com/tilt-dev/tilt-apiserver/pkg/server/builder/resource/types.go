@@ -19,6 +19,7 @@ package resource
 import (
 	"fmt"
 
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/apiserver"
 	"github.com/tilt-dev/tilt-apiserver/pkg/server/builder/resource/resourcestrategy"
 	"k8s.io/apimachinery/pkg/conversion"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -88,10 +89,10 @@ type StatusSubResource interface {
 	CopyTo(parent ObjectWithStatusSubResource)
 }
 
-// ArbitrarySubResource defines interface for registering arbitrary subresource to the parent resource.
-type ArbitrarySubResource interface {
+// GenericSubResource defines interface for registering arbitrary subresource to the parent resource.
+type GenericSubResource interface {
 	Name() string
-	// TODO: fill the details for this interface.
+	GetStorageProvider(parentObj Object, rootPath string, parentSP apiserver.StorageProvider) apiserver.StorageProvider
 }
 
 // ObjectWithStatusSubResource defines an interface for getting and setting the status sub-resource for a resource.
@@ -107,10 +108,10 @@ type ObjectWithScaleSubResource interface {
 	GetScale() (scaleSubResource *autoscalingv1.Scale)
 }
 
-// ObjectWithArbitrarySubResource adds arbitrary subresources to the resource.
-type ObjectWithArbitrarySubResource interface {
+// ObjectWithGenericSubResource adds arbitrary subresources to the resource.
+type ObjectWithGenericSubResource interface {
 	Object
-	ArbitrarySubResources() []ArbitrarySubResource
+	GenericSubResources() []GenericSubResource
 }
 
 // AddToScheme returns a function to add the Objects to the scheme.

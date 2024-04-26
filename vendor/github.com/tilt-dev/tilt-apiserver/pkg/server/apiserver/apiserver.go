@@ -46,11 +46,12 @@ func NewScheme() *runtime.Scheme {
 
 // ExtraConfig holds custom apiserver config
 type ExtraConfig struct {
-	Scheme      *runtime.Scheme
-	Codecs      serializer.CodecFactory
-	APIs        map[schema.GroupVersionResource]StorageProvider
-	ServingInfo *genericapiserver.SecureServingInfo
-	Version     *version.Info
+	Scheme         *runtime.Scheme
+	Codecs         serializer.CodecFactory
+	APIs           map[schema.GroupVersionResource]StorageProvider
+	ServingInfo    *genericapiserver.SecureServingInfo
+	Version        *version.Info
+	ParameterCodec runtime.ParameterCodec
 }
 
 // Config defines the config for the apiserver
@@ -101,7 +102,7 @@ func (c completedConfig) New() (*TiltServer, error) {
 	}
 
 	// Add new APIs through inserting into APIs
-	apiGroups, err := buildAPIGroupInfos(c.ExtraConfig.Scheme, c.ExtraConfig.Codecs, c.ExtraConfig.APIs, c.GenericConfig.RESTOptionsGetter)
+	apiGroups, err := buildAPIGroupInfos(c.ExtraConfig.Scheme, c.ExtraConfig.Codecs, c.ExtraConfig.APIs, c.GenericConfig.RESTOptionsGetter, c.ExtraConfig.ParameterCodec)
 	if err != nil {
 		return nil, err
 	}

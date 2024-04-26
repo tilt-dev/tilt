@@ -43,20 +43,19 @@ sed -i "s/[*]_types.go/types.go/g" "${CODEGEN_PKG}/kube_codegen.sh"
 echo "Generating code..."
 rm -fR pkg/apis/**/zz_generated*
 kube::codegen::gen_helpers \
-  --input-pkg-root github.com/tilt-dev/tilt/pkg/apis \
-  --output-base "$(dirname "${BASH_SOURCE[0]}")/../../../.." \
-  --boilerplate "${SCRIPT_ROOT}"/hack/boilerplate.go.txt
+  --boilerplate "${SCRIPT_ROOT}"/hack/boilerplate.go.txt \
+  ./pkg/apis
 
 rm -fR pkg/openapi
 VIOLATIONS_ORIG_FILE=$(mktemp)
 VIOLATIONS_FILE=$(mktemp)
 kube::codegen::gen_openapi \
-  --input-pkg-root github.com/tilt-dev/tilt/pkg/apis \
-  --output-pkg-root github.com/tilt-dev/tilt/pkg \
-  --output-base "$(dirname "${BASH_SOURCE[0]}")/../../../.." \
+  --output-pkg github.com/tilt-dev/tilt/pkg/openapi \
+  --output-dir ./pkg/openapi \
   --report-filename "${VIOLATIONS_ORIG_FILE}" \
   --update-report \
-  --boilerplate "${SCRIPT_ROOT}"/hack/boilerplate.go.txt
+  --boilerplate "${SCRIPT_ROOT}"/hack/boilerplate.go.txt \
+  ./pkg/apis
 
 # add a sentinel line at the end of the file.
 # this ensures grep -v doesn't remove all the warnings.
