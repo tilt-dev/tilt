@@ -1,4 +1,4 @@
-FROM golang:1.18
+FROM golang:1.22
 
 ENV GOPATH=/go
 WORKDIR /go/src
