@@ -3,6 +3,7 @@ package apis
 import (
 	"encoding/hex"
 	"hash/fnv"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -51,6 +52,7 @@ func SanitizeLabel(name string) string {
 // SanitizeName ensures a value is suitable for usage as an apiserver identifier.
 func SanitizeName(name string) string {
 	sanitized := name
+
 	if len(path.IsValidPathSegmentName(name)) != 0 {
 		for _, invalidName := range path.NameMayNotBe {
 			if name == invalidName {
@@ -58,8 +60,10 @@ func SanitizeName(name string) string {
 				return strings.ReplaceAll(name, ".", "_")
 			}
 		}
-		sanitized = invalidPathCharacters.ReplaceAllString(sanitized, "_")
+
+		sanitized = url.QueryEscape(sanitized)
 	}
+
 	if len(sanitized) > MaxNameLength {
 		var sb strings.Builder
 		sb.Grow(MaxNameLength)

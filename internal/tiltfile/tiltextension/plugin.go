@@ -7,6 +7,7 @@ package tiltextension
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"go.starlark.net/starlark"
@@ -23,8 +24,10 @@ import (
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
-const extensionPrefix = "ext://"
-const defaultRepoName = "default"
+const (
+	extensionPrefix = "ext://"
+	defaultRepoName = "default"
+)
 
 type Plugin struct {
 	repoReconciler ExtRepoReconciler
@@ -126,9 +129,30 @@ func (e *Plugin) LocalPath(t *starlark.Thread, arg string) (localPath string, er
 //
 // If it has, returns the existing object (which should only have a spec).
 //
+// If it hasn't, but it's a nested extension name, and the root has been registered, register it and
+// return it.
+//
 // Otherwise, infers an extension object that points to the default repo.
 func (e *Plugin) ensureExtension(t *starlark.Thread, objSet apiset.ObjectSet, moduleName string) *v1alpha1.Extension {
+	// Copy the supplied module name (which may contain slashes) into the "repo path".
+	// This ensures that sanitizing or name munging does not effect the path where the extension
+	// will be loaded.
+	repoPath := moduleName
+
+	// Before sanitizing the name, split off anything after the first /
+	extRoot, nestedPath, isNested := strings.Cut(moduleName, "/")
+
+	// This is the name of the extension root. For regular (non-nested) extensions, this is the same
+	// as the sanitized moduleName.
+	// For nested extensions, this is the root extension name and it must already be registered.
 	extName := apis.SanitizeName(moduleName)
+	if isNested {
+		extName = apis.SanitizeName(extRoot)
+	}
+
+	// Create an extension spec that points to the default extension repository.
+	// This will be "registered" in place if the requested extension has not already been
+	// registered.
 	defaultExt := &v1alpha1.Extension{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: extName,
@@ -138,18 +162,42 @@ func (e *Plugin) ensureExtension(t *starlark.Thread, objSet apiset.ObjectSet, mo
 		},
 		Spec: v1alpha1.ExtensionSpec{
 			RepoName: defaultRepoName,
-			RepoPath: moduleName,
+			RepoPath: repoPath,
 		},
 	}
 
 	typedSet := objSet.GetOrCreateTypedSet(defaultExt)
 	existing, exists := typedSet[extName]
-	if exists {
+
+	if exists && !isNested {
+		// If the extension exists by this name and this is not a nested load, then it's already
+		// been registered and should be returned
 		ext := existing.(*v1alpha1.Extension)
 		metav1.SetMetaDataAnnotation(&ext.ObjectMeta, v1alpha1.AnnotationManagedBy, "tiltfile.loader")
 		return ext
+	} else if exists {
+		// Turn extName back into the fully sanitized version
+		extName = apis.SanitizeName(moduleName)
+		// Otherwise, if it already exists but this is a nested load, we need to register it
+		ext := existing.(*v1alpha1.Extension)
+		childExt := &v1alpha1.Extension{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: extName,
+			},
+			Spec: v1alpha1.ExtensionSpec{
+				// The name of the repository for the nested extension is the same as the root
+				// extension
+				RepoName: ext.Spec.RepoName,
+				RepoPath: filepath.Join(ext.Spec.RepoPath, nestedPath),
+			},
+		}
+
+		metav1.SetMetaDataAnnotation(&childExt.ObjectMeta, v1alpha1.AnnotationManagedBy, "tiltfile.loader")
+		typedSet[extName] = childExt
+		return childExt
 	}
 
+	// If the extension wasn't otherwise found, return it as a "default extension"
 	typedSet[extName] = defaultExt
 	return defaultExt
 }
@@ -179,8 +227,10 @@ func (e *Plugin) ensureRepo(t *starlark.Thread, objSet apiset.ObjectSet, repoNam
 	return defaultRepo
 }
 
-var _ starkit.LoadInterceptor = (*Plugin)(nil)
-var _ starkit.StatefulPlugin = (*Plugin)(nil)
+var (
+	_ starkit.LoadInterceptor = (*Plugin)(nil)
+	_ starkit.StatefulPlugin  = (*Plugin)(nil)
+)
 
 func MustState(model starkit.Model) State {
 	state, err := GetState(model)

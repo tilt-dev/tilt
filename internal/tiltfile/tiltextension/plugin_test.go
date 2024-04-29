@@ -191,6 +191,178 @@ include('Tiltfile.b')
 	f.assertLoadRecorded(res, "my-extension")
 }
 
+func TestLoadNestedExtension(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// We don't want to have to bother with file:// escaping on windows.
+		// The repo reconciler already tests this.
+		t.Skip()
+	}
+
+	f := newExtensionFixture(t)
+
+	f.tiltfile(fmt.Sprintf(`
+v1alpha1.extension_repo(name='custom', url='file://%s/my-custom-repo')
+v1alpha1.extension(name='my-extension', repo_name='custom', repo_path='my-custom-path')
+
+load("ext://my-extension/nested", "printNested")
+printNested()
+`, f.tmp.Path()))
+
+	nested := `
+def printNested():
+	print("nested")
+	`
+
+	f.tmp.WriteFile(filepath.Join("my-custom-repo", "my-custom-path", "nested", "Tiltfile"), nested)
+
+	res := f.assertExecOutput("nested")
+	f.assertLoadRecorded(res, "my-extension/nested")
+}
+
+func TestLoadNestedAndParentExtension(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// We don't want to have to bother with file:// escaping on windows.
+		// The repo reconciler already tests this.
+		t.Skip()
+	}
+
+	f := newExtensionFixture(t)
+
+	f.tiltfile(fmt.Sprintf(`
+v1alpha1.extension_repo(name='custom', url='file://%s/my-custom-repo')
+v1alpha1.extension(name='my-extension', repo_name='custom', repo_path='my-custom-path')
+
+load("ext://my-extension", "hello")
+load("ext://my-extension/nested", "world")
+print(hello() + " " + world())
+`, f.tmp.Path()))
+
+	helloExt := `
+def hello():
+	return "hello"
+`
+	worldExt := `
+def world():
+	return "world"
+	`
+
+	f.tmp.WriteFile(filepath.Join("my-custom-repo", "my-custom-path", "Tiltfile"), helloExt)
+	f.tmp.WriteFile(filepath.Join("my-custom-repo", "my-custom-path", "nested", "Tiltfile"), worldExt)
+
+	res := f.assertExecOutput("hello world")
+	f.assertLoadRecorded(res, "my-extension", "my-extension/nested")
+}
+
+func TestLoadNestedLoadsParentExtension(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// We don't want to have to bother with file:// escaping on windows.
+		// The repo reconciler already tests this.
+		t.Skip()
+	}
+
+	f := newExtensionFixture(t)
+
+	f.tiltfile(fmt.Sprintf(`
+v1alpha1.extension_repo(name='custom', url='file://%s/my-custom-repo')
+v1alpha1.extension(name='my-extension', repo_name='custom', repo_path='my-custom-path')
+
+load("ext://my-extension/nested", "greet")
+print(greet())
+`, f.tmp.Path()))
+
+	helloExt := `
+def hello():
+	return "hello"
+`
+	worldExt := `
+load("ext://my-extension", "hello")
+
+def greet():
+    return hello() + " world"
+`
+
+	f.tmp.WriteFile(filepath.Join("my-custom-repo", "my-custom-path", "Tiltfile"), helloExt)
+	f.tmp.WriteFile(filepath.Join("my-custom-repo", "my-custom-path", "nested", "Tiltfile"), worldExt)
+
+	res := f.assertExecOutput("hello world")
+	f.assertLoadRecorded(res, "my-extension", "my-extension/nested")
+}
+
+func TestLoadNestedLoadsSiblingExtension(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// We don't want to have to bother with file:// escaping on windows.
+		// The repo reconciler already tests this.
+		t.Skip()
+	}
+
+	f := newExtensionFixture(t)
+
+	f.tiltfile(fmt.Sprintf(`
+v1alpha1.extension_repo(name='custom', url='file://%s/my-custom-repo')
+v1alpha1.extension(name='my-extension', repo_name='custom', repo_path='my-custom-path')
+
+load("ext://my-extension/nested", "greet")
+print(greet())
+`, f.tmp.Path()))
+
+	helloExt := `
+def hello():
+	return "hello"
+`
+	worldExt := `
+load("ext://my-extension/sibling", "hello")
+
+def greet():
+    return hello() + " world"
+`
+
+	f.tmp.WriteFile(filepath.Join("my-custom-repo", "my-custom-path", "sibling", "Tiltfile"), helloExt)
+	f.tmp.WriteFile(filepath.Join("my-custom-repo", "my-custom-path", "nested", "Tiltfile"), worldExt)
+
+	res := f.assertExecOutput("hello world")
+	f.assertLoadRecorded(res, "my-extension/sibling", "my-extension/nested")
+}
+
+func TestLoadNestedLoadsChildExtension(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// We don't want to have to bother with file:// escaping on windows.
+		// The repo reconciler already tests this.
+		t.Skip()
+	}
+
+	f := newExtensionFixture(t)
+
+	f.tiltfile(fmt.Sprintf(`
+v1alpha1.extension_repo(name='custom', url='file://%s/my-custom-repo')
+v1alpha1.extension(name='my-extension', repo_name='custom', repo_path='my-custom-path')
+
+load("ext://my-extension", "greet")
+print(greet())
+`, f.tmp.Path()))
+
+	greetExt := `
+load("ext://my-extension/hello", "hello")
+load("ext://my-extension/hello/world", "world")
+def greet():
+	return hello() + " " + world()
+`
+	helloExt := `
+def hello():
+	return "hello"
+`
+	worldExt := `
+def world():
+	return "world"
+`
+
+	f.tmp.WriteFile(filepath.Join("my-custom-repo", "my-custom-path", "Tiltfile"), greetExt)
+	f.tmp.WriteFile(filepath.Join("my-custom-repo", "my-custom-path", "hello", "Tiltfile"), helloExt)
+	f.tmp.WriteFile(filepath.Join("my-custom-repo", "my-custom-path", "hello", "world", "Tiltfile"), worldExt)
+
+	res := f.assertExecOutput("hello world")
+	f.assertLoadRecorded(res, "my-extension", "my-extension/hello", "my-extension/hello/world")
+}
+
 type extensionFixture struct {
 	t     *testing.T
 	skf   *starkit.Fixture
