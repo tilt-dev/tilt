@@ -19,8 +19,6 @@ const MaxNameLength = validation.DNS1123SubdomainMaxLength
 
 var invalidLabelCharacters = regexp.MustCompile("[^-A-Za-z0-9_.]")
 
-var invalidPathCharacters = regexp.MustCompile(`[` + strings.Join(path.NameMayNotContain, "") + `]`)
-
 type KeyableObject interface {
 	GetName() string
 	GetNamespace() string
