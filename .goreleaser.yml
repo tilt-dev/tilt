@@ -131,7 +131,7 @@ archives:
   meta: true
   files:
     - LICENSE
-    - pkg/assets/build/**/*
+    - pkg/assets/build/**
 
 checksum:
   name_template: 'checksums.txt'
