@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/internal/controllers"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
 	"github.com/tilt-dev/tilt/internal/hud/prompt"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -176,7 +177,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 func redirectLogs(ctx context.Context, l logger.Logger) context.Context {
 	ctx = logger.WithLogger(ctx, l)
 	log.SetOutput(l.Writer(logger.InfoLvl))
-	maybeSetKlogOutput(l.Writer(logger.InfoLvl))
+	controllers.MaybeSetKlogOutput(l.Writer(logger.InfoLvl))
 	return ctx
 }
 

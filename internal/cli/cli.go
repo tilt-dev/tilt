@@ -16,6 +16,7 @@ import (
 
 	"github.com/tilt-dev/starlark-lsp/pkg/cli"
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
+	"github.com/tilt-dev/tilt/internal/controllers"
 	"github.com/tilt-dev/tilt/internal/output"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -91,7 +92,7 @@ up-to-date in real-time. Think 'docker build && kubectl apply' or 'docker-compos
 	globalFlags := rootCmd.PersistentFlags()
 	globalFlags.BoolVarP(&debug, "debug", "d", false, "Enable debug logging")
 	globalFlags.BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")
-	globalFlags.IntVar(&klogLevel, "klog", 0, "Enable Kubernetes API logging. Uses klog v-levels (0-4 are debug logs, 5-9 are tracing logs)")
+	controllers.AddKlogFlags(globalFlags)
 
 	ctx, cleanup := createContext()
 	defer cleanup()
@@ -128,7 +129,7 @@ func preCommand(ctx context.Context, cmdName model.TiltSubcommand) context.Conte
 	// Users don't care about controller-runtime logs.
 	ctrllog.SetLogger(logr.New(ctrllog.NullLogSink{}))
 
-	initKlog(l.Writer(logger.InfoLvl))
+	controllers.InitKlog(l.Writer(logger.InfoLvl))
 
 	// SIGNAL TRAPPING
 	ctx, cancel := context.WithCancel(ctx)

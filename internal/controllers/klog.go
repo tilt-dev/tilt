@@ -1,4 +1,4 @@
-package cli
+package controllers
 
 import (
 	"flag"
@@ -7,11 +7,16 @@ import (
 	"log"
 	"os"
 
+	"github.com/spf13/pflag"
 	"k8s.io/klog/v2"
 )
 
 // https://kubernetes.io/docs/reference/kubectl/cheatsheet/#kubectl-output-verbosity-and-debugging
 var klogLevel = 0
+
+func AddKlogFlags(flags *pflag.FlagSet) {
+	flags.IntVar(&klogLevel, "klog", 0, "Enable Kubernetes API logging. Uses klog v-levels (0-4 are debug logs, 5-9 are tracing logs)")
+}
 
 // HACK(nick): The Kubernetes libs we use sometimes use klog to log things to
 // os.Stderr. There are no API hooks to configure this. And printing to Stderr
@@ -19,10 +24,10 @@ var klogLevel = 0
 //
 // Fortunately, klog does initialize itself from flags, so we can backdoor
 // configure it by setting our own flags. Don't do this at home!
-func initKlog(w io.Writer) {
+func InitKlog(w io.Writer) {
 	var tmpFlagSet = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	klog.InitFlags(tmpFlagSet)
-	maybeSetKlogOutput(w)
+	MaybeSetKlogOutput(w)
 
 	flags := []string{
 		"--stderrthreshold=FATAL",
@@ -62,7 +67,7 @@ func initKlog(w io.Writer) {
 // We're not convinced that controller-runtime logs EVER make sense to show to
 // tilt users, so let's filter them out by default. Users can turn them on
 // with --klog if they want.
-func maybeSetKlogOutput(w io.Writer) {
+func MaybeSetKlogOutput(w io.Writer) {
 	if klogLevel == 0 {
 		klog.SetOutput(io.Discard)
 	} else {

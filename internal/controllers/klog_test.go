@@ -1,4 +1,4 @@
-package cli
+package controllers
 
 import (
 	"bytes"
@@ -10,7 +10,7 @@ import (
 
 func TestResourceVersionTooOldWarningsSilenced(t *testing.T) {
 	out := bytes.NewBuffer(nil)
-	initKlog(out)
+	InitKlog(out)
 
 	PrintWatchEndedV4()
 	klog.Flush()
@@ -28,7 +28,7 @@ func TestResourceVersionTooOldWarningsPrinted(t *testing.T) {
 		klogLevel = 0
 	}()
 	out := bytes.NewBuffer(nil)
-	initKlog(out)
+	InitKlog(out)
 
 	PrintWatchEndedV4()
 	klog.Flush()
@@ -37,7 +37,7 @@ func TestResourceVersionTooOldWarningsPrinted(t *testing.T) {
 
 func TestEmptyGroupVersionErrorsSilenced(t *testing.T) {
 	out := bytes.NewBuffer(nil)
-	initKlog(out)
+	InitKlog(out)
 
 	klog.Error("couldn't get resource list for external.metrics.k8s.io/v1beta1: Got empty response for: external.metrics.k8s.io/v1beta1")
 	klog.Flush()
