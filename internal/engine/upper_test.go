@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path"
@@ -2687,8 +2688,14 @@ print('foo=', cfg['foo'])`)
 
 	f.loadAndStart(opt)
 
+	// Wait for both EngineState and apiserver state updates,
+	// so we can write back to the apiserver.
 	f.WaitUntil("first tiltfile build finishes", func(state store.EngineState) bool {
-		return len(state.MainTiltfileState().BuildHistory) == 1
+		var tf v1alpha1.Tiltfile
+		_ = f.ctrlClient.Get(f.ctx,
+			types.NamespacedName{Name: model.MainTiltfileManifestName.String()}, &tf)
+		return len(state.MainTiltfileState().BuildHistory) == 1 &&
+			tf.Status.Terminated != nil
 	})
 
 	f.withState(func(state store.EngineState) {
@@ -3112,6 +3119,7 @@ type fixtureOptions struct {
 }
 
 func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
+	controllers.InitKlog(io.Discard)
 	f := tempdir.NewTempDirFixture(t)
 
 	engineMode := store.EngineModeUp
