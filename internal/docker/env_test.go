@@ -89,6 +89,19 @@ func TestColimaEnv(t *testing.T) {
 			match:       false,
 			warning:     "connected to Kubernetes running on Orbstack, but building on a non-Orbstack Docker socket",
 		},
+		// colima on linux
+		{
+			product:     clusterid.ProductColima,
+			kubecontext: "colima",
+			dockerHost:  "unix://~/.config/colima/default/docker.sock",
+			match:       true,
+		},
+		{
+			product:     clusterid.ProductColima,
+			kubecontext: "colima-test",
+			dockerHost:  "unix://~/.config/colima/test/docker.sock",
+			match:       true,
+		},
 	}
 
 	for i, c := range table {

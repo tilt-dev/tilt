@@ -355,6 +355,8 @@ func willBuildToKubeContext(ctx context.Context, product clusterid.Product, kube
 		//    colima "test" profile < 0.4 -> ~/.colima-test/docker.sock -> kubecontext colima-test
 		//    colima default profile >= 0.4 -> ~/.colima/default/docker.sock -> kubecontext colima
 		//    colima "test" profile >= 0.4 -> ~/.colima/test/docker.sock -> kubecontext colima-test
+		//    colima linux profile >= 0.4 -> ~/.config/colima/default/docker.sock -> kubecontext colima
+		//    colima linux "test" profile >= 0.4 -> ~/.config/colima/test/docker.sock -> kubecontext colima-test
 		//
 		// NOTE: ~ is used for legibility here; in practice, the paths MUST
 		// be fully qualified!
@@ -365,11 +367,13 @@ func willBuildToKubeContext(ctx context.Context, product clusterid.Product, kube
 		// should NOT be considered as building to the context, as these
 		// are two distinct Colima VMs/profiles. (This would almost always
 		// be indicative of user error, but we respect the Docker + K8s
-		// configs as provided to Tilt as-is. Providing a warning upon
-		// detecting a likely misconfiguration here is probably a good idea
-		// in the future, however!)
+		// configs as provided to Tilt as-is. We emit a warning upon
+		// detecting a likely misconfiguration here.)
 		dockerColimaProfile := ""
 		parts := strings.Split(env.DaemonHost(), "/.colima")
+		if len(parts) == 1 {
+			parts = strings.Split(env.DaemonHost(), "/.config/colima")
+		}
 		if len(parts) >= 2 {
 			lastPart := parts[len(parts)-1]
 			if strings.HasPrefix(lastPart, "-") {
