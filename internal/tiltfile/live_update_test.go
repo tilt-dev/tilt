@@ -284,6 +284,7 @@ func TestLiveUpdateRunEchoOff(t *testing.T) {
 		{"echoOff True", `echo_off=True`, true},
 		{"echoOff False", `echo_off=False`, false},
 		{"echoOff default", ``, false},
+		{"echoOff default", `[]`, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newFixture(t)

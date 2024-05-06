@@ -169,7 +169,7 @@ func (s *tiltfileState) liveUpdateRun(thread *starlark.Thread, fn *starlark.Buil
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"cmd", &commandVal,
 		"trigger?", &triggers,
-		"echo_off", &echoOff); err != nil {
+		"echo_off?", &echoOff); err != nil {
 		return nil, err
 	}
 
