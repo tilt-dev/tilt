@@ -315,6 +315,10 @@ v1alpha1.extension_repo(name='custom', url='file://%s/ext-repo', prefix='custom'
 # Should load an extension from the custom repo at <repo.path>/my-ext
 load("ext://custom/my-ext", "printExt")
 printExt()
+
+# Should load from <repo.path>/my-ext/subext
+load("ext://custom/my-ext/subext", "printSub")
+printSub()
 `, f.tmp.Path()))
 
 	extContent := `
@@ -322,10 +326,16 @@ def printExt():
 	print("main ext")
 	`
 
-	f.tmp.WriteFile(filepath.Join("ext-repo", "subdir", "my-ext", "Tiltfile"), extContent)
+	subExtContent := `
+def printSub():
+	print("sub ext")
+	`
 
-	res := f.assertExecOutput("main ext")
-	f.assertLoadRecorded(res, "custom/my-ext")
+	f.tmp.WriteFile(filepath.Join("ext-repo", "subdir", "my-ext", "Tiltfile"), extContent)
+	f.tmp.WriteFile(filepath.Join("ext-repo", "subdir", "my-ext", "subext", "Tiltfile"), subExtContent)
+
+	res := f.assertExecOutput("main ext\nsub ext")
+	f.assertLoadRecorded(res, "custom/my-ext", "custom/my-ext/subext")
 }
 
 type extensionFixture struct {
