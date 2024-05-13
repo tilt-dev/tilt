@@ -191,6 +191,48 @@ include('Tiltfile.b')
 	f.assertLoadRecorded(res, "my-extension")
 }
 
+func TestNestingDefaultBehavior(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// We don't want to have to bother with file:// escaping on windows.
+		// The repo reconciler already tests this.
+		t.Skip()
+	}
+
+	// The default behavior of the extension loading mechanism converts slashes in extension names
+	// to an _, but retains the original extension name as the path within the extension repository.
+	// You can leverage this for nested extensions by defining an extension with an underscore and
+	// then loading it with a slash.
+	f := newExtensionFixture(t)
+
+	f.tiltfile(fmt.Sprintf(`
+v1alpha1.extension_repo(name='custom', url='file://%s/my-custom-repo')
+v1alpha1.extension(name='nested_fake', repo_name='custom', repo_path='fake')
+v1alpha1.extension(name='nested_real', repo_name='custom', repo_path='nested/real')
+
+load("ext://nested/fake", "printFake")
+printFake()
+
+load("ext://nested/real", "printReal")
+printReal()
+`, f.tmp.Path()))
+
+	fakeContent := `
+def printFake():
+    print("fake")
+	`
+
+	realContent := `
+def printReal():
+	print("real")
+	`
+
+	f.tmp.WriteFile(filepath.Join("my-custom-repo", "fake", "Tiltfile"), fakeContent)
+	f.tmp.WriteFile(filepath.Join("my-custom-repo", "nested", "real", "Tiltfile"), realContent)
+
+	res := f.assertExecOutput("fake\nreal")
+	f.assertLoadRecorded(res, "nested/fake", "nested/real")
+}
+
 type extensionFixture struct {
 	t     *testing.T
 	skf   *starkit.Fixture
