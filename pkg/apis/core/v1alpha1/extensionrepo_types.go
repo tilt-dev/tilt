@@ -68,11 +68,24 @@ type ExtensionRepoSpec struct {
 	// the repo to the latest version.
 	// +optional
 	Ref string `json:"ref,omitempty" protobuf:"bytes,2,opt,name=ref"`
+
+	// A prefix used to support autoregistration of extensions within this repository.
+	// For example, an extension repo with prefix="internal" will cause any load()
+	// calls that start with `ext://internal` to be loaded from this repository.
+	// +optional
+	Prefix string `json:"prefix,omitempty" protobuf:"bytes,3,opt,name=prefix"`
+
+	// A path within the repository root that contains all extensions. By default, all extensions
+	// are expected to live at the repository root.
+	// +optional
+	Path string `json:"path,omitempty" protobuf:"bytes,4,opt,name=path"`
 }
 
-var _ resource.Object = &ExtensionRepo{}
-var _ resourcerest.SingularNameProvider = &ExtensionRepo{}
-var _ resourcestrategy.Validater = &ExtensionRepo{}
+var (
+	_ resource.Object                   = &ExtensionRepo{}
+	_ resourcerest.SingularNameProvider = &ExtensionRepo{}
+	_ resourcestrategy.Validater        = &ExtensionRepo{}
+)
 
 func (in *ExtensionRepo) GetSingularName() string {
 	return "extensionrepo"

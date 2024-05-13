@@ -23,8 +23,10 @@ import (
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
-const extensionPrefix = "ext://"
-const defaultRepoName = "default"
+const (
+	extensionPrefix = "ext://"
+	defaultRepoName = "default"
+)
 
 type Plugin struct {
 	repoReconciler ExtRepoReconciler
@@ -128,7 +130,13 @@ func (e *Plugin) LocalPath(t *starlark.Thread, arg string) (localPath string, er
 //
 // Otherwise, infers an extension object that points to the default repo.
 func (e *Plugin) ensureExtension(t *starlark.Thread, objSet apiset.ObjectSet, moduleName string) *v1alpha1.Extension {
+	// TODO: Better names
+	head, rest, hasSlash := strings.Cut(moduleName, "/")
+
 	extName := apis.SanitizeName(moduleName)
+
+	// Represents an extension by name extName in the default extensions repository.
+	// Used as a fallback
 	defaultExt := &v1alpha1.Extension{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: extName,
@@ -144,6 +152,37 @@ func (e *Plugin) ensureExtension(t *starlark.Thread, objSet apiset.ObjectSet, mo
 
 	typedSet := objSet.GetOrCreateTypedSet(defaultExt)
 	existing, exists := typedSet[extName]
+
+	// If an existing extension by this name does not exist, check if the moduleName prefix matches
+	// the prefix of an existing extension repository
+	if !exists && hasSlash {
+		repoSet := objSet.GetOrCreateTypedSet(&v1alpha1.ExtensionRepo{})
+
+		// TODO: Is there a better way to do this vs iterating over every extension repo?
+		for _, v := range repoSet {
+			repo := v.(*v1alpha1.ExtensionRepo)
+			if repo.Spec.Prefix != "" && repo.Spec.Prefix == head {
+				// This repo prefix matches the head of the module name
+				// So we can register this as an extension on that repo
+				ext := &v1alpha1.Extension{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: extName,
+						Annotations: map[string]string{
+							v1alpha1.AnnotationManagedBy: "tiltfile.loader",
+						},
+					},
+					Spec: v1alpha1.ExtensionSpec{
+						RepoName: repo.Name,
+						RepoPath: rest,
+					},
+				}
+
+				typedSet[extName] = ext
+				return ext
+			}
+		}
+	}
+
 	if exists {
 		ext := existing.(*v1alpha1.Extension)
 		metav1.SetMetaDataAnnotation(&ext.ObjectMeta, v1alpha1.AnnotationManagedBy, "tiltfile.loader")
@@ -179,8 +218,10 @@ func (e *Plugin) ensureRepo(t *starlark.Thread, objSet apiset.ObjectSet, repoNam
 	return defaultRepo
 }
 
-var _ starkit.LoadInterceptor = (*Plugin)(nil)
-var _ starkit.StatefulPlugin = (*Plugin)(nil)
+var (
+	_ starkit.LoadInterceptor = (*Plugin)(nil)
+	_ starkit.StatefulPlugin  = (*Plugin)(nil)
+)
 
 func MustState(model starkit.Model) State {
 	state, err := GetState(model)

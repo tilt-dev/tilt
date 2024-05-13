@@ -233,6 +233,30 @@ def printReal():
 	f.assertLoadRecorded(res, "nested/fake", "nested/real")
 }
 
+func TestRepoPrefix(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// We don't want to have to bother with file:// escaping on windows.
+		// The repo reconciler already tests this.
+		t.Skip()
+	}
+
+	// Assert that extension repositories with a prefix allow "autoregistration" of extensions
+	// if the extension prefix starts with the registered repository prefix.
+	f := newExtensionFixture(t)
+
+	f.tiltfile(fmt.Sprintf(`
+v1alpha1.extension_repo(name='custom', url='file://%s/ext-repo', prefix='custom')
+
+load("ext://custom/ext", "printFoo")
+printFoo()
+`, f.tmp.Path()))
+
+	f.tmp.WriteFile(filepath.Join("ext-repo", "ext", "Tiltfile"), libText)
+
+	res := f.assertExecOutput("foo")
+	f.assertLoadRecorded(res, "custom/ext")
+}
+
 type extensionFixture struct {
 	t     *testing.T
 	skf   *starkit.Fixture

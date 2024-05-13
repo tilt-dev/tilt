@@ -285,6 +285,8 @@ func (p Plugin) extensionRepo(t *starlark.Thread, fn *starlark.Builtin, args sta
 		"annotations?", &annotations,
 		"url?", &obj.Spec.URL,
 		"ref?", &obj.Spec.Ref,
+		"prefix?", &obj.Spec.Prefix,
+		"path?", &obj.Spec.Path,
 	)
 	if err != nil {
 		return nil, err
