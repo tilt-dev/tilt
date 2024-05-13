@@ -1131,6 +1131,17 @@ message ExtensionRepoSpec {
   // the repo to the latest version.
   // +optional
   optional string ref = 2;
+
+  // A prefix used to support autoregistration of extensions within this repository.
+  // For example, an extension repo with prefix="internal" will cause any load()
+  // calls that start with `ext://internal` to be loaded from this repository.
+  // +optional
+  optional string prefix = 3;
+
+  // A path within the repository root that contains all extensions. By default, all extensions
+  // are expected to live at the repository root.
+  // +optional
+  optional string path = 4;
 }
 
 // ExtensionRepoStatus defines the observed state of ExtensionRepo

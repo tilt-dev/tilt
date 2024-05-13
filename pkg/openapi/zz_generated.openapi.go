@@ -2991,6 +2991,20 @@ func schema_pkg_apis_core_v1alpha1_ExtensionRepoSpec(ref common.ReferenceCallbac
 							Format:      "",
 						},
 					},
+					"prefix": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A prefix used to support autoregistration of extensions within this repository. For example, an extension repo with prefix=\"internal\" will cause any load() calls that start with `ext://internal` to be loaded from this repository.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"path": {
+						SchemaProps: spec.SchemaProps{
+							Description: "A path within the repository root that contains all extensions. By default, all extensions are expected to live at the repository root.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"url"},
 			},
