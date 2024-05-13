@@ -298,6 +298,36 @@ def printExt2():
 	f.assertLoadRecorded(res, "my-ext", "my-ext-with-path")
 }
 
+func TestRepoPrefixAndPath(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// We don't want to have to bother with file:// escaping on windows.
+		// The repo reconciler already tests this.
+		t.Skip()
+	}
+
+	// Assert that extension repositories with a defined subpath load registered extensions
+	// from that subpath, including autoregistration by prefix match
+	f := newExtensionFixture(t)
+
+	f.tiltfile(fmt.Sprintf(`
+v1alpha1.extension_repo(name='custom', url='file://%s/ext-repo', prefix='custom', path='subdir')
+
+# Should load an extension from the custom repo at <repo.path>/my-ext
+load("ext://custom/my-ext", "printExt")
+printExt()
+`, f.tmp.Path()))
+
+	extContent := `
+def printExt():
+	print("main ext")
+	`
+
+	f.tmp.WriteFile(filepath.Join("ext-repo", "subdir", "my-ext", "Tiltfile"), extContent)
+
+	res := f.assertExecOutput("main ext")
+	f.assertLoadRecorded(res, "custom/my-ext")
+}
+
 type extensionFixture struct {
 	t     *testing.T
 	skf   *starkit.Fixture
