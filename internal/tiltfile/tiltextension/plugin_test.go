@@ -257,6 +257,47 @@ printFoo()
 	f.assertLoadRecorded(res, "custom/ext")
 }
 
+func TestRepoPath(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// We don't want to have to bother with file:// escaping on windows.
+		// The repo reconciler already tests this.
+		t.Skip()
+	}
+
+	// Assert that extension repositories with a defined subpath load registered extensions
+	// from that subpath
+	f := newExtensionFixture(t)
+
+	f.tiltfile(fmt.Sprintf(`
+v1alpha1.extension_repo(name='custom', url='file://%s/ext-repo', path='subdir')
+v1alpha1.extension(name='my-ext', repo_name='custom')
+v1alpha1.extension(name='my-ext-with-path', repo_name='custom', repo_path='subdir2')
+
+# Assert that loading an extension without a repo_path loads from the repo-wide path
+load("ext://my-ext", "printExt")
+printExt()
+
+load("ext://my-ext-with-path", "printExt2")
+printExt2()
+`, f.tmp.Path()))
+
+	extContent := `
+def printExt():
+	print("main ext")
+	`
+
+	extContent2 := `
+def printExt2():
+	print("sub ext")
+	`
+
+	f.tmp.WriteFile(filepath.Join("ext-repo", "subdir", "Tiltfile"), extContent)
+	f.tmp.WriteFile(filepath.Join("ext-repo", "subdir", "subdir2", "Tiltfile"), extContent2)
+
+	res := f.assertExecOutput("main ext\nsub ext")
+	f.assertLoadRecorded(res, "my-ext", "my-ext-with-path")
+}
+
 type extensionFixture struct {
 	t     *testing.T
 	skf   *starkit.Fixture

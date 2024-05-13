@@ -126,7 +126,11 @@ func (r *Reconciler) apply(ext *v1alpha1.Extension, repo *v1alpha1.ExtensionRepo
 		return v1alpha1.ExtensionStatus{Error: fmt.Sprintf("extension repo not loaded: %s", ext.Spec.RepoName)}
 	}
 
-	absPath := filepath.Join(repo.Status.Path, ext.Spec.RepoPath, "Tiltfile")
+	// The absolute path to an extension's Tiltfile is a combination of:
+	//  - path to the repository on disk (repo.Status.Path)
+	//  - specified path for all extensions within the repository (repo.Spec.Path)
+	//  - specified path for the extension (ext.Spec.RepoPath)
+	absPath := filepath.Join(repo.Status.Path, repo.Spec.Path, ext.Spec.RepoPath, "Tiltfile")
 
 	// Make sure the user isn't trying to use path tricks to "escape" the repo.
 	if !ospath.IsChild(repo.Status.Path, absPath) {

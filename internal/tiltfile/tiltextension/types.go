@@ -49,6 +49,6 @@ func (r *FakeExtReconciler) ForceApply(ext *v1alpha1.Extension, repo *v1alpha1.E
 		return v1alpha1.ExtensionStatus{Error: r.Error}
 	}
 	return v1alpha1.ExtensionStatus{
-		Path: filepath.Join(repo.Status.Path, ext.Spec.RepoPath, "Tiltfile"),
+		Path: filepath.Join(repo.Status.Path, repo.Spec.Path, ext.Spec.RepoPath, "Tiltfile"),
 	}
 }

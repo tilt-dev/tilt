@@ -49,7 +49,51 @@ func TestDefault(t *testing.T) {
 	})
 
 	assert.Equal(t, f.ma.Counts, []analytics.CountEvent{
-		analytics.CountEvent{
+		{
+			Name: "api.extension.load",
+			Tags: map[string]string{
+				"ext_path":      "my-ext",
+				"repo_type":     "file",
+				"repo_url_hash": tiltanalytics.HashSHA1(repo.Spec.URL),
+			},
+			N: 1,
+		},
+	})
+}
+
+// Assert that the repo extension path, if specified, is used for extension location
+func TestRepoSubpath(t *testing.T) {
+	f := newFixture(t)
+	repo := f.setupRepoSubpath("subpath")
+
+	ext := v1alpha1.Extension{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "my-repo:my-ext",
+		},
+		Spec: v1alpha1.ExtensionSpec{
+			RepoName: "my-repo",
+			RepoPath: "my-ext",
+			Args:     []string{"--namespaces=foo"},
+		},
+	}
+	f.Create(&ext)
+
+	f.MustGet(types.NamespacedName{Name: "my-repo:my-ext"}, &ext)
+
+	p := f.JoinPath("my-repo", "subpath", "my-ext", "Tiltfile")
+	require.Equal(t, p, ext.Status.Path)
+
+	var tf v1alpha1.Tiltfile
+	f.MustGet(types.NamespacedName{Name: "my-repo:my-ext"}, &tf)
+	require.Equal(t, tf.Spec, v1alpha1.TiltfileSpec{
+		Path:      p,
+		Labels:    map[string]string{"extension.my-repo_my-ext": "extension.my-repo_my-ext"},
+		RestartOn: &v1alpha1.RestartOnSpec{FileWatches: []string{"configs:my-repo:my-ext"}},
+		Args:      []string{"--namespaces=foo"},
+	})
+
+	assert.Equal(t, f.ma.Counts, []analytics.CountEvent{
+		{
 			Name: "api.extension.load",
 			Tags: map[string]string{
 				"ext_path":      "my-ext",
@@ -198,6 +242,26 @@ func (f *fixture) setupRepo() *v1alpha1.ExtensionRepo {
 		},
 		Spec: v1alpha1.ExtensionRepoSpec{
 			URL: fmt.Sprintf("file://%s", f.JoinPath("my-repo")),
+		},
+		Status: v1alpha1.ExtensionRepoStatus{
+			Path: f.JoinPath("my-repo"),
+		},
+	}
+	f.Create(&repo)
+	return &repo
+}
+
+func (f *fixture) setupRepoSubpath(subpath string) *v1alpha1.ExtensionRepo {
+	p := f.JoinPath("my-repo", subpath, "my-ext", "Tiltfile")
+	f.WriteFile(p, "print('hello-world')")
+
+	repo := v1alpha1.ExtensionRepo{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "my-repo",
+		},
+		Spec: v1alpha1.ExtensionRepoSpec{
+			URL:  fmt.Sprintf("file://%s", f.JoinPath("my-repo")),
+			Path: subpath,
 		},
 		Status: v1alpha1.ExtensionRepoStatus{
 			Path: f.JoinPath("my-repo"),
