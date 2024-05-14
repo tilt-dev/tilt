@@ -20,6 +20,7 @@ require (
 	github.com/fsnotify/fsevents v0.1.1
 	github.com/gdamore/tcell v1.1.3
 	github.com/go-logr/logr v1.4.1
+	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.4
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.3.0
@@ -62,7 +63,7 @@ require (
 	go.opentelemetry.io/otel v1.19.0
 	go.opentelemetry.io/otel/sdk v1.19.0
 	go.opentelemetry.io/otel/trace v1.19.0
-	go.starlark.net v0.0.0-20230525235612-a134d8f9ddca
+	go.starlark.net v0.0.0-20240510163022-f457c4c2b267
 	go.uber.org/atomic v1.10.0
 	golang.org/x/exp v0.0.0-20230713183714-613f0c0eb8a1
 	golang.org/x/mod v0.15.0
@@ -145,7 +146,6 @@ require (
 	github.com/gofrs/flock v0.8.1 // indirect
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
 	github.com/gogo/googleapis v1.4.1 // indirect
-	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/google/btree v1.0.1 // indirect
 	github.com/google/cel-go v0.17.8 // indirect
