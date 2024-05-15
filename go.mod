@@ -63,7 +63,7 @@ require (
 	go.opentelemetry.io/otel v1.19.0
 	go.opentelemetry.io/otel/sdk v1.19.0
 	go.opentelemetry.io/otel/trace v1.19.0
-	go.starlark.net v0.0.0-20230525235612-a134d8f9ddca
+	go.starlark.net v0.0.0-20240510163022-f457c4c2b267
 	go.uber.org/atomic v1.10.0
 	golang.org/x/exp v0.0.0-20230713183714-613f0c0eb8a1
 	golang.org/x/mod v0.15.0
