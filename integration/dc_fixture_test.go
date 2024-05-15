@@ -102,24 +102,3 @@ func (f *dcFixture) CurlUntil(ctx context.Context, service string, url string, e
 		return out.String(), err
 	}, expectedContents)
 }
-
-func doV1V2(t *testing.T, body func(t *testing.T)) {
-	t.Run("docker-compose-v1", func(t *testing.T) {
-		t.Setenv("TILT_DOCKER_COMPOSE_CMD", "docker-compose-v1")
-		fmt.Println("Running with docker-compose-v1")
-		body(t)
-	})
-
-	cmd := exec.Command("docker-compose", "version")
-	out, err := cmd.Output()
-	if err != nil {
-		fmt.Printf("error: getting docker-compose version: %v\n", err)
-	} else {
-		fmt.Print(string(out))
-	}
-	t.Run("docker-compose v2?", func(t *testing.T) {
-		fmt.Println("Running with docker-compose")
-		body(t)
-		fmt.Print(string(out))
-	})
-}

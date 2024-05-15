@@ -3,9 +3,6 @@ FROM cimg/go:1.22-node
 # --- DEPENDENCIES ---
 USER root
 
-RUN curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose-v1 \
-    && chmod +x /usr/local/bin/docker-compose-v1
-
 # NOTE: cimg/go already includes Docker Compose v2, but it's not always up-to-date
 ARG COMPOSE_V2_VERSION="2.25.0"
 RUN mkdir -p "${HOME}/.docker/cli-plugins" \
