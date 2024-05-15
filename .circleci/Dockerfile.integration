@@ -31,12 +31,6 @@ RUN set -exu \
   && which docker \
   && (docker version || true)
 
-# docker-compose v1
-ARG DOCKER_COMPOSE_V1_VERSION=1.29.2
-RUN curl -fL "https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_V1_VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose-v1 \
-  && chmod a+x /usr/local/bin/docker-compose-v1 \
-  && docker-compose-v1 version
-
 # docker-compose v2
 ARG DOCKER_COMPOSE_V2_VERSION=v2.25.0
 RUN curl -fL "https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_V2_VERSION}/docker-compose-$(uname -s | tr '[A-Z]' '[a-z]')-$(uname -m)" -o /usr/local/bin/docker-compose \

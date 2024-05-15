@@ -10,7 +10,7 @@ jobs:
   build-linux:
     resource_class: medium+
     docker:
-      - image: docker/tilt-ci@sha256:f02bd52d3b8b50ee231526d4bc88e065130bd4a9dc483aa266a68197c5494124
+      - image: docker/tilt-ci@sha256:d5862a9bfdad294feb50849bae1d9add22b1f5d0e750273c24683cc5edc2c4fa
     # apiserver code generation scripts require being in GOPATH
     working_directory: /home/circleci/go/src/github.com/tilt-dev/tilt
 
@@ -50,7 +50,7 @@ jobs:
 
   check-docs:
     docker:
-      - image: docker/tilt-ci@sha256:f02bd52d3b8b50ee231526d4bc88e065130bd4a9dc483aa266a68197c5494124
+      - image: docker/tilt-ci@sha256:d5862a9bfdad294feb50849bae1d9add22b1f5d0e750273c24683cc5edc2c4fa
     steps:
       - checkout
       - setup_remote_docker
