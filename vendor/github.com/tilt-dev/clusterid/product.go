@@ -78,7 +78,7 @@ func ProductFromContext(c *clientcmdapi.Context, cl *clientcmdapi.Cluster) Produ
 		// As of KinD 0.6.0, KinD uses a context name prefix
 		// https://github.com/kubernetes-sigs/kind/issues/1060
 		return ProductKIND
-	} else if strings.HasPrefix(cn, "microk8s-cluster") {
+	} else if strings.HasPrefix(cn, "microk8s") {
 		return ProductMicroK8s
 	} else if strings.HasPrefix(cn, "api-crc-testing") {
 		return ProductCRC
