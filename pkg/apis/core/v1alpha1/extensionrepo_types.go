@@ -77,14 +77,14 @@ type ExtensionRepoSpec struct {
 	// extension at load time that looks like:
 	//  load("ext://internal/ext-name", "...")
 	// +optional
-	LoadHost string `json:"load_host,omitempty" protobuf:"bytes,3,opt,name=load_host"`
+	LoadHost string `json:"loadHost,omitempty" protobuf:"bytes,3,opt,name=loadHost"`
 
 	// A path within the repository root that contains all extensions. By default, all extensions
 	// are expected to live at the repository root.
 	// Note that it is an error for this to be set for extension repositories using file:// URLs.
 	// For directory based extension repositories, you can add the subpath in the URL.
 	// +optional
-	GitSubpath string `json:"git_subpath,omitempty" protobuf:"bytes,4,opt,name=git_subpath"`
+	GitSubpath string `json:"gitSubpath,omitempty" protobuf:"bytes,4,opt,name=gitSubpath"`
 }
 
 var (

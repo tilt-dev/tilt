@@ -1140,14 +1140,14 @@ message ExtensionRepoSpec {
   // extension at load time that looks like:
   //  load("ext://internal/ext-name", "...")
   // +optional
-  optional string load_host = 3;
+  optional string loadHost = 3;
 
   // A path within the repository root that contains all extensions. By default, all extensions
   // are expected to live at the repository root.
   // Note that it is an error for this to be set for extension repositories using file:// URLs.
   // For directory based extension repositories, you can add the subpath in the URL.
   // +optional
-  optional string git_subpath = 4;
+  optional string gitSubpath = 4;
 }
 
 // ExtensionRepoStatus defines the observed state of ExtensionRepo

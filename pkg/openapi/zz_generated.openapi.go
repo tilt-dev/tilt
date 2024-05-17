@@ -2991,14 +2991,14 @@ func schema_pkg_apis_core_v1alpha1_ExtensionRepoSpec(ref common.ReferenceCallbac
 							Format:      "",
 						},
 					},
-					"load_host": {
+					"loadHost": {
 						SchemaProps: spec.SchemaProps{
 							Description: "When set, this allows for automatically registering extensions within this repository in the following conditions:\n - The extension is not already registered\n - The first component of the load path matches the load_host of an extension repository.\nFor example, an extension_repo call with load_host=\"internal\" will support registering an extension at load time that looks like:\n load(\"ext://internal/ext-name\", \"...\")",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
-					"git_subpath": {
+					"gitSubpath": {
 						SchemaProps: spec.SchemaProps{
 							Description: "A path within the repository root that contains all extensions. By default, all extensions are expected to live at the repository root. Note that it is an error for this to be set for extension repositories using file:// URLs. For directory based extension repositories, you can add the subpath in the URL.",
 							Type:        []string{"string"},
