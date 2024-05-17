@@ -260,8 +260,8 @@ func (f *fixture) setupRepoSubpath(subpath string) *v1alpha1.ExtensionRepo {
 			Name: "my-repo",
 		},
 		Spec: v1alpha1.ExtensionRepoSpec{
-			URL:  fmt.Sprintf("file://%s", f.JoinPath("my-repo")),
-			Path: subpath,
+			URL:        fmt.Sprintf("file://%s", f.JoinPath("my-repo")),
+			GitSubpath: subpath,
 		},
 		Status: v1alpha1.ExtensionRepoStatus{
 			Path: f.JoinPath("my-repo"),

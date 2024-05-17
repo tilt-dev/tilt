@@ -69,16 +69,22 @@ type ExtensionRepoSpec struct {
 	// +optional
 	Ref string `json:"ref,omitempty" protobuf:"bytes,2,opt,name=ref"`
 
-	// A prefix used to support autoregistration of extensions within this repository.
-	// For example, an extension repo with prefix="internal" will cause any load()
-	// calls that start with `ext://internal` to be loaded from this repository.
+	// When set, this allows for automatically registering extensions within this repository in the
+	// following conditions:
+	//  - The extension is not already registered
+	//  - The first component of the load path matches the load_host of an extension repository.
+	// For example, an extension_repo call with load_host="internal" will support registering an
+	// extension at load time that looks like:
+	//  load("ext://internal/ext-name", "...")
 	// +optional
-	Prefix string `json:"prefix,omitempty" protobuf:"bytes,3,opt,name=prefix"`
+	LoadHost string `json:"load_host,omitempty" protobuf:"bytes,3,opt,name=load_host"`
 
 	// A path within the repository root that contains all extensions. By default, all extensions
 	// are expected to live at the repository root.
+	// Note that it is an error for this to be set for extension repositories using file:// URLs.
+	// For directory based extension repositories, you can add the subpath in the URL.
 	// +optional
-	Path string `json:"path,omitempty" protobuf:"bytes,4,opt,name=path"`
+	GitSubpath string `json:"git_subpath,omitempty" protobuf:"bytes,4,opt,name=git_subpath"`
 }
 
 var (
@@ -142,6 +148,12 @@ func (in *ExtensionRepo) Validate(ctx context.Context) field.ErrorList {
 			field.NewPath("spec.url"),
 			url,
 			"file:// URLs must be absolute (e.g., file:///home/user/repo)"))
+	} else if isFile && in.Spec.GitSubpath != "" {
+		fieldErrors = append(fieldErrors, field.Invalid(
+			field.NewPath("spec.git_subpath"),
+			in.Spec.GitSubpath,
+			"cannot use git_subpath for file:// URL extension repositories"),
+		)
 	}
 	return fieldErrors
 }

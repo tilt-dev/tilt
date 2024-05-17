@@ -9,10 +9,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/internal/tiltfile/include"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 	tiltfilev1alpha1 "github.com/tilt-dev/tilt/internal/tiltfile/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/apis"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
 func TestFetchableAlreadyPresentWorks(t *testing.T) {
@@ -233,19 +237,19 @@ def printReal():
 	f.assertLoadRecorded(res, "nested/fake", "nested/real")
 }
 
-func TestRepoPrefix(t *testing.T) {
+func TestRepoLoadHost(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		// We don't want to have to bother with file:// escaping on windows.
 		// The repo reconciler already tests this.
 		t.Skip()
 	}
 
-	// Assert that extension repositories with a prefix allow "autoregistration" of extensions
-	// if the extension prefix starts with the registered repository prefix.
+	// Assert that extension repositories with a load_host allow "autoregistration" of extensions if
+	// the extension path starts with the registered repository load_host.
 	f := newExtensionFixture(t)
 
 	f.tiltfile(fmt.Sprintf(`
-v1alpha1.extension_repo(name='custom', url='file://%s/ext-repo', prefix='custom')
+v1alpha1.extension_repo(name='custom', url='file://%s/ext-repo', load_host='custom')
 
 load("ext://custom/ext", "printFoo")
 printFoo()
@@ -257,19 +261,21 @@ printFoo()
 	f.assertLoadRecorded(res, "custom/ext")
 }
 
-func TestRepoPath(t *testing.T) {
+func TestRepoGitSubpath(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		// We don't want to have to bother with file:// escaping on windows.
 		// The repo reconciler already tests this.
 		t.Skip()
 	}
 
+	t.Skip("cannot use file:// repos with git_subpath, making this test unusable")
+
 	// Assert that extension repositories with a defined subpath load registered extensions
 	// from that subpath
 	f := newExtensionFixture(t)
 
 	f.tiltfile(fmt.Sprintf(`
-v1alpha1.extension_repo(name='custom', url='file://%s/ext-repo', path='subdir')
+v1alpha1.extension_repo(name='custom', url='file://%s/ext-repo', git_subpath='subdir')
 v1alpha1.extension(name='my-ext', repo_name='custom')
 v1alpha1.extension(name='my-ext-with-path', repo_name='custom', repo_path='subdir2')
 
@@ -298,19 +304,21 @@ def printExt2():
 	f.assertLoadRecorded(res, "my-ext", "my-ext-with-path")
 }
 
-func TestRepoPrefixAndPath(t *testing.T) {
+func TestRepoLoadHostAndSubpath(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		// We don't want to have to bother with file:// escaping on windows.
 		// The repo reconciler already tests this.
 		t.Skip()
 	}
 
+	t.Skip("cannot use file:// repos with git_subpath, making this test unusable")
+
 	// Assert that extension repositories with a defined subpath load registered extensions
-	// from that subpath, including autoregistration by prefix match
+	// from that subpath, including autoregistration by host match
 	f := newExtensionFixture(t)
 
 	f.tiltfile(fmt.Sprintf(`
-v1alpha1.extension_repo(name='custom', url='file://%s/ext-repo', prefix='custom', path='subdir')
+v1alpha1.extension_repo(name='custom', url='file://%s/ext-repo', load_host='custom', git_subpath='subdir')
 
 # Should load an extension from the custom repo at <repo.path>/my-ext
 load("ext://custom/my-ext", "printExt")
@@ -336,6 +344,160 @@ def printSub():
 
 	res := f.assertExecOutput("main ext\nsub ext")
 	f.assertLoadRecorded(res, "custom/my-ext", "custom/my-ext/subext")
+}
+
+// Verifies behavior around registering an extension using the default repository as a fallback
+func TestRegisterDefaultExtension(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// We don't want to have to bother with file:// escaping on windows.
+		// The repo reconciler already tests this.
+		t.Skip()
+	}
+
+	f := newExtensionFixture(t)
+
+	p := NewFakePlugin(f.extrr, f.extr)
+
+	// NOTE: I don't know a better way to get a model, and this test needs one to get an object set
+	f.tiltfile(`print("hello")`)
+	model, _ := f.skf.ExecFile("Tiltfile")
+	objSet, err := tiltfilev1alpha1.GetState(model)
+	if err != nil {
+		f.t.Fatalf("unexpected error %v", err)
+	}
+
+	moduleName := "tests/golang"
+	extName := apis.SanitizeName(moduleName)
+	extSet := objSet.GetOrCreateTypedSet(&v1alpha1.Extension{})
+
+	ext := p.registerDefaultExtension(nil /* *starlark.Thread */, extSet, extName, moduleName)
+
+	if ext.GetName() != extName {
+		f.t.Fatalf("want name %s, got %s", extName, ext.GetName())
+	}
+
+	if ext.Spec.RepoName != defaultRepoName {
+		f.t.Fatalf("want repo name %s, got %s", defaultRepoName, ext.Spec.RepoName)
+	}
+
+	// And look in the extension set to make sure it exists
+	if existing, exists := extSet[extName]; !exists {
+		f.t.Fatal("expected extension to exist in object set")
+	} else if existing != ext {
+		f.t.Fatalf("expected registered extension to be identical to returned extension")
+	}
+}
+
+// Verifies the behavior of p.registerExtension
+func TestRegisterExtension(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// We don't want to have to bother with file:// escaping on windows.
+		// The repo reconciler already tests this.
+		t.Skip()
+	}
+
+	// Assert that extension repositories with a defined subpath load registered extensions
+	// from that subpath, including autoregistration by host match
+	f := newExtensionFixture(t)
+
+	p := NewFakePlugin(f.extrr, f.extr)
+
+	f.tiltfile(`print("hello")`)
+	model, _ := f.skf.ExecFile("Tiltfile")
+	objSet, err := tiltfilev1alpha1.GetState(model)
+	if err != nil {
+		f.t.Fatalf("unexpected error %v", err)
+	}
+
+	extSet := objSet.GetOrCreateTypedSet(&v1alpha1.Extension{})
+	repoSet := objSet.GetOrCreateTypedSet(&v1alpha1.ExtensionRepo{})
+
+	repo := &v1alpha1.ExtensionRepo{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "custom",
+		},
+		Spec: v1alpha1.ExtensionRepoSpec{
+			URL:      fmt.Sprintf("file:///%s/my-custom-repo", f.tmp.Path()),
+			LoadHost: "custom",
+		},
+	}
+
+	repoSet[repo.GetName()] = repo
+
+	moduleName := "custom/ext"
+	extName := apis.SanitizeName(moduleName)
+
+	ext := p.registerExtension(nil /* *starlark.Thread */, extSet, repoSet, extName, moduleName)
+
+	if ext.GetName() != extName {
+		f.t.Fatalf("want name %s, got %s", extName, ext.GetName())
+	}
+
+	if ext.Spec.RepoName != repo.GetName() {
+		f.t.Fatalf("want repo name %s, got %s", repo.GetName(), ext.Spec.RepoName)
+	}
+
+	// And look in the extension set to make sure it exists
+	if existing, exists := extSet[extName]; !exists {
+		f.t.Fatal("expected extension to exist in object set")
+	} else if existing != ext {
+		f.t.Fatalf("expected registered extension to be identical to returned extension")
+	}
+}
+
+// Verifies the behavior of p.registerExtension when there's no matching repository
+func TestRegisterExtensionNoMatchingRepo(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// We don't want to have to bother with file:// escaping on windows.
+		// The repo reconciler already tests this.
+		t.Skip()
+	}
+
+	f := newExtensionFixture(t)
+
+	p := NewFakePlugin(f.extrr, f.extr)
+
+	f.tiltfile(`print("hello")`)
+	model, _ := f.skf.ExecFile("Tiltfile")
+	objSet, err := tiltfilev1alpha1.GetState(model)
+	if err != nil {
+		f.t.Fatalf("unexpected error %v", err)
+	}
+
+	repo := &v1alpha1.ExtensionRepo{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "custom",
+		},
+		Spec: v1alpha1.ExtensionRepoSpec{
+			URL:      fmt.Sprintf("file:///%s/my-custom-repo", f.tmp.Path()),
+			LoadHost: "custom",
+		},
+	}
+
+	extSet := objSet.GetOrCreateTypedSet(&v1alpha1.Extension{})
+	repoSet := objSet.GetOrCreateTypedSet(&v1alpha1.ExtensionRepo{})
+
+	repoSet[repo.GetName()] = repo
+
+	moduleName := "tests/golang"
+	extName := apis.SanitizeName(moduleName)
+	ext := p.registerExtension(nil /* *starlark.Thread */, extSet, repoSet, extName, moduleName)
+
+	if ext.GetName() != extName {
+		f.t.Fatalf("want name %s, got %s", extName, ext.GetName())
+	}
+
+	// Because our repository prefix is "custom", it should *not* be used for this extension
+	if ext.Spec.RepoName != defaultRepoName {
+		f.t.Fatalf("want repo name %s, got %s", defaultRepoName, ext.Spec.RepoName)
+	}
+
+	// And look in the extension set to make sure it exists
+	if existing, exists := extSet[extName]; !exists {
+		f.t.Fatal("expected extension to exist in object set")
+	} else if existing != ext {
+		f.t.Fatalf("expected registered extension to be identical to returned extension")
+	}
 }
 
 type extensionFixture struct {

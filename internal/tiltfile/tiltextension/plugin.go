@@ -130,13 +130,76 @@ func (e *Plugin) LocalPath(t *starlark.Thread, arg string) (localPath string, er
 //
 // Otherwise, infers an extension object that points to the default repo.
 func (e *Plugin) ensureExtension(t *starlark.Thread, objSet apiset.ObjectSet, moduleName string) *v1alpha1.Extension {
-	// TODO: Better names
-	head, rest, hasSlash := strings.Cut(moduleName, "/")
-
 	extName := apis.SanitizeName(moduleName)
 
-	// Represents an extension by name extName in the default extensions repository.
-	// Used as a fallback
+	extSet := objSet.GetOrCreateTypedSet(&v1alpha1.Extension{})
+	if existing, exists := extSet[extName]; exists {
+		ext := existing.(*v1alpha1.Extension)
+		metav1.SetMetaDataAnnotation(&ext.ObjectMeta, v1alpha1.AnnotationManagedBy, "tiltfile.loader")
+		return ext
+	}
+
+	repoSet := objSet.GetOrCreateTypedSet(&v1alpha1.ExtensionRepo{})
+
+	return e.registerExtension(t, extSet, repoSet, extName, moduleName)
+}
+
+// In cases where an extension is not already registered, this function will search for an extension
+// repo that can satisfy the requested extension, with a fallback to an extension in the default
+// repository.
+func (e *Plugin) registerExtension(t *starlark.Thread, extSet, repoSet apiset.TypedObjectSet, extName, moduleName string) *v1alpha1.Extension {
+	loadHost, extPath, tryRegister := strings.Cut(moduleName, "/")
+
+	// Safety fallback (in case this is called without already previously calling ensureExtension)
+	existing := extSet[extName]
+	if existing != nil {
+		return existing.(*v1alpha1.Extension)
+	}
+
+	// If the supplied module name does not contain a / then there's no point looking for matching
+	// extension repositories. We can just return an extension named extName in the default
+	// repository
+	if !tryRegister {
+		return e.registerDefaultExtension(t, extSet, extName, moduleName)
+	}
+
+	// Otherwise, look for a repository that can satisfy this lookup
+	for _, v := range repoSet {
+		repo := v.(*v1alpha1.ExtensionRepo)
+		if repo.Spec.LoadHost == "" || repo.Spec.LoadHost != loadHost {
+			continue
+		}
+
+		// This repo load_host matches the first component of the module name
+		// So we can register this as an extension on that repo
+		ext := &v1alpha1.Extension{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: extName,
+				Annotations: map[string]string{
+					v1alpha1.AnnotationManagedBy: "tiltfile.loader",
+				},
+			},
+			Spec: v1alpha1.ExtensionSpec{
+				RepoName: repo.Name,
+				RepoPath: extPath,
+			},
+		}
+
+		extSet[extName] = ext
+		return ext
+	}
+
+	return e.registerDefaultExtension(t, extSet, extName, moduleName)
+}
+
+// Registers an extension named moduleName in the default extension repository. Used as a fallback.
+func (e *Plugin) registerDefaultExtension(t *starlark.Thread, extSet apiset.TypedObjectSet, extName, moduleName string) *v1alpha1.Extension {
+	// Safety fallback
+	existing := extSet[extName]
+	if existing != nil {
+		return existing.(*v1alpha1.Extension)
+	}
+
 	defaultExt := &v1alpha1.Extension{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: extName,
@@ -150,46 +213,7 @@ func (e *Plugin) ensureExtension(t *starlark.Thread, objSet apiset.ObjectSet, mo
 		},
 	}
 
-	typedSet := objSet.GetOrCreateTypedSet(defaultExt)
-	existing, exists := typedSet[extName]
-
-	// If an existing extension by this name does not exist, check if the moduleName prefix matches
-	// the prefix of an existing extension repository
-	if !exists && hasSlash {
-		repoSet := objSet.GetOrCreateTypedSet(&v1alpha1.ExtensionRepo{})
-
-		// TODO: Is there a better way to do this vs iterating over every extension repo?
-		for _, v := range repoSet {
-			repo := v.(*v1alpha1.ExtensionRepo)
-			if repo.Spec.Prefix != "" && repo.Spec.Prefix == head {
-				// This repo prefix matches the head of the module name
-				// So we can register this as an extension on that repo
-				ext := &v1alpha1.Extension{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: extName,
-						Annotations: map[string]string{
-							v1alpha1.AnnotationManagedBy: "tiltfile.loader",
-						},
-					},
-					Spec: v1alpha1.ExtensionSpec{
-						RepoName: repo.Name,
-						RepoPath: rest,
-					},
-				}
-
-				typedSet[extName] = ext
-				return ext
-			}
-		}
-	}
-
-	if exists {
-		ext := existing.(*v1alpha1.Extension)
-		metav1.SetMetaDataAnnotation(&ext.ObjectMeta, v1alpha1.AnnotationManagedBy, "tiltfile.loader")
-		return ext
-	}
-
-	typedSet[extName] = defaultExt
+	extSet[extName] = defaultExt
 	return defaultExt
 }
 
