@@ -1131,6 +1131,23 @@ message ExtensionRepoSpec {
   // the repo to the latest version.
   // +optional
   optional string ref = 2;
+
+  // When set, this allows for automatically registering extensions within this repository in the
+  // following conditions:
+  //  - The extension is not already registered
+  //  - The first component of the load path matches the load_host of an extension repository.
+  // For example, an extension_repo call with load_host="internal" will support registering an
+  // extension at load time that looks like:
+  //  load("ext://internal/ext-name", "...")
+  // +optional
+  optional string loadHost = 3;
+
+  // A path within the repository root that contains all extensions. By default, all extensions
+  // are expected to live at the repository root.
+  // Note that it is an error for this to be set for extension repositories using file:// URLs.
+  // For directory based extension repositories, you can add the subpath in the URL.
+  // +optional
+  optional string gitSubpath = 4;
 }
 
 // ExtensionRepoStatus defines the observed state of ExtensionRepo

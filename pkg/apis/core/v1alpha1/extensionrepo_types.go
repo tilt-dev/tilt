@@ -68,11 +68,30 @@ type ExtensionRepoSpec struct {
 	// the repo to the latest version.
 	// +optional
 	Ref string `json:"ref,omitempty" protobuf:"bytes,2,opt,name=ref"`
+
+	// When set, this allows for automatically registering extensions within this repository in the
+	// following conditions:
+	//  - The extension is not already registered
+	//  - The first component of the load path matches the load_host of an extension repository.
+	// For example, an extension_repo call with load_host="internal" will support registering an
+	// extension at load time that looks like:
+	//  load("ext://internal/ext-name", "...")
+	// +optional
+	LoadHost string `json:"loadHost,omitempty" protobuf:"bytes,3,opt,name=loadHost"`
+
+	// A path within the repository root that contains all extensions. By default, all extensions
+	// are expected to live at the repository root.
+	// Note that it is an error for this to be set for extension repositories using file:// URLs.
+	// For directory based extension repositories, you can add the subpath in the URL.
+	// +optional
+	GitSubpath string `json:"gitSubpath,omitempty" protobuf:"bytes,4,opt,name=gitSubpath"`
 }
 
-var _ resource.Object = &ExtensionRepo{}
-var _ resourcerest.SingularNameProvider = &ExtensionRepo{}
-var _ resourcestrategy.Validater = &ExtensionRepo{}
+var (
+	_ resource.Object                   = &ExtensionRepo{}
+	_ resourcerest.SingularNameProvider = &ExtensionRepo{}
+	_ resourcestrategy.Validater        = &ExtensionRepo{}
+)
 
 func (in *ExtensionRepo) GetSingularName() string {
 	return "extensionrepo"
@@ -129,6 +148,12 @@ func (in *ExtensionRepo) Validate(ctx context.Context) field.ErrorList {
 			field.NewPath("spec.url"),
 			url,
 			"file:// URLs must be absolute (e.g., file:///home/user/repo)"))
+	} else if isFile && in.Spec.GitSubpath != "" {
+		fieldErrors = append(fieldErrors, field.Invalid(
+			field.NewPath("spec.git_subpath"),
+			in.Spec.GitSubpath,
+			"cannot use git_subpath for file:// URL extension repositories"),
+		)
 	}
 	return fieldErrors
 }

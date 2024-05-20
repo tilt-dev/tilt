@@ -23,8 +23,10 @@ import (
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
-const extensionPrefix = "ext://"
-const defaultRepoName = "default"
+const (
+	extensionPrefix = "ext://"
+	defaultRepoName = "default"
+)
 
 type Plugin struct {
 	repoReconciler ExtRepoReconciler
@@ -129,6 +131,75 @@ func (e *Plugin) LocalPath(t *starlark.Thread, arg string) (localPath string, er
 // Otherwise, infers an extension object that points to the default repo.
 func (e *Plugin) ensureExtension(t *starlark.Thread, objSet apiset.ObjectSet, moduleName string) *v1alpha1.Extension {
 	extName := apis.SanitizeName(moduleName)
+
+	extSet := objSet.GetOrCreateTypedSet(&v1alpha1.Extension{})
+	if existing, exists := extSet[extName]; exists {
+		ext := existing.(*v1alpha1.Extension)
+		metav1.SetMetaDataAnnotation(&ext.ObjectMeta, v1alpha1.AnnotationManagedBy, "tiltfile.loader")
+		return ext
+	}
+
+	repoSet := objSet.GetOrCreateTypedSet(&v1alpha1.ExtensionRepo{})
+
+	return e.registerExtension(t, extSet, repoSet, extName, moduleName)
+}
+
+// In cases where an extension is not already registered, this function will search for an extension
+// repo that can satisfy the requested extension, with a fallback to an extension in the default
+// repository.
+func (e *Plugin) registerExtension(t *starlark.Thread, extSet, repoSet apiset.TypedObjectSet, extName, moduleName string) *v1alpha1.Extension {
+	loadHost, extPath, tryRegister := strings.Cut(moduleName, "/")
+
+	// Safety fallback (in case this is called without already previously calling ensureExtension)
+	existing := extSet[extName]
+	if existing != nil {
+		return existing.(*v1alpha1.Extension)
+	}
+
+	// If the supplied module name does not contain a / then there's no point looking for matching
+	// extension repositories. We can just return an extension named extName in the default
+	// repository
+	if !tryRegister {
+		return e.registerDefaultExtension(t, extSet, extName, moduleName)
+	}
+
+	// Otherwise, look for a repository that can satisfy this lookup
+	for _, v := range repoSet {
+		repo := v.(*v1alpha1.ExtensionRepo)
+		if repo.Spec.LoadHost == "" || repo.Spec.LoadHost != loadHost {
+			continue
+		}
+
+		// This repo load_host matches the first component of the module name
+		// So we can register this as an extension on that repo
+		ext := &v1alpha1.Extension{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: extName,
+				Annotations: map[string]string{
+					v1alpha1.AnnotationManagedBy: "tiltfile.loader",
+				},
+			},
+			Spec: v1alpha1.ExtensionSpec{
+				RepoName: repo.Name,
+				RepoPath: extPath,
+			},
+		}
+
+		extSet[extName] = ext
+		return ext
+	}
+
+	return e.registerDefaultExtension(t, extSet, extName, moduleName)
+}
+
+// Registers an extension named moduleName in the default extension repository. Used as a fallback.
+func (e *Plugin) registerDefaultExtension(t *starlark.Thread, extSet apiset.TypedObjectSet, extName, moduleName string) *v1alpha1.Extension {
+	// Safety fallback
+	existing := extSet[extName]
+	if existing != nil {
+		return existing.(*v1alpha1.Extension)
+	}
+
 	defaultExt := &v1alpha1.Extension{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: extName,
@@ -142,15 +213,7 @@ func (e *Plugin) ensureExtension(t *starlark.Thread, objSet apiset.ObjectSet, mo
 		},
 	}
 
-	typedSet := objSet.GetOrCreateTypedSet(defaultExt)
-	existing, exists := typedSet[extName]
-	if exists {
-		ext := existing.(*v1alpha1.Extension)
-		metav1.SetMetaDataAnnotation(&ext.ObjectMeta, v1alpha1.AnnotationManagedBy, "tiltfile.loader")
-		return ext
-	}
-
-	typedSet[extName] = defaultExt
+	extSet[extName] = defaultExt
 	return defaultExt
 }
 
@@ -179,8 +242,10 @@ func (e *Plugin) ensureRepo(t *starlark.Thread, objSet apiset.ObjectSet, repoNam
 	return defaultRepo
 }
 
-var _ starkit.LoadInterceptor = (*Plugin)(nil)
-var _ starkit.StatefulPlugin = (*Plugin)(nil)
+var (
+	_ starkit.LoadInterceptor = (*Plugin)(nil)
+	_ starkit.StatefulPlugin  = (*Plugin)(nil)
+)
 
 func MustState(model starkit.Model) State {
 	state, err := GetState(model)
