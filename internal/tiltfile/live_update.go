@@ -173,7 +173,7 @@ func (s *tiltfileState) liveUpdateRun(thread *starlark.Thread, fn *starlark.Buil
 		return nil, err
 	}
 
-	command, err := value.ValueToUnixCmd(thread, commandVal, nil, nil)
+	command, err := value.ValueToUnixCmd(thread, commandVal, nil, nil, value.StdinMode{})
 	if err != nil {
 		return nil, err
 	}
