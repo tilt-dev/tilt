@@ -4,15 +4,18 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"sync"
 	"syscall"
 	"testing"
 	"time"
 
+	"github.com/creack/pty"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tilt-dev/tilt/internal/localexec"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/pkg/procutil"
@@ -32,6 +35,7 @@ type fakeExecProcess struct {
 	workdir   string
 	env       []string
 	startTime time.Time
+	stdinMode v1alpha1.StdinMode
 }
 
 type FakeExecer struct {
@@ -69,6 +73,7 @@ func (e *FakeExecer) Start(ctx context.Context, cmd model.Cmd, w io.Writer) chan
 		workdir:   cmd.Dir,
 		startTime: time.Now(),
 		env:       cmd.Env,
+		stdinMode: cmd.StdinMode,
 	}
 	e.mu.Unlock()
 
@@ -176,7 +181,16 @@ func (e *processExecer) processRun(ctx context.Context, cmd model.Cmd, w io.Writ
 	c.Stderr = w
 	c.Stdout = w
 
-	err = c.Start()
+	if cmd.StdinMode == v1alpha1.StdinModePty {
+		var f *os.File
+		f, err = pty.StartWithAttrs(c, nil, c.SysProcAttr)
+		if f != nil {
+			defer f.Close()
+		}
+	} else {
+		err = c.Start()
+	}
+
 	if err != nil {
 		logger.Get(ctx).Errorf("%s failed to start: %v", cmd.String(), err)
 		statusCh <- statusAndMetadata{

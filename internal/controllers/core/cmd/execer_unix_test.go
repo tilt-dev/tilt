@@ -4,8 +4,8 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
-	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -14,12 +14,31 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
+func TestStdinModeDefault(t *testing.T) {
+	f := newProcessExecFixture(t)
+	f.withStdinMode(v1alpha1.StdinModeDefault).start(
+		"echo terminal:$(tty)")
+	f.waitForStatus(Done)
+	f.assertLogContains("terminal:not a tty")
+}
+
+func TestStdinModePTY(t *testing.T) {
+	f := newProcessExecFixture(t)
+	f.withStdinMode(v1alpha1.StdinModePty).start(
+		"echo terminal:$(tty)")
+	f.waitForStatus(Done)
+
+	// Verify that it shows the same TTY as the TTY
+	// running the test.
+	fmt.Println("output:", f.testWriter.String())
+	f.assertLogContains("terminal:/dev")
+}
+
 func TestStopsBackgroundGrandchildren(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("no bash on windows")
-	}
 	f := newProcessExecFixture(t)
 
 	f.start(`bash -c 'sleep 100 &

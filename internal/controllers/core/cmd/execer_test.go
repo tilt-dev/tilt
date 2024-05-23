@@ -16,6 +16,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -38,7 +39,7 @@ func TestWorkdir(t *testing.T) {
 		cmd = "cd"
 	}
 
-	f.startWithWorkdir(cmd, d.Path())
+	f.withWorkdir(d.Path()).start(cmd)
 
 	f.assertCmdSucceeds()
 	f.assertLogContains(d.Path())
@@ -194,6 +195,8 @@ type processExecFixture struct {
 	execer     *processExecer
 	testWriter *bufsync.ThreadSafeBuffer
 	statusCh   chan statusAndMetadata
+	workdir    string
+	stdinMode  v1alpha1.StdinMode
 }
 
 func newProcessExecFixture(t *testing.T) *processExecFixture {
@@ -209,6 +212,8 @@ func newProcessExecFixture(t *testing.T) *processExecFixture {
 		cancel:     cancel,
 		execer:     execer,
 		testWriter: testWriter,
+		workdir:    ".",
+		stdinMode:  v1alpha1.StdinModeDefault,
 	}
 
 	t.Cleanup(ret.tearDown)
@@ -224,14 +229,21 @@ func (f *processExecFixture) startMalformedCommand() {
 	f.statusCh = f.execer.Start(f.ctx, c, f.testWriter)
 }
 
-func (f *processExecFixture) startWithWorkdir(cmd string, workdir string) {
-	c := model.ToHostCmd(cmd)
-	c.Dir = workdir
-	f.statusCh = f.execer.Start(f.ctx, c, f.testWriter)
+func (f *processExecFixture) withWorkdir(workdir string) *processExecFixture {
+	f.workdir = workdir
+	return f
+}
+
+func (f *processExecFixture) withStdinMode(stdinMode v1alpha1.StdinMode) *processExecFixture {
+	f.stdinMode = stdinMode
+	return f
 }
 
 func (f *processExecFixture) start(cmd string) {
-	f.startWithWorkdir(cmd, ".")
+	c := model.ToHostCmd(cmd)
+	c.Dir = f.workdir
+	c.StdinMode = f.stdinMode
+	f.statusCh = f.execer.Start(f.ctx, c, f.testWriter)
 }
 
 func (f *processExecFixture) assertCmdSucceeds() {
