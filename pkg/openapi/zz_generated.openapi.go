@@ -996,6 +996,13 @@ func schema_pkg_apis_core_v1alpha1_CmdSpec(ref common.ReferenceCallback) common.
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource"),
 						},
 					},
+					"stdinMode": {
+						SchemaProps: spec.SchemaProps{
+							Description: "How stdin is attached to the command.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},
