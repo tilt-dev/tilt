@@ -1132,7 +1132,9 @@ def local_resource(name: str,
                    readiness_probe: Probe = None,
                    dir: str = "",
                    serve_dir: str = "",
-                   labels: List[str] = []) -> None:
+                   labels: List[str] = [],
+                   stdin_mode: str = "",
+                   serve_stdin_mode: str = "") -> None:
   """Configures one or more commands to run on the *host* machine (not in a remote cluster).
 
   By default, Tilt performs an update on local resources on ``tilt up`` and whenever any of their ``deps`` change.
@@ -1175,6 +1177,8 @@ def local_resource(name: str,
     dir: Working directory for ``cmd``. Defaults to the Tiltfile directory.
     serve_dir: Working directory for ``serve_cmd``. Defaults to the Tiltfile directory.
     labels: used to group resources in the Web UI, (e.g. you want all frontend services displayed together, while test and backend services are displayed separately). A label must start and end with an alphanumeric character, can include ``_``, ``-``, and ``.``, and must be 63 characters or less. For an example, see `Resource Grouping <tiltfile_concepts.html#resource-groups>`_.
+    stdin_mode: Stdin mode for ``cmd``. Set to 'pty' to attach a pseudo terminal.
+    serve_stdin_mode: Stdin mode for ``serve_cmd``. Set to 'pty' to attach a pseudo terminal.
   """
   pass
 

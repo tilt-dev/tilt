@@ -34,9 +34,10 @@ func NewLocalTarget(name TargetName, updateCmd Cmd, serveCmd Cmd, deps []string)
 	var updateCmdSpec *v1alpha1.CmdSpec
 	if !updateCmd.Empty() {
 		updateCmdSpec = &v1alpha1.CmdSpec{
-			Args: updateCmd.Argv,
-			Dir:  updateCmd.Dir,
-			Env:  updateCmd.Env,
+			Args:      updateCmd.Argv,
+			Dir:       updateCmd.Dir,
+			Env:       updateCmd.Env,
+			StdinMode: updateCmd.StdinMode,
 		}
 	}
 
