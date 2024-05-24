@@ -4,13 +4,16 @@ import (
 	"fmt"
 	"runtime"
 	"strings"
+
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
 type Cmd struct {
-	Argv    []string
-	Dir     string
-	Env     []string
-	EchoOff bool
+	Argv      []string
+	Dir       string
+	Env       []string
+	EchoOff   bool
+	StdinMode v1alpha1.StdinMode
 }
 
 func (c Cmd) IsShellStandardForm() bool {
