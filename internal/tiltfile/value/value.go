@@ -10,6 +10,7 @@ import (
 	"go.starlark.net/starlark"
 
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -109,29 +110,33 @@ func StringSliceToList(slice []string) *starlark.List {
 // there's a "main" command, and then various per-platform overrides.
 // https://docs.bazel.build/versions/master/be/general.html#genrule.cmd_bat
 // This helper function abstracts out the precedence rules.
-func ValueGroupToCmdHelper(t *starlark.Thread, cmdVal, cmdBatVal, cmdDir starlark.Value, env map[string]string) (model.Cmd, error) {
+func ValueGroupToCmdHelper(
+	t *starlark.Thread,
+	cmdVal, cmdBatVal, cmdDir starlark.Value,
+	env map[string]string,
+	stdinMode StdinMode) (model.Cmd, error) {
 	if cmdBatVal != nil && runtime.GOOS == "windows" {
-		return ValueToBatCmd(t, cmdBatVal, cmdDir, env)
+		return ValueToBatCmd(t, cmdBatVal, cmdDir, env, stdinMode)
 	}
-	return ValueToHostCmd(t, cmdVal, cmdDir, env)
+	return ValueToHostCmd(t, cmdVal, cmdDir, env, stdinMode)
 }
 
 // provides dockerfile-style behavior of:
 // a string gets interpreted as a shell command (like, sh -c 'foo bar $X')
 // an array of strings gets interpreted as a raw argv to exec
-func ValueToHostCmd(t *starlark.Thread, v, dir starlark.Value, env map[string]string) (model.Cmd, error) {
-	return valueToCmdHelper(t, v, dir, env, model.ToHostCmd)
+func ValueToHostCmd(t *starlark.Thread, v, dir starlark.Value, env map[string]string, stdinMode StdinMode) (model.Cmd, error) {
+	return valueToCmdHelper(t, v, dir, env, stdinMode, model.ToHostCmd)
 }
 
-func ValueToBatCmd(t *starlark.Thread, v, dir starlark.Value, env map[string]string) (model.Cmd, error) {
-	return valueToCmdHelper(t, v, dir, env, model.ToBatCmd)
+func ValueToBatCmd(t *starlark.Thread, v, dir starlark.Value, env map[string]string, stdinMode StdinMode) (model.Cmd, error) {
+	return valueToCmdHelper(t, v, dir, env, stdinMode, model.ToBatCmd)
 }
 
-func ValueToUnixCmd(t *starlark.Thread, v, dir starlark.Value, env map[string]string) (model.Cmd, error) {
-	return valueToCmdHelper(t, v, dir, env, model.ToUnixCmd)
+func ValueToUnixCmd(t *starlark.Thread, v, dir starlark.Value, env map[string]string, stdinMode StdinMode) (model.Cmd, error) {
+	return valueToCmdHelper(t, v, dir, env, stdinMode, model.ToUnixCmd)
 }
 
-func valueToCmdHelper(t *starlark.Thread, cmdVal, cmdDirVal starlark.Value, cmdEnv map[string]string, stringToCmd func(string) model.Cmd) (model.Cmd, error) {
+func valueToCmdHelper(t *starlark.Thread, cmdVal, cmdDirVal starlark.Value, cmdEnv map[string]string, stdinMode StdinMode, stringToCmd func(string) model.Cmd) (model.Cmd, error) {
 
 	var dir string
 	var dirErr error
@@ -163,13 +168,19 @@ func valueToCmdHelper(t *starlark.Thread, cmdVal, cmdDirVal starlark.Value, cmdE
 		cmd := stringToCmd(string(x))
 		cmd.Dir = dir
 		cmd.Env = env
+		cmd.StdinMode = stdinMode.Value
 		return cmd, nil
 	case starlark.Sequence:
 		argv, err := SequenceToStringSlice(x)
 		if err != nil {
 			return model.Cmd{}, errors.Wrap(err, "a command must be a string or a list of strings")
 		}
-		return model.Cmd{Argv: argv, Dir: dir, Env: env}, nil
+		return model.Cmd{
+			Argv:      argv,
+			Dir:       dir,
+			Env:       env,
+			StdinMode: stdinMode.Value,
+		}, nil
 	default:
 		return model.Cmd{}, fmt.Errorf("a command must be a string or list of strings. found %T", x)
 	}
@@ -229,4 +240,29 @@ func starlarkIntAsInt32(v starlark.Int) (int32, error) {
 		return 0, fmt.Errorf("value out of range for int32: %s", v.String())
 	}
 	return int32(x), nil
+}
+
+// Deserializing StdinMode from starlark values.
+type StdinMode struct {
+	Value v1alpha1.StdinMode
+}
+
+func (m *StdinMode) Unpack(v starlark.Value) error {
+	s, ok := AsString(v)
+	if !ok {
+		return fmt.Errorf("Must be a string. Got: %s", v.Type())
+	}
+
+	for _, mode := range []v1alpha1.StdinMode{
+		v1alpha1.StdinModeDefault,
+		v1alpha1.StdinModePty,
+	} {
+		if s == string(mode) {
+			m.Value = mode
+			return nil
+		}
+	}
+
+	return fmt.Errorf("Invalid value. Allowed: {%q, %q}. Got: %s",
+		v1alpha1.StdinModeDefault, v1alpha1.StdinModePty, s)
 }

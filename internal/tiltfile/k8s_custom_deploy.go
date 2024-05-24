@@ -52,14 +52,14 @@ func (s *tiltfileState) k8sCustomDeploy(thread *starlark.Thread, fn *starlark.Bu
 		return nil, err
 	}
 
-	applyCmd, err := value.ValueGroupToCmdHelper(thread, applyCmdVal, applyCmdBatVal, applyCmdDirVal, applyCmdEnv)
+	applyCmd, err := value.ValueGroupToCmdHelper(thread, applyCmdVal, applyCmdBatVal, applyCmdDirVal, applyCmdEnv, value.StdinMode{})
 	if err != nil {
 		return nil, errors.Wrap(err, "apply_cmd")
 	} else if applyCmd.Empty() {
 		return nil, fmt.Errorf("k8s_custom_deploy: apply_cmd cannot be empty")
 	}
 
-	deleteCmd, err := value.ValueGroupToCmdHelper(thread, deleteCmdVal, deleteCmdBatVal, deleteCmdDirVal, deleteCmdEnv)
+	deleteCmd, err := value.ValueGroupToCmdHelper(thread, deleteCmdVal, deleteCmdBatVal, deleteCmdDirVal, deleteCmdEnv, value.StdinMode{})
 	if err != nil {
 		return nil, errors.Wrap(err, "delete_cmd")
 	} else if deleteCmd.Empty() {
