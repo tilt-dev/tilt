@@ -355,10 +355,6 @@ message CmdSpec {
   //
   // +optional
   optional DisableSource disableSource = 7;
-
-  // How stdin is attached to the command.
-  // +optional
-  optional string stdinMode = 8;
 }
 
 // CmdStateRunning is a running state of a local command.

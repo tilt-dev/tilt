@@ -10,7 +10,6 @@ require (
 	github.com/alessio/shellescape v1.4.1
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/compose-spec/compose-go v1.20.2
-	github.com/creack/pty v1.1.18
 	github.com/davecgh/go-spew v1.1.1
 	github.com/distribution/reference v0.5.0
 	github.com/docker/cli v24.0.6+incompatible

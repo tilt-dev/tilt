@@ -391,10 +391,9 @@ func (c *Controller) runInternal(ctx context.Context,
 	}
 
 	cmdModel := model.Cmd{
-		Argv:      spec.Args,
-		Dir:       spec.Dir,
-		Env:       env,
-		StdinMode: spec.StdinMode,
+		Argv: spec.Args,
+		Dir:  spec.Dir,
+		Env:  env,
 	}
 	statusCh := c.execer.Start(ctx, cmdModel, logger.Get(ctx).Writer(logger.InfoLvl))
 	proc.doneCh = make(chan struct{})

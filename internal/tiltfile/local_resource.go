@@ -52,7 +52,6 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 	var allowParallel bool
 	var links links.LinkList
 	var labels value.LabelSet
-	var updateStdinMode, serveStdinMode value.StdinMode
 	autoInit := true
 	if fn.Name() == testN {
 		// If we're initializing a test, by default parallelism is on
@@ -79,8 +78,6 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		"readiness_probe?", &readinessProbe,
 		"dir?", &updateCmdDirVal,
 		"serve_dir?", &serveCmdDirVal,
-		"stdin_mode??", &updateStdinMode,
-		"serve_stdin_mode??", &serveStdinMode,
 	); err != nil {
 		return nil, err
 	}
@@ -95,15 +92,11 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		return nil, err
 	}
 
-	updateCmd, err := value.ValueGroupToCmdHelper(thread,
-		updateCmdVal, updateCmdBatVal, updateCmdDirVal, updateEnv,
-		updateStdinMode)
+	updateCmd, err := value.ValueGroupToCmdHelper(thread, updateCmdVal, updateCmdBatVal, updateCmdDirVal, updateEnv)
 	if err != nil {
 		return nil, err
 	}
-	serveCmd, err := value.ValueGroupToCmdHelper(thread,
-		serveCmdVal, serveCmdBatVal, serveCmdDirVal, serveEnv,
-		serveStdinMode)
+	serveCmd, err := value.ValueGroupToCmdHelper(thread, serveCmdVal, serveCmdBatVal, serveCmdDirVal, serveEnv)
 	if err != nil {
 		return nil, err
 	}

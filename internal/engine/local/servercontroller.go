@@ -138,7 +138,6 @@ func (c *ServerController) determineServers(ctx context.Context, st store.RStore
 				TriggerTime:    mt.State.LastSuccessfulDeployTime,
 				ReadinessProbe: lt.ReadinessProbe,
 				DisableSource:  lt.ServeCmdDisableSource,
-				StdinMode:      lt.ServeCmd.StdinMode,
 			},
 		}
 
@@ -266,7 +265,6 @@ func (c *ServerController) reconcile(ctx context.Context, server CmdServer, owne
 		Dir:            server.Spec.Dir,
 		Env:            server.Spec.Env,
 		ReadinessProbe: server.Spec.ReadinessProbe,
-		StdinMode:      server.Spec.StdinMode,
 	}
 
 	triggerTime := c.createdTriggerTime[name]
@@ -338,7 +336,6 @@ type CmdServerSpec struct {
 	Dir            string
 	Env            []string
 	ReadinessProbe *v1alpha1.Probe
-	StdinMode      v1alpha1.StdinMode
 
 	// Kubernetes tends to represent this as a "generation" field
 	// to force an update.

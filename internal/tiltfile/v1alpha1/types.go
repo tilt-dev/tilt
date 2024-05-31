@@ -182,7 +182,6 @@ func (p Plugin) cmd(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tupl
 	var restartOn RestartOnSpec = RestartOnSpec{t: t}
 	var startOn StartOnSpec = StartOnSpec{t: t}
 	var disableSource DisableSource = DisableSource{t: t}
-	var stdinMode string
 	var labels value.StringStringMap
 	var annotations value.StringStringMap
 	err = starkit.UnpackArgs(t, fn.Name(), args, kwargs,
@@ -196,7 +195,6 @@ func (p Plugin) cmd(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tupl
 		"restart_on?", &restartOn,
 		"start_on?", &startOn,
 		"disable_source?", &disableSource,
-		"stdin_mode?", &stdinMode,
 	)
 	if err != nil {
 		return nil, err
@@ -217,7 +215,6 @@ func (p Plugin) cmd(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tupl
 	if disableSource.isUnpacked {
 		obj.Spec.DisableSource = (*v1alpha1.DisableSource)(&disableSource.Value)
 	}
-	obj.Spec.StdinMode = v1alpha1.StdinMode(stdinMode)
 	obj.ObjectMeta.Labels = labels
 	obj.ObjectMeta.Annotations = annotations
 	return p.register(t, obj)
