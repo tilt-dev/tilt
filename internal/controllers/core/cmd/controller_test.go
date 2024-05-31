@@ -869,23 +869,6 @@ func TestCmdOnlyUsesButtonThatStartedIt(t *testing.T) {
 	require.Equal(t, expectedEnv, actualEnv)
 }
 
-func TestServeStdinPty(t *testing.T) {
-	f := newFixture(t)
-
-	t1 := time.Unix(1, 0)
-	c := model.ToHostCmd("my-server")
-	c.StdinMode = v1alpha1.StdinModePty
-	localTarget := model.NewLocalTarget(
-		model.TargetName("foo"), model.Cmd{}, c, nil)
-	f.resourceFromTarget("foo", localTarget, t1)
-	f.step()
-
-	f.fe.mu.Lock()
-	sm := f.fe.processes["my-server"].stdinMode
-	f.fe.mu.Unlock()
-	assert.Equal(t, v1alpha1.StdinModePty, sm)
-}
-
 type testStore struct {
 	*store.TestingStore
 	out     io.Writer

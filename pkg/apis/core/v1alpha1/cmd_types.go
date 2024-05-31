@@ -109,25 +109,7 @@ type CmdSpec struct {
 	//
 	// +optional
 	DisableSource *DisableSource `json:"disableSource,omitempty" protobuf:"bytes,7,opt,name=disableSource"`
-
-	// How stdin is attached to the command.
-	// +optional
-	StdinMode StdinMode `json:"stdinMode,omitempty" protobuf:"bytes,8,opt,name=stdinMode"`
 }
-
-type StdinMode string
-
-const (
-	// Attach a null device (e.g. /dev/null) to the command's stdin.
-	StdinModeDefault StdinMode = ""
-
-	// Attaches a pseudo-terminal to the command's stdin.
-	//
-	// If you're using Tilt's local() or local_resource() to run an interactive
-	// command, some commands may try to attach to the terminal and shutdown Tilt.
-	// Attaching a pty can help make it behave more reliably.
-	StdinModePty StdinMode = "pty"
-)
 
 var _ resource.Object = &Cmd{}
 var _ resourcerest.SingularNameProvider = &Cmd{}
