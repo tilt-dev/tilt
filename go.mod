@@ -18,7 +18,7 @@ require (
 	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-units v0.5.0
 	github.com/fatih/color v1.13.0
-	github.com/fsnotify/fsevents v0.1.1
+	github.com/fsnotify/fsevents v0.2.0
 	github.com/gdamore/tcell v1.1.3
 	github.com/go-logr/logr v1.4.1
 	github.com/gogo/protobuf v1.3.2
