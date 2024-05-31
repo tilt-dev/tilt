@@ -268,14 +268,15 @@ func TestRepoGitSubpath(t *testing.T) {
 		t.Skip()
 	}
 
-	t.Skip("cannot use file:// repos with git_subpath, making this test unusable")
-
 	// Assert that extension repositories with a defined subpath load registered extensions
 	// from that subpath
 	f := newExtensionFixture(t)
 
-	f.tiltfile(fmt.Sprintf(`
-v1alpha1.extension_repo(name='custom', url='file://%s/ext-repo', git_subpath='subdir')
+	f.tiltfile(`
+v1alpha1.extension_repo(
+    name='custom',
+    url='https://github.com/tilt-dev/ext-repo',
+    git_subpath='subdir')
 v1alpha1.extension(name='my-ext', repo_name='custom')
 v1alpha1.extension(name='my-ext-with-path', repo_name='custom', repo_path='subdir2')
 
@@ -285,7 +286,7 @@ printExt()
 
 load("ext://my-ext-with-path", "printExt2")
 printExt2()
-`, f.tmp.Path()))
+`)
 
 	extContent := `
 def printExt():
@@ -304,6 +305,26 @@ def printExt2():
 	f.assertLoadRecorded(res, "my-ext", "my-ext-with-path")
 }
 
+func TestFileGitSubpath(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// We don't want to have to bother with file:// escaping on windows.
+		// The repo reconciler already tests this.
+		t.Skip()
+	}
+
+	// Assert that extension repositories with a defined subpath load registered extensions
+	// from that subpath
+	f := newExtensionFixture(t)
+
+	f.tiltfile(fmt.Sprintf(`
+v1alpha1.extension_repo(
+    name='custom',
+    url='file://%s/ext-repo',
+    git_subpath='subdir')
+`, f.tmp.Path()))
+	f.assertError("cannot use git_subpath for file:// URL extension repositories")
+}
+
 func TestRepoLoadHostAndSubpath(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		// We don't want to have to bother with file:// escaping on windows.
@@ -311,14 +332,16 @@ func TestRepoLoadHostAndSubpath(t *testing.T) {
 		t.Skip()
 	}
 
-	t.Skip("cannot use file:// repos with git_subpath, making this test unusable")
-
 	// Assert that extension repositories with a defined subpath load registered extensions
 	// from that subpath, including autoregistration by host match
 	f := newExtensionFixture(t)
 
-	f.tiltfile(fmt.Sprintf(`
-v1alpha1.extension_repo(name='custom', url='file://%s/ext-repo', load_host='custom', git_subpath='subdir')
+	f.tiltfile(`
+v1alpha1.extension_repo(
+    name='custom',
+    url='https://github.com/tilt-dev/ext-repo',
+    load_host='custom',
+    git_subpath='subdir')
 
 # Should load an extension from the custom repo at <repo.path>/my-ext
 load("ext://custom/my-ext", "printExt")
@@ -327,7 +350,7 @@ printExt()
 # Should load from <repo.path>/my-ext/subext
 load("ext://custom/my-ext/subext", "printSub")
 printSub()
-`, f.tmp.Path()))
+`)
 
 	extContent := `
 def printExt():
@@ -358,13 +381,9 @@ func TestRegisterDefaultExtension(t *testing.T) {
 
 	p := NewFakePlugin(f.extrr, f.extr)
 
-	// NOTE: I don't know a better way to get a model, and this test needs one to get an object set
 	f.tiltfile(`print("hello")`)
 	model, _ := f.skf.ExecFile("Tiltfile")
-	objSet, err := tiltfilev1alpha1.GetState(model)
-	if err != nil {
-		f.t.Fatalf("unexpected error %v", err)
-	}
+	objSet := tiltfilev1alpha1.MustState(model)
 
 	moduleName := "tests/golang"
 	extName := apis.SanitizeName(moduleName)
@@ -404,11 +423,7 @@ func TestRegisterExtension(t *testing.T) {
 
 	f.tiltfile(`print("hello")`)
 	model, _ := f.skf.ExecFile("Tiltfile")
-	objSet, err := tiltfilev1alpha1.GetState(model)
-	if err != nil {
-		f.t.Fatalf("unexpected error %v", err)
-	}
-
+	objSet := tiltfilev1alpha1.MustState(model)
 	extSet := objSet.GetOrCreateTypedSet(&v1alpha1.Extension{})
 	repoSet := objSet.GetOrCreateTypedSet(&v1alpha1.ExtensionRepo{})
 
@@ -459,11 +474,7 @@ func TestRegisterExtensionNoMatchingRepo(t *testing.T) {
 
 	f.tiltfile(`print("hello")`)
 	model, _ := f.skf.ExecFile("Tiltfile")
-	objSet, err := tiltfilev1alpha1.GetState(model)
-	if err != nil {
-		f.t.Fatalf("unexpected error %v", err)
-	}
-
+	objSet := tiltfilev1alpha1.MustState(model)
 	repo := &v1alpha1.ExtensionRepo{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "custom",
