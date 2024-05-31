@@ -10,7 +10,7 @@ import (
 )
 
 func SetOptNewProcessGroup(attrs *syscall.SysProcAttr) {
-	attrs.Setpgid = true
+	attrs.Setsid = true
 }
 
 func KillProcessGroup(cmd *exec.Cmd) {
