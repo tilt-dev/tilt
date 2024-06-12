@@ -28,9 +28,33 @@ func (f *fakeDaemonClient) DaemonHost() string {
 	return f.host
 }
 
-func TestColimaEnv(t *testing.T) {
+func TestEnv(t *testing.T) {
 
 	table := []EnvTest{
+		{
+			product:     clusterid.ProductDockerDesktop,
+			kubecontext: "docker-desktop",
+			dockerHost:  "npipe:////./pipe/dockerDesktopLinuxEngine",
+			match:       true,
+		},
+		{
+			product:     clusterid.ProductDockerDesktop,
+			kubecontext: "docker-desktop",
+			dockerHost:  "npipe:////./pipe/docker_engine",
+			match:       true,
+		},
+		{
+			product:     clusterid.ProductDockerDesktop,
+			kubecontext: "docker-desktop",
+			dockerHost:  "unix:///var/run/docker.sock",
+			match:       true,
+		},
+		{
+			product:     clusterid.ProductDockerDesktop,
+			kubecontext: "docker-desktop",
+			dockerHost:  "unix://~/.docker/desktop/docker.sock",
+			match:       true,
+		},
 		{
 			product:     clusterid.ProductColima,
 			kubecontext: "colima",
