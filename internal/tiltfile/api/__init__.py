@@ -1126,13 +1126,12 @@ def local_resource(name: str,
                    serve_cmd_bat: Union[str, List[str]] = "",
                    allow_parallel: bool=False,
                    links: Union[str, Link, List[Union[str, Link]]]=[],
-                   tags: List[str] = [],
+                   labels: List[str] = [],
                    env: Dict[str, str] = {},
                    serve_env: Dict[str, str] = {},
                    readiness_probe: Probe = None,
                    dir: str = "",
-                   serve_dir: str = "",
-                   labels: List[str] = []) -> None:
+                   serve_dir: str = "") -> None:
   """Configures one or more commands to run on the *host* machine (not in a remote cluster).
 
   By default, Tilt performs an update on local resources on ``tilt up`` and whenever any of their ``deps`` change.
@@ -1169,12 +1168,12 @@ def local_resource(name: str,
     allow_parallel: By default, all local resources are presumed unsafe to run in parallel, due to race
       conditions around modifying a shared file system. Set to True to allow them to run in parallel.
     links: one or more links to be associated with this resource in the Web UI (e.g. perhaps you have a "reset database" workflow and want to attach a link to the database web console). Provide one or more strings (the URLs to link to) or :class:`~api.Link` objects.
+    labels: used to group resources in the Web UI, (e.g. you want all frontend services displayed together, while test and backend services are displayed separately). A label must start and end with an alphanumeric character, can include ``_``, ``-``, and ``.``, and must be 63 characters or less. For an example, see `Resource Grouping <tiltfile_concepts.html#resource-groups>`_.
     env: Environment variables to pass to the executed ``cmd``. Values specified here will override any variables passed to the Tilt parent process.
     serve_env: Environment variables to pass to the executed ``serve_cmd``. Values specified here will override any variables passed to the Tilt parent process.
     readiness_probe: Optional readiness probe to use for determining ``serve_cmd`` health state. Fore more info, see the :meth:`probe` function.
     dir: Working directory for ``cmd``. Defaults to the Tiltfile directory.
     serve_dir: Working directory for ``serve_cmd``. Defaults to the Tiltfile directory.
-    labels: used to group resources in the Web UI, (e.g. you want all frontend services displayed together, while test and backend services are displayed separately). A label must start and end with an alphanumeric character, can include ``_``, ``-``, and ``.``, and must be 63 characters or less. For an example, see `Resource Grouping <tiltfile_concepts.html#resource-groups>`_.
   """
   pass
 
