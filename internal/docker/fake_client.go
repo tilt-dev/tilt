@@ -17,8 +17,9 @@ import (
 
 	"github.com/distribution/reference"
 	"github.com/docker/docker/api/types"
-	apicontainer "github.com/docker/docker/api/types/container"
+	typescontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
+	typesimage "github.com/docker/docker/api/types/image"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -181,7 +182,7 @@ func (c *FakeClient) SetExecError(err error) {
 	c.ExecErrorsToThrow = []error{err}
 }
 
-func (c *FakeClient) ContainerLogs(ctx context.Context, containerID string, options types.ContainerLogsOptions) (io.ReadCloser, error) {
+func (c *FakeClient) ContainerLogs(ctx context.Context, containerID string, options typescontainer.LogsOptions) (io.ReadCloser, error) {
 	output := c.ContainerLogChans[containerID]
 	reader, writer := io.Pipe()
 	go func() {
@@ -212,7 +213,7 @@ func (c *FakeClient) ContainerInspect(ctx context.Context, containerID string) (
 	container, ok := c.Containers[containerID]
 	if ok {
 		return types.ContainerJSON{
-			Config: &apicontainer.Config{Tty: true},
+			Config: &typescontainer.Config{Tty: true},
 			ContainerJSONBase: &types.ContainerJSONBase{
 				ID:    containerID,
 				State: &container,
@@ -221,7 +222,7 @@ func (c *FakeClient) ContainerInspect(ctx context.Context, containerID string) (
 	}
 	state := NewRunningContainerState()
 	return types.ContainerJSON{
-		Config: &apicontainer.Config{Tty: true},
+		Config: &typescontainer.Config{Tty: true},
 		ContainerJSONBase: &types.ContainerJSONBase{
 			ID:    containerID,
 			State: &state,
@@ -237,7 +238,7 @@ func (c *FakeClient) SetDefaultContainerListOutput() {
 	c.SetContainerListOutput(DefaultContainerListOutput)
 }
 
-func (c *FakeClient) ContainerList(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error) {
+func (c *FakeClient) ContainerList(ctx context.Context, options typescontainer.ListOptions) ([]types.Container, error) {
 	nameFilter := options.Filters.Get("name")
 	if len(nameFilter) != 1 {
 		return nil, fmt.Errorf("expected one filter for 'name', got: %v", nameFilter)
@@ -341,11 +342,11 @@ func (c *FakeClient) ImageInspectWithRaw(ctx context.Context, imageID string) (t
 	return types.ImageInspect{}, nil, newNotFoundErrorf("fakeClient.Images key: %s", imageID)
 }
 
-func (c *FakeClient) ImageList(ctx context.Context, options types.ImageListOptions) ([]types.ImageSummary, error) {
+func (c *FakeClient) ImageList(ctx context.Context, options types.ImageListOptions) ([]typesimage.Summary, error) {
 	c.ImageListOpts = append(c.ImageListOpts, options)
-	summaries := make([]types.ImageSummary, c.ImageListCount)
+	summaries := make([]typesimage.Summary, c.ImageListCount)
 	for i := range summaries {
-		summaries[i] = types.ImageSummary{
+		summaries[i] = typesimage.Summary{
 			ID:      fmt.Sprintf("build-id-%d", i),
 			Created: time.Now().Add(-time.Second).Unix(),
 		}
@@ -353,11 +354,11 @@ func (c *FakeClient) ImageList(ctx context.Context, options types.ImageListOptio
 	return summaries, nil
 }
 
-func (c *FakeClient) ImageRemove(ctx context.Context, imageID string, options types.ImageRemoveOptions) ([]types.ImageDeleteResponseItem, error) {
+func (c *FakeClient) ImageRemove(ctx context.Context, imageID string, options types.ImageRemoveOptions) ([]typesimage.DeleteResponse, error) {
 	c.RemovedImageIDs = append(c.RemovedImageIDs, imageID)
 	sort.Strings(c.RemovedImageIDs)
-	return []types.ImageDeleteResponseItem{
-		types.ImageDeleteResponseItem{Deleted: imageID},
+	return []typesimage.DeleteResponse{
+		typesimage.DeleteResponse{Deleted: imageID},
 	}, nil
 }
 

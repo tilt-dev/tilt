@@ -11,6 +11,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
+	typesimage "github.com/docker/docker/api/types/image"
 
 	"github.com/tilt-dev/tilt/internal/container"
 
@@ -177,7 +178,7 @@ func (dp *DockerPruner) prune(ctx context.Context, maxAge time.Duration, keepRec
 	return nil
 }
 
-func (dp *DockerPruner) inspectImages(ctx context.Context, imgs []types.ImageSummary) []types.ImageInspect {
+func (dp *DockerPruner) inspectImages(ctx context.Context, imgs []typesimage.Summary) []types.ImageInspect {
 	result := []types.ImageInspect{}
 	for _, imgSummary := range imgs {
 		inspect, _, err := dp.dCli.ImageInspectWithRaw(ctx, imgSummary.ID)
@@ -277,7 +278,7 @@ func (dp *DockerPruner) deleteOldImages(ctx context.Context, maxAge time.Duratio
 	toDelete := dp.filterOutMostRecentInspects(ctx, inspects, keepRecent, selectors)
 
 	rmOpts := types.ImageRemoveOptions{PruneChildren: true}
-	var responseItems []types.ImageDeleteResponseItem
+	var responseItems []typesimage.DeleteResponse
 	var reclaimedBytes uint64
 
 	for _, inspect := range toDelete {
@@ -318,7 +319,7 @@ func prettyPrintImagesPruneReport(report types.ImagesPruneReport, l logger.Logge
 	}
 }
 
-func prettyStringImgDeleteItem(img types.ImageDeleteResponseItem) string {
+func prettyStringImgDeleteItem(img typesimage.DeleteResponse) string {
 	if img.Deleted != "" {
 		return fmt.Sprintf("deleted: %s", img.Deleted)
 	}

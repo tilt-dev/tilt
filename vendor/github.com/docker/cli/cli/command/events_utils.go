@@ -9,12 +9,16 @@ import (
 
 // EventHandler is abstract interface for user to customize
 // own handle functions of each type of events
+//
+// Deprecated: EventHandler is no longer used, and will be removed in the next release.
 type EventHandler interface {
 	Handle(action events.Action, h func(events.Message))
 	Watch(c <-chan events.Message)
 }
 
 // InitEventHandler initializes and returns an EventHandler
+//
+// Deprecated: InitEventHandler is no longer used, and will be removed in the next release.
 func InitEventHandler() EventHandler {
 	return &eventHandler{handlers: make(map[events.Action]func(events.Message))}
 }

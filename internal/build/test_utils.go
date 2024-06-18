@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/distribution/reference"
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	typescontainer "github.com/docker/docker/api/types/container"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/tilt-dev/clusterid"
@@ -104,7 +104,7 @@ func newFakeDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 func (f *dockerBuildFixture) teardown() {
 	for _, cID := range f.containerIDs {
 		// ignore failures
-		_ = f.dCli.ContainerRemove(f.ctx, string(cID), types.ContainerRemoveOptions{
+		_ = f.dCli.ContainerRemove(f.ctx, string(cID), typescontainer.RemoveOptions{
 			Force: true,
 		})
 	}
@@ -196,7 +196,7 @@ func (f *dockerBuildFixture) startContainer(ctx context.Context, config *contain
 	}
 	cID := resp.ID
 
-	err = f.dCli.ContainerStart(ctx, cID, types.ContainerStartOptions{})
+	err = f.dCli.ContainerStart(ctx, cID, typescontainer.StartOptions{})
 	if err != nil {
 		f.t.Fatalf("startContainer: %v", err)
 	}

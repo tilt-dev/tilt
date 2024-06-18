@@ -65,6 +65,7 @@ type Cli interface {
 	ContextStore() store.Store
 	CurrentContext() string
 	DockerEndpoint() docker.Endpoint
+	TelemetryClient
 }
 
 // DockerCli is an instance the docker command line client.
@@ -85,6 +86,7 @@ type DockerCli struct {
 	dockerEndpoint     docker.Endpoint
 	contextStoreConfig store.Config
 	initTimeout        time.Duration
+	res                telemetryResource
 
 	// baseCtx is the base context used for internal operations. In the future
 	// this may be replaced by explicitly passing a context to functions that
@@ -187,6 +189,36 @@ func (cli *DockerCli) BuildKitEnabled() (bool, error) {
 	return cli.ServerInfo().OSType != "windows", nil
 }
 
+// HooksEnabled returns whether plugin hooks are enabled.
+func (cli *DockerCli) HooksEnabled() bool {
+	// legacy support DOCKER_CLI_HINTS env var
+	if v := os.Getenv("DOCKER_CLI_HINTS"); v != "" {
+		enabled, err := strconv.ParseBool(v)
+		if err != nil {
+			return false
+		}
+		return enabled
+	}
+	// use DOCKER_CLI_HOOKS env var value if set and not empty
+	if v := os.Getenv("DOCKER_CLI_HOOKS"); v != "" {
+		enabled, err := strconv.ParseBool(v)
+		if err != nil {
+			return false
+		}
+		return enabled
+	}
+	featuresMap := cli.ConfigFile().Features
+	if v, ok := featuresMap["hooks"]; ok {
+		enabled, err := strconv.ParseBool(v)
+		if err != nil {
+			return false
+		}
+		return enabled
+	}
+	// default to false
+	return false
+}
+
 // ManifestStore returns a store for local manifests
 func (cli *DockerCli) ManifestStore() manifeststore.Store {
 	// TODO: support override default location from config file
@@ -241,6 +273,11 @@ func (cli *DockerCli) Initialize(opts *cliflags.ClientOptions, ops ...CLIOption)
 			return ResolveDefaultContext(cli.options, cli.contextStoreConfig)
 		},
 	}
+
+	// TODO(krissetto): pass ctx to the funcs instead of using this
+	cli.createGlobalMeterProvider(cli.baseCtx)
+	cli.createGlobalTracerProvider(cli.baseCtx)
+
 	return nil
 }
 

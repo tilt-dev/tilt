@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	dtypes "github.com/docker/docker/api/types"
+	typescontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/pkg/stdcopy"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -199,7 +199,7 @@ func (r *Reconciler) consumeLogs(watch *watch) {
 	startTime := watch.startWatchTime
 
 	for {
-		readCloser, err := r.dc.ContainerLogs(ctx, watch.containerID, dtypes.ContainerLogsOptions{
+		readCloser, err := r.dc.ContainerLogs(ctx, watch.containerID, typescontainer.LogsOptions{
 			ShowStdout: true,
 			ShowStderr: true,
 			Follow:     true,
