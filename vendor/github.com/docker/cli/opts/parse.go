@@ -71,21 +71,26 @@ func ConvertKVStringsToMapWithNil(values []string) map[string]*string {
 
 // ParseRestartPolicy returns the parsed policy or an error indicating what is incorrect
 func ParseRestartPolicy(policy string) (container.RestartPolicy, error) {
-	p := container.RestartPolicy{}
-
 	if policy == "" {
-		return p, nil
+		// for backward-compatibility, we don't set the default ("no")
+		// policy here, because older versions of the engine may not
+		// support it.
+		return container.RestartPolicy{}, nil
 	}
 
-	k, v, _ := strings.Cut(policy, ":")
+	p := container.RestartPolicy{}
+	k, v, ok := strings.Cut(policy, ":")
+	if ok && k == "" {
+		return container.RestartPolicy{}, fmt.Errorf("invalid restart policy format: no policy provided before colon")
+	}
 	if v != "" {
 		count, err := strconv.Atoi(v)
 		if err != nil {
-			return p, fmt.Errorf("invalid restart policy format: maximum retry count must be an integer")
+			return container.RestartPolicy{}, fmt.Errorf("invalid restart policy format: maximum retry count must be an integer")
 		}
 		p.MaximumRetryCount = count
 	}
 
-	p.Name = k
+	p.Name = container.RestartPolicyMode(k)
 	return p, nil
 }

@@ -3,11 +3,11 @@ package types
 import (
 	"encoding/json"
 
+	"github.com/distribution/reference"
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/manifest/manifestlist"
 	"github.com/docker/distribution/manifest/ocischema"
 	"github.com/docker/distribution/manifest/schema2"
-	"github.com/docker/distribution/reference"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
@@ -55,14 +55,18 @@ func PlatformSpecFromOCI(p *ocispec.Platform) *manifestlist.PlatformSpec {
 
 // Blobs returns the digests for all the blobs referenced by this manifest
 func (i ImageManifest) Blobs() []digest.Digest {
-	digests := []digest.Digest{}
+	var digests []digest.Digest
 	switch {
 	case i.SchemaV2Manifest != nil:
-		for _, descriptor := range i.SchemaV2Manifest.References() {
+		refs := i.SchemaV2Manifest.References()
+		digests = make([]digest.Digest, 0, len(refs))
+		for _, descriptor := range refs {
 			digests = append(digests, descriptor.Digest)
 		}
 	case i.OCIManifest != nil:
-		for _, descriptor := range i.OCIManifest.References() {
+		refs := i.OCIManifest.References()
+		digests = make([]digest.Digest, 0, len(refs))
+		for _, descriptor := range refs {
 			digests = append(digests, descriptor.Digest)
 		}
 	}

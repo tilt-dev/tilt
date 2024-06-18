@@ -116,8 +116,8 @@ func (c *switchCli) ImageList(ctx context.Context, options types.ImageListOption
 func (c *switchCli) ImageRemove(ctx context.Context, imageID string, options types.ImageRemoveOptions) ([]types.ImageDeleteResponseItem, error) {
 	return c.client(ctx).ImageRemove(ctx, imageID, options)
 }
-func (c *switchCli) NewVersionError(apiRequired, feature string) error {
-	return c.client(context.Background()).NewVersionError(apiRequired, feature)
+func (c *switchCli) NewVersionError(ctx context.Context, apiRequired, feature string) error {
+	return c.client(context.Background()).NewVersionError(ctx, apiRequired, feature)
 }
 func (c *switchCli) BuildCachePrune(ctx context.Context, opts types.BuildCachePruneOptions) (*types.BuildCachePruneReport, error) {
 	return c.client(ctx).BuildCachePrune(ctx, opts)

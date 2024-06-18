@@ -161,21 +161,53 @@ func ParseTCPAddr(tryAddr string, defaultAddr string) (string, error) {
 	return fmt.Sprintf("tcp://%s%s", net.JoinHostPort(host, port), u.Path), nil
 }
 
-// ValidateExtraHost validates that the specified string is a valid extrahost and returns it.
-// ExtraHost is in the form of name:ip where the ip has to be a valid ip (IPv4 or IPv6).
+// ValidateExtraHost validates that the specified string is a valid extrahost and
+// returns it. ExtraHost is in the form of name:ip or name=ip, where the ip has
+// to be a valid ip (IPv4 or IPv6). The address may be enclosed in square
+// brackets.
 //
-// TODO(thaJeztah): remove client-side validation, and delegate to the API server.
+// For example:
+//
+//	my-hostname:127.0.0.1
+//	my-hostname:::1
+//	my-hostname=::1
+//	my-hostname:[::1]
+//
+// For compatibility with the API server, this function normalises the given
+// argument to use the ':' separator and strip square brackets enclosing the
+// address.
 func ValidateExtraHost(val string) (string, error) {
-	// allow for IPv6 addresses in extra hosts by only splitting on first ":"
-	k, v, ok := strings.Cut(val, ":")
-	if !ok || k == "" {
+	k, v, ok := strings.Cut(val, "=")
+	if !ok {
+		// allow for IPv6 addresses in extra hosts by only splitting on first ":"
+		k, v, ok = strings.Cut(val, ":")
+	}
+	// Check that a hostname was given, and that it doesn't contain a ":". (Colon
+	// isn't allowed in a hostname, along with many other characters. It's
+	// special-cased here because the API server doesn't know about '=' separators in
+	// '--add-host'. So, it'll split at the first colon and generate a strange error
+	// message.)
+	if !ok || k == "" || strings.Contains(k, ":") {
 		return "", fmt.Errorf("bad format for add-host: %q", val)
 	}
 	// Skip IPaddr validation for "host-gateway" string
 	if v != hostGatewayName {
+		// If the address is enclosed in square brackets, extract it (for IPv6, but
+		// permit it for IPv4 as well; we don't know the address family here, but it's
+		// unambiguous).
+		if len(v) > 2 && v[0] == '[' && v[len(v)-1] == ']' {
+			v = v[1 : len(v)-1]
+		}
+		// ValidateIPAddress returns the address in canonical form (for example,
+		// 0:0:0:0:0:0:0:1 -> ::1). But, stick with the original form, to avoid
+		// surprising a user who's expecting to see the address they supplied in the
+		// output of 'docker inspect' or '/etc/hosts'.
 		if _, err := ValidateIPAddress(v); err != nil {
 			return "", fmt.Errorf("invalid IP address in add-host: %q", v)
 		}
 	}
-	return val, nil
+	// This result is passed directly to the API, the daemon doesn't accept the '='
+	// separator or an address enclosed in brackets. So, construct something it can
+	// understand.
+	return k + ":" + v, nil
 }

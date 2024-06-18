@@ -14,6 +14,18 @@ import (
 )
 
 const (
+	// EnvEnableTLS is the name of the environment variable that can be used
+	// to enable TLS for client connections. When set to a non-empty value, TLS
+	// is enabled for API connections using TCP. For backward-compatibility, this
+	// environment-variable can only be used to enable TLS, not to disable.
+	//
+	// Note that TLS is always enabled implicitly if the "--tls-verify" option
+	// or "DOCKER_TLS_VERIFY" ([github.com/docker/docker/client.EnvTLSVerify])
+	// env var is set to, which could be to either enable or disable TLS certification
+	// validation. In both cases, TLS is enabled but, depending on the setting,
+	// with verification disabled.
+	EnvEnableTLS = "DOCKER_TLS"
+
 	// DefaultCaFile is the default filename for the CA pem file
 	DefaultCaFile = "ca.pem"
 	// DefaultKeyFile is the default filename for the key pem file
@@ -39,8 +51,7 @@ Refer to https://docs.docker.com/go/formatting/ for more information about forma
 var (
 	dockerCertPath  = os.Getenv(client.EnvOverrideCertPath)
 	dockerTLSVerify = os.Getenv(client.EnvTLSVerify) != ""
-	// TODO(thaJeztah) the 'DOCKER_TLS' environment variable is not documented, and does not have a const.
-	dockerTLS = os.Getenv("DOCKER_TLS") != ""
+	dockerTLS       = os.Getenv(EnvEnableTLS) != ""
 )
 
 // ClientOptions are the options used to configure the client cli.
@@ -62,10 +73,12 @@ func NewClientOptions() *ClientOptions {
 
 // InstallFlags adds flags for the common options on the FlagSet
 func (o *ClientOptions) InstallFlags(flags *pflag.FlagSet) {
+	configDir := config.Dir()
 	if dockerCertPath == "" {
-		dockerCertPath = config.Dir()
+		dockerCertPath = configDir
 	}
 
+	flags.StringVar(&o.ConfigDir, "config", configDir, "Location of client config files")
 	flags.BoolVarP(&o.Debug, "debug", "D", false, "Enable debug mode")
 	flags.StringVarP(&o.LogLevel, "log-level", "l", "info", `Set the logging level ("debug", "info", "warn", "error", "fatal")`)
 	flags.BoolVar(&o.TLS, "tls", dockerTLS, "Use TLS; implied by --tlsverify")

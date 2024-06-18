@@ -19,6 +19,7 @@ import (
 	"github.com/docker/docker/api/types"
 	mobycontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
+	typesregistry "github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/docker/docker/registry"
@@ -111,7 +112,7 @@ type Client interface {
 	ImageList(ctx context.Context, options types.ImageListOptions) ([]types.ImageSummary, error)
 	ImageRemove(ctx context.Context, imageID string, options types.ImageRemoveOptions) ([]types.ImageDeleteResponseItem, error)
 
-	NewVersionError(APIrequired, feature string) error
+	NewVersionError(ctx context.Context, APIrequired, feature string) error
 	BuildCachePrune(ctx context.Context, opts types.BuildCachePruneOptions) (*types.BuildCachePruneReport, error)
 	ContainersPrune(ctx context.Context, pruneFilters filters.Args) (types.ContainersPruneReport, error)
 }
@@ -145,7 +146,7 @@ var _ Client = &Cli{}
 type Cli struct {
 	*client.Client
 
-	authConfigsOnce func() map[string]types.AuthConfig
+	authConfigsOnce func() map[string]typesregistry.AuthConfig
 	env             Env
 
 	versionsOnce   sync.Once
@@ -363,16 +364,16 @@ func (c *Cli) startBuildkitSession(ctx context.Context, g *errgroup.Group, key s
 // Protocol (1) is very slow. If you're using the gcloud credential store,
 // fetching all the creds ahead of time can take ~3 seconds.
 // Protocol (2) is more efficient, but also more complex to manage. We manage it lazily.
-func authConfigs() map[string]types.AuthConfig {
+func authConfigs() map[string]typesregistry.AuthConfig {
 	configFile := config.LoadDefaultConfigFile(io.Discard)
 
 	// If we fail to get credentials for some reason, that's OK.
 	// even the docker CLI ignores this:
 	// https://github.com/docker/cli/blob/23446275646041f9b598d64c51be24d5d0e49376/cli/command/image/build.go#L386
 	credentials, _ := configFile.GetAllCredentials()
-	authConfigs := make(map[string]types.AuthConfig, len(credentials))
+	authConfigs := make(map[string]typesregistry.AuthConfig, len(credentials))
 	for k, auth := range credentials {
-		authConfigs[k] = types.AuthConfig(auth)
+		authConfigs[k] = typesregistry.AuthConfig(auth)
 	}
 	return authConfigs
 }
@@ -403,12 +404,12 @@ func (c *Cli) authInfo(ctx context.Context, repoInfo *registry.RepositoryInfo, c
 	if err != nil {
 		return "", nil, errors.Wrap(err, "authInfo")
 	}
-	authConfig := command.ResolveAuthConfig(ctx, cli, repoInfo.Index)
+	authConfig := command.ResolveAuthConfig(cli.ConfigFile(), repoInfo.Index)
 	requestPrivilege := command.RegistryAuthenticationPrivilegedFunc(cli, repoInfo.Index, cmdName)
 
-	auth, err := command.EncodeAuthToBase64(authConfig)
+	auth, err := typesregistry.EncodeAuthConfig(authConfig)
 	if err != nil {
-		return "", nil, errors.Wrap(err, "authInfo#EncodeAuthToBase64")
+		return "", nil, errors.Wrap(err, "authInfo#EncodeAuthConfig")
 	}
 	return encodedAuth(auth), requestPrivilege, nil
 }

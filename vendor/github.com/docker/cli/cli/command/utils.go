@@ -1,3 +1,6 @@
+// FIXME(thaJeztah): remove once we are a module; the go:build directive prevents go from downgrading language version to go1.16:
+//go:build go1.19
+
 package command
 
 import (
@@ -11,6 +14,8 @@ import (
 
 	"github.com/docker/cli/cli/streams"
 	"github.com/docker/docker/api/types/filters"
+	mounttypes "github.com/docker/docker/api/types/mount"
+	"github.com/docker/docker/api/types/versions"
 	"github.com/moby/sys/sequential"
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
@@ -56,7 +61,7 @@ func capitalizeFirst(s string) string {
 }
 
 // PrettyPrint outputs arbitrary data for human formatted output by uppercasing the first letter.
-func PrettyPrint(i interface{}) string {
+func PrettyPrint(i any) string {
 	switch t := i.(type) {
 	case nil:
 		return "None"
@@ -182,16 +187,30 @@ func stringSliceIndex(s, subs []string) int {
 	return -1
 }
 
-// StringSliceReplaceAt replaces the sub-slice old, with the sub-slice new, in the string
+// StringSliceReplaceAt replaces the sub-slice find, with the sub-slice replace, in the string
 // slice s, returning a new slice and a boolean indicating if the replacement happened.
 // requireIdx is the index at which old needs to be found at (or -1 to disregard that).
-func StringSliceReplaceAt(s, old, new []string, requireIndex int) ([]string, bool) {
-	idx := stringSliceIndex(s, old)
+func StringSliceReplaceAt(s, find, replace []string, requireIndex int) ([]string, bool) {
+	idx := stringSliceIndex(s, find)
 	if (requireIndex != -1 && requireIndex != idx) || idx == -1 {
 		return s, false
 	}
 	out := append([]string{}, s[:idx]...)
-	out = append(out, new...)
-	out = append(out, s[idx+len(old):]...)
+	out = append(out, replace...)
+	out = append(out, s[idx+len(find):]...)
 	return out, true
+}
+
+// ValidateMountWithAPIVersion validates a mount with the server API version.
+func ValidateMountWithAPIVersion(m mounttypes.Mount, serverAPIVersion string) error {
+	if m.BindOptions != nil {
+		if m.BindOptions.NonRecursive && versions.LessThan(serverAPIVersion, "1.40") {
+			return errors.Errorf("bind-recursive=disabled requires API v1.40 or later")
+		}
+		// ReadOnlyNonRecursive can be safely ignored when API < 1.44
+		if m.BindOptions.ReadOnlyForceRecursive && versions.LessThan(serverAPIVersion, "1.44") {
+			return errors.Errorf("bind-recursive=readonly requires API v1.44 or later")
+		}
+	}
+	return nil
 }

@@ -361,7 +361,7 @@ func (c *FakeClient) ImageRemove(ctx context.Context, imageID string, options ty
 	}, nil
 }
 
-func (c *FakeClient) NewVersionError(apiRequired, feature string) error {
+func (c *FakeClient) NewVersionError(ctx context.Context, apiRequired, feature string) error {
 	if c.ThrowNewVersionError {
 		c.ThrowNewVersionError = false
 		return c.VersionError(apiRequired, feature)
