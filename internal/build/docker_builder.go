@@ -274,7 +274,10 @@ func (d *DockerBuilder) buildToDigest(ctx context.Context, spec v1alpha1.DockerI
 		if err != nil {
 			return "", nil, err
 		}
-		options.DirSource = toDirSource(buildContext, dockerfileDir, filter)
+		options.DirSource, err = toDirSource(buildContext, dockerfileDir, filter)
+		if err != nil {
+			return "", nil, err
+		}
 		options.Dockerfile = DockerfileName
 
 		defer func() {
@@ -603,7 +606,7 @@ const DockerfileName = "Dockerfile"
 //
 // The fake Dockerfile.dockerignore tells buildkit not do to its server-side
 // filtering dance.
-func toDirSource(context string, dockerfileSyncDir string, filter model.PathMatcher) filesync.DirSource {
+func toDirSource(context string, dockerfileSyncDir string, filter model.PathMatcher) (filesync.DirSource, error) {
 	fileMap := func(path string, s *fsutiltypes.Stat) fsutil.MapResult {
 		if !filepath.IsAbs(path) {
 			path = filepath.Join(context, path)
@@ -626,15 +629,27 @@ func toDirSource(context string, dockerfileSyncDir string, filter model.PathMatc
 		return fsutil.MapResultKeep
 	}
 
-	return filesync.StaticDirSource{
-		"context": filesync.SyncedDir{
-			Dir: context,
-			Map: fileMap,
-		},
-		"dockerfile": filesync.SyncedDir{
-			Dir: dockerfileSyncDir,
-		},
+	contextFS, err := fsutil.NewFS(context)
+	if err != nil {
+		return nil, err
 	}
+
+	contextFS, err = fsutil.NewFilterFS(contextFS, &fsutil.FilterOpt{
+		Map: fileMap,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	dockerfileFS, err := fsutil.NewFS(dockerfileSyncDir)
+	if err != nil {
+		return nil, err
+	}
+
+	return filesync.StaticDirSource{
+		"context":    contextFS,
+		"dockerfile": dockerfileFS,
+	}, nil
 }
 
 // Writes Dockerfile and Dockerfile.dockerignore to a temporary directory.

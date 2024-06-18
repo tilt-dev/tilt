@@ -68,14 +68,27 @@ func run() error {
 	if !filepath.IsAbs(contextDir) {
 		contextDir = filepath.Join(dir, contextDir)
 	}
+
+	contextFS, err := fsutil.NewFS(contextDir)
+	if err != nil {
+		return err
+	}
+
+	contextFS, err = fsutil.NewFilterFS(contextFS, &fsutil.FilterOpt{
+		Map: fileMap,
+	})
+	if err != nil {
+		return err
+	}
+
+	dockerfileFS, err := fsutil.NewFS(dir)
+	if err != nil {
+		return err
+	}
+
 	session.Allow(filesync.NewFSSyncProvider(filesync.StaticDirSource{
-		"context": filesync.SyncedDir{
-			Dir: contextDir,
-			Map: fileMap,
-		},
-		"dockerfile": filesync.SyncedDir{
-			Dir: dir,
-		},
+		"context":    contextFS,
+		"dockerfile": dockerfileFS,
 	}))
 
 	go func() {
