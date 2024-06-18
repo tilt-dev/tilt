@@ -317,7 +317,7 @@ func (c *Cli) startBuildkitSession(ctx context.Context, g *errgroup.Group, key s
 
 	dockerConfig := config.LoadDefaultConfigFile(
 		logger.Get(ctx).Writer(logger.InfoLvl))
-	provider := authprovider.NewDockerAuthProvider(dockerConfig)
+	provider := authprovider.NewDockerAuthProvider(dockerConfig, nil)
 	session.Allow(provider)
 
 	if len(secretSpecs) > 0 {
