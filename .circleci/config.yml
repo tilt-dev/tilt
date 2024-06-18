@@ -124,9 +124,9 @@ jobs:
           only_for_branches: master
 
   build-macos:
-    resource_class: "macos.x86.medium.gen2"
+    resource_class: "macos.m1.medium.gen1"
     macos:
-      xcode: "15.0.0"
+      xcode: "15.4.0"
 
     steps:
       - checkout
@@ -191,13 +191,13 @@ workflows:
   build:
     # The linux job is cheaper than the others, so run that first.
     jobs:
-      - build-linux
+      - build-linux:
+          requires:
+            - build-macos
       - build-js:
           requires:
             - build-linux
-      - build-macos:
-          requires:
-            - build-linux
+      - build-macos
       - build-integration:
           requires:
             - build-linux
