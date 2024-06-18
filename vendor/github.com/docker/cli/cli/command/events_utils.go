@@ -10,21 +10,21 @@ import (
 // EventHandler is abstract interface for user to customize
 // own handle functions of each type of events
 type EventHandler interface {
-	Handle(action string, h func(events.Message))
+	Handle(action events.Action, h func(events.Message))
 	Watch(c <-chan events.Message)
 }
 
 // InitEventHandler initializes and returns an EventHandler
 func InitEventHandler() EventHandler {
-	return &eventHandler{handlers: make(map[string]func(events.Message))}
+	return &eventHandler{handlers: make(map[events.Action]func(events.Message))}
 }
 
 type eventHandler struct {
-	handlers map[string]func(events.Message)
+	handlers map[events.Action]func(events.Message)
 	mu       sync.Mutex
 }
 
-func (w *eventHandler) Handle(action string, h func(events.Message)) {
+func (w *eventHandler) Handle(action events.Action, h func(events.Message)) {
 	w.mu.Lock()
 	w.handlers[action] = h
 	w.mu.Unlock()

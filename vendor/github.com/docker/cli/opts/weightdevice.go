@@ -65,7 +65,7 @@ func (opt *WeightdeviceOpt) Set(val string) error {
 
 // String returns WeightdeviceOpt values as a string.
 func (opt *WeightdeviceOpt) String() string {
-	var out []string
+	out := make([]string, 0, len(opt.values))
 	for _, v := range opt.values {
 		out = append(out, v.String())
 	}

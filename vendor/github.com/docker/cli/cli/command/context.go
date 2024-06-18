@@ -1,3 +1,6 @@
+// FIXME(thaJeztah): remove once we are a module; the go:build directive prevents go from downgrading language version to go1.16:
+//go:build go1.19
+
 package command
 
 import (
@@ -10,12 +13,12 @@ import (
 // DockerContext is a typed representation of what we put in Context metadata
 type DockerContext struct {
 	Description      string
-	AdditionalFields map[string]interface{}
+	AdditionalFields map[string]any
 }
 
 // MarshalJSON implements custom JSON marshalling
 func (dc DockerContext) MarshalJSON() ([]byte, error) {
-	s := map[string]interface{}{}
+	s := map[string]any{}
 	if dc.Description != "" {
 		s["Description"] = dc.Description
 	}
@@ -29,7 +32,7 @@ func (dc DockerContext) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements custom JSON marshalling
 func (dc *DockerContext) UnmarshalJSON(payload []byte) error {
-	var data map[string]interface{}
+	var data map[string]any
 	if err := json.Unmarshal(payload, &data); err != nil {
 		return err
 	}
@@ -39,7 +42,7 @@ func (dc *DockerContext) UnmarshalJSON(payload []byte) error {
 			dc.Description = v.(string)
 		default:
 			if dc.AdditionalFields == nil {
-				dc.AdditionalFields = make(map[string]interface{})
+				dc.AdditionalFields = make(map[string]any)
 			}
 			dc.AdditionalFields[k] = v
 		}

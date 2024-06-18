@@ -300,7 +300,8 @@ func (dp *DockerPruner) deleteOldImages(ctx context.Context, maxAge time.Duratio
 }
 
 func (dp *DockerPruner) sufficientVersionError() error {
-	return dp.dCli.NewVersionError("1.30", "image | container prune with filter: label")
+	return dp.dCli.NewVersionError(context.Background(),
+		"1.30", "image | container prune with filter: label")
 }
 
 func prettyPrintImagesPruneReport(report types.ImagesPruneReport, l logger.Logger) {

@@ -12,8 +12,8 @@ require (
 	github.com/compose-spec/compose-go v1.20.2
 	github.com/davecgh/go-spew v1.1.1
 	github.com/distribution/reference v0.5.0
-	github.com/docker/cli v24.0.6+incompatible
-	github.com/docker/docker v24.0.9+incompatible
+	github.com/docker/cli v25.0.0+incompatible
+	github.com/docker/docker v25.0.0+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-units v0.5.0
 	github.com/fatih/color v1.13.0
@@ -36,7 +36,7 @@ require (
 	github.com/mattn/go-isatty v0.0.17
 	github.com/mattn/go-jsonpointer v0.0.1
 	github.com/mattn/go-tty v0.0.4
-	github.com/moby/buildkit v0.11.6
+	github.com/moby/buildkit v0.12.4
 	github.com/modern-go/reflect2 v1.0.2
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
@@ -55,7 +55,7 @@ require (
 	github.com/tilt-dev/starlark-lsp v0.0.0-20230210155543-84c13fe0ff94
 	github.com/tilt-dev/tilt-apiserver v0.12.0
 	github.com/tilt-dev/wmclient v0.0.0-20201109174454-1839d0355fbc
-	github.com/tonistiigi/fsutil v0.0.0-20230214225802-a3696a2f1f27
+	github.com/tonistiigi/fsutil v0.0.0-20230629203738-36ef4d8c0dbb
 	github.com/tonistiigi/units v0.0.0-20180711220420-6950e57a87ea
 	github.com/whilp/git-urls v1.0.0
 	go.lsp.dev/protocol v0.11.2
@@ -115,7 +115,6 @@ require (
 	github.com/containerd/containerd v1.7.11 // indirect
 	github.com/containerd/continuity v0.4.2 // indirect
 	github.com/containerd/log v0.1.0 // indirect
-	github.com/containerd/typeurl v1.0.2 // indirect
 	github.com/containerd/typeurl/v2 v2.1.1 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
@@ -197,7 +196,7 @@ require (
 	github.com/smacker/go-tree-sitter v0.0.0-20220209044044-0d3022e933c3 // indirect
 	github.com/stoewer/go-strcase v1.2.0 // indirect
 	github.com/theupdateframework/notary v0.6.1 // indirect
-	github.com/tonistiigi/vt100 v0.0.0-20210615222946-8066bb97264f // indirect
+	github.com/tonistiigi/vt100 v0.0.0-20230623042737-f9a4f7ef6531 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect

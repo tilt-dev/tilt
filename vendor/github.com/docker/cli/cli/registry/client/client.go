@@ -6,10 +6,10 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/distribution/reference"
 	manifesttypes "github.com/docker/cli/cli/manifest/types"
 	"github.com/docker/cli/cli/trust"
 	"github.com/docker/distribution"
-	"github.com/docker/distribution/reference"
 	distributionclient "github.com/docker/distribution/registry/client"
 	registrytypes "github.com/docker/docker/api/types/registry"
 	"github.com/opencontainers/go-digest"
