@@ -131,6 +131,8 @@ func (m *MountOpt) Set(value string) error {
 				return fmt.Errorf("invalid value for %s: %s (must be \"enabled\", \"disabled\", \"writable\", or \"readonly\")",
 					key, val)
 			}
+		case "volume-subpath":
+			volumeOptions().Subpath = val
 		case "volume-nocopy":
 			volumeOptions().NoCopy, err = strconv.ParseBool(val)
 			if err != nil {

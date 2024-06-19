@@ -5,17 +5,21 @@ package command
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 
 	"github.com/docker/cli/cli/streams"
 	"github.com/docker/docker/api/types/filters"
 	mounttypes "github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/versions"
+	"github.com/docker/docker/errdefs"
 	"github.com/moby/sys/sequential"
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
@@ -72,12 +76,19 @@ func PrettyPrint(i any) string {
 	}
 }
 
-// PromptForConfirmation requests and checks confirmation from user.
-// This will display the provided message followed by ' [y/N] '. If
-// the user input 'y' or 'Y' it returns true other false.  If no
-// message is provided "Are you sure you want to proceed? [y/N] "
-// will be used instead.
-func PromptForConfirmation(ins io.Reader, outs io.Writer, message string) bool {
+var ErrPromptTerminated = errdefs.Cancelled(errors.New("prompt terminated"))
+
+// PromptForConfirmation requests and checks confirmation from the user.
+// This will display the provided message followed by ' [y/N] '. If the user
+// input 'y' or 'Y' it returns true otherwise false. If no message is provided,
+// "Are you sure you want to proceed? [y/N] " will be used instead.
+//
+// If the user terminates the CLI with SIGINT or SIGTERM while the prompt is
+// active, the prompt will return false with an ErrPromptTerminated error.
+// When the prompt returns an error, the caller should propagate the error up
+// the stack and close the io.Reader used for the prompt which will prevent the
+// background goroutine from blocking indefinitely.
+func PromptForConfirmation(ctx context.Context, ins io.Reader, outs io.Writer, message string) (bool, error) {
 	if message == "" {
 		message = "Are you sure you want to proceed?"
 	}
@@ -90,9 +101,33 @@ func PromptForConfirmation(ins io.Reader, outs io.Writer, message string) bool {
 		ins = streams.NewIn(os.Stdin)
 	}
 
-	reader := bufio.NewReader(ins)
-	answer, _, _ := reader.ReadLine()
-	return strings.ToLower(string(answer)) == "y"
+	result := make(chan bool)
+
+	// Catch the termination signal and exit the prompt gracefully.
+	// The caller is responsible for properly handling the termination.
+	notifyCtx, notifyCancel := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
+	defer notifyCancel()
+
+	go func() {
+		var res bool
+		scanner := bufio.NewScanner(ins)
+		if scanner.Scan() {
+			answer := strings.TrimSpace(scanner.Text())
+			if strings.EqualFold(answer, "y") {
+				res = true
+			}
+		}
+		result <- res
+	}()
+
+	select {
+	case <-notifyCtx.Done():
+		// print a newline on termination
+		_, _ = fmt.Fprintln(outs, "")
+		return false, ErrPromptTerminated
+	case r := <-result:
+		return r, nil
+	}
 }
 
 // PruneFilters returns consolidated prune filters obtained from config.json and cli

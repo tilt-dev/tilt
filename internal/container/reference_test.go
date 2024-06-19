@@ -21,7 +21,7 @@ func TestNewRefSetWithInvalidRegistryErrors(t *testing.T) {
 func TestNewRefSetErrorsWithBadLocalRef(t *testing.T) {
 	// Force "repository name must not be longer than 255 characters" when assembling LocalRef
 	var longname string
-	for i := 0; i < 230; i++ {
+	for i := 0; i < 240; i++ {
 		longname += "o"
 	}
 	selector := MustParseSelector(longname)
@@ -32,7 +32,7 @@ func TestNewRefSetErrorsWithBadLocalRef(t *testing.T) {
 func TestNewRefSetErrorsWithBadClusterRef(t *testing.T) {
 	// Force "repository name must not be longer than 255 characters" when assembling ClusterRef
 	var longname string
-	for i := 0; i < 230; i++ {
+	for i := 0; i < 240; i++ {
 		longname += "o"
 	}
 	selector := MustParseSelector(longname)

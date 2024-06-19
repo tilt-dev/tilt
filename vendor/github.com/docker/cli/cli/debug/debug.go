@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel"
 )
 
 // Enable sets the DEBUG env var to true
@@ -24,3 +25,13 @@ func Disable() {
 func IsEnabled() bool {
 	return os.Getenv("DEBUG") != ""
 }
+
+// OTELErrorHandler is an error handler for OTEL that
+// uses the CLI debug package to log messages when an error
+// occurs.
+//
+// The default is to log to the debug level which is only
+// enabled when debugging is enabled.
+var OTELErrorHandler otel.ErrorHandler = otel.ErrorHandlerFunc(func(err error) {
+	logrus.WithError(err).Debug("otel error")
+})

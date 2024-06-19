@@ -11,18 +11,10 @@ import (
 	"github.com/moby/term"
 )
 
-// CLIOption applies a modification on a DockerCli.
+// CLIOption is a functional argument to apply options to a [DockerCli]. These
+// options can be passed to [NewDockerCli] to initialize a new CLI, or
+// applied with [DockerCli.Initialize] or [DockerCli.Apply].
 type CLIOption func(cli *DockerCli) error
-
-// DockerCliOption applies a modification on a DockerCli.
-//
-// Deprecated: use [CLIOption] instead.
-type DockerCliOption = CLIOption
-
-// InitializeOpt is the type of the functional options passed to DockerCli.Initialize
-//
-// Deprecated: use [CLIOption] instead.
-type InitializeOpt = CLIOption
 
 // WithStandardStreams sets a cli in, out and err streams with the standard streams.
 func WithStandardStreams() CLIOption {

@@ -17,8 +17,9 @@ import (
 	"github.com/docker/cli/cli/command"
 	"github.com/docker/cli/cli/config"
 	"github.com/docker/docker/api/types"
-	mobycontainer "github.com/docker/docker/api/types/container"
+	typescontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
+	typesimage "github.com/docker/docker/api/types/image"
 	typesregistry "github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
@@ -93,9 +94,9 @@ type Client interface {
 	// relevant for the switchClient which has clients for both types.
 	ForOrchestrator(orc model.Orchestrator) Client
 
-	ContainerLogs(ctx context.Context, container string, options types.ContainerLogsOptions) (io.ReadCloser, error)
+	ContainerLogs(ctx context.Context, container string, options typescontainer.LogsOptions) (io.ReadCloser, error)
 	ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error)
-	ContainerList(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error)
+	ContainerList(ctx context.Context, options typescontainer.ListOptions) ([]types.Container, error)
 	ContainerRestartNoWait(ctx context.Context, containerID string) error
 
 	Run(ctx context.Context, opts RunConfig) (RunResult, error)
@@ -109,8 +110,8 @@ type Client interface {
 	ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io.Reader, options BuildOptions) (types.ImageBuildResponse, error)
 	ImageTag(ctx context.Context, source, target string) error
 	ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error)
-	ImageList(ctx context.Context, options types.ImageListOptions) ([]types.ImageSummary, error)
-	ImageRemove(ctx context.Context, imageID string, options types.ImageRemoveOptions) ([]types.ImageDeleteResponseItem, error)
+	ImageList(ctx context.Context, options types.ImageListOptions) ([]typesimage.Summary, error)
+	ImageRemove(ctx context.Context, imageID string, options typesimage.RemoveOptions) ([]typesimage.DeleteResponse, error)
 
 	NewVersionError(ctx context.Context, APIrequired, feature string) error
 	BuildCachePrune(ctx context.Context, opts types.BuildCachePruneOptions) (*types.BuildCachePruneReport, error)
@@ -574,7 +575,7 @@ func (c *Cli) ContainerRestartNoWait(ctx context.Context, containerID string) er
 	// Don't wait on the container to fully start.
 	dur := 0
 
-	return c.ContainerRestart(ctx, containerID, mobycontainer.StopOptions{
+	return c.ContainerRestart(ctx, containerID, typescontainer.StopOptions{
 		Timeout: &dur,
 	})
 }
@@ -670,7 +671,7 @@ func (c *Cli) Run(ctx context.Context, opts RunConfig) (RunResult, error) {
 		}
 	}
 
-	cc := &mobycontainer.Config{
+	cc := &typescontainer.Config{
 		Image:        opts.Image.String(),
 		AttachStdout: opts.Stdout != nil,
 		AttachStderr: opts.Stderr != nil,
@@ -678,7 +679,7 @@ func (c *Cli) Run(ctx context.Context, opts RunConfig) (RunResult, error) {
 		Labels:       BuiltLabelSet,
 	}
 
-	hc := &mobycontainer.HostConfig{
+	hc := &typescontainer.HostConfig{
 		Mounts: opts.Mounts,
 	}
 
@@ -694,7 +695,7 @@ func (c *Cli) Run(ctx context.Context, opts RunConfig) (RunResult, error) {
 	}
 
 	tearDown := func(containerID string) error {
-		return c.Client.ContainerRemove(ctx, createResp.ID, types.ContainerRemoveOptions{Force: true})
+		return c.Client.ContainerRemove(ctx, createResp.ID, typescontainer.RemoveOptions{Force: true})
 	}
 
 	var containerStarted bool
@@ -708,7 +709,7 @@ func (c *Cli) Run(ctx context.Context, opts RunConfig) (RunResult, error) {
 		}
 	}(createResp.ID)
 
-	statusCh, statusErrCh := c.Client.ContainerWait(ctx, createResp.ID, mobycontainer.WaitConditionNextExit)
+	statusCh, statusErrCh := c.Client.ContainerWait(ctx, createResp.ID, typescontainer.WaitConditionNextExit)
 	// ContainerWait() can immediately write to the error channel before returning if it can't start the API request,
 	// so catch these errors early (it _also_ can write to that channel later, so it's still passed to the RunResult)
 	select {
@@ -717,7 +718,7 @@ func (c *Cli) Run(ctx context.Context, opts RunConfig) (RunResult, error) {
 	default:
 	}
 
-	err = c.Client.ContainerStart(ctx, createResp.ID, types.ContainerStartOptions{})
+	err = c.Client.ContainerStart(ctx, createResp.ID, typescontainer.StartOptions{})
 	if err != nil {
 		return RunResult{}, fmt.Errorf("could not start container (id=%s): %v", createResp.ID, err)
 	}
@@ -727,7 +728,7 @@ func (c *Cli) Run(ctx context.Context, opts RunConfig) (RunResult, error) {
 	if opts.Stdout != nil || opts.Stderr != nil {
 		var logsResp io.ReadCloser
 		logsResp, err = c.Client.ContainerLogs(
-			ctx, createResp.ID, types.ContainerLogsOptions{
+			ctx, createResp.ID, typescontainer.LogsOptions{
 				ShowStdout: opts.Stdout != nil,
 				ShowStderr: opts.Stderr != nil,
 				Follow:     true,

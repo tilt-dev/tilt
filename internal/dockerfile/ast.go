@@ -289,7 +289,7 @@ func fmtDefault(node *parser.Node) string {
 func fmtLabel(node *parser.Node) string {
 	cmd := getCmd(node)
 	assignments := []string{cmd[0]}
-	for i := 1; i < len(cmd); i += 2 {
+	for i := 1; i < len(cmd); i += 3 {
 		if i+1 < len(cmd) {
 			assignments = append(assignments, fmt.Sprintf("%s=%s", cmd[i], cmd[i+1]))
 		} else {

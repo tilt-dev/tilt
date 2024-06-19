@@ -6,7 +6,9 @@ import (
 
 	"github.com/distribution/reference"
 	"github.com/docker/docker/api/types"
+	typescontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
+	typesimage "github.com/docker/docker/api/types/image"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/tilt-dev/tilt/internal/container"
@@ -42,13 +44,13 @@ func (c explodingClient) BuilderVersion(ctx context.Context) (types.BuilderVersi
 func (c explodingClient) ServerVersion(ctx context.Context) (types.Version, error) {
 	return types.Version{}, c.err
 }
-func (c explodingClient) ContainerLogs(ctx context.Context, containerID string, options types.ContainerLogsOptions) (io.ReadCloser, error) {
+func (c explodingClient) ContainerLogs(ctx context.Context, containerID string, options typescontainer.LogsOptions) (io.ReadCloser, error) {
 	return nil, c.err
 }
 func (c explodingClient) ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error) {
 	return types.ContainerJSON{}, c.err
 }
-func (c explodingClient) ContainerList(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error) {
+func (c explodingClient) ContainerList(ctx context.Context, options typescontainer.ListOptions) ([]types.Container, error) {
 	return nil, c.err
 }
 func (c explodingClient) ContainerRestartNoWait(ctx context.Context, containerID string) error {
@@ -75,10 +77,10 @@ func (c explodingClient) ImageTag(ctx context.Context, source, target string) er
 func (c explodingClient) ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error) {
 	return types.ImageInspect{}, nil, c.err
 }
-func (c explodingClient) ImageList(ctx context.Context, options types.ImageListOptions) ([]types.ImageSummary, error) {
+func (c explodingClient) ImageList(ctx context.Context, options types.ImageListOptions) ([]typesimage.Summary, error) {
 	return nil, c.err
 }
-func (c explodingClient) ImageRemove(ctx context.Context, imageID string, options types.ImageRemoveOptions) ([]types.ImageDeleteResponseItem, error) {
+func (c explodingClient) ImageRemove(ctx context.Context, imageID string, options types.ImageRemoveOptions) ([]typesimage.DeleteResponse, error) {
 	return nil, c.err
 }
 func (c explodingClient) NewVersionError(ctx context.Context, apiRequired, feature string) error {

@@ -10,6 +10,7 @@ import (
 	"github.com/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
+	typesimage "github.com/docker/docker/api/types/image"
 	"github.com/docker/go-units"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -429,7 +430,7 @@ func (dpf *dockerPruneFixture) withImageInspect(i, size int, timeSinceLastTag ti
 		ID:       id,
 		RepoTags: []string{tag},
 		Size:     int64(size),
-		Metadata: types.ImageMetadata{
+		Metadata: typesimage.Metadata{
 			LastTagTime: time.Now().Add(-1 * timeSinceLastTag),
 		},
 	}

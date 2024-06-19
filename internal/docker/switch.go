@@ -7,7 +7,9 @@ import (
 
 	"github.com/distribution/reference"
 	"github.com/docker/docker/api/types"
+	typescontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
+	typesimage "github.com/docker/docker/api/types/image"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/tilt-dev/tilt/internal/container"
@@ -77,13 +79,13 @@ func (c *switchCli) BuilderVersion(ctx context.Context) (types.BuilderVersion, e
 func (c *switchCli) ServerVersion(ctx context.Context) (types.Version, error) {
 	return c.client(ctx).ServerVersion(ctx)
 }
-func (c *switchCli) ContainerLogs(ctx context.Context, containerID string, options types.ContainerLogsOptions) (io.ReadCloser, error) {
+func (c *switchCli) ContainerLogs(ctx context.Context, containerID string, options typescontainer.LogsOptions) (io.ReadCloser, error) {
 	return c.client(ctx).ContainerLogs(ctx, containerID, options)
 }
 func (c *switchCli) ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error) {
 	return c.client(ctx).ContainerInspect(ctx, containerID)
 }
-func (c *switchCli) ContainerList(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error) {
+func (c *switchCli) ContainerList(ctx context.Context, options typescontainer.ListOptions) ([]types.Container, error) {
 	return c.client(ctx).ContainerList(ctx, options)
 }
 func (c *switchCli) ContainerRestartNoWait(ctx context.Context, containerID string) error {
@@ -110,10 +112,10 @@ func (c *switchCli) ImageTag(ctx context.Context, source, target string) error {
 func (c *switchCli) ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error) {
 	return c.client(ctx).ImageInspectWithRaw(ctx, imageID)
 }
-func (c *switchCli) ImageList(ctx context.Context, options types.ImageListOptions) ([]types.ImageSummary, error) {
+func (c *switchCli) ImageList(ctx context.Context, options types.ImageListOptions) ([]typesimage.Summary, error) {
 	return c.client(ctx).ImageList(ctx, options)
 }
-func (c *switchCli) ImageRemove(ctx context.Context, imageID string, options types.ImageRemoveOptions) ([]types.ImageDeleteResponseItem, error) {
+func (c *switchCli) ImageRemove(ctx context.Context, imageID string, options typesimage.RemoveOptions) ([]typesimage.DeleteResponse, error) {
 	return c.client(ctx).ImageRemove(ctx, imageID, options)
 }
 func (c *switchCli) NewVersionError(ctx context.Context, apiRequired, feature string) error {
