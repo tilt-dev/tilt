@@ -64,7 +64,7 @@ func parseVersion(versionOutput string) (helmVersion, error) {
 
 	if strings.HasPrefix(version, "v3.0.") {
 		return helmV3_0, nil
-	} else if strings.HasPrefix(version, "v3.") {
+	} else if strings.HasPrefix(version, "v3.") || strings.HasPrefix(version, "3.") {
 		return helmV3_1andAbove, nil
 	} else if strings.HasPrefix(version, "Client: v2") {
 		return helmV2, nil
