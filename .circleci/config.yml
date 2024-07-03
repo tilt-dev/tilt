@@ -123,28 +123,33 @@ jobs:
       - slack/notify-on-failure:
           only_for_branches: master
 
-  build-macos:
-    resource_class: "macos.x86.medium.gen2"
-    macos:
-      xcode: "15.0.0"
+  # NOTE(nicks): Tilt is on Docker's legacy CircleCI plan,
+  # which has lots of credits but does not have access to MacOS
+  # Apple Silicon runners. The MacOS Intel runners have been
+  # decommissioned.
+  #
+  # build-macos:
+  #   resource_class: "macos.x86.medium.gen2"
+  #   macos:
+  #     xcode: "15.0.0"
 
-    steps:
-      - checkout
-      - go/install:
-          version: "1.22.2"
-      - run: curl -fsSL "https://github.com/gotestyourself/gotestsum/releases/download/v1.7.0/gotestsum_1.7.0_darwin_amd64.tar.gz" | sudo tar -xz -C /usr/local/bin gotestsum
-      # We can't run the container tests on macos because nested
-      # VMs don't work on circleci.
-      - run: mkdir -p test-results
-      # Check to make sure binaries compile
-      - run: go install -mod vendor ./cmd/tilt
-      # Only run watch tests, because these are currently the only tests that are OS-specific.
-      # In other Tilt tests, we mock out OS-specific components.
-      - run: gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- -mod vendor ./internal/watch/...
-      - store_test_results:
-          path: test-results
-      - slack/notify-on-failure:
-          only_for_branches: master
+  #   steps:
+  #     - checkout
+  #     - go/install:
+  #         version: "1.22.2"
+  #     - run: curl -fsSL "https://github.com/gotestyourself/gotestsum/releases/download/v1.7.0/gotestsum_1.7.0_darwin_amd64.tar.gz" | sudo tar -xz -C /usr/local/bin gotestsum
+  #     # We can't run the container tests on macos because nested
+  #     # VMs don't work on circleci.
+  #     - run: mkdir -p test-results
+  #     # Check to make sure binaries compile
+  #     - run: go install -mod vendor ./cmd/tilt
+  #     # Only run watch tests, because these are currently the only tests that are OS-specific.
+  #     # In other Tilt tests, we mock out OS-specific components.
+  #     - run: gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- -mod vendor ./internal/watch/...
+  #     - store_test_results:
+  #         path: test-results
+  #     - slack/notify-on-failure:
+  #         only_for_branches: master
 
   release-dry-run:
     resource_class: medium+
@@ -195,9 +200,9 @@ workflows:
       - build-js:
           requires:
             - build-linux
-      - build-macos:
-          requires:
-            - build-linux
+     # - build-macos:
+     #     requires:
+     #       - build-linux
       - build-integration:
           requires:
             - build-linux
