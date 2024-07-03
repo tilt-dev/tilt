@@ -247,6 +247,7 @@ const exampleHelmV2VersionOutput = `Client: v2.12.3geecf22f`
 const exampleHelmV3_0VersionOutput = `v3.0.0`
 const exampleHelmV3_1VersionOutput = `v3.1.0`
 const exampleHelmV3_2VersionOutput = `v3.2.4`
+const examplePkgxHelmV3_15VersionOutput = `3.15.2`
 
 // see https://github.com/tilt-dev/tilt/issues/3788
 const exampleHelmV3_3VersionOutput = `WARNING: Kubernetes configuration file is group-readable. This is insecure. Location: /Users/someone/.kube/config
@@ -277,6 +278,11 @@ func TestParseHelmV3_2Version(t *testing.T) {
 func TestParseHelmV3_3Version(t *testing.T) {
 	expected := helmV3_1andAbove
 	assertHelmVersion(t, exampleHelmV3_3VersionOutput, expected)
+}
+
+func TestParsePkgxHelmV3_15Version(t *testing.T) {
+	expected := helmV3_1andAbove
+	assertHelmVersion(t, examplePkgxHelmV3_15VersionOutput, expected)
 }
 
 func TestHelmUnknownVersionError(t *testing.T) {
