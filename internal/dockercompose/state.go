@@ -43,6 +43,9 @@ func (s State) RuntimeStatus() v1alpha1.RuntimeStatus {
 	if s.ContainerState.Error != "" || s.ContainerState.ExitCode != 0 {
 		return v1alpha1.RuntimeStatusError
 	}
+	if s.ContainerState.Status == ContainerStatusRestarting {
+		return v1alpha1.RuntimeStatusPending
+	}
 	if s.ContainerState.Running ||
 		s.ContainerState.Status == ContainerStatusRunning ||
 		s.ContainerState.Status == ContainerStatusExited {
@@ -101,6 +104,34 @@ func (s State) HasEverBeenReadyOrSucceeded() bool {
 	return !s.LastReadyTime.IsZero()
 }
 
+func populateContainerStatus(state *types.ContainerState) string {
+	if state.Health == nil {
+		return state.Status
+	}
+	if state.Health.Status == types.Starting {
+		return ContainerStatusRestarting
+	}
+	return state.Status
+}
+
+func populateContainerError(state *types.ContainerState) string {
+	if state.Error != "" {
+		return state.Error
+	}
+	if state.Health == nil || state.Health.Status != types.Unhealthy {
+		return ""
+	}
+	result := "container is unhealthy"
+	log := state.Health.Log
+	if len(log) > 0 {
+		last := log[len(log)-1]
+		if last != nil && last.Output != "" {
+			result = result + ": " + last.Output
+		}
+	}
+	return result
+}
+
 // Convert ContainerState into an apiserver-compatible state model.
 func ToContainerState(state *types.ContainerState) *v1alpha1.DockerContainerState {
 	if state == nil {
@@ -123,9 +154,9 @@ func ToContainerState(state *types.ContainerState) *v1alpha1.DockerContainerStat
 	}
 
 	return &v1alpha1.DockerContainerState{
-		Status:     state.Status,
+		Status:     populateContainerStatus(state),
 		Running:    state.Running,
-		Error:      state.Error,
+		Error:      populateContainerError(state),
 		ExitCode:   int32(state.ExitCode),
 		StartedAt:  metav1.NewMicroTime(startedAt),
 		FinishedAt: metav1.NewMicroTime(finishedAt),
