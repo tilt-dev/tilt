@@ -48,5 +48,5 @@ export function sourcePrefix(n: string) {
 }
 
 export function isBuildSpanId(spanId: string): boolean {
-  return spanId.indexOf("build:") !== -1
+  return spanId.indexOf("build:") === 0 || spanId.indexOf("cmdimage:") === 0
 }

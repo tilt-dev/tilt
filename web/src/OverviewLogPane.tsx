@@ -16,6 +16,7 @@ import LogStore, {
   LogUpdateEvent,
   useLogStore,
 } from "./LogStore"
+import { isBuildSpanId } from "./logs"
 import PathBuilder, { usePathBuilder } from "./PathBuilder"
 import { RafContext, useRaf } from "./raf"
 import { useStarredResources } from "./StarredResourcesContext"
@@ -449,13 +450,10 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
     }
 
     let source = this.props.filterSet.source
-    if (
-      source === FilterSource.runtime &&
-      line.spanId.indexOf("build:") === 0
-    ) {
+    if (source === FilterSource.runtime && isBuildSpanId(line.spanId)) {
       return false
     }
-    if (source === FilterSource.build && line.spanId.indexOf("build:") !== 0) {
+    if (source === FilterSource.build && !isBuildSpanId(line.spanId)) {
       return false
     }
 
