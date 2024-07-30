@@ -190,6 +190,76 @@ func TestContainerEvent(t *testing.T) {
 		s.ManifestTargets["fe"].State.DCRuntimeState().ContainerState.Status)
 }
 
+func TestContainerUnhealthy(t *testing.T) {
+	f := newFixture(t)
+	nn := types.NamespacedName{Name: "fe"}
+	obj := v1alpha1.DockerComposeService{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "fe",
+			Annotations: map[string]string{
+				v1alpha1.AnnotationManifest: "fe",
+			},
+		},
+		Spec: v1alpha1.DockerComposeServiceSpec{
+			Service: "fe",
+			Project: v1alpha1.DockerComposeProject{
+				YAML: "fake-yaml",
+			},
+		},
+	}
+	f.Create(&obj)
+
+	status := f.r.ForceApply(f.Context(), nn, obj.Spec, nil, false)
+	assert.Equal(t, "", status.ApplyError)
+	assert.Equal(t, true, status.ContainerState.Running)
+
+	container := dtypes.ContainerState{
+		Status:    "running",
+		Running:   true,
+		ExitCode:  0,
+		StartedAt: "2021-09-08T19:58:01.483005100Z",
+		Health: &dtypes.Health{
+			Status: dtypes.Unhealthy,
+			Log: []*dtypes.HealthcheckResult{
+				{
+					Output: "healthcheck failed",
+				},
+			},
+		},
+	}
+	containerID := "my-container-id"
+	f.dc.Containers[containerID] = container
+
+	event := dockercompose.Event{Type: dockercompose.TypeContainer, ID: containerID, Service: "fe"}
+	f.dcc.SendEvent(event)
+
+	require.Eventually(t, func() bool {
+		f.MustReconcile(nn)
+		f.MustGet(nn, &obj)
+		return obj.Status.ContainerState.HealthStatus == dtypes.Unhealthy
+	}, time.Second, 10*time.Millisecond, "container unhealthy")
+
+	assert.Equal(t, containerID, obj.Status.ContainerID)
+
+	f.MustReconcile(nn)
+	tmpf := tempdir.NewTempDirFixture(t)
+	s := store.NewState()
+	m := manifestbuilder.New(tmpf, "fe").WithDockerCompose().Build()
+	s.UpsertManifestTarget(store.NewManifestTarget(m))
+
+	for _, action := range f.Store.Actions() {
+		switch action := action.(type) {
+		case dockercomposeservices.DockerComposeServiceUpsertAction:
+			dockercomposeservices.HandleDockerComposeServiceUpsertAction(s, action)
+		}
+	}
+
+	assert.Equal(t, dtypes.Unhealthy,
+		s.ManifestTargets["fe"].State.DCRuntimeState().ContainerState.HealthStatus)
+
+	assert.Contains(t, f.Stdout(), "healthcheck failed")
+}
+
 func TestForceDelete(t *testing.T) {
 	f := newFixture(t)
 	nn := types.NamespacedName{Name: "fe"}

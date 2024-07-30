@@ -849,6 +849,16 @@
       },
       "description": "UIResource represents per-resource status data for rendering the web UI.\n\nTreat this as a legacy data structure that's more intended to make transition\neasier rather than a robust long-term API.\n\n+k8s:openapi-gen=true"
     },
+    "v1alpha1UIResourceCompose": {
+      "type": "object",
+      "properties": {
+        "healthStatus": {
+          "type": "string",
+          "title": "Status is one of Starting, Healthy or Unhealthy"
+        }
+      },
+      "description": "UIResourceCompose contains status information specific to Docker Compose."
+    },
     "v1alpha1UIResourceCondition": {
       "type": "object",
       "properties": {
@@ -1031,6 +1041,10 @@
         "k8sResourceInfo": {
           "$ref": "#/definitions/v1alpha1UIResourceKubernetes",
           "title": "Extra data about Kubernetes resources.\n+optional"
+        },
+        "composeResourceInfo": {
+          "$ref": "#/definitions/v1alpha1UIResourceCompose",
+          "title": "Extra data about Compose resources.\n+optional"
         },
         "localResourceInfo": {
           "$ref": "#/definitions/v1alpha1UIResourceLocal",

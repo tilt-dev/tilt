@@ -164,6 +164,10 @@ type UIResourceStatus struct {
 	// +optional
 	K8sResourceInfo *UIResourceKubernetes `json:"k8sResourceInfo,omitempty" protobuf:"bytes,8,opt,name=k8sResourceInfo"`
 
+	// Extra data about Compose resources.
+	// +optional
+	ComposeResourceInfo *UIResourceCompose `json:"composeResourceInfo,omitempty" protobuf:"bytes,19,opt,name=composeResourceInfo"`
+
 	// Extra data about Local resources
 	// +optional
 	LocalResourceInfo *UIResourceLocal `json:"localResourceInfo,omitempty" protobuf:"bytes,9,opt,name=localResourceInfo"`
@@ -361,6 +365,12 @@ type UIResourceKubernetes struct {
 	// for this resource.
 	// +optional
 	DisplayNames []string `json:"displayNames,omitempty" protobuf:"bytes,9,rep,name=displayNames"`
+}
+
+// UIResourceCompose contains status information specific to Docker Compose.
+type UIResourceCompose struct {
+	// Status is one of Starting, Healthy or Unhealthy
+	HealthStatus string `json:"healthStatus,omitempty" protobuf:"bytes,1,opt,name=healthStatus"`
 }
 
 // UIResourceLocal contains status information specific to local commands.

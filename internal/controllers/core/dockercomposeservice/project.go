@@ -3,9 +3,10 @@ package dockercomposeservice
 import (
 	"context"
 
+	"github.com/docker/docker/api/types"
+
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
-	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
@@ -92,9 +93,7 @@ func (r *Reconciler) runProjectWatch(pw *ProjectWatch) {
 				continue
 			}
 
-			cState := containerJSON.ContainerJSONBase.State
-			dcState := dockercompose.ToContainerState(cState)
-			r.recordContainerEvent(evt, dcState)
+			r.recordContainerEvent(ctx, evt, containerJSON)
 
 		case <-ctx.Done():
 			return
@@ -103,9 +102,19 @@ func (r *Reconciler) runProjectWatch(pw *ProjectWatch) {
 }
 
 // Record the container event and re-reconcile the dockercompose service.
-func (r *Reconciler) recordContainerEvent(evt dockercompose.Event, state *v1alpha1.DockerContainerState) {
+func (r *Reconciler) recordContainerEvent(ctx context.Context, evt dockercompose.Event, containerJSON types.ContainerJSON) {
+	cState := containerJSON.ContainerJSONBase.State
+	state := dockercompose.ToContainerState(cState)
+	healthcheckOutput := dockercompose.ToHealthcheckOutput(cState)
+
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
+	oldOutput := r.healthcheckOutputByServiceName[evt.Service]
+	r.healthcheckOutputByServiceName[evt.Service] = healthcheckOutput
+	if healthcheckOutput != "" && oldOutput != healthcheckOutput {
+		logger.Get(ctx).Warnf("healthcheck: %s", healthcheckOutput)
+	}
 
 	result, ok := r.resultsByServiceName[evt.Service]
 	if !ok {

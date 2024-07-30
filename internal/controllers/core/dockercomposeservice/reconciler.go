@@ -45,9 +45,10 @@ type Reconciler struct {
 	mu           sync.Mutex
 
 	// Protected by the mutex.
-	results              map[types.NamespacedName]*Result
-	resultsByServiceName map[string]*Result
-	projectWatches       map[string]*ProjectWatch
+	results                        map[types.NamespacedName]*Result
+	resultsByServiceName           map[string]*Result
+	healthcheckOutputByServiceName map[string]string
+	projectWatches                 map[string]*ProjectWatch
 }
 
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
@@ -71,16 +72,17 @@ func NewReconciler(
 	disableQueue *DisableSubscriber,
 ) *Reconciler {
 	return &Reconciler{
-		ctrlClient:           ctrlClient,
-		dcc:                  dcc,
-		dc:                   dc.ForOrchestrator(model.OrchestratorDC),
-		indexer:              indexer.NewIndexer(scheme, indexDockerComposeService),
-		st:                   st,
-		requeuer:             indexer.NewRequeuer(),
-		disableQueue:         disableQueue,
-		results:              make(map[types.NamespacedName]*Result),
-		resultsByServiceName: make(map[string]*Result),
-		projectWatches:       make(map[string]*ProjectWatch),
+		ctrlClient:                     ctrlClient,
+		dcc:                            dcc,
+		dc:                             dc.ForOrchestrator(model.OrchestratorDC),
+		indexer:                        indexer.NewIndexer(scheme, indexDockerComposeService),
+		st:                             st,
+		requeuer:                       indexer.NewRequeuer(),
+		disableQueue:                   disableQueue,
+		results:                        make(map[types.NamespacedName]*Result),
+		resultsByServiceName:           make(map[string]*Result),
+		healthcheckOutputByServiceName: make(map[string]string),
+		projectWatches:                 make(map[string]*ProjectWatch),
 	}
 }
 

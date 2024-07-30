@@ -256,6 +256,9 @@ type DockerContainerState struct {
 	// When the container process finished.
 	// +optional
 	FinishedAt metav1.MicroTime `json:"finishedAt,omitempty" protobuf:"bytes,6,opt,name=finishedAt"`
+
+	// Status is one of Starting, Healthy or Unhealthy
+	HealthStatus string `json:"healthStatus,omitempty" protobuf:"bytes,7,opt,name=healthStatus"`
 }
 
 // How docker binds container ports to the host network
