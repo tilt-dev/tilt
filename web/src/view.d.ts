@@ -436,6 +436,7 @@ declare namespace Proto {
     hasPendingChanges?: boolean;
     endpointLinks?: v1alpha1UIResourceLink[];
     k8sResourceInfo?: v1alpha1UIResourceKubernetes;
+    composeResourceInfo?: v1alpha1UIResourceCompose;
     localResourceInfo?: v1alpha1UIResourceLocal;
     /**
      * The RuntimeStatus is a simple, high-level summary of the runtime state of a server.
@@ -566,6 +567,9 @@ declare namespace Proto {
     lastTransitionTime?: string;
     reason?: string;
     message?: string;
+  }
+  export interface v1alpha1UIResourceCompose {
+    healthStatus?: string;
   }
   export interface v1alpha1UIResource {
     metadata?: v1ObjectMeta;

@@ -427,6 +427,11 @@ func populateResourceInfoView(mt *store.ManifestTarget, r *v1alpha1.UIResource) 
 		lState := mt.State.LocalRuntimeState()
 		r.Status.LocalResourceInfo = &v1alpha1.UIResourceLocal{PID: int64(lState.PID)}
 	}
+	if mt.Manifest.IsDC() {
+		r.Status.ComposeResourceInfo = &v1alpha1.UIResourceCompose{
+			HealthStatus: mt.State.DCRuntimeState().ContainerState.HealthStatus,
+		}
+	}
 	if mt.Manifest.IsK8s() {
 		kState := mt.State.K8sRuntimeState()
 		pod := kState.MostRecentPod()

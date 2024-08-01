@@ -811,6 +811,9 @@ message DockerContainerState {
   // When the container process finished.
   // +optional
   optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime finishedAt = 6;
+
+  // Status is one of Starting, Healthy or Unhealthy
+  optional string healthStatus = 7;
 }
 
 // DockerImage describes an image to build with Docker.
@@ -3265,6 +3268,12 @@ message UIResource {
   optional UIResourceStatus status = 3;
 }
 
+// UIResourceCompose contains status information specific to Docker Compose.
+message UIResourceCompose {
+  // Status is one of Starting, Healthy or Unhealthy
+  optional string healthStatus = 1;
+}
+
 message UIResourceCondition {
   // Type of UI Resource condition.
   optional string type = 1;
@@ -3431,6 +3440,10 @@ message UIResourceStatus {
   // Extra data about Kubernetes resources.
   // +optional
   optional UIResourceKubernetes k8sResourceInfo = 8;
+
+  // Extra data about Compose resources.
+  // +optional
+  optional UIResourceCompose composeResourceInfo = 19;
 
   // Extra data about Local resources
   // +optional

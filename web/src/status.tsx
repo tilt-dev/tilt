@@ -59,6 +59,12 @@ function runtimeStatus(
     }
   }
 
+  // Compose Healthchecks aren't currently part of the runtime status,
+  // so are handled separately.
+  if (res.composeResourceInfo?.healthStatus == "unhealthy") {
+    return ResourceStatus.Unhealthy
+  }
+
   switch (res.runtimeStatus) {
     case RuntimeStatus.Error:
       return ResourceStatus.Unhealthy

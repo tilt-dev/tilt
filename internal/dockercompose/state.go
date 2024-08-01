@@ -122,14 +122,37 @@ func ToContainerState(state *types.ContainerState) *v1alpha1.DockerContainerStat
 		}
 	}
 
-	return &v1alpha1.DockerContainerState{
-		Status:     state.Status,
-		Running:    state.Running,
-		Error:      state.Error,
-		ExitCode:   int32(state.ExitCode),
-		StartedAt:  metav1.NewMicroTime(startedAt),
-		FinishedAt: metav1.NewMicroTime(finishedAt),
+	health := state.Health
+	healthStatus := ""
+	if health != nil {
+		healthStatus = health.Status
 	}
+
+	return &v1alpha1.DockerContainerState{
+		Status:       state.Status,
+		Running:      state.Running,
+		Error:        state.Error,
+		ExitCode:     int32(state.ExitCode),
+		StartedAt:    metav1.NewMicroTime(startedAt),
+		FinishedAt:   metav1.NewMicroTime(finishedAt),
+		HealthStatus: healthStatus,
+	}
+}
+
+// Returns the output of a healthcheck if the container is unhealthy.
+func ToHealthcheckOutput(state *types.ContainerState) string {
+	health := state.Health
+	healthStatus := ""
+	if health == nil {
+		return ""
+	}
+
+	healthStatus = health.Status
+	if healthStatus != types.Unhealthy || len(health.Log) == 0 {
+		return ""
+	}
+
+	return health.Log[len(health.Log)-1].Output
 }
 
 // Convert a full into an apiserver-compatible status model.
