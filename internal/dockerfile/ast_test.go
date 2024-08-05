@@ -125,6 +125,33 @@ FROM golang:10
 	assertPrint(t, orig, expected)
 }
 
+func TestPrintArgAndEnv(t *testing.T) {
+	assertPrintSame(t, `
+
+FROM busybox
+ARG APP_NAME=TheAppName
+
+ENV APP_NAME=$APP_NAME
+`)
+}
+
+func TestPrintMultipleEnv(t *testing.T) {
+	assertPrintSame(t, `
+FROM busybox
+ENV VAR_1=foo VAR_2=bar
+`)
+}
+
+func TestPrintReformatEnv(t *testing.T) {
+	assertPrint(t, `
+FROM busybox
+ENV APP_NAME TheAppName
+`, `
+FROM busybox
+ENV APP_NAME=TheAppName
+`)
+}
+
 // Convert the dockerfile into an AST, print it, and then
 // assert that the result is the same as the original.
 func assertPrintSame(t *testing.T, original string) {

@@ -210,8 +210,8 @@ func (a AST) printNode(node *parser.Node, writer io.Writer) (int, error) {
 	// https://github.com/moby/buildkit/blob/2ec7d53b00f24624cda0adfbdceed982623a93b3/frontend/dockerfile/parser/parser.go#L152
 	case command.Cmd, command.Entrypoint, command.Run, command.Shell:
 		v = fmtCmd(node)
-	case command.Label:
-		v = fmtLabel(node)
+	case command.Label, command.Env:
+		v = fmtKeyValuePairs(node)
 	default:
 		v = fmtDefault(node)
 	}
@@ -286,7 +286,7 @@ func fmtDefault(node *parser.Node) string {
 	return appendHeredocs(node, strings.Join(cmd, " "))
 }
 
-func fmtLabel(node *parser.Node) string {
+func fmtKeyValuePairs(node *parser.Node) string {
 	cmd := getCmd(node)
 	assignments := []string{cmd[0]}
 	for i := 1; i < len(cmd); i += 3 {
