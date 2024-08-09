@@ -1,7 +1,7 @@
 package opts
 
 import (
-	"fmt"
+	"errors"
 	"os"
 	"strconv"
 	"strings"
@@ -81,12 +81,12 @@ func ParseRestartPolicy(policy string) (container.RestartPolicy, error) {
 	p := container.RestartPolicy{}
 	k, v, ok := strings.Cut(policy, ":")
 	if ok && k == "" {
-		return container.RestartPolicy{}, fmt.Errorf("invalid restart policy format: no policy provided before colon")
+		return container.RestartPolicy{}, errors.New("invalid restart policy format: no policy provided before colon")
 	}
 	if v != "" {
 		count, err := strconv.Atoi(v)
 		if err != nil {
-			return container.RestartPolicy{}, fmt.Errorf("invalid restart policy format: maximum retry count must be an integer")
+			return container.RestartPolicy{}, errors.New("invalid restart policy format: maximum retry count must be an integer")
 		}
 		p.MaximumRetryCount = count
 	}

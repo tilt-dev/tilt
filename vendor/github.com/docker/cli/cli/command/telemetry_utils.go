@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/docker/cli/cli/version"
-	"github.com/moby/term"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/otel/attribute"
@@ -101,12 +100,10 @@ func startCobraCommandTimer(mp metric.MeterProvider, attrs []attribute.KeyValue)
 }
 
 func stdioAttributes(streams Streams) []attribute.KeyValue {
-	// we don't wrap stderr, but we do wrap in/out
-	_, stderrTty := term.GetFdInfo(streams.Err())
 	return []attribute.KeyValue{
 		attribute.Bool("command.stdin.isatty", streams.In().IsTerminal()),
 		attribute.Bool("command.stdout.isatty", streams.Out().IsTerminal()),
-		attribute.Bool("command.stderr.isatty", stderrTty),
+		attribute.Bool("command.stderr.isatty", streams.Err().IsTerminal()),
 	}
 }
 

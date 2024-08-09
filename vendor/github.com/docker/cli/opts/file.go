@@ -18,7 +18,7 @@ type ErrBadKey struct {
 }
 
 func (e ErrBadKey) Error() string {
-	return fmt.Sprintf("poorly formatted environment: %s", e.msg)
+	return "poorly formatted environment: " + e.msg
 }
 
 func parseKeyValueFile(filename string, emptyFn func(string) (string, bool)) ([]string, error) {

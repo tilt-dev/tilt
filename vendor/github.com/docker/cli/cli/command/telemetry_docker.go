@@ -1,11 +1,10 @@
 // FIXME(jsternberg): remove once we are a module; the go:build directive prevents go from downgrading language version to go1.16:
-//go:build go1.19
+//go:build go1.21
 
 package command
 
 import (
 	"context"
-	"fmt"
 	"net/url"
 	"os"
 	"path"
@@ -85,7 +84,7 @@ func dockerExporterOTLPEndpoint(cli Cli) (endpoint string, secure bool) {
 		// needs the scheme to use the correct resolver.
 		//
 		// We'll just handle this in a special way and add the unix:// back to the endpoint.
-		endpoint = fmt.Sprintf("unix://%s", path.Join(u.Host, u.Path))
+		endpoint = "unix://" + path.Join(u.Host, u.Path)
 	case "https":
 		secure = true
 		fallthrough

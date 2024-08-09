@@ -2,6 +2,7 @@ package opts
 
 import (
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -68,7 +69,7 @@ func (o *ConfigOpt) Set(value string) error {
 	}
 
 	if options.ConfigName == "" {
-		return fmt.Errorf("source is required")
+		return errors.New("source is required")
 	}
 	if options.File.Name == "" {
 		options.File.Name = options.ConfigName

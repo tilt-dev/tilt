@@ -112,7 +112,7 @@ func (c *switchCli) ImageTag(ctx context.Context, source, target string) error {
 func (c *switchCli) ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error) {
 	return c.client(ctx).ImageInspectWithRaw(ctx, imageID)
 }
-func (c *switchCli) ImageList(ctx context.Context, options types.ImageListOptions) ([]typesimage.Summary, error) {
+func (c *switchCli) ImageList(ctx context.Context, options typesimage.ListOptions) ([]typesimage.Summary, error) {
 	return c.client(ctx).ImageList(ctx, options)
 }
 func (c *switchCli) ImageRemove(ctx context.Context, imageID string, options typesimage.RemoveOptions) ([]typesimage.DeleteResponse, error) {

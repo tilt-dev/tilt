@@ -91,7 +91,7 @@ type FakeClient struct {
 
 	PushCount   int
 	PushImage   string
-	PushOptions types.ImagePushOptions
+	PushOptions typesimage.PushOptions
 	PushOutput  string
 
 	BuildCount        int
@@ -101,7 +101,7 @@ type FakeClient struct {
 	BuildErrorToThrow error // next call to Build will throw this err (after which we clear the error)
 
 	ImageListCount int
-	ImageListOpts  []types.ImageListOptions
+	ImageListOpts  []typesimage.ListOptions
 
 	TagCount  int
 	TagSource string
@@ -342,7 +342,7 @@ func (c *FakeClient) ImageInspectWithRaw(ctx context.Context, imageID string) (t
 	return types.ImageInspect{}, nil, newNotFoundErrorf("fakeClient.Images key: %s", imageID)
 }
 
-func (c *FakeClient) ImageList(ctx context.Context, options types.ImageListOptions) ([]typesimage.Summary, error) {
+func (c *FakeClient) ImageList(ctx context.Context, options typesimage.ListOptions) ([]typesimage.Summary, error) {
 	c.ImageListOpts = append(c.ImageListOpts, options)
 	summaries := make([]typesimage.Summary, c.ImageListCount)
 	for i := range summaries {
@@ -354,7 +354,7 @@ func (c *FakeClient) ImageList(ctx context.Context, options types.ImageListOptio
 	return summaries, nil
 }
 
-func (c *FakeClient) ImageRemove(ctx context.Context, imageID string, options types.ImageRemoveOptions) ([]typesimage.DeleteResponse, error) {
+func (c *FakeClient) ImageRemove(ctx context.Context, imageID string, options typesimage.RemoveOptions) ([]typesimage.DeleteResponse, error) {
 	c.RemovedImageIDs = append(c.RemovedImageIDs, imageID)
 	sort.Strings(c.RemovedImageIDs)
 	return []typesimage.DeleteResponse{

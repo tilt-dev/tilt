@@ -77,10 +77,10 @@ func (c explodingClient) ImageTag(ctx context.Context, source, target string) er
 func (c explodingClient) ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error) {
 	return types.ImageInspect{}, nil, c.err
 }
-func (c explodingClient) ImageList(ctx context.Context, options types.ImageListOptions) ([]typesimage.Summary, error) {
+func (c explodingClient) ImageList(ctx context.Context, options typesimage.ListOptions) ([]typesimage.Summary, error) {
 	return nil, c.err
 }
-func (c explodingClient) ImageRemove(ctx context.Context, imageID string, options types.ImageRemoveOptions) ([]typesimage.DeleteResponse, error) {
+func (c explodingClient) ImageRemove(ctx context.Context, imageID string, options typesimage.RemoveOptions) ([]typesimage.DeleteResponse, error) {
 	return nil, c.err
 }
 func (c explodingClient) NewVersionError(ctx context.Context, apiRequired, feature string) error {

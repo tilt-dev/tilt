@@ -1,7 +1,6 @@
 package client
 
 import (
-	"fmt"
 	"net"
 	"net/http"
 	"time"
@@ -83,7 +82,6 @@ func getHTTPTransport(authConfig registrytypes.AuthConfig, endpoint registry.API
 		Dial: (&net.Dialer{
 			Timeout:   30 * time.Second,
 			KeepAlive: 30 * time.Second,
-			DualStack: true,
 		}).Dial,
 		TLSHandshakeTimeout: 10 * time.Second,
 		TLSClientConfig:     endpoint.TLSConfig,
@@ -126,7 +124,7 @@ type existingTokenHandler struct {
 }
 
 func (th *existingTokenHandler) AuthorizeRequest(req *http.Request, _ map[string]string) error {
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", th.token))
+	req.Header.Set("Authorization", "Bearer "+th.token)
 	return nil
 }
 

@@ -101,23 +101,23 @@ func (c *client) MountBlob(ctx context.Context, sourceRef reference.Canonical, t
 func (c *client) PutManifest(ctx context.Context, ref reference.Named, manifest distribution.Manifest) (digest.Digest, error) {
 	repoEndpoint, err := newDefaultRepositoryEndpoint(ref, c.insecureRegistry)
 	if err != nil {
-		return digest.Digest(""), err
+		return "", err
 	}
 
 	repoEndpoint.actions = trust.ActionsPushAndPull
 	repo, err := c.getRepositoryForReference(ctx, ref, repoEndpoint)
 	if err != nil {
-		return digest.Digest(""), err
+		return "", err
 	}
 
 	manifestService, err := repo.Manifests(ctx)
 	if err != nil {
-		return digest.Digest(""), err
+		return "", err
 	}
 
 	_, opts, err := getManifestOptionsFromReference(ref)
 	if err != nil {
-		return digest.Digest(""), err
+		return "", err
 	}
 
 	dgst, err := manifestService.Put(ctx, manifest, opts...)

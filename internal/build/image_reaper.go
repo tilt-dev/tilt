@@ -9,8 +9,8 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/distribution/reference"
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
+	typesimage "github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 
 	"github.com/tilt-dev/tilt/internal/docker"
@@ -46,7 +46,7 @@ func NewImageReaper(docker docker.Client) ImageReaper {
 func (r ImageReaper) RemoveTiltImages(ctx context.Context, createdBefore time.Time, force bool, extraFilters ...filters.KeyValuePair) error {
 	defaultFilter := FilterByLabel(BuildMode)
 	filterList := append([]filters.KeyValuePair{defaultFilter}, extraFilters...)
-	listOptions := types.ImageListOptions{
+	listOptions := typesimage.ListOptions{
 		Filters: filters.NewArgs(filterList...),
 	}
 
@@ -56,7 +56,7 @@ func (r ImageReaper) RemoveTiltImages(ctx context.Context, createdBefore time.Ti
 	}
 
 	g, ctx := errgroup.WithContext(ctx)
-	rmOptions := types.ImageRemoveOptions{
+	rmOptions := typesimage.RemoveOptions{
 		PruneChildren: true,
 		Force:         force,
 	}

@@ -1,5 +1,5 @@
 // FIXME(thaJeztah): remove once we are a module; the go:build directive prevents go from downgrading language version to go1.16:
-//go:build go1.19
+//go:build go1.21
 
 package command
 
@@ -44,7 +44,7 @@ const defaultInitTimeout = 2 * time.Second
 type Streams interface {
 	In() *streams.In
 	Out() *streams.Out
-	Err() io.Writer
+	Err() *streams.Out
 }
 
 // Cli represents the docker command line client.
@@ -75,7 +75,7 @@ type DockerCli struct {
 	options            *cliflags.ClientOptions
 	in                 *streams.In
 	out                *streams.Out
-	err                io.Writer
+	err                *streams.Out
 	client             client.APIClient
 	serverInfo         ServerInfo
 	contentTrust       bool
@@ -92,6 +92,8 @@ type DockerCli struct {
 	// this may be replaced by explicitly passing a context to functions that
 	// need it.
 	baseCtx context.Context
+
+	enableGlobalMeter, enableGlobalTracer bool
 }
 
 // DefaultVersion returns api.defaultVersion.
@@ -124,7 +126,7 @@ func (cli *DockerCli) Out() *streams.Out {
 }
 
 // Err returns the writer used for stderr
-func (cli *DockerCli) Err() io.Writer {
+func (cli *DockerCli) Err() *streams.Out {
 	return cli.err
 }
 
@@ -184,9 +186,18 @@ func (cli *DockerCli) BuildKitEnabled() (bool, error) {
 	if _, ok := aliasMap["builder"]; ok {
 		return true, nil
 	}
-	// otherwise, assume BuildKit is enabled but
-	// not if wcow reported from server side
-	return cli.ServerInfo().OSType != "windows", nil
+
+	si := cli.ServerInfo()
+	if si.BuildkitVersion == types.BuilderBuildKit {
+		// The daemon advertised BuildKit as the preferred builder; this may
+		// be either a Linux daemon or a Windows daemon with experimental
+		// BuildKit support enabled.
+		return true, nil
+	}
+
+	// otherwise, assume BuildKit is enabled for Linux, but disabled for
+	// Windows / WCOW, which does not yet support BuildKit by default.
+	return si.OSType != "windows", nil
 }
 
 // HooksEnabled returns whether plugin hooks are enabled.
@@ -275,8 +286,12 @@ func (cli *DockerCli) Initialize(opts *cliflags.ClientOptions, ops ...CLIOption)
 	}
 
 	// TODO(krissetto): pass ctx to the funcs instead of using this
-	cli.createGlobalMeterProvider(cli.baseCtx)
-	cli.createGlobalTracerProvider(cli.baseCtx)
+	if cli.enableGlobalMeter {
+		cli.createGlobalMeterProvider(cli.baseCtx)
+	}
+	if cli.enableGlobalTracer {
+		cli.createGlobalTracerProvider(cli.baseCtx)
+	}
 
 	return nil
 }
@@ -309,13 +324,13 @@ func newAPIClientFromEndpoint(ep docker.Endpoint, configFile *configfile.ConfigF
 	if len(configFile.HTTPHeaders) > 0 {
 		opts = append(opts, client.WithHTTPHeaders(configFile.HTTPHeaders))
 	}
-	opts = append(opts, client.WithUserAgent(UserAgent()))
+	opts = append(opts, withCustomHeadersFromEnv(), client.WithUserAgent(UserAgent()))
 	return client.NewClientWithOpts(opts...)
 }
 
 func resolveDockerEndpoint(s store.Reader, contextName string) (docker.Endpoint, error) {
 	if s == nil {
-		return docker.Endpoint{}, fmt.Errorf("no context store initialized")
+		return docker.Endpoint{}, errors.New("no context store initialized")
 	}
 	ctxMeta, err := s.GetMetadata(contextName)
 	if err != nil {
@@ -546,7 +561,7 @@ func getServerHost(hosts []string, tlsOptions *tlsconfig.Options) (string, error
 	case 1:
 		host = hosts[0]
 	default:
-		return "", errors.New("Please specify only one -H")
+		return "", errors.New("Specify only one -H")
 	}
 
 	return dopts.ParseHost(tlsOptions != nil, host)

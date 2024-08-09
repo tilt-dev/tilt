@@ -1,5 +1,5 @@
 // FIXME(thaJeztah): remove once we are a module; the go:build directive prevents go from downgrading language version to go1.16:
-//go:build go1.19
+//go:build go1.21
 
 package store
 
@@ -124,6 +124,9 @@ func (s *ContextStore) List() ([]Metadata, error) {
 
 // Names return Metadata names for a Lister
 func Names(s Lister) ([]string, error) {
+	if s == nil {
+		return nil, errors.New("nil lister")
+	}
 	list, err := s.List()
 	if err != nil {
 		return nil, err

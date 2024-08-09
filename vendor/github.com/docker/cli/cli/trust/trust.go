@@ -119,7 +119,6 @@ func GetNotaryRepository(in io.Reader, out io.Writer, userAgent string, repoInfo
 		Dial: (&net.Dialer{
 			Timeout:   30 * time.Second,
 			KeepAlive: 30 * time.Second,
-			DualStack: true,
 		}).Dial,
 		TLSHandshakeTimeout: 10 * time.Second,
 		TLSClientConfig:     cfg,
