@@ -1,22 +1,21 @@
 package command
 
 import (
-	"bufio"
+	"context"
 	"fmt"
-	"io"
 	"os"
 	"runtime"
 	"strings"
 
 	"github.com/distribution/reference"
 	"github.com/docker/cli/cli/config/configfile"
+	"github.com/docker/cli/cli/config/credentials"
 	configtypes "github.com/docker/cli/cli/config/types"
 	"github.com/docker/cli/cli/hints"
 	"github.com/docker/cli/cli/streams"
 	"github.com/docker/docker/api/types"
 	registrytypes "github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/registry"
-	"github.com/moby/term"
 	"github.com/pkg/errors"
 )
 
@@ -27,15 +26,22 @@ const patSuggest = "You can log in with your password or a Personal Access " +
 // RegistryAuthenticationPrivilegedFunc returns a RequestPrivilegeFunc from the specified registry index info
 // for the given command.
 func RegistryAuthenticationPrivilegedFunc(cli Cli, index *registrytypes.IndexInfo, cmdName string) types.RequestPrivilegeFunc {
-	return func() (string, error) {
-		fmt.Fprintf(cli.Out(), "\nPlease login prior to %s:\n", cmdName)
+	return func(ctx context.Context) (string, error) {
+		fmt.Fprintf(cli.Out(), "\nLogin prior to %s:\n", cmdName)
 		indexServer := registry.GetAuthConfigKey(index)
 		isDefaultRegistry := indexServer == registry.IndexServer
 		authConfig, err := GetDefaultAuthConfig(cli.ConfigFile(), true, indexServer, isDefaultRegistry)
 		if err != nil {
 			fmt.Fprintf(cli.Err(), "Unable to retrieve stored credentials for %s, error: %s.\n", indexServer, err)
 		}
-		err = ConfigureAuth(cli, "", "", &authConfig, isDefaultRegistry)
+
+		select {
+		case <-ctx.Done():
+			return "", ctx.Err()
+		default:
+		}
+
+		err = ConfigureAuth(ctx, cli, "", "", &authConfig, isDefaultRegistry)
 		if err != nil {
 			return "", err
 		}
@@ -63,7 +69,7 @@ func ResolveAuthConfig(cfg *configfile.ConfigFile, index *registrytypes.IndexInf
 // If credentials for given serverAddress exists in the credential store, the configuration will be populated with values in it
 func GetDefaultAuthConfig(cfg *configfile.ConfigFile, checkCredStore bool, serverAddress string, isDefaultRegistry bool) (registrytypes.AuthConfig, error) {
 	if !isDefaultRegistry {
-		serverAddress = registry.ConvertToHostname(serverAddress)
+		serverAddress = credentials.ConvertToHostname(serverAddress)
 	}
 	authconfig := configtypes.AuthConfig{}
 	var err error
@@ -81,7 +87,7 @@ func GetDefaultAuthConfig(cfg *configfile.ConfigFile, checkCredStore bool, serve
 }
 
 // ConfigureAuth handles prompting of user's username and password if needed
-func ConfigureAuth(cli Cli, flUser, flPassword string, authconfig *registrytypes.AuthConfig, isDefaultRegistry bool) error {
+func ConfigureAuth(ctx context.Context, cli Cli, flUser, flPassword string, authconfig *registrytypes.AuthConfig, isDefaultRegistry bool) error {
 	// On Windows, force the use of the regular OS stdin stream.
 	//
 	// See:
@@ -116,9 +122,15 @@ func ConfigureAuth(cli Cli, flUser, flPassword string, authconfig *registrytypes
 				fmt.Fprintln(cli.Out())
 			}
 		}
-		promptWithDefault(cli.Out(), "Username", authconfig.Username)
+
+		var prompt string
+		if authconfig.Username == "" {
+			prompt = "Username: "
+		} else {
+			prompt = fmt.Sprintf("Username (%s): ", authconfig.Username)
+		}
 		var err error
-		flUser, err = readInput(cli.In())
+		flUser, err = PromptForInput(ctx, cli.In(), cli.Out(), prompt)
 		if err != nil {
 			return err
 		}
@@ -130,16 +142,13 @@ func ConfigureAuth(cli Cli, flUser, flPassword string, authconfig *registrytypes
 		return errors.Errorf("Error: Non-null Username Required")
 	}
 	if flPassword == "" {
-		oldState, err := term.SaveState(cli.In().FD())
+		restoreInput, err := DisableInputEcho(cli.In())
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(cli.Out(), "Password: ")
-		_ = term.DisableEcho(cli.In().FD(), oldState)
-		defer func() {
-			_ = term.RestoreTerminal(cli.In().FD(), oldState)
-		}()
-		flPassword, err = readInput(cli.In())
+		defer restoreInput()
+
+		flPassword, err = PromptForInput(ctx, cli.In(), cli.Out(), "Password: ")
 		if err != nil {
 			return err
 		}
@@ -153,25 +162,6 @@ func ConfigureAuth(cli Cli, flUser, flPassword string, authconfig *registrytypes
 	authconfig.Password = flPassword
 
 	return nil
-}
-
-// readInput reads, and returns user input from in. It tries to return a
-// single line, not including the end-of-line bytes, and trims leading
-// and trailing whitespace.
-func readInput(in io.Reader) (string, error) {
-	line, _, err := bufio.NewReader(in).ReadLine()
-	if err != nil {
-		return "", errors.Wrap(err, "error while reading input")
-	}
-	return strings.TrimSpace(string(line)), nil
-}
-
-func promptWithDefault(out io.Writer, prompt string, configDefault string) {
-	if configDefault == "" {
-		fmt.Fprintf(out, "%s: ", prompt)
-	} else {
-		fmt.Fprintf(out, "%s (%s): ", prompt, configDefault)
-	}
 }
 
 // RetrieveAuthTokenFromImage retrieves an encoded auth token given a complete

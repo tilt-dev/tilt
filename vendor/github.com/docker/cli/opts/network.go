@@ -2,6 +2,7 @@ package opts
 
 import (
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -83,11 +84,11 @@ func (n *NetworkOpt) Set(value string) error { //nolint:gocyclo
 				}
 				netOpt.DriverOpts[key] = val
 			default:
-				return fmt.Errorf("invalid field key %s", key)
+				return errors.New("invalid field key " + key)
 			}
 		}
 		if len(netOpt.Target) == 0 {
-			return fmt.Errorf("network name/id is not specified")
+			return errors.New("network name/id is not specified")
 		}
 	} else {
 		netOpt.Target = value
@@ -126,7 +127,7 @@ func parseDriverOpt(driverOpt string) (string, string, error) {
 	// TODO(thaJeztah): should value be converted to lowercase as well, or only the key?
 	key, value, ok := strings.Cut(strings.ToLower(driverOpt), "=")
 	if !ok || key == "" {
-		return "", "", fmt.Errorf("invalid key value pair format in driver options")
+		return "", "", errors.New("invalid key value pair format in driver options")
 	}
 	key = strings.TrimSpace(key)
 	value = strings.TrimSpace(value)

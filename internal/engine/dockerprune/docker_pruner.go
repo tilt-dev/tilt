@@ -263,7 +263,7 @@ func (dp *DockerPruner) filterOutMostRecentInspects(ctx context.Context, inspect
 }
 
 func (dp *DockerPruner) deleteOldImages(ctx context.Context, maxAge time.Duration, keepRecent int, selectors []container.RefSelector) (types.ImagesPruneReport, error) {
-	opts := types.ImageListOptions{
+	opts := typesimage.ListOptions{
 		Filters: filters.NewArgs(
 			filters.Arg("label", gcEnabledSelector),
 		),
@@ -277,7 +277,7 @@ func (dp *DockerPruner) deleteOldImages(ctx context.Context, maxAge time.Duratio
 	inspects = dp.filterImageInspectsByMaxAge(ctx, inspects, maxAge, selectors)
 	toDelete := dp.filterOutMostRecentInspects(ctx, inspects, keepRecent, selectors)
 
-	rmOpts := types.ImageRemoveOptions{PruneChildren: true}
+	rmOpts := typesimage.RemoveOptions{PruneChildren: true}
 	var responseItems []typesimage.DeleteResponse
 	var reclaimedBytes uint64
 

@@ -110,7 +110,7 @@ type Client interface {
 	ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io.Reader, options BuildOptions) (types.ImageBuildResponse, error)
 	ImageTag(ctx context.Context, source, target string) error
 	ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error)
-	ImageList(ctx context.Context, options types.ImageListOptions) ([]typesimage.Summary, error)
+	ImageList(ctx context.Context, options typesimage.ListOptions) ([]typesimage.Summary, error)
 	ImageRemove(ctx context.Context, imageID string, options typesimage.RemoveOptions) ([]typesimage.DeleteResponse, error)
 
 	NewVersionError(ctx context.Context, APIrequired, feature string) error
@@ -427,7 +427,7 @@ func (c *Cli) ImagePull(ctx context.Context, ref reference.Named) (reference.Can
 	}
 
 	image := ref.String()
-	pullResp, err := c.Client.ImagePull(ctx, image, types.ImagePullOptions{
+	pullResp, err := c.Client.ImagePull(ctx, image, typesimage.PullOptions{
 		RegistryAuth:  string(encodedAuth),
 		PrivilegeFunc: requestPrivilege,
 	})
@@ -488,7 +488,7 @@ func (c *Cli) ImagePush(ctx context.Context, ref reference.NamedTagged) (io.Read
 		return nil, errors.Wrap(err, "ImagePush: authenticate")
 	}
 
-	options := types.ImagePushOptions{
+	options := typesimage.PushOptions{
 		RegistryAuth:  string(encodedAuth),
 		PrivilegeFunc: requestPrivilege,
 	}

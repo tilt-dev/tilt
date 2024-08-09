@@ -401,7 +401,7 @@ func ParseCPUs(value string) (int64, error) {
 	}
 	nano := cpu.Mul(cpu, big.NewRat(1e9, 1))
 	if !nano.IsInt() {
-		return 0, fmt.Errorf("value is too precise")
+		return 0, errors.New("value is too precise")
 	}
 	return nano.Num().Int64(), nil
 }
@@ -409,14 +409,14 @@ func ParseCPUs(value string) (int64, error) {
 // ParseLink parses and validates the specified string as a link format (name:alias)
 func ParseLink(val string) (string, string, error) {
 	if val == "" {
-		return "", "", fmt.Errorf("empty string specified for links")
+		return "", "", errors.New("empty string specified for links")
 	}
 	// We expect two parts, but restrict to three to allow detecting invalid formats.
 	arr := strings.SplitN(val, ":", 3)
 
 	// TODO(thaJeztah): clean up this logic!!
 	if len(arr) > 2 {
-		return "", "", fmt.Errorf("bad format for links: %s", val)
+		return "", "", errors.New("bad format for links: " + val)
 	}
 	// TODO(thaJeztah): this should trim the "/" prefix as well??
 	if len(arr) == 1 {

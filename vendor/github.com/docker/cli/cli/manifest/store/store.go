@@ -2,7 +2,6 @@ package store
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -162,7 +161,7 @@ func newNotFoundError(ref string) *notFoundError {
 }
 
 func (n *notFoundError) Error() string {
-	return fmt.Sprintf("No such manifest: %s", n.object)
+	return "No such manifest: " + n.object
 }
 
 // NotFound interface

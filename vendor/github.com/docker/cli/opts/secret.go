@@ -2,6 +2,7 @@ package opts
 
 import (
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -62,12 +63,12 @@ func (o *SecretOpt) Set(value string) error {
 
 			options.File.Mode = os.FileMode(m)
 		default:
-			return fmt.Errorf("invalid field in secret request: %s", key)
+			return errors.New("invalid field in secret request: " + key)
 		}
 	}
 
 	if options.SecretName == "" {
-		return fmt.Errorf("source is required")
+		return errors.New("source is required")
 	}
 	if options.File.Name == "" {
 		options.File.Name = options.SecretName

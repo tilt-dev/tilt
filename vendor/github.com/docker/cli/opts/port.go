@@ -2,6 +2,7 @@ package opts
 
 import (
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"net"
 	"regexp"
@@ -102,7 +103,7 @@ func (p *PortOpt) Set(value string) error {
 		for _, portBindings := range portBindingMap {
 			for _, portBinding := range portBindings {
 				if portBinding.HostIP != "" {
-					return fmt.Errorf("hostip is not supported")
+					return errors.New("hostip is not supported")
 				}
 			}
 		}
@@ -148,6 +149,7 @@ func ConvertPortToPortConfig(
 
 	for _, binding := range portBindings[port] {
 		if p := net.ParseIP(binding.HostIP); p != nil && !p.IsUnspecified() {
+			// TODO(thaJeztah): use context-logger, so that this output can be suppressed (in tests).
 			logrus.Warnf("ignoring IP-address (%s:%s) service will listen on '0.0.0.0'", net.JoinHostPort(binding.HostIP, binding.HostPort), port)
 		}
 
