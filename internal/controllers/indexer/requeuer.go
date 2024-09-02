@@ -14,7 +14,7 @@ import (
 // Small helper class for triggering a Reconcile() from a goroutine.
 type Requeuer struct {
 	mu sync.Mutex
-	q  workqueue.RateLimitingInterface
+	q  workqueue.TypedRateLimitingInterface[reconcile.Request]
 }
 
 var _ source.Source = &Requeuer{}
@@ -23,7 +23,7 @@ func NewRequeuer() *Requeuer {
 	return &Requeuer{}
 }
 
-func (s *Requeuer) Start(ctx context.Context, q workqueue.RateLimitingInterface) error {
+func (s *Requeuer) Start(ctx context.Context, q workqueue.TypedRateLimitingInterface[reconcile.Request]) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.q = q
@@ -52,18 +52,18 @@ func StartSourceForTesting(
 	reconciler reconcile.Reconciler,
 	resultChan chan RequeueForTestResult,
 ) {
-	q := workqueue.NewRateLimitingQueue(
-		workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, time.Millisecond))
+	q := workqueue.NewTypedRateLimitingQueue[reconcile.Request](
+		workqueue.NewTypedItemExponentialFailureRateLimiter[reconcile.Request](
+			time.Millisecond, time.Millisecond))
 	_ = s.Start(ctx, q)
 
 	go func() {
 		for ctx.Err() == nil {
-			next, shutdown := q.Get()
+			req, shutdown := q.Get()
 			if shutdown {
 				return
 			}
 
-			req := next.(reconcile.Request)
 			res, err := reconciler.Reconcile(ctx, req)
 			if resultChan != nil {
 				result := RequeueForTestResult{
@@ -74,7 +74,7 @@ func StartSourceForTesting(
 				resultChan <- result
 			}
 
-			q.Done(next)
+			q.Done(req)
 		}
 	}()
 }

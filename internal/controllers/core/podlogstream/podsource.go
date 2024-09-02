@@ -30,7 +30,7 @@ type PodSource struct {
 	ctx     context.Context
 	indexer *indexer.Indexer
 	kClient k8s.Client
-	q       workqueue.RateLimitingInterface
+	q       workqueue.TypedRateLimitingInterface[reconcile.Request]
 	clock   clockwork.Clock
 
 	watchesByNamespace map[string]*podWatch
@@ -59,7 +59,7 @@ func NewPodSource(ctx context.Context, kClient k8s.Client, scheme *runtime.Schem
 	}
 }
 
-func (s *PodSource) Start(ctx context.Context, q workqueue.RateLimitingInterface) error {
+func (s *PodSource) Start(ctx context.Context, q workqueue.TypedRateLimitingInterface[reconcile.Request]) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.q = q

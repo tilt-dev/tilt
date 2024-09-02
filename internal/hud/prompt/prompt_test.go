@@ -118,7 +118,7 @@ type fakeInput struct {
 
 func (i *fakeInput) Close() error { return nil }
 
-func (i *fakeInput) ReadRune() (rune, error) {
+func (i *fakeInput) ReadNextRune() (rune, error) {
 	select {
 	case r := <-i.nextRune:
 		return r, nil

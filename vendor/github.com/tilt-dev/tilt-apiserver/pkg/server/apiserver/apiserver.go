@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/version"
 	genericapiserver "k8s.io/apiserver/pkg/server"
+	utilversion "k8s.io/apiserver/pkg/util/version"
 )
 
 func NewScheme() *runtime.Scheme {
@@ -77,16 +78,12 @@ type CompletedConfig struct {
 
 // Complete fills in any fields not set that are required to have valid data. It's mutating the receiver.
 func (cfg *Config) Complete() CompletedConfig {
-	c := completedConfig{
-		cfg.GenericConfig.Complete(),
-		&cfg.ExtraConfig,
-	}
+	v := utilversion.DefaultKubeEffectiveVersion()
+	cfg.GenericConfig.EffectiveVersion = v
 
-	c.GenericConfig.Version = &version.Info{
-		Major: "1",
-		Minor: "0",
-	}
-
+	c := completedConfig{}
+	c.GenericConfig = cfg.GenericConfig.Complete()
+	c.ExtraConfig = &cfg.ExtraConfig
 	return CompletedConfig{&c}
 }
 

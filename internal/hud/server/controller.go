@@ -111,7 +111,6 @@ func (s *HeadsUpServerController) SetUp(ctx context.Context, st store.RStore) er
 }
 
 func (s *HeadsUpServerController) setUpHelper(ctx context.Context, st store.RStore) error {
-	stopCh := ctx.Done()
 	config := s.apiServerConfig
 	server, err := config.Complete().New()
 	if err != nil {
@@ -183,7 +182,7 @@ func (s *HeadsUpServerController) setUpHelper(ctx context.Context, st store.RSto
 		ErrorLog: log.New(io.Discard, "", 0),
 	}
 	runServer(ctx, s.apiServer, serving.Listener)
-	server.GenericAPIServer.RunPostStartHooks(stopCh)
+	server.GenericAPIServer.RunPostStartHooks(ctx)
 
 	go func() {
 		err := s.assetServer.Serve(ctx)
