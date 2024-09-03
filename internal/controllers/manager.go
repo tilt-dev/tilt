@@ -10,6 +10,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/config"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	"github.com/go-logr/logr"
@@ -69,8 +70,15 @@ func (m *TiltServerControllerManager) SetUp(ctx context.Context, _ store.RStore)
 	logr := logr.New(&logSink{ctx: ctx, logger: logger.Get(ctx), Formatter: funcr.NewFormatter(funcr.Options{})})
 	timeout := time.Duration(0)
 
+	// Suppress an incorrect check
+	// https://github.com/kubernetes-sigs/controller-runtime/issues/2937
+	skipNameValidation := true
+
 	mgr, err := ctrl.NewManager(m.config, ctrl.Options{
 		Scheme: m.scheme,
+		Controller: config.Controller{
+			SkipNameValidation: &skipNameValidation,
+		},
 
 		// Disable metrics server.
 		Metrics: metricsserver.Options{

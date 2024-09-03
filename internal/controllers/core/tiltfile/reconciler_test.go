@@ -481,7 +481,7 @@ type fixture struct {
 	tempdir *tempdir.TempDirFixture
 	st      *testStore
 	r       *Reconciler
-	q       workqueue.RateLimitingInterface
+	q       workqueue.TypedRateLimitingInterface[reconcile.Request]
 	tfl     *tiltfile.FakeTiltfileLoader
 	ma      *analytics.MemoryAnalytics
 }
@@ -494,8 +494,8 @@ func newFixture(t *testing.T) *fixture {
 	tfl := tiltfile.NewFakeTiltfileLoader()
 	d := docker.NewFakeClient()
 	r := NewReconciler(st, tfl, d, cfb.Client, v1alpha1.NewScheme(), store.EngineModeUp, "", "", 0)
-	q := workqueue.NewRateLimitingQueue(
-		workqueue.NewItemExponentialFailureRateLimiter(time.Millisecond, time.Millisecond))
+	q := workqueue.NewTypedRateLimitingQueue[reconcile.Request](
+		workqueue.NewTypedItemExponentialFailureRateLimiter[reconcile.Request](time.Millisecond, time.Millisecond))
 	_ = r.requeuer.Start(context.Background(), q)
 
 	return &fixture{
@@ -516,7 +516,7 @@ func (f *fixture) popQueue() {
 	done := make(chan error)
 	go func() {
 		item, _ := f.q.Get()
-		_, err := f.r.Reconcile(f.Context(), item.(reconcile.Request))
+		_, err := f.r.Reconcile(f.Context(), item)
 		f.q.Done(item)
 		done <- err
 	}()

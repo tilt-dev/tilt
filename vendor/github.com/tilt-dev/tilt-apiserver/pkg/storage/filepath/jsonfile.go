@@ -14,19 +14,19 @@ import (
 //   - For namespaced-scoped resources: the resource will be written under the root-path in
 //     the following structure:
 //
-//       -- (root-path) --- /namespace1/ --- resource1
-//                      |                |
-//                      |                --- resource2
-//                      |
-//                      --- /namespace2/ --- resource3
+//     -- (root-path) --- /namespace1/ --- resource1
+//     |                |
+//     |                --- resource2
+//     |
+//     --- /namespace2/ --- resource3
 //
 //   - For cluster-scoped resources, there will be no mid-layer folders for namespaces:
 //
-//       -- (root-path) --- resource1
-//                      |
-//                      --- resource2
-//                      |
-//                      --- resource3
+//     -- (root-path) --- resource1
+//     |
+//     --- resource2
+//     |
+//     --- resource3
 //
 // Args:
 //
@@ -37,7 +37,7 @@ import (
 func NewJSONFilepathStorageProvider(obj resource.Object, rootPath string, fs FS, watchSet *WatchSet, strategy Strategy) builderrest.ResourceHandlerProvider {
 	return func(scheme *runtime.Scheme, getter generic.RESTOptionsGetter) (rest.Storage, error) {
 		gr := obj.GetGroupVersionResource().GroupResource()
-		opt, err := getter.GetRESTOptions(gr)
+		opt, err := getter.GetRESTOptions(gr, obj)
 		if err != nil {
 			return nil, err
 		}

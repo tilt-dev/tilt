@@ -19,14 +19,28 @@ import (
 
 //nolint:govet
 type TerminalInput interface {
-	ReadRune() (rune, error)
+	ReadNextRune() (rune, error)
 	Close() error
 }
 
 type OpenInput func() (TerminalInput, error)
 
+// workaround for
+// https://github.com/mattn/go-tty/issues/53
+type TTYWrapper struct {
+	*tty.TTY
+}
+
+func (t *TTYWrapper) ReadNextRune() (rune, error) {
+	return t.TTY.ReadRune()
+}
+
 func TTYOpen() (TerminalInput, error) {
-	return tty.Open()
+	t, err := tty.Open()
+	if err != nil {
+		return nil, err
+	}
+	return &TTYWrapper{t}, nil
 }
 
 type TerminalPrompt struct {
@@ -152,7 +166,7 @@ func (p *TerminalPrompt) OnChange(ctx context.Context, st store.RStore, _ store.
 	// One goroutine just pulls input from TTY.
 	go func() {
 		for ctx.Err() == nil {
-			r, err := t.ReadRune()
+			r, err := t.ReadNextRune()
 			if err != nil {
 				st.Dispatch(store.ErrorAction{Error: err})
 				return

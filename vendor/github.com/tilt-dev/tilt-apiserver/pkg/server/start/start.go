@@ -176,7 +176,7 @@ func (o *TiltServerOptions) Config() (*apiserver.Config, error) {
 		),
 	}
 	serverConfig.Authentication = genericapiserver.AuthenticationInfo{
-		Authenticator: anonymous.NewAuthenticator(),
+		Authenticator: anonymous.NewAuthenticator(nil),
 	}
 
 	cert := extraConfig.ServingInfo.Cert
@@ -219,7 +219,7 @@ func (o TiltServerOptions) loopbackClientConfig(cert dynamiccertificates.CertKey
 	return result
 }
 
-func (o TiltServerOptions) GetRESTOptions(resource schema.GroupResource) (generic.RESTOptions, error) {
+func (o TiltServerOptions) GetRESTOptions(resource schema.GroupResource, obj runtime.Object) (generic.RESTOptions, error) {
 	return generic.RESTOptions{
 		StorageConfig: &storagebackend.ConfigForResource{
 			GroupResource: resource,
@@ -273,7 +273,7 @@ func (o TiltServerOptions) RunTiltServerFromConfig(config apiserver.CompletedCon
 		return nil, err
 	}
 
-	server.GenericAPIServer.RunPostStartHooks(stopCh)
+	server.GenericAPIServer.RunPostStartHooks(ctx)
 
 	return stoppedCh, nil
 }
