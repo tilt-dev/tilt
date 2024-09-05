@@ -33,10 +33,10 @@ func (s *JSONPathImageLocatorListSpec) Unpack(v starlark.Value) error {
 	return nil
 }
 
-func (s JSONPathImageLocatorListSpec) ToImageLocators(selector k8s.ObjectSelector) ([]k8s.ImageLocator, error) {
+func (s JSONPathImageLocatorListSpec) ToImageLocators(selector k8s.ObjectSelector, optional bool) ([]k8s.ImageLocator, error) {
 	result := []k8s.ImageLocator{}
 	for _, spec := range s.Specs {
-		locator, err := spec.ToImageLocator(selector)
+		locator, err := spec.ToImageLocator(selector, optional)
 		if err != nil {
 			return nil, err
 		}
@@ -58,8 +58,8 @@ func (s *JSONPathImageLocatorSpec) Unpack(v starlark.Value) error {
 	return nil
 }
 
-func (s JSONPathImageLocatorSpec) ToImageLocator(selector k8s.ObjectSelector) (k8s.ImageLocator, error) {
-	return k8s.NewJSONPathImageLocator(selector, s.jsonPath)
+func (s JSONPathImageLocatorSpec) ToImageLocator(selector k8s.ObjectSelector, optional bool) (k8s.ImageLocator, error) {
+	return k8s.NewJSONPathImageLocator(selector, s.jsonPath, optional)
 }
 
 type JSONPathImageObjectLocatorSpec struct {
@@ -87,8 +87,8 @@ func (s *JSONPathImageObjectLocatorSpec) Unpack(v starlark.Value) error {
 	return nil
 }
 
-func (s JSONPathImageObjectLocatorSpec) ToImageLocator(selector k8s.ObjectSelector) (k8s.ImageLocator, error) {
-	return k8s.NewJSONPathImageObjectLocator(selector, s.jsonPath, s.repoField, s.tagField)
+func (s JSONPathImageObjectLocatorSpec) ToImageLocator(selector k8s.ObjectSelector, optional bool) (k8s.ImageLocator, error) {
+	return k8s.NewJSONPathImageObjectLocator(selector, s.jsonPath, s.repoField, s.tagField, optional)
 }
 
 func validateStringDict(d *starlark.Dict, expectedFields []string) ([]string, error) {

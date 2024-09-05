@@ -286,13 +286,37 @@ func TestCRDExtract(t *testing.T) {
 
 	jp, err := NewJSONPathImageLocator(
 		selector,
-		"{.spec.validation.openAPIV3Schema.properties.spec.properties.image}")
+		"{.spec.validation.openAPIV3Schema.properties.spec.properties.image}",
+		false)
 	require.NoError(t, err)
 
 	match, err := e.HasImage(img, []ImageLocator{jp}, false)
 	require.NoError(t, err)
 
 	assert.True(t, match, "CRD yaml should match image %s", img.String())
+}
+
+func TestCRDExtractImageOptional(t *testing.T) {
+	entities, err := ParseYAMLFromString(testyaml.CRDYAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	img := container.MustParseTaggedSelector("docker.io/bitnami/minideb:latest")
+	e := entities[0]
+	selector, err := NewPartialMatchObjectSelector("", "", "projects.example.martin-helmich.de", "")
+	require.NoError(t, err)
+
+	jp, err := NewJSONPathImageLocator(
+		selector,
+		"{.spec.validation.openAPIV3Schema.properties.spec.properties.not-an-image}",
+		true)
+	require.NoError(t, err)
+
+	match, err := e.HasImage(img, []ImageLocator{jp}, false)
+	require.NoError(t, err) // There should not be an error here as the match is optional
+
+	assert.False(t, match, "CRD yaml should not match image %s", img.String())
 }
 
 func TestEnvExtract(t *testing.T) {
@@ -360,7 +384,7 @@ spec:
 `
 
 	selector := MustKindSelector("Foo")
-	locator := MustJSONPathImageLocator(selector, "{.spec.image}")
+	locator := MustJSONPathImageLocator(selector, "{.spec.image}", false)
 	entities, err := ParseYAMLFromString(yaml)
 	require.NoError(t, err)
 
@@ -387,7 +411,7 @@ spec:
 }
 
 func TestInjectDigestCRDMapValue(t *testing.T) {
-	locator := MustJSONPathImageLocator(MustKindSelector("Foo"), "{.spec.image}")
+	locator := MustJSONPathImageLocator(MustKindSelector("Foo"), "{.spec.image}", false)
 	testInjectDigestCRD(t, `
 apiversion: foo/v1
 kind: Foo
@@ -397,7 +421,7 @@ spec:
 }
 
 func TestInjectDigestCRDListElement(t *testing.T) {
-	locator := MustJSONPathImageLocator(MustKindSelector("Foo"), "{.spec.images[0]}")
+	locator := MustJSONPathImageLocator(MustKindSelector("Foo"), "{.spec.images[0]}", false)
 	testInjectDigestCRD(t, `
 apiversion: foo/v1
 kind: Foo
@@ -408,7 +432,7 @@ spec:
 }
 
 func TestInjectDigestCRDListOfMaps(t *testing.T) {
-	locator := MustJSONPathImageLocator(MustKindSelector("Foo"), "{.spec.args.image}")
+	locator := MustJSONPathImageLocator(MustKindSelector("Foo"), "{.spec.args.image}", false)
 	testInjectDigestCRD(t, `
 apiversion: foo/v1
 kind: Foo

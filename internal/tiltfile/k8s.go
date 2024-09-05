@@ -469,7 +469,7 @@ func (s *tiltfileState) k8sImageJsonPath(thread *starlark.Thread, fn *starlark.B
 		return nil, err
 	}
 
-	paths, err := locatorList.ToImageLocators(k)
+	paths, err := locatorList.ToImageLocators(k, false)
 	if err != nil {
 		return nil, err
 	}
@@ -491,11 +491,13 @@ func (s *tiltfileState) k8sKind(thread *starlark.Thread, fn *starlark.Builtin, a
 	}
 
 	var apiVersion, kind string
+	var imageOptional bool
 	var jpLocators tiltfile_k8s.JSONPathImageLocatorListSpec
 	var jpObjectLocator tiltfile_k8s.JSONPathImageObjectLocatorSpec
 	var podReadiness tiltfile_k8s.PodReadinessMode
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"kind", &kind,
+		"image_optional?", &imageOptional,
 		"image_json_path?", &jpLocators,
 		"api_version?", &apiVersion,
 		"image_object?", &jpObjectLocator,
@@ -520,14 +522,14 @@ func (s *tiltfileState) k8sKind(thread *starlark.Thread, fn *starlark.Builtin, a
 	}
 
 	if !jpLocators.IsEmpty() {
-		locators, err := jpLocators.ToImageLocators(k)
+		locators, err := jpLocators.ToImageLocators(k, imageOptional)
 		if err != nil {
 			return nil, err
 		}
 
 		kindInfo.ImageLocators = locators
 	} else if !jpObjectLocator.IsEmpty() {
-		locator, err := jpObjectLocator.ToImageLocator(k)
+		locator, err := jpObjectLocator.ToImageLocator(k, imageOptional)
 		if err != nil {
 			return nil, err
 		}

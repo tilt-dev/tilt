@@ -18,7 +18,7 @@ func TestCRDImageObjectInjection(t *testing.T) {
 
 	e := entities[0]
 	selector := MustKindSelector("UselessMachine")
-	locator := MustJSONPathImageObjectLocator(selector, "{.spec.imageObject}", "repo", "tag")
+	locator := MustJSONPathImageObjectLocator(selector, "{.spec.imageObject}", "repo", "tag", false)
 	images, err := locator.Extract(e)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(images))
@@ -35,13 +35,37 @@ func TestCRDImageObjectInjection(t *testing.T) {
 	assert.Equal(t, "docker.io/library/frontend:tilt-123", images[0].String())
 }
 
+func TestCRDImageObjectInjectionOptional(t *testing.T) {
+	entities, err := ParseYAMLFromString(testyaml.CRDImageObjectYAML)
+	require.NoError(t, err)
+
+	e := entities[0]
+	selector := MustKindSelector("UselessMachine")
+	locator := MustJSONPathImageObjectLocator(selector, "{.spec.notImageObject}", "repo", "tag", true)
+	images, err := locator.Extract(e)
+	require.NoError(t, err)
+	require.Equal(t, 0, len(images))
+}
+
+func TestCRDImagePathInjectionOptional(t *testing.T) {
+	entities, err := ParseYAMLFromString(testyaml.CRDContainerSpecYAML)
+	require.NoError(t, err)
+
+	e := entities[0]
+	selector := MustKindSelector("UselessMachine")
+	locator := MustJSONPathImageLocator(selector, "{.spec.containers[*].notImage}", true)
+	images, err := locator.Extract(e)
+	require.NoError(t, err)
+	require.Equal(t, 0, len(images))
+}
+
 func TestCRDPullPolicyInjection(t *testing.T) {
 	entities, err := ParseYAMLFromString(testyaml.CRDContainerSpecYAML)
 	require.NoError(t, err)
 
 	e := entities[0]
 	selector := MustKindSelector("UselessMachine")
-	locator := MustJSONPathImageLocator(selector, "{.spec.containers[*].image}")
+	locator := MustJSONPathImageLocator(selector, "{.spec.containers[*].image}", false)
 	images, err := locator.Extract(e)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(images))

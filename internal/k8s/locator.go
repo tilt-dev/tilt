@@ -48,18 +48,19 @@ func LocatorMatchesOne(l ImageLocator, entities []K8sEntity) bool {
 
 type JSONPathImageLocator struct {
 	selector ObjectSelector
+	optional bool
 	path     JSONPath
 }
 
-func MustJSONPathImageLocator(selector ObjectSelector, path string) *JSONPathImageLocator {
-	locator, err := NewJSONPathImageLocator(selector, path)
+func MustJSONPathImageLocator(selector ObjectSelector, path string, optional bool) *JSONPathImageLocator {
+	locator, err := NewJSONPathImageLocator(selector, path, optional)
 	if err != nil {
 		panic(err)
 	}
 	return locator
 }
 
-func NewJSONPathImageLocator(selector ObjectSelector, path string) (*JSONPathImageLocator, error) {
+func NewJSONPathImageLocator(selector ObjectSelector, path string, optional bool) (*JSONPathImageLocator, error) {
 	p, err := NewJSONPath(path)
 	if err != nil {
 		return nil, err
@@ -67,6 +68,7 @@ func NewJSONPathImageLocator(selector ObjectSelector, path string) (*JSONPathIma
 	return &JSONPathImageLocator{
 		selector: selector,
 		path:     p,
+		optional: optional,
 	}, nil
 }
 
@@ -105,7 +107,9 @@ func (l *JSONPathImageLocator) Extract(e K8sEntity) ([]reference.Named, error) {
 
 	// also look for images in any json paths that were specified for this entity
 	images, err := l.path.FindStrings(l.unpack(e))
-	if err != nil {
+	if err != nil && l.optional {
+		return nil, nil
+	} else if err != nil {
 		return nil, err
 	}
 
@@ -155,17 +159,18 @@ type JSONPathImageObjectLocator struct {
 	path      JSONPath
 	repoField string
 	tagField  string
+	optional  bool
 }
 
-func MustJSONPathImageObjectLocator(selector ObjectSelector, path, repoField, tagField string) *JSONPathImageObjectLocator {
-	locator, err := NewJSONPathImageObjectLocator(selector, path, repoField, tagField)
+func MustJSONPathImageObjectLocator(selector ObjectSelector, path, repoField, tagField string, optional bool) *JSONPathImageObjectLocator {
+	locator, err := NewJSONPathImageObjectLocator(selector, path, repoField, tagField, optional)
 	if err != nil {
 		panic(err)
 	}
 	return locator
 }
 
-func NewJSONPathImageObjectLocator(selector ObjectSelector, path, repoField, tagField string) (*JSONPathImageObjectLocator, error) {
+func NewJSONPathImageObjectLocator(selector ObjectSelector, path, repoField, tagField string, optional bool) (*JSONPathImageObjectLocator, error) {
 	p, err := NewJSONPath(path)
 	if err != nil {
 		return nil, err
@@ -175,6 +180,7 @@ func NewJSONPathImageObjectLocator(selector ObjectSelector, path, repoField, tag
 		path:      p,
 		repoField: repoField,
 		tagField:  tagField,
+		optional:  optional,
 	}, nil
 }
 
@@ -229,13 +235,17 @@ func (l *JSONPathImageObjectLocator) Extract(e K8sEntity) ([]reference.Named, er
 	result := make([]reference.Named, 0)
 	err := l.path.Visit(l.unpack(e), func(val jsonpath.Value) error {
 		ref, err := l.extractImageFromMap(val)
-		if err != nil {
+		if err != nil && l.optional {
+			return nil
+		} else if err != nil {
 			return err
 		}
 		result = append(result, ref)
 		return nil
 	})
-	if err != nil {
+	if err != nil && l.optional {
+		return nil, nil
+	} else if err != nil {
 		return nil, err
 	}
 	return result, nil
@@ -253,7 +263,9 @@ func (l *JSONPathImageObjectLocator) Inject(e K8sEntity, selector container.RefS
 	modified := false
 	err := l.path.Visit(l.unpack(e), func(val jsonpath.Value) error {
 		ref, err := l.extractImageFromMap(val)
-		if err != nil {
+		if err != nil && l.optional {
+			return nil
+		} else if err != nil {
 			return err
 		}
 		if selector.Matches(ref) {

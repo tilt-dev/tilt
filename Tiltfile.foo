@@ -1,0 +1,7 @@
+k8s_kind(
+    "AnalysisTemplate",
+    api_version="argoproj.io/v1alpha1",
+    image_optional=True,
+    image_json_path="{.spec.metrics[*].provider.job.spec.template.spec.containers[*].image}",
+    pod_readiness="ignore",
+)

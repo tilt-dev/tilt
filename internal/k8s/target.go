@@ -84,13 +84,13 @@ func ParseImageLocators(locators []v1alpha1.KubernetesImageLocator) ([]ImageLoca
 		}
 
 		if locator.Object != nil {
-			parsedLocator, err := NewJSONPathImageObjectLocator(selector, locator.Path, locator.Object.RepoField, locator.Object.TagField)
+			parsedLocator, err := NewJSONPathImageObjectLocator(selector, locator.Path, locator.Object.RepoField, locator.Object.TagField, locator.Optional)
 			if err != nil {
 				return nil, errors.Wrap(err, "parsing image locator")
 			}
 			result = append(result, parsedLocator)
 		} else {
-			parsedLocator, err := NewJSONPathImageLocator(selector, locator.Path)
+			parsedLocator, err := NewJSONPathImageLocator(selector, locator.Path, locator.Optional)
 			if err != nil {
 				return nil, errors.Wrap(err, "parsing image locator")
 			}
