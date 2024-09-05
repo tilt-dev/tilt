@@ -1793,16 +1793,18 @@ func (p Plugin) kubernetesImageLocator(t *starlark.Thread, fn *starlark.Builtin,
 	var objectSelector starlark.Value
 	var path starlark.Value
 	var object starlark.Value
+	var optional starlark.Value
 	err := starkit.UnpackArgs(t, fn.Name(), args, kwargs,
 		"object_selector?", &objectSelector,
 		"path?", &path,
 		"object?", &object,
+		"optional?", &optional,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	dict := starlark.NewDict(3)
+	dict := starlark.NewDict(4)
 
 	if objectSelector != nil {
 		err := dict.SetKey(starlark.String("object_selector"), objectSelector)
@@ -1818,6 +1820,12 @@ func (p Plugin) kubernetesImageLocator(t *starlark.Thread, fn *starlark.Builtin,
 	}
 	if object != nil {
 		err := dict.SetKey(starlark.String("object"), object)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if optional != nil {
+		err := dict.SetKey(starlark.String("optional"), optional)
 		if err != nil {
 			return nil, err
 		}
@@ -1875,6 +1883,14 @@ func (o *KubernetesImageLocator) Unpack(v starlark.Value) error {
 				return fmt.Errorf("unpacking %s: %v", key, err)
 			}
 			obj.Object = (*v1alpha1.KubernetesImageObjectDescriptor)(&v.Value)
+			continue
+		}
+		if key == "optional" {
+			v, ok := val.(starlark.Bool)
+			if !ok {
+				return fmt.Errorf("Expected bool, got: %v", val.Type())
+			}
+			obj.Optional = bool(v)
 			continue
 		}
 		return fmt.Errorf("Unexpected attribute name: %s", key)

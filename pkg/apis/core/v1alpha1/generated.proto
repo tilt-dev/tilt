@@ -1910,6 +1910,9 @@ message KubernetesImageLocator {
   //
   // +optional
   optional KubernetesImageObjectDescriptor object = 3;
+
+  // Whether the specified path not existing in a resource should cause an error
+  optional bool optional = 4;
 }
 
 message KubernetesImageObjectDescriptor {

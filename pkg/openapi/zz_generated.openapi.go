@@ -4607,6 +4607,13 @@ func schema_pkg_apis_core_v1alpha1_KubernetesImageLocator(ref common.ReferenceCa
 							Ref:         ref("github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesImageObjectDescriptor"),
 						},
 					},
+					"optional": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether the specified path not existing in a resource should cause an error",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"objectSelector", "path"},
 			},
