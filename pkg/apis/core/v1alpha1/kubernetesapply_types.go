@@ -375,7 +375,7 @@ type KubernetesImageLocator struct {
 	Object *KubernetesImageObjectDescriptor `json:"object,omitempty" protobuf:"bytes,3,opt,name=object"`
 
 	// Whether the specified path not existing in a resource should cause an error
-	Optional bool `json: "optional, omitempty" protobuf:"bytes,4,opt,name=optional"`
+	Optional bool `json:"optional,omitempty" protobuf:"bytes,4,opt,name=optional"`
 }
 
 type KubernetesImageObjectDescriptor struct {
