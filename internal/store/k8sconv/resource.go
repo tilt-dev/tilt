@@ -171,7 +171,10 @@ func FilterPods(filter *KubernetesApplyFilter, pods []v1alpha1.Pod) []v1alpha1.P
 	for _, pod := range pods {
 		// Ignore pods from an old replicaset.
 		newestOwner := newestOwnerByAncestorUID[pod.AncestorUID]
-		if hasValidOwner(pod) && newestOwner != nil && pod.Owner.Name != newestOwner.Name {
+		if hasValidOwner(pod) &&
+			newestOwner != nil &&
+			pod.Owner.Name != newestOwner.Name &&
+			pod.Owner.Kind == "ReplicaSet" {
 			continue
 		}
 

@@ -43,9 +43,21 @@ func TestFilteredPodByOwner(t *testing.T) {
 	time1 := metav1.Time{Time: time.Now().Add(-time.Hour)}
 	time2 := metav1.Time{Time: time.Now().Add(-time.Minute)}
 
-	ownerA := &v1alpha1.PodOwner{Name: "rs-rev-1", CreationTimestamp: time1}
-	ownerB := &v1alpha1.PodOwner{Name: "rs-rev-2", CreationTimestamp: time2}
-	ownerC := &v1alpha1.PodOwner{Name: "alt-rs", CreationTimestamp: time1}
+	ownerA := &v1alpha1.PodOwner{
+		Name:              "rs-rev-1",
+		Kind:              "ReplicaSet",
+		CreationTimestamp: time1,
+	}
+	ownerB := &v1alpha1.PodOwner{
+		Name:              "rs-rev-2",
+		Kind:              "ReplicaSet",
+		CreationTimestamp: time2,
+	}
+	ownerC := &v1alpha1.PodOwner{
+		Name:              "alt-rs",
+		Kind:              "ReplicaSet",
+		CreationTimestamp: time1,
+	}
 	podA := v1alpha1.Pod{Name: "pod-1", Owner: ownerA, AncestorUID: "dep-1"}
 	podB := v1alpha1.Pod{Name: "pod-2", Owner: ownerA, AncestorUID: "dep-1"}
 	podAlt := v1alpha1.Pod{Name: "pod-alt", Owner: ownerC, AncestorUID: "alt-server"}
@@ -69,6 +81,35 @@ func TestFilteredPodByOwner(t *testing.T) {
 	// Ensure that if we have pods coming from multiple deployments,
 	// we keep pods from all deployments.
 	assert.Equal(t, []v1alpha1.Pod{podAlt, podC}, filter(podAlt, podC, podB, podA))
+}
+
+func TestFilterPodsHanldesJobSets(t *testing.T) {
+	time1 := metav1.Time{Time: time.Now().Add(-time.Hour)}
+	time2 := metav1.Time{Time: time.Now().Add(-time.Minute)}
+
+	ownerA := &v1alpha1.PodOwner{
+		Name:              "job-1",
+		Kind:              "Job",
+		CreationTimestamp: time1,
+	}
+	ownerB := &v1alpha1.PodOwner{
+		Name:              "job-2",
+		Kind:              "Job",
+		CreationTimestamp: time2,
+	}
+	podA := v1alpha1.Pod{Name: "pod-1", Owner: ownerA, AncestorUID: "js-1"}
+	podB := v1alpha1.Pod{Name: "pod-2", Owner: ownerB, AncestorUID: "js-1"}
+
+	filter := func(pods ...v1alpha1.Pod) []v1alpha1.Pod {
+		discovery := newDiscovery(pods)
+		res, err := NewKubernetesResource(discovery, nil)
+		require.NoError(t, err)
+		return res.FilteredPods
+	}
+
+	// Ensure that if one JobSet has two Jobs,
+	// all pods are preserved.
+	assert.Equal(t, []v1alpha1.Pod{podA, podB}, filter(podA, podB))
 }
 
 func TestNewKubernetesApplyFilter_Sorted(t *testing.T) {
