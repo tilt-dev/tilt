@@ -254,7 +254,7 @@ func HoldTargetsWaitingOnCluster(state store.EngineState, mts []*store.ManifestT
 		cluster, ok := state.Clusters[clusterName]
 		isClusterOK := ok && cluster.Status.Error == "" && cluster.Status.Arch != ""
 		if isClusterOK {
-			return
+			continue
 		}
 
 		gvk := v1alpha1.SchemeGroupVersion.WithKind("Cluster")
