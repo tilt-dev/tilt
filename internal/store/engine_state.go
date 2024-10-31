@@ -391,7 +391,7 @@ func (e *EngineState) HasBuild() bool {
 }
 
 func (e *EngineState) InitialBuildsCompleted() bool {
-	if e.ManifestTargets == nil || len(e.ManifestTargets) == 0 {
+	if len(e.ManifestTargets) == 0 {
 		return false
 	}
 

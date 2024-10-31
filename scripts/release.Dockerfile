@@ -7,13 +7,13 @@
 # osxcross contains the MacOSX cross toolchain for xx
 FROM crazymax/osxcross:11.3-debian AS osxcross
 
-FROM golang:1.22-bullseye as musl-cross
+FROM golang:1.23-bullseye as musl-cross
 WORKDIR /musl
 # https://more.musl.cc/GCC-MAJOR-VERSION/HOST-ARCH-linux-musl/CROSS-ARCH-linux-musl-cross.tgz
 RUN curl -sf https://more.musl.cc/11/x86_64-linux-musl/aarch64-linux-musl-cross.tgz | tar zxf -
 RUN curl -sf https://more.musl.cc/11/x86_64-linux-musl/x86_64-linux-musl-cross.tgz | tar zxf -
 
-FROM golang:1.22-bullseye
+FROM golang:1.23-bullseye
 
 RUN apt-get update && \
     apt-get install -y -q --no-install-recommends \
@@ -52,7 +52,7 @@ RUN set -exu \
     && apt update \
   && apt install -y docker-ce-cli=5:25.0.3-1~debian.11~bullseye docker-buildx-plugin
 
-ENV GORELEASER_VERSION=v1.24.0
+ENV GORELEASER_VERSION=v2.3.0
 RUN set -exu \
   && URL="https://github.com/goreleaser/goreleaser/releases/download/${GORELEASER_VERSION}/goreleaser_Linux_x86_64.tar.gz" \
   && echo goreleaser URL: $URL \

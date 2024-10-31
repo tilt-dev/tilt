@@ -349,7 +349,7 @@ func prettyPrintContainersPruneReport(report types.ContainersPruneReport, l logg
 	l.Infof("[Docker Prune] removed %d containers, reclaimed %s",
 		len(report.ContainersDeleted), humanSize(report.SpaceReclaimed))
 	if len(report.ContainersDeleted) > 0 {
-		l.Debugf(sliceutils.BulletedIndentedStringList(report.ContainersDeleted))
+		l.Debugf("%s", sliceutils.BulletedIndentedStringList(report.ContainersDeleted))
 	}
 }
 

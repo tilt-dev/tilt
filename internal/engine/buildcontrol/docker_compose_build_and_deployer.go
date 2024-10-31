@@ -202,13 +202,11 @@ func (bd *DockerComposeBuildAndDeployer) BuildAndDeploy(ctx context.Context, st 
 	}
 
 	dcManagedBuild := plan.dockerComposeImageTarget != nil
-	var stepName string
 	if dcManagedBuild {
-		stepName = "Building & deploying"
+		ps.StartPipelineStep(ctx, "Building & deploying")
 	} else {
-		stepName = "Deploying"
+		ps.StartPipelineStep(ctx, "Deploying")
 	}
-	ps.StartPipelineStep(ctx, stepName)
 
 	status := bd.dcsr.ForceApply(ctx, dcTargetNN, dcTarget.Spec, imageMapSet, dcManagedBuild)
 	ps.EndPipelineStep(ctx)

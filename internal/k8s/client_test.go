@@ -151,7 +151,7 @@ func TestUpsertToTerminatingNamespaceForbidden(t *testing.T) {
 	// field error. Make sure we treat it as what it is and bail out of `kubectl apply`
 	// rather than trying to --force
 	errStr := `Error from server (Forbidden): error when creating "STDIN": deployments.apps "sancho" is forbidden: unable to create new content in namespace sancho-ns because it is being terminated`
-	f.resourceClient.updateErr = fmt.Errorf(errStr)
+	f.resourceClient.updateErr = errors.New(errStr)
 
 	_, err = f.k8sUpsert(f.ctx, postgres)
 	if assert.NotNil(t, err) {
@@ -252,7 +252,7 @@ func TestServerHealth(t *testing.T) {
 					}, nil
 				}
 				err := fmt.Errorf("unsupported request: %s", req.URL.Path)
-				t.Fatalf(err.Error())
+				t.Fatal(err.Error())
 				return nil, err
 			})
 

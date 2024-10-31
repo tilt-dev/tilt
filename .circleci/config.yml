@@ -10,7 +10,7 @@ jobs:
   build-linux:
     resource_class: medium+
     docker:
-      - image: docker/tilt-ci@sha256:d5862a9bfdad294feb50849bae1d9add22b1f5d0e750273c24683cc5edc2c4fa
+      - image: docker/tilt-ci@sha256:04e2f5ed618d5e17d72a6674a7e2645c3f8c3fead1cfbd9fa8f73a841f5bcf5b
     # apiserver code generation scripts require being in GOPATH
     working_directory: /home/circleci/go/src/github.com/tilt-dev/tilt
 
@@ -50,7 +50,7 @@ jobs:
 
   check-docs:
     docker:
-      - image: docker/tilt-ci@sha256:d5862a9bfdad294feb50849bae1d9add22b1f5d0e750273c24683cc5edc2c4fa
+      - image: docker/tilt-ci@sha256:04e2f5ed618d5e17d72a6674a7e2645c3f8c3fead1cfbd9fa8f73a841f5bcf5b
     steps:
       - checkout
       - setup_remote_docker
@@ -73,7 +73,7 @@ jobs:
     steps:
       - run: |
           choco install -y make kustomize kubernetes-helm docker-compose
-          choco upgrade -y --allow-downgrade golang --version=1.22.2
+          choco upgrade -y --allow-downgrade golang --version=1.23.2
 
           # mingw 13 seems to have broken gcc installs
           # https://community.chocolatey.org/packages/mingw#comment-6290804217
@@ -100,7 +100,7 @@ jobs:
   build-integration:
     resource_class: medium+
     docker:
-      - image: docker/tilt-integration-ci@sha256:17d2fc2c7de751bbc6aa750a362e556c6b4277c168457460a67d6d31455eec4d
+      - image: docker/tilt-integration-ci@sha256:16f9d26ea50cecfc184ecced4370885c9ae6c6dd30ca3cad1c4ec765e0f61b28
     steps:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
@@ -155,16 +155,14 @@ jobs:
     resource_class: medium+
     docker:
       # keep image in sync with build.toast.yml
-      - image: docker/tilt-releaser@sha256:e626c30b4b6d42056182f530563eaf80df72441bc37f49e7a707395428aab725
-    environment:
-      DOCKER_CLI_EXPERIMENTAL: enabled
+      - image: docker/tilt-releaser@sha256:838b82383bab402b5a68c64d14f09558951230db3dc2f492fd3803581b5dcad6
     steps:
       - setup_remote_docker
       # https://discuss.circleci.com/t/arm-version-of-remote-docker/41624
       - run: ssh remote-docker "sudo apt-get update; sudo apt-get install -y qemu-user-static binfmt-support"
       - checkout
       - run: make build-js
-      - run: goreleaser --debug --clean --skip-publish --snapshot
+      - run: goreleaser --verbose --clean --skip=publish --snapshot
       - slack/notify-on-failure:
           only_for_branches: main
 

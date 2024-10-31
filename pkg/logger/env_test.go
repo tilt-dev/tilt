@@ -24,7 +24,6 @@ func TestPrepareEnv(t *testing.T) {
 		{"so-many-lines", []string{"LINES=20000"}, []string{"LINES=20000", "COLUMNS=80", "PYTHONUNBUFFERED=1"}},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert.ElementsMatch(t, tt.expected, PrepareEnv(Get(ctx), tt.env))
 		})
