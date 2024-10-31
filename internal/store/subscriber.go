@@ -127,7 +127,6 @@ func (l *subscriberList) NotifyAll(ctx context.Context, store *Store, summary Ch
 	l.mu.Unlock()
 
 	for _, s := range subscribers {
-		s := s
 		isPending := s.claimPending(summary)
 		if isPending {
 			SafeGo(store, func() {

@@ -150,7 +150,6 @@ func populateContainerPorts(pft *v1alpha1.PortForwardTemplateSpec, pod *v1alpha1
 func PickBestPortForwardPod(kd *v1alpha1.KubernetesDiscovery) *v1alpha1.Pod {
 	var bestPod *v1alpha1.Pod
 	for _, pod := range kd.Status.Pods {
-		pod := pod
 		if pod.Name == "" {
 			continue
 		}

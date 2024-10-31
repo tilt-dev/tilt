@@ -25,4 +25,4 @@ docker run --rm -v "$(pwd)":/go/src/github.com/tilt-dev/tilt \
 docker run --rm -e "CODEGEN_UID=$(id -u)" -e "CODEGEN_GID=$(id -g)" -v "$(pwd)":/go/src/github.com/tilt-dev/tilt \
    --workdir /go/src/github.com/tilt-dev/tilt \
    --entrypoint ./scripts/update-codegen-helper.sh \
-   golang:1.22
+   golang:1.23

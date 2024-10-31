@@ -315,7 +315,7 @@ func (in *UIInputSpec) Validate(_ context.Context, path *field.Path) field.Error
 	}
 	if in.Choice != nil {
 		numInputTypes += 1
-		if in.Choice.Choices == nil || len(in.Choice.Choices) == 0 {
+		if len(in.Choice.Choices) == 0 {
 			fieldErrors = append(fieldErrors, field.Invalid(path, in, "must specify choices if input type is choice"))
 		}
 	}

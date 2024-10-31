@@ -51,7 +51,6 @@ func CompleteView(ctx context.Context, client ctrlclient.Client, st store.RStore
 	}
 
 	for _, item := range resourceList.Items {
-		item := item
 		ret.UiResources = append(ret.UiResources, &item)
 	}
 
@@ -62,7 +61,6 @@ func CompleteView(ctx context.Context, client ctrlclient.Client, st store.RStore
 	}
 
 	for _, item := range buttonList.Items {
-		item := item
 		ret.UiButtons = append(ret.UiButtons, &item)
 	}
 
@@ -73,7 +71,6 @@ func CompleteView(ctx context.Context, client ctrlclient.Client, st store.RStore
 	}
 
 	for _, item := range clusterList.Items {
-		item := item
 		ret.Clusters = append(ret.Clusters, &item)
 	}
 

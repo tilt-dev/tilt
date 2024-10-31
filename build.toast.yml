@@ -1,5 +1,5 @@
 # keep image in sync with .circleci/config.yml
-image: docker/tilt-releaser@sha256:e626c30b4b6d42056182f530563eaf80df72441bc37f49e7a707395428aab725
+image: docker/tilt-releaser@sha256:838b82383bab402b5a68c64d14f09558951230db3dc2f492fd3803581b5dcad6
 location: /go/src/github.com/tilt-dev/tilt
 command_prefix: set -euo pipefail
 tasks:
@@ -22,7 +22,7 @@ tasks:
       GR_ARGS: ""
     dependencies:
       - build-js
-    command: goreleaser --debug build --snapshot --clean $GR_ARGS
+    command: goreleaser --verbose build --snapshot --clean $GR_ARGS
     input_paths:
       - .git/
       - cmd/

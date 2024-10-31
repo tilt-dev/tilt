@@ -25,4 +25,4 @@ docker run --rm --privileged \
        -v "$PWD:/src/tilt:delegated" \
        -v /var/run/docker.sock:/var/run/docker.sock \
        docker/tilt-releaser \
-       --rm-dist
+       --clean

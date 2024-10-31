@@ -5,7 +5,6 @@ package cmd
 
 import (
 	"os"
-	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -17,9 +16,6 @@ import (
 )
 
 func TestStopsBackgroundGrandchildren(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("no bash on windows")
-	}
 	f := newProcessExecFixture(t)
 
 	f.start(`bash -c 'sleep 100 &

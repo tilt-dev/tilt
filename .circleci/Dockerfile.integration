@@ -1,4 +1,4 @@
-FROM cimg/go:1.22-node
+FROM cimg/go:1.23-node
 
 USER root
 
@@ -38,7 +38,7 @@ RUN curl -fL "https://github.com/docker/compose/releases/download/${DOCKER_COMPO
   && docker-compose version
 
 # install Kind (Kubernetes in Docker)
-ENV KIND_VERSION=v0.21.0
+ENV KIND_VERSION=v0.24.0
 RUN curl -fLo ./kind-linux-amd64 https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-linux-amd64 \
   && chmod +x ./kind-linux-amd64 \
   && mv ./kind-linux-amd64 /usr/local/bin/kind \

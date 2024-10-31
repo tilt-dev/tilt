@@ -647,11 +647,11 @@ func (s *tiltfileState) assertAllImagesMatched(us model.UpdateSettings) error {
 	dcSvcCount := s.dc.ServiceCount()
 
 	if dcSvcCount == 0 && len(s.k8s) == 0 && len(s.k8sUnresourced) == 0 {
-		return fmt.Errorf(unmatchedImageNoConfigsWarning)
+		return errors.New(unmatchedImageNoConfigsWarning)
 	}
 
 	if len(s.k8s) == 0 && len(s.k8sUnresourced) != 0 {
-		return fmt.Errorf(unmatchedImageAllUnresourcedWarning)
+		return errors.New(unmatchedImageAllUnresourcedWarning)
 	}
 
 	configType := "Kubernetes"

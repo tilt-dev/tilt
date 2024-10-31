@@ -359,7 +359,6 @@ func TestSupportsPartialMeta(t *testing.T) {
 		partialMetaTestCase{"garbage", false},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.v, func(t *testing.T) {
 			assert.Equal(t, c.expected, supportsPartialMetadata(&version.Info{GitVersion: c.v}))
 		})
