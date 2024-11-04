@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 
 	"github.com/docker/docker/client"
@@ -39,8 +38,6 @@ import (
 )
 
 const ArchUnknown string = "unknown"
-
-var runtimeDirWarning = sync.Once{}
 
 const (
 	clientInitBackoff        = 30 * time.Second
@@ -401,13 +398,6 @@ func (r *Reconciler) openFrozenKubeConfigFile(ctx context.Context, nn types.Name
 			return path, f, nil
 		}
 	}
-
-	// From the spec: emit a warning if the runtime dir isn't available.
-	// https://specifications.freedesktop.org/basedir-spec/latest/
-	runtimeDirWarning.Do(func() {
-		logger.Get(ctx).Warnf(
-			"XDG Runtime directory not available. Storing temp kubeconfigs in: %s. Error: %v", path, err)
-	})
 
 	path, err = r.base.StateFile(
 		filepath.Join(string(r.apiServerName), "cluster", fmt.Sprintf("%s.yml", nn.Name)))
