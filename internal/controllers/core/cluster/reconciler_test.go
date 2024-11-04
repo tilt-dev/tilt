@@ -3,6 +3,7 @@ package cluster
 import (
 	"errors"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -260,6 +261,59 @@ func TestDockerArch(t *testing.T) {
 	}
 }
 
+func TestKubeconfig_RuntimeDirImmutable(t *testing.T) {
+	f := newFixture(t)
+	cluster := &v1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "default"},
+		Spec: v1alpha1.ClusterSpec{
+			Connection: &v1alpha1.ClusterConnection{
+				Kubernetes: &v1alpha1.KubernetesClusterConnection{},
+			},
+		},
+	}
+
+	p, err := f.base.RuntimeFile(filepath.Join("tilt-default", "cluster", "default.yml"))
+	require.NoError(t, err)
+	runtimeFile, _ := os.OpenFile(p, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0400)
+	_ = runtimeFile.Close()
+
+	nn := types.NamespacedName{Name: "default"}
+	f.Create(cluster)
+	f.MustGet(nn, cluster)
+
+	configPath := cluster.Status.Connection.Kubernetes.ConfigPath
+	require.NotEqual(t, configPath, "")
+}
+
+func TestKubeconfig_RuntimeAndStateDirImmutable(t *testing.T) {
+	f := newFixture(t)
+	cluster := &v1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "default"},
+		Spec: v1alpha1.ClusterSpec{
+			Connection: &v1alpha1.ClusterConnection{
+				Kubernetes: &v1alpha1.KubernetesClusterConnection{},
+			},
+		},
+	}
+
+	p, err := f.base.RuntimeFile(filepath.Join("tilt-default", "cluster", "default.yml"))
+	require.NoError(t, err)
+	runtimeFile, _ := os.OpenFile(p, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0400)
+	_ = runtimeFile.Close()
+
+	p, err = f.base.StateFile(filepath.Join("tilt-default", "cluster", "default.yml"))
+	require.NoError(t, err)
+	stateFile, _ := os.OpenFile(p, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0400)
+	_ = stateFile.Close()
+
+	nn := types.NamespacedName{Name: "default"}
+	f.Create(cluster)
+	f.MustGet(nn, cluster)
+
+	require.Equal(t, cluster.Status.Connection.Kubernetes.ConfigPath, "")
+	require.Contains(t, cluster.Status.Error, "storing temp kubeconfigs")
+}
+
 type fixture struct {
 	*fake.ControllerFixture
 	r            *Reconciler
@@ -267,6 +321,7 @@ type fixture struct {
 	clock        clockwork.FakeClock
 	k8sClient    *k8s.FakeK8sClient
 	dockerClient *docker.FakeClient
+	base         xdg.FakeBase
 	requeues     <-chan indexer.RequeueForTestResult
 }
 
@@ -299,6 +354,7 @@ func newFixture(t *testing.T) *fixture {
 		k8sClient:         k8sClient,
 		dockerClient:      dockerClient,
 		requeues:          requeueChan,
+		base:              base,
 	}
 }
 
