@@ -4,6 +4,7 @@
 
 [![Build Status](https://circleci.com/gh/tilt-dev/tilt/tree/master.svg?style=shield)](https://circleci.com/gh/tilt-dev/tilt)
 [![GoDoc](https://godoc.org/github.com/tilt-dev/tilt?status.svg)](https://pkg.go.dev/github.com/tilt-dev/tilt)
+[![Gurubase](https://img.shields.io/badge/Gurubase-Ask%20Tilt%20Guru-006BFF)](https://gurubase.io/g/tilt)
 
 Kubernetes for Prod, Tilt for Dev
 
