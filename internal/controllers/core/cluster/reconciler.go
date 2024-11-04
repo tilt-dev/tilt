@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/docker/docker/client"
@@ -38,6 +39,8 @@ import (
 )
 
 const ArchUnknown string = "unknown"
+
+var runtimeDirWarning = sync.Once{}
 
 const (
 	clientInitBackoff        = 30 * time.Second
@@ -369,7 +372,11 @@ func (r *Reconciler) populateK8sMetadata(ctx context.Context, clusterNN types.Na
 			k8sStatus.Namespace = context.Namespace
 			k8sStatus.Cluster = context.Cluster
 		}
-		k8sStatus.ConfigPath = r.writeFrozenKubeConfig(ctx, clusterNN, apiConfig)
+		configPath, err := r.writeFrozenKubeConfig(ctx, clusterNN, apiConfig)
+		if err != nil {
+			conn.initError = err.Error()
+		}
+		k8sStatus.ConfigPath = configPath
 
 		conn.connStatus = &v1alpha1.ClusterConnectionStatus{
 			Kubernetes: k8sStatus,
@@ -384,38 +391,58 @@ func (r *Reconciler) populateK8sMetadata(ctx context.Context, clusterNN types.Na
 	}
 }
 
-func (r *Reconciler) writeFrozenKubeConfig(ctx context.Context, nn types.NamespacedName, config *api.Config) string {
-	config = config.DeepCopy()
-	err := api.MinifyConfig(config)
-	if err != nil {
-		logger.Get(ctx).Warnf("Minifying Kubernetes config: %v", err)
-		return ""
-	}
-
-	err = api.FlattenConfig(config)
-	if err != nil {
-		logger.Get(ctx).Warnf("Flattening Kubernetes config: %v", err)
-		return ""
-	}
-
-	obj, err := latest.Scheme.ConvertToVersion(config, latest.ExternalVersion)
-	if err != nil {
-		logger.Get(ctx).Warnf("Converting Kubernetes config: %v", err)
-		return ""
-	}
-
-	printer := printers.YAMLPrinter{}
+func (r *Reconciler) openFrozenKubeConfigFile(ctx context.Context, nn types.NamespacedName) (string, *os.File, error) {
 	path, err := r.base.RuntimeFile(
 		filepath.Join(string(r.apiServerName), "cluster", fmt.Sprintf("%s.yml", nn.Name)))
+	if err == nil {
+		var f *os.File
+		f, err = os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
+		if err == nil {
+			return path, f, nil
+		}
+	}
+
+	// From the spec: emit a warning if the runtime dir isn't available.
+	// https://specifications.freedesktop.org/basedir-spec/latest/
+	runtimeDirWarning.Do(func() {
+		logger.Get(ctx).Warnf(
+			"XDG Runtime directory not available. Storing temp kubeconfigs in: %s. Error: %v", path, err)
+	})
+
+	path, err = r.base.StateFile(
+		filepath.Join(string(r.apiServerName), "cluster", fmt.Sprintf("%s.yml", nn.Name)))
 	if err != nil {
-		logger.Get(ctx).Warnf("Writing Kubernetes config: %v", err)
-		return ""
+		return "", nil, fmt.Errorf("storing temp kubeconfigs: %v", err)
 	}
 
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 	if err != nil {
-		logger.Get(ctx).Warnf("Writing Kubernetes config: %v", err)
-		return ""
+		return "", nil, fmt.Errorf("storing temp kubeconfigs: %v", err)
+	}
+	return path, f, nil
+}
+
+func (r *Reconciler) writeFrozenKubeConfig(ctx context.Context, nn types.NamespacedName, config *api.Config) (string, error) {
+	config = config.DeepCopy()
+	err := api.MinifyConfig(config)
+	if err != nil {
+		return "", fmt.Errorf("minifying Kubernetes config: %v", err)
+	}
+
+	err = api.FlattenConfig(config)
+	if err != nil {
+		return "", fmt.Errorf("flattening Kubernetes config: %v", err)
+	}
+
+	obj, err := latest.Scheme.ConvertToVersion(config, latest.ExternalVersion)
+	if err != nil {
+		return "", fmt.Errorf("converting Kubernetes config: %v", err)
+	}
+
+	printer := printers.YAMLPrinter{}
+	path, f, err := r.openFrozenKubeConfigFile(ctx, nn)
+	if err != nil {
+		return "", err
 	}
 	defer func() {
 		_ = f.Close()
@@ -423,10 +450,9 @@ func (r *Reconciler) writeFrozenKubeConfig(ctx context.Context, nn types.Namespa
 
 	err = printer.PrintObj(obj, f)
 	if err != nil {
-		logger.Get(ctx).Warnf("Writing Kubernetes config: %v", err)
-		return ""
+		return "", fmt.Errorf("writing kubeconfig: %v", err)
 	}
-	return path
+	return path, nil
 }
 
 func (r *Reconciler) populateDockerMetadata(ctx context.Context, conn *connection) {

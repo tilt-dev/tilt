@@ -13,7 +13,7 @@ type FakeBase struct {
 var _ Base = FakeBase{}
 
 func (b FakeBase) createPath(prefix, relPath string) (string, error) {
-	p := filepath.Join(b.Dir, "cache", relPath)
+	p := filepath.Join(b.Dir, prefix, relPath)
 	dir := filepath.Dir(p)
 	err := os.MkdirAll(dir, os.ModeDir|0700)
 	if err != nil {
