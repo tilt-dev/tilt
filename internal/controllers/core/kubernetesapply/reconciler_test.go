@@ -179,6 +179,7 @@ func TestApplyCmdWithImages(t *testing.T) {
 		assert.Equal(t, []string{
 			"TILT_IMAGE_MAP_0=image-a",
 			"TILT_IMAGE_0=image-a:my-tag",
+			"KUBECONFIG=/path/to/default/kubeconfig",
 		}, call.Cmd.Env)
 	}
 }
@@ -800,7 +801,8 @@ func newFixture(t *testing.T) *fixture {
 		Status: v1alpha1.ClusterStatus{
 			Connection: &v1alpha1.ClusterConnectionStatus{
 				Kubernetes: &v1alpha1.KubernetesClusterConnectionStatus{
-					Context: "default",
+					Context:    "default",
+					ConfigPath: "/path/to/default/kubeconfig",
 				},
 			},
 		},

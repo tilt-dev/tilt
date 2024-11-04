@@ -361,17 +361,18 @@ func (r *Reconciler) runYAMLDeploy(ctx context.Context, spec v1alpha1.Kubernetes
 	return deployed, nil
 }
 
-func (r *Reconciler) maybeInjectKubeconfig(cmd *model.Cmd, cluster *v1alpha1.Cluster) {
+func (r *Reconciler) maybeInjectKubeconfig(cmd *model.Cmd, cluster *v1alpha1.Cluster) error {
 	if cluster == nil ||
 		cluster.Status.Connection == nil ||
 		cluster.Status.Connection.Kubernetes == nil {
-		return
+		return errors.New("no kubernetes connection")
 	}
 	kubeconfig := cluster.Status.Connection.Kubernetes.ConfigPath
 	if kubeconfig == "" {
-		return
+		return fmt.Errorf("missing kubeconfig in cluster %s", cluster.Name)
 	}
 	cmd.Env = append(cmd.Env, fmt.Sprintf("KUBECONFIG=%s", kubeconfig))
+	return nil
 }
 
 func (r *Reconciler) runCmdDeploy(ctx context.Context, spec v1alpha1.KubernetesApplySpec,
@@ -395,7 +396,10 @@ func (r *Reconciler) runCmdDeploy(ctx context.Context, spec v1alpha1.KubernetesA
 	if err != nil {
 		return nil, err
 	}
-	r.maybeInjectKubeconfig(&cmd, cluster)
+	err = r.maybeInjectKubeconfig(&cmd, cluster)
+	if err != nil {
+		return nil, err
+	}
 
 	logger.Get(ctx).Infof("Running cmd: %s", cmd.String())
 	exitCode, err := r.execer.Run(ctx, cmd, runIO)
@@ -889,7 +893,10 @@ func (r *Reconciler) bestEffortDelete(ctx context.Context, nn types.NamespacedNa
 
 	if toDelete.deleteCmd != nil {
 		deleteCmd := toModelCmd(*toDelete.deleteCmd)
-		r.maybeInjectKubeconfig(&deleteCmd, toDelete.cluster)
+		err := r.maybeInjectKubeconfig(&deleteCmd, toDelete.cluster)
+		if err != nil {
+			l.Errorf("Error %s: %v", reason, err)
+		}
 		if err := localexec.OneShotToLogger(ctx, r.execer, deleteCmd); err != nil {
 			l.Errorf("Error %s: %v", reason, err)
 		}
