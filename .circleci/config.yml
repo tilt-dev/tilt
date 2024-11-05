@@ -162,7 +162,9 @@ jobs:
       - run: ssh remote-docker "sudo apt-get update; sudo apt-get install -y qemu-user-static binfmt-support"
       - checkout
       - run: make build-js
-      - run: goreleaser --verbose --clean --skip=publish --snapshot
+      - run:
+          command: goreleaser --single-target --verbose --clean --skip=publish --snapshot
+          no_output_timeout: 20m
       - slack/notify-on-failure:
           only_for_branches: main
 
@@ -180,7 +182,9 @@ jobs:
       - slack/notify:
           message: "A Tilt release has started!"
       - checkout
-      - run: ./scripts/release-ci.sh
+      - run:
+          command: ./scripts/release-ci.sh
+          no_output_timeout: 20m
       - slack/status
 
 workflows:
