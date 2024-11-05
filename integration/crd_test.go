@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -65,8 +66,8 @@ func TestCRDPartialNotFound(t *testing.T) {
 	require.NoError(t, err)
 
 	// Make sure the crds were deleted.
-	out, err = f.runCommand("kubectl", "get", "crd", "uselessmachines.tilt.dev")
-	if assert.Error(t, err) {
-		assert.Contains(t, out.String(), `"uselessmachines.tilt.dev" not found`)
-	}
+	assert.Eventually(t, func() bool {
+		out, err := f.runCommand("kubectl", "get", "crd", "uselessmachines.tilt.dev")
+		return err != nil && strings.Contains(out.String(), `"uselessmachines.tilt.dev" not found`)
+	}, 3*time.Second, time.Second)
 }
