@@ -1,3 +1,4 @@
+version: 2
 project_name: tilt
 builds:
 - main: ./cmd/tilt/main.go
@@ -136,7 +137,7 @@ archives:
 checksum:
   name_template: 'checksums.txt'
 snapshot:
-  name_template: "{{ .Tag }}-next"
+  version_template: "{{ .Tag }}-next"
 
 changelog:
   sort: asc
