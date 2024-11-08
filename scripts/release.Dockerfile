@@ -52,7 +52,7 @@ RUN set -exu \
     && apt update \
   && apt install -y docker-ce-cli=5:25.0.3-1~debian.11~bullseye docker-buildx-plugin
 
-ENV GORELEASER_VERSION=v2.3.0
+ENV GORELEASER_VERSION=v2.4.4
 RUN set -exu \
   && URL="https://github.com/goreleaser/goreleaser/releases/download/${GORELEASER_VERSION}/goreleaser_Linux_x86_64.tar.gz" \
   && echo goreleaser URL: $URL \

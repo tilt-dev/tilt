@@ -155,7 +155,7 @@ jobs:
     resource_class: medium+
     docker:
       # keep image in sync with build.toast.yml
-      - image: docker/tilt-releaser@sha256:838b82383bab402b5a68c64d14f09558951230db3dc2f492fd3803581b5dcad6
+      - image: docker/tilt-releaser@sha256:4c9287b9e33c0448f9480fbdd921f18f7b795d282041157bccd473b01093e686
     steps:
       - setup_remote_docker
       # https://discuss.circleci.com/t/arm-version-of-remote-docker/41624
@@ -163,7 +163,7 @@ jobs:
       - checkout
       - run: make build-js
       - run:
-          command: goreleaser --single-target --verbose --clean --skip=publish --snapshot
+          command: goreleaser --verbose --clean --skip=publish --snapshot
           no_output_timeout: 20m
       - slack/notify-on-failure:
           only_for_branches: main
@@ -172,7 +172,7 @@ jobs:
     resource_class: medium+
     docker:
       # keep image in sync with build.toast.yml
-      - image: docker/tilt-releaser@sha256:e626c30b4b6d42056182f530563eaf80df72441bc37f49e7a707395428aab725
+      - image: docker/tilt-releaser@sha256:4c9287b9e33c0448f9480fbdd921f18f7b795d282041157bccd473b01093e686
     environment:
       DOCKER_CLI_EXPERIMENTAL: enabled
     steps:
