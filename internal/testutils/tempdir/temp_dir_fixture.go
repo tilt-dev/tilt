@@ -4,16 +4,13 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 	"testing"
-
-	"github.com/tilt-dev/wmclient/pkg/os/temp"
 )
 
 type TempDirFixture struct {
 	t      testing.TB
-	dir    *temp.TempDir
+	dir    string
 	oldDir string
 }
 
@@ -25,19 +22,12 @@ func SanitizeFileName(name string) string {
 }
 
 func NewTempDirFixture(t testing.TB) *TempDirFixture {
-	dir, err := temp.NewDir(SanitizeFileName(t.Name()))
-	if err != nil {
-		t.Fatalf("Error making temp dir: %v", err)
-	}
-
-	ret := &TempDirFixture{
+	f := &TempDirFixture{
 		t:   t,
-		dir: dir,
+		dir: t.TempDir(),
 	}
-
-	t.Cleanup(ret.tearDown)
-
-	return ret
+	t.Cleanup(f.tearDown)
+	return f
 }
 
 func (f *TempDirFixture) T() testing.TB {
@@ -45,7 +35,7 @@ func (f *TempDirFixture) T() testing.TB {
 }
 
 func (f *TempDirFixture) Path() string {
-	return f.dir.Path()
+	return f.dir
 }
 
 func (f *TempDirFixture) Chdir() {
@@ -154,11 +144,11 @@ func (f *TempDirFixture) Rm(pathInRepo string) {
 }
 
 func (f *TempDirFixture) NewFile(prefix string) (*os.File, error) {
-	return os.CreateTemp(f.dir.Path(), prefix)
+	return os.CreateTemp(f.dir, prefix)
 }
 
 func (f *TempDirFixture) TempDir(prefix string) string {
-	name, err := os.MkdirTemp(f.dir.Path(), prefix)
+	name, err := os.MkdirTemp(f.dir, prefix)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -171,15 +161,5 @@ func (f *TempDirFixture) tearDown() {
 		if err != nil {
 			f.t.Fatal(err)
 		}
-	}
-
-	err := f.dir.TearDown()
-	if err != nil && runtime.GOOS == "windows" &&
-		(strings.Contains(err.Error(), "The process cannot access the file") ||
-			strings.Contains(err.Error(), "Access is denied")) {
-		// NOTE(nick): I'm not convinced that this is a real problem.
-		// I think it might just be clean up of file notification I/O.
-	} else if err != nil {
-		f.t.Fatal(err)
 	}
 }

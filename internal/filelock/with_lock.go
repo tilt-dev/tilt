@@ -24,10 +24,15 @@ func withLock(filename string, lt lockType, action func() error) error {
 	if err != nil {
 		return err
 	}
+	defer func() {
+		_ = lockfile.Close()
+	}()
 	err = lock(lockfile, lt)
 	if err != nil {
 		return err
 	}
-	defer func() { _ = Unlock(lockfile) }()
+	defer func() {
+		_ = Unlock(lockfile)
+	}()
 	return action()
 }

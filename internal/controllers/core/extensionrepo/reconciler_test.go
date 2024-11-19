@@ -14,10 +14,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
-	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/internal/xdg"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
-	"github.com/tilt-dev/wmclient/pkg/os/temp"
 )
 
 func TestInvalidRepo(t *testing.T) {
@@ -208,11 +206,8 @@ type fixture struct {
 
 func newFixture(t *testing.T) *fixture {
 	cfb := fake.NewControllerFixtureBuilder(t)
-	tmpDir, err := temp.NewDir(tempdir.SanitizeFileName(t.Name()))
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = os.RemoveAll(tmpDir.Path()) })
-
-	base := xdg.FakeBase{Dir: tmpDir.Path()}
+	tmpDir := t.TempDir()
+	base := xdg.FakeBase{Dir: tmpDir}
 	r, err := NewReconciler(cfb.Client, cfb.Store, base)
 	require.NoError(t, err)
 
