@@ -19,7 +19,7 @@ import (
 	"github.com/moby/buildkit/session/filesync"
 	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
-	"github.com/tonistiigi/fsutil"
+	"github.com/tilt-dev/tilt/internal/build/fsutil"
 	fsutiltypes "github.com/tonistiigi/fsutil/types"
 	"golang.org/x/sync/errgroup"
 	ktypes "k8s.io/apimachinery/pkg/types"
