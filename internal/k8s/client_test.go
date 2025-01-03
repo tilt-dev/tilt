@@ -89,15 +89,30 @@ func TestDeleteMissingKind(t *testing.T) {
 }
 
 func TestUpsertAnnotationTooLong(t *testing.T) {
-	f := newClientTestFixture(t)
 	postgres := MustParseYAMLFromString(t, testyaml.PostgresYAML)
 
-	f.resourceClient.updateErr = fmt.Errorf(`The ConfigMap "postgres-config" is invalid: metadata.annotations: Too long: must have at most 262144 bytes`)
-	_, err := f.k8sUpsert(f.ctx, postgres)
-	assert.Nil(t, err)
-	assert.Equal(t, 0, len(f.resourceClient.creates))
-	assert.Equal(t, 1, len(f.resourceClient.createOrReplaces))
-	assert.Equal(t, 4, len(f.resourceClient.updates))
+	// These error strings are from the Kubernetes API server which can have
+	// different error messages depending on the version.
+	//
+	// The error string was changed in K8S v1.32:
+	// See: https://github.com/kubernetes/kubernetes/pull/128553
+	errorMsgs := []string{
+		`The ConfigMap "postgres-config" is invalid: metadata.annotations: Too long: must have at most 262144 bytes`,
+		`The ConfigMap "postgres-config" is invalid: metadata.annotations: Too long: may not be more than 262144 bytes`,
+	}
+
+	for _, errorMsg := range errorMsgs {
+		t.Run(errorMsg, func(t *testing.T) {
+			f := newClientTestFixture(t)
+
+			f.resourceClient.updateErr = errors.New(errorMsg)
+			_, err := f.k8sUpsert(f.ctx, postgres)
+			assert.Nil(t, err)
+			assert.Equal(t, 0, len(f.resourceClient.creates))
+			assert.Equal(t, 1, len(f.resourceClient.createOrReplaces))
+			assert.Equal(t, 4, len(f.resourceClient.updates))
+		})
+	}
 }
 
 func TestUpsert413(t *testing.T) {
