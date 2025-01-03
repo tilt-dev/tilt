@@ -943,7 +943,10 @@ func newFixture(t *testing.T) *fixture {
 	fe := NewFakeExecer()
 	fpm := NewFakeProberManager()
 	sc := local.NewServerController(f.Client)
-	clock := clockwork.NewFakeClock()
+
+	// Fake clock is set to 2006-01-02 15:04:05
+	// This helps ensure that nanosecond rounding in time doesn't break tests.
+	clock := clockwork.NewFakeClockAt(time.Date(2006, time.January, 2, 15, 4, 5, 0, time.UTC))
 	c := NewController(f.Context(), fe, fpm, f.Client, st, clock, v1alpha1.NewScheme())
 
 	return &fixture{

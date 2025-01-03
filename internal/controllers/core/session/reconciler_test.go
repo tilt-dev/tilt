@@ -698,7 +698,9 @@ func newFixture(t testing.TB, engineMode store.EngineMode) *fixture {
 		})
 	})
 
-	clock := clockwork.NewFakeClock()
+	// Fake clock is set to 2006-01-02 15:04:05
+	// This helps ensure that nanosecond rounding in time doesn't break tests.
+	clock := clockwork.NewFakeClockAt(time.Date(2006, time.January, 2, 15, 4, 5, 0, time.UTC))
 	r := NewReconciler(cfb.Client, st, clock)
 	cf := cfb.Build(r)
 

@@ -23,20 +23,27 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/version"
 	genericapiserver "k8s.io/apiserver/pkg/server"
-	utilversion "k8s.io/apiserver/pkg/util/version"
+	utilversion "k8s.io/component-base/version"
 )
 
 func NewScheme() *runtime.Scheme {
 	scheme := runtime.NewScheme()
 
-	// we need to add the options to empty v1
-	// TODO fix the server code to avoid this
-	metav1.AddToGroupVersion(scheme, schema.GroupVersion{Version: "v1"})
+	// Loosely adapted from
+	// https://github.com/kubernetes/apiextensions-apiserver/blob/a1e0ff9923b68731a7735f1c4168b6b3d0bd1027/pkg/apiserver/apiserver.go#L57
+	//
+	// Whitelist the unversioned API types
+	// for any apiserver.
 
-	// TODO: keep the generic API server from wanting this
-	unversioned := schema.GroupVersion{Group: "", Version: "v1"}
+	unversioned := schema.GroupVersion{
+		Group:   "",
+		Version: "v1",
+	}
+	metav1.AddToGroupVersion(scheme, unversioned)
+
 	scheme.AddUnversionedTypes(unversioned,
 		&metav1.Status{},
+		&metav1.WatchEvent{},
 		&metav1.APIVersions{},
 		&metav1.APIGroupList{},
 		&metav1.APIGroup{},

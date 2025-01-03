@@ -249,7 +249,7 @@ func (o TiltServerOptions) RunTiltServerFromConfig(config apiserver.CompletedCon
 
 	server.GenericAPIServer.AddPostStartHookOrDie("start-tilt-server-informers", func(context genericapiserver.PostStartHookContext) error {
 		if config.GenericConfig.SharedInformerFactory != nil {
-			config.GenericConfig.SharedInformerFactory.Start(context.StopCh)
+			config.GenericConfig.SharedInformerFactory.Start(context.Context.Done())
 		}
 		return nil
 	})
