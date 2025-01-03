@@ -48,6 +48,7 @@ type podWatch struct {
 }
 
 var _ source.Source = &PodSource{}
+var _ fmt.Stringer = &PodSource{}
 
 func NewPodSource(ctx context.Context, kClient k8s.Client, scheme *runtime.Scheme, clock clockwork.Clock) *PodSource {
 	return &PodSource{
@@ -57,6 +58,10 @@ func NewPodSource(ctx context.Context, kClient k8s.Client, scheme *runtime.Schem
 		watchesByNamespace: make(map[string]*podWatch),
 		clock:              clock,
 	}
+}
+
+func (s *PodSource) String() string {
+	return "pod-source"
 }
 
 func (s *PodSource) Start(ctx context.Context, q workqueue.TypedRateLimitingInterface[reconcile.Request]) error {

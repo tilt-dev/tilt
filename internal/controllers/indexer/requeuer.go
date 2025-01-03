@@ -2,6 +2,7 @@ package indexer
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -18,9 +19,14 @@ type Requeuer struct {
 }
 
 var _ source.Source = &Requeuer{}
+var _ fmt.Stringer = &Requeuer{}
 
 func NewRequeuer() *Requeuer {
 	return &Requeuer{}
+}
+
+func (s *Requeuer) String() string {
+	return "requeuer"
 }
 
 func (s *Requeuer) Start(ctx context.Context, q workqueue.TypedRateLimitingInterface[reconcile.Request]) error {
