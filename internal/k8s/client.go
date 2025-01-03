@@ -621,7 +621,7 @@ func maybeImmutableFieldStderr(stderr string) bool {
 		strings.Contains(stderr, ForbiddenFieldsPrefix)
 }
 
-var MetadataAnnotationsTooLongRe = regexp.MustCompile(`metadata.annotations: Too long: must have at most \d+ bytes.*`)
+var MetadataAnnotationsTooLongRe = regexp.MustCompile(`metadata.annotations: Too long: .* \d+ bytes.*`)
 
 // kubectl apply sets an annotation containing the object's previous configuration.
 // However, annotations have a max size of 256k. Large objects such as configmaps can exceed 256k, which makes
