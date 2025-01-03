@@ -119,7 +119,7 @@ func (s *HeadsUpServerController) setUpHelper(ctx context.Context, st store.RSto
 
 	err = server.GenericAPIServer.AddPostStartHook("start-tilt-server-informers", func(context genericapiserver.PostStartHookContext) error {
 		if config.GenericConfig.SharedInformerFactory != nil {
-			config.GenericConfig.SharedInformerFactory.Start(context.StopCh)
+			config.GenericConfig.SharedInformerFactory.Start(context.Context.Done())
 		}
 		return nil
 	})
