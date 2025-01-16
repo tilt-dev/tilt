@@ -38,9 +38,16 @@ func (d *darwinNotify) loop() {
 				e.Path = filepath.Join("/", e.Path)
 
 				_, isPathWereWatching := d.pathsWereWatching[e.Path]
-				if e.Flags&fsevents.ItemIsDir == fsevents.ItemIsDir && isPathWereWatching {
+				isDir := e.Flags&fsevents.ItemIsDir == fsevents.ItemIsDir
+				if isDir && isPathWereWatching {
 					// For consistency with Linux and Windows, don't fire any events
 					// for directories that we're watching -- only their contents.
+					continue
+				}
+
+				// On MacOS, modifying a directory entry fires Created | InodeMetaMod
+				// Ignore these events, mod time modifications shouldnt trigger copies.
+				if isDir && (e.Flags&fsevents.ItemInodeMetaMod) == fsevents.ItemInodeMetaMod {
 					continue
 				}
 

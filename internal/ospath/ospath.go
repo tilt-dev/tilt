@@ -154,6 +154,15 @@ func IsDir(path string) bool {
 	return f.Mode().IsDir()
 }
 
+func IsDirLstat(path string) bool {
+	f, err := os.Lstat(path)
+	if err != nil {
+		return false
+	}
+
+	return f.Mode().IsDir()
+}
+
 func IsBrokenSymlink(path string) (bool, error) {
 	// Stat resolves symlinks, lstat does not.
 	// So if Stat reports IsNotExist, but Lstat does not,
