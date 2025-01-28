@@ -11,7 +11,7 @@ $binDir = "$HOME\bin"
 $dest = "$binDir\tilt.exe"
 
 $useScoop = ""
-if (Get-Command "scoop" 2>$null) {
+if (Get-Command "scoop" -ErrorAction Ignore) {
    $useScoop = "true"
 }
 
