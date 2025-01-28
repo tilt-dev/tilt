@@ -190,6 +190,10 @@ func (c *Controller) addOrReplace(ctx context.Context, name types.NamespacedName
 		w.restartBackoff = existing.restartBackoff
 		status.Error = existing.status.Error
 	}
+	if hasExisting {
+		status.FileEvents = existing.status.FileEvents
+		status.LastEventTime = existing.status.LastEventTime
+	}
 
 	ignoreMatcher := ignore.CreateFileChangeFilter(fw.Spec.Ignores)
 	startFileChangeLoop := false

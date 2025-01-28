@@ -324,13 +324,14 @@ func TestController_Reconcile_Watches(t *testing.T) {
 	assert.Truef(t, updatedStart.After(originalStart),
 		"Monitor start time should be more recent after update, (original: %s, updated: %s)",
 		originalStart, updatedStart)
-	if assert.Equal(t, 2, len(updated.Status.FileEvents)) {
+	if assert.Equal(t, 3, len(updated.Status.FileEvents)) {
 		// ensure ONLY the expected files were seen
 		assert.NotZero(t, updated.Status.FileEvents[0].Time.Time)
-		mostRecentEventTime := updated.Status.FileEvents[1].Time.Time
+		mostRecentEventTime := updated.Status.FileEvents[2].Time.Time
 		assert.NotZero(t, mostRecentEventTime)
-		assert.Equal(t, []string{f.tmpdir.JoinPath("d", "1")}, updated.Status.FileEvents[0].SeenFiles)
-		assert.Equal(t, []string{f.tmpdir.JoinPath("d", "2")}, updated.Status.FileEvents[1].SeenFiles)
+		assert.Equal(t, []string{f.tmpdir.JoinPath("a", "1")}, updated.Status.FileEvents[0].SeenFiles)
+		assert.Equal(t, []string{f.tmpdir.JoinPath("d", "1")}, updated.Status.FileEvents[1].SeenFiles)
+		assert.Equal(t, []string{f.tmpdir.JoinPath("d", "2")}, updated.Status.FileEvents[2].SeenFiles)
 		assert.Equal(t, mostRecentEventTime, updated.Status.LastEventTime.Time)
 	}
 }
