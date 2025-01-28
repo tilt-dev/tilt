@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 type TempDirFixture struct {
@@ -22,9 +24,14 @@ func SanitizeFileName(name string) string {
 }
 
 func NewTempDirFixture(t testing.TB) *TempDirFixture {
+	dir := t.TempDir()
+
+	dir, err := filepath.EvalSymlinks(dir)
+	require.NoError(t, err)
+
 	f := &TempDirFixture{
 		t:   t,
-		dir: t.TempDir(),
+		dir: dir,
 	}
 	t.Cleanup(f.tearDown)
 	return f
