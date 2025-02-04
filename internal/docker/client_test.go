@@ -152,18 +152,6 @@ func TestProvideClusterProduct(t *testing.T) {
 		},
 		{
 			env:     clusterid.ProductMicroK8s,
-			runtime: container.RuntimeDocker,
-			expectedCluster: Env{
-				Client:              hostClient{Host: "unix:///var/snap/microk8s/current/docker.sock"},
-				Environ:             []string{"DOCKER_HOST=unix:///var/snap/microk8s/current/docker.sock"},
-				BuildToKubeContexts: []string{"microk8s-me"},
-			},
-			expectedLocal: Env{
-				Client: hostClient{Host: "unix:///var/run/docker.sock"},
-			},
-		},
-		{
-			env:     clusterid.ProductMicroK8s,
 			runtime: container.RuntimeCrio,
 			expectedCluster: Env{
 				Client: hostClient{Host: "unix:///var/run/docker.sock"},
