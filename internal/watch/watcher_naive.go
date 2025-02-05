@@ -151,16 +151,32 @@ func (d *naiveNotify) loop() {
 		}
 
 		if e.Op&fsnotify.Create != fsnotify.Create {
-			if d.shouldNotify(e.Name) {
-				d.wrappedEvents <- FileEvent{e.Name}
+			if !d.shouldNotify(e.Name) {
+				continue
 			}
+
+			// Don't send events for directories when the modtime is being changed.
+			//
+			// This is a bit of a hack because every OS represents modtime updates
+			// a bit differently and they don't map well to fsnotify events.
+			//
+			// On Windows, updating the modtime of a directory is a fsnotify.Write.
+			// On Linux, it's a fsnotify.Chmod.
+			isDirUpdateOnly := (e.Op == fsnotify.Write || e.Op == fsnotify.Chmod) &&
+				ospath.IsDir(e.Name)
+			if isDirUpdateOnly {
+				continue
+			}
+
+			d.wrappedEvents <- FileEvent{e.Name}
 			continue
 		}
 
 		if d.isWatcherRecursive {
-			if d.shouldNotify(e.Name) {
-				d.wrappedEvents <- FileEvent{e.Name}
+			if !d.shouldNotify(e.Name) {
+				continue
 			}
+			d.wrappedEvents <- FileEvent{e.Name}
 			continue
 		}
 
@@ -223,8 +239,7 @@ func (d *naiveNotify) shouldNotify(path string) bool {
 
 	if _, ok := d.notifyList[path]; ok {
 		// We generally don't care when directories change at the root of an ADD
-		stat, err := os.Lstat(path)
-		isDir := err == nil && stat.IsDir()
+		isDir := ospath.IsDirLstat(path)
 		if isDir {
 			return false
 		}

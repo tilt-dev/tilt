@@ -218,6 +218,24 @@ func TestWatchDirectoryAndTouchIt(t *testing.T) {
 	f.assertEvents()
 }
 
+func TestWatchDirectoryAndTouchSubdir(t *testing.T) {
+	f := newNotifyFixture(t)
+
+	cTime := time.Now()
+	root := f.TempDir("root")
+	path := filepath.Join(root, "change")
+	a := filepath.Join(path, "a.txt")
+	f.WriteFile(a, "a")
+
+	f.watch(root)
+	f.fsync()
+
+	err := os.Chtimes(path, cTime, time.Now().Add(time.Minute))
+	assert.NoError(t, err)
+
+	f.assertEvents()
+}
+
 func TestWatchNonExistentPathDoesNotFireSiblingEvent(t *testing.T) {
 	f := newNotifyFixture(t)
 
