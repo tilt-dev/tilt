@@ -19,7 +19,6 @@ func NewErrorAction(err error) store.ErrorAction {
 
 type InitAction struct {
 	TiltfilePath string
-	ConfigFiles  []string
 	UserArgs     []string
 
 	TiltBuild model.TiltBuild

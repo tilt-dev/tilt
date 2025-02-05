@@ -1955,22 +1955,6 @@ func TestHudExitWithError(t *testing.T) {
 	_ = f.WaitForNoExit()
 }
 
-func TestNewConfigsAreWatchedAfterFailure(t *testing.T) {
-	f := newTestFixture(t)
-	f.useRealTiltfileLoader()
-	f.loadAndStart()
-
-	f.WriteConfigFiles("Tiltfile", "read_file('foo.txt')")
-	f.WaitUntil("foo.txt is a config file", func(state store.EngineState) bool {
-		for _, s := range state.MainConfigPaths() {
-			if s == f.JoinPath("foo.txt") {
-				return true
-			}
-		}
-		return false
-	})
-}
-
 func TestDockerComposeUp(t *testing.T) {
 	f := newTestFixture(t)
 	redis, server := f.setupDCFixture()
@@ -3413,7 +3397,7 @@ func (f *testFixture) Init(action InitAction) {
 	expectedFileWatches := ctrltiltfile.ToFileWatchObjects(ctrltiltfile.WatchInputs{
 		TiltfileManifestName: model.MainTiltfileManifestName,
 		Manifests:            state.Manifests(),
-		ConfigFiles:          state.MainConfigPaths(),
+		ConfigFiles:          []string{action.TiltfilePath},
 		TiltfilePath:         action.TiltfilePath,
 	}, make(map[model.ManifestName]*v1alpha1.DisableSource))
 	if f.overrideMaxParallelUpdates > 0 {

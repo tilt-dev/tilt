@@ -11,7 +11,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
-	"github.com/tilt-dev/tilt/internal/sliceutils"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
@@ -197,32 +196,6 @@ func LastRestartEvent(restartOn *v1alpha1.RestartOnSpec, triggerObjs Objects) (t
 	}
 
 	return cur, latestButton
-}
-
-// Fetch the set of files that have changed since the given timestamp.
-// We err on the side of undercounting (i.e., skipping files that may have triggered
-// this build but are not sure).
-func FilesChanged(restartOn *v1alpha1.RestartOnSpec, fileWatches map[string]*v1alpha1.FileWatch, lastBuild time.Time) []string {
-	filesChanged := []string{}
-	if restartOn == nil {
-		return filesChanged
-	}
-	for _, fwn := range restartOn.FileWatches {
-		fw, ok := fileWatches[fwn]
-		if !ok {
-			// ignore missing filewatches
-			continue
-		}
-
-		// Add files so that the most recent files are first.
-		for i := len(fw.Status.FileEvents) - 1; i >= 0; i-- {
-			e := fw.Status.FileEvents[i]
-			if e.Time.Time.After(lastBuild) {
-				filesChanged = append(filesChanged, e.SeenFiles...)
-			}
-		}
-	}
-	return sliceutils.DedupedAndSorted(filesChanged)
 }
 
 // registerWatches ensures that reconciliation happens on changes to objects referenced by RestartOnSpec/StartOnSpec.

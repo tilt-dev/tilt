@@ -85,12 +85,8 @@ func (u Upper) Start(
 	if err != nil {
 		return err
 	}
-
-	configFiles := []string{absTfPath}
-
 	return u.Init(ctx, InitAction{
 		TiltfilePath:     absTfPath,
-		ConfigFiles:      configFiles,
 		UserArgs:         args,
 		TiltBuild:        b,
 		StartTime:        startTime,
@@ -282,7 +278,6 @@ func handleInitAction(ctx context.Context, engineState *store.EngineState, actio
 	engineState.TiltBuildInfo = action.TiltBuild
 	engineState.TiltStartTime = action.StartTime
 	engineState.DesiredTiltfilePath = action.TiltfilePath
-	engineState.TiltfileConfigPaths[model.MainTiltfileManifestName] = action.ConfigFiles
 	engineState.UserConfigState = model.NewUserConfigState(action.UserArgs)
 	engineState.AnalyticsUserOpt = action.AnalyticsUserOpt
 	engineState.CloudAddress = action.CloudAddress
