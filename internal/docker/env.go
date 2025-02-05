@@ -246,21 +246,6 @@ func ProvideClusterEnv(
 		}
 	}
 
-	if product == clusterid.ProductMicroK8s && kClient.ContainerRuntime(ctx) == container.RuntimeDocker {
-		// If we're running Microk8s with a docker runtime, talk to Microk8s's docker socket.
-		d, err := creator.FromEnvMap(map[string]string{"DOCKER_HOST": microK8sDockerHost})
-		if err != nil {
-			return ClusterEnv{Error: fmt.Errorf("connecting to microk8s: %v", err)}
-		}
-
-		// Handle the case where people manually set DOCKER_HOST to microk8s.
-		if hostOverride == "" || hostOverride == d.DaemonHost() {
-			env.Client = d
-			env.Environ = append(env.Environ, fmt.Sprintf("DOCKER_HOST=%s", microK8sDockerHost))
-			env.BuildToKubeContexts = append(env.BuildToKubeContexts, string(kubeContext))
-		}
-	}
-
 	if env.Client == nil {
 		client, err := creator.FromCLI(ctx)
 		env.Client = client
@@ -274,8 +259,7 @@ func ProvideClusterEnv(
 	// images)
 	//
 	// currently, we handle this by inspecting the Docker + K8s configs to see
-	// if they're matched up, but with the exception of microk8s (handled above),
-	// we don't override the environmental Docker config
+	// if they're matched up, but we don't override the environmental Docker config
 	if willBuildToKubeContext(ctx, product, kubeContext, env) &&
 		kClient.ContainerRuntime(ctx) == container.RuntimeDocker {
 		env.BuildToKubeContexts = append(env.BuildToKubeContexts, string(kubeContext))

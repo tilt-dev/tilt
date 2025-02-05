@@ -69,10 +69,6 @@ var minDockerVersionExperimentalBuildkit = semver.MustParse("1.38.0")
 
 var versionTimeout = 5 * time.Second
 
-// microk8s exposes its own docker socket
-// https://github.com/ubuntu/microk8s/blob/master/docs/dockerd.md
-const microK8sDockerHost = "unix:///var/snap/microk8s/current/docker.sock"
-
 // Create an interface so this can be mocked out.
 type Client interface {
 	CheckConnected() error
