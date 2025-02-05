@@ -7,13 +7,14 @@ import (
 	"io"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/httpstream"
 	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/kubectl/pkg/scheme"
 
 	"github.com/tilt-dev/tilt/internal/container"
 )
 
-func (k *K8sClient) Exec(_ context.Context, podID PodID, cName container.Name, n Namespace, cmd []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
+func (k *K8sClient) Exec(ctx context.Context, podID PodID, cName container.Name, n Namespace, cmd []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
 	req := k.core.RESTClient().Post().
 		Resource("pods").
 		Namespace(n.String()).
@@ -28,12 +29,20 @@ func (k *K8sClient) Exec(_ context.Context, podID PodID, cName container.Name, n
 		Stderr:    stderr != nil,
 	}, scheme.ParameterCodec)
 
-	exec, err := remotecommand.NewSPDYExecutor(k.restConfig, "POST", req.URL())
+	spdyExec, err := remotecommand.NewSPDYExecutor(k.restConfig, "POST", req.URL())
 	if err != nil {
-		return fmt.Errorf("establishing connection: %w", err)
+		return fmt.Errorf("failed to create spdy executor: %w", err)
+	}
+	websocketExec, err := remotecommand.NewWebSocketExecutor(k.restConfig, "GET", req.URL().String())
+	if err != nil {
+		return fmt.Errorf("failed to create websocket executor: %w", err)
 	}
 
-	err = exec.Stream(remotecommand.StreamOptions{
+	exec, _ := remotecommand.NewFallbackExecutor(websocketExec, spdyExec, func(err error) bool {
+		return httpstream.IsUpgradeFailure(err) || httpstream.IsHTTPSProxyError(err)
+	})
+
+	err = exec.StreamWithContext(ctx, remotecommand.StreamOptions{
 		Stdin:  stdin,
 		Stdout: stdout,
 		Stderr: stderr,
