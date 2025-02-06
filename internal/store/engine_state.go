@@ -41,10 +41,6 @@ type EngineState struct {
 	// How many builds have been completed (pass or fail) since starting tilt
 	CompletedBuildCount int
 
-	// For synchronizing ConfigsController -- wait until engine records all builds started
-	// so far before starting another build
-	StartedTiltfileLoadCount int
-
 	UpdateSettings model.UpdateSettings
 
 	FatalError error
@@ -74,10 +70,6 @@ type EngineState struct {
 
 	TiltfileDefinitionOrder []model.ManifestName
 	TiltfileStates          map[model.ManifestName]*ManifestState
-
-	// Files and directories read during tiltfile execution,
-	// which we listen to for reload.
-	TiltfileConfigPaths map[model.ManifestName][]string
 
 	SuggestedTiltVersion string
 	VersionSettings      model.VersionSettings
@@ -375,10 +367,6 @@ func (e *EngineState) MainTiltfileState() *ManifestState {
 	return e.TiltfileStates[model.MainTiltfileManifestName]
 }
 
-func (e *EngineState) MainConfigPaths() []string {
-	return e.TiltfileConfigPaths[model.MainTiltfileManifestName]
-}
-
 func (e *EngineState) HasBuild() bool {
 	for _, m := range e.Manifests() {
 		for _, targ := range m.ImageTargets {
@@ -515,7 +503,6 @@ func NewState() *EngineState {
 			CurrentBuilds: make(map[string]model.BuildRecord),
 		},
 	}
-	ret.TiltfileConfigPaths = map[model.ManifestName][]string{}
 
 	if ok, _ := tiltanalytics.IsAnalyticsDisabledFromEnv(); ok {
 		ret.AnalyticsEnvOpt = analytics.OptOut

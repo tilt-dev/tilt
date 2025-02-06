@@ -3,7 +3,6 @@ package tiltfile
 import (
 	"context"
 
-	"github.com/tilt-dev/tilt/internal/sliceutils"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -29,7 +28,6 @@ func HandleConfigsReloadStarted(
 	}
 	ms.CurrentBuilds[TiltfileBuildSource] = status
 	state.RemoveFromTriggerQueue(event.Name)
-	state.StartedTiltfileLoadCount++
 }
 
 // In the original Tilt architecture, the Tiltfile contained
@@ -121,9 +119,6 @@ func HandleConfigsReloaded(
 		// and introduce a syntax error.  You don't want partial results to wipe out
 		// your "good" state.
 
-		// Watch any new config files in the partial state.
-		state.TiltfileConfigPaths[event.Name] = sliceutils.AppendWithoutDupes(state.TiltfileConfigPaths[event.Name], event.ConfigFiles...)
-
 		if isMainTiltfile {
 			// Enable any new features in the partial state.
 			if len(state.Features) == 0 {
@@ -183,8 +178,6 @@ func HandleConfigsReloaded(
 			continue
 		}
 	}
-
-	state.TiltfileConfigPaths[event.Name] = event.ConfigFiles
 
 	// Global state that's only configurable from the main manifest.
 	if isMainTiltfile {
