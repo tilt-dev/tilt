@@ -1457,6 +1457,7 @@ func (s *tiltfileState) imgTargetsForDepsHelper(mn model.ManifestName, imageMapD
 				ExtraTags:          image.extraTags,
 				ContextIgnores:     contextIgnores,
 				ExtraHosts:         image.extraHosts,
+				DisablePush:        image.disablePush,
 			}
 			iTarget = iTarget.WithBuildDetails(model.DockerBuild{DockerImageSpec: spec})
 		case CustomBuild:

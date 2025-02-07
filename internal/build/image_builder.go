@@ -126,14 +126,18 @@ func (ib *ImageBuilder) push(ctx context.Context, refs container.TaggedRefs, ps 
 	ps.StartPipelineStep(ctx, "Pushing %s", container.FamiliarString(refs.LocalRef))
 	defer ps.EndPipelineStep(ctx)
 
-	cbSkip := false
 	if iTarget.IsCustomBuild() {
-		cbSkip = iTarget.CustomBuildInfo().SkipsPush()
+		if iTarget.CustomBuildInfo().SkipsPush() {
+			ps.Printf(ctx, "Skipping push: custom_build() configured to handle push itself")
+			return nil
+		}
 	}
 
-	if cbSkip {
-		ps.Printf(ctx, "Skipping push: custom_build() configured to handle push itself")
-		return nil
+	if iTarget.IsDockerBuild() {
+		if iTarget.DockerBuildInfo().DisablePush {
+			ps.Printf(ctx, "Skipping push: docker_build() configured to handle push itself")
+			return nil
+		}
 	}
 
 	// We can also skip the push of the image if it isn't used

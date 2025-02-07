@@ -4010,6 +4010,21 @@ k8s_yaml('foo.yaml')
 		m.ImageTargets[0].DockerBuildInfo().Args)
 }
 
+func TestDockerBuildDisablePush(t *testing.T) {
+
+	f := newFixture(t)
+
+	f.dockerfile("Dockerfile")
+	f.yaml("foo.yaml", deployment("foo", image("gcr.io/foo")))
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', '.', disable_push=True)
+k8s_yaml('foo.yaml')
+`)
+
+	f.load()
+	f.assertNextManifest("foo", db(image("gcr.io/foo"), disablePush(true)))
+}
+
 func TestCustomBuildEntrypoint(t *testing.T) {
 	f := newFixture(t)
 
@@ -6103,6 +6118,8 @@ func (f *fixture) assertNextManifest(name model.ManifestName, opts ...interface{
 					lu := image.LiveUpdateSpec
 					assert.False(f.t, liveupdate.IsEmptySpec(lu))
 					assert.Equal(f.t, matcher, lu)
+				case disablePushHelper:
+					assert.Equal(f.t, matcher.disabled, image.DockerBuildInfo().DisablePush)
 				default:
 					f.t.Fatalf("unknown dbHelper matcher: %T %v", matcher, matcher)
 				}

@@ -198,7 +198,8 @@ def docker_build(ref: str,
                  cache_from: Union[str, List[str]] = [],
                  pull: bool = False,
                  platform: str = "",
-                 extra_hosts: Union[str, List[str]] = []) -> None:
+                 extra_hosts: Union[str, List[str]] = [],
+                 disable_push: bool = False) -> None:
   """Builds a docker image.
 
   The invocation
@@ -244,6 +245,7 @@ def docker_build(ref: str,
     pull: Force pull the latest version of parent images. Equivalent to the ``docker build --pull`` flag.
     platform: Target platform for build (e.g. ``linux/amd64``). Defaults to the value of the ``DOCKER_DEFAULT_PLATFORM`` environment variable. Equivalent to the ``docker build --platform`` flag.
     extra_hosts: Add a custom host-to-IP mapping (host:ip). Equivalent to the ``docker build --add-host`` flag.
+    disable_push: whether Tilt should push the image to the registry that the Kubernetes cluster has access to. Set this to true if you don't want tilt to push the image to the cluster registry
   """
   pass
 

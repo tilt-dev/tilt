@@ -116,7 +116,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 	var buildArgs value.StringStringMap
 	var network, platform value.Stringable
 	var ssh, secret, extraTags, cacheFrom, extraHosts value.StringOrStringList
-	var matchInEnvVars, pullParent bool
+	var matchInEnvVars, pullParent, disablePush bool
 	var overrideArgsVal starlark.Sequence
 	if err := s.unpackArgs(fn.Name(), args, kwargs,
 		"ref", &dockerRef,
@@ -140,6 +140,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		"pull?", &pullParent,
 		"platform?", &platform,
 		"extra_hosts?", &extraHosts,
+		"disable_push?", &disablePush,
 	); err != nil {
 		return nil, err
 	}
@@ -242,6 +243,7 @@ func (s *tiltfileState) dockerBuild(thread *starlark.Thread, fn *starlark.Builti
 		dbBuildPath:      context,
 		configurationRef: container.NewRefSelector(ref),
 		dbBuildArgs:      buildArgsList,
+		disablePush:      disablePush,
 		liveUpdate:       liveUpdate,
 		matchInEnvVars:   matchInEnvVars,
 		sshSpecs:         ssh.Values,

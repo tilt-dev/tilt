@@ -2522,6 +2522,12 @@ func schema_pkg_apis_core_v1alpha1_DockerImageSpec(ref common.ReferenceCallback)
 							},
 						},
 					},
+					"disablePush": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"boolean"},
+							Format: "",
+						},
+					},
 				},
 				Required: []string{"ref"},
 			},

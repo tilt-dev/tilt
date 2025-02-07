@@ -963,6 +963,9 @@ message DockerImageSpec {
   //
   // Equivalent to `--add-host` in the Docker CLI.
   repeated string extraHosts = 17;
+
+  // +optional
+  optional bool disablePush = 18;
 }
 
 // DockerImageStageStatus gives detailed report of each stage

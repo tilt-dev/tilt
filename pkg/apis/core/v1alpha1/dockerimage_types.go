@@ -181,6 +181,11 @@ type DockerImageSpec struct {
 	//
 	// Equivalent to `--add-host` in the Docker CLI.
 	ExtraHosts []string `json:"extraHosts,omitempty" protobuf:"bytes,17,opt,name=extraHosts"`
+
+	// Whether to push the image to the registry
+
+	// +optional
+	DisablePush bool `json:"disablePush,omitempty" protobuf:"varint,18,opt,name=disablePush"`
 }
 
 var _ resource.Object = &DockerImage{}
