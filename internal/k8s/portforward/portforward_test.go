@@ -18,7 +18,6 @@ package portforward
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -33,8 +32,6 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/httpstream"
-
-	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
 type fakeDialer struct {
@@ -54,6 +51,7 @@ type fakeConnection struct {
 	closeChan   chan bool
 	dataStream  *fakeStream
 	errorStream *fakeStream
+	streamCount int
 }
 
 func newFakeConnection() *fakeConnection {
@@ -67,15 +65,14 @@ func newFakeConnection() *fakeConnection {
 func (c *fakeConnection) CreateStream(headers http.Header) (httpstream.Stream, error) {
 	switch headers.Get(v1.StreamType) {
 	case v1.StreamTypeData:
+		c.streamCount++
 		return c.dataStream, nil
 	case v1.StreamTypeError:
+		c.streamCount++
 		return c.errorStream, nil
 	default:
 		return nil, fmt.Errorf("fakeStream creation not supported for stream type %s", headers.Get(v1.StreamType))
 	}
-}
-
-func (c *fakeConnection) RemoveStreams(_ ...httpstream.Stream) {
 }
 
 func (c *fakeConnection) Close() error {
@@ -88,6 +85,12 @@ func (c *fakeConnection) Close() error {
 
 func (c *fakeConnection) CloseChan() <-chan bool {
 	return c.closeChan
+}
+
+func (c *fakeConnection) RemoveStreams(streams ...httpstream.Stream) {
+	for range streams {
+		c.streamCount--
+	}
 }
 
 func (c *fakeConnection) SetIdleTimeout(timeout time.Duration) {
@@ -105,12 +108,9 @@ func newFakeListener() fakeListener {
 	}
 }
 
-//nolint:gosimple // Copy of upstream code @ https://github.com/kubernetes/client-go/blob/77f63643f951f19681397a995fe0916d2d5cb992/tools/portforward/portforward_test.go#L105-L110
 func (l *fakeListener) Accept() (net.Conn, error) {
-	select {
-	case <-l.closeChan:
-		return nil, fmt.Errorf("listener closed")
-	}
+	<-l.closeChan
+	return nil, fmt.Errorf("listener closed")
 }
 
 func (l *fakeListener) Close() error {
@@ -291,15 +291,15 @@ func TestParsePortsAndNew(t *testing.T) {
 			t.Fatalf("%d: parseAddresses: error expected=%t, got %t: %s", i, e, a, err)
 		}
 
-		ctx := newCtx()
 		dialer := &fakeDialer{}
+		expectedStopChan := make(chan struct{})
 		readyChan := make(chan struct{})
 
 		var pf *PortForwarder
 		if len(test.addresses) > 0 {
-			pf, err = NewOnAddresses(ctx, dialer, test.addresses, test.input, readyChan)
+			pf, err = NewOnAddresses(dialer, test.addresses, test.input, expectedStopChan, readyChan, os.Stdout, os.Stderr)
 		} else {
-			pf, err = New(ctx, dialer, test.input, readyChan)
+			pf, err = New(dialer, test.input, expectedStopChan, readyChan, os.Stdout, os.Stderr)
 		}
 		haveError = err != nil
 		if e, a := test.expectNewError, haveError; e != a {
@@ -340,6 +340,9 @@ func TestParsePortsAndNew(t *testing.T) {
 			t.Fatalf("%d: GetPorts: unable to retrieve ports: %s", i, portErr)
 		} else if !reflect.DeepEqual(test.expectedPorts, ports) {
 			t.Fatalf("%d: ports: expected %#v, got %#v", i, test.expectedPorts, ports)
+		}
+		if e, a := expectedStopChan, pf.stopChan; e != a {
+			t.Fatalf("%d: stopChan: expected %#v, got %#v", i, e, a)
 		}
 		if pf.Ready == nil {
 			t.Fatalf("%d: Ready should be non-nil", i)
@@ -425,15 +428,16 @@ func TestGetListener(t *testing.T) {
 
 func TestGetPortsReturnsDynamicallyAssignedLocalPort(t *testing.T) {
 	dialer := &fakeDialer{
-		conn: newFakeConnection(),
+		conn:               newFakeConnection(),
+		negotiatedProtocol: PortForwardProtocolV1Name,
 	}
 
-	ctx, cancel := context.WithCancel(newCtx())
+	stopChan := make(chan struct{})
 	readyChan := make(chan struct{})
 	errChan := make(chan error)
 
 	defer func() {
-		cancel()
+		close(stopChan)
 
 		forwardErr := <-errChan
 		if forwardErr != nil {
@@ -441,7 +445,7 @@ func TestGetPortsReturnsDynamicallyAssignedLocalPort(t *testing.T) {
 		}
 	}()
 
-	pf, err := New(ctx, dialer, []string{":5000"}, readyChan)
+	pf, err := New(dialer, []string{":5000"}, stopChan, readyChan, os.Stdout, os.Stderr)
 
 	if err != nil {
 		t.Fatalf("error while calling New: %s", err)
@@ -469,14 +473,10 @@ func TestGetPortsReturnsDynamicallyAssignedLocalPort(t *testing.T) {
 	}
 }
 
-func newCtx() context.Context {
-	return logger.WithLogger(context.Background(), logger.NewTestLogger(os.Stdout))
-}
-
 func TestHandleConnection(t *testing.T) {
-	readyChan := make(chan struct{})
+	out := bytes.NewBufferString("")
 
-	pf, err := New(newCtx(), &fakeDialer{}, []string{":2222"}, readyChan)
+	pf, err := New(&fakeDialer{}, []string{":2222"}, nil, nil, out, nil)
 	if err != nil {
 		t.Fatalf("error while calling New: %s", err)
 	}
@@ -509,15 +509,16 @@ func TestHandleConnection(t *testing.T) {
 
 	// Test handleConnection
 	pf.handleConnection(localConnection, ForwardedPort{Local: 1111, Remote: 2222})
-
+	assert.Equal(t, 0, remoteConnection.streamCount, "stream count should be zero")
 	assert.Equal(t, "test data from local", remoteDataReceived.String())
 	assert.Equal(t, "test data from remote", localConnection.receiveBuffer.String())
 }
 
 func TestHandleConnectionSendsRemoteError(t *testing.T) {
-	readyChan := make(chan struct{})
+	out := bytes.NewBufferString("")
+	errOut := bytes.NewBufferString("")
 
-	pf, err := New(newCtx(), &fakeDialer{}, []string{":2222"}, readyChan)
+	pf, err := New(&fakeDialer{}, []string{":2222"}, nil, nil, out, errOut)
 	if err != nil {
 		t.Fatalf("error while calling New: %s", err)
 	}
@@ -541,14 +542,16 @@ func TestHandleConnectionSendsRemoteError(t *testing.T) {
 	// Test handleConnection, using go-routine because it needs to be able to write to unbuffered pf.errorChan
 	pf.handleConnection(localConnection, ForwardedPort{Local: 1111, Remote: 2222})
 
+	assert.Equal(t, 0, remoteConnection.streamCount, "stream count should be zero")
 	assert.Equal(t, "", remoteDataReceived.String())
 	assert.Equal(t, "", localConnection.receiveBuffer.String())
 }
 
 func TestWaitForConnectionExitsOnStreamConnClosed(t *testing.T) {
-	readyChan := make(chan struct{})
+	out := bytes.NewBufferString("")
+	errOut := bytes.NewBufferString("")
 
-	pf, err := New(newCtx(), &fakeDialer{}, []string{":2222"}, readyChan)
+	pf, err := New(&fakeDialer{}, []string{":2222"}, nil, nil, out, errOut)
 	if err != nil {
 		t.Fatalf("error while calling New: %s", err)
 	}
@@ -560,4 +563,67 @@ func TestWaitForConnectionExitsOnStreamConnClosed(t *testing.T) {
 
 	port := ForwardedPort{}
 	pf.waitForConnection(&listener, port)
+}
+
+func TestForwardPortsReturnsErrorWhenConnectionIsLost(t *testing.T) {
+	dialer := &fakeDialer{
+		conn:               newFakeConnection(),
+		negotiatedProtocol: PortForwardProtocolV1Name,
+	}
+
+	stopChan := make(chan struct{})
+	readyChan := make(chan struct{})
+	errChan := make(chan error)
+
+	pf, err := New(dialer, []string{":5000"}, stopChan, readyChan, os.Stdout, os.Stderr)
+	if err != nil {
+		t.Fatalf("failed to create new PortForwarder: %s", err)
+	}
+
+	go func() {
+		errChan <- pf.ForwardPorts()
+	}()
+
+	<-pf.Ready
+
+	// Simulate lost pod connection by closing streamConn, which should result in pf.ForwardPorts() returning an error.
+	pf.streamConn.Close()
+
+	err = <-errChan
+	if err == nil {
+		t.Fatalf("unexpected non-error from pf.ForwardPorts()")
+	} else if err != ErrLostConnectionToPod {
+		t.Fatalf("unexpected error from pf.ForwardPorts(): %s", err)
+	}
+}
+
+func TestForwardPortsReturnsNilWhenStopChanIsClosed(t *testing.T) {
+	dialer := &fakeDialer{
+		conn:               newFakeConnection(),
+		negotiatedProtocol: PortForwardProtocolV1Name,
+	}
+
+	stopChan := make(chan struct{})
+	readyChan := make(chan struct{})
+	errChan := make(chan error)
+
+	pf, err := New(dialer, []string{":5000"}, stopChan, readyChan, os.Stdout, os.Stderr)
+	if err != nil {
+		t.Fatalf("failed to create new PortForwarder: %s", err)
+	}
+
+	go func() {
+		errChan <- pf.ForwardPorts()
+	}()
+
+	<-pf.Ready
+
+	// Closing (or sending to) stopChan indicates a stop request by the caller, which should result in pf.ForwardPorts()
+	// returning nil.
+	close(stopChan)
+
+	err = <-errChan
+	if err != nil {
+		t.Fatalf("unexpected error from pf.ForwardPorts(): %s", err)
+	}
 }
