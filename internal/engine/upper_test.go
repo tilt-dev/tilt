@@ -1093,7 +1093,7 @@ k8s_yaml('snack.yaml')`
 
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("src/main.go"))
 	f.WaitUntil("pending change appears", func(st store.EngineState) bool {
-		return len(st.BuildStatus(imageTargetID).PendingFileChanges) > 0
+		return st.BuildStatus(imageTargetID).HasPendingFileChanges()
 	})
 	f.assertNoCall("even tho there are pending changes, manual manifest shouldn't build w/o explicit trigger")
 

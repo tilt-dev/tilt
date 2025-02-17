@@ -65,7 +65,7 @@ func TestNextBuildReason(t *testing.T) {
 	assert.Equal(t, "Initial Build",
 		mt.NextBuildReason().String())
 
-	status.PendingDependencyChanges[iTargetID] = time.Now()
+	status.DependencyChanges[iTargetID] = time.Now()
 	assert.Equal(t, "Initial Build",
 		mt.NextBuildReason().String())
 
@@ -73,9 +73,47 @@ func TestNextBuildReason(t *testing.T) {
 	assert.Equal(t, "Dependency Updated",
 		mt.NextBuildReason().String())
 
-	status.PendingFileChanges["a.txt"] = time.Now()
+	status.FileChanges["a.txt"] = time.Now()
 	assert.Equal(t, "Changed Files | Dependency Updated",
 		mt.NextBuildReason().String())
+}
+
+func TestBuildStatusGC(t *testing.T) {
+	start := time.Now()
+	bs := newBuildStatus()
+	assert.False(t, bs.HasPendingFileChanges())
+	assert.False(t, bs.HasPendingDependencyChanges())
+
+	bs.FileChanges["a.txt"] = start
+	bs.FileChanges["b.txt"] = start
+	bs.DependencyChanges[model.ImageID(container.MustParseSelector("sancho"))] = start
+
+	assert.True(t, bs.HasPendingFileChanges())
+	assert.True(t, bs.HasPendingDependencyChanges())
+
+	pending := []string{}
+	for f := range bs.PendingFileChanges() {
+		pending = append(pending, f)
+	}
+	assert.Equal(t, []string{"a.txt", "b.txt"}, pending)
+
+	bs.ConsumeChangesBefore(start.Add(time.Second))
+	assert.False(t, bs.HasPendingFileChanges())
+	assert.False(t, bs.HasPendingDependencyChanges())
+	assert.Equal(t, 2, len(bs.FileChanges))
+	assert.Equal(t, 1, len(bs.DependencyChanges))
+
+	bs.FileChanges["a.txt"] = start.Add(2 * time.Second)
+	assert.True(t, bs.HasPendingFileChanges())
+
+	bs.ConsumeChangesBefore(start.Add(time.Hour))
+	assert.False(t, bs.HasPendingFileChanges())
+	assert.False(t, bs.HasPendingDependencyChanges())
+
+	// GC should remove sufficiently old changes from the map
+	// since they'll just slow things down.
+	assert.Equal(t, 0, len(bs.FileChanges))
+	assert.Equal(t, 0, len(bs.DependencyChanges))
 }
 
 func TestManifestTargetEndpoints(t *testing.T) {

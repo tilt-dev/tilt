@@ -73,7 +73,7 @@ func HandleConfigsReloaded(
 
 	// Remove pending file changes that were consumed by this build.
 	for _, status := range ms.BuildStatuses {
-		status.ClearPendingChangesBefore(b.StartTime)
+		status.ConsumeChangesBefore(b.StartTime)
 	}
 
 	// Track the new secrets and go back to scrub them.

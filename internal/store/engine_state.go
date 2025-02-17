@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+	"iter"
 	"sort"
 	"time"
 
@@ -178,7 +179,7 @@ func (e *EngineState) IsBuilding(name model.ManifestName) bool {
 }
 
 // Find the first build status. Only suitable for testing.
-func (e *EngineState) BuildStatus(id model.TargetID) BuildStatus {
+func (e *EngineState) BuildStatus(id model.TargetID) *BuildStatus {
 	mns := e.ManifestNamesForTargetID(id)
 	for _, mn := range mns {
 		ms := e.ManifestTargets[mn].State
@@ -187,7 +188,7 @@ func (e *EngineState) BuildStatus(id model.TargetID) BuildStatus {
 			return bs
 		}
 	}
-	return BuildStatus{}
+	return &BuildStatus{}
 }
 
 func (e *EngineState) AvailableBuildSlots() int {
@@ -397,12 +398,21 @@ func (e *EngineState) InitialBuildsCompleted() bool {
 	return true
 }
 
-// TODO(nick): This will eventually implement TargetStatus
 type BuildStatus struct {
-	// Stores the times of all the pending changes,
-	// so we can prioritize the oldest one first.
-	// This map is mutable.
-	PendingFileChanges map[string]time.Time
+	// We keep track of a change with two fields:
+	//
+	// 1) When we saw the change.
+	// 2) When we consumed the change.
+	//
+	// A change is considered pending if the last seen timestamp is later than the
+	// last consumed timestamp.
+	//
+	// Because these two fields are one-way ratchets (they only move forward in
+	// time), they avoid race conditions (e.g., if a we received Seen and Consumed
+	// events out of order).
+	ConsumedChanges time.Time
+
+	FileChanges map[string]time.Time
 
 	LastResult BuildResult
 
@@ -412,7 +422,7 @@ type BuildStatus struct {
 	// Long-term, we want to process all dependencies as a build graph rather than
 	// a list of manifests. Specifically, we'll build one Target at a time.  Once
 	// the build completes, we'll look at all the targets that depend on it, and
-	// mark PendingDependencyChanges to indicate that they need a rebuild.
+	// mark DependencyChanges to indicate that they need a rebuild.
 	//
 	// Short-term, we only use this for cases where two manifests share a common
 	// image. This only handles cross-manifest dependencies.
@@ -420,33 +430,89 @@ type BuildStatus struct {
 	// This approach allows us to start working on the bookkeeping and
 	// dependency-tracking in the short-term, without having to switch over to a
 	// full dependency graph in one swoop.
-	PendingDependencyChanges map[model.TargetID]time.Time
+	DependencyChanges map[model.TargetID]time.Time
 }
 
 func newBuildStatus() *BuildStatus {
 	return &BuildStatus{
-		PendingFileChanges:       make(map[string]time.Time),
-		PendingDependencyChanges: make(map[model.TargetID]time.Time),
+		FileChanges:       make(map[string]time.Time),
+		DependencyChanges: make(map[model.TargetID]time.Time),
 	}
 }
 
-func (s BuildStatus) IsEmpty() bool {
-	return len(s.PendingFileChanges) == 0 &&
-		len(s.PendingDependencyChanges) == 0 &&
+func (s *BuildStatus) ConsumeChangesBefore(startTime time.Time) {
+	if s.ConsumedChanges.IsZero() || s.ConsumedChanges.Before(startTime) {
+		s.ConsumedChanges = startTime
+	}
+
+	// Garbage collect changes consumed
+	// more than a minute ago.
+	for path, modTime := range s.FileChanges {
+		if modTime.Add(time.Minute).Before(s.ConsumedChanges) {
+			delete(s.FileChanges, path)
+		}
+	}
+
+	for targetID, modTime := range s.DependencyChanges {
+		if modTime.Add(time.Minute).Before(s.ConsumedChanges) {
+			delete(s.DependencyChanges, targetID)
+		}
+	}
+}
+
+func (s *BuildStatus) IsEmpty() bool {
+	return len(s.FileChanges) == 0 &&
+		len(s.DependencyChanges) == 0 &&
 		s.LastResult == nil
 }
 
-func (s *BuildStatus) ClearPendingChangesBefore(startTime time.Time) {
-	for file, modTime := range s.PendingFileChanges {
-		if timecmp.BeforeOrEqual(modTime, startTime) {
-			delete(s.PendingFileChanges, file)
+// Count PendingFileChanges
+func (s *BuildStatus) CountPendingFileChanges() int {
+	count := 0
+	for _ = range s.PendingFileChanges() {
+		count++
+	}
+	return count
+}
+
+func (s *BuildStatus) PendingFileChanges() iter.Seq2[string, time.Time] {
+	return func(yield func(string, time.Time) bool) {
+		neverConsumed := s.ConsumedChanges.IsZero()
+		for p, modTime := range s.FileChanges {
+			if neverConsumed || !timecmp.BeforeOrEqual(modTime, s.ConsumedChanges) {
+				if !yield(p, modTime) {
+					return
+				}
+			}
 		}
 	}
-	for file, modTime := range s.PendingDependencyChanges {
-		if timecmp.BeforeOrEqual(modTime, startTime) {
-			delete(s.PendingDependencyChanges, file)
+}
+
+func (s *BuildStatus) PendingDependencyChanges() iter.Seq2[model.TargetID, time.Time] {
+	return func(yield func(model.TargetID, time.Time) bool) {
+		neverConsumed := s.ConsumedChanges.IsZero()
+		for p, modTime := range s.DependencyChanges {
+			if neverConsumed || !timecmp.BeforeOrEqual(modTime, s.ConsumedChanges) {
+				if !yield(p, modTime) {
+					return
+				}
+			}
 		}
 	}
+}
+
+func (s *BuildStatus) HasPendingFileChanges() bool {
+	for _ = range s.PendingFileChanges() {
+		return true
+	}
+	return false
+}
+
+func (s *BuildStatus) HasPendingDependencyChanges() bool {
+	for _ = range s.PendingDependencyChanges() {
+		return true
+	}
+	return false
 }
 
 type ManifestState struct {
@@ -551,12 +617,14 @@ func (ms *ManifestState) TargetID() model.TargetID {
 	return ms.Name.TargetID()
 }
 
-func (ms *ManifestState) BuildStatus(id model.TargetID) BuildStatus {
+// Returns a copy of the build status. Any changes will not change the
+// engine. Allows for multiple simultaneous readers.
+func (ms *ManifestState) BuildStatus(id model.TargetID) *BuildStatus {
 	result, ok := ms.BuildStatuses[id]
 	if !ok {
-		return BuildStatus{}
+		return &BuildStatus{}
 	}
-	return *result
+	return result
 }
 
 func (ms *ManifestState) MutableBuildStatus(id model.TargetID) *BuildStatus {
@@ -680,12 +748,12 @@ func (ms *ManifestState) AddPendingFileChange(targetID model.TargetID, file stri
 	}
 
 	bs := ms.MutableBuildStatus(targetID)
-	bs.PendingFileChanges[file] = timestamp
+	bs.FileChanges[file] = timestamp
 }
 
 func (ms *ManifestState) HasPendingFileChanges() bool {
 	for _, status := range ms.BuildStatuses {
-		if len(status.PendingFileChanges) > 0 {
+		if status.HasPendingFileChanges() {
 			return true
 		}
 	}
@@ -694,7 +762,7 @@ func (ms *ManifestState) HasPendingFileChanges() bool {
 
 func (ms *ManifestState) HasPendingDependencyChanges() bool {
 	for _, status := range ms.BuildStatuses {
-		if len(status.PendingDependencyChanges) > 0 {
+		if status.HasPendingDependencyChanges() {
 			return true
 		}
 	}
@@ -740,14 +808,14 @@ func (ms *ManifestState) HasPendingChangesBeforeOrEqual(highWaterMark time.Time)
 	}
 
 	for _, status := range ms.BuildStatuses {
-		for _, t := range status.PendingFileChanges {
+		for _, t := range status.PendingFileChanges() {
 			if !t.IsZero() && timecmp.BeforeOrEqual(t, earliest) {
 				ok = true
 				earliest = t
 			}
 		}
 
-		for _, t := range status.PendingDependencyChanges {
+		for _, t := range status.PendingDependencyChanges() {
 			if !t.IsZero() && timecmp.BeforeOrEqual(t, earliest) {
 				ok = true
 				earliest = t
