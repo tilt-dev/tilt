@@ -13,10 +13,14 @@ import (
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
+func LoggerCtx() context.Context {
+	return logger.WithLogger(context.Background(), logger.NewTestLogger(os.Stdout))
+}
+
 // CtxAndAnalyticsForTest returns a context.Context suitable for use in tests (i.e. with
 // logger & analytics attached), and the analytics it contains.
 func CtxAndAnalyticsForTest() (context.Context, *analytics.MemoryAnalytics, *tiltanalytics.TiltAnalytics) {
-	ctx := logger.WithLogger(context.Background(), logger.NewTestLogger(os.Stdout))
+	ctx := LoggerCtx()
 
 	opter := tiltanalytics.NewFakeOpter(analytics.OptIn)
 	ma, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(opter)
@@ -26,7 +30,7 @@ func CtxAndAnalyticsForTest() (context.Context, *analytics.MemoryAnalytics, *til
 }
 
 func ForkedCtxAndAnalyticsWithOpterForTest(w io.Writer, o tiltanalytics.AnalyticsOpter) (context.Context, *analytics.MemoryAnalytics, *tiltanalytics.TiltAnalytics) {
-	ctx := logger.WithLogger(context.Background(), logger.NewTestLogger(os.Stdout))
+	ctx := LoggerCtx()
 	ctx = logger.CtxWithForkedOutput(ctx, w)
 
 	ma, ta := tiltanalytics.NewMemoryTiltAnalyticsForTest(o)
