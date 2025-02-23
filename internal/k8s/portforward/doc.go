@@ -19,5 +19,4 @@ limitations under the License.
 //
 // This is a fork of
 // github.com/kubernetes/client-go/tree/master/tools/portforward
-
-package portforward
+package portforward // import "k8s.io/client-go/tools/portforward"

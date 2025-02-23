@@ -1,11 +1,12 @@
 package k8s
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/util/httpstream"
+
+	"github.com/tilt-dev/tilt/internal/testutils"
 )
 
 type fakeDialer struct {
@@ -25,30 +26,34 @@ var fakeNewPodDialer = newPodDialerFn(func(namespace Namespace, podID PodID) (ht
 })
 
 func TestPortForwardEmptyHost(t *testing.T) {
+	ctx := testutils.LoggerCtx()
 	client := portForwardClient{newPodDialer: fakeNewPodDialer}
-	pf, err := client.CreatePortForwarder(context.Background(), "default", "podid", 8080, 8080, "")
+	pf, err := client.CreatePortForwarder(ctx, "default", "podid", 8080, 8080, "")
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"127.0.0.1", "::1"}, pf.Addresses())
 }
 
 func TestPortForwardLocalhost(t *testing.T) {
+	ctx := testutils.LoggerCtx()
 	client := portForwardClient{newPodDialer: fakeNewPodDialer}
-	pf, err := client.CreatePortForwarder(context.Background(), "default", "podid", 8080, 8080, "localhost")
+	pf, err := client.CreatePortForwarder(ctx, "default", "podid", 8080, 8080, "localhost")
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"127.0.0.1", "::1"}, pf.Addresses())
 }
 
 func TestPortForwardInvalidDomain(t *testing.T) {
+	ctx := testutils.LoggerCtx()
 	client := portForwardClient{newPodDialer: fakeNewPodDialer}
-	_, err := client.CreatePortForwarder(context.Background(), "default", "podid", 8080, 8080, "domain.invalid")
+	_, err := client.CreatePortForwarder(ctx, "default", "podid", 8080, 8080, "domain.invalid")
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "failed to look up address for domain.invalid")
 	}
 }
 
 func TestPortForwardAllHosts(t *testing.T) {
+	ctx := testutils.LoggerCtx()
 	client := portForwardClient{newPodDialer: fakeNewPodDialer}
-	pf, err := client.CreatePortForwarder(context.Background(), "default", "podid", 8080, 8080, "0.0.0.0")
+	pf, err := client.CreatePortForwarder(ctx, "default", "podid", 8080, 8080, "0.0.0.0")
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"0.0.0.0"}, pf.Addresses())
 }

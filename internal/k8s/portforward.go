@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/transport/spdy"
 
 	"github.com/tilt-dev/tilt/internal/k8s/portforward"
+	"github.com/tilt-dev/tilt/pkg/logger"
 
 	"github.com/pkg/errors"
 )
@@ -139,12 +140,13 @@ func (c portForwardClient) CreatePortForwarder(ctx context.Context, namespace Na
 	//
 	// If it's defaulting to localhost, use the default kubernetse logic
 	// for binding the portforward.
+	w := logger.NewMutexWriter(logger.Get(ctx).Writer(logger.DebugLvl))
 	if host == "" || host == "localhost" {
 		pf, err = portforward.New(
-			ctx,
 			dialer,
 			ports,
-			readyChan)
+			ctx.Done(),
+			readyChan, w, w)
 	} else {
 		var addresses []string
 		addresses, err = getListenableAddresses(host)
@@ -152,11 +154,11 @@ func (c portForwardClient) CreatePortForwarder(ctx context.Context, namespace Na
 			return nil, err
 		}
 		pf, err = portforward.NewOnAddresses(
-			ctx,
 			dialer,
 			addresses,
 			ports,
-			readyChan)
+			ctx.Done(),
+			readyChan, w, w)
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, "error forwarding port")
