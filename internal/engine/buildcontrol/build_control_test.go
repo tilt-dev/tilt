@@ -322,7 +322,7 @@ func TestLiveUpdateMainImageHold(t *testing.T) {
 	}
 	f.st.KubernetesResources["sancho"] = resource
 
-	sancho.State.MutableBuildStatus(sanchoImage.ID()).PendingFileChanges[srcFile] = time.Now()
+	sancho.State.MutableBuildStatus(sanchoImage.ID()).FileChanges[srcFile] = time.Now()
 	f.assertNoTargetNextToBuild()
 	f.assertHold("sancho", store.HoldReasonReconciling)
 
@@ -338,7 +338,7 @@ func TestLiveUpdateMainImageHold(t *testing.T) {
 	f.assertNoTargetNextToBuild()
 
 	// If the base image has a change, we have to rebuild.
-	sancho.State.MutableBuildStatus(baseImage.ID()).PendingFileChanges[srcFile] = time.Now()
+	sancho.State.MutableBuildStatus(baseImage.ID()).FileChanges[srcFile] = time.Now()
 	f.assertNextTargetToBuild("sancho")
 }
 
@@ -385,7 +385,7 @@ func TestLiveUpdateBaseImageHold(t *testing.T) {
 	}
 	f.st.KubernetesResources["sancho"] = resource
 
-	sancho.State.MutableBuildStatus(baseImage.ID()).PendingFileChanges[srcFile] = time.Now()
+	sancho.State.MutableBuildStatus(baseImage.ID()).FileChanges[srcFile] = time.Now()
 	f.assertNoTargetNextToBuild()
 	f.assertHold("sancho", store.HoldReasonReconciling)
 
@@ -401,7 +401,7 @@ func TestLiveUpdateBaseImageHold(t *testing.T) {
 	f.assertNoTargetNextToBuild()
 
 	// If the deploy image has a change, we have to rebuild.
-	sancho.State.MutableBuildStatus(sanchoImage.ID()).PendingFileChanges[srcFile] = time.Now()
+	sancho.State.MutableBuildStatus(sanchoImage.ID()).FileChanges[srcFile] = time.Now()
 	f.assertNextTargetToBuild("sancho")
 }
 
@@ -472,15 +472,15 @@ func TestHoldForDeploy(t *testing.T) {
 
 	status := sancho.State.MutableBuildStatus(sanchoImage.ID())
 
-	status.PendingFileChanges[objFile] = time.Now()
+	status.FileChanges[objFile] = time.Now().Add(-2 * time.Second)
 	f.assertNextTargetToBuild("sancho")
-	delete(status.PendingFileChanges, objFile)
+	status.ConsumedChanges = time.Now().Add(-2 * time.Second)
 
-	status.PendingFileChanges[fallbackFile] = time.Now()
+	status.FileChanges[fallbackFile] = time.Now().Add(-time.Second)
 	f.assertNextTargetToBuild("sancho")
-	delete(status.PendingFileChanges, fallbackFile)
+	status.ConsumedChanges = time.Now().Add(-time.Second)
 
-	status.PendingFileChanges[srcFile] = time.Now()
+	status.FileChanges[srcFile] = time.Now()
 	f.assertNoTargetNextToBuild()
 	f.assertHold("sancho", store.HoldReasonWaitingForDeploy)
 
@@ -544,11 +544,11 @@ func TestHoldForManualLiveUpdate(t *testing.T) {
 	// This shouldn't trigger a full-build, because it will be handled by the live-updater.
 	status := sancho.State.MutableBuildStatus(sanchoImage.ID())
 	f.st.AppendToTriggerQueue(sancho.Manifest.Name, model.BuildReasonFlagTriggerCLI)
-	status.PendingFileChanges[srcFile] = time.Now()
+	status.FileChanges[srcFile] = time.Now()
 	f.assertNoTargetNextToBuild()
 
 	// This should trigger a full-rebuild, because we have a trigger without pending changes.
-	delete(status.PendingFileChanges, srcFile)
+	status.ConsumedChanges = time.Now()
 	f.assertNextTargetToBuild("sancho")
 }
 

@@ -81,7 +81,7 @@ func handleBuildResults(engineState *store.EngineState,
 
 	// Remove pending file changes that were consumed by this build.
 	for _, status := range ms.BuildStatuses {
-		status.ClearPendingChangesBefore(br.StartTime)
+		status.ConsumeChangesBefore(br.StartTime)
 	}
 
 	if isBuildSuccess {
@@ -124,7 +124,7 @@ func handleBuildResults(engineState *store.EngineState,
 
 			currentStatus := currentMS.MutableBuildStatus(id)
 			currentStatus.LastResult = result
-			currentStatus.ClearPendingChangesBefore(br.StartTime)
+			currentStatus.ConsumeChangesBefore(br.StartTime)
 			updatedIDSet[id] = true
 		}
 
@@ -155,7 +155,7 @@ func handleBuildResults(engineState *store.EngineState,
 				}
 
 				// Otherwise, we need to mark it for rebuild to pick up the new image.
-				currentMS.MutableBuildStatus(rDepID).PendingDependencyChanges[updatedID] = br.StartTime
+				currentMS.MutableBuildStatus(rDepID).DependencyChanges[updatedID] = br.StartTime
 			}
 		}
 	}

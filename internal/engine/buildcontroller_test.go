@@ -113,7 +113,7 @@ func TestTriggerModes(t *testing.T) {
 
 			f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
 			f.WaitUntil("pending change appears", func(st store.EngineState) bool {
-				return len(st.BuildStatus(manifest.ImageTargetAt(0).ID()).PendingFileChanges) >= 1
+				return st.BuildStatus(manifest.ImageTargetAt(0).ID()).CountPendingFileChanges() >= 1
 			})
 
 			if !tc.expectBuildWhenFilesChange {
@@ -161,7 +161,7 @@ func TestBuildControllerImageBuildTrigger(t *testing.T) {
 				f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
 			}
 			f.WaitUntil("pending change appears", func(st store.EngineState) bool {
-				return len(st.BuildStatus(manifest.ImageTargetAt(0).ID()).PendingFileChanges) >= len(expectedFiles)
+				return st.BuildStatus(manifest.ImageTargetAt(0).ID()).CountPendingFileChanges() >= len(expectedFiles)
 			})
 
 			if manifest.TriggerMode.AutoOnChange() {
@@ -214,10 +214,10 @@ func TestBuildQueueOrdering(t *testing.T) {
 
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("main.go"))
 	f.WaitUntil("pending change appears", func(st store.EngineState) bool {
-		return len(st.BuildStatus(m1.ImageTargetAt(0).ID()).PendingFileChanges) > 0 &&
-			len(st.BuildStatus(m2.ImageTargetAt(0).ID()).PendingFileChanges) > 0 &&
-			len(st.BuildStatus(m3.ImageTargetAt(0).ID()).PendingFileChanges) > 0 &&
-			len(st.BuildStatus(m4.ImageTargetAt(0).ID()).PendingFileChanges) > 0
+		return st.BuildStatus(m1.ImageTargetAt(0).ID()).HasPendingFileChanges() &&
+			st.BuildStatus(m2.ImageTargetAt(0).ID()).HasPendingFileChanges() &&
+			st.BuildStatus(m3.ImageTargetAt(0).ID()).HasPendingFileChanges() &&
+			st.BuildStatus(m4.ImageTargetAt(0).ID()).HasPendingFileChanges()
 	})
 	f.assertNoCall("even tho there are pending changes, manual manifest shouldn't build w/o explicit trigger")
 
@@ -270,10 +270,10 @@ func TestBuildQueueAndAutobuildOrdering(t *testing.T) {
 
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("dirManual/main.go"))
 	f.WaitUntil("pending change appears", func(st store.EngineState) bool {
-		return len(st.BuildStatus(m1.ImageTargetAt(0).ID()).PendingFileChanges) > 0 &&
-			len(st.BuildStatus(m2.ImageTargetAt(0).ID()).PendingFileChanges) > 0 &&
-			len(st.BuildStatus(m3.ImageTargetAt(0).ID()).PendingFileChanges) > 0 &&
-			len(st.BuildStatus(m4.ImageTargetAt(0).ID()).PendingFileChanges) > 0
+		return st.BuildStatus(m1.ImageTargetAt(0).ID()).HasPendingFileChanges() &&
+			st.BuildStatus(m2.ImageTargetAt(0).ID()).HasPendingFileChanges() &&
+			st.BuildStatus(m3.ImageTargetAt(0).ID()).HasPendingFileChanges() &&
+			st.BuildStatus(m4.ImageTargetAt(0).ID()).HasPendingFileChanges()
 	})
 	f.assertNoCall("even tho there are pending changes, manual manifest shouldn't build w/o explicit trigger")
 

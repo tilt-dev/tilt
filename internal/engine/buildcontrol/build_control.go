@@ -155,7 +155,7 @@ func waitingOnDependencies(state store.EngineState, mt *store.ManifestTarget) []
 // 3) Checks that the image still exists on the image store
 //
 // But in this particular context, we can cheat a bit.
-func canReuseImageTargetHeuristic(spec model.TargetSpec, status store.BuildStatus) bool {
+func canReuseImageTargetHeuristic(spec model.TargetSpec, status *store.BuildStatus) bool {
 	id := spec.ID()
 	if id.Type != model.TargetTypeImage {
 		return false
@@ -163,7 +163,7 @@ func canReuseImageTargetHeuristic(spec model.TargetSpec, status store.BuildStatu
 
 	// NOTE(nick): A more accurate check might see if the pending file changes
 	// are potentially live-updatable, but this is OK for the case of a base image.
-	if len(status.PendingFileChanges) > 0 || len(status.PendingDependencyChanges) > 0 {
+	if status.HasPendingFileChanges() || status.HasPendingDependencyChanges() {
 		return false
 	}
 
@@ -505,14 +505,14 @@ func IsLiveUpdateTargetWaitingOnDeploy(state store.EngineState, mt *store.Manife
 
 	// Go through all the files, and make sure they're live-update-able.
 	for id, status := range mt.State.BuildStatuses {
-		if len(status.PendingFileChanges) == 0 {
+		if !status.HasPendingFileChanges() {
 			continue
 		}
 
 		// We have an image target with changes!
 		// First, make sure that all the changes match a sync.
-		files := make([]string, 0, len(status.PendingFileChanges))
-		for f := range status.PendingFileChanges {
+		files := []string{}
+		for f := range status.PendingFileChanges() {
 			files = append(files, f)
 		}
 
@@ -605,7 +605,7 @@ func HoldLiveUpdateTargetsHandledByReconciler(state store.EngineState, mts []*st
 		// Changes to the deploy target can't be live-updated.
 		if mt.Manifest.DeployTarget != nil {
 			bs, hasBuildStatus := mt.State.BuildStatuses[mt.Manifest.DeployTarget.ID()]
-			hasPendingChanges := hasBuildStatus && len(bs.PendingFileChanges) > 0
+			hasPendingChanges := hasBuildStatus && bs.HasPendingFileChanges()
 			if hasPendingChanges {
 				continue
 			}
@@ -615,7 +615,7 @@ func HoldLiveUpdateTargetsHandledByReconciler(state store.EngineState, mts []*st
 		iTargets := mt.Manifest.ImageTargets
 		for _, iTarget := range iTargets {
 			bs, hasBuildStatus := mt.State.BuildStatuses[iTarget.ID()]
-			hasPendingChanges := hasBuildStatus && len(bs.PendingFileChanges) > 0
+			hasPendingChanges := hasBuildStatus && bs.HasPendingFileChanges()
 			if !hasPendingChanges {
 				continue
 			}

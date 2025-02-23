@@ -218,13 +218,13 @@ func buildStateSet(ctx context.Context, manifest model.Manifest,
 		id := spec.ID()
 		status := ms.BuildStatus(id)
 		var filesChanged []string
-		for file := range status.PendingFileChanges {
+		for file := range status.PendingFileChanges() {
 			filesChanged = append(filesChanged, file)
 		}
 		sort.Strings(filesChanged)
 
 		var depsChanged []model.TargetID
-		for dep := range status.PendingDependencyChanges {
+		for dep := range status.PendingDependencyChanges() {
 			depsChanged = append(depsChanged, dep)
 		}
 

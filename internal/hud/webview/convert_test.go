@@ -58,7 +58,7 @@ func TestStateToWebViewRelativeEditPaths(t *testing.T) {
 	ms.BuildHistory = []model.BuildRecord{
 		{},
 	}
-	ms.MutableBuildStatus(m.ImageTargets[0].ID()).PendingFileChanges =
+	ms.MutableBuildStatus(m.ImageTargets[0].ID()).FileChanges =
 		map[string]time.Time{
 			f.JoinPath("a", "b", "c", "foo"):    time.Now(),
 			f.JoinPath("a", "b", "c", "d", "e"): time.Now(),
