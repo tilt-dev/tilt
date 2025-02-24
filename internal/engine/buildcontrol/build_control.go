@@ -511,11 +511,7 @@ func IsLiveUpdateTargetWaitingOnDeploy(state store.EngineState, mt *store.Manife
 
 		// We have an image target with changes!
 		// First, make sure that all the changes match a sync.
-		files := []string{}
-		for f := range status.PendingFileChanges() {
-			files = append(files, f)
-		}
-
+		files := status.PendingFileChangesList()
 		iTarget := mt.Manifest.ImageTargetWithID(id)
 		luSpec := iTarget.LiveUpdateSpec
 		_, pathsMatchingNoSync, err := build.FilesToPathMappings(files, liveupdate.SyncSteps(luSpec))

@@ -488,6 +488,20 @@ func (s *BuildStatus) PendingFileChanges() iter.Seq2[string, time.Time] {
 	}
 }
 
+func (s *BuildStatus) PendingFileChangesList() []string {
+	var paths []string
+	for p, _ := range s.PendingFileChanges() {
+		paths = append(paths, p)
+	}
+	return paths
+}
+
+func (s *BuildStatus) PendingFileChangesSorted() []string {
+	result := s.PendingFileChangesList()
+	sort.Strings(result)
+	return result
+}
+
 func (s *BuildStatus) PendingDependencyChanges() iter.Seq2[model.TargetID, time.Time] {
 	return func(yield func(model.TargetID, time.Time) bool) {
 		neverConsumed := s.ConsumedChanges.IsZero()

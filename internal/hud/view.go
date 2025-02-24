@@ -51,9 +51,7 @@ func StateToTerminalView(s store.EngineState, mu *sync.RWMutex) view.View {
 
 		var pendingBuildEdits []string
 		for _, status := range ms.BuildStatuses {
-			for f := range status.PendingFileChanges() {
-				pendingBuildEdits = append(pendingBuildEdits, f)
-			}
+			pendingBuildEdits = append(pendingBuildEdits, status.PendingFileChangesList()...)
 		}
 
 		pendingBuildEdits = ospath.FileListDisplayNames(absWatchDirs, pendingBuildEdits)
