@@ -3,7 +3,6 @@ package engine
 import (
 	"context"
 	"fmt"
-	"sort"
 	"sync"
 	"time"
 
@@ -217,11 +216,7 @@ func buildStateSet(ctx context.Context, manifest model.Manifest,
 	for _, spec := range specs {
 		id := spec.ID()
 		status := ms.BuildStatus(id)
-		var filesChanged []string
-		for file := range status.PendingFileChanges() {
-			filesChanged = append(filesChanged, file)
-		}
-		sort.Strings(filesChanged)
+		filesChanged := status.PendingFileChangesSorted()
 
 		var depsChanged []model.TargetID
 		for dep := range status.PendingDependencyChanges() {

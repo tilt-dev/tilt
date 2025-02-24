@@ -90,18 +90,14 @@ func TestBuildStatusGC(t *testing.T) {
 
 	assert.True(t, bs.HasPendingFileChanges())
 	assert.True(t, bs.HasPendingDependencyChanges())
-
-	pending := []string{}
-	for f := range bs.PendingFileChanges() {
-		pending = append(pending, f)
-	}
-	assert.Equal(t, []string{"a.txt", "b.txt"}, pending)
+	assert.Equal(t, []string{"a.txt", "b.txt"}, bs.PendingFileChangesSorted())
 
 	bs.ConsumeChangesBefore(start.Add(time.Second))
 	assert.False(t, bs.HasPendingFileChanges())
 	assert.False(t, bs.HasPendingDependencyChanges())
 	assert.Equal(t, 2, len(bs.FileChanges))
 	assert.Equal(t, 1, len(bs.DependencyChanges))
+	assert.Equal(t, []string(nil), bs.PendingFileChangesSorted())
 
 	bs.FileChanges["a.txt"] = start.Add(2 * time.Second)
 	assert.True(t, bs.HasPendingFileChanges())
