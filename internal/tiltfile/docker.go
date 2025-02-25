@@ -526,10 +526,6 @@ func (s *tiltfileState) dockerignoresFromPathsAndContextFilters(source string, p
 		}
 		dupeSet[path] = true
 
-		if !ospath.IsDir(path) {
-			continue
-		}
-
 		if len(ignorePatterns) != 0 {
 			result = append(result, model.Dockerignore{
 				LocalPath: path,
