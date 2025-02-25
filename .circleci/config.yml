@@ -13,7 +13,6 @@ jobs:
       - image: docker/tilt-ci@sha256:04e2f5ed618d5e17d72a6674a7e2645c3f8c3fead1cfbd9fa8f73a841f5bcf5b
     # apiserver code generation scripts require being in GOPATH
     working_directory: /home/circleci/go/src/github.com/tilt-dev/tilt
-
     steps:
       - checkout
       - run: echo 'export PATH=~/go/bin:$PATH' >> $BASH_ENV
@@ -30,10 +29,9 @@ jobs:
           path: test-results
       - slack/notify-on-failure:
           only_for_branches: master
-
   build-js:
     docker:
-      - image: cimg/node:20.7.0
+      - image: cimg/node:22.14.0
     steps:
       - checkout
       - run: make check-js
@@ -47,7 +45,6 @@ jobs:
           path: web/reports/junit
       - slack/notify-on-failure:
           only_for_branches: master
-
   check-docs:
     docker:
       - image: docker/tilt-ci@sha256:04e2f5ed618d5e17d72a6674a7e2645c3f8c3fead1cfbd9fa8f73a841f5bcf5b
@@ -65,7 +62,6 @@ jobs:
           make api
       - slack/notify-on-failure:
           only_for_branches: master
-
   build-windows:
     executor:
       name: win/default
@@ -96,7 +92,6 @@ jobs:
       - run: iex ./scripts/install.ps1
       - store_test_results:
           path: test-results
-
   build-integration:
     resource_class: medium+
     docker:
@@ -110,7 +105,6 @@ jobs:
           path: test-results
       - slack/notify-on-failure:
           only_for_branches: master
-
   test-extensions:
     resource_class: large
     docker:
@@ -122,7 +116,6 @@ jobs:
       - run: ctlptl create cluster kind --registry=ctlptl-registry && make build-js install test-extensions
       - slack/notify-on-failure:
           only_for_branches: master
-
   # NOTE(nicks): Tilt is on Docker's legacy CircleCI plan,
   # which has lots of credits but does not have access to MacOS
   # Apple Silicon runners. The MacOS Intel runners have been
@@ -150,12 +143,11 @@ jobs:
   #         path: test-results
   #     - slack/notify-on-failure:
   #         only_for_branches: master
-
   release-dry-run:
     resource_class: medium+
     docker:
       # keep image in sync with build.toast.yml
-      - image: docker/tilt-releaser@sha256:4c9287b9e33c0448f9480fbdd921f18f7b795d282041157bccd473b01093e686
+      - image: "docker/tilt-releaser@sha256:9d05f87976ccdf8a3434443fac2b867ca99a81c8423008437c767c04784969e4"
     steps:
       - setup_remote_docker
       # https://discuss.circleci.com/t/arm-version-of-remote-docker/41624
@@ -167,12 +159,11 @@ jobs:
           no_output_timeout: 20m
       - slack/notify-on-failure:
           only_for_branches: main
-
   release:
     resource_class: medium+
     docker:
       # keep image in sync with build.toast.yml
-      - image: docker/tilt-releaser@sha256:4c9287b9e33c0448f9480fbdd921f18f7b795d282041157bccd473b01093e686
+      - image: "docker/tilt-releaser@sha256:9d05f87976ccdf8a3434443fac2b867ca99a81c8423008437c767c04784969e4"
     environment:
       DOCKER_CLI_EXPERIMENTAL: enabled
     steps:
@@ -186,7 +177,6 @@ jobs:
           command: ./scripts/release-ci.sh
           no_output_timeout: 20m
       - slack/status
-
 workflows:
   version: 2
   shellcheck:
@@ -194,7 +184,6 @@ workflows:
       - shellcheck/check:
           dir: scripts
           exclude: SC2001
-
   build:
     # The linux job is cheaper than the others, so run that first.
     jobs:
@@ -202,9 +191,9 @@ workflows:
       - build-js:
           requires:
             - build-linux
-     # - build-macos:
-     #     requires:
-     #       - build-linux
+            # - build-macos:
+            #     requires:
+            #       - build-linux
       - build-integration:
           requires:
             - build-linux
@@ -226,7 +215,6 @@ workflows:
           filters:
             branches:
               only: master
-
   release:
     jobs:
       - release:

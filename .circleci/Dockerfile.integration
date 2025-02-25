@@ -1,4 +1,4 @@
-FROM cimg/go:1.23-node
+FROM cimg/go:1.23-node # Uses Node 22
 
 USER root
 

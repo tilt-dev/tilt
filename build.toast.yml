@@ -1,5 +1,5 @@
 # keep image in sync with .circleci/config.yml
-image: docker/tilt-releaser@sha256:4c9287b9e33c0448f9480fbdd921f18f7b795d282041157bccd473b01093e686
+image: "docker/tilt-releaser@sha256:9d05f87976ccdf8a3434443fac2b867ca99a81c8423008437c767c04784969e4"
 location: /go/src/github.com/tilt-dev/tilt
 command_prefix: set -euo pipefail
 tasks:
@@ -12,7 +12,6 @@ tasks:
     excluded_input_paths:
       - web/build
       - web/node_modules
-
   build:
     # These are empty by default. You can test a single target by passing, e.g.,
     # GOOS=linux GOARCH=arm64 GR_ARGS="--id tilt-linux-arm64 --single-target" toast -f build.toast.yml
