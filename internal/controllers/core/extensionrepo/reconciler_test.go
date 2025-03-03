@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -201,13 +202,14 @@ type fixture struct {
 	*fake.ControllerFixture
 	r    *Reconciler
 	dlr  *fakeDownloader
-	base xdg.FakeBase
+	base *xdg.FakeBase
 }
 
 func newFixture(t *testing.T) *fixture {
 	cfb := fake.NewControllerFixtureBuilder(t)
 	tmpDir := t.TempDir()
-	base := xdg.FakeBase{Dir: tmpDir}
+	fs := afero.NewOsFs()
+	base := xdg.NewFakeBase(tmpDir, fs)
 	r, err := NewReconciler(cfb.Client, cfb.Store, base)
 	require.NoError(t, err)
 

@@ -1,6 +1,6 @@
 # Wire: Automated Initialization in Go
 
-[![Build Status](https://travis-ci.com/google/wire.svg?branch=master)][travis]
+[![Build Status](https://github.com/google/wire/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/google/wire/actions)
 [![godoc](https://godoc.org/github.com/google/wire?status.svg)][godoc]
 [![Coverage](https://codecov.io/gh/google/wire/branch/master/graph/badge.svg)](https://codecov.io/gh/google/wire)
 
@@ -24,7 +24,7 @@ For an overview, see the [introductory blog post][].
 Install Wire by running:
 
 ```shell
-go get github.com/google/wire/cmd/wire
+go install github.com/google/wire/cmd/wire@latest
 ```
 
 and ensuring that `$GOPATH/bin` is added to your `$PATH`.
