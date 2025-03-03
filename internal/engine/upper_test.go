@@ -22,6 +22,7 @@ import (
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/google/uuid"
 	"github.com/jonboulle/clockwork"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
@@ -2628,6 +2629,11 @@ func TestVersionSettingsStoredOnState(t *testing.T) {
 	f.WaitUntil("CheckVersionUpdates is set to false", func(state store.EngineState) bool {
 		return state.VersionSettings.CheckUpdates == false
 	})
+
+	filepath.Walk(f.Path(), func(path string, info os.FileInfo, err error) error {
+		log.Printf("path: %s", path)
+		return nil
+	})
 }
 
 func TestAnalyticsTiltfileOpt(t *testing.T) {
@@ -3113,7 +3119,8 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		}
 	}
 
-	base := xdg.FakeBase{Dir: f.Path()}
+	fs := afero.NewMemMapFs()
+	base := xdg.NewFakeBase(f.Path(), fs)
 	log := bufsync.NewThreadSafeBuffer()
 	to := tiltanalytics.NewFakeOpter(analytics.OptIn)
 	ctx, _, ta := testutils.ForkedCtxAndAnalyticsWithOpterForTest(log, to)
@@ -3223,7 +3230,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	clr := cluster.NewReconciler(ctx, cdc, st, clock, clusterClients, docker.LocalEnv{},
 		cluster.FakeDockerClientOrError(dockerClient, nil),
 		cluster.FakeKubernetesClientOrError(kClient, nil),
-		wsl, base, "tilt-default")
+		wsl, base, "tilt-default", fs)
 	dclsr := dockercomposelogstream.NewReconciler(cdc, st, fakeDcc, dockerClient)
 
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
