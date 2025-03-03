@@ -75,6 +75,10 @@ func addNamespaceFlag(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&namespaceOverride, "namespace", defaultNamespace, "Default namespace for Kubernetes resources (overrides default namespace from active context in kubeconfig)")
 }
 
+func addLogFiltersFlag(cmd *cobra.Command, v *[]string) {
+	cmd.Flags().StringSliceVar(v, "log-filters", []string{}, "Specify one or more log span filters, e.g. 'pod', 'build', 'tiltfile', 'monitor', 'localserve', 'telemetry', 'events', 'dc'. Exclude with '!', e.g. '!pod' to exlude pod logs")
+}
+
 var kubeContextOverride string
 
 func ProvideKubeContextOverride() k8s.KubeContextOverride {
