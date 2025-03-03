@@ -62,13 +62,13 @@ func updateOwnedObjects(
 	disableSources := toDisableSources(tlr)
 
 	if tlr != nil {
-		for i, m := range tlr.Manifests {
-			// Apply the registry to the image refs.
-			err := m.InferImageProperties()
-			if err != nil {
-				return err
-			}
+		// Apply the registry to the image refs.
+		err := model.InferImageProperties(tlr.Manifests)
+		if err != nil {
+			return err
+		}
 
+		for i, m := range tlr.Manifests {
 			// Assemble the LiveUpdate selectors, connecting objects together.
 			err = m.InferLiveUpdateSelectors()
 			if err != nil {

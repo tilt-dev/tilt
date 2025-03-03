@@ -100,10 +100,8 @@ func (c *dockerPruneCmd) run(ctx context.Context, args []string) error {
 // with all resources in a "disabled" state and rely on the API, but that's not
 // possible currently.
 func resolveImageSelectors(ctx context.Context, kCli k8s.Client, tlr *tiltfile.TiltfileLoadResult) ([]container.RefSelector, error) {
-	for _, m := range tlr.Manifests {
-		if err := m.InferImageProperties(); err != nil {
-			return nil, err
-		}
+	if err := model.InferImageProperties(tlr.Manifests); err != nil {
+		return nil, err
 	}
 
 	var reg *v1alpha1.RegistryHosting
