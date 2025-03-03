@@ -76,7 +76,7 @@ func addNamespaceFlag(cmd *cobra.Command) {
 }
 
 func addLogFiltersFlag(cmd *cobra.Command, v *[]string) {
-	cmd.Flags().StringSliceVar(v, "log-filters", []string{}, "Specify one or more log span filters, e.g. 'pod', 'build', 'tiltfile', 'monitor', 'localserve', 'telemetry', 'events', 'dc'. Exclude with '!', e.g. '!pod' to exlude pod logs")
+	cmd.Flags().StringSliceVar(v, "log-filters", []string{}, "Specify one or more log span filters, e.g. 'pod', 'build', 'tiltfile', 'monitor', 'localserve', 'telemetry', 'events', 'dc'. Exclude with '!', e.g. '!pod' to exclude pod logs")
 }
 
 var kubeContextOverride string
