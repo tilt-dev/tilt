@@ -9,6 +9,7 @@ import (
 
 	"github.com/docker/docker/client"
 	"github.com/jonboulle/clockwork"
+	"github.com/spf13/afero"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -45,22 +46,20 @@ const (
 )
 
 type Reconciler struct {
-	globalCtx     context.Context
-	ctrlClient    ctrlclient.Client
-	store         store.RStore
-	requeuer      *indexer.Requeuer
-	clock         clockwork.Clock
-	connManager   *ConnectionManager
-	base          xdg.Base
-	apiServerName model.APIServerName
-
+	globalCtx           context.Context
+	ctrlClient          ctrlclient.Client
+	store               store.RStore
+	requeuer            *indexer.Requeuer
+	clock               clockwork.Clock
+	connManager         *ConnectionManager
+	base                xdg.Base
+	apiServerName       model.APIServerName
 	localDockerEnv      docker.LocalEnv
 	dockerClientFactory DockerClientFactory
-
-	k8sClientFactory KubernetesClientFactory
-	wsList           *server.WebsocketList
-
-	clusterHealth *clusterHealthMonitor
+	k8sClientFactory    KubernetesClientFactory
+	wsList              *server.WebsocketList
+	clusterHealth       *clusterHealthMonitor
+	filesystem          afero.Fs
 }
 
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
@@ -82,6 +81,7 @@ func NewReconciler(
 	wsList *server.WebsocketList,
 	base xdg.Base,
 	apiServerName model.APIServerName,
+	filesystem afero.Fs,
 ) *Reconciler {
 	requeuer := indexer.NewRequeuer()
 
@@ -99,6 +99,7 @@ func NewReconciler(
 		clusterHealth:       newClusterHealthMonitor(globalCtx, clock, requeuer),
 		base:                base,
 		apiServerName:       apiServerName,
+		filesystem:          filesystem,
 	}
 }
 
@@ -388,12 +389,12 @@ func (r *Reconciler) populateK8sMetadata(ctx context.Context, clusterNN types.Na
 	}
 }
 
-func (r *Reconciler) openFrozenKubeConfigFile(ctx context.Context, nn types.NamespacedName) (string, *os.File, error) {
+func (r *Reconciler) openFrozenKubeConfigFile(ctx context.Context, nn types.NamespacedName) (string, afero.File, error) {
 	path, err := r.base.RuntimeFile(
 		filepath.Join(string(r.apiServerName), "cluster", fmt.Sprintf("%s.yml", nn.Name)))
 	if err == nil {
-		var f *os.File
-		f, err = os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
+		var f afero.File
+		f, err = r.filesystem.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 		if err == nil {
 			return path, f, nil
 		}
@@ -405,7 +406,7 @@ func (r *Reconciler) openFrozenKubeConfigFile(ctx context.Context, nn types.Name
 		return "", nil, fmt.Errorf("storing temp kubeconfigs: %v", err)
 	}
 
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
+	f, err := r.filesystem.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 	if err != nil {
 		return "", nil, fmt.Errorf("storing temp kubeconfigs: %v", err)
 	}

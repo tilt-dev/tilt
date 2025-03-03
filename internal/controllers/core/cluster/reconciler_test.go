@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/jonboulle/clockwork"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
@@ -174,7 +175,7 @@ func TestKubernetesConnStatus(t *testing.T) {
 	}
 	assert.Equal(t, expected, cluster.Status.Connection)
 
-	contents, err := os.ReadFile(configPath)
+	contents, err := afero.ReadFile(f.fs, configPath)
 	require.NoError(t, err)
 	assert.Equal(t, `apiVersion: v1
 clusters:
@@ -321,8 +322,9 @@ type fixture struct {
 	clock        clockwork.FakeClock
 	k8sClient    *k8s.FakeK8sClient
 	dockerClient *docker.FakeClient
-	base         xdg.FakeBase
+	base         *xdg.FakeBase
 	requeues     <-chan indexer.RequeueForTestResult
+	fs           afero.Fs
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -332,8 +334,8 @@ func newFixture(t *testing.T) *fixture {
 
 	k8sClient := k8s.NewFakeK8sClient(t)
 	dockerClient := docker.NewFakeClient()
-	base := xdg.FakeBase{Dir: tmpf.Path()}
-
+	fs := afero.NewOsFs()
+	base := xdg.NewFakeBase(tmpf.Path(), fs)
 	r := NewReconciler(cfb.Context(),
 		cfb.Client,
 		cfb.Store,
@@ -344,7 +346,8 @@ func newFixture(t *testing.T) *fixture {
 		FakeKubernetesClientOrError(k8sClient, nil),
 		server.NewWebsocketList(),
 		base,
-		"tilt-default")
+		"tilt-default",
+		fs)
 	requeueChan := make(chan indexer.RequeueForTestResult, 1)
 	return &fixture{
 		ControllerFixture: cfb.WithRequeuer(r.requeuer).WithRequeuerResultChan(requeueChan).Build(r),
@@ -355,6 +358,7 @@ func newFixture(t *testing.T) *fixture {
 		dockerClient:      dockerClient,
 		requeues:          requeueChan,
 		base:              base,
+		fs:                fs,
 	}
 }
 
