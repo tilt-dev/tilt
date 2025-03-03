@@ -232,7 +232,7 @@ func (b ManifestBuilder) Build() model.Manifest {
 	}
 	m = m.WithTriggerMode(b.triggerMode)
 
-	err := m.InferImageProperties()
+	err := model.InferImageProperties([]model.Manifest{m})
 	require.NoError(b.f.T(), err)
 
 	err = m.InferLiveUpdateSelectors()

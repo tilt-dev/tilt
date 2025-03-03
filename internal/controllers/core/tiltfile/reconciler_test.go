@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strconv"
 	"testing"
 	"time"
@@ -453,6 +454,63 @@ func TestCancelClickedBeforeLoad(t *testing.T) {
 	f.Get(nn, &tf)
 	require.NotNil(t, tf.Status.Terminated)
 	require.Equal(t, "", tf.Status.Terminated.Error)
+}
+
+func TestPushBaseImageIssue6486(t *testing.T) {
+	f := newFixture(t)
+	p := f.tempdir.JoinPath("Tiltfile")
+
+	image1 := model.MustNewImageTarget(container.MustParseSelector("image-1")).
+		WithDockerImage(v1alpha1.DockerImageSpec{Context: f.tempdir.Path()})
+	image2 := model.MustNewImageTarget(container.MustParseSelector("image-2")).
+		WithDockerImage(v1alpha1.DockerImageSpec{Context: f.tempdir.Path()})
+	image3 := model.MustNewImageTarget(container.MustParseSelector("image-3")).
+		WithDockerImage(v1alpha1.DockerImageSpec{Context: f.tempdir.Path()}).
+		WithImageMapDeps([]string{"image-1", "image-2"})
+
+	service1 := manifestbuilder.New(f.tempdir, "service-1").
+		WithImageTargets(image1).
+		WithK8sYAML(testyaml.Deployment("service-1", "image-1")).
+		Build()
+	service3 := manifestbuilder.New(f.tempdir, "service-3").
+		WithImageTargets(image1, image2, image3).
+		WithK8sYAML(testyaml.Deployment("service-3", "image-3")).
+		Build()
+
+	f.tfl.Result = tiltfile.TiltfileLoadResult{
+		Manifests: []model.Manifest{service1, service3},
+	}
+
+	name := model.MainTiltfileManifestName.String()
+	tf := v1alpha1.Tiltfile{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Spec: v1alpha1.TiltfileSpec{
+			Path: p,
+		},
+	}
+	f.createAndWaitForLoaded(&tf)
+
+	assert.Equal(t, "", tf.Status.Terminated.Error)
+
+	var imageList = v1alpha1.DockerImageList{}
+	f.List(&imageList)
+
+	sort.Slice(imageList.Items, func(i, j int) bool {
+		return imageList.Items[i].Name < imageList.Items[j].Name
+	})
+
+	if assert.Equal(t, 4, len(imageList.Items)) {
+		assert.Equal(t, "service-1:image-1", imageList.Items[0].Name)
+		assert.Equal(t, v1alpha1.ClusterImageNeedsPush, imageList.Items[0].Spec.ClusterNeeds)
+		assert.Equal(t, "service-3:image-1", imageList.Items[1].Name)
+		assert.Equal(t, v1alpha1.ClusterImageNeedsPush, imageList.Items[1].Spec.ClusterNeeds)
+		assert.Equal(t, "service-3:image-2", imageList.Items[2].Name)
+		assert.Equal(t, v1alpha1.ClusterImageNeedsBase, imageList.Items[2].Spec.ClusterNeeds)
+		assert.Equal(t, "service-3:image-3", imageList.Items[3].Name)
+		assert.Equal(t, v1alpha1.ClusterImageNeedsPush, imageList.Items[3].Spec.ClusterNeeds)
+	}
 }
 
 type testStore struct {

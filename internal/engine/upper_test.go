@@ -3843,9 +3843,7 @@ func (f *testFixture) setupDCFixture() (redis, server model.Manifest) {
 		f.T().Fatalf("Expected two manifests. Actual: %v", tlr.Manifests)
 	}
 
-	for _, m := range tlr.Manifests {
-		require.NoError(f.t, m.InferImageProperties())
-	}
+	require.NoError(f.t, model.InferImageProperties(tlr.Manifests))
 
 	return tlr.Manifests[0], tlr.Manifests[1]
 }

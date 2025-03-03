@@ -5947,11 +5947,7 @@ func (f *fixture) loadAllowWarnings(args ...string) {
 		f.t.Fatal(err)
 	}
 	f.loadResult = tlr
-
-	for _, m := range f.loadResult.Manifests {
-		err := m.InferImageProperties()
-		require.NoError(f.t, err)
-	}
+	require.NoError(f.t, model.InferImageProperties(f.loadResult.Manifests))
 }
 
 func unusedImageWarning(unusedImage string, suggestedImages []string, configType string) string {
@@ -5993,11 +5989,7 @@ func (f *fixture) loadArgsErrString(args []string, msgs ...string) {
 			f.t.Fatalf("error %q does not contain string %q", errText, msg)
 		}
 	}
-
-	for _, m := range f.loadResult.Manifests {
-		err := m.InferImageProperties()
-		require.NoError(f.t, err)
-	}
+	require.NoError(f.t, model.InferImageProperties(tlr.Manifests))
 }
 
 func (f *fixture) gitInit(path string) {

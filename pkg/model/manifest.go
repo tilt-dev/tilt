@@ -269,7 +269,7 @@ func (m *Manifest) ClusterName() string {
 }
 
 // Infer image properties for each image.
-func (m *Manifest) InferImageProperties() error {
+func (m *Manifest) inferImageProperties(clusterImageNeeds func(TargetID) v1alpha1.ClusterImageNeeds) error {
 	var deployImageIDs []TargetID
 	if m.DeployTarget != nil {
 		deployImageIDs = m.DeployTarget.DependencyIDs()
@@ -280,13 +280,8 @@ func (m *Manifest) InferImageProperties() error {
 	}
 
 	for i, iTarget := range m.ImageTargets {
-		// An image only needs to be pushed if it's used in-cluster.
-		clusterNeeds := v1alpha1.ClusterImageNeedsBase
-		if deployImageIDSet[iTarget.ID()] {
-			clusterNeeds = v1alpha1.ClusterImageNeedsPush
-		}
-
-		iTarget, err := iTarget.inferImageProperties(clusterNeeds, m.ClusterName())
+		iTarget, err := iTarget.inferImageProperties(
+			clusterImageNeeds(iTarget.ID()), m.ClusterName())
 		if err != nil {
 			return fmt.Errorf("manifest %s: %v", m.Name, err)
 		}
@@ -659,4 +654,33 @@ func equalForBuildInvalidation(x, y interface{}) bool {
 		// well as some unused by Tilt (HostFromClusterNetwork)
 		ignoreRegistryFields,
 	)
+}
+
+// Infer image properties for each image in the manifest set.
+func InferImageProperties(manifests []Manifest) error {
+	deployImageIDSet := make(map[TargetID]bool, len(manifests))
+	for _, m := range manifests {
+		if m.DeployTarget != nil {
+			for _, depID := range m.DeployTarget.DependencyIDs() {
+				deployImageIDSet[depID] = true
+			}
+		}
+	}
+
+	// An image only needs to be pushed if it's used in-cluster.
+	// If it needs to be pushed for one manifest, it needs to be pushed for all.
+	// The caching system will make sure it's not pushed multiple times.
+	clusterImageNeeds := func(id TargetID) v1alpha1.ClusterImageNeeds {
+		if deployImageIDSet[id] {
+			return v1alpha1.ClusterImageNeedsPush
+		}
+		return v1alpha1.ClusterImageNeedsBase
+	}
+
+	for _, m := range manifests {
+		if err := m.inferImageProperties(clusterImageNeeds); err != nil {
+			return err
+		}
+	}
+	return nil
 }
