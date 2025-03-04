@@ -33,6 +33,7 @@ const DefaultWebDevPort = 46764
 var updateModeFlag string = string(liveupdates.UpdateModeAuto)
 var webDevPort = 0
 var logActionsFlag bool = false
+var logFiltersFlag []string = []string{}
 
 var userExitError = errors.New("user requested Tilt exit")
 
@@ -84,6 +85,7 @@ local resources--i.e. those using serve_cmd--are terminated when you exit Tilt.
 	addTiltfileFlag(cmd, &c.fileName)
 	addKubeContextFlag(cmd)
 	addNamespaceFlag(cmd)
+	addLogFiltersFlag(cmd, &logFiltersFlag)
 	cmd.Flags().Lookup("logactions").Hidden = true
 	cmd.Flags().StringVar(&c.outputSnapshotOnExit, "output-snapshot-on-exit", "", "If specified, Tilt will dump a snapshot of its state to the specified path when it exits")
 

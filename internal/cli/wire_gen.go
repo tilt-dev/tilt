@@ -349,7 +349,9 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	headsUpDisplay := hud.NewHud(renderer, webURL, analytics3, openURL)
 	stdout := hud.ProvideStdout()
 	incrementalPrinter := hud.NewIncrementalPrinter(stdout)
-	terminalStream := hud.NewTerminalStream(incrementalPrinter, storeStore)
+	v3 := hud.ProvideLogFilters()
+	logFilters := hud.LogFiltersFromStrings(v3)
+	terminalStream := hud.NewTerminalStream(incrementalPrinter, logFilters, storeStore)
 	openInput := _wireOpenInputValue
 	terminalPrompt := prompt.NewTerminalPrompt(analytics3, openInput, openURL, stdout, webHost, webURL)
 	serviceWatcher := k8swatch.NewServiceWatcher(connectionManager, namespace)
@@ -375,8 +377,8 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	sessionController := session2.NewController(sessionReconciler)
 	subscriber := uisession2.NewSubscriber(deferredClient)
 	uiresourceSubscriber := uiresource2.NewSubscriber(deferredClient)
-	v3 := engine.ProvideSubscribers(headsUpServerController, tiltServerControllerManager, controllerBuilder, headsUpDisplay, terminalStream, terminalPrompt, serviceWatcher, buildController, configsController, triggerQueueSubscriber, analyticsReporter, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, serverController, podMonitor, sessionController, subscriber, uiresourceSubscriber)
-	upper, err := engine.NewUpper(ctx, storeStore, v3)
+	v4 := engine.ProvideSubscribers(headsUpServerController, tiltServerControllerManager, controllerBuilder, headsUpDisplay, terminalStream, terminalPrompt, serviceWatcher, buildController, configsController, triggerQueueSubscriber, analyticsReporter, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, serverController, podMonitor, sessionController, subscriber, uiresourceSubscriber)
+	upper, err := engine.NewUpper(ctx, storeStore, v4)
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
@@ -559,7 +561,9 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	headsUpDisplay := hud.NewHud(renderer, webURL, analytics3, openURL)
 	stdout := hud.ProvideStdout()
 	incrementalPrinter := hud.NewIncrementalPrinter(stdout)
-	terminalStream := hud.NewTerminalStream(incrementalPrinter, storeStore)
+	v3 := hud.ProvideLogFilters()
+	logFilters := hud.LogFiltersFromStrings(v3)
+	terminalStream := hud.NewTerminalStream(incrementalPrinter, logFilters, storeStore)
 	openInput := _wireOpenInputValue
 	terminalPrompt := prompt.NewTerminalPrompt(analytics3, openInput, openURL, stdout, webHost, webURL)
 	serviceWatcher := k8swatch.NewServiceWatcher(connectionManager, namespace)
@@ -586,8 +590,8 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	sessionController := session2.NewController(sessionReconciler)
 	subscriber := uisession2.NewSubscriber(deferredClient)
 	uiresourceSubscriber := uiresource2.NewSubscriber(deferredClient)
-	v3 := engine.ProvideSubscribers(headsUpServerController, tiltServerControllerManager, controllerBuilder, headsUpDisplay, terminalStream, terminalPrompt, serviceWatcher, buildController, configsController, triggerQueueSubscriber, analyticsReporter, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, serverController, podMonitor, sessionController, subscriber, uiresourceSubscriber)
-	upper, err := engine.NewUpper(ctx, storeStore, v3)
+	v4 := engine.ProvideSubscribers(headsUpServerController, tiltServerControllerManager, controllerBuilder, headsUpDisplay, terminalStream, terminalPrompt, serviceWatcher, buildController, configsController, triggerQueueSubscriber, analyticsReporter, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, serverController, podMonitor, sessionController, subscriber, uiresourceSubscriber)
+	upper, err := engine.NewUpper(ctx, storeStore, v4)
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
@@ -761,10 +765,12 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	stdout := hud.ProvideStdout()
 	incrementalPrinter := hud.NewIncrementalPrinter(stdout)
-	terminalStream := hud.NewTerminalStream(incrementalPrinter, storeStore)
+	v2 := hud.ProvideLogFilters()
+	logFilters := hud.LogFiltersFromStrings(v2)
+	terminalStream := hud.NewTerminalStream(incrementalPrinter, logFilters, storeStore)
 	cliUpdogSubscriber := provideUpdogSubscriber(objects, deferredClient)
-	v2 := provideUpdogCmdSubscribers(headsUpServerController, tiltServerControllerManager, controllerBuilder, terminalStream, cliUpdogSubscriber)
-	upper, err := engine.NewUpper(ctx, storeStore, v2)
+	v3 := provideUpdogCmdSubscribers(headsUpServerController, tiltServerControllerManager, controllerBuilder, terminalStream, cliUpdogSubscriber)
+	upper, err := engine.NewUpper(ctx, storeStore, v3)
 	if err != nil {
 		return CmdUpdogDeps{}, err
 	}
