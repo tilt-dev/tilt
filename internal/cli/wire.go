@@ -106,6 +106,9 @@ var BaseWireSet = wire.NewSet(
 
 	build.ProvideClock,
 	provideClock,
+	provideLogSource,
+	provideLogResource,
+	provideLogLevel,
 	hud.WireSet,
 	prompt.WireSet,
 	wire.Value(openurl.OpenURL(openurl.BrowserOpen)),
@@ -209,7 +212,8 @@ func wireCmdUpdog(ctx context.Context,
 	analytics *analytics.TiltAnalytics,
 	cmdTags engineanalytics.CmdTags,
 	subcommand model.TiltSubcommand,
-	objects []ctrlclient.Object) (CmdUpdogDeps, error) {
+	objects []ctrlclient.Object,
+) (CmdUpdogDeps, error) {
 	wire.Build(BaseWireSet,
 		provideUpdogSubscriber,
 		provideUpdogCmdSubscribers,
@@ -290,7 +294,8 @@ func ProvideDownDeps(
 	tfl tiltfile.TiltfileLoader,
 	dcClient dockercompose.DockerComposeClient,
 	kClient k8s.Client,
-	execer localexec.Execer) DownDeps {
+	execer localexec.Execer,
+) DownDeps {
 	return DownDeps{
 		tfl:      tfl,
 		dcClient: dcClient,
@@ -349,4 +354,23 @@ func wireLsp(ctx context.Context, l logger.Logger, subcommand model.TiltSubcomma
 
 func provideCITimeoutFlag() model.CITimeoutFlag {
 	return model.CITimeoutFlag(ciTimeout)
+}
+
+func provideLogSource() hud.FilterSource {
+	return hud.FilterSource(logSourceFlag)
+}
+
+func provideLogResource() model.ManifestName {
+	return model.ManifestName(logResourceFlag)
+}
+
+func provideLogLevel() logger.Level {
+	switch logLevelFlag {
+	case "warn", "WARN", "warning", "WARNING":
+		return logger.WarnLvl
+	case "error", "ERROR":
+		return logger.ErrorLvl
+	default:
+		return logger.NoneLvl
+	}
 }

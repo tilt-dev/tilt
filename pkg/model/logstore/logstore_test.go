@@ -452,9 +452,9 @@ func TestContinuingLines(t *testing.T) {
 
 	c2 := l.Checkpoint()
 	assert.Equal(t, []LogLine{
-		LogLine{Text: "           fe │ layer 1: pending\n", SpanID: "fe", ProgressID: "layer 1", Time: now},
-		LogLine{Text: "           fe │ layer 2: pending\n", SpanID: "fe", ProgressID: "layer 2", Time: now},
-		LogLine{Text: "           be │ layer 1: pending\n", SpanID: "be", ProgressID: "layer 1", Time: now},
+		{Text: "           fe │ layer 1: pending\n", SpanID: "fe", ManifestName: "fe", ProgressID: "layer 1", Time: now},
+		{Text: "           fe │ layer 2: pending\n", SpanID: "fe", ManifestName: "fe", ProgressID: "layer 2", Time: now},
+		{Text: "           be │ layer 1: pending\n", SpanID: "be", ManifestName: "be", ProgressID: "layer 1", Time: now},
 	}, l.ContinuingLines(c1))
 
 	l.Append(testLogEvent{
@@ -468,9 +468,10 @@ func TestContinuingLines(t *testing.T) {
 	}, nil)
 
 	assert.Equal(t, []LogLine{
-		LogLine{
+		{
 			Text:              "           fe │ layer 1: done\n",
 			SpanID:            "fe",
+			ManifestName:      "fe",
 			ProgressID:        "layer 1",
 			ProgressMustPrint: true,
 			Time:              now,
@@ -497,8 +498,8 @@ func TestContinuingLinesWithOptionsSuppressPrefix(t *testing.T) {
 	}, nil)
 
 	assert.Equal(t, []LogLine{
-		LogLine{Text: "layer 1: pending\n", SpanID: "fe", ProgressID: "layer 1", Time: now},
-		LogLine{Text: "layer 2: pending\n", SpanID: "fe", ProgressID: "layer 2", Time: now},
+		{Text: "layer 1: pending\n", SpanID: "fe", ManifestName: "fe", ProgressID: "layer 1", Time: now},
+		{Text: "layer 2: pending\n", SpanID: "fe", ManifestName: "fe", ProgressID: "layer 2", Time: now},
 	}, l.ContinuingLinesWithOptions(c1, LineOptions{SuppressPrefix: true}))
 }
 
@@ -527,8 +528,8 @@ func TestContinuingLinesWithOptionsSpans(t *testing.T) {
 	}, nil)
 
 	assert.Equal(t, []LogLine{
-		LogLine{Text: "          foo │ layer 1: pending\n", SpanID: "foo", ProgressID: "layer 1", Time: now},
-		LogLine{Text: "          foo │ layer 2: pending\n", SpanID: "foo", ProgressID: "layer 2", Time: now},
+		{Text: "          foo │ layer 1: pending\n", SpanID: "foo", ManifestName: "foo", ProgressID: "layer 1", Time: now},
+		{Text: "          foo │ layer 2: pending\n", SpanID: "foo", ManifestName: "foo", ProgressID: "layer 2", Time: now},
 	}, l.ContinuingLinesWithOptions(c1, lineOptionsWithManifests("foo")))
 }
 
