@@ -2,8 +2,8 @@ package cli
 
 import (
 	"os"
-	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -89,8 +89,10 @@ func addLogFilterFlags(cmd *cobra.Command, logSource *string, logResource *strin
 		func(_ *cobra.Command, _ []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			var completions []string
 			options := []string{"warn", "error"}
-			if idx := slices.Index(options, toComplete); idx >= 0 {
-				completions = append(completions, options[idx])
+			for _, option := range options {
+				if strings.Contains(option, strings.ToLower(toComplete)) {
+					completions = append(completions, option)
+				}
 			}
 
 			return completions, cobra.ShellCompDirectiveNoFileComp
@@ -107,8 +109,10 @@ func addLogFilterFlags(cmd *cobra.Command, logSource *string, logResource *strin
 				hud.FilterSourceBuild.String(),
 				hud.FilterSourceRuntime.String(),
 			}
-			if idx := slices.Index(options, toComplete); idx >= 0 {
-				completions = append(completions, options[idx])
+			for _, option := range options {
+				if strings.Contains(option, strings.ToLower(toComplete)) {
+					completions = append(completions, option)
+				}
 			}
 
 			return completions, cobra.ShellCompDirectiveNoFileComp
