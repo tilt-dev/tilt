@@ -349,9 +349,11 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	headsUpDisplay := hud.NewHud(renderer, webURL, analytics3, openURL)
 	stdout := hud.ProvideStdout()
 	incrementalPrinter := hud.NewIncrementalPrinter(stdout)
-	v3 := hud.ProvideLogFilters()
-	logFilters := hud.LogFiltersFromStrings(v3)
-	terminalStream := hud.NewTerminalStream(incrementalPrinter, logFilters, storeStore)
+	filterSource := provideLogSource()
+	manifestName := provideLogResource()
+	level := provideLogLevel()
+	logFilter := hud.NewLogFilter(filterSource, manifestName, level)
+	terminalStream := hud.NewTerminalStream(incrementalPrinter, logFilter, storeStore)
 	openInput := _wireOpenInputValue
 	terminalPrompt := prompt.NewTerminalPrompt(analytics3, openInput, openURL, stdout, webHost, webURL)
 	serviceWatcher := k8swatch.NewServiceWatcher(connectionManager, namespace)
@@ -377,8 +379,8 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	sessionController := session2.NewController(sessionReconciler)
 	subscriber := uisession2.NewSubscriber(deferredClient)
 	uiresourceSubscriber := uiresource2.NewSubscriber(deferredClient)
-	v4 := engine.ProvideSubscribers(headsUpServerController, tiltServerControllerManager, controllerBuilder, headsUpDisplay, terminalStream, terminalPrompt, serviceWatcher, buildController, configsController, triggerQueueSubscriber, analyticsReporter, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, serverController, podMonitor, sessionController, subscriber, uiresourceSubscriber)
-	upper, err := engine.NewUpper(ctx, storeStore, v4)
+	v3 := engine.ProvideSubscribers(headsUpServerController, tiltServerControllerManager, controllerBuilder, headsUpDisplay, terminalStream, terminalPrompt, serviceWatcher, buildController, configsController, triggerQueueSubscriber, analyticsReporter, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, serverController, podMonitor, sessionController, subscriber, uiresourceSubscriber)
+	upper, err := engine.NewUpper(ctx, storeStore, v3)
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
@@ -561,9 +563,11 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	headsUpDisplay := hud.NewHud(renderer, webURL, analytics3, openURL)
 	stdout := hud.ProvideStdout()
 	incrementalPrinter := hud.NewIncrementalPrinter(stdout)
-	v3 := hud.ProvideLogFilters()
-	logFilters := hud.LogFiltersFromStrings(v3)
-	terminalStream := hud.NewTerminalStream(incrementalPrinter, logFilters, storeStore)
+	filterSource := provideLogSource()
+	manifestName := provideLogResource()
+	level := provideLogLevel()
+	logFilter := hud.NewLogFilter(filterSource, manifestName, level)
+	terminalStream := hud.NewTerminalStream(incrementalPrinter, logFilter, storeStore)
 	openInput := _wireOpenInputValue
 	terminalPrompt := prompt.NewTerminalPrompt(analytics3, openInput, openURL, stdout, webHost, webURL)
 	serviceWatcher := k8swatch.NewServiceWatcher(connectionManager, namespace)
@@ -590,8 +594,8 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	sessionController := session2.NewController(sessionReconciler)
 	subscriber := uisession2.NewSubscriber(deferredClient)
 	uiresourceSubscriber := uiresource2.NewSubscriber(deferredClient)
-	v4 := engine.ProvideSubscribers(headsUpServerController, tiltServerControllerManager, controllerBuilder, headsUpDisplay, terminalStream, terminalPrompt, serviceWatcher, buildController, configsController, triggerQueueSubscriber, analyticsReporter, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, serverController, podMonitor, sessionController, subscriber, uiresourceSubscriber)
-	upper, err := engine.NewUpper(ctx, storeStore, v4)
+	v3 := engine.ProvideSubscribers(headsUpServerController, tiltServerControllerManager, controllerBuilder, headsUpDisplay, terminalStream, terminalPrompt, serviceWatcher, buildController, configsController, triggerQueueSubscriber, analyticsReporter, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, serverController, podMonitor, sessionController, subscriber, uiresourceSubscriber)
+	upper, err := engine.NewUpper(ctx, storeStore, v3)
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
@@ -765,12 +769,14 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
 	stdout := hud.ProvideStdout()
 	incrementalPrinter := hud.NewIncrementalPrinter(stdout)
-	v2 := hud.ProvideLogFilters()
-	logFilters := hud.LogFiltersFromStrings(v2)
-	terminalStream := hud.NewTerminalStream(incrementalPrinter, logFilters, storeStore)
+	filterSource := provideLogSource()
+	manifestName := provideLogResource()
+	level := provideLogLevel()
+	logFilter := hud.NewLogFilter(filterSource, manifestName, level)
+	terminalStream := hud.NewTerminalStream(incrementalPrinter, logFilter, storeStore)
 	cliUpdogSubscriber := provideUpdogSubscriber(objects, deferredClient)
-	v3 := provideUpdogCmdSubscribers(headsUpServerController, tiltServerControllerManager, controllerBuilder, terminalStream, cliUpdogSubscriber)
-	upper, err := engine.NewUpper(ctx, storeStore, v3)
+	v2 := provideUpdogCmdSubscribers(headsUpServerController, tiltServerControllerManager, controllerBuilder, terminalStream, cliUpdogSubscriber)
+	upper, err := engine.NewUpper(ctx, storeStore, v2)
 	if err != nil {
 		return CmdUpdogDeps{}, err
 	}
@@ -1075,7 +1081,10 @@ var K8sWireSet = wire.NewSet(k8s.ProvideClusterProduct, k8s.ProvideClusterName, 
 	ProvideNamespaceOverride)
 
 var BaseWireSet = wire.NewSet(
-	K8sWireSet, tiltfile.WireSet, git.ProvideGitRemote, localexec.DefaultEnv, localexec.NewProcessExecer, wire.Bind(new(localexec.Execer), new(*localexec.ProcessExecer)), docker.SwitchWireSet, dockercompose.NewDockerComposeClient, clockwork.NewRealClock, engine.DeployerWireSet, engine.NewBuildController, local.NewServerController, kubernetesdiscovery.NewContainerRestartDetector, k8swatch.NewServiceWatcher, k8swatch.NewEventWatchManager, uisession2.NewSubscriber, uiresource2.NewSubscriber, configs.NewConfigsController, configs.NewTriggerQueueSubscriber, telemetry.NewController, cloud.WireSet, cloudurl.ProvideAddress, k8srollout.NewPodMonitor, telemetry.NewStartTracker, session2.NewController, build.ProvideClock, provideClock, hud.WireSet, prompt.WireSet, wire.Value(openurl.OpenURL(openurl.BrowserOpen)), provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(*store.Store)), wire.Bind(new(store.Dispatcher), new(*store.Store)), dockerprune.NewDockerPruner, provideTiltInfo, engine.NewUpper, analytics2.NewAnalyticsUpdater, analytics2.ProvideAnalyticsReporter, provideUpdateModeFlag, fsevent.ProvideWatcherMaker, fsevent.ProvideTimerMaker, controllers.WireSet, provideCITimeoutFlag,
+	K8sWireSet, tiltfile.WireSet, git.ProvideGitRemote, localexec.DefaultEnv, localexec.NewProcessExecer, wire.Bind(new(localexec.Execer), new(*localexec.ProcessExecer)), docker.SwitchWireSet, dockercompose.NewDockerComposeClient, clockwork.NewRealClock, engine.DeployerWireSet, engine.NewBuildController, local.NewServerController, kubernetesdiscovery.NewContainerRestartDetector, k8swatch.NewServiceWatcher, k8swatch.NewEventWatchManager, uisession2.NewSubscriber, uiresource2.NewSubscriber, configs.NewConfigsController, configs.NewTriggerQueueSubscriber, telemetry.NewController, cloud.WireSet, cloudurl.ProvideAddress, k8srollout.NewPodMonitor, telemetry.NewStartTracker, session2.NewController, build.ProvideClock, provideClock,
+	provideLogSource,
+	provideLogResource,
+	provideLogLevel, hud.WireSet, prompt.WireSet, wire.Value(openurl.OpenURL(openurl.BrowserOpen)), provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(*store.Store)), wire.Bind(new(store.Dispatcher), new(*store.Store)), dockerprune.NewDockerPruner, provideTiltInfo, engine.NewUpper, analytics2.NewAnalyticsUpdater, analytics2.ProvideAnalyticsReporter, provideUpdateModeFlag, fsevent.ProvideWatcherMaker, fsevent.ProvideTimerMaker, controllers.WireSet, provideCITimeoutFlag,
 	provideWebVersion,
 	provideWebMode,
 	provideWebURL,
@@ -1127,7 +1136,8 @@ func ProvideDownDeps(
 	tfl tiltfile.TiltfileLoader,
 	dcClient dockercompose.DockerComposeClient,
 	kClient k8s.Client,
-	execer localexec.Execer) DownDeps {
+	execer localexec.Execer,
+) DownDeps {
 	return DownDeps{
 		tfl:      tfl,
 		dcClient: dcClient,
@@ -1159,4 +1169,23 @@ type DumpImageDeployRefDeps struct {
 
 func provideCITimeoutFlag() model.CITimeoutFlag {
 	return model.CITimeoutFlag(ciTimeout)
+}
+
+func provideLogSource() hud.FilterSource {
+	return hud.FilterSource(logSourceFlag)
+}
+
+func provideLogResource() model.ManifestName {
+	return model.ManifestName(logResourceFlag)
+}
+
+func provideLogLevel() logger.Level {
+	switch logLevelFlag {
+	case "warn", "WARN", "warning", "WARNING":
+		return logger.WarnLvl
+	case "error", "ERROR":
+		return logger.ErrorLvl
+	default:
+		return logger.NoneLvl
+	}
 }

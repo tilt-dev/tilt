@@ -2,23 +2,30 @@ package cli
 
 import (
 	"os"
+	"slices"
 	"strconv"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/tilt-dev/tilt/internal/hud"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/tiltfile"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
-var defaultWebHost = "localhost"
-var defaultWebPort = model.DefaultWebPort
-var defaultNamespace = ""
-var webHostFlag = ""
-var webPortFlag = 0
-var snapshotViewPortFlag = 0
-var namespaceOverride = ""
+var (
+	defaultWebHost       = "localhost"
+	defaultWebPort       = model.DefaultWebPort
+	defaultNamespace     = ""
+	defaultLogLevel      = ""
+	defaultLogResource   = ""
+	defaultLogSource     = "all"
+	webHostFlag          = ""
+	webPortFlag          = 0
+	snapshotViewPortFlag = 0
+	namespaceOverride    = ""
+)
 
 func readEnvDefaults() error {
 	envPort := os.Getenv("TILT_PORT")
@@ -75,8 +82,38 @@ func addNamespaceFlag(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&namespaceOverride, "namespace", defaultNamespace, "Default namespace for Kubernetes resources (overrides default namespace from active context in kubeconfig)")
 }
 
-func addLogFiltersFlag(cmd *cobra.Command, v *[]string) {
-	cmd.Flags().StringSliceVar(v, "log-filters", []string{}, "Specify one or more log span filters, e.g. 'pod', 'build', 'tiltfile', 'monitor', 'localserve', 'telemetry', 'events', 'dc'. Exclude with '!', e.g. '!pod' to exclude pod logs")
+func addLogFilterFlags(cmd *cobra.Command, logSource *string, logResource *string, logLevel *string) {
+	cmd.Flags().StringVar(logLevel, "log-level", defaultLogLevel, `Specify a log level. One of "warn", "error"`)
+	_ = cmd.RegisterFlagCompletionFunc(
+		"log-level",
+		func(_ *cobra.Command, _ []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			var completions []string
+			options := []string{"warn", "error"}
+			if idx := slices.Index(options, toComplete); idx >= 0 {
+				completions = append(completions, options[idx])
+			}
+
+			return completions, cobra.ShellCompDirectiveNoFileComp
+		},
+	)
+	cmd.Flags().StringVar(logResource, "log-resource", defaultLogResource, `Specify a resource to print logs for, e.g. "(Tiltfile)", "nginx", etc.`)
+	cmd.Flags().StringVar(logSource, "log-source", defaultLogSource, `Specify a log source. One of "all", "build", "runtime"`)
+	_ = cmd.RegisterFlagCompletionFunc(
+		"log-source",
+		func(_ *cobra.Command, _ []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			var completions []string
+			options := []string{
+				hud.FilterSourceAll.String(),
+				hud.FilterSourceBuild.String(),
+				hud.FilterSourceRuntime.String(),
+			}
+			if idx := slices.Index(options, toComplete); idx >= 0 {
+				completions = append(completions, options[idx])
+			}
+
+			return completions, cobra.ShellCompDirectiveNoFileComp
+		},
+	)
 }
 
 var kubeContextOverride string

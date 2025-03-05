@@ -10,14 +10,14 @@ import (
 type TerminalStream struct {
 	ProcessedLogs logstore.Checkpoint
 	printer       *IncrementalPrinter
-	filters       LogFilters
+	filter        LogFilter
 	store         store.RStore
 }
 
-func NewTerminalStream(printer *IncrementalPrinter, filters LogFilters, store store.RStore) *TerminalStream {
+func NewTerminalStream(printer *IncrementalPrinter, filter LogFilter, store store.RStore) *TerminalStream {
 	return &TerminalStream{
 		printer: printer,
-		filters: filters,
+		filter:  filter,
 		store:   store,
 	}
 }
@@ -53,7 +53,7 @@ func (h *TerminalStream) OnChange(ctx context.Context, st store.RStore, _ store.
 
 	state := st.RLockState()
 	lines := state.LogStore.ContinuingLines(h.ProcessedLogs)
-	lines = h.filters.Apply(lines)
+	lines = h.filter.Apply(lines)
 
 	checkpoint := state.LogStore.Checkpoint()
 	st.RUnlockState()

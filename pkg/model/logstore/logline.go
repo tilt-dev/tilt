@@ -5,12 +5,16 @@ import (
 	"time"
 
 	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 type LogLine struct {
-	Text       string
-	SpanID     SpanID
-	ProgressID string
+	Text         string
+	SpanID       SpanID
+	ProgressID   string
+	Level        logger.Level
+	BuildEvent   string
+	ManifestName model.ManifestName
 
 	// Most progress lines are optional. For example, if a bunch
 	// of little upload updates come in, it's ok to skip some.
@@ -78,9 +82,12 @@ func (b *logLineBuilder) buildSpaceLine(options logOptions) LogLine {
 	sb.WriteString("\n")
 
 	return LogLine{
-		Text:   sb.String(),
-		SpanID: spanID,
-		Time:   time,
+		Text:         sb.String(),
+		SpanID:       spanID,
+		Level:        segment.Level,
+		BuildEvent:   segment.Fields[logger.FieldNameBuildEvent],
+		ManifestName: span.ManifestName,
+		Time:         time,
 	}
 }
 
@@ -120,6 +127,9 @@ func (b *logLineBuilder) buildMainLine(options logOptions) LogLine {
 	return LogLine{
 		Text:              sb.String(),
 		SpanID:            spanID,
+		Level:             segment.Level,
+		BuildEvent:        segment.Fields[logger.FieldNameBuildEvent],
+		ManifestName:      span.ManifestName,
 		ProgressID:        progressID,
 		ProgressMustPrint: progressMustPrint,
 		Time:              time,

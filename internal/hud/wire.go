@@ -8,16 +8,11 @@ import (
 var WireSet = wire.NewSet(
 	NewRenderer,
 	NewHud,
-	ProvideLogFilters,
-	LogFiltersFromStrings,
+	NewLogFilter,
 	NewTerminalStream,
 	ProvideStdout,
 	NewIncrementalPrinter)
 
 func ProvideStdout() Stdout {
 	return Stdout(colorable.NewColorableStdout())
-}
-
-func ProvideLogFilters() []string {
-	return []string{}
 }

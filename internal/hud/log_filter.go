@@ -3,76 +3,84 @@ package hud
 import (
 	"strings"
 
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
 
-func LogFilterFromString(v string) LogFilter {
-	return LogFilter{
-		spanPrefix: strings.TrimPrefix(v, "!"),
-		not:        strings.HasPrefix(v, "!"),
-	}
-}
+type FilterSource string
 
-func LogFiltersFromStrings(v []string) LogFilters {
-	r := LogFilters{}
-	for _, s := range v {
-		f := LogFilterFromString(s)
-		if f.not {
-			r.deny = append(r.deny, f)
-		} else {
-			r.allow = append(r.allow, f)
-		}
-	}
+const (
+	FilterSourceAll     FilterSource = "all"
+	FilterSourceBuild   FilterSource = "build"
+	FilterSourceRuntime FilterSource = "runtime"
+)
 
+func (s FilterSource) String() string { return string(s) }
+
+func NewLogFilter(
+	source FilterSource,
+	manifestName model.ManifestName,
+	level logger.Level,
+) LogFilter {
+	r := LogFilter{
+		source:       source,
+		manifestName: manifestName,
+		level:        level,
+	}
 	return r
 }
 
 type LogFilter struct {
-	spanPrefix string
-	not        bool
+	source       FilterSource
+	manifestName model.ManifestName
+	level        logger.Level
 }
 
-func (f LogFilter) Matches(l logstore.LogLine) bool {
-	return strings.HasPrefix(string(l.SpanID), f.spanPrefix) != f.not
+// The implementation is identical to isBuildSpanId in web/src/logs.ts.
+func isBuildSpanID(spanID logstore.SpanID) bool {
+	return strings.HasPrefix(string(spanID), "build:") || strings.HasPrefix(string(spanID), "cmdimage:")
 }
 
-type LogFilters struct {
-	allow []LogFilter
-	deny  []LogFilter
-}
-
-func (s LogFilters) applyDeny(line logstore.LogLine) bool {
-	shouldInclude := true
-	for _, f := range s.deny {
-		shouldInclude = shouldInclude && f.Matches(line)
-	}
-
-	return shouldInclude
-}
-
-func (s LogFilters) applyAllow(line logstore.LogLine) bool {
-	if len(s.allow) == 0 {
+// The implementation is identical to matchesLevelFilter in web/src/OverviewLogPane.tsx
+func (f LogFilter) matchesLevelFilter(line logstore.LogLine) bool {
+	if !f.level.AsSevereAs(logger.WarnLvl) {
 		return true
 	}
 
-	shouldInclude := false
-	for _, f := range s.allow {
-		shouldInclude = shouldInclude || f.Matches(line)
-	}
-
-	return shouldInclude
+	return f.level == line.Level
 }
 
-func (s LogFilters) Apply(lines []logstore.LogLine) []logstore.LogLine {
-	hasDeny := len(s.deny) > 0
-	hasAllow := len(s.allow) > 0
-	if !hasDeny && !hasAllow {
-		return lines
+// Matches Checks if this line matches the current filter.
+// The implementation is identical to matchesFilter in web/src/OverviewLogPane.tsx.
+// except for term filtering as tools like grep can be used from the CLI.
+func (f LogFilter) Matches(line logstore.LogLine) bool {
+	if line.BuildEvent != "" {
+		// Always leave in build event logs.
+		// This makes it easier to see which logs belong to which builds.
+		return true
 	}
 
+	if f.manifestName != "" && f.manifestName != line.ManifestName {
+		return false
+	}
+
+	isBuild := isBuildSpanID(line.SpanID)
+	if f.source == FilterSourceRuntime && isBuild {
+		return false
+	}
+
+	if f.source == FilterSourceBuild && !isBuild {
+		return false
+	}
+
+	return f.matchesLevelFilter(line)
+}
+
+func (f LogFilter) Apply(lines []logstore.LogLine) []logstore.LogLine {
 	filtered := []logstore.LogLine{}
 	for _, line := range lines {
-		if (hasDeny && s.applyDeny(line)) || (hasAllow && s.applyAllow(line)) {
+		if f.Matches(line) {
 			filtered = append(filtered, line)
 		}
 	}

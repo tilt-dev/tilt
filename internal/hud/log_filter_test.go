@@ -5,6 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
 
@@ -17,52 +18,142 @@ func TestLogFilterMatches(t *testing.T) {
 	}
 	testCases := []testCase{
 		{
-			description: "allow",
-			logFilter:   LogFilter{spanPrefix: "pod"},
+			description: "source all matches pod logs",
+			logFilter:   LogFilter{source: FilterSourceAll},
 			input:       logstore.LogLine{SpanID: "pod:default:nginx"},
 			expected:    true,
 		},
 		{
-			description: "allow empty",
-			logFilter:   LogFilter{spanPrefix: ""},
-			input:       logstore.LogLine{SpanID: "pod:default:nginx"},
+			description: "source all matches build logs",
+			logFilter:   LogFilter{source: FilterSourceAll},
+			input:       logstore.LogLine{SpanID: "build:1"},
 			expected:    true,
 		},
 		{
-			description: "allow specific",
-			logFilter:   LogFilter{spanPrefix: "pod:default"},
-			input:       logstore.LogLine{SpanID: "pod:default:nginx"},
+			description: "source all matches cmdimage logs",
+			logFilter:   LogFilter{source: FilterSourceBuild},
+			input:       logstore.LogLine{SpanID: "cmdimage:nginx"},
 			expected:    true,
 		},
 		{
-			description: "allow does not match",
-			logFilter:   LogFilter{spanPrefix: "pod"},
-			input:       logstore.LogLine{SpanID: "monitor:default:nginx"},
-			expected:    false,
+			description: "source all matches tiltfile logs",
+			logFilter:   LogFilter{source: FilterSourceAll},
+			input:       logstore.LogLine{SpanID: "tiltfile:(Tiltfile):1"},
+			expected:    true,
 		},
 		{
-			description: "deny",
-			logFilter:   LogFilter{spanPrefix: "pod", not: true},
-			input:       logstore.LogLine{SpanID: "pod:default:nginx"},
-			expected:    false,
-		},
-		{
-			description: "deny empty",
-			logFilter:   LogFilter{spanPrefix: "", not: true},
+			description: "source build does not match pod logs",
+			logFilter:   LogFilter{source: FilterSourceBuild},
 			input:       logstore.LogLine{SpanID: "pod:default:nginx"},
 			expected:    false,
 		},
 		{
-			description: "deny specific",
-			logFilter:   LogFilter{spanPrefix: "pod:default", not: true},
-			input:       logstore.LogLine{SpanID: "pod:my-namespace:nginx"},
+			description: "source build matches build logs",
+			logFilter:   LogFilter{source: FilterSourceBuild},
+			input:       logstore.LogLine{SpanID: "build:1"},
 			expected:    true,
 		},
 		{
-			description: "deny does not match",
-			logFilter:   LogFilter{spanPrefix: "pod", not: true},
-			input:       logstore.LogLine{SpanID: "monitor:default:nginx"},
+			description: "source build matches cmdimage logs",
+			logFilter:   LogFilter{source: FilterSourceBuild},
+			input:       logstore.LogLine{SpanID: "cmdimage:nginx"},
 			expected:    true,
+		},
+		{
+			description: "source build does not match tiltfile logs",
+			logFilter:   LogFilter{source: FilterSourceBuild},
+			input:       logstore.LogLine{SpanID: "tiltfile:(Tiltfile):1"},
+			expected:    false,
+		},
+		{
+			description: "source runtime matches pod logs",
+			logFilter:   LogFilter{source: FilterSourceRuntime},
+			input:       logstore.LogLine{SpanID: "pod:default:nginx"},
+			expected:    true,
+		},
+		{
+			description: "source runtime does not match build logs",
+			logFilter:   LogFilter{source: FilterSourceRuntime},
+			input:       logstore.LogLine{SpanID: "build:1"},
+			expected:    false,
+		},
+		{
+			description: "source runtime does not match cmdimage logs",
+			logFilter:   LogFilter{source: FilterSourceRuntime},
+			input:       logstore.LogLine{SpanID: "cmdimage:nginx"},
+			expected:    false,
+		},
+		{
+			description: "source runtime matches tiltfile logs",
+			logFilter:   LogFilter{source: FilterSourceRuntime},
+			input:       logstore.LogLine{SpanID: "tiltfile:(Tiltfile):1"},
+			expected:    true,
+		},
+		{
+			description: "source all matches logs with buildEvent",
+			logFilter:   LogFilter{source: FilterSourceAll},
+			input:       logstore.LogLine{SpanID: "pod:default:nginx", BuildEvent: "init"},
+			expected:    true,
+		},
+		{
+			description: "source build matches logs with buildEvent",
+			logFilter:   LogFilter{source: FilterSourceBuild},
+			input:       logstore.LogLine{SpanID: "pod:default:nginx", BuildEvent: "init"},
+			expected:    true,
+		},
+		{
+			description: "source runtime matches logs with buildEvent",
+			logFilter:   LogFilter{source: FilterSourceRuntime},
+			input:       logstore.LogLine{SpanID: "build:1", BuildEvent: "init"},
+			expected:    true,
+		},
+		{
+			description: "level lower than warn matches logs with any level",
+			logFilter:   LogFilter{source: FilterSourceAll, level: logger.NoneLvl},
+			input:       logstore.LogLine{SpanID: "pod:default:nginx", Level: logger.InfoLvl},
+			expected:    true,
+		},
+		{
+			description: "level warn matches logs with warn level",
+			logFilter:   LogFilter{source: FilterSourceAll, level: logger.WarnLvl},
+			input:       logstore.LogLine{SpanID: "pod:default:nginx", Level: logger.WarnLvl},
+			expected:    true,
+		},
+		{
+			description: "level warn does not match logs with error level",
+			logFilter:   LogFilter{source: FilterSourceAll, level: logger.WarnLvl},
+			input:       logstore.LogLine{SpanID: "pod:default:nginx", Level: logger.ErrorLvl},
+			expected:    false,
+		},
+		{
+			description: "level error matches logs with error level",
+			logFilter:   LogFilter{source: FilterSourceAll, level: logger.ErrorLvl},
+			input:       logstore.LogLine{SpanID: "pod:default:nginx", Level: logger.ErrorLvl},
+			expected:    true,
+		},
+		{
+			description: "level error does not match logs with warn level",
+			logFilter:   LogFilter{source: FilterSourceAll, level: logger.ErrorLvl},
+			input:       logstore.LogLine{SpanID: "pod:default:nginx", Level: logger.WarnLvl},
+			expected:    false,
+		},
+		{
+			description: "empty manifest name matches any logs",
+			logFilter:   LogFilter{source: FilterSourceAll, manifestName: ""},
+			input:       logstore.LogLine{SpanID: "pod:default:nginx", ManifestName: "nginx"},
+			expected:    true,
+		},
+		{
+			description: "manifest name matches logs with the same manifest name",
+			logFilter:   LogFilter{source: FilterSourceAll, manifestName: "nginx"},
+			input:       logstore.LogLine{SpanID: "pod:default:nginx", ManifestName: "nginx"},
+			expected:    true,
+		},
+		{
+			description: "manifest name does not match logs with a different manifest name",
+			logFilter:   LogFilter{source: FilterSourceAll, manifestName: "test"},
+			input:       logstore.LogLine{SpanID: "pod:default:nginx", ManifestName: "nginx"},
+			expected:    false,
 		},
 	}
 
@@ -74,226 +165,120 @@ func TestLogFilterMatches(t *testing.T) {
 	}
 }
 
-func TestLogFiltersApply(t *testing.T) {
+func TestLogFilterApply(t *testing.T) {
 	type testCase struct {
 		description string
-		logFilters  LogFilters
+		logFilter   LogFilter
 		input       []logstore.LogLine
 		expected    []logstore.LogLine
 	}
 	testCases := []testCase{
 		{
-			description: "no filters",
-			logFilters:  LogFilters{},
+			description: "empty filter matches all logs",
+			logFilter:   LogFilter{},
 			input: []logstore.LogLine{
 				{SpanID: "pod:default:nginx"},
-				{SpanID: "monitor:default:nginx"},
-				{SpanID: "tiltfile:(Tiltfile):1"},
 				{SpanID: "build:1"},
+				{SpanID: "cmdimage:nginx"},
+				{SpanID: "tiltfile:(Tiltfile):1"},
 			},
 			expected: []logstore.LogLine{
 				{SpanID: "pod:default:nginx"},
-				{SpanID: "monitor:default:nginx"},
-				{SpanID: "tiltfile:(Tiltfile):1"},
 				{SpanID: "build:1"},
+				{SpanID: "cmdimage:nginx"},
+				{SpanID: "tiltfile:(Tiltfile):1"},
 			},
 		},
 		{
-			description: "empty filters",
-			logFilters: LogFilters{
-				deny: []LogFilter{
-					{spanPrefix: "", not: true},
-				},
-				allow: []LogFilter{
-					{spanPrefix: "", not: false},
-				},
-			},
+			description: "filter with source all matches all logs",
+			logFilter:   LogFilter{source: FilterSourceAll},
 			input: []logstore.LogLine{
 				{SpanID: "pod:default:nginx"},
-				{SpanID: "monitor:default:nginx"},
-				{SpanID: "tiltfile:(Tiltfile):1"},
 				{SpanID: "build:1"},
+				{SpanID: "cmdimage:nginx"},
+				{SpanID: "tiltfile:(Tiltfile):1"},
 			},
 			expected: []logstore.LogLine{
 				{SpanID: "pod:default:nginx"},
-				{SpanID: "monitor:default:nginx"},
-				{SpanID: "tiltfile:(Tiltfile):1"},
 				{SpanID: "build:1"},
+				{SpanID: "cmdimage:nginx"},
+				{SpanID: "tiltfile:(Tiltfile):1"},
 			},
 		},
 		{
-			description: "multiple allow filters",
-			logFilters: LogFilters{
-				allow: []LogFilter{
-					{spanPrefix: "pod"},
-					{spanPrefix: "monitor"},
-				},
-			},
+			description: "filter with source build matches build logs",
+			logFilter:   LogFilter{source: FilterSourceBuild},
 			input: []logstore.LogLine{
 				{SpanID: "pod:default:nginx"},
-				{SpanID: "monitor:default:nginx"},
-				{SpanID: "tiltfile:(Tiltfile):1"},
 				{SpanID: "build:1"},
+				{SpanID: "cmdimage:nginx"},
+				{SpanID: "tiltfile:(Tiltfile):1"},
 			},
 			expected: []logstore.LogLine{
-				{SpanID: "pod:default:nginx"},
-				{SpanID: "monitor:default:nginx"},
+				{SpanID: "build:1"},
+				{SpanID: "cmdimage:nginx"},
 			},
 		},
 		{
-			description: "multiple deny filters",
-			logFilters: LogFilters{
-				deny: []LogFilter{
-					{spanPrefix: "pod", not: true},
-					{spanPrefix: "monitor", not: true},
-				},
-			},
+			description: "filter with source runtime matches non-build logs",
+			logFilter:   LogFilter{source: FilterSourceRuntime},
 			input: []logstore.LogLine{
 				{SpanID: "pod:default:nginx"},
-				{SpanID: "monitor:default:nginx"},
-				{SpanID: "tiltfile:(Tiltfile):1"},
 				{SpanID: "build:1"},
+				{SpanID: "cmdimage:nginx"},
+				{SpanID: "tiltfile:(Tiltfile):1"},
 			},
 			expected: []logstore.LogLine{
+				{SpanID: "pod:default:nginx"},
 				{SpanID: "tiltfile:(Tiltfile):1"},
-				{SpanID: "build:1"},
 			},
 		},
 		{
-			description: "deny all and allow a subset",
-			logFilters: LogFilters{
-				deny: []LogFilter{
-					{spanPrefix: "pod", not: true},
-				},
-				allow: []LogFilter{
-					{spanPrefix: "pod:my-namespace"},
-				},
-			},
+			description: "filter with level warn matches warn logs",
+			logFilter:   LogFilter{source: FilterSourceAll, level: logger.WarnLvl},
 			input: []logstore.LogLine{
-				{SpanID: "pod:default:nginx"},
-				{SpanID: "pod:default:my-pod"},
-				{SpanID: "pod:my-namespace:nginx"},
-				{SpanID: "pod:my-namespace:my-pod"},
+				{SpanID: "pod:default:nginx", Level: logger.DebugLvl},
+				{SpanID: "build:1", Level: logger.InfoLvl},
+				{SpanID: "cmdimage:nginx", Level: logger.WarnLvl},
+				{SpanID: "tiltfile:(Tiltfile):1", Level: logger.ErrorLvl},
 			},
 			expected: []logstore.LogLine{
-				{SpanID: "pod:my-namespace:nginx"},
-				{SpanID: "pod:my-namespace:my-pod"},
+				{SpanID: "cmdimage:nginx", Level: logger.WarnLvl},
 			},
 		},
 		{
-			description: "deny all and allow one",
-			logFilters: LogFilters{
-				deny: []LogFilter{
-					{spanPrefix: "pod", not: true},
-				},
-				allow: []LogFilter{
-					{spanPrefix: "pod:my-namespace:my-pod"},
-				},
-			},
+			description: "filter with level error matches error logs",
+			logFilter:   LogFilter{source: FilterSourceAll, level: logger.ErrorLvl},
 			input: []logstore.LogLine{
-				{SpanID: "pod:default:nginx"},
-				{SpanID: "pod:default:my-pod"},
-				{SpanID: "pod:my-namespace:nginx"},
-				{SpanID: "pod:my-namespace:my-pod"},
+				{SpanID: "pod:default:nginx", Level: logger.DebugLvl},
+				{SpanID: "build:1", Level: logger.InfoLvl},
+				{SpanID: "cmdimage:nginx", Level: logger.WarnLvl},
+				{SpanID: "tiltfile:(Tiltfile):1", Level: logger.ErrorLvl},
 			},
 			expected: []logstore.LogLine{
-				{SpanID: "pod:my-namespace:my-pod"},
+				{SpanID: "tiltfile:(Tiltfile):1", Level: logger.ErrorLvl},
+			},
+		},
+		{
+			description: "filter with manifest name matches only logs with the same manifest name",
+			logFilter:   LogFilter{source: FilterSourceAll, manifestName: "nginx"},
+			input: []logstore.LogLine{
+				{SpanID: "pod:default:nginx", ManifestName: "nginx"},
+				{SpanID: "build:1", ManifestName: "nginx"},
+				{SpanID: "cmdimage:nginx", ManifestName: "nginx"},
+				{SpanID: "tiltfile:(Tiltfile):1", ManifestName: "(Tiltfile)"},
+			},
+			expected: []logstore.LogLine{
+				{SpanID: "pod:default:nginx", ManifestName: "nginx"},
+				{SpanID: "build:1", ManifestName: "nginx"},
+				{SpanID: "cmdimage:nginx", ManifestName: "nginx"},
 			},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
-			actual := tc.logFilters.Apply(tc.input)
-			assert.Equal(t, tc.expected, actual)
-		})
-	}
-}
-
-func TestLogFilterFromString(t *testing.T) {
-	type testCase struct {
-		description string
-		input       string
-		expected    LogFilter
-	}
-
-	testCases := []testCase{
-		{
-			description: "empty allow filter",
-			input:       "",
-			expected:    LogFilter{spanPrefix: "", not: false},
-		},
-		{
-			description: "allow filter",
-			input:       "pod",
-			expected:    LogFilter{spanPrefix: "pod", not: false},
-		},
-		{
-			description: "empty deny filter",
-			input:       "!",
-			expected:    LogFilter{spanPrefix: "", not: true},
-		},
-		{
-			description: "deny filter",
-			input:       "!pod",
-			expected:    LogFilter{spanPrefix: "pod", not: true},
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.description, func(t *testing.T) {
-			actual := LogFilterFromString(tc.input)
-			assert.Equal(t, tc.expected, actual)
-		})
-	}
-}
-
-func TestLogFiltersFromStrings(t *testing.T) {
-	type testCase struct {
-		description string
-		input       []string
-		expected    LogFilters
-	}
-
-	testCases := []testCase{
-		{
-			description: "allow filters",
-			input:       []string{"pod", "monitor"},
-			expected: LogFilters{
-				allow: []LogFilter{
-					{spanPrefix: "pod", not: false},
-					{spanPrefix: "monitor", not: false},
-				},
-			},
-		},
-		{
-			description: "deny filters",
-			input:       []string{"!pod", "!monitor"},
-			expected: LogFilters{
-				deny: []LogFilter{
-					{spanPrefix: "pod", not: true},
-					{spanPrefix: "monitor", not: true},
-				},
-			},
-		},
-		{
-			description: "allow and deny filters",
-			input:       []string{"!pod", "!monitor", "build"},
-			expected: LogFilters{
-				allow: []LogFilter{
-					{spanPrefix: "build", not: false},
-				},
-				deny: []LogFilter{
-					{spanPrefix: "pod", not: true},
-					{spanPrefix: "monitor", not: true},
-				},
-			},
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.description, func(t *testing.T) {
-			actual := LogFiltersFromStrings(tc.input)
+			actual := tc.logFilter.Apply(tc.input)
 			assert.Equal(t, tc.expected, actual)
 		})
 	}
