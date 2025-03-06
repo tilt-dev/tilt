@@ -30,9 +30,14 @@ var webModeFlag model.WebMode = model.DefaultWebMode
 
 const DefaultWebDevPort = 46764
 
-var updateModeFlag string = string(liveupdates.UpdateModeAuto)
-var webDevPort = 0
-var logActionsFlag bool = false
+var (
+	updateModeFlag  string = string(liveupdates.UpdateModeAuto)
+	webDevPort             = 0
+	logActionsFlag  bool   = false
+	logSourceFlag   string = ""
+	logResourceFlag string = ""
+	logLevelFlag    string = ""
+)
 
 var userExitError = errors.New("user requested Tilt exit")
 
@@ -84,6 +89,7 @@ local resources--i.e. those using serve_cmd--are terminated when you exit Tilt.
 	addTiltfileFlag(cmd, &c.fileName)
 	addKubeContextFlag(cmd)
 	addNamespaceFlag(cmd)
+	addLogFilterFlags(cmd, &logSourceFlag, &logResourceFlag, &logLevelFlag)
 	cmd.Flags().Lookup("logactions").Hidden = true
 	cmd.Flags().StringVar(&c.outputSnapshotOnExit, "output-snapshot-on-exit", "", "If specified, Tilt will dump a snapshot of its state to the specified path when it exits")
 
@@ -265,7 +271,6 @@ func targetMode(mode model.WebMode, embeddedAvailable bool) (model.WebMode, erro
 func provideAssetServer(mode model.WebMode, version model.WebVersion) (assets.Server, error) {
 	s, ok := assets.GetEmbeddedServer()
 	m, err := targetMode(mode, ok)
-
 	if err != nil {
 		return nil, err
 	}

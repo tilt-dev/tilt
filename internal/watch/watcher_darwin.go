@@ -81,7 +81,9 @@ func (d *darwinNotify) Start() error {
 
 	numberOfWatches.Add(int64(len(d.stream.Paths)))
 
-	d.stream.Start()
+	if err := d.stream.Start(); err != nil {
+		return err
+	}
 
 	go d.loop()
 
