@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 
 	"github.com/tilt-dev/tilt/internal/hud"
@@ -141,20 +142,27 @@ type logStreamerFixture struct {
 func newLogStreamerFixture(t *testing.T) *logStreamerFixture {
 	fakeStdout := &bytes.Buffer{}
 	printer := hud.NewIncrementalPrinter(hud.Stdout(fakeStdout))
+	filter := hud.NewLogFilter(
+		hud.FilterSourceAll,
+		hud.FilterResources{},
+		hud.FilterLevel(logger.InfoLvl))
 	return &logStreamerFixture{
 		t:          t,
 		fakeStdout: fakeStdout,
 		printer:    printer,
-		ls:         NewLogStreamer(nil, printer),
+		ls:         NewLogStreamer(filter, printer),
 	}
 }
 
 func (f *logStreamerFixture) withResourceNames(resourceNames ...string) *logStreamerFixture {
-	rns := make(model.ManifestNameSet, len(resourceNames))
+	resources := []model.ManifestName{}
 	for _, rn := range resourceNames {
-		rns[model.ManifestName(rn)] = true
+		resources = append(resources, model.ManifestName(rn))
 	}
-	f.ls.resources = rns
+	f.ls.filter = hud.NewLogFilter(
+		hud.FilterSourceAll,
+		hud.FilterResources(resources),
+		hud.FilterLevel(logger.InfoLvl))
 	return f
 }
 

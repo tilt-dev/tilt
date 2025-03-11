@@ -52,7 +52,9 @@ func (h *TerminalStream) OnChange(ctx context.Context, st store.RStore, _ store.
 	}
 
 	state := st.RLockState()
-	lines := state.LogStore.ContinuingLines(h.ProcessedLogs)
+	lines := state.LogStore.ContinuingLinesWithOptions(h.ProcessedLogs, logstore.LineOptions{
+		SuppressPrefix: h.filter.SuppressPrefix(),
+	})
 	lines = h.filter.Apply(lines)
 
 	checkpoint := state.LogStore.Checkpoint()
