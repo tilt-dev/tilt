@@ -27,7 +27,7 @@ tasks:
        --go_out=. --go_opt=paths=source_relative \
        --go-grpc_out=. --go-grpc_opt=paths=source_relative \
        pkg/webview/*.proto
-      sed -i 's|v1alpha1 "pkg/apis/core/v1alpha1"|v1alpha1 "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"|g' pkg/webview/*.pb.go 
+      sed -i 's|v1alpha1 "pkg/apis/core/v1alpha1"|v1alpha1 "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"|g' pkg/webview/*.pb.go
       sed -i 's|"$ref": "#/definitions/v1Time",|"type": "string", "format": "date-time",|g' pkg/webview/view.swagger.json
       sed -i 's|"$ref": "#/definitions/v1MicroTime",|"type": "string", "format": "date-time",|g' pkg/webview/view.swagger.json
       goimports -local github.com/tilt-dev -w pkg/webview/*.pb.go
@@ -45,22 +45,3 @@ tasks:
       declare namespace Proto
       " --output web/src/view.d.ts
       sed -i 's|v1alpha1 "pkg/apis/core/v1alpha1"|v1alpha1 "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"|g' pkg/webview/*.pb.go
-
-  wire:
-    input_paths:
-      - go.mod
-      - go.sum
-      - cmd
-      - integration
-      - internal
-      - pkg
-      - web/web.go
-      - vendor
-      - Makefile
-    output_paths:
-      - ./internal/cli/wire_gen.go
-      - ./internal/engine/wire_gen.go
-      - ./internal/engine/buildcontrol/wire_gen.go
-    command: |
-      make wire-dev
-      make goimports

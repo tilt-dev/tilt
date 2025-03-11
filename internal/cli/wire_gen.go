@@ -8,9 +8,15 @@ package cli
 
 import (
 	"context"
+	"time"
+
 	"github.com/google/wire"
 	"github.com/jonboulle/clockwork"
 	"github.com/spf13/afero"
+	"go.opentelemetry.io/otel/sdk/trace"
+	version2 "k8s.io/apimachinery/pkg/version"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
@@ -80,13 +86,7 @@ import (
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/wmclient/pkg/dirs"
-	"go.opentelemetry.io/otel/sdk/trace"
-	version2 "k8s.io/apimachinery/pkg/version"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"time"
-)
 
-import (
 	_ "embed"
 )
 
@@ -350,9 +350,9 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	stdout := hud.ProvideStdout()
 	incrementalPrinter := hud.NewIncrementalPrinter(stdout)
 	filterSource := provideLogSource()
-	manifestName := provideLogResource()
-	level := provideLogLevel()
-	logFilter := hud.NewLogFilter(filterSource, manifestName, level)
+	filterResources := provideLogResources()
+	filterLevel := provideLogLevel()
+	logFilter := hud.NewLogFilter(filterSource, filterResources, filterLevel)
 	terminalStream := hud.NewTerminalStream(incrementalPrinter, logFilter, storeStore)
 	openInput := _wireOpenInputValue
 	terminalPrompt := prompt.NewTerminalPrompt(analytics3, openInput, openURL, stdout, webHost, webURL)
@@ -564,9 +564,9 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	stdout := hud.ProvideStdout()
 	incrementalPrinter := hud.NewIncrementalPrinter(stdout)
 	filterSource := provideLogSource()
-	manifestName := provideLogResource()
-	level := provideLogLevel()
-	logFilter := hud.NewLogFilter(filterSource, manifestName, level)
+	filterResources := provideLogResources()
+	filterLevel := provideLogLevel()
+	logFilter := hud.NewLogFilter(filterSource, filterResources, filterLevel)
 	terminalStream := hud.NewTerminalStream(incrementalPrinter, logFilter, storeStore)
 	openInput := _wireOpenInputValue
 	terminalPrompt := prompt.NewTerminalPrompt(analytics3, openInput, openURL, stdout, webHost, webURL)
@@ -770,9 +770,9 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	stdout := hud.ProvideStdout()
 	incrementalPrinter := hud.NewIncrementalPrinter(stdout)
 	filterSource := provideLogSource()
-	manifestName := provideLogResource()
-	level := provideLogLevel()
-	logFilter := hud.NewLogFilter(filterSource, manifestName, level)
+	filterResources := provideLogResources()
+	filterLevel := provideLogLevel()
+	logFilter := hud.NewLogFilter(filterSource, filterResources, filterLevel)
 	terminalStream := hud.NewTerminalStream(incrementalPrinter, logFilter, storeStore)
 	cliUpdogSubscriber := provideUpdogSubscriber(objects, deferredClient)
 	v2 := provideUpdogCmdSubscribers(headsUpServerController, tiltServerControllerManager, controllerBuilder, terminalStream, cliUpdogSubscriber)
@@ -1083,7 +1083,7 @@ var K8sWireSet = wire.NewSet(k8s.ProvideClusterProduct, k8s.ProvideClusterName, 
 var BaseWireSet = wire.NewSet(
 	K8sWireSet, tiltfile.WireSet, git.ProvideGitRemote, localexec.DefaultEnv, localexec.NewProcessExecer, wire.Bind(new(localexec.Execer), new(*localexec.ProcessExecer)), docker.SwitchWireSet, dockercompose.NewDockerComposeClient, clockwork.NewRealClock, engine.DeployerWireSet, engine.NewBuildController, local.NewServerController, kubernetesdiscovery.NewContainerRestartDetector, k8swatch.NewServiceWatcher, k8swatch.NewEventWatchManager, uisession2.NewSubscriber, uiresource2.NewSubscriber, configs.NewConfigsController, configs.NewTriggerQueueSubscriber, telemetry.NewController, cloud.WireSet, cloudurl.ProvideAddress, k8srollout.NewPodMonitor, telemetry.NewStartTracker, session2.NewController, build.ProvideClock, provideClock,
 	provideLogSource,
-	provideLogResource,
+	provideLogResources,
 	provideLogLevel, hud.WireSet, prompt.WireSet, wire.Value(openurl.OpenURL(openurl.BrowserOpen)), provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(*store.Store)), wire.Bind(new(store.Dispatcher), new(*store.Store)), dockerprune.NewDockerPruner, provideTiltInfo, engine.NewUpper, analytics2.NewAnalyticsUpdater, analytics2.ProvideAnalyticsReporter, provideUpdateModeFlag, fsevent.ProvideWatcherMaker, fsevent.ProvideTimerMaker, controllers.WireSet, provideCITimeoutFlag,
 	provideWebVersion,
 	provideWebMode,
@@ -1175,17 +1175,21 @@ func provideLogSource() hud.FilterSource {
 	return hud.FilterSource(logSourceFlag)
 }
 
-func provideLogResource() model.ManifestName {
-	return model.ManifestName(logResourceFlag)
+func provideLogResources() hud.FilterResources {
+	result := []model.ManifestName{}
+	for _, r := range logResourcesFlag {
+		result = append(result, model.ManifestName(r))
+	}
+	return hud.FilterResources(result)
 }
 
-func provideLogLevel() logger.Level {
+func provideLogLevel() hud.FilterLevel {
 	switch logLevelFlag {
 	case "warn", "WARN", "warning", "WARNING":
-		return logger.WarnLvl
+		return hud.FilterLevel(logger.WarnLvl)
 	case "error", "ERROR":
-		return logger.ErrorLvl
+		return hud.FilterLevel(logger.ErrorLvl)
 	default:
-		return logger.NoneLvl
+		return hud.FilterLevel(logger.NoneLvl)
 	}
 }

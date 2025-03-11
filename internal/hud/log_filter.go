@@ -18,23 +18,40 @@ const (
 
 func (s FilterSource) String() string { return string(s) }
 
+type FilterResources []model.ManifestName
+
+func (r FilterResources) Matches(name model.ManifestName) bool {
+	if len(r) == 0 {
+		return true
+	}
+
+	for _, n := range r {
+		if n == name {
+			return true
+		}
+	}
+
+	return false
+}
+
+type FilterLevel logger.Level
+
 func NewLogFilter(
 	source FilterSource,
-	manifestName model.ManifestName,
-	level logger.Level,
+	resources FilterResources,
+	level FilterLevel,
 ) LogFilter {
-	r := LogFilter{
-		source:       source,
-		manifestName: manifestName,
-		level:        level,
+	return LogFilter{
+		source:    source,
+		resources: resources,
+		level:     logger.Level(level),
 	}
-	return r
 }
 
 type LogFilter struct {
-	source       FilterSource
-	manifestName model.ManifestName
-	level        logger.Level
+	source    FilterSource
+	resources FilterResources
+	level     logger.Level
 }
 
 // The implementation is identical to isBuildSpanId in web/src/logs.ts.
@@ -61,7 +78,7 @@ func (f LogFilter) Matches(line logstore.LogLine) bool {
 		return true
 	}
 
-	if f.manifestName != "" && f.manifestName != line.ManifestName {
+	if !f.resources.Matches(line.ManifestName) {
 		return false
 	}
 

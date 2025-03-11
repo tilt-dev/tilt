@@ -113,14 +113,8 @@ else
 endif
 
 wire:
-	# run wire in a container, which will then invoke `make wire-dev`
-	toast wire
-
-wire-dev:
-	# run wire directly, both used by Toast job and useful for faster iteration
-	# if you have wire installed (but don't forget to run `make wire` before
-	# committing to generate the authoritative versions!)
 	wire ./internal/engine ./internal/engine/buildcontrol ./internal/cli
+	goimports -w -l $(GOIMPORTS_LOCAL_ARG) internal/
 
 wire-check:
 	wire check ./internal/engine ./internal/engine/buildcontrol ./internal/cli

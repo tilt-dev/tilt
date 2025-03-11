@@ -107,7 +107,7 @@ var BaseWireSet = wire.NewSet(
 	build.ProvideClock,
 	provideClock,
 	provideLogSource,
-	provideLogResource,
+	provideLogResources,
 	provideLogLevel,
 	hud.WireSet,
 	prompt.WireSet,
@@ -360,17 +360,21 @@ func provideLogSource() hud.FilterSource {
 	return hud.FilterSource(logSourceFlag)
 }
 
-func provideLogResource() model.ManifestName {
-	return model.ManifestName(logResourceFlag)
+func provideLogResources() hud.FilterResources {
+	result := []model.ManifestName{}
+	for _, r := range logResourcesFlag {
+		result = append(result, model.ManifestName(r))
+	}
+	return hud.FilterResources(result)
 }
 
-func provideLogLevel() logger.Level {
+func provideLogLevel() hud.FilterLevel {
 	switch logLevelFlag {
 	case "warn", "WARN", "warning", "WARNING":
-		return logger.WarnLvl
+		return hud.FilterLevel(logger.WarnLvl)
 	case "error", "ERROR":
-		return logger.ErrorLvl
+		return hud.FilterLevel(logger.ErrorLvl)
 	default:
-		return logger.NoneLvl
+		return hud.FilterLevel(logger.NoneLvl)
 	}
 }

@@ -19,7 +19,6 @@ var (
 	defaultWebPort       = model.DefaultWebPort
 	defaultNamespace     = ""
 	defaultLogLevel      = ""
-	defaultLogResource   = ""
 	defaultLogSource     = "all"
 	webHostFlag          = ""
 	webPortFlag          = 0
@@ -82,8 +81,8 @@ func addNamespaceFlag(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&namespaceOverride, "namespace", defaultNamespace, "Default namespace for Kubernetes resources (overrides default namespace from active context in kubeconfig)")
 }
 
-func addLogFilterFlags(cmd *cobra.Command, logSource *string, logResource *string, logLevel *string) {
-	cmd.Flags().StringVar(logLevel, "log-level", defaultLogLevel, `Specify a log level. One of "warn", "error"`)
+func addLogFilterFlags(cmd *cobra.Command) {
+	cmd.Flags().StringVar(&logLevelFlag, "log-level", defaultLogLevel, `Specify a log level. One of "warn", "error"`)
 	_ = cmd.RegisterFlagCompletionFunc(
 		"log-level",
 		func(_ *cobra.Command, _ []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -98,8 +97,8 @@ func addLogFilterFlags(cmd *cobra.Command, logSource *string, logResource *strin
 			return completions, cobra.ShellCompDirectiveNoFileComp
 		},
 	)
-	cmd.Flags().StringVar(logResource, "log-resource", defaultLogResource, `Specify a resource to print logs for, e.g. "(Tiltfile)", "nginx", etc.`)
-	cmd.Flags().StringVar(logSource, "log-source", defaultLogSource, `Specify a log source. One of "all", "build", "runtime"`)
+	cmd.Flags().StringSliceVar(&logResourcesFlag, "log-resource", nil, `Specify one or more resources to print logs for, e.g. "(Tiltfile)", "nginx", etc. If not specified, prints all resources.`)
+	cmd.Flags().StringVar(&logSourceFlag, "log-source", defaultLogSource, `Specify a log source. One of "all", "build", "runtime"`)
 	_ = cmd.RegisterFlagCompletionFunc(
 		"log-source",
 		func(_ *cobra.Command, _ []string, toComplete string) ([]string, cobra.ShellCompDirective) {
