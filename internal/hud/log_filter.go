@@ -68,6 +68,11 @@ func (f LogFilter) matchesLevelFilter(line logstore.LogLine) bool {
 	return f.level == line.Level
 }
 
+// if printing logs for only one resource, don't need resource name prefix
+func (f LogFilter) SuppressPrefix() bool {
+	return len(f.resources) == 1
+}
+
 // Matches Checks if this line matches the current filter.
 // The implementation is identical to matchesFilter in web/src/OverviewLogPane.tsx.
 // except for term filtering as tools like grep can be used from the CLI.

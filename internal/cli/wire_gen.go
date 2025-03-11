@@ -991,7 +991,15 @@ func wireLogsDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, s
 	}
 	stdout := hud.ProvideStdout()
 	incrementalPrinter := hud.NewIncrementalPrinter(stdout)
-	logsDeps := ProvideLogsDeps(webURL, incrementalPrinter)
+	filterSource := provideLogSource()
+	filterResources := provideLogResources()
+	filterLevel := provideLogLevel()
+	logFilter := hud.NewLogFilter(filterSource, filterResources, filterLevel)
+	logsDeps := LogsDeps{
+		url:     webURL,
+		printer: incrementalPrinter,
+		filter:  logFilter,
+	}
 	return logsDeps, nil
 }
 
@@ -1149,13 +1157,7 @@ func ProvideDownDeps(
 type LogsDeps struct {
 	url     model.WebURL
 	printer *hud.IncrementalPrinter
-}
-
-func ProvideLogsDeps(u model.WebURL, p *hud.IncrementalPrinter) LogsDeps {
-	return LogsDeps{
-		url:     u,
-		printer: p,
-	}
+	filter  hud.LogFilter
 }
 
 func provideClock() func() time.Time {
