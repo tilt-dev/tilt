@@ -3187,7 +3187,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	lsc := local.NewServerController(cdc)
 	sr := ctrlsession.NewReconciler(cdc, st, clock)
 	sessionController := session.NewController(sr)
-	ts := hud.NewTerminalStream(hud.NewIncrementalPrinter(log), hud.NewLogFilter(hud.FilterSourceAll, "", logger.NoneLvl), st)
+	ts := hud.NewTerminalStream(hud.NewIncrementalPrinter(log), hud.NewLogFilter(hud.FilterSourceAll, nil, hud.FilterLevel(logger.NoneLvl)), st)
 	tp := prompt.NewTerminalPrompt(ta, prompt.TTYOpen, openurl.BrowserOpen,
 		log, "localhost", model.WebURL{})
 	h := hud.NewFakeHud()

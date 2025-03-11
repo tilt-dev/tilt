@@ -139,19 +139,19 @@ func TestLogFilterMatches(t *testing.T) {
 		},
 		{
 			description: "empty manifest name matches any logs",
-			logFilter:   LogFilter{source: FilterSourceAll, manifestName: ""},
+			logFilter:   LogFilter{source: FilterSourceAll, resources: nil},
 			input:       logstore.LogLine{SpanID: "pod:default:nginx", ManifestName: "nginx"},
 			expected:    true,
 		},
 		{
 			description: "manifest name matches logs with the same manifest name",
-			logFilter:   LogFilter{source: FilterSourceAll, manifestName: "nginx"},
+			logFilter:   LogFilter{source: FilterSourceAll, resources: FilterResources{"nginx"}},
 			input:       logstore.LogLine{SpanID: "pod:default:nginx", ManifestName: "nginx"},
 			expected:    true,
 		},
 		{
 			description: "manifest name does not match logs with a different manifest name",
-			logFilter:   LogFilter{source: FilterSourceAll, manifestName: "test"},
+			logFilter:   LogFilter{source: FilterSourceAll, resources: FilterResources{"test"}},
 			input:       logstore.LogLine{SpanID: "pod:default:nginx", ManifestName: "nginx"},
 			expected:    false,
 		},
@@ -261,7 +261,7 @@ func TestLogFilterApply(t *testing.T) {
 		},
 		{
 			description: "filter with manifest name matches only logs with the same manifest name",
-			logFilter:   LogFilter{source: FilterSourceAll, manifestName: "nginx"},
+			logFilter:   LogFilter{source: FilterSourceAll, resources: FilterResources{"nginx"}},
 			input: []logstore.LogLine{
 				{SpanID: "pod:default:nginx", ManifestName: "nginx"},
 				{SpanID: "build:1", ManifestName: "nginx"},
