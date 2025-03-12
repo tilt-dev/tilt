@@ -3,7 +3,7 @@
 # Usage:
 #   iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/tilt-dev/tilt/master/scripts/install.ps1')
 
-$version = "0.33.22"
+$version = "0.34.0"
 $url = "https://github.com/tilt-dev/tilt/releases/download/v" + $version + "/tilt." + $version + ".windows.x86_64.zip"
 $zip = "tilt-" + $version + ".zip"
 $extractDir = "tilt-" + $version
