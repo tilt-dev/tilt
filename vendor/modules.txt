@@ -18,7 +18,7 @@ github.com/Microsoft/go-winio/internal/fs
 github.com/Microsoft/go-winio/internal/socket
 github.com/Microsoft/go-winio/internal/stringbuffer
 github.com/Microsoft/go-winio/pkg/guid
-# github.com/Microsoft/hcsshim v0.11.5
+# github.com/Microsoft/hcsshim v0.11.7
 ## explicit; go 1.21
 github.com/Microsoft/hcsshim/osversion
 # github.com/NYTimes/gziphandler v1.1.1
@@ -92,14 +92,14 @@ github.com/compose-spec/compose-go/utils
 # github.com/containerd/console v1.0.4
 ## explicit; go 1.13
 github.com/containerd/console
-# github.com/containerd/containerd v1.7.18
+# github.com/containerd/containerd v1.7.27
 ## explicit; go 1.21
-github.com/containerd/containerd/api/services/content/v1
 github.com/containerd/containerd/archive/compression
 github.com/containerd/containerd/content
 github.com/containerd/containerd/content/local
 github.com/containerd/containerd/content/proxy
 github.com/containerd/containerd/defaults
+github.com/containerd/containerd/errdefs
 github.com/containerd/containerd/filters
 github.com/containerd/containerd/identifiers
 github.com/containerd/containerd/images
@@ -111,7 +111,6 @@ github.com/containerd/containerd/platforms
 github.com/containerd/containerd/protobuf
 github.com/containerd/containerd/protobuf/types
 github.com/containerd/containerd/reference
-github.com/containerd/containerd/reference/docker
 github.com/containerd/containerd/remotes
 github.com/containerd/containerd/remotes/docker
 github.com/containerd/containerd/remotes/docker/auth
@@ -120,17 +119,24 @@ github.com/containerd/containerd/remotes/errors
 github.com/containerd/containerd/services/content/contentserver
 github.com/containerd/containerd/tracing
 github.com/containerd/containerd/version
-# github.com/containerd/continuity v0.4.3
-## explicit; go 1.19
+# github.com/containerd/containerd/api v1.8.0
+## explicit; go 1.21
+github.com/containerd/containerd/api/services/content/v1
+# github.com/containerd/continuity v0.4.4
+## explicit; go 1.21
+github.com/containerd/continuity/devices
 github.com/containerd/continuity/fs
 github.com/containerd/continuity/sysx
-# github.com/containerd/errdefs v0.1.0
+# github.com/containerd/errdefs v0.3.0
 ## explicit; go 1.20
 github.com/containerd/errdefs
 # github.com/containerd/log v0.1.0
 ## explicit; go 1.20
 github.com/containerd/log
-# github.com/containerd/ttrpc v1.2.4
+# github.com/containerd/platforms v0.2.1
+## explicit; go 1.20
+github.com/containerd/platforms
+# github.com/containerd/ttrpc v1.2.7
 ## explicit; go 1.19
 github.com/containerd/ttrpc
 # github.com/containerd/typeurl/v2 v2.1.1
