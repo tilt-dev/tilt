@@ -1743,11 +1743,11 @@ __metadata:
   linkType: hard
 
 "@babel/runtime@npm:^7.0.0, @babel/runtime@npm:^7.1.2, @babel/runtime@npm:^7.11.2, @babel/runtime@npm:^7.12.13, @babel/runtime@npm:^7.12.5, @babel/runtime@npm:^7.16.3, @babel/runtime@npm:^7.17.8, @babel/runtime@npm:^7.23.2, @babel/runtime@npm:^7.3.1, @babel/runtime@npm:^7.4.4, @babel/runtime@npm:^7.5.0, @babel/runtime@npm:^7.5.5, @babel/runtime@npm:^7.7.6, @babel/runtime@npm:^7.8.3, @babel/runtime@npm:^7.8.4, @babel/runtime@npm:^7.8.7, @babel/runtime@npm:^7.9.2":
-  version: 7.24.0
-  resolution: "@babel/runtime@npm:7.24.0"
+  version: 7.26.10
+  resolution: "@babel/runtime@npm:7.26.10"
   dependencies:
     regenerator-runtime: "npm:^0.14.0"
-  checksum: 10/8d32c7e116606ea322b89f9fde8ffae6be9503b549dc0d0abb38bd9dc26e87469b9fb7a66964cc089ee558fd0a97d304fb0a3cfec140694764fb0d71b6a6f5e4
+  checksum: 10/9d7ff8e96abe3791047c1138789c742411e3ef19c4d7ca18ce916f83cec92c06ec5dc64401759f6dd1e377cf8a01bbd2c62e033eb7550f435cf6579768d0d4a5
   languageName: node
   linkType: hard
 
