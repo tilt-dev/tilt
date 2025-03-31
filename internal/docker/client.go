@@ -593,18 +593,24 @@ func (c *Cli) ExecInContainer(ctx context.Context, cID container.ID, cmd model.C
 		return errors.Wrap(err, "ExecInContainer")
 	}
 
-	execId, err := c.ContainerExecCreate(ctx, cID.String(), cfg)
+	// We've sometimes seen ExecCreate/Attach/Start hang, so we add a timeout
+	// here.  It happens very rarely and is not consistently reproducible. It
+	// seems to happen when running the exec inside a volume.
+	// https://github.com/tilt-dev/tilt/issues/6521
+	createCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	execId, err := c.ContainerExecCreate(createCtx, cID.String(), cfg)
 	if err != nil {
 		return errors.Wrap(err, "ExecInContainer#create")
 	}
 
-	connection, err := c.ContainerExecAttach(ctx, execId.ID, types.ExecStartCheck{Tty: true})
+	connection, err := c.ContainerExecAttach(createCtx, execId.ID, types.ExecStartCheck{Tty: true})
 	if err != nil {
 		return errors.Wrap(err, "ExecInContainer#attach")
 	}
 	defer connection.Close()
 
-	err = c.ContainerExecStart(ctx, execId.ID, types.ExecStartCheck{})
+	err = c.ContainerExecStart(createCtx, execId.ID, types.ExecStartCheck{})
 	if err != nil {
 		return errors.Wrap(err, "ExecInContainer#start")
 	}
