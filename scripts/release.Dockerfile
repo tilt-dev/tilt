@@ -7,7 +7,7 @@
 # osxcross contains the MacOSX cross toolchain for xx
 FROM crazymax/osxcross:11.3-debian AS osxcross
 
-FROM golang:1.23-bullseye as musl-cross
+FROM golang:1.23-bullseye AS musl-cross
 WORKDIR /musl
 # https://more.musl.cc/GCC-MAJOR-VERSION/HOST-ARCH-linux-musl/CROSS-ARCH-linux-musl-cross.tgz
 RUN curl -sf https://more.musl.cc/11/x86_64-linux-musl/aarch64-linux-musl-cross.tgz | tar zxf -
@@ -77,6 +77,6 @@ COPY --from=osxcross /osxcross /osxcross
 COPY --from=musl-cross /musl /musl
 
 ENV PATH=/home/linuxbrew/.linuxbrew/bin:/osxcross/bin:/musl/aarch64-linux-musl-cross/bin:/musl/x86_64-linux-musl-cross/bin:$PATH
-ENV LD_LIBRARY_PATH=/osxcross/lib:$LD_LIBRARY_PATH
+ENV LD_LIBRARY_PATH=/osxcross/lib
 
 RUN mkdir -p ~/.windmill
