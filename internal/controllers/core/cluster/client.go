@@ -56,8 +56,8 @@ func KubernetesClientFromEnv(ctx context.Context, contextOverride k8s.KubeContex
 	portForwardClient := k8s.ProvidePortForwardClient(restConfigOrError, clientsetOrError)
 	namespace := k8s.ProvideConfigNamespace(clientConfig)
 	kubeContext := k8s.ProvideKubeContext(apiConfigOrError)
-	minikubeClient := k8s.ProvideMinikubeClient(kubeContext)
 	clusterName := k8s.ProvideClusterName(apiConfigOrError)
+	minikubeClient := k8s.ProvideMinikubeClient(clusterName)
 	client := k8s.ProvideK8sClient(ctx, env, restConfigOrError, clientsetOrError, portForwardClient, kubeContext, clusterName, namespace, minikubeClient, apiConfigOrError, clientConfig)
 	_, err := client.CheckConnected(ctx)
 	if err != nil {

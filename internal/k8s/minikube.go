@@ -32,10 +32,17 @@ type MinikubeClient interface {
 }
 
 type minikubeClient struct {
-	context KubeContext
+	// The minikube client needs to know which minikube profile to talk to.
+	//
+	// When minikube creates a cluster, it sets the kubeconfig context name and
+	// the cluster nameto the name of the profile.
+	//
+	// The cluster name is better because users
+	// don't usually rename it.
+	context ClusterName
 }
 
-func ProvideMinikubeClient(context KubeContext) MinikubeClient {
+func ProvideMinikubeClient(context ClusterName) MinikubeClient {
 	return minikubeClient{context: context}
 }
 
