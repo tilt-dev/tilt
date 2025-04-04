@@ -12,10 +12,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/compose-spec/compose-go/loader"
+	"github.com/compose-spec/compose-go/v2/loader"
 	"golang.org/x/mod/semver"
 
-	"github.com/compose-spec/compose-go/types"
+	"github.com/compose-spec/compose-go/v2/types"
 	"github.com/pkg/errors"
 
 	"github.com/tilt-dev/tilt/internal/container"
@@ -23,7 +23,7 @@ import (
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 
-	compose "github.com/compose-spec/compose-go/cli"
+	compose "github.com/compose-spec/compose-go/v2/cli"
 )
 
 // versionRegex handles both v1 and v2 version outputs, which have several variations.
@@ -254,7 +254,7 @@ func (c *cmdDCClient) Project(ctx context.Context, spec v1alpha1.DockerComposePr
 
 	// First, use compose-go to natively load the project.
 	if len(spec.ConfigPaths) > 0 {
-		parsed, err := c.loadProjectNative(spec)
+		parsed, err := c.loadProjectNative(ctx, spec)
 		if err == nil {
 			proj = parsed
 		}
@@ -309,12 +309,12 @@ func composeProjectOptions(modelProj v1alpha1.DockerComposeProject, env []string
 	return compose.NewProjectOptions(modelProj.ConfigPaths, allProjectOptions...)
 }
 
-func (c *cmdDCClient) loadProjectNative(modelProj v1alpha1.DockerComposeProject) (*types.Project, error) {
+func (c *cmdDCClient) loadProjectNative(ctx context.Context, modelProj v1alpha1.DockerComposeProject) (*types.Project, error) {
 	opts, err := composeProjectOptions(modelProj, c.mergedEnv())
 	if err != nil {
 		return nil, err
 	}
-	proj, err := compose.ProjectFromOptions(opts)
+	proj, err := compose.ProjectFromOptions(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
