@@ -294,6 +294,10 @@ func (c *cmdDCClient) Version(ctx context.Context) (string, string, error) {
 }
 
 func composeProjectOptions(modelProj v1alpha1.DockerComposeProject, env []string) (*compose.ProjectOptions, error) {
+	var envFiles []string
+	if modelProj.EnvFile != "" {
+		envFiles = append(envFiles, modelProj.EnvFile)
+	}
 	// NOTE: take care to keep behavior in sync with loadProjectCLI()
 	allProjectOptions := append(dcProjectOptions,
 		compose.WithWorkingDirectory(modelProj.ProjectPath),
@@ -301,10 +305,8 @@ func composeProjectOptions(modelProj v1alpha1.DockerComposeProject, env []string
 		compose.WithResolvedPaths(true),
 		compose.WithEnv(env),
 		compose.WithProfiles(modelProj.Profiles),
+		compose.WithEnvFiles(envFiles...),
 	)
-	if modelProj.EnvFile != "" {
-		allProjectOptions = append(allProjectOptions, compose.WithEnvFiles(modelProj.EnvFile))
-	}
 	allProjectOptions = append(allProjectOptions, compose.WithDotEnv)
 	return compose.NewProjectOptions(modelProj.ConfigPaths, allProjectOptions...)
 }
