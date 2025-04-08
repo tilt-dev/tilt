@@ -86,6 +86,8 @@ func TestRecursive(t *testing.T) {
 	// https://github.com/tilt-dev/tilt/blob/15d0c94ccc08230d3a528b14cb0a3455b947d13c/vendor/sigs.k8s.io/kustomize/api/types/kustomization.go#L102
 	kustomize := `bases:
 - ./dev
+components:
+- ./component
 resources:
 - ./staging
 - ./production
@@ -114,6 +116,11 @@ namePrefix: cluster-a-`
 namePrefix: dev-`
 	f.writeBaseKustomize("dev", dev)
 
+	component := `labels:
+  - pairs:
+      instance: myapp`
+	f.writeBaseKustomize("component", component)
+
 	staging := `bases:
 - ./../base
 namePrefix: stag-`
@@ -127,6 +134,7 @@ namePrefix: prod-`
 	expected := []string{
 		"base/kustomization.yaml",
 		"base/pod.yaml",
+		"component/kustomization.yaml",
 		"dev/kustomization.yaml",
 		"staging/kustomization.yaml",
 		"production/kustomization.yaml",
