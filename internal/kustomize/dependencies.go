@@ -86,6 +86,7 @@ func dependenciesForKustomization(dir string) ([]string, error) {
 	}
 
 	paths := append([]string{}, content.Bases...)
+	paths = append(paths, content.Components...)
 	paths = append(paths, content.Resources...)
 
 	for _, p := range paths {
