@@ -1,5 +1,5 @@
 # keep image in sync with .circleci/config.yml
-image: "docker/tilt-releaser@sha256:9d05f87976ccdf8a3434443fac2b867ca99a81c8423008437c767c04784969e4"
+image: "docker/tilt-releaser@sha256:2dcf9df09bd9b8c5d51659868b045bea5ee8830fe4638cb59b7bff825d82dd01"
 location: /go/src/github.com/tilt-dev/tilt
 command_prefix: set -euo pipefail
 tasks:

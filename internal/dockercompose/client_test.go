@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/compose-spec/compose-go/types"
+	"github.com/compose-spec/compose-go/v2/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -55,7 +55,7 @@ func TestVariableInterpolation(t *testing.T) {
 
 	proj := f.loadProject(output)
 	if assert.Len(t, proj.Services, 1) {
-		svc := proj.Services[0]
+		svc := proj.Services["app"]
 		assert.Equal(t, "myimage", svc.Image)
 		if assert.NotNil(t, svc.Build) {
 			assert.Equal(t, f.tmpdir.JoinPath("0"), svc.Build.Context)
@@ -133,7 +133,7 @@ func TestLoadEnvFile(t *testing.T) {
     image: asdf
 `
 	proj := f.loadProject(dcYAML)
-	require.Equal(t, types.ShellCommand{"foo"}, proj.Services[0].Command)
+	require.Equal(t, types.ShellCommand{"foo"}, proj.Services["foo"].Command)
 }
 
 type dcFixture struct {

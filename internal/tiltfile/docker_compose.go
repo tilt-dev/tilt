@@ -12,9 +12,9 @@ import (
 
 	"golang.org/x/exp/slices"
 
-	"github.com/compose-spec/compose-go/consts"
-	"github.com/compose-spec/compose-go/loader"
-	"github.com/compose-spec/compose-go/types"
+	"github.com/compose-spec/compose-go/v2/consts"
+	"github.com/compose-spec/compose-go/v2/loader"
+	"github.com/compose-spec/compose-go/v2/types"
 	"github.com/distribution/reference"
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
@@ -193,11 +193,11 @@ func (s *tiltfileState) dockerCompose(thread *starlark.Thread, fn *starlark.Buil
 		}
 
 		dc.serviceNames = append(dc.serviceNames, svc.Name)
-		for _, f := range svc.ServiceConfig.EnvFile {
-			if !filepath.IsAbs(f) {
-				f = filepath.Join(project.ProjectPath, f)
+		for _, f := range svc.ServiceConfig.EnvFiles {
+			if !filepath.IsAbs(f.Path) {
+				f.Path = filepath.Join(project.ProjectPath, f.Path)
 			}
-			err = io.RecordReadPath(thread, io.WatchFileOnly, f)
+			err = io.RecordReadPath(thread, io.WatchFileOnly, f.Path)
 			if err != nil {
 				return nil, err
 			}
@@ -488,8 +488,8 @@ func parseDCConfig(ctx context.Context, dcc dockercompose.DockerComposeClient, d
 	}
 
 	var services []*dcService
-	err = proj.WithServices(proj.ServiceNames(), func(svcConfig types.ServiceConfig) error {
-		svc, err := dockerComposeConfigToService(dcrs, proj.Name, svcConfig)
+	err = proj.ForEachService(proj.ServiceNames(), func(name string, svcConfig *types.ServiceConfig) error {
+		svc, err := dockerComposeConfigToService(dcrs, proj.Name, *svcConfig)
 		if err != nil {
 			return errors.Wrapf(err, "getting service %s", svcConfig.Name)
 		}

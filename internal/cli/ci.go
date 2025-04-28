@@ -49,7 +49,8 @@ See blog post for additional information: https://blog.tilt.dev/2020/04/16/how-t
 	addTiltfileFlag(cmd, &c.fileName)
 	addKubeContextFlag(cmd)
 	addNamespaceFlag(cmd)
-	addLogFilterFlags(cmd)
+	addLogFilterFlags(cmd, "log-")
+	addLogFilterResourcesFlag(cmd)
 
 	cmd.Flags().BoolVar(&logActionsFlag, "logactions", false, "log all actions and state changes")
 	cmd.Flags().Lookup("logactions").Hidden = true

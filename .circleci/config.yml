@@ -10,7 +10,7 @@ jobs:
   build-linux:
     resource_class: medium+
     docker:
-      - image: docker/tilt-ci@sha256:04e2f5ed618d5e17d72a6674a7e2645c3f8c3fead1cfbd9fa8f73a841f5bcf5b
+      - image: docker/tilt-ci@sha256:d3a4b59d61b0f254a467ae265ab07c20426793fafea6d4c0582bb487b5a21569
     # apiserver code generation scripts require being in GOPATH
     working_directory: /home/circleci/go/src/github.com/tilt-dev/tilt
     steps:
@@ -47,7 +47,7 @@ jobs:
           only_for_branches: master
   check-docs:
     docker:
-      - image: docker/tilt-ci@sha256:04e2f5ed618d5e17d72a6674a7e2645c3f8c3fead1cfbd9fa8f73a841f5bcf5b
+      - image: docker/tilt-ci@sha256:d3a4b59d61b0f254a467ae265ab07c20426793fafea6d4c0582bb487b5a21569
     steps:
       - checkout
       - setup_remote_docker
@@ -69,7 +69,7 @@ jobs:
     steps:
       - run: |
           choco install -y make kustomize kubernetes-helm docker-compose
-          choco upgrade -y --allow-downgrade golang --version=1.23.2
+          choco upgrade -y --allow-downgrade golang --version=1.24.1
 
           # mingw 13 seems to have broken gcc installs
           # https://community.chocolatey.org/packages/mingw#comment-6290804217
@@ -95,7 +95,7 @@ jobs:
   build-integration:
     resource_class: medium+
     docker:
-      - image: docker/tilt-integration-ci@sha256:16f9d26ea50cecfc184ecced4370885c9ae6c6dd30ca3cad1c4ec765e0f61b28
+      - image: docker/tilt-integration-ci@sha256:930c41e8b1ed625600c691ff0039cc1e06b94638f989008cda400ee560167704
     steps:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
@@ -108,7 +108,7 @@ jobs:
   test-extensions:
     resource_class: large
     docker:
-      - image: docker/tilt-extensions-ci@sha256:996c1dc73f2740fe7d3057264b75d8f2614b0b1b929e11aa580c7e3f8c7ded8e
+      - image: "docker/tilt-extensions-ci@sha256:c22a39c287c7c3afba182f4f46044475b43bd2d4e2bb89f41136eae7d4f4b94d"
     steps:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
@@ -147,7 +147,7 @@ jobs:
     resource_class: medium+
     docker:
       # keep image in sync with build.toast.yml
-      - image: "docker/tilt-releaser@sha256:9d05f87976ccdf8a3434443fac2b867ca99a81c8423008437c767c04784969e4"
+      - image: "docker/tilt-releaser@sha256:2dcf9df09bd9b8c5d51659868b045bea5ee8830fe4638cb59b7bff825d82dd01"
     steps:
       - setup_remote_docker
       # https://discuss.circleci.com/t/arm-version-of-remote-docker/41624
@@ -163,7 +163,7 @@ jobs:
     resource_class: medium+
     docker:
       # keep image in sync with build.toast.yml
-      - image: "docker/tilt-releaser@sha256:9d05f87976ccdf8a3434443fac2b867ca99a81c8423008437c767c04784969e4"
+      - image: "docker/tilt-releaser@sha256:2dcf9df09bd9b8c5d51659868b045bea5ee8830fe4638cb59b7bff825d82dd01"
     environment:
       DOCKER_CLI_EXPERIMENTAL: enabled
     steps:

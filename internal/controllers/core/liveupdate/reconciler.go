@@ -1005,11 +1005,6 @@ func (r *Reconciler) containerUpdater(input Input) containerupdate.ContainerUpda
 		return r.ExecUpdater
 	}
 
-	dcu, ok := r.DockerUpdater.(*containerupdate.DockerUpdater)
-	if ok && dcu.WillBuildToKubeContext(r.kubeContext) {
-		return r.DockerUpdater
-	}
-
 	return r.ExecUpdater
 }
 

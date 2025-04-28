@@ -1,0 +1,4 @@
+BAR=bar_from_label_file_2
+
+# overridden in configDetails.Labels
+QUX=quz_from_label_file_2

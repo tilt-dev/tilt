@@ -1,7 +1,7 @@
 # options for analysis running
 run:
   timeout: 10m
-  go: "1.23"
+  go: "1.24"
   exclude-files:
     - "zz_generated.*\\.go$"
     - "vendored_openapi\\.go$"

@@ -8,9 +8,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/compose-spec/compose-go/loader"
+	"github.com/compose-spec/compose-go/v2/loader"
 
-	"github.com/compose-spec/compose-go/types"
+	"github.com/compose-spec/compose-go/v2/types"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -134,7 +134,7 @@ func (c *FakeDCClient) Config(_ context.Context, _ []string) (string, error) {
 	return c.ConfigOutput, nil
 }
 
-func (c *FakeDCClient) Project(_ context.Context, m v1alpha1.DockerComposeProject) (*types.Project, error) {
+func (c *FakeDCClient) Project(ctx context.Context, m v1alpha1.DockerComposeProject) (*types.Project, error) {
 	// this is a dummy ProjectOptions that lets us use compose's logic to apply options
 	// for consistency, but we have to then pull the data out ourselves since we're calling
 	// loader.Load ourselves
@@ -152,7 +152,7 @@ func (c *FakeDCClient) Project(_ context.Context, m v1alpha1.DockerComposeProjec
 		projectName = "fakedc"
 	}
 
-	p, err := loader.Load(types.ConfigDetails{
+	p, err := loader.LoadWithContext(ctx, types.ConfigDetails{
 		WorkingDir: workDir,
 		ConfigFiles: []types.ConfigFile{
 			{

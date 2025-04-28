@@ -33,8 +33,8 @@ By default, looks for a running Tilt instance on localhost:10350
 
 	cmd.Flags().BoolVarP(&c.follow, "follow", "f", false, "If true, stream the requested logs; otherwise, print the requested logs at the current moment in time, then exit.")
 
-	// TODO: log level flags
 	addConnectServerFlags(cmd)
+	addLogFilterFlags(cmd, "")
 	return cmd
 }
 
@@ -48,10 +48,13 @@ func (c *logsCmd) run(ctx context.Context, args []string) error {
 		log.Printf("Tilt analytics disabled: %s", reason)
 	}
 
+	// For `tilt logs`, the resources are passed as extra args.
+	logResourcesFlag = args
+
 	logDeps, err := wireLogsDeps(ctx, a, "logs")
 	if err != nil {
 		return err
 	}
 
-	return server.StreamLogs(ctx, c.follow, logDeps.url, args, logDeps.printer)
+	return server.StreamLogs(ctx, c.follow, logDeps.url, logDeps.filter, logDeps.printer)
 }
