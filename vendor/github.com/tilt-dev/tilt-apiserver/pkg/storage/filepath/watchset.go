@@ -53,10 +53,14 @@ type watchNode struct {
 }
 
 // Start sending events to this watch.
-func (w *watchNode) Start(p storage.SelectionPredicate, initEvents []watch.Event) {
+func (w *watchNode) Start(p storage.SelectionPredicate, initEventFactory func() ([]watch.Event, error)) error {
 	w.s.mu.Lock()
+	defer w.s.mu.Unlock()
 	w.s.nodes[w.id] = w
-	w.s.mu.Unlock()
+	initEvents, err := initEventFactory()
+	if err != nil {
+		return err
+	}
 
 	go func() {
 		for _, e := range initEvents {
@@ -76,6 +80,8 @@ func (w *watchNode) Start(p storage.SelectionPredicate, initEvents []watch.Event
 		}
 		close(w.outCh)
 	}()
+
+	return nil
 }
 
 func (w *watchNode) Stop() {

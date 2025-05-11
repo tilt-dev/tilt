@@ -549,33 +549,40 @@ func (f *filepathREST) Watch(ctx context.Context, options *metainternalversion.L
 	p := newSelectionPredicate(options)
 	jw := f.watchSet.newWatch()
 
-	// On initial watch, send all the existing objects
-	list, err := f.List(ctx, options)
-	if err != nil {
-		return nil, err
-	}
+	getInitEvents := func() ([]watch.Event, error) {
+		// On initial watch, send all the existing objects.
+		// We may receive duplicated "Added" events for some objects via the watch updata channel,
+		// and we may report them twice, but that is much better than not reporting them at all,
+		// and having clients left unaware that an object they might be interested in was created.
+		// See https://github.com/tilt-dev/tilt-apiserver/issues/88
 
-	danger := reflect.ValueOf(list).Elem()
-	items := danger.FieldByName("Items")
-
-	initEvents := []watch.Event{}
-	for i := 0; i < items.Len(); i++ {
-		obj := items.Index(i).Addr().Interface().(runtime.Object)
-		ok, err := p.Matches(obj)
+		list, err := f.List(ctx, options)
 		if err != nil {
 			return nil, err
 		}
-		if !ok {
-			continue
-		}
-		initEvents = append(initEvents, watch.Event{
-			Type:   watch.Added,
-			Object: obj,
-		})
-	}
-	jw.Start(p, initEvents)
+		danger := reflect.ValueOf(list).Elem()
+		items := danger.FieldByName("Items")
 
-	return jw, nil
+		initEvents := []watch.Event{}
+		for i := 0; i < items.Len(); i++ {
+			obj := items.Index(i).Addr().Interface().(runtime.Object)
+			ok, err := p.Matches(obj)
+			if err != nil {
+				return nil, err
+			}
+			if !ok {
+				continue
+			}
+			initEvents = append(initEvents, watch.Event{
+				Type:   watch.Added,
+				Object: obj,
+			})
+		}
+		return initEvents, nil
+	}
+
+	startErr := jw.Start(p, getInitEvents)
+	return jw, startErr
 }
 
 func (f *filepathREST) conflictErr(name string) error {
