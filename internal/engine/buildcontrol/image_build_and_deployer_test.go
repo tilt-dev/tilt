@@ -764,8 +764,8 @@ func TestCantInjectOverrideCommandWithoutContainer(t *testing.T) {
 	cmd := model.ToUnixCmd("./foo.sh bar")
 	manifest := manifestbuilder.New(f, "sancho").
 		WithK8sYAML(crdYamlWithSanchoImage).
-		WithNamedJSONPathImageLocator("projects.example.martin-helmich.de",
-			"{.spec.validation.openAPIV3Schema.properties.spec.properties.image}").
+		WithNamedJSONPathImageLocator("example-project",
+			"{.spec.image}").
 		WithImageTarget(NewSanchoDockerBuildImageTarget(f).WithOverrideCommand(cmd)).
 		Build()
 

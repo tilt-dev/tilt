@@ -1402,7 +1402,7 @@ spec:
 // Example CRD YAML from:
 // https://github.com/martin-helmich/kubernetes-crd-example/tree/master/kubernetes
 const CRDYAML = `
-apiVersion: apiextensions.k8s.io/v1beta1
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: projects.example.martin-helmich.de
@@ -1413,20 +1413,26 @@ spec:
     plural: projects
     singular: project
   scope: Namespaced
-  validation:
-    openAPIV3Schema:
-      properties:
-        spec:
-          properties:
-            image: docker.io/bitnami/minideb:latest
-            replicas:
-              minimum: 1
-              type: integer
-          required:
-          - replicas
-      required:
-      - spec
-  version: v1alpha1
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          spec:
+            properties:
+              image:
+                type: string
+              replicas:
+                minimum: 1
+                type: integer
+            required:
+            - replicas
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
 
 ---
 apiVersion: example.martin-helmich.de/v1alpha1
@@ -1435,6 +1441,7 @@ metadata:
   name: example-project
   namespace: default
 spec:
+  image: docker.io/bitnami/minideb:latest
   replicas: 1
 `
 

@@ -26,7 +26,7 @@ func (r *ResourceList) Append(val *resource.Info) {
 	*r = append(*r, val)
 }
 
-// Visit implements resource.Visitor.
+// Visit implements resource.Visitor. The visitor stops if fn returns an error.
 func (r ResourceList) Visit(fn resource.VisitorFunc) error {
 	for _, i := range r {
 		if err := fn(i, nil); err != nil {
@@ -81,5 +81,5 @@ func (r ResourceList) Intersect(rs ResourceList) ResourceList {
 
 // isMatchingInfo returns true if infos match on Name and GroupVersionKind.
 func isMatchingInfo(a, b *resource.Info) bool {
-	return a.Name == b.Name && a.Namespace == b.Namespace && a.Mapping.GroupVersionKind.Kind == b.Mapping.GroupVersionKind.Kind
+	return a.Name == b.Name && a.Namespace == b.Namespace && a.Mapping.GroupVersionKind.Kind == b.Mapping.GroupVersionKind.Kind && a.Mapping.GroupVersionKind.Group == b.Mapping.GroupVersionKind.Group
 }

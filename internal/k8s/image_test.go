@@ -280,19 +280,19 @@ func TestCRDExtract(t *testing.T) {
 	}
 
 	img := container.MustParseTaggedSelector("docker.io/bitnami/minideb:latest")
-	e := entities[0]
-	selector, err := NewPartialMatchObjectSelector("", "", "projects.example.martin-helmich.de", "")
+	e := entities[1]
+	selector, err := NewPartialMatchObjectSelector("", "", "Project", "")
 	require.NoError(t, err)
 
 	jp, err := NewJSONPathImageLocator(
 		selector,
-		"{.spec.validation.openAPIV3Schema.properties.spec.properties.image}")
+		"{.spec.image}")
 	require.NoError(t, err)
 
 	match, err := e.HasImage(img, []ImageLocator{jp}, false)
 	require.NoError(t, err)
 
-	assert.True(t, match, "CRD yaml should match image %s", img.String())
+	assert.True(t, match, "CR yaml should match image %s", img.String())
 }
 
 func TestEnvExtract(t *testing.T) {
