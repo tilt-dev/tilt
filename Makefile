@@ -109,7 +109,7 @@ ifneq ($(CIRCLECI),true)
 	GOFLAGS="-mod=vendor" golangci-lint run $(LINT_FLAGS) -v --timeout 300s
 else
 	mkdir -p test-results
-	GOFLAGS="-mod=vendor" golangci-lint run -v --timeout 300s --out-format junit-xml > test-results/lint.xml
+	GOFLAGS="-mod=vendor" golangci-lint run -v --timeout 300s --output.junit-xml.path=test-results/lint.xml
 endif
 
 wire:

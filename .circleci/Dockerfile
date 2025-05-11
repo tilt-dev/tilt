@@ -31,4 +31,4 @@ RUN go install github.com/google/wire/cmd/wire@latest \
     && go install golang.org/x/tools/cmd/goimports@latest \
     && go clean -cache -modcache
 
-RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.64.8
+RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.1.6
