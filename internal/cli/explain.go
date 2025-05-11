@@ -54,16 +54,15 @@ var (
 )
 
 type explainCmd struct {
-	options *explain.ExplainOptions
-	cmd     *cobra.Command
+	flags *explain.ExplainFlags
 }
 
 var _ tiltCmd = &explainCmd{}
 
 func newExplainCmd(streams genericclioptions.IOStreams) *explainCmd {
-	o := explain.NewExplainOptions("tilt", streams)
+	f := explain.NewExplainFlags(streams)
 	return &explainCmd{
-		options: o,
+		flags: f,
 	}
 }
 
@@ -78,8 +77,8 @@ func (c *explainCmd) register() *cobra.Command {
 		Long:                  explainLong,
 		Example:               explainExamples,
 	}
-	cmd.Flags().BoolVar(&c.options.Recursive, "recursive", c.options.Recursive, "Print the fields of fields (Currently only 1 level deep)")
-	cmd.Flags().StringVar(&c.options.APIVersion, "api-version", c.options.APIVersion, "Get different explanations for particular API version (API group/version)")
+	cmd.Flags().BoolVar(&c.flags.Recursive, "recursive", c.flags.Recursive, "Print the fields of fields (Currently only 1 level deep)")
+	cmd.Flags().StringVar(&c.flags.APIVersion, "api-version", c.flags.APIVersion, "Get different explanations for particular API version (API group/version)")
 
 	// TODO(nick): Currently, tilt explain must connect to a running tilt
 	// environment.  But there's not really a fundamental reason why we couldn't
@@ -95,15 +94,14 @@ func (c *explainCmd) run(ctx context.Context, args []string) error {
 	a.Incr("cmd.explain", cmdTags.AsMap())
 	defer a.Flush(time.Second)
 
-	o := c.options
 	getter, err := wireClientGetter(ctx)
 	if err != nil {
 		return err
 	}
 
 	f := cmdutil.NewFactory(getter)
-	cmd := c.cmd
-	cmdutil.CheckErr(o.Complete(f, cmd, args))
+	o, err := c.flags.ToOptions(f, "tilt", args)
+	cmdutil.CheckErr(err)
 	cmdutil.CheckErr(o.Validate())
 	cmdutil.CheckErr(o.Run())
 	return nil
