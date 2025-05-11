@@ -53,8 +53,8 @@ func TestJSONPathMultipleMatches(t *testing.T) {
 
 func TestJSONPathCRD(t *testing.T) {
 	entities := MustParseYAMLFromString(t, testyaml.CRDYAML)
-	crd := entities[0]
-	path, err := NewJSONPath("{.spec.validation.openAPIV3Schema.properties.spec.properties.image}")
+	crd := entities[1]
+	path, err := NewJSONPath("{.spec.image}")
 	assert.NoError(t, err)
 
 	content := crd.Obj.(runtime.Unstructured).UnstructuredContent()
@@ -65,8 +65,8 @@ func TestJSONPathCRD(t *testing.T) {
 
 func TestJSONPathCRDReplace(t *testing.T) {
 	entities := MustParseYAMLFromString(t, testyaml.CRDYAML)
-	crd := entities[0]
-	path, err := NewJSONPath("{.spec.validation.openAPIV3Schema.properties.spec.properties.image}")
+	crd := entities[1]
+	path, err := NewJSONPath("{.spec.image}")
 	assert.NoError(t, err)
 
 	content := crd.Obj.(runtime.Unstructured).UnstructuredContent()
