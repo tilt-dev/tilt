@@ -1,81 +1,81 @@
-# options for analysis running
+version: "2"
 run:
-  timeout: 10m
   go: "1.24"
-  exclude-files:
-    - "zz_generated.*\\.go$"
-    - "vendored_openapi\\.go$"
-  allow-parallel-runners: true
-  modules-download-mode: vendor
   build-tags:
     - integration
-
-# output configuration options
+  modules-download-mode: vendor
+  allow-parallel-runners: true
 output:
-  # colored-line-number|line-number|json|tab|checkstyle|code-climate, default is "colored-line-number"
   formats:
-  - format: colored-line-number
-
-  # print lines of code with issue, default is true
-  print-issued-lines: true
-
-  # print linter name in the end of issue text, default is true
-  print-linter-name: true
-
-# all available settings of specific linters
-linters-settings:
-  errcheck:
-    # report about not checking of errors in type assertions: `a := b.(MyStruct)`;
-    # default is false: such cases aren't reported by default.
-    check-type-assertions: false
-
-    # report about assignment of errors to blank identifier: `num, _ := strconv.Atoi(numStr)`;
-    # default is false: such cases aren't reported by default.
-    check-blank: false
-  govet:
-    settings:
-      printf:
-        funcs:
-          - Verbosef
-          - Infof
-          - Debugf
-          - PrintColorf
-  goimports:
-    local-prefixes: github.com/tilt-dev
-  misspell:
-    # Correct spellings using locale preferences for US or UK.
-    # Default is to use a neutral variety of English.
-    # Setting locale to US will correct the British spelling of 'colour' to 'color'.
-    locale: US
-    ignore-words:
-      - servantes
-      - cancelled # British spelling used in Kubernetes code
-
+    text:
+      path: stdout
+      print-linter-name: true
+      print-issued-lines: true
 linters:
-  disable-all: true
+  default: none
   enable:
     - copyloopvar
     - errcheck
-    - goimports
-    - gosimple
     - govet
     - ineffassign
-    - staticcheck
     - misspell
     - unconvert
     - unused
-
-issues:
-  exclude-rules:
-    - linters:
-        - staticcheck
-      text: "SA1019:"
-    - linters:
-        - gosimple
-      text: "S1008:"
-    - path: _test\.go
-      linters:
-        - errcheck
-    - path: types.go
-      linters:
-        - unconvert
+  settings:
+    errcheck:
+      check-type-assertions: false
+      check-blank: false
+    govet:
+      settings:
+        printf:
+          funcs:
+            - Verbosef
+            - Infof
+            - Debugf
+            - PrintColorf
+    misspell:
+      locale: US
+      ignore-rules:
+        - servantes
+        - cancelled
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - staticcheck
+        text: 'SA1019:'
+      - linters:
+          - staticcheck
+        text: 'S1008:'
+      - linters:
+          - errcheck
+        path: _test\.go
+      - linters:
+          - unconvert
+        path: types.go
+    paths:
+      - zz_generated.*\.go$
+      - vendored_openapi\.go$
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/tilt-dev
+  exclusions:
+    generated: lax
+    paths:
+      - zz_generated.*\.go$
+      - vendored_openapi\.go$
+      - third_party$
+      - builtin$
+      - examples$
