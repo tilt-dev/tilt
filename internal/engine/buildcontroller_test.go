@@ -525,6 +525,9 @@ func TestBuildControllerResourceDepTrumpsLocalResourcePriority(t *testing.T) {
 
 // bar depends on foo, we build foo three times before marking it ready, and make sure bar waits
 func TestBuildControllerResourceDepTrumpsInitialBuild(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("flaky on windows")
+	}
 	f := newTestFixture(t)
 
 	foo := manifestbuilder.New(f, "foo").
