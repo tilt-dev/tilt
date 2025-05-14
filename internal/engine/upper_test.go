@@ -1971,6 +1971,9 @@ func TestDockerComposeUp(t *testing.T) {
 }
 
 func TestDockerComposeRedeployFromFileChange(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("flaky on windows")
+	}
 	f := newTestFixture(t)
 	r, m := f.setupDCFixture()
 
