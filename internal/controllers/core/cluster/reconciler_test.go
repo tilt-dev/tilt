@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/tilt-dev/tilt/internal/hud/server"
+	"github.com/tilt-dev/tilt/internal/k8s/kubeconfig"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/internal/xdg"
 	"github.com/tilt-dev/wmclient/pkg/analytics"
@@ -336,6 +337,7 @@ func newFixture(t *testing.T) *fixture {
 	dockerClient := docker.NewFakeClient()
 	fs := afero.NewOsFs()
 	base := xdg.NewFakeBase(tmpf.Path(), fs)
+	kubeconfigWriter := kubeconfig.NewWriter(base, fs, "tilt-default")
 	r := NewReconciler(cfb.Context(),
 		cfb.Client,
 		cfb.Store,
@@ -345,9 +347,7 @@ func newFixture(t *testing.T) *fixture {
 		FakeDockerClientOrError(dockerClient, nil),
 		FakeKubernetesClientOrError(k8sClient, nil),
 		server.NewWebsocketList(),
-		base,
-		"tilt-default",
-		fs)
+		kubeconfigWriter)
 	requeueChan := make(chan indexer.RequeueForTestResult, 1)
 	return &fixture{
 		ControllerFixture: cfb.WithRequeuer(r.requeuer).WithRequeuerResultChan(requeueChan).Build(r),

@@ -69,6 +69,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/hud/prompt"
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/k8s/kubeconfig"
 	"github.com/tilt-dev/tilt/internal/localexec"
 	"github.com/tilt-dev/tilt/internal/openurl"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -335,7 +336,8 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	dockerClientFactory := _wireDockerClientFuncValue
 	kubernetesClientFactory := _wireKubernetesClientFuncValue
 	fs := afero.NewOsFs()
-	clusterReconciler := cluster.NewReconciler(ctx, deferredClient, storeStore, clock, connectionManager, localEnv, dockerClientFactory, kubernetesClientFactory, websocketList, base, apiServerName, fs)
+	writer := kubeconfig.NewWriter(base, fs, apiServerName)
+	clusterReconciler := cluster.NewReconciler(ctx, deferredClient, storeStore, clock, connectionManager, localEnv, dockerClientFactory, kubernetesClientFactory, websocketList, writer)
 	disableSubscriber := dockercomposeservice.NewDisableSubscriber(ctx, dockerComposeClient, clock)
 	dockercomposeserviceReconciler := dockercomposeservice.NewReconciler(deferredClient, dockerComposeClient, compositeClient, storeStore, scheme, disableSubscriber)
 	imagemapReconciler := imagemap.NewReconciler(deferredClient, storeStore)
@@ -549,7 +551,8 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	dockerClientFactory := _wireDockerClientFuncValue
 	kubernetesClientFactory := _wireKubernetesClientFuncValue
 	fs := afero.NewOsFs()
-	clusterReconciler := cluster.NewReconciler(ctx, deferredClient, storeStore, clock, connectionManager, localEnv, dockerClientFactory, kubernetesClientFactory, websocketList, base, apiServerName, fs)
+	writer := kubeconfig.NewWriter(base, fs, apiServerName)
+	clusterReconciler := cluster.NewReconciler(ctx, deferredClient, storeStore, clock, connectionManager, localEnv, dockerClientFactory, kubernetesClientFactory, websocketList, writer)
 	disableSubscriber := dockercomposeservice.NewDisableSubscriber(ctx, dockerComposeClient, clock)
 	dockercomposeserviceReconciler := dockercomposeservice.NewReconciler(deferredClient, dockerComposeClient, compositeClient, storeStore, scheme, disableSubscriber)
 	imagemapReconciler := imagemap.NewReconciler(deferredClient, storeStore)
@@ -759,7 +762,8 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	dockerClientFactory := _wireDockerClientFuncValue
 	kubernetesClientFactory := _wireKubernetesClientFuncValue
 	fs := afero.NewOsFs()
-	clusterReconciler := cluster.NewReconciler(ctx, deferredClient, storeStore, clock, connectionManager, localEnv, dockerClientFactory, kubernetesClientFactory, websocketList, base, apiServerName, fs)
+	writer := kubeconfig.NewWriter(base, fs, apiServerName)
+	clusterReconciler := cluster.NewReconciler(ctx, deferredClient, storeStore, clock, connectionManager, localEnv, dockerClientFactory, kubernetesClientFactory, websocketList, writer)
 	disableSubscriber := dockercomposeservice.NewDisableSubscriber(ctx, dockerComposeClient, clock)
 	dockercomposeserviceReconciler := dockercomposeservice.NewReconciler(deferredClient, dockerComposeClient, compositeClient, storeStore, scheme, disableSubscriber)
 	imagemapReconciler := imagemap.NewReconciler(deferredClient, storeStore)
@@ -978,7 +982,17 @@ func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, s
 	processExecer := localexec.NewProcessExecer(env)
 	defaults := _wireDefaultsValue
 	tiltfileLoader := tiltfile.ProvideTiltfileLoader(tiltAnalytics, plugin, versionPlugin, configPlugin, tiltextensionPlugin, cisettingsPlugin, dockerComposeClient, webHost, processExecer, defaults, product)
-	downDeps := ProvideDownDeps(tiltfileLoader, dockerComposeClient, k8sClient, processExecer)
+	fs := afero.NewOsFs()
+	apiServerName := model.ProvideAPIServerName(webPort)
+	writer := kubeconfig.NewWriter(base, fs, apiServerName)
+	downDeps := DownDeps{
+		tfl:              tiltfileLoader,
+		dcClient:         dockerComposeClient,
+		kClient:          k8sClient,
+		execer:           processExecer,
+		kubeconfigWriter: writer,
+		fs:               fs,
+	}
 	return downDeps, nil
 }
 
@@ -1134,24 +1148,12 @@ type CmdUpdogDeps struct {
 }
 
 type DownDeps struct {
-	tfl      tiltfile.TiltfileLoader
-	dcClient dockercompose.DockerComposeClient
-	kClient  k8s.Client
-	execer   localexec.Execer
-}
-
-func ProvideDownDeps(
-	tfl tiltfile.TiltfileLoader,
-	dcClient dockercompose.DockerComposeClient,
-	kClient k8s.Client,
-	execer localexec.Execer,
-) DownDeps {
-	return DownDeps{
-		tfl:      tfl,
-		dcClient: dcClient,
-		kClient:  kClient,
-		execer:   execer,
-	}
+	tfl              tiltfile.TiltfileLoader
+	dcClient         dockercompose.DockerComposeClient
+	kClient          k8s.Client
+	execer           localexec.Execer
+	kubeconfigWriter *kubeconfig.Writer
+	fs               afero.Fs
 }
 
 type LogsDeps struct {

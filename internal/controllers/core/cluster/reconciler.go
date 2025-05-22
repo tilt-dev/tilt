@@ -3,20 +3,14 @@ package cluster
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/docker/docker/client"
 	"github.com/jonboulle/clockwork"
-	"github.com/spf13/afero"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/cli-runtime/pkg/printers"
-	"k8s.io/client-go/tools/clientcmd/api"
-	"k8s.io/client-go/tools/clientcmd/api/latest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -29,9 +23,9 @@ import (
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/k8s/kubeconfig"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/clusters"
-	"github.com/tilt-dev/tilt/internal/xdg"
 	"github.com/tilt-dev/tilt/pkg/apis"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -52,14 +46,12 @@ type Reconciler struct {
 	requeuer            *indexer.Requeuer
 	clock               clockwork.Clock
 	connManager         *ConnectionManager
-	base                xdg.Base
-	apiServerName       model.APIServerName
 	localDockerEnv      docker.LocalEnv
 	dockerClientFactory DockerClientFactory
 	k8sClientFactory    KubernetesClientFactory
 	wsList              *server.WebsocketList
 	clusterHealth       *clusterHealthMonitor
-	filesystem          afero.Fs
+	kubeconfigWriter    *kubeconfig.Writer
 }
 
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
@@ -79,9 +71,7 @@ func NewReconciler(
 	dockerClientFactory DockerClientFactory,
 	k8sClientFactory KubernetesClientFactory,
 	wsList *server.WebsocketList,
-	base xdg.Base,
-	apiServerName model.APIServerName,
-	filesystem afero.Fs,
+	kubeconfigWriter *kubeconfig.Writer,
 ) *Reconciler {
 	requeuer := indexer.NewRequeuer()
 
@@ -97,9 +87,7 @@ func NewReconciler(
 		k8sClientFactory:    k8sClientFactory,
 		wsList:              wsList,
 		clusterHealth:       newClusterHealthMonitor(globalCtx, clock, requeuer),
-		base:                base,
-		apiServerName:       apiServerName,
-		filesystem:          filesystem,
+		kubeconfigWriter:    kubeconfigWriter,
 	}
 }
 
@@ -370,7 +358,7 @@ func (r *Reconciler) populateK8sMetadata(ctx context.Context, clusterNN types.Na
 			k8sStatus.Namespace = context.Namespace
 			k8sStatus.Cluster = context.Cluster
 		}
-		configPath, err := r.writeFrozenKubeConfig(ctx, clusterNN, apiConfig)
+		configPath, err := r.kubeconfigWriter.WriteFrozenKubeConfig(ctx, clusterNN, apiConfig)
 		if err != nil {
 			conn.initError = err.Error()
 		}
@@ -387,63 +375,6 @@ func (r *Reconciler) populateK8sMetadata(ctx context.Context, clusterNN types.Na
 			conn.serverVersion = versionInfo.String()
 		}
 	}
-}
-
-func (r *Reconciler) openFrozenKubeConfigFile(ctx context.Context, nn types.NamespacedName) (string, afero.File, error) {
-	path, err := r.base.RuntimeFile(
-		filepath.Join(string(r.apiServerName), "cluster", fmt.Sprintf("%s.yml", nn.Name)))
-	if err == nil {
-		var f afero.File
-		f, err = r.filesystem.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
-		if err == nil {
-			return path, f, nil
-		}
-	}
-
-	path, err = r.base.StateFile(
-		filepath.Join(string(r.apiServerName), "cluster", fmt.Sprintf("%s.yml", nn.Name)))
-	if err != nil {
-		return "", nil, fmt.Errorf("storing temp kubeconfigs: %v", err)
-	}
-
-	f, err := r.filesystem.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
-	if err != nil {
-		return "", nil, fmt.Errorf("storing temp kubeconfigs: %v", err)
-	}
-	return path, f, nil
-}
-
-func (r *Reconciler) writeFrozenKubeConfig(ctx context.Context, nn types.NamespacedName, config *api.Config) (string, error) {
-	config = config.DeepCopy()
-	err := api.MinifyConfig(config)
-	if err != nil {
-		return "", fmt.Errorf("minifying Kubernetes config: %v", err)
-	}
-
-	err = api.FlattenConfig(config)
-	if err != nil {
-		return "", fmt.Errorf("flattening Kubernetes config: %v", err)
-	}
-
-	obj, err := latest.Scheme.ConvertToVersion(config, latest.ExternalVersion)
-	if err != nil {
-		return "", fmt.Errorf("converting Kubernetes config: %v", err)
-	}
-
-	printer := printers.YAMLPrinter{}
-	path, f, err := r.openFrozenKubeConfigFile(ctx, nn)
-	if err != nil {
-		return "", err
-	}
-	defer func() {
-		_ = f.Close()
-	}()
-
-	err = printer.PrintObj(obj, f)
-	if err != nil {
-		return "", fmt.Errorf("writing kubeconfig: %v", err)
-	}
-	return path, nil
 }
 
 func (r *Reconciler) populateDockerMetadata(ctx context.Context, conn *connection) {

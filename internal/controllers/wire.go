@@ -26,6 +26,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/core/uibutton"
 	"github.com/tilt-dev/tilt/internal/controllers/core/uiresource"
 	"github.com/tilt-dev/tilt/internal/controllers/core/uisession"
+	"github.com/tilt-dev/tilt/internal/k8s/kubeconfig"
 )
 
 var controllerSet = wire.NewSet(
@@ -36,6 +37,7 @@ var controllerSet = wire.NewSet(
 	podlogstream.NewPodSource,
 	kubernetesapply.NewReconciler,
 	cluster.NewReconciler,
+	kubeconfig.NewWriter,
 
 	ProvideControllers,
 )
