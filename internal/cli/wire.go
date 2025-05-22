@@ -9,9 +9,12 @@ import (
 	"context"
 	"time"
 
+	"github.com/spf13/afero"
+
 	"github.com/tilt-dev/clusterid"
 	cliclient "github.com/tilt-dev/tilt/internal/cli/client"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
+	"github.com/tilt-dev/tilt/internal/k8s/kubeconfig"
 
 	"github.com/google/wire"
 	"github.com/jonboulle/clockwork"
@@ -279,29 +282,18 @@ func wireDockerCompositeClient(ctx context.Context) (docker.CompositeClient, err
 }
 
 func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (DownDeps, error) {
-	wire.Build(UpWireSet, ProvideDownDeps)
+	wire.Build(UpWireSet,
+		wire.Struct(new(DownDeps), "*"))
 	return DownDeps{}, nil
 }
 
 type DownDeps struct {
-	tfl      tiltfile.TiltfileLoader
-	dcClient dockercompose.DockerComposeClient
-	kClient  k8s.Client
-	execer   localexec.Execer
-}
-
-func ProvideDownDeps(
-	tfl tiltfile.TiltfileLoader,
-	dcClient dockercompose.DockerComposeClient,
-	kClient k8s.Client,
-	execer localexec.Execer,
-) DownDeps {
-	return DownDeps{
-		tfl:      tfl,
-		dcClient: dcClient,
-		kClient:  kClient,
-		execer:   execer,
-	}
+	tfl              tiltfile.TiltfileLoader
+	dcClient         dockercompose.DockerComposeClient
+	kClient          k8s.Client
+	execer           localexec.Execer
+	kubeconfigWriter *kubeconfig.Writer
+	fs               afero.Fs
 }
 
 func wireLogsDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (LogsDeps, error) {

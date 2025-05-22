@@ -80,6 +80,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/hud/view"
 	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/k8s/kubeconfig"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/localexec"
 	"github.com/tilt-dev/tilt/internal/openurl"
@@ -3229,10 +3230,11 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	ib := build.NewImageBuilder(dockerBuilder, customBuilder, kp)
 	dir := dockerimage.NewReconciler(cdc, st, sch, dockerClient, ib)
 	cir := cmdimage.NewReconciler(cdc, st, sch, dockerClient, ib)
+	kubeconfigWriter := kubeconfig.NewWriter(base, fs, "tilt-default")
 	clr := cluster.NewReconciler(ctx, cdc, st, clock, clusterClients, docker.LocalEnv{},
 		cluster.FakeDockerClientOrError(dockerClient, nil),
 		cluster.FakeKubernetesClientOrError(kClient, nil),
-		wsl, base, "tilt-default", fs)
+		wsl, kubeconfigWriter)
 	dclsr := dockercomposelogstream.NewReconciler(cdc, st, fakeDcc, dockerClient)
 
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(

@@ -2,12 +2,14 @@ package cli
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
@@ -173,6 +175,19 @@ func manifestsForNode(node *dependencyNode) []model.Manifest {
 }
 
 func deleteK8sEntities(ctx context.Context, manifests []model.Manifest, updateSettings model.UpdateSettings, downDeps DownDeps, deleteNamespaces bool) error {
+	kubeconfigWriter := downDeps.kubeconfigWriter
+	kClient := downDeps.kClient
+	kubeconfigPath, err := kubeconfigWriter.WriteFrozenKubeConfig(
+		ctx,
+		types.NamespacedName{Name: v1alpha1.ClusterNameDefault},
+		kClient.APIConfig())
+	if err != nil {
+		return errors.Wrap(err, "Writing kubeconfig connection")
+	}
+	defer func() {
+		_ = downDeps.fs.Remove(kubeconfigPath)
+	}()
+
 	entities, deleteCmds, err := k8sToDelete(manifests...)
 	if err != nil {
 		return errors.Wrap(err, "Parsing manifest YAML")
@@ -214,13 +229,14 @@ func deleteK8sEntities(ctx context.Context, manifests []model.Manifest, updateSe
 		}
 	}
 
-	for i := range deleteCmds {
+	for _, deleteCmd := range deleteCmds {
 		dCtx, cancel := context.WithTimeout(ctx, updateSettings.K8sUpsertTimeout())
-		err := localexec.OneShotToLogger(dCtx, downDeps.execer, deleteCmds[i])
+		deleteCmd.Env = append(deleteCmd.Env, fmt.Sprintf("KUBECONFIG=%s", kubeconfigPath))
+		err := localexec.OneShotToLogger(dCtx, downDeps.execer, deleteCmd)
 		cancel()
 
 		if err != nil {
-			errs = append(errs, errors.Wrapf(err, "Deleting k8s entities for cmd: %s", deleteCmds[i].String()))
+			errs = append(errs, errors.Wrapf(err, "Deleting k8s entities for cmd: %s", deleteCmd.String()))
 		}
 	}
 

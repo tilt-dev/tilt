@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -12,10 +13,12 @@ import (
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
 	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/k8s/kubeconfig"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/localexec"
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/tiltfile"
+	"github.com/tilt-dev/tilt/internal/xdg"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -240,6 +243,9 @@ func TestDownK8sDeleteCmd(t *testing.T) {
 	calls := f.execer.Calls()
 	if assert.Len(t, calls, 1, "Should have been exactly 1 exec call") {
 		assert.Equal(t, []string{"custom-delete-cmd"}, calls[0].Cmd.Argv)
+		if assert.Len(t, calls[0].Cmd.Env, 1, "Should have been exactly 1 env var") {
+			assert.Contains(t, calls[0].Cmd.Env[0], "KUBECONFIG=")
+		}
 	}
 }
 
@@ -461,7 +467,18 @@ func newDownFixture(t *testing.T) downFixture {
 	dcc := dockercompose.NewFakeDockerComposeClient(t, ctx)
 	kCli := k8s.NewFakeK8sClient(t)
 	execer := localexec.NewFakeExecer(t)
-	downDeps := DownDeps{tfl, dcc, kCli, execer}
+	fs := afero.NewMemMapFs()
+	xdgBase := xdg.NewFakeBase(t.TempDir(), fs)
+	writer := kubeconfig.NewWriter(xdgBase, fs, model.APIServerName("test"))
+
+	downDeps := DownDeps{
+		tfl:              tfl,
+		dcClient:         dcc,
+		kClient:          kCli,
+		execer:           execer,
+		kubeconfigWriter: writer,
+		fs:               fs,
+	}
 	cmd := &downCmd{downDepsProvider: func(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (deps DownDeps, err error) {
 		return downDeps, nil
 	}}
